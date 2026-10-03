@@ -1431,6 +1431,10 @@
 
   html[data-big-text] .lk-meta { font-size: 15.5px; }
 
+  html[data-big-text] .save-remind-sum { font-size: 16.5px; }
+
+  html[data-big-text] .save-remind-off { font-size: 15.5px; }
+
   /* инлайновые font-size */
   html[data-big-text] [style*="font-size:8.5px"], html[data-big-text] [style*="font-size: 8.5px"] { font-size: 12.5px !important; }
   html[data-big-text] [style*="font-size:9px"], html[data-big-text] [style*="font-size: 9px"] { font-size: 13px !important; }

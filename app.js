@@ -8225,6 +8225,11 @@ const app = {
             this.lastSavedStateString = this.getStateSignature();
             this.markAsSaved();
             this.logInvoiceEvent('saved');
+            // Точка отсчёта для напоминания «сохранить расчёт» — теперь это сохранённая сумма
+            this._remindBase = total;
+            this._remindDismissSum = null;
+            this.saveReminderDisarm();
+            this.saveReminderClearPending();
             console.log("[saveToCloud] Сохранение успешно завершено.");
             if (!silent) app.alert("✅ Смета успешно сохранена!");
             return true;
@@ -12655,6 +12660,7 @@ const app = {
             this.hasUnsavedChanges = false;
             this.updateSaveBtnUI();
             this.resetAutosaveBaseline();
+            this._remindBase = this.saveReminderSum(); this._remindDismissSum = null; this.saveReminderClearPending();
             // Цены каталога могли уехать с момента сохранения — расчёт уже пересобран
             // по сегодняшним, осталось сказать об этом вслух
             this.showRepriceNotice({ eqSum: data.eq_sum, at: data.created_at });
@@ -17019,6 +17025,7 @@ const app = {
         if (kpDaysEl) kpDaysEl.value = String(this.kpReminderDaysDefault());
         const shortEl = document.getElementById('profile_short_names');
         if (shortEl) shortEl.checked = this.shortNamesDefault();
+        this.fillSaveReminderForm();
     },
     invoiceValidDaysDefault: function () {
         if (!this.installerSettings) this.loadInstallerSettingsLocal();
@@ -42428,7 +42435,7 @@ const app = {
     // масштаб страницы уже не поместить. Правила лежат в big_text.css, его собирает
     // tools/gen_big_text.py из style.css; грузится лениво, только когда режим включён.
     BIG_TEXT_KEY: 'hc_big_text',
-    BIG_TEXT_CSS_V: '8',
+    BIG_TEXT_CSS_V: '9',
 
     bigText: function () {
         try { return localStorage.getItem(this.BIG_TEXT_KEY) === '1'; } catch (e) { return false; }
@@ -48109,6 +48116,7 @@ const app = {
         // прежним файлом. Без вопроса — он уже подтверждён строкой выше.
         if (typeof RecognizeUI !== 'undefined' && RecognizeUI.resetAll) RecognizeUI.resetAll(true);
         this.resetAutosaveBaseline();
+        this._remindBase = 0; this._remindDismissSum = null; this.saveReminderDisarm(); this.saveReminderClearPending();
     },
 
     /**
@@ -48206,9 +48214,252 @@ const app = {
         if (this._autoSaveTimeout) {
             clearTimeout(this._autoSaveTimeout);
         }
+        // Тихое автосохранение копий в облако заменено напоминанием с вопросом
+        // «сохранить расчёт?» (saveReminderEval): копии под именем «(автосохранение)»
+        // никто не искал, а сервер они грузили. runAutoSave оставлен, но не вызывается.
         this._autoSaveTimeout = setTimeout(() => {
-            this.runAutoSave();
+            this.saveReminderEval();
         }, 3000);
+    },
+
+    // ── Напоминание сохранить расчёт ─────────────────────────────────────────
+    // Включено у всех вошедших в аккаунт. Таймер заводится, когда расчёт изменён и
+    // сумма ушла от последней сохранённой (или от нуля) на 10 % и больше; через N минут
+    // (по умолчанию 15) появляется окно с названием объекта. Сохранили или отказались —
+    // таймер заново не идёт, пока расчёт снова не изменится на 10 %.
+    // Закрытие вкладки: браузер не даёт нарисовать своё окно, поэтому на десктопе
+    // срабатывает его штатный вопрос, а везде (в том числе на телефоне) расчёт
+    // помечается в localStorage, и при следующем открытии окно появляется само.
+    SAVE_REMIND_MIN_DEFAULT: 15,
+    SAVE_REMIND_MIN_MAX: 240,
+    SAVE_REMIND_PENDING_KEY: 'hc_save_reminder_pending',
+    _remindBase: 0,
+    _remindTimer: null,
+    _remindDismissSum: null,
+    _remindOpen: false,
+
+    saveReminderEnabled: function () {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        return this.installerSettings.saveReminder !== false;
+    },
+    setSaveReminderEnabled: function (on) {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        this.installerSettings.saveReminder = !!on;
+        if (!on) { this.saveReminderDisarm(); this.saveReminderClearPending(); }
+        this.pushInstallerSettingsToCloud();
+        this.fillSaveReminderForm();
+    },
+    saveReminderMinutes: function () {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const n = Math.round(Number(this.installerSettings.saveReminderMin));
+        if (!isFinite(n) || n < 1) return this.SAVE_REMIND_MIN_DEFAULT;
+        return Math.min(n, this.SAVE_REMIND_MIN_MAX);
+    },
+    setSaveReminderMinutes: function (v) {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        let n = Math.round(Number(v));
+        if (!isFinite(n) || n < 1) n = this.SAVE_REMIND_MIN_DEFAULT;
+        n = Math.min(n, this.SAVE_REMIND_MIN_MAX);
+        if (this.installerSettings.saveReminderMin !== n) {
+            this.installerSettings.saveReminderMin = n;
+            this.pushInstallerSettingsToCloud();
+        }
+        this.saveReminderDisarm();
+        this.fillSaveReminderForm();
+    },
+    fillSaveReminderForm: function () {
+        const on = this.saveReminderEnabled();
+        const sw = document.getElementById('profile_save_reminder');
+        if (sw) sw.checked = on;
+        const mEl = document.getElementById('profile_save_reminder_min');
+        if (mEl) { mEl.value = String(this.saveReminderMinutes()); mEl.disabled = !on; }
+        const row = document.getElementById('profile_save_reminder_min_row');
+        if (row) row.style.opacity = on ? '' : '0.5';
+    },
+
+    // Сумма сметы, как её видит человек: оборудование + монтаж (если он ему доступен)
+    saveReminderSum: function () {
+        return (app.lastEqSum || 0) + (!this.canUseWorks() ? 0 : (app.lastWorksSum || 0));
+    },
+    // Есть ли что предлагать сохранить: расчёт изменён и ушёл от сохранённого на 10 %+
+    saveReminderNeeded: function () {
+        const sum = this.saveReminderSum();
+        if (!(sum > 0) || !this.hasUnsavedChanges) return false;
+        if (this._remindDismissSum !== null && this._remindDismissSum > 0 &&
+            Math.abs(sum - this._remindDismissSum) / this._remindDismissSum < 0.10) return false;
+        const base = this._remindBase || 0;
+        return base <= 0 || Math.abs(sum - base) / base >= 0.10;
+    },
+    saveReminderDisarm: function () {
+        if (this._remindTimer) { clearTimeout(this._remindTimer); this._remindTimer = null; }
+    },
+    saveReminderEval: function () {
+        if (this._suppressSaveState || !this.isAppReady) return;
+        if (!this.saveReminderEnabled()) { this.saveReminderDisarm(); return; }
+        // Чистое состояние (загружено или только что сохранено) — запоминаем его сумму
+        // как точку отсчёта и снимаем отказ
+        if (!this.hasUnsavedChanges) {
+            this._remindBase = this.saveReminderSum();
+            this._remindDismissSum = null;
+            this.saveReminderDisarm();
+            this.saveReminderClearPending();
+            return;
+        }
+        if (!this.saveReminderNeeded()) { this.saveReminderDisarm(); return; }
+        if (this._remindTimer || this._remindOpen) return;
+        this._remindTimer = setTimeout(() => {
+            this._remindTimer = null;
+            this.saveReminderFire();
+        }, this.saveReminderMinutes() * 60 * 1000);
+    },
+    saveReminderFire: async function () {
+        if (!this.saveReminderEnabled() || !this.saveReminderNeeded() || this._remindOpen) return;
+        // Вкладка в фоне — спросим, когда человек вернётся
+        if (document.hidden) {
+            const onShow = () => {
+                if (document.hidden) return;
+                document.removeEventListener('visibilitychange', onShow);
+                this.saveReminderFire();
+            };
+            document.addEventListener('visibilitychange', onShow);
+            return;
+        }
+        if (!(await this.saveReminderHasSession())) return;
+        this.saveReminderShow('timer');
+    },
+    saveReminderHasSession: async function () {
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            return !!session;
+        } catch (e) { return false; }
+    },
+    saveReminderClearPending: function () {
+        try { localStorage.removeItem(this.SAVE_REMIND_PENDING_KEY); } catch (e) { }
+    },
+    // Ставим отметку при уходе со страницы, если расчёт не сохранён
+    saveReminderMarkPending: function () {
+        try {
+            if (this.saveReminderEnabled() && this.saveReminderNeeded()) {
+                localStorage.setItem(this.SAVE_REMIND_PENDING_KEY, JSON.stringify({ t: Date.now(), sum: this.saveReminderSum() }));
+            }
+        } catch (e) { }
+    },
+    // Старт приложения: если в прошлый раз расчёт закрыли несохранённым — спросить
+    saveReminderCheckPending: async function () {
+        let p = null;
+        try { p = JSON.parse(localStorage.getItem(this.SAVE_REMIND_PENDING_KEY) || 'null'); } catch (e) { }
+        if (!p) return;
+        if (!this.saveReminderEnabled() || Date.now() - (p.t || 0) > 7 * 24 * 3600 * 1000 || !(this.saveReminderSum() > 0)) {
+            this.saveReminderClearPending();
+            return;
+        }
+        if (!(await this.saveReminderHasSession())) return;
+        this.saveReminderShow('reopen');
+    },
+    saveReminderBindEvents: function () {
+        window.addEventListener('beforeunload', (e) => {
+            // Настольный браузер: штатный вопрос «Покинуть сайт?». На телефонах он не
+            // показывается — там работает отметка и окно при следующем открытии.
+            this.saveReminderMarkPending();
+            if (this.saveReminderEnabled() && this.saveReminderNeeded() && !this.isMobileLayout()) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+        window.addEventListener('pagehide', () => this.saveReminderMarkPending());
+        document.addEventListener('visibilitychange', () => { if (document.hidden) this.saveReminderMarkPending(); });
+    },
+    saveReminderSnooze: function () {
+        this._remindDismissSum = this.saveReminderSum();
+        this.saveReminderDisarm();
+        this.saveReminderClearPending();
+    },
+    saveReminderShow: function (reason) {
+        if (this._remindOpen) return;
+        this._remindOpen = true;
+        const sum = this.saveReminderSum();
+        const fmt = (n) => Math.round(n).toLocaleString('ru-RU') + ' ₽';
+        const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        let name = (this.state.projectName || document.getElementById('project_name_input')?.value?.trim() || this.projectObjectTitle('') || '').replace(/\s*\(автосохранение.*?\)/gi, '').trim();
+        if (name === 'Мой проект') name = '';
+        const lead = reason === 'reopen'
+            ? 'В прошлый раз вы закрыли калькулятор, не сохранив расчёт.'
+            : 'Вы давно работаете над расчётом и не сохраняли его.';
+
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay';
+        overlay.innerHTML = `
+            <div class="calc-dialog-card save-remind-card" role="dialog" aria-modal="true" aria-labelledby="save_remind_title">
+                <div class="save-remind-head">
+                    <div class="save-remind-ico">💾</div>
+                    <div>
+                        <h3 class="calc-dialog-title" id="save_remind_title">Сохранить расчёт?</h3>
+                        <div class="save-remind-sum">Сумма сметы: <b>${fmt(sum)}</b></div>
+                    </div>
+                </div>
+                <p class="calc-dialog-message">${lead} Дайте объекту название — потом найдёте его в «Моих объектах» и продолжите с того же места.</p>
+                <div class="calc-dialog-input-wrapper">
+                    <input type="text" class="calc-dialog-input" id="save_remind_name" maxlength="120" placeholder="Например: Дом Ивановых, 180 м²" value="${esc(name)}" autocomplete="off">
+                    <div class="calc-dialog-error" id="save_remind_err" style="display:none"></div>
+                </div>
+                <div class="calc-dialog-buttons save-remind-buttons">
+                    <button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" id="save_remind_later">Не сейчас</button>
+                    <button type="button" class="calc-dialog-btn calc-dialog-btn-confirm" id="save_remind_ok">Сохранить</button>
+                </div>
+                <button type="button" class="save-remind-off" id="save_remind_off">Больше не напоминать</button>
+            </div>`;
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.classList.add('active'), 10);
+
+        const input = overlay.querySelector('#save_remind_name');
+        const okBtn = overlay.querySelector('#save_remind_ok');
+        const errEl = overlay.querySelector('#save_remind_err');
+        const close = () => {
+            this._remindOpen = false;
+            overlay.classList.remove('active');
+            setTimeout(() => overlay.remove(), 200);
+            document.removeEventListener('keydown', onKey);
+        };
+        const later = () => { this.saveReminderSnooze(); close(); };
+        const save = async () => {
+            const v = input.value.trim();
+            if (!v) {
+                errEl.textContent = 'Введите название объекта';
+                errEl.style.display = '';
+                input.focus();
+                return;
+            }
+            okBtn.disabled = true;
+            okBtn.textContent = 'Сохраняю…';
+            this.state.projectName = v;
+            const pn = document.getElementById('project_name_input');
+            if (pn) pn.value = v;
+            this.saveState();
+            const ok = await this.saveToCloud(true);
+            if (ok) {
+                close();
+                this.showInAppNotification('Расчёт сохранён', `«${esc(v)}» — в «Моих объектах»`, '✅');
+            } else {
+                okBtn.disabled = false;
+                okBtn.textContent = 'Сохранить';
+                errEl.textContent = 'Не удалось сохранить. Проверьте связь и нажмите ещё раз.';
+                errEl.style.display = '';
+            }
+        };
+        const onKey = (e) => {
+            if (e.key === 'Escape') later();
+            else if (e.key === 'Enter' && document.activeElement === input) save();
+        };
+        document.addEventListener('keydown', onKey);
+        okBtn.onclick = save;
+        overlay.querySelector('#save_remind_later').onclick = later;
+        overlay.querySelector('#save_remind_off').onclick = () => {
+            this.setSaveReminderEnabled(false);
+            close();
+            this.showInAppNotification('Напоминание выключено', 'Включить снова: Личный кабинет → Настройки → КП и счета', 'ℹ️');
+        };
+        // На телефоне фокус открыл бы клавиатуру поверх окна — ставим его только на десктопе
+        if (!this.isMobileLayout()) setTimeout(() => { input.focus(); input.select(); }, 60);
     },
 
     runAutoSave: async function () {
@@ -50964,6 +51215,10 @@ const app = {
         this.lastSavedStateString = this.getStateSignature();
         this.updateSaveBtnUI();
         this.resetAutosaveBaseline();
+        // Напоминание «сохранить расчёт»: точка отсчёта — то, что загрузилось
+        this._remindBase = this.saveReminderSum();
+        this.saveReminderBindEvents();
+        setTimeout(() => this.saveReminderCheckPending(), 3500);
 
         // Фоновый запуск очереди отправки писем
         if (this.queue && typeof this.queue.start === 'function') {
