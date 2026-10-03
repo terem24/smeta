@@ -9763,6 +9763,39 @@ body.dark-mode .sec-analog-badge.active .sec-analog-label {
     outline: none;
 }
 
+/* Окно «Ссылка / Печать / Excel» без вертикальной прокрутки: карточки плотнее,
+   оборудование с работами и теплопотери со схемой — по две в ряд, подсказка таймера
+   одна короткая. Только это окно: .share-option-card есть и в других местах. */
+#share_options_modal_overlay .auth-modal-content {
+    padding: 18px 20px !important;
+}
+
+#share_options_modal_overlay .share-option-card {
+    gap: 10px;
+    padding: 9px 12px;
+    margin-bottom: 8px;
+    border-width: 1.5px;
+    border-radius: 10px;
+}
+
+.share-opt-pair {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    column-gap: 8px;
+}
+
+.share-opt-pair .share-option-card {
+    min-width: 0;
+}
+
+#share_options_modal_overlay .share-timer-hint-long {
+    display: none;
+}
+
+#share_options_modal_overlay .share-timer-hint-short {
+    display: inline;
+}
+
 /* Карточка «Счёт действителен N дней» в окне ссылки клиенту.
    Число и слово «дня» — одна неразрывная группа: на телефоне поле
    ввода крупнее (16px против приближения в iOS), и без группы слово

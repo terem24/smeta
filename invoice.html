@@ -2437,6 +2437,26 @@
             }
         }
 
+        /* Подсказка поверх таблицы. Таблица лежит в ящике с overflow-x:auto, а при нём
+           браузер режет и по вертикали: у первой строки раздела подсказка, открытая
+           вверх, упиралась в верх ящика, и «Зачем это нужно» с описанием пропадали.
+           Позицию считает placeTooltip() при наведении: fixed не режется ящиком,
+           место (вверх или вниз) и сдвиг по горизонтали выбираются по экрану. */
+        .tooltip-content.tip-fixed {
+            position: fixed;
+            bottom: auto;
+            transform: none;
+            max-height: calc(100vh - 16px);
+            overflow-y: auto;
+        }
+
+        .tooltip-content.tip-fixed::after {
+            top: 100%;
+            bottom: auto;
+            left: var(--tip-arrow, 50%);
+            border-color: #1F2937 transparent transparent transparent;
+        }
+
         /* Prevent showing tooltips when printing */
         @media print {
             .no-print, .tooltip-wrapper, .info-icon, .tooltip-content {
@@ -2939,6 +2959,44 @@
             if (!s || s === 'нет' || s === '-') return '';
             return /^(rec|custom|user)_/.test(s) ? '' : s;
         }
+
+        // Подсказка к позиции всегда открывается НАД значком. Ящик таблицы режет всё,
+        // что выходит за него (overflow-x:auto), поэтому подсказка выводится поверх
+        // страницы (position:fixed, см. .tip-fixed). Если над значком мало места,
+        // она прижимается к верху экрана и при необходимости прокручивается, но
+        // вниз не уходит. По горизонтали сдвигается так, чтобы не вылезать за экран;
+        // стрелка продолжает указывать на значок.
+        function placeTooltip(wrap, tip) {
+            tip.classList.add('tip-fixed');
+            // У подсказки transition: 0.2s на все свойства — без этого она бы «доезжала»
+            // со старого места на новое, а замер размеров шёл бы посреди перехода
+            tip.style.transition = 'none';
+            tip.style.visibility = 'hidden';
+            tip.style.display = 'block';
+            tip.style.maxHeight = '';
+            const r = wrap.getBoundingClientRect();
+            const vw = document.documentElement.clientWidth;
+            const gap = 8, edge = 8;
+            const tw = tip.offsetWidth;
+            const room = r.top - gap - edge;                      // место над значком
+            if (tip.offsetHeight > room) tip.style.maxHeight = Math.max(room, 120) + 'px';
+            const th = tip.offsetHeight;
+            let left = r.left + r.width / 2 - tw / 2;
+            left = Math.max(edge, Math.min(left, vw - tw - edge));
+            tip.style.left = left + 'px';
+            tip.style.top = Math.max(edge, r.top - gap - th) + 'px';
+            tip.style.setProperty('--tip-arrow', Math.round(r.left + r.width / 2 - left) + 'px');
+            tip.style.display = '';
+            tip.style.visibility = '';
+            void tip.offsetHeight;                                 // применить позицию до возврата перехода
+            tip.style.transition = '';
+        }
+        document.addEventListener('mouseover', function (e) {
+            const wrap = e.target && e.target.closest ? e.target.closest('.tooltip-wrapper') : null;
+            if (!wrap) return;
+            const tip = wrap.querySelector('.tooltip-content');
+            if (tip && !tip.contains(e.target)) placeTooltip(wrap, tip);
+        });
 
         // Фото позиции не нашлось по артикулу — пробуем код каталога, и только
         // потом ставим заглушку. Запасной адрес используется один раз.

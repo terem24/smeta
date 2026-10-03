@@ -43004,7 +43004,7 @@ const app = {
 
         if (actionType === 'share') {
             if (titleEl) titleEl.innerText = "Создание ссылки для клиента";
-            if (descEl) descEl.innerText = "Выберите, какие сметы будут доступны клиенту по ссылке. Клиент увидит только выбранные разделы в режиме чтения (без возможности редактирования).";
+            if (descEl) descEl.innerText = "Клиент увидит только выбранные разделы, без возможности редактирования.";
             if (btnTextEl) btnTextEl.innerText = "Создать ссылку";
             if (iconEl) {
                 iconEl.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
