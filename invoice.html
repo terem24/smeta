@@ -3788,7 +3788,7 @@
             const n1 = v => (Math.round((+v || 0) * 10) / 10).toFixed(1).replace('.', ',');
             const word = n => { const a = n % 10, b = n % 100; return (a === 1 && b !== 11) ? 'петля' : (a >= 2 && a <= 4 && (b < 12 || b > 14)) ? 'петли' : 'петель'; };
             const el = (tag, txt, css) => { const e = document.createElement(tag); if (txt != null) e.textContent = txt; if (css) e.style.cssText = css; return e; };
-            let shown = 0;
+            let shown = 0, anyTp = false, anyRad = false, anyTee = false;
             floors.forEach(v => {
                 const svg = sanitizePlanSvg(v.svg);
                 if (!svg) return;
@@ -3816,11 +3816,36 @@
                     t.appendChild(tot);
                     wrap.appendChild(t);
                 }
+                const rr = Array.isArray(v.radRows) ? v.radRows : [];
+                if (rr.length) {
+                    anyRad = true; anyTee = anyTee || !!v.radTee;
+                    const t = el('table', null, 'width:100%;max-width:820px;border-collapse:collapse;font-size:12.5px;margin-top:10px;');
+                    const head = el('tr', null, 'color:#6B7280;');
+                    ['Радиатор', 'Помещение', 'Длина прибора', v.radTee ? 'Магистраль до прибора' : 'Трубы к прибору'].forEach((h, i) => head.appendChild(el('th', h, 'padding:4px 6px;font-weight:600;text-align:' + (i === 1 ? 'left' : i ? 'right' : 'center') + ';border-bottom:1px solid #E5E7EB;')));
+                    t.appendChild(head);
+                    rr.forEach(r => {
+                        const tr = el('tr');
+                        [['Р' + (r.no || ''), 'center'], [String(r.name || ''), 'left'], [n1(r.w) + ' м', 'right'],
+                         [r.L == null ? '—' : n1(r.L) + ' м', 'right']].forEach(c => tr.appendChild(el('td', c[0], 'padding:3px 6px;text-align:' + c[1] + ';border-bottom:1px solid #F3F4F6;')));
+                        t.appendChild(tr);
+                    });
+                    const tot = el('tr', null, 'font-weight:700;');
+                    ['', 'Итого: ' + rr.length + ' шт.', '', n1(v.radM) + ' м'].forEach((c, i) => tot.appendChild(el('td', c, 'padding:4px 6px;text-align:' + (i === 1 ? 'left' : 'right') + ';')));
+                    t.appendChild(tot);
+                    wrap.appendChild(t);
+                }
+                if (rows.length) anyTp = true;
                 body.appendChild(wrap);
                 shown++;
             });
-            if (shown) body.appendChild(el('div', 'Петли тёплого пола разложены по плану вашего дома: подача и обратка, подводки к коллектору, ' +
-                'номера контуров. Точная укладка уточняется при монтаже.', 'font-size:12px;color:#6B7280;max-width:820px;'));
+            const notes = [];
+            if (anyTp) notes.push('Петли тёплого пола разложены по плану вашего дома: подача и обратка, подводки к коллектору, номера контуров.');
+            if (anyRad) notes.push(anyTee ? 'Радиаторы подключены по тройниковой схеме: одна магистраль проходит через приборы.'
+                : 'К каждому радиатору идёт своя пара труб от коллектора — по полу, вдоль стен.');
+            notes.push('Точная укладка уточняется при монтаже.');
+            if (shown) body.appendChild(el('div', notes.join(' '), 'font-size:12px;color:#6B7280;max-width:820px;'));
+            const ttl = sec.querySelector('.sec-title');
+            if (ttl) ttl.textContent = anyRad ? 'Отопление вашего дома' : 'Тёплый пол в вашем доме';
             sec.style.display = shown ? '' : 'none';
         }
 
