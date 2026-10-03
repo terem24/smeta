@@ -6123,6 +6123,31 @@ saveAll = function () {
   updateGuide();
   return r;
 };
+// Кнопка «Сохранить» показывает, есть ли несохранённые правки: сравниваем разметку
+// (без картинок) с тем, что было при открытии или последнем сохранении.
+var savedSnap = null, saveBtnTimer = 0;
+function planSnap() {
+  try { return JSON.stringify(DATA.floors, function (k, v) { return k === 'img' ? undefined : v; }); } catch (e) { return ''; }
+}
+function syncSaveBtn() {
+  saveBtnTimer = 0;
+  var b = document.getElementById('b_save');
+  if (!b || UFH) return;
+  var snap = planSnap();
+  if (savedSnap === null) savedSnap = snap;
+  var dirty = snap !== savedSnap;
+  var t = dirty ? '● Сохранить' : '✓ Сохранено';
+  if (b.textContent !== t) b.textContent = t;
+  b.style.background = dirty ? '#d97706' : 'var(--ok)';
+  b.style.borderColor = dirty ? '#d97706' : 'var(--ok)';
+  b.title = dirty ? 'Есть несохранённые правки — нажмите, чтобы сохранить' : 'Все правки сохранены';
+}
+function scheduleSaveBtn() { if (!saveBtnTimer) saveBtnTimer = setTimeout(syncSaveBtn, 250); }
+var _gs = updateGuide;
+updateGuide = function () { _gs(); scheduleSaveBtn(); };
+var _sv2 = saveAll;
+saveAll = function () { var r = _sv2(); savedSnap = planSnap(); syncSaveBtn(); return r; };
+scheduleSaveBtn();
 window.addEventListener('resize', updateGuide);
 window.addEventListener('resize', function () { try { if (!imgCache[cur]) draw(); } catch (e) { } });
 window.addEventListener('scroll', updateGuide, true);
