@@ -279,6 +279,13 @@
   // 124) и подводки 46 → 35 % трубы (у них 29 %). Жёстче (1,5 м², 8 %) — петель
   // меньше, чем у проектировщиков, и трубы 0,63 от их длины.
   var SIDE_RECT_M2 = 1.0, SIDE_RECT_MIN_W = 0.5;
+  // И только если в него ляжет петля не короче 12 м (порог в метрах, а не в м²:
+  // при шаге 100 в тот же кусок входит вдвое больше трубы, чем при 200). Полоса у
+  // дверного проёма, прихваченная контуром комнаты, давала петлю на 14 м с
+  // подводками. Корпус Galf (03.10.2026): коротких петель (< 25 м) на боковых
+  // участках 49 → 24, всего петель 96 → 92 (у проектировщиков 99), покрытие
+  // обычных комнат 75 → 73 % (у проектировщиков 45 %); 15 м — 16 коротких, 72 %.
+  var SIDE_LOOP_MIN_M = 12;
   // Зазор между участками соседних петель, клеток. Без зазора (пробовали
   // 03.10.2026) покрытие комнаты растёт лишь на 1–2 %, а пучку подводок
   // становится негде пройти между петлями — появляются наложения. Клетка.
@@ -428,11 +435,13 @@
    * между участками — клетка зазора, по ней и пойдёт пучок к дальним петлям.
    * Каждый прямоугольник делится вдоль длинной стороны на k петель.
    */
-  function zoneRects(g, own, zi, bb, cellsTotal) {
+  function zoneRects(g, own, zi, bb, cellsTotal, stepM) {
     var ok = new Uint8Array(g.W * g.H), x, y, rects = [];
     for (y = bb[1]; y <= bb[3]; y++) for (x = bb[0]; x <= bb[2]; x++)
       if (own[y * g.W + x] === zi + 1) ok[y * g.W + x] = 1;
     var minCells = MIN_RECT_M2 / (CELL_M * CELL_M);
+    // боковой участок, в который ляжет петля короче SIDE_LOOP_MIN_M, — без своей петли
+    var sideCells = Math.max(SIDE_RECT_M2, stepM ? SIDE_LOOP_MIN_M * stepM / 1.05 : 0) / (CELL_M * CELL_M);
     for (var it = 0; it < 8; it++) {
       var r = maxRect(g, ok, bb);
       if (!r || r.area < minCells) break;
@@ -441,7 +450,7 @@
       // на корпусе Galf такие петли по 15–18 м грели по метру с небольшим,
       // а подводки к ним шли длиннее самих петель. Плечо Г-образной комнаты
       // (несколько м²) — по-прежнему своя петля.
-      if (rects.length && (r.area < cellsTotal * 0.04 || r.area * CELL_M * CELL_M < SIDE_RECT_M2 ||
+      if (rects.length && (r.area < cellsTotal * 0.04 || r.area < sideCells ||
           Math.min(r.x1 - r.x0, r.y1 - r.y0) + 1 < SIDE_RECT_MIN_W / CELL_M)) break;
       rects.push(r);
       for (y = r.y0 - SLAB_GAP; y <= r.y1 + SLAB_GAP; y++) for (x = r.x0 - SLAB_GAP; x <= r.x1 + SLAB_GAP; x++)
@@ -783,7 +792,7 @@
       zs.forEach(function (Z) {
         var n = 0;
         if (mask !== own) for (var k = 0; k < N; k++) if (mask[k] === Z.i + 1) n++;
-        info[Z.i].rects = zoneRects(g, mask, Z.i, info[Z.i].bb, mask === own ? info[Z.i].cells : n);
+        info[Z.i].rects = zoneRects(g, mask, Z.i, info[Z.i].bb, mask === own ? info[Z.i].cells : n, stepMm / 1000);
         info[Z.i].k = info[Z.i].rects.map(function (r) {
           var a = (r.x1 - r.x0 + 1) * (r.y1 - r.y0 + 1) * CELL_M * CELL_M;
           var cx = (r.x0 + r.x1) / 2 * g.c + g.ox, cy = (r.y0 + r.y1) / 2 * g.c + g.oy;

@@ -43,7 +43,8 @@ for (const f of ['project_sheets.js', 'project_plans.js'])
 const PP = ctx.projectPlans;
 const Geo = require(path.join(root, 'recognize_geo.js'));
 
-const ZOOM = 1.5;                                   // как в ufh_corpus_extract.py
+const SHORT_M = 25;                                 // «короткая петля», м с подводками
+const ZOOM = 1.5;                                  // как в ufh_corpus_extract.py
 const MM_PX = 25.4 / 72 / ZOOM * 100;               // мм натуры на пиксель при 1:100
 
 // ── картинка → маска стен ─────────────────────────────────────────────────
@@ -388,6 +389,11 @@ for (const m of meta) {
     }
   }); });
   row.ourN = ourN; row.ourM = Math.round(ourM); row.est = est; row.leadM = Math.round(leadM);
+  // Короткие петли — полная длина с подводками меньше SHORT_M: такая петля греет
+  // метр-другой, а выход коллектора и пару подводок занимает как полная.
+  row.shortOur = 0; row.shortDesign = m.L.filter(L => L < SHORT_M).length;
+  row.shortSide = 0;   // из них — на втором и дальше участке комнаты (не вся комната маленькая)
+  FL.forEach(Z => Z.loops.forEach(l => { if (l.sup && l.m < SHORT_M) { row.shortOur++; if (l.ri > 0) row.shortSide++; } }));
   // Покрытие — труба петель на м² зоны против полного заполнения (1 / шаг):
   // наше — по нашей раскладке без подводок, проектировщика — по цветным трубам
   // его листа внутри тех же зон.
@@ -470,6 +476,10 @@ if (done.length) {
     `в залах 60–150 м²: ${done.reduce((a, r) => a + (r.overLimHall || 0), 0)}; залов таких ${done.reduce((a, r) => a + (r.halls || 0), 0)}); ` +
     `улиток ${done.reduce((a, r) => a + r.spiral, 0)}, змеек ${done.reduce((a, r) => a + r.snake, 0)}; ` +
     `время раскладки: медиана ${q(done.map(r => r.ms), 0.5)} мс, макс ${Math.max(...done.map(r => r.ms))} мс`);
+  console.log(`Короткие петли (меньше ${SHORT_M} м с подводками): наших ${done.reduce((a, r) => a + r.shortOur, 0)} из ${done.reduce((a, r) => a + r.ourN, 0)}, ` +
+    `(из них на боковом участке комнаты ${done.reduce((a, r) => a + r.shortSide, 0)}), ` +
+    `у проектировщиков ${done.reduce((a, r) => a + r.shortDesign, 0)} из ${done.reduce((a, r) => a + r.designN, 0)}; ` +
+    `на этажах из обычных комнат — наших ${real.reduce((a, r) => a + r.shortOur, 0)}, у них ${real.reduce((a, r) => a + r.shortDesign, 0)}`);
 }
 const fails = {};
 res.filter(r => r.fail).forEach(r => { fails[r.fail] = (fails[r.fail] || 0) + 1; });
