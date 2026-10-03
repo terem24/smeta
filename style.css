@@ -18283,21 +18283,11 @@ body.theme-yandex #profile_modal_overlay {
    Разделы кабинета писались в разное время: у каждого свой заголовок, своя кнопка
    «Обновить», свои цвета подзаголовков. Здесь сведено к правилам админки. */
 
-/* Название раздела уже стоит в активной вкладке-чипе над содержимым, повторять его
-   заголовком не нужно: остаётся строка с кнопками справа (она пропадает, если кнопок нет) */
-#profile_modal_overlay .lk-subtabs:not(:empty) ~ div > .lk-section-head:first-child > h4:first-child,
-#profile_modal_overlay .lk-subtabs:not(:empty) ~ div .ad-page-h h3 { display: none; }
-#profile_modal_overlay .lk-subtabs:not(:empty) ~ div > .lk-section-head:first-child { justify-content: flex-end; margin-bottom: 12px; border-bottom: 0; padding-bottom: 0; }
-#profile_modal_overlay .lk-subtabs:not(:empty) ~ div > .lk-section-head:first-child:not(:has(button)) { display: none; }
-#profile_modal_overlay .lk-subtabs:not(:empty) ~ div .ad-page-h { justify-content: flex-end; margin-bottom: 12px; }
-#profile_modal_overlay .lk-subtabs:not(:empty) ~ div .ad-page-h > div:first-child:not(:has(.ad-sub)) { display: none; }
-
-/* Раздел без вкладок (монтажники менеджера): заголовок раздела — как в админке */
-#profile_modal_overlay .lk-pane .lk-section-head > h4:first-child { font-size: 17px !important; color: var(--text-main) !important; }
+#profile_modal_overlay .lk-pane .lk-section-head h4 { color: var(--text-main) !important; }
 
 /* Подзаголовки внутри раздела — один вид: мелкий серый капс, как «Контакты» в карточке.
    Раньше часть была синей (цвет бренда), часть крупной и чёрной */
-#profile_modal_overlay .lk-pane h4:not(.lk-section-head > h4),
+#profile_modal_overlay .lk-pane h4:not(.lk-section-head h4),
 #profile_modal_overlay .lk-pane h5 {
     font-size: 12px !important;
     font-weight: 700 !important;
@@ -18467,9 +18457,6 @@ body.theme-yandex #profile_modal_overlay {
     color: var(--text-sec);
 }
 #profile_modal_overlay .lk-pane .lk-hint { font-size: 13px; }
-#profile_modal_overlay .lk-subtabs:not(:empty) ~ div > .lk-section-head:first-child { justify-content: space-between; align-items: center; }
-#profile_modal_overlay .lk-subtabs:not(:empty) ~ div > .lk-section-head:first-child:has(.lk-head-hint) { display: flex; }
-#profile_modal_overlay .lk-subtabs:not(:empty) ~ div .ad-page-h { justify-content: space-between; align-items: center; }
 
 /* «Главная»: сводка — тоже карточка, а не голые строки */
 #profile_modal_overlay .lk-pane .lk-home-facts { gap: 0; padding-top: 4px; padding-bottom: 4px; }
@@ -18522,11 +18509,25 @@ body.theme-yandex #profile_modal_overlay {
 }
 #profile_modal_overlay .lk-section-head .ui-emo { display: none; }
 #profile_modal_overlay .lk-section-head > div:first-child { min-width: 0; }
+/* Пункт с одним разделом (продавцу — «Своё оборудование») чипов не рисует, и шапка встаёт
+   на одну линию с кнопкой поиска в углу окна — оставляем ей место справа */
+@media screen and (min-width: 769px) {
+    #profile_modal_overlay .lk-subtabs:empty ~ div[id^="profile_tab_"] > .lk-section-head:first-child { padding-right: 190px; }
+}
 .lk-sub {
     color: var(--text-sec);
     font-size: 12px;
     line-height: 1.45;
     margin-top: 3px;
+}
+/* Пояснение, перенесённое в шапку скриптом (mergeCabinetHeadHints), — тот же .lk-sub */
+#profile_modal_overlay .lk-pane .lk-section-head .lk-head-hint {
+    flex: none;
+    margin: 3px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-sec);
+    max-width: none;
 }
 
 /* Форма: сетка из 12 колонок, поле = подпись + ввод. На планшете треть ряда становится

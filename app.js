@@ -22603,7 +22603,19 @@ const app = {
             const hint = head.nextElementSibling;
             if (!hint || !hint.classList.contains('lk-hint')) return;
             hint.classList.add('lk-head-hint');
-            head.insertBefore(hint, head.firstChild);
+            // Заголовок и пояснение — одним блоком слева, как у разделов со статичной шапкой
+            // (<div><h4>…</h4><div class="lk-sub">…</div></div>); кнопки остаются справа
+            const h4 = head.querySelector(':scope > h4');
+            let box = h4 ? null : head.querySelector(':scope > div:first-child');
+            if (h4) {
+                box = document.createElement('div');
+                head.insertBefore(box, h4);
+                box.appendChild(h4);
+            }
+            if (!box) { head.insertBefore(hint, head.firstChild); return; }
+            hint.classList.add('lk-sub');
+            hint.style.margin = '';
+            box.appendChild(hint);
         });
     },
 
