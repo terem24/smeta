@@ -2161,6 +2161,7 @@
    * проёмов нет по той же причине — данных о них в плане не заведено.
    */
   function isoWalls(f, t, o, hMm) {
+    if (f.geom && (f.geom.walls || []).length) return isoWallsGeom(f, t, o, hMm);
     var h = t.mm(hMm || 2700);
     [[[0, 0], [f.w, 0]], [[0, 0], [0, f.h]]].forEach(function (e) {
       var a = t.P(e[0][0], e[0][1], 0), b = t.P(e[1][0], e[1][1], 0);
@@ -2169,6 +2170,74 @@
         return n(p[0]) + ',' + n(p[1]);
       }).join(' ') + '" style="fill:#eef1f4;fill-opacity:0.5;stroke:#8a9099;stroke-width:0.25"/>');
     });
+  }
+
+  /**
+   * Стены по геометрии плана (f.geom — те же контуры, что на листе плана).
+   * Дальние стены, с которых смотрит зритель, идут во всю высоту, с окнами;
+   * остальные — низким «срезом» (250 мм), чтобы план читался, а трубы не
+   * закрывались. Как на 3D-видах проектов-образцов: стены и окна, а не
+   * прозрачная коробка.
+   */
+  function isoWallsGeom(f, t, o, hMm) {
+    var g = f.geom, ppm = f.pxPerM || 100, T = 0.5 * ppm, AL = 0.15 * ppm;
+    var hz = t.mm(hMm || 2700), low = t.mm(250);
+    var mnX = 1e9, mnY = 1e9;
+    g.walls.forEach(function (ring) {
+      ring.forEach(function (p) { mnX = Math.min(mnX, p[0]); mnY = Math.min(mnY, p[1]); });
+    });
+    var far = [], near = [], innerVX = null, innerHY = null;
+    g.walls.forEach(function (ring) {
+      for (var i = 0; i < ring.length; i++) {
+        var a = ring[i], b = ring[(i + 1) % ring.length];
+        if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 1) continue;
+        var vx = Math.abs(a[0] - b[0]) < AL && Math.max(a[0], b[0]) <= mnX + T;
+        var hy = Math.abs(a[1] - b[1]) < AL && Math.max(a[1], b[1]) <= mnY + T;
+        if (vx) innerVX = innerVX == null ? a[0] : Math.max(innerVX, a[0]);
+        if (hy) innerHY = innerHY == null ? a[1] : Math.max(innerHY, a[1]);
+        (vx || hy ? far : near).push({ a: a, b: b, vx: vx });
+      }
+    });
+    var P2 = function (p, z) { var q = t.P(p[0], p[1], z); return n(q[0]) + ',' + n(q[1]); };
+    var face = function (e, h, style) {
+      return '<polygon points="' + [P2(e.a, 0), P2(e.b, 0), P2(e.b, h), P2(e.a, h)].join(' ') +
+        '" style="' + style + '"/>';
+    };
+    var dep = function (e) { return e.a[0] + e.a[1] + e.b[0] + e.b[1]; };
+    // низкий срез остальных стен: боковые грани от дальних к ближним, затем верх
+    near.sort(function (p, q) { return dep(p) - dep(q); }).forEach(function (e) {
+      o.push(face(e, low, 'fill:#a9b2bf;stroke:#7d8795;stroke-width:0.12'));
+    });
+    g.walls.forEach(function (ring) {      // отдельным контуром, как на плане: наложение стен не даёт «дыр»
+      o.push('<path d="' + isoPath(ring, t, low) + 'Z" style="fill:#8b98ab;stroke:#5b6675;stroke-width:0.12"/>');
+    });
+    // дальние стены во всю высоту: внутренняя грань светлее наружной
+    far.sort(function (p, q) { return dep(p) - dep(q); }).forEach(function (e) {
+      var pos = e.vx ? e.a[0] : e.a[1], inner = e.vx ? innerVX : innerHY;
+      o.push(face(e, hz, 'fill:' + (inner != null && pos >= inner - AL ? '#eceff3' : '#d3d8de') +
+        ';stroke:#8a9099;stroke-width:0.2'));
+    });
+    // окна дальних стен: стекло с переплётом на внутренней грани
+    var sill = t.mm(900), head = t.mm(2100);
+    (g.wins || []).forEach(function (w) {
+      var vert = Math.abs((w.ang || 0) % 180) > 45, half = (w.w || 0) / 2, A, B;
+      if (vert && innerVX != null && w.x <= mnX + T) { A = [innerVX, w.y - half]; B = [innerVX, w.y + half]; }
+      else if (!vert && innerHY != null && w.y <= mnY + T) { A = [w.x - half, innerHY]; B = [w.x + half, innerHY]; }
+      else return;
+      var q = [P2(A, sill), P2(B, sill), P2(B, head), P2(A, head)];
+      var M1 = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
+      o.push('<polygon points="' + q.join(' ') + '" style="fill:#cfe4f5;stroke:#5b6675;stroke-width:0.25"/>');
+      o.push('<line x1="' + P2(M1, sill).split(',')[0] + '" y1="' + P2(M1, sill).split(',')[1] + '" x2="' +
+        P2(M1, head).split(',')[0] + '" y2="' + P2(M1, head).split(',')[1] +
+        '" style="stroke:#5b6675;stroke-width:0.2"/>');
+    });
+  }
+
+  /** Плита и стены вместе: с геометрией плиту рисуем первой — низкие стены лежат на ней */
+  function isoShell(f, t, o) {
+    var geom = f.geom && (f.geom.walls || []).length;
+    if (geom) { isoSlab(f, t, o); isoWalls(f, t, o); }
+    else { isoWalls(f, t, o); isoSlab(f, t, o); }
   }
 
   function isoSlab(f, t, o, thick) {
@@ -2184,7 +2253,8 @@
     });
     o.push('<polygon points="' + isoPoly(top, t, 0) +
       '" style="fill:#f2f4f6;stroke:#8a9099;stroke-width:0.3"/>');
-    if (f.img) {
+    // с контурами стен подложка не нужна: вид чистый, как в проектах-образцах
+    if (f.img && !(f.geom && (f.geom.walls || []).length)) {
       var O = t.P(0, 0, 0), U = t.P(1, 0, 0), V = t.P(0, 1, 0);
       var m = [U[0] - O[0], U[1] - O[1], V[0] - O[0], V[1] - O[1], O[0], O[1]];
       o.push('<image x="0" y="0" width="' + n(f.w) + '" height="' + n(f.h) +
@@ -2211,8 +2281,7 @@
   /** Лист «Этаж N. 3D вид напольного отопления» */
   function isoTpBody(f, num, stepMm, rooms) {
     var t = isoFit(f), o = [];
-    isoWalls(f, t, o);
-    isoSlab(f, t, o);
+    isoShell(f, t, o);
     rooms = (rooms || []).filter(function (r) { return (r.floor || 1) === num; });
 
     var cards = [];
@@ -2679,8 +2748,7 @@
   function isoRadBody(f, num, opts) {
     opts = opts || {};
     var t = isoFit(f), o = [];
-    isoWalls(f, t, o);
-    isoSlab(f, t, o);
+    isoShell(f, t, o);
     var ppm = f.pxPerM || 100, px = function (mm) { return mm / 1000 * ppm; };
     var rooms = (opts.rooms || []).filter(function (r) { return (r.floor || 1) === num; });
     var hMm = opts.radH || 500;
@@ -2811,8 +2879,7 @@
   /** Лист «Этаж N. 3D вид водоснабжения» либо «…канализации» */
   function isoPipeBody(f, num, kind) {
     var t = isoFit(f), o = [];
-    isoWalls(f, t, o);
-    isoSlab(f, t, o);
+    isoShell(f, t, o);
     var lines = kind === 'sewer' ? (f.slines || []) : (f.wlines || []);
     lines.forEach(function (L) {
       if (!L.pts || L.pts.length < 2) return;
@@ -3004,10 +3071,59 @@
     return L.length <= cap && R.length <= cap;
   }
 
+  function outWord(k) {
+    var m = k % 10, h = k % 100;
+    return m === 1 && h !== 11 ? 'выход' : (m >= 2 && m <= 4 && (h < 12 || h > 14) ? 'выхода' : 'выходов');
+  }
+  /** Номер помещения в экспликации: из расчёта, а без него — этаж.порядок */
+  function roomNo(r, num, i) {
+    return (r && r.id != null && String(r.id) !== '') ? String(r.id) : num + '.' + (i + 1);
+  }
+
+  /**
+   * Подписи комнат на плане ТП, как у проектировщиков: (номер) имя, Вт, м².
+   * Мелкая рамка — труба под ней всё равно читается; ставится внутри своей
+   * комнаты, без наложения на другие подписи.
+   */
+  function tpRoomTags(o, f, t, rooms, num) {
+    if (!rooms || !rooms.length) return;
+    var byName = {}, idx = {};
+    rooms.forEach(function (r, i) { var k = String(r.name || '').trim().toLowerCase(); if (!(k in byName)) { byName[k] = r; idx[k] = i; } });
+    var used = {}, lp = labelPlacer();
+    var toImg = function (X, Y) { return [(X - t.ox) / t.s, (Y - t.oy) / t.s]; };
+    (f.zones || []).forEach(function (z) {
+      var key = String(z.name || '').trim().toLowerCase(), r = byName[key];
+      if (!r || used[key] || !z.pts || z.pts.length < 3) return;
+      used[key] = 1;
+      var c = centroid(z.pts), X0 = t.X(c[0]), Y0 = t.Y(c[1]);
+      var lines = ['(' + roomNo(r, num, idx[key]) + ')', r.name];
+      if (r.q > 0) lines.push(Math.round(r.q) + ' Вт');
+      lines.push((+r.area || 0).toFixed(1) + ' м²');
+      var w = Math.max(11, textW(r.name, 1.9) + 1.6), step = 2.4, h = step * lines.length + 1.4;
+      var cands = [];
+      for (var dx = -16; dx <= 16; dx += 2) for (var dy = -12; dy <= 12; dy += 1.5) {
+        var X = X0 + dx, Y = Y0 + dy;
+        var b = [X - w / 2, Y - h / 2, X + w / 2, Y + h / 2]; b.p = [X, Y];
+        var out = [[b[0], b[1]], [b[2], b[1]], [b[0], b[3]], [b[2], b[3]]]
+          .filter(function (p) { return !pip(toImg(p[0], p[1]), z.pts); }).length;
+        b.pen = out * 400 + Math.hypot(dx, dy) * 0.05;
+        cands.push(b);
+      }
+      cands.sort(function (a, b) { return a.pen - b.pen; });
+      var b2 = lp.place(cands), X = b2.p[0], Y = b2.p[1];
+      o.push('<rect x="' + n(X - w / 2) + '" y="' + n(Y - h / 2) + '" width="' + n(w) + '" height="' + n(h) +
+        '" rx="0.5" style="fill:#ffffff;fill-opacity:0.82;stroke:#000;stroke-width:0.15"/>');
+      lines.forEach(function (s2, i) {
+        o.push(txt(X, Y - h / 2 + 2.3 + i * step, s2, { size: i ? 1.9 : 2.2, anchor: 'middle' }));
+      });
+    });
+  }
+
   function tpBody(f, num, stepMm, rooms, opts) {
     opts = opts || {};
     var t = fit(f, TP_PLAN), o = [];
-    o.push(imageTag(f, t, 0.32));
+    var vecWalls = wallsBody(f, t);                 // стены и окна — вектором, как на сводном плане
+    o.push(vecWalls || imageTag(f, t, 0.32));
     var bundle = floorLoops(f, stepMm, loopLimit(stepMm)).bundle || [];
     var anyAuto = bundle.length > 0, anyCold = false;
     var flowSum = 0, cards = [], ppm = f.pxPerM || 100, Ex0 = 340;   // Ex0 — левый край экспликации
@@ -3065,7 +3181,8 @@
         'L = ' + num1(lp.lenM || R.m) + ' м', num1(R.flow) + ' л/мин'] });
     });
     dims.forEach(function (D) { dimLine(o, D[0], D[1], D[2], D[3]); });
-    if (f.coll) collectorMark(f.coll, t, f, o);
+    if (f.coll) collectorMark(f.coll, t, f, o, true);   // подпись — выноской ниже
+    tpRoomTags(o, f, t, rooms, num);
 
     // таблички контуров с выносками: колонки — у края самого плана, а не поля
     var zx = [];
@@ -3136,12 +3253,55 @@
       });
     });
 
+    // выноски коллектора, как в проектах: «Коллектор ТП на N выходов», «Подъём на
+    // контуры ТП 2-го этажа», «Опуск к коллектору ТП 1-го этажа»
+    var anchor = null, calls = [];
+    if (f.coll) {
+      anchor = f.coll;
+      var nOut = opts.collOutputs || cards.length;
+      calls.push('Коллектор ТП на ' + nOut + ' ' + outWord(nOut));
+      (opts.tpAbove || []).forEach(function (k) { calls.push('Подъём на контуры ТП ' + k + '-го этажа'); });
+    } else if (opts.tpBelow) {
+      anchor = opts.tpBelow;
+      calls.push('Опуск к коллектору ТП ' + opts.tpBelow.floor + '-го этажа');
+      o.push('<circle cx="' + n(t.X(anchor.x)) + '" cy="' + n(t.Y(anchor.y)) +
+        '" r="1.4" style="fill:#fff;stroke:#b35900;stroke-width:0.5"/>');
+    }
+    if (anchor && calls.length) {
+      var aX = t.X(anchor.x), aY = t.Y(anchor.y), sideR = aX >= mid, W2 = TP_CARD.w;
+      var busy = cards.filter(function (c) { return c.side === (sideR ? 'R' : 'L'); })
+        .map(function (c) { return [c.y - 1, c.y + rowH * 4 + 1]; });
+      var colX = sideR ? cols.right : cols.left + W2, placed = [], ok = true;
+      calls.forEach(function (txtC) {
+        var spot = null;
+        for (var dy = 0; dy <= 140 && spot == null; dy += 4.6) {
+          [dy, -dy].forEach(function (d) {
+            var y = aY + d;
+            if (spot != null || y < TP_PLAN.y0 || y > TP_PLAN.y1 + 8) return;
+            var hit = busy.concat(placed).some(function (r) { return y + 2.6 > r[0] && y - 2.6 < r[1]; });
+            if (!hit) spot = y;
+          });
+        }
+        if (spot == null) { ok = false; return; }
+        placed.push([spot - 2.6, spot + 2.6]);
+        var bx = sideR ? pR + 3 : pL - 3, tx = sideR ? colX : colX;
+        var path = Math.abs(spot - aY) < 0.3 ? [[aX, aY], [tx, spot]] : [[aX, aY], [bx, aY], [bx, spot], [tx, spot]];
+        o.push('<polyline points="' + path.map(function (q) { return n(q[0]) + ',' + n(q[1]); }).join(' ') +
+          '" style="fill:none;stroke:#000;stroke-width:0.2"/>');
+        o.push('<circle cx="' + n(aX) + '" cy="' + n(aY) + '" r="0.75" style="fill:#000"/>');
+        o.push(txt(tx + (sideR ? 1 : -1), spot + 1, txtC, { size: 3.0, anchor: sideR ? 'start' : 'end' }));
+      });
+      if (!ok && f.coll) o.push(txt(aX, aY + 6, 'Коллектор ТП', { size: 2.8, anchor: 'middle', fill: '#b35900' }));
+    } else if (f.coll) {
+      o.push(txt(t.X(f.coll.x), t.Y(f.coll.y) + 6, 'Коллектор ТП', { size: 2.8, anchor: 'middle', fill: '#b35900' }));
+    }
+
     // экспликация помещений этажа — справа вверху, как в проектах
     var Ex = Ex0, Ey = 30, EW = [8, 32, 15, 19], erh = 5;
     var EWs = EW.reduce(function (a, b) { return a + b; }, 0);
     var eRows = rooms.length
       ? rooms.map(function (r, i) {
-          return [num + '.' + (i + 1), r.name || '', num1(+r.area || 0) + ' м²', r.q > 0 ? Math.round(r.q) + ' Вт' : '—'];
+          return [roomNo(r, num, i), r.name || '', num1(+r.area || 0) + ' м²', r.q > 0 ? Math.round(r.q) + ' Вт' : '—'];
         })
       : floorLoops(f, stepMm, loopLimit(stepMm)).map(function (Z, i) {
           return [num + '.' + (i + 1), Z.name || 'зона ' + (i + 1), num1(Z.area) + ' м²', '—'];
@@ -4387,6 +4547,29 @@
     var fmt = opts.num || function (n) { return String(n); };
     var want = function (k) { return !opts.only || opts.only.indexOf(k) >= 0; };
     if (!plans || !plans.floors) return out;
+    // Коллектор ТП принимает и контуры верхних этажей без своего коллектора:
+    // «Коллектор ТП на 11 выходов», «Подъём на контуры ТП 2-го этажа»
+    var tpFl = plans.floors.map(function (fl) { return (fl.zones || []).some(function (z) { return z.type === 'tp'; }); });
+    var tpOut = plans.floors.map(function (fl, k) {
+      try { return tpFl[k] && fl.pxPerM ? loopRows(fl, (opts.steps && opts.steps[k]) || opts.stepMm || 150, opts.rooms).length : 0; }
+      catch (e) { return 0; }
+    });
+    var tpExtra = function (i) {
+      var f = plans.floors[i], ex = {}, j;
+      if (!tpFl[i]) return ex;
+      if (f.coll) {
+        var tot = tpOut[i], ups = [];
+        for (j = i + 1; j < plans.floors.length && tpFl[j] && !plans.floors[j].coll; j++) { tot += tpOut[j]; ups.push(j + 1); }
+        ex.collOutputs = tot; ex.tpAbove = ups;
+      } else {
+        for (j = i - 1; j >= 0; j--) if (plans.floors[j].coll) {
+          if (plans.floors[j].w === f.w && plans.floors[j].h === f.h)
+            ex.tpBelow = { floor: j + 1, x: plans.floors[j].coll.x, y: plans.floors[j].coll.y };
+          break;
+        }
+      }
+      return ex;
+    };
     plans.floors.forEach(function (f, i) {
       if (!f.img || !f.pxPerM) return;
       // opts.floor — собрать только этот этаж: в эталоне листы идут этажами
@@ -4423,7 +4606,12 @@
           kind: 'tp', title: t2,
           svg: window.projectSheets.sheet({
             code: opts.code, sheet: fmt(num++),
-            body: title(t2) + tpBody(f, i + 1, st, opts.rooms, opts)
+            body: title(t2) + tpBody(f, i + 1, st, opts.rooms, (function () {
+              var o2 = {}, k, ex = tpExtra(i);
+              for (k in opts) o2[k] = opts[k];
+              for (k in ex) o2[k] = ex[k];
+              return o2;
+            })())
           })
         });
       }
