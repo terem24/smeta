@@ -24,8 +24,10 @@
   'use strict';
 
   var AVAIL = { x0: 100, y0: 24, x1: 405, y1: 266 };  // поле под подложку, мм листа
-  var COLT = { tp: '#ff8000', rad: '#d22222', boiler: '#5577aa', wc: '#0b7285', cold: '#7a7a7a' };
-  var NAMES = { tp: 'Тёплый пол', rad: 'Радиаторы', boiler: 'Котельная', wc: 'Санузел', cold: 'Без обогрева' };
+  // room — контур помещения без тёплого пола (модуль раскладки ТП): на листах
+  // это просто подписанная комната
+  var COLT = { tp: '#ff8000', rad: '#d22222', boiler: '#5577aa', wc: '#0b7285', cold: '#7a7a7a', room: '#8a94a6' };
+  var NAMES = { tp: 'Тёплый пол', rad: 'Радиаторы', boiler: 'Котельная', wc: 'Санузел', cold: 'Без обогрева', room: 'Помещение' };
 
   function n(v) { return Math.round(v * 100) / 100; }
   function esc(s) {
@@ -3368,13 +3370,91 @@
     return out;
   }
 
+  /**
+   * Раскладка тёплого пола этажа для сметы и КП — без рамки листа: план
+   * (подложка бледно), комнаты, петли, пучок подводок, коллектор и номера
+   * контуров. Числа — те же loopRows, что на листе и в смете.
+   * Возвращает { svg, rows } или null, если петель на этаже нет.
+   * Рисуется в пикселях подложки (viewBox по комнатам с полем), поэтому
+   * толщины — в метрах через pxPerM.
+   */
+  function ufhView(f, stepMm, rooms, opts) {
+    opts = opts || {};
+    if (!f || !f.pxPerM || !(f.zones || []).some(function (z) { return z.type === 'tp'; })) return null;
+    var rows = loopRows(f, stepMm, rooms || []);
+    if (!rows.length) return null;
+    var ppm = f.pxPerM, bundle = floorLoops(f, stepMm, loopLimit(stepMm)).bundle || [];
+    var all = [];
+    (f.zones || []).forEach(function (z) { (z.pts || []).forEach(function (p) { all.push(p); }); });
+    if (f.coll) all.push([f.coll.x, f.coll.y]);
+    var b = bbox(all), pad = 0.6 * ppm;
+    var X0 = b[0] - pad, Y0 = b[1] - pad, W = b[2] - b[0] + 2 * pad, H = b[3] - b[1] + 2 * pad;
+    var m = function (v) { return Math.round(v * 10) / 10; };
+    var P = function (pts) { return pts.map(function (p) { return m(p[0]) + ',' + m(p[1]); }).join(' '); };
+    var lw = 0.035 * ppm, o = [];
+    o.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + m(X0) + ' ' + m(Y0) + ' ' + m(W) + ' ' + m(H) +
+      '" style="display:block;background:#fff" font-family="system-ui,sans-serif">');
+    if (f.img) o.push('<image x="0" y="0" width="' + f.w + '" height="' + f.h + '" preserveAspectRatio="none" opacity="' +
+      (opts.imgOpacity != null ? opts.imgOpacity : 0.3) + '" href="' + String(f.img).replace(/&/g, '&amp;') + '"/>');
+    // комнаты: тёплый пол — тёплой заливкой, прочие — контуром
+    (f.zones || []).forEach(function (z) {
+      if (!z.pts || z.pts.length < 3) return;
+      var st = z.type === 'tp' ? 'fill:#fff3e6;fill-opacity:0.75;stroke:#ff8000;stroke-width:' + m(lw * 0.8)
+        : z.type === 'cold' ? 'fill:#e9e9e9;stroke:#9a9a9a;stroke-width:' + m(lw * 0.6)
+          : 'fill:none;stroke:#8a94a6;stroke-width:' + m(lw * 0.6) + ';stroke-dasharray:' + m(lw * 3) + ',' + m(lw * 2);
+      o.push('<polygon points="' + P(z.pts) + '" style="' + st + '"/>');
+    });
+    bundle.forEach(function (sg) {
+      o.push('<line x1="' + m(sg.a[0]) + '" y1="' + m(sg.a[1]) + '" x2="' + m(sg.b[0]) + '" y2="' + m(sg.b[1]) +
+        '" style="stroke:' + COL_BUNDLE + ';stroke-opacity:0.85;stroke-linecap:square;stroke-width:' +
+        m(Math.max(lw * 1.2, sg.n * 2 * BUNDLE_DRAW_M * ppm)) + '"/>');
+    });
+    var badges = [];
+    rows.forEach(function (R) {
+      var lp = R.loop;
+      if (!lp || !lp.sup) return;
+      [[lp.sup, COL_SUP], [lp.ret, COL_RET]].forEach(function (pr) {
+        o.push('<polyline points="' + P(pr[0]) + '" style="fill:none;stroke:' + pr[1] + ';stroke-width:' + m(lw) +
+          ';stroke-linejoin:round;stroke-linecap:round"/>');
+      });
+      badges.push([pointAt(lp.sup, 0.72), R.no]);
+    });
+    // подписи комнат — у верхнего края контура, чтобы не спорить с номерами петель
+    var fs = 0.24 * ppm;
+    (f.zones || []).forEach(function (z) {
+      if (z.type === 'cold' || !z.name || !z.pts) return;
+      var bb = bbox(z.pts);
+      if (bb[2] - bb[0] < 1.2 * ppm) return;
+      o.push('<text x="' + m((bb[0] + bb[2]) / 2) + '" y="' + m(bb[1] + fs * 1.25) + '" font-size="' + m(fs) +
+        '" text-anchor="middle" style="fill:#333;paint-order:stroke;stroke:#fff;stroke-width:' + m(fs * 0.25) + '">' +
+        esc(z.name) + '</text>');
+    });
+    var r = 0.24 * ppm;
+    badges.forEach(function (bd) {
+      o.push('<circle cx="' + m(bd[0][0]) + '" cy="' + m(bd[0][1]) + '" r="' + m(r) + '" style="fill:#fff;stroke:#333;stroke-width:' + m(lw * 0.6) + '"/>');
+      o.push('<text x="' + m(bd[0][0]) + '" y="' + m(bd[0][1] + r * 0.42) + '" font-size="' + m(r * 1.15) +
+        '" text-anchor="middle" style="fill:#111;font-weight:700">' + bd[1] + '</text>');
+    });
+    if (f.coll) {
+      var cw = 0.6 * ppm, ch = 0.22 * ppm;
+      o.push('<rect x="' + m(f.coll.x - cw / 2) + '" y="' + m(f.coll.y - ch / 2) + '" width="' + m(cw) + '" height="' + m(ch) +
+        '" style="fill:#ffd9a8;stroke:#c25e00;stroke-width:' + m(lw * 0.7) + '"/>');
+      o.push('<text x="' + m(f.coll.x) + '" y="' + m(f.coll.y - ch / 2 - fs * 0.35) + '" font-size="' + m(fs * 0.85) +
+        '" text-anchor="middle" style="fill:#c25e00;font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:' + m(fs * 0.2) + '">Коллектор</text>');
+    }
+    o.push('</svg>');
+    return { svg: o.join(''), rows: rows.map(function (R) {
+      return { no: R.no, name: R.name, area: R.area, m: (R.loop && R.loop.lenM) || R.m, step: R.step, flow: R.flow, est: R.est };
+    }) };
+  }
+
   // floorLoops — для сметы и редактора: длина трубы и число выходов коллектора
   // берутся из той же укладки, что нарисована на листе (стенд — bench/ufh_sheet.js).
   // loopRows — для листа узла коллектора (project_ufh_manifold.js): номера,
   // длины и расходы петель там должны совпадать с листом укладки.
   window.projectPlans = { sheets: sheets, waterSheets: waterSheets, wetZoneSheets: wetZoneSheets, axonoSheets: axonoSheets, iso3dSheets: iso3dSheets,
     boilerRoom: boilerRoom,
-    floorLoops: floorLoops, loopRows: loopRows, num1: num1,
+    floorLoops: floorLoops, loopRows: loopRows, num1: num1, ufhView: ufhView,
     UFH_DT: UFH_DT, ufhDt: ufhDt, UFH_C: UFH_C,
     MAX_LOOP_M: MAX_LOOP_M, loopLimit: loopLimit, setLoopLimits: setLoopLimits };
 })();

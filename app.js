@@ -20626,7 +20626,17 @@ const app = {
         // вместе с ним — теперь условие приходится ставить руками, иначе она
         // всплывёт и в быстром расчёте, где планов нет.
         const planRow = document.getElementById('blk_plan_editor_row');
-        if (planRow) planRow.style.display = (on && this.state.detailedRooms) ? '' : 'none';
+        // Раскладка тёплого пола — своя отметка для редактора в режиме ?m=ufh
+        const ufh = this.canUseUfhPlan();
+        try { localStorage.setItem('heatcalc_ufhplan_access', ufh ? '1' : '0'); } catch (e) { }
+        if (planRow) planRow.style.display = ((on || ufh) && this.state.detailedRooms) ? '' : 'none';
+        const bU = document.getElementById('btn_ufhplan'), bF = document.getElementById('btn_plan_full');
+        if (bU) {
+            bU.style.display = ufh ? '' : 'none';
+            const hasPlan = !!(this.state.plans && (this.state.plans.floors || []).some(f => f && (f.img || f.imgFile)));
+            bU.textContent = hasPlan ? 'Раскладка тёплого пола' : 'Загрузить план';
+        }
+        if (bF) bF.style.display = on ? '' : 'none';
     },
 
     // ═══ Тарифы: что открыто учётной записи на её тарифе ═════════════════
@@ -20668,6 +20678,7 @@ const app = {
         { id: 'analog', group: 'Функции', label: 'Подешевле', hint: 'Вторая смета подешевле: переключатель «Подешевле» в параметрах и в заголовках разделов сметы, вкладка «Почему дешевле». Выключен — переключателя не видно' },
         { id: 'recognize', group: 'Функции', label: 'Распознавание', list: true, hint: 'Вкладка «Распознавание»' },
         { id: 'design', group: 'Функции', label: 'Проект', list: true, hint: 'Листы проекта и редактор планов этажей' },
+        { id: 'ufhplan', group: 'Функции', label: 'Раскладка ТП', hint: 'Модуль «Раскладка тёплого пола» в подробном режиме: загрузить план дома, отметить комнаты с тёплым полом кликом — раскладка петель под сметой и в КП. Кому открыт «Проект», раскладка доступна и так' },
         { id: 'money', group: 'Функции', label: 'Деньги', hint: 'Вкладка «Деньги» (маржа по смете); гостю без входа не показывается никогда' },
         { id: 'docs', group: 'Функции', label: 'Документы', hint: 'Кнопка «Документы» в «Заказах и счетах»: договор подряда, акты, гарантийный талон' },
         // Читает не калькулятор, а invoice.html (блок «Счёт для 1С» в просмотре КП
@@ -20690,6 +20701,8 @@ const app = {
         if (feature === 'analog') return pro ? 'on' : 'off';
         if (feature === 'recognize') return pro ? 'list' : 'off';
         if (feature === 'design') return 'list';
+        // Раскладка тёплого пола по плану — функция «Профи» (03.10.2026)
+        if (feature === 'ufhplan') return pro ? 'on' : 'off';
         if (feature === 'money') return (pro && (account === 'installer')) ? 'on' : 'off';
         // Договор подряда и акты — про монтаж: исходно только монтажнику, на
         // любом тарифе. Продавцу, менеджеру и наблюдателю закрыто (15.09.2026).
@@ -35775,6 +35788,242 @@ const app = {
         if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
         this.pushPlansToEditor();
         window.open('plan_editor.html', '_blank');
+    },
+
+    // ═══ Модуль «Раскладка тёплого пола» ═════════════════════════════════
+    // Монтажник загружает план, система находит стены и комнаты, клик по
+    // комнате — «здесь тёплый пол», и под сметой появляется раскладка петель
+    // этого дома. Зачем: заказчик видит в КП свою планировку, а не шаблон.
+    // Только подробный режим; доступ — столбец «Раскладка ТП» таблицы
+    // «Тарифы» (исходно у «Профи»). Без плана смета считает как раньше.
+    // Редактор тот же, что у проектирования (plan_editor.html), в режиме ?m=ufh,
+    // окном поверх калькулятора; данные — те же state.plans.
+
+    canUseUfhPlan: function () {
+        if (!this.state.tgUser) return false;
+        return this.tariffAccess('ufhplan') === 'on' || this.canUseDesign();
+    },
+
+    openUfhPlan: function () {
+        if (window.SessionTrack) SessionTrack.screen('ufhplan');
+        if (!this.canUseUfhPlan()) { app.alert('Раскладка тёплого пола входит в тариф «Профи».'); return; }
+        if (!this.state.detailedRooms) { app.alert('Раскладка тёплого пола работает в подробном режиме расчёта — включите его и добавьте план.'); return; }
+        if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
+        try { localStorage.setItem('heatcalc_ufhplan_access', '1'); } catch (e) { }
+        this.pushPlansToEditor();
+        let ov = document.getElementById('ufhplan_overlay');
+        if (ov) ov.remove();
+        ov = document.createElement('div');
+        ov.id = 'ufhplan_overlay';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:10050;background:#1e1e1e;display:flex;flex-direction:column;';
+        ov.innerHTML =
+            '<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;background:#141414;color:#ddd;font:13px/1.3 system-ui,sans-serif;">' +
+            '<span style="flex:1">План дома — отметьте комнаты с тёплым полом</span>' +
+            '<button type="button" onclick="app.closeUfhPlan(true)" style="font:inherit;padding:4px 12px;border-radius:7px;border:1px solid #555;background:transparent;color:#ddd;cursor:pointer;">✕ Сохранить и закрыть</button></div>' +
+            '<iframe id="ufhplan_frame" src="plan_editor.html?m=ufh" style="flex:1;border:0;width:100%;background:#1e1e1e;"></iframe>';
+        document.body.appendChild(ov);
+        this._ufhOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        if (!this._ufhMsgBound) {
+            this._ufhMsgBound = true;
+            window.addEventListener('message', (e) => {
+                if (e.origin !== location.origin || !e.data || e.data.type !== 'hc-ufhplan') return;
+                if (e.data.done) this.closeUfhPlan(false);
+            });
+        }
+    },
+
+    /**
+     * Закрыть окно раскладки. viaButton — крестик в шапке окна: сначала даём
+     * редактору сохраниться (его «Готово» дождётся, пока план уедет на сервер,
+     * и само пришлёт «закрыть»).
+     */
+    closeUfhPlan: function (viaButton) {
+        const ov = document.getElementById('ufhplan_overlay');
+        if (viaButton && ov) {
+            const fr = document.getElementById('ufhplan_frame');
+            try {
+                if (fr && fr.contentWindow && typeof fr.contentWindow.ufhDone === 'function') {
+                    fr.contentWindow.ufhDone();
+                    return;
+                }
+            } catch (e) { }
+        }
+        if (ov) ov.remove();
+        document.body.style.overflow = this._ufhOverflow || '';
+        this.applyPlansFromEditor();
+    },
+
+    /** Забрать разметку из редактора и разнести её по смете. */
+    applyPlansFromEditor: function () {
+        this.pullPlansFromEditor();
+        const changed = this.syncRoomsFromPlan();
+        this.loadPlanCheckData();            // и номер ревизии планов: петли пересчитаются
+        this._ufhGeomCache = null;
+        if (changed) { this.syncRoomsToState(); this.renderRoomsUI(); this.syncUI(); }
+        this.renderPlanChecks(); this.renderWaterPlanChecks(); this.renderPlanAreaNote();
+        this.render();
+    },
+
+    /**
+     * План → комнаты расчёта. Связь — по имени зоны и этажу.
+     *  · у комнаты расчёта, которая есть на плане, галочка тёплого пола
+     *    ставится и снимается по плану (зона «Тёплый пол» есть или нет);
+     *  · на этаже расчёта комнат ещё нет — они создаются по плану: имя (без
+     *    имени — «Помещение N»), площадь с плана, тёплый пол по разметке.
+     * Комнаты, которых на плане нет, не трогаются. Возвращает true, если
+     * комнаты расчёта изменились.
+     */
+    syncRoomsFromPlan: function () {
+        const plans = this.state.plans;
+        if (!this.state.detailedRooms || !plans || !Array.isArray(plans.floors)) return false;
+        if (!this.state.rooms) this.state.rooms = [];
+        const norm = s => String(s || '').trim().toLowerCase();
+        const polyM2 = (pts, ppm) => {
+            let s = 0;
+            for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; s += a[0] * b[1] - b[0] * a[1]; }
+            return Math.abs(s / 2) / (ppm * ppm);
+        };
+        let changed = false, plansChanged = false;
+        plans.floors.forEach((f, fi) => {
+            if (!f || !f.pxPerM || fi > 1) return;               // калькулятор знает два этажа
+            const fl = fi + 1;
+            const zones = (f.zones || []).filter(z => z && z.pts && z.pts.length > 2 &&
+                ['tp', 'room', 'wc', 'boiler'].includes(z.type));
+            if (!zones.length) return;
+            const here = this.state.rooms.filter(r => (parseInt(r.floor, 10) || 1) === fl);
+            if (here.length) {
+                here.forEach(r => {
+                    const zs = zones.filter(z => norm(z.name) && norm(z.name) === norm(r.name));
+                    if (!zs.length) return;
+                    const hasTp = zs.some(z => z.type === 'tp');
+                    if (!r.sys) r.sys = ['rad'];
+                    if (hasTp && !r.sys.includes('tp')) { r.sys.push('tp'); changed = true; }
+                    else if (!hasTp && r.sys.includes('tp')) { r.sys = r.sys.filter(s => s !== 'tp'); changed = true; }
+                });
+                return;
+            }
+            // Комнат на этаже нет — заводим по плану. Санузел или котельная с
+            // тёплым полом лежат двумя зонами одного контура: площадь — одна.
+            const used = {};
+            zones.forEach(z => { if (norm(z.name)) used[norm(z.name)] = 1; });
+            let n = 0;
+            zones.forEach(z => {
+                if (norm(z.name)) return;
+                do { n++; } while (used[norm('Помещение ' + n)]);
+                z.name = 'Помещение ' + n; used[norm(z.name)] = 1; plansChanged = true;
+            });
+            const byName = new Map();
+            zones.forEach(z => {
+                const k = norm(z.name);
+                const e = byName.get(k) || { name: z.name.trim(), shapes: {}, area: 0, tp: false };
+                const sig = JSON.stringify(z.pts);
+                if (!e.shapes[sig]) { e.shapes[sig] = 1; e.area += polyM2(z.pts, f.pxPerM); }
+                if (z.type === 'tp') e.tp = true;
+                byName.set(k, e);
+            });
+            const total = this.state.rooms.reduce((s, r) => s + (parseFloat(r.area) || 0), 0) +
+                Array.from(byName.values()).reduce((s, e) => s + e.area, 0);
+            if (total > this.MAX_AREA) {
+                app.alert('Комнаты с плана ' + fl + '-го этажа в расчёт не добавлены: вместе они больше ' + this.MAX_AREA +
+                    ' м². Проверьте масштаб плана.');
+                return;
+            }
+            let id = Date.now();
+            byName.forEach(e => {
+                const living = /гостин|кухн|спальн|детск|кабинет|помещение|комнат/i.test(e.name);
+                const area = Math.max(1, Math.round(e.area * 10) / 10);
+                id += 10;
+                this.state.rooms.push({
+                    id: id, name: e.name, area: area, floor: fl,
+                    sys: e.tp ? ['tp'] : ['rad'],
+                    windows: living ? [{ id: id + 1, width: this.getDefaultWindowWidth(area), isPan: false }] : []
+                });
+                changed = true;
+            });
+            if (fl === 2 && this.state.floors !== 2) this.state.floors = 2;
+        });
+        if (plansChanged) { this.saveState(); this.pushPlansToEditor(); }
+        return changed;
+    },
+
+    /**
+     * Обратный ход: галочку тёплого пола поменяли в карточке комнаты — тип её
+     * зоны на плане меняется так же («Помещение» ↔ «Тёплый пол»), контур
+     * остаётся. Комнаты на плане нет — молчим.
+     */
+    syncPlanFromRoom: function (r) {
+        const plans = this.state.plans;
+        if (!r || !plans || !Array.isArray(plans.floors)) return;
+        const f = plans.floors[(parseInt(r.floor, 10) || 1) - 1];
+        const norm = s => String(s || '').trim().toLowerCase();
+        const key = norm(r.name);
+        if (!f || !Array.isArray(f.zones) || !key) return;
+        const zs = f.zones.filter(z => z && z.type !== 'cold' && norm(z.name) === key);
+        if (!zs.length) return;
+        const on = (r.sys || []).includes('tp');
+        const tp = zs.filter(z => z.type === 'tp'), base = zs.filter(z => z.type !== 'tp');
+        if (on && !tp.length) {
+            const b = base.find(z => z.type === 'room');
+            if (b) b.type = 'tp';
+            else f.zones.push({ type: 'tp', name: base[0].name, roomId: r.id, pts: JSON.parse(JSON.stringify(base[0].pts)) });
+        } else if (!on && tp.length) {
+            tp.forEach(z => {
+                if (base.length) f.zones.splice(f.zones.indexOf(z), 1);
+                else z.type = 'room';
+            });
+        } else return;
+        this._ufhGeomCache = null;
+        this.saveState();
+        this.pushPlansToEditor();            // и ревизия планов: петли пересчитаются
+    },
+
+    /**
+     * Раскладка тёплого пола под заголовком раздела «4. Водяной тёплый пол» —
+     * по переключателю «Схема», как схемы котельной. По этажам: план с петлями
+     * и таблица контуров. Нет доступа, плана или зон тёплого пола — пусто.
+     */
+    renderUfhPlanScheme: function () {
+        if (!this.state.detailedRooms || !this.canUseUfhPlan()) return '';
+        const PP = window.projectPlans;
+        if (!PP || !PP.ufhView) return '';
+        const plans = this.currentPlans();
+        if (!plans || !Array.isArray(plans.floors)) return '';
+        let heat = [];
+        try { heat = this.buildHeatLossData() || []; } catch (e) { heat = []; }
+        const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        const n1 = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+        const parts = [];
+        plans.floors.forEach((f0, fi) => {
+            if (!f0 || !f0.pxPerM || fi > 1) return;
+            const f = Object.assign({}, f0);
+            if (!f.img && f.imgFile && plans.key)
+                f.img = this.PLANS_ENDPOINT + '?k=' + plans.key + '&n=' + encodeURIComponent(f.imgFile);
+            const step = fi === 1 ? (this.state.ufhStep2 || 150) : (this.state.ufhStep1 || 150);
+            const rooms = ((heat[fi] && heat[fi].rooms) || []).map(r => ({ name: r.name, area: r.area, q: r.total, qud: r.ufhQud, floor: fi + 1 }));
+            let v = null;
+            try { v = PP.ufhView(f, step, rooms); } catch (e) { console.warn('[раскладка ТП] этаж ' + (fi + 1) + ':', e.message); }
+            if (!v) return;
+            const sumM = v.rows.reduce((s, r) => s + (r.m || 0), 0), sumF = v.rows.reduce((s, r) => s + (r.flow || 0), 0);
+            const tr = v.rows.map(r => `<tr><td style="text-align:center">${r.no}</td><td>${esc(r.name)}</td>` +
+                `<td style="text-align:right">${n1(r.area)} м²</td><td style="text-align:right">${n1(r.m)} м</td>` +
+                `<td style="text-align:right">${r.step}</td><td style="text-align:right">${n1(r.flow)}</td></tr>`).join('');
+            parts.push(
+                `<div style="margin:6px 0 14px">` +
+                (plans.floors.filter(x => x && x.pxPerM).length > 1 ? `<div style="font-weight:700;margin:0 0 6px">${fi + 1}-й этаж</div>` : '') +
+                `<div class="automation-scheme" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${v.svg}` +
+                `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>` +
+                `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">` +
+                `<thead><tr style="color:var(--text-sec)"><th>Контур</th><th style="text-align:left">Помещение</th><th style="text-align:right">Площадь</th>` +
+                `<th style="text-align:right">Длина петли</th><th style="text-align:right">Шаг, мм</th><th style="text-align:right">Расход, л/мин</th></tr></thead>` +
+                `<tbody>${tr}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.rows.length} петель</td><td></td>` +
+                `<td style="text-align:right">${n1(sumM)} м</td><td></td><td style="text-align:right">${n1(sumF)}</td></tr></tfoot></table></div>`);
+        });
+        if (!parts.length) return '';
+        return `<div style="padding:8px 2px 2px"><div style="font-weight:700;font-size:14px;margin-bottom:6px">Раскладка тёплого пола по плану дома</div>` +
+            parts.join('') +
+            `<div style="font-size:11px;color:var(--text-sec)">Петли разложены автоматически по плану помещений: улиткой, в узких местах змейкой, ` +
+            `отступ от стен 100 мм, подводки к коллектору — в теплоизоляции. Длины петель — с подводками. Уточняется при монтаже.</div></div>`;
     },
 
     // ═══ Напоминания тем, кто давно не заходил ═══════════════════════════
@@ -57871,6 +58120,8 @@ const app = {
             if (!r.sys) r.sys = ['rad'];
             if (r.sys.includes(sysType)) r.sys = r.sys.filter(s => s !== sysType);
             else r.sys.push(sysType);
+            // тёплый пол на плане дома — следом за галочкой
+            if (sysType === 'tp') this.syncPlanFromRoom(r);
             this.syncRoomsToState(); this.renderRoomsUI(); this.syncUI(); this.render();
         }
     },
@@ -78469,6 +78720,8 @@ const app = {
          ['rad_panel_scheme_row', '3. Приборы отопления', () => this.renderRadPanelScheme(), true],
          ['rad_node_scheme_row', '3.3. Трубы отопления', () => this.renderRadNodeScheme()],
          ['ufh_node_scheme_row', '4. Водяной тёплый пол', () => this.renderUfhNodeScheme(), true],
+         // раскладка по плану дома — вставляется следом и встаёт выше узла
+         ['ufh_plan_scheme_row', '4. Водяной тёплый пол', () => this.renderUfhPlanScheme(), true],
          ['water_scheme_row', ['5.1.', '5. Внутреннее водоснабжение'], () => this.renderWaterScheme(), true],
          ['hvs_node_scheme_row', '6. Узел ввода ХВС', () => this.renderHvsNodeScheme(), true]]
         .forEach(([rowId, marker, build, atSec]) => {
