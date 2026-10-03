@@ -18318,3 +18318,172 @@ body.theme-yandex #profile_modal_overlay {
 
 /* Панель разделов: семь пунктов одним блоком и одинаковые промежутки (без разделителей между блоками) */
 #lk_rail .lk-rail-group { gap: 4px; }
+
+/* ── Кабинет, вторая очередь: один вид у всех разделов (03.10.2026) ─────────────
+   Разделы кабинета писались в разное время: у каждого свой заголовок, своя кнопка
+   «Обновить», свои цвета подзаголовков. Здесь сведено к правилам админки. */
+
+/* Название раздела уже стоит в активной вкладке-чипе над содержимым, повторять его
+   заголовком не нужно: остаётся строка с кнопками справа (она пропадает, если кнопок нет) */
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div > .lk-section-head:first-child > h4:first-child,
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div .ad-page-h h3 { display: none; }
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div > .lk-section-head:first-child { justify-content: flex-end; margin-bottom: 12px; border-bottom: 0; padding-bottom: 0; }
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div > .lk-section-head:first-child:not(:has(button)) { display: none; }
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div .ad-page-h { justify-content: flex-end; margin-bottom: 12px; }
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div .ad-page-h > div:first-child:not(:has(.ad-sub)) { display: none; }
+
+/* Раздел без вкладок (монтажники менеджера): заголовок раздела — как в админке */
+#profile_modal_overlay .lk-pane .lk-section-head > h4:first-child { font-size: 17px !important; color: var(--text-main) !important; }
+
+/* Подзаголовки внутри раздела — один вид: мелкий серый капс, как «Контакты» в карточке.
+   Раньше часть была синей (цвет бренда), часть крупной и чёрной */
+#profile_modal_overlay .lk-pane h4:not(.lk-section-head > h4),
+#profile_modal_overlay .lk-pane h5 {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.06em !important;
+    text-transform: uppercase !important;
+    color: var(--text-sec) !important;
+    margin: 18px 0 8px !important;
+}
+
+/* Карточки блоков — одна поверхность, одна рамка, одно скругление */
+#profile_modal_overlay .lk-pane .lk-card,
+#profile_modal_overlay .lk-pane .profile-main-card {
+    background: var(--surface-light);
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-card-radius);
+    box-shadow: none;
+}
+
+/* Кнопки действий — одной высоты и одного вида. «Обновить», «Сбросить», «Открыть», «Скачать»
+   и подобные раньше были 21, 27, 28, 30 и 32 px */
+#profile_modal_overlay .lk-pane .lk-btn-sm,
+#profile_modal_overlay .lk-pane .btn-subscribe {
+    min-height: 30px;
+    height: auto;
+    padding: 4px 12px;
+    border-radius: var(--ad-radius);
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--surface);
+    color: var(--text-main);
+    border: 1px solid var(--ad-line);
+}
+#profile_modal_overlay .lk-pane .lk-btn-sm:hover:not(:disabled),
+#profile_modal_overlay .lk-pane .btn-subscribe:hover:not(:disabled) {
+    background: var(--primary-light);
+    border-color: transparent;
+    color: var(--primary);
+}
+/* Выбранный период («90 дн.») */
+#profile_modal_overlay .lk-pane .lk-btn-sm.is-active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+
+/* Кнопки внизу формы (Сохранить / Отмена) — тот же радиус, что у остальных */
+#profile_modal_footer_requisites button { border-radius: var(--ad-radius); }
+
+/* Подзаголовки .lk-subhead и подписи карточек — тот же серый капс, что и остальные */
+#profile_modal_overlay .lk-pane .lk-subhead,
+#profile_modal_overlay .lk-pane .lk-card-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-sec);
+}
+#profile_modal_overlay .lk-pane .lk-subhead { border-bottom: 1px solid var(--ad-line); }
+
+/* ── Кабинет, третья очередь: содержимое разделов (03.10.2026) ─────────────────── */
+
+/* Заголовки внутри «Показателей» («Деньги на столе», «Что сделать сейчас») — подзаголовки блока,
+   а не названия раздела: серый капс, как остальные */
+#profile_modal_overlay .lk-pane .sm-head > h4:first-child {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-sec) !important;
+}
+#profile_modal_overlay .lk-pane .sm-head { border-bottom: 0; padding-bottom: 0; margin: 20px 0 8px; }
+
+/* «Объекты»: название читается целиком (до двух строк), кнопки действий переносятся во второй ряд */
+#profile_cloud_list_content .inv-table th:nth-child(1),
+#profile_cloud_list_content .inv-table td:nth-child(1) {
+    min-width: 200px;
+    max-width: 320px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+#profile_cloud_list_content .inv-table td:nth-child(5) { white-space: normal !important; }
+#profile_cloud_list_content .inv-table td:nth-child(5) > div { flex-wrap: wrap; max-width: 340px; margin-left: auto; row-gap: 6px; }
+#profile_cloud_list_content .inv-table td { padding-top: 10px; padding-bottom: 10px; }
+
+/* «Показатели»: плитки и ячейки — как карточки «Главной» и плитки админки */
+#profile_modal_overlay .lk-pane .sm-tiles,
+#profile_modal_overlay .lk-pane .sm-cells {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+#profile_modal_overlay .lk-pane .sm-tile,
+#profile_modal_overlay .lk-pane .sm-cell {
+    background: var(--surface-light);
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-card-radius);
+    padding: 14px 16px;
+    gap: 2px;
+}
+#profile_modal_overlay .lk-pane .sm-tile-label,
+#profile_modal_overlay .lk-pane .sm-cell span {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-sec);
+}
+#profile_modal_overlay .lk-pane .sm-tile-val,
+#profile_modal_overlay .lk-pane .sm-cell b {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+#profile_modal_overlay .lk-pane .sm-tile-sub,
+#profile_modal_overlay .lk-pane .sm-cell small { font-size: 11px; color: var(--text-sec); }
+#profile_modal_overlay .lk-pane .sm-tile-list { border-top: 1px solid var(--ad-line); }
+#profile_modal_overlay .lk-pane .sm-row { border-bottom-color: var(--ad-line); }
+
+/* «Документы»: строка «сформировано …» и одна кнопка */
+.doc-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.doc-prog { font-size: 12px; color: var(--text-sec); min-width: 0; flex: 1 1 260px; }
+
+/* «Прайс монтажа»: свёрнутые группы с числом позиций, поля ввода — как везде */
+#profile_modal_overlay .lk-pane details.lk-group { margin: 0 0 8px; border: 1px solid var(--ad-line); border-radius: var(--ad-card-radius); background: var(--surface-light); overflow: hidden; }
+#profile_modal_overlay .lk-pane details.lk-group > summary.lk-subhead {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 10px 14px;
+    cursor: pointer;
+    list-style: none;
+    border-bottom: 0;
+}
+#profile_modal_overlay .lk-pane details.lk-group > summary::-webkit-details-marker { display: none; }
+#profile_modal_overlay .lk-pane details.lk-group > summary::before { content: "+"; width: 14px; color: var(--text-sec); font-weight: 700; }
+#profile_modal_overlay .lk-pane details.lk-group[open] > summary::before { content: "−"; }
+#profile_modal_overlay .lk-pane details.lk-group[open] > summary.lk-subhead { border-bottom: 1px solid var(--ad-line); }
+#profile_modal_overlay .lk-pane details.lk-group > .lk-list,
+#profile_modal_overlay .lk-pane details.lk-group > div:not(.lk-list) { padding-left: 14px; padding-right: 14px; }
+.lk-group-n { margin-left: auto; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--ad-line); background: var(--surface); color: var(--text-sec); letter-spacing: 0; text-transform: none; }
+#profile_modal_overlay .lk-pane .lk-row input[type="text"] {
+    height: 30px !important;
+    min-height: 30px;
+    border-radius: var(--ad-field-radius) !important;
+    background: var(--surface) !important;
+}
+#profile_modal_overlay .lk-pane .lk-row { border-bottom-color: var(--ad-line); }
+#profile_modal_overlay .lk-pane .lk-row:hover { background: color-mix(in srgb, var(--primary) 5%, transparent); }
+
+#profile_cloud_list_content .inv-table th:nth-child(5),
+#profile_cloud_list_content .inv-table td:nth-child(5) { width: 340px; min-width: 340px; }
+#profile_cloud_list_content .inv-table td:nth-child(5) > div { max-width: none; }
+#profile_cloud_list_content .inv-table th:nth-child(1),
+#profile_cloud_list_content .inv-table td:nth-child(1) { max-width: none; }

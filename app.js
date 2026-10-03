@@ -12813,6 +12813,7 @@ const app = {
         this.renderProfilePhotoField();
         this.renderThemeChoiceCard();
         this.setProfileTab(forced ? 'requisites' : (initialTab || 'requisites'));
+        this.watchCabinetStyle();
         // Телефон: без явного раздела (нижняя вкладка «Профиль») открываем меню разделов,
         // с разделом (railGo, push, принудительная анкета) — сам раздел с полосой «‹ Разделы»
         const lkLayout = profileNav && profileNav.parentElement;
@@ -13424,7 +13425,7 @@ const app = {
             return `<div class="lk-card" style="margin-bottom:8px; padding:10px 12px;">
                         <div style="font-size:12.5px; font-weight:600; color:var(--text-main); margin-bottom:2px;">${esc(o.project_name || 'Без названия')}</div>
                         <div style="font-size:10.5px; font-family:monospace; color:var(--text-sec); margin-bottom:8px;">КП № ${calcId}</div>
-                        <div id="doc_list_${calcId}" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                        <div id="doc_list_${calcId}"></div>
                     </div>`;
         }).join('');
         objects.forEach(o => this.renderDocChecklist(o.calc_id));
@@ -13446,15 +13447,17 @@ const app = {
         const fmt = (iso) => iso ? new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
         // Каждый документ — кнопка, а не плашка-статус: по плашке «Можно сформировать»
         // пробовали нажимать, а она ничего не делала. Сформированные помечены галочкой.
-        holder.innerHTML = this.DOC_TYPES.map(t => {
-            const at = generated[t.key];
-            const style = at
-                ? 'background:#ECFDF5; border-color:#10B981; color:#047857;'
-                : '';
-            return `<button type="button" class="lk-btn-sm" style="font-size:11px; padding:4px 10px; ${style}"
-                        title="${at ? 'Уже формировали · ' + fmt(at) : 'Сформировать документ'}"
-                        onclick="app.lazy('docs').then(() => Docs.openForOrder('${calcId}'))">${at ? '✓ ' : ''}${t.label}</button>`;
-        }).join('');
+        // Раньше здесь было семь одинаковых кнопок, и каждая открывала одну и ту же форму
+        // Docs.openForOrder(calcId): тип документа выбирают уже в ней. Теперь одна кнопка и строка
+        // «что уже сформировано» — те же данные из localStorage, но без семи ложных вариантов.
+        const done = this.DOC_TYPES.filter(t => generated[t.key]);
+        const doneTitle = done.map(t => t.label + ' · ' + fmt(generated[t.key])).join('\n');
+        holder.innerHTML = `<div class="doc-line">
+                <span class="doc-prog"${doneTitle ? ` title="${doneTitle.replace(/"/g, '&quot;')}"` : ''}>${done.length
+                    ? 'Сформировано ' + done.length + ' из ' + this.DOC_TYPES.length + ': ' + done.map(t => t.label).join(', ')
+                    : 'Документы ещё не формировали'}</span>
+                <button type="button" class="lk-btn-sm" onclick="app.lazy('docs').then(() => Docs.openForOrder('${calcId}'))">Сформировать документы</button>
+            </div>`;
     },
 
     // skipHead — когда заголовок раздела уже нарисован снаружи (фоллбек в renderOrdersTab)
@@ -14769,7 +14772,9 @@ const app = {
         const footerRequisites = document.getElementById('profile_modal_footer_requisites');
         const footerOther = document.getElementById('profile_modal_footer_other');
         if (footerRequisites) footerRequisites.style.display = isFormTab ? 'flex' : 'none';
-        if (footerOther) footerOther.style.display = isFormTab ? 'none' : 'flex';
+        // Кнопка «Закрыть» по центру на разделах без формы убрана (03.10.2026): окно закрывает
+        // крестик в углу, и лишняя кнопка внизу только отличала эти разделы от остальных
+        if (footerOther) footerOther.style.display = 'none';
 
         if (tab === 'home') {
             this.renderCabinetHome();
@@ -18078,8 +18083,12 @@ const app = {
             </p>`;
         }
 
-        Object.keys(groups).forEach(groupName => {
-            html += `<div class="lk-subhead">${groupName}</div>`;
+        // Шестьдесят строк подряд — это экран в 9 000 px: группы сворачиваются, открыта первая
+        // (или те, что человек открывал сам — состояние помним, пока вкладка перерисовывается)
+        const wpOpen = this._wpOpen || (this._wpOpen = {});
+        Object.keys(groups).forEach((groupName, gi) => {
+            const isOpen = wpOpen[groupName] === undefined ? gi === 0 : wpOpen[groupName];
+            html += `<details class="lk-group"${isOpen ? ' open' : ''} data-g="${String(groupName).replace(/"/g, '&quot;')}" ontoggle="app._wpOpen[this.dataset.g] = this.open"><summary class="lk-subhead">${groupName} <span class="lk-group-n">${groups[groupName].length}</span></summary>`;
             if (showCosts) {
                 html += `<div style="display:flex; justify-content:flex-end; gap:6px; padding:0 4px 4px 0; font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase; letter-spacing:.4px;">
                     <span style="width:82px; text-align:right;">Клиенту</span>
@@ -18123,7 +18132,7 @@ const app = {
                     </div>
                 `;
             });
-            html += `</div>`;
+            html += `</div></details>`;
         });
 
         container.innerHTML = html;
@@ -22341,8 +22350,8 @@ const app = {
         }
     },
 
-    softenAdminChips: function (root) {
-        this.decorateAdminLoaders(root);
+    softenAdminChips: function (root, noLoaders) {
+        if (!noLoaders) this.decorateAdminLoaders(root);
         this.cleanAdminEmoji(root);
         // Кнопки с цветом, заданным числом (зелёный «Excel», оранжевый и т. п.): красные —
         // остаются красными, все прочие становятся цветом темы. Кнопки на var(--primary)
@@ -22390,6 +22399,34 @@ const app = {
         }).observe(root, { childList: true, subtree: true });
         // Заглушка, уже стоящая в панели к моменту запуска наблюдателя
         try { this.decorateAdminLoaders(root); } catch (e) { }
+    },
+
+    // Те же правила для кабинета (03.10.2026): эмодзи в заголовках и кнопках убираются, сплошные
+    // цветные кнопки становятся мягкими. Заглушки загрузки кабинета не трогаем — у них свой вид.
+    watchCabinetStyle: function () {
+        const root = document.querySelector('#profile_modal_overlay .lk-pane');
+        if (!root || root._softWatch) return;
+        root._softWatch = true;
+        let timer = 0;
+        new MutationObserver(() => {
+            clearTimeout(timer);
+            timer = setTimeout(() => { try { this.softenAdminChips(root, true); this.stripCabinetEmoji(root); } catch (e) { } }, 30);
+        }).observe(root, { childList: true, subtree: true });
+        try { this.softenAdminChips(root, true); this.stripCabinetEmoji(root); } catch (e) { }
+    },
+
+    // Ведущие эмодзи в плашках и подсказках («📋 Нет данных от заказчика», «💡 Счёт на оборудование…»):
+    // cleanAdminEmoji берёт заголовки и кнопки, а здесь это обычные блоки текста. Чат не трогаем.
+    stripCabinetEmoji: function (root) {
+        const re = /^[\s‍️]*(?:\p{Extended_Pictographic}[️‍]*)+\s*/u;
+        root.querySelectorAll('div, p, span, a, li').forEach(el => {
+            if (el.dataset.emo || el.closest('.emoji-picker, .emoji-set, [class*="chat"], button')) return;
+            const n = el.firstChild;
+            if (n && n.nodeType === 3 && re.test(n.nodeValue)) {
+                const rest = n.nodeValue.replace(re, '');
+                if (rest.trim().length > 1) { n.nodeValue = rest; el.dataset.emo = '1'; }
+            }
+        });
     },
 
     // Разделы владельца: «Дашборд» — сводка тех же данных, что и «Аналитика»,
