@@ -36723,6 +36723,13 @@ const app = {
         // стороны подключения радиаторов по моделям сметы — трассы окна плана
         // подходят к приборам так же, как в смете и КП
         try { localStorage.setItem('heatcalc_rad_conn', JSON.stringify(this.radConnMap())); } catch (e) { }
+        // нехватка тепла по комнатам из последнего расчёта — шаг «Готово» покажет её,
+        // пока план не тронут (после правок плана цифры устарели)
+        try {
+            const bal = {};
+            this.radDeficits().forEach(x => { bal[String(x.name).trim()] = x.diff; });
+            localStorage.setItem('heatcalc_room_deficit', JSON.stringify(bal));
+        } catch (e) { }
         try {
             localStorage.setItem('heatcalc_ufh_theme', JSON.stringify({
                 dark, primary: cv('primary'), bg: cv('bg'), surface: cv('surface'),
@@ -62843,6 +62850,43 @@ const app = {
             (diff < 0 ? 'Тепла не хватает: добавьте прибор или утеплите помещение.' : 'Баланс в плюсе — в самые морозы комната не остынет.');
         return `<span style="font-size:10px; font-weight:800; color:${col}; white-space:nowrap;" title="${tip}">${diff >= 0 ? '+' : '−'}${Math.abs(diff)}</span>`;
     },
+    /**
+     * Комнаты, где тепла не хватает: приборы + тёплый пол меньше теплопотерь
+     * больше чем на 50 Вт (те же цифры, что плашки «−515» в списке комнат).
+     * Меньший недобор — округление подбора, говорить о нём незачем.
+     */
+    radDeficits: function () {
+        const out = [];
+        if (!this.state.detailedRooms) return out;
+        (this.state.rooms || []).forEach(r => {
+            const b = (this._roomBalance || {})[r.id];
+            if (!b || !(b.q > 0)) return;
+            const diff = Math.round((b.fact || 0) + (b.ufh || 0) - b.q);
+            if (diff < -50) out.push({ id: r.id, name: r.name, diff, q: b.q });
+        });
+        return out;
+    },
+
+    /**
+     * Строка под «Планом дома»: «Не хватает тепла: Кухня −515 Вт, Кабинет −388 Вт».
+     * Монтажник видел это только по плашке в смете и красным числам в списке
+     * комнат — а нужно сразу после «Готово» в окне плана, пока план перед
+     * глазами и радиатор можно добавить (03.10.2026). Клик по названию —
+     * к карточке комнаты.
+     */
+    updatePlanRowWarn: function () {
+        const el = document.getElementById('plan_row_warn');
+        if (!el) return;
+        const d = this.radDeficits();
+        if (!d.length || !this.planRowSummary()) { el.style.display = 'none'; el.innerHTML = ''; return; }
+        const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+        el.innerHTML = 'Не хватает тепла: ' + d.slice(0, 4).map(x =>
+            `<a href="#" style="color:inherit;text-decoration:underline;" onclick="app.jumpToRoom(${Number(x.id) || 0}); return false;">${esc(x.name)}</a> −${Math.abs(x.diff)} Вт`
+        ).join(', ') + (d.length > 4 ? ' и ещё ' + (d.length - 4) : '') +
+            '. Добавьте радиатор или тёплый пол в этих комнатах.';
+        el.style.display = 'block';
+    },
+
     // render() пересчитывает баланс после пересборки сметы — обновляем плашки
     // в уже отрисованном списке, не трогая сам список (ввод и фокус целы).
     updateRoomBalanceChips: function () {
@@ -80195,6 +80239,7 @@ const app = {
         // Плашки баланса в списке помещений: подбор приборов только что положил
         // свежие цифры в _roomBalance — обновляем плашки, не пересобирая список.
         if (this.state.detailedRooms) this.updateRoomBalanceChips();
+        this.updatePlanRowWarn();
     },
 
     // ─── Подсказка «из чего складывается экономия» ──────────────────────────
