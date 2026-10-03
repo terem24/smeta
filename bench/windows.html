@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>Стенд: окна и двери на плане</title>
+<style>
+  body { font: 13px/1.45 system-ui, sans-serif; margin: 16px; color: #111; }
+  table { border-collapse: collapse; margin: 8px 0 18px; }
+  td, th { border: 1px solid #ccc; padding: 3px 8px; text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; }
+  .ok { color: #15803d; } .bad { color: #b91c1c; font-weight: 600; } .chg { color: #b45309; font-weight: 600; }
+  code { background: #f3f4f6; padding: 0 4px; }
+  iframe { position: absolute; left: -9999px; width: 1400px; height: 900px; }
+</style></head><body>
+<h2>Стенд: окна и двери на плане</h2>
+<p>Прогоняет планы через настоящий поиск окон и дверей редактора (<code>detectWindows</code>).
+Запуск: открыть <code>http://localhost:8080/.claude/worktrees/&lt;ветка&gt;/bench/windows.html?dir=bench/windows_data</code>.
+В папке — картинки планов и <code>cases.json</code> (она в .gitignore: планы чужие).</p>
+<p>Параметры: <code>dir</code> — папка с данными (от корня сервера); <code>editor</code> — какой редактор
+гонять (по умолчанию <code>plan_editor.html?m=ufh</code> рядом); <code>golden</code> — файл прошлого прогона
+(по умолчанию <code>golden.json</code> в папке данных): расхождения с ним подсвечены.</p>
+<pre>cases.json: [{ "file": "plan.png", "ppm": 78.5,
+   "truth": { "windows": [[x, y], ...], "doors": [[x, y], ...] } }]
+ppm — пикселей на метр на самой картинке; truth (необязательно) — координаты в пикселях картинки.</pre>
+<div id="out">идёт прогон…</div>
+<iframe id="fr"></iframe>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var root = location.pathname.replace(/\/bench\/windows\.html$/, '/');
+  var dir = root + (q.get('dir') || 'bench/windows_data').replace(/^\/+|\/+$/g, '');
+  var editor = q.get('editor') || (root + 'plan_editor.html?m=ufh');
+  var MATCH_M = 0.7;                       // совпадение с эталоном — не дальше 0,7 м
+  var out = document.getElementById('out'), fr = document.getElementById('fr');
+  window.__result = null;
+
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function until(fn, ms) {
+    var t0 = Date.now();
+    return new Promise(function (res) {
+      (function tick() {
+        var v = false; try { v = fn(); } catch (e) {}
+        if (v) return res(true);
+        if (Date.now() - t0 > ms) return res(false);
+        setTimeout(tick, 80);
+      })();
+    });
+  }
+  function getJson(u) { return fetch(u + (u.indexOf('?') < 0 ? '?' : '&') + 'r=' + Date.now()).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }); }
+
+  /** Прогон одного плана в свежем редакторе. */
+  function runCase(c) {
+    return new Promise(function (resolve) {
+      var done = function (v) { resolve(v); };
+      fr.onload = function () {
+        fr.onload = null;
+        (async function () {
+          var cw = fr.contentWindow;
+          if (!await until(function () { return typeof cw.loadImage === 'function' && cw.DATA; }, 8000)) return done({ err: 'редактор не загрузился' });
+          try { cw.calcRooms.length = 0; } catch (e) {}
+          var blob = await (await fetch(dir + '/' + c.file + '?r=' + Date.now())).blob();
+          cw.loadImage({ files: [new File([blob], c.file, { type: blob.type || 'image/png' })], value: '' });
+          if (!await until(function () { return cw.F().img && cw.imgCache && cw.imgCache[cw.cur]; }, 12000)) return done({ err: 'план не открылся' });
+          var f = cw.F(), k = f.w / (c.w || f.w);       // редактор мог уменьшить картинку до 1600 px
+          f.pxPerM = c.ppm * k; cw.resetScaleCaches();
+          var t0 = Date.now(), w = cw.floorWindows() || [], d = (cw.DOORS || []).slice();
+          done({
+            ms: Date.now() - t0, k: k,
+            // координаты — в пикселях исходной картинки; для окна берём центр проёма (ox, oy)
+            windows: w.map(function (q) { return [Math.round((q.ox != null ? q.ox : q.x) / k), Math.round((q.oy != null ? q.oy : q.y) / k), +(q.ow / k / c.ppm).toFixed(2)]; }),
+            doors: d.map(function (q) { return [Math.round(q.x / k), Math.round(q.y / k), +(q.w / k / c.ppm).toFixed(2)]; })
+          });
+        })();
+      };
+      fr.src = editor;
+    });
+  }
+
+  function near(a, b, ppm) { return Math.hypot(a[0] - b[0], a[1] - b[1]) <= MATCH_M * ppm; }
+  /** Сопоставление найденного с эталоном: {tp, fp, fn}. */
+  function score(found, truth, ppm) {
+    var used = {}, tp = 0;
+    found.forEach(function (p) {
+      for (var i = 0; i < truth.length; i++) if (!used[i] && near(p, truth[i], ppm)) { used[i] = 1; tp++; return; }
+    });
+    return { tp: tp, fp: found.length - tp, fn: truth.length - tp };
+  }
+  /** Что прибавилось и пропало против прошлого прогона. */
+  function diff(now, old, ppm) {
+    var add = now.filter(function (p) { return !old.some(function (o) { return near(p, o, ppm); }); });
+    var gone = old.filter(function (o) { return !now.some(function (p) { return near(p, o, ppm); }); });
+    return { add: add, gone: gone };
+  }
+
+  (async function main() {
+    var cases = await getJson(dir + '/cases.json');
+    if (!cases) { out.textContent = 'нет ' + dir + '/cases.json'; return; }
+    var gp = q.get('golden');
+    var golden = gp === 'none' ? {} : (await getJson(gp || (dir + '/golden.json')) || {});
+    // чтобы не затереть планы в браузере, пока идёт прогон: редактор читает floor_plans_v1
+    var backup = localStorage.getItem('floor_plans_v1');
+    var rows = [], res = {}, tot = { tp: 0, fp: 0, fn: 0, dtp: 0, dfp: 0, dfn: 0 }, changed = 0;
+    for (var i = 0; i < cases.length; i++) {
+      var c = cases[i];
+      localStorage.removeItem('floor_plans_v1');
+      // размеры картинки нужны, чтобы пересчитать масштаб
+      var im = new Image(); im.src = dir + '/' + c.file + '?r=' + Date.now();
+      await new Promise(function (r) { im.onload = im.onerror = r; });
+      c.w = im.naturalWidth;
+      out.textContent = 'прогон ' + (i + 1) + ' из ' + cases.length + ': ' + c.file;
+      var r = await runCase(c);
+      res[c.file] = r;
+      var g = golden[c.file], tr = '', cls = '';
+      if (c.truth && !r.err) {
+        var sw = score(r.windows, c.truth.windows || [], c.ppm), sd = score(r.doors, c.truth.doors || [], c.ppm);
+        tot.tp += sw.tp; tot.fp += sw.fp; tot.fn += sw.fn; tot.dtp += sd.tp; tot.dfp += sd.fp; tot.dfn += sd.fn;
+        tr = 'окна: верно ' + sw.tp + ', лишних ' + sw.fp + ', пропущено ' + sw.fn +
+          '<br>двери: верно ' + sd.tp + ', лишних ' + sd.fp + ', пропущено ' + sd.fn;
+        cls = (sw.fp || sw.fn || sd.fp || sd.fn) ? 'bad' : 'ok';
+      }
+      var df = '';
+      if (g && !r.err) {
+        var dw = diff(r.windows, g.windows || [], c.ppm), dd = diff(r.doors, g.doors || [], c.ppm);
+        var parts = [];
+        if (dw.add.length) parts.push('окна +' + dw.add.length + ' ' + JSON.stringify(dw.add.map(function (p) { return p.slice(0, 2); })));
+        if (dw.gone.length) parts.push('окна −' + dw.gone.length + ' ' + JSON.stringify(dw.gone.map(function (p) { return p.slice(0, 2); })));
+        if (dd.add.length) parts.push('двери +' + dd.add.length);
+        if (dd.gone.length) parts.push('двери −' + dd.gone.length);
+        if (parts.length) { df = parts.join('<br>'); changed++; }
+      }
+      rows.push('<tr><td>' + c.file + '</td><td>' + (r.err ? '<span class="bad">' + r.err + '</span>' : r.windows.length) + '</td><td>' +
+        (r.err ? '' : r.doors.length) + '</td><td class="' + cls + '">' + tr + '</td><td class="' + (df ? 'chg' : '') + '">' +
+        (g ? (df || 'как в прошлый раз') : 'прошлого прогона нет') + '</td><td>' + (r.ms || '') + '</td></tr>');
+    }
+    if (backup !== null) localStorage.setItem('floor_plans_v1', backup);
+    window.__result = res;
+    var sumTruth = (tot.tp + tot.fn) ? 'С эталоном — окна: верно ' + tot.tp + ', лишних ' + tot.fp + ', пропущено ' + tot.fn +
+      '; двери: верно ' + tot.dtp + ', лишних ' + tot.dfp + ', пропущено ' + tot.dfn + '.<br>' : '';
+    out.innerHTML = sumTruth + 'Планов: ' + cases.length + ', отличаются от прошлого прогона: ' + changed +
+      '. Результат прогона — в <code>window.__result</code> (его можно сохранить как <code>golden.json</code>).' +
+      '<table><tr><th>План</th><th>Окон</th><th>Дверей</th><th>Против эталона</th><th>Против прошлого прогона</th><th>мс</th></tr>' + rows.join('') + '</table>';
+  })();
+})();
+</script></body></html>
