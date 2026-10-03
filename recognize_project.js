@@ -1646,7 +1646,7 @@ const RecognizeProject = {
         if (e.heaters) sys.push('rad');
         if (e.ufh) sys.push('tp');
         room.sys = sys;
-        if (e.ufh && e.ufhArea > 0 && e.ufhArea < room.area) room.tpArea = e.ufhArea;
+        if (e.ufh && e.ufhArea > 0 && e.ufhArea < room.area) room.tpArea = Math.round(e.ufhArea * 100) / 100;
 
         // Приборов больше, чем окон: лишние встают под «виртуальное» окно
         // той же ширины. Конвектор в полу — это панорамное окно расчёта.
@@ -1753,8 +1753,9 @@ const RecognizeProject = {
             .filter(r => (f === 2 ? r.floor === 2 : r.floor !== 2) && r.sys && r.sys.includes('tp'))
             .reduce((s, r) => s + (typeof app.roomTpArea === 'function'
                 ? app.roomTpArea(r) : (parseFloat(r.area) || 0)), 0);
-        st.tp1 = sum(1);
-        st.tp2 = sum(2);
+        // До двух знаков: сумма дробных площадей даёт хвост вида 58.599999999999994
+        st.tp1 = Math.round(sum(1) * 100) / 100;
+        st.tp2 = Math.round(sum(2) * 100) / 100;
         if (!(st.systems || []).includes('tp')) st.systems = (st.systems || []).concat('tp');
     },
 

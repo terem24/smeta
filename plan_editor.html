@@ -3885,7 +3885,7 @@ function renderZones() {
       if (r.win) mt.push(r.win + ' ок.');
       h += '<div class="croom" data-i="' + idx + '">' +
         '<span class="nm">' + r.name + '</span>' +
-        '<span class="mt">' + (r.area ? r.area + ' м² · ' : '') + mt.join(' · ') + '</span></div>';
+        '<span class="mt">' + (r.area ? (Math.round(r.area * 100) / 100) + ' м² · ' : '') + mt.join(' · ') + '</span></div>';
     });
     g.innerHTML = h;
     g.onclick = function (e) {
@@ -4213,7 +4213,7 @@ function ufhAskName(z) {
     h += '<div class="sub" style="margin-bottom:4px">Из расчёта:</div><div class="grid">';
     calc.forEach(function (r) {
       h += '<button class="calc" data-n="' + esc(r.name) + '">' + esc(r.name) +
-        (r.area ? ' · ' + String(r.area).replace('.', ',') + ' м²' : '') + '</button>';
+        (r.area ? ' · ' + String(Math.round(r.area * 100) / 100).replace('.', ',') + ' м²' : '') + '</button>';
     });
     h += '</div><div class="sub" style="margin-bottom:4px">Или новая:</div>';
   }
