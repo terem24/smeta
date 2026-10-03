@@ -5613,6 +5613,35 @@ const app = {
         Гарантия на монтаж — дополнительное обязательство исполнителя (п. 7 ст. 5 Закона «О защите прав потребителей»), с даты акта. Сформировано в HeatCalc.ru.</div>`;
     },
 
+    // Гарантия STOUT в ссылке клиенту. Условие то же, что у бланка при печати (вошёл
+    // монтажник, оборудование в ссылке, доля STOUT не ниже порога), но без требования
+    // «адрес и заказчик заполнены»: в ссылку они всё равно не идут (как и в разделе
+    // «Ваш дом» — личных данных там нет), а клиенту нужно само обещание.
+    warrantyLinkEligible: function (showEq) {
+        if (!this.state.tgUser || showEq === false) return false;
+        const sh = this.stoutShare();
+        return sh.pct !== null && sh.pct >= this.warrantyThreshold();
+    },
+
+    // Данные листа «Гарантия» для страницы клиента (object_info.warranty): сроки по
+    // группам, витрина из позиций сметы, срок на монтаж, страховка. Рисует их invoice.html.
+    // Нужен Docs (сроки и полисы лежат в docs.js) — executeShareInvoice грузит его заранее.
+    warrantyLinkData: function () {
+        if (typeof Docs === 'undefined') return null;
+        const groups = this.warrantyTermGroups();
+        if (!groups.length) return null;
+        const ins = (Docs.activeInsurance(new Date().toISOString().slice(0, 10)) || []).find(p => p.brand === 'STOUT');
+        const extM = parseInt((this.state.contract || {}).extWorksMonths) || this.WARRANTY_EXT_WORKS_MONTHS;
+        return {
+            maxM: groups[0].months,
+            extM: extM,
+            groups: groups.map(g => ({ m: g.months, k: g.kinds.slice(0, 6) })),
+            tiles: this.warrantyPhotoTiles(5).map(t => ({ id: String(t.it.id), kind: t.kind, m: t.months })),
+            ins: ins ? { sum: ins.sum, perCase: ins.perCase, insurer: String(ins.insurer).replace(/^СПАО\s+/, ''), policy: ins.policy, to: ins.to } : null,
+            system: this.systemSummary()
+        };
+    },
+
     // Прежнее имя: зовётся из нескольких мест по ходу отрисовки.
     syncEmptyFitPanelScale: function (recalc) { this.fitParamsPanel(recalc); },
     // Отложенный пересчёт: за одну отрисовку панель трогают десятки раз, а ответ
@@ -38035,7 +38064,8 @@ const app = {
             if (c && c.seasonCost > 0) {
                 out.cost = {
                     fuel: fuel, month: Math.round(c.avgMonthCost / 10) * 10, season: Math.round(c.seasonCost / 100) * 100,
-                    months: c.activeMonths || 7, zOt: c.zOt, tOt: c.tOt,
+                    // Сутки целым числом: для региона без города период усредняется («206,33… дн.»)
+                    months: c.activeMonths || 7, zOt: c.zOt ? Math.round(c.zOt) : c.zOt, tOt: c.tOt,
                     tariff: fuel === 'gas' ? (c.tariff && c.tariff.rub) : (c.tariffDay || null),
                     unit: fuel === 'gas' ? (c.lpg ? '₽/л' : '₽/м³') : '₽/кВт·ч', lpg: !!c.lpg,
                     units: fuel === 'gas' ? Math.round(c.seasonUnits) : Math.round(c.seasonKwh), uName: fuel === 'gas' ? (c.lpg ? 'л' : 'м³') : 'кВт·ч'
@@ -47132,6 +47162,37 @@ const app = {
         }, () => { });
     },
 
+    // Лимит КП на бесплатном тарифе (настройки — вкладка «Оплата подписки» → «Лимит КП»,
+    // по умолчанию выключен). Вызывается перед окном выбора разделов, то есть до
+    // того, как КП уйдёт клиенту. true — можно продолжать. Любая ошибка подсчёта
+    // пропускает человека: лимит не должен мешать работать.
+    sendLimitOk: async function () {
+        try {
+            await this.loadAppSettings();
+            if (typeof Subscription === 'undefined' || !Subscription.limitApplies()) return true;
+            const tg = this.state.tgUser || {};
+            if (!tg.id) return true;
+            const d = new Date();
+            const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
+            const { data, error } = await supabaseClient.from('invoice_events').select('calc_id')
+                .eq('user_id', String(tg.id)).in('event', ['printed', 'sent']).gte('created_at', start).limit(500);
+            if (error) throw error;
+            const used = new Set((data || []).map(r => String(r.calc_id)));
+            const cur = String(this.state.calc_id || '');
+            if (cur && used.has(cur)) return true;            // это КП уже отправляли в этом месяце
+            const max = Subscription.limitSettings().perMonth;
+            if (used.size < max) return true;
+            const go = await this.confirmChoice(
+                'На бесплатном тарифе можно отправить клиентам ' + max + ' разных КП в месяц, в этом месяце вы уже отправили ' + used.size + '. Ранее отправленные КП можно отправлять снова. Счётчик обнулится 1 числа. Профи — без ограничения.',
+                'Лимит бесплатных КП', 'Оформить Профи', 'Закрыть');
+            if (go) this.showModal('pro');
+            return false;
+        } catch (e) {
+            console.warn('[лимит КП] не проверен, пропускаем:', e);
+            return true;
+        }
+    },
+
     shareInvoice: async function () {
         if (!this.checkAccess('base')) return;
 
@@ -47165,6 +47226,7 @@ const app = {
             this.syncUI();
         }
 
+        if (!(await this.sendLimitOk())) return;
         this.openShareOptionsModal('share');
     },
 
@@ -47248,6 +47310,15 @@ const app = {
                 if (kp) object_info.kp = kp;
             } catch (e) { console.warn('[ссылка] раздел «Ваш дом» не добавлен:', e.message); }
         }
+        // Гарантия STOUT — отдельным листом и плиткой в «Ваш дом»: преимущество, которое
+        // клиент должен увидеть в ссылке, а не только в печатном бланке. Без адреса и ФИО.
+        try {
+            if (this.warrantyLinkEligible(showEq)) {
+                await this.lazy('docs');
+                const wr = this.warrantyLinkData();
+                if (wr) object_info.warranty = wr;
+            }
+        } catch (e) { console.warn('[ссылка] гарантия не добавлена:', e.message); }
 
         // Таймер счёта. sent_at — момент этой отправки (переотправка ставит новый),
         // valid_until — когда страница клиента спрячет цены и оставит одну кнопку
@@ -47582,6 +47653,7 @@ const app = {
             return;
         }
 
+        if (!(await this.sendLimitOk())) return;
         this.openShareOptionsModal(actionType);
     },
     // html2canvas (используется html2pdf на мобильных, см. executeDownload) рендерит DOM как
