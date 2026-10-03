@@ -1301,12 +1301,20 @@
     floorLoops(f, stepMm, loopLimit(stepMm)).forEach(function (Z) {
       var k = Z.loops.length;
       var zName = Z.name || 'зона ' + (++zno);
-      // мощность зоны делится между её петлями поровну — как и площадь
-      var rm = roomOf(Z.name, rooms);
-      var g = flowLmin(zoneHeat(rm, Z.area, stepMm) / k);
+      // Пол греет под трубой: у разложенной петли предел мощности — с площади
+      // под её трубой (длина без подводок × шаг), нагрузка комнаты делится между
+      // петлями по этой площади. Зона-оценка — по площади, поровну, как прежде.
+      // Так же считает смета (app.ufhCalc).
+      var rm = roomOf(Z.name, rooms), s = stepMm / 1000;
+      var laidSum = Z.est ? 0 : Z.loops.reduce(function (a, lp) { return a + (lp.loopM || 0); }, 0);
       Z.loops.forEach(function (lp, li) {
+        var q;
+        if (laidSum > 0 && lp.loopM > 0) {
+          var cap = lp.loopM * s * qUdeFor(stepMm);
+          q = (rm && rm.q > 0) ? Math.min(rm.q * lp.loopM / laidSum, cap) : cap;
+        } else q = zoneHeat(rm, Z.area, stepMm) / k;
         out.push({ no: ++no, name: zName + (k > 1 ? ' ' + (li + 1) + '/' + k : ''),
-          area: Z.area / k, step: stepMm, m: lp.m, flow: g,
+          area: Z.area / k, step: stepMm, m: lp.m, flow: flowLmin(q),
           byLoss: !!rm, est: !!Z.est, zi: Z.i, k: k, li: li, loop: lp });
       });
     });

@@ -59719,14 +59719,22 @@ const app = {
                 };
                 // Зона может быть поделена на несколько петель — мощность комнаты
                 // делим между ними поровну, как и её площадь.
-                const kOf = {};
-                g.rows.forEach(r => { kOf[r.zone] = (kOf[r.zone] || 0) + 1; });
+                const kOf = {}, laidOf = {};
+                g.rows.forEach(r => {
+                    kOf[r.zone] = (kOf[r.zone] || 0) + 1;
+                    if (r.laidM > 0) laidOf[r.zone] = (laidOf[r.zone] || 0) + r.laidM;
+                });
+                // Пол греет под трубой: у разложенной петли предел — с площади под её
+                // трубой (длина без подводок × шаг), нагрузка комнаты делится между
+                // петлями по этой площади (так же лист, projectPlans.loopRows).
                 // 1,05 — подрезка и подъём концов петель к гребёнке, как в смете
                 g.rows.forEach(r => {
-                    const cap = r.area * roomQud(r.zone);
+                    const qud = roomQud(r.zone), laid = r.laidM > 0 && laidOf[r.zone] > 0;
+                    const cap = laid ? r.laidM * step / 1000 * qud : r.area * qud;
+                    const share = laid ? r.laidM / laidOf[r.zone] : 1 / (kOf[r.zone] || 1);
                     const q = roomQ(r.zone);
                     rows.push({ name: r.name, area: r.area, m: r.m * 1.05,
-                        Q: q > 0 ? Math.min(q / (kOf[r.zone] || 1), cap) : cap });
+                        Q: q > 0 ? Math.min(q * share, cap) : cap });
                 });
             }
             if (!rows.length) {
