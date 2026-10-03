@@ -36864,58 +36864,56 @@ const app = {
      * таблица стилей страницы урезана) и на страницу клиента.
      * qr — { src, url } для печати: картинка QR на онлайн-КП.
      */
+
+    /**
+     * Разметка раздела. Стили встроенные: одна и та же уходит в печать (там
+     * таблица стилей страницы урезана) и на страницу клиента (invoice.html,
+     * renderKpHouse, — та же раскладка, но через textContent).
+     * Для заказчика, не для эксперта: три плитки с цифрами (теплопотери, в месяц,
+     * за сезон), «вы просили — мы учли» бейджами, комнаты таблицей, нормы и
+     * тариф — одной серой строкой внизу. qr — { src, url }: картинка QR на онлайн-КП.
+     */
     kpPersonalHtml: function (d, qr) {
         if (!d) return '';
         const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const n1 = v => String(Math.round((v || 0) * 10) / 10).replace('.', ',');
         const money = v => Math.round(v || 0).toLocaleString('ru-RU');
-        const H = (t) => `<div style="font-weight:700;font-size:14px;margin:14px 0 6px;color:#111">${t}</div>`;
+        const H = (t) => `<div style="font-weight:700;font-size:13px;margin:14px 0 6px;color:#111">${t}</div>`;
         const td = 'padding:4px 6px;border-bottom:1px solid #eee;';
+        const hs = d.house || {}, c = d.cost;
+        const tileCss = 'flex:1 1 150px;min-width:140px;border:1px solid #E5E7EB;border-radius:10px;padding:10px 12px;page-break-inside:avoid;';
+        const tile = (lbl, val, sub) => `<div style="${tileCss}"><div style="font-size:9.5px;color:#6B7280;font-weight:700;text-transform:uppercase;letter-spacing:.5px">${lbl}</div>` +
+            `<div style="font-size:21px;font-weight:800;color:#111;line-height:1.15;margin:2px 0">${val}</div>${sub ? `<div style="font-size:11px;color:#6B7280">${sub}</div>` : ''}</div>`;
+        let tiles = '';
+        if (hs.kw) tiles += tile('Теплопотери дома', `${n1(hs.kw)} кВт`, [hs.t != null ? `при ${hs.t} °C` : '', hs.city ? esc(hs.city) : ''].filter(Boolean).join(', '));
+        if (c) {
+            tiles += tile('Отопление в месяц', `≈ ${money(c.month)} ₽`, 'в среднем за отопительный сезон');
+            tiles += tile('За сезон', `${money(c.season)} ₽`, `${c.zOt ? c.zOt + ' дн.' : c.months + ' мес.'} · ${c.fuel === 'gas' ? (c.lpg ? 'сжиженный газ' : 'газ') : 'электроэнергия'} ${money(c.units)} ${esc(c.uName)}`);
+        }
+        if (qr && qr.src) tiles += `<div style="${tileCss}flex:0 0 auto;text-align:center"><img src="${qr.src}" alt="QR" style="width:84px;height:84px;display:block;margin:0 auto 2px"><div style="font-size:10px;color:#6B7280">Это КП онлайн</div></div>`;
         let h = `<div class="kp-personal" style="font-family:inherit;color:#222;font-size:12.5px;line-height:1.45;margin:6px 0 16px;page-break-inside:auto">`;
-        const hs = d.house || {};
-        h += `<div style="display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap">` +
-            `<div style="flex:1;min-width:260px"><div style="font-weight:800;font-size:16px;margin-bottom:4px">Расчёт выполнен для вашего дома</div>` +
-            `<div>${[hs.city ? esc(hs.city) : '', hs.area ? n1(hs.area) + ' м²' : '', hs.floors ? hs.floors + ' ' + (hs.floors === 1 ? 'этаж' : 'этажа') : '']
-                .filter(Boolean).join(' · ')}</div>` +
-            (hs.kw ? `<div>Теплопотери дома: <b>${n1(hs.kw)} кВт</b>${hs.t != null ? ` при наружной температуре ${hs.t} °C` : ''}` +
-                `${hs.city ? ` (расчётная зимняя для г. ${esc(hs.city)}, СП 131.13330.2020, табл. 3.1)` : ''}</div>` : '') +
-            `</div>` +
-            (qr && qr.src ? `<div style="text-align:center;width:150px"><img src="${qr.src}" alt="QR" style="width:120px;height:120px;display:block;margin:0 auto 4px">` +
-                `<div style="font-size:10.5px;color:#555">Этот КП онлайн: план дома, смета, согласование — наведите камеру телефона</div></div>` : '') +
-            `</div>`;
+        h += `<div style="font-size:13px;color:#374151;margin:0 0 10px">Посчитано для вашего дома, а не по шаблону: теплопотери, котёл и приборы — под ` +
+            `${hs.area ? n1(hs.area) + ' м²' : 'ваш дом'}${hs.city ? ' в г. ' + esc(hs.city) : ''}.</div>`;
+        if (tiles) h += `<div style="display:flex;gap:10px;flex-wrap:wrap">${tiles}</div>`;
         if (d.asked && d.asked.length) {
-            h += H('Вы просили — мы учли');
-            h += `<table style="width:100%;border-collapse:collapse">` + d.asked.map(x =>
-                `<tr><td style="${td}width:40%">${esc(x.q)}</td><td style="${td}">${x.ok
-                    ? `<span style="color:#15803d;font-weight:700">✓</span> ${esc(x.a)}`
-                    : `<span style="color:#b45309;font-weight:700">—</span> в смету не вошло, обсудим`}</td></tr>`).join('') + `</table>`;
+            h += H('Вы просили — мы учли') + `<div style="display:flex;flex-wrap:wrap;gap:6px">` + d.asked.map(x =>
+                `<span style="display:inline-block;border:1px solid ${x.ok ? '#BBF7D0' : '#FDE68A'};background:${x.ok ? '#F0FDF4' : '#FFFBEB'};border-radius:999px;padding:4px 10px;font-size:12px">` +
+                `<b style="color:${x.ok ? '#15803d' : '#b45309'}">${x.ok ? '✓' : '—'}</b> ${esc(x.q)}${x.ok ? ': ' + esc(x.a) : ' — обсудим'}</span>`).join('') + `</div>`;
         }
         if (d.rooms && d.rooms.length) {
             const two = d.rooms.some(r => r.floor === 2);
             h += H('Ваш дом по комнатам');
-            h += `<table style="width:100%;border-collapse:collapse"><tr style="color:#666">` +
-                `<th style="${td}text-align:left">Помещение</th><th style="${td}text-align:right">Площадь</th>` +
-                `<th style="${td}text-align:right">Теплопотери</th><th style="${td}text-align:left">Чем греется</th></tr>` +
+            h += `<table style="width:100%;border-collapse:collapse"><tr style="color:#666;font-size:11px">` +
+                `<th style="${td}text-align:left;font-weight:600">Помещение</th><th style="${td}text-align:right;font-weight:600">Площадь</th>` +
+                `<th style="${td}text-align:right;font-weight:600">Теплопотери</th><th style="${td}text-align:left;font-weight:600">Отопление</th></tr>` +
                 d.rooms.map(r => `<tr><td style="${td}">${esc(r.name)}${two ? ` <span style="color:#888">(${r.floor} эт.)</span>` : ''}</td>` +
                     `<td style="${td}text-align:right">${n1(r.area)} м²</td><td style="${td}text-align:right">${money(r.q)} Вт</td>` +
                     `<td style="${td}">${esc(r.heat || '—')}</td></tr>`).join('') +
                 `<tr style="font-weight:700"><td style="${td}">Итого</td><td style="${td}text-align:right">${n1(d.rooms.reduce((s, r) => s + (r.area || 0), 0))} м²</td>` +
-                `<td style="${td}text-align:right">${money(d.rooms.reduce((s, r) => s + (r.q || 0), 0))} Вт</td><td style="${td}"></td></tr></table>` +
-                `<div style="font-size:11px;color:#666;margin-top:4px">Теплопотери посчитаны по каждой комнате: стены, окна, пол, кровля и вентиляция (СП 50.13330.2024).</div>`;
+                `<td style="${td}text-align:right">${money(d.rooms.reduce((s, r) => s + (r.q || 0), 0))} Вт</td><td style="${td}"></td></tr></table>`;
         }
-        if (d.cost) {
-            const c = d.cost;
-            h += H('Сколько будет стоить отопление');
-            h += `<div style="display:flex;gap:24px;flex-wrap:wrap">` +
-                `<div><div style="color:#666">В среднем в месяц отопительного сезона</div><div style="font-size:18px;font-weight:800">${money(c.month)} ₽</div></div>` +
-                `<div><div style="color:#666">За сезон (${c.zOt ? c.zOt + ' сут.' : c.months + ' мес.'})</div><div style="font-size:18px;font-weight:800">${money(c.season)} ₽</div></div>` +
-                `<div><div style="color:#666">${c.fuel === 'gas' ? (c.lpg ? 'Сжиженный газ' : 'Газ') : 'Электроэнергия'} за сезон</div>` +
-                `<div style="font-size:18px;font-weight:800">${money(c.units)} ${esc(c.uName)}</div></div></div>` +
-                `<div style="font-size:11px;color:#666;margin-top:4px">Оценка: тепло за отопительный период по СП 131.13330.2020, табл. 3.1` +
-                `${c.tOt != null ? ` (средняя температура периода ${n1(c.tOt)} °C)` : ''}, ` +
-                `тариф ${c.tariff ? n1(c.tariff) + ' ' + esc(c.unit) : 'по региону'}${c.fuel === 'gas' ? ', КПД котла 92 %' : ''}, ` +
-                `в доме +20 °C. Счёт зависит от того, как вы живёте в доме.</div>`;
-        }
+        h += `<div style="font-size:10.5px;color:#9CA3AF;margin-top:8px">Расчёт: теплопотери — СП 50.13330.2024${d.rooms && d.rooms.length ? ' по каждой комнате' : ''}, климат — СП 131.13330.2020, табл. 3.1` +
+            (c ? `; тариф ${c.tariff ? n1(c.tariff) + ' ' + esc(c.unit) : 'по региону'}${c.fuel === 'gas' ? ', КПД котла 92 %' : ''}, в доме +20 °C. Реальный счёт зависит от того, как вы живёте в доме` : '') + `.</div>`;
         return h + `</div>`;
     },
 

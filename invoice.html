@@ -3792,6 +3792,7 @@
          * теплопотери, «вы просили — мы учли», комнаты, стоимость отопления.
          * Данные из базы — всё через textContent, числа через Number.
          */
+
         function renderKpHouse(kp) {
             const sec = document.getElementById('kp_house_section'), body = document.getElementById('kp_house_body');
             if (!sec || !body) return;
@@ -3801,38 +3802,50 @@
             const n1 = v => String(Math.round(num(v) * 10) / 10).replace('.', ',');
             const money = v => Math.round(num(v)).toLocaleString('ru-RU');
             const el = (tag, txt, css) => { const e = document.createElement(tag); if (txt != null) e.textContent = txt; if (css) e.style.cssText = css; return e; };
-            const H = t => el('div', t, 'font-weight:700;font-size:14px;margin:16px 0 6px;color:#111;');
+            const H = t => el('div', t, 'font-weight:700;font-size:13px;margin:14px 0 6px;color:#111;');
             const td = 'padding:5px 6px;border-bottom:1px solid #EEF0F3;';
             const box = el('div', null, 'max-width:820px;font-size:13px;line-height:1.5;color:#222;');
-            const hs = kp.house || {};
-            const parts = [hs.city ? String(hs.city) : '', num(hs.area) ? n1(hs.area) + ' м²' : '', num(hs.floors) ? num(hs.floors) + ' ' + (num(hs.floors) === 1 ? 'этаж' : 'этажа') : ''].filter(Boolean);
-            box.appendChild(el('div', 'Расчёт выполнен для вашего дома' + (parts.length ? ': ' + parts.join(' · ') : ''), 'font-weight:700;font-size:15px;'));
-            if (num(hs.kw)) box.appendChild(el('div', 'Теплопотери дома: ' + n1(hs.kw) + ' кВт' +
-                (hs.t != null && isFinite(Number(hs.t)) ? ' при наружной температуре ' + num(hs.t) + ' °C' : '') +
-                (hs.city ? ' (расчётная зимняя для г. ' + String(hs.city) + ', СП 131.13330.2020, табл. 3.1)' : '')));
+            const hs = kp.house || {}, c = (kp.cost && typeof kp.cost === 'object' && num(kp.cost.season) > 0) ? kp.cost : null;
+            // Та же раскладка, что в печати (app.kpPersonalHtml): плитки, бейджи, комнаты, строка норм
+            box.appendChild(el('div', 'Посчитано для вашего дома, а не по шаблону: теплопотери, котёл и приборы — под ' +
+                (num(hs.area) ? n1(hs.area) + ' м²' : 'ваш дом') + (hs.city ? ' в г. ' + String(hs.city) : '') + '.', 'color:#374151;margin:0 0 10px;'));
+            const tiles = el('div', null, 'display:flex;gap:10px;flex-wrap:wrap;');
+            const tileCss = 'flex:1 1 150px;min-width:140px;border:1px solid #E5E7EB;border-radius:10px;padding:10px 12px;';
+            const tile = (lbl, val, sub) => {
+                const d = el('div', null, tileCss);
+                d.appendChild(el('div', lbl, 'font-size:9.5px;color:#6B7280;font-weight:700;text-transform:uppercase;letter-spacing:.5px;'));
+                d.appendChild(el('div', val, 'font-size:21px;font-weight:800;color:#111;line-height:1.15;margin:2px 0;'));
+                if (sub) d.appendChild(el('div', sub, 'font-size:11px;color:#6B7280;'));
+                tiles.appendChild(d);
+            };
+            if (num(hs.kw)) tile('Теплопотери дома', n1(hs.kw) + ' кВт',
+                [hs.t != null && isFinite(Number(hs.t)) ? 'при ' + num(hs.t) + ' °C' : '', hs.city ? String(hs.city) : ''].filter(Boolean).join(', '));
+            if (c) {
+                tile('Отопление в месяц', '≈ ' + money(c.month) + ' ₽', 'в среднем за отопительный сезон');
+                tile('За сезон', money(c.season) + ' ₽', (num(c.zOt) ? num(c.zOt) + ' дн.' : num(c.months) + ' мес.') + ' · ' +
+                    (c.fuel === 'gas' ? (c.lpg ? 'сжиженный газ' : 'газ') : 'электроэнергия') + ' ' + money(c.units) + ' ' + String(c.uName || ''));
+            }
+            if (tiles.childNodes.length) box.appendChild(tiles);
             const asked = Array.isArray(kp.asked) ? kp.asked : [];
             if (asked.length) {
                 box.appendChild(H('Вы просили — мы учли'));
-                const t = el('table', null, 'width:100%;border-collapse:collapse;');
+                const row = el('div', null, 'display:flex;flex-wrap:wrap;gap:6px;');
                 asked.forEach(x => {
-                    const tr = el('tr');
-                    tr.appendChild(el('td', String(x.q || ''), td + 'width:40%;'));
-                    const c = el('td', null, td);
-                    const mark = el('span', x.ok ? '✓ ' : '— ', 'font-weight:700;color:' + (x.ok ? '#15803d' : '#b45309') + ';');
-                    c.appendChild(mark);
-                    c.appendChild(document.createTextNode(x.ok ? String(x.a || '') : 'в смету не вошло, обсудим'));
-                    tr.appendChild(c);
-                    t.appendChild(tr);
+                    const ok = !!x.ok;
+                    const chip = el('span', null, 'display:inline-block;border:1px solid ' + (ok ? '#BBF7D0' : '#FDE68A') + ';background:' + (ok ? '#F0FDF4' : '#FFFBEB') + ';border-radius:999px;padding:4px 10px;font-size:12px;');
+                    chip.appendChild(el('b', ok ? '✓' : '—', 'color:' + (ok ? '#15803d' : '#b45309') + ';'));
+                    chip.appendChild(document.createTextNode(' ' + String(x.q || '') + (ok ? ': ' + String(x.a || '') : ' — обсудим')));
+                    row.appendChild(chip);
                 });
-                box.appendChild(t);
+                box.appendChild(row);
             }
             const rooms = Array.isArray(kp.rooms) ? kp.rooms : [];
             if (rooms.length) {
                 const two = rooms.some(r => num(r.floor) === 2);
                 box.appendChild(H('Ваш дом по комнатам'));
                 const t = el('table', null, 'width:100%;border-collapse:collapse;');
-                const hd = el('tr', null, 'color:#6B7280;');
-                [['Помещение', 'left'], ['Площадь', 'right'], ['Теплопотери', 'right'], ['Чем греется', 'left']].forEach(h => hd.appendChild(el('th', h[0], td + 'font-weight:600;text-align:' + h[1] + ';')));
+                const hd = el('tr', null, 'color:#6B7280;font-size:11px;');
+                [['Помещение', 'left'], ['Площадь', 'right'], ['Теплопотери', 'right'], ['Отопление', 'left']].forEach(h => hd.appendChild(el('th', h[0], td + 'font-weight:600;text-align:' + h[1] + ';')));
                 t.appendChild(hd);
                 let sa = 0, sq = 0;
                 rooms.forEach(r => {
@@ -3845,28 +3858,15 @@
                     t.appendChild(tr);
                 });
                 const tot = el('tr', null, 'font-weight:700;');
-                ['Итого', n1(sa) + ' м²', money(sq) + ' Вт', ''].forEach((c, i) => tot.appendChild(el('td', c, td + (i === 1 || i === 2 ? 'text-align:right;' : ''))));
+                ['Итого', n1(sa) + ' м²', money(sq) + ' Вт', ''].forEach((cell, i) => tot.appendChild(el('td', cell, td + (i === 1 || i === 2 ? 'text-align:right;' : ''))));
                 t.appendChild(tot);
                 box.appendChild(t);
-                box.appendChild(el('div', 'Теплопотери посчитаны по каждой комнате: стены, окна, пол, кровля и вентиляция (СП 50.13330.2024).', 'font-size:12px;color:#6B7280;margin-top:4px;'));
             }
-            const c = kp.cost;
-            if (c && typeof c === 'object' && num(c.season) > 0) {
-                box.appendChild(H('Сколько будет стоить отопление'));
-                const row = el('div', null, 'display:flex;gap:28px;flex-wrap:wrap;');
-                const card = (lbl, val) => { const d = el('div'); d.appendChild(el('div', lbl, 'color:#6B7280;')); d.appendChild(el('div', val, 'font-size:20px;font-weight:800;')); return d; };
-                row.appendChild(card('В среднем в месяц отопительного сезона', money(c.month) + ' ₽'));
-                row.appendChild(card('За сезон' + (num(c.zOt) ? ' (' + num(c.zOt) + ' сут.)' : ''), money(c.season) + ' ₽'));
-                row.appendChild(card((c.fuel === 'gas' ? (c.lpg ? 'Сжиженный газ' : 'Газ') : 'Электроэнергия') + ' за сезон', money(c.units) + ' ' + String(c.uName || '')));
-                box.appendChild(row);
-                box.appendChild(el('div', 'Оценка: тепло за отопительный период по СП 131.13330.2020, табл. 3.1' +
-                    (c.tOt != null && isFinite(Number(c.tOt)) ? ' (средняя температура периода ' + n1(c.tOt) + ' °C)' : '') +
-                    ', тариф ' + (num(c.tariff) ? n1(c.tariff) + ' ' + String(c.unit || '') : 'по региону') +
-                    (c.fuel === 'gas' ? ', КПД котла 92 %' : '') + ', в доме +20 °C. Счёт зависит от того, как вы живёте в доме.',
-                    'font-size:12px;color:#6B7280;margin-top:4px;'));
-            }
+            box.appendChild(el('div', 'Расчёт: теплопотери — СП 50.13330.2024' + (rooms.length ? ' по каждой комнате' : '') + ', климат — СП 131.13330.2020, табл. 3.1' +
+                (c ? '; тариф ' + (num(c.tariff) ? n1(c.tariff) + ' ' + String(c.unit || '') : 'по региону') + (c.fuel === 'gas' ? ', КПД котла 92 %' : '') +
+                    ', в доме +20 °C. Реальный счёт зависит от того, как вы живёте в доме' : '') + '.', 'font-size:10.5px;color:#9CA3AF;margin-top:8px;'));
             body.appendChild(box);
-            sec.style.display = (asked.length || rooms.length || (c && num(c.season) > 0) || num(hs.kw)) ? '' : 'none';
+            sec.style.display = (asked.length || rooms.length || c || num(hs.kw)) ? '' : 'none';
         }
 
         function renderUfhPlan(list) {
