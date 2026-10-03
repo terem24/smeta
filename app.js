@@ -45596,14 +45596,11 @@ const app = {
     },
 
     updateShareOptionsUI: function () {
-        // Карточки идут по три в ряд (на узком экране по две); неполный последний ряд добивается растяжением последней карточки — без «дыры»
+        // Карточки идут по две в ряд; нечётная последняя растягивается на всю строку — без «дыры» рядом
         document.querySelectorAll('.share-opt-pair').forEach(pairBox => {
             const vis = Array.from(pairBox.children).filter(c => c.classList.contains('share-option-card') && c.style.display !== 'none');
             vis.forEach(c => { c.style.gridColumn = ''; });
-            const cols = (getComputedStyle(pairBox).gridTemplateColumns || '').split(' ').filter(Boolean).length || 2;
-            const rest = vis.length % cols;
-            if (rest === 1) vis[vis.length - 1].style.gridColumn = '1 / -1';
-            else if (rest > 1) vis[vis.length - 1].style.gridColumn = 'span ' + (cols - rest + 1);
+            if (vis.length % 2 === 1) vis[vis.length - 1].style.gridColumn = '1 / -1';
         });
         const chkEq = document.getElementById('share_opt_eq');
         const chkWorks = document.getElementById('share_opt_works');
