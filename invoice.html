@@ -2920,6 +2920,7 @@
     </div>
 
     <script src="catalog.js"></script>
+    <script src="short_names.js"></script>
     <!-- Цены дистрибьюторов. Нужны здесь потому, что в ссылке для клиента у обычных
          позиций едет только артикул, а цену эта страница берёт из каталога сама. -->
     <script src="dist_prices.js"></script>
@@ -3898,6 +3899,7 @@
                     region: compact.o.g,
                     date: compact.o.d,
                     showSku: compact.o.s === 1,
+                    fullNames: compact.o.fn === 1,
                     eqDiscount: discountPercent,
                     sequence_id: compact.o.q || '',
                     kp_version: compact.o.v || null,
@@ -4177,6 +4179,7 @@
             const obj = data.object_info || {};
 
             let showSku = true;
+            let shortView = false;
             if (urlParams.has('show_sku')) {
                 const param = urlParams.get('show_sku');
                 showSku = !(param === 'false' || param === '0');
@@ -4185,6 +4188,14 @@
             } else if (obj.hasOwnProperty('show_sku')) {
                 showSku = !!obj.show_sku;
             }
+
+            // Клиентский вид: ни артикула, ни названия модели (см. short_names.js).
+            // Смета уходит клиенту, а от него — другим монтажникам, которые подбирают
+            // её заново по названию и артикулу. Полный вид — только у сотрудника
+            // (?manager=1): ему артикулы нужны для счёта в 1С. Сами данные не
+            // меняем — запрос счёта отдаёт продавцу полные названия и артикулы.
+            shortView = !isManager && !obj.fullNames;
+            if (shortView) showSku = false;
 
             if (!showSku) {
                 document.body.classList.add('hide-sku');
@@ -4425,8 +4436,8 @@
                             <td class="col-img">
                                 <img src="${imgPath}" class="table-img" data-alt-src="${altImgPath.replace(/"/g, '&quot;')}" onerror="tableImgFallback(this)">
                             </td>
-                            <td class="col-name">${i.name}</td>
-                            <td class="col-sku">${i.displaySku || '-'}</td>
+                            <td class="col-name">${shortView && window.HcShortName ? HcShortName.of({ id: realSku(i.displaySku), name: i.name }) : i.name}</td>
+                            <td class="col-sku">${shortView ? '' : (i.displaySku || '-')}</td>
                             <td class="col-brand">${i.brand || 'STOUT'}</td>
                             <td class="col-unit">${i.unit || 'шт'}</td>
                             <td class="col-qty">
