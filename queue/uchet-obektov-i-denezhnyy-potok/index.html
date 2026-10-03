@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Учёт объектов монтажника: деньги по каждому объекту | HeatCalc.ru</title>
+    <meta name="description" content="Как монтажнику вести учёт по объектам: таблица договор, получено, закуплено, выплачено бригаде, накладные, остаток. Как не путать деньги разных объектов и видеть кассовый разрыв заранее.">
+    <link rel="canonical" href="https://heatcalc.ru/uchet-obektov-i-denezhnyy-potok/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=7">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/uchet-obektov-i-denezhnyy-potok/">
+    <meta property="og:title" content="Учёт объектов: деньги по каждому объекту отдельно">
+    <meta property="og:description" content="Одна таблица по объектам показывает, где вы зарабатываете, а где работаете за свой счёт.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/uchet-obektov-i-denezhnyy-potok/#webpage",
+      "url": "https://heatcalc.ru/uchet-obektov-i-denezhnyy-potok/",
+      "name": "Учёт объектов: как видеть деньги по каждому",
+      "description": "Как монтажнику вести учёт по объектам: таблица договор, получено, закуплено, выплачено бригаде, накладные, остаток. Как не путать деньги разных объектов и видеть кассовый разрыв заранее.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "учёт объектов монтажника"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Учёт объектов: как видеть деньги по каждому",
+          "item": "https://heatcalc.ru/uchet-obektov-i-denezhnyy-potok/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Нужна ли отдельная таблица, если есть смета?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Да. Смета показывает план, а таблица учёта — факт: что реально получено, закуплено и выплачено. Сравнение плана с фактом показывает, где вы теряете деньги."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как понять, что объект работает в минус?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Если получено меньше, чем закуплено, выплачено бригаде и потрачено на накладные, остаток по деньгам отрицательный. Это значит, что вы финансируете объект из других источников. Проверьте график платежей заказчика и при необходимости запросите платёж."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как учитывать накладные расходы по объектам?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Записывайте то, что можно привязать к объекту: транспорт, комиссии, аренду инструмента. Общие расходы бригады (связь, склад) распределяйте по объектам процентом или фиксом. Вкладка «Деньги» калькулятора принимает оба варианта."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как часто нужно сверять учёт?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Раз в неделю и перед каждой крупной закупкой. Если объектов много, сверяйте чаще. Главное, чтобы сверка была регулярной: так вы увидите кассовый разрыв до того, как он появится."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/uchet-obektov-i-denezhnyy-potok/#article",
+      "headline": "Учёт объектов: как видеть деньги по каждому",
+      "description": "Как монтажнику вести учёт по объектам: таблица договор, получено, закуплено, выплачено бригаде, накладные, остаток. Как не путать деньги разных объектов и видеть кассовый разрыв заранее.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/uchet-obektov-i-denezhnyy-potok/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-08-11",
+      "dateModified": "2027-08-11",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 552,
+      "citation": []
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Учёт объектов: как видеть деньги по каждому</nav>
+
+        <h1>Учёт объектов: как видеть деньги по каждому</h1>
+
+        <p class="art-meta"><time datetime="2027-08-11">11 августа 2027</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Как вести учёт объектов и денег по каждому монтажнику?</p>
+            <p>Завести одну таблицу, где на каждый объект есть договорная сумма, полученные платежи, закупки оборудования, выплаты бригаде, накладные и остаток. Остаток считайте двумя числами: плановый по смете и фактический по деньгам. Сверяйте таблицу раз в неделю и перед каждой крупной закупкой. Так видно, какой объект приносит прибыль, а какой нужно подпитывать деньгами с других.</p>
+        </div>
+
+        <p class="lead">На счёте есть деньги, но вы не знаете, чьи они: аванс по одному дому уже ушёл на оборудование по другому. Бригаде нужно платить в пятницу, а заказчик обещал только в понедельник. Когда объектов три-четыре, без учёта по каждому деньги смешиваются, и вы перестаёте понимать, где зарабатываете, а где работаете в долг.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#pochemu-obschiy-schet-obmanyvaet">Почему общий счёт обманывает</a></li>
+            <li><a href="#chto-nuzhno-znat-po-kazhdomu-obektu">Что нужно знать по каждому объекту</a></li>
+            <li><a href="#primer-na-treh-obektah">Пример на трёх объектах</a></li>
+            <li><a href="#kak-svyazat-uchet-so-smetoy">Как связать учёт со сметой</a></li>
+            <li><a href="#ezhenedelnaya-sverka-i-pravila-obrascheniya-s-dengami">Еженедельная сверка и правила обращения с деньгами</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="pochemu-obschiy-schet-obmanyvaet">Почему общий счёт обманывает</h2>
+
+        <p>Остаток на карте — это сумма денег по всем объектам сразу. В нём лежат авансы будущих работ, чужие деньги на оборудование и ваша прибыль, причём вперемешку. Пока объект один, это терпимо. Когда их три, вы легко тратите аванс одного заказчика на закупку другого и обнаруживаете проблему только на финише.</p>
+
+        <p>Правило простое: каждый объект — отдельная строка учёта. Деньги заказчика принадлежат объекту, пока не закрыт его бюджет. Прибыль вы видите после закрытия объекта, а не по остатку на счёте.</p>
+
+        <h2 id="chto-nuzhno-znat-po-kazhdomu-obektu">Что нужно знать по каждому объекту</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Показатель</th><th>Что это</th><th>Откуда взять</th></tr>
+                <tr><td>Сумма договора</td><td>сколько заказчик должен заплатить всего</td><td>смета и договор</td></tr>
+                <tr><td>Получено</td><td>сколько заказчик уже заплатил</td><td>платежи и чеки</td></tr>
+                <tr><td>Закуплено</td><td>сколько заплачено поставщику</td><td>счета поставщика</td></tr>
+                <tr><td>Выплачено бригаде</td><td>сколько заплачено за работы</td><td>ведомость или договор с бригадой</td></tr>
+                <tr><td>Накладные</td><td>транспорт, инструмент, связь, комиссии</td><td>ваши расходы по объекту</td></tr>
+                <tr><td>Остаток</td><td>что остаётся вам</td><td>получено минус закуплено, бригада и накладные</td></tr>
+            </table>
+        </div>
+        <p class="note">Остаток по деньгам и плановый остаток по смете — разные числа: первый показывает уже случившееся, второй — то, что должно быть.</p>
+
+        <h2 id="primer-na-treh-obektah">Пример на трёх объектах</h2>
+
+        <p>Условный пример. Три объекта в работе, суммы в тысячах рублей.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Объект</th><th>Договор</th><th>Получено</th><th>Закуплено</th><th>Бригаде</th><th>Накладные</th><th>Остаток сейчас</th></tr>
+                <tr><td>Дом А</td><td class="num">600</td><td class="num">600</td><td class="num">380</td><td class="num">90</td><td class="num">30</td><td class="num">100</td></tr>
+                <tr><td>Дом Б</td><td class="num">450</td><td class="num">225</td><td class="num">300</td><td class="num">40</td><td class="num">20</td><td class="num">−135</td></tr>
+                <tr><td>Дом В</td><td class="num">300</td><td class="num">90</td><td class="num">0</td><td class="num">0</td><td class="num">5</td><td class="num">85</td></tr>
+            </table>
+        </div>
+        <p class="note">Остаток сейчас = получено − закуплено − бригаде − накладные. Все цифры условные.</p>
+
+        <p>По деньгам общий остаток по трём объектам: 100 − 135 + 85 = 50 тысяч рублей. Кажется, что всё в порядке. Но дом Б ушёл в минус на 135: вы закупили оборудование на 300, а заказчик внёс только 225. Эти 135 вы взяли из денег дома А (там прибыль) и дома В (аванс). Если заказчик Б задержит платёж, закупка по дому В окажется под угрозой. Таблица показывает это за минуту, общий остаток на счёте — нет.</p>
+
+        <div class="callout">
+            <p><strong>Следите за минусом по объекту.</strong> Отрицательный остаток означает, что вы финансируете заказчика из денег другого объекта. Пока он небольшой и кратковременный, это нормально. Если растёт, это сигнал остановиться и получить платёж.</p>
+        </div>
+
+        <h2 id="kak-svyazat-uchet-so-smetoy">Как связать учёт со сметой</h2>
+
+        <p>Плановый остаток берётся из сметы, фактический — из денег. Разница между ними показывает, где вы теряете. Закупили дороже, чем предполагали, бригаде заплатили больше, накладные оказались выше, заказчик получил уступку. Все четыре причины видны в разрезе одного объекта.</p>
+
+        <p>В калькуляторе вкладка «Деньги» (тариф «Профи») считает плановую часть: скидка поставщика отдельно по STOUT, ROMMER и прочим, доля бригады или ваша оплата по видам работ, накладные фиксом и процентом. Таблица «клиенту / себе / остаётся» показывает, сколько останется после всех затрат, а карточки «уступить ещё 5 и 10 %» — во что обойдётся торг. Фактические платежи вы вносите в свою таблицу и сравниваете.</p>
+
+        <h2 id="ezhenedelnaya-sverka-i-pravila-obrascheniya-s-dengami">Еженедельная сверка и правила обращения с деньгами</h2>
+
+        <ol>
+            <li>Раз в неделю обновляйте таблицу: поступления, закупки, выплаты.</li>
+            <li>Перед крупной закупкой проверяйте, получен ли аванс по этому объекту.</li>
+            <li>Не используйте аванс одного объекта на закупку другого, если не уверены в завтрашних поступлениях.</li>
+            <li>Фиксируйте накладные по объектам, а не «в общий котёл».</li>
+            <li>После сдачи объекта сравните плановый и фактический остаток и запишите причину разницы.</li>
+            <li>Следите за дебиторкой: если заказчик задерживает платёж, действуйте по порядку из материала про <a href="/debitorka-zakazchik-ne-platit/">неплатящего заказчика</a>.</li>
+        </ol>
+
+        <p>Налоговый учёт отдельный: для самозанятых и ИП правила разные, и их стоит уточнить у бухгалтера. Режим НПД, например, ограничивает доход 2,4 млн ₽ в год, а ставки — 4 % с физлиц и 6 % с юрлиц и ИП, подробнее в материале про <a href="/nalogovye-rezhimy-montazhnika/">налоговые режимы монтажника</a>.</p>
+
+        <p>Наценку и уступки считайте до подписания договора, как в статье про <a href="/nacenka-montazhnika/">наценку монтажника</a>, а график платежей от заказчика — по этапам, как в материале про <a href="/avans-i-oplata-po-etapam/">аванс и оплату по этапам</a>.</p>
+
+        <a class="cta" href="/">
+            Посчитать остаток по смете
+            <small>Вкладка «Деньги»: клиенту, себе и остаётся по каждой смете</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужна ли отдельная таблица, если есть смета?</span></summary>
+            <div class="answer">
+                <p>Да. Смета показывает план, а таблица учёта — факт: что реально получено, закуплено и выплачено. Сравнение плана с фактом показывает, где вы теряете деньги.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как понять, что объект работает в минус?</span></summary>
+            <div class="answer">
+                <p>Если получено меньше, чем закуплено, выплачено бригаде и потрачено на накладные, остаток по деньгам отрицательный. Это значит, что вы финансируете объект из других источников. Проверьте график платежей заказчика и при необходимости запросите платёж.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как учитывать накладные расходы по объектам?</span></summary>
+            <div class="answer">
+                <p>Записывайте то, что можно привязать к объекту: транспорт, комиссии, аренду инструмента. Общие расходы бригады (связь, склад) распределяйте по объектам процентом или фиксом. Вкладка «Деньги» калькулятора принимает оба варианта.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как часто нужно сверять учёт?</span></summary>
+            <div class="answer">
+                <p>Раз в неделю и перед каждой крупной закупкой. Если объектов много, сверяйте чаще. Главное, чтобы сверка была регулярной: так вы увидите кассовый разрыв до того, как он появится.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=uchet-obektov-i-denezhnyy-potok#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/nacenka-montazhnika/">наценка монтажника: сколько закладывать на оборудование и работы</a> · <a href="/avans-i-oplata-po-etapam/">аванс и оплата по этапам: как не работать в долг</a> · <a href="/rassrochka-dlya-zakazchika/">рассрочка для заказчика: варианты и риски</a> · <a href="/skidki-postavshchika-i-usloviya-zakupki/">условия закупки: скидки, отсрочка, возвраты</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=uchet-obektov-i-denezhnyy-potok">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Акты промывки и теплового испытания системы отопления | HeatCalc.ru</title>
+    <meta name="description" content="Когда оформлять акт промывки и акт теплового испытания системы отопления, что в них вписать, в каком порядке идут опрессовка, промывка и пуск. Разбор для монтажника и образец структуры.">
+    <link rel="canonical" href="https://heatcalc.ru/akt-promyvki-i-teplovogo-ispytaniya/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=7">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/akt-promyvki-i-teplovogo-ispytaniya/">
+    <meta property="og:title" content="Акты промывки и теплового испытания">
+    <meta property="og:description" content="Два коротких акта закрывают вопрос «а вы систему промывали и проверяли в работе?».">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/akt-promyvki-i-teplovogo-ispytaniya/#webpage",
+      "url": "https://heatcalc.ru/akt-promyvki-i-teplovogo-ispytaniya/",
+      "name": "Акты промывки и теплового испытания: когда и как",
+      "description": "Когда оформлять акт промывки и акт теплового испытания системы отопления, что в них вписать, в каком порядке идут опрессовка, промывка и пуск. Разбор для монтажника и образец структуры.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "акт промывки системы отопления"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Акты промывки и теплового испытания: когда и как",
+          "item": "https://heatcalc.ru/akt-promyvki-i-teplovogo-ispytaniya/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Нужен ли отдельный акт промывки, если есть акт опрессовки?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Это разные проверки: опрессовка подтверждает герметичность, промывка — чистоту системы. Отдельный акт снимает вопросы о мусоре в трубах. Состав документов лучше прописать в договоре."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Когда проводят тепловое испытание?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "После пуска, когда система заполнена, воздух удалён, котёл и приборы вышли на рабочий режим. Тогда видно, прогревается ли система равномерно и работает ли автоматика."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какие параметры писать в акте промывки и теплового испытания?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Свои, фактические: дату, участок, способ, результат, условия испытания. Нормативные значения берите из проекта и паспортов оборудования, а не из статьи или чужого образца."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что делать, если при испытании нашли замечания?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Записать их в акт вместе со сроком устранения, устранить и провести повторную проверку. Акт со сведениями о найденных и устранённых недостатках надёжнее акта без единого замечания."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/akt-promyvki-i-teplovogo-ispytaniya/#article",
+      "headline": "Акты промывки и теплового испытания: когда и как",
+      "description": "Когда оформлять акт промывки и акт теплового испытания системы отопления, что в них вписать, в каком порядке идут опрессовка, промывка и пуск. Разбор для монтажника и образец структуры.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/akt-promyvki-i-teplovogo-ispytaniya/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-01-20",
+      "dateModified": "2027-01-20",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 572,
+      "citation": [
+        {
+          "@type": "CreativeWork",
+          "name": "СП 73.13330.2016"
+        }
+      ]
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Акты промывки и теплового испытания: когда и как</nav>
+
+        <h1>Акты промывки и теплового испытания: когда и как</h1>
+
+        <p class="art-meta"><time datetime="2027-01-20">20 января 2027</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Когда оформляют акт промывки и акт теплового испытания?</p>
+            <p>Акт промывки составляют после монтажа и опрессовки, до пуска в работу, когда система очищена от монтажного мусора. Акт теплового испытания составляют после пуска, когда система прогрета и проверена в рабочем режиме. Параметры и порядок берите из проекта и паспортов оборудования, а в акте фиксируйте, что сделано, кем, когда и каким получился результат.</p>
+        </div>
+
+        <p class="lead">Котёл пущен, радиаторы горят, заказчик доволен. Через месяц забился фильтр, и вопрос звучит так: «а вы систему промывали?». Если ответ только на словах, вы снова спорите. Два коротких акта, промывки и теплового испытания, дают документ, который отвечает без вас.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#gde-eti-akty-v-obschey-cepochke">Где эти акты в общей цепочке</a></li>
+            <li><a href="#akt-promyvki">Акт промывки</a></li>
+            <li><a href="#akt-teplovogo-ispytaniya">Акт теплового испытания</a></li>
+            <li><a href="#kak-ne-prevratit-akty-v-formalnost">Как не превратить акты в формальность</a></li>
+            <li><a href="#gde-vzyat-shablon">Где взять шаблон</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="gde-eti-akty-v-obschey-cepochke">Где эти акты в общей цепочке</h2>
+
+        <p>Порядок работ при сдаче системы отопления обычно такой: монтаж, акт скрытых работ там, где трубы закрывают, опрессовка, промывка, заполнение и пуск, тепловое испытание, сдача заказчику. Давление и порядок опрессовки задаёт СП 73.13330.2016, а параметры промывки и теплового испытания определяются проектом и паспортами оборудования. В статье цифр нет намеренно: подставлять чужие значения в акт нельзя.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Этап</th><th>Документ</th><th>Что подтверждает</th></tr>
+                <tr><td>Скрытые участки</td><td>Акт скрытых работ</td><td>Трубы смонтированы правильно до закрытия</td></tr>
+                <tr><td>Опрессовка</td><td>Акт опрессовки</td><td>Система герметична под давлением</td></tr>
+                <tr><td>Промывка</td><td>Акт промывки</td><td>Мусор и остатки монтажа удалены</td></tr>
+                <tr><td>Пуск и прогрев</td><td>Акт теплового испытания</td><td>Система работает в рабочем режиме</td></tr>
+                <tr><td>Приёмка</td><td>Акт сдачи-приёмки</td><td>Работа принята, претензий нет</td></tr>
+            </table>
+        </div>
+        <p class="note">О скрытых работах — в статье <a href="/akt-skrytyh-rabot-otopleniya/">про акт скрытых работ</a>, о приёмке — <a href="/zakazchik-ne-podpisyvaet-akt/">про неподписанный акт</a>.</p>
+
+        <h2 id="akt-promyvki">Акт промывки</h2>
+
+        <p>Промывка нужна, потому что после монтажа в трубах остаются окалина, стружка, остатки флюса и герметика. Они забивают фильтры, портят насос и теплообменник котла и становятся причиной гула и неравномерного прогрева. Для акта важно не как вы промывали, а что именно сделано и чем это подтверждено.</p>
+
+        <ul>
+            <li>Объект, адрес, дата и участок системы, который промывали (вся система, контур тёплого пола, контур радиаторов).</li>
+            <li>Способ промывки: чем, под каким давлением и как долго, с отключёнными или заглушёнными приборами, которые нельзя промывать в общем контуре.</li>
+            <li>Результат: что вытекало, были ли загрязнения, повторялась ли промывка до чистой воды.</li>
+            <li>Что сделано после: очищены фильтры, система заполнена, указан теплоноситель.</li>
+            <li>Подписи исполнителя и заказчика (или его представителя).</li>
+        </ul>
+
+        <p>Способ и параметры берите из проекта и инструкций производителей оборудования. Если в системе тёплый пол с коллектором, промывать каждый контур отдельно и отмечать это в акте. Про воздух, который остаётся после заполнения и мешает прогреву, — в статье <a href="/vozduh-v-sisteme-otopleniya/">воздух в системе отопления</a>.</p>
+
+        <div class="callout">
+            <p><strong>Акт промывки отвечает на вопрос «из-за чего это случилось?» заранее.</strong> Если фильтр забился мусором через месяц, а в акте записано, что система промыта до чистой воды и фильтры очищены, спор уходит в сторону: значит, мусор попал уже после сдачи.</p>
+        </div>
+
+        <h2 id="akt-teplovogo-ispytaniya">Акт теплового испытания</h2>
+
+        <p>Тепловое испытание проверяет то, что опрессовка не показывает: прогревается ли система равномерно, работает ли автоматика и насос, нет ли шума и воздушных пробок, доходит ли тепло до дальних приборов. Проводится после пуска, когда котёл и приборы вышли на рабочий режим, и подтверждает, что система работает, а не только держит давление.</p>
+
+        <ol>
+            <li>Запишите условия: дата, наружная температура, режим котла, заданная температура теплоносителя.</li>
+            <li>Проверьте прогрев всех приборов и контуров, особенно дальних, и запишите результат (прогрелись равномерно или какие не прогрелись).</li>
+            <li>Проверьте работу автоматики: термостаты, смесительные узлы, насосы, предохранительные устройства.</li>
+            <li>Отметьте утечки, шумы и другие замечания и как они устранены.</li>
+            <li>Подведите итог: система выдержала испытание и принята в работу, или какие недостатки подлежат устранению и в какой срок.</li>
+        </ol>
+
+        <p>Условный пример записи: «контуры радиаторов прогрелись равномерно, на втором этаже прибор в спальне прогревался с задержкой из-за воздуха, воздух удалён, повторная проверка показала равномерный прогрев». Такая запись честнее строки «замечаний нет»: она доказывает, что проверка была реальной.</p>
+
+        <h2 id="kak-ne-prevratit-akty-v-formalnost">Как не превратить акты в формальность</h2>
+
+        <ul>
+            <li>Не подписывайте акт до проведения работ. Подпись «на будущее» — прямой путь к претензиям.</li>
+            <li>Пишите только то, что делали. Если промывки не было, акта промывки быть не должно.</li>
+            <li>Фотографируйте: слив при промывке, манометр, термометры на подаче и обратке при прогреве.</li>
+            <li>Храните копии вместе с остальными документами по объекту. Эти акты входят в папку, которую вы передаёте заказчику вместе с <a href="/garantiynyy-talon-montazhnika/">гарантийным талоном</a>.</li>
+        </ul>
+
+        <h2 id="gde-vzyat-shablon">Где взять шаблон</h2>
+
+        <p>В тарифе «Профи» кнопка «Документы» формирует акты опрессовки, промывки, теплового испытания, скрытых работ и сдачи-приёмки. Данные объекта, оборудование и работы подставляются из сметы, вам остаётся вписать фактические параметры и результат на объекте и подписать у заказчика. Порядок и значения проверок сверяйте с проектом и паспортами оборудования.</p>
+
+        <a class="cta" href="/">
+            Сформировать акты по смете
+            <small>Кнопка «Документы»: акты промывки и теплового испытания</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужен ли отдельный акт промывки, если есть акт опрессовки?</span></summary>
+            <div class="answer">
+                <p>Это разные проверки: опрессовка подтверждает герметичность, промывка — чистоту системы. Отдельный акт снимает вопросы о мусоре в трубах. Состав документов лучше прописать в договоре.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Когда проводят тепловое испытание?</span></summary>
+            <div class="answer">
+                <p>После пуска, когда система заполнена, воздух удалён, котёл и приборы вышли на рабочий режим. Тогда видно, прогревается ли система равномерно и работает ли автоматика.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какие параметры писать в акте промывки и теплового испытания?</span></summary>
+            <div class="answer">
+                <p>Свои, фактические: дату, участок, способ, результат, условия испытания. Нормативные значения берите из проекта и паспортов оборудования, а не из статьи или чужого образца.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что делать, если при испытании нашли замечания?</span></summary>
+            <div class="answer">
+                <p>Записать их в акт вместе со сроком устранения, устранить и провести повторную проверку. Акт со сведениями о найденных и устранённых недостатках надёжнее акта без единого замечания.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=akt-promyvki-i-teplovogo-ispytaniya#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/akt-skrytyh-rabot-otopleniya/">акт скрытых работ на отопление и тёплый пол: как составить</a> · <a href="/zakazchik-ne-podpisyvaet-akt/">заказчик не подписывает акт: что делать подрядчику</a> · <a href="/garantiynyy-talon-montazhnika/">гарантийный талон монтажника: содержание и порядок выдачи</a> · <a href="/instruktsiya-po-ekspluatatsii/">инструкция по эксплуатации для заказчика: что в неё писать</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=akt-promyvki-i-teplovogo-ispytaniya">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

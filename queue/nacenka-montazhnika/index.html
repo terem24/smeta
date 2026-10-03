@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Наценка монтажника на оборудование и работы: как считать | HeatCalc.ru</title>
+    <meta name="description" content="Наценка и маржа — не одно и то же. Как посчитать, сколько остаётся монтажнику с объекта: скидка поставщика, оплата бригады, накладные, и во что обходится уступка клиенту в 5 и 10 процентов.">
+    <link rel="canonical" href="https://heatcalc.ru/nacenka-montazhnika/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=7">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/nacenka-montazhnika/">
+    <meta property="og:title" content="Наценка монтажника: сколько закладывать">
+    <meta property="og:description" content="Пять процентов уступки клиенту съедают почти треть прибыли. Разбираем на примере.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/nacenka-montazhnika/#webpage",
+      "url": "https://heatcalc.ru/nacenka-montazhnika/",
+      "name": "Наценка монтажника: сколько закладывать на оборудование и работы",
+      "description": "Наценка и маржа — не одно и то же. Как посчитать, сколько остаётся монтажнику с объекта: скидка поставщика, оплата бригады, накладные, и во что обходится уступка клиенту в 5 и 10 процентов.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "наценка на оборудование монтаж"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Наценка монтажника: сколько закладывать на оборудование и работы",
+          "item": "https://heatcalc.ru/nacenka-montazhnika/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Чем наценка отличается от маржи?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Наценка — прибавка к закупочной цене в процентах от закупки, маржа — доля прибыли в цене продажи. Наценка 25 % даёт маржу 20 %, наценка 43 % — маржу 30 %. Путать их — значит получать прибыль меньше задуманной."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Сколько наценки ставить на оборудование?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Если продаёте по прайсу, а закупаете со скидкой, маржа равна скидке поставщика, и добавлять сверху обычно нельзя: заказчик сравнивает с розничной ценой. Заработок монтажника — в работах, а не в разнице на оборудовании."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как посчитать цену работ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "От объёма и оплаты бригады: к стоимости работы бригады прибавляют долю накладных и прибыль. Процентом от оборудования работы считать нельзя, потому что трудоёмкость от стоимости оборудования не зависит."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Стоит ли уступать клиенту в цене?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Только посчитав остаток по всему объекту. Закупка и оплата бригады не уменьшаются вместе с ценой, поэтому вся уступка вычитается из вашей прибыли: на примере из статьи пять процентов цены уменьшили остаток почти на 28 %."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/nacenka-montazhnika/#article",
+      "headline": "Наценка монтажника: сколько закладывать на оборудование и работы",
+      "description": "Наценка и маржа — не одно и то же. Как посчитать, сколько остаётся монтажнику с объекта: скидка поставщика, оплата бригады, накладные, и во что обходится уступка клиенту в 5 и 10 процентов.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/nacenka-montazhnika/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-10-14",
+      "dateModified": "2026-10-14",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 553,
+      "citation": []
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Наценка монтажника: сколько закладывать на оборудование и работы</nav>
+
+        <h1>Наценка монтажника: сколько закладывать на оборудование и работы</h1>
+
+        <p class="art-meta"><time datetime="2026-10-14">14 октября 2026</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Сколько наценки закладывать монтажнику на оборудование и работы?</p>
+            <p>Универсальной цифры нет: она зависит от скидки у поставщика, оплаты бригады и накладных. Правильный порядок — сначала посчитать, сколько должно остаться с объекта, а потом выводить цену. Для оборудования ориентир — скидка поставщика от прайса: при продаже по прайсу она и есть ваша маржа. Для работ — оплата бригады плюс доля накладных и прибыли.</p>
+        </div>
+
+        <p class="lead">«Накинуть процентов двадцать» — самый распространённый способ ценообразования в монтаже и самый частый источник убытков. Наценка и маржа — разные числа, накладные съедают больше, чем кажется, а уступка в пять процентов бьёт по прибыли сильнее, чем по цене. Считаем на примере.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#nacenka-i-marzha">Наценка и маржа</a></li>
+            <li><a href="#oborudovanie-skidka-postavschika-i-est-marzha">Оборудование: скидка поставщика и есть маржа</a></li>
+            <li><a href="#raboty-chto-v-nih-vhodit">Работы: что в них входит</a></li>
+            <li><a href="#primer-chto-ostaetsya-s-obekta">Пример: что остаётся с объекта</a></li>
+            <li><a href="#kak-zakladyvat-nakladnye">Как закладывать накладные</a></li>
+            <li><a href="#gde-eto-schitat">Где это считать</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="nacenka-i-marzha">Наценка и маржа</h2>
+
+        <p>Наценка считается от закупочной цены, маржа — от цены продажи. Разница кажется академической, пока не нужно ответить на вопрос «сколько я заработал».</p>
+
+        <div class="formula">
+            <p>Наценка = (цена продажи − закупка) ÷ закупка</p>
+            <p>Маржа = (цена продажи − закупка) ÷ цена продажи</p>
+        </div>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Наценка</th><th>Маржа</th><th>С 100 000 закупки остаётся</th></tr>
+                <tr><td class="num">10 %</td><td class="num">9,1 %</td><td class="num">10 000 ₽</td></tr>
+                <tr><td class="num">20 %</td><td class="num">16,7 %</td><td class="num">20 000 ₽</td></tr>
+                <tr><td class="num">25 %</td><td class="num">20,0 %</td><td class="num">25 000 ₽</td></tr>
+                <tr><td class="num">43 %</td><td class="num">30,0 %</td><td class="num">43 000 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Чтобы получить маржу 30 %, наценка должна быть не 30, а 43 %. Именно здесь «накинем тридцатку» превращается в прибыль, которая на треть меньше задуманной.</p>
+
+        <h2 id="oborudovanie-skidka-postavschika-i-est-marzha">Оборудование: скидка поставщика и есть маржа</h2>
+
+        <p>Если вы продаёте заказчику по прайсу, а закупаете со скидкой, ваша маржа с оборудования равна этой скидке. Скидка 15 % от прайса — это маржа 15 % и наценка около 17,6 % от закупки. Поднимать цену выше прайса монтажник обычно не может: заказчик сравнивает с розницей, и разница на виду.</p>
+
+        <p>Отсюда важный вывод: оборудование зарабатывает мало, и его доля в смете определяет, сколько у вас в итоге останется. Объект, в котором 80 % суммы — оборудование, приносит заметно меньше, чем объект с тем же итогом, где половина — работы. Нормально, что на котле вы почти не зарабатываете: его покупают ради того, чтобы вы его поставили.</p>
+
+        <h2 id="raboty-chto-v-nih-vhodit">Работы: что в них входит</h2>
+
+        <p>Цена работ — это оплата бригады, часть накладных и ваша прибыль. Считать её «процентом от оборудования» нельзя: монтаж тёплого пола на 100 м² и котельная на 100 м² весят по-разному при одинаковой стоимости оборудования. Работы считают по объёму: точки, метры, комплекты — как в <a href="/rascenki-na-montazh-otopleniya/">расценках на монтаж</a>.</p>
+
+        <h2 id="primer-chto-ostaetsya-s-obekta">Пример: что остаётся с объекта</h2>
+
+        <p>Цифры условные, но порядок величин типичен для частного дома. Оборудование по прайсу — 500 000 ₽, закупка со скидкой 15 %. Работы для заказчика — 200 000 ₽, бригаде платите половину. Накладные: 15 000 ₽ фиксом (доставка, выезды) и 6 % от выручки (налог, эквайринг).</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Статья</th><th>Без уступки</th><th>Уступка 5 %</th></tr>
+                <tr><td>Выручка</td><td class="num">700 000 ₽</td><td class="num">665 000 ₽</td></tr>
+                <tr><td>Закупка оборудования</td><td class="num">425 000 ₽</td><td class="num">425 000 ₽</td></tr>
+                <tr><td>Оплата бригады</td><td class="num">100 000 ₽</td><td class="num">100 000 ₽</td></tr>
+                <tr><td>Накладные (15 000 ₽ + 6 %)</td><td class="num">57 000 ₽</td><td class="num">54 900 ₽</td></tr>
+                <tr><td>Остаётся</td><td class="num">118 000 ₽</td><td class="num">85 100 ₽</td></tr>
+                <tr><td>Доля от выручки</td><td class="num">16,9 %</td><td class="num">12,8 %</td></tr>
+            </table>
+        </div>
+        <p class="note">Уступка в 5 % от суммы — 35 000 ₽ по цене, но 32 900 ₽ по прибыли: часть возвращается через меньший процентный налог. Остаток падает почти на 28 %.</p>
+
+        <div class="callout">
+            <p><strong>Пять процентов уступки — это не пять процентов прибыли.</strong> Закупка и оплата бригады не уменьшаются вместе с ценой, поэтому вся уступка вычитается из того, что остаётся вам. Перед тем как согласиться на «давайте на пять процентов дешевле», посчитайте остаток по объекту, а не по строке.</p>
+        </div>
+
+        <h2 id="kak-zakladyvat-nakladnye">Как закладывать накладные</h2>
+
+        <ul>
+            <li><strong>Фиксированные</strong> — доставка, выезды на замеры и пуск, аренда инструмента, связь. Делите на число объектов в месяц, а не относите к первому.</li>
+            <li><strong>Процентные</strong> — налог по вашему режиму, эквайринг, комиссия платёжного сервиса. Они пропорциональны выручке, и уступка уменьшает их вместе с ценой.</li>
+            <li><strong>Гарантийный резерв</strong> — часть прибыли на выезды по недостаткам. Учтите его в цене, а не в надежде, что не понадобится.</li>
+        </ul>
+
+        <h2 id="gde-eto-schitat">Где это считать</h2>
+
+        <p>В тарифе «Профи» на вкладке «Деньги» задаются скидка поставщика отдельно по STOUT, ROMMER и прочим брендам, доля бригады (или своя оплата по каждому виду работ), накладные фиксом и процентом. Таблица показывает, что уходит клиенту, что себе и сколько остаётся, а карточки «уступить ещё 5 и 10 %» применяют уступку сразу к смете и пересчитывают остаток. Вкладка — для вас: клиент её не видит.</p>
+
+        <a class="cta" href="/">
+            Посчитать прибыль по смете
+            <small>Вкладка «Деньги»: закупка, бригада, накладные, остаток</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Чем наценка отличается от маржи?</span></summary>
+            <div class="answer">
+                <p>Наценка — прибавка к закупочной цене в процентах от закупки, маржа — доля прибыли в цене продажи. Наценка 25 % даёт маржу 20 %, наценка 43 % — маржу 30 %. Путать их — значит получать прибыль меньше задуманной.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько наценки ставить на оборудование?</span></summary>
+            <div class="answer">
+                <p>Если продаёте по прайсу, а закупаете со скидкой, маржа равна скидке поставщика, и добавлять сверху обычно нельзя: заказчик сравнивает с розничной ценой. Заработок монтажника — в работах, а не в разнице на оборудовании.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как посчитать цену работ?</span></summary>
+            <div class="answer">
+                <p>От объёма и оплаты бригады: к стоимости работы бригады прибавляют долю накладных и прибыль. Процентом от оборудования работы считать нельзя, потому что трудоёмкость от стоимости оборудования не зависит.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Стоит ли уступать клиенту в цене?</span></summary>
+            <div class="answer">
+                <p>Только посчитав остаток по всему объекту. Закупка и оплата бригады не уменьшаются вместе с ценой, поэтому вся уступка вычитается из вашей прибыли: на примере из статьи пять процентов цены уменьшили остаток почти на 28 %.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=nacenka-montazhnika#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/kp-na-montazh-otopleniya/">коммерческое предложение на монтаж отопления: из чего собрать</a> · <a href="/akt-skrytyh-rabot-otopleniya/">акт скрытых работ на отопление и тёплый пол: как составить</a> · <a href="/dogovor-podryada-zashchita-montazhnika/">договор подряда на монтаж: что вписать, чтобы защитить себя</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=nacenka-montazhnika">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

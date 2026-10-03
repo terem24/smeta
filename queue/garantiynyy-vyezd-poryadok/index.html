@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гарантийный выезд монтажника: порядок, учёт и затраты | HeatCalc.ru</title>
+    <meta name="description" content="Как организовать гарантийный выезд по отоплению: приём заявки, диагностика на месте, акт, учёт затрат и разделение гарантийных и платных случаев, чтобы не работать себе в убыток.">
+    <link rel="canonical" href="https://heatcalc.ru/garantiynyy-vyezd-poryadok/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=7">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/garantiynyy-vyezd-poryadok/">
+    <meta property="og:title" content="Гарантийный выезд: как организовать и не терять деньги">
+    <meta property="og:description" content="Порядок гарантийного выезда: заявка, диагностика, акт, учёт затрат и граница между гарантией и платным визитом.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/garantiynyy-vyezd-poryadok/#webpage",
+      "url": "https://heatcalc.ru/garantiynyy-vyezd-poryadok/",
+      "name": "Гарантийный выезд: как организовать и не терять деньги",
+      "description": "Как организовать гарантийный выезд по отоплению: приём заявки, диагностика на месте, акт, учёт затрат и разделение гарантийных и платных случаев, чтобы не работать себе в убыток.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "гарантийный ремонт отопления"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Гарантийный выезд: как организовать и не терять деньги",
+          "item": "https://heatcalc.ru/garantiynyy-vyezd-poryadok/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Обязан ли подрядчик приезжать по гарантии бесплатно?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Устранение недостатков, возникших не по вине заказчика, в пределах гарантийного срока делается за счёт подрядчика (ст. 722, 724 ГК РФ). Если причина в эксплуатации или чужом вмешательстве, выезд можно считать платным, но это нужно подтвердить актом."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "В какой срок нужно реагировать на гарантийную заявку?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Срок реагирования стоит прописать в договоре или гарантийном талоне, например, «в течение нескольких рабочих дней, при аварии — в течение суток». Если срок не указан, он должен быть разумным. Аварийные случаи не откладывайте."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что делать, если заказчик вызывает по надуманным причинам?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Вежливо уточняйте симптомы до выезда, фиксируйте в акте, что гарантийной причины нет, и называйте стоимость платного визита заранее. Сохраняйте все сообщения: они пригодятся, если заказчик начнёт обвинять вас в игнорировании."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужно ли оформлять акт при мелком устранении?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Да, хотя бы короткий: дата, что сделано, подпись или отметка об отказе. Акт подтверждает, что вы отреагировали, и помогает отследить повторяющиеся случаи для будущих проектов."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/garantiynyy-vyezd-poryadok/#article",
+      "headline": "Гарантийный выезд: как организовать и не терять деньги",
+      "description": "Как организовать гарантийный выезд по отоплению: приём заявки, диагностика на месте, акт, учёт затрат и разделение гарантийных и платных случаев, чтобы не работать себе в убыток.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/garantiynyy-vyezd-poryadok/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-02-24",
+      "dateModified": "2027-02-24",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 602,
+      "citation": []
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Гарантийный выезд: как организовать и не терять деньги</nav>
+
+        <h1>Гарантийный выезд: как организовать и не терять деньги</h1>
+
+        <p class="art-meta"><time datetime="2027-02-24">24 февраля 2027</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Как организовать гарантийный выезд и не терять деньги?</p>
+            <p>Принимать заявки письменно, уточнять симптомы до выезда и выезжать с диагностикой, а не с надеждой. На месте составить акт: что обнаружено, чья причина, гарантийный случай или нет. Гарантийное устранение делать за свой счёт, негарантийное — платно по заранее названному прайсу. Каждый выезд записывать в журнал со временем и затратами, чтобы закладывать этот расход в цену.</p>
+        </div>
+
+        <p class="lead">«У вас гарантия, приезжайте». Звонок в пятницу вечером, объект за сорок километров, а причиной оказывается воздух в радиаторе, который заказчик мог выпустить сам. Гарантийный выезд — часть вашей работы, и если им не управлять, он тихо съедает маржу и нервы.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#pochemu-garantiynye-vyezdy-dorozhayut-nezametno">Почему гарантийные выезды дорожают незаметно</a></li>
+            <li><a href="#poryadok-vyezda-ot-zvonka-do-zakrytiya">Порядок выезда от звонка до закрытия</a></li>
+            <li><a href="#chto-obychno-okazyvaetsya-garantiynym-a-chto-net">Что обычно оказывается гарантийным, а что нет</a></li>
+            <li><a href="#kak-schitat-stoimost-garantii">Как считать стоимость гарантии</a></li>
+            <li><a href="#kak-snizit-chislo-vyezdov">Как снизить число выездов</a></li>
+            <li><a href="#chto-fiksirovat-dlya-zaschity">Что фиксировать для защиты</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="pochemu-garantiynye-vyezdy-dorozhayut-nezametno">Почему гарантийные выезды дорожают незаметно</h2>
+
+        <p>Один выезд кажется мелочью: час дороги, час работы. Но время бригады, топливо, отвлечение от оплачиваемого объекта и испорченное настроение складываются. Если вы не считаете эти расходы, вы не знаете, сколько стоит ваша гарантия. А заказчик, который понял, что любой звонок приводит к бесплатному приезду, начинает звонить по любому поводу.</p>
+
+        <p>Решение не в том, чтобы отказываться от гарантии, а в том, чтобы у каждого выезда был порядок, понятные границы и цена. Условия гарантии лучше описать в <a href="/garantiynyy-talon-montazhnika/">гарантийном талоне</a> до начала работ.</p>
+
+        <h2 id="poryadok-vyezda-ot-zvonka-do-zakrytiya">Порядок выезда от звонка до закрытия</h2>
+
+        <ol>
+            <li><strong>Приём заявки.</strong> Просите заказчика написать: адрес, дата установки, что происходит, с какого момента, фото или видео. Звонок без записи легко забыть и трудно доказать.</li>
+            <li><strong>Диагностика по описанию.</strong> Уточните, что можно проверить по телефону: давление на манометре, ошибка на котле, положение кранов, воздух в радиаторе. Часть проблем решается инструкцией без выезда.</li>
+            <li><strong>Согласование условий.</strong> Скажите заказчику: если случай окажется гарантийным, выезд бесплатный, если нет, он оплачивает по такому-то тарифу. Фраза должна прозвучать и остаться в сообщении.</li>
+            <li><strong>Выезд с документами.</strong> Берите договор, смету, акты и инструмент для диагностики, а не только ключи.</li>
+            <li><strong>Акт гарантийного обращения.</strong> Дата, описание, причина, выполненные работы, замены, подпись заказчика. Если подписывать отказался, сделайте отметку и фото.</li>
+            <li><strong>Учёт.</strong> Время, расстояние, материалы, исполнитель. Это нужно не для отчёта, а для будущего ценообразования.</li>
+        </ol>
+
+        <div class="callout">
+            <p><strong>Граница между гарантией и сервисом должна быть названа до выезда.</strong> Гарантийное — недостаток работы или оборудования, который возник не по вине заказчика (ст. 722, 724 ГК РФ). Всё остальное — консультация, регулировка, обслуживание, чужое вмешательство — платный сервис.</p>
+        </div>
+
+        <h2 id="chto-obychno-okazyvaetsya-garantiynym-a-chto-net">Что обычно оказывается гарантийным, а что нет</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Обращение</th><th>Чаще всего</th><th>Что делать</th></tr>
+                <tr><td>Течь соединения, смонтированного вами</td><td>гарантия</td><td>устранить за свой счёт, записать причину</td></tr>
+                <tr><td>Воздух в радиаторах после первого пуска</td><td>наладка, входит в работу</td><td>выпустить и объяснить заказчику, как это делать</td></tr>
+                <tr><td>Не греет из-за закрытого заказчиком крана</td><td>эксплуатация</td><td>показать и записать, выезд платный по тарифу</td></tr>
+                <tr><td>Шум, вызванный неправильной настройкой насоса</td><td>зависит от того, кто настраивал</td><td>если наладка ваша, гарантия, если заказчик менял параметры, платно</td></tr>
+                <tr><td>Неисправность прибора с заводским браком</td><td>гарантия производителя через вас</td><td>заменить, затем предъявить поставщику</td></tr>
+                <tr><td>Просьба дополнительно что-то подключить</td><td>новая работа</td><td>оформить как допработу</td></tr>
+            </table>
+        </div>
+        <p class="note">Таблица отражает типичные ситуации. В спорных случаях решают договор, талон и акт осмотра.</p>
+
+        <h2 id="kak-schitat-stoimost-garantii">Как считать стоимость гарантии</h2>
+
+        <p>Гарантия не бесплатна, она оплачена из вашей наценки. Посчитайте на примере. Условные цифры: выезд занимает три часа вместе с дорогой, бригада из двух человек, час работы одного монтажника оценён в 1 000 ₽, дорога обходится в 600 ₽. Один выезд: 3 × 2 × 1 000 + 600 = 6 600 ₽. Если за год таких выездов пять, то 5 × 6 600 = 33 000 ₽ уходит на гарантию. Эту сумму нужно раскладывать на объекты заранее, как резерв, о котором подробнее в статье про <a href="/nacenka-montazhnika/">наценку монтажника</a>.</p>
+
+        <p>Реальные значения у вас свои, это только пример арифметики. Важно другое: если вести журнал выездов, через полгода вы увидите, какие объекты и какие узлы приносят больше всего обращений, и сможете исправить причину, а не повторять поездки.</p>
+
+        <h2 id="kak-snizit-chislo-vyezdov">Как снизить число выездов</h2>
+
+        <ul>
+            <li>Проводите приёмку с заказчиком и показывайте, как пользоваться системой: <a href="/instruktsiya-po-ekspluatatsii/">инструкция по эксплуатации</a> снимает половину звонков.</li>
+            <li>Делайте повторный контрольный визит через две-три недели после пуска: воздух, давление, фильтры. Он дешевле аварийного выезда.</li>
+            <li>Записывайте повторяющиеся причины и меняйте материалы или порядок работ.</li>
+            <li>Не оставляйте «на потом» мелкие недоделки: они возвращаются гарантийными заявками.</li>
+            <li>Предлагайте платный сервисный договор для тех, кому нужна регулярная проверка.</li>
+        </ul>
+
+        <h2 id="chto-fiksirovat-dlya-zaschity">Что фиксировать для защиты</h2>
+
+        <p>Каждый акт гарантийного обращения подтверждает, что вы выполняете обязательства, и помогает, если заказчик позже заявит, что вы их игнорировали. Если заказчик пишет претензию, ваши акты и журнал показывают добросовестность: порядок описан в статье <a href="/pretenziya-zakazchika-poryadok/">про ответ на претензию</a>. Резерв на гарантию и накладные удобно видеть во вкладке «Деньги» тарифа «Профи»: там таблица показывает, сколько уходит клиенту, сколько вам и что остаётся после всех расходов.</p>
+
+        <a class="cta" href="/">
+            Заложить резерв в цену
+            <small>Накладные и резерв видны во вкладке «Деньги»</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Обязан ли подрядчик приезжать по гарантии бесплатно?</span></summary>
+            <div class="answer">
+                <p>Устранение недостатков, возникших не по вине заказчика, в пределах гарантийного срока делается за счёт подрядчика (ст. 722, 724 ГК РФ). Если причина в эксплуатации или чужом вмешательстве, выезд можно считать платным, но это нужно подтвердить актом.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">В какой срок нужно реагировать на гарантийную заявку?</span></summary>
+            <div class="answer">
+                <p>Срок реагирования стоит прописать в договоре или гарантийном талоне, например, «в течение нескольких рабочих дней, при аварии — в течение суток». Если срок не указан, он должен быть разумным. Аварийные случаи не откладывайте.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что делать, если заказчик вызывает по надуманным причинам?</span></summary>
+            <div class="answer">
+                <p>Вежливо уточняйте симптомы до выезда, фиксируйте в акте, что гарантийной причины нет, и называйте стоимость платного визита заранее. Сохраняйте все сообщения: они пригодятся, если заказчик начнёт обвинять вас в игнорировании.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужно ли оформлять акт при мелком устранении?</span></summary>
+            <div class="answer">
+                <p>Да, хотя бы короткий: дата, что сделано, подпись или отметка об отказе. Акт подтверждает, что вы отреагировали, и помогает отследить повторяющиеся случаи для будущих проектов.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=garantiynyy-vyezd-poryadok#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/garantiynyy-talon-montazhnika/">гарантийный талон монтажника: содержание и порядок выдачи</a> · <a href="/pretenziya-zakazchika-poryadok/">претензия заказчика: порядок действий подрядчика</a> · <a href="/zamerzshaya-sistema-ekspluatatsiya-ili-brak/">разморозка системы зимой: эксплуатация или брак</a> · <a href="/protechka-kto-vinovat/">протечка после монтажа: как установить, кто виноват</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=garantiynyy-vyezd-poryadok">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

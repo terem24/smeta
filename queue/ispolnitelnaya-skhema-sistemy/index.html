@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Исполнительная схема системы отопления: как нарисовать | HeatCalc.ru</title>
+    <meta name="description" content="Исполнительная схема показывает, как система смонтирована фактически. Что на неё наносить, как фиксировать скрытые трассы и отклонения от проекта и как хранить, чтобы она пригодилась.">
+    <link rel="canonical" href="https://heatcalc.ru/ispolnitelnaya-skhema-sistemy/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=7">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/ispolnitelnaya-skhema-sistemy/">
+    <meta property="og:title" content="Исполнительная схема системы">
+    <meta property="og:description" content="Схема «как построено» закрывает вопрос «где проходит труба» через год после сдачи.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/ispolnitelnaya-skhema-sistemy/#webpage",
+      "url": "https://heatcalc.ru/ispolnitelnaya-skhema-sistemy/",
+      "name": "Исполнительная схема: как нарисовать и зачем хранить",
+      "description": "Исполнительная схема показывает, как система смонтирована фактически. Что на неё наносить, как фиксировать скрытые трассы и отклонения от проекта и как хранить, чтобы она пригодилась.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "исполнительная схема отопления"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Исполнительная схема: как нарисовать и зачем хранить",
+          "item": "https://heatcalc.ru/ispolnitelnaya-skhema-sistemy/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Чем исполнительная схема отличается от проектной?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Проектная показывает, как систему планировали, исполнительная — как смонтировали на самом деле, с отклонениями и привязками скрытых участков. Вторая нужна для ремонта и для споров."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Когда рисовать исполнительную схему?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "По ходу монтажа, пока трубы открыты. Привязки и фото нужно сделать до заливки стяжки или закрытия стены: потом восстановить трассу сложно и дорого."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Кому передавать исполнительную схему?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Заказчику в составе папки с документами, а копию оставить себе. Это защищает обе стороны: заказчик знает, где проходят трубы, а вы можете подтвердить, как система была сдана."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Обязательно ли оформлять исполнительную схему в частном доме?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Единой обязательной формы для частного дома я не знаю: уточните требования в договоре и у юриста. По практике схема нужна, чтобы потом не вскрывать полы и стены наугад."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/ispolnitelnaya-skhema-sistemy/#article",
+      "headline": "Исполнительная схема: как нарисовать и зачем хранить",
+      "description": "Исполнительная схема показывает, как система смонтирована фактически. Что на неё наносить, как фиксировать скрытые трассы и отклонения от проекта и как хранить, чтобы она пригодилась.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/ispolnitelnaya-skhema-sistemy/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-01-27",
+      "dateModified": "2027-01-27",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 551,
+      "citation": []
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Исполнительная схема: как нарисовать и зачем хранить</nav>
+
+        <h1>Исполнительная схема: как нарисовать и зачем хранить</h1>
+
+        <p class="art-meta"><time datetime="2027-01-27">27 января 2027</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Что такое исполнительная схема системы отопления?</p>
+            <p>Это чертёж системы в том виде, как она смонтирована фактически, с отклонениями от проекта и привязками скрытых участков к стенам и полу. Её рисуют по ходу монтажа, а не после: пока трубы открыты, их можно измерить и сфотографировать. Хранить схему нужно в паспорте системы у заказчика и у себя, потому что именно по ней находят трубу, когда стяжка уже залита.</p>
+        </div>
+
+        <p class="lead">Заказчик решил повесить полку или проложить кабель, и сверло упёрлось в трубу тёплого пола. Или вы через два года приехали на течь и вскрываете полстены, потому что не помните, где проходит стояк. Проект показывает, как собирались построить, исполнительная схема — как построили на самом деле.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#chem-ona-otlichaetsya-ot-proekta">Чем она отличается от проекта</a></li>
+            <li><a href="#chto-dolzhno-byt-na-sheme">Что должно быть на схеме</a></li>
+            <li><a href="#kak-risovat-po-hodu-montazha">Как рисовать по ходу монтажа</a></li>
+            <li><a href="#zachem-ona-nuzhna-montazhniku">Зачем она нужна монтажнику</a></li>
+            <li><a href="#kak-hranit">Как хранить</a></li>
+            <li><a href="#gde-vzyat-osnovu">Где взять основу</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="chem-ona-otlichaetsya-ot-proekta">Чем она отличается от проекта</h2>
+
+        <p>Проект или принципиальная схема показывают задуманное. На объекте всегда что-то отличается: стояк ушёл на двадцать сантиметров, потому что мешала балка, контур тёплого пола разделили иначе, коллектор переехал в другую нишу, добавили кран, которого не было. Если не зафиксировать, через год о реальном положении дел знает только память бригады, а она подводит.</p>
+
+        <p>Исполнительная схема не заменяет проект. Она его дополняет: берёт за основу то, что было задумано, и отмечает, что сделано иначе и где фактически проходят скрытые участки. Единой формы для частного дома, насколько известно, нет, поэтому главное качество такой схемы — читаемость для человека, который не видел объект.</p>
+
+        <h2 id="chto-dolzhno-byt-na-sheme">Что должно быть на схеме</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Что нанести</th><th>Как</th><th>Зачем</th></tr>
+                <tr><td>Трассы труб</td><td>Линии с привязками к стенам и осям</td><td>Найти трубу под отделкой</td></tr>
+                <tr><td>Контуры тёплого пола</td><td>Раскладка, шаг, длина каждой петли, номер контура на коллекторе</td><td>Понять, какой контур где</td></tr>
+                <tr><td>Запорная арматура и узлы</td><td>Краны, коллекторы, смесительные узлы, фильтры, воздухоотводчики с номерами</td><td>Найти, что перекрывать</td></tr>
+                <tr><td>Оборудование</td><td>Котёл, бойлер, насосы, расширительные баки</td><td>Понять состав системы</td></tr>
+                <tr><td>Отклонения от проекта</td><td>Отметка, что изменено, и причина</td><td>Объяснить, почему не так, как в проекте</td></tr>
+                <tr><td>Диаметры и материалы</td><td>Условные обозначения</td><td>Подобрать запчасти при ремонте</td></tr>
+            </table>
+        </div>
+        <p class="note">Размеры привязок берите рулеткой на объекте, пока трубы открыты. По фото «на глаз» скрытый участок потом не восстановить.</p>
+
+        <h2 id="kak-risovat-po-hodu-montazha">Как рисовать по ходу монтажа</h2>
+
+        <ol>
+            <li>Начните с проекта или схемы, на которой вы согласовывали систему. Распечатайте на листе, с которым удобно ходить по объекту.</li>
+            <li>Перед закрытием стяжки или стены измерьте и отметьте положение труб от двух стен или осей. Сфотографируйте с рулеткой в кадре.</li>
+            <li>Отмечайте изменения сразу, пока помните: что перенесли, что добавили, что заменили.</li>
+            <li>Пронумеруйте контуры и арматуру так же, как на объекте: бирки на коллекторе, наклейки на кранах. Номера на схеме и на месте должны совпадать.</li>
+            <li>Перенесите заметки в чистый вид: от руки подпишите дату и исполнителя, обязательно проверьте, что скрытые участки и отклонения отражены.</li>
+            <li>Приложите фото и передайте заказчику вместе с <a href="/akt-skrytyh-rabot-otopleniya/">актом скрытых работ</a>.</li>
+        </ol>
+
+        <div class="callout">
+            <p><strong>Исполнительная схема строится на фото и замерах, сделанных до закрытия труб.</strong> После заливки стяжки восстановить трассу можно только по тепловизору или вскрытию. Две минуты с рулеткой в нужный момент заменяют потом день работы.</p>
+        </div>
+
+        <h2 id="zachem-ona-nuzhna-montazhniku">Зачем она нужна монтажнику</h2>
+
+        <ul>
+            <li><strong>Ремонт.</strong> Вы приезжаете на течь через год и знаете, где вскрывать, а не ищете.</li>
+            <li><strong>Споры.</strong> Заказчик утверждает, что вы сделали не так, а схема с датой и фото показывает, что было сделано и что согласовано.</li>
+            <li><strong>Передача заказчику.</strong> Он потом сможет сделать ремонт или расширить систему, не повредив скрытые трубы, и у него будет хороший документ.</li>
+            <li><strong>Профессиональная репутация.</strong> Аккуратная схема в паспорте отличает вас от тех, кто сдал систему и исчез.</li>
+        </ul>
+
+        <h2 id="kak-hranit">Как хранить</h2>
+
+        <p>Схема существует минимум в трёх копиях: у заказчика в папке, у вас в архиве по объекту и в облаке, откуда её можно открыть с телефона на выезде. Хранить её нужно как минимум весь гарантийный срок, а лучше столько, сколько вы готовы приезжать на этот объект. Дальше схема работает вместе с актами: о них — в статье <a href="/akt-promyvki-i-teplovogo-ispytaniya/">про акты промывки и теплового испытания</a>, о папке целиком — в статье про <a href="/pasport-sistemy-otopleniya-zakazchiku/">паспорт системы</a>. Если вы показываете заказчику варианты <a href="/shema-otopleniya-chastnogo-doma/">схем отопления</a> ещё на этапе предложения, фактическая схема станет их логичным продолжением.</p>
+
+        <h2 id="gde-vzyat-osnovu">Где взять основу</h2>
+
+        <p>Схемы и листы проекта строятся в калькуляторе по данным расчёта: оборудование, диаметры и контуры берутся из сметы. Это хорошая основа для исполнительной схемы: вам остаётся отметить фактические привязки и отклонения, а не рисовать с нуля. Для тарифа «Профи» также доступно распознавание проекта и сметы, которое помогает собрать данные по объекту быстрее.</p>
+
+        <a class="cta" href="/">
+            Взять схему из расчёта
+            <small>Схемы и листы проекта строятся по данным сметы</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Чем исполнительная схема отличается от проектной?</span></summary>
+            <div class="answer">
+                <p>Проектная показывает, как систему планировали, исполнительная — как смонтировали на самом деле, с отклонениями и привязками скрытых участков. Вторая нужна для ремонта и для споров.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Когда рисовать исполнительную схему?</span></summary>
+            <div class="answer">
+                <p>По ходу монтажа, пока трубы открыты. Привязки и фото нужно сделать до заливки стяжки или закрытия стены: потом восстановить трассу сложно и дорого.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Кому передавать исполнительную схему?</span></summary>
+            <div class="answer">
+                <p>Заказчику в составе папки с документами, а копию оставить себе. Это защищает обе стороны: заказчик знает, где проходят трубы, а вы можете подтвердить, как система была сдана.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Обязательно ли оформлять исполнительную схему в частном доме?</span></summary>
+            <div class="answer">
+                <p>Единой обязательной формы для частного дома я не знаю: уточните требования в договоре и у юриста. По практике схема нужна, чтобы потом не вскрывать полы и стены наугад.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=ispolnitelnaya-skhema-sistemy#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/akt-skrytyh-rabot-otopleniya/">акт скрытых работ на отопление и тёплый пол: как составить</a> · <a href="/pasport-sistemy-otopleniya-zakazchiku/">паспорт системы отопления: что передать заказчику при сдаче</a> · <a href="/akt-promyvki-i-teplovogo-ispytaniya/">акты промывки и теплового испытания: когда и как</a> · <a href="/garantiynyy-talon-montazhnika/">гарантийный талон монтажника: содержание и порядок выдачи</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=ispolnitelnaya-skhema-sistemy">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
