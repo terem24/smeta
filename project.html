@@ -463,8 +463,8 @@ if (payload && payload.items && payload.items.length) {
         sheetStart: n, stepMm: tpStep, rooms: expRooms, floor: fl, num: numOf('o') }); },
         ttl + '. 3D вид напольного отопления', hasTp);
       put(function (n) { return projectPlans.sheets(plans, withOpts({ code: MARK.o.code,
-        sheetStart: n, only: ['floor'], floor: fl, num: numOf('o') })); },
-        ttl + '. План отопления', true);
+        sheetStart: n, only: ['floor'], floor: fl, num: numOf('o'), tee: radTee })); },
+        ttl + '. План отопления', !!((f && f.rads || []).length));
       put(function (n) { return projectPlans.iso3dSheets(plans, { kind: 'rad', code: MARK.o.code,
         sheetStart: n, rooms: expRooms, floor: fl, num: numOf('o'),
         tee: radTee, radH: radH }); }, ttl + '. 3D вид отопления', hasRad);
