@@ -3242,6 +3242,22 @@
                     <div><h4>КП и счета</h4><div class="lk-sub">Значения по умолчанию для отправки смет клиенту. Перед каждой отправкой их можно поменять прямо в окне ссылки</div></div>
                 </div>
                 <div class="lk-card">
+                    <!-- Напоминание «сохранить расчёт»: окно с названием объекта, если расчёт изменён
+                         и не сохранялся N минут. installerSettings.saveReminder / saveReminderMin -->
+                    <div class="lk-setting">
+                        <div class="lk-setting-text">
+                            <b>Напоминать сохранить расчёт</b>
+                            <span>Если вы изменили расчёт и не сохранили его, калькулятор предложит дать объекту название и сохранить. Если ничего не менялось — не беспокоит.</span>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="profile_save_reminder" onchange="app.setSaveReminderEnabled(this.checked)"><span class="slider"></span></label>
+                    </div>
+                    <div class="lk-setting" id="profile_save_reminder_min_row">
+                        <div class="lk-setting-text">
+                            <b>Напомнить через, минут</b>
+                            <span>По умолчанию 15 минут после последнего значимого изменения (больше 10 % по сумме).</span>
+                        </div>
+                        <input type="number" id="profile_save_reminder_min" class="auth-input lk-num" min="1" max="240" step="1" placeholder="15" onchange="app.setSaveReminderMinutes(this.value.trim())">
+                    </div>
                     <!-- Срок действия счёта по ссылке клиенту. Значение по умолчанию для окна
                          «Создание ссылки для клиента»; 0 или пусто — таймер выключен. Поле пишет
                          настройку сразу при изменении и показывает приведённое число. -->
