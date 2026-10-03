@@ -252,7 +252,7 @@ def related_links(meta, schedule, art, publish=False):
 # призыв туда только сбил бы читателя. Метка ?src= несёт слаг статьи — по ней
 # заявка в журнале привязывается к статье (та же, что у формы монтажа).
 DOM_PAGE = '/dom/'
-NO_DOM_CLUSTERS = {'water', 'sewer'}
+NO_DOM_CLUSTERS = {'water', 'sewer', 'biz'}
 NO_DOM_SLUGS = {'truba-pnd-vvod-vody', 'truby-dlya-vodosnabzheniya', 'zapusk-vodosnabzheniya-posle-zimy'}
 
 

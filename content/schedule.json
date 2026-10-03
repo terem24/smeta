@@ -73,6 +73,20 @@
    "words": 847
   },
   {
+   "slug": "dogovor-podryada-zashchita-montazhnika",
+   "title": "Договор подряда на монтаж: что вписать, чтобы защитить себя",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "договор подряда на монтаж отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "шаблон договора из сметы",
+   "status": "queued",
+   "date": "2026-10-07",
+   "published_at": null,
+   "words": 705
+  },
+  {
    "slug": "polipropilen-dlya-otopleniya",
    "title": "Полипропилен для отопления: плюсы и границы",
    "cluster": "Трубы и разводка",
@@ -85,6 +99,20 @@
    "date": "2026-10-08",
    "published_at": null,
    "words": 746
+  },
+  {
+   "slug": "akt-skrytyh-rabot-otopleniya",
+   "title": "Акт скрытых работ на отопление и тёплый пол: как составить",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "акт скрытых работ отопление",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "акты из сметы",
+   "status": "queued",
+   "date": "2026-10-09",
+   "published_at": null,
+   "words": 546
   },
   {
    "slug": "shema-otopleniya-chastnogo-doma",
@@ -101,6 +129,20 @@
    "words": 698
   },
   {
+   "slug": "kp-na-montazh-otopleniya",
+   "title": "Коммерческое предложение на монтаж отопления: из чего собрать",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "коммерческое предложение на монтаж отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "КП ссылкой и версии",
+   "status": "queued",
+   "date": "2026-10-12",
+   "published_at": null,
+   "words": 511
+  },
+  {
    "slug": "vodosnabzhenie-chastnogo-doma",
    "title": "Водоснабжение частного дома: с чего начать",
    "cluster": "Водоснабжение и скважина",
@@ -113,6 +155,20 @@
    "date": "2026-10-13",
    "published_at": null,
    "words": 676
+  },
+  {
+   "slug": "nacenka-montazhnika",
+   "title": "Наценка монтажника: сколько закладывать на оборудование и работы",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "наценка на оборудование монтаж",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "вкладка «Деньги»",
+   "status": "queued",
+   "date": "2026-10-14",
+   "published_at": null,
+   "words": 553
   },
   {
    "slug": "boyler-kosvennogo-nagreva",
@@ -129,6 +185,20 @@
    "words": 707
   },
   {
+   "slug": "avans-i-oplata-po-etapam",
+   "title": "Аванс и оплата по этапам: как не работать в долг",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "аванс по договору подряда монтаж",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "этапы оплаты из сметы",
+   "status": "queued",
+   "date": "2026-10-16",
+   "published_at": null,
+   "words": 510
+  },
+  {
    "slug": "podbor-tsirkulyatsionnogo-nasosa",
    "title": "Подбор циркуляционного насоса: напор и расход",
    "cluster": "Насосы и гидравлика",
@@ -141,6 +211,20 @@
    "date": "2026-10-17",
    "published_at": null,
    "words": 661
+  },
+  {
+   "slug": "dopolnitelnye-raboty-po-hodu-montazha",
+   "title": "Дополнительные работы по ходу монтажа: как оформить и получить деньги",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "дополнительные работы договор подряда",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "порядок допсоглашения",
+   "status": "queued",
+   "date": "2026-10-19",
+   "published_at": null,
+   "words": 537
   },
   {
    "slug": "datchiki-protechki",
@@ -157,6 +241,20 @@
    "words": 647
   },
   {
+   "slug": "zakazchik-ne-podpisyvaet-akt",
+   "title": "Заказчик не подписывает акт: что делать подрядчику",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "заказчик не подписывает акт выполненных работ",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "акт сдачи-приёмки из сметы",
+   "status": "queued",
+   "date": "2026-10-21",
+   "published_at": null,
+   "words": 529
+  },
+  {
    "slug": "teplovoy-nasos-dlya-doma",
    "title": "Тепловой насос: работает ли в наши морозы",
    "cluster": "Без газа: электричество и тепловые насосы",
@@ -169,6 +267,20 @@
    "date": "2026-10-22",
    "published_at": null,
    "words": 699
+  },
+  {
+   "slug": "samozanyatyy-ili-ip-montazhnik",
+   "title": "Самозанятый или ИП: как монтажнику продавать оборудование и работы",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "самозанятый монтажник оборудование",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "раздельные позиции оборудования и работ",
+   "status": "queued",
+   "date": "2026-10-23",
+   "published_at": null,
+   "words": 520
   },
   {
    "slug": "septik-ili-vygrebnaya-yama",
