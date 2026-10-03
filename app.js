@@ -4946,25 +4946,25 @@ const app = {
         return twin || best;
     },
 
-    // Копия КП с заменой на STOUT. Оригинал не трогаем: сначала сохраняем его в облако,
-    // затем текущий расчёт становится копией под новым 6-значным номером (та же
-    // механика, что у чужой сметы по «Загрузить код»: detachLoadedEstimate +
-    // ensureCalcId, связь с оригиналом — state.copiedFrom), и уже в ней идёт замена.
-    // Копию можно найти и загрузить по номеру через «Загрузить код».
-    makeStoutCopy: async function () {
-        try { this.ensureCalcId(true); await this.saveToCloud(true); } catch (e) { console.warn('[makeStoutCopy] оригинал не сохранён', e); }
+    // Замена на STOUT всегда идёт в копии КП: оригинал не трогаем. Первая замена
+    // делает копию — сохраняет оригинал в облако, затем текущий расчёт становится
+    // копией под новым 6-значным номером (механика чужой сметы по «Загрузить код»:
+    // detachLoadedEstimate + ensureCalcId, связь с оригиналом — state.copiedFrom).
+    // Метка state.stoutCopy помнит номер копии: пока он тот же, следующие замены
+    // идут в ту же копию, а не плодят новые. Найти и загрузить копию можно по номеру.
+    isStoutCopy: function () {
+        const c = this.state.stoutCopy;
+        return !!(c && c.calc && String(c.calc) === String(this.state.calc_id));
+    },
+    ensureStoutCopy: async function () {
+        if (this.isStoutCopy()) return false;
+        try { this.ensureCalcId(true); await this.saveToCloud(true); } catch (e) { console.warn('[ensureStoutCopy] оригинал не сохранён', e); }
         const origNo = this.state.calc_id || '';
         this.detachLoadedEstimate(this.state, { estId: null });
         this.ensureCalcId(true);
-        const n = this.replaceWithStout(null);
-        let saved = false;
-        try { saved = await this.saveToCloud(true); } catch (e) { console.warn('[makeStoutCopy] копия не сохранена', e); }
+        this.state.stoutCopy = { calc: String(this.state.calc_id), from: origNo };
         this.saveState();
-        const sh = this.stoutShare();
-        this.alert('Создана копия КП № ' + this.state.calc_id + ' с заменой на STOUT: заменено ' + n + ' поз., доля STOUT ' + sh.pct + ' %'
-            + (sh.pct >= this.warrantyThreshold() ? ' — гарантия на объект доступна.' : '.')
-            + '\nОригинал № ' + origNo + ' не изменён.'
-            + (saved ? '' : '\nВ облако копия пока не сохранилась: нажмите «Сохранить».'), 'Копия КП');
+        return true;
     },
 
     // Заменить на STOUT одну позицию (индекс в списке missing) или все, где есть аналог
@@ -5041,7 +5041,7 @@ const app = {
         const html = `
             <div class="sg-head">
                 <div class="sg-shield"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 2.7v5.6c0 4.6-3.1 8.4-7.5 9.7-4.4-1.3-7.5-5.1-7.5-9.7V5.7z"/><path d="M8.6 12.1l2.4 2.4 4.4-4.6"/></svg></div>
-                <div class="sg-ht"><div class="sg-title">Гарантия STOUT на объект</div><div class="sg-sub">Бланк последним листом КП</div></div>
+                <div class="sg-ht"><div class="sg-title">Гарантия STOUT на объект</div><div class="sg-sub">${this.isStoutCopy() ? `Копия КП № ${e(this.state.calc_id)}, оригинал № ${e(this.state.stoutCopy.from)} не изменён` : 'Бланк последним листом КП'}</div></div>
                 <span class="sg-pill ${ok ? 'ok' : 'low'}">${ok ? 'Доступна' : 'Пока нет'}</span>
             </div>
             <div class="sg-body">
@@ -5060,8 +5060,8 @@ const app = {
                     <div><b>страховка</b><span>ответственность завода</span></div>
                 </div>` : `
                 <div class="sg-lead"><b>Не хватает ${rub(need)}.</b>${n ? ` Заменить примерно ${word(n)} на STOUT, начиная с самых дорогих:` : ''}</div>
-                <div class="sg-rows">${rows}${sh.missing.length > 3 ? `<div class="sg-more">и ещё ${sh.missing.length - 3}. «Заменить» меняет позицию в этом КП, кнопка ниже делает копию КП с заменой всего, оригинал не меняется</div>` : ''}</div>`}
-                <div class="calc-dialog-buttons">${canAll ? `<button type="button" class="calc-dialog-btn sg-all" id="sg_all">Сделать копию КП на STOUT (${canAll})</button>` : ''}<button type="button" class="calc-dialog-btn ${canAll ? 'calc-dialog-btn-cancel' : 'calc-dialog-btn-confirm'}" id="sg_ok">${canAll ? 'Закрыть' : 'Понятно'}</button></div>
+                <div class="sg-rows">${rows}${sh.missing.length > 3 ? `<div class="sg-more">и ещё ${sh.missing.length - 3}. Замена идёт в копии КП с новым номером, оригинал не меняется</div>` : ''}</div>`}
+                <div class="calc-dialog-buttons">${canAll ? `<button type="button" class="calc-dialog-btn sg-all" id="sg_all">Заменить все на STOUT (${canAll})</button>` : ''}<button type="button" class="calc-dialog-btn ${canAll ? 'calc-dialog-btn-cancel' : 'calc-dialog-btn-confirm'}" id="sg_ok">${canAll ? 'Закрыть' : 'Понятно'}</button></div>
             </div>`;
         const overlay = document.createElement('div');
         overlay.className = 'calc-dialog-overlay';
@@ -5079,21 +5079,18 @@ const app = {
         document.addEventListener('keydown', onKey);
         card.querySelector('#sg_ok').onclick = close;
         // Замена: окно закрываем сразу и открываем заново — шкала покажет новую долю
-        const redo = (index) => {
+        const redo = async (index) => {
             document.removeEventListener('keydown', onKey);
             overlay.remove();
+            await this.ensureStoutCopy();
             const n = this.replaceWithStout(index);
+            try { await this.saveToCloud(true); } catch (e) { console.warn('[redo] копия не сохранена', e); }
             this.showStoutShareInfo();
             if (!n) { const h = document.querySelector('.sg-card .sg-lead'); if (h) h.insertAdjacentHTML('beforeend', ' Аналога STOUT не нашлось.'); }
         };
-        card.querySelectorAll('.sg-rep').forEach(b => { b.onclick = () => redo(parseInt(b.dataset.i)); });
+        card.querySelectorAll('.sg-rep').forEach(b => { b.onclick = () => { b.disabled = true; redo(parseInt(b.dataset.i)); }; });
         const all = card.querySelector('#sg_all');
-        if (all) all.onclick = async () => {
-            all.disabled = true; all.textContent = 'Делаем копию…';
-            document.removeEventListener('keydown', onKey);
-            overlay.remove();
-            await this.makeStoutCopy();
-        };
+        if (all) all.onclick = () => { all.disabled = true; all.textContent = 'Заменяем…'; redo(null); };
         overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
         setTimeout(() => overlay.classList.add('active'), 10);
     },
