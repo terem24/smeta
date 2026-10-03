@@ -116,8 +116,80 @@
         return { text: out.join(' '), removed: removed };
     }
 
+    // --- Размеры и резьба ---
+    // Дюймы («3/4"», «1''»), пары размеров («25xR3/4"», «16x2.0», «60/100», «32x20x25»),
+    // диаметры («DN25», «Dn63», «D110»), Kv и вид резьбы (ВР, НР, ВР/НР, Н-В) —
+    // по ним позицию подбирают заново проще всего.
+    // Мощность, объём, число секций, длина и толщина остаются: по ним клиент оценивает смету.
+    var Q = '(?:"\'|"|”|\'\'|’’|″)';
+    var PFX = '(?:R[pc]?|G|D)?';
+    var NUM = '\\d+(?:[.,]\\d+)?(?:\\/\\d+)?';
+    var SPEC_INCH = new RegExp('^\\d+(?:\\/\\d+)?' + Q + '$');
+    var SPEC_DIM = new RegExp('^' + PFX + NUM + Q + '?(?:[xх×\\/]' + PFX + NUM + Q + '?)+$', 'i');
+    var SPEC_DIAM = /^(?:D[Nn]?|Ø)\d+$/;
+    var SPEC_THREAD_TAIL = /^\d+[xх×](?:R[pc]?|G)$/i;          // «16xR» перед «1/2"»
+    var SPEC_GENDER = /^(?:ВР|НР|ВН|НВ|ВПр|НПр|(?:ВР|НР|ВН|НВ|ВПр|НПр|Н|В)(?:[\/-](?:ВР|НР|ВН|НВ|ВПр|НПр|Н|В|накидная))+)$/;
+    var SPEC_LETTER = /^(?:R[pc]?|G)$/;                                 // «Rp 1"» через пробел
+    var SPEC_PUMP = /^\d+\/\d+-\d+$/;                                   // насос «25/60-180»: DN / напор / длина
+    var SPEC_DN_WORD = /^D[Nn]$/;
+    var SPEC_KV_WORD = /^Kv$/i;
+    var IS_NUM = /^\d+(?:[.,]\d+)?$/;
+
+    function isSpecWord(core, next) {
+        if (!core) return false;
+        if (SPEC_INCH.test(core) || SPEC_DIM.test(core) || SPEC_DIAM.test(core)) return true;
+        if (SPEC_THREAD_TAIL.test(core) || SPEC_GENDER.test(core) || SPEC_PUMP.test(core)) return true;
+        if (SPEC_LETTER.test(core) && SPEC_INCH.test(next || '')) return true;
+        return false;
+    }
+
+    function stripSpecs(name) {
+        var s = String(name || '')
+            .replace(/\((?:п|м|п-м|м-м|п-п|м-п)\)/g, '')   // (п) (м) (п-м)…
+            .replace(/\s+с\s+(?:наружной|внутренней)\s+резьбой/gi, '')
+            .replace(/\s*\((?:Газо-жидкостная|Жидкостная|Бабочка|Рычаг)\)/gi, '');
+        // Коллектор «3/4"х1/2"х3 вых.», «1"/3/4"x7»: резьба уходит, число выходов — характеристика
+        if (/Коллектор/i.test(s)) {
+            s = s.replace(/\S*["”'’][xх×](\d+)(?:\s+вых\.?)?/gi, '$1 вых.');
+        }
+        // Сечение кабеля «3×1,5» — электрическая характеристика, а не диаметр
+        var cable = /^(?:Кабель|Провод)/i.test(s);
+        var words = s.split(/\s+/);
+        var out = [];
+        for (var i = 0; i < words.length; i++) {
+            // Кавычки-дюймы остаются в слове: stripPunct их отрезал бы, и «1"» стал бы числом «1»
+            var p = { core: words[i].replace(/^\(+/, '').replace(/[,;.)]+$/, '') };
+            var nextCore = (words[i + 1] || '').replace(/^\(+/, '').replace(/[,;.)]+$/, '');
+            if (SPEC_KV_WORD.test(p.core) && IS_NUM.test(nextCore)) { i++; continue; }          // Kv 1,8
+            if (SPEC_DN_WORD.test(p.core) && IS_NUM.test(nextCore)) { i++; continue; }          // DN 25
+            if (cable && /^\d+[xх×]/.test(p.core)) { out.push(words[i]); continue; }
+            if (/^[xх×]$/i.test(p.core)) continue;                                    // «1" х 3/4"»: знак между убранными размерами
+            if (isSpecWord(p.core, nextCore)) {
+                // «1 1/4"»: целая часть осталась в предыдущем слове
+                if (/^\d\/\d/.test(p.core) && out.length && /^\d$/.test(stripPunct(out[out.length - 1]).core)) out.pop();
+                // Закрывающая скобка убранного слова переезжает к предыдущему, если скобка была открыта
+                var closing = (words[i].match(/\)+$/) || [''])[0];
+                if (closing && out.length) {
+                    var soFar = out.join(' ');
+                    var open = (soFar.match(/\(/g) || []).length - (soFar.match(/\)/g) || []).length;
+                    if (open > 0) out[out.length - 1] += closing.slice(0, open);
+                }
+                // «16/500 мм»: единица без числа не нужна
+                if (/^(?:мм|см)[,;.)]*$/.test(nextCore) && !SPEC_GENDER.test(p.core)) i++;
+                // «с НР», «с ВР»: предлог без слова не нужен
+                if (SPEC_GENDER.test(p.core) && out.length && /^(?:с|со)$/i.test(out[out.length - 1])) out.pop();
+                // «НР/накидная гайка»: слово «гайка» относится к убранной паре
+                if (/накидная$/.test(p.core) && /^гайка/.test(nextCore)) i++;
+                continue;
+            }
+            out.push(words[i]);
+        }
+        // «1" x 4 вых»: после дюйма остался одинокий «x»
+        return out.join(' ').replace(/(^|\s)[xх×]\s+(?=\d)/gi, '$1');
+    }
+
     function strip(name) {
-        var s = String(name || '');
+        var s = stripSpecs(name);
         // Скобки обрабатываем отдельно: перечень совместимости «(BAXI кроме ECO Nova,
         // Ariston…)» после удаления моделей превращается в «(кроме)» — такую скобку
         // убираем целиком

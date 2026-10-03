@@ -202,8 +202,8 @@
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
-    <script src="short_names.js?v=1.0" defer></script>
-    <script src="app.js?v=10.61" defer></script>
+    <script src="short_names.js?v=1.1" defer></script>
+    <script src="app.js?v=10.62" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -220,7 +220,7 @@
     <!-- Укладка тёплого пола по планам этажей. В калькуляторе нужна не ради
          листов, а ради сметы: длину трубы и число выходов коллектора берём
          из нарисованных петель (projectPlans.floorLoops). -->
-    <script src="project_plans.js?v=1.19" defer></script>
+    <script src="project_plans.js?v=1.20" defer></script>
     <!-- Подписка Профи: цены и ссылки на оплату, акции, региональные цены,
          учёт заявок и оплат, вкладка «Оплата подписки» в панели. Нужен и вне
          панели: окно тарифа и окно оплаты берут цены отсюда. -->
@@ -2995,8 +2995,8 @@
             <div class="share-option-card" id="card_opt_names" onclick="app.toggleShareOption('names')">
                 <input type="checkbox" id="share_opt_names" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
                 <div style="display: flex; flex-direction: column; text-align: left; gap: 2px; flex: 1; min-width: 0;">
-                    <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">🔒 Без моделей и артикулов</span>
-                    <span style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.3;">Названия без модели («Радиатор 7 секций»), артикулов нет. Так смету сложнее повторить у других. Снимите галочку, чтобы отправить полные названия.</span>
+                    <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">🔒 Без моделей, размеров и артикулов</span>
+                    <span style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.3;">Названия без модели, диаметров и резьбы («Кран шаровой», «Радиатор 7 секций»), артикулов нет. Так смету сложнее повторить у других. Снимите галочку, чтобы отправить полные названия.</span>
                 </div>
             </div>
 
