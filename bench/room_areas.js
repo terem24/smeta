@@ -33,9 +33,9 @@ function grab(name) {
   }
   return SRC.slice(i, k + 1);
 }
-const ctx = { GROW_ROOMS: true, Math, Uint8Array, Int16Array, Int32Array, Array, Number, console, window: {} };
+const ctx = { GROW_ROOMS: true, SNAP_ZONES: true, Math, Uint8Array, Int16Array, Int32Array, Array, Number, console, window: {} };
 vm.createContext(ctx);
-vm.runInContext(['openThin', 'chamferDist', 'cleanBar', 'growToWalls', 'labelRooms', 'traceLabel', 'dpSimp', 'simplifyZone', 'area', 'centroid', 'fitZonePts'].map(grab).join('\n'), ctx);
+vm.runInContext(['openThin', 'chamferDist', 'cleanBar', 'growToWalls', 'labelRooms', 'traceLabel', 'dpSimp', 'simplifyZone', 'area', 'centroid', 'pip', 'snapZoneToWalls', 'fitZonePts'].map(grab).join('\n'), ctx);
 if (process.argv.includes('--nogrow')) ctx.growToWalls = function () {};
 let CUR = null;
 ctx.getMask = () => CUR.m;
@@ -76,7 +76,9 @@ for (const e of meta) {
     const f = { pxPerM: e.pxPerM };
     if (mode === 'clean') f.roomMask = 'clean';
     const m = { w: m0.w, h: m0.h, k: m0.k, bar: m0.bar };   // метки кладутся в m — копия на режим
+    const wb = new Uint8Array(m0.bar); ctx.openThin(wb, m0.w, m0.h, e.pxPerM * m0.k);
     CUR = { m, f };
+    ctx.getWallMask = () => ({ w: m0.w, h: m0.h, k: m0.k, bar: wb });
     const t0 = Date.now();
     ctx.labelRooms();
     const ms = Date.now() - t0;
@@ -110,20 +112,44 @@ for (const e of meta) {
       }
       let got = L && !m.labEdge[L] ? m.labCnt[L] / (ppm * ppm) : 0;
       if (got < 1.5 || got > 130) got = 0;            // такую область enumerateRooms не берёт
-      let polyA = 0, simpA = 0, fitA = 0;
+      let polyA = 0, simpA = 0, fitA = 0, gapPre = NaN, gapPost = NaN, polyPost = null;
+      // зазор до стены: на сколько сантиметров сторона не доходит до внутренней грани (в пределах метра)
+      const gapOf = P => {
+        const wm = ctx.getWallMask(), n = P.length; let tot = 0, wsum = 0;
+        for (let i = 0; i < n; i++) {
+          const a = P[i], b = P[(i + 1) % n], ex = b[0] - a[0], ey = b[1] - a[1];
+          const horiz = Math.abs(ey) <= 1.5 && Math.abs(ex) > 0.5 * e.pxPerM, vert = Math.abs(ex) <= 1.5 && Math.abs(ey) > 0.5 * e.pxPerM;
+          if (!horiz && !vert) continue;
+          const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+          let nr = horiz ? [0, 1] : [1, 0];
+          if (ctx.pip([mid[0] + nr[0] * 4, mid[1] + nr[1] * 4], P)) nr = [-nr[0], -nr[1]];
+          const len = Math.max(Math.abs(ex), Math.abs(ey)), cnt = Math.max(6, Math.min(80, Math.round(len * wm.k / 2)));
+          const sm = []; for (let j = 0; j < cnt; j++) { const t = 0.1 + 0.8 * (j + 0.5) / cnt; sm.push([(a[0] + ex * t) * wm.k, (a[1] + ey * t) * wm.k]); }
+          const fr = o => { let c = 0; sm.forEach(q => { const x = Math.round(q[0] + nr[0] * o), y = Math.round(q[1] + nr[1] * o); if (x < 0 || y < 0 || x >= wm.w || y >= wm.h || wm.bar[y * wm.w + x]) c++; }); return c / sm.length; };
+          const lim = Math.round(1.0 * e.pxPerM * wm.k); let g = null;
+          for (let o = 0; o <= lim; o++) if (fr(o) >= 0.5) { g = o; break; }
+          if (g === null) continue;                          // стены рядом нет (проём, открытая планировка)
+          tot += g / wm.k / e.pxPerM * 100 * len; wsum += len;
+        }
+        return wsum ? tot / wsum : NaN;
+      };
       if (got && L) {
         // что получит монтажник на экране: контур по меткам, затем упрощение до 4–6 углов
         const shoe = P => { let a = 0; for (let i = 0; i < P.length; i++) { const u = P[i], v = P[(i + 1) % P.length]; a += u[0] * v[1] - v[0] * u[1]; } return Math.abs(a) / 2 / (e.pxPerM * e.pxPerM); };
         const pts = ctx.traceLabel(m, L);
-        if (pts) { polyA = shoe(pts); simpA = shoe(ctx.fitZonePts(pts.map(q => q.slice()), e.pxPerM) || pts); fitA = shoe(ctx.fitZonePts(pts.map(q => q.slice()), e.pxPerM, l.area) || pts); }
+        if (pts) { polyA = shoe(pts); ctx.SNAP_ZONES = false; const pre = ctx.fitZonePts(pts.map(q => q.slice()), e.pxPerM) || pts; ctx.SNAP_ZONES = true; const post = ctx.fitZonePts(pts.map(q => q.slice()), e.pxPerM) || pts; gapPre = gapOf(pre); gapPost = gapOf(post); polyPost = post; simpA = shoe(post); fitA = shoe(ctx.fitZonePts(pts.map(q => q.slice()), e.pxPerM, l.area) || pts); }
       }
       if (got) perRegion[L] = (perRegion[L] || 0) + 1;
-      rowsHere.push({ id: e.id, mode, name: l.name, printed: l.area, got, polyA, simpA, fitA, L, ratio: got ? got / l.area : 0, ms });
+      rowsHere.push({ id: e.id, mode, name: l.name, printed: l.area, got, polyA, simpA, fitA, gapPre, gapPost, polyPost, L, ratio: got ? got / l.area : 0, ms });
     });
     rowsHere.forEach(r => { r.alone = r.got > 0 && perRegion[r.L] === 1; rows.push(r); });
   }
 }
 
+if (process.argv.includes('--polys')) {      // итоговые контуры зон — для наложения на картинку
+  const o = {}; rows.filter(r => r.mode === modes[0] && r.polyPost).forEach(r => { (o[r.id] = o[r.id] || []).push(r.polyPost); });
+  fs.writeFileSync(process.argv[process.argv.indexOf('--polys') + 1], JSON.stringify(o));
+}
 const med = a => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[s.length >> 1] : NaN; };
 const q = (a, p) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[Math.min(s.length - 1, Math.floor(p * s.length))] : NaN; };
 for (const mode of modes) {
@@ -139,5 +165,5 @@ for (const mode of modes) {
   console.log(`    найденная / напечатанная: медиана ${med(ra).toFixed(3)}, 25–75 % ${q(ra, .25).toFixed(2)}–${q(ra, .75).toFixed(2)}; ошибка до 5 %: ${ea.filter(v => v <= .05).length}, до 10 %: ${ea.filter(v => v <= .10).length}, до 20 %: ${ea.filter(v => v <= .20).length}, больше: ${ea.filter(v => v > .20).length}`);
   const ms = R.map(r => r.ms);
   console.log(`  время поиска комнат на лист: медиана ${med(ms)} мс`);
-  if (VERBOSE) R.forEach(r => console.log(`    ${r.id} ${String(r.name).padEnd(18)} напечатано ${r.printed}  найдено ${r.got.toFixed(1)}  контур ${r.polyA.toFixed(1)}  упрощённый ${r.simpA.toFixed(1)}  с подгонкой ${r.fitA.toFixed(1)}  ${r.ratio.toFixed(2)}${r.alone ? '' : '  (область общая/нет)'}`));
+  if (VERBOSE) R.forEach(r => console.log(`    ${r.id} ${String(r.name).padEnd(18)} напечатано ${r.printed}  найдено ${r.got.toFixed(1)}  контур ${r.polyA.toFixed(1)}  упрощённый ${r.simpA.toFixed(1)} (зазор до стены ${isNaN(r.gapPre) ? '—' : r.gapPre.toFixed(0)}→${isNaN(r.gapPost) ? '—' : r.gapPost.toFixed(0)} см)  с подгонкой ${r.fitA.toFixed(1)}  ${r.ratio.toFixed(2)}${r.alone ? '' : '  (область общая/нет)'}`));
 }

@@ -345,17 +345,29 @@ if (UFH) document.documentElement.classList.add('ufh');
 // светлое окно. Полный редактор проектирования остаётся тёмным, как САПР.
 var UFH_THEME = null;
 if (UFH) try { UFH_THEME = JSON.parse(localStorage.getItem('heatcalc_ufh_theme') || 'null'); } catch (e) {}
-if (UFH_THEME) (function () {
-  var R = document.documentElement, st = R.style, T = UFH_THEME;
+// Тему можно сменить, пока окно открыто (кнопка в шапке калькулятора): app.syncUfhTheme
+// зовёт эту функцию. Прежние значения снимаются, иначе светлая тема после тёмной
+// оставалась бы на половину тёмной.
+function applyUfhTheme(T) {
+  if (!T) return;
+  var R = document.documentElement, st = R.style;
+  ['--primary', '--primary-dim', '--bg', '--surface', '--text-main', '--text-sec', '--border', '--border-soft',
+   '--surface-light', '--surface-hi', '--rad'].forEach(function (k) { st.removeProperty(k); });
+  R.classList.remove('light');
+  UFH_THEME = T;
   if (T.primary) { st.setProperty('--primary', T.primary); st.setProperty('--primary-dim', T.primary); }
-  if (T.dark) return;
-  R.classList.add('light');
-  var set = function (k, v) { if (v) st.setProperty('--' + k, v); };
-  set('bg', T.bg); set('surface', T.surface); set('text-main', T['text-main']); set('text-sec', T['text-sec']);
-  set('border', T.border); set('border-soft', T.border);
-  set('surface-light', T.bg); set('surface-hi', T.bg);
-  st.setProperty('--rad', '8px');
-})();
+  if (!T.dark) {
+    R.classList.add('light');
+    var set = function (k, v) { if (v) st.setProperty('--' + k, v); };
+    set('bg', T.bg); set('surface', T.surface); set('text-main', T['text-main']); set('text-sec', T['text-sec']);
+    set('border', T.border); set('border-soft', T.border);
+    set('surface-light', T.bg); set('surface-hi', T.bg);
+    st.setProperty('--rad', '8px');
+  }
+  // чертёж: на светлом окне — как есть, на тёмном — в графитовом виде
+  try { if (typeof darkPlan !== 'undefined') { darkPlan = !!T.dark; if (typeof draw === 'function') draw(); } } catch (e) { }
+}
+if (UFH_THEME) applyUfhTheme(UFH_THEME);
 (function () {
   var ok = false;
   try {
@@ -2422,6 +2434,17 @@ function autoRooms() {
   // Санузел подписан именем из расчёта — приборы по его карточке встают сами
   if (cnt.wc && fixAuto) refreshAutoFixtures();
   renderZones(); draw();
+  // Контур теперь по стенам, а площадь в расчёт — та, что напечатана на плане: у комнаты с
+  // лестницей или проёмом они расходятся на несколько процентов. Пока контур не двигали
+  // руками (подпись контура — printedSig), берётся напечатанная
+  F().zones.forEach(function (z) {
+    delete z.printedM2; delete z.printedSig;
+    if (!labs.length || z.type === 'cold') return;
+    var inside = labs.filter(function (l) { return pip([l.x, l.y], z.pts); });
+    if (inside.length !== 1) return;
+    var A = area(z.pts);
+    if (Math.abs(A - inside[0].m2) / inside[0].m2 <= 0.15) { z.printedM2 = inside[0].m2; z.printedSig = JSON.stringify(z.pts); }
+  });
   lastRoomsNote = printedNote(labs) + scaleNote;
   var NAMES = { tp: 'тёплый пол', boiler: 'котельная', wc: 'санузлы', room: 'прочие помещения' };
   var parts = ['tp', 'boiler', 'wc', 'room'].filter(function (k) { return cnt[k]; })
@@ -3030,7 +3053,7 @@ function draw() {
       }
     }
     var c = centroid(z.pts);
-    var nm = (z.name || TYPES[z.type][0]) + ' · ' + area(z.pts).toFixed(1) + ' м²' +
+    var nm = (z.name || TYPES[z.type][0]) + ' · ' + zoneM2(z).toFixed(1) + ' м²' +
       ' · ' + z.pts.length + ' угл.' +
       (lp && lp.length > 1 ? ' · ' + lp.length + ' петли' : '');
     cx.font = 'bold 13px system-ui'; cx.textAlign = 'center';
@@ -3268,6 +3291,10 @@ function evPt(e) {
   var x = (e.clientX - r.left) * (cv.width / r.width) / cs();
   var y = (e.clientY - r.top) * (cv.height / r.height) / cs();
   return [Math.round(x), Math.round(y)];
+}
+/** Площадь зоны для списка и расчёта: напечатанная на плане (PDF), пока контур не трогали, иначе по контуру */
+function zoneM2(z) {
+  return (z.printedM2 > 0 && z.printedSig === JSON.stringify(z.pts)) ? z.printedM2 : area(z.pts);
 }
 function area(pts) {
   var s = 0, m = F().pxPerM || 1;
@@ -3899,11 +3926,16 @@ function fitZonePts(pts, ppm, printedM2) {
     var eD = A0 > 0 ? Math.abs(area(Dp) - A0) / A0 : 0;
     if (Dp.length >= 4 && Dp.length <= 24 && eD < bestErr) { best = Dp.map(function (q) { return [Math.round(q[0]), Math.round(q[1])]; }); bestErr = eD; }
   }
+  // Стороны контура — к настоящим стенам плана (внутренняя грань): контур по меткам
+  // обрывался на размерных цепочках и лестнице, и серые зоны приходилось тянуть руками
+  var snapped = false;
+  if (best && SNAP_ZONES) { var sn = snapZoneToWalls(best, ppm); snapped = sn !== best; best = sn; }
   // Подписанная площадь известна и расходится на 1,5–15 % — подгоняем зону к
   // ней растяжением от центра: так «Помещение · N м²» на плане и площадь,
   // уходящая в расчёт, равны напечатанной. Расхождение больше 15 % не трогаем:
   // там комната найдена неверно, и подгонка спрятала бы это.
-  if (printedM2 > 0 && best) {
+  // К стенам уже прижато — площадь получилась честной, подгонка только сдвинула бы стороны обратно от стен.
+  if (printedM2 > 0 && best && !snapped) {
     var Ab = area(best), dev = Math.abs(Ab - printedM2) / printedM2;
     if (dev > 0.015 && dev <= 0.15) {
       var cc = centroid(best), kk = Math.sqrt(printedM2 / Ab);
@@ -3911,6 +3943,66 @@ function fitZonePts(pts, ppm, printedM2) {
     }
   }
   return best;
+}
+
+/**
+ * Стороны зоны — к внутренней грани стены.
+ *
+ * Зона по меткам комнаты кончается там, где ей помешала линия: размерная цепочка,
+ * ступень лестницы, подпись. До стены оставалось 0,2–0,5 м, и соседние зоны то не
+ * доходили до стены, то наползали друг на друга (03.10.2026, план заказчика).
+ * Каждая сторона, идущая по осям, ищет стену в маске без тонкого (getWallMask)
+ * наружу не дальше 0,7 м и встаёт вплотную к ней; сторона, севшая на стену, отходит
+ * внутрь. Сторону с проёмом больше половины длины (дверь, арка) не трогаем:
+ * по ней стены нет, и сдвигать её некуда. Углы переносятся вместе со сторонами.
+ */
+var SNAP_ZONES = true;      // стенд (bench/room_areas.js) гасит, чтобы сравнить «до» и «после»
+function snapZoneToWalls(P, ppm) {
+  var wm = null;
+  try { wm = getWallMask(); } catch (e) { wm = null; }
+  if (!wm || !P || P.length < 4) return P;
+  var k = wm.k, W = wm.w, H = wm.h, bar = wm.bar, n = P.length;
+  var SN = Math.max(3, Math.round(0.7 * ppm * k)), IN = Math.max(2, Math.round(0.3 * ppm * k));
+  var wallAt = function (x, y) {
+    x = Math.round(x); y = Math.round(y);
+    return (x < 0 || y < 0 || x >= W || y >= H) ? 1 : bar[y * W + x];
+  };
+  var dxV = new Array(n), dyV = new Array(n), moved = false;
+  for (var i = 0; i < n; i++) {
+    var a = P[i], b = P[(i + 1) % n], ex = b[0] - a[0], ey = b[1] - a[1];
+    var horiz = Math.abs(ey) <= 1.5 && Math.abs(ex) > 0.5 * ppm, vert = Math.abs(ex) <= 1.5 && Math.abs(ey) > 0.5 * ppm;
+    if (!horiz && !vert) continue;
+    var mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    var nrm = horiz ? [0, 1] : [1, 0];
+    if (pip([mid[0] + nrm[0] * 4, mid[1] + nrm[1] * 4], P)) nrm = [-nrm[0], -nrm[1]];   // наружу
+    var len = Math.max(Math.abs(ex), Math.abs(ey)), cnt = Math.max(6, Math.min(80, Math.round(len * k / 2)));
+    var samples = [];
+    for (var j = 0; j < cnt; j++) {
+      var t = 0.1 + 0.8 * (j + 0.5) / cnt;
+      samples.push([(a[0] + ex * t) * k, (a[1] + ey * t) * k]);
+    }
+    var frac = function (o) {
+      var c = 0;
+      for (var q = 0; q < samples.length; q++) if (wallAt(samples[q][0] + nrm[0] * o, samples[q][1] + nrm[1] * o)) c++;
+      return c / samples.length;
+    };
+    var sh = 0, o;
+    if (frac(0) > 0.5) {
+      for (o = 1; o <= IN; o++) if (frac(-o) <= 0.35) { sh = -o; break; }
+    } else {
+      for (o = 1; o <= SN; o++) if (frac(o) >= 0.5) { sh = o - 1; break; }
+    }
+    if (!sh) continue;
+    var d = sh / k;
+    var i2 = (i + 1) % n;
+    moved = true;
+    if (horiz) { dyV[i] = nrm[1] * d; dyV[i2] = nrm[1] * d; }
+    else { dxV[i] = nrm[0] * d; dxV[i2] = nrm[0] * d; }
+  }
+  if (!moved) return P;
+  var out = P.map(function (q, j) { return [Math.round(q[0] + (dxV[j] || 0)), Math.round(q[1] + (dyV[j] || 0))]; });
+  var A0 = area(P), A1 = area(out);
+  return (A1 > 0.6 * A0 && A1 < 1.6 * A0) ? out : P;
 }
 
 /** Комнаты плана, в которых стоит ровно одна подпись площади: [{ room, label }] */
@@ -3960,8 +4052,8 @@ function printedNote(labs) {
     else bad.push(ba.toFixed(1).replace('.', ',') + ' вместо ' + String(l.m2).replace('.', ','));
   });
   if (!n) return '';
-  return ' Площади сверены с подписями на плане: сошлось ' + ok + ' из ' + n +
-    (bad.length ? ' (расходятся: ' + bad.join('; ') + ' м²)' : '') + '.';
+  return ' Контуры комнат — по стенам плана; площади сверены с подписями: сошлось ' + ok + ' из ' + n +
+    (bad.length ? ' (контур расходится: ' + bad.join('; ') + ' м²)' : '') + '. В расчёт идут напечатанные площади.';
 }
 
 /**
@@ -4067,7 +4159,7 @@ function renderZonesUfh(box) {
       d.appendChild(inp);
     }
     var ar = document.createElement('span'); ar.className = 'ar';
-    ar.textContent = area(z.pts).toFixed(1).replace('.', ',') + ' м²';
+    ar.textContent = zoneM2(z).toFixed(1).replace('.', ',') + ' м²';
     d.appendChild(ar);
     var del = document.createElement('span'); del.className = 'del'; del.textContent = '✕';
     del.title = 'Убрать';
@@ -4143,7 +4235,7 @@ function renderZones() {
       ar.title = card ? 'Приборы взяты из карточки санузла в расчёте'
         : 'Впишите имя санузла так же, как в расчёте — приборы подставятся сами';
     } else {
-      ar.textContent = area(z.pts).toFixed(1) + ' м²';
+      ar.textContent = zoneM2(z).toFixed(1) + ' м²';
     }
     d.appendChild(ar);
     var del = document.createElement('span'); del.className = 'del'; del.textContent = '✕';
