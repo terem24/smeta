@@ -2611,17 +2611,39 @@
 
         .kp-main tbody tr:not(.kp-fl):not(.kp-tot):hover td { background: var(--soft); }
 
+        /* Строка этажа — кнопка: итог по этажу виден всегда, комнаты раскрываются нажатием.
+           Открыт первый этаж, остальные свёрнуты; стрелка и подпись справа говорят об этом прямо. */
+        .kp-rooms tr.kp-fl { cursor: pointer; }
+
         .kp-rooms tr.kp-fl td {
-            padding: 8px 16px;
+            padding: 13px 16px;
+            border-top: 1px solid var(--border);
             background: var(--soft);
-            color: var(--primary);
-            font-size: 11px;
+            color: var(--text-main);
+            font-size: 14px;
             font-weight: 700;
-            letter-spacing: .6px;
-            text-transform: uppercase;
         }
 
+        .kp-rooms tbody tr.kp-fl:first-child td { border-top: 0; }
+        .kp-rooms tr.kp-fl:hover td { background: var(--primary-light); }
+        .kp-rooms tr.kp-fl:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
         .kp-rooms tr.kp-fl td.n { font-weight: 700; }
+        .kp-rooms tr.kp-fl td.ht { padding-left: 32px; }
+
+        .kp-fl-c {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            margin: 0 12px 1px 2px;
+            border-right: 2px solid var(--primary);
+            border-bottom: 2px solid var(--primary);
+            transform: rotate(-45deg);
+            transition: transform .2s ease;
+        }
+
+        .kp-fl.open .kp-fl-c { margin-bottom: 3px; transform: rotate(45deg); }
+        .kp-fl-hint { color: var(--primary); font-size: 12.5px; font-weight: 600; }
+        .kp-main tr.kp-hide { display: none; }
 
         .kp-rooms tr.kp-tot td {
             padding: 13px 16px;
@@ -2633,12 +2655,18 @@
         }
 
         /* Полоска теплопотерь комнаты относительно самой «горячей» комнаты дома */
-        .kp-q { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+        .kp-q {
+            display: grid;
+            grid-template-columns: 96px 88px;
+            align-items: center;
+            justify-content: end;
+            column-gap: 12px;
+        }
+
+        .kp-q > :last-child { text-align: right; }
 
         .kp-bar {
             display: block;
-            flex: none;
-            width: 72px;
             height: 6px;
             border-radius: 3px;
             background: var(--border);
@@ -2827,14 +2855,34 @@
             .kp-main td.nm { grid-column: 1; grid-row: 1; }
             .kp-main td.ar { grid-column: 2; grid-row: 1; width: auto; }
             .kp-main td.q { grid-column: 1 / -1; grid-row: 2; width: auto; }
-            .kp-main td.q .kp-bar { flex: 1; width: auto; }
+            .kp-main td.q .kp-q { grid-template-columns: 1fr 88px; }
             .kp-main td.ht { grid-column: 1 / -1; grid-row: 3; }
 
+            /* Строка этажа и итог: слева название, справа цифры, подпись «Свернуть/Показать» ниже */
             .kp-main tbody tr.kp-fl,
-            .kp-main tbody tr.kp-tot { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; }
+            .kp-main tbody tr.kp-tot {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 2px 14px;
+                align-items: center;
+                background: var(--soft);
+            }
+
+            .kp-main tbody tr.kp-fl { border-top: 1px solid var(--border); }
+            .kp-main tbody tr.kp-fl:first-child { border-top: 0; }
+            .kp-main tbody tr.kp-tot { border-top: 2px solid var(--border); }
+
+            .kp-main tbody tr.kp-fl td,
+            .kp-main tbody tr.kp-tot td { width: auto; padding: 0; border: 0; background: none; }
+
             .kp-main tbody tr.kp-fl td:first-child,
-            .kp-main tbody tr.kp-tot td:first-child { flex: 1; }
+            .kp-main tbody tr.kp-tot td:first-child { flex: 1 1 auto; }
             .kp-main tbody tr.kp-tot td:empty { display: none; }
+            .kp-main tbody tr.kp-fl td.ht { flex: 1 0 100%; padding-left: 0; }
+            .kp-main tbody tr.kp-fl .kp-q,
+            .kp-main tbody tr.kp-tot .kp-q { display: block; }
+            .kp-main tbody tr.kp-fl .kp-q > :first-child,
+            .kp-main tbody tr.kp-tot .kp-q > :first-child { display: none; }
             .kp-main tbody tr:last-child { border-bottom: 0; }
         }
 
@@ -2842,7 +2890,9 @@
             .kp-sheet { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
             .kp-rooms-wrap { overflow: visible; }
             .kp-main { min-width: 0; }
-            .kp-tabs, .kp-plan-hint, .kp-acc-c { display: none !important; }
+            .kp-tabs, .kp-plan-hint, .kp-acc-c, .kp-fl-c, .kp-fl-hint { display: none !important; }
+            .kp-main tr.kp-hide { display: table-row !important; }
+            .kp-rooms tr.kp-fl { cursor: default; }
             .kp-fpanel { display: block !important; margin-bottom: 18px; }
             .kp-multi .kp-fl-title { display: block; }
             .kp-acc-b { display: block !important; }
@@ -2855,7 +2905,11 @@
         body.html2pdf-printing .kp-main { min-width: 0; }
         body.html2pdf-printing .kp-tabs,
         body.html2pdf-printing .kp-plan-hint,
-        body.html2pdf-printing .kp-acc-c { display: none !important; }
+        body.html2pdf-printing .kp-acc-c,
+        body.html2pdf-printing .kp-fl-c,
+        body.html2pdf-printing .kp-fl-hint { display: none !important; }
+        body.html2pdf-printing .kp-main tr.kp-hide { display: table-row !important; }
+        body.html2pdf-printing .kp-rooms tr.kp-fl { cursor: default; }
         body.html2pdf-printing .kp-fpanel { display: block !important; margin-bottom: 18px; }
         body.html2pdf-printing .kp-multi .kp-fl-title { display: block; }
         body.html2pdf-printing .kp-acc-b { display: block !important; }
@@ -4335,18 +4389,47 @@
                 t.appendChild(kpEl('thead')).appendChild(hr);
                 const tb = kpEl('tbody');
                 let sa = 0, sq = 0;
-                groups.forEach(g => {
+                // Итог в той же сетке, что и полоски комнат: пустая ячейка под полоску, число справа
+                const sumQ = v => {
+                    const tq = kpEl('td', 'n'), qc = kpEl('div', 'kp-q');
+                    qc.appendChild(kpEl('span'));
+                    qc.appendChild(kpUnit(kpEl('span'), money(v), 'Вт'));
+                    tq.appendChild(qc);
+                    return tq;
+                };
+                const plural = (n, a, b, c) => { const x = n % 10, y = n % 100; return (x === 1 && y !== 11) ? a : (x >= 2 && x <= 4 && (y < 12 || y > 14)) ? b : c; };
+                groups.forEach((g, gi) => {
+                    const floorRows = [];
+                    let fr = null, hint = null;
+                    // Этажей несколько: строка этажа с итогом — кнопка. Первый этаж открыт, остальные свёрнуты.
+                    const setOpen = open => {
+                        fr.classList.toggle('open', open);
+                        fr.setAttribute('aria-expanded', open ? 'true' : 'false');
+                        floorRows.forEach(x => x.classList.toggle('kp-hide', !open));
+                        hint.textContent = open ? 'Свернуть' : 'Показать ' + g.list.length + ' ' + plural(g.list.length, 'помещение', 'помещения', 'помещений');
+                    };
                     if (groups.length > 1) {
-                        const fr = kpEl('tr', 'kp-fl');
-                        fr.appendChild(kpEl('td', null, g.fl + '-й этаж'));
+                        fr = kpEl('tr', 'kp-fl');
+                        fr.tabIndex = 0;
+                        fr.setAttribute('role', 'button');
+                        const lbl = kpEl('td');
+                        lbl.appendChild(kpEl('span', 'kp-fl-c'));
+                        lbl.appendChild(document.createTextNode(g.fl + '-й этаж'));
+                        fr.appendChild(lbl);
                         fr.appendChild(kpUnit(kpEl('td', 'n'), n1(g.area), 'м²'));
-                        fr.appendChild(kpUnit(kpEl('td', 'n'), money(g.q), 'Вт'));
-                        fr.appendChild(kpEl('td'));
+                        fr.appendChild(sumQ(g.q));
+                        const ht = kpEl('td', 'ht');
+                        hint = kpEl('span', 'kp-fl-hint');
+                        ht.appendChild(hint);
+                        fr.appendChild(ht);
+                        fr.addEventListener('click', () => setOpen(!fr.classList.contains('open')));
+                        fr.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(!fr.classList.contains('open')); } });
                         tb.appendChild(fr);
                     }
                     g.list.forEach(r => {
                         sa += num(r.area); sq += num(r.q);
                         const tr = kpEl('tr');
+                        floorRows.push(tr);
                         tr.appendChild(kpEl('td', 'nm', String(r.name || '')));
                         tr.appendChild(kpUnit(kpEl('td', 'n ar'), n1(r.area), 'м²'));
                         const tq = kpEl('td', 'n q'), qc = kpEl('div', 'kp-q'), bar = kpEl('span', 'kp-bar'), fill = kpEl('b');
@@ -4363,11 +4446,12 @@
                         tr.appendChild(th);
                         tb.appendChild(tr);
                     });
+                    if (fr) setOpen(gi === 0);
                 });
                 const tot = kpEl('tr', 'kp-tot');
                 tot.appendChild(kpEl('td', null, 'Итого'));
                 tot.appendChild(kpUnit(kpEl('td', 'n'), n1(sa), 'м²'));
-                tot.appendChild(kpUnit(kpEl('td', 'n'), money(sq), 'Вт'));
+                tot.appendChild(sumQ(sq));
                 tot.appendChild(kpEl('td'));
                 tb.appendChild(tot);
                 t.appendChild(tb);
