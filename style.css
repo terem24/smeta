@@ -14776,6 +14776,19 @@ body.dark-mode #hyd_card .hyd-card__p {
 @media print {
     .scheme-hints-btn { display: none !important; }
 }
+/* ─── План дома в смете: подсветка контура/прибора ↔ строки таблицы ───────────
+   Включает та же кнопка «Подсветка». Остальные значки на плане притушены, нужный
+   горит; строка таблицы — жёлтая. */
+.ufh-plan-block svg [data-pl], #scheme_zoom_overlay svg [data-pl] { transition: opacity .12s; }
+.pl-act svg [data-pl]:not(.pl-hl) { opacity: .2; }
+.pl-act svg .pl-hl { filter: drop-shadow(0 0 3px rgba(255, 170, 0, .95)); }
+.ufh-plan-table tr[data-pl] { cursor: default; }
+.ufh-plan-table tr.pl-hl > td { background: rgba(255, 193, 7, .30); }
+body.dark-mode .ufh-plan-table tr.pl-hl > td { background: rgba(255, 193, 7, .22); }
+@media print {
+    .pl-act svg [data-pl]:not(.pl-hl) { opacity: 1; }
+    .pl-act svg .pl-hl { filter: none; }
+}
 /* ================== ТЕМА «МАГАЗИН» (все продавцы) ==================
    Включается классом body.theme-shop из app.js (syncShopTheme), когда у
    пользователя сфера деятельности «продажа» без монтажа (isSellerOnly).

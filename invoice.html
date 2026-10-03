@@ -3759,10 +3759,10 @@
          * обработчиков, ни чужих ссылок в страницу заказчика не попадёт.
          */
         function sanitizePlanSvg(src) {
-            const TAGS = { svg: 1, image: 1, polygon: 1, polyline: 1, line: 1, circle: 1, rect: 1, text: 1 };
+            const TAGS = { svg: 1, image: 1, polygon: 1, polyline: 1, line: 1, circle: 1, rect: 1, text: 1, g: 1, path: 1 };
             const ATTRS = { viewBox: 1, x: 1, y: 1, width: 1, height: 1, points: 1, x1: 1, y1: 1, x2: 1, y2: 1,
                 cx: 1, cy: 1, r: 1, style: 1, opacity: 1, preserveAspectRatio: 1, 'font-size': 1, 'font-family': 1,
-                'text-anchor': 1 };
+                'text-anchor': 1, d: 1, transform: 1 };
             let doc;
             try { doc = new DOMParser().parseFromString(String(src || ''), 'image/svg+xml'); } catch (e) { return null; }
             const root = doc && doc.documentElement;
@@ -3910,11 +3910,11 @@
                     anyRad = true; anyTee = anyTee || !!v.radTee;
                     const t = el('table', null, 'width:100%;max-width:820px;border-collapse:collapse;font-size:12.5px;margin-top:10px;');
                     const head = el('tr', null, 'color:#6B7280;');
-                    ['Радиатор', 'Помещение', 'Длина прибора', v.radTee ? 'Магистраль до прибора' : 'Трубы к прибору'].forEach((h, i) => head.appendChild(el('th', h, 'padding:4px 6px;font-weight:600;text-align:' + (i === 1 ? 'left' : i ? 'right' : 'center') + ';border-bottom:1px solid #E5E7EB;')));
+                    ['Прибор', 'Помещение', 'Длина прибора', v.radTee ? 'Магистраль до прибора' : 'Трубы к прибору'].forEach((h, i) => head.appendChild(el('th', h, 'padding:4px 6px;font-weight:600;text-align:' + (i === 1 ? 'left' : i ? 'right' : 'center') + ';border-bottom:1px solid #E5E7EB;')));
                     t.appendChild(head);
                     rr.forEach(r => {
                         const tr = el('tr');
-                        [['Р' + (r.no || ''), 'center'], [String(r.name || ''), 'left'], [n1(r.w) + ' м', 'right'],
+                        [[(r.kind === 'conv' ? 'К' : 'Р') + (r.no || ''), 'center'], [String(r.name || ''), 'left'], [n1(r.w) + ' м', 'right'],
                          [r.L == null ? '—' : n1(r.L) + ' м', 'right']].forEach(c => tr.appendChild(el('td', c[0], 'padding:3px 6px;text-align:' + c[1] + ';border-bottom:1px solid #F3F4F6;')));
                         t.appendChild(tr);
                     });

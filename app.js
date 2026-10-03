@@ -34879,6 +34879,7 @@ const app = {
         const on = !this.hydEnabled();
         try { localStorage.setItem('hc_scheme_hints', on ? '1' : '0'); } catch (e) { /* приватный режим */ }
         this.hydHoverOff();
+        this.clearPlanHl();
         this.closeHydCard();
         this._hydHintPos = null;      // ручные положения плашек — до переключения
         this._hydCardPos = null;
@@ -37317,7 +37318,8 @@ const app = {
         try { heat = this.buildHeatLossData() || []; } catch (e) { heat = []; }
         // Радиаторы с трассами — когда они есть в смете; схема разводки — та же,
         // что выбрана в смете (тройниковая или лучевая от коллектора)
-        const radOpts = { rads: (this.state.systems || []).includes('rad'), tee: this.state.radConnectionScheme === 'tee', connMap: this.radConnMap() };
+        const radOpts = { rads: (this.state.systems || []).includes('rad'), tee: this.state.radConnectionScheme === 'tee', connMap: this.radConnMap(),
+            kinds: this.radKindsByRoom() };
         const out = [];
         plans.floors.forEach((f0, fi) => {
             if (!f0 || !f0.pxPerM || fi > 1) return;
@@ -37357,6 +37359,22 @@ const app = {
             if (!d || d.kind !== 'rad') return;
             const k = String(d.room || '').trim().toLowerCase();
             if (k && !map[k]) map[k] = PP.radSideOfModel(d.name, d.bottom);
+        });
+        return map;
+    },
+
+    /**
+     * Какие приборы смета подобрала в каждой комнате, по порядку: { 'гостиная': ['rad', 'conv'] }.
+     * План берёт по ним тип значка: окно в пол («панорамное») даёт внутрипольный конвектор,
+     * и на плане он должен стоять конвектором, а не радиатором. Замена в смете — и значок
+     * на плане меняется вместе с ней.
+     */
+    radKindsByRoom: function () {
+        const map = {};
+        (this.radDevices || []).forEach(d => {
+            if (!d || (d.kind !== 'rad' && d.kind !== 'conv')) return;
+            const k = String(d.room || '').trim().toLowerCase();
+            if (k) (map[k] = map[k] || []).push(d.kind);
         });
         return map;
     },
@@ -37569,7 +37587,7 @@ const app = {
         if (!views.length) return null;
         return views.map(v => ({ fl: v.fl, svg: v.svg,
             rows: v.rows.map(r => ({ no: r.no, name: r.name, area: r1(r.area), m: r1(r.m), step: r.step, flow: r1(r.flow) })),
-            radRows: (v.radRows || []).map(r => ({ no: r.no, name: r.name, w: r1(r.w), L: r.L == null ? null : r1(r.L) })),
+            radRows: (v.radRows || []).map(r => ({ no: r.no, name: r.name, w: r1(r.w), L: r.L == null ? null : r1(r.L), kind: r.kind })),
             radTee: v.radTee, radM: r1(v.radM) }));
     },
 
@@ -37577,6 +37595,44 @@ const app = {
     loopsWord: function (n) {
         const a = n % 10, b = n % 100;
         return (a === 1 && b !== 11) ? 'петля' : (a >= 2 && a <= 4 && (b < 12 || b > 14)) ? 'петли' : 'петель';
+    },
+
+    /**
+     * Подсветка на плане дома: наведение на контур или прибор на чертеже зажигает его строку
+     * в таблице, наведение на строку — контур на чертеже. Работает, пока включена кнопка
+     * «Подсветка» (та же, что на схемах котельной); выключена — план как картинка.
+     * Связь — атрибут data-pl («L3» — контур 3, «Р5» — прибор 5) у значков и у строк.
+     */
+    bindPlanHighlight: function () {
+        if (this._planHlBound) return;
+        this._planHlBound = true;
+        const holder = el => (el && el.closest) ? el.closest('[data-pl]') : null;
+        const scopeOf = el => el.closest('#scheme_zoom_overlay') || el.closest('.ufh-plan-block');
+        document.addEventListener('mouseover', e => {
+            const t = holder(e.target);
+            if (!t || !this.hydEnabled()) { if (this._planHl && !t) this.clearPlanHl(); return; }
+            const sc = scopeOf(t);
+            if (!sc) return;
+            const key = t.getAttribute('data-pl');
+            if (this._planHl && this._planHl.sc === sc && this._planHl.key === key) return;
+            this.clearPlanHl();
+            sc.classList.add('pl-act');
+            sc.querySelectorAll('[data-pl]').forEach(x => { if (x.getAttribute('data-pl') === key) x.classList.add('pl-hl'); });
+            this._planHl = { sc, key };
+        });
+        document.addEventListener('mouseout', e => {
+            if (!this._planHl) return;
+            const to = holder(e.relatedTarget);
+            if (!to) this.clearPlanHl();           // перешли на другой значок — снимет mouseover
+        });
+    },
+
+    clearPlanHl: function () {
+        const h = this._planHl;
+        this._planHl = null;
+        if (!h) return;
+        h.sc.classList.remove('pl-act');
+        h.sc.querySelectorAll('.pl-hl').forEach(x => x.classList.remove('pl-hl'));
     },
 
     renderUfhPlanScheme: function () {
@@ -37591,7 +37647,7 @@ const app = {
             if (v.rows.length) {
                 anyTp = true;
                 const sumM = v.rows.reduce((s, r) => s + (r.m || 0), 0), sumF = v.rows.reduce((s, r) => s + (r.flow || 0), 0);
-                const tr = v.rows.map(r => `<tr><td style="text-align:center">${r.no}</td><td>${esc(r.name)}</td>` +
+                const tr = v.rows.map(r => `<tr data-pl="L${r.no}"><td style="text-align:center">${r.no}</td><td>${esc(r.name)}</td>` +
                     `<td style="text-align:right">${n1(r.area)} м²</td><td style="text-align:right">${n1(r.m)} м</td>` +
                     `<td style="text-align:right">${r.step}</td><td style="text-align:right">${n1(r.flow)}</td></tr>`).join('');
                 tables += `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">` +
@@ -37602,22 +37658,24 @@ const app = {
             }
             if ((v.radRows || []).length) {
                 anyRad = true; tee = tee || !!v.radTee;
-                const tr = v.radRows.map(r => `<tr><td style="text-align:center">Р${r.no}</td><td>${esc(r.name)}</td>` +
+                const tr = v.radRows.map(r => `<tr data-pl="R${r.no}"><td style="text-align:center">${r.kind === 'conv' ? 'К' : 'Р'}${r.no}</td><td>${esc(r.name)}</td>` +
                     `<td style="text-align:right">${n1(r.w)} м</td><td style="text-align:right">${r.L == null ? '—' : n1(r.L) + ' м'}</td></tr>`).join('');
                 tables += `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px">` +
-                    `<thead><tr style="color:var(--text-sec)"><th>Радиатор</th><th style="text-align:left">Помещение</th><th style="text-align:right">Длина прибора</th>` +
+                    `<thead><tr style="color:var(--text-sec)"><th>Прибор</th><th style="text-align:left">Помещение</th><th style="text-align:right">Длина прибора</th>` +
                     `<th style="text-align:right">${v.radTee ? 'Магистраль до прибора' : 'Трубы к прибору'}</th></tr></thead>` +
                     `<tbody>${tr}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.radRows.length} шт.</td><td></td>` +
                     `<td style="text-align:right">${n1(v.radM || 0)} м</td></tr></tfoot></table>`;
             }
             parts.push(
-                `<div style="margin:6px 0 14px">` +
+                `<div class="ufh-plan-block" style="margin:6px 0 14px">` +
                 (views.length > 1 ? `<div style="font-weight:700;margin:0 0 6px">${fi + 1}-й этаж</div>` : '') +
                 `<div class="automation-scheme" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${v.svg}` +
-                `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>` +
+                `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button>` +
+                `<button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка контура или прибора при наведении — на плане и в таблице">${this._hydToggleLabel(false)}</button></div>` +
                 tables + `</div>`);
         });
         if (!parts.length) return '';
+        this.bindPlanHighlight();
         const notes = [];
         if (anyTp) notes.push('Петли тёплого пола разложены автоматически по плану помещений: улиткой, в узких местах змейкой, ' +
             'отступ от стен 100 мм, подводки к коллектору — в теплоизоляции. Длины петель — с подводками.');

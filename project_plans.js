@@ -4374,6 +4374,30 @@
   // Радиаторы на плане дома: прибор, трассы и пучок — свои цвета, чтобы не
   // путаться с петлями тёплого пола (те — светлые красный и синий).
   var COL_RAD = '#c62828', COL_RAD_BUNDLE = '#9b2c2c';
+  // Оформление плана дома в смете и КП — как на листах проектировщиков (корпус
+  // Galf, 03.10.2026): тонкие линии, подача красная, обратка сине-фиолетовая, у
+  // поворотов дуги, подложка плана видна, комнаты не залиты. Раньше линии были
+  // в полтора раза толще шага, пастельные, с острыми углами.
+  var V_SUP = '#e0484a', V_RET = '#5560d8';
+  /** Ломаная со скруглёнными углами: дуга радиусом r (число или функция (a, b, c) → радиус;
+   *  не больше половины соседних звеньев) */
+  function roundedD(pts, r) {
+    var mm = function (v) { return Math.round(v * 10) / 10; };
+    if (!pts || pts.length < 2) return '';
+    var d = 'M' + mm(pts[0][0]) + ' ' + mm(pts[0][1]);
+    for (var i = 1; i < pts.length - 1; i++) {
+      var a = pts[i - 1], b = pts[i], c = pts[i + 1];
+      var la = Math.hypot(a[0] - b[0], a[1] - b[1]), lc = Math.hypot(c[0] - b[0], c[1] - b[1]);
+      if (la < 1e-6 || lc < 1e-6) continue;
+      var cross = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+      var rr = Math.min(typeof r === 'function' ? r(a, b, c) : r, la / 2, lc / 2);
+      if (Math.abs(cross) < 1e-6 * la * lc || rr < 0.5) { d += 'L' + mm(b[0]) + ' ' + mm(b[1]); continue; }
+      d += 'L' + mm(b[0] + (a[0] - b[0]) / la * rr) + ' ' + mm(b[1] + (a[1] - b[1]) / la * rr) +
+        'Q' + mm(b[0]) + ' ' + mm(b[1]) + ' ' + mm(b[0] + (c[0] - b[0]) / lc * rr) + ' ' + mm(b[1] + (c[1] - b[1]) / lc * rr);
+    }
+    var z = pts[pts.length - 1];
+    return d + 'L' + mm(z[0]) + ' ' + mm(z[1]);
+  }
   function ufhView(f, stepMm, rooms, opts) {
     opts = opts || {};
     if (!f || !f.pxPerM) return null;
@@ -4397,55 +4421,122 @@
     o.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + m(X0) + ' ' + m(Y0) + ' ' + m(W) + ' ' + m(H) +
       '" style="display:block;background:#fff" font-family="system-ui,sans-serif">');
     if (f.img) o.push('<image x="0" y="0" width="' + f.w + '" height="' + f.h + '" preserveAspectRatio="none" opacity="' +
-      (opts.imgOpacity != null ? opts.imgOpacity : 0.3) + '" href="' + String(f.img).replace(/&/g, '&amp;') + '"/>');
+      (opts.imgOpacity != null ? opts.imgOpacity : 0.42) + '" href="' + String(f.img).replace(/&/g, '&amp;') + '"/>');
     // комнаты: тёплый пол — тёплой заливкой, прочие — контуром
     (f.zones || []).forEach(function (z) {
       if (!z.pts || z.pts.length < 3) return;
-      var st = z.type === 'tp' ? 'fill:#fff3e6;fill-opacity:0.75;stroke:#ff8000;stroke-width:' + m(lw * 0.8)
+      var st = z.type === 'tp' ? 'fill:#fff4e6;fill-opacity:0.45;stroke:#e8a45c;stroke-width:' + m(lw * 0.45)
         : z.type === 'cold' ? 'fill:#e9e9e9;stroke:#9a9a9a;stroke-width:' + m(lw * 0.6)
           : 'fill:none;stroke:#8a94a6;stroke-width:' + m(lw * 0.6) + ';stroke-dasharray:' + m(lw * 3) + ',' + m(lw * 2);
       o.push('<polygon points="' + P(z.pts) + '" style="' + st + '"/>');
     });
-    bundle.forEach(function (sg) {
-      o.push('<line x1="' + m(sg.a[0]) + '" y1="' + m(sg.a[1]) + '" x2="' + m(sg.b[0]) + '" y2="' + m(sg.b[1]) +
-        '" style="stroke:' + COL_BUNDLE + ';stroke-opacity:0.85;stroke-linecap:square;stroke-width:' +
-        m(Math.max(lw * 1.2, sg.n * 2 * BUNDLE_DRAW_M * ppm)) + '"/>');
-    });
+    // Пучок труб на участке: n пар — 2n тонких линий рядом, красная/синяя по очереди
+    // (как подводки на листах проектировщиков), а не одна толстая полоса
+    var pipeBundle = function (sg, w0) {
+      var n2 = Math.max(2, Math.round(sg.n * 2)), gap = Math.max(lw * 1.6, BUNDLE_DRAW_M * ppm * 1.05);
+      var dx = sg.b[0] - sg.a[0], dy = sg.b[1] - sg.a[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+      if (n2 > 16) {                                   // очень толстый пучок — полоса, линии слились бы
+        o.push('<line x1="' + m(sg.a[0]) + '" y1="' + m(sg.a[1]) + '" x2="' + m(sg.b[0]) + '" y2="' + m(sg.b[1]) +
+          '" style="stroke:' + COL_BUNDLE + ';stroke-opacity:0.85;stroke-linecap:butt;stroke-width:' + m(n2 * gap) + '"/>');
+        return;
+      }
+      for (var k = 0; k < n2; k++) {
+        var off = (k - (n2 - 1) / 2) * gap;
+        o.push('<line x1="' + m(sg.a[0] + nx * off) + '" y1="' + m(sg.a[1] + ny * off) + '" x2="' + m(sg.b[0] + nx * off) +
+          '" y2="' + m(sg.b[1] + ny * off) + '" style="stroke:' + (k % 2 ? V_RET : V_SUP) + ';stroke-width:' + m(w0) +
+          ';stroke-linecap:butt"/>');
+      }
+    };
+    bundle.forEach(function (sg) { pipeBundle(sg, lw * 0.5); });
     var badges = [];
+    // Дуги подачи и обратки концентрические, как у настоящей трубы: у внутренней трубы
+    // поворота радиус меньше, у наружной больше на шаг. Какая из двух внутренняя —
+    // по тому, с какой стороны от угла лежит парная труба.
+    var s0 = Math.max(lw * 2, stepMm / 1000 * ppm);
+    var pairR = function (other) {
+      return function (a, b, c) {
+        var la = Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, lc = Math.hypot(c[0] - b[0], c[1] - b[1]) || 1;
+        var iw = [(a[0] - b[0]) / la + (c[0] - b[0]) / lc, (a[1] - b[1]) / la + (c[1] - b[1]) / lc];
+        var bd = Infinity, q = null;
+        for (var i = 1; i < other.length; i++) {
+          var p0 = other[i - 1], p1 = other[i], dx = p1[0] - p0[0], dy = p1[1] - p0[1], L2 = dx * dx + dy * dy || 1;
+          var t = Math.max(0, Math.min(1, ((b[0] - p0[0]) * dx + (b[1] - p0[1]) * dy) / L2));
+          var qx = p0[0] + dx * t, qy = p0[1] + dy * t, dd = Math.hypot(qx - b[0], qy - b[1]);
+          if (dd < bd) { bd = dd; q = [qx, qy]; }
+        }
+        if (!q) return s0;
+        var inner = ((q[0] - b[0]) * iw[0] + (q[1] - b[1]) * iw[1]) < 0;   // парная труба снаружи поворота — эта внутренняя
+        return inner ? 0.55 * s0 : 1.65 * s0;
+      };
+    };
     rows.forEach(function (R) {
       var lp = R.loop;
       if (!lp || !lp.sup) return;
-      [[lp.sup, COL_SUP], [lp.ret, COL_RET]].forEach(function (pr) {
-        o.push('<polyline points="' + P(pr[0]) + '" style="fill:none;stroke:' + pr[1] + ';stroke-width:' + m(lw) +
+      // группа контура: невидимая область для наведения (привязка к строке таблицы) и две трубы
+      var bb = bbox(lp.sup.concat(lp.ret || []));
+      o.push('<g data-pl="L' + R.no + '"><rect x="' + m(bb[0]) + '" y="' + m(bb[1]) + '" width="' + m(bb[2] - bb[0]) +
+        '" height="' + m(bb[3] - bb[1]) + '" style="fill:#000;fill-opacity:0;stroke:none;pointer-events:all"/>');
+      [[lp.sup, V_SUP, lp.ret], [lp.ret, V_RET, lp.sup]].forEach(function (pr) {
+        o.push('<path d="' + roundedD(pr[0], pairR(pr[2] || [])) + '" style="fill:none;stroke:' + pr[1] + ';stroke-width:' + m(lw * 0.5) +
           ';stroke-linejoin:round;stroke-linecap:round"/>');
       });
+      o.push('</g>');
       badges.push([pointAt(lp.sup, 0.72), R.no]);
     });
     // Радиаторы: трассы полосой (ширина — по числу труб), сами приборы
     // прямоугольником вдоль стены, номер «Р1…» с комнатной стороны
     var radRows = [], radBadges = [];
     if (RR) {
-      RR.segs.forEach(function (sg) {
-        o.push('<line x1="' + m(sg.a[0]) + '" y1="' + m(sg.a[1]) + '" x2="' + m(sg.b[0]) + '" y2="' + m(sg.b[1]) +
-          '" style="stroke:' + COL_RAD_BUNDLE + ';stroke-opacity:0.8;stroke-linecap:square;stroke-width:' +
-          m(Math.max(lw * 1.1, sg.n * 2 * BUNDLE_DRAW_M * ppm)) + '"/>');
-      });
-      var byI = {};
+      RR.segs.forEach(function (sg) { pipeBundle(sg, lw * 0.5); });
+      var byI = {}, kc = {};
       RR.items.forEach(function (it) { byI[it.i] = it; });
       (f.rads || []).forEach(function (rd, i) {
         var a = (rd.ang || 0) * Math.PI / 180, ux = Math.cos(a), uy = Math.sin(a);
-        var hw = (rd.w || 0.8 * ppm) / 2, hd = 0.05 * ppm, nx = -uy, ny = ux;
-        var q = [[rd.x - ux * hw - nx * hd, rd.y - uy * hw - ny * hd], [rd.x + ux * hw - nx * hd, rd.y + uy * hw - ny * hd],
-          [rd.x + ux * hw + nx * hd, rd.y + uy * hw + ny * hd], [rd.x - ux * hw + nx * hd, rd.y - uy * hw + ny * hd]];
-        o.push('<polygon points="' + P(q) + '" style="fill:' + COL_RAD + ';fill-opacity:0.35;stroke:' + COL_RAD +
-          ';stroke-width:' + m(lw * 0.9) + '"/>');
         var it = byI[i], z = zoneOfPoint(f, [rd.x, rd.y]);
+        // Тип прибора — по смете: окно в пол даёт внутрипольный конвектор вместо радиатора.
+        // Приборы комнаты в смете идут в том же порядке, что окна, а окна заводились по приборам плана
+        var rkey = z ? String(z.name || '').trim().toLowerCase() : '';
+        var kinds = (opts.kinds && opts.kinds[rkey]) || [];
+        kc[rkey] = kc[rkey] == null ? 0 : kc[rkey] + 1;
+        var isConv = kinds[kc[rkey]] === 'conv';
+        var hw = (rd.w || 0.8 * ppm) / 2, nx = -uy, ny = ux;
+        var hd = (isConv ? 0.09 : 0.05) * ppm;
+        var quad = function (h, e) {
+          return [[rd.x - ux * (hw + e) - nx * h, rd.y - uy * (hw + e) - ny * h], [rd.x + ux * (hw + e) - nx * h, rd.y + uy * (hw + e) - ny * h],
+            [rd.x + ux * (hw + e) + nx * h, rd.y + uy * (hw + e) + ny * h], [rd.x - ux * (hw + e) + nx * h, rd.y - uy * (hw + e) + ny * h]];
+        };
+        var q = quad(hd, 0);
+        o.push('<g data-pl="R' + (i + 1) + '"><polygon points="' + P(quad(0.22 * ppm, 0.08 * ppm)) +
+          '" style="fill:#000;fill-opacity:0;stroke:none;pointer-events:all"/>');
+        if (isConv) {
+          // внутрипольный конвектор: пунктирный короб с решёткой — вдоль прибора частые поперечные чёрточки
+          o.push('<polygon points="' + P(q) + '" style="fill:#fff;fill-opacity:0.85;stroke:' + COL_RAD + ';stroke-width:' + m(lw * 0.55) +
+            ';stroke-dasharray:' + m(lw * 2.4) + ',' + m(lw * 1.2) + '"/>');
+          var nb = Math.max(3, Math.round(2 * hw / (0.06 * ppm)));
+          for (var bI = 1; bI < nb; bI++) {
+            var tt = -hw + 2 * hw * bI / nb;
+            o.push('<line x1="' + m(rd.x + ux * tt - nx * hd * 0.7) + '" y1="' + m(rd.y + uy * tt - ny * hd * 0.7) +
+              '" x2="' + m(rd.x + ux * tt + nx * hd * 0.7) + '" y2="' + m(rd.y + uy * tt + ny * hd * 0.7) +
+              '" style="stroke:' + COL_RAD + ';stroke-width:' + m(lw * 0.3) + '"/>');
+          }
+        } else {
+          // радиатор: контур с секциями, как на листах проектировщиков
+          o.push('<polygon points="' + P(q) + '" style="fill:#fff;fill-opacity:0.9;stroke:' + COL_RAD + ';stroke-width:' + m(lw * 0.6) + '"/>');
+          var ns = Math.max(3, Math.round(2 * hw / (0.08 * ppm)));
+          for (var sI = 1; sI < ns; sI++) {
+            var ts = -hw + 2 * hw * sI / ns;
+            o.push('<line x1="' + m(rd.x + ux * ts - nx * hd) + '" y1="' + m(rd.y + uy * ts - ny * hd) +
+              '" x2="' + m(rd.x + ux * ts + nx * hd) + '" y2="' + m(rd.y + uy * ts + ny * hd) +
+              '" style="stroke:' + COL_RAD + ';stroke-width:' + m(lw * 0.25) + '"/>');
+          }
+        }
+        o.push('</g>');
         // номер — с той стороны прибора, где точка подключения (комната)
         var side = it ? Math.sign((it.p[0] - rd.x) * nx + (it.p[1] - rd.y) * ny) || 1 : 1;
-        radBadges.push([[rd.x + nx * side * 0.42 * ppm, rd.y + ny * side * 0.42 * ppm], 'Р' + (i + 1)]);
+        radBadges.push([[rd.x + nx * side * 0.42 * ppm, rd.y + ny * side * 0.42 * ppm], (isConv ? 'К' : 'Р') + (i + 1), i + 1]);
         var rm = z ? roomOf(z.name, rooms || []) : null;
         radRows.push({ no: i + 1, name: rm ? rm.name : (z && z.name) || '', w: Math.round((rd.w || 0) / ppm * 10) / 10,
-          L: it ? Math.round(it.L * 10) / 10 : null });
+          L: it ? Math.round(it.L * 10) / 10 : null, kind: isConv ? 'conv' : 'rad' });
       });
     }
     // подписи комнат — у верхнего края контура, чтобы не спорить с номерами петель
@@ -4460,16 +4551,16 @@
     });
     var r = 0.24 * ppm;
     badges.forEach(function (bd) {
-      o.push('<circle cx="' + m(bd[0][0]) + '" cy="' + m(bd[0][1]) + '" r="' + m(r) + '" style="fill:#fff;stroke:#333;stroke-width:' + m(lw * 0.6) + '"/>');
+      o.push('<g data-pl="L' + bd[1] + '"><circle cx="' + m(bd[0][0]) + '" cy="' + m(bd[0][1]) + '" r="' + m(r) + '" style="fill:#fff;stroke:#333;stroke-width:' + m(lw * 0.5) + '"/>');
       o.push('<text x="' + m(bd[0][0]) + '" y="' + m(bd[0][1] + r * 0.42) + '" font-size="' + m(r * 1.15) +
-        '" text-anchor="middle" style="fill:#111;font-weight:700">' + bd[1] + '</text>');
+        '" text-anchor="middle" style="fill:#111;font-weight:700">' + bd[1] + '</text></g>');
     });
     radBadges.forEach(function (bd) {
       var w2 = r * 1.6, h2 = r * 1.3;
-      o.push('<rect x="' + m(bd[0][0] - w2 / 2) + '" y="' + m(bd[0][1] - h2 / 2) + '" width="' + m(w2) + '" height="' + m(h2) +
-        '" style="fill:#fff;stroke:' + COL_RAD + ';stroke-width:' + m(lw * 0.6) + '"/>');
+      o.push('<g data-pl="R' + bd[2] + '"><rect x="' + m(bd[0][0] - w2 / 2) + '" y="' + m(bd[0][1] - h2 / 2) + '" width="' + m(w2) + '" height="' + m(h2) +
+        '" style="fill:#fff;stroke:' + COL_RAD + ';stroke-width:' + m(lw * 0.5) + '"/>');
       o.push('<text x="' + m(bd[0][0]) + '" y="' + m(bd[0][1] + r * 0.38) + '" font-size="' + m(r * 1.0) +
-        '" text-anchor="middle" style="fill:' + COL_RAD + ';font-weight:700">' + bd[1] + '</text>');
+        '" text-anchor="middle" style="fill:' + COL_RAD + ';font-weight:700">' + bd[1] + '</text></g>');
     });
     // Коллектор радиаторов — когда он не там же, где коллектор тёплого пола
     if (RR && !(f.coll && Math.hypot(RR.C.x - f.coll.x, RR.C.y - f.coll.y) < 0.3 * ppm)) {
