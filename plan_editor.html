@@ -328,7 +328,7 @@
   </div>
 </div>
 
-<script src="project_plans.js?v=1.30"></script>
+<script src="project_plans.js?v=1.31"></script>
 <script>
 'use strict';
 // Доступ к проектированию. Своей авторизации у страницы нет, поэтому отметку
@@ -548,6 +548,24 @@ DATA.floors.forEach(function (f) {
   if (!f.rads) f.rads = [];
   if (!f.img && f.imgFile) f.img = planUrl(f.imgFile);
 });
+
+/**
+ * Свой номер (rid) у каждого радиатора на плане. Окно в расчёте запоминает, под каким
+ * радиатором оно создано (window.radId), и тип прибора, подобранный смете для окна, рисуется
+ * именно на нём: окно в пол даёт конвектор у того окна, у которого его поставили, а не у
+ * первого по порядку в комнате.
+ */
+var _ridSeq = 0;
+function ensureRadIds() {
+  var used = {};
+  DATA.floors.forEach(function (f) {
+    (f.rads || []).forEach(function (r) {
+      if (!r.rid || used[r.rid]) r.rid = 'r' + Date.now().toString(36) + (++_ridSeq).toString(36);
+      used[r.rid] = 1;
+    });
+  });
+}
+ensureRadIds();
 
 // комнаты подробного расчёта калькулятора: имена и площади для привязки зон
 var roomNames = [], calcRooms = [];
@@ -1990,9 +2008,13 @@ function matchScore(ok, found, nTargets) {
  *  подбирается масштаб. Вынесено из guessScale: отказ обязан называть
  *  причину, а она как раз в том, сколько таких комнат нашлось. */
 function scaleTargets() {
-  return calcRooms.filter(function (r) {
+  var t = calcRooms.filter(function (r) {
     return (+r.floor || 1) === cur + 1 && r.area > 0;
   }).map(function (r) { return r.area; });
+  if (t.length >= 2) return t;
+  // комнат в расчёте нет — площади, напечатанные на самом плане (PDF или прочитанные со скана)
+  var pr = (PDF_AREAS[cur] || []).map(function (l) { return l.m2; });
+  return pr.length >= 2 ? pr : t;
 }
 
 /** Масштаб по площадям комнат расчёта: сколько пикселей плана в метре.
@@ -2418,14 +2440,14 @@ function autoRooms() {
     free.forEach(function (c) {
       var cc = centroid(c.pts);
       if (F().zones.some(function (z) { return pip(cc, z.pts); })) return;
-      F().zones.push({ type: 'room', name: '', pts: fitZonePts(c.pts, F().pxPerM || 100, c.printed) });
+      F().zones.push({ type: 'room', name: c.pname || '', nameSrc: c.pname ? 'plan' : undefined, pts: fitZonePts(c.pts, F().pxPerM || 100, c.printed) });
       cnt.room = (cnt.room || 0) + 1; made++;
     });
     missed = [];
   }
   if (!made && !targets.length) {
     free.forEach(function (c) {
-      F().zones.push({ type: 'tp', name: '', pts: fitZonePts(c.pts, F().pxPerM || 100, c.printed) });
+      F().zones.push({ type: 'tp', name: c.pname || '', nameSrc: c.pname ? 'plan' : undefined, pts: fitZonePts(c.pts, F().pxPerM || 100, c.printed) });
       made++;
     });
     cnt = { tp: made };
@@ -2438,14 +2460,18 @@ function autoRooms() {
   // лестницей или проёмом они расходятся на несколько процентов. Пока контур не двигали
   // руками (подпись контура — printedSig), берётся напечатанная
   F().zones.forEach(function (z) {
-    delete z.printedM2; delete z.printedSig;
+    delete z.printedM2; delete z.printedSig; delete z.planM2;
     if (!labs.length || z.type === 'cold') return;
     var inside = labs.filter(function (l) { return pip([l.x, l.y], z.pts); });
     if (inside.length !== 1) return;
+    z.planM2 = inside[0].m2;                    // для подсветки спорных комнат (zoneDisputed)
     var A = area(z.pts);
-    if (Math.abs(A - inside[0].m2) / inside[0].m2 <= 0.15) { z.printedM2 = inside[0].m2; z.printedSig = JSON.stringify(z.pts); }
+    // цифры, прочитанные со снимка, доверия меньше: на размытом фото 8,56 читалось как 8,18
+    if (Math.abs(A - inside[0].m2) / inside[0].m2 <= (inside[0].scan ? 0.08 : 0.15)) { z.printedM2 = inside[0].m2; z.printedSig = JSON.stringify(z.pts); }
   });
-  lastRoomsNote = printedNote(labs) + scaleNote;
+  var named = F().zones.filter(function (z) { return z.nameSrc === 'plan' && z.name; }).length;
+  lastRoomsNote = printedNote(labs) + scaleNote +
+    (named ? ' Названия комнат взяты с плана (' + named + ') — проверьте их в списке справа.' : '');
   var NAMES = { tp: 'тёплый пол', boiler: 'котельная', wc: 'санузлы', room: 'прочие помещения' };
   var parts = ['tp', 'boiler', 'wc', 'room'].filter(function (k) { return cnt[k]; })
     .map(function (k) { return NAMES[k] + ' ' + cnt[k]; });
@@ -2529,6 +2555,125 @@ function textItemsPx(tc, vp) {
  * Возвращает [{ m2, x, y }] — центр подписи в пикселях подложки.
  */
 var PDF_AREAS = {};
+
+/**
+ * Подписи площадей на СКАНЕ или ФОТО плана (текстового слоя нет): картинку читает
+ * тот же сервис распознавания, что во вкладке «Распознавание». Результат — тот же
+ * [{ m2, x, y }] в пикселях подложки, что дают areaLabelsFrom для PDF, и дальше всё
+ * работает одинаково: масштаб по площадям, выбор контура, площадь в расчёт.
+ * Не ответил за 50 с или ошибся — молча [], план грузится как раньше.
+ */
+var AREA_READ_URL = 'https://proxy.heatcalc.ru/gemini_proxy.php';
+var AREA_READ_PROMPT = 'Ты читаешь чертёж этажа частного дома. Найди на плане подписи площадей помещений: ' +
+  'число с запятой или точкой и единицей м² (м2, кв.м), например «19,16 м²», стоящее внутри контура комнаты. ' +
+  'Не бери размеры в миллиметрах, отметки высот, номера помещений, периметры, общую площадь этажа и числа из ' +
+  'таблиц-экспликаций вне плана. Для каждой подписи верни число (точка вместо запятой), рамку текста ' +
+  'box_2d = [ymin, xmin, ymax, xmax] в координатах 0–1000 от размеров изображения и название комнаты, ' +
+  'если оно написано рядом с площадью на плане («Спальня», «Кухня-гостиная»), иначе пустую строку. ' +
+  'Название бери ровно как написано, ничего не придумывай. ' +
+  'Ответ — только JSON: {"labels":[{"m2":19.16,"name":"Спальня","box_2d":[210,300,225,350]}]}. Подписей нет — {"labels":[]}.';
+function parseAreaReply(resp, W, H) {
+  var txt = '';
+  try { txt = resp.candidates[0].content.parts[0].text; } catch (e) { return []; }
+  var data = null;
+  try { data = JSON.parse(String(txt).trim().replace(/^```json\s*/i, '').replace(/```$/, '')); } catch (e) { return []; }
+  var list = (data && data.labels) || (Array.isArray(data) ? data : []);
+  var out = [];
+  list.forEach(function (it) {
+    var a = parseFloat(String(it && (it.m2 != null ? it.m2 : it.area)).replace(',', '.'));
+    var b = it && it.box_2d;
+    if (!(a >= 1.5 && a <= 300) || !Array.isArray(b) || b.length < 4) return;
+    var x = (b[1] + b[3]) / 2 / 1000 * W, y = (b[0] + b[2]) / 2 / 1000 * H;
+    if (!isFinite(x) || !isFinite(y)) return;
+    // одна подпись, прочитанная дважды
+    if (out.some(function (q) { return Math.abs(q.m2 - a) < 0.005 && Math.hypot(q.x - x, q.y - y) < 40; })) return;
+    out.push({ m2: a, x: x, y: y, name: cleanRoomName(it.name), scan: true });      // scan — цифры читала модель, а не текстовый слой: могут быть неточны
+  });
+  uniqueLabelNames(out);
+  return out;
+}
+function readAreaLabelsFromCanvas(c) {
+  return new Promise(function (resolve) {
+    var finished = false;
+    var finish = function (v) { if (!finished) { finished = true; clearTimeout(tm); resolve(v || []); } };
+    var tm = setTimeout(function () { console.warn('[plan_editor] подписи площадей: не дождались ответа'); finish([]); }, 50000);
+    try {
+      hint('Читаю подписи площадей на плане… (до минуты)');
+      var k = Math.min(1, 1600 / Math.max(c.width, c.height));
+      var t = document.createElement('canvas');
+      t.width = Math.round(c.width * k); t.height = Math.round(c.height * k);
+      var g = t.getContext('2d');
+      g.fillStyle = '#fff'; g.fillRect(0, 0, t.width, t.height); g.drawImage(c, 0, 0, t.width, t.height);
+      var b64 = t.toDataURL('image/jpeg', 0.85).split(',')[1];
+      var models = ['gemini-3.5-flash', 'gemini-flash-latest'], mi = 0;
+      var tryNext = function () {
+        fetch(AREA_READ_URL, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mode: 'recognize', model: models[mi], systemInstruction: AREA_READ_PROMPT,
+            messages: [{ role: 'user', parts: [{ inline_data: { mime_type: 'image/jpeg', data: b64 } },
+              { text: 'Найди подписи площадей помещений на этом плане.' }] }]
+          })
+        }).then(function (r) { return r.json(); }).then(function (resp) {
+          if (resp && resp.error && ++mi < models.length) { tryNext(); return; }
+          finish(resp && !resp.error ? parseAreaReply(resp, c.width, c.height) : []);
+        })['catch'](function (e) {
+          console.warn('[plan_editor] подписи площадей:', e && e.message);
+          if (++mi < models.length) tryNext(); else finish([]);
+        });
+      };
+      tryNext();
+    } catch (e) { console.warn('[plan_editor] подписи площадей:', e && e.message); finish([]); }
+  });
+}
+
+/** Название комнаты из подписи: убрать мусор, отсеять не-названия, привести к «Спальня» */
+function cleanRoomName(s) {
+  s = String(s == null ? '' : s).replace(/\s+/g, ' ').trim().replace(/[.,:;]+$/, '');
+  if (s.length < 3 || s.length > 28) return '';
+  if (!/[А-Яа-яЁё]{3}/.test(s)) return '';
+  if (/^(площадь|итого|всего|этаж|план|лист|масштаб|экспликация|помещени[ея]|высота|отметка)\b/i.test(s)) return '';
+  if (/м\s*[²2]|кв\.?\s*м|\bвт\b|\bмм\b/i.test(s)) return '';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** Одинаковые названия получают номера по порядку на плане (сверху вниз, слева направо): «Спальня 1», «Спальня 2» */
+function uniqueLabelNames(labs) {
+  var cnt = {}, seen = {};
+  labs.forEach(function (l) { if (l.name) cnt[l.name.toLowerCase()] = (cnt[l.name.toLowerCase()] || 0) + 1; });
+  labs.slice().sort(function (a, b) { return (a.y - b.y) || (a.x - b.x); }).forEach(function (l) {
+    if (!l.name) return;
+    var k = l.name.toLowerCase();
+    if (cnt[k] > 1) { seen[k] = (seen[k] || 0) + 1; l.name = l.name + ' ' + seen[k]; }
+  });
+}
+
+/**
+ * Название комнаты рядом с подписью площади в текстовом слое PDF: проектировщики ставят
+ * его строкой выше (реже ниже), по центру над числом. Берётся ближайшая строка, куски
+ * одной строки склеиваются («Кухня-» «гостиная»).
+ */
+function nameNearLabel(items, L) {
+  var h = L.h || 9, best = null, bd = 1e9;
+  var cand = items.filter(function (t) {
+    return t !== L.item && /[А-Яа-яЁё]{2}/.test(t.s) && !/^м\s*[²2]/i.test(t.s);
+  });
+  cand.forEach(function (t) {
+    var dy = L.y0 - t.y, ady = Math.abs(dy);
+    if (ady < 0.4 * h || ady > 3.4 * h) return;
+    var cxC = t.x + (t.w || 0) / 2, cxL = L.x0 + (L.w || 0) / 2;
+    if (Math.abs(cxC - cxL) > Math.max(t.w || 0, L.w || 0) * 0.9 + 3 * h) return;
+    var d = ady + (dy < 0 ? 0.6 * h : 0);                       // выше площади — предпочтительнее
+    if (d < bd) { bd = d; best = t; }
+  });
+  if (!best) return '';
+  var line = cand.filter(function (t) { return Math.abs(t.y - best.y) <= 0.35 * h; }).sort(function (a, b) { return a.x - b.x; });
+  var i0 = line.indexOf(best), lo = i0, hi = i0;
+  while (lo > 0 && line[lo].x - (line[lo - 1].x + (line[lo - 1].w || 0)) <= 1.3 * h) lo--;
+  while (hi < line.length - 1 && line[hi + 1].x - (line[hi].x + (line[hi].w || 0)) <= 1.3 * h) hi++;
+  return cleanRoomName(line.slice(lo, hi + 1).map(function (t) { return t.s.trim(); }).join(' ').replace(/-\s+/g, '-'));
+}
+
 function areaLabelsFrom(items) {
   var out = [], UNIT = /^(?:м\s*[²2]|м\.?\s*кв|кв\.?\s*м)/i;
   // Показатель степени в PDF обычно отдельный кусок «2» чуть выше строки:
@@ -2544,9 +2689,10 @@ function areaLabelsFrom(items) {
   };
   (items || []).forEach(function (t, i) {
     var cx = t.x + (t.w || 0) / 2, cy = t.y - (t.h || 0) / 2, v = null, m;
-    if ((m = /^(\d{1,3}[.,]\d{1,2})\s*(?:м\s*[²2]|м\.?\s*кв|кв\.?\s*м)/i.exec(t.s))) v = m[1];
-    else if ((m = /^(\d{1,3}[.,]\d{1,2})\s*м$/i.exec(t.s))) { if (sup(t, items)) v = m[1]; }
-    else if (/^\d{1,3}[.,]\d{1,2}$/.test(t.s)) {
+    // площадь бывает и целой («20 м²»), но только с единицей рядом
+    if ((m = /^(\d{1,3}(?:[.,]\d{1,2})?)\s*(?:м\s*[²2]|м\.?\s*кв|кв\.?\s*м)/i.exec(t.s))) v = m[1];
+    else if ((m = /^(\d{1,3}(?:[.,]\d{1,2})?)\s*м$/i.exec(t.s))) { if (sup(t, items)) v = m[1]; }
+    else if (/^\d{1,3}(?:[.,]\d{1,2})?$/.test(t.s)) {
       for (var j = 0; j < items.length; j++) {
         var u = items[j];
         if (j === i || !UNIT.test(u.s)) continue;
@@ -2556,8 +2702,10 @@ function areaLabelsFrom(items) {
     }
     if (v === null) return;
     var a = parseFloat(String(v).replace(',', '.'));
-    if (a >= 1.5 && a <= 300) out.push({ m2: a, x: cx, y: cy });
+    if (a >= 1.5 && a <= 300) out.push({ m2: a, x: cx, y: cy, item: t, x0: t.x, y0: t.y, w: t.w, h: t.h });
   });
+  out.forEach(function (L) { L.name = nameNearLabel(items || [], L); delete L.item; });
+  uniqueLabelNames(out);
   return out;
 }
 
@@ -2720,6 +2868,11 @@ function renderPdfPage(page) {
   }, function () { PDF_DIMS[fi] = null; PDF_AREAS[fi] = []; }).then(function () {
     return page.render({ canvasContext: g, viewport: vp }).promise;
   }).then(function () {
+    // Страница-скан (текста почти нет) и подписей площадей не нашли — читаем картинку
+    if (!(PDF_AREAS[fi] && PDF_AREAS[fi].length) && (!PDF_DIMS[fi] || PDF_DIMS[fi].length < 8)) {
+      return readAreaLabelsFromCanvas(c).then(function (labs) { PDF_AREAS[fi] = labs; });
+    }
+  }).then(function () {
     applyPlanCanvas(c);
   });
 }
@@ -2739,8 +2892,15 @@ function loadOne(file) {
         var c = document.createElement('canvas');
         c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
         c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-        applyPlanCanvas(c);
-        done();
+        // Подписи площадей на картинке читаем до масштаба: по ним он и подбирается
+        var fi0 = cur;
+        readAreaLabelsFromCanvas(c).then(function (labs) {
+          PDF_AREAS[fi0] = labs;
+          PDF_DIMS[fi0] = null;
+          applyPlanCanvas(c);
+          if (labs.length) hint('<span class=ok>На плане прочитано подписей площадей: ' + labs.length + '.</span> ' + (F().pxPerM ? '' : 'Дальше — масштаб.'));
+          done();
+        });
       };
       im.onerror = function () {
         alert('Не удалось прочитать файл «' + file.name + '».');
@@ -3020,6 +3180,9 @@ function draw() {
     // сразу видно шаг, число веток и как ляжет труба.
     cx.fillStyle = col + (lp ? '14' : '33'); cx.fill();
     cx.lineWidth = lp ? 1.4 : 2; cx.strokeStyle = col; cx.stroke();
+    if (zoneDisputed(z)) {
+      cx.save(); cx.setLineDash([9, 5]); cx.lineWidth = 3.5; cx.strokeStyle = '#f59e0b'; cx.stroke(); cx.restore();
+    }
     if (lp) {
       var lw = Math.max(1, Math.min(2.4, 0.022 * (f.pxPerM || 100) * k));
       cx.lineJoin = 'round'; cx.lineCap = 'round';
@@ -3053,7 +3216,7 @@ function draw() {
       }
     }
     var c = centroid(z.pts);
-    var nm = (z.name || TYPES[z.type][0]) + ' · ' + zoneM2(z).toFixed(1) + ' м²' +
+    var nm = (zoneDisputed(z) ? '⚠ ' : '') + (z.name || TYPES[z.type][0]) + ' · ' + zoneM2(z).toFixed(1) + ' м²' +
       ' · ' + z.pts.length + ' угл.' +
       (lp && lp.length > 1 ? ' · ' + lp.length + ' петли' : '');
     cx.font = 'bold 13px system-ui'; cx.textAlign = 'center';
@@ -3148,7 +3311,8 @@ function draw() {
   if (f.coll) {
     var ccx = f.coll.x * k, ccy = f.coll.y * k;
     var cw = Math.max(16, 0.55 * (f.pxPerM || 100) * k), ch = Math.max(6, cw * 0.36);
-    cx.save(); cx.translate(ccx, ccy); cx.rotate((f.collAng || 0) * Math.PI / 180);
+    var cAng = window.projectPlans && projectPlans.collAngle ? projectPlans.collAngle(f, 'tp') : (f.collAng || 0);
+    cx.save(); cx.translate(ccx, ccy); cx.rotate(cAng * Math.PI / 180);
     cx.fillStyle = '#fff'; cx.strokeStyle = '#b35900'; cx.lineWidth = 2;
     cx.fillRect(-cw / 2, -ch / 2, cw, ch);
     cx.strokeRect(-cw / 2, -ch / 2, cw, ch);
@@ -3159,7 +3323,7 @@ function draw() {
     }
     cx.restore();
     cx.fillStyle = '#b35900'; cx.font = 'bold 12px system-ui'; cx.textAlign = 'center';
-    cx.fillText('Коллектор ТП', ccx, ccy + (f.collAng ? cw : ch) / 2 + 13);
+    cx.fillText('Коллектор ТП', ccx, ccy + (cAng % 180 === 90 ? cw : ch) / 2 + 13);
   }
   // Коллектор радиаторов — свой значок: его видно и можно перетащить, как
   // коллектор ТП (раньше он стоял там же, где ТП, и не двигался)
@@ -3167,7 +3331,8 @@ function draw() {
   if (rcp) {
     var rx = rcp.x * k, ry = rcp.y * k;
     var rw = Math.max(16, 0.55 * (f.pxPerM || 100) * k), rh = Math.max(6, rw * 0.36);
-    cx.save(); cx.translate(rx, ry); cx.rotate((f.radCollAng || 0) * Math.PI / 180);
+    var rAng2 = rcp.ang || 0;
+    cx.save(); cx.translate(rx, ry); cx.rotate(rAng2 * Math.PI / 180);
     cx.fillStyle = '#fff'; cx.strokeStyle = '#d22222'; cx.lineWidth = 2;
     cx.fillRect(-rw / 2, -rh / 2, rw, rh);
     cx.strokeRect(-rw / 2, -rh / 2, rw, rh);
@@ -3178,7 +3343,7 @@ function draw() {
     }
     cx.restore();
     cx.fillStyle = '#d22222'; cx.font = 'bold 12px system-ui'; cx.textAlign = 'center';
-    cx.fillText('Коллектор радиаторов', rx, ry + (f.radCollAng ? rw : rh) / 2 + 13);
+    cx.fillText('Коллектор радиаторов', rx, ry + (rAng2 % 180 === 90 ? rw : rh) / 2 + 13);
   }
   // сантехприборы: настоящий габарит и разворот вдоль стены
   (f.fixtures || []).forEach(function (q) {
@@ -3292,6 +3457,18 @@ function evPt(e) {
   var y = (e.clientY - r.top) * (cv.height / r.height) / cs();
   return [Math.round(x), Math.round(y)];
 }
+/**
+ * Комната, контур которой расходится с площадью, напечатанной на плане, больше чем на 10 %:
+ * её надо проверить глазами (в холл попал тамбур, контур вылез за проём). Флаг считается
+ * на лету по текущему контуру — потянули сторону и площадь сошлась, подсветка гаснет.
+ * Возвращает { geom, plan } или null.
+ */
+function zoneDisputed(z) {
+  if (!(z.planM2 > 0) || z.type === 'cold' || !z.pts) return null;
+  var g = area(z.pts);
+  return Math.abs(g - z.planM2) / z.planM2 > 0.10 ? { geom: g, plan: z.planM2 } : null;
+}
+
 /** Площадь зоны для списка и расчёта: напечатанная на плане (PDF), пока контур не трогали, иначе по контуру */
 function zoneM2(z) {
   return (z.printedM2 > 0 && z.printedSig === JSON.stringify(z.pts)) ? z.printedM2 : area(z.pts);
@@ -3546,6 +3723,15 @@ cv.addEventListener('mouseleave', function () {
 cv.addEventListener('mouseup', function (e) {
   if (dragC) {
     var was = dragC; dragC = null; cv.style.cursor = '';
+    if (was.moved && window.projectPlans && projectPlans.snapCollector) {
+      // коллектор не бывает посреди комнаты: встаёт к ближайшей стене и разворачивается вдоль неё
+      var fs0 = F(), cur0 = was.kind === 'tp' ? fs0.coll : fs0.radColl;
+      var sn0 = cur0 ? projectPlans.snapCollector(fs0, [cur0.x, cur0.y]) : null;
+      if (sn0) {
+        if (was.kind === 'tp') { fs0.coll = { x: sn0.x, y: sn0.y }; delete fs0.collAng; }
+        else { fs0.radColl = { x: sn0.x, y: sn0.y }; delete fs0.radCollAng; }
+      }
+    }
     if (was.moved) {
       justDragged = Date.now();
       hint('<span class=ok>' + (was.kind === 'tp' ? 'Коллектор тёплого пола' : 'Коллектор радиаторов') +
@@ -3577,7 +3763,11 @@ cv.addEventListener('click', function (e) {
     pushUndo('zones');
     var fr2 = F();
     if (fr2.radColl && Math.hypot(p[0] - fr2.radColl.x, p[1] - fr2.radColl.y) < 0.45 * (fr2.pxPerM || 100)) fr2.radColl = null;
-    else fr2.radColl = { x: Math.round(p[0]), y: Math.round(p[1]) };
+    else {
+      var sn1 = window.projectPlans && projectPlans.snapCollector ? projectPlans.snapCollector(fr2, p) : null;
+      fr2.radColl = sn1 ? { x: sn1.x, y: sn1.y } : { x: Math.round(p[0]), y: Math.round(p[1]) };
+      delete fr2.radCollAng;
+    }
     renderZones(); draw();
     return;
   }
@@ -4048,12 +4238,14 @@ function printedNote(labs) {
     });
     if (!best) return;
     n++;
-    if (Math.abs(ba - l.m2) / l.m2 <= 0.05) ok++;
+    if (Math.abs(ba - l.m2) / l.m2 <= 0.10) ok++;
     else bad.push(ba.toFixed(1).replace('.', ',') + ' вместо ' + String(l.m2).replace('.', ','));
   });
   if (!n) return '';
-  return ' Контуры комнат — по стенам плана; площади сверены с подписями: сошлось ' + ok + ' из ' + n +
-    (bad.length ? ' (контур расходится: ' + bad.join('; ') + ' м²)' : '') + '. В расчёт идут напечатанные площади.';
+  var scan = labs.some(function (l) { return l.scan; });
+  return ' Контуры комнат — по стенам плана; площади сверены с подписями' + (scan ? ' (прочитаны со снимка — сверьте цифры с планом)' : '') +
+    ': сошлось ' + ok + ' из ' + n +
+    (bad.length ? ' (контур расходится: ' + bad.join('; ') + ' м²; такие комнаты подсвечены жёлтым — потяните стороны к стенам)' : '') + '. В расчёт идут площади с плана.';
 }
 
 /**
@@ -4084,7 +4276,7 @@ function reconcileRooms(rooms, labs) {
     var eA = Math.abs(A - l.m2) / l.m2, eB = Math.abs(B - l.m2) / l.m2;
     if (ib >= 0 && eB + 0.02 < eA) out[ia] = alt[ib];
   });
-  printedPairs(out, labs).forEach(function (p) { p.room.printed = p.label.m2; });
+  printedPairs(out, labs).forEach(function (p) { p.room.printed = p.label.m2; if (p.label.name) p.room.pname = p.label.name; });
   return out;
 }
 
@@ -4160,6 +4352,15 @@ function renderZonesUfh(box) {
     }
     var ar = document.createElement('span'); ar.className = 'ar';
     ar.textContent = zoneM2(z).toFixed(1).replace('.', ',') + ' м²';
+    var dsp = zoneDisputed(z);
+    if (dsp) {
+      d.style.background = 'rgba(245,158,11,.16)'; d.style.boxShadow = 'inset 3px 0 0 #f59e0b';
+      var wn = document.createElement('span'); wn.textContent = '⚠'; wn.style.cssText = 'color:#d97706;font-weight:700;cursor:help';
+      wn.title = 'Контур комнаты на плане — ' + dsp.geom.toFixed(1).replace('.', ',') + ' м², а подписано ' +
+        String(dsp.plan).replace('.', ',') + ' м². Потяните стороны к стенам — подсветка погаснет, когда площади сойдутся. ' +
+        'В расчёт идёт площадь с плана.';
+      d.appendChild(wn);
+    }
     d.appendChild(ar);
     var del = document.createElement('span'); del.className = 'del'; del.textContent = '✕';
     del.title = 'Убрать';
@@ -4366,6 +4567,7 @@ function writeLocal(keepImages) {
 }
 
 function saveAll() {
+  ensureRadIds();
   refreshAutoFixtures();   // приборы санузлов из расчёта — на случай правок зон
   computeLeads();   // маршруты подводок к коллектору — свежие на момент сохранения
   computeVk();      // и трассы водоснабжения с канализацией
@@ -4485,11 +4687,11 @@ function radRoomName(r) {
 function collRotate(kind) {
   var f = F();
   pushUndo('zones');
-  if (kind === 'tp') { f.collAng = f.collAng ? 0 : 90; }
-  else { f.radCollAng = f.radCollAng ? 0 : 90; }
-  var a = kind === 'tp' ? f.collAng : f.radCollAng;
-  hint('<span class=ok>Коллектор ' + (kind === 'tp' ? 'тёплого пола' : 'радиаторов') + ' — ' +
-    (a ? 'вертикально' : 'горизонтально') + '.</span> Правый клик по нему (или R над ним) — повернуть ещё раз.');
+  var cur0 = window.projectPlans && projectPlans.collAngle ? projectPlans.collAngle(f, kind === 'tp' ? 'tp' : 'rad') : 0;
+  var a = (cur0 + 90) % 360;
+  if (kind === 'tp') f.collAng = a; else f.radCollAng = a;
+  hint('<span class=ok>Коллектор ' + (kind === 'tp' ? 'тёплого пола' : 'радиаторов') + ' повёрнут на 90°.</span> ' +
+    'Отводы смотрят ' + ({ 0: 'вверх', 90: 'вправо', 180: 'вниз', 270: 'влево' })[a] + '. Правый клик по нему (или R над ним) — повернуть ещё раз.');
   renderZones(); draw();
 }
 
@@ -4672,10 +4874,20 @@ function ufhAutoColl(f) {
   var bz = window.projectPlans && projectPlans.boilerZone ? projectPlans.boilerZone(f)
     : (f.zones || []).filter(function (z) { return z.type === 'boiler'; })[0];
   if (bz) {
-    var bp = window.projectPlans && projectPlans.wallSpot ? projectPlans.wallSpot(f, bz, C).p : centroid(bz.pts);
+    var bp = window.projectPlans && projectPlans.wallSpot ? projectPlans.wallSpot(f, bz, C, 0.16).p : centroid(bz.pts);
     f.coll = { x: Math.round(bp[0]), y: Math.round(bp[1]) };
     f.collAuto = true;
     return true;
+  }
+  // Котельной нет: ближайшая к центру тёплого пола комната, коллектор у её стены и вдоль неё.
+  // Раньше центр площадей, попавший в комнату, и был местом коллектора — посреди комнаты.
+  if (window.projectPlans && projectPlans.snapCollector) {
+    var sn = projectPlans.snapCollector(f, C);
+    if (sn) {
+      // угол, заданный рукой, сбрасываем только когда коллектор переехал: функция зовётся на каждой перерисовке
+      if (!f.coll || f.coll.x !== sn.x || f.coll.y !== sn.y) { f.coll = { x: sn.x, y: sn.y }; delete f.collAng; }
+      f.collAuto = true; return true;
+    }
   }
   (f.zones || []).forEach(function (z) {
     if (z.type === 'cold' || bd === 0) return;
