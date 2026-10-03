@@ -780,6 +780,10 @@
                     oninput="app.setArea(this.value)">
                 <!-- Площадь по зонам планов этажей: заполняет app.renderPlanAreaNote(), без зон скрыта -->
                 <div id="plan_area_note" style="display:none; margin-top: 4px; font-size: 11px; line-height: 1.4; color: var(--text-sec);"></div>
+                <!-- Быстрый режим: строка «План дома» здесь лишняя (план работает в подробном),
+                     остаётся одна ссылка — она сама включит подробный (app.openUfhPlan) -->
+                <a id="plan_quick_link" href="#" onclick="app.openUfhPlan(); return false;"
+                    style="display: none; margin-top: 6px; font-size: 11.5px; line-height: 1.4; color: var(--text-sec);">Есть план дома? Загрузите — перейдём в подробный расчёт</a>
             </div>
 
             <div id="blk_fast_calc">
