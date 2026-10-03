@@ -337,6 +337,23 @@ for (const m of meta) {
   row.detour = manM > 0 ? Math.round(leadM / manM * 100) / 100 : null;
   row.ratio = Math.round(ourM / Math.max(1, row.designM) * 100) / 100;
   Object.assign(row, crossCount(FL, pxPerM));
+  // Пучок в середине комнаты — метры оси дальше 0,4 м от стен своей зоны
+  // (проектировщики ведут подводки вдоль стен и по коридорам)
+  {
+    const pipZ = (x, y, P) => { let c = false; for (let a = 0, b = P.length - 1; a < P.length; b = a++) if ((P[a][1] > y) !== (P[b][1] > y) && x < (P[b][0] - P[a][0]) * (y - P[a][1]) / (P[b][1] - P[a][1]) + P[a][0]) c = !c; return c; };
+    const segD = (x, y, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy; const t = L ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L)) : 0; return Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy); };
+    let bM = 0, mM = 0;
+    (FL.bundle || []).forEach(sg => {
+      const L = Math.hypot(sg.b[0] - sg.a[0], sg.b[1] - sg.a[1]) / pxPerM, n = Math.max(1, Math.ceil(L / 0.05));
+      for (let i = 0; i < n; i++) {
+        const t = (i + 0.5) / n, x = sg.a[0] + (sg.b[0] - sg.a[0]) * t, y = sg.a[1] + (sg.b[1] - sg.a[1]) * t;
+        let d = 0;
+        for (const z of zones) if (pipZ(x, y, z.pts)) { d = Infinity; for (let a = 0, b = z.pts.length - 1; a < z.pts.length; b = a++) d = Math.min(d, segD(x, y, z.pts[b], z.pts[a])); d /= pxPerM; break; }
+        bM += L / n; if (d > 0.4) mM += L / n;
+      }
+    });
+    row.bundleM = Math.round(bM); row.midM = Math.round(mM);
+  }
   if (svgDir) {
     fs.mkdirSync(svgDir, { recursive: true });
     const img = process.env.UNDERLAY ? m.id + '.png'
@@ -393,6 +410,7 @@ if (ok.length) {
   console.log(`Площадь наших зон / подписанной (по тем же комнатам): медиана ${q(ok.filter(r => r.areaK).map(r => r.areaK), 0.5)}`);
   console.log(`Труба на м² зоны: наша медиана ${q(ok.map(r => Math.round((r.ourM - r.leadM) / r.zoneA * 10) / 10), 0.5)} без подводок; подводки — ${q(ok.map(r => Math.round(r.leadM / r.ourM * 100)), 0.5)} % трубы`);
   console.log(`Подводки длиннее прямого пути по осям: медиана в ${q(ok.filter(r => r.detour).map(r => r.detour), 0.5)} раза`);
+  console.log(`Пучок по оси (все разложенные этажи): ${done.reduce((a, r) => a + (r.bundleM || 0), 0)} м, из них в середине комнат (дальше 0,4 м от стен) ${done.reduce((a, r) => a + (r.midM || 0), 0)} м`);
   console.log(`Чисто (0 пересечений и 0 наложений пучка): ${ok.filter(r => !r.loopX && !r.bandX).length} из ${ok.length}`);
   console.log(`С пересечениями петель: ${ok.filter(r => r.loopX).length}, с наложением пучка: ${ok.filter(r => r.bandX).length}, с незаложенными зонами: ${ok.filter(r => r.est).length}`);
   console.log(`Время раскладки: медиана ${q(ok.map(r => r.ms), 0.5)} мс, макс ${Math.max(...ok.map(r => r.ms))} мс`);
