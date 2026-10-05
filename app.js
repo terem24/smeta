@@ -40748,8 +40748,13 @@ const app = {
      * синхронно, ждать сеть на каждой строке нельзя.
      */
     loadRecognitionAccess: async function () {
+        // Таймаут обязателен: эту функцию ждёт отрисовка таблицы пользователей, и
+        // зависший запрос к внешнему серверу (телефон, чужая сеть) оставлял на экране
+        // «Загрузка данных…» вместо таблицы. Не успели за 6 с — рисуем без списков доступа.
+        const ctl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+        const timer = ctl ? setTimeout(() => ctl.abort(), 6000) : null;
         try {
-            const r = await fetch(`${this.RECOGNIZE_ARCHIVE}?access=1`);
+            const r = await fetch(`${this.RECOGNIZE_ARCHIVE}?access=1`, ctl ? { signal: ctl.signal } : undefined);
             const data = await r.json();
             // Держим весь ответ: кроме распознавания в нём раздел design
             // (проектирование) со своими списками людей, дистрибьюторов и регионов.
@@ -40759,6 +40764,8 @@ const app = {
             }
         } catch (e) {
             console.warn('[доступ] списки не получены:', e.message);
+        } finally {
+            if (timer) clearTimeout(timer);
         }
         return this._recognitionAccess || { users: {}, regions: {} };
     },
