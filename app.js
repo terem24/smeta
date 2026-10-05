@@ -499,7 +499,60 @@ function installEmailjsProxy() {
         return err instanceof Error && err.status === undefined;
     }
 
+    // Бюджет писем (20261005_mail_budget.sql): тип письма по теме, проверка выключателя
+    // для необязательных рассылок и запись в журнал. Зеркало SQL-функции mail_kind_of.
+    // Защищённые типы (код регистрации, запрос счёта) проходят без вопросов к базе.
+    function mailKindOf(subject, templateId) {
+        const s = String(subject || '');
+        if (templateId === 'template_lg1zol9') return 'invoice';
+        if (/^Код подтверждения/i.test(s)) return 'code';
+        if (/Запрос счёта/i.test(s)) return 'invoice';
+        if (/^\[Feedback/i.test(s)) return 'feedback';
+        if (/^Вы давно не заходили/i.test(s) || /^Доступ к HeatCalc\.ru приостановлен/i.test(s)) return 'inactivity';
+        if (/^Первая смета в HeatCalc/i.test(s) || /^Что не получилось в HeatCalc/i.test(s) || /^Давно не видели смет/i.test(s)) return 'nudge';
+        if (/^Новое личное сообщение/i.test(s)) return 'message';
+        if (/^Вопрос без ответа/i.test(s)) return 'stale';
+        if (/Тариф Профи/i.test(s)) return 'tariff';
+        if (/^(\[Админ\] )?Статус КП/i.test(s)) return 'status';
+        return 'other';
+    }
+    const mailGateCache = {};
+    function mailGate(kind) {
+        if (kind === 'code' || kind === 'invoice') return Promise.resolve(true);
+        const c = mailGateCache[kind];
+        if (c && Date.now() - c.at < 60000) return Promise.resolve(c.ok);
+        if (typeof supabaseClient === 'undefined' || !supabaseClient || !supabaseClient.rpc) return Promise.resolve(true);
+        // Ошибка или тайм-аут — разрешаем: лучше лишнее письмо, чем потерянное.
+        return withTimeout(Promise.resolve(supabaseClient.rpc('mail_allowed', { k: kind })), 4000, 'mail_allowed')
+            .then(r => { const ok = !(r && r.data === false); mailGateCache[kind] = { ok, at: Date.now() }; return ok; })
+            .catch(() => true);
+    }
+    function mailLogAdd(kind, templateId, subject, ok, skipped) {
+        try {
+            if (typeof supabaseClient === 'undefined' || !supabaseClient || !supabaseClient.rpc) return;
+            Promise.resolve(supabaseClient.rpc('mail_log_add', {
+                k: kind, tpl: templateId, subj: String(subject || ''), was_ok: ok, was_skipped: skipped, src: 'browser'
+            })).catch(() => {});
+        } catch (e) { /* журнал не должен ломать отправку */ }
+    }
+
     function send(serviceId, templateId, templateParams, key) {
+        const subject = (templateParams && (templateParams.email_subject || templateParams.subject_text)) || '';
+        const kind = mailKindOf(subject, templateId);
+        return mailGate(kind).then(allowed => {
+            if (!allowed) {
+                console.warn('[почта] тип «' + kind + '» отключён бюджетом писем, письмо не отправлено');
+                mailLogAdd(kind, templateId, subject, true, true);
+                return { status: 200, text: 'SKIPPED' };
+            }
+            return rawSend(serviceId, templateId, templateParams, key).then(res => {
+                mailLogAdd(kind, templateId, subject, true, false);
+                return res;
+            });
+        });
+    }
+
+    function rawSend(serviceId, templateId, templateParams, key) {
         const k = key || publicKey;
         const direct = withTimeout(
             Promise.resolve().then(() => origSend(serviceId, templateId, templateParams, k)),
@@ -1149,7 +1202,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
 
     lastSavedStateString: "",
 
@@ -23670,7 +23723,8 @@ const app = {
         { id: 'aifill', icon: '✨', label: 'Умное заполнение', hint: 'Что говорили и писали в окно ✨' },
         { id: 'articles', icon: '📰', label: 'Статьи', hint: 'Очередь публикаций на год: даты, тексты, что уже вышло' },
         { id: 'leads', icon: '📨', label: 'Заявки', hint: 'Заявки на монтаж: откуда пришли и что просят' },
-        { id: 'warranty', icon: '🛡', label: 'Гарантия STOUT', hint: 'Объекты с долей STOUT: порог для бланка, порог по объекту, реестр' }
+        { id: 'warranty', icon: '🛡', label: 'Гарантия STOUT', hint: 'Объекты с долей STOUT: порог для бланка, порог по объекту, реестр' },
+        { id: 'mailbudget', icon: '✉️', label: 'Почта', hint: 'Лимит писем, на что ушёл, отключение рассылок' }
     ],
 
     // Значки разделов — одноцветные линейные, берут цвет текста (currentColor).
@@ -23700,7 +23754,8 @@ const app = {
         aifill: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4M21 5h-4"/>',
         articles: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
         leads: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
-        warranty: '<path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5z"/><path d="M9 12l2 2 4-4"/>'
+        warranty: '<path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5z"/><path d="M9 12l2 2 4-4"/>',
+        mailbudget: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/>'
     },
 
     // Разделы панели в группах. Двадцать вкладок в два ряда без порядка — это «конструктор»,
@@ -23714,7 +23769,7 @@ const app = {
         { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['leads', 'estimates', 'kanban', 'projects', 'warranty'] },
         { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages'] },
         { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'distprices', 'equipment', 'successors'] },
-        { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription', 'payready'] },
+        { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription', 'payready', 'mailbudget'] },
         { id: 'ai', label: 'ИИ и файлы', icon: 'recognition', tabs: ['recognition', 'plans', 'aifill'] },
         { id: 'content', label: 'Контент', icon: 'articles', tabs: ['articles'] }
     ],
@@ -23932,7 +23987,8 @@ const app = {
     // «Замены позиций» — подтверждённая замена меняет позицию каталога у всех
     // пользователей сразу, решать это наблюдателю или менеджеру нельзя.
     // «Тарифы» — что открыто каждой учётной записи на всей платформе.
-    ADMIN_ONLY_TABS: ['distributors', 'successors', 'tariffs'],
+    // «Почта» — лимит писем EmailJS на всю платформу и выключатели рассылок.
+    ADMIN_ONLY_TABS: ['distributors', 'successors', 'tariffs', 'mailbudget'],
 
     // Вкладка «Аналитика» — только для владельца: там конкурентная разведка,
     // которой незачем светиться даже перед наблюдателями с доступом в админку.
@@ -25618,6 +25674,12 @@ const app = {
             return;
         }
 
+        if (this._adminTab === 'mailbudget') {
+            content.innerHTML = navHtml;
+            this.renderAdminMail();
+            return;
+        }
+
         if (this._adminTab === 'projects') {
             content.innerHTML = navHtml;
             this.renderAdminProjects();
@@ -26082,6 +26144,9 @@ const app = {
             }
             let name = this.getAdminUserDisplayName(u);
             let nameEscaped = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            // Для «Компактно»: «Фамилия И.О.» вместо полного ФИО (только если это настоящее ФИО)
+            let nameShort = name;
+            { const w = String(name).trim().split(/\s+/); if (w.length >= 2 && w.length <= 3 && w.every(x => /^[А-ЯЁA-Z][а-яёa-z-]+$/.test(x))) nameShort = w[0] + ' ' + w.slice(1).map(x => x[0] + '.').join(''); }
             let phone = u.phone || 'Нет телефона';
             let device = u.last_device || 'Неизвестно';
             let lastVis = u.last_visited ? new Date(u.last_visited).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : date;
@@ -26185,13 +26250,13 @@ const app = {
                         <!-- Нумерация сквозная по всему списку, а не по странице: на второй
                              странице отсчёт снова с 1 сбивал с толку (44 записи → 1…44) -->
                         <td style="color:var(--text-sec);">${this._adminOffset + i + 1}</td>
-                        <td><div style="display:flex; align-items:center;">${avatarImg} <div><b style="font-size:13px;">${suspectMark}${name}</b><br><span style="font-size:11px;color:var(--text-sec);">${phone}</span>${locHTML}${extraHTML}</div></div></td>
+                        <td><div style="display:flex; align-items:center;">${avatarImg} <div><b style="font-size:13px;">${suspectMark}<span class="ad-name-full">${name}</span><span class="ad-name-short">${nameShort}</span></b><br><span style="font-size:11px;color:var(--text-sec);">${phone}</span><span class="ad-more">${locHTML}${extraHTML}</span></div></div></td>
                         <!-- admin-cell-half: на телефоне карточка ставит помеченную
                              пару в один ряд по половине ширины (см. style.css).
                              Содержимое коротких и однотипных ячеек — сумма со
                              сметами, тариф с устройством, два переключателя
                              доступа — отдельной строки на каждую не стоило. -->
-                        <td class="admin-cell-half"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount} | Ср.объект: ${u.avgArea} м²</span><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${sessionLine}</span></td>
+                        <td class="admin-cell-half"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount} | Ср.объект: ${u.avgArea} м²</span><span class="ad-more"><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${sessionLine}</span></span></td>
                         <td class="admin-cell-half">${badge}<br><span style="font-size:10px;color:var(--text-sec);">${device}</span></td>
                         <td onclick="event.stopPropagation();">${distCell}</td>
                         <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${recCell}</td>
@@ -39115,6 +39180,244 @@ const app = {
         }
     },
 
+    // ═══ Почта: лимит EmailJS, расход по типам, выключатели ═══════════════
+    //
+    // Все письма сайта идут через EmailJS, а у аккаунта 200 писем в месяц (цикл с 8-го).
+    // Журнал (mail_log) и расчёт — в базе (20261005_mail_budget.sql); здесь только показ и
+    // настройки в app_settings.mail_budget. Типы 'code' и 'invoice' защищены: не отключаются.
+    MAIL_KIND_LABELS: {
+        code: ['Коды регистрации', 'Подтверждение почты при регистрации'],
+        invoice: ['Запрос счёта', 'Письма дистрибьютору по КП'],
+        status: ['Статусы смет', 'Клиент открыл/согласовал КП — письмо монтажнику и копия вам'],
+        tariff: ['Истечение тарифа Профи', 'Предупреждение перед окончанием срока'],
+        message: ['Личные сообщения от админа', 'Дублирование сообщения на почту'],
+        stale: ['Вопросы без ответа', 'Вам: монтажник ждёт ответа больше 2 суток'],
+        feedback: ['Обратная связь', 'Форма «Написать нам»'],
+        inactivity: ['Неактивные учётки', 'Предупреждение и заморозка'],
+        nudge: ['Напоминания новичкам', 'Рассылка «первая смета», «что не получилось»'],
+        other: ['Прочее', 'Всё, что не распознано по теме письма']
+    },
+
+    loadMailBudget: async function () {
+        const { data, error } = await supabaseClient.rpc('mail_budget_state');
+        if (error) throw error;
+        this._mailState = data;
+        const { data: log } = await supabaseClient.rpc('mail_log_recent', { n: 100 });
+        this._mailLog = log || [];
+    },
+
+    renderAdminMail: async function () {
+        const content = document.getElementById('admin_content');
+        if (!content) return;
+        content.innerHTML += `<div id="admin_mail_root" style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка…</div>`;
+        try {
+            await this.loadMailBudget();
+        } catch (e) {
+            const root = document.getElementById('admin_mail_root');
+            if (root) root.innerHTML = `<div style="color:#EF4444; padding:20px;">Не удалось прочитать данные: ${e.message || e}
+                <div style="margin-top:8px; color:var(--text-sec); font-size:12px;">Похоже, миграция 20261005_mail_budget.sql ещё не выполнена в Supabase.</div></div>`;
+            return;
+        }
+        this.renderAdminMailBody();
+    },
+
+    renderAdminMailBody: function () {
+        const root = document.getElementById('admin_mail_root');
+        const s = this._mailState;
+        if (!root || !s) return;
+        root.style.textAlign = 'left'; root.style.padding = '0';
+        const esc = x => String(x ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const d = x => new Date(x).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+        const dt = x => new Date(x).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const lim = s.limit;
+        const color = s.load_pct >= 95 ? '#EF4444' : s.load_pct >= 80 ? '#D97706' : '#10B981';
+        const barW = Math.min(100, s.pct);
+        const fW = Math.min(100, s.forecast_pct);
+
+        const kinds = s.kinds || [];
+        const sumAll = kinds.reduce((a, k) => a + (k.per_cycle || 0), 0);
+        const sumOn = kinds.filter(k => !k.off).reduce((a, k) => a + (k.per_cycle || 0), 0);
+        const anyNoRate = kinds.some(k => k.per_cycle === null);
+
+        const stateOf = k => {
+            if (k.tier === 0) return ['защищён', '#0EA5E9'];
+            if (k.override === 'off') return ['выключен вручную', '#EF4444'];
+            if (k.override === 'on') return ['включён вручную', '#10B981'];
+            if (k.off) return [`отключён автоматически (порог ${k.threshold}%)`, '#D97706'];
+            return s.mode === 'auto' ? [`работает (отключится при ${k.threshold}%)`, '#10B981'] : ['работает', '#10B981'];
+        };
+
+        const rows = kinds.map(k => {
+            const [name, hint] = this.MAIL_KIND_LABELS[k.kind] || [k.kind, ''];
+            const [st, col] = stateOf(k);
+            const rate = k.rate_per_day === null ? '—' : (Math.round(k.rate_per_day * 10) / 10);
+            const per = k.per_cycle === null ? '—' : '≈ ' + k.per_cycle + (k.estimated ? '*' : '');
+            const sel = k.tier === 0 ? '<span style="color:var(--text-sec);">всегда включено</span>'
+                : `<select onchange="app.setMailOverride('${k.kind}', this.value)" style="padding:4px 6px;">
+                    <option value="" ${!k.override ? 'selected' : ''}>Авто</option>
+                    <option value="on" ${k.override === 'on' ? 'selected' : ''}>Включено</option>
+                    <option value="off" ${k.override === 'off' ? 'selected' : ''}>Выключено</option>
+                   </select>`;
+            const extra = (k.off && k.per_cycle) ? `<div style="font-size:10px; color:var(--text-sec);">включить = ещё ≈ ${k.per_cycle} писем за период</div>` : '';
+            return `<tr style="border-top:1px solid var(--border);">
+                <td style="padding:8px;"><b style="color:var(--text-main);">${esc(name)}</b><div style="font-size:10px; color:var(--text-sec);">${esc(hint)}</div></td>
+                <td style="padding:8px; text-align:center;">${k.tier === 0 ? '—' : k.tier}</td>
+                <td style="padding:8px; text-align:center;"><b>${k.used}</b></td>
+                <td style="padding:8px; text-align:center;">${rate}</td>
+                <td style="padding:8px; text-align:center;">${per}</td>
+                <td style="padding:8px;"><span style="color:${col}; font-weight:600;">${esc(st)}</span>${extra}</td>
+                <td style="padding:8px;">${sel}</td>
+            </tr>`;
+        }).join('');
+
+        const logRows = (this._mailLog || []).map(r => {
+            const [name] = this.MAIL_KIND_LABELS[r.kind] || [r.kind];
+            const stt = r.skipped ? '<span style="color:#D97706;">не отправлено (отключено)</span>' : (r.ok ? 'отправлено' : '<span style="color:#EF4444;">ошибка</span>');
+            return `<tr style="border-top:1px solid var(--border);">
+                <td style="padding:6px 8px; white-space:nowrap;">${dt(r.created_at)}</td>
+                <td style="padding:6px 8px;">${esc(name)}</td>
+                <td style="padding:6px 8px;">${esc(r.subject || '')}</td>
+                <td style="padding:6px 8px;">${stt}</td>
+                <td style="padding:6px 8px; color:var(--text-sec);">${esc(r.source || '')}</td>
+            </tr>`;
+        }).join('');
+
+        const dis = this.isReadOnlyAdmin() ? 'disabled' : '';
+        const field = (label, id, val, min, max) => `<label class="ad-field"><span>${label}</span><input type="number" id="${id}" min="${min}" max="${max}" value="${val}" ${dis}></label>`;
+        const hasOverrides = kinds.some(k => k.override);
+
+        root.innerHTML = `
+            <div class="ad-page-h">
+                <div><h3>Почта — лимит писем EmailJS</h3>
+                <div class="ad-sub">Цикл ${d(s.cycle_start)} — ${d(s.cycle_end)}, осталось ${s.days_left} дн. Сбрасывается сам
+                ${s.cycle_day}-го числа: отключённое автоматически включится заново.</div></div>
+            </div>
+
+            <div class="control-card" style="display:block; margin-bottom:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
+                    <div><span style="font-size:28px; font-weight:700; color:${color};">${s.used}</span>
+                        <span style="color:var(--text-sec);"> из ${lim} (${s.pct}%)</span></div>
+                    <div style="color:var(--text-sec); font-size:13px;">Прогноз на конец цикла: <b style="color:var(--text-main);">≈ ${s.forecast}</b> (${s.forecast_pct}%)</div>
+                </div>
+                <div style="position:relative; height:12px; background:var(--border); border-radius:6px; margin:10px 0 6px; overflow:hidden;">
+                    <div style="position:absolute; inset:0 auto 0 0; width:${fW}%; background:${color}; opacity:.28;"></div>
+                    <div style="position:absolute; inset:0 auto 0 0; width:${barW}%; background:${color};"></div>
+                </div>
+                <div style="font-size:11px; color:var(--text-sec);">Тёмная часть — уже ушло, светлая — прогноз. Для автоотключения берётся большее из двух: <b>${s.load_pct}%</b>.
+                ${s.elapsed_days < 5 ? ' Прогноз включается с 5-го дня цикла — раньше он слишком шумный.' : ''}
+                ${s.adjust ? ` В счётчик добавлена поправка ${s.adjust >= 0 ? '+' : ''}${s.adjust}.` : ''}</div>
+            </div>
+
+            <div class="control-card" style="display:block; margin-bottom:14px;">
+                <b>Режим</b>
+                <div style="margin-top:8px; display:flex; gap:18px; flex-wrap:wrap;">
+                    <label><input type="radio" name="mail_mode" value="auto" ${s.mode === 'auto' ? 'checked' : ''} ${dis} onchange="app.setMailMode('auto')"> Авто — рассылки отключаются по ступеням</label>
+                    <label><input type="radio" name="mail_mode" value="manual" ${s.mode === 'manual' ? 'checked' : ''} ${dis} onchange="app.setMailMode('manual')"> Вручную — сами выключатели, без автоотключения</label>
+                </div>
+                <div style="font-size:12px; color:var(--text-sec); margin-top:8px; max-width:780px;">
+                    Ступень 1 (${s.tiers.t1}%): напоминания новичкам, прочее · Ступень 2 (${s.tiers.t2}%): неактивные, личные сообщения, вопросы без ответа, обратная связь ·
+                    Ступень 3 (${s.tiers.t3}%): статусы смет, тариф Профи. Коды регистрации и запросы счёта не отключаются никогда.
+                    Ручная отметка по строке ниже главнее авто и работает в обоих режимах.
+                </div>
+            </div>
+
+            <div style="overflow-x:auto;"><table class="inv-table ad-sticky" style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead><tr style="text-align:left; color:var(--text-sec);">
+                    <th style="padding:8px;">Тип письма</th>
+                    <th style="padding:8px; text-align:center;">Ступень</th>
+                    <th style="padding:8px; text-align:center;">Ушло в цикле</th>
+                    <th style="padding:8px; text-align:center;">В сутки</th>
+                    <th style="padding:8px; text-align:center;">Прогноз на цикл</th>
+                    <th style="padding:8px;">Состояние</th>
+                    <th style="padding:8px;">Выключатель</th>
+                </tr></thead><tbody>${rows}</tbody></table></div>
+            <div style="font-size:12px; color:var(--text-sec); margin:8px 0 14px; max-width:820px;">
+                Если включено всё: ≈ <b style="color:var(--text-main);">${sumAll}</b> писем за цикл${anyNoRate ? ' (по типам с данными)' : ''} при лимите ${lim}.
+                С текущими отключениями: ≈ <b style="color:var(--text-main);">${sumOn}</b>.
+                ${s.log_age_days < 3 ? '<br>* Журнал только начал копить данные, поэтому для кодов регистрации, неактивных и новичков темп — оценка по истории базы; остальные типы покажут цифры через пару дней.' : ''}
+                ${hasOverrides && !this.isReadOnlyAdmin() ? '<br><a href="#" onclick="app.resetMailOverrides(); return false;">Сбросить все ручные отметки (вернуть на Авто)</a>' : ''}
+            </div>
+
+            <details class="ad-collapse">
+                <summary>Лимит и пороги</summary>
+                <div class="ad-form-grid">
+                    ${field('Лимит писем в цикле', 'mail_limit', lim, 1, 100000)}
+                    ${field('День начала цикла', 'mail_cycle_day', s.cycle_day, 1, 28)}
+                    ${field('Ступень 1, % нагрузки', 'mail_t1', s.tiers.t1, 1, 200)}
+                    ${field('Ступень 2, % нагрузки', 'mail_t2', s.tiers.t2, 1, 200)}
+                    ${field('Ступень 3, % нагрузки', 'mail_t3', s.tiers.t3, 1, 200)}
+                    ${field('Поправка к счётчику в этом цикле, писем', 'mail_adjust', s.adjust, -100000, 100000)}
+                    <div class="ad-form-act"><button class="admin-btn ad-primary" ${dis} onclick="app.saveMailSettings()">Сохранить</button></div>
+                </div>
+                <div class="ad-sub" style="margin:0 16px 8px; max-width:780px;">
+                    Поправка нужна, чтобы счётчик сошёлся с кабинетом EmailJS: журнал видит письма сайта и базы, а письма из Edge Function
+                    (статусы смет) и всё, что ушло до сегодняшнего дня, он не считал. Посмотрите «Requests received» в EmailJS и впишите разницу.
+                </div>
+            </details>
+
+            <h4 style="margin:18px 0 6px;">Последние письма</h4>
+            ${logRows ? `<div style="overflow-x:auto;"><table class="inv-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead><tr style="text-align:left; color:var(--text-sec);"><th style="padding:6px 8px;">Когда</th><th style="padding:6px 8px;">Тип</th><th style="padding:6px 8px;">Тема</th><th style="padding:6px 8px;">Итог</th><th style="padding:6px 8px;">Откуда</th></tr></thead>
+                <tbody>${logRows}</tbody></table></div>`
+                : '<div style="padding:16px; color:var(--text-sec);">Журнал пока пуст — письма начнут записываться после выкладки.</div>'}`;
+    },
+
+    // Состояние → объект app_settings.mail_budget (расчёт отдаёт всё, что в нём лежит).
+    mailCfgFromState: function () {
+        const s = this._mailState;
+        const overrides = {};
+        (s.kinds || []).forEach(k => { if (k.override) overrides[k.kind] = k.override; });
+        // Поправка живёт только в своём цикле (adjust_cycle — дата его начала): в новом счётчик с нуля.
+        return { limit: s.limit, cycle_day: s.cycle_day, mode: s.mode, tiers: Object.assign({}, s.tiers), overrides,
+                 adjust: s.adjust, adjust_cycle: String(s.cycle_start).slice(0, 10) };
+    },
+
+    saveMailCfg: async function (cfg, okText) {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять настройки почты запрещено.'); return; }
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'mail_budget', value: cfg, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            await this.loadMailBudget();
+            this.renderAdminMailBody();
+            if (okText) app.alert(okText);
+        } catch (e) {
+            app.alert('Не удалось сохранить настройки почты: ' + (e.message || e));
+        }
+    },
+
+    setMailOverride: function (kind, val) {
+        const cfg = this.mailCfgFromState();
+        if (val === 'on' || val === 'off') cfg.overrides[kind] = val; else delete cfg.overrides[kind];
+        this.saveMailCfg(cfg);
+    },
+
+    setMailMode: function (mode) {
+        const cfg = this.mailCfgFromState();
+        cfg.mode = mode === 'manual' ? 'manual' : 'auto';
+        this.saveMailCfg(cfg);
+    },
+
+    resetMailOverrides: function () {
+        const cfg = this.mailCfgFromState();
+        cfg.overrides = {};
+        this.saveMailCfg(cfg);
+    },
+
+    saveMailSettings: function () {
+        const get = id => parseInt((document.getElementById(id) || {}).value, 10);
+        const limit = get('mail_limit'), cycle_day = get('mail_cycle_day');
+        const t1 = get('mail_t1'), t2 = get('mail_t2'), t3 = get('mail_t3');
+        let adjust = get('mail_adjust'); if (isNaN(adjust)) adjust = 0;
+        if (!(limit >= 1) || !(cycle_day >= 1 && cycle_day <= 28)) { app.alert('Лимит — целое число от 1, день цикла — от 1 до 28.'); return; }
+        if (!(t1 >= 1) || !(t2 >= 1) || !(t3 >= 1)) { app.alert('Пороги ступеней — целые числа процентов.'); return; }
+        if (!(t1 <= t2 && t2 <= t3)) { app.alert('Ступени идут по возрастанию: первая отключается раньше второй, вторая — раньше третьей.'); return; }
+        const cfg = this.mailCfgFromState();
+        Object.assign(cfg, { limit, cycle_day, adjust, tiers: { t1, t2, t3 } });
+        this.saveMailCfg(cfg, 'Настройки сохранены.');
+    },
+
     renderAdminInactive: async function () {
         const content = document.getElementById('admin_content');
         if (!content) return;
@@ -49861,7 +50164,7 @@ const app = {
 
         // Полный сброс данных расчета
         this.state = {
-            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
+            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
             autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null },
             // ВОЗВРАЩАЕМ АВТОРИЗАЦИЮ И ТАРИФ НА МЕСТО
             tgUser: currentTgUser,
@@ -60311,6 +60614,218 @@ const app = {
         };
     },
 
+    // ===== Буферная ёмкость (тепловой накопитель) STOUT STT-0001…0004 =====
+    // Паспорта 2026 («Новые паспорта»). В смете — только в подробном режиме и только без
+    // газового котла: в калькуляторе источники тепла — газ и электро, а накопитель окупается
+    // на электрокотле с двухтарифным счётчиком (ночью греем, днём отдаём). Тепловые насосы и
+    // твёрдое топливо калькулятор пока не считает.
+    // Правила подбора — практика проектирования, на СП не ссылаемся (CLAUDE.md, «Нормативная
+    // база», правило 2):
+    //  · ΔT = 40 К: заряд до 85 °C при паспортном пределе 95 °C, отбор до ≈ 45 °C;
+    //  · двухтарифный счётчик: накопитель берёт на себя половину дневного расхода средней зимы;
+    //  · один тариф: накопитель не окупается, объём — 20 л на кВт котла (от коротких циклов).
+    // Паспорт: расстояние от верха до потолка не менее 600 мм, до стены — не менее 50 мм.
+    BUFFER_DT: 40,
+    BUFFER_COVER: 0.5,
+    BUFFER_L_PER_KW: 20,
+    BUFFER_TOP_GAP_M: 0.6,
+    bufferAvailable: function () {
+        const s = this.state;
+        if (!s.detailedRooms || this.isFlat()) return false;
+        const f = s.fuels || [];
+        return f.includes('el') && !f.includes('gas');
+    },
+    bufferActive: function () { return this.bufferAvailable() && !!this.state.bufferTank; },
+    // Потери накопителя за сутки, кВт·ч: изоляция 70 мм (λ 0,031) плюс плёнка воздуха
+    // 0,115 м²·К/Вт (СП 50.13330, αв = 8,7); вода в среднем 65 °C, в котельной 20 °C.
+    bufferLossKwhDay: function (it) {
+        const R = (it.insMm / 1000) / it.insLambda + 0.115;
+        const D = it.dMm / 1000, H = it.hMm / 1000;
+        const A = Math.PI * D * H + 2 * Math.PI * D * D / 4;
+        return A / R * (65 - 20) * 24 / 1000;
+    },
+    // Сколько патрубков остаётся без дела и требует заглушки (паспорт, табл. «Конструкция»).
+    bufferSparePorts: function (it) {
+        const t = String((it && it.id) || '').slice(0, 8);
+        if (t === 'STT-0001') return { n: 5, size: '1 1/2"' };
+        if (t === 'STT-0002') return { n: 3, size: '1 1/2"' };
+        if (t === 'STT-0004') return { n: 1, size: '2"' };
+        return { n: 0, size: '' };
+    },
+    bufferPick: function () {
+        const kind = this.state.bufferKind || 'plain';
+        const pool = (catalog.tanks_buffer || []).filter(x => x.kind === kind).slice().sort((a, b) => a.vol - b.vol);
+        if (!pool.length) return null;
+        const r = this.calcElHeatingCost();
+        const twoRate = !!(r && r.twoRate);
+        const boilerKw = parseFloat(this._elBoilerKw) || (r ? r.kw : 0);
+        let need = 0, perDay = 0, roomKwh = 0, rechargeLimited = false;
+        if (twoRate) {
+            let dayKwh = 0, nightKwh = 0, days = 0;
+            r.months.forEach(m => { if (!m.off) { dayKwh += m.kwh - m.kwhNight; nightKwh += m.kwhNight; days += m.days; } });
+            perDay = days ? dayKwh / days : 0;
+            // Сколько котёл успевает дозарядить за ночные 8 часов сверх обычной ночной нагрузки:
+            // больше этого накопитель не заряжается, и лишний объём только копит потери.
+            const kwCap = r.capKw > 0 ? r.capKw : (r.boilerKw > 0 ? r.boilerKw : r.kw);
+            roomKwh = Math.max(0, kwCap * this.EL_NIGHT_HOURS - (days ? nightKwh / days : 0));
+            let eNeed = perDay * this.BUFFER_COVER;
+            if (eNeed > roomKwh) { eNeed = roomKwh; rechargeLimited = true; }
+            need = eNeed * 1000 / (1.163 * this.BUFFER_DT);
+        } else {
+            need = boilerKw * this.BUFFER_L_PER_KW;
+        }
+        const ceilH = parseFloat(this.state.h1) || 2.7;
+        const fits = x => (x.hMm / 1000 + this.BUFFER_TOP_GAP_M) <= ceilH + 1e-6;
+        const manual = parseInt(this.state.bufferVolManual, 10) || 0;
+        let item = manual ? (pool.find(x => x.volNom === manual) || null) : null;
+        const byManual = !!item;
+        if (!item) {
+            const ok = pool.filter(fits);
+            item = ok.find(x => x.vol >= need) || null;
+            if (!item) item = ok.length ? ok[ok.length - 1] : (pool.find(x => x.vol >= need) || pool[pool.length - 1]);
+        }
+        return {
+            item: item, need: need, perDay: perDay, roomKwh: roomKwh, rechargeLimited: rechargeLimited,
+            byManual: byManual, fits: fits(item), ceilH: ceilH,
+            undersized: item.vol < need * 0.95, twoRate: twoRate, kind: kind, boilerKw: boilerKw
+        };
+    },
+    // Экономика ночного накопления. Берём месячный расход из calcElHeatingCost: накопитель
+    // переносит на ночь столько дневных кВт·ч, сколько в него влезает (E = V·1,163·ΔT) и
+    // сколько котёл успевает дозарядить за ночные 8 часов сверх обычной ночной нагрузки.
+    // Потери бака платим по ночному тарифу, считаем за все сутки сезона.
+    calcBufferSaving: function (pick, r) {
+        if (!pick || !r || !r.twoRate) return null;
+        const it = pick.item;
+        const eFull = it.vol * 0.001163 * this.BUFFER_DT;
+        const loss = this.bufferLossKwhDay(it);
+        const kwCap = r.capKw > 0 ? r.capKw : (r.boilerKw > 0 ? r.boilerKw : r.kw);
+        let saving = 0, shiftSum = 0, days = 0, limited = false;
+        r.months.forEach(m => {
+            if (m.off) return;
+            const dayPD = (m.kwh - m.kwhNight) / m.days;
+            const nightPD = m.kwhNight / m.days;
+            let shift = Math.min(eFull, dayPD);
+            const room = Math.max(0, kwCap * this.EL_NIGHT_HOURS - nightPD - loss);
+            if (shift > room) { shift = room; limited = true; }
+            saving += m.days * (shift * (r.tariffDay - r.tariffNight) - loss * r.tariffNight);
+            shiftSum += shift * m.days; days += m.days;
+        });
+        const price = it.price > 0 ? it.price : 0;
+        return {
+            eFull: eFull, loss: loss, saving: saving, shiftAvg: days ? shiftSum / days : 0, days: days,
+            limited: limited, price: price, kwCap: kwCap,
+            payback: (price > 0 && saving > 0) ? price / saving : null
+        };
+    },
+    // Плашки к разделу сметы «Буферная ёмкость». Цены у позиций STT пока нет: ТЕРЕМ внесёт
+    // их в прайс в следующем месяце, тогда AutoPrice.py подставит цену, а плашка исчезнет.
+    bufferNotesHtml: function (pick) {
+        const it = pick.item;
+        let html = '';
+        if (!(it.price > 0)) {
+            html += this.noteBox('warn', 'Цена ёмкости не определена.',
+                `Позиции STT появятся в прайсе ТЕРЕМ в следующем месяце, пока строка в итог не входит.`,
+                `<div class="tip-p">Артикул <b>${it.id}</b>, цена по запросу. Фитинги подключения посчитаны по прайсу.</div>`);
+        }
+        if (!pick.fits) {
+            html += this.noteBox('error', 'Ёмкость не помещается по высоте.',
+                `Нужен потолок от ${(it.hMm / 1000 + this.BUFFER_TOP_GAP_M).toFixed(2).replace('.', ',')} м, в расчёте ${pick.ceilH.toFixed(2).replace('.', ',')} м.`,
+                `<div class="tip-p">Паспорт STT: от верха ёмкости до потолка не менее 600 мм. Высота ${it.hMm} мм. Выберите меньший объём или другое исполнение.</div>`);
+        }
+        if (pick.undersized && !pick.byManual) {
+            html += this.noteBox('warn', 'Объём меньше расчётного.',
+                `Нужно около ${Math.round(pick.need)} л, подобрано ${it.vol} л — выше не проходит по высоте или по паспортному ряду.`, '');
+        }
+        if (pick.rechargeLimited) {
+            html += this.noteBox('warn', 'Объём ограничен мощностью котла.',
+                `За ночь он успевает дозарядить около ${Math.round(pick.roomKwh)} кВт·ч сверх нагрузки дома.`,
+                `<div class="tip-p">Электрокотёл ${Math.round(pick.boilerKw * 10) / 10} кВт: ночные ${this.EL_NIGHT_HOURS} часов уходят на отопление самого дома, на заряд ёмкости остаётся только остаток мощности. Больший объём не успеет зарядиться и даст только потери. Поднимите мощность котла или лимит сети, тогда накопитель окупится лучше.</div>`);
+        }
+        const sp = this.bufferSparePorts(it);
+        const det = `<div class="tip-p">Ёмкость <b>${it.vol} л</b>, высота ${it.hMm} мм, диаметр с изоляцией ${it.dMm} мм, масса пустой ${it.kg} кг (с водой ≈ ${(it.kg + it.vol)} кг). До ${it.maxBar} бар и ${it.maxT} °C.</div>` +
+            `<div class="tip-p">Подключение G 1 1/2" ВР. В смету включены ниппели-переходы, муфты и переходы на трубу на подачу и обратку котла и системы, дренажный кран и 3 м трубы. ` +
+            (sp.n ? `Остальные патрубки (${sp.n} шт., G ${sp.size} ВР) надо заглушить: наружных заглушек такого размера в прайсе STOUT нет, подберите у поставщика. ` : '') +
+            `Патрубки G 1/2" под гильзы датчиков закрывают по месту.</div>` +
+            `<div class="tip-p">Гидрострелка / коллектор с разделителем остаются: накопитель стоит в контуре котла, а не вместо разделителя. Расширительный бак пересчитан с учётом объёма ёмкости (паспорт, раздел «Монтаж»).</div>` +
+            `<div class="tip-p">Нужны предохранительный клапан на 3 бар (в обвязке котла) и заземление на кольцевой опоре.</div>` +
+            (pick.kind === 'coil' ? `<div class="tip-p"><b>STT-0004 со змеевиком ГВС.</b> Бойлер из сметы автоматически не убирается: если змеевика хватает для горячей воды, уберите «Водонагреватель» вручную.</div>` : '');
+        html += this.noteBox('info', `Буферная ёмкость ${it.id}.`, `${it.vol} л, ${it.hMm} мм. Подробности — под значком.`, det);
+        return html;
+    },
+    // Переключатель «Буферная ёмкость» в панели настроек.
+    toggleBuffer: function (chk) {
+        this.state.bufferTank = !!chk;
+        this.render();
+        this.syncUI();
+        this.saveState();
+    },
+    setBufferKind: function (kind) {
+        this.state.bufferKind = (kind === 'strat' || kind === 'coil') ? kind : 'plain';
+        this.state.bufferVolManual = null;
+        this.render();
+        this.syncUI();
+        this.saveState();
+    },
+    // Шаг по паспортному ряду: ±1 типоразмер от текущего, ручной выбор снимает автоподбор.
+    stepBufferVol: function (dir) {
+        const kind = this.state.bufferKind || 'plain';
+        const pool = (catalog.tanks_buffer || []).filter(x => x.kind === kind).slice().sort((a, b) => a.vol - b.vol);
+        const seen = {}; const noms = pool.map(x => x.volNom).filter(n => !seen[n] && (seen[n] = 1));
+        const pick = this._bufPick;
+        const cur = noms.indexOf(pick && pick.item ? pick.item.volNom : noms[0]);
+        const next = Math.max(0, Math.min(noms.length - 1, cur + (dir || 0)));
+        this.state.bufferVolManual = noms[next];
+        this.render();
+        this.syncUI();
+        this.saveState();
+    },
+    resetBufferVol: function () {
+        this.state.bufferVolManual = null;
+        this.render();
+        this.syncUI();
+        this.saveState();
+    },
+    // Блок в панели настроек: что подобрано, откуда объём и сколько это даёт за сезон.
+    renderBufferUI: function () {
+        const box = document.getElementById('buffer_body');
+        if (!box) return;
+        this.initPanelTips();
+        const pick = this._bufPick || this.bufferPick();
+        if (!pick) { box.innerHTML = ''; return; }
+        const it = pick.item;
+        const r = this.calcElHeatingCost();
+        const sav = this.calcBufferSaving(pick, r);
+        const money = v => Math.round(v).toLocaleString('ru-RU');
+        const f1 = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
+        let h = `<div style="font-size:12px; font-weight:700;">${it.id} · ${it.vol} л</div>` +
+            `<div style="font-size:11px; color:var(--text-sec);">высота ${it.hMm} мм, Ø ${it.dMm} мм, пустой ${it.kg} кг, ${it.maxBar} бар, ${it.maxT} °C</div>`;
+        if (pick.twoRate) {
+            h += `<div style="margin-top:6px; font-size:11px;">Объём: половина дневного расхода средней зимы (${f1(pick.perDay)} кВт·ч/сут, ΔT ${this.BUFFER_DT} К) — нужно около ${Math.round(pick.need)} л.</div>`;
+            if (pick.rechargeLimited) {
+                h += `<div style="margin-top:6px; padding-left:8px; border-left:3px solid #F59E0B; font-size:11px; line-height:1.5;">⚠️ Объём ограничен мощностью котла: за ночные ${this.EL_NIGHT_HOURS} ч он даёт на дозарядку ёмкости только ${f1(pick.roomKwh)} кВт·ч сверх ночной нагрузки дома. Больше объём — только лишние потери. Выгоднее поднять мощность котла или лимит сети.</div>`;
+            }
+        } else {
+            h += `<div style="margin-top:6px; padding-left:8px; border-left:3px solid #F59E0B; font-size:11px; line-height:1.5;">⚠️ Тариф один — ночного накопления нет, окупаемости нет. Объём взят из расчёта ${this.BUFFER_L_PER_KW} л на кВт котла (${f1(pick.boilerKw)} кВт), против коротких циклов. Включите «День-ночь» в блоке «Стоимость отопления».</div>`;
+        }
+        if (!pick.fits) {
+            h += `<div style="margin-top:6px; padding-left:8px; border-left:3px solid #DC2626; font-size:11px; line-height:1.5;">⛔ Не помещается: нужен потолок от ${f1(it.hMm / 1000 + this.BUFFER_TOP_GAP_M)} м, задано ${f1(pick.ceilH)} м (высота 1-го этажа).</div>`;
+        }
+        if (pick.undersized && !pick.byManual) {
+            h += `<div style="margin-top:6px; padding-left:8px; border-left:3px solid #F59E0B; font-size:11px; line-height:1.5;">⚠️ Объём меньше расчётного: выше не проходит по высоте или по ряду.</div>`;
+        }
+        if (sav) {
+            h += `<div style="margin-top:6px; font-size:11px; line-height:1.5;">В цикле ёмкость запасает ${f1(sav.eFull)} кВт·ч, в среднем за сезон переносит на ночь ${f1(sav.shiftAvg)} кВт·ч в сутки; потери самой ёмкости ${f1(sav.loss)} кВт·ч в сутки.` +
+                (sav.limited ? ' Дозарядка за ночь упирается в мощность котла.' : '') + `</div>`;
+            const ok = sav.saving > 0;
+            h += `<div style="margin-top:6px; padding:6px 8px; background:var(--primary-light); border-radius:6px; font-size:11px; font-weight:700; color:${ok ? 'var(--primary)' : '#B45309'};">` +
+                (ok ? `Экономия ≈ ${money(sav.saving)} ₽ за сезон` : `При этих тарифах накопитель убыточен (${money(sav.saving)} ₽ за сезон)`) +
+                (sav.payback ? `<br><span style="font-weight:500;">Окупаемость самой ёмкости ≈ ${f1(sav.payback)} лет</span>` : `<br><span style="font-weight:500;">Окупаемость — когда в прайсе появится цена ёмкости</span>`) +
+                `</div>`;
+        }
+        box.innerHTML = h;
+    },
+
     // Теплота сгорания и КПД для пересчёта тепла в топливо.
     // Природный газ: низшая теплота сгорания 34 МДж/м³ = 9.45 кВт·ч/м³.
     // СУГ (пропан-бутан): 12.8 кВт·ч/кг при плотности 0.54 кг/л = 6.91 кВт·ч/л.
@@ -66050,6 +66565,29 @@ const app = {
                 this.renderElCostUI();
             }
         }
+        // Буферная ёмкость: переключатель виден в подробном режиме без газового котла,
+        // тело блока — пока тумблер включён (bufferAvailable / bufferActive).
+        const bufBlk = document.getElementById('blk_buffer');
+        if (bufBlk) {
+            const bufOn = this.bufferAvailable();
+            bufBlk.style.display = bufOn ? 'block' : 'none';
+            const bufChk = document.getElementById('chk_buffer');
+            if (bufChk) bufChk.checked = !!this.state.bufferTank;
+            const bufShow = bufOn && !!this.state.bufferTank;
+            const bufBox = document.getElementById('blk_buffer_box');
+            if (bufBox) bufBox.style.display = bufShow ? 'flex' : 'none';
+            if (bufShow) {
+                document.querySelectorAll('.buffer-kind-tab').forEach(t => {
+                    t.className = 'tab buffer-kind-tab' + (t.dataset.bkind === (this.state.bufferKind || 'plain') ? ' active' : '');
+                });
+                const bufPk = this._bufPick || this.bufferPick();
+                const bufVal = document.getElementById('val_buffer_vol');
+                if (bufVal && bufPk) bufVal.innerText = bufPk.item.volNom;
+                const bufRs = document.getElementById('buffer_vol_reset');
+                if (bufRs) bufRs.style.display = this.state.bufferVolManual ? 'block' : 'none';
+                this.renderBufferUI();
+            }
+        }
         // Дымоход: трасса и предел котла
         this.syncChimneyUI();
 
@@ -68066,7 +68604,19 @@ const app = {
             </table>${capNote}
             <div style="position:relative; margin-top:6px; padding:6px 8px; background:var(--primary-light); border-radius:6px; font-size:11px; font-weight:700; color:var(--primary); display:flex; align-items:center; justify-content:space-between; gap:6px;">
                 <span>В среднем ${money(r.avgMonthCost)} ₽ в месяц<span class="ui-emo"> ⚡</span></span>${tip}
-            </div>${this.boilerAutoSaveHtml(r.seasonCost, r.activeMonths, 'el')}`;
+            </div>${this.bufferCostLineHtml(r)}${this.boilerAutoSaveHtml(r.seasonCost, r.activeMonths, 'el')}`;
+    },
+    // Строка под средним счётом: сколько даёт буферная ёмкость, если она включена в смете.
+    bufferCostLineHtml: function (r) {
+        if (!this.bufferActive() || !r || !r.twoRate) return '';
+        const pick = this._bufPick || this.bufferPick();
+        const sav = this.calcBufferSaving(pick, r);
+        if (!sav) return '';
+        const ok = sav.saving > 0;
+        const v = Math.round(Math.abs(sav.saving)).toLocaleString('ru-RU');
+        return `<div style="margin-top:6px; font-size:11px; font-weight:700; color:${ok ? 'var(--primary)' : '#B45309'};">` +
+            (ok ? `С ёмкостью ${pick.item.id}: на ${v} ₽ меньше за сезон` : `С ёмкостью ${pick.item.id}: на ${v} ₽ больше за сезон`) +
+            `</div>`;
     },
     toggleGasCost: function (chk) {
         this.state.showGasCost = !!chk;
@@ -75350,6 +75900,10 @@ const app = {
         // Расчет объема системы (для бака)
         let boilersVol = 0; if (selBoilers.length > 0) { selBoilers.forEach(b => { boilersVol += (b.vol !== undefined ? b.vol : 6); }); }
         let vSys = (boilersVol + radSecs * 0.25 + radMeters * 0.11 + tpMeters * 0.113 + (needCollector ? 5 : 0)) * 1.15;
+        // Буферная ёмкость входит в объём системы: расширительный бак считается с ней
+        // (паспорт STT, раздел «Монтаж»).
+        this._bufPick = this.bufferActive() ? this.bufferPick() : null;
+        if (this._bufPick) vSys += this._bufPick.item.vol;
         this.tpMeters = tpMeters;
         this.tpArea = tpArea;
         this.tQ_val = tQ;
@@ -76394,6 +76948,70 @@ const app = {
                     (_tieTh !== '1' ? ` <b>Внимание:</b> муфта узла на 1", нужен резьбовой переход 1"–${this.ssThreadLabel(_tieTh)} (в смету не входит).` : ``) +
                     ` Требуется: 2 шт.`, _hydroTieGrp);
             }
+        }
+
+        // 0в. Буферная ёмкость STOUT STT (подробный режим, электрокотёл без газа — bufferAvailable).
+        // Четыре патрубка G 1 1/2" ВР: подача и обратка котла, подача и обратка системы. Переход
+        // на трубу идёт тем же путём, что у узла гидроразделения, только с патрубка ВР, а не НР:
+        // ниппель 1 1/2" х T в патрубок, на его резьбу T — муфта ВР, в муфту — пресс-переходник
+        // трубы с НР той же резьбы T. T — та резьба, которая у перехода этого диаметра реально
+        // есть (на 15–22 это 3/4", на 28 — 1", на 35 — 1 1/4"): пара «НР — ВР» обязана сойтись
+        // по размеру, а не по диаметру трубы (CLAUDE.md, «Стыковка обвязки котельной», п. 3).
+        // Дренаж — шаровой кран 1/2" НР/НР в патрубок подпитки/дренажа; 3 м трубы — подводка
+        // котёл → ёмкость → узел (1,5 м на трубу, как у подводки к гидроразделению).
+        if (this._bufPick && this._bufPick.item) {
+            const _bp = this._bufPick, _bi = _bp.item, _bg = "2.7. Буферная ёмкость";
+            const _bAlts = (catalog.tanks_buffer || []).filter(x => x.volNom === _bi.volNom && x.id !== _bi.id).map(x => ({ ...x, noCheapen: true }));
+            addToBill({ ..._bi, alts: _bAlts, noCheapenAlts: true, sortRank: -2 }, 1,
+                `Буферная ёмкость STOUT ${_bi.id}, полезный объём ${_bi.vol} л, ${_bi.maxBar} бар, до ${_bi.maxT} °C, изоляция ${_bi.insMm} мм в комплекте. Накапливает тепло ночью (дешёвый тариф) и отдаёт его системе днём.`, _bg);
+            // Резьба пресс-перехода трубы и сам переход (ставится ниже, после ниппеля с муфтой).
+            let _bTh = '1', _bAdpAdd = null;
+            if (isAnalog) {
+                _bTh = '1';
+                _bAdpAdd = (thNote) => {
+                    if (ss_diameter === 28) {
+                        addToBill(this.getPprItem(catalog.ppr_ekoplastik_coupling_red, 'SRE14032RCT'), 4,
+                            `Муфта переходная 40х32 PP-RCT перед присоединением к буферной ёмкости. Требуется: 4 шт.`, _bg);
+                    }
+                    addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_mi, 'SZE03232OKRCT'), 4,
+                        `Муфта комбинированная с наружной резьбой 32х1" PP-RCT — вкручивается в муфту патрубка ёмкости. Требуется: 4 шт.`, _bg);
+                };
+            } else if (isPress) {
+                const _bD = mpD(ss_diameter);
+                const _bTie = bpThreadFor('mi', _bD, '1');
+                _bTh = _bTie.key;
+                _bAdpAdd = (thNote) => bpPress(_bTie.item, 4,
+                    `Переходник с трубы ${_bD} на наружную резьбу ${bpThLabel(_bTie.key)} — вкручивается в муфту патрубка буферной ёмкости.${thNote} Требуется: 4 шт.`, _bg, 1, _bD);
+            } else {
+                const _bThS = this.ssThreadFor('ss_adapter_mi', ss_diameter, '1');
+                const _bAdp = _bThS && this.ssFit('ss_adapter_mi', ss_diameter, _bThS);
+                _bTh = _bThS || '1';
+                _bAdpAdd = (thNote) => { if (_bAdp) addToBill(_bAdp, 4,
+                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${this.ssThreadLabel(_bThS)} — вкручивается в муфту патрубка буферной ёмкости.${thNote} Требуется: 4 шт.`, _bg); };
+            }
+            // Ниппель и муфта — под ту же резьбу. Резьбы 1/2" в линейке ниппелей 1 1/2" нет, берём 3/4".
+            const _bKey = ({ '1/2': '3/4', '3/4': '3/4', '1': '1', '11/4': '11/4' })[_bTh] || '1';
+            const _bNip = ({ '3/4': catalog.buffer_nipple_112_34, '1': catalog.buffer_nipple_112_1, '11/4': catalog.buffer_nipple_112_114 })[_bKey];
+            const _bCplBase = ({ '3/4': catalog.buffer_coupling_34, '1': catalog.hydro_tie_coupling_1, '11/4': catalog.buffer_coupling_114 })[_bKey];
+            const _bThTxt = ({ '3/4': '3/4"', '1': '1"', '11/4': '1 1/4"' })[_bKey];
+            if (_bNip) {
+                addToBill(_bNip, 4,
+                    `Ниппель переходной 1 1/2" х ${_bThTxt} НР — вкручивается в патрубок ёмкости G 1 1/2" (ВР); на его ${_bThTxt} садится муфта. По одному на каждый используемый патрубок: подача и обратка котла, подача и обратка системы. Требуется: 4 шт.`, _bg);
+            }
+            if (_bCplBase) {
+                addToBill({ ..._bCplBase, originalId: (_bCplBase.id + '_buf') }, 4,
+                    `Муфта ВР ${_bThTxt} между ниппелем патрубка ёмкости и переходом на трубу. Требуется: 4 шт.`, _bg);
+            }
+            if (_bAdpAdd) _bAdpAdd(_bTh !== _bKey ? ` <b>Внимание:</b> муфта на ${_bThTxt}, у перехода трубы резьба ${_bTh}" — нужен резьбовой переход (в смету не входит).` : '');
+            const _bDrain = (catalog.ball_valves || []).find(v => v.id === 'SVB-0006-200015');
+            if (_bDrain) {
+                addToBill({ ...withRommerAlt(_bDrain), originalId: 'SVB-0006-200015_buf_drain' }, 1,
+                    `Дренажный кран на патрубок подпитки/дренажа G 1/2" ёмкости: паспорт требует кран для слива теплоносителя на время обслуживания.`, _bg);
+            }
+            ss_pipes_demand[_boilerSize].length += 3;
+            ss_pipes_demand[_boilerSize].components.push("подводка к буферной ёмкости");
+            this.groupWarns = this.groupWarns || {};
+            this.groupWarns[_bg] = this.bufferNotesHtml(_bp);
         }
 
         // 1. Котлы

@@ -199,7 +199,8 @@ body.dark-mode #blk_zone_auto_item {
    и тёмную тему получает тем же правилом. Без него фон оставался #F8FAFC, а
    текст поверх него шёл светлым: в тёмной теме блок читался только наполовину. */
 body.dark-mode #blk_el_cost_box,
-body.dark-mode #blk_gas_cost_box {
+body.dark-mode #blk_gas_cost_box,
+body.dark-mode #blk_buffer_box {
     background: #161616 !important;
     border-color: #2A2A2A !important;
 }
@@ -13812,12 +13813,12 @@ body.lk-docked #lk_rating_overlay .auth-modal-content {
    Множитель задаём свой и постоянный: в пристыкованном виде ширина окна уже не
    определяет размер панели. */
 body.lk-docked #admin_modal_overlay .auth-modal-content {
-    zoom: 0.8 !important;
+    zoom: var(--ui-zoom, 0.8) !important;
     position: fixed !important;
-    top: calc(var(--lk-dock-top, 80px) / 0.8) !important;
-    left: calc(var(--lk-dock-left, 104px) / 0.8) !important;
-    right: calc(var(--lk-dock-right, 16px) / 0.8) !important;
-    bottom: calc(var(--lk-dock-bottom, 16px) / 0.8) !important;
+    top: calc(var(--lk-dock-top, 80px) / var(--ui-zoom, 0.8)) !important;
+    left: calc(var(--lk-dock-left, 104px) / var(--ui-zoom, 0.8)) !important;
+    right: calc(var(--lk-dock-right, 16px) / var(--ui-zoom, 0.8)) !important;
+    bottom: calc(var(--lk-dock-bottom, 16px) / var(--ui-zoom, 0.8)) !important;
     width: auto !important;
     max-width: none !important;
     height: auto !important;
@@ -17648,6 +17649,12 @@ body.theme-yandex #admin_modal_overlay {
 }
 #admin_content table.ad-dense td { padding-top: 3px !important; padding-bottom: 3px !important; font-size: 11.5px; }
 #admin_content table.ad-dense td * { line-height: 1.25; }
+/* Компактно: вторичные строки (адрес, возраст, активность, время на сайте) скрыты — они и задают высоту строки */
+#admin_content table.ad-dense .ad-more { display: none !important; }
+.ad-name-short { display: none; }
+#admin_content table.ad-dense .ad-name-full { display: none; }
+#admin_content table.ad-dense .ad-name-short { display: inline; }
+#admin_content table.ad-dense td img { width: 24px !important; height: 24px !important; }
 #ad_peek {
     position: absolute;
     top: 0;
@@ -18242,7 +18249,7 @@ body.dark-mode #admin_content .btn-icon {
 
 /* Меню «Размер интерфейса» у кнопки «Aa». Лежит в body вне zoom обёртки — обычные px. */
 .ui-scale-menu {
-    position: fixed; z-index: 100000; width: 250px; box-sizing: border-box;
+    position: fixed; z-index: 2000100; width: 250px; box-sizing: border-box;
     padding: 14px; border-radius: 12px;
     background: var(--surface, #fff); color: var(--text-main, #111827);
     border: 1px solid var(--border, #e5e7eb);
