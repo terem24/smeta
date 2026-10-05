@@ -36416,7 +36416,12 @@ const app = {
         if (!window.projectScheme || !window.projectScheme.ufhScheme || !window.projectSheets) return null;
         const spec = this.currentSpec || [];
         const nameOf = i => (i && i.name ? String(i.name) : '');
-        const rows = spec.filter(i => /^\s*4\.3/.test(i.group || ''));
+        // Позиции зональной автоматики лежат в разделе 4.5 (кабель — в 4.5.1, его
+        // строки «линии термостатов/сервоприводов» под поиск по названию не берём).
+        // Схема нарисована под планку STOUT STE-3050; у ENGO другие клеммы и своего
+        // листа пока нет — без паспорта ECB62-ZB их не рисуем.
+        if (this.zoneAutoSystem() !== 'stout') return '';
+        const rows = spec.filter(i => /^\s*4\.5\.(?!\d)/.test(i.group || ''));
         if (!rows.length) return '';
         const pick = re => rows.find(i => re.test(nameOf(i)));
         const servo = pick(/сервопривод/i), stat = pick(/термостат|терморегулятор/i), blk = pick(/контроллер|коммутацион/i);
@@ -36427,7 +36432,7 @@ const app = {
             // \b в JS не срабатывает на кириллице, поэтому «НО» ищем явными границами
             servoType: servo ? (servo.type || (/(^|[^А-Яа-яЁё])НО([^А-Яа-яЁё]|$)|\(NO\)|нормально\s*откр/i.test(nameOf(servo)) ? 'no' : 'nc')) : 'nc',
             servoVolt: servo ? (servo.voltage || (/\b24\s*В/.test(nameOf(servo)) ? 24 : 230)) : 230,
-            stats: stat ? (stat.q || 0) : 0, statName: stat ? nameOf(stat) : '',
+            stats: stat ? (stat.q || 0) : 0, statName: stat ? nameOf(stat) : '', statId: stat ? (stat.id || '') : '',
             statCurrent: stat ? (stat.current || null) : null,
             statCtrl: stat ? (stat.ctrlType || null) : null,
             blocks: blk ? (blk.q || 0) : 0, blockName: blk ? nameOf(blk) : '',
@@ -36905,11 +36910,12 @@ const app = {
             boiler0: nameOfItem(tcBoilers[0] && (tcBoilers[0].kind === 'gas' ? gasB : elB)),
             boiler1: nameOfItem(tcBoilers[1] && (tcBoilers[1].kind === 'gas' ? gasB : elB))
         };
-        // Автоматика тёплого пола (раздел 4.3) — самостоятельная зональная
+        // Автоматика радиаторов и тёплого пола (раздел 4.5) — самостоятельная зональная
         // система на 230 В, к клеммам контроллера она не подключается напрямую.
         // Состав берём из самой сметы, а не пересчитываем: там он уже посчитан
         // по петлям, зонам и этажам.
-        const ufhRows = spec.filter(i => /^\s*4\.3/.test(i.group || ''));
+        // Состав зональной автоматики — раздел 4.5; лист нарисован под планку STOUT.
+        const ufhRows = this.zoneAutoSystem() === 'stout' ? spec.filter(i => /^\s*4\.5\.(?!\d)/.test(i.group || '')) : [];
         if (ufhRows.length) {
             const pick = re => ufhRows.find(i => re.test(nameOf(i)));
             const servo = pick(/сервопривод/i), stat = pick(/термостат|терморегулятор/i), blk = pick(/контроллер|коммутацион/i);
@@ -36921,7 +36927,7 @@ const app = {
                 servos: servo ? (servo.q || 0) : 0, servoName: servo ? nameOf(servo) : '',
                 servoType: servo ? (servo.type || (/\bНО\b|\(NO\)/.test(nameOf(servo)) ? 'no' : 'nc')) : 'nc',
                 servoVolt: servo ? (servo.voltage || (/\b24\s*В/.test(nameOf(servo)) ? 24 : 230)) : 230,
-                stats: stat ? (stat.q || 0) : 0, statName: stat ? nameOf(stat) : '',
+                stats: stat ? (stat.q || 0) : 0, statName: stat ? nameOf(stat) : '', statId: stat ? (stat.id || '') : '',
                 blocks: blk ? (blk.q || 0) : 0, blockName: blk ? nameOf(blk) : '',
                 ko: koUfh ? koUfh.name : null
             };
@@ -82904,7 +82910,7 @@ const app = {
         // У каждого контроллера своя схема: клеммы у приборов разные, и
         // нужный лист выбирает сама renderAutomationScheme по модели.
         [['automation_scheme_row', '2.9.1.', () => this.thermaticConfig && this.renderAutomationScheme()],
-         ['ufh_scheme_row', '4.3.', () => this.renderUfhScheme()],
+         ['ufh_scheme_row', '4.5. Автоматика радиаторов', () => this.renderUfhScheme()],
          ['snow_scheme_row', '4.4.1', () => this.renderSnowScheme()],
          ['rad_panel_scheme_row', '3. Приборы отопления', () => this.renderRadPanelScheme(), true],
          ['rad_node_scheme_row', '3.3. Трубы отопления', () => this.renderRadNodeScheme()],
