@@ -26096,6 +26096,9 @@ const app = {
             }
             let name = this.getAdminUserDisplayName(u);
             let nameEscaped = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            // Для «Компактно»: «Фамилия И.О.» вместо полного ФИО (только если это настоящее ФИО)
+            let nameShort = name;
+            { const w = String(name).trim().split(/\s+/); if (w.length >= 2 && w.length <= 3 && w.every(x => /^[А-ЯЁA-Z][а-яёa-z-]+$/.test(x))) nameShort = w[0] + ' ' + w.slice(1).map(x => x[0] + '.').join(''); }
             let phone = u.phone || 'Нет телефона';
             let device = u.last_device || 'Неизвестно';
             let lastVis = u.last_visited ? new Date(u.last_visited).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : date;
@@ -26199,13 +26202,13 @@ const app = {
                         <!-- Нумерация сквозная по всему списку, а не по странице: на второй
                              странице отсчёт снова с 1 сбивал с толку (44 записи → 1…44) -->
                         <td style="color:var(--text-sec);">${this._adminOffset + i + 1}</td>
-                        <td><div style="display:flex; align-items:center;">${avatarImg} <div><b style="font-size:13px;">${suspectMark}${name}</b><br><span style="font-size:11px;color:var(--text-sec);">${phone}</span>${locHTML}${extraHTML}</div></div></td>
+                        <td><div style="display:flex; align-items:center;">${avatarImg} <div><b style="font-size:13px;">${suspectMark}<span class="ad-name-full">${name}</span><span class="ad-name-short">${nameShort}</span></b><br><span style="font-size:11px;color:var(--text-sec);">${phone}</span><span class="ad-more">${locHTML}${extraHTML}</span></div></div></td>
                         <!-- admin-cell-half: на телефоне карточка ставит помеченную
                              пару в один ряд по половине ширины (см. style.css).
                              Содержимое коротких и однотипных ячеек — сумма со
                              сметами, тариф с устройством, два переключателя
                              доступа — отдельной строки на каждую не стоило. -->
-                        <td class="admin-cell-half"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount} | Ср.объект: ${u.avgArea} м²</span><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${sessionLine}</span></td>
+                        <td class="admin-cell-half"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount} | Ср.объект: ${u.avgArea} м²</span><span class="ad-more"><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${sessionLine}</span></span></td>
                         <td class="admin-cell-half">${badge}<br><span style="font-size:10px;color:var(--text-sec);">${device}</span></td>
                         <td onclick="event.stopPropagation();">${distCell}</td>
                         <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${recCell}</td>

@@ -17648,6 +17648,12 @@ body.theme-yandex #admin_modal_overlay {
 }
 #admin_content table.ad-dense td { padding-top: 3px !important; padding-bottom: 3px !important; font-size: 11.5px; }
 #admin_content table.ad-dense td * { line-height: 1.25; }
+/* Компактно: вторичные строки (адрес, возраст, активность, время на сайте) скрыты — они и задают высоту строки */
+#admin_content table.ad-dense .ad-more { display: none !important; }
+.ad-name-short { display: none; }
+#admin_content table.ad-dense .ad-name-full { display: none; }
+#admin_content table.ad-dense .ad-name-short { display: inline; }
+#admin_content table.ad-dense td img { width: 24px !important; height: 24px !important; }
 #ad_peek {
     position: absolute;
     top: 0;
