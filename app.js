@@ -33195,17 +33195,20 @@ const app = {
             </div>
             ${canEdit ? this.dpUploadHtml() : ''}
             <div class="ad-chips" id="dp_chips"></div>
+            <!-- Поиск и фильтры — отдельной панелью, а не строкой шапки: на телефоне шапка таблицы
+                 скрывается (таблица становится карточками), и поиск вместе с ней пропадал -->
+            <div class="admin-toolbar-row" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 0 12px;">
+                <input id="dp_q" class="admin-tb-search" type="search" placeholder="Поиск по артикулу" value="${esc(st.q)}" oninput="app._dp.q=this.value; app.dpRefresh()" style="${inp} flex:1 1 200px; width:auto;">
+                <input id="dp_qn" type="search" placeholder="Фильтр по названию" value="${esc(st.qn)}" oninput="app._dp.qn=this.value; app.dpRefresh()" style="${inp} flex:2 1 220px; width:auto;">
+                <input id="dp_min" type="number" min="0" step="1" placeholder="Отличие от, %" value="${esc(st.min)}" oninput="app._dp.min=this.value; app.dpRefresh()" style="${inp} flex:0 1 140px; width:auto;">
+                <select id="dp_sort" title="Сортировка" onchange="app.dpSort(this.value, true)" style="${inp} flex:0 1 190px; width:auto;">
+                    ${[['id', 'Сортировка: артикул'], ['name', 'Сортировка: название'], ['base', 'Сортировка: каталог'], ['own', 'Сортировка: прайс'], ['diff', 'Сортировка: разница ₽'], ['pct', 'Сортировка: разница %'], ['eff', 'Сортировка: действует']]
+                        .map(o => `<option value="${o[0]}" ${st.sort === o[0] ? 'selected' : ''}>${o[1]}</option>`).join('')}</select>
+            </div>
             <div style="overflow-x:auto;">
             <table class="admin-table" style="width:100%; min-width:900px;">
                 <thead>
                     <tr>${th('id', 'Артикул')}${th('name', 'Название')}${th('base', 'Каталог, ₽', 1)}${th('own', 'Прайс, ₽', 1)}${th('diff', 'Разница, ₽', 1)}${th('pct', 'Разница, %', 1)}${th('eff', 'Действует, ₽', 1)}${canEdit ? '<th></th>' : ''}</tr>
-                    <tr>
-                        <td><input id="dp_q" type="search" placeholder="Поиск по артикулу" value="${esc(st.q)}" oninput="app._dp.q=this.value; app.dpRefresh()" style="${inp}"></td>
-                        <td><input id="dp_qn" type="search" placeholder="Фильтр по названию" value="${esc(st.qn)}" oninput="app._dp.qn=this.value; app.dpRefresh()" style="${inp}"></td>
-                        <td colspan="2"></td>
-                        <td colspan="2"><input id="dp_min" type="number" min="0" step="1" placeholder="Отличие от, %" value="${esc(st.min)}" oninput="app._dp.min=this.value; app.dpRefresh()" style="${inp}"></td>
-                        <td colspan="${canEdit ? 2 : 1}"></td>
-                    </tr>
                 </thead>
                 <tbody id="dp_body"></tbody>
             </table></div>
@@ -33214,9 +33217,12 @@ const app = {
         this.dpRefresh();
     },
 
-    dpSort: function (col) {
+    // Клик по заголовку: тот же столбец — меняет направление, другой — по возрастанию.
+    // Выбор из списка «Сортировка» (его видно и на телефоне, где шапки нет) — всегда
+    // по возрастанию нового столбца.
+    dpSort: function (col, fromSelect) {
         const st = this._dp;
-        if (st.sort === col) st.dir = -st.dir; else { st.sort = col; st.dir = 1; }
+        if (st.sort === col && !fromSelect) st.dir = -st.dir; else { st.sort = col; st.dir = 1; }
         this.dpRefresh();
     },
 
@@ -33341,13 +33347,13 @@ const app = {
     dpUploadHtml: function () {
         // Загрузка в три шага: выбрать файлы → проверить отчёт → опубликовать.
         // Требования к файлу спрятаны за кнопкой, чтобы сам выбор файлов был на виду.
-        return `<div style="margin:0 0 16px; border:1px solid var(--border); border-radius:14px; padding:16px 18px; background:var(--surface);">
-            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-                <div><div style="font-weight:800; font-size:15px;">Загрузка нового прайса из Excel</div>
-                    <div class="ad-sub" style="max-width:760px; line-height:1.5;">Файл читает ваш браузер — на сервер уходит только список «артикул → цена». Цены начнут действовать у монтажников компании при их следующем входе, выкладка сайта не нужна.</div></div>
-                <button class="admin-btn" onclick="var h=document.getElementById('dp_up_help'); h.style.display = h.style.display === 'none' ? '' : 'none'">Требования к файлу</button>
+        return `<div class="ad-card" style="margin:0 0 16px;">
+            <div class="ad-card-h" style="align-items:flex-start; flex-wrap:wrap; gap:10px;">
+                <div style="min-width:0; flex:1 1 260px;"><div class="ad-card-title" style="font-size:15px;">Загрузка нового прайса из Excel</div>
+                    <div class="ad-card-note" style="max-width:760px;">Файл читает ваш браузер — на сервер уходит только список «артикул → цена». Цены начнут действовать у монтажников компании при их следующем входе, выкладка сайта не нужна.</div></div>
+                <button class="admin-btn" style="margin:0;" onclick="var h=document.getElementById('dp_up_help'); h.style.display = h.style.display === 'none' ? '' : 'none'">Требования к файлу</button>
             </div>
-            <div id="dp_up_help" style="display:none; margin-top:12px; padding:12px 16px; border-radius:10px; background:var(--surface-light); font-size:13px; line-height:1.6; color:var(--text-main);">
+            <div id="dp_up_help" style="display:none; padding:12px 16px; border-radius:10px; background:var(--surface); border:1px solid var(--ad-line); font-size:13px; line-height:1.6; color:var(--text-main);">
                 <ul style="margin:0; padding-left:20px;">
                     <li>Формат <b>.xls</b> или <b>.xlsx</b>, прайс на <b>первом листе</b>.</li>
                     <li>В шапке есть колонка «Артикул» (подойдёт «Номенклатура.Артикул») и колонка «Цена» — их находят по названию, порядок колонок не важен.</li>
@@ -33358,7 +33364,7 @@ const app = {
                     <li>«Обновить» меняет цены только у позиций из файла, остальные остаются прежними. «Заменить целиком» стирает прежний прайс — нужен, только когда файл содержит весь ассортимент.</li>
                     <li>Загрузили не то — загрузите правильный файл ещё раз. Правки спорных позиций и журнал при этом сохраняются.</li>
                 </ul></div>
-            <div id="dp_up_box" style="margin-top:14px;">${this.dpUpReportHtml()}</div>
+            <div id="dp_up_box">${this.dpUpReportHtml()}</div>
         </div>`;
     },
 
@@ -33369,21 +33375,21 @@ const app = {
         if (up && up.done) n = 4;
         else if (up && up.rep && !up.busy) n = up.ack ? 3 : 2;
         const names = ['Выберите файлы', 'Проверьте отчёт', 'Опубликуйте'];
-        return `<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">${names.map((t, i) => {
+        // Тот же вид, что у чипов-срезов в остальных разделах (.ad-chip), активный — .active
+        return `<div class="ad-chips" style="margin:0;">${names.map((t, i) => {
             const k = i + 1;
             const done = n > k, cur = n === k;
-            const col = done ? '#059669' : (cur ? 'var(--primary)' : 'var(--text-sec)');
-            return `<div style="display:flex; align-items:center; gap:8px; padding:6px 14px 6px 8px; border-radius:999px; border:1px solid ${cur ? 'var(--primary)' : 'var(--border)'}; background:${cur ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'transparent'}; color:${col}; font-size:13px; font-weight:${cur ? 700 : 600};">
-                <span style="width:22px; height:22px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:${done ? '#059669' : (cur ? 'var(--primary)' : 'var(--border)')}; color:#fff; font-size:12px;">${done ? '✓' : k}</span>${t}</div>`;
+            return `<span class="ad-chip${cur ? ' active' : ''}" style="cursor:default; ${done ? 'color:#10B981; border-color:#10B981;' : ''}">
+                <span style="width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:${done ? '#10B981' : (cur ? 'var(--primary)' : 'var(--ad-line)')}; color:${done || cur ? '#fff' : 'var(--text-sec)'}; font-size:11px; font-weight:700;">${done ? '✓' : k}</span>${t}</span>`;
         }).join('')}</div>`;
     },
 
     // Крупная зона выбора файлов: клик или перетаскивание
     dpUpDropzone: function (compact) {
         return `<label ondragover="event.preventDefault(); this.style.borderColor='var(--primary)'" ondragleave="this.style.borderColor=''" ondrop="event.preventDefault(); this.style.borderColor=''; app.dpUpFiles({ files: event.dataTransfer.files })"
-            style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:${compact ? '10px 16px' : '30px 16px'}; border:2px dashed var(--border); border-radius:12px; cursor:pointer; text-align:center; background:var(--surface-light);">
-            <span style="font-weight:700; font-size:${compact ? 13 : 15}px; color:var(--primary);">${compact ? '＋ Выбрать другие файлы' : 'Перетащите сюда файлы прайса или нажмите, чтобы выбрать'}</span>
-            ${compact ? '' : '<span class="ad-sub">Формат .xls или .xlsx. Если прайс в нескольких файлах (у КИТ-Сервис — STOUT и ROMMER), выберите их все сразу.</span>'}
+            style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:${compact ? '9px 14px' : '24px 14px'}; border:2px dashed var(--ad-line); border-radius:var(--ad-card-radius); cursor:pointer; text-align:center; background:var(--surface); min-width:0; box-sizing:border-box;">
+            <span style="font-weight:700; font-size:${compact ? 13 : 15}px; color:var(--primary);">${compact ? '＋ Выбрать другие файлы' : 'Выберите файлы прайса'}</span>
+            ${compact ? '' : '<span class="ad-card-note" style="padding:0;">Нажмите здесь или перетащите файлы .xls / .xlsx. Если прайс в нескольких файлах (у КИТ-Сервис — STOUT и ROMMER), выберите их все сразу.</span>'}
             <input type="file" multiple accept=".xls,.xlsx" onchange="app.dpUpFiles(this)" style="display:none">
         </label>`;
     },
@@ -33526,10 +33532,10 @@ const app = {
         let h = steps;
         if (up.err) h += `<div style="color:#EF4444; margin-bottom:8px;">${esc(up.err)}</div>`;
         // Выбранные файлы — компактными плашками, рядом — выбрать другие
-        h += `<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px;">${
+        h += `<div class="ad-chips" style="align-items:stretch; margin:12px 0;">${
             up.files.map(f => f.error
-                ? `<span style="padding:5px 12px; border-radius:8px; background:color-mix(in srgb, #EF4444 12%, transparent); color:#DC2626; font-size:12.5px;"><b>${esc(f.name)}</b> — ${esc(f.error)}</span>`
-                : `<span style="padding:5px 12px; border-radius:8px; background:var(--surface-light); border:1px solid var(--border); font-size:12.5px;"><b>${esc(f.name)}</b> · ${num(f.count)} поз.${f.date ? ' · от ' + esc(new Date(f.date).toLocaleDateString('ru-RU')) : ''}</span>`).join('')}
+                ? `<span class="ad-chip ad-count-bad" style="height:auto; min-height:30px; padding:6px 12px; white-space:normal; cursor:default;"><b>${esc(f.name)}</b> — ${esc(f.error)}</span>`
+                : `<span class="ad-chip" style="height:auto; min-height:30px; padding:6px 12px; white-space:normal; cursor:default; color:var(--text-main);"><b>${esc(f.name)}</b> <span style="color:var(--text-sec);">· ${num(f.count)} поз.${f.date ? ' · от ' + esc(new Date(f.date).toLocaleDateString('ru-RU')) : ''}</span></span>`).join('')}
             <div style="flex:0 0 auto;">${this.dpUpDropzone(true)}</div></div>`;
         if (!items) return h + '<div style="color:#EF4444; font-weight:600;">В выбранных файлах нет ни одной позиции с артикулом и ценой — публиковать нечего. Проверьте требования к файлу.</div>';
         const rep = up.rep;
@@ -33538,11 +33544,11 @@ const app = {
         const open = rep.sus.filter(s => !s.ov).length;       // подозрительных без правки админа
         const needCheck = open > 0 || rep.warn.length > 0;
         // Шаг 2: итог простыми словами
-        h += `<div style="padding:12px 16px; border-radius:12px; margin-bottom:12px; line-height:1.55; background:color-mix(in srgb, ${needCheck ? '#D97706' : '#10B981'} 12%, transparent);">
-                <b style="color:${needCheck ? '#B45309' : '#059669'};">${needCheck ? 'Файлы прочитаны, но кое-что стоит проверить' : '✓ Файлы прочитаны, замечаний нет'}</b><br>
+        h += `<div style="padding:12px 16px; border-radius:var(--ad-card-radius); margin-bottom:12px; line-height:1.55; font-size:13px; background:color-mix(in srgb, ${needCheck ? '#D97706' : '#10B981'} 12%, transparent);">
+                <b style="color:${needCheck ? '#D97706' : '#10B981'};">${needCheck ? 'Файлы прочитаны, но кое-что стоит проверить' : '✓ Файлы прочитаны, замечаний нет'}</b><br>
                 После публикации: у <b>${num(rep.changed)}</b> позиций изменится цена, <b>${num(rep.added)}</b> добавится, у <b>${num(rep.same)}</b> цена останется той же${up.mode === 'replace'
                     ? `, <b>${num(rep.removed)}</b> позиций прежнего прайса пропадёт`
-                    : `, у <b>${num(rep.untouched)}</b> останется прежняя цена (их нет в загруженных файлах)`}. Всего в прайсе будет <b>${num(rep.total)}</b> позиций.${rep.sus.length ? (open ? ` Подозрительных цен: <b>${open}</b> — посмотрите список ниже.` : ` Подозрительные цены (${rep.sus.length}) уже закрыты правками администратора.`) : ''}</div>
+                    : `, у <b>${num(rep.untouched)}</b> останется прежняя цена (их нет в загруженных файлах)`}. Всего в прайсе будет <b>${num(rep.total)}</b> позиций.${rep.sus.length ? (open ? ` Подозрительных цен без правки: <b>${open}</b>${open !== rep.sus.length ? ' из ' + rep.sus.length : ''} — посмотрите список ниже.` : ` Подозрительные цены (${rep.sus.length}) уже закрыты правками администратора.`) : ''}</div>
             <div style="margin:0 0 12px;">
                 <label style="${lab}"><input type="radio" name="dp_up_mode" value="merge" ${up.mode === 'merge' ? 'checked' : ''} onchange="app._dpUp.mode='merge'; app.dpUpCompute()"> <span><b>Обновить</b> — цены меняются только у позиций из файлов</span></label>
                 <label style="${lab}"><input type="radio" name="dp_up_mode" value="replace" ${up.mode === 'replace' ? 'checked' : ''} onchange="app._dpUp.mode='replace'; app.dpUpCompute()"> <span><b>Заменить целиком</b> — прежний прайс стирается</span></label></div>`;
@@ -33561,7 +33567,7 @@ const app = {
         }
         // Шаг 3: панель публикации прилипает к низу окна — кнопка всегда на виду,
         // как бы длинен ни был отчёт
-        h += `<div style="position:sticky; bottom:0; z-index:5; margin-top:14px; padding:12px 16px; border:1px solid var(--border); border-radius:12px; background:var(--surface); box-shadow:0 -8px 18px rgba(0,0,0,.10); display:flex; align-items:center; gap:14px 20px; flex-wrap:wrap;">
+        h += `<div class="dp-up-bar" style="position:sticky; bottom:0; z-index:5; margin-top:14px; padding:12px 16px; border:1px solid var(--ad-line); border-radius:var(--ad-card-radius); background:var(--surface); box-shadow:0 -8px 18px rgba(0,0,0,.10); display:flex; align-items:center; gap:10px 20px; flex-wrap:wrap;">
                 <label style="font-size:13px;">Дата прайса${up.files.some(f => f.date) ? '' : ' <span style="color:#D97706;">(в файле не найдена — укажите)</span>'}:
                     <input type="date" value="${esc(up.date)}" oninput="app._dpUp.date=this.value; app.dpUpRerenderBtn()" style="margin-left:6px; padding:5px 8px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main);"></label>
                 <label style="${lab} margin-right:0; font-size:13px;"><input type="checkbox" ${up.ack ? 'checked' : ''} onchange="app._dpUp.ack=this.checked; app.dpUpRerenderBtn()"> Я проверил отчёт</label>
@@ -33771,18 +33777,22 @@ const app = {
             const el = document.getElementById('dp_arr_' + k);
             if (el) el.textContent = k === c ? (d > 0 ? ' ▲' : ' ▼') : '';
         });
+        const sortSel = document.getElementById('dp_sort');
+        if (sortSel && sortSel.value !== c) sortSel.value = c;
 
         this._dpList = list;     // что видно по фильтрам — то и уйдёт в Excel
         const shown = st.all ? list : list.slice(0, this.DP_LIMIT);
         const colorOf = r => r.diff == null || Math.abs(r.diff) < 0.5 ? 'var(--text-sec)' : (r.diff > 0 ? '#D97706' : '#10B981');
+        // data-l — подписи ячеек для телефона (строки карточками); ставим сами: наблюдатель
+        // подписей размечает таблицу один раз, а строки здесь перерисовываются на каждый фильтр
         body.innerHTML = shown.length ? shown.map(r => `<tr>
-            <td style="white-space:nowrap; font-weight:600;">${esc(r.id)}</td>
-            <td style="font-size:12.5px;">${esc(r.name)}</td>
-            <td style="text-align:right; white-space:nowrap;">${fmt(r.base)}</td>
-            <td style="text-align:right; white-space:nowrap;">${r.own == null ? '<span style="color:var(--text-sec);">нет в прайсе</span>' : fmt(r.own)}</td>
-            <td style="text-align:right; white-space:nowrap; color:${colorOf(r)}; font-weight:700;">${r.diff == null ? '—' : (r.diff > 0 ? '+' : '') + fmt(r.diff)}</td>
-            <td style="text-align:right; white-space:nowrap; color:${colorOf(r)}; font-weight:700;">${r.pct == null ? '—' : (r.pct > 0 ? '+' : '') + (Math.round(r.pct * 10) / 10).toLocaleString('ru-RU') + ' %'}</td>
-            <td style="text-align:right; white-space:nowrap;">${this.dpEffCell(r)}</td>
+            <td data-l="Артикул" style="white-space:nowrap; font-weight:600;">${esc(r.id)}</td>
+            <td data-l="Название" style="font-size:12.5px;">${esc(r.name)}</td>
+            <td data-l="Каталог, ₽" style="text-align:right; white-space:nowrap;">${fmt(r.base)}</td>
+            <td data-l="Прайс, ₽" style="text-align:right; white-space:nowrap;">${r.own == null ? '<span style="color:var(--text-sec);">нет в прайсе</span>' : fmt(r.own)}</td>
+            <td data-l="Разница, ₽" style="text-align:right; white-space:nowrap; color:${colorOf(r)}; font-weight:700;">${r.diff == null ? '—' : (r.diff > 0 ? '+' : '') + fmt(r.diff)}</td>
+            <td data-l="Разница, %" style="text-align:right; white-space:nowrap; color:${colorOf(r)}; font-weight:700;">${r.pct == null ? '—' : (r.pct > 0 ? '+' : '') + (Math.round(r.pct * 10) / 10).toLocaleString('ru-RU') + ' %'}</td>
+            <td data-l="Действует, ₽" style="text-align:right; white-space:nowrap;">${this.dpEffCell(r)}</td>
             ${canEdit ? `<td style="text-align:right;"><button class="admin-btn" style="height:26px; font-size:11px; margin:0;" onclick="app.dpEdit(${JSON.stringify(r.id).replace(/"/g, '&quot;')})">${r.ov ? 'Изменить' : 'Править'}</button></td>` : ''}
         </tr>`).join('') : `<tr><td colspan="${canEdit ? 8 : 7}" style="text-align:center; padding:24px; color:var(--text-sec);">Ничего не найдено.</td></tr>`;
         this.dpRenderHist();
