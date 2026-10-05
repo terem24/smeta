@@ -75,24 +75,6 @@ if (is_file($secretFile)) {
     }
 }
 
-// Журнал отправок: одна строка на письмо — время, шаблон, ответ EmailJS, тема. Нужен, чтобы
-// видеть, на что уходит месячный лимит (в самом EmailJS разбивки по типам писем нет).
-// Адрес получателя и тело (там коды) не пишем. Файл с охранной первой строкой: если его
-// откроют по адресу, сервер выполнит её и отдаст 404, а не содержимое. Только отправки
-// через этот прокси: письма, ушедшие из браузера напрямую, сюда не попадают.
-function emailjs_log($payload, $templateId, $httpCode) {
-    $file = __DIR__ . '/emailjs_log.php';
-    $guard = "<?php http_response_code(404); exit; ?>\n";
-    $params = (isset($payload->template_params) && is_object($payload->template_params)) ? $payload->template_params : null;
-    $subject = ($params && isset($params->email_subject)) ? (string)$params->email_subject : '';
-    $subject = preg_replace('/[\r\n\t]+/', ' ', mb_substr($subject, 0, 80));
-    $line = date('Y-m-d H:i:s') . "\t" . $templateId . "\t" . $httpCode . "\t" . $subject . "\n";
-    if (!is_file($file)) {
-        @file_put_contents($file, $guard, LOCK_EX);
-    }
-    @file_put_contents($file, $line, FILE_APPEND | LOCK_EX);
-}
-
 $ch = curl_init('https://api.emailjs.com/api/v1.0/email/send');
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload, JSON_UNESCAPED_UNICODE));
@@ -113,8 +95,6 @@ if (curl_errno($ch)) {
 
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
-
-emailjs_log($payload, $templateId, $httpCode);
 
 http_response_code($httpCode);
 echo $response;
