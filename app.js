@@ -499,7 +499,60 @@ function installEmailjsProxy() {
         return err instanceof Error && err.status === undefined;
     }
 
+    // Бюджет писем (20261005_mail_budget.sql): тип письма по теме, проверка выключателя
+    // для необязательных рассылок и запись в журнал. Зеркало SQL-функции mail_kind_of.
+    // Защищённые типы (код регистрации, запрос счёта) проходят без вопросов к базе.
+    function mailKindOf(subject, templateId) {
+        const s = String(subject || '');
+        if (templateId === 'template_lg1zol9') return 'invoice';
+        if (/^Код подтверждения/i.test(s)) return 'code';
+        if (/Запрос счёта/i.test(s)) return 'invoice';
+        if (/^\[Feedback/i.test(s)) return 'feedback';
+        if (/^Вы давно не заходили/i.test(s) || /^Доступ к HeatCalc\.ru приостановлен/i.test(s)) return 'inactivity';
+        if (/^Первая смета в HeatCalc/i.test(s) || /^Что не получилось в HeatCalc/i.test(s) || /^Давно не видели смет/i.test(s)) return 'nudge';
+        if (/^Новое личное сообщение/i.test(s)) return 'message';
+        if (/^Вопрос без ответа/i.test(s)) return 'stale';
+        if (/Тариф Профи/i.test(s)) return 'tariff';
+        if (/^(\[Админ\] )?Статус КП/i.test(s)) return 'status';
+        return 'other';
+    }
+    const mailGateCache = {};
+    function mailGate(kind) {
+        if (kind === 'code' || kind === 'invoice') return Promise.resolve(true);
+        const c = mailGateCache[kind];
+        if (c && Date.now() - c.at < 60000) return Promise.resolve(c.ok);
+        if (typeof supabaseClient === 'undefined' || !supabaseClient || !supabaseClient.rpc) return Promise.resolve(true);
+        // Ошибка или тайм-аут — разрешаем: лучше лишнее письмо, чем потерянное.
+        return withTimeout(Promise.resolve(supabaseClient.rpc('mail_allowed', { k: kind })), 4000, 'mail_allowed')
+            .then(r => { const ok = !(r && r.data === false); mailGateCache[kind] = { ok, at: Date.now() }; return ok; })
+            .catch(() => true);
+    }
+    function mailLogAdd(kind, templateId, subject, ok, skipped) {
+        try {
+            if (typeof supabaseClient === 'undefined' || !supabaseClient || !supabaseClient.rpc) return;
+            Promise.resolve(supabaseClient.rpc('mail_log_add', {
+                k: kind, tpl: templateId, subj: String(subject || ''), was_ok: ok, was_skipped: skipped, src: 'browser'
+            })).catch(() => {});
+        } catch (e) { /* журнал не должен ломать отправку */ }
+    }
+
     function send(serviceId, templateId, templateParams, key) {
+        const subject = (templateParams && (templateParams.email_subject || templateParams.subject_text)) || '';
+        const kind = mailKindOf(subject, templateId);
+        return mailGate(kind).then(allowed => {
+            if (!allowed) {
+                console.warn('[почта] тип «' + kind + '» отключён бюджетом писем, письмо не отправлено');
+                mailLogAdd(kind, templateId, subject, true, true);
+                return { status: 200, text: 'SKIPPED' };
+            }
+            return rawSend(serviceId, templateId, templateParams, key).then(res => {
+                mailLogAdd(kind, templateId, subject, true, false);
+                return res;
+            });
+        });
+    }
+
+    function rawSend(serviceId, templateId, templateParams, key) {
         const k = key || publicKey;
         const direct = withTimeout(
             Promise.resolve().then(() => origSend(serviceId, templateId, templateParams, k)),
@@ -23622,7 +23675,8 @@ const app = {
         { id: 'aifill', icon: '✨', label: 'Умное заполнение', hint: 'Что говорили и писали в окно ✨' },
         { id: 'articles', icon: '📰', label: 'Статьи', hint: 'Очередь публикаций на год: даты, тексты, что уже вышло' },
         { id: 'leads', icon: '📨', label: 'Заявки', hint: 'Заявки на монтаж: откуда пришли и что просят' },
-        { id: 'warranty', icon: '🛡', label: 'Гарантия STOUT', hint: 'Объекты с долей STOUT: порог для бланка, порог по объекту, реестр' }
+        { id: 'warranty', icon: '🛡', label: 'Гарантия STOUT', hint: 'Объекты с долей STOUT: порог для бланка, порог по объекту, реестр' },
+        { id: 'mailbudget', icon: '✉️', label: 'Почта', hint: 'Лимит писем, на что ушёл, отключение рассылок' }
     ],
 
     // Значки разделов — одноцветные линейные, берут цвет текста (currentColor).
@@ -23652,7 +23706,8 @@ const app = {
         aifill: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4M21 5h-4"/>',
         articles: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
         leads: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
-        warranty: '<path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5z"/><path d="M9 12l2 2 4-4"/>'
+        warranty: '<path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5z"/><path d="M9 12l2 2 4-4"/>',
+        mailbudget: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/>'
     },
 
     // Разделы панели в группах. Двадцать вкладок в два ряда без порядка — это «конструктор»,
@@ -23666,7 +23721,7 @@ const app = {
         { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['leads', 'estimates', 'kanban', 'projects', 'warranty'] },
         { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages'] },
         { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'distprices', 'equipment', 'successors'] },
-        { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription', 'payready'] },
+        { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription', 'payready', 'mailbudget'] },
         { id: 'ai', label: 'ИИ и файлы', icon: 'recognition', tabs: ['recognition', 'plans', 'aifill'] },
         { id: 'content', label: 'Контент', icon: 'articles', tabs: ['articles'] }
     ],
@@ -23884,7 +23939,8 @@ const app = {
     // «Замены позиций» — подтверждённая замена меняет позицию каталога у всех
     // пользователей сразу, решать это наблюдателю или менеджеру нельзя.
     // «Тарифы» — что открыто каждой учётной записи на всей платформе.
-    ADMIN_ONLY_TABS: ['distributors', 'successors', 'tariffs'],
+    // «Почта» — лимит писем EmailJS на всю платформу и выключатели рассылок.
+    ADMIN_ONLY_TABS: ['distributors', 'successors', 'tariffs', 'mailbudget'],
 
     // Вкладка «Аналитика» — только для владельца: там конкурентная разведка,
     // которой незачем светиться даже перед наблюдателями с доступом в админку.
@@ -25567,6 +25623,12 @@ const app = {
         if (this._adminTab === 'inactive') {
             content.innerHTML = navHtml;
             this.renderAdminInactive();
+            return;
+        }
+
+        if (this._adminTab === 'mailbudget') {
+            content.innerHTML = navHtml;
+            this.renderAdminMail();
             return;
         }
 
@@ -38782,6 +38844,244 @@ const app = {
         } catch (e) {
             app.alert('Не удалось сохранить сроки: ' + (e.message || e));
         }
+    },
+
+    // ═══ Почта: лимит EmailJS, расход по типам, выключатели ═══════════════
+    //
+    // Все письма сайта идут через EmailJS, а у аккаунта 200 писем в месяц (цикл с 8-го).
+    // Журнал (mail_log) и расчёт — в базе (20261005_mail_budget.sql); здесь только показ и
+    // настройки в app_settings.mail_budget. Типы 'code' и 'invoice' защищены: не отключаются.
+    MAIL_KIND_LABELS: {
+        code: ['Коды регистрации', 'Подтверждение почты при регистрации'],
+        invoice: ['Запрос счёта', 'Письма дистрибьютору по КП'],
+        status: ['Статусы смет', 'Клиент открыл/согласовал КП — письмо монтажнику и копия вам'],
+        tariff: ['Истечение тарифа Профи', 'Предупреждение перед окончанием срока'],
+        message: ['Личные сообщения от админа', 'Дублирование сообщения на почту'],
+        stale: ['Вопросы без ответа', 'Вам: монтажник ждёт ответа больше 2 суток'],
+        feedback: ['Обратная связь', 'Форма «Написать нам»'],
+        inactivity: ['Неактивные учётки', 'Предупреждение и заморозка'],
+        nudge: ['Напоминания новичкам', 'Рассылка «первая смета», «что не получилось»'],
+        other: ['Прочее', 'Всё, что не распознано по теме письма']
+    },
+
+    loadMailBudget: async function () {
+        const { data, error } = await supabaseClient.rpc('mail_budget_state');
+        if (error) throw error;
+        this._mailState = data;
+        const { data: log } = await supabaseClient.rpc('mail_log_recent', { n: 100 });
+        this._mailLog = log || [];
+    },
+
+    renderAdminMail: async function () {
+        const content = document.getElementById('admin_content');
+        if (!content) return;
+        content.innerHTML += `<div id="admin_mail_root" style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка…</div>`;
+        try {
+            await this.loadMailBudget();
+        } catch (e) {
+            const root = document.getElementById('admin_mail_root');
+            if (root) root.innerHTML = `<div style="color:#EF4444; padding:20px;">Не удалось прочитать данные: ${e.message || e}
+                <div style="margin-top:8px; color:var(--text-sec); font-size:12px;">Похоже, миграция 20261005_mail_budget.sql ещё не выполнена в Supabase.</div></div>`;
+            return;
+        }
+        this.renderAdminMailBody();
+    },
+
+    renderAdminMailBody: function () {
+        const root = document.getElementById('admin_mail_root');
+        const s = this._mailState;
+        if (!root || !s) return;
+        root.style.textAlign = 'left'; root.style.padding = '0';
+        const esc = x => String(x ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const d = x => new Date(x).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+        const dt = x => new Date(x).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const lim = s.limit;
+        const color = s.load_pct >= 95 ? '#EF4444' : s.load_pct >= 80 ? '#D97706' : '#10B981';
+        const barW = Math.min(100, s.pct);
+        const fW = Math.min(100, s.forecast_pct);
+
+        const kinds = s.kinds || [];
+        const sumAll = kinds.reduce((a, k) => a + (k.per_cycle || 0), 0);
+        const sumOn = kinds.filter(k => !k.off).reduce((a, k) => a + (k.per_cycle || 0), 0);
+        const anyNoRate = kinds.some(k => k.per_cycle === null);
+
+        const stateOf = k => {
+            if (k.tier === 0) return ['защищён', '#0EA5E9'];
+            if (k.override === 'off') return ['выключен вручную', '#EF4444'];
+            if (k.override === 'on') return ['включён вручную', '#10B981'];
+            if (k.off) return [`отключён автоматически (порог ${k.threshold}%)`, '#D97706'];
+            return s.mode === 'auto' ? [`работает (отключится при ${k.threshold}%)`, '#10B981'] : ['работает', '#10B981'];
+        };
+
+        const rows = kinds.map(k => {
+            const [name, hint] = this.MAIL_KIND_LABELS[k.kind] || [k.kind, ''];
+            const [st, col] = stateOf(k);
+            const rate = k.rate_per_day === null ? '—' : (Math.round(k.rate_per_day * 10) / 10);
+            const per = k.per_cycle === null ? '—' : '≈ ' + k.per_cycle + (k.estimated ? '*' : '');
+            const sel = k.tier === 0 ? '<span style="color:var(--text-sec);">всегда включено</span>'
+                : `<select onchange="app.setMailOverride('${k.kind}', this.value)" style="padding:4px 6px;">
+                    <option value="" ${!k.override ? 'selected' : ''}>Авто</option>
+                    <option value="on" ${k.override === 'on' ? 'selected' : ''}>Включено</option>
+                    <option value="off" ${k.override === 'off' ? 'selected' : ''}>Выключено</option>
+                   </select>`;
+            const extra = (k.off && k.per_cycle) ? `<div style="font-size:10px; color:var(--text-sec);">включить = ещё ≈ ${k.per_cycle} писем за период</div>` : '';
+            return `<tr style="border-top:1px solid var(--border);">
+                <td style="padding:8px;"><b style="color:var(--text-main);">${esc(name)}</b><div style="font-size:10px; color:var(--text-sec);">${esc(hint)}</div></td>
+                <td style="padding:8px; text-align:center;">${k.tier === 0 ? '—' : k.tier}</td>
+                <td style="padding:8px; text-align:center;"><b>${k.used}</b></td>
+                <td style="padding:8px; text-align:center;">${rate}</td>
+                <td style="padding:8px; text-align:center;">${per}</td>
+                <td style="padding:8px;"><span style="color:${col}; font-weight:600;">${esc(st)}</span>${extra}</td>
+                <td style="padding:8px;">${sel}</td>
+            </tr>`;
+        }).join('');
+
+        const logRows = (this._mailLog || []).map(r => {
+            const [name] = this.MAIL_KIND_LABELS[r.kind] || [r.kind];
+            const stt = r.skipped ? '<span style="color:#D97706;">не отправлено (отключено)</span>' : (r.ok ? 'отправлено' : '<span style="color:#EF4444;">ошибка</span>');
+            return `<tr style="border-top:1px solid var(--border);">
+                <td style="padding:6px 8px; white-space:nowrap;">${dt(r.created_at)}</td>
+                <td style="padding:6px 8px;">${esc(name)}</td>
+                <td style="padding:6px 8px;">${esc(r.subject || '')}</td>
+                <td style="padding:6px 8px;">${stt}</td>
+                <td style="padding:6px 8px; color:var(--text-sec);">${esc(r.source || '')}</td>
+            </tr>`;
+        }).join('');
+
+        const dis = this.isReadOnlyAdmin() ? 'disabled' : '';
+        const field = (label, id, val, min, max) => `<label class="ad-field"><span>${label}</span><input type="number" id="${id}" min="${min}" max="${max}" value="${val}" ${dis}></label>`;
+        const hasOverrides = kinds.some(k => k.override);
+
+        root.innerHTML = `
+            <div class="ad-page-h">
+                <div><h3>Почта — лимит писем EmailJS</h3>
+                <div class="ad-sub">Цикл ${d(s.cycle_start)} — ${d(s.cycle_end)}, осталось ${s.days_left} дн. Сбрасывается сам
+                ${s.cycle_day}-го числа: отключённое автоматически включится заново.</div></div>
+            </div>
+
+            <div class="control-card" style="display:block; margin-bottom:14px;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
+                    <div><span style="font-size:28px; font-weight:700; color:${color};">${s.used}</span>
+                        <span style="color:var(--text-sec);"> из ${lim} (${s.pct}%)</span></div>
+                    <div style="color:var(--text-sec); font-size:13px;">Прогноз на конец цикла: <b style="color:var(--text-main);">≈ ${s.forecast}</b> (${s.forecast_pct}%)</div>
+                </div>
+                <div style="position:relative; height:12px; background:var(--border); border-radius:6px; margin:10px 0 6px; overflow:hidden;">
+                    <div style="position:absolute; inset:0 auto 0 0; width:${fW}%; background:${color}; opacity:.28;"></div>
+                    <div style="position:absolute; inset:0 auto 0 0; width:${barW}%; background:${color};"></div>
+                </div>
+                <div style="font-size:11px; color:var(--text-sec);">Тёмная часть — уже ушло, светлая — прогноз. Для автоотключения берётся большее из двух: <b>${s.load_pct}%</b>.
+                ${s.elapsed_days < 5 ? ' Прогноз включается с 5-го дня цикла — раньше он слишком шумный.' : ''}
+                ${s.adjust ? ` В счётчик добавлена поправка ${s.adjust >= 0 ? '+' : ''}${s.adjust}.` : ''}</div>
+            </div>
+
+            <div class="control-card" style="display:block; margin-bottom:14px;">
+                <b>Режим</b>
+                <div style="margin-top:8px; display:flex; gap:18px; flex-wrap:wrap;">
+                    <label><input type="radio" name="mail_mode" value="auto" ${s.mode === 'auto' ? 'checked' : ''} ${dis} onchange="app.setMailMode('auto')"> Авто — рассылки отключаются по ступеням</label>
+                    <label><input type="radio" name="mail_mode" value="manual" ${s.mode === 'manual' ? 'checked' : ''} ${dis} onchange="app.setMailMode('manual')"> Вручную — сами выключатели, без автоотключения</label>
+                </div>
+                <div style="font-size:12px; color:var(--text-sec); margin-top:8px; max-width:780px;">
+                    Ступень 1 (${s.tiers.t1}%): напоминания новичкам, прочее · Ступень 2 (${s.tiers.t2}%): неактивные, личные сообщения, вопросы без ответа, обратная связь ·
+                    Ступень 3 (${s.tiers.t3}%): статусы смет, тариф Профи. Коды регистрации и запросы счёта не отключаются никогда.
+                    Ручная отметка по строке ниже главнее авто и работает в обоих режимах.
+                </div>
+            </div>
+
+            <div style="overflow-x:auto;"><table class="inv-table ad-sticky" style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead><tr style="text-align:left; color:var(--text-sec);">
+                    <th style="padding:8px;">Тип письма</th>
+                    <th style="padding:8px; text-align:center;">Ступень</th>
+                    <th style="padding:8px; text-align:center;">Ушло в цикле</th>
+                    <th style="padding:8px; text-align:center;">В сутки</th>
+                    <th style="padding:8px; text-align:center;">Прогноз на цикл</th>
+                    <th style="padding:8px;">Состояние</th>
+                    <th style="padding:8px;">Выключатель</th>
+                </tr></thead><tbody>${rows}</tbody></table></div>
+            <div style="font-size:12px; color:var(--text-sec); margin:8px 0 14px; max-width:820px;">
+                Если включено всё: ≈ <b style="color:var(--text-main);">${sumAll}</b> писем за цикл${anyNoRate ? ' (по типам с данными)' : ''} при лимите ${lim}.
+                С текущими отключениями: ≈ <b style="color:var(--text-main);">${sumOn}</b>.
+                ${s.log_age_days < 3 ? '<br>* Журнал только начал копить данные, поэтому для кодов регистрации, неактивных и новичков темп — оценка по истории базы; остальные типы покажут цифры через пару дней.' : ''}
+                ${hasOverrides && !this.isReadOnlyAdmin() ? '<br><a href="#" onclick="app.resetMailOverrides(); return false;">Сбросить все ручные отметки (вернуть на Авто)</a>' : ''}
+            </div>
+
+            <details class="ad-collapse">
+                <summary>Лимит и пороги</summary>
+                <div class="ad-form-grid">
+                    ${field('Лимит писем в цикле', 'mail_limit', lim, 1, 100000)}
+                    ${field('День начала цикла', 'mail_cycle_day', s.cycle_day, 1, 28)}
+                    ${field('Ступень 1, % нагрузки', 'mail_t1', s.tiers.t1, 1, 200)}
+                    ${field('Ступень 2, % нагрузки', 'mail_t2', s.tiers.t2, 1, 200)}
+                    ${field('Ступень 3, % нагрузки', 'mail_t3', s.tiers.t3, 1, 200)}
+                    ${field('Поправка к счётчику в этом цикле, писем', 'mail_adjust', s.adjust, -100000, 100000)}
+                    <div class="ad-form-act"><button class="admin-btn ad-primary" ${dis} onclick="app.saveMailSettings()">Сохранить</button></div>
+                </div>
+                <div class="ad-sub" style="margin:0 16px 8px; max-width:780px;">
+                    Поправка нужна, чтобы счётчик сошёлся с кабинетом EmailJS: журнал видит письма сайта и базы, а письма из Edge Function
+                    (статусы смет) и всё, что ушло до сегодняшнего дня, он не считал. Посмотрите «Requests received» в EmailJS и впишите разницу.
+                </div>
+            </details>
+
+            <h4 style="margin:18px 0 6px;">Последние письма</h4>
+            ${logRows ? `<div style="overflow-x:auto;"><table class="inv-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead><tr style="text-align:left; color:var(--text-sec);"><th style="padding:6px 8px;">Когда</th><th style="padding:6px 8px;">Тип</th><th style="padding:6px 8px;">Тема</th><th style="padding:6px 8px;">Итог</th><th style="padding:6px 8px;">Откуда</th></tr></thead>
+                <tbody>${logRows}</tbody></table></div>`
+                : '<div style="padding:16px; color:var(--text-sec);">Журнал пока пуст — письма начнут записываться после выкладки.</div>'}`;
+    },
+
+    // Состояние → объект app_settings.mail_budget (расчёт отдаёт всё, что в нём лежит).
+    mailCfgFromState: function () {
+        const s = this._mailState;
+        const overrides = {};
+        (s.kinds || []).forEach(k => { if (k.override) overrides[k.kind] = k.override; });
+        // Поправка живёт только в своём цикле (adjust_cycle — дата его начала): в новом счётчик с нуля.
+        return { limit: s.limit, cycle_day: s.cycle_day, mode: s.mode, tiers: Object.assign({}, s.tiers), overrides,
+                 adjust: s.adjust, adjust_cycle: String(s.cycle_start).slice(0, 10) };
+    },
+
+    saveMailCfg: async function (cfg, okText) {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять настройки почты запрещено.'); return; }
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'mail_budget', value: cfg, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            await this.loadMailBudget();
+            this.renderAdminMailBody();
+            if (okText) app.alert(okText);
+        } catch (e) {
+            app.alert('Не удалось сохранить настройки почты: ' + (e.message || e));
+        }
+    },
+
+    setMailOverride: function (kind, val) {
+        const cfg = this.mailCfgFromState();
+        if (val === 'on' || val === 'off') cfg.overrides[kind] = val; else delete cfg.overrides[kind];
+        this.saveMailCfg(cfg);
+    },
+
+    setMailMode: function (mode) {
+        const cfg = this.mailCfgFromState();
+        cfg.mode = mode === 'manual' ? 'manual' : 'auto';
+        this.saveMailCfg(cfg);
+    },
+
+    resetMailOverrides: function () {
+        const cfg = this.mailCfgFromState();
+        cfg.overrides = {};
+        this.saveMailCfg(cfg);
+    },
+
+    saveMailSettings: function () {
+        const get = id => parseInt((document.getElementById(id) || {}).value, 10);
+        const limit = get('mail_limit'), cycle_day = get('mail_cycle_day');
+        const t1 = get('mail_t1'), t2 = get('mail_t2'), t3 = get('mail_t3');
+        let adjust = get('mail_adjust'); if (isNaN(adjust)) adjust = 0;
+        if (!(limit >= 1) || !(cycle_day >= 1 && cycle_day <= 28)) { app.alert('Лимит — целое число от 1, день цикла — от 1 до 28.'); return; }
+        if (!(t1 >= 1) || !(t2 >= 1) || !(t3 >= 1)) { app.alert('Пороги ступеней — целые числа процентов.'); return; }
+        if (!(t1 <= t2 && t2 <= t3)) { app.alert('Ступени идут по возрастанию: первая отключается раньше второй, вторая — раньше третьей.'); return; }
+        const cfg = this.mailCfgFromState();
+        Object.assign(cfg, { limit, cycle_day, adjust, tiers: { t1, t2, t3 } });
+        this.saveMailCfg(cfg, 'Настройки сохранены.');
     },
 
     renderAdminInactive: async function () {
