@@ -13332,6 +13332,19 @@ body.dark-mode .rq-cap, body.dark-mode .rq-rl span:first-child, body.dark-mode .
     text-align: center; font-size: 12.5px;
 }
 .admin-chat-list .admin-chat-empty { background: none; color: var(--text-sec); }
+/* Автоматическое напоминание в переписке: одна строка, по клику — полный текст */
+.chat-sysnote {
+    align-self: stretch; margin: 6px 0; padding: 7px 10px; border-radius: 10px;
+    background: var(--surface); color: var(--text-main);
+    border: 1px solid var(--border); border-left: 3px solid #F59E0B;
+    font-size: 12px; line-height: 1.4; cursor: pointer;
+}
+.chat-sysnote-head { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+.chat-sysnote-time { font-weight: 400; font-size: 10.5px; color: var(--text-sec); }
+.chat-sysnote-brief { color: var(--text-sec); margin-top: 2px; }
+.chat-sysnote-full { display: none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); white-space: pre-wrap; word-break: break-word; }
+.chat-sysnote.open .chat-sysnote-brief { display: none; }
+.chat-sysnote.open .chat-sysnote-full { display: block; }
 
 /* Список получателей объявлений: разворачивается на месте переписки, когда в шапке
    нажали «N получателей». Обоев тут нет намеренно — это справочник, а не чат. */

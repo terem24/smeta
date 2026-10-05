@@ -173,7 +173,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=4.90">
+    <link rel="stylesheet" href="style.css?v=4.91">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.29" defer></script>
@@ -203,7 +203,7 @@
     <script src="boiler_wall.js?v=1.0" defer></script>
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
     <script src="short_names.js?v=1.1" defer></script>
-    <script src="app.js?v=11.35" defer></script>
+    <script src="app.js?v=11.36" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -3644,7 +3644,11 @@
             </div>
 
             <div id="notif_pane_chat" style="display: none; flex-direction: column; flex: 1; min-height: 0; margin: 0 -18px -18px; border-top: 1px solid var(--border); border-radius: 0 0 16px 16px; overflow: hidden;">
-                <div class="admin-chat-body" id="user_chat_body" style="min-height: 240px;"></div>
+                <div class="admin-chat-body" id="user_chat_body" style="min-height: 240px;" onscroll="app.userChatOnScroll(this)"></div>
+                <!-- «↓ Новое сообщение»: показывается из renderUserChatNewBtn -->
+                <div style="position: relative; height: 0; flex-shrink: 0;">
+                    <button id="user_chat_newbtn" type="button" onclick="app.userChatToBottom()" style="display: none; position: absolute; right: 14px; bottom: 10px; z-index: 2; padding: 6px 12px; border: none; border-radius: 16px; background: var(--primary); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.25);"></button>
+                </div>
                 <!-- Полоска «отвечаем на это сообщение»: появляется по клику на пузыре,
                      заполняется из renderUserReplyBar -->
                 <div id="user_chat_replybar"></div>

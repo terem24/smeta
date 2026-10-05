@@ -20497,6 +20497,7 @@ const app = {
 
     switchNotifTab: function (tab) {
         this._notifTab = tab;
+        this._userChatShown = false; // вкладку открывают заново — читать с последнего сообщения
         this.renderNotifTabs();
         if (tab === 'chat') {
             this.renderUserChat();
@@ -20753,6 +20754,7 @@ const app = {
         // после отправки/прочтения вызывают эту функцию без аргумента и не должны
         // перекидывать человека с той вкладки, где он сейчас находится.
         if (tab) this._notifTab = tab;
+        this._userChatShown = false; // окно открыли заново — переписка с последнего сообщения
         // У админа вкладки нет вообще — только список
         if (this.usesAdminMessenger() || !this._notifTab) this._notifTab = this.usesAdminMessenger() ? 'list' : (this._notifTab || 'list');
         this.renderNotifTabs();
@@ -21030,6 +21032,23 @@ const app = {
             // Подпись входящего: имя автора, если оно есть в сообщении (так подписаны
             // ответы наблюдателей), иначе привычное «Администратор».
             const from = mine ? '' : (m.type === 'broadcast' ? '📢 Объявление для всех' : (m.sender_name || 'Администратор'));
+            // Автоматическое напоминание «выставить счёт» (его шлёт база раз в сутки) —
+            // не разговор: сворачиваем в одну строку, чтобы оно не вытесняло живую переписку.
+            // Клик раскрывает полный текст. Узнаём по первой строке, поэтому работает и
+            // для старых напоминаний, и без правок на стороне базы.
+            if (!mine && /^📄 Напоминание: выставить счёт/.test(m.text || '')) {
+                const mm = String(m.text).match(/КП по объекту «(.+?)» \(расчёт № ([^,)]+)(?:, ([^)]+))?\) ушло клиенту (\d{2}\.\d{2}\.\d{4})/);
+                const brief = mm
+                    ? [`«${mm[1]}»`, '№ ' + mm[2], mm[3], 'ушло ' + mm[4]].filter(Boolean).join(' · ')
+                    : 'КП ушло клиенту, счёт не запрошен';
+                html += `
+                <div class="chat-sysnote${(this._userChatNotesOpen || {})[m.id] ? ' open' : ''}" id="umsg_${m.id}" onclick="app.toggleChatSysnote(this, '${m.id}')" title="Нажмите, чтобы прочитать целиком">
+                    <div class="chat-sysnote-head"><span>📄 Напоминание: выставить счёт</span><span class="chat-sysnote-time">${clockTime(m.created_at)}</span></div>
+                    <div class="chat-sysnote-brief">${esc(brief)}</div>
+                    <div class="chat-sysnote-full">${esc(String(m.text).replace(/^📄 Напоминание: выставить счёт\s*/, ''))}</div>
+                </div>`;
+                return;
+            }
             const src = m.reply_to_id ? byId[m.reply_to_id] : null;
             const quote = m.reply_to_id
                 ? this.chatQuoteHtml(src ? nameOf(src) : '', src ? src.text : '', src ? 'umsg_' + src.id : '')
@@ -21047,9 +21066,26 @@ const app = {
         });
         // Ушли вверх по переписке (например, отвечают на старое сообщение) — не
         // отбрасываем обратно в конец при перерисовке
-        const keepScroll = (body.scrollHeight - body.scrollTop - body.clientHeight) > 40 ? body.scrollTop : null;
+        // Позицию храним только если переписка уже была на экране: у скрытой вкладки
+        // прокрутить вниз нельзя, она остаётся на нуле, и следующая перерисовка
+        // принимала этот ноль за «человек сам ушёл вверх» — переписка открывалась с начала.
+        const visible = body.clientHeight > 0;
+        // Своё только что отправленное сообщение — всегда вниз, даже если читали старое
+        const forceBottom = this._userChatForceBottom;
+        this._userChatForceBottom = false;
+        const keepScroll = !forceBottom && visible && this._userChatShown && (body.scrollHeight - body.scrollTop - body.clientHeight) > 40 ? body.scrollTop : null;
         body.innerHTML = html;
         body.scrollTop = keepScroll == null ? body.scrollHeight : keepScroll;
+        // Пришло новое входящее, а человек читает выше — не прыгаем вниз, а показываем
+        // кнопку «↓ Новое сообщение». Счёт ведём по входящим, чтобы свои ответы не считались.
+        const incomingTotal = items.filter(m => m.sender_id !== meId).length;
+        if (keepScroll == null) this._userChatUnseen = 0;
+        else if (this._userChatIncoming != null && incomingTotal > this._userChatIncoming) {
+            this._userChatUnseen = (this._userChatUnseen || 0) + (incomingTotal - this._userChatIncoming);
+        }
+        this._userChatIncoming = visible ? incomingTotal : null;
+        this.renderUserChatNewBtn();
+        this._userChatShown = visible;
         this.renderUserReplyBar(byId[this._userReplyTo] || null, nameOf);
 
         // Переписка открыта и текст виден целиком — значит письма прочитаны: ставим
@@ -21065,6 +21101,39 @@ const app = {
                 (this._notifications || []).forEach(n => { if (fresh.includes(n.id)) n.isRead = true; });
                 this.fetchNotifications();
             }
+        }
+    },
+
+    // Кнопка «↓ Новое сообщение» над полем ввода: видна, пока человек читает выше
+    // и пришло входящее, которого он ещё не видел
+    renderUserChatNewBtn: function () {
+        const btn = document.getElementById('user_chat_newbtn');
+        if (!btn) return;
+        const n = this._userChatUnseen || 0;
+        btn.style.display = n > 0 ? 'block' : 'none';
+        btn.textContent = n > 1 ? '↓ Новых сообщений: ' + n : '↓ Новое сообщение';
+    },
+
+    // Раскрытая карточка напоминания помнится между перерисовками переписки
+    toggleChatSysnote: function (el, id) {
+        const open = el.classList.toggle('open');
+        this._userChatNotesOpen = this._userChatNotesOpen || {};
+        if (open) this._userChatNotesOpen[id] = true; else delete this._userChatNotesOpen[id];
+    },
+
+    userChatToBottom: function () {
+        const body = document.getElementById('user_chat_body');
+        if (body) body.scrollTo({ top: body.scrollHeight, behavior: 'smooth' });
+        this._userChatUnseen = 0;
+        this.renderUserChatNewBtn();
+    },
+
+    // Дошли до низа сами — кнопка больше не нужна
+    userChatOnScroll: function (body) {
+        if (!this._userChatUnseen) return;
+        if (body.scrollHeight - body.scrollTop - body.clientHeight <= 40) {
+            this._userChatUnseen = 0;
+            this.renderUserChatNewBtn();
         }
     },
 
@@ -21140,6 +21209,7 @@ const app = {
         const localId = 'local_' + Date.now();
         if (inp) { inp.value = ''; inp.focus({ preventScroll: true }); }
         this._userReplyTo = null;
+        this._userChatForceBottom = true;
         (this._msgCache = this._msgCache || []).push({
             id: localId, sender_id: meId, recipient_id: null,
             text: text, type: 'reply', parent_id: parentId, reply_to_id: replyTo,
