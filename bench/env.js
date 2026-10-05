@@ -156,6 +156,7 @@ const load = (file, expose) => {
 // Файл ставит window.boilerWall сам, вытаскивать нечего.
 load('boiler_wall.js', '');
 load('catalog.js', 'globalThis.__catalog = catalog;');
+load('dist_prices.js', 'globalThis.DIST_PRICES = DIST_PRICES;');
 load('app.js', 'globalThis.__app = app;');
 
 const app = ctx.__app;

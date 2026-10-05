@@ -8746,6 +8746,15 @@ const app = {
         return key;
     },
 
+    // Цена артикула в прайсе дистрибьютора (с подстановкой нержавейки RSS-10… → RSS-00…)
+    // или undefined, если позиции в прайсе нет. Один разбор на наложение цен и на таблицу
+    // сверки в админке, чтобы они не разошлись.
+    distPriceOf: function (prices, id) {
+        const own = prices[id];
+        if (own !== undefined) return own;
+        return String(id).indexOf('RSS-10') === 0 ? prices['RSS-00' + String(id).slice(6)] : undefined;
+    },
+
     // Накладывает цены дистрибьютора на каталог (или снимает их). Возвращает
     // true, если цены реально поменялись — значит вызвавшему нужен render().
     applyDistributorPrices: function () {
@@ -8772,11 +8781,7 @@ const app = {
         // нержавейки: прямых совпадений между каталогом и прайсом ноль, а после
         // замены совпадают все 227 — вся нержавеющая труба и пресс-фитинги.
         // Монтажник со своим прайсом считал их по ценам Терем-онлайн.
-        const priceOf = (id) => {
-            const own = prices[id];
-            if (own !== undefined) return own;
-            return id.indexOf('RSS-10') === 0 ? prices['RSS-00' + id.slice(6)] : undefined;
-        };
+        const priceOf = (id) => this.distPriceOf(prices, id);
         const backup = new Map();
         const seen = new Set();
         // Обход рекурсивный: цены есть и во вложенных .rommer / .comfort, а одна
@@ -23554,6 +23559,7 @@ const app = {
         { id: 'kanban', icon: '📅', label: 'Планировщик', hint: 'Статусы смет по этапам' },
         { id: 'branches', icon: '🏬', label: 'Филиалы', hint: 'Схема компании: ссылки, монтажники, работа менеджеров' },
         { id: 'pricelist', icon: '💵', label: 'Прайс-лист', sub: 'Цены работ', hint: 'Свои расценки монтажников' },
+        { id: 'distprices', icon: '🏷', label: 'Прайс дистрибьютора', sub: 'Прайс дистрибьютора', hint: 'Дата прайса и чем его цены отличаются от каталога' },
         { id: 'equipment', icon: '🧰', label: 'Своё оборудование', sub: 'Оборудование', hint: 'Добавленное, удалённое, замены' },
         { id: 'successors', icon: '🔁', label: 'Замены позиций', sub: 'Замены', hint: 'Снятые с поставки и чем заменить' },
         { id: 'recognition', icon: '🔍', label: 'Распознавание', hint: 'Архив смет и месячные лимиты' },
@@ -23582,6 +23588,7 @@ const app = {
         payready: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
         kanban: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18"/>',
         branches: '<rect x="9" y="2" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="16" y="16" width="6" height="6" rx="1"/><path d="M12 8v4M5 16v-2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2"/>',
+        distprices: '<path d="M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1"/>',
         pricelist: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
         equipment: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',
         successors: '<path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
@@ -23606,7 +23613,7 @@ const app = {
         { id: 'people', label: 'Клиенты', icon: 'stats', tabs: ['stats', 'distributors', 'branches', 'inactive'] },
         { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['leads', 'estimates', 'kanban', 'projects', 'warranty'] },
         { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages'] },
-        { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'equipment', 'successors'] },
+        { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'distprices', 'equipment', 'successors'] },
         { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription', 'payready'] },
         { id: 'ai', label: 'ИИ и файлы', icon: 'recognition', tabs: ['recognition', 'plans', 'aifill'] },
         { id: 'content', label: 'Контент', icon: 'articles', tabs: ['articles'] }
@@ -23849,7 +23856,7 @@ const app = {
     // Разделы менеджера дистрибьютора. Остальные вкладки — либо про платформу
     // целиком (прайс-листы, распознавание, проекты, аналитика), либо про чужие
     // компании (карточки дистрибьюторов), поэтому их он не видит вовсе.
-    MANAGER_TABS: ['stats', 'estimates', 'messages', 'kanban'],
+    MANAGER_TABS: ['stats', 'estimates', 'messages', 'kanban', 'distprices'],
 
     // Подписи под названиями разделов в мобильном меню: у менеджера они честнее
     // говорят «ваши», а не «все» — данные-то урезаны по его компании.
@@ -23857,7 +23864,8 @@ const app = {
         stats: 'Монтажники вашей компании',
         estimates: 'Сметы ваших монтажников',
         messages: 'Переписка с вашими монтажниками',
-        kanban: 'Статусы смет вашей компании'
+        kanban: 'Статусы смет вашей компании',
+        distprices: 'Прайс вашей компании и отличия от каталога'
     },
 
     // Вкладки, доступные текущему админу. Фильтр в одном месте: список строится
@@ -25477,6 +25485,12 @@ const app = {
         if (this._adminTab === 'pricelist') {
             content.innerHTML = navHtml;
             this.renderAdminPricelist();
+            return;
+        }
+
+        if (this._adminTab === 'distprices') {
+            content.innerHTML = navHtml + '<div id="dp_box"></div>';
+            this.renderAdminDistPrices();
             return;
         }
 
@@ -32917,6 +32931,170 @@ const app = {
      * в таблицу пишет функция по публичному ключу, и чужой текст не должен
      * исполняться в админке.
      */
+    // ═══ Вкладка «Прайс дистрибьютора» ═══════════════════════════════════
+    //
+    // Только просмотр: дата прайса и таблица «цена каталога (Терем-онлайн) против цены
+    // дистрибьютора» для сверки глазами. Прайс лежит файлом dist_prices.js и накладывается
+    // на каталог в браузере (applyDistributorPrices), поэтому базовую цену берём из
+    // _distPriceBackup, если прайс сейчас наложен, — иначе в каталоге уже цена дистрибьютора
+    // и разницы не было бы.
+    // Администратор выбирает любой прайс, менеджер и наблюдатель — только прайсы своих
+    // компаний (adminData.distributors уже урезан по их области видимости).
+    DP_LIMIT: 300,
+
+    distPriceKeys: function () {
+        const all = (typeof DIST_PRICES !== 'undefined') ? DIST_PRICES : {};
+        if (!this.isScopedAdmin()) return Object.keys(all);
+        const mine = ((this.adminData && this.adminData.distributors) || []).map(d => d.price_list_key).filter(k => k && all[k]);
+        return mine.filter((k, i) => mine.indexOf(k) === i);
+    },
+
+    // Строки сверки: позиции каталога по одной на артикул и их цена в прайсе
+    distPriceRows: function (key) {
+        const cache = this._dpCache || (this._dpCache = {});
+        if (cache[key]) return cache[key];
+        const prices = (DIST_PRICES[key] && DIST_PRICES[key].items) || {};
+        const rows = [], seen = new Set(), ids = new Set();
+        const walk = (node) => {
+            if (!node || typeof node !== 'object' || seen.has(node)) return;
+            seen.add(node);
+            if (typeof node.id === 'string' && typeof node.price === 'number' && !ids.has(node.id)) {
+                ids.add(node.id);
+                const base = this._distPriceBackup && this._distPriceBackup.has(node) ? this._distPriceBackup.get(node) : node.price;
+                const own = this.distPriceOf(prices, node.id);
+                const has = own !== undefined;
+                rows.push({
+                    id: node.id, name: String(node.name || ''), base: base,
+                    own: has ? own : null,
+                    diff: has ? own - base : null,
+                    pct: has && base ? (own - base) / base * 100 : null
+                });
+            }
+            for (const k in node) walk(node[k]);
+        };
+        (typeof CATALOG_PRICE_ROOTS !== 'undefined' ? CATALOG_PRICE_ROOTS : [catalog]).forEach(walk);
+        cache[key] = { rows: rows, total: Object.keys(prices).length };
+        return cache[key];
+    },
+
+    renderAdminDistPrices: function () {
+        const box = document.getElementById('dp_box');
+        if (!box) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const keys = this.distPriceKeys();
+        const st = this._dp || (this._dp = { key: '', q: '', qn: '', st: 'all', min: '', sort: 'id', dir: 1, all: false });
+        if (!keys.length) {
+            box.innerHTML = `<div class="ad-page-h"><div><h3>Прайс дистрибьютора</h3></div></div>
+                <div style="padding:30px; text-align:center; color:var(--text-sec); background:var(--surface-light); border-radius:10px;">${
+                this.isScopedAdmin() ? 'У вашей компании нет своего прайс-листа: монтажники видят цены Терем-онлайн.' : 'Прайс-листов дистрибьюторов нет.'}</div>`;
+            return;
+        }
+        if (keys.indexOf(st.key) < 0) st.key = keys[0];
+        const pl = DIST_PRICES[st.key];
+        const data = this.distPriceRows(st.key);
+        const users = ((this.adminData && this.adminData.distributors) || []).filter(d => d.price_list_key === st.key);
+        const on = users.filter(d => d.use_own_prices);
+        const date = pl.date ? new Date(pl.date) : null;
+        const days = date ? Math.floor((Date.now() - date.getTime()) / 86400000) : null;
+        const inList = data.rows.filter(r => r.own != null).length;
+        const stale = days != null && days > 45;
+
+        const select = keys.length > 1
+            ? `<select onchange="app._dp.key=this.value; app._dp.all=false; app.renderAdminDistPrices()" style="padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main);">
+                ${keys.map(k => `<option value="${esc(k)}" ${k === st.key ? 'selected' : ''}>${esc(DIST_PRICES[k].title || k)}</option>`).join('')}</select>` : '';
+        const tile = (label, value, sub, warn) => `<div class="control-card"><span class="lbl">${label}</span><span${warn ? ' style="color:#D97706;"' : ''}>${value}</span><span>${sub}</span></div>`;
+        const inp = 'padding:6px 8px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main); font-size:12.5px; width:100%; box-sizing:border-box;';
+        const th = (col, label, right) => `<th style="${right ? 'text-align:right;' : ''} cursor:pointer; white-space:nowrap;" onclick="app.dpSort('${col}')">${label}<span id="dp_arr_${col}"></span></th>`;
+
+        box.innerHTML = `
+            <div class="ad-page-h">
+                <div><h3>Прайс дистрибьютора</h3>
+                    <div class="ad-sub" style="max-width:900px; line-height:1.55;">Таблица для сверки: цена позиции в каталоге (Терем-онлайн) и в прайсе дистрибьютора. Только просмотр — прайс обновляется выкладкой нового файла.</div></div>
+                ${select}
+            </div>
+            <div class="admin-stat-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; margin-bottom:14px;">
+                ${tile('Прайс от', date ? date.toLocaleDateString('ru-RU') : '—', days != null ? (stale ? `${days} дн. назад — пора обновить` : `${days} дн. назад`) : 'дата не указана', stale)}
+                ${tile('Артикулов в прайсе', data.total.toLocaleString('ru-RU'), esc(pl.title || st.key))}
+                ${tile('Совпало с каталогом', inList.toLocaleString('ru-RU'), `из ${data.rows.length.toLocaleString('ru-RU')} позиций каталога`)}
+                ${tile('Монтажники видят', on.length ? 'свои цены' : 'Терем', on.length ? esc(on.map(d => d.company_name).join(', ')) : (users.length ? 'свои цены выключены' : 'прайс никому не назначен'))}
+            </div>
+            <div class="ad-chips" id="dp_chips"></div>
+            <div style="overflow-x:auto;">
+            <table class="admin-table" style="width:100%; min-width:760px;">
+                <thead>
+                    <tr>${th('id', 'Артикул')}${th('name', 'Название')}${th('base', 'Каталог, ₽', 1)}${th('own', 'Прайс, ₽', 1)}${th('diff', 'Разница, ₽', 1)}${th('pct', 'Разница, %', 1)}</tr>
+                    <tr>
+                        <td><input id="dp_q" type="search" placeholder="Поиск по артикулу" value="${esc(st.q)}" oninput="app._dp.q=this.value; app.dpRefresh()" style="${inp}"></td>
+                        <td><input id="dp_qn" type="search" placeholder="Фильтр по названию" value="${esc(st.qn)}" oninput="app._dp.qn=this.value; app.dpRefresh()" style="${inp}"></td>
+                        <td colspan="2"></td>
+                        <td colspan="2"><input id="dp_min" type="number" min="0" step="1" placeholder="Отличие от, %" value="${esc(st.min)}" oninput="app._dp.min=this.value; app.dpRefresh()" style="${inp}"></td>
+                    </tr>
+                </thead>
+                <tbody id="dp_body"></tbody>
+            </table></div>
+            <div id="dp_more" style="margin-top:10px; text-align:center;"></div>`;
+        this.dpRefresh();
+    },
+
+    dpSort: function (col) {
+        const st = this._dp;
+        if (st.sort === col) st.dir = -st.dir; else { st.sort = col; st.dir = 1; }
+        this.dpRefresh();
+    },
+
+    // Перерисовывает только тело таблицы и счётчики: пока админ печатает в поиске,
+    // поля фильтров не должны пересоздаваться — иначе пропадает фокус
+    dpRefresh: function () {
+        const body = document.getElementById('dp_body');
+        const st = this._dp;
+        if (!body || !st) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const fmt = n => n == null ? '—' : (Math.round(n * 100) / 100).toLocaleString('ru-RU');
+        const rows = this.distPriceRows(st.key).rows;
+        const cnt = { all: rows.length, diff: 0, same: 0, none: 0 };
+        rows.forEach(r => { if (r.own == null) cnt.none++; else if (Math.abs(r.diff) < 0.5) cnt.same++; else cnt.diff++; });
+        const chips = [['all', 'Все'], ['diff', 'Отличаются'], ['same', 'Совпадают'], ['none', 'Нет в прайсе']];
+        document.getElementById('dp_chips').innerHTML = chips.map(c =>
+            `<button class="ad-chip${st.st === c[0] ? ' active' : ''}" onclick="app._dp.st='${c[0]}'; app._dp.all=false; app.dpRefresh()">${c[1]} <span class="ad-chip-n">${cnt[c[0]]}</span></button>`).join('');
+
+        const q = st.q.trim().toLowerCase(), qn = st.qn.trim().toLowerCase(), min = parseFloat(st.min);
+        const list = rows.filter(r => {
+            if (st.st === 'diff' && !(r.own != null && Math.abs(r.diff) >= 0.5)) return false;
+            if (st.st === 'same' && !(r.own != null && Math.abs(r.diff) < 0.5)) return false;
+            if (st.st === 'none' && r.own != null) return false;
+            if (q && r.id.toLowerCase().indexOf(q) < 0) return false;
+            if (qn && r.name.toLowerCase().indexOf(qn) < 0) return false;
+            if (min > 0 && !(r.pct != null && Math.abs(r.pct) >= min)) return false;
+            return true;
+        });
+        const c = st.sort, d = st.dir;
+        list.sort((a, b) => {
+            const x = a[c], y = b[c];
+            if (x == null && y == null) return 0;
+            if (x == null) return 1;           // пустые — всегда в конец
+            if (y == null) return -1;
+            return (typeof x === 'string' ? x.localeCompare(y, 'ru', { numeric: true }) : x - y) * d;
+        });
+        ['id', 'name', 'base', 'own', 'diff', 'pct'].forEach(k => {
+            const el = document.getElementById('dp_arr_' + k);
+            if (el) el.textContent = k === c ? (d > 0 ? ' ▲' : ' ▼') : '';
+        });
+
+        const shown = st.all ? list : list.slice(0, this.DP_LIMIT);
+        const colorOf = r => r.diff == null || Math.abs(r.diff) < 0.5 ? 'var(--text-sec)' : (r.diff > 0 ? '#D97706' : '#10B981');
+        body.innerHTML = shown.length ? shown.map(r => `<tr>
+            <td style="white-space:nowrap; font-weight:600;">${esc(r.id)}</td>
+            <td style="font-size:12.5px;">${esc(r.name)}</td>
+            <td style="text-align:right; white-space:nowrap;">${fmt(r.base)}</td>
+            <td style="text-align:right; white-space:nowrap;">${r.own == null ? '<span style="color:var(--text-sec);">нет в прайсе</span>' : fmt(r.own)}</td>
+            <td style="text-align:right; white-space:nowrap; color:${colorOf(r)}; font-weight:700;">${r.diff == null ? '—' : (r.diff > 0 ? '+' : '') + fmt(r.diff)}</td>
+            <td style="text-align:right; white-space:nowrap; color:${colorOf(r)}; font-weight:700;">${r.pct == null ? '—' : (r.pct > 0 ? '+' : '') + (Math.round(r.pct * 10) / 10).toLocaleString('ru-RU') + ' %'}</td>
+        </tr>`).join('') : '<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-sec);">Ничего не найдено.</td></tr>';
+        document.getElementById('dp_more').innerHTML = list.length > shown.length
+            ? `<span style="color:var(--text-sec); font-size:12.5px;">Показано ${shown.length} из ${list.length}. </span><button class="admin-btn" onclick="app._dp.all=true; app.dpRefresh()">Показать все</button>`
+            : `<span style="color:var(--text-sec); font-size:12.5px;">Строк: ${list.length}</span>`;
+    },
+
     renderAdminSuccessors: function () {
         const content = document.getElementById('admin_content');
         if (!content) return;
