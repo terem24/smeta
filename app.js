@@ -33218,8 +33218,21 @@ const app = {
         if (!box || !st) return;
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const fmt = n => (Math.round(Number(n) * 100) / 100).toLocaleString('ru-RU');
-        const head = '<h3 style="margin:0 0 4px;">Журнал изменений</h3>';
-        if (!meta || meta.key !== st.key || !meta.loaded) { box.innerHTML = head + '<div class="ad-sub">Загрузка…</div>'; return; }
+        const head0 = '<h3 style="margin:0 0 4px;">Журнал изменений</h3>';
+        if (!meta || meta.key !== st.key || !meta.loaded) { box.innerHTML = head0 + '<div class="ad-sub">Загрузка…</div>'; return; }
+        // Загрузки прайса из Excel: кто, когда, на какую дату и сколько позиций затронуто
+        const ups = (meta.uploads || []).length ? `<h3 style="margin:0 0 4px;">Загрузки прайса</h3>
+            <div style="overflow-x:auto; margin-bottom:22px;"><table class="admin-table" style="width:100%; min-width:760px;">
+            <thead><tr><th>Когда</th><th>Кто</th><th>Дата прайса</th><th style="text-align:right;">Позиций в прайсе</th><th style="text-align:right;">Добавлено</th><th style="text-align:right;">Изменено</th><th style="text-align:right;">Убрано</th><th>Режим</th></tr></thead>
+            <tbody>${meta.uploads.map(u => `<tr>
+                <td style="white-space:nowrap;">${esc(new Date(u.uploaded_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))}</td>
+                <td style="font-size:12px;">${esc(u.uploaded_by || '—')}</td>
+                <td>${esc(new Date(u.price_date).toLocaleDateString('ru-RU'))}</td>
+                <td style="text-align:right;">${Number(u.items_count).toLocaleString('ru-RU')}</td>
+                <td style="text-align:right;">${u.added}</td><td style="text-align:right;">${u.changed}</td><td style="text-align:right;">${u.removed}</td>
+                <td style="font-size:12px;">${u.mode === 'replace' ? 'заменён целиком' : 'обновление'}${u.files > 1 ? ', файлов: ' + u.files : ''}</td>
+            </tr>`).join('')}</tbody></table></div>` : '';
+        const head = ups + head0;
         if (meta.err) {
             box.innerHTML = head + `<div class="ad-sub" style="color:#D97706;">Журнал недоступен: ${esc(meta.err)}. Если миграция 20261005_distributor_price_overrides.sql ещё не выполнена в Supabase — правки и журнал работать не будут.</div>`;
             return;
