@@ -33339,35 +33339,53 @@ const app = {
     },
 
     dpUploadHtml: function () {
-        const key = this._dp.key;
-        const up = this._dpUp && this._dpUp.key === key ? this._dpUp : null;
-        const open = up || this.distPriceData(key).source === 'file';
-        return `<details ${open ? 'open' : ''} style="margin:0 0 16px; border:1px solid var(--border); border-radius:12px; padding:12px 16px; background:var(--surface);">
-            <summary style="cursor:pointer; font-weight:700; font-size:14px;">Загрузить новый прайс из Excel</summary>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:10px 32px; margin-top:12px; font-size:13px; line-height:1.55; color:var(--text-main);">
-                <div><b>Как загрузить</b>
-                    <ol style="margin:6px 0 0; padding-left:20px;">
-                        <li>Возьмите у дистрибьютора свежую выгрузку цен в Excel. Если прайс разбит на несколько файлов (у КИТ-Сервис это «STOUT списком» и «ROMMER списком»), выберите их <b>все сразу</b>.</li>
-                        <li>Нажмите «Выбрать файлы». Файл никуда не отправляется — его читает ваш браузер.</li>
-                        <li>Проверьте отчёт: сколько цен изменилось, нет ли предупреждений и подозрительных позиций.</li>
-                        <li>Поставьте отметку «Отчёт проверил» и нажмите «Опубликовать прайс». Цены начнут действовать у монтажников компании при их следующем входе, выкладка сайта не нужна.</li>
-                    </ol></div>
-                <div><b>Требования к файлу</b>
-                    <ul style="margin:6px 0 0; padding-left:20px;">
-                        <li>Формат <b>.xls</b> или <b>.xlsx</b>, прайс на <b>первом листе</b>.</li>
-                        <li>В шапке есть колонка «Артикул» (подойдёт «Номенклатура.Артикул») и колонка «Цена» — их ищут по названию, порядок колонок не важен.</li>
-                        <li>Цена — в <b>рублях с НДС</b>, за ту же единицу, что в каталоге (метр, штука, кассета). Если цена за бухту или упаковку, отчёт покажет такую позицию как подозрительную.</li>
-                        <li>Дата берётся из шапки («Цена указана на 30.09.2026»). Если её нет — введите вручную.</li>
-                        <li>Строки без артикула или без цены пропускаются, их список будет в отчёте. Колонку РИЦ (рекомендованная розница) загружать не нужно.</li>
-                        <li>Режим «Обновить» меняет цены только у позиций из файла, остальные остаются прежними. «Заменить целиком» стирает прежний прайс — нужен, только когда файл содержит весь ассортимент.</li>
-                        <li>Загрузили не то — загрузите правильный файл ещё раз. Правки спорных позиций и журнал при этом сохраняются.</li>
-                    </ul></div>
+        // Загрузка в три шага: выбрать файлы → проверить отчёт → опубликовать.
+        // Требования к файлу спрятаны за кнопкой, чтобы сам выбор файлов был на виду.
+        return `<div style="margin:0 0 16px; border:1px solid var(--border); border-radius:14px; padding:16px 18px; background:var(--surface);">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                <div><div style="font-weight:800; font-size:15px;">Загрузка нового прайса из Excel</div>
+                    <div class="ad-sub" style="max-width:760px; line-height:1.5;">Файл читает ваш браузер — на сервер уходит только список «артикул → цена». Цены начнут действовать у монтажников компании при их следующем входе, выкладка сайта не нужна.</div></div>
+                <button class="admin-btn" onclick="var h=document.getElementById('dp_up_help'); h.style.display = h.style.display === 'none' ? '' : 'none'">Требования к файлу</button>
             </div>
-            <div style="margin-top:14px;">
-                <input id="dp_up_file" type="file" multiple accept=".xls,.xlsx" onchange="app.dpUpFiles(this)" style="font-size:13px;">
-            </div>
-            <div id="dp_up_box" style="margin-top:12px;">${this.dpUpReportHtml()}</div>
-        </details>`;
+            <div id="dp_up_help" style="display:none; margin-top:12px; padding:12px 16px; border-radius:10px; background:var(--surface-light); font-size:13px; line-height:1.6; color:var(--text-main);">
+                <ul style="margin:0; padding-left:20px;">
+                    <li>Формат <b>.xls</b> или <b>.xlsx</b>, прайс на <b>первом листе</b>.</li>
+                    <li>В шапке есть колонка «Артикул» (подойдёт «Номенклатура.Артикул») и колонка «Цена» — их находят по названию, порядок колонок не важен.</li>
+                    <li>Цена — в <b>рублях с НДС</b>, за ту же единицу, что в каталоге (метр, штука, кассета). Если цена за бухту или упаковку, отчёт покажет такую позицию как подозрительную.</li>
+                    <li>Дата берётся из шапки («Цена указана на 30.09.2026»). Если её нет — укажете вручную.</li>
+                    <li>Строки без артикула или без цены пропускаются, их список будет в отчёте. Колонку РИЦ (рекомендованная розница) загружать не нужно.</li>
+                    <li>Если прайс разбит на несколько файлов (у КИТ-Сервис — «STOUT списком» и «ROMMER списком»), выберите их <b>все сразу</b>.</li>
+                    <li>«Обновить» меняет цены только у позиций из файла, остальные остаются прежними. «Заменить целиком» стирает прежний прайс — нужен, только когда файл содержит весь ассортимент.</li>
+                    <li>Загрузили не то — загрузите правильный файл ещё раз. Правки спорных позиций и журнал при этом сохраняются.</li>
+                </ul></div>
+            <div id="dp_up_box" style="margin-top:14px;">${this.dpUpReportHtml()}</div>
+        </div>`;
+    },
+
+    // Полоска шагов: выбрать файлы → проверить отчёт → опубликовать
+    dpUpSteps: function () {
+        const up = this._dpUp && this._dp && this._dpUp.key === this._dp.key ? this._dpUp : null;
+        let n = 1;
+        if (up && up.done) n = 4;
+        else if (up && up.rep && !up.busy) n = up.ack ? 3 : 2;
+        const names = ['Выберите файлы', 'Проверьте отчёт', 'Опубликуйте'];
+        return `<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">${names.map((t, i) => {
+            const k = i + 1;
+            const done = n > k, cur = n === k;
+            const col = done ? '#059669' : (cur ? 'var(--primary)' : 'var(--text-sec)');
+            return `<div style="display:flex; align-items:center; gap:8px; padding:6px 14px 6px 8px; border-radius:999px; border:1px solid ${cur ? 'var(--primary)' : 'var(--border)'}; background:${cur ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'transparent'}; color:${col}; font-size:13px; font-weight:${cur ? 700 : 600};">
+                <span style="width:22px; height:22px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:${done ? '#059669' : (cur ? 'var(--primary)' : 'var(--border)')}; color:#fff; font-size:12px;">${done ? '✓' : k}</span>${t}</div>`;
+        }).join('')}</div>`;
+    },
+
+    // Крупная зона выбора файлов: клик или перетаскивание
+    dpUpDropzone: function (compact) {
+        return `<label ondragover="event.preventDefault(); this.style.borderColor='var(--primary)'" ondragleave="this.style.borderColor=''" ondrop="event.preventDefault(); this.style.borderColor=''; app.dpUpFiles({ files: event.dataTransfer.files })"
+            style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:${compact ? '10px 16px' : '30px 16px'}; border:2px dashed var(--border); border-radius:12px; cursor:pointer; text-align:center; background:var(--surface-light);">
+            <span style="font-weight:700; font-size:${compact ? 13 : 15}px; color:var(--primary);">${compact ? '＋ Выбрать другие файлы' : 'Перетащите сюда файлы прайса или нажмите, чтобы выбрать'}</span>
+            ${compact ? '' : '<span class="ad-sub">Формат .xls или .xlsx. Если прайс в нескольких файлах (у КИТ-Сервис — STOUT и ROMMER), выберите их все сразу.</span>'}
+            <input type="file" multiple accept=".xls,.xlsx" onchange="app.dpUpFiles(this)" style="display:none">
+        </label>`;
     },
 
     // Один лист → { items, noArt, noPrice, dups, date, error }
@@ -33422,8 +33440,10 @@ const app = {
     },
 
     dpUpFiles: async function (input) {
-        const files = Array.from(input.files || []);
-        if (!files.length) return;
+        const files = Array.from(input.files || []).filter(f => /\.xlsx?$/i.test(f.name));
+        // Сбрасываем выбор, чтобы те же файлы можно было выбрать повторно
+        try { if (input.tagName) input.value = ''; } catch (e) { }
+        if (!files.length) { app.alert('Нужны файлы Excel: .xls или .xlsx.'); return; }
         const key = this._dp.key;
         const up = this._dpUp = { key: key, files: [], inc: {}, noArt: [], date: '', mode: 'merge', ack: false, busy: 'Читаю файлы…', err: '', done: '', rep: null };
         this.dpUpRerender();
@@ -33473,7 +33493,10 @@ const app = {
             const why = [];
             if (base[a] && (inc[a] / base[a] > 1.6 || inc[a] / base[a] < 0.6)) why.push('цена отличается от каталога в ' + (Math.round(inc[a] / base[a] * 100) / 100).toLocaleString('ru-RU') + ' раза');
             if (cur[a] && (inc[a] / cur[a] > 1.6 || inc[a] / cur[a] < 0.6)) why.push('цена изменилась в ' + (Math.round(inc[a] / cur[a] * 100) / 100).toLocaleString('ru-RU') + ' раза против прежнего прайса');
-            if (why.length) rep.sus.push({ id: a, name: names[a] || '', base: base[a], was: cur[a], now: inc[a], why: why.join('; '), k: Math.abs(Math.log(inc[a] / (base[a] || cur[a] || inc[a]))) });
+            // Позиция, по которой админ уже поставил правку, не требует решения: в прайсе
+            // цена будет лежать, но монтажнику она не достанется (или заменена своей)
+            const ovr = this.dpOvMap(up.key)[a] || null;
+            if (why.length) rep.sus.push({ id: a, name: names[a] || '', base: base[a], was: cur[a], now: inc[a], why: why.join('; '), ov: ovr, k: Math.abs(Math.log(inc[a] / (base[a] || cur[a] || inc[a]))) });
         });
         rep.sus.sort((x, y) => y.k - x.k);
         const curDate = (this.distPriceData(up.key) || {}).date || '';
@@ -33489,35 +33512,46 @@ const app = {
     },
 
     dpUpReportHtml: function () {
-        const up = this._dpUp;
-        if (!up || !this._dp || up.key !== this._dp.key) return '';
+        const up = this._dpUp && this._dp && this._dpUp.key === this._dp.key ? this._dpUp : null;
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const fmt = n => n == null ? '—' : (Math.round(n * 100) / 100).toLocaleString('ru-RU');
-        if (up.busy) return `<div class="ad-sub">${esc(up.busy)}</div>`;
-        if (up.done) return `<div style="padding:10px 14px; border-radius:10px; background:color-mix(in srgb, #10B981 14%, transparent); color:#059669; font-weight:600;">${esc(up.done)}</div>`;
+        const num = n => Number(n).toLocaleString('ru-RU');
+        const steps = `<div id="dp_up_steps">${this.dpUpSteps()}</div>`;
+        // Шаг 1: файлы ещё не выбраны
+        if (!up) return steps + this.dpUpDropzone(false);
+        if (up.busy) return steps + `<div class="ad-sub" style="padding:18px 0;">${esc(up.busy)}</div>`;
+        if (up.done) return steps + `<div style="padding:14px 16px; border-radius:12px; background:color-mix(in srgb, #10B981 14%, transparent); color:#059669; font-weight:600; line-height:1.5;">✓ ${esc(up.done)}</div>
+            <div style="margin-top:12px;">${this.dpUpDropzone(true)}</div>`;
         const items = Object.keys(up.inc).length;
-        let h = '';
+        let h = steps;
         if (up.err) h += `<div style="color:#EF4444; margin-bottom:8px;">${esc(up.err)}</div>`;
-        h += `<table class="admin-table" style="width:100%; margin-bottom:10px;"><thead><tr><th>Файл</th><th style="text-align:right;">Позиций с ценой</th><th style="text-align:right;">Без артикула</th><th>Дата в шапке</th></tr></thead><tbody>${
-            up.files.map(f => `<tr><td>${esc(f.name)}</td>${f.error
-                ? `<td colspan="3" style="color:#EF4444;">${esc(f.error)}</td>`
-                : `<td style="text-align:right;">${f.count.toLocaleString('ru-RU')}</td><td style="text-align:right;">${f.noArt}</td><td>${f.date ? esc(new Date(f.date).toLocaleDateString('ru-RU')) : '<span style="color:var(--text-sec);">нет</span>'}</td>`}</tr>`).join('')}</tbody></table>`;
-        if (!items) return h + '<div style="color:#EF4444;">В выбранных файлах нет ни одной позиции с артикулом и ценой — публиковать нечего.</div>';
+        // Выбранные файлы — компактными плашками, рядом — выбрать другие
+        h += `<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px;">${
+            up.files.map(f => f.error
+                ? `<span style="padding:5px 12px; border-radius:8px; background:color-mix(in srgb, #EF4444 12%, transparent); color:#DC2626; font-size:12.5px;"><b>${esc(f.name)}</b> — ${esc(f.error)}</span>`
+                : `<span style="padding:5px 12px; border-radius:8px; background:var(--surface-light); border:1px solid var(--border); font-size:12.5px;"><b>${esc(f.name)}</b> · ${num(f.count)} поз.${f.date ? ' · от ' + esc(new Date(f.date).toLocaleDateString('ru-RU')) : ''}</span>`).join('')}
+            <div style="flex:0 0 auto;">${this.dpUpDropzone(true)}</div></div>`;
+        if (!items) return h + '<div style="color:#EF4444; font-weight:600;">В выбранных файлах нет ни одной позиции с артикулом и ценой — публиковать нечего. Проверьте требования к файлу.</div>';
         const rep = up.rep;
         if (!rep) return h;
         const lab = 'display:inline-flex; align-items:center; gap:6px; margin-right:18px; cursor:pointer;';
-        h += `<div style="margin:8px 0;">
-                <label style="${lab}"><input type="radio" name="dp_up_mode" value="merge" ${up.mode === 'merge' ? 'checked' : ''} onchange="app._dpUp.mode='merge'; app.dpUpCompute()"> Обновить (остальные цены прежние)</label>
-                <label style="${lab}"><input type="radio" name="dp_up_mode" value="replace" ${up.mode === 'replace' ? 'checked' : ''} onchange="app._dpUp.mode='replace'; app.dpUpCompute()"> Заменить прайс целиком</label></div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; margin:10px 0;">
-                ${[['Добавится новых', rep.added], ['Цена изменится', rep.changed], ['Не изменится', rep.same], [up.mode === 'replace' ? 'Пропадёт' : 'Останутся прежними', up.mode === 'replace' ? rep.removed : rep.untouched], ['Всего в прайсе', rep.total]]
-                    .map(x => `<div class="control-card"><span class="lbl">${x[0]}</span><span>${x[1].toLocaleString('ru-RU')}</span></div>`).join('')}</div>`;
+        const open = rep.sus.filter(s => !s.ov).length;       // подозрительных без правки админа
+        const needCheck = open > 0 || rep.warn.length > 0;
+        // Шаг 2: итог простыми словами
+        h += `<div style="padding:12px 16px; border-radius:12px; margin-bottom:12px; line-height:1.55; background:color-mix(in srgb, ${needCheck ? '#D97706' : '#10B981'} 12%, transparent);">
+                <b style="color:${needCheck ? '#B45309' : '#059669'};">${needCheck ? 'Файлы прочитаны, но кое-что стоит проверить' : '✓ Файлы прочитаны, замечаний нет'}</b><br>
+                После публикации: у <b>${num(rep.changed)}</b> позиций изменится цена, <b>${num(rep.added)}</b> добавится, у <b>${num(rep.same)}</b> цена останется той же${up.mode === 'replace'
+                    ? `, <b>${num(rep.removed)}</b> позиций прежнего прайса пропадёт`
+                    : `, у <b>${num(rep.untouched)}</b> останется прежняя цена (их нет в загруженных файлах)`}. Всего в прайсе будет <b>${num(rep.total)}</b> позиций.${rep.sus.length ? (open ? ` Подозрительных цен: <b>${open}</b> — посмотрите список ниже.` : ` Подозрительные цены (${rep.sus.length}) уже закрыты правками администратора.`) : ''}</div>
+            <div style="margin:0 0 12px;">
+                <label style="${lab}"><input type="radio" name="dp_up_mode" value="merge" ${up.mode === 'merge' ? 'checked' : ''} onchange="app._dpUp.mode='merge'; app.dpUpCompute()"> <span><b>Обновить</b> — цены меняются только у позиций из файлов</span></label>
+                <label style="${lab}"><input type="radio" name="dp_up_mode" value="replace" ${up.mode === 'replace' ? 'checked' : ''} onchange="app._dpUp.mode='replace'; app.dpUpCompute()"> <span><b>Заменить целиком</b> — прежний прайс стирается</span></label></div>`;
         rep.warn.forEach(w => { h += `<div style="padding:8px 12px; margin:6px 0; border-radius:8px; background:color-mix(in srgb, #D97706 14%, transparent); color:#B45309; font-size:13px;">⚠ ${esc(w)}</div>`; });
         if (rep.sus.length) {
-            h += `<details style="margin:8px 0;"><summary style="cursor:pointer; font-weight:600;">Подозрительные цены: ${rep.sus.length}</summary>
+            h += `<details open style="margin:8px 0;"><summary style="cursor:pointer; font-weight:600;">Подозрительные цены: ${rep.sus.length}</summary>
                 <div style="font-size:12px; color:var(--text-sec); margin:4px 0;">Это позиции, где цена в файле сильно отличается от каталога или от прежнего прайса. Чаще всего причина — другая единица измерения (бухта вместо метра, упаковка вместо штуки). Если цена верна — публикуйте, нет — потом исключите позицию кнопкой «Править» в таблице ниже.</div>
                 <div style="overflow-x:auto; max-height:260px;"><table class="admin-table" style="width:100%; min-width:700px;"><thead><tr><th>Артикул</th><th>Название</th><th style="text-align:right;">Каталог</th><th style="text-align:right;">Был в прайсе</th><th style="text-align:right;">Станет</th><th>Почему</th></tr></thead><tbody>${
-                rep.sus.slice(0, 60).map(s => `<tr><td><b>${esc(s.id)}</b></td><td style="font-size:12px;">${esc(s.name)}</td><td style="text-align:right;">${fmt(s.base)}</td><td style="text-align:right;">${fmt(s.was)}</td><td style="text-align:right;"><b>${fmt(s.now)}</b></td><td style="font-size:12px;">${esc(s.why)}</td></tr>`).join('')}</tbody></table></div></details>`;
+                rep.sus.slice(0, 60).map(s => `<tr><td><b>${esc(s.id)}</b></td><td style="font-size:12px;">${esc(s.name)}</td><td style="text-align:right;">${fmt(s.base)}</td><td style="text-align:right;">${fmt(s.was)}</td><td style="text-align:right;"><b>${fmt(s.now)}</b></td><td style="font-size:12px;">${esc(s.why)}${s.ov ? `<br><b style="color:#059669;">✓ Уже есть правка: ${s.ov.action === 'skip' ? 'не применять — у монтажников останется цена Терем' : 'своя цена ' + fmt(s.ov.price) + ' ₽'}</b>` : ''}</td></tr>`).join('')}</tbody></table></div></details>`;
         }
         if (up.noArt.length) {
             h += `<details style="margin:8px 0;"><summary style="cursor:pointer; font-weight:600;">Строки без артикула (в прайс не попадут): ${up.noArt.length}</summary>
@@ -33525,20 +33559,34 @@ const app = {
                 <div style="overflow-x:auto; max-height:200px;"><table class="admin-table" style="width:100%;"><tbody>${
                 up.noArt.slice(0, 100).map(x => `<tr><td style="font-size:12px;">${esc(x.name)}</td><td style="text-align:right; white-space:nowrap;">${fmt(x.price)} ₽</td><td style="font-size:11px; color:var(--text-sec);">${esc(x.file)}</td></tr>`).join('')}</tbody></table></div></details>`;
         }
-        const needDate = !up.date;
-        h += `<div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:12px;">
+        // Шаг 3: панель публикации прилипает к низу окна — кнопка всегда на виду,
+        // как бы длинен ни был отчёт
+        h += `<div style="position:sticky; bottom:0; z-index:5; margin-top:14px; padding:12px 16px; border:1px solid var(--border); border-radius:12px; background:var(--surface); box-shadow:0 -8px 18px rgba(0,0,0,.10); display:flex; align-items:center; gap:14px 20px; flex-wrap:wrap;">
                 <label style="font-size:13px;">Дата прайса${up.files.some(f => f.date) ? '' : ' <span style="color:#D97706;">(в файле не найдена — укажите)</span>'}:
                     <input type="date" value="${esc(up.date)}" oninput="app._dpUp.date=this.value; app.dpUpRerenderBtn()" style="margin-left:6px; padding:5px 8px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main);"></label>
-                <label style="${lab}"><input type="checkbox" ${up.ack ? 'checked' : ''} onchange="app._dpUp.ack=this.checked; app.dpUpRerenderBtn()"> Отчёт проверил</label>
+                <label style="${lab} margin-right:0; font-size:13px;"><input type="checkbox" ${up.ack ? 'checked' : ''} onchange="app._dpUp.ack=this.checked; app.dpUpRerenderBtn()"> Я проверил отчёт</label>
                 <button id="dp_up_pub" class="admin-btn ad-primary" ${up.ack && up.date ? '' : 'disabled'} onclick="app.dpUpPublish()">Опубликовать прайс</button>
-                ${needDate ? '<span style="font-size:12px; color:#D97706;">Без даты публиковать нельзя</span>' : ''}</div>`;
+                <span id="dp_up_hint" style="font-size:12px; color:var(--text-sec);">${esc(this.dpUpHint())}</span></div>`;
         return h;
     },
 
-    dpUpRerenderBtn: function () {
-        const b = document.getElementById('dp_up_pub');
+    // Подсказка рядом с кнопкой: почему она ещё недоступна
+    dpUpHint: function () {
         const up = this._dpUp;
+        if (!up) return '';
+        if (!up.date) return 'Укажите дату прайса';
+        if (!up.ack) return 'Отметьте «Я проверил отчёт», чтобы опубликовать';
+        return 'Цены начнут действовать у монтажников при их следующем входе';
+    },
+
+    dpUpRerenderBtn: function () {
+        const up = this._dpUp;
+        const b = document.getElementById('dp_up_pub');
         if (b && up) b.disabled = !(up.ack && up.date);
+        const hint = document.getElementById('dp_up_hint');
+        if (hint) hint.textContent = this.dpUpHint();
+        const st = document.getElementById('dp_up_steps');
+        if (st) st.innerHTML = this.dpUpSteps();
     },
 
     dpUpPublish: async function () {
