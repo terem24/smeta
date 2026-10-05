@@ -9556,6 +9556,11 @@ body.dark-mode .to-top-btn:hover {
     margin-left: 0; margin-right: auto;
 }
 .scheme-svg-wrap > svg, .automation-scheme > svg { width: 100%; height: 100%; }
+/* Схема платы зональной автоматики (над разделом 4.5): подписи у каждой клеммы
+   мелкие, в общей рамке в три колонки они не читаются. Эта схема идёт во всю
+   ширину таблицы сметы; высота — по пропорции самого листа (viewBox). */
+#ufh_scheme_row .automation-scheme { width: 100%; max-width: 960px; height: auto; }
+#ufh_scheme_row .automation-scheme > svg { height: auto; }
 @media print {
     /* На печати общая рамка не нужна: лист занимает страницу целиком и
        раскладывается по своей пропорции. */
