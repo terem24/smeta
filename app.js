@@ -8755,11 +8755,60 @@ const app = {
         return String(id).indexOf('RSS-10') === 0 ? prices['RSS-00' + String(id).slice(6)] : undefined;
     },
 
+    // Правки админа поверх прайса: { артикул: { action: 'skip'|'price', price } }.
+    // Берутся из памяти, при первом обращении — из localStorage (последний ответ базы),
+    // чтобы смета при открытии сайта сразу считалась с правками, не дожидаясь Supabase.
+    _distOv: null,
+
+    distOverrides: function (key) {
+        if (this._distOv && this._distOv.key === key) return this._distOv.map;
+        let map = {};
+        try { map = JSON.parse(localStorage.getItem('dist_overrides_' + key) || '{}') || {}; } catch (e) { map = {}; }
+        this._distOv = { key: key, map: map };
+        return map;
+    },
+
+    // Короткая подпись набора правок — чтобы заметить, что он изменился
+    distOvSig: function (ov) {
+        return Object.keys(ov).sort().map(a => a + ':' + ov[a].action + ':' + (ov[a].price || '')).join('|');
+    },
+
+    // Цена артикула с учётом правок: «не применять» → undefined (цена каталога),
+    // «своя цена» → она, иначе цена из прайса
+    distEffectivePrice: function (prices, ov, id) {
+        const o = ov && ov[id];
+        if (o) {
+            if (o.action === 'skip') return undefined;
+            if (o.action === 'price' && Number(o.price) > 0) return Math.round(Number(o.price));
+        }
+        return this.distPriceOf(prices, id);
+    },
+
+    // Подтягивает правки админа для прайса из базы. Без миграции или без сети
+    // остаётся то, что было в памяти и в localStorage: цены от этого не ломаются.
+    loadDistOverrides: async function (key) {
+        try {
+            const { data, error } = await supabaseClient.rpc('dist_price_overrides_public', { p_key: key });
+            if (error) throw error;
+            const map = {};
+            (data || []).forEach(r => { map[r.article] = { action: r.action, price: r.price == null ? null : Number(r.price) }; });
+            this._distOv = { key: key, map: map };
+            try { localStorage.setItem('dist_overrides_' + key, JSON.stringify(map)); } catch (e) { }
+        } catch (e) {
+            console.warn('[правки прайса] не загрузились:', e.message || e);
+        }
+    },
+
     // Накладывает цены дистрибьютора на каталог (или снимает их). Возвращает
     // true, если цены реально поменялись — значит вызвавшему нужен render().
     applyDistributorPrices: function () {
         const key = this.activeDistPriceKey();
-        if (key === this._distPriceApplied) return false;
+        // Что наложено, определяет не только ключ прайса, но и правки админа
+        // (distributor_price_overrides): их подгрузка поверх уже наложенного прайса
+        // должна заставить наложить заново.
+        const ov = key ? this.distOverrides(key) : {};
+        const sig = key ? key + '#' + this.distOvSig(ov) : null;
+        if (sig === this._distPriceApplied) return false;
 
         // Сначала всегда откат к ценам каталога: иначе при переключении между
         // двумя прайсами второй лёг бы поверх первого и вернуться было бы некуда.
@@ -8767,7 +8816,7 @@ const app = {
             this._distPriceBackup.forEach((basePrice, item) => { item.price = basePrice; });
             this._distPriceBackup = null;
         }
-        this._distPriceApplied = key;
+        this._distPriceApplied = sig;
         if (!key) return true;
 
         const prices = (DIST_PRICES[key] && DIST_PRICES[key].items) || {};
@@ -8781,7 +8830,7 @@ const app = {
         // нержавейки: прямых совпадений между каталогом и прайсом ноль, а после
         // замены совпадают все 227 — вся нержавеющая труба и пресс-фитинги.
         // Монтажник со своим прайсом считал их по ценам Терем-онлайн.
-        const priceOf = (id) => this.distPriceOf(prices, id);
+        const priceOf = (id) => this.distEffectivePrice(prices, ov, id);
         const backup = new Map();
         const seen = new Set();
         // Обход рекурсивный: цены есть и во вложенных .rommer / .comfort, а одна
@@ -8837,6 +8886,9 @@ const app = {
                     if (uRow) this.state.priceSource = uRow.price_source || 'distributor';
                 }
                 this.saveState();
+                // Правки админа по спорным позициям прайса тоже могли поменяться
+                const ovKey = this.activeDistPriceKey();
+                if (ovKey) await this.loadDistOverrides(ovKey);
                 // Свои цены могли включить или выключить из админки уже после
                 // прошлого визита — пересчитываем смету, если цены изменились.
                 if (this.applyDistributorPrices()) this.render();
@@ -32998,6 +33050,8 @@ const app = {
         const days = date ? Math.floor((Date.now() - date.getTime()) / 86400000) : null;
         const inList = data.rows.filter(r => r.own != null).length;
         const stale = days != null && days > 45;
+        const canEdit = this.dpCanEdit();
+        this.dpLoadMeta(st.key);
 
         const select = keys.length > 1
             ? `<select onchange="app._dp.key=this.value; app._dp.all=false; app.renderAdminDistPrices()" style="padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main);">
@@ -33009,7 +33063,9 @@ const app = {
         box.innerHTML = `
             <div class="ad-page-h">
                 <div><h3>Прайс дистрибьютора</h3>
-                    <div class="ad-sub" style="max-width:900px; line-height:1.55;">Таблица для сверки: цена позиции в каталоге (Терем-онлайн) и в прайсе дистрибьютора. Только просмотр — прайс обновляется выкладкой нового файла.</div></div>
+                    <div class="ad-sub" style="max-width:900px; line-height:1.55;">Таблица для сверки: цена позиции в каталоге (Терем-онлайн) и в прайсе дистрибьютора. ${canEdit
+                        ? 'Спорную позицию можно исключить из прайса («не применять» — останется цена Терем) или назначить свою цену: правка сразу действует у монтажников дистрибьютора, каждое изменение пишется в журнал внизу. Сам файл прайса обновляется выкладкой.'
+                        : 'Только просмотр: правки спорных позиций и журнал изменений ниже ведёт администратор. Сам файл прайса обновляется выкладкой.'}</div></div>
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">${select}
                     <button class="admin-btn" onclick="app.exportDistPricesXlsx()" title="Выгружается то, что сейчас отфильтровано в таблице">Скачать Excel</button></div>
             </div>
@@ -33021,19 +33077,21 @@ const app = {
             </div>
             <div class="ad-chips" id="dp_chips"></div>
             <div style="overflow-x:auto;">
-            <table class="admin-table" style="width:100%; min-width:760px;">
+            <table class="admin-table" style="width:100%; min-width:900px;">
                 <thead>
-                    <tr>${th('id', 'Артикул')}${th('name', 'Название')}${th('base', 'Каталог, ₽', 1)}${th('own', 'Прайс, ₽', 1)}${th('diff', 'Разница, ₽', 1)}${th('pct', 'Разница, %', 1)}</tr>
+                    <tr>${th('id', 'Артикул')}${th('name', 'Название')}${th('base', 'Каталог, ₽', 1)}${th('own', 'Прайс, ₽', 1)}${th('diff', 'Разница, ₽', 1)}${th('pct', 'Разница, %', 1)}${th('eff', 'Действует, ₽', 1)}${canEdit ? '<th></th>' : ''}</tr>
                     <tr>
                         <td><input id="dp_q" type="search" placeholder="Поиск по артикулу" value="${esc(st.q)}" oninput="app._dp.q=this.value; app.dpRefresh()" style="${inp}"></td>
                         <td><input id="dp_qn" type="search" placeholder="Фильтр по названию" value="${esc(st.qn)}" oninput="app._dp.qn=this.value; app.dpRefresh()" style="${inp}"></td>
                         <td colspan="2"></td>
                         <td colspan="2"><input id="dp_min" type="number" min="0" step="1" placeholder="Отличие от, %" value="${esc(st.min)}" oninput="app._dp.min=this.value; app.dpRefresh()" style="${inp}"></td>
+                        <td colspan="${canEdit ? 2 : 1}"></td>
                     </tr>
                 </thead>
                 <tbody id="dp_body"></tbody>
             </table></div>
-            <div id="dp_more" style="margin-top:10px; text-align:center;"></div>`;
+            <div id="dp_more" style="margin-top:10px; text-align:center;"></div>
+            <div id="dp_hist" style="margin-top:22px;"></div>`;
         this.dpRefresh();
     },
 
@@ -33041,6 +33099,144 @@ const app = {
         const st = this._dp;
         if (st.sort === col) st.dir = -st.dir; else { st.sort = col; st.dir = 1; }
         this.dpRefresh();
+    },
+
+    // ── Правки спорных позиций прайса (distributor_price_overrides) ──────────
+    // Править могут владелец, администратор и наблюдатель (по прайсам своих
+    // компаний); менеджер дистрибьютора только смотрит. Это та же проверка, что в
+    // SQL-функциях dist_price_override_set/clear: клиентская нужна лишь затем, чтобы
+    // не показывать кнопки тем, кому база всё равно откажет.
+    dpCanEdit: function () { return ['super_admin', 'admin', 'viewer'].indexOf(this.getAdminRole()) >= 0; },
+
+    dpOvMap: function (key) { return (this._dpMeta && this._dpMeta.key === key && this._dpMeta.map) || {}; },
+
+    // Правки и журнал выбранного прайса. Грузятся один раз на прайс; после своей
+    // правки перезапрашиваются целиком, чтобы журнал показывал то, что записала база.
+    dpLoadMeta: async function (key) {
+        if (this._dpMeta && this._dpMeta.key === key) return;
+        const meta = this._dpMeta = { key: key, map: {}, log: [], loaded: false, err: null };
+        try {
+            const [ov, log] = await Promise.all([
+                supabaseClient.from('distributor_price_overrides')
+                    .select('article, action, price, note, updated_by, updated_at').eq('price_list_key', key),
+                supabaseClient.from('distributor_price_override_log')
+                    .select('article, before_action, before_price, after_action, after_price, note, changed_by, changed_at')
+                    .eq('price_list_key', key).order('changed_at', { ascending: false }).limit(200)
+            ]);
+            if (ov.error) throw ov.error;
+            if (log.error) throw log.error;
+            (ov.data || []).forEach(r => { meta.map[r.article] = r; });
+            meta.log = log.data || [];
+        } catch (e) {
+            console.warn('[прайс дистрибьютора] правки не загрузились:', e.message || e);
+            meta.err = e.message || String(e);
+        }
+        meta.loaded = true;
+        if (this._adminTab === 'distprices' && this._dpMeta === meta) this.dpRefresh();
+    },
+
+    // Ячейка «Действует»: что реально видит монтажник дистрибьютора по этой позиции
+    dpEffCell: function (r) {
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const fmt = n => n == null ? '—' : (Math.round(n * 100) / 100).toLocaleString('ru-RU');
+        const o = r.ov;
+        if (!o) return r.own == null ? '<span style="color:var(--text-sec);">как в каталоге</span>' : fmt(r.own);
+        const when = o.updated_at ? new Date(o.updated_at).toLocaleDateString('ru-RU') : '';
+        const tip = esc([o.updated_by, when, o.note].filter(Boolean).join(' · '));
+        const lbl = o.action === 'skip'
+            ? '<span style="font-size:10.5px; font-weight:700; color:#D97706;">не применять</span>'
+            : '<span style="font-size:10.5px; font-weight:700; color:#2563EB;">своя цена</span>';
+        return `<span title="${tip}"><b>${fmt(r.eff)}</b><br>${lbl}<br><span style="font-size:10px; color:var(--text-sec);">${esc(String(o.updated_by || '').split('@')[0])}${when ? ', ' + when : ''}</span></span>`;
+    },
+
+    // Журнал: кто, когда, по какому артикулу и что поменял
+    dpRenderHist: function () {
+        const box = document.getElementById('dp_hist');
+        const st = this._dp, meta = this._dpMeta;
+        if (!box || !st) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const fmt = n => (Math.round(Number(n) * 100) / 100).toLocaleString('ru-RU');
+        const head = '<h3 style="margin:0 0 4px;">Журнал изменений</h3>';
+        if (!meta || meta.key !== st.key || !meta.loaded) { box.innerHTML = head + '<div class="ad-sub">Загрузка…</div>'; return; }
+        if (meta.err) {
+            box.innerHTML = head + `<div class="ad-sub" style="color:#D97706;">Журнал недоступен: ${esc(meta.err)}. Если миграция 20261005_distributor_price_overrides.sql ещё не выполнена в Supabase — правки и журнал работать не будут.</div>`;
+            return;
+        }
+        const names = {};
+        this.distPriceRows(st.key).rows.forEach(r => { names[r.id] = r.name; });
+        const act = (a, p) => a == null ? 'цена из прайса' : (a === 'skip' ? 'не применять (цена Терем)' : 'своя цена ' + fmt(p) + ' ₽');
+        const q = st.q.trim().toLowerCase();
+        const list = meta.log.filter(l => !q || l.article.toLowerCase().indexOf(q) >= 0);
+        if (!list.length) {
+            box.innerHTML = head + `<div class="ad-sub">${meta.log.length ? 'По этому артикулу правок не было.' : 'Правок пока нет: у всех позиций действует цена из прайса.'}</div>`;
+            return;
+        }
+        box.innerHTML = head + `<div class="ad-sub" style="margin-bottom:8px;">Последние ${Math.min(list.length, 100)} из ${list.length}${q ? ' (по артикулу из поиска)' : ''}.</div>
+            <div style="overflow-x:auto;"><table class="admin-table" style="width:100%; min-width:760px;">
+            <thead><tr><th>Когда</th><th>Кто</th><th>Артикул</th><th>Что изменено</th><th>Комментарий</th></tr></thead>
+            <tbody>${list.slice(0, 100).map(l => `<tr>
+                <td style="white-space:nowrap;">${esc(new Date(l.changed_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))}</td>
+                <td style="font-size:12px;">${esc(l.changed_by || '—')}</td>
+                <td><b>${esc(l.article)}</b><br><span style="font-size:11px; color:var(--text-sec);">${esc(names[l.article] || '')}</span></td>
+                <td style="font-size:12.5px;">${esc(act(l.before_action, l.before_price))} <span style="color:var(--text-sec);">→</span> <b>${esc(act(l.after_action, l.after_price))}</b></td>
+                <td style="font-size:12px; color:var(--text-sec);">${esc(l.note || '')}</td>
+            </tr>`).join('')}</tbody></table></div>`;
+    },
+
+    // Окно правки одной позиции
+    dpEdit: function (id) {
+        const st = this._dp;
+        if (!st || !this.dpCanEdit()) return;
+        const row = this.distPriceRows(st.key).rows.find(r => r.id === id);
+        if (!row) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const fmt = n => n == null ? '—' : (Math.round(n * 100) / 100).toLocaleString('ru-RU');
+        const cur = this.dpOvMap(st.key)[id] || null;
+        const mode = cur ? cur.action : 'none';
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay';
+        const lab = 'display:flex; align-items:center; gap:8px; margin:8px 0; font-size:13.5px; cursor:pointer;';
+        overlay.innerHTML = `<div class="calc-dialog-card" style="max-width:480px;">
+            <h3 class="calc-dialog-title">Правка прайса</h3>
+            <p class="calc-dialog-message"><b>${esc(id)}</b><br>${esc(row.name)}<br>
+                <span style="color:var(--text-sec);">Каталог (Терем): ${fmt(row.base)} ₽ · Прайс: ${row.own == null ? 'нет' : fmt(row.own) + ' ₽'}</span></p>
+            <label style="${lab}"><input type="radio" name="dp_act" value="none" ${mode === 'none' ? 'checked' : ''}> Как в прайсе${cur ? ' (снять правку)' : ''}</label>
+            <label style="${lab}"><input type="radio" name="dp_act" value="skip" ${mode === 'skip' ? 'checked' : ''}> Не применять — цена Терем-онлайн (${fmt(row.base)} ₽)</label>
+            <label style="${lab}"><input type="radio" name="dp_act" value="price" ${mode === 'price' ? 'checked' : ''}> Своя цена, ₽
+                <input id="dp_e_price" type="number" min="1" step="1" value="${cur && cur.action === 'price' ? esc(cur.price) : ''}" style="width:110px; padding:6px 8px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main);"></label>
+            <input id="dp_e_note" type="text" maxlength="300" placeholder="Почему (необязательно)" value="" style="width:100%; box-sizing:border-box; margin-top:6px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main);">
+            <div class="calc-dialog-buttons" style="margin-top:14px;">
+                <button class="calc-dialog-btn calc-dialog-btn-cancel" id="dp_e_cancel">Отмена</button>
+                <button class="calc-dialog-btn calc-dialog-btn-confirm" id="dp_e_ok">Сохранить</button>
+            </div></div>`;
+        document.body.appendChild(overlay);
+        requestAnimationFrame(() => overlay.classList.add('active'));
+        const close = () => { overlay.classList.remove('active'); setTimeout(() => overlay.remove(), 200); };
+        overlay.querySelector('#dp_e_cancel').onclick = close;
+        overlay.querySelector('#dp_e_price').addEventListener('focus', () => { overlay.querySelector('input[value="price"]').checked = true; });
+        overlay.querySelector('#dp_e_ok').onclick = async () => {
+            const act = (overlay.querySelector('input[name="dp_act"]:checked') || {}).value || 'none';
+            const note = overlay.querySelector('#dp_e_note').value.trim();
+            const price = parseFloat(overlay.querySelector('#dp_e_price').value);
+            if (act === 'price' && !(price > 0)) { app.alert('Укажите цену больше нуля.'); return; }
+            if (act === 'none' && !cur) { close(); return; }
+            const btn = overlay.querySelector('#dp_e_ok');
+            btn.disabled = true; btn.textContent = 'Сохраняю…';
+            try {
+                const call = act === 'none'
+                    ? supabaseClient.rpc('dist_price_override_clear', { p_key: st.key, p_article: id, p_note: note || null })
+                    : supabaseClient.rpc('dist_price_override_set', { p_key: st.key, p_article: id, p_action: act, p_price: act === 'price' ? price : null, p_note: note || null });
+                const { error } = await call;
+                if (error) throw error;
+                close();
+                this._dpMeta = null;                 // журнал и правки — заново, как их записала база
+                await this.dpLoadMeta(st.key);
+                this.dpRefresh();
+            } catch (e) {
+                btn.disabled = false; btn.textContent = 'Сохранить';
+                app.alert('Не удалось сохранить: ' + (e.message || e));
+            }
+        };
     },
 
     // Выгрузка таблицы сверки в Excel: все строки, прошедшие фильтры (не только
@@ -33054,28 +33250,32 @@ const app = {
         const pl = DIST_PRICES[st.key] || {};
         const date = pl.date ? new Date(pl.date).toLocaleDateString('ru-RU') : 'дата не указана';
         const today = new Date().toLocaleDateString('ru-RU');
-        const stNames = { all: 'все позиции', diff: 'только отличающиеся', same: 'только совпадающие', none: 'только отсутствующие в прайсе' };
+        const stNames = { all: 'все позиции', diff: 'только отличающиеся', same: 'только совпадающие', none: 'только отсутствующие в прайсе', ov: 'только с правками админа' };
         const filters = [stNames[st.st], st.q.trim() && ('артикул «' + st.q.trim() + '»'), st.qn.trim() && ('название «' + st.qn.trim() + '»'),
             parseFloat(st.min) > 0 && ('отличие от ' + parseFloat(st.min) + ' %')].filter(Boolean).join(', ');
         const num = v => v == null ? { v: '—', t: 's', s: X.tdC } : { v: Math.round(v * 100) / 100, t: 'n', s: X.money };
         const rows = [
-            { cells: [{ v: 'Сверка прайса дистрибьютора с каталогом', t: 's', s: X.title, span: 6 }], h: 22 },
-            { cells: [{ v: (pl.title || st.key) + ' · прайс от ' + date + ' · выгружено ' + today, t: 's', s: X.gray, span: 6 }] },
-            { cells: [{ v: 'Отбор: ' + filters + ' · строк: ' + list.length, t: 's', s: X.gray, span: 6 }] },
+            { cells: [{ v: 'Сверка прайса дистрибьютора с каталогом', t: 's', s: X.title, span: 8 }], h: 22 },
+            { cells: [{ v: (pl.title || st.key) + ' · прайс от ' + date + ' · выгружено ' + today, t: 's', s: X.gray, span: 8 }] },
+            { cells: [{ v: 'Отбор: ' + filters + ' · строк: ' + list.length, t: 's', s: X.gray, span: 8 }] },
             { cells: [] },
-            { cells: ['Артикул', 'Название', 'Каталог, ₽', 'Прайс, ₽', 'Разница, ₽', 'Разница, %'].map(v => ({ v: v, t: 's', s: X.th })), h: 28 }
+            { cells: ['Артикул', 'Название', 'Каталог, ₽', 'Прайс, ₽', 'Разница, ₽', 'Разница, %', 'Действует, ₽', 'Правка админа'].map(v => ({ v: v, t: 's', s: X.th })), h: 28 }
         ];
+        const ovText = r => !r.ov ? '' : (r.ov.action === 'skip' ? 'не применять (цена Терем)' : 'своя цена')
+            + (r.ov.updated_by ? ' · ' + r.ov.updated_by : '') + (r.ov.updated_at ? ' · ' + new Date(r.ov.updated_at).toLocaleDateString('ru-RU') : '');
         list.forEach(r => rows.push({ cells: [
             { v: r.id, t: 's', s: X.td },
             { v: r.name, t: 's', s: X.td },
             num(r.base),
             r.own == null ? { v: 'нет в прайсе', t: 's', s: X.tdC } : num(r.own),
             num(r.diff),
-            num(r.pct == null ? null : r.pct)
+            num(r.pct == null ? null : r.pct),
+            num(r.eff),
+            { v: ovText(r), t: 's', s: X.td }
         ] }));
         try {
             window.ExcelExport.saveSheets('Сверка прайса ' + (pl.title || st.key).replace(/[\\/:*?"<>|]/g, ' ') + ' ' + today + '.xlsx',
-                [{ name: 'Сверка прайса', cols: [20, 60, 13, 13, 13, 13], freeze: 5, rows: rows }]);
+                [{ name: 'Сверка прайса', cols: [20, 60, 13, 13, 13, 13, 14, 34], freeze: 5, rows: rows }]);
         } catch (e) {
             console.error('[прайс дистрибьютора] выгрузка в Excel:', e);
             app.alert('Не удалось собрать файл Excel.');
@@ -33091,9 +33291,17 @@ const app = {
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const fmt = n => n == null ? '—' : (Math.round(n * 100) / 100).toLocaleString('ru-RU');
         const rows = this.distPriceRows(st.key).rows;
-        const cnt = { all: rows.length, diff: 0, same: 0, none: 0 };
-        rows.forEach(r => { if (r.own == null) cnt.none++; else if (Math.abs(r.diff) < 0.5) cnt.same++; else cnt.diff++; });
-        const chips = [['all', 'Все'], ['diff', 'Отличаются'], ['same', 'Совпадают'], ['none', 'Нет в прайсе']];
+        const canEdit = this.dpCanEdit();
+        const ovmap = this.dpOvMap(st.key);
+        // Что реально действует у монтажников: правка админа, иначе цена из прайса
+        rows.forEach(r => {
+            const o = ovmap[r.id];
+            r.ov = o || null;
+            r.eff = o ? (o.action === 'skip' ? r.base : Number(o.price)) : r.own;
+        });
+        const cnt = { all: rows.length, diff: 0, same: 0, none: 0, ov: 0 };
+        rows.forEach(r => { if (r.ov) cnt.ov++; if (r.own == null) cnt.none++; else if (Math.abs(r.diff) < 0.5) cnt.same++; else cnt.diff++; });
+        const chips = [['all', 'Все'], ['diff', 'Отличаются'], ['same', 'Совпадают'], ['none', 'Нет в прайсе'], ['ov', 'С правками']];
         document.getElementById('dp_chips').innerHTML = chips.map(c =>
             `<button class="ad-chip${st.st === c[0] ? ' active' : ''}" onclick="app._dp.st='${c[0]}'; app._dp.all=false; app.dpRefresh()">${c[1]} <span class="ad-chip-n">${cnt[c[0]]}</span></button>`).join('');
 
@@ -33102,6 +33310,7 @@ const app = {
             if (st.st === 'diff' && !(r.own != null && Math.abs(r.diff) >= 0.5)) return false;
             if (st.st === 'same' && !(r.own != null && Math.abs(r.diff) < 0.5)) return false;
             if (st.st === 'none' && r.own != null) return false;
+            if (st.st === 'ov' && !r.ov) return false;
             if (q && r.id.toLowerCase().indexOf(q) < 0) return false;
             if (qn && r.name.toLowerCase().indexOf(qn) < 0) return false;
             if (min > 0 && !(r.pct != null && Math.abs(r.pct) >= min)) return false;
@@ -33115,7 +33324,7 @@ const app = {
             if (y == null) return -1;
             return (typeof x === 'string' ? x.localeCompare(y, 'ru', { numeric: true }) : x - y) * d;
         });
-        ['id', 'name', 'base', 'own', 'diff', 'pct'].forEach(k => {
+        ['id', 'name', 'base', 'own', 'diff', 'pct', 'eff'].forEach(k => {
             const el = document.getElementById('dp_arr_' + k);
             if (el) el.textContent = k === c ? (d > 0 ? ' ▲' : ' ▼') : '';
         });
@@ -33130,7 +33339,10 @@ const app = {
             <td style="text-align:right; white-space:nowrap;">${r.own == null ? '<span style="color:var(--text-sec);">нет в прайсе</span>' : fmt(r.own)}</td>
             <td style="text-align:right; white-space:nowrap; color:${colorOf(r)}; font-weight:700;">${r.diff == null ? '—' : (r.diff > 0 ? '+' : '') + fmt(r.diff)}</td>
             <td style="text-align:right; white-space:nowrap; color:${colorOf(r)}; font-weight:700;">${r.pct == null ? '—' : (r.pct > 0 ? '+' : '') + (Math.round(r.pct * 10) / 10).toLocaleString('ru-RU') + ' %'}</td>
-        </tr>`).join('') : '<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-sec);">Ничего не найдено.</td></tr>';
+            <td style="text-align:right; white-space:nowrap;">${this.dpEffCell(r)}</td>
+            ${canEdit ? `<td style="text-align:right;"><button class="admin-btn" style="height:26px; font-size:11px; margin:0;" onclick="app.dpEdit(${JSON.stringify(r.id).replace(/"/g, '&quot;')})">${r.ov ? 'Изменить' : 'Править'}</button></td>` : ''}
+        </tr>`).join('') : `<tr><td colspan="${canEdit ? 8 : 7}" style="text-align:center; padding:24px; color:var(--text-sec);">Ничего не найдено.</td></tr>`;
+        this.dpRenderHist();
         document.getElementById('dp_more').innerHTML = list.length > shown.length
             ? `<span style="color:var(--text-sec); font-size:12.5px;">Показано ${shown.length} из ${list.length}. </span><button class="admin-btn" onclick="app._dp.all=true; app.dpRefresh()">Показать все</button>`
             : `<span style="color:var(--text-sec); font-size:12.5px;">Строк: ${list.length}</span>`;
