@@ -33010,7 +33010,8 @@ const app = {
             <div class="ad-page-h">
                 <div><h3>Прайс дистрибьютора</h3>
                     <div class="ad-sub" style="max-width:900px; line-height:1.55;">Таблица для сверки: цена позиции в каталоге (Терем-онлайн) и в прайсе дистрибьютора. Только просмотр — прайс обновляется выкладкой нового файла.</div></div>
-                ${select}
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">${select}
+                    <button class="admin-btn" onclick="app.exportDistPricesXlsx()" title="Выгружается то, что сейчас отфильтровано в таблице">Скачать Excel</button></div>
             </div>
             <div class="admin-stat-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; margin-bottom:14px;">
                 ${tile('Прайс от', date ? date.toLocaleDateString('ru-RU') : '—', days != null ? (stale ? `${days} дн. назад — пора обновить` : `${days} дн. назад`) : 'дата не указана', stale)}
@@ -33040,6 +33041,45 @@ const app = {
         const st = this._dp;
         if (st.sort === col) st.dir = -st.dir; else { st.sort = col; st.dir = 1; }
         this.dpRefresh();
+    },
+
+    // Выгрузка таблицы сверки в Excel: все строки, прошедшие фильтры (не только
+    // первые 300 на экране), в том порядке, как отсортировано.
+    exportDistPricesXlsx: async function () {
+        const st = this._dp, list = this._dpList;
+        if (!st || !list || !list.length) { app.alert('В таблице нет строк для выгрузки.'); return; }
+        if (!window.ExcelExport) await this.lazy('excel').catch(() => { });
+        if (!window.ExcelExport) { app.alert('Модуль выгрузки в Excel не загрузился — обновите страницу.'); return; }
+        const X = window.ExcelExport.styles;
+        const pl = DIST_PRICES[st.key] || {};
+        const date = pl.date ? new Date(pl.date).toLocaleDateString('ru-RU') : 'дата не указана';
+        const today = new Date().toLocaleDateString('ru-RU');
+        const stNames = { all: 'все позиции', diff: 'только отличающиеся', same: 'только совпадающие', none: 'только отсутствующие в прайсе' };
+        const filters = [stNames[st.st], st.q.trim() && ('артикул «' + st.q.trim() + '»'), st.qn.trim() && ('название «' + st.qn.trim() + '»'),
+            parseFloat(st.min) > 0 && ('отличие от ' + parseFloat(st.min) + ' %')].filter(Boolean).join(', ');
+        const num = v => v == null ? { v: '—', t: 's', s: X.tdC } : { v: Math.round(v * 100) / 100, t: 'n', s: X.money };
+        const rows = [
+            { cells: [{ v: 'Сверка прайса дистрибьютора с каталогом', t: 's', s: X.title, span: 6 }], h: 22 },
+            { cells: [{ v: (pl.title || st.key) + ' · прайс от ' + date + ' · выгружено ' + today, t: 's', s: X.gray, span: 6 }] },
+            { cells: [{ v: 'Отбор: ' + filters + ' · строк: ' + list.length, t: 's', s: X.gray, span: 6 }] },
+            { cells: [] },
+            { cells: ['Артикул', 'Название', 'Каталог, ₽', 'Прайс, ₽', 'Разница, ₽', 'Разница, %'].map(v => ({ v: v, t: 's', s: X.th })), h: 28 }
+        ];
+        list.forEach(r => rows.push({ cells: [
+            { v: r.id, t: 's', s: X.td },
+            { v: r.name, t: 's', s: X.td },
+            num(r.base),
+            r.own == null ? { v: 'нет в прайсе', t: 's', s: X.tdC } : num(r.own),
+            num(r.diff),
+            num(r.pct == null ? null : r.pct)
+        ] }));
+        try {
+            window.ExcelExport.saveSheets('Сверка прайса ' + (pl.title || st.key).replace(/[\\/:*?"<>|]/g, ' ') + ' ' + today + '.xlsx',
+                [{ name: 'Сверка прайса', cols: [20, 60, 13, 13, 13, 13], freeze: 5, rows: rows }]);
+        } catch (e) {
+            console.error('[прайс дистрибьютора] выгрузка в Excel:', e);
+            app.alert('Не удалось собрать файл Excel.');
+        }
     },
 
     // Перерисовывает только тело таблицы и счётчики: пока админ печатает в поиске,
@@ -33080,6 +33120,7 @@ const app = {
             if (el) el.textContent = k === c ? (d > 0 ? ' ▲' : ' ▼') : '';
         });
 
+        this._dpList = list;     // что видно по фильтрам — то и уйдёт в Excel
         const shown = st.all ? list : list.slice(0, this.DP_LIMIT);
         const colorOf = r => r.diff == null || Math.abs(r.diff) < 0.5 ? 'var(--text-sec)' : (r.diff > 0 ? '#D97706' : '#10B981');
         body.innerHTML = shown.length ? shown.map(r => `<tr>
