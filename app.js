@@ -8808,6 +8808,53 @@ const app = {
         return String(id).indexOf('RSS-10') === 0 ? prices['RSS-00' + String(id).slice(6)] : undefined;
     },
 
+    // Прайс дистрибьютора бывает двух видов: зашитый в код (dist_prices.js) и
+    // загруженный админом из Excel (dist_price_save.php → Beget). Действует тот,
+    // у которого дата не старее: загруженный в день выкладки файла не должен
+    // проигрывать зашитому, а зашитый свежее загруженного значит, что после загрузки
+    // выложили новую версию с более новым прайсом.
+    _distRemote: {},
+
+    distRemote: function (key) {
+        if (this._distRemote[key] === undefined) {
+            let r = null;
+            try { r = JSON.parse(localStorage.getItem('dist_prices_remote_' + key) || 'null'); } catch (e) { r = null; }
+            this._distRemote[key] = (r && r.items && r.date) ? r : null;
+        }
+        return this._distRemote[key];
+    },
+
+    // { title, date, items, source: 'remote'|'file', uploaded_at } либо null, если
+    // такого прайса нет вовсе
+    distPriceData: function (key) {
+        const b = (typeof DIST_PRICES !== 'undefined') ? DIST_PRICES[key] : null;
+        if (!b) return null;
+        const r = this.distRemote(key);
+        if (r && (!b.date || String(r.date) >= String(b.date))) {
+            return { title: b.title, date: r.date, items: r.items, source: 'remote', uploaded_at: r.uploaded_at || '' };
+        }
+        return { title: b.title, date: b.date, items: b.items || {}, source: 'file', uploaded_at: '' };
+    },
+
+    // Забирает загруженный прайс с Beget. Нет файла (404) — прайс ещё не загружали,
+    // остаётся зашитый. Возвращает true, если действующий прайс сменился.
+    loadRemoteDistPrices: async function (key) {
+        try {
+            const resp = await fetch('https://proxy.heatcalc.ru/dist_price_get.php?key=' + encodeURIComponent(key));
+            if (!resp.ok) return false;
+            const d = await resp.json();
+            if (!d || !d.items || !d.date) return false;
+            const prev = this.distRemote(key);
+            const next = { date: d.date, uploaded_at: d.uploaded_at || '', items: d.items };
+            this._distRemote[key] = next;
+            try { localStorage.setItem('dist_prices_remote_' + key, JSON.stringify(next)); } catch (e) { }
+            return !prev || prev.date !== next.date || prev.uploaded_at !== next.uploaded_at;
+        } catch (e) {
+            console.warn('[прайс дистрибьютора] загруженный прайс не получен:', e.message || e);
+            return false;
+        }
+    },
+
     // Правки админа поверх прайса: { артикул: { action: 'skip'|'price', price } }.
     // Берутся из памяти, при первом обращении — из localStorage (последний ответ базы),
     // чтобы смета при открытии сайта сразу считалась с правками, не дожидаясь Supabase.
@@ -8860,7 +8907,8 @@ const app = {
         // (distributor_price_overrides): их подгрузка поверх уже наложенного прайса
         // должна заставить наложить заново.
         const ov = key ? this.distOverrides(key) : {};
-        const sig = key ? key + '#' + this.distOvSig(ov) : null;
+        const pdata = key ? this.distPriceData(key) : null;
+        const sig = key ? key + '#' + pdata.date + '#' + (pdata.uploaded_at || '') + '#' + this.distOvSig(ov) : null;
         if (sig === this._distPriceApplied) return false;
 
         // Сначала всегда откат к ценам каталога: иначе при переключении между
@@ -8872,7 +8920,7 @@ const app = {
         this._distPriceApplied = sig;
         if (!key) return true;
 
-        const prices = (DIST_PRICES[key] && DIST_PRICES[key].items) || {};
+        const prices = pdata.items || {};
         // Нержавейка лежит в каталоге под ROMMER-овским артикулом
         // (RSS-1021-002234), а в прайсах поставщика — под прайсовым
         // (RSS-0021-002234). Это одна и та же позиция: на сайте она находится по
@@ -8941,7 +8989,7 @@ const app = {
                 this.saveState();
                 // Правки админа по спорным позициям прайса тоже могли поменяться
                 const ovKey = this.activeDistPriceKey();
-                if (ovKey) await this.loadDistOverrides(ovKey);
+                if (ovKey) await Promise.all([this.loadDistOverrides(ovKey), this.loadRemoteDistPrices(ovKey)]);
                 // Свои цены могли включить или выключить из админки уже после
                 // прошлого визита — пересчитываем смету, если цены изменились.
                 if (this.applyDistributorPrices()) this.render();
@@ -9681,7 +9729,7 @@ const app = {
                 <p class="lk-hint">Ваш прайс-лист в системе не загружен, сравнить не с чем. Пришлите выгрузку — и здесь появится список позиций, которые ваши монтажники ставят в счета, а вы их не возите.</p>`;
             return;
         }
-        const priceItems = DIST_PRICES[withPrice.price_list_key].items || {};
+        const priceItems = this.distPriceData(withPrice.price_list_key).items || {};
         // Та же подстановка, что при наложении цен: нержавейка лежит в каталоге
         // под RSS-10…, а в прайсах поставщика под RSS-00… — это одна позиция.
         const inPrice = (id) => {
@@ -9875,7 +9923,7 @@ const app = {
         // Здесь только выбираем, какой из готовых прайсов принадлежит компании.
         const priceLists = (typeof DIST_PRICES !== 'undefined') ? DIST_PRICES : {};
         const priceListOptions = Object.keys(priceLists).map(k => {
-            const pl = priceLists[k];
+            const pl = Object.assign({}, priceLists[k], { date: this.distPriceData(k).date });
             const dateText = pl.date ? new Date(pl.date).toLocaleDateString('ru-RU') : '';
             return `<option value="${k}">${pl.title || k}${dateText ? ' — от ' + dateText : ''}</option>`;
         }).join('');
@@ -33070,7 +33118,7 @@ const app = {
     distPriceRows: function (key) {
         const cache = this._dpCache || (this._dpCache = {});
         if (cache[key]) return cache[key];
-        const prices = (DIST_PRICES[key] && DIST_PRICES[key].items) || {};
+        const prices = (this.distPriceData(key) || {}).items || {};
         const rows = [], seen = new Set(), ids = new Set();
         const walk = (node) => {
             if (!node || typeof node !== 'object' || seen.has(node)) return;
@@ -33107,7 +33155,8 @@ const app = {
             return;
         }
         if (keys.indexOf(st.key) < 0) st.key = keys[0];
-        const pl = DIST_PRICES[st.key];
+        const pd = this.distPriceData(st.key);
+        const pl = Object.assign({}, DIST_PRICES[st.key], { date: pd.date });
         const data = this.distPriceRows(st.key);
         const users = ((this.adminData && this.adminData.distributors) || []).filter(d => d.price_list_key === st.key);
         const on = users.filter(d => d.use_own_prices);
@@ -33117,6 +33166,10 @@ const app = {
         const stale = days != null && days > 45;
         const canEdit = this.dpCanEdit();
         this.dpLoadMeta(st.key);
+        this.dpLoadRemote(st.key);
+        const srcNote = pd.source === 'remote'
+            ? 'загружен из Excel' + (pd.uploaded_at ? ' ' + new Date(pd.uploaded_at).toLocaleDateString('ru-RU') : '')
+            : 'из файла на сайте, не загружался из админки';
 
         const select = keys.length > 1
             ? `<select onchange="app._dp.key=this.value; app._dp.all=false; app.renderAdminDistPrices()" style="padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main);">
@@ -33129,17 +33182,18 @@ const app = {
             <div class="ad-page-h">
                 <div><h3>Прайс дистрибьютора</h3>
                     <div class="ad-sub" style="max-width:900px; line-height:1.55;">Таблица для сверки: цена позиции в каталоге (Терем-онлайн) и в прайсе дистрибьютора. ${canEdit
-                        ? 'Спорную позицию можно исключить из прайса («не применять» — останется цена Терем) или назначить свою цену: правка сразу действует у монтажников дистрибьютора, каждое изменение пишется в журнал внизу. Сам файл прайса обновляется выкладкой.'
-                        : 'Только просмотр: правки спорных позиций и журнал изменений ниже ведёт администратор. Сам файл прайса обновляется выкладкой.'}</div></div>
+                        ? 'Спорную позицию можно исключить из прайса («не применять» — останется цена Терем) или назначить свою цену: правка сразу действует у монтажников дистрибьютора, каждое изменение пишется в журнал внизу. Новый прайс загружается из Excel блоком ниже.'
+                        : 'Только просмотр: прайс, правки спорных позиций и журнал изменений ведёт администратор.'}</div></div>
                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">${select}
                     <button class="admin-btn" onclick="app.exportDistPricesXlsx()" title="Выгружается то, что сейчас отфильтровано в таблице">Скачать Excel</button></div>
             </div>
             <div class="admin-stat-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:12px; margin-bottom:14px;">
                 ${tile('Прайс от', date ? date.toLocaleDateString('ru-RU') : '—', days != null ? (stale ? `${days} дн. назад — пора обновить` : `${days} дн. назад`) : 'дата не указана', stale)}
-                ${tile('Артикулов в прайсе', data.total.toLocaleString('ru-RU'), esc(pl.title || st.key))}
+                ${tile('Артикулов в прайсе', data.total.toLocaleString('ru-RU'), esc((pl.title || st.key) + ' · ' + srcNote))}
                 ${tile('Совпало с каталогом', inList.toLocaleString('ru-RU'), `из ${data.rows.length.toLocaleString('ru-RU')} позиций каталога`)}
                 ${tile('Монтажники видят', on.length ? 'свои цены' : 'Терем', on.length ? esc(on.map(d => d.company_name).join(', ')) : (users.length ? 'свои цены выключены' : 'прайс никому не назначен'))}
             </div>
+            ${canEdit ? this.dpUploadHtml() : ''}
             <div class="ad-chips" id="dp_chips"></div>
             <div style="overflow-x:auto;">
             <table class="admin-table" style="width:100%; min-width:900px;">
@@ -33179,7 +33233,15 @@ const app = {
     // правки перезапрашиваются целиком, чтобы журнал показывал то, что записала база.
     dpLoadMeta: async function (key) {
         if (this._dpMeta && this._dpMeta.key === key) return;
-        const meta = this._dpMeta = { key: key, map: {}, log: [], loaded: false, err: null };
+        const meta = this._dpMeta = { key: key, map: {}, log: [], uploads: [], loaded: false, err: null };
+        // Журнал загрузок — отдельно: пока не выполнена его миграция, правки и их
+        // журнал должны работать как работали
+        try {
+            const up = await supabaseClient.from('distributor_price_uploads')
+                .select('price_date, items_count, added, changed, removed, files, mode, uploaded_by, uploaded_at')
+                .eq('price_list_key', key).order('uploaded_at', { ascending: false }).limit(30);
+            if (!up.error) meta.uploads = up.data || [];
+        } catch (e) { /* таблицы ещё нет */ }
         try {
             const [ov, log] = await Promise.all([
                 supabaseClient.from('distributor_price_overrides')
@@ -33221,8 +33283,21 @@ const app = {
         if (!box || !st) return;
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const fmt = n => (Math.round(Number(n) * 100) / 100).toLocaleString('ru-RU');
-        const head = '<h3 style="margin:0 0 4px;">Журнал изменений</h3>';
-        if (!meta || meta.key !== st.key || !meta.loaded) { box.innerHTML = head + '<div class="ad-sub">Загрузка…</div>'; return; }
+        const head0 = '<h3 style="margin:0 0 4px;">Журнал изменений</h3>';
+        if (!meta || meta.key !== st.key || !meta.loaded) { box.innerHTML = head0 + '<div class="ad-sub">Загрузка…</div>'; return; }
+        // Загрузки прайса из Excel: кто, когда, на какую дату и сколько позиций затронуто
+        const ups = (meta.uploads || []).length ? `<h3 style="margin:0 0 4px;">Загрузки прайса</h3>
+            <div style="overflow-x:auto; margin-bottom:22px;"><table class="admin-table" style="width:100%; min-width:760px;">
+            <thead><tr><th>Когда</th><th>Кто</th><th>Дата прайса</th><th style="text-align:right;">Позиций в прайсе</th><th style="text-align:right;">Добавлено</th><th style="text-align:right;">Изменено</th><th style="text-align:right;">Убрано</th><th>Режим</th></tr></thead>
+            <tbody>${meta.uploads.map(u => `<tr>
+                <td style="white-space:nowrap;">${esc(new Date(u.uploaded_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }))}</td>
+                <td style="font-size:12px;">${esc(u.uploaded_by || '—')}</td>
+                <td>${esc(new Date(u.price_date).toLocaleDateString('ru-RU'))}</td>
+                <td style="text-align:right;">${Number(u.items_count).toLocaleString('ru-RU')}</td>
+                <td style="text-align:right;">${u.added}</td><td style="text-align:right;">${u.changed}</td><td style="text-align:right;">${u.removed}</td>
+                <td style="font-size:12px;">${u.mode === 'replace' ? 'заменён целиком' : 'обновление'}${u.files > 1 ? ', файлов: ' + u.files : ''}</td>
+            </tr>`).join('')}</tbody></table></div>` : '';
+        const head = ups + head0;
         if (meta.err) {
             box.innerHTML = head + `<div class="ad-sub" style="color:#D97706;">Журнал недоступен: ${esc(meta.err)}. Если миграция 20261005_distributor_price_overrides.sql ещё не выполнена в Supabase — правки и журнал работать не будут.</div>`;
             return;
@@ -33246,6 +33321,260 @@ const app = {
                 <td style="font-size:12.5px;">${esc(act(l.before_action, l.before_price))} <span style="color:var(--text-sec);">→</span> <b>${esc(act(l.after_action, l.after_price))}</b></td>
                 <td style="font-size:12px; color:var(--text-sec);">${esc(l.note || '')}</td>
             </tr>`).join('')}</tbody></table></div>`;
+    },
+
+    // ── Загрузка нового прайса из Excel ──────────────────────────────────────
+    // Файл читает браузер (SheetJS, грузится только здесь) и никуда не отправляет.
+    // На Beget (dist_price_save.php) уходит готовый список «артикул → цена».
+    // Права — у базы: владелец, админ, наблюдатель по своим компаниям.
+
+    dpLoadRemote: async function (key) {
+        const tried = this._dpRemoteTried || (this._dpRemoteTried = {});
+        if (tried[key]) return;
+        tried[key] = true;
+        if (await this.loadRemoteDistPrices(key) && this._adminTab === 'distprices' && this._dp && this._dp.key === key) {
+            delete (this._dpCache || {})[key];
+            this.renderAdminDistPrices();
+        }
+    },
+
+    dpUploadHtml: function () {
+        const key = this._dp.key;
+        const up = this._dpUp && this._dpUp.key === key ? this._dpUp : null;
+        const open = up || this.distPriceData(key).source === 'file';
+        return `<details ${open ? 'open' : ''} style="margin:0 0 16px; border:1px solid var(--border); border-radius:12px; padding:12px 16px; background:var(--surface);">
+            <summary style="cursor:pointer; font-weight:700; font-size:14px;">Загрузить новый прайс из Excel</summary>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:10px 32px; margin-top:12px; font-size:13px; line-height:1.55; color:var(--text-main);">
+                <div><b>Как загрузить</b>
+                    <ol style="margin:6px 0 0; padding-left:20px;">
+                        <li>Возьмите у дистрибьютора свежую выгрузку цен в Excel. Если прайс разбит на несколько файлов (у КИТ-Сервис это «STOUT списком» и «ROMMER списком»), выберите их <b>все сразу</b>.</li>
+                        <li>Нажмите «Выбрать файлы». Файл никуда не отправляется — его читает ваш браузер.</li>
+                        <li>Проверьте отчёт: сколько цен изменилось, нет ли предупреждений и подозрительных позиций.</li>
+                        <li>Поставьте отметку «Отчёт проверил» и нажмите «Опубликовать прайс». Цены начнут действовать у монтажников компании при их следующем входе, выкладка сайта не нужна.</li>
+                    </ol></div>
+                <div><b>Требования к файлу</b>
+                    <ul style="margin:6px 0 0; padding-left:20px;">
+                        <li>Формат <b>.xls</b> или <b>.xlsx</b>, прайс на <b>первом листе</b>.</li>
+                        <li>В шапке есть колонка «Артикул» (подойдёт «Номенклатура.Артикул») и колонка «Цена» — их ищут по названию, порядок колонок не важен.</li>
+                        <li>Цена — в <b>рублях с НДС</b>, за ту же единицу, что в каталоге (метр, штука, кассета). Если цена за бухту или упаковку, отчёт покажет такую позицию как подозрительную.</li>
+                        <li>Дата берётся из шапки («Цена указана на 30.09.2026»). Если её нет — введите вручную.</li>
+                        <li>Строки без артикула или без цены пропускаются, их список будет в отчёте. Колонку РИЦ (рекомендованная розница) загружать не нужно.</li>
+                        <li>Режим «Обновить» меняет цены только у позиций из файла, остальные остаются прежними. «Заменить целиком» стирает прежний прайс — нужен, только когда файл содержит весь ассортимент.</li>
+                        <li>Загрузили не то — загрузите правильный файл ещё раз. Правки спорных позиций и журнал при этом сохраняются.</li>
+                    </ul></div>
+            </div>
+            <div style="margin-top:14px;">
+                <input id="dp_up_file" type="file" multiple accept=".xls,.xlsx" onchange="app.dpUpFiles(this)" style="font-size:13px;">
+            </div>
+            <div id="dp_up_box" style="margin-top:12px;">${this.dpUpReportHtml()}</div>
+        </details>`;
+    },
+
+    // Один лист → { items, noArt, noPrice, dups, date, error }
+    dpParseSheet: function (rows) {
+        const res = { items: {}, noArt: [], noPrice: 0, dups: 0, date: '', error: '' };
+        const ART_RE = /^[A-Za-z0-9][A-Za-z0-9._\/-]{2,}$/;
+        const normArt = a => {
+            a = String(a == null ? '' : a).trim().replace(/\*+$/, '').trim();
+            if (/^\d+\.0$/.test(a)) a = a.slice(0, -2);
+            // артикул, записанный через пробел вместо дефиса («SMS 0907 000002»)
+            if (/^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*(?: [A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)+$/.test(a)) a = a.replace(/ /g, '-');
+            return a;
+        };
+        const toNum = v => {
+            if (typeof v === 'number') return v;
+            const n = parseFloat(String(v == null ? '' : v).replace(/[\s ]/g, '').replace(',', '.'));
+            return isNaN(n) ? null : n;
+        };
+        // Колонки — по тексту шапки. Шапка может быть двухэтажной: «Артикул» на одной
+        // строке, «Цена» на следующей (так у выгрузок 1С), поэтому данные идут после
+        // самой нижней строки шапки.
+        let artCol = -1, priceCol = -1, hdrEnd = -1;
+        for (let r = 0; r < Math.min(rows.length, 40); r++) {
+            (rows[r] || []).forEach((cell, c) => {
+                const t = String(cell == null ? '' : cell).toLowerCase().trim();
+                if (artCol < 0 && /артикул/.test(t) && !/групп/.test(t)) { artCol = c; hdrEnd = Math.max(hdrEnd, r); }
+                if (priceCol < 0 && /^цена/.test(t) && !/eur|евро|euro|риц/.test(t)) { priceCol = c; hdrEnd = Math.max(hdrEnd, r); }
+            });
+        }
+        if (artCol < 0 || priceCol < 0) {
+            res.error = 'не найдены колонки «Артикул» и «Цена» в шапке (в первых 40 строках)';
+            return res;
+        }
+        for (let r = 0; r < Math.min(rows.length, 15); r++) {
+            const m = (rows[r] || []).join(' ').match(/(\d{2})\.(\d{2})\.(\d{4})/);
+            if (m) { res.date = m[3] + '-' + m[2] + '-' + m[1]; break; }
+        }
+        for (let r = hdrEnd + 1; r < rows.length; r++) {
+            const row = rows[r] || [];
+            const art = normArt(row[artCol]);
+            const price = toNum(row[priceCol]);
+            if (!art) {
+                if (price > 0) res.noArt.push({ name: String(row[artCol + 1] == null ? '' : row[artCol + 1]).trim().slice(0, 90), price: Math.round(price) });
+                continue;
+            }
+            if (!(price > 0)) { res.noPrice++; continue; }
+            if (!ART_RE.test(art)) continue;
+            if (res.items[art] !== undefined) res.dups++;
+            res.items[art] = Math.round(price);
+        }
+        return res;
+    },
+
+    dpUpFiles: async function (input) {
+        const files = Array.from(input.files || []);
+        if (!files.length) return;
+        const key = this._dp.key;
+        const up = this._dpUp = { key: key, files: [], inc: {}, noArt: [], date: '', mode: 'merge', ack: false, busy: 'Читаю файлы…', err: '', done: '', rep: null };
+        this.dpUpRerender();
+        try {
+            if (typeof XLSX === 'undefined') await this.lazy('sheetjs');
+            if (typeof XLSX === 'undefined') throw new Error('библиотека чтения Excel не загрузилась — проверьте интернет и повторите');
+            for (const f of files) {
+                const info = { name: f.name, count: 0, noArt: 0, error: '' };
+                up.files.push(info);
+                try {
+                    const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' });
+                    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' });
+                    const p = this.dpParseSheet(rows);
+                    if (p.error) { info.error = p.error; continue; }
+                    info.count = Object.keys(p.items).length;
+                    info.noArt = p.noArt.length;
+                    info.date = p.date;
+                    Object.assign(up.inc, p.items);
+                    p.noArt.forEach(x => up.noArt.push(Object.assign({ file: f.name }, x)));
+                    if (p.date && p.date > up.date) up.date = p.date;
+                } catch (e) {
+                    info.error = 'файл не читается: ' + (e.message || e);
+                }
+            }
+        } catch (e) {
+            up.err = e.message || String(e);
+        }
+        up.busy = '';
+        this.dpUpCompute();
+    },
+
+    // Что изменится относительно действующего прайса
+    dpUpCompute: function () {
+        const up = this._dpUp;
+        if (!up) return;
+        const cur = (this.distPriceData(up.key) || {}).items || {};
+        const inc = up.inc;
+        const incKeys = Object.keys(inc);
+        const curKeys = Object.keys(cur);
+        const rep = up.rep = { added: 0, changed: 0, same: 0, removed: 0, untouched: 0, sus: [], warn: [] };
+        incKeys.forEach(a => { if (cur[a] === undefined) rep.added++; else if (cur[a] !== inc[a]) rep.changed++; else rep.same++; });
+        curKeys.forEach(a => { if (inc[a] === undefined) { if (up.mode === 'replace') rep.removed++; else rep.untouched++; } });
+        rep.total = up.mode === 'replace' ? incKeys.length : new Set(curKeys.concat(incKeys)).size;
+        const names = {}, base = {};
+        this.distPriceRows(up.key).rows.forEach(r => { names[r.id] = r.name; base[r.id] = r.base; });
+        incKeys.forEach(a => {
+            const why = [];
+            if (base[a] && (inc[a] / base[a] > 1.6 || inc[a] / base[a] < 0.6)) why.push('цена отличается от каталога в ' + (Math.round(inc[a] / base[a] * 100) / 100).toLocaleString('ru-RU') + ' раза');
+            if (cur[a] && (inc[a] / cur[a] > 1.6 || inc[a] / cur[a] < 0.6)) why.push('цена изменилась в ' + (Math.round(inc[a] / cur[a] * 100) / 100).toLocaleString('ru-RU') + ' раза против прежнего прайса');
+            if (why.length) rep.sus.push({ id: a, name: names[a] || '', base: base[a], was: cur[a], now: inc[a], why: why.join('; '), k: Math.abs(Math.log(inc[a] / (base[a] || cur[a] || inc[a]))) });
+        });
+        rep.sus.sort((x, y) => y.k - x.k);
+        const curDate = (this.distPriceData(up.key) || {}).date || '';
+        if (up.date && curDate && up.date < curDate) rep.warn.push('Дата загружаемого прайса (' + new Date(up.date).toLocaleDateString('ru-RU') + ') старее действующего (' + new Date(curDate).toLocaleDateString('ru-RU') + ') — это не откат ли к старому файлу?');
+        if (up.mode === 'replace' && curKeys.length && rep.removed > curKeys.length * 0.2) rep.warn.push('В режиме «Заменить целиком» пропадёт ' + rep.removed + ' из ' + curKeys.length + ' позиций прежнего прайса — в файле, видимо, не весь ассортимент. Возможно, нужен режим «Обновить».');
+        if (rep.sus.length > 20) rep.warn.push('Много подозрительных цен (' + rep.sus.length + ') — вероятно, в файле другая единица измерения или другая колонка цены.');
+        this.dpUpRerender();
+    },
+
+    dpUpRerender: function () {
+        const box = document.getElementById('dp_up_box');
+        if (box) box.innerHTML = this.dpUpReportHtml();
+    },
+
+    dpUpReportHtml: function () {
+        const up = this._dpUp;
+        if (!up || !this._dp || up.key !== this._dp.key) return '';
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const fmt = n => n == null ? '—' : (Math.round(n * 100) / 100).toLocaleString('ru-RU');
+        if (up.busy) return `<div class="ad-sub">${esc(up.busy)}</div>`;
+        if (up.done) return `<div style="padding:10px 14px; border-radius:10px; background:color-mix(in srgb, #10B981 14%, transparent); color:#059669; font-weight:600;">${esc(up.done)}</div>`;
+        const items = Object.keys(up.inc).length;
+        let h = '';
+        if (up.err) h += `<div style="color:#EF4444; margin-bottom:8px;">${esc(up.err)}</div>`;
+        h += `<table class="admin-table" style="width:100%; margin-bottom:10px;"><thead><tr><th>Файл</th><th style="text-align:right;">Позиций с ценой</th><th style="text-align:right;">Без артикула</th><th>Дата в шапке</th></tr></thead><tbody>${
+            up.files.map(f => `<tr><td>${esc(f.name)}</td>${f.error
+                ? `<td colspan="3" style="color:#EF4444;">${esc(f.error)}</td>`
+                : `<td style="text-align:right;">${f.count.toLocaleString('ru-RU')}</td><td style="text-align:right;">${f.noArt}</td><td>${f.date ? esc(new Date(f.date).toLocaleDateString('ru-RU')) : '<span style="color:var(--text-sec);">нет</span>'}</td>`}</tr>`).join('')}</tbody></table>`;
+        if (!items) return h + '<div style="color:#EF4444;">В выбранных файлах нет ни одной позиции с артикулом и ценой — публиковать нечего.</div>';
+        const rep = up.rep;
+        if (!rep) return h;
+        const lab = 'display:inline-flex; align-items:center; gap:6px; margin-right:18px; cursor:pointer;';
+        h += `<div style="margin:8px 0;">
+                <label style="${lab}"><input type="radio" name="dp_up_mode" value="merge" ${up.mode === 'merge' ? 'checked' : ''} onchange="app._dpUp.mode='merge'; app.dpUpCompute()"> Обновить (остальные цены прежние)</label>
+                <label style="${lab}"><input type="radio" name="dp_up_mode" value="replace" ${up.mode === 'replace' ? 'checked' : ''} onchange="app._dpUp.mode='replace'; app.dpUpCompute()"> Заменить прайс целиком</label></div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:8px; margin:10px 0;">
+                ${[['Добавится новых', rep.added], ['Цена изменится', rep.changed], ['Не изменится', rep.same], [up.mode === 'replace' ? 'Пропадёт' : 'Останутся прежними', up.mode === 'replace' ? rep.removed : rep.untouched], ['Всего в прайсе', rep.total]]
+                    .map(x => `<div class="control-card"><span class="lbl">${x[0]}</span><span>${x[1].toLocaleString('ru-RU')}</span></div>`).join('')}</div>`;
+        rep.warn.forEach(w => { h += `<div style="padding:8px 12px; margin:6px 0; border-radius:8px; background:color-mix(in srgb, #D97706 14%, transparent); color:#B45309; font-size:13px;">⚠ ${esc(w)}</div>`; });
+        if (rep.sus.length) {
+            h += `<details style="margin:8px 0;"><summary style="cursor:pointer; font-weight:600;">Подозрительные цены: ${rep.sus.length}</summary>
+                <div style="font-size:12px; color:var(--text-sec); margin:4px 0;">Это позиции, где цена в файле сильно отличается от каталога или от прежнего прайса. Чаще всего причина — другая единица измерения (бухта вместо метра, упаковка вместо штуки). Если цена верна — публикуйте, нет — потом исключите позицию кнопкой «Править» в таблице ниже.</div>
+                <div style="overflow-x:auto; max-height:260px;"><table class="admin-table" style="width:100%; min-width:700px;"><thead><tr><th>Артикул</th><th>Название</th><th style="text-align:right;">Каталог</th><th style="text-align:right;">Был в прайсе</th><th style="text-align:right;">Станет</th><th>Почему</th></tr></thead><tbody>${
+                rep.sus.slice(0, 60).map(s => `<tr><td><b>${esc(s.id)}</b></td><td style="font-size:12px;">${esc(s.name)}</td><td style="text-align:right;">${fmt(s.base)}</td><td style="text-align:right;">${fmt(s.was)}</td><td style="text-align:right;"><b>${fmt(s.now)}</b></td><td style="font-size:12px;">${esc(s.why)}</td></tr>`).join('')}</tbody></table></div></details>`;
+        }
+        if (up.noArt.length) {
+            h += `<details style="margin:8px 0;"><summary style="cursor:pointer; font-weight:600;">Строки без артикула (в прайс не попадут): ${up.noArt.length}</summary>
+                <div style="font-size:12px; color:var(--text-sec); margin:4px 0;">У этих позиций в файле есть название и цена, но нет артикула, подобрать их к каталогу нельзя. Попросите дистрибьютора добавить артикулы.</div>
+                <div style="overflow-x:auto; max-height:200px;"><table class="admin-table" style="width:100%;"><tbody>${
+                up.noArt.slice(0, 100).map(x => `<tr><td style="font-size:12px;">${esc(x.name)}</td><td style="text-align:right; white-space:nowrap;">${fmt(x.price)} ₽</td><td style="font-size:11px; color:var(--text-sec);">${esc(x.file)}</td></tr>`).join('')}</tbody></table></div></details>`;
+        }
+        const needDate = !up.date;
+        h += `<div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-top:12px;">
+                <label style="font-size:13px;">Дата прайса${up.files.some(f => f.date) ? '' : ' <span style="color:#D97706;">(в файле не найдена — укажите)</span>'}:
+                    <input type="date" value="${esc(up.date)}" oninput="app._dpUp.date=this.value; app.dpUpRerenderBtn()" style="margin-left:6px; padding:5px 8px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main);"></label>
+                <label style="${lab}"><input type="checkbox" ${up.ack ? 'checked' : ''} onchange="app._dpUp.ack=this.checked; app.dpUpRerenderBtn()"> Отчёт проверил</label>
+                <button id="dp_up_pub" class="admin-btn ad-primary" ${up.ack && up.date ? '' : 'disabled'} onclick="app.dpUpPublish()">Опубликовать прайс</button>
+                ${needDate ? '<span style="font-size:12px; color:#D97706;">Без даты публиковать нельзя</span>' : ''}</div>`;
+        return h;
+    },
+
+    dpUpRerenderBtn: function () {
+        const b = document.getElementById('dp_up_pub');
+        const up = this._dpUp;
+        if (b && up) b.disabled = !(up.ack && up.date);
+    },
+
+    dpUpPublish: async function () {
+        const up = this._dpUp;
+        if (!up || !up.ack || !up.date || !this.dpCanEdit()) return;
+        const cur = (this.distPriceData(up.key) || {}).items || {};
+        const final = up.mode === 'replace' ? Object.assign({}, up.inc) : Object.assign({}, cur, up.inc);
+        const rep = up.rep || {};
+        const btn = document.getElementById('dp_up_pub');
+        if (btn) { btn.disabled = true; btn.textContent = 'Публикую…'; }
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session || !session.access_token) throw new Error('нужно войти в аккаунт');
+            const resp = await fetch('https://proxy.heatcalc.ru/dist_price_save.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+                body: JSON.stringify({
+                    key: up.key, date: up.date, items: final, mode: up.mode,
+                    stats: { added: rep.added || 0, changed: rep.changed || 0, removed: rep.removed || 0, files: up.files.length }
+                })
+            });
+            let out = null;
+            try { out = await resp.json(); } catch (e) { }
+            if (!resp.ok || !out || !out.ok) throw new Error((out && out.error) || ('ответ сервера ' + resp.status));
+            // Сразу показываем и применяем у себя: ждать, пока файл доедет с Beget, незачем
+            const next = { date: up.date, uploaded_at: out.uploaded_at || new Date().toISOString(), items: final };
+            this._distRemote[up.key] = next;
+            try { localStorage.setItem('dist_prices_remote_' + up.key, JSON.stringify(next)); } catch (e) { }
+            delete (this._dpCache || {})[up.key];
+            this._dpMeta = null;
+            this._dpUp = { key: up.key, done: 'Прайс опубликован: ' + Object.keys(final).length.toLocaleString('ru-RU') + ' позиций, дата ' + new Date(up.date).toLocaleDateString('ru-RU') + '. У монтажников цены обновятся при их следующем входе.' + (out.logged === false ? ' (В журнал загрузок запись не попала — проверьте, что выполнена миграция 20261005_distributor_price_uploads.sql.)' : ''), files: [], inc: {}, noArt: [] };
+            this.renderAdminDistPrices();
+        } catch (e) {
+            if (btn) { btn.disabled = false; btn.textContent = 'Опубликовать прайс'; }
+            app.alert('Прайс не опубликован: ' + (e.message || e));
+        }
     },
 
     // Окно правки одной позиции
@@ -33312,7 +33641,8 @@ const app = {
         if (!window.ExcelExport) await this.lazy('excel').catch(() => { });
         if (!window.ExcelExport) { app.alert('Модуль выгрузки в Excel не загрузился — обновите страницу.'); return; }
         const X = window.ExcelExport.styles;
-        const pl = DIST_PRICES[st.key] || {};
+        const pd = this.distPriceData(st.key) || {};
+        const pl = Object.assign({}, DIST_PRICES[st.key] || {}, { date: pd.date });
         const date = pl.date ? new Date(pl.date).toLocaleDateString('ru-RU') : 'дата не указана';
         const today = new Date().toLocaleDateString('ru-RU');
         const stNames = { all: 'все позиции', diff: 'только отличающиеся', same: 'только совпадающие', none: 'только отсутствующие в прайсе', ov: 'только с правками админа' };
@@ -37345,7 +37675,8 @@ const app = {
                 if (!priceSel || !priceInfo) return;
                 const d = (this.adminData.distributors || []).find(x => String(x.id) === String(distSel && distSel.value));
                 const priceLists = (typeof DIST_PRICES !== 'undefined') ? DIST_PRICES : {};
-                const pl = d && d.price_list_key ? priceLists[d.price_list_key] : null;
+                const pl = d && d.price_list_key && priceLists[d.price_list_key]
+                    ? Object.assign({}, priceLists[d.price_list_key], { date: this.distPriceData(d.price_list_key).date }) : null;
                 if (priceSel.value === 'terem') {
                     priceInfo.innerHTML = '💰 Цены Терем-онлайн из каталога, прайс дистрибьютора игнорируется.';
                 } else if (!d) {
