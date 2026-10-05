@@ -2125,6 +2125,39 @@
                 </div>
             </div>
 
+            <!-- Буферная ёмкость (тепловой накопитель STOUT STT-0001…0004). Видна в подробном
+                 режиме и только без газового котла: накопитель окупается на электрокотле с
+                 двухтарифным счётчиком (app.bufferAvailable, показ — в app.syncUI). Содержимое
+                 блока рисует app.renderBufferUI(). -->
+            <div class="control-item toggle-item" id="blk_buffer" style="display:none;">
+                <div class="label-row" style="position:relative;">
+                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Буферная ёмкость<span class="ui-emo"> 🔋</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Тепловой накопитель STOUT STT: ночью электрокотёл греет воду по дешёвому тарифу, днём система берёт тепло из ёмкости.<div class="tip-p"><b>Когда окупается.</b> Нужен счётчик «день-ночь» и заметная разница тарифов. На одном тарифе ёмкость только копит потери.</div><div class="tip-p"><b>Исполнения.</b> Простая (STT-0003), с расслоением по высоте (STT-0001/0002), со змеевиком ГВС (STT-0004).</div><div class="tip-p">Объём подбирается по расходу средней зимы; расчёт — практика проектирования, не норма.</div></div></span></span>
+                    <label class="switch"><input type="checkbox" id="chk_buffer"
+                            onchange="app.toggleBuffer(this.checked)"><span class="slider"></span></label>
+                </div>
+                <div id="blk_buffer_box"
+                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
+                    <div class="tabs" style="font-size:11px;">
+                        <div class="tab buffer-kind-tab" data-bkind="plain" onclick="app.setBufferKind('plain')">Простая</div>
+                        <div class="tab buffer-kind-tab" data-bkind="strat" onclick="app.setBufferKind('strat')">Расслоение</div>
+                        <div class="tab buffer-kind-tab" data-bkind="coil" onclick="app.setBufferKind('coil')">Со змеевиком</div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="lbl" style="font-size:12px;">Объём, л</span>
+                        <div class="stepper" style="width:124px;">
+                            <button class="step-btn" onclick="app.stepBufferVol(-1)">−</button>
+                            <div class="step-val" id="val_buffer_vol">—</div>
+                            <button class="step-btn" onclick="app.stepBufferVol(1)">+</button>
+                        </div>
+                    </div>
+                    <div id="buffer_vol_reset" style="display:none; text-align:right;">
+                        <span onclick="app.resetBufferVol()"
+                            style="font-size:10px; color:var(--primary); cursor:pointer; text-decoration:underline dotted;">вернуть автоподбор объёма</span>
+                    </div>
+                    <div id="buffer_body"></div>
+                </div>
+            </div>
+
             <!-- Стоимость отопления газом. Устроено как блок по электричеству, но
                  переключатель другой: магистральный газ считается по тарифу региона
                  (GAS_TARIFF_RU в catalog.js, подставляется по выбранному городу),

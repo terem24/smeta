@@ -23,7 +23,10 @@ const OBJECTS = [
     { title: '150 м², рециркуляция ГВС', o: { area: 150, recirc: true } },
     { title: '150 м², газ + резервный электрокотёл', o: { area: 150, fuels: ['gas', 'el'] } },
     { title: '300 м², металлопластик', o: { area: 300, res: 6, systems: ['rad', 'tp'], tp1: 80, boilerPipeSystem: 'mp' } },
-    { title: '150 м², рециркуляция ГВС, ROMMER', o: { area: 150, recirc: true, brandMode: 'rommer' } }
+    { title: '150 м², рециркуляция ГВС, ROMMER', o: { area: 150, recirc: true, brandMode: 'rommer' } },
+    // Электрокотёл с буферной ёмкостью STT (подробный режим, «день-ночь»). Остаток «2 ВР 1 1/2" без пары»
+    // и ВР на 1" и 1/2" есть и без ёмкости (электро-объекты без газа), ёмкость их не добавляет.
+    { title: '200 м², электрокотёл + буферная ёмкость', o: { area: 200, res: 3, fuels: ['el'], detailedRooms: true, bufferTank: true, elTariffMode: 'day_night', systems: ['rad'] } }
 ];
 
 const KIND = ac.KIND_RU;

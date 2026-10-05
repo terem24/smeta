@@ -199,7 +199,8 @@ body.dark-mode #blk_zone_auto_item {
    и тёмную тему получает тем же правилом. Без него фон оставался #F8FAFC, а
    текст поверх него шёл светлым: в тёмной теме блок читался только наполовину. */
 body.dark-mode #blk_el_cost_box,
-body.dark-mode #blk_gas_cost_box {
+body.dark-mode #blk_gas_cost_box,
+body.dark-mode #blk_buffer_box {
     background: #161616 !important;
     border-color: #2A2A2A !important;
 }

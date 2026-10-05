@@ -1202,7 +1202,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
 
     lastSavedStateString: "",
 
@@ -49833,7 +49833,7 @@ const app = {
 
         // Полный сброс данных расчета
         this.state = {
-            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
+            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
             autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null },
             // ВОЗВРАЩАЕМ АВТОРИЗАЦИЮ И ТАРИФ НА МЕСТО
             tgUser: currentTgUser,
@@ -60283,6 +60283,218 @@ const app = {
         };
     },
 
+    // ===== Буферная ёмкость (тепловой накопитель) STOUT STT-0001…0004 =====
+    // Паспорта 2026 («Новые паспорта»). В смете — только в подробном режиме и только без
+    // газового котла: в калькуляторе источники тепла — газ и электро, а накопитель окупается
+    // на электрокотле с двухтарифным счётчиком (ночью греем, днём отдаём). Тепловые насосы и
+    // твёрдое топливо калькулятор пока не считает.
+    // Правила подбора — практика проектирования, на СП не ссылаемся (CLAUDE.md, «Нормативная
+    // база», правило 2):
+    //  · ΔT = 40 К: заряд до 85 °C при паспортном пределе 95 °C, отбор до ≈ 45 °C;
+    //  · двухтарифный счётчик: накопитель берёт на себя половину дневного расхода средней зимы;
+    //  · один тариф: накопитель не окупается, объём — 20 л на кВт котла (от коротких циклов).
+    // Паспорт: расстояние от верха до потолка не менее 600 мм, до стены — не менее 50 мм.
+    BUFFER_DT: 40,
+    BUFFER_COVER: 0.5,
+    BUFFER_L_PER_KW: 20,
+    BUFFER_TOP_GAP_M: 0.6,
+    bufferAvailable: function () {
+        const s = this.state;
+        if (!s.detailedRooms || this.isFlat()) return false;
+        const f = s.fuels || [];
+        return f.includes('el') && !f.includes('gas');
+    },
+    bufferActive: function () { return this.bufferAvailable() && !!this.state.bufferTank; },
+    // Потери накопителя за сутки, кВт·ч: изоляция 70 мм (λ 0,031) плюс плёнка воздуха
+    // 0,115 м²·К/Вт (СП 50.13330, αв = 8,7); вода в среднем 65 °C, в котельной 20 °C.
+    bufferLossKwhDay: function (it) {
+        const R = (it.insMm / 1000) / it.insLambda + 0.115;
+        const D = it.dMm / 1000, H = it.hMm / 1000;
+        const A = Math.PI * D * H + 2 * Math.PI * D * D / 4;
+        return A / R * (65 - 20) * 24 / 1000;
+    },
+    // Сколько патрубков остаётся без дела и требует заглушки (паспорт, табл. «Конструкция»).
+    bufferSparePorts: function (it) {
+        const t = String((it && it.id) || '').slice(0, 8);
+        if (t === 'STT-0001') return { n: 5, size: '1 1/2"' };
+        if (t === 'STT-0002') return { n: 3, size: '1 1/2"' };
+        if (t === 'STT-0004') return { n: 1, size: '2"' };
+        return { n: 0, size: '' };
+    },
+    bufferPick: function () {
+        const kind = this.state.bufferKind || 'plain';
+        const pool = (catalog.tanks_buffer || []).filter(x => x.kind === kind).slice().sort((a, b) => a.vol - b.vol);
+        if (!pool.length) return null;
+        const r = this.calcElHeatingCost();
+        const twoRate = !!(r && r.twoRate);
+        const boilerKw = parseFloat(this._elBoilerKw) || (r ? r.kw : 0);
+        let need = 0, perDay = 0, roomKwh = 0, rechargeLimited = false;
+        if (twoRate) {
+            let dayKwh = 0, nightKwh = 0, days = 0;
+            r.months.forEach(m => { if (!m.off) { dayKwh += m.kwh - m.kwhNight; nightKwh += m.kwhNight; days += m.days; } });
+            perDay = days ? dayKwh / days : 0;
+            // Сколько котёл успевает дозарядить за ночные 8 часов сверх обычной ночной нагрузки:
+            // больше этого накопитель не заряжается, и лишний объём только копит потери.
+            const kwCap = r.capKw > 0 ? r.capKw : (r.boilerKw > 0 ? r.boilerKw : r.kw);
+            roomKwh = Math.max(0, kwCap * this.EL_NIGHT_HOURS - (days ? nightKwh / days : 0));
+            let eNeed = perDay * this.BUFFER_COVER;
+            if (eNeed > roomKwh) { eNeed = roomKwh; rechargeLimited = true; }
+            need = eNeed * 1000 / (1.163 * this.BUFFER_DT);
+        } else {
+            need = boilerKw * this.BUFFER_L_PER_KW;
+        }
+        const ceilH = parseFloat(this.state.h1) || 2.7;
+        const fits = x => (x.hMm / 1000 + this.BUFFER_TOP_GAP_M) <= ceilH + 1e-6;
+        const manual = parseInt(this.state.bufferVolManual, 10) || 0;
+        let item = manual ? (pool.find(x => x.volNom === manual) || null) : null;
+        const byManual = !!item;
+        if (!item) {
+            const ok = pool.filter(fits);
+            item = ok.find(x => x.vol >= need) || null;
+            if (!item) item = ok.length ? ok[ok.length - 1] : (pool.find(x => x.vol >= need) || pool[pool.length - 1]);
+        }
+        return {
+            item: item, need: need, perDay: perDay, roomKwh: roomKwh, rechargeLimited: rechargeLimited,
+            byManual: byManual, fits: fits(item), ceilH: ceilH,
+            undersized: item.vol < need * 0.95, twoRate: twoRate, kind: kind, boilerKw: boilerKw
+        };
+    },
+    // Экономика ночного накопления. Берём месячный расход из calcElHeatingCost: накопитель
+    // переносит на ночь столько дневных кВт·ч, сколько в него влезает (E = V·1,163·ΔT) и
+    // сколько котёл успевает дозарядить за ночные 8 часов сверх обычной ночной нагрузки.
+    // Потери бака платим по ночному тарифу, считаем за все сутки сезона.
+    calcBufferSaving: function (pick, r) {
+        if (!pick || !r || !r.twoRate) return null;
+        const it = pick.item;
+        const eFull = it.vol * 0.001163 * this.BUFFER_DT;
+        const loss = this.bufferLossKwhDay(it);
+        const kwCap = r.capKw > 0 ? r.capKw : (r.boilerKw > 0 ? r.boilerKw : r.kw);
+        let saving = 0, shiftSum = 0, days = 0, limited = false;
+        r.months.forEach(m => {
+            if (m.off) return;
+            const dayPD = (m.kwh - m.kwhNight) / m.days;
+            const nightPD = m.kwhNight / m.days;
+            let shift = Math.min(eFull, dayPD);
+            const room = Math.max(0, kwCap * this.EL_NIGHT_HOURS - nightPD - loss);
+            if (shift > room) { shift = room; limited = true; }
+            saving += m.days * (shift * (r.tariffDay - r.tariffNight) - loss * r.tariffNight);
+            shiftSum += shift * m.days; days += m.days;
+        });
+        const price = it.price > 0 ? it.price : 0;
+        return {
+            eFull: eFull, loss: loss, saving: saving, shiftAvg: days ? shiftSum / days : 0, days: days,
+            limited: limited, price: price, kwCap: kwCap,
+            payback: (price > 0 && saving > 0) ? price / saving : null
+        };
+    },
+    // Плашки к разделу сметы «Буферная ёмкость». Цены у позиций STT пока нет: ТЕРЕМ внесёт
+    // их в прайс в следующем месяце, тогда AutoPrice.py подставит цену, а плашка исчезнет.
+    bufferNotesHtml: function (pick) {
+        const it = pick.item;
+        let html = '';
+        if (!(it.price > 0)) {
+            html += this.noteBox('warn', 'Цена ёмкости не определена.',
+                `Позиции STT появятся в прайсе ТЕРЕМ в следующем месяце, пока строка в итог не входит.`,
+                `<div class="tip-p">Артикул <b>${it.id}</b>, цена по запросу. Фитинги подключения посчитаны по прайсу.</div>`);
+        }
+        if (!pick.fits) {
+            html += this.noteBox('error', 'Ёмкость не помещается по высоте.',
+                `Нужен потолок от ${(it.hMm / 1000 + this.BUFFER_TOP_GAP_M).toFixed(2).replace('.', ',')} м, в расчёте ${pick.ceilH.toFixed(2).replace('.', ',')} м.`,
+                `<div class="tip-p">Паспорт STT: от верха ёмкости до потолка не менее 600 мм. Высота ${it.hMm} мм. Выберите меньший объём или другое исполнение.</div>`);
+        }
+        if (pick.undersized && !pick.byManual) {
+            html += this.noteBox('warn', 'Объём меньше расчётного.',
+                `Нужно около ${Math.round(pick.need)} л, подобрано ${it.vol} л — выше не проходит по высоте или по паспортному ряду.`, '');
+        }
+        if (pick.rechargeLimited) {
+            html += this.noteBox('warn', 'Объём ограничен мощностью котла.',
+                `За ночь он успевает дозарядить около ${Math.round(pick.roomKwh)} кВт·ч сверх нагрузки дома.`,
+                `<div class="tip-p">Электрокотёл ${Math.round(pick.boilerKw * 10) / 10} кВт: ночные ${this.EL_NIGHT_HOURS} часов уходят на отопление самого дома, на заряд ёмкости остаётся только остаток мощности. Больший объём не успеет зарядиться и даст только потери. Поднимите мощность котла или лимит сети, тогда накопитель окупится лучше.</div>`);
+        }
+        const sp = this.bufferSparePorts(it);
+        const det = `<div class="tip-p">Ёмкость <b>${it.vol} л</b>, высота ${it.hMm} мм, диаметр с изоляцией ${it.dMm} мм, масса пустой ${it.kg} кг (с водой ≈ ${(it.kg + it.vol)} кг). До ${it.maxBar} бар и ${it.maxT} °C.</div>` +
+            `<div class="tip-p">Подключение G 1 1/2" ВР. В смету включены ниппели-переходы, муфты и переходы на трубу на подачу и обратку котла и системы, дренажный кран и 3 м трубы. ` +
+            (sp.n ? `Остальные патрубки (${sp.n} шт., G ${sp.size} ВР) надо заглушить: наружных заглушек такого размера в прайсе STOUT нет, подберите у поставщика. ` : '') +
+            `Патрубки G 1/2" под гильзы датчиков закрывают по месту.</div>` +
+            `<div class="tip-p">Гидрострелка / коллектор с разделителем остаются: накопитель стоит в контуре котла, а не вместо разделителя. Расширительный бак пересчитан с учётом объёма ёмкости (паспорт, раздел «Монтаж»).</div>` +
+            `<div class="tip-p">Нужны предохранительный клапан на 3 бар (в обвязке котла) и заземление на кольцевой опоре.</div>` +
+            (pick.kind === 'coil' ? `<div class="tip-p"><b>STT-0004 со змеевиком ГВС.</b> Бойлер из сметы автоматически не убирается: если змеевика хватает для горячей воды, уберите «Водонагреватель» вручную.</div>` : '');
+        html += this.noteBox('info', `Буферная ёмкость ${it.id}.`, `${it.vol} л, ${it.hMm} мм. Подробности — под значком.`, det);
+        return html;
+    },
+    // Переключатель «Буферная ёмкость» в панели настроек.
+    toggleBuffer: function (chk) {
+        this.state.bufferTank = !!chk;
+        this.render();
+        this.syncUI();
+        this.saveState();
+    },
+    setBufferKind: function (kind) {
+        this.state.bufferKind = (kind === 'strat' || kind === 'coil') ? kind : 'plain';
+        this.state.bufferVolManual = null;
+        this.render();
+        this.syncUI();
+        this.saveState();
+    },
+    // Шаг по паспортному ряду: ±1 типоразмер от текущего, ручной выбор снимает автоподбор.
+    stepBufferVol: function (dir) {
+        const kind = this.state.bufferKind || 'plain';
+        const pool = (catalog.tanks_buffer || []).filter(x => x.kind === kind).slice().sort((a, b) => a.vol - b.vol);
+        const seen = {}; const noms = pool.map(x => x.volNom).filter(n => !seen[n] && (seen[n] = 1));
+        const pick = this._bufPick;
+        const cur = noms.indexOf(pick && pick.item ? pick.item.volNom : noms[0]);
+        const next = Math.max(0, Math.min(noms.length - 1, cur + (dir || 0)));
+        this.state.bufferVolManual = noms[next];
+        this.render();
+        this.syncUI();
+        this.saveState();
+    },
+    resetBufferVol: function () {
+        this.state.bufferVolManual = null;
+        this.render();
+        this.syncUI();
+        this.saveState();
+    },
+    // Блок в панели настроек: что подобрано, откуда объём и сколько это даёт за сезон.
+    renderBufferUI: function () {
+        const box = document.getElementById('buffer_body');
+        if (!box) return;
+        this.initPanelTips();
+        const pick = this._bufPick || this.bufferPick();
+        if (!pick) { box.innerHTML = ''; return; }
+        const it = pick.item;
+        const r = this.calcElHeatingCost();
+        const sav = this.calcBufferSaving(pick, r);
+        const money = v => Math.round(v).toLocaleString('ru-RU');
+        const f1 = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
+        let h = `<div style="font-size:12px; font-weight:700;">${it.id} · ${it.vol} л</div>` +
+            `<div style="font-size:11px; color:var(--text-sec);">высота ${it.hMm} мм, Ø ${it.dMm} мм, пустой ${it.kg} кг, ${it.maxBar} бар, ${it.maxT} °C</div>`;
+        if (pick.twoRate) {
+            h += `<div style="margin-top:6px; font-size:11px;">Объём: половина дневного расхода средней зимы (${f1(pick.perDay)} кВт·ч/сут, ΔT ${this.BUFFER_DT} К) — нужно около ${Math.round(pick.need)} л.</div>`;
+            if (pick.rechargeLimited) {
+                h += `<div style="margin-top:6px; padding-left:8px; border-left:3px solid #F59E0B; font-size:11px; line-height:1.5;">⚠️ Объём ограничен мощностью котла: за ночные ${this.EL_NIGHT_HOURS} ч он даёт на дозарядку ёмкости только ${f1(pick.roomKwh)} кВт·ч сверх ночной нагрузки дома. Больше объём — только лишние потери. Выгоднее поднять мощность котла или лимит сети.</div>`;
+            }
+        } else {
+            h += `<div style="margin-top:6px; padding-left:8px; border-left:3px solid #F59E0B; font-size:11px; line-height:1.5;">⚠️ Тариф один — ночного накопления нет, окупаемости нет. Объём взят из расчёта ${this.BUFFER_L_PER_KW} л на кВт котла (${f1(pick.boilerKw)} кВт), против коротких циклов. Включите «День-ночь» в блоке «Стоимость отопления».</div>`;
+        }
+        if (!pick.fits) {
+            h += `<div style="margin-top:6px; padding-left:8px; border-left:3px solid #DC2626; font-size:11px; line-height:1.5;">⛔ Не помещается: нужен потолок от ${f1(it.hMm / 1000 + this.BUFFER_TOP_GAP_M)} м, задано ${f1(pick.ceilH)} м (высота 1-го этажа).</div>`;
+        }
+        if (pick.undersized && !pick.byManual) {
+            h += `<div style="margin-top:6px; padding-left:8px; border-left:3px solid #F59E0B; font-size:11px; line-height:1.5;">⚠️ Объём меньше расчётного: выше не проходит по высоте или по ряду.</div>`;
+        }
+        if (sav) {
+            h += `<div style="margin-top:6px; font-size:11px; line-height:1.5;">В цикле ёмкость запасает ${f1(sav.eFull)} кВт·ч, в среднем за сезон переносит на ночь ${f1(sav.shiftAvg)} кВт·ч в сутки; потери самой ёмкости ${f1(sav.loss)} кВт·ч в сутки.` +
+                (sav.limited ? ' Дозарядка за ночь упирается в мощность котла.' : '') + `</div>`;
+            const ok = sav.saving > 0;
+            h += `<div style="margin-top:6px; padding:6px 8px; background:var(--primary-light); border-radius:6px; font-size:11px; font-weight:700; color:${ok ? 'var(--primary)' : '#B45309'};">` +
+                (ok ? `Экономия ≈ ${money(sav.saving)} ₽ за сезон` : `При этих тарифах накопитель убыточен (${money(sav.saving)} ₽ за сезон)`) +
+                (sav.payback ? `<br><span style="font-weight:500;">Окупаемость самой ёмкости ≈ ${f1(sav.payback)} лет</span>` : `<br><span style="font-weight:500;">Окупаемость — когда в прайсе появится цена ёмкости</span>`) +
+                `</div>`;
+        }
+        box.innerHTML = h;
+    },
+
     // Теплота сгорания и КПД для пересчёта тепла в топливо.
     // Природный газ: низшая теплота сгорания 34 МДж/м³ = 9.45 кВт·ч/м³.
     // СУГ (пропан-бутан): 12.8 кВт·ч/кг при плотности 0.54 кг/л = 6.91 кВт·ч/л.
@@ -66022,6 +66234,29 @@ const app = {
                 this.renderElCostUI();
             }
         }
+        // Буферная ёмкость: переключатель виден в подробном режиме без газового котла,
+        // тело блока — пока тумблер включён (bufferAvailable / bufferActive).
+        const bufBlk = document.getElementById('blk_buffer');
+        if (bufBlk) {
+            const bufOn = this.bufferAvailable();
+            bufBlk.style.display = bufOn ? 'block' : 'none';
+            const bufChk = document.getElementById('chk_buffer');
+            if (bufChk) bufChk.checked = !!this.state.bufferTank;
+            const bufShow = bufOn && !!this.state.bufferTank;
+            const bufBox = document.getElementById('blk_buffer_box');
+            if (bufBox) bufBox.style.display = bufShow ? 'flex' : 'none';
+            if (bufShow) {
+                document.querySelectorAll('.buffer-kind-tab').forEach(t => {
+                    t.className = 'tab buffer-kind-tab' + (t.dataset.bkind === (this.state.bufferKind || 'plain') ? ' active' : '');
+                });
+                const bufPk = this._bufPick || this.bufferPick();
+                const bufVal = document.getElementById('val_buffer_vol');
+                if (bufVal && bufPk) bufVal.innerText = bufPk.item.volNom;
+                const bufRs = document.getElementById('buffer_vol_reset');
+                if (bufRs) bufRs.style.display = this.state.bufferVolManual ? 'block' : 'none';
+                this.renderBufferUI();
+            }
+        }
         // Дымоход: трасса и предел котла
         this.syncChimneyUI();
 
@@ -68038,7 +68273,19 @@ const app = {
             </table>${capNote}
             <div style="position:relative; margin-top:6px; padding:6px 8px; background:var(--primary-light); border-radius:6px; font-size:11px; font-weight:700; color:var(--primary); display:flex; align-items:center; justify-content:space-between; gap:6px;">
                 <span>В среднем ${money(r.avgMonthCost)} ₽ в месяц<span class="ui-emo"> ⚡</span></span>${tip}
-            </div>${this.boilerAutoSaveHtml(r.seasonCost, r.activeMonths, 'el')}`;
+            </div>${this.bufferCostLineHtml(r)}${this.boilerAutoSaveHtml(r.seasonCost, r.activeMonths, 'el')}`;
+    },
+    // Строка под средним счётом: сколько даёт буферная ёмкость, если она включена в смете.
+    bufferCostLineHtml: function (r) {
+        if (!this.bufferActive() || !r || !r.twoRate) return '';
+        const pick = this._bufPick || this.bufferPick();
+        const sav = this.calcBufferSaving(pick, r);
+        if (!sav) return '';
+        const ok = sav.saving > 0;
+        const v = Math.round(Math.abs(sav.saving)).toLocaleString('ru-RU');
+        return `<div style="margin-top:6px; font-size:11px; font-weight:700; color:${ok ? 'var(--primary)' : '#B45309'};">` +
+            (ok ? `С ёмкостью ${pick.item.id}: на ${v} ₽ меньше за сезон` : `С ёмкостью ${pick.item.id}: на ${v} ₽ больше за сезон`) +
+            `</div>`;
     },
     toggleGasCost: function (chk) {
         this.state.showGasCost = !!chk;
@@ -75322,6 +75569,10 @@ const app = {
         // Расчет объема системы (для бака)
         let boilersVol = 0; if (selBoilers.length > 0) { selBoilers.forEach(b => { boilersVol += (b.vol !== undefined ? b.vol : 6); }); }
         let vSys = (boilersVol + radSecs * 0.25 + radMeters * 0.11 + tpMeters * 0.113 + (needCollector ? 5 : 0)) * 1.15;
+        // Буферная ёмкость входит в объём системы: расширительный бак считается с ней
+        // (паспорт STT, раздел «Монтаж»).
+        this._bufPick = this.bufferActive() ? this.bufferPick() : null;
+        if (this._bufPick) vSys += this._bufPick.item.vol;
         this.tpMeters = tpMeters;
         this.tpArea = tpArea;
         this.tQ_val = tQ;
@@ -76366,6 +76617,70 @@ const app = {
                     (_tieTh !== '1' ? ` <b>Внимание:</b> муфта узла на 1", нужен резьбовой переход 1"–${this.ssThreadLabel(_tieTh)} (в смету не входит).` : ``) +
                     ` Требуется: 2 шт.`, _hydroTieGrp);
             }
+        }
+
+        // 0в. Буферная ёмкость STOUT STT (подробный режим, электрокотёл без газа — bufferAvailable).
+        // Четыре патрубка G 1 1/2" ВР: подача и обратка котла, подача и обратка системы. Переход
+        // на трубу идёт тем же путём, что у узла гидроразделения, только с патрубка ВР, а не НР:
+        // ниппель 1 1/2" х T в патрубок, на его резьбу T — муфта ВР, в муфту — пресс-переходник
+        // трубы с НР той же резьбы T. T — та резьба, которая у перехода этого диаметра реально
+        // есть (на 15–22 это 3/4", на 28 — 1", на 35 — 1 1/4"): пара «НР — ВР» обязана сойтись
+        // по размеру, а не по диаметру трубы (CLAUDE.md, «Стыковка обвязки котельной», п. 3).
+        // Дренаж — шаровой кран 1/2" НР/НР в патрубок подпитки/дренажа; 3 м трубы — подводка
+        // котёл → ёмкость → узел (1,5 м на трубу, как у подводки к гидроразделению).
+        if (this._bufPick && this._bufPick.item) {
+            const _bp = this._bufPick, _bi = _bp.item, _bg = "2.7. Буферная ёмкость";
+            const _bAlts = (catalog.tanks_buffer || []).filter(x => x.volNom === _bi.volNom && x.id !== _bi.id).map(x => ({ ...x, noCheapen: true }));
+            addToBill({ ..._bi, alts: _bAlts, noCheapenAlts: true, sortRank: -2 }, 1,
+                `Буферная ёмкость STOUT ${_bi.id}, полезный объём ${_bi.vol} л, ${_bi.maxBar} бар, до ${_bi.maxT} °C, изоляция ${_bi.insMm} мм в комплекте. Накапливает тепло ночью (дешёвый тариф) и отдаёт его системе днём.`, _bg);
+            // Резьба пресс-перехода трубы и сам переход (ставится ниже, после ниппеля с муфтой).
+            let _bTh = '1', _bAdpAdd = null;
+            if (isAnalog) {
+                _bTh = '1';
+                _bAdpAdd = (thNote) => {
+                    if (ss_diameter === 28) {
+                        addToBill(this.getPprItem(catalog.ppr_ekoplastik_coupling_red, 'SRE14032RCT'), 4,
+                            `Муфта переходная 40х32 PP-RCT перед присоединением к буферной ёмкости. Требуется: 4 шт.`, _bg);
+                    }
+                    addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_mi, 'SZE03232OKRCT'), 4,
+                        `Муфта комбинированная с наружной резьбой 32х1" PP-RCT — вкручивается в муфту патрубка ёмкости. Требуется: 4 шт.`, _bg);
+                };
+            } else if (isPress) {
+                const _bD = mpD(ss_diameter);
+                const _bTie = bpThreadFor('mi', _bD, '1');
+                _bTh = _bTie.key;
+                _bAdpAdd = (thNote) => bpPress(_bTie.item, 4,
+                    `Переходник с трубы ${_bD} на наружную резьбу ${bpThLabel(_bTie.key)} — вкручивается в муфту патрубка буферной ёмкости.${thNote} Требуется: 4 шт.`, _bg, 1, _bD);
+            } else {
+                const _bThS = this.ssThreadFor('ss_adapter_mi', ss_diameter, '1');
+                const _bAdp = _bThS && this.ssFit('ss_adapter_mi', ss_diameter, _bThS);
+                _bTh = _bThS || '1';
+                _bAdpAdd = (thNote) => { if (_bAdp) addToBill(_bAdp, 4,
+                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${this.ssThreadLabel(_bThS)} — вкручивается в муфту патрубка буферной ёмкости.${thNote} Требуется: 4 шт.`, _bg); };
+            }
+            // Ниппель и муфта — под ту же резьбу. Резьбы 1/2" в линейке ниппелей 1 1/2" нет, берём 3/4".
+            const _bKey = ({ '1/2': '3/4', '3/4': '3/4', '1': '1', '11/4': '11/4' })[_bTh] || '1';
+            const _bNip = ({ '3/4': catalog.buffer_nipple_112_34, '1': catalog.buffer_nipple_112_1, '11/4': catalog.buffer_nipple_112_114 })[_bKey];
+            const _bCplBase = ({ '3/4': catalog.buffer_coupling_34, '1': catalog.hydro_tie_coupling_1, '11/4': catalog.buffer_coupling_114 })[_bKey];
+            const _bThTxt = ({ '3/4': '3/4"', '1': '1"', '11/4': '1 1/4"' })[_bKey];
+            if (_bNip) {
+                addToBill(_bNip, 4,
+                    `Ниппель переходной 1 1/2" х ${_bThTxt} НР — вкручивается в патрубок ёмкости G 1 1/2" (ВР); на его ${_bThTxt} садится муфта. По одному на каждый используемый патрубок: подача и обратка котла, подача и обратка системы. Требуется: 4 шт.`, _bg);
+            }
+            if (_bCplBase) {
+                addToBill({ ..._bCplBase, originalId: (_bCplBase.id + '_buf') }, 4,
+                    `Муфта ВР ${_bThTxt} между ниппелем патрубка ёмкости и переходом на трубу. Требуется: 4 шт.`, _bg);
+            }
+            if (_bAdpAdd) _bAdpAdd(_bTh !== _bKey ? ` <b>Внимание:</b> муфта на ${_bThTxt}, у перехода трубы резьба ${_bTh}" — нужен резьбовой переход (в смету не входит).` : '');
+            const _bDrain = (catalog.ball_valves || []).find(v => v.id === 'SVB-0006-200015');
+            if (_bDrain) {
+                addToBill({ ...withRommerAlt(_bDrain), originalId: 'SVB-0006-200015_buf_drain' }, 1,
+                    `Дренажный кран на патрубок подпитки/дренажа G 1/2" ёмкости: паспорт требует кран для слива теплоносителя на время обслуживания.`, _bg);
+            }
+            ss_pipes_demand[_boilerSize].length += 3;
+            ss_pipes_demand[_boilerSize].components.push("подводка к буферной ёмкости");
+            this.groupWarns = this.groupWarns || {};
+            this.groupWarns[_bg] = this.bufferNotesHtml(_bp);
         }
 
         // 1. Котлы
