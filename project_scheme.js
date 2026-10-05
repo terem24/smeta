@@ -3339,29 +3339,38 @@
       return circle(x, y, 2.1, { f: '#fff', c: INK, w: 0.45 }) +
         txt(x, y + 0.8, String(k), { size: 2.3, anchor: 'middle', weight: 'bold' });
     }
-    // Колодки платы в трёх режимах: 'on' — ярко, сюда заводят провод в примере;
-    // 'pale' — такая же зона из сметы, подключается так же; 'dim' — не используется.
-    var ST = {
-      on: { f: '#27AE60', c: '#14532D', w: 0.5, sf: '#fff', sc: '#334155' },
-      pale: { f: '#CDEBD8', c: '#7FB99A', w: 0.4, sf: '#fff', sc: '#7FB99A' },
-      dim: { f: '#EEF1F4', c: '#CBD5E1', w: 0.35, sf: '#fff', sc: '#CBD5E1' }
-    };
-    var PITCH = 7;   // шаг контактов 7 мм — крупно, чтобы читалась подпись у каждого
-    function blkBig(x, y, nn, mode) {
-      var m = ST[mode];
-      var s = rrect(x, y, 14, nn * PITCH + 4, 1, { f: m.f, c: m.c, w: m.w });
-      for (var i = 0; i < nn; i++) s += circle(x + 7, y + 2 + PITCH / 2 + i * PITCH, 1.8, { f: m.sf, c: m.sc, w: 0.35 });
-      return s;
+    // Клеммные колодки платы — серые, как на фото из паспорта (пружинные, у каждого
+    // контакта большое круглое гнездо для провода, рычажок и малое гнездо).
+    // Режимы: 'on' — ярко, сюда заводят провод; 'pale' — такая же зона из сметы,
+    // подключается так же; 'dim' — не используется, плата показана тускло.
+    //   vertical: контакты столбиком, провод — слева (клеммы зон);
+    //   иначе контакты в ряд, провод — снизу (клеммы внизу справа).
+    function wago(x, y, w, h, nn, mode, vertical) {
+      var s = '<g opacity="' + (mode === 'on' ? 1 : (mode === 'pale' ? 0.85 : 0.3)) + '">';
+      if (mode === 'on') s += rrect(x - 1.3, y - 1.3, w + 2.6, h + 2.6, 1.6, { f: '#86EFAC', c: '#16A34A', w: 0.6 });
+      if (mode === 'pale') s += rrect(x - 0.7, y - 0.7, w + 1.4, h + 1.4, 1.2, { f: '#DCFCE7', c: '#86C7A0', w: 0.4 });
+      s += rrect(x, y, w, h, 0.8, { f: '#B8B8BC', c: '#6B7280', w: 0.3 });
+      if (vertical) s += rrect(x + w - 3.2, y, 3.2, h, 0.6, { f: '#9A9AA0', c: '#6B7280', w: 0.2 });
+      var ring = mode === 'on' ? '#15803D' : '#52525B';
+      for (var i = 0; i < nn; i++) {
+        if (vertical) {
+          var cy = y + (i + 0.5) * h / nn;
+          s += rrect(x + 8.2, cy - 1.5, 1.6, 3, 0.3, { f: '#D4D4D8', c: '#6B7280', w: 0.2 });
+          s += circle(x + 4.4, cy, 1.5, { f: '#27272A', c: ring, w: 0.4 });
+          s += circle(x + w - 5.4, cy, 0.8, { f: '#52525B' });
+        } else {
+          var cx = x + (i + 0.5) * w / nn;
+          s += circle(cx, y + 3.2, 0.8, { f: '#52525B' });
+          s += rrect(cx - 1.5, y + h / 2 - 0.8, 3, 1.6, 0.3, { f: '#D4D4D8', c: '#6B7280', w: 0.2 });
+          s += circle(cx, y + h - 3.6, 1.5, { f: '#27272A', c: ring, w: 0.4 });
+        }
+      }
+      return s + '</g>';
     }
-    function cyb(y, i) { return y + 2 + PITCH / 2 + i * PITCH; }
-    var HP = 3.2, HH = 5.2;
-    function blkH(x, y, nn, mode) {
-      var m = ST[mode];
-      var s = rrect(x, y, nn * HP + 1.4, HH, 0.6, { f: m.f, c: m.c, w: m.w * 0.8 });
-      for (var i = 0; i < nn; i++) s += circle(x + 0.7 + HP / 2 + i * HP, y + HH / 2, 0.85, { f: m.sf, c: m.sc, w: 0.26 });
-      return s;
-    }
-    function cxh(x, i) { return x + 0.7 + HP / 2 + i * HP; }
+    // Положение на фото паспорта (862×402 px) → мм схемы. Фото масштабировано 0,4:
+    // так все колодки и детали платы стоят там же, где на настоящей плате.
+    var BX0 = 96, BY0 = 84;
+    function P(px, py) { return [(px - 112) * 0.4 + BX0, (py - 112) * 0.4 + BY0]; }
 
     var stats = ufh.stats || 0, servos = ufh.servos || 0, blocks = Math.max(1, ufh.blocks || 1);
 
@@ -3402,32 +3411,63 @@
       wy0 = ty + th;
     }
 
-    // ── плата STE-3050 целиком: нужные клеммы ярко, остальные тускло ──
-    var COL = 22, X0 = 104, zy = 86, ay = 124;
+    // ── плата STE-3050: вид и расположение клемм — как на фото из паспорта (п. 3.1) ──
     var nUsed = Math.max(1, Math.min(stats, 8));
     var DIMT = '#94A3B8', DARK = '#0F172A';
-    o.push(rrect(96, 78, 316, 86, 1.6, { f: FACE2, c: INK, w: 0.55 }));
-    o.push(txt(96, 75.4, 'Плата STOUT STE-3050 — вид сверху, 8 зон' + (blocks > 1 ? ' (в смете таких плат ' + blocks + ')' : ''), { size: 2.6, weight: 'bold' }));
-    for (var z = 0; z < 8; z++) {
-      var zx = X0 + z * COL, md = z === 0 ? 'on' : (z < nUsed ? 'pale' : 'dim');
-      var lc = md === 'dim' ? '#CBD5E1' : '#334155';
-      o.push(blkBig(zx, zy, 3, md));
-      o.push(blkBig(zx, ay, 4, md));
-      o.push(txt(zx, zy - 1.6, z === 0 ? 'зона 1 (поз. 3)' : 'зона ' + (z + 1), { size: 1.8, weight: z === 0 ? 'bold' : undefined, fill: md === 'dim' ? DIMT : DARK }));
-      ['N', 'L', 'упр'].forEach(function (L, i) { o.push(txt(zx + 15.4, cyb(zy, i) + 0.8, L, { size: 1.8, fill: lc })); });
-      ['L', 'N', 'L', 'N'].forEach(function (L, i) { o.push(txt(zx + 15.4, cyb(ay, i) + 0.8, L, { size: 1.8, fill: lc })); });
+    var UPW = 18.8, UPH = 20, LOH = 22.8, ZP = 55.4 * 0.4;
+    var zx0 = P(147.5, 155)[0], zyU = P(147.5, 155)[1], zyL = P(147.5, 207)[1];
+    function cU(i) { return zyU + (i + 0.5) * UPH / 3; }
+    function cL(i) { return zyL + (i + 0.5) * LOH / 4; }
+    var holeX = zx0 + 4.4;                       // гнездо провода у клеммы зоны 1
+    // печатная плата и надписи на ней
+    o.push(txt(98, 81, 'Плата STOUT STE-3050 — вид сверху, как на фото в паспорте' + (blocks > 1 ? ' (в смете таких плат ' + blocks + ')' : ''), { size: 2.5, weight: 'bold' }));
+    o.push(rrect(98, 84, 248, 86, 2, { f: '#DCE6F0', c: '#94A3B8', w: 0.5 }));
+    // ряд «домиков» со светодиодами зон (поз. 4) и светодиоды POWER / BOILER / PUMP (поз. 5–7)
+    for (var h = 0; h < 8; h++) {
+      var hp = P(184 + 32.5 * h, 134);
+      o.push('<g opacity="0.6">' + seg([[hp[0] - 2, hp[1] + 1.2], [hp[0], hp[1] - 1.3], [hp[0] + 2, hp[1] + 1.2], [hp[0] - 2, hp[1] + 1.2]], '#475569', 0.3) +
+        rrect(hp[0] + 2.8, hp[1] - 0.5, 2.6, 1.3, 0.6, { f: h === 0 ? '#22C55E' : '#F1F5F9', c: '#94A3B8', w: 0.25 }) + '</g>');
     }
-    o.push(txt(X0, 115.6, '«упр» даёт 230 В на приводы ↓', { size: 1.6, fill: '#475569' }));
-    o.push(txt(X0, 121.4, 'клемма приводов (поз. 2)', { size: 1.6, fill: '#475569' }));
-
-    // жилы термостат → клемма зоны 1: правая клемма уходит выше всех — пересечений нет
-    //  N → контакт N; L → контакт L; выход нагрева → контакт «упр» (номера клемм — по T)
-    var wr = [[70, CN, 0], [62, CL, 1], [54, COPEN, 2]];
-    wr.forEach(function (w) {
-      var xs = known ? X(w[2] === 0 ? T.N : (w[2] === 1 ? T.L : T.U)) : w[0];
-      o.push(seg([[xs, wy0], [xs, cyb(zy, w[2])], [X0, cyb(zy, w[2])]], w[1], 0.5));
+    [['POWER', 91.2], ['BOILER', 94.4], ['PUMP', 97.6]].forEach(function (L) {
+      o.push(txt(221, L[1] + 0.4, L[0], { size: 1.3, fill: DIMT, anchor: 'end' }));
+      o.push(circle(222.6, L[1], 0.55, { f: L[0] === 'BOILER' ? '#F59E0B' : '#22C55E' }));
     });
-    o.push(mark(90, cyb(zy, 1), 1));
+    // переключатель задержки (поз. 8)
+    o.push(rrect(254, 91.2, 13, 7.6, 0.6, { f: '#1F2937', c: '#0F172A', w: 0.3 }));
+    o.push(rrect(256, 92.6, 3.2, 1.8, 0.3, { f: '#F8FAFC' })); o.push(rrect(260.6, 92.6, 3.2, 1.8, 0.3, { f: '#F8FAFC' }));
+    o.push(rrect(256, 95.6, 3.2, 1.8, 0.3, { f: '#F8FAFC' })); o.push(rrect(260.6, 95.6, 3.2, 1.8, 0.3, { f: '#F8FAFC' }));
+    o.push(txt(269, 95.4, 'задержка насоса и котла (поз. 8)', { size: 1.4, fill: DIMT }));
+    // детали: предохранитель (зелёный), трансформатор (жёлтый), реле (чёрные) — приглушены
+    o.push('<g opacity="0.55">' +
+      rrect(283.2, 119.6, 13.6, 27.6, 1, { f: '#4CAF50', c: '#2E7D32', w: 0.4 }) + rrect(286, 127, 8, 12, 0.5, { f: '#2E7D32' }) +
+      rrect(311.2, 105.6, 20, 16, 1, { f: '#FACC15', c: '#92400E', w: 0.4 }) + rrect(314, 105.6, 3.4, 16, 0, { f: '#1F2937' }) + rrect(325.2, 105.6, 3.4, 16, 0, { f: '#1F2937' }) +
+      rrect(307.2, 128, 18, 21, 0.8, { f: '#111827' }) + rrect(326, 128, 18, 21, 0.8, { f: '#111827' }) +
+      circle(335, 97, 3.2, { f: '#1E3A8A' }) + circle(303, 109, 2.2, { f: '#1E3A8A' }) + '</g>');
+    // клеммы зон: сверху три контакта (L, N, ←), снизу четыре (L N L N, два привода)
+    for (var z = 0; z < 8; z++) {
+      var zx = zx0 + z * ZP, md = z === 0 ? 'on' : (z < nUsed ? 'pale' : 'dim');
+      var lc = md === 'dim' ? '#CBD5E1' : '#1E3A8A';
+      o.push(wago(zx, zyU, UPW, UPH, 3, md, true));
+      o.push(wago(zx, zyL, UPW, LOH, 4, md, true));
+      // надписи на плате: слева от клеммы зоны «L N ←» (у зоны 1 там жилы — вместо них метки на жилах)
+      if (z > 0) ['L', 'N', '←'].forEach(function (L, i) { o.push(txt(zx - 2.6, cU(i) + 0.6, L, { size: 1.6, anchor: 'middle', fill: lc })); });
+      ['L', 'N', 'L', 'N'].forEach(function (L, i) { o.push(txt(zx + UPW + 2.4, cL(i) + 0.6, L, { size: 1.5, anchor: 'middle', fill: lc })); });
+      o.push(txt(zx + UPW / 2, zyU - 1.4, 'зона ' + (z + 1) + (z === 0 ? ' (поз. 3, 2)' : ''), { size: 1.6, anchor: 'middle', weight: z === 0 ? 'bold' : undefined, fill: md === 'dim' ? DIMT : DARK }));
+    }
+
+    // жилы термостат → клемма зоны 1. Контакты на плате сверху вниз: L, N, «упр»
+    // (←). У термостата клеммы N, L, «упр» идут слева направо в обратном порядке, поэтому
+    // одно пересечение неизбежно: жила L перескакивает жилу N дугой.
+    var xN = known ? X(T.N) : 70, xL = known ? X(T.L) : 62, xU = known ? X(T.U) : 54;
+    o.push(seg([[xN, wy0], [xN, cU(1)], [holeX, cU(1)]], CN, 0.5));
+    o.push(seg([[xU, wy0], [xU, cU(2)], [holeX, cU(2)]], COPEN, 0.5));
+    o.push('<path d="M' + n(xL) + ',' + n(wy0) + ' L' + n(xL) + ',' + n(cU(0)) + ' L' + n(xN - 2.6) + ',' + n(cU(0)) + ' A2.6,2.6 0 0 1 ' + n(xN + 2.6) + ',' + n(cU(0)) +
+      ' L' + n(holeX) + ',' + n(cU(0)) + '" fill="none" stroke="' + CL + '" stroke-width="0.5" stroke-linejoin="round" stroke-linecap="round"/>');
+    [['L', 0, CL], ['N', 1, CN], ['упр', 2, COPEN]].forEach(function (t) {
+      o.push(rrect(100.2, cU(t[1]) - 1.5, t[0] === 'упр' ? 7 : 5, 3, 1.2, { f: '#fff', c: t[2], w: 0.35 }));
+      o.push(txt(100.2 + (t[0] === 'упр' ? 3.5 : 2.5), cU(t[1]) + 0.6, t[0], { size: 1.7, anchor: 'middle', weight: 'bold', fill: t[2] }));
+    });
+    o.push(mark(90, cU(1), 1));
     // подписи жил — слева от жил, под термостатом; номера клемм — только в известной раскладке
     o.push(txt(16, 92, known ? 'N → клемма ' + T.N : 'N', { size: 1.9, fill: CN }));
     o.push(txt(16, 96, known ? 'L → клемма ' + T.L : 'L', { size: 1.9, fill: CL }));
@@ -3435,69 +3475,61 @@
 
     // ── сервопривод 1 и второй (по желанию): жилы уходят влево от клеммы приводов зоны 1 ──
     // L сворачивает вниз левее N — жилы не пересекаются
-    var s1 = 50, s2 = 79, syc = 156;
+    var s1 = 50, s2 = 79, syc = 162;
     o.push(icoAct(s1, syc, 12));
-    o.push(seg([[X0, cyb(ay, 0)], [s1 - 4, cyb(ay, 0)], [s1 - 4, syc - 6]], CL, 0.5));
-    o.push(seg([[X0, cyb(ay, 1)], [s1 + 2, cyb(ay, 1)], [s1 + 2, syc - 6]], CN, 0.5));
-    o.push(mark(84, cyb(ay, 0), 2));
+    o.push(seg([[holeX, cL(0)], [s1 - 4, cL(0)], [s1 - 4, syc - 6]], CL, 0.5));
+    o.push(seg([[holeX, cL(1)], [s1 + 2, cL(1)], [s1 + 2, syc - 6]], CN, 0.5));
+    o.push(mark(88, cL(0), 2));
     o.push(icoAct(s2, syc, 10, true));
-    o.push(seg([[X0, cyb(ay, 2)], [s2 - 3, cyb(ay, 2)], [s2 - 3, syc - 5]], GREY, 0.45, '1.4 1'));
-    o.push(seg([[X0, cyb(ay, 3)], [s2 + 3, cyb(ay, 3)], [s2 + 3, syc - 5]], GREY, 0.45, '1.4 1'));
-    o.push(txt(12, 166, 'Сервопривод — ' + (no ? 'НО' : 'НЗ') + ', ' + (ufh.servoVolt || 230) + ' В', { size: 2.1, weight: 'bold', fill: no ? '#B45309' : DARK }));
-    o.push(txt(12, 169.2, cut(ufh.servoName, 40), { size: 1.9 }));
-    o.push(txt(68, 149, 'второй — по желанию', { size: 1.7, fill: '#64748B' }));
+    o.push(seg([[holeX, cL(2)], [s2 - 3, cL(2)], [s2 - 3, syc - 5]], GREY, 0.45, '1.4 1'));
+    o.push(seg([[holeX, cL(3)], [s2 + 3, cL(3)], [s2 + 3, syc - 5]], GREY, 0.45, '1.4 1'));
+    o.push(txt(12, 172, 'Сервопривод — ' + (no ? 'НО' : 'НЗ') + ', ' + (ufh.servoVolt || 230) + ' В', { size: 2.1, weight: 'bold', fill: no ? '#B45309' : DARK }));
+    o.push(txt(12, 175.2, cut(ufh.servoName, 40), { size: 1.9 }));
+    o.push(txt(68, 154, 'второй — по желанию', { size: 1.7, fill: '#64748B' }));
 
-    // ── общие клеммы платы: питание, насос, сухой контакт, земля ──
-    var gx = 290, DX = 352;
-    function row(y, mode, nn, labs, title, sub, k) {
-      o.push(txt(gx, y - 4.4, title, { size: 2.1, weight: 'bold', fill: mode === 'dim' ? DIMT : DARK }));
-      labs.forEach(function (L, i) { o.push(txt(cxh(gx, i), y - 0.9, L, { size: 1.6, anchor: 'middle', fill: mode === 'dim' ? '#CBD5E1' : '#334155' })); });
-      o.push(blkH(gx, y, nn, mode));
-      o.push(txt(gx, y + HH + 9.4, sub, { size: 1.8, fill: mode === 'dim' ? DIMT : '#475569' }));
-      o.push(mark(gx - 4, y + HH / 2, k));
-    }
-    // две жилы блока вправо: N выходит выше, L ниже — не пересекаются
-    function out2(y, hi, lo, c1, c2) {
-      o.push(seg([[cxh(gx, hi), y + HH], [cxh(gx, hi), y + HH + 2], [DX, y + HH + 2]], c1, 0.5));
-      o.push(seg([[cxh(gx, lo), y + HH], [cxh(gx, lo), y + HH + 5], [DX, y + HH + 5]], c2, 0.5));
-    }
+    // ── клеммы внизу справа: INPUT (поз. 11), PUMP (поз. 9), COM/NC/NO (поз. 10); провод входит снизу ──
+    var by = P(0, 276)[1], bh = 15.6, bx1 = 281.6, bx2 = 299.6, bx3 = 318.6;
+    o.push(wago(bx1, by, 16.4, bh, 2, 'on', false));
+    o.push(wago(bx2, by, 16.4, bh, 2, 'on', false));
+    o.push(wago(bx3, by, 24.6, bh, 3, ufh.auto ? 'on' : 'dim', false));
+    var hy = by + bh - 3.6;
+    function hx(x, w, nn, i) { return x + (i + 0.5) * w / nn; }
+    var DX = 356;
+    function lead(x, lvl, c) { o.push(seg([[x, hy], [x, lvl], [DX, lvl]], c, 0.5)); }
     function dest(y, t1, t2) {
-      o.push(rrect(DX, y - 1.5, 54, 13, 1, { f: '#fff', c: INK, w: 0.4 }));
-      o.push(txt(DX + 27, y + 3.6, t1, { size: 2.0, anchor: 'middle', weight: 'bold' }));
-      if (t2) o.push(txt(DX + 27, y + 7.2, t2, { size: 1.7, anchor: 'middle', fill: '#475569' }));
+      o.push(rrect(DX, y, 54, 12, 1, { f: '#fff', c: INK, w: 0.4 }));
+      o.push(txt(DX + 27, y + 4.7, t1, { size: 1.9, anchor: 'middle', weight: 'bold' }));
+      if (t2) o.push(txt(DX + 27, y + 8.6, t2, { size: 1.5, anchor: 'middle', fill: '#475569' }));
     }
-    row(92, 'on', 2, ['L', 'N'], 'Питание платы 230 В (поз. 11)', 'от отдельного автомата 10 А · PE — на винт земли', 3);
-    out2(92, 1, 0, CN, CL);
-    dest(92, 'Щит', 'автомат 10 А');
-    row(114, 'on', 2, ['L', 'N'], 'Насос (поз. 9) — 230 В с платы', 'вариант Б · нагрузка до 3 А · PE насоса — в щит', 4);
-    out2(114, 1, 0, CN, CL);
-    o.push(seg([[DX, 114 + HH + 2], [DX, 114 + HH + 5]], INK, 0.4));
-    o.push(seg([[DX, 114 + HH + 3.5], [DX + 5, 114 + HH + 3.5]], INK, 0.5));
-    o.push(pump(DX + 9, 114 + HH + 3.5, 'right'));
-    o.push(txt(DX + 15, 114 + HH + 2.9, 'Насос группы ТП', { size: 1.9 }));
+    // чем глубже уходит жила вниз, тем левее клемма — жилы не пересекаются
+    lead(hx(bx1, 16.4, 2, 1), 197, CN); lead(hx(bx1, 16.4, 2, 0), 202, CL);
+    dest(194, 'Щит · автомат 10 А', 'питание L, N + PE'); o.push(mark(DX - 4.5, 199.5, 3));
+    lead(hx(bx2, 16.4, 2, 1), 182, CN); lead(hx(bx2, 16.4, 2, 0), 187, CL);
+    dest(179, 'Насос группы ТП', 'вариант Б · до 3 А'); o.push(mark(DX - 4.5, 184.5, 4));
     if (ufh.auto) {
-      row(136, 'on', 3, ['COM', 'NC', 'NO'], 'Сухой контакт (поз. 10)', 'COM + NC → «Входы термостатов»' + (ufh.ko ? ' (' + ufh.ko + ')' : ''), 5);
-      out2(136, 1, 0, CCLOSE, CCLOSE);
-      dest(136, 'Контроллер', 'котельной, метка А');
+      lead(hx(bx3, 24.6, 3, 1), 168, CCLOSE); lead(hx(bx3, 24.6, 3, 0), 173, CCLOSE);
+      dest(164, 'Контроллер котельной', 'метка А · ' + (ufh.ko || 'вход термостатов')); o.push(mark(DX - 4.5, 170.5, 5));
     } else {
-      row(136, 'dim', 3, ['COM', 'NC', 'NO'], 'Сухой контакт (поз. 10)', 'не используется', 5);
+      o.push(txt(DX, 169, 'сухой контакт — не используется', { size: 1.6, fill: DIMT }));
     }
-    // винт заземления (поз. 1): сюда PE питания платы
-    var gnX = gx + 3, gnY = 155;
-    o.push(circle(gnX, gnY, 1.7, { f: '#27AE60', c: '#14532D', w: 0.5 }));
-    o.push(seg([[gnX - 1.1, gnY], [gnX + 1.1, gnY]], '#14532D', 0.4));
-    o.push(txt(gx + 8, gnY + 0.8, 'Земля (поз. 1) ← защитный проводник питания', { size: 1.9 }));
-    o.push(txt(160, 160, 'задержка включения насоса и котла 30/45/60/120 с — переключатель (поз. 8)', { size: 1.6, fill: '#94A3B8' }));
+    // подписи клемм: названия на плате и номера позиций паспорта
+    o.push(txt(bx1 + 8.2, hy + 7.4, 'INPUT', { size: 1.3, anchor: 'middle', fill: '#475569' }));
+    o.push(txt(bx2 + 8.2, hy + 7.4, 'PUMP', { size: 1.3, anchor: 'middle', fill: '#475569' }));
+    // винт заземления (поз. 1): внизу в середине платы, два контакта и знак земли
+    var ex = P(425, 288)[0], ey = P(425, 288)[1];
+    o.push(wago(ex, ey, 12, 10.8, 2, 'on', false));
+    o.push(txt(ex + 6, ey - 1.2, '⏚', { size: 2.4, anchor: 'middle', fill: '#14532D' }));
+    o.push(txt(ex - 2, 174, 'Земля (поз. 1) — сюда защитный проводник (PE) питания платы', { size: 1.7, anchor: 'end', fill: '#475569' }));
 
     // легенда подсветки
-    var lgY = 172;
-    function sw(x, md, t) { return rrect(x, lgY - 2.2, 6, 3.2, 0.5, { f: ST[md].f, c: ST[md].c, w: 0.4 }) + txt(x + 8, lgY + 0.4, t, { size: 1.9 }); }
-    o.push(sw(120, 'on', 'ярко — сюда заводят провод'));
-    o.push(sw(205, 'pale', 'такие же зоны вашей сметы — подключаются так же'));
-    o.push(sw(340, 'dim', 'не используется'));
+    var lgY = 214;
+    function sw(x, f, c, t) { return rrect(x, lgY - 2.2, 6, 3.2, 0.5, { f: f, c: c, w: 0.4 }) + txt(x + 8, lgY + 0.4, t, { size: 1.9 }); }
+    o.push(sw(12, '#86EFAC', '#16A34A', 'ярко — сюда заводят провод'));
+    o.push(sw(100, '#DCFCE7', '#86C7A0', 'такие же зоны вашей сметы — подключаются так же'));
+    o.push(sw(260, '#E5E7EB', '#CBD5E1', 'тускло — не используется'));
 
     // ── что в смете ──
-    var ny = 180;
+    var ny = 222;
     o.push(txt(12, ny, 'Сколько всего — по вашей смете:', { size: 2.5, weight: 'bold' })); ny += 4;
     if (stats) {
       o.push(txt(12, ny, '• Термостатов ' + stats + ' — по одному на комнату: каждый подключается на свою клемму зоны платы (зона 1, 2, 3 … по порядку), как на схеме.', { size: 2.1 })); ny += 3.6;
