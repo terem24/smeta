@@ -4284,6 +4284,13 @@ body.profile-incomplete-lock #page_scale_wrapper {
     text-overflow: ellipsis;
 }
 
+/* Окно «Переписка / Уведомления»: нижняя навигация (z-index 10000002) и плавающая кнопка
+   «умного заполнения» лежат выше него и перекрывали строку ввода с кнопкой отправки.
+   Класс ставят openNotificationsModal / closeNotificationsModal. */
+body.notif-open .mobile-bottom-nav,
+body.notif-open .ai-parse-fab,
+body.notif-open .to-top-btn { display: none !important; }
+
 /* Нижняя навигация калькулятора и плавающие кнопки лежат выше модалок
    (z-index 10000002/10000003) и, пока открыта админка, закрывали нижние строки
    таблиц вместе с кнопками действий. Класс вешает showAdminModal. */

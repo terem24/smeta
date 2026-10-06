@@ -8195,7 +8195,7 @@ const app = {
      * из профиля открывается окно тарифов, и снимать класс при закрытии
      * верхнего из них нельзя, пока под ним осталось нижнее.
      */
-    MODAL_OVER_BANNER_IDS: ['profile_modal_overlay', 'custom_modal_overlay', 'quick_start_overlay', 'invite_gate_overlay'],
+    MODAL_OVER_BANNER_IDS: ['profile_modal_overlay', 'custom_modal_overlay', 'quick_start_overlay', 'invite_gate_overlay', 'notifications_modal_overlay'],
     syncModalOverlayClass: function () {
         const open = this.MODAL_OVER_BANNER_IDS.some(id => {
             const el = document.getElementById(id);
@@ -20751,6 +20751,10 @@ const app = {
 
     openNotificationsModal: async function (tab) {
         document.getElementById('notifications_modal_overlay').style.display = 'flex';
+        // Нижняя панель телефона лежит выше окна по слоям и закрывала строку ввода
+        // переписки вместе с кнопкой отправки — тап по «➤» попадал в «Профиль»
+        document.body.classList.add('notif-open');
+        this.syncModalOverlayClass(); // баннер cookie тоже закрывал строку ввода
         // Окно сообщений открывается из панели разделов — значит, встаёт туда же,
         // где остальные разделы, не закрывая меню
         this.syncCabinetDock();
@@ -21662,6 +21666,8 @@ const app = {
 
     closeNotificationsModal: function () {
         document.getElementById('notifications_modal_overlay').style.display = 'none';
+        document.body.classList.remove('notif-open');
+        this.syncModalOverlayClass();
         this.syncCabinetDock();
         this.syncRailUI();
         // Панель смайликов живёт в body и сама об окне не знает — гасим вместе с ним
