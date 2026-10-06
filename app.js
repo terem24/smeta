@@ -49804,6 +49804,40 @@ const app = {
     // Выполняет фактическую запись в shared_invoices для задачи из очереди. Перед перезаписью
     // подтягивает уже существующий статус согласования (confirmed/needs_revision/комментарий) —
     // повторная генерация ссылки монтажником не должна сбрасывать то, что клиент уже отметил.
+    // Что делать с ответом клиента, когда ссылку записывают заново. ex — object_info,
+    // который уже лежит в базе, info — тот, что собираются записать. Возвращает итоговый.
+    //
+    // Раньше это жило внутри saveSharedInvoiceJobToCloud, а «Запрос счёта» писал ссылку
+    // мимо него и каждый раз возвращал статус «отправлен» — ответ клиента («нужна доработка»,
+    // «одобрено») терялся через секунды после нажатия, в Telegram он приходил, а в
+    // калькуляторе уведомления не было: оно строится из статуса в этой строке.
+    mergeClientAnswer: function (ex, info) {
+        // Клиент просил обновить просроченный счёт — эта запись и есть
+        // ответ на просьбу: статус снова «отправлен», таймер идёт заново
+        // (sent_at/valid_until уже новые в info). Отметки о
+        // просьбе (когда и сколько раз) оставляем: по ним дашборд считает,
+        // как таймер повлиял на ответы клиентов.
+        const wasRefreshAsked = ex.status === 'refresh_requested';
+        // Под той же ссылкой ушла новая версия КП — одобрение клиента
+        // относилось к прошлой, переносить его на новую нельзя: клиент
+        // увидел бы «одобрено» на смете, которую ещё не видел. Статус
+        // снова «отправлен», а что и по какой версии он отмечал, остаётся
+        // в истории (invoice_events хранят номер версии).
+        const newVersion = !!(info.kp_version && ex.kp_version
+            && Number(info.kp_version) !== Number(ex.kp_version));
+        const resetStatus = wasRefreshAsked || newVersion;
+        return {
+            ...info,
+            status: resetStatus ? (info.status || 'sent') : (ex.status || info.status),
+            client_comment: newVersion ? null : (ex.client_comment || null),
+            status_updated_at: resetStatus ? null : (ex.status_updated_at || null),
+            refresh_requested_at: ex.refresh_requested_at || null,
+            refresh_count: ex.refresh_count || 0,
+            refreshed_at: wasRefreshAsked ? new Date().toISOString() : (ex.refreshed_at || null),
+            first_sent_at: ex.first_sent_at || ex.sent_at || info.sent_at
+        };
+    },
+
     saveSharedInvoiceJobToCloud: async function (job) {
         try {
             // shared_invoices.user_id ссылается на auth-идентификатор пользователя (тот же, что
@@ -49837,31 +49871,7 @@ const app = {
                 try {
                     const { data: existing } = await supabaseClient.from('shared_invoices').select('object_info').eq('id', job.shareId).maybeSingle();
                     if (existing && existing.object_info) {
-                        const ex = existing.object_info;
-                        // Клиент просил обновить просроченный счёт — эта запись и есть
-                        // ответ на просьбу: статус снова «отправлен», таймер идёт заново
-                        // (sent_at/valid_until уже новые в job.object_info). Отметки о
-                        // просьбе (когда и сколько раз) оставляем: по ним дашборд считает,
-                        // как таймер повлиял на ответы клиентов.
-                        const wasRefreshAsked = ex.status === 'refresh_requested';
-                        // Под той же ссылкой ушла новая версия КП — одобрение клиента
-                        // относилось к прошлой, переносить его на новую нельзя: клиент
-                        // увидел бы «одобрено» на смете, которую ещё не видел. Статус
-                        // снова «отправлен», а что и по какой версии он отмечал, остаётся
-                        // в истории (invoice_events хранят номер версии).
-                        const newVersion = !!(job.object_info.kp_version && ex.kp_version
-                            && Number(job.object_info.kp_version) !== Number(ex.kp_version));
-                        const resetStatus = wasRefreshAsked || newVersion;
-                        objectInfo = {
-                            ...job.object_info,
-                            status: resetStatus ? (job.object_info.status || 'sent') : (ex.status || job.object_info.status),
-                            client_comment: newVersion ? null : (ex.client_comment || null),
-                            status_updated_at: resetStatus ? null : (ex.status_updated_at || null),
-                            refresh_requested_at: ex.refresh_requested_at || null,
-                            refresh_count: ex.refresh_count || 0,
-                            refreshed_at: wasRefreshAsked ? new Date().toISOString() : (ex.refreshed_at || null),
-                            first_sent_at: ex.first_sent_at || ex.sent_at || job.object_info.sent_at
-                        };
+                        objectInfo = this.mergeClientAnswer(existing.object_info, job.object_info);
                     }
                 } catch (e) {
                     console.warn('[saveSharedInvoiceJobToCloud] Ошибка чтения существующей записи:', e);
@@ -50348,6 +50358,17 @@ const app = {
 
                 if (shareId) {
                     insertPayload.id = shareId;
+                    // Ссылка уже есть — клиент мог на неё ответить. Статус и комментарий
+                    // переносим в новую запись (см. mergeClientAnswer), иначе ответ пропадёт
+                    try {
+                        const { data: exRow } = await withTimeout(
+                            supabaseClient.from('shared_invoices').select('object_info').eq('id', shareId).maybeSingle(),
+                            3000
+                        );
+                        if (exRow && exRow.object_info) insertPayload.object_info = this.mergeClientAnswer(exRow.object_info, object_info);
+                    } catch (e) {
+                        console.warn('[sendEmail] Не удалось прочитать ответ клиента перед записью ссылки:', e);
+                    }
                 }
 
                 let { data, error } = await withTimeout(
