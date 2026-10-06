@@ -48001,6 +48001,15 @@ const app = {
     // определяется по state и позициям сметы — тем же способом, каким
     // renderScheme собирает слои старой PNG-схемы. Возвращает null, если в
     // смете нет котла (тогда лист схемы в комплект не входит).
+    // Буферная ёмкость из сметы для схемы: она разделяет контуры вместо гидрострелки только когда в
+    // котельной есть коллектор (needCollector); без коллектора ёмкость стоит в контуре котла и схема
+    // рисует «без стрелки» как раньше.
+    schemeBuffer: function (spec) {
+        if (!this.needCollector) return null;
+        const row = (spec || []).find(i => /^STT-/.test(String(i.id || i.originalId || '')));
+        if (!row) return null;
+        return (catalog.tanks_buffer || []).find(x => x.id === (row.id || row.originalId)) || null;
+    },
     buildSchemeConfig: function () {
         // Вычеркнутые кнопкой ✖ позиции (isOpt) на схему не идут: монтажник убрал
         // расчётные котлы и добавил свои — схема рисовала и те и другие, четыре котла.
@@ -48211,9 +48220,11 @@ const app = {
             // схеме пропадали и стрелка, и насосы радиаторных групп.
             // thermo — есть ли в смете контрольный термометр узла: у коллектора со
             // встроенным разделителем SDG-0018 его нет (гнёзд 1/2" только два).
-            hydro: has(/гидрострелк|гидравлическ\S*\s+(стрелк|раздел)/i) ? {
+            hydro: (has(/гидрострелк|гидравлическ\S*\s+(стрелк|раздел)/i) || !!this.schemeBuffer(spec)) ? {
                 kw: Math.ceil(power / 5) * 5,
-                thermo: spec.some(i => String(i.originalId || i.id) === ((catalog.hydro_thermometer || {}).id))
+                thermo: spec.some(i => String(i.originalId || i.id) === ((catalog.hydro_thermometer || {}).id)),
+                // Буферная ёмкость стоит на месте разделителя (смета: коллектор без стрелки)
+                buffer: (function (b) { return b ? { vol: b.vol, id: b.id } : null; })(this.schemeBuffer(spec))
             } : null,
             water: !!s.water || indirect,
             recirc: !!s.recirc,
@@ -61129,13 +61140,13 @@ const app = {
         const r = this.calcElHeatingCost();
         const twoRate = !!(r && r.twoRate);
         const boilerKw = parseFloat(this._elBoilerKw) || (r ? r.kw : 0);
+        // Объём «по расходу» — справочно: половина дневного расхода средней зимы, но не больше того,
+        // что котёл успевает дозарядить за ночные 8 часов. Подбор идёт не по нему, а по выгоде (ниже).
         let need = 0, perDay = 0, roomKwh = 0, rechargeLimited = false;
         if (twoRate) {
             let dayKwh = 0, nightKwh = 0, days = 0;
             r.months.forEach(m => { if (!m.off) { dayKwh += m.kwh - m.kwhNight; nightKwh += m.kwhNight; days += m.days; } });
             perDay = days ? dayKwh / days : 0;
-            // Сколько котёл успевает дозарядить за ночные 8 часов сверх обычной ночной нагрузки:
-            // больше этого накопитель не заряжается, и лишний объём только копит потери.
             const kwCap = r.capKw > 0 ? r.capKw : (r.boilerKw > 0 ? r.boilerKw : r.kw);
             roomKwh = Math.max(0, kwCap * this.EL_NIGHT_HOURS - (days ? nightKwh / days : 0));
             let eNeed = perDay * this.BUFFER_COVER;
@@ -61149,16 +61160,45 @@ const app = {
         const manual = parseInt(this.state.bufferVolManual, 10) || 0;
         let item = manual ? (pool.find(x => x.volNom === manual) || null) : null;
         const byManual = !!item;
-        if (!item) {
+        // Подбор по выгоде: перебираем паспортный ряд, для каждой ёмкости считаем экономию за сезон
+        // (с потерями бака и дозарядкой котла) и затраты, берём ту, у которой чистая выгода за срок
+        // службы наибольшая. Обвязка и гидрострелка у всех объёмов одинаковые и на выбор не влияют,
+        // а растут цена ёмкости, расширительный бак и теплоноситель на заправку — поэтому лишний объём
+        // сам отсекается.
+        const cands = [];
+        if (twoRate) {
             const ok = pool.filter(fits);
-            item = ok.find(x => x.vol >= need) || null;
-            if (!item) item = ok.length ? ok[ok.length - 1] : (pool.find(x => x.vol >= need) || pool[pool.length - 1]);
+            (ok.length ? ok : pool).forEach(x => {
+                const eco = this.bufferEconomics(x, r, { tank: x.price || 0, rig: 0, exp: this.bufferExpDelta(x.vol), fill: this.bufferFillRate() * x.vol, saved: 0 });
+                cands.push({ item: x, eco: eco, net: eco.net });
+            });
+        }
+        let best = null;
+        if (!item) {
+            if (cands.length) {
+                best = cands.reduce((a, c) => (c.net > a.net + 1e-6 ? c : a), cands[0]);
+                item = best.item;
+            } else {
+                const ok = pool.filter(fits);
+                item = ok.find(x => x.vol >= need) || (ok.length ? ok[ok.length - 1] : (pool.find(x => x.vol >= need) || pool[pool.length - 1]));
+            }
         }
         return {
             item: item, need: need, perDay: perDay, roomKwh: roomKwh, rechargeLimited: rechargeLimited,
-            byManual: byManual, fits: fits(item), ceilH: ceilH,
-            undersized: item.vol < need * 0.95, twoRate: twoRate, kind: kind, boilerKw: boilerKw
+            byManual: byManual, fits: fits(item), ceilH: ceilH, cands: cands, byBenefit: !!best,
+            undersized: !byManual && !best && item.vol < need * 0.95, twoRate: twoRate, kind: kind, boilerKw: boilerKw
         };
+    },
+    // Прирост расширительного бака, ₽, если в систему добавить ёмкость такого объёма. Контекст
+    // (объём системы без ёмкости, встроенный бак котла, коэффициент теплоносителя) render кладёт
+    // в _bufExpCtx при каждом расчёте.
+    bufferExpDelta: function (vol) {
+        const c = this._bufExpCtx;
+        if (!c || !catalog.exp_heating) return 0;
+        const price = d => d > 0 ? ((catalog.exp_heating.find(t => t.vol >= d) || catalog.exp_heating[4]).price || 0) : 0;
+        const d0 = c.vNoBuf * 0.12 * c.K - c.bltin;
+        const d1 = (c.vNoBuf + vol) * 0.12 * c.K - c.bltin;
+        return Math.max(0, price(d1) - price(d0));
     },
     // ===== Прогноз роста тарифов на электроэнергию =====
     // Минэкономразвития России, прогноз социально-экономического развития на 2027–2029 гг.
@@ -61193,7 +61233,11 @@ const app = {
     // Потери бака платим по ночному тарифу, считаем за все сутки сезона.
     calcBufferSaving: function (pick, r) {
         if (!pick || !r || !r.twoRate) return null;
-        const it = pick.item;
+        return this.bufferEconomics(pick.item, r, this.bufferCapex(pick.item));
+    },
+    // Экономика одной ёмкости при заданных затратах cap = { tank, rig, exp, saved }:
+    // saved — гидрострелка (совмещённый узел), которая при буфере не нужна.
+    bufferEconomics: function (it, r, cap) {
         const eFull = it.vol * 0.001163 * this.BUFFER_DT;
         const loss = this.bufferLossKwhDay(it);
         const kwCap = r.capKw > 0 ? r.capKw : (r.boilerKw > 0 ? r.boilerKw : r.kw);
@@ -61208,8 +61252,7 @@ const app = {
             saving += m.days * (shift * (r.tariffDay - r.tariffNight) - loss * r.tariffNight);
             shiftSum += shift * m.days; days += m.days;
         });
-        const cap = this.bufferCapex(it);
-        const capex = cap.tank + cap.rig + cap.exp;
+        const capex = cap.tank + cap.rig + cap.exp + (cap.fill || 0) - (cap.saved || 0);
         // Ряд по сезонам: экономия растёт вместе с тарифом (день и ночь дорожают одинаково, поэтому
         // и разница тарифов, и потери бака пропорциональны множителю). Окупаемость — год, в котором
         // накопленная экономия догоняет затраты, с долей внутри года; дальше 15 лет не считаем.
@@ -61223,11 +61266,12 @@ const app = {
             series.push({ k: k, label: this.elSeasonLabel(k), factor: fG[k], saving: y, cum: cum });
             if (payback === null && capex > 0 && saving > 0 && cum >= capex) payback = k + (capex - before) / y;
         }
+        const life = series[this.BUFFER_LIFE_YEARS - 1] ? series[this.BUFFER_LIFE_YEARS - 1].cum : 0;
         return {
             eFull: eFull, loss: loss, saving: saving, shiftAvg: days ? shiftSum / days : 0, days: days,
             limited: limited, price: cap.tank, kwCap: kwCap, cap: cap, capex: capex, est: !!it.priceEst,
             growth: growth, series: series, tariffDay: r.tariffDay, tariffNight: r.tariffNight,
-            payback: payback,
+            payback: payback, net: life - capex,
             paybackFlat: (capex > 0 && saving > 0) ? capex / saving : null
         };
     },
@@ -61239,7 +61283,20 @@ const app = {
         const sum = rows.reduce((a, x) => a + (x.price || 0) * (x.q || 1), 0);
         const tankRow = rows.find(x => /^STT-/.test(String(x.id || '')));
         const tank = tankRow ? (tankRow.price || 0) * (tankRow.q || 1) : (it.price || 0);
-        return { tank: tank, rig: Math.max(0, sum - tank), exp: this._bufExpDelta || 0 };
+        return { tank: tank, rig: Math.max(0, sum - tank), exp: this._bufExpDelta || 0, saved: this._bufHydroSaved || 0,
+            fill: this.bufferFillRate() * it.vol };
+    },
+    // Стоимость теплоносителя за литр: смета заливает его в весь объём системы (раздел 9), а в объём
+    // системы входит и ёмкость — это затраты буфера. «Вода» — WARME Hydro, пропиленгликоль — свой тариф.
+    bufferFillRate: function () {
+        if (this.isFlat()) return 0;
+        const cl = (catalog.coolants || []).find(c => c.type === this.state.coolant);
+        if (!cl) return 0;
+        if (cl.type === 'pro65') {
+            const p1 = catalog.coolants[2], p2 = catalog.coolants[0];
+            return 0.65 * p1.price / p1.vol + 0.35 * p2.price / p2.vol;
+        }
+        return cl.price / cl.vol;
     },
     // Плашки к разделу сметы «Буферная ёмкость». Цены у позиций STT пока нет: ТЕРЕМ внесёт
     // их в прайс в следующем месяце, тогда AutoPrice.py подставит цену, а плашка исчезнет.
@@ -61271,10 +61328,12 @@ const app = {
         }
         const sp = this.bufferSparePorts(it);
         const det = `<div class="tip-p">Ёмкость <b>${it.vol} л</b>, высота ${it.hMm} мм, диаметр с изоляцией ${it.dMm} мм, масса пустой ${it.kg} кг (с водой ≈ ${(it.kg + it.vol)} кг). До ${it.maxBar} бар и ${it.maxT} °C.</div>` +
-            `<div class="tip-p">Подключение G 1 1/2" ВР. В смету включены ниппели-переходы, муфты и переходы на трубу на подачу и обратку котла и системы, дренажный кран и 3 м трубы. ` +
+            `<div class="tip-p">Подключение G 1 1/2" ВР. В смету включены на каждый из четырёх патрубков ниппель, запорный кран, муфта и переход на трубу, а также воздухоотводчик, термометр, дренажный кран и 3 м трубы. ` +
             (sp.n ? `Остальные патрубки (${sp.n} шт., G ${sp.size} ВР) надо заглушить: наружных заглушек такого размера в прайсе STOUT нет, подберите у поставщика. ` : '') +
-            `Патрубки G 1/2" под гильзы датчиков закрывают по месту.</div>` +
-            `<div class="tip-p">Гидрострелка / коллектор с разделителем остаются: накопитель стоит в контуре котла, а не вместо разделителя. Расширительный бак пересчитан с учётом объёма ёмкости (паспорт, раздел «Монтаж»).</div>` +
+            `Гильзовые патрубки G 1/2": воздухоотводчик и термометр, остальные закрывают по месту.</div>` +
+            (this.needCollector
+                ? `<div class="tip-p"><b>Вместо гидрострелки.</b> Ёмкость разделяет контуры котла и системы (у неё отдельные патрубки подачи и обратки котла и системы), поэтому коллектор взят обычный, без встроенного разделителя, а гидрострелки в смете нет. Расширительный бак пересчитан с учётом объёма ёмкости (паспорт, раздел «Монтаж»), теплоноситель — на весь объём системы вместе с ней.</div>`
+                : `<div class="tip-p">Коллектора в котельной нет: ёмкость стоит в контуре котла последовательно. Расширительный бак пересчитан с учётом её объёма, теплоноситель — на весь объём системы вместе с ней.</div>`) +
             `<div class="tip-p">Нужны предохранительный клапан на 3 бар (в обвязке котла) и заземление на кольцевой опоре.</div>` +
             (it.kind === 'plain' ? `<div class="tip-p"><b>Под ТЭН</b> патрубка нет: STT-0003 рассчитана только на нагрев от котла.</div>`
                 : it.kind === 'coil' ? `<div class="tip-p"><b>Под ТЭН:</b> патрубок G 2" ВР, рекомендуемая мощность ТЭН до ${it.tenMaxKw} кВт. <b>Змеевик ГВС:</b> ${String(it.coilM2).replace('.', ',')} м², ${String(it.coilL).replace('.', ',')} л, нержавеющая сталь AISI 304, до 6 бар.</div>`
@@ -61328,33 +61387,25 @@ const app = {
         const sav = this.calcBufferSaving(pick, r);
         const money = v => Math.round(v).toLocaleString('ru-RU');
         const f1 = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
-        let h = `<div style="font-size:12px; font-weight:700;">${it.id} · ${it.vol} л</div>` +
-            `<div style="font-size:11px; color:var(--text-sec);">высота ${it.hMm} мм, Ø ${it.dMm} мм, пустой ${it.kg} кг, ${it.maxBar} бар, ${it.maxT} °C</div>`;
-        if (pick.twoRate) {
-            h += `<div style="margin-top:6px; font-size:11px;">Объём: половина дневного расхода средней зимы (${f1(pick.perDay)} кВт·ч/сут, ΔT ${this.BUFFER_DT} К) — нужно около ${Math.round(pick.need)} л.</div>`;
-            if (pick.rechargeLimited) {
-                h += `<div style="margin-top:6px; padding-left:8px; border-left:3px solid #F59E0B; font-size:11px; line-height:1.5;">⚠️ Объём ограничен мощностью котла: за ночные ${this.EL_NIGHT_HOURS} ч он даёт на дозарядку ёмкости только ${f1(pick.roomKwh)} кВт·ч сверх ночной нагрузки дома. Больше объём — только лишние потери. Выгоднее поднять мощность котла или лимит сети.</div>`;
-            }
-        } else {
-            h += `<div style="margin-top:6px; padding-left:8px; border-left:3px solid #F59E0B; font-size:11px; line-height:1.5;">⚠️ Тариф один — ночного накопления нет, окупаемости нет. Объём взят из расчёта ${this.BUFFER_L_PER_KW} л на кВт котла (${f1(pick.boilerKw)} кВт), против коротких циклов. Включите «День-ночь» в блоке «Стоимость отопления».</div>`;
-        }
-        if (!pick.fits) {
-            h += `<div style="margin-top:6px; padding-left:8px; border-left:3px solid #DC2626; font-size:11px; line-height:1.5;">⛔ Не помещается: нужен потолок от ${f1(it.hMm / 1000 + this.BUFFER_TOP_GAP_M)} м, задано ${f1(pick.ceilH)} м (высота 1-го этажа).</div>`;
-        }
-        if (pick.undersized && !pick.byManual) {
-            h += `<div style="margin-top:6px; padding-left:8px; border-left:3px solid #F59E0B; font-size:11px; line-height:1.5;">⚠️ Объём меньше расчётного: выше не проходит по высоте или по ряду.</div>`;
-        }
+        const y1 = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+        let h = `<div class="bf-id">${it.id} · ${it.vol} л</div>` +
+            `<div class="bf-dim">высота ${it.hMm} мм · Ø ${it.dMm} мм · ${it.kg} кг пустая</div>`;
+        // На виду — только то, что требует внимания; объяснения и числа — под значком «i»
+        const chips = [];
+        if (!pick.fits) chips.push(['err', `Не поместится: нужен потолок от ${f1(it.hMm / 1000 + this.BUFFER_TOP_GAP_M)} м, задано ${f1(pick.ceilH)} м`]);
+        if (!pick.twoRate) chips.push(['warn', 'Тариф один — ночного накопления нет. Включите «День-ночь» в «Стоимости отопления»']);
+        else if (sav && sav.saving > 0 && !(sav.net > 0)) chips.push(['warn', `За ${this.BUFFER_LIFE_YEARS} лет службы не окупается`]);
+        else if (sav && sav.saving <= 0) chips.push(['warn', 'При этих тарифах накопитель убыточен']);
+        else if (pick.rechargeLimited) chips.push(['warn', 'Объём ограничен мощностью котла']);
+        h += chips.map(c => `<div class="bf-chip ${c[0]}">${c[0] === 'err' ? '⛔' : '⚠️'} ${c[1]}</div>`).join('');
         if (sav) {
-            h += `<div style="margin-top:6px; font-size:11px; line-height:1.5;">В цикле ёмкость запасает ${f1(sav.eFull)} кВт·ч, в среднем за сезон переносит на ночь ${f1(sav.shiftAvg)} кВт·ч в сутки; потери самой ёмкости ${f1(sav.loss)} кВт·ч в сутки.` +
-                (sav.limited ? ' Дозарядка за ночь упирается в мощность котла.' : '') + `</div>`;
             const ok = sav.saving > 0;
-            const y1 = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
-            h += `<div style="margin-top:6px; padding:6px 8px; background:var(--primary-light); border-radius:6px; font-size:11px; font-weight:700; color:${ok ? 'var(--primary)' : '#B45309'};">` +
-                (ok ? `Экономия ≈ ${money(sav.saving)} ₽ за сезон` : `При этих тарифах накопитель убыточен (${money(sav.saving)} ₽ за сезон)`) +
+            h += `<div class="bf-eco ${ok ? '' : 'neg'}">` +
+                (ok ? `Экономия ≈ ${money(sav.saving)} ₽ за сезон` : `Убыток ≈ ${money(-sav.saving)} ₽ за сезон`) +
                 (sav.payback
-                    ? `<br><span style="font-weight:500;">Окупаемость с обвязкой ≈ ${y1(sav.payback)} года${sav.growth ? ' (с ростом тарифов)' : ''}</span>`
-                    : (sav.capex > 0 ? (ok ? `<br><span style="font-weight:500;">Окупаемость: больше 15 лет — не окупается</span>` : '')
-                        : `<br><span style="font-weight:500;">Окупаемость — когда в прайсе появится цена ёмкости</span>`)) +
+                    ? `<br><span>Окупаемость ≈ ${y1(sav.payback)} года${sav.growth ? ' (с ростом тарифов)' : ''}</span>`
+                    : (sav.capex > 0 ? (ok ? `<br><span>Окупаемость больше 15 лет</span>` : '')
+                        : `<br><span>Окупаемость — когда в прайсе появится цена ёмкости</span>`)) +
                 `</div>`;
             if (sav.capex > 0 && ok) {
                 const good = !!sav.payback && sav.payback <= this.BUFFER_LIFE_YEARS;
@@ -61366,13 +61417,54 @@ const app = {
             const gr = this.EL_TARIFF_FORECAST.rows;
             h += `<label class="bf-growth"><input type="checkbox" ${sav.growth ? 'checked' : ''} onchange="app.toggleElGrowth(this.checked)"> Учитывать рост тарифов по прогнозу МЭР (+${gr.map(x => String(x.g).replace('.', ',')).join(' / +')} %)</label>`;
             if (sav.capex > 0 && ok) h += `<button type="button" class="bf-btn" onclick="app.showBufferPayback()">График окупаемости</button>`;
-            if (sav.capex > 0) {
-                h += `<div style="margin-top:6px; font-size:11px; line-height:1.5; color:var(--text-sec);">Затраты ${money(sav.capex)} ₽: ёмкость ${money(sav.cap.tank)} ₽${sav.est ? ' (ориентировочно, по аналогам S-Tank)' : ''}, обвязка ${money(sav.cap.rig)} ₽` +
-                    (sav.cap.exp > 0 ? `, больший расширительный бак +${money(sav.cap.exp)} ₽` : '') +
-                    `. Труба подводки и монтаж не входят.</div>`;
-            }
+            if (sav.capex > 0) h += `<div class="bf-cost">Затраты ${money(sav.capex)} ₽ — состав под значком «i»</div>`;
         }
         box.innerHTML = h;
+        const tip = document.getElementById('buffer_tip');
+        if (tip) tip.innerHTML = this.bufferTipHtml(pick, sav);
+    },
+    // Содержимое подсказки «i»: как подобран объём, таблица вариантов, что входит в затраты.
+    bufferTipHtml: function (pick, sav) {
+        const it = pick.item;
+        const money = v => Math.round(v).toLocaleString('ru-RU');
+        const f1 = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
+        const y1 = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+        let t = `<div class="tip-p"><b>Что это.</b> Ночью электрокотёл греет воду по дешёвому тарифу, днём система берёт тепло из ёмкости. Ёмкость стоит на месте гидрострелки и разделяет контуры, поэтому гидрострелка из сметы убрана.</div>`;
+        if (!pick.twoRate) {
+            t += `<div class="tip-p"><b>Тариф один.</b> Ночного накопления нет, окупаемости нет. Объём взят из расчёта ${this.BUFFER_L_PER_KW} л на кВт котла (${f1(pick.boilerKw)} кВт) — защита от коротких циклов. Чтобы появилась экономия, включите «День-ночь» в блоке «Стоимость отопления».</div>`;
+            return t;
+        }
+        if (pick.byManual) {
+            t += `<div class="tip-p"><b>Объём выбран вручную.</b> Автоподбор отключён; вернуться к нему можно ссылкой «вернуть автоподбор объёма».</div>`;
+        } else {
+            t += `<div class="tip-p"><b>Как подобран объём.</b> Для каждой ёмкости ряда посчитаны экономия (с потерями бака) и затраты; взята та, у которой выгода за ${this.BUFFER_LIFE_YEARS} лет службы наибольшая. Ограничения: высота потолка минус 0,6 м и дозарядка — котёл за ночные ${this.EL_NIGHT_HOURS} ч даёт на неё только ${f1(pick.roomKwh)} кВт·ч сверх ночной нагрузки дома.</div>`;
+        }
+        if (pick.cands && pick.cands.length) {
+            const cap = this.bufferCapex(it);
+            const rAll = this.calcElHeatingCost();
+            const th = v => Math.round(v / 1000).toLocaleString('ru-RU');
+            const rows = pick.cands.map(c => {
+                const capex = (c.item.price || 0) + cap.rig + this.bufferExpDelta(c.item.vol) + this.bufferFillRate() * c.item.vol - cap.saved;
+                const e = this.bufferEconomics(c.item, rAll, { tank: c.item.price || 0, rig: cap.rig, exp: this.bufferExpDelta(c.item.vol), fill: this.bufferFillRate() * c.item.vol, saved: cap.saved });
+                const cur = c.item.id === it.id;
+                return `<tr${cur ? ' class="cur"' : ''}><td>${c.item.volNom} л${cur ? ' ✓' : ''}</td><td>${th(e.capex)}</td><td>${th(e.saving)}</td><td>${e.payback ? y1(e.payback) : '—'}</td><td>${e.net >= 0 ? '+' : '−'}${th(Math.abs(e.net))}</td></tr>`;
+            }).join('');
+            t += `<table class="bf-tbl"><thead><tr><th>Объём</th><th>Затраты</th><th>Эконо&shy;мия</th><th>Окупае&shy;мость</th><th>Итог за ${this.BUFFER_LIFE_YEARS} л.</th></tr></thead><tbody>${rows}</tbody></table>`;
+        }
+        t += `<div class="tip-p">В таблице: затраты, экономия за сезон и итог за ${this.BUFFER_LIFE_YEARS} лет — в тыс. ₽, окупаемость — в годах.</div>`;
+        t += `<div class="tip-p"><b>По расходу</b> (для сравнения): половина дневного расхода (${f1(pick.perDay)} кВт·ч в сутки) — около ${Math.round(pick.need)} л${pick.rechargeLimited ? ', но котёл столько за ночь не зарядит' : ''}. Лишние литры стоят и ёмкость, и теплоноситель, а экономии почти не добавляют.</div>`;
+        if (sav && sav.capex > 0) {
+            const c = sav.cap;
+            t += `<div class="tip-p"><b>Из чего затраты ${money(sav.capex)} ₽:</b> ёмкость ${money(c.tank)} ₽${sav.est ? ' (ориентировочно, по аналогам S-Tank)' : ''}; обвязка ${money(c.rig)} ₽ (краны, ниппели, муфты, переходы на трубу, воздухоотводчик, термометр, дренаж)`
+                + (c.exp > 0 ? `; расширительный бак побольше +${money(c.exp)} ₽` : '')
+                + (c.fill > 0 ? `; теплоноситель на заправку ${it.vol} л ${money(c.fill)} ₽` : '')
+                + (c.saved > 0 ? `; минус ${money(c.saved)} ₽ — гидрострелка не нужна` : '')
+                + `. Труба подводки (≈3 м) и монтаж не входят.</div>`;
+        }
+        if (!pick.fits) t += `<div class="tip-p"><b>Не помещается.</b> Паспорт: от верха ёмкости до потолка не менее 600 мм. Высота ${it.hMm} мм, потолок задан ${f1(pick.ceilH)} м.</div>`;
+        t += `<div class="tip-p"><b>Не входит.</b> Включение котла по ночному тарифу (реле или таймер котла) — проверьте по паспорту котла.</div>`;
+        t += `<div class="tip-p">Другое исполнение (с расслоением STT-0001/0002, со змеевиком ГВС STT-0004) — кнопкой замены в строке сметы; объём — кнопками «−/+».</div>`;
+        return t;
     },
 
     // Срок службы и гарантия по паспорту STOUT STT (паспорт: срок службы 5 лет, гарантия 2 года).
@@ -61447,7 +61539,7 @@ const app = {
                 <div class="bf-chart"><div class="bf-ct">Накопленная экономия по сезонам, тыс. ₽</div>
                     <svg viewBox="0 0 ${VW} ${VH}" role="img" aria-label="Накопленная экономия по годам против затрат">${base}${bars}${line}</svg></div>
                 <div class="sg-perks">
-                    <div><b>${rub(sav.capex)}</b><span>затраты: ёмкость${sav.est ? ' (ориентировочно)' : ''}, обвязка, расширительный бак</span></div>
+                    <div><b>${rub(sav.capex)}</b><span>затраты: ёмкость${sav.est ? ' (ориентировочно)' : ''}, обвязка, расширительный бак, теплоноситель, минус гидрострелка</span></div>
                     <div><b>${rub(sav.saving)}</b><span>экономия за первый сезон</span></div>
                     <div><b>${net5 >= 0 ? '+' : '−'}${rub(Math.abs(net5))}</b><span>итог за ${life} лет службы</span></div>
                 </div>
@@ -76577,6 +76669,7 @@ const app = {
         // Буферная ёмкость входит в объём системы: расширительный бак считается с ней
         // (паспорт STT, раздел «Монтаж»).
         this._bufPick = this.bufferActive() ? this.bufferPick() : null;
+        this._bufHydroSaved = 0;
         if (this._bufPick) vSys += this._bufPick.item.vol;
         this.tpMeters = tpMeters;
         this.tpArea = tpArea;
@@ -76608,6 +76701,7 @@ const app = {
         const expCoolantK = this.expTankCoolantK();
         let reqExp = vSys * 0.12 * expCoolantK; let bltin = 0; if (selBoilers.length > 0) { selBoilers.forEach(b => { bltin += (b.exp !== undefined ? b.exp : 0); }); }
         // Прирост расширительного бака из-за буферной ёмкости: идёт в окупаемость ёмкости (bufferCapex).
+        this._bufExpCtx = { vNoBuf: vSys - (this._bufPick ? this._bufPick.item.vol : 0), bltin: bltin, K: expCoolantK };
         this._bufExpDelta = 0;
         if (this._bufPick) {
             const _d0 = (vSys - this._bufPick.item.vol) * 0.12 * expCoolantK - bltin;
@@ -76841,6 +76935,12 @@ const app = {
             let circuits = rQ + tQ + (tankNeedsPumpGroup ? 1 : 0) + polisCircuits + snowCircuits;
             let idx = (circuits > 2) ? 1 : 0;
             let hCtx = { rQ, tQ, pwr, tpArea, snowN: snowCircuits };
+            // Буферная ёмкость сама разделяет котловой и системный контуры (у неё отдельные пары патрубков
+            // котла и системы, паспорт STT, рис. «Гидравлическая схема»): гидрострелка и коллектор со встроенным
+            // разделителем не нужны, берётся обычный коллектор. Только когда в котельной есть коллектор.
+            const _bufSep = !!(this._bufPick && needCollector);
+            let _hydroSaved = 0;
+            const _bufSepDesc = `Распределительный коллектор без встроенного разделителя: котловой и системный контуры разделяет буферная ёмкость, гидрострелка не нужна.`;
             {
                 const _gRad = (rQ > 0 && pwr > 0) ? pwr / (1.163 * this.radDT()) : 0;
                 // Тёплый пол — по первичной стороне узла подмеса. Его насос гоняет по
@@ -76853,7 +76953,7 @@ const app = {
                 const _dtPrim = Math.max(10, _tSup - 35);
                 const _gUfh = _qUfh > 0 ? _qUfh / (1.163 * _dtPrim) : 0;
                 const _gSum = _gRad + _gUfh;
-                if (_gSum > 3.0) {
+                if (_gSum > 3.0 && !_bufSep) {
                     this.groupWarns = this.groupWarns || {};
                     const _f = (v) => v.toFixed(2).replace('.', ',');
                     // Совет по ситуации: перепад радиаторов уже 20 K — предлагать его
@@ -76877,7 +76977,7 @@ const app = {
                 // обычный коллектор: до 20.09.2026 на DN25 такая замена оставляла
                 // котельную вовсе без гидроразделения — hydroType здесь не читался.
                 const _dn25Modular = (circuits > 3 || this.state.hydroType === 'modular');
-                if (_dn25Modular && catalog.collectors_dn25) {
+                if ((_dn25Modular || _bufSep) && catalog.collectors_dn25) {
                     const _dn25CollectorByLoops = { 2: 'SDG-0016-004002', 3: 'SDG-0016-004003', 4: 'SDG-0016-004004', 5: 'SDG-0016-004005', 6: 'SDG-0016-004006' };
                     let clampedCircuits = Math.max(2, Math.min(circuits, 6));
                     let collItem = catalog.collectors_dn25.find(c => c.id === _dn25CollectorByLoops[clampedCircuits]) || catalog.collectors_dn25[catalog.collectors_dn25.length - 1];
@@ -76886,14 +76986,28 @@ const app = {
                     // замены. Выше трёх коллектора-гидрострелки в линейке нет, там
                     // список сужается до ряда обычных коллекторов DN25.
                     collItem.alts = (circuits > 3) ? catalog.collectors_dn25 : (catalog.collectorAltsAll || catalog.collectors_dn25);
-                    addToBill({ ...collItem, sortRank: -3 }, 1, this.getDesc('hydro_collector', true, circuits, 'dn25', hCtx), grpHydro);
-                    addToBill({ ...catalog.hydro_arrow, sortRank: -3 }, 1, `Гидрострелка — выравнивает давление между котловым и распределительными контурами. Применяется в модульной схеме: коллектор и стрелка раздельно. Макс. расход: 3.0 м³/ч.`, grpHydro);
+                    if (_bufSep) {
+                        addToBill({ ...collItem, sortRank: -3 }, 1, _bufSepDesc, grpHydro);
+                        // Что сэкономили: отдельная стрелка или разница совмещённого узла и обычного коллектора
+                        _hydroSaved = _dn25Modular ? (catalog.hydro_arrow.price || 0)
+                            : Math.max(0, ((catalog.hydro_dn25[idx] || {}).price || 0) - (collItem.price || 0));
+                    } else {
+                        addToBill({ ...collItem, sortRank: -3 }, 1, this.getDesc('hydro_collector', true, circuits, 'dn25', hCtx), grpHydro);
+                        addToBill({ ...catalog.hydro_arrow, sortRank: -3 }, 1, `Гидрострелка — выравнивает давление между котловым и распределительными контурами. Применяется в модульной схеме: коллектор и стрелка раздельно. Макс. расход: 3.0 м³/ч.`, grpHydro);
+                    }
                 } else {
                     let item = catalog.hydro_dn25[idx];
                     addToBill({ ...item, sortRank: -3 }, 1, this.getDesc('hydro_collector', true, circuits, 'dn25', hCtx), grpHydro);
                 }
             } else {
-                if (this.state.hydroType === 'combo') {
+                if (_bufSep && catalog.collectors_dn20 && catalog.collectors_dn20[idx]) {
+                    const _plain20 = catalog.collectors_dn20[idx];
+                    addToBill({ ..._plain20, alts: catalog.collectors_dn20, sortRank: -3 }, 1, _bufSepDesc, grpHydro);
+                    const _was20 = (this.state.hydroType === 'combo')
+                        ? ((catalog.hydro_dn20[idx] || {}).price || 0)
+                        : (((catalog.hydro_modular_dn20[idx] || {}).price || 0) + (catalog.hydro_arrow.price || 0));
+                    _hydroSaved = Math.max(0, _was20 - (_plain20.price || 0));
+                } else if (this.state.hydroType === 'combo') {
                     let item = catalog.hydro_dn20[idx]; item.alts = catalog.hydro_modular_dn20;
                     addToBill({ ...item, sortRank: -3 }, 1, this.getDesc('hydro_collector', false, circuits, 'combo', hCtx), grpHydro);
                 } else {
@@ -76903,6 +77017,7 @@ const app = {
                 }
             }
 
+            this._bufHydroSaved = _hydroSaved;
             // Воздухоотводчик и сливной кран на узел гидроразделения. В комплект
             // поставки они не входят: паспорт «Коллектор стальной распределительный»
             // (ред. 3 от 30.03.2023) в разделе 4.2 перечисляет только соединительный
@@ -76917,7 +77032,7 @@ const app = {
             // ранги -0,2 и -0,1 ставят их сразу за насосами (-1) и перед остальной
             // обвязкой (0), которая сортируется по сумме. Без рангов клапан за 251 ₽
             // уезжал от своего воздухоотводчика в самый низ подраздела.
-            if (catalog.air_vent_12) {
+            if (catalog.air_vent_12 && !_bufSep) {
                 addToBill({ ...catalog.air_vent_12, alts: catalog.air_vent_12_alts || [], noCheapenAlts: true, sortRank: -0.2 },
                     1, this.getDesc('air_vent_hydro'), grpHydro);
                 if (catalog.air_vent_check_12) {
@@ -76937,7 +77052,7 @@ const app = {
             // Найдено проверкой стыковки концов, 27.09.2026.
             const _hydroCombo = (this.currentSpec || []).some(x => x.group === grpHydro &&
                 /^(SDG-0018|RDG-0017)-/.test(String(x.originalId || x.id || '')));
-            if (catalog.hydro_thermometer && !_hydroCombo) {
+            if (catalog.hydro_thermometer && !_hydroCombo && !_bufSep) {
                 addToBill({ ...catalog.hydro_thermometer, alts: catalog.hydro_thermometer_alts || [], noCheapenAlts: true },
                     1, this.getDesc('hydro_thermometer'), grpHydro);
             }
@@ -76948,7 +77063,7 @@ const app = {
             _hydroTieGrp = grpHydro;
 
             const _hydroDrain = (catalog.ball_valves || []).find(v => v.id === 'SVB-0006-200015');
-            if (_hydroDrain) {
+            if (_hydroDrain && !_bufSep) {
                 // Свой originalId — кран 1/2" НР/НР встречается в смете и в других узлах,
                 // а этот должен иметь отдельную строку и собственную ручную замену.
                 addToBill({ ...withRommerAlt(_hydroDrain), originalId: 'SVB-0006-200015_hydro_drain' },
@@ -77634,21 +77749,22 @@ const app = {
         }
 
         // 0в. Буферная ёмкость STOUT STT (подробный режим, электрокотёл без газа — bufferAvailable).
-        // Четыре патрубка G 1 1/2" ВР: подача и обратка котла, подача и обратка системы. Переход
-        // на трубу идёт тем же путём, что у узла гидроразделения, только с патрубка ВР, а не НР:
-        // ниппель 1 1/2" х T в патрубок, на его резьбу T — муфта ВР, в муфту — пресс-переходник
-        // трубы с НР той же резьбы T. T — та резьба, которая у перехода этого диаметра реально
-        // есть (на 15–22 это 3/4", на 28 — 1", на 35 — 1 1/4"): пара «НР — ВР» обязана сойтись
-        // по размеру, а не по диаметру трубы (CLAUDE.md, «Стыковка обвязки котельной», п. 3).
-        // Дренаж — шаровой кран 1/2" НР/НР в патрубок подпитки/дренажа; 3 м трубы — подводка
-        // котёл → ёмкость → узел (1,5 м на трубу, как у подводки к гидроразделению).
+        // Четыре патрубка G 1 1/2" ВР: подача и обратка котла, подача и обратка системы. Переход на трубу:
+        // ниппель 1 1/2" х T в патрубок, запорный кран (паспорт, схема подключения: запорная арматура на
+        // каждом патрубке), муфта ВР и пресс-переход трубы с НР той же резьбы T. T — та резьба, которая у
+        // перехода этого диаметра реально есть (на 15–22 это 3/4", на 28 — 1", на 35 — 1 1/4"): пара
+        // «НР — ВР» обязана сойтись по размеру, а не по диаметру трубы (CLAUDE.md, «Стыковка обвязки
+        // котельной», п. 3). На 1 1/4" кран ВР/ВР сам заменяет муфту. Дренаж — кран 1/2" НР/НР в патрубок
+        // подпитки; воздухоотводчик и термометр — в гильзовые патрубки 1/2" (ёмкость стоит на месте
+        // гидрострелки, у неё нет своих штуцеров под них); 3 м трубы — подводка котёл → ёмкость → коллектор.
         if (this._bufPick && this._bufPick.item) {
             const _bp = this._bufPick, _bi = _bp.item, _bg = "2.7. Буферная ёмкость";
             const _bAlts = (catalog.tanks_buffer || []).filter(x => x.volNom === _bi.volNom && x.id !== _bi.id).map(x => ({ ...x, noCheapen: true }));
             addToBill({ ..._bi, alts: _bAlts, noCheapenAlts: true, sortRank: -2 }, 1,
-                `Буферная ёмкость STOUT ${_bi.id}, полезный объём ${_bi.vol} л, ${_bi.maxBar} бар, до ${_bi.maxT} °C, изоляция ${_bi.insMm} мм в комплекте. Накапливает тепло ночью (дешёвый тариф) и отдаёт его системе днём.` +
+                `Буферная ёмкость STOUT ${_bi.id}, полезный объём ${_bi.vol} л, ${_bi.maxBar} бар, до ${_bi.maxT} °C, изоляция ${_bi.insMm} мм в комплекте. Накапливает тепло ночью (дешёвый тариф) и отдаёт его системе днём` +
+                (needCollector ? `; заодно разделяет котловой и системный контуры вместо гидрострелки.` : `.`) +
                 (_bi.priceEst ? ` Цена ориентировочная — по аналогам завода-изготовителя, уточнится после появления в прайсе.` : ``), _bg);
-            // Резьба пресс-перехода трубы и сам переход (ставится ниже, после ниппеля с муфтой).
+            // Резьба пресс-перехода трубы и сам переход (ставится ниже, после ниппеля, крана и муфты).
             let _bTh = '1', _bAdpAdd = null;
             if (isAnalog) {
                 _bTh = '1';
@@ -77658,35 +77774,55 @@ const app = {
                             `Муфта переходная 40х32 PP-RCT перед присоединением к буферной ёмкости. Требуется: 4 шт.`, _bg);
                     }
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_mi, 'SZE03232OKRCT'), 4,
-                        `Муфта комбинированная с наружной резьбой 32х1" PP-RCT — вкручивается в муфту патрубка ёмкости. Требуется: 4 шт.`, _bg);
+                        `Муфта комбинированная с наружной резьбой 32х1" PP-RCT — вкручивается в муфту у крана патрубка ёмкости. Требуется: 4 шт.`, _bg);
                 };
             } else if (isPress) {
                 const _bD = mpD(ss_diameter);
                 const _bTie = bpThreadFor('mi', _bD, '1');
                 _bTh = _bTie.key;
                 _bAdpAdd = (thNote) => bpPress(_bTie.item, 4,
-                    `Переходник с трубы ${_bD} на наружную резьбу ${bpThLabel(_bTie.key)} — вкручивается в муфту патрубка буферной ёмкости.${thNote} Требуется: 4 шт.`, _bg, 1, _bD);
+                    `Переходник с трубы ${_bD} на наружную резьбу ${bpThLabel(_bTie.key)} — вкручивается в муфту у крана патрубка буферной ёмкости.${thNote} Требуется: 4 шт.`, _bg, 1, _bD);
             } else {
                 const _bThS = this.ssThreadFor('ss_adapter_mi', ss_diameter, '1');
                 const _bAdp = _bThS && this.ssFit('ss_adapter_mi', ss_diameter, _bThS);
                 _bTh = _bThS || '1';
                 _bAdpAdd = (thNote) => { if (_bAdp) addToBill(_bAdp, 4,
-                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${this.ssThreadLabel(_bThS)} — вкручивается в муфту патрубка буферной ёмкости.${thNote} Требуется: 4 шт.`, _bg); };
+                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${this.ssThreadLabel(_bThS)} — вкручивается в муфту у крана патрубка буферной ёмкости.${thNote} Требуется: 4 шт.`, _bg); };
             }
-            // Ниппель и муфта — под ту же резьбу. Резьбы 1/2" в линейке ниппелей 1 1/2" нет, берём 3/4".
+            // Ниппель, кран и муфта — под ту же резьбу. Резьбы 1/2" в линейке ниппелей 1 1/2" нет, берём 3/4".
             const _bKey = ({ '1/2': '3/4', '3/4': '3/4', '1': '1', '11/4': '11/4' })[_bTh] || '1';
             const _bNip = ({ '3/4': catalog.buffer_nipple_112_34, '1': catalog.buffer_nipple_112_1, '11/4': catalog.buffer_nipple_112_114 })[_bKey];
-            const _bCplBase = ({ '3/4': catalog.buffer_coupling_34, '1': catalog.hydro_tie_coupling_1, '11/4': catalog.buffer_coupling_114 })[_bKey];
+            const _bCplBase = ({ '3/4': catalog.buffer_coupling_34, '1': catalog.hydro_tie_coupling_1, '11/4': null })[_bKey];
+            const _bValveId = ({ '3/4': 'SVB-0004-200020', '1': 'SVB-0004-200025', '11/4': 'SVB-0001-200032' })[_bKey];
+            const _bValve = (catalog.ball_valves || []).find(v => v.id === _bValveId);
             const _bThTxt = ({ '3/4': '3/4"', '1': '1"', '11/4': '1 1/4"' })[_bKey];
             if (_bNip) {
                 addToBill(_bNip, 4,
-                    `Ниппель переходной 1 1/2" х ${_bThTxt} НР — вкручивается в патрубок ёмкости G 1 1/2" (ВР); на его ${_bThTxt} садится муфта. По одному на каждый используемый патрубок: подача и обратка котла, подача и обратка системы. Требуется: 4 шт.`, _bg);
+                    `Ниппель переходной 1 1/2" х ${_bThTxt} НР — вкручивается в патрубок ёмкости G 1 1/2" (ВР); на его ${_bThTxt} садится запорный кран. По одному на каждый используемый патрубок: подача и обратка котла, подача и обратка системы. Требуется: 4 шт.`, _bg);
+            }
+            if (_bValve) {
+                addToBill({ ...withRommerAlt(_bValve), originalId: _bValveId + '_buf' }, 4,
+                    `Запорный кран ${_bThTxt} на патрубке ёмкости: паспорт STT на схеме подключения ставит запорную арматуру на каждую подачу и обратку, чтобы отключить и слить ёмкость, не останавливая котельную целиком. Требуется: 4 шт.`, _bg);
             }
             if (_bCplBase) {
                 addToBill({ ..._bCplBase, originalId: (_bCplBase.id + '_buf') }, 4,
-                    `Муфта ВР ${_bThTxt} между ниппелем патрубка ёмкости и переходом на трубу. Требуется: 4 шт.`, _bg);
+                    `Муфта ВР ${_bThTxt} между краном патрубка ёмкости и переходом на трубу. Требуется: 4 шт.`, _bg);
             }
             if (_bAdpAdd) _bAdpAdd(_bTh !== _bKey ? ` <b>Внимание:</b> муфта на ${_bThTxt}, у перехода трубы резьба ${_bTh}" — нужен резьбовой переход (в смету не входит).` : '');
+            // Воздухоотводчик (с отсекающим обратным клапаном) — в верхний гильзовый патрубок G 1/2", термометр
+            // подачи — в нижний. У STT-0004 гильзовый патрубок один: на нём воздухоотводчик, термометра нет.
+            if (catalog.air_vent_12) {
+                addToBill({ ...catalog.air_vent_12, alts: catalog.air_vent_12_alts || [], noCheapenAlts: true },
+                    1, `Автоматический воздухоотводчик — в верхний гильзовый патрубок G 1/2" ёмкости: воздух из контура собирается под верхней крышкой.`, _bg);
+                if (catalog.air_vent_check_12) {
+                    addToBill({ ...catalog.air_vent_check_12 }, 1,
+                        `Отсекающий обратный клапан под воздухоотводчиком: поплавковую головку можно снять и заменить, не сливая ёмкость.`, _bg);
+                }
+            }
+            if (catalog.hydro_thermometer && _bi.kind !== 'coil') {
+                addToBill({ ...catalog.hydro_thermometer, alts: catalog.hydro_thermometer_alts || [], noCheapenAlts: true },
+                    1, `Термометр в нижний гильзовый патрубок G 1/2" ёмкости: по нему видно, насколько она заряжена.`, _bg);
+            }
             const _bDrain = (catalog.ball_valves || []).find(v => v.id === 'SVB-0006-200015');
             if (_bDrain) {
                 addToBill({ ...withRommerAlt(_bDrain), originalId: 'SVB-0006-200015_buf_drain' }, 1,

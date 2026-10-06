@@ -301,11 +301,16 @@
   /** Выноска у фильтра с центром (fx,fy). */
   function leaderFilter(fx, fy, size) { return leader(fx - 0.96, fy - 1.77, size); }
 
-  /** Гидравлический разделитель для схемы. (x,y) — центр корпуса 9×20. */
-  function hydroSep(x, y, kw, noThermo) {
+  /** Гидравлический разделитель для схемы. (x,y) — центр корпуса 9×20.
+   *  buf = { vol } — на его месте буферная ёмкость: те же подключения (воздухоотводчик сверху,
+   *  дренаж снизу, термометр слева), корпус скруглён, внутри объём в литрах вместо кВт. */
+  function hydroSep(x, y, kw, noThermo, buf) {
     var w = 9, h = 20, o = [];
-    o.push(rrect(x - w / 2, y - h / 2, w, h, 1, { c: '#000', w: LW.sym }));
-    if (kw) {
+    o.push(rrect(x - w / 2, y - h / 2, w, h, buf ? 2.6 : 1, { c: '#000', w: LW.sym }));
+    if (buf) {
+      o.push(txt(x, y - 0.6, String(buf.vol), { size: SZ.txt, anchor: 'middle' }));
+      o.push(txt(x, y + 3.4, 'л', { size: SZ.txt, anchor: 'middle' }));
+    } else if (kw) {
       o.push(txt(x, y - 0.6, String(kw), { size: SZ.txt, anchor: 'middle' }));
       o.push(txt(x, y + 3.4, 'кВт', { size: SZ.txt, anchor: 'middle' }));
     }
@@ -545,7 +550,9 @@
   filterSym = sym(filterSym, 'filter', 'Фильтр-грязевик');
   airSep = sym(airSep, 'airsep', 'Сепаратор воздуха');
   safetyGroup = sym(safetyGroup, 'safetygroup', 'Группа безопасности котла');
-  hydroSep = sym(hydroSep, 'hydro', 'Гидравлический разделитель');
+  hydroSep = sym(hydroSep, 'hydro', function (x, y, kw, nt, buf) {
+    return buf ? 'Буферная ёмкость' : 'Гидравлический разделитель';
+  });
   expTank = sym(expTank, 'exptank', 'Расширительный бак');
   boilerUnit = sym(boilerUnit, 'boiler', function (x, y, kind) {
     return kind === 'gas' ? 'Газовый котёл' : 'Электрический котёл';
@@ -626,7 +633,7 @@
       o.push(airVent(bx, bt - 1.37));
       o.push(pline([[bx - 1.31, bt - 1.37], [bx - 1.31, bt]]));
       o.push(pline([[bx + 1.3, bt - 1.37], [bx + 1.3, bt]]));
-      o.push(rrect(bx - bw / 2, bt, bw, bb - bt, 0.4, { c: '#000', w: LW.sym }));
+      o.push(rrect(bx - bw / 2, bt, bw, bb - bt, cfg.hydro.buffer ? 2 : 0.4, { c: '#000', w: LW.sym }));
       o.push(pline([[bx - 1.31, bb], [bx - 1.31, bb + 1.37]]));
       o.push(pline([[bx + 1.3, bb], [bx + 1.3, bb + 1.37]]));
       o.push(pline([[bx - 1.31, bb + 1.37], [bx + 1.3, bb + 1.37]]));
@@ -635,7 +642,7 @@
       o.push(pline([[bx - 0.92, bb + 8.61], [bx + 0.92, bb + 8.61]]));
       o.push(pline([[bx - 0.92, bb + 8.61], [bx, bb + 10.14]]));
       o.push(pline([[bx + 0.92, bb + 8.61], [bx, bb + 10.14]]));
-      o.push(txt(tx, (hy0 + hy1) / 2 + SZ.txt * 0.35, 'Гидравлический разделитель', { size: SZ.txt, anchor: 'middle' }));
+      o.push(txt(tx, (hy0 + hy1) / 2 + SZ.txt * 0.35, cfg.hydro.buffer ? 'Буферная ёмкость' : 'Гидравлический разделитель', { size: SZ.txt, anchor: 'middle' }));
       o.push(ln(L, hy1, R, hy1));
       y = hy1;
     }
@@ -1424,7 +1431,7 @@
       o.push(hpipe(hydroX + 4.5, xu, secPair.ret, COL.ret));
       o.push(openArrow(xu - 0.8, secPair.ret, 'right', COL.ret));
       o.push('</g><g data-hyd-part="hydro" data-hyd-dir="none">');
-      o.push(hydroSep(hydroX, 167, cfg.hydro.kw, cfg.hydro.thermo === false));
+      o.push(hydroSep(hydroX, 167, cfg.hydro.kw, cfg.hydro.thermo === false, cfg.hydro.buffer || null));
       o.push('</g>');
       // датчик «Каскад» — на подаче за гидрострелкой (по нему контроллер
       // ведёт общую температуру каскада)

@@ -919,6 +919,23 @@ body.dark-mode .sg-card .bf-t em { color: #FBBF24; }
     .sg-card .bf-tariffs { flex-wrap: wrap; }
     .sg-card .bf-t { flex: 1 1 45%; }
 }
+/* Панель «Буферная ёмкость»: коротко на виду (app.renderBufferUI), всё остальное — под значком «i» */
+.bf-id { font-size: 12px; font-weight: 700; }
+.bf-dim { font-size: 11px; color: var(--text-sec); }
+.bf-chip { margin-top: 6px; padding-left: 8px; border-left: 3px solid #F59E0B; font-size: 11px; line-height: 1.45; }
+.bf-chip.err { border-left-color: #DC2626; }
+.bf-eco { margin-top: 8px; padding: 6px 8px; background: var(--primary-light); border-radius: 6px; font-size: 11px; font-weight: 700; color: var(--primary); line-height: 1.45; }
+.bf-eco span { font-weight: 500; }
+.bf-eco.neg { color: #B45309; }
+.bf-cost { margin-top: 6px; font-size: 11px; color: var(--text-sec); }
+/* Таблица вариантов объёма в подсказке: выбранный ряд выделен */
+#buffer_tip { max-height: 75vh; overflow-y: auto; }
+.tip-panel .bf-tbl { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 11px; }
+.tip-panel .bf-tbl th { text-align: right; font-weight: 600; color: var(--text-sec); padding: 2px 4px; border-bottom: 1px solid var(--border); font-size: 10px; }
+.tip-panel .bf-tbl th:first-child, .tip-panel .bf-tbl td:first-child { text-align: left; }
+.tip-panel .bf-tbl td { text-align: right; padding: 2px 3px; white-space: nowrap; }
+.tip-panel .bf-tbl tr.cur td { font-weight: 800; color: var(--primary); background: var(--primary-light); }
+
 /* Блок «Прогноз: счёт за сезон» в «Стоимости отопления»: четыре столбика по сезонам */
 .bf-fc { margin-top: 8px; padding: 8px 10px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 8px; }
 .bf-fc-t { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-sec); }

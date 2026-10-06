@@ -228,7 +228,7 @@
       elW: 420, elH: 640, elD: 300,
       // корпус электрокотла зависит от серии: STATUS или PLUS
       elKey: (scheme.el && scheme.el.status) ? 'boiler_status' : 'boiler_plus',
-      hydro: !!scheme.hydro,
+      hydro: !!scheme.hydro && !scheme.hydro.buffer,
       indirect: scheme.indirect ? boilerTankSize(scheme.indirect.vol, scheme.indirect.wall) : null,
       tankH: tankSize(scheme.tankHeating),
       tankD: tankSize(scheme.tankDhw),
