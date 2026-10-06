@@ -2239,13 +2239,13 @@ const RecognizeUI = {
             // Администратору — суточный расход по сайту: месячного лимита у него
             // нет, а упирается он именно в сутки Google. Порог бесплатного тарифа
             // ~20 запросов на модель в сутки — ориентир, Google его не подтверждает.
-            const perModel = d ? Object.keys(d.models || {}).map(m => `• ${m}: ${d.models[m]} из ~20`) : [];
+            const perModel = d ? Object.keys(d.models || {}).map((m, i) => `• Канал ${i + 1}: ${d.models[m]} из ~20`) : [];
             const top = d ? Math.max(0, ...Object.values(d.models || {}).map(Number)) : 0;
             text = d ? `🔍 ${d.total} сегодня` : '🔍 ∞';
             cls = top >= 20 ? 'bad' : top >= 15 ? 'warn' : 'ok';
             tip = (d ? `Запросов к распознаванию сегодня на всём сайте: ${d.total}` +
                         (d.modes && d.modes.recognize != null ? ` (распознавание ${d.modes.recognize}, помощник ${d.modes.chat || 0})` : '') + '.' +
-                        (perModel.length ? '\nПо моделям, порог бесплатного тарифа ~20 в сутки на каждую:\n' + perModel.join('\n') : '')
+                        (perModel.length ? '\nПо каналам, порог бесплатного тарифа ~20 в сутки на каждую:\n' + perModel.join('\n') : '')
                      : 'Суточный счётчик по сайту ещё не включён на сервере.') +
                 (q && q.used != null ? `\nВ этом месяце вами: ${q.used} — месячного лимита у администратора нет.` : '') +
                 (this._apiCalls ? `\nЗа этот разбор: ${this._apiCalls}.` : '') +
@@ -2255,8 +2255,8 @@ const RecognizeUI = {
                 if (d.modes && d.modes.recognize != null) pop += kv('Распознавание / помощник', `${d.modes.recognize} / ${d.modes.chat || 0}`);
                 const ms = Object.keys(d.models || {});
                 if (ms.length) {
-                    pop += sep + cap('По моделям · порог бесплатного тарифа ~20 в сутки');
-                    ms.forEach(m => { const n = Number(d.models[m]) || 0; pop += bar(m, n, 20, `${n} из ~20`); });
+                    pop += sep + cap('По каналам · порог бесплатного тарифа ~20 в сутки');
+                    ms.forEach((m, i) => { const n = Number(d.models[m]) || 0; pop += bar('Канал ' + (i + 1), n, 20, `${n} из ~20`); });
                 }
             } else {
                 pop += cap('Суточный счётчик по сайту ещё не включён на сервере.');
