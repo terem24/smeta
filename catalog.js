@@ -2360,6 +2360,12 @@ const catalog = {
         { id: "CBL-VVG-3X15-PW", name: "Кабель ВВГнг(А)-LS 3×1,5 — питание планки и насоса", price: 62, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-08-09" },
         { id: "CBL-MKESH-2X05", name: "Кабель МКЭШ 2×0,5 экран. — сухой контакт на контроллер", price: 75, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-08-09" }
     ],
+    // Линия проводного термостата к планке ENGO ECB62-ZB. По паспорту планки
+    // (Quick Guide v6.1) клемма термостата 230 В принимает 3×0,75…3×1,0 мм², и
+    // ВВГнг 3×1,5 в неё не войдёт. ВВГнг тоньше 1,5 мм² не выпускают, поэтому
+    // берём гибкий ПВС 3×1,0 (в гофре). Цена ориентировочная — как у остального
+    // кабеля к автоматике.
+    ufh_cable_engo_ts: { id: "CBL-PVS-3X10-TS", name: "Кабель ПВС 3×1,0 — линии проводных термостатов ENGO", price: 48, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-10-06" },
     h_valves: [
         { id: "SVH-0004-000020", name: "Узел нижн. подкл. (Угловой)", price: 1254, type: "angled", desc: "Трубы выходят из стены.", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SVH-0002-000020", name: "Узел нижн. подкл. (Прямой)", price: 1233, type: "straight", desc: "Трубы выходят из пола.", availability: "in_stock", price_date: "2026-09-23" },

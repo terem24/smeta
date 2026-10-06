@@ -36646,11 +36646,36 @@ const app = {
         const nameOf = i => (i && i.name ? String(i.name) : '');
         // Позиции зональной автоматики лежат в разделе 4.5 (кабель — в 4.5.1, его
         // строки «линии термостатов/сервоприводов» под поиск по названию не берём).
-        // Схема нарисована под планку STOUT STE-3050; у ENGO другие клеммы и своего
-        // листа пока нет — без паспорта ECB62-ZB их не рисуем.
-        if (this.zoneAutoSystem() !== 'stout') return '';
+        // Планка STOUT STE-3050 и центр коммутации ENGO ECB62-ZB — две разные
+        // схемы: клеммы у них свои (паспорта обоих), рисуются по системе в смете.
         const rows = spec.filter(i => /^\s*4\.5\.(?!\d)/.test(i.group || ''));
         if (!rows.length) return '';
+        if (this.zoneAutoSystem() === 'engo') {
+            if (!window.projectScheme.ufhSchemeEngo) return '';
+            const q = re => rows.filter(i => re.test(nameOf(i))).reduce((a, i) => a + (i.q || 0), 0);
+            const first = re => rows.find(i => re.test(nameOf(i)));
+            const bar = first(/ECB62|центр коммутации/i);
+            const isStat = i => /термостат|терморегулятор/i.test(nameOf(i));
+            const wiredRow = rows.find(i => isStat(i) && /проводн/i.test(nameOf(i)) && !/беспровод/i.test(nameOf(i)));
+            const servoRow = first(/сервопривод/i);
+            const wiredN = rows.filter(i => isStat(i) && /проводн/i.test(nameOf(i)) && !/беспровод/i.test(nameOf(i))).reduce((a, i) => a + (i.q || 0), 0);
+            const radioN = rows.filter(i => isStat(i) && /беспровод/i.test(nameOf(i))).reduce((a, i) => a + (i.q || 0), 0);
+            if (!bar && !wiredN && !radioN) return '';
+            const tcE = this.thermaticConfig;
+            const koE = tcE && (tcE.circuits || []).find(c => c.src === 'ufh');
+            return window.projectScheme.ufhSchemeEngo({
+                bars: bar ? (bar.q || 1) : 1,
+                wired: wiredN, radio: radioN,
+                heads: q(/радиоголовк/i), servos: q(/сервопривод/i),
+                gateway: q(/шлюз/i),
+                statKind: wiredRow && /EASY/i.test((wiredRow.id || '') + nameOf(wiredRow)) ? 'easy' : 'simple',
+                statName: wiredRow ? nameOf(wiredRow) : '',
+                servoName: servoRow ? nameOf(servoRow) : '',
+                servoVolt: servoRow ? (servoRow.voltage || (/\b24\s*В/.test(nameOf(servoRow)) ? 24 : 230)) : 230,
+                auto: this.thermaticFull(), ko: koE ? koE.name : null
+            });
+        }
+        if (this.zoneAutoSystem() !== 'stout') return '';
         const pick = re => rows.find(i => re.test(nameOf(i)));
         const servo = pick(/сервопривод/i), stat = pick(/термостат|терморегулятор/i), blk = pick(/контроллер|коммутацион/i);
         const tc = this.thermaticConfig;
@@ -45920,6 +45945,14 @@ const app = {
             (catalog.ufh_cables || []).forEach(c => {
                 if (noBoilerCtrl && c.id === 'CBL-MKESH-2X05') return;
                 if (c.id === 'CBL-VVG-3X15-TS' && wiredAll === 0) return;
+                // У ENGO клемма проводного термостата принимает до 1,0 мм² (паспорт
+                // ECB62-ZB): вместо ВВГнг 3×1,5 берём 3×1,0 с тем же метражом.
+                if (c.id === 'CBL-VVG-3X15-TS' && sys === 'engo' && catalog.ufh_cable_engo_ts) {
+                    const mE = cab.qty[c.id] || 0;
+                    if (mE > 0) add(catalog.ufh_cable_engo_ts, mE, cab.desc[c.id] +
+                        '<br><span style="font-size:11px;line-height:1.5;"><b>Почему 3×1,0:</b> клемма проводного термостата ECB62-ZB принимает до 1,0 мм² (паспорт ENGO), кабель 3×1,5 в нее не войдет.</span>', grpCab);
+                    return;
+                }
                 if (c.id === 'CBL-VVG-2X15-SV' && servos === 0) return;
                 const m = cab.qty[c.id] || 0;
                 if (m > 0) add(c, m, cab.desc[c.id], grpCab);
