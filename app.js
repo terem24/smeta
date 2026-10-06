@@ -20009,6 +20009,23 @@ const app = {
                             const msgReplies = replies.filter(r => r.parent_id === msg.id);
                             incomingIds.push(msg.id);
 
+                            // Автоматическое напоминание про счёт — не письмо, а уведомление:
+                            // показываем его во вкладке «Уведомления», в переписке его нет
+                            const kp = this.kpReminderInfo(msg.text);
+                            if (kp) {
+                                notifications.push({
+                                    id: msg.id,
+                                    type: 'kp_reminder',
+                                    projectName: kp.title,
+                                    status: 'info',
+                                    comment: kp.brief,
+                                    fullText: kp.rest,
+                                    time: msg.created_at,
+                                    isRead: readIds.includes(msg.id)
+                                });
+                                return;
+                            }
+
                             notifications.push({
                                 id: msg.id,
                                 type: 'admin_message',
@@ -20305,6 +20322,34 @@ const app = {
         }
     },
 
+    // Автоматические напоминания шлёт база (send_kp_invoice_reminders) обычным личным
+    // сообщением: монтажнику «выставить счёт», менеджеру «счёт не выставлен». Узнаём их
+    // по первой строке — так работают и старые, без правок на стороне базы.
+    // Возвращает { title, brief, rest } или null, если это обычное письмо.
+    kpReminderInfo: function (text) {
+        const t = String(text || '');
+        const head = t.match(/^📄 (Напоминание: выставить счёт|Счёт по КП не выставлен)\s*/);
+        if (!head) return null;
+        const rest = t.slice(head[0].length).trim();
+        const mm = rest.match(/КП по объекту «(.+?)» \(расчёт № ([^,)]+)(?:, ([^)]+))?\) ушло клиенту (\d{2}\.\d{2}\.\d{4})/);
+        const who = rest.match(/^Монтажник: ([^\n]+?)\.?\s*(?:\n|$)/);
+        const brief = (mm
+            ? [`«${mm[1]}»`, '№ ' + mm[2], mm[3], 'ушло ' + mm[4]].filter(Boolean).join(' · ')
+            : 'КП ушло клиенту, счёт не запрошен') + (who ? ' · ' + who[1] : '');
+        return { title: head[1], brief: brief, rest: rest };
+    },
+
+    // Список уведомлений открыт и виден — значит напоминания увидены: гасим по ним
+    // бейдж и ставим галочку «прочитано» (как в renderUserChat для писем)
+    markKpRemindersSeen: function () {
+        const fresh = (this._notifications || []).filter(n => n.type === 'kp_reminder' && !n.isRead).map(n => n.id);
+        if (!fresh.length) return;
+        this.markAdminMessagesRead(fresh);
+        this.markNotifState('read', fresh);
+        (this._notifications || []).forEach(n => { if (fresh.includes(n.id)) n.isRead = true; });
+        this.fetchNotifications();
+    },
+
     // ids — id уведомлений; из них берём только сообщения админа, остальные типы
     // (статусы смет, тарифы, чат) в этой таблице не участвуют
     markAdminMessagesRead: async function (ids) {
@@ -20312,7 +20357,7 @@ const app = {
         if (!u || !u.id || !u.authId) return;
         const list = Array.isArray(ids) ? ids : [ids];
         const known = this._notifications || [];
-        const msgIds = list.filter(id => known.some(n => n.id === id && n.type === 'admin_message'));
+        const msgIds = list.filter(id => known.some(n => n.id === id && (n.type === 'admin_message' || n.type === 'kp_reminder')));
         if (!msgIds.length) return;
 
         const CACHE_KEY = 'stout_msg_read';
@@ -20501,6 +20546,7 @@ const app = {
         this._notifTab = tab;
         this._userChatShown = false; // вкладку открывают заново — читать с последнего сообщения
         this.renderNotifTabs();
+        if (tab === 'list') this.markKpRemindersSeen();
         if (tab === 'chat') {
             this.renderUserChat();
             // На телефоне фокус сам поднимает клавиатуру и закрывает половину переписки,
@@ -20674,6 +20720,26 @@ const app = {
                         </div>
                     </div>
                 `;
+            } else if (n.type === 'kp_reminder') {
+                // Напоминание из базы: КП ушло клиенту, а счёт не запрошен. Кратко — в одну
+                // строку, полный текст — под «Подробнее»
+                const esc = (x) => String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+                h += `
+                    <div class="notification-card" style="background: rgba(245, 158, 11, 0.05); border-left: 4.5px solid #F59E0B; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; position: relative;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 800; color: #92400E; font-size: 10px; letter-spacing: 0.03em;">📄 ${esc(n.projectName).toUpperCase()}${unreadDot}</span>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-size: 10px; color: var(--text-sec); font-weight: 500;">${dateStr}</span>
+                                <span onclick="event.stopPropagation(); app.dismissNotification('${n.id}', event)" title="Удалить уведомление" style="cursor:pointer; color: var(--text-sec); font-size: 14px; line-height: 1;">✕</span>
+                            </div>
+                        </div>
+                        <div style="font-size: 12.5px; font-weight: 700; color: var(--text-main); line-height: 1.3;">${esc(n.comment)}</div>
+                        ${n.fullText ? `<details onclick="event.stopPropagation();" style="font-size: 11.5px; color: var(--text-sec); line-height: 1.4;">
+                            <summary style="cursor: pointer; color: #92400E; font-weight: 600;">Подробнее</summary>
+                            <div style="white-space: pre-wrap; margin-top: 4px;">${esc(n.fullText)}</div>
+                        </details>` : ''}
+                    </div>
+                `;
             } else if (n.type === 'invoice_reminder') {
                 const bg = 'rgba(245, 158, 11, 0.05)';
                 const borderCol = '#F59E0B';
@@ -20796,6 +20862,8 @@ const app = {
         this.markAdminMessagesRead(notifications.filter(n => n.type === 'admin_message').map(n => n.id));
 
         const h = this.renderNotificationCards(notifications);
+        // Карточки нарисованы с точкой «новое»; когда список на виду — гасим её для следующего раза
+        if (this._notifTab !== 'chat') setTimeout(() => this.markKpRemindersSeen(), 1500);
 
         // Письма админа у монтажника показываются во вкладке «Переписка», в списке их нет —
         // иначе одно и то же сообщение висело бы дважды, с двумя разными полями ответа.
@@ -21002,8 +21070,10 @@ const app = {
         // В кэше лежат и чужие ответы (они уходят с recipient_id = null и потому видны
         // всем), поэтому по sender_id отбираем строго свои.
         const all = (this._msgCache || []);
+        // Автоматические напоминания «выставить счёт» в переписку не попадают: это не
+        // разговор, они лежат во вкладке «Уведомления» (см. kpReminderInfo)
         const items = all
-            .filter(m => (m.type !== 'reply' && m.sender_id !== meId) || (m.type === 'reply' && m.sender_id === meId))
+            .filter(m => (m.type !== 'reply' && m.sender_id !== meId && !this.kpReminderInfo(m.text)) || (m.type === 'reply' && m.sender_id === meId))
             .slice()
             .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
@@ -21041,23 +21111,6 @@ const app = {
             // Подпись входящего: имя автора, если оно есть в сообщении (так подписаны
             // ответы наблюдателей), иначе привычное «Администратор».
             const from = mine ? '' : (m.type === 'broadcast' ? '📢 Объявление для всех' : (m.sender_name || 'Администратор'));
-            // Автоматическое напоминание «выставить счёт» (его шлёт база раз в сутки) —
-            // не разговор: сворачиваем в одну строку, чтобы оно не вытесняло живую переписку.
-            // Клик раскрывает полный текст. Узнаём по первой строке, поэтому работает и
-            // для старых напоминаний, и без правок на стороне базы.
-            if (!mine && /^📄 Напоминание: выставить счёт/.test(m.text || '')) {
-                const mm = String(m.text).match(/КП по объекту «(.+?)» \(расчёт № ([^,)]+)(?:, ([^)]+))?\) ушло клиенту (\d{2}\.\d{2}\.\d{4})/);
-                const brief = mm
-                    ? [`«${mm[1]}»`, '№ ' + mm[2], mm[3], 'ушло ' + mm[4]].filter(Boolean).join(' · ')
-                    : 'КП ушло клиенту, счёт не запрошен';
-                html += `
-                <div class="chat-sysnote${(this._userChatNotesOpen || {})[m.id] ? ' open' : ''}" id="umsg_${m.id}" onclick="app.toggleChatSysnote(this, '${m.id}')" title="Нажмите, чтобы прочитать целиком">
-                    <div class="chat-sysnote-head"><span>📄 Напоминание: выставить счёт</span><span class="chat-sysnote-time">${clockTime(m.created_at)}</span></div>
-                    <div class="chat-sysnote-brief">${esc(brief)}</div>
-                    <div class="chat-sysnote-full">${esc(String(m.text).replace(/^📄 Напоминание: выставить счёт\s*/, ''))}</div>
-                </div>`;
-                return;
-            }
             const src = m.reply_to_id ? byId[m.reply_to_id] : null;
             const quote = m.reply_to_id
                 ? this.chatQuoteHtml(src ? nameOf(src) : '', src ? src.text : '', src ? 'umsg_' + src.id : '')
@@ -21121,13 +21174,6 @@ const app = {
         const n = this._userChatUnseen || 0;
         btn.style.display = n > 0 ? 'block' : 'none';
         btn.textContent = n > 1 ? '↓ Новых сообщений: ' + n : '↓ Новое сообщение';
-    },
-
-    // Раскрытая карточка напоминания помнится между перерисовками переписки
-    toggleChatSysnote: function (el, id) {
-        const open = el.classList.toggle('open');
-        this._userChatNotesOpen = this._userChatNotesOpen || {};
-        if (open) this._userChatNotesOpen[id] = true; else delete this._userChatNotesOpen[id];
     },
 
     userChatToBottom: function () {
@@ -21353,7 +21399,7 @@ const app = {
         const canReply = isChat || n.type === 'admin_message';
         const icon = isChat ? '💬'
             : n.type === 'admin_message' ? '✉️'
-                : n.type === 'invoice_reminder' ? '📄'
+                : (n.type === 'invoice_reminder' || n.type === 'kp_reminder') ? '📄'
                     : n.status === 'confirmed' ? '✅'
                         : n.type === 'distributor_info' ? '🤝' : '🔔';
         const title = isChat ? (n.senderName || 'Новое сообщение') : (n.projectName || 'Уведомление');
