@@ -39472,6 +39472,9 @@ const app = {
         this.renderAdminMailBody();
     },
 
+    // Ступени автоотключения: какие типы писем на какой ступени. Должно совпадать с mail_tier_of в базе.
+    MAIL_TIER_KINDS: { t1: ['nudge', 'other'], t2: ['inactivity', 'message', 'stale', 'feedback'], t3: ['status', 'tariff'] },
+
     renderAdminMailBody: function () {
         const root = document.getElementById('admin_mail_root');
         const s = this._mailState;
@@ -39480,150 +39483,216 @@ const app = {
         const esc = x => String(x ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const d = x => new Date(x).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
         const dt = x => new Date(x).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        const kname = k => (this.MAIL_KIND_LABELS[k] || [k])[0];
+        const ro = this.isReadOnlyAdmin();
+        const dis = ro ? 'disabled' : '';
         const lim = s.limit;
-        const color = s.load_pct >= 95 ? '#EF4444' : s.load_pct >= 80 ? '#D97706' : '#10B981';
-        const barW = Math.min(100, s.pct);
-        const fW = Math.min(100, s.forecast_pct);
-
+        const load = s.load_pct;
+        const col = load >= s.tiers.t3 ? '#EF4444' : load >= s.tiers.t1 ? '#D97706' : '#10B981';
+        const clamp = v => Math.max(0, Math.min(100, v));
         const kinds = s.kinds || [];
+        const byKind = {}; kinds.forEach(k => { byKind[k.kind] = k; });
         const sumAll = kinds.reduce((a, k) => a + (k.per_cycle || 0), 0);
         const sumOn = kinds.filter(k => !k.off).reduce((a, k) => a + (k.per_cycle || 0), 0);
         const anyNoRate = kinds.some(k => k.per_cycle === null);
+        const maxUsed = Math.max(1, ...kinds.map(k => k.used || 0));
 
-        const stateOf = k => {
-            if (k.tier === 0) return ['защищён', '#0EA5E9'];
-            if (k.override === 'off') return ['выключен вручную', '#EF4444'];
-            if (k.override === 'on') return ['включён вручную', '#10B981'];
-            if (k.off) return [`отключён автоматически (порог ${k.threshold}%)`, '#D97706'];
-            return s.mode === 'auto' ? [`работает (отключится при ${k.threshold}%)`, '#10B981'] : ['работает', '#10B981'];
+        // ── Шкала: зоны ступеней, «уже ушло», прогноз, три двигаемых порога ──
+        const T = s.tiers;
+        const zones = `<i style="left:${clamp(T.t1)}%; width:${clamp(T.t2) - clamp(T.t1)}%; background:color-mix(in srgb,#D97706 14%,transparent)"></i>`
+            + `<i style="left:${clamp(T.t2)}%; width:${clamp(T.t3) - clamp(T.t2)}%; background:color-mix(in srgb,#EA580C 18%,transparent)"></i>`
+            + `<i style="left:${clamp(T.t3)}%; right:0; background:color-mix(in srgb,#DC2626 20%,transparent)"></i>`;
+        const knob = (id, n) => `<button type="button" class="mb-knob ${id}" data-t="${id}" style="left:${clamp(T[id])}%" ${dis}
+            role="slider" aria-label="Порог ступени ${n}" aria-valuemin="1" aria-valuemax="200" aria-valuenow="${T[id]}"><span>${n}</span></button>`;
+        const gauge = `
+            <div class="mb-gauge" id="mb_gauge" style="--mb-col:${col}">
+                <div class="mb-tip" id="mb_tip"></div>
+                <div class="mb-track" id="mb_track">
+                    <div class="mb-zones">${zones}</div>
+                    <div class="mb-fc" style="width:calc(${clamp(s.forecast_pct)}% - 4px)"></div>
+                    <div class="mb-used" style="width:calc(${clamp(s.pct)}% - 4px)"></div>
+                    <div class="mb-now" style="left:${clamp(load)}%" title="Нагрузка для автоотключения: ${load}%"></div>
+                    ${knob('t1', 1)}${knob('t2', 2)}${knob('t3', 3)}
+                </div>
+                <div class="mb-scale">${[0, 25, 50, 75, 100].map(v => `<i style="left:${v}%">${v}%</i>`).join('')}</div>
+            </div>`;
+
+        const tierBox = (id, n, title) => {
+            const names = this.MAIL_TIER_KINDS[id].map(kname).join(', ');
+            const off = this.MAIL_TIER_KINDS[id].every(k => byKind[k] && byKind[k].auto_off);
+            return `<div class="mb-tier ${id} ${off ? 'off' : ''}"><b><em>${n}</em>${title} · <span id="mb_tv_${id}" style="display:inline; color:inherit;">${T[id]}</span>%
+                ${off ? '<span class="ad-pill bad" style="margin-left:auto;">отключена</span>' : '<span class="ad-pill ok" style="margin-left:auto;">работает</span>'}</b>
+                <span>${esc(names)}</span></div>`;
         };
 
+        // ── Переключатели-сегменты ──
+        const seg = (items, cur, fn) => `<span class="mb-seg">${items.map(([v, label, cls]) =>
+            `<button type="button" class="${cur === v ? 'on ' + (cls || '') : ''}" ${dis} onclick="${fn}('${v}')">${label}</button>`).join('')}</span>`;
+
+        // ── Строки типов ──
+        const stateOf = k => {
+            if (k.tier === 0) return ['ok', 'защищён'];
+            if (k.override === 'off') return ['bad', 'выключен вручную'];
+            if (k.override === 'on') return ['ok', 'включён вручную'];
+            if (k.off) return ['warn', `отключён авто (от ${k.threshold}%)`];
+            return ['ok', 'работает'];
+        };
         const rows = kinds.map(k => {
             const [name, hint] = this.MAIL_KIND_LABELS[k.kind] || [k.kind, ''];
-            const [st, col] = stateOf(k);
+            const [pc, pt] = stateOf(k);
             const rate = k.rate_per_day === null ? '—' : (Math.round(k.rate_per_day * 10) / 10);
             const per = k.per_cycle === null ? '—' : '≈ ' + k.per_cycle + (k.estimated ? '*' : '');
-            const sel = k.tier === 0 ? '<span style="color:var(--text-sec);">всегда включено</span>'
-                : `<select onchange="app.setMailOverride('${k.kind}', this.value)" style="padding:4px 6px;">
-                    <option value="" ${!k.override ? 'selected' : ''}>Авто</option>
-                    <option value="on" ${k.override === 'on' ? 'selected' : ''}>Включено</option>
-                    <option value="off" ${k.override === 'off' ? 'selected' : ''}>Выключено</option>
-                   </select>`;
-            const extra = (k.off && k.per_cycle) ? `<div style="font-size:10px; color:var(--text-sec);">включить = ещё ≈ ${k.per_cycle} писем за период</div>` : '';
-            return `<tr style="border-top:1px solid var(--border);">
-                <td style="padding:8px;"><b style="color:var(--text-main);">${esc(name)}</b><div style="font-size:10px; color:var(--text-sec);">${esc(hint)}</div></td>
-                <td style="padding:8px; text-align:center;">${k.tier === 0 ? '—' : k.tier}</td>
-                <td style="padding:8px; text-align:center;"><b>${k.used}</b></td>
-                <td style="padding:8px; text-align:center;">${rate}</td>
-                <td style="padding:8px; text-align:center;">${per}</td>
-                <td style="padding:8px;"><span style="color:${col}; font-weight:600;">${esc(st)}</span>${extra}</td>
-                <td style="padding:8px;">${sel}</td>
-            </tr>`;
+            const sw = k.tier === 0
+                ? '<span style="color:var(--text-sec); font-size:12px;">всегда включено</span>'
+                : `<span class="mb-seg">
+                    <button type="button" class="${!k.override ? 'on' : ''}" ${dis} onclick="app.setMailOverride('${k.kind}','')" title="Решает режим «Авто»">Авто</button>
+                    <button type="button" class="${k.override === 'on' ? 'on good' : ''}" ${dis} onclick="app.setMailOverride('${k.kind}','on')">Вкл</button>
+                    <button type="button" class="${k.override === 'off' ? 'on bad' : ''}" ${dis} onclick="app.setMailOverride('${k.kind}','off')">Выкл</button>
+                   </span>`;
+            const extra = (k.off && k.per_cycle) ? ` title="Если включить: ещё ≈ ${k.per_cycle} писем за цикл"` : '';
+            return `<div class="mb-row">
+                <div class="nm"><b>${esc(name)}</b><span title="${esc(hint)}">${k.tier ? 'Ступень ' + k.tier + ' · ' : ''}${esc(hint)}</span></div>
+                <div class="mb-mini" title="Ушло в этом цикле: ${k.used}"><u><i style="width:${Math.round((k.used || 0) * 100 / maxUsed)}%"></i></u><em>${k.used}</em></div>
+                <div class="c">${rate}</div>
+                <div class="c">${per}</div>
+                <div><span class="ad-pill ${pc}"${extra}>${esc(pt)}</span></div>
+                <div>${sw}</div>
+            </div>`;
         }).join('');
 
         const logRows = (this._mailLog || []).map(r => {
-            const [name] = this.MAIL_KIND_LABELS[r.kind] || [r.kind];
-            const stt = r.skipped ? '<span style="color:#D97706;">не отправлено (отключено)</span>' : (r.ok ? 'отправлено' : '<span style="color:#EF4444;">ошибка</span>');
-            return `<tr style="border-top:1px solid var(--border);">
-                <td style="padding:6px 8px; white-space:nowrap;">${dt(r.created_at)}</td>
-                <td style="padding:6px 8px;">${esc(name)}</td>
-                <td style="padding:6px 8px;">${esc(r.subject || '')}</td>
-                <td style="padding:6px 8px;">${stt}</td>
-                <td style="padding:6px 8px; color:var(--text-sec);">${esc(r.source || '')}</td>
-            </tr>`;
+            const stt = r.skipped ? '<span style="color:#D97706;">не отправлено</span>' : (r.ok ? 'отправлено' : '<span style="color:#EF4444;">ошибка</span>');
+            return `<div class="mb-log"><span>${dt(r.created_at)}</span><span>${esc(kname(r.kind))}</span><span title="${esc(r.subject || '')}">${esc(r.subject || '')}</span><span>${stt}</span><span style="color:var(--text-sec);">${esc(r.source || '')}</span></div>`;
         }).join('');
 
-        const dis = this.isReadOnlyAdmin() ? 'disabled' : '';
-        const field = (label, id, val, min, max) => `<label class="ad-field"><span>${label}</span><input type="number" id="${id}" min="${min}" max="${max}" value="${val}" ${dis}></label>`;
         const hasOverrides = kinds.some(k => k.override);
+        const field = (label, id, val, min, max) => `<label class="ad-field"><span>${label}</span><input type="number" id="${id}" min="${min}" max="${max}" value="${val}" ${dis}></label>`;
 
         root.innerHTML = `
             <div class="ad-page-h">
                 <div><h3>Почта — лимит писем EmailJS</h3>
-                <div class="ad-sub">Цикл ${d(s.cycle_start)} — ${d(s.cycle_end)}, осталось ${s.days_left} дн. Сбрасывается сам
-                ${s.cycle_day}-го числа: отключённое автоматически включится заново.</div></div>
+                <div class="ad-sub">Цикл ${d(s.cycle_start)} — ${d(s.cycle_end)}, осталось ${s.days_left} дн. С ${s.cycle_day}-го числа счётчик начинается заново, а отключённое автоматически включается.</div></div>
             </div>
 
-            <div class="control-card" style="display:block; margin-bottom:14px;">
-                <div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;">
-                    <div><span style="font-size:28px; font-weight:700; color:${color};">${s.used}</span>
-                        <span style="color:var(--text-sec);"> из ${lim} (${s.pct}%)</span></div>
-                    <div style="color:var(--text-sec); font-size:13px;">Прогноз на конец цикла: <b style="color:var(--text-main);">≈ ${s.forecast}</b> (${s.forecast_pct}%)</div>
+            <div class="mb-top">
+                <div class="mb-card" style="--mb-col:${col}">
+                    <div class="mb-big">
+                        <div><b>${s.used}</b> <span>из ${lim} · ${s.pct}%</span></div>
+                        <span>Прогноз на конец цикла: <b style="font-size:inherit; color:var(--text-main);">≈ ${s.forecast}</b> (${s.forecast_pct}%)</span>
+                    </div>
+                    ${gauge}
+                    <div class="mb-tiers">${tierBox('t1', 1, 'Ступень 1')}${tierBox('t2', 2, 'Ступень 2')}${tierBox('t3', 3, 'Ступень 3')}</div>
+                    <div class="mb-note" style="margin:10px 0 0;">Тяните кружки 1, 2, 3 по шкале — порог сохранится сам. Наведите курсор на шкалу: покажу, что отключится при такой нагрузке.
+                        Треугольник — текущая нагрузка (<b>${load}%</b>, большее из «ушло» и «прогноз»${s.elapsed_days < 5 ? '; прогноз включится с 5-го дня цикла' : ''}).${s.adjust ? ` В счётчик добавлена поправка ${s.adjust >= 0 ? '+' : ''}${s.adjust}.` : ''}</div>
                 </div>
-                <div style="position:relative; height:12px; background:var(--border); border-radius:6px; margin:10px 0 6px; overflow:hidden;">
-                    <div style="position:absolute; inset:0 auto 0 0; width:${fW}%; background:${color}; opacity:.28;"></div>
-                    <div style="position:absolute; inset:0 auto 0 0; width:${barW}%; background:${color};"></div>
-                </div>
-                <div style="font-size:11px; color:var(--text-sec);">Тёмная часть — уже ушло, светлая — прогноз. Для автоотключения берётся большее из двух: <b>${s.load_pct}%</b>.
-                ${s.elapsed_days < 5 ? ' Прогноз включается с 5-го дня цикла — раньше он слишком шумный.' : ''}
-                ${s.adjust ? ` В счётчик добавлена поправка ${s.adjust >= 0 ? '+' : ''}${s.adjust}.` : ''}</div>
-            </div>
 
-            <div class="control-card" style="display:block; margin-bottom:14px;">
-                <b>Режим</b>
-                <div style="margin-top:8px; display:flex; gap:18px; flex-wrap:wrap;">
-                    <label><input type="radio" name="mail_mode" value="auto" ${s.mode === 'auto' ? 'checked' : ''} ${dis} onchange="app.setMailMode('auto')"> Авто — рассылки отключаются по ступеням</label>
-                    <label><input type="radio" name="mail_mode" value="manual" ${s.mode === 'manual' ? 'checked' : ''} ${dis} onchange="app.setMailMode('manual')"> Вручную — сами выключатели, без автоотключения</label>
-                </div>
-                <div style="font-size:12px; color:var(--text-sec); margin-top:8px; max-width:780px;">
-                    Ступень 1 (${s.tiers.t1}%): напоминания новичкам, прочее · Ступень 2 (${s.tiers.t2}%): неактивные, личные сообщения, вопросы без ответа, обратная связь ·
-                    Ступень 3 (${s.tiers.t3}%): статусы смет, тариф Профи. Коды регистрации и запросы счёта не отключаются никогда.
-                    Ручная отметка по строке ниже главнее авто и работает в обоих режимах.
-                </div>
-            </div>
-
-            <div class="control-card" style="display:block; margin-bottom:14px;">
-                <b>Регистрация по промокоду без кода из письма</b>
-                <div style="margin-top:8px; display:flex; gap:18px; flex-wrap:wrap;">
-                    <label><input type="radio" name="mail_promo" value="off" ${s.promo_no_code === 'off' ? 'checked' : ''} ${dis} onchange="app.setMailPromoMode('off')"> Всегда слать код</label>
-                    <label><input type="radio" name="mail_promo" value="auto" ${s.promo_no_code === 'auto' ? 'checked' : ''} ${dis} onchange="app.setMailPromoMode('auto')"> Без кода, когда лимит выбран (от 95%)</label>
-                    <label><input type="radio" name="mail_promo" value="always" ${s.promo_no_code === 'always' ? 'checked' : ''} ${dis} onchange="app.setMailPromoMode('always')"> Всегда без кода</label>
-                </div>
-                <div style="font-size:12px; color:var(--text-sec); margin-top:8px; max-width:780px;">
-                    Работает только для промокода магазина, который проверила база. Такому человеку код не нужен: промокод — пропуск, а адрес почты профиль попросит сверить.
-                    Независимо от режима, если письмо с кодом не ушло (лимит EmailJS), человек с рабочим промокодом всё равно зарегистрируется.
+                <div class="mb-card">
+                    <div class="mb-set"><b>Режим</b>
+                        ${seg([['auto', 'Авто'], ['manual', 'Вручную']], s.mode, 'app.setMailMode')}
+                        <span>«Авто» — рассылки отключаются по ступеням. «Вручную» — только ваши выключатели. Коды регистрации и запросы счёта не отключаются никогда; ручная отметка главнее авто.</span></div>
+                    <div class="mb-set"><b>Регистрация по промокоду без кода из письма</b>
+                        ${seg([['off', 'Слать код'], ['auto', 'Без кода при лимите ≥95%'], ['always', 'Всегда без кода']], s.promo_no_code, 'app.setMailPromoMode')}
+                        <span>Только для промокода магазина, проверенного базой; адрес профиль попросит сверить. Если письмо с кодом не ушло, человек с рабочим промокодом всё равно зарегистрируется.</span></div>
+                    <details class="ad-collapse" style="margin:0;">
+                        <summary>Лимит, цикл, поправка</summary>
+                        <div class="ad-form-grid" style="padding:10px 0 0;">
+                            ${field('Лимит писем в цикле', 'mail_limit', lim, 1, 100000)}
+                            ${field('День начала цикла', 'mail_cycle_day', s.cycle_day, 1, 28)}
+                            ${field('Поправка в этом цикле', 'mail_adjust', s.adjust, -100000, 100000)}
+                            <div class="ad-form-act"><button class="admin-btn ad-primary" ${dis} onclick="app.saveMailSettings()">Сохранить</button></div>
+                        </div>
+                        <div class="mb-note">Поправка подгоняет счётчик под «Requests received» в кабинете EmailJS: журнал не видит письма статусов смет и всё, что ушло до 05.10. Действует только в текущем цикле.</div>
+                    </details>
                 </div>
             </div>
 
-            <div style="overflow-x:auto;"><table class="inv-table ad-sticky" style="width:100%; border-collapse:collapse; font-size:12px;">
-                <thead><tr style="text-align:left; color:var(--text-sec);">
-                    <th style="padding:8px;">Тип письма</th>
-                    <th style="padding:8px; text-align:center;">Ступень</th>
-                    <th style="padding:8px; text-align:center;">Ушло в цикле</th>
-                    <th style="padding:8px; text-align:center;">В сутки</th>
-                    <th style="padding:8px; text-align:center;">Прогноз на цикл</th>
-                    <th style="padding:8px;">Состояние</th>
-                    <th style="padding:8px;">Выключатель</th>
-                </tr></thead><tbody>${rows}</tbody></table></div>
-            <div style="font-size:12px; color:var(--text-sec); margin:8px 0 14px; max-width:820px;">
-                Если включено всё: ≈ <b style="color:var(--text-main);">${sumAll}</b> писем за цикл${anyNoRate ? ' (по типам с данными)' : ''} при лимите ${lim}.
-                С текущими отключениями: ≈ <b style="color:var(--text-main);">${sumOn}</b>.
-                ${s.log_age_days < 3 ? '<br>* Журнал только начал копить данные, поэтому для кодов регистрации, неактивных и новичков темп — оценка по истории базы; остальные типы покажут цифры через пару дней.' : ''}
-                ${hasOverrides && !this.isReadOnlyAdmin() ? '<br><a href="#" onclick="app.resetMailOverrides(); return false;">Сбросить все ручные отметки (вернуть на Авто)</a>' : ''}
+            <div class="mb-rows">
+                <div class="mb-row head"><div>Тип письма</div><div>Ушло в цикле</div><div class="c">В сутки</div><div class="c">Прогноз</div><div>Состояние</div><div>Выключатель</div></div>
+                ${rows}
             </div>
+            <div class="mb-note">Если включено всё: ≈ <b style="color:var(--text-main);">${sumAll}</b> писем за цикл${anyNoRate ? ' (по типам с данными)' : ''} при лимите ${lim}; с текущими отключениями ≈ <b style="color:var(--text-main);">${sumOn}</b>.
+                ${s.log_age_days < 3 ? ' * Журнал только начал копить данные, поэтому для кодов, неактивных и новичков темп — оценка по истории базы.' : ''}
+                ${hasOverrides && !ro ? ' <a href="#" onclick="app.resetMailOverrides(); return false;">Сбросить ручные отметки (все на «Авто»)</a>' : ''}</div>
 
             <details class="ad-collapse">
-                <summary>Лимит и пороги</summary>
-                <div class="ad-form-grid">
-                    ${field('Лимит писем в цикле', 'mail_limit', lim, 1, 100000)}
-                    ${field('День начала цикла', 'mail_cycle_day', s.cycle_day, 1, 28)}
-                    ${field('Ступень 1, % нагрузки', 'mail_t1', s.tiers.t1, 1, 200)}
-                    ${field('Ступень 2, % нагрузки', 'mail_t2', s.tiers.t2, 1, 200)}
-                    ${field('Ступень 3, % нагрузки', 'mail_t3', s.tiers.t3, 1, 200)}
-                    ${field('Поправка к счётчику в этом цикле, писем', 'mail_adjust', s.adjust, -100000, 100000)}
-                    <div class="ad-form-act"><button class="admin-btn ad-primary" ${dis} onclick="app.saveMailSettings()">Сохранить</button></div>
-                </div>
-                <div class="ad-sub" style="margin:0 16px 8px; max-width:780px;">
-                    Поправка нужна, чтобы счётчик сошёлся с кабинетом EmailJS: журнал видит письма сайта и базы, а письма из Edge Function
-                    (статусы смет) и всё, что ушло до сегодняшнего дня, он не считал. Посмотрите «Requests received» в EmailJS и впишите разницу.
-                </div>
-            </details>
+                <summary>Последние письма (${(this._mailLog || []).length})</summary>
+                ${logRows ? `<div class="mb-rows" style="margin:8px 0 0;">${logRows}</div>` : '<div class="mb-note">Журнал пока пуст.</div>'}
+            </details>`;
 
-            <h4 style="margin:18px 0 6px;">Последние письма</h4>
-            ${logRows ? `<div style="overflow-x:auto;"><table class="inv-table" style="width:100%; border-collapse:collapse; font-size:12px;">
-                <thead><tr style="text-align:left; color:var(--text-sec);"><th style="padding:6px 8px;">Когда</th><th style="padding:6px 8px;">Тип</th><th style="padding:6px 8px;">Тема</th><th style="padding:6px 8px;">Итог</th><th style="padding:6px 8px;">Откуда</th></tr></thead>
-                <tbody>${logRows}</tbody></table></div>`
-                : '<div style="padding:16px; color:var(--text-sec);">Журнал пока пуст — письма начнут записываться после выкладки.</div>'}`;
+        this.bindMailGauge(root);
+    },
+
+    // Шкала: перетаскивание порогов (мышь, палец, стрелки с клавиатуры) и подсказка «что отключится при N%».
+    bindMailGauge: function (root) {
+        const track = root.querySelector('#mb_track');
+        const tip = root.querySelector('#mb_tip');
+        const gauge = root.querySelector('#mb_gauge');
+        if (!track || !tip || !gauge) return;
+        const s = this._mailState;
+        const T = Object.assign({}, s.tiers);
+        const kname = k => (this.MAIL_KIND_LABELS[k] || [k])[0];
+        const pctAt = ev => {
+            const r = track.getBoundingClientRect();
+            return Math.max(0, Math.min(100, Math.round((ev.clientX - r.left) * 100 / r.width)));
+        };
+        const showTip = (pct, x) => {
+            const off = ['t1', 't2', 't3'].filter(id => pct >= T[id]);
+            const names = off.flatMap(id => this.MAIL_TIER_KINDS[id]).map(kname);
+            tip.innerHTML = `<b>${pct}%</b><br>` + (names.length ? 'отключатся: ' + names.join(', ') : 'всё работает');
+            const gr = gauge.getBoundingClientRect();
+            tip.style.left = Math.max(70, Math.min(gr.width - 70, x - gr.left)) + 'px';
+            tip.classList.add('on');
+        };
+        track.addEventListener('mousemove', ev => { if (!root.querySelector('.mb-knob.drag')) showTip(pctAt(ev), ev.clientX); });
+        track.addEventListener('mouseleave', () => { if (!root.querySelector('.mb-knob.drag')) tip.classList.remove('on'); });
+
+        const setKnob = (id, v) => {
+            const order = ['t1', 't2', 't3'];
+            const i = order.indexOf(id);
+            const lo = i > 0 ? T[order[i - 1]] : 1;
+            const hi = i < 2 ? T[order[i + 1]] : 200;
+            T[id] = Math.max(lo, Math.min(hi, Math.max(1, Math.min(100, v))));
+            const k = root.querySelector(`.mb-knob[data-t="${id}"]`);
+            if (k) { k.style.left = T[id] + '%'; k.setAttribute('aria-valuenow', T[id]); }
+            const lab = root.querySelector('#mb_tv_' + id);
+            if (lab) lab.textContent = T[id];
+        };
+        let saveTimer = null;
+        const commit = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => this.saveMailTiers(T.t1, T.t2, T.t3), 350); };
+
+        root.querySelectorAll('.mb-knob').forEach(k => {
+            if (k.disabled) return;
+            const id = k.dataset.t;
+            k.addEventListener('pointerdown', ev => {
+                ev.preventDefault();
+                k.setPointerCapture(ev.pointerId);
+                k.classList.add('drag');
+            });
+            k.addEventListener('pointermove', ev => {
+                if (!k.classList.contains('drag')) return;
+                setKnob(id, pctAt(ev));
+                showTip(T[id], ev.clientX);
+            });
+            const end = ev => {
+                if (!k.classList.contains('drag')) return;
+                k.classList.remove('drag');
+                tip.classList.remove('on');
+                commit();
+            };
+            k.addEventListener('pointerup', end);
+            k.addEventListener('pointercancel', end);
+            k.addEventListener('keydown', ev => {
+                const step = ev.shiftKey ? 5 : 1;
+                if (ev.key === 'ArrowLeft' || ev.key === 'ArrowDown') { setKnob(id, T[id] - step); commit(); ev.preventDefault(); }
+                if (ev.key === 'ArrowRight' || ev.key === 'ArrowUp') { setKnob(id, T[id] + step); commit(); ev.preventDefault(); }
+            });
+        });
+    },
+
+    saveMailTiers: function (t1, t2, t3) {
+        const cfg = this.mailCfgFromState();
+        cfg.tiers = { t1, t2, t3 };
+        this.saveMailCfg(cfg);
     },
 
     // Состояние → объект app_settings.mail_budget (расчёт отдаёт всё, что в нём лежит).
