@@ -37704,6 +37704,7 @@ const app = {
                             })()}
                             <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:8px 20px; font-size:12px;">
                                 <div><span style="color:var(--text-sec);">ФИО:</span> <b style="color:var(--text-main);">${[user.last_name, user.first_name, user.middle_name].filter(Boolean).join(' ') || '—'}</b></div>
+                                <div id="admin_name_history" style="grid-column:1 / -1;"></div>
                                 <div><span style="color:var(--text-sec);">Дата рождения:</span> <b style="color:var(--text-main);">${user.birth_date ? new Date(user.birth_date).toLocaleDateString('ru-RU') : '—'}</b></div>
                                 <div><span style="color:var(--text-sec);">Регион:</span> <b style="color:var(--text-main);">${user.region || '—'}</b></div>
                                 <div><span style="color:var(--text-sec);">Населённый пункт:</span> <b style="color:var(--text-main);">${user.city || '—'}</b></div>
@@ -37933,8 +37934,24 @@ const app = {
         h += `<div id="admin_chat_sections" style="margin-top:20px;"></div>`;
         document.getElementById('admin_content').innerHTML = h;
         this.renderAdminUserExtras(user.id);
+        this.renderAdminNameHistory(user.id);
         this.renderAdminUserChatSections(user);
         this.renderAdminUserDevices(user.id);
+    },
+    // Журнал правок ФИО в карточке: когда и на что менял (user_name_history, 20261006).
+    // Пока миграция не применена или правок не было — строки нет.
+    renderAdminNameHistory: async function (userId) {
+        const el = document.getElementById('admin_name_history');
+        if (!el) return;
+        try {
+            const { data, error } = await supabaseClient.rpc('user_name_history_for', { p_user: userId });
+            if (error || !data || !data.length) return;
+            const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            el.innerHTML = `<details style="font-size:12px;"><summary style="cursor:pointer; color:var(--text-sec);">История ФИО (${data.length})</summary>` +
+                data.map(h => `<div style="margin:4px 0 0 12px; color:var(--text-main);">${new Date(h.changed_at).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' })}: ` +
+                    `${esc(h.old_name || '—')} → <b>${esc(h.new_name || '—')}</b>${h.by_admin ? ' <span style="color:var(--text-sec);">(правил администратор)</span>' : ''}</div>`).join('') +
+                `</details>`;
+        } catch (e) { /* не критично */ }
     },
     // Строка «Устройство» в карточке показывает только последний вход (users.last_device,
     // перезаписывается при каждом заходе) — по ней не видно, что человек заходит и с
@@ -39747,7 +39764,8 @@ const app = {
                 outcome = 'Удалён' + (r.deleted_at ? ' ' + dt(r.deleted_at) : '') + (r.frozen_at ? ' (был заморожен ' + dt(r.frozen_at) + ')' : '');
                 // Год после удаления заново зарегистрироваться нельзя, пока не разрешат
                 // (20260922_deleted_users_reg_block.sql).
-                const regTill = r.deleted_at ? new Date(new Date(r.deleted_at).getTime() + 365 * 864e5) : null;
+                const regTill = r.reg_until ? new Date(r.reg_until) : (r.deleted_at ? new Date(new Date(r.deleted_at).getTime() + 365 * 864e5) : null);
+                if (r.kind === 'manual') outcome = 'Удалён администратором' + (r.deleted_at ? ' ' + dt(r.deleted_at) : '');
                 if (r.reg_allowed_at) outcome += ' · регистрация разрешена ' + dt(r.reg_allowed_at);
                 else if (regTill && regTill > new Date()) outcome += ' · регистрация закрыта до ' + regTill.toLocaleDateString('ru-RU');
                 color = '#EF4444';
@@ -39781,7 +39799,7 @@ const app = {
                         ? `<button class="admin-action-btn btn-msg" onclick="app.viewAdminUser('${r.user_id}')">Карточка</button>`
                         : ''}
                     ${r.stage === 'deleted' && r.deleted_id && !r.reg_allowed_at && !isViewer
-                        && new Date(r.deleted_at).getTime() + 365 * 864e5 > Date.now()
+                        && (r.reg_until ? new Date(r.reg_until).getTime() : new Date(r.deleted_at).getTime() + 365 * 864e5) > Date.now()
                         ? `<button class="admin-action-btn btn-obj" onclick="app.allowReregistration('${r.deleted_id}')">Разрешить регистрацию</button>`
                         : ''}
                 </td>
@@ -42227,9 +42245,10 @@ const app = {
             // Спрашиваем до письма с кодом, чтобы не тратить лимит почты. Сбой проверки
             // не повод отказывать: запрет всё равно сработает в базе при первом входе.
             try {
-                const { data: blockTill } = await supabaseClient.rpc('reg_block_until', { p_email: email });
-                if (blockTill) {
-                    const msg = this.regBlockedText(blockTill);
+                const { data: blockRows } = await supabaseClient.rpc('reg_block_info', { p_email: email });
+                const blockInfo = Array.isArray(blockRows) ? blockRows[0] : blockRows;
+                if (blockInfo && blockInfo.till) {
+                    const msg = this.regBlockedText(blockInfo.till, blockInfo.kind);
                     if (authErrEl) { authErrEl.innerText = msg; authErrEl.style.display = 'block'; }
                     else app.alert(msg);
                     if (btn) { btn.disabled = false; btn.innerText = 'Зарегистрироваться'; }
@@ -42685,6 +42704,11 @@ const app = {
                 email: email
             };
 
+            // Название компании вместо ФИО в базу не отправляем: анкету попросят
+            // заполнить заново (то же правило держит триггер users_guard_name)
+            if (this.looksLikeCompany([this.state.tgUser.lastName, this.state.tgUser.givenName, this.state.tgUser.middleName].filter(Boolean).join(' '))) {
+                this.state.tgUser.lastName = ''; this.state.tgUser.givenName = ''; this.state.tgUser.middleName = '';
+            }
             const regFieldsObj = {
                 last_name: this.state.tgUser.lastName || undefined,
                 first_name: this.state.tgUser.givenName || undefined,
@@ -42720,7 +42744,7 @@ const app = {
             // Новая учётка с почтой или телефоном удалённого за неактивность — база её
             // не создаёт (users_block_deleted_reregistration). Запасная вставка ниже
             // упрётся в тот же запрет, поэтому выходим сразу и объясняем почему.
-            if (upsertError && /REG_BLOCKED_INACTIVE/.test(upsertError.message || '')) {
+            if (upsertError && /REG_BLOCKED_(INACTIVE|DELETED)/.test(upsertError.message || '')) {
                 const till = (String(upsertError.message).match(/(\d{2})\.(\d{2})\.(\d{4})/) || []);
                 await supabaseClient.auth.signOut();
                 delete this.state.tgUser;
@@ -42728,7 +42752,7 @@ const app = {
                 this.saveState();
                 this.syncUI();
                 this.render();
-                app.alert(this.regBlockedText(till[0] ? `${till[3]}-${till[2]}-${till[1]}` : null));
+                app.alert(this.regBlockedText(till[0] ? `${till[3]}-${till[2]}-${till[1]}` : null, /REG_BLOCKED_DELETED/.test(upsertError.message) ? 'manual' : 'inactive'));
                 return;
             }
 
@@ -43284,10 +43308,11 @@ const app = {
     // (unfreeze_user двигает last_visited), иначе ночной проход заморозил бы
     // человека той же ночью.
     // Текст для удалённого за неактивность, который пробует зарегистрироваться снова.
-    regBlockedText: function (till) {
+    regBlockedText: function (till, kind) {
         const d = till ? new Date(till) : null;
         const when = (d && !isNaN(d)) ? ' до ' + d.toLocaleDateString('ru-RU') : '';
-        return 'Учётная запись с этими данными была удалена за долгое отсутствие, повторная регистрация закрыта' + when +
+        const why = kind === 'manual' ? 'была удалена администратором' : 'была удалена за долгое отсутствие';
+        return 'Учётная запись с этими данными ' + why + ', повторная регистрация закрыта' + when +
             '. Чтобы открыть её раньше, напишите на dima24ba@gmail.com.';
     },
     // Снимает годовой запрет на повторную регистрацию удалённого за неактивность.
@@ -43360,7 +43385,7 @@ const app = {
                 app.alert('Профиль не удалился — похоже, RLS-политика в Supabase не разрешает администратору удалять чужие учётки.');
                 return;
             }
-            app.alert('🗑 Учётка и все данные удалены. Обратите внимание: логин/пароль в Supabase Auth это не затрагивает — при необходимости удалите его вручную в Dashboard.');
+            app.alert('🗑 Учётка и все данные удалены. Заново зарегистрироваться с этой почтой или телефоном нельзя 30 дней (снять запрет можно на вкладке «Неактивные»). Обратите внимание: логин/пароль в Supabase Auth это не затрагивает — при необходимости удалите его вручную в Dashboard.');
             this.renderAdminMain();
             this.loadAdminData(this._adminOffset);
         } catch (e) {
@@ -43706,6 +43731,16 @@ const app = {
         return this.TEMP_EMAIL_DOMAINS.some(tempDomain => domain === tempDomain);
     },
 
+    // Название компании вместо ФИО: «ООО Монтаж», «Сантехинжиниринг». Правило то же,
+    // что name_looks_like_company в базе (20261006_name_guard_and_deletion_block.sql) —
+    // менять вместе. Основы взяты те, что в настоящих фамилиях не встречаются.
+    COMPANY_FORMS: /(?:^|[^а-я])(?:ооо|оао|зао|пао|ип|тоо|ао|чп|нко)(?![а-я])/,
+    COMPANY_STEMS: /(?:^|[^а-я])(?:монтаж(?![а-я])|монтажн|сантех|инжинир|строи|групп[аы]?(?![а-я])|компани|сервис|трейд|холдинг|студи[яий]|мастерск|бригад|отоплен|теплотех|теплоснаб|водоснаб|энерго|ремонт|логистик|технолог|проектн|проектс)/,
+    looksLikeCompany: function (text) {
+        const t = String(text || '').toLowerCase().replace(/ё/g, 'е');
+        return this.COMPANY_FORMS.test(t) || this.COMPANY_STEMS.test(t);
+    },
+
     isJunkNameWord: function (word) {
         const w = String(word || '').toLowerCase().replace(/ё/g, 'е');
         // Кусок без единой кириллической буквы — не слово, а декоративный значок
@@ -43736,6 +43771,7 @@ const app = {
         if (/[A-Za-z]/.test(v)) return 'Поле «' + label + '» заполняется русскими буквами.';
         if (!/^[А-Яа-яЁё'’\s-]+$/.test(v)) return 'В поле «' + label + '» есть лишние символы: допустимы только буквы, дефис и пробел.';
         if (v.replace(/[^А-Яа-яЁё]/g, '').length < 2) return 'Поле «' + label + '» слишком короткое — не меньше двух букв.';
+        if (this.looksLikeCompany(v)) return 'В поле «' + label + '» нужно ваше личное имя, а не название компании. Компанию можно указать в реквизитах.';
         if (v.split(/[\s-]+/).some(part => this.isJunkNameWord(part))) {
             return 'Похоже, поле «' + label + '» набрано наугад. Впишите настоящие данные: их видит клиент в смете, счёте и договоре.';
         }
@@ -43804,6 +43840,7 @@ const app = {
             if (/[A-Za-z]/.test(all)) hard.push('латиница в ФИО');
             if (/\d/.test(all)) hard.push('цифры в ФИО');
             if (parts.some(p => String(p).split(/[\s-]+/).some(w => this.isJunkNameWord(w)))) hard.push('ФИО набрано наугад');
+            if (this.looksLikeCompany(all)) hard.push('в ФИО название компании');
         }
         if (u.phone && this.checkPhoneValue(u.phone)) hard.push('телефон не похож на настоящий');
         if (u.birth_date) {
