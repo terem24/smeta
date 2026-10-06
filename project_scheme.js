@@ -306,13 +306,17 @@
    *  дренаж снизу, термометр слева), корпус скруглён, внутри объём в литрах вместо кВт. */
   function hydroSep(x, y, kw, noThermo, buf) {
     var w = 9, h = 20, o = [];
-    o.push(rrect(x - w / 2, y - h / 2, w, h, buf ? 2.6 : 1, { c: '#000', w: LW.sym }));
     if (buf) {
+      // Буферная ёмкость — серый корпус с теплоизоляцией, как у бойлера: полосы по верху и низу,
+      // внутри объём. Гидравлический разделитель — пустая белая гильза, их не спутать.
+      o.push(rrect(x - w / 2, y - h / 2, w, h, 3.6, { f: GREY.body, c: '#000', w: LW.sym }));
+      o.push(pline([[x - w / 2, y - h / 2 + 2.6], [x + w / 2, y - h / 2 + 2.6]], { c: GREY.edge, w: 0.6 }));
+      o.push(pline([[x - w / 2, y + h / 2 - 2.6], [x + w / 2, y + h / 2 - 2.6]], { c: GREY.edge, w: 0.6 }));
       o.push(txt(x, y - 0.6, String(buf.vol), { size: SZ.txt, anchor: 'middle' }));
       o.push(txt(x, y + 3.4, 'л', { size: SZ.txt, anchor: 'middle' }));
-    } else if (kw) {
-      o.push(txt(x, y - 0.6, String(kw), { size: SZ.txt, anchor: 'middle' }));
-      o.push(txt(x, y + 3.4, 'кВт', { size: SZ.txt, anchor: 'middle' }));
+    } else {
+      // Мощность на разделителе не пишем: он подбирается по расходу, а не по кВт котла.
+      o.push(rrect(x - w / 2, y - h / 2, w, h, 1, { c: '#000', w: LW.sym }));
     }
     o.push(pline([[x, y - h / 2], [x, y - h / 2 - 1.5]]));
     o.push(airVent(x, y - h / 2 - 1.5));
@@ -633,7 +637,13 @@
       o.push(airVent(bx, bt - 1.37));
       o.push(pline([[bx - 1.31, bt - 1.37], [bx - 1.31, bt]]));
       o.push(pline([[bx + 1.3, bt - 1.37], [bx + 1.3, bt]]));
-      o.push(rrect(bx - bw / 2, bt, bw, bb - bt, cfg.hydro.buffer ? 2 : 0.4, { c: '#000', w: LW.sym }));
+      o.push(cfg.hydro.buffer
+        ? rrect(bx - bw / 2, bt, bw, bb - bt, 2.6, { f: GREY.body, c: '#000', w: LW.sym })
+        : rrect(bx - bw / 2, bt, bw, bb - bt, 0.4, { c: '#000', w: LW.sym }));
+      if (cfg.hydro.buffer) {
+        o.push(pline([[bx - bw / 2, bt + 2], [bx + bw / 2, bt + 2]], { c: GREY.edge, w: 0.6 }));
+        o.push(pline([[bx - bw / 2, bb - 2], [bx + bw / 2, bb - 2]], { c: GREY.edge, w: 0.6 }));
+      }
       o.push(pline([[bx - 1.31, bb], [bx - 1.31, bb + 1.37]]));
       o.push(pline([[bx + 1.3, bb], [bx + 1.3, bb + 1.37]]));
       o.push(pline([[bx - 1.31, bb + 1.37], [bx + 1.3, bb + 1.37]]));

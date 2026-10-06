@@ -61427,19 +61427,20 @@ const app = {
         const money = v => Math.round(v).toLocaleString('ru-RU');
         const f1 = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
         const y1 = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
-        let h = `<div class="bf-id">${it.id} · ${it.vol} л</div>` +
-            `<div class="bf-dim">высота ${it.hMm} мм · Ø ${it.dMm} мм · ${it.kg} кг пустая</div>`;
-        // На виду — только то, что требует внимания; объяснения и числа — под значком «i»
+        // На виду — только объём, график и затраты; артикул, габариты, экономия, шкала и предупреждения — под «i»
+        let h = '';
         const chips = [];
         if (!pick.fits) chips.push(['err', `Не поместится: нужен потолок от ${f1(it.hMm / 1000 + this.BUFFER_TOP_GAP_M)} м, задано ${f1(pick.ceilH)} м`]);
         if (!pick.twoRate) chips.push(['warn', 'Тариф один — ночного накопления нет. Включите «День-ночь» в «Стоимости отопления»']);
         else if (sav && sav.saving > 0 && !(sav.net > 0)) chips.push(['warn', `За ${this.BUFFER_LIFE_YEARS} лет службы не окупается`]);
         else if (sav && sav.saving <= 0) chips.push(['warn', 'При этих тарифах накопитель убыточен']);
         else if (pick.rechargeLimited) chips.push(['warn', 'Объём ограничен мощностью котла']);
-        h += chips.map(c => `<div class="bf-chip ${c[0]}">${c[0] === 'err' ? '⛔' : '⚠️'} ${c[1]}</div>`).join('');
+        h += chips.filter(c => c[0] === 'err').map(c => `<div class="bf-chip err">⛔ ${c[1]}</div>`).join('');
+        let top = `<div class="tip-p"><b>${it.id} · ${it.vol} л</b><br>высота ${it.hMm} мм · Ø ${it.dMm} мм · ${it.kg} кг пустая</div>`;
+        top += chips.filter(c => c[0] !== 'err').map(c => `<div class="bf-chip ${c[0]}">⚠️ ${c[1]}</div>`).join('');
         if (sav) {
             const ok = sav.saving > 0;
-            h += `<div class="bf-eco ${ok ? '' : 'neg'}">` +
+            top += `<div class="bf-eco ${ok ? '' : 'neg'}">` +
                 (ok ? `Экономия ≈ ${money(sav.saving)} ₽ за сезон` : `Убыток ≈ ${money(-sav.saving)} ₽ за сезон`) +
                 (sav.payback
                     ? `<br><span>Окупаемость ≈ ${y1(sav.payback)} года${sav.growth ? ' (с ростом тарифов)' : ''}</span>`
@@ -61449,18 +61450,18 @@ const app = {
             if (sav.capex > 0 && ok) {
                 const good = !!sav.payback && sav.payback <= this.BUFFER_LIFE_YEARS;
                 const w = Math.min(100, (sav.payback || 10) / 10 * 100);
-                h += `<div class="bf-mini"><div class="bf-mini-track"><i class="bf-mini-fill ${good ? 'ok' : 'low'}" style="width:${w}%"></i>` +
+                top += `<div class="bf-mini"><div class="bf-mini-track"><i class="bf-mini-fill ${good ? 'ok' : 'low'}" style="width:${w}%"></i>` +
                     `<u style="left:${this.BUFFER_WARRANTY_YEARS * 10}%"><span>гарантия ${this.BUFFER_WARRANTY_YEARS} г.</span></u><u style="left:${this.BUFFER_LIFE_YEARS * 10}%"><span>срок службы ${this.BUFFER_LIFE_YEARS} л.</span></u></div>` +
                     `<div class="bf-mini-ticks"><span>0</span><span>5</span><span>10 лет</span></div></div>`;
             }
             const gr = this.EL_TARIFF_FORECAST.rows;
-            h += `<label class="bf-growth"><input type="checkbox" ${sav.growth ? 'checked' : ''} onchange="app.toggleElGrowth(this.checked)"> Учитывать рост тарифов по прогнозу МЭР (+${gr.map(x => String(x.g).replace('.', ',')).join(' / +')} %)</label>`;
+            top += `<label class="bf-growth"><input type="checkbox" ${sav.growth ? 'checked' : ''} onchange="app.toggleElGrowth(this.checked)"> Учитывать рост тарифов по прогнозу МЭР (+${gr.map(x => String(x.g).replace('.', ',')).join(' / +')} %)</label>`;
             if (sav.capex > 0 && ok) h += `<button type="button" class="bf-btn" onclick="app.showBufferPayback()">График окупаемости</button>`;
             if (sav.capex > 0) h += `<div class="bf-cost">Затраты ${money(sav.capex)} ₽ — состав под значком «i»</div>`;
         }
         box.innerHTML = h;
         const tip = document.getElementById('buffer_tip');
-        if (tip) tip.innerHTML = this.bufferTipHtml(pick, sav);
+        if (tip) tip.innerHTML = top + this.bufferTipHtml(pick, sav);
     },
     // Содержимое подсказки «i»: как подобран объём, таблица вариантов, что входит в затраты.
     bufferTipHtml: function (pick, sav) {
