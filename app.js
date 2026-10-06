@@ -36947,7 +36947,7 @@ const app = {
             out.push('Подающая и обратная линии магистральной фильтрации');
         const fl = Math.max(1, parseInt(s.floors) || 1);
         for (let i = 1; i <= fl; i++) out.push('Распределение ХВС по потребителям ' + i + ' этажа');
-        if (s.hotWater) out.push('Линия загрузки бойлера косвенного нагрева');
+        if (this.dhwTankOn()) out.push('Линия загрузки бойлера косвенного нагрева');
         if (s.recirc) out.push('Линия рециркуляции ГВС');
         return out;
     },
@@ -47509,7 +47509,7 @@ const app = {
         // не сумма, а большее из двух: котлы греют бойлер с приоритетом ГВС,
         // отопление на это время отключается.
         const _need = this.boilerTargetPower(this.getHouseHeatLoss());
-        const dhwW = s.hotWater ? Math.round((_need.dhwKw || 0) * 1000) : 0;
+        const dhwW = this.dhwTankOn() ? Math.round((_need.dhwKw || 0) * 1000) : 0;
         let rows = [], totArea = 0, totQ = 0, totVent = 0;
         const hl = this.buildHeatLossData();
         if (hl && hl.length) {
@@ -48086,7 +48086,7 @@ const app = {
         // вариантах, различается только подпись узла на схеме.
         const elPolisGbm = elPolis && spec.some(i => /быстрого\s+монтажа/i.test(nameOf(i)));
 
-        const indirect = !!s.hotWater && has(/бойлер|водонагреват/i);
+        const indirect = this.dhwTankOn() && has(/бойлер|водонагреват/i);
         let tankVol = null;
         if (indirect) {
             const it = spec.find(i => /бойлер|водонагреват/i.test(nameOf(i)));
@@ -52102,11 +52102,370 @@ const app = {
         return this.FLAT_WH_STEPS[i];
     },
 
+    // ===== Электрические накопительные водонагреватели: объём И электрическая мощность =====
+    //
+    // Прибор берёт из сети 1,5–2 кВт часами подряд, поэтому подбор по одному объёму
+    // недостаточен: в подробном режиме у объекта есть выделенная мощность (лимит
+    // участка), и водонагреватель делит её с котлом, тёплым полом и бытом.
+    // Порядок подбора (согласован 06.10.2026, как у распознавания проекта):
+    // объём по расчёту → бренд STOUT → остальные → внутри бренда дешевле. Если
+    // STOUT SEW (2 кВт) в лимит не входит — берём тот же объём у другой модели,
+    // самой мощной из тех, что в лимит входят; не входит никто — оставляем самую
+    // слабую и пишем плашку, а не подменяем молча.
+    //
+    // Нагрев — по формуле V·4,187·ΔT/P при ΔT = 45 К (с 15 до 60 °C): на этой же
+    // основе завод Haier даёт время нагрева в своих паспортах.
+    WH_EL_DT: 45,
+
+    /** Электрическая мощность прибора, кВт. У «0,7 / 1,3 / 2,0 кВт» — наибольшая ступень. */
+    whKw: function (it) {
+        if (!it) return 0;
+        if (it.kwMax > 0) return it.kwMax;
+        const src = String(it.kw || '') || ((String(it.name || '').match(/((?:\d+(?:[.,]\d+)?\s*\/\s*)*\d+(?:[.,]\d+)?)\s*кВт/) || [])[1] || '');
+        const nums = src.replace(/,/g, '.').match(/\d+(?:\.\d+)?/g) || [];
+        return nums.length ? Math.max.apply(null, nums.map(Number)) : 0;
+    },
+
+    /** Время нагрева бака с 15 до 60 °C, в минутах. */
+    whHeatMin: function (it) {
+        const kw = this.whKw(it);
+        return (it && kw > 0 && it.vol > 0) ? it.vol * 4.187 * this.WH_EL_DT / kw / 60 : 0;
+    },
+    whHeatText: function (it) {
+        if (it && it.heat) return it.heat;
+        const m = Math.round(this.whHeatMin(it) / 5) * 5;
+        if (!m) return '—';
+        return m >= 60 ? `${Math.floor(m / 60)}ч${m % 60 ? ' ' + (m % 60) + ' мин' : ''}` : `${m} мин`;
+    },
+
+    /** Все модели ряда без дублей: основные позиции и их замены. */
+    elWhAll: function () {
+        const seen = new Set(), out = [];
+        (catalog.water_heaters_el || []).forEach(m => [m].concat(m.alts || []).forEach(a => {
+            if (a && a.vol > 0 && !seen.has(a.id)) { seen.add(a.id); out.push(a); }
+        }));
+        return out;
+    },
+
+    /**
+     * Подбор водонагревателя: needVol — нужный объём, л.
+     * opts.maxUnits — сколько приборов можно поставить параллельно (квартира — 1);
+     * opts.budgetKw — сколько киловатт можно взять из сети, 0 — ограничения нет.
+     */
+    pickElWaterHeater: function (needVol, opts) {
+        opts = opts || {};
+        const all = this.elWhAll();
+        if (!all.length) return null;
+        const maxUnits = Math.max(1, opts.maxUnits || 1);
+        const budget = opts.budgetKw > 0 ? opts.budgetKw : 0;
+        const rank = a => (a.brand === 'STOUT' ? 0 : 1);
+        const vols = [...new Set(all.map(a => a.vol))].sort((a, b) => a - b);
+        const maxVol = vols[vols.length - 1];
+        const need = Math.max(1, needVol || 0);
+        let n = Math.max(1, Math.ceil(need / maxVol - 1e-9));
+        const shortVol = n > maxUnits;
+        if (shortVol) n = maxUnits;
+        const per = need / n;
+        const vol = vols.find(v => v >= per - 1e-9) || maxVol;
+        const cands = all.filter(a => a.vol === vol)
+            .sort((a, b) => rank(a) - rank(b) || (a.price || 0) - (b.price || 0));
+        let item = cands[0], overBudget = false, byPower = false;
+        if (budget > 0 && this.whKw(item) * n > budget + 1e-9) {
+            const fit = cands.filter(a => this.whKw(a) * n <= budget + 1e-9)
+                .sort((a, b) => this.whKw(b) - this.whKw(a) || rank(a) - rank(b) || (a.price || 0) - (b.price || 0));
+            if (fit.length) { item = fit[0]; byPower = true; }
+            else {
+                item = cands.slice().sort((a, b) => this.whKw(a) - this.whKw(b))[0];
+                overBudget = true;
+            }
+        }
+        const kwUnit = this.whKw(item);
+        const alts = all.filter(a => a.id !== item.id)
+            .sort((a, b) => (a.vol - b.vol) || ((a.price || 0) - (b.price || 0)));
+        return {
+            item: item, qty: n, vol: vol, totalVol: vol * n, needVol: need,
+            kwUnit: kwUnit, kwTotal: kwUnit * n, budgetKw: budget,
+            shortVol: shortVol || vol * n < need - 1e-9,
+            overBudget: overBudget, byPower: byPower, alts: alts,
+            preferred: cands[0]
+        };
+    },
+
+    /** Мощность электрического тёплого пола в квартире, кВт — она делит лимит с водонагревателем. */
+    flatElUfhKw: function () {
+        if (!this.usesElectricUfh() || !(this.state.systems || []).includes('tp')) return 0;
+        const area = Math.max(0, parseFloat(this.state.tp1) || 0);
+        if (!(area > 0)) return 0;
+        const cover = this.state.flatUfhCover === 'laminate' ? 'laminate' : 'tile';
+        return this.pickUfhMats(area, cover).reduce((a, m) => a + (m.watt || 0), 0) / 1000;
+    },
+
+    /**
+     * Сколько киловатт квартиры достаётся водонагревателю: выделенная мощность без
+     * 15 % на быт и без тёплого пола. 0 — ограничения нет (быстрый режим или лимит снят).
+     */
+    flatWhBudgetKw: function () {
+        if (!this.state.detailedRooms) return 0;
+        const lim = this.elLimitKw();
+        if (!(lim > 0)) return 0;
+        return Math.max(0.1, lim * (1 - this.EL_HOUSEHOLD_RESERVE) - this.flatElUfhKw());
+    },
+
+    flatWaterHeaterPlan: function () {
+        return this.pickElWaterHeater(this.flatWhVolume(), { maxUnits: 1, budgetKw: this.flatWhBudgetKw() });
+    },
+
     flatWaterHeater: function () {
-        const pool = (catalog.water_heaters_el || []).slice().sort((x, y) => x.vol - y.vol);
+        const p = this.flatWaterHeaterPlan();
+        return p ? p.item : null;
+    },
+
+    // ===== Электрическое ГВС в доме (только подробный режим) =====
+    //
+    // Вместо бойлера косвенного нагрева — STOUT SEW (до трёх штук по 100 л). Мощность
+    // делится с электрокотлом: водонагревателю отдаётся не больше WH_EL_HOUSE_SHARE доступной
+    // мощности участка (по практике: отопление в мороз важнее), остальное — котлу
+    // (getElBoilerBudget вычитает то, что водонагреватель взял по факту).
+    WH_EL_HOUSE_SHARE: 0.4,
+
+    dhwElectric: function () {
+        return !this.isFlat() && !!this.state.detailedRooms && !!this.state.hotWater && this.state.dhwSource === 'electric';
+    },
+    // Бойлер косвенного нагрева в смете: ГВС есть и греет его не электрический водонагреватель
+    dhwTankOn: function () {
+        return !!this.state.hotWater && !this.dhwElectric();
+    },
+    setDhwSource: function (src, event) {
+        if (!this.checkAccess('pro', event)) return;
+        this.state.dhwSource = (src === 'electric') ? 'electric' : 'boiler';
+        // У SEW нет патрубка рециркуляции — контур ей нечем обслужить
+        if (this.state.dhwSource === 'electric') this.state.recirc = false;
+        this.syncUI();
+        this.render();
+        this.saveState();
+    },
+    houseWhAvailKw: function () {
+        const lim = this.elLimitKw();
+        return lim > 0 ? lim * (1 - this.EL_HOUSEHOLD_RESERVE) : 0;
+    },
+    houseWhPlan: function () {
+        if (!this.dhwElectric()) return null;
+        const avail = this.houseWhAvailKw();
+        return this.pickElWaterHeater(this.dhwTankPlan().targetVol, {
+            maxUnits: 3, budgetKw: avail > 0 ? avail * this.WH_EL_HOUSE_SHARE : 0
+        });
+    },
+    dhwElectricKw: function () {
+        const p = this.houseWhPlan();
+        return p ? p.kwTotal : 0;
+    },
+
+    /**
+     * Текст позиции и плашки водонагревателя — один на квартиру и на дом, чтобы
+     * подсказки не разъехались. ctx.why — почему такой объём; ctx.shared — с кем
+     * делится мощностью («тёплым полом», «котлом»). Возвращает { tip, warn }:
+     * tip — для addToBill, warn — плашка раздела.
+     */
+    elWhBlock: function (plan, ctx) {
+        ctx = ctx || {};
+        const wh = plan.item, n = plan.qty, kw = plan.kwUnit;
+        const fmt = x => String(Math.round(x * 100) / 100).replace('.', ',');
+        const amps = plan.kwTotal * 1000 / 230;
+        const isSew = wh.brand === 'STOUT' && !!wh.plug;
+        const lim = this.state.detailedRooms ? this.elLimitKw() : 0;
+        const paras = [ctx.why];
+        paras.push(`<b>Нагрев:</b> ${this.whHeatText(wh)} с 15 до 60 °C при мощности ${fmt(kw)} кВт${n > 1 ? ' у каждого из ' + n + ' приборов' : ''}. Это важнее объёма: бак, который греется четыре часа, второй душ подряд не выдаст.`);
+        if (plan.budgetKw > 0 && ctx.budgetText) {
+            paras.push(ctx.budgetText);
+        } else if (plan.budgetKw > 0) {
+            paras.push(`<b>Электрическая мощность:</b> ${n > 1 ? n + ' прибора берут' : 'прибор берёт'} ${fmt(plan.kwTotal)} кВт (около ${fmt(amps)} А). Из выделенных ${lim} кВт на водонагреватель доступно ${fmt(plan.budgetKw)} кВт: ${Math.round(this.EL_HOUSEHOLD_RESERVE * 100)} % оставлено на освещение и быт` + (ctx.shared ? `, ещё часть занята ${ctx.shared}` : '') + '.');
+        } else if (this.state.detailedRooms) {
+            paras.push(`<b>Электрическая мощность:</b> ограничение снято — подбор идёт по объёму. Прибор берёт ${fmt(plan.kwTotal)} кВт (около ${fmt(amps)} А).`);
+        } else {
+            paras.push(`<b>Электрическая мощность:</b> прибор берёт ${fmt(plan.kwTotal)} кВт (около ${fmt(amps)} А). Проверка по выделенной мощности — в подробном режиме.`);
+        }
+        if (isSew) {
+            paras.push(`<b>Питание:</b> штатный шнур с вилкой 1,5 м. По паспорту — отдельная розетка с заземлением, автомат на 10 А и УЗО на линии. Автомат и УЗО в смете, линия и розетка — по месту.`);
+            paras.push(`<b>Стена:</b> полный бак весит ${wh.wetKg} кг${n > 1 ? ' каждый' : ''} — стена должна держать с запасом (анкеры в комплекте). Не над ванной, унитазом, умывальником и дверным проёмом; от боковой стенки до стены не менее 50 мм (паспорт SEW, п. 5).`);
+            paras.push(`<b>Клапан:</b> предохранительный клапан 0,8 МПа с обратным клапаном — в комплекте, ставится сразу на вход холодной воды. Между ним и баком кранов быть не должно, слив — трубкой в канализацию.`);
+            paras.push(`<b>Режим:</b> не для проточной работы; только в отапливаемом помещении (от 5 до 50 °C), вода питьевого качества. Магниевый анод менять раз в два года, ТЭН чистить от накипи раз в год — жёсткая вода сокращает срок службы ТЭНа.`);
+        } else {
+            paras.push(`<b>Питание:</b> ${kw > 2.2
+                ? 'мощность выше 2,2 кВт — нужна отдельная линия с автоматом и УЗО, обычную розетку так грузить нельзя.'
+                : 'обычная розетка выдерживает такую мощность, отдельная линия не нужна.'}`);
+            paras.push(`<b>В комплекте:</b> предохранительный клапан и крепёж — отдельными позициями они не считаются.`);
+        }
+        if (wh.priceEst) {
+            paras.push(`<b>Цена:</b> ориентировочная. Модель новая, в прайсе ТЕРЕМ её ещё нет: взята цена Haier того же объёма (тот же завод, тот же ТЭН). Заводская появится позже и подставится сама.`);
+        }
+        let warn = '';
+        if (plan.overBudget) {
+            warn += this.noteBox('warn', 'Водонагреватель не вписывается в электрическую мощность.',
+                `Нужно ${fmt(plan.kwTotal)} кВт, доступно ${fmt(plan.budgetKw)} кВт.`,
+                `<div class="tip-p">Самая слабая модель этого объёма берёт ${fmt(plan.kwTotal)} кВт, а из выделенных ${lim} кВт на водонагреватель остаётся ${fmt(plan.budgetKw)} кВт.</div>` +
+                `<div class="tip-p"><b>Что делать:</b> увеличить выделенную мощность, убрать из расчёта часть электроприёмников или взять объём поменьше — греться он будет быстрее.</div>`);
+        } else if (plan.byPower) {
+            const pw = this.whKw(plan.preferred);
+            warn += this.noteBox('info', 'Водонагреватель подобран по лимиту сети.',
+                `Вместо ${fmt(pw)} кВт — ${fmt(kw)} кВт.`,
+                `<div class="tip-p">${plan.preferred.name} берёт ${fmt(pw * n)} кВт, а на водонагреватель доступно ${fmt(plan.budgetKw)} кВт. Взят тот же объём с мощностью ${fmt(kw)} кВт — греется чуть дольше.</div>`);
+        }
+        if (plan.shortVol) {
+            warn += this.noteBox('warn', 'Нужный объём больше, чем даёт ряд.',
+                `Нужно ${Math.round(plan.needVol)} л, в смете ${plan.totalVol} л.`,
+                `<div class="tip-p">Электрические накопительные здесь — до ${plan.qty} шт. по 100 л. Для такого расхода ГВС надёжнее бойлер косвенного нагрева от котла.</div>`);
+        }
+        if (wh.priceEst) {
+            warn += this.noteBox('info', 'Цена STOUT SEW ориентировочная.',
+                'Новинка, в прайсе её ещё нет — цена как у Haier того же объёма.', null);
+        }
+        return { tip: this.autoTip(wh.name, paras), warn: warn };
+    },
+
+    // ===== Расширительный бак водонагревателя: бак или только клапан =====
+    //
+    // Водонагреватель с обратным клапаном на входе — закрытая система: вода при нагреве
+    // расширяется (около 1,7 % при нагреве на 45 К), деваться ей некуда, и давление растёт до
+    // срабатывания предохранительного клапана. Либо клапан изредка сбрасывает по капле в
+    // канализацию (дёшево, но капает при каждом нагреве), либо расширение принимает мембранный
+    // бак. Совет по умолчанию: в квартире бака нет — ему нет места, а дренаж клапана
+    // выводится в канализацию; в загородном доме место в котельной или санузле есть, и бак
+    // стоит. Переключается одним щелчком (setWhExp), обвязка перестраивается сама.
+    //
+    // Объём — по формуле V = V_вн · 0,017 / (1 − (P_пред + 1) / (P_макс + 1)), как у бака
+    // бойлера косвенного нагрева: предварительное давление 3 бар (после редуктора), P_макс 7 бар
+    // (клапан SEW открывается на 8). Берём наименьший белый бак ряда STW-0015 не меньше расчёта.
+    WH_EXP_P_PRE: 3,
+    WH_EXP_P_MAX: 7,
+    WH_EXP_K: 0.017,
+
+    whExpMode: function () {
+        const m = this.state.whExp;
+        if (m === 'tank' || m === 'valve') return m;
+        return this.isFlat() ? 'valve' : 'tank';
+    },
+    setWhExp: function (m) {
+        this.state.whExp = (m === 'tank') ? 'tank' : 'valve';
+        this.saveState();
+        this.render();
+    },
+    whExpNeed: function (totalVol) {
+        return totalVol * this.WH_EXP_K / (1 - (this.WH_EXP_P_PRE + 1) / (this.WH_EXP_P_MAX + 1));
+    },
+    whExpPick: function (totalVol) {
+        const need = this.whExpNeed(totalVol);
+        const pool = this.expTankPool('dhw').filter(x => x.color === 'white').sort((a, b) => a.vol - b.vol);
         if (!pool.length) return null;
-        const need = this.flatWhVolume();
-        return pool.find(x => x.vol >= need) || pool[pool.length - 1];
+        return { need: need, item: pool.find(x => x.vol >= need) || pool[pool.length - 1], pool: pool };
+    },
+
+    /**
+     * Обвязка STOUT SEW: термосмеситель на выходе, расширительный бак или только клапан,
+     * переходы по резьбе. add(item, qty, tip, group) — addToBill из render. Возвращает плашку.
+     *
+     * Резьбы (паспорт SEW, табл. 2): оба патрубка бака — G 1/2" НР. Цепочка собрана только из
+     * стыков «наружная ↔ внутренняя» и проверена по каталожным позициям:
+     *   выход ГВС: патрубок НР 1/2 → кран с американкой ВР/НР 1/2 (из комплекта подключения) →
+     *     [бак: тройник 1/2 ВР, ниппель 3/4×1/2 на тройнике и ещё один к клапану] или
+     *     [без бака: футорка 3/4×1/2] → кран с гайкой ВР 3/4 → горячий вход клапана (НР G3/4).
+     *   вход ХВС: подмес на клапан берётся тройником 3/4 ВР, в него — футорка 3/4×1/2 от крана
+     *     американки бака и кран с гайкой НР 3/4 на холодный вход клапана; ещё один такой кран — на
+     *     выходе клапана в разводку.
+     * Бак стоит на линии ГОРЯЧЕЙ воды сразу за краном бака: расширение выходит через горячий
+     * патрубок. На холодной линии ему мешал бы обратный клапан комбинированного предохранительного
+     * узла SEW, а резьба этого узла паспортом не заявлена — стык пришлось бы придумывать.
+     */
+    elWhPiping: function (plan, ctx, add) {
+        const wh = plan.item;
+        if (!(wh.brand === 'STOUT' && wh.plug)) return '';
+        const grp = ctx.group, n = plan.qty;
+        const F = id => this.findCatalogItemById(id);
+        const fut = F('SFT-0029-003412'), nip = catalog.nipple_34_12;
+        const tee12 = F('SFT-0020-000012'), tee34 = F('SFT-0020-000034');
+        const nutHot = F('SVB-0009-000020'), nutSide = F('SVB-1009-000020');
+        const mode = this.whExpMode();
+        const one = n === 1;
+        const nm = (it, key) => it ? { ...it, originalId: it.id + '_' + key } : null;
+        let note = '';
+
+        // --- термосмеситель на выходе (паспорт, табл. 5: «Требуется установка термостатического смесительного клапана») ---
+        const mixAll = (catalog.dhw_mix_valves || []).filter(v => v.size === '3/4"');
+        if (mixAll.length && nutHot && nutSide) {
+            const dq = this.dhwDesignFlow();
+            const qM3h = dq.qTotal * 3.6;
+            const isR = this.state.brandMode === 'rommer';
+            const fits = mixAll.filter(v => qM3h <= v.kv * Math.sqrt(0.3))
+                .sort((a, b) => (((isR && !a.rommer) ? 1 : 0) - ((isR && !b.rommer) ? 1 : 0)) || (a.price - b.price));
+            const sel = fits[0] || mixAll[mixAll.length - 1];
+            add({ ...sel, alts: (catalog.dhw_mix_valves || []).filter(v => v.id !== sel.id), noCheapenAlts: true }, 1,
+                this.autoTip(sel.name, [
+                    `<b>Зачем:</b> Бак греется до 60–75 °C (ручка), на разбор нужно 45–50 °C. Клапан подмешивает холодную воду и не даёт обжечься. Паспорт SEW рекомендует его при скачках температуры воды.`,
+                    `<b>Расход:</b> расчётный ${String(Math.round(qM3h * 100) / 100).replace('.', ',')} м³/ч по СП 30.13330.2020 (вероятностный метод); клапан Kv ${String(sel.kv).replace('.', ',')} пропускает до ${String(Math.round(sel.kv * Math.sqrt(0.3) * 100) / 100).replace('.', ',')} м³/ч при перепаде 0,3 бар.`,
+                    `<b>Резьба:</b> наружная G 3/4" под накидную гайку — на каждый патрубок идёт кран с гайкой, они в смете ниже.`
+                ]), grp);
+            add(nm(nutHot, 'whmix_hot'), 1, this.autoTip(nutHot.name, [
+                `<b>Где:</b> горячий вход клапана. Внутренняя резьба 3/4" садится на ${mode === 'tank' && one ? 'ниппель 3/4"×1/2" от тройника бака' : (one ? 'футорку 3/4"×1/2" от крана бака' : 'горячую линию')}, накидная гайка — на клапан.`
+            ]), grp);
+            add(nm(nutSide, 'whmix_io'), 2, this.autoTip(nutSide.name, [
+                `<b>Где:</b> холодный вход клапана (в тройник подмеса) и выход клапана в разводку ГВС. Наружная резьба 3/4" — в ответные ВР, накидная гайка — на клапан. Отсекают клапан для обслуживания.`
+            ]), grp);
+            if (tee34) add(nm(tee34, 'whmix_cold'), 1, this.autoTip(tee34.name, [
+                `<b>Где:</b> на линии холодной воды перед краном бака — отвод холодной воды на подмес к клапану. Кран бака и холодная ветка клапана остаются отдельными: бак отключается, подмес не страдает.`
+            ]), grp);
+            if (one && fut) add(nm(fut, 'whmix_cold_fut'), 1, this.autoTip(fut.name, [
+                `<b>Где:</b> на холодной линии: НР 3/4" — в тройник подмеса, ВР 1/2" — на наружную резьбу крана бака (американка ВР/НР 1/2").`
+            ]), grp);
+            if (one && mode === 'valve' && fut) add(nm(fut, 'whmix_hot_fut'), 1, this.autoTip(fut.name, [
+                `<b>Где:</b> на выходе ГВС: ВР 1/2" — на наружную резьбу крана бака, НР 3/4" — в кран с гайкой горячего входа клапана.`
+            ]), grp);
+            if (!one) note += this.noteBox('info', `Приборов ${n} — общая линия.`,
+                'Тройники к приборам и общий подмес — по месту.',
+                `<div class="tip-p">В смете один термосмеситель и его краны на общую горячую линию. Тройники, которыми ${n} водонагревателя собираются на общую холодную и горячую линии, зависят от системы труб — их даёт раздел разводки.</div>` +
+                `<div class="tip-p">Каждый прибор оснащён своим комплектом: кранами и предохранительным клапаном из поставки.</div>`);
+        }
+
+        // --- расширительный бак или только клапан ---
+        const exp = this.whExpPick(plan.totalVol);
+        if (mode === 'tank' && exp && catalog.tank_kit) {
+            const eI = exp.item;
+            const expAlts = this.expTankPool('dhw').filter(x => x.id !== eI.id).map(x => ({ ...x, noCheapen: true }));
+            add({ ...eI, alts: expAlts, sortRank: -2 }, 1, this.autoTip(eI.name, [
+                `<b>Зачем:</b> принимает расширение воды при нагреве — иначе предохранительный клапан капает при каждом включении. Объём по расчёту ${String(Math.round(exp.need * 10) / 10).replace('.', ',')} л (${plan.totalVol} л воды, давление 3 бар до 7 бар), взят ближайший ${eI.vol} л.`,
+                `<b>Где:</b> на линии горячей воды сразу за краном водонагревателя. Предохранительный клапан из поставки остаётся — он страхует и бак.`,
+                `<b>Если места нет:</b> в плашке раздела — «Без бака»: обвязка перестроится на клапан-дренаж.`
+            ]), grp);
+            add({ ...catalog.tank_kit, sortRank: -1 }, 1, this.autoTip(catalog.tank_kit.name, [
+                `<b>Зачем:</b> отсечной кран с фиксатором и сливом: бак отключается и сбрасывается без слива водонагревателя. Внутренняя резьба 3/4" — на ниппель от тройника, накидная гайка — на патрубок бака.`
+            ]), grp);
+            if (eI.vol <= 25) {
+                const isStout = (this.state.expansionTankMountType === 'stout');
+                const mountItem = (catalog.mounting_system || []).find(x => x.id === (isStout ? 'SAC-0030-000825' : 'ASKON-83115'));
+                if (mountItem) {
+                    const other = (catalog.mounting_system || []).find(x => x.id === (isStout ? 'ASKON-83115' : 'SAC-0030-000825'));
+                    add({ ...mountItem, originalId: 'SAC-0030-000825', alts: other ? [other] : [] }, 1,
+                        'Крепление расширительного бака ГВС (L-кронштейн или комплект STOUT): бак держит кронштейн, а не резьба узла.', grp);
+                }
+            }
+            if (tee12) add(nm(tee12, 'whexp_tee'), 1, this.autoTip(tee12.name, [
+                `<b>Где:</b> на горячей линии сразу за краном водонагревателя: проход — к термосмесителю, отвод — на бак. Наружная резьба 1/2" крана вкручивается в тройник.`
+            ]), grp);
+            if (nip) add(nm(nip, 'whexp_nip'), one ? 2 : 1, this.autoTip(nip.name, [
+                `<b>Где:</b> ${one ? 'два: один от прохода тройника к крану с гайкой клапана, второй — от отвода тройника к комплекту подключения бака. Резьба 1/2" — в тройник, 3/4" — в ответную внутреннюю.' : 'от отвода тройника к комплекту подключения бака: 1/2" в тройник, 3/4" во внутреннюю резьбу комплекта.'}`
+            ]), grp);
+        }
+        // плашка: текущий режим и переключатель
+        const act = (m, t) => `<a href="#" style="text-decoration:underline;font-weight:700;color:inherit;" onclick="event.preventDefault();event.stopPropagation();app.setWhExp('${m}')">${t}</a>`;
+        if (mode === 'tank' && exp) {
+            note += this.noteBox('info', `Расширительный бак ${exp.item.vol} л.`,
+                `Принимает расширение воды при нагреве. ${act('valve', 'Без бака')}`,
+                `<div class="tip-p">Без бака расширение сбрасывает предохранительный клапан — по капле в канализацию при каждом нагреве. Годится, если места нет (обвязка перестроится: исчезнут бак, комплект подключения и тройник).</div>`);
+        } else if (mode === 'valve') {
+            note += this.noteBox('info', 'Расширительного бака нет.',
+                `Расширение воды сбрасывает клапан — изредка капает. ${act('tank', 'Поставить бак')}`,
+                `<div class="tip-p">${this.isFlat() ? 'В квартире бак по умолчанию не ставят — нет места. Сброс клапана выводят трубкой в канализацию (в паспорте SEW — наклонно, без перегибов).' : 'Совет: в загородном доме место есть, а бак избавляет от капанья клапана — стоит его поставить.'}</div>` +
+                `<div class="tip-p">Нажмите «Поставить бак»: в смету добавятся бак STW-0015 ряда ГВС, комплект подключения, тройник и ниппели.</div>`);
+        }
+        return note;
     },
 
     setFlatUfhKind: function (kind) {
@@ -55432,7 +55791,7 @@ const app = {
         const heat = parseFloat(heatKw) || 0;
         const withReserve = heat * this.BOILER_RESERVE_K;
         let dhwKw = 0, tankVol = 0;
-        if (this.state.hotWater) {
+        if (this.dhwTankOn()) {
             tankVol = this.dhwTankPlan().vol || 0;
             dhwKw = tankVol * this.DHW_TANK_KW_PER_L;
         }
@@ -67704,11 +68063,21 @@ const app = {
         const lblCoolant = document.getElementById('lbl_coolant');
         if (lblCoolant) lblCoolant.style.display = this.state.detailedRooms ? 'block' : 'none';
         const blkRecircWrap = document.getElementById('blk_recirc_wrap');
-        if (blkRecircWrap) blkRecircWrap.style.display = this.state.detailedRooms ? 'flex' : 'none';
+        if (blkRecircWrap) blkRecircWrap.style.display = (this.state.detailedRooms && !this.dhwElectric()) ? 'flex' : 'none';
+        // Чем греть горячую воду: бойлер от котла или электрический водонагреватель.
+        // Только подробный режим дома: мощность и лимит сети считаются там же.
+        const blkDhwSrc = document.getElementById('blk_dhw_src');
+        if (blkDhwSrc) {
+            blkDhwSrc.style.display = (this.state.detailedRooms && !this.isFlat()) ? 'flex' : 'none';
+            const _src = this.dhwElectric() ? 'electric' : 'boiler';
+            document.querySelectorAll('.dhw-src-tab').forEach(t => {
+                t.className = 'tab dhw-src-tab' + (t.dataset.src === _src ? ' active' : '');
+            });
+        }
         const blkTowelWrap = document.getElementById('blk_towel_wrap');
         if (blkTowelWrap) blkTowelWrap.style.display = this.state.detailedRooms ? 'block' : 'none';
         const blkTankPumpWrap = document.getElementById('blk_tank_pump_wrap');
-        if (blkTankPumpWrap) blkTankPumpWrap.style.display = this.state.detailedRooms ? 'block' : 'none';
+        if (blkTankPumpWrap) blkTankPumpWrap.style.display = (this.state.detailedRooms && !this.dhwElectric()) ? 'block' : 'none';
         const blkSewerType = document.getElementById('blk_sewer_type');
         if (blkSewerType) blkSewerType.style.display = this.state.detailedRooms ? 'block' : 'none';
 
@@ -69586,7 +69955,8 @@ const app = {
     // лимит снят, подбор идёт по расчётной мощности.
     getElBoilerBudget: function () {
         const lim = this.elLimitKw();
-        return lim > 0 ? lim * (1 - this.EL_HOUSEHOLD_RESERVE) : 0;
+        // Электрический водонагреватель берёт свои киловатты из того же лимита
+        return lim > 0 ? Math.max(0.5, lim * (1 - this.EL_HOUSEHOLD_RESERVE) - this.dhwElectricKw()) : 0;
     },
     // Хватает ли выделенной мощности на расчётную — считаем и при перерисовке
     // панели (syncUI), и на каждый шаг ползунка, поэтому вынесено отдельно.
@@ -70792,7 +71162,7 @@ const app = {
         const parts = [];
         if ((s.systems || []).includes('rad')) parts.push('радиаторы от насоса котла');
         if ((s.systems || []).includes('tp')) parts.push('тёплый пол через узел подмеса');
-        if (s.hotWater) parts.push('бойлер через трёхходовой клапан');
+        if (this.dhwTankOn()) parts.push('бойлер через трёхходовой клапан');
         const why = this._bsAutoWhy || [];
         // Под кнопками — коротко: что выбрано и почему; что значит каждая схема —
         // под «i» заголовка, а оговорки к собранной обвязке — в шапке раздела 2.
@@ -71506,9 +71876,9 @@ const app = {
         // Режимы те же, что и у старшего прибора: контур ГВС у 1002 полноценный,
         // с насосом загрузки, датчиком бойлера и антилегионеллой.
         let dhw = 'off';
-        if (s.hotWater) dhw = dhwPump ? 'boiler' : (hasDigital ? 'boiler_ct' : 'external');
+        if (this.dhwTankOn()) dhw = dhwPump ? 'boiler' : (hasDigital ? 'boiler_ct' : 'external');
         else if (boilerList.some(b => b.kind === 'gas' && b.circuits === 2)) dhw = 'ct';
-        const recirc = !!(s.hotWater && s.recirc);
+        const recirc = !!(this.dhwTankOn() && s.recirc);
 
         /**
          * --- Датчики температуры ---
@@ -71822,9 +72192,9 @@ const app = {
         // группой, либо ГВС проходит мимо контроллера.
         const hasDigital = boilerList.some(b => b.iface === 'digital');
         let dhw = 'off';
-        if (s.hotWater) dhw = dhwPump ? 'boiler' : (hasDigital ? 'boiler_ct' : 'external');
+        if (this.dhwTankOn()) dhw = dhwPump ? 'boiler' : (hasDigital ? 'boiler_ct' : 'external');
         else if (boilerList.some(b => b.kind === 'gas' && b.circuits === 2)) dhw = 'ct';
-        const recirc = !!(s.hotWater && s.recirc);
+        const recirc = !!(this.dhwTankOn() && s.recirc);
 
         // --- Датчики NTC ---
         // Все шесть входов именные, и все датчики идут в комплекте поставки
@@ -75198,17 +75568,18 @@ const app = {
         // котла и живёт в одном разделе с ним, а здесь котла нет вовсе.
         if (this.flatNeedsHeater()) {
             currentSectionTitle = "1. Водонагреватель";
-            const wh = this.flatWaterHeater();
+            const _whPlan = this.flatWaterHeaterPlan();
+            const wh = _whPlan && _whPlan.item;
+            let _whWarn = '';
             if (wh) {
                 const grpW = "1.1. Электрический водонагреватель";
-                addToBill(wh, 1, this.autoTip(wh.name, [
-                    `<b>Почему такой объём:</b> ${wh.vol} л — по числу жильцов и наличию ванны. Душ забирает около 30 л горячей воды на человека, ванна — около 50. Не подходит — меняется кнопкой замены, там весь ряд от 30 до 100 л.`,
-                    `<b>Нагрев:</b> ${wh.heat} с холодной до 60 °C при мощности ${wh.kw} кВт. Это важнее объёма: бак на 100 л, который греется четыре часа, второй душ подряд не выдаст.`,
-                    `<b>Питание:</b> ${(parseFloat(String(wh.kw).replace(',', '.')) || 0) > 2.2
-                        ? 'мощность выше 2,2 кВт — нужна отдельная линия с автоматом и УЗО, обычную розетку так грузить нельзя.'
-                        : 'обычная розетка выдерживает такую мощность, отдельная линия не нужна.'}`,
-                    `<b>В комплекте:</b> предохранительный клапан и крепёж — отдельными позициями они не считаются.`
-                ]), grpW);
+                const _ufhKw = this.flatElUfhKw();
+                const _blk = this.elWhBlock(_whPlan, {
+                    why: `<b>Почему такой объём:</b> ${wh.vol} л — по числу жильцов и наличию ванны. Душ забирает около 30 л горячей воды на человека, ванна — около 50. Не подходит — меняется кнопкой замены, там весь ряд от 30 до 100 л.`,
+                    shared: _ufhKw > 0 ? `электрическим тёплым полом (${String(Math.round(_ufhKw * 10) / 10).replace('.', ',')} кВт)` : ''
+                });
+                _whWarn = _blk.warn;
+                addToBill({ ...wh, alts: _whPlan.alts }, 1, _blk.tip, grpW);
 
                 const kit = catalog.water_heater_kit || [];
                 if (kit.length) {
@@ -75216,8 +75587,19 @@ const app = {
                         `<b>Зачем:</b> Отсекают прибор по холодной и по горячей и разбираются по американке — снять водонагреватель на чистку от накипи, не разрезая подводку.`
                     ]), grpW);
                 }
+                if (wh.plug) {
+                    _whWarn += this.elWhPiping(_whPlan, { group: "1.2. Обвязка водонагревателя" }, addToBill);
+                    const _pw = (catalog.water_heater_power || [])[0], _rcd = (catalog.ufh_el_power || [])[2];
+                    const grpP = "1.3. Питание водонагревателя";
+                    if (_pw) addToBill(_pw, 1, this.autoTip(_pw.name, [
+                        `<b>Зачем:</b> Паспорт SEW требует отдельный автомат на 10 А: прибор берёт около 8,7 А, на общую розеточную группу его вешать нельзя.`
+                    ]), grpP);
+                    if (_rcd) addToBill(_rcd, 1, this.autoTip(_rcd.name, [
+                        `<b>Зачем:</b> Паспорт SEW требует УЗО на линии: корпус прибора под напряжением опаснее всего во влажном помещении.`
+                    ]), grpP);
+                }
             }
-            flushBill("1. Водонагреватель");
+            flushBill("1. Водонагреватель", _whWarn || null);
         }
 
         // === 1. КОТЁЛ + ВОДОНАГРЕВАТЕЛЬ ===
@@ -75681,7 +76063,26 @@ const app = {
                 : `2.2.${idx} Обвязка ${idx + 1}-го Электрического котла`;
         };
 
-        if (this.state.hotWater) {
+        this._whHeatWarn = '';
+        this._whPipeWarn = '';
+        if (this.dhwElectric()) {
+            this.state.waterZones = this.state.waterZones || [];
+            const _hp = this.houseWhPlan();
+            if (_hp && _hp.item) {
+                const _fmtH = x => String(Math.round(x * 10) / 10).replace('.', ',');
+                const _avail = this.houseWhAvailKw(), _lim = this.elLimitKw();
+                const _hb = this.elWhBlock(_hp, {
+                    why: `<b>Почему такой объём:</b> ${_hp.totalVol} л${_hp.qty > 1 ? ' (' + _hp.qty + ' × ' + _hp.vol + ' л)' : ''} — расчётный запас горячей воды ${Math.round(_hp.needVol)} л на ${this.state.res} жильцов и приборы санузлов. Не подходит — меняется кнопкой замены, там весь ряд от 30 до 100 л.`,
+                    budgetText: _hp.budgetKw > 0
+                        ? `<b>Электрическая мощность:</b> ${_hp.qty > 1 ? _hp.qty + ' прибора берут' : 'прибор берёт'} ${_fmtH(_hp.kwTotal)} кВт. Из выделенных ${_lim} кВт ${Math.round(this.EL_HOUSEHOLD_RESERVE * 100)} % оставлено на освещение и быт, водонагревателю отдано не больше ${Math.round(this.WH_EL_HOUSE_SHARE * 100)} % остатка (${_fmtH(_hp.budgetKw)} кВт) — отопление в мороз важнее. Электрокотлу остаётся ${_fmtH(this.getElBoilerBudget())} кВт.`
+                        : ''
+                });
+                this._whHeatWarn = _hb.warn;
+                addToBill({ ..._hp.item, alts: _hp.alts }, _hp.qty, _hb.tip);
+                markRigAnchor('dhw', _hp.item.id);
+            }
+        }
+        if (this.dhwTankOn()) {
             this.state.waterZones = this.state.waterZones || [];
             // Объём бака, потребность по санузлам и состав приборов считает
             // dhwTankPlan. Раньше всё это лежало здесь же по месту, но тот же
@@ -75834,6 +76235,7 @@ const app = {
         // первой плашкой сметы, пока их не учли — чтобы не потерялись.
         const _reqNote = this.projectReqsNote();
         if (_reqNote) boilerWarnHtml = _reqNote + (boilerWarnHtml || '');
+        if (this._whHeatWarn) boilerWarnHtml = this._whHeatWarn + (boilerWarnHtml || '');
         flushBill("1. Котёл + водонагреватель", boilerWarnHtml);
 
         // === 2. ОБВЯЗКА КОТЕЛЬНОЙ ===
@@ -75873,7 +76275,7 @@ const app = {
         // ставим только если он не в коробке (dhwSensor — артикул докупаемого датчика,
         // у Vaillant 306257; у Navien датчик в комплекте, и dhwSensor нет).
         const addTankLoadingKit = (grp, boiler) => {
-            if (!this.state.hotWater) return;
+            if (!this.dhwTankOn()) return;
             // Узел загрузки переключает поток котла на змеевик бойлера — без бойлера
             // в смете он ни к чему не подключается.
             if (rigDropped('dhw')) return;
@@ -76109,12 +76511,35 @@ const app = {
         let hasElSel = selBoilers.some(b => b.type !== 'gas' && !b.noPump) && !rigDropped('el');
         // tankLoadSchemeEff, а не state: при схеме котельной «Без гидрострелки»
         // коллектора, на котором висела бы насосная группа бойлера, нет.
-        let tankNeedsPumpGroup = !!this.state.hotWater && !rigDropped('dhw') && this.tankLoadSchemeEff() === 'pump';
+        let tankNeedsPumpGroup = this.dhwTankOn() && !rigDropped('dhw') && this.tankLoadSchemeEff() === 'pump';
         if (!tankNeedsPumpGroup) {
             if (hasGasSel) addTankLoadingKit(gasBoilerGrp(0), selBoilers.find(b => b && b.type === 'gas'));
             if (hasElSel) addTankLoadingKit(elBoilerGrp(0));
         }
-        if (this.state.hotWater && !rigDropped('dhw')) {
+        if (this.dhwElectric() && !rigDropped('dhw')) {
+            const _hp = this.houseWhPlan();
+            if (_hp && _hp.item) {
+                const grp = "2.3. Обвязка Водонагревателя";
+                const kit = catalog.water_heater_kit || [];
+                if (kit.length) {
+                    addToBill(kit[0], _hp.qty * 2, this.autoTip(kit[0].name, [
+                        `<b>Зачем:</b> Отсекают прибор по холодной и по горячей и разбираются по американке — снять водонагреватель на чистку от накипи, не разрезая подводку. Два крана на каждый прибор.`
+                    ]), grp);
+                }
+                if (_hp.item.plug) {
+                    this._whPipeWarn = this.elWhPiping(_hp, { group: grp }, addToBill);
+                    const _pw = (catalog.water_heater_power || [])[0], _rcd = (catalog.ufh_el_power || [])[2];
+                    const grpP = "2.3.1. Питание водонагревателя";
+                    if (_pw) addToBill(_pw, _hp.qty, this.autoTip(_pw.name, [
+                        `<b>Зачем:</b> Паспорт SEW требует отдельный автомат на 10 А на каждый прибор: он берёт около 8,7 А, на общую розеточную группу его вешать нельзя.`
+                    ]), grpP);
+                    if (_rcd) addToBill(_rcd, Math.ceil(_hp.qty / 2), this.autoTip(_rcd.name, [
+                        `<b>Зачем:</b> Паспорт SEW требует УЗО на линии. Одно УЗО 25 А закрывает пару линий водонагревателей.`
+                    ]), grpP);
+                }
+            }
+        }
+        if (this.dhwTankOn() && !rigDropped('dhw')) {
             let grp = "2.3. Обвязка Водонагревателя";
             // Объём — того бойлера, что стоит в смете (dhwTankPlan), а не прикидка по
             // жильцам: при 3 жильцах и баке 300 л бак ГВС считался от 150 л.
@@ -77360,7 +77785,7 @@ const app = {
         const _wallLoops = [];
         if (this.tQ_val > 0) _wallLoops.push(1, 1);
         if ((this.state.systems || []).indexOf('rad') >= 0) _wallLoops.push(1, 1);
-        if (this.state.hotWater) _wallLoops.push(1, 1, 1);
+        if (this.dhwTankOn()) _wallLoops.push(1, 1, 1);
         if (!_wallLoops.length) _wallLoops.push(1, 1);
         _wallCfg = {
             gasCount: (selBoilers || []).filter(b => b && b.type === 'gas').length,
@@ -77995,7 +78420,7 @@ const app = {
         });
 
         // 2. Бойлер ГВС
-        if (this.state.hotWater && !rigDropped('dhw')) {
+        if (this.dhwTankOn() && !rigDropped('dhw')) {
             let grp = "2.3. Обвязка Водонагревателя";
             // Греющий контур несёт не мощность котельной, а мощность ЗМЕЕВИКА: больше
             // него в бак всё равно не уйдёт. Паспортные киловатты берём из TANK_COIL_KW
@@ -78635,8 +79060,8 @@ const app = {
                 const _parts = [];
                 if (hasRad) _parts.push('радиаторы питает насос котла');
                 if (hasTp && tpArea > 0) _parts.push('тёплый пол — свой узел подмеса');
-                if (this.state.hotWater) _parts.push('бойлер — трёхходовой клапан котла');
-                const _lostTankPump = !!this.state.hotWater && this.state.tankLoadScheme === 'pump';
+                if (this.dhwTankOn()) _parts.push('бойлер — трёхходовой клапан котла');
+                const _lostTankPump = this.dhwTankOn() && this.state.tankLoadScheme === 'pump';
                 const _multi = selBoilers.length > 1;
                 let det = _p('Схема выбрана вручную. Котёл и потребители — одно кольцо: насос котла продавливает ' +
                     'всю систему, поэтому его напор проверяет гидравлический расчёт радиаторов.') +
@@ -78659,6 +79084,7 @@ const app = {
             }
             if (_sb) hydroWarnHtml = hydroWarnHtml ? (_sb + hydroWarnHtml) : _sb;
         }
+        if (this._whPipeWarn) hydroWarnHtml = this._whPipeWarn + (hydroWarnHtml || '');
         flushBill("2. Обвязка котельной", hydroWarnHtml);
 
 
@@ -81936,7 +82362,7 @@ const app = {
                 // БЛОК: 2.1 Внешнее водоснабжение
                 // ==========================================
                 let extWaterGroup = "2.1 Внешнее водоснабжение";
-                if (this.state.hotWater) {
+                if (this.dhwTankOn()) {
                     addToWorks("Подключение ХВС к бойлеру косвенного нагрева ГВС", 1, 5000, "компл", extWaterGroup);
                 }
                 if (this.state.well) {
@@ -83010,8 +83436,20 @@ const app = {
             addToWorks("Монтаж распределительного коллектора котельной", steelManifoldCount, 5500, "шт", obvyazkaGroup);
         }
 
+        // 2а. Электрический водонагреватель дома (STOUT SEW): свои расценки из квартирного набора
+        if (this.dhwElectric()) {
+            const _wp = this.houseWhPlan();
+            if (_wp && _wp.item) {
+                addToWorks("Монтаж электрического водонагревателя", _wp.qty, 6000, "шт", boilerGroup);
+                addToWorks("Обвязка водонагревателя (краны и подводки)", _wp.qty, 3500, "компл", boilerGroup);
+                if (_wp.item.plug) addToWorks("Установка автомата и УЗО в щит", _wp.qty, 1500, "линия", boilerGroup);
+                if (this.whExpMode() === 'tank') addToWorks("Установка расширительного бака водоснабжения", 1, 4500, "шт", boilerGroup);
+                let dhwTapCountEl = this.currentEquipmentList.filter(x => String(x.group || '').startsWith("2.3") && ((x.name || '').toLowerCase().includes("американка") || (x.name || '').toLowerCase().includes("кран"))).reduce((sum, x) => sum + x.q, 0);
+                if (dhwTapCountEl > 0) addToWorks("Монтаж запорной арматуры и американок бойлера", dhwTapCountEl, 950, "шт", boilerGroup);
+            }
+        }
         // 2. Бойлер и водоснабжение (Монтаж котла и бойлера + Обвязка котельной)
-        if (this.state.hotWater) {
+        if (this.dhwTankOn()) {
             addToWorks("Монтаж водонагревателя / бойлера", 1, 9000, "шт", boilerGroup);
             addToWorks("Подключение бойлера косвенного нагрева (монтаж гидравлики)", 1, 12000, "компл", boilerGroup);
             addToWorks("Установка расширительного бака водоснабжения", 1, 4500, "шт", boilerGroup);
@@ -83045,6 +83483,11 @@ const app = {
             const gWh = "1.7 Водонагреватель";
             addToWorks("Монтаж электрического водонагревателя", 1, 6000, "шт", gWh);
             addToWorks("Обвязка водонагревателя (краны и подводки)", 1, 3500, "компл", gWh);
+            const _wp = this.flatWaterHeaterPlan();
+            if (_wp && _wp.item && _wp.item.plug) {
+                addToWorks("Установка автомата и УЗО в щит", 1, 1500, "линия", gWh);
+                if (this.whExpMode() === 'tank') addToWorks("Установка расширительного бака водоснабжения", 1, 4500, "шт", gWh);
+            }
         }
         if (this.usesElectricUfh()) {
             const aEl = Math.max(0, parseFloat(this.state.tp1) || 0);
