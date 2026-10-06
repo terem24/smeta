@@ -68825,6 +68825,9 @@ const app = {
     },
     setElTariffMode: function (mode) {
         this.state.elTariffMode = (mode === 'day_night') ? 'day_night' : 'single';
+        // Буферная ёмкость подбирается по режиму тарифа (ночное накопление есть только при «день-ночь»),
+        // поэтому смета пересчитывается до обновления панели, иначе панель и строка сметы остаются от прежнего режима.
+        if (this.bufferActive()) this.render();
         this.syncUI();
         this.saveState();
     },
