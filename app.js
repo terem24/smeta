@@ -61066,19 +61066,34 @@ const app = {
             saving += m.days * (shift * (r.tariffDay - r.tariffNight) - loss * r.tariffNight);
             shiftSum += shift * m.days; days += m.days;
         });
-        const price = it.price > 0 ? it.price : 0;
+        const cap = this.bufferCapex(it);
+        const capex = cap.tank + cap.rig + cap.exp;
         return {
             eFull: eFull, loss: loss, saving: saving, shiftAvg: days ? shiftSum / days : 0, days: days,
-            limited: limited, price: price, kwCap: kwCap,
-            payback: (price > 0 && saving > 0) ? price / saving : null
+            limited: limited, price: cap.tank, kwCap: kwCap, cap: cap, capex: capex, est: !!it.priceEst,
+            payback: (capex > 0 && saving > 0) ? capex / saving : null
         };
+    },
+    // Затраты на буфер: сама ёмкость, обвязка (всё в разделе сметы 2.7: ниппели, муфты, переходы, кран) и
+    // прирост расширительного бака (this._bufExpDelta, считается в render). Трубу подводки (≈3 м) и
+    // работы не считаем: труба в общем метраже котельной, работы — в отдельной вкладке.
+    bufferCapex: function (it) {
+        const rows = (this.currentEquipmentList || []).filter(x => /^2\.7\./.test(String(x.group || '')));
+        const sum = rows.reduce((a, x) => a + (x.price || 0) * (x.q || 1), 0);
+        const tankRow = rows.find(x => /^STT-/.test(String(x.id || '')));
+        const tank = tankRow ? (tankRow.price || 0) * (tankRow.q || 1) : (it.price || 0);
+        return { tank: tank, rig: Math.max(0, sum - tank), exp: this._bufExpDelta || 0 };
     },
     // Плашки к разделу сметы «Буферная ёмкость». Цены у позиций STT пока нет: ТЕРЕМ внесёт
     // их в прайс в следующем месяце, тогда AutoPrice.py подставит цену, а плашка исчезнет.
     bufferNotesHtml: function (pick) {
         const it = pick.item;
         let html = '';
-        if (!(it.price > 0)) {
+        if (it.priceEst) {
+            html += this.noteBox('warn', 'Цена ёмкости ориентировочная.',
+                `Оценена по аналогам завода-изготовителя (S-Tank), в ноябре заменится ценой из прайса ТЕРЕМ.`,
+                `<div class="tip-p">Артикул <b>${it.id}</b>. Простые и расслоённые STT — по S-Tank ET (без теплообменника), STT-0004 — по S-Tank HFWT (змеевик 3,2 / 3,8 м² как у STT-0004). Розничная цена в РФ × 0,8: каталог ТЕРЕМ — это РРЦ STOUT × 0,8. Разброс у продавцов около ±15 %. Фитинги подключения посчитаны по прайсу.</div>`);
+        } else if (!(it.price > 0)) {
             html += this.noteBox('warn', 'Цена ёмкости не определена.',
                 `Позиции STT появятся в прайсе ТЕРЕМ в следующем месяце, пока строка в итог не входит.`,
                 `<div class="tip-p">Артикул <b>${it.id}</b>, цена по запросу. Фитинги подключения посчитаны по прайсу.</div>`);
@@ -61178,8 +61193,15 @@ const app = {
             const ok = sav.saving > 0;
             h += `<div style="margin-top:6px; padding:6px 8px; background:var(--primary-light); border-radius:6px; font-size:11px; font-weight:700; color:${ok ? 'var(--primary)' : '#B45309'};">` +
                 (ok ? `Экономия ≈ ${money(sav.saving)} ₽ за сезон` : `При этих тарифах накопитель убыточен (${money(sav.saving)} ₽ за сезон)`) +
-                (sav.payback ? `<br><span style="font-weight:500;">Окупаемость самой ёмкости ≈ ${f1(sav.payback)} лет</span>` : `<br><span style="font-weight:500;">Окупаемость — когда в прайсе появится цена ёмкости</span>`) +
+                (sav.payback
+                    ? `<br><span style="font-weight:500;">Окупаемость с обвязкой ${sav.payback > 20 ? 'больше 20 лет — не окупается' : '≈ ' + f1(sav.payback) + ' года'}</span>`
+                    : (sav.capex > 0 ? '' : `<br><span style="font-weight:500;">Окупаемость — когда в прайсе появится цена ёмкости</span>`)) +
                 `</div>`;
+            if (sav.capex > 0) {
+                h += `<div style="margin-top:6px; font-size:11px; line-height:1.5; color:var(--text-sec);">Затраты ${money(sav.capex)} ₽: ёмкость ${money(sav.cap.tank)} ₽${sav.est ? ' (ориентировочно, по аналогам S-Tank)' : ''}, обвязка ${money(sav.cap.rig)} ₽` +
+                    (sav.cap.exp > 0 ? `, больший расширительный бак +${money(sav.cap.exp)} ₽` : '') +
+                    `. Труба подводки и монтаж не входят.</div>`;
+            }
         }
         box.innerHTML = h;
     },
@@ -76291,6 +76313,15 @@ const app = {
         // свойства только воды, для гликолевых растворов данных в нём нет.
         const expCoolantK = this.expTankCoolantK();
         let reqExp = vSys * 0.12 * expCoolantK; let bltin = 0; if (selBoilers.length > 0) { selBoilers.forEach(b => { bltin += (b.exp !== undefined ? b.exp : 0); }); }
+        // Прирост расширительного бака из-за буферной ёмкости: идёт в окупаемость ёмкости (bufferCapex).
+        this._bufExpDelta = 0;
+        if (this._bufPick) {
+            const _d0 = (vSys - this._bufPick.item.vol) * 0.12 * expCoolantK - bltin;
+            const _d1 = reqExp - bltin;
+            const _e0 = _d0 > 0 ? (catalog.exp_heating.find(t => t.vol >= _d0) || catalog.exp_heating[4]) : null;
+            const _e1 = _d1 > 0 ? (catalog.exp_heating.find(t => t.vol >= _d1) || catalog.exp_heating[4]) : null;
+            this._bufExpDelta = Math.max(0, (_e1 ? _e1.price : 0) - (_e0 ? _e0.price : 0));
+        }
         let def = reqExp - bltin; if (def > 0) {
             let et = catalog.exp_heating.find(t => t.vol >= def) || catalog.exp_heating[4];
             // noCheapen — см. бак ГВС: другой литраж не является аналогом.
@@ -77321,7 +77352,8 @@ const app = {
             const _bp = this._bufPick, _bi = _bp.item, _bg = "2.7. Буферная ёмкость";
             const _bAlts = (catalog.tanks_buffer || []).filter(x => x.volNom === _bi.volNom && x.id !== _bi.id).map(x => ({ ...x, noCheapen: true }));
             addToBill({ ..._bi, alts: _bAlts, noCheapenAlts: true, sortRank: -2 }, 1,
-                `Буферная ёмкость STOUT ${_bi.id}, полезный объём ${_bi.vol} л, ${_bi.maxBar} бар, до ${_bi.maxT} °C, изоляция ${_bi.insMm} мм в комплекте. Накапливает тепло ночью (дешёвый тариф) и отдаёт его системе днём.`, _bg);
+                `Буферная ёмкость STOUT ${_bi.id}, полезный объём ${_bi.vol} л, ${_bi.maxBar} бар, до ${_bi.maxT} °C, изоляция ${_bi.insMm} мм в комплекте. Накапливает тепло ночью (дешёвый тариф) и отдаёт его системе днём.` +
+                (_bi.priceEst ? ` Цена ориентировочная — по аналогам завода-изготовителя, уточнится после появления в прайсе.` : ``), _bg);
             // Резьба пресс-перехода трубы и сам переход (ставится ниже, после ниппеля с муфтой).
             let _bTh = '1', _bAdpAdd = null;
             if (isAnalog) {

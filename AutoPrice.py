@@ -404,6 +404,11 @@ def apply_price_status(obj_text, start_idx, price_local_start, price_local_end, 
     edits = []
     if new_price != old_price:
         edits.append((start_idx + price_local_start, start_idx + price_local_end, str(new_price)))
+        # Ориентировочная цена (priceEst: true, пока позиции нет в прайсе) с настоящей ценой
+        # перестаёт быть ориентировочной — снимаем признак вместе с запятой перед ним.
+        est_m = re.search(r',\s*priceEst\s*:\s*true', own_text)
+        if est_m:
+            edits.append((start_idx + est_m.start(), start_idx + est_m.end(), ''))
 
     def _set_field(field, value):
         m = re.search(r'(["\']?' + field + r'["\']?\s*:\s*["\'])([^"\']+)(["\'])', own_text, re.IGNORECASE)
