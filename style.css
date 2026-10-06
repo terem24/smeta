@@ -13561,6 +13561,15 @@ body.dark-mode .rq-cap, body.dark-mode .rq-rl span:first-child, body.dark-mode .
     color: var(--text-sec); font-size: 12px; line-height: 1.4; text-align: center;
 }
 
+/* iOS приближает страницу, когда в фокус попадает поле со шрифтом меньше 16 px, и после
+   этого появляется горизонтальная прокрутка, а кнопка отправки уезжает за край. Правило
+   «Input sizing to prevent iOS zoom» выше касается только input, а в переписке поле —
+   textarea (и у монтажника, и в панели управления). */
+@media (pointer: coarse) {
+    .admin-chat-compose textarea,
+    #notif_pane_chat .admin-chat-compose textarea { font-size: 16px !important; }
+}
+
 /* Тонкие полосы прокрутки — обычные в админке слишком толстые для этой вёрстки */
 .admin-chat-list::-webkit-scrollbar, .admin-chat-body::-webkit-scrollbar { width: 6px; }
 .admin-chat-list::-webkit-scrollbar-thumb, .admin-chat-body::-webkit-scrollbar-thumb {

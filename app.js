@@ -20501,8 +20501,11 @@ const app = {
         this.renderNotifTabs();
         if (tab === 'chat') {
             this.renderUserChat();
+            // На телефоне фокус сам поднимает клавиатуру и закрывает половину переписки,
+            // а iOS ещё и приближает страницу — поле ввода человек выберет сам
+            const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
             const inp = document.getElementById('user_chat_input');
-            if (inp) inp.focus();
+            if (inp && !coarse) inp.focus();
         }
     },
 
@@ -21207,6 +21210,11 @@ const app = {
         if (this._userChatSending) return;
         this._userChatSending = true;
         const localId = 'local_' + Date.now();
+        // Не ушло с первого раза — повтор того же текста идёт с тем же id (см. sendUserReply)
+        const retry = this._userChatRetry;
+        const rowId = retry && retry.text === text ? retry.id
+            : ((window.crypto && crypto.randomUUID) ? crypto.randomUUID() : null);
+        this._userChatRetry = rowId ? { text: text, id: rowId } : null;
         if (inp) { inp.value = ''; inp.focus({ preventScroll: true }); }
         this._userReplyTo = null;
         this._userChatForceBottom = true;
@@ -21217,7 +21225,8 @@ const app = {
         });
         this.renderUserChat();
         try {
-            await withTimeout(this.sendUserReply(parentId, text, true, replyTo), 20000);
+            await withTimeout(this.sendUserReply(parentId, text, true, replyTo, rowId), 20000);
+            this._userChatRetry = null;
         } catch (e) {
             // Техническую причину — в журнал, человеку короткий текст и код, чтобы
             // было что назвать администратору, если повторится
@@ -35128,6 +35137,15 @@ const app = {
             return;
         }
 
+        // Как в мессенджере: пока сообщение уходит, второе нажатие ничего не делает, а поле
+        // очищается сразу. Раньше оно очищалось после ответа базы — на телефоне это секунды,
+        // и повторные нажатия отправляли то же сообщение по три-четыре раза.
+        if (this._adminSending) return;
+        this._adminSending = true;
+        const replyToBefore = this._adminReplyTo;
+        if (textEl) { textEl.value = ''; textEl.focus({ preventScroll: true }); }
+        let sentOk = false;
+
         try {
             const recipientId = recipientVal === 'all' ? null : recipientVal;
             const type = recipientVal === 'all' ? 'broadcast' : 'private';
@@ -35154,6 +35172,9 @@ const app = {
                 text: text.trim(),
                 type: type
             };
+            // id придумываем здесь: если ответ потерялся, а строка в базе уже есть, повторная
+            // вставка упрётся в тот же id (23505) и не создаст дубль
+            if (window.crypto && crypto.randomUUID) row.id = crypto.randomUUID();
             // Имя подставляем наблюдателю и менеджеру дистрибьютора: монтажник не
             // может узнать его по sender_id (чужие строки таблицы пользователей ему
             // не отдаются), а письма владельца и администраторов остаются
@@ -35179,7 +35200,11 @@ const app = {
                 ({ data: inserted, error } = await supabaseClient.from('messages').insert(row).select('id').maybeSingle());
             }
 
+            // 23505 — строка с этим id уже лежит в базе: прошлая попытка дошла, просто
+            // не вернула ответ. Для человека это успех, а не ошибка.
+            if (error && error.code === '23505' && row.id) { error = null; inserted = { id: row.id }; }
             if (error) throw error;
+            sentOk = true;
 
             // Журнал сотрудников: личное письмо монтажнику. Объявления для всех не
             // пишем — они не про работу филиала.
@@ -35188,8 +35213,14 @@ const app = {
             }
 
             // Alert'а нет намеренно: отправленное сообщение само появляется в переписке
-            if (textEl) textEl.value = '';
             this._adminReplyTo = null; // цитата ушла вместе с сообщением
+            // Сообщение показываем сразу, не дожидаясь перезагрузки всей таблицы ниже
+            if (inserted && inserted.id && Array.isArray(this.adminData.messages)
+                && !this.adminData.messages.some(m => m.id === inserted.id)) {
+                this.adminData.messages.unshift(Object.assign({ created_at: new Date().toISOString() }, row, { id: inserted.id }));
+                this._lastRenderedChatId = null;
+                this.renderAdminMessages();
+            }
 
             // Пуш получателю (или всем, если объявление). На почту объявления
             // намеренно не уходят — см. комментарий ниже, — так что для закрытого
@@ -35221,6 +35252,9 @@ const app = {
                 }
             })();
 
+            // Кнопка свободна: остальное — обновление картинки, а не отправка
+            this._adminSending = false;
+
             // Перезапрашиваем сообщения (и квитанции — у нового сообщения их пока нет,
             // но у остальных статус мог измениться, пока админка была открыта)
             let { data: allMessages } = await supabaseClient.from('messages').select('*').order('created_at', { ascending: false });
@@ -35235,7 +35269,15 @@ const app = {
             if (ta) ta.focus();
         } catch (e) {
             console.error("Error sending admin message:", e);
+            // Не ушло — текст возвращается в поле (если человек уже не набрал другой)
+            if (!sentOk) {
+                const ta2 = document.getElementById('admin_msg_text');
+                if (ta2 && !ta2.value) ta2.value = text;
+                if (replyToBefore && !this._adminReplyTo) this._adminReplyTo = replyToBefore;
+            }
             app.alert("Не удалось отправить сообщение: " + e.message);
+        } finally {
+            this._adminSending = false;
         }
     },
 
@@ -35310,7 +35352,7 @@ const app = {
     // replyToId — id сообщения, на которое отвечают с цитатой (клик по пузырю в
     // переписке). Это не то же самое, что parentId: тот определяет, в чью нить
     // попадёт ответ, и ставится сам, без участия человека.
-    sendUserReply: async function (parentId, text, silent, replyToId) {
+    sendUserReply: async function (parentId, text, silent, replyToId, rowId) {
         if (!text || !text.trim()) {
             if (silent) throw new Error('Введите текст ответа');
             app.alert("Введите текст ответа!");
@@ -35341,6 +35383,8 @@ const app = {
                 type: 'reply',
                 parent_id: parentId
             };
+            // id задаёт вызывающий: повтор того же текста после таймаута не создаст дубль
+            if (rowId) row.id = rowId;
             if (replyToId) row.reply_to_id = replyToId;
             // .select('id') — id нужен, чтобы попросить сервер разбудить телефон
             // администратора по этой строке (см. appPush.notify ниже)
@@ -35367,6 +35411,8 @@ const app = {
                 ({ data: inserted, error } = await supabaseClient.from('messages').insert(row).select('id').maybeSingle());
             }
 
+            // 23505 — прошлая попытка с этим id уже дошла до базы
+            if (error && error.code === '23505' && row.id) { error = null; inserted = { id: row.id }; }
             if (error) throw error;
 
             if (!silent) app.alert("Ответ успешно отправлен администратору!");
