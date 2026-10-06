@@ -43313,7 +43313,7 @@ const app = {
         const when = (d && !isNaN(d)) ? ' до ' + d.toLocaleDateString('ru-RU') : '';
         const why = kind === 'manual' ? 'была удалена администратором' : 'была удалена за долгое отсутствие';
         return 'Учётная запись с этими данными ' + why + ', повторная регистрация закрыта' + when +
-            '. Чтобы открыть её раньше, напишите на dima24ba@gmail.com.';
+            '. Чтобы открыть её раньше, напишите на kovdor24@yandex.ru.';
     },
     // Снимает годовой запрет на повторную регистрацию удалённого за неактивность.
     allowReregistration: async function (recordId) {
