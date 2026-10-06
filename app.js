@@ -43462,6 +43462,14 @@ const app = {
                 : this.checkNamePart(firstName, 'Имя') ? 'profile_first_name_input' : 'profile_middle_name_input';
             this.profileFieldError(nameField, nameErr); return;
         }
+        // Каждое слово по отдельности могло пройти (по одному нарушению звуковых правил
+        // бывает у редкой настоящей фамилии), а вместе ФИО — набор букв: «Уфр Сфоарис Уупкф»
+        const junkParts = [['profile_last_name_input', lastName], ['profile_first_name_input', firstName], ['profile_middle_name_input', middleName]]
+            .map(([id, v]) => [id, this.nameJunkCount(v)]);
+        if (junkParts.reduce((n, p) => n + p[1], 0) >= 2) {
+            const worst = junkParts.slice().sort((a, b) => b[1] - a[1])[0][0];
+            this.profileFieldError(worst, 'Похоже, ФИО набрано наугад. Впишите настоящие данные: их видит клиент в смете, счёте и договоре.'); return;
+        }
         const phoneErr = this.checkPhoneValue(phone);
         if (phoneErr) { this.profileFieldError('profile_phone_input', phoneErr); return; }
         if (!birthDate) { this.profileFieldError('profile_birth_date_input', 'Пожалуйста, укажите дату рождения.'); return; }
@@ -43741,6 +43749,52 @@ const app = {
         return this.COMPANY_FORMS.test(t) || this.COMPANY_STEMS.test(t);
     },
 
+    // Звуковые правила имени: какие согласные могут стоять вместе в начале, конце и
+    // внутри слова. Таблицы выведены из словаря настоящих имён (bench/name_corpus.txt),
+    // стенд — bench/name_gibberish.js (менять вместе). «Уупкф Сфоарис Уфр» нарушает их
+    // четырежды, живая фамилия — ноль, редкая — одно: потому форма отказывает от двух.
+    NAME_PHON: {
+        init: 'бз бл бр вд вз вл вм вн вр вс гв гдж гл гн гр дв дж дз дм дн др жб жг жд жм зб зв зд зл зм зн кв кл кн кр кс ксн кт кц мкртч мл мн мр мс мст мц мч пл пр пс пф пч пш рж рз рц рч св ск скв скр сл см сн сп ср ст стр сх сц тв тк тл тр фл фр хв хл хм хр цв цх чв чк чх шв шк шкл шл шм шн шп шт',
+        fin: 'др дт кр кс кт лд лк лл лм лт лф лц мс нг нд ндр нк нс нт нф нц нш пп пт рг рд рк рл рм рн рнст рс рт рф рх рц рш ск сс ст тр',
+        pair: 'бб бг бд бз бк бл бн бр бс бх бц вв вг вд вз вк вл вм вн вр вс вт вц вч вш гв гг гд гл гм гн гр гт дб дв дг дд дж дз дк дм дн др дс дт дх дч жб жг жд жж жк жм жн зб зв зг зд зк зл зм зн зр зт зх кб кв кк кл км кн кп кр кс кт кц кш лв лг лд лк лл лм лп лс лт лф лх лц лч мб мв мд мз мк мл мм мн мп мр мс мх мц мч мщ нб нв нг нд нж нз нк нл нм нн нс нт нф нц нч нш пк пл пн пп пр пс пт пф пц пч пш рб рв рг рд рж рз рк рл рм рн рп рс рт рф рх рц рч рш сб св сд ск сл см сн сп ср сс ст сх сц сч тв тд тж тк тл тм тн тп тр тс тт тц тч тш фл фм фр фт хв хк хл хм хн хр хт цв цк цм цх чв чк чн чх шб шв шк шл шм шн шп шт'
+    },
+    _namePhonSets: null,
+    nameJunkViolations: function (word) {
+        const w = String(word || '').toLowerCase().replace(/ё/g, 'е');
+        const out = [];
+        if (!/[а-я]/.test(w)) return out;
+        if (!this._namePhonSets) {
+            const mk = s => new Set(s.split(' '));
+            this._namePhonSets = { init: mk(this.NAME_PHON.init), fin: mk(this.NAME_PHON.fin), pair: mk(this.NAME_PHON.pair) };
+        }
+        const T = this._namePhonSets;
+        if (/^[ыьъ]/.test(w)) out.push('нач');
+        if (/[аеиоуыэюя]ь/.test(w)) out.push('ь');
+        if (/(.{2,3})\1\1/.test(w) || /(.)\1\1/.test(w)) out.push('повтор');
+        if (/[аеиоуыэюя]{4}/.test(w)) out.push('гласные подряд');
+        if (/уу/.test(w) && !/уулу$/.test(w)) out.push('уу');
+        if (/(оа|ыа|ыо|ыу|ыи|ыэ|ээ|иы|еы|ъо)/.test(w) && !/^гоар/.test(w)) out.push('гласные');
+        if (/(чы|щы|чя|щя|чю|щю|жя|шя|шю|жю|ьй|йй)/.test(w)) out.push('правописание');
+        const pairsOk = t => { for (let k = 0; k < t.length - 1; k++) if (!T.pair.has(t.slice(k, k + 2))) return false; return true; };
+        const re = /[бвгджзклмнпрстфхцчшщ]+/g;
+        let m;
+        while ((m = re.exec(w))) {
+            const s = m[0], st = m.index, en = st + s.length;
+            if (s.length >= 5 || (s.length === 4 && !/(мкрт|нтск|ндск|нгск|стск|рдск|лтск|вств|нств|рств|мств|здр|стр|ндр|нтр|рнск|рвск|ртск|нцк|цств)/.test(s))) { out.push('цепочка'); continue; }
+            if (s.length < 2) continue;
+            if (st === 0) {
+                if (!T.init.has(s) && !(s.length === 3 && T.init.has(s.slice(0, 2)) && pairsOk(s))) out.push('начало');
+            } else if (en === w.length) {
+                if (!T.fin.has(s)) out.push('конец');
+            } else if (!pairsOk(s)) out.push('пара');
+        }
+        return out;
+    },
+    // Сколько нарушений звуковых правил во всех словах строки
+    nameJunkCount: function (text) {
+        return String(text || '').split(/[\s-]+/).reduce((n, w) => n + this.nameJunkViolations(w).length, 0);
+    },
+
     isJunkNameWord: function (word) {
         const w = String(word || '').toLowerCase().replace(/ё/g, 'е');
         // Кусок без единой кириллической буквы — не слово, а декоративный значок
@@ -43771,6 +43825,7 @@ const app = {
         if (/[A-Za-z]/.test(v)) return 'Поле «' + label + '» заполняется русскими буквами.';
         if (!/^[А-Яа-яЁё'’\s-]+$/.test(v)) return 'В поле «' + label + '» есть лишние символы: допустимы только буквы, дефис и пробел.';
         if (v.replace(/[^А-Яа-яЁё]/g, '').length < 2) return 'Поле «' + label + '» слишком короткое — не меньше двух букв.';
+        if (this.nameJunkCount(v) >= 2) return 'Похоже, поле «' + label + '» набрано наугад. Впишите настоящие данные: их видит клиент в смете, счёте и договоре.';
         if (this.looksLikeCompany(v)) return 'В поле «' + label + '» нужно ваше личное имя, а не название компании. Компанию можно указать в реквизитах.';
         if (v.split(/[\s-]+/).some(part => this.isJunkNameWord(part))) {
             return 'Похоже, поле «' + label + '» набрано наугад. Впишите настоящие данные: их видит клиент в смете, счёте и договоре.';
@@ -43841,6 +43896,9 @@ const app = {
             if (/\d/.test(all)) hard.push('цифры в ФИО');
             if (parts.some(p => String(p).split(/[\s-]+/).some(w => this.isJunkNameWord(w)))) hard.push('ФИО набрано наугад');
             if (this.looksLikeCompany(all)) hard.push('в ФИО название компании');
+            const junkN = this.nameJunkCount(all);
+            if (junkN >= 2) { if (hard.indexOf('ФИО набрано наугад') === -1) hard.push('ФИО набрано наугад'); }
+            else if (junkN === 1) soft.push('необычное написание ФИО');
         }
         if (u.phone && this.checkPhoneValue(u.phone)) hard.push('телефон не похож на настоящий');
         if (u.birth_date) {
