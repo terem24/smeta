@@ -14043,6 +14043,8 @@ const app = {
         this.showPhoneRegionHint();
         if (document.getElementById('profile_email_input')) {
             document.getElementById('profile_email_input').value = tgUser.email || '';
+            const unvHint = document.getElementById('profile_email_unverified_hint');
+            if (unvHint) unvHint.style.display = this._emailUnverified ? 'block' : 'none';
         }
         // Сфера теперь одна. У старых анкет в базе их может быть две — показываем
         // первую и просим выбрать при следующем сохранении, а не молчим.
@@ -39501,6 +39503,19 @@ const app = {
                 </div>
             </div>
 
+            <div class="control-card" style="display:block; margin-bottom:14px;">
+                <b>Регистрация по промокоду без кода из письма</b>
+                <div style="margin-top:8px; display:flex; gap:18px; flex-wrap:wrap;">
+                    <label><input type="radio" name="mail_promo" value="off" ${s.promo_no_code === 'off' ? 'checked' : ''} ${dis} onchange="app.setMailPromoMode('off')"> Всегда слать код</label>
+                    <label><input type="radio" name="mail_promo" value="auto" ${s.promo_no_code === 'auto' ? 'checked' : ''} ${dis} onchange="app.setMailPromoMode('auto')"> Без кода, когда лимит выбран (от 95%)</label>
+                    <label><input type="radio" name="mail_promo" value="always" ${s.promo_no_code === 'always' ? 'checked' : ''} ${dis} onchange="app.setMailPromoMode('always')"> Всегда без кода</label>
+                </div>
+                <div style="font-size:12px; color:var(--text-sec); margin-top:8px; max-width:780px;">
+                    Работает только для промокода магазина, который проверила база. Такому человеку код не нужен: промокод — пропуск, а адрес почты профиль попросит сверить.
+                    Независимо от режима, если письмо с кодом не ушло (лимит EmailJS), человек с рабочим промокодом всё равно зарегистрируется.
+                </div>
+            </div>
+
             <div style="overflow-x:auto;"><table class="inv-table ad-sticky" style="width:100%; border-collapse:collapse; font-size:12px;">
                 <thead><tr style="text-align:left; color:var(--text-sec);">
                     <th style="padding:8px;">Тип письма</th>
@@ -39549,7 +39564,7 @@ const app = {
         (s.kinds || []).forEach(k => { if (k.override) overrides[k.kind] = k.override; });
         // Поправка живёт только в своём цикле (adjust_cycle — дата его начала): в новом счётчик с нуля.
         return { limit: s.limit, cycle_day: s.cycle_day, mode: s.mode, tiers: Object.assign({}, s.tiers), overrides,
-                 adjust: s.adjust, adjust_cycle: String(s.cycle_start).slice(0, 10) };
+                 adjust: s.adjust, adjust_cycle: String(s.cycle_start).slice(0, 10), promo_no_code: s.promo_no_code || 'auto' };
     },
 
     saveMailCfg: async function (cfg, okText) {
@@ -39576,6 +39591,12 @@ const app = {
     setMailMode: function (mode) {
         const cfg = this.mailCfgFromState();
         cfg.mode = mode === 'manual' ? 'manual' : 'auto';
+        this.saveMailCfg(cfg);
+    },
+
+    setMailPromoMode: function (mode) {
+        const cfg = this.mailCfgFromState();
+        cfg.promo_no_code = (mode === 'off' || mode === 'always') ? mode : 'auto';
         this.saveMailCfg(cfg);
     },
 
@@ -42213,11 +42234,15 @@ const app = {
             // Промокод проверяем ДО письма: у почты месячный лимит, и опечатка в
             // коде не должна его тратить. Ошибка проверки (сеть, база) — не повод
             // отказывать в регистрации: код ещё раз проверится при первом входе.
+            // inviteOk — промокод именно подтверждён базой (а не «не удалось проверить»):
+            // только такой регистрации можно обойтись без кода из письма.
+            let inviteOk = false;
             if (promoCode) {
                 if (btn) btn.innerText = 'Проверка промокода...';
                 let inviteRes = null;
                 try { inviteRes = await this.checkInviteCode(promoCode); }
                 catch (checkErr) { console.warn('[регистрация] промокод не проверен:', checkErr.message || checkErr); }
+                inviteOk = !!(inviteRes && inviteRes.ok === true);
                 if (inviteRes && !inviteRes.ok) {
                     if (authErrEl) {
                         authErrEl.innerText = this.inviteRefusalText(inviteRes);
@@ -42241,6 +42266,14 @@ const app = {
                     lastName, firstName, middleName, phone, birthDate, region, city, activityTypes
                 };
 
+                // Регистрация по подтверждённому промокоду магазина — без письма с кодом, когда
+                // у почты выбран лимит (вкладка админки «Почта» → «Регистрация по промокоду»).
+                // Адрес тогда не проверен: профиль попросит его сверить.
+                if (inviteOk && await this.promoSkipsCode()) {
+                    await this.createAccountFromPending(true, btn);
+                    return;
+                }
+
                 const serviceId = "service_o11b4ej";
                 const templateId = "template_ysuxfio";
                 const publicKey = "-m4N93pTqMlCfuBpT";
@@ -42254,7 +42287,16 @@ const app = {
                     message_text: `Для подтверждения вашего email и завершения регистрации на сайте HeatCalc.ru, пожалуйста, введите следующий 4-значный код:\n\n👉  ${code}  👈\n\nЕсли вы не запрашивали этот код, просто проигнорируйте это письмо.`
                 };
 
-                await emailjs.send(serviceId, templateId, templateParams, publicKey);
+                try {
+                    await emailjs.send(serviceId, templateId, templateParams, publicKey);
+                } catch (sendErr) {
+                    // Письмо не ушло (лимит почты, сеть): человека с рабочим промокодом
+                    // не задерживаем — создаём учётку без кода, адрес проверит профиль.
+                    if (!inviteOk) throw sendErr;
+                    console.warn('[регистрация] код не отправлен, регистрируем по промокоду без кода:', sendErr && (sendErr.message || sendErr.text) || sendErr);
+                    await this.createAccountFromPending(true, btn);
+                    return;
+                }
 
                 // Transition the UI to the verification code input modal only after the EmailJS promise resolves successfully.
                 document.getElementById('auth_main_view').style.display = 'none';
@@ -42276,6 +42318,17 @@ const app = {
                 btn.innerText = (this.currentAuthTab === 'login') ? 'Войти' : 'Зарегистрироваться';
             }
         }
+    },
+
+    // Можно ли сейчас не слать код при регистрации по промокоду. Решает база
+    // (mail_code_skip_for_promo, 20261006_mail_promo_no_code.sql): режим из настроек
+    // «Почты» — 'off' / 'auto' (когда лимит почты выбран) / 'always'. Нет ответа — нет.
+    promoSkipsCode: async function () {
+        try {
+            const { data, error } = await supabaseClient.rpc('mail_code_skip_for_promo');
+            if (error) return false;
+            return data === true;
+        } catch (e) { return false; }
     },
 
     verifyCodeAndSignUp: async function () {
@@ -42301,8 +42354,13 @@ const app = {
             return;
         }
 
-        btn.disabled = true;
-        btn.innerText = 'Создание аккаунта...';
+        await this.createAccountFromPending(false, btn);
+    },
+
+    // Создание учётки по данным из pendingRegistration. Зовётся после ввода кода из письма
+    // (unverified = false) и при регистрации по промокоду без письма (unverified = true).
+    createAccountFromPending: async function (unverified, btn) {
+        if (btn) { btn.disabled = true; btn.innerText = 'Создание аккаунта...'; }
 
         const authErrEl = document.getElementById('auth_error_msg');
         if (authErrEl) authErrEl.style.display = 'none';
@@ -42329,7 +42387,10 @@ const app = {
                         activity_types: (pr.activityTypes && pr.activityTypes.length) ? pr.activityTypes : null,
                         // Промокод применяется при первом входе, когда появится запись
                         // в users (см. applyPromoFromRegistration в handleAuthSession)
-                        promo_code: pr.promoCode || null
+                        promo_code: pr.promoCode || null,
+                        // Почту не подтверждали кодом (регистрация по промокоду без письма):
+                        // профиль попросит проверить адрес
+                        email_unverified: unverified ? true : null
                     }
                 }
             });
@@ -42358,8 +42419,7 @@ const app = {
                 app.alert('Ошибка регистрации: ' + friendlyErr);
             }
         } finally {
-            btn.disabled = false;
-            btn.innerText = 'Подтвердить';
+            if (btn) { btn.disabled = false; btn.innerText = 'Подтвердить'; }
         }
     },
 
@@ -42497,6 +42557,8 @@ const app = {
             // Доп. поля анкеты регистрации (ФИО по частям, дата рождения, регион, сфера деятельности) —
             // приходят через user_metadata только при регистрации через нашу форму (не через Google/Telegram)
             let meta = user.user_metadata || {};
+            // Регистрация по промокоду без кода из письма: профиль попросит сверить адрес
+            this._emailUnverified = !!meta.email_unverified;
             let regLastName = meta.last_name || '';
             let regFirstName = meta.first_name || '';
             let regMiddleName = meta.middle_name || '';
@@ -43377,6 +43439,11 @@ const app = {
         if (!region) { this.profileFieldError('profile_region_input', 'Пожалуйста, укажите регион.'); return; }
         if (!city) { this.profileFieldError('profile_city_input', 'Пожалуйста, укажите ваш город. Это необходимо для формирования смет.'); return; }
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { this.profileFieldError('profile_email_input', 'Пожалуйста, введите корректный email.'); return; }
+        // Адрес сверили и сохранили — отметку «не подтверждён кодом» снимаем (метаданные, письмо не уходит)
+        if (this._emailUnverified && email) {
+            this._emailUnverified = false;
+            try { supabaseClient.auth.updateUser({ data: { email_unverified: null } }).catch(() => {}); } catch (e) { /* не критично */ }
+        }
         if (activityTypes.length === 0) { this.profileFieldError('profile_act_installer', 'Выберите сферу деятельности: монтажник или продавец.'); return; }
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
