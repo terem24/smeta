@@ -1202,7 +1202,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
 
     lastSavedStateString: "",
 
@@ -50519,7 +50519,7 @@ const app = {
 
         // Полный сброс данных расчета
         this.state = {
-            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
+            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
             autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null },
             // ВОЗВРАЩАЕМ АВТОРИЗАЦИЮ И ТАРИФ НА МЕСТО
             tgUser: currentTgUser,
@@ -61045,6 +61045,33 @@ const app = {
             undersized: item.vol < need * 0.95, twoRate: twoRate, kind: kind, boilerKw: boilerKw
         };
     },
+    // ===== Прогноз роста тарифов на электроэнергию =====
+    // Минэкономразвития России, прогноз социально-экономического развития на 2027–2029 гг.
+    // (25.09.2026): конечная цена электроэнергии для населения +14,4 % в 2027, +12,1 % в 2028,
+    // +10,1 % в 2029. Тариф с 1 октября 2026 уже в справочнике (сезон 2026/27), рост применяется
+    // к следующим сезонам. После 2029 официального прогноза нет: берём +7 % в год — допущение
+    // автора, не норма. Раз в год сверять с новым прогнозом МЭР (CLAUDE.md, «Нормативная база», п. 4).
+    EL_TARIFF_FORECAST: { base: 2026, asOf: '25.09.2026', after: 7, rows: [{ y: 2027, g: 14.4 }, { y: 2028, g: 12.1 }, { y: 2029, g: 10.1 }] },
+    elGrowthOn: function () { return this.state.elTariffGrowth !== false; },
+    // Множители тарифа по сезонам: [1; 1,144; 1,144·1,121; …]. Без роста — единицы.
+    elGrowthFactors: function (n, on) {
+        const f = [1];
+        for (let k = 1; k < n; k++) {
+            const rows = this.EL_TARIFF_FORECAST.rows;
+            const g = on ? (k <= rows.length ? rows[k - 1].g : this.EL_TARIFF_FORECAST.after) : 0;
+            f.push(f[k - 1] * (1 + g / 100));
+        }
+        return f;
+    },
+    elSeasonLabel: function (k) {
+        const y = this.EL_TARIFF_FORECAST.base + k;
+        return y + '/' + String(y + 1).slice(-2);
+    },
+    toggleElGrowth: function (on) {
+        this.state.elTariffGrowth = !!on;
+        this.syncUI();
+        this.saveState();
+    },
     // Экономика ночного накопления. Берём месячный расход из calcElHeatingCost: накопитель
     // переносит на ночь столько дневных кВт·ч, сколько в него влезает (E = V·1,163·ΔT) и
     // сколько котёл успевает дозарядить за ночные 8 часов сверх обычной ночной нагрузки.
@@ -61068,10 +61095,25 @@ const app = {
         });
         const cap = this.bufferCapex(it);
         const capex = cap.tank + cap.rig + cap.exp;
+        // Ряд по сезонам: экономия растёт вместе с тарифом (день и ночь дорожают одинаково, поэтому
+        // и разница тарифов, и потери бака пропорциональны множителю). Окупаемость — год, в котором
+        // накопленная экономия догоняет затраты, с долей внутри года; дальше 15 лет не считаем.
+        const growth = this.elGrowthOn();
+        const N = 15, fG = this.elGrowthFactors(N, growth);
+        let cum = 0, payback = null;
+        const series = [];
+        for (let k = 0; k < N; k++) {
+            const y = saving * fG[k], before = cum;
+            cum += y;
+            series.push({ k: k, label: this.elSeasonLabel(k), factor: fG[k], saving: y, cum: cum });
+            if (payback === null && capex > 0 && saving > 0 && cum >= capex) payback = k + (capex - before) / y;
+        }
         return {
             eFull: eFull, loss: loss, saving: saving, shiftAvg: days ? shiftSum / days : 0, days: days,
             limited: limited, price: cap.tank, kwCap: kwCap, cap: cap, capex: capex, est: !!it.priceEst,
-            payback: (capex > 0 && saving > 0) ? capex / saving : null
+            growth: growth, series: series, tariffDay: r.tariffDay, tariffNight: r.tariffNight,
+            payback: payback,
+            paybackFlat: (capex > 0 && saving > 0) ? capex / saving : null
         };
     },
     // Затраты на буфер: сама ёмкость, обвязка (всё в разделе сметы 2.7: ниппели, муфты, переходы, кран) и
@@ -61191,12 +61233,24 @@ const app = {
             h += `<div style="margin-top:6px; font-size:11px; line-height:1.5;">В цикле ёмкость запасает ${f1(sav.eFull)} кВт·ч, в среднем за сезон переносит на ночь ${f1(sav.shiftAvg)} кВт·ч в сутки; потери самой ёмкости ${f1(sav.loss)} кВт·ч в сутки.` +
                 (sav.limited ? ' Дозарядка за ночь упирается в мощность котла.' : '') + `</div>`;
             const ok = sav.saving > 0;
+            const y1 = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
             h += `<div style="margin-top:6px; padding:6px 8px; background:var(--primary-light); border-radius:6px; font-size:11px; font-weight:700; color:${ok ? 'var(--primary)' : '#B45309'};">` +
                 (ok ? `Экономия ≈ ${money(sav.saving)} ₽ за сезон` : `При этих тарифах накопитель убыточен (${money(sav.saving)} ₽ за сезон)`) +
                 (sav.payback
-                    ? `<br><span style="font-weight:500;">Окупаемость с обвязкой ${sav.payback > 20 ? 'больше 20 лет — не окупается' : '≈ ' + f1(sav.payback) + ' года'}</span>`
-                    : (sav.capex > 0 ? '' : `<br><span style="font-weight:500;">Окупаемость — когда в прайсе появится цена ёмкости</span>`)) +
+                    ? `<br><span style="font-weight:500;">Окупаемость с обвязкой ≈ ${y1(sav.payback)} года${sav.growth ? ' (с ростом тарифов)' : ''}</span>`
+                    : (sav.capex > 0 ? (ok ? `<br><span style="font-weight:500;">Окупаемость: больше 15 лет — не окупается</span>` : '')
+                        : `<br><span style="font-weight:500;">Окупаемость — когда в прайсе появится цена ёмкости</span>`)) +
                 `</div>`;
+            if (sav.capex > 0 && ok) {
+                const good = !!sav.payback && sav.payback <= this.BUFFER_LIFE_YEARS;
+                const w = Math.min(100, (sav.payback || 10) / 10 * 100);
+                h += `<div class="bf-mini"><div class="bf-mini-track"><i class="bf-mini-fill ${good ? 'ok' : 'low'}" style="width:${w}%"></i>` +
+                    `<u style="left:${this.BUFFER_WARRANTY_YEARS * 10}%"><span>гарантия ${this.BUFFER_WARRANTY_YEARS} г.</span></u><u style="left:${this.BUFFER_LIFE_YEARS * 10}%"><span>срок службы ${this.BUFFER_LIFE_YEARS} л.</span></u></div>` +
+                    `<div class="bf-mini-ticks"><span>0</span><span>5</span><span>10 лет</span></div></div>`;
+            }
+            const gr = this.EL_TARIFF_FORECAST.rows;
+            h += `<label class="bf-growth"><input type="checkbox" ${sav.growth ? 'checked' : ''} onchange="app.toggleElGrowth(this.checked)"> Учитывать рост тарифов по прогнозу МЭР (+${gr.map(x => String(x.g).replace('.', ',')).join(' / +')} %)</label>`;
+            if (sav.capex > 0 && ok) h += `<button type="button" class="bf-btn" onclick="app.showBufferPayback()">График окупаемости</button>`;
             if (sav.capex > 0) {
                 h += `<div style="margin-top:6px; font-size:11px; line-height:1.5; color:var(--text-sec);">Затраты ${money(sav.capex)} ₽: ёмкость ${money(sav.cap.tank)} ₽${sav.est ? ' (ориентировочно, по аналогам S-Tank)' : ''}, обвязка ${money(sav.cap.rig)} ₽` +
                     (sav.cap.exp > 0 ? `, больший расширительный бак +${money(sav.cap.exp)} ₽` : '') +
@@ -61204,6 +61258,114 @@ const app = {
             }
         }
         box.innerHTML = h;
+    },
+
+    // Срок службы и гарантия по паспорту STOUT STT (паспорт: срок службы 5 лет, гарантия 2 года).
+    BUFFER_LIFE_YEARS: 5,
+    BUFFER_WARRANTY_YEARS: 2,
+    // Окно «Окупаемость буферной ёмкости»: тот же вид, что у окна «Гарантия STOUT» — синяя шапка,
+    // крупная цифра, шкала с отметками, плитки; под шкалой столбики накопленной экономии по сезонам
+    // против линии затрат и ряд тарифов с ростом по прогнозу МЭР.
+    showBufferPayback: function () {
+        const pick = this._bufPick || this.bufferPick();
+        if (!pick) return;
+        const sav = this.calcBufferSaving(pick, this.calcElHeatingCost());
+        if (!sav || !(sav.capex > 0)) return;
+        const it = pick.item;
+        const rub = n => Math.round(n).toLocaleString('ru-RU') + ' ₽';
+        const thou = n => Math.round(n / 1000).toLocaleString('ru-RU');
+        const f1 = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+        const life = this.BUFFER_LIFE_YEARS, warr = this.BUFFER_WARRANTY_YEARS;
+        const pb = sav.payback;
+        const ok = !!pb && pb <= life;
+        const SC = 10;
+        const fillW = Math.min(100, (pb || SC) / SC * 100);
+        // Столбики: накопленная экономия по сезонам, зелёные — когда затраты уже вернулись.
+        const N = Math.min(10, Math.max(6, Math.ceil(pb || 6) + 1));
+        const rows = sav.series.slice(0, N);
+        const maxV = Math.max(sav.capex, rows[N - 1].cum, 1) * 1.15;
+        const VW = 600, VH = 210, pl = 12, pr = 12, pt = 22, pbm = 34;
+        const bw = (VW - pl - pr) / N;
+        const yy = v => pt + (VH - pt - pbm) * (1 - Math.max(0, v) / maxV);
+        let bars = '', firstOk = -1;
+        rows.forEach((sr, i) => {
+            const x = pl + i * bw + bw * 0.16, w = bw * 0.68;
+            const top = yy(sr.cum), h = Math.max(1, yy(0) - top);
+            const good = sr.cum >= sav.capex;
+            if (good && firstOk < 0) firstOk = i;
+            bars += `<rect class="bf-bar ${good ? 'ok' : 'low'}" x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="3"/>` +
+                `<text class="bf-val" x="${(x + w / 2).toFixed(1)}" y="${(top - 4).toFixed(1)}" text-anchor="middle">${thou(sr.cum)}</text>` +
+                `<text class="bf-x" x="${(x + w / 2).toFixed(1)}" y="${VH - 18}" text-anchor="middle">${i + 1}</text>` +
+                `<text class="bf-x2" x="${(x + w / 2).toFixed(1)}" y="${VH - 6}" text-anchor="middle">${sr.label}</text>`;
+        });
+        const yc = yy(sav.capex);
+        const line = `<line class="bf-cap" x1="${pl}" x2="${VW - pr}" y1="${yc.toFixed(1)}" y2="${yc.toFixed(1)}"/>` +
+            `<text class="bf-cap-t" x="${pl + 2}" y="${(yc - 5).toFixed(1)}">затраты ${thou(sav.capex)} тыс. ₽</text>`;
+        const base = `<line class="bf-base" x1="${pl}" x2="${VW - pr}" y1="${yy(0).toFixed(1)}" y2="${yy(0).toFixed(1)}"/>`;
+        // Ряд тарифов: первые четыре сезона, день-ночь и прирост к прошлому сезону.
+        const gr = this.EL_TARIFF_FORECAST.rows;
+        const tariffs = sav.series.slice(0, 4).map((sr, i) => {
+            const g = i > 0 ? (sav.growth ? gr[i - 1].g : 0) : null;
+            return `<div class="bf-t"><b>${sr.label}</b><span>${(sav.tariffDay * sr.factor).toFixed(2).replace('.', ',')} / ${(sav.tariffNight * sr.factor).toFixed(2).replace('.', ',')} ₽</span>` +
+                `<em>${g === null ? 'сейчас' : (g > 0 ? '+' + String(g).replace('.', ',') + ' %' : 'без роста')}</em></div>`;
+        }).join('');
+        const net5 = (sav.series[life - 1] ? sav.series[life - 1].cum : 0) - sav.capex;
+        const lead = pb
+            ? (ok ? `Ёмкость окупится за <b>${f1(pb)} года</b> — раньше срока службы по паспорту (${life} лет).`
+                : `Окупится за <b>${f1(pb)} года</b>, это дольше срока службы по паспорту (${life} лет).`)
+            : (sav.saving > 0 ? `<b>За 15 лет не окупается.</b>` : `<b>При этих тарифах накопитель убыточен.</b>`);
+        const html = `
+            <div class="sg-head">
+                <div class="sg-shield"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div>
+                <div class="sg-ht"><div class="sg-title">Окупаемость буферной ёмкости</div><div class="sg-sub">${it.id} · ${it.vol} л</div></div>
+                <span class="sg-pill ${ok ? 'ok' : 'low'}">${ok ? 'Окупается' : (pb ? 'Дольше срока службы' : 'Не окупается')}</span>
+            </div>
+            <div class="sg-body">
+                <div class="sg-meter">
+                    <div class="sg-big"><b>${pb ? f1(pb) : '—'}<small> г.</small></b><em>${sav.growth ? 'с ростом тарифов' : 'тариф без роста'}</em></div>
+                    <div class="sg-scale">
+                        <div class="sg-track"><i class="sg-fill ${ok ? 'ok' : 'low'}" style="width:${fillW}%"></i><u class="sg-mark" style="left:${warr / SC * 100}%"><span>гарантия ${warr} г.</span></u><u class="sg-mark" style="left:${life / SC * 100}%"><span>срок службы ${life} л.</span></u></div>
+                        <div class="sg-ticks"><span>0</span><span>5</span><span>10 лет</span></div>
+                    </div>
+                </div>
+                <div class="sg-lead">${lead}</div>
+                <div class="bf-chart"><div class="bf-ct">Накопленная экономия по сезонам, тыс. ₽</div>
+                    <svg viewBox="0 0 ${VW} ${VH}" role="img" aria-label="Накопленная экономия по годам против затрат">${base}${bars}${line}</svg></div>
+                <div class="sg-perks">
+                    <div><b>${rub(sav.capex)}</b><span>затраты: ёмкость${sav.est ? ' (ориентировочно)' : ''}, обвязка, расширительный бак</span></div>
+                    <div><b>${rub(sav.saving)}</b><span>экономия за первый сезон</span></div>
+                    <div><b>${net5 >= 0 ? '+' : '−'}${rub(Math.abs(net5))}</b><span>итог за ${life} лет службы</span></div>
+                </div>
+                <div class="bf-tt">Тариф день / ночь, ₽ за кВт·ч</div>
+                <div class="bf-tariffs">${tariffs}</div>
+                <label class="bf-growth bf-growth-win"><input type="checkbox" id="bf_growth" ${sav.growth ? 'checked' : ''}> Учитывать рост тарифов</label>
+                <div class="sg-foot">Рост тарифов — прогноз Минэкономразвития России от ${this.EL_TARIFF_FORECAST.asOf}: конечная цена электроэнергии для населения ${gr.map(x => '+' + String(x.g).replace('.', ',') + ' % в ' + x.y).join(', ')}; после ${gr[gr.length - 1].y} — условно +${this.EL_TARIFF_FORECAST.after} % в год (прогноза нет). Срок службы и гарантия — по паспорту STT. Труба подводки и монтаж в затраты не входят.${sav.est ? ' Цена ёмкости ориентировочная, по аналогам завода (S-Tank); в ноябре заменится ценой из прайса.' : ''}</div>
+                <div class="calc-dialog-buttons"><button type="button" class="calc-dialog-btn" id="bf_ok">Понятно</button></div>
+            </div>`;
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay';
+        const card = document.createElement('div');
+        card.className = 'calc-dialog-card sg-card';
+        card.innerHTML = html;
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+        const close = () => {
+            document.removeEventListener('keydown', onKey);
+            overlay.classList.remove('active');
+            setTimeout(() => overlay.remove(), 200);
+        };
+        const onKey = (ev) => { if (ev.key === 'Escape') close(); };
+        document.addEventListener('keydown', onKey);
+        card.querySelector('#bf_ok').onclick = close;
+        // Переключатель роста: пересчёт и новое окно на месте старого — шкала и столбики покажут новый срок
+        card.querySelector('#bf_growth').onchange = (ev) => {
+            document.removeEventListener('keydown', onKey);
+            overlay.remove();
+            this.toggleElGrowth(ev.target.checked);
+            this.showBufferPayback();
+        };
+        overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
+        setTimeout(() => overlay.classList.add('active'), 10);
     },
 
     // Теплота сгорания и КПД для пересчёта тепла в топливо.
@@ -68987,7 +69149,21 @@ const app = {
             </table>${capNote}
             <div style="position:relative; margin-top:6px; padding:6px 8px; background:var(--primary-light); border-radius:6px; font-size:11px; font-weight:700; color:var(--primary); display:flex; align-items:center; justify-content:space-between; gap:6px;">
                 <span>В среднем ${money(r.avgMonthCost)} ₽ в месяц<span class="ui-emo"> ⚡</span></span>${tip}
-            </div>${this.bufferCostLineHtml(r)}${this.boilerAutoSaveHtml(r.seasonCost, r.activeMonths, 'el')}`;
+            </div>${this.elForecastHtml(r)}${this.bufferCostLineHtml(r)}${this.boilerAutoSaveHtml(r.seasonCost, r.activeMonths, 'el')}`;
+    },
+    // Как вырастет счёт за отопление за три сезона вперёд: столбики по прогнозу Минэкономразвития
+    // (EL_TARIFF_FORECAST). Считаем от сезонного счёта этого же расчёта; потребление то же, дорожает тариф.
+    elForecastHtml: function (r) {
+        if (!r || !(r.seasonCost > 0)) return '';
+        const fc = this.EL_TARIFF_FORECAST, f = this.elGrowthFactors(4, true);
+        const money = v => Math.round(v / 1000).toLocaleString('ru-RU');
+        const cols = f.map((x, k) => {
+            const h = Math.round(30 + 34 * x / f[3]);
+            const g = k > 0 ? '+' + String(fc.rows[k - 1].g).replace('.', ',') + ' %' : 'сейчас';
+            return `<div class="bf-fc-col"><span class="bf-fc-v">${money(r.seasonCost * x)}</span><i style="height:${h}px"></i><b>${this.elSeasonLabel(k)}</b><em>${g}</em></div>`;
+        }).join('');
+        return `<div class="bf-fc"><div class="bf-fc-t">Прогноз: счёт за сезон, тыс. ₽</div><div class="bf-fc-cols">${cols}</div>` +
+            `<div class="bf-fc-s">Прогноз Минэкономразвития от ${fc.asOf}: цена электроэнергии для населения растёт, потребление то же.</div></div>`;
     },
     // Строка под средним счётом: сколько даёт буферная ёмкость, если она включена в смете.
     bufferCostLineHtml: function (r) {

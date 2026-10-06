@@ -873,6 +873,66 @@ body.dark-mode .sg-card .sg-pill.low { background: rgba(245, 158, 11, .2); color
     .sg-card .sg-big b { font-size: 40px; }
 }
 
+/* Буферная ёмкость: окупаемость и прогноз тарифов (app.renderBufferUI, showBufferPayback, elForecastHtml).
+   Окно использует оформление окна «Гарантия STOUT» (.sg-card), здесь только то, чего в нём нет:
+   график накопленной экономии, ряд тарифов, мини-шкала в панели. */
+.bf-mini { margin-top: 8px; padding-top: 16px; }
+.bf-mini-track { position: relative; height: 8px; border-radius: 4px; background: var(--border); }
+.bf-mini-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+.bf-mini-fill.ok { background: linear-gradient(90deg, #22C55E, #16A34A); }
+.bf-mini-fill.low { background: linear-gradient(90deg, #FBBF24, #F59E0B); }
+.bf-mini-track u { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text-main); text-decoration: none; border-radius: 1px; }
+.bf-mini-track u span { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 2px; font-size: 9px; font-weight: 700; white-space: nowrap; color: var(--text-main); }
+.bf-mini-ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-sec); margin-top: 4px; }
+.bf-growth { display: flex; align-items: flex-start; gap: 6px; margin-top: 8px; font-size: 11px; line-height: 1.4; cursor: pointer; color: var(--text-main); }
+.bf-growth input { margin-top: 2px; flex: 0 0 auto; }
+.bf-btn { width: 100%; margin-top: 8px; padding: 7px 10px; border: 1px solid #203F6F; background: transparent; color: #203F6F; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.bf-btn:hover { background: #203F6F; color: #fff; }
+body.dark-mode .bf-btn { border-color: #7CC4F2; color: #7CC4F2; }
+body.dark-mode .bf-btn:hover { background: #7CC4F2; color: #111; }
+body.dark-mode .bf-mini-track { background: rgba(255, 255, 255, .16); }
+.sg-card .bf-chart { margin-top: 16px; }
+.sg-card .bf-ct, .sg-card .bf-tt { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-sec); margin-bottom: 4px; }
+.sg-card .bf-chart svg { display: block; width: 100%; height: auto; }
+.sg-card .bf-bar.ok { fill: #16A34A; }
+.sg-card .bf-bar.low { fill: #F59E0B; }
+.sg-card .bf-val { font-size: 11px; font-weight: 700; fill: var(--text-main); }
+.sg-card .bf-x { font-size: 11px; font-weight: 700; fill: var(--text-main); }
+.sg-card .bf-x2 { font-size: 9px; fill: var(--text-sec); }
+.sg-card .bf-cap { stroke: #203F6F; stroke-width: 1.5; stroke-dasharray: 5 4; }
+.sg-card .bf-cap-t { font-size: 11px; font-weight: 700; fill: #203F6F; }
+.sg-card .bf-base { stroke: var(--border); stroke-width: 1; }
+body.dark-mode .sg-card .bf-cap { stroke: #7CC4F2; }
+body.dark-mode .sg-card .bf-cap-t { fill: #7CC4F2; }
+body.dark-mode .sg-card .bf-base { stroke: rgba(255, 255, 255, .25); }
+.sg-card .sg-perks { margin-top: 12px; }
+.sg-card .bf-tt { margin-top: 14px; }
+.sg-card .bf-tariffs { display: flex; gap: 8px; }
+.sg-card .bf-t { flex: 1 1 0; background: var(--surface-light); border: 1px solid var(--border); border-radius: 10px; padding: 7px 9px; min-width: 0; }
+.sg-card .bf-t b { display: block; font-size: 12px; color: var(--text-main); }
+.sg-card .bf-t span { display: block; font-size: 12px; color: var(--text-main); margin-top: 1px; white-space: nowrap; }
+.sg-card .bf-t em { display: block; font-style: normal; font-size: 11px; font-weight: 700; color: #B45309; margin-top: 1px; }
+body.dark-mode .sg-card .bf-t { background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .16); }
+body.dark-mode .sg-card .bf-t em { color: #FBBF24; }
+.sg-card .bf-growth-win { margin-top: 12px; font-size: 12px; }
+@media (max-width: 520px) {
+    .sg-card .bf-tariffs { flex-wrap: wrap; }
+    .sg-card .bf-t { flex: 1 1 45%; }
+}
+/* Блок «Прогноз: счёт за сезон» в «Стоимости отопления»: четыре столбика по сезонам */
+.bf-fc { margin-top: 8px; padding: 8px 10px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 8px; }
+.bf-fc-t { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-sec); }
+.bf-fc-cols { display: flex; align-items: flex-end; gap: 6px; margin-top: 6px; }
+.bf-fc-col { flex: 1 1 0; text-align: center; min-width: 0; }
+.bf-fc-col i { display: block; width: 100%; max-width: 38px; margin: 2px auto 0; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, #F59E0B, #FBBF24); }
+.bf-fc-col:first-child i { background: linear-gradient(180deg, #203F6F, #3F9DE1); }
+.bf-fc-v { display: block; font-size: 11px; font-weight: 700; color: var(--text-main); }
+.bf-fc-col b { display: block; font-size: 10px; color: var(--text-main); margin-top: 3px; }
+.bf-fc-col em { display: block; font-style: normal; font-size: 10px; font-weight: 700; color: #B45309; }
+.bf-fc-s { margin-top: 6px; font-size: 10px; line-height: 1.4; color: var(--text-sec); }
+body.dark-mode .bf-fc { background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .16); }
+body.dark-mode .bf-fc-col em { color: #FBBF24; }
+
 /* Строка не помещается в линию — app.fitDocSummary сжимает промежутки и отступы
    (и прячет значки, где они есть), чтобы «Дата» не уезжала одна на вторую строку.
    На печати у строки свои правила (@media print ниже), поэтому только для экрана. */
