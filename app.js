@@ -56581,7 +56581,11 @@ const app = {
                 `поэтому наружный размер отличается. Цены — по прайсу: «Эта позиция» — одна деталь, «Система» — все трубы и фитинги котельной.</div>` +
                 `</div>`;
             customAlts = [
-                { id: 'ss304', sys: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', imgId: 'RSS-1001-000022' },
+                // ROMMER AISI 304 — только ПРОФИ (как и остальные позиции ROMMER). Уже
+                // стоящую в смете оставляем, иначе пропала бы отметка «Выбран».
+                ...((this.isPro() || this.boilerPipeSystem() === 'ss304')
+                    ? [{ id: 'ss304', sys: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', imgId: 'RSS-1001-000022' }]
+                    : []),
                 { id: 'ss316', sys: 'ss316', name: 'Нержавеющая сталь AISI 316L, пресс', brand: 'STOUT', imgId: 'SSS-2001-000022' },
                 // Полипропилен — марки прайса ТЕРЕМ, поэтому только при включённом
                 // столбце ТЕРЕМ в «Тарифах». Если ППР уже стоит в смете, строку
@@ -70705,8 +70709,11 @@ const app = {
         const v = this.state.boilerPipeSystem;
         if (this.BOILER_PIPE_SYSTEMS.includes(v)) return v;
         const sec = (this.state.sectionAnalog || {})["2. Обвязка котельной"];
-        const analog = (sec !== undefined) ? sec : (this.state.brandMode === 'rommer');
-        return analog ? 'ppr' : 'ss304';
+        // По умолчанию — нержавейка (с 06.10.2026): в режиме STOUT это STOUT AISI 316L
+        // (есть фото и артикулы), в режиме ROMMER — ROMMER AISI 304, а не полипропилен.
+        // Полипропилен — только если монтажник включил «Аналог» раздела 2 или выбрал сам.
+        if (sec === true) return 'ppr';
+        return this.state.brandMode === 'rommer' ? 'ss304' : 'ss316';
     },
 
     // Артикул нержавейки в текущей системе. Линейки пронумерованы зеркально тип в тип
