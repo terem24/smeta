@@ -16056,6 +16056,7 @@ const app = {
         } else if (tab === 'kp') {
             this.fillKpSettingsForm();
         } else if (tab === 'notify') {
+            this.refreshMailConsentUI();
             this.refreshTelegramConnectUI();
         } else if (tab === 'login') {
             this.renderProfileLoginMethod();
@@ -17572,6 +17573,58 @@ const app = {
         this.installerSettings.tgNotify[kind] = !!on;
         this.pushInstallerSettingsToCloud();
     },
+    // ── Согласие на информационные письма (users.mail_consent, миграция 20261007_mail_consent.sql) ──
+    // null — человек не отвечал (рассылку не шлём), true — согласен, false — отказался.
+    // Служебные письма (код, статусы смет, предупреждения о доступе) согласия не требуют.
+
+    // Галочка при регистрации ждёт первого входа: до него строки в users ещё нет.
+    flushPendingMailConsent: async function (email) {
+        let raw = null;
+        try { raw = JSON.parse(localStorage.getItem('hc_pending_mail_consent') || 'null'); } catch (e) { raw = null; }
+        if (!raw || typeof raw.v !== 'boolean') return;
+        const sameUser = raw.email && email && String(raw.email).toLowerCase() === String(email).toLowerCase();
+        const stale = !raw.t || (Date.now() - raw.t) > 2 * 24 * 3600 * 1000;
+        if (!sameUser) {
+            // Чужой или протухший выбор не применяем и не копим
+            if (stale) { try { localStorage.removeItem('hc_pending_mail_consent'); } catch (e) { } }
+            return;
+        }
+        try {
+            const { data, error } = await supabaseClient.rpc('set_my_mail_consent', { p_value: raw.v });
+            if (error) throw error;
+            if (data === true) { try { localStorage.removeItem('hc_pending_mail_consent'); } catch (e) { } }
+        } catch (e) {
+            console.warn('[flushPendingMailConsent] Не записали согласие, повторим при следующем входе:', e && e.message ? e.message : e);
+        }
+    },
+
+    refreshMailConsentUI: async function () {
+        const el = document.getElementById('profile_mail_consent');
+        if (!el) return;
+        try {
+            const { data, error } = await supabaseClient.rpc('get_my_mail_consent');
+            if (error) throw error;
+            el.checked = !!(data && data.consent === true);
+            el.disabled = false;
+        } catch (e) {
+            // Нет связи или миграция не применена: переключатель не показываем включённым наугад
+            el.checked = false;
+            console.warn('[refreshMailConsentUI]', e && e.message ? e.message : e);
+        }
+    },
+
+    setMailConsent: async function (on) {
+        const el = document.getElementById('profile_mail_consent');
+        try {
+            const { data, error } = await supabaseClient.rpc('set_my_mail_consent', { p_value: !!on });
+            if (error) throw error;
+            if (data !== true) throw new Error('учётная запись не найдена');
+        } catch (e) {
+            if (el) el.checked = !on;
+            app.alert('Не удалось сохранить выбор: ' + (e && e.message ? e.message : e) + '. Проверьте соединение и повторите.');
+        }
+    },
+
     // Статус подключения + три чекбокса — карточка «Telegram» на вкладке «Мои объекты»
     refreshTelegramConnectUI: function () {
         const statusEl = document.getElementById('profile_tg_status');
@@ -42236,6 +42289,16 @@ const app = {
         const email = document.getElementById('auth_email_input').value.trim();
         const password = document.getElementById('auth_reg_password').value.trim();
 
+        // Выбор «хочу информационные письма» запоминаем вместе с почтой: учётная запись в базе
+        // появляется только при первом входе, и тогда выбор уходит в базу (flushPendingMailConsent).
+        // Привязка к почте нужна, чтобы чужой выбор не лёг на следующего, кто войдёт с этого устройства.
+        try {
+            const mailChk = document.getElementById('chk_mail_consent');
+            localStorage.setItem('hc_pending_mail_consent', JSON.stringify({
+                email: email.toLowerCase(), v: !!(mailChk && mailChk.checked), t: Date.now()
+            }));
+        } catch (e) { /* без localStorage согласие просто не запомнится, включить можно в кабинете */ }
+
         const authErrEl = document.getElementById('auth_error_msg');
         if (authErrEl) authErrEl.style.display = 'none';
 
@@ -42918,6 +42981,7 @@ const app = {
 
             let uRow = upsertResult ? upsertResult[0] : null;
             if (uRow && !HC_LOCAL_DEV) this.stampLoginGeo(authUserId);
+            if (uRow) this.flushPendingMailConsent(email);
             if (uRow && utm) this.stampFirstTouchSource(uRow, authUserId, utm);
             if (uRow && uRow.is_blocked) {
                 // Заблокированный админом аккаунт: данные не трогаем, но не даём пользоваться
