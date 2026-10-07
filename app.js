@@ -69205,14 +69205,9 @@ const app = {
             const n = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
             let html = '';
             if (st) {
-                const tail = `R ${n(st.total)} из ${n(st.req.r)} м²·°C/Вт`;
-                if (st.ok) html = `<span style="color:#22C55E;">✓ Хватает: ${tail}</span>`;
-                else if (s.ufhInsNoAdd) html = `<span style="color:#F59E0B;">⚠ Не хватает: ${tail}. Плиты в смету не добавлены.</span>`;
-                else html = `<span style="color:#F59E0B;">Не хватает: ${tail}. Недостающее добавлено в смету.</span>`;
-                if (!st.ok && !s.ufhInsNoAdd) {
-                    const add = this.ufhInsLayers(st.req.r - st.base - st.own);
-                    if (add.length) html += `<div style="color:var(--text-sec); margin-top:2px;">В смету: ${add.map(l => 'XPS ' + l.thick + ' мм (R ' + n(l.r) + ')').join(' + ')}</div>`;
-                }
+                if (st.ok) html = `<span style="color:#22C55E;">✓ Утеплителя хватает</span>`;
+                else if (s.ufhInsNoAdd) html = `<span style="color:#F59E0B;">⚠ Внимание: утеплителя не хватает. Плиты в смету не добавлены.</span>`;
+                else html = `<span style="color:#F59E0B;">⚠ Внимание: утеплителя не хватает. Недостающее добавлено в смету.</span>`;
             }
             eff.innerHTML = html;
         }
