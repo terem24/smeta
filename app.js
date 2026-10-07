@@ -36579,6 +36579,11 @@ const app = {
     openSchemeFullscreen: function (srcEl) {
         const src = srcEl || document.querySelector('#dynamic_scheme .scheme-svg');
         if (!src) return;
+        // Все схемы, что сейчас показаны в расчёте, — для листания ‹ › и стрелками
+        const list = Array.from(document.querySelectorAll('.scheme-svg-wrap > svg, .automation-scheme > svg'))
+            .filter(el => !el.closest('#scheme_zoom_overlay') && el.getClientRects().length);
+        let cur = list.indexOf(src);
+        if (cur < 0) { list.unshift(src); cur = 0; }
         const old = document.getElementById('scheme_zoom_overlay');
         if (old) old.remove();
         const ov = document.createElement('div');
@@ -36586,6 +36591,7 @@ const app = {
         ov.innerHTML =
             `<div class="scheme-zoom-bar">
                 <button type="button" data-z="hints" class="scheme-zoom-hints">${this._hydToggleLabel(true)}</button>
+                ${list.length > 1 ? `<button type="button" data-z="prev" aria-label="Предыдущая схема" title="Предыдущая схема (←)">‹</button><span class="scheme-zoom-count"></span><button type="button" data-z="next" aria-label="Следующая схема" title="Следующая схема (→)">›</button>` : ''}
                 <button type="button" data-z="out" aria-label="Уменьшить">−</button>
                 <button type="button" data-z="fit">Вписать</button>
                 <button type="button" data-z="in" aria-label="Увеличить">+</button>
@@ -36595,7 +36601,17 @@ const app = {
         if (!this.hydEnabled()) ov.classList.add('hyd-off');
         document.body.appendChild(ov);
         const canvas = ov.querySelector('.scheme-zoom-canvas');
-        const svg = canvas.querySelector('svg');
+        let svg = canvas.querySelector('svg');
+        const countEl = ov.querySelector('.scheme-zoom-count');
+        const go = (d) => {
+            if (list.length < 2) return;
+            cur = (cur + d + list.length) % list.length;
+            canvas.innerHTML = list[cur].outerHTML;
+            svg = canvas.querySelector('svg');
+            fit();
+            canvas.scrollLeft = 0; canvas.scrollTop = 0;
+            if (countEl) countEl.textContent = (cur + 1) + ' / ' + list.length;
+        };
         let w = 0;
         const fit = () => { w = canvas.clientWidth - 32; svg.style.width = w + 'px'; };
         const zoom = (k, cx, cy) => {
@@ -36609,9 +36625,12 @@ const app = {
             canvas.scrollTop = py * w - (cy ?? rect.height / 2);
         };
         fit();
+        if (countEl) countEl.textContent = (cur + 1) + ' / ' + list.length;
         ov.addEventListener('click', (e) => {
             const z = e.target.dataset && e.target.dataset.z;
-            if (z === 'in') zoom(1.3);
+            if (z === 'prev') go(-1);
+            else if (z === 'next') go(1);
+            else if (z === 'in') zoom(1.3);
             else if (z === 'hints') this.toggleHydHints(e);
             else if (z === 'out') zoom(1 / 1.3);
             else if (z === 'fit') fit();
@@ -36639,7 +36658,12 @@ const app = {
         });
         // клик по свободному полю канваса не закрывает после перетаскивания
         canvas.addEventListener('click', (e) => { if (drag && drag.moved) e.stopPropagation(); }, true);
-        const onKey = (e) => { if (e.key === 'Escape') { ov.remove(); window.removeEventListener('keydown', onKey); } };
+        const onKey = (e) => {
+            if (!ov.isConnected) { window.removeEventListener('keydown', onKey); return; }
+            if (e.key === 'Escape') { ov.remove(); window.removeEventListener('keydown', onKey); }
+            else if (e.key === 'ArrowLeft') go(-1);
+            else if (e.key === 'ArrowRight') go(1);
+        };
         window.addEventListener('keydown', onKey);
     },
     // Схема подключения автоматики котельной: контроллер с именными
