@@ -77,27 +77,6 @@ const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey, {
     global: { fetch: supabaseProxyFetch }
 });
 
-// === КОНКУРС МОНТАЖНИКОВ STOUT 2026 (01.04.2026 – 30.11.2026) ===
-const CONTEST_CATS_2026 = [
-    { key: 'rad_design',     label: 'Дизайн. радиаторы',  pts: 20, emoji: '✨', test: (id)       => id.startsWith('SRB-3320') },
-    { key: 'boiler_el',      label: 'Котёл электрич.',     pts: 10, emoji: '⚡', test: (id)       => id.startsWith('SEB-') },
-    { key: 'water_heater',   label: 'Водонагреватель',     pts: 9,  emoji: '🌡️', test: (id)       => id.startsWith('SWH-') },
-    { key: 'pump_group',     label: 'Группа б.монтажа',   pts: 8,  emoji: '⚙️', minQty: 2, test: (id) => id.startsWith('SDG-000') },
-    { key: 'manifold_heat',  label: 'Коллектор отопл.',   pts: 7,  emoji: '🔀', test: (id)       => id.startsWith('SMS-09') || id.startsWith('SMB-6850-') },
-    { key: 'rad_conv',       label: 'Радиаторы/конвект.', pts: 6,  emoji: '🏠', test: (id)       => (id.startsWith('SRB-0') || id.startsWith('SCQ-') || id.startsWith('SCN-')) },
-    { key: 'automation',     label: 'Автоматика',          pts: 6,  emoji: '🎛️', test: (id, name) => id.startsWith('STE-') || id.startsWith('SHT-') || name.includes('термостат') || name.includes('терморегулятор') || name.includes('сервопривод') || name.includes('контроллер') },
-    // SCA — итальянская линейка (снята с умолчания 20.09.2026), SCR — российская
-    // STOUT, RCA — ROMMER. Проверять один SCA значило бы, что после смены
-    // умолчания баллы за дымоход не начисляются никому.
-    { key: 'chimney',        label: 'Дымоход',             pts: 5,  emoji: '🏭', test: (id)       => /^(SCA|SCR|RCA)-/.test(id) },
-    { key: 'pump',           label: 'Насос',               pts: 4,  emoji: '💧', test: (id)       => id.startsWith('SPC-') },
-    { key: 'tank_exp',       label: 'Бак мембранный',      pts: 4,  emoji: '🛢️', test: (id)       => id.startsWith('STH-') || id.startsWith('STW-') },
-    { key: 'manifold_water', label: 'Коллектор воды',      pts: 3,  emoji: '🚿', test: (id, name, item) => (id.startsWith('SMB-6851-') || name.includes('3/4')) && (item && (item.group === '5.1. Внутреннее водоснабжение' || (item.group === '5. Внутреннее водоснабжение' && item.desc && (item.desc.includes('ХВС') || item.desc.includes('Холодная вода'))))) },
-    { key: 'flex_conn',      label: 'Гибкая подводка',     pts: 3,  emoji: '🔗', test: (id, name) => name.includes('гибк') },
-    { key: 'valve',          label: 'Арматура',            pts: 2,  emoji: '🔧', test: (id)       => id.startsWith('SVT-') || id.startsWith('SVL-') || id.startsWith('SFB-') || id.startsWith('SBV-') || id === 'BX4991100069' },
-    { key: 'pipes_fittings', label: 'Трубы и фитинги',     pts: 1,  emoji: '➿', test: (id, name, item) => (name.includes('труб') && (item.q || 1) >= 20) || name.includes('фитинг') || id.startsWith('SFP-') || id.startsWith('SFA-') || id.startsWith('SFC-') || id.startsWith('SFH-') || id.startsWith('SPX-') },
-    { key: 'mats',           label: 'Маты',                pts: 1,  emoji: '🧱', test: (id, name) => (name.includes('мат') && !name.includes('матов')) || id.startsWith('SPM-') },
-];
 
 
 
@@ -16113,7 +16092,6 @@ const app = {
             if (id === 'profile_modal_overlay') this.closeProfileModal();
             else if (id === 'admin_modal_overlay') this.closeAdminModal();
             else if (id === 'notifications_modal_overlay') this.closeNotificationsModal();
-            else if (id === 'lk_rating_overlay') this.closeRatingPanel();
         });
     },
 
@@ -16344,7 +16322,6 @@ const app = {
             + `<div class="ad-cards">${cards.join('')}</div>`
             + `<div class="ad-card lk-home-facts">`
             + (tariff ? `<div class="ad-kv"><span>Тариф</span><button type="button" class="lk-link" onclick="app.setProfileTab('subscription')" title="Что даёт тариф и срок действия">${esc(tariff)} ›</button></div>` : '')
-            + ((typeof GRM !== 'undefined' && GRM.isEnabled && GRM.isEnabled()) ? `<div class="ad-kv"><span>Баллы, значки и рейтинг</span><button type="button" class="lk-btn-sm" onclick="app.railGo('rating')">Открыть</button></div>` : '')
             + `<div class="ad-kv"><span>Сохранённых смет</span><b>${ests.length}${ests.length >= 50 ? '+' : ''}</b></div>`
             + `</div>`;
         // Список для общего поиска по кабинету — те же свои сметы, второй раз не читаем
@@ -16493,10 +16470,6 @@ const app = {
             this.openMessagesCenter();
             return;
         }
-        if (section === 'rating') {
-            this.openRatingPanel();
-            return;
-        }
         if (section === 'admin') {
             this.closeOtherRailPlaces('admin_modal_overlay');
             this._adminOpenedFrom = 'admin';
@@ -16533,7 +16506,7 @@ const app = {
     // Список окон, которые открываются из панели и потому обязаны вставать в то же
     // место: кабинет, панель управления (у админа в неё ведут «Сообщения»), окно
     // сообщений обычного монтажника и врезка рейтинга.
-    DOCKABLE_OVERLAY_IDS: ['profile_modal_overlay', 'admin_modal_overlay', 'notifications_modal_overlay', 'lk_rating_overlay'],
+    DOCKABLE_OVERLAY_IDS: ['profile_modal_overlay', 'admin_modal_overlay', 'notifications_modal_overlay'],
 
     isOverlayOpen: function (id) {
         const el = document.getElementById(id);
@@ -17275,36 +17248,6 @@ const app = {
         if (this.isMobileLayout()) this.switchMobileTab('inputs');
     },
 
-    // ── Врезка «Баллы и рейтинг» ──
-    // Рейтинг — отдельная страница, и ссылка на неё уводила из калькулятора вместе с
-    // меню. Показываем ту же страницу во фрейме на месте колонок; на узком экране,
-    // где панели нет, по-прежнему открываем её отдельной вкладкой.
-    openRatingPanel: function () {
-        if (!this.isRailVisible()) {
-            window.open('/rating/', '_blank', 'noopener');
-            return;
-        }
-        this.closeOtherRailPlaces('lk_rating_overlay');
-
-        const frame = document.getElementById('lk_rating_frame');
-        // Адрес подставляем при первом открытии: до него страницу грузить незачем.
-        // Путь относительный — сайт живёт и на своём домене, и в подпапке.
-        if (frame && !frame.getAttribute('src')) frame.setAttribute('src', 'rating/');
-        const overlay = document.getElementById('lk_rating_overlay');
-        if (overlay) overlay.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        this.syncCabinetDock();
-        this.syncRailUI();
-    },
-
-    closeRatingPanel: function () {
-        const overlay = document.getElementById('lk_rating_overlay');
-        if (overlay) overlay.style.display = 'none';
-        document.body.style.overflow = '';
-        this.syncCabinetDock();
-        this.syncRailUI();
-    },
-
     setCabinetDocked: function (on) {
         document.body.classList.toggle('lk-docked', !!on);
         if (!on) return;
@@ -17477,8 +17420,6 @@ const app = {
             current = (this._adminOpenedFrom === 'messages') ? 'messages' : 'admin';
         } else if (this.isOverlayOpen('notifications_modal_overlay')) {
             current = 'messages';
-        } else if (this.isOverlayOpen('lk_rating_overlay')) {
-            current = 'rating';
         }
         rail.querySelectorAll('.lk-rail-item').forEach(el => {
             const key = el.dataset.rail;
@@ -17503,11 +17444,6 @@ const app = {
             this.fitRailToViewport();
         }
     },
-
-    // Геймификация (начисление XP / разблокировка значков за действия монтажника,
-    // региональный рейтинг, значки, лента активности) вынесена в общий модуль
-    // gamification.js (глобальная переменная GRM, подключается в index.html перед
-    // app.js) — переиспользуется и на отдельной странице /rating/.
 
     // ═══════════════ Персональные настройки монтажника (личный кабинет) ═══════════════
     // Хранятся отдельно от app.state (который сохраняется/сбрасывается per-проект), чтобы
@@ -22650,7 +22586,6 @@ const app = {
         'lk:summary': 'сводка',
         'lk:workprices': 'цены на монтаж',
         'lk:equipment': 'своё оборудование',
-        'lk:rating': 'баллы',
         'lk:admin': 'панель управления'
     },
 
@@ -44272,9 +44207,7 @@ const app = {
                     if (typeof RecognizeUI !== 'undefined') RecognizeUI.mountInline(panelRec);
                 }).catch(() => { });
             }
-            // Полный render() здесь не нужен — таблица сметы скрыта. Но виджет
-            // конкурса живёт вне таблицы и сам не спрячется, его чистим явно.
-            this.renderContestWidget();
+            // Полный render() здесь не нужен — таблица сметы скрыта.
             return;
         }
         if (panelRec) panelRec.style.display = 'none';
@@ -49155,7 +49088,6 @@ const app = {
             // ссылку, а напоминание «КП без счёта» не видело отправок ссылкой.
             this.logInvoiceEvent('sent', { shared_invoice_id: shareId, channel: 'link', kp_version: kpVersion || null });
 
-            GRM.trackAction('share', shareId);  // геймификация: +10 XP + значки ссылок (шаринг ссылки клиенту)
 
             // Копируем готовое сообщение с номером КП, а не голую ссылку
             const shareMsg = this.clientShareMessage({
@@ -49402,7 +49334,6 @@ const app = {
                         .replace(/[\\\/:\*\?"<>\|]/g, '');
                     const res = await hcNative.printPdf({ name: safeName + '.pdf' });
                     this.logPrintedEvent('pdf');
-                    GRM.trackAction('pdf', this.state.calc_id);
                     if (window.hcNativeShowSaved) window.hcNativeShowSaved(res);
                     document.dispatchEvent(new CustomEvent('hc:pdf-done'));
                 } catch (err) {
@@ -49463,7 +49394,6 @@ const app = {
                 await this.lazy('html2pdf');
                 await html2pdf().set(opt).from(printBin).save();
                 this.logPrintedEvent('pdf');
-                GRM.trackAction('pdf', this.state.calc_id);  // геймификация: +5 XP + значки PDF
                 // Документ на руках — момент, когда в приложении уместно
                 // попросить оценку (rate_app.js слушает это событие).
                 document.dispatchEvent(new CustomEvent('hc:pdf-done'));
@@ -49498,7 +49428,6 @@ const app = {
             app._printBinReady = false;
         }
         this.logPrintedEvent('pdf');
-        GRM.trackAction('pdf', this.state.calc_id);  // геймификация: +5 XP + значки PDF
         document.dispatchEvent(new CustomEvent('hc:pdf-done'));
 
         // Возвращаем тему обратно
@@ -49593,7 +49522,6 @@ const app = {
             const safeName = (document.title || this.state.projectName || 'Смета').replace(/[\\\/:\*\?"<>\|]/g, '');
             ExcelExport.saveFromPrintBin(`${safeName}.xlsx`, { flat: !!flat });
             this.logPrintedEvent('excel');
-            GRM.trackAction('pdf', this.state.calc_id);  // геймификация: та же отметка, что и у PDF
         } catch (err) {
             console.error('[executeExcelDownload] Ошибка формирования Excel:', err);
             app.alert('Не удалось сформировать файл Excel: ' + (err && err.message ? err.message : err));
@@ -50400,7 +50328,6 @@ const app = {
                 this.saveState();
                 this.capturePriceSnapshot();
                 this.logInvoiceEvent('sent', { shared_invoice_id: shareId, channel: 'invoice', kp_version: kpVersion || null });
-                GRM.trackAction('invoice', shareId);  // геймификация: +15 XP + значки счетов (запрос счёта у дистрибьютора)
 
                 viewUrl = `${baseOrigin}/invoice.html?id=${shareId}`;
             } catch (err) {
@@ -67585,23 +67512,6 @@ const app = {
         // Кнопка быстрого старта над площадью — пока в расчёте ничего нет
         this.syncQuickStartBtn();
 
-        // Рейтинг и значки свёрнуты — общим выключателем в gamification.js (GRM.isEnabled).
-        // Пока он выключен, прячем оба входа: кубок в шапке и пункт «Рейтинг» в меню
-        // кабинета. Внутри — прежнее правило пилота: Калининградская область плюс
-        // админы и наблюдатели для контроля.
-        const ratingOn = (typeof GRM !== 'undefined' && GRM.isEnabled) ? GRM.isEnabled() : false;
-        const trophyBtn = document.querySelector('.btn-trophy');
-        if (trophyBtn) {
-            const region = this.state.tgUser && this.state.tgUser.region;
-            const eligible = ratingOn && !isGuest && (
-                GRM.isEligibleRegion(region) || this.hasAdminAccess()
-            );
-            trophyBtn.style.display = eligible ? 'flex' : 'none';
-        }
-        document.querySelectorAll('[data-rail="rating"], .lk-nav-rating').forEach(el => {
-            el.style.display = ratingOn ? '' : 'none';
-        });
-
         if (isGuest) {
             this.state.detailedRooms = false;
             this.state.showDetailedRoomsPanel = false;
@@ -83984,7 +83894,6 @@ const app = {
         this._queueKpDayCheck();
         // Лист не скачет, а к новым строкам плавно едет (см. _estimateAfter).
         this._estimateAfter(_estBefore);
-        this.renderContestWidget();
         // Панель переноса выделенных распознанных строк: таблица только что
         // перестроена, число выделенных могло измениться (перенос, удаление,
         // откат распознавания), да и вкладка могла смениться на «Работы».
@@ -84628,154 +84537,6 @@ const app = {
         const el = document.getElementById('cheaper_print');
         if (!el) return;
         el.innerHTML = this.cheapModeOn() ? this.cheaperReportHtml(true) : '';
-    },
-
-    renderContestWidget() {
-        const el = document.getElementById('contest_widget');
-        if (!el) return;
-
-        // Пилот рейтинга свёрнут — виджет баллов и значков не показываем никому
-        // (общий выключатель GRM.isEnabled в gamification.js).
-        if (typeof GRM === 'undefined' || !GRM.isEnabled || !GRM.isEnabled()) { el.innerHTML = ''; return; }
-
-        // Виджет считает баллы по оборудованию и уместен только на его вкладке.
-        // На монтажных работах, распознавании и 3D он не к месту.
-        if (this.state.viewMode !== 'equipment') { el.innerHTML = ''; return; }
-
-        if (this.state.brandMode !== 'stout') { el.innerHTML = ''; return; }
-
-        const list = this.currentEquipmentList || [];
-
-        // Подсчёт количества по категориям конкурса
-        const catQty = {};
-        for (const item of list) {
-            if ((item.brand || 'STOUT') === 'ROMMER') continue;
-            const id = item.originalId || item.id || '';
-            const name = (item.name || '').toLowerCase();
-            for (const cat of CONTEST_CATS_2026) {
-                if (cat.test(id, name, item)) {
-                    catQty[cat.key] = (catQty[cat.key] || 0) + (item.q || 1);
-                    break;
-                }
-            }
-        }
-
-        if (Object.keys(catQty).length === 0) { el.innerHTML = ''; return; }
-
-        // Определяем заработанные категории (с учётом minQty)
-        const earned = new Set();
-        const pendingQty = {};
-        for (const cat of CONTEST_CATS_2026) {
-            const qty = catQty[cat.key] || 0;
-            if (qty >= (cat.minQty || 1)) earned.add(cat.key);
-            else if (qty > 0) pendingQty[cat.key] = qty;
-        }
-
-        const totalPts = CONTEST_CATS_2026.filter(c => earned.has(c.key)).reduce((s, c) => s + c.pts, 0);
-
-        // Тост при появлении или потере категории
-        const prevEarned = this._contestPrevEarned || new Set();
-        if (prevEarned.size > 0) {
-            let toastShown = false;
-            for (const key of earned) {
-                if (!prevEarned.has(key)) {
-                    const cat = CONTEST_CATS_2026.find(c => c.key === key);
-                    if (cat) { this.showContestToast(cat.label, cat.pts, 'gain'); toastShown = true; }
-                    break;
-                }
-            }
-            if (!toastShown) {
-                for (const key of prevEarned) {
-                    if (!earned.has(key)) {
-                        const cat = CONTEST_CATS_2026.find(c => c.key === key);
-                        if (cat) { this.showContestToast(cat.label, cat.pts, 'loss'); }
-                        break;
-                    }
-                }
-            }
-        }
-        this._contestPrevEarned = new Set(earned);
-
-
-        // XP-бар: 20 блоков, каждый = 5 баллов
-        const XP_BLOCKS = 20;
-        const filledBlocks = Math.min(XP_BLOCKS, Math.floor(totalPts / 5));
-        const xpBar = Array.from({length: XP_BLOCKS}, (_, i) =>
-            `<div class="cw-xp-block${i < filledBlocks ? ' filled' : ''}"></div>`
-        ).join('');
-
-        let xpLabel = '';
-        if (totalPts >= 200) {
-            xpLabel = `<span class="cw-xp-label bonus">🎉 БОНУС: +${(totalPts * 10).toLocaleString('ru-RU')} ₽ за объект</span>`;
-        } else if (totalPts >= 100) {
-            xpLabel = `<span class="cw-xp-label good">✅ ФОРМА ПОЛУЧЕНА! (комбинезон + куртка)</span>`;
-        } else {
-            xpLabel = `<span class="cw-xp-label">${totalPts} / 100 XP &nbsp;·&nbsp; до формы (комбинезон + куртка) ещё ${100 - totalPts}</span>`;
-        }
-
-        // Достижения
-        const earnedAch = CONTEST_CATS_2026
-            .filter(c => earned.has(c.key))
-            .map(c => `<div class="cw-achieve earned" title="+${c.pts} XP">${c.emoji} ${c.label} <b>+${c.pts}</b></div>`)
-            .join('');
-
-        const lockedAch = CONTEST_CATS_2026
-            .filter(c => !earned.has(c.key))
-            .map(c => {
-                const pq = pendingQty[c.key];
-                const note = c.minQty && pq ? ` (${pq}/${c.minQty})` : '';
-                return `<div class="cw-achieve locked" title="${c.label}: нужно смонтировать">🔒 ${c.label}${note} <b>+${c.pts}</b></div>`;
-            })
-            .join('');
-
-        el.innerHTML = `
-            <div class="cw-card">
-                <div class="cw-header">
-                    <span class="cw-title">🏆 Конкурс STOUT 2026</span>
-                    <span class="cw-pts">${totalPts}<span class="cw-pts-label"> баллов</span></span>
-                </div>
-                <div class="cw-xp-row">
-                    <div class="cw-xp-bar">${xpBar}</div>
-                    ${xpLabel}
-                </div>
-                <details class="cw-details">
-                    <summary class="cw-details-summary">🔍 Подробнее</summary>
-                    <div class="cw-details-content">
-                        <div class="cw-achievements">
-                            ${earnedAch}${lockedAch}
-                        </div>
-                        <details class="cw-rules-details">
-                            <summary class="cw-rules-summary">📜 Правила конкурса STOUT 2026</summary>
-                            <div class="cw-rules-content">
-                                <p><b>📅 Период:</b> 1 апреля – 30 ноября 2026 г.</p>
-                                <p><b>🎁 Призовые места:</b></p>
-                                <ul>
-                                    <li>🥇 <b>1–10 место:</b> 150 000 ₽</li>
-                                    <li>🥈 <b>11–15 место:</b> 100 000 ₽</li>
-                                    <li>🥉 <b>16–20 место:</b> 50 000 ₽</li>
-                                    <li>📦 <b>21–30 место:</b> Ящик для инструментов</li>
-                                </ul>
-                                <p><b>👔 Гарантированные призы:</b></p>
-                                <ul>
-                                    <li>👕 <b>От 100 баллов:</b> Форма STOUT (полукомбинезон + куртка)</li>
-                                    <li>💰 <b>От 200 баллов:</b> Денежное вознаграждение <b>1 балл = 10 ₽</b></li>
-                                </ul>
-                            </div>
-                        </details>
-                    </div>
-                </details>
-            </div>`;
-    },
-
-    showContestToast(label, pts, type = 'gain') {
-        const el = document.getElementById('contest_toast');
-        if (!el) return;
-        const isLoss = type === 'loss';
-        const suffix = pts === 1 ? '' : pts >= 2 && pts <= 4 ? 'а' : 'ов';
-        el.innerHTML = `<span class="ct-icon">${isLoss ? '📉' : '🏆'}</span><div><div class="ct-title">${isLoss ? '−' : '+'}${pts} балл${suffix} конкурса</div><div class="ct-sub">${isLoss ? 'Потеряно: ' : ''}${label}</div></div>`;
-        el.className = `contest-toast${isLoss ? ' loss' : ''} visible no-print`;
-        clearTimeout(this._contestToastTimer);
-        this._contestToastTimer = setTimeout(() => el.classList.remove('visible'), 3500);
     },
 
     // Переключение отображения цен подписки Профи между рублями и тенге (KZT).

@@ -191,7 +191,6 @@
     <!-- Цены дистрибьюторов поверх каталога. Отдельный файл, потому что каталог
          раз в месяц целиком переписывает автообновление цен Терем-онлайн. -->
     <script src="dist_prices.js?v=1.2" defer></script>
-    <script src="gamification.js?v=2.2" defer></script>
     <!-- Пуш-уведомления Android-приложения. В браузере файл ничего не делает:
          плагина Capacitor нет, все методы тихо выходят. Подключать до app.js —
          app.init() дёргает appPush.init(). -->
@@ -203,7 +202,7 @@
     <script src="boiler_wall.js?v=1.0" defer></script>
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
     <script src="short_names.js?v=1.1" defer></script>
-    <script src="app.js?v=11.56" defer></script>
+    <script src="app.js?v=11.57" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -658,22 +657,6 @@
                 </button>
 
                 <div class="header-divider"></div>
-
-                <!-- Открывает ту же врезку рейтинга, что и пункт меню: обычный переход по
-                     ссылке уводил со страницы вместе с меню. href оставлен для средней
-                     кнопки мыши и «открыть в новой вкладке». -->
-                <a class="btn-ctrl btn-trophy" href="/rating/" title="Рейтинг и достижения"
-                    onclick="event.preventDefault(); app.railGo('rating');">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M7 4h10v4a5 5 0 0 1-10 0V4z"></path>
-                        <path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5v1A3.5 3.5 0 0 0 6.5 11H7"></path>
-                        <path d="M17 5h2.5A1.5 1.5 0 0 1 21 6.5v1A3.5 3.5 0 0 1 17.5 11H17"></path>
-                        <path d="M12 13v4"></path>
-                        <path d="M9 21h6"></path>
-                        <path d="M10 17h4"></path>
-                    </svg>
-                </a>
 
                 <!-- Режим обучения. Раньше это была галочка отдельной строкой над колонками:
                      её не замечали, а на телефоне она занимала место в самом верху экрана.
@@ -2394,7 +2377,6 @@
             <!-- Бланк «Гарантия на систему STOUT»: на экране скрыт, печатается последним
                  листом КП при доле STOUT не ниже порога (app.renderWarrantyPrint) -->
             <div id="warranty_print" class="warranty-print"></div>
-            <div id="contest_widget" class="no-print"></div>
             <div class="doc-footer" style="display: flex; flex-direction: column; align-items: stretch;">
                 <div class="discount-container no-print" id="discount_block" style="display: none; width: 100%; flex-direction: column; gap: 8px; margin-bottom: 12px; border-bottom: 1px dashed var(--border); padding-bottom: 12px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--text-sec);">
@@ -3429,16 +3411,6 @@
             </div>
         </div>
     </div>
-    <!-- Врезка «Баллы и рейтинг»: та же страница /rating/, но внутри рабочего экрана,
-         рядом с меню. Открывает и закрывает app.openRatingPanel / closeRatingPanel;
-         адрес подставляется при первом открытии, чтобы страница не грузилась зря. -->
-    <div id="lk_rating_overlay" class="auth-modal-overlay" style="display: none; z-index: 99997;">
-        <div class="auth-modal-content lk-rating-card">
-            <span class="auth-modal-close" onclick="app.closeRatingPanel()" style="top: 8px; right: 14px;">&times;</span>
-            <iframe id="lk_rating_frame" class="lk-rating-frame" title="Баллы и рейтинг" loading="lazy"></iframe>
-        </div>
-    </div>
-
     <div id="admin_modal_overlay" class="auth-modal-overlay" style="display: none; z-index: 100000;">
         <div class="auth-modal-content" style="display: flex; flex-direction: column;">
             <span class="auth-modal-close" onclick="app.closeAdminModal()">&times;</span>
@@ -3783,7 +3755,5 @@
     </div>
     <div class="mobile-menu-backdrop" onclick="app.toggleMenu()"></div>
 
-    <!-- Тост конкурса STOUT -->
-    <div id="contest_toast" class="contest-toast no-print"></div>
 
 </body>
