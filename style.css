@@ -19678,3 +19678,17 @@ body.dark-mode .save-remind-field input { background: #121212; border-color: #4B
     .mb-log { grid-template-columns: 1fr 1fr; }
     .mb-log > span:nth-child(3) { grid-column: 1 / -1; white-space: normal; }
 }
+
+/* Сверка схемы самосборной группы со сметой: рамки подписей поверх листа и подсветка строк (app.sgInit). */
+.sg-hot { fill: transparent; stroke: none; cursor: pointer; pointer-events: all; }
+.sg-hot.sg-miss { stroke: #ef4444; stroke-width: 5; stroke-dasharray: 16 9; fill: rgba(239, 68, 68, 0.10); }
+.sg-hot.sg-hl { fill: rgba(37, 99, 235, 0.25); stroke: #2563eb; stroke-width: 6; stroke-dasharray: none; }
+.sg-pt { display: none; fill: rgba(37, 99, 235, 0.35); stroke: #2563eb; stroke-width: 6; pointer-events: none; }
+.sg-pt.sg-hl { display: block; }
+#print-area tr.sg-row-hl td { background: rgba(37, 99, 235, 0.20) !important; box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.55); }
+#print-area tr.sg-row-flash td { animation: sg-flash 1.8s ease-out; }
+@keyframes sg-flash { 0%, 40% { background: rgba(250, 204, 21, 0.55); } 100% { background: transparent; } }
+.sg-summary { font-size: 12px; line-height: 1.5; padding: 6px 10px; margin: 6px 0 2px; border-radius: 8px; background: var(--surface-light, rgba(127,127,127,.08)); }
+.sg-miss-txt { color: #ef4444; font-weight: 600; }
+.sg-ok-txt { color: #16a34a; font-weight: 600; }
+.sg-hint { color: var(--text-sec, #6b7280); }

@@ -1202,7 +1202,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
 
     lastSavedStateString: "",
 
@@ -36786,6 +36786,11 @@ const app = {
         const isVentil = i => /ventil|вентил/i.test(nameOf(i));
         const tap = this.state.waterInput && (parseInt(this.state.outdoorFaucet) || 0) > 0;
         return {
+            // Листы самосборных насосных групп — только когда группы в смете собраны из позиций
+            // (this._selfKinds выставляет подбор в render): у готовых групп STOUT/ROMMER вид другой.
+            pumpGroups: ['direct', 'thermo', 'servo']
+                .filter(k => this._selfKinds && this._selfKinds[k])
+                .map(k => ({ kind: k, url: this.SELF_GROUP_SHEETS[k] })),
             ufh: (this.state.tp1 > 0 || this.state.tp2 > 0) ? this.UFH_SHEET : null,
             // Лист про лучевую разводку: без самого коллектора его не показываем
             radManifold: spec.some(i => inRads(i) && /коллектор/i.test(nameOf(i)) &&
@@ -37055,6 +37060,214 @@ const app = {
      * сам коллектор: при врезке радиаторов в магистраль тройниками коллектора
      * нет, и узла обвязки к нему тоже.
      */
+    /**
+     * Узлы обвязки самосборных насосных групп — над подразделом «2.4. Гидравлика котельной».
+     * Листы «Обвязка насосной группы» проектов корпуса Galf (рамка и штамп сняты):
+     *   direct — прямая (радиаторы), «1 объект», лист 49;
+     *   thermo — термостатическая (тёплый пол), «2 объект», лист 41;
+     *   servo  — под сервопривод, 2024-479-MEP.CO, лист 40.
+     * На листах оборудование проектов (ZOTA, ESBE) — состав в смете подобран из прайса ТЕРЕМ,
+     * но схема сборки та же: насос, краны, смеситель, обратный клапан-перемычка.
+     */
+    SELF_GROUP_SHEETS: {
+        direct: 'img/nodes/selfgrp_direct.jpg',
+        thermo: 'img/nodes/selfgrp_thermo.jpg',
+        servo: 'img/nodes/selfgrp_servo.jpg'
+    },
+    SELF_GROUP_LABELS: {
+        direct: { w: 1500, h: 1155, l: [
+            ["Фитинг ППР - переход на наружную резьбу, 32 мм х 3/4\"",485,619,846,639,938,629],
+            ["Футорка 1\" x 3/4\"",485,662,601,682,937,672],
+            ["Гайка насоса с краном 1\"х1 1/2\" ВР-ВР",485,709,732,729,937,719],
+            ["Циркуляционный насос EcoRING III, ZOTA 25/60 180",486,822,800,842,938,832],
+            ["Фитинг ППР - переход на наружную резьбу, 32 мм х 3/4\"",1099,873,1460,893,1034,883],
+            ["Гайка насоса 1 1/2\" x 1\"",485,923,637,943,937,933],
+            ["Клапан обратный 3/4\" ВР",1282,928,1448,947,1033,938],
+            ["Футорка 1\" x 3/4\"",485,955,601,974,937,965],
+            ["Кран шаровой ВН-НР 3/4\"",1295,999,1460,1019,1033,1009],
+            ["Кран шаровой ВН-НР 3/4\"",485,1000,650,1019,936,1010],
+            ["Хомут трубный 24-28 мм",1300,1043,1460,1063,1033,1053],
+            ["Хомут трубный 24-28 мм",485,1045,645,1065,936,1056],
+            ["Удлинитель ВН/ВР 3/4\" 30 мм",485,1070,676,1089,937,1080],
+            ["Удлинитель ВН/ВР 3/4\" 30 мм",1269,1070,1460,1090,1033,1080],
+            ["Сгон прямой 3 /4\" ВР-НР",485,1101,643,1120,936,1110],
+            ["Сгон прямой 3 /4\" ВР-НР",1302,1106,1460,1126,1034,1116]
+        ] },
+        thermo: { w: 1500, h: 1176, l: [
+            ["Тройник нерж. ст. 22х22х22",570,223,745,242,927,232],
+            ["Уголок 45° ВР/НР нерж.ст. 22аx22",570,284,789,303,964,293],
+            ["Тройник нерж. ст. 22х22х22",1300,357,1474,376,1144,366],
+            ["Уголок 45° ВР/НР нерж.ст. 22аx22",1255,439,1474,458,1094,448],
+            ["Соединитель нерж.ст. прямой с НР 22х3/4\"",1202,516,1474,534,1092,524],
+            ["Соединитель прямой с ВР нерж. ст. 22х3/4\"",570,543,846,561,967,552],
+            ["Клапан обратный 3/4\" ВР",1308,560,1474,578,1092,569],
+            ["Полусгон прямой 1\"х3/4\"'",570,583,734,601,966,591],
+            ["Ниппель 3/4\" НР",1369,604,1474,622,1092,613],
+            ["Смесительный клапан Ø25, Kvs = 3.4 м³/ч",570,640,834,659,964,649],
+            ["Тройник 3/4\" ВР",1369,640,1474,659,1092,649],
+            ["Соединитель нерж.ст. прямой с НР 22х3/4\"",1202,698,1474,716,1092,707],
+            ["Гайка насоса с краном 1\"х1 1/2\" ВР-ВР",570,705,818,724,966,714],
+            ["Полусгон прямой 1\"х3/4\"'",1310,734,1474,753,1048,743],
+            ["Циркуляционный насос EcoRING III, ZOTA 25/60 180",570,831,886,850,968,840],
+            ["Гайка насоса 1 1/2\" x 1\"",570,940,722,958,964,949],
+            ["Соединитель прямой с ВР нерж. ст. 22х3/4\"",1198,953,1474,972,1092,962],
+            ["Футорка 1\" x 3/4\"",570,970,686,988,966,979],
+            ["Кран шаровой ВН-НР 3/4\"",1309,1011,1474,1029,1092,1020],
+            ["Кран шаровой ВН-НР 3/4\"",570,1012,736,1030,966,1021],
+            ["Хомут трубный 24-28 мм",570,1055,730,1073,966,1064],
+            ["Хомут трубный 24-28 мм",1314,1056,1474,1075,1092,1065],
+            ["Удлинитель ВН/ВР 3/4\" 30 мм",570,1080,762,1099,966,1089],
+            ["Удлинитель ВН/ВР 3/4\" 30 мм",1283,1081,1474,1099,1092,1090],
+            ["Сгон прямой 3 /4\" ВР-НР",1316,1118,1474,1136,1092,1127],
+            ["Сгон прямой 3 /4\" ВР-НР",570,1119,728,1137,966,1128]
+        ] },
+        servo: { w: 1500, h: 1268, l: [
+            ["Соединитель нерж.ст. прямой с НР 22х3/4\"",1190,511,1455,530,1115,521],
+            ["Соединитель нерж.ст. прямой с НР 22х3/4\"",559,541,825,560,992,550],
+            ["Клапан обратный 3/4\" ВР",1293,561,1455,580,1116,571],
+            ["Сгон прямой 3 /4\" ВР-НР",559,587,714,606,992,597],
+            ["Ниппель 3/4\" НР",1353,597,1456,616,1115,607],
+            ["Клапан трехходовой смесительный, Esbe",560,632,816,651,990,642],
+            ["Тройник 3/4\" ВР",1353,633,1455,653,1115,643],
+            ["Ниппель 1\" х 3/4\" НР",559,681,687,700,992,691],
+            ["Соединитель нерж.ст. прямой с НР 22х3/4\"",1190,689,1455,708,1115,699],
+            ["Гайка насоса с краном 1\"х1 1/2\" ВР-ВР",559,724,801,743,993,734],
+            ["Сгон прямой 3 /4\" ВР-НР",1301,725,1456,744,1059,734],
+            ["Ниппель 3/4\" НР",1353,770,1456,790,1036,780],
+            ["Циркуляционный насос EcoRING III, ZOTA 25/60 180",560,845,868,864,994,856],
+            ["Гайка насоса 1 1/2\" x 1\"",559,950,707,969,993,960],
+            ["Соединитель прямой с ВР нерж. ст. 22х3/4\"",1186,971,1455,990,1116,981],
+            ["Футорка 1\" x 3/4\"",559,977,672,996,993,987],
+            ["Кран шаровой ВН-НР 3/4\"",1294,1018,1455,1038,1116,1029],
+            ["Кран шаровой ВН-НР 3/4\"",559,1019,721,1038,993,1030],
+            ["Хомут трубный 24-28 мм",559,1063,716,1082,993,1073],
+            ["Хомут трубный 24-28 мм",1299,1063,1456,1082,1116,1073],
+            ["Удлинитель ВН/ВР 3/4\" 30 мм",1269,1088,1456,1107,1115,1097],
+            ["Удлинитель ВН/ВР 3/4\" 30 мм",559,1088,746,1108,992,1098],
+            ["Сгон прямой 3 /4\" ВР-НР",559,1119,714,1138,992,1128],
+            ["Сгон прямой 3 /4\" ВР-НР",1301,1119,1456,1138,1115,1128]
+        ] }
+    },
+    // Подраздел сметы каждого вида группы (без номера) — по нему подпись схемы ищет свои строки.
+    SELF_KIND_TITLE: { direct: 'Самосборная группа: прямая', thermo: 'Самосборная группа: термостатическая', servo: 'Самосборная группа: под сервопривод' },
+    // Сверка подписей схемы со сметой: [подпись, какие артикулы сметы её закрывают, искать во всей котельной?].
+    // null вместо артикулов — позиции этой подписи в смете нет и не закладывается.
+    SELF_LABEL_RULES: [
+        [/^Тройник нерж/, /^(RSS|SSS)-(1013|1014|2013|2014)-/, true, ['tee']],
+        [/^Уголок 45/, /^(RSS|SSS)-(1004|2004)-0000(22|28)/, false, ['elbow45']],
+        [/^Фитинг ППР/, /^(RSS|SSS)-(1021|1022|2021|2022)-(002234|000281)/, false, ['adF', 'adM']],
+        [/^Соединитель.*с НР/, /^(RSS|SSS)-(1021|2021)-(002234|000281)/, false, ['adM']],
+        [/^Соединитель.*с ВР/, /^(RSS|SSS)-(1022|2022)-(002234|000281)/, false, ['adF']],
+        [/^Клапан обратный/, /^(SVC-0011-0000(20|25)|RVC-0001-0000(20|25))/],
+        [/^Ниппель 3\/4/, /^SFT-0004-(003434|000011)/],
+        [/^Ниппель 1/, /^SFT-0004-(000134|000011)/],
+        [/^Тройник 3\/4/, /^SFT-0020-0000(34|01)/],
+        [/^(Полусгон|Футорка)/, /^SFT-(0004-000134|0028-000134|0004-000011)/],
+        [/^(Смесительный клапан|Клапан трехходовой)/, /^(SVM-0120-16432[05]|RVM-0121-164320|SVM-0003-01(2002|2501)|RVM-0003-0(06320|10025))/],
+        [/^Гайка насоса/, /^SPC-0010-000025/],
+        [/^Циркуляц/, /^(SPC|RCP)-/],
+        [/^Кран шаровой/, /^(SVB-0004-2000(20|25)|RBV-0004-02102(20|25)|RBV-0004-2210220)/],
+        [/^Хомут/, /^SAC-0020-3000(34|01)/],
+        [/^Удлинитель/, /^SFT-0001-003430/],
+        [/^Сгон/, /^SFT-0032-034100/]
+    ],
+    sgRule: function (text) {
+        return this.SELF_LABEL_RULES.find(r => r[0].test(String(text || ''))) || null;
+    },
+    // Подраздел, в котором стоит строка сметы: по ближайшему заголовку группы выше неё (ключ строки хранит только раздел).
+    sgSubTitleOf: function (tr) {
+        for (let e = tr.previousElementSibling; e; e = e.previousElementSibling) {
+            if (e.classList.contains('group-header')) return e.innerText || '';
+            if (e.classList.contains('row-sec')) return '';
+        }
+        return '';
+    },
+    sgIdMatch: function (rule, id) {
+        return !!rule && !!rule[1] && (rule[1].test(id) || (rule[3] || []).some(k => this.selfFitIdSet(k).has(id)));
+    },
+    sgIdOf: function (tr) {
+        return String((String(tr.dataset.rk || '').split('|')[2]) || '').replace(/#\d+$/, '');
+    },
+    // Строки сметы, закрывающие подпись: по артикулу в ключе строки (data-rk = вид|раздел|артикул) и по подразделу вида группы.
+    sgRows: function (kind, rule) {
+        if (!rule || !rule[1]) return [];
+        const title = this.SELF_KIND_TITLE[kind];
+        const all = Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr => this.sgIdMatch(rule, this.sgIdOf(tr)));
+        if (rule[2]) return all;
+        const own = all.filter(tr => this.sgSubTitleOf(tr).indexOf(title) >= 0);
+        // Смета склеивает строки одного артикула и показывает под первой (хомут, кран, ниппель бывают и в других узлах):
+        // нет в подразделе группы — берём ту же позицию из соседнего подраздела, а не считаем её потерянной.
+        return own.length ? own : all;
+    },
+    renderPumpGroupScheme: function () {
+        this.sgInit();
+        return this.projectNodeSheetUrls().pumpGroups.map(p => {
+            const lab = this.SELF_GROUP_LABELS[p.kind];
+            let sum = '';
+            if (lab) {
+                const okList = lab.l.map(l => this.sgRows(p.kind, this.sgRule(l[0])).length > 0);
+                const missU = [];
+                lab.l.forEach((l, i) => { if (!okList[i] && missU.indexOf(l[0]) < 0) missU.push(l[0]); });
+                const total = lab.l.length, okN = okList.filter(Boolean).length;
+                sum = `<div class="sg-summary no-print">Сверка схемы со сметой: подписей <b>${total}</b>, в смете есть <b>${okN}</b>.` +
+                    (missU.length ? ` <span class="sg-miss-txt">Нет в смете: ${missU.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
+                    ` <span class="sg-hint">Наведите на подпись схемы или на строку сметы — соответствие подсветится.</span></div>`;
+            }
+            return sum + this._renderSheetImage(p.url, p.kind);
+        }).join('');
+    },
+    // Подсветка соответствия «подпись на схеме ↔ строка сметы». Слушатели на документе, ставятся один раз.
+    sgInit: function () {
+        if (this._sgBound) return;
+        this._sgBound = true;
+        const clear = () => {
+            document.querySelectorAll('.sg-hl').forEach(e => e.classList.remove('sg-hl'));
+            document.querySelectorAll('tr.sg-row-hl').forEach(e => e.classList.remove('sg-row-hl'));
+        };
+        const hotOf = (el) => el && el.closest ? el.closest('.sg-hot, .sg-pt') : null;
+        document.addEventListener('mouseover', (e) => {
+            const hot = hotOf(e.target);
+            if (hot) {
+                clear();
+                const [kind, i] = String(hot.getAttribute('data-sg')).split(':');
+                document.querySelectorAll('[data-sg="' + kind + ':' + i + '"]').forEach(x => x.classList.add('sg-hl'));
+                const lab = this.SELF_GROUP_LABELS[kind];
+                this.sgRows(kind, this.sgRule(lab && lab.l[i] && lab.l[i][0])).forEach(tr => tr.classList.add('sg-row-hl'));
+                return;
+            }
+            const tr = e.target.closest ? e.target.closest('#print-area tr[data-rk]') : null;
+            if (!tr || !document.querySelector('.sg-hot')) return;
+            const id = this.sgIdOf(tr), sub = this.sgSubTitleOf(tr);
+            let any = false;
+            document.querySelectorAll('.sg-hot').forEach(h => {
+                const [kind, i] = String(h.getAttribute('data-sg')).split(':');
+                const lab = this.SELF_GROUP_LABELS[kind];
+                const rule = this.sgRule(lab && lab.l[i] && lab.l[i][0]);
+                if (rule && this.sgIdMatch(rule, id) && (rule[2] || sub.indexOf(this.SELF_KIND_TITLE[kind]) >= 0)) {
+                    document.querySelectorAll('[data-sg="' + kind + ':' + i + '"]').forEach(x => x.classList.add('sg-hl'));
+                    any = true;
+                }
+            });
+            if (any) tr.classList.add('sg-row-hl');
+        });
+        document.addEventListener('mouseout', (e) => {
+            if (hotOf(e.target) || (e.target.closest && e.target.closest('#print-area tr[data-rk]'))) clear();
+        });
+        // Щелчок по подписи — к строке сметы (раньше, чем сработает открытие схемы на весь экран).
+        document.addEventListener('click', (e) => {
+            const hot = hotOf(e.target);
+            if (!hot) return;
+            e.stopPropagation();
+            const [kind, i] = String(hot.getAttribute('data-sg')).split(':');
+            const lab = this.SELF_GROUP_LABELS[kind];
+            const rows = this.sgRows(kind, this.sgRule(lab && lab.l[i] && lab.l[i][0]));
+            if (!rows.length) return;
+            const fs = document.querySelector('.scheme-fullscreen, .scheme-fs-overlay');
+            if (fs) fs.remove();
+            rows[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+            rows.forEach(r => { r.classList.add('sg-row-flash'); setTimeout(() => r.classList.remove('sg-row-flash'), 1800); });
+        }, true);
+    },
     RAD_SHEET: 'img/nodes/rad_manifold_sheet.jpg',
     renderRadNodeScheme: function () {
         // Коллектор радиаторов лежит в подразделе труб («3.3. Трубы отопления»),
@@ -37101,13 +37314,26 @@ const app = {
             this._schemeBoxTimer = setTimeout(() => this.syncSchemeBox(), 150);
         });
     },
-    _renderSheetImage: function (url) {
+    _renderSheetImage: function (url, sgKind) {
         if (!url) return '';
         const a = this.SHEET_SIZE;
+        // Подписи схемы самосборной группы — прозрачные кликабельные рамки поверх картинки (см. sgInit).
+        let overlay = '';
+        const lab = sgKind && this.SELF_GROUP_LABELS ? this.SELF_GROUP_LABELS[sgKind] : null;
+        if (lab) {
+            const sc = Math.min(a.w / lab.w, a.h / lab.h), ox = (a.w - lab.w * sc) / 2, oy = (a.h - lab.h * sc) / 2;
+            overlay = lab.l.map((l, i) => {
+                const ok = this.sgRows(sgKind, this.sgRule(l[0])).length > 0;
+                const r = (v, o) => Math.round(o + v * sc);
+                const tip = ok ? '' : '<title>Этой позиции со схемы нет в смете</title>';
+                return `<rect class="sg-hot ${ok ? 'sg-ok' : 'sg-miss'}" data-sg="${sgKind}:${i}" x="${r(l[1], ox)}" y="${r(l[2], oy)}" width="${Math.round((l[3] - l[1]) * sc)}" height="${Math.round((l[4] - l[2]) * sc)}">${tip}</rect>` +
+                    `<circle class="sg-pt" data-sg="${sgKind}:${i}" cx="${r(l[5], ox)}" cy="${r(l[6], oy)}" r="${Math.round(14 * sc)}"/>`;
+            }).join('');
+        }
         return `<div class="automation-scheme" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">` +
             `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${a.w} ${a.h}">` +
             `<rect x="0" y="0" width="${a.w}" height="${a.h}" fill="#fff" stroke="none"/>` +
-            `<image x="0" y="0" width="${a.w}" height="${a.h}" preserveAspectRatio="xMidYMid meet" href="${url}"/></svg>` +
+            `<image x="0" y="0" width="${a.w}" height="${a.h}" preserveAspectRatio="xMidYMid meet" href="${url}"/>${overlay}</svg>` +
             `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>`;
     },
     automationSchemeArt: function () {
@@ -50705,7 +50931,7 @@ const app = {
 
         // Полный сброс данных расчета
         this.state = {
-            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
+            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
             autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null },
             // ВОЗВРАЩАЕМ АВТОРИЗАЦИЮ И ТАРИФ НА МЕСТО
             tgUser: currentTgUser,
@@ -58427,6 +58653,37 @@ const app = {
             });
         }
 
+        // Насосная группа: вариант «Собрать из отдельных позиций» (тариф «Профи», нержавеющая обвязка).
+        // Цена — комплект на одну группу, процент — к цене выбранной готовой группы вместе с насосом и узлами МУ-25М.
+        {
+            const _sgKind = this.selfGroupKindOfReady(item.originalId || item.id);
+            if (_sgKind && this.state.groupsBuild !== 'self' && this.selfGroupsMode()) {
+                const _sgLbl = { direct: 'прямая', thermo: 'термостатическая', servo: 'под сервопривод' }[_sgKind];
+                const _sgSelf = Math.round(this.selfGroupPrice(_sgKind));
+                const _sgReady = Math.round(this.readyGroupPrice(_sgKind));
+                const _sgD = _sgReady > 0 ? Math.round((_sgSelf - _sgReady) / _sgReady * 100) : 0;
+                const _sgC = _sgD > 0 ? '#ef4444' : (_sgD < 0 ? '#16a34a' : 'var(--text-sec)');
+                const _sgAvail = this.selfGroupsAvailable();
+                const _sgNote = !this.isPro() ? 'Функция тарифа «Профи».'
+                    : !_sgAvail ? 'Нужна нержавеющая или ППР обвязка котельной.'
+                    : 'Переключит все насосные группы и коллектор на самосборные — они стыкуются только друг с другом. Вернуть можно в любой момент.';
+                html += `
+                    <tr class="swap-sub-head" style="border-top: 2px solid var(--border);">
+                        <td colspan="6" style="padding:10px 8px 4px; font-size:12px; font-weight:800; color:var(--text-muted, #6B7280); text-align:left;">
+                            Собрать самосборную группу из отдельных позиций
+                        </td>
+                    </tr>
+                    <tr style="cursor: pointer;" onclick="app.applySelfBuiltFromSwap('${_sgKind}', event)">
+                        <td class="col-idx"></td>
+                        <td class="col-img" style="text-align:center;font-size:20px;">🧩</td>
+                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">Самосборная группа: ${_sgLbl}<div style="font-size:11px;font-weight:400;color:var(--text-sec);margin-top:2px;">Насос, краны, ${_sgKind === 'direct' ? 'обратный клапан' : (_sgKind === 'thermo' ? 'термосмеситель, перемычка, аварийный термостат' : '3-ходовой клапан, привод, перемычка, аварийный термостат')}, термометры. <b>Процент — к готовой «под ключ»: группа + насос + узлы МУ-25М = ${this.formatPriceHtml(_sgReady, true)}.</b> ${_sgNote}</div></td>
+                        <td class="col-brand" style="text-align: center; font-size: 13px;">STOUT / ROMMER</td>
+                        <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px; color:${_sgC};">${_sgD > 0 ? '+' : ''}${_sgD}%</td>
+                        <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${this.formatPriceHtml(_sgSelf, true)}</td>
+                    </tr>`;
+            }
+        }
+
         html += `
                 </tbody>
             </table>
@@ -58434,6 +58691,31 @@ const app = {
 
         body.innerHTML = html;
         modal.style.display = 'flex';
+    },
+    // Вид готовой насосной группы по артикулу (для окна замены): прямая / термостатическая / под сервопривод.
+    selfGroupKindOfReady: function (id) {
+        const s = String(id || '');
+        if (/^(SDG-0001|RDG-1001|RDG-2001)-/.test(s)) return 'direct';
+        if (/^(SDG-0002|RDG-1002|RDG-2002)-/.test(s)) return 'thermo';
+        if (/^(SDG-0003|SDG-0007|RDG-1003|RDG-1004|RDG-2003)-/.test(s)) return 'servo';
+        return null;
+    },
+    applySelfBuiltFromSwap: function (kind, event) {
+        if (!this.checkAccess('pro', event)) return;
+        if (!this.selfGroupsMode()) {
+            this.alert('Самосборные группы доступны в подробном режиме расчёта: включите его в панели слева.', 'Самосборные группы');
+            return;
+        }
+        if (!this.selfGroupsAvailable()) {
+            this.alert(this.isPro() ? 'Самосборные группы собираются на нержавеющей или ППР обвязке. Выберите её в разделе «Обвязка котельной».' : 'Самосборные группы — функция тарифа «Профи».', 'Самосборные группы');
+            return;
+        }
+        this.state.groupsBuild = 'self';
+        const m = document.getElementById('swap_modal_overlay');
+        if (m) m.style.display = 'none';
+        this.syncUI();
+        this.render();
+        this.saveState();
     },
     // ═══════════════════════════════════════════════════════════════
     // РАДИАТОРНЫЙ МОДАЛ: высоты, пересчёт секций, групповая замена
@@ -71094,6 +71376,335 @@ const app = {
     },
 
     /**
+     * Самосборные насосные группы и коллектор (как в проектах Galf): вместо готовой группы STOUT/ROMMER
+     * в смету идёт набор — насос, краны, смеситель (термостатический или 3-ходовой под сервопривод),
+     * обратный клапан-перемычка; коллектор — труба с тройниками. Только тариф «Профи» и только на
+     * нержавеющей обвязке: переходы набора рассчитаны на пресс-фитинги нержавейки (22 мм ↔ 3/4").
+     * Выбор хранится в state.groupsBuild ('ready' | 'self'); без «Профи» или на другой системе труб
+     * он не действует, но и не сбрасывается — вернётся вместе с доступом.
+     */
+    selfGroupsAvailable: function () {
+        return !!this.isPro() && ['ss316', 'ss304', 'ppr'].includes(this.boilerPipeSystem());
+    },
+    // Только в подробном режиме и не в квартире: переключатель живёт там же, что и схема котельной. В быстром расчёте выбор из
+    // подробного не действует (скрытая настройка не должна менять смету) — он сохраняется и вернётся вместе с подробным режимом.
+    selfGroupsMode: function () {
+        return !!this.state.detailedRooms && this.state.objectType !== 'flat';
+    },
+    selfGroups: function () {
+        return this.state.groupsBuild === 'self' && this.selfGroupsAvailable() && this.selfGroupsMode();
+    },
+    // Состав самосборной насосной группы на ОДНУ группу: список {item, q, desc, rank}. По нему и смета (render),
+    // и окно замены считают цену. type: 'direct' | 'thermo' | 'servo'; насос и привод передаёт вызывающий.
+    selfKitLines: function (type, pumpItem, servoItem, opt) {
+        opt = opt || {};
+        if (opt.size === '1') return this.selfKitLines1(type, pumpItem, servoItem, opt);
+        const lines = [];
+        const lbl = { direct: 'прямая', thermo: 'термостатическая', servo: 'под сервопривод' }[type];
+        const add = (item, q, desc, rank, extra) => {
+            if (item) lines.push({ item, q, desc, rank, extra: extra || null });
+        };
+            if (type === 'thermo') add(catalog.selfbuilt_mixer_thermo, 1,
+                `Термостатический смесительный клапан самосборной группы (${lbl}): держит температуру подачи 20–43 °C для тёплого пола без привода и автоматики. 3/4" НР.`, -2);
+            if (type === 'servo') add(catalog.selfbuilt_mixer_3way, 1,
+                `3-ходовой смесительный клапан самосборной группы (${lbl}): с сервоприводом поддерживает температуру подачи по команде автоматики. 3/4".`, -2);
+            if (pumpItem) add(pumpItem, 1, opt.pumpDesc || this.getDesc('pump_std'), -1, opt.pumpExtra || null);
+            if (servoItem) add(servoItem, 1, "Сервопривод для автоматического управления трехходовым смесительным клапаном группы отопления.", -1);
+            this.selfUnionLine(add, pumpItem);
+            // Порядок деталей подобран так, чтобы каждая наружная резьба нашла внутреннюю (стенд assembly.js).
+            // Подача: переход с трубы (ВР) → кран (НР–ВР) → смеситель (НР) или ниппель на насос (1" НР).
+            // thermo: порты смесителя наружные (НР) — принимают футорки и внутренние резьбы; servo: у
+            // STOUT SVM-0003 все три порта внутренние (паспорт, каталог стр. 216), им нужны ниппели.
+            const thermo = type === 'thermo';
+            const mix = type !== 'direct';
+            if (thermo) {
+                add(catalog.selfbuilt_futorka_34_1, 2,
+                    `Футорка 3/4" ВР × 1" НР: внутренняя резьба принимает НР смесителя, наружная вкручивается в Rp 1" комплекта насоса. По 2 на группу (до и после насоса).`, -0.7);
+            } else {
+                add(this.selfCatItem('SFT-0004-000134'), 2,
+                    `Ниппель 1" × 3/4" НР: наружная 1" — в Rp 1" комплекта насоса, 3/4" — во внутреннюю резьбу крана или перехода. По 2 на группу (до и после насоса).`, -0.7);
+            }
+            add(this.selfCatItem('SVB-0004-200020'), 2,
+                `Шаровой кран 3/4" на подаче и обратке самосборной группы: группу можно снять и обслужить, не сливая систему. По 2 на группу.`, -0.6);
+            add(this.selfCatItem('SVC-0011-000020'), 1,
+                type === 'direct' ? `Обратный клапан 3/4" на обратке группы: не даёт воде идти назад при остановке насоса.`
+                    : `Обратный клапан 3/4" в перемычке между обраткой и смесителем: подмес идёт только в одну сторону, как в проектах.`, -0.5);
+            if (mix) {
+                add(this.selfCatItem('SFT-0020-000034'), 1,
+                    `Тройник 3/4" ВР: врезка перемычки подмеса в обратную линию группы.`, -0.45);
+                add(this.selfCatItem('SFT-0004-003434'), thermo ? 1 : 3,
+                    thermo ? `Ниппель 3/4" НР: соединяет обратный клапан перемычки с тройником обратной линии. По одному на группу.`
+                        : `Ниппель 3/4" НР: к внутренним резьбам 3-ходового клапана (подача, перемычка) и от обратного клапана к тройнику. По 3 на группу.`, -0.4);
+            }
+            // Защита и контроль, как в заводских узлах STOUT (паспорта SDG-0120 и SDG-0001): накладной
+            // аварийный термостат на подачу тёплого пола (разрывает питание насоса при перегреве) и накладные
+            // термометры — на подаче тёплого пола, на подаче и обратке прямой группы.
+            if (mix) {
+                add(catalog.selfbuilt_thermostat, 1,
+                    `Накладной аварийный термостат на подающую трубу тёплого пола: при перегреве размыкает питание насоса и защищает пол и трубу. Уставка 55 °C. Так сделано в заводских смесительных узлах STOUT.`, -0.35);
+                add(catalog.selfbuilt_cable_thermostat, 3,
+                    `Кабель 3×1,5 от аварийного термостата к насосу: термостат врезается в цепь питания насоса. Около 3 м на группу, длину уточните по месту.`, -0.34);
+            }
+            add(catalog.selfbuilt_thermometer_clip, mix ? 1 : 2,
+                mix ? `Накладной термометр на подающую трубу тёплого пола (шкала 0–120 °C): видно реальную температуру подачи после смесителя. Один на группу.`
+                    : `Накладные термометры на подачу и обратку группы (шкала 0–120 °C): видна разница температур. По 2 на группу.`, -0.33);
+            // Уголки 45° нержавейка 22 мм на подаче и обратке смесительных групп (подписи «Уголок 45°» на листах проектов).
+        if (type !== 'direct') add(this.selfFit('elbow45', '34'), 2,
+            `Угольник 45° ${this.selfPipeLbl('34')}: уводит подающую и обратную трубу к коллектору, как на схеме проекта. По 2 на группу.`, -0.29);
+        // Нижние выпуски на стену, как на листах проектов: хомут трубный 24–28 мм, удлинитель и сгон под каждый кран.
+        add(catalog.selfbuilt_extension_34, 2,
+            `Удлинитель 3/4" 30 мм под кран: выводит резьбу за хомут. По 2 на группу (подача и обратка), как на схеме.`, -0.32);
+        add(catalog.selfbuilt_longscrew_34, type === 'servo' ? 4 : 2,
+            type === 'servo' ? `Сгон 3/4" ВР-НР: два нижних выпуска на стену и два у 3-ходового клапана, как на схеме проекта. По 4 на группу.`
+                : `Сгон 3/4" ВР-НР: нижний выпуск группы на стену, как на схеме проекта. По 2 на группу.`, -0.31);
+        add(this.selfCatItem('SAC-0020-300034'), 2,
+            `Хомут трубный одновинтовой 25–28 мм: крепит нижние выпуски группы к стене. По 2 на группу.`, -0.3);
+        // Переходы с пресс-труб 22 мм на резьбу 3/4": ВР — туда, где дальше идёт НР (подача от коллектора,
+            // выход прямой группы в радиаторы); НР — туда, где принимает ВР (обратка, тёплый пол).
+            // Ответвление тройника самосборного коллектора — 22 мм.
+            add(this.selfFit('adF', '34'), thermo ? 1 : 2,
+                thermo ? `Переходник с ${this.selfJoinLbl('34')} на внутреннюю резьбу 3/4": присоединяет подачу группы к тройнику коллектора. По одному на группу.`
+                    : `Переходник с ${this.selfJoinLbl('34')} на внутреннюю резьбу 3/4": подача группы от коллектора и выход в радиаторы. По 2 на группу.`, -0.3);
+            add(this.selfFit('adM', '34'), thermo ? 3 : 2,
+                thermo ? `Переходник с ${this.selfJoinLbl('34')} на наружную резьбу 3/4": обратка группы к коллектору, подача и обратка тёплого пола. По 3 на группу.`
+                    : `Переходник с ${this.selfJoinLbl('34')} на наружную резьбу 3/4": возврат из радиаторов и обратка группы к коллектору. По 2 на группу.`, -0.3);
+
+        return lines;
+    },
+    // Комплект на 1" на ОДНУ группу: когда в 3/4" скорость выше 1,0 м/с. Трубы коллектора — 28 мм (переходы 28 ↔ 1"). Порядок деталей —
+    // как у комплекта 3/4": каждая НР находит ВР (стенд assembly.js). Порты смесителей: термостатический 1" — три НР (каталог STOUT
+    // стр. 204–205), 3-ходовой 1" — три ВР (стр. 216), поэтому у servo ниппели на каждом порту.
+    selfKitLines1: function (type, pumpItem, servoItem, opt) {
+        const lines = [];
+        const lbl = { direct: 'прямая', thermo: 'термостатическая', servo: 'под сервопривод' }[type];
+        const add = (item, q, desc, rank, extra) => { if (item) lines.push({ item, q, desc, rank, extra: extra || null }); };
+        const thermo = type === 'thermo', mix = type !== 'direct';
+        if (thermo) add(catalog.selfbuilt_mixer_thermo_1, 1,
+            `Термостатический смесительный клапан самосборной группы (${lbl}, 1″): держит температуру подачи 20–43 °C для тёплого пола. 1" НР.`, -2);
+        if (type === 'servo') add(catalog.selfbuilt_mixer_3way_1, 1,
+            `3-ходовой смесительный клапан самосборной группы (${lbl}, 1″): с сервоприводом поддерживает температуру подачи. 1" ВР.`, -2);
+        if (pumpItem) add(pumpItem, 1, opt.pumpDesc || this.getDesc('pump_std'), -1, opt.pumpExtra || null);
+        if (servoItem) add(servoItem, 1, "Сервопривод для автоматического управления трехходовым смесительным клапаном группы отопления.", -1);
+        this.selfUnionLine(add, pumpItem);
+        add(catalog.selfbuilt_nipple_1, thermo ? 2 : (type === 'servo' ? 5 : 2),
+            thermo ? `Ниппель 1" НР: от обратного клапана перемычки к тройнику и от насоса к выходу тёплого пола. По 2 на группу.`
+                : (type === 'servo' ? `Ниппель 1" НР: к внутренним резьбам 3-ходового клапана (подача, перемычка, выход на насос), от обратного клапана к тройнику и от насоса к выходу. По 5 на группу.`
+                    : `Ниппель 1" НР: из внутренней резьбы Rp 1" комплекта насоса — на кран и на выход в радиаторы. По 2 на группу.`), -0.7);
+        add(this.selfCatItem('SVB-0004-200025'), 2,
+            `Шаровой кран 1" на подаче и обратке самосборной группы: группу можно снять и обслужить, не сливая систему. По 2 на группу.`, -0.6);
+        add(catalog.selfbuilt_check_1, 1,
+            type === 'direct' ? `Обратный клапан 1" на обратке группы: не даёт воде идти назад при остановке насоса.`
+                : `Обратный клапан 1" в перемычке между обраткой и смесителем: подмес идёт только в одну сторону, как в проектах.`, -0.5);
+        if (mix) {
+            add(catalog.selfbuilt_tee_1, 1, `Тройник 1" ВР: врезка перемычки подмеса в обратную линию группы.`, -0.45);
+            add(catalog.selfbuilt_thermostat, 1,
+                `Накладной аварийный термостат на подающую трубу тёплого пола: при перегреве размыкает питание насоса и защищает пол и трубу. Уставка 55 °C. Так сделано в заводских смесительных узлах STOUT.`, -0.35);
+            add(catalog.selfbuilt_cable_thermostat, 3,
+                `Кабель 3×1,5 от аварийного термостата к насосу: термостат врезается в цепь питания насоса. Около 3 м на группу, длину уточните по месту.`, -0.34);
+        }
+        add(catalog.selfbuilt_thermometer_clip, mix ? 1 : 2,
+            mix ? `Накладной термометр на подающую трубу тёплого пола (шкала 0–120 °C): видно реальную температуру подачи после смесителя. Один на группу.`
+                : `Накладные термометры на подачу и обратку группы (шкала 0–120 °C): видна разница температур. По 2 на группу.`, -0.33);
+        if (mix) add(this.selfFit('elbow45', '1'), 2,
+            `Угольник 45° ${this.selfPipeLbl('1')}: уводит подающую и обратную трубу к коллектору, как на схеме проекта. По 2 на группу.`, -0.29);
+        add(this.selfCatItem('SAC-0020-300001'), 2,
+            `Хомут трубный одновинтовой 31–35 мм: крепит нижние выпуски группы к стене. По 2 на группу.`, -0.3);
+        add(this.selfFit('adF', '1'), 2,
+            `Переходник с ${this.selfJoinLbl('1')} на внутреннюю резьбу 1": подача группы от коллектора и выход (радиаторы или тёплый пол). По 2 на группу.`, -0.3);
+        add(this.selfFit('adM', '1'), 2,
+            `Переходник с ${this.selfJoinLbl('1')} на наружную резьбу 1": обратка группы к коллектору и возврат с контура. По 2 на группу.`, -0.3);
+        return lines;
+    },
+    // Детали под трубу котельной для самосборных групп: переход на резьбу, угольник 45°, тройник и заглушка коллектора.
+    // size: '34' (комплект 3/4", ветка 22 мм / PPR 32 мм) или '1' (комплект 1", ветка 28 мм / PPR 32 мм). Нержавейка — пресс RSS/SSS по системе
+    // (STOUT 316L или ROMMER 304), ППР — Wavin или Pro Aqua по pprSystemBrand через общий getPprItem.
+    selfFit: function (kind, size) {
+        const big = size === '1';
+        if (this.boilerPipeSystem() === 'ppr') {
+            const g = (arr, id) => this.getPprItem(catalog[arr], id);
+            if (kind === 'adF') return g('ppr_ekoplastik_adapter_fi', big ? 'SZI03232OKRCT' : 'SZI03225RCT');
+            if (kind === 'adM') return g('ppr_ekoplastik_adapter_mi', big ? 'SZE03232RCT' : 'SZE03225RCT');
+            if (kind === 'elbow45') return g('ppr_ekoplastik_elbow45', 'SKO03245RCT');
+            if (kind === 'tee') return g('ppr_ekoplastik_tee', 'STK032RCTX');
+            if (kind === 'plug') return (catalog.ppr_proaqua_extra || []).find(x => x.id === 'PA15012P') || null;
+            return null;
+        }
+        if (kind === 'adF') return this.ssItem(catalog.ss_adapter_fi, big ? 'RSS-1022-000281' : 'RSS-1022-002234');
+        if (kind === 'adM') return this.ssItem(catalog.ss_adapter_mi, big ? 'RSS-1021-000281' : 'RSS-1021-002234');
+        if (kind === 'elbow45') return this.ssItem(catalog.ss_elbow45, big ? 'RSS-1004-000028' : 'RSS-1004-000022');
+        return null;
+    },
+    // Подписи для описаний: труба коллектора и способ соединения с ней.
+    selfPipeLbl: function (size) {
+        return this.boilerPipeSystem() === 'ppr' ? 'PP-RCT 32 мм' : ('нержавеющий ' + (size === '1' ? '28' : '22') + ' мм');
+    },
+    selfJoinLbl: function (size) {
+        return this.boilerPipeSystem() === 'ppr' ? 'PP-RCT 32 мм (сварка)' : ('пресс-соединения ' + (size === '1' ? '28' : '22'));
+    },
+    // Артикулы деталей под трубу обеих систем — для сверки подписей схемы (схема Galf одна, система труб любая).
+    selfFitIdSet: function (kind) {
+        this._selfFitIds = this._selfFitIds || {};
+        if (this._selfFitIds[kind]) return this._selfFitIds[kind];
+        const set = new Set();
+        const arrs = { adF: ['ppr_ekoplastik_adapter_fi', ['SZI03225RCT', 'SZI03232OKRCT']], adM: ['ppr_ekoplastik_adapter_mi', ['SZE03225RCT', 'SZE03232RCT']],
+            elbow45: ['ppr_ekoplastik_elbow45', ['SKO03245RCT']], tee: ['ppr_ekoplastik_tee', ['STK032RCTX']] }[kind];
+        if (arrs) (catalog[arrs[0]] || []).filter(e => arrs[1].includes(e.id)).forEach(e => { set.add(e.id); (e.alts || []).forEach(a => set.add(a.id)); });
+        this._selfFitIds[kind] = set;
+        return set;
+    },
+    // Входят ли присоединительные гайки в комплект поставки насоса. STOUT: 3-скоростные (SPC-0010, SPC-0011) — «резьбовые фитинги с
+    // прокладками, 2 шт.» (технический каталог, стр. 239), SPC-0011 в названии прайса «с латунными гайками G 1 1/2 x Rp 1»; Mini и Mini Pro
+    // (SPC-0002/0003) — фитинги отдельно (стр. 243, 245). ROMMER: EVO (RCP-0030) «с гайками»; PROFI RATE (RCP-0004) в прайсе не сказано —
+    // считаем, что гаек нет. Насос ROMMER берётся, когда у раздела «2. Обвязка котельной» включён «Аналог» (или бренд ROMMER).
+    selfPumpHasNuts: function (pumpItem) {
+        if (!pumpItem) return false;
+        const so = (this.state.sectionAnalog || {})['2. Обвязка котельной'];
+        const rom = so !== undefined ? so : this.state.brandMode === 'rommer';
+        const id = String((rom && pumpItem.rommer && !Array.isArray(pumpItem.rommer)) ? pumpItem.rommer.id : pumpItem.id);
+        return /^(SPC-0010|SPC-0011)-/.test(id) || /^RCP-0030-/.test(id);
+    },
+    // Строка «присоединительный комплект насоса»: платная, если гаек в коробке насоса нет; иначе та же позиция с нулевой ценой —
+    // чтобы схема и проверка стыковки видели гайки, а клиент не платил дважды.
+    selfUnionLine: function (add, pumpItem) {
+        const kit = this.selfCatItem('SPC-0010-000025') || catalog.pump_union_1;
+        if (!kit) return;
+        if (this.selfPumpHasNuts(pumpItem)) {
+            add({ ...kit, price: 0, originalId: kit.id + '_incl', name: 'Присоединительные гайки насоса — входят в комплект насоса', alts: undefined, rommer: undefined }, 1,
+                `Гайки с прокладками на оба патрубка насоса уже лежат в коробке с насосом (у 3-скоростных STOUT — два резьбовых фитинга с прокладками, каталог стр. 239), отдельно их покупать не нужно. Строка с нулевой ценой оставлена для схемы и проверки резьб. Если насос замените на Mini, Mini Pro или ROMMER PROFI, комплект станет платным.`, -0.8);
+        } else {
+            add(kit, 1,
+                `Присоединительный комплект насоса G 1 1/2" × Rp 1": гайки с прокладками на оба патрубка насоса. По одному на группу. У насосов Mini и Mini Pro фитинги отдельно (каталог стр. 245).`, -0.8);
+        }
+    },
+    // Подраздел сметы, в который уходит самосборная группа вида type (сворачивается как остальные подразделы).
+    selfGroupTitle: function (type, sub) {
+        if (sub === 'dhw') return '2.4.4. Самосборная группа: загрузка бойлера (прямая)';
+        return {
+            direct: '2.4.1. Самосборная группа: прямая (радиаторы)',
+            thermo: '2.4.2. Самосборная группа: термостатическая (тёплый пол)',
+            servo: '2.4.3. Самосборная группа: под сервопривод'
+        }[type];
+    },
+    // Размер самосборного комплекта: '34' (3/4") или '1' (1"). Берём 1", когда скорость в 3/4" на одну группу выше 1,0 м/с
+    // (практика проектирования; внутренний диаметр 3/4" — 21,6 мм). loadKw — вся нагрузка контура, groups — число групп.
+    selfKitSize: function (loadKw, groups, dt) {
+        if (!(loadKw > 0 && groups > 0)) return '34';
+        const G = (loadKw / groups) / (1.163 * (dt || 20));
+        return G / 3600 / (Math.PI * 0.0216 * 0.0216 / 4) > 1.0 ? '1' : '34';
+    },
+    // Цена ОДНОЙ готовой группы вида kind «под ключ»: группа STOUT/ROMMER DN25 + насос + два присоединительных узла МУ-25М
+    // (+ сервопривод у «под сервопривод»). Для сравнения с самосборной (коллектор в обоих вариантах свой, не входит).
+    readyGroupPrice: function (kind) {
+        if (kind === 'dhw') kind = 'direct';
+        const rom = this.state.brandMode === 'rommer';
+        const P = (it) => it ? ((rom && it.rommer && !Array.isArray(it.rommer)) ? (it.rommer.price || 0) : (it.price || 0)) : 0;
+        const g = { direct: catalog.groups_dn25[0], thermo: catalog.groups_dn25[1], servo: catalog.groups_dn25[2] }[kind];
+        const pump = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
+        const servo = kind === 'servo' ? (this.state.servoType === 'sensor' ? catalog.servo_rotary_sensor : catalog.servo_rotary_std) : null;
+        return P(g) + P(pump) + 2 * P((catalog.gbm_nodes || [])[0]) + P(servo);
+    },
+    // Цена ОДНОЙ самосборной группы вида kind по тому же составу, что идёт в смету.
+    selfGroupPrice: function (kind) {
+        const rom = this.state.brandMode === 'rommer';
+        const P = (it) => it ? ((rom && it.rommer && !Array.isArray(it.rommer)) ? (it.rommer.price || 0) : (it.price || 0)) : 0;
+        const pump = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
+        const servo = kind === 'servo' ? (this.state.servoType === 'sensor' ? catalog.servo_rotary_sensor : catalog.servo_rotary_std) : null;
+        const ld = (this._selfLoads || {})[kind];
+        const size = ld ? this.selfKitSize(ld.kw, ld.groups, ld.dt) : '34';
+        return this.selfKitLines(kind, pump, servo, { size }).reduce((a, l) => a + P(l.item) * l.q, 0);
+    },
+    // Плашка под заголовком подраздела самосборной группы: сколько стоит против готовой и кнопка возврата.
+    selfGroupNote: function (title, bill) {
+        const kind = { '2.4.1': 'direct', '2.4.2': 'thermo', '2.4.3': 'servo', '2.4.4': 'dhw' }[String(title).slice(0, 5)];
+        if (!kind) return '';
+        const n = (this._selfCounts || {})[kind] || 0;
+        const selfSum = (bill || []).filter(x => x.group === title).reduce((a, x) => a + (x.sum || 0), 0);
+        const readySum = n * this.readyGroupPrice(kind);
+        if (!(n > 0) || !(readySum > 0)) return '';
+        const f = v => Math.round(Math.abs(v)).toLocaleString('ru-RU') + ' ₽';
+        const diff = selfSum - readySum;
+        const pct = Math.round(Math.abs(diff) / readySum * 1000) / 10;
+        const word = diff < 0 ? 'дешевле' : 'дороже';
+        const colour = diff < 0 ? '#16a34a' : '#d97706';
+        // Мощность и диаметр: нагрузка на одну группу, расход и скорость в трубе 3/4" (внутренний 21,6 мм). Предел мощности — паспортная
+        // мощность готовой группы STOUT того же типоразмера и вида (в комплекте те же насос и арматура); скорость — практика проектирования.
+        let loadTxt = '', loadWarn = '';
+        const ld = (this._selfLoads || {})[kind];
+        if (ld && ld.kw > 0 && ld.groups > 0) {
+            const per = ld.kw / ld.groups, G = per / (1.163 * ld.dt);
+            const big = this.selfKitSize(ld.kw, ld.groups, ld.dt) === '1';
+            const dIn = big ? 0.0272 : 0.0216, szLbl = big ? '1″' : '3/4″';
+            const v = G / 3600 / (Math.PI * dIn * dIn / 4);
+            // Расход насоса 25/60: по названию готовой группы STOUT DN25 «35 кВт при ΔT 10 K» — около 3,0 м³/ч.
+            const Gmax = 3.0;
+            const f1 = x => (Math.round(x * 10) / 10).toString().replace('.', ',');
+            const f2 = x => (Math.round(x * 100) / 100).toString().replace('.', ',');
+            // Потери на смесителе: через него идёт весь расход контура, Δp = (G / Kv)² бар. Kv — по названиям позиций прайса: термосмеситель
+            // 1,6 (оба размера), 3-ходовой Kvs 6 (3/4″) и 8 (1″). Предел — напор насоса 25/60: 6 м вод. ст. ≈ 0,6 бар (при нулевом расходе;
+            // на рабочем расходе меньше, поэтому предел мягкий).
+            const kv = kind === 'thermo' ? 1.6 : (kind === 'servo' ? (big ? 8 : 6) : 0);
+            const dp = kv ? Math.pow(G / kv, 2) : 0, dpMax = 0.6;
+            loadTxt = ` Нагрузка ${f1(per)} кВт на группу при ΔT ${ld.dt} K: расход ${f2(G)} м³/ч, скорость в трубе ${szLbl} ${f2(v)} м/с.${big ? ' Комплект на 1″: в 3/4″ скорость была бы выше 1,0 м/с.' : ''}` +
+                (kv ? ` Потери на смесителе (Kv ${f1(kv)}) ${f2(dp)} бар.` : '');
+            if (v > 1.0 || G > Gmax || dp > dpMax) {
+                const why = [];
+                if (v > 1.0) why.push(`скорость в ${szLbl} ${f2(v)} м/с`);
+                if (G > Gmax) why.push(`расход ${f2(G)} м³/ч выше ${f1(Gmax)} м³/ч насоса`);
+                if (dp > dpMax) why.push(`потери на смесителе ${f2(dp)} бар выше ${f2(dpMax)} бар напора насоса`);
+                loadWarn = this.noteBox('warn', 'Самосборная группа перегружена.',
+                    `${f1(per)} кВт на группу: ${why.join('; ')}.`,
+                    `<div class="tip-p">Комплект ${szLbl} с насосом 25/60: скорость в трубе по практике проектирования не выше 1,0 м/с, расход насоса — около ${f1(Gmax)} м³/ч (по готовой группе STOUT DN25).</div>` +
+                    (kv ? `<div class="tip-p">Через смеситель идёт весь расход контура: потери (G / Kv)² = (${f2(G)} / ${f1(kv)})² = ${f2(dp)} бар. Напор насоса 25/60 — около 0,6 бар.</div>` : '') +
+                    `<div class="tip-p"><b>Что делать:</b> ${kind === 'thermo' && dp > dpMax ? 'взять группу под сервопривод (3-ходовой клапан Kvs 6–8 почти не теряет напор), ' : ''}разделить нагрузку на несколько групп или вернуть готовые группы кнопкой выше.</div>`);
+            }
+        }
+        const btn = `<span class="no-print" onclick="event.stopPropagation(); app.setGroupsBuild('ready', event)" style="margin-left:8px;cursor:pointer;color:var(--primary);border-bottom:1px dashed var(--primary);">Вернуть готовые</span>`;
+        const short = `${n} шт.: самосборные <b>${f(selfSum)}</b> против <b>${f(readySum)}</b> у готовых — <b style="color:${colour}">${word} на ${f(diff)} (${String(pct).replace('.', ',')} %)</b>.${loadTxt}${btn}`;
+        const det = `<div class="tip-p">Готовая группа — STOUT или ROMMER DN25 с насосом и двумя присоединительными узлами МУ-25М${kind === 'servo' ? ' и сервоприводом' : ''}. Самосборная — комплект из отдельных позиций по проектам. Стальной коллектор в сравнение не входит: он свой в каждом варианте.</div>` +
+            `<div class="tip-p">Подраздел сворачивается щелчком по заголовку.</div>`;
+        // Сравнение с готовыми и расчёт нагрузки — для монтажника: в печать, PDF и ссылку клиенту не идут.
+        return `<div class="no-print">` + this.noteBox('info', 'Самосборная группа.', short, det) + loadWarn + `</div>`;
+    },
+    // Позиция каталога по артикулу (поиск по всем массивам; индекс строится один раз).
+    _selfCatIdx: null,
+    selfCatItem: function (id) {
+        if (!this._selfCatIdx) {
+            const idx = {};
+            Object.keys(catalog).forEach(k => {
+                const v = catalog[k];
+                (Array.isArray(v) ? v : [v]).forEach(it => { if (it && it.id && !idx[it.id]) idx[it.id] = it; });
+            });
+            this._selfCatIdx = idx;
+        }
+        return this._selfCatIdx[id] || null;
+    },
+    setGroupsBuild: function (mode, event) {
+        if (!this.checkAccess('pro', event)) { this.syncUI(); return; }
+        if (!this.isPro()) { this.showModal('pro'); this.syncUI(); return; }
+        this.state.groupsBuild = (mode === 'self') ? 'self' : 'ready';
+        this.syncUI();
+        this.render();
+        this.saveState();
+    },
+    syncGroupsBuildUI: function () {
+        const s = this.state;
+        const blk = document.getElementById('blk_groups_build');
+        const on = !!(s.detailedRooms && s.objectType !== 'flat' && this.needCollector);
+        if (blk) blk.style.display = on ? 'block' : 'none';
+        const self = s.groupsBuild === 'self';
+        const tR = document.getElementById('groups_build_ready'), tS = document.getElementById('groups_build_self');
+        if (tR) tR.className = self ? 'tab' : 'tab active';
+        if (tS) tS.className = self ? 'tab active' : 'tab';
+        const note = document.getElementById('lbl_groups_build_note');
+        if (note) {
+            note.textContent = !this.isPro() ? 'Самосборные группы — функция тарифа «Профи».'
+                : !this.selfGroupsAvailable() ? 'Самосборные группы собираются на нержавеющей или ППР обвязке: выберите её в разделе «Обвязка котельной».'
+                : self ? 'Группы и коллектор собираются из отдельных позиций, как в проектах.'
+                : 'Готовые насосные группы STOUT/ROMMER на стальном коллекторе.';
+        }
+    },
+
+    /**
      * «Без гидрострелки» выбрана, но не собирается: тёплый пол больше, чем тянет
      * один узел подмеса, или есть снеготаяние. Считается по одному состоянию, без расчёта сметы, —
      * потому что спрашивают об этом и до него: схема загрузки бойлера решается в
@@ -75168,7 +75779,7 @@ const app = {
                     // у разделов верхнего уровня, и совет про диаметр трассы
                     // висел в шапке «3. Приборы отопления», за десяток строк от
                     // трубы, к которой относится.
-                    const _gw = (this.groupWarns || {})[i.group];
+                    const _gw = (this.groupWarns || {})[i.group] || (/^2\.4\.\d\. Самосборная группа/.test(i.group) ? this.selfGroupNote(i.group, bill) : '');
                     if (_gw) {
                         // Плашка та же, что у разделов (app.noteBox): в groupWarns
                         // лежит уже собранный блок, здесь остаётся только строка таблицы.
@@ -76502,7 +77113,7 @@ const app = {
         // Резьба котлового ввода узла гидроразделения (112 = 1 1/2", 1 = 1") и его
         // подраздел. Заполняются при подборе коллектора ниже, используются в блоке
         // расчёта труб — там известны материал магистрали и её диаметр.
-        let _hydroTieDn = 0, _hydroTieGrp = null;
+        let _hydroTieDn = 0, _hydroTieGrp = null, _hydroTieN = 2;
         // Подраздел, куда ляжет сепаратор, ищем среди ОСТАВШИХСЯ обвязок: снятая
         // вместе с котлом обвязка в смете не печатается, и позиция уехала бы в пустоту.
         const _sepInGas = selBoilers.some(b => b && b.type === 'gas') && !rigDropped('gas');
@@ -77187,6 +77798,8 @@ const app = {
             this._bsAutoWhy = why;
         }
         this.syncBoilerSchemeNote();
+        this.needCollector = needCollector;
+        this.syncGroupsBuildUI();
         this.vSys = vSys;
         // Незамерзающий теплоноситель расширяется сильнее воды. Паспорт WARME Eco PRO 30
         // (пропиленгликоль): «необходимо устанавливать расширительный бак на 5–10 % больше,
@@ -77303,6 +77916,14 @@ const app = {
         // Предупреждение по разделу «2. Обвязка котельной» (см. flushBill ниже):
         // ручная замена насосной группы отопления на меньший типоразмер.
         let hydroWarnHtml = null;
+
+        // Самосборные группы и коллектор (тариф «Профи», нержавеющая обвязка) — см. selfGroups().
+        const _selfG = this.selfGroups();
+        this._selfCollPipeLen = 0;
+        this._selfCollPipeD = 0;
+        this._selfKinds = {};
+        this._selfCounts = {};
+        this._selfLoads = {};
 
         if (needCollector) {
             // Несущий каркас (рама) или хомуты коллектора котельной на базе C-образного профиля и консолей STOUT
@@ -77463,7 +78084,45 @@ const app = {
                         `<div class="tip-p"><b>Что делать:</b> ${_advice}</div>`);
                 }
             }
-            if (dn25) {
+            if (_selfG) {
+                // Самосборный коллектор: две трубы (подача и обратка) с тройниками на каждый контур,
+                // как в проектах Galf. Диаметр — котловая магистраль, но не больше 35 мм: на больших
+                // трубах переходных тройников под ответвление 22 в линейке нет.
+                // Комплект на 1" требует ответвлений 28 мм (переходы 28 ↔ 1"): коллектор тогда не тоньше 28.
+                const _tpA = ((this.state.tp1 || 0) + (this.state.tp2 || 0));
+                const _big = this.selfKitSize(this._radGroupLoadKw || 0, rQ, this.radDT()) === '1' ||
+                    (tQ > 0 && this.selfKitSize(tpArea * 0.08, tQ, parseInt(this.state.ufhDT, 10) || 5) === '1');
+                const _pprC = this.boilerPipeSystem() === 'ppr';
+                // ППР: коллектор из трубы PP-RCT 32 мм (в ведре метража это «22»), ветка 32 — переходы 32×3/4" и 32×1" одним размером.
+                const _D = _pprC ? 22 : Math.min(Math.max(boilerSizes(selBoilers).main, (_big || !_bufSep) ? 28 : 22), 35);
+                const _n = Math.max(2, circuits);
+                const _tee = _pprC ? this.selfFit('tee') : this.ssItem(_D === 22 ? catalog.ss_tee : (_D === 28 && _big ? catalog.ss_tee : catalog.ss_tee_red),
+                    _D === 22 ? 'RSS-1013-000022' : (_D === 28 ? (_big ? 'RSS-1013-000028' : 'RSS-1014-282228') : (_big ? 'RSS-1014-352835' : 'RSS-1014-352235')));
+                const _plugC = _pprC ? this.selfFit('plug') : this.ssItem(catalog.ss_plug, 'RSS-1025-0000' + _D);
+                const _railLen = _n * 0.35 + 0.5;
+                this._selfCollPipeLen = 2 * _railLen;
+                this._selfCollPipeD = _D;
+                const _brLbl = _pprC ? 'Ответвление 32 мм' : (_big ? 'Ответвление 28 мм' : 'Ответвление 22 мм');
+                const _pipeLbl = _pprC ? 'трубы PP-RCT 32 мм' : `трубы ${_D} мм`;
+                if (_tee) addToBill({ ..._tee, sortRank: -3 }, _n * 2,
+                    `Тройники самосборного коллектора насосных групп: на каждый контур по одному на подающую и обратную трубу (${_n} контура${_n > 4 ? 'ов' : ''} × 2). ${_brLbl} — к насосной группе. Коллектор собирается из ${_pipeLbl}, как в проектах: вместо готового стального коллектора.`, grpHydro);
+                if (_plugC) addToBill({ ..._plugC, sortRank: -3 }, 2,
+                    `Заглушки на свободные концы подающей и обратной трубы коллектора: к другому концу подключается гидрострелка. Требуется: 2 шт.`, grpHydro);
+                if (!_bufSep) {
+                    addToBill({ ...catalog.hydro_arrow, sortRank: -3 }, 1, `Гидрострелка — выравнивает давление между котловым и распределительными контурами. Стоит на торце самосборного коллектора. Макс. расход: 3.0 м³/ч.`, grpHydro);
+                }
+                // Системная сторона гидрострелки — к трубам коллектора. По паспорту STOUT (каталог, стр. 277–278) котловые патрубки —
+                // 1 1/2" НР, системные — 1 1/2" ВР; у ROMMER системные — накидные гайки 1 1/2". И ВР, и гайке нужна НР: ниппель
+                // 1 1/2"×1" НР, а на нём переход на трубу коллектора (внутренняя резьба 1") — пресс 28/35 или ППР 32. Котловая сторона (муфта + переход) считается ниже.
+                if (!_bufSep) {
+                    const _tieNip = catalog.buffer_nipple_112_1;
+                    const _tieAd = _pprC ? this.selfFit('adF', '1') : this.ssItem(catalog.ss_adapter_fi, _D >= 35 ? 'RSS-1022-000351' : 'RSS-1022-000281');
+                    if (_tieNip) addToBill({ ..._tieNip, sortRank: -3 }, 2,
+                        `Ниппель 1 1/2" × 1" НР: в системные патрубки гидрострелки (1 1/2" ВР у STOUT, накидная гайка у ROMMER) — переход к трубам коллектора. По одному на подачу и обратку. Требуется: 2 шт.`, grpHydro);
+                    if (_tieAd) addToBill({ ..._tieAd, sortRank: -3 }, 2,
+                        `Переходник с ${_pprC ? 'PP-RCT 32 мм (сварка)' : 'пресс-соединения ' + _D} на внутреннюю резьбу 1": на ниппель гидрострелки, к трубе коллектора. Требуется: 2 шт.`, grpHydro);
+                }
+            } else if (dn25) {
                 // Модульная схема DN25 — коллектор БЕЗ встроенного разделителя, и
                 // тогда гидрострелка обязана идти отдельной строкой. Так собирается
                 // и при числе контуров больше трёх (совмещённого узла на столько просто
@@ -77553,7 +78212,8 @@ const app = {
 
             // Резьба котлового ввода узла — для фитингов присоединения, которые
             // считаются ниже, вместе с трубами (там известен материал и диаметр).
-            _hydroTieDn = dn25 ? 112 : 1;
+            // Самосборный коллектор вместе с буфером: стрелки нет, переход на коллектор не нужен.
+            _hydroTieDn = (_selfG && _bufSep) ? 0 : (dn25 ? 112 : 1);
             _hydroTieGrp = grpHydro;
 
             const _hydroDrain = (catalog.ball_valves || []).find(v => v.id === 'SVB-0006-200015');
@@ -77563,6 +78223,26 @@ const app = {
                 addToBill({ ...withRommerAlt(_hydroDrain), originalId: 'SVB-0006-200015_hydro_drain' },
                     1, this.getDesc('hydro_drain'), grpHydro);
             }
+
+            // Самосборная насосная группа: комплект по проектам Galf на n групп. type: 'direct' (радиаторы,
+            // без смешения), 'thermo' (термостатический смеситель, тёплый пол) или 'servo' (3-ходовой
+            // смеситель под сервопривод). Насос и привод передаёт вызывающий: они подбираются по тем же
+            // правилам, что и у готовой группы. opt.dhw — группа загрузки бойлера: её насос идёт отдельной
+            // строкой с переключателем схемы загрузки.
+            const _selfKit = (type, n, pumpItem, servoItem, opt) => {
+                if (!(n > 0)) return;
+                this._selfKinds[type] = true;
+                // Группа загрузки бойлера — отдельный подраздел со своей нагрузкой (по змеевику бака и котлу), вид комплекта — прямая.
+                const key = opt && opt.sub === 'dhw' ? 'dhw' : type;
+                this._selfCounts[key] = (this._selfCounts[key] || 0) + n;
+                // Нагрузка на группы этого вида (для проверки мощности и скорости в трубе 3/4"): задаёт вызывающий.
+                if (opt && opt.loadKw > 0) this._selfLoads[key] = { kw: opt.loadKw, groups: n, dt: opt.dt || 20 };
+                opt = { ...(opt || {}), size: opt && opt.loadKw > 0 ? this.selfKitSize(opt.loadKw, n, opt.dt) : '34' };
+                const grpSelf = this.selfGroupTitle(type, opt.sub);
+                this.selfKitLines(type, pumpItem, servoItem, opt).forEach(l => {
+                    addToBill({ ...l.item, ...(l.extra || {}), sortRank: l.rank }, l.q * n, l.desc, grpSelf);
+                });
+            };
 
             let grps = dn25 ? catalog.groups_dn25 : catalog.groups_dn20;
             if (dn25) {
@@ -77604,7 +78284,8 @@ const app = {
             } else if (_actDn >= 25 && !dn25) {
                 radPump = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
             }
-            if (rQ > 0) {
+            if (rQ > 0 && _selfG) _selfKit('direct', rQ, radPump, null, { loadKw: this._radGroupLoadKw || 0, dt: this.radDT() });
+            if (rQ > 0 && !_selfG) {
                 // Строку запоминаем: гидравлику в её подсказку допишем ниже,
                 // когда приборы будут подобраны (см. radGroupHydroTip).
                 this._radGroupItemId = grps[0].id;
@@ -77640,7 +78321,15 @@ const app = {
                         `<div class="tip-p"><b>Что делать:</b> вернуть подбор по умолчанию кнопкой ↺ у метки «Изменён» в строке группы либо поставить типоразмер больше — иначе контур не прокачается.</div>`);
                 }
             }
-            if (tankNeedsPumpGroup) {
+            if (tankNeedsPumpGroup && _selfG) {
+                // Греющий контур несёт мощность змеевика, но не больше, чем отдаёт котёл (как в dhwLoadHydraulics): по ней размер комплекта.
+                const _dhwCoil = this.tankCoilKw(this._tankPortsModel);
+                const _dhwBoiler = selBoilers.find(b => b && b.type === 'gas') || selBoilers[0] || null;
+                const _dhwBKw = _dhwBoiler ? (parseFloat(_dhwBoiler.power) || 0) : 0;
+                const _dhwKw = _dhwCoil > 0 ? (_dhwBKw > 0 ? Math.min(_dhwCoil, _dhwBKw) : _dhwCoil) : 0;
+                _selfKit('direct', 1, pmp, null, { sub: 'dhw', loadKw: _dhwKw, dt: this.boilerDT(), pumpExtra: { originalId: pmp.id + '_dhw', alts: _tankLoadAlts }, pumpDesc: this.getDesc('fugas_pump') });
+            }
+            if (tankNeedsPumpGroup && !_selfG) {
                 let tankBase = grps[0];
                 // Мощность берём из паспортной мощности той же группы (для радиаторов) —
                 // физически это тот же узел, просто на контуре загрузки бойлера.
@@ -77678,7 +78367,14 @@ const app = {
                         `<b>Почему 25/80, а не 25/60:</b> ${this._ufhBal.notes.find(n => n.indexOf('25/80') >= 0) || ''}` +
                         `</span>` : '');
 
-                if (activeMixType === 'dn32_servo') {
+                if (_selfG && activeMixType !== 'std') {
+                    const _isServo = /servo/.test(activeMixType);
+                    // Самосборный комплект под насос 25/60 (комплект G 1 1/2" × Rp 1"): типоразмер DN20/25/32
+                    // готовой группы здесь значения не имеет.
+                    const _sPump = _ufhPumpPool.find(p => p.type === this.state.pumpType) || _ufhPumpPool[0];
+                    const _sServo = _isServo ? ((activeServoType === 'sensor') ? catalog.servo_rotary_sensor : catalog.servo_rotary_std) : null;
+                    _selfKit(_isServo ? 'servo' : 'thermo', tQ, _sPump, _sServo, { pumpDesc: _ufhPumpDesc(), loadKw: tpArea * 0.08, dt: parseInt(this.state.ufhDT, 10) || 5 });
+                } else if (activeMixType === 'dn32_servo') {
                     let ufhGrp = catalog.groups_dn32.find(g => g.id === 'SDG-0007-003201');
                     addToBill({ ...ufhGrp, _uiUfhOnly: true, sortRank: -2 }, tQ, this.getDesc('pump_group', ufhGrp, tQ, 'ufh', tpArea), grpHydro);
 
@@ -78065,6 +78761,13 @@ const app = {
         [ss_diameter, _tankSize, _boilerSize].forEach(d => {
             if (!ss_pipes_demand[d]) ss_pipes_demand[d] = { length: 0, components: [] };
         });
+        // Труба самосборного коллектора насосных групп — в то же ведро метража, что и обвязка.
+        if (this._selfCollPipeLen > 0) {
+            const _scd = this._selfCollPipeD;
+            if (!ss_pipes_demand[_scd]) ss_pipes_demand[_scd] = { length: 0, components: [] };
+            ss_pipes_demand[_scd].length += this._selfCollPipeLen;
+            ss_pipes_demand[_scd].components.push("самосборный коллектор насосных групп");
+        }
 
         // Функция добавления труб с комбинированным подбором 2м/4м штанг или PPR штанг по 4м
         const addPipesToBill = (L, diam, grp, desc) => {
@@ -78215,8 +78918,9 @@ const app = {
             const _tieCoupling = (_hydroTieDn === 112) ? catalog.hydro_tie_coupling_112 : catalog.hydro_tie_coupling_1;
             const _tieLabel = (_hydroTieDn === 112) ? '1 1/2"' : '1"';
             if (_tieCoupling) {
-                addToBill(_tieCoupling, 2,
-                    `Латунная муфта с внутренней резьбой на патрубок узла гидроразделения (${_tieLabel} НР по паспорту) — с неё начинается переход на трубу котлового контура. По одной на подачу и обратку. Требуется: 2 шт.`, _hydroTieGrp);
+                addToBill(_tieCoupling, _hydroTieN,
+                    `Латунная муфта с внутренней резьбой на патрубок узла гидроразделения (${_tieLabel} НР по паспорту) — с неё начинается переход на трубу котлового контура` +
+                    (_hydroTieN > 2 ? ` и на трубы самосборного коллектора. По одной на каждый патрубок гидрострелки. Требуется: ${_hydroTieN} шт.` : `. По одной на подачу и обратку. Требуется: 2 шт.`), _hydroTieGrp);
             }
             if (isAnalog) {
                 if (ss_diameter === 28) {
@@ -78235,10 +78939,10 @@ const app = {
             } else {
                 const _tieTh = this.ssThreadFor('ss_adapter_mi', ss_diameter, '1');
                 const _tieAdp = _tieTh && this.ssFit('ss_adapter_mi', ss_diameter, _tieTh);
-                if (_tieAdp) addToBill(_tieAdp, 2,
+                if (_tieAdp) addToBill(_tieAdp, _hydroTieN,
                     `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${this.ssThreadLabel(_tieTh)} — вкручивается в муфту на патрубке узла гидроразделения.` +
                     (_tieTh !== '1' ? ` <b>Внимание:</b> муфта узла на 1", нужен резьбовой переход 1"–${this.ssThreadLabel(_tieTh)} (в смету не входит).` : ``) +
-                    ` Требуется: 2 шт.`, _hydroTieGrp);
+                    ` Требуется: ${_hydroTieN} шт.`, _hydroTieGrp);
             }
         }
 
@@ -84238,6 +84942,7 @@ const app = {
         [['automation_scheme_row', '2.9.1.', () => this.thermaticConfig && this.renderAutomationScheme()],
          ['ufh_scheme_row', '4.5. Автоматика радиаторов', () => this.renderUfhScheme()],
          ['snow_scheme_row', '4.4.1', () => this.renderSnowScheme()],
+         ['pump_group_scheme_row', '2.4. Гидравлика котельной', () => this.renderPumpGroupScheme()],
          ['rad_panel_scheme_row', '3. Приборы отопления', () => this.renderRadPanelScheme(), true],
          ['rad_node_scheme_row', '3.3. Трубы отопления', () => this.renderRadNodeScheme()],
          ['ufh_node_scheme_row', '4. Водяной тёплый пол', () => this.renderUfhNodeScheme(), true],

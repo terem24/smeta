@@ -173,10 +173,10 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=4.98">
+    <link rel="stylesheet" href="style.css?v=4.99">
 
     <script src="supabase-js.js" defer></script>
-    <script src="catalog.js?v=3.33" defer></script>
+    <script src="catalog.js?v=3.34" defer></script>
     <!-- Координаты и регионы населённых пунктов: карта проектов в админке и
          адрес объекта. Данные вшиты в файл, наружу никаких запросов. -->
     <script src="cities_geo.js?v=1.0" defer></script>
@@ -203,7 +203,7 @@
     <script src="boiler_wall.js?v=1.0" defer></script>
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
     <script src="short_names.js?v=1.1" defer></script>
-    <script src="app.js?v=11.56" defer></script>
+    <script src="app.js?v=11.57" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1274,6 +1274,17 @@
                 </div>
                 <div style="margin-top:6px; font-size:11px;"><a href="#" id="lnk_boiler_scheme_auto" hidden onclick="app.setBoilerScheme('auto', event); return false;"
                         style="margin-left: 4px; color: var(--primary); text-decoration: none; border-bottom: 1px dashed var(--primary); cursor: pointer;">Вернуть автоподбор</a></div>
+            </div>
+
+            <!-- Насосные группы: готовые STOUT/ROMMER или самосборные из отдельных позиций, как в
+                 проектах (тариф «Профи», нержавеющая обвязка). Блок виден, когда в котельной есть
+                 коллектор (app.syncGroupsBuildUI). -->
+            <div class="control-item" id="blk_groups_build" style="display:none; margin-bottom: 16px;">
+                <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Насосные группы<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Готовые.</b> Насосная группа STOUT/ROMMER одной позицией и стальной коллектор.<div class="tip-p"><b>Самосборные.</b> Группа собирается из отдельных позиций, как в проектах: насос, краны, смеситель (термостатический или под сервопривод), обратный клапан. Коллектор — две трубы с тройниками на каждый контур. Функция тарифа «Профи», на нержавеющей или ППР обвязке.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_groups_build_note">Готовые насосные группы.</span></div></div></span></span>
+                <div class="tabs" id="groups_build_tabs">
+                    <div class="tab active" id="groups_build_ready" onclick="app.setGroupsBuild('ready', event)">Готовые</div>
+                    <div class="tab" id="groups_build_self" onclick="app.setGroupsBuild('self', event)">Самосборные</div>
+                </div>
             </div>
 
             <!-- Инженерные настройки свёрнуты: большинство оставляет их по умолчанию.
