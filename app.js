@@ -43536,12 +43536,11 @@ const app = {
             app.alert('Не удалось вернуть доступ: ' + (e.message || e));
         }
     },
-    // Безвозвратно стирает профиль пользователя и все связанные с ним данные (сметы,
-    // рассылки/переписку с админом, чаты с менеджером дистрибьютора). ВАЖНО: это удаляет
-    // только строки в public.users и связанных таблицах — сам логин/пароль в Supabase Auth
-    // отсюда не удаляется (для этого нужен service_role ключ, которого у клиента нет из
-    // соображений безопасности) — при необходимости полностью закрыть возможность входа
-    // его нужно вручную удалить в Supabase Dashboard → Authentication → Users.
+    // Безвозвратно стирает пользователя целиком: профиль, сметы, переписку, чаты с менеджером,
+    // КП-ссылки, события журнала, диалоги помощника и сам логин (Supabase Auth). Всё это делает
+    // серверная функция admin_delete_user_completely (миграция 20261007_admin_delete_user.sql):
+    // у страницы нет служебного ключа, а функция сама проверяет, что вызвал администратор,
+    // и не даёт удалить себя, владельца и (без прав владельца) администраторов и менеджеров.
     deleteUserCompletely: async function (userId) {
         if (this.isReadOnlyAdmin()) {
             app.alert('Режим просмотра. Удаление учетных записей запрещено.');
@@ -43560,17 +43559,23 @@ const app = {
         if (!await app.confirm('Точно удалить? Отменить это будет невозможно — данные восстановить не получится.')) return;
 
         try {
-            await supabaseClient.from('estimates').delete().eq('user_id', userId);
-            await supabaseClient.from('messages').delete().or(`sender_id.eq.${userId},recipient_id.eq.${userId}`);
-            await supabaseClient.from('manager_chat_messages').delete().or(`installer_user_id.eq.${userId},manager_user_id.eq.${userId},sender_user_id.eq.${userId}`);
-
-            const { data, error } = await supabaseClient.from('users').delete().eq('id', userId).select('id');
+            const { data, error } = await supabaseClient.rpc('admin_delete_user_completely', { p_user_id: userId });
             if (error) throw error;
-            if (!data || data.length === 0) {
-                app.alert('Профиль не удалился — похоже, RLS-политика в Supabase не разрешает администратору удалять чужие учётки.');
+            if (!data || data.ok !== true) {
+                const reasons = {
+                    forbidden: 'нет прав администратора',
+                    not_found: 'учётка не найдена (возможно, уже удалена)',
+                    self: 'нельзя удалить самого себя',
+                    protected: 'эту учётку удалить нельзя (владелец)',
+                    owner_only: 'удалять администраторов, наблюдателей и менеджеров может только Владелец',
+                    not_deleted: 'профиль не удалился'
+                };
+                app.alert('Не удалось удалить учётку: ' + (reasons[data && data.error] || 'неизвестная причина'));
                 return;
             }
-            app.alert('🗑 Учётка и все данные удалены. Заново зарегистрироваться с этой почтой или телефоном нельзя 30 дней (снять запрет можно на вкладке «Неактивные»). Обратите внимание: логин/пароль в Supabase Auth это не затрагивает — при необходимости удалите его вручную в Dashboard.');
+            app.alert(data.auth_deleted === false
+                ? '🗑 Профиль и все данные удалены, но логин в Supabase Auth удалить не удалось' + (data.warning ? ' (' + data.warning + ')' : '') + '. Его можно удалить вручную в Dashboard → Authentication → Users. Заново зарегистрироваться с этой почтой или телефоном нельзя 30 дней (снять запрет можно на вкладке «Неактивные»).'
+                : '🗑 Учётка, все данные и логин удалены. Заново зарегистрироваться с этой почтой или телефоном нельзя 30 дней (снять запрет можно на вкладке «Неактивные»).');
             this.renderAdminMain();
             this.loadAdminData(this._adminOffset);
         } catch (e) {
