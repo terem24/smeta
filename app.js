@@ -22951,8 +22951,14 @@ const app = {
         // вторую половину (ни одного расчёта) досчитывает filterIdleVisitors.
         if (filters.idle === 'yes') query = query.gte('sess_visits', this.IDLE_MIN_VISITS);
         if (searchFilter) {
+            // По словам: «Ибат», «Ибатуллин Д», «Ибатуллин Д.О.» — каждое слово (или буква)
+            // должно встретиться в какой-нибудь из колонок. Целая фраза в одной колонке
+            // находила только полное совпадение имени.
             const cols = ['username', 'email', 'phone', 'city', 'region', 'last_name', 'first_name', 'middle_name'];
-            query = query.or(cols.map(c => `${c}.ilike.%${searchFilter}%`).join(','));
+            const words = searchFilter.split(/[\s.]+/).filter(Boolean);
+            (words.length ? words : [searchFilter]).forEach(w => {
+                query = query.or(cols.map(c => `${c}.ilike.%${w}%`).join(','));
+            });
         }
 
         if (tariffFilter === 'base') {
@@ -23293,6 +23299,10 @@ const app = {
         // выясняем до первого запроса, иначе фильтры уйдут пустыми.
         if (this.isScopedAdmin()) await this.resolveAdminScope();
         this._adminOffset = offset;
+        // Номер загрузки: если пока шла эта, началась следующая (поиск, фильтр, смена
+        // вкладки), ответ устаревшей не должен перекрасить экран — на медленной сети
+        // он приходил последним и затирал список пустым или чужим.
+        const loadSeq = this._adminLoadSeq = (this._adminLoadSeq || 0) + 1;
         const content = document.getElementById('admin_content');
         // Запоминаем значение и фокус поля поиска — оно вот-вот исчезнет из DOM вместе
         // с "Загрузка данных...", а после перерисовки надо продолжить печатать без разрыва
@@ -23396,17 +23406,27 @@ const app = {
             let users = [];
             let totalUsers = 0;
 
-            if (isClientSort || isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter) {
-                let { data, error, count } = await query;
-                if (error) throw error;
-                users = data || [];
-                totalUsers = count || users.length;
-            } else {
-                let { data, error, count } = await query.range(offset, offset + this._adminPageSize - 1);
-                if (error) throw error;
-                users = data || [];
-                totalUsers = count || users.length;
+            // Запрос шлём до двух раз: на нестабильной сети (другие ноутбуки, VPN, расширения)
+            // первый ответ бывает пустым или обрывается, а со второго раза приходит список.
+            const runUsersQuery = async () => {
+                const wholeList = isClientSort || isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter;
+                const r = wholeList ? await query : await query.range(offset, offset + this._adminPageSize - 1);
+                if (r.error) throw r.error;
+                return r;
+            };
+            let usersRes;
+            try { usersRes = await runUsersQuery(); } catch (e1) {
+                console.warn('[админка] список пользователей, повтор:', e1);
+                await new Promise(res => setTimeout(res, 800));
+                usersRes = await runUsersQuery();
             }
+            if (!(usersRes.data || []).length && offset === 0) {
+                await new Promise(res => setTimeout(res, 800));
+                try { const r2 = await runUsersQuery(); if ((r2.data || []).length) usersRes = r2; } catch (e2) { }
+            }
+            if (loadSeq !== this._adminLoadSeq) return;
+            users = usersRes.data || [];
+            totalUsers = usersRes.count || users.length;
 
             // Отбор по доступу к распознаванию и по сомнительным анкетам — раньше всего
             // остального: и тариф, и LTV должны сортировать уже отобранных, а счётчик
@@ -23757,9 +23777,11 @@ const app = {
             // Ошибка чтения не должна ломать админку: столбец просто покажет
             // «выключено», а список подтянется при следующем открытии.
             await this.loadRecognitionAccess();
+            if (loadSeq !== this._adminLoadSeq) return;
             this.renderAdminMain();
         } catch (error) {
             console.error("Admin Load Error:", error);
+            if (loadSeq !== this._adminLoadSeq) return;
             if (content) content.innerHTML = `<div style="padding:20px; color:#EF4444;">Ошибка: ${error.message}</div>`;
         }
     },
@@ -26382,10 +26404,10 @@ const app = {
     },
 
     filterAdminUsersTable: function (query) {
-        let lowerQuery = query.toLowerCase().trim();
+        const words = query.toLowerCase().split(/[\s.]+/).filter(Boolean);
         document.querySelectorAll('.admin-list-row').forEach(row => {
             let dataSearch = row.getAttribute('data-search') || '';
-            row.style.display = (!lowerQuery || dataSearch.includes(lowerQuery)) ? '' : 'none';
+            row.style.display = words.every(w => dataSearch.includes(w)) ? '' : 'none';
         });
     },
 
