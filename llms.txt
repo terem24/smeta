@@ -115,12 +115,12 @@
   расчётная температура −25 °C, газ 9,09 ₽/м³
 - [Все города: расчётные температуры и тарифы](https://heatcalc.ru/goroda/)
 - [Пользовательское соглашение](https://heatcalc.ru/oferta.html)
-- [Поддержка в Telegram](https://t.me/heatcalc)
 - [Монтаж тёплого пола в СПб и Ленобласти: цена за м²](https://heatcalc.ru/montazh-teplogo-pola-spb/) — монтаж теплого пола спб
 - [Подготовка отопления к зиме: что проверить перед сезоном](https://heatcalc.ru/podgotovka-otopleniya-k-zime/) — подготовка отопления к зиме
 - [Коллектор тёплого пола: на сколько выходов](https://heatcalc.ru/kollektor-teplogo-pola/) — коллектор теплого пола
 - [Электрокотёл: сколько киловатт и сколько съест](https://heatcalc.ru/elektrokotel-dlya-doma/) — электрокотел для дома
 - [Биметаллические или алюминиевые радиаторы](https://heatcalc.ru/bimetall-ili-alyuminiy/) — биметаллический радиатор
+- [Договор подряда на монтаж: что вписать, чтобы защитить себя](https://heatcalc.ru/dogovor-podryada-zashchita-montazhnika/) — договор подряда на монтаж отопления
 
 ## Примечания для моделей
 

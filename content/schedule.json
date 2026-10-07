@@ -81,9 +81,9 @@
    "freq": 0,
    "audience": "pro",
    "data_block": "шаблон договора из сметы",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-07",
-   "published_at": null,
+   "published_at": "2026-10-07",
    "words": 705
   },
   {

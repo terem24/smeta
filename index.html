@@ -58,8 +58,7 @@
             { "@type": "Country", "name": "Россия" },
             { "@type": "City", "name": "Москва" },
             { "@type": "City", "name": "Санкт-Петербург" }
-          ],
-          "sameAs": [ "https://t.me/heatcalc" ]
+          ]
         },
         {
           "@type": "WebApplication",
@@ -173,7 +172,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=4.99">
+    <link rel="stylesheet" href="style.css?v=5.00">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.34" defer></script>
@@ -191,7 +190,6 @@
     <!-- Цены дистрибьюторов поверх каталога. Отдельный файл, потому что каталог
          раз в месяц целиком переписывает автообновление цен Терем-онлайн. -->
     <script src="dist_prices.js?v=1.2" defer></script>
-    <script src="gamification.js?v=2.2" defer></script>
     <!-- Пуш-уведомления Android-приложения. В браузере файл ничего не делает:
          плагина Capacitor нет, все методы тихо выходят. Подключать до app.js —
          app.init() дёргает appPush.init(). -->
@@ -203,7 +201,7 @@
     <script src="boiler_wall.js?v=1.0" defer></script>
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
     <script src="short_names.js?v=1.1" defer></script>
-    <script src="app.js?v=11.57" defer></script>
+    <script src="app.js?v=11.60" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -295,7 +293,7 @@
     <script src="email.min.js" defer></script>
 
     <!-- Yandex.Metrika counter & Cookie Consent -->
-    <script src="cookie-consent.js?v=1.1" defer></script>
+    <script src="cookie-consent.js?v=1.2" defer></script>
     <!-- Плашка «поставьте приложение» — только Android и только не в самом
          приложении, остальное решает сам файл. -->
     <script src="install_app.js?v=1.0" defer></script>
@@ -658,22 +656,6 @@
                 </button>
 
                 <div class="header-divider"></div>
-
-                <!-- Открывает ту же врезку рейтинга, что и пункт меню: обычный переход по
-                     ссылке уводил со страницы вместе с меню. href оставлен для средней
-                     кнопки мыши и «открыть в новой вкладке». -->
-                <a class="btn-ctrl btn-trophy" href="/rating/" title="Рейтинг и достижения"
-                    onclick="event.preventDefault(); app.railGo('rating');">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M7 4h10v4a5 5 0 0 1-10 0V4z"></path>
-                        <path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5v1A3.5 3.5 0 0 0 6.5 11H7"></path>
-                        <path d="M17 5h2.5A1.5 1.5 0 0 1 21 6.5v1A3.5 3.5 0 0 1 17.5 11H17"></path>
-                        <path d="M12 13v4"></path>
-                        <path d="M9 21h6"></path>
-                        <path d="M10 17h4"></path>
-                    </svg>
-                </a>
 
                 <!-- Режим обучения. Раньше это была галочка отдельной строкой над колонками:
                      её не замечали, а на телефоне она занимала место в самом верху экрана.
@@ -2405,7 +2387,6 @@
             <!-- Бланк «Гарантия на систему STOUT»: на экране скрыт, печатается последним
                  листом КП при доле STOUT не ниже порога (app.renderWarrantyPrint) -->
             <div id="warranty_print" class="warranty-print"></div>
-            <div id="contest_widget" class="no-print"></div>
             <div class="doc-footer" style="display: flex; flex-direction: column; align-items: stretch;">
                 <div class="discount-container no-print" id="discount_block" style="display: none; width: 100%; flex-direction: column; gap: 8px; margin-bottom: 12px; border-bottom: 1px dashed var(--border); padding-bottom: 12px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--text-sec);">
@@ -2884,6 +2865,13 @@
                                 <input type="checkbox" id="chk_privacy" required style="width: 15px; height: 15px; cursor: pointer; flex-shrink: 0;">
                                 <span>Согласен с <a href="privacy-policy.html" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: none;">политикой обработки персональных данных</a></span>
                             </label>
+                            <!-- Необязательное и по умолчанию не отмеченное: согласие на информационные
+                                 письма (напоминания, советы, поздравления) даётся отдельно от согласия
+                                 на обработку данных. Служебные письма (коды, статусы смет) идут без него. -->
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 11.5px; color: var(--text-sec); line-height: 1.4;">
+                                <input type="checkbox" id="chk_mail_consent" style="width: 15px; height: 15px; cursor: pointer; flex-shrink: 0;">
+                                <span>Хочу получать информационные письма и напоминания (необязательно)</span>
+                            </label>
                         </div>
                     </div>
                     <div id="auth_error_msg" style="color: #ef4444; font-size: 13px; margin: 0 0 12px; display: none; text-align: left; line-height: 1.4;"></div>
@@ -3097,7 +3085,7 @@
         </div>
     </div>
 
-    <div id="profile_modal_overlay" class="auth-modal-overlay" style="display: none;">
+    <div id="profile_modal_overlay" class="auth-modal-overlay ym-hide-content" style="display: none;">
         <div class="auth-modal-content" style="box-sizing: border-box; transition: max-width 0.3s ease; display: flex; flex-direction: column;">
             <span id="profile_modal_close_btn" class="auth-modal-close" onclick="app.closeProfileModal()" style="top: 10px; right: 16px;">&times;</span>
 
@@ -3372,6 +3360,19 @@
                 <div class="lk-section-head">
                     <div><h4>Уведомления</h4><div class="lk-sub">Куда и о чём сообщать, когда с вашей сметой что-то происходит</div></div>
                 </div>
+                <!-- Информационные письма: согласие хранится в users.mail_consent (миграция
+                     20261007_mail_consent.sql), читает и пишет app.refreshMailConsentUI / setMailConsent.
+                     Служебные письма (коды, статусы смет, предупреждения о доступе) отключить нельзя. -->
+                <div class="lk-card" style="margin-bottom: 14px;">
+                    <div class="lk-setting">
+                        <div class="lk-setting-text">
+                            <b>Информационные письма и поздравления</b>
+                            <span>Напоминания, советы по работе с калькулятором, поздравление с днём рождения. Служебные письма (коды, статусы смет) отключить нельзя</span>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="profile_mail_consent" onchange="app.setMailConsent(this.checked)"><span class="slider"></span></label>
+                    </div>
+                </div>
+
                 <!-- Личные уведомления в Telegram: подключение через бота (tg-webhook) и три
                      переключателя категорий (installer_settings.tgNotify, см. app.setTgNotify).
                      Состояние заполняет app.refreshTelegramConnectUI. -->
@@ -3440,17 +3441,7 @@
             </div>
         </div>
     </div>
-    <!-- Врезка «Баллы и рейтинг»: та же страница /rating/, но внутри рабочего экрана,
-         рядом с меню. Открывает и закрывает app.openRatingPanel / closeRatingPanel;
-         адрес подставляется при первом открытии, чтобы страница не грузилась зря. -->
-    <div id="lk_rating_overlay" class="auth-modal-overlay" style="display: none; z-index: 99997;">
-        <div class="auth-modal-content lk-rating-card">
-            <span class="auth-modal-close" onclick="app.closeRatingPanel()" style="top: 8px; right: 14px;">&times;</span>
-            <iframe id="lk_rating_frame" class="lk-rating-frame" title="Баллы и рейтинг" loading="lazy"></iframe>
-        </div>
-    </div>
-
-    <div id="admin_modal_overlay" class="auth-modal-overlay" style="display: none; z-index: 100000;">
+    <div id="admin_modal_overlay" class="auth-modal-overlay ym-hide-content" style="display: none; z-index: 100000;">
         <div class="auth-modal-content" style="display: flex; flex-direction: column;">
             <span class="auth-modal-close" onclick="app.closeAdminModal()">&times;</span>
             <!-- Тот же переключатель темы, что и в шапке сайта: панель открыта поверх
@@ -3636,7 +3627,7 @@
     </button>
 
     <!-- МОДАЛЬНОЕ ОКНО УВЕДОМЛЕНИЙ -->
-    <div id="notifications_modal_overlay" class="auth-modal-overlay" style="display: none; z-index: 99998;" onclick="if(event.target === this) app.closeNotificationsModal()">
+    <div id="notifications_modal_overlay" class="auth-modal-overlay ym-hide-content" style="display: none; z-index: 99998;" onclick="if(event.target === this) app.closeNotificationsModal()">
         <div class="auth-modal-content" style="max-width: 420px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; padding: 18px; border-radius: 16px;">
             <span class="auth-modal-close" onclick="app.closeNotificationsModal()">&times;</span>
             <h3 class="auth-modal-title" style="margin-top: 0; margin-bottom: 15px; font-size: 15px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 8px; flex-shrink: 0; flex-wrap: wrap;">
@@ -3794,7 +3785,5 @@
     </div>
     <div class="mobile-menu-backdrop" onclick="app.toggleMenu()"></div>
 
-    <!-- Тост конкурса STOUT -->
-    <div id="contest_toast" class="contest-toast no-print"></div>
 
 </body>

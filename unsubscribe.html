@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Отписка от писем — HeatCalc.ru</title>
+    <style>
+        :root { --bg: #F3F4F6; --card: #FFFFFF; --text: #111827; --sec: #6B7280; --line: #E5E7EB; --primary: #2563EB; --ok: #15803D; --err: #B91C1C; }
+        @media (prefers-color-scheme: dark) {
+            :root { --bg: #0B1220; --card: #111827; --text: #F3F4F6; --sec: #9CA3AF; --line: #1F2937; --primary: #3B82F6; --ok: #4ADE80; --err: #F87171; }
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; line-height: 1.55; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; max-width: 460px; width: 100%; padding: 28px 24px; }
+        h1 { font-size: 20px; margin: 0 0 12px; }
+        p { margin: 0 0 14px; }
+        .sec { color: var(--sec); font-size: 14px; }
+        button { font: inherit; font-weight: 600; background: var(--primary); color: #fff; border: 0; border-radius: 10px; padding: 11px 20px; cursor: pointer; width: 100%; }
+        button:disabled { opacity: .6; cursor: default; }
+        .ok { color: var(--ok); font-weight: 600; }
+        .err { color: var(--err); }
+        a { color: var(--primary); }
+        [hidden] { display: none !important; }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <h1>Отписка от писем HeatCalc.ru</h1>
+
+        <div id="view_ask" hidden>
+            <p>Вы перестанете получать информационные письма и сообщения: напоминания, советы по работе с калькулятором и поздравления.</p>
+            <p class="sec">Служебные письма вы будете получать по-прежнему: коды подтверждения, статусы смет и счетов, сообщения менеджера, предупреждения о приостановке доступа.</p>
+            <button id="btn_unsub" type="button">Отписаться</button>
+        </div>
+
+        <div id="view_done" hidden>
+            <p class="ok">Готово, вы отписаны.</p>
+            <p class="sec">Передумали? Включить письма обратно можно в личном кабинете: «Настройки», вкладка «Уведомления».</p>
+            <p><a href="/">Вернуться в калькулятор</a></p>
+        </div>
+
+        <div id="view_bad" hidden>
+            <p class="err">Ссылка неполная или устарела.</p>
+            <p class="sec">Откройте письмо ещё раз и перейдите по ссылке целиком. Если не получается, напишите на <a href="mailto:support@heatcalc.ru">support@heatcalc.ru</a>, мы отпишем вручную.</p>
+        </div>
+
+        <div id="view_fail" hidden>
+            <p class="err">Не удалось отписаться: нет связи с сервером.</p>
+            <p class="sec">Попробуйте ещё раз чуть позже или напишите на <a href="mailto:support@heatcalc.ru">support@heatcalc.ru</a>.</p>
+            <button id="btn_retry" type="button">Повторить</button>
+        </div>
+    </main>
+
+    <script>
+        (function () {
+            // Отписка по кнопке, а не при открытии страницы: почтовые сервисы и антивирусы
+            // сами проходят по ссылкам из писем, и человек оказался бы отписан без своего ведома.
+            var SUPA_URL = 'https://ahanbwugsmcyvrwbmtlx.supabase.co';
+            var SUPA_KEY = 'sb_publishable_gcMJ-PvJmKavObbnePFGZQ_O-pu5O2p';
+            var PATH = '/rest/v1/rpc/mail_unsubscribe';
+
+            function show(id) {
+                ['view_ask', 'view_done', 'view_bad', 'view_fail'].forEach(function (v) {
+                    document.getElementById(v).hidden = (v !== id);
+                });
+            }
+
+            var token = '';
+            try {
+                var t = new URLSearchParams(location.search).get('t') || '';
+                if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t)) token = t;
+            } catch (e) { }
+
+            if (!token) { show('view_bad'); return; }
+            show('view_ask');
+
+            function send() {
+                var ask = document.getElementById('btn_unsub');
+                var retry = document.getElementById('btn_retry');
+                ask.disabled = true; retry.disabled = true;
+                var opts = {
+                    method: 'POST',
+                    headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ p_token: token })
+                };
+                // Часть сетей блокирует *.supabase.co — тогда тот же запрос идёт через proxy.heatcalc.ru
+                fetch(SUPA_URL + PATH, opts)
+                    .catch(function () {
+                        return fetch('https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(PATH), opts);
+                    })
+                    .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('http ' + r.status)); })
+                    .then(function (res) { show(res === true ? 'view_done' : 'view_bad'); })
+                    .catch(function () { show('view_fail'); })
+                    .then(function () { ask.disabled = false; retry.disabled = false; });
+            }
+
+            document.getElementById('btn_unsub').addEventListener('click', send);
+            document.getElementById('btn_retry').addEventListener('click', send);
+        })();
+    </script>
+</body>
+</html>
