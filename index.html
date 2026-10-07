@@ -293,7 +293,7 @@
     <script src="email.min.js" defer></script>
 
     <!-- Yandex.Metrika counter & Cookie Consent -->
-    <script src="cookie-consent.js?v=1.1" defer></script>
+    <script src="cookie-consent.js?v=1.2" defer></script>
     <!-- Плашка «поставьте приложение» — только Android и только не в самом
          приложении, остальное решает сам файл. -->
     <script src="install_app.js?v=1.0" defer></script>
@@ -3067,7 +3067,7 @@
         </div>
     </div>
 
-    <div id="profile_modal_overlay" class="auth-modal-overlay" style="display: none;">
+    <div id="profile_modal_overlay" class="auth-modal-overlay ym-hide-content" style="display: none;">
         <div class="auth-modal-content" style="box-sizing: border-box; transition: max-width 0.3s ease; display: flex; flex-direction: column;">
             <span id="profile_modal_close_btn" class="auth-modal-close" onclick="app.closeProfileModal()" style="top: 10px; right: 16px;">&times;</span>
 
@@ -3410,7 +3410,7 @@
             </div>
         </div>
     </div>
-    <div id="admin_modal_overlay" class="auth-modal-overlay" style="display: none; z-index: 100000;">
+    <div id="admin_modal_overlay" class="auth-modal-overlay ym-hide-content" style="display: none; z-index: 100000;">
         <div class="auth-modal-content" style="display: flex; flex-direction: column;">
             <span class="auth-modal-close" onclick="app.closeAdminModal()">&times;</span>
             <!-- Тот же переключатель темы, что и в шапке сайта: панель открыта поверх
@@ -3596,7 +3596,7 @@
     </button>
 
     <!-- МОДАЛЬНОЕ ОКНО УВЕДОМЛЕНИЙ -->
-    <div id="notifications_modal_overlay" class="auth-modal-overlay" style="display: none; z-index: 99998;" onclick="if(event.target === this) app.closeNotificationsModal()">
+    <div id="notifications_modal_overlay" class="auth-modal-overlay ym-hide-content" style="display: none; z-index: 99998;" onclick="if(event.target === this) app.closeNotificationsModal()">
         <div class="auth-modal-content" style="max-width: 420px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; padding: 18px; border-radius: 16px;">
             <span class="auth-modal-close" onclick="app.closeNotificationsModal()">&times;</span>
             <h3 class="auth-modal-title" style="margin-top: 0; margin-bottom: 15px; font-size: 15px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 8px; flex-shrink: 0; flex-wrap: wrap;">
