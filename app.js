@@ -77,27 +77,6 @@ const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey, {
     global: { fetch: supabaseProxyFetch }
 });
 
-// === КОНКУРС МОНТАЖНИКОВ STOUT 2026 (01.04.2026 – 30.11.2026) ===
-const CONTEST_CATS_2026 = [
-    { key: 'rad_design',     label: 'Дизайн. радиаторы',  pts: 20, emoji: '✨', test: (id)       => id.startsWith('SRB-3320') },
-    { key: 'boiler_el',      label: 'Котёл электрич.',     pts: 10, emoji: '⚡', test: (id)       => id.startsWith('SEB-') },
-    { key: 'water_heater',   label: 'Водонагреватель',     pts: 9,  emoji: '🌡️', test: (id)       => id.startsWith('SWH-') },
-    { key: 'pump_group',     label: 'Группа б.монтажа',   pts: 8,  emoji: '⚙️', minQty: 2, test: (id) => id.startsWith('SDG-000') },
-    { key: 'manifold_heat',  label: 'Коллектор отопл.',   pts: 7,  emoji: '🔀', test: (id)       => id.startsWith('SMS-09') || id.startsWith('SMB-6850-') },
-    { key: 'rad_conv',       label: 'Радиаторы/конвект.', pts: 6,  emoji: '🏠', test: (id)       => (id.startsWith('SRB-0') || id.startsWith('SCQ-') || id.startsWith('SCN-')) },
-    { key: 'automation',     label: 'Автоматика',          pts: 6,  emoji: '🎛️', test: (id, name) => id.startsWith('STE-') || id.startsWith('SHT-') || name.includes('термостат') || name.includes('терморегулятор') || name.includes('сервопривод') || name.includes('контроллер') },
-    // SCA — итальянская линейка (снята с умолчания 20.09.2026), SCR — российская
-    // STOUT, RCA — ROMMER. Проверять один SCA значило бы, что после смены
-    // умолчания баллы за дымоход не начисляются никому.
-    { key: 'chimney',        label: 'Дымоход',             pts: 5,  emoji: '🏭', test: (id)       => /^(SCA|SCR|RCA)-/.test(id) },
-    { key: 'pump',           label: 'Насос',               pts: 4,  emoji: '💧', test: (id)       => id.startsWith('SPC-') },
-    { key: 'tank_exp',       label: 'Бак мембранный',      pts: 4,  emoji: '🛢️', test: (id)       => id.startsWith('STH-') || id.startsWith('STW-') },
-    { key: 'manifold_water', label: 'Коллектор воды',      pts: 3,  emoji: '🚿', test: (id, name, item) => (id.startsWith('SMB-6851-') || name.includes('3/4')) && (item && (item.group === '5.1. Внутреннее водоснабжение' || (item.group === '5. Внутреннее водоснабжение' && item.desc && (item.desc.includes('ХВС') || item.desc.includes('Холодная вода'))))) },
-    { key: 'flex_conn',      label: 'Гибкая подводка',     pts: 3,  emoji: '🔗', test: (id, name) => name.includes('гибк') },
-    { key: 'valve',          label: 'Арматура',            pts: 2,  emoji: '🔧', test: (id)       => id.startsWith('SVT-') || id.startsWith('SVL-') || id.startsWith('SFB-') || id.startsWith('SBV-') || id === 'BX4991100069' },
-    { key: 'pipes_fittings', label: 'Трубы и фитинги',     pts: 1,  emoji: '➿', test: (id, name, item) => (name.includes('труб') && (item.q || 1) >= 20) || name.includes('фитинг') || id.startsWith('SFP-') || id.startsWith('SFA-') || id.startsWith('SFC-') || id.startsWith('SFH-') || id.startsWith('SPX-') },
-    { key: 'mats',           label: 'Маты',                pts: 1,  emoji: '🧱', test: (id, name) => (name.includes('мат') && !name.includes('матов')) || id.startsWith('SPM-') },
-];
 
 
 
@@ -16077,6 +16056,7 @@ const app = {
         } else if (tab === 'kp') {
             this.fillKpSettingsForm();
         } else if (tab === 'notify') {
+            this.refreshMailConsentUI();
             this.refreshTelegramConnectUI();
         } else if (tab === 'login') {
             this.renderProfileLoginMethod();
@@ -16113,7 +16093,6 @@ const app = {
             if (id === 'profile_modal_overlay') this.closeProfileModal();
             else if (id === 'admin_modal_overlay') this.closeAdminModal();
             else if (id === 'notifications_modal_overlay') this.closeNotificationsModal();
-            else if (id === 'lk_rating_overlay') this.closeRatingPanel();
         });
     },
 
@@ -16344,7 +16323,6 @@ const app = {
             + `<div class="ad-cards">${cards.join('')}</div>`
             + `<div class="ad-card lk-home-facts">`
             + (tariff ? `<div class="ad-kv"><span>Тариф</span><button type="button" class="lk-link" onclick="app.setProfileTab('subscription')" title="Что даёт тариф и срок действия">${esc(tariff)} ›</button></div>` : '')
-            + ((typeof GRM !== 'undefined' && GRM.isEnabled && GRM.isEnabled()) ? `<div class="ad-kv"><span>Баллы, значки и рейтинг</span><button type="button" class="lk-btn-sm" onclick="app.railGo('rating')">Открыть</button></div>` : '')
             + `<div class="ad-kv"><span>Сохранённых смет</span><b>${ests.length}${ests.length >= 50 ? '+' : ''}</b></div>`
             + `</div>`;
         // Список для общего поиска по кабинету — те же свои сметы, второй раз не читаем
@@ -16493,10 +16471,6 @@ const app = {
             this.openMessagesCenter();
             return;
         }
-        if (section === 'rating') {
-            this.openRatingPanel();
-            return;
-        }
         if (section === 'admin') {
             this.closeOtherRailPlaces('admin_modal_overlay');
             this._adminOpenedFrom = 'admin';
@@ -16533,7 +16507,7 @@ const app = {
     // Список окон, которые открываются из панели и потому обязаны вставать в то же
     // место: кабинет, панель управления (у админа в неё ведут «Сообщения»), окно
     // сообщений обычного монтажника и врезка рейтинга.
-    DOCKABLE_OVERLAY_IDS: ['profile_modal_overlay', 'admin_modal_overlay', 'notifications_modal_overlay', 'lk_rating_overlay'],
+    DOCKABLE_OVERLAY_IDS: ['profile_modal_overlay', 'admin_modal_overlay', 'notifications_modal_overlay'],
 
     isOverlayOpen: function (id) {
         const el = document.getElementById(id);
@@ -17275,36 +17249,6 @@ const app = {
         if (this.isMobileLayout()) this.switchMobileTab('inputs');
     },
 
-    // ── Врезка «Баллы и рейтинг» ──
-    // Рейтинг — отдельная страница, и ссылка на неё уводила из калькулятора вместе с
-    // меню. Показываем ту же страницу во фрейме на месте колонок; на узком экране,
-    // где панели нет, по-прежнему открываем её отдельной вкладкой.
-    openRatingPanel: function () {
-        if (!this.isRailVisible()) {
-            window.open('/rating/', '_blank', 'noopener');
-            return;
-        }
-        this.closeOtherRailPlaces('lk_rating_overlay');
-
-        const frame = document.getElementById('lk_rating_frame');
-        // Адрес подставляем при первом открытии: до него страницу грузить незачем.
-        // Путь относительный — сайт живёт и на своём домене, и в подпапке.
-        if (frame && !frame.getAttribute('src')) frame.setAttribute('src', 'rating/');
-        const overlay = document.getElementById('lk_rating_overlay');
-        if (overlay) overlay.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        this.syncCabinetDock();
-        this.syncRailUI();
-    },
-
-    closeRatingPanel: function () {
-        const overlay = document.getElementById('lk_rating_overlay');
-        if (overlay) overlay.style.display = 'none';
-        document.body.style.overflow = '';
-        this.syncCabinetDock();
-        this.syncRailUI();
-    },
-
     setCabinetDocked: function (on) {
         document.body.classList.toggle('lk-docked', !!on);
         if (!on) return;
@@ -17477,8 +17421,6 @@ const app = {
             current = (this._adminOpenedFrom === 'messages') ? 'messages' : 'admin';
         } else if (this.isOverlayOpen('notifications_modal_overlay')) {
             current = 'messages';
-        } else if (this.isOverlayOpen('lk_rating_overlay')) {
-            current = 'rating';
         }
         rail.querySelectorAll('.lk-rail-item').forEach(el => {
             const key = el.dataset.rail;
@@ -17503,11 +17445,6 @@ const app = {
             this.fitRailToViewport();
         }
     },
-
-    // Геймификация (начисление XP / разблокировка значков за действия монтажника,
-    // региональный рейтинг, значки, лента активности) вынесена в общий модуль
-    // gamification.js (глобальная переменная GRM, подключается в index.html перед
-    // app.js) — переиспользуется и на отдельной странице /rating/.
 
     // ═══════════════ Персональные настройки монтажника (личный кабинет) ═══════════════
     // Хранятся отдельно от app.state (который сохраняется/сбрасывается per-проект), чтобы
@@ -17636,6 +17573,58 @@ const app = {
         this.installerSettings.tgNotify[kind] = !!on;
         this.pushInstallerSettingsToCloud();
     },
+    // ── Согласие на информационные письма (users.mail_consent, миграция 20261007_mail_consent.sql) ──
+    // null — человек не отвечал (рассылку не шлём), true — согласен, false — отказался.
+    // Служебные письма (код, статусы смет, предупреждения о доступе) согласия не требуют.
+
+    // Галочка при регистрации ждёт первого входа: до него строки в users ещё нет.
+    flushPendingMailConsent: async function (email) {
+        let raw = null;
+        try { raw = JSON.parse(localStorage.getItem('hc_pending_mail_consent') || 'null'); } catch (e) { raw = null; }
+        if (!raw || typeof raw.v !== 'boolean') return;
+        const sameUser = raw.email && email && String(raw.email).toLowerCase() === String(email).toLowerCase();
+        const stale = !raw.t || (Date.now() - raw.t) > 2 * 24 * 3600 * 1000;
+        if (!sameUser) {
+            // Чужой или протухший выбор не применяем и не копим
+            if (stale) { try { localStorage.removeItem('hc_pending_mail_consent'); } catch (e) { } }
+            return;
+        }
+        try {
+            const { data, error } = await supabaseClient.rpc('set_my_mail_consent', { p_value: raw.v });
+            if (error) throw error;
+            if (data === true) { try { localStorage.removeItem('hc_pending_mail_consent'); } catch (e) { } }
+        } catch (e) {
+            console.warn('[flushPendingMailConsent] Не записали согласие, повторим при следующем входе:', e && e.message ? e.message : e);
+        }
+    },
+
+    refreshMailConsentUI: async function () {
+        const el = document.getElementById('profile_mail_consent');
+        if (!el) return;
+        try {
+            const { data, error } = await supabaseClient.rpc('get_my_mail_consent');
+            if (error) throw error;
+            el.checked = !!(data && data.consent === true);
+            el.disabled = false;
+        } catch (e) {
+            // Нет связи или миграция не применена: переключатель не показываем включённым наугад
+            el.checked = false;
+            console.warn('[refreshMailConsentUI]', e && e.message ? e.message : e);
+        }
+    },
+
+    setMailConsent: async function (on) {
+        const el = document.getElementById('profile_mail_consent');
+        try {
+            const { data, error } = await supabaseClient.rpc('set_my_mail_consent', { p_value: !!on });
+            if (error) throw error;
+            if (data !== true) throw new Error('учётная запись не найдена');
+        } catch (e) {
+            if (el) el.checked = !on;
+            app.alert('Не удалось сохранить выбор: ' + (e && e.message ? e.message : e) + '. Проверьте соединение и повторите.');
+        }
+    },
+
     // Статус подключения + три чекбокса — карточка «Telegram» на вкладке «Мои объекты»
     refreshTelegramConnectUI: function () {
         const statusEl = document.getElementById('profile_tg_status');
@@ -22650,7 +22639,6 @@ const app = {
         'lk:summary': 'сводка',
         'lk:workprices': 'цены на монтаж',
         'lk:equipment': 'своё оборудование',
-        'lk:rating': 'баллы',
         'lk:admin': 'панель управления'
     },
 
@@ -23016,8 +23004,14 @@ const app = {
         // вторую половину (ни одного расчёта) досчитывает filterIdleVisitors.
         if (filters.idle === 'yes') query = query.gte('sess_visits', this.IDLE_MIN_VISITS);
         if (searchFilter) {
+            // По словам: «Ибат», «Ибатуллин Д», «Ибатуллин Д.О.» — каждое слово (или буква)
+            // должно встретиться в какой-нибудь из колонок. Целая фраза в одной колонке
+            // находила только полное совпадение имени.
             const cols = ['username', 'email', 'phone', 'city', 'region', 'last_name', 'first_name', 'middle_name'];
-            query = query.or(cols.map(c => `${c}.ilike.%${searchFilter}%`).join(','));
+            const words = searchFilter.split(/[\s.]+/).filter(Boolean);
+            (words.length ? words : [searchFilter]).forEach(w => {
+                query = query.or(cols.map(c => `${c}.ilike.%${w}%`).join(','));
+            });
         }
 
         if (tariffFilter === 'base') {
@@ -23358,6 +23352,10 @@ const app = {
         // выясняем до первого запроса, иначе фильтры уйдут пустыми.
         if (this.isScopedAdmin()) await this.resolveAdminScope();
         this._adminOffset = offset;
+        // Номер загрузки: если пока шла эта, началась следующая (поиск, фильтр, смена
+        // вкладки), ответ устаревшей не должен перекрасить экран — на медленной сети
+        // он приходил последним и затирал список пустым или чужим.
+        const loadSeq = this._adminLoadSeq = (this._adminLoadSeq || 0) + 1;
         const content = document.getElementById('admin_content');
         // Запоминаем значение и фокус поля поиска — оно вот-вот исчезнет из DOM вместе
         // с "Загрузка данных...", а после перерисовки надо продолжить печатать без разрыва
@@ -23461,17 +23459,27 @@ const app = {
             let users = [];
             let totalUsers = 0;
 
-            if (isClientSort || isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter) {
-                let { data, error, count } = await query;
-                if (error) throw error;
-                users = data || [];
-                totalUsers = count || users.length;
-            } else {
-                let { data, error, count } = await query.range(offset, offset + this._adminPageSize - 1);
-                if (error) throw error;
-                users = data || [];
-                totalUsers = count || users.length;
+            // Запрос шлём до двух раз: на нестабильной сети (другие ноутбуки, VPN, расширения)
+            // первый ответ бывает пустым или обрывается, а со второго раза приходит список.
+            const runUsersQuery = async () => {
+                const wholeList = isClientSort || isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter;
+                const r = wholeList ? await query : await query.range(offset, offset + this._adminPageSize - 1);
+                if (r.error) throw r.error;
+                return r;
+            };
+            let usersRes;
+            try { usersRes = await runUsersQuery(); } catch (e1) {
+                console.warn('[админка] список пользователей, повтор:', e1);
+                await new Promise(res => setTimeout(res, 800));
+                usersRes = await runUsersQuery();
             }
+            if (!(usersRes.data || []).length && offset === 0) {
+                await new Promise(res => setTimeout(res, 800));
+                try { const r2 = await runUsersQuery(); if ((r2.data || []).length) usersRes = r2; } catch (e2) { }
+            }
+            if (loadSeq !== this._adminLoadSeq) return;
+            users = usersRes.data || [];
+            totalUsers = usersRes.count || users.length;
 
             // Отбор по доступу к распознаванию и по сомнительным анкетам — раньше всего
             // остального: и тариф, и LTV должны сортировать уже отобранных, а счётчик
@@ -23822,9 +23830,11 @@ const app = {
             // Ошибка чтения не должна ломать админку: столбец просто покажет
             // «выключено», а список подтянется при следующем открытии.
             await this.loadRecognitionAccess();
+            if (loadSeq !== this._adminLoadSeq) return;
             this.renderAdminMain();
         } catch (error) {
             console.error("Admin Load Error:", error);
+            if (loadSeq !== this._adminLoadSeq) return;
             if (content) content.innerHTML = `<div style="padding:20px; color:#EF4444;">Ошибка: ${error.message}</div>`;
         }
     },
@@ -26447,10 +26457,10 @@ const app = {
     },
 
     filterAdminUsersTable: function (query) {
-        let lowerQuery = query.toLowerCase().trim();
+        const words = query.toLowerCase().split(/[\s.]+/).filter(Boolean);
         document.querySelectorAll('.admin-list-row').forEach(row => {
             let dataSearch = row.getAttribute('data-search') || '';
-            row.style.display = (!lowerQuery || dataSearch.includes(lowerQuery)) ? '' : 'none';
+            row.style.display = words.every(w => dataSearch.includes(w)) ? '' : 'none';
         });
     },
 
@@ -36646,11 +36656,36 @@ const app = {
         const nameOf = i => (i && i.name ? String(i.name) : '');
         // Позиции зональной автоматики лежат в разделе 4.5 (кабель — в 4.5.1, его
         // строки «линии термостатов/сервоприводов» под поиск по названию не берём).
-        // Схема нарисована под планку STOUT STE-3050; у ENGO другие клеммы и своего
-        // листа пока нет — без паспорта ECB62-ZB их не рисуем.
-        if (this.zoneAutoSystem() !== 'stout') return '';
+        // Планка STOUT STE-3050 и центр коммутации ENGO ECB62-ZB — две разные
+        // схемы: клеммы у них свои (паспорта обоих), рисуются по системе в смете.
         const rows = spec.filter(i => /^\s*4\.5\.(?!\d)/.test(i.group || ''));
         if (!rows.length) return '';
+        if (this.zoneAutoSystem() === 'engo') {
+            if (!window.projectScheme.ufhSchemeEngo) return '';
+            const q = re => rows.filter(i => re.test(nameOf(i))).reduce((a, i) => a + (i.q || 0), 0);
+            const first = re => rows.find(i => re.test(nameOf(i)));
+            const bar = first(/ECB62|центр коммутации/i);
+            const isStat = i => /термостат|терморегулятор/i.test(nameOf(i));
+            const wiredRow = rows.find(i => isStat(i) && /проводн/i.test(nameOf(i)) && !/беспровод/i.test(nameOf(i)));
+            const servoRow = first(/сервопривод/i);
+            const wiredN = rows.filter(i => isStat(i) && /проводн/i.test(nameOf(i)) && !/беспровод/i.test(nameOf(i))).reduce((a, i) => a + (i.q || 0), 0);
+            const radioN = rows.filter(i => isStat(i) && /беспровод/i.test(nameOf(i))).reduce((a, i) => a + (i.q || 0), 0);
+            if (!bar && !wiredN && !radioN) return '';
+            const tcE = this.thermaticConfig;
+            const koE = tcE && (tcE.circuits || []).find(c => c.src === 'ufh');
+            return window.projectScheme.ufhSchemeEngo({
+                bars: bar ? (bar.q || 1) : 1,
+                wired: wiredN, radio: radioN,
+                heads: q(/радиоголовк/i), servos: q(/сервопривод/i),
+                gateway: q(/шлюз/i),
+                statKind: wiredRow && /EASY/i.test((wiredRow.id || '') + nameOf(wiredRow)) ? 'easy' : 'simple',
+                statName: wiredRow ? nameOf(wiredRow) : '',
+                servoName: servoRow ? nameOf(servoRow) : '',
+                servoVolt: servoRow ? (servoRow.voltage || (/\b24\s*В/.test(nameOf(servoRow)) ? 24 : 230)) : 230,
+                auto: this.thermaticFull(), ko: koE ? koE.name : null
+            });
+        }
+        if (this.zoneAutoSystem() !== 'stout') return '';
         const pick = re => rows.find(i => re.test(nameOf(i)));
         const servo = pick(/сервопривод/i), stat = pick(/термостат|терморегулятор/i), blk = pick(/контроллер|коммутацион/i);
         const tc = this.thermaticConfig;
@@ -36922,7 +36957,7 @@ const app = {
             out.push('Подающая и обратная линии магистральной фильтрации');
         const fl = Math.max(1, parseInt(s.floors) || 1);
         for (let i = 1; i <= fl; i++) out.push('Распределение ХВС по потребителям ' + i + ' этажа');
-        if (s.hotWater) out.push('Линия загрузки бойлера косвенного нагрева');
+        if (this.dhwTankOn()) out.push('Линия загрузки бойлера косвенного нагрева');
         if (s.recirc) out.push('Линия рециркуляции ГВС');
         return out;
     },
@@ -42254,6 +42289,16 @@ const app = {
         const email = document.getElementById('auth_email_input').value.trim();
         const password = document.getElementById('auth_reg_password').value.trim();
 
+        // Выбор «хочу информационные письма» запоминаем вместе с почтой: учётная запись в базе
+        // появляется только при первом входе, и тогда выбор уходит в базу (flushPendingMailConsent).
+        // Привязка к почте нужна, чтобы чужой выбор не лёг на следующего, кто войдёт с этого устройства.
+        try {
+            const mailChk = document.getElementById('chk_mail_consent');
+            localStorage.setItem('hc_pending_mail_consent', JSON.stringify({
+                email: email.toLowerCase(), v: !!(mailChk && mailChk.checked), t: Date.now()
+            }));
+        } catch (e) { /* без localStorage согласие просто не запомнится, включить можно в кабинете */ }
+
         const authErrEl = document.getElementById('auth_error_msg');
         if (authErrEl) authErrEl.style.display = 'none';
 
@@ -42936,6 +42981,7 @@ const app = {
 
             let uRow = upsertResult ? upsertResult[0] : null;
             if (uRow && !HC_LOCAL_DEV) this.stampLoginGeo(authUserId);
+            if (uRow) this.flushPendingMailConsent(email);
             if (uRow && utm) this.stampFirstTouchSource(uRow, authUserId, utm);
             if (uRow && uRow.is_blocked) {
                 // Заблокированный админом аккаунт: данные не трогаем, но не даём пользоваться
@@ -44247,9 +44293,7 @@ const app = {
                     if (typeof RecognizeUI !== 'undefined') RecognizeUI.mountInline(panelRec);
                 }).catch(() => { });
             }
-            // Полный render() здесь не нужен — таблица сметы скрыта. Но виджет
-            // конкурса живёт вне таблицы и сам не спрячется, его чистим явно.
-            this.renderContestWidget();
+            // Полный render() здесь не нужен — таблица сметы скрыта.
             return;
         }
         if (panelRec) panelRec.style.display = 'none';
@@ -45876,7 +45920,7 @@ const app = {
             if (bars) add(withAlts(bar, [catalog.wiring_center]), bars, `Планка: 2 проводные зоны + 6 зон Zigbee, до 50 приводов 230 В NC. ` +
                 `Проводных ${wired}, радио ${radioAll}, приводов ${servos}. ${srcTip}` +
                 (reqBars >= bars && reqBars > 0 ? ` Планок ${bars} — столько названо в заявке.` : ``) +
-                ` Термостаты привязываются к планке напрямую, без шлюза. В замене — STOUT STE-3050 (только проводные).`, null, 'bar');
+                ` Радиотермостаты привязываются к планке по радио (SELECT → PAIR) в одной Zigbee-сети со шлюзом, провода не нужны. В замене — STOUT STE-3050 (только проводные).`, null, 'bar');
             if (bars > 1 && byWired === bars && byWired > byRadio) warns.push(`Планок ${bars} из-за проводных термостатов: у планки радиокомплекта только 2 проводные зоны. ` +
                 `Дешевле часть термостатов взять радио.`);
             const wl = e.wired || [];
@@ -45895,8 +45939,14 @@ const app = {
             if (heads > 0) {
                 const hl = e.heads || [];
                 add(withAlts(hl[0], hl), heads, `Радиоголовка на клапан каждого прибора (${heads}); M28 — в замене. Работает в паре с E25 через шлюз.`, null, 'head');
+            }
+            // Шлюз нужен не только головкам: по паспорту ECB62-ZB (Quick Guide v6.1)
+            // планка и радиотермостат должны быть в одной Zigbee-сети шлюза, иначе
+            // привязка не пройдёт. Раньше он ставился только при головках.
+            if (radioAll > 0 || heads > 0) {
                 gateway = 1;
-                add(e.gateway, gateway, `Шлюз обязателен радиоголовкам; заодно управление с телефона (ENGO Smart).`, null, 'gw');
+                add(e.gateway, gateway, `Шлюз Zigbee: по паспорту ECB62-ZB радиотермостаты привязываются к планке в одной сети со шлюзом` +
+                    (heads > 0 ? `; радиоголовкам он обязателен` : ``) + `. Заодно управление с телефона (ENGO Smart).`, null, 'gw');
             }
         }
         if (servos > 0) {
@@ -45920,6 +45970,14 @@ const app = {
             (catalog.ufh_cables || []).forEach(c => {
                 if (noBoilerCtrl && c.id === 'CBL-MKESH-2X05') return;
                 if (c.id === 'CBL-VVG-3X15-TS' && wiredAll === 0) return;
+                // У ENGO клемма проводного термостата принимает до 1,0 мм² (паспорт
+                // ECB62-ZB): вместо ВВГнг 3×1,5 берём 3×1,0 с тем же метражом.
+                if (c.id === 'CBL-VVG-3X15-TS' && sys === 'engo' && catalog.ufh_cable_engo_ts) {
+                    const mE = cab.qty[c.id] || 0;
+                    if (mE > 0) add(catalog.ufh_cable_engo_ts, mE, cab.desc[c.id] +
+                        '<br><span style="font-size:11px;line-height:1.5;"><b>Почему 3×1,0:</b> клемма проводного термостата ECB62-ZB принимает до 1,0 мм² (паспорт ENGO), кабель 3×1,5 в нее не войдет.</span>', grpCab);
+                    return;
+                }
                 if (c.id === 'CBL-VVG-2X15-SV' && servos === 0) return;
                 const m = cab.qty[c.id] || 0;
                 if (m > 0) add(c, m, cab.desc[c.id], grpCab);
@@ -45974,7 +46032,7 @@ const app = {
             works = `термостат в комнате замыкает контакт на планке, планка открывает сервоприводы петель этой комнаты и включает насос; когда все зоны прогреты, насос останавливается.` +
                 (zk.heads > 0 ? ` Радиоголовки держат температуру радиаторов по своей уставке и управляются со смартфона через шлюз.` : '');
         } else {
-            works = `проводные термостаты подключены к планке кабелем, радиотермостаты — по радио напрямую, без интернета; по сигналу термостата планка открывает приводы контуров комнаты и даёт котлу команду греть.` +
+            works = `проводные термостаты подключены к планке кабелем, радиотермостаты — по радио (Zigbee) через шлюз, провод не нужен; по сигналу термостата планка открывает приводы контуров комнаты и даёт котлу команду греть.` +
                 (zk.heads > 0 ? ` Радиоголовки держат температуру радиаторов по уставке своего радиотермостата (до 6 головок на один) и управляются с телефона через шлюз.` : '');
         }
         const note = zk.fromReq
@@ -47470,7 +47528,7 @@ const app = {
         // не сумма, а большее из двух: котлы греют бойлер с приоритетом ГВС,
         // отопление на это время отключается.
         const _need = this.boilerTargetPower(this.getHouseHeatLoss());
-        const dhwW = s.hotWater ? Math.round((_need.dhwKw || 0) * 1000) : 0;
+        const dhwW = this.dhwTankOn() ? Math.round((_need.dhwKw || 0) * 1000) : 0;
         let rows = [], totArea = 0, totQ = 0, totVent = 0;
         const hl = this.buildHeatLossData();
         if (hl && hl.length) {
@@ -48047,7 +48105,7 @@ const app = {
         // вариантах, различается только подпись узла на схеме.
         const elPolisGbm = elPolis && spec.some(i => /быстрого\s+монтажа/i.test(nameOf(i)));
 
-        const indirect = !!s.hotWater && has(/бойлер|водонагреват/i);
+        const indirect = this.dhwTankOn() && has(/бойлер|водонагреват/i);
         let tankVol = null;
         if (indirect) {
             const it = spec.find(i => /бойлер|водонагреват/i.test(nameOf(i)));
@@ -49116,7 +49174,6 @@ const app = {
             // ссылку, а напоминание «КП без счёта» не видело отправок ссылкой.
             this.logInvoiceEvent('sent', { shared_invoice_id: shareId, channel: 'link', kp_version: kpVersion || null });
 
-            GRM.trackAction('share', shareId);  // геймификация: +10 XP + значки ссылок (шаринг ссылки клиенту)
 
             // Копируем готовое сообщение с номером КП, а не голую ссылку
             const shareMsg = this.clientShareMessage({
@@ -49363,7 +49420,6 @@ const app = {
                         .replace(/[\\\/:\*\?"<>\|]/g, '');
                     const res = await hcNative.printPdf({ name: safeName + '.pdf' });
                     this.logPrintedEvent('pdf');
-                    GRM.trackAction('pdf', this.state.calc_id);
                     if (window.hcNativeShowSaved) window.hcNativeShowSaved(res);
                     document.dispatchEvent(new CustomEvent('hc:pdf-done'));
                 } catch (err) {
@@ -49424,7 +49480,6 @@ const app = {
                 await this.lazy('html2pdf');
                 await html2pdf().set(opt).from(printBin).save();
                 this.logPrintedEvent('pdf');
-                GRM.trackAction('pdf', this.state.calc_id);  // геймификация: +5 XP + значки PDF
                 // Документ на руках — момент, когда в приложении уместно
                 // попросить оценку (rate_app.js слушает это событие).
                 document.dispatchEvent(new CustomEvent('hc:pdf-done'));
@@ -49459,7 +49514,6 @@ const app = {
             app._printBinReady = false;
         }
         this.logPrintedEvent('pdf');
-        GRM.trackAction('pdf', this.state.calc_id);  // геймификация: +5 XP + значки PDF
         document.dispatchEvent(new CustomEvent('hc:pdf-done'));
 
         // Возвращаем тему обратно
@@ -49554,7 +49608,6 @@ const app = {
             const safeName = (document.title || this.state.projectName || 'Смета').replace(/[\\\/:\*\?"<>\|]/g, '');
             ExcelExport.saveFromPrintBin(`${safeName}.xlsx`, { flat: !!flat });
             this.logPrintedEvent('excel');
-            GRM.trackAction('pdf', this.state.calc_id);  // геймификация: та же отметка, что и у PDF
         } catch (err) {
             console.error('[executeExcelDownload] Ошибка формирования Excel:', err);
             app.alert('Не удалось сформировать файл Excel: ' + (err && err.message ? err.message : err));
@@ -49765,6 +49818,40 @@ const app = {
     // Выполняет фактическую запись в shared_invoices для задачи из очереди. Перед перезаписью
     // подтягивает уже существующий статус согласования (confirmed/needs_revision/комментарий) —
     // повторная генерация ссылки монтажником не должна сбрасывать то, что клиент уже отметил.
+    // Что делать с ответом клиента, когда ссылку записывают заново. ex — object_info,
+    // который уже лежит в базе, info — тот, что собираются записать. Возвращает итоговый.
+    //
+    // Раньше это жило внутри saveSharedInvoiceJobToCloud, а «Запрос счёта» писал ссылку
+    // мимо него и каждый раз возвращал статус «отправлен» — ответ клиента («нужна доработка»,
+    // «одобрено») терялся через секунды после нажатия, в Telegram он приходил, а в
+    // калькуляторе уведомления не было: оно строится из статуса в этой строке.
+    mergeClientAnswer: function (ex, info) {
+        // Клиент просил обновить просроченный счёт — эта запись и есть
+        // ответ на просьбу: статус снова «отправлен», таймер идёт заново
+        // (sent_at/valid_until уже новые в info). Отметки о
+        // просьбе (когда и сколько раз) оставляем: по ним дашборд считает,
+        // как таймер повлиял на ответы клиентов.
+        const wasRefreshAsked = ex.status === 'refresh_requested';
+        // Под той же ссылкой ушла новая версия КП — одобрение клиента
+        // относилось к прошлой, переносить его на новую нельзя: клиент
+        // увидел бы «одобрено» на смете, которую ещё не видел. Статус
+        // снова «отправлен», а что и по какой версии он отмечал, остаётся
+        // в истории (invoice_events хранят номер версии).
+        const newVersion = !!(info.kp_version && ex.kp_version
+            && Number(info.kp_version) !== Number(ex.kp_version));
+        const resetStatus = wasRefreshAsked || newVersion;
+        return {
+            ...info,
+            status: resetStatus ? (info.status || 'sent') : (ex.status || info.status),
+            client_comment: newVersion ? null : (ex.client_comment || null),
+            status_updated_at: resetStatus ? null : (ex.status_updated_at || null),
+            refresh_requested_at: ex.refresh_requested_at || null,
+            refresh_count: ex.refresh_count || 0,
+            refreshed_at: wasRefreshAsked ? new Date().toISOString() : (ex.refreshed_at || null),
+            first_sent_at: ex.first_sent_at || ex.sent_at || info.sent_at
+        };
+    },
+
     saveSharedInvoiceJobToCloud: async function (job) {
         try {
             // shared_invoices.user_id ссылается на auth-идентификатор пользователя (тот же, что
@@ -49798,31 +49885,7 @@ const app = {
                 try {
                     const { data: existing } = await supabaseClient.from('shared_invoices').select('object_info').eq('id', job.shareId).maybeSingle();
                     if (existing && existing.object_info) {
-                        const ex = existing.object_info;
-                        // Клиент просил обновить просроченный счёт — эта запись и есть
-                        // ответ на просьбу: статус снова «отправлен», таймер идёт заново
-                        // (sent_at/valid_until уже новые в job.object_info). Отметки о
-                        // просьбе (когда и сколько раз) оставляем: по ним дашборд считает,
-                        // как таймер повлиял на ответы клиентов.
-                        const wasRefreshAsked = ex.status === 'refresh_requested';
-                        // Под той же ссылкой ушла новая версия КП — одобрение клиента
-                        // относилось к прошлой, переносить его на новую нельзя: клиент
-                        // увидел бы «одобрено» на смете, которую ещё не видел. Статус
-                        // снова «отправлен», а что и по какой версии он отмечал, остаётся
-                        // в истории (invoice_events хранят номер версии).
-                        const newVersion = !!(job.object_info.kp_version && ex.kp_version
-                            && Number(job.object_info.kp_version) !== Number(ex.kp_version));
-                        const resetStatus = wasRefreshAsked || newVersion;
-                        objectInfo = {
-                            ...job.object_info,
-                            status: resetStatus ? (job.object_info.status || 'sent') : (ex.status || job.object_info.status),
-                            client_comment: newVersion ? null : (ex.client_comment || null),
-                            status_updated_at: resetStatus ? null : (ex.status_updated_at || null),
-                            refresh_requested_at: ex.refresh_requested_at || null,
-                            refresh_count: ex.refresh_count || 0,
-                            refreshed_at: wasRefreshAsked ? new Date().toISOString() : (ex.refreshed_at || null),
-                            first_sent_at: ex.first_sent_at || ex.sent_at || job.object_info.sent_at
-                        };
+                        objectInfo = this.mergeClientAnswer(existing.object_info, job.object_info);
                     }
                 } catch (e) {
                     console.warn('[saveSharedInvoiceJobToCloud] Ошибка чтения существующей записи:', e);
@@ -50309,6 +50372,17 @@ const app = {
 
                 if (shareId) {
                     insertPayload.id = shareId;
+                    // Ссылка уже есть — клиент мог на неё ответить. Статус и комментарий
+                    // переносим в новую запись (см. mergeClientAnswer), иначе ответ пропадёт
+                    try {
+                        const { data: exRow } = await withTimeout(
+                            supabaseClient.from('shared_invoices').select('object_info').eq('id', shareId).maybeSingle(),
+                            3000
+                        );
+                        if (exRow && exRow.object_info) insertPayload.object_info = this.mergeClientAnswer(exRow.object_info, object_info);
+                    } catch (e) {
+                        console.warn('[sendEmail] Не удалось прочитать ответ клиента перед записью ссылки:', e);
+                    }
                 }
 
                 let { data, error } = await withTimeout(
@@ -50340,7 +50414,6 @@ const app = {
                 this.saveState();
                 this.capturePriceSnapshot();
                 this.logInvoiceEvent('sent', { shared_invoice_id: shareId, channel: 'invoice', kp_version: kpVersion || null });
-                GRM.trackAction('invoice', shareId);  // геймификация: +15 XP + значки счетов (запрос счёта у дистрибьютора)
 
                 viewUrl = `${baseOrigin}/invoice.html?id=${shareId}`;
             } catch (err) {
@@ -52063,11 +52136,370 @@ const app = {
         return this.FLAT_WH_STEPS[i];
     },
 
+    // ===== Электрические накопительные водонагреватели: объём И электрическая мощность =====
+    //
+    // Прибор берёт из сети 1,5–2 кВт часами подряд, поэтому подбор по одному объёму
+    // недостаточен: в подробном режиме у объекта есть выделенная мощность (лимит
+    // участка), и водонагреватель делит её с котлом, тёплым полом и бытом.
+    // Порядок подбора (согласован 06.10.2026, как у распознавания проекта):
+    // объём по расчёту → бренд STOUT → остальные → внутри бренда дешевле. Если
+    // STOUT SEW (2 кВт) в лимит не входит — берём тот же объём у другой модели,
+    // самой мощной из тех, что в лимит входят; не входит никто — оставляем самую
+    // слабую и пишем плашку, а не подменяем молча.
+    //
+    // Нагрев — по формуле V·4,187·ΔT/P при ΔT = 45 К (с 15 до 60 °C): на этой же
+    // основе завод Haier даёт время нагрева в своих паспортах.
+    WH_EL_DT: 45,
+
+    /** Электрическая мощность прибора, кВт. У «0,7 / 1,3 / 2,0 кВт» — наибольшая ступень. */
+    whKw: function (it) {
+        if (!it) return 0;
+        if (it.kwMax > 0) return it.kwMax;
+        const src = String(it.kw || '') || ((String(it.name || '').match(/((?:\d+(?:[.,]\d+)?\s*\/\s*)*\d+(?:[.,]\d+)?)\s*кВт/) || [])[1] || '');
+        const nums = src.replace(/,/g, '.').match(/\d+(?:\.\d+)?/g) || [];
+        return nums.length ? Math.max.apply(null, nums.map(Number)) : 0;
+    },
+
+    /** Время нагрева бака с 15 до 60 °C, в минутах. */
+    whHeatMin: function (it) {
+        const kw = this.whKw(it);
+        return (it && kw > 0 && it.vol > 0) ? it.vol * 4.187 * this.WH_EL_DT / kw / 60 : 0;
+    },
+    whHeatText: function (it) {
+        if (it && it.heat) return it.heat;
+        const m = Math.round(this.whHeatMin(it) / 5) * 5;
+        if (!m) return '—';
+        return m >= 60 ? `${Math.floor(m / 60)}ч${m % 60 ? ' ' + (m % 60) + ' мин' : ''}` : `${m} мин`;
+    },
+
+    /** Все модели ряда без дублей: основные позиции и их замены. */
+    elWhAll: function () {
+        const seen = new Set(), out = [];
+        (catalog.water_heaters_el || []).forEach(m => [m].concat(m.alts || []).forEach(a => {
+            if (a && a.vol > 0 && !seen.has(a.id)) { seen.add(a.id); out.push(a); }
+        }));
+        return out;
+    },
+
+    /**
+     * Подбор водонагревателя: needVol — нужный объём, л.
+     * opts.maxUnits — сколько приборов можно поставить параллельно (квартира — 1);
+     * opts.budgetKw — сколько киловатт можно взять из сети, 0 — ограничения нет.
+     */
+    pickElWaterHeater: function (needVol, opts) {
+        opts = opts || {};
+        const all = this.elWhAll();
+        if (!all.length) return null;
+        const maxUnits = Math.max(1, opts.maxUnits || 1);
+        const budget = opts.budgetKw > 0 ? opts.budgetKw : 0;
+        const rank = a => (a.brand === 'STOUT' ? 0 : 1);
+        const vols = [...new Set(all.map(a => a.vol))].sort((a, b) => a - b);
+        const maxVol = vols[vols.length - 1];
+        const need = Math.max(1, needVol || 0);
+        let n = Math.max(1, Math.ceil(need / maxVol - 1e-9));
+        const shortVol = n > maxUnits;
+        if (shortVol) n = maxUnits;
+        const per = need / n;
+        const vol = vols.find(v => v >= per - 1e-9) || maxVol;
+        const cands = all.filter(a => a.vol === vol)
+            .sort((a, b) => rank(a) - rank(b) || (a.price || 0) - (b.price || 0));
+        let item = cands[0], overBudget = false, byPower = false;
+        if (budget > 0 && this.whKw(item) * n > budget + 1e-9) {
+            const fit = cands.filter(a => this.whKw(a) * n <= budget + 1e-9)
+                .sort((a, b) => this.whKw(b) - this.whKw(a) || rank(a) - rank(b) || (a.price || 0) - (b.price || 0));
+            if (fit.length) { item = fit[0]; byPower = true; }
+            else {
+                item = cands.slice().sort((a, b) => this.whKw(a) - this.whKw(b))[0];
+                overBudget = true;
+            }
+        }
+        const kwUnit = this.whKw(item);
+        const alts = all.filter(a => a.id !== item.id)
+            .sort((a, b) => (a.vol - b.vol) || ((a.price || 0) - (b.price || 0)));
+        return {
+            item: item, qty: n, vol: vol, totalVol: vol * n, needVol: need,
+            kwUnit: kwUnit, kwTotal: kwUnit * n, budgetKw: budget,
+            shortVol: shortVol || vol * n < need - 1e-9,
+            overBudget: overBudget, byPower: byPower, alts: alts,
+            preferred: cands[0]
+        };
+    },
+
+    /** Мощность электрического тёплого пола в квартире, кВт — она делит лимит с водонагревателем. */
+    flatElUfhKw: function () {
+        if (!this.usesElectricUfh() || !(this.state.systems || []).includes('tp')) return 0;
+        const area = Math.max(0, parseFloat(this.state.tp1) || 0);
+        if (!(area > 0)) return 0;
+        const cover = this.state.flatUfhCover === 'laminate' ? 'laminate' : 'tile';
+        return this.pickUfhMats(area, cover).reduce((a, m) => a + (m.watt || 0), 0) / 1000;
+    },
+
+    /**
+     * Сколько киловатт квартиры достаётся водонагревателю: выделенная мощность без
+     * 15 % на быт и без тёплого пола. 0 — ограничения нет (быстрый режим или лимит снят).
+     */
+    flatWhBudgetKw: function () {
+        if (!this.state.detailedRooms) return 0;
+        const lim = this.elLimitKw();
+        if (!(lim > 0)) return 0;
+        return Math.max(0.1, lim * (1 - this.EL_HOUSEHOLD_RESERVE) - this.flatElUfhKw());
+    },
+
+    flatWaterHeaterPlan: function () {
+        return this.pickElWaterHeater(this.flatWhVolume(), { maxUnits: 1, budgetKw: this.flatWhBudgetKw() });
+    },
+
     flatWaterHeater: function () {
-        const pool = (catalog.water_heaters_el || []).slice().sort((x, y) => x.vol - y.vol);
+        const p = this.flatWaterHeaterPlan();
+        return p ? p.item : null;
+    },
+
+    // ===== Электрическое ГВС в доме (только подробный режим) =====
+    //
+    // Вместо бойлера косвенного нагрева — STOUT SEW (до трёх штук по 100 л). Мощность
+    // делится с электрокотлом: водонагревателю отдаётся не больше WH_EL_HOUSE_SHARE доступной
+    // мощности участка (по практике: отопление в мороз важнее), остальное — котлу
+    // (getElBoilerBudget вычитает то, что водонагреватель взял по факту).
+    WH_EL_HOUSE_SHARE: 0.4,
+
+    dhwElectric: function () {
+        return !this.isFlat() && !!this.state.detailedRooms && !!this.state.hotWater && this.state.dhwSource === 'electric';
+    },
+    // Бойлер косвенного нагрева в смете: ГВС есть и греет его не электрический водонагреватель
+    dhwTankOn: function () {
+        return !!this.state.hotWater && !this.dhwElectric();
+    },
+    setDhwSource: function (src, event) {
+        if (!this.checkAccess('pro', event)) return;
+        this.state.dhwSource = (src === 'electric') ? 'electric' : 'boiler';
+        // У SEW нет патрубка рециркуляции — контур ей нечем обслужить
+        if (this.state.dhwSource === 'electric') this.state.recirc = false;
+        this.syncUI();
+        this.render();
+        this.saveState();
+    },
+    houseWhAvailKw: function () {
+        const lim = this.elLimitKw();
+        return lim > 0 ? lim * (1 - this.EL_HOUSEHOLD_RESERVE) : 0;
+    },
+    houseWhPlan: function () {
+        if (!this.dhwElectric()) return null;
+        const avail = this.houseWhAvailKw();
+        return this.pickElWaterHeater(this.dhwTankPlan().targetVol, {
+            maxUnits: 3, budgetKw: avail > 0 ? avail * this.WH_EL_HOUSE_SHARE : 0
+        });
+    },
+    dhwElectricKw: function () {
+        const p = this.houseWhPlan();
+        return p ? p.kwTotal : 0;
+    },
+
+    /**
+     * Текст позиции и плашки водонагревателя — один на квартиру и на дом, чтобы
+     * подсказки не разъехались. ctx.why — почему такой объём; ctx.shared — с кем
+     * делится мощностью («тёплым полом», «котлом»). Возвращает { tip, warn }:
+     * tip — для addToBill, warn — плашка раздела.
+     */
+    elWhBlock: function (plan, ctx) {
+        ctx = ctx || {};
+        const wh = plan.item, n = plan.qty, kw = plan.kwUnit;
+        const fmt = x => String(Math.round(x * 100) / 100).replace('.', ',');
+        const amps = plan.kwTotal * 1000 / 230;
+        const isSew = wh.brand === 'STOUT' && !!wh.plug;
+        const lim = this.state.detailedRooms ? this.elLimitKw() : 0;
+        const paras = [ctx.why];
+        paras.push(`<b>Нагрев:</b> ${this.whHeatText(wh)} с 15 до 60 °C при мощности ${fmt(kw)} кВт${n > 1 ? ' у каждого из ' + n + ' приборов' : ''}. Это важнее объёма: бак, который греется четыре часа, второй душ подряд не выдаст.`);
+        if (plan.budgetKw > 0 && ctx.budgetText) {
+            paras.push(ctx.budgetText);
+        } else if (plan.budgetKw > 0) {
+            paras.push(`<b>Электрическая мощность:</b> ${n > 1 ? n + ' прибора берут' : 'прибор берёт'} ${fmt(plan.kwTotal)} кВт (около ${fmt(amps)} А). Из выделенных ${lim} кВт на водонагреватель доступно ${fmt(plan.budgetKw)} кВт: ${Math.round(this.EL_HOUSEHOLD_RESERVE * 100)} % оставлено на освещение и быт` + (ctx.shared ? `, ещё часть занята ${ctx.shared}` : '') + '.');
+        } else if (this.state.detailedRooms) {
+            paras.push(`<b>Электрическая мощность:</b> ограничение снято — подбор идёт по объёму. Прибор берёт ${fmt(plan.kwTotal)} кВт (около ${fmt(amps)} А).`);
+        } else {
+            paras.push(`<b>Электрическая мощность:</b> прибор берёт ${fmt(plan.kwTotal)} кВт (около ${fmt(amps)} А). Проверка по выделенной мощности — в подробном режиме.`);
+        }
+        if (isSew) {
+            paras.push(`<b>Питание:</b> штатный шнур с вилкой 1,5 м. По паспорту — отдельная розетка с заземлением, автомат на 10 А и УЗО на линии. Автомат и УЗО в смете, линия и розетка — по месту.`);
+            paras.push(`<b>Стена:</b> полный бак весит ${wh.wetKg} кг${n > 1 ? ' каждый' : ''} — стена должна держать с запасом (анкеры в комплекте). Не над ванной, унитазом, умывальником и дверным проёмом; от боковой стенки до стены не менее 50 мм (паспорт SEW, п. 5).`);
+            paras.push(`<b>Клапан:</b> предохранительный клапан 0,8 МПа с обратным клапаном — в комплекте, ставится сразу на вход холодной воды. Между ним и баком кранов быть не должно, слив — трубкой в канализацию.`);
+            paras.push(`<b>Режим:</b> не для проточной работы; только в отапливаемом помещении (от 5 до 50 °C), вода питьевого качества. Магниевый анод менять раз в два года, ТЭН чистить от накипи раз в год — жёсткая вода сокращает срок службы ТЭНа.`);
+        } else {
+            paras.push(`<b>Питание:</b> ${kw > 2.2
+                ? 'мощность выше 2,2 кВт — нужна отдельная линия с автоматом и УЗО, обычную розетку так грузить нельзя.'
+                : 'обычная розетка выдерживает такую мощность, отдельная линия не нужна.'}`);
+            paras.push(`<b>В комплекте:</b> предохранительный клапан и крепёж — отдельными позициями они не считаются.`);
+        }
+        if (wh.priceEst) {
+            paras.push(`<b>Цена:</b> ориентировочная. Модель новая, в прайсе ТЕРЕМ её ещё нет: взята цена Haier того же объёма (тот же завод, тот же ТЭН). Заводская появится позже и подставится сама.`);
+        }
+        let warn = '';
+        if (plan.overBudget) {
+            warn += this.noteBox('warn', 'Водонагреватель не вписывается в электрическую мощность.',
+                `Нужно ${fmt(plan.kwTotal)} кВт, доступно ${fmt(plan.budgetKw)} кВт.`,
+                `<div class="tip-p">Самая слабая модель этого объёма берёт ${fmt(plan.kwTotal)} кВт, а из выделенных ${lim} кВт на водонагреватель остаётся ${fmt(plan.budgetKw)} кВт.</div>` +
+                `<div class="tip-p"><b>Что делать:</b> увеличить выделенную мощность, убрать из расчёта часть электроприёмников или взять объём поменьше — греться он будет быстрее.</div>`);
+        } else if (plan.byPower) {
+            const pw = this.whKw(plan.preferred);
+            warn += this.noteBox('info', 'Водонагреватель подобран по лимиту сети.',
+                `Вместо ${fmt(pw)} кВт — ${fmt(kw)} кВт.`,
+                `<div class="tip-p">${plan.preferred.name} берёт ${fmt(pw * n)} кВт, а на водонагреватель доступно ${fmt(plan.budgetKw)} кВт. Взят тот же объём с мощностью ${fmt(kw)} кВт — греется чуть дольше.</div>`);
+        }
+        if (plan.shortVol) {
+            warn += this.noteBox('warn', 'Нужный объём больше, чем даёт ряд.',
+                `Нужно ${Math.round(plan.needVol)} л, в смете ${plan.totalVol} л.`,
+                `<div class="tip-p">Электрические накопительные здесь — до ${plan.qty} шт. по 100 л. Для такого расхода ГВС надёжнее бойлер косвенного нагрева от котла.</div>`);
+        }
+        if (wh.priceEst) {
+            warn += this.noteBox('info', 'Цена STOUT SEW ориентировочная.',
+                'Новинка, в прайсе её ещё нет — цена как у Haier того же объёма.', null);
+        }
+        return { tip: this.autoTip(wh.name, paras), warn: warn };
+    },
+
+    // ===== Расширительный бак водонагревателя: бак или только клапан =====
+    //
+    // Водонагреватель с обратным клапаном на входе — закрытая система: вода при нагреве
+    // расширяется (около 1,7 % при нагреве на 45 К), деваться ей некуда, и давление растёт до
+    // срабатывания предохранительного клапана. Либо клапан изредка сбрасывает по капле в
+    // канализацию (дёшево, но капает при каждом нагреве), либо расширение принимает мембранный
+    // бак. Совет по умолчанию: в квартире бака нет — ему нет места, а дренаж клапана
+    // выводится в канализацию; в загородном доме место в котельной или санузле есть, и бак
+    // стоит. Переключается одним щелчком (setWhExp), обвязка перестраивается сама.
+    //
+    // Объём — по формуле V = V_вн · 0,017 / (1 − (P_пред + 1) / (P_макс + 1)), как у бака
+    // бойлера косвенного нагрева: предварительное давление 3 бар (после редуктора), P_макс 7 бар
+    // (клапан SEW открывается на 8). Берём наименьший белый бак ряда STW-0015 не меньше расчёта.
+    WH_EXP_P_PRE: 3,
+    WH_EXP_P_MAX: 7,
+    WH_EXP_K: 0.017,
+
+    whExpMode: function () {
+        const m = this.state.whExp;
+        if (m === 'tank' || m === 'valve') return m;
+        return this.isFlat() ? 'valve' : 'tank';
+    },
+    setWhExp: function (m) {
+        this.state.whExp = (m === 'tank') ? 'tank' : 'valve';
+        this.saveState();
+        this.render();
+    },
+    whExpNeed: function (totalVol) {
+        return totalVol * this.WH_EXP_K / (1 - (this.WH_EXP_P_PRE + 1) / (this.WH_EXP_P_MAX + 1));
+    },
+    whExpPick: function (totalVol) {
+        const need = this.whExpNeed(totalVol);
+        const pool = this.expTankPool('dhw').filter(x => x.color === 'white').sort((a, b) => a.vol - b.vol);
         if (!pool.length) return null;
-        const need = this.flatWhVolume();
-        return pool.find(x => x.vol >= need) || pool[pool.length - 1];
+        return { need: need, item: pool.find(x => x.vol >= need) || pool[pool.length - 1], pool: pool };
+    },
+
+    /**
+     * Обвязка STOUT SEW: термосмеситель на выходе, расширительный бак или только клапан,
+     * переходы по резьбе. add(item, qty, tip, group) — addToBill из render. Возвращает плашку.
+     *
+     * Резьбы (паспорт SEW, табл. 2): оба патрубка бака — G 1/2" НР. Цепочка собрана только из
+     * стыков «наружная ↔ внутренняя» и проверена по каталожным позициям:
+     *   выход ГВС: патрубок НР 1/2 → кран с американкой ВР/НР 1/2 (из комплекта подключения) →
+     *     [бак: тройник 1/2 ВР, ниппель 3/4×1/2 на тройнике и ещё один к клапану] или
+     *     [без бака: футорка 3/4×1/2] → кран с гайкой ВР 3/4 → горячий вход клапана (НР G3/4).
+     *   вход ХВС: подмес на клапан берётся тройником 3/4 ВР, в него — футорка 3/4×1/2 от крана
+     *     американки бака и кран с гайкой НР 3/4 на холодный вход клапана; ещё один такой кран — на
+     *     выходе клапана в разводку.
+     * Бак стоит на линии ГОРЯЧЕЙ воды сразу за краном бака: расширение выходит через горячий
+     * патрубок. На холодной линии ему мешал бы обратный клапан комбинированного предохранительного
+     * узла SEW, а резьба этого узла паспортом не заявлена — стык пришлось бы придумывать.
+     */
+    elWhPiping: function (plan, ctx, add) {
+        const wh = plan.item;
+        if (!(wh.brand === 'STOUT' && wh.plug)) return '';
+        const grp = ctx.group, n = plan.qty;
+        const F = id => this.findCatalogItemById(id);
+        const fut = F('SFT-0029-003412'), nip = catalog.nipple_34_12;
+        const tee12 = F('SFT-0020-000012'), tee34 = F('SFT-0020-000034');
+        const nutHot = F('SVB-0009-000020'), nutSide = F('SVB-1009-000020');
+        const mode = this.whExpMode();
+        const one = n === 1;
+        const nm = (it, key) => it ? { ...it, originalId: it.id + '_' + key } : null;
+        let note = '';
+
+        // --- термосмеситель на выходе (паспорт, табл. 5: «Требуется установка термостатического смесительного клапана») ---
+        const mixAll = (catalog.dhw_mix_valves || []).filter(v => v.size === '3/4"');
+        if (mixAll.length && nutHot && nutSide) {
+            const dq = this.dhwDesignFlow();
+            const qM3h = dq.qTotal * 3.6;
+            const isR = this.state.brandMode === 'rommer';
+            const fits = mixAll.filter(v => qM3h <= v.kv * Math.sqrt(0.3))
+                .sort((a, b) => (((isR && !a.rommer) ? 1 : 0) - ((isR && !b.rommer) ? 1 : 0)) || (a.price - b.price));
+            const sel = fits[0] || mixAll[mixAll.length - 1];
+            add({ ...sel, alts: (catalog.dhw_mix_valves || []).filter(v => v.id !== sel.id), noCheapenAlts: true }, 1,
+                this.autoTip(sel.name, [
+                    `<b>Зачем:</b> Бак греется до 60–75 °C (ручка), на разбор нужно 45–50 °C. Клапан подмешивает холодную воду и не даёт обжечься. Паспорт SEW рекомендует его при скачках температуры воды.`,
+                    `<b>Расход:</b> расчётный ${String(Math.round(qM3h * 100) / 100).replace('.', ',')} м³/ч по СП 30.13330.2020 (вероятностный метод); клапан Kv ${String(sel.kv).replace('.', ',')} пропускает до ${String(Math.round(sel.kv * Math.sqrt(0.3) * 100) / 100).replace('.', ',')} м³/ч при перепаде 0,3 бар.`,
+                    `<b>Резьба:</b> наружная G 3/4" под накидную гайку — на каждый патрубок идёт кран с гайкой, они в смете ниже.`
+                ]), grp);
+            add(nm(nutHot, 'whmix_hot'), 1, this.autoTip(nutHot.name, [
+                `<b>Где:</b> горячий вход клапана. Внутренняя резьба 3/4" садится на ${mode === 'tank' && one ? 'ниппель 3/4"×1/2" от тройника бака' : (one ? 'футорку 3/4"×1/2" от крана бака' : 'горячую линию')}, накидная гайка — на клапан.`
+            ]), grp);
+            add(nm(nutSide, 'whmix_io'), 2, this.autoTip(nutSide.name, [
+                `<b>Где:</b> холодный вход клапана (в тройник подмеса) и выход клапана в разводку ГВС. Наружная резьба 3/4" — в ответные ВР, накидная гайка — на клапан. Отсекают клапан для обслуживания.`
+            ]), grp);
+            if (tee34) add(nm(tee34, 'whmix_cold'), 1, this.autoTip(tee34.name, [
+                `<b>Где:</b> на линии холодной воды перед краном бака — отвод холодной воды на подмес к клапану. Кран бака и холодная ветка клапана остаются отдельными: бак отключается, подмес не страдает.`
+            ]), grp);
+            if (one && fut) add(nm(fut, 'whmix_cold_fut'), 1, this.autoTip(fut.name, [
+                `<b>Где:</b> на холодной линии: НР 3/4" — в тройник подмеса, ВР 1/2" — на наружную резьбу крана бака (американка ВР/НР 1/2").`
+            ]), grp);
+            if (one && mode === 'valve' && fut) add(nm(fut, 'whmix_hot_fut'), 1, this.autoTip(fut.name, [
+                `<b>Где:</b> на выходе ГВС: ВР 1/2" — на наружную резьбу крана бака, НР 3/4" — в кран с гайкой горячего входа клапана.`
+            ]), grp);
+            if (!one) note += this.noteBox('info', `Приборов ${n} — общая линия.`,
+                'Тройники к приборам и общий подмес — по месту.',
+                `<div class="tip-p">В смете один термосмеситель и его краны на общую горячую линию. Тройники, которыми ${n} водонагревателя собираются на общую холодную и горячую линии, зависят от системы труб — их даёт раздел разводки.</div>` +
+                `<div class="tip-p">Каждый прибор оснащён своим комплектом: кранами и предохранительным клапаном из поставки.</div>`);
+        }
+
+        // --- расширительный бак или только клапан ---
+        const exp = this.whExpPick(plan.totalVol);
+        if (mode === 'tank' && exp && catalog.tank_kit) {
+            const eI = exp.item;
+            const expAlts = this.expTankPool('dhw').filter(x => x.id !== eI.id).map(x => ({ ...x, noCheapen: true }));
+            add({ ...eI, alts: expAlts, sortRank: -2 }, 1, this.autoTip(eI.name, [
+                `<b>Зачем:</b> принимает расширение воды при нагреве — иначе предохранительный клапан капает при каждом включении. Объём по расчёту ${String(Math.round(exp.need * 10) / 10).replace('.', ',')} л (${plan.totalVol} л воды, давление 3 бар до 7 бар), взят ближайший ${eI.vol} л.`,
+                `<b>Где:</b> на линии горячей воды сразу за краном водонагревателя. Предохранительный клапан из поставки остаётся — он страхует и бак.`,
+                `<b>Если места нет:</b> в плашке раздела — «Без бака»: обвязка перестроится на клапан-дренаж.`
+            ]), grp);
+            add({ ...catalog.tank_kit, sortRank: -1 }, 1, this.autoTip(catalog.tank_kit.name, [
+                `<b>Зачем:</b> отсечной кран с фиксатором и сливом: бак отключается и сбрасывается без слива водонагревателя. Внутренняя резьба 3/4" — на ниппель от тройника, накидная гайка — на патрубок бака.`
+            ]), grp);
+            if (eI.vol <= 25) {
+                const isStout = (this.state.expansionTankMountType === 'stout');
+                const mountItem = (catalog.mounting_system || []).find(x => x.id === (isStout ? 'SAC-0030-000825' : 'ASKON-83115'));
+                if (mountItem) {
+                    const other = (catalog.mounting_system || []).find(x => x.id === (isStout ? 'ASKON-83115' : 'SAC-0030-000825'));
+                    add({ ...mountItem, originalId: 'SAC-0030-000825', alts: other ? [other] : [] }, 1,
+                        'Крепление расширительного бака ГВС (L-кронштейн или комплект STOUT): бак держит кронштейн, а не резьба узла.', grp);
+                }
+            }
+            if (tee12) add(nm(tee12, 'whexp_tee'), 1, this.autoTip(tee12.name, [
+                `<b>Где:</b> на горячей линии сразу за краном водонагревателя: проход — к термосмесителю, отвод — на бак. Наружная резьба 1/2" крана вкручивается в тройник.`
+            ]), grp);
+            if (nip) add(nm(nip, 'whexp_nip'), one ? 2 : 1, this.autoTip(nip.name, [
+                `<b>Где:</b> ${one ? 'два: один от прохода тройника к крану с гайкой клапана, второй — от отвода тройника к комплекту подключения бака. Резьба 1/2" — в тройник, 3/4" — в ответную внутреннюю.' : 'от отвода тройника к комплекту подключения бака: 1/2" в тройник, 3/4" во внутреннюю резьбу комплекта.'}`
+            ]), grp);
+        }
+        // плашка: текущий режим и переключатель
+        const act = (m, t) => `<a href="#" style="text-decoration:underline;font-weight:700;color:inherit;" onclick="event.preventDefault();event.stopPropagation();app.setWhExp('${m}')">${t}</a>`;
+        if (mode === 'tank' && exp) {
+            note += this.noteBox('info', `Расширительный бак ${exp.item.vol} л.`,
+                `Принимает расширение воды при нагреве. ${act('valve', 'Без бака')}`,
+                `<div class="tip-p">Без бака расширение сбрасывает предохранительный клапан — по капле в канализацию при каждом нагреве. Годится, если места нет (обвязка перестроится: исчезнут бак, комплект подключения и тройник).</div>`);
+        } else if (mode === 'valve') {
+            note += this.noteBox('info', 'Расширительного бака нет.',
+                `Расширение воды сбрасывает клапан — изредка капает. ${act('tank', 'Поставить бак')}`,
+                `<div class="tip-p">${this.isFlat() ? 'В квартире бак по умолчанию не ставят — нет места. Сброс клапана выводят трубкой в канализацию (в паспорте SEW — наклонно, без перегибов).' : 'Совет: в загородном доме место есть, а бак избавляет от капанья клапана — стоит его поставить.'}</div>` +
+                `<div class="tip-p">Нажмите «Поставить бак»: в смету добавятся бак STW-0015 ряда ГВС, комплект подключения, тройник и ниппели.</div>`);
+        }
+        return note;
     },
 
     setFlatUfhKind: function (kind) {
@@ -55393,7 +55825,7 @@ const app = {
         const heat = parseFloat(heatKw) || 0;
         const withReserve = heat * this.BOILER_RESERVE_K;
         let dhwKw = 0, tankVol = 0;
-        if (this.state.hotWater) {
+        if (this.dhwTankOn()) {
             tankVol = this.dhwTankPlan().vol || 0;
             dhwKw = tankVol * this.DHW_TANK_KW_PER_L;
         }
@@ -56183,7 +56615,13 @@ const app = {
                 `поэтому наружный размер отличается. Цены — по прайсу: «Эта позиция» — одна деталь, «Система» — все трубы и фитинги котельной.</div>` +
                 `</div>`;
             customAlts = [
-                { id: 'ss304', sys: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', imgId: 'RSS-1001-000022' },
+                // ROMMER AISI 304 — для ПРОФИ (как и остальные позиции ROMMER), а до
+                // 1 ноября 2026 — для всех, независимо от тарифа (переходный период после
+                // смены умолчания на STOUT 316L). Уже стоящую в смете оставляем, иначе
+                // пропала бы отметка «Выбран».
+                ...((this.isPro() || new Date() < new Date(2026, 10, 1) || this.boilerPipeSystem() === 'ss304')
+                    ? [{ id: 'ss304', sys: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', imgId: 'RSS-1001-000022' }]
+                    : []),
                 { id: 'ss316', sys: 'ss316', name: 'Нержавеющая сталь AISI 316L, пресс', brand: 'STOUT', imgId: 'SSS-2001-000022' },
                 // Полипропилен — марки прайса ТЕРЕМ, поэтому только при включённом
                 // столбце ТЕРЕМ в «Тарифах». Если ППР уже стоит в смете, строку
@@ -67160,23 +67598,6 @@ const app = {
         // Кнопка быстрого старта над площадью — пока в расчёте ничего нет
         this.syncQuickStartBtn();
 
-        // Рейтинг и значки свёрнуты — общим выключателем в gamification.js (GRM.isEnabled).
-        // Пока он выключен, прячем оба входа: кубок в шапке и пункт «Рейтинг» в меню
-        // кабинета. Внутри — прежнее правило пилота: Калининградская область плюс
-        // админы и наблюдатели для контроля.
-        const ratingOn = (typeof GRM !== 'undefined' && GRM.isEnabled) ? GRM.isEnabled() : false;
-        const trophyBtn = document.querySelector('.btn-trophy');
-        if (trophyBtn) {
-            const region = this.state.tgUser && this.state.tgUser.region;
-            const eligible = ratingOn && !isGuest && (
-                GRM.isEligibleRegion(region) || this.hasAdminAccess()
-            );
-            trophyBtn.style.display = eligible ? 'flex' : 'none';
-        }
-        document.querySelectorAll('[data-rail="rating"], .lk-nav-rating').forEach(el => {
-            el.style.display = ratingOn ? '' : 'none';
-        });
-
         if (isGuest) {
             this.state.detailedRooms = false;
             this.state.showDetailedRoomsPanel = false;
@@ -67665,11 +68086,21 @@ const app = {
         const lblCoolant = document.getElementById('lbl_coolant');
         if (lblCoolant) lblCoolant.style.display = this.state.detailedRooms ? 'block' : 'none';
         const blkRecircWrap = document.getElementById('blk_recirc_wrap');
-        if (blkRecircWrap) blkRecircWrap.style.display = this.state.detailedRooms ? 'flex' : 'none';
+        if (blkRecircWrap) blkRecircWrap.style.display = (this.state.detailedRooms && !this.dhwElectric()) ? 'flex' : 'none';
+        // Чем греть горячую воду: бойлер от котла или электрический водонагреватель.
+        // Только подробный режим дома: мощность и лимит сети считаются там же.
+        const blkDhwSrc = document.getElementById('blk_dhw_src');
+        if (blkDhwSrc) {
+            blkDhwSrc.style.display = (this.state.detailedRooms && !this.isFlat()) ? 'flex' : 'none';
+            const _src = this.dhwElectric() ? 'electric' : 'boiler';
+            document.querySelectorAll('.dhw-src-tab').forEach(t => {
+                t.className = 'tab dhw-src-tab' + (t.dataset.src === _src ? ' active' : '');
+            });
+        }
         const blkTowelWrap = document.getElementById('blk_towel_wrap');
         if (blkTowelWrap) blkTowelWrap.style.display = this.state.detailedRooms ? 'block' : 'none';
         const blkTankPumpWrap = document.getElementById('blk_tank_pump_wrap');
-        if (blkTankPumpWrap) blkTankPumpWrap.style.display = this.state.detailedRooms ? 'block' : 'none';
+        if (blkTankPumpWrap) blkTankPumpWrap.style.display = (this.state.detailedRooms && !this.dhwElectric()) ? 'block' : 'none';
         const blkSewerType = document.getElementById('blk_sewer_type');
         if (blkSewerType) blkSewerType.style.display = this.state.detailedRooms ? 'block' : 'none';
 
@@ -69547,7 +69978,8 @@ const app = {
     // лимит снят, подбор идёт по расчётной мощности.
     getElBoilerBudget: function () {
         const lim = this.elLimitKw();
-        return lim > 0 ? lim * (1 - this.EL_HOUSEHOLD_RESERVE) : 0;
+        // Электрический водонагреватель берёт свои киловатты из того же лимита
+        return lim > 0 ? Math.max(0.5, lim * (1 - this.EL_HOUSEHOLD_RESERVE) - this.dhwElectricKw()) : 0;
     },
     // Хватает ли выделенной мощности на расчётную — считаем и при перерисовке
     // панели (syncUI), и на каждый шаг ползунка, поэтому вынесено отдельно.
@@ -70296,8 +70728,11 @@ const app = {
         const v = this.state.boilerPipeSystem;
         if (this.BOILER_PIPE_SYSTEMS.includes(v)) return v;
         const sec = (this.state.sectionAnalog || {})["2. Обвязка котельной"];
-        const analog = (sec !== undefined) ? sec : (this.state.brandMode === 'rommer');
-        return analog ? 'ppr' : 'ss304';
+        // По умолчанию — нержавейка (с 06.10.2026): в режиме STOUT это STOUT AISI 316L
+        // (есть фото и артикулы), в режиме ROMMER — ROMMER AISI 304, а не полипропилен.
+        // Полипропилен — только если монтажник включил «Аналог» раздела 2 или выбрал сам.
+        if (sec === true) return 'ppr';
+        return this.state.brandMode === 'rommer' ? 'ss304' : 'ss316';
     },
 
     // Артикул нержавейки в текущей системе. Линейки пронумерованы зеркально тип в тип
@@ -70753,7 +71188,7 @@ const app = {
         const parts = [];
         if ((s.systems || []).includes('rad')) parts.push('радиаторы от насоса котла');
         if ((s.systems || []).includes('tp')) parts.push('тёплый пол через узел подмеса');
-        if (s.hotWater) parts.push('бойлер через трёхходовой клапан');
+        if (this.dhwTankOn()) parts.push('бойлер через трёхходовой клапан');
         const why = this._bsAutoWhy || [];
         // Под кнопками — коротко: что выбрано и почему; что значит каждая схема —
         // под «i» заголовка, а оговорки к собранной обвязке — в шапке раздела 2.
@@ -71467,9 +71902,9 @@ const app = {
         // Режимы те же, что и у старшего прибора: контур ГВС у 1002 полноценный,
         // с насосом загрузки, датчиком бойлера и антилегионеллой.
         let dhw = 'off';
-        if (s.hotWater) dhw = dhwPump ? 'boiler' : (hasDigital ? 'boiler_ct' : 'external');
+        if (this.dhwTankOn()) dhw = dhwPump ? 'boiler' : (hasDigital ? 'boiler_ct' : 'external');
         else if (boilerList.some(b => b.kind === 'gas' && b.circuits === 2)) dhw = 'ct';
-        const recirc = !!(s.hotWater && s.recirc);
+        const recirc = !!(this.dhwTankOn() && s.recirc);
 
         /**
          * --- Датчики температуры ---
@@ -71783,9 +72218,9 @@ const app = {
         // группой, либо ГВС проходит мимо контроллера.
         const hasDigital = boilerList.some(b => b.iface === 'digital');
         let dhw = 'off';
-        if (s.hotWater) dhw = dhwPump ? 'boiler' : (hasDigital ? 'boiler_ct' : 'external');
+        if (this.dhwTankOn()) dhw = dhwPump ? 'boiler' : (hasDigital ? 'boiler_ct' : 'external');
         else if (boilerList.some(b => b.kind === 'gas' && b.circuits === 2)) dhw = 'ct';
-        const recirc = !!(s.hotWater && s.recirc);
+        const recirc = !!(this.dhwTankOn() && s.recirc);
 
         // --- Датчики NTC ---
         // Все шесть входов именные, и все датчики идут в комплекте поставки
@@ -75159,17 +75594,18 @@ const app = {
         // котла и живёт в одном разделе с ним, а здесь котла нет вовсе.
         if (this.flatNeedsHeater()) {
             currentSectionTitle = "1. Водонагреватель";
-            const wh = this.flatWaterHeater();
+            const _whPlan = this.flatWaterHeaterPlan();
+            const wh = _whPlan && _whPlan.item;
+            let _whWarn = '';
             if (wh) {
                 const grpW = "1.1. Электрический водонагреватель";
-                addToBill(wh, 1, this.autoTip(wh.name, [
-                    `<b>Почему такой объём:</b> ${wh.vol} л — по числу жильцов и наличию ванны. Душ забирает около 30 л горячей воды на человека, ванна — около 50. Не подходит — меняется кнопкой замены, там весь ряд от 30 до 100 л.`,
-                    `<b>Нагрев:</b> ${wh.heat} с холодной до 60 °C при мощности ${wh.kw} кВт. Это важнее объёма: бак на 100 л, который греется четыре часа, второй душ подряд не выдаст.`,
-                    `<b>Питание:</b> ${(parseFloat(String(wh.kw).replace(',', '.')) || 0) > 2.2
-                        ? 'мощность выше 2,2 кВт — нужна отдельная линия с автоматом и УЗО, обычную розетку так грузить нельзя.'
-                        : 'обычная розетка выдерживает такую мощность, отдельная линия не нужна.'}`,
-                    `<b>В комплекте:</b> предохранительный клапан и крепёж — отдельными позициями они не считаются.`
-                ]), grpW);
+                const _ufhKw = this.flatElUfhKw();
+                const _blk = this.elWhBlock(_whPlan, {
+                    why: `<b>Почему такой объём:</b> ${wh.vol} л — по числу жильцов и наличию ванны. Душ забирает около 30 л горячей воды на человека, ванна — около 50. Не подходит — меняется кнопкой замены, там весь ряд от 30 до 100 л.`,
+                    shared: _ufhKw > 0 ? `электрическим тёплым полом (${String(Math.round(_ufhKw * 10) / 10).replace('.', ',')} кВт)` : ''
+                });
+                _whWarn = _blk.warn;
+                addToBill({ ...wh, alts: _whPlan.alts }, 1, _blk.tip, grpW);
 
                 const kit = catalog.water_heater_kit || [];
                 if (kit.length) {
@@ -75177,8 +75613,19 @@ const app = {
                         `<b>Зачем:</b> Отсекают прибор по холодной и по горячей и разбираются по американке — снять водонагреватель на чистку от накипи, не разрезая подводку.`
                     ]), grpW);
                 }
+                if (wh.plug) {
+                    _whWarn += this.elWhPiping(_whPlan, { group: "1.2. Обвязка водонагревателя" }, addToBill);
+                    const _pw = (catalog.water_heater_power || [])[0], _rcd = (catalog.ufh_el_power || [])[2];
+                    const grpP = "1.3. Питание водонагревателя";
+                    if (_pw) addToBill(_pw, 1, this.autoTip(_pw.name, [
+                        `<b>Зачем:</b> Паспорт SEW требует отдельный автомат на 10 А: прибор берёт около 8,7 А, на общую розеточную группу его вешать нельзя.`
+                    ]), grpP);
+                    if (_rcd) addToBill(_rcd, 1, this.autoTip(_rcd.name, [
+                        `<b>Зачем:</b> Паспорт SEW требует УЗО на линии: корпус прибора под напряжением опаснее всего во влажном помещении.`
+                    ]), grpP);
+                }
             }
-            flushBill("1. Водонагреватель");
+            flushBill("1. Водонагреватель", _whWarn || null);
         }
 
         // === 1. КОТЁЛ + ВОДОНАГРЕВАТЕЛЬ ===
@@ -75642,7 +76089,26 @@ const app = {
                 : `2.2.${idx} Обвязка ${idx + 1}-го Электрического котла`;
         };
 
-        if (this.state.hotWater) {
+        this._whHeatWarn = '';
+        this._whPipeWarn = '';
+        if (this.dhwElectric()) {
+            this.state.waterZones = this.state.waterZones || [];
+            const _hp = this.houseWhPlan();
+            if (_hp && _hp.item) {
+                const _fmtH = x => String(Math.round(x * 10) / 10).replace('.', ',');
+                const _avail = this.houseWhAvailKw(), _lim = this.elLimitKw();
+                const _hb = this.elWhBlock(_hp, {
+                    why: `<b>Почему такой объём:</b> ${_hp.totalVol} л${_hp.qty > 1 ? ' (' + _hp.qty + ' × ' + _hp.vol + ' л)' : ''} — расчётный запас горячей воды ${Math.round(_hp.needVol)} л на ${this.state.res} жильцов и приборы санузлов. Не подходит — меняется кнопкой замены, там весь ряд от 30 до 100 л.`,
+                    budgetText: _hp.budgetKw > 0
+                        ? `<b>Электрическая мощность:</b> ${_hp.qty > 1 ? _hp.qty + ' прибора берут' : 'прибор берёт'} ${_fmtH(_hp.kwTotal)} кВт. Из выделенных ${_lim} кВт ${Math.round(this.EL_HOUSEHOLD_RESERVE * 100)} % оставлено на освещение и быт, водонагревателю отдано не больше ${Math.round(this.WH_EL_HOUSE_SHARE * 100)} % остатка (${_fmtH(_hp.budgetKw)} кВт) — отопление в мороз важнее. Электрокотлу остаётся ${_fmtH(this.getElBoilerBudget())} кВт.`
+                        : ''
+                });
+                this._whHeatWarn = _hb.warn;
+                addToBill({ ..._hp.item, alts: _hp.alts }, _hp.qty, _hb.tip);
+                markRigAnchor('dhw', _hp.item.id);
+            }
+        }
+        if (this.dhwTankOn()) {
             this.state.waterZones = this.state.waterZones || [];
             // Объём бака, потребность по санузлам и состав приборов считает
             // dhwTankPlan. Раньше всё это лежало здесь же по месту, но тот же
@@ -75795,6 +76261,7 @@ const app = {
         // первой плашкой сметы, пока их не учли — чтобы не потерялись.
         const _reqNote = this.projectReqsNote();
         if (_reqNote) boilerWarnHtml = _reqNote + (boilerWarnHtml || '');
+        if (this._whHeatWarn) boilerWarnHtml = this._whHeatWarn + (boilerWarnHtml || '');
         flushBill("1. Котёл + водонагреватель", boilerWarnHtml);
 
         // === 2. ОБВЯЗКА КОТЕЛЬНОЙ ===
@@ -75834,7 +76301,7 @@ const app = {
         // ставим только если он не в коробке (dhwSensor — артикул докупаемого датчика,
         // у Vaillant 306257; у Navien датчик в комплекте, и dhwSensor нет).
         const addTankLoadingKit = (grp, boiler) => {
-            if (!this.state.hotWater) return;
+            if (!this.dhwTankOn()) return;
             // Узел загрузки переключает поток котла на змеевик бойлера — без бойлера
             // в смете он ни к чему не подключается.
             if (rigDropped('dhw')) return;
@@ -76070,12 +76537,35 @@ const app = {
         let hasElSel = selBoilers.some(b => b.type !== 'gas' && !b.noPump) && !rigDropped('el');
         // tankLoadSchemeEff, а не state: при схеме котельной «Без гидрострелки»
         // коллектора, на котором висела бы насосная группа бойлера, нет.
-        let tankNeedsPumpGroup = !!this.state.hotWater && !rigDropped('dhw') && this.tankLoadSchemeEff() === 'pump';
+        let tankNeedsPumpGroup = this.dhwTankOn() && !rigDropped('dhw') && this.tankLoadSchemeEff() === 'pump';
         if (!tankNeedsPumpGroup) {
             if (hasGasSel) addTankLoadingKit(gasBoilerGrp(0), selBoilers.find(b => b && b.type === 'gas'));
             if (hasElSel) addTankLoadingKit(elBoilerGrp(0));
         }
-        if (this.state.hotWater && !rigDropped('dhw')) {
+        if (this.dhwElectric() && !rigDropped('dhw')) {
+            const _hp = this.houseWhPlan();
+            if (_hp && _hp.item) {
+                const grp = "2.3. Обвязка Водонагревателя";
+                const kit = catalog.water_heater_kit || [];
+                if (kit.length) {
+                    addToBill(kit[0], _hp.qty * 2, this.autoTip(kit[0].name, [
+                        `<b>Зачем:</b> Отсекают прибор по холодной и по горячей и разбираются по американке — снять водонагреватель на чистку от накипи, не разрезая подводку. Два крана на каждый прибор.`
+                    ]), grp);
+                }
+                if (_hp.item.plug) {
+                    this._whPipeWarn = this.elWhPiping(_hp, { group: grp }, addToBill);
+                    const _pw = (catalog.water_heater_power || [])[0], _rcd = (catalog.ufh_el_power || [])[2];
+                    const grpP = "2.3.1. Питание водонагревателя";
+                    if (_pw) addToBill(_pw, _hp.qty, this.autoTip(_pw.name, [
+                        `<b>Зачем:</b> Паспорт SEW требует отдельный автомат на 10 А на каждый прибор: он берёт около 8,7 А, на общую розеточную группу его вешать нельзя.`
+                    ]), grpP);
+                    if (_rcd) addToBill(_rcd, Math.ceil(_hp.qty / 2), this.autoTip(_rcd.name, [
+                        `<b>Зачем:</b> Паспорт SEW требует УЗО на линии. Одно УЗО 25 А закрывает пару линий водонагревателей.`
+                    ]), grpP);
+                }
+            }
+        }
+        if (this.dhwTankOn() && !rigDropped('dhw')) {
             let grp = "2.3. Обвязка Водонагревателя";
             // Объём — того бойлера, что стоит в смете (dhwTankPlan), а не прикидка по
             // жильцам: при 3 жильцах и баке 300 л бак ГВС считался от 150 л.
@@ -77321,7 +77811,7 @@ const app = {
         const _wallLoops = [];
         if (this.tQ_val > 0) _wallLoops.push(1, 1);
         if ((this.state.systems || []).indexOf('rad') >= 0) _wallLoops.push(1, 1);
-        if (this.state.hotWater) _wallLoops.push(1, 1, 1);
+        if (this.dhwTankOn()) _wallLoops.push(1, 1, 1);
         if (!_wallLoops.length) _wallLoops.push(1, 1);
         _wallCfg = {
             gasCount: (selBoilers || []).filter(b => b && b.type === 'gas').length,
@@ -77956,7 +78446,7 @@ const app = {
         });
 
         // 2. Бойлер ГВС
-        if (this.state.hotWater && !rigDropped('dhw')) {
+        if (this.dhwTankOn() && !rigDropped('dhw')) {
             let grp = "2.3. Обвязка Водонагревателя";
             // Греющий контур несёт не мощность котельной, а мощность ЗМЕЕВИКА: больше
             // него в бак всё равно не уйдёт. Паспортные киловатты берём из TANK_COIL_KW
@@ -78596,8 +79086,8 @@ const app = {
                 const _parts = [];
                 if (hasRad) _parts.push('радиаторы питает насос котла');
                 if (hasTp && tpArea > 0) _parts.push('тёплый пол — свой узел подмеса');
-                if (this.state.hotWater) _parts.push('бойлер — трёхходовой клапан котла');
-                const _lostTankPump = !!this.state.hotWater && this.state.tankLoadScheme === 'pump';
+                if (this.dhwTankOn()) _parts.push('бойлер — трёхходовой клапан котла');
+                const _lostTankPump = this.dhwTankOn() && this.state.tankLoadScheme === 'pump';
                 const _multi = selBoilers.length > 1;
                 let det = _p('Схема выбрана вручную. Котёл и потребители — одно кольцо: насос котла продавливает ' +
                     'всю систему, поэтому его напор проверяет гидравлический расчёт радиаторов.') +
@@ -78620,6 +79110,7 @@ const app = {
             }
             if (_sb) hydroWarnHtml = hydroWarnHtml ? (_sb + hydroWarnHtml) : _sb;
         }
+        if (this._whPipeWarn) hydroWarnHtml = this._whPipeWarn + (hydroWarnHtml || '');
         flushBill("2. Обвязка котельной", hydroWarnHtml);
 
 
@@ -81897,7 +82388,7 @@ const app = {
                 // БЛОК: 2.1 Внешнее водоснабжение
                 // ==========================================
                 let extWaterGroup = "2.1 Внешнее водоснабжение";
-                if (this.state.hotWater) {
+                if (this.dhwTankOn()) {
                     addToWorks("Подключение ХВС к бойлеру косвенного нагрева ГВС", 1, 5000, "компл", extWaterGroup);
                 }
                 if (this.state.well) {
@@ -82971,8 +83462,20 @@ const app = {
             addToWorks("Монтаж распределительного коллектора котельной", steelManifoldCount, 5500, "шт", obvyazkaGroup);
         }
 
+        // 2а. Электрический водонагреватель дома (STOUT SEW): свои расценки из квартирного набора
+        if (this.dhwElectric()) {
+            const _wp = this.houseWhPlan();
+            if (_wp && _wp.item) {
+                addToWorks("Монтаж электрического водонагревателя", _wp.qty, 6000, "шт", boilerGroup);
+                addToWorks("Обвязка водонагревателя (краны и подводки)", _wp.qty, 3500, "компл", boilerGroup);
+                if (_wp.item.plug) addToWorks("Установка автомата и УЗО в щит", _wp.qty, 1500, "линия", boilerGroup);
+                if (this.whExpMode() === 'tank') addToWorks("Установка расширительного бака водоснабжения", 1, 4500, "шт", boilerGroup);
+                let dhwTapCountEl = this.currentEquipmentList.filter(x => String(x.group || '').startsWith("2.3") && ((x.name || '').toLowerCase().includes("американка") || (x.name || '').toLowerCase().includes("кран"))).reduce((sum, x) => sum + x.q, 0);
+                if (dhwTapCountEl > 0) addToWorks("Монтаж запорной арматуры и американок бойлера", dhwTapCountEl, 950, "шт", boilerGroup);
+            }
+        }
         // 2. Бойлер и водоснабжение (Монтаж котла и бойлера + Обвязка котельной)
-        if (this.state.hotWater) {
+        if (this.dhwTankOn()) {
             addToWorks("Монтаж водонагревателя / бойлера", 1, 9000, "шт", boilerGroup);
             addToWorks("Подключение бойлера косвенного нагрева (монтаж гидравлики)", 1, 12000, "компл", boilerGroup);
             addToWorks("Установка расширительного бака водоснабжения", 1, 4500, "шт", boilerGroup);
@@ -83006,6 +83509,11 @@ const app = {
             const gWh = "1.7 Водонагреватель";
             addToWorks("Монтаж электрического водонагревателя", 1, 6000, "шт", gWh);
             addToWorks("Обвязка водонагревателя (краны и подводки)", 1, 3500, "компл", gWh);
+            const _wp = this.flatWaterHeaterPlan();
+            if (_wp && _wp.item && _wp.item.plug) {
+                addToWorks("Установка автомата и УЗО в щит", 1, 1500, "линия", gWh);
+                if (this.whExpMode() === 'tank') addToWorks("Установка расширительного бака водоснабжения", 1, 4500, "шт", gWh);
+            }
         }
         if (this.usesElectricUfh()) {
             const aEl = Math.max(0, parseFloat(this.state.tp1) || 0);
@@ -83472,7 +83980,6 @@ const app = {
         this._queueKpDayCheck();
         // Лист не скачет, а к новым строкам плавно едет (см. _estimateAfter).
         this._estimateAfter(_estBefore);
-        this.renderContestWidget();
         // Панель переноса выделенных распознанных строк: таблица только что
         // перестроена, число выделенных могло измениться (перенос, удаление,
         // откат распознавания), да и вкладка могла смениться на «Работы».
@@ -84116,341 +84623,6 @@ const app = {
         const el = document.getElementById('cheaper_print');
         if (!el) return;
         el.innerHTML = this.cheapModeOn() ? this.cheaperReportHtml(true) : '';
-    },
-
-    renderContestWidget() {
-        const el = document.getElementById('contest_widget');
-        if (!el) return;
-
-        // Пилот рейтинга свёрнут — виджет баллов и значков не показываем никому
-        // (общий выключатель GRM.isEnabled в gamification.js).
-        if (typeof GRM === 'undefined' || !GRM.isEnabled || !GRM.isEnabled()) { el.innerHTML = ''; return; }
-
-        // Виджет считает баллы по оборудованию и уместен только на его вкладке.
-        // На монтажных работах, распознавании и 3D он не к месту — заодно
-        // не дёргаем рейтинг с profi-stout.pro, когда его никто не увидит.
-        if (this.state.viewMode !== 'equipment') { el.innerHTML = ''; return; }
-
-        if (this.state.brandMode !== 'stout') { el.innerHTML = ''; return; }
-
-        // Запускаем (или продолжаем) загрузку рейтинга в фоне.
-        // При ошибке — не чаще раза в минуту (иначе каждый ре-рендер бил бы
-        // по login и мог сжечь лимит попыток на сервере).
-        const RETRY_COOLDOWN = 60 * 1000;
-        const canRetry = !this._stoutRatingTs || (Date.now() - this._stoutRatingTs) > RETRY_COOLDOWN;
-        if (!this._stoutRating || (this._stoutRating.status === 'error' && canRetry)) {
-            this.fetchStoutRating(); // async, перерисует виджет сам после загрузки
-        }
-
-        const list = this.currentEquipmentList || [];
-
-        // Подсчёт количества по категориям конкурса
-        const catQty = {};
-        for (const item of list) {
-            if ((item.brand || 'STOUT') === 'ROMMER') continue;
-            const id = item.originalId || item.id || '';
-            const name = (item.name || '').toLowerCase();
-            for (const cat of CONTEST_CATS_2026) {
-                if (cat.test(id, name, item)) {
-                    catQty[cat.key] = (catQty[cat.key] || 0) + (item.q || 1);
-                    break;
-                }
-            }
-        }
-
-        if (Object.keys(catQty).length === 0) { el.innerHTML = ''; return; }
-
-        // Определяем заработанные категории (с учётом minQty)
-        const earned = new Set();
-        const pendingQty = {};
-        for (const cat of CONTEST_CATS_2026) {
-            const qty = catQty[cat.key] || 0;
-            if (qty >= (cat.minQty || 1)) earned.add(cat.key);
-            else if (qty > 0) pendingQty[cat.key] = qty;
-        }
-
-        const totalPts = CONTEST_CATS_2026.filter(c => earned.has(c.key)).reduce((s, c) => s + c.pts, 0);
-
-        // Тост при появлении или потере категории
-        const prevEarned = this._contestPrevEarned || new Set();
-        if (prevEarned.size > 0) {
-            let toastShown = false;
-            for (const key of earned) {
-                if (!prevEarned.has(key)) {
-                    const cat = CONTEST_CATS_2026.find(c => c.key === key);
-                    if (cat) { this.showContestToast(cat.label, cat.pts, 'gain'); toastShown = true; }
-                    break;
-                }
-            }
-            if (!toastShown) {
-                for (const key of prevEarned) {
-                    if (!earned.has(key)) {
-                        const cat = CONTEST_CATS_2026.find(c => c.key === key);
-                        if (cat) { this.showContestToast(cat.label, cat.pts, 'loss'); }
-                        break;
-                    }
-                }
-            }
-        }
-        this._contestPrevEarned = new Set(earned);
-
-
-        // XP-бар: 20 блоков, каждый = 5 баллов
-        const XP_BLOCKS = 20;
-        const filledBlocks = Math.min(XP_BLOCKS, Math.floor(totalPts / 5));
-        const xpBar = Array.from({length: XP_BLOCKS}, (_, i) =>
-            `<div class="cw-xp-block${i < filledBlocks ? ' filled' : ''}"></div>`
-        ).join('');
-
-        let xpLabel = '';
-        if (totalPts >= 200) {
-            xpLabel = `<span class="cw-xp-label bonus">🎉 БОНУС: +${(totalPts * 10).toLocaleString('ru-RU')} ₽ за объект</span>`;
-        } else if (totalPts >= 100) {
-            xpLabel = `<span class="cw-xp-label good">✅ ФОРМА ПОЛУЧЕНА! (комбинезон + куртка)</span>`;
-        } else {
-            xpLabel = `<span class="cw-xp-label">${totalPts} / 100 XP &nbsp;·&nbsp; до формы (комбинезон + куртка) ещё ${100 - totalPts}</span>`;
-        }
-
-        // Достижения
-        const earnedAch = CONTEST_CATS_2026
-            .filter(c => earned.has(c.key))
-            .map(c => `<div class="cw-achieve earned" title="+${c.pts} XP">${c.emoji} ${c.label} <b>+${c.pts}</b></div>`)
-            .join('');
-
-        const lockedAch = CONTEST_CATS_2026
-            .filter(c => !earned.has(c.key))
-            .map(c => {
-                const pq = pendingQty[c.key];
-                const note = c.minQty && pq ? ` (${pq}/${c.minQty})` : '';
-                return `<div class="cw-achieve locked" title="${c.label}: нужно смонтировать">🔒 ${c.label}${note} <b>+${c.pts}</b></div>`;
-            })
-            .join('');
-
-        el.innerHTML = `
-            <div class="cw-card">
-                <div class="cw-header">
-                    <span class="cw-title">🏆 Конкурс STOUT 2026</span>
-                    <span class="cw-pts">${totalPts}<span class="cw-pts-label"> баллов</span></span>
-                </div>
-                <div class="cw-xp-row">
-                    <div class="cw-xp-bar">${xpBar}</div>
-                    ${xpLabel}
-                </div>
-                <details class="cw-details">
-                    <summary class="cw-details-summary">🔍 Подробнее</summary>
-                    <div class="cw-details-content">
-                        ${this._renderRatingBlock()}
-                        <div class="cw-achievements">
-                            ${earnedAch}${lockedAch}
-                        </div>
-                        <details class="cw-rules-details">
-                            <summary class="cw-rules-summary">📜 Правила конкурса STOUT 2026</summary>
-                            <div class="cw-rules-content">
-                                <p><b>📅 Период:</b> 1 апреля – 30 ноября 2026 г.</p>
-                                <p><b>🎁 Призовые места:</b></p>
-                                <ul>
-                                    <li>🥇 <b>1–10 место:</b> 150 000 ₽</li>
-                                    <li>🥈 <b>11–15 место:</b> 100 000 ₽</li>
-                                    <li>🥉 <b>16–20 место:</b> 50 000 ₽</li>
-                                    <li>📦 <b>21–30 место:</b> Ящик для инструментов</li>
-                                </ul>
-                                <p><b>👔 Гарантированные призы:</b></p>
-                                <ul>
-                                    <li>👕 <b>От 100 баллов:</b> Форма STOUT (полукомбинезон + куртка)</li>
-                                    <li>💰 <b>От 200 баллов:</b> Денежное вознаграждение <b>1 балл = 10 ₽</b></li>
-                                </ul>
-                            </div>
-                        </details>
-                    </div>
-                </details>
-            </div>`;
-    },
-
-    // === РЕЙТИНГ STOUT: рендер блока ===
-    _renderRatingBlock() {
-        const st = this._stoutRating;
-        if (!st || st.status === 'loading') {
-            return `<div class="cw-rating-block loading">
-                <span class="cw-rating-icon">⏳</span>
-                <span class="cw-rating-text">Загружаю рейтинг…</span>
-            </div>`;
-        }
-        if (st.status === 'not-found') {
-            return `<div class="cw-rating-block not-found">
-                <span class="cw-rating-icon">🔍</span>
-                <div class="cw-rating-text">
-                    <div class="cw-rating-label">Вы ещё не участвуете в конкурсе</div>
-                    <div class="cw-rating-sub">Данные с сайта profi-stout.pro</div>
-                </div>
-                <button class="cw-rating-refresh" onclick="app.refreshStoutRating()" title="Обновить рейтинг">↻</button>
-            </div>`;
-        }
-        if (st.status === 'error') {
-            return `<div class="cw-rating-block not-found">
-                <span class="cw-rating-icon">⚠️</span>
-                <div class="cw-rating-text">
-                    <div class="cw-rating-label">Не удалось загрузить рейтинг</div>
-                    <div class="cw-rating-sub">Нет соединения с сайтом STOUT</div>
-                </div>
-                <button class="cw-rating-refresh" onclick="app.refreshStoutRating()" title="Повторить">↻</button>
-            </div>`;
-        }
-        // found
-        const medal = st.place === 1 ? '🥇' : st.place === 2 ? '🥈' : st.place === 3 ? '🥉' : '🏅';
-        return `<div class="cw-rating-block found">
-            <span class="cw-rating-medal">${medal}</span>
-            <div class="cw-rating-text">
-                <div class="cw-rating-label">Место в конкурсе STOUT&nbsp;2026</div>
-                <div class="cw-rating-position">#${st.place} · ${st.name}</div>
-                <div class="cw-rating-sub">${st.points.toLocaleString('ru-RU')} баллов · из ${st.total} участников</div>
-            </div>
-            <button class="cw-rating-refresh" onclick="app.refreshStoutRating()" title="Обновить рейтинг">↻</button>
-        </div>`;
-    },
-
-    // === ЗАГРУЗКА РЕЙТИНГА STOUT через официальный API ===
-    async fetchStoutRating() {
-        const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 часа
-        const now = Date.now();
-        if (this._stoutRatingTs && (now - this._stoutRatingTs) < CACHE_TTL &&
-            this._stoutRating && this._stoutRating.status !== 'error') {
-            return;
-        }
-
-        this._stoutRating = { status: 'loading' };
-        this.renderContestWidget();
-
-        // baseURL реального фронтенда profi-stout — уже включает "/api",
-        // а вызовы идут с относительным путём вида "api/login" (без ведущего
-        const isLocal = HC_LOCAL_DEV;
-        const BASE = isLocal ? 'https://profi-stout.promo-online.pro/api' : `${supabaseUrl}/functions/v1/stout-proxy?path=`;
-        const APP_TOKEN = 'Pns2wxxcAnrd6z8vlero6OVNVtv8ksJVg-TsL3D7GOHPIRDnt2MU6VJ7tZshxhn_';
-        const CREDS = { login: '+79826109548', password: '31Dim1988@' };
-        const TIMEOUT_MS = 10000; // 10 секунд на каждый запрос
-
-        const baseHeaders = {
-            'Content-Type': 'application/json',
-            'X-Token': APP_TOKEN
-        };
-
-        // Хелпер: fetch с таймаутом
-        const fetchT = (url, opts) => {
-            const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-            return fetch(url, { ...opts, signal: ctrl.signal })
-                .finally(() => clearTimeout(timer));
-        };
-
-        try {
-            // Шаг 1: Получаем токен (из кэша или логинимся)
-            let token = this._stoutToken || localStorage.getItem('_stout_token');
-            let profileId = this._stoutProfileId || localStorage.getItem('_stout_profile_id');
-
-            if (!token) {
-                const loginResp = await fetchT(`${BASE}/api/login`, {
-                    method: 'POST',
-                    headers: baseHeaders,
-                    body: JSON.stringify(CREDS)
-                });
-                if (!loginResp.ok) throw new Error('Login failed: ' + loginResp.status);
-                const loginData = await loginResp.json();
-                token = loginData.token;
-                profileId = loginData.profile_id;
-                if (!token) throw new Error('No token in login response');
-                this._stoutToken = token;
-                this._stoutProfileId = profileId;
-                localStorage.setItem('_stout_token', token);
-                localStorage.setItem('_stout_profile_id', String(profileId));
-            }
-
-            const authHeaders = {
-                ...baseHeaders,
-                'Authorization': `Bearer ${token}`
-            };
-
-            // Шаг 2: Получаем список конкурсов, берём актуальный (is_actual=true)
-            let taskId = this._stoutTaskId;
-            if (!taskId) {
-                const tasksResp = await fetchT(`${BASE}/tasks/api/task/history-list`, {
-                    method: 'POST',
-                    headers: authHeaders,
-                    body: JSON.stringify({ type_id: 1, profile_id: profileId })
-                });
-                if (!tasksResp.ok) throw new Error('Tasks failed: ' + tasksResp.status);
-                const tasksData = await tasksResp.json();
-                const tasks = tasksData.tasks || tasksData || [];
-                const actualTask = Array.isArray(tasks)
-                    ? (tasks.find(t => t.is_actual) || tasks[0])
-                    : null;
-                if (!actualTask) throw new Error('No task found');
-                taskId = actualTask.id;
-                this._stoutTaskId = taskId;
-            }
-
-            // Шаг 3: Получаем рейтинг (список победителей)
-            const winnersResp = await fetchT(`${BASE}/tasks/api/task/winners-list`, {
-                method: 'POST',
-                headers: authHeaders,
-                body: JSON.stringify({ task_id: taskId, profile_id: profileId })
-            });
-            if (!winnersResp.ok) {
-                if (winnersResp.status === 401 || winnersResp.status === 403) {
-                    this._stoutToken = null;
-                    localStorage.removeItem('_stout_token');
-                }
-                throw new Error('Winners failed: ' + winnersResp.status);
-            }
-            const winnersData = await winnersResp.json();
-            const winners = winnersData.winners || winnersData || [];
-
-            if (!Array.isArray(winners) || winners.length === 0) {
-                this._stoutRatingTs = Date.now();
-                this._stoutRating = { status: 'not-found', total: 0 };
-                this.renderContestWidget();
-                return;
-            }
-
-            // Шаг 4: Ищем себя по profile_id (точное совпадение)
-            const me = winners.find(w => String(w.profile_id) === String(profileId));
-
-            this._stoutRatingTs = Date.now();
-
-            if (me) {
-                const place = me.order_number || (winners.indexOf(me) + 1);
-                const name = me.name || me.full_name || me.fio || '';
-                const points = me.points || me.bonuses || me.score || 0;
-                this._stoutRating = { status: 'found', place, name, points, total: winners.length };
-            } else {
-                this._stoutRating = { status: 'not-found', total: winners.length };
-            }
-
-        } catch (e) {
-            console.warn('STOUT rating fetch error:', e);
-            this._stoutRatingTs = Date.now();
-            this._stoutRating = { status: 'error' };
-        }
-        this.renderContestWidget();
-    },
-
-    refreshStoutRating() {
-        this._stoutRatingTs = 0;
-        this._stoutRating = null;
-        this._stoutToken = null;
-        this._stoutTaskId = null;
-        localStorage.removeItem('_stout_token');
-        localStorage.removeItem('_stout_profile_id');
-        this.fetchStoutRating();
-    },
-
-    showContestToast(label, pts, type = 'gain') {
-        const el = document.getElementById('contest_toast');
-        if (!el) return;
-        const isLoss = type === 'loss';
-        const suffix = pts === 1 ? '' : pts >= 2 && pts <= 4 ? 'а' : 'ов';
-        el.innerHTML = `<span class="ct-icon">${isLoss ? '📉' : '🏆'}</span><div><div class="ct-title">${isLoss ? '−' : '+'}${pts} балл${suffix} конкурса</div><div class="ct-sub">${isLoss ? 'Потеряно: ' : ''}${label}</div></div>`;
-        el.className = `contest-toast${isLoss ? ' loss' : ''} visible no-print`;
-        clearTimeout(this._contestToastTimer);
-        this._contestToastTimer = setTimeout(() => el.classList.remove('visible'), 3500);
     },
 
     // Переключение отображения цен подписки Профи между рублями и тенге (KZT).

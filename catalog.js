@@ -2360,6 +2360,12 @@ const catalog = {
         { id: "CBL-VVG-3X15-PW", name: "Кабель ВВГнг(А)-LS 3×1,5 — питание планки и насоса", price: 62, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-08-09" },
         { id: "CBL-MKESH-2X05", name: "Кабель МКЭШ 2×0,5 экран. — сухой контакт на контроллер", price: 75, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-08-09" }
     ],
+    // Линия проводного термостата к планке ENGO ECB62-ZB. По паспорту планки
+    // (Quick Guide v6.1) клемма термостата 230 В принимает 3×0,75…3×1,0 мм², и
+    // ВВГнг 3×1,5 в неё не войдёт. ВВГнг тоньше 1,5 мм² не выпускают, поэтому
+    // берём гибкий ПВС 3×1,0 (в гофре). Цена ориентировочная — как у остального
+    // кабеля к автоматике.
+    ufh_cable_engo_ts: { id: "CBL-PVS-3X10-TS", name: "Кабель ПВС 3×1,0 — линии проводных термостатов ENGO", price: 48, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-10-06" },
     h_valves: [
         { id: "SVH-0004-000020", name: "Узел нижн. подкл. (Угловой)", price: 1254, type: "angled", desc: "Трубы выходят из стены.", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SVH-0002-000020", name: "Узел нижн. подкл. (Прямой)", price: 1233, type: "straight", desc: "Трубы выходят из пола.", availability: "in_stock", price_date: "2026-09-23" },
@@ -4623,6 +4629,20 @@ const catalog = {
     // Предохранительный клапан и крепёж у Haier входят в комплект поставки,
     // поэтому отдельными позициями они не считаются.
     water_heaters_el: [
+    // ===== STOUT SEW — настенные, 2 кВт, из вилки (паспорт SEW от 30.09.2026) =====
+    // Новинка, на stout.ru и в прайсе ТЕРЕМ её ещё нет. Цена — ОРИЕНТИРОВОЧНАЯ (priceEst: true), взята у
+    // Haier A4 того же объёма (priceRef): завод тот же (Хайер Индастри Рус), ТЭН тот же (нержавейка 310S+Mo).
+    // Заводская цена появится ориентировочно в ноябре 2026 — AutoPrice.py подставит её и снимет priceEst.
+    // Данные паспорта: ТЭН 2 кВт, ~230 В, шнур с вилкой 1,5 м, IPX4, автомат 10 А + УЗО, бак — эмалированная
+    // сталь, магниевый анод 25х150, предохранительный клапан 0,8 МПа 1/2" и анкеры в комплекте, патрубки
+    // G 1/2" НР, не для проточного режима, температура 35…75 °C. kwMax — мощность числом для подбора по
+    // электрической мощности; wetKg — масса полного бака (корпус + вода) для проверки стены; heat — расчёт:
+    // V·4,187·45 К / 2 кВт (с 15 до 60 °C; на той же основе даны времена у Haier). Размеры A/B — расстояния
+    // от кронштейна до патрубков и до низа, мм.
+    { id: "SEW-030L-01", name: "Водонагреватель электрический накопительный настенный STOUT SEW-030L-01, 30 л, 2 кВт", vol: 30, kw: "2,0", kwMax: 2, heat: "47 мин", price: 10700, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-10-06", priceEst: true, priceRef: "GA04JGE01RU", wall: true, plug: true, ports: { cold: '1/2"', hot: '1/2"', thread: 'НР', src: 'паспорт SEW, табл. 2' }, ipx: "IPX4", kg: 11.5, wetKg: 41.5, dimA: 130, dimB: 515, pack: "425х425х530", warrantyTankY: 5, warrantyPartsY: 2, src: "паспорт SEW 30.09.2026", alts: [] },
+    { id: "SEW-050L-01", name: "Водонагреватель электрический накопительный настенный STOUT SEW-050L-01, 50 л, 2 кВт", vol: 50, kw: "2,0", kwMax: 2, heat: "1ч 19 мин", price: 11900, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-10-06", priceEst: true, priceRef: "GA04JHE01RU", wall: true, plug: true, ports: { cold: '1/2"', hot: '1/2"', thread: 'НР', src: 'паспорт SEW, табл. 2' }, ipx: "IPX4", kg: 14.5, wetKg: 64.5, dimA: 205, dimB: 675, pack: "425х425х690", warrantyTankY: 5, warrantyPartsY: 2, src: "паспорт SEW 30.09.2026", alts: [] },
+    { id: "SEW-080L-01", name: "Водонагреватель электрический накопительный настенный STOUT SEW-080L-01, 80 л, 2 кВт", vol: 80, kw: "2,0", kwMax: 2, heat: "2ч 6 мин", price: 14150, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-10-06", priceEst: true, priceRef: "GA04JEE01RU", wall: true, plug: true, ports: { cold: '1/2"', hot: '1/2"', thread: 'НР', src: 'паспорт SEW, табл. 2' }, ipx: "IPX4", kg: 21, wetKg: 101, dimA: 530, dimB: 1000, pack: "425х425х1015", warrantyTankY: 5, warrantyPartsY: 2, src: "паспорт SEW 30.09.2026", alts: [] },
+    { id: "SEW-100L-01", name: "Водонагреватель электрический накопительный настенный STOUT SEW-100L-01, 100 л, 2 кВт", vol: 100, kw: "2,0", kwMax: 2, heat: "2ч 37 мин", price: 16700, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-10-06", priceEst: true, priceRef: "GA04JFE01RU", wall: true, plug: true, ports: { cold: '1/2"', hot: '1/2"', thread: 'НР', src: 'паспорт SEW, табл. 2' }, ipx: "IPX4", kg: 24.5, wetKg: 124.5, dimA: 530, dimB: 1210, pack: "425х425х1225", warrantyTankY: 5, warrantyPartsY: 2, src: "паспорт SEW 30.09.2026", alts: [] },
         { id: "GA04JGE01RU", name: "Водонагреватель электрический Haier A4, 30 л, 1,75 кВт", vol: 30, kw: "1,75", heat: "50 мин", price: 10700, brand: "Haier", unit: "шт", availability: "on_order", price_date: "2026-09-23",
           alts: [{ id: "GA04J001DRU", name: "Водонагреватель электрический Haier C1, 30 л, 1,5 кВт", vol: 30, price: 8027, brand: "Haier",
   availability: 'in_stock',
@@ -4860,6 +4880,12 @@ const catalog = {
     // расширяется, и клапан стравливает несколько капель), но в квартире его не
     // ставит никто — вешать некуда, а капель принимают как данность. Смета
     // должна показывать то, что действительно смонтируют.
+    // Защита линии STOUT SEW: паспорт (п. 5) требует отдельный автомат на 10 А и УЗО. Автомата C10 в
+    // прайсе ТЕРЕМ нет; цена — как у C16 той же серии IEK (в серии ARMAT они стоят одинаково), priceEst.
+    // УЗО берётся из ufh_el_power (тот же 25 А / 30 мА), здесь не дублируется.
+    water_heater_power: [
+        { id: "MVA20-1-010-C", name: "Автоматический выключатель C10, 1P, 4,5 кА", price: 194, brand: "IEK", unit: "шт", availability: "on_order", price_date: "2026-10-06", priceEst: true }
+    ],
     water_heater_kit: [
         { id: "SVB-1007-200015", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 1110, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RBV-0005-0510215", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 358, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } }
     ],
@@ -6755,6 +6781,27 @@ const catalog = {
         { id: "6103", article: "6103", name: "Гель уплотнительный СантехМастерГель Синий, тюбик 60 г, блистер", price: 717, unit: "шт", brand: "СантехМастер", availability: "in_stock", price_date: "2026-07-28" }
     ]
 };
+
+// Ряд электрических водонагревателей: STOUT SEW впереди, Haier в заменах и наоборот.
+// Вручную alts у SEW не расписываем — иначе при каждой правке Haier два списка расходятся.
+(function () {
+    const L = catalog.water_heaters_el || [];
+    const sew = L.filter(x => x.brand === 'STOUT');
+    const hai = L.filter(x => x.brand !== 'STOUT');
+    const seen = new Set(), pool = [];
+    hai.forEach(m => [m].concat(m.alts || []).forEach(a => {
+        if (!a || seen.has(a.id)) return;
+        seen.add(a.id);
+        pool.push(a.alts ? Object.assign({}, a, { alts: undefined }) : a);
+    }));
+    const byVolPrice = (x, y) => (x.vol - y.vol) || ((x.price || 0) - (y.price || 0));
+    sew.forEach(m => { m.alts = pool.slice().sort(byVolPrice); });
+    hai.forEach(m => {
+        const have = new Set((m.alts || []).map(a => a.id));
+        const add = sew.filter(x => !have.has(x.id)).map(x => Object.assign({}, x, { alts: undefined }));
+        m.alts = (m.alts || []).concat(add).sort(byVolPrice);
+    });
+})();
 
 const titanRads = [
     { id: "SRB-3320-050004", name: "Радиатор TITAN 4 секций", sec: 4, price: 7410, brand: "STOUT", power50: 128, passportPower: 198,

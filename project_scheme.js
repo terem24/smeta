@@ -1972,22 +1972,24 @@
    * приходит жила. groups — как колодка разбита на самостоятельные части
    * («Входы термостатов» — три отдельные колодки по два контакта).
    */
-  function pluggable(x, y, nn, col, on, up, groups) {
-    var h = 6.4, s = '<g' + (on ? '' : ' opacity="0.4"') + '>';
+  function pluggable(x, y, nn, col, on, up, groups, pitch) {
+    var h = 6.4, pp = pitch || P, pale = on === 'pale', lit = on === true;
+    var s = '<g' + (lit || pale ? '' : ' opacity="0.4"') + '>';
     var parts = groups || [nn], k0 = 0, bound = {};
     parts.forEach(function (g) {
       bound[k0 + g] = true;
-      var gx = x + k0 * P, gw = g * P - (parts.length > 1 ? 0.6 : 0);
-      if (on) s += rrect(gx - 0.9, y - 0.9, gw + 1.8, h + 1.8, 1.1, HALO);
+      var gx = x + k0 * pp, gw = g * pp - (parts.length > 1 ? 0.6 : 0);
+      if (lit) s += rrect(gx - 0.9, y - 0.9, gw + 1.8, h + 1.8, 1.1, HALO);
+      if (pale) s += rrect(gx - 0.6, y - 0.6, gw + 1.2, h + 1.2, 1.0, { f: '#DCFCE7', c: '#86C7A0', w: 0.4 });
       s += rrect(gx, y, gw, h, 0.7, { f: shade(col, -0.35), c: shade(col, -0.6), w: 0.3 });
       s += rrect(gx + 0.25, y + 0.25, gw - 0.5, h - 0.5, 0.5, { f: col });
       s += rrect(gx + 0.25, y + 0.25, gw - 0.5, 1.2, 0.5, { f: shade(col, 0.38) });
       k0 += g;
     });
     for (var i = 0; i < nn; i++) {
-      var cx = x + P / 2 + i * P;
+      var cx = x + pp / 2 + i * pp;
       if (i > 0 && !bound[i]) {
-        s += ln(x + i * P, y + 0.4, x + i * P, y + h - 0.4, { c: shade(col, -0.45), w: 0.25 });
+        s += ln(x + i * pp, y + 0.4, x + i * pp, y + h - 0.4, { c: shade(col, -0.45), w: 0.25 });
       }
       s += rrect(cx - 0.95, up ? y + 0.35 : y + h - 1.85, 1.9, 1.5, 0.3, { f: '#111827' });   // гнездо провода
       s += circle(cx, y + 3.2, 1.0, { f: '#E5E7EB', c: '#475569', w: 0.3 });                  // головка винта
@@ -3665,6 +3667,262 @@
     return { svg: o.join(''), w: W, h: ny + 6 };
   }
 
+  // ─── Схема подключения зональной автоматики ENGO (центр коммутации ECB62-ZB) ───
+  // Клеммы и их порядок — по Quick Guide v6.1 производителя (engocontrols.com):
+  //   INPUT_A / INPUT_B — проводные зоны, по три контакта N, L, SLA (SLB);
+  //   OUTPUT_A, OUTPUT_B, OUTPUT_1…6 — приводы 230 В NC, по четыре контакта
+  //     N, SLx, N, SLx (до 6 приводов по 2 Вт на зону);
+  //   WIRELESS ZONE_1…6 — радиозоны Zigbee, клемм нет, привязка кнопками SELECT и PAIR;
+  //   POWER SUPPLY N L N L, PE, PUMP OUTPUT N L N L (до 3 А), BOILER OUTPUT NO COM NC (до 6 А).
+  // Проводной термостат — паспорта ESIMPLE-230 (N, L, SL) и EASY-230 (N, L, COM, NO;
+  // перемычка L–COM, жила на планку — с клеммы NO).
+  // e: bars, wired, radio, heads, servos, gateway, statKind ('simple' | 'easy'),
+  //    statName, servoName, servoVolt, auto (есть контроллер котельной), ko.
+  function ufhSchemeEngo(e) {
+    e = e || {};
+    var o = [], W = 420;
+    var DARK = '#0F172A', GREY = '#94A3B8';
+    var wired = e.wired || 0, radio = e.radio || 0, heads = e.heads || 0, servos = e.servos || 0;
+    var bars = Math.max(1, e.bars || 1), easy = e.statKind === 'easy';
+    var PE_ = 5.0;                                   // шаг контактов, мм схемы
+    var BXL = 14, BW = 330, BY = 80, BH = 110;
+    // положение на рисунке Quick Guide (2000 px) → схема; колонки: A, B, зоны 1…6
+    function gx(px) { return BXL + (px - 610) * BW / 1330; }
+    function col(k) { return gx(700 + 98 * k); }
+    var yT = BY + 8, yB = BY + BH - 14.4;            // верхний и нижний ряд клемм
+
+    function pill(x, y, t, c, w) {
+      return rrect(x - w / 2, y - 1.4, w, 2.8, 1.2, { f: '#fff', c: c, w: 0.35 }) +
+        txt(x, y + 0.6, t, { size: 1.6, anchor: 'middle', weight: 'bold', fill: c });
+    }
+    function mark(x, y, k) {
+      return circle(x, y, 2.1, { f: '#fff', c: INK, w: 0.45 }) + txt(x, y + 0.8, String(k), { size: 2.3, anchor: 'middle', weight: 'bold' });
+    }
+    function act(cx, cy, s, ghost) {
+      var c = ghost ? GREY : INK;
+      return rrect(cx - s * 0.34, cy - s * 0.40, s * 0.68, s * 0.62, s * 0.16, { f: ghost ? '#F8FAFC' : '#F1F5F9', c: c, w: 0.5 }) +
+        rrect(cx - s * 0.12, cy - s * 0.14, s * 0.24, s * 0.26, 0.3, { f: '#fff', c: c, w: 0.35 }) +
+        rrect(cx - s * 0.2, cy + s * 0.22, s * 0.4, s * 0.16, 0.2, { f: '#CBD5E1', c: c, w: 0.4 });
+    }
+
+    o.push(txt(W / 2, 9, 'Схема подключения автоматики — ENGO ECB62-ZB, пример: 1 зона, 1 термостат, 1 привод', { size: 4.0, anchor: 'middle', weight: 'bold' }));
+    o.push(txt(W / 2, 14.4, 'раздел 4.5 сметы · остальные зоны подключаются точно так же, каждая на свои клеммы' +
+      (e.auto ? ' · котёл на контроллере котельной через сухой контакт' : ''), { size: 2.2, anchor: 'middle', fill: '#475569' }));
+
+    // ── корпус: тёмный, с салатовой полосой индикации, как у прибора ──
+    o.push(txt(BXL + BW - 22, BY - 2.4, 'ENGO ECB62-ZB — вид с открытой крышкой, 330 × 110 мм' + (bars > 1 ? ' (в смете таких блоков ' + bars + ')' : ''), { size: 2.5, weight: 'bold', anchor: 'end' }));
+    o.push(rrect(BXL, BY, BW, BH, 3, { f: '#2B3036', c: '#111418', w: 0.6 }));
+    o.push(rrect(BXL + 3, BY + BH / 2 - 7.5, BW - 6, 15, 2, { f: '#8DC63F', c: '#5B8A1E', w: 0.3 }));
+    o.push(txt(BXL + BW - 6, BY + BH / 2 + 1.2, 'ENGO', { size: 3.4, anchor: 'end', weight: 'bold', fill: '#2B3036' }));
+
+    var haveWired = wired > 0, haveRadio = radio > 0 || !haveWired;
+    // режимы колонок: 0 — A, 1 — B, 2…7 — радиозоны 1…6
+    function modeCol(k) {
+      if (k === 0) return haveWired ? 'on' : 'dim';
+      if (k === 1) return wired > 1 ? 'pale' : 'dim';
+      if (k === 2) return haveRadio ? 'on' : 'dim';
+      return (k - 2) < radio ? 'pale' : 'dim';
+    }
+    function pm(m) { return m === 'on' ? true : (m === 'pale' ? 'pale' : false); }
+    var LB = '#E5E7EB';
+
+    // ── верхний ряд: INPUT_A, INPUT_B и радиозоны ──
+    ['INPUT_A', 'INPUT_B'].forEach(function (nm, k) {
+      var m = modeCol(k), x0 = col(k) - 1.5 * PE_;
+      o.push(pluggable(x0, yT, 3, '#DDE1E6', pm(m), true, null, PE_));
+      o.push(txt(col(k), yT - 1.6, nm, { size: 1.5, anchor: 'middle', fill: m === 'dim' ? '#6B7280' : LB }));
+      ['N', 'L', k ? 'SLB' : 'SLA'].forEach(function (L, i) {
+        o.push(txt(x0 + PE_ / 2 + i * PE_, yT + 9.4, L, { size: 1.4, anchor: 'middle', fill: m === 'dim' ? '#6B7280' : LB }));
+      });
+    });
+    for (var z = 1; z <= 6; z++) {
+      var cz = col(z + 1), mz = modeCol(z + 1);
+      o.push('<g' + (mz === 'dim' ? ' opacity="0.45"' : '') + '>' +
+        rrect(cz - 9, yT - 1.2, 18, 11.6, 1.6, { f: '#F1F5F9', c: mz === 'on' ? '#16A34A' : (mz === 'pale' ? '#86C7A0' : '#94A3B8'), w: mz === 'on' ? 1.0 : 0.5 }) +
+        [2.2, 3.6, 5.0].map(function (r) { return '<path d="M' + n(cz - r) + ',' + n(yT + 4.2) + ' A' + r + ',' + r + ' 0 0 1 ' + n(cz + r) + ',' + n(yT + 4.2) + '" fill="none" stroke="#475569" stroke-width="0.35"/>'; }).join('') +
+        circle(cz, yT + 5.2, 0.5, { f: '#475569' }) +
+        txt(cz, yT + 8.6, 'ZIGBEE', { size: 1.2, anchor: 'middle', fill: '#475569' }) + '</g>');
+      o.push(txt(cz, yT - 1.9, 'ZONE_' + z, { size: 1.5, anchor: 'middle', fill: mz === 'dim' ? '#6B7280' : LB }));
+    }
+    // кнопки SELECT / PAIR, светодиоды PUMP / BOILER / POWER и антенна
+    o.push(rrect(gx(1452), BY + BH / 2 - 17, 7, 7, 1, { f: '#E5E7EB', c: '#111418', w: 0.3 }));
+    o.push(rrect(gx(1498), BY + BH / 2 - 17, 7, 7, 1, { f: '#E5E7EB', c: '#111418', w: 0.3 }));
+    o.push(txt(gx(1452) + 3.5, BY + BH / 2 - 18.4, 'SELECT', { size: 1.3, anchor: 'middle', fill: LB }));
+    o.push(txt(gx(1498) + 3.5, BY + BH / 2 - 18.4, 'PAIR', { size: 1.3, anchor: 'middle', fill: LB }));
+    [['PUMP', 1550, '#22C55E'], ['BOILER', 1610, '#22C55E'], ['POWER', 1670, '#EF4444']].forEach(function (L) {
+      o.push(circle(gx(L[1]) + 3, BY + BH / 2 - 13.6, 1.2, { f: L[2], c: '#111418', w: 0.25 }));
+      o.push(txt(gx(L[1]) + 3, BY + BH / 2 - 18.4, L[0], { size: 1.3, anchor: 'middle', fill: LB }));
+    });
+    o.push(rrect(gx(1855), BY + 5, 14, 11, 1.4, { f: '#E5E7EB', c: '#111418', w: 0.3 }));
+    o.push(txt(gx(1855) + 7, BY + 3.4, 'ANTENNA', { size: 1.3, anchor: 'middle', fill: LB }));
+    // светодиоды зон 1…8
+    for (var l = 0; l < 8; l++) {
+      var lit = (l === 0 && haveWired) || (l === 2 && haveRadio) || (l === 1 && wired > 1) || (l > 2 && (l - 2) < radio);
+      o.push(circle(col(l), BY + BH / 2, 1.5, { f: lit ? '#22C55E' : '#C6E58B', c: '#5B8A1E', w: 0.3 }));
+      o.push(txt(col(l) + 3.2, BY + BH / 2 + 0.8, String(l + 1), { size: 1.6, fill: '#2B3036' }));
+    }
+
+    // ── нижний ряд: OUTPUT_A, OUTPUT_B, OUTPUT_1…6 (приводы), предохранитель, питание, PE, насос, котёл ──
+    var outNames = ['OUTPUT_A', 'OUTPUT_B', 'OUTPUT_1', 'OUTPUT_2', 'OUTPUT_3', 'OUTPUT_4', 'OUTPUT_5', 'OUTPUT_6'];
+    var xOut = [];
+    outNames.forEach(function (nm, k) {
+      var m = modeCol(k), x0 = col(k) - 2 * PE_;
+      xOut.push(x0);
+      o.push(pluggable(x0, yB, 4, '#DDE1E6', pm(m), false, null, PE_));
+      o.push(txt(col(k), yB - 1.6, nm, { size: 1.5, anchor: 'middle', fill: m === 'dim' ? '#6B7280' : LB }));
+    });
+    var xFu = gx(1440);
+    o.push(rrect(xFu, yB - 0.6, 26, 7.6, 1, { f: '#E5E7EB', c: '#111418', w: 0.3 }));
+    o.push(txt(xFu + 13, yB + 4.4, 'FUSE 10 A', { size: 1.7, anchor: 'middle', fill: '#2B3036' }));
+    var xPw = gx(1550), xPe = gx(1650), xPu = gx(1725), xBo = gx(1820);
+    o.push(pluggable(xPw, yB, 4, '#DDE1E6', true, false, null, PE_));
+    o.push(txt(xPw + 2 * PE_, yB - 1.6, 'POWER SUPPLY', { size: 1.3, anchor: 'middle', fill: LB }));
+    o.push(pluggable(xPe, yB, 3, '#DDE1E6', true, false, null, PE_));
+    o.push(txt(xPe + 1.5 * PE_, yB - 1.6, 'PE', { size: 1.5, anchor: 'middle', fill: LB }));
+    o.push(pluggable(xPu, yB, 4, '#DDE1E6', true, false, null, PE_));
+    o.push(txt(xPu + 2 * PE_, yB - 1.6, 'PUMP OUTPUT', { size: 1.3, anchor: 'middle', fill: LB }));
+    o.push(pluggable(xBo, yB, 3, '#DDE1E6', true, false, null, PE_));
+    o.push(txt(xBo + 1.5 * PE_, yB - 1.6, 'BOILER OUTPUT', { size: 1.3, anchor: 'middle', fill: LB }));
+    ['NO', 'COM', 'NC'].forEach(function (L, i) { o.push(txt(xBo + PE_ / 2 + i * PE_, yB + 9.4, L, { size: 1.4, anchor: 'middle', fill: LB })); });
+    ['N', 'L', 'N', 'L'].forEach(function (L, i) {
+      o.push(txt(xPw + PE_ / 2 + i * PE_, yB + 9.4, L, { size: 1.4, anchor: 'middle', fill: LB }));
+      o.push(txt(xPu + PE_ / 2 + i * PE_, yB + 9.4, L, { size: 1.4, anchor: 'middle', fill: LB }));
+    });
+    o.push(txt(xPe + 1.5 * PE_, yB + 9.4, '⏚', { size: 2.0, anchor: 'middle', fill: LB }));
+
+    // ── проводной термостат над INPUT_A: жилы идут прямо вниз, N → N, L → L, SL → SLA ──
+    var tx = col(0), bx = tx - 1.5 * PE_;            // центр термостата и левый контакт INPUT_A
+    if (haveWired) {
+      var ty = 22, tw = 56, th = 30;
+      o.push(txt(tx - tw / 2, ty - 1.6, 'Проводной термостат ENGO ' + (easy ? 'EASY' : 'SIMPLE') + ' · 230 В', { size: 2.0, weight: 'bold' }));
+      o.push(rrect(tx - tw / 2, ty, tw, th, 1.6, { f: '#fff', c: INK, w: 0.5 }));
+      o.push(rrect(tx - tw / 2 + 6, ty + 3, tw - 12, 11, 1, { f: '#DBEAFE', c: '#64748B', w: 0.35 }));
+      o.push(txt(tx, ty + 11, '22', { size: 6, anchor: 'middle', fill: '#1D4ED8' }));
+      // клеммы термостата: ESIMPLE — N, L, SL; EASY — N, L, COM, NO (перемычка L–COM)
+      var tt = easy ? ['N', 'L', 'COM', 'NO'] : ['N', 'L', 'SL'];
+      var sy = ty + th - 6;
+      o.push(rrect(tx - tw / 2 + 4, sy - 1.6, tw - 8, 7.6, 0.8, { f: '#E2E8F0', c: INK, w: 0.4 }));
+      var tpos = tt.map(function (L, i) { return bx + PE_ / 2 + i * PE_; });
+      tt.forEach(function (L, i) {
+        o.push(circle(tpos[i], sy + 1.2, 1.3, { f: '#fff', c: '#475569', w: 0.35 }));
+        o.push(ln(tpos[i] - 0.8, sy + 1.2, tpos[i] + 0.8, sy + 1.2, { c: '#475569', w: 0.3 }));
+        o.push(txt(tpos[i], sy + 4.9, L, { size: 1.5, anchor: 'middle' }));
+      });
+      var yCut = BY - 8, yEnd = yT + 3.2;
+      var cN = bx + PE_ / 2, cL = bx + PE_ * 1.5, cS = bx + PE_ * 2.5;   // контакты INPUT_A
+      o.push(seg([[tpos[0], sy + 6], [tpos[0], yEnd]], CN, 0.5));
+      o.push(seg([[tpos[1], sy + 6], [tpos[1], yEnd]], CL, 0.5));
+      if (easy) {
+        // перемычка L–COM на термостате; жила SL идёт с клеммы NO и выравнивается по контакту SLA
+        o.push('<path d="M' + n(tpos[1]) + ',' + n(sy + 6) + ' L' + n(tpos[1]) + ',' + n(sy + 8.6) + ' L' + n(tpos[2]) + ',' + n(sy + 8.6) + ' L' + n(tpos[2]) + ',' + n(sy + 6) +
+          '" fill="none" stroke="' + CCLOSE + '" stroke-width="0.5" stroke-dasharray="1.2 0.8"/>');
+        o.push(txt(tx + tw / 2 + 1.6, sy + 3.6, '← перемычка L–COM', { size: 1.4, fill: '#475569' }));
+        o.push(seg([[tpos[3], sy + 6], [tpos[3], yCut], [cS, yCut], [cS, yEnd]], COPEN, 0.5));
+      } else {
+        o.push(seg([[tpos[2], sy + 6], [tpos[2], yEnd]], COPEN, 0.5));
+      }
+      o.push(mark(tpos[1], (sy + 6 + yEnd) / 2 + 3, 1));
+      o.push(pill(tpos[0], BY - 4.2, 'N', CN, 3.6));
+      o.push(pill(tpos[1], BY - 4.2, 'L', CL, 3.6));
+      o.push(pill(easy ? cS : tpos[2], BY - 4.2, 'SL', COPEN, 4.6));
+    }
+
+    // ── радиотермостат над зоной 1: проводов нет, связь по радио ──
+    if (haveRadio) {
+      var rx = col(2), ry = 22, rw = 40, rh = 22;
+      o.push(txt(rx + 0.0, ry - 1.6, 'Радиотермостат ENGO E25 / ONE (Zigbee)', { size: 2.0, weight: 'bold' }));
+      o.push(rrect(rx - rw / 2 + 12, ry, rw, rh, 1.6, { f: '#fff', c: INK, w: 0.5 }));
+      o.push(rrect(rx - rw / 2 + 17, ry + 3, rw - 10, 9, 1, { f: '#DBEAFE', c: '#64748B', w: 0.35 }));
+      o.push(txt(rx + 12, ry + 10, '22', { size: 5, anchor: 'middle', fill: '#1D4ED8' }));
+      var rcx = rx + 12;
+      o.push('<path d="M' + n(rcx) + ',' + n(ry + rh + 0.5) + ' L' + n(rcx) + ',' + n(yT - 1.8) + '" fill="none" stroke="#475569" stroke-width="0.5" stroke-dasharray="1.4 1.1"/>');
+      o.push(txt(rcx + 2, (ry + rh + yT) / 2 + 0.6, 'по радио: SELECT → PAIR', { size: 1.7, fill: '#475569' }));
+      o.push(mark(rcx - 5, (ry + rh + yT) / 2, 2));
+    }
+
+    // ── приводы под OUTPUT: N и SLx идут прямо вниз ──
+    function actPair(k, n1) {
+      var x0 = xOut[k], cN1 = x0 + PE_ / 2, cS1 = x0 + PE_ * 1.5, cN2 = x0 + PE_ * 2.5, cS2 = x0 + PE_ * 3.5;
+      var sy0 = yB + 6.4 + 22, y0 = yB + 3.2;
+      o.push(act((cN1 + cS1) / 2, sy0, 11));
+      o.push(seg([[cN1, y0], [cN1, sy0 - 3.4]], CN, 0.5));
+      o.push(seg([[cS1, y0], [cS1, sy0 - 3.4]], COPEN, 0.5));
+      o.push(act((cN2 + cS2) / 2, sy0, 11, true));
+      o.push(seg([[cN2, y0], [cN2, sy0 - 3.4]], GREY, 0.45, '1.4 1'));
+      o.push(seg([[cS2, y0], [cS2, sy0 - 3.4]], GREY, 0.45, '1.4 1'));
+      o.push(txt(cN1, sy0 + 8, 'N', { size: 1.6, anchor: 'middle', fill: CN }));
+      o.push(txt(cS1, sy0 + 8, n1, { size: 1.6, anchor: 'middle', fill: COPEN }));
+      return sy0;
+    }
+    var sA = null;
+    if (haveWired) { sA = actPair(0, 'SLA'); o.push(mark(xOut[0] - 4.5, yB + 12, 3)); }
+    if (haveRadio) { sA = actPair(2, 'SL1'); if (!haveWired) o.push(mark(xOut[2] - 4.5, yB + 12, 3)); }
+    var sBase = (sA || yB + 28) + 9;
+    o.push(txt(14, sBase + 5, 'Сервопривод — ' + (e.servoVolt === 24 ? '24 В' : 'НЗ, 230 В'), { size: 2.1, weight: 'bold' }));
+    o.push(txt(14, sBase + 8.2, cut(e.servoName || 'сервопривод термоэлектрический NC', 44), { size: 1.9 }));
+    o.push(txt(14, sBase + 11.4, 'второй привод на ту же зону — пунктиром; до 6 приводов (2 Вт) на зону', { size: 1.8, fill: '#475569' }));
+
+    // ── питание, насос, котёл → щит, насос, котёл; уровни: чем левее клемма, тем глубже жила ──
+    var DX = 356, yb0 = yB + 3.2, lv0 = BY + BH + 6;
+    function hxp(x0, i) { return x0 + PE_ / 2 + i * PE_; }
+    function lead(x, lvl, c, dash) { o.push(seg([[x, yb0], [x, lvl], [DX, lvl]], c, 0.5, dash)); }
+    function dest(y, hgt, t1, t2, ico) {
+      o.push(rrect(DX, y, 54, hgt, 1, { f: '#fff', c: INK, w: 0.4 }));
+      if (ico) o.push(ico(DX + 6.5, y + hgt / 2, 8.4));
+      o.push(txt(DX + 32, y + hgt / 2 - 0.8, t1, { size: 1.8, anchor: 'middle', weight: 'bold' }));
+      if (t2) o.push(txt(DX + 32, y + hgt / 2 + 3, t2, { size: 1.5, anchor: 'middle', fill: '#475569' }));
+    }
+    var L0 = lv0, STEP = 5;
+    // котёл: COM (c1) выше, NO (c0) глубже
+    lead(hxp(xBo, 1), L0, CCLOSE); lead(hxp(xBo, 0), L0 + STEP, CCLOSE);
+    dest(L0 - 3.5, 11, e.auto ? 'Контроллер котельной' : 'Котёл', e.auto ? 'вход термостатов · COM + NO' : 'клеммы термостата · COM + NO', e.auto ? icoPanel : function (a, b, s) { return icoBoiler(a, b, s, true); });
+    o.push(mark(DX - 4.5, L0 + STEP / 2, 5));
+    // насос: L (c3) выше, N (c2) глубже — первая пара N L
+    lead(hxp(xPu, 1), L0 + 2 * STEP + 1, CL); lead(hxp(xPu, 0), L0 + 3 * STEP + 1, CN);
+    dest(L0 + 8.5, 12, 'Насос группы ТП', 'до 3 А · PE насоса в щит', icoPump);
+    o.push(mark(DX - 4.5, L0 + 13.5, 4));
+    // питание и PE → щит
+    lead(hxp(xPe, 0), L0 + 4 * STEP + 2, CPE2, '1.6 1.2');
+    lead(hxp(xPw, 1), L0 + 5 * STEP + 2, CL); lead(hxp(xPw, 0), L0 + 6 * STEP + 2, CN);
+    dest(L0 + 21, 15, 'Щит · автомат 10 А', 'питание L, N + PE', icoBreaker);
+    o.push(mark(DX - 4.5, L0 + 27, 6));
+
+    // ── шлюз Zigbee: нужен радиоголовкам и телефону; радиосвязь — пунктиром ──
+    if (e.gateway) {
+      var gxp = 292, gy = 18;
+      o.push(rrect(gxp, gy, 52, 17, 1.2, { f: '#fff', c: INK, w: 0.4 }));
+      o.push(icoModule(gxp + 8, gy + 9, 10, true));
+      o.push(txt(gxp + 28, gy + 7.2, 'Шлюз Zigbee', { size: 1.9, anchor: 'middle', weight: 'bold' }));
+      o.push(txt(gxp + 28, gy + 11, 'EGATEZB · Wi-Fi 2,4 ГГц', { size: 1.5, anchor: 'middle', fill: '#475569' }));
+      o.push('<path d="M' + n(gxp + 40) + ',' + n(gy + 17) + ' L' + n(gxp + 40) + ',' + n(BY + 5) + '" fill="none" stroke="#475569" stroke-width="0.5" stroke-dasharray="1.4 1.1"/>');
+    }
+
+    // ── что в смете и как подключать ──
+    var ny = Math.max(L0 + 6 * STEP + 14, sBase + 18);
+    function line(t, o2) { o.push(txt(12, ny, t, o2 || { size: 2.1 })); ny += 3.6; }
+    line('Сколько всего — по вашей смете:', { size: 2.5, weight: 'bold' });
+    line('• Блоков ECB62-ZB ' + bars + ' — на каждом 2 проводные зоны (A, B), 6 радиозон Zigbee, до 50 приводов 230 В.');
+    if (wired) line('• Проводных термостатов ' + wired + ' — каждый на свой INPUT (A, B): три жилы N, L, SL, четвёртой нет' +
+      (easy ? '; у EASY перемычка L–COM, жила SL идёт с клеммы NO.' : '.'));
+    if (radio) line('• Радиотермостатов ' + radio + ' — клемм на плате нет: SELECT выбирает зону, PAIR запускает привязку, на термостате удерживают кнопки до «bind»; плата и термостат — в одной сети шлюза.');
+    if (heads) line('• Радиоголовок ETRV ' + heads + ' — по радио через термостат E25 (до 6 голов на один), нужен шлюз.');
+    if (servos) line('• Сервоприводов ' + servos + ' — на OUTPUT своей зоны, клеммы N и SLx; до 6 приводов на зону, только НЗ (NC).');
+    ny += 1.4;
+    line('Питание платы — да, 230 В: POWER SUPPLY (N, L) и PE от отдельного автомата 10 А; на плате вставка 10 А, суммарная нагрузка до 10 А.', { size: 2.1, weight: 'bold' });
+    line('С платы 230 В получают приводы (OUTPUT), насос (PUMP OUTPUT, до 3 А) и проводные термостаты; PE насоса идёт в щит, мимо платы.');
+    line('Насос включается через 3 минуты после запроса тепла от любой зоны и выключается, когда запросов нет; котёл (BOILER OUTPUT, до 6 А) — так же.');
+    ny += 1.4;
+    line('Кабели — выноски 1…6 на схеме (сечения — паспорт ENGO ECB62-ZB, Quick Guide v6.1):', { size: 2.2, weight: 'bold' });
+    if (wired) line('1. Проводной термостат → INPUT: 3 жилы N, L, SL, 0,75–1,0 мм² (клемма принимает до 1,0): кабель ПВС 3×1,0 в гофре.');
+    line('2. Радиотермостат: провода нет; питание E25/ONE — свое (батарея или 230 В), смотрите паспорт термостата.');
+    line('3. Привод → OUTPUT: 2 жилы N и SLx; привод идёт с проводом, наращивать в коробке; сечение паспорт платы не задаёт.');
+    line('4. Насос → PUMP OUTPUT: 3 жилы N, L, PE, 1,0–1,5 мм². 5. Котёл → BOILER OUTPUT: 2 жилы COM–NO, 0,75–1,0 мм².');
+    line('6. Питание → POWER SUPPLY: 3 жилы N, L, PE, 1,0–1,5 мм² от отдельного автомата 10 А.');
+
+    return { svg: o.join(''), w: W, h: ny + 6 };
+  }
+
+
   /** Готовый лист: рамка + штамп формы 6 + схема. */
   function sheetSvg(cfg, opts) {
     opts = opts || {};
@@ -3675,7 +3933,7 @@
   }
 
   window.projectScheme = {
-    build: build, sheet: sheetSvg, automation: automation, automation1002: automation1002, ufhScheme: ufhScheme,
+    build: build, sheet: sheetSvg, automation: automation, automation1002: automation1002, ufhScheme: ufhScheme, ufhSchemeEngo: ufhSchemeEngo,
     snowScheme: snowScheme,
     // отдельные УГО пригодятся будущим листам узлов обвязки
     sym: {

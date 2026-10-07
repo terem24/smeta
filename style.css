@@ -14532,6 +14532,16 @@ body.object-flat:not(.calc-detailed) #blk_water_reducer_row {
     display: none !important;
 }
 
+/* Быстрый режим (дом и квартира): карточка узла ввода ХВС короче — остаются
+   редуктор, счётчик и защита от протечки. Кран, фильтрация, каркас и подпитка
+   отопления — в подробном; значения в смете не сбрасываются. */
+body:not(.calc-detailed) #blk_outdoor_faucet_row,
+body:not(.calc-detailed) #blk_water_filter_row,
+body:not(.calc-detailed) #blk_water_frame_row,
+body:not(.calc-detailed) #blk_heating_feed_row {
+    display: none !important;
+}
+
 /* Быстрый режим квартиры: две цифры вместо списка приборов */
 body.object-flat.flat-water-simple #blk_flat_water_simple {
     display: flex !important;
