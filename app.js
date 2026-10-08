@@ -37545,6 +37545,8 @@ const app = {
     automationSchemeArt: function () {
         const tc = this.thermaticConfig;
         if (!tc || !window.projectScheme || !window.projectScheme.automation || !window.projectSheets) return null;
+        // Схема подключения MyHeat пока не рисуется: клеммы по паспортам прибора и блоков — отдельный этап.
+        if (tc.mh) return null;
         // Артикулы подобранных позиций — постер показывает фото именно того
         // оборудования, которое лежит в смете (img/<артикул>.jpg)
         const spec = this.currentSpec || [];
@@ -45834,7 +45836,7 @@ const app = {
         const panelRow = document.getElementById('blk_ctrl_panel_row');
         if (!panelRow) return;
         const model = this.boilerAutoModel({ tQ: this.tQ_val, snow: this.snowCalc });
-        panelRow.style.display = (model === 'full') ? 'flex' : 'none';
+        panelRow.style.display = (model === 'full' && this.autoBrand() !== 'myheat') ? 'flex' : 'none';
     },
 
     // Короткая сводка конфигурации контроллера под самим переключателем —
@@ -46482,7 +46484,7 @@ const app = {
     /** Предел шлейфа у того контроллера, который сейчас идёт в смету. */
     leakSensorsMax: function () {
         // У ZONT SMART 2.0 шлейф до 10 датчиков одного типа, как и у Climatic.
-        return (this.boilerAutoModel({ tQ: this.tQ_val, snow: this.snowCalc }) === 'basic' && this.autoBrand() !== 'zont')
+        return (this.boilerAutoModel({ tQ: this.tQ_val, snow: this.snowCalc }) === 'basic' && this.autoBrand() === 'stout')
             ? this.LEAK_SENSORS_BASIC_MAX : this.LEAK_SENSORS_MAX;
     },
 
@@ -46684,10 +46686,14 @@ const app = {
         const ntcAll = isBasic
             ? (cfg.sensors || []).filter(n => n.src !== 'bus').length
             : (cfg.ntcUsed || 0);
-        const ntcIn = Math.max(0, ntcAll - 1), ntcM = ntcIn * 2 + (ntcAll > 0 ? 10 : 0);
+        // У MyHeat уличного датчика в смете нет (прогноз из интернета): кабель — только на датчики в колбе.
+        const ntcIn = cfg.mh ? ntcAll : Math.max(0, ntcAll - 1), ntcM = ntcIn * 2 + ((ntcAll > 0 && !cfg.mh) ? 10 : 0);
         add('CBL-MKESH-2X05-NTC', ntcM,
-            `<b>Куда:</b> проводные датчики температуры — теплоноситель и бойлер по котельной, уличный на северную стену.` +
-            `<br><b>Расчёт:</b> ${ntcIn} датч. × 2 м + уличный 10 м = ${Math.ceil(ntcM)} м. Вести отдельно от силовых линий, пересекать под 90°.`,
+            (cfg.mh
+                ? `<b>Куда:</b> датчики в колбе на шину 1-Wire — подача контуров, бойлер, каскад по котельной.` +
+                  `<br><b>Расчёт:</b> ${ntcIn} датч. × 2 м = ${Math.ceil(ntcM)} м. Вести отдельно от силовых линий, пересекать под 90°.`
+                : `<b>Куда:</b> проводные датчики температуры — теплоноситель и бойлер по котельной, уличный на северную стену.` +
+                  `<br><b>Расчёт:</b> ${ntcIn} датч. × 2 м + уличный 10 м = ${Math.ceil(ntcM)} м. Вести отдельно от силовых линий, пересекать под 90°.`),
             groups.auto);
 
         const panelM = cfg.panel ? span + h1 + 3 : 0;
@@ -46837,10 +46843,14 @@ const app = {
         // basic — именно Thermatic 1002 (своя радиосеть LoRa); у ZONT SMART 2.0 связь
         // та же, что у Climatic, но двухпозиционных термостатов тоже нет (noDry).
         const basic = !!(cfg && cfg.model === 'basic' && cfg.brand !== 'zont');
-        const noDry = !!(cfg && (cfg.model === 'basic' || cfg.hser));
+        const noDry = !!(cfg && (cfg.model === 'basic' || cfg.hser || cfg.mh));
         if (kind === 'dry' && !noDry) {
             s += `Подключается сухим контактом на «Входы термостатов» — их у контроллера <b>${(cfg && cfg.dryInputs) || 3}</b>. ` +
                  `Контур переходит в режим «Термостат»: греет, пока термостат разомкнут, расчётную температуру подачи контроллер уже не ведёт.`;
+        } else if (cfg && cfg.mh) {
+            s += link === 'radio'
+                ? (cfg.mh.rdt ? 'Радиоканал 868 МГц. Радиомодуль RDT2 добавится сам — один на объект.' : 'Радиоканал 868 МГц, радио уже в корпусе контроллера.')
+                : 'Связь по шине 1-Wire (до 60 м).';
         } else if (link === 'radio') {
             // У базового уровня радиосеть LoRa встроена, отдельный модуль не нужен.
             s += basic
@@ -58377,6 +58387,7 @@ const app = {
                 `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">Бренд:</span>` +
                 `<span onclick="app.setCtrlBrandFilter('STOUT')" ${_b(_bf==='STOUT')}>STOUT</span>` +
                 `<span onclick="app.setCtrlBrandFilter('ZONT')" ${_b(_bf==='ZONT')}>ZONT</span>` +
+                `<span onclick="app.setCtrlBrandFilter('MYHEAT')" ${_b(_bf==='MYHEAT')}>MyHeat</span>` +
                 `<span onclick="app.setCtrlBrandFilter('all')" ${_b(_bf==='all')}>Все</span>` +
                 `</div>` +
                 `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
@@ -60310,20 +60321,23 @@ const app = {
             }
             // серия H — тот же уровень, что и Climatic.V2, но другой прибор
             if ((this.ZONT_H_MODELS || []).some(m => m.id === id)) return { lvl: 'full', brand: 'zont', h: true };
+            // MyHeat: уровня нет — состав решает myheatFit, а конкретную модель можно назвать самому
+            if ((this.MYHEAT_MODELS || []).some(m => m.id === id)) return { lvl: 'auto', brand: 'myheat', mh: true };
             return null;
         };
         const _ctrlFrom = _ctrlOf(originalId), _ctrlTo = _ctrlOf(chosenId);
         if (_ctrlFrom && _ctrlTo) {
             // Автоматика ZONT — ассортимент тарифа «Профи».
-            if (_ctrlTo.brand === 'zont' && !this.isPro()) { this.showModal('pro'); return; }
+            if ((_ctrlTo.brand === 'zont' || _ctrlTo.brand === 'myheat') && !this.isPro()) { this.showModal('pro'); return; }
             const _byBill = this.boilerAutoModel({ tQ: this.tQ_val, snow: this.snowCalc }, true);
             delete this.state.swaps[originalId];
             this.state.boilerAutoBrand = _ctrlTo.brand;
             this.state.boilerAutoZontH = !!_ctrlTo.h;
             this.state.boilerAutoZontHModel = _ctrlTo.h ? chosenId : null;   // конкретная модель H, выбранная в таблице
+            this.state.boilerAutoMhModel = _ctrlTo.mh ? chosenId : null;     // конкретная модель MyHeat, выбранная в таблице
             this.logEquipmentSwap(originalId, chosenId);
             this.closeSwapModal();
-            this.setBoilerAutoLevel(_ctrlTo.lvl === _byBill ? 'auto' : _ctrlTo.lvl);   // внутри syncUI + render + saveState
+            this.setBoilerAutoLevel((_ctrlTo.lvl === 'auto' || _ctrlTo.lvl === _byBill) ? 'auto' : _ctrlTo.lvl);   // внутри syncUI + render + saveState
             return;
         }
 
@@ -62628,8 +62642,9 @@ const app = {
         // Контуров нет — контроллеру нечем управлять, и экономить не на чем.
         // У базового уровня контуров не бывает вовсе, а экономия есть: он ведёт
         // сам котёл — погодная кривая, расписание и каскад работают через него.
-        if (!cfg || (cfg.model !== 'basic' && !cfg.circuitCount)) return null;
-        if (cfg.model === 'basic' && !cfg.boilerCount) return null;
+        const _blike = cfg && (cfg.model === 'basic' || (cfg.mh && !cfg.circuitCount));   // прибор ведёт только котёл
+        if (!cfg || (!_blike && !cfg.circuitCount)) return null;
+        if (_blike && !cfg.boilerCount) return null;
         const s = this.state;
         const K = this.BOILER_AUTO_SAVE;
 
@@ -62667,7 +62682,7 @@ const app = {
         // зона не греется, когда в ней и так тепло от солнца, камина или людей.
         // У базового уровня такой контур один — сам контур отопления, и ведётся
         // он по воздуху, как только в смете появился комнатный прибор.
-        const byAir = (cfg.model === 'basic')
+        const byAir = _blike
             ? (cfg.airQty > 0 ? 1 : 0)
             : (cfg.circuits || []).filter(x => x.byAir).length;
         if (byAir > 0) {
@@ -72592,20 +72607,21 @@ const app = {
     },
 
     /**
-     * Чья автоматика идёт в смету: 'zont' или 'stout'.
+     * Чья автоматика идёт в смету: 'zont', 'myheat' или 'stout'.
      *
-     * Выбор хранится в state.boilerAutoBrand и меняется заменой позиции на
+     * Выбор хранится в state.boilerAutoBrand ('zont' | 'myheat') и меняется заменой позиции на
      * строке контроллера. Но действует он только на Профи: на Базовом сохранённая смета с ZONT открывается
      * на STOUT, а не ломается.
      */
     autoBrand: function () {
-        return (this.state.boilerAutoBrand === 'zont' && this.isPro()) ? 'zont' : 'stout';
+        const b = this.state.boilerAutoBrand;
+        return ((b === 'zont' || b === 'myheat') && this.isPro()) ? b : 'stout';
     },
 
     /** Прибор уровня ('full' | 'basic') выбранной марки. */
     autoCtrlModel: function (level, brand) {
         const b = brand || this.autoBrand();
-        return (b === 'zont' ? this.ZONT_AUTO_MODELS : this.BOILER_AUTO_MODELS)[level === 'basic' ? 'basic' : 'full'];
+        return (b === 'zont' ? this.ZONT_AUTO_MODELS : b === 'myheat' ? this.MYHEAT_AUTO_MODELS : this.BOILER_AUTO_MODELS)[level === 'basic' ? 'basic' : 'full'];
     },
 
     /**
@@ -72808,6 +72824,268 @@ const app = {
     },
 
     /**
+     * MyHeat — автоматика котельной на замену Thermatic (ассортимент тарифа «Профи»).
+     *
+     * Устроена иначе, чем STOUT и ZONT, и по составу ближе к «набору из прибора и модулей»,
+     * чем к «прибору с контурами» (паспорта и карточки myheat.net, 08.10.2026):
+     *   relays — реле на борту, 3 А / 250 В; triacs — симисторы 1 А / 250 В (приводы смесителей);
+     *   inputs — дискретные входы под датчик осадков и шлейф протечки; pressure — вход 4–20 мА;
+     *   maxDev — предел единиц оборудования (только Smart 2: «до 5»); maxMix — смесительных узлов
+     *            (таблица лимитов RL6W/RL6SW: GO! 0, Smart 2 — 2, Eco Smart — 14, Pro — 25);
+     *   bus — котлов по цифровой шине (первый — шина в приборе, второй — адаптер, где он есть);
+     *   ext — блоки расширения: артикулы реле/симисторов, выходов на блок, предел блоков;
+     *   radio — радио в корпусе (иначе радиомодуль RDT2); mains — питание от сети 230 В
+     *            (иначе блок питания на DIN-рейку покупается отдельно).
+     * Погодозависимость идёт по интернет-прогнозу — уличный датчик не обязателен.
+     * Датчики температуры — в колбе по шине 1-Wire (до 5 на шину, страница датчика).
+     */
+    MYHEAT_MODELS: [
+        { id: '6280', name: 'MyHeat GO!', short: 'GO!', noLoads: true, relays: 1, triacs: 0, inputs: 0, pressure: false, maxDev: 0, maxMix: 0, bus: 1, adapter: null, ext: null, radio: true, mains: false },
+        { id: '6279', name: 'MyHeat GO!+', short: 'GO!+', noLoads: true, relays: 1, triacs: 0, inputs: 0, pressure: false, maxDev: 0, maxMix: 0, bus: 1, adapter: null, ext: null, radio: true, mains: false },
+        { id: '6281', name: 'MyHeat Smart 2', short: 'Smart 2', relays: 1, triacs: 0, inputs: 4, pressure: false, maxDev: 5, maxMix: 2, bus: 1, adapter: null,
+            ext: { relay: '6295', triac: '6296', per: 2, max: 6 }, radio: false, mains: false },
+        { id: '6284', name: 'MyHeat Pro', short: 'Pro', relays: 4, triacs: 4, inputs: 2, pressure: true, maxDev: 0, maxMix: 25, bus: 2, adapter: '6309',
+            ext: { relay: '6291', triac: '6292', per: 6, max: 6 }, radio: false, mains: false },
+        { id: '7007', name: 'MyHeat Eco Smart', short: 'Eco Smart', relays: 6, triacs: 4, inputs: 2, pressure: true, maxDev: 0, maxMix: 14, bus: 2, adapter: '7008',
+            ext: { relay: '7010', triac: '7011', per: 6, max: 6 }, radio: true, mains: true }
+    ],
+    // Для тех мест, где контроллер выбирают по «уровню» (как у STOUT и ZONT): без смесителей —
+    // Smart 2, со смесителями — Pro. Сам состав решает myheatFit по нагрузкам.
+    MYHEAT_AUTO_MODELS: {
+        full: { id: '6284', name: 'MyHeat Pro', short: 'Pro' },
+        basic: { id: '6281', name: 'MyHeat Smart 2', short: 'Smart 2' }
+    },
+    MYHEAT_PROBE: '6286',       // датчик в колбе на 1-Wire
+    MYHEAT_RDT: '6288',         // радиомодуль RDT2
+    MYHEAT_PSU: '6310',         // блок питания на DIN-рейку (12 Вт)
+    MYHEAT_PRESSURE: '7002',    // датчик давления 4–20 мА
+    // Потребление блоков из паспортов, Вт — для числа блоков питания.
+    MYHEAT_WATTS: { '6295': 4, '6296': 2, '6291': 8, '6292': 2, '7010': 12, '7011': 4, '6309': 2, '7008': 2 },
+
+    /**
+     * Что нужно включать и мерить на котельной и какой прибор MyHeat с этим справится.
+     * Чистая функция от посчитанной конфигурации: по ней же решается, предлагать ли
+     * модель в таблице замены.
+     *
+     * Нагрузки раскладываются по виду выхода:
+     *   котёл на релейном управлении и соленоид — только реле;
+     *   привод смесителя и четырёхжильный привод крана протечки — пара выходов
+     *     «открыть/закрыть», на симисторах (1 А хватает приводу), иначе на двух реле;
+     *   насосы, рециркуляция — одно реле, а когда реле кончились, симистор.
+     * Без смесительных контуров насосы радиаторных групп не включаются контроллером
+     * (работают постоянно, температуру ведёт котёл), если уровень автоматики не задан «Полной».
+     * Блоки расширения подбираются так, чтобы набор целиком вышел дешевле.
+     */
+    myheatFit: function (cfg, onlyId) {
+        const s = this.state;
+        const cat = catalog.boiler_automation || [];
+        const priceOf = id => ((cat.find(x => x.id === id) || {}).price) || 0;
+        const circuits = (cfg && cfg.circuits) || [];
+        const mixN = circuits.filter(x => x.type === 'mix').length;
+        const pumpsOn = mixN > 0 || s.boilerAutoLevel === 'full';
+        const leakOn = !!(cfg && cfg.leakQty > 0);
+        const leakPair = leakOn && !cfg.leakSolenoid;
+        const pressureOn = !!(s.heatingFeed && this.isAutoFeed());
+        const snowIn = (cfg && (cfg.snowSensor || (this.ctrlNeedNow(cfg).snow && (s.snowCtrl || 'sensor') === 'sensor'))) ? 1 : 0;
+        const inputsNeed = (leakOn ? 1 : 0) + snowIn;
+        const dhwPump = !!(cfg && cfg.dhw === 'boiler');
+        const boilers = (cfg && cfg.boilers) || [];
+        const wiredB = boilers.filter(b => b.iface !== 'own');
+
+        // Нагрузки (без котлов на реле — их число зависит от модели).
+        const loads = [];
+        if (leakOn && cfg.leakSolenoid) loads.push({ k: 'relay', label: 'Соленоидный клапан на вводе ХВС' });
+        if (leakPair) loads.push({ k: 'pair', label: 'Кран защиты от протечки (привод «открыть / закрыть»)' });
+        circuits.filter(x => x.type === 'mix').forEach(x => loads.push({ k: 'pair', label: 'Привод смесителя ' + x.name, circuit: x.name }));
+        if (pumpsOn) circuits.forEach(x => loads.push({ k: 'any', label: 'Насос ' + x.name, circuit: x.name }));
+        if (dhwPump) loads.push({ k: 'any', label: 'Насос загрузки бойлера ГВС' });
+        if (cfg && cfg.recirc) loads.push({ k: 'any', label: 'Насос рециркуляции ГВС' });
+
+        // Датчики на шину 1-Wire: подача каждого смесительного контура, бойлер, каскад.
+        const probes = [];
+        circuits.filter(x => x.type === 'mix').forEach(x => probes.push({ role: 'supply', label: 'Подача ' + x.name }));
+        if (dhwPump) probes.push({ role: 'dhw', label: 'Бойлер — температура ГВС' });
+        if (cfg && cfg.wiredCount > 1) probes.push({ role: 'cascade', label: 'Каскад — подача за гидрострелкой' });
+        const airWired = (cfg && cfg.airOn && cfg.airDevice && cfg.airDevice.link === 'wired') ? (cfg.airQty || 0) : 0;
+        const airRadio = !!(cfg && cfg.airOn && cfg.airDevice && cfg.airDevice.link === 'radio' && cfg.airQty > 0);
+        const rdtPrice = priceOf(this.MYHEAT_RDT), probePrice = priceOf(this.MYHEAT_PROBE), psuPrice = priceOf(this.MYHEAT_PSU);
+
+        const place = (m, nR, nT) => {
+            const ex = m.ext;
+            const rPool0 = m.relays + (ex ? nR * ex.per : 0);
+            const tPool0 = m.triacs + (ex ? nT * ex.per : 0);
+            // Котёл: по шине идут первые m.bus (и без noBus), остальные — реле.
+            const ifaces = boilers.map(b => b.iface === 'own' ? 'own' : null);
+            const adId = m.adapter;
+            const adRemoved = !!(adId && s.optItems && s.optItems[adId]);
+            let digital = 0, relayBoilers = 0;
+            boilers.forEach((b, i) => {
+                if (ifaces[i] === 'own') return;
+                const cap = (m.bus > 1 && adRemoved) ? 1 : m.bus;
+                if (!b.noBus && digital < cap) { ifaces[i] = 'digital'; digital++; }
+                else { ifaces[i] = 'relay'; relayBoilers++; }
+            });
+            const adapters = (adId && !adRemoved) ? Math.max(0, digital - 1) : 0;
+            let R = rPool0, T = tPool0, fail = '';
+            const assign = [];
+            const take = (kinds) => {
+                for (const k of kinds) { if (k === 'r' && R > 0) { R--; return 'relay'; } if (k === 't' && T > 0) { T--; return 'triac'; } }
+                return null;
+            };
+            const all = [];
+            for (let i = 0; i < relayBoilers; i++) all.push({ k: 'relay', label: 'Котёл на релейном управлении' });
+            loads.forEach(l => all.push(l));
+            for (const l of all) {
+                if (fail) break;
+                if (l.k === 'relay') {
+                    const o = take(['r']);
+                    if (o) assign.push({ label: l.label, how: o }); else fail = 'не хватает выходов';
+                } else if (l.k === 'pair') {
+                    if (T >= 2) { T -= 2; assign.push({ label: l.label, how: 'triac', pair: true, circuit: l.circuit }); }
+                    else if (R >= 2) { R -= 2; assign.push({ label: l.label, how: 'relay', pair: true, circuit: l.circuit }); }
+                    else fail = 'не хватает выходов под привод';
+                } else {
+                    const o = take(['r', 't']);
+                    if (o) assign.push({ label: l.label, how: o, circuit: l.circuit }); else fail = 'не хватает выходов';
+                }
+            }
+            const outputsNeed = all.reduce((a, l) => a + (l.k === 'pair' ? 2 : 1), 0);
+            const outputsMax = rPool0 + tPool0;
+            if (!fail && pressureOn && !m.pressure) fail = 'датчик давления 4–20 мА подключается только к Pro и Eco Smart';
+            if (!fail && inputsNeed > m.inputs) fail = inputsNeed > 0 && m.inputs === 0 ? 'нет входов под датчик осадков и шлейф протечки' : 'не хватает дискретных входов';
+            // единицы оборудования (насос, смеситель, кран, котёл на реле) — предел только у Smart 2 («до 5»)
+            const devUnits = relayBoilers + loads.length;
+            if (!fail && m.maxDev > 0 && devUnits > m.maxDev) fail = 'у ' + m.short + ' предел — ' + m.maxDev + ' единиц оборудования, нужно ' + devUnits;
+            if (!fail && mixN > m.maxMix) fail = mixN > 0 && m.maxMix === 0 ? 'смесительных узлов у ' + m.short + ' нет' : 'смесительных узлов больше предела (' + m.maxMix + ')';
+            // GO! и GO!+ ведут только котёл (основной и резервный): ни насосов, ни смесителей, ни крана
+            if (!fail && m.noLoads && loads.length > 0) fail = m.short + ' ведёт только котёл — насосы, смесители и кран ему не подчиняются';
+            const rdt = airRadio && !m.radio;
+            const modules = [];
+            if (ex && nR > 0) modules.push({ id: ex.relay, qty: nR, kind: 'relay' });
+            if (ex && nT > 0) modules.push({ id: ex.triac, qty: nT, kind: 'triac' });
+            const W = this.MYHEAT_WATTS;
+            const watts = modules.reduce((a, x) => a + (W[x.id] || 0) * x.qty, 0) + adapters * (W[adId] || 0);
+            const psu = m.mains ? (watts > 0 ? Math.ceil(watts / 12) : 0) : Math.max(1, Math.ceil(watts / 12));
+            const modCost = modules.reduce((a, x) => a + priceOf(x.id) * x.qty, 0);
+            const cost = priceOf(m.id) + modCost + adapters * priceOf(adId) + psu * psuPrice + probes.length * probePrice + (rdt ? rdtPrice : 0);
+            return { model: m, ok: !fail, fail, assign, ifaces, adapters, adapterId: adId, adapterRemoved: adRemoved,
+                busCount: digital, relayBoilers, modules, psu, rdt, probes, airWired, airRadio, outputsNeed, outputsMax,
+                devUnits, inputsNeed, pressureOn, pumpsOn, cost };
+        };
+
+        let last = null;
+        const fits = [];
+        for (const m of this.MYHEAT_MODELS) {
+            if (onlyId && m.id !== onlyId) continue;
+            let best = null;
+            const maxN = m.ext ? m.ext.max : 0;
+            for (let nT = 0; nT <= maxN; nT++) {
+                for (let nR = 0; nR + nT <= maxN; nR++) {
+                    const f = place(m, nR, nT);
+                    // при равной цене — приводы на симисторах (RL2S / RL6S рассчитаны именно на них), реле остаются насосам
+                    const _tr = x => x.assign.filter(a => a.pair && a.how === 'triac').length;
+                    if (f.ok && (!best || f.cost < best.cost || (f.cost === best.cost && _tr(f) > _tr(best)))) best = f;
+                    last = (f.ok || !last || (nR + nT === maxN)) ? f : last;
+                }
+            }
+            if (best) { last = best; fits.push(best); }
+        }
+        if (fits.length) return fits.reduce((a, b) => (b.cost < a.cost ? b : a));
+        return last;
+    },
+
+    /**
+     * Дописывает в конфигурацию то, чем MyHeat отличается от Thermatic: прибор и блоки
+     * расширения по myheatFit, адаптеры шины — только второму котлу, датчики на 1-Wire,
+     * блок питания и радиомодуль — когда нужны. Схема подключения MyHeat пока не рисуется.
+     */
+    myheatApply: function (cfg) {
+        const s = this.state;
+        const _forced = s.boilerAutoMhModel;
+        const fit = this.myheatFit(cfg, this.MYHEAT_MODELS.some(m => m.id === _forced) ? _forced : undefined);
+        cfg.mh = fit;
+        cfg.model = 'full';
+        cfg.expansion = fit.modules.map(x => ({ id: x.id, qty: x.qty, circuits: 0, mhBlock: true, kind: x.kind }));
+        cfg.needsPsu = false;
+        cfg.dryInputs = 0;
+        cfg.relays = fit.outputsNeed;
+        cfg.relaysMax = fit.outputsMax;
+        cfg.relayExtra = 0;
+        cfg.ctrlName = fit.model.short;
+        cfg.ntc = fit.probes.map(x => x.label);
+        cfg.ntcUsed = fit.probes.length;
+        cfg.slotsFree = 0;
+        cfg.panel = false;
+        cfg.needRadio = fit.rdt;
+        cfg.boilers = (cfg.boilers || []).map((b, i) => Object.assign({}, b, { iface: fit.ifaces[i] || b.iface }));
+        cfg.busCount = fit.busCount;
+        cfg.digitalBoards = fit.adapters;
+        cfg.boardsUsed = fit.adapters;
+        cfg.boardRemoved = !!fit.adapterRemoved && fit.model.bus > 1;
+        cfg.wiredCount = cfg.boilers.filter(b => b.iface !== 'own').length;
+        if (!fit.ok) {
+            cfg.warnings.push('MyHeat ' + fit.model.short + ' на этой котельной не подходит: ' + fit.fail + '. Замените контроллер в смете на другую модель MyHeat (Pro — для большинства котельных со смесителями) или на ZONT / STOUT.');
+        }
+        if (cfg.boardRemoved && cfg.wiredCount > 1) {
+            cfg.warnings.push('Адаптер цифровой шины удалён из сметы — второй котёл перейдёт на релейное управление, по перемычке термостата: только «греет / не греет», без уставки, модуляции и кодов аварий. Верните позицию в смету, если это не то, что нужно.');
+        }
+        if (fit.probes.length + fit.airWired > 5) {
+            cfg.warnings.push('На шину 1-Wire приходится ' + (fit.probes.length + fit.airWired) + ' устройств (датчики в колбе и проводные комнатные приборы), а на одну шину — не больше 5 датчиков, кабель до 60 м (паспорт датчика). Лишние придётся вести вторым блоком NTC-1wire или по радио — в смету они не заложены.');
+        }
+        cfg.notes.push('Погодозависимое регулирование MyHeat берёт у интернет-прогноза — уличный датчик в смету не входит. ' +
+            'Если нужен свой замер на объекте, берётся радиодатчик уличный (5 890 ₽) — он работает через радиомодуль RDT2 (у Smart 2 и Pro) или напрямую (у GO!, GO!+ и Eco Smart).');
+        if (fit.airRadio && fit.model.id === '6280') {
+            cfg.notes.push('Радиомодуль у GO! в корпусе, но для радиотермостатов его нужно активировать — платно (3 000 ₽, только РФ, страница прибора); в смету это не заложено. GO!+ принимает радиодатчики без активации.');
+        }
+        if (!fit.model.mains) {
+            cfg.notes.push('Прибор питается от 9–12 В: блок питания на DIN-рейку (' + (fit.psu) + ' шт.) в смету добавлен — в описании прибора он не значится. ' +
+                'Число блоков посчитано по паспортной мощности блоков расширения, 12 Вт на блок питания.');
+        }
+        return cfg;
+    },
+
+    /** Подсказка строки контроллера MyHeat: что из него получилось на этом объекте. */
+    getMyheatDesc: function (cfg) {
+        const styles = "font-size:11px; line-height:1.4;";
+        const head = "font-weight:700; color:#93C5FD; display:block; margin-bottom:9px; padding-bottom:7px; border-bottom:1px solid rgba(255,255,255,0.15);";
+        const f = cfg.mh, m = f.model;
+        let rows = '';
+        (cfg.circuits || []).forEach(x => {
+            rows += `<br>&nbsp;&nbsp;• ${x.name} — ${x.type === 'mix' ? 'смесительный' : 'прямой'} (${x.src === 'ufh' ? 'тёплый пол' : x.src === 'snow' ? 'снеготаяние' : 'радиаторы'})`;
+        });
+        if (!rows) rows = '<br>&nbsp;&nbsp;• контуров с насосными группами нет';
+        let outs = '';
+        (f.assign || []).forEach(a => {
+            outs += `<br>&nbsp;&nbsp;• ${a.label} — ${a.how === 'relay' ? (a.pair ? 'два реле с блокировкой' : 'реле 3 А') : (a.pair ? 'два симистора 1 А' : 'симистор 1 А')}`;
+        });
+        if (!outs) outs = '<br>&nbsp;&nbsp;• управляемых нагрузок нет — прибор ведёт только котёл';
+        let sens = '';
+        (f.probes || []).forEach(x => { sens += `<br>&nbsp;&nbsp;• ${x.label} — датчик в колбе, шина 1-Wire`; });
+        if (!sens) sens = '<br>&nbsp;&nbsp;• датчиков не требуется';
+        let warnText = '';
+        (cfg.notes || []).forEach(n => { warnText += `<div class="tip-p">ℹ️ ${n}</div>`; });
+        (cfg.warnings || []).forEach(w => { warnText += `<div class="tip-p">⚠️ ${w}</div>`; });
+        const modTxt = (f.modules || []).map(x => {
+            const it = (catalog.boiler_automation || []).find(y => y.id === x.id);
+            return x.qty + ' × ' + (it ? it.name : x.id);
+        }).join(', ');
+        return `<span style="${styles}"><span style="${head}">Контроллер отопления ${m.name}</span>` +
+            `<div class="tip-p"><b>Зачем:</b> Ведёт котёл по цифровой шине, держит температуру по погоде (по интернет-прогнозу) ` +
+            `и по датчикам, управляет насосами, смесителями и ГВС; всё видно и настраивается с телефона. ` +
+            `Состав — прибор и модули: нагрузки включаются выходами прибора и блоков расширения.</div>` +
+            `<div class="tip-p">` +
+            `<b>Контуры (${cfg.circuitCount}):</b>${rows}<br>` +
+            `<b>Котлы:</b> ${this.thermaticBoilerText(cfg)}.<br>` +
+            `<b>ГВС:</b> ${this.thermaticDhwText(cfg)}.<br>` +
+            `<b>Выходы</b> (нужно ${f.outputsNeed}, у набора — ${f.outputsMax}${modTxt ? ': ' + modTxt : ''}):${outs}<br>` +
+            `<b>Датчики:</b>${sens}<br>` +
+            `<b>Питание:</b> ${m.mains ? 'от сети 230 В, резервный аккумулятор в корпусе' : '9–12 В от блока питания на DIN-рейку'}.` +
+            `</div>` +
+            warnText +
+            `</span>`;
+    },
+
+    /**
      * Какой контроллер идёт в смету.
      *
      * Ручной выбор в панели («Базовая» / «Полная») сильнее расчёта — монтажник
@@ -72837,7 +73115,8 @@ const app = {
     /** В смете стоит старший контроллер: только он ведёт смесительные узлы. */
     thermaticFull: function () {
         const cfg = this.thermaticConfig;
-        return !!(cfg && cfg.model !== 'basic');
+        // У MyHeat клемм «вход контура КО-N» нет — листы со ссылкой на них не рисуются.
+        return !!(cfg && cfg.model !== 'basic' && !cfg.mh);
     },
 
     /**
@@ -72956,6 +73235,7 @@ const app = {
         const boilerList = boilers.map((b, i) => ({
             kind: (b && b.type === 'gas') ? 'gas' : 'el',
             iface: !wiredIdx.has(i) ? 'own' : (busIdx.has(i) ? 'digital' : 'relay'),
+            noBus: !!(b && b.noBus),
             circuits: (b && b.circuits) || 1
         }));
         const wiredCount = boilerList.filter(b => b.iface !== 'own').length;
@@ -73189,7 +73469,8 @@ const app = {
     getThermaticConfig: function (ctx) {
         // Базовый уровень считается отдельно: у приборов расходится всё, кроме
         // очереди котлов, — контуры, входы, реле и состав комплекта.
-        if (this.boilerAutoModel(ctx) === 'basic') return this.getBasicAutoConfig(ctx);
+        // MyHeat «уровнями» не делится: прибор и блоки подбирает myheatFit по нагрузкам.
+        if (this.boilerAutoModel(ctx) === 'basic' && this.autoBrand() !== 'myheat') return this.getBasicAutoConfig(ctx);
         const s = this.state;
         const c = ctx || {};
         const rQ = Math.max(0, c.rQ || 0);
@@ -73236,6 +73517,8 @@ const app = {
         // вход как дискретный (паспорт, п. 4.1 и 4.3.9): полярность задаётся в сервисе.
         const zontHWanted = this.autoBrand() === 'zont' && !!s.boilerAutoZontH;
         const H = zontHWanted;
+        // MyHeat вместо Thermatic: те же контуры и котлы, состав — по myheatFit (см. myheatApply).
+        const MH = this.autoBrand() === 'myheat';
         const circuitCount = circuits.length;
 
         // --- Котлы ---
@@ -73250,7 +73533,7 @@ const app = {
         // ведётся только релейно — плату ему покупать не за что.
         // У серии H шину котла даёт тот же адаптер ZONT, что и у SMART 2.0.
         const BOARD_ID = H ? this.ZONT_H_ADAPTER : 'ML00005842';
-        const boardRemoved = !!(s.optItems && s.optItems[BOARD_ID]);
+        const boardRemoved = !MH && !!(s.optItems && s.optItems[BOARD_ID]);
         /**
          * Кто вообще попадает под контроллер.
          *
@@ -73311,6 +73594,7 @@ const app = {
             // термостата, 'own' — канала не досталось, котёл живёт на своей
             // автоматике и контроллеру не подчиняется.
             iface: !wiredIdx.has(i) ? 'own' : (busIdx.has(i) ? 'digital' : 'relay'),
+            noBus: !!(b && b.noBus),
             circuits: (b && b.circuits) || 1
         }));
         // Каскад — про то, что ведёт контроллер. Котёл на собственной автоматике
@@ -73388,22 +73672,24 @@ const app = {
         const airOn = advanced && !!s.airControl && circuitCount > 0;
         // У серии H «Входов термостатов» нет — двухпозиционные термостаты STOUT
         // сухим контактом к ней не подключаются, остаются приборы ZONT по шине.
-        const airKind = (H && s.airDeviceType === 'dry') ? 'sensor' : (s.airDeviceType || 'sensor');
+        const airKind = ((H || MH) && s.airDeviceType === 'dry') ? 'sensor' : (s.airDeviceType || 'sensor');
         // У двухпозиционных термостатов STOUT связи по шине нет вовсе — они
         // сидят на сухом контакте, поэтому выбор «проводом/радио» к ним не
         // применяется.
-        const airLink = (airKind === 'dry') ? 'dry' : ((H && s.airLink === 'dry') ? 'wired' : (s.airLink || 'wired'));
+        const airLink = (airKind === 'dry') ? 'dry' : (((H || MH) && s.airLink === 'dry') ? 'wired' : (s.airLink || 'wired'));
         // Сначала — прибор, выбранный руками в таблице замен (state.airDeviceId).
         // Проверку по виду и связи оставляем: если после ручного выбора
         // переключили «Датчик/Термостат» или «Проводом/По радио», старый
         // артикул не подойдёт и подбор сам вернётся к первому подходящему.
         // Приборы базового уровня сюда не попадают: они говорят по своей шине с
         // Thermatic 1002, и к 3001 их не подключить.
-        const airPool = (catalog.air_sensors || []).filter(x => (x.sys || 'full') === 'full' && (!H || x.brand === 'ZONT'));
-        const airDevice = airOn
+        const airPool = (catalog.air_sensors || []).filter(x => (x.sys || 'full') === 'full' && (MH ? !!x.myheat : (!x.myheat && (!H || x.brand === 'ZONT'))));
+        let airDevice = airOn
             ? ((s.airDeviceId && airPool.find(x => x.id === s.airDeviceId && x.kind === airKind && x.link === airLink))
                 || airPool.find(x => x.kind === airKind && x.link === airLink) || null)
             : null;
+        // У MyHeat радиодатчика комнатного в прайсе нет — вместо него радиотермостат.
+        if (airOn && !airDevice && MH) airDevice = airPool.find(x => x.kind === 'thermostat' && x.link === airLink) || null;
 
         /**
          * Сколько датчиков воздуха нужно по расчёту.
@@ -73466,7 +73752,7 @@ const app = {
         // notes — калькулятор уже поправил, человеку нужно только объяснение.
         const warnings = [];
         const notes = [];
-        if (circuitCount === 0) {
+        if (circuitCount === 0 && !MH) {
             warnings.push('В смете нет ни одного контура с насосной группой — управлять контроллеру нечем. ' +
                 'Он нужен там, где есть коллектор котельной с отдельными группами на радиаторы и тёплый пол.');
         }
@@ -73526,7 +73812,7 @@ const app = {
         // два узла контакт реле разводится на два входа.
         const snowDry = ((s.snowCtrl || 'sensor') === 'sensor') ? snowQ : 0;
         const dryUsed = ((airOn && airKind === 'dry') ? airQty : 0) + snowDry;
-        if (!H && dryUsed > DRY_INPUTS) {
+        if (!H && !MH && dryUsed > DRY_INPUTS) {
             warnings.push('На «Входы термостатов» приходится ' + dryUsed + ' устройств' +
                 (snowDry ? (snowDry > 1
                     ? ' (в том числе ' + snowDry + ' контура снеготаяния — датчик осадков разводится на каждый)'
@@ -73572,7 +73858,7 @@ const app = {
         // Старший прибор на котельной, где ему нечего вести. Сюда попадают только
         // по ручному выбору: расчёт в такой конфигурации сам предложил бы 1002
         // (см. boilerAutoModel). Молчать нельзя — разница в цене вчетверо.
-        if (circuits.every(x => x.type !== 'mix')) {
+        if (!MH && circuits.every(x => x.type !== 'mix')) {
             const _basic = this.autoCtrlModel('basic');
             const _bItem = (catalog.boiler_automation || []).find(x => x.id === _basic.id);
             notes.push('Смесительных узлов в смете нет, а ' + this.autoCtrlModel('full').short + ' нужен прежде всего ради них. С этой котельной ' +
@@ -73608,7 +73894,7 @@ const app = {
             brand: this.autoBrand(), ctrlName: this.autoCtrlModel('full').short,
             warnings, notes
         };
-        return H ? this.zontHApply(cfgFull) : cfgFull;
+        return H ? this.zontHApply(cfgFull) : (MH ? this.myheatApply(cfgFull) : cfgFull);
     },
 
     /**
@@ -73762,6 +74048,12 @@ const app = {
      */
     ctrlZoneInfo: function (id, cfg) {
         const need = this.ctrlNeedNow(cfg);
+        const mh = (this.MYHEAT_MODELS || []).find(x => x.id === id);
+        if (mh) {
+            const cap = Math.min(mh.maxMix, 16);
+            const fit = this.myheatFit(this.ctrlFitCfg(cfg), id);
+            return { cap, fit: !!(fit && fit.ok), label: mh.noLoads ? 'только котёл, без насосов и смесителей' : 'до ' + cap + ' ' + this.plural(cap, 'смесительного узла', 'смесительных узлов', 'смесительных узлов') };
+        }
         const m = (this.ZONT_H_MODELS || []).find(x => x.id === id);
         if (m) {
             const cap = Math.floor((m.relays + m.uni + m.oc) / 3);
@@ -73843,6 +74135,7 @@ const app = {
             // ни блоков расширения, зато узкое место в реле и входах датчиков.
             if (cfg.model === 'basic') return this.getBasicAutoDesc(cfg);
             if (cfg.hser) return this.getZontHDesc(cfg);
+            if (cfg.mh) return this.getMyheatDesc(cfg);
             const dhwText = this.thermaticDhwText(cfg);
 
             let rows = '';
@@ -80170,7 +80463,8 @@ const app = {
             const _model = (cfg.model === 'basic') ? 'basic' : 'full';
             const _brand = this.autoBrand();
             const _isH = !!cfg.hser;   // в смете серия H (ZONT) вместо Climatic.V2
-            let ctrlItem = catalog.boiler_automation.find(x => x.id === (_isH ? cfg.hser.model.id : this.autoCtrlModel(_model, _brand).id));
+            const _isMH = !!cfg.mh;    // в смете MyHeat вместо Thermatic
+            let ctrlItem = catalog.boiler_automation.find(x => x.id === (_isMH ? cfg.mh.model.id : _isH ? cfg.hser.model.id : this.autoCtrlModel(_model, _brand).id));
             // Остальные приборы идут аналогами: контроллер подбирается по составу
             // котельной, но выбор всегда можно переиграть заменой позиции —
             // она переключает уровень и марку целиком (см. selectSwapAlternative).
@@ -80193,22 +80487,61 @@ const app = {
                     hint += ' · набор с реле 12 В и адаптерами ' + (d > 0 ? 'дешевле' : 'дороже') + ' Climatic.V2 на ' +
                         Math.abs(Math.round(d)).toLocaleString('ru-RU') + ' ₽';
                 }
+                if ((this.MYHEAT_MODELS || []).some(m => m.id === it.id) && zi.fit) {
+                    const mf = this.myheatFit(_fitCfg, it.id);
+                    const d = _climCost - mf.cost;
+                    hint += ' · набор с модулями ' + Math.round(mf.cost).toLocaleString('ru-RU') + ' ₽, ' + (d > 0 ? 'дешевле' : 'дороже') +
+                        ' Climatic.V2 на ' + Math.abs(Math.round(d)).toLocaleString('ru-RU') + ' ₽';
+                }
                 return { ...it, ctrlRow: true, zoneCap: zi.cap, fitNow: zi.fit, hint, hintWarn: !zi.fit };
             };
             const _ctrlAlts = [];
             const _addAlt = (id) => {
                 if (id === _curId || _ctrlAlts.some(x => x.id === id)) return;
                 const it = catalog.boiler_automation.find(x => x.id === id);
-                if (it && (_canZont || !it.zont)) _ctrlAlts.push(_decorate(it));
+                if (it && (_canZont || !(it.zont || it.myheat))) _ctrlAlts.push(_decorate(it));
             };
             ['SMH-1002-105210', 'SMH-3001-104212', 'ML00004479', 'ML00007105'].forEach(_addAlt);
             // Серия H — когда в смете есть контуры и нет снеготаяния: датчику осадков у H
             // нечем быть (нет «Входа термостата»).
             if (_canZont && _need.zones > 0) this.ZONT_H_MODELS.forEach(m => _addAlt(m.id));
+            // MyHeat — прибор и модули; в таблице все пять, а какие из них хватает на расчёт, видно по подсказке.
+            if (_canZont) this.MYHEAT_MODELS.forEach(m => _addAlt(m.id));
             if (ctrlItem) {
                 const _curDec = _decorate(ctrlItem);
                 addToBill({ ...ctrlItem, ctrlRow: true, hint: _curDec.hint, hintWarn: _curDec.hintWarn, zoneCap: _curDec.zoneCap, fitNow: true,
                     alts: _ctrlAlts.length ? _ctrlAlts : undefined }, 1, this.getDesc('thermatic', cfg), grpAuto);
+            }
+
+            // MyHeat: адаптер шины второму котлу, датчики на 1-Wire, радиомодуль и блок питания.
+            // Первый котёл идёт по шине, которая есть в самом приборе, — адаптер ему не нужен.
+            if (_isMH) {
+                const F = cfg.mh;
+                const _mhFind = id => catalog.boiler_automation.find(x => x.id === id);
+                const _ad = F.adapters > 0 && _mhFind(F.adapterId);
+                if (_ad) addToBill(_ad, F.adapters, this.autoTip(_ad.name, [
+                    `<b>Зачем:</b> Первый котёл ведётся шиной, встроенной в ${F.model.short}: уставка, модуляция горелки, коды аварий. Второй котёл каскада говорит на своём протоколе через этот адаптер.`,
+                    `<b>Протоколы:</b> OpenTherm, E-Bus, BridgeNet, Navien, BSB, Daesung, EMS/EMS+ (для EMS нужна версия адаптера v3).`,
+                    `<b>Количество:</b> ${F.adapters} шт. — один на второй котёл. ${F.model.bus < 2 ? '' : 'К ' + F.model.short + ' по шине подключается до двух котлов.'}`,
+                    `<b>Если убрать из сметы:</b> второй котёл останется на релейном управлении и займёт выход; уставка, модуляция горелки и коды аварий по перемычке не передаются.`
+                ]), grpAuto);
+                const _probe = F.probes.length > 0 && _mhFind(this.MYHEAT_PROBE);
+                if (_probe) addToBill(_probe, F.probes.length, this.autoTip(_probe.name, [
+                    `<b>Куда:</b> ${F.probes.map(x => x.label).join('; ')}.`,
+                    `<b>Подключение:</b> шина 1-Wire (DS18B20): до 5 датчиков на шину, кабель до 60 м, не ближе 0,2 м к силовым линиям. Ставится в гильзу на трубе или в бойлере.`,
+                    `<b>Комплект:</b> в коробке прибора датчиков температуры нет — каждый берётся отдельно.`
+                ]), grpAuto);
+                const _rdt = F.rdt && _mhFind(this.MYHEAT_RDT);
+                if (_rdt) addToBill(_rdt, 1, this.autoTip(_rdt.name, [
+                    `<b>Зачем:</b> У ${F.model.short} своего радио нет — радиодатчики и радиотермостаты работают только через этот модуль. Подключается по 1-Wire, связь 868–870 МГц до 100 м.`,
+                    `<b>Количество:</b> 1 шт. на объект.`
+                ]), grpAuto);
+                const _psu = F.psu > 0 && _mhFind(this.MYHEAT_PSU);
+                if (_psu) addToBill(_psu, F.psu, this.autoTip(_psu.name, [
+                    `<b>Зачем:</b> ${F.model.mains ? 'Блоки расширения на Wi-Fi питаются от 9–24 В, а сам прибор — от сети 230 В.' : F.model.short + ' и блоки расширения питаются от 9–12 В, блок питания на DIN-рейку в комплект прибора не входит.'}`,
+                    `<b>Количество:</b> ${F.psu} шт. — по паспортной мощности блоков 12 Вт на один блок питания.`,
+                    `<b>Важно:</b> минус блока питания соединяется с общей минусовой клеммой прибора.`
+                ]), grpAuto);
             }
 
             // Адаптер цифровой шины базового уровня. Thermatic 1002: шина первого
@@ -80279,7 +80612,7 @@ const app = {
                         : `<b>Если убрать из сметы:</b> котёл останется на релейном управлении и займёт выход контроллера.`
                 ]), grpAuto);
             }
-            if (!_isH && _model === 'full' && cfg.digitalBoards > 0) {
+            if (!_isH && !_isMH && _model === 'full' && cfg.digitalBoards > 0) {
                 let board = catalog.boiler_automation.find(x => x.id === "ML00005842");
                 if (board) addToBill(board, cfg.digitalBoards, this.autoTip('Плата цифровых шин универсальная', [
                     `<b>Зачем:</b> Через неё контроллер говорит с котлом на его языке: задаёт уставку, читает модуляцию горелки и коды аварий.`,
@@ -80321,7 +80654,8 @@ const app = {
                 const _airSys = (_model === 'basic' && cfg.brand === 'zont') ? 'full' : _model;
                 let airAlts = (catalog.air_sensors || [])
                     .filter(x => (x.sys || 'full') === _airSys && x.id !== cfg.airDevice.id
-                        && !((_model === 'basic' || _isH) && cfg.brand === 'zont' && x.brand !== 'ZONT'));
+                        && !((_model === 'basic' || _isH) && cfg.brand === 'zont' && x.brand !== 'ZONT')
+                        && (_isMH ? !!x.myheat : !x.myheat));
                 const _dry = (cfg.airKind === 'dry');
                 const _qtyWhy = (cfg.airManual !== null)
                     ? `${cfg.airQty} шт. — задано вручную (по расчёту ${cfg.airAuto}).`
@@ -80336,16 +80670,20 @@ const app = {
                         : `<b>Зачем:</b> Контур держит не температуру теплоносителя, а температуру воздуха в своей зоне — контроллер сам считает, насколько нагреть подачу.`,
                     _dry
                         ? `<b>Что меняется:</b> контур переходит в режим «Термостат» — расчётную температуру подачи контроллер больше не ведёт, решение принимает сам термостат. Погодную коррекцию можно вернуть режимом «Термостат + ПЗА».`
-                        : `<b>Связь:</b> ${cfg.airDevice.link === 'radio' ? 'радиоканал 868 МГц через радиомодуль' : 'шина RS-485, витая пара, до 200 м'}.`,
+                        : (_isMH
+                            ? `<b>Связь:</b> ${cfg.airDevice.link === 'radio' ? (cfg.mh.rdt ? 'радиоканал 868 МГц через радиомодуль RDT2' : 'радиоканал 868 МГц, радио в корпусе прибора') : 'шина 1-Wire, до 60 м'}.`
+                            : `<b>Связь:</b> ${cfg.airDevice.link === 'radio' ? 'радиоканал 868 МГц через радиомодуль' : 'шина RS-485, витая пара, до 200 м'}.`),
                     _dry
                         ? `<b>Предел:</b> подключается сухим контактом на «Входы термостатов», их у контроллера ${cfg.dryInputs} — по одному на КО-1…КО-3. Контуры на блоках расширения так не закрыть.`
                         : '',
                     `<b>Количество:</b> ${_qtyWhy} Каждый прибор привязывается к своему контуру в настройках; без привязки он только показывает температуру и в регулировании не участвует.`,
-                    `<b>Важно:</b> теплоноситель этими датчиками мерить нельзя — для него штатные NTC из комплекта.`
+                    _isMH
+                        ? `<b>Важно:</b> теплоноситель этими приборами мерить нельзя — для него датчики в колбе.`
+                        : `<b>Важно:</b> теплоноситель этими датчиками мерить нельзя — для него штатные NTC из комплекта.`
                 ]), grpAir);
             }
 
-            if (cfg.needRadio && catalog.radio_modules) {
+            if (cfg.needRadio && !_isMH && catalog.radio_modules) {
                 addToBill(catalog.radio_modules[0], 1, this.autoTip(catalog.radio_modules[0].name, [
                     `<b>Зачем:</b> Своего радиоканала у контроллера нет — радиодатчики и радиотермостаты работают только через этот модуль. Подключается по RS-485.`,
                     `<b>Количество:</b> 1 шт. на объект — один модуль держит до 40 радиоустройств.`
@@ -80363,6 +80701,14 @@ const app = {
             cfg.expansion.forEach(e => {
                 let blk = catalog.boiler_automation.find(x => x.id === e.id);
                 if (!blk) return;
+                if (e.mhBlock) {
+                    addToBill(blk, e.qty, this.autoTip(blk.name, [
+                        `<b>Зачем:</b> Своих выходов у ${cfg.mh.model.short} не хватает на ${cfg.mh.outputsNeed} нагрузок (у прибора ${cfg.mh.model.relays + cfg.mh.model.triacs}). Блок даёт ${blk.relays ? blk.relays + ' реле 3 А / 250 В' : blk.triacs + ' симисторов 1 А / 250 В'} на штуку; симисторы рассчитаны на приводы смесителей и крана, реле — на насосы и котёл.`,
+                        `<b>Количество:</b> ${e.qty} шт. — подобрано так, чтобы набор целиком вышел дешевле.`,
+                        `<b>Подключение:</b> ${cfg.mh.model.id === '7007' ? 'по Wi-Fi, до 6 блоков на Eco Smart; питание 9–24 В отдельным блоком' : cfg.mh.model.id === '6281' ? 'кабелем к Smart 2, блоки RL2 / RL2S работают только с ним' : 'по шине EXT к Pro'}.`
+                    ]), grpAuto);
+                    return;
+                }
                 if (e.hBlock) {
                     // Блок расширения серии H: даёт реле и выходы, а не «контуры» — как у Climatic.
                     const _onBlk = (cfg.hser.assign || []).filter(a => a.block).map(a => a.label.charAt(0).toLowerCase() + a.label.slice(1));
@@ -80447,7 +80793,9 @@ const app = {
                         `<b>Зачем:</b> Перекрывает ввод холодной воды по сработке датчика. Своего привода не требует — катушка и есть привод, отсюда цена почти впятеро ниже связки «шаровой кран + сервопривод».`,
                         `⚠️ <b>Держит открытое положение только под напряжением.</b> Пропало электричество — вода перекрыта, дом остаётся без воды до восстановления питания. Шаровой кран с приводом так себя не ведёт: он бистабильный и стоит в том положении, куда его довернули.`,
                         `<b>Ещё:</b> мягкое седло чувствительно к песку и окалине из водопровода, а катушка под постоянным напряжением греется. Для ответственных объектов надёжнее кран с приводом.`,
-                        `<b>Подключение:</b> релейный выход 1 контроллера (сухой контакт НР/Общ/НЗ).`
+                        _isMH
+                            ? `<b>Подключение:</b> одно реле контроллера или блока расширения (3 А).`
+                            : `<b>Подключение:</b> релейный выход 1 контроллера (сухой контакт НР/Общ/НЗ).`
                     ]
                     : [
                         `<b>Зачем:</b> Запорный кран на вводе холодной воды — им контроллер перекрывает дом при протечке.`,
@@ -80459,7 +80807,9 @@ const app = {
                 if (!cfg.leakSolenoid) {
                     addToBill(catalog.leak_actuators[0], 1, this.autoTip(catalog.leak_actuators[0].name, [
                         `<b>Зачем:</b> Привод к запорному крану. Питание 230 В, отдельный блок питания не нужен.`,
-                        `<b>Подключение:</b> релейный выход 1 контроллера (сухой контакт НР/Общ/НЗ) — он выделен под кран протечки и ни для чего другого не используется.`
+                        _isMH
+                            ? `<b>Подключение:</b> пара выходов «открыть / закрыть» — симисторы 1 А (RL2S, RL6S или встроенные) либо два реле с взаимной блокировкой.`
+                            : `<b>Подключение:</b> релейный выход 1 контроллера (сухой контакт НР/Общ/НЗ) — он выделен под кран протечки и ни для чего другого не используется.`
                     ]), grpLeak);
                 }
             }
@@ -80492,7 +80842,7 @@ const app = {
             // +12 В от самого прибора, сигнал — на универсальный вход.
             const _stoutBasic = (_model === 'basic' && cfg.brand !== 'zont');
             if (this.state.heatingFeed && this.isAutoFeed()) {
-                let pSensor = catalog.boiler_automation.find(x => x.id === (_stoutBasic ? "SMH-0002-010100" : "ML00005517"));
+                let pSensor = catalog.boiler_automation.find(x => x.id === (_isMH ? this.MYHEAT_PRESSURE : (_stoutBasic ? "SMH-0002-010100" : "ML00005517")));
                 if (pSensor) addToBill(pSensor, 1, this.autoTip(pSensor.name, _stoutBasic
                     ? [
                         `<b>Зачем:</b> Автоподпитка доливает воду молча, и медленная утечка может идти месяцами незамеченной. Манометр с электроконтактной приставкой её вскрывает: стрелки порогов выставляются на корпусе, и при выходе за них приходит оповещение.`,
@@ -83301,7 +83651,7 @@ const app = {
             // — Автоматика. Датчика осадков нет ни у STOUT, ни у ROMMER, поэтому
             //   строка идёт с чужим брендом и ориентировочной ценой.
             if ((this.state.snowCtrl || 'sensor') === 'sensor') {
-                const _hSnow = !!(this.thermaticConfig && this.thermaticConfig.hser);   // контроллер — серия H ZONT
+                const _hSnow = !!(this.thermaticConfig && (this.thermaticConfig.hser || this.thermaticConfig.mh));   // контроллер без «Входа термостата»: серия H ZONT или MyHeat
                 const _far = sc.rows.reduce((m, r) => Math.max(m, r.dist || 0), 0);
                 const _cableM = Math.ceil(_far + 10);
                 const _cold = sc.Tn < -20;   // ниже паспортного предела датчика

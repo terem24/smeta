@@ -6699,7 +6699,45 @@ const catalog = {
         { id: "ML00005703", name: "Блок расширения ZE-22 (2 реле, 2 вх/вых, 2 NTC)", price: 15150, brand: "ZONT", unit: "шт", zont: true, zontH: true, relays: 2, uni: 2, availability: "in_stock", price_date: "2026-10-08" },
         { id: "ML00005696", name: "Блок расширения ZE-44 (4 реле, 4 вх/вых, 4 NTC)", price: 20500, brand: "ZONT", unit: "шт", zont: true, zontH: true, relays: 4, uni: 4, availability: "in_stock", price_date: "2026-10-08" },
         { id: "ML00004775", name: "Датчик температуры NTC (воздух / теплоноситель)", price: 500, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
-        { id: "ML00003614", name: "Термодатчик теплоносителя DS18B20 (в гильзу)", price: 950, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" }
+        { id: "ML00003614", name: "Термодатчик теплоносителя DS18B20 (в гильзу)", price: 950, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
+
+        // --- MyHeat: автоматика на замену Thermatic (тариф «Профи», 08.10.2026) ---
+        //
+        // Артикул — код ТЕРЕМ (teremonline.ru, продавец «MY HEAT»), цена — из
+        // price_index.json на 08.10.2026; на myheat.net цены выше на ~1 000 ₽.
+        // Приборы устроены иначе, чем у Thermatic и ZONT (паспорта myheat.net):
+        //   GO! / GO!+  — один котёл по цифровой шине, реле 1 шт. (3 А, сухой контакт);
+        //   Smart 2     — реле 1 + 4 универсальных вход/выхода (открытый коллектор,
+        //                 нагрузку не держат), до 5 единиц оборудования; насосы
+        //                 и смесители — через RL2 (реле) / RL2S (симисторы);
+        //   Eco Smart   — 6 реле 3 А + 4 симистора 1 А, питание от сети, радио в корпусе;
+        //   Pro         — 4 реле 3 А + 4 симистора 1 А, блоки RL6 / RL6S на шине EXT.
+        // Поле myheat: true — позиция бренда MyHeat, участвует в таблице замен.
+        { id: "6280", name: "Контроллер GO!", price: 15990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6279", name: "Контроллер GO!+ (аккумулятор, радиодатчик в комплекте)", price: 20990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6281", name: "Контроллер Smart 2 (GSM / Wi-Fi)", price: 17990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6284", name: "Контроллер Pro (модульный)", price: 41990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "7007", name: "Контроллер Eco Smart (аккумулятор, радио, 6 реле)", price: 46990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        // Блоки расширения. RL2 / RL2S — только к Smart 2; RL6 / RL6S — к Pro (шина EXT);
+        // RL6W / RL6SW — по Wi-Fi к Eco Smart (до 6 шт.).
+        { id: "6295", name: "Блок расширения RL2 (2 реле 3 А)", price: 3490, brand: "MyHeat", unit: "шт", myheat: true, relays: 2, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6296", name: "Блок расширения RL2S (2 симистора 1 А)", price: 3490, brand: "MyHeat", unit: "шт", myheat: true, triacs: 2, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6291", name: "Блок расширения RL6 (6 реле 3 А)", price: 8490, brand: "MyHeat", unit: "шт", myheat: true, relays: 6, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6292", name: "Блок расширения RL6S (6 симисторов 1 А)", price: 9490, brand: "MyHeat", unit: "шт", myheat: true, triacs: 6, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "7010", name: "Блок расширения RL6W (6 реле 3 А, Wi-Fi, DIN)", price: 14990, brand: "MyHeat", unit: "шт", myheat: true, relays: 6, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "7011", name: "Блок расширения RL6SW (6 симисторов 1 А, Wi-Fi, DIN)", price: 15990, brand: "MyHeat", unit: "шт", myheat: true, triacs: 6, availability: "in_stock", price_date: "2026-10-08" },
+        // Адаптеры цифровой шины: первый котёл ведётся шиной, встроенной в прибор,
+        // адаптер нужен второму (каскад) — у Pro и Eco Smart.
+        { id: "6309", name: "Адаптер цифровой шины для Pro", price: 6490, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "7008", name: "Адаптер цифровой шины для Eco Smart", price: 6990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        // Радиомодуль для радиодатчиков и радиотермостатов: у GO!+ и Eco Smart радио
+        // в корпусе, у Smart 2 и Pro — отдельный RDT2.
+        { id: "6288", name: "Радиомодуль RDT2 (868 МГц)", price: 4590, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6310", name: "Блок питания на DIN-рейку 12 В", price: 2290, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        // Датчик в гильзу на шину 1-Wire (DS18B20): до 5 датчиков на шину, кабель до 60 м.
+        { id: "6286", name: "Датчик температуры в колбе (1-Wire)", price: 1350, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        // Датчик давления 4–20 мА — только Pro, Eco Smart и блок IO4.
+        { id: "7002", name: "Датчик давления 4–20 мА", price: 5990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" }
     ],
 
     // Датчики воздуха для регулирования отопительного контура по температуре
@@ -6716,6 +6754,15 @@ const catalog = {
         { id: "ML00004436", name: "Радиодатчик температуры комнатный МЛ-740 (868 МГц)", price: 3450, brand: "ZONT", unit: "шт", kind: "sensor", link: "radio", availability: "in_stock", price_date: "2026-09-23" },
         { id: "ML00006088", name: "Комнатный термостат МЛ-232 (RS-485)", price: 6100, brand: "ZONT", unit: "шт", kind: "thermostat", link: "wired", availability: "in_stock", price_date: "2026-09-23" },
         { id: "ML00006557", name: "Комнатный термостат МЛ-332 (868 МГц)", price: 6900, brand: "ZONT", unit: "шт", kind: "thermostat", link: "radio", availability: "in_stock", price_date: "2026-09-23" },
+        // MyHeat (тариф «Профи»): проводной датчик и термостат идут по шине 1-Wire,
+        // термостат — и по радио (через RDT2 у Smart 2 и Pro, у GO!+ и Eco Smart радио в корпусе).
+        // Один артикул термостата работает и по проводу, и по радио (белый 6277, чёрный
+        // 6278 — разные исполнения корпуса); в каталоге они разведены по связи, чтобы
+        // у позиции был один артикул. Радиодатчика комнатного в прайсе ТЕРЕМ нет
+        // (6289 снят с производства) — при выборе «датчик по радио» берётся радиотермостат.
+        { id: "7000", name: "Датчик температуры комнатный проводной (1-Wire)", price: 1990, brand: "MyHeat", unit: "шт", kind: "sensor", link: "wired", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6277", name: "Комнатный термостат (проводной, 1-Wire), белый", price: 8990, brand: "MyHeat", unit: "шт", kind: "thermostat", link: "wired", color: "white", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6278", name: "Комнатный термостат (868 МГц), чёрный", price: 8990, brand: "MyHeat", unit: "шт", kind: "thermostat", link: "radio", color: "black", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
         // Двухпозиционные термостаты STOUT (3 А, ON/OFF). Подключаются иначе —
         // не по шине, а сухим контактом на клеммы «Входы термостатов», которых
         // у контроллера ровно 3. Меняется и способ регулирования: контур
