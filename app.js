@@ -36822,7 +36822,7 @@ const app = {
         return {
             // Листы самосборных насосных групп — только когда группы в смете собраны из позиций
             // (this._selfKinds выставляет подбор в render): у готовых групп STOUT/ROMMER вид другой.
-            pumpGroups: ['direct', 'thermo', 'servo']
+            pumpGroups: ['direct', 'thermo', 'servo', 'dhw']
                 .filter(k => this._selfKinds && this._selfKinds[k])
                 .map(k => ({ kind: k, url: this.SELF_GROUP_SHEETS[k] })),
             ufh: (this.state.tp1 > 0 || this.state.tp2 > 0) ? this.UFH_SHEET : null,
@@ -37104,6 +37104,7 @@ const app = {
      * но схема сборки та же: насос, краны, смеситель, обратный клапан-перемычка.
      */
     SELF_GROUP_SHEETS: {
+        dhw: 'img/nodes/selfgrp_direct.jpg',
         direct: 'img/nodes/selfgrp_direct.jpg',
         thermo: 'img/nodes/selfgrp_thermo.jpg',
         servo: 'img/nodes/selfgrp_servo.jpg'
@@ -37183,7 +37184,7 @@ const app = {
         ] }
     },
     // Подраздел сметы каждого вида группы (без номера) — по нему подпись схемы ищет свои строки.
-    SELF_KIND_TITLE: { direct: 'Самосборная группа: прямая', thermo: 'Самосборная группа: термостатическая', servo: 'Самосборная группа: под сервопривод' },
+    SELF_KIND_TITLE: { direct: 'Самосборная группа: прямая', thermo: 'Самосборная группа: термостатическая', servo: 'Самосборная группа: под сервопривод', dhw: 'Самосборная группа: загрузка бойлера' },
     // Сверка подписей схемы со сметой: [подпись, какие артикулы сметы её закрывают, искать во всей котельной?].
     // null вместо артикулов — позиции этой подписи в смете нет и не закладывается.
     SELF_LABEL_RULES: [
@@ -37205,6 +37206,10 @@ const app = {
         [/^Удлинитель/, /^SFT-0001-003430/],
         [/^Сгон/, /^SFT-0032-034100/]
     ],
+    // Подписи схемы вида kind. Группа загрузки бойлера собрана как прямая — у неё лист прямой.
+    sgLab: function (kind) {
+        return this.SELF_GROUP_LABELS[kind === 'dhw' ? 'direct' : kind];
+    },
     sgRule: function (text) {
         return this.SELF_LABEL_RULES.find(r => r[0].test(String(text || ''))) || null;
     },
@@ -37233,10 +37238,11 @@ const app = {
         // нет в подразделе группы — берём ту же позицию из соседнего подраздела, а не считаем её потерянной.
         return own.length ? own : all;
     },
-    renderPumpGroupScheme: function () {
+    // Схема одной группы (kind) — над её подразделом сметы. Без kind — все схемы подряд (на случай внешнего вызова).
+    renderPumpGroupScheme: function (kind) {
         this.sgInit();
-        return this.projectNodeSheetUrls().pumpGroups.map(p => {
-            const lab = this.SELF_GROUP_LABELS[p.kind];
+        return this.projectNodeSheetUrls().pumpGroups.filter(p => !kind || p.kind === kind).map(p => {
+            const lab = this.sgLab(p.kind);
             let sum = '';
             if (lab) {
                 const okList = lab.l.map(l => this.sgRows(p.kind, this.sgRule(l[0])).length > 0);
@@ -37258,14 +37264,47 @@ const app = {
             document.querySelectorAll('.sg-hl').forEach(e => e.classList.remove('sg-hl'));
             document.querySelectorAll('tr.sg-row-hl').forEach(e => e.classList.remove('sg-row-hl'));
         };
-        const hotOf = (el) => el && el.closest ? el.closest('.sg-hot, .sg-pt') : null;
+        const hotOf = (el) => el && el.closest ? el.closest('.sg-hot, .sg-pt, .sg-hit') : null;
+        // Подсказка у курсора: строки сметы, которые закрывают подпись (строка может быть далеко от схемы, за экраном).
+        const tipEl = () => {
+            let t = document.getElementById('sg-tip');
+            if (!t) { t = document.createElement('div'); t.id = 'sg-tip'; t.className = 'no-print'; document.body.appendChild(t); }
+            return t;
+        };
+        const hideTip = () => { const t = document.getElementById('sg-tip'); if (t) t.style.display = 'none'; };
+        const rowBrief = (tr) => {
+            const idx = (tr.querySelector('.col-idx') || {}).innerText || '';
+            const nm = ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
+            const qEl = tr.querySelector('.col-qty input');
+            const q = qEl ? qEl.value : ((tr.querySelector('.col-qty') || {}).innerText || '').trim();
+            const sum = ((tr.querySelector('.col-sum') || {}).innerText || '').trim();
+            return `<div class="sg-tip-row"><b>№ ${idx.trim()}</b> ${nm.replace(/</g, '&lt;')} <span>${q} шт. · ${sum}</span></div>`;
+        };
+        document.addEventListener('mousemove', (e) => {
+            const t = document.getElementById('sg-tip');
+            if (!t || t.style.display === 'none') return;
+            const w = t.offsetWidth, h = t.offsetHeight;
+            t.style.left = Math.max(8, Math.min(innerWidth - w - 8, e.clientX + 16)) + 'px';
+            t.style.top = Math.max(8, Math.min(innerHeight - h - 8, e.clientY + 18)) + 'px';
+        });
         document.addEventListener('mouseover', (e) => {
             const hot = hotOf(e.target);
             if (hot) {
                 clear();
+                {
+                    const [k0, i0] = String(hot.getAttribute('data-sg')).split(':');
+                    const lab0 = this.sgLab(k0), rows0 = this.sgRows(k0, this.sgRule(lab0 && lab0.l[i0] && lab0.l[i0][0]));
+                    const t = tipEl();
+                    t.innerHTML = '<div class="sg-tip-h">' + String((lab0 && lab0.l[i0] && lab0.l[i0][0]) || '').replace(/</g, '&lt;') + '</div>' +
+                        (rows0.length ? rows0.slice(0, 4).map(rowBrief).join('') + (rows0.length > 4 ? '<div class="sg-tip-row">… и ещё ' + (rows0.length - 4) + '</div>' : '')
+                            : '<div class="sg-tip-row sg-tip-miss">В смете этой позиции нет</div>');
+                    t.style.display = 'block';
+                    t.style.left = Math.max(8, Math.min(innerWidth - t.offsetWidth - 8, e.clientX + 16)) + 'px';
+                    t.style.top = Math.max(8, Math.min(innerHeight - t.offsetHeight - 8, e.clientY + 18)) + 'px';
+                }
                 const [kind, i] = String(hot.getAttribute('data-sg')).split(':');
                 document.querySelectorAll('[data-sg="' + kind + ':' + i + '"]').forEach(x => x.classList.add('sg-hl'));
-                const lab = this.SELF_GROUP_LABELS[kind];
+                const lab = this.sgLab(kind);
                 this.sgRows(kind, this.sgRule(lab && lab.l[i] && lab.l[i][0])).forEach(tr => tr.classList.add('sg-row-hl'));
                 return;
             }
@@ -37275,7 +37314,7 @@ const app = {
             let any = false;
             document.querySelectorAll('.sg-hot').forEach(h => {
                 const [kind, i] = String(h.getAttribute('data-sg')).split(':');
-                const lab = this.SELF_GROUP_LABELS[kind];
+                const lab = this.sgLab(kind);
                 const rule = this.sgRule(lab && lab.l[i] && lab.l[i][0]);
                 if (rule && this.sgIdMatch(rule, id) && (rule[2] || sub.indexOf(this.SELF_KIND_TITLE[kind]) >= 0)) {
                     document.querySelectorAll('[data-sg="' + kind + ':' + i + '"]').forEach(x => x.classList.add('sg-hl'));
@@ -37286,6 +37325,7 @@ const app = {
         });
         document.addEventListener('mouseout', (e) => {
             if (hotOf(e.target) || (e.target.closest && e.target.closest('#print-area tr[data-rk]'))) clear();
+            if (hotOf(e.target)) hideTip();
         });
         // Щелчок по подписи — к строке сметы (раньше, чем сработает открытие схемы на весь экран).
         document.addEventListener('click', (e) => {
@@ -37293,7 +37333,7 @@ const app = {
             if (!hot) return;
             e.stopPropagation();
             const [kind, i] = String(hot.getAttribute('data-sg')).split(':');
-            const lab = this.SELF_GROUP_LABELS[kind];
+            const lab = this.sgLab(kind);
             const rows = this.sgRows(kind, this.sgRule(lab && lab.l[i] && lab.l[i][0]));
             if (!rows.length) return;
             const fs = document.querySelector('.scheme-fullscreen, .scheme-fs-overlay');
@@ -37353,15 +37393,29 @@ const app = {
         const a = this.SHEET_SIZE;
         // Подписи схемы самосборной группы — прозрачные кликабельные рамки поверх картинки (см. sgInit).
         let overlay = '';
-        const lab = sgKind && this.SELF_GROUP_LABELS ? this.SELF_GROUP_LABELS[sgKind] : null;
+        const lab = sgKind && this.SELF_GROUP_LABELS ? this.sgLab(sgKind) : null;
         if (lab) {
             const sc = Math.min(a.w / lab.w, a.h / lab.h), ox = (a.w - lab.w * sc) / 2, oy = (a.h - lab.h * sc) / 2;
             overlay = lab.l.map((l, i) => {
                 const ok = this.sgRows(sgKind, this.sgRule(l[0])).length > 0;
                 const r = (v, o) => Math.round(o + v * sc);
                 const tip = ok ? '' : '<title>Этой позиции со схемы нет в смете</title>';
-                return `<rect class="sg-hot ${ok ? 'sg-ok' : 'sg-miss'}" data-sg="${sgKind}:${i}" x="${r(l[1], ox)}" y="${r(l[2], oy)}" width="${Math.round((l[3] - l[1]) * sc)}" height="${Math.round((l[4] - l[2]) * sc)}">${tip}</rect>` +
+                const geo = `x="${r(l[1], ox)}" y="${r(l[2], oy)}" width="${Math.round((l[3] - l[1]) * sc)}" height="${Math.round((l[4] - l[2]) * sc)}"`;
+                // sg-hot — видимая рамка, sg-hit — невидимая зона наведения с запасом в экранных пикселях (подписи на листе мелкие).
+                return `<rect class="sg-hot ${ok ? 'sg-ok' : 'sg-miss'}" data-sg="${sgKind}:${i}" ${geo}></rect>` +
                     `<circle class="sg-pt" data-sg="${sgKind}:${i}" cx="${r(l[5], ox)}" cy="${r(l[6], oy)}" r="${Math.round(14 * sc)}"/>`;
+            }).join('') + lab.l.map((l, i) => {
+                const ok = this.sgRows(sgKind, this.sgRule(l[0])).length > 0;
+                const r = (v, o) => Math.round(o + v * sc);
+                // Зона наведения шире самой подписи (она мелкая), но не заходит на соседей: вверх и вниз — до середины зазора, не больше 26 пикселей листа.
+                let up = -1e9, dn = 1e9;
+                lab.l.forEach((q, j) => {
+                    if (j === i || q[3] < l[1] || q[1] > l[3]) return;
+                    if (q[4] <= l[2]) up = Math.max(up, q[4]); else if (q[2] >= l[4]) dn = Math.min(dn, q[2]);
+                });
+                const padUp = Math.min(26, Math.max(0, (l[2] - up) / 2)), padDn = Math.min(26, Math.max(0, (dn - l[4]) / 2));
+                const x0 = l[1] - 8, x1 = l[3] + 8, y0 = l[2] - padUp, y1 = l[4] + padDn;
+                return `<rect class="sg-hit" data-sg="${sgKind}:${i}" x="${r(x0, ox)}" y="${r(y0, oy)}" width="${Math.round((x1 - x0) * sc)}" height="${Math.round((y1 - y0) * sc)}">${ok ? '' : '<title>Этой позиции со схемы нет в смете</title>'}</rect>`;
             }).join('');
         }
         return `<div class="automation-scheme" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">` +
@@ -78251,9 +78305,9 @@ const app = {
             // строкой с переключателем схемы загрузки.
             const _selfKit = (type, n, pumpItem, servoItem, opt) => {
                 if (!(n > 0)) return;
-                this._selfKinds[type] = true;
                 // Группа загрузки бойлера — отдельный подраздел со своей нагрузкой (по змеевику бака и котлу), вид комплекта — прямая.
                 const key = opt && opt.sub === 'dhw' ? 'dhw' : type;
+                this._selfKinds[key] = true;
                 this._selfCounts[key] = (this._selfCounts[key] || 0) + n;
                 // Нагрузка на группы этого вида (для проверки мощности и скорости в трубе 3/4"): задаёт вызывающий.
                 if (opt && opt.loadKw > 0) this._selfLoads[key] = { kw: opt.loadKw, groups: n, dt: opt.dt || 20 };
@@ -84961,7 +85015,10 @@ const app = {
         [['automation_scheme_row', '2.9.1.', () => this.thermaticConfig && this.renderAutomationScheme()],
          ['ufh_scheme_row', '4.5. Автоматика радиаторов', () => this.renderUfhScheme()],
          ['snow_scheme_row', '4.4.1', () => this.renderSnowScheme()],
-         ['pump_group_scheme_row', '2.4. Гидравлика котельной', () => this.renderPumpGroupScheme()],
+         ['pump_group_scheme_row_direct', '2.4.1. Самосборная группа', () => this.renderPumpGroupScheme('direct')],
+         ['pump_group_scheme_row_thermo', '2.4.2. Самосборная группа', () => this.renderPumpGroupScheme('thermo')],
+         ['pump_group_scheme_row_servo', '2.4.3. Самосборная группа', () => this.renderPumpGroupScheme('servo')],
+         ['pump_group_scheme_row_dhw', '2.4.4. Самосборная группа', () => this.renderPumpGroupScheme('dhw')],
          ['rad_panel_scheme_row', '3. Приборы отопления', () => this.renderRadPanelScheme(), true],
          ['rad_node_scheme_row', '3.3. Трубы отопления', () => this.renderRadNodeScheme()],
          ['ufh_node_scheme_row', '4. Водяной тёплый пол', () => this.renderUfhNodeScheme(), true],
