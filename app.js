@@ -37545,8 +37545,7 @@ const app = {
     automationSchemeArt: function () {
         const tc = this.thermaticConfig;
         if (!tc || !window.projectScheme || !window.projectScheme.automation || !window.projectSheets) return null;
-        // Схема подключения MyHeat пока не рисуется: клеммы по паспортам прибора и блоков — отдельный этап.
-        if (tc.mh) return null;
+
         // Артикулы подобранных позиций — постер показывает фото именно того
         // оборудования, которое лежит в смете (img/<артикул>.jpg)
         const spec = this.currentSpec || [];
@@ -37621,6 +37620,7 @@ const app = {
         }
         // У приборов разные клеммы, значит и лист свой у каждого. Общая у них
         // только графика — палитра, значки и колодки (см. project_scheme.js).
+        if (tc.mh && window.projectScheme.automationMyheat) return window.projectScheme.automationMyheat(tc, items);
         if (tc.hser && window.projectScheme.automationH) return window.projectScheme.automationH(tc, items);
         if (tc.model === 'basic' && tc.brand === 'zont' && window.projectScheme.automationSmart2) {
             return window.projectScheme.automationSmart2(tc, items);
@@ -72850,12 +72850,13 @@ const app = {
         { id: '6284', name: 'MyHeat Pro', short: 'Pro', relays: 4, triacs: 4, inputs: 2, pressure: true, maxDev: 0, maxMix: 25, bus: 2, adapter: '6309',
             ext: { relay: '6291', triac: '6292', per: 6, max: 12 }, di: '6298', radio: false, mains: false, kitFlask: 2, kitAirWired: 1 },
         // Eco Smart: клеммы именные (паспорт, п. 1.5): 2 смесительных узла (привод + насос), насос прямого контура,
-        // насос бойлера, привод крана перекрытия воды, ещё два реле — «прочее» (котёл, рециркуляция, соленоид).
+        // насос бойлера, привод крана перекрытия воды, одно реле с сухим контактом — резервный котёл (паспорт, п. 11).
+        // У рециркуляции и соленоидного клапана именных клемм нет — им блоки RL6W / RL6SW.
         // Всё сверх этого — блоки RL6W / RL6SW по Wi-Fi: не более 3 через собственную сеть контроллера (паспорт блока, часть 3;
         // до 6 — только через домашний роутер). Входов NTC четыре, три датчика NTC 10K в комплекте.
         { id: '7007', name: 'MyHeat Eco Smart', short: 'Eco Smart', relays: 6, triacs: 4, inputs: 2, pressure: true, maxDev: 0, maxMix: 14, bus: 2, adapter: '7008',
             ext: { relay: '7010', triac: '7011', per: 6, max: 3 }, radio: true, mains: true, kitNtc: 3,
-            typed: { mixPair: 2, mixPump: 2, direct: 1, dhw: 1, valve: 1, other: 2 }, ntcSlots: { mix: 2, dhw: 1, cascade: 1 } }
+            typed: { mixPair: 2, mixPump: 2, direct: 1, dhw: 1, valve: 1, other: 1 }, ntcSlots: { mix: 2, dhw: 1, cascade: 1 } }
     ],
     // Для тех мест, где контроллер выбирают по «уровню» (как у STOUT и ZONT): без смесителей —
     // Smart 2, со смесителями — Pro. Сам состав решает myheatFit по нагрузкам.
@@ -72907,12 +72908,12 @@ const app = {
 
         // Нагрузки (без котлов на реле — их число зависит от модели). role — именной выход Eco Smart.
         const loads = [];
-        if (leakOn && cfg.leakSolenoid) loads.push({ k: 'relay', role: 'other', label: 'Соленоидный клапан на вводе ХВС' });
+        if (leakOn && cfg.leakSolenoid) loads.push({ k: 'relay', role: 'x', label: 'Соленоидный клапан на вводе ХВС' });
         if (leakPair) loads.push({ k: 'pair', role: 'valve', label: 'Кран защиты от протечки (привод «открыть / закрыть»)' });
         circuits.filter(x => x.type === 'mix').forEach(x => loads.push({ k: 'pair', role: 'mixPair', label: 'Привод смесителя ' + x.name, circuit: x.name }));
         if (pumpsOn) circuits.forEach(x => loads.push({ k: 'any', role: x.type === 'mix' ? 'mixPump' : 'direct', label: 'Насос ' + x.name, circuit: x.name }));
         if (dhwPump) loads.push({ k: 'any', role: 'dhw', label: 'Насос загрузки бойлера ГВС' });
-        if (cfg && cfg.recirc) loads.push({ k: 'any', role: 'other', label: 'Насос рециркуляции ГВС' });
+        if (cfg && cfg.recirc) loads.push({ k: 'any', role: 'x', label: 'Насос рециркуляции ГВС' });
 
         // Датчики температуры: подача каждого смесительного контура, бойлер, каскад.
         const probes = [];
