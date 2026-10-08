@@ -42543,15 +42543,8 @@ const app = {
         const email = document.getElementById('auth_email_input').value.trim();
         const password = document.getElementById('auth_reg_password').value.trim();
 
-        // Выбор «хочу информационные письма» запоминаем вместе с почтой: учётная запись в базе
-        // появляется только при первом входе, и тогда выбор уходит в базу (flushPendingMailConsent).
-        // Привязка к почте нужна, чтобы чужой выбор не лёг на следующего, кто войдёт с этого устройства.
-        try {
-            const mailChk = document.getElementById('chk_mail_consent');
-            localStorage.setItem('hc_pending_mail_consent', JSON.stringify({
-                email: email.toLowerCase(), v: !!(mailChk && mailChk.checked), t: Date.now()
-            }));
-        } catch (e) { /* без localStorage согласие просто не запомнится, включить можно в кабинете */ }
+        // Галочки «информационные письма» в форме больше нет: согласие остаётся «не отвечал»
+        // (null), включить его можно в кабинете. flushPendingMailConsent без записи ничего не делает.
 
         const authErrEl = document.getElementById('auth_error_msg');
         if (authErrEl) authErrEl.style.display = 'none';
@@ -42643,10 +42636,7 @@ const app = {
 
             // Логика блокировки: Если emailExists === true
             if (emailExists === true) {
-                if (authErrEl) {
-                    authErrEl.innerText = 'Пользователь с таким email уже существует. Пожалуйста, войдите в систему.';
-                    authErrEl.style.display = 'block';
-                }
+                if (authErrEl) this.showEmailExistsHint(authErrEl, email);
                 if (btn) {
                     btn.disabled = false;
                     btn.innerText = 'Зарегистрироваться';
@@ -42847,19 +42837,60 @@ const app = {
             const friendlyErr = getFriendlyErrorMessage(err);
             if (authErrEl) {
                 const msg = (err.message || "").toLowerCase();
+                this.backToAuthMain(); // Возвращаем к форме, чтобы пользователь видел ошибку
                 if (msg.includes('already registered') || msg.includes('already exists')) {
-                    authErrEl.innerText = 'Пользователь с таким email уже существует. Пожалуйста, войдите в систему.';
+                    this.showEmailExistsHint(authErrEl, email);
                 } else {
                     authErrEl.innerText = 'Ошибка регистрации: ' + friendlyErr;
+                    authErrEl.style.display = 'block';
                 }
-                authErrEl.style.display = 'block';
-                this.backToAuthMain(); // Возвращаем к форме, чтобы пользователь видел ошибку
             } else {
                 app.alert('Ошибка регистрации: ' + friendlyErr);
             }
         } finally {
             if (btn) { btn.disabled = false; btn.innerText = 'Подтвердить'; }
         }
+    },
+
+    // Почта уже зарегистрирована: вместо тупика «войдите» даём два выхода сразу в окне регистрации —
+    // перейти ко входу с этой почтой или выслать на неё ссылку для нового пароля.
+    showEmailExistsHint: function (el, email) {
+        if (!el) return;
+        el.innerHTML = '';
+        const text = document.createElement('div');
+        text.textContent = 'Пользователь с таким email уже существует.';
+        el.appendChild(text);
+        const row = document.createElement('div');
+        row.style.cssText = 'margin-top:6px; display:flex; gap:14px; flex-wrap:wrap;';
+        const mk = (label, fn) => {
+            const a = document.createElement('a');
+            a.href = '#';
+            a.textContent = label;
+            a.style.cssText = 'color: var(--primary); font-weight: 600; text-decoration: none;';
+            a.onclick = (e) => { e.preventDefault(); fn(a); };
+            return a;
+        };
+        row.appendChild(mk('Войти', () => {
+            el.style.display = 'none';
+            this.switchAuthTab('login');
+        }));
+        row.appendChild(mk('Выслать пароль на почту', async (a) => {
+            a.style.pointerEvents = 'none';
+            a.textContent = 'Отправка...';
+            try {
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+                if (error) throw error;
+                el.style.color = 'var(--text-sec)';
+                el.textContent = 'Письмо со ссылкой для нового пароля отправлено на ' + email + '. Проверьте также «Спам».';
+            } catch (err) {
+                a.style.pointerEvents = '';
+                a.textContent = 'Выслать пароль на почту';
+                app.alert('Ошибка: ' + getFriendlyErrorMessage(err));
+            }
+        }));
+        el.appendChild(row);
+        el.style.color = '#ef4444';
+        el.style.display = 'block';
     },
 
     showForgotPasswordView: function () {

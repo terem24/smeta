@@ -2853,13 +2853,8 @@
                                 <input type="checkbox" id="chk_privacy" required style="width: 15px; height: 15px; cursor: pointer; flex-shrink: 0;">
                                 <span>Согласен с <a href="privacy-policy.html" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: none;">политикой обработки персональных данных</a></span>
                             </label>
-                            <!-- Необязательное и по умолчанию не отмеченное: согласие на информационные
-                                 письма (напоминания, советы, поздравления) даётся отдельно от согласия
-                                 на обработку данных. Служебные письма (коды, статусы смет) идут без него. -->
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 11.5px; color: var(--text-sec); line-height: 1.4;">
-                                <input type="checkbox" id="chk_mail_consent" style="width: 15px; height: 15px; cursor: pointer; flex-shrink: 0;">
-                                <span>Хочу получать информационные письма и напоминания (необязательно)</span>
-                            </label>
+                            <!-- Согласие на информационные письма в форме регистрации не спрашиваем:
+                                 форму не перегружаем, переключатель — в кабинете (Уведомления, #profile_mail_consent) -->
                         </div>
                     </div>
                     <div id="auth_error_msg" style="color: #ef4444; font-size: 13px; margin: 0 0 12px; display: none; text-align: left; line-height: 1.4;"></div>
