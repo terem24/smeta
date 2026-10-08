@@ -32,6 +32,8 @@
     // которые клиенту нужны: материал трубы, класс давления, диаметр, стандарт.
     var WHITE = /^(PE-?X(-?[abc])?|PEX(-?[abc])?|PE-?RT|PE|RT|EVOH|PP-?R(CT)?|PPR|PVC|PVDF|PN\d*|DN\d*|Dn\d*|XPS|EPDM|FPM|NBR|NTC|DIN|IP\d+|AISI|Al|HP|II|III|Kv|RS-?485|eBUS|LED|UV|SDR\d*|SN\d*|PTFE|PET|LS|NO|NC|AC|DC|PWM|DHW|WiFi|Wi-Fi|GSM|USB|LoRa|ZigBee|Bluetooth|UTP|FTP|R[pc]?|G)$/i;
 
+    // Модельные коды из латиницы и цифр, которые правило «короткая приставка — размер» иначе оставило бы
+    var MODEL_CODE = /^(?:H\d{3,4}\+?|ZE-\d{2,3}|EX-\d{2,3})$/;
     // Слова-серии, написанные кириллицей
     var CYR_SERIES = /^(АНТИЛ[ЕЁ]Д|ПРОТЕКТ)$/i;
     var CYR_SERIES_CASE = /^ПРО$/;
@@ -51,6 +53,10 @@
         if (/^ВВГнг/.test(core)) return false;                       // марка кабеля
         if (CYR_SERIES.test(core) || CYR_SERIES_CASE.test(core)) return true;
         if (CYR_CODE.test(core)) return true;
+        // Слово, где есть кириллица, — часть описания, а не модель: «DIN-рейку», «ВР/НР»
+        if (/[А-Яа-яЁё]/.test(core)) return false;
+        // Модельные коды контроллеров и блоков: «H1000+», «ZE-44», «EX-108»
+        if (MODEL_CODE.test(core)) return true;
         // Размеры и резьба: «20xR3/4"», «Rp3/4"», «Dn63», «A4» — цифры и короткие
         // буквенные приставки (до двух букв подряд), это не название модели
         if (/^\d/.test(core)) return false;                              // размер вида «25xRp3/4"»
@@ -95,6 +101,11 @@
             var drop = isModelWord(p.core);
             // «Haier A4»: буква и цифра сразу за убранным словом — тоже модель
             if (!drop && prevRemoved && /^[A-Z]\d$/.test(p.core)) drop = true;
+            // Версия модели: «SMART 2.0» — одна цифра, точка, одна цифра за убранным словом
+            if (!drop && prevRemoved && /^\d\.\d$/.test(p.core)) {
+                var nextV = stripPunct(words[i + 1] || '').core;
+                if (!UNIT_AFTER.test(nextV)) drop = true;
+            }
             // Номер модели: «Thermatic 3001», «NOVA QUAD 001» — три и более цифры подряд
             // сразу за убранным словом, если дальше не единица измерения
             if (!drop && prevRemoved && /^\d{3,}$/.test(p.core)) {

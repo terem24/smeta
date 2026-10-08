@@ -3079,6 +3079,10 @@
       t: 'Насосная группа со смесителем × ' + tc.mixCount,
       s: cut(nm.mixGroup || 'узел тёплого пола', 44) + ' — температуру держит термостатическая головка'
     });
+    if (onBlocks.length) offList.push({
+      t: 'Блоки расширения ' + (f.blocks && f.blocks.n44 ? 'ZE-44 × ' + f.blocks.n44 : '') + (f.blocks && f.blocks.n22 ? (f.blocks.n44 ? ' · ' : '') + 'ZE-22 × ' + f.blocks.n22 : '') + ' (RS-485)',
+      s: cut(onBlocks.map(function (a) { return a.label; }).join(', '), 70) + ' — клеммы блока по его паспорту'
+    });
     var ufh = items.ufh || null;
     if (ufh && (ufh.blocks || ufh.stats || ufh.servos)) offList.push({
       t: 'Автоматика радиаторов и тёплого пола (раздел 4.5)',
@@ -3872,6 +3876,7 @@
     }
     if (tc.leakQty > 0) uniIn.push({ what: 'leak', pin: takeIn() });
     if (f.pressureOn) uniIn.push({ what: 'press', pin: takeIn() });
+    if (f.snowIn) uniIn.push({ what: 'snow', pin: takeIn() });
     function nextRelay() { return relIdx < M.relays ? T['r' + (++relIdx)] : null; }
     function nextOc() { return uniAll.length ? uniAll.shift() : null; }
 
@@ -3886,7 +3891,9 @@
       ico: icoBreaker, title: 'Блок питания 12 В', sub: 'из комплекта · розетка ~220 В'
     });
 
+    var onBlocks = (f.assign || []).filter(function (a) { return a.block; });
     (f.assign || []).forEach(function (a) {
+      if (a.block) return;   // клеммы блока расширения — по паспорту блока, здесь не рисуем
       var isValve = /кран|соленоид/i.test(a.label), isBoiler = /котёл/i.test(a.label);
       var isMix = /смесител/i.test(a.label);
       var ico = isMix ? icoServo : isValve ? icoValveAct : isBoiler ? (relayBoilerIco || icoModule) : icoPump;
@@ -3948,7 +3955,17 @@
         legs: legsOf([{ b: u.pin.b, i: u.pin.i, c: CD1, l: 'Вх' }]), ico: icoDrop,
         title: 'Датчики протечки × ' + tc.leakQty, sub: 'шлейф АСТРА-361 на вход · полярность — паспорт'
       });
-      else {
+      else if (u.what === 'snow') {
+        // Сухой контакт реле времени датчика осадков: один провод на вход, второй — на «минус» питания.
+        dn.push({
+          legs: legsOf([{ b: u.pin.b, i: u.pin.i, c: CD1, l: 'Вх' }]), ico: icoModule,
+          title: 'Датчик осадков · через реле времени', sub: 'сухой контакт на вход · тип «Дискретный», полярность в сервисе'
+        });
+        dn.push({
+          legs: legsOf([{ b: T.pw, i: 0, c: CRS[0], l: '−' }]), ico: icoModule,
+          title: 'Датчик осадков · общий провод', sub: 'второй провод контакта — на «минус» питания'
+        });
+      } else {
         dn.push({
           legs: legsOf([{ b: u.pin.b, i: u.pin.i, c: '#EAB308', l: 'сигнал' }]), ico: icoGauge,
           title: 'Датчик давления MLD-10.01 · сигнал', sub: 'жёлтая жила — на универсальный вход'
