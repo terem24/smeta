@@ -2617,7 +2617,15 @@ const app = {
         if (elBank) elBank.innerHTML = (cc && cc.bank) ? formatBrandingText(cc.bank, defBank) : defBank;
     },
 
+    // Раздел «Реквизиты компании» закрыт, если функция «Реквизиты» не открыта тарифом
+    brandingBlocked: function () {
+        if (this.canUseBranding()) return false;
+        app.alert('Смена логотипа и реквизитов доступна на тарифе «Профи».');
+        return true;
+    },
+
     handleProfileLogoUpload: function (event) {
+        if (this.brandingBlocked()) { event.target.value = ''; return; }
         const file = event.target.files[0];
         if (!file) return;
         if (file.size > 1048576) {
@@ -2642,6 +2650,7 @@ const app = {
     },
 
     resetProfileLogo: function () {
+        if (this.brandingBlocked()) return;
         this.setCompanyDetails({ logo: "" });
         const imgPreview = document.getElementById('profile_logo_preview');
         const _b = this.distBrand();
@@ -2651,6 +2660,7 @@ const app = {
     },
 
     resetCompanyDetails: function () {
+        if (this.brandingBlocked()) return;
         this.setCompanyDetails({ name: "", website: "", address: "", bank: "", logo: "" });
         if (document.getElementById('profile_company_name')) document.getElementById('profile_company_name').value = "";
         if (document.getElementById('profile_company_website')) document.getElementById('profile_company_website').value = "";
@@ -10905,6 +10915,8 @@ const app = {
             for (const part of chunk(distIds, 60)) {
                 const { data: rows, error } = await supabaseClient.from('team_activity')
                     .select('*').in('distributor_id', part)
+                    // Правки реквизитов — в своём журнале («Тарифы»), в ленте филиала им не место
+                    .in('action', Object.keys(this.BRANCH_ACTIONS))
                     .order('created_at', { ascending: false }).limit(3000);
                 if (error) throw error;
                 data.activity.push(...(rows || []));
@@ -12655,10 +12667,14 @@ const app = {
 
             // Ищем смету в кеше; если кэш ещё не загружен (например, запрос пришёл из
             // карточки уведомления, а не из открытого списка смет) — подтягиваем точечно из БД
+            // Запись из кеша списка — заглушка: в ней только calc_id и shared_invoice_id,
+            // без сумм (список не тянет calc_data целиком). Раньше письмо уходило с
+            // «0 ₽» и без оборудования. Суммы и КП берём из базы всегда.
             let est = (this._cloudEstimates || []).find(e => String(e.id) === String(estimateId));
-            if (!est) {
-                const { data: estRow } = await supabaseClient.from('estimates').select('id, project_name, calc_data, eq_sum, works_sum').eq('id', estimateId).maybeSingle();
-                est = estRow;
+            {
+                const { data: estRow } = await supabaseClient.from('estimates')
+                    .select('id, project_name, calc_data, eq_sum, works_sum, total_sum').eq('id', estimateId).maybeSingle();
+                if (estRow) est = { ...(est || {}), ...estRow };
             }
             if (!est || !est.calc_data) {
                 await app.alert('Данные сметы не найдены. Попробуйте обновить список.');
@@ -12678,9 +12694,40 @@ const app = {
             const EMAILJS_TEMPLATE_ID = "template_lg1zol9";
             const EMAILJS_PUBLIC_KEY = "-m4N93pTqMlCfuBpT";
 
-            const eqSum = est.eq_sum || 0;
+            // Менеджеру для счёта нужно только оборудование — монтаж в письмо не идёт.
+            // Оборудование — из КП, которое одобрил клиент (shared_invoices.items):
+            // в самой смете списка позиций нет, только настройки расчёта.
             const worksSum = est.works_sum || 0;
-            const total = eqSum + worksSum;
+            let eqSum = est.eq_sum || 0;
+            let eqItems = [];
+            {
+                const shId = est.calc_data.shared_invoice_id || est.shared_invoice_id || '';
+                if (shId) {
+                    try {
+                        const { data: sh } = await withTimeout(
+                            supabaseClient.from('shared_invoices').select('items, totals').eq('id', shId).maybeSingle(), 4000);
+                        if (sh && sh.items && Array.isArray(sh.items.equipment)) eqItems = sh.items.equipment;
+                        if (!eqSum && sh && sh.totals) eqSum = Number(sh.totals.equipment) || 0;
+                    } catch (e) { console.warn('[sendEstimateInvoiceToManager] Оборудование КП прочитать не удалось:', e); }
+                }
+                if (!eqSum) eqSum = Math.max(0, (Number(est.total_sum) || 0) - worksSum);
+            }
+            const skuOf = (item) => item.article ? String(item.article) : realSku(item.id || item.code);
+            let equipmentText = '';
+            if (eqItems.length) {
+                equipmentText = 'Название - Артикул - Количество\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+                let copyRows = '', noSku = 0;
+                eqItems.forEach((item, idx) => {
+                    const sku = skuOf(item);
+                    equipmentText += `${idx + 1}. ${item.name} - ${sku || 'нет'} - ${item.q} шт.\n`;
+                    if (sku) copyRows += `${sku}\t${item.q}\n`; else noSku++;
+                });
+                equipmentText += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 ТАБЛИЦА ДЛЯ ИМПОРТА (выделите и скопируйте):\n'
+                    + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' + copyRows + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+                if (noSku > 0) equipmentText += `\nПозиций без артикула: ${noSku} — в таблицу импорта они не вошли, их надо подобрать по названию из списка выше.`;
+            } else {
+                equipmentText = 'Список оборудования в письмо не попал — откройте КП по кнопке ниже.';
+            }
 
             const baseOrigin = HC_LOCAL_DEV ? window.location.origin : 'https://heatcalc.ru';
             // Ссылка — на КП, которое одобрил клиент (строка shared_invoices). Раньше
@@ -12720,12 +12767,15 @@ const app = {
                 region: est.calc_data.region || 100,
                 boiler_type: "—",
                 total_sum: eqSum.toLocaleString('ru-RU') + " ₽",
-                equipment_list: `[Запрос счёта для согласованной сметы]\nКП №${kpNum}\nОборудование: ${eqSum.toLocaleString('ru-RU')} ₽\nРаботы: ${worksSum.toLocaleString('ru-RU')} ₽\nИТОГО: ${total.toLocaleString('ru-RU')} ₽`,
+                equipment_list: `[Запрос счёта для согласованной сметы]\nКП №${kpNum}\nОборудование: ${eqSum.toLocaleString('ru-RU')} ₽\n\n${equipmentText}`,
                 view_url: managerViewUrl
             };
 
+            // type 'email_only': только письмо. Без него очередь «сохраняла» бы в облако
+            // calc_data из этой записи, а там заглушка — смета потеряла бы все настройки.
             const job = {
                 id: "invoice_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+                type: 'email_only',
                 stateData: est.calc_data,
                 eqSum: eqSum,
                 worksSum: worksSum,
@@ -12755,11 +12805,12 @@ const app = {
                     // EmailJS (template_lg1zol9) поле Bcc было настроено на {{bcc_email}}
                     bcc_email: directorEmail,
                     email_subject: `[Дистрибьютор] Запрос счёта от ${tgUser.first_name || 'Монтажника'} — ${est.project_name || 'Проект'} (КП №${kpNum})`,
-                    equipment_list: `[Копия для дистрибьютора ${distCompany}]\nКП №${kpNum}\nМонтажник: ${tgUser.first_name || ''} ${tgUser.phone || ''} (${tgUser.email || ''})\nОборудование: ${eqSum.toLocaleString('ru-RU')} ₽\nРаботы: ${worksSum.toLocaleString('ru-RU')} ₽\nИТОГО: ${total.toLocaleString('ru-RU')} ₽`
+                    equipment_list: `[Копия для дистрибьютора ${distCompany}]\nКП №${kpNum}\nМонтажник: ${tgUser.first_name || ''} ${tgUser.phone || ''} (${tgUser.email || ''})\nОборудование: ${eqSum.toLocaleString('ru-RU')} ₽\n\n${equipmentText}`
                 };
 
                 const distJob = {
                     id: "invoice_dist_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+                    type: 'email_only',
                     stateData: est.calc_data,
                     eqSum: eqSum,
                     worksSum: worksSum,
@@ -13983,7 +14034,7 @@ const app = {
 
         // Тариф и срок подписки показывает раздел «Подписка» (renderSubscriptionTab)
 
-        // Реквизиты компании и логотип — доступны на любом тарифе (не только ПРО),
+        // Реквизиты компании и логотип — функция «Реквизиты» таблицы «Тарифы» (исходно Профи),
         // живут в отдельном разделе кабинета «Реквизиты компании»
         this.fillCompanyDetailsForm();
 
@@ -17630,6 +17681,16 @@ const app = {
         const current = this.installerSettings.company || {};
         this.installerSettings.company = Object.assign({}, current, patch || {});
         this.pushInstallerSettingsToCloud();
+        // В журнал — только то, что действительно изменилось (анкета шлёт все поля сразу)
+        const norm = x => String(x || '').replace(/\r/g, '').trim();
+        const changed = Object.keys(patch || {}).filter(k => this.COMPANY_FIELDS.includes(k) && norm(patch[k]) !== norm(current[k]));
+        if (changed.length) {
+            const meta = { fields: changed };
+            // Текст — коротко, самого логотипа в журнале нет (он в base64)
+            ['name', 'website'].forEach(k => { if (changed.includes(k)) meta[k] = norm(patch[k]).slice(0, 120); });
+            if (changed.includes('logo')) meta.logo = patch.logo ? 'загружен' : 'сброшен';
+            this.logTeamActivity('company_edit', { distId: this.state.distributorId, meta: meta });
+        }
     },
     // Разовый перенос реквизитов из последней сметы в настройки аккаунта. Вызывается
     // в init() сразу после загрузки state: там лежит то, что человек заполнял последним.
@@ -17690,7 +17751,8 @@ const app = {
     // Итоговые реквизиты: поле за полем своё → дистрибьютора. Пустое поле значит
     // «по умолчанию ТЕРЕМ» — так их понимают шапка, ссылка клиенту и печать.
     effectiveCompanyDetails: function () {
-        const cc = this.companyDetails() || {};
+        // Без функции «Реквизиты» свои данные не действуют (но не стираются)
+        const cc = this.canUseBranding() ? (this.companyDetails() || {}) : {};
         const b = this.distBrand() || {};
         const out = Object.assign({}, cc);
         this.COMPANY_FIELDS.forEach(k => { out[k] = this.ownCompanyField(cc, k) || b[k] || ''; });
@@ -17750,7 +17812,7 @@ const app = {
             const { data } = await supabaseClient.from('app_settings').select('value').eq('key', this.DIST_BRAND_PREFIX + distId).maybeSingle();
             value = (data && data.value) || {};
         } catch (e) { }
-        this._distBrandDraft = { distId: distId, logo: value.logo || '' };
+        this._distBrandDraft = { distId: distId, logo: value.logo || '', before: value };
         const T = this.TEREM_COMPANY;
         const field = (id, label, v, ph, rows) => `
             <label style="display:block; font-size:11px; font-weight:600; color:var(--text-sec); margin:10px 0 4px;">${label}</label>
@@ -17828,6 +17890,10 @@ const app = {
             const { error } = await supabaseClient.from('app_settings')
                 .upsert({ key: this.DIST_BRAND_PREFIX + draft.distId, value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
             if (error) throw error;
+            const dist = this.findDist(draft.distId);
+            const old = draft.before || {};
+            const changed = this.COMPANY_FIELDS.filter(k => String(old[k] || '') !== String(value[k] || ''));
+            if (changed.length) this.logTeamActivity('dist_brand', { distId: draft.distId, target: dist ? dist.company_name : null, meta: { fields: changed } });
             const ov = document.getElementById('dist_brand_overlay');
             if (ov) ov.remove();
             this.fillDistBrandMarks();
@@ -17845,6 +17911,8 @@ const app = {
         try {
             const { error } = await supabaseClient.from('app_settings').delete().eq('key', this.DIST_BRAND_PREFIX + draft.distId);
             if (error) throw error;
+            const dist = this.findDist(draft.distId);
+            this.logTeamActivity('dist_brand_delete', { distId: draft.distId, target: dist ? dist.company_name : null });
             const ov = document.getElementById('dist_brand_overlay');
             if (ov) ov.remove();
             this.fillDistBrandMarks();
@@ -17879,6 +17947,27 @@ const app = {
         document.getElementById('profile_company_address').value = cc.address ? cc.address : defAddr;
         document.getElementById('profile_company_bank').value = cc.bank ? cc.bank : defBank;
         document.getElementById('profile_logo_preview').src = cc.logo || 'img/logo.jpg';
+        // Функция «Реквизиты» закрыта тарифом: поля только для чтения, сверху пояснение
+        const brandOk = this.canUseBranding();
+        compSec.querySelectorAll('input, textarea, button').forEach(el => {
+            if (el.closest('.lk-section-head') || el.closest('.lk-card')) el.disabled = !brandOk;
+        });
+        let lockEl = document.getElementById('profile_branding_lock');
+        if (!brandOk) {
+            if (!lockEl) {
+                lockEl = document.createElement('div');
+                lockEl.id = 'profile_branding_lock';
+                lockEl.className = 'lk-card';
+                lockEl.style.cssText = 'margin-bottom:12px; font-size:13px;';
+                const head = compSec.querySelector('.lk-section-head');
+                if (head) head.insertAdjacentElement('afterend', lockEl);
+            }
+            lockEl.innerHTML = '🔒 Свой логотип и реквизиты — функция тарифа «Профи». Сейчас в шапке, КП и счёте стоят ' +
+                (this.distBrand() ? 'реквизиты вашего дистрибьютора' : 'реквизиты ТЕРЕМ') + '.' +
+                ' <a href="#" onclick="event.preventDefault(); app.closeProfileModal(); app.showModal(\'pro\');" style="color:var(--primary);">О тарифе</a>';
+        } else if (lockEl) {
+            lockEl.remove();
+        }
         // Разделы «КП и счета» и «Уведомления» читают те же installerSettings
         this.fillKpSettingsForm();
         this.refreshTelegramConnectUI();
@@ -20257,6 +20346,38 @@ const app = {
         }
     },
 
+    // Текст сообщения → безопасный HTML со ссылками. Ссылка вида heatcalc.ru/?pay=<тариф>
+    // открывает окно оплаты прямо на этой странице, остальные — в новой вкладке.
+    linkifyMsg: function (text) {
+        const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        return esc(text).replace(/https?:\/\/[^\s<]+/g, (u) => {
+            const pay = u.match(/^https:\/\/heatcalc\.ru\/\?pay=([\w-]+)/);
+            return pay
+                ? `<a href="${u}" onclick="event.stopPropagation(); return app.openPayFromLink('${pay[1]}');" style="font-weight:700; text-decoration:underline;">💳 Открыть окно оплаты</a>`
+                : `<a href="${u}" target="_blank" rel="noopener" onclick="event.stopPropagation();" style="text-decoration:underline;">${u}</a>`;
+        });
+    },
+
+    // Клик по ссылке оплаты из сообщения: закрываем окно уведомлений/переписки и открываем оплату
+    openPayFromLink: function (planId) {
+        try {
+            if (typeof this.closeNotificationsModal === 'function') this.closeNotificationsModal();
+        } catch (e) { }
+        this.openPaymentModal(planId);
+        return false;
+    },
+
+    // Заход по ссылке ?pay=<тариф> (её шлёт администратор в «Предложении») — сразу окно оплаты
+    openPayFromUrl: function () {
+        try {
+            const plan = new URLSearchParams(window.location.search).get('pay');
+            if (!plan) return;
+            const q = new URLSearchParams(window.location.search); q.delete('pay');
+            history.replaceState(null, document.title, window.location.pathname + (q.toString() ? '?' + q : '') + window.location.hash);
+            setTimeout(() => this.openPaymentModal(plan), 1200);
+        } catch (e) { }
+    },
+
     // Автоматические напоминания шлёт база (send_kp_invoice_reminders) обычным личным
     // сообщением: монтажнику «выставить счёт», менеджеру «счёт не выставлен». Узнаём их
     // по первой строке — так работают и старые, без правок на стороне базы.
@@ -20644,7 +20765,7 @@ const app = {
                                 <span onclick="event.stopPropagation(); app.dismissNotification('${n.id}', event)" title="Удалить уведомление" style="cursor:pointer; color:var(--text-sec); font-size:13px; line-height:1; padding:2px;">✕</span>
                             </div>
                         </div>
-                        <div style="font-size: 11.5px; color: var(--text-main); font-weight: 500; line-height: 1.4; white-space: pre-wrap; margin-top: 2px;">${n.comment}</div>
+                        <div style="font-size: 11.5px; color: var(--text-main); font-weight: 500; line-height: 1.4; white-space: pre-wrap; margin-top: 2px;">${this.linkifyMsg(n.comment)}</div>
                         
                         ${repliesHtml}
 
@@ -21054,7 +21175,7 @@ const app = {
                 <div class="admin-chat-bubble ${mine ? 'from-admin' : 'from-user'}${serieCls}" id="umsg_${m.id}" onclick="app.userChatReplyTo('${m.id}')" title="Нажмите, чтобы ответить на это сообщение">
                     ${(!mine && !sameAsPrev) ? `<div class="user-chat-from">${from}</div>` : ''}
                     ${quote}
-                    <div class="admin-chat-text">${esc(m.text)}<span class="admin-chat-meta">
+                    <div class="admin-chat-text">${this.linkifyMsg(m.text)}<span class="admin-chat-meta">
                         <span onclick="event.stopPropagation(); app.userChatReplyTo('${m.id}')" title="Ответить на это сообщение" class="admin-chat-reply">↩</span>
                         <span class="admin-chat-metatime">${clockTime(m.created_at)}</span>
                     </span></div>
@@ -22181,6 +22302,7 @@ const app = {
         { id: 'recognize', group: 'Функции', label: 'Распознавание', list: true, hint: 'Вкладка «Распознавание»' },
         { id: 'design', group: 'Функции', label: 'Проект', list: true, hint: 'Листы проекта и редактор планов этажей' },
         { id: 'ufhplan', group: 'Функции', label: 'Раскладка ТП', hint: 'Модуль «План отопления» в подробном режиме: загрузить план дома, отметить комнаты с тёплым полом кликом, радиаторы под окнами — раскладка петель и трассы радиаторов под сметой и в КП. Кому открыт «Проект», он доступен и так' },
+        { id: 'branding', group: 'Функции', label: 'Реквизиты', hint: 'Смена своего логотипа и реквизитов компании в кабинете. Они идут в шапку, КП, счёт и ссылку клиенту. Выключено — везде реквизиты дистрибьютора или ТЕРЕМ, уже введённые свои сохраняются и вернутся при включении' },
         { id: 'money', group: 'Функции', label: 'Деньги', hint: 'Вкладка «Деньги» (маржа по смете); гостю без входа не показывается никогда' },
         { id: 'docs', group: 'Функции', label: 'Документы', hint: 'Кнопка «Документы» в «Заказах и счетах»: договор подряда, акты, гарантийный талон' },
         // Читает не калькулятор, а invoice.html (блок «Счёт для 1С» в просмотре КП
@@ -22205,6 +22327,8 @@ const app = {
         if (feature === 'design') return 'list';
         // Раскладка тёплого пола по плану — функция «Профи» (03.10.2026)
         if (feature === 'ufhplan') return pro ? 'on' : 'off';
+        // Свой логотип и реквизиты — функция «Профи» (05.10.2026); раньше были на любом тарифе
+        if (feature === 'branding') return pro ? 'on' : 'off';
         if (feature === 'money') return (pro && (account === 'installer')) ? 'on' : 'off';
         // Договор подряда и акты — про монтаж: исходно только монтажнику, на
         // любом тарифе. Продавцу, менеджеру и наблюдателю закрыто (15.09.2026).
@@ -22220,6 +22344,7 @@ const app = {
     },
 
     canUseDocs: function () { return this.tariffAccess('docs') === 'on'; },
+    canUseBranding: function () { return this.tariffAccess('branding') === 'on'; },
     // Монтаж решается в три слоя, сильнейший первым:
     //   1) личная отметка в карточке пользователя (вкл или выкл);
     //   2) «монтаж всей компании» в таблице «Дистрибьюторы» (только включает);
@@ -22405,6 +22530,8 @@ const app = {
         this.syncRoleTabs();
         this.syncMoneyTab();
         this.syncDesignUI();
+        // Реквизиты в шапке и форма кабинета зависят от функции «Реквизиты»
+        try { this.updateHeaderCompanyDetails(); this.fillCompanyDetailsForm(); } catch (e) { }
         if (typeof RecognizeUI !== 'undefined') RecognizeUI.syncButton();
     },
 
@@ -25177,6 +25304,63 @@ const app = {
     // ═══ Вкладка «Тарифы» ════════════════════════════════════════════════
     // Сама логика доступа — у tariffCell; здесь только таблица переключателей.
     // Перерисовывается целиком на каждый щелчок: ячеек полсотни, дёшево.
+    // «Кто менял реквизиты»: свои правки людей и правки реквизитов дистрибьютора
+    // (журнал team_activity, записи company_edit / dist_brand / dist_brand_delete).
+    // Читать может администратор — политика team_activity_visible.
+    BRANDING_FIELD_LABELS: { name: 'название', website: 'сайт', address: 'адрес', bank: 'банк', logo: 'логотип' },
+    renderBrandingLog: async function (filter) {
+        const box = document.getElementById('admin_branding_log');
+        if (!box) return;
+        if (filter) this._brandingLogFilter = filter;
+        const f = this._brandingLogFilter || 'all';
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        if (!this._brandingLogRows) {
+            box.innerHTML = '<div style="color:var(--text-sec); font-size:12px;">Загрузка журнала реквизитов…</div>';
+            try {
+                const { data, error } = await supabaseClient.from('team_activity').select('*')
+                    .in('action', ['company_edit', 'dist_brand', 'dist_brand_delete'])
+                    .order('created_at', { ascending: false }).limit(300);
+                if (error) throw error;
+                this._brandingLogRows = data || [];
+            } catch (e) {
+                box.innerHTML = `<div style="color:var(--text-sec); font-size:12px;">Журнал реквизитов не прочитан: ${esc(e.message || e)}. Если таблицы или функции ещё нет — выполните миграцию 20261005_company_edit_log.sql.</div>`;
+                return;
+            }
+        }
+        const rows = this._brandingLogRows.filter(r => f === 'all' || (f === 'self' ? r.action === 'company_edit' : r.action !== 'company_edit'));
+        const distName = id => { const d = this.findDist && this.findDist(id); return d ? d.company_name : ''; };
+        const line = r => {
+            const m = r.meta || {};
+            const fields = (m.fields || []).map(k => this.BRANDING_FIELD_LABELS[k] || k).join(', ');
+            const who = esc(r.actor_name || r.actor_email || '—');
+            let what, kind;
+            if (r.action === 'company_edit') {
+                kind = 'сам';
+                what = `поменял свои реквизиты: ${esc(fields)}` + (m.logo ? ` (логотип ${esc(m.logo)})` : '') + (m.name ? ` — «${esc(m.name)}»` : '');
+            } else if (r.action === 'dist_brand') {
+                kind = 'дистрибьютор';
+                what = `поменял реквизиты компании «${esc(r.target || distName(r.distributor_id) || '—')}»: ${esc(fields)}`;
+            } else {
+                kind = 'дистрибьютор';
+                what = `удалил реквизиты компании «${esc(r.target || distName(r.distributor_id) || '—')}»`;
+            }
+            const when = new Date(r.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+            const dist = r.action === 'company_edit' && r.distributor_id ? ` <span style="color:var(--text-sec);">· ${esc(distName(r.distributor_id))}</span>` : '';
+            return `<div style="display:flex; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); font-size:12.5px;">
+                <span style="flex:0 0 78px; font-size:10.5px; color:var(--text-sec);">${kind}</span>
+                <span style="flex:1; min-width:0;"><b>${who}</b> ${what}${dist}</span>
+                <span style="white-space:nowrap; color:var(--text-sec); font-size:11px;">${when}</span>
+            </div>`;
+        };
+        const btn = (id, label) => `<button type="button" class="lk-btn-sm" style="${f === id ? 'font-weight:700;' : ''}" onclick="app.renderBrandingLog('${id}')">${label}</button>`;
+        box.innerHTML = `<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+                <h4 style="margin:0;">Кто менял реквизиты</h4>
+                ${btn('all', 'Все')}${btn('self', 'Сами')}${btn('dist', 'Дистрибьютор')}
+                <button type="button" class="lk-btn-sm" onclick="app._brandingLogRows = null; app.renderBrandingLog()">↻</button>
+            </div>
+            ${rows.length ? rows.map(line).join('') : '<div style="color:var(--text-sec); font-size:12px;">Записей пока нет. Журнал ведётся с момента выкладки.</div>'}`;
+    },
+
     renderAdminTariffs: function () {
         const box = document.getElementById('admin_tariffs_box');
         if (!box) return;
@@ -25732,8 +25916,9 @@ const app = {
         }
 
         if (this._adminTab === 'tariffs') {
-            content.innerHTML = navHtml + '<div id="admin_tariffs_box"></div>';
+            content.innerHTML = navHtml + '<div id="admin_tariffs_box"></div><div id="admin_branding_log" style="margin-top:18px;"></div>';
             this.renderAdminTariffs();
+            this.renderBrandingLog();
             return;
         }
 
@@ -37730,7 +37915,8 @@ const app = {
         if (btn) btn.classList.toggle('active', this._usersFiltersOpen);
     },
     usersDense: function () {
-        try { return localStorage.getItem('admin_users_dense') === '1'; } catch (e) { return false; }
+        // По умолчанию компактно; «Обычная плотность» запоминается как '0'
+        try { return localStorage.getItem('admin_users_dense') !== '0'; } catch (e) { return true; }
     },
     toggleUsersDense: function (btn) {
         const on = !this.usersDense();
@@ -44076,7 +44262,7 @@ const app = {
         this.state.tgUser.email = email;
         this.state.tgUser.activityTypes = activityTypes;
 
-        // Реквизиты компании и логотип — доступны на любом тарифе. Это настройка
+        // Реквизиты компании и логотип — функция «Реквизиты» (исходно Профи). Это настройка
         // учётной записи, а не сметы: сохраняем в installerSettings, откуда их не
         // сможет затереть ни загрузка чужого расчёта, ни «Сбросить всё».
         // Значение по умолчанию (реквизиты дистрибьютора или ТЕРЕМ) своим не считаем
@@ -44087,7 +44273,8 @@ const app = {
             const b = this.distBrand() || {};
             return (norm(v) === norm(this.TEREM_COMPANY[k]) || (b[k] && norm(v) === norm(b[k]))) ? '' : v;
         };
-        this.setCompanyDetails({
+        // Без функции «Реквизиты» поля показывают чужие значения и закрыты — не писать их как свои
+        if (this.canUseBranding()) this.setCompanyDetails({
             name: _ownOrEmpty('name', 'profile_company_name'),
             website: _ownOrEmpty('website', 'profile_company_website'),
             address: _ownOrEmpty('address', 'profile_company_address'),
@@ -50417,7 +50604,9 @@ const app = {
                             // Оборачиваем таймаутом: без него зависший (не отклонённый и не
                             // выполненный) сетевой запрос к Supabase блокирует _isProcessing
                             // навечно, и вся очередь (включая retry других задач) встаёт намертво.
-                            isSaved = await withTimeout(app.saveJobToCloud(job.stateData, job.eqSum, job.worksSum), 10000);
+                            isSaved = job.type === 'email_only'
+                                ? true
+                                : await withTimeout(app.saveJobToCloud(job.stateData, job.eqSum, job.worksSum), 10000);
                             if (!isSaved) {
                                 console.warn("[Queue] Не удалось сохранить смету в облаке (продолжаем отправку письма)");
                             }
@@ -52675,7 +52864,12 @@ const app = {
     WH_EL_HOUSE_SHARE: 0.4,
 
     dhwElectric: function () {
-        return !this.isFlat() && !!this.state.detailedRooms && !!this.state.hotWater && this.state.dhwSource === 'electric';
+        return !this.isFlat() && !!this.state.detailedRooms && !!this.state.hotWater && this.state.dhwSource === 'electric'
+            && !this.dhwSourceHidden();
+    },
+    // Есть газовый котёл — электрический водонагреватель не предлагаем: ГВС греет косвенный бойлер
+    dhwSourceHidden: function () {
+        return (this.state.fuels || []).includes('gas');
     },
     // Бойлер косвенного нагрева в смете: ГВС есть и греет его не электрический водонагреватель
     dhwTankOn: function () {
@@ -54117,6 +54311,7 @@ const app = {
         // Ссылка из опросника заказчика: параметры объекта — в state, текстовые
         // ответы — окном монтажнику (см. applyOprosFromUrl)
         this.applyOprosFromUrl();
+        this.openPayFromUrl();
         // Ссылка ?tarif=pro (кнопка в дайджесте новостей) открывает окно тарифа.
         // Ждём, пока восстановится сессия: у тех, у кого Профи уже есть, окно не нужно
         try {
@@ -68559,7 +68754,7 @@ const app = {
         // Только подробный режим дома: мощность и лимит сети считаются там же.
         const blkDhwSrc = document.getElementById('blk_dhw_src');
         if (blkDhwSrc) {
-            blkDhwSrc.style.display = (this.state.detailedRooms && !this.isFlat()) ? 'block' : 'none';
+            blkDhwSrc.style.display = (this.state.detailedRooms && !this.isFlat() && !this.dhwSourceHidden()) ? 'block' : 'none';
             const _src = this.dhwElectric() ? 'electric' : 'boiler';
             document.querySelectorAll('.dhw-src-tab').forEach(t => {
                 t.className = 'tab dhw-src-tab' + (t.dataset.src === _src ? ' active' : '');

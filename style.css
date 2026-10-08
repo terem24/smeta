@@ -18831,6 +18831,8 @@ body.theme-yandex #profile_modal_overlay {
 /* Содержимое не растягивается на весь широкий экран: строки на 1700 px читаются хуже, а поля
    ввода оказываются далеко от подписей */
 #profile_modal_overlay .lk-pane > div[id^="profile_tab_"] { max-width: 1240px; }
+/* «Объекты»: в таблице смет шесть кнопок в ряду — на 1240 px она сжималась в половину широкого экрана */
+#profile_modal_overlay .lk-pane > #profile_tab_objects { max-width: 1760px; }
 
 /* Шапка раздела: пояснение слева, кнопки справа */
 #profile_modal_overlay .lk-pane .lk-head-hint {
