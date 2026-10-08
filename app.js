@@ -72845,14 +72845,16 @@ const app = {
         // Smart 2: четыре DIO на всё — датчики (протечка, осадки) и блоки RL2 / RL2S, по два DIO на блок.
         { id: '6281', name: 'MyHeat Smart 2', short: 'Smart 2', relays: 1, triacs: 0, inputs: 0, dio: 4, pressure: false, maxDev: 5, maxMix: 2, bus: 1, adapter: null,
             ext: { relay: '6295', triac: '6296', per: 2, max: 2 }, radio: false, mains: false, kitAirWired: 1 },
-        // Pro: два дискретных входа, больше — блоки DI6 (по шине EXT); в комплекте два датчика в колбе.
+        // Pro: два дискретных входа, больше — блоки DI6 (по шине EXT: до 12 устройств в шлейфе — паспорт Pro, п. 31, адаптер шины тоже на ней);
+        // в комплекте два датчика в колбе.
         { id: '6284', name: 'MyHeat Pro', short: 'Pro', relays: 4, triacs: 4, inputs: 2, pressure: true, maxDev: 0, maxMix: 25, bus: 2, adapter: '6309',
-            ext: { relay: '6291', triac: '6292', per: 6, max: 6 }, di: '6298', radio: false, mains: false, kitFlask: 2, kitAirWired: 1 },
+            ext: { relay: '6291', triac: '6292', per: 6, max: 12 }, di: '6298', radio: false, mains: false, kitFlask: 2, kitAirWired: 1 },
         // Eco Smart: клеммы именные (паспорт, п. 1.5): 2 смесительных узла (привод + насос), насос прямого контура,
         // насос бойлера, привод крана перекрытия воды, ещё два реле — «прочее» (котёл, рециркуляция, соленоид).
-        // Всё сверх этого — блоки RL6W / RL6SW по Wi-Fi. Входов NTC четыре, три датчика NTC 10K в комплекте.
+        // Всё сверх этого — блоки RL6W / RL6SW по Wi-Fi: не более 3 через собственную сеть контроллера (паспорт блока, часть 3;
+        // до 6 — только через домашний роутер). Входов NTC четыре, три датчика NTC 10K в комплекте.
         { id: '7007', name: 'MyHeat Eco Smart', short: 'Eco Smart', relays: 6, triacs: 4, inputs: 2, pressure: true, maxDev: 0, maxMix: 14, bus: 2, adapter: '7008',
-            ext: { relay: '7010', triac: '7011', per: 6, max: 6 }, radio: true, mains: true, kitNtc: 3,
+            ext: { relay: '7010', triac: '7011', per: 6, max: 3 }, radio: true, mains: true, kitNtc: 3,
             typed: { mixPair: 2, mixPump: 2, direct: 1, dhw: 1, valve: 1, other: 2 }, ntcSlots: { mix: 2, dhw: 1, cascade: 1 } }
     ],
     // Для тех мест, где контроллер выбирают по «уровню» (как у STOUT и ZONT): без смесителей —
@@ -72978,6 +72980,8 @@ const app = {
             if (!fail && mixN > m.maxMix) fail = mixN > 0 && m.maxMix === 0 ? 'смесительных узлов у ' + m.short + ' нет' : 'смесительных узлов больше предела (' + m.maxMix + ')';
             // GO! и GO!+ ведут только котёл (основной и резервный): ни насосов, ни смесителей, ни крана
             if (!fail && m.noLoads && loads.length > 0) fail = m.short + ' ведёт только котёл — насосы, смесители и кран ему не подчиняются';
+            // шина EXT у Pro: до 12 устройств в шлейфе, адаптер цифровой шины тоже на ней
+            if (!fail && m.id === '6284' && (nR + nT + nD + adapters) > 12) fail = 'на шине EXT Pro не больше 12 устройств';
             const rdt = airRadio && !m.radio;
             const modules = [];
             if (ex && nR > 0) modules.push({ id: ex.relay, qty: nR, kind: 'relay' });
@@ -73068,9 +73072,13 @@ const app = {
         if (cfg.boardRemoved && cfg.wiredCount > 1) {
             cfg.warnings.push('Адаптер цифровой шины удалён из сметы — второй котёл перейдёт на релейное управление, по перемычке термостата: только «греет / не греет», без уставки, модуляции и кодов аварий. Верните позицию в смету, если это не то, что нужно.');
         }
+        // На одну шину 1-Wire — не больше 5 датчиков, шлейф до 60 м (паспорт датчика). У каждого блока RL6 / RL6S / RL6W / RL6SW
+        // свой разъём 1-Wire (паспорт блоков) — это ещё одна шина, датчик смесителя ставят на тот блок, который им управляет.
         const _flaskAll = fit.probes.filter(x => x.type === 'flask').length;
-        if (_flaskAll + fit.airWired > 5) {
-            cfg.warnings.push('На шину 1-Wire приходится ' + (_flaskAll + fit.airWired) + ' устройств (датчики в колбе и проводные комнатные приборы), а на одну шину — не больше 5 датчиков, кабель до 60 м (паспорт датчика). Лишние придётся вести вторым блоком NTC-1wire или по радио — в смету они не заложены.');
+        const _buses = 1 + fit.modules.filter(x => ['6291', '6292', '7010', '7011'].includes(x.id)).reduce((a, x) => a + x.qty, 0);
+        if (_flaskAll + fit.airWired > 5 * _buses) {
+            cfg.warnings.push('На шины 1-Wire приходится ' + (_flaskAll + fit.airWired) + ' устройств (датчики в колбе и проводные комнатные приборы), а шин в наборе ' + _buses +
+                ' и на каждую — не больше 5 датчиков, шлейф до 60 м (паспорт датчика). Лишние придётся вести вторым блоком NTC-1wire или по радио — в смету они не заложены.');
         }
         cfg.notes.push('Погодозависимое регулирование MyHeat берёт у интернет-прогноза — уличный датчик в смету не входит. ' +
             'Если нужен свой замер на объекте, берётся радиодатчик уличный (5 890 ₽) — он работает через радиомодуль RDT2 (у Smart 2 и Pro) или напрямую (у GO!, GO!+ и Eco Smart).');

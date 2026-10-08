@@ -6725,7 +6725,7 @@ const catalog = {
         // Блок дискретных входов DI6 (6 входов до 12 В) — к Pro по шине EXT: у самого Pro два дискретных входа.
         { id: "6298", name: "Блок дискретных входов DI6 (6 входов 12 В)", price: 7490, brand: "MyHeat", unit: "шт", myheat: true, inputs: 6, availability: "in_stock", price_date: "2026-10-08" },
         // Блоки расширения. RL2 / RL2S — только к Smart 2; RL6 / RL6S — к Pro (шина EXT);
-        // RL6W / RL6SW — по Wi-Fi к Eco Smart (до 6 шт.).
+        // RL6W / RL6SW — по Wi-Fi к Eco Smart (до 3 шт. через собственную сеть контроллера, до 6 — через домашний роутер; паспорт блока).
         { id: "6295", name: "Блок расширения RL2 (2 реле 3 А)", price: 3490, brand: "MyHeat", unit: "шт", myheat: true, relays: 2, availability: "in_stock", price_date: "2026-10-08" },
         { id: "6296", name: "Блок расширения RL2S (2 симистора 1 А)", price: 3490, brand: "MyHeat", unit: "шт", myheat: true, triacs: 2, availability: "in_stock", price_date: "2026-10-08" },
         { id: "6291", name: "Блок расширения RL6 (6 реле 3 А)", price: 8490, brand: "MyHeat", unit: "шт", myheat: true, relays: 6, availability: "in_stock", price_date: "2026-10-08" },
