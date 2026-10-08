@@ -80823,15 +80823,15 @@ const app = {
                 addToBill(vReturn, totalConvCount, "На обратку из конвектора.", grpC);
 
                 addToBill(catalog.conv_parts[0], totalConvCount * 2, "Монтажная гильза.", grpC);
-                addToBill(catalog.conv_parts[1], totalConvCount * 2, "Переходник на резьбу 1/2.", grpC);
+                addToBill(catalog.conv_parts.find(x => x.id === "SFA-0001-001612"), totalConvCount * 2, "Переходник на резьбу 1/2.", grpC);
 
                 if (this.state.convectorType === 'scq') {
                     // Для вентиляторных
                     addToBill(catalog.actuators, totalConvCount, "На термостатический клапан.", grpC);
                     if (totalVartronic > 0) {
-                        addToBill(catalog.conv_parts[2], totalVartronic, "Настенный регулятор Vartronic (1 шт на комнату, до 12 шт).", grpC);
+                        addToBill(catalog.conv_parts.find(x => x.id === "703102"), totalVartronic, "Настенный регулятор Vartronic (1 шт на комнату, до 12 шт).", grpC);
                     } else if (!this.state.detailedRooms) {
-                        addToBill(catalog.conv_parts[2], 1, "Настенный регулятор Vartronic.", grpC);
+                        addToBill(catalog.conv_parts.find(x => x.id === "703102"), 1, "Настенный регулятор Vartronic.", grpC);
                     }
                 }
                 // Для естественной конвекции (SCN) автоматика не выводится
