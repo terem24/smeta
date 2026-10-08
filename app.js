@@ -13967,7 +13967,12 @@ const app = {
         // Строго после региона: подсказке нужно с чем сравнивать номер
         this.showPhoneRegionHint();
         if (document.getElementById('profile_email_input')) {
-            document.getElementById('profile_email_input').value = tgUser.email || '';
+            const emailInp = document.getElementById('profile_email_input');
+            emailInp.value = tgUser.email || '';
+            // Почта, с которой вошли, — это и есть почта аккаунта: править её здесь нельзя.
+            // Редактируется только когда её нет (вход без почты) или она не подтверждена
+            // (регистрация по промокоду — там возможна опечатка).
+            emailInp.readOnly = !!(tgUser.email && !this._emailUnverified);
             const unvHint = document.getElementById('profile_email_unverified_hint');
             if (unvHint) unvHint.style.display = this._emailUnverified ? 'block' : 'none';
         }
