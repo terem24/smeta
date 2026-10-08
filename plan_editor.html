@@ -543,7 +543,7 @@ function putFloorImage(fi, onProgress) {
     console.warn('[plan_editor] ключи хранилища Supabase:', authKeysSeen);
     return Promise.reject(new Error(authKeysSeen.length
       ? 'сессия в браузере есть, но токен в ней не найден — выйдите и войдите заново'
-      : 'нет входа в учётную запись — войдите в калькуляторе по email или через Google'));
+      : 'нет входа в учётную запись — войдите в калькуляторе по email или через Яндекс ID'));
   }
   var body = JSON.stringify({
     action: 'put', key: planKey(), floor: fi + 1,

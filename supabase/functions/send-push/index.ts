@@ -34,9 +34,7 @@ const corsHeaders = {
 // Тот же список, что в app.js (app.isAdminEmail) и в политиках manager_chat_messages.
 // Меняется в одном месте — не забыть поменять и здесь.
 const ADMIN_EMAILS = [
-  "kovdorekb@gmail.com",
   "kovdor24@yandex.ru",
-  "dima24ba@gmail.com",
 ];
 
 // События по смете, ради которых стоит будить телефон. Черновики (calculated, saved)

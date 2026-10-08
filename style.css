@@ -9733,6 +9733,8 @@ body.dark-mode .automation-scheme svg {
     border-radius: 8px; cursor: pointer;
 }
 #scheme_zoom_overlay .scheme-zoom-bar button:hover { background: rgba(255, 255, 255, 0.22); }
+#scheme_zoom_overlay .scheme-zoom-count { align-self: center; min-width: 44px; text-align: center; font-size: 13px; font-weight: 700; color: #E2E8F0; }
+@media (max-width: 600px) { #scheme_zoom_overlay .scheme-zoom-bar { flex-wrap: wrap; justify-content: center; gap: 6px; padding: 8px; } }
 #scheme_zoom_overlay .scheme-zoom-canvas {
     flex: 1 1 auto; overflow: auto; padding: 16px;
     cursor: grab; -webkit-overflow-scrolling: touch;
@@ -14529,6 +14531,16 @@ body.object-flat:not(.calc-detailed) #blk_flat_ufh,
 body.object-flat:not(.calc-detailed) #blk_flat_hot_riser_row,
 body.object-flat:not(.calc-detailed) #blk_water_filter_row,
 body.object-flat:not(.calc-detailed) #blk_water_reducer_row {
+    display: none !important;
+}
+
+/* Быстрый режим (дом и квартира): карточка узла ввода ХВС короче — остаются
+   редуктор, счётчик и защита от протечки. Кран, фильтрация, каркас и подпитка
+   отопления — в подробном; значения в смете не сбрасываются. */
+body:not(.calc-detailed) #blk_outdoor_faucet_row,
+body:not(.calc-detailed) #blk_water_filter_row,
+body:not(.calc-detailed) #blk_water_frame_row,
+body:not(.calc-detailed) #blk_heating_feed_row {
     display: none !important;
 }
 
@@ -19677,4 +19689,45 @@ body.dark-mode .save-remind-field input { background: #121212; border-color: #4B
     .mb-tiers { grid-template-columns: 1fr; }
     .mb-log { grid-template-columns: 1fr 1fr; }
     .mb-log > span:nth-child(3) { grid-column: 1 / -1; white-space: normal; }
+}
+
+/* Сверка схемы самосборной группы со сметой: рамки подписей поверх листа и подсветка строк (app.sgInit). */
+.sg-hot { fill: transparent; stroke: none; pointer-events: none; }
+.sg-hot.sg-miss { stroke: #ef4444; stroke-width: 2px; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; fill: rgba(239, 68, 68, 0.10); }
+.sg-hot.sg-hl { fill: rgba(37, 99, 235, 0.28); stroke: #2563eb; stroke-width: 2px; stroke-dasharray: none; vector-effect: non-scaling-stroke; }
+/* Зона наведения: подписи на листе мелкие, поэтому зона шире рамки подписи, но не заходит на соседние подписи. */
+.sg-hit { fill: transparent; stroke: none; pointer-events: all; cursor: pointer; }
+.sg-pt { display: none; fill: rgba(37, 99, 235, 0.35); stroke: #2563eb; stroke-width: 2px; vector-effect: non-scaling-stroke; pointer-events: none; }
+.sg-pt.sg-hl { display: block; }
+/* Листы насосных групп — крупнее общей рамки схем: на них мелкие подписи, а их надо читать и наводить мышью. */
+[id^="pump_group_scheme_row_"] .automation-scheme { width: 100%; max-width: 1040px; height: auto; }
+[id^="pump_group_scheme_row_"] .automation-scheme > svg { height: auto; }
+#print-area tr.sg-row-hl td { background: rgba(37, 99, 235, 0.20) !important; box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.55); }
+#print-area tr.sg-row-flash td { animation: sg-flash 1.8s ease-out; }
+@keyframes sg-flash { 0%, 40% { background: rgba(250, 204, 21, 0.55); } 100% { background: transparent; } }
+.sg-summary { font-size: 12px; line-height: 1.5; padding: 6px 10px; margin: 6px 0 2px; border-radius: 8px; background: var(--surface-light, rgba(127,127,127,.08)); }
+.sg-miss-txt { color: #ef4444; font-weight: 600; }
+.sg-ok-txt { color: #16a34a; font-weight: 600; }
+.sg-hint { color: var(--text-sec, #6b7280); }
+
+#sg-tip { display: none; position: fixed; z-index: 99999; max-width: 420px; padding: 8px 10px; border-radius: 8px; font-size: 12px; line-height: 1.4;
+    background: var(--surface, #fff); color: var(--text-main, #111827); border: 1px solid var(--primary, #2563eb); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); pointer-events: none; }
+#sg-tip .sg-tip-h { font-weight: 700; margin-bottom: 4px; }
+#sg-tip .sg-tip-row { margin-top: 2px; }
+#sg-tip .sg-tip-row span { color: var(--text-sec, #6b7280); white-space: nowrap; }
+#sg-tip .sg-tip-miss { color: #ef4444; font-weight: 600; }
+
+/* Строка с плашкой под заголовком подраздела (group-warn-row) на телефоне: мобильная карточка товара раскладывала её в сетку
+   «картинка | название | количество», и плашка сжималась в колонку шириной ~60 px. Как у строки со схемой — одним блоком на всю ширину. */
+@media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    /* Селектор не короче мобильной карточки товара (там девять :not) и на один класс специфичнее — иначе карточка перебивает. */
+    .inv-table tr.group-warn-row:not(.row-sec):not(.group-header):not(.row-subtotal):not(.empty-state-row):not(.hide-custom-work-btn):not(.hide-custom-eq-btn):not(.scheme-row) { display: block !important; }
+    .inv-table tr.group-warn-row:not(.row-sec):not(.group-header):not(.row-subtotal):not(.empty-state-row):not(.hide-custom-work-btn):not(.hide-custom-eq-btn):not(.scheme-row) > td { display: block !important; width: 100% !important; padding: 2px 0 8px !important; grid-column: 1 / -1 !important; }
+}
+
+/* Телефон: подписи на листе в смете мельче пальца (6–7 px), касание схемы должно её увеличивать, а не уводить к чужой строке.
+   Зоны подписей в смете на сенсорных экранах отключены; в полноэкранном просмотре (там лист увеличен) они работают. */
+@media (hover: none), screen and (max-width: 768px) {
+    .automation-scheme .sg-hit { pointer-events: none; }
+    #scheme_zoom_overlay .sg-hit { pointer-events: all; }
 }

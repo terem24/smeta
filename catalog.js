@@ -2939,6 +2939,32 @@ const catalog = {
     pumps_mix: [
         { id: "SPC-0011-2560130", brand: "STOUT", name: "Насос 25/60-130", price: 12666, rommer: { id: "RCP-0004-2560130", name: "Насос циркуляционный PROFI 25/60-130", price: 5507, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" }
     ],
+    // Смесители самосборных насосных групп (режим «Самосборная», тариф «Профи»; состав — по
+    // проектам Galf: насос + смеситель + обратный клапан-перемычка, а не готовая группа).
+    // Артикулы и цены — прайс ТЕРЕМ на 10.2026. Наличие «под заказ» осознанно: позиции внесены
+    // руками, AutoPrice уточнит его сам. Цены — прайс ТЕРЕМ × коэффициент соседей по группе (STOUT ×0,836 по
+    // SVM-0120/SFT, ROMMER RVM ×0,889 по RVM-0005), как у остального каталога.
+    selfbuilt_mixer_thermo: { id: "SVM-0120-164320", name: "Клапан термостатический смесительный для систем отопления 3/4\" НР, 20–43 °C, Kv 1,6", price: 9918, brand: "STOUT", availability: "on_order", price_date: "2026-10-07", rommer: { id: "RVM-0121-164320", name: "Клапан термостатический смесительный для систем отопления 3/4\" НР, 20–43 °C, Kv 1,6", price: 3416, brand: "ROMMER", availability: "on_order", price_date: "2026-10-07" } },
+    // Защита и контроль самосборной группы (отчёт по паспортам STOUT SDG-0120 и SDG-0001: в заводских узлах есть
+    // аварийный накладной термостат на подаче тёплого пола и стрелочные термометры). Резьб нет — крепятся на трубу.
+    // Цены: STE ×0,836 (по STE-0010), SIM ×0,9 (по SIM-1001/1002); кабель — как остальной электромонтаж (ориентировочно).
+    selfbuilt_thermostat: { id: "STE-1007-200090", name: "Термостат накладной механический с пружинным фиксатором 0–90 °C", price: 1182, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    selfbuilt_thermometer_clip: { id: "SIM-1004-630015", name: "Термометр биметаллический накладной с пружиной, Dn 63 мм, 0–120 °C", price: 418, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    selfbuilt_cable_thermostat: { id: "CBL-VVG-3X15-THERMO", name: "Кабель ВВГнг(А)-LS 3×1,5 — защитный термостат в цепи питания насоса", price: 62, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-10-07" },
+    // Нижние выпуски группы на стену/коллектор, как на листах «Обвязка насосной группы» проектов: удлинитель и сгон под кран.
+    // Цены: прайс × 0,836 (серия SFT). Резьбы по названиям прайса: удлинитель внутренняя/наружная 3/4", сгон ВР-НР 3/4".
+    selfbuilt_extension_34: { id: "SFT-0001-003430", name: "Удлинитель внутренняя/наружная резьба 3/4\"x30 мм", price: 432, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    selfbuilt_longscrew_34: { id: "SFT-0032-034100", name: "Сгон 3/4\"x100 мм ВР-НР", price: 749, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    // Комплект на 1" (нагрузка выше предела по скорости в 3/4"): ниппель, тройник, обратный клапан, смесители 1". Цены: прайс × 0,836 (STOUT),
+    // × 0,899 (ROMMER RVC по RVC-0001-000020), × 0,889 (ROMMER RVM по RVM-0005). Тройник и ниппель — серии SFT, обратный клапан — SVC-0011.
+    selfbuilt_nipple_1: { id: "SFT-0004-000011", name: "Ниппель 1\" НР", price: 409, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    selfbuilt_tee_1: { id: "SFT-0020-000001", name: "Тройник 1\" ВР", price: 993, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    selfbuilt_check_1: { id: "SVC-0011-000025", name: "Клапан обратный пружинный 1\" ВР", price: 2339, brand: "STOUT", availability: "on_order", price_date: "2026-10-07", rommer: { id: "RVC-0001-000025", name: "Клапан обратный 1\"", price: 984, brand: "ROMMER", availability: "on_order", price_date: "2026-10-07" } },
+    selfbuilt_mixer_thermo_1: { id: "SVM-0120-164325", name: "Клапан термостатический смесительный для систем отопления 1\" НР, 20–43 °C, Kv 1,6", price: 9632, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    selfbuilt_mixer_3way_1: { id: "SVM-0003-012501", name: "Клапан смесительный 3-ходовой 1\", Kvs 8 м³/ч (под сервопривод)", price: 8377, brand: "STOUT", availability: "on_order", price_date: "2026-10-07", rommer: { id: "RVM-0003-010025", name: "Клапан смесительный 3-ходовой 1\", Kvs 10 м³/ч (под сервопривод)", price: 2603, brand: "ROMMER", availability: "on_order", price_date: "2026-10-07" } },
+    // Футорка: внутренняя 3/4" (принимает НР смесителя) и наружная 1" (в Rp 1" комплекта насоса).
+    selfbuilt_futorka_34_1: { id: "SFT-0028-000134", name: "Футорка внутренняя/наружная резьба 3/4\"х1\"", price: 248, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    selfbuilt_mixer_3way: { id: "SVM-0003-012002", name: "Клапан смесительный 3-ходовой 3/4\", Kvs 6 м³/ч (под сервопривод)", price: 8070, brand: "STOUT", availability: "on_order", price_date: "2026-10-07", rommer: { id: "RVM-0003-006320", name: "Клапан смесительный 3-ходовой 3/4\", Kvs 6,3 м³/ч (под сервопривод)", price: 2539, brand: "ROMMER", availability: "on_order", price_date: "2026-10-07" } },
     // Соединение насосной группы с коллектором ROMMER RDG-0017: у коллектора сверху
     // G1 1/2" НР («подключение контуров 1 1/2" наружная резьба», rommer_266bcb1de3b1),
     // у групп STOUT и ROMMER снизу тоже G1 1/2" НР — напрямую не стыкуются. Нужна

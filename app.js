@@ -77,27 +77,6 @@ const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey, {
     global: { fetch: supabaseProxyFetch }
 });
 
-// === КОНКУРС МОНТАЖНИКОВ STOUT 2026 (01.04.2026 – 30.11.2026) ===
-const CONTEST_CATS_2026 = [
-    { key: 'rad_design',     label: 'Дизайн. радиаторы',  pts: 20, emoji: '✨', test: (id)       => id.startsWith('SRB-3320') },
-    { key: 'boiler_el',      label: 'Котёл электрич.',     pts: 10, emoji: '⚡', test: (id)       => id.startsWith('SEB-') },
-    { key: 'water_heater',   label: 'Водонагреватель',     pts: 9,  emoji: '🌡️', test: (id)       => id.startsWith('SWH-') },
-    { key: 'pump_group',     label: 'Группа б.монтажа',   pts: 8,  emoji: '⚙️', minQty: 2, test: (id) => id.startsWith('SDG-000') },
-    { key: 'manifold_heat',  label: 'Коллектор отопл.',   pts: 7,  emoji: '🔀', test: (id)       => id.startsWith('SMS-09') || id.startsWith('SMB-6850-') },
-    { key: 'rad_conv',       label: 'Радиаторы/конвект.', pts: 6,  emoji: '🏠', test: (id)       => (id.startsWith('SRB-0') || id.startsWith('SCQ-') || id.startsWith('SCN-')) },
-    { key: 'automation',     label: 'Автоматика',          pts: 6,  emoji: '🎛️', test: (id, name) => id.startsWith('STE-') || id.startsWith('SHT-') || name.includes('термостат') || name.includes('терморегулятор') || name.includes('сервопривод') || name.includes('контроллер') },
-    // SCA — итальянская линейка (снята с умолчания 20.09.2026), SCR — российская
-    // STOUT, RCA — ROMMER. Проверять один SCA значило бы, что после смены
-    // умолчания баллы за дымоход не начисляются никому.
-    { key: 'chimney',        label: 'Дымоход',             pts: 5,  emoji: '🏭', test: (id)       => /^(SCA|SCR|RCA)-/.test(id) },
-    { key: 'pump',           label: 'Насос',               pts: 4,  emoji: '💧', test: (id)       => id.startsWith('SPC-') },
-    { key: 'tank_exp',       label: 'Бак мембранный',      pts: 4,  emoji: '🛢️', test: (id)       => id.startsWith('STH-') || id.startsWith('STW-') },
-    { key: 'manifold_water', label: 'Коллектор воды',      pts: 3,  emoji: '🚿', test: (id, name, item) => (id.startsWith('SMB-6851-') || name.includes('3/4')) && (item && (item.group === '5.1. Внутреннее водоснабжение' || (item.group === '5. Внутреннее водоснабжение' && item.desc && (item.desc.includes('ХВС') || item.desc.includes('Холодная вода'))))) },
-    { key: 'flex_conn',      label: 'Гибкая подводка',     pts: 3,  emoji: '🔗', test: (id, name) => name.includes('гибк') },
-    { key: 'valve',          label: 'Арматура',            pts: 2,  emoji: '🔧', test: (id)       => id.startsWith('SVT-') || id.startsWith('SVL-') || id.startsWith('SFB-') || id.startsWith('SBV-') || id === 'BX4991100069' },
-    { key: 'pipes_fittings', label: 'Трубы и фитинги',     pts: 1,  emoji: '➿', test: (id, name, item) => (name.includes('труб') && (item.q || 1) >= 20) || name.includes('фитинг') || id.startsWith('SFP-') || id.startsWith('SFA-') || id.startsWith('SFC-') || id.startsWith('SFH-') || id.startsWith('SPX-') },
-    { key: 'mats',           label: 'Маты',                pts: 1,  emoji: '🧱', test: (id, name) => (name.includes('мат') && !name.includes('матов')) || id.startsWith('SPM-') },
-];
 
 
 
@@ -1202,7 +1181,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
 
     lastSavedStateString: "",
 
@@ -8230,7 +8209,7 @@ const app = {
                 icon.innerHTML = "🔒";
             }
             if (title) title.innerHTML = "Требуется авторизация";
-            if (text) text.innerHTML = "Авторизуйтесь через Email, Google, чтобы получить доступ к этой функции.";
+            if (text) text.innerHTML = "Авторизуйтесь через Email или Яндекс ID, чтобы получить доступ к этой функции.";
             let trialBtn = document.getElementById('custom_modal_btn_trial');
             if (trialBtn) trialBtn.style.display = 'none';
             let cards = document.querySelector('.tariff-cards');
@@ -12166,7 +12145,7 @@ const app = {
 
             // Фоллбек для локального тестирования
             if (!uRow && isLocal) {
-                uRow = { id: '0279a53c-452b-474f-8626-08be2c2b32da', account_type: 'base', email: 'dima24ba@gmail.com' };
+                uRow = { id: '0279a53c-452b-474f-8626-08be2c2b32da', account_type: 'base', email: 'kovdor24@yandex.ru' };
             }
 
             // Безопасность: если пользователь не найден в БД — не показываем ничего
@@ -12180,7 +12159,7 @@ const app = {
             // через JSON-путь, а не весь calc_data (десятки КБ на смету).
             let query = supabaseClient.from('estimates').select('id, project_name, total_sum, created_at, user_id, calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, kp_ver:calc_data->>kpVersion, cf_calc:calc_data->copiedFrom->>calc').order('created_at', { ascending: false }).limit(50);
 
-            const isAdmin = (uRow.email && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
+            const isAdmin = (uRow.email && ['kovdor24@yandex.ru'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
             // «Мои объекты» в личном кабинете — всегда только свои сметы, даже у админа:
             // чужие расчёты смотрят в админке, а кабинет принадлежит одному человеку
             if (!isAdmin || hostId !== 'cloud_list_content') {
@@ -12278,7 +12257,7 @@ const app = {
             return;
         }
 
-        const isAdmin = this._currentUserRow && ((this._currentUserRow.email && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(this._currentUserRow.email.toLowerCase())) || ['admin', 'viewer'].includes(this._currentUserRow.account_type));
+        const isAdmin = this._currentUserRow && ((this._currentUserRow.email && ['kovdor24@yandex.ru'].includes(this._currentUserRow.email.toLowerCase())) || ['admin', 'viewer'].includes(this._currentUserRow.account_type));
         const currentUserId = this._currentUserRow ? this._currentUserRow.id : null;
 
         let h = `
@@ -13140,7 +13119,7 @@ const app = {
             // Если мы не в режиме разработки, добавляем фильтр по текущему пользователю
             // (даже если RLS настроен, лишняя проверка на фронте не помешает)
             let userEmail = session ? session.user.email : (tgUser ? tgUser.email : null);
-            const isUserAdmin = (userEmail && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(userEmail.toLowerCase())) || ['admin', 'viewer'].includes(this.state.accountType) || (this.state.tgUser && ['admin', 'viewer'].includes(this.state.tgUser.account_type));
+            const isUserAdmin = (userEmail && ['kovdor24@yandex.ru'].includes(userEmail.toLowerCase())) || ['admin', 'viewer'].includes(this.state.accountType) || (this.state.tgUser && ['admin', 'viewer'].includes(this.state.tgUser.account_type));
             if (isUserAdmin) {
                 // Пропускаем фильтрацию для админа
             } else if (session) {
@@ -13196,24 +13175,6 @@ const app = {
             if (this.isMobileLayout()) this.switchMobileTab('output');
             app.alert("✅ Смета успешно загружена!");
         } catch (error) { app.alert("Ошибка загрузки сметы: " + error.message); }
-    },
-
-    loginGoogle: async function () {
-        try {
-            const { data, error } = await supabaseClient.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin + window.location.pathname,
-                    // Без этого Google молча логинит в уже активную в браузере сессию,
-                    // не давая выбрать другой аккаунт после выхода.
-                    queryParams: { prompt: 'select_account' }
-                }
-            });
-            if (error) throw error;
-        } catch (err) {
-            console.error("Ошибка входа через Google:", err);
-            app.alert("Ошибка при входе через Google: " + getFriendlyErrorMessage(err));
-        }
     },
 
     // Публичный идентификатор приложения из oauth.yandex.ru (не секрет).
@@ -13599,7 +13560,7 @@ const app = {
 
     isAdminEmail: function (email) {
         if (!email) return false;
-        return ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com']
+        return ['kovdor24@yandex.ru']
             .includes(String(email).toLowerCase().trim());
     },
 
@@ -13659,38 +13620,6 @@ const app = {
             } catch (e) { }
         }
         return code;
-    },
-
-    // Для посетителей из РФ кнопки Google в окне входа нет вовсе.
-    // Иностранным пользователям окно показывается без изменений.
-    applyRuLoginRestrictions: async function () {
-        const googleBtn = document.getElementById('auth_google_btn');
-        if (!googleBtn) return;
-
-        // Служебный доступ для администратора: heatcalc.ru/?google_login=1 возвращает
-        // кнопку Google и в РФ. Флаг в sessionStorage: он переживает редирект Google
-        // (та же вкладка), но не остаётся включённым навсегда, как было бы
-        // в localStorage. Сбрасывается закрытием вкладки или ?google_login=0.
-        try {
-            // Прежняя версия хранила флаг в localStorage, то есть он оставался включённым
-            // навсегда: у всех, кто хоть раз открыл ?google_login=1, кнопка Google
-            // продолжала показываться и в РФ. Убираем этот ключ при первом же запуске.
-            localStorage.removeItem('force_google_login');
-
-            const flag = new URLSearchParams(window.location.search).get('google_login');
-            if (flag === '1') sessionStorage.setItem('force_google_login', '1');
-            if (flag === '0') sessionStorage.removeItem('force_google_login');
-        } catch (e) { }
-        if (sessionStorage.getItem('force_google_login') === '1') {
-            googleBtn.style.display = '';
-            return;
-        }
-
-        // Кнопка скрыта в разметке и появляется только если страна точно определена
-        // и это не РФ. Пока идёт определение или если геосервисы недоступны, кнопки
-        // нет: показать её пользователю из РФ хуже, чем не показать иностранцу.
-        const country = await this.detectVisitorCountry();
-        googleBtn.style.display = (country && country !== 'RU') ? '' : 'none';
     },
 
     // Каким способом получена эта сессия: 'oauth' (Google), 'password', 'otp'
@@ -13973,9 +13902,6 @@ const app = {
     showAuthModal: function () {
         document.getElementById('auth_modal_overlay').style.display = 'flex';
         document.body.classList.add('auth-modal-open');
-        // Посетителям из РФ показываем, что через Google можно только войти
-        // в ранее созданный аккаунт
-        this.applyRuLoginRestrictions();
         // Каждое открытие — с выбора способа (Яндекс ID / Почта), как у vc.ru
         this._authView = 'method';
         this.syncAuthChrome();
@@ -16077,6 +16003,7 @@ const app = {
         } else if (tab === 'kp') {
             this.fillKpSettingsForm();
         } else if (tab === 'notify') {
+            this.refreshMailConsentUI();
             this.refreshTelegramConnectUI();
         } else if (tab === 'login') {
             this.renderProfileLoginMethod();
@@ -16113,7 +16040,6 @@ const app = {
             if (id === 'profile_modal_overlay') this.closeProfileModal();
             else if (id === 'admin_modal_overlay') this.closeAdminModal();
             else if (id === 'notifications_modal_overlay') this.closeNotificationsModal();
-            else if (id === 'lk_rating_overlay') this.closeRatingPanel();
         });
     },
 
@@ -16344,7 +16270,6 @@ const app = {
             + `<div class="ad-cards">${cards.join('')}</div>`
             + `<div class="ad-card lk-home-facts">`
             + (tariff ? `<div class="ad-kv"><span>Тариф</span><button type="button" class="lk-link" onclick="app.setProfileTab('subscription')" title="Что даёт тариф и срок действия">${esc(tariff)} ›</button></div>` : '')
-            + ((typeof GRM !== 'undefined' && GRM.isEnabled && GRM.isEnabled()) ? `<div class="ad-kv"><span>Баллы, значки и рейтинг</span><button type="button" class="lk-btn-sm" onclick="app.railGo('rating')">Открыть</button></div>` : '')
             + `<div class="ad-kv"><span>Сохранённых смет</span><b>${ests.length}${ests.length >= 50 ? '+' : ''}</b></div>`
             + `</div>`;
         // Список для общего поиска по кабинету — те же свои сметы, второй раз не читаем
@@ -16493,10 +16418,6 @@ const app = {
             this.openMessagesCenter();
             return;
         }
-        if (section === 'rating') {
-            this.openRatingPanel();
-            return;
-        }
         if (section === 'admin') {
             this.closeOtherRailPlaces('admin_modal_overlay');
             this._adminOpenedFrom = 'admin';
@@ -16533,7 +16454,7 @@ const app = {
     // Список окон, которые открываются из панели и потому обязаны вставать в то же
     // место: кабинет, панель управления (у админа в неё ведут «Сообщения»), окно
     // сообщений обычного монтажника и врезка рейтинга.
-    DOCKABLE_OVERLAY_IDS: ['profile_modal_overlay', 'admin_modal_overlay', 'notifications_modal_overlay', 'lk_rating_overlay'],
+    DOCKABLE_OVERLAY_IDS: ['profile_modal_overlay', 'admin_modal_overlay', 'notifications_modal_overlay'],
 
     isOverlayOpen: function (id) {
         const el = document.getElementById(id);
@@ -17275,36 +17196,6 @@ const app = {
         if (this.isMobileLayout()) this.switchMobileTab('inputs');
     },
 
-    // ── Врезка «Баллы и рейтинг» ──
-    // Рейтинг — отдельная страница, и ссылка на неё уводила из калькулятора вместе с
-    // меню. Показываем ту же страницу во фрейме на месте колонок; на узком экране,
-    // где панели нет, по-прежнему открываем её отдельной вкладкой.
-    openRatingPanel: function () {
-        if (!this.isRailVisible()) {
-            window.open('/rating/', '_blank', 'noopener');
-            return;
-        }
-        this.closeOtherRailPlaces('lk_rating_overlay');
-
-        const frame = document.getElementById('lk_rating_frame');
-        // Адрес подставляем при первом открытии: до него страницу грузить незачем.
-        // Путь относительный — сайт живёт и на своём домене, и в подпапке.
-        if (frame && !frame.getAttribute('src')) frame.setAttribute('src', 'rating/');
-        const overlay = document.getElementById('lk_rating_overlay');
-        if (overlay) overlay.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        this.syncCabinetDock();
-        this.syncRailUI();
-    },
-
-    closeRatingPanel: function () {
-        const overlay = document.getElementById('lk_rating_overlay');
-        if (overlay) overlay.style.display = 'none';
-        document.body.style.overflow = '';
-        this.syncCabinetDock();
-        this.syncRailUI();
-    },
-
     setCabinetDocked: function (on) {
         document.body.classList.toggle('lk-docked', !!on);
         if (!on) return;
@@ -17477,8 +17368,6 @@ const app = {
             current = (this._adminOpenedFrom === 'messages') ? 'messages' : 'admin';
         } else if (this.isOverlayOpen('notifications_modal_overlay')) {
             current = 'messages';
-        } else if (this.isOverlayOpen('lk_rating_overlay')) {
-            current = 'rating';
         }
         rail.querySelectorAll('.lk-rail-item').forEach(el => {
             const key = el.dataset.rail;
@@ -17503,11 +17392,6 @@ const app = {
             this.fitRailToViewport();
         }
     },
-
-    // Геймификация (начисление XP / разблокировка значков за действия монтажника,
-    // региональный рейтинг, значки, лента активности) вынесена в общий модуль
-    // gamification.js (глобальная переменная GRM, подключается в index.html перед
-    // app.js) — переиспользуется и на отдельной странице /rating/.
 
     // ═══════════════ Персональные настройки монтажника (личный кабинет) ═══════════════
     // Хранятся отдельно от app.state (который сохраняется/сбрасывается per-проект), чтобы
@@ -17636,6 +17520,58 @@ const app = {
         this.installerSettings.tgNotify[kind] = !!on;
         this.pushInstallerSettingsToCloud();
     },
+    // ── Согласие на информационные письма (users.mail_consent, миграция 20261007_mail_consent.sql) ──
+    // null — человек не отвечал (рассылку не шлём), true — согласен, false — отказался.
+    // Служебные письма (код, статусы смет, предупреждения о доступе) согласия не требуют.
+
+    // Галочка при регистрации ждёт первого входа: до него строки в users ещё нет.
+    flushPendingMailConsent: async function (email) {
+        let raw = null;
+        try { raw = JSON.parse(localStorage.getItem('hc_pending_mail_consent') || 'null'); } catch (e) { raw = null; }
+        if (!raw || typeof raw.v !== 'boolean') return;
+        const sameUser = raw.email && email && String(raw.email).toLowerCase() === String(email).toLowerCase();
+        const stale = !raw.t || (Date.now() - raw.t) > 2 * 24 * 3600 * 1000;
+        if (!sameUser) {
+            // Чужой или протухший выбор не применяем и не копим
+            if (stale) { try { localStorage.removeItem('hc_pending_mail_consent'); } catch (e) { } }
+            return;
+        }
+        try {
+            const { data, error } = await supabaseClient.rpc('set_my_mail_consent', { p_value: raw.v });
+            if (error) throw error;
+            if (data === true) { try { localStorage.removeItem('hc_pending_mail_consent'); } catch (e) { } }
+        } catch (e) {
+            console.warn('[flushPendingMailConsent] Не записали согласие, повторим при следующем входе:', e && e.message ? e.message : e);
+        }
+    },
+
+    refreshMailConsentUI: async function () {
+        const el = document.getElementById('profile_mail_consent');
+        if (!el) return;
+        try {
+            const { data, error } = await supabaseClient.rpc('get_my_mail_consent');
+            if (error) throw error;
+            el.checked = !!(data && data.consent === true);
+            el.disabled = false;
+        } catch (e) {
+            // Нет связи или миграция не применена: переключатель не показываем включённым наугад
+            el.checked = false;
+            console.warn('[refreshMailConsentUI]', e && e.message ? e.message : e);
+        }
+    },
+
+    setMailConsent: async function (on) {
+        const el = document.getElementById('profile_mail_consent');
+        try {
+            const { data, error } = await supabaseClient.rpc('set_my_mail_consent', { p_value: !!on });
+            if (error) throw error;
+            if (data !== true) throw new Error('учётная запись не найдена');
+        } catch (e) {
+            if (el) el.checked = !on;
+            app.alert('Не удалось сохранить выбор: ' + (e && e.message ? e.message : e) + '. Проверьте соединение и повторите.');
+        }
+    },
+
     // Статус подключения + три чекбокса — карточка «Telegram» на вкладке «Мои объекты»
     refreshTelegramConnectUI: function () {
         const statusEl = document.getElementById('profile_tg_status');
@@ -19701,7 +19637,7 @@ const app = {
                 .select('id, project_name, total_sum, created_at, shared_invoice_id:calc_data->>shared_invoice_id, calc_id:calc_data->>calc_id')
                 .eq('user_id', uRow.id);
             if (estError) throw estError;
-            const isAdmin = (uRow.email && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
+            const isAdmin = (uRow.email && ['kovdor24@yandex.ru'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
 
             // Обрабатываем уведомления
             const notifications = [];
@@ -20277,13 +20213,12 @@ const app = {
             const chatPane = document.getElementById('notif_pane_chat');
             if (chatPane && chatPane.style.display === 'flex') this.renderUserChat();
 
-            // Открытая лента уведомлений в мессенджере панели управления живёт из этого
-            // же массива — обновляем её тут же, иначе конверт открывал бы панель с
+            // Открытая вкладка «Уведомления» в панели управления живёт из этого же
+            // массива — обновляем её тут же, иначе конверт открывал бы панель с
             // прошлым содержимым и дорисовывал новое только по клику.
             const adminBox = document.getElementById('admin_modal_overlay');
-            if (adminBox && adminBox.style.display === 'flex'
-                && this._adminTab === 'messages' && this._adminChatId === 'notifications') {
-                this.renderAdminMessages();
+            if (adminBox && adminBox.style.display === 'flex' && this._adminTab === 'notifications') {
+                this.renderAdminNotifications();
             }
         } catch (e) {
             console.error("Error fetching notifications:", e);
@@ -20337,6 +20272,12 @@ const app = {
             ? [`«${mm[1]}»`, '№ ' + mm[2], mm[3], 'ушло ' + mm[4]].filter(Boolean).join(' · ')
             : 'КП ушло клиенту, счёт не запрошен') + (who ? ' · ' + who[1] : '');
         return { title: head[1], brief: brief, rest: rest };
+    },
+
+    // Письмо, которое отправила не живая переписка, а база по расписанию
+    isAutoNoticeText: function (text) {
+        const t = String(text || '');
+        return !!this.kpReminderInfo(t) || t.indexOf('🎂 Сегодня день рождения у вашего монтажника') === 0;
     },
 
     // Список уведомлений открыт и виден — значит напоминания увидены: гасим по ним
@@ -20514,14 +20455,9 @@ const app = {
         if (this.usesAdminMessenger()) {
             this._adminTab = 'messages';
             // Пришли посмотреть, что нового: есть непрочитанные уведомления — открываем
-            // сразу их ленту, нет — оставляем тот диалог, на котором остановились.
+            // вкладку «Уведомления», нет — оставляем переписку на том диалоге, где остановились.
             const unread = (this._notifications || []).filter(n => !n.isRead).length;
-            if (unread > 0) {
-                this._adminChatId = 'notifications';
-                // На узком экране панели показываются по очереди — раз знаем, что
-                // показывать, сразу разворачиваем правую.
-                this._adminChatOpen = true;
-            }
+            if (unread > 0) this._adminTab = 'notifications';
             this.showAdminModal();
             this.fetchNotifications();
             return;
@@ -20534,9 +20470,8 @@ const app = {
     // Без этого клик по карточке в панели поднимал бы поверх неё узкую модалку.
     refreshNotificationsView: function () {
         const adminOpen = (document.getElementById('admin_modal_overlay') || {}).style;
-        if (this._adminTab === 'messages' && this._adminChatId === 'notifications'
-            && adminOpen && adminOpen.display === 'flex') {
-            this.renderAdminMessages();
+        if (this._adminTab === 'notifications' && adminOpen && adminOpen.display === 'flex') {
+            this.renderAdminNotifications();
             return;
         }
         this.openNotificationsModal();
@@ -21720,7 +21655,7 @@ const app = {
         this.closeEmojiPicker();
     },
 
-    SUPER_ADMIN_EMAILS: ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'],
+    SUPER_ADMIN_EMAILS: ['kovdor24@yandex.ru'],
 
     getAdminRole: function () {
         // Локальная панель: кнопка «Менеджер» подменяет роль мимо базы, даже у
@@ -22650,7 +22585,6 @@ const app = {
         'lk:summary': 'сводка',
         'lk:workprices': 'цены на монтаж',
         'lk:equipment': 'своё оборудование',
-        'lk:rating': 'баллы',
         'lk:admin': 'панель управления'
     },
 
@@ -23016,8 +22950,14 @@ const app = {
         // вторую половину (ни одного расчёта) досчитывает filterIdleVisitors.
         if (filters.idle === 'yes') query = query.gte('sess_visits', this.IDLE_MIN_VISITS);
         if (searchFilter) {
+            // По словам: «Ибат», «Ибатуллин Д», «Ибатуллин Д.О.» — каждое слово (или буква)
+            // должно встретиться в какой-нибудь из колонок. Целая фраза в одной колонке
+            // находила только полное совпадение имени.
             const cols = ['username', 'email', 'phone', 'city', 'region', 'last_name', 'first_name', 'middle_name'];
-            query = query.or(cols.map(c => `${c}.ilike.%${searchFilter}%`).join(','));
+            const words = searchFilter.split(/[\s.]+/).filter(Boolean);
+            (words.length ? words : [searchFilter]).forEach(w => {
+                query = query.or(cols.map(c => `${c}.ilike.%${w}%`).join(','));
+            });
         }
 
         if (tariffFilter === 'base') {
@@ -23358,6 +23298,10 @@ const app = {
         // выясняем до первого запроса, иначе фильтры уйдут пустыми.
         if (this.isScopedAdmin()) await this.resolveAdminScope();
         this._adminOffset = offset;
+        // Номер загрузки: если пока шла эта, началась следующая (поиск, фильтр, смена
+        // вкладки), ответ устаревшей не должен перекрасить экран — на медленной сети
+        // он приходил последним и затирал список пустым или чужим.
+        const loadSeq = this._adminLoadSeq = (this._adminLoadSeq || 0) + 1;
         const content = document.getElementById('admin_content');
         // Запоминаем значение и фокус поля поиска — оно вот-вот исчезнет из DOM вместе
         // с "Загрузка данных...", а после перерисовки надо продолжить печатать без разрыва
@@ -23461,17 +23405,27 @@ const app = {
             let users = [];
             let totalUsers = 0;
 
-            if (isClientSort || isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter) {
-                let { data, error, count } = await query;
-                if (error) throw error;
-                users = data || [];
-                totalUsers = count || users.length;
-            } else {
-                let { data, error, count } = await query.range(offset, offset + this._adminPageSize - 1);
-                if (error) throw error;
-                users = data || [];
-                totalUsers = count || users.length;
+            // Запрос шлём до двух раз: на нестабильной сети (другие ноутбуки, VPN, расширения)
+            // первый ответ бывает пустым или обрывается, а со второго раза приходит список.
+            const runUsersQuery = async () => {
+                const wholeList = isClientSort || isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter;
+                const r = wholeList ? await query : await query.range(offset, offset + this._adminPageSize - 1);
+                if (r.error) throw r.error;
+                return r;
+            };
+            let usersRes;
+            try { usersRes = await runUsersQuery(); } catch (e1) {
+                console.warn('[админка] список пользователей, повтор:', e1);
+                await new Promise(res => setTimeout(res, 800));
+                usersRes = await runUsersQuery();
             }
+            if (!(usersRes.data || []).length && offset === 0) {
+                await new Promise(res => setTimeout(res, 800));
+                try { const r2 = await runUsersQuery(); if ((r2.data || []).length) usersRes = r2; } catch (e2) { }
+            }
+            if (loadSeq !== this._adminLoadSeq) return;
+            users = usersRes.data || [];
+            totalUsers = usersRes.count || users.length;
 
             // Отбор по доступу к распознаванию и по сомнительным анкетам — раньше всего
             // остального: и тариф, и LTV должны сортировать уже отобранных, а счётчик
@@ -23822,9 +23776,11 @@ const app = {
             // Ошибка чтения не должна ломать админку: столбец просто покажет
             // «выключено», а список подтянется при следующем открытии.
             await this.loadRecognitionAccess();
+            if (loadSeq !== this._adminLoadSeq) return;
             this.renderAdminMain();
         } catch (error) {
             console.error("Admin Load Error:", error);
+            if (loadSeq !== this._adminLoadSeq) return;
             if (content) content.innerHTML = `<div style="padding:20px; color:#EF4444;">Ошибка: ${error.message}</div>`;
         }
     },
@@ -23836,7 +23792,8 @@ const app = {
         { id: 'home', icon: '🏠', label: 'Центр внимания', hint: 'Что требует действия сегодня' },
         { id: 'stats', icon: '👥', label: 'Пользователи', hint: 'Монтажники, тарифы, доступы' },
         { id: 'estimates', icon: '📋', label: 'Расчёты', hint: 'Все сохранённые сметы' },
-        { id: 'messages', icon: '💬', label: 'Сообщения', hint: 'Переписка и уведомления' },
+        { id: 'messages', icon: '💬', label: 'Сообщения', hint: 'Переписка с монтажниками и объявления' },
+        { id: 'notifications', icon: '🔔', label: 'Уведомления', hint: 'Статусы смет, счета, тариф и что включить, чтобы они доходили' },
         { id: 'inactive', icon: '📨', label: 'Напоминания', hint: 'Кто давно не заходил и вернулся ли' },
         { id: 'distributors', icon: '🏢', label: 'Дистрибьюторы', hint: 'Промокоды, менеджеры, свои цены' },
         { id: 'tariffs', icon: '🎚', label: 'Тарифы', hint: 'Что открыто учётке на её тарифе' },
@@ -23868,6 +23825,7 @@ const app = {
         stats: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
         estimates: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/>',
         messages: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+        notifications: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
         inactive: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
         distributors: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/>',
         tariffs: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
@@ -23900,7 +23858,7 @@ const app = {
         { id: 'overview', label: 'Обзор', icon: 'dashboard', tabs: ['home', 'dashboard', 'analytics'] },
         { id: 'people', label: 'Клиенты', icon: 'stats', tabs: ['stats', 'distributors', 'branches', 'inactive'] },
         { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['leads', 'estimates', 'kanban', 'projects', 'warranty'] },
-        { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages'] },
+        { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages', 'notifications'] },
         { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'distprices', 'equipment', 'successors'] },
         { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription', 'payready', 'mailbudget'] },
         { id: 'ai', label: 'ИИ и файлы', icon: 'recognition', tabs: ['recognition', 'plans', 'aifill'] },
@@ -24145,7 +24103,7 @@ const app = {
     // Разделы менеджера дистрибьютора. Остальные вкладки — либо про платформу
     // целиком (прайс-листы, распознавание, проекты, аналитика), либо про чужие
     // компании (карточки дистрибьюторов), поэтому их он не видит вовсе.
-    MANAGER_TABS: ['stats', 'estimates', 'messages', 'kanban', 'distprices'],
+    MANAGER_TABS: ['stats', 'estimates', 'messages', 'notifications', 'kanban', 'distprices'],
 
     // Подписи под названиями разделов в мобильном меню: у менеджера они честнее
     // говорят «ваши», а не «все» — данные-то урезаны по его компании.
@@ -24153,6 +24111,7 @@ const app = {
         stats: 'Монтажники вашей компании',
         estimates: 'Сметы ваших монтажников',
         messages: 'Переписка с вашими монтажниками',
+        notifications: 'Счета, напоминания по вашим монтажникам и что включить',
         kanban: 'Статусы смет вашей компании',
         distprices: 'Прайс вашей компании и отличия от каталога'
     },
@@ -25559,7 +25518,7 @@ const app = {
             <div class="admin-mob-item" onclick="app.switchAdminTab('${t.id}')">
                 <span class="admin-mob-ico">${this.adminIcon(t)}</span>
                 <span class="admin-mob-body"><b>${t.label}</b><small>${t.hint || ''}</small></span>
-                ${(t.id === 'messages' && unread) ? `<span class="admin-mob-badge">${unread}</span>` : ''}
+                ${(t.id === 'notifications' && unread) ? `<span class="admin-mob-badge">${unread}</span>` : ''}
                 <span class="admin-mob-arrow">›</span>
             </div>`).join('')}`).join('');
 
@@ -25715,6 +25674,7 @@ const app = {
         // Перетаскивание вкладок отключено с введением групп (см. ADMIN_GROUPS): порядок
         // внутри группы задан в коде, а сохранённый плоский порядок больше ничего не меняет.
         const canReorder = false;
+        const tabUnread = (this._notifications || []).filter(x => !x.isRead).length;
         // Два уровня: группы (Клиенты, Продажи, Каталог…) и вкладки текущей группы.
         // У группы из одной вкладки (Сообщения, Контент) второго ряда нет.
         const groups = this.adminVisibleGroups(ADMIN_TAB_DEFS);
@@ -25728,7 +25688,7 @@ const app = {
             ${curGroup.defs.length > 1 ? `
             <div id="admin_nav_tabs">
                 ${curGroup.defs.map(t => `
-                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn${this._adminTab === t.id ? ' active' : ''}" title="${t.hint || t.label}${canReorder ? ' — перетащите, чтобы поменять порядок для всех' : ''}" style="${canReorder ? 'touch-action: none;' : ''}" onclick="app.switchAdminTab('${t.id}')">${this.adminIcon(t)}<span class="admin-tab-label"> ${t.sub || t.label}</span></button>
+                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn${this._adminTab === t.id ? ' active' : ''}" title="${t.hint || t.label}${canReorder ? ' — перетащите, чтобы поменять порядок для всех' : ''}" style="${canReorder ? 'touch-action: none;' : ''}" onclick="app.switchAdminTab('${t.id}')">${this.adminIcon(t)}<span class="admin-tab-label"> ${t.sub || t.label}</span>${(t.id === 'notifications' && tabUnread) ? `<span class="admin-mob-badge" style="margin-left:6px;">${tabUnread}</span>` : ''}</button>
                 `).join('')}
             </div>` : ''}
         `;
@@ -25744,6 +25704,12 @@ const app = {
         if (this._adminTab === 'messages') {
             content.innerHTML = navHtml;
             this.renderAdminMessages();
+            return;
+        }
+
+        if (this._adminTab === 'notifications') {
+            content.innerHTML = navHtml + '<div id="admin_notif_box"></div>';
+            this.renderAdminNotifications();
             return;
         }
 
@@ -26447,10 +26413,10 @@ const app = {
     },
 
     filterAdminUsersTable: function (query) {
-        let lowerQuery = query.toLowerCase().trim();
+        const words = query.toLowerCase().split(/[\s.]+/).filter(Boolean);
         document.querySelectorAll('.admin-list-row').forEach(row => {
             let dataSearch = row.getAttribute('data-search') || '';
-            row.style.display = (!lowerQuery || dataSearch.includes(lowerQuery)) ? '' : 'none';
+            row.style.display = words.every(w => dataSearch.includes(w)) ? '' : 'none';
         });
     },
 
@@ -26762,8 +26728,8 @@ const app = {
             card({ title: 'Профи заканчивается', n: proRows.length, urgent: true, state: st.pro, body: proBody, tab: 'stats', action: 'Открыть пользователей' }),
             card({ title: 'Замены позиций', n: succN == null ? null : succN, urgent: false, state: st.succ,
                 body: succN ? `<div class="ad-card-note">Новых замен снятых позиций, которые ждут решения: <b>${succN}</b>.</div>` : ok('Новых замен нет'), tab: 'successors', action: 'Открыть замены' }),
-            card({ title: 'Сообщения', n: unread, urgent: false, state: 'ready',
-                body: unread ? `<div class="ad-card-note">Непрочитанных уведомлений: <b>${unread}</b>.</div>` : ok('Непрочитанного нет'), tab: 'messages', action: 'Открыть сообщения' })
+            card({ title: 'Уведомления', n: unread, urgent: false, state: 'ready',
+                body: unread ? `<div class="ad-card-note">Непрочитанных уведомлений: <b>${unread}</b>.</div>` : ok('Непрочитанного нет'), tab: 'notifications', action: 'Открыть уведомления' })
         ].join('');
 
         // Карта разделов: то, что раньше было двадцатью вкладками в два ряда
@@ -34498,7 +34464,10 @@ const app = {
         };
         const msgSide = {};      // id письма -> сторона отправителя (для привязки ответов)
         const sentToUser = {};   // монтажник -> [{ t, side }] по времени, для ответов без родителя
-        parentMsgs.filter(m => m.type === 'private')
+        // Автоматические письма базы (напоминание про счёт, день рождения монтажника) —
+        // это уведомления менеджеру, их место во вкладке «Уведомления», а не в переписке
+        // с ним: иначе чат превращался в ленту одинаковых плашек от системы
+        parentMsgs.filter(m => m.type === 'private' && !this.isAutoNoticeText(m.text))
             .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
             .forEach(m => {
                 const side = staffSide(m.sender_id, m.sender_name);
@@ -34609,10 +34578,12 @@ const app = {
             this._adminChatFindMsg = null;
         }
 
-        const allIds = (canBroadcast ? ['broadcast'] : []).concat(['notifications'])
+        // Уведомления (статусы смет, напоминания, тариф) с октября 2026 живут в своей
+        // вкладке «Уведомления», а не закреплённой нитью здесь — переписка не мешается с лентой
+        const allIds = (canBroadcast ? ['broadcast'] : [])
             .concat(threads.map(t => t.id)).concat(dropdownUsers.map(u => u.id));
         if (!this._adminChatId || allIds.indexOf(this._adminChatId) === -1) {
-            this._adminChatId = threads.length ? threads[0].id : (canBroadcast ? 'broadcast' : 'notifications');
+            this._adminChatId = threads.length ? threads[0].id : (canBroadcast ? 'broadcast' : null);
         }
         const activeId = this._adminChatId;
         this._lastRenderedChatId = activeId;
@@ -34629,25 +34600,8 @@ const app = {
         }
 
         // ── Левая панель: список диалогов ──
-        // Первой закреплена нить «Уведомления»: смены статусов смет у заказчиков,
-        // напоминания по счетам, срок тарифа, ответы монтажников. Это не переписка,
-        // отвечать в неё нельзя — вместо поля ввода у неё кнопки списка.
-        // Уведомления отсортированы новыми вперёд (см. fetchNotifications).
-        const notifItems = this._notifications || [];
-        const notifUnread = notifItems.filter(n => !n.isRead).length;
-        const lastNotif = notifItems[0];
-        const notifPrev = lastNotif
-            ? [lastNotif.projectName, lastNotif.comment].filter(Boolean).join(' — ').replace(/\s+/g, ' ')
-            : 'Статусы смет, счета и срок тарифа';
         const lastBroadcast = broadcastItems[broadcastItems.length - 1];
         let listHtml = `
-            <div class="admin-chat-item ${activeId === 'notifications' ? 'active' : ''}" data-search="уведомления статусы смет счета напоминания тариф ответы монтажников ${esc(notifItems.map(n => [n.projectName, n.comment].filter(Boolean).join(' ')).join(' ').toLowerCase())}" onclick="app.openAdminChat('notifications')">
-                <div class="admin-chat-ava" style="background:#3B82F6;">🔔</div>
-                <div class="admin-chat-item-body">
-                    <div class="admin-chat-item-row"><span class="admin-chat-name">Уведомления и статусы смет</span><span class="admin-chat-time">${lastNotif ? listTime(lastNotif.time) : ''}</span></div>
-                    <div class="admin-chat-item-row"><span class="admin-chat-prev">${esc(notifPrev)}</span>${notifUnread ? `<span class="admin-chat-badge" title="Непрочитанных уведомлений: ${notifUnread}">${notifUnread}</span>` : ''}</div>
-                </div>
-            </div>
             ${canBroadcast ? `
             <div class="admin-chat-item ${activeId === 'broadcast' ? 'active' : ''}" data-search="объявление рассылка всем broadcast ${esc(broadcastItems.map(m => m.text || '').join(' ').toLowerCase())}" onclick="app.openAdminChat('broadcast')">
                 <div class="admin-chat-ava" style="background:#D97706;">📢</div>
@@ -34701,7 +34655,7 @@ const app = {
         });
 
         // ── Правая панель: сама переписка ──
-        const isNotifChat = activeId === 'notifications';
+        const isNoChat = !activeId;
         const isBroadcastChat = activeId === 'broadcast';
         const activeThread = threads.find(t => t.id === activeId);
         const isMgrChat = !!activeThread && activeThread.kind === 'manager';
@@ -34710,11 +34664,11 @@ const app = {
         // человека», а на деле отвечают двое разных
         const isStaffChat = !!activeThread && activeThread.kind === 'staff';
         const isForeignChat = isMgrChat || isStaffChat;
-        const activeUser = activeThread && !isForeignChat && !isNotifChat ? activeThread.user : ((isForeignChat || isNotifChat) ? null : findUser(activeId));
-        const chatName = isNotifChat ? 'Уведомления и статусы смет'
+        const activeUser = activeThread && !isForeignChat ? activeThread.user : (isForeignChat || isNoChat ? null : findUser(activeId));
+        const chatName = isNoChat ? 'Диалог не выбран'
             : (isBroadcastChat ? 'Объявления для всех' : (isForeignChat ? activeThread.name : userName(activeUser, activeId)));
-        const chatSub = isNotifChat
-            ? (notifUnread ? `${notifUnread} непрочитанных из ${notifItems.length}` : (notifItems.length ? 'Все прочитаны' : 'Пока пусто'))
+        const chatSub = isNoChat
+            ? 'Выберите собеседника слева'
             : (isBroadcastChat
                 ? `${dropdownUsers.length} получателей`
                 : (isMgrChat
@@ -34725,13 +34679,13 @@ const app = {
         const chatItems = isBroadcastChat ? broadcastItems : (activeThread ? activeThread.items : []);
         // Что именно сейчас на экране — по этому списку кнопка «Удалить эту переписку»
         // сносит ровно открытый диалог (см. deleteUserMessages)
-        this._adminChatIds = (isNotifChat || isForeignChat) ? [] : chatItems.map(m => m.id);
+        this._adminChatIds = (isNoChat || isForeignChat) ? [] : chatItems.map(m => m.id);
 
         // Ответ с цитатой: id сообщения, на которое отвечают. Живёт только пока открыт
         // тот же диалог — ушли в другую переписку, и цитата снимается сама.
         const itemsById = {};
         chatItems.forEach(m => { itemsById[m.id] = m; });
-        const canReply = !isNotifChat && !isForeignChat;
+        const canReply = !isNoChat && !isForeignChat;
         if (this._adminReplyTo && (!canReply || !itemsById[this._adminReplyTo])) this._adminReplyTo = null;
         // Кто написал сообщение — этим именем подписывается цитата
         const msgAuthor = (m) => m.__from === 'user'
@@ -34739,13 +34693,8 @@ const app = {
             : (m.sender_name || (isStaffChat && activeThread ? activeThread.mgrName : 'Администрация'));
 
         let bodyHtml = '';
-        if (isNotifChat) {
-            // Разметку карточек берём ту же, что и в окне уведомлений у монтажника
-            // (renderNotificationCards) — иначе две копии со временем разошлись бы.
-            const cards = notifItems.length ? this.renderNotificationCards(notifItems) : '';
-            bodyHtml = cards
-                ? `<div style="display:flex; flex-direction:column; gap:10px; padding:4px 2px;">${cards}</div>`
-                : '<div class="admin-chat-empty">Уведомлений пока нет.</div>';
+        if (isNoChat) {
+            bodyHtml = '<div class="admin-chat-empty">Выберите собеседника в списке слева.</div>';
         } else if (!chatItems.length) {
             bodyHtml = `<div class="admin-chat-empty">${isBroadcastChat ? 'Объявлений пока не было.' : 'Переписки ещё нет — напишите первым.'}</div>`;
         } else {
@@ -34886,28 +34835,21 @@ const app = {
                 <div class="admin-chat-main">
                     <div class="admin-chat-head">
                         <span class="admin-chat-back" onclick="app.closeAdminChat()">←</span>
-                        ${isNotifChat
-                ? `<div class="admin-chat-ava" style="background:#3B82F6;">🔔</div>`
+                        ${isNoChat
+                ? `<div class="admin-chat-ava" style="background:#64748B;">💬</div>`
                 : (isBroadcastChat
                     ? `<div class="admin-chat-ava" style="background:#D97706;">📢</div>`
                     : (isForeignChat
                         ? `<div class="admin-chat-ava" style="background:#64748B;">⇄</div>`
                         : avaHtml(activeUser, chatName)))}
                         <div style="min-width:0; flex:1;">
-                            <div class="admin-chat-headname" ${isBroadcastChat || isNotifChat ? '' : `onclick="app.openAdminUserFromMessages('${isForeignChat ? activeThread.installerId : activeId}')" title="Открыть карточку монтажника"`}>${esc(chatName)}</div>
+                            <div class="admin-chat-headname" ${isBroadcastChat || isNoChat ? '' : `onclick="app.openAdminUserFromMessages('${isForeignChat ? activeThread.installerId : activeId}')" title="Открыть карточку монтажника"`}>${esc(chatName)}</div>
                             <div class="admin-chat-headsub" ${isBroadcastChat ? `onclick="app.toggleBroadcastRecipients()" title="Показать, кто получает объявления"` : ''}>${esc(chatSub)}${isBroadcastChat ? ` <span style="opacity:.8;">${recipientsOpen ? '▲' : '▼'}</span>` : ''}</div>
                         </div>
-                        ${isBroadcastChat || isForeignChat || isNotifChat || isViewer ? '' : `<button class="admin-chat-clear" title="Удалить эту переписку" onclick="app.deleteUserMessages('${activeId}')">🗑</button>`}
+                        ${isBroadcastChat || isForeignChat || isNoChat || isViewer ? '' : `<button class="admin-chat-clear" title="Удалить эту переписку" onclick="app.deleteUserMessages('${activeId}')">🗑</button>`}
                     </div>
                     ${recipientsOpen ? recipientsHtml : `<div class="admin-chat-body" id="admin_chat_body">${bodyHtml}</div>`}
-                    ${isNotifChat ? `
-                    <!-- В ленту уведомлений не пишут — вместо поля ввода те же кнопки,
-                         что были внизу прежнего окна уведомлений. -->
-                    <div class="admin-chat-compose" style="justify-content:center; gap:10px;">
-                        <button class="auth-btn-base btn-email-submit" style="margin:0; max-width:150px; height:32px; font-size:12px;" onclick="app.markAllNotificationsRead()">Прочитать все</button>
-                        <button class="auth-btn-base" style="margin:0; max-width:130px; height:32px; font-size:12px; background:var(--surface-light); color:var(--text-sec); border:1px solid var(--border);" onclick="app.clearAllNotifications()">Очистить всё</button>
-                    </div>
-                    ` : (isForeignChat ? `
+                    ${isNoChat ? '' : (isForeignChat ? `
                     <!-- Чужая переписка открыта только на чтение: писать в неё нельзя,
                          иначе монтажнику приходят ответы «от одного человека», а на деле
                          отвечают двое. Кнопка рядом открывает свой диалог с этим же
@@ -34964,6 +34906,130 @@ const app = {
         if (body) body.scrollTop = scrollBefore == null ? body.scrollHeight : scrollBefore;
 
         this.filterAdminChatList();
+    },
+
+    // ═══ Вкладка «Уведомления» ════════════════════════════════════════════
+    // Лента уведомлений (статусы смет у заказчиков, напоминания по счетам, срок тарифа,
+    // ответы монтажников) отдельно от переписки: раньше она лежала закреплённой нитью
+    // в «Сообщениях», а автонапоминания базы падали в чат с менеджером и тонули там.
+    // Над лентой — проверка каналов: что выключено и что именно включить, чтобы
+    // уведомления доходили не только до открытой вкладки.
+    renderAdminNotifications: function () {
+        const box = document.getElementById('admin_notif_box');
+        if (!box) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const again = () => { if (this._adminTab === 'notifications') this.renderAdminNotifications(); };
+
+        // Подтягиваем то, чего на экране ещё нет: статус Telegram (читается вместе с
+        // облачными настройками) и разрешение на пуш в приложении
+        if (!this.state.tgConnect && !this._installerSettingsCloudSynced) {
+            this.pullInstallerSettingsFromCloud().then(again).catch(() => { });
+        }
+        if (this._notifPushPerm === undefined && typeof appPush !== 'undefined' && appPush.isNative()) {
+            this._notifPushPerm = null;
+            Promise.resolve(appPush.plugin().checkPermissions())
+                .then(p => { this._notifPushPerm = (p && p.receive) || 'unknown'; again(); })
+                .catch(() => { this._notifPushPerm = 'unknown'; });
+        }
+
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const items = this._notifications || [];
+        const unread = items.filter(n => !n.isRead).length;
+        const isManager = this.isManagerRole();
+        const rows = [];
+
+        // Звук: «Без звука» — самая частая причина «мне ничего не приходит»
+        let sound = 'iphone';
+        try { sound = localStorage.getItem('stout_notification_sound') || 'iphone'; } catch (e) { /* без хранилища — звук по умолчанию */ }
+        const soundSel = `<select class="auth-input" style="width:auto; padding:4px 8px;" onchange="app.changeNotificationSound(this.value); app.renderAdminNotifications()">
+            <option value="iphone"${sound === 'iphone' ? ' selected' : ''}>iPhone (Тритон)</option>
+            <option value="icq"${sound === 'icq' ? ' selected' : ''}>ICQ (О-оу!)</option>
+            <option value="none"${sound === 'none' ? ' selected' : ''}>Без звука</option>
+        </select>`;
+        rows.push(sound === 'none'
+            ? { ok: false, title: 'Звук при новом уведомлении', text: 'Выключен: когда калькулятор открыт, новое уведомление придёт молча. Выберите мелодию:', fix: soundSel }
+            : { ok: true, title: 'Звук при новом уведомлении', text: 'Включён, пока калькулятор открыт в браузере.', fix: soundSel });
+
+        // Telegram: единственный канал, который доходит, когда сайт закрыт
+        const tg = this.state.tgConnect;
+        if (!tg && !this._installerSettingsCloudSynced) {
+            rows.push({ ok: null, title: 'Telegram', text: 'Проверяем подключение…', fix: '' });
+        } else if (!tg || !tg.chatId) {
+            rows.push({
+                ok: false, title: 'Telegram не подключён',
+                text: 'Без него уведомления видны, только когда открыт калькулятор. Нажмите «Подключить» → в открывшемся боте нажмите «Запустить» (Start) → вернитесь сюда. Подключение действует 10 минут с нажатия.',
+                fix: `<button type="button" class="lk-btn-sm" onclick="app.connectTelegram()">Подключить Telegram</button>`
+            });
+        } else {
+            rows.push({ ok: true, title: 'Telegram подключён' + (tg.username ? ' как @' + esc(tg.username) : ''), text: 'Уведомления приходят в бота, даже когда сайт закрыт.', fix: '' });
+            [['kp', 'Одобрение или отклонение КП', 'Клиент ответил по ссылке на смету'],
+            ['oprosnik', 'Заполненный опросник', 'Заказчик прислал анкету о доме'],
+            ['chat', 'Сообщения из калькулятора', 'Ответы менеджера и сообщения сервиса']].forEach(c => {
+                const on = this.tgNotifyEnabled(c[0]);
+                rows.push({
+                    ok: on, sub: true, title: 'Telegram: ' + c[1],
+                    text: on ? c[2] : c[2] + '. Выключено — включите переключатель справа.',
+                    fix: `<label class="switch"><input type="checkbox"${on ? ' checked' : ''} onchange="app.setTgNotify('${c[0]}', this.checked); app.renderAdminNotifications()"><span class="slider"></span></label>`
+                });
+            });
+        }
+
+        // Напоминание «КП ушло, а счёта нет». Срок задаёт сам монтажник, поэтому менеджеру
+        // дистрибьютора строка ни к чему: у него напоминания приходят про чужих монтажников
+        if (!isManager) {
+            const days = this.kpReminderDaysDefault();
+            const inp = `<input type="number" class="auth-input lk-num" min="0" max="90" step="1" value="${days}" onchange="app.setKpReminderDays(this.value.trim()); app.renderAdminNotifications()">`;
+            rows.push(days > 0
+                ? { ok: true, title: 'Напоминание выставить счёт', text: `Придёт через ${days} дн. после отправки КП клиенту, если счёт не запрошен. Срок можно поменять (дней):`, fix: inp }
+                : { ok: false, title: 'Напоминание выставить счёт', text: 'Выключено (стоит 0). Чтобы получать напоминания, впишите срок в днях — по умолчанию 10:', fix: inp });
+        }
+
+        // Пуш — только в приложении для Android; на сайте браузерных пушей нет
+        if (typeof appPush !== 'undefined' && appPush.isNative()) {
+            const perm = this._notifPushPerm;
+            if (perm === 'granted') rows.push({ ok: true, title: 'Пуш-уведомления в приложении', text: 'Разрешены.', fix: '' });
+            else if (perm === undefined || perm === null) rows.push({ ok: null, title: 'Пуш-уведомления в приложении', text: 'Проверяем разрешение…', fix: '' });
+            else rows.push({ ok: false, title: 'Пуш-уведомления в приложении', text: 'Не разрешены. Откройте настройки телефона → Приложения → HeatCalc → Уведомления и включите их (на Android 13 и новее также пункт «Разрешить уведомления»).', fix: '' });
+        } else {
+            rows.push({ ok: null, title: 'Пуш-уведомления', text: 'Приходят только в приложении HeatCalc для Android. В браузере их нет — для закрытого сайта используйте Telegram.', fix: '' });
+        }
+
+        const bad = rows.filter(r => r.ok === false).length;
+        const dot = r => r.ok === true ? '<span style="color:#10B981;font-weight:700;">✓</span>'
+            : (r.ok === false ? '<span style="color:#D97706;font-weight:700;">!</span>' : '<span style="color:var(--text-sec);">·</span>');
+        const rowsHtml = rows.map(r => `
+            <div class="lk-setting"${r.sub ? ' style="padding-left:22px;"' : ''}>
+                <div class="lk-setting-text">
+                    <b>${dot(r)} ${r.title}</b>
+                    <span${r.ok === false ? ' style="color:#B45309;"' : ''}>${r.text}</span>
+                </div>
+                ${r.fix || ''}
+            </div>`).join('');
+
+        const cards = items.length ? this.renderNotificationCards(items) : '';
+        box.innerHTML = `
+            <div class="ad-page-h">
+                <div><h3>Уведомления</h3><div class="ad-sub">${unread ? unread + ' непрочитанных из ' + items.length : (items.length ? 'Все прочитаны' : 'Пока пусто')} · статусы смет, счета, тариф, ответы монтажников</div></div>
+                <div style="display:flex; gap:8px;">
+                    <button class="admin-btn" onclick="app.markAllNotificationsRead()">Прочитать все</button>
+                    <button class="admin-btn" onclick="app.clearAllNotifications()">Очистить всё</button>
+                </div>
+            </div>
+            <div class="lk-card" style="margin-bottom:14px; text-align:left;">
+                <div class="lk-setting" style="border-bottom:1px solid var(--border);">
+                    <div class="lk-setting-text">
+                        <b>${bad ? '⚠ Что выключено: ' + bad : '✓ Все каналы включены'}</b>
+                        <span>${bad ? 'Пока это не включено, часть уведомлений вы не увидите, пока не откроете калькулятор.' : 'Уведомления доходят по всем доступным каналам.'}</span>
+                    </div>
+                </div>
+                ${rowsHtml}
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px; padding:4px 2px 20px;">
+                ${cards || '<div class="admin-chat-empty">Уведомлений пока нет.</div>'}
+            </div>`;
+
+        // Лента на виду — автонапоминания базы увидены, гасим по ним бейдж
+        if (unread) setTimeout(() => { if (this._adminTab === 'notifications') this.markKpRemindersSeen(); }, 1500);
     },
 
     // Фильтрует уже отрисованный список диалогов (только display, без перестройки DOM —
@@ -36569,6 +36635,11 @@ const app = {
     openSchemeFullscreen: function (srcEl) {
         const src = srcEl || document.querySelector('#dynamic_scheme .scheme-svg');
         if (!src) return;
+        // Все схемы, что сейчас показаны в расчёте, — для листания ‹ › и стрелками
+        const list = Array.from(document.querySelectorAll('.scheme-svg-wrap > svg, .automation-scheme > svg'))
+            .filter(el => !el.closest('#scheme_zoom_overlay') && el.getClientRects().length);
+        let cur = list.indexOf(src);
+        if (cur < 0) { list.unshift(src); cur = 0; }
         const old = document.getElementById('scheme_zoom_overlay');
         if (old) old.remove();
         const ov = document.createElement('div');
@@ -36576,6 +36647,7 @@ const app = {
         ov.innerHTML =
             `<div class="scheme-zoom-bar">
                 <button type="button" data-z="hints" class="scheme-zoom-hints">${this._hydToggleLabel(true)}</button>
+                ${list.length > 1 ? `<button type="button" data-z="prev" aria-label="Предыдущая схема" title="Предыдущая схема (←)">‹</button><span class="scheme-zoom-count"></span><button type="button" data-z="next" aria-label="Следующая схема" title="Следующая схема (→)">›</button>` : ''}
                 <button type="button" data-z="out" aria-label="Уменьшить">−</button>
                 <button type="button" data-z="fit">Вписать</button>
                 <button type="button" data-z="in" aria-label="Увеличить">+</button>
@@ -36585,7 +36657,17 @@ const app = {
         if (!this.hydEnabled()) ov.classList.add('hyd-off');
         document.body.appendChild(ov);
         const canvas = ov.querySelector('.scheme-zoom-canvas');
-        const svg = canvas.querySelector('svg');
+        let svg = canvas.querySelector('svg');
+        const countEl = ov.querySelector('.scheme-zoom-count');
+        const go = (d) => {
+            if (list.length < 2) return;
+            cur = (cur + d + list.length) % list.length;
+            canvas.innerHTML = list[cur].outerHTML;
+            svg = canvas.querySelector('svg');
+            fit();
+            canvas.scrollLeft = 0; canvas.scrollTop = 0;
+            if (countEl) countEl.textContent = (cur + 1) + ' / ' + list.length;
+        };
         let w = 0;
         const fit = () => { w = canvas.clientWidth - 32; svg.style.width = w + 'px'; };
         const zoom = (k, cx, cy) => {
@@ -36599,9 +36681,14 @@ const app = {
             canvas.scrollTop = py * w - (cy ?? rect.height / 2);
         };
         fit();
+        // Лист насосной группы на телефоне: подписи при «вписать» мельче читаемого, открываем с увеличением (кнопка «Вписать» вернёт целиком).
+        if (svg.querySelector('.sg-hit') && canvas.clientWidth < 700) zoom(2.4);
+        if (countEl) countEl.textContent = (cur + 1) + ' / ' + list.length;
         ov.addEventListener('click', (e) => {
             const z = e.target.dataset && e.target.dataset.z;
-            if (z === 'in') zoom(1.3);
+            if (z === 'prev') go(-1);
+            else if (z === 'next') go(1);
+            else if (z === 'in') zoom(1.3);
             else if (z === 'hints') this.toggleHydHints(e);
             else if (z === 'out') zoom(1 / 1.3);
             else if (z === 'fit') fit();
@@ -36629,7 +36716,12 @@ const app = {
         });
         // клик по свободному полю канваса не закрывает после перетаскивания
         canvas.addEventListener('click', (e) => { if (drag && drag.moved) e.stopPropagation(); }, true);
-        const onKey = (e) => { if (e.key === 'Escape') { ov.remove(); window.removeEventListener('keydown', onKey); } };
+        const onKey = (e) => {
+            if (!ov.isConnected) { window.removeEventListener('keydown', onKey); return; }
+            if (e.key === 'Escape') { ov.remove(); window.removeEventListener('keydown', onKey); }
+            else if (e.key === 'ArrowLeft') go(-1);
+            else if (e.key === 'ArrowRight') go(1);
+        };
         window.addEventListener('keydown', onKey);
     },
     // Схема подключения автоматики котельной: контроллер с именными
@@ -36786,6 +36878,11 @@ const app = {
         const isVentil = i => /ventil|вентил/i.test(nameOf(i));
         const tap = this.state.waterInput && (parseInt(this.state.outdoorFaucet) || 0) > 0;
         return {
+            // Листы самосборных насосных групп — только когда группы в смете собраны из позиций
+            // (this._selfKinds выставляет подбор в render): у готовых групп STOUT/ROMMER вид другой.
+            pumpGroups: ['direct', 'thermo', 'servo', 'dhw']
+                .filter(k => this._selfKinds && this._selfKinds[k])
+                .map(k => ({ kind: k, url: this.SELF_GROUP_SHEETS[k] })),
             ufh: (this.state.tp1 > 0 || this.state.tp2 > 0) ? this.UFH_SHEET : null,
             // Лист про лучевую разводку: без самого коллектора его не показываем
             radManifold: spec.some(i => inRads(i) && /коллектор/i.test(nameOf(i)) &&
@@ -37055,6 +37152,264 @@ const app = {
      * сам коллектор: при врезке радиаторов в магистраль тройниками коллектора
      * нет, и узла обвязки к нему тоже.
      */
+    /**
+     * Узлы обвязки самосборных насосных групп — над подразделом «2.4. Гидравлика котельной».
+     * Листы «Обвязка насосной группы» проектов корпуса Galf (рамка и штамп сняты):
+     *   direct — прямая (радиаторы), «1 объект», лист 49;
+     *   thermo — термостатическая (тёплый пол), «2 объект», лист 41;
+     *   servo  — под сервопривод, 2024-479-MEP.CO, лист 40.
+     * На листах оборудование проектов (ZOTA, ESBE) — состав в смете подобран из прайса ТЕРЕМ,
+     * но схема сборки та же: насос, краны, смеситель, обратный клапан-перемычка.
+     */
+    SELF_GROUP_SHEETS: {
+        dhw: 'img/nodes/selfgrp_direct.jpg',
+        direct: 'img/nodes/selfgrp_direct.jpg',
+        thermo: 'img/nodes/selfgrp_thermo.jpg',
+        servo: 'img/nodes/selfgrp_servo.jpg'
+    },
+    SELF_GROUP_LABELS: {
+        direct: { w: 1500, h: 1155, l: [
+            ["Фитинг ППР - переход на наружную резьбу, 32 мм х 3/4\"",485,619,846,639,938,629],
+            ["Футорка 1\" x 3/4\"",485,662,601,682,937,672],
+            ["Гайка насоса с краном 1\"х1 1/2\" ВР-ВР",485,709,732,729,937,719],
+            ["Циркуляционный насос EcoRING III, ZOTA 25/60 180",486,822,800,842,938,832],
+            ["Фитинг ППР - переход на наружную резьбу, 32 мм х 3/4\"",1099,873,1460,893,1034,883],
+            ["Гайка насоса 1 1/2\" x 1\"",485,923,637,943,937,933],
+            ["Клапан обратный 3/4\" ВР",1282,928,1448,947,1033,938],
+            ["Футорка 1\" x 3/4\"",485,955,601,974,937,965],
+            ["Кран шаровой ВН-НР 3/4\"",1295,999,1460,1019,1033,1009],
+            ["Кран шаровой ВН-НР 3/4\"",485,1000,650,1019,936,1010],
+            ["Хомут трубный 24-28 мм",1300,1043,1460,1063,1033,1053],
+            ["Хомут трубный 24-28 мм",485,1045,645,1065,936,1056],
+            ["Удлинитель ВН/ВР 3/4\" 30 мм",485,1070,676,1089,937,1080],
+            ["Удлинитель ВН/ВР 3/4\" 30 мм",1269,1070,1460,1090,1033,1080],
+            ["Сгон прямой 3 /4\" ВР-НР",485,1101,643,1120,936,1110],
+            ["Сгон прямой 3 /4\" ВР-НР",1302,1106,1460,1126,1034,1116]
+        ] },
+        thermo: { w: 1500, h: 1176, l: [
+            ["Тройник нерж. ст. 22х22х22",570,223,745,242,927,232],
+            ["Уголок 45° ВР/НР нерж.ст. 22аx22",570,284,789,303,964,293],
+            ["Тройник нерж. ст. 22х22х22",1300,357,1474,376,1144,366],
+            ["Уголок 45° ВР/НР нерж.ст. 22аx22",1255,439,1474,458,1094,448],
+            ["Соединитель нерж.ст. прямой с НР 22х3/4\"",1202,516,1474,534,1092,524],
+            ["Соединитель прямой с ВР нерж. ст. 22х3/4\"",570,543,846,561,967,552],
+            ["Клапан обратный 3/4\" ВР",1308,560,1474,578,1092,569],
+            ["Полусгон прямой 1\"х3/4\"'",570,583,734,601,966,591],
+            ["Ниппель 3/4\" НР",1369,604,1474,622,1092,613],
+            ["Смесительный клапан Ø25, Kvs = 3.4 м³/ч",570,640,834,659,964,649],
+            ["Тройник 3/4\" ВР",1369,640,1474,659,1092,649],
+            ["Соединитель нерж.ст. прямой с НР 22х3/4\"",1202,698,1474,716,1092,707],
+            ["Гайка насоса с краном 1\"х1 1/2\" ВР-ВР",570,705,818,724,966,714],
+            ["Полусгон прямой 1\"х3/4\"'",1310,734,1474,753,1048,743],
+            ["Циркуляционный насос EcoRING III, ZOTA 25/60 180",570,831,886,850,968,840],
+            ["Гайка насоса 1 1/2\" x 1\"",570,940,722,958,964,949],
+            ["Соединитель прямой с ВР нерж. ст. 22х3/4\"",1198,953,1474,972,1092,962],
+            ["Футорка 1\" x 3/4\"",570,970,686,988,966,979],
+            ["Кран шаровой ВН-НР 3/4\"",1309,1011,1474,1029,1092,1020],
+            ["Кран шаровой ВН-НР 3/4\"",570,1012,736,1030,966,1021],
+            ["Хомут трубный 24-28 мм",570,1055,730,1073,966,1064],
+            ["Хомут трубный 24-28 мм",1314,1056,1474,1075,1092,1065],
+            ["Удлинитель ВН/ВР 3/4\" 30 мм",570,1080,762,1099,966,1089],
+            ["Удлинитель ВН/ВР 3/4\" 30 мм",1283,1081,1474,1099,1092,1090],
+            ["Сгон прямой 3 /4\" ВР-НР",1316,1118,1474,1136,1092,1127],
+            ["Сгон прямой 3 /4\" ВР-НР",570,1119,728,1137,966,1128]
+        ] },
+        servo: { w: 1500, h: 1268, l: [
+            ["Соединитель нерж.ст. прямой с НР 22х3/4\"",1190,511,1455,530,1115,521],
+            ["Соединитель нерж.ст. прямой с НР 22х3/4\"",559,541,825,560,992,550],
+            ["Клапан обратный 3/4\" ВР",1293,561,1455,580,1116,571],
+            ["Сгон прямой 3 /4\" ВР-НР",559,587,714,606,992,597],
+            ["Ниппель 3/4\" НР",1353,597,1456,616,1115,607],
+            ["Клапан трехходовой смесительный, Esbe",560,632,816,651,990,642],
+            ["Тройник 3/4\" ВР",1353,633,1455,653,1115,643],
+            ["Ниппель 1\" х 3/4\" НР",559,681,687,700,992,691],
+            ["Соединитель нерж.ст. прямой с НР 22х3/4\"",1190,689,1455,708,1115,699],
+            ["Гайка насоса с краном 1\"х1 1/2\" ВР-ВР",559,724,801,743,993,734],
+            ["Сгон прямой 3 /4\" ВР-НР",1301,725,1456,744,1059,734],
+            ["Ниппель 3/4\" НР",1353,770,1456,790,1036,780],
+            ["Циркуляционный насос EcoRING III, ZOTA 25/60 180",560,845,868,864,994,856],
+            ["Гайка насоса 1 1/2\" x 1\"",559,950,707,969,993,960],
+            ["Соединитель прямой с ВР нерж. ст. 22х3/4\"",1186,971,1455,990,1116,981],
+            ["Футорка 1\" x 3/4\"",559,977,672,996,993,987],
+            ["Кран шаровой ВН-НР 3/4\"",1294,1018,1455,1038,1116,1029],
+            ["Кран шаровой ВН-НР 3/4\"",559,1019,721,1038,993,1030],
+            ["Хомут трубный 24-28 мм",559,1063,716,1082,993,1073],
+            ["Хомут трубный 24-28 мм",1299,1063,1456,1082,1116,1073],
+            ["Удлинитель ВН/ВР 3/4\" 30 мм",1269,1088,1456,1107,1115,1097],
+            ["Удлинитель ВН/ВР 3/4\" 30 мм",559,1088,746,1108,992,1098],
+            ["Сгон прямой 3 /4\" ВР-НР",559,1119,714,1138,992,1128],
+            ["Сгон прямой 3 /4\" ВР-НР",1301,1119,1456,1138,1115,1128]
+        ] }
+    },
+    // Подраздел сметы каждого вида группы (без номера) — по нему подпись схемы ищет свои строки.
+    SELF_KIND_TITLE: { direct: 'Самосборная группа: прямая', thermo: 'Самосборная группа: термостатическая', servo: 'Самосборная группа: под сервопривод', dhw: 'Самосборная группа: загрузка бойлера' },
+    // Сверка подписей схемы со сметой: [подпись, какие артикулы сметы её закрывают, искать во всей котельной?].
+    // null вместо артикулов — позиции этой подписи в смете нет и не закладывается.
+    SELF_LABEL_RULES: [
+        [/^Тройник нерж/, /^(RSS|SSS)-(1013|1014|2013|2014)-/, true, ['tee']],
+        [/^Уголок 45/, /^(RSS|SSS)-(1004|2004)-0000(22|28)/, false, ['elbow45']],
+        [/^Фитинг ППР/, /^(RSS|SSS)-(1021|1022|2021|2022)-(002234|000281)/, false, ['adF', 'adM']],
+        [/^Соединитель.*с НР/, /^(RSS|SSS)-(1021|2021)-(002234|000281)/, false, ['adM']],
+        [/^Соединитель.*с ВР/, /^(RSS|SSS)-(1022|2022)-(002234|000281)/, false, ['adF']],
+        [/^Клапан обратный/, /^(SVC-0011-0000(20|25)|RVC-0001-0000(20|25))/],
+        [/^Ниппель 3\/4/, /^SFT-0004-(003434|000011)/],
+        [/^Ниппель 1/, /^SFT-0004-(000134|000011)/],
+        [/^Тройник 3\/4/, /^SFT-0020-0000(34|01)/],
+        [/^(Полусгон|Футорка)/, /^SFT-(0004-000134|0028-000134|0004-000011)/],
+        [/^(Смесительный клапан|Клапан трехходовой)/, /^(SVM-0120-16432[05]|RVM-0121-164320|SVM-0003-01(2002|2501)|RVM-0003-0(06320|10025))/],
+        [/^Гайка насоса/, /^SPC-0010-000025/],
+        [/^Циркуляц/, /^(SPC|RCP)-/],
+        [/^Кран шаровой/, /^(SVB-0004-2000(20|25)|RBV-0004-02102(20|25)|RBV-0004-2210220)/],
+        [/^Хомут/, /^SAC-0020-3000(34|01)/],
+        [/^Удлинитель/, /^SFT-0001-003430/],
+        [/^Сгон/, /^SFT-0032-034100/]
+    ],
+    // Подписи схемы вида kind. Группа загрузки бойлера собрана как прямая — у неё лист прямой.
+    sgLab: function (kind) {
+        return this.SELF_GROUP_LABELS[kind === 'dhw' ? 'direct' : kind];
+    },
+    sgRule: function (text) {
+        return this.SELF_LABEL_RULES.find(r => r[0].test(String(text || ''))) || null;
+    },
+    // Подраздел, в котором стоит строка сметы: по ближайшему заголовку группы выше неё (ключ строки хранит только раздел).
+    sgSubTitleOf: function (tr) {
+        for (let e = tr.previousElementSibling; e; e = e.previousElementSibling) {
+            if (e.classList.contains('group-header')) return e.innerText || '';
+            if (e.classList.contains('row-sec')) return '';
+        }
+        return '';
+    },
+    sgIdMatch: function (rule, id) {
+        return !!rule && !!rule[1] && (rule[1].test(id) || (rule[3] || []).some(k => this.selfFitIdSet(k).has(id)));
+    },
+    sgIdOf: function (tr) {
+        return String((String(tr.dataset.rk || '').split('|')[2]) || '').replace(/#\d+$/, '');
+    },
+    // Строки сметы, закрывающие подпись: по артикулу в ключе строки (data-rk = вид|раздел|артикул) и по подразделу вида группы.
+    sgRows: function (kind, rule) {
+        if (!rule || !rule[1]) return [];
+        const title = this.SELF_KIND_TITLE[kind];
+        const all = Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr => this.sgIdMatch(rule, this.sgIdOf(tr)));
+        if (rule[2]) return all;
+        const own = all.filter(tr => this.sgSubTitleOf(tr).toLowerCase().indexOf(title.toLowerCase()) >= 0);
+        if (own.length) return own;
+        // Смета склеивает строки одного артикула и показывает под первой (хомут, кран, ниппель бывают и в других узлах):
+        // нет в подразделе группы — берём ту же позицию из соседнего подраздела, а не считаем её потерянной. Только артикулы,
+        // которые идут в комплект ЭТОЙ группы: кран 3/4" не должен тянуть за собой краны 1" и чужие узлы.
+        const kit = (this._selfKitIds || {})[kind];
+        const narrowed = kit ? all.filter(tr => kit.has(this.sgIdOf(tr))) : all;
+        return narrowed.length ? narrowed : all;
+    },
+    // Схема одной группы (kind) — над её подразделом сметы. Без kind — все схемы подряд (на случай внешнего вызова).
+    renderPumpGroupScheme: function (kind) {
+        this.sgInit();
+        return this.projectNodeSheetUrls().pumpGroups.filter(p => !kind || p.kind === kind).map(p => {
+            const lab = this.sgLab(p.kind);
+            let sum = '';
+            if (lab) {
+                const okList = lab.l.map(l => this.sgRows(p.kind, this.sgRule(l[0])).length > 0);
+                const missU = [];
+                lab.l.forEach((l, i) => { if (!okList[i] && missU.indexOf(l[0]) < 0) missU.push(l[0]); });
+                const total = lab.l.length, okN = okList.filter(Boolean).length;
+                sum = `<div class="sg-summary no-print">Сверка схемы со сметой: подписей <b>${total}</b>, в смете есть <b>${okN}</b>.` +
+                    (missU.length ? ` <span class="sg-miss-txt">Нет в смете: ${missU.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
+                    ` <span class="sg-hint">Наведите на подпись схемы или на строку сметы — соответствие подсветится.</span></div>`;
+            }
+            return sum + this._renderSheetImage(p.url, p.kind);
+        }).join('');
+    },
+    // Подсветка соответствия «подпись на схеме ↔ строка сметы». Слушатели на документе, ставятся один раз.
+    sgInit: function () {
+        if (this._sgBound) return;
+        this._sgBound = true;
+        const clear = () => {
+            document.querySelectorAll('.sg-hl').forEach(e => e.classList.remove('sg-hl'));
+            document.querySelectorAll('tr.sg-row-hl').forEach(e => e.classList.remove('sg-row-hl'));
+        };
+        const hotOf = (el) => el && el.closest ? el.closest('.sg-hot, .sg-pt, .sg-hit') : null;
+        // Подсказка у курсора: строки сметы, которые закрывают подпись (строка может быть далеко от схемы, за экраном).
+        const tipEl = () => {
+            let t = document.getElementById('sg-tip');
+            if (!t) { t = document.createElement('div'); t.id = 'sg-tip'; t.className = 'no-print'; document.body.appendChild(t); }
+            return t;
+        };
+        const hideTip = () => { const t = document.getElementById('sg-tip'); if (t) t.style.display = 'none'; };
+        const rowBrief = (tr) => {
+            const idx = (tr.querySelector('.col-idx') || {}).innerText || '';
+            const nm = ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
+            const qEl = tr.querySelector('.col-qty input');
+            const q = qEl ? qEl.value : ((tr.querySelector('.col-qty') || {}).innerText || '').trim();
+            const sum = ((tr.querySelector('.col-sum') || {}).innerText || '').trim();
+            return `<div class="sg-tip-row"><b>№ ${idx.trim()}</b> ${nm.replace(/</g, '&lt;')} <span>${q} шт. · ${sum}</span></div>`;
+        };
+        document.addEventListener('mousemove', (e) => {
+            const t = document.getElementById('sg-tip');
+            if (!t || t.style.display === 'none') return;
+            const w = t.offsetWidth, h = t.offsetHeight;
+            t.style.left = Math.max(8, Math.min(innerWidth - w - 8, e.clientX + 16)) + 'px';
+            t.style.top = Math.max(8, Math.min(innerHeight - h - 8, e.clientY + 18)) + 'px';
+        });
+        document.addEventListener('mouseover', (e) => {
+            const hot = hotOf(e.target);
+            if (hot) {
+                clear();
+                if (window.matchMedia && window.matchMedia('(hover: hover)').matches) {
+                    const [k0, i0] = String(hot.getAttribute('data-sg')).split(':');
+                    const lab0 = this.sgLab(k0), rows0 = this.sgRows(k0, this.sgRule(lab0 && lab0.l[i0] && lab0.l[i0][0]));
+                    const t = tipEl();
+                    t.innerHTML = '<div class="sg-tip-h">' + String((lab0 && lab0.l[i0] && lab0.l[i0][0]) || '').replace(/</g, '&lt;') + '</div>' +
+                        (rows0.length ? rows0.slice(0, 4).map(rowBrief).join('') + (rows0.length > 4 ? '<div class="sg-tip-row">… и ещё ' + (rows0.length - 4) + '</div>' : '')
+                            : '<div class="sg-tip-row sg-tip-miss">В смете этой позиции нет</div>');
+                    t.style.display = 'block';
+                    t.style.left = Math.max(8, Math.min(innerWidth - t.offsetWidth - 8, e.clientX + 16)) + 'px';
+                    t.style.top = Math.max(8, Math.min(innerHeight - t.offsetHeight - 8, e.clientY + 18)) + 'px';
+                }
+                const [kind, i] = String(hot.getAttribute('data-sg')).split(':');
+                document.querySelectorAll('[data-sg="' + kind + ':' + i + '"]').forEach(x => x.classList.add('sg-hl'));
+                const lab = this.sgLab(kind);
+                this.sgRows(kind, this.sgRule(lab && lab.l[i] && lab.l[i][0])).forEach(tr => tr.classList.add('sg-row-hl'));
+                return;
+            }
+            const tr = e.target.closest ? e.target.closest('#print-area tr[data-rk]') : null;
+            if (!tr || !document.querySelector('.sg-hot')) return;
+            const id = this.sgIdOf(tr), sub = this.sgSubTitleOf(tr);
+            let any = false;
+            document.querySelectorAll('.sg-hot').forEach(h => {
+                const [kind, i] = String(h.getAttribute('data-sg')).split(':');
+                const lab = this.sgLab(kind);
+                const rule = this.sgRule(lab && lab.l[i] && lab.l[i][0]);
+                if (rule && this.sgIdMatch(rule, id) && (rule[2] || sub.indexOf(this.SELF_KIND_TITLE[kind]) >= 0)) {
+                    document.querySelectorAll('[data-sg="' + kind + ':' + i + '"]').forEach(x => x.classList.add('sg-hl'));
+                    any = true;
+                }
+            });
+            if (any) tr.classList.add('sg-row-hl');
+        });
+        document.addEventListener('mouseout', (e) => {
+            if (hotOf(e.target) || (e.target.closest && e.target.closest('#print-area tr[data-rk]'))) clear();
+            if (hotOf(e.target)) hideTip();
+        });
+        // Щелчок по подписи — к строке сметы (раньше, чем сработает открытие схемы на весь экран).
+        document.addEventListener('click', (e) => {
+            const hot = hotOf(e.target);
+            if (!hot) return;
+            e.stopPropagation();
+            hideTip();
+            const [kind, i] = String(hot.getAttribute('data-sg')).split(':');
+            const lab = this.sgLab(kind);
+            const rows = this.sgRows(kind, this.sgRule(lab && lab.l[i] && lab.l[i][0]));
+            if (!rows.length) return;
+            const fs = document.getElementById('scheme_zoom_overlay');
+            if (fs) fs.remove();
+            // Ближайшая к листу этой группы строка (схема стоит над своим подразделом) — а не самая верхняя строка сметы.
+            const anchor = document.getElementById('pump_group_scheme_row_' + kind) || hot;
+            const ay = anchor.getBoundingClientRect().top + window.scrollY;
+            const dist = (r) => Math.abs(r.getBoundingClientRect().top + window.scrollY - ay);
+            const target = rows.slice().sort((a, b) => dist(a) - dist(b))[0];
+            target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            rows.forEach(r => { r.classList.add('sg-row-flash'); setTimeout(() => r.classList.remove('sg-row-flash'), 1800); });
+        }, true);
+    },
     RAD_SHEET: 'img/nodes/rad_manifold_sheet.jpg',
     renderRadNodeScheme: function () {
         // Коллектор радиаторов лежит в подразделе труб («3.3. Трубы отопления»),
@@ -37101,13 +37456,40 @@ const app = {
             this._schemeBoxTimer = setTimeout(() => this.syncSchemeBox(), 150);
         });
     },
-    _renderSheetImage: function (url) {
+    _renderSheetImage: function (url, sgKind) {
         if (!url) return '';
         const a = this.SHEET_SIZE;
+        // Подписи схемы самосборной группы — прозрачные кликабельные рамки поверх картинки (см. sgInit).
+        let overlay = '';
+        const lab = sgKind && this.SELF_GROUP_LABELS ? this.sgLab(sgKind) : null;
+        if (lab) {
+            const sc = Math.min(a.w / lab.w, a.h / lab.h), ox = (a.w - lab.w * sc) / 2, oy = (a.h - lab.h * sc) / 2;
+            overlay = lab.l.map((l, i) => {
+                const ok = this.sgRows(sgKind, this.sgRule(l[0])).length > 0;
+                const r = (v, o) => Math.round(o + v * sc);
+                const tip = ok ? '' : '<title>Этой позиции со схемы нет в смете</title>';
+                const geo = `x="${r(l[1], ox)}" y="${r(l[2], oy)}" width="${Math.round((l[3] - l[1]) * sc)}" height="${Math.round((l[4] - l[2]) * sc)}"`;
+                // sg-hot — видимая рамка, sg-hit — невидимая зона наведения с запасом в экранных пикселях (подписи на листе мелкие).
+                return `<rect class="sg-hot ${ok ? 'sg-ok' : 'sg-miss'}" data-sg="${sgKind}:${i}" ${geo}></rect>` +
+                    `<circle class="sg-pt" data-sg="${sgKind}:${i}" cx="${r(l[5], ox)}" cy="${r(l[6], oy)}" r="${Math.round(14 * sc)}"/>`;
+            }).join('') + lab.l.map((l, i) => {
+                const ok = this.sgRows(sgKind, this.sgRule(l[0])).length > 0;
+                const r = (v, o) => Math.round(o + v * sc);
+                // Зона наведения шире самой подписи (она мелкая), но не заходит на соседей: вверх и вниз — до середины зазора, не больше 26 пикселей листа.
+                let up = -1e9, dn = 1e9;
+                lab.l.forEach((q, j) => {
+                    if (j === i || q[3] < l[1] || q[1] > l[3]) return;
+                    if (q[4] <= l[2]) up = Math.max(up, q[4]); else if (q[2] >= l[4]) dn = Math.min(dn, q[2]);
+                });
+                const padUp = Math.min(26, Math.max(0, (l[2] - up) / 2)), padDn = Math.min(26, Math.max(0, (dn - l[4]) / 2));
+                const x0 = l[1] - 8, x1 = l[3] + 8, y0 = l[2] - padUp, y1 = l[4] + padDn;
+                return `<rect class="sg-hit" data-sg="${sgKind}:${i}" x="${r(x0, ox)}" y="${r(y0, oy)}" width="${Math.round((x1 - x0) * sc)}" height="${Math.round((y1 - y0) * sc)}">${ok ? '' : '<title>Этой позиции со схемы нет в смете</title>'}</rect>`;
+            }).join('');
+        }
         return `<div class="automation-scheme" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">` +
             `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${a.w} ${a.h}">` +
             `<rect x="0" y="0" width="${a.w}" height="${a.h}" fill="#fff" stroke="none"/>` +
-            `<image x="0" y="0" width="${a.w}" height="${a.h}" preserveAspectRatio="xMidYMid meet" href="${url}"/></svg>` +
+            `<image x="0" y="0" width="${a.w}" height="${a.h}" preserveAspectRatio="xMidYMid meet" href="${url}"/>${overlay}</svg>` +
             `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>`;
     },
     automationSchemeArt: function () {
@@ -39966,7 +40348,7 @@ const app = {
             const found = (this._recognitionStorageKeys || []);
             if (root()) root().innerHTML = `<div style="color:#EF4444; padding:20px;">
                 Список читается по вашей учётной записи, а токен сессии в браузере не найден.<br>
-                Попробуйте выйти и войти заново по email или через Google.
+                Попробуйте выйти и войти заново по email или через Яндекс ID.
                 <div style="margin-top:10px; color:var(--text-sec); font-size:12px;">
                     Для диагностики: ключи хранилища — ${found.length ? found.join(', ') : 'не найдены'}.<br>
                     Вкладка «Распознавание» читает токен той же функцией — если там та же ошибка,
@@ -40242,11 +40624,11 @@ const app = {
             const root = document.getElementById('admin_recognition_root');
             // Сессии Supabase нет вовсе — так бывает после входа через Telegram
             // или когда браузер почистил хранилище. Обновление страницы тут не
-            // поможет, нужен именно вход по email или через Google.
+            // поможет, нужен именно вход по email или через Яндекс ID.
             const found = (this._recognitionStorageKeys || []);
             if (root) root.innerHTML = `<div style="color:#EF4444; padding:20px;">
                 Архив читается по вашей учётной записи, а токен сессии в браузере не найден.<br>
-                Попробуйте выйти и войти заново по email или через Google.
+                Попробуйте выйти и войти заново по email или через Яндекс ID.
                 <div style="margin-top:10px; color:var(--text-sec); font-size:12px;">
                     Для диагностики: ключи хранилища — ${found.length ? found.join(', ') : 'не найдены'}.
                 </div></div>`;
@@ -42279,6 +42661,9 @@ const app = {
         const email = document.getElementById('auth_email_input').value.trim();
         const password = document.getElementById('auth_reg_password').value.trim();
 
+        // Галочки «информационные письма» в форме больше нет: согласие остаётся «не отвечал»
+        // (null), включить его можно в кабинете. flushPendingMailConsent без записи ничего не делает.
+
         const authErrEl = document.getElementById('auth_error_msg');
         if (authErrEl) authErrEl.style.display = 'none';
 
@@ -42369,10 +42754,7 @@ const app = {
 
             // Логика блокировки: Если emailExists === true
             if (emailExists === true) {
-                if (authErrEl) {
-                    authErrEl.innerText = 'Пользователь с таким email уже существует. Пожалуйста, войдите в систему.';
-                    authErrEl.style.display = 'block';
-                }
+                if (authErrEl) this.showEmailExistsHint(authErrEl, email);
                 if (btn) {
                     btn.disabled = false;
                     btn.innerText = 'Зарегистрироваться';
@@ -42573,19 +42955,60 @@ const app = {
             const friendlyErr = getFriendlyErrorMessage(err);
             if (authErrEl) {
                 const msg = (err.message || "").toLowerCase();
+                this.backToAuthMain(); // Возвращаем к форме, чтобы пользователь видел ошибку
                 if (msg.includes('already registered') || msg.includes('already exists')) {
-                    authErrEl.innerText = 'Пользователь с таким email уже существует. Пожалуйста, войдите в систему.';
+                    this.showEmailExistsHint(authErrEl, email);
                 } else {
                     authErrEl.innerText = 'Ошибка регистрации: ' + friendlyErr;
+                    authErrEl.style.display = 'block';
                 }
-                authErrEl.style.display = 'block';
-                this.backToAuthMain(); // Возвращаем к форме, чтобы пользователь видел ошибку
             } else {
                 app.alert('Ошибка регистрации: ' + friendlyErr);
             }
         } finally {
             if (btn) { btn.disabled = false; btn.innerText = 'Подтвердить'; }
         }
+    },
+
+    // Почта уже зарегистрирована: вместо тупика «войдите» даём два выхода сразу в окне регистрации —
+    // перейти ко входу с этой почтой или выслать на неё ссылку для нового пароля.
+    showEmailExistsHint: function (el, email) {
+        if (!el) return;
+        el.innerHTML = '';
+        const text = document.createElement('div');
+        text.textContent = 'Пользователь с таким email уже существует.';
+        el.appendChild(text);
+        const row = document.createElement('div');
+        row.style.cssText = 'margin-top:6px; display:flex; gap:14px; flex-wrap:wrap;';
+        const mk = (label, fn) => {
+            const a = document.createElement('a');
+            a.href = '#';
+            a.textContent = label;
+            a.style.cssText = 'color: var(--primary); font-weight: 600; text-decoration: none;';
+            a.onclick = (e) => { e.preventDefault(); fn(a); };
+            return a;
+        };
+        row.appendChild(mk('Войти', () => {
+            el.style.display = 'none';
+            this.switchAuthTab('login');
+        }));
+        row.appendChild(mk('Выслать пароль на почту', async (a) => {
+            a.style.pointerEvents = 'none';
+            a.textContent = 'Отправка...';
+            try {
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+                if (error) throw error;
+                el.style.color = 'var(--text-sec)';
+                el.textContent = 'Письмо со ссылкой для нового пароля отправлено на ' + email + '. Проверьте также «Спам».';
+            } catch (err) {
+                a.style.pointerEvents = '';
+                a.textContent = 'Выслать пароль на почту';
+                app.alert('Ошибка: ' + getFriendlyErrorMessage(err));
+            }
+        }));
+        el.appendChild(row);
+        el.style.color = '#ef4444';
+        el.style.display = 'block';
     },
 
     showForgotPasswordView: function () {
@@ -42733,7 +43156,7 @@ const app = {
             let regActivityTypes = Array.isArray(meta.activity_types) ? meta.activity_types : [];
 
             // Ограничение авторизации через Google для пользователей из РФ.
-            // Кнопки Google в окне входа в РФ нет (см. applyRuLoginRestrictions) — то есть
+            // Кнопки Google в окне входа в РФ нет (кнопка Google убрана 08.10.2026) — то есть
             // обычным путём сюда никто из России не попадёт. Но остаются VPN, устаревший
             // кэш страны и служебная ссылка ?google_login=1, и раньше такой вход считался
             // новой регистрацией: он отменялся, а учётная запись удалялась. Человек этого
@@ -42961,6 +43384,7 @@ const app = {
 
             let uRow = upsertResult ? upsertResult[0] : null;
             if (uRow && !HC_LOCAL_DEV) this.stampLoginGeo(authUserId);
+            if (uRow) this.flushPendingMailConsent(email);
             if (uRow && utm) this.stampFirstTouchSource(uRow, authUserId, utm);
             if (uRow && uRow.is_blocked) {
                 // Заблокированный админом аккаунт: данные не трогаем, но не даём пользоваться
@@ -43491,12 +43915,11 @@ const app = {
             app.alert('Не удалось вернуть доступ: ' + (e.message || e));
         }
     },
-    // Безвозвратно стирает профиль пользователя и все связанные с ним данные (сметы,
-    // рассылки/переписку с админом, чаты с менеджером дистрибьютора). ВАЖНО: это удаляет
-    // только строки в public.users и связанных таблицах — сам логин/пароль в Supabase Auth
-    // отсюда не удаляется (для этого нужен service_role ключ, которого у клиента нет из
-    // соображений безопасности) — при необходимости полностью закрыть возможность входа
-    // его нужно вручную удалить в Supabase Dashboard → Authentication → Users.
+    // Безвозвратно стирает пользователя целиком: профиль, сметы, переписку, чаты с менеджером,
+    // КП-ссылки, события журнала, диалоги помощника и сам логин (Supabase Auth). Всё это делает
+    // серверная функция admin_delete_user_completely (миграция 20261007_admin_delete_user.sql):
+    // у страницы нет служебного ключа, а функция сама проверяет, что вызвал администратор,
+    // и не даёт удалить себя, владельца и (без прав владельца) администраторов и менеджеров.
     deleteUserCompletely: async function (userId) {
         if (this.isReadOnlyAdmin()) {
             app.alert('Режим просмотра. Удаление учетных записей запрещено.');
@@ -43515,17 +43938,23 @@ const app = {
         if (!await app.confirm('Точно удалить? Отменить это будет невозможно — данные восстановить не получится.')) return;
 
         try {
-            await supabaseClient.from('estimates').delete().eq('user_id', userId);
-            await supabaseClient.from('messages').delete().or(`sender_id.eq.${userId},recipient_id.eq.${userId}`);
-            await supabaseClient.from('manager_chat_messages').delete().or(`installer_user_id.eq.${userId},manager_user_id.eq.${userId},sender_user_id.eq.${userId}`);
-
-            const { data, error } = await supabaseClient.from('users').delete().eq('id', userId).select('id');
+            const { data, error } = await supabaseClient.rpc('admin_delete_user_completely', { p_user_id: userId });
             if (error) throw error;
-            if (!data || data.length === 0) {
-                app.alert('Профиль не удалился — похоже, RLS-политика в Supabase не разрешает администратору удалять чужие учётки.');
+            if (!data || data.ok !== true) {
+                const reasons = {
+                    forbidden: 'нет прав администратора',
+                    not_found: 'учётка не найдена (возможно, уже удалена)',
+                    self: 'нельзя удалить самого себя',
+                    protected: 'эту учётку удалить нельзя (владелец)',
+                    owner_only: 'удалять администраторов, наблюдателей и менеджеров может только Владелец',
+                    not_deleted: 'профиль не удалился'
+                };
+                app.alert('Не удалось удалить учётку: ' + (reasons[data && data.error] || 'неизвестная причина'));
                 return;
             }
-            app.alert('🗑 Учётка и все данные удалены. Заново зарегистрироваться с этой почтой или телефоном нельзя 30 дней (снять запрет можно на вкладке «Неактивные»). Обратите внимание: логин/пароль в Supabase Auth это не затрагивает — при необходимости удалите его вручную в Dashboard.');
+            app.alert(data.auth_deleted === false
+                ? '🗑 Профиль и все данные удалены, но логин в Supabase Auth удалить не удалось' + (data.warning ? ' (' + data.warning + ')' : '') + '. Его можно удалить вручную в Dashboard → Authentication → Users. Заново зарегистрироваться с этой почтой или телефоном нельзя 30 дней (снять запрет можно на вкладке «Неактивные»).'
+                : '🗑 Учётка, все данные и логин удалены. Заново зарегистрироваться с этой почтой или телефоном нельзя 30 дней (снять запрет можно на вкладке «Неактивные»).');
             this.renderAdminMain();
             this.loadAdminData(this._adminOffset);
         } catch (e) {
@@ -43715,7 +44144,7 @@ const app = {
                         authUserId: tgUser.authUserId, email: tgUser.email || email
                     });
                     app.alert('Анкета сохранена на этом устройстве, но не записалась в вашу учётную запись — ' +
-                        'на другом устройстве её придётся заполнить заново. Напишите на dima24ba@gmail.com, мы поправим.',
+                        'на другом устройстве её придётся заполнить заново. Напишите на support@heatcalc.ru, мы поправим.',
                         'Профиль сохранён не полностью');
                     return;
                 }
@@ -44272,9 +44701,7 @@ const app = {
                     if (typeof RecognizeUI !== 'undefined') RecognizeUI.mountInline(panelRec);
                 }).catch(() => { });
             }
-            // Полный render() здесь не нужен — таблица сметы скрыта. Но виджет
-            // конкурса живёт вне таблицы и сам не спрячется, его чистим явно.
-            this.renderContestWidget();
+            // Полный render() здесь не нужен — таблица сметы скрыта.
             return;
         }
         if (panelRec) panelRec.style.display = 'none';
@@ -49155,7 +49582,6 @@ const app = {
             // ссылку, а напоминание «КП без счёта» не видело отправок ссылкой.
             this.logInvoiceEvent('sent', { shared_invoice_id: shareId, channel: 'link', kp_version: kpVersion || null });
 
-            GRM.trackAction('share', shareId);  // геймификация: +10 XP + значки ссылок (шаринг ссылки клиенту)
 
             // Копируем готовое сообщение с номером КП, а не голую ссылку
             const shareMsg = this.clientShareMessage({
@@ -49402,7 +49828,6 @@ const app = {
                         .replace(/[\\\/:\*\?"<>\|]/g, '');
                     const res = await hcNative.printPdf({ name: safeName + '.pdf' });
                     this.logPrintedEvent('pdf');
-                    GRM.trackAction('pdf', this.state.calc_id);
                     if (window.hcNativeShowSaved) window.hcNativeShowSaved(res);
                     document.dispatchEvent(new CustomEvent('hc:pdf-done'));
                 } catch (err) {
@@ -49463,7 +49888,6 @@ const app = {
                 await this.lazy('html2pdf');
                 await html2pdf().set(opt).from(printBin).save();
                 this.logPrintedEvent('pdf');
-                GRM.trackAction('pdf', this.state.calc_id);  // геймификация: +5 XP + значки PDF
                 // Документ на руках — момент, когда в приложении уместно
                 // попросить оценку (rate_app.js слушает это событие).
                 document.dispatchEvent(new CustomEvent('hc:pdf-done'));
@@ -49498,7 +49922,6 @@ const app = {
             app._printBinReady = false;
         }
         this.logPrintedEvent('pdf');
-        GRM.trackAction('pdf', this.state.calc_id);  // геймификация: +5 XP + значки PDF
         document.dispatchEvent(new CustomEvent('hc:pdf-done'));
 
         // Возвращаем тему обратно
@@ -49593,7 +50016,6 @@ const app = {
             const safeName = (document.title || this.state.projectName || 'Смета').replace(/[\\\/:\*\?"<>\|]/g, '');
             ExcelExport.saveFromPrintBin(`${safeName}.xlsx`, { flat: !!flat });
             this.logPrintedEvent('excel');
-            GRM.trackAction('pdf', this.state.calc_id);  // геймификация: та же отметка, что и у PDF
         } catch (err) {
             console.error('[executeExcelDownload] Ошибка формирования Excel:', err);
             app.alert('Не удалось сформировать файл Excel: ' + (err && err.message ? err.message : err));
@@ -49804,6 +50226,40 @@ const app = {
     // Выполняет фактическую запись в shared_invoices для задачи из очереди. Перед перезаписью
     // подтягивает уже существующий статус согласования (confirmed/needs_revision/комментарий) —
     // повторная генерация ссылки монтажником не должна сбрасывать то, что клиент уже отметил.
+    // Что делать с ответом клиента, когда ссылку записывают заново. ex — object_info,
+    // который уже лежит в базе, info — тот, что собираются записать. Возвращает итоговый.
+    //
+    // Раньше это жило внутри saveSharedInvoiceJobToCloud, а «Запрос счёта» писал ссылку
+    // мимо него и каждый раз возвращал статус «отправлен» — ответ клиента («нужна доработка»,
+    // «одобрено») терялся через секунды после нажатия, в Telegram он приходил, а в
+    // калькуляторе уведомления не было: оно строится из статуса в этой строке.
+    mergeClientAnswer: function (ex, info) {
+        // Клиент просил обновить просроченный счёт — эта запись и есть
+        // ответ на просьбу: статус снова «отправлен», таймер идёт заново
+        // (sent_at/valid_until уже новые в info). Отметки о
+        // просьбе (когда и сколько раз) оставляем: по ним дашборд считает,
+        // как таймер повлиял на ответы клиентов.
+        const wasRefreshAsked = ex.status === 'refresh_requested';
+        // Под той же ссылкой ушла новая версия КП — одобрение клиента
+        // относилось к прошлой, переносить его на новую нельзя: клиент
+        // увидел бы «одобрено» на смете, которую ещё не видел. Статус
+        // снова «отправлен», а что и по какой версии он отмечал, остаётся
+        // в истории (invoice_events хранят номер версии).
+        const newVersion = !!(info.kp_version && ex.kp_version
+            && Number(info.kp_version) !== Number(ex.kp_version));
+        const resetStatus = wasRefreshAsked || newVersion;
+        return {
+            ...info,
+            status: resetStatus ? (info.status || 'sent') : (ex.status || info.status),
+            client_comment: newVersion ? null : (ex.client_comment || null),
+            status_updated_at: resetStatus ? null : (ex.status_updated_at || null),
+            refresh_requested_at: ex.refresh_requested_at || null,
+            refresh_count: ex.refresh_count || 0,
+            refreshed_at: wasRefreshAsked ? new Date().toISOString() : (ex.refreshed_at || null),
+            first_sent_at: ex.first_sent_at || ex.sent_at || info.sent_at
+        };
+    },
+
     saveSharedInvoiceJobToCloud: async function (job) {
         try {
             // shared_invoices.user_id ссылается на auth-идентификатор пользователя (тот же, что
@@ -49837,31 +50293,7 @@ const app = {
                 try {
                     const { data: existing } = await supabaseClient.from('shared_invoices').select('object_info').eq('id', job.shareId).maybeSingle();
                     if (existing && existing.object_info) {
-                        const ex = existing.object_info;
-                        // Клиент просил обновить просроченный счёт — эта запись и есть
-                        // ответ на просьбу: статус снова «отправлен», таймер идёт заново
-                        // (sent_at/valid_until уже новые в job.object_info). Отметки о
-                        // просьбе (когда и сколько раз) оставляем: по ним дашборд считает,
-                        // как таймер повлиял на ответы клиентов.
-                        const wasRefreshAsked = ex.status === 'refresh_requested';
-                        // Под той же ссылкой ушла новая версия КП — одобрение клиента
-                        // относилось к прошлой, переносить его на новую нельзя: клиент
-                        // увидел бы «одобрено» на смете, которую ещё не видел. Статус
-                        // снова «отправлен», а что и по какой версии он отмечал, остаётся
-                        // в истории (invoice_events хранят номер версии).
-                        const newVersion = !!(job.object_info.kp_version && ex.kp_version
-                            && Number(job.object_info.kp_version) !== Number(ex.kp_version));
-                        const resetStatus = wasRefreshAsked || newVersion;
-                        objectInfo = {
-                            ...job.object_info,
-                            status: resetStatus ? (job.object_info.status || 'sent') : (ex.status || job.object_info.status),
-                            client_comment: newVersion ? null : (ex.client_comment || null),
-                            status_updated_at: resetStatus ? null : (ex.status_updated_at || null),
-                            refresh_requested_at: ex.refresh_requested_at || null,
-                            refresh_count: ex.refresh_count || 0,
-                            refreshed_at: wasRefreshAsked ? new Date().toISOString() : (ex.refreshed_at || null),
-                            first_sent_at: ex.first_sent_at || ex.sent_at || job.object_info.sent_at
-                        };
+                        objectInfo = this.mergeClientAnswer(existing.object_info, job.object_info);
                     }
                 } catch (e) {
                     console.warn('[saveSharedInvoiceJobToCloud] Ошибка чтения существующей записи:', e);
@@ -50348,6 +50780,17 @@ const app = {
 
                 if (shareId) {
                     insertPayload.id = shareId;
+                    // Ссылка уже есть — клиент мог на неё ответить. Статус и комментарий
+                    // переносим в новую запись (см. mergeClientAnswer), иначе ответ пропадёт
+                    try {
+                        const { data: exRow } = await withTimeout(
+                            supabaseClient.from('shared_invoices').select('object_info').eq('id', shareId).maybeSingle(),
+                            3000
+                        );
+                        if (exRow && exRow.object_info) insertPayload.object_info = this.mergeClientAnswer(exRow.object_info, object_info);
+                    } catch (e) {
+                        console.warn('[sendEmail] Не удалось прочитать ответ клиента перед записью ссылки:', e);
+                    }
                 }
 
                 let { data, error } = await withTimeout(
@@ -50379,7 +50822,6 @@ const app = {
                 this.saveState();
                 this.capturePriceSnapshot();
                 this.logInvoiceEvent('sent', { shared_invoice_id: shareId, channel: 'invoice', kp_version: kpVersion || null });
-                GRM.trackAction('invoice', shareId);  // геймификация: +15 XP + значки счетов (запрос счёта у дистрибьютора)
 
                 viewUrl = `${baseOrigin}/invoice.html?id=${shareId}`;
             } catch (err) {
@@ -50684,7 +51126,7 @@ const app = {
 
         // Полный сброс данных расчета
         this.state = {
-            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
+            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
             autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null },
             // ВОЗВРАЩАЕМ АВТОРИЗАЦИЮ И ТАРИФ НА МЕСТО
             tgUser: currentTgUser,
@@ -54131,7 +54573,7 @@ const app = {
                 demo_ends_at: "2026-06-06T00:00:00.000Z",
                 // Email нужен, чтобы на localhost сразу была видна кнопка "Админка"
                 // (она проверяет email по списку adminEmails) — без входа через реальный аккаунт
-                email: "dima24ba@gmail.com"
+                email: "kovdor24@yandex.ru"
             };
         }
         // ===================================================
@@ -56581,7 +57023,13 @@ const app = {
                 `поэтому наружный размер отличается. Цены — по прайсу: «Эта позиция» — одна деталь, «Система» — все трубы и фитинги котельной.</div>` +
                 `</div>`;
             customAlts = [
-                { id: 'ss304', sys: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', imgId: 'RSS-1001-000022' },
+                // ROMMER AISI 304 — для ПРОФИ (как и остальные позиции ROMMER), а до
+                // 1 ноября 2026 — для всех, независимо от тарифа (переходный период после
+                // смены умолчания на STOUT 316L). Уже стоящую в смете оставляем, иначе
+                // пропала бы отметка «Выбран».
+                ...((this.isPro() || new Date() < new Date(2026, 10, 1) || this.boilerPipeSystem() === 'ss304')
+                    ? [{ id: 'ss304', sys: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', imgId: 'RSS-1001-000022' }]
+                    : []),
                 { id: 'ss316', sys: 'ss316', name: 'Нержавеющая сталь AISI 316L, пресс', brand: 'STOUT', imgId: 'SSS-2001-000022' },
                 // Полипропилен — марки прайса ТЕРЕМ, поэтому только при включённом
                 // столбце ТЕРЕМ в «Тарифах». Если ППР уже стоит в смете, строку
@@ -58400,6 +58848,37 @@ const app = {
             });
         }
 
+        // Насосная группа: вариант «Собрать из отдельных позиций» (тариф «Профи», нержавеющая обвязка).
+        // Цена — комплект на одну группу, процент — к цене выбранной готовой группы вместе с насосом и узлами МУ-25М.
+        {
+            const _sgKind = this.selfGroupKindOfReady(item.originalId || item.id);
+            if (_sgKind && this.state.groupsBuild !== 'self' && this.selfGroupsMode()) {
+                const _sgLbl = { direct: 'прямая', thermo: 'термостатическая', servo: 'под сервопривод' }[_sgKind];
+                const _sgSelf = Math.round(this.selfGroupPrice(_sgKind));
+                const _sgReady = Math.round(this.readyGroupPrice(_sgKind));
+                const _sgD = _sgReady > 0 ? Math.round((_sgSelf - _sgReady) / _sgReady * 100) : 0;
+                const _sgC = _sgD > 0 ? '#ef4444' : (_sgD < 0 ? '#16a34a' : 'var(--text-sec)');
+                const _sgAvail = this.selfGroupsAvailable();
+                const _sgNote = !this.isPro() ? 'Функция тарифа «Профи».'
+                    : !_sgAvail ? 'Нужна нержавеющая или ППР обвязка котельной.'
+                    : 'Переключит все насосные группы и коллектор на самосборные — они стыкуются только друг с другом. Вернуть можно в любой момент.';
+                html += `
+                    <tr class="swap-sub-head" style="border-top: 2px solid var(--border);">
+                        <td colspan="6" style="padding:10px 8px 4px; font-size:12px; font-weight:800; color:var(--text-muted, #6B7280); text-align:left;">
+                            Собрать самосборную группу из отдельных позиций
+                        </td>
+                    </tr>
+                    <tr style="cursor: pointer;" onclick="app.applySelfBuiltFromSwap('${_sgKind}', event)">
+                        <td class="col-idx"></td>
+                        <td class="col-img" style="text-align:center;font-size:20px;">🧩</td>
+                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">Самосборная группа: ${_sgLbl}<div style="font-size:11px;font-weight:400;color:var(--text-sec);margin-top:2px;">Насос, краны, ${_sgKind === 'direct' ? 'обратный клапан' : (_sgKind === 'thermo' ? 'термосмеситель, перемычка, аварийный термостат' : '3-ходовой клапан, привод, перемычка, аварийный термостат')}, термометры. <b>Процент — к готовой «под ключ»: группа + насос + узлы МУ-25М = ${this.formatPriceHtml(_sgReady, true)}.</b> ${_sgNote}</div></td>
+                        <td class="col-brand" style="text-align: center; font-size: 13px;">STOUT / ROMMER</td>
+                        <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px; color:${_sgC};">${_sgD > 0 ? '+' : ''}${_sgD}%</td>
+                        <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${this.formatPriceHtml(_sgSelf, true)}</td>
+                    </tr>`;
+            }
+        }
+
         html += `
                 </tbody>
             </table>
@@ -58407,6 +58886,31 @@ const app = {
 
         body.innerHTML = html;
         modal.style.display = 'flex';
+    },
+    // Вид готовой насосной группы по артикулу (для окна замены): прямая / термостатическая / под сервопривод.
+    selfGroupKindOfReady: function (id) {
+        const s = String(id || '');
+        if (/^(SDG-0001|RDG-1001|RDG-2001)-/.test(s)) return 'direct';
+        if (/^(SDG-0002|RDG-1002|RDG-2002)-/.test(s)) return 'thermo';
+        if (/^(SDG-0003|SDG-0007|RDG-1003|RDG-1004|RDG-2003)-/.test(s)) return 'servo';
+        return null;
+    },
+    applySelfBuiltFromSwap: function (kind, event) {
+        if (!this.checkAccess('pro', event)) return;
+        if (!this.selfGroupsMode()) {
+            this.alert('Самосборные группы доступны в подробном режиме расчёта: включите его в панели слева.', 'Самосборные группы');
+            return;
+        }
+        if (!this.selfGroupsAvailable()) {
+            this.alert(this.isPro() ? 'Самосборные группы собираются на нержавеющей или ППР обвязке. Выберите её в разделе «Обвязка котельной».' : 'Самосборные группы — функция тарифа «Профи».', 'Самосборные группы');
+            return;
+        }
+        this.state.groupsBuild = 'self';
+        const m = document.getElementById('swap_modal_overlay');
+        if (m) m.style.display = 'none';
+        this.syncUI();
+        this.render();
+        this.saveState();
     },
     // ═══════════════════════════════════════════════════════════════
     // РАДИАТОРНЫЙ МОДАЛ: высоты, пересчёт секций, групповая замена
@@ -67558,23 +68062,6 @@ const app = {
         // Кнопка быстрого старта над площадью — пока в расчёте ничего нет
         this.syncQuickStartBtn();
 
-        // Рейтинг и значки свёрнуты — общим выключателем в gamification.js (GRM.isEnabled).
-        // Пока он выключен, прячем оба входа: кубок в шапке и пункт «Рейтинг» в меню
-        // кабинета. Внутри — прежнее правило пилота: Калининградская область плюс
-        // админы и наблюдатели для контроля.
-        const ratingOn = (typeof GRM !== 'undefined' && GRM.isEnabled) ? GRM.isEnabled() : false;
-        const trophyBtn = document.querySelector('.btn-trophy');
-        if (trophyBtn) {
-            const region = this.state.tgUser && this.state.tgUser.region;
-            const eligible = ratingOn && !isGuest && (
-                GRM.isEligibleRegion(region) || this.hasAdminAccess()
-            );
-            trophyBtn.style.display = eligible ? 'flex' : 'none';
-        }
-        document.querySelectorAll('[data-rail="rating"], .lk-nav-rating').forEach(el => {
-            el.style.display = ratingOn ? '' : 'none';
-        });
-
         if (isGuest) {
             this.state.detailedRooms = false;
             this.state.showDetailedRoomsPanel = false;
@@ -69182,14 +69669,9 @@ const app = {
             const n = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
             let html = '';
             if (st) {
-                const tail = `R ${n(st.total)} из ${n(st.req.r)} м²·°C/Вт`;
-                if (st.ok) html = `<span style="color:#22C55E;">✓ Хватает: ${tail}</span>`;
-                else if (s.ufhInsNoAdd) html = `<span style="color:#F59E0B;">⚠ Не хватает: ${tail}. Плиты в смету не добавлены.</span>`;
-                else html = `<span style="color:#F59E0B;">Не хватает: ${tail}. Недостающее добавлено в смету.</span>`;
-                if (!st.ok && !s.ufhInsNoAdd) {
-                    const add = this.ufhInsLayers(st.req.r - st.base - st.own);
-                    if (add.length) html += `<div style="color:var(--text-sec); margin-top:2px;">В смету: ${add.map(l => 'XPS ' + l.thick + ' мм (R ' + n(l.r) + ')').join(' + ')}</div>`;
-                }
+                if (st.ok) html = `<span style="color:#22C55E;">✓ Утеплителя хватает</span>`;
+                else if (s.ufhInsNoAdd) html = `<span style="color:#F59E0B;">⚠ Внимание: утеплителя не хватает. Плиты в смету не добавлены.</span>`;
+                else html = `<span style="color:#F59E0B;">⚠ Внимание: утеплителя не хватает. Недостающее добавлено в смету.</span>`;
             }
             eff.innerHTML = html;
         }
@@ -70705,8 +71187,11 @@ const app = {
         const v = this.state.boilerPipeSystem;
         if (this.BOILER_PIPE_SYSTEMS.includes(v)) return v;
         const sec = (this.state.sectionAnalog || {})["2. Обвязка котельной"];
-        const analog = (sec !== undefined) ? sec : (this.state.brandMode === 'rommer');
-        return analog ? 'ppr' : 'ss304';
+        // По умолчанию — нержавейка (с 06.10.2026): в режиме STOUT это STOUT AISI 316L
+        // (есть фото и артикулы), в режиме ROMMER — ROMMER AISI 304, а не полипропилен.
+        // Полипропилен — только если монтажник включил «Аналог» раздела 2 или выбрал сам.
+        if (sec === true) return 'ppr';
+        return this.state.brandMode === 'rommer' ? 'ss304' : 'ss316';
     },
 
     // Артикул нержавейки в текущей системе. Линейки пронумерованы зеркально тип в тип
@@ -71061,6 +71546,335 @@ const app = {
         if (!this.state.detailedRooms) return 'auto';
         const v = this.state.boilerScheme;
         return (v === 'direct' || v === 'hydro') ? v : 'auto';
+    },
+
+    /**
+     * Самосборные насосные группы и коллектор (как в проектах Galf): вместо готовой группы STOUT/ROMMER
+     * в смету идёт набор — насос, краны, смеситель (термостатический или 3-ходовой под сервопривод),
+     * обратный клапан-перемычка; коллектор — труба с тройниками. Только тариф «Профи» и только на
+     * нержавеющей обвязке: переходы набора рассчитаны на пресс-фитинги нержавейки (22 мм ↔ 3/4").
+     * Выбор хранится в state.groupsBuild ('ready' | 'self'); без «Профи» или на другой системе труб
+     * он не действует, но и не сбрасывается — вернётся вместе с доступом.
+     */
+    selfGroupsAvailable: function () {
+        return !!this.isPro() && ['ss316', 'ss304', 'ppr'].includes(this.boilerPipeSystem());
+    },
+    // Только в подробном режиме и не в квартире: переключатель живёт там же, что и схема котельной. В быстром расчёте выбор из
+    // подробного не действует (скрытая настройка не должна менять смету) — он сохраняется и вернётся вместе с подробным режимом.
+    selfGroupsMode: function () {
+        return !!this.state.detailedRooms && this.state.objectType !== 'flat';
+    },
+    selfGroups: function () {
+        return this.state.groupsBuild === 'self' && this.selfGroupsAvailable() && this.selfGroupsMode();
+    },
+    // Состав самосборной насосной группы на ОДНУ группу: список {item, q, desc, rank}. По нему и смета (render),
+    // и окно замены считают цену. type: 'direct' | 'thermo' | 'servo'; насос и привод передаёт вызывающий.
+    selfKitLines: function (type, pumpItem, servoItem, opt) {
+        opt = opt || {};
+        if (opt.size === '1') return this.selfKitLines1(type, pumpItem, servoItem, opt);
+        const lines = [];
+        const lbl = { direct: 'прямая', thermo: 'термостатическая', servo: 'под сервопривод' }[type];
+        const add = (item, q, desc, rank, extra) => {
+            if (item) lines.push({ item, q, desc, rank, extra: extra || null });
+        };
+            if (type === 'thermo') add(catalog.selfbuilt_mixer_thermo, 1,
+                `Термостатический смесительный клапан самосборной группы (${lbl}): держит температуру подачи 20–43 °C для тёплого пола без привода и автоматики. 3/4" НР.`, -2);
+            if (type === 'servo') add(catalog.selfbuilt_mixer_3way, 1,
+                `3-ходовой смесительный клапан самосборной группы (${lbl}): с сервоприводом поддерживает температуру подачи по команде автоматики. 3/4".`, -2);
+            if (pumpItem) add(pumpItem, 1, opt.pumpDesc || this.getDesc('pump_std'), -1, opt.pumpExtra || null);
+            if (servoItem) add(servoItem, 1, "Сервопривод для автоматического управления трехходовым смесительным клапаном группы отопления.", -1);
+            this.selfUnionLine(add, pumpItem);
+            // Порядок деталей подобран так, чтобы каждая наружная резьба нашла внутреннюю (стенд assembly.js).
+            // Подача: переход с трубы (ВР) → кран (НР–ВР) → смеситель (НР) или ниппель на насос (1" НР).
+            // thermo: порты смесителя наружные (НР) — принимают футорки и внутренние резьбы; servo: у
+            // STOUT SVM-0003 все три порта внутренние (паспорт, каталог стр. 216), им нужны ниппели.
+            const thermo = type === 'thermo';
+            const mix = type !== 'direct';
+            if (thermo) {
+                add(catalog.selfbuilt_futorka_34_1, 2,
+                    `Футорка 3/4" ВР × 1" НР: внутренняя резьба принимает НР смесителя, наружная вкручивается в Rp 1" комплекта насоса. По 2 на группу (до и после насоса).`, -0.7);
+            } else {
+                add(this.selfCatItem('SFT-0004-000134'), 2,
+                    `Ниппель 1" × 3/4" НР: наружная 1" — в Rp 1" комплекта насоса, 3/4" — во внутреннюю резьбу крана или перехода. По 2 на группу (до и после насоса).`, -0.7);
+            }
+            add(this.selfCatItem('SVB-0004-200020'), 2,
+                `Шаровой кран 3/4" на подаче и обратке самосборной группы: группу можно снять и обслужить, не сливая систему. По 2 на группу.`, -0.6);
+            add(this.selfCatItem('SVC-0011-000020'), 1,
+                type === 'direct' ? `Обратный клапан 3/4" на обратке группы: не даёт воде идти назад при остановке насоса.`
+                    : `Обратный клапан 3/4" в перемычке между обраткой и смесителем: подмес идёт только в одну сторону, как в проектах.`, -0.5);
+            if (mix) {
+                add(this.selfCatItem('SFT-0020-000034'), 1,
+                    `Тройник 3/4" ВР: врезка перемычки подмеса в обратную линию группы.`, -0.45);
+                add(this.selfCatItem('SFT-0004-003434'), thermo ? 1 : 3,
+                    thermo ? `Ниппель 3/4" НР: соединяет обратный клапан перемычки с тройником обратной линии. По одному на группу.`
+                        : `Ниппель 3/4" НР: к внутренним резьбам 3-ходового клапана (подача, перемычка) и от обратного клапана к тройнику. По 3 на группу.`, -0.4);
+            }
+            // Защита и контроль, как в заводских узлах STOUT (паспорта SDG-0120 и SDG-0001): накладной
+            // аварийный термостат на подачу тёплого пола (разрывает питание насоса при перегреве) и накладные
+            // термометры — на подаче тёплого пола, на подаче и обратке прямой группы.
+            if (mix) {
+                add(catalog.selfbuilt_thermostat, 1,
+                    `Накладной аварийный термостат на подающую трубу тёплого пола: при перегреве размыкает питание насоса и защищает пол и трубу. Уставка 55 °C. Так сделано в заводских смесительных узлах STOUT.`, -0.35);
+                add(catalog.selfbuilt_cable_thermostat, 3,
+                    `Кабель 3×1,5 от аварийного термостата к насосу: термостат врезается в цепь питания насоса. Около 3 м на группу, длину уточните по месту.`, -0.34);
+            }
+            add(catalog.selfbuilt_thermometer_clip, mix ? 1 : 2,
+                mix ? `Накладной термометр на подающую трубу тёплого пола (шкала 0–120 °C): видно реальную температуру подачи после смесителя. Один на группу.`
+                    : `Накладные термометры на подачу и обратку группы (шкала 0–120 °C): видна разница температур. По 2 на группу.`, -0.33);
+            // Уголки 45° нержавейка 22 мм на подаче и обратке смесительных групп (подписи «Уголок 45°» на листах проектов).
+        if (type !== 'direct') add(this.selfFit('elbow45', '34'), 2,
+            `Угольник 45° ${this.selfPipeLbl('34')}: уводит подающую и обратную трубу к коллектору, как на схеме проекта. По 2 на группу.`, -0.29);
+        // Нижние выпуски на стену, как на листах проектов: хомут трубный 24–28 мм, удлинитель и сгон под каждый кран.
+        add(catalog.selfbuilt_extension_34, 2,
+            `Удлинитель 3/4" 30 мм под кран: выводит резьбу за хомут. По 2 на группу (подача и обратка), как на схеме.`, -0.32);
+        add(catalog.selfbuilt_longscrew_34, type === 'servo' ? 4 : 2,
+            type === 'servo' ? `Сгон 3/4" ВР-НР: два нижних выпуска на стену и два у 3-ходового клапана, как на схеме проекта. По 4 на группу.`
+                : `Сгон 3/4" ВР-НР: нижний выпуск группы на стену, как на схеме проекта. По 2 на группу.`, -0.31);
+        add(this.selfCatItem('SAC-0020-300034'), 2,
+            `Хомут трубный одновинтовой 25–28 мм: крепит нижние выпуски группы к стене. По 2 на группу.`, -0.3);
+        // Переходы с пресс-труб 22 мм на резьбу 3/4": ВР — туда, где дальше идёт НР (подача от коллектора,
+            // выход прямой группы в радиаторы); НР — туда, где принимает ВР (обратка, тёплый пол).
+            // Ответвление тройника самосборного коллектора — 22 мм.
+            add(this.selfFit('adF', '34'), thermo ? 1 : 2,
+                thermo ? `Переходник с ${this.selfJoinLbl('34')} на внутреннюю резьбу 3/4": присоединяет подачу группы к тройнику коллектора. По одному на группу.`
+                    : `Переходник с ${this.selfJoinLbl('34')} на внутреннюю резьбу 3/4": подача группы от коллектора и выход в радиаторы. По 2 на группу.`, -0.3);
+            add(this.selfFit('adM', '34'), thermo ? 3 : 2,
+                thermo ? `Переходник с ${this.selfJoinLbl('34')} на наружную резьбу 3/4": обратка группы к коллектору, подача и обратка тёплого пола. По 3 на группу.`
+                    : `Переходник с ${this.selfJoinLbl('34')} на наружную резьбу 3/4": возврат из радиаторов и обратка группы к коллектору. По 2 на группу.`, -0.3);
+
+        return lines;
+    },
+    // Комплект на 1" на ОДНУ группу: когда в 3/4" скорость выше 1,0 м/с. Трубы коллектора — 28 мм (переходы 28 ↔ 1"). Порядок деталей —
+    // как у комплекта 3/4": каждая НР находит ВР (стенд assembly.js). Порты смесителей: термостатический 1" — три НР (каталог STOUT
+    // стр. 204–205), 3-ходовой 1" — три ВР (стр. 216), поэтому у servo ниппели на каждом порту.
+    selfKitLines1: function (type, pumpItem, servoItem, opt) {
+        const lines = [];
+        const lbl = { direct: 'прямая', thermo: 'термостатическая', servo: 'под сервопривод' }[type];
+        const add = (item, q, desc, rank, extra) => { if (item) lines.push({ item, q, desc, rank, extra: extra || null }); };
+        const thermo = type === 'thermo', mix = type !== 'direct';
+        if (thermo) add(catalog.selfbuilt_mixer_thermo_1, 1,
+            `Термостатический смесительный клапан самосборной группы (${lbl}, 1″): держит температуру подачи 20–43 °C для тёплого пола. 1" НР.`, -2);
+        if (type === 'servo') add(catalog.selfbuilt_mixer_3way_1, 1,
+            `3-ходовой смесительный клапан самосборной группы (${lbl}, 1″): с сервоприводом поддерживает температуру подачи. 1" ВР.`, -2);
+        if (pumpItem) add(pumpItem, 1, opt.pumpDesc || this.getDesc('pump_std'), -1, opt.pumpExtra || null);
+        if (servoItem) add(servoItem, 1, "Сервопривод для автоматического управления трехходовым смесительным клапаном группы отопления.", -1);
+        this.selfUnionLine(add, pumpItem);
+        add(catalog.selfbuilt_nipple_1, thermo ? 2 : (type === 'servo' ? 5 : 2),
+            thermo ? `Ниппель 1" НР: от обратного клапана перемычки к тройнику и от насоса к выходу тёплого пола. По 2 на группу.`
+                : (type === 'servo' ? `Ниппель 1" НР: к внутренним резьбам 3-ходового клапана (подача, перемычка, выход на насос), от обратного клапана к тройнику и от насоса к выходу. По 5 на группу.`
+                    : `Ниппель 1" НР: из внутренней резьбы Rp 1" комплекта насоса — на кран и на выход в радиаторы. По 2 на группу.`), -0.7);
+        add(this.selfCatItem('SVB-0004-200025'), 2,
+            `Шаровой кран 1" на подаче и обратке самосборной группы: группу можно снять и обслужить, не сливая систему. По 2 на группу.`, -0.6);
+        add(catalog.selfbuilt_check_1, 1,
+            type === 'direct' ? `Обратный клапан 1" на обратке группы: не даёт воде идти назад при остановке насоса.`
+                : `Обратный клапан 1" в перемычке между обраткой и смесителем: подмес идёт только в одну сторону, как в проектах.`, -0.5);
+        if (mix) {
+            add(catalog.selfbuilt_tee_1, 1, `Тройник 1" ВР: врезка перемычки подмеса в обратную линию группы.`, -0.45);
+            add(catalog.selfbuilt_thermostat, 1,
+                `Накладной аварийный термостат на подающую трубу тёплого пола: при перегреве размыкает питание насоса и защищает пол и трубу. Уставка 55 °C. Так сделано в заводских смесительных узлах STOUT.`, -0.35);
+            add(catalog.selfbuilt_cable_thermostat, 3,
+                `Кабель 3×1,5 от аварийного термостата к насосу: термостат врезается в цепь питания насоса. Около 3 м на группу, длину уточните по месту.`, -0.34);
+        }
+        add(catalog.selfbuilt_thermometer_clip, mix ? 1 : 2,
+            mix ? `Накладной термометр на подающую трубу тёплого пола (шкала 0–120 °C): видно реальную температуру подачи после смесителя. Один на группу.`
+                : `Накладные термометры на подачу и обратку группы (шкала 0–120 °C): видна разница температур. По 2 на группу.`, -0.33);
+        if (mix) add(this.selfFit('elbow45', '1'), 2,
+            `Угольник 45° ${this.selfPipeLbl('1')}: уводит подающую и обратную трубу к коллектору, как на схеме проекта. По 2 на группу.`, -0.29);
+        add(this.selfCatItem('SAC-0020-300001'), 2,
+            `Хомут трубный одновинтовой 31–35 мм: крепит нижние выпуски группы к стене. По 2 на группу.`, -0.3);
+        add(this.selfFit('adF', '1'), 2,
+            `Переходник с ${this.selfJoinLbl('1')} на внутреннюю резьбу 1": подача группы от коллектора и выход (радиаторы или тёплый пол). По 2 на группу.`, -0.3);
+        add(this.selfFit('adM', '1'), 2,
+            `Переходник с ${this.selfJoinLbl('1')} на наружную резьбу 1": обратка группы к коллектору и возврат с контура. По 2 на группу.`, -0.3);
+        return lines;
+    },
+    // Детали под трубу котельной для самосборных групп: переход на резьбу, угольник 45°, тройник и заглушка коллектора.
+    // size: '34' (комплект 3/4", ветка 22 мм / PPR 32 мм) или '1' (комплект 1", ветка 28 мм / PPR 32 мм). Нержавейка — пресс RSS/SSS по системе
+    // (STOUT 316L или ROMMER 304), ППР — Wavin или Pro Aqua по pprSystemBrand через общий getPprItem.
+    selfFit: function (kind, size) {
+        const big = size === '1';
+        if (this.boilerPipeSystem() === 'ppr') {
+            const g = (arr, id) => this.getPprItem(catalog[arr], id);
+            if (kind === 'adF') return g('ppr_ekoplastik_adapter_fi', big ? 'SZI03232OKRCT' : 'SZI03225RCT');
+            if (kind === 'adM') return g('ppr_ekoplastik_adapter_mi', big ? 'SZE03232RCT' : 'SZE03225RCT');
+            if (kind === 'elbow45') return g('ppr_ekoplastik_elbow45', 'SKO03245RCT');
+            if (kind === 'tee') return g('ppr_ekoplastik_tee', 'STK032RCTX');
+            if (kind === 'plug') return (catalog.ppr_proaqua_extra || []).find(x => x.id === 'PA15012P') || null;
+            return null;
+        }
+        if (kind === 'adF') return this.ssItem(catalog.ss_adapter_fi, big ? 'RSS-1022-000281' : 'RSS-1022-002234');
+        if (kind === 'adM') return this.ssItem(catalog.ss_adapter_mi, big ? 'RSS-1021-000281' : 'RSS-1021-002234');
+        if (kind === 'elbow45') return this.ssItem(catalog.ss_elbow45, big ? 'RSS-1004-000028' : 'RSS-1004-000022');
+        return null;
+    },
+    // Подписи для описаний: труба коллектора и способ соединения с ней.
+    selfPipeLbl: function (size) {
+        return this.boilerPipeSystem() === 'ppr' ? 'PP-RCT 32 мм' : ('нержавеющий ' + (size === '1' ? '28' : '22') + ' мм');
+    },
+    selfJoinLbl: function (size) {
+        return this.boilerPipeSystem() === 'ppr' ? 'PP-RCT 32 мм (сварка)' : ('пресс-соединения ' + (size === '1' ? '28' : '22'));
+    },
+    // Артикулы деталей под трубу обеих систем — для сверки подписей схемы (схема Galf одна, система труб любая).
+    selfFitIdSet: function (kind) {
+        this._selfFitIds = this._selfFitIds || {};
+        if (this._selfFitIds[kind]) return this._selfFitIds[kind];
+        const set = new Set();
+        const arrs = { adF: ['ppr_ekoplastik_adapter_fi', ['SZI03225RCT', 'SZI03232OKRCT']], adM: ['ppr_ekoplastik_adapter_mi', ['SZE03225RCT', 'SZE03232RCT']],
+            elbow45: ['ppr_ekoplastik_elbow45', ['SKO03245RCT']], tee: ['ppr_ekoplastik_tee', ['STK032RCTX']] }[kind];
+        if (arrs) (catalog[arrs[0]] || []).filter(e => arrs[1].includes(e.id)).forEach(e => { set.add(e.id); (e.alts || []).forEach(a => set.add(a.id)); });
+        this._selfFitIds[kind] = set;
+        return set;
+    },
+    // Входят ли присоединительные гайки в комплект поставки насоса. STOUT: 3-скоростные (SPC-0010, SPC-0011) — «резьбовые фитинги с
+    // прокладками, 2 шт.» (технический каталог, стр. 239), SPC-0011 в названии прайса «с латунными гайками G 1 1/2 x Rp 1»; Mini и Mini Pro
+    // (SPC-0002/0003) — фитинги отдельно (стр. 243, 245). ROMMER: EVO (RCP-0030) «с гайками»; PROFI RATE (RCP-0004) в прайсе не сказано —
+    // считаем, что гаек нет. Насос ROMMER берётся, когда у раздела «2. Обвязка котельной» включён «Аналог» (или бренд ROMMER).
+    selfPumpHasNuts: function (pumpItem) {
+        if (!pumpItem) return false;
+        const so = (this.state.sectionAnalog || {})['2. Обвязка котельной'];
+        const rom = so !== undefined ? so : this.state.brandMode === 'rommer';
+        const id = String((rom && pumpItem.rommer && !Array.isArray(pumpItem.rommer)) ? pumpItem.rommer.id : pumpItem.id);
+        return /^(SPC-0010|SPC-0011)-/.test(id) || /^RCP-0030-/.test(id);
+    },
+    // Строка «присоединительный комплект насоса»: платная, если гаек в коробке насоса нет; иначе та же позиция с нулевой ценой —
+    // чтобы схема и проверка стыковки видели гайки, а клиент не платил дважды.
+    selfUnionLine: function (add, pumpItem) {
+        const kit = this.selfCatItem('SPC-0010-000025') || catalog.pump_union_1;
+        if (!kit) return;
+        if (this.selfPumpHasNuts(pumpItem)) {
+            add({ ...kit, price: 0, originalId: kit.id + '_incl', name: 'Присоединительные гайки насоса — входят в комплект насоса', alts: undefined, rommer: undefined }, 1,
+                `Гайки с прокладками на оба патрубка насоса уже лежат в коробке с насосом (у 3-скоростных STOUT — два резьбовых фитинга с прокладками, каталог стр. 239), отдельно их покупать не нужно. Строка с нулевой ценой оставлена для схемы и проверки резьб. Если насос замените на Mini, Mini Pro или ROMMER PROFI, комплект станет платным.`, -0.8);
+        } else {
+            add(kit, 1,
+                `Присоединительный комплект насоса G 1 1/2" × Rp 1": гайки с прокладками на оба патрубка насоса. По одному на группу. У насосов Mini и Mini Pro фитинги отдельно (каталог стр. 245).`, -0.8);
+        }
+    },
+    // Подраздел сметы, в который уходит самосборная группа вида type (сворачивается как остальные подразделы).
+    selfGroupTitle: function (type, sub) {
+        if (sub === 'dhw') return '2.4.4. Самосборная группа: загрузка бойлера (прямая)';
+        return {
+            direct: '2.4.1. Самосборная группа: прямая (радиаторы)',
+            thermo: '2.4.2. Самосборная группа: термостатическая (тёплый пол)',
+            servo: '2.4.3. Самосборная группа: под сервопривод'
+        }[type];
+    },
+    // Размер самосборного комплекта: '34' (3/4") или '1' (1"). Берём 1", когда скорость в 3/4" на одну группу выше 1,0 м/с
+    // (практика проектирования; внутренний диаметр 3/4" — 21,6 мм). loadKw — вся нагрузка контура, groups — число групп.
+    selfKitSize: function (loadKw, groups, dt) {
+        if (!(loadKw > 0 && groups > 0)) return '34';
+        const G = (loadKw / groups) / (1.163 * (dt || 20));
+        return G / 3600 / (Math.PI * 0.0216 * 0.0216 / 4) > 1.0 ? '1' : '34';
+    },
+    // Цена ОДНОЙ готовой группы вида kind «под ключ»: группа STOUT/ROMMER DN25 + насос + два присоединительных узла МУ-25М
+    // (+ сервопривод у «под сервопривод»). Для сравнения с самосборной (коллектор в обоих вариантах свой, не входит).
+    readyGroupPrice: function (kind) {
+        if (kind === 'dhw') kind = 'direct';
+        const rom = this.state.brandMode === 'rommer';
+        const P = (it) => it ? ((rom && it.rommer && !Array.isArray(it.rommer)) ? (it.rommer.price || 0) : (it.price || 0)) : 0;
+        const g = { direct: catalog.groups_dn25[0], thermo: catalog.groups_dn25[1], servo: catalog.groups_dn25[2] }[kind];
+        const pump = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
+        const servo = kind === 'servo' ? (this.state.servoType === 'sensor' ? catalog.servo_rotary_sensor : catalog.servo_rotary_std) : null;
+        return P(g) + P(pump) + 2 * P((catalog.gbm_nodes || [])[0]) + P(servo);
+    },
+    // Цена ОДНОЙ самосборной группы вида kind по тому же составу, что идёт в смету.
+    selfGroupPrice: function (kind) {
+        const rom = this.state.brandMode === 'rommer';
+        const P = (it) => it ? ((rom && it.rommer && !Array.isArray(it.rommer)) ? (it.rommer.price || 0) : (it.price || 0)) : 0;
+        const pump = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
+        const servo = kind === 'servo' ? (this.state.servoType === 'sensor' ? catalog.servo_rotary_sensor : catalog.servo_rotary_std) : null;
+        const ld = (this._selfLoads || {})[kind];
+        const size = ld ? this.selfKitSize(ld.kw, ld.groups, ld.dt) : '34';
+        return this.selfKitLines(kind, pump, servo, { size }).reduce((a, l) => a + P(l.item) * l.q, 0);
+    },
+    // Плашка под заголовком подраздела самосборной группы: сколько стоит против готовой и кнопка возврата.
+    selfGroupNote: function (title, bill) {
+        const kind = { '2.4.1': 'direct', '2.4.2': 'thermo', '2.4.3': 'servo', '2.4.4': 'dhw' }[String(title).slice(0, 5)];
+        if (!kind) return '';
+        const n = (this._selfCounts || {})[kind] || 0;
+        const selfSum = (bill || []).filter(x => x.group === title).reduce((a, x) => a + (x.sum || 0), 0);
+        const readySum = n * this.readyGroupPrice(kind);
+        if (!(n > 0) || !(readySum > 0)) return '';
+        const f = v => Math.round(Math.abs(v)).toLocaleString('ru-RU') + ' ₽';
+        const diff = selfSum - readySum;
+        const pct = Math.round(Math.abs(diff) / readySum * 1000) / 10;
+        const word = diff < 0 ? 'дешевле' : 'дороже';
+        const colour = diff < 0 ? '#16a34a' : '#d97706';
+        // Мощность и диаметр: нагрузка на одну группу, расход и скорость в трубе 3/4" (внутренний 21,6 мм). Предел мощности — паспортная
+        // мощность готовой группы STOUT того же типоразмера и вида (в комплекте те же насос и арматура); скорость — практика проектирования.
+        let loadTxt = '', loadWarn = '';
+        const ld = (this._selfLoads || {})[kind];
+        if (ld && ld.kw > 0 && ld.groups > 0) {
+            const per = ld.kw / ld.groups, G = per / (1.163 * ld.dt);
+            const big = this.selfKitSize(ld.kw, ld.groups, ld.dt) === '1';
+            const dIn = big ? 0.0272 : 0.0216, szLbl = big ? '1″' : '3/4″';
+            const v = G / 3600 / (Math.PI * dIn * dIn / 4);
+            // Расход насоса 25/60: по названию готовой группы STOUT DN25 «35 кВт при ΔT 10 K» — около 3,0 м³/ч.
+            const Gmax = 3.0;
+            const f1 = x => (Math.round(x * 10) / 10).toString().replace('.', ',');
+            const f2 = x => (Math.round(x * 100) / 100).toString().replace('.', ',');
+            // Потери на смесителе: через него идёт весь расход контура, Δp = (G / Kv)² бар. Kv — по названиям позиций прайса: термосмеситель
+            // 1,6 (оба размера), 3-ходовой Kvs 6 (3/4″) и 8 (1″). Предел — напор насоса 25/60: 6 м вод. ст. ≈ 0,6 бар (при нулевом расходе;
+            // на рабочем расходе меньше, поэтому предел мягкий).
+            const kv = kind === 'thermo' ? 1.6 : (kind === 'servo' ? (big ? 8 : 6) : 0);
+            const dp = kv ? Math.pow(G / kv, 2) : 0, dpMax = 0.6;
+            loadTxt = ` Нагрузка ${f1(per)} кВт на группу при ΔT ${ld.dt} K: расход ${f2(G)} м³/ч, скорость в трубе ${szLbl} ${f2(v)} м/с.${big ? ' Комплект на 1″: в 3/4″ скорость была бы выше 1,0 м/с.' : ''}` +
+                (kv ? ` Потери на смесителе (Kv ${f1(kv)}) ${f2(dp)} бар.` : '');
+            if (v > 1.0 || G > Gmax || dp > dpMax) {
+                const why = [];
+                if (v > 1.0) why.push(`скорость в ${szLbl} ${f2(v)} м/с`);
+                if (G > Gmax) why.push(`расход ${f2(G)} м³/ч выше ${f1(Gmax)} м³/ч насоса`);
+                if (dp > dpMax) why.push(`потери на смесителе ${f2(dp)} бар выше ${f2(dpMax)} бар напора насоса`);
+                loadWarn = this.noteBox('warn', 'Самосборная группа перегружена.',
+                    `${f1(per)} кВт на группу: ${why.join('; ')}.`,
+                    `<div class="tip-p">Комплект ${szLbl} с насосом 25/60: скорость в трубе по практике проектирования не выше 1,0 м/с, расход насоса — около ${f1(Gmax)} м³/ч (по готовой группе STOUT DN25).</div>` +
+                    (kv ? `<div class="tip-p">Через смеситель идёт весь расход контура: потери (G / Kv)² = (${f2(G)} / ${f1(kv)})² = ${f2(dp)} бар. Напор насоса 25/60 — около 0,6 бар.</div>` : '') +
+                    `<div class="tip-p"><b>Что делать:</b> ${kind === 'thermo' && dp > dpMax ? 'взять группу под сервопривод (3-ходовой клапан Kvs 6–8 почти не теряет напор), ' : ''}разделить нагрузку на несколько групп или вернуть готовые группы кнопкой выше.</div>`);
+            }
+        }
+        const btn = `<span class="no-print" onclick="event.stopPropagation(); app.setGroupsBuild('ready', event)" style="margin-left:8px;cursor:pointer;color:var(--primary);border-bottom:1px dashed var(--primary);">Вернуть готовые</span>`;
+        const short = `${n} шт.: самосборные <b>${f(selfSum)}</b> против <b>${f(readySum)}</b> у готовых — <b style="color:${colour}">${word} на ${f(diff)} (${String(pct).replace('.', ',')} %)</b>.${loadTxt}${btn}`;
+        const det = `<div class="tip-p">Готовая группа — STOUT или ROMMER DN25 с насосом и двумя присоединительными узлами МУ-25М${kind === 'servo' ? ' и сервоприводом' : ''}. Самосборная — комплект из отдельных позиций по проектам. Стальной коллектор в сравнение не входит: он свой в каждом варианте.</div>` +
+            `<div class="tip-p">Подраздел сворачивается щелчком по заголовку.</div>`;
+        // Сравнение с готовыми и расчёт нагрузки — для монтажника: в печать, PDF и ссылку клиенту не идут.
+        return `<div class="no-print">` + this.noteBox('info', 'Самосборная группа.', short, det) + loadWarn + `</div>`;
+    },
+    // Позиция каталога по артикулу (поиск по всем массивам; индекс строится один раз).
+    _selfCatIdx: null,
+    selfCatItem: function (id) {
+        if (!this._selfCatIdx) {
+            const idx = {};
+            Object.keys(catalog).forEach(k => {
+                const v = catalog[k];
+                (Array.isArray(v) ? v : [v]).forEach(it => { if (it && it.id && !idx[it.id]) idx[it.id] = it; });
+            });
+            this._selfCatIdx = idx;
+        }
+        return this._selfCatIdx[id] || null;
+    },
+    setGroupsBuild: function (mode, event) {
+        if (!this.checkAccess('pro', event)) { this.syncUI(); return; }
+        if (!this.isPro()) { this.showModal('pro'); this.syncUI(); return; }
+        this.state.groupsBuild = (mode === 'self') ? 'self' : 'ready';
+        this.syncUI();
+        this.render();
+        this.saveState();
+    },
+    syncGroupsBuildUI: function () {
+        const s = this.state;
+        const blk = document.getElementById('blk_groups_build');
+        const on = !!(s.detailedRooms && s.objectType !== 'flat' && this.needCollector);
+        if (blk) blk.style.display = on ? 'block' : 'none';
+        const self = s.groupsBuild === 'self';
+        const tR = document.getElementById('groups_build_ready'), tS = document.getElementById('groups_build_self');
+        if (tR) tR.className = self ? 'tab' : 'tab active';
+        if (tS) tS.className = self ? 'tab active' : 'tab';
+        const note = document.getElementById('lbl_groups_build_note');
+        if (note) {
+            note.textContent = !this.isPro() ? 'Самосборные группы — функция тарифа «Профи».'
+                : !this.selfGroupsAvailable() ? 'Самосборные группы собираются на нержавеющей или ППР обвязке: выберите её в разделе «Обвязка котельной».'
+                : self ? 'Группы и коллектор собираются из отдельных позиций, как в проектах.'
+                : 'Готовые насосные группы STOUT/ROMMER на стальном коллекторе.';
+        }
     },
 
     /**
@@ -75138,7 +75952,7 @@ const app = {
                     // у разделов верхнего уровня, и совет про диаметр трассы
                     // висел в шапке «3. Приборы отопления», за десяток строк от
                     // трубы, к которой относится.
-                    const _gw = (this.groupWarns || {})[i.group];
+                    const _gw = (this.groupWarns || {})[i.group] || (/^2\.4\.\d\. Самосборная группа/.test(i.group) ? this.selfGroupNote(i.group, bill) : '');
                     if (_gw) {
                         // Плашка та же, что у разделов (app.noteBox): в groupWarns
                         // лежит уже собранный блок, здесь остаётся только строка таблицы.
@@ -76472,7 +77286,7 @@ const app = {
         // Резьба котлового ввода узла гидроразделения (112 = 1 1/2", 1 = 1") и его
         // подраздел. Заполняются при подборе коллектора ниже, используются в блоке
         // расчёта труб — там известны материал магистрали и её диаметр.
-        let _hydroTieDn = 0, _hydroTieGrp = null;
+        let _hydroTieDn = 0, _hydroTieGrp = null, _hydroTieN = 2;
         // Подраздел, куда ляжет сепаратор, ищем среди ОСТАВШИХСЯ обвязок: снятая
         // вместе с котлом обвязка в смете не печатается, и позиция уехала бы в пустоту.
         const _sepInGas = selBoilers.some(b => b && b.type === 'gas') && !rigDropped('gas');
@@ -77157,6 +77971,8 @@ const app = {
             this._bsAutoWhy = why;
         }
         this.syncBoilerSchemeNote();
+        this.needCollector = needCollector;
+        this.syncGroupsBuildUI();
         this.vSys = vSys;
         // Незамерзающий теплоноситель расширяется сильнее воды. Паспорт WARME Eco PRO 30
         // (пропиленгликоль): «необходимо устанавливать расширительный бак на 5–10 % больше,
@@ -77273,6 +78089,15 @@ const app = {
         // Предупреждение по разделу «2. Обвязка котельной» (см. flushBill ниже):
         // ручная замена насосной группы отопления на меньший типоразмер.
         let hydroWarnHtml = null;
+
+        // Самосборные группы и коллектор (тариф «Профи», нержавеющая обвязка) — см. selfGroups().
+        const _selfG = this.selfGroups();
+        this._selfCollPipeLen = 0;
+        this._selfCollPipeD = 0;
+        this._selfKinds = {};
+        this._selfCounts = {};
+        this._selfLoads = {};
+        this._selfKitIds = {};
 
         if (needCollector) {
             // Несущий каркас (рама) или хомуты коллектора котельной на базе C-образного профиля и консолей STOUT
@@ -77433,7 +78258,45 @@ const app = {
                         `<div class="tip-p"><b>Что делать:</b> ${_advice}</div>`);
                 }
             }
-            if (dn25) {
+            if (_selfG) {
+                // Самосборный коллектор: две трубы (подача и обратка) с тройниками на каждый контур,
+                // как в проектах Galf. Диаметр — котловая магистраль, но не больше 35 мм: на больших
+                // трубах переходных тройников под ответвление 22 в линейке нет.
+                // Комплект на 1" требует ответвлений 28 мм (переходы 28 ↔ 1"): коллектор тогда не тоньше 28.
+                const _tpA = ((this.state.tp1 || 0) + (this.state.tp2 || 0));
+                const _big = this.selfKitSize(this._radGroupLoadKw || 0, rQ, this.radDT()) === '1' ||
+                    (tQ > 0 && this.selfKitSize(tpArea * 0.08, tQ, parseInt(this.state.ufhDT, 10) || 5) === '1');
+                const _pprC = this.boilerPipeSystem() === 'ppr';
+                // ППР: коллектор из трубы PP-RCT 32 мм (в ведре метража это «22»), ветка 32 — переходы 32×3/4" и 32×1" одним размером.
+                const _D = _pprC ? 22 : Math.min(Math.max(boilerSizes(selBoilers).main, (_big || !_bufSep) ? 28 : 22), 35);
+                const _n = Math.max(2, circuits);
+                const _tee = _pprC ? this.selfFit('tee') : this.ssItem(_D === 22 ? catalog.ss_tee : (_D === 28 && _big ? catalog.ss_tee : catalog.ss_tee_red),
+                    _D === 22 ? 'RSS-1013-000022' : (_D === 28 ? (_big ? 'RSS-1013-000028' : 'RSS-1014-282228') : (_big ? 'RSS-1014-352835' : 'RSS-1014-352235')));
+                const _plugC = _pprC ? this.selfFit('plug') : this.ssItem(catalog.ss_plug, 'RSS-1025-0000' + _D);
+                const _railLen = _n * 0.35 + 0.5;
+                this._selfCollPipeLen = 2 * _railLen;
+                this._selfCollPipeD = _D;
+                const _brLbl = _pprC ? 'Ответвление 32 мм' : (_big ? 'Ответвление 28 мм' : 'Ответвление 22 мм');
+                const _pipeLbl = _pprC ? 'трубы PP-RCT 32 мм' : `трубы ${_D} мм`;
+                if (_tee) addToBill({ ..._tee, sortRank: -3 }, _n * 2,
+                    `Тройники самосборного коллектора насосных групп: на каждый контур по одному на подающую и обратную трубу (${_n} контура${_n > 4 ? 'ов' : ''} × 2). ${_brLbl} — к насосной группе. Коллектор собирается из ${_pipeLbl}, как в проектах: вместо готового стального коллектора.`, grpHydro);
+                if (_plugC) addToBill({ ..._plugC, sortRank: -3 }, 2,
+                    `Заглушки на свободные концы подающей и обратной трубы коллектора: к другому концу подключается гидрострелка. Требуется: 2 шт.`, grpHydro);
+                if (!_bufSep) {
+                    addToBill({ ...catalog.hydro_arrow, sortRank: -3 }, 1, `Гидрострелка — выравнивает давление между котловым и распределительными контурами. Стоит на торце самосборного коллектора. Макс. расход: 3.0 м³/ч.`, grpHydro);
+                }
+                // Системная сторона гидрострелки — к трубам коллектора. По паспорту STOUT (каталог, стр. 277–278) котловые патрубки —
+                // 1 1/2" НР, системные — 1 1/2" ВР; у ROMMER системные — накидные гайки 1 1/2". И ВР, и гайке нужна НР: ниппель
+                // 1 1/2"×1" НР, а на нём переход на трубу коллектора (внутренняя резьба 1") — пресс 28/35 или ППР 32. Котловая сторона (муфта + переход) считается ниже.
+                if (!_bufSep) {
+                    const _tieNip = catalog.buffer_nipple_112_1;
+                    const _tieAd = _pprC ? this.selfFit('adF', '1') : this.ssItem(catalog.ss_adapter_fi, _D >= 35 ? 'RSS-1022-000351' : 'RSS-1022-000281');
+                    if (_tieNip) addToBill({ ..._tieNip, sortRank: -3 }, 2,
+                        `Ниппель 1 1/2" × 1" НР: в системные патрубки гидрострелки (1 1/2" ВР у STOUT, накидная гайка у ROMMER) — переход к трубам коллектора. По одному на подачу и обратку. Требуется: 2 шт.`, grpHydro);
+                    if (_tieAd) addToBill({ ..._tieAd, sortRank: -3 }, 2,
+                        `Переходник с ${_pprC ? 'PP-RCT 32 мм (сварка)' : 'пресс-соединения ' + _D} на внутреннюю резьбу 1": на ниппель гидрострелки, к трубе коллектора. Требуется: 2 шт.`, grpHydro);
+                }
+            } else if (dn25) {
                 // Модульная схема DN25 — коллектор БЕЗ встроенного разделителя, и
                 // тогда гидрострелка обязана идти отдельной строкой. Так собирается
                 // и при числе контуров больше трёх (совмещённого узла на столько просто
@@ -77523,7 +78386,8 @@ const app = {
 
             // Резьба котлового ввода узла — для фитингов присоединения, которые
             // считаются ниже, вместе с трубами (там известен материал и диаметр).
-            _hydroTieDn = dn25 ? 112 : 1;
+            // Самосборный коллектор вместе с буфером: стрелки нет, переход на коллектор не нужен.
+            _hydroTieDn = (_selfG && _bufSep) ? 0 : (dn25 ? 112 : 1);
             _hydroTieGrp = grpHydro;
 
             const _hydroDrain = (catalog.ball_valves || []).find(v => v.id === 'SVB-0006-200015');
@@ -77533,6 +78397,29 @@ const app = {
                 addToBill({ ...withRommerAlt(_hydroDrain), originalId: 'SVB-0006-200015_hydro_drain' },
                     1, this.getDesc('hydro_drain'), grpHydro);
             }
+
+            // Самосборная насосная группа: комплект по проектам Galf на n групп. type: 'direct' (радиаторы,
+            // без смешения), 'thermo' (термостатический смеситель, тёплый пол) или 'servo' (3-ходовой
+            // смеситель под сервопривод). Насос и привод передаёт вызывающий: они подбираются по тем же
+            // правилам, что и у готовой группы. opt.dhw — группа загрузки бойлера: её насос идёт отдельной
+            // строкой с переключателем схемы загрузки.
+            const _selfKit = (type, n, pumpItem, servoItem, opt) => {
+                if (!(n > 0)) return;
+                // Группа загрузки бойлера — отдельный подраздел со своей нагрузкой (по змеевику бака и котлу), вид комплекта — прямая.
+                const key = opt && opt.sub === 'dhw' ? 'dhw' : type;
+                this._selfKinds[key] = true;
+                this._selfCounts[key] = (this._selfCounts[key] || 0) + n;
+                // Нагрузка на группы этого вида (для проверки мощности и скорости в трубе 3/4"): задаёт вызывающий.
+                if (opt && opt.loadKw > 0) this._selfLoads[key] = { kw: opt.loadKw, groups: n, dt: opt.dt || 20 };
+                opt = { ...(opt || {}), size: opt && opt.loadKw > 0 ? this.selfKitSize(opt.loadKw, n, opt.dt) : '34' };
+                const grpSelf = this.selfGroupTitle(type, opt.sub);
+                const _kitIds = (this._selfKitIds[key] = this._selfKitIds[key] || new Set());
+                this.selfKitLines(type, pumpItem, servoItem, opt).forEach(l => {
+                    _kitIds.add(l.item.id);
+                    if (l.item.rommer && !Array.isArray(l.item.rommer)) _kitIds.add(l.item.rommer.id);
+                    addToBill({ ...l.item, ...(l.extra || {}), sortRank: l.rank }, l.q * n, l.desc, grpSelf);
+                });
+            };
 
             let grps = dn25 ? catalog.groups_dn25 : catalog.groups_dn20;
             if (dn25) {
@@ -77574,7 +78461,8 @@ const app = {
             } else if (_actDn >= 25 && !dn25) {
                 radPump = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
             }
-            if (rQ > 0) {
+            if (rQ > 0 && _selfG) _selfKit('direct', rQ, radPump, null, { loadKw: this._radGroupLoadKw || 0, dt: this.radDT() });
+            if (rQ > 0 && !_selfG) {
                 // Строку запоминаем: гидравлику в её подсказку допишем ниже,
                 // когда приборы будут подобраны (см. radGroupHydroTip).
                 this._radGroupItemId = grps[0].id;
@@ -77610,7 +78498,15 @@ const app = {
                         `<div class="tip-p"><b>Что делать:</b> вернуть подбор по умолчанию кнопкой ↺ у метки «Изменён» в строке группы либо поставить типоразмер больше — иначе контур не прокачается.</div>`);
                 }
             }
-            if (tankNeedsPumpGroup) {
+            if (tankNeedsPumpGroup && _selfG) {
+                // Греющий контур несёт мощность змеевика, но не больше, чем отдаёт котёл (как в dhwLoadHydraulics): по ней размер комплекта.
+                const _dhwCoil = this.tankCoilKw(this._tankPortsModel);
+                const _dhwBoiler = selBoilers.find(b => b && b.type === 'gas') || selBoilers[0] || null;
+                const _dhwBKw = _dhwBoiler ? (parseFloat(_dhwBoiler.power) || 0) : 0;
+                const _dhwKw = _dhwCoil > 0 ? (_dhwBKw > 0 ? Math.min(_dhwCoil, _dhwBKw) : _dhwCoil) : 0;
+                _selfKit('direct', 1, pmp, null, { sub: 'dhw', loadKw: _dhwKw, dt: this.boilerDT(), pumpExtra: { originalId: pmp.id + '_dhw', alts: _tankLoadAlts }, pumpDesc: this.getDesc('fugas_pump') });
+            }
+            if (tankNeedsPumpGroup && !_selfG) {
                 let tankBase = grps[0];
                 // Мощность берём из паспортной мощности той же группы (для радиаторов) —
                 // физически это тот же узел, просто на контуре загрузки бойлера.
@@ -77648,7 +78544,14 @@ const app = {
                         `<b>Почему 25/80, а не 25/60:</b> ${this._ufhBal.notes.find(n => n.indexOf('25/80') >= 0) || ''}` +
                         `</span>` : '');
 
-                if (activeMixType === 'dn32_servo') {
+                if (_selfG && activeMixType !== 'std') {
+                    const _isServo = /servo/.test(activeMixType);
+                    // Самосборный комплект под насос 25/60 (комплект G 1 1/2" × Rp 1"): типоразмер DN20/25/32
+                    // готовой группы здесь значения не имеет.
+                    const _sPump = _ufhPumpPool.find(p => p.type === this.state.pumpType) || _ufhPumpPool[0];
+                    const _sServo = _isServo ? ((activeServoType === 'sensor') ? catalog.servo_rotary_sensor : catalog.servo_rotary_std) : null;
+                    _selfKit(_isServo ? 'servo' : 'thermo', tQ, _sPump, _sServo, { pumpDesc: _ufhPumpDesc(), loadKw: tpArea * 0.08, dt: parseInt(this.state.ufhDT, 10) || 5 });
+                } else if (activeMixType === 'dn32_servo') {
                     let ufhGrp = catalog.groups_dn32.find(g => g.id === 'SDG-0007-003201');
                     addToBill({ ...ufhGrp, _uiUfhOnly: true, sortRank: -2 }, tQ, this.getDesc('pump_group', ufhGrp, tQ, 'ufh', tpArea), grpHydro);
 
@@ -78035,6 +78938,13 @@ const app = {
         [ss_diameter, _tankSize, _boilerSize].forEach(d => {
             if (!ss_pipes_demand[d]) ss_pipes_demand[d] = { length: 0, components: [] };
         });
+        // Труба самосборного коллектора насосных групп — в то же ведро метража, что и обвязка.
+        if (this._selfCollPipeLen > 0) {
+            const _scd = this._selfCollPipeD;
+            if (!ss_pipes_demand[_scd]) ss_pipes_demand[_scd] = { length: 0, components: [] };
+            ss_pipes_demand[_scd].length += this._selfCollPipeLen;
+            ss_pipes_demand[_scd].components.push("самосборный коллектор насосных групп");
+        }
 
         // Функция добавления труб с комбинированным подбором 2м/4м штанг или PPR штанг по 4м
         const addPipesToBill = (L, diam, grp, desc) => {
@@ -78185,8 +79095,9 @@ const app = {
             const _tieCoupling = (_hydroTieDn === 112) ? catalog.hydro_tie_coupling_112 : catalog.hydro_tie_coupling_1;
             const _tieLabel = (_hydroTieDn === 112) ? '1 1/2"' : '1"';
             if (_tieCoupling) {
-                addToBill(_tieCoupling, 2,
-                    `Латунная муфта с внутренней резьбой на патрубок узла гидроразделения (${_tieLabel} НР по паспорту) — с неё начинается переход на трубу котлового контура. По одной на подачу и обратку. Требуется: 2 шт.`, _hydroTieGrp);
+                addToBill(_tieCoupling, _hydroTieN,
+                    `Латунная муфта с внутренней резьбой на патрубок узла гидроразделения (${_tieLabel} НР по паспорту) — с неё начинается переход на трубу котлового контура` +
+                    (_hydroTieN > 2 ? ` и на трубы самосборного коллектора. По одной на каждый патрубок гидрострелки. Требуется: ${_hydroTieN} шт.` : `. По одной на подачу и обратку. Требуется: 2 шт.`), _hydroTieGrp);
             }
             if (isAnalog) {
                 if (ss_diameter === 28) {
@@ -78205,10 +79116,10 @@ const app = {
             } else {
                 const _tieTh = this.ssThreadFor('ss_adapter_mi', ss_diameter, '1');
                 const _tieAdp = _tieTh && this.ssFit('ss_adapter_mi', ss_diameter, _tieTh);
-                if (_tieAdp) addToBill(_tieAdp, 2,
+                if (_tieAdp) addToBill(_tieAdp, _hydroTieN,
                     `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${this.ssThreadLabel(_tieTh)} — вкручивается в муфту на патрубке узла гидроразделения.` +
                     (_tieTh !== '1' ? ` <b>Внимание:</b> муфта узла на 1", нужен резьбовой переход 1"–${this.ssThreadLabel(_tieTh)} (в смету не входит).` : ``) +
-                    ` Требуется: 2 шт.`, _hydroTieGrp);
+                    ` Требуется: ${_hydroTieN} шт.`, _hydroTieGrp);
             }
         }
 
@@ -80015,15 +80926,15 @@ const app = {
                 addToBill(vReturn, totalConvCount, "На обратку из конвектора.", grpC);
 
                 addToBill(catalog.conv_parts[0], totalConvCount * 2, "Монтажная гильза.", grpC);
-                addToBill(catalog.conv_parts[1], totalConvCount * 2, "Переходник на резьбу 1/2.", grpC);
+                addToBill(catalog.conv_parts.find(x => x.id === "SFA-0001-001612"), totalConvCount * 2, "Переходник на резьбу 1/2.", grpC);
 
                 if (this.state.convectorType === 'scq') {
                     // Для вентиляторных
                     addToBill(catalog.actuators, totalConvCount, "На термостатический клапан.", grpC);
                     if (totalVartronic > 0) {
-                        addToBill(catalog.conv_parts[2], totalVartronic, "Настенный регулятор Vartronic (1 шт на комнату, до 12 шт).", grpC);
+                        addToBill(catalog.conv_parts.find(x => x.id === "703102"), totalVartronic, "Настенный регулятор Vartronic (1 шт на комнату, до 12 шт).", grpC);
                     } else if (!this.state.detailedRooms) {
-                        addToBill(catalog.conv_parts[2], 1, "Настенный регулятор Vartronic.", grpC);
+                        addToBill(catalog.conv_parts.find(x => x.id === "703102"), 1, "Настенный регулятор Vartronic.", grpC);
                     }
                 }
                 // Для естественной конвекции (SCN) автоматика не выводится
@@ -83954,7 +84865,6 @@ const app = {
         this._queueKpDayCheck();
         // Лист не скачет, а к новым строкам плавно едет (см. _estimateAfter).
         this._estimateAfter(_estBefore);
-        this.renderContestWidget();
         // Панель переноса выделенных распознанных строк: таблица только что
         // перестроена, число выделенных могло измениться (перенос, удаление,
         // откат распознавания), да и вкладка могла смениться на «Работы».
@@ -84208,6 +85118,10 @@ const app = {
         [['automation_scheme_row', '2.9.1.', () => this.thermaticConfig && this.renderAutomationScheme()],
          ['ufh_scheme_row', '4.5. Автоматика радиаторов', () => this.renderUfhScheme()],
          ['snow_scheme_row', '4.4.1', () => this.renderSnowScheme()],
+         ['pump_group_scheme_row_direct', '2.4.1. Самосборная группа', () => this.renderPumpGroupScheme('direct')],
+         ['pump_group_scheme_row_thermo', '2.4.2. Самосборная группа', () => this.renderPumpGroupScheme('thermo')],
+         ['pump_group_scheme_row_servo', '2.4.3. Самосборная группа', () => this.renderPumpGroupScheme('servo')],
+         ['pump_group_scheme_row_dhw', '2.4.4. Самосборная группа', () => this.renderPumpGroupScheme('dhw')],
          ['rad_panel_scheme_row', '3. Приборы отопления', () => this.renderRadPanelScheme(), true],
          ['rad_node_scheme_row', '3.3. Трубы отопления', () => this.renderRadNodeScheme()],
          ['ufh_node_scheme_row', '4. Водяной тёплый пол', () => this.renderUfhNodeScheme(), true],
@@ -84598,341 +85512,6 @@ const app = {
         const el = document.getElementById('cheaper_print');
         if (!el) return;
         el.innerHTML = this.cheapModeOn() ? this.cheaperReportHtml(true) : '';
-    },
-
-    renderContestWidget() {
-        const el = document.getElementById('contest_widget');
-        if (!el) return;
-
-        // Пилот рейтинга свёрнут — виджет баллов и значков не показываем никому
-        // (общий выключатель GRM.isEnabled в gamification.js).
-        if (typeof GRM === 'undefined' || !GRM.isEnabled || !GRM.isEnabled()) { el.innerHTML = ''; return; }
-
-        // Виджет считает баллы по оборудованию и уместен только на его вкладке.
-        // На монтажных работах, распознавании и 3D он не к месту — заодно
-        // не дёргаем рейтинг с profi-stout.pro, когда его никто не увидит.
-        if (this.state.viewMode !== 'equipment') { el.innerHTML = ''; return; }
-
-        if (this.state.brandMode !== 'stout') { el.innerHTML = ''; return; }
-
-        // Запускаем (или продолжаем) загрузку рейтинга в фоне.
-        // При ошибке — не чаще раза в минуту (иначе каждый ре-рендер бил бы
-        // по login и мог сжечь лимит попыток на сервере).
-        const RETRY_COOLDOWN = 60 * 1000;
-        const canRetry = !this._stoutRatingTs || (Date.now() - this._stoutRatingTs) > RETRY_COOLDOWN;
-        if (!this._stoutRating || (this._stoutRating.status === 'error' && canRetry)) {
-            this.fetchStoutRating(); // async, перерисует виджет сам после загрузки
-        }
-
-        const list = this.currentEquipmentList || [];
-
-        // Подсчёт количества по категориям конкурса
-        const catQty = {};
-        for (const item of list) {
-            if ((item.brand || 'STOUT') === 'ROMMER') continue;
-            const id = item.originalId || item.id || '';
-            const name = (item.name || '').toLowerCase();
-            for (const cat of CONTEST_CATS_2026) {
-                if (cat.test(id, name, item)) {
-                    catQty[cat.key] = (catQty[cat.key] || 0) + (item.q || 1);
-                    break;
-                }
-            }
-        }
-
-        if (Object.keys(catQty).length === 0) { el.innerHTML = ''; return; }
-
-        // Определяем заработанные категории (с учётом minQty)
-        const earned = new Set();
-        const pendingQty = {};
-        for (const cat of CONTEST_CATS_2026) {
-            const qty = catQty[cat.key] || 0;
-            if (qty >= (cat.minQty || 1)) earned.add(cat.key);
-            else if (qty > 0) pendingQty[cat.key] = qty;
-        }
-
-        const totalPts = CONTEST_CATS_2026.filter(c => earned.has(c.key)).reduce((s, c) => s + c.pts, 0);
-
-        // Тост при появлении или потере категории
-        const prevEarned = this._contestPrevEarned || new Set();
-        if (prevEarned.size > 0) {
-            let toastShown = false;
-            for (const key of earned) {
-                if (!prevEarned.has(key)) {
-                    const cat = CONTEST_CATS_2026.find(c => c.key === key);
-                    if (cat) { this.showContestToast(cat.label, cat.pts, 'gain'); toastShown = true; }
-                    break;
-                }
-            }
-            if (!toastShown) {
-                for (const key of prevEarned) {
-                    if (!earned.has(key)) {
-                        const cat = CONTEST_CATS_2026.find(c => c.key === key);
-                        if (cat) { this.showContestToast(cat.label, cat.pts, 'loss'); }
-                        break;
-                    }
-                }
-            }
-        }
-        this._contestPrevEarned = new Set(earned);
-
-
-        // XP-бар: 20 блоков, каждый = 5 баллов
-        const XP_BLOCKS = 20;
-        const filledBlocks = Math.min(XP_BLOCKS, Math.floor(totalPts / 5));
-        const xpBar = Array.from({length: XP_BLOCKS}, (_, i) =>
-            `<div class="cw-xp-block${i < filledBlocks ? ' filled' : ''}"></div>`
-        ).join('');
-
-        let xpLabel = '';
-        if (totalPts >= 200) {
-            xpLabel = `<span class="cw-xp-label bonus">🎉 БОНУС: +${(totalPts * 10).toLocaleString('ru-RU')} ₽ за объект</span>`;
-        } else if (totalPts >= 100) {
-            xpLabel = `<span class="cw-xp-label good">✅ ФОРМА ПОЛУЧЕНА! (комбинезон + куртка)</span>`;
-        } else {
-            xpLabel = `<span class="cw-xp-label">${totalPts} / 100 XP &nbsp;·&nbsp; до формы (комбинезон + куртка) ещё ${100 - totalPts}</span>`;
-        }
-
-        // Достижения
-        const earnedAch = CONTEST_CATS_2026
-            .filter(c => earned.has(c.key))
-            .map(c => `<div class="cw-achieve earned" title="+${c.pts} XP">${c.emoji} ${c.label} <b>+${c.pts}</b></div>`)
-            .join('');
-
-        const lockedAch = CONTEST_CATS_2026
-            .filter(c => !earned.has(c.key))
-            .map(c => {
-                const pq = pendingQty[c.key];
-                const note = c.minQty && pq ? ` (${pq}/${c.minQty})` : '';
-                return `<div class="cw-achieve locked" title="${c.label}: нужно смонтировать">🔒 ${c.label}${note} <b>+${c.pts}</b></div>`;
-            })
-            .join('');
-
-        el.innerHTML = `
-            <div class="cw-card">
-                <div class="cw-header">
-                    <span class="cw-title">🏆 Конкурс STOUT 2026</span>
-                    <span class="cw-pts">${totalPts}<span class="cw-pts-label"> баллов</span></span>
-                </div>
-                <div class="cw-xp-row">
-                    <div class="cw-xp-bar">${xpBar}</div>
-                    ${xpLabel}
-                </div>
-                <details class="cw-details">
-                    <summary class="cw-details-summary">🔍 Подробнее</summary>
-                    <div class="cw-details-content">
-                        ${this._renderRatingBlock()}
-                        <div class="cw-achievements">
-                            ${earnedAch}${lockedAch}
-                        </div>
-                        <details class="cw-rules-details">
-                            <summary class="cw-rules-summary">📜 Правила конкурса STOUT 2026</summary>
-                            <div class="cw-rules-content">
-                                <p><b>📅 Период:</b> 1 апреля – 30 ноября 2026 г.</p>
-                                <p><b>🎁 Призовые места:</b></p>
-                                <ul>
-                                    <li>🥇 <b>1–10 место:</b> 150 000 ₽</li>
-                                    <li>🥈 <b>11–15 место:</b> 100 000 ₽</li>
-                                    <li>🥉 <b>16–20 место:</b> 50 000 ₽</li>
-                                    <li>📦 <b>21–30 место:</b> Ящик для инструментов</li>
-                                </ul>
-                                <p><b>👔 Гарантированные призы:</b></p>
-                                <ul>
-                                    <li>👕 <b>От 100 баллов:</b> Форма STOUT (полукомбинезон + куртка)</li>
-                                    <li>💰 <b>От 200 баллов:</b> Денежное вознаграждение <b>1 балл = 10 ₽</b></li>
-                                </ul>
-                            </div>
-                        </details>
-                    </div>
-                </details>
-            </div>`;
-    },
-
-    // === РЕЙТИНГ STOUT: рендер блока ===
-    _renderRatingBlock() {
-        const st = this._stoutRating;
-        if (!st || st.status === 'loading') {
-            return `<div class="cw-rating-block loading">
-                <span class="cw-rating-icon">⏳</span>
-                <span class="cw-rating-text">Загружаю рейтинг…</span>
-            </div>`;
-        }
-        if (st.status === 'not-found') {
-            return `<div class="cw-rating-block not-found">
-                <span class="cw-rating-icon">🔍</span>
-                <div class="cw-rating-text">
-                    <div class="cw-rating-label">Вы ещё не участвуете в конкурсе</div>
-                    <div class="cw-rating-sub">Данные с сайта profi-stout.pro</div>
-                </div>
-                <button class="cw-rating-refresh" onclick="app.refreshStoutRating()" title="Обновить рейтинг">↻</button>
-            </div>`;
-        }
-        if (st.status === 'error') {
-            return `<div class="cw-rating-block not-found">
-                <span class="cw-rating-icon">⚠️</span>
-                <div class="cw-rating-text">
-                    <div class="cw-rating-label">Не удалось загрузить рейтинг</div>
-                    <div class="cw-rating-sub">Нет соединения с сайтом STOUT</div>
-                </div>
-                <button class="cw-rating-refresh" onclick="app.refreshStoutRating()" title="Повторить">↻</button>
-            </div>`;
-        }
-        // found
-        const medal = st.place === 1 ? '🥇' : st.place === 2 ? '🥈' : st.place === 3 ? '🥉' : '🏅';
-        return `<div class="cw-rating-block found">
-            <span class="cw-rating-medal">${medal}</span>
-            <div class="cw-rating-text">
-                <div class="cw-rating-label">Место в конкурсе STOUT&nbsp;2026</div>
-                <div class="cw-rating-position">#${st.place} · ${st.name}</div>
-                <div class="cw-rating-sub">${st.points.toLocaleString('ru-RU')} баллов · из ${st.total} участников</div>
-            </div>
-            <button class="cw-rating-refresh" onclick="app.refreshStoutRating()" title="Обновить рейтинг">↻</button>
-        </div>`;
-    },
-
-    // === ЗАГРУЗКА РЕЙТИНГА STOUT через официальный API ===
-    async fetchStoutRating() {
-        const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 часа
-        const now = Date.now();
-        if (this._stoutRatingTs && (now - this._stoutRatingTs) < CACHE_TTL &&
-            this._stoutRating && this._stoutRating.status !== 'error') {
-            return;
-        }
-
-        this._stoutRating = { status: 'loading' };
-        this.renderContestWidget();
-
-        // baseURL реального фронтенда profi-stout — уже включает "/api",
-        // а вызовы идут с относительным путём вида "api/login" (без ведущего
-        const isLocal = HC_LOCAL_DEV;
-        const BASE = isLocal ? 'https://profi-stout.promo-online.pro/api' : `${supabaseUrl}/functions/v1/stout-proxy?path=`;
-        const APP_TOKEN = 'Pns2wxxcAnrd6z8vlero6OVNVtv8ksJVg-TsL3D7GOHPIRDnt2MU6VJ7tZshxhn_';
-        const CREDS = { login: '+79826109548', password: '31Dim1988@' };
-        const TIMEOUT_MS = 10000; // 10 секунд на каждый запрос
-
-        const baseHeaders = {
-            'Content-Type': 'application/json',
-            'X-Token': APP_TOKEN
-        };
-
-        // Хелпер: fetch с таймаутом
-        const fetchT = (url, opts) => {
-            const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-            return fetch(url, { ...opts, signal: ctrl.signal })
-                .finally(() => clearTimeout(timer));
-        };
-
-        try {
-            // Шаг 1: Получаем токен (из кэша или логинимся)
-            let token = this._stoutToken || localStorage.getItem('_stout_token');
-            let profileId = this._stoutProfileId || localStorage.getItem('_stout_profile_id');
-
-            if (!token) {
-                const loginResp = await fetchT(`${BASE}/api/login`, {
-                    method: 'POST',
-                    headers: baseHeaders,
-                    body: JSON.stringify(CREDS)
-                });
-                if (!loginResp.ok) throw new Error('Login failed: ' + loginResp.status);
-                const loginData = await loginResp.json();
-                token = loginData.token;
-                profileId = loginData.profile_id;
-                if (!token) throw new Error('No token in login response');
-                this._stoutToken = token;
-                this._stoutProfileId = profileId;
-                localStorage.setItem('_stout_token', token);
-                localStorage.setItem('_stout_profile_id', String(profileId));
-            }
-
-            const authHeaders = {
-                ...baseHeaders,
-                'Authorization': `Bearer ${token}`
-            };
-
-            // Шаг 2: Получаем список конкурсов, берём актуальный (is_actual=true)
-            let taskId = this._stoutTaskId;
-            if (!taskId) {
-                const tasksResp = await fetchT(`${BASE}/tasks/api/task/history-list`, {
-                    method: 'POST',
-                    headers: authHeaders,
-                    body: JSON.stringify({ type_id: 1, profile_id: profileId })
-                });
-                if (!tasksResp.ok) throw new Error('Tasks failed: ' + tasksResp.status);
-                const tasksData = await tasksResp.json();
-                const tasks = tasksData.tasks || tasksData || [];
-                const actualTask = Array.isArray(tasks)
-                    ? (tasks.find(t => t.is_actual) || tasks[0])
-                    : null;
-                if (!actualTask) throw new Error('No task found');
-                taskId = actualTask.id;
-                this._stoutTaskId = taskId;
-            }
-
-            // Шаг 3: Получаем рейтинг (список победителей)
-            const winnersResp = await fetchT(`${BASE}/tasks/api/task/winners-list`, {
-                method: 'POST',
-                headers: authHeaders,
-                body: JSON.stringify({ task_id: taskId, profile_id: profileId })
-            });
-            if (!winnersResp.ok) {
-                if (winnersResp.status === 401 || winnersResp.status === 403) {
-                    this._stoutToken = null;
-                    localStorage.removeItem('_stout_token');
-                }
-                throw new Error('Winners failed: ' + winnersResp.status);
-            }
-            const winnersData = await winnersResp.json();
-            const winners = winnersData.winners || winnersData || [];
-
-            if (!Array.isArray(winners) || winners.length === 0) {
-                this._stoutRatingTs = Date.now();
-                this._stoutRating = { status: 'not-found', total: 0 };
-                this.renderContestWidget();
-                return;
-            }
-
-            // Шаг 4: Ищем себя по profile_id (точное совпадение)
-            const me = winners.find(w => String(w.profile_id) === String(profileId));
-
-            this._stoutRatingTs = Date.now();
-
-            if (me) {
-                const place = me.order_number || (winners.indexOf(me) + 1);
-                const name = me.name || me.full_name || me.fio || '';
-                const points = me.points || me.bonuses || me.score || 0;
-                this._stoutRating = { status: 'found', place, name, points, total: winners.length };
-            } else {
-                this._stoutRating = { status: 'not-found', total: winners.length };
-            }
-
-        } catch (e) {
-            console.warn('STOUT rating fetch error:', e);
-            this._stoutRatingTs = Date.now();
-            this._stoutRating = { status: 'error' };
-        }
-        this.renderContestWidget();
-    },
-
-    refreshStoutRating() {
-        this._stoutRatingTs = 0;
-        this._stoutRating = null;
-        this._stoutToken = null;
-        this._stoutTaskId = null;
-        localStorage.removeItem('_stout_token');
-        localStorage.removeItem('_stout_profile_id');
-        this.fetchStoutRating();
-    },
-
-    showContestToast(label, pts, type = 'gain') {
-        const el = document.getElementById('contest_toast');
-        if (!el) return;
-        const isLoss = type === 'loss';
-        const suffix = pts === 1 ? '' : pts >= 2 && pts <= 4 ? 'а' : 'ов';
-        el.innerHTML = `<span class="ct-icon">${isLoss ? '📉' : '🏆'}</span><div><div class="ct-title">${isLoss ? '−' : '+'}${pts} балл${suffix} конкурса</div><div class="ct-sub">${isLoss ? 'Потеряно: ' : ''}${label}</div></div>`;
-        el.className = `contest-toast${isLoss ? ' loss' : ''} visible no-print`;
-        clearTimeout(this._contestToastTimer);
-        this._contestToastTimer = setTimeout(() => el.classList.remove('visible'), 3500);
     },
 
     // Переключение отображения цен подписки Профи между рублями и тенге (KZT).

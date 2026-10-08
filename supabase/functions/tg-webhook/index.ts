@@ -31,9 +31,7 @@ const CONNECT_TOKEN_TTL_MS = 10 * 60 * 1000;
 // Тот же список, что в app.js (app.isAdminEmail) и в send-push — только эти
 // адреса могут отвечать монтажникам обычным текстом.
 const ADMIN_EMAILS = [
-  "kovdorekb@gmail.com",
   "kovdor24@yandex.ru",
-  "dima24ba@gmail.com",
 ];
 
 // --- FCM: тот же код, что в send-push/index.ts (см. комментарий выше) ------
