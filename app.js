@@ -13209,6 +13209,16 @@ const app = {
                 // SessionStorage недоступен — сохраняем в localStorage
                 localStorage.setItem('yandex_oauth_state_fallback', state);
             }
+            // Страница могла вернуться в другой вкладке/окне (Brave, айфон, PWA), где
+            // sessionStorage пуст или чужой, — тогда state не совпадал и вход обрывался
+            // с «Не удалось подтвердить». Держим ещё и общий список недавних state.
+            try {
+                const now = Date.now();
+                let list = JSON.parse(localStorage.getItem('yandex_oauth_states') || '[]');
+                list = (Array.isArray(list) ? list : []).filter(x => x && x.s && now - x.t < 30 * 60 * 1000).slice(-4);
+                list.push({ s: state, t: now });
+                localStorage.setItem('yandex_oauth_states', JSON.stringify(list));
+            } catch (e) { }
             // Режим привязки: пользователь уже вошёл (через Google) и переводит
             // существующий аккаунт на Яндекс ID, а не логинится заново
             if (linkMode) {
@@ -13301,10 +13311,20 @@ const app = {
         // Свой флоу опознаём по state в sessionStorage — чтобы не перехватить
         // ?code=, принадлежащий чему-то другому (например, PKCE-редиректу Supabase).
         // SessionStorage может быть недоступен в приватном режиме — fallback на localStorage.
-        let savedState = sessionStorage.getItem('yandex_oauth_state');
+        let savedState = null;
+        try { savedState = sessionStorage.getItem('yandex_oauth_state'); } catch (e) { }
         if (!savedState) {
             savedState = localStorage.getItem('yandex_oauth_state_fallback');
         }
+        // Общий список недавних state: если в sessionStorage лежит другой (или пустой),
+        // принимаем state, который мы сами выдавали за последние 30 минут
+        try {
+            const list = JSON.parse(localStorage.getItem('yandex_oauth_states') || '[]');
+            const hit = (Array.isArray(list) ? list : []).find(x => x && x.s === state && Date.now() - x.t < 30 * 60 * 1000);
+            if (hit) savedState = state;
+            else if (!savedState && list.length && state) savedState = list[list.length - 1].s;
+            localStorage.removeItem('yandex_oauth_states');
+        } catch (e) { }
         if (!savedState) return;
         try {
             sessionStorage.removeItem('yandex_oauth_state');
