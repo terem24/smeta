@@ -12145,7 +12145,7 @@ const app = {
 
             // Фоллбек для локального тестирования
             if (!uRow && isLocal) {
-                uRow = { id: '0279a53c-452b-474f-8626-08be2c2b32da', account_type: 'base', email: 'dima24ba@gmail.com' };
+                uRow = { id: '0279a53c-452b-474f-8626-08be2c2b32da', account_type: 'base', email: 'kovdor24@yandex.ru' };
             }
 
             // Безопасность: если пользователь не найден в БД — не показываем ничего
@@ -12159,7 +12159,7 @@ const app = {
             // через JSON-путь, а не весь calc_data (десятки КБ на смету).
             let query = supabaseClient.from('estimates').select('id, project_name, total_sum, created_at, user_id, calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, kp_ver:calc_data->>kpVersion, cf_calc:calc_data->copiedFrom->>calc').order('created_at', { ascending: false }).limit(50);
 
-            const isAdmin = (uRow.email && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
+            const isAdmin = (uRow.email && ['kovdor24@yandex.ru'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
             // «Мои объекты» в личном кабинете — всегда только свои сметы, даже у админа:
             // чужие расчёты смотрят в админке, а кабинет принадлежит одному человеку
             if (!isAdmin || hostId !== 'cloud_list_content') {
@@ -12257,7 +12257,7 @@ const app = {
             return;
         }
 
-        const isAdmin = this._currentUserRow && ((this._currentUserRow.email && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(this._currentUserRow.email.toLowerCase())) || ['admin', 'viewer'].includes(this._currentUserRow.account_type));
+        const isAdmin = this._currentUserRow && ((this._currentUserRow.email && ['kovdor24@yandex.ru'].includes(this._currentUserRow.email.toLowerCase())) || ['admin', 'viewer'].includes(this._currentUserRow.account_type));
         const currentUserId = this._currentUserRow ? this._currentUserRow.id : null;
 
         let h = `
@@ -13119,7 +13119,7 @@ const app = {
             // Если мы не в режиме разработки, добавляем фильтр по текущему пользователю
             // (даже если RLS настроен, лишняя проверка на фронте не помешает)
             let userEmail = session ? session.user.email : (tgUser ? tgUser.email : null);
-            const isUserAdmin = (userEmail && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(userEmail.toLowerCase())) || ['admin', 'viewer'].includes(this.state.accountType) || (this.state.tgUser && ['admin', 'viewer'].includes(this.state.tgUser.account_type));
+            const isUserAdmin = (userEmail && ['kovdor24@yandex.ru'].includes(userEmail.toLowerCase())) || ['admin', 'viewer'].includes(this.state.accountType) || (this.state.tgUser && ['admin', 'viewer'].includes(this.state.tgUser.account_type));
             if (isUserAdmin) {
                 // Пропускаем фильтрацию для админа
             } else if (session) {
@@ -13560,7 +13560,7 @@ const app = {
 
     isAdminEmail: function (email) {
         if (!email) return false;
-        return ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com']
+        return ['kovdor24@yandex.ru']
             .includes(String(email).toLowerCase().trim());
     },
 
@@ -19637,7 +19637,7 @@ const app = {
                 .select('id, project_name, total_sum, created_at, shared_invoice_id:calc_data->>shared_invoice_id, calc_id:calc_data->>calc_id')
                 .eq('user_id', uRow.id);
             if (estError) throw estError;
-            const isAdmin = (uRow.email && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
+            const isAdmin = (uRow.email && ['kovdor24@yandex.ru'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
 
             // Обрабатываем уведомления
             const notifications = [];
@@ -21656,7 +21656,7 @@ const app = {
         this.closeEmojiPicker();
     },
 
-    SUPER_ADMIN_EMAILS: ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'],
+    SUPER_ADMIN_EMAILS: ['kovdor24@yandex.ru'],
 
     getAdminRole: function () {
         // Локальная панель: кнопка «Менеджер» подменяет роль мимо базы, даже у
@@ -43995,7 +43995,7 @@ const app = {
                         authUserId: tgUser.authUserId, email: tgUser.email || email
                     });
                     app.alert('Анкета сохранена на этом устройстве, но не записалась в вашу учётную запись — ' +
-                        'на другом устройстве её придётся заполнить заново. Напишите на dima24ba@gmail.com, мы поправим.',
+                        'на другом устройстве её придётся заполнить заново. Напишите на support@heatcalc.ru, мы поправим.',
                         'Профиль сохранён не полностью');
                     return;
                 }
@@ -54424,7 +54424,7 @@ const app = {
                 demo_ends_at: "2026-06-06T00:00:00.000Z",
                 // Email нужен, чтобы на localhost сразу была видна кнопка "Админка"
                 // (она проверяет email по списку adminEmails) — без входа через реальный аккаунт
-                email: "dima24ba@gmail.com"
+                email: "kovdor24@yandex.ru"
             };
         }
         // ===================================================

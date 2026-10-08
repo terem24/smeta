@@ -54,7 +54,7 @@ $MAX_BYTES   = 25 * 1024 * 1024;   // потолок на один файл см
  */
 const SUPABASE_HOST = 'https://ahanbwugsmcyvrwbmtlx.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_gcMJ-PvJmKavObbnePFGZQ_O-pu5O2p';
-const SUPER_ADMIN_EMAILS = ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'];
+const SUPER_ADMIN_EMAILS = ['kovdor24@yandex.ru'];
 
 function bearerToken() {
     foreach (getallheaders() as $name => $value) {

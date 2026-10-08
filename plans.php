@@ -62,7 +62,7 @@ $RETENTION_DAYS = 90;
 
 const SUPABASE_HOST = 'https://ahanbwugsmcyvrwbmtlx.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_gcMJ-PvJmKavObbnePFGZQ_O-pu5O2p';
-const SUPER_ADMIN_EMAILS = ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'];
+const SUPER_ADMIN_EMAILS = ['kovdor24@yandex.ru'];
 
 /** Ответ ошибкой в том же виде, что и у остальных наших скриптов. */
 function fail($code, $msg) {
