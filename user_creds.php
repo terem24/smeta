@@ -49,7 +49,7 @@ if (!function_exists('getallheaders')) {
 
 const SUPABASE_HOST = 'https://ahanbwugsmcyvrwbmtlx.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_gcMJ-PvJmKavObbnePFGZQ_O-pu5O2p';
-const SUPER_ADMIN_EMAILS = ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'];
+const SUPER_ADMIN_EMAILS = ['kovdor24@yandex.ru'];
 
 /** Рядом с архивом распознаваний: та же папка уже закрыта .htaccess. */
 function credsPath() { return __DIR__ . '/archive/creds.json'; }

@@ -8209,7 +8209,7 @@ const app = {
                 icon.innerHTML = "🔒";
             }
             if (title) title.innerHTML = "Требуется авторизация";
-            if (text) text.innerHTML = "Авторизуйтесь через Email, Google, чтобы получить доступ к этой функции.";
+            if (text) text.innerHTML = "Авторизуйтесь через Email или Яндекс ID, чтобы получить доступ к этой функции.";
             let trialBtn = document.getElementById('custom_modal_btn_trial');
             if (trialBtn) trialBtn.style.display = 'none';
             let cards = document.querySelector('.tariff-cards');
@@ -12145,7 +12145,7 @@ const app = {
 
             // Фоллбек для локального тестирования
             if (!uRow && isLocal) {
-                uRow = { id: '0279a53c-452b-474f-8626-08be2c2b32da', account_type: 'base', email: 'dima24ba@gmail.com' };
+                uRow = { id: '0279a53c-452b-474f-8626-08be2c2b32da', account_type: 'base', email: 'kovdor24@yandex.ru' };
             }
 
             // Безопасность: если пользователь не найден в БД — не показываем ничего
@@ -12159,7 +12159,7 @@ const app = {
             // через JSON-путь, а не весь calc_data (десятки КБ на смету).
             let query = supabaseClient.from('estimates').select('id, project_name, total_sum, created_at, user_id, calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, kp_ver:calc_data->>kpVersion, cf_calc:calc_data->copiedFrom->>calc').order('created_at', { ascending: false }).limit(50);
 
-            const isAdmin = (uRow.email && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
+            const isAdmin = (uRow.email && ['kovdor24@yandex.ru'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
             // «Мои объекты» в личном кабинете — всегда только свои сметы, даже у админа:
             // чужие расчёты смотрят в админке, а кабинет принадлежит одному человеку
             if (!isAdmin || hostId !== 'cloud_list_content') {
@@ -12257,7 +12257,7 @@ const app = {
             return;
         }
 
-        const isAdmin = this._currentUserRow && ((this._currentUserRow.email && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(this._currentUserRow.email.toLowerCase())) || ['admin', 'viewer'].includes(this._currentUserRow.account_type));
+        const isAdmin = this._currentUserRow && ((this._currentUserRow.email && ['kovdor24@yandex.ru'].includes(this._currentUserRow.email.toLowerCase())) || ['admin', 'viewer'].includes(this._currentUserRow.account_type));
         const currentUserId = this._currentUserRow ? this._currentUserRow.id : null;
 
         let h = `
@@ -13119,7 +13119,7 @@ const app = {
             // Если мы не в режиме разработки, добавляем фильтр по текущему пользователю
             // (даже если RLS настроен, лишняя проверка на фронте не помешает)
             let userEmail = session ? session.user.email : (tgUser ? tgUser.email : null);
-            const isUserAdmin = (userEmail && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(userEmail.toLowerCase())) || ['admin', 'viewer'].includes(this.state.accountType) || (this.state.tgUser && ['admin', 'viewer'].includes(this.state.tgUser.account_type));
+            const isUserAdmin = (userEmail && ['kovdor24@yandex.ru'].includes(userEmail.toLowerCase())) || ['admin', 'viewer'].includes(this.state.accountType) || (this.state.tgUser && ['admin', 'viewer'].includes(this.state.tgUser.account_type));
             if (isUserAdmin) {
                 // Пропускаем фильтрацию для админа
             } else if (session) {
@@ -13175,24 +13175,6 @@ const app = {
             if (this.isMobileLayout()) this.switchMobileTab('output');
             app.alert("✅ Смета успешно загружена!");
         } catch (error) { app.alert("Ошибка загрузки сметы: " + error.message); }
-    },
-
-    loginGoogle: async function () {
-        try {
-            const { data, error } = await supabaseClient.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin + window.location.pathname,
-                    // Без этого Google молча логинит в уже активную в браузере сессию,
-                    // не давая выбрать другой аккаунт после выхода.
-                    queryParams: { prompt: 'select_account' }
-                }
-            });
-            if (error) throw error;
-        } catch (err) {
-            console.error("Ошибка входа через Google:", err);
-            app.alert("Ошибка при входе через Google: " + getFriendlyErrorMessage(err));
-        }
     },
 
     // Публичный идентификатор приложения из oauth.yandex.ru (не секрет).
@@ -13578,7 +13560,7 @@ const app = {
 
     isAdminEmail: function (email) {
         if (!email) return false;
-        return ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com']
+        return ['kovdor24@yandex.ru']
             .includes(String(email).toLowerCase().trim());
     },
 
@@ -13638,38 +13620,6 @@ const app = {
             } catch (e) { }
         }
         return code;
-    },
-
-    // Для посетителей из РФ кнопки Google в окне входа нет вовсе.
-    // Иностранным пользователям окно показывается без изменений.
-    applyRuLoginRestrictions: async function () {
-        const googleBtn = document.getElementById('auth_google_btn');
-        if (!googleBtn) return;
-
-        // Служебный доступ для администратора: heatcalc.ru/?google_login=1 возвращает
-        // кнопку Google и в РФ. Флаг в sessionStorage: он переживает редирект Google
-        // (та же вкладка), но не остаётся включённым навсегда, как было бы
-        // в localStorage. Сбрасывается закрытием вкладки или ?google_login=0.
-        try {
-            // Прежняя версия хранила флаг в localStorage, то есть он оставался включённым
-            // навсегда: у всех, кто хоть раз открыл ?google_login=1, кнопка Google
-            // продолжала показываться и в РФ. Убираем этот ключ при первом же запуске.
-            localStorage.removeItem('force_google_login');
-
-            const flag = new URLSearchParams(window.location.search).get('google_login');
-            if (flag === '1') sessionStorage.setItem('force_google_login', '1');
-            if (flag === '0') sessionStorage.removeItem('force_google_login');
-        } catch (e) { }
-        if (sessionStorage.getItem('force_google_login') === '1') {
-            googleBtn.style.display = '';
-            return;
-        }
-
-        // Кнопка скрыта в разметке и появляется только если страна точно определена
-        // и это не РФ. Пока идёт определение или если геосервисы недоступны, кнопки
-        // нет: показать её пользователю из РФ хуже, чем не показать иностранцу.
-        const country = await this.detectVisitorCountry();
-        googleBtn.style.display = (country && country !== 'RU') ? '' : 'none';
     },
 
     // Каким способом получена эта сессия: 'oauth' (Google), 'password', 'otp'
@@ -13952,9 +13902,6 @@ const app = {
     showAuthModal: function () {
         document.getElementById('auth_modal_overlay').style.display = 'flex';
         document.body.classList.add('auth-modal-open');
-        // Посетителям из РФ показываем, что через Google можно только войти
-        // в ранее созданный аккаунт
-        this.applyRuLoginRestrictions();
         // Каждое открытие — с выбора способа (Яндекс ID / Почта), как у vc.ru
         this._authView = 'method';
         this.syncAuthChrome();
@@ -19690,7 +19637,7 @@ const app = {
                 .select('id, project_name, total_sum, created_at, shared_invoice_id:calc_data->>shared_invoice_id, calc_id:calc_data->>calc_id')
                 .eq('user_id', uRow.id);
             if (estError) throw estError;
-            const isAdmin = (uRow.email && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
+            const isAdmin = (uRow.email && ['kovdor24@yandex.ru'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
 
             // Обрабатываем уведомления
             const notifications = [];
@@ -21708,7 +21655,7 @@ const app = {
         this.closeEmojiPicker();
     },
 
-    SUPER_ADMIN_EMAILS: ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'],
+    SUPER_ADMIN_EMAILS: ['kovdor24@yandex.ru'],
 
     getAdminRole: function () {
         // Локальная панель: кнопка «Менеджер» подменяет роль мимо базы, даже у
@@ -36734,6 +36681,8 @@ const app = {
             canvas.scrollTop = py * w - (cy ?? rect.height / 2);
         };
         fit();
+        // Лист насосной группы на телефоне: подписи при «вписать» мельче читаемого, открываем с увеличением (кнопка «Вписать» вернёт целиком).
+        if (svg.querySelector('.sg-hit') && canvas.clientWidth < 700) zoom(2.4);
         if (countEl) countEl.textContent = (cur + 1) + ' / ' + list.length;
         ov.addEventListener('click', (e) => {
             const z = e.target.dataset && e.target.dataset.z;
@@ -36931,7 +36880,7 @@ const app = {
         return {
             // Листы самосборных насосных групп — только когда группы в смете собраны из позиций
             // (this._selfKinds выставляет подбор в render): у готовых групп STOUT/ROMMER вид другой.
-            pumpGroups: ['direct', 'thermo', 'servo']
+            pumpGroups: ['direct', 'thermo', 'servo', 'dhw']
                 .filter(k => this._selfKinds && this._selfKinds[k])
                 .map(k => ({ kind: k, url: this.SELF_GROUP_SHEETS[k] })),
             ufh: (this.state.tp1 > 0 || this.state.tp2 > 0) ? this.UFH_SHEET : null,
@@ -37213,6 +37162,7 @@ const app = {
      * но схема сборки та же: насос, краны, смеситель, обратный клапан-перемычка.
      */
     SELF_GROUP_SHEETS: {
+        dhw: 'img/nodes/selfgrp_direct.jpg',
         direct: 'img/nodes/selfgrp_direct.jpg',
         thermo: 'img/nodes/selfgrp_thermo.jpg',
         servo: 'img/nodes/selfgrp_servo.jpg'
@@ -37292,7 +37242,7 @@ const app = {
         ] }
     },
     // Подраздел сметы каждого вида группы (без номера) — по нему подпись схемы ищет свои строки.
-    SELF_KIND_TITLE: { direct: 'Самосборная группа: прямая', thermo: 'Самосборная группа: термостатическая', servo: 'Самосборная группа: под сервопривод' },
+    SELF_KIND_TITLE: { direct: 'Самосборная группа: прямая', thermo: 'Самосборная группа: термостатическая', servo: 'Самосборная группа: под сервопривод', dhw: 'Самосборная группа: загрузка бойлера' },
     // Сверка подписей схемы со сметой: [подпись, какие артикулы сметы её закрывают, искать во всей котельной?].
     // null вместо артикулов — позиции этой подписи в смете нет и не закладывается.
     SELF_LABEL_RULES: [
@@ -37314,6 +37264,10 @@ const app = {
         [/^Удлинитель/, /^SFT-0001-003430/],
         [/^Сгон/, /^SFT-0032-034100/]
     ],
+    // Подписи схемы вида kind. Группа загрузки бойлера собрана как прямая — у неё лист прямой.
+    sgLab: function (kind) {
+        return this.SELF_GROUP_LABELS[kind === 'dhw' ? 'direct' : kind];
+    },
     sgRule: function (text) {
         return this.SELF_LABEL_RULES.find(r => r[0].test(String(text || ''))) || null;
     },
@@ -37338,14 +37292,19 @@ const app = {
         const all = Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr => this.sgIdMatch(rule, this.sgIdOf(tr)));
         if (rule[2]) return all;
         const own = all.filter(tr => this.sgSubTitleOf(tr).indexOf(title) >= 0);
+        if (own.length) return own;
         // Смета склеивает строки одного артикула и показывает под первой (хомут, кран, ниппель бывают и в других узлах):
-        // нет в подразделе группы — берём ту же позицию из соседнего подраздела, а не считаем её потерянной.
-        return own.length ? own : all;
+        // нет в подразделе группы — берём ту же позицию из соседнего подраздела, а не считаем её потерянной. Только артикулы,
+        // которые идут в комплект ЭТОЙ группы: кран 3/4" не должен тянуть за собой краны 1" и чужие узлы.
+        const kit = (this._selfKitIds || {})[kind];
+        const narrowed = kit ? all.filter(tr => kit.has(this.sgIdOf(tr))) : all;
+        return narrowed.length ? narrowed : all;
     },
-    renderPumpGroupScheme: function () {
+    // Схема одной группы (kind) — над её подразделом сметы. Без kind — все схемы подряд (на случай внешнего вызова).
+    renderPumpGroupScheme: function (kind) {
         this.sgInit();
-        return this.projectNodeSheetUrls().pumpGroups.map(p => {
-            const lab = this.SELF_GROUP_LABELS[p.kind];
+        return this.projectNodeSheetUrls().pumpGroups.filter(p => !kind || p.kind === kind).map(p => {
+            const lab = this.sgLab(p.kind);
             let sum = '';
             if (lab) {
                 const okList = lab.l.map(l => this.sgRows(p.kind, this.sgRule(l[0])).length > 0);
@@ -37367,14 +37326,47 @@ const app = {
             document.querySelectorAll('.sg-hl').forEach(e => e.classList.remove('sg-hl'));
             document.querySelectorAll('tr.sg-row-hl').forEach(e => e.classList.remove('sg-row-hl'));
         };
-        const hotOf = (el) => el && el.closest ? el.closest('.sg-hot, .sg-pt') : null;
+        const hotOf = (el) => el && el.closest ? el.closest('.sg-hot, .sg-pt, .sg-hit') : null;
+        // Подсказка у курсора: строки сметы, которые закрывают подпись (строка может быть далеко от схемы, за экраном).
+        const tipEl = () => {
+            let t = document.getElementById('sg-tip');
+            if (!t) { t = document.createElement('div'); t.id = 'sg-tip'; t.className = 'no-print'; document.body.appendChild(t); }
+            return t;
+        };
+        const hideTip = () => { const t = document.getElementById('sg-tip'); if (t) t.style.display = 'none'; };
+        const rowBrief = (tr) => {
+            const idx = (tr.querySelector('.col-idx') || {}).innerText || '';
+            const nm = ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
+            const qEl = tr.querySelector('.col-qty input');
+            const q = qEl ? qEl.value : ((tr.querySelector('.col-qty') || {}).innerText || '').trim();
+            const sum = ((tr.querySelector('.col-sum') || {}).innerText || '').trim();
+            return `<div class="sg-tip-row"><b>№ ${idx.trim()}</b> ${nm.replace(/</g, '&lt;')} <span>${q} шт. · ${sum}</span></div>`;
+        };
+        document.addEventListener('mousemove', (e) => {
+            const t = document.getElementById('sg-tip');
+            if (!t || t.style.display === 'none') return;
+            const w = t.offsetWidth, h = t.offsetHeight;
+            t.style.left = Math.max(8, Math.min(innerWidth - w - 8, e.clientX + 16)) + 'px';
+            t.style.top = Math.max(8, Math.min(innerHeight - h - 8, e.clientY + 18)) + 'px';
+        });
         document.addEventListener('mouseover', (e) => {
             const hot = hotOf(e.target);
             if (hot) {
                 clear();
+                if (window.matchMedia && window.matchMedia('(hover: hover)').matches) {
+                    const [k0, i0] = String(hot.getAttribute('data-sg')).split(':');
+                    const lab0 = this.sgLab(k0), rows0 = this.sgRows(k0, this.sgRule(lab0 && lab0.l[i0] && lab0.l[i0][0]));
+                    const t = tipEl();
+                    t.innerHTML = '<div class="sg-tip-h">' + String((lab0 && lab0.l[i0] && lab0.l[i0][0]) || '').replace(/</g, '&lt;') + '</div>' +
+                        (rows0.length ? rows0.slice(0, 4).map(rowBrief).join('') + (rows0.length > 4 ? '<div class="sg-tip-row">… и ещё ' + (rows0.length - 4) + '</div>' : '')
+                            : '<div class="sg-tip-row sg-tip-miss">В смете этой позиции нет</div>');
+                    t.style.display = 'block';
+                    t.style.left = Math.max(8, Math.min(innerWidth - t.offsetWidth - 8, e.clientX + 16)) + 'px';
+                    t.style.top = Math.max(8, Math.min(innerHeight - t.offsetHeight - 8, e.clientY + 18)) + 'px';
+                }
                 const [kind, i] = String(hot.getAttribute('data-sg')).split(':');
                 document.querySelectorAll('[data-sg="' + kind + ':' + i + '"]').forEach(x => x.classList.add('sg-hl'));
-                const lab = this.SELF_GROUP_LABELS[kind];
+                const lab = this.sgLab(kind);
                 this.sgRows(kind, this.sgRule(lab && lab.l[i] && lab.l[i][0])).forEach(tr => tr.classList.add('sg-row-hl'));
                 return;
             }
@@ -37384,7 +37376,7 @@ const app = {
             let any = false;
             document.querySelectorAll('.sg-hot').forEach(h => {
                 const [kind, i] = String(h.getAttribute('data-sg')).split(':');
-                const lab = this.SELF_GROUP_LABELS[kind];
+                const lab = this.sgLab(kind);
                 const rule = this.sgRule(lab && lab.l[i] && lab.l[i][0]);
                 if (rule && this.sgIdMatch(rule, id) && (rule[2] || sub.indexOf(this.SELF_KIND_TITLE[kind]) >= 0)) {
                     document.querySelectorAll('[data-sg="' + kind + ':' + i + '"]').forEach(x => x.classList.add('sg-hl'));
@@ -37395,19 +37387,26 @@ const app = {
         });
         document.addEventListener('mouseout', (e) => {
             if (hotOf(e.target) || (e.target.closest && e.target.closest('#print-area tr[data-rk]'))) clear();
+            if (hotOf(e.target)) hideTip();
         });
         // Щелчок по подписи — к строке сметы (раньше, чем сработает открытие схемы на весь экран).
         document.addEventListener('click', (e) => {
             const hot = hotOf(e.target);
             if (!hot) return;
             e.stopPropagation();
+            hideTip();
             const [kind, i] = String(hot.getAttribute('data-sg')).split(':');
-            const lab = this.SELF_GROUP_LABELS[kind];
+            const lab = this.sgLab(kind);
             const rows = this.sgRows(kind, this.sgRule(lab && lab.l[i] && lab.l[i][0]));
             if (!rows.length) return;
-            const fs = document.querySelector('.scheme-fullscreen, .scheme-fs-overlay');
+            const fs = document.getElementById('scheme_zoom_overlay');
             if (fs) fs.remove();
-            rows[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+            // Ближайшая к листу этой группы строка (схема стоит над своим подразделом) — а не самая верхняя строка сметы.
+            const anchor = document.getElementById('pump_group_scheme_row_' + kind) || hot;
+            const ay = anchor.getBoundingClientRect().top + window.scrollY;
+            const dist = (r) => Math.abs(r.getBoundingClientRect().top + window.scrollY - ay);
+            const target = rows.slice().sort((a, b) => dist(a) - dist(b))[0];
+            target.scrollIntoView({ block: 'center', behavior: 'smooth' });
             rows.forEach(r => { r.classList.add('sg-row-flash'); setTimeout(() => r.classList.remove('sg-row-flash'), 1800); });
         }, true);
     },
@@ -37462,15 +37461,29 @@ const app = {
         const a = this.SHEET_SIZE;
         // Подписи схемы самосборной группы — прозрачные кликабельные рамки поверх картинки (см. sgInit).
         let overlay = '';
-        const lab = sgKind && this.SELF_GROUP_LABELS ? this.SELF_GROUP_LABELS[sgKind] : null;
+        const lab = sgKind && this.SELF_GROUP_LABELS ? this.sgLab(sgKind) : null;
         if (lab) {
             const sc = Math.min(a.w / lab.w, a.h / lab.h), ox = (a.w - lab.w * sc) / 2, oy = (a.h - lab.h * sc) / 2;
             overlay = lab.l.map((l, i) => {
                 const ok = this.sgRows(sgKind, this.sgRule(l[0])).length > 0;
                 const r = (v, o) => Math.round(o + v * sc);
                 const tip = ok ? '' : '<title>Этой позиции со схемы нет в смете</title>';
-                return `<rect class="sg-hot ${ok ? 'sg-ok' : 'sg-miss'}" data-sg="${sgKind}:${i}" x="${r(l[1], ox)}" y="${r(l[2], oy)}" width="${Math.round((l[3] - l[1]) * sc)}" height="${Math.round((l[4] - l[2]) * sc)}">${tip}</rect>` +
+                const geo = `x="${r(l[1], ox)}" y="${r(l[2], oy)}" width="${Math.round((l[3] - l[1]) * sc)}" height="${Math.round((l[4] - l[2]) * sc)}"`;
+                // sg-hot — видимая рамка, sg-hit — невидимая зона наведения с запасом в экранных пикселях (подписи на листе мелкие).
+                return `<rect class="sg-hot ${ok ? 'sg-ok' : 'sg-miss'}" data-sg="${sgKind}:${i}" ${geo}></rect>` +
                     `<circle class="sg-pt" data-sg="${sgKind}:${i}" cx="${r(l[5], ox)}" cy="${r(l[6], oy)}" r="${Math.round(14 * sc)}"/>`;
+            }).join('') + lab.l.map((l, i) => {
+                const ok = this.sgRows(sgKind, this.sgRule(l[0])).length > 0;
+                const r = (v, o) => Math.round(o + v * sc);
+                // Зона наведения шире самой подписи (она мелкая), но не заходит на соседей: вверх и вниз — до середины зазора, не больше 26 пикселей листа.
+                let up = -1e9, dn = 1e9;
+                lab.l.forEach((q, j) => {
+                    if (j === i || q[3] < l[1] || q[1] > l[3]) return;
+                    if (q[4] <= l[2]) up = Math.max(up, q[4]); else if (q[2] >= l[4]) dn = Math.min(dn, q[2]);
+                });
+                const padUp = Math.min(26, Math.max(0, (l[2] - up) / 2)), padDn = Math.min(26, Math.max(0, (dn - l[4]) / 2));
+                const x0 = l[1] - 8, x1 = l[3] + 8, y0 = l[2] - padUp, y1 = l[4] + padDn;
+                return `<rect class="sg-hit" data-sg="${sgKind}:${i}" x="${r(x0, ox)}" y="${r(y0, oy)}" width="${Math.round((x1 - x0) * sc)}" height="${Math.round((y1 - y0) * sc)}">${ok ? '' : '<title>Этой позиции со схемы нет в смете</title>'}</rect>`;
             }).join('');
         }
         return `<div class="automation-scheme" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">` +
@@ -40335,7 +40348,7 @@ const app = {
             const found = (this._recognitionStorageKeys || []);
             if (root()) root().innerHTML = `<div style="color:#EF4444; padding:20px;">
                 Список читается по вашей учётной записи, а токен сессии в браузере не найден.<br>
-                Попробуйте выйти и войти заново по email или через Google.
+                Попробуйте выйти и войти заново по email или через Яндекс ID.
                 <div style="margin-top:10px; color:var(--text-sec); font-size:12px;">
                     Для диагностики: ключи хранилища — ${found.length ? found.join(', ') : 'не найдены'}.<br>
                     Вкладка «Распознавание» читает токен той же функцией — если там та же ошибка,
@@ -40611,11 +40624,11 @@ const app = {
             const root = document.getElementById('admin_recognition_root');
             // Сессии Supabase нет вовсе — так бывает после входа через Telegram
             // или когда браузер почистил хранилище. Обновление страницы тут не
-            // поможет, нужен именно вход по email или через Google.
+            // поможет, нужен именно вход по email или через Яндекс ID.
             const found = (this._recognitionStorageKeys || []);
             if (root) root.innerHTML = `<div style="color:#EF4444; padding:20px;">
                 Архив читается по вашей учётной записи, а токен сессии в браузере не найден.<br>
-                Попробуйте выйти и войти заново по email или через Google.
+                Попробуйте выйти и войти заново по email или через Яндекс ID.
                 <div style="margin-top:10px; color:var(--text-sec); font-size:12px;">
                     Для диагностики: ключи хранилища — ${found.length ? found.join(', ') : 'не найдены'}.
                 </div></div>`;
@@ -42648,15 +42661,8 @@ const app = {
         const email = document.getElementById('auth_email_input').value.trim();
         const password = document.getElementById('auth_reg_password').value.trim();
 
-        // Выбор «хочу информационные письма» запоминаем вместе с почтой: учётная запись в базе
-        // появляется только при первом входе, и тогда выбор уходит в базу (flushPendingMailConsent).
-        // Привязка к почте нужна, чтобы чужой выбор не лёг на следующего, кто войдёт с этого устройства.
-        try {
-            const mailChk = document.getElementById('chk_mail_consent');
-            localStorage.setItem('hc_pending_mail_consent', JSON.stringify({
-                email: email.toLowerCase(), v: !!(mailChk && mailChk.checked), t: Date.now()
-            }));
-        } catch (e) { /* без localStorage согласие просто не запомнится, включить можно в кабинете */ }
+        // Галочки «информационные письма» в форме больше нет: согласие остаётся «не отвечал»
+        // (null), включить его можно в кабинете. flushPendingMailConsent без записи ничего не делает.
 
         const authErrEl = document.getElementById('auth_error_msg');
         if (authErrEl) authErrEl.style.display = 'none';
@@ -42748,10 +42754,7 @@ const app = {
 
             // Логика блокировки: Если emailExists === true
             if (emailExists === true) {
-                if (authErrEl) {
-                    authErrEl.innerText = 'Пользователь с таким email уже существует. Пожалуйста, войдите в систему.';
-                    authErrEl.style.display = 'block';
-                }
+                if (authErrEl) this.showEmailExistsHint(authErrEl, email);
                 if (btn) {
                     btn.disabled = false;
                     btn.innerText = 'Зарегистрироваться';
@@ -42952,19 +42955,60 @@ const app = {
             const friendlyErr = getFriendlyErrorMessage(err);
             if (authErrEl) {
                 const msg = (err.message || "").toLowerCase();
+                this.backToAuthMain(); // Возвращаем к форме, чтобы пользователь видел ошибку
                 if (msg.includes('already registered') || msg.includes('already exists')) {
-                    authErrEl.innerText = 'Пользователь с таким email уже существует. Пожалуйста, войдите в систему.';
+                    this.showEmailExistsHint(authErrEl, email);
                 } else {
                     authErrEl.innerText = 'Ошибка регистрации: ' + friendlyErr;
+                    authErrEl.style.display = 'block';
                 }
-                authErrEl.style.display = 'block';
-                this.backToAuthMain(); // Возвращаем к форме, чтобы пользователь видел ошибку
             } else {
                 app.alert('Ошибка регистрации: ' + friendlyErr);
             }
         } finally {
             if (btn) { btn.disabled = false; btn.innerText = 'Подтвердить'; }
         }
+    },
+
+    // Почта уже зарегистрирована: вместо тупика «войдите» даём два выхода сразу в окне регистрации —
+    // перейти ко входу с этой почтой или выслать на неё ссылку для нового пароля.
+    showEmailExistsHint: function (el, email) {
+        if (!el) return;
+        el.innerHTML = '';
+        const text = document.createElement('div');
+        text.textContent = 'Пользователь с таким email уже существует.';
+        el.appendChild(text);
+        const row = document.createElement('div');
+        row.style.cssText = 'margin-top:6px; display:flex; gap:14px; flex-wrap:wrap;';
+        const mk = (label, fn) => {
+            const a = document.createElement('a');
+            a.href = '#';
+            a.textContent = label;
+            a.style.cssText = 'color: var(--primary); font-weight: 600; text-decoration: none;';
+            a.onclick = (e) => { e.preventDefault(); fn(a); };
+            return a;
+        };
+        row.appendChild(mk('Войти', () => {
+            el.style.display = 'none';
+            this.switchAuthTab('login');
+        }));
+        row.appendChild(mk('Выслать пароль на почту', async (a) => {
+            a.style.pointerEvents = 'none';
+            a.textContent = 'Отправка...';
+            try {
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+                if (error) throw error;
+                el.style.color = 'var(--text-sec)';
+                el.textContent = 'Письмо со ссылкой для нового пароля отправлено на ' + email + '. Проверьте также «Спам».';
+            } catch (err) {
+                a.style.pointerEvents = '';
+                a.textContent = 'Выслать пароль на почту';
+                app.alert('Ошибка: ' + getFriendlyErrorMessage(err));
+            }
+        }));
+        el.appendChild(row);
+        el.style.color = '#ef4444';
+        el.style.display = 'block';
     },
 
     showForgotPasswordView: function () {
@@ -43112,7 +43156,7 @@ const app = {
             let regActivityTypes = Array.isArray(meta.activity_types) ? meta.activity_types : [];
 
             // Ограничение авторизации через Google для пользователей из РФ.
-            // Кнопки Google в окне входа в РФ нет (см. applyRuLoginRestrictions) — то есть
+            // Кнопки Google в окне входа в РФ нет (кнопка Google убрана 08.10.2026) — то есть
             // обычным путём сюда никто из России не попадёт. Но остаются VPN, устаревший
             // кэш страны и служебная ссылка ?google_login=1, и раньше такой вход считался
             // новой регистрацией: он отменялся, а учётная запись удалялась. Человек этого
@@ -44100,7 +44144,7 @@ const app = {
                         authUserId: tgUser.authUserId, email: tgUser.email || email
                     });
                     app.alert('Анкета сохранена на этом устройстве, но не записалась в вашу учётную запись — ' +
-                        'на другом устройстве её придётся заполнить заново. Напишите на dima24ba@gmail.com, мы поправим.',
+                        'на другом устройстве её придётся заполнить заново. Напишите на support@heatcalc.ru, мы поправим.',
                         'Профиль сохранён не полностью');
                     return;
                 }
@@ -54529,7 +54573,7 @@ const app = {
                 demo_ends_at: "2026-06-06T00:00:00.000Z",
                 // Email нужен, чтобы на localhost сразу была видна кнопка "Админка"
                 // (она проверяет email по списку adminEmails) — без входа через реальный аккаунт
-                email: "dima24ba@gmail.com"
+                email: "kovdor24@yandex.ru"
             };
         }
         // ===================================================
@@ -78053,6 +78097,7 @@ const app = {
         this._selfKinds = {};
         this._selfCounts = {};
         this._selfLoads = {};
+        this._selfKitIds = {};
 
         if (needCollector) {
             // Несущий каркас (рама) или хомуты коллектора котельной на базе C-образного профиля и консолей STOUT
@@ -78360,15 +78405,18 @@ const app = {
             // строкой с переключателем схемы загрузки.
             const _selfKit = (type, n, pumpItem, servoItem, opt) => {
                 if (!(n > 0)) return;
-                this._selfKinds[type] = true;
                 // Группа загрузки бойлера — отдельный подраздел со своей нагрузкой (по змеевику бака и котлу), вид комплекта — прямая.
                 const key = opt && opt.sub === 'dhw' ? 'dhw' : type;
+                this._selfKinds[key] = true;
                 this._selfCounts[key] = (this._selfCounts[key] || 0) + n;
                 // Нагрузка на группы этого вида (для проверки мощности и скорости в трубе 3/4"): задаёт вызывающий.
                 if (opt && opt.loadKw > 0) this._selfLoads[key] = { kw: opt.loadKw, groups: n, dt: opt.dt || 20 };
                 opt = { ...(opt || {}), size: opt && opt.loadKw > 0 ? this.selfKitSize(opt.loadKw, n, opt.dt) : '34' };
                 const grpSelf = this.selfGroupTitle(type, opt.sub);
+                const _kitIds = (this._selfKitIds[key] = this._selfKitIds[key] || new Set());
                 this.selfKitLines(type, pumpItem, servoItem, opt).forEach(l => {
+                    _kitIds.add(l.item.id);
+                    if (l.item.rommer && !Array.isArray(l.item.rommer)) _kitIds.add(l.item.rommer.id);
                     addToBill({ ...l.item, ...(l.extra || {}), sortRank: l.rank }, l.q * n, l.desc, grpSelf);
                 });
             };
@@ -80878,15 +80926,15 @@ const app = {
                 addToBill(vReturn, totalConvCount, "На обратку из конвектора.", grpC);
 
                 addToBill(catalog.conv_parts[0], totalConvCount * 2, "Монтажная гильза.", grpC);
-                addToBill(catalog.conv_parts[1], totalConvCount * 2, "Переходник на резьбу 1/2.", grpC);
+                addToBill(catalog.conv_parts.find(x => x.id === "SFA-0001-001612"), totalConvCount * 2, "Переходник на резьбу 1/2.", grpC);
 
                 if (this.state.convectorType === 'scq') {
                     // Для вентиляторных
                     addToBill(catalog.actuators, totalConvCount, "На термостатический клапан.", grpC);
                     if (totalVartronic > 0) {
-                        addToBill(catalog.conv_parts[2], totalVartronic, "Настенный регулятор Vartronic (1 шт на комнату, до 12 шт).", grpC);
+                        addToBill(catalog.conv_parts.find(x => x.id === "703102"), totalVartronic, "Настенный регулятор Vartronic (1 шт на комнату, до 12 шт).", grpC);
                     } else if (!this.state.detailedRooms) {
-                        addToBill(catalog.conv_parts[2], 1, "Настенный регулятор Vartronic.", grpC);
+                        addToBill(catalog.conv_parts.find(x => x.id === "703102"), 1, "Настенный регулятор Vartronic.", grpC);
                     }
                 }
                 // Для естественной конвекции (SCN) автоматика не выводится
@@ -85070,7 +85118,10 @@ const app = {
         [['automation_scheme_row', '2.9.1.', () => this.thermaticConfig && this.renderAutomationScheme()],
          ['ufh_scheme_row', '4.5. Автоматика радиаторов', () => this.renderUfhScheme()],
          ['snow_scheme_row', '4.4.1', () => this.renderSnowScheme()],
-         ['pump_group_scheme_row', '2.4. Гидравлика котельной', () => this.renderPumpGroupScheme()],
+         ['pump_group_scheme_row_direct', '2.4.1. Самосборная группа', () => this.renderPumpGroupScheme('direct')],
+         ['pump_group_scheme_row_thermo', '2.4.2. Самосборная группа', () => this.renderPumpGroupScheme('thermo')],
+         ['pump_group_scheme_row_servo', '2.4.3. Самосборная группа', () => this.renderPumpGroupScheme('servo')],
+         ['pump_group_scheme_row_dhw', '2.4.4. Самосборная группа', () => this.renderPumpGroupScheme('dhw')],
          ['rad_panel_scheme_row', '3. Приборы отопления', () => this.renderRadPanelScheme(), true],
          ['rad_node_scheme_row', '3.3. Трубы отопления', () => this.renderRadNodeScheme()],
          ['ufh_node_scheme_row', '4. Водяной тёплый пол', () => this.renderUfhNodeScheme(), true],
