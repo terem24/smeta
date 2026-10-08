@@ -17394,14 +17394,20 @@ body.dark-mode .hc-export-doc::after {
 
     #profile_modal_overlay .auth-modal-content {
         position: fixed !important;
-        top: 0 !important;
+        top: var(--vv-top, 0px) !important;
         left: 0 !important;
         right: 0 !important;
-        bottom: 0 !important;
+        bottom: auto !important;
         width: 100% !important;
         max-width: 100% !important;
-        height: 100% !important;
-        max-height: 100% !important;
+        /* Высота — видимая часть экрана, а не 100%/100vh: на iPhone они включают область
+           под нижней панелью Safari, и кнопка «Сохранить» уезжала под неё. --vv-h пишет
+           скрипт в index.html из visualViewport (он же учитывает клавиатуру); dvh — запасной
+           вариант, если скрипт не отработал. */
+        height: 100vh !important;
+        height: 100dvh !important;
+        height: var(--vv-h, 100dvh) !important;
+        max-height: none !important;
         margin: 0 !important;
         border-radius: 0 !important;
         transform: none !important;
@@ -19157,7 +19163,7 @@ body.theme-yandex #profile_modal_overlay {
         z-index: 3;
         background: var(--surface);
         margin-top: auto;
-        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+        padding: 12px 0 calc(14px + env(safe-area-inset-bottom, 0px));
     }
     body.dark-mode #profile_modal_overlay .lk-footer { background: #1E1E1E; }
 }
