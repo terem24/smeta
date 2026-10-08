@@ -6681,6 +6681,18 @@ const catalog = {
         // (насос, кран протечки, котёл, привод смесителя). Модульное, на DIN-рейку.
         { id: "ML00000291", name: "Реле промежуточное ZONT 12 В DC на DIN-рейку", price: 958, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
         // Датчики температуры SMART 2.0: два входа NTC и шина 1-Wire до 10 штук.
+        // Универсальные контроллеры серии H (PRO.V2) — замена Climatic.V2 на
+        // котельных со смесительными узлами, когда выходит дешевле (zontH: true).
+        // Выходов 220 В на борту нет: встроенные реле 3 А / 240 В (переключающие,
+        // 1 НЗ — 2 общий — 3 НР) и выходы «открытый коллектор», на которые каждую
+        // нагрузку берут через реле 12 В. Блок питания, три датчика в гильзе
+        // (четыре у H2000+) и уличный МЛ-773 идут в комплекте. Цены — zont.online
+        // на 08.10.2026: в ТЕРЕМ у H700+/H1500+ PRO.V2 цена нулевая («Уведомить»).
+        // Модельный ряд и клеммы — паспорт ML.TD.ZHContPRO.V2.001, стр. 10–15, 64–66.
+        { id: "ML00007752", name: "Контроллер ZONT H700+ PRO.V2", price: 22180, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00006584", name: "Контроллер ZONT H1000+ PRO.V2", price: 28200, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00007756", name: "Контроллер ZONT H1500+ PRO.V2", price: 30680, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00006086", name: "Контроллер ZONT H2000+ PRO.V2", price: 44300, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
         { id: "ML00004775", name: "Датчик температуры ZONT NTC (воздух / теплоноситель)", price: 500, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
         { id: "ML00003614", name: "Термодатчик теплоносителя ZONT DS18B20 (в гильзу)", price: 950, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" }
     ],
