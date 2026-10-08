@@ -37236,9 +37236,13 @@ const app = {
         const all = Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr => this.sgIdMatch(rule, this.sgIdOf(tr)));
         if (rule[2]) return all;
         const own = all.filter(tr => this.sgSubTitleOf(tr).indexOf(title) >= 0);
+        if (own.length) return own;
         // Смета склеивает строки одного артикула и показывает под первой (хомут, кран, ниппель бывают и в других узлах):
-        // нет в подразделе группы — берём ту же позицию из соседнего подраздела, а не считаем её потерянной.
-        return own.length ? own : all;
+        // нет в подразделе группы — берём ту же позицию из соседнего подраздела, а не считаем её потерянной. Только артикулы,
+        // которые идут в комплект ЭТОЙ группы: кран 3/4" не должен тянуть за собой краны 1" и чужие узлы.
+        const kit = (this._selfKitIds || {})[kind];
+        const narrowed = kit ? all.filter(tr => kit.has(this.sgIdOf(tr))) : all;
+        return narrowed.length ? narrowed : all;
     },
     // Схема одной группы (kind) — над её подразделом сметы. Без kind — все схемы подряд (на случай внешнего вызова).
     renderPumpGroupScheme: function (kind) {
@@ -37341,7 +37345,12 @@ const app = {
             if (!rows.length) return;
             const fs = document.getElementById('scheme_zoom_overlay');
             if (fs) fs.remove();
-            rows[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+            // Ближайшая к листу этой группы строка (схема стоит над своим подразделом) — а не самая верхняя строка сметы.
+            const anchor = document.getElementById('pump_group_scheme_row_' + kind) || hot;
+            const ay = anchor.getBoundingClientRect().top + window.scrollY;
+            const dist = (r) => Math.abs(r.getBoundingClientRect().top + window.scrollY - ay);
+            const target = rows.slice().sort((a, b) => dist(a) - dist(b))[0];
+            target.scrollIntoView({ block: 'center', behavior: 'smooth' });
             rows.forEach(r => { r.classList.add('sg-row-flash'); setTimeout(() => r.classList.remove('sg-row-flash'), 1800); });
         }, true);
     },
@@ -78001,6 +78010,7 @@ const app = {
         this._selfKinds = {};
         this._selfCounts = {};
         this._selfLoads = {};
+        this._selfKitIds = {};
 
         if (needCollector) {
             // Несущий каркас (рама) или хомуты коллектора котельной на базе C-образного профиля и консолей STOUT
@@ -78316,7 +78326,10 @@ const app = {
                 if (opt && opt.loadKw > 0) this._selfLoads[key] = { kw: opt.loadKw, groups: n, dt: opt.dt || 20 };
                 opt = { ...(opt || {}), size: opt && opt.loadKw > 0 ? this.selfKitSize(opt.loadKw, n, opt.dt) : '34' };
                 const grpSelf = this.selfGroupTitle(type, opt.sub);
+                const _kitIds = (this._selfKitIds[key] = this._selfKitIds[key] || new Set());
                 this.selfKitLines(type, pumpItem, servoItem, opt).forEach(l => {
+                    _kitIds.add(l.item.id);
+                    if (l.item.rommer && !Array.isArray(l.item.rommer)) _kitIds.add(l.item.rommer.id);
                     addToBill({ ...l.item, ...(l.extra || {}), sortRank: l.rank }, l.q * n, l.desc, grpSelf);
                 });
             };

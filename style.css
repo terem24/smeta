@@ -19724,3 +19724,10 @@ body.dark-mode .save-remind-field input { background: #121212; border-color: #4B
     .inv-table tr.group-warn-row:not(.row-sec):not(.group-header):not(.row-subtotal):not(.empty-state-row):not(.hide-custom-work-btn):not(.hide-custom-eq-btn):not(.scheme-row) { display: block !important; }
     .inv-table tr.group-warn-row:not(.row-sec):not(.group-header):not(.row-subtotal):not(.empty-state-row):not(.hide-custom-work-btn):not(.hide-custom-eq-btn):not(.scheme-row) > td { display: block !important; width: 100% !important; padding: 2px 0 8px !important; grid-column: 1 / -1 !important; }
 }
+
+/* Телефон: подписи на листе в смете мельче пальца (6–7 px), касание схемы должно её увеличивать, а не уводить к чужой строке.
+   Зоны подписей в смете на сенсорных экранах отключены; в полноэкранном просмотре (там лист увеличен) они работают. */
+@media (hover: none), screen and (max-width: 768px) {
+    .automation-scheme .sg-hit { pointer-events: none; }
+    #scheme_zoom_overlay .sg-hit { pointer-events: all; }
+}
