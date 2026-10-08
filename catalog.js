@@ -6693,6 +6693,11 @@ const catalog = {
         { id: "ML00006584", name: "Контроллер H1000+ PRO.V2", price: 28200, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
         { id: "ML00007756", name: "Контроллер H1500+ PRO.V2", price: 30680, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
         { id: "ML00006086", name: "Контроллер H2000+ PRO.V2", price: 44300, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
+        // Блоки расширения серии H (RS-485): реле 3 А / 240 В, универсальные вход/выходы и NTC.
+        // Питание 9–18 В, блок в комплект не входит (берём ML13968). Совместимы с H1000+
+        // (до 2 блоков), H1500+ (1) и H2000+ (до 5); к H700+ блоки не подключаются.
+        { id: "ML00005703", name: "Блок расширения ZE-22 (2 реле, 2 вх/вых, 2 NTC)", price: 15150, brand: "ZONT", unit: "шт", zont: true, zontH: true, relays: 2, uni: 2, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00005696", name: "Блок расширения ZE-44 (4 реле, 4 вх/вых, 4 NTC)", price: 20500, brand: "ZONT", unit: "шт", zont: true, zontH: true, relays: 4, uni: 4, availability: "in_stock", price_date: "2026-10-08" },
         { id: "ML00004775", name: "Датчик температуры NTC (воздух / теплоноситель)", price: 500, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
         { id: "ML00003614", name: "Термодатчик теплоносителя DS18B20 (в гильзу)", price: 950, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" }
     ],
