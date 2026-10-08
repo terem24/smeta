@@ -36579,6 +36579,11 @@ const app = {
     openSchemeFullscreen: function (srcEl) {
         const src = srcEl || document.querySelector('#dynamic_scheme .scheme-svg');
         if (!src) return;
+        // Все схемы, что сейчас показаны в расчёте, — для листания ‹ › и стрелками
+        const list = Array.from(document.querySelectorAll('.scheme-svg-wrap > svg, .automation-scheme > svg'))
+            .filter(el => !el.closest('#scheme_zoom_overlay') && el.getClientRects().length);
+        let cur = list.indexOf(src);
+        if (cur < 0) { list.unshift(src); cur = 0; }
         const old = document.getElementById('scheme_zoom_overlay');
         if (old) old.remove();
         const ov = document.createElement('div');
@@ -36586,6 +36591,7 @@ const app = {
         ov.innerHTML =
             `<div class="scheme-zoom-bar">
                 <button type="button" data-z="hints" class="scheme-zoom-hints">${this._hydToggleLabel(true)}</button>
+                ${list.length > 1 ? `<button type="button" data-z="prev" aria-label="Предыдущая схема" title="Предыдущая схема (←)">‹</button><span class="scheme-zoom-count"></span><button type="button" data-z="next" aria-label="Следующая схема" title="Следующая схема (→)">›</button>` : ''}
                 <button type="button" data-z="out" aria-label="Уменьшить">−</button>
                 <button type="button" data-z="fit">Вписать</button>
                 <button type="button" data-z="in" aria-label="Увеличить">+</button>
@@ -36595,7 +36601,17 @@ const app = {
         if (!this.hydEnabled()) ov.classList.add('hyd-off');
         document.body.appendChild(ov);
         const canvas = ov.querySelector('.scheme-zoom-canvas');
-        const svg = canvas.querySelector('svg');
+        let svg = canvas.querySelector('svg');
+        const countEl = ov.querySelector('.scheme-zoom-count');
+        const go = (d) => {
+            if (list.length < 2) return;
+            cur = (cur + d + list.length) % list.length;
+            canvas.innerHTML = list[cur].outerHTML;
+            svg = canvas.querySelector('svg');
+            fit();
+            canvas.scrollLeft = 0; canvas.scrollTop = 0;
+            if (countEl) countEl.textContent = (cur + 1) + ' / ' + list.length;
+        };
         let w = 0;
         const fit = () => { w = canvas.clientWidth - 32; svg.style.width = w + 'px'; };
         const zoom = (k, cx, cy) => {
@@ -36609,9 +36625,12 @@ const app = {
             canvas.scrollTop = py * w - (cy ?? rect.height / 2);
         };
         fit();
+        if (countEl) countEl.textContent = (cur + 1) + ' / ' + list.length;
         ov.addEventListener('click', (e) => {
             const z = e.target.dataset && e.target.dataset.z;
-            if (z === 'in') zoom(1.3);
+            if (z === 'prev') go(-1);
+            else if (z === 'next') go(1);
+            else if (z === 'in') zoom(1.3);
             else if (z === 'hints') this.toggleHydHints(e);
             else if (z === 'out') zoom(1 / 1.3);
             else if (z === 'fit') fit();
@@ -36639,7 +36658,12 @@ const app = {
         });
         // клик по свободному полю канваса не закрывает после перетаскивания
         canvas.addEventListener('click', (e) => { if (drag && drag.moved) e.stopPropagation(); }, true);
-        const onKey = (e) => { if (e.key === 'Escape') { ov.remove(); window.removeEventListener('keydown', onKey); } };
+        const onKey = (e) => {
+            if (!ov.isConnected) { window.removeEventListener('keydown', onKey); return; }
+            if (e.key === 'Escape') { ov.remove(); window.removeEventListener('keydown', onKey); }
+            else if (e.key === 'ArrowLeft') go(-1);
+            else if (e.key === 'ArrowRight') go(1);
+        };
         window.addEventListener('keydown', onKey);
     },
     // Схема подключения автоматики котельной: контроллер с именными
@@ -43738,12 +43762,11 @@ const app = {
             app.alert('Не удалось вернуть доступ: ' + (e.message || e));
         }
     },
-    // Безвозвратно стирает профиль пользователя и все связанные с ним данные (сметы,
-    // рассылки/переписку с админом, чаты с менеджером дистрибьютора). ВАЖНО: это удаляет
-    // только строки в public.users и связанных таблицах — сам логин/пароль в Supabase Auth
-    // отсюда не удаляется (для этого нужен service_role ключ, которого у клиента нет из
-    // соображений безопасности) — при необходимости полностью закрыть возможность входа
-    // его нужно вручную удалить в Supabase Dashboard → Authentication → Users.
+    // Безвозвратно стирает пользователя целиком: профиль, сметы, переписку, чаты с менеджером,
+    // КП-ссылки, события журнала, диалоги помощника и сам логин (Supabase Auth). Всё это делает
+    // серверная функция admin_delete_user_completely (миграция 20261007_admin_delete_user.sql):
+    // у страницы нет служебного ключа, а функция сама проверяет, что вызвал администратор,
+    // и не даёт удалить себя, владельца и (без прав владельца) администраторов и менеджеров.
     deleteUserCompletely: async function (userId) {
         if (this.isReadOnlyAdmin()) {
             app.alert('Режим просмотра. Удаление учетных записей запрещено.');
@@ -43762,17 +43785,23 @@ const app = {
         if (!await app.confirm('Точно удалить? Отменить это будет невозможно — данные восстановить не получится.')) return;
 
         try {
-            await supabaseClient.from('estimates').delete().eq('user_id', userId);
-            await supabaseClient.from('messages').delete().or(`sender_id.eq.${userId},recipient_id.eq.${userId}`);
-            await supabaseClient.from('manager_chat_messages').delete().or(`installer_user_id.eq.${userId},manager_user_id.eq.${userId},sender_user_id.eq.${userId}`);
-
-            const { data, error } = await supabaseClient.from('users').delete().eq('id', userId).select('id');
+            const { data, error } = await supabaseClient.rpc('admin_delete_user_completely', { p_user_id: userId });
             if (error) throw error;
-            if (!data || data.length === 0) {
-                app.alert('Профиль не удалился — похоже, RLS-политика в Supabase не разрешает администратору удалять чужие учётки.');
+            if (!data || data.ok !== true) {
+                const reasons = {
+                    forbidden: 'нет прав администратора',
+                    not_found: 'учётка не найдена (возможно, уже удалена)',
+                    self: 'нельзя удалить самого себя',
+                    protected: 'эту учётку удалить нельзя (владелец)',
+                    owner_only: 'удалять администраторов, наблюдателей и менеджеров может только Владелец',
+                    not_deleted: 'профиль не удалился'
+                };
+                app.alert('Не удалось удалить учётку: ' + (reasons[data && data.error] || 'неизвестная причина'));
                 return;
             }
-            app.alert('🗑 Учётка и все данные удалены. Заново зарегистрироваться с этой почтой или телефоном нельзя 30 дней (снять запрет можно на вкладке «Неактивные»). Обратите внимание: логин/пароль в Supabase Auth это не затрагивает — при необходимости удалите его вручную в Dashboard.');
+            app.alert(data.auth_deleted === false
+                ? '🗑 Профиль и все данные удалены, но логин в Supabase Auth удалить не удалось' + (data.warning ? ' (' + data.warning + ')' : '') + '. Его можно удалить вручную в Dashboard → Authentication → Users. Заново зарегистрироваться с этой почтой или телефоном нельзя 30 дней (снять запрет можно на вкладке «Неактивные»).'
+                : '🗑 Учётка, все данные и логин удалены. Заново зарегистрироваться с этой почтой или телефоном нельзя 30 дней (снять запрет можно на вкладке «Неактивные»).');
             this.renderAdminMain();
             this.loadAdminData(this._adminOffset);
         } catch (e) {
@@ -69487,14 +69516,9 @@ const app = {
             const n = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
             let html = '';
             if (st) {
-                const tail = `R ${n(st.total)} из ${n(st.req.r)} м²·°C/Вт`;
-                if (st.ok) html = `<span style="color:#22C55E;">✓ Хватает: ${tail}</span>`;
-                else if (s.ufhInsNoAdd) html = `<span style="color:#F59E0B;">⚠ Не хватает: ${tail}. Плиты в смету не добавлены.</span>`;
-                else html = `<span style="color:#F59E0B;">Не хватает: ${tail}. Недостающее добавлено в смету.</span>`;
-                if (!st.ok && !s.ufhInsNoAdd) {
-                    const add = this.ufhInsLayers(st.req.r - st.base - st.own);
-                    if (add.length) html += `<div style="color:var(--text-sec); margin-top:2px;">В смету: ${add.map(l => 'XPS ' + l.thick + ' мм (R ' + n(l.r) + ')').join(' + ')}</div>`;
-                }
+                if (st.ok) html = `<span style="color:#22C55E;">✓ Утеплителя хватает</span>`;
+                else if (s.ufhInsNoAdd) html = `<span style="color:#F59E0B;">⚠ Внимание: утеплителя не хватает. Плиты в смету не добавлены.</span>`;
+                else html = `<span style="color:#F59E0B;">⚠ Внимание: утеплителя не хватает. Недостающее добавлено в смету.</span>`;
             }
             eff.innerHTML = html;
         }

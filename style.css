@@ -9733,6 +9733,8 @@ body.dark-mode .automation-scheme svg {
     border-radius: 8px; cursor: pointer;
 }
 #scheme_zoom_overlay .scheme-zoom-bar button:hover { background: rgba(255, 255, 255, 0.22); }
+#scheme_zoom_overlay .scheme-zoom-count { align-self: center; min-width: 44px; text-align: center; font-size: 13px; font-weight: 700; color: #E2E8F0; }
+@media (max-width: 600px) { #scheme_zoom_overlay .scheme-zoom-bar { flex-wrap: wrap; justify-content: center; gap: 6px; padding: 8px; } }
 #scheme_zoom_overlay .scheme-zoom-canvas {
     flex: 1 1 auto; overflow: auto; padding: 16px;
     cursor: grab; -webkit-overflow-scrolling: touch;
