@@ -14432,7 +14432,7 @@ const app = {
         if (!avatarEl || !nameEl || !tariffEl) return;
 
         const uName = this.formatShortName(tgUser) || 'Монтажник';
-        const avatarImg = tgUser.avatar_url || tgUser.photo_url;
+        const avatarImg = tgUser.avatar_url;
         avatarEl.innerHTML = avatarImg
             ? `<img src="${avatarImg}" alt="">`
             : (uName.trim().charAt(0).toUpperCase() || '·');
@@ -20398,7 +20398,9 @@ const app = {
     // Письмо, которое отправила не живая переписка, а база по расписанию
     isAutoNoticeText: function (text) {
         const t = String(text || '');
-        return !!this.kpReminderInfo(t) || t.indexOf('🎂 Сегодня день рождения у вашего монтажника') === 0;
+        // Рассылки о неактивности и подсказки новичкам подписаны одинаково и разговора не ждут
+        return !!this.kpReminderInfo(t) || t.indexOf('🎂 Сегодня день рождения у вашего монтажника') === 0
+            || /Администрация HeatCalc\.ru\s*$/.test(t);
     },
 
     // Список уведомлений открыт и виден — значит напоминания увидены: гасим по ним
@@ -23202,7 +23204,7 @@ const app = {
     // переписка и компании-дистрибьюторы. Переписку тянем только для вкладки
     // сообщений — таблица messages из трёх самая объёмная.
     loadAdminLightData: async function () {
-        const withMessages = this._adminTab === 'messages';
+        const withMessages = this._adminTab === 'messages' || this._adminTab === 'notifications';
         // Вкладку «Расчёты» на телефоне открывают из меню разделов, минуя тяжёлую
         // загрузку, — список смет для неё тянем здесь. Один раз за открытие
         // панели: дальше его отмечает estimatesLoaded в adminData.
@@ -26789,7 +26791,7 @@ const app = {
         // сам набор users, переписку — массив messages.
         const needHeavy = this.adminTabNeedsHeavyData(tab) && !(this.adminData && Array.isArray(this.adminData.users) && this.adminData.users.length);
         // Мессенджеру нужен список людей с фото: если он загружен без них — берём заново
-        const needMessages = (tab === 'messages') && !(this.adminData && Array.isArray(this.adminData.messages) && this.adminData.dropdownAvatars);
+        const needMessages = (tab === 'messages' || tab === 'notifications') && !(this.adminData && Array.isArray(this.adminData.messages) && this.adminData.dropdownAvatars);
         const needEstimates = (tab === 'estimates') && !(this.adminData && this.adminData.estimatesLoaded);
         const needLists = !(this.adminData && Array.isArray(this.adminData.distributors));
         if (needHeavy || needMessages || needEstimates || needLists) {
@@ -35119,102 +35121,135 @@ const app = {
 
         if (!this.installerSettings) this.loadInstallerSettingsLocal();
         const items = this._notifications || [];
-        const unread = items.filter(n => !n.isRead).length;
+        const fresh = items.filter(n => !n.isRead);
+        const old = items.filter(n => n.isRead);
         const isManager = this.isManagerRole();
-        const rows = [];
+
+        // Карточки каналов: ok true — работает, false — выключено и надо включить, null — просто сведения
+        const chan = [];
+        const chip = (ok, onTxt, offTxt) => ok === true ? `<span class="ad-count ad-count-on">${onTxt}</span>`
+            : (ok === false ? `<span class="ad-count ad-count-bad">${offTxt}</span>` : `<span class="ad-count">${onTxt}</span>`);
 
         // Звук: «Без звука» — самая частая причина «мне ничего не приходит»
         let sound = 'iphone';
         try { sound = localStorage.getItem('stout_notification_sound') || 'iphone'; } catch (e) { /* без хранилища — звук по умолчанию */ }
-        const soundSel = `<select class="auth-input" style="width:auto; padding:4px 8px;" onchange="app.changeNotificationSound(this.value); app.renderAdminNotifications()">
-            <option value="iphone"${sound === 'iphone' ? ' selected' : ''}>iPhone (Тритон)</option>
-            <option value="icq"${sound === 'icq' ? ' selected' : ''}>ICQ (О-оу!)</option>
-            <option value="none"${sound === 'none' ? ' selected' : ''}>Без звука</option>
-        </select>`;
-        rows.push(sound === 'none'
-            ? { ok: false, title: 'Звук при новом уведомлении', text: 'Выключен: когда калькулятор открыт, новое уведомление придёт молча. Выберите мелодию:', fix: soundSel }
-            : { ok: true, title: 'Звук при новом уведомлении', text: 'Включён, пока калькулятор открыт в браузере.', fix: soundSel });
+        chan.push({
+            ok: sound !== 'none', title: 'Звук', chip: chip(sound !== 'none', 'Включён', 'Выключен'),
+            note: sound === 'none' ? 'Новое уведомление придёт молча. Выберите мелодию:' : 'Сигнал, пока калькулятор открыт в браузере.',
+            body: `<select class="auth-input" onchange="app.changeNotificationSound(this.value); app.renderAdminNotifications()">
+                <option value="iphone"${sound === 'iphone' ? ' selected' : ''}>iPhone (Тритон)</option>
+                <option value="icq"${sound === 'icq' ? ' selected' : ''}>ICQ (О-оу!)</option>
+                <option value="none"${sound === 'none' ? ' selected' : ''}>Без звука</option>
+            </select>`
+        });
 
         // Telegram: единственный канал, который доходит, когда сайт закрыт
         const tg = this.state.tgConnect;
         if (!tg && !this._installerSettingsCloudSynced) {
-            rows.push({ ok: null, title: 'Telegram', text: 'Проверяем подключение…', fix: '' });
+            chan.push({ ok: null, title: 'Telegram', chip: chip(null, 'Проверяем…'), note: 'Смотрим, подключён ли бот.', body: '' });
         } else if (!tg || !tg.chatId) {
-            rows.push({
-                ok: false, title: 'Telegram не подключён',
-                text: 'Без него уведомления видны, только когда открыт калькулятор. Нажмите «Подключить» → в открывшемся боте нажмите «Запустить» (Start) → вернитесь сюда. Подключение действует 10 минут с нажатия.',
-                fix: `<button type="button" class="lk-btn-sm" onclick="app.connectTelegram()">Подключить Telegram</button>`
+            chan.push({
+                ok: false, title: 'Telegram', chip: chip(false, '', 'Не подключён'),
+                note: 'Без него уведомления видны, только когда открыт калькулятор. Нажмите кнопку, в боте — «Запустить» (Start), затем вернитесь сюда. Код действует 10 минут.',
+                body: '<button type="button" class="lk-btn-sm ad-card-act" onclick="app.connectTelegram()">Подключить Telegram</button>'
             });
         } else {
-            rows.push({ ok: true, title: 'Telegram подключён' + (tg.username ? ' как @' + esc(tg.username) : ''), text: 'Уведомления приходят в бота, даже когда сайт закрыт.', fix: '' });
-            [['kp', 'Одобрение или отклонение КП', 'Клиент ответил по ссылке на смету'],
-            ['oprosnik', 'Заполненный опросник', 'Заказчик прислал анкету о доме'],
-            ['chat', 'Сообщения из калькулятора', 'Ответы менеджера и сообщения сервиса']].forEach(c => {
-                const on = this.tgNotifyEnabled(c[0]);
-                rows.push({
-                    ok: on, sub: true, title: 'Telegram: ' + c[1],
-                    text: on ? c[2] : c[2] + '. Выключено — включите переключатель справа.',
-                    fix: `<label class="switch"><input type="checkbox"${on ? ' checked' : ''} onchange="app.setTgNotify('${c[0]}', this.checked); app.renderAdminNotifications()"><span class="slider"></span></label>`
-                });
+            const cats = [['kp', 'Одобрение или отклонение КП'], ['oprosnik', 'Заполненный опросник'], ['chat', 'Сообщения из калькулятора']]
+                .map(c => ({ k: c[0], t: c[1], on: this.tgNotifyEnabled(c[0]) }));
+            const off = cats.filter(c => !c.on).length;
+            chan.push({
+                ok: off === 0, title: 'Telegram', chip: chip(off === 0, 'Подключён', 'Выключено ' + off + ' из 3'),
+                note: (tg.username ? '@' + esc(tg.username) + ' · ' : '') + 'приходит, даже когда сайт закрыт.' + (off ? ' Включите нужное:' : ''),
+                body: cats.map(c => `<div class="ad-row"><div class="ad-row-main"><b>${c.t}</b></div>
+                    <label class="switch"><input type="checkbox"${c.on ? ' checked' : ''} onchange="app.setTgNotify('${c.k}', this.checked); app.renderAdminNotifications()"><span class="slider"></span></label></div>`).join('')
             });
         }
 
         // Напоминание «КП ушло, а счёта нет». Срок задаёт сам монтажник, поэтому менеджеру
-        // дистрибьютора строка ни к чему: у него напоминания приходят про чужих монтажников
+        // дистрибьютора карточка ни к чему: у него напоминания приходят про чужих монтажников
         if (!isManager) {
             const days = this.kpReminderDaysDefault();
-            const inp = `<input type="number" class="auth-input lk-num" min="0" max="90" step="1" value="${days}" onchange="app.setKpReminderDays(this.value.trim()); app.renderAdminNotifications()">`;
-            rows.push(days > 0
-                ? { ok: true, title: 'Напоминание выставить счёт', text: `Придёт через ${days} дн. после отправки КП клиенту, если счёт не запрошен. Срок можно поменять (дней):`, fix: inp }
-                : { ok: false, title: 'Напоминание выставить счёт', text: 'Выключено (стоит 0). Чтобы получать напоминания, впишите срок в днях — по умолчанию 10:', fix: inp });
+            chan.push({
+                ok: days > 0, title: 'Напоминание про счёт', chip: chip(days > 0, 'Через ' + days + ' дн.', 'Выключено'),
+                note: days > 0 ? 'Придёт, если после отправки КП клиенту счёт не запрошен. Срок, дней:' : 'Сейчас 0 — напоминаний нет. Впишите срок в днях (обычно 10):',
+                body: `<input type="number" class="auth-input lk-num" min="0" max="90" step="1" value="${days}" onchange="app.setKpReminderDays(this.value.trim()); app.renderAdminNotifications()">`
+            });
         }
 
         // Пуш — только в приложении для Android; на сайте браузерных пушей нет
         if (typeof appPush !== 'undefined' && appPush.isNative()) {
             const perm = this._notifPushPerm;
-            if (perm === 'granted') rows.push({ ok: true, title: 'Пуш-уведомления в приложении', text: 'Разрешены.', fix: '' });
-            else if (perm === undefined || perm === null) rows.push({ ok: null, title: 'Пуш-уведомления в приложении', text: 'Проверяем разрешение…', fix: '' });
-            else rows.push({ ok: false, title: 'Пуш-уведомления в приложении', text: 'Не разрешены. Откройте настройки телефона → Приложения → HeatCalc → Уведомления и включите их (на Android 13 и новее также пункт «Разрешить уведомления»).', fix: '' });
+            if (perm === 'granted') chan.push({ ok: true, title: 'Пуш в приложении', chip: chip(true, 'Разрешены'), note: 'Приходят на телефон.', body: '' });
+            else if (perm === undefined || perm === null) chan.push({ ok: null, title: 'Пуш в приложении', chip: chip(null, 'Проверяем…'), note: '', body: '' });
+            else chan.push({ ok: false, title: 'Пуш в приложении', chip: chip(false, '', 'Запрещены'), note: 'Откройте настройки телефона → Приложения → HeatCalc → Уведомления и включите их (на Android 13+ ещё «Разрешить уведомления»).', body: '' });
         } else {
-            rows.push({ ok: null, title: 'Пуш-уведомления', text: 'Приходят только в приложении HeatCalc для Android. В браузере их нет — для закрытого сайта используйте Telegram.', fix: '' });
+            chan.push({ ok: null, title: 'Пуш в приложении', chip: chip(null, 'Не используется'), note: 'Работает только в приложении HeatCalc для Android. В браузере его нет — используйте Telegram.', body: '' });
         }
 
-        const bad = rows.filter(r => r.ok === false).length;
-        const dot = r => r.ok === true ? '<span style="color:#10B981;font-weight:700;">✓</span>'
-            : (r.ok === false ? '<span style="color:#D97706;font-weight:700;">!</span>' : '<span style="color:var(--text-sec);">·</span>');
-        const rowsHtml = rows.map(r => `
-            <div class="lk-setting"${r.sub ? ' style="padding-left:22px;"' : ''}>
-                <div class="lk-setting-text">
-                    <b>${dot(r)} ${r.title}</b>
-                    <span${r.ok === false ? ' style="color:#B45309;"' : ''}>${r.text}</span>
+        // Неисправные — первыми: то, что надо включить, должно быть видно сразу
+        chan.sort((a, b) => (a.ok === false ? 0 : 1) - (b.ok === false ? 0 : 1));
+        const bad = chan.filter(c => c.ok === false).length;
+        const chanHtml = chan.map(c => `
+            <div class="ad-card">
+                <div class="ad-card-h"><span class="ad-card-title">${c.title}</span>${c.chip}</div>
+                <div class="ad-card-b">
+                    ${c.note ? `<div class="ad-card-note${c.ok === false ? ' ad-warn' : ''}">${c.note}</div>` : ''}
+                    ${c.body || ''}
                 </div>
-                ${r.fix || ''}
             </div>`).join('');
 
-        const cards = items.length ? this.renderNotificationCards(items) : '';
+        const showAll = !!this._notifShowAll;
+        const oldShown = showAll ? old : old.slice(0, 10);
+        const feedHtml = !items.length
+            ? '<div class="ad-card"><div class="ad-card-note ad-ok">Уведомлений пока нет.</div></div>'
+            : `${fresh.length ? `<h4 class="ad-section-h">Новые · ${fresh.length}</h4>
+                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:18px;">${this.renderNotificationCards(fresh)}</div>` : ''}
+               ${old.length ? `<h4 class="ad-section-h">Раньше · ${old.length}</h4>
+                <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;">${this.renderNotificationCards(oldShown)}</div>
+                ${old.length > oldShown.length ? `<button class="admin-btn" onclick="app._notifShowAll=true; app.renderAdminNotifications()">Показать все (${old.length})</button>` : ''}` : ''}`;
+
+        // Письма, которые база разослала пользователям сама (напоминания, «давно не заходили»,
+        // подсказки новичкам). Раньше они лежали в «Сообщениях» и забивали переписку.
+        // Менеджеру их не показываем: чужих получателей он не видит, а свои у него в ленте.
+        let sentHtml = '';
+        if (!isManager) {
+            const people = (this.adminData && this.adminData.allUsersDropdown) || [];
+            const nameOf = id => { const u = people.find(x => x.id === id); return u ? (u.username || u.email || u.phone || 'Без имени') : 'Пользователь'; };
+            const topic = t => this.kpReminderInfo(t) ? 'Напоминание про счёт'
+                : (t.indexOf('🎂') === 0 ? 'День рождения'
+                    : (/приостановлен|будет удалена|удалим/.test(t) ? 'Доступ приостановлен'
+                        : (/не заходили/.test(t) ? 'Давно не заходили'
+                            : (/зарегистрировались|смету так и не|новых смет нет|считали у нас/.test(t) ? 'Помощь с первой сметой' : 'Автоматическое письмо'))));
+            const meId = (this._meRow && this._meRow.id) || null;
+            const sent = ((this.adminData && this.adminData.messages) || [])
+                .filter(m => m.type === 'private' && m.recipient_id && m.recipient_id !== meId && this.isAutoNoticeText(m.text))
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            if (sent.length) {
+                const shown = this._notifSentAll ? sent : sent.slice(0, 10);
+                const when = d => new Date(d).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                sentHtml = `<h4 class="ad-section-h" style="margin-top:22px !important;">Разослано системой · ${sent.length}</h4>
+                    <div class="ad-card" style="margin-bottom:12px;">
+                        ${shown.map(m => `<div class="ad-row"><div class="ad-row-main"><b>${esc(nameOf(m.recipient_id))}</b><span>${esc(topic(String(m.text || '')))}</span></div><div class="ad-row-r">${when(m.created_at)}</div></div>`).join('')}
+                    </div>
+                    ${sent.length > shown.length ? `<button class="admin-btn" onclick="app._notifSentAll=true; app.renderAdminNotifications()">Показать все (${sent.length})</button>` : ''}`;
+            }
+        }
+
         box.innerHTML = `
             <div class="ad-page-h">
-                <div><h3>Уведомления</h3><div class="ad-sub">${unread ? unread + ' непрочитанных из ' + items.length : (items.length ? 'Все прочитаны' : 'Пока пусто')} · статусы смет, счета, тариф, ответы монтажников</div></div>
-                <div style="display:flex; gap:8px;">
+                <div><h3>Уведомления</h3><div class="ad-sub">${fresh.length ? fresh.length + ' новых' : 'Новых нет'} · статусы смет, счета, тариф, ответы монтажников</div></div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
                     <button class="admin-btn" onclick="app.markAllNotificationsRead()">Прочитать все</button>
-                    <button class="admin-btn" onclick="app.clearAllNotifications()">Очистить всё</button>
+                    <button class="admin-btn" onclick="app.clearAllNotifications()">Очистить</button>
                 </div>
             </div>
-            <div class="lk-card" style="margin-bottom:14px; text-align:left;">
-                <div class="lk-setting" style="border-bottom:1px solid var(--border);">
-                    <div class="lk-setting-text">
-                        <b>${bad ? '⚠ Что выключено: ' + bad : '✓ Все каналы включены'}</b>
-                        <span>${bad ? 'Пока это не включено, часть уведомлений вы не увидите, пока не откроете калькулятор.' : 'Уведомления доходят по всем доступным каналам.'}</span>
-                    </div>
-                </div>
-                ${rowsHtml}
-            </div>
-            <div style="display:flex; flex-direction:column; gap:10px; padding:4px 2px 20px;">
-                ${cards || '<div class="admin-chat-empty">Уведомлений пока нет.</div>'}
-            </div>`;
+            <h4 class="ad-section-h">Куда приходят${bad ? ' · требует включения: ' + bad : ''}</h4>
+            <div class="ad-cards">${chanHtml}</div>
+            ${feedHtml}
+            ${sentHtml}`;
 
         // Лента на виду — автонапоминания базы увидены, гасим по ним бейдж
-        if (unread) setTimeout(() => { if (this._adminTab === 'notifications') this.markKpRemindersSeen(); }, 1500);
+        if (fresh.length) setTimeout(() => { if (this._adminTab === 'notifications') this.markKpRemindersSeen(); }, 1500);
     },
 
     // Фильтрует уже отрисованный список диалогов (только display, без перестройки DOM —
@@ -43328,9 +43363,10 @@ const app = {
                 ? user.user_metadata.full_name
                 : (email ? email.split('@')[0] : 'Монтажник');
             let phone = (user.user_metadata && user.user_metadata.phone) ? user.user_metadata.phone : '';
-            let avatar = (user.user_metadata && user.user_metadata.avatar_url)
-                ? user.user_metadata.avatar_url
-                : ((user.user_metadata && user.user_metadata.picture) ? user.user_metadata.picture : '');
+            // Фото из внешних сервисов берём только у Яндекса (российский сервис). Аватарки
+            // Google и Telegram не подставляем: их картинки лежат за границей, и браузер человека
+            // ходил бы за ними туда (см. allowedAvatarUrl).
+            let avatar = this.allowedAvatarUrl(user.user_metadata && user.user_metadata.avatar_url);
 
             // Доп. поля анкеты регистрации (ФИО по частям, дата рождения, регион, сфера деятельности) —
             // приходят через user_metadata только при регистрации через нашу форму (не через Google/Telegram)
@@ -51910,9 +51946,9 @@ const app = {
             nameVal = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || tgUser.username || "Монтажник";
             phoneVal = tgUser.phone || "";
             // avatar_url — своё фото из кабинета или аватарка Яндекса/Google;
-            // photo_url приходит только из Telegram
-            if (tgUser.avatar_url || tgUser.photo_url) {
-                avatarSrc = tgUser.avatar_url || tgUser.photo_url;
+            // photo_url (Telegram) не показываем: картинка лежит за границей
+            if (tgUser.avatar_url) {
+                avatarSrc = tgUser.avatar_url;
             }
         } else {
             // 2. Иначе проверяем ручные настройки из формы профиля
@@ -52081,18 +52117,26 @@ const app = {
         await this.setProfilePhoto(await this.providerAvatarUrl());
     },
 
+    // Какие фото разрешено показывать: свой снимок из кабинета (data:-строка) и аватарка Яндекса.
+    // Остальное (Telegram, Google и любые чужие адреса) отбрасываем: картинка лежала бы на
+    // зарубежном сервере, и браузер человека ходил бы туда за ней (политика, п. 6.3–6.4).
+    allowedAvatarUrl: function (url) {
+        const u = (typeof url === 'string') ? url : '';
+        if (u.indexOf('data:image/') === 0) return u;
+        if (/^https:\/\/avatars(\.mds)?\.yandex\.net\//.test(u)) return u;
+        return '';
+    },
+
     // Аватарка провайдера из данных уже открытой сессии — сети это не стоит: getSession
-    // читает сохранённую сессию, а Telegram отдаёт photo_url прямо в state.
+    // читает сохранённую сессию. Теперь это только Яндекс.
     providerAvatarUrl: async function () {
-        const tgUser = this.state.tgUser || {};
-        if (tgUser.photo_url) return tgUser.photo_url;
         try {
             const { data } = await supabaseClient.auth.getSession();
             const meta = (data && data.session && data.session.user && data.session.user.user_metadata) || {};
-            const url = meta.avatar_url || meta.picture || '';
             // Своё фото в метаданных аккаунта не держим — если там всё же оказалась
             // data:-строка, возвращать её как «аватарку провайдера» нельзя
-            return url.indexOf('data:') === 0 ? '' : url;
+            const url = meta.avatar_url || '';
+            return url.indexOf('data:') === 0 ? '' : this.allowedAvatarUrl(url);
         } catch (e) {
             console.warn('[profilePhoto] Не удалось прочитать аватарку провайдера:', e);
             return '';
@@ -52139,7 +52183,7 @@ const app = {
         const removeBtn = document.getElementById('profile_photo_remove_btn');
 
         const tgUser = this.state.tgUser || {};
-        const src = tgUser.avatar_url || tgUser.photo_url || '';
+        const src = tgUser.avatar_url || '';
         const isOwnPhoto = String(tgUser.avatar_url || '').indexOf('data:') === 0;
 
         if (src) {
@@ -69243,7 +69287,7 @@ const app = {
                 let isActuallyPro = this.isPro();
                 let infoHtml = '';
                 let uName = this.formatShortName(tgUser) || 'Монтажник';
-                let avatarImg = tgUser.avatar_url || tgUser.photo_url;
+                let avatarImg = tgUser.avatar_url;
                 let icon = avatarImg ? `<img src="${avatarImg}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">` : (tgUser.isGoogle ? 'G' : '👤');
 
                 if (isActuallyPro) {
@@ -75695,10 +75739,15 @@ const app = {
                 // артикула только когда она показывается — при включённой схеме. Иначе
                 // слитая строка «4 шт.» несла бы подпись первого из четырёх кранов.
                 // Схема выключена — строки схлопываются как раньше, подписи всё равно нет.
-                const _portSplit = !!(this.schemeOn() && (finalItem.portTag || undefined));
+                // 08.10.2026: строки одного артикула склеиваются и при включённой схеме —
+                // «Американка 3/4" — 2 шт.» в смете понятнее двух одинаковых строк. Куда
+                // какая деталь, показывает сама схема (она строится из своей конфигурации,
+                // а не из строк сметы). Пометка назначения остаётся только у строки, где
+                // она у всех слитых единиц одна и та же.
                 let existing = bill.find(x => x.id === finalItem.id &&
-                    (_portSplit ? (x.group === itemGroup && x.portTag === finalItem.portTag) : (forceMerge ? true : (x.group === itemGroup && x.name === finalItem.name))));
+                    (forceMerge ? true : (x.group === itemGroup && x.name === finalItem.name)));
                 if (existing) {
+                    if (existing.portTag !== finalItem.portTag) delete existing.portTag;
                     existing.q += finalQty;
                     existing.sum = Math.round(existing.sum + finalItem.price * finalQty);
                     if (tip && tip.includes('|||')) {
