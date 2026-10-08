@@ -16275,7 +16275,14 @@ const app = {
     },
 
     // ── Поиск по кабинету (Ctrl+K): разделы и свои сметы ─────────────────────
+    // Поиск по кабинету ведёт во все разделы (в том числе в админку), поэтому он только для
+    // вошедшего и полностью заполнившего анкету: гостю и недозаполненному — сначала вход и анкета.
+    cabinetSearchAllowed: function () {
+        return !!(this.state.tgUser && !this._profileForceComplete && !this.isProfileIncomplete());
+    },
+
     openCabinetSearch: async function () {
+        if (!this.cabinetSearchAllowed()) return;
         // С панели слева кабинет может быть закрыт: поиск живёт внутри него, открываем «Главную»
         if (!this.isOverlayOpen('profile_modal_overlay')) {
             this.railGo('home');
@@ -16390,6 +16397,7 @@ const app = {
     cabinetSearchOpen: function (i) {
         const it = this._lkSearch && this._lkSearch.items[i];
         if (!it) return;
+        if (!this.cabinetSearchAllowed()) { this.closeCabinetSearch(); return; }
         this.closeCabinetSearch();
         it.act();
     },
