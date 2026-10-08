@@ -14381,7 +14381,7 @@ const app = {
         if (!avatarEl || !nameEl || !tariffEl) return;
 
         const uName = this.formatShortName(tgUser) || 'Монтажник';
-        const avatarImg = tgUser.avatar_url || tgUser.photo_url;
+        const avatarImg = tgUser.avatar_url;
         avatarEl.innerHTML = avatarImg
             ? `<img src="${avatarImg}" alt="">`
             : (uName.trim().charAt(0).toUpperCase() || '·');
@@ -37296,8 +37296,8 @@ const app = {
         [/^Циркуляц/, /^(SPC|RCP)-/],
         [/^Кран шаровой/, /^(SVB-0004-2000(20|25)|RBV-0004-02102(20|25)|RBV-0004-2210220)/],
         [/^Хомут/, /^SAC-0020-3000(34|01)/],
-        [/^Удлинитель/, /^SFT-0001-003430/],
-        [/^Сгон/, /^SFT-0032-034100/]
+        [/^Удлинитель/, /^SFT-0(001-0034|002-0001)30/],
+        [/^Сгон/, /^SFT-0032-(034|001)100/]
     ],
     // Подписи схемы вида kind. Группа загрузки бойлера собрана как прямая — у неё лист прямой.
     sgLab: function (kind) {
@@ -37326,14 +37326,18 @@ const app = {
         const title = this.SELF_KIND_TITLE[kind];
         const all = Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr => this.sgIdMatch(rule, this.sgIdOf(tr)));
         if (rule[2]) return all;
-        const own = all.filter(tr => this.sgSubTitleOf(tr).indexOf(title) >= 0);
+        const own = all.filter(tr => this.sgSubTitleOf(tr).toLowerCase().indexOf(title.toLowerCase()) >= 0);
         if (own.length) return own;
         // Смета склеивает строки одного артикула и показывает под первой (хомут, кран, ниппель бывают и в других узлах):
         // нет в подразделе группы — берём ту же позицию из соседнего подраздела, а не считаем её потерянной. Только артикулы,
         // которые идут в комплект ЭТОЙ группы: кран 3/4" не должен тянуть за собой краны 1" и чужие узлы.
         const kit = (this._selfKitIds || {})[kind];
-        const narrowed = kit ? all.filter(tr => kit.has(this.sgIdOf(tr))) : all;
-        return narrowed.length ? narrowed : all;
+        // Группы нет в смете вовсе (kit не собран) — берём как есть; группа есть, а позиции в её комплекте нет
+        // (у комплекта на 1" нет удлинителя и сгона) — подпись честно остаётся без строки, а не ведёт к чужой группе.
+        if (!kit) return all;
+        const mine = all.filter(tr => kit.has(this.sgIdOf(tr)));
+        // Хомуты лежат в разделе крепежа, а не в комплекте группы: их берём, чужие самосборные группы — нет.
+        return mine.length ? mine : all.filter(tr => !/самосборная группа/i.test(this.sgSubTitleOf(tr)));
     },
     // Схема одной группы (kind) — над её подразделом сметы. Без kind — все схемы подряд (на случай внешнего вызова).
     renderPumpGroupScheme: function (kind) {
@@ -43173,9 +43177,10 @@ const app = {
                 ? user.user_metadata.full_name
                 : (email ? email.split('@')[0] : 'Монтажник');
             let phone = (user.user_metadata && user.user_metadata.phone) ? user.user_metadata.phone : '';
-            let avatar = (user.user_metadata && user.user_metadata.avatar_url)
-                ? user.user_metadata.avatar_url
-                : ((user.user_metadata && user.user_metadata.picture) ? user.user_metadata.picture : '');
+            // Фото из внешних сервисов берём только у Яндекса (российский сервис). Аватарки
+            // Google и Telegram не подставляем: их картинки лежат за границей, и браузер человека
+            // ходил бы за ними туда (см. allowedAvatarUrl).
+            let avatar = this.allowedAvatarUrl(user.user_metadata && user.user_metadata.avatar_url);
 
             // Доп. поля анкеты регистрации (ФИО по частям, дата рождения, регион, сфера деятельности) —
             // приходят через user_metadata только при регистрации через нашу форму (не через Google/Telegram)
@@ -51752,9 +51757,9 @@ const app = {
             nameVal = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || tgUser.username || "Монтажник";
             phoneVal = tgUser.phone || "";
             // avatar_url — своё фото из кабинета или аватарка Яндекса/Google;
-            // photo_url приходит только из Telegram
-            if (tgUser.avatar_url || tgUser.photo_url) {
-                avatarSrc = tgUser.avatar_url || tgUser.photo_url;
+            // photo_url (Telegram) не показываем: картинка лежит за границей
+            if (tgUser.avatar_url) {
+                avatarSrc = tgUser.avatar_url;
             }
         } else {
             // 2. Иначе проверяем ручные настройки из формы профиля
@@ -51923,18 +51928,26 @@ const app = {
         await this.setProfilePhoto(await this.providerAvatarUrl());
     },
 
+    // Какие фото разрешено показывать: свой снимок из кабинета (data:-строка) и аватарка Яндекса.
+    // Остальное (Telegram, Google и любые чужие адреса) отбрасываем: картинка лежала бы на
+    // зарубежном сервере, и браузер человека ходил бы туда за ней (политика, п. 6.3–6.4).
+    allowedAvatarUrl: function (url) {
+        const u = (typeof url === 'string') ? url : '';
+        if (u.indexOf('data:image/') === 0) return u;
+        if (/^https:\/\/avatars(\.mds)?\.yandex\.net\//.test(u)) return u;
+        return '';
+    },
+
     // Аватарка провайдера из данных уже открытой сессии — сети это не стоит: getSession
-    // читает сохранённую сессию, а Telegram отдаёт photo_url прямо в state.
+    // читает сохранённую сессию. Теперь это только Яндекс.
     providerAvatarUrl: async function () {
-        const tgUser = this.state.tgUser || {};
-        if (tgUser.photo_url) return tgUser.photo_url;
         try {
             const { data } = await supabaseClient.auth.getSession();
             const meta = (data && data.session && data.session.user && data.session.user.user_metadata) || {};
-            const url = meta.avatar_url || meta.picture || '';
             // Своё фото в метаданных аккаунта не держим — если там всё же оказалась
             // data:-строка, возвращать её как «аватарку провайдера» нельзя
-            return url.indexOf('data:') === 0 ? '' : url;
+            const url = meta.avatar_url || '';
+            return url.indexOf('data:') === 0 ? '' : this.allowedAvatarUrl(url);
         } catch (e) {
             console.warn('[profilePhoto] Не удалось прочитать аватарку провайдера:', e);
             return '';
@@ -51981,7 +51994,7 @@ const app = {
         const removeBtn = document.getElementById('profile_photo_remove_btn');
 
         const tgUser = this.state.tgUser || {};
-        const src = tgUser.avatar_url || tgUser.photo_url || '';
+        const src = tgUser.avatar_url || '';
         const isOwnPhoto = String(tgUser.avatar_url || '').indexOf('data:') === 0;
 
         if (src) {
@@ -68590,7 +68603,7 @@ const app = {
         // Только подробный режим дома: мощность и лимит сети считаются там же.
         const blkDhwSrc = document.getElementById('blk_dhw_src');
         if (blkDhwSrc) {
-            blkDhwSrc.style.display = (this.state.detailedRooms && !this.isFlat()) ? 'flex' : 'none';
+            blkDhwSrc.style.display = (this.state.detailedRooms && !this.isFlat()) ? 'block' : 'none';
             const _src = this.dhwElectric() ? 'electric' : 'boiler';
             document.querySelectorAll('.dhw-src-tab').forEach(t => {
                 t.className = 'tab dhw-src-tab' + (t.dataset.src === _src ? ' active' : '');
@@ -69079,7 +69092,7 @@ const app = {
                 let isActuallyPro = this.isPro();
                 let infoHtml = '';
                 let uName = this.formatShortName(tgUser) || 'Монтажник';
-                let avatarImg = tgUser.avatar_url || tgUser.photo_url;
+                let avatarImg = tgUser.avatar_url;
                 let icon = avatarImg ? `<img src="${avatarImg}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">` : (tgUser.isGoogle ? 'G' : '👤');
 
                 if (isActuallyPro) {
@@ -71715,6 +71728,12 @@ const app = {
                 : `Накладные термометры на подачу и обратку группы (шкала 0–120 °C): видна разница температур. По 2 на группу.`, -0.33);
         if (mix) add(this.selfFit('elbow45', '1'), 2,
             `Угольник 45° ${this.selfPipeLbl('1')}: уводит подающую и обратную трубу к коллектору, как на схеме проекта. По 2 на группу.`, -0.29);
+        // Нижние выпуски на стену, как на листе 3/4": удлинитель и сгон под каждый кран.
+        add(catalog.selfbuilt_extension_1, 2,
+            `Удлинитель 1" 30 мм под кран: выводит резьбу за хомут. По 2 на группу (подача и обратка), как на схеме.`, -0.32);
+        add(catalog.selfbuilt_longscrew_1, type === 'servo' ? 4 : 2,
+            type === 'servo' ? `Сгон 1" ВР-НР: два нижних выпуска на стену и два у 3-ходового клапана, как на схеме проекта. По 4 на группу.`
+                : `Сгон 1" ВР-НР: нижний выпуск группы на стену, как на схеме проекта. По 2 на группу.`, -0.31);
         add(this.selfCatItem('SAC-0020-300001'), 2,
             `Хомут трубный одновинтовой 31–35 мм: крепит нижние выпуски группы к стене. По 2 на группу.`, -0.3);
         add(this.selfFit('adF', '1'), 2,
@@ -75525,10 +75544,15 @@ const app = {
                 // артикула только когда она показывается — при включённой схеме. Иначе
                 // слитая строка «4 шт.» несла бы подпись первого из четырёх кранов.
                 // Схема выключена — строки схлопываются как раньше, подписи всё равно нет.
-                const _portSplit = !!(this.schemeOn() && (finalItem.portTag || undefined));
+                // 08.10.2026: строки одного артикула склеиваются и при включённой схеме —
+                // «Американка 3/4" — 2 шт.» в смете понятнее двух одинаковых строк. Куда
+                // какая деталь, показывает сама схема (она строится из своей конфигурации,
+                // а не из строк сметы). Пометка назначения остаётся только у строки, где
+                // она у всех слитых единиц одна и та же.
                 let existing = bill.find(x => x.id === finalItem.id &&
-                    (_portSplit ? (x.group === itemGroup && x.portTag === finalItem.portTag) : (forceMerge ? true : (x.group === itemGroup && x.name === finalItem.name))));
+                    (forceMerge ? true : (x.group === itemGroup && x.name === finalItem.name)));
                 if (existing) {
+                    if (existing.portTag !== finalItem.portTag) delete existing.portTag;
                     existing.q += finalQty;
                     existing.sum = Math.round(existing.sum + finalItem.price * finalQty);
                     if (tip && tip.includes('|||')) {

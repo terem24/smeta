@@ -2955,6 +2955,9 @@ const catalog = {
     // Цены: прайс × 0,836 (серия SFT). Резьбы по названиям прайса: удлинитель внутренняя/наружная 3/4", сгон ВР-НР 3/4".
     selfbuilt_extension_34: { id: "SFT-0001-003430", name: "Удлинитель внутренняя/наружная резьба 3/4\"x30 мм", price: 432, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
     selfbuilt_longscrew_34: { id: "SFT-0032-034100", name: "Сгон 3/4\"x100 мм ВР-НР", price: 749, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    // Комплект на 1": удлинитель (в прайсе только хромированный) и сгон 1"x100 — те же нижние выпуски, что на листе 3/4". Цены прайс × 0,836 (серия SFT).
+    selfbuilt_extension_1: { id: "SFT-0002-000130", name: "Удлинитель внутренняя/наружная резьба хромированный 1\"x30 мм", price: 767, brand: "STOUT", availability: "on_order", price_date: "2026-10-08" },
+    selfbuilt_longscrew_1: { id: "SFT-0032-001100", name: "Сгон 1\"x100 мм ВР-НР", price: 834, brand: "STOUT", availability: "on_order", price_date: "2026-10-08" },
     // Комплект на 1" (нагрузка выше предела по скорости в 3/4"): ниппель, тройник, обратный клапан, смесители 1". Цены: прайс × 0,836 (STOUT),
     // × 0,899 (ROMMER RVC по RVC-0001-000020), × 0,889 (ROMMER RVM по RVM-0005). Тройник и ниппель — серии SFT, обратный клапан — SVC-0011.
     selfbuilt_nipple_1: { id: "SFT-0004-000011", name: "Ниппель 1\" НР", price: 409, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
