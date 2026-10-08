@@ -20266,13 +20266,12 @@ const app = {
             const chatPane = document.getElementById('notif_pane_chat');
             if (chatPane && chatPane.style.display === 'flex') this.renderUserChat();
 
-            // Открытая лента уведомлений в мессенджере панели управления живёт из этого
-            // же массива — обновляем её тут же, иначе конверт открывал бы панель с
+            // Открытая вкладка «Уведомления» в панели управления живёт из этого же
+            // массива — обновляем её тут же, иначе конверт открывал бы панель с
             // прошлым содержимым и дорисовывал новое только по клику.
             const adminBox = document.getElementById('admin_modal_overlay');
-            if (adminBox && adminBox.style.display === 'flex'
-                && this._adminTab === 'messages' && this._adminChatId === 'notifications') {
-                this.renderAdminMessages();
+            if (adminBox && adminBox.style.display === 'flex' && this._adminTab === 'notifications') {
+                this.renderAdminNotifications();
             }
         } catch (e) {
             console.error("Error fetching notifications:", e);
@@ -20326,6 +20325,12 @@ const app = {
             ? [`«${mm[1]}»`, '№ ' + mm[2], mm[3], 'ушло ' + mm[4]].filter(Boolean).join(' · ')
             : 'КП ушло клиенту, счёт не запрошен') + (who ? ' · ' + who[1] : '');
         return { title: head[1], brief: brief, rest: rest };
+    },
+
+    // Письмо, которое отправила не живая переписка, а база по расписанию
+    isAutoNoticeText: function (text) {
+        const t = String(text || '');
+        return !!this.kpReminderInfo(t) || t.indexOf('🎂 Сегодня день рождения у вашего монтажника') === 0;
     },
 
     // Список уведомлений открыт и виден — значит напоминания увидены: гасим по ним
@@ -20503,14 +20508,9 @@ const app = {
         if (this.usesAdminMessenger()) {
             this._adminTab = 'messages';
             // Пришли посмотреть, что нового: есть непрочитанные уведомления — открываем
-            // сразу их ленту, нет — оставляем тот диалог, на котором остановились.
+            // вкладку «Уведомления», нет — оставляем переписку на том диалоге, где остановились.
             const unread = (this._notifications || []).filter(n => !n.isRead).length;
-            if (unread > 0) {
-                this._adminChatId = 'notifications';
-                // На узком экране панели показываются по очереди — раз знаем, что
-                // показывать, сразу разворачиваем правую.
-                this._adminChatOpen = true;
-            }
+            if (unread > 0) this._adminTab = 'notifications';
             this.showAdminModal();
             this.fetchNotifications();
             return;
@@ -20523,9 +20523,8 @@ const app = {
     // Без этого клик по карточке в панели поднимал бы поверх неё узкую модалку.
     refreshNotificationsView: function () {
         const adminOpen = (document.getElementById('admin_modal_overlay') || {}).style;
-        if (this._adminTab === 'messages' && this._adminChatId === 'notifications'
-            && adminOpen && adminOpen.display === 'flex') {
-            this.renderAdminMessages();
+        if (this._adminTab === 'notifications' && adminOpen && adminOpen.display === 'flex') {
+            this.renderAdminNotifications();
             return;
         }
         this.openNotificationsModal();
@@ -23846,7 +23845,8 @@ const app = {
         { id: 'home', icon: '🏠', label: 'Центр внимания', hint: 'Что требует действия сегодня' },
         { id: 'stats', icon: '👥', label: 'Пользователи', hint: 'Монтажники, тарифы, доступы' },
         { id: 'estimates', icon: '📋', label: 'Расчёты', hint: 'Все сохранённые сметы' },
-        { id: 'messages', icon: '💬', label: 'Сообщения', hint: 'Переписка и уведомления' },
+        { id: 'messages', icon: '💬', label: 'Сообщения', hint: 'Переписка с монтажниками и объявления' },
+        { id: 'notifications', icon: '🔔', label: 'Уведомления', hint: 'Статусы смет, счета, тариф и что включить, чтобы они доходили' },
         { id: 'inactive', icon: '📨', label: 'Напоминания', hint: 'Кто давно не заходил и вернулся ли' },
         { id: 'distributors', icon: '🏢', label: 'Дистрибьюторы', hint: 'Промокоды, менеджеры, свои цены' },
         { id: 'tariffs', icon: '🎚', label: 'Тарифы', hint: 'Что открыто учётке на её тарифе' },
@@ -23878,6 +23878,7 @@ const app = {
         stats: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
         estimates: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/>',
         messages: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+        notifications: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
         inactive: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
         distributors: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/>',
         tariffs: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
@@ -23910,7 +23911,7 @@ const app = {
         { id: 'overview', label: 'Обзор', icon: 'dashboard', tabs: ['home', 'dashboard', 'analytics'] },
         { id: 'people', label: 'Клиенты', icon: 'stats', tabs: ['stats', 'distributors', 'branches', 'inactive'] },
         { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['leads', 'estimates', 'kanban', 'projects', 'warranty'] },
-        { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages'] },
+        { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages', 'notifications'] },
         { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'distprices', 'equipment', 'successors'] },
         { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription', 'payready', 'mailbudget'] },
         { id: 'ai', label: 'ИИ и файлы', icon: 'recognition', tabs: ['recognition', 'plans', 'aifill'] },
@@ -24155,7 +24156,7 @@ const app = {
     // Разделы менеджера дистрибьютора. Остальные вкладки — либо про платформу
     // целиком (прайс-листы, распознавание, проекты, аналитика), либо про чужие
     // компании (карточки дистрибьюторов), поэтому их он не видит вовсе.
-    MANAGER_TABS: ['stats', 'estimates', 'messages', 'kanban', 'distprices'],
+    MANAGER_TABS: ['stats', 'estimates', 'messages', 'notifications', 'kanban', 'distprices'],
 
     // Подписи под названиями разделов в мобильном меню: у менеджера они честнее
     // говорят «ваши», а не «все» — данные-то урезаны по его компании.
@@ -24163,6 +24164,7 @@ const app = {
         stats: 'Монтажники вашей компании',
         estimates: 'Сметы ваших монтажников',
         messages: 'Переписка с вашими монтажниками',
+        notifications: 'Счета, напоминания по вашим монтажникам и что включить',
         kanban: 'Статусы смет вашей компании',
         distprices: 'Прайс вашей компании и отличия от каталога'
     },
@@ -25569,7 +25571,7 @@ const app = {
             <div class="admin-mob-item" onclick="app.switchAdminTab('${t.id}')">
                 <span class="admin-mob-ico">${this.adminIcon(t)}</span>
                 <span class="admin-mob-body"><b>${t.label}</b><small>${t.hint || ''}</small></span>
-                ${(t.id === 'messages' && unread) ? `<span class="admin-mob-badge">${unread}</span>` : ''}
+                ${(t.id === 'notifications' && unread) ? `<span class="admin-mob-badge">${unread}</span>` : ''}
                 <span class="admin-mob-arrow">›</span>
             </div>`).join('')}`).join('');
 
@@ -25725,6 +25727,7 @@ const app = {
         // Перетаскивание вкладок отключено с введением групп (см. ADMIN_GROUPS): порядок
         // внутри группы задан в коде, а сохранённый плоский порядок больше ничего не меняет.
         const canReorder = false;
+        const tabUnread = (this._notifications || []).filter(x => !x.isRead).length;
         // Два уровня: группы (Клиенты, Продажи, Каталог…) и вкладки текущей группы.
         // У группы из одной вкладки (Сообщения, Контент) второго ряда нет.
         const groups = this.adminVisibleGroups(ADMIN_TAB_DEFS);
@@ -25738,7 +25741,7 @@ const app = {
             ${curGroup.defs.length > 1 ? `
             <div id="admin_nav_tabs">
                 ${curGroup.defs.map(t => `
-                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn${this._adminTab === t.id ? ' active' : ''}" title="${t.hint || t.label}${canReorder ? ' — перетащите, чтобы поменять порядок для всех' : ''}" style="${canReorder ? 'touch-action: none;' : ''}" onclick="app.switchAdminTab('${t.id}')">${this.adminIcon(t)}<span class="admin-tab-label"> ${t.sub || t.label}</span></button>
+                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn${this._adminTab === t.id ? ' active' : ''}" title="${t.hint || t.label}${canReorder ? ' — перетащите, чтобы поменять порядок для всех' : ''}" style="${canReorder ? 'touch-action: none;' : ''}" onclick="app.switchAdminTab('${t.id}')">${this.adminIcon(t)}<span class="admin-tab-label"> ${t.sub || t.label}</span>${(t.id === 'notifications' && tabUnread) ? `<span class="admin-mob-badge" style="margin-left:6px;">${tabUnread}</span>` : ''}</button>
                 `).join('')}
             </div>` : ''}
         `;
@@ -25754,6 +25757,12 @@ const app = {
         if (this._adminTab === 'messages') {
             content.innerHTML = navHtml;
             this.renderAdminMessages();
+            return;
+        }
+
+        if (this._adminTab === 'notifications') {
+            content.innerHTML = navHtml + '<div id="admin_notif_box"></div>';
+            this.renderAdminNotifications();
             return;
         }
 
@@ -26772,8 +26781,8 @@ const app = {
             card({ title: 'Профи заканчивается', n: proRows.length, urgent: true, state: st.pro, body: proBody, tab: 'stats', action: 'Открыть пользователей' }),
             card({ title: 'Замены позиций', n: succN == null ? null : succN, urgent: false, state: st.succ,
                 body: succN ? `<div class="ad-card-note">Новых замен снятых позиций, которые ждут решения: <b>${succN}</b>.</div>` : ok('Новых замен нет'), tab: 'successors', action: 'Открыть замены' }),
-            card({ title: 'Сообщения', n: unread, urgent: false, state: 'ready',
-                body: unread ? `<div class="ad-card-note">Непрочитанных уведомлений: <b>${unread}</b>.</div>` : ok('Непрочитанного нет'), tab: 'messages', action: 'Открыть сообщения' })
+            card({ title: 'Уведомления', n: unread, urgent: false, state: 'ready',
+                body: unread ? `<div class="ad-card-note">Непрочитанных уведомлений: <b>${unread}</b>.</div>` : ok('Непрочитанного нет'), tab: 'notifications', action: 'Открыть уведомления' })
         ].join('');
 
         // Карта разделов: то, что раньше было двадцатью вкладками в два ряда
@@ -34508,7 +34517,10 @@ const app = {
         };
         const msgSide = {};      // id письма -> сторона отправителя (для привязки ответов)
         const sentToUser = {};   // монтажник -> [{ t, side }] по времени, для ответов без родителя
-        parentMsgs.filter(m => m.type === 'private')
+        // Автоматические письма базы (напоминание про счёт, день рождения монтажника) —
+        // это уведомления менеджеру, их место во вкладке «Уведомления», а не в переписке
+        // с ним: иначе чат превращался в ленту одинаковых плашек от системы
+        parentMsgs.filter(m => m.type === 'private' && !this.isAutoNoticeText(m.text))
             .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
             .forEach(m => {
                 const side = staffSide(m.sender_id, m.sender_name);
@@ -34619,10 +34631,12 @@ const app = {
             this._adminChatFindMsg = null;
         }
 
-        const allIds = (canBroadcast ? ['broadcast'] : []).concat(['notifications'])
+        // Уведомления (статусы смет, напоминания, тариф) с октября 2026 живут в своей
+        // вкладке «Уведомления», а не закреплённой нитью здесь — переписка не мешается с лентой
+        const allIds = (canBroadcast ? ['broadcast'] : [])
             .concat(threads.map(t => t.id)).concat(dropdownUsers.map(u => u.id));
         if (!this._adminChatId || allIds.indexOf(this._adminChatId) === -1) {
-            this._adminChatId = threads.length ? threads[0].id : (canBroadcast ? 'broadcast' : 'notifications');
+            this._adminChatId = threads.length ? threads[0].id : (canBroadcast ? 'broadcast' : null);
         }
         const activeId = this._adminChatId;
         this._lastRenderedChatId = activeId;
@@ -34639,25 +34653,8 @@ const app = {
         }
 
         // ── Левая панель: список диалогов ──
-        // Первой закреплена нить «Уведомления»: смены статусов смет у заказчиков,
-        // напоминания по счетам, срок тарифа, ответы монтажников. Это не переписка,
-        // отвечать в неё нельзя — вместо поля ввода у неё кнопки списка.
-        // Уведомления отсортированы новыми вперёд (см. fetchNotifications).
-        const notifItems = this._notifications || [];
-        const notifUnread = notifItems.filter(n => !n.isRead).length;
-        const lastNotif = notifItems[0];
-        const notifPrev = lastNotif
-            ? [lastNotif.projectName, lastNotif.comment].filter(Boolean).join(' — ').replace(/\s+/g, ' ')
-            : 'Статусы смет, счета и срок тарифа';
         const lastBroadcast = broadcastItems[broadcastItems.length - 1];
         let listHtml = `
-            <div class="admin-chat-item ${activeId === 'notifications' ? 'active' : ''}" data-search="уведомления статусы смет счета напоминания тариф ответы монтажников ${esc(notifItems.map(n => [n.projectName, n.comment].filter(Boolean).join(' ')).join(' ').toLowerCase())}" onclick="app.openAdminChat('notifications')">
-                <div class="admin-chat-ava" style="background:#3B82F6;">🔔</div>
-                <div class="admin-chat-item-body">
-                    <div class="admin-chat-item-row"><span class="admin-chat-name">Уведомления и статусы смет</span><span class="admin-chat-time">${lastNotif ? listTime(lastNotif.time) : ''}</span></div>
-                    <div class="admin-chat-item-row"><span class="admin-chat-prev">${esc(notifPrev)}</span>${notifUnread ? `<span class="admin-chat-badge" title="Непрочитанных уведомлений: ${notifUnread}">${notifUnread}</span>` : ''}</div>
-                </div>
-            </div>
             ${canBroadcast ? `
             <div class="admin-chat-item ${activeId === 'broadcast' ? 'active' : ''}" data-search="объявление рассылка всем broadcast ${esc(broadcastItems.map(m => m.text || '').join(' ').toLowerCase())}" onclick="app.openAdminChat('broadcast')">
                 <div class="admin-chat-ava" style="background:#D97706;">📢</div>
@@ -34711,7 +34708,7 @@ const app = {
         });
 
         // ── Правая панель: сама переписка ──
-        const isNotifChat = activeId === 'notifications';
+        const isNoChat = !activeId;
         const isBroadcastChat = activeId === 'broadcast';
         const activeThread = threads.find(t => t.id === activeId);
         const isMgrChat = !!activeThread && activeThread.kind === 'manager';
@@ -34720,11 +34717,11 @@ const app = {
         // человека», а на деле отвечают двое разных
         const isStaffChat = !!activeThread && activeThread.kind === 'staff';
         const isForeignChat = isMgrChat || isStaffChat;
-        const activeUser = activeThread && !isForeignChat && !isNotifChat ? activeThread.user : ((isForeignChat || isNotifChat) ? null : findUser(activeId));
-        const chatName = isNotifChat ? 'Уведомления и статусы смет'
+        const activeUser = activeThread && !isForeignChat ? activeThread.user : (isForeignChat || isNoChat ? null : findUser(activeId));
+        const chatName = isNoChat ? 'Диалог не выбран'
             : (isBroadcastChat ? 'Объявления для всех' : (isForeignChat ? activeThread.name : userName(activeUser, activeId)));
-        const chatSub = isNotifChat
-            ? (notifUnread ? `${notifUnread} непрочитанных из ${notifItems.length}` : (notifItems.length ? 'Все прочитаны' : 'Пока пусто'))
+        const chatSub = isNoChat
+            ? 'Выберите собеседника слева'
             : (isBroadcastChat
                 ? `${dropdownUsers.length} получателей`
                 : (isMgrChat
@@ -34735,13 +34732,13 @@ const app = {
         const chatItems = isBroadcastChat ? broadcastItems : (activeThread ? activeThread.items : []);
         // Что именно сейчас на экране — по этому списку кнопка «Удалить эту переписку»
         // сносит ровно открытый диалог (см. deleteUserMessages)
-        this._adminChatIds = (isNotifChat || isForeignChat) ? [] : chatItems.map(m => m.id);
+        this._adminChatIds = (isNoChat || isForeignChat) ? [] : chatItems.map(m => m.id);
 
         // Ответ с цитатой: id сообщения, на которое отвечают. Живёт только пока открыт
         // тот же диалог — ушли в другую переписку, и цитата снимается сама.
         const itemsById = {};
         chatItems.forEach(m => { itemsById[m.id] = m; });
-        const canReply = !isNotifChat && !isForeignChat;
+        const canReply = !isNoChat && !isForeignChat;
         if (this._adminReplyTo && (!canReply || !itemsById[this._adminReplyTo])) this._adminReplyTo = null;
         // Кто написал сообщение — этим именем подписывается цитата
         const msgAuthor = (m) => m.__from === 'user'
@@ -34749,13 +34746,8 @@ const app = {
             : (m.sender_name || (isStaffChat && activeThread ? activeThread.mgrName : 'Администрация'));
 
         let bodyHtml = '';
-        if (isNotifChat) {
-            // Разметку карточек берём ту же, что и в окне уведомлений у монтажника
-            // (renderNotificationCards) — иначе две копии со временем разошлись бы.
-            const cards = notifItems.length ? this.renderNotificationCards(notifItems) : '';
-            bodyHtml = cards
-                ? `<div style="display:flex; flex-direction:column; gap:10px; padding:4px 2px;">${cards}</div>`
-                : '<div class="admin-chat-empty">Уведомлений пока нет.</div>';
+        if (isNoChat) {
+            bodyHtml = '<div class="admin-chat-empty">Выберите собеседника в списке слева.</div>';
         } else if (!chatItems.length) {
             bodyHtml = `<div class="admin-chat-empty">${isBroadcastChat ? 'Объявлений пока не было.' : 'Переписки ещё нет — напишите первым.'}</div>`;
         } else {
@@ -34896,28 +34888,21 @@ const app = {
                 <div class="admin-chat-main">
                     <div class="admin-chat-head">
                         <span class="admin-chat-back" onclick="app.closeAdminChat()">←</span>
-                        ${isNotifChat
-                ? `<div class="admin-chat-ava" style="background:#3B82F6;">🔔</div>`
+                        ${isNoChat
+                ? `<div class="admin-chat-ava" style="background:#64748B;">💬</div>`
                 : (isBroadcastChat
                     ? `<div class="admin-chat-ava" style="background:#D97706;">📢</div>`
                     : (isForeignChat
                         ? `<div class="admin-chat-ava" style="background:#64748B;">⇄</div>`
                         : avaHtml(activeUser, chatName)))}
                         <div style="min-width:0; flex:1;">
-                            <div class="admin-chat-headname" ${isBroadcastChat || isNotifChat ? '' : `onclick="app.openAdminUserFromMessages('${isForeignChat ? activeThread.installerId : activeId}')" title="Открыть карточку монтажника"`}>${esc(chatName)}</div>
+                            <div class="admin-chat-headname" ${isBroadcastChat || isNoChat ? '' : `onclick="app.openAdminUserFromMessages('${isForeignChat ? activeThread.installerId : activeId}')" title="Открыть карточку монтажника"`}>${esc(chatName)}</div>
                             <div class="admin-chat-headsub" ${isBroadcastChat ? `onclick="app.toggleBroadcastRecipients()" title="Показать, кто получает объявления"` : ''}>${esc(chatSub)}${isBroadcastChat ? ` <span style="opacity:.8;">${recipientsOpen ? '▲' : '▼'}</span>` : ''}</div>
                         </div>
-                        ${isBroadcastChat || isForeignChat || isNotifChat || isViewer ? '' : `<button class="admin-chat-clear" title="Удалить эту переписку" onclick="app.deleteUserMessages('${activeId}')">🗑</button>`}
+                        ${isBroadcastChat || isForeignChat || isNoChat || isViewer ? '' : `<button class="admin-chat-clear" title="Удалить эту переписку" onclick="app.deleteUserMessages('${activeId}')">🗑</button>`}
                     </div>
                     ${recipientsOpen ? recipientsHtml : `<div class="admin-chat-body" id="admin_chat_body">${bodyHtml}</div>`}
-                    ${isNotifChat ? `
-                    <!-- В ленту уведомлений не пишут — вместо поля ввода те же кнопки,
-                         что были внизу прежнего окна уведомлений. -->
-                    <div class="admin-chat-compose" style="justify-content:center; gap:10px;">
-                        <button class="auth-btn-base btn-email-submit" style="margin:0; max-width:150px; height:32px; font-size:12px;" onclick="app.markAllNotificationsRead()">Прочитать все</button>
-                        <button class="auth-btn-base" style="margin:0; max-width:130px; height:32px; font-size:12px; background:var(--surface-light); color:var(--text-sec); border:1px solid var(--border);" onclick="app.clearAllNotifications()">Очистить всё</button>
-                    </div>
-                    ` : (isForeignChat ? `
+                    ${isNoChat ? '' : (isForeignChat ? `
                     <!-- Чужая переписка открыта только на чтение: писать в неё нельзя,
                          иначе монтажнику приходят ответы «от одного человека», а на деле
                          отвечают двое. Кнопка рядом открывает свой диалог с этим же
@@ -34974,6 +34959,130 @@ const app = {
         if (body) body.scrollTop = scrollBefore == null ? body.scrollHeight : scrollBefore;
 
         this.filterAdminChatList();
+    },
+
+    // ═══ Вкладка «Уведомления» ════════════════════════════════════════════
+    // Лента уведомлений (статусы смет у заказчиков, напоминания по счетам, срок тарифа,
+    // ответы монтажников) отдельно от переписки: раньше она лежала закреплённой нитью
+    // в «Сообщениях», а автонапоминания базы падали в чат с менеджером и тонули там.
+    // Над лентой — проверка каналов: что выключено и что именно включить, чтобы
+    // уведомления доходили не только до открытой вкладки.
+    renderAdminNotifications: function () {
+        const box = document.getElementById('admin_notif_box');
+        if (!box) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const again = () => { if (this._adminTab === 'notifications') this.renderAdminNotifications(); };
+
+        // Подтягиваем то, чего на экране ещё нет: статус Telegram (читается вместе с
+        // облачными настройками) и разрешение на пуш в приложении
+        if (!this.state.tgConnect && !this._installerSettingsCloudSynced) {
+            this.pullInstallerSettingsFromCloud().then(again).catch(() => { });
+        }
+        if (this._notifPushPerm === undefined && typeof appPush !== 'undefined' && appPush.isNative()) {
+            this._notifPushPerm = null;
+            Promise.resolve(appPush.plugin().checkPermissions())
+                .then(p => { this._notifPushPerm = (p && p.receive) || 'unknown'; again(); })
+                .catch(() => { this._notifPushPerm = 'unknown'; });
+        }
+
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const items = this._notifications || [];
+        const unread = items.filter(n => !n.isRead).length;
+        const isManager = this.isManagerRole();
+        const rows = [];
+
+        // Звук: «Без звука» — самая частая причина «мне ничего не приходит»
+        let sound = 'iphone';
+        try { sound = localStorage.getItem('stout_notification_sound') || 'iphone'; } catch (e) { /* без хранилища — звук по умолчанию */ }
+        const soundSel = `<select class="auth-input" style="width:auto; padding:4px 8px;" onchange="app.changeNotificationSound(this.value); app.renderAdminNotifications()">
+            <option value="iphone"${sound === 'iphone' ? ' selected' : ''}>iPhone (Тритон)</option>
+            <option value="icq"${sound === 'icq' ? ' selected' : ''}>ICQ (О-оу!)</option>
+            <option value="none"${sound === 'none' ? ' selected' : ''}>Без звука</option>
+        </select>`;
+        rows.push(sound === 'none'
+            ? { ok: false, title: 'Звук при новом уведомлении', text: 'Выключен: когда калькулятор открыт, новое уведомление придёт молча. Выберите мелодию:', fix: soundSel }
+            : { ok: true, title: 'Звук при новом уведомлении', text: 'Включён, пока калькулятор открыт в браузере.', fix: soundSel });
+
+        // Telegram: единственный канал, который доходит, когда сайт закрыт
+        const tg = this.state.tgConnect;
+        if (!tg && !this._installerSettingsCloudSynced) {
+            rows.push({ ok: null, title: 'Telegram', text: 'Проверяем подключение…', fix: '' });
+        } else if (!tg || !tg.chatId) {
+            rows.push({
+                ok: false, title: 'Telegram не подключён',
+                text: 'Без него уведомления видны, только когда открыт калькулятор. Нажмите «Подключить» → в открывшемся боте нажмите «Запустить» (Start) → вернитесь сюда. Подключение действует 10 минут с нажатия.',
+                fix: `<button type="button" class="lk-btn-sm" onclick="app.connectTelegram()">Подключить Telegram</button>`
+            });
+        } else {
+            rows.push({ ok: true, title: 'Telegram подключён' + (tg.username ? ' как @' + esc(tg.username) : ''), text: 'Уведомления приходят в бота, даже когда сайт закрыт.', fix: '' });
+            [['kp', 'Одобрение или отклонение КП', 'Клиент ответил по ссылке на смету'],
+            ['oprosnik', 'Заполненный опросник', 'Заказчик прислал анкету о доме'],
+            ['chat', 'Сообщения из калькулятора', 'Ответы менеджера и сообщения сервиса']].forEach(c => {
+                const on = this.tgNotifyEnabled(c[0]);
+                rows.push({
+                    ok: on, sub: true, title: 'Telegram: ' + c[1],
+                    text: on ? c[2] : c[2] + '. Выключено — включите переключатель справа.',
+                    fix: `<label class="switch"><input type="checkbox"${on ? ' checked' : ''} onchange="app.setTgNotify('${c[0]}', this.checked); app.renderAdminNotifications()"><span class="slider"></span></label>`
+                });
+            });
+        }
+
+        // Напоминание «КП ушло, а счёта нет». Срок задаёт сам монтажник, поэтому менеджеру
+        // дистрибьютора строка ни к чему: у него напоминания приходят про чужих монтажников
+        if (!isManager) {
+            const days = this.kpReminderDaysDefault();
+            const inp = `<input type="number" class="auth-input lk-num" min="0" max="90" step="1" value="${days}" onchange="app.setKpReminderDays(this.value.trim()); app.renderAdminNotifications()">`;
+            rows.push(days > 0
+                ? { ok: true, title: 'Напоминание выставить счёт', text: `Придёт через ${days} дн. после отправки КП клиенту, если счёт не запрошен. Срок можно поменять (дней):`, fix: inp }
+                : { ok: false, title: 'Напоминание выставить счёт', text: 'Выключено (стоит 0). Чтобы получать напоминания, впишите срок в днях — по умолчанию 10:', fix: inp });
+        }
+
+        // Пуш — только в приложении для Android; на сайте браузерных пушей нет
+        if (typeof appPush !== 'undefined' && appPush.isNative()) {
+            const perm = this._notifPushPerm;
+            if (perm === 'granted') rows.push({ ok: true, title: 'Пуш-уведомления в приложении', text: 'Разрешены.', fix: '' });
+            else if (perm === undefined || perm === null) rows.push({ ok: null, title: 'Пуш-уведомления в приложении', text: 'Проверяем разрешение…', fix: '' });
+            else rows.push({ ok: false, title: 'Пуш-уведомления в приложении', text: 'Не разрешены. Откройте настройки телефона → Приложения → HeatCalc → Уведомления и включите их (на Android 13 и новее также пункт «Разрешить уведомления»).', fix: '' });
+        } else {
+            rows.push({ ok: null, title: 'Пуш-уведомления', text: 'Приходят только в приложении HeatCalc для Android. В браузере их нет — для закрытого сайта используйте Telegram.', fix: '' });
+        }
+
+        const bad = rows.filter(r => r.ok === false).length;
+        const dot = r => r.ok === true ? '<span style="color:#10B981;font-weight:700;">✓</span>'
+            : (r.ok === false ? '<span style="color:#D97706;font-weight:700;">!</span>' : '<span style="color:var(--text-sec);">·</span>');
+        const rowsHtml = rows.map(r => `
+            <div class="lk-setting"${r.sub ? ' style="padding-left:22px;"' : ''}>
+                <div class="lk-setting-text">
+                    <b>${dot(r)} ${r.title}</b>
+                    <span${r.ok === false ? ' style="color:#B45309;"' : ''}>${r.text}</span>
+                </div>
+                ${r.fix || ''}
+            </div>`).join('');
+
+        const cards = items.length ? this.renderNotificationCards(items) : '';
+        box.innerHTML = `
+            <div class="ad-page-h">
+                <div><h3>Уведомления</h3><div class="ad-sub">${unread ? unread + ' непрочитанных из ' + items.length : (items.length ? 'Все прочитаны' : 'Пока пусто')} · статусы смет, счета, тариф, ответы монтажников</div></div>
+                <div style="display:flex; gap:8px;">
+                    <button class="admin-btn" onclick="app.markAllNotificationsRead()">Прочитать все</button>
+                    <button class="admin-btn" onclick="app.clearAllNotifications()">Очистить всё</button>
+                </div>
+            </div>
+            <div class="lk-card" style="margin-bottom:14px; text-align:left;">
+                <div class="lk-setting" style="border-bottom:1px solid var(--border);">
+                    <div class="lk-setting-text">
+                        <b>${bad ? '⚠ Что выключено: ' + bad : '✓ Все каналы включены'}</b>
+                        <span>${bad ? 'Пока это не включено, часть уведомлений вы не увидите, пока не откроете калькулятор.' : 'Уведомления доходят по всем доступным каналам.'}</span>
+                    </div>
+                </div>
+                ${rowsHtml}
+            </div>
+            <div style="display:flex; flex-direction:column; gap:10px; padding:4px 2px 20px;">
+                ${cards || '<div class="admin-chat-empty">Уведомлений пока нет.</div>'}
+            </div>`;
+
+        // Лента на виду — автонапоминания базы увидены, гасим по ним бейдж
+        if (unread) setTimeout(() => { if (this._adminTab === 'notifications') this.markKpRemindersSeen(); }, 1500);
     },
 
     // Фильтрует уже отрисованный список диалогов (только display, без перестройки DOM —
