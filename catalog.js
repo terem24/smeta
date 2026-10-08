@@ -2338,6 +2338,7 @@ const catalog = {
         { id: "CBL-UTP-AIR", name: "Кабель UTP cat.5 — линии комнатных приборов RS-485", price: 38, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-08-09" },
         { id: "CBL-MKESH-2X05-AIR", name: "Кабель МКЭШ 2×0,5 экран. — линии комнатных термостатов (сухой контакт)", price: 75, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-08-09" },
         { id: "CBL-VVG-4X15-LEAK", name: "Кабель ВВГнг(А)-LS 4×1,5 — привод крана защиты от протечки", price: 96, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-08-09" },
+        { id: "CBL-MKESH-3X05-LEAK", name: "Кабель МКЭШ 3×0,5 экран. — датчики протечки (питание, сигнал, земля)", price: 105, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-10-08" },
         { id: "CBL-MKESH-2X05-LEAK", name: "Кабель МКЭШ 2×0,5 экран. — датчики протечки", price: 75, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-08-09" },
         // Силовой ввод электрокотла. Сечение — из паспорта STOUT STATUS (Таб.1, п. 17):
         // 4 мм² до 12 кВт, 6 мм² на 14–21 кВт, 10 мм² на 24–27 кВт. Паспорт пишет «4×S»
@@ -6707,9 +6708,10 @@ const catalog = {
         // price_index.json на 08.10.2026; на myheat.net цены выше на ~1 000 ₽.
         // Приборы устроены иначе, чем у Thermatic и ZONT (паспорта myheat.net):
         //   GO! / GO!+  — один котёл по цифровой шине, реле 1 шт. (3 А, сухой контакт);
-        //   Smart 2     — реле 1 + 4 универсальных вход/выхода (открытый коллектор,
+        //   Smart 2     — реле 1 + 4 универсальных вход/выхода DIO (открытый коллектор,
         //                 нагрузку не держат), до 5 единиц оборудования; насосы
-        //                 и смесители — через RL2 (реле) / RL2S (симисторы);
+        //                 и смесители — через RL2 (реле) / RL2S (симисторы), каждый блок
+        //                 занимает два DIO (паспорт RL2: «выходы ОК1 и ОК2 — к входам DIO»);
         //   Eco Smart   — 6 реле 3 А + 4 симистора 1 А, питание от сети, радио в корпусе;
         //   Pro         — 4 реле 3 А + 4 симистора 1 А, блоки RL6 / RL6S на шине EXT.
         // Поле myheat: true — позиция бренда MyHeat, участвует в таблице замен.
@@ -6718,6 +6720,10 @@ const catalog = {
         { id: "6281", name: "Контроллер Smart 2 (GSM / Wi-Fi)", price: 17990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
         { id: "6284", name: "Контроллер Pro (модульный)", price: 41990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
         { id: "7007", name: "Контроллер Eco Smart (аккумулятор, радио, 6 реле)", price: 46990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        // Датчик температуры NTC 10K в колбе: три штуки лежат в комплекте Eco Smart (паспорт, табл. 2).
+        { id: "6320", name: "Датчик температуры в колбе NTC 10K", price: 3190, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        // Блок дискретных входов DI6 (6 входов до 12 В) — к Pro по шине EXT: у самого Pro два дискретных входа.
+        { id: "6298", name: "Блок дискретных входов DI6 (6 входов 12 В)", price: 7490, brand: "MyHeat", unit: "шт", myheat: true, inputs: 6, availability: "in_stock", price_date: "2026-10-08" },
         // Блоки расширения. RL2 / RL2S — только к Smart 2; RL6 / RL6S — к Pro (шина EXT);
         // RL6W / RL6SW — по Wi-Fi к Eco Smart (до 6 шт.).
         { id: "6295", name: "Блок расширения RL2 (2 реле 3 А)", price: 3490, brand: "MyHeat", unit: "шт", myheat: true, relays: 2, availability: "in_stock", price_date: "2026-10-08" },
@@ -6730,6 +6736,8 @@ const catalog = {
         // адаптер нужен второму (каскад) — у Pro и Eco Smart.
         { id: "6309", name: "Адаптер цифровой шины для Pro", price: 6490, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
         { id: "7008", name: "Адаптер цифровой шины для Eco Smart", price: 6990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        // Блок питания контроллера в комплекте у GO!, GO!+, Smart 2 и Pro (паспорта, табл. 2) —
+        // отдельно он нужен только блокам расширения, когда им не хватает питания прибора.
         // Радиомодуль для радиодатчиков и радиотермостатов: у GO!+ и Eco Smart радио
         // в корпусе, у Smart 2 и Pro — отдельный RDT2.
         { id: "6288", name: "Радиомодуль RDT2 (868 МГц)", price: 4590, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
@@ -6813,7 +6821,11 @@ const catalog = {
         { id: "ML11025", name: "Датчик протечки воды АСТРА-361, проводной", price: 1140, brand: "ZONT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
         // Для Thermatic 1002 берём извещатель из его же линейки: шлейф у него
         // свой (вход Д1), и разветвители к нему идут из того же комплекта.
-        { id: "SMH-0002-010060", name: "Датчик протечки воды проводной", price: 1490, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "SMH-0002-010060", name: "Датчик протечки воды проводной", price: 1490, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
+        // Для MyHeat: Neptun SW005 — тот же датчик, что продаёт сам MyHeat (карточка «Нептун SW 005»).
+        // Три провода: +12–24 В, сигнал (открытый коллектор, до 50 мА), GND; до 100 м от контроллера
+        // (паспорт). Питается от контроллера, на каждый датчик — свой дискретный вход.
+        { id: "100035557500", name: "Датчик протечки воды Neptun SW005 (3 провода, 12–24 В)", price: 2999.75, brand: "Neptun", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-09-09" }
     ],
     // Диаметр берётся по вводу ХВС (штатно 3/4"), остальные — для замены.
     leak_valves: [
