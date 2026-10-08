@@ -36625,6 +36625,8 @@ const app = {
             canvas.scrollTop = py * w - (cy ?? rect.height / 2);
         };
         fit();
+        // Лист насосной группы на телефоне: подписи при «вписать» мельче читаемого, открываем с увеличением (кнопка «Вписать» вернёт целиком).
+        if (svg.querySelector('.sg-hit') && canvas.clientWidth < 700) zoom(2.4);
         if (countEl) countEl.textContent = (cur + 1) + ' / ' + list.length;
         ov.addEventListener('click', (e) => {
             const z = e.target.dataset && e.target.dataset.z;
@@ -37291,7 +37293,7 @@ const app = {
             const hot = hotOf(e.target);
             if (hot) {
                 clear();
-                {
+                if (window.matchMedia && window.matchMedia('(hover: hover)').matches) {
                     const [k0, i0] = String(hot.getAttribute('data-sg')).split(':');
                     const lab0 = this.sgLab(k0), rows0 = this.sgRows(k0, this.sgRule(lab0 && lab0.l[i0] && lab0.l[i0][0]));
                     const t = tipEl();
@@ -37332,11 +37334,12 @@ const app = {
             const hot = hotOf(e.target);
             if (!hot) return;
             e.stopPropagation();
+            hideTip();
             const [kind, i] = String(hot.getAttribute('data-sg')).split(':');
             const lab = this.sgLab(kind);
             const rows = this.sgRows(kind, this.sgRule(lab && lab.l[i] && lab.l[i][0]));
             if (!rows.length) return;
-            const fs = document.querySelector('.scheme-fullscreen, .scheme-fs-overlay');
+            const fs = document.getElementById('scheme_zoom_overlay');
             if (fs) fs.remove();
             rows[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
             rows.forEach(r => { r.classList.add('sg-row-flash'); setTimeout(() => r.classList.remove('sg-row-flash'), 1800); });
