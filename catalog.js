@@ -6657,7 +6657,32 @@ const catalog = {
         // разные по смыслу датчики (протечка и давление), нужен адресный:
         // иначе реакция «перекрыть воду» сработает и от падения давления.
         { id: "SMH-0002-010320", name: "Разветвитель контактных датчиков", price: 500, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SMH-0002-010550", name: "Разветвитель контактных датчиков адресный, RS-485", price: 1990, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "SMH-0002-010550", name: "Разветвитель контактных датчиков адресный, RS-485", price: 1990, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
+
+        // --- ZONT: автоматика на замену Thermatic (тариф «Профи», 08.10.2026) ---
+        //
+        // Контроллеры в ассортименте ТЕРЕМ (teremonline.ru/brands/zont-69059/).
+        // Climatic.V2 — тот же прибор, что STOUT Thermatic 3001 (и цена та же),
+        // поэтому весь остальной состав раздела у него общий и не дублируется.
+        // SMART 2.0 — замена Thermatic 1002 на котельных без смесительных узлов,
+        // но по-другому устроенная (паспорт ML.TD.ZHCONT.001.01): питание 12 В
+        // (блок в комплекте), одно реле 3 А/240 В (переключающее: общий/НЗ/НР),
+        // три универсальных вход/выхода «открытый коллектор» до 100 мА — любую
+        // нагрузку 220 В они включают только через промежуточное реле 12 В, а
+        // цифровую шину котла даёт адаптер, который покупается на каждый котёл.
+        // Поле zont: true — позиция бренда ZONT, участвует в таблице замен.
+        { id: "ML00007105", name: "Контроллер ZONT Climatic.V2", price: 67000, brand: "ZONT", unit: "шт", zont: true, sys: "full", availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00004479", name: "Контроллер ZONT SMART 2.0 (GSM / Wi-Fi)", price: 16430, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
+        // Адаптер цифровой шины ZONT: OpenTherm, E-Bus, BridgeNet, BSB, Navien,
+        // Wolf, Kiturami. К SMART 2.0 по цифровой шине подключается один котёл —
+        // второй только релейно (паспорт, п. 1.2).
+        { id: "ML00005505", name: "Адаптер цифровых шин универсальный ZONT (DIN)", price: 3980, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
+        // Реле, на которое выход «открытый коллектор» включает нагрузку 220 В
+        // (насос, кран протечки, котёл, привод смесителя). Модульное, на DIN-рейку.
+        { id: "ML00000291", name: "Реле промежуточное ZONT 12 В DC на DIN-рейку", price: 958, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
+        // Датчики температуры SMART 2.0: два входа NTC и шина 1-Wire до 10 штук.
+        { id: "ML00004775", name: "Датчик температуры ZONT NTC (воздух / теплоноситель)", price: 500, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00003614", name: "Термодатчик теплоносителя ZONT DS18B20 (в гильзу)", price: 950, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" }
     ],
 
     // Датчики воздуха для регулирования отопительного контура по температуре
