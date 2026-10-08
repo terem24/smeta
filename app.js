@@ -50941,28 +50941,40 @@ const app = {
     },
 
     loadFromCode: async function () {
-        let code = await app.prompt("Вставьте 6-значный код или код расчета (например, 265039 или HC-...):");
+        let code = await app.prompt("Вставьте 6-значный номер КП (можно с версией: 265039 или 265039-2) или код расчета (HC-...):");
         if (!code) return;
 
         code = code.trim();
 
+        // Номер КП с версией («665761-1», так он написан в КП и в «Моих объектах»)
+        // в базе хранится без версии: у сметы один номер, версии лежат внутри неё.
+        const verMatch = code.match(/^(\d{6})\s*[-–—/]\s*(\d{1,3})$/);
+        if (verMatch) code = verMatch[1];
+
         // 1. ПОИСК ПО КОРОТКОМУ КОДУ В БАЗЕ (HC-... или 6-значный код)
         if (code.startsWith('HC-') || /^\d{6}$/.test(code)) {
             try {
-                // Самая ранняя строка с этим номером — смета автора. Позже под тем же
-                // номером могли появиться копии тех, кто грузил КП до этой правки, и
-                // .single() на двух строках падал с «не найдено».
-                const { data: rows, error } = await supabaseClient
-                    .from('estimates')
-                    .select('id, calc_data, user_id, users(username)')
-                    .eq('share_id', code)
-                    .order('created_at', { ascending: true })
-                    .limit(1);
-                const data = rows && rows[0];
+                // Поиск идёт через функцию базы: она сама проверяет вход и роль.
+                // Открыть чужое КП по номеру могут только владелец, администратор,
+                // менеджер и наблюдатель; остальным (монтажник, продавец) база отвечает
+                // 'foreign', саму смету не отдаёт.
+                const { data: res, error } = await supabaseClient
+                    .rpc('lookup_estimate_by_code', { p_code: code });
+                if (error) throw error;
+                const st = res && res.status;
 
-                if (error || !data) {
+                if (st === 'auth') {
+                    app.alert("🔒 Поиск КП по номеру доступен после входа в аккаунт.\n\nВойдите и повторите.");
+                    return;
+                }
+                if (st === 'foreign') {
+                    app.alert(`🔒 КП № ${code} составлено другим специалистом.\n\nОткрыть чужой расчёт по номеру нельзя. Обратитесь к тому, кто его произвёл: он может отправить вам ссылку на КП.`);
+                    return;
+                }
+                if (st !== 'ok') {
                     throw new Error("Расчет с таким кодом не найден в базе данных.");
                 }
+                const data = { id: res.id, calc_data: res.calc_data, user_id: res.user_id, users: { username: res.username } };
 
                 if (data.calc_data) {
                     let savedState = data.calc_data;
@@ -81496,8 +81508,16 @@ const app = {
                 addToBill(vSupply, totalConvCount, "На подачу в конвектор.", grpC);
                 addToBill(vReturn, totalConvCount, "На обратку из конвектора.", grpC);
 
-                addToBill(catalog.conv_parts[0], totalConvCount * 2, "Монтажная гильза.", grpC);
-                addToBill(catalog.conv_parts.find(x => x.id === "SFA-0001-001612"), totalConvCount * 2, "Переходник на резьбу 1/2.", grpC);
+                // Подключение следует трубе радиаторов (pipeType): на металлопластике аксиальная
+                // гильза с переходником не садятся — нужен пресс-переходник 16×1/2" НР, гильза не нужна.
+                const _convMp = (this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp');
+                const _convPress = _convMp ? (catalog.water_fittings_press_mp || []).find(x => x.id === 'SFP-0001-001216') : null;
+                if (_convPress) {
+                    addToBill(_convPress, totalConvCount * 2, "Пресс-переходник 16×1/2\" НР на металлопластик (гильза не нужна).", grpC);
+                } else {
+                    addToBill(catalog.conv_parts[0], totalConvCount * 2, "Монтажная гильза.", grpC);
+                    addToBill(catalog.conv_parts.find(x => x.id === "SFA-0001-001612"), totalConvCount * 2, "Переходник на резьбу 1/2.", grpC);
+                }
 
                 if (this.state.convectorType === 'scq') {
                     // Для вентиляторных
