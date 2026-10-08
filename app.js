@@ -75509,10 +75509,15 @@ const app = {
                 // артикула только когда она показывается — при включённой схеме. Иначе
                 // слитая строка «4 шт.» несла бы подпись первого из четырёх кранов.
                 // Схема выключена — строки схлопываются как раньше, подписи всё равно нет.
-                const _portSplit = !!(this.schemeOn() && (finalItem.portTag || undefined));
+                // 08.10.2026: строки одного артикула склеиваются и при включённой схеме —
+                // «Американка 3/4" — 2 шт.» в смете понятнее двух одинаковых строк. Куда
+                // какая деталь, показывает сама схема (она строится из своей конфигурации,
+                // а не из строк сметы). Пометка назначения остаётся только у строки, где
+                // она у всех слитых единиц одна и та же.
                 let existing = bill.find(x => x.id === finalItem.id &&
-                    (_portSplit ? (x.group === itemGroup && x.portTag === finalItem.portTag) : (forceMerge ? true : (x.group === itemGroup && x.name === finalItem.name))));
+                    (forceMerge ? true : (x.group === itemGroup && x.name === finalItem.name)));
                 if (existing) {
+                    if (existing.portTag !== finalItem.portTag) delete existing.portTag;
                     existing.q += finalQty;
                     existing.sum = Math.round(existing.sum + finalItem.price * finalQty);
                     if (tip && tip.includes('|||')) {
