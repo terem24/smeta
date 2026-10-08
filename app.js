@@ -8209,7 +8209,7 @@ const app = {
                 icon.innerHTML = "🔒";
             }
             if (title) title.innerHTML = "Требуется авторизация";
-            if (text) text.innerHTML = "Авторизуйтесь через Email, Google, чтобы получить доступ к этой функции.";
+            if (text) text.innerHTML = "Авторизуйтесь через Email или Яндекс ID, чтобы получить доступ к этой функции.";
             let trialBtn = document.getElementById('custom_modal_btn_trial');
             if (trialBtn) trialBtn.style.display = 'none';
             let cards = document.querySelector('.tariff-cards');
@@ -13177,24 +13177,6 @@ const app = {
         } catch (error) { app.alert("Ошибка загрузки сметы: " + error.message); }
     },
 
-    loginGoogle: async function () {
-        try {
-            const { data, error } = await supabaseClient.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin + window.location.pathname,
-                    // Без этого Google молча логинит в уже активную в браузере сессию,
-                    // не давая выбрать другой аккаунт после выхода.
-                    queryParams: { prompt: 'select_account' }
-                }
-            });
-            if (error) throw error;
-        } catch (err) {
-            console.error("Ошибка входа через Google:", err);
-            app.alert("Ошибка при входе через Google: " + getFriendlyErrorMessage(err));
-        }
-    },
-
     // Публичный идентификатор приложения из oauth.yandex.ru (не секрет).
     // Client secret лежит в секретах Edge Functions, в браузер не попадает.
     YANDEX_CLIENT_ID: 'e8247e2e9ae84d34bf56b4215e817cfc',
@@ -13640,38 +13622,6 @@ const app = {
         return code;
     },
 
-    // Для посетителей из РФ кнопки Google в окне входа нет вовсе.
-    // Иностранным пользователям окно показывается без изменений.
-    applyRuLoginRestrictions: async function () {
-        const googleBtn = document.getElementById('auth_google_btn');
-        if (!googleBtn) return;
-
-        // Служебный доступ для администратора: heatcalc.ru/?google_login=1 возвращает
-        // кнопку Google и в РФ. Флаг в sessionStorage: он переживает редирект Google
-        // (та же вкладка), но не остаётся включённым навсегда, как было бы
-        // в localStorage. Сбрасывается закрытием вкладки или ?google_login=0.
-        try {
-            // Прежняя версия хранила флаг в localStorage, то есть он оставался включённым
-            // навсегда: у всех, кто хоть раз открыл ?google_login=1, кнопка Google
-            // продолжала показываться и в РФ. Убираем этот ключ при первом же запуске.
-            localStorage.removeItem('force_google_login');
-
-            const flag = new URLSearchParams(window.location.search).get('google_login');
-            if (flag === '1') sessionStorage.setItem('force_google_login', '1');
-            if (flag === '0') sessionStorage.removeItem('force_google_login');
-        } catch (e) { }
-        if (sessionStorage.getItem('force_google_login') === '1') {
-            googleBtn.style.display = '';
-            return;
-        }
-
-        // Кнопка скрыта в разметке и появляется только если страна точно определена
-        // и это не РФ. Пока идёт определение или если геосервисы недоступны, кнопки
-        // нет: показать её пользователю из РФ хуже, чем не показать иностранцу.
-        const country = await this.detectVisitorCountry();
-        googleBtn.style.display = (country && country !== 'RU') ? '' : 'none';
-    },
-
     // Каким способом получена эта сессия: 'oauth' (Google), 'password', 'otp'
     // (Яндекс ID и ссылки из писем), 'recovery'. Берётся из поля amr токена —
     // последний по времени способ. Токен не читается — считаем, что Google,
@@ -13952,9 +13902,6 @@ const app = {
     showAuthModal: function () {
         document.getElementById('auth_modal_overlay').style.display = 'flex';
         document.body.classList.add('auth-modal-open');
-        // Посетителям из РФ показываем, что через Google можно только войти
-        // в ранее созданный аккаунт
-        this.applyRuLoginRestrictions();
         // Каждое открытие — с выбора способа (Яндекс ID / Почта), как у vc.ru
         this._authView = 'method';
         this.syncAuthChrome();
@@ -40283,7 +40230,7 @@ const app = {
             const found = (this._recognitionStorageKeys || []);
             if (root()) root().innerHTML = `<div style="color:#EF4444; padding:20px;">
                 Список читается по вашей учётной записи, а токен сессии в браузере не найден.<br>
-                Попробуйте выйти и войти заново по email или через Google.
+                Попробуйте выйти и войти заново по email или через Яндекс ID.
                 <div style="margin-top:10px; color:var(--text-sec); font-size:12px;">
                     Для диагностики: ключи хранилища — ${found.length ? found.join(', ') : 'не найдены'}.<br>
                     Вкладка «Распознавание» читает токен той же функцией — если там та же ошибка,
@@ -40559,11 +40506,11 @@ const app = {
             const root = document.getElementById('admin_recognition_root');
             // Сессии Supabase нет вовсе — так бывает после входа через Telegram
             // или когда браузер почистил хранилище. Обновление страницы тут не
-            // поможет, нужен именно вход по email или через Google.
+            // поможет, нужен именно вход по email или через Яндекс ID.
             const found = (this._recognitionStorageKeys || []);
             if (root) root.innerHTML = `<div style="color:#EF4444; padding:20px;">
                 Архив читается по вашей учётной записи, а токен сессии в браузере не найден.<br>
-                Попробуйте выйти и войти заново по email или через Google.
+                Попробуйте выйти и войти заново по email или через Яндекс ID.
                 <div style="margin-top:10px; color:var(--text-sec); font-size:12px;">
                     Для диагностики: ключи хранилища — ${found.length ? found.join(', ') : 'не найдены'}.
                 </div></div>`;
@@ -43060,7 +43007,7 @@ const app = {
             let regActivityTypes = Array.isArray(meta.activity_types) ? meta.activity_types : [];
 
             // Ограничение авторизации через Google для пользователей из РФ.
-            // Кнопки Google в окне входа в РФ нет (см. applyRuLoginRestrictions) — то есть
+            // Кнопки Google в окне входа в РФ нет (кнопка Google убрана 08.10.2026) — то есть
             // обычным путём сюда никто из России не попадёт. Но остаются VPN, устаревший
             // кэш страны и служебная ссылка ?google_login=1, и раньше такой вход считался
             // новой регистрацией: он отменялся, а учётная запись удалялась. Человек этого
