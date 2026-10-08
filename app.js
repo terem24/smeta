@@ -37182,7 +37182,7 @@ const app = {
         const title = this.SELF_KIND_TITLE[kind];
         const all = Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr => this.sgIdMatch(rule, this.sgIdOf(tr)));
         if (rule[2]) return all;
-        const own = all.filter(tr => this.sgSubTitleOf(tr).indexOf(title) >= 0);
+        const own = all.filter(tr => this.sgSubTitleOf(tr).toLowerCase().indexOf(title.toLowerCase()) >= 0);
         if (own.length) return own;
         // Смета склеивает строки одного артикула и показывает под первой (хомут, кран, ниппель бывают и в других узлах):
         // нет в подразделе группы — берём ту же позицию из соседнего подраздела, а не считаем её потерянной. Только артикулы,
