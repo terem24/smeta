@@ -14381,7 +14381,7 @@ const app = {
         if (!avatarEl || !nameEl || !tariffEl) return;
 
         const uName = this.formatShortName(tgUser) || 'Монтажник';
-        const avatarImg = tgUser.avatar_url || tgUser.photo_url;
+        const avatarImg = tgUser.avatar_url;
         avatarEl.innerHTML = avatarImg
             ? `<img src="${avatarImg}" alt="">`
             : (uName.trim().charAt(0).toUpperCase() || '·');
@@ -43142,9 +43142,10 @@ const app = {
                 ? user.user_metadata.full_name
                 : (email ? email.split('@')[0] : 'Монтажник');
             let phone = (user.user_metadata && user.user_metadata.phone) ? user.user_metadata.phone : '';
-            let avatar = (user.user_metadata && user.user_metadata.avatar_url)
-                ? user.user_metadata.avatar_url
-                : ((user.user_metadata && user.user_metadata.picture) ? user.user_metadata.picture : '');
+            // Фото из внешних сервисов берём только у Яндекса (российский сервис). Аватарки
+            // Google и Telegram не подставляем: их картинки лежат за границей, и браузер человека
+            // ходил бы за ними туда (см. allowedAvatarUrl).
+            let avatar = this.allowedAvatarUrl(user.user_metadata && user.user_metadata.avatar_url);
 
             // Доп. поля анкеты регистрации (ФИО по частям, дата рождения, регион, сфера деятельности) —
             // приходят через user_metadata только при регистрации через нашу форму (не через Google/Telegram)
@@ -51721,9 +51722,9 @@ const app = {
             nameVal = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ') || tgUser.username || "Монтажник";
             phoneVal = tgUser.phone || "";
             // avatar_url — своё фото из кабинета или аватарка Яндекса/Google;
-            // photo_url приходит только из Telegram
-            if (tgUser.avatar_url || tgUser.photo_url) {
-                avatarSrc = tgUser.avatar_url || tgUser.photo_url;
+            // photo_url (Telegram) не показываем: картинка лежит за границей
+            if (tgUser.avatar_url) {
+                avatarSrc = tgUser.avatar_url;
             }
         } else {
             // 2. Иначе проверяем ручные настройки из формы профиля
@@ -51892,18 +51893,26 @@ const app = {
         await this.setProfilePhoto(await this.providerAvatarUrl());
     },
 
+    // Какие фото разрешено показывать: свой снимок из кабинета (data:-строка) и аватарка Яндекса.
+    // Остальное (Telegram, Google и любые чужие адреса) отбрасываем: картинка лежала бы на
+    // зарубежном сервере, и браузер человека ходил бы туда за ней (политика, п. 6.3–6.4).
+    allowedAvatarUrl: function (url) {
+        const u = (typeof url === 'string') ? url : '';
+        if (u.indexOf('data:image/') === 0) return u;
+        if (/^https:\/\/avatars(\.mds)?\.yandex\.net\//.test(u)) return u;
+        return '';
+    },
+
     // Аватарка провайдера из данных уже открытой сессии — сети это не стоит: getSession
-    // читает сохранённую сессию, а Telegram отдаёт photo_url прямо в state.
+    // читает сохранённую сессию. Теперь это только Яндекс.
     providerAvatarUrl: async function () {
-        const tgUser = this.state.tgUser || {};
-        if (tgUser.photo_url) return tgUser.photo_url;
         try {
             const { data } = await supabaseClient.auth.getSession();
             const meta = (data && data.session && data.session.user && data.session.user.user_metadata) || {};
-            const url = meta.avatar_url || meta.picture || '';
             // Своё фото в метаданных аккаунта не держим — если там всё же оказалась
             // data:-строка, возвращать её как «аватарку провайдера» нельзя
-            return url.indexOf('data:') === 0 ? '' : url;
+            const url = meta.avatar_url || '';
+            return url.indexOf('data:') === 0 ? '' : this.allowedAvatarUrl(url);
         } catch (e) {
             console.warn('[profilePhoto] Не удалось прочитать аватарку провайдера:', e);
             return '';
@@ -51950,7 +51959,7 @@ const app = {
         const removeBtn = document.getElementById('profile_photo_remove_btn');
 
         const tgUser = this.state.tgUser || {};
-        const src = tgUser.avatar_url || tgUser.photo_url || '';
+        const src = tgUser.avatar_url || '';
         const isOwnPhoto = String(tgUser.avatar_url || '').indexOf('data:') === 0;
 
         if (src) {
@@ -69048,7 +69057,7 @@ const app = {
                 let isActuallyPro = this.isPro();
                 let infoHtml = '';
                 let uName = this.formatShortName(tgUser) || 'Монтажник';
-                let avatarImg = tgUser.avatar_url || tgUser.photo_url;
+                let avatarImg = tgUser.avatar_url;
                 let icon = avatarImg ? `<img src="${avatarImg}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">` : (tgUser.isGoogle ? 'G' : '👤');
 
                 if (isActuallyPro) {
