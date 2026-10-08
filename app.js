@@ -8209,7 +8209,7 @@ const app = {
                 icon.innerHTML = "🔒";
             }
             if (title) title.innerHTML = "Требуется авторизация";
-            if (text) text.innerHTML = "Авторизуйтесь через Email, Google, чтобы получить доступ к этой функции.";
+            if (text) text.innerHTML = "Авторизуйтесь через Email или Яндекс ID, чтобы получить доступ к этой функции.";
             let trialBtn = document.getElementById('custom_modal_btn_trial');
             if (trialBtn) trialBtn.style.display = 'none';
             let cards = document.querySelector('.tariff-cards');
@@ -12145,7 +12145,7 @@ const app = {
 
             // Фоллбек для локального тестирования
             if (!uRow && isLocal) {
-                uRow = { id: '0279a53c-452b-474f-8626-08be2c2b32da', account_type: 'base', email: 'dima24ba@gmail.com' };
+                uRow = { id: '0279a53c-452b-474f-8626-08be2c2b32da', account_type: 'base', email: 'kovdor24@yandex.ru' };
             }
 
             // Безопасность: если пользователь не найден в БД — не показываем ничего
@@ -12159,7 +12159,7 @@ const app = {
             // через JSON-путь, а не весь calc_data (десятки КБ на смету).
             let query = supabaseClient.from('estimates').select('id, project_name, total_sum, created_at, user_id, calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, kp_ver:calc_data->>kpVersion, cf_calc:calc_data->copiedFrom->>calc').order('created_at', { ascending: false }).limit(50);
 
-            const isAdmin = (uRow.email && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
+            const isAdmin = (uRow.email && ['kovdor24@yandex.ru'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
             // «Мои объекты» в личном кабинете — всегда только свои сметы, даже у админа:
             // чужие расчёты смотрят в админке, а кабинет принадлежит одному человеку
             if (!isAdmin || hostId !== 'cloud_list_content') {
@@ -12257,7 +12257,7 @@ const app = {
             return;
         }
 
-        const isAdmin = this._currentUserRow && ((this._currentUserRow.email && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(this._currentUserRow.email.toLowerCase())) || ['admin', 'viewer'].includes(this._currentUserRow.account_type));
+        const isAdmin = this._currentUserRow && ((this._currentUserRow.email && ['kovdor24@yandex.ru'].includes(this._currentUserRow.email.toLowerCase())) || ['admin', 'viewer'].includes(this._currentUserRow.account_type));
         const currentUserId = this._currentUserRow ? this._currentUserRow.id : null;
 
         let h = `
@@ -13119,7 +13119,7 @@ const app = {
             // Если мы не в режиме разработки, добавляем фильтр по текущему пользователю
             // (даже если RLS настроен, лишняя проверка на фронте не помешает)
             let userEmail = session ? session.user.email : (tgUser ? tgUser.email : null);
-            const isUserAdmin = (userEmail && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(userEmail.toLowerCase())) || ['admin', 'viewer'].includes(this.state.accountType) || (this.state.tgUser && ['admin', 'viewer'].includes(this.state.tgUser.account_type));
+            const isUserAdmin = (userEmail && ['kovdor24@yandex.ru'].includes(userEmail.toLowerCase())) || ['admin', 'viewer'].includes(this.state.accountType) || (this.state.tgUser && ['admin', 'viewer'].includes(this.state.tgUser.account_type));
             if (isUserAdmin) {
                 // Пропускаем фильтрацию для админа
             } else if (session) {
@@ -13175,24 +13175,6 @@ const app = {
             if (this.isMobileLayout()) this.switchMobileTab('output');
             app.alert("✅ Смета успешно загружена!");
         } catch (error) { app.alert("Ошибка загрузки сметы: " + error.message); }
-    },
-
-    loginGoogle: async function () {
-        try {
-            const { data, error } = await supabaseClient.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin + window.location.pathname,
-                    // Без этого Google молча логинит в уже активную в браузере сессию,
-                    // не давая выбрать другой аккаунт после выхода.
-                    queryParams: { prompt: 'select_account' }
-                }
-            });
-            if (error) throw error;
-        } catch (err) {
-            console.error("Ошибка входа через Google:", err);
-            app.alert("Ошибка при входе через Google: " + getFriendlyErrorMessage(err));
-        }
     },
 
     // Публичный идентификатор приложения из oauth.yandex.ru (не секрет).
@@ -13578,7 +13560,7 @@ const app = {
 
     isAdminEmail: function (email) {
         if (!email) return false;
-        return ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com']
+        return ['kovdor24@yandex.ru']
             .includes(String(email).toLowerCase().trim());
     },
 
@@ -13638,38 +13620,6 @@ const app = {
             } catch (e) { }
         }
         return code;
-    },
-
-    // Для посетителей из РФ кнопки Google в окне входа нет вовсе.
-    // Иностранным пользователям окно показывается без изменений.
-    applyRuLoginRestrictions: async function () {
-        const googleBtn = document.getElementById('auth_google_btn');
-        if (!googleBtn) return;
-
-        // Служебный доступ для администратора: heatcalc.ru/?google_login=1 возвращает
-        // кнопку Google и в РФ. Флаг в sessionStorage: он переживает редирект Google
-        // (та же вкладка), но не остаётся включённым навсегда, как было бы
-        // в localStorage. Сбрасывается закрытием вкладки или ?google_login=0.
-        try {
-            // Прежняя версия хранила флаг в localStorage, то есть он оставался включённым
-            // навсегда: у всех, кто хоть раз открыл ?google_login=1, кнопка Google
-            // продолжала показываться и в РФ. Убираем этот ключ при первом же запуске.
-            localStorage.removeItem('force_google_login');
-
-            const flag = new URLSearchParams(window.location.search).get('google_login');
-            if (flag === '1') sessionStorage.setItem('force_google_login', '1');
-            if (flag === '0') sessionStorage.removeItem('force_google_login');
-        } catch (e) { }
-        if (sessionStorage.getItem('force_google_login') === '1') {
-            googleBtn.style.display = '';
-            return;
-        }
-
-        // Кнопка скрыта в разметке и появляется только если страна точно определена
-        // и это не РФ. Пока идёт определение или если геосервисы недоступны, кнопки
-        // нет: показать её пользователю из РФ хуже, чем не показать иностранцу.
-        const country = await this.detectVisitorCountry();
-        googleBtn.style.display = (country && country !== 'RU') ? '' : 'none';
     },
 
     // Каким способом получена эта сессия: 'oauth' (Google), 'password', 'otp'
@@ -13952,9 +13902,6 @@ const app = {
     showAuthModal: function () {
         document.getElementById('auth_modal_overlay').style.display = 'flex';
         document.body.classList.add('auth-modal-open');
-        // Посетителям из РФ показываем, что через Google можно только войти
-        // в ранее созданный аккаунт
-        this.applyRuLoginRestrictions();
         // Каждое открытие — с выбора способа (Яндекс ID / Почта), как у vc.ru
         this._authView = 'method';
         this.syncAuthChrome();
@@ -19690,7 +19637,7 @@ const app = {
                 .select('id, project_name, total_sum, created_at, shared_invoice_id:calc_data->>shared_invoice_id, calc_id:calc_data->>calc_id')
                 .eq('user_id', uRow.id);
             if (estError) throw estError;
-            const isAdmin = (uRow.email && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
+            const isAdmin = (uRow.email && ['kovdor24@yandex.ru'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
 
             // Обрабатываем уведомления
             const notifications = [];
@@ -21709,7 +21656,7 @@ const app = {
         this.closeEmojiPicker();
     },
 
-    SUPER_ADMIN_EMAILS: ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'],
+    SUPER_ADMIN_EMAILS: ['kovdor24@yandex.ru'],
 
     getAdminRole: function () {
         // Локальная панель: кнопка «Менеджер» подменяет роль мимо базы, даже у
@@ -40292,7 +40239,7 @@ const app = {
             const found = (this._recognitionStorageKeys || []);
             if (root()) root().innerHTML = `<div style="color:#EF4444; padding:20px;">
                 Список читается по вашей учётной записи, а токен сессии в браузере не найден.<br>
-                Попробуйте выйти и войти заново по email или через Google.
+                Попробуйте выйти и войти заново по email или через Яндекс ID.
                 <div style="margin-top:10px; color:var(--text-sec); font-size:12px;">
                     Для диагностики: ключи хранилища — ${found.length ? found.join(', ') : 'не найдены'}.<br>
                     Вкладка «Распознавание» читает токен той же функцией — если там та же ошибка,
@@ -40568,11 +40515,11 @@ const app = {
             const root = document.getElementById('admin_recognition_root');
             // Сессии Supabase нет вовсе — так бывает после входа через Telegram
             // или когда браузер почистил хранилище. Обновление страницы тут не
-            // поможет, нужен именно вход по email или через Google.
+            // поможет, нужен именно вход по email или через Яндекс ID.
             const found = (this._recognitionStorageKeys || []);
             if (root) root.innerHTML = `<div style="color:#EF4444; padding:20px;">
                 Архив читается по вашей учётной записи, а токен сессии в браузере не найден.<br>
-                Попробуйте выйти и войти заново по email или через Google.
+                Попробуйте выйти и войти заново по email или через Яндекс ID.
                 <div style="margin-top:10px; color:var(--text-sec); font-size:12px;">
                     Для диагностики: ключи хранилища — ${found.length ? found.join(', ') : 'не найдены'}.
                 </div></div>`;
@@ -42605,15 +42552,8 @@ const app = {
         const email = document.getElementById('auth_email_input').value.trim();
         const password = document.getElementById('auth_reg_password').value.trim();
 
-        // Выбор «хочу информационные письма» запоминаем вместе с почтой: учётная запись в базе
-        // появляется только при первом входе, и тогда выбор уходит в базу (flushPendingMailConsent).
-        // Привязка к почте нужна, чтобы чужой выбор не лёг на следующего, кто войдёт с этого устройства.
-        try {
-            const mailChk = document.getElementById('chk_mail_consent');
-            localStorage.setItem('hc_pending_mail_consent', JSON.stringify({
-                email: email.toLowerCase(), v: !!(mailChk && mailChk.checked), t: Date.now()
-            }));
-        } catch (e) { /* без localStorage согласие просто не запомнится, включить можно в кабинете */ }
+        // Галочки «информационные письма» в форме больше нет: согласие остаётся «не отвечал»
+        // (null), включить его можно в кабинете. flushPendingMailConsent без записи ничего не делает.
 
         const authErrEl = document.getElementById('auth_error_msg');
         if (authErrEl) authErrEl.style.display = 'none';
@@ -42705,10 +42645,7 @@ const app = {
 
             // Логика блокировки: Если emailExists === true
             if (emailExists === true) {
-                if (authErrEl) {
-                    authErrEl.innerText = 'Пользователь с таким email уже существует. Пожалуйста, войдите в систему.';
-                    authErrEl.style.display = 'block';
-                }
+                if (authErrEl) this.showEmailExistsHint(authErrEl, email);
                 if (btn) {
                     btn.disabled = false;
                     btn.innerText = 'Зарегистрироваться';
@@ -42909,19 +42846,60 @@ const app = {
             const friendlyErr = getFriendlyErrorMessage(err);
             if (authErrEl) {
                 const msg = (err.message || "").toLowerCase();
+                this.backToAuthMain(); // Возвращаем к форме, чтобы пользователь видел ошибку
                 if (msg.includes('already registered') || msg.includes('already exists')) {
-                    authErrEl.innerText = 'Пользователь с таким email уже существует. Пожалуйста, войдите в систему.';
+                    this.showEmailExistsHint(authErrEl, email);
                 } else {
                     authErrEl.innerText = 'Ошибка регистрации: ' + friendlyErr;
+                    authErrEl.style.display = 'block';
                 }
-                authErrEl.style.display = 'block';
-                this.backToAuthMain(); // Возвращаем к форме, чтобы пользователь видел ошибку
             } else {
                 app.alert('Ошибка регистрации: ' + friendlyErr);
             }
         } finally {
             if (btn) { btn.disabled = false; btn.innerText = 'Подтвердить'; }
         }
+    },
+
+    // Почта уже зарегистрирована: вместо тупика «войдите» даём два выхода сразу в окне регистрации —
+    // перейти ко входу с этой почтой или выслать на неё ссылку для нового пароля.
+    showEmailExistsHint: function (el, email) {
+        if (!el) return;
+        el.innerHTML = '';
+        const text = document.createElement('div');
+        text.textContent = 'Пользователь с таким email уже существует.';
+        el.appendChild(text);
+        const row = document.createElement('div');
+        row.style.cssText = 'margin-top:6px; display:flex; gap:14px; flex-wrap:wrap;';
+        const mk = (label, fn) => {
+            const a = document.createElement('a');
+            a.href = '#';
+            a.textContent = label;
+            a.style.cssText = 'color: var(--primary); font-weight: 600; text-decoration: none;';
+            a.onclick = (e) => { e.preventDefault(); fn(a); };
+            return a;
+        };
+        row.appendChild(mk('Войти', () => {
+            el.style.display = 'none';
+            this.switchAuthTab('login');
+        }));
+        row.appendChild(mk('Выслать пароль на почту', async (a) => {
+            a.style.pointerEvents = 'none';
+            a.textContent = 'Отправка...';
+            try {
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+                if (error) throw error;
+                el.style.color = 'var(--text-sec)';
+                el.textContent = 'Письмо со ссылкой для нового пароля отправлено на ' + email + '. Проверьте также «Спам».';
+            } catch (err) {
+                a.style.pointerEvents = '';
+                a.textContent = 'Выслать пароль на почту';
+                app.alert('Ошибка: ' + getFriendlyErrorMessage(err));
+            }
+        }));
+        el.appendChild(row);
+        el.style.color = '#ef4444';
+        el.style.display = 'block';
     },
 
     showForgotPasswordView: function () {
@@ -43069,7 +43047,7 @@ const app = {
             let regActivityTypes = Array.isArray(meta.activity_types) ? meta.activity_types : [];
 
             // Ограничение авторизации через Google для пользователей из РФ.
-            // Кнопки Google в окне входа в РФ нет (см. applyRuLoginRestrictions) — то есть
+            // Кнопки Google в окне входа в РФ нет (кнопка Google убрана 08.10.2026) — то есть
             // обычным путём сюда никто из России не попадёт. Но остаются VPN, устаревший
             // кэш страны и служебная ссылка ?google_login=1, и раньше такой вход считался
             // новой регистрацией: он отменялся, а учётная запись удалялась. Человек этого
@@ -44057,7 +44035,7 @@ const app = {
                         authUserId: tgUser.authUserId, email: tgUser.email || email
                     });
                     app.alert('Анкета сохранена на этом устройстве, но не записалась в вашу учётную запись — ' +
-                        'на другом устройстве её придётся заполнить заново. Напишите на dima24ba@gmail.com, мы поправим.',
+                        'на другом устройстве её придётся заполнить заново. Напишите на support@heatcalc.ru, мы поправим.',
                         'Профиль сохранён не полностью');
                     return;
                 }
@@ -54486,7 +54464,7 @@ const app = {
                 demo_ends_at: "2026-06-06T00:00:00.000Z",
                 // Email нужен, чтобы на localhost сразу была видна кнопка "Админка"
                 // (она проверяет email по списку adminEmails) — без входа через реальный аккаунт
-                email: "dima24ba@gmail.com"
+                email: "kovdor24@yandex.ru"
             };
         }
         // ===================================================

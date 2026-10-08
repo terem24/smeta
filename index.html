@@ -201,7 +201,7 @@
     <script src="boiler_wall.js?v=1.0" defer></script>
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
     <script src="short_names.js?v=1.1" defer></script>
-    <script src="app.js?v=11.66" defer></script>
+    <script src="app.js?v=11.68" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -2786,18 +2786,6 @@
 
                 <div id="auth_method_view">
                     <div class="social-btn-wrapper">
-                        <!-- Google скрыт по умолчанию: показывается только тем, чья страна точно
-                             определена и это не Россия (app.applyRuLoginRestrictions). -->
-                        <button class="auth-btn-base btn-google" id="auth_google_btn" style="display: none;" onclick="app.loginGoogle()">
-                            <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                            </svg>
-                            Продолжить с Google
-                        </button>
-
                         <button class="auth-btn-base btn-google btn-yandex" onclick="app.loginYandex()">
                             <span class="yandex-logo-badge">Я</span>
                             Яндекс ID
@@ -2865,13 +2853,8 @@
                                 <input type="checkbox" id="chk_privacy" required style="width: 15px; height: 15px; cursor: pointer; flex-shrink: 0;">
                                 <span>Согласен с <a href="privacy-policy.html" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: none;">политикой обработки персональных данных</a></span>
                             </label>
-                            <!-- Необязательное и по умолчанию не отмеченное: согласие на информационные
-                                 письма (напоминания, советы, поздравления) даётся отдельно от согласия
-                                 на обработку данных. Служебные письма (коды, статусы смет) идут без него. -->
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 11.5px; color: var(--text-sec); line-height: 1.4;">
-                                <input type="checkbox" id="chk_mail_consent" style="width: 15px; height: 15px; cursor: pointer; flex-shrink: 0;">
-                                <span>Хочу получать информационные письма и напоминания (необязательно)</span>
-                            </label>
+                            <!-- Согласие на информационные письма в форме регистрации не спрашиваем:
+                                 форму не перегружаем, переключатель — в кабинете (Уведомления, #profile_mail_consent) -->
                         </div>
                     </div>
                     <div id="auth_error_msg" style="color: #ef4444; font-size: 13px; margin: 0 0 12px; display: none; text-align: left; line-height: 1.4;"></div>

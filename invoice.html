@@ -3884,7 +3884,7 @@
         // «Скидка 1С» таблицы «Тарифы» (app_settings.tariffs). Строка таблицы
         // определяется так же, как tariffAccountOfUser / tariffPlanOfUser в app.js.
         // Разделение клиентское, как и вся таблица тарифов.
-        const SUPER_ADMIN_EMAILS_1C = ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'];
+        const SUPER_ADMIN_EMAILS_1C = ['kovdor24@yandex.ru'];
         async function invoice1cAllowed() {
             const host = window.location.hostname;
             if (host === 'localhost' || host === '127.0.0.1') return true;

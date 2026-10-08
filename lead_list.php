@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 const SUPABASE_HOST = 'https://ahanbwugsmcyvrwbmtlx.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_gcMJ-PvJmKavObbnePFGZQ_O-pu5O2p';
-const OWNER_EMAILS = ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'];
+const OWNER_EMAILS = ['kovdor24@yandex.ru'];
 const MAX_ROWS = 500;
 
 function bearerToken() {
