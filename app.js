@@ -56298,6 +56298,8 @@ const app = {
             }
             // Наборы клавиш и цветов у инсталляций и у панелей смыва разные, поэтому
             // фильтры сбрасываем при любом переходе — в том числе с комплекта на панель.
+            this.state.ctrlBrandFilter = null;
+            this.state.ctrlZonesFilter = null;
             this.state.installSwapSeries = null;
             this.state.installSwapColor = null;
             this.state.installSwapMat = null;
@@ -58345,6 +58347,43 @@ const app = {
             });
         }
 
+        // Контроллер котельной: фильтр по бренду и по числу зон, и что требуется сейчас.
+        if (alts.some(a => a.ctrlRow)) {
+            const _bf = this.state.ctrlBrandFilter || 'all';
+            const _zf = this.state.ctrlZonesFilter || 'all';
+            const _need = this.ctrlNeedNow(this.thermaticConfig);
+            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _zonesBtns = [1, 2, 3, 4].map(n => `<span onclick="app.setCtrlZonesFilter('${n}')" ${_b(_zf === String(n))}>${n}+</span>`).join('');
+            const _needTxt = [
+                _need.mix ? _need.mix + ' ' + this.plural(_need.mix, 'смесительный контур', 'смесительных контура', 'смесительных контуров') : '',
+                _need.direct ? _need.direct + ' ' + this.plural(_need.direct, 'прямой контур', 'прямых контура', 'прямых контуров') : '',
+                _need.boilers ? _need.boilers + ' ' + this.plural(_need.boilers, 'котёл', 'котла', 'котлов') + ' под контроллером' : ''
+            ].filter(Boolean).join(' · ') || 'контуров с насосными группами нет';
+            _tankFiltersHtml =
+                `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
+                `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
+                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">Бренд:</span>` +
+                `<span onclick="app.setCtrlBrandFilter('STOUT')" ${_b(_bf==='STOUT')}>STOUT</span>` +
+                `<span onclick="app.setCtrlBrandFilter('ZONT')" ${_b(_bf==='ZONT')}>ZONT</span>` +
+                `<span onclick="app.setCtrlBrandFilter('all')" ${_b(_bf==='all')}>Все</span>` +
+                `</div>` +
+                `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
+                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">Смесительных контуров:</span>` +
+                _zonesBtns +
+                `<span onclick="app.setCtrlZonesFilter('fit')" ${_b(_zf==='fit')}>Хватает на мой расчёт</span>` +
+                `<span onclick="app.setCtrlZonesFilter('all')" ${_b(_zf==='all')}>Все</span>` +
+                `</div>` +
+                `<div style="font-size:12px;color:var(--text-sec);flex-basis:100%;">Сейчас в расчёте: <b>${_needTxt}</b></div>` +
+                `</div>`;
+            alts = alts.filter(a => {
+                if (!a.ctrlRow || a.id === item.id) return true;
+                if (_bf !== 'all' && String(a.brand || '').toUpperCase() !== _bf) return false;
+                if (_zf === 'fit') return !!a.fitNow;
+                if (_zf !== 'all' && (a.zoneCap || 0) < Number(_zf)) return false;
+                return true;
+            });
+        }
+
         const _tsSortField = _isTankItem ? (this._tankSwapSort || 'price') : null;
         const _tsSortOrder = _isTankItem ? (this._tankSwapSortOrder || 'asc') : null;
         const _priceArrow = _tsSortField === 'price' ? (_tsSortOrder === 'asc' ? ' ▲' : ' ▼') : '';
@@ -58789,6 +58828,10 @@ const app = {
                 let _rowCoilKw = _isTankItem ? _tankCoilKwMap[displayAlt.id] : null;
                 let _rowCoilStr = _rowCoilKw ? ` <span style="color:var(--text-sec);font-size:11px;font-weight:500;">(${_rowCoilKw} кВт)</span>` : '';
                 let _nameDisplay = displayAlt.name;
+                // Пояснение под названием серым: ему не место в самом названии — цена и так в колонке.
+                const _hintText = displayAlt.hint || alt.hint || '';
+                const _hintHtml = _hintText
+                    ? `<div style="font-size:11px;font-weight:400;color:${(displayAlt.hintWarn || alt.hintWarn) ? '#B45309' : 'var(--text-sec)'};margin-top:2px;">${_hintText}</div>` : '';
                 if (_origId0 === 'gas_boiler_auto' && alt.power != null && alt.brand !== 'Haier') {
                     const _cirStr = alt.circuits === 1 ? 'одноконтурный' : alt.circuits === 2 ? 'двухконтурный' : '';
                     _nameDisplay = `Котёл газовый, ${_cirStr} (${alt.power} кВт) ${displayAlt.name}`;
@@ -58799,7 +58842,7 @@ const app = {
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${displayAlt.id}')">
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img" style="text-align: center;">${img}</td>
-                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(displayAlt.brand || 'STOUT')}${_nameDisplay}${_rowCoilStr}${badgeHtml}</td>
+                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(displayAlt.brand || 'STOUT')}${_nameDisplay}${_rowCoilStr}${badgeHtml}${_hintHtml}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${displayAlt.brand || 'STOUT'}</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>
@@ -60265,6 +60308,7 @@ const app = {
             delete this.state.swaps[originalId];
             this.state.boilerAutoBrand = _ctrlTo.brand;
             this.state.boilerAutoZontH = !!_ctrlTo.h;
+            this.state.boilerAutoZontHModel = _ctrlTo.h ? chosenId : null;   // конкретная модель H, выбранная в таблице
             this.logEquipmentSwap(originalId, chosenId);
             this.closeSwapModal();
             this.setBoilerAutoLevel(_ctrlTo.lvl === _byBill ? 'auto' : _ctrlTo.lvl);   // внутри syncUI + render + saveState
@@ -72598,7 +72642,7 @@ const app = {
      * Универсальные выходы, занятые шлейфом протечки и датчиком давления,
      * выходами быть перестают.
      */
-    zontHFit: function (cfg) {
+    zontHFit: function (cfg, onlyId) {
         const s = this.state;
         const circuits = (cfg && cfg.circuits) || [];
         const leakOn = !!(cfg && cfg.leakQty > 0);
@@ -72627,6 +72671,7 @@ const app = {
         const fits = [];
         for (let mi = 0; mi < this.ZONT_H_MODELS.length; mi++) {
             const m = this.ZONT_H_MODELS[mi];
+            if (onlyId && m.id !== onlyId) continue;
             let R = m.relays, U = Math.max(0, m.uni - uniIn) + m.oc, relayExtra = 0, fail = '';
             const assign = [];
             for (const n of need) {
@@ -72690,7 +72735,9 @@ const app = {
      * часть нагрузок — через реле 12 В, датчики сверх комплекта — на 1-Wire.
      */
     zontHApply: function (cfg) {
-        const fit = this.zontHFit(cfg);
+        // Модель можно назвать самому в таблице замены; иначе — самая дешёвая из подходящих.
+        const _forced = this.state.boilerAutoZontHModel;
+        const fit = this.zontHFit(cfg, this.ZONT_H_MODELS.some(m => m.id === _forced) ? _forced : undefined);
         cfg.hser = fit;
         cfg.expansion = [];
         cfg.needsPsu = false;
@@ -73631,6 +73678,67 @@ const app = {
             `</div>` +
             warnText +
             `</span>`;
+    },
+
+    /**
+     * Что требуется от контроллера в расчёте сейчас — для фильтра в таблице замены.
+     * Считается по смете, а не по текущему прибору: у 1002 и SMART контуров в
+     * конфигурации нет, хотя смесители в смете могут быть.
+     */
+    ctrlNeedNow: function (cfg) {
+        const ctx = this._ctrlNeedCtx || {};
+        const mix = Math.max(0, (ctx.tQ || 0)) + ((ctx.snow && !ctx.snow.impossible) ? Math.max(1, ctx.snow.nodes || 1) : 0);
+        const direct = Math.max(0, ctx.rQ || 0);
+        return {
+            mix, direct, zones: mix + direct,
+            snow: !!(ctx.snow && !ctx.snow.impossible),
+            boilers: (cfg && cfg.wiredCount) || 0
+        };
+    },
+
+    /**
+     * Конфигурация для примерки контроллера: у 1002 и SMART своих контуров нет,
+     * поэтому контуры берутся из сметы — смесительные, затем прямые.
+     */
+    ctrlFitCfg: function (cfg) {
+        if (cfg && cfg.circuits && cfg.circuits.length) return cfg;
+        const need = this.ctrlNeedNow(cfg);
+        const circuits = [];
+        for (let i = 0; i < need.mix; i++) circuits.push({ type: 'mix', src: 'ufh' });
+        for (let i = 0; i < need.direct; i++) circuits.push({ type: 'direct', src: 'rad' });
+        circuits.forEach((x, i) => { x.name = 'КО-' + (i + 1); });
+        return Object.assign({}, cfg, { circuits });
+    },
+
+    /**
+     * Сколько зон тянет контроллер и хватит ли его на расчёт сейчас.
+     * cap — смесительных контуров (насос и привод смесителя на каждый).
+     *   Thermatic 3001 и Climatic.V2: три контура на борту, до 16 с блоками расширения;
+     *   1002 и SMART 2.0: смесительных контуров не ведут (см. getBasicAutoConfig);
+     *   серия H: выходы поделены на три на контур — floor((реле + выходы) / 3).
+     */
+    ctrlZoneInfo: function (id, cfg) {
+        const need = this.ctrlNeedNow(cfg);
+        const m = (this.ZONT_H_MODELS || []).find(x => x.id === id);
+        if (m) {
+            const cap = Math.floor((m.relays + m.uni + m.oc) / 3);
+            const fit = this.zontHFit(this.ctrlFitCfg(cfg), id);
+            return { cap, fit: !!(fit && fit.ok) && !need.snow, label: cap + ' ' + this.plural(cap, 'смесительный контур', 'смесительных контура', 'смесительных контуров') };
+        }
+        if (id === 'SMH-3001-104212' || id === 'ML00007105') {
+            return { cap: 16, fit: need.zones <= 16, label: 'до 16 контуров' };
+        }
+        // 1002 / SMART 2.0
+        return { cap: 0, fit: need.mix === 0, label: 'без смесительных контуров' };
+    },
+
+    setCtrlBrandFilter: function (val) {
+        this.state.ctrlBrandFilter = val;
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
+    setCtrlZonesFilter: function (val) {
+        this.state.ctrlZonesFilter = val;
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
     },
 
     /**
@@ -80008,6 +80116,7 @@ const app = {
             let grpAir = "2.9.2. Регулирование по воздуху";
             let grpLeak = "2.9.3. Защита от протечки";
             let grpPress = "2.9.4. Контроль давления";
+            this._ctrlNeedCtx = { rQ, tQ, snow: snowCalc };   // что просит расчёт — для таблицы замены контроллера
             let cfg = this.getThermaticConfig({ rQ, tQ, dhwPump: tankNeedsPumpGroup, boilers: selBoilers, snow: snowCalc });
             // Кладём на app, чтобы конфигурацию могли показать подсказки и
             // будущие листы проекта, не пересчитывая её заново.
@@ -80022,33 +80131,42 @@ const app = {
             // Остальные приборы идут аналогами: контроллер подбирается по составу
             // котельной, но выбор всегда можно переиграть заменой позиции —
             // она переключает уровень и марку целиком (см. selectSwapAlternative).
-            // Приборы ZONT показываются только тому, у кого активирован тариф «Профи»
-            // : остальным в таблице те же два STOUT, что и раньше.
-            const _ctrlAlts = [];
-            const _pushAlt = (lvl, brand) => {
-                if (lvl === _model && brand === _brand && !_isH) return;
-                const it = catalog.boiler_automation.find(x => x.id === this.autoCtrlModel(lvl, brand).id);
-                if (it && !_ctrlAlts.includes(it)) _ctrlAlts.push(it);
-            };
-            if (_isH) _pushAlt('full', 'zont');                        // из серии H — назад на Climatic.V2
-            _pushAlt(_model, _brand === 'zont' ? 'stout' : 'zont');   // тот же уровень, другая марка
-            _pushAlt(_model === 'basic' ? 'full' : 'basic', _brand);  // другой уровень той же марки
-            _pushAlt(_model === 'basic' ? 'full' : 'basic', _brand === 'zont' ? 'stout' : 'zont');
-            // Серия H — вариант замены, когда она и справляется с котельной, и выходит
-            // дешевле Climatic.V2 на тех же контурах. Без снеготаяния: датчику осадков
-            // у H нечем быть (нет «Входа термостата»).
-            if (!_isH && _model === 'full' && !(cfg.circuits || []).some(x => x.src === 'snow')) {
-                const _hf = this.zontHFit(cfg);
-                const _save = this.zontClimaticCost(cfg) - this.zontHCost(cfg, _hf);
-                const _hItem = _hf.ok && _save > 0 && catalog.boiler_automation.find(x => x.id === _hf.model.id);
-                if (_hItem) _ctrlAlts.unshift({ ..._hItem,
-                    name: _hItem.name + ' — дешевле Climatic.V2 на ' + Math.round(_save).toLocaleString('ru-RU') +
-                        ' ₽ вместе с реле 12 В и адаптерами' });
-            }
+            // Приборы ZONT показываются только тому, у кого активирован тариф «Профи».
+            // Каждой строке — сколько зон тянет прибор и хватит ли его на расчёт:
+            // по этим полям таблица замены фильтруется (см. openSwapModal) и пишет
+            // серую подсказку под названием. В самом названии пояснений нет.
             const _canZont = this.isPro();
-            const _altsShown = _ctrlAlts.filter(x => _canZont || !x.zont);
-            if (ctrlItem) addToBill({ ...ctrlItem, alts: _altsShown.length ? _altsShown : undefined }, 1,
-                this.getDesc('thermatic', cfg), grpAuto);
+            const _curId = ctrlItem ? ctrlItem.id : '';
+            const _fitCfg = this.ctrlFitCfg(cfg);
+            const _need = this.ctrlNeedNow(cfg);
+            const _climCost = this.zontClimaticCost(_fitCfg);
+            const _decorate = (it) => {
+                const zi = this.ctrlZoneInfo(it.id, cfg);
+                let hint = zi.label + (zi.fit ? '' : ' — на ваш расчёт не хватает');
+                const hm = (this.ZONT_H_MODELS || []).find(m => m.id === it.id);
+                if (hm && zi.fit) {
+                    const hf = this.zontHFit(_fitCfg, it.id);
+                    const d = _climCost - this.zontHCost(_fitCfg, hf);
+                    hint += ' · набор с реле 12 В и адаптерами ' + (d > 0 ? 'дешевле' : 'дороже') + ' Climatic.V2 на ' +
+                        Math.abs(Math.round(d)).toLocaleString('ru-RU') + ' ₽';
+                }
+                return { ...it, ctrlRow: true, zoneCap: zi.cap, fitNow: zi.fit, hint, hintWarn: !zi.fit };
+            };
+            const _ctrlAlts = [];
+            const _addAlt = (id) => {
+                if (id === _curId || _ctrlAlts.some(x => x.id === id)) return;
+                const it = catalog.boiler_automation.find(x => x.id === id);
+                if (it && (_canZont || !it.zont)) _ctrlAlts.push(_decorate(it));
+            };
+            ['SMH-1002-105210', 'SMH-3001-104212', 'ML00004479', 'ML00007105'].forEach(_addAlt);
+            // Серия H — когда в смете есть контуры и нет снеготаяния: датчику осадков у H
+            // нечем быть (нет «Входа термостата»).
+            if (_canZont && !_need.snow && _need.zones > 0) this.ZONT_H_MODELS.forEach(m => _addAlt(m.id));
+            if (ctrlItem) {
+                const _curDec = _decorate(ctrlItem);
+                addToBill({ ...ctrlItem, ctrlRow: true, hint: _curDec.hint, hintWarn: _curDec.hintWarn, zoneCap: _curDec.zoneCap, fitNow: true,
+                    alts: _ctrlAlts.length ? _ctrlAlts : undefined }, 1, this.getDesc('thermatic', cfg), grpAuto);
+            }
 
             // Адаптер цифровой шины базового уровня. Thermatic 1002: шина первого
             // котла встроена, поэтому покупается он только второму. ZONT SMART 2.0:

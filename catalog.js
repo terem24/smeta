@@ -6671,15 +6671,15 @@ const catalog = {
         // нагрузку 220 В они включают только через промежуточное реле 12 В, а
         // цифровую шину котла даёт адаптер, который покупается на каждый котёл.
         // Поле zont: true — позиция бренда ZONT, участвует в таблице замен.
-        { id: "ML00007105", name: "Контроллер ZONT Climatic.V2", price: 67000, brand: "ZONT", unit: "шт", zont: true, sys: "full", availability: "in_stock", price_date: "2026-10-08" },
-        { id: "ML00004479", name: "Контроллер ZONT SMART 2.0 (GSM / Wi-Fi)", price: 16430, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00007105", name: "Контроллер Climatic.V2", price: 67000, brand: "ZONT", unit: "шт", zont: true, sys: "full", availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00004479", name: "Контроллер SMART 2.0 (GSM / Wi-Fi)", price: 16430, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
         // Адаптер цифровой шины ZONT: OpenTherm, E-Bus, BridgeNet, BSB, Navien,
         // Wolf, Kiturami. К SMART 2.0 по цифровой шине подключается один котёл —
         // второй только релейно (паспорт, п. 1.2).
-        { id: "ML00005505", name: "Адаптер цифровых шин универсальный ZONT (DIN)", price: 3980, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00005505", name: "Адаптер цифровых шин универсальный (DIN)", price: 3980, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
         // Реле, на которое выход «открытый коллектор» включает нагрузку 220 В
         // (насос, кран протечки, котёл, привод смесителя). Модульное, на DIN-рейку.
-        { id: "ML00000291", name: "Реле промежуточное ZONT 12 В DC на DIN-рейку", price: 958, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00000291", name: "Реле промежуточное 12 В DC на DIN-рейку", price: 958, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
         // Датчики температуры SMART 2.0: два входа NTC и шина 1-Wire до 10 штук.
         // Универсальные контроллеры серии H (PRO.V2) — замена Climatic.V2 на
         // котельных со смесительными узлами, когда выходит дешевле (zontH: true).
@@ -6689,12 +6689,12 @@ const catalog = {
         // (четыре у H2000+) и уличный МЛ-773 идут в комплекте. Цены — zont.online
         // на 08.10.2026: в ТЕРЕМ у H700+/H1500+ PRO.V2 цена нулевая («Уведомить»).
         // Модельный ряд и клеммы — паспорт ML.TD.ZHContPRO.V2.001, стр. 10–15, 64–66.
-        { id: "ML00007752", name: "Контроллер ZONT H700+ PRO.V2", price: 22180, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
-        { id: "ML00006584", name: "Контроллер ZONT H1000+ PRO.V2", price: 28200, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
-        { id: "ML00007756", name: "Контроллер ZONT H1500+ PRO.V2", price: 30680, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
-        { id: "ML00006086", name: "Контроллер ZONT H2000+ PRO.V2", price: 44300, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
-        { id: "ML00004775", name: "Датчик температуры ZONT NTC (воздух / теплоноситель)", price: 500, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
-        { id: "ML00003614", name: "Термодатчик теплоносителя ZONT DS18B20 (в гильзу)", price: 950, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" }
+        { id: "ML00007752", name: "Контроллер H700+ PRO.V2", price: 22180, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00006584", name: "Контроллер H1000+ PRO.V2", price: 28200, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00007756", name: "Контроллер H1500+ PRO.V2", price: 30680, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00006086", name: "Контроллер H2000+ PRO.V2", price: 44300, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00004775", name: "Датчик температуры NTC (воздух / теплоноситель)", price: 500, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00003614", name: "Термодатчик теплоносителя DS18B20 (в гильзу)", price: 950, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" }
     ],
 
     // Датчики воздуха для регулирования отопительного контура по температуре
