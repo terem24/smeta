@@ -1507,11 +1507,10 @@
                     <!-- Чем греть горячую воду. Только подробный режим дома (app.syncUI):
                          электрическая мощность и лимит участка считаются там же. -->
                     <div id="blk_dhw_src"
-                        style="display:none; justify-content:space-between; align-items:center; gap:8px; border-top:1px solid #E5E7EB; padding-top:8px;">
-                        <span class="lbl" style="font-size:12px;">Чем греть</span>
-                        <div class="tabs" style="font-size:11px; flex:0 0 auto;">
-                            <div class="tab dhw-src-tab active" data-src="boiler" onclick="app.setDhwSource('boiler', event)">Бойлер от котла</div>
-                            <div class="tab dhw-src-tab" data-src="electric" onclick="app.setDhwSource('electric', event)">Электро (SEW)</div>
+                        style="display:none; border-top:1px solid #E5E7EB; padding-top:8px;">
+                        <div class="tabs" style="font-size:11px;">
+                            <div class="tab dhw-src-tab active" data-src="boiler" onclick="app.setDhwSource('boiler', event)">От котла</div>
+                            <div class="tab dhw-src-tab" data-src="electric" onclick="app.setDhwSource('electric', event)">Электро</div>
                         </div>
                     </div>
                     <div id="blk_recirc_wrap"

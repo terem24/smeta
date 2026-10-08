@@ -68068,7 +68068,7 @@ const app = {
         // Только подробный режим дома: мощность и лимит сети считаются там же.
         const blkDhwSrc = document.getElementById('blk_dhw_src');
         if (blkDhwSrc) {
-            blkDhwSrc.style.display = (this.state.detailedRooms && !this.isFlat()) ? 'flex' : 'none';
+            blkDhwSrc.style.display = (this.state.detailedRooms && !this.isFlat()) ? 'block' : 'none';
             const _src = this.dhwElectric() ? 'electric' : 'boiler';
             document.querySelectorAll('.dhw-src-tab').forEach(t => {
                 t.className = 'tab dhw-src-tab' + (t.dataset.src === _src ? ' active' : '');
