@@ -22177,7 +22177,6 @@ const app = {
     TARIFF_FEATURES: [
         { id: 'stout', group: 'Ассортимент', label: 'STOUT', locked: true, hint: 'Основа расчёта: без него смету не собрать, поэтому выключить нельзя' },
         { id: 'rommer', group: 'Ассортимент', label: 'ROMMER', hint: 'Замены позиций на ROMMER и ROMMER в поиске; без него нет и переключателя «Подешевле»' },
-        { id: 'zont', group: 'Ассортимент', label: 'ZONT', hint: 'Автоматика котельной ZONT (Climatic.V2, SMART 2.0) вместо STOUT Thermatic: варианты в таблице замены на строке контроллера. Остальные позиции ZONT в смете (датчики, блоки расширения, радиомодуль) идут всем' },
         { id: 'terem', group: 'Ассортимент', label: 'ТЕРЕМ', hint: 'Прочие марки прайс-листа ТЕРЕМ: поиск при ручном добавлении и распознавание. Оборудование, которое подбирает сам расчёт, не затрагивается' },
         { id: 'works', group: 'Функции', label: 'Монтаж', hint: 'Монтажные работы: вкладка, сумма «Монтаж» в шапке, работы в печати, Excel, ссылке клиенту и счёте, расценки «Прайс» в кабинете' },
         { id: 'analog', group: 'Функции', label: 'Подешевле', hint: 'Вторая смета подешевле: переключатель «Подешевле» в параметрах и в заголовках разделов сметы, вкладка «Почему дешевле». Выключен — переключателя не видно' },
@@ -22202,8 +22201,6 @@ const app = {
         const pro = plan === 'pro';
         if (feature === 'stout' || feature === 'terem') return 'on';
         if (feature === 'rommer') return pro ? 'on' : 'off';
-        // Замена автоматики STOUT на ZONT — «Профи» (решение владельца 08.10.2026)
-        if (feature === 'zont') return pro ? 'on' : 'off';
         // «Аналог» раньше шёл вместе с ROMMER — исходно так же, Профи.
         if (feature === 'analog') return pro ? 'on' : 'off';
         if (feature === 'recognize') return pro ? 'list' : 'off';
@@ -60355,12 +60352,8 @@ const app = {
         };
         const _ctrlFrom = _ctrlOf(originalId), _ctrlTo = _ctrlOf(chosenId);
         if (_ctrlFrom && _ctrlTo) {
-            // Автоматика ZONT — функция «ZONT» таблицы тарифов (исходно Профи).
-            if (_ctrlTo.brand === 'zont' && this.tariffAccess('zont') !== 'on') {
-                if (!this.isPro() && this.tariffCell(this.tariffAccount(), 'pro', 'zont') === 'on') this.showModal('pro');
-                else app.alert('Автоматика ZONT для вашей учётной записи не подключена.');
-                return;
-            }
+            // Автоматика ZONT — ассортимент тарифа «Профи».
+            if (_ctrlTo.brand === 'zont' && !this.isPro()) { this.showModal('pro'); return; }
             const _byBill = this.boilerAutoModel({ tQ: this.tQ_val, snow: this.snowCalc }, true);
             delete this.state.swaps[originalId];
             this.state.boilerAutoBrand = _ctrlTo.brand;
@@ -72621,7 +72614,7 @@ const app = {
     },
 
     /**
-     * То же самое, но на автоматике ZONT (тариф «Профи», функция «ZONT»).
+     * То же самое, но на автоматике ZONT (ассортимент тарифа «Профи»).
      *
      * full  — Climatic.V2: прибор тот же, что Thermatic 3001 (одна плата, одна
      *         карта клемм, одна цена), поэтому состав раздела у него общий;
@@ -72638,12 +72631,11 @@ const app = {
      * Чья автоматика идёт в смету: 'zont' или 'stout'.
      *
      * Выбор хранится в state.boilerAutoBrand и меняется заменой позиции на
-     * строке контроллера. Но действует он только пока у учётки открыта функция
-     * «ZONT» в таблице тарифов: на Базовом сохранённая смета с ZONT открывается
+     * строке контроллера. Но действует он только на Профи: на Базовом сохранённая смета с ZONT открывается
      * на STOUT, а не ломается.
      */
     autoBrand: function () {
-        return (this.state.boilerAutoBrand === 'zont' && this.tariffAccess('zont') === 'on') ? 'zont' : 'stout';
+        return (this.state.boilerAutoBrand === 'zont' && this.isPro()) ? 'zont' : 'stout';
     },
 
     /** Прибор уровня ('full' | 'basic') выбранной марки. */
@@ -79900,8 +79892,8 @@ const app = {
             // Остальные приборы идут аналогами: контроллер подбирается по составу
             // котельной, но выбор всегда можно переиграть заменой позиции —
             // она переключает уровень и марку целиком (см. selectSwapAlternative).
-            // Приборы ZONT показываются только тому, у кого открыта функция «ZONT»
-            // (тариф «Профи»): остальным в таблице те же два STOUT, что и раньше.
+            // Приборы ZONT показываются только тому, у кого активирован тариф «Профи»
+            // : остальным в таблице те же два STOUT, что и раньше.
             const _ctrlAlts = [];
             const _pushAlt = (lvl, brand) => {
                 if (lvl === _model && brand === _brand) return;
@@ -79911,7 +79903,7 @@ const app = {
             _pushAlt(_model, _brand === 'zont' ? 'stout' : 'zont');   // тот же уровень, другая марка
             _pushAlt(_model === 'basic' ? 'full' : 'basic', _brand);  // другой уровень той же марки
             _pushAlt(_model === 'basic' ? 'full' : 'basic', _brand === 'zont' ? 'stout' : 'zont');
-            const _canZont = this.tariffAccess('zont') === 'on';
+            const _canZont = this.isPro();
             const _altsShown = _ctrlAlts.filter(x => _canZont || !x.zont);
             if (ctrlItem) addToBill({ ...ctrlItem, alts: _altsShown.length ? _altsShown : undefined }, 1,
                 this.getDesc('thermatic', cfg), grpAuto);
