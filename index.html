@@ -15,14 +15,15 @@
        «Сохранить» оказывалась под ней; visualViewport даёт реальную видимую часть и
        учитывает экранную клавиатуру. */
     (function () {
-        var vv = window.visualViewport, root = document.documentElement, raf = 0;
+        var vv = window.visualViewport, root = document.documentElement;
         function set() {
-            raf = 0;
             var h = vv ? vv.height : window.innerHeight, t = vv ? vv.offsetTop : 0;
             if (h > 0) root.style.setProperty('--vv-h', Math.round(h) + 'px');
             root.style.setProperty('--vv-top', Math.round(t) + 'px');
         }
-        function sched() { if (!raf) raf = requestAnimationFrame(set); }
+        // Напрямую, без requestAnimationFrame: во фоновых и встроенных браузерах кадры могут не идти,
+        // и высота застыла бы на старом значении
+        function sched() { set(); }
         set();
         window.addEventListener('resize', sched);
         window.addEventListener('orientationchange', function () { setTimeout(set, 300); });
