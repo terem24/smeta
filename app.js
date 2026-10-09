@@ -79676,9 +79676,13 @@ const app = {
                 const _dtPrim = Math.max(10, _tSup - 35);
                 const _gUfh = _qUfh > 0 ? _qUfh / (1.163 * _dtPrim) : 0;
                 const _gSum = _gRad + _gUfh;
-                _hydroFlow = _gSum;
+                // Стрелка пропускает большее из двух расходов: потребителей (вторичный контур) и котлового (первичный): Q / (1,163 × перепад котла).
+                // Первичный считаем только в самосборном режиме, где модель подбирается по паспорту; в готовых узлах поведение прежнее.
+                const _gPrim = (_selfG && pwr > 0) ? pwr / (1.163 * this.boilerDT()) : 0;
+                const _gCmp = Math.max(_gSum, _gPrim);
+                _hydroFlow = _gCmp;
                 _hydroWarn = (_gLim) => {
-                if (_gSum > _gLim && !_bufSep) {
+                if (_gCmp > _gLim && !_bufSep) {
                     this.groupWarns = this.groupWarns || {};
                     const _f = (v) => v.toFixed(2).replace('.', ',');
                     // Совет по ситуации: перепад радиаторов уже 20 K — предлагать его
@@ -79687,7 +79691,7 @@ const app = {
                         ? `перейти на режим радиаторов 80/60 (перепад 20 K вдвое снижает расход) или заменить узел на гидрострелку большего типоразмера.`
                         : `заменить узел на гидрострелку большего типоразмера (модульная схема DN32) — режим радиаторов уже с перепадом 20 K.`;
                     this.groupWarns[grpHydro] = this.noteBox('warn', 'Расход больше паспорта гидрострелки.',
-                        `${_f(_gSum)} м³/ч при пределе ${_f(_gLim)} м³/ч.`,
+                        `${_f(_gCmp)} м³/ч при пределе ${_f(_gLim)} м³/ч.`,
                         `<div class="tip-p">Радиаторы ${_f(_gRad)} м³/ч (G = Q / (1,163 × ${this.radDT()} K))` +
                         (_gUfh > 0 ? `, тёплый пол ${_f(_gUfh)} м³/ч по первичной стороне узла подмеса (${_f(_qUfh)} кВт / (1,163 × ${_dtPrim} K: подача ${_tSup} °C, обратка пола 35 °C))` : '') +
                         `. Выше паспортного расхода разделение контуров работает хуже и растёт шум.</div>` +
@@ -79747,6 +79751,12 @@ const app = {
                 if (!_bufSep && _gdPress) {
                     // GRSS-PF: пресс на всех четырёх концах. Котловая магистраль идёт своим диаметром — если он не равен диаметру стрелки, нужны переходные муфты.
                     const _mainD = boilerSizes(selBoilers).main;
+                    // Стрелка крупнее коллектора (не хватило паспорта 28 мм): со стороны коллектора тоже переход.
+                    if (_gdPick && _gdPick.d > _D) {
+                        const _redC = this.ssItem(catalog.ss_coupling_red, 'RSS-1018-00' + _gdPick.d + _D);
+                        if (_redC) addToBill({ ..._redC, originalId: _redC.id + '_coll', sortRank: -3 }, 2,
+                            `Переходная муфта пресс ${_gdPick.d}×${_D}: коллектор ${_D} мм к гидрострелке под пресс ${_gdPick.d} мм (модель подобрана по расходу). Требуется: 2 шт.`, grpHydro);
+                    }
                     if (_mainD !== _D) {
                         const _pd = (_gdPick && _gdPick.d) || _D;
                         const _hi = Math.max(_pd, _mainD), _lo = Math.min(_pd, _mainD);
