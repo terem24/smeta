@@ -14421,7 +14421,7 @@ const app = {
         if (!avatarEl || !nameEl || !tariffEl) return;
 
         const uName = this.formatShortName(tgUser) || 'Монтажник';
-        const avatarImg = tgUser.avatar_url;
+        const avatarImg = this.ownAvatarSrc(tgUser);
         avatarEl.innerHTML = avatarImg
             ? `<img src="${avatarImg}" alt="">`
             : (uName.trim().charAt(0).toUpperCase() || '·');
@@ -51749,9 +51749,7 @@ const app = {
             phoneVal = tgUser.phone || "";
             // avatar_url — своё фото из кабинета или аватарка Яндекса/Google;
             // photo_url (Telegram) не показываем: картинка лежит за границей
-            if (tgUser.avatar_url) {
-                avatarSrc = tgUser.avatar_url;
-            }
+            avatarSrc = this.ownAvatarSrc(tgUser) || null;
         } else {
             // 2. Иначе проверяем ручные настройки из формы профиля
             const manualLastName = document.getElementById('profile_last_name_input')?.value || "";
@@ -51976,6 +51974,23 @@ const app = {
         }
     },
 
+    // Что показать в кружке у самого человека: своё фото или выбранный рисунок, а если ничего
+    // не выбрано — рисунок по умолчанию из анкеты (пол, сфера, регион, бренд, ТЕРЕМ), как в админке.
+    // Рисунок по умолчанию только рисуется, в users.avatar_url не пишется. Не вошёл — пусто.
+    ownAvatarSrc: function (tgUser) {
+        if (!tgUser) return '';
+        if (tgUser.avatar_url) return tgUser.avatar_url;
+        if (!window.Avatars || !(tgUser.authUserId || tgUser.email)) return '';
+        return Avatars.defaultFor({
+            id: tgUser.authUserId || tgUser.email,
+            last_name: tgUser.lastName, first_name: tgUser.givenName, middle_name: tgUser.middleName,
+            region: tgUser.region, city: tgUser.city,
+            activity_types: tgUser.activityTypes || tgUser.activity_types || [],
+            brandPref: this.state.brandMode === 'rommer' ? 'rommer' : 'stout',
+            inTerem: this.isUserInTerem({ email: tgUser.email, work_email: this._myWorkEmail })
+        });
+    },
+
     // ── Выбор аватарки из набора ──
     // Рисунок собирает avatars.js (пол, сфера, значок региона). Сохраняется так же, как своё фото:
     // data:-строкой в users.avatar_url — отдельного поля и миграции не нужно.
@@ -52056,7 +52071,7 @@ const app = {
         const removeBtn = document.getElementById('profile_photo_remove_btn');
 
         const tgUser = this.state.tgUser || {};
-        const src = tgUser.avatar_url || '';
+        const src = this.ownAvatarSrc(tgUser);
         const isOwnPhoto = String(tgUser.avatar_url || '').indexOf('data:') === 0;
 
         if (src) {
@@ -69215,7 +69230,7 @@ const app = {
                 let isActuallyPro = this.isPro();
                 let infoHtml = '';
                 let uName = this.formatShortName(tgUser) || 'Монтажник';
-                let avatarImg = tgUser.avatar_url;
+                let avatarImg = this.ownAvatarSrc(tgUser);
                 let icon = avatarImg ? `<img src="${avatarImg}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">` : (tgUser.isGoogle ? 'G' : '👤');
 
                 if (isActuallyPro) {
