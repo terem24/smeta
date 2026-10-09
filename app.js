@@ -59394,6 +59394,10 @@ const app = {
                 if (this.selfGroupKindOfReady(displayAlt.id)) {
                     const _sp = String(displayAlt.name).split(' - ');
                     if (_sp.length === 2) _nameDisplay = `${_sp[0]}<div style="font-size:12px;font-weight:500;color:var(--text-sec);margin-top:2px;">${_sp[1]}</div>`;
+                } else if (/^(SDG-001[678]|SDG-0120|RDG-0120)/.test(String(displayAlt.id)) && String(displayAlt.name).length > 38) {
+                    // Коллекторы и узлы подмеса: «Стальной распределительный коллектор DN25 (3 насосных группы)» → название и серая вторая строка.
+                    const _pm = String(displayAlt.name).match(/^(.*\S)\s+\(([^()]+)\)$/);
+                    if (_pm) _nameDisplay = `${_pm[1]}<div style="font-size:12px;font-weight:500;color:var(--text-sec);margin-top:2px;">${_pm[2]}</div>`;
                 }
                 // Пояснение под названием серым: ему не место в самом названии — цена и так в колонке.
                 const _hintText = displayAlt.hint || alt.hint || '';
@@ -59426,6 +59430,7 @@ const app = {
                 const _sgLbl = { direct: 'прямая', thermo: 'термостатическая', servo: 'под сервопривод' }[_sgKind];
                 const _sgSelf = Math.round(this.selfGroupPrice(_sgKind, { noPump: true }));
                 const _sgReady = Math.round(this.readyGroupPrice(_sgKind, { noPump: true, noNodes: true }));
+                const _sgReadyKit = Math.round(this.readyGroupPrice(_sgKind, { noPump: true }));
                 const _sgD = _sgReady > 0 ? Math.round((_sgSelf - _sgReady) / _sgReady * 100) : 0;
                 const _sgC = _sgD > 0 ? '#ef4444' : (_sgD < 0 ? '#16a34a' : 'var(--text-sec)');
                 const _sgAvail = this.selfGroupsAvailable();
@@ -59452,7 +59457,7 @@ const app = {
                     <tr style="cursor: pointer;" onclick="app.applySelfBuiltFromSwap('${_sgKind}', event)">
                         <td class="col-idx"></td>
                         <td class="col-img" style="text-align:center;">${_sgIcon}</td>
-                        <td class="col-name" style="font-size: 14px; font-weight: 600; text-align: left;">Самосборная: ${_sgLbl}<div style="font-size:12px;font-weight:400;color:var(--text-sec);margin-top:2px;">${_sgCmp}.<br>Без насоса. Готовая группа: ${this.formatPriceHtml(_sgReady, true)}${_sgNote ? '<br><b>' + _sgNote + '</b>' : ''}${_sgParts}</div></td>
+                        <td class="col-name" style="font-size: 14px; font-weight: 600; text-align: left;">Самосборная: ${_sgLbl}<div style="font-size:12px;font-weight:400;color:var(--text-sec);margin-top:2px;">${_sgCmp}.<br>Без насоса. Готовая группа: ${this.formatPriceHtml(_sgReady, true)}, с узлами МУ-25М: ${this.formatPriceHtml(_sgReadyKit, true)}${_sgNote ? '<br><b>' + _sgNote + '</b>' : ''}${_sgParts}</div></td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">STOUT / ROMMER</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px; color:${_sgC};">${_sgD > 0 ? '+' : ''}${_sgD}%</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${this.formatPriceHtml(_sgSelf, true)}</td>
