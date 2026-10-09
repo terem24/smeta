@@ -56,7 +56,13 @@ function supabaseProxyFetchRaw(input, init) {
     // Через прокси её пускаем по той же причине, что и основной адрес: иначе
     // проверка шла бы в других условиях, чем работа, и «вход не работает» на
     // копии значило бы не то же самое, что на сайте.
-    const canProxy = (host === 'heatcalc.ru' || host === 'www.heatcalc.ru' || host === 'new.heatcalc.ru');
+    // Приложение для Android открывает страницу с https://localhost и до этого ходило
+    // в базу напрямую: у части провайдеров supabase.co не открывается, и вкладки
+    // админки висели до обрыва по времени («AbortError: signal is aborted…»).
+    // Его тоже пускаем через прокси — как сам сайт. Локальную разработку
+    // (http://localhost:8080) это не задевает: у неё протокол http.
+    const inApp = !!window.__HC_NATIVE__ || (host === 'localhost' && window.location.protocol === 'https:');
+    const canProxy = inApp || (host === 'heatcalc.ru' || host === 'www.heatcalc.ru' || host === 'new.heatcalc.ru');
     const url = typeof input === 'string' ? input : input.url;
     if (canProxy && url.startsWith(supabaseUrl)) {
         return fetch('https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(supabaseUrl.length)), init);
