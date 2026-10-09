@@ -19807,3 +19807,21 @@ body.profile-incomplete-lock #lk_search,
 body.profile-incomplete-lock .lk-rail-item:not([data-rail]):not(.lk-rail-logout) { display: none !important; }
 
 #profile_modal_overlay .auth-input[readonly] { opacity: .7; cursor: default; }
+
+/* Итоги в шапке в темах «Профи», бренда и магазина: без «светофора» (синий/красный/зелёный).
+   Оборудование и монтаж — обычный цвет текста темы, «Мне» — акцент темы. */
+body.theme-yandex #anim_eq_sum,
+body.theme-yandex #anim_works_sum,
+body.theme-yandex .m-total-eq span,
+body.theme-yandex .m-total-work span,
+body.theme-brand #anim_eq_sum,
+body.theme-brand #anim_works_sum,
+body.theme-brand .m-total-eq span,
+body.theme-brand .m-total-work span,
+body.theme-shop #anim_eq_sum,
+body.theme-shop #anim_works_sum,
+body.theme-shop .m-total-eq span,
+body.theme-shop .m-total-work span { color: var(--text-main) !important; }
+body.theme-yandex #hdr_margin_sum,
+body.theme-brand #hdr_margin_sum,
+body.theme-shop #hdr_margin_sum { color: var(--primary) !important; }
