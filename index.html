@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Калькулятор отопления частного дома — расчёт и смета онлайн | HeatCalc.ru</title>
-    <meta name="description" content="Онлайн-калькулятор отопления частного дома: расчёт теплопотерь по СП, подбор котла, радиаторов и труб STOUT, ROMMER, Haier, готовая смета и КП в PDF. Бесплатно, без установки.">
+    <title>Калькулятор отопления частного дома онлайн: расчёт, стоимость и смета | HeatCalc.ru</title>
+    <meta name="description" content="Онлайн-калькулятор отопления частного дома: теплопотери по СП, подбор котла, радиаторов и труб, стоимость и смета с КП в PDF. Бесплатно, без установки. Хозяину дома: цена отопления под ключ за минуту.">
     <link rel="canonical" href="https://heatcalc.ru/">
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
     <meta name="format-detection" content="telephone=no">
@@ -36,7 +36,7 @@
     <meta property="og:site_name" content="HeatCalc.ru">
     <meta property="og:locale" content="ru_RU">
     <meta property="og:url" content="https://heatcalc.ru/">
-    <meta property="og:title" content="Калькулятор отопления частного дома — расчёт и смета онлайн">
+    <meta property="og:title" content="Калькулятор отопления частного дома онлайн: расчёт, стоимость и смета">
     <meta property="og:description" content="Расчёт теплопотерь, подбор котла и оборудования STOUT, ROMMER, Haier, готовая смета и коммерческое предложение в PDF. Для монтажников и инженеров.">
     <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
     <meta property="og:image:width" content="1200">
@@ -417,6 +417,14 @@
                 поэтому смета собирается сразу из того, что можно купить.
             </p>
 
+            <h2 style="font-size: 21px; font-weight: 700; margin: 28px 0 12px;">Хозяину дома: сколько стоит отопление под ключ</h2>
+            <p style="margin: 0 0 24px;">
+                Если вы не монтажник, а строите или отапливаете свой дом, цену под ключ покажет страница
+                <a href="/dom/">«Калькулятор стоимости отопления частного дома»</a>: семь вопросов, около минуты, три
+                комплектации с ценой оборудования и монтажа. Для дома 150 м² в Санкт-Петербурге (газ, радиаторы,
+                один этаж) выходит от 490 тыс. до 2,30 млн ₽ в зависимости от комплектации.
+            </p>
+
             <h2 style="font-size: 21px; font-weight: 700; margin: 28px 0 12px;">Сколько стоит</h2>
             <p style="margin: 0 0 24px;">
                 Тариф <strong>«Базовый»</strong> бесплатный и бессрочный: расчёт, подбор
@@ -706,6 +714,35 @@
     <!-- Плашка «Вас пригласил магазин …» — появляется, когда сайт открыт по ссылке
          менеджера (?ref=КОД). Наполняет app.showInviteBanner. -->
     <div id="invite_banner" class="no-print" style="display: none;"></div>
+    <!-- Плашка хозяину дома: люди приходят с поисковых запросов про стоимость отопления, а на главной калькулятор
+         для монтажника. Показывается гостю без кода магазина; закрытие помнится. Ссылка с ?src=home: заявка
+         с /dom/ покажет, что человек пришёл отсюда. -->
+    <div id="homeowner_hint" class="no-print" style="display: none; margin: 0 20px 10px;">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px 14px; background:var(--primary-light); border:1px solid var(--border); border-radius:12px; padding:10px 14px;">
+            <span style="font-size:13px; color:var(--text-main); text-align:center;">Вы хозяин дома, а не монтажник? Узнайте цену отопления под ключ за минуту, без регистрации.</span>
+            <a href="/dom/?src=home" style="font-size:12.5px; font-weight:700; padding:7px 14px; border-radius:8px; background:var(--primary); color:#fff; text-decoration:none;">Узнать цену</a>
+            <button type="button" id="homeowner_hint_close" title="Скрыть" style="font:inherit; font-size:18px; line-height:1; padding:2px 6px; border:none; background:transparent; color:var(--text-sec); cursor:pointer;">×</button>
+        </div>
+    </div>
+    <script>
+        (function () {
+            try {
+                var box = document.getElementById('homeowner_hint');
+                if (!box) return;
+                var q = location.search;
+                // пришёл регистрироваться по коду магазина или ссылкой менеджера — подсказка не нужна
+                if (/[?&](ref|promo|reg|opros)=/.test(q)) return;
+                if (localStorage.getItem('hc_dom_hint') === 'off') return;
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                if (saved && saved.tgUser && (saved.tgUser.id || saved.tgUser.authUserId || saved.tgUser.email)) return;
+                box.style.display = 'block';
+                document.getElementById('homeowner_hint_close').onclick = function () {
+                    box.style.display = 'none';
+                    try { localStorage.setItem('hc_dom_hint', 'off'); } catch (e) { }
+                };
+            } catch (e) { }
+        })();
+    </script>
     <div class="container">
         <!-- ЛЕВАЯ ПАНЕЛЬ ЛИЧНОГО КАБИНЕТА (только широкий экран, от 1025 px).
              Зачем: до неё в кабинет вёл единственный вход — клик по собственному
