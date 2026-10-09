@@ -26302,7 +26302,7 @@ const app = {
                 lastVis = '⚠ ' + lastVis;
                 lastVisTitle += ' — время из будущего: на устройстве пользователя сбиты часы';
             }
-            let avatarImg = u.avatar_url ? `<img src="${u.avatar_url}" style="width:32px; height:32px; border-radius:50%; vertical-align:middle; margin-right:10px; object-fit:cover; border:1px solid #E5E7EB;">` : `<span style="font-size:24px; vertical-align:middle; margin-right:10px;">👤</span>`;
+            let avatarImg = `<img src="${(window.Avatars ? Avatars.forUser(u) : u.avatar_url) || ''}" alt="" style="width:36px; height:36px; border-radius:50%; vertical-align:middle; margin-right:10px; object-fit:cover; border:1px solid #E5E7EB;">`;
 
             let cityText = u.city || 'Город не указан';
             let ipLoc = u.location || 'Неизвестно';
@@ -38167,7 +38167,7 @@ const app = {
                     <button class="btn-header-blue" style="margin-bottom: 20px; width: fit-content;" onclick="app.renderAdminMain()">← Назад</button>
                     <div style="background: var(--surface-light); padding: 25px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 30px;">
                         <div style="display:flex; align-items:center; gap:20px; margin-bottom:25px; flex-wrap:wrap;">
-                            ${user.avatar_url ? `<img src="${user.avatar_url}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);">` : `<div style="width:80px; height:80px; border-radius:50%; background:var(--primary-light); display:flex; align-items:center; justify-content:center; font-size:40px; color:var(--primary);">👤</div>`}
+                            ${(user.avatar_url || window.Avatars) ? `<img src="${window.Avatars ? Avatars.forUser(user) : user.avatar_url}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);">` : `<div style="width:80px; height:80px; border-radius:50%; background:var(--primary-light); display:flex; align-items:center; justify-content:center; font-size:40px; color:var(--primary);">👤</div>`}
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; width: 100%; flex-wrap: wrap;">
                                 <div class="user-main-contacts" style="min-width:0;">
                                     <h2 style="margin: 0; color: var(--text-main); font-size: 20px; overflow-wrap: anywhere;">${[user.last_name, user.first_name, user.middle_name].filter(Boolean).join(' ') || user.username || user.email || 'Без имени'}</h2>
@@ -51943,6 +51943,74 @@ const app = {
             console.error('[profilePhoto] Не удалось сохранить фото в облако:', e);
             app.alert('Фото сохранено на этом устройстве, но до облака не дошло. На других устройствах оно появится, когда связь восстановится.');
         }
+    },
+
+    // ── Выбор аватарки из набора ──
+    // Рисунок собирает avatars.js (пол, сфера, значок региона). Сохраняется так же, как своё фото:
+    // data:-строкой в users.avatar_url — отдельного поля и миграции не нужно.
+    openAvatarPicker: function () {
+        if (!window.Avatars) { app.alert('Набор аватарок ещё загружается, попробуйте через секунду.'); return; }
+        const tgUser = this.state.tgUser;
+        if (!tgUser) { app.alert('Войдите в аккаунт, чтобы выбрать аватар.'); return; }
+        const pick = {
+            g: Avatars.guessGender({ first_name: tgUser.firstName || tgUser.first_name, middle_name: tgUser.middleName || tgUser.middle_name }),
+            role: Avatars.guessRole({ activity_types: tgUser.activityTypes || tgUser.activity_types || [] }),
+            emb: Avatars.guessEmblem({ region: tgUser.region, city: tgUser.city }),
+            hair: 0,
+            seed: String(tgUser.authUserId || tgUser.email || tgUser.username || 'me')
+        };
+        this._avatarPick = pick;
+        let box = document.getElementById('avatar_picker_overlay');
+        if (box) box.remove();
+        box = document.createElement('div');
+        box.id = 'avatar_picker_overlay';
+        box.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:100000; display:flex; align-items:center; justify-content:center; padding:16px;';
+        box.onclick = (e) => { if (e.target === box) box.remove(); };
+        box.innerHTML = '<div style="background:var(--card-bg,#fff); color:var(--text-main,#222); border-radius:16px; padding:20px; width:100%; max-width:380px; max-height:92vh; overflow:auto; box-shadow:0 12px 40px rgba(0,0,0,.3);">'
+            + '<div style="font-size:17px; font-weight:700; margin-bottom:12px;">Выбор аватара</div>'
+            + '<div style="text-align:center; margin-bottom:14px;"><img id="avatar_picker_preview" alt="" style="width:120px; height:120px; border-radius:50%; border:2px solid var(--primary,#FF6A00);"></div>'
+            + '<div id="avatar_picker_body"></div>'
+            + '<div style="display:flex; gap:8px; margin-top:16px;">'
+            + '<button type="button" class="lk-btn-sm" style="flex:1;" onclick="app.closeAvatarPicker()">Отмена</button>'
+            + '<button type="button" class="lk-btn-sm" style="flex:1; background:var(--primary,#FF6A00); color:#fff;" onclick="app.saveAvatarPick()">Сохранить</button>'
+            + '</div></div>';
+        document.body.appendChild(box);
+        this.renderAvatarPicker();
+    },
+
+    renderAvatarPicker: function () {
+        const p = this._avatarPick;
+        const body = document.getElementById('avatar_picker_body');
+        if (!p || !body) return;
+        const chip = (active, label, js) => `<button type="button" onclick="${js}" style="padding:6px 12px; border-radius:999px; border:1px solid ${active ? 'var(--primary,#FF6A00)' : 'var(--border,#ddd)'}; background:${active ? 'var(--primary,#FF6A00)' : 'transparent'}; color:${active ? '#fff' : 'inherit'}; font-size:13px; cursor:pointer;">${label}</button>`;
+        const row = (title, inner) => `<div style="margin-bottom:12px;"><div style="font-size:12px; color:var(--text-sec,#777); margin-bottom:6px;">${title}</div><div style="display:flex; flex-wrap:wrap; gap:6px;">${inner}</div></div>`;
+        const thumb = (o, active, js) => `<img src="${Avatars.dataUri(Object.assign({}, p, o))}" alt="" onclick="${js}" style="width:46px; height:46px; border-radius:50%; cursor:pointer; border:2px solid ${active ? 'var(--primary,#FF6A00)' : 'transparent'};">`;
+        let html = row('Пол', chip(p.g === 'm', 'Мужской', "app.setAvatarPick('g','m')") + chip(p.g === 'f', 'Женский', "app.setAvatarPick('g','f')"));
+        html += row('Чем занимаетесь', chip(p.role === 'installer', 'Монтажник отопления', "app.setAvatarPick('role','installer')") + chip(p.role === 'seller', 'Продавец', "app.setAvatarPick('role','seller')"));
+        html += row('Причёска', [0, 1, 2].map(i => thumb({ hair: i }, p.hair === i, `app.setAvatarPick('hair',${i})`)).join(''));
+        html += row('Регион (значок в углу)', Avatars.EMBLEMS.map(e => thumb({ emb: e.id }, p.emb === e.id, `app.setAvatarPick('emb','${e.id}')`).replace('<img ', `<img title="${e.label}" `)).join(''));
+        body.innerHTML = html;
+        const prev = document.getElementById('avatar_picker_preview');
+        if (prev) prev.src = Avatars.dataUri(p);
+    },
+
+    closeAvatarPicker: function () {
+        const box = document.getElementById('avatar_picker_overlay');
+        if (box) box.remove();
+    },
+
+    setAvatarPick: function (key, val) {
+        if (!this._avatarPick) return;
+        this._avatarPick[key] = val;
+        this.renderAvatarPicker();
+    },
+
+    saveAvatarPick: async function () {
+        const p = this._avatarPick;
+        const box = document.getElementById('avatar_picker_overlay');
+        if (!p || !window.Avatars) return;
+        if (box) box.remove();
+        await this.setProfilePhoto(Avatars.dataUri(p));
     },
 
     // Кружок с фото и кнопки в разделе «Профиль»
