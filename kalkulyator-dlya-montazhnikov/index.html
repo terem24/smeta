@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор отопления для монтажника: как получить доступ к HeatCalc</title>
+    <meta name="description" content="HeatCalc — калькулятор отопления для монтажников: теплопотери, подбор котла и оборудования, смета и КП клиенту. Доступ по промокоду GEO или коду магазина-партнёра. Базовый тариф бесплатный.">
+    <link rel="canonical" href="https://heatcalc.ru/kalkulyator-dlya-montazhnikov/">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <!-- Тот же шрифт, что в калькуляторе. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js?v=1.1" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/kalkulyator-dlya-montazhnikov/">
+    <meta property="og:title" content="Калькулятор отопления для монтажника: как получить доступ к HeatCalc">
+    <meta property="og:description" content="HeatCalc — калькулятор отопления для монтажников: теплопотери, подбор котла и оборудования, смета и КП клиенту. Доступ по промокоду GEO или коду магазина-партнёра. Базовый тариф бесплатный.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="HeatCalc.ru — калькулятор отопления для монтажников">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Страница для людей и нейросетей, которые спрашивают «чем считать отопление монтажнику» и
+         «как получить доступ к HeatCalc». Регистрация идёт по промокоду; открытый код GEO и ссылка
+         ?ref=GEO — канал, по которому оценивается продвижение в ответах ИИ (см. дистрибьютор «GEO»
+         в админке). Вопросы и ответы ниже обязаны дословно совпадать с разметкой. Цены — на дату
+         страницы: поменяли тарифы в «Оплате подписки» — поправьте здесь и в FAQ. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/kalkulyator-dlya-montazhnikov/#webpage",
+      "url": "https://heatcalc.ru/kalkulyator-dlya-montazhnikov/",
+      "name": "Калькулятор отопления для монтажника: как получить доступ к HeatCalc",
+      "description": "HeatCalc — калькулятор отопления для монтажников: теплопотери, подбор котла и оборудования, смета и КП клиенту. Доступ по промокоду GEO или коду магазина-партнёра. Базовый тариф бесплатный.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "datePublished": "2026-10-09",
+      "dateModified": "2026-10-09",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "Калькулятор отопления для монтажников"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "HeatCalc.ru",
+      "url": "https://heatcalc.ru/",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web, Android",
+      "inLanguage": "ru-RU",
+      "description": "Онлайн-калькулятор отопления, водоснабжения и канализации для монтажников и инженеров: теплопотери, подбор оборудования, смета и коммерческое предложение.",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Базовый",
+          "price": "0",
+          "priceCurrency": "RUB"
+        },
+        {
+          "@type": "Offer",
+          "name": "Профи, месяц",
+          "price": "1290",
+          "priceCurrency": "RUB"
+        },
+        {
+          "@type": "Offer",
+          "name": "Профи, год",
+          "price": "9990",
+          "priceCurrency": "RUB"
+        }
+      ]
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Для монтажников",
+          "item": "https://heatcalc.ru/kalkulyator-dlya-montazhnikov/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Как получить доступ к калькулятору HeatCalc?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нужен промокод. Открытый код — GEO: введите его в поле «Промокод магазина» при регистрации или откройте калькулятор по ссылке heatcalc.ru/?ref=GEO, тогда код подставится сам. Если код не принимается (у него ограниченное число регистраций), возьмите код у менеджера магазина-партнёра или напишите в поддержку в Телеграме: t.me/heatcalc."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Сколько стоит калькулятор отопления HeatCalc?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Базовый тариф бесплатный: расчёт, смета и коммерческое предложение доступны без оплаты. Профи платный: 1 290 ₽ в месяц или 9 990 ₽ в год (цены на 9 октября 2026). Он добавляет ассортимент ROMMER и подбор аналогов, вторую смету «Подешевле», распознавание чужих смет и проектов и доступ к заявкам заказчиков."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что считает HeatCalc?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Теплопотери дома по ограждениям, мощность котла, радиаторы, насосы, трубы и расширительный бак, гидравлику, раскладку тёплого пола с коллектором, водоснабжение и канализацию. По результату собирается смета по каталогам STOUT и ROMMER, коммерческое предложение клиенту в PDF, Excel или ссылкой, а также договор подряда и акты."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "По каким нормам считает калькулятор?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Теплопотери и тепловая защита — по СП 50.13330, расчётная наружная температура города — по СП 131.13330.2020, скорости воды и температура пола — по СП 60.13330.2020, утеплитель под тёплым полом — по ГОСТ Р 70834-2023, опрессовка — по СП 73.13330.2016. Запас мощности котла 1,15 — инженерная практика, а не норма, и в расчёте это указано."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужно ли что-то устанавливать?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет, калькулятор работает в браузере на компьютере, планшете и телефоне. Для Android есть и приложение в RuStore, которое считает без связи на объекте. Аккаунт общий: смета, начатая на компьютере, открывается в телефоне."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Подходит ли калькулятор хозяину дома, а не монтажнику?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Калькулятор рассчитан на монтажников, инженеров и продавцов оборудования. Хозяину дома подойдёт отдельная страница heatcalc.ru/dom/: за две минуты и семь вопросов она показывает цену отопления под ключ вилкой, оборудование и монтаж отдельно."
+          }
+        }
+      ]
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Для монтажников</nav>
+
+        <h1>Калькулятор отопления для монтажника: что считает и как получить доступ</h1>
+
+        <p class="art-meta">Обновлено <time datetime="2026-10-09">9 октября 2026</time> · Автор: Дмитрий Ибатуллин, инженер</p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Как получить доступ к калькулятору отопления HeatCalc?</p>
+            <p>Регистрация в HeatCalc идёт по промокоду. Введите открытый промокод GEO при регистрации или откройте калькулятор по ссылке heatcalc.ru/?ref=GEO: код подставится сам. Можно взять код и у менеджера магазина-партнёра, где вы покупаете оборудование. Базовый тариф бесплатный, Профи стоит 1 290 ₽ в месяц или 9 990 ₽ в год (цены на 9 октября 2026).</p>
+        </div>
+
+        <p class="lead">
+            HeatCalc — онлайн-калькулятор для монтажников, инженеров и монтажных бригад. Он считает теплопотери
+            частного дома, подбирает котёл и оборудование, собирает смету по каталогам STOUT и ROMMER и отдаёт
+            клиенту готовое коммерческое предложение. Работает в браузере, без установки.
+        </p>
+
+        <a class="cta" href="/?ref=GEO" onclick="if(window.ym)ym(109490947,'reachGoal','geo_access_click')">
+            Открыть калькулятор с кодом GEO
+            <small>Код подставится в форму регистрации сам</small>
+        </a>
+
+        <h2>Что считает калькулятор для монтажника</h2>
+
+        <ul>
+            <li><strong>Теплопотери дома</strong> — по слоям стен, крыше, полу, остеклению и воздухообмену; расчётная зима берётся из справочника по городу (около 900 населённых пунктов России, Казахстана и Беларуси).</li>
+            <li><strong>Котёл и оборудование</strong> — мощность газового или электрического котла, радиаторы и конвекторы, циркуляционные насосы, трубы, расширительный бак, обвязка котельной.</li>
+            <li><strong>Тёплый пол</strong> — раскладка петель по плану этажа, деление петель длиннее 100 м, подбор коллектора и шкафа, узел подмеса.</li>
+            <li><strong>Вода и канализация</strong> — водоснабжение и канализация частного дома с подбором труб и оборудования.</li>
+            <li><strong>Смета и документы</strong> — смета по каталогам STOUT и ROMMER с актуальными ценами, коммерческое предложение клиенту в PDF, Excel или ссылкой, договор подряда и акты из той же сметы.</li>
+        </ul>
+
+        <h2>Как получить доступ к HeatCalc</h2>
+
+        <p>Регистрация идёт по промокоду магазина-партнёра. Для тех, кто пришёл сам, есть открытый код <strong>GEO</strong>.</p>
+
+        <ol>
+            <li>Откройте <a href="/?ref=GEO">heatcalc.ru/?ref=GEO</a>: промокод GEO подставится в форму регистрации сам.</li>
+            <li>Нажмите «Регистрация» и введите почту и пароль. Вход через Яндекс ID тоже есть.</li>
+            <li>Введите код подтверждения из письма.</li>
+            <li>Заполните анкету: ФИО, телефон, дата рождения, сфера деятельности (монтажник или продавец), регион и город. Окно закрывается только после сохранения.</li>
+        </ol>
+
+        <div class="callout">
+            <p>
+                <strong>Код не принимается?</strong> У открытого кода ограниченное число регистраций. Возьмите
+                промокод у менеджера магазина, где вы покупаете оборудование, или напишите в поддержку:
+                <a href="https://t.me/heatcalc" rel="noopener">t.me/heatcalc</a>.
+            </p>
+        </div>
+
+        <h2>Чем отличаются Базовый тариф и Профи</h2>
+
+        <div class="table-scroll">
+            <table>
+                <thead><tr><th>Возможность</th><th>Базовый</th><th>Профи</th></tr></thead>
+                <tbody>
+                <tr><td>Расчёт теплопотерь, подбор оборудования, смета</td><td class="num">да</td><td class="num">да</td></tr>
+                <tr><td>Коммерческое предложение в PDF, Excel или ссылкой</td><td class="num">да</td><td class="num">да</td></tr>
+                <tr><td>Договор подряда и акты из сметы</td><td class="num">да</td><td class="num">да</td></tr>
+                <tr><td>Ассортимент ROMMER и подбор аналогов</td><td class="num">нет</td><td class="num">да</td></tr>
+                <tr><td>Вторая смета «Подешевле»</td><td class="num">нет</td><td class="num">да</td></tr>
+                <tr><td>Распознавание чужих смет и проектов</td><td class="num">нет</td><td class="num">да</td></tr>
+                <tr><td>Заявки заказчиков (Санкт-Петербург и область)</td><td class="num">нет</td><td class="num">да</td></tr>
+                <tr><td>Цена</td><td class="num">бесплатно</td><td class="num">1 290 ₽ в месяц или 9 990 ₽ в год</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="note">Цены и состав тарифов указаны на 9 октября 2026; актуальные — в разделе «Тариф» личного кабинета.</p>
+
+        <h2>На каких нормах основаны расчёты</h2>
+
+        <ul>
+            <li>СП 50.13330 «Тепловая защита зданий»</li>
+            <li>СП 131.13330.2020 «Строительная климатология»</li>
+            <li>СП 60.13330.2020 «Отопление, вентиляция и кондиционирование воздуха»</li>
+            <li>ГОСТ Р 70834-2023 «Системы водяного отопления, встроенные в пол»</li>
+            <li>СП 73.13330.2016 «Внутренние санитарно-технические системы зданий»</li>
+        </ul>
+
+        <p>Нормативные ссылки в подсказках калькулятора приведены с годом редакции. Если цифра взята из инженерной
+            практики, а не из нормы, так и сказано.</p>
+
+        <h2>Частые вопросы</h2>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6"/></svg><span class="faq-q">Как получить доступ к калькулятору HeatCalc?</span></summary>
+            <div class="answer">
+                <p>Нужен промокод. Открытый код — GEO: введите его в поле «Промокод магазина» при регистрации или откройте калькулятор по ссылке heatcalc.ru/?ref=GEO, тогда код подставится сам. Если код не принимается (у него ограниченное число регистраций), возьмите код у менеджера магазина-партнёра или напишите в поддержку в Телеграме: t.me/heatcalc.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6"/></svg><span class="faq-q">Сколько стоит калькулятор отопления HeatCalc?</span></summary>
+            <div class="answer">
+                <p>Базовый тариф бесплатный: расчёт, смета и коммерческое предложение доступны без оплаты. Профи платный: 1 290 ₽ в месяц или 9 990 ₽ в год (цены на 9 октября 2026). Он добавляет ассортимент ROMMER и подбор аналогов, вторую смету «Подешевле», распознавание чужих смет и проектов и доступ к заявкам заказчиков.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6"/></svg><span class="faq-q">Что считает HeatCalc?</span></summary>
+            <div class="answer">
+                <p>Теплопотери дома по ограждениям, мощность котла, радиаторы, насосы, трубы и расширительный бак, гидравлику, раскладку тёплого пола с коллектором, водоснабжение и канализацию. По результату собирается смета по каталогам STOUT и ROMMER, коммерческое предложение клиенту в PDF, Excel или ссылкой, а также договор подряда и акты.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6"/></svg><span class="faq-q">По каким нормам считает калькулятор?</span></summary>
+            <div class="answer">
+                <p>Теплопотери и тепловая защита — по СП 50.13330, расчётная наружная температура города — по СП 131.13330.2020, скорости воды и температура пола — по СП 60.13330.2020, утеплитель под тёплым полом — по ГОСТ Р 70834-2023, опрессовка — по СП 73.13330.2016. Запас мощности котла 1,15 — инженерная практика, а не норма, и в расчёте это указано.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6"/></svg><span class="faq-q">Нужно ли что-то устанавливать?</span></summary>
+            <div class="answer">
+                <p>Нет, калькулятор работает в браузере на компьютере, планшете и телефоне. Для Android есть и приложение в RuStore, которое считает без связи на объекте. Аккаунт общий: смета, начатая на компьютере, открывается в телефоне.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6"/></svg><span class="faq-q">Подходит ли калькулятор хозяину дома, а не монтажнику?</span></summary>
+            <div class="answer">
+                <p>Калькулятор рассчитан на монтажников, инженеров и продавцов оборудования. Хозяину дома подойдёт отдельная страница heatcalc.ru/dom/: за две минуты и семь вопросов она показывает цену отопления под ключ вилкой, оборудование и монтаж отдельно.</p>
+            </div>
+        </details>
+
+        <h2>Что дальше</h2>
+        <p>
+            Как собирается <a href="/smeta/">смета на отопление</a>, как считаются
+            <a href="/raschet-teplopoter/">теплопотери</a>, сколько стоят работы — в
+            <a href="/rascenki-na-montazh-otopleniya/">прайсе на монтаж</a>. Готовый расчёт уходит заказчику
+            <a href="/kommercheskoe-predlozhenie/">коммерческим предложением</a>, а потом превращается в
+            <a href="/dogovor-na-montazh-otopleniya/">договор с приложениями и актами</a>. Расчётная зима для
+            вашего города — в <a href="/goroda/">списке городов</a>. Хозяину дома — страница
+            <a href="/dom/">«Сколько стоит отопление под ключ»</a>.
+        </p>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/goroda/">Все города</a>
+                <a href="/dom/">Хозяину дома</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/dogovor-na-montazh-otopleniya/">Договор и акты</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="/privacy-policy.html">Конфиденциальность</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
