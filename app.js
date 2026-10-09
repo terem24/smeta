@@ -54706,6 +54706,13 @@ const app = {
                 ].filter(x => x.id);
             }
         }
+        if (catalog.hydro_gidruss && catalog.hydro_gidruss_ss) {
+            // Ряд GIDRUSS: замена — стальные GR ↔ нержавеющие GRSS; по цене не «удешевляем» (типоразмеры отличаются подачей).
+            const _gAll = catalog.hydro_gidruss.concat(catalog.hydro_gidruss_ss);
+            _gAll.forEach(h => { h.alts = _gAll; h.noCheapenAlts = true; });
+            // Под пресс — свой ряд: резьбовая стрелка на пресс-коллектор без переходов не встанет.
+            (catalog.hydro_gidruss_pf || []).forEach(h => { h.alts = catalog.hydro_gidruss_pf; h.noCheapenAlts = true; });
+        }
         if (catalog.hydro_separators && catalog.hydro_arrow) {
             // noCheapenAlts — ряд гидрострелок отличается пропускной способностью (м³/ч).
             catalog.hydro_arrow.alts = catalog.hydro_separators;
@@ -72159,6 +72166,12 @@ const app = {
                 `Присоединительный комплект насоса G 1 1/2" × Rp 1": гайки с прокладками на оба патрубка насоса. По одному на группу. У насосов Mini и Mini Pro фитинги отдельно (каталог стр. 245).`, -0.8);
         }
     },
+    // Гидрострелка GIDRUSS для самосборного коллектора: наименьшая из ряда GR, у которой хватает и мощности (kW), и подачи (м³/ч).
+    // Как в проектах Galf: стрелку берут по мощности котельной и расходу, а не готовым узлом. Больше ряда — старшая модель.
+    gidrussPick: function (kw, flow) {
+        const row = catalog.hydro_gidruss || [];
+        return row.find(h => h.kw >= (kw || 0) && h.flow >= (flow || 0)) || row[row.length - 1] || null;
+    },
     // Подраздел сметы, в который уходит самосборная группа вида type (сворачивается как остальные подразделы).
     selfGroupTitle: function (type, sub) {
         if (sub === 'dhw') return '2.4.4. Самосборная группа: загрузка бойлера (прямая)';
@@ -79646,6 +79659,10 @@ const app = {
             // разделителем не нужны, берётся обычный коллектор. Только когда в котельной есть коллектор.
             const _bufSep = !!(this._bufPick && needCollector);
             let _hydroSaved = 0;
+            let _gdPress = false; // стрелка под пресс-фитинг: резьбовых муфт у неё нет
+            let _gdPick = null; // выбранная гидрострелка GIDRUSS (самосборный режим)
+            let _hydroWarn = () => {}; // плашка «расход больше паспорта»: вызывается с пределом выбранной гидрострелки
+            let _hydroFlow = 0; // расход через гидрострелку, м³/ч (для подбора GIDRUSS в самосборном режиме)
             const _bufSepDesc = `Распределительный коллектор без встроенного разделителя: котловой и системный контуры разделяет буферная ёмкость, гидрострелка не нужна.`;
             {
                 const _gRad = (rQ > 0 && pwr > 0) ? pwr / (1.163 * this.radDT()) : 0;
@@ -79659,7 +79676,9 @@ const app = {
                 const _dtPrim = Math.max(10, _tSup - 35);
                 const _gUfh = _qUfh > 0 ? _qUfh / (1.163 * _dtPrim) : 0;
                 const _gSum = _gRad + _gUfh;
-                if (_gSum > 3.0 && !_bufSep) {
+                _hydroFlow = _gSum;
+                _hydroWarn = (_gLim) => {
+                if (_gSum > _gLim && !_bufSep) {
                     this.groupWarns = this.groupWarns || {};
                     const _f = (v) => v.toFixed(2).replace('.', ',');
                     // Совет по ситуации: перепад радиаторов уже 20 K — предлагать его
@@ -79668,12 +79687,15 @@ const app = {
                         ? `перейти на режим радиаторов 80/60 (перепад 20 K вдвое снижает расход) или заменить узел на гидрострелку большего типоразмера.`
                         : `заменить узел на гидрострелку большего типоразмера (модульная схема DN32) — режим радиаторов уже с перепадом 20 K.`;
                     this.groupWarns[grpHydro] = this.noteBox('warn', 'Расход больше паспорта гидрострелки.',
-                        `${_f(_gSum)} м³/ч при пределе 3,0 м³/ч.`,
+                        `${_f(_gSum)} м³/ч при пределе ${_f(_gLim)} м³/ч.`,
                         `<div class="tip-p">Радиаторы ${_f(_gRad)} м³/ч (G = Q / (1,163 × ${this.radDT()} K))` +
                         (_gUfh > 0 ? `, тёплый пол ${_f(_gUfh)} м³/ч по первичной стороне узла подмеса (${_f(_qUfh)} кВт / (1,163 × ${_dtPrim} K: подача ${_tSup} °C, обратка пола 35 °C))` : '') +
                         `. Выше паспортного расхода разделение контуров работает хуже и растёт шум.</div>` +
                         `<div class="tip-p"><b>Что делать:</b> ${_advice}</div>`);
                 }
+                };
+                // Самосборный коллектор: предел — паспорт выбранной ниже гидрострелки GIDRUSS.
+                if (!_selfG) _hydroWarn(3.0);
             }
             if (_selfG) {
                 // Самосборный коллектор: две трубы (подача и обратка) с тройниками на каждый контур,
@@ -79700,12 +79722,43 @@ const app = {
                 if (_plugC) addToBill({ ..._plugC, sortRank: -3 }, 2,
                     `Заглушки на свободные концы подающей и обратной трубы коллектора: к другому концу подключается гидрострелка. Требуется: 2 шт.`, grpHydro);
                 if (!_bufSep) {
-                    addToBill({ ...catalog.hydro_arrow, sortRank: -3 }, 1, `Гидрострелка — выравнивает давление между котловым и распределительными контурами. Стоит на торце самосборного коллектора. Макс. расход: 3.0 м³/ч.`, grpHydro);
+                    // GIDRUSS по умолчанию (как в проектах Galf): ряд GR по мощности и расходу; STOUT/ROMMER — не в этом режиме.
+                    // Нержавейка: GRSS под пресс-фитинг по диаметру коллектора — как в 67 из 75 проектов Galf со стрелкой, без резьбовых переходов.
+                    // ППР: пресс не подходит (паспорт: только пресс-системы из нержавеющей и оцинкованной стали) — стальная резьбовая GR по мощности и расходу.
+                    // Galf: самая частая модель — 28PF (39 из 67 проектов с PF), 22PF — 21, 35PF — 7; жёсткого правила нет (ни мощность котла, ни площадь не определяют),
+                    // поэтому берём по диаметру коллектора, а если стрелка по паспорту (кВт, м³/ч) не тянет — следующую по размеру.
+                    const _pfRow = (catalog.hydro_gidruss_pf || []).filter(h => h.d >= Math.min(Math.max(_D, 22), 35));
+                    const _pf = !_pprC ? (_pfRow.find(h => pwr <= h.kw && _hydroFlow <= h.flow) || _pfRow[_pfRow.length - 1] || null) : null;
+                    const _gd = _pf || this.gidrussPick(pwr, _hydroFlow) || catalog.hydro_arrow;
+                    _gdPick = _gd;
+                    if (_pf) _gdPress = true;
+                    if (_gd.flow) _hydroWarn(_gd.flow);
+                    const _kwTxt = (Math.round(pwr * 10) / 10).toString().replace('.', ',');
+                    const _flTxt = (Math.round(_hydroFlow * 100) / 100).toString().replace('.', ',');
+                    addToBill({ ..._gd, sortRank: -3 }, 1, _pf
+                        ? `Гидрострелка GIDRUSS под пресс-фитинг ${_pf.d} мм — выравнивает давление между котловым и распределительными контурами. Стоит на торце самосборного коллектора и садится прямо на трубы магистрали обжимными фитингами, без резьбовых переходов. Модель по диаметру магистрали; по паспорту до ${_pf.kw} кВт и ${String(_pf.flow).replace('.', ',')} м³/ч, у вас ${_kwTxt} кВт и ${_flTxt} м³/ч.`
+                        : _gd.kw
+                        ? `Гидрострелка GIDRUSS — выравнивает давление между котловым и распределительными контурами. Стоит на торце самосборного коллектора. Подобрана по мощности ${_kwTxt} кВт и расходу ${_flTxt} м³/ч: до ${_gd.kw} кВт и ${String(_gd.flow).replace('.', ',')} м³/ч по паспорту, патрубки ${this.ssThreadLabel(_gd.port)} НР.`
+                        : `Гидрострелка — выравнивает давление между котловым и распределительными контурами. Стоит на торце самосборного коллектора. Макс. расход: 3.0 м³/ч.`, grpHydro);
                 }
                 // Системная сторона гидрострелки — к трубам коллектора. По паспорту STOUT (каталог, стр. 277–278) котловые патрубки —
                 // 1 1/2" НР, системные — 1 1/2" ВР; у ROMMER системные — накидные гайки 1 1/2". И ВР, и гайке нужна НР: ниппель
                 // 1 1/2"×1" НР, а на нём переход на трубу коллектора (внутренняя резьба 1") — пресс 28/35 или ППР 32. Котловая сторона (муфта + переход) считается ниже.
-                if (!_bufSep) {
+                if (!_bufSep && _gdPress) {
+                    // GRSS-PF: пресс на всех четырёх концах. Котловая магистраль идёт своим диаметром — если он не равен диаметру стрелки, нужны переходные муфты.
+                    const _mainD = boilerSizes(selBoilers).main;
+                    if (_mainD !== _D) {
+                        const _pd = (_gdPick && _gdPick.d) || _D;
+                        const _hi = Math.max(_pd, _mainD), _lo = Math.min(_pd, _mainD);
+                        const _red = this.ssItem(catalog.ss_coupling_red, 'RSS-1018-00' + _hi + _lo);
+                        if (_red) addToBill({ ..._red, sortRank: -3 }, 2,
+                            `Переходная муфта пресс ${_hi}×${_lo}: котловая труба ${_mainD} мм к гидрострелке под пресс ${_D} мм. Требуется: 2 шт.`, grpHydro);
+                    }
+                } else if (!_bufSep && _gdPick && _gdPick.kw) {
+                    // Патрубки GIDRUSS — наружная резьба на обеих сторонах: к трубам коллектора идёт та же пара «муфта ВР + переход с НР»,
+                    // что и на котловой стороне (блок «0б» ниже), всего по одной на каждый из четырёх патрубков.
+                    _hydroTieN = 4;
+                } else if (!_bufSep) {
                     const _tieNip = catalog.buffer_nipple_112_1;
                     const _tieAd = _pprC ? this.selfFit('adF', '1') : this.ssItem(catalog.ss_adapter_fi, _D >= 35 ? 'RSS-1022-000351' : 'RSS-1022-000281');
                     if (_tieNip) addToBill({ ..._tieNip, sortRank: -3 }, 2,
@@ -79804,7 +79857,7 @@ const app = {
             // Резьба котлового ввода узла — для фитингов присоединения, которые
             // считаются ниже, вместе с трубами (там известен материал и диаметр).
             // Самосборный коллектор вместе с буфером: стрелки нет, переход на коллектор не нужен.
-            _hydroTieDn = (_selfG && _bufSep) ? 0 : (dn25 ? 112 : 1);
+            _hydroTieDn = (_selfG && (_bufSep || _gdPress)) ? 0 : (_gdPick && _gdPick.kw ? ({ '1': 1, '11/4': 114, '11/2': 112 }[_gdPick.port] || 1) : (dn25 ? 112 : 1));
             _hydroTieGrp = grpHydro;
 
             const _hydroDrain = (catalog.ball_valves || []).find(v => v.id === 'SVB-0006-200015');
@@ -80509,8 +80562,15 @@ const app = {
         // обратку. Раньше этого перехода в смете не было вовсе — труба в спецификации
         // обрывалась, не доходя до коллектора.
         if (_hydroTieDn && _hydroTieGrp) {
-            const _tieCoupling = (_hydroTieDn === 112) ? catalog.hydro_tie_coupling_112 : catalog.hydro_tie_coupling_1;
-            const _tieLabel = (_hydroTieDn === 112) ? '1 1/2"' : '1"';
+            // Патрубок 1 1/4" (GIDRUSS): прямой переход с трубы на НР 1 1/4" есть только на больших диаметрах нержавейки (35, 42);
+            // иначе муфта ВР 1 1/4"×1" и переход на 1", как у патрубка 1 1/2".
+            const _tieDirect114 = _hydroTieDn === 114 && !isAnalog && !isPress &&
+                this.ssThreadFor('ss_adapter_mi', ss_diameter, '11/4') === '11/4';
+            const _tieCoupling = (_hydroTieDn === 112) ? catalog.hydro_tie_coupling_112
+                : (_hydroTieDn === 114 ? (_tieDirect114 ? catalog.buffer_coupling_114 : catalog.hydro_tie_coupling_114_1) : catalog.hydro_tie_coupling_1);
+            const _tieLabel = (_hydroTieDn === 112) ? '1 1/2"' : (_hydroTieDn === 114 ? '1 1/4"' : '1"');
+            // Резьба перехода на трубе.
+            const _tieWant = _tieDirect114 ? '11/4' : '1';
             if (_tieCoupling) {
                 addToBill(_tieCoupling, _hydroTieN,
                     `Латунная муфта с внутренней резьбой на патрубок узла гидроразделения (${_tieLabel} НР по паспорту) — с неё начинается переход на трубу котлового контура` +
@@ -80518,24 +80578,25 @@ const app = {
             }
             if (isAnalog) {
                 if (ss_diameter === 28) {
-                    addToBill(this.getPprItem(catalog.ppr_ekoplastik_coupling_red, 'SRE14032RCT'), 2,
-                        `Муфта переходная 40х32 PP-RCT перед присоединением к узлу гидроразделения. Требуется: 2 шт.`, _hydroTieGrp);
+                    addToBill(this.getPprItem(catalog.ppr_ekoplastik_coupling_red, 'SRE14032RCT'), _hydroTieN,
+                        `Муфта переходная 40х32 PP-RCT перед присоединением к узлу гидроразделения. Требуется: ${_hydroTieN} шт.`, _hydroTieGrp);
                 }
-                addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_mi, 'SZE03232OKRCT'), 2,
-                    `Муфта комбинированная с наружной резьбой 32х1" PP-RCT — вкручивается в муфту на патрубке узла гидроразделения. Требуется: 2 шт.`, _hydroTieGrp);
+                addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_mi, 'SZE03232OKRCT'), _hydroTieN,
+                    `Муфта комбинированная с наружной резьбой 32х1" PP-RCT — вкручивается в муфту на патрубке узла гидроразделения.` +
+                    ` Требуется: ${_hydroTieN} шт.`, _hydroTieGrp);
             } else if (isPress) {
                 const _tieD = mpD(ss_diameter);
                 const _tie = bpThreadFor('mi', _tieD, '1');
-                bpPress(_tie.item, 2,
+                bpPress(_tie.item, _hydroTieN,
                     `Переходник с трубы ${_tieD} на наружную резьбу ${bpThLabel(_tie.key)} — вкручивается в муфту на патрубке узла гидроразделения.` +
                     (_tie.key !== '1' ? ` <b>Внимание:</b> муфта узла на 1", нужен резьбовой переход 1"–${bpThLabel(_tie.key)} (в смету не входит).` : ``) +
-                    ` Требуется: 2 шт.`, _hydroTieGrp, 1, _tieD);
+                    ` Требуется: ${_hydroTieN} шт.`, _hydroTieGrp, 1, _tieD);
             } else {
-                const _tieTh = this.ssThreadFor('ss_adapter_mi', ss_diameter, '1');
+                const _tieTh = this.ssThreadFor('ss_adapter_mi', ss_diameter, _tieWant);
                 const _tieAdp = _tieTh && this.ssFit('ss_adapter_mi', ss_diameter, _tieTh);
                 if (_tieAdp) addToBill(_tieAdp, _hydroTieN,
                     `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${this.ssThreadLabel(_tieTh)} — вкручивается в муфту на патрубке узла гидроразделения.` +
-                    (_tieTh !== '1' ? ` <b>Внимание:</b> муфта узла на 1", нужен резьбовой переход 1"–${this.ssThreadLabel(_tieTh)} (в смету не входит).` : ``) +
+                    (_tieTh !== _tieWant ? ` <b>Внимание:</b> муфта узла на ${_tieWant === '11/4' ? '1 1/4' : '1'}", нужен резьбовой переход ${_tieWant === '11/4' ? '1 1/4' : '1'}"–${this.ssThreadLabel(_tieTh)} (в смету не входит).` : ``) +
                     ` Требуется: ${_hydroTieN} шт.`, _hydroTieGrp);
             }
         }

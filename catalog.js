@@ -2984,6 +2984,29 @@ const catalog = {
     // коллектор RDG-0016 (низ 1 1/4" НР), а в смете шёл к RDG-0017 и SDG-0016 с
     // низом 1 1/2" НР — не стыковался (паспорта rommer_c954b11233c3, rommer_266bcb1de3b1).
     // Цена — прайс × 0,9, как у RDG-0015-004002 (7256 / 8061,9).
+    // Гидрострелки GIDRUSS (самосборный коллектор, «Профи»): ряд по мощности и расходу, патрубки НР (паспорт производителя, web.gidruss.ru,
+    // раздел «Магистральное присоединение»). kw — максимальная мощность, flow — максимальная подача, м³/ч, port — резьба (1 / 11/4 / 11/2 / 2).
+    // Стальные GR (09Г2С) — по умолчанию, нержавеющие GRSS — в замене. Цены — teremonline.ru на 09.10.2026.
+    // GRSS-PF — нержавеющие под пресс-фитинг, садятся прямо на трубу магистрали (22/28/35 мм). Так стрелка стоит в проектах Galf:
+    // из 75 проектов со стрелкой GRSS-60-28PF — 39, GRSS-40-22PF — 21, GRSS-100-35PF — 7; модель выбирают по диаметру магистрали.
+    // Паспорт web.gidruss.ru: 22PF — до 35 кВт и 1,7 м³/ч, 28PF — 60 и 2,6, 35PF — 100 и 4,3. d — наружный диаметр трубы, мм.
+    hydro_gidruss_pf: [
+        { id: "GG 40PA0 20", name: "Гидравлический разделитель GIDRUSS GRSS-40-22PF (нерж., под пресс-фитинг 22 мм)", price: 10200, brand: "GIDRUSS", kw: 35, flow: 1.7, d: 22, availability: "on_order", price_date: "2026-10-09" },
+        { id: "GG 60PA0 20", name: "Гидравлический разделитель GIDRUSS GRSS-60-28PF (нерж., под пресс-фитинг 28 мм)", price: 17200, brand: "GIDRUSS", kw: 60, flow: 2.6, d: 28, availability: "on_order", price_date: "2026-10-09" },
+        { id: "GG 10PA0 20", name: "Гидравлический разделитель GIDRUSS GRSS-100-35PF (нерж., под пресс-фитинг 35 мм)", price: 19600, brand: "GIDRUSS", kw: 100, flow: 4.3, d: 35, availability: "on_order", price_date: "2026-10-09" }
+    ],
+    hydro_gidruss: [
+        { id: "GR 60G0T 04", name: "Гидравлический разделитель GIDRUSS GR-60-25.EPP (до 60 кВт, G 1″ НР, сталь, EPP-изоляция)", price: 10200, brand: "GIDRUSS", kw: 60, flow: 2.6, port: "1", availability: "on_order", price_date: "2026-10-09" },
+        { id: "GR 80G0T 04", name: "Гидравлический разделитель GIDRUSS GR-80-32.EPP (до 80 кВт, G 1 1/4″ НР, сталь, EPP-изоляция)", price: 11200, brand: "GIDRUSS", kw: 80, flow: 3.4, port: "11/4", availability: "in_stock", price_date: "2026-10-09" },
+        { id: "11 00100 05", name: "Гидравлический разделитель GIDRUSS GR-100-32 (до 100 кВт, G 1 1/4″ НР, сталь)", price: 13200, brand: "GIDRUSS", kw: 100, flow: 4.3, port: "11/4", availability: "in_stock", price_date: "2026-10-09" },
+        { id: "11 00150 04", name: "Гидравлический разделитель GIDRUSS GR-150-40 (до 150 кВт, G 1 1/2″ НР, сталь)", price: 16200, brand: "GIDRUSS", kw: 150, flow: 6.4, port: "11/2", availability: "on_order", price_date: "2026-10-09" }
+    ],
+    hydro_gidruss_ss: [
+        { id: "GR 60GAT 04", name: "Гидравлический разделитель GIDRUSS GRSS-60-25.EPP (нерж., до 60 кВт, G 1″, EPP-изоляция)", price: 20200, brand: "GIDRUSS", kw: 60, flow: 2.6, port: "1", availability: "on_order", price_date: "2026-10-09" },
+        { id: "GR 80GAT 04", name: "Гидравлический разделитель GIDRUSS GRSS-80-32.EPP (нерж., до 80 кВт, G 1 1/4″, EPP-изоляция)", price: 22200, brand: "GIDRUSS", kw: 80, flow: 3.4, port: "11/4", availability: "on_order", price_date: "2026-10-09" },
+        { id: "12 00100 05", name: "Гидравлический разделитель GIDRUSS GRSS-100-32 (нерж., до 100 кВт, G 1 1/4″)", price: 26400, brand: "GIDRUSS", kw: 100, flow: 4.3, port: "11/4", availability: "on_order", price_date: "2026-10-09" },
+        { id: "12 00150 04", name: "Гидравлический разделитель GIDRUSS GRSS-150-40 (нерж., до 150 кВт, G 1 1/2″)", price: 35600, brand: "GIDRUSS", kw: 150, flow: 6.4, port: "11/2", availability: "on_order", price_date: "2026-10-09" }
+    ],
     hydro_arrow: { id: "SDG-0015-004001", name: "Гидравлическая стрелка 3 м³/ч", price: 23408, rommer: { id: "RDG-0015-004003", name: "Гидравлическая стрелка с накидными гайками 1 1/2″", price: 7828, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" },
     servo_rotary_sensor: { id: "SVM-0025-230017", name: "Сервопривод с датчиком", price: 43357, rommer: { id: "RVM-0015-230017", name: "Сервопривод с датчиком", price: 15459, brand: "ROMMER",
   availability: 'on_order',
@@ -3134,6 +3157,7 @@ const catalog = {
     buffer_nipple_112_34: { id: "SFT-0003-011234", name: "Ниппель переходной 1 1/2\" х 3/4\" НР", price: 818, brand: "STOUT", availability: "in_stock", price_date: "2026-10-05" },
     buffer_nipple_112_114: { id: "SFT-0003-112114", name: "Ниппель переходной 1 1/2\" х 1 1/4\" НР", price: 780, brand: "STOUT", availability: "in_stock", price_date: "2026-10-05" },
     buffer_coupling_34: { id: "SFT-0005-003434", name: "Муфта ВР 3/4\"", price: 306, brand: "STOUT", availability: "in_stock", price_date: "2026-10-05" },
+    hydro_tie_coupling_114_1: { id: "SFT-0005-001141", name: "Муфта переходная ВР 1 1/4\"х1\"", price: 830, brand: "STOUT", availability: "in_stock", price_date: "2026-10-09" },
     buffer_coupling_114: { id: "SFT-0005-114114", name: "Муфта ВР 1 1/4\"", price: 742, brand: "STOUT", availability: "in_stock", price_date: "2026-10-05" },
     // Контрольный термометр на третий штуцер G 1/2" гидроразделителя. Паспорт
     // «Гидравлический разделитель» (ред. 3 от 17.05.2021, п. 3.1) перечисляет три
