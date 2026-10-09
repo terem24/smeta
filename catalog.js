@@ -6745,7 +6745,34 @@ const catalog = {
         // Датчик в гильзу на шину 1-Wire (DS18B20): до 5 датчиков на шину, кабель до 60 м.
         { id: "6286", name: "Датчик температуры в колбе (1-Wire)", price: 1350, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
         // Датчик давления 4–20 мА — только Pro, Eco Smart и блок IO4.
-        { id: "7002", name: "Датчик давления 4–20 мА", price: 5990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" }
+        { id: "7002", name: "Датчик давления 4–20 мА", price: 5990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+
+        // --- ectoControl: автоматика на замену Thermatic (тариф «Профи», 09.10.2026) ---
+        //
+        // Артикул и цена — раздел Ectocontrol прайса ТЕРЕМ (price_index.json, продавец
+        // «Ectocontrol»); паспорта и карточки — ecto-control.ru (Эктострой), v4.0:
+        //   один блок на все объекты: 3 встроенных реле 3 А / 250 В (контакты A-B-C),
+        //   3 проводных датчика температуры Т1…Т3, 5 контактных входов Д1…Д5, один вход
+        //   4–20 мА, порт ДОП (RS-485, до 32 устройств), радио 868 МГц, GSM + Wi-Fi;
+        //   блок питания 14 В, аккумулятор 12 В 1,2 А·ч и антенны лежат в коробке;
+        //   смесительными контурами ведёт сам блок ec01060 (4 канала, привод 230 В, 3 провода),
+        //   котлом по цифровой шине — адаптер на каждый котёл, реле — только сухой контакт.
+        // Поле ecto: true — позиция бренда ectoControl, участвует в таблице замен.
+        // Это не STOUT Thermatic 1002: у 1002 шина первого котла встроена и два контура,
+        // у v4.0 — адаптер на каждый котёл и смесители через отдельный блок.
+        { id: "ec01v40", name: "Центральный блок управления v4.0 (GSM / Wi-Fi, питание и аккумулятор в комплекте)", price: 18900, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        // Адаптер шины котла — на каждый котёл; Navien и eBus отличаются только протоколом.
+        { id: "ec01042", name: "Адаптер OpenTherm", price: 3590, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01045", name: "Адаптер eBus", price: 3590, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01058", name: "Адаптер Navien", price: 3590, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        // Цифровой датчик температуры в гильзе: порты Т1…Т3 блока и порты Т1…Т4 смесительного блока.
+        { id: "ec01003", name: "Датчик температуры проводной в гильзе", price: 1590, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01001", name: "Датчик температуры воздуха проводной", price: 1390, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01060", name: "Блок управления смесительными контурами (ПИД-регулятор), RS485 — 4 канала", price: 15990, brand: "ectoControl", unit: "шт", ecto: true, mixChannels: 4, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01025", name: "Блок управления на 10 реле проводной RS485 (12 А)", price: 11490, brand: "ectoControl", unit: "шт", ecto: true, relays: 10, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01033", name: "Разветвитель устройств RS485 (10 разъёмов порта ДОП)", price: 700, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01055", name: "Разветвитель для контактных датчиков адресный RS485 (8 входов)", price: 1990, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01011", name: "Провод для подключения котла/насоса", price: 290, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" }
     ],
 
     // Датчики воздуха для регулирования отопительного контура по температуре
@@ -6771,6 +6798,13 @@ const catalog = {
         { id: "7000", name: "Датчик температуры комнатный проводной (1-Wire)", price: 1990, brand: "MyHeat", unit: "шт", kind: "sensor", link: "wired", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
         { id: "6277", name: "Комнатный термостат (проводной, 1-Wire), белый", price: 8990, brand: "MyHeat", unit: "шт", kind: "thermostat", link: "wired", color: "white", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
         { id: "6278", name: "Комнатный термостат (868 МГц), чёрный", price: 8990, brand: "MyHeat", unit: "шт", kind: "thermostat", link: "radio", color: "black", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        // ectoControl v4.0 (тариф «Профи»): комнатные приборы идут по порту ДОП (RS-485) или по радио 868 МГц —
+        // радио в самом блоке, отдельный модуль не нужен. Термостат ec01091 (ES-TSMB-01) работает только с v4.0,
+        // в прайсе ТЕРЕМ его нет — цена с ecto-control.ru. Радиотермостата в линейке нет: при выборе
+        // «термостат по радио» берётся беспроводной датчик.
+        { id: "ec01002", name: "Датчик температуры воздуха проводной RS485 (Modbus)", price: 3190, brand: "ectoControl", unit: "шт", kind: "sensor", link: "wired", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01005", name: "Беспроводной датчик температуры воздуха", price: 3490, brand: "ectoControl", unit: "шт", kind: "sensor", link: "radio", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01091", name: "Термостат проводной RS-485 (дисплей, реле 12 А)", price: 6990, brand: "ectoControl", unit: "шт", kind: "thermostat", link: "wired", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
         // Двухпозиционные термостаты STOUT (3 А, ON/OFF). Подключаются иначе —
         // не по шине, а сухим контактом на клеммы «Входы термостатов», которых
         // у контроллера ровно 3. Меняется и способ регулирования: контур
@@ -6825,7 +6859,9 @@ const catalog = {
         // Для MyHeat: Neptun SW005 — тот же датчик, что продаёт сам MyHeat (карточка «Нептун SW 005»).
         // Три провода: +12–24 В, сигнал (открытый коллектор, до 50 мА), GND; до 100 м от контроллера
         // (паспорт). Питается от контроллера, на каждый датчик — свой дискретный вход.
-        { id: "100035557500", name: "Датчик протечки воды Neptun SW005 (3 провода, 12–24 В)", price: 2999.75, brand: "Neptun", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-09-09" }
+        { id: "100035557500", name: "Датчик протечки воды Neptun SW005 (3 провода, 12–24 В)", price: 2999.75, brand: "Neptun", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-09-09" },
+        // ectoControl: контактный датчик на входы Д1…Д5 (тревога — замыкание), кабель 10 м в комплекте.
+        { id: "ec01006", name: "Датчик протечки воды проводной", price: 1490, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" }
     ],
     // Диаметр берётся по вводу ХВС (штатно 3/4"), остальные — для замены.
     leak_valves: [
