@@ -18456,10 +18456,14 @@ body.dark-mode #admin_content .btn-icon {
 }
 .ui-scale-step:hover:not(:disabled) { border-color: var(--primary, #2563EB); }
 .ui-scale-step.on { background: var(--primary, #2563EB); border-color: var(--primary, #2563EB); color: #fff; }
-/* В тёмных темах бренда --primary светлый (#E4E4E7 / #FFF): белый текст на нём не виден */
+/* В тёмных темах бренда --primary светлый (#E4E4E7 / #FFF): белый текст на нём не виден.
+   То же у бейджа с процентом на кнопке «Aa» в шапке. */
 body.brand-stout.dark-mode .ui-scale-step.on,
 body.brand-rommer.dark-mode .ui-scale-step.on,
-body.theme-yandex.dark-mode .ui-scale-step.on { color: #111; }
+body.theme-yandex.dark-mode .ui-scale-step.on,
+body.brand-stout.dark-mode #btn_ui_scale .ui-scale-badge,
+body.brand-rommer.dark-mode #btn_ui_scale .ui-scale-badge,
+body.theme-yandex.dark-mode #btn_ui_scale .ui-scale-badge { color: #111; }
 .ui-scale-step:disabled { opacity: 0.35; cursor: not-allowed; }
 .ui-scale-note { font-size: 11.5px; opacity: 0.7; margin-top: 6px; }
 .ui-scale-row {
