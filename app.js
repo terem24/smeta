@@ -52922,9 +52922,89 @@ const app = {
         return (it && kw > 0 && it.vol > 0) ? it.vol * 4.187 * this.WH_EL_DT / kw / 60 : 0;
     },
     whHeatText: function (it) {
-        const m = Math.round(this.whHeatMin(it));
+        return this.heatMinText(this.whHeatMin(it));
+    },
+    heatMinText: function (min) {
+        const m = Math.round(min);
         if (!m) return '—';
         return m >= 60 ? `${Math.floor(m / 60)}ч${m % 60 ? ' ' + (m % 60) + ' мин' : ''}` : `${m} мин`;
+    },
+
+    /**
+     * Нагрев бойлера косвенного нагрева с 15 до 60 °C — та же формула и тот же
+     * перепад, что у электрического водонагревателя (WH_EL_DT), чтобы времена
+     * можно было сравнивать. Мощность контура — меньшее из двух: сколько отдаёт
+     * котёл и сколько принимает змеевик (как в dhwLoadHydraulics). Без потерь тепла.
+     */
+    boilerHeatInfo: function (vol, coilKw, boilerKw) {
+        const kw = coilKw > 0 ? (boilerKw > 0 ? Math.min(coilKw, boilerKw) : coilKw) : (boilerKw || 0);
+        if (!(vol > 0) || !(kw > 0)) return null;
+        const min = vol * 4.187 * this.WH_EL_DT / kw / 60;
+        return { kw: kw, coilKw: coilKw || 0, boilerKw: boilerKw || 0, min: min, text: this.heatMinText(min), byCoil: coilKw > 0 && (!(boilerKw > 0) || coilKw <= boilerKw) };
+    },
+    _fmtKw: function (x) { return String(Math.round(x * 10) / 10).replace('.', ','); },
+    boilerHeatNote: function (vol, coilKw, boilerKw, tankName) {
+        const h = this.boilerHeatInfo(vol, coilKw, boilerKw);
+        if (!h) return '';
+        const f = x => this._fmtKw(x);
+        const src = h.coilKw > 0 && h.boilerKw > 0
+            ? `меньшее из двух: змеевик бойлера ${f(h.coilKw)} кВт и котёл ${f(h.boilerKw)} кВт`
+            : (h.coilKw > 0 ? `мощность змеевика бойлера ${f(h.coilKw)} кВт` : `мощность котла ${f(h.boilerKw)} кВт`);
+        return this.noteBox('info', `Нагрев бойлера — около ${h.text}.`,
+            `${vol} л, с 15 до 60 °C при ${f(h.kw)} кВт на нагрев.`,
+            `<div class="tip-p"><b>Расчёт:</b> t = V · c · ΔT / P = ${vol} л · 4,187 кДж/(кг·К) · ${this.WH_EL_DT} К / ${f(h.kw)} кВт ≈ ${Math.round(h.min)} мин. Мощность контура — ${src}${tankName ? ' (' + tankName + ')' : ''}. Справочная оценка без потерь тепла.</div>` +
+            `<div class="tip-p">Котёл подбирается так, чтобы бойлер прогревался за час, поэтому время зависит от того, что слабее — котёл или змеевик.</div>`);
+    },
+
+    /**
+     * Что будет, если электрический водонагреватель дома заменить бойлером
+     * косвенного нагрева такого же объёма: тихий прогон сметы с источником ГВС
+     * «от котла» (как computeCheapBaseline). Результат — для плашки у водонагревателя:
+     * время нагрева у бойлера и у прибора. Только когда объёмы совпадают.
+     */
+    computeDhwSwitch: function () {
+        this._dhwSwitch = null;
+        if (!this.dhwElectric()) return;
+        const hp = this.houseWhPlan();
+        if (!hp || !hp.item) return;
+        const heater = { vol: hp.totalVol, min: this.whHeatMin(hp.item), kw: hp.kwUnit };
+        const snapshot = JSON.parse(JSON.stringify(this.state));
+        this._dhwSimming = true;
+        try {
+            this.state.dhwSource = 'boiler';
+            this._boilerRangeCache = null;
+            this.render(true);
+            const plan = this.dhwTankPlan();
+            const L = this._dhwLoad;
+            if (plan && plan.vol === heater.vol && L) {
+                const h = this.boilerHeatInfo(plan.vol, L.coilKw, L.boilerKw);
+                const tank = (this.currentEquipmentList || []).find(i => /бойлер|водонагревател/i.test(String(i.name || '')) && !/термо|клапан|кронштейн/i.test(String(i.name || '')));
+                if (h) this._dhwSwitch = { match: true, vol: plan.vol, heater: heater, boiler: h, tankName: L.tankName || '', tankTitle: tank ? tank.name : '' };
+            }
+        } catch (e) {
+            console.warn('[замена на бойлер] прогон не посчитался:', e);
+            this._dhwSwitch = null;
+        } finally {
+            Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
+            Object.assign(this.state, snapshot);
+            this._boilerRangeCache = null;
+            this._dhwSimming = false;
+        }
+    },
+    dhwSwitchNote: function () {
+        const w = this._dhwSwitch;
+        if (!w || !w.match) return '';
+        const f = x => this._fmtKw(x);
+        const ratio = w.heater.min / w.boiler.min;
+        const rr = Math.round(ratio * 10) / 10;
+        const cmp = ratio >= 1.05
+            ? `быстрее в ${String(rr).replace('.', ',')} ${Number.isInteger(rr) ? (rr % 10 >= 2 && rr % 10 <= 4 && (rr < 10 || rr > 20) ? 'раза' : 'раз') : 'раза'}`
+            : (ratio <= 0.95 ? 'медленнее' : 'примерно так же');
+        const act = `<a href="#" style="text-decoration:underline;font-weight:700;color:inherit;" onclick="event.preventDefault();event.stopPropagation();app.setDhwSource('boiler', event)">Заменить на бойлер</a>`;
+        return this.noteBox('info', `Бойлер косвенного нагрева на ${w.vol} л нагреется за ~${w.boiler.text} вместо ${this.heatMinText(w.heater.min)} — ${cmp}.`,
+            `Тот же объём воды. ${act}`,
+            `<div class="tip-p"><b>Сравнение (нагрев ${w.vol} л с 15 до 60 °C):</b> электрический водонагреватель — ${this.heatMinText(w.heater.min)} при ${f(w.heater.kw)} кВт; бойлер косвенного нагрева — ${w.boiler.text} при ${f(w.boiler.kw)} кВт (${w.boiler.coilKw > 0 && w.boiler.boilerKw > 0 ? 'меньшее из змеевика ' + f(w.boiler.coilKw) + ' кВт и котла ' + f(w.boiler.boilerKw) + ' кВт' : (w.boiler.coilKw > 0 ? 'змеевик' : 'котёл')}).</div>` +
+            `<div class="tip-p"><b>Что изменится при замене:</b> водонагреватель, его краны, термосмеситель, питание и бак на горячей линии заменятся бойлером с обвязкой от котла; схема и компоновка пересоберутся. Мощность котла подберётся с учётом прогрева бака, а электрическая нагрузка на сеть станет меньше на ${f(w.heater.kw)} кВт. Расчёт — без потерь тепла.</div>`);
     },
 
     /** Все модели ряда без дублей: основные позиции и их замены. */
@@ -76424,6 +76504,9 @@ const app = {
             else this._cheapBase = null;
         }
 
+        // Замена электрического водонагревателя на бойлер: сравнение считается тихим прогоном
+        if (!computeOnly && !this._cheapComparing && !this._dhwSimming) this.computeDhwSwitch();
+
         // Update top left logo based on brandMode
         this.syncTopLogo();
         // Оформление под бренд следует за переключателем «Аналог» (brandMode)
@@ -78349,6 +78432,7 @@ const app = {
 
         this._whHeatWarn = '';
         this._whPipeWarn = '';
+        this._tankHeatWarn = '';
         if (this.dhwElectric()) {
             this.state.waterZones = this.state.waterZones || [];
             const _hp = this.houseWhPlan();
@@ -78361,7 +78445,7 @@ const app = {
                         ? `<b>Электрическая мощность:</b> ${_hp.qty > 1 ? _hp.qty + ' прибора берут' : 'прибор берёт'} ${_fmtH(_hp.kwTotal)} кВт. Из выделенных ${_lim} кВт ${Math.round(this.EL_HOUSEHOLD_RESERVE * 100)} % оставлено на освещение и быт, водонагревателю отдано не больше ${Math.round(this.WH_EL_HOUSE_SHARE * 100)} % остатка (${_fmtH(_hp.budgetKw)} кВт) — отопление в мороз важнее. Электрокотлу остаётся ${_fmtH(this.getElBoilerBudget())} кВт.`
                         : ''
                 });
-                this._whHeatWarn = _hb.warn;
+                this._whHeatWarn = _hb.warn + this.dhwSwitchNote();
                 addToBill({ ..._hp.item, alts: _hp.alts }, _hp.qty, _hb.tip);
                 markRigAnchor('dhw', _hp.item.id);
             }
@@ -78410,6 +78494,11 @@ const app = {
             }
             this._tankPorts = (_portSrc && _portSrc.ports) || null;
             this._tankPortsModel = _portSrc ? _portSrc.id : null;
+            {
+                const _lb = selBoilers.find(b => b && b.type === 'gas') || selBoilers[0] || null;
+                this._tankHeatWarn = this.boilerHeatNote(vol, this.tankCoilKw(this._tankPortsModel),
+                    _lb ? (parseFloat(_lb.power) || 0) : 0, _portSrc && _portSrc.name ? String(_portSrc.name).replace(/^Бойлер косвенного нагрева\s*/i, '') : '');
+            }
         }
         // Дефицит мощности источника. Электрокотёл подбирается по выделенной на
         // участок мощности, и она бывает вдвое ниже теплопотерь: на 360 м² в
@@ -78520,6 +78609,7 @@ const app = {
         const _reqNote = this.projectReqsNote();
         if (_reqNote) boilerWarnHtml = _reqNote + (boilerWarnHtml || '');
         if (this._whHeatWarn) boilerWarnHtml = this._whHeatWarn + (boilerWarnHtml || '');
+        if (this._tankHeatWarn) boilerWarnHtml = this._tankHeatWarn + (boilerWarnHtml || '');
         flushBill("1. Котёл + водонагреватель", boilerWarnHtml);
 
         // === 2. ОБВЯЗКА КОТЕЛЬНОЙ ===
