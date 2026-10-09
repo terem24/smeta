@@ -59425,7 +59425,7 @@ const app = {
             if (_sgKind && this.state.groupsBuild !== 'self' && this.selfGroupsMode()) {
                 const _sgLbl = { direct: 'прямая', thermo: 'термостатическая', servo: 'под сервопривод' }[_sgKind];
                 const _sgSelf = Math.round(this.selfGroupPrice(_sgKind, { noPump: true }));
-                const _sgReady = Math.round(this.readyGroupPrice(_sgKind, { noPump: true }));
+                const _sgReady = Math.round(this.readyGroupPrice(_sgKind, { noPump: true, noNodes: true }));
                 const _sgD = _sgReady > 0 ? Math.round((_sgSelf - _sgReady) / _sgReady * 100) : 0;
                 const _sgC = _sgD > 0 ? '#ef4444' : (_sgD < 0 ? '#16a34a' : 'var(--text-sec)');
                 const _sgAvail = this.selfGroupsAvailable();
@@ -59452,7 +59452,7 @@ const app = {
                     <tr style="cursor: pointer;" onclick="app.applySelfBuiltFromSwap('${_sgKind}', event)">
                         <td class="col-idx"></td>
                         <td class="col-img" style="text-align:center;">${_sgIcon}</td>
-                        <td class="col-name" style="font-size: 14px; font-weight: 600; text-align: left;">Самосборная: ${_sgLbl}<div style="font-size:12px;font-weight:400;color:var(--text-sec);margin-top:2px;">${_sgCmp}.<br>Без насоса. Готовая с узлами МУ-25М: ${this.formatPriceHtml(_sgReady, true)}${_sgNote ? '<br><b>' + _sgNote + '</b>' : ''}${_sgParts}</div></td>
+                        <td class="col-name" style="font-size: 14px; font-weight: 600; text-align: left;">Самосборная: ${_sgLbl}<div style="font-size:12px;font-weight:400;color:var(--text-sec);margin-top:2px;">${_sgCmp}.<br>Без насоса. Готовая группа: ${this.formatPriceHtml(_sgReady, true)}${_sgNote ? '<br><b>' + _sgNote + '</b>' : ''}${_sgParts}</div></td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">STOUT / ROMMER</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px; color:${_sgC};">${_sgD > 0 ? '+' : ''}${_sgD}%</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${this.formatPriceHtml(_sgSelf, true)}</td>
@@ -72389,6 +72389,7 @@ const app = {
     },
     // Цена ОДНОЙ готовой группы вида kind «под ключ»: группа STOUT/ROMMER DN25 + насос + два присоединительных узла МУ-25М
     // (+ сервопривод у «под сервопривод»). Для сравнения с самосборной (коллектор в обоих вариантах свой, не входит).
+    // opt.noNodes — без присоединительных узлов МУ-25М (сравнение в окне замены: сама группа против самосборной).
     // opt.noPump — без насоса (насос подбирается отдельно и ставится к любой группе, в сравнении окна замены не участвует).
     readyGroupPrice: function (kind, opt) {
         if (kind === 'dhw') kind = 'direct';
@@ -72397,7 +72398,7 @@ const app = {
         const g = { direct: catalog.groups_dn25[0], thermo: catalog.groups_dn25[1], servo: catalog.groups_dn25[2] }[kind];
         const pump = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
         const servo = kind === 'servo' ? (this.state.servoType === 'sensor' ? catalog.servo_rotary_sensor : catalog.servo_rotary_std) : null;
-        return P(g) + ((opt && opt.noPump) ? 0 : P(pump)) + 2 * P((catalog.gbm_nodes || [])[0]) + P(servo);
+        return P(g) + ((opt && opt.noPump) ? 0 : P(pump)) + ((opt && opt.noNodes) ? 0 : 2 * P((catalog.gbm_nodes || [])[0])) + P(servo);
     },
     // Цена ОДНОЙ самосборной группы вида kind по тому же составу, что идёт в смету.
     selfGroupPrice: function (kind, opt) {
