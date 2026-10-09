@@ -23536,10 +23536,10 @@ const app = {
                 // JSON-путь PostgREST и восстанавливаем прежнюю форму e.calc_data.xxx на клиенте,
                 // чтобы не переписывать весь код рендера ниже.
                 let { data: uEsts, error: errUE } = await supabaseClient.from('estimates')
-                    .select('id, user_id, project_name, eq_sum, works_sum, total_sum, created_at, share_id, users(username, phone, email), calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, area:calc_data->>area, from_recognition:calc_data->>from_recognition, kp_ver:calc_data->>kpVersion, cf_calc:calc_data->copiedFrom->>calc')
+                    .select('id, user_id, project_name, eq_sum, works_sum, total_sum, created_at, share_id, users(username, phone, email), calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, area:calc_data->>area, brand:calc_data->>brandMode, from_recognition:calc_data->>from_recognition, kp_ver:calc_data->>kpVersion, cf_calc:calc_data->copiedFrom->>calc')
                     .in('user_id', userIds);
                 if (errUE) throw errUE;
-                userEsts = (uEsts || []).map(e => ({ ...e, calc_data: { calc_id: e.calc_id, shared_invoice_id: e.shared_invoice_id, area: e.area } }));
+                userEsts = (uEsts || []).map(e => ({ ...e, calc_data: { calc_id: e.calc_id, shared_invoice_id: e.shared_invoice_id, area: e.area, brandMode: e.brand } }));
             }
 
             // 2б. Расчёты, которые монтажник начал, но в облако не сохранил.
@@ -25909,6 +25909,10 @@ const app = {
                 if (e.calc_data && e.calc_data.area) totalArea += parseFloat(e.calc_data.area);
             });
             u.avgArea = u.projectsCount > 0 ? Math.round(totalArea / u.projectsCount) : 0;
+            // Какой бренд считает чаще — от этого цвет каски на аватарке (синий STOUT, красный ROMMER).
+            // Ничья и пустой список — STOUT, он в калькуляторе по умолчанию.
+            const nRommer = uEsts.filter(e => e.calc_data && e.calc_data.brandMode === 'rommer').length;
+            u.brandPref = (nRommer > uEsts.length - nRommer) ? 'rommer' : 'stout';
             // Начатые расчёты и распознавания — вторая половина картины: по одним
             // сохранённым сметам не видно, чем занят тот, кто заходит каждый день,
             // а в списке смет у него ноль. null = «посчитать не удалось».
@@ -43194,6 +43198,11 @@ const app = {
             let regRegion = meta.region || '';
             let regCity = meta.city || '';
             let regActivityTypes = Array.isArray(meta.activity_types) ? meta.activity_types : [];
+            // Цифры в ФИО из внешнего входа (Яндекс ID, Google) — отбрасываем до записи в базу
+            fullName = this.stripDigitWords(fullName) || 'Монтажник';
+            regLastName = this.stripDigitWords(regLastName);
+            regFirstName = this.stripDigitWords(regFirstName);
+            regMiddleName = this.stripDigitWords(regMiddleName);
 
             // Ограничение авторизации через Google для пользователей из РФ.
             // Кнопки Google в окне входа в РФ нет (кнопка Google убрана 08.10.2026) — то есть
@@ -43309,6 +43318,9 @@ const app = {
 
             // Название компании вместо ФИО в базу не отправляем: анкету попросят
             // заполнить заново (то же правило держит триггер users_guard_name)
+            ['lastName', 'givenName', 'middleName'].forEach(k => {
+                if (/\d/.test(this.state.tgUser[k] || '')) this.state.tgUser[k] = this.stripDigitWords(this.state.tgUser[k]);
+            });
             if (this.looksLikeCompany([this.state.tgUser.lastName, this.state.tgUser.givenName, this.state.tgUser.middleName].filter(Boolean).join(' '))) {
                 this.state.tgUser.lastName = ''; this.state.tgUser.givenName = ''; this.state.tgUser.middleName = '';
             }
@@ -44360,6 +44372,13 @@ const app = {
             .split(/([\s-])/)
             .map(p => (p === ' ' || p === '-') ? p : p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
             .join('');
+    },
+
+    // Цифр в ФИО не бывает никогда. Форма кабинета их не пропускает (checkNamePart), а имя из
+    // Яндекс ID / Google приходит как есть: «190 Андрей» (ник с номером машины) попал в базу
+    // именно так. Слова с цифрами выбрасываем; что осталось — оставляем как имя.
+    stripDigitWords: function (text) {
+        return String(text || '').split(/\s+/).filter(w => w && !/\d/.test(w)).join(' ');
     },
 
     /** Текст ошибки для части ФИО или пустая строка, если поле в порядке. */
@@ -51957,6 +51976,7 @@ const app = {
             role: Avatars.guessRole({ activity_types: tgUser.activityTypes || tgUser.activity_types || [] }),
             emb: Avatars.guessEmblem({ region: tgUser.region, city: tgUser.city }),
             hair: 0,
+            brand: this.state.brandMode === 'rommer' ? 'rommer' : 'stout',
             seed: String(tgUser.authUserId || tgUser.email || tgUser.username || 'me')
         };
         this._avatarPick = pick;
@@ -51987,6 +52007,7 @@ const app = {
         const thumb = (o, active, js) => `<img src="${Avatars.dataUri(Object.assign({}, p, o))}" alt="" onclick="${js}" style="width:46px; height:46px; border-radius:50%; cursor:pointer; border:2px solid ${active ? 'var(--primary,#FF6A00)' : 'transparent'};">`;
         let html = row('Пол', chip(p.g === 'm', 'Мужской', "app.setAvatarPick('g','m')") + chip(p.g === 'f', 'Женский', "app.setAvatarPick('g','f')"));
         html += row('Чем занимаетесь', chip(p.role === 'installer', 'Монтажник отопления', "app.setAvatarPick('role','installer')") + chip(p.role === 'seller', 'Продавец', "app.setAvatarPick('role','seller')"));
+        if (p.role === 'installer') html += row('Цвет каски: бренд, который считаете чаще', chip(p.brand === 'stout', 'STOUT (синий)', "app.setAvatarPick('brand','stout')") + chip(p.brand === 'rommer', 'ROMMER (красный)', "app.setAvatarPick('brand','rommer')"));
         html += row('Причёска', [0, 1, 2].map(i => thumb({ hair: i }, p.hair === i, `app.setAvatarPick('hair',${i})`)).join(''));
         html += row('Регион (значок в углу)', Avatars.EMBLEMS.map(e => thumb({ emb: e.id }, p.emb === e.id, `app.setAvatarPick('emb','${e.id}')`).replace('<img ', `<img title="${e.label}" `)).join(''));
         body.innerHTML = html;

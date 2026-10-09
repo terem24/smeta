@@ -2,6 +2,7 @@
 // Что отражает рисунок:
 //   пол        — причёска (м/ж), по отчеству и имени угадывается, если человек не выбрал сам;
 //   сфера      — монтажник в каске, продавец в рубашке с бейджем (users.activity_types);
+//                цвет каски и спецовки монтажника — бренд, который он считает чаще: синий STOUT, красный ROMMER;
 //   регион     — значок в углу: снежинка (Сибирь, Север, Дальний Восток), горы (Урал, Кавказ),
 //                солнце (юг), волны (Северо-Запад, Поволжье), купол (Центр), звезда (прочее).
 // Цвет кожи, волос и фона берётся от хеша имени, чтобы у разных людей рисунки не совпадали.
@@ -12,8 +13,11 @@
     var SKIN = ['#F5D0B0', '#E8B98F', '#D9A27A'];
     var HAIR = ['#2B2118', '#5A3A22', '#8A5A2B', '#D2A24C', '#B5502A', '#7C7C80'];
     // Фон по сфере: оранжевые для монтажников, синие для продавцов
-    var BG = { installer: ['#FFE0B8', '#FFD2A0', '#FFC98F'], seller: ['#CFE3FF', '#BBD6FA', '#D6E4F7'] };
-    var SHIRT = { installer: ['#37474F', '#455A64', '#3E4A57'], seller: ['#FFFFFF', '#F4F6F8', '#EEF2F7'] };
+    // Продавцы — спокойные зелёно-серые фоны, чтобы не путаться с цветом бренда монтажника
+    var BG = { installer: { stout: ['#D6E6FB', '#C7DBF7', '#DCEAFC'], rommer: ['#FADADA', '#F6C8C8', '#FBE0E0'] }, seller: ['#DDEBE3', '#D0E4D9', '#E4EFE8'] };
+    var SHIRT = { installer: { stout: ['#1E4F9E', '#1D5AB8', '#23468C'], rommer: ['#A52828', '#B32D2D', '#8F2323'] }, seller: ['#FFFFFF', '#F4F6F8', '#EEF2F7'] };
+    // Каска и полоски на спецовке: синий — STOUT, красный — ROMMER
+    var BRAND = { stout: { hat: '#2F7BE5', hatDark: '#1E5EBF', trim: '#9CC3F5' }, rommer: { hat: '#E03B3B', hatDark: '#B52626', trim: '#F4A3A3' } };
 
     var EMBLEMS = [
         { id: 'snow', label: 'Север и Сибирь', col: '#2E86C9' },
@@ -65,6 +69,12 @@
         return (seller && !inst) ? 'seller' : 'installer';
     }
 
+    // Бренд, который монтажник считает чаще: u.brandPref задаёт админка по сохранённым сметам.
+    // Нет данных — STOUT, это бренд по умолчанию в калькуляторе.
+    function guessBrand(u) {
+        return (u && u.brandPref === 'rommer') ? 'rommer' : 'stout';
+    }
+
     function guessEmblem(u) {
         u = u || {};
         var text = (String(u.region || '') + ' ' + String(u.city || '')).toLowerCase();
@@ -102,8 +112,10 @@
         var h = hash(opts.seed || '');
         var skin = SKIN[h % 3];
         var hairCol = HAIR[(h >> 3) % HAIR.length];
-        var bg = BG[role][(h >> 5) % 3];
-        var shirt = SHIRT[role][(h >> 7) % 3];
+        var brand = opts.brand === 'rommer' ? 'rommer' : 'stout';
+        var B = BRAND[brand];
+        var bg = (role === 'installer' ? BG.installer[brand] : BG.seller)[(h >> 5) % 3];
+        var shirt = (role === 'installer' ? SHIRT.installer[brand] : SHIRT.seller)[(h >> 7) % 3];
         var style = (typeof opts.hair === 'number') ? opts.hair % 3 : (h >> 9) % 3;
         var em = EMBLEMS.filter(function (e) { return e.id === opts.emb; })[0] || EMBLEMS[5];
         var s = '';
@@ -121,8 +133,8 @@
             if (g === 'm') s += '<path d="M32 51.5l-2 2.6 2 8.4 2-8.4z" fill="#1F4E8C"/>';
             s += '<rect x="14" y="54" width="10" height="6" rx="1" fill="#fff" stroke="#9AA9BA" stroke-width=".8"/><path d="M16 56.7h6M16 58.4h4" stroke="#9AA9BA" stroke-width=".8"/>';
         } else {
-            s += '<path d="M24 46l8 8 8-8" fill="none" stroke="#FF8F1F" stroke-width="2"/>';
-            s += '<rect x="13" y="53" width="3" height="11" fill="#FFC107" opacity=".9"/><rect x="48" y="53" width="3" height="11" fill="#FFC107" opacity=".9"/>';
+            s += '<path d="M24 46l8 8 8-8" fill="none" stroke="' + B.trim + '" stroke-width="2"/>';
+            s += '<rect x="13" y="53" width="3" height="11" fill="' + B.trim + '" opacity=".9"/><rect x="48" y="53" width="3" height="11" fill="' + B.trim + '" opacity=".9"/>';
         }
         // шея и голова
         s += '<rect x="28" y="38" width="8" height="9" rx="3" fill="' + skin + '"/>';
@@ -140,7 +152,7 @@
         if (g === 'f') s += '<path d="M25.5 26.4q2-1.4 4 0M34.5 26.4q2-1.4 4 0" fill="none" stroke="' + hairCol + '" stroke-width=".9"/>';
         // каска монтажника
         if (role === 'installer') {
-            s += '<path d="M20 22Q20 8.5 32 8.5Q44 8.5 44 22Z" fill="#FFC107"/><rect x="30" y="8.5" width="4" height="8" fill="#FFB300"/><rect x="17" y="21" width="30" height="3.2" rx="1.6" fill="#FFB300"/>';
+            s += '<path d="M20 22Q20 8.5 32 8.5Q44 8.5 44 22Z" fill="' + B.hat + '"/><rect x="30" y="8.5" width="4" height="8" fill="' + B.hatDark + '"/><rect x="17" y="21" width="30" height="3.2" rx="1.6" fill="' + B.hatDark + '"/>';
         }
         s += emblemSvg(em.id, em.col);
         return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' + s + '</svg>';
@@ -154,7 +166,7 @@
     function defaultFor(u) {
         u = u || {};
         var seed = u.id || u.auth_user_id || u.email || u.username || [u.last_name, u.first_name, u.middle_name].join(' ');
-        return dataUri({ g: guessGender(u), role: guessRole(u), emb: guessEmblem(u), seed: seed });
+        return dataUri({ g: guessGender(u), role: guessRole(u), brand: guessBrand(u), emb: guessEmblem(u), seed: seed });
     }
 
     // Что показывать в кружке: своё фото/выбранная аватарка, иначе рисунок по умолчанию
@@ -170,6 +182,7 @@
         forUser: forUser,
         guessGender: guessGender,
         guessRole: guessRole,
-        guessEmblem: guessEmblem
+        guessEmblem: guessEmblem,
+        guessBrand: guessBrand
     };
 })();
