@@ -8346,6 +8346,18 @@ const app = {
             return /терем/i.test(dn);
         } catch (e) { return false; }
     },
+    // Человек работает в ТЕРЕМ: закреплён за подразделением «ООО ТЕРЕМ ОП …» или пишет с почты teremopt.ru.
+    // Нужно аватарке продавца (красно-золотые цвета компании против обычных).
+    isUserInTerem: function (u) {
+        try {
+            if (!u) return false;
+            const mails = [u.email, u.work_email].filter(Boolean).map(x => String(x).trim().toLowerCase());
+            if (mails.some(m => /@([a-z0-9-]+\.)*teremopt\.ru$/.test(m))) return true;
+            const d = ((this.adminData && this.adminData.distributors) || []).find(x => x.id === u.distributor_id);
+            return !!d && /терем/i.test(d.company_name || '');
+        } catch (e) { return false; }
+    },
+
     // Предложение пробного Профи после сохранения сметы: человек уже увидел цену
     // своего объекта, и показать ему, что умеет платный тариф, имеет смысл именно
     // сейчас. Не навязываем: не чаще раза в 3 дня и не больше двух раз за всё
@@ -25913,6 +25925,7 @@ const app = {
             // Ничья и пустой список — STOUT, он в калькуляторе по умолчанию.
             const nRommer = uEsts.filter(e => e.calc_data && e.calc_data.brandMode === 'rommer').length;
             u.brandPref = (nRommer > uEsts.length - nRommer) ? 'rommer' : 'stout';
+            u.inTerem = this.isUserInTerem(u);
             // Начатые расчёты и распознавания — вторая половина картины: по одним
             // сохранённым сметам не видно, чем занят тот, кто заходит каждый день,
             // а в списке смет у него ноль. null = «посчитать не удалось».
@@ -38171,7 +38184,7 @@ const app = {
                     <button class="btn-header-blue" style="margin-bottom: 20px; width: fit-content;" onclick="app.renderAdminMain()">← Назад</button>
                     <div style="background: var(--surface-light); padding: 25px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 30px;">
                         <div style="display:flex; align-items:center; gap:20px; margin-bottom:25px; flex-wrap:wrap;">
-                            ${(user.avatar_url || window.Avatars) ? `<img src="${window.Avatars ? Avatars.forUser(user) : user.avatar_url}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);">` : `<div style="width:80px; height:80px; border-radius:50%; background:var(--primary-light); display:flex; align-items:center; justify-content:center; font-size:40px; color:var(--primary);">👤</div>`}
+                            ${(user.avatar_url || window.Avatars) ? `<img src="${window.Avatars ? Avatars.forUser(Object.assign({}, user, { inTerem: this.isUserInTerem(user) })) : user.avatar_url}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);">` : `<div style="width:80px; height:80px; border-radius:50%; background:var(--primary-light); display:flex; align-items:center; justify-content:center; font-size:40px; color:var(--primary);">👤</div>`}
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; width: 100%; flex-wrap: wrap;">
                                 <div class="user-main-contacts" style="min-width:0;">
                                     <h2 style="margin: 0; color: var(--text-main); font-size: 20px; overflow-wrap: anywhere;">${[user.last_name, user.first_name, user.middle_name].filter(Boolean).join(' ') || user.username || user.email || 'Без имени'}</h2>
@@ -51977,6 +51990,7 @@ const app = {
             emb: Avatars.guessEmblem({ region: tgUser.region, city: tgUser.city }),
             hair: 0,
             brand: this.state.brandMode === 'rommer' ? 'rommer' : 'stout',
+            terem: this.isTeremStaff(),
             seed: String(tgUser.authUserId || tgUser.email || tgUser.username || 'me')
         };
         this._avatarPick = pick;
@@ -52008,6 +52022,7 @@ const app = {
         let html = row('Пол', chip(p.g === 'm', 'Мужской', "app.setAvatarPick('g','m')") + chip(p.g === 'f', 'Женский', "app.setAvatarPick('g','f')"));
         html += row('Чем занимаетесь', chip(p.role === 'installer', 'Монтажник отопления', "app.setAvatarPick('role','installer')") + chip(p.role === 'seller', 'Продавец', "app.setAvatarPick('role','seller')"));
         if (p.role === 'installer') html += row('Цвет каски: бренд, который считаете чаще', chip(p.brand === 'stout', 'STOUT (синий)', "app.setAvatarPick('brand','stout')") + chip(p.brand === 'rommer', 'ROMMER (красный)', "app.setAvatarPick('brand','rommer')"));
+        if (p.role === 'seller') html += row('Компания', chip(!!p.terem, 'ТЕРЕМ', "app.setAvatarPick('terem',true)") + chip(!p.terem, 'Другая', "app.setAvatarPick('terem',false)"));
         html += row('Причёска', [0, 1, 2].map(i => thumb({ hair: i }, p.hair === i, `app.setAvatarPick('hair',${i})`)).join(''));
         html += row('Регион (значок в углу)', Avatars.EMBLEMS.map(e => thumb({ emb: e.id }, p.emb === e.id, `app.setAvatarPick('emb','${e.id}')`).replace('<img ', `<img title="${e.label}" `)).join(''));
         body.innerHTML = html;

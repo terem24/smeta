@@ -2,6 +2,7 @@
 // Что отражает рисунок:
 //   пол        — причёска (м/ж), по отчеству и имени угадывается, если человек не выбрал сам;
 //   сфера      — монтажник в каске, продавец в рубашке с бейджем (users.activity_types);
+//                продавец из ТЕРЕМ (u.inTerem) — в красно-золотых цветах компании, из других компаний — в светлой рубашке;
 //                цвет каски и спецовки монтажника — бренд, который он считает чаще: синий STOUT, красный ROMMER;
 //   регион     — значок в углу: снежинка (Сибирь, Север, Дальний Восток), горы (Урал, Кавказ),
 //                солнце (юг), волны (Северо-Запад, Поволжье), купол (Центр), звезда (прочее).
@@ -14,8 +15,8 @@
     var HAIR = ['#2B2118', '#5A3A22', '#8A5A2B', '#D2A24C', '#B5502A', '#7C7C80'];
     // Фон по сфере: оранжевые для монтажников, синие для продавцов
     // Продавцы — спокойные зелёно-серые фоны, чтобы не путаться с цветом бренда монтажника
-    var BG = { installer: { stout: ['#D6E6FB', '#C7DBF7', '#DCEAFC'], rommer: ['#FADADA', '#F6C8C8', '#FBE0E0'] }, seller: ['#DDEBE3', '#D0E4D9', '#E4EFE8'] };
-    var SHIRT = { installer: { stout: ['#1E4F9E', '#1D5AB8', '#23468C'], rommer: ['#A52828', '#B32D2D', '#8F2323'] }, seller: ['#FFFFFF', '#F4F6F8', '#EEF2F7'] };
+    var BG = { installer: { stout: ['#D6E6FB', '#C7DBF7', '#DCEAFC'], rommer: ['#FADADA', '#F6C8C8', '#FBE0E0'] }, seller: { other: ['#DDEBE3', '#D0E4D9', '#E4EFE8'], terem: ['#F5E6CC', '#EFDDBB', '#F8EDD8'] } };
+    var SHIRT = { installer: { stout: ['#1E4F9E', '#1D5AB8', '#23468C'], rommer: ['#A52828', '#B32D2D', '#8F2323'] }, seller: { other: ['#FFFFFF', '#F4F6F8', '#EEF2F7'], terem: ['#EA2227', '#D81E23', '#C91B20'] } };
     // Каска и полоски на спецовке: синий — STOUT, красный — ROMMER
     var BRAND = { stout: { hat: '#2F7BE5', hatDark: '#1E5EBF', trim: '#9CC3F5' }, rommer: { hat: '#E03B3B', hatDark: '#B52626', trim: '#F4A3A3' } };
 
@@ -114,8 +115,9 @@
         var hairCol = HAIR[(h >> 3) % HAIR.length];
         var brand = opts.brand === 'rommer' ? 'rommer' : 'stout';
         var B = BRAND[brand];
-        var bg = (role === 'installer' ? BG.installer[brand] : BG.seller)[(h >> 5) % 3];
-        var shirt = (role === 'installer' ? SHIRT.installer[brand] : SHIRT.seller)[(h >> 7) % 3];
+        var co = opts.terem ? 'terem' : 'other';
+        var bg = (role === 'installer' ? BG.installer[brand] : BG.seller[co])[(h >> 5) % 3];
+        var shirt = (role === 'installer' ? SHIRT.installer[brand] : SHIRT.seller[co])[(h >> 7) % 3];
         var style = (typeof opts.hair === 'number') ? opts.hair % 3 : (h >> 9) % 3;
         var em = EMBLEMS.filter(function (e) { return e.id === opts.emb; })[0] || EMBLEMS[5];
         var s = '';
@@ -129,9 +131,10 @@
         // плечи и одежда
         s += '<path d="M6 64Q8 45 32 45Q56 45 58 64Z" fill="' + shirt + '"/>';
         if (role === 'seller') {
-            s += '<path d="M26 45.5L32 53l6-7.5" fill="none" stroke="#C9D3DF" stroke-width="1.4"/>';
-            if (g === 'm') s += '<path d="M32 51.5l-2 2.6 2 8.4 2-8.4z" fill="#1F4E8C"/>';
-            s += '<rect x="14" y="54" width="10" height="6" rx="1" fill="#fff" stroke="#9AA9BA" stroke-width=".8"/><path d="M16 56.7h6M16 58.4h4" stroke="#9AA9BA" stroke-width=".8"/>';
+            var terem = !!opts.terem;
+            s += '<path d="M26 45.5L32 53l6-7.5" fill="none" stroke="' + (terem ? '#BE8A40' : '#C9D3DF') + '" stroke-width="1.4"/>';
+            if (g === 'm') s += '<path d="M32 51.5l-2 2.6 2 8.4 2-8.4z" fill="' + (terem ? '#BE8A40' : '#1F4E8C') + '"/>';
+            s += '<rect x="14" y="54" width="10" height="6" rx="1" fill="#fff" stroke="' + (terem ? '#BE8A40' : '#9AA9BA') + '" stroke-width=".8"/><path d="M16 56.7h6M16 58.4h4" stroke="' + (terem ? '#BE8A40' : '#9AA9BA') + '" stroke-width=".8"/>';
         } else {
             s += '<path d="M24 46l8 8 8-8" fill="none" stroke="' + B.trim + '" stroke-width="2"/>';
             s += '<rect x="13" y="53" width="3" height="11" fill="' + B.trim + '" opacity=".9"/><rect x="48" y="53" width="3" height="11" fill="' + B.trim + '" opacity=".9"/>';
@@ -166,7 +169,7 @@
     function defaultFor(u) {
         u = u || {};
         var seed = u.id || u.auth_user_id || u.email || u.username || [u.last_name, u.first_name, u.middle_name].join(' ');
-        return dataUri({ g: guessGender(u), role: guessRole(u), brand: guessBrand(u), emb: guessEmblem(u), seed: seed });
+        return dataUri({ g: guessGender(u), role: guessRole(u), brand: guessBrand(u), terem: !!u.inTerem, emb: guessEmblem(u), seed: seed });
     }
 
     // Что показывать в кружке: своё фото/выбранная аватарка, иначе рисунок по умолчанию
