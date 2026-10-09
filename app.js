@@ -43507,6 +43507,13 @@ const app = {
                 activityTypes: (this.state.tgUser.activityTypes && this.state.tgUser.activityTypes.length) ? this.state.tgUser.activityTypes : regActivityTypes,
                 isGoogle: user.app_metadata && user.app_metadata.provider === 'google'
             };
+            // Тариф прежней записи того же человека переносим: пока идёт запрос в базу,
+            // isPro() без него видит «base», и тема «Профи» гаснет и тут же загорается
+            // снова — на экране мигание светлая/ночная (09.10.2026)
+            if (!prevIsOther && prevUser.account_type) {
+                this.state.tgUser.account_type = prevUser.account_type;
+                this.state.tgUser.demo_ends_at = prevUser.demo_ends_at;
+            }
             this.saveState();
             // Только что вошли — забираем настройки аккаунта (реквизиты компании,
             // прайс-лист монтажа). При запуске страницы сессии ещё могло не быть.
@@ -87144,6 +87151,15 @@ const app = {
         // а не по позициям: так в него входит и другая обвязка котельной.
         // Пока базовая смета не посчитана (или режим выключен) — по позициям.
         const _cb = this.cheapModeOn() ? this._cheapBase : null;
+        // Количество, правленное руками у позиции, которой в базовой смете нет под
+        // тем же артикулом (радиаторы: в двух режимах разный исходный подбор),
+        // базовый прогон не видит — деньги этой правки (итог с ней минус итог без
+        // неё, см. computeCheapBaseline) добавляем в базу. Без этого итог рос,
+        // база стояла, и процент уходил в минус.
+        if (_cb && !_cb.adjDone && _cb.finNoOv != null) {
+            _cb.adjDone = true;
+            _cb.eq += Math.round(this.calcFinalTotal - _cb.finNoOv);
+        }
         const _bBase = _cb ? _cb.eq : this.calcBaseTotal;
         if (dBadge) {
             if (_bBase > this.calcFinalTotal) {
@@ -87297,6 +87313,20 @@ const app = {
             this._boilerRangeCache = null;
             this.render(true);
             this._cheapBase = { eq: Math.round(this.calcFinalTotal || 0), works: Math.round(this.lastWorksSum || 0) };
+            // Ручное количество, у которого в базовой смете нет строки с тем же
+            // артикулом, базовый прогон не применил. Считаем «режим без этой
+            // правки» — к концу отрисовки разница с настоящим итогом пойдёт в базу.
+            const _have = new Set((this.currentEquipmentList || []).map(x => x.originalId || x.id));
+            const _ovs = snapshot.qtyOverrides || {};
+            const _miss = Object.keys(_ovs).filter(k => !_have.has(k.lastIndexOf('@') > 0 ? k.slice(0, k.lastIndexOf('@')) : k));
+            if (_miss.length) {
+                Object.assign(this.state, snapshot);
+                this.state.qtyOverrides = {};
+                Object.keys(_ovs).forEach(k => { if (!_miss.includes(k)) this.state.qtyOverrides[k] = _ovs[k]; });
+                this._boilerRangeCache = null;
+                this.render(true);
+                this._cheapBase.finNoOv = Math.round(this.calcFinalTotal || 0);
+            }
         } catch (e) {
             console.warn('[подешевле] базовая смета не посчиталась:', e);
             this._cheapBase = null;

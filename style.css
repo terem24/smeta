@@ -17177,6 +17177,7 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
     body.theme-yandex.dark-mode #swap_modal_body .swap-tab.active,
     body.theme-yandex.dark-mode .cw-xp-block.filled,
     body.theme-yandex.dark-mode .tour-btn:not(.tour-btn-ghost),
+    body.theme-yandex.dark-mode .save-remind-ok,
     body.theme-yandex.dark-mode [style*="background:var(--primary)"],
     body.theme-yandex.dark-mode [style*="background: var(--primary)"],
     body.theme-yandex.dark-mode [style*="background-color:var(--primary)"],
