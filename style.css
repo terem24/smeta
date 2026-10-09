@@ -2583,6 +2583,49 @@ body.dark-mode .sec-explain {
     border-color: var(--note-info-border, #93C5FD);
 }
 
+/* Подряд идущие синие плашки — одна строка «N пояснения», раскрывается по клику */
+.note-fold {
+    margin-top: 5px;
+    width: 100%;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: normal;
+    text-align: left;
+    white-space: normal;
+    cursor: default;
+}
+.note-fold > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--note-info-border, #93C5FD);
+    background: var(--note-info-bg, #EFF6FF);
+    color: var(--note-info-text, #1E40AF);
+}
+.note-fold > summary::-webkit-details-marker { display: none; }
+.note-fold > summary::after { content: ' ▾'; }
+.note-fold[open] > summary::after { content: ' ▴'; }
+.note-fold > .note-box { margin-top: 4px; }
+
+/* «Понятно» — крестик у синей плашки; в печать и PDF не идёт */
+.note-box .note-ok {
+    flex-shrink: 0;
+    align-self: flex-start;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    opacity: .55;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+    cursor: pointer;
+}
+.note-box .note-ok:hover { opacity: 1; }
+@media print { .note-box .note-ok { display: none !important; } }
+body.html2pdf-printing .note-box .note-ok { display: none !important; }
+
 /* Кружок «i» перекрашиваем под уровень: синий значок на янтарной плашке
    выглядел чужой кнопкой из другого места экрана. */
 .note-warn .info-icon {
