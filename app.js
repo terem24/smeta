@@ -14477,6 +14477,7 @@ const app = {
             ? `<img src="${avatarImg}" alt="">`
             : (uName.trim().charAt(0).toUpperCase() || '·');
         nameEl.innerText = uName;
+        avatarEl.style.cssText += ';' + (this.isPro() ? this.PRO_RING : 'box-shadow:none;');
 
         if (this.isPro()) {
             const until = this.getProUntilDate();
@@ -26503,7 +26504,7 @@ const app = {
                 lastVis = '⚠ ' + lastVis;
                 lastVisTitle += ' — время из будущего: на устройстве пользователя сбиты часы';
             }
-            let avatarImg = `<img src="${(window.Avatars ? Avatars.forUser(u) : u.avatar_url) || ''}" alt="" style="width:36px; height:36px; border-radius:50%; vertical-align:middle; margin-right:10px; object-fit:cover; border:1px solid #E5E7EB;">`;
+            let avatarImg = `<img src="${(window.Avatars ? Avatars.forUser(u) : u.avatar_url) || ''}" alt="" style="width:36px; height:36px; border-radius:50%; vertical-align:middle; margin:0 12px 0 4px; object-fit:cover; border:1px solid #E5E7EB; ${this.proRing(this.isUserProActive(u))}">`;
 
             let cityText = u.city || 'Город не указан';
             let ipLoc = u.location || 'Неизвестно';
@@ -38370,7 +38371,7 @@ const app = {
                     <button class="btn-header-blue" style="margin-bottom: 20px; width: fit-content;" onclick="app.renderAdminMain()">← Назад</button>
                     <div style="background: var(--surface-light); padding: 25px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 30px;">
                         <div style="display:flex; align-items:center; gap:20px; margin-bottom:25px; flex-wrap:wrap;">
-                            ${(user.avatar_url || window.Avatars) ? `<img src="${window.Avatars ? Avatars.forUser(Object.assign({}, user, { inTerem: this.isUserInTerem(user) })) : user.avatar_url}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);">` : `<div style="width:80px; height:80px; border-radius:50%; background:var(--primary-light); display:flex; align-items:center; justify-content:center; font-size:40px; color:var(--primary);">👤</div>`}
+                            ${(user.avatar_url || window.Avatars) ? `<img src="${window.Avatars ? Avatars.forUser(Object.assign({}, user, { inTerem: this.isUserInTerem(user) })) : user.avatar_url}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--primary); ${this.proRing(this.isUserProActive(user))}">` : `<div style="width:80px; height:80px; border-radius:50%; background:var(--primary-light); display:flex; align-items:center; justify-content:center; font-size:40px; color:var(--primary);">👤</div>`}
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; width: 100%; flex-wrap: wrap;">
                                 <div class="user-main-contacts" style="min-width:0;">
                                     <h2 style="margin: 0; color: var(--text-main); font-size: 20px; overflow-wrap: anywhere;">${[user.last_name, user.first_name, user.middle_name].filter(Boolean).join(' ') || user.username || user.email || 'Без имени'}</h2>
@@ -52008,6 +52009,9 @@ const app = {
             adminItem.style.display = this.hasAdminAccess() ? 'flex' : 'none';
         }
 
+        if (avatarImgEl && avatarImgEl.parentElement) {
+            avatarImgEl.parentElement.style.boxShadow = (avatarSrc && this.isPro()) ? '0 0 0 2px var(--surface,#fff),0 0 0 4px #D4A017' : '';
+        }
         if (avatarSrc) {
             if (avatarImgEl) {
                 avatarImgEl.src = avatarSrc;
@@ -52168,6 +52172,16 @@ const app = {
         }
     },
 
+    // Золотая обводка вокруг аватарки у тех, у кого действует Профи. Это inline-стиль (box-shadow:
+    // место не занимает), поэтому работает и для фото, и для рисунка, и в любой теме.
+    PRO_RING: 'box-shadow:0 0 0 2px var(--surface,#fff),0 0 0 4px #D4A017;',
+    proRing: function (active) { return active ? this.PRO_RING : ''; },
+    // Профи у человека из списка админки: тариф есть и срок не вышел
+    isUserProActive: function (u) {
+        if (!u || this.adminTariffRank(u) !== 1) return false;
+        return !(u.demo_ends_at && new Date(u.demo_ends_at) < new Date());
+    },
+
     // Что показать в кружке у самого человека: своё фото или выбранный рисунок, а если ничего
     // не выбрано — рисунок по умолчанию из анкеты (пол, сфера, регион, бренд, ТЕРЕМ), как в админке.
     // Рисунок по умолчанию только рисуется, в users.avatar_url не пишется. Не вошёл — пусто.
@@ -52279,6 +52293,7 @@ const app = {
                 initialEl.innerText = uName.trim().charAt(0).toUpperCase() || '·';
             }
         }
+        box.style.boxShadow = this.isPro() ? '0 0 0 2px var(--surface,#fff),0 0 0 4px #D4A017' : '';
         // «Удалить фото» имеет смысл только для своего снимка: аватарку Яндекса или
         // Google мы всё равно получим обратно при следующем входе
         if (removeBtn) removeBtn.style.display = isOwnPhoto ? '' : 'none';
@@ -69434,7 +69449,7 @@ const app = {
                 let infoHtml = '';
                 let uName = this.formatShortName(tgUser) || 'Монтажник';
                 let avatarImg = this.ownAvatarSrc(tgUser);
-                let icon = avatarImg ? `<img src="${avatarImg}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">` : (tgUser.isGoogle ? 'G' : '👤');
+                let icon = avatarImg ? `<img src="${avatarImg}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; ${this.proRing(isActuallyPro)}">` : (tgUser.isGoogle ? 'G' : '👤');
 
                 if (isActuallyPro) {
                     let proUntilDate = this.getProUntilDate();
