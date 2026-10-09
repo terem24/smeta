@@ -45575,7 +45575,7 @@ const app = {
     // масштаб страницы уже не поместить. Правила лежат в big_text.css, его собирает
     // tools/gen_big_text.py из style.css; грузится лениво, только когда режим включён.
     BIG_TEXT_KEY: 'hc_big_text',
-    BIG_TEXT_CSS_V: '9',
+    BIG_TEXT_CSS_V: '11',
 
     bigText: function () {
         try { return localStorage.getItem(this.BIG_TEXT_KEY) === '1'; } catch (e) { return false; }
@@ -46274,6 +46274,88 @@ const app = {
             if (w !== el) w.classList.remove('tip-open');
         });
         el.classList.toggle('tip-open');
+    },
+
+    /**
+     * Синие плашки — справочные, действий не требуют, поэтому подряд идущие
+     * сворачиваем в одну строку «N пояснения», а у каждой есть «Понятно»:
+     * закрытая больше не показывается (запоминается в этом браузере, в смету и
+     * ссылку клиенту не попадает). Красные и янтарные не трогаем.
+     * Плашки собираются строкой в десятках мест, поэтому сворачиваем по готовой
+     * разметке — наблюдателем, а не правкой каждого места.
+     */
+    _noteKey: function (box) {
+        const t = (box.querySelector('.note-text') || box).textContent.replace(/[\d.,]+/g, '#').replace(/\s+/g, ' ').trim();
+        return t.slice(0, 80);
+    },
+    _noteDismissed: function () {
+        try { return JSON.parse(localStorage.getItem('hc_notes_ok') || '[]'); } catch (e) { return []; }
+    },
+    dismissNote: function (btn) {
+        const box = btn.closest('.note-box');
+        if (!box) return;
+        try {
+            const arr = this._noteDismissed();
+            const k = this._noteKey(box);
+            if (arr.indexOf(k) < 0) arr.push(k);
+            localStorage.setItem('hc_notes_ok', JSON.stringify(arr.slice(-200)));
+        } catch (e) { }
+        box.remove();
+        this.foldInfoNotes();
+    },
+    foldInfoNotes: function () {
+        if (this._foldBusy) return;
+        this._foldBusy = true;
+        try {
+            const ok = this._noteDismissed();
+            document.querySelectorAll('.note-box.note-info').forEach(box => {
+                if (box.closest('.note-fold') || box.closest('.tip-panel')) return;
+                if (!box.querySelector('.note-ok') && !box.closest('.no-print-fold')) {
+                    const b = document.createElement('button');
+                    b.type = 'button';
+                    b.className = 'note-ok';
+                    b.title = 'Понятно — больше не показывать';
+                    b.textContent = '×';
+                    b.setAttribute('onclick', 'event.stopPropagation(); app.dismissNote(this);');
+                    box.appendChild(b);
+                }
+                if (ok.indexOf(this._noteKey(box)) >= 0) box.remove();
+            });
+            const seen = new Set();
+            document.querySelectorAll('.note-box.note-info').forEach(first => {
+                if (seen.has(first) || first.closest('.note-fold') || first.closest('.tip-panel')) return;
+                const prev = first.previousElementSibling;
+                if (prev && prev.classList.contains('note-info') && prev.classList.contains('note-box')) return;
+                const run = [first];
+                let n = first.nextElementSibling;
+                while (n && n.classList.contains('note-box') && n.classList.contains('note-info')) { run.push(n); n = n.nextElementSibling; }
+                run.forEach(r => seen.add(r));
+                if (run.length < 2) return;
+                const d = document.createElement('details');
+                d.className = 'note-fold';
+                d.setAttribute('onclick', 'event.stopPropagation();');
+                const s = document.createElement('summary');
+                const w = run.length % 10 === 1 && run.length % 100 !== 11 ? 'пояснение'
+                    : (run.length % 10 >= 2 && run.length % 10 <= 4 && (run.length % 100 < 12 || run.length % 100 > 14) ? 'пояснения' : 'пояснений');
+                s.innerHTML = `<span class="note-ico">ℹ️</span> ${run.length} ${w}`;
+                d.appendChild(s);
+                first.parentNode.insertBefore(d, first);
+                run.forEach(r => d.appendChild(r));
+            });
+            // Раскрытая группа, из которой убрали плашки, не нужна
+            document.querySelectorAll('.note-fold').forEach(d => {
+                if (d.querySelectorAll('.note-box').length === 0) d.remove();
+            });
+        } finally { this._foldBusy = false; }
+    },
+    installNoteFold: function () {
+        if (this._noteFoldObs || typeof MutationObserver === 'undefined') return;
+        let t = 0;
+        this._noteFoldObs = new MutationObserver(() => {
+            if (this._foldBusy || t) return;
+            t = setTimeout(() => { t = 0; this.foldInfoNotes(); }, 60);
+        });
+        this._noteFoldObs.observe(document.body, { childList: true, subtree: true });
     },
 
     tipHtml: function (content) {
@@ -53255,12 +53337,17 @@ const app = {
                 `Вместо ${fmt(pw)} кВт — ${fmt(kw)} кВт.`,
                 `<div class="tip-p">${plan.preferred.name} берёт ${fmt(pw * n)} кВт, а на водонагреватель доступно ${fmt(plan.budgetKw)} кВт. Взят тот же объём с мощностью ${fmt(kw)} кВт — греется чуть дольше.</div>`);
         }
+        const heatDet = this.whHeatMin(wh) > 0
+            ? `<div class="tip-p"><b>Расчёт нагрева:</b> t = V · c · ΔT / P = ${wh.vol} л · 4,187 кДж/(кг·К) · ${this.WH_EL_DT} К / ${fmt(kw)} кВт ≈ ${Math.round(this.whHeatMin(wh))} мин. Справочная оценка без потерь тепла через стенки бака, на деле чуть дольше.</div>`
+            : '';
         if (plan.shortVol) {
+            // Одна плашка про бак: и нехватка объёма, и время нагрева — про одно и то же
             warn += this.noteBox('warn', 'Нужный объём больше, чем даёт ряд.',
-                `Нужно ${Math.round(plan.needVol)} л, в смете ${plan.totalVol} л.`,
-                `<div class="tip-p">Автоматически ставится один электрический накопительный, не больше 100 л. Для такого расхода ГВС надёжнее бойлер косвенного нагрева от котла; если нужен именно электрический — количество можно увеличить вручную.</div>`);
+                `Нужно ${Math.round(plan.needVol)} л, в смете ${plan.totalVol} л.` +
+                (this.whHeatMin(wh) > 0 ? ` Нагрев — около ${this.whHeatText(wh)}.` : ''),
+                `<div class="tip-p">Автоматически ставится один электрический накопительный, не больше 100 л. Для такого расхода ГВС надёжнее бойлер косвенного нагрева от котла; если нужен именно электрический — количество можно увеличить вручную.</div>` + heatDet);
         }
-        if (this.whHeatMin(wh) > 0) {
+        if (this.whHeatMin(wh) > 0 && !plan.shortVol) {
             warn += this.noteBox('info', `Нагрев бака — около ${this.whHeatText(wh)}.`,
                 `${wh.vol} л, ТЭН ${fmt(kw)} кВт, нагрев с 15 до 60 °C.`,
                 `<div class="tip-p"><b>Расчёт:</b> t = V · c · ΔT / P = ${wh.vol} л · 4,187 кДж/(кг·К) · ${this.WH_EL_DT} К / ${fmt(kw)} кВт ≈ ${Math.round(this.whHeatMin(wh))} мин. Справочная оценка без потерь тепла через стенки бака, на деле чуть дольше.</div>`);
@@ -54579,6 +54666,7 @@ const app = {
         if (!this._stateDefaults) this._stateDefaults = JSON.parse(JSON.stringify(this.state));
         // Меню кабинета (панель слева и колонка в окне) строим до всего, что их читает
         this.buildCabinetMenus();
+        this.installNoteFold();
         // Global premium modal overrides
         window.alert = (msg) => app.alert(msg);
         window.confirm = (msg) => app.confirm(msg);
@@ -59394,6 +59482,10 @@ const app = {
                 if (this.selfGroupKindOfReady(displayAlt.id)) {
                     const _sp = String(displayAlt.name).split(' - ');
                     if (_sp.length === 2) _nameDisplay = `${_sp[0]}<div style="font-size:12px;font-weight:500;color:var(--text-sec);margin-top:2px;">${_sp[1]}</div>`;
+                } else if (/^(SDG-001[678]|SDG-0120|RDG-0120)/.test(String(displayAlt.id)) && String(displayAlt.name).length > 38) {
+                    // Коллекторы и узлы подмеса: «Стальной распределительный коллектор DN25 (3 насосных группы)» → название и серая вторая строка.
+                    const _pm = String(displayAlt.name).match(/^(.*\S)\s+\(([^()]+)\)$/);
+                    if (_pm) _nameDisplay = `${_pm[1]}<div style="font-size:12px;font-weight:500;color:var(--text-sec);margin-top:2px;">${_pm[2]}</div>`;
                 }
                 // Пояснение под названием серым: ему не место в самом названии — цена и так в колонке.
                 const _hintText = displayAlt.hint || alt.hint || '';
@@ -59426,6 +59518,7 @@ const app = {
                 const _sgLbl = { direct: 'прямая', thermo: 'термостатическая', servo: 'под сервопривод' }[_sgKind];
                 const _sgSelf = Math.round(this.selfGroupPrice(_sgKind, { noPump: true }));
                 const _sgReady = Math.round(this.readyGroupPrice(_sgKind, { noPump: true, noNodes: true }));
+                const _sgReadyKit = Math.round(this.readyGroupPrice(_sgKind, { noPump: true }));
                 const _sgD = _sgReady > 0 ? Math.round((_sgSelf - _sgReady) / _sgReady * 100) : 0;
                 const _sgC = _sgD > 0 ? '#ef4444' : (_sgD < 0 ? '#16a34a' : 'var(--text-sec)');
                 const _sgAvail = this.selfGroupsAvailable();
@@ -59452,7 +59545,7 @@ const app = {
                     <tr style="cursor: pointer;" onclick="app.applySelfBuiltFromSwap('${_sgKind}', event)">
                         <td class="col-idx"></td>
                         <td class="col-img" style="text-align:center;">${_sgIcon}</td>
-                        <td class="col-name" style="font-size: 14px; font-weight: 600; text-align: left;">Самосборная: ${_sgLbl}<div style="font-size:12px;font-weight:400;color:var(--text-sec);margin-top:2px;">${_sgCmp}.<br>Без насоса. Готовая группа: ${this.formatPriceHtml(_sgReady, true)}${_sgNote ? '<br><b>' + _sgNote + '</b>' : ''}${_sgParts}</div></td>
+                        <td class="col-name" style="font-size: 14px; font-weight: 600; text-align: left;">Самосборная: ${_sgLbl}<div style="font-size:12px;font-weight:400;color:var(--text-sec);margin-top:2px;">${_sgCmp}.<br>Без насоса. Готовая группа: ${this.formatPriceHtml(_sgReady, true)}, с узлами МУ-25М: ${this.formatPriceHtml(_sgReadyKit, true)}${_sgNote ? '<br><b>' + _sgNote + '</b>' : ''}${_sgParts}</div></td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">STOUT / ROMMER</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px; color:${_sgC};">${_sgD > 0 ? '+' : ''}${_sgD}%</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${this.formatPriceHtml(_sgSelf, true)}</td>
@@ -78626,9 +78719,9 @@ const app = {
             if (!this.state.detailedRooms && !this.isFlat() && _elKw > 15 && _gasKw === 0) {
                 const _warm = this.state.mat === 0.8;
                 boilerWarnHtml = (boilerWarnHtml || '') + this.noteBox('info',
-                    `Электрокотёл ${_elKw} кВт — больше обычных 15 кВт на участок.`,
-                    _warm ? 'Посчитайте дом по помещениям: быстрый расчёт — укрупнённая оценка.'
-                          : 'Если дом новый и утеплённый — нажмите «Тёплый» или посчитайте по помещениям.',
+                    `Электрокотёл ${_elKw} кВт — больше 15 кВт на участок.`,
+                    'Проверьте расчёт.',
+                    `<div class="tip-p"><b>${_warm ? 'Посчитайте дом по помещениям: быстрый расчёт — укрупнённая оценка.' : 'Если дом новый и утеплённый — нажмите «Тёплый» или посчитайте по помещениям.'}</b></div>` +
                     `<div class="tip-p">Быстрый расчёт на кнопке «${_warm ? 'Тёплый' : this.state.mat === 1.3 ? 'Холодный' : 'Стандарт'}» — ` +
                     `${this.quickWPerM2()} Вт на м² пола. Это практика, а не расчёт ограждений: для типового дома — привычные «1 кВт на 10 м²», ` +
                     `а в проектах на новые утеплённые дома теплопотери около 67 Вт/м², и котёл выходит на треть меньше.</div>` +

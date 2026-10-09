@@ -167,11 +167,11 @@
 
   html[data-big-text] .warn-box { font-size: 14px; }
 
-  html[data-big-text] .note-box { font-size: 15px; }
+  html[data-big-text] .note-box { font-size: 12.5px; }
 
   html[data-big-text] .sec-explain { font-size: 15px; }
 
-  html[data-big-text] .note-box .note-ico { font-size: 15.5px; }
+  html[data-big-text] .note-box .note-ico { font-size: 13px; }
 
   html[data-big-text] .ph-top { font-size: 17px; }
 

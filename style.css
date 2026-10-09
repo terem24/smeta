@@ -2495,8 +2495,8 @@ body.menu-open .mobile-menu-backdrop {
     border-radius: 6px;
     border: 1px solid transparent;
     font-size: 11px;
-    font-weight: 600;
-    line-height: 1.45;
+    font-weight: 500;
+    line-height: 1.4;
     text-transform: none;
     letter-spacing: normal;
     text-align: left;
@@ -2554,7 +2554,7 @@ body.dark-mode .sec-explain {
 /* Заголовок плашки — тем же цветом, только жирнее: цветной текст на цветном
    фоне и так контрастен, второй акцент делает строку пёстрой. */
 .note-box .note-text b {
-    font-weight: 800;
+    font-weight: 700;
 }
 
 .note-box .note-tip {
@@ -2582,6 +2582,49 @@ body.dark-mode .sec-explain {
     color: var(--note-info-text, #1E40AF);
     border-color: var(--note-info-border, #93C5FD);
 }
+
+/* Подряд идущие синие плашки — одна строка «N пояснения», раскрывается по клику */
+.note-fold {
+    margin-top: 5px;
+    width: 100%;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: normal;
+    text-align: left;
+    white-space: normal;
+    cursor: default;
+}
+.note-fold > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--note-info-border, #93C5FD);
+    background: var(--note-info-bg, #EFF6FF);
+    color: var(--note-info-text, #1E40AF);
+}
+.note-fold > summary::-webkit-details-marker { display: none; }
+.note-fold > summary::after { content: ' ▾'; }
+.note-fold[open] > summary::after { content: ' ▴'; }
+.note-fold > .note-box { margin-top: 4px; }
+
+/* «Понятно» — крестик у синей плашки; в печать и PDF не идёт */
+.note-box .note-ok {
+    flex-shrink: 0;
+    align-self: flex-start;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    opacity: .55;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+    cursor: pointer;
+}
+.note-box .note-ok:hover { opacity: 1; }
+@media print { .note-box .note-ok { display: none !important; } }
+body.html2pdf-printing .note-box .note-ok { display: none !important; }
 
 /* Кружок «i» перекрашиваем под уровень: синий значок на янтарной плашке
    выглядел чужой кнопкой из другого места экрана. */
@@ -16520,7 +16563,7 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
            владелец 24.09.2026 отверг: «режут глаз», чёрные заменил на серые по
            образцу); --primary остаётся белым для текстовых акцентов. Заливки
            переводит на --ya-fill список в конце блока. */
-        --ya-fill: #747476; /* белый 40 % на #18181A — активная плашка ya.ru ночью */
+        --ya-fill: #5E5E61; /* темнее прежних #747476: белый текст на них давал ~4,6:1 и плохо читался (09.10.2026, ~6,5:1) */
         --ya-on-primary: #FFFFFF;
         --ya-shadow: none;
         --bg-sec: #2E2E30;
@@ -18413,6 +18456,14 @@ body.dark-mode #admin_content .btn-icon {
 }
 .ui-scale-step:hover:not(:disabled) { border-color: var(--primary, #2563EB); }
 .ui-scale-step.on { background: var(--primary, #2563EB); border-color: var(--primary, #2563EB); color: #fff; }
+/* В тёмных темах бренда --primary светлый (#E4E4E7 / #FFF): белый текст на нём не виден.
+   То же у бейджа с процентом на кнопке «Aa» в шапке. */
+body.brand-stout.dark-mode .ui-scale-step.on,
+body.brand-rommer.dark-mode .ui-scale-step.on,
+body.theme-yandex.dark-mode .ui-scale-step.on,
+body.brand-stout.dark-mode #btn_ui_scale .ui-scale-badge,
+body.brand-rommer.dark-mode #btn_ui_scale .ui-scale-badge,
+body.theme-yandex.dark-mode #btn_ui_scale .ui-scale-badge { color: #111; }
 .ui-scale-step:disabled { opacity: 0.35; cursor: not-allowed; }
 .ui-scale-note { font-size: 11.5px; opacity: 0.7; margin-top: 6px; }
 .ui-scale-row {
@@ -19756,3 +19807,21 @@ body.profile-incomplete-lock #lk_search,
 body.profile-incomplete-lock .lk-rail-item:not([data-rail]):not(.lk-rail-logout) { display: none !important; }
 
 #profile_modal_overlay .auth-input[readonly] { opacity: .7; cursor: default; }
+
+/* Итоги в шапке в темах «Профи», бренда и магазина: без «светофора» (синий/красный/зелёный).
+   Оборудование и монтаж — обычный цвет текста темы, «Мне» — акцент темы. */
+body.theme-yandex #anim_eq_sum,
+body.theme-yandex #anim_works_sum,
+body.theme-yandex .m-total-eq span,
+body.theme-yandex .m-total-work span,
+body.theme-brand #anim_eq_sum,
+body.theme-brand #anim_works_sum,
+body.theme-brand .m-total-eq span,
+body.theme-brand .m-total-work span,
+body.theme-shop #anim_eq_sum,
+body.theme-shop #anim_works_sum,
+body.theme-shop .m-total-eq span,
+body.theme-shop .m-total-work span { color: var(--text-main) !important; }
+body.theme-yandex #hdr_margin_sum,
+body.theme-brand #hdr_margin_sum,
+body.theme-shop #hdr_margin_sum { color: var(--primary) !important; }
