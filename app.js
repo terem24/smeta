@@ -1952,7 +1952,7 @@ const app = {
                 </div>
                 ${line ? `<div style="font-size:12px; color:var(--text-sec); margin-top:2px;">${esc(line)}</div>` : ''}
                 <div style="display:flex; gap:8px; margin-top:8px;">
-                    <button onclick="app.openOprosRequest('${r.id}')" style="flex:1; padding:8px; border:none; border-radius:8px; background:var(--primary); color:#fff; font-size:12.5px; font-weight:700; cursor:pointer;">Открыть в расчёте</button>
+                    <button onclick="app.openOprosRequest('${r.id}')" style="flex:1; padding:8px; border:none; border-radius:8px; background:var(--primary); color:var(--on-primary,#fff); font-size:12.5px; font-weight:700; cursor:pointer;">Открыть в расчёте</button>
                     <button onclick="app.dismissOprosRequest('${r.id}', this)" style="padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:transparent; color:var(--text-sec); font-size:12.5px; font-weight:600; cursor:pointer;">Скрыть</button>
                 </div>
             </div>`;
@@ -2069,7 +2069,7 @@ const app = {
 
         const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const loggedIn = !!this.state.tgUser;
-        const btnStyle = 'font:inherit; font-size:12.5px; font-weight:700; padding:7px 14px; border-radius:8px; border:none; background:var(--primary); color:#fff; cursor:pointer;';
+        const btnStyle = 'font:inherit; font-size:12.5px; font-weight:700; padding:7px 14px; border-radius:8px; border:none; background:var(--primary); color:var(--on-primary,#fff); cursor:pointer;';
         const closeStyle = 'font:inherit; font-size:18px; line-height:1; padding:2px 6px; border:none; background:transparent; color:var(--text-sec); cursor:pointer;';
 
         let text, action = '';
@@ -2414,7 +2414,7 @@ const app = {
         const st = compact
             ? base + ' font-size:11px; padding:4px 8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main);'
             : base + ' font-size:12.5px; padding:8px 14px; border:1px solid var(--border); background:var(--surface); color:var(--text-main);';
-        const primary = compact ? st : st + ' background:var(--primary); color:#fff; border-color:var(--primary);';
+        const primary = compact ? st : st + ' background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);';
         const id = String(d.id);
         const code = String(d.promo_code || '').toUpperCase().replace(/'/g, '');
         return `
@@ -11385,7 +11385,7 @@ const app = {
                 .brx-top { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin-bottom:14px; }
                 .brx-pills { display:flex; gap:4px; background:var(--surface-light); border:1px solid var(--border); border-radius:10px; padding:3px; }
                 .brx-pill { font:inherit; font-size:12px; font-weight:700; border:0; border-radius:8px; padding:6px 12px; cursor:pointer; background:transparent; color:var(--text-sec); }
-                .brx-pill.on { background:var(--primary); color:#fff; }
+                .brx-pill.on { background:var(--primary); color:var(--on-primary,#fff); }
                 .brx-layout { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; align-items:start; }
                 @media (min-width:1100px) { .brx-layout { grid-template-columns:minmax(0,1.55fr) minmax(340px,1fr); } .brx-detail { position:sticky; top:0; max-height:calc(100vh - 160px); overflow-y:auto; } }
                 .brx-group { margin-bottom:26px; }
@@ -17900,7 +17900,7 @@ const app = {
                 ${field('dist_brand_address', 'Адрес и телефоны (первая строка будет жирной)', value.address || '', T.address, 3)}
                 ${field('dist_brand_bank', 'Банковские реквизиты', value.bank || '', T.bank, 4)}
                 <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
-                    <button class="admin-btn" style="background:var(--primary); color:#fff; border-color:var(--primary);" onclick="app.saveDistBrand()">Сохранить</button>
+                    <button class="admin-btn" style="background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);" onclick="app.saveDistBrand()">Сохранить</button>
                     <button class="admin-btn danger" onclick="app.deleteDistBrand()">Удалить — вернуть ТЕРЕМ</button>
                 </div>
             </div>`;
@@ -19131,7 +19131,7 @@ const app = {
                         по каждому разделу сметы.
                     </div>
                     <button type="button" onclick="app.showModal('pro')"
-                        style="margin-top: 16px; font: inherit; font-size: 13px; font-weight: 700; padding: 10px 22px; border-radius: 10px; border: none; background: var(--primary); color: #fff; cursor: pointer;">Посмотреть тариф</button>
+                        style="margin-top: 16px; font: inherit; font-size: 13px; font-weight: 700; padding: 10px 22px; border-radius: 10px; border: none; background: var(--primary); color: var(--on-primary,#fff); cursor: pointer;">Посмотреть тариф</button>
                 </div>`;
             return;
         }
@@ -19174,7 +19174,7 @@ const app = {
                         в смету не попадают и клиенту по ссылке не уходят.
                     </div>
                     <button type="button" onclick="app.applyMarginSetup()"
-                        style="margin-top: 14px; font: inherit; font-size: 14px; font-weight: 700; padding: 11px 26px; border-radius: 10px; border: none; background: var(--primary); color: #fff; cursor: pointer;">Считать</button>
+                        style="margin-top: 14px; font: inherit; font-size: 14px; font-weight: 700; padding: 11px 26px; border-radius: 10px; border: none; background: var(--primary); color: var(--on-primary,#fff); cursor: pointer;">Считать</button>
                 </div>`;
             return;
         }
@@ -27526,9 +27526,9 @@ const app = {
               .sort((a, b) => (b.points[b.points.length - 1][1] || 0) - (a.points[a.points.length - 1][1] || 0))
               .slice(0, 8);
 
-            const btn = (m, label) => `<button class="admin-btn" style="${months === m ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsMonths(${m})">${label}</button>`;
-            const gBtn = (g, label) => `<button class="admin-btn" style="${curGroup === g ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsGroup('${g}')">${label}</button>`;
-            const rBtn = (rg, label) => `<button class="admin-btn" style="${trendRegion === rg ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsTrendRegion('${esc(rg).replace(/'/g, "\\'")}')">${label}</button>`;
+            const btn = (m, label) => `<button class="admin-btn" style="${months === m ? 'background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);' : ''}" onclick="app.setAnalyticsMonths(${m})">${label}</button>`;
+            const gBtn = (g, label) => `<button class="admin-btn" style="${curGroup === g ? 'background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);' : ''}" onclick="app.setAnalyticsGroup('${g}')">${label}</button>`;
+            const rBtn = (rg, label) => `<button class="admin-btn" style="${trendRegion === rg ? 'background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);' : ''}" onclick="app.setAnalyticsTrendRegion('${esc(rg).replace(/'/g, "\\'")}')">${label}</button>`;
 
             h += `<div style="margin:26px 0 8px;">
                     <h4 style="margin:0 0 6px; color:var(--text-main);">Спрос по месяцам${trendRegion ? ` — ${esc(trendRegion)}` : ' — вся Россия'}</h4>
@@ -27700,7 +27700,7 @@ const app = {
                     // кнопка «все» рядом с единственной областью — мусор.
                     let chips = '';
                     if (x.known.length > 1) {
-                        const chip = (val, label) => `<button class="admin-btn" style="padding:0 7px; height:22px; font-size:11px; margin:2px 3px 0 0; ${((x.picked || '') === val) ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="event.stopPropagation(); app.setDistRegion('${esc(String(x.id))}', '${esc(val).replace(/'/g, "\\'")}')">${esc(label)}</button>`;
+                        const chip = (val, label) => `<button class="admin-btn" style="padding:0 7px; height:22px; font-size:11px; margin:2px 3px 0 0; ${((x.picked || '') === val) ? 'background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);' : ''}" onclick="event.stopPropagation(); app.setDistRegion('${esc(String(x.id))}', '${esc(val).replace(/'/g, "\\'")}')">${esc(label)}</button>`;
                         chips = `<div style="margin-top:3px;">${chip('', 'все регионы')}${x.known.map(rg => chip(rg, rg)).join('')}</div>`;
                     } else if (x.known.length === 1) {
                         chips = `<br><small style="color:var(--text-sec);">${esc(x.known[0])}</small>`;
@@ -29241,7 +29241,7 @@ const app = {
                 <div style="margin-left:auto; display:flex; gap:6px; flex-wrap:wrap;">
                     ${edit
                         ? `<button class="admin-btn" onclick="app.resetDashLayout()">Сбросить</button>
-                           <button class="admin-btn" style="background:var(--primary); color:#fff; border-color:var(--primary);" onclick="app.toggleDashEdit(false)">Готово</button>`
+                           <button class="admin-btn" style="background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);" onclick="app.toggleDashEdit(false)">Готово</button>`
                         : `<button class="admin-btn" title="переставить блоки и настроить вид" onclick="app.toggleDashEdit(true)">✏️ Настроить</button>
                            <button class="admin-btn" onclick="app.switchAdminTab('analytics')">Подробно →</button>
                            <button class="admin-btn" onclick="app._analytics = null; app.renderAdminMain()">Обновить</button>`}
@@ -29265,7 +29265,7 @@ const app = {
 
         if (edit) {
             const pick = (key, val, label, hint) => `<button class="admin-btn" title="${hint || ''}"
-                    style="height:26px; padding:0 9px; font-size:11.5px; ${st[key] == val ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}"
+                    style="height:26px; padding:0 9px; font-size:11.5px; ${st[key] == val ? 'background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);' : ''}"
                     onclick="app.dashSetStyle('${key}', '${val}')">${label}</button>`;
             const group = (title, inner) => `<span style="display:inline-flex; align-items:center; gap:5px;">
                     <span style="font-size:11.5px; color:var(--text-sec);">${title}</span>${inner}</span>`;
@@ -29408,7 +29408,7 @@ const app = {
             .filter(id => tab === 'all' || this.DASH_WIDGETS[id].sec === tab);
 
         const chip = (id, label) => `<button class="admin-btn"
-                style="${tab === id ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}"
+                style="${tab === id ? 'background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);' : ''}"
                 onclick="app.dashOpenGallery('${sid}', '${id}')">${label}</button>`;
 
         const cards = ids.map(id => {
@@ -30596,7 +30596,7 @@ const app = {
             ? `${visible[0][0]} → ${visible[visible.length - 1][0]}` + (spanPct === null ? '' : ` · ${pctFmt(spanPct)}`)
             : '';
 
-        const gBtn = (g, label) => `<button class="admin-btn" style="height:26px; padding:0 9px; font-size:11.5px; ${curGroup === g ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsGroup('${g}')">${label}</button>`;
+        const gBtn = (g, label) => `<button class="admin-btn" style="height:26px; padding:0 9px; font-size:11.5px; ${curGroup === g ? 'background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);' : ''}" onclick="app.setAnalyticsGroup('${g}')">${label}</button>`;
         const monthsLabel = (m) => this.dashMonthsLabel(m);
 
         // ── Настройка списка марок ──────────────────────────────────────────
@@ -30671,7 +30671,7 @@ const app = {
         };
         const brandBtn = isBrands
             ? `<button class="admin-btn" title="Какие марки показывать на графике"
-                    style="height:26px; padding:0 9px; font-size:11.5px; ${this._brandEditorOpen ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}"
+                    style="height:26px; padding:0 9px; font-size:11.5px; ${this._brandEditorOpen ? 'background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);' : ''}"
                     onclick="app.toggleBrandEditor()">Список марок</button>`
             : '';
 
@@ -30698,7 +30698,7 @@ const app = {
                                style="flex:1 1 180px; max-width:300px; accent-color:var(--primary);"
                                oninput="app.previewDashMonths(this.value)" onchange="app.setDashMonths(this.value)">
                         <b id="dash_months_label" style="font-size:12px; color:var(--text-main); white-space:nowrap;">${monthsLabel(mns)}</b>
-                        <button class="admin-btn" style="height:26px; padding:0 9px; font-size:11.5px; ${mns === 0 ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setDashMonths(0)">всё</button>
+                        <button class="admin-btn" style="height:26px; padding:0 9px; font-size:11.5px; ${mns === 0 ? 'background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);' : ''}" onclick="app.setDashMonths(0)">всё</button>
                     </div>
                     ${chartSeries.length
                         ? this.buildAnalyticsLineChart(chartSeries, 'dash')
@@ -30888,7 +30888,7 @@ const app = {
                 qNote = 'Кварталы подряд, процент — к предыдущему. Здесь виден сезон: у монтажа он всегда падает к первому кварталу, и это не спад спроса.';
             }
 
-            const qBtn = (m, label) => `<button class="admin-btn" style="height:26px; padding:0 9px; font-size:11.5px; ${qMode === m ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setDashQuarters('${m}')">${label}</button>`;
+            const qBtn = (m, label) => `<button class="admin-btn" style="height:26px; padding:0 9px; font-size:11.5px; ${qMode === m ? 'background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);' : ''}" onclick="app.setDashQuarters('${m}')">${label}</button>`;
             const curGroupLabel = (GROUPS.find(([g]) => g === curGroup) || [null, ''])[1];
             const ySel = (which, val) => `<select onchange="app.setDashQYear('${which}', this.value)"
                     style="background:var(--surface); color:var(--text-main); border:1px solid var(--border); border-radius:8px;
@@ -32865,7 +32865,7 @@ const app = {
             // от раскрытой категории надо доскроллить всю таблицу, и было
             // непонятно, чем вообще менять глубину этой кривой.
             const mBtn = (m, label) => `<button class="admin-btn"
-                    style="height:22px; padding:0 8px; font-size:11px; ${monthsCd === m ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}"
+                    style="height:22px; padding:0 8px; font-size:11px; ${monthsCd === m ? 'background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);' : ''}"
                     onclick="event.stopPropagation(); app.setAnalyticsCatMonths(${m})">${label}</button>`;
             inner += `<div style="display:flex; align-items:flex-start; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
                     <div style="flex:1 1 320px; min-width:0; font-size:12px; color:var(--text-sec);">
@@ -39253,7 +39253,7 @@ const app = {
             (ready ? ' — можно выпускать' : '') + '</span>' +
             '<button type="button" style="' + btn + '" onclick="app.openProjectMarkup()">Открыть разметку</button>' +
             '<button type="button" style="' + btn + '" onclick="app.showProjectReadiness()">Что осталось</button>' +
-            '<button type="button" style="' + btn + 'background:var(--primary);color:#fff;border-color:var(--primary);font-weight:600" ' +
+            '<button type="button" style="' + btn + 'background:var(--primary);color:var(--on-primary,#fff);border-color:var(--primary);font-weight:600" ' +
             'onclick="app.openProjectSheets()">Выпустить проект →</button>' +
             '<button type="button" style="' + btn + 'padding:5px 9px" title="Скрыть полосу" onclick="app.closeProjectFlow()">✕</button>';
     },
@@ -39373,7 +39373,7 @@ const app = {
             'border-bottom:1px solid var(--border);color:var(--text-main);font-size:13px;">' +
             '<button type="button" onclick="app.closeUfhPlan(true)" title="Сохранить план и вернуться к смете" ' +
             'style="font:inherit;font-weight:600;padding:6px 14px;border-radius:8px;border:1px solid var(--primary);' +
-            'background:var(--primary);color:#fff;cursor:pointer;">← К смете</button>' +
+            'background:var(--primary);color:var(--on-primary,#fff);cursor:pointer;">← К смете</button>' +
             '<b style="font-size:15px;">План дома</b>' +
             '<span style="flex:1;min-width:0;color:var(--text-sec);">комнаты, тёплый пол и радиаторы' +
             (modeNote ? ' · <span style="color:var(--primary)">' + modeNote + '</span>' : '') + '</span></div>' +
@@ -59180,7 +59180,7 @@ const app = {
 
                 let activeClass = isActive ? "active-row" : "";
                 let activeStyle = isActive ? "background-color: var(--primary-light);" : "";
-                let badgeHtml = isActive ? `<span style="font-size: 10px; background: var(--primary); color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 8px;">Выбран</span>` : "";
+                let badgeHtml = isActive ? `<span style="font-size: 10px; background: var(--primary); color: var(--on-primary,#fff); padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 8px;">Выбран</span>` : "";
                 let imgHtml = getImg(alt.imgId ? { ...alt, id: alt.imgId } : alt);
                 let diffHtml = getPriceDiffHtml(alt.price, isActive);
                 let priceText = alt.price > 0 ? this.formatPriceHtml(alt.price, true) : "-";
@@ -59476,7 +59476,7 @@ const app = {
                 let isActive = _activeAltId ? (displayAlt.id === _activeAltId) : (displayAlt.id === item.id);
                 let activeClass = isActive ? "active-row" : "";
                 let activeStyle = isActive ? "background-color: var(--primary-light);" : "";
-                let badgeHtml = isActive ? `<div style="margin-top:4px;"><span style="font-size: 11px; background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: bold;">✓ Выбран</span></div>` : "";
+                let badgeHtml = isActive ? `<div style="margin-top:4px;"><span style="font-size: 11px; background: var(--primary); color: var(--on-primary,#fff); padding: 2px 8px; border-radius: 4px; font-weight: bold;">✓ Выбран</span></div>` : "";
                 let diffHtml = getPriceDiffHtml(displayAlt.price, isActive);
                 let priceText = displayAlt.price > 0 ? this.formatPriceHtml(displayAlt.price, true) : "-";
                 let _rowCoilKw = _isTankItem ? _tankCoilKwMap[displayAlt.id] : null;
@@ -60071,12 +60071,12 @@ const app = {
                 }
                 .swap-tab:hover {
                     background: var(--primary);
-                    color: #fff;
+                    color: var(--on-primary,#fff);
                 }
                 .swap-tab.active {
                     font-weight: 700;
                     background: var(--primary);
-                    color: #fff;
+                    color: var(--on-primary,#fff);
                     box-shadow: none;
                 }
                 .swap-tabs-wrapper {
@@ -60670,7 +60670,7 @@ const app = {
             const candidate = entry.candidate;
             const isActive = entry.isActive;
             const activeSt = isActive ? 'background:var(--primary-light);' : '';
-            const badge = isActive ? `<span style="font-size:10px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:4px;font-weight:bold;margin-left:6px;">Выбран</span>` : '';
+            const badge = isActive ? `<span style="font-size:10px;background:var(--primary);color:var(--on-primary,#fff);padding:2px 6px;border-radius:4px;font-weight:bold;margin-left:6px;">Выбран</span>` : '';
 
             let diffHtml = `<span style="color:var(--text-sec);">—</span>`;
             if (origPrice > 0 && candidate.price > 0) {
@@ -71448,7 +71448,7 @@ const app = {
             idx++;
             const isActive = x.id === tw.modelId;
             const activeSt = isActive ? 'background:var(--primary-light);' : '';
-            const badge = isActive ? `<span style="font-size:10px;background:var(--primary);color:#fff;padding:2px 6px;border-radius:4px;font-weight:bold;margin-left:6px;">Выбран</span>` : '';
+            const badge = isActive ? `<span style="font-size:10px;background:var(--primary);color:var(--on-primary,#fff);padding:2px 6px;border-radius:4px;font-weight:bold;margin-left:6px;">Выбран</span>` : '';
             let diffHtml = `<span style="color:var(--text-sec);">—</span>`;
             if (selPrice > 0 && x.price > 0) {
                 const pct = Math.round(((x.price - selPrice) / selPrice) * 100);
@@ -71468,8 +71468,8 @@ const app = {
         body.innerHTML = `
             <style>
                 #swap_modal_body .swap-tab { border:1px solid var(--primary); outline:none; padding:3px 10px; cursor:pointer; font-size:12px; font-weight:500; color:var(--primary); background:transparent; border-radius:5px; margin:2px; transition:all 0.15s ease; }
-                #swap_modal_body .swap-tab:hover { background:var(--primary); color:#fff; }
-                #swap_modal_body .swap-tab.active { font-weight:700; background:var(--primary); color:#fff; }
+                #swap_modal_body .swap-tab:hover { background:var(--primary); color:var(--on-primary,#fff); }
+                #swap_modal_body .swap-tab.active { font-weight:700; background:var(--primary); color:var(--on-primary,#fff); }
                 #swap_modal_body .swap-tabs-wrapper { display:flex; flex-wrap:wrap; width:100%; background:transparent; border:none; padding:0; box-sizing:border-box; align-items:center; }
             </style>
             <div style="background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:20px; display:flex; flex-direction:column; gap:12px; margin-bottom:12px; box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.02), 0 4px 6px -4px rgba(15, 23, 42, 0.02);">
@@ -77739,7 +77739,7 @@ const app = {
                         `<b>Можно одним котлом:</b> ${_sa.name} (${_sa.power} кВт) — ${_saDiff}, ` +
                         `зато один дымоход, одна обвязка и одна газовая подводка вместо ${i.q}.` +
                         `<div style="margin-top:8px;"><span onclick="event.stopPropagation(); app.selectSwapAlternative('gas_boiler_auto', '${_sa.id}')" ` +
-                        `style="display:inline-block; cursor:pointer; background:var(--primary); color:#fff; font-weight:700; padding:5px 10px; border-radius:5px;">` +
+                        `style="display:inline-block; cursor:pointer; background:var(--primary); color:var(--on-primary,#fff); font-weight:700; padding:5px 10px; border-radius:5px;">` +
                         `Поставить один котёл</span></div></div>`;
                 }
                 let priceDateLine = '';
@@ -83874,7 +83874,7 @@ const app = {
                     ' м/с — <b>СП 60.13330.2020, табл. И.1</b>. Выше него поток в трубе становится слышен в помещении.</div>' +
                     (this.radPipeFamily() !== 'mp'
                         ? '<div class="tip-p">У металлопластика внутренний проход шире при том же наружном размере — одна смена трубы снимает около четверти скорости.</div>' +
-                          '<div class="tip-p"><button onclick="event.stopPropagation(); app.widenRadTrunk();" style="padding:4px 10px; border:1px solid var(--primary); background:var(--primary); color:#fff; border-radius:4px; font-size:11px; font-weight:700; cursor:pointer;">Заменить трубу</button></div>'
+                          '<div class="tip-p"><button onclick="event.stopPropagation(); app.widenRadTrunk();" style="padding:4px 10px; border:1px solid var(--primary); background:var(--primary); color:var(--on-primary,#fff); border-radius:4px; font-size:11px; font-weight:700; cursor:pointer;">Заменить трубу</button></div>'
                         : '<div class="tip-p"><b>Что делать:</b> Ø32 — крупнейшая труба каталога, поэтому разделите разводку на две трассы или переведите систему на режим 80/60.</div>'));
                 // Ø32 — последний в каталоге, «взять следующий» не всегда есть куда.
                 // Зато внутренний диаметр у семейств разный: на тридцать второй
@@ -86995,7 +86995,7 @@ const app = {
                 let modeDiscountBtn = document.getElementById('eq_discount_mode_discount');
                 let modeMarkupBtn = document.getElementById('eq_discount_mode_markup');
                 if (modeDiscountBtn && modeMarkupBtn) {
-                    let activeStyle = 'background:var(--primary); color:#fff;';
+                    let activeStyle = 'background:var(--primary); color:var(--on-primary,#fff);';
                     let inactiveStyle = 'background:transparent; color:var(--text-sec);';
                     modeDiscountBtn.setAttribute('style', modeDiscountBtn.getAttribute('style').replace(/background:[^;]+;\s*color:[^;]+;/, curMode === 'discount' ? activeStyle : inactiveStyle));
                     modeMarkupBtn.setAttribute('style', modeMarkupBtn.getAttribute('style').replace(/background:[^;]+;\s*color:[^;]+;/, curMode === 'markup' ? activeStyle : inactiveStyle));
