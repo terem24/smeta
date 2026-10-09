@@ -5368,10 +5368,10 @@
             // ?id= могла упираться в блокировку Supabase у части пользователей в РФ.
             try {
                 // Fetch invoice record from shared_invoices
+                // Чтение по номеру ссылки — через функцию базы: таблица закрыта от
+                // перебора, а саму смету по её id отдаёт get_shared_invoice
                 const { data, error } = await supabaseClient
-                    .from('shared_invoices')
-                    .select('*')
-                    .eq('id', id)
+                    .rpc('get_shared_invoice', { p_id: id })
                     .single();
 
                 if (error || !data) {
@@ -5969,7 +5969,7 @@
             if (!id || !supabaseClient || !invoiceData) return;
             if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return;
             try {
-                const req = supabaseClient.from('shared_invoices').select('object_info').eq('id', id).maybeSingle();
+                const req = supabaseClient.rpc('get_shared_invoice', { p_id: id }).maybeSingle();
                 const { data } = await Promise.race([
                     req,
                     new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
