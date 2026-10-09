@@ -60034,6 +60034,13 @@ const app = {
         // Коллектор: число выходов
         const out = n.match(/[xх×]\s?(\d{1,2})\s*(?:вых|$|\s|,)/) || n.match(/(\d{1,2})\s?(?:вых|конт)/i);
         if (out && /коллектор|блок/i.test(n)) s.outlets = num(out[1]);
+        // Коллектор: размер и тип выходов. Число выходов совпало у 1"×3/4" (евроконус)
+        // и 1"×1/2" (цанга) — а труба с евроконусом в цанговый выход не встаёт.
+        if (/коллектор|блок/i.test(n)) {
+            if (it.outSize) s.outSize = String(it.outSize);
+            else { const om = n.match(/\d(?:\/\d)?["″]\s?[\/xх×]\s?(\d(?:\/\d)?)["″]/); if (om) s.outSize = om[1]; }
+            if (it.connType) s.connType = String(it.connType);
+        }
         // Радиаторы и конвекторы. Секции, объём и мощность — сначала из названия:
         // пара ROMMER собирается поверх карточки STOUT и наследует её поля, а
         // название у неё своё (бойлер «GT 150 л» с полем vol: 100 от STOUT-овских
@@ -60113,6 +60120,8 @@ const app = {
             if (a.pump !== b.pump) return { ok: false, why: `другой типоразмер насоса ${b.pump}` };
             why.push(`тот же типоразмер ${a.pump}`);
         }
+        if (both('outSize') && a.outSize !== b.outSize) return { ok: false, why: `другой размер выходов ${b.outSize}"` };
+        if (both('connType') && a.connType !== b.connType) return { ok: false, why: 'другой тип присоединения выходов' };
         if (both('outlets')) {
             if (a.outlets !== b.outlets) return { ok: false, why: `другое число выходов (${b.outlets})` };
             why.push(`те же ${a.outlets} выходов`);
@@ -91648,8 +91657,24 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // уходит и футорка-переход (торец 3/4" ВР, у компенсатора 1/2" НР).
             // Монтаж только вверх или горизонтально: перевёрнутая установка не даёт поршню ходить.
             const _hammer = catalog.water_hammer_arrestors[0];
-            const _hammerAdapter = catalog.water_hammer_arrestors[1];
-            const _manifoldPlug = catalog.water_parts.find(x => x.id === "SFT-0024-000034");
+            // Торец коллектора — внутренняя резьба размера ВХОДА (inSize): у блока 1"×3/4"
+            // он 1" ВР, у коллектора 3/4"×3/4" — 3/4" ВР. Заглушка (НР) и футорка под
+            // компенсатор должны быть того же размера, иначе не вкручиваются.
+            const _endBySize = {
+                '3/4': { plug: catalog.water_parts.find(x => x.id === "SFT-0024-000034"), adapter: catalog.water_hammer_arrestors[1], label: '3/4"' },
+                '1': { plug: catalog.plug_1, adapter: catalog.water_hammer_arrestors[2], label: '1"' }
+            };
+            // Размер торца того коллектора, что реально встанет в смету (с учётом ручной замены в модалке)
+            const _collEndSize = (baseItem) => {
+                const f = getWaterManifold(baseItem);
+                const sw = (this.state.swaps || {})[f.originalId];
+                let it = f;
+                if (sw && sw !== f.id) it = (f.alts || []).find(x => x && x.id === sw) || (f.rommer && f.rommer.id === sw ? f.rommer : f);
+                let s = it.inSize;
+                if (!s) { const m = String(it.name || '').match(/(\d(?:\/\d)?)"/); s = m ? m[1] : '3/4'; }
+                return _endBySize[s] ? s : '3/4';
+            };
+            const _isPlugId = id => id === "SFT-0024-000034" || id === "SFT-0024-000001";
             // Список замен собираем руками: flushBill складывает строку сметы по фиксированному
             // набору полей, .rommer до модалки не доезжает, а найти позицию в каталоге по
             // originalId она не может — он с суффиксом линии. ROMMER-строку показываем только
@@ -91658,7 +91683,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // Дубль с текущей позицией строки отсеет сама модалка (seenIds), поэтому кладём
             // все варианты сразу — иначе в режиме ROMMER из списка выпадала версия STOUT
             // и вернуться на неё было некуда.
-            const _endAlts = () => {
+            const _endAlts = (_manifoldPlug) => {
                 const _rommerOpen = (this.state.brandMode === 'rommer');
                 // Модалка достраивает ROMMER-строку сама, из поля .rommer каждой альтернативы,
                 // — поэтому при закрытом каталоге ROMMER поле из копии убираем. На подстановку
@@ -91668,15 +91693,17 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     _rommerOpen ? _hammer : { ..._hammer, rommer: undefined }
                 ];
             };
-            const _addManifoldEnd = (line, suffix, grp) => {
+            const _addManifoldEnd = (line, suffix, grp, baseItem) => {
                 const oid = `${_hammer.id}_${suffix}`;
-                if ((this.state.swaps || {})[oid] === _manifoldPlug.id) {
-                    addToBill({ ..._manifoldPlug, originalId: oid, alts: _endAlts() }, 1, "Заглушка коллектора", grp);
+                const _sz = _endBySize[_collEndSize(baseItem)];
+                const _manifoldPlug = _sz.plug, _hammerAdapter = _sz.adapter;
+                if (_isPlugId((this.state.swaps || {})[oid])) {
+                    addToBill({ ..._manifoldPlug, originalId: oid, alts: _endAlts(_manifoldPlug) }, 1, "Заглушка коллектора", grp);
                     return;
                 }
                 addToBill({ ..._hammerAdapter, originalId: `${_hammerAdapter.id}_hammer_${suffix}` }, 1,
-                    `Футорка 3/4" х 1/2": переход с торца коллектора ${line} на компенсатор гидроудара.`, grp);
-                addToBill({ ..._hammer, originalId: oid, alts: _endAlts() }, 1,
+                    `Футорка ${_sz.label} х 1/2": переход с торца коллектора ${line} на компенсатор гидроудара.`, grp);
+                addToBill({ ..._hammer, originalId: oid, alts: _endAlts(_manifoldPlug) }, 1,
                     `Компенсатор гидроудара в торец коллектора ${line}: гасит скачок давления от быстрозакрывающихся клапанов (стиральная и посудомоечная машина, защита от протечек, однорычажные смесители). Устанавливается вертикально вверх или горизонтально, перевёрнутое положение не допускается.`, grp);
             };
 
@@ -91743,7 +91770,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     if (q.q4) addToBill(mk(list[2]), q.q4, descColl, grp);
                     if (q.q3) addToBill(mk(list[1]), q.q3, descColl, grp);
                     if (q.q2) addToBill(mk(list[0]), q.q2, descColl, grp);
-                    _addManifoldEnd(line, suffix, grp);
+                    _addManifoldEnd(line, suffix, grp, q.q4 ? list[2] : q.q3 ? list[1] : list[0]);
                     this._waterCollGroups++;
                     let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-300001");
                     if (clampItem) addToBill(clampItem, 2, `Хомут одновинтовой с гайкой M8 1" для крепления коллектора водоснабжения (${line}).`, grp);
@@ -91906,7 +91933,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 if (q3) addToBill(getWaterManifold(catalog.water_manifolds_recirc[1]), q3, descColl, grpRecirc);
                 if (q2) addToBill(getWaterManifold(catalog.water_manifolds_recirc[0]), q2, descColl, grpRecirc);
                 addEurocone(waterEurocone, totalHotPoints, this.getDesc('eurocone_water', totalHotPoints), grpRecirc);
-                addToBill(catalog.water_parts.find(x => x.id === "SFT-0024-000034"), 1, "Заглушка коллектора", grpRecirc);
+                addToBill(_endBySize[_collEndSize(q4 ? catalog.water_manifolds_recirc[2] : q3 ? catalog.water_manifolds_recirc[1] : catalog.water_manifolds_recirc[0])].plug, 1, "Заглушка коллектора", grpRecirc);
                 this._waterCollGroups++;
                 // Крепление коллектора рециркуляции ГВС
                 let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-300001");

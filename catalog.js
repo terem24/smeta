@@ -3635,7 +3635,9 @@ const catalog = {
     // 3/4" ВР (туда же идёт заглушка SFT-0024-000034), поэтому нужна футорка 3/4"НР х 1/2"ВР.
     water_hammer_arrestors: [
         { id: "SVS-1014-000015", name: "Компенсатор гидроудара 1/2\" НР, хром", price: 2970, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10", rommer: { id: "RVS-1001-000015", name: "Компенсатор гидроудара мембранный 1/2\" НР, никель", price: 1484, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
-        { id: "SFT-0029-003412", name: "Футорка 3/4\" x 1/2\"", price: 168, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" }
+        { id: "SFT-0029-003412", name: "Футорка 3/4\" x 1/2\"", price: 168, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
+        // Для коллектора с торцом 1" ВР (блок 1"×3/4" — вариант по умолчанию). Цена: price_index 369,14 × 0,902.
+        { id: "SFT-0029-000112", name: "Футорка 1\" x 1/2\"", price: 333, brand: "STOUT", availability: "in_stock", price_date: "2026-10-09" }
     ],
     // Узел ввода на 1" (state.waterNodeSize === '1'): позиции 1" из прайса вместо 3/4" той же роли.
     // replaces — id позиции 3/4", вместо которой встаёт эта (app.nodeItem1). Цены — по ставке 3/4"-соседа
