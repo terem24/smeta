@@ -45524,7 +45524,11 @@ const app = {
     uiZoomChosen: function () {
         let z = NaN;
         try { z = parseFloat(localStorage.getItem(this.UI_ZOOM_KEY)); } catch (e) { }
-        return this.UI_ZOOM_STEPS.includes(z) ? z : this.UI_ZOOM_STEPS[0];
+        if (this.UI_ZOOM_STEPS.includes(z)) return z;
+        // Выбора ещё не было: на широком мониторе (от 1800 px) стартуем с 113 %, иначе
+        // мелкие подписи при базовом zoom 0,8 выходят 9–10 px. Окно уже — как раньше.
+        // Если не влезает, uiZoom() сам возьмёт наибольший из помещающихся.
+        return window.innerWidth >= 1800 ? this.UI_ZOOM_STEPS[1] : this.UI_ZOOM_STEPS[0];
     },
 
     // Размеры, которые по ширине окна помещаются. Меньше стандартного 0.8 не уходим.
@@ -45575,7 +45579,7 @@ const app = {
     // масштаб страницы уже не поместить. Правила лежат в big_text.css, его собирает
     // tools/gen_big_text.py из style.css; грузится лениво, только когда режим включён.
     BIG_TEXT_KEY: 'hc_big_text',
-    BIG_TEXT_CSS_V: '11',
+    BIG_TEXT_CSS_V: '12',
 
     bigText: function () {
         try { return localStorage.getItem(this.BIG_TEXT_KEY) === '1'; } catch (e) { return false; }
