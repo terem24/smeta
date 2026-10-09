@@ -109,9 +109,9 @@
    "freq": 0,
    "audience": "pro",
    "data_block": "акты из сметы",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-09",
-   "published_at": null,
+   "published_at": "2026-10-09",
    "words": 546
   },
   {
