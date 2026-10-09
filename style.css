@@ -19825,3 +19825,24 @@ body.theme-shop .m-total-work span { color: var(--text-main) !important; }
 body.theme-yandex #hdr_margin_sum,
 body.theme-brand #hdr_margin_sum,
 body.theme-shop #hdr_margin_sum { color: var(--primary) !important; }
+
+/* Отметка «38%» на полосе шапки висела под ней и ложилась на строку «№ КП / Объект /
+   Теплопотери». С мышью показываем её только при наведении на полосу (цифра и так в
+   подсказке, а длина заливки видна сразу); на сенсорных экранах — как было. */
+@media (hover: hover) and (pointer: fine) {
+    .header-fill-bar-marker {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .15s ease;
+    }
+    .header-fill-bar:hover .header-fill-bar-marker { opacity: 1; }
+    /* Зона наведения шире самой полосы (3 px): уходит вниз, на кнопки шапки не заходит */
+    .header-fill-bar::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 100%;
+        height: 8px;
+    }
+}

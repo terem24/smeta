@@ -77672,6 +77672,11 @@ const app = {
                 let isCollapsed = (!forceMerge && i.group && this.state.collapsedGroups.includes(i.group));
                 let isSubSection = (i.group && i.group.match(/^\d+\.\d+/));
                 const dashStyle = "1px dashed rgba(0, 0, 0, 0.2)";
+                // Подгруппа с тем же названием, что у раздела, и стоящая первой, повторяла
+                // заголовок («9. Дополнительные материалы» два раза подряд) — не рисуем.
+                // Свёрнутую оставляем: иначе её нечем развернуть.
+                const _dupHead = !forceMerge && i.group === title && lastGroup === null && !isCollapsed;
+                if (_dupHead) lastGroup = i.group;
                 if (!forceMerge && i.group && i.group !== lastGroup) {
                     let icon = "";
                     if (i.group.includes("Газового")) icon = "🔥";
