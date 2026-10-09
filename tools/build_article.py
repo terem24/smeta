@@ -553,7 +553,6 @@ TEMPLATE = '''<!DOCTYPE html>
                 <a href="{lead_page}">Монтаж в СПб</a>
                 <a href="/goroda/">Города</a>
                 <a href="/oferta.html">Оферта</a>
-                <a href="https://t.me/heatcalc">Поддержка</a>
             </p>
             <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
         </div>

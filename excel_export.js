@@ -887,6 +887,17 @@
             saveBlob(buildWorkbook(sheets), fileName);
             return sheets.length;
         },
+        /**
+         * Книга из готовых листов (формат листа — у sheetXml), а не из печатной
+         * вёрстки сметы. Нужна выгрузкам, у которых сметы нет, — например, таблице
+         * сверки прайса дистрибьютора в админке. S — номера стилей для ячеек.
+         */
+        saveSheets: function (fileName, sheets) {
+            if (!sheets || !sheets.length) throw new Error('нет листов для выгрузки');
+            saveBlob(buildWorkbook(sheets), fileName);
+            return sheets.length;
+        },
+        styles: S,
         // для отладки и тестов
         _internals: { collectSheets: collectSheets, buildWorkbook: buildWorkbook, readText: readText, num: num }
     };

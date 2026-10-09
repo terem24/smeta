@@ -156,6 +156,7 @@ const load = (file, expose) => {
 // Файл ставит window.boilerWall сам, вытаскивать нечего.
 load('boiler_wall.js', '');
 load('catalog.js', 'globalThis.__catalog = catalog;');
+load('dist_prices.js', 'globalThis.DIST_PRICES = DIST_PRICES;');
 load('app.js', 'globalThis.__app = app;');
 
 const app = ctx.__app;
@@ -184,6 +185,8 @@ if (app.__initError) {
 }
 // Доступ к странице-заглушке: нужен, чтобы прочитать, что код в неё записал.
 app.__doc = doc;
+// Песочница целиком: чтобы стенд мог подгрузить в неё листы схем (project_scheme.js).
+app.__ctx = ctx;
 
 // Исходное состояние после init(): к нему __setup возвращает объект перед каждым
 // расчётом. Раньше параметры накладывались на то, что осталось от прошлого

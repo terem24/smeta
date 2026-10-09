@@ -1,0 +1,665 @@
+/* Оформление разделов «Ваш дом» и «Гарантия» в печати и PDF — копия блоков из invoice.html
+   (лист «Гарантия», лист «Ваш дом»). Переменные темы заданы светлыми: печать всегда светлая. */
+.kp-share {
+    --primary: #1E3A8A; --primary-light: #EFF6FF; --text-main: #1F2937; --text-sec: #4B5563;
+    --border: #E5E7EB; --surface: #FFFFFF; --soft: #F9FAFB; --track-hover: #D1D5DB;
+    color: var(--text-main);
+    font-family: 'Roboto', Arial, sans-serif;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+.kp-share .sec-header-row { display: flex; align-items: center; justify-content: space-between; margin: 0 0 12px; }
+.kp-share .sec-title { font-size: 15px; font-weight: 800; color: var(--primary); text-transform: uppercase; letter-spacing: .5px; margin: 0; }
+.kp-share img { max-width: none; }
+
+        /* ===== Лист «Гарантия» (renderWarranty) ===============================
+           Фирменные цвета STOUT (синяя панель, голубой акцент) не зависят от темы:
+           это бренд завода, он должен выглядеть так же и днём, и ночью. Остальное —
+           из переменных темы. */
+        .kpw-hero {
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #203F6F;
+            color: #fff;
+        }
+
+        .kpw-hero-t { padding: 26px 28px; }
+
+        .kpw-logo {
+            display: inline-block;
+            margin-bottom: 14px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .kpw-logo img { display: block; height: 22px; width: auto; }
+
+        .kpw-kick {
+            color: #9CC9F0;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .8px;
+            text-transform: uppercase;
+        }
+
+        .kpw-hero h2 { margin: 6px 0 10px; font-size: 28px; font-weight: 800; line-height: 1.15; color: #fff; }
+        .kpw-hero h2 b { color: #7FC0FF; }
+        .kpw-lead { margin: 0; color: #DCE8F5; font-size: 14px; line-height: 1.5; }
+
+        .kpw-hero-i {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            background: #F5F5F5;
+        }
+
+        .kpw-hero-i img { max-width: 80%; max-height: 220px; object-fit: contain; }
+
+        .kpw-badge {
+            position: absolute;
+            left: 14px;
+            bottom: 14px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            background: #3F9DE1;
+            color: #fff;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+
+        .kpw-badge b { display: block; font-size: 20px; font-weight: 800; }
+
+        .kpw-pils {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        .kpw-pil {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--soft);
+        }
+
+        .kpw-pil svg { flex: none; width: 40px; height: 40px; color: var(--primary); }
+        .kpw-pn { color: var(--text-main); font-size: 20px; font-weight: 800; line-height: 1.15; }
+        .kpw-pt { margin-top: 2px; color: var(--text-sec); font-size: 12.5px; line-height: 1.4; }
+
+        .kpw-row {
+            display: grid;
+            grid-template-columns: 56px minmax(120px, 1.4fr) 2fr auto;
+            gap: 14px;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .kpw-row:last-of-type { border-bottom: 0; }
+
+        .kpw-row-i {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .kpw-row-i img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .kpw-row-n { color: var(--text-main); font-weight: 600; }
+        .kpw-bar { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
+        .kpw-bar i { display: block; height: 100%; border-radius: 4px; background: #3F9DE1; }
+        .kpw-term { color: var(--text-main); font-weight: 800; white-space: nowrap; }
+        .kpw-more { margin-top: 10px; color: var(--text-sec); font-size: 13px; line-height: 1.6; }
+        .kpw-more b { color: var(--text-main); }
+
+        .kpw-cta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px 24px;
+            margin-top: 18px;
+            padding: 16px 20px;
+            border-radius: 14px;
+            background: #203F6F;
+            color: #fff;
+        }
+
+        .kpw-cta-h { font-size: 17px; font-weight: 800; }
+        .kpw-cta-t { margin-top: 3px; max-width: 520px; color: #DCE8F5; font-size: 12.5px; line-height: 1.5; }
+        .kpw-cta-r { text-align: right; }
+        .kpw-phone { color: #fff; font-size: 22px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+        .kpw-fn { margin-top: 2px; color: #9CC9F0; font-size: 12px; }
+        .kpw-prelim { margin-top: 12px; color: var(--text-sec); font-size: 12.5px; }
+        .kpw-prelim b { color: var(--text-main); }
+        .kpw-src { margin-top: 8px; color: var(--text-sec); font-size: 11.5px; line-height: 1.55; }
+
+        /* Плитка в «Ваш дом»: фирменная синяя, ведёт к листу гарантии */
+        /* Два класса: базовый .kp-kpi объявлен ниже по файлу и иначе перебил бы фон */
+        .kp-kpi.kp-kpi-w {
+            display: block;
+            border-color: #203F6F;
+            background: #203F6F;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+
+        .kp-kpi.kp-kpi-w:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(32, 63, 111, .35); }
+        .kp-kpi-w .kp-kpi-l { color: #9CC9F0; }
+        .kp-kpi-w .kp-kpi-v { color: #fff; }
+        .kp-kpi-w .kp-kpi-s { color: #DCE8F5; }
+
+        @media screen and (max-width: 600px) {
+            .kpw-hero { grid-template-columns: 1fr; }
+            .kpw-hero-t { padding: 20px 18px; }
+            .kpw-hero h2 { font-size: 23px; }
+            .kpw-hero-i { min-height: 150px; }
+            .kpw-hero-i img { max-height: 150px; }
+            .kpw-row { grid-template-columns: 48px 1fr auto; gap: 8px 12px; }
+            .kpw-row-i { width: 48px; height: 48px; }
+            .kpw-bar { grid-column: 1 / -1; grid-row: 2; }
+            .kpw-cta-r { text-align: left; }
+        }
+
+        .kpw-hero-solo { grid-template-columns: 1fr; }
+
+        /* ===== Лист «Ваш дом» (renderKpHouse, renderUfhPlan) ===================
+           Один лист вместо стопки таблиц: плитки с цифрами, одна главная таблица
+           комнат с полосками теплопотерь, планировка по этажам (вкладки), а петли,
+           приборы и нормативная сноска свёрнуты. Цвета — только из переменных темы:
+           ночью лист тёмный, на печати переменные сбрасываются в светлые.
+           В печати и PDF разворачивается всё: вкладки и свёрнутое там не работают. */
+        .kp-sheet {
+            margin: 36px 0 8px;
+            padding: 26px 28px 22px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: var(--surface);
+        }
+
+        .kp-sheet * {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .kp-sheet .sec-header-row { margin-top: 0; }
+
+        .kp-intro {
+            margin: 0 0 14px;
+            color: var(--text-sec);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .kp-kpis {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 12px;
+        }
+
+        .kp-kpi {
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--soft);
+        }
+
+        .kp-kpi-l {
+            color: var(--text-sec);
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: .6px;
+            text-transform: uppercase;
+        }
+
+        .kp-kpi-v {
+            margin: 4px 0 2px;
+            color: var(--text-main);
+            font-size: 26px;
+            font-weight: 800;
+            line-height: 1.15;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .kp-kpi-s { color: var(--text-sec); font-size: 12px; }
+
+        .kp-kpi-acc { border-color: transparent; background: var(--primary-light); }
+        .kp-kpi-acc .kp-kpi-v { color: var(--primary); }
+
+        .kp-h {
+            margin: 24px 0 10px;
+            color: var(--text-main);
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .kp-ask { display: flex; flex-wrap: wrap; gap: 8px; }
+
+        .kp-ask-chip {
+            padding: 5px 12px;
+            border: 1px solid rgba(245, 158, 11, .55);
+            border-radius: 999px;
+            background: rgba(245, 158, 11, .14);
+            color: var(--text-main);
+            font-size: 12.5px;
+        }
+
+        .kp-ask-chip.ok { border-color: rgba(34, 197, 94, .5); background: rgba(34, 197, 94, .14); }
+        .kp-ask-chip b { color: #d97706; }
+        .kp-ask-chip.ok b { color: #16a34a; }
+
+        /* Таблицы: общая рамка со скруглением; широкая таблица листается внутри неё,
+           а не тянет за собой всю страницу */
+        .kp-rooms-wrap {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow-x: auto;
+            background: var(--surface);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .kp-rooms {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13.5px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .kp-main { min-width: 560px; }
+
+        .kp-rooms th {
+            padding: 10px 16px;
+            background: var(--soft);
+            border-bottom: 1px solid var(--border);
+            color: var(--text-sec);
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: .6px;
+            text-transform: uppercase;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .kp-rooms td {
+            padding: 11px 16px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        .kp-rooms .n { text-align: right; white-space: nowrap; width: 1%; }
+        .kp-rooms td.n { font-weight: 600; }
+
+        .kp-rooms .u {
+            color: var(--text-sec);
+            font-size: 11.5px;
+            font-weight: 400;
+        }
+
+        /* Между числами и колонкой «Отопление» нужен воздух: иначе «880 Вт» слипается с текстом */
+        .kp-main .ht { padding-left: 32px; }
+
+        .kp-rooms td.nm { font-weight: 600; }
+
+        .kp-main tbody tr:not(.kp-fl):not(.kp-tot):hover td { background: var(--soft); }
+
+        /* Строка этажа — кнопка: итог по этажу виден всегда, комнаты раскрываются нажатием.
+           Открыт первый этаж, остальные свёрнуты; стрелка и подпись справа говорят об этом прямо. */
+        .kp-rooms tr.kp-fl { cursor: pointer; }
+
+        .kp-rooms tr.kp-fl td {
+            padding: 13px 16px;
+            border-top: 1px solid var(--border);
+            background: var(--soft);
+            color: var(--text-main);
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .kp-rooms tbody tr.kp-fl:first-child td { border-top: 0; }
+        .kp-rooms tr.kp-fl:hover td { background: var(--primary-light); }
+        .kp-rooms tr.kp-fl:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+        .kp-rooms tr.kp-fl td.n { font-weight: 700; }
+        .kp-rooms tr.kp-fl td.ht { padding-left: 32px; }
+
+        .kp-fl-c {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            margin: 0 12px 1px 2px;
+            border-right: 2px solid var(--primary);
+            border-bottom: 2px solid var(--primary);
+            transform: rotate(-45deg);
+            transition: transform .2s ease;
+        }
+
+        .kp-fl.open .kp-fl-c { margin-bottom: 3px; transform: rotate(45deg); }
+        .kp-fl-hint { color: var(--primary); font-size: 12.5px; font-weight: 600; }
+        .kp-main tr.kp-hide { display: none; }
+
+        .kp-rooms tr.kp-tot td {
+            padding: 13px 16px;
+            background: var(--soft);
+            border-top: 2px solid var(--border);
+            border-bottom: 0;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        /* Полоска теплопотерь комнаты относительно самой «горячей» комнаты дома */
+        .kp-q {
+            display: grid;
+            grid-template-columns: 96px 88px;
+            align-items: center;
+            justify-content: end;
+            column-gap: 12px;
+        }
+
+        .kp-q > :last-child { text-align: right; }
+
+        .kp-bar {
+            display: block;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            overflow: hidden;
+        }
+
+        .kp-bar b { display: block; height: 100%; border-radius: 3px; background: var(--primary); }
+
+        .kp-chip {
+            display: inline-block;
+            margin: 2px 6px 2px 0;
+            padding: 3px 11px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--soft);
+            font-size: 12.5px;
+            white-space: nowrap;
+        }
+
+        .kp-chip-fl {
+            border-color: transparent;
+            background: var(--primary-light);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Малые таблицы внутри свёрнутых блоков */
+        .kp-sm th, .kp-sm td { padding: 8px 14px; }
+        .kp-sm .c { text-align: center; width: 1%; white-space: nowrap; }
+        .kp-sm td.c { color: var(--primary); font-weight: 700; }
+        .kp-sm tr.kp-tot td { padding: 10px 14px; font-size: 13px; }
+
+        /* Свёрнутый блок: заголовок-кнопка, справа — краткая цифра и стрелка */
+        .kp-acc {
+            margin-top: 10px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--surface);
+            overflow: hidden;
+        }
+
+        .kp-acc-h {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 12px 16px;
+            border: 0;
+            background: var(--soft);
+            color: var(--text-main);
+            font: inherit;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .kp-acc-h:hover { background: var(--primary-light); }
+        .kp-acc-t { flex: none; }
+        .kp-acc-m { flex: 1; min-width: 0; color: var(--text-sec); font-size: 12.5px; font-weight: 500; }
+
+        .kp-acc-c {
+            flex: none;
+            width: 8px;
+            height: 8px;
+            margin: 0 4px 3px auto;
+            border-right: 2px solid var(--text-sec);
+            border-bottom: 2px solid var(--text-sec);
+            transform: rotate(45deg);
+            transition: transform .2s ease;
+        }
+
+        .kp-acc.open .kp-acc-c { margin-bottom: -3px; transform: rotate(-135deg); }
+        .kp-acc-b { display: none; border-top: 1px solid var(--border); }
+        .kp-acc.open .kp-acc-b { display: block; }
+        .kp-acc-b .kp-rooms-wrap { border: 0; border-radius: 0; }
+        .kp-text { padding: 12px 16px; color: var(--text-sec); font-size: 12.5px; line-height: 1.55; }
+
+        /* Планировка: вкладки по этажам, один этаж на экране */
+        .kp-tabs {
+            display: flex;
+            gap: 4px;
+            width: max-content;
+            max-width: 100%;
+            margin: 0 0 12px;
+            padding: 4px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--soft);
+            overflow-x: auto;
+        }
+
+        .kp-tab {
+            padding: 7px 18px;
+            border: 0;
+            border-radius: 999px;
+            background: transparent;
+            color: var(--text-sec);
+            font: inherit;
+            font-size: 13.5px;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .kp-tab.on { background: var(--primary); color: var(--surface); }
+
+        .kp-fpanel { display: none; }
+        .kp-fpanel.on { display: block; }
+        .kp-fl-title { display: none; margin: 0 0 6px; font-weight: 700; }
+
+        .kp-plan {
+            position: relative;
+            max-width: 900px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: zoom-in;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .kp-plan-hint {
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(17, 24, 39, .72);
+            color: #fff;
+            font-size: 11.5px;
+            pointer-events: none;
+        }
+
+        .kp-note { margin-top: 14px; color: var(--text-sec); font-size: 12.5px; line-height: 1.5; }
+
+        /* Крупный просмотр плана: окно листается, закрывается нажатием или Esc */
+        .kp-zoom {
+            position: fixed;
+            top: 0; right: 0; bottom: 0; left: 0;
+            z-index: 3000;
+            overflow: auto;
+            background: rgba(0, 0, 0, .88);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .kp-zoom-in { width: 1200px; margin: 0 auto; padding: 64px 16px 24px; box-sizing: content-box; }
+
+        .kp-zoom-x {
+            position: fixed;
+            top: 14px;
+            right: 14px;
+            width: 44px;
+            height: 44px;
+            border: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .18);
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        @media screen and (max-width: 600px) {
+            .kp-sheet { padding: 18px 14px 14px; border-radius: 12px; }
+            .kp-kpi-v { font-size: 22px; }
+            .kp-sm th, .kp-sm td { padding: 8px 8px; }
+            .kp-acc-h { padding: 12px; }
+            .kp-zoom-in { padding-left: 8px; padding-right: 8px; }
+
+            /* Главная таблица на телефоне — карточки комнат: имя и площадь, полоска, приборы */
+            .kp-main { min-width: 0; }
+            .kp-main, .kp-main tbody { display: block; }
+            .kp-main thead { display: none; }
+
+            .kp-main tbody tr {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                column-gap: 12px;
+                padding: 11px 14px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .kp-main tbody tr td,
+            .kp-main tbody tr td.ht { padding: 2px 0; border: 0; background: none; }
+
+            .kp-main td.nm { grid-column: 1; grid-row: 1; }
+            .kp-main td.ar { grid-column: 2; grid-row: 1; width: auto; }
+            .kp-main td.q { grid-column: 1 / -1; grid-row: 2; width: auto; }
+            .kp-main td.q .kp-q { grid-template-columns: 1fr 88px; }
+            .kp-main td.ht { grid-column: 1 / -1; grid-row: 3; }
+
+            /* Строка этажа и итог: слева название, справа цифры, подпись «Свернуть/Показать» ниже */
+            .kp-main tbody tr.kp-fl,
+            .kp-main tbody tr.kp-tot {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 2px 14px;
+                align-items: center;
+                background: var(--soft);
+            }
+
+            .kp-main tbody tr.kp-fl { border-top: 1px solid var(--border); }
+            .kp-main tbody tr.kp-fl:first-child { border-top: 0; }
+            .kp-main tbody tr.kp-tot { border-top: 2px solid var(--border); }
+
+            .kp-main tbody tr.kp-fl td,
+            .kp-main tbody tr.kp-tot td { width: auto; padding: 0; border: 0; background: none; }
+
+            .kp-main tbody tr.kp-fl td:first-child,
+            .kp-main tbody tr.kp-tot td:first-child { flex: 1 1 auto; }
+            .kp-main tbody tr.kp-tot td:empty { display: none; }
+            .kp-main tbody tr.kp-fl td.ht { flex: 1 0 100%; padding-left: 0; }
+            .kp-main tbody tr.kp-fl .kp-q,
+            .kp-main tbody tr.kp-tot .kp-q { display: block; }
+            .kp-main tbody tr.kp-fl .kp-q > :first-child,
+            .kp-main tbody tr.kp-tot .kp-q > :first-child { display: none; }
+            .kp-main tbody tr:last-child { border-bottom: 0; }
+        }
+
+        @media print {
+            .kp-sheet { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
+            .kp-rooms-wrap { overflow: visible; }
+            .kp-main { min-width: 0; }
+            .kp-tabs, .kp-plan-hint, .kp-acc-c, .kp-fl-c, .kp-fl-hint { display: none !important; }
+            .kp-rooms tr.kp-fl { cursor: default; break-after: avoid; page-break-after: avoid; }
+            .kp-fl-title { break-after: avoid; page-break-after: avoid; }
+            .kp-fpanel { display: block !important; margin-bottom: 18px; }
+            /* Лист гарантии вместе с шапкой компании должен умещаться на одной странице */
+            .kpw-hero-t { padding: 18px 24px; }
+            .kpw-hero-i { min-height: 130px; }
+            .kpw-hero-i img { max-height: 130px; }
+            .kpw-pils { grid-auto-flow: column; grid-auto-columns: 1fr; grid-template-columns: none; gap: 10px; margin-top: 12px; }
+            .kpw-pil { flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 12px 10px; }
+            .kpw-pil svg { width: 30px; height: 30px; }
+            .kpw-pn { font-size: 18px; }
+            .kpw-pt { font-size: 11px; line-height: 1.35; }
+            .kp-sheet.kpw { break-inside: avoid; page-break-inside: avoid; }
+            .kpw-row { grid-template-columns: 38px minmax(120px, 1.4fr) 2fr auto; padding: 4px 0; }
+            .kpw-row-i { width: 38px; height: 38px; }
+            .kpw-cta { margin-top: 10px; flex-wrap: nowrap; padding: 12px 18px; }
+            .kpw-cta-t { max-width: 380px; }
+            .kpw-hero h2 { font-size: 24px; margin: 4px 0 8px; }
+            .kpw-prelim { margin-top: 8px; }
+            .kpw-src { margin-top: 4px; font-size: 10px; line-height: 1.45; }
+            /* Заголовок раздела не остаётся один в конце страницы */
+            .kp-sheet .sec-header-row, .kp-h { break-after: avoid; page-break-after: avoid; }
+            .kp-multi .kp-fl-title { display: block; }
+            /* Таблицы петель и приборов в печати свёрнуты до строки-итога; «Как это посчитано» раскрыто */
+            .kp-acc-b { display: block !important; }
+            .kp-fpanel .kp-acc-b, .kp-note { display: none !important; }
+            .kp-fpanel .kp-acc { margin-top: 8px; }
+            .kp-acc-h { background: none; cursor: default; }
+            .kp-plan { cursor: auto; }
+        }
+
+        body.html2pdf-printing .kp-sheet { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
+        body.html2pdf-printing .kp-rooms-wrap { overflow: visible; }
+        body.html2pdf-printing .kp-main { min-width: 0; }
+        body.html2pdf-printing .kp-tabs,
+        body.html2pdf-printing .kp-plan-hint,
+        body.html2pdf-printing .kp-acc-c,
+        body.html2pdf-printing .kp-fl-c,
+        body.html2pdf-printing .kp-fl-hint { display: none !important; }
+        body.html2pdf-printing        body.html2pdf-printing .kp-rooms tr.kp-fl { cursor: default; break-after: avoid; page-break-after: avoid; }
+        body.html2pdf-printing .kp-fl-title { break-after: avoid; page-break-after: avoid; }
+        body.html2pdf-printing .kp-fpanel { display: block !important; margin-bottom: 18px; }
+        body.html2pdf-printing .kpw-hero-t { padding: 18px 24px; }
+        body.html2pdf-printing .kpw-hero-i { min-height: 130px; }
+        body.html2pdf-printing .kpw-hero-i img { max-height: 130px; }
+        body.html2pdf-printing .kpw-pils { grid-auto-flow: column; grid-auto-columns: 1fr; grid-template-columns: none; gap: 10px; margin-top: 12px; }
+        body.html2pdf-printing .kpw-pil { flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 12px 10px; }
+        body.html2pdf-printing .kpw-pil svg { width: 30px; height: 30px; }
+        body.html2pdf-printing .kpw-pn { font-size: 18px; }
+        body.html2pdf-printing .kpw-pt { font-size: 11px; line-height: 1.35; }
+        body.html2pdf-printing .kp-sheet.kpw { break-inside: avoid; page-break-inside: avoid; }
+        body.html2pdf-printing .kpw-row { grid-template-columns: 38px minmax(120px, 1.4fr) 2fr auto; padding: 4px 0; }
+        body.html2pdf-printing .kpw-row-i { width: 38px; height: 38px; }
+        body.html2pdf-printing .kpw-cta { margin-top: 10px; flex-wrap: nowrap; padding: 12px 18px; }
+        body.html2pdf-printing .kpw-cta-t { max-width: 380px; }
+        body.html2pdf-printing .kpw-hero h2 { font-size: 24px; margin: 4px 0 8px; }
+        body.html2pdf-printing .kpw-prelim { margin-top: 8px; }
+        body.html2pdf-printing .kpw-src { margin-top: 4px; font-size: 10px; line-height: 1.45; }
+        body.html2pdf-printing .kp-sheet .sec-header-row,
+        body.html2pdf-printing .kp-h { break-after: avoid; page-break-after: avoid; }
+        body.html2pdf-printing .kp-multi .kp-fl-title { display: block; }
+        body.html2pdf-printing .kp-acc-b { display: block !important; }
+        body.html2pdf-printing .kp-fpanel .kp-acc-b,
+        body.html2pdf-printing .kp-note { display: none !important; }
+        body.html2pdf-printing .kp-acc-h { background: none; cursor: default; }
+        body.html2pdf-printing .kp-plan { cursor: auto; }
+

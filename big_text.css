@@ -968,7 +968,7 @@
 
   html[data-big-text] .rec-quota { font-size: 16px; }
 
-  html[data-big-text] .rec-quota::after { font-size: 15.5px; }
+  html[data-big-text] .rec-quota .rq-pop { font-size: 15.5px; }
 
   html[data-big-text] .rec-plan-group-row { font-size: 16px; }
 

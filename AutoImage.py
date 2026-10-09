@@ -22,6 +22,12 @@ INVALID_SKU_LIST_PATH = "articles_invalid_sku.txt"
 INVALID_FILENAME_CHARS = set('*?"<>|:\\/')
 NOT_FOUND_LIST_PATH = "articles_not_found.txt"
 
+# Артикулы, которых на сайте ещё нет: {"префикс артикула": "ГГГГ-ММ-ДД"}. До этой даты обычный
+# прогон их не трогает и, главное, не заносит в articles_not_found.txt: «не найдено» оттуда
+# не возвращается, и позиция навсегда выпала бы из поиска ещё до появления на сайте.
+# Пример: буферные ёмкости STOUT STT-000x, в прайсе и на сайте — с ноября 2026.
+NOT_BEFORE_PATH = "images_not_before.json"
+
 def has_invalid_filename_chars(item_id):
     return any(c in INVALID_FILENAME_CHARS for c in item_id)
 
@@ -207,7 +213,26 @@ def get_unique_skus():
 
     return [{"id": k, "article": v, "sheet": sheets.get(k, CATALOG_PATH)} for k, v in sorted(items.items())]
 
-def get_missing_skus(items):
+def load_not_before():
+    """Префиксы артикулов, поиск картинок по которым отложен, и дата начала поиска."""
+    if not os.path.exists(NOT_BEFORE_PATH):
+        return {}
+    try:
+        with open(NOT_BEFORE_PATH, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return {str(k).lower(): str(v) for k, v in data.items() if not str(k).startswith('_')}
+    except Exception as e:
+        print(f"Ошибка чтения {NOT_BEFORE_PATH}: {e}")
+        return {}
+
+def is_postponed(item_id, not_before):
+    """True, если дата начала поиска для этого артикула ещё не наступила."""
+    from datetime import date
+    today = date.today().isoformat()
+    low = item_id.lower()
+    return any(low.startswith(pref) and today < day for pref, day in not_before.items())
+
+def get_missing_skus(items, only=None):
     existing_files = set()
     if os.path.exists(IMAGE_DIR):
         for f in os.listdir(IMAGE_DIR):
@@ -226,10 +251,20 @@ def get_missing_skus(items):
         except Exception as e:
             print(f"Ошибка чтения {NOT_FOUND_LIST_PATH}: {e}")
 
+    not_before = load_not_before()
+    only = [x.lower() for x in (only or [])]
+    postponed = 0
     missing = []
     for item in items:
         item_id = item["id"]
-        if item_id.lower() in not_found_skus:
+        if only and not any(item_id.lower().startswith(x) for x in only):
+            continue
+        if not only and is_postponed(item_id, not_before):
+            postponed += 1
+            continue
+        # В режиме --only список «не найдено» не смотрим: он нужен как раз для повторных
+        # попыток по позициям, которых раньше на сайте не было.
+        if not only and item_id.lower() in not_found_skus:
             continue
             
         # Check case-insensitive for item_id.jpg, png, etc.
@@ -241,6 +276,8 @@ def get_missing_skus(items):
                 break
         if not found:
             missing.append(item)
+    if postponed:
+        print(f"Отложено до появления на сайте (см. {NOT_BEFORE_PATH}): {postponed}")
     return missing
 
 def optimize_and_save_image(temp_file_path, sku):
@@ -561,7 +598,7 @@ def pick_pilot(missing_items, total):
     return picked[:total]
 
 
-def update_catalog_images(pilot=0):
+def update_catalog_images(pilot=0, only=None):
     print("=== ЗАПУСК ПАРСЕРА КАРТИНОК С ОПТИМИЗАЦИЕЙ ===")
     if pilot:
         print(f"[ПИЛОТ] Пробный прогон: до {pilot} артикулов, по {PILOT_PER_SHEET} из листа. "
@@ -572,13 +609,16 @@ def update_catalog_images(pilot=0):
     print(f"Всего уникальных товаров в каталоге: {len(items)}")
     
     print("Шаг 2: Определение товаров без картинок (с учетом удаленных)...")
-    missing_items = get_missing_skus(items)
+    missing_items = get_missing_skus(items, only)
     print(f"Товаров для скачивания: {len(missing_items)}")
     
-    # Save the list of missing ids for local user reference
-    with open(MISSING_LIST_PATH, 'w', encoding='utf-8') as f:
-        f.write("\n".join([item["id"] for item in missing_items]))
-    print(f"Список артикулов сохранен в {MISSING_LIST_PATH}")
+    if only:
+        print('[ТОЛЬКО ' + ', '.join(only) + '] Прогон по префиксам артикулов: список «не найдено» не читаем и не пополняем, общий список articles_without_images.txt не трогаем.')
+    else:
+        # Save the list of missing ids for local user reference
+        with open(MISSING_LIST_PATH, 'w', encoding='utf-8') as f:
+            f.write("\n".join([item["id"] for item in missing_items]))
+        print(f"Список артикулов сохранен в {MISSING_LIST_PATH}")
 
     if not missing_items:
         print("Все картинки уже скачаны. Завершение работы.")
@@ -647,8 +687,9 @@ def update_catalog_images(pilot=0):
                 stat[1] += 1
                 consecutive_errors = 0
                 # В пилоте список пропускаемых не пополняем: пары промахов мало,
-                # чтобы навсегда вычеркнуть артикул из полного прогона.
-                if not pilot:
+                # чтобы навсегда вычеркнуть артикул из полного прогона. Так же в режиме --only:
+                # позиции могли просто ещё не выложить на сайт.
+                if not pilot and not only:
                     try:
                         with open(NOT_FOUND_LIST_PATH, 'a', encoding='utf-8') as f:
                             f.write(item['id'] + '\n')
@@ -713,8 +754,14 @@ if __name__ == "__main__":
                 pilot_n = int(sys.argv[pos + 1])
             except ValueError:
                 pass
+    # python AutoImage.py --only STT-000 — только артикулы с этими префиксами (через запятую)
+    only_list = []
+    if '--only' in sys.argv:
+        pos = sys.argv.index('--only')
+        if pos + 1 < len(sys.argv):
+            only_list = [x.strip() for x in sys.argv[pos + 1].split(',') if x.strip()]
     try:
-        update_catalog_images(pilot=pilot_n)
+        update_catalog_images(pilot=pilot_n, only=only_list)
     except Exception as e:
         print(f"\n[!] КРИТИЧЕСКАЯ ОШИБКА: {e}")
         traceback.print_exc()

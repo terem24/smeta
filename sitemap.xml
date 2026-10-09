@@ -259,4 +259,46 @@
         <priority>0.8</priority>
     </url>
 
+    <url>
+        <loc>https://heatcalc.ru/novosti/2026-10-05/</loc>
+        <lastmod>2026-10-05</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <url>
+        <loc>https://heatcalc.ru/novosti/</loc>
+        <lastmod>2026-10-05</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+    </url>
+
+    <url>
+        <loc>https://heatcalc.ru/bimetall-ili-alyuminiy/</loc>
+        <lastmod>2026-10-06</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://heatcalc.ru/dogovor-podryada-zashchita-montazhnika/</loc>
+        <lastmod>2026-10-07</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://heatcalc.ru/polipropilen-dlya-otopleniya/</loc>
+        <lastmod>2026-10-08</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://heatcalc.ru/akt-skrytyh-rabot-otopleniya/</loc>
+        <lastmod>2026-10-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
 </urlset>

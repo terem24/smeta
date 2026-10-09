@@ -2218,35 +2218,67 @@ const RecognizeUI = {
         const seeSite = admin || !!(q && q.tariff === 'admin' && !q.personal);
         const dayLine = (d && seeSite ? `Сегодня на всём сайте: ${d.total} запросов. ` : '') +
             'Суточный лимит распознавания общий на всех пользователей, обнуляется в ' + gWhen + '.';
+        // Всплывающая панель: шкалы вместо сплошного текста. Цвет шкалы — по
+        // заполнению: до 70 % зелёная, до 90 % янтарная, дальше красная.
+        const e = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const lvl = f => f >= .9 ? 'bad' : f >= .7 ? 'warn' : 'ok';
+        const head = (t, r) => `<div class="rq-h"><span>${e(t)}</span><b>${e(r)}</b></div>`;
+        const bar = (label, val, max, right, c) => `<div class="rq-row"><div class="rq-rl"><span>${e(label)}</span><span>${e(right)}</span></div>` +
+            `<div class="rq-bar"><i class="${c || lvl(max ? val / max : 0)}" style="width:${Math.round(Math.min(1, Math.max(0, max ? val / max : 0)) * 100)}%"></i></div></div>`;
+        const kv = (k, v) => `<div class="rq-kv"><span>${e(k)}</span><b>${e(v)}</b></div>`;
+        const cap = t => `<div class="rq-cap">${e(t)}</div>`;
+        const sep = '<div class="rq-sep"></div>';
+        let pop = '';
         let text, cls = 'ok', tip;
         if (b) {
             text = '⏳ ' + this.fmtLeft(b.until - Date.now());
             cls = 'bad';
             tip = this.blockText(b);
+            pop = head('Распознавание приостановлено', '⏳ ' + this.fmtLeft(b.until - Date.now())) + cap(tip);
         } else if (admin) {
             // Администратору — суточный расход по сайту: месячного лимита у него
             // нет, а упирается он именно в сутки Google. Порог бесплатного тарифа
             // ~20 запросов на модель в сутки — ориентир, Google его не подтверждает.
-            const perModel = d ? Object.keys(d.models || {}).map(m => `• ${m}: ${d.models[m]} из ~20`) : [];
+            const perModel = d ? Object.keys(d.models || {}).map((m, i) => `• Канал ${i + 1}: ${d.models[m]} из ~20`) : [];
             const top = d ? Math.max(0, ...Object.values(d.models || {}).map(Number)) : 0;
             text = d ? `🔍 ${d.total} сегодня` : '🔍 ∞';
             cls = top >= 20 ? 'bad' : top >= 15 ? 'warn' : 'ok';
             tip = (d ? `Запросов к распознаванию сегодня на всём сайте: ${d.total}` +
                         (d.modes && d.modes.recognize != null ? ` (распознавание ${d.modes.recognize}, помощник ${d.modes.chat || 0})` : '') + '.' +
-                        (perModel.length ? '\nПо моделям, порог бесплатного тарифа ~20 в сутки на каждую:\n' + perModel.join('\n') : '')
+                        (perModel.length ? '\nПо каналам, порог бесплатного тарифа ~20 в сутки на каждую:\n' + perModel.join('\n') : '')
                      : 'Суточный счётчик по сайту ещё не включён на сервере.') +
                 (q && q.used != null ? `\nВ этом месяце вами: ${q.used} — месячного лимита у администратора нет.` : '') +
                 (this._apiCalls ? `\nЗа этот разбор: ${this._apiCalls}.` : '') +
                 `\nСутки Google обнуляются в ${gWhen}.\n${perSheet}`;
+            pop = head('Запросы сегодня, весь сайт', d ? String(d.total) : '—');
+            if (d) {
+                if (d.modes && d.modes.recognize != null) pop += kv('Распознавание / помощник', `${d.modes.recognize} / ${d.modes.chat || 0}`);
+                const ms = Object.keys(d.models || {});
+                if (ms.length) {
+                    pop += sep + cap('По каналам · порог бесплатного тарифа ~20 в сутки');
+                    ms.forEach((m, i) => { const n = Number(d.models[m]) || 0; pop += bar('Канал ' + (i + 1), n, 20, `${n} из ~20`); });
+                }
+            } else {
+                pop += cap('Суточный счётчик по сайту ещё не включён на сервере.');
+            }
+            pop += sep;
+            if (q && q.used != null) pop += kv('В этом месяце вами', `${q.used} · лимита нет`);
+            if (this._apiCalls) pop += kv('За этот разбор', String(this._apiCalls));
+            pop += kv('Сутки Google обнулятся', gWhen) + cap(perSheet);
         } else if (!q) {
             // Сервер лимитов промолчал — ограничивать нечем.
             text = '🔍 ∞';
             tip = 'Месячный лимит распознаваний не ограничен.' +
                 (this._apiCalls ? `\nЗа этот разбор: ${this._apiCalls}.` : '') +
                 `\nСчётчик месяца обнуляется ${resetStr}.\n${dayLine}\n${perSheet}`;
+            pop = head('Распознавания', '∞') + cap('Месячный лимит не ограничен.') + sep +
+                (this._apiCalls ? kv('За этот разбор', String(this._apiCalls)) : '') +
+                kv('Месяц обнулится', resetStr) + cap(dayLine) + cap(perSheet);
         } else if (!q.personal && q.tariff === 'admin') {
             text = `🔍 ${q.used} · ∞`;
             tip = `Запросов в этом месяце: ${q.used}. Администратор — без месячного ограничения.\nСчётчик обнуляется ${resetStr}.\n${dayLine}\n${perSheet}`;
+            pop = head('Запросов в этом месяце', String(q.used)) + cap('Администратор — без месячного ограничения.') + sep +
+                kv('Месяц обнулится', resetStr) + cap(dayLine) + cap(perSheet);
         } else {
             text = `🔍 ${q.left} из ${q.limit}`;
             cls = q.left <= 0 ? 'bad' : q.left <= 3 ? 'warn' : 'ok';
@@ -2256,8 +2288,16 @@ const RecognizeUI = {
                 `\nЛимит обнуляется ${resetStr}.\n${dayLine}\n${perSheet}` +
                 (q.tariff === 'base' && !q.personal ? '\nБольше — на тарифе «Профи» или по запросу администратору.'
                     : '\nНужно больше — напишите администратору.');
+            const lim = Number(q.limit) || 0, usedN = Number(q.used) || 0;
+            pop = head(`Распознавания · ${tariff}`, `осталось ${q.left}`) +
+                bar('Потрачено за месяц', usedN, lim, `${usedN} из ${lim}`, lvl(lim ? usedN / lim : 1)) +
+                kv('Лимит обнулится', resetStr) + sep + cap(dayLine) + cap(perSheet) +
+                cap(q.tariff === 'base' && !q.personal ? 'Больше — на тарифе «Профи» или по запросу администратору.'
+                    : 'Нужно больше — напишите администратору.');
         }
-        el.textContent = text;
+        // Бейдж: подпись + панель. Панель — внутри бейджа, чтобы наведение на неё
+        // не гасло, а на телефоне касание (:focus) держало её открытой.
+        el.innerHTML = `<span class="rq-label">${e(text)}</span><div class="rq-pop" role="tooltip">${pop}</div>`;
         el.className = 'rec-quota ' + cls + (el.classList.contains('open') ? ' open' : '');
         el.setAttribute('data-tip', tip);
     },

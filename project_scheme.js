@@ -301,11 +301,16 @@
   /** Выноска у фильтра с центром (fx,fy). */
   function leaderFilter(fx, fy, size) { return leader(fx - 0.96, fy - 1.77, size); }
 
-  /** Гидравлический разделитель для схемы. (x,y) — центр корпуса 9×20. */
-  function hydroSep(x, y, kw, noThermo) {
+  /** Гидравлический разделитель для схемы. (x,y) — центр корпуса 9×20.
+   *  buf = { vol } — на его месте буферная ёмкость: те же подключения (воздухоотводчик сверху,
+   *  дренаж снизу, термометр слева), корпус скруглён, внутри объём в литрах вместо кВт. */
+  function hydroSep(x, y, kw, noThermo, buf) {
     var w = 9, h = 20, o = [];
-    o.push(rrect(x - w / 2, y - h / 2, w, h, 1, { c: '#000', w: LW.sym }));
-    if (kw) {
+    o.push(rrect(x - w / 2, y - h / 2, w, h, buf ? 2.6 : 1, { c: '#000', w: LW.sym }));
+    if (buf) {
+      o.push(txt(x, y - 0.6, String(buf.vol), { size: SZ.txt, anchor: 'middle' }));
+      o.push(txt(x, y + 3.4, 'л', { size: SZ.txt, anchor: 'middle' }));
+    } else if (kw) {
       o.push(txt(x, y - 0.6, String(kw), { size: SZ.txt, anchor: 'middle' }));
       o.push(txt(x, y + 3.4, 'кВт', { size: SZ.txt, anchor: 'middle' }));
     }
@@ -545,7 +550,9 @@
   filterSym = sym(filterSym, 'filter', 'Фильтр-грязевик');
   airSep = sym(airSep, 'airsep', 'Сепаратор воздуха');
   safetyGroup = sym(safetyGroup, 'safetygroup', 'Группа безопасности котла');
-  hydroSep = sym(hydroSep, 'hydro', 'Гидравлический разделитель');
+  hydroSep = sym(hydroSep, 'hydro', function (x, y, kw, nt, buf) {
+    return buf ? 'Буферная ёмкость' : 'Гидравлический разделитель';
+  });
   expTank = sym(expTank, 'exptank', 'Расширительный бак');
   boilerUnit = sym(boilerUnit, 'boiler', function (x, y, kind) {
     return kind === 'gas' ? 'Газовый котёл' : 'Электрический котёл';
@@ -626,7 +633,7 @@
       o.push(airVent(bx, bt - 1.37));
       o.push(pline([[bx - 1.31, bt - 1.37], [bx - 1.31, bt]]));
       o.push(pline([[bx + 1.3, bt - 1.37], [bx + 1.3, bt]]));
-      o.push(rrect(bx - bw / 2, bt, bw, bb - bt, 0.4, { c: '#000', w: LW.sym }));
+      o.push(rrect(bx - bw / 2, bt, bw, bb - bt, cfg.hydro.buffer ? 2 : 0.4, { c: '#000', w: LW.sym }));
       o.push(pline([[bx - 1.31, bb], [bx - 1.31, bb + 1.37]]));
       o.push(pline([[bx + 1.3, bb], [bx + 1.3, bb + 1.37]]));
       o.push(pline([[bx - 1.31, bb + 1.37], [bx + 1.3, bb + 1.37]]));
@@ -635,7 +642,7 @@
       o.push(pline([[bx - 0.92, bb + 8.61], [bx + 0.92, bb + 8.61]]));
       o.push(pline([[bx - 0.92, bb + 8.61], [bx, bb + 10.14]]));
       o.push(pline([[bx + 0.92, bb + 8.61], [bx, bb + 10.14]]));
-      o.push(txt(tx, (hy0 + hy1) / 2 + SZ.txt * 0.35, 'Гидравлический разделитель', { size: SZ.txt, anchor: 'middle' }));
+      o.push(txt(tx, (hy0 + hy1) / 2 + SZ.txt * 0.35, cfg.hydro.buffer ? 'Буферная ёмкость' : 'Гидравлический разделитель', { size: SZ.txt, anchor: 'middle' }));
       o.push(ln(L, hy1, R, hy1));
       y = hy1;
     }
@@ -1424,7 +1431,7 @@
       o.push(hpipe(hydroX + 4.5, xu, secPair.ret, COL.ret));
       o.push(openArrow(xu - 0.8, secPair.ret, 'right', COL.ret));
       o.push('</g><g data-hyd-part="hydro" data-hyd-dir="none">');
-      o.push(hydroSep(hydroX, 167, cfg.hydro.kw, cfg.hydro.thermo === false));
+      o.push(hydroSep(hydroX, 167, cfg.hydro.kw, cfg.hydro.thermo === false, cfg.hydro.buffer || null));
       o.push('</g>');
       // датчик «Каскад» — на подаче за гидрострелкой (по нему контроллер
       // ведёт общую температуру каскада)
@@ -1925,7 +1932,7 @@
   var CSIG = '#64748B', COPEN = '#B45309', CCLOSE = '#1F2937';
   var CBUS = '#0D9488', CBUS2 = '#F59E0B';
   var CRS = ['#1F2937', '#16A34A', '#EAB308', '#DC2626']; // ⏚ B A +12В
-  var TC_ = { or: '#F97316', bl: '#2563EB', rd: '#DC2626', wh: '#F1F5F9', dk: '#475569', tl: '#0D9488' };
+  var TC_ = { or: '#F97316', bl: '#2563EB', rd: '#DC2626', wh: '#F1F5F9', dk: '#475569', tl: '#0D9488', gy: '#C4CAD3', bk: '#2B3139' };
   var P = 3.2;      // шаг клемм (общий для прибора и потребителей)
 
   function cut(s, k) { s = String(s || ''); return s.length > k ? s.slice(0, k - 1) + '…' : s; }
@@ -1944,15 +1951,63 @@
       seg([[x - 1.1, y + 0.8 * dir], [x + 1.1, y + 0.8 * dir]], CPE2, 0.5) +
       seg([[x - 0.5, y + 1.6 * dir], [x + 0.5, y + 1.6 * dir]], CPE2, 0.5);
   }
-  // ── колодка потребителя: клеммы стоят столбиком, жила входит по прямой ──
+  // ── реалистичные клеммные колодки: общий язык для всех схем автоматики ──
+  // Вид и цвета — по фотографиям и паспортам приборов (STOUT Thermatic 3001,
+  // стр. 10; STOUT STE-3050, стр. 3). Нужные клеммы показаны ярко и в зелёной
+  // подсветке — сюда заводят провод; остальные тусклые, как на плате планки.
+  function shade(hex, k) {            // k > 0 — к белому, k < 0 — к чёрному
+    var m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return hex;
+    var v = [0, 2, 4].map(function (i) { return parseInt(m[1].slice(i, i + 2), 16); });
+    return '#' + v.map(function (c) {
+      var r = Math.round(k >= 0 ? c + (255 - c) * k : c * (1 + k));
+      return ('0' + r.toString(16)).slice(-2);
+    }).join('');
+  }
+  var HALO = { f: '#BBF7D0', c: '#22C55E', w: 0.5 };
+  /**
+   * Съёмная винтовая колодка Thermatic: цветной корпус с бликом, перегородки
+   * между контактами, шлицевые винты и тёмное гнездо провода со стороны жилы.
+   * Высота 6,4 мм, шаг контактов P; центр винта — на 3,2 мм от верха, туда же
+   * приходит жила. groups — как колодка разбита на самостоятельные части
+   * («Входы термостатов» — три отдельные колодки по два контакта).
+   */
+  function pluggable(x, y, nn, col, on, up, groups, pitch) {
+    var h = 6.4, pp = pitch || P, pale = on === 'pale', lit = on === true;
+    var s = '<g' + (lit || pale ? '' : ' opacity="0.4"') + '>';
+    var parts = groups || [nn], k0 = 0, bound = {};
+    parts.forEach(function (g) {
+      bound[k0 + g] = true;
+      var gx = x + k0 * pp, gw = g * pp - (parts.length > 1 ? 0.6 : 0);
+      if (lit) s += rrect(gx - 0.9, y - 0.9, gw + 1.8, h + 1.8, 1.1, HALO);
+      if (pale) s += rrect(gx - 0.6, y - 0.6, gw + 1.2, h + 1.2, 1.0, { f: '#DCFCE7', c: '#86C7A0', w: 0.4 });
+      s += rrect(gx, y, gw, h, 0.7, { f: shade(col, -0.35), c: shade(col, -0.6), w: 0.3 });
+      s += rrect(gx + 0.25, y + 0.25, gw - 0.5, h - 0.5, 0.5, { f: col });
+      s += rrect(gx + 0.25, y + 0.25, gw - 0.5, 1.2, 0.5, { f: shade(col, 0.38) });
+      k0 += g;
+    });
+    for (var i = 0; i < nn; i++) {
+      var cx = x + pp / 2 + i * pp;
+      if (i > 0 && !bound[i]) {
+        s += ln(x + i * pp, y + 0.4, x + i * pp, y + h - 0.4, { c: shade(col, -0.45), w: 0.25 });
+      }
+      s += rrect(cx - 0.95, up ? y + 0.35 : y + h - 1.85, 1.9, 1.5, 0.3, { f: '#111827' });   // гнездо провода
+      s += circle(cx, y + 3.2, 1.0, { f: '#E5E7EB', c: '#475569', w: 0.3 });                  // головка винта
+      s += ln(cx - 0.62, y + 3.2, cx + 0.62, y + 3.2, { c: '#475569', w: 0.3 });              // шлиц
+    }
+    return s + '</g>';
+  }
+  /** Колодка потребителя: серая пружинная, провод входит с той стороны, откуда он идёт. */
   function vstrip(x, cy, labels, side) {
-    var m = labels.length, h = m * P + 1.6, s = '';
-    s += rrect(x - 2.4, cy - h / 2, 4.8, h, 0.8, { f: '#27AE60', c: '#14532D', w: 0.4 });
+    var m = labels.length, h = m * P + 1.6, bw = 6.4, s = '';
+    s += rrect(x - bw / 2 - 0.9, cy - h / 2 - 0.9, bw + 1.8, h + 1.8, 1.2, HALO);
+    s += rrect(x - bw / 2, cy - h / 2, bw, h, 0.9, { f: '#B8B8BC', c: '#6B7280', w: 0.35 });
+    s += rrect(x + side * (bw / 2 - 1.4) - 0.7, cy - h / 2, 1.4, h, 0.5, { f: '#9A9AA0' });
     labels.forEach(function (L, i) {
       var y = cy + (i - (m - 1) / 2) * P;
-      s += circle(x, y, 1.05, { f: '#E8F5E9', c: '#14532D', w: 0.3 });
-      s += ln(x - 0.6, y, x + 0.6, y, { c: '#14532D', w: 0.3 });
-      s += txt(x + side * 4.2, y + 0.7, L, { size: 1.95, anchor: side > 0 ? 'start' : 'end' });
+      s += circle(x - side * 0.5, y, 1.15, { f: '#27272A', c: '#15803D', w: 0.4 });          // гнездо провода
+      s += rrect(x + side * 1.2 - 0.5, y - 0.9, 1.0, 1.8, 0.2, { f: '#D4D4D8', c: '#6B7280', w: 0.2 }); // рычажок
+      s += txt(x + side * 5.6, y + 0.7, L, { size: 1.95, anchor: side > 0 ? 'start' : 'end' });
     });
     return s;
   }
@@ -2079,15 +2134,15 @@
     var TOP = [
       { k: 'tn1', n: 2, c: TC_.or, t: 'ТН-1' }, { k: 'tn2', n: 2, c: TC_.bl, t: 'ТН-2' },
       { k: 'tn3', n: 2, c: TC_.rd, t: 'ТН-3' }, { k: 'boiler', n: 2, c: TC_.wh, t: 'Бойлер' },
-      { k: 'out', n: 2, c: TC_.wh, t: 'Улица' }, { k: 'casc', n: 2, c: TC_.dk, t: 'Каскад' },
-      { k: 'ain', n: 3, c: TC_.wh, t: 'Входы' }, { k: 'vext', n: 3, c: TC_.tl, t: '+5/12В' },
-      { k: 'thr', n: 6, c: TC_.wh, t: 'Термостаты' }, { k: 'ow', n: 2, c: TC_.wh, t: '1-Wire' },
+      { k: 'out', n: 2, c: TC_.gy, t: 'Улица' }, { k: 'casc', n: 2, c: TC_.bk, t: 'Каскад' },
+      { k: 'ain', n: 3, c: TC_.gy, t: 'Входы' }, { k: 'vext', n: 3, c: TC_.tl, t: '+5/12В' },
+      { k: 'thr', n: 6, c: TC_.gy, t: 'Термостаты', groups: [2, 2, 2] }, { k: 'ow', n: 2, c: TC_.gy, t: '1-Wire' },
       // Ethernet — не клеммник, а гнездо RJ45; по карте клемм стоит в том же
       // ряду, что и 1-Wire с RS-485 (Приложение 4), поэтому и рисуется здесь,
       // а не на лицевой панели: на приборе её лицевая сторона пустая
       { k: 'eth', n: 2, c: TC_.wh, t: 'Ethernet', jack: true },
-      { k: 'rs', n: 4, c: TC_.wh, t: 'RS-485' }, { k: 'csh1', n: 2, c: TC_.dk, t: 'ЦШ1' },
-      { k: 'csh2', n: 2, c: TC_.dk, t: 'ЦШ2' }
+      { k: 'rs', n: 4, c: TC_.gy, t: 'RS-485' }, { k: 'csh1', n: 2, c: TC_.bk, t: 'ЦШ1' },
+      { k: 'csh2', n: 2, c: TC_.bk, t: 'ЦШ2' }
     ];
     var BOT = [
       { k: 'ko1p', n: 2, c: TC_.or, t: 'КО-1 Насос' }, { k: 'ko1m', n: 3, c: TC_.or, t: 'КО-1 Смеситель' },
@@ -2095,7 +2150,7 @@
       { k: 'ko3p', n: 2, c: TC_.rd, t: 'КО-3 Насос' }, { k: 'ko3m', n: 3, c: TC_.rd, t: 'КО-3 Смеситель' },
       { k: 'dhwrc', n: 2, c: TC_.wh, t: 'ГВС РЦ' }, { k: 'dhwcn', n: 2, c: TC_.wh, t: 'ГВС ЦН' },
       { k: 'leak', n: 3, c: TC_.tl, t: 'Кран протечки' }, { k: 'trace', n: 3, c: TC_.tl, t: 'Насос трассы' },
-      { k: 'rel1', n: 3, c: TC_.dk, t: 'Реле котёл 1' }, { k: 'rel2', n: 3, c: TC_.dk, t: 'Реле котёл 2' },
+      { k: 'rel1', n: 3, c: TC_.bk, t: 'Реле котёл 1' }, { k: 'rel2', n: 3, c: TC_.bk, t: 'Реле котёл 2' },
       { k: 'pwr', n: 2, c: TC_.tl, t: 'Питание 220В' }
     ];
     // раскладка блоков по ширине корпуса
@@ -2315,11 +2370,10 @@
           // на самом контроллере, поэтому и рисуются так же.
           var ty = y0 + 9.4;
           function term(tx, cl, col) {
-            o.push(rrect(tx, ty, cl.length * P, 6.4, 0.7, { f: col, c: '#0F172A', w: 0.45 }));
+            // та же съёмная колодка, что и на самом контроллере
+            o.push(pluggable(tx, ty, cl.length, col, true, true));
             cl.forEach(function (L, i) {
-              var ccx = tx + P / 2 + i * P;
-              o.push(circle(ccx, ty + 3.2, 0.95, { f: '#fff', c: '#334155', w: 0.3 }));
-              o.push(txt(ccx, ty + 9.4, L, { size: 2.1, anchor: 'middle' }));
+              o.push(txt(tx + P / 2 + i * P, ty + 9.4, L, { size: 2.1, anchor: 'middle' }));
             });
             return tx + cl.length * P;
           }
@@ -2337,7 +2391,10 @@
 
     var H = CB + 12 + (nBot - 1) * LS + 44 + exPlan.h;
 
-    o.push(txt(W / 2, 8.4, 'Схема подключения автоматики котельной — STOUT Thermatic 3001',
+    // Climatic.V2 — тот же прибор, что Thermatic 3001 (паспорт ZONT ML.TD.ZHCL.V2.001,
+    // Приложение 4: колодки и подписи клемм те же), отличается только марка.
+    var devName = tc.brand === 'zont' ? 'ZONT Climatic.V2' : 'STOUT Thermatic 3001';
+    o.push(txt(W / 2, 8.4, 'Схема подключения автоматики котельной — ' + devName,
       { size: 4.4, anchor: 'middle', weight: 'bold' }));
 
     // ── корпус прибора: плоский вид с лицевой панели ──
@@ -2350,7 +2407,7 @@
     var fx = CX + 3, fy = CY + 10.6, fw = CW - 6, fh = CH - 21;
     o.push(rrect(fx, fy, fw, fh, 2.2, { f: FACE2, c: '#CBD5E1', w: 0.4 }));
     // шильдик: по фотографии — 14 % ширины от левого края, 36 % высоты
-    o.push(txt(fx + fw * 0.06, fy + fh * 0.30, 'STOUT Thermatic 3001', { size: 6.4, fill: '#6B7280' }));
+    o.push(txt(fx + fw * 0.06, fy + fh * 0.30, devName, { size: 6.4, fill: '#6B7280' }));
 
     // ── модуль экрана: 41 % ширины и 54 % высоты панели, поднят кверху ──
     var dw = fw * 0.41, dh = fh * 0.54, dx = fx + fw - dw - fw * 0.025, dy = fy + fh * 0.07;
@@ -2671,17 +2728,33 @@
 
     // клеммные ряды — поверх жил
     function strip(list, y, labelBelow) {
+      // Полочка корпуса под колодками — тёмно-серая планка, как на фото прибора
+      // (паспорт STOUT, стр. 10): колодки съёмные и сидят в ней, а не прямо на панели.
+      o.push(rrect(CX + 2.4, y - 1.4, CW - 4.8, 9.2, 1.2, { f: '#8E98A6', c: '#6B7280', w: 0.4 }));
+      if (labelBelow) {
+        // переключатель АКБ (ON / OFF) в начале верхнего ряда
+        o.push(rrect(CX + 3.1, y - 0.2, 3.4, 6.8, 0.5, { f: '#F1F5F9', c: '#475569', w: 0.3 }));
+        o.push(rrect(CX + 3.7, y + 0.6, 2.2, 2.6, 0.3, { f: '#334155' }));
+        // три светодиода «Индикация» — между питанием внешних устройств и входами термостатов
+        var ledX = (T.vext.x + 3 * P + T.thr.x) / 2;
+        [['#EF4444', -1.6], ['#EAB308', 0], ['#22C55E', 1.6]].forEach(function (L) {
+          o.push(circle(ledX + L[1], y + 3.2, 0.6, { f: L[0], c: '#475569', w: 0.15 }));
+        });
+      }
       list.forEach(function (b) {
         var on = !!used[b.k];
-        o.push(rrect(b.x, y, b.n * P, 6.4, 0.7, { f: on ? b.c : '#E2E8F0', c: on ? '#0F172A' : '#94A3B8', w: on ? 0.45 : 0.3 }));
         if (b.jack) {
-          // гнездо RJ45: корпус с язычком, а не винтовые клеммы
-          o.push(rrect(b.x + 1, y + 1.2, b.n * P - 2, 4, 0.4, { f: '#fff', c: '#94A3B8', w: 0.35 }));
-          o.push(rrect(b.x + b.n * P / 2 - 0.9, y + 0.4, 1.8, 1.4, 0.2, { f: '#fff', c: '#94A3B8', w: 0.3 }));
-        } else for (var i = 0; i < b.n; i++) {
-          var cxx = b.x + P / 2 + i * P;
-          o.push(circle(cxx, y + 3.2, 0.95, { f: '#fff', c: '#334155', w: 0.3 }));
-          o.push(ln(cxx - 0.55, y + 3.2, cxx + 0.55, y + 3.2, { c: '#334155', w: 0.3 }));
+          // гнездо RJ45: металлический корпус с контактной колодкой, а не винтовые клеммы
+          o.push('<g' + (on ? '' : ' opacity="0.4"') + '>' +
+            (on ? rrect(b.x - 0.9, y - 0.9, b.n * P + 1.8, 8.2, 1.1, HALO) : '') +
+            rrect(b.x, y - 0.3, b.n * P, 7, 0.6, { f: '#CBD5E1', c: '#64748B', w: 0.35 }) +
+            rrect(b.x + 0.9, y + 0.9, b.n * P - 1.8, 4.2, 0.4, { f: '#1F2937' }) +
+            rrect(b.x + b.n * P / 2 - 0.9, y + 0.3, 1.8, 0.9, 0.2, { f: '#CBD5E1' }) +
+            [0, 1, 2, 3, 4, 5].map(function (q) {
+              return rrect(b.x + 1.3 + q * ((b.n * P - 2.6) / 6), y + 3.6, 0.5, 1.5, 0.1, { f: '#EAB308' });
+            }).join('') + '</g>');
+        } else {
+          o.push(pluggable(b.x, y, b.n, b.c, on, !labelBelow ? false : true, b.groups));
         }
         var col = on ? '#0F172A' : '#94A3B8';
         // Названия силовых клемм длиннее своих колодок («КО-1 Смеситель» —
@@ -3006,9 +3079,13 @@
       t: 'Насосная группа со смесителем × ' + tc.mixCount,
       s: cut(nm.mixGroup || 'узел тёплого пола', 44) + ' — температуру держит термостатическая головка'
     });
+    if (onBlocks.length) offList.push({
+      t: 'Блоки расширения ' + (f.blocks && f.blocks.n44 ? 'ZE-44 × ' + f.blocks.n44 : '') + (f.blocks && f.blocks.n22 ? (f.blocks.n44 ? ' · ' : '') + 'ZE-22 × ' + f.blocks.n22 : '') + ' (RS-485)',
+      s: cut(onBlocks.map(function (a) { return a.label; }).join(', '), 70) + ' — клеммы блока по его паспорту'
+    });
     var ufh = items.ufh || null;
     if (ufh && (ufh.blocks || ufh.stats || ufh.servos)) offList.push({
-      t: 'Автоматика тёплого пола (раздел 4.3)',
+      t: 'Автоматика радиаторов и тёплого пола (раздел 4.5)',
       s: [ufh.stats ? 'термостаты × ' + ufh.stats : '', ufh.servos ? 'сервоприводы × ' + ufh.servos : '',
         ufh.blocks ? 'коммутационный блок × ' + ufh.blocks : ''].filter(Boolean).join(' · ') +
         ' — своя зональная система на 230 В'
@@ -3235,20 +3312,35 @@
       ROW.forEach(function (b) {
         var on = !!used[b.k];
         var col = on ? '#0F172A' : '#94A3B8';
+        var g0 = '<g' + (on ? '' : ' opacity="0.4"') + '>';
         if (b.round) {
-          o.push(circle(b.cx, y + 3.2, 2.6, { f: on ? '#F8FAFC' : '#E2E8F0', c: col, w: on ? 0.5 : 0.35 }));
-          o.push(circle(b.cx, y + 3.2, 0.9, { f: col }));
+          // гнездо питания: чёрная втулка с центральным штырём
+          o.push(g0 + (on ? circle(b.cx, y + 3.2, 4.0, HALO) : '') +
+            circle(b.cx, y + 3.2, 2.7, { f: '#1F2937', c: '#111827', w: 0.4 }) +
+            circle(b.cx, y + 3.2, 1.7, { f: '#374151' }) +
+            circle(b.cx, y + 3.2, 0.7, { f: '#CBD5E1' }) + '</g>');
         } else if (b.jack) {
-          o.push(rrect(b.x, y, b.w, 6.4, 0.7, { f: on ? '#F8FAFC' : '#E2E8F0', c: col, w: on ? 0.5 : 0.35 }));
-          o.push(rrect(b.cx - 1.1, y + 0.5, 2.2, 1.6, 0.2, { f: '#fff', c: col, w: 0.3 }));
-          o.push(rrect(b.x + 0.9, y + 2.2, b.w - 1.8, 3.4, 0.3, { f: '#fff', c: col, w: 0.3 }));
+          // розетка 4P4C (RJ11): тёмный корпус, окно с четырьмя контактами и язычок
+          o.push(g0 + (on ? rrect(b.x - 0.9, y - 0.9, b.w + 1.8, 8.2, 1.1, HALO) : '') +
+            rrect(b.x, y - 0.3, b.w, 7, 0.6, { f: '#4B5563', c: '#1F2937', w: 0.35 }) +
+            rrect(b.x + 0.7, y + 1.2, b.w - 1.4, 4.4, 0.4, { f: '#111827' }) +
+            rrect(b.cx - 1.1, y + 0.1, 2.2, 1.2, 0.2, { f: '#374151' }) +
+            [0, 1, 2, 3].map(function (q) {
+              return rrect(b.x + 1.1 + q * ((b.w - 2.2) / 4), y + 3.4, 0.5, 1.9, 0.1, { f: '#EAB308' });
+            }).join('') + '</g>');
         } else {
-          o.push(rrect(b.x, y, b.w, 6.4, 0.7, { f: on ? '#27AE60' : '#D7E3DA', c: on ? '#14532D' : '#94A3B8', w: 0.45 }));
+          // пружинная колодка: зелёный корпус, оранжевые рычажки, тёмные гнёзда провода
+          var gw = b.n * P;
+          var sp = g0 + (on ? rrect(b.x - 0.9, y - 0.9, gw + 1.8, 8.2, 1.1, HALO) : '') +
+            rrect(b.x, y, gw, 6.4, 0.7, { f: '#1E8E4E', c: '#14532D', w: 0.35 }) +
+            rrect(b.x + 0.25, y + 0.25, gw - 0.5, 1.1, 0.4, { f: '#4ADE80' });
           for (var i = 0; i < b.n; i++) {
             var cxx = b.x + P / 2 + i * P;
-            o.push(rrect(cxx - 1.05, y + 0.7, 2.1, 2.2, 0.3, { f: '#F59E0B', c: '#B45309', w: 0.25 }));
-            o.push(circle(cxx, y + 4.4, 0.85, { f: '#fff', c: '#14532D', w: 0.3 }));
+            if (i > 0) sp += ln(b.x + i * P, y + 0.4, b.x + i * P, y + 6.0, { c: '#14532D', w: 0.25 });
+            sp += rrect(cxx - 1.05, y + 0.7, 2.1, 2.2, 0.3, { f: '#F59E0B', c: '#B45309', w: 0.25 });
+            sp += rrect(cxx - 0.9, y + 3.7, 1.8, 1.8, 0.35, { f: '#111827' });
           }
+          o.push(sp + '</g>');
         }
         if (b.pins) {
           var groups = [{ t: 'ЦШ', a: 0, b: 1 }, { t: 'ПУ', a: 2, b: 3 },
@@ -3294,6 +3386,1572 @@
     return { svg: o.join(''), w: W, h: H };
   }
 
+  // ─── Схема подключения автоматики базового уровня (ZONT SMART 2.0) ─────
+  // Клеммы — по фотографии прибора в техдокументации ML.TD.ZHCONT.001.01
+  // (п. 2 «Подключение», рис. на стр. 66): внизу корпуса один ряд, слева направо
+  //
+  //   Реле        О НЗ НР            — единственное реле, переключающий контакт
+  //   Вход/Выход  1 2 3              — универсальные: вход под датчик или выход
+  //                                    «открытый коллектор» (до 100 мА, 30 В)
+  //   1-wire      ⏚ +t°              — цифровые датчики DS18B20 (до 10 шт.)
+  //   NTC         ⏚ 1 2              — аналоговые датчики
+  //   RS-485      A B ⏚ K-Line       — шина адаптера котла, радиомодуля, панелей
+  //   +12–24 В    ⏚ +                — питание (блок из комплекта)
+  //
+  // Нагрузку 220 В выход «открытый коллектор» не включит — между ним и насосом
+  // стоит реле 12 В (паспорт, п. 5.3): на схеме оно нарисовано прибором в разрыве
+  // жгута, как адаптер шины. Что паспорт не показывает, того на схеме нет:
+  // схема подключения извещателей протечки в нём не приведена, поэтому у шлейфа
+  // подписано лишь, на какой вход он заходит.
+  function automationSmart2(tc, items) {
+    tc = tc || {};
+    items = items || {};
+    var nm = items.names || {};
+    var o = [], W = 420;
+
+    var LS = 19;
+    var CW = 150, CH = 104, CX = (W - CW) / 2;
+    var DXL = 92, DXR = 328;
+    var ICL = 62, ICR = 358, ICO = 13;
+    var CD1 = '#7C3AED';
+    var CRAD = '#94A3B8';
+
+    var ROW = [
+      { k: 'rel', n: 3, t: 'Реле', pl: ['О', 'НЗ', 'НР'], col: '#22A855' },
+      { k: 'uni', n: 3, t: 'Вход/Выход', pl: ['1', '2', '3'], col: '#9CA3AF' },
+      { k: 'ow', n: 2, t: '1-wire', pl: ['⏚', '+t°'], col: '#9CA3AF' },
+      { k: 'ntc', n: 3, t: 'NTC', pl: ['⏚', '1', '2'], col: '#9CA3AF' },
+      { k: 'rs', n: 4, t: 'RS-485', pl: ['A', 'B', '⏚', 'K'], col: '#F1F5F9' },
+      { k: 'pw', n: 2, t: '+12–24 В', pl: ['⏚', '+'], col: '#B91C1C' }
+    ];
+    (function layoutRow() {
+      var total = 0;
+      ROW.forEach(function (b) { b.w = b.n * P; total += b.w; });
+      var gap = (CW - 12 - total) / (ROW.length - 1);
+      if (gap < 1.6) gap = 1.6;
+      var x = CX + 6;
+      ROW.forEach(function (b) { b.x = x; b.cx = x + b.w / 2; x += b.w + gap; });
+    })();
+    var T = {};
+    ROW.forEach(function (b) { T[b.k] = b; });
+    function wireX(blk, i) { return blk.x + P / 2 + i * P; }
+    var RADIO_X = CX + CW + 4;
+
+    // Выход жилы: leg = { b: блок, i: номер клеммы в блоке, c: цвет, l: подпись у потребителя }.
+    // Жилы жгута обязаны идти слева направо — на этом держится отсутствие пересечений.
+    function legsOf(arr) {
+      return arr.slice().sort(function (p, q) { return wireX(p.b, p.i) - wireX(q.b, q.i); });
+    }
+    var used = {}, botL = [], botR = [];
+    function boilerIco(gas) { return function (a, c, s) { return icoBoiler(a, c, s, gas); }; }
+
+    // ── котлы ──
+    // По цифровой шине ведётся один котёл, и идёт он через адаптер на RS-485;
+    // второй — только релейно (паспорт, п. 2), он попадает в нагрузки реле ниже.
+    var relayBoilerIco = null, relayBoilerTitle = '';
+    (tc.boilers || []).filter(function (b) { return b.iface !== 'own'; }).slice(0, 2).forEach(function (b, i) {
+      var gas = b.kind === 'gas';
+      var title = 'Котёл ' + (i + 1) + ' — ' + (gas ? 'газовый' : 'электрический');
+      var sub = cut(nm['boiler' + i] || '', 30);
+      if (b.iface === 'digital') {
+        botR.push({
+          legs: legsOf([{ b: T.rs, i: 0, c: CRS[2], l: 'A' }, { b: T.rs, i: 1, c: CRS[1], l: 'B' }, { b: T.rs, i: 2, c: CRS[0], l: '⏚' }]),
+          inline: 'Адаптер цифровых шин', inlineOut: 'ЦШ котла',
+          clampsOut: ['ЦШ', 'ЦШ'], wiresOut: [CBUS, CBUS2],
+          ico: boilerIco(gas), title: title,
+          sub: sub || 'питание адаптера — с клемм «+12–24 В»'
+        });
+      } else {
+        relayBoilerIco = boilerIco(gas); relayBoilerTitle = title + ' (релейно)';
+      }
+    });
+
+    // ── датчики температуры ──
+    var SENS_ROLE = {
+      dhw: { title: 'Датчик бойлера', sub: 'в гильзу бойлера ГВС' },
+      flow: { title: 'Датчик теплоносителя', sub: 'в гильзу на подаче котла' },
+      out: { title: 'Уличный датчик', sub: 'на северную стену, в тень' }
+    };
+    var sens = tc.sensors || [];
+    var ds = sens.filter(function (s) { return s.wire1; });
+    var ntcS = sens.filter(function (s) { return !s.wire1; });
+    ntcS.slice(0, 2).forEach(function (s, i) {
+      var r = SENS_ROLE[s.role] || SENS_ROLE.out;
+      botL.push({
+        legs: legsOf([{ b: T.ntc, i: 0, c: CRS[0], l: '⏚' }, { b: T.ntc, i: 1 + i, c: CSIG, l: '' + (1 + i) }]),
+        ico: icoProbe, title: r.title, sub: r.sub + ' · вход NTC ' + (1 + i)
+      });
+    });
+    if (ds.length) {
+      botL.push({
+        legs: legsOf([{ b: T.ow, i: 0, c: CRS[0], l: '⏚' }, { b: T.ow, i: 1, c: CSIG, l: '+t°' }]),
+        ico: ds[0].role === 'dhw' ? icoTank : icoProbe,
+        title: ds.length > 1 ? 'Датчики 1-Wire × ' + ds.length : (SENS_ROLE[ds[0].role] || SENS_ROLE.out).title,
+        sub: ds.map(function (s) { return (SENS_ROLE[s.role] || SENS_ROLE.out).sub; }).join(' · ').slice(0, 46) +
+          (ds.length > 1 ? ' · параллельно на одну шину' : '')
+      });
+    }
+
+    // ── универсальные вход/выходы: сначала входы (шлейф, давление), остальное — выходы ──
+    var uniNext = 0;
+    function icoGauge(cx, cy, s) {
+      return circle(cx, cy, s * 0.36, { f: FACE2, c: INK, w: 0.55 }) +
+        seg([[cx, cy], [cx + s * 0.18, cy - s * 0.18]], INK, 0.55) +
+        circle(cx, cy, s * 0.05, { f: INK });
+    }
+    if (tc.leakQty > 0) {
+      botL.push({
+        legs: legsOf([{ b: T.uni, i: uniNext++, c: CD1, l: 'Вх' }]),
+        ico: icoDrop, title: 'Датчики протечки × ' + tc.leakQty,
+        sub: 'шлейф АСТРА-361 на вход · полярность — паспорт, п. 3.4'
+      });
+    }
+    if (tc.pressure) {
+      // У датчика три жилы с двух разных колодок. Одним жгутом они бы пересекли
+      // чужие этажи, поэтому датчик показан дважды: сигнал — от входа, питание —
+      // от клемм «+12–24 В». Это один и тот же прибор.
+      botL.push({
+        legs: legsOf([{ b: T.uni, i: uniNext++, c: '#EAB308', l: 'сигнал' }]),
+        ico: icoGauge, title: 'Датчик давления MLD-10.01 · сигнал',
+        sub: 'жёлтая жила — на универсальный вход'
+      });
+      botR.push({
+        legs: legsOf([{ b: T.pw, i: 0, c: CRS[0], l: '−' }, { b: T.pw, i: 1, c: CRS[3], l: '+12 В' }]),
+        ico: icoGauge, title: 'Датчик давления MLD-10.01 · питание',
+        sub: 'красная жила +12 В, чёрная — «минус»'
+      });
+    }
+
+    // ── устройства шины RS-485 ──
+    var radioAir = !!(tc.airOn && tc.airQty > 0 && tc.airDevice && tc.airDevice.link === 'radio');
+    var busLegs = function () {
+      return legsOf([{ b: T.rs, i: 0, c: CRS[2], l: 'A' }, { b: T.rs, i: 1, c: CRS[1], l: 'B' }, { b: T.rs, i: 2, c: CRS[0], l: '⏚' }]);
+    };
+    if (tc.airOn && tc.airQty > 0 && !radioAir) botR.push({
+      legs: busLegs(), ico: tc.airKind === 'thermostat' ? icoPanel : icoPuck,
+      title: tc.airKind === 'thermostat' ? 'Комнатный термостат' : 'Датчик воздуха комнатный',
+      sub: cut(nm.air || 'по шине RS-485', 32)
+    });
+    if (tc.needRadio) botR.push({
+      legs: busLegs(), ico: function (a, c, s) { return icoModule(a, c, s, true); },
+      title: 'Радиомодуль МЛ-590', sub: 'радиодатчики 868 МГц · до 40 устройств'
+    });
+
+    // ── питание: блок 12 В из комплекта ──
+    botR.push({
+      legs: legsOf([{ b: T.pw, i: 0, c: CRS[0], l: '−' }, { b: T.pw, i: 1, c: CRS[3], l: '+12 В' }]),
+      ico: icoBreaker, title: 'Блок питания 12 В', sub: 'из комплекта · розетка ~220 В'
+    });
+
+    // ── нагрузки ──
+    // Встроенное реле — переключающее (О, НЗ, НР): кому оно досталось, посчитал
+    // getBasicAutoConfig. Остальные нагрузки — на выходах «открытый коллектор»
+    // через реле 12 В; у реле катушка берёт +12 В питания и «минус» выхода.
+    (tc.loads || []).forEach(function (l) {
+      var isValve = /кран|соленоид/i.test(l.label);
+      var isBoilerLoad = /котёл/i.test(l.label);
+      var ico = isValve ? icoValveAct : isBoilerLoad ? (relayBoilerIco || icoModule) : icoPump;
+      var title = isBoilerLoad ? (relayBoilerTitle || l.label) : l.label;
+      var sub = isBoilerLoad ? 'клеммы термостата котла · перемычку снять'
+        : isValve ? cut(nm.leakValve || 'на вводе ХВС', 32)
+          : /бойлер/i.test(l.label) ? cut(nm.dhwPump || 'из обвязки бойлера', 32)
+            : /рециркуляц/i.test(l.label) ? cut(nm.recircPump || 'линия Т4', 32)
+              : 'ток не более 3 А';
+      if (l.out === 'built') {
+        if (isBoilerLoad) botR.push({
+          legs: legsOf([{ b: T.rel, i: 0, c: CCLOSE, l: 'О' }, { b: T.rel, i: 2, c: '#6B7280', l: 'НР' }]),
+          ico: ico, title: title, sub: sub
+        });
+        else if (isValve) botR.push({
+          legs: legsOf([{ b: T.rel, i: 0, c: CL, l: 'О' }, { b: T.rel, i: 1, c: CCLOSE, l: 'НЗ' }, { b: T.rel, i: 2, c: COPEN, l: 'НР' }]),
+          pe: true, nStub: true, ico: ico, title: title, sub: sub
+        });
+        else botR.push({
+          legs: legsOf([{ b: T.rel, i: 0, c: CL, l: 'О' }, { b: T.rel, i: 2, c: CL, l: 'НР' }]),
+          pe: true, nStub: true, ico: ico, title: title, sub: sub
+        });
+      } else if (l.out === 'extra') {
+        botR.push({
+          legs: legsOf([{ b: T.uni, i: Math.min(uniNext++, 2), c: CD1, l: 'ОК' }]),
+          inline: 'Реле 12 В', clampsOut: ['L', 'N', '⏚'], wiresOut: [CL, CN],
+          pe: true, ico: ico, title: title, sub: sub + ' · через реле 12 В'
+        });
+      }
+    });
+
+    // ── этажи: тот же закон, что и у 1002 — клемма левее, этаж ближе к корпусу ──
+    var bot = botL.concat(botR);
+    bot.forEach(function (d) {
+      d.xLo = Infinity; d.xHi = -Infinity;
+      d.legs.forEach(function (g) { var x = wireX(g.b, g.i); d.xLo = Math.min(d.xLo, x); d.xHi = Math.max(d.xHi, x); });
+    });
+    bot.sort(function (a, b) { return (a.xLo - b.xLo) || (a.xHi - b.xHi); });
+    var cutAt = 0, runHi = -Infinity, best = null;
+    for (var s2 = 0; s2 <= bot.length; s2++) {
+      if (s2 > 0) runHi = Math.max(runHi, bot[s2 - 1].xHi);
+      if (s2 > 0 && s2 < bot.length && runHi > bot[s2].xLo) continue;
+      var d2 = Math.abs(s2 - bot.length / 2);
+      if (best === null || d2 < best) { best = d2; cutAt = s2; }
+    }
+    botL = bot.slice(0, cutAt);
+    botR = bot.slice(cutAt).reverse();
+    var nBot = Math.max(botL.length, botR.length, 1);
+    var CY = 36, CB = CY + CH;
+
+    // ── в смете есть, но проводов к контроллеру не имеет ──
+    var offList = [];
+    if (tc.dhw === 'boiler_ct') offList.push({
+      t: 'Бойлер ГВС · на переключающем клапане котла',
+      s: cut(nm.tank || 'бойлер косвенного нагрева', 40) + ' — клапан и датчик бойлера подключаются к самому котлу; контроллер задаёт котлу уставку ГВС по цифровой шине'
+    });
+    if (tc.dhw === 'external') offList.push({
+      t: 'Бойлер ГВС · мимо контроллера',
+      s: cut(nm.tank || 'бойлер косвенного нагрева', 40) + ' — у котла нет цифровой шины, ГВС остаётся на его собственной автоматике'
+    });
+    if (tc.dhw === 'ct') offList.push({ t: 'ГВС от двухконтурного котла', s: 'проточный теплообменник котла — отдельного бойлера в смете нет' });
+    if ((tc.directCount || 0) > 0) offList.push({
+      t: 'Насос радиаторного контура × ' + tc.directCount,
+      s: cut(nm.dirGroup || 'прямая насосная группа', 44) + ' — питание от щита, работает постоянно'
+    });
+    if ((tc.mixCount || 0) > 0) offList.push({
+      t: 'Насосная группа со смесителем × ' + tc.mixCount,
+      s: cut(nm.mixGroup || 'узел тёплого пола', 44) + ' — температуру держит термостатическая головка'
+    });
+    var ufh = items.ufh || null;
+    if (ufh && (ufh.blocks || ufh.stats || ufh.servos)) offList.push({
+      t: 'Автоматика радиаторов и тёплого пола (раздел 4.5)',
+      s: [ufh.stats ? 'термостаты × ' + ufh.stats : '', ufh.servos ? 'сервоприводы × ' + ufh.servos : '',
+        ufh.blocks ? 'коммутационный блок × ' + ufh.blocks : ''].filter(Boolean).join(' · ') + ' — своя зональная система на 230 В'
+    });
+    if (radioAir) offList.push({
+      t: (tc.airKind === 'thermostat' ? 'Комнатный термостат' : 'Датчик воздуха') + ' × ' + tc.airQty,
+      s: cut(nm.air || 'радиоканал 868 МГц', 44) + ' — по радио через МЛ-590, провода не нужны'
+    });
+    var OFF_ROW = 8.6, offBoxH = offList.length ? 9.6 + offList.length * OFF_ROW : 0;
+    var offH = offBoxH ? offBoxH + 6 : 0;
+    var H = CB + 14 + (nBot - 1) * LS + 40 + offH;
+
+    o.push(txt(W / 2, 8.4, 'Схема подключения автоматики котельной — ZONT SMART 2.0',
+      { size: 4.4, anchor: 'middle', weight: 'bold' }));
+
+    // ── корпус: вид с лицевой стороны, как на фото в паспорте ──
+    o.push(rrect(CX, CY, CW, CH, 7, { f: '#FCFDFE', c: '#94A3B8', w: 0.6 }));
+    var fx = CX + 5, fy = CY + 6, fw = CW - 10, fh = CH - 24;
+    o.push(rrect(fx, fy, fw, fh, 5, { f: FACE2, c: '#CBD5E1', w: 0.4 }));
+    // верхняя грань: антенна GSM, слот SIM, выключатель резервной АКБ
+    (function () {
+      var ax = CX + CW * 0.18;
+      o.push(rrect(ax - 1.4, CY - 2.6, 2.8, 3, 0.5, { f: '#E2E8F0', c: '#94A3B8', w: 0.4 }));
+      o.push(rrect(ax - 1.05, CY - 15, 2.1, 12.6, 1.05, { f: '#F8FAFC', c: '#94A3B8', w: 0.45 }));
+      o.push(txt(ax, CY - 16.4, 'GSM', { size: 1.9, anchor: 'middle', fill: '#64748B' }));
+      var sx = CX + CW * 0.5;
+      o.push(rrect(sx - 3.6, CY - 3, 7.2, 3.4, 0.5, { f: '#fff', c: '#94A3B8', w: 0.4 }));
+      o.push(txt(sx, CY - 4.4, 'SIM', { size: 1.9, anchor: 'middle', fill: '#64748B' }));
+      var bx = CX + CW * 0.82;
+      o.push(rrect(bx - 3.2, CY - 3, 6.4, 3.4, 0.5, { f: '#fff', c: '#94A3B8', w: 0.4 }));
+      o.push(txt(bx, CY - 4.4, 'АКБ', { size: 1.9, anchor: 'middle', fill: '#64748B' }));
+    })();
+    // три индикатора на лицевой стороне: питание, нагрев, связь
+    [['#EF4444', 'питание'], ['#EAB308', 'нагрев'], ['#22C55E', 'связь']].forEach(function (L, i) {
+      var lx = CX + CW / 2 + (i - 1) * 14, ly = fy + 8;
+      o.push(circle(lx, ly, 1.6, { f: L[0], c: '#94A3B8', w: 0.35 }));
+      o.push(txt(lx, ly + 5, L[1], { size: 1.9, anchor: 'middle', fill: '#94A3B8' }));
+    });
+    o.push(txt(CX + CW / 2, fy + fh - 6, 'ZONT SMART 2.0', { size: 5.2, anchor: 'middle', fill: '#6B7280' }));
+
+    // ── жгуты ──
+    function drawSide(list, side) {
+      list.forEach(function (d, i) {
+        var lane = CB + 14 + i * LS;
+        var y0 = CB - 0.6;
+        var dx = side < 0 ? DXL : DXR;
+        var legs = d.legs, M = legs.length;
+        var hasOut = !!(d.inline && d.wiresOut && d.clampsOut);
+        var mw = 26, mxc = side < 0 ? (DXL + CX) / 2 : (CX + CW + DXR) / 2;
+        var clStrip = hasOut ? d.clampsOut : legs.map(function (g) { return g.l; });
+        var Ms = clStrip.length;
+        var inX = hasOut ? (side > 0 ? mxc - mw / 2 : mxc + mw / 2) : dx - side * 2.4;
+        var rev = side > 0;
+        function offOf(k) { return ((rev ? M - 1 - k : k) - (M - 1) / 2) * P; }
+        function offS(k) { return ((rev ? Ms - 1 - k : k) - (Ms - 1) / 2) * P; }
+        legs.forEach(function (g, k) {
+          var cxw = wireX(g.b, g.i), yw = lane + offOf(k);
+          used[g.b.k] = true;
+          o.push(seg([[cxw, y0], [cxw, yw], [inX, yw]], g.c, 0.55));
+          o.push(circle(cxw, y0, 0.75, { f: g.c }));
+        });
+        if (hasOut) {
+          var outX = side > 0 ? mxc + mw / 2 : mxc - mw / 2;
+          d.wiresOut.forEach(function (c, k2) {
+            var yy = lane + offS(k2);
+            o.push(seg([[outX, yy], [dx - side * 2.4, yy]], c, 0.55));
+          });
+          if (d.inlineOut) o.push(txt((outX + dx - side * 2.4) / 2, lane - Ms * P / 2 - 1.4,
+            d.inlineOut, { size: 2, anchor: 'middle', fill: '#475569' }));
+          var mh = Math.max(M, Ms) * P + 5.4;
+          o.push(rrect(mxc - mw / 2, lane - mh / 2, mw, mh, 1.2, { f: FACE2, c: INK, w: 0.5 }));
+          o.push(rrect(mxc - mw / 2 + 2.4, lane - mh / 2 + 1.6, mw - 4.8, 2, 0.4, { f: '#CBD5E1' }));
+          for (var g1 = 0; g1 < M; g1++) o.push(circle(mxc - mw / 2 + 2.2, lane + (g1 - (M - 1) / 2) * P, 0.7, { f: '#fff', c: INK, w: 0.3 }));
+          for (var g2 = 0; g2 < Ms; g2++) o.push(circle(mxc + mw / 2 - 2.2, lane + (g2 - (Ms - 1) / 2) * P, 0.7, { f: '#fff', c: INK, w: 0.3 }));
+          o.push(txt(mxc, lane + mh / 2 + 2.8, d.inline, { size: 2, anchor: 'middle' }));
+        }
+        o.push(vstrip(dx, lane, rev ? clStrip.slice().reverse() : clStrip, side));
+        var icx = side < 0 ? ICL : ICR;
+        o.push(seg([[icx - side * ICO * 0.5, lane], [dx + side * 2.4, lane]], INK, 0.4, '1 1'));
+        o.push(d.ico(icx, lane, ICO));
+        var tx2 = side < 0 ? icx - ICO * 0.55 - 4 : icx + ICO * 0.55 + 4;
+        var an = side < 0 ? 'end' : 'start';
+        o.push(txt(tx2, lane - 1.2, cut(d.title, 40), { size: 2.4, anchor: an, weight: 'bold' }));
+        if (d.sub) o.push(txt(tx2, lane + 2.2, cut(d.sub, side < 0 ? 40 : 46), { size: 2.1, anchor: an }));
+        if (d.nStub) {
+          var ny = lane + offS(Ms);
+          o.push(seg([[dx - side * 2.4, ny], [dx - side * 8, ny]], CN, 0.55));
+          o.push(txt(dx - side * 9, ny + 0.7, 'N щита', { size: 1.8, anchor: side > 0 ? 'end' : 'start' }));
+        }
+        if (d.pe) {
+          var pdir = rev ? -1 : 1, pey = lane + offS(Ms - 1);
+          o.push(peSeg([[dx, pey], [dx, pey + 2.2 * pdir]]));
+          o.push(gndSym(dx, pey + 2.2 * pdir, pdir));
+        }
+      });
+    }
+    drawSide(botL, -1); drawSide(botR, 1);
+
+    // ── таблица: что ведёт контроллер ──
+    (function () {
+      var rw = [];
+      rw.push({ t: 'Отопление', s: 'уставку держит котёл · ПЗА по уличному датчику' });
+      if (tc.dhw === 'boiler') {
+        var dl = (tc.loads || []).filter(function (l) { return /бойлер/i.test(l.label); })[0];
+        rw.push({ t: 'ГВС · загрузка бойлера', s: 'насос на ' + (dl && dl.out === 'built' ? 'реле «О»–«НР»' : 'выходе ОК через реле 12 В') + ' · датчик бойлера на 1-Wire' });
+      } else if (tc.dhw === 'boiler_ct') rw.push({ t: 'ГВС · через котёл', s: 'уставку котлу задаёт цифровая шина' });
+      else if (tc.dhw === 'ct') rw.push({ t: 'ГВС · котловой', s: 'проточный теплообменник котла' });
+      (tc.boilers || []).filter(function (b) { return b.iface !== 'own'; }).slice(0, 2).forEach(function (b, i) {
+        rw.push({
+          t: 'Котёл ' + (i + 1) + ' · ' + (b.kind === 'gas' ? 'газовый' : 'электрический'),
+          s: b.iface === 'digital' ? 'адаптер цифровых шин на RS-485' : 'реле или выход ОК · клеммы термостата'
+        });
+      });
+      if (tc.cascade) rw.push({ t: 'Каскад', s: 'два котла, второй — релейно' });
+      if (tc.leakQty > 0) rw.push({ t: 'Защита от протечки', s: 'шлейф на универсальный вход · кран на реле' });
+      var tw = 92, th = 6.4 + rw.length * 8.2, tx0 = 6, ty0 = CY + (CH - th) / 2;
+      o.push(rrect(tx0, ty0, tw, th, 1.6, { f: '#F8FAFC', c: '#CBD5E1', w: 0.4 }));
+      o.push(txt(tx0 + 3, ty0 + 4.6, 'Что ведёт контроллер', { size: 2.6, weight: 'bold' }));
+      o.push(ln(tx0 + 3, ty0 + 6, tx0 + tw - 3, ty0 + 6, { c: '#CBD5E1', w: 0.3 }));
+      rw.forEach(function (r, i) {
+        var ry2 = ty0 + 10.6 + i * 8.2;
+        o.push(txt(tx0 + 3, ry2, r.t, { size: 2.4, weight: 'bold' }));
+        o.push(txt(tx0 + 3, ry2 + 3.4, cut(r.s, 44), { size: 2.2, fill: '#475569' }));
+      });
+    })();
+
+    // ── ряд клемм нижней грани — поверх жил ──
+    (function drawRow() {
+      var y = CB - 6.4;
+      ROW.forEach(function (b) {
+        var on = !!used[b.k];
+        var col = on ? '#0F172A' : '#94A3B8';
+        o.push(pluggable(b.x, y, b.n, b.col, on, false));
+        b.pl.forEach(function (lab, i) {
+          o.push(txt(wireX(b, i), y - 1.8, lab, { size: 1.9, anchor: 'middle', fill: col }));
+        });
+        o.push(txt(b.cx, y - 5.4, b.t, { size: 1.9, anchor: 'middle', weight: 'bold', fill: col }));
+      });
+    })();
+
+    if (offH) {
+      var oy = CB + 14 + (nBot - 1) * LS + 12;
+      o.push(rrect(12, oy, W - 24, offBoxH, 1.6, { f: FACE2, c: '#94A3B8', w: 0.5 }));
+      o.push(txt(17, oy + 5.8, 'В смете есть, но проводов к контроллеру не имеет', { size: 2.6, weight: 'bold' }));
+      o.push(ln(17, oy + 7.2, W - 17, oy + 7.2, { c: '#CBD5E1', w: 0.3 }));
+      offList.forEach(function (r, i) {
+        var ry3 = oy + 11.8 + i * OFF_ROW;
+        o.push(txt(17, ry3, r.t, { size: 2.4, weight: 'bold' }));
+        o.push(txt(17, ry3 + 3.4, r.s, { size: 2.1, fill: '#475569' }));
+      });
+    }
+
+    // ── легенда жил ──
+    var lg = [[CL, 'L — фаза (реле «О»–«НР» или реле 12 В)'], [CN, 'N — нейтраль'],
+      [null, 'PE — на шину заземления щита'], [CSIG, 'датчики температуры'],
+      [CRS[2], 'RS-485: A B ⏚'], [CBUS, 'цифровая шина котла'],
+      [CD1, 'универсальный вход / выход ОК'], [CRS[3], '+12 В питания']];
+    var lgY = H - 10;
+    lg.forEach(function (L, i) {
+      var col = i % 4, rw3 = Math.floor(i / 4);
+      var xx = 14 + col * 102, yy = lgY + rw3 * 5;
+      if (L[0] === null) o.push(peSeg([[xx, yy], [xx + 10, yy]]));
+      else o.push(seg([[xx, yy], [xx + 10, yy]], L[0], 0.8));
+      o.push(txt(xx + 12.5, yy + 1, L[1], { size: 2.1 }));
+    });
+
+    return { svg: o.join(''), w: W, h: H };
+  }
+
+  // ─── Схема подключения автоматики на MyHeat ─────────────────────────────
+  // Клеммы — по паспортам: GO! / GO!+ (п. 1.5), Smart 2 (п. 1.5, рис. паспорта блока на 2 выхода),
+  // Pro (п. 1.5, паспорт блоков расширения), Eco Smart (п. 1.5, клеммы 1–32), блоки RL2 / RL2S / RL6 / RL6S.
+  // Приборы MyHeat собираются из прибора и модулей, поэтому схема — карточки устройств: у каждого
+  // нарисован корпус с колодками клемм в порядке паспорта (у контроллера и фото с myheat.net),
+  // от каждой используемой клеммы линия-кабель идёт к потребителю,
+  // над линией — марка кабеля (ориентир), справа у потребителя — как подключить. Линии идут лесенкой
+  // (правая клемма — к верхнему потребителю), поэтому не пересекаются.
+  function automationMyheat(tc, items) {
+    tc = tc || {};
+    items = items || {};
+    var F = tc.mh;
+    if (!F) return null;
+    var nm = items.names || {};
+    var o = [], W = 420, X0 = 10, WW = W - 20;
+    var M = F.model, id = M.id;
+    var GREEN = '#22A855', GREY = '#9CA3AF', RED = '#B91C1C', BLUE = '#2563EB', YEL = '#EAB308', WHITE = '#F1F5F9';
+
+    function G(k, nn, t, pl, col) { return { k: k, n: nn, t: t, pl: pl || [], col: col || GREY }; }
+    function pair(k, t, a, b, col) { return G(k, 2, t, [a || '', b || ''], col); }
+
+    // ── колодки приборов: порядок — как на корпусе по паспорту ──
+    var CTRL;
+    if (id === '6280' || id === '6279') {
+      CTRL = [G('bus', 2, 'BUS', ['', ''], BLUE), G('ow', 3, '1-wire', ['⏚', 'DAT', 'V+'], GREY), pair('pw', '+12VDC IN', 'V+', '⏚', RED),
+        pair('rel', 'Relay', 'COM', 'NO', GREEN), pair('rel2', 'Relay', 'COM', 'NC', GREEN)];
+    } else if (id === '6281') {
+      CTRL = [pair('rel', 'Relay', '', '', GREEN)];
+      for (var di = 1; di <= 4; di++) CTRL.push(pair('dio' + di, 'DIO ' + di, '●', '', BLUE));
+      CTRL.push(pair('bus', 'BUS', '', '', BLUE), G('ow', 3, '1-wire', ['⏚', 'DAT', 'V+'], GREY), pair('pw', '+12VDC IN', 'V+', '⏚', RED));
+    } else if (id === '6284') {
+      CTRL = [];
+      for (var ri = 1; ri <= 4; ri++) CTRL.push(pair('rls' + ri, 'RLS ' + ri, '', '', GREEN));
+      for (var rj = 1; rj <= 4; rj++) CTRL.push(pair('rel' + rj, 'Relay ' + rj, '', '', GREEN));
+      CTRL.push(pair('bus', 'BUS', '', '', BLUE), G('ow', 3, '1-wire', ['⏚', 'DAT', 'V+'], GREY), pair('i420', '4–20 mA', 'IN', 'V+', GREY),
+        pair('ai', 'AI', '', '', GREY), pair('di1', 'DI 1', '', '', BLUE), pair('di2', 'DI 2', '', '', BLUE),
+        pair('mod', 'Modbus', 'A', 'B', WHITE), pair('ext', 'EXT', 'A', 'B', YEL), pair('po', '+12VDC OUT', 'V+', '⏚', RED), pair('pi', '+12VDC IN', 'V+', '⏚', RED));
+    } else {
+      CTRL = [G('ow', 3, '1-wire', ['+5V', 'DAT', '⏚'], GREY), G('ext', 4, 'VDC OUT + EXT', ['+12V', '⏚', 'A', 'B'], YEL),
+        pair('di1', 'DI 1', '⏚', 'DI', BLUE), G('di2', 3, 'DI 2', ['⏚', 'DI', '+12V'], BLUE),
+        pair('bus1', 'BUS 1', '', '', BLUE), pair('bus2', 'BUS 2', '', '', BLUE),
+        pair('ntc1', 'NTC см.1', '', '', GREY), pair('ntc2', 'NTC см.2', '', '', GREY), pair('ntc3', 'NTC бойл.', '', '', GREY), pair('ntc4', 'NTC касс.', '', '', GREY),
+        pair('rel', 'Резерв. котёл', '', '', GREEN), pair('i420', '4–20 mA', 'IN', '+12V', GREY),
+        { br: true },
+        G('drv1', 4, 'Привод 1', ['N', 'L1', 'L2', '⏚'], GREEN), G('pmp1', 3, 'Насос 1', ['N', 'L', '⏚'], GREEN),
+        G('drv2', 4, 'Привод 2', ['N', 'L1', 'L2', '⏚'], GREEN), G('pmp2', 3, 'Насос 2', ['N', 'L', '⏚'], GREEN),
+        G('dir', 3, 'Прямой', ['N', 'L', '⏚'], GREEN), G('boil', 3, 'Бойлер', ['N', 'L', '⏚'], GREEN),
+        G('vlv', 4, 'Кран воды', ['N', 'L1', 'L2', '⏚'], GREEN),
+        G('pin', 3, '220 В вход', ['N', 'L', '⏚'], RED), G('pout', 3, '220 В выход', ['N', 'L', '⏚'], RED)];
+    }
+
+    // ── устройства: карточка = колодки + строки таблицы ──
+    var devs = [];
+    var ctrlDev = { title: 'Контроллер MyHeat ' + M.short, sub: 'клеммы — по паспорту прибора', groups: CTRL, rows: [], img: id };
+    devs.push(ctrlDev);
+
+    // Модули по порядку: сначала реле, потом симисторы, потом входы DI6.
+    var MODS = [];
+    (F.modules || []).forEach(function (m) {
+      for (var q = 1; q <= m.qty; q++) MODS.push({ id: m.id, kind: m.kind, n: q });
+    });
+    var MODNAME = { '6295': 'RL2', '6296': 'RL2S', '6291': 'RL6', '6292': 'RL6S', '7010': 'RL6W', '7011': 'RL6SW', '6298': 'DI6' };
+    var MODSTRIP = {
+      '6295': function () { return [G('o1', 3, 'Реле 1', ['NO', 'NC', 'COM'], GREEN), G('o2', 3, 'Реле 2', ['NO', 'NC', 'COM'], GREEN), pair('pw', '12VDC', 'V+', '⏚', RED), G('ok1', 1, 'OK 1', [''], BLUE), G('ok2', 1, 'OK 2', [''], BLUE)]; },
+      '6296': function () { return [G('o1', 3, 'Выходы', ['COM', 'R1', 'R2'], GREEN), pair('pw', '12VDC', 'V+', '⏚', RED), G('ok1', 1, 'OK 1', [''], BLUE), G('ok2', 1, 'OK 2', [''], BLUE)]; },
+      '6291': function () { return [G('g1', 4, 'Группа 1', ['R1', 'R2', 'R3', 'COM'], GREEN), G('g2', 4, 'Группа 2', ['COM', 'R4', 'R5', 'R6'], GREEN), pair('pw', '12VDC', 'V+', '⏚', RED), pair('ext', 'EXT', 'A', 'B', YEL), G('ow', 3, '1-wire', ['⏚', 'DAT', 'V+'], GREY)]; }
+    };
+    MODSTRIP['6292'] = MODSTRIP['6291'];
+
+    // Выходы по видам: у каждого есть подпись клемм для таблицы. Сначала выходы прибора, потом модулей.
+    var OUT = { relay: [], triac: [] };
+    function addOut(kind, dev, key, label, how) { OUT[kind].push({ dev: dev, key: key, label: label, how: how, used: false }); }
+    if (id === '6281') addOut('relay', ctrlDev, 'rel', 'встроенное реле Relay', 'rel');
+    else if (id === '6284') {
+      for (var a = 1; a <= 4; a++) addOut('relay', ctrlDev, 'rel' + a, 'Relay ' + a, 'rel');
+      for (var b = 1; b <= 4; b++) addOut('triac', ctrlDev, 'rls' + b, 'RLS ' + b, 'rls');
+    } else if (id === '6280' || id === '6279') addOut('relay', ctrlDev, 'rel', 'Relay (COM–NO)', 'rel');
+    MODS.forEach(function (mm) {
+      var nmn = MODNAME[mm.id] + ' №' + mm.n;
+      var strip = MODSTRIP[mm.id] ? MODSTRIP[mm.id]() : [];
+      mm.dev = { title: nmn, sub: MODNAME[mm.id] === 'RL2' || MODNAME[mm.id] === 'RL2S' ? 'блок на 2 выхода — к Smart 2' : mm.id === '6298' ? 'блок дискретных входов — к Pro по EXT'
+        : mm.kind === 'relay' ? 'блок реле — по ' + (id === '7007' ? 'Wi-Fi' : 'шине EXT') : 'блок симисторов — по ' + (id === '7007' ? 'Wi-Fi' : 'шине EXT'), groups: strip, rows: [], img: mm.id };
+      devs.push(mm.dev);
+      if (mm.id === '6295') { addOut('relay', mm.dev, 'o1', nmn + ', реле 1', 'rl2'); addOut('relay', mm.dev, 'o2', nmn + ', реле 2', 'rl2'); }
+      else if (mm.id === '6296') { addOut('triac', mm.dev, 'o1', nmn + ', R1', 'rl2s'); addOut('triac', mm.dev, 'o1', nmn + ', R2', 'rl2s'); }
+      else if (mm.id === '6291' || mm.id === '7010') for (var c = 1; c <= 6; c++) addOut('relay', mm.dev, c <= 3 ? 'g1' : 'g2', nmn + ', R' + c, 'rl6');
+      else if (mm.id === '6292' || mm.id === '7011') for (var d = 1; d <= 6; d++) addOut('triac', mm.dev, d <= 3 ? 'g1' : 'g2', nmn + ', R' + d, 'rl6s');
+    });
+    function takeOut(kind, cnt) {
+      var list = OUT[kind];
+      for (var i = 0; i < list.length; i++) {
+        // пара выходов — на одном устройстве, подряд
+        var ok = true;
+        for (var j = 0; j < cnt; j++) { if (!list[i + j] || list[i + j].used || list[i + j].dev !== list[i].dev) { ok = false; break; } }
+        if (ok) { var res = []; for (var j2 = 0; j2 < cnt; j2++) { list[i + j2].used = true; res.push(list[i + j2]); } return res; }
+      }
+      return null;
+    }
+
+    function row(dev, keys, what, how) { dev.rows.push({ keys: keys, what: what, how: how }); }
+
+    // ── питание ──
+    if (id === '7007') row(ctrlDev, ['pin'], 'Питание прибора 220 В', 'N, L и PE — от отдельного автомата в щите; резервный аккумулятор Li-Ion стоит в корпусе. Выход 220 В («Выход 220 В») повторяет вход.');
+    else row(ctrlDev, [id === '6284' ? 'pi' : 'pw'], 'Питание прибора 12 В', 'V+ и ⏚ — от блока питания 12 В из комплекта; блок включается в розетку 230 В через автомат щита.');
+
+    // ── котлы ──
+    var boilers = (tc.boilers || []).filter(function (b) { return b.iface !== 'own'; });
+    var bi = 0;
+    boilers.forEach(function (b, i) {
+      var gas = b.kind === 'gas', t = 'Котёл ' + (i + 1) + ' — ' + (gas ? 'газовый' : 'электрический');
+      var sub = cut(nm['boiler' + i] || '', 36);
+      if (b.iface === 'digital') {
+        bi++;
+        if (bi === 1) row(ctrlDev, [id === '7007' ? 'bus1' : 'bus'], t, 'цифровая шина котла (OpenTherm, E-Bus, BridgeNet, Navien, BSB, Daesung, EMS): два провода на BUS, полярность не важна. ' + sub);
+        else row(ctrlDev, [id === '6284' ? 'ext' : 'ext'], t + ' · через адаптер шины', 'адаптер цифровой шины на DIN-рейку: EXT A/B прибора → A/B адаптера, питание 12 В; к котлу адаптер идёт по его шине. ' + sub);
+      } else {
+        var o1 = takeOut('relay', 1);
+        if (id === '7007' && !o1) o1 = null;
+        if (id === '7007') row(ctrlDev, ['rel'], t + ' (релейно)', 'сухой контакт «Реле» (2 клеммы, нормально разомкнутый) — на клеммы термостата котла, перемычку снять. ' + sub);
+        else if (o1) row(o1[0].dev, [o1[0].key], t + ' (релейно)', o1[0].label + ' — на клеммы термостата котла, перемычку снять. ' + sub);
+      }
+    });
+
+    // ── нагрузки ──
+    // Eco Smart: назначаем именные клеммы по ролям, а не по списку выше
+    if (id === '7007') {
+      var mixN = 0, pumpMix = 0, directDone = false;
+      (F.assign || []).forEach(function (a) {
+        if (a.how !== 'built') return;
+        var isDrive = /Привод смесителя/i.test(a.label), isValve = /кран/i.test(a.label);
+        if (isDrive) { mixN++; row(ctrlDev, [mixN === 1 ? 'drv1' : 'drv2'], a.label, 'клеммы «Привод смесительного узла ' + mixN + '»: N, L1 — открыть, L2 — закрыть, PE — на шину заземления. Привод 230 В, трёхпроводный.'); }
+        else if (isValve) row(ctrlDev, ['vlv'], a.label, 'клеммы «Привод крана перекрытия воды»: N, L1, L2, PE — кран с приводом 230 В; ' + cut(nm.leakValve || 'на вводе ХВС', 40));
+        else if (/бойлер/i.test(a.label)) row(ctrlDev, ['boil'], a.label, 'клеммы «Насос бойлера»: N, L, PE · ' + cut(nm.dhwPump || 'обвязка бойлера', 40));
+        else if (a.circuit && (F.assign || []).some(function (z) { return z.pair && z.circuit === a.circuit; })) { pumpMix++; row(ctrlDev, [pumpMix === 1 ? 'pmp1' : 'pmp2'], a.label, 'клеммы «Насос смесительного узла ' + pumpMix + '»: N, L, PE.'); }
+        else if (!directDone) { directDone = true; row(ctrlDev, ['dir'], a.label, 'клеммы «Насос прямого контура»: N, L, PE.'); }
+      });
+    }
+    // остальные нагрузки — на реле и симисторах прибора и модулей
+    (F.assign || []).forEach(function (a) {
+      if (a.how === 'built') return;
+      var isValve = /кран|соленоид/i.test(a.label), isDrive = /Привод смесителя/i.test(a.label), isBoilerLoad = /Котёл/i.test(a.label);
+      if (isBoilerLoad) return;      // котлы на реле выданы выше
+      var dest = isValve ? cut(nm.leakValve || 'на вводе ХВС', 40) : /бойлер/i.test(a.label) ? cut(nm.dhwPump || 'обвязка бойлера', 40)
+        : /рециркуляц/i.test(a.label) ? cut(nm.recircPump || 'линия Т4', 40) : '';
+      var kind = a.how === 'triac' ? 'triac' : 'relay';
+      var outs = takeOut(kind, a.pair ? 2 : 1);
+      if (!outs) return;
+      var o1 = outs[0], o2 = outs[1];
+      var dv = o1.dev;
+      if (a.pair) {
+        var how = kind === 'triac'
+          ? (o1.how === 'rls'
+            ? o1.label + ' и ' + o2.label + ' (симисторы): фаза L подаётся через каждый — с первого на «открыть», со второго на «закрыть»; N и PE привода — с шины щита. Симисторные выходы — только цепи переменного тока 230 В.'
+            : o1.how === 'rl2s'
+              ? 'COM — фаза L; R1 — «открыть», R2 — «закрыть»; N и PE привода — с шины щита. Симисторный выход — только цепи 230 В.'
+              : 'COM группы — фаза L; ' + o1.label.split(', ')[1] + ' — «открыть», ' + o2.label.split(', ')[1] + ' — «закрыть»; N и PE — с шины щита.')
+          : o1.label + ' и ' + o2.label + ': фаза L подаётся через каждое реле — с первого на «открыть», со второго на «закрыть»; два реле одновременно не включаются, но защиту от залипания контактов обеспечивает схема подключения привода.';
+        row(dv, [o1.key].concat(o2.dev === dv && o2.key !== o1.key ? [o2.key] : []), a.label, how + (dest ? ' · ' + dest : ''));
+      } else {
+        var how1 = o1.how === 'rl2' ? 'COM — фаза L, NO — на нагрузку (нормально разомкнутый контакт); N и PE — с шины щита.'
+          : o1.how === 'rl6' ? 'COM группы — фаза L, выход ' + o1.label.split(', ')[1] + ' — на нагрузку; N и PE — с шины щита.'
+          : 'фаза L через ' + o1.label + ' — на нагрузку; N и PE — с шины щита. Ток не более 3 А.';
+        row(dv, [o1.key], a.label, how1 + (dest ? ' · ' + dest : ''));
+      }
+    });
+
+    // ── датчики ──
+    var probes = F.probes || [];
+    var flask = probes.filter(function (p) { return p.type === 'flask'; });
+    var ntcP = probes.filter(function (p) { return p.type === 'ntc'; });
+    if (id === '7007') {
+      var ntcKeys = { mix: ['ntc1', 'ntc2'], dhw: ['ntc3'], cascade: ['ntc4'] }, mixK = 0;
+      ntcP.forEach(function (p) {
+        var key = p.role === 'mix' ? ntcKeys.mix[mixK++] : ntcKeys[p.role][0];
+        row(ctrlDev, [key], p.label, 'датчик NTC 10K в колбе — 2 провода без полярности' + (p.kit ? ' (из комплекта)' : '') + '.');
+      });
+    }
+    if (flask.length || F.airWired) {
+      var parts = flask.map(function (p) { return p.label + (p.kit ? ' (из комплекта)' : ''); });
+      if (F.airWired) parts.push((tc.airKind === 'thermostat' ? 'комнатные термостаты' : 'комнатные датчики') + ' × ' + F.airWired);
+      row(ctrlDev, ['ow'], 'Датчики на шине 1-Wire × ' + (flask.length + F.airWired),
+        'три жилы: ⏚ — GND, DAT — данные, V+ — питание; все параллельно на одну шину, до 5 на шину, шлейф до 60 м, не короче 1 м между приборами. ' + parts.join('; '));
+    }
+    if (F.airRadio || tc.needRadio) row(ctrlDev, ['ow'], 'Радиомодуль RDT2', 'подключается по 1-Wire; радиодатчики и радиотермостаты (868 МГц) работают через него.');
+
+    // ── входы ──
+    var inKeys = id === '6281' ? ['dio1', 'dio2', 'dio3', 'dio4'] : id === '6284' ? ['di1', 'di2'] : id === '7007' ? ['di1', 'di2'] : [];
+    var dioUsed = 0;
+    // Smart 2: каждый блок RL2 / RL2S занимает два DIO, остальные — датчикам
+    if (id === '6281') {
+      MODS.forEach(function (mm) {
+        if (mm.id !== '6295' && mm.id !== '6296') return;
+        var k1 = 'dio' + (dioUsed + 1), k2 = 'dio' + (dioUsed + 2); dioUsed += 2;
+        row(ctrlDev, [k1, k2], MODNAME[mm.id] + ' №' + mm.n + ' — управление блоком', 'DIO ' + (dioUsed - 1) + ' → OK 1 блока, DIO ' + dioUsed + ' → OK 2 блока (открытый коллектор; сигнал — на клемму, отмеченную точкой); 12VDC блока — параллельно питанию прибора.');
+        row(mm.dev, ['ok1', 'ok2', 'pw'], 'Управление и питание', 'OK 1 и OK 2 — на DIO ' + (dioUsed - 1) + ' и DIO ' + dioUsed + ' прибора; 12VDC V+ и ⏚ — параллельно +12VDC IN прибора, с того же блока питания.');
+      });
+    }
+    var leakQ = tc.leakQty || 0, snowQ = tc.snowSensor ? 1 : 0, inUsed = id === '6281' ? dioUsed : 0;
+    function nextIn(cnt) {
+      var ks = [];
+      for (var q = 0; q < cnt; q++) { if (inKeys[inUsed]) ks.push(inKeys[inUsed]); inUsed++; }
+      return ks;
+    }
+    if (leakQ > 0 && inKeys.length) {
+      var lk = nextIn(Math.min(leakQ, Math.max(0, inKeys.length - inUsed)));
+      var viaDi6 = leakQ > lk.length;
+      row(ctrlDev, lk.length ? lk : ['ow'], 'Датчики протечки × ' + leakQ,
+        'Neptun SW005: три провода — красный +12–24 В, жёлтый — сигнал, зелёный — GND; сигнал каждого датчика на свой вход' + (lk.length ? ' (' + lk.length + ' шт. на входах прибора' + (viaDi6 ? ', остальные на блок DI6' : '') + ')' : ' — на блок DI6') + '; питание 12 В — с клемм «+12VDC».');
+    } else if (leakQ > 0 && id === '6280') { /* GO!: датчиков протечки нет */ }
+    if (leakQ > inKeys.length - (id === '6281' ? dioUsed : 0)) {
+      var di6 = MODS.filter(function (mm) { return mm.id === '6298'; })[0];
+      if (di6) row(di6.dev, [], 'Датчики протечки — входы блока DI6', 'по одному датчику на вход (до 6 на блок), красный +12–24 В, жёлтый — сигнал, зелёный — GND; питание блока 12 В — с «+12VDC OUT» или отдельного блока.');
+    }
+    if (snowQ && inKeys.length) row(ctrlDev, nextIn(1), 'Датчик осадков снеготаяния', 'сухой контакт реле времени на дискретный вход прибора.');
+    if (F.pressureOn && (id === '6284' || id === '7007')) row(ctrlDev, ['i420'], 'Датчик давления 4–20 мА', 'IN — сигнал, ' + (id === '7007' ? '+12V' : 'V+') + ' — питание датчика; токовая петля, два провода.');
+
+    // ── модули по EXT / Wi-Fi ──
+    MODS.forEach(function (mm) {
+      if (id === '6281') return;
+      if (mm.id === '6298') { row(ctrlDev, ['ext'], 'Блок DI6 №' + mm.n, 'EXT A → A, EXT B → B (витая пара UTP cat.5, до 12 устройств в шлейфе); питание 12 В — с «+12VDC OUT» или от отдельного блока.'); return; }
+      if (id === '7007') { row(ctrlDev, ['ext'], MODNAME[mm.id] + ' №' + mm.n + ' — блок расширения', 'по Wi-Fi: блок получает питание 9–24 В от отдельного блока питания и сопрягается с прибором в личном кабинете (до 3 блоков через сеть прибора).'); return; }
+      row(ctrlDev, ['ext', 'po'], MODNAME[mm.id] + ' №' + mm.n + ' — блок расширения', 'EXT A → A, EXT B → B (витая пара UTP cat.5), 12VDC блока — с «+12VDC OUT» прибора (не более 6 Вт на все блоки) или параллельно питанию; блоки соединяются друг с другом тем же шлейфом.');
+      row(mm.dev, ['ext', 'pw'], 'Шина и питание', 'EXT A/B — к прибору или к соседнему блоку; 12VDC V+ и ⏚ — питание; датчик смесительного узла — на разъём 1-wire того блока, который ведёт его привод.');
+    });
+
+    // ── размеры и рисование ──
+    // Карточка прибора: корпус с колодками клемм слева, потребители и датчики справа, между ними —
+    // провода (ломаная от клеммы вниз и вправо). Линия — один кабель; цвет — назначение,
+    // над линией — марка кабеля. Провода идут «лесенкой»: самая правая клемма — к верхнему потребителю,
+    // поэтому линии друг друга не пересекают.
+    var GAP = 2.2, STRIPW = 214, XB = X0 + 262, BW = X0 + WW - 4 - XB, LANE = 4.6;
+    var out = [], y = 14;
+    out.push(txt(W / 2, 8.4, 'Схема подключения автоматики котельной — MyHeat ' + M.short, { size: 4.4, anchor: 'middle', weight: 'bold' }));
+
+    // Шаг клемм подбирается по карточке: колодки растягиваются на отведённую ширину, но не крупнее 5,4 мм
+    function layoutGroups(groups, pp) {
+      var rowsG = [[]], x = 0, fits = true;
+      groups.forEach(function (g) {
+        if (g.br) { rowsG.push([]); x = 0; return; }
+        var w = g.n * pp;
+        if (x + w > STRIPW - 4 && rowsG[rowsG.length - 1].length) { rowsG.push([]); x = 0; }
+        if (x + w > STRIPW) fits = false;
+        g.rx = x; g.w = w; x += w + GAP; rowsG[rowsG.length - 1].push(g);
+      });
+      rowsG.fits = fits;
+      return rowsG;
+    }
+    function layoutBest(groups) {
+      var tries = [5.4, 5.0, 4.6, 4.2, 3.8, 3.5, P], want = groups.some(function (g) { return g.br; }) ? 2 : 1, pick = null;
+      for (var i = 0; i < tries.length; i++) {
+        var r = layoutGroups(groups, tries[i]);
+        if (r.length <= want && r.fits) { pick = { rows: r, pp: tries[i] }; break; }
+      }
+      if (!pick) pick = { rows: layoutGroups(groups, P), pp: P };
+      return pick;
+    }
+    // цвет линии — по назначению клеммы; марка кабеля — ориентир (нагрузка до 3 А)
+    function wireColor(g) {
+      return g.col === GREEN ? '#C2410C' : g.col === RED ? '#B91C1C' : g.col === BLUE ? '#0D9488' : g.col === YEL ? '#B45309' : '#475569';
+    }
+    function cableOf(r, g) {
+      var w = String(r.what || '').toLowerCase(), t = String(g.t || '').toLowerCase();
+      if (g.col === YEL) return 'UTP cat.5';
+      if (g.col === RED) return /220/.test(t) ? 'ПВС 3×1,5' : '2×0,75';
+      if (g.col === BLUE || g.col === WHITE) return '2×0,5';
+      if (g.col === GREY) return g.k === 'ow' ? '3×0,5' : '2×0,5';
+      if (/котёл|котел/.test(w)) return '2×0,75';
+      if (/привод/.test(w)) return 'ПВС 4×0,75';
+      if (/кран|соленоид/.test(w)) return 'ПВС 3×0,75';
+      return 'ПВС 3×1,5';
+    }
+    function iconOf(what) {
+      var w = String(what || '').toLowerCase();
+      if (/питание прибора 220/.test(w)) return icoBreaker;
+      if (/котёл|котел/.test(w)) return function (a, b, s) { return icoBoiler(a, b, s, /газов/.test(w)); };
+      if (/привод/.test(w)) return icoServo;
+      if (/кран|соленоид/.test(w)) return icoValveAct;
+      if (/насос/.test(w)) return icoPump;
+      if (/протечк/.test(w)) return icoDrop;
+      if (/термостат/.test(w)) return icoPanel;
+      if (/датчик|ntc|1-wire/.test(w)) return icoProbe;
+      return function (a, b, s) { return icoModule(a, b, s, /радио|rdt/.test(w)); };
+    }
+    function wrapTxt(s, k, maxLines) {
+      var words = String(s || '').split(/\s+/), lines = [], cur = '';
+      words.forEach(function (wd) {
+        if ((cur + ' ' + wd).trim().length > k) { if (cur) lines.push(cur); cur = wd; } else cur = (cur + ' ' + wd).trim();
+      });
+      if (cur) lines.push(cur);
+      if (lines.length > maxLines) { lines = lines.slice(0, maxLines); lines[maxLines - 1] = cut(lines[maxLines - 1] + '…', k); }
+      return lines;
+    }
+    var badgeN = 0;
+    devs.forEach(function (dv) {
+      if (!dv.rows.length && dv !== ctrlDev) return;
+      var lay = layoutBest(dv.groups), rowsG = lay.rows, pp = lay.pp;
+      var cy0 = y, idx = out.length;
+      out.push('');   // сюда ляжет рамка карточки, когда станет известна высота
+      out.push(txt(X0 + 4, cy0 + 5.4, dv.title, { size: 3, weight: 'bold' }));
+      out.push(txt(X0 + WW - 4, cy0 + 5.4, dv.sub, { size: 2.1, anchor: 'end', fill: '#64748B' }));
+      out.push(ln(X0 + 3, cy0 + 7, X0 + WW - 3, cy0 + 7, { c: '#CBD5E1', w: 0.3 }));
+      // номера: у клеммы и у потребителя
+      var num = {};
+      dv.rows.forEach(function (r) { badgeN++; r.n = badgeN; (r.keys || []).forEach(function (k) { if (!num[k]) num[k] = []; num[k].push(badgeN); }); });
+      var cur = cy0 + 9;
+      // какому ряду колодок принадлежит строка таблицы — по первой найденной клемме
+      var rowOf = dv.rows.map(function (r) {
+        for (var q = 0; q < rowsG.length; q++) for (var q2 = 0; q2 < rowsG[q].length; q2++) {
+          if ((r.keys || []).indexOf(rowsG[q][q2].k) >= 0) return q;
+        }
+        return rowsG.length - 1;
+      });
+      rowsG.forEach(function (rg, ri) {
+        var hTop = cur + 4, yy = hTop + 12, hBot = yy + 13.5, hx = X0 + 3, hw = STRIPW + 6;
+        // корпус
+        out.push(rrect(hx, hTop, hw, hBot - hTop, 2.2, { f: '#EEF1F5', c: '#94A3B8', w: 0.5 }));
+        out.push(rrect(hx + 1, hTop + 1, hw - 2, 2.6, 1, { f: '#DDE3EA' }));
+        out.push(txt(hx + 3, hTop + 3.2, ri === 0 ? (dv === ctrlDev ? 'MyHeat ' + M.short : dv.title) : 'нижний ряд клемм корпуса',
+          { size: 2, weight: 'bold', fill: '#475569' }));
+        if (ri === 0 && dv === ctrlDev && id !== '7007') {   // антенна у GO!, Smart 2 и Pro
+          out.push(seg([[hx + hw - 14, hTop], [hx + hw - 14, hTop - 4]], '#334155', 0.8));
+          out.push(circle(hx + hw - 14, hTop - 4.3, 0.8, { f: '#334155' }));
+        }
+        // фото прибора с myheat.net — рядом с корпусом, чтобы было видно, как он выглядит
+        if (ri === 0 && dv.img) out.push('<image href="img/' + dv.img + '.jpg" x="' + n(XB + (BW - 46) / 2) + '" y="' + n(hTop - 1) + '" width="46" height="28.3" preserveAspectRatio="xMidYMid meet"/>' +
+          rrect(XB + (BW - 46) / 2, hTop - 1, 46, 28.3, 1, { f: 'none', c: '#CBD5E1', w: 0.3 }));
+        // колодки
+        var pos = {};
+        rg.forEach(function (g) {
+          var on = !!num[g.k], gx = X0 + 6 + g.rx, cx = gx + g.w / 2;
+          pos[g.k] = cx;
+          out.push(pluggable(gx, yy, g.n, g.col, on, false, null, pp));
+          g.pl.forEach(function (lab, i) { out.push(txt(gx + pp / 2 + i * pp, yy - 1.6, lab, { size: 1.9, anchor: 'middle', fill: on ? '#0F172A' : '#94A3B8' })); });
+          out.push(txt(gx + g.w / 2, yy - 5, g.t, { size: 1.9, anchor: 'middle', weight: 'bold', fill: on ? '#0F172A' : '#94A3B8' }));
+        });
+        // строки этого ряда: по самой правой клемме — справа налево, чтобы провода не пересекались
+        var mine = [];
+        dv.rows.forEach(function (r, i) { if (rowOf[i] === ri) mine.push(r); });
+        mine.forEach(function (r) {
+          r.ws = (r.keys || []).filter(function (k) { return pos[k] !== undefined; }).sort(function (a, b) { return pos[b] - pos[a]; });
+          r.mx = r.ws.length ? pos[r.ws[0]] : -1;
+        });
+        mine.sort(function (a, b) { return b.mx - a.mx; });
+        var gk = {}; rg.forEach(function (g) { gk[g.k] = g; });
+        var ry = hBot + 4;
+        mine.forEach(function (r) {
+          var how = wrapTxt(r.how, 70, 3);
+          var bh = Math.max(11, 9.6 + how.length * 3.3, r.ws.length * LANE + 3);
+          // потребитель
+          out.push(rrect(XB, ry, BW, bh, 1.4, { f: '#FFFFFF', c: '#94A3B8', w: 0.4 }));
+          out.push(circle(XB + 4.2, ry + 4.4, 2.2, { f: '#DCFCE7', c: '#15803D', w: 0.5 }));
+          out.push(txt(XB + 4.2, ry + 5.3, String(r.n), { size: 2.3, anchor: 'middle', weight: 'bold', fill: '#14532D' }));
+          out.push(iconOf(r.what)(XB + 12, ry + bh / 2 + 1, 8));
+          out.push(txt(XB + 19, ry + 3.6, cut(r.what, 58), { size: 2.35, weight: 'bold' }));
+          var cab = r.ws.length ? cableOf(r, gk[r.ws[0]]) : '';
+          if (cab) out.push(txt(XB + 19, ry + 6.9, 'кабель ' + cab, { size: 2.0, weight: 'bold', fill: wireColor(gk[r.ws[0]]) }));
+          how.forEach(function (ln1, li) { out.push(txt(XB + 19, ry + 10.2 + li * 3.3, ln1, { size: 1.75, fill: '#475569' })); });
+          // провода от клемм
+          r.ws.forEach(function (k, j) {
+            var g = gk[k], cx = pos[k], ly = ry + 4.2 + j * LANE, col = wireColor(g);
+            out.push(seg([[cx, yy + 7], [cx, ly], [XB, ly]], col, 0.7));
+            out.push(circle(cx, ly, 0.55, { f: col }));
+            out.push(txt(XB - 2, ly - 0.9, cableOf(r, g), { size: 1.85, anchor: 'end', fill: col, weight: 'bold' }));
+          });
+          ry += bh + 1.6;
+        });
+        // номера под колодками — поверх проводов, чтобы связь «клемма — потребитель» читалась
+        rg.forEach(function (g) {
+          if (!num[g.k]) return;
+          var label = num[g.k].join(','), bw2 = Math.max(4.4, label.length * 1.6 + 2.2);
+          out.push(rrect(pos[g.k] - bw2 / 2, yy + 8.1, bw2, 4, 2, { f: '#DCFCE7', c: '#15803D', w: 0.4 }));
+          out.push(txt(pos[g.k], yy + 11, label, { size: 2.2, anchor: 'middle', weight: 'bold', fill: '#14532D' }));
+        });
+        cur = Math.max(ry, hBot + 4) + 1;
+      });
+      out[idx] = rrect(X0, cy0, WW, cur - cy0 + 1, 1.6, { f: '#FCFDFE', c: '#CBD5E1', w: 0.5 });
+      y = cur + 5;
+    });
+
+    // ── условные обозначения ──
+    var LEG = [['#C2410C', 'нагрузка 230 В (насос, привод, котёл)'], ['#B91C1C', 'питание'], ['#0D9488', 'шина и дискретные входы'], ['#B45309', 'шина EXT к блокам'], ['#475569', 'датчики']];
+    out.push(rrect(X0, y, WW, 11.5, 1.6, { f: FACE2, c: '#CBD5E1', w: 0.5 }));
+    var lx = X0 + 5;
+    LEG.forEach(function (L) {
+      out.push(seg([[lx, y + 4.4], [lx + 8, y + 4.4]], L[0], 0.9));
+      out.push(txt(lx + 10, y + 5.1, L[1], { size: 2.0, fill: '#334155' }));
+      lx += 12 + L[1].length * 1.75;
+    });
+    out.push(txt(X0 + 5, y + 9.4, 'Одна линия — один кабель, над линией его марка. Сечения ориентировочные: ток нагрузки до 3 А, длины и сечение силовых — по паспортам нагрузки.', { size: 1.85, fill: '#64748B' }));
+    y += 15.5;
+
+    // ── что в смете есть, но проводов к контроллеру не имеет ──
+    var offList = [];
+    boilers = tc.boilers || [];
+    if (tc.dhw === 'boiler_ct') offList.push('Бойлер ГВС на переключающем клапане котла — клапан и датчик бойлера подключаются к самому котлу, контроллер задаёт уставку по шине.');
+    if (tc.dhw === 'external') offList.push('Бойлер ГВС мимо контроллера — у котла нет цифровой шины, ГВС остаётся на его собственной автоматике.');
+    if (tc.dhw === 'ct') offList.push('ГВС от двухконтурного котла — проточный теплообменник котла, отдельного бойлера в смете нет.');
+    if (!F.pumpsOn && (tc.directCount || 0) > 0) offList.push('Насосы радиаторных контуров × ' + tc.directCount + ' — питание от щита, работают постоянно; температуру ведёт котёл.');
+    if (boilers.some(function (b) { return b.iface === 'own'; })) offList.push('Котлы сверх подчинённых контроллеру — на собственной автоматике, в каскад не входят.');
+    if (tc.airOn && tc.airQty > 0 && F.airRadio) offList.push('Комнатные радиоприборы × ' + tc.airQty + ' — по радио (868 МГц), провода не нужны.');
+    if (offList.length) {
+      var oh = 9.6 + offList.length * 5.2;
+      out.push(rrect(X0, y, WW, oh, 1.6, { f: FACE2, c: '#94A3B8', w: 0.5 }));
+      out.push(txt(X0 + 4, y + 5.4, 'В смете есть, но проводов к контроллеру не имеет', { size: 2.6, weight: 'bold' }));
+      offList.forEach(function (t, i) { out.push(txt(X0 + 4, y + 10.6 + i * 5.2, cut(t, 215), { size: 2.1, fill: '#475569' })); });
+      y += oh + 4;
+    }
+    var H = y + 4;
+    o = o.concat(out);
+    return { svg: o.join(''), w: W, h: H };
+  }
+
+  // ─── Схема подключения автоматики на ectoControl v4.0 ──────────────────
+  // Карточки, как у MyHeat: колодки клемм в порядке паспорта + таблица «номер — что — как».
+  // Источники (09.10.2026, ecto-control.ru):
+  //   • блок v4.0 — «Полное руководство ectoControl 4.0», п. 1.5 (разъёмы: ПИТ, ДОП, Д1…Д5, Т1…Т3/КЛ,
+  //     реле ABC, DEF, GHI — A общий, B нормально замкнутый, C нормально разомкнутый, «12345», АКБ «–» «+»)
+  //     и п. 6.1–6.9 (схемы подключения);
+  //   • блок смесителей — паспорт «Блок управления смесительными контурами», стр. 6: одна колодка
+  //     OPk N OPkS CLk N CLkS на канал, питание L и N, датчики Т1…Т4 и ДОП — разъёмы;
+  //   • блок на 10 реле — паспорт блока, стр. 2: реле 1…8 на клеммах 1…24 (по три на реле),
+  //     реле 9 и 10 — клеммы 45–43 и 42–40, питание 230 В — L 33, N 31, доп. питание — «–» 26, «+» 25.
+  // Разъёмы Т, Д, ДОП — розетки под вилку 4P4C (RJ11), кабели датчиков идут с вилками.
+  function automationEcto(tc, items) {
+    tc = tc || {};
+    items = items || {};
+    var F = tc.ec;
+    if (!F) return null;
+    var nm = items.names || {};
+    var o = [], W = 420, X0 = 10, WW = W - 20;
+    var M = F.model, id = M.id;
+    var GREEN = '#22A855', GREY = '#9CA3AF', RED = '#B91C1C', BLUE = '#2563EB', YEL = '#EAB308', WHITE = '#F1F5F9';
+
+    function G(k, nn, t, pl, col) { return { k: k, n: nn, t: t, pl: pl || [], col: col || GREY }; }
+    function pair(k, t, a, b, col) { return G(k, 2, t, [a || '', b || ''], col); }
+    function sock(k, t, col) { return G(k, 1, t, [''], col || GREY); }
+
+    // ── колодки прибора: порядок — как на корпусе по паспорту ──
+    var CTRL = [G('abc', 3, 'Реле ABC', ['A', 'B', 'C'], GREEN), G('def', 3, 'Реле DEF', ['D', 'E', 'F'], GREEN), G('ghi', 3, 'Реле GHI', ['G', 'H', 'I'], GREEN),
+      pair('akb', 'АКБ 12 В', '–', '+', RED), sock('pit', 'ПИТ', RED), G('io', 5, '«12345»: ТОК 4–20 мА', ['1', '2', '3', '4', '5'], GREY), { br: true },
+      sock('t1', 'Т1', GREY), sock('t2', 'Т2', GREY), sock('t3', 'Т3 / КЛ', GREY)];
+    for (var di = 1; di <= 5; di++) CTRL.push(sock('d' + di, 'Д' + di, BLUE));
+    CTRL.push(sock('dop', 'ДОП', YEL));
+
+    var devs = [];
+    var ctrlDev = { title: 'Центральный блок ectoControl ' + M.short, sub: 'клеммы и разъёмы — по паспорту прибора', groups: CTRL, rows: [], img: id };
+    devs.push(ctrlDev);
+
+    // Блоки на шине ДОП по порядку: сначала смесители, потом реле.
+    var MIX = [], REL = [];
+    (F.modules || []).forEach(function (m) {
+      for (var q = 1; q <= m.qty; q++) {
+        var dev;
+        if (m.kind === 'mixer') {
+          var gs = [pair('pw', 'Питание 230 В', 'L', 'N', RED), sock('dop', 'ДОП', YEL)];
+          for (var tq = 1; tq <= 4; tq++) gs.push(sock('t' + tq, 'Т' + tq, GREY));
+          gs.push({ br: true });
+          for (var ck = 1; ck <= 4; ck++) gs.push(G('ch' + ck, 6, 'Канал ' + ck, ['OP' + ck, 'N', 'OP' + ck + 'S', 'CL' + ck, 'N', 'CL' + ck + 'S'], GREEN));
+          dev = { title: 'Блок смесителей №' + q, sub: '4 канала, привод 230 В на три провода — по шине ДОП', groups: gs, rows: [] };
+          MIX.push(dev);
+        } else {
+          var rg = [];
+          for (var rk = 1; rk <= 8; rk++) rg.push(G('r' + rk, 3, 'Реле ' + rk, [String(3 * rk - 2), String(3 * rk - 1), String(3 * rk)], GREEN));
+          rg.push({ br: true });
+          rg.push(G('r9', 3, 'Реле 9', ['45', '44', '43'], GREEN), G('r10', 3, 'Реле 10', ['42', '41', '40'], GREEN),
+            pair('pw', 'Сеть 230 В', 'L 33', 'N 31', RED), pair('dc', 'Доп. 12…14 В', '– 26', '+ 25', RED), sock('dop', 'ДОП', YEL));
+          dev = { title: 'Блок реле №' + q, sub: '10 каналов по 12 А — по шине ДОП', groups: rg, rows: [] };
+          REL.push(dev);
+        }
+        devs.push(dev);
+      }
+    });
+
+    function row(dev, keys, what, how) { dev.rows.push({ keys: keys, what: what, how: how }); }
+
+    // Выходы по порядку: сначала три встроенных реле, потом каналы блоков реле.
+    var OUTS = [
+      { dev: ctrlDev, key: 'abc', label: 'реле ABC', t: ['A', 'B', 'C'] },
+      { dev: ctrlDev, key: 'def', label: 'реле DEF', t: ['D', 'E', 'F'] },
+      { dev: ctrlDev, key: 'ghi', label: 'реле GHI', t: ['G', 'H', 'I'] }
+    ];
+    REL.forEach(function (bd, bi) {
+      for (var c = 1; c <= 10; c++) {
+        var tn = c <= 8 ? [3 * c - 2, 3 * c - 1, 3 * c] : (c === 9 ? [45, 44, 43] : [42, 41, 40]);
+        OUTS.push({ dev: bd, key: c <= 8 ? 'r' + c : 'r' + c, label: 'блок реле №' + (bi + 1) + ', канал ' + c, t: tn.map(String), block: true });
+      }
+    });
+    var outUsed = 0;
+    function nextOut() { return OUTS[outUsed++] || null; }
+
+    // ── питание ──
+    row(ctrlDev, ['pit', 'akb'], 'Питание блока 230 В',
+      'ПИТ — адаптер 230/14 В из комплекта (штекер 5,5×2,1 мм), включается через отдельный автомат. АКБ 12 В 1,2 А·ч — кабелем с предохранителем 3 А (на красном проводе) к клеммам «–» и «+».');
+
+    // ── котлы ──
+    var boilers = tc.boilers || [];
+    var wired = boilers.filter(function (b) { return b.iface !== 'own'; });
+    var relayBoilerN = 0;
+    wired.forEach(function (b, i) {
+      var gas = b.kind === 'gas', t = 'Котёл ' + (i + 1) + ' — ' + (gas ? 'газовый' : 'электрический');
+      var sub = cut(nm['boiler' + i] || '', 36);
+      if (b.iface === 'digital') {
+        row(ctrlDev, ['dop'], t + ' · через адаптер шины',
+          'адаптер на DIN-рейке: к порту ДОП кабель 2 м из комплекта (через разветвитель, если устройств больше одного), к клеммам шины котла — кабель 10 м (OpenTherm / eBus / Navien — по инструкции котла). ' + sub);
+      }
+    });
+
+    // ── нагрузки по реле: порядок тот же, что в ectoFit ──
+    (F.assign || []).forEach(function (a) {
+      var out = nextOut();
+      if (!out) return;
+      var isBoiler = /Котёл/i.test(a.label), isValve = /кран|соленоид/i.test(a.label), isSwitch = /кран/i.test(a.label);
+      var dest = isValve ? cut(nm.leakValve || 'на вводе ХВС', 40) : /бойлер/i.test(a.label) ? cut(nm.dhwPump || 'обвязка бойлера', 40)
+        : /рециркуляц/i.test(a.label) ? cut(nm.recircPump || 'линия Т4', 40) : '';
+      var how;
+      if (isBoiler) {
+        relayBoilerN++;
+        how = (out.block ? out.label + ': замыкающий контакт' : out.label + ': A — общий, C — замыкающий') + ' — на клеммы комнатного термостата котла, перемычку снять; провод 4 м. Чтобы при пропаже питания котёл продолжал греть, реле включают в инверсном режиме и берут контакты A–B.';
+      } else if (isSwitch) {
+        how = out.label + ' — переключающий контакт: фаза L на общий, «открыть» и «закрыть» с нормально замкнутого и нормально разомкнутого контактов; N и PE привода — с шины щита. Обозначения проводов привода — по его паспорту.';
+      } else {
+        how = out.block
+          ? out.label + ': фаза L на общий контакт (средний в группе из трёх), нагрузка — с замыкающего; N и PE — с шины щита.'
+          : out.label + ': A — фаза L, C — на нагрузку (замыкающий контакт); N и PE — с шины щита. Ток не более 3 А, мощнее — через контактор.';
+      }
+      row(out.dev, [out.key], isBoiler ? 'Котёл на релейном управлении' : a.label, how + (dest ? ' · ' + dest : ''));
+      if (out.block) {
+        row(ctrlDev, ['dop'], out.dev.title + ' — на шине ДОП', 'порт ДОП, кабель из комплекта; блок программируется кнопкой УСТ при подключении к порту в одиночку, затем переносится на разветвитель.');
+      }
+    });
+    // блок реле: питание и шина — одной строкой на блок
+    REL.forEach(function (bd) {
+      if (!bd.rows.length) return;
+      row(bd, ['pw', 'dc', 'dop'], 'Питание и шина', 'L (клемма 33) и N (31) — сеть 230 В, либо 12…14 В на «–» (26) и «+» (25) при нескольких блоках на одном порту; разъём ДОП — к системе.');
+    });
+
+    // ── смесительные контуры: канал блока + датчик подачи ──
+    var mixCircuits = (tc.circuits || []).filter(function (c) { return c.type === 'mix'; });
+    mixCircuits.forEach(function (c, idx) {
+      var bd = MIX[Math.floor(idx / 4)];
+      var k = (idx % 4) + 1;
+      if (!bd) return;
+      row(bd, ['ch' + k, 't' + k], 'Привод смесителя ' + c.name,
+        'OP' + k + ' — «открыть», CL' + k + ' — «закрыть», N — общий провод привода; защитный проводник PE — на шину щита. Датчик подачи — в разъём Т' + k + ' блока, на подающей трубе после смесителя.');
+    });
+    MIX.forEach(function (bd, bi) {
+      row(bd, ['pw', 'dop'], 'Питание и шина', 'L и N — сеть 230 В от автомата (ток — удвоенный ток всех приводов блока), от системы блок не питается; разъём ДОП — к порту ДОП системы.');
+      row(ctrlDev, ['dop'], 'Блок смесителей №' + (bi + 1) + ' на шине ДОП', 'порт ДОП, кабель из комплекта 2 м; блок программируется кнопкой УСТ при подключении к порту в одиночку, затем переносится на разветвитель.');
+    });
+
+    // ── датчики системы: Т1…Т3 ──
+    var tIdx = 0;
+    (F.probes || []).filter(function (p) { return p.port === 'T'; }).forEach(function (p) {
+      tIdx++;
+      var key = tIdx === 1 ? 't1' : tIdx === 2 ? 't2' : 't3';
+      row(ctrlDev, [key], p.label, 'цифровой датчик ectoControl, разъём ' + (tIdx === 3 ? 'Т3/КЛ' : 'Т' + tIdx) + ', кабель 10 м (удлинять не более чем до 15 м). ' + (p.role === 'out' ? 'Ставится на северную стену под козырёк.' : 'Ставится в гильзу на трубе.'));
+    });
+    if (F.splitters > 0) row(ctrlDev, ['dop'], 'Разветвитель порта ДОП × ' + F.splitters, 'на 10 разъёмов; разветвители соединяются витой парой UTP cat.5 2×2×0,5. Устройств на порту — ' + F.dop + '.');
+    if (F.airWired) row(ctrlDev, ['dop'], (tc.airKind === 'thermostat' ? 'Комнатные термостаты' : 'Комнатные датчики') + ' × ' + F.airWired, 'по шине ДОП (RS-485): каждый подключается к порту по одному для программирования, затем переносится на разветвитель.');
+
+    // ── контактные входы ──
+    var dUsed = 0;
+    function nextD(cnt) { var ks = []; for (var q = 0; q < cnt; q++) { dUsed++; if (dUsed <= 5) ks.push('d' + dUsed); } return ks; }
+    var leakQ = tc.leakQty || 0;
+    if (leakQ > 0 && F.leakDirect) {
+      row(ctrlDev, nextD(leakQ), 'Датчики протечки × ' + leakQ,
+        'вилка 4P4C кабеля датчика — в свой разъём Д (по датчику на разъём); в настройках разъём — «датчик протечки»: тревога при замыкании контактов 3 и 4 вилки.');
+    } else if (leakQ > 0) {
+      row(ctrlDev, ['dop'], 'Датчики протечки × ' + leakQ + ' — адресный разветвитель', 'разветвитель на 8 входов подключается к порту ДОП (витая пара); датчики — в его входы, каждый различается по номеру.');
+    }
+    if (tc.snowSensor) row(ctrlDev, nextD(1), 'Датчик осадков снеготаяния', 'сухой контакт реле времени — на контакты 3 и 4 вилки 4P4C в разъёме Д; в настройках разъём — «датчик, тревога при замыкании».');
+    if (F.pressureOn) row(ctrlDev, ['io'], 'Датчик давления 4–20 мА', 'контакты 2 и 4 разъёма «12345» — по схеме И1 паспорта (стр. 127); питание 12 В берётся от системы.');
+
+    // ── размеры и рисование ──
+    // Карточка прибора: корпус с колодками клемм слева, потребители и датчики справа, между ними —
+    // провода (ломаная от клеммы вниз и вправо). Линия — один кабель; цвет — назначение,
+    // над линией — марка кабеля. Провода идут «лесенкой»: самая правая клемма — к верхнему потребителю,
+    // поэтому линии друг друга не пересекают.
+    var GAP = 2.2, STRIPW = 214, XB = X0 + 262, BW = X0 + WW - 4 - XB, LANE = 4.6;
+    var out = [], y = 14;
+    out.push(txt(W / 2, 8.4, 'Схема подключения автоматики котельной — ectoControl ' + M.short, { size: 4.4, anchor: 'middle', weight: 'bold' }));
+
+    // Шаг клемм подбирается по карточке: колодки растягиваются на отведённую ширину, но не крупнее 5,4 мм
+    function layoutGroups(groups, pp) {
+      var rowsG = [[]], x = 0, fits = true;
+      groups.forEach(function (g) {
+        if (g.br) { rowsG.push([]); x = 0; return; }
+        var w = g.n * pp;
+        if (x + w > STRIPW - 4 && rowsG[rowsG.length - 1].length) { rowsG.push([]); x = 0; }
+        if (x + w > STRIPW) fits = false;
+        g.rx = x; g.w = w; x += w + GAP; rowsG[rowsG.length - 1].push(g);
+      });
+      rowsG.fits = fits;
+      return rowsG;
+    }
+    function layoutBest(groups) {
+      var tries = [5.4, 5.0, 4.6, 4.2, 3.8, 3.5, P], want = groups.some(function (g) { return g.br; }) ? 2 : 1, pick = null;
+      for (var i = 0; i < tries.length; i++) {
+        var r = layoutGroups(groups, tries[i]);
+        if (r.length <= want && r.fits) { pick = { rows: r, pp: tries[i] }; break; }
+      }
+      if (!pick) pick = { rows: layoutGroups(groups, P), pp: P };
+      return pick;
+    }
+    // цвет линии — по назначению клеммы; марка кабеля — ориентир (нагрузка до 3 А)
+    function wireColor(g) {
+      return g.col === GREEN ? '#C2410C' : g.col === RED ? '#B91C1C' : g.col === BLUE ? '#0D9488' : g.col === YEL ? '#B45309' : '#475569';
+    }
+    function cableOf(r, g) {
+      var w = String(r.what || '').toLowerCase(), t = String(g.t || '').toLowerCase();
+      if (g.col === YEL) return 'UTP cat.5';
+      if (g.col === RED) return /220/.test(t) ? 'ПВС 3×1,5' : '2×0,75';
+      if (g.col === BLUE || g.col === WHITE) return '2×0,5';
+      if (g.col === GREY) return g.k === 'ow' ? '3×0,5' : '2×0,5';
+      if (/котёл|котел/.test(w)) return '2×0,75';
+      if (/привод/.test(w)) return 'ПВС 4×0,75';
+      if (/кран|соленоид/.test(w)) return 'ПВС 3×0,75';
+      return 'ПВС 3×1,5';
+    }
+    function iconOf(what) {
+      var w = String(what || '').toLowerCase();
+      if (/питание прибора 220/.test(w)) return icoBreaker;
+      if (/котёл|котел/.test(w)) return function (a, b, s) { return icoBoiler(a, b, s, /газов/.test(w)); };
+      if (/привод/.test(w)) return icoServo;
+      if (/кран|соленоид/.test(w)) return icoValveAct;
+      if (/насос/.test(w)) return icoPump;
+      if (/протечк/.test(w)) return icoDrop;
+      if (/термостат/.test(w)) return icoPanel;
+      if (/датчик|ntc|1-wire/.test(w)) return icoProbe;
+      return function (a, b, s) { return icoModule(a, b, s, /радио|rdt/.test(w)); };
+    }
+    function wrapTxt(s, k, maxLines) {
+      var words = String(s || '').split(/\s+/), lines = [], cur = '';
+      words.forEach(function (wd) {
+        if ((cur + ' ' + wd).trim().length > k) { if (cur) lines.push(cur); cur = wd; } else cur = (cur + ' ' + wd).trim();
+      });
+      if (cur) lines.push(cur);
+      if (lines.length > maxLines) { lines = lines.slice(0, maxLines); lines[maxLines - 1] = cut(lines[maxLines - 1] + '…', k); }
+      return lines;
+    }
+    var badgeN = 0;
+    devs.forEach(function (dv) {
+      if (!dv.rows.length && dv !== ctrlDev) return;
+      var lay = layoutBest(dv.groups), rowsG = lay.rows, pp = lay.pp;
+      var cy0 = y, idx = out.length;
+      out.push('');   // сюда ляжет рамка карточки, когда станет известна высота
+      out.push(txt(X0 + 4, cy0 + 5.4, dv.title, { size: 3, weight: 'bold' }));
+      out.push(txt(X0 + WW - 4, cy0 + 5.4, dv.sub, { size: 2.1, anchor: 'end', fill: '#64748B' }));
+      out.push(ln(X0 + 3, cy0 + 7, X0 + WW - 3, cy0 + 7, { c: '#CBD5E1', w: 0.3 }));
+      // номера: у клеммы и у потребителя
+      var num = {};
+      dv.rows.forEach(function (r) { badgeN++; r.n = badgeN; (r.keys || []).forEach(function (k) { if (!num[k]) num[k] = []; num[k].push(badgeN); }); });
+      var cur = cy0 + 9;
+      // какому ряду колодок принадлежит строка таблицы — по первой найденной клемме
+      var rowOf = dv.rows.map(function (r) {
+        for (var q = 0; q < rowsG.length; q++) for (var q2 = 0; q2 < rowsG[q].length; q2++) {
+          if ((r.keys || []).indexOf(rowsG[q][q2].k) >= 0) return q;
+        }
+        return rowsG.length - 1;
+      });
+      rowsG.forEach(function (rg, ri) {
+        var hTop = cur + 4, yy = hTop + 12, hBot = yy + 13.5, hx = X0 + 3, hw = STRIPW + 6;
+        // корпус
+        out.push(rrect(hx, hTop, hw, hBot - hTop, 2.2, { f: '#EEF1F5', c: '#94A3B8', w: 0.5 }));
+        out.push(rrect(hx + 1, hTop + 1, hw - 2, 2.6, 1, { f: '#DDE3EA' }));
+        out.push(txt(hx + 3, hTop + 3.2, ri === 0 ? (dv === ctrlDev ? 'ectoControl ' + M.short : dv.title) : 'нижний ряд клемм корпуса',
+          { size: 2, weight: 'bold', fill: '#475569' }));
+        if (ri === 0 && dv === ctrlDev) {   // антенны GSM, Wi-Fi и 868 МГц
+          out.push(seg([[hx + hw - 14, hTop], [hx + hw - 14, hTop - 4]], '#334155', 0.8));
+          out.push(circle(hx + hw - 14, hTop - 4.3, 0.8, { f: '#334155' }));
+        }
+        // фото прибора с myheat.net — рядом с корпусом, чтобы было видно, как он выглядит
+        if (ri === 0 && dv.img) out.push('<image href="img/' + dv.img + '.jpg" x="' + n(XB + (BW - 46) / 2) + '" y="' + n(hTop - 1) + '" width="46" height="28.3" preserveAspectRatio="xMidYMid meet"/>' +
+          rrect(XB + (BW - 46) / 2, hTop - 1, 46, 28.3, 1, { f: 'none', c: '#CBD5E1', w: 0.3 }));
+        // колодки
+        var pos = {};
+        rg.forEach(function (g) {
+          var on = !!num[g.k], gx = X0 + 6 + g.rx, cx = gx + g.w / 2;
+          pos[g.k] = cx;
+          out.push(pluggable(gx, yy, g.n, g.col, on, false, null, pp));
+          g.pl.forEach(function (lab, i) { out.push(txt(gx + pp / 2 + i * pp, yy - 1.6, lab, { size: 1.9, anchor: 'middle', fill: on ? '#0F172A' : '#94A3B8' })); });
+          out.push(txt(gx + g.w / 2, yy - 5, g.t, { size: 1.9, anchor: 'middle', weight: 'bold', fill: on ? '#0F172A' : '#94A3B8' }));
+        });
+        // строки этого ряда: по самой правой клемме — справа налево, чтобы провода не пересекались
+        var mine = [];
+        dv.rows.forEach(function (r, i) { if (rowOf[i] === ri) mine.push(r); });
+        mine.forEach(function (r) {
+          r.ws = (r.keys || []).filter(function (k) { return pos[k] !== undefined; }).sort(function (a, b) { return pos[b] - pos[a]; });
+          r.mx = r.ws.length ? pos[r.ws[0]] : -1;
+        });
+        mine.sort(function (a, b) { return b.mx - a.mx; });
+        var gk = {}; rg.forEach(function (g) { gk[g.k] = g; });
+        var ry = hBot + 4;
+        mine.forEach(function (r) {
+          var how = wrapTxt(r.how, 70, 3);
+          var bh = Math.max(11, 9.6 + how.length * 3.3, r.ws.length * LANE + 3);
+          // потребитель
+          out.push(rrect(XB, ry, BW, bh, 1.4, { f: '#FFFFFF', c: '#94A3B8', w: 0.4 }));
+          out.push(circle(XB + 4.2, ry + 4.4, 2.2, { f: '#DCFCE7', c: '#15803D', w: 0.5 }));
+          out.push(txt(XB + 4.2, ry + 5.3, String(r.n), { size: 2.3, anchor: 'middle', weight: 'bold', fill: '#14532D' }));
+          out.push(iconOf(r.what)(XB + 12, ry + bh / 2 + 1, 8));
+          out.push(txt(XB + 19, ry + 3.6, cut(r.what, 58), { size: 2.35, weight: 'bold' }));
+          var cab = r.ws.length ? cableOf(r, gk[r.ws[0]]) : '';
+          if (cab) out.push(txt(XB + 19, ry + 6.9, 'кабель ' + cab, { size: 2.0, weight: 'bold', fill: wireColor(gk[r.ws[0]]) }));
+          how.forEach(function (ln1, li) { out.push(txt(XB + 19, ry + 10.2 + li * 3.3, ln1, { size: 1.75, fill: '#475569' })); });
+          // провода от клемм
+          r.ws.forEach(function (k, j) {
+            var g = gk[k], cx = pos[k], ly = ry + 4.2 + j * LANE, col = wireColor(g);
+            out.push(seg([[cx, yy + 7], [cx, ly], [XB, ly]], col, 0.7));
+            out.push(circle(cx, ly, 0.55, { f: col }));
+            out.push(txt(XB - 2, ly - 0.9, cableOf(r, g), { size: 1.85, anchor: 'end', fill: col, weight: 'bold' }));
+          });
+          ry += bh + 1.6;
+        });
+        // номера под колодками — поверх проводов, чтобы связь «клемма — потребитель» читалась
+        rg.forEach(function (g) {
+          if (!num[g.k]) return;
+          var label = num[g.k].join(','), bw2 = Math.max(4.4, label.length * 1.6 + 2.2);
+          out.push(rrect(pos[g.k] - bw2 / 2, yy + 8.1, bw2, 4, 2, { f: '#DCFCE7', c: '#15803D', w: 0.4 }));
+          out.push(txt(pos[g.k], yy + 11, label, { size: 2.2, anchor: 'middle', weight: 'bold', fill: '#14532D' }));
+        });
+        cur = Math.max(ry, hBot + 4) + 1;
+      });
+      out[idx] = rrect(X0, cy0, WW, cur - cy0 + 1, 1.6, { f: '#FCFDFE', c: '#CBD5E1', w: 0.5 });
+      y = cur + 5;
+    });
+
+    // ── условные обозначения ──
+    var LEG = [['#C2410C', 'нагрузка 230 В (насос, привод, котёл)'], ['#B91C1C', 'питание'], ['#0D9488', 'шина и дискретные входы'], ['#B45309', 'шина ДОП (RS-485)'], ['#475569', 'датчики']];
+    out.push(rrect(X0, y, WW, 11.5, 1.6, { f: FACE2, c: '#CBD5E1', w: 0.5 }));
+    var lx = X0 + 5;
+    LEG.forEach(function (L) {
+      out.push(seg([[lx, y + 4.4], [lx + 8, y + 4.4]], L[0], 0.9));
+      out.push(txt(lx + 10, y + 5.1, L[1], { size: 2.0, fill: '#334155' }));
+      lx += 12 + L[1].length * 1.75;
+    });
+    out.push(txt(X0 + 5, y + 9.4, 'Одна линия — один кабель, над линией его марка. Сечения ориентировочные: ток нагрузки до 3 А, длины и сечение силовых — по паспортам нагрузки.', { size: 1.85, fill: '#64748B' }));
+    y += 15.5;
+
+    // ── что в смете есть, но проводов к контроллеру не имеет ──
+    var offList = [];
+    boilers = tc.boilers || [];
+    if (tc.dhw === 'boiler_ct') offList.push('Бойлер ГВС на переключающем клапане котла — клапан и датчик бойлера подключаются к самому котлу, контроллер задаёт уставку по шине.');
+    if (tc.dhw === 'external') offList.push('Бойлер ГВС мимо контроллера — у котла нет цифровой шины, ГВС остаётся на его собственной автоматике.');
+    if (tc.dhw === 'ct') offList.push('ГВС от двухконтурного котла — проточный теплообменник котла, отдельного бойлера в смете нет.');
+    if (!F.pumpsOn && (tc.directCount || 0) > 0) offList.push('Насосы радиаторных контуров × ' + tc.directCount + ' — питание от щита, работают постоянно; температуру ведёт котёл.');
+    if (boilers.some(function (b) { return b.iface === 'own'; })) offList.push('Котлы сверх подчинённых контроллеру — на собственной автоматике, в каскад не входят.');
+    if (tc.airOn && tc.airQty > 0 && F.airRadio) offList.push('Комнатные радиоприборы × ' + tc.airQty + ' — по радио (868 МГц), провода не нужны.');
+    if (offList.length) {
+      var oh = 9.6 + offList.length * 5.2;
+      out.push(rrect(X0, y, WW, oh, 1.6, { f: FACE2, c: '#94A3B8', w: 0.5 }));
+      out.push(txt(X0 + 4, y + 5.4, 'В смете есть, но проводов к контроллеру не имеет', { size: 2.6, weight: 'bold' }));
+      offList.forEach(function (t, i) { out.push(txt(X0 + 4, y + 10.6 + i * 5.2, cut(t, 215), { size: 2.1, fill: '#475569' })); });
+      y += oh + 4;
+    }
+    var H = y + 4;
+    o = o.concat(out);
+    return { svg: o.join(''), w: W, h: H };
+  }
+
+
+
+  // ─── Схема подключения автоматики на ZONT серии H (PRO.V2) ─────────────
+  // Клеммы — по фотографиям приборов в паспорте ML.TD.ZHContPRO.V2.001
+  // (стр. 10–11, 64–66). Две кромки, как на самом приборе:
+  //   сверху  — датчики: NTC (⏚ и по два входа на колодку), 1-Wire, RS-485;
+  //   снизу   — питание (⏚, +12 В вход, +12 В выход), универсальные вход/выходы,
+  //             реле (три контакта: 1 НЗ, 2 общий, 3 НР) или выходы ОК (H1500+).
+  // Порядок клемм в ряду — по фото; номера контактов реле — по рисункам паспорта
+  // (стр. 164, 166): фаза на общий (2), нагрузка с НР (3).
+  //
+  // Привод смесителя 220 В: на двух встроенных реле по схеме паспорта (стр. 164) —
+  // фаза на общий первого реле, «закрыть» с его НР, а его НЗ питает общий второго
+  // реле, с НР которого идёт «открыть»: оба входа привода сразу под напряжением
+  // оказаться не могут. На выходах ОК то же самое делают два реле 12 В.
+  // Нагрузка 220 В на выход ОК напрямую не вешается (паспорт, стр. 79, 166).
+  function automationH(tc, items) {
+    tc = tc || {};
+    items = items || {};
+    var nm = items.names || {};
+    var f = tc.hser || {};
+    var M = f.model || { short: 'H1000+', name: 'ZONT H1000+ PRO.V2', relays: 4, uni: 2, oc: 0, ntc: 4, id: '' };
+    var o = [], W = 420;
+    var LS = 19, CH = 70;
+    var DXL = 92, DXR = 328, ICL = 62, ICR = 358, ICO = 13;
+    var CJ = '#EA580C';                 // перемычка блокировки реле
+    var CD1 = '#7C3AED';
+
+    // ── колодки (слева направо) ──
+    var relPins = ['НЗ', 'О', 'НР'];
+    var bot = [{ k: 'pw', n: 3, t: 'Питание', pl: ['⏚', '+12 Вх', '+12 Вых'], col: '#B91C1C' }];
+    if (M.short === 'H1500+') {
+      bot.push({ k: 'u1', n: 6, t: 'Вход/Выход 1–6', pl: ['1', '2', '3', '4', '5', '6'], col: '#2563EB' });
+      bot.push({ k: 'oc', n: 6, t: 'Выходы ОК 7–12', pl: ['7', '8', '9', '10', '11', '12'], col: '#16A34A' });
+    } else {
+      bot.push({ k: 'u1', n: 2, t: 'Вход/Выход', pl: M.short === 'H2000+' ? ['1', '2'] : ['1', '2'], col: '#2563EB' });
+      for (var r = 1; r <= M.relays; r++) bot.push({ k: 'r' + r, n: 3, t: 'Реле ' + r, pl: relPins, col: '#16A34A', relay: true });
+      if (M.short === 'H2000+') bot.push({ k: 'u2', n: 2, t: 'Вход/Выход', pl: ['3', '4'], col: '#2563EB' });
+    }
+    var ntcN = Math.min(M.ntc, 8), ntcGroups = [];
+    for (var g = 0; g < ntcN; g += 2) {
+      var pair = (g + 1 < ntcN) ? [g + 1, g + 2] : [g + 1];
+      ntcGroups.push({ k: 'n' + g, n: 1 + pair.length, t: 'NTC', pl: ['⏚'].concat(pair.map(String)), col: '#9CA3AF' });
+    }
+    var top = ntcGroups.concat([
+      { k: 'ow', n: 2, t: '1-Wire', pl: ['⏚', '1w'], col: '#9CA3AF' },
+      { k: 'rs', n: 3, t: 'RS-485 (интерфейс)', pl: ['⏚', 'B', 'A'], col: '#F1F5F9' }
+    ]);
+    function layout(row, W0) {
+      var total = 0; row.forEach(function (b) { b.w = b.n * P; total += b.w; });
+      var gap = Math.max(1.6, (W0 - 12 - total) / Math.max(1, row.length - 1));
+      var x = 6;
+      row.forEach(function (b) { b.x = x; b.cx = x + b.w / 2; x += b.w + gap; });
+    }
+    var botPins = bot.reduce(function (a, b) { return a + b.n; }, 0);
+    var CW = Math.max(150, Math.min(250, botPins * P + (bot.length - 1) * 2.4 + 14));
+    var CX = (W - CW) / 2;
+    layout(bot, CW); layout(top, CW);
+    bot.forEach(function (b) { b.x += CX; b.cx += CX; });
+    top.forEach(function (b) { b.x += CX; b.cx += CX; });
+    var T = {}; bot.concat(top).forEach(function (b) { T[b.k] = b; });
+    function wireX(blk, i) { return blk.x + P / 2 + i * P; }
+    function legsOf(arr) { return arr.slice().sort(function (p, q) { return wireX(p.b, p.i) - wireX(q.b, q.i); }); }
+    function boilerIco(gas) { return function (a, c, s) { return icoBoiler(a, c, s, gas); }; }
+    function icoGauge(cx, cy, s) {
+      return circle(cx, cy, s * 0.36, { f: FACE2, c: INK, w: 0.55 }) + seg([[cx, cy], [cx + s * 0.18, cy - s * 0.18]], INK, 0.55) +
+        circle(cx, cy, s * 0.05, { f: INK });
+    }
+
+    var dn = [], up = [];   // выноски нижней и верхней кромки
+
+    // ── распределение выходов: так же, как zontHFit() — в порядке нагрузок ──
+    var relIdx = 0;         // следующее свободное встроенное реле
+    var uniPins = [];       // свободные выходы ОК
+    var uniAll = [];
+    if (M.short === 'H1500+') {
+      for (var q = 0; q < 6; q++) uniAll.push({ b: T.oc, i: q });
+      for (var q2 = 0; q2 < 6; q2++) uniAll.push({ b: T.u1, i: q2 });
+    } else {
+      for (var q3 = 0; q3 < 2; q3++) uniAll.push({ b: T.u1, i: q3 });
+      if (T.u2) for (var q4 = 0; q4 < 2; q4++) uniAll.push({ b: T.u2, i: q4 });
+    }
+    var uniIn = [];         // входы: шлейф протечки, датчик давления
+    function takeIn() {
+      // входы берём с универсальных клемм (не с отдельных ОК-выходов H1500+)
+      var k = uniAll.findIndex(function (u) { return u.b.k !== 'oc'; });
+      return k < 0 ? null : uniAll.splice(k, 1)[0];
+    }
+    if (tc.leakQty > 0) uniIn.push({ what: 'leak', pin: takeIn() });
+    if (f.pressureOn) uniIn.push({ what: 'press', pin: takeIn() });
+    if (f.snowIn) uniIn.push({ what: 'snow', pin: takeIn() });
+    function nextRelay() { return relIdx < M.relays ? T['r' + (++relIdx)] : null; }
+    function nextOc() { return uniAll.length ? uniAll.shift() : null; }
+
+    var relayBoilerIco = null;
+    (tc.boilers || []).filter(function (b) { return b.iface === 'relay'; }).slice(0, 2).forEach(function (b) {
+      relayBoilerIco = boilerIco(b.kind === 'gas');
+    });
+
+    // питание: блок 12 В из комплекта
+    dn.push({
+      legs: legsOf([{ b: T.pw, i: 0, c: CRS[0], l: '−' }, { b: T.pw, i: 1, c: CRS[3], l: '+12 В' }]),
+      ico: icoBreaker, title: 'Блок питания 12 В', sub: 'из комплекта · розетка ~220 В'
+    });
+
+    var onBlocks = (f.assign || []).filter(function (a) { return a.block; });
+    (f.assign || []).forEach(function (a) {
+      if (a.block) return;   // клеммы блока расширения — по паспорту блока, здесь не рисуем
+      var isValve = /кран|соленоид/i.test(a.label), isBoiler = /котёл/i.test(a.label);
+      var isMix = /смесител/i.test(a.label);
+      var ico = isMix ? icoServo : isValve ? icoValveAct : isBoiler ? (relayBoilerIco || icoModule) : icoPump;
+      var circ = (tc.circuits || []).filter(function (c) { return c.name === a.circuit; })[0];
+      var sub = isMix ? cut(nm.mixServo || 'сервопривод смесителя, 230 В', 36)
+        : isValve ? cut(nm.leakValve || 'на вводе ХВС', 32)
+          : isBoiler ? 'клеммы термостата котла · перемычку снять'
+            : /бойлер/i.test(a.label) ? cut(nm.dhwPump || 'из обвязки бойлера', 32)
+              : /рециркуляц/i.test(a.label) ? cut(nm.recircPump || 'линия Т4', 32)
+                : cut(nm[(circ && circ.type === 'mix' ? 'mixGroup' : 'dirGroup')] || 'насосная группа', 32);
+      if (a.how === 'built' && a.pair) {
+        // «открыть» — первое реле, «закрыть» — второе: перемычка блокировки идёт
+        // от НЗ второго к общему первого и пересекает ровно одну жилу
+        var ro = nextRelay(), rc = nextRelay();
+        if (!ro || !rc) return;
+        dn.push({
+          legs: legsOf([{ b: ro, i: 2, c: COPEN, l: 'откр.' }, { b: rc, i: 1, c: CL, l: 'L' }, { b: rc, i: 2, c: CCLOSE, l: 'закр.' }]),
+          jump: { from: { b: rc, i: 0 }, to: { b: ro, i: 1 } },
+          nStub: true, pe: true, ico: ico, title: a.label, sub: sub + ' · блокировка'
+        });
+      } else if (a.how === 'built') {
+        var rb = nextRelay();
+        if (!rb) return;
+        if (isValve) dn.push({
+          legs: legsOf([{ b: rb, i: 0, c: CCLOSE, l: 'НЗ' }, { b: rb, i: 1, c: CL, l: 'О' }, { b: rb, i: 2, c: COPEN, l: 'НР' }]),
+          nStub: true, pe: true, ico: ico, title: a.label, sub: sub
+        });
+        else if (isBoiler) dn.push({
+          legs: legsOf([{ b: rb, i: 1, c: CCLOSE, l: 'О' }, { b: rb, i: 2, c: '#6B7280', l: 'НР' }]),
+          ico: ico, title: a.label, sub: sub
+        });
+        else dn.push({
+          legs: legsOf([{ b: rb, i: 1, c: CL, l: 'О' }, { b: rb, i: 2, c: CL, l: 'НР' }]),
+          nStub: true, pe: true, ico: ico, title: a.label, sub: sub
+        });
+      } else if (a.pair) {
+        var p1 = nextOc(), p2 = nextOc();
+        if (!p1 || !p2) return;
+        dn.push({
+          legs: legsOf([{ b: T.pw, i: 2, c: CRS[3], l: '+12' }, { b: p1.b, i: p1.i, c: CD1, l: 'ОК' }, { b: p2.b, i: p2.i, c: CD1, l: 'ОК' }]),
+          inline: 'Реле 12 В × 2 (блокировка)', clampsOut: ['откр.', 'L', 'закр.'], wiresOut: [COPEN, CL, CCLOSE],
+          nStub: true, pe: true, ico: ico, title: a.label, sub: sub + ' · через реле 12 В'
+        });
+      } else {
+        var p0 = nextOc();
+        if (!p0) return;
+        dn.push({
+          legs: legsOf([{ b: T.pw, i: 2, c: CRS[3], l: '+12' }, { b: p0.b, i: p0.i, c: CD1, l: 'ОК' }]),
+          inline: 'Реле 12 В', clampsOut: ['L', 'N', '⏚'], wiresOut: [CL, CN, CPE2],
+          pe: false, ico: ico, title: a.label, sub: sub + ' · через реле 12 В'
+        });
+      }
+    });
+
+    // шлейф протечки и датчик давления на универсальных входах
+    uniIn.forEach(function (u) {
+      if (!u.pin) return;
+      if (u.what === 'leak') dn.push({
+        legs: legsOf([{ b: u.pin.b, i: u.pin.i, c: CD1, l: 'Вх' }]), ico: icoDrop,
+        title: 'Датчики протечки × ' + tc.leakQty, sub: 'шлейф АСТРА-361 на вход · полярность — паспорт'
+      });
+      else if (u.what === 'snow') {
+        // Сухой контакт реле времени датчика осадков: один провод на вход, второй — на «минус» питания.
+        dn.push({
+          legs: legsOf([{ b: u.pin.b, i: u.pin.i, c: CD1, l: 'Вх' }]), ico: icoModule,
+          title: 'Датчик осадков · через реле времени', sub: 'сухой контакт на вход · тип «Дискретный», полярность в сервисе'
+        });
+        dn.push({
+          legs: legsOf([{ b: T.pw, i: 0, c: CRS[0], l: '−' }]), ico: icoModule,
+          title: 'Датчик осадков · общий провод', sub: 'второй провод контакта — на «минус» питания'
+        });
+      } else {
+        dn.push({
+          legs: legsOf([{ b: u.pin.b, i: u.pin.i, c: '#EAB308', l: 'сигнал' }]), ico: icoGauge,
+          title: 'Датчик давления MLD-10.01 · сигнал', sub: 'жёлтая жила — на универсальный вход'
+        });
+        dn.push({
+          legs: legsOf([{ b: T.pw, i: 0, c: CRS[0], l: '−' }, { b: T.pw, i: 1, c: CRS[3], l: '+12 В' }]), ico: icoGauge,
+          title: 'Датчик давления MLD-10.01 · питание', sub: 'красная жила +12 В, чёрная — «минус»'
+        });
+      }
+    });
+
+    // ── датчики температуры (верхняя кромка) ──
+    var ntcPin = 0;                 // следующий свободный вход NTC
+    function ntcLegs() {
+      var gi = Math.floor(ntcPin / 2), within = ntcPin % 2, blk = ntcGroups[gi];
+      if (!blk) return null;
+      ntcPin++;
+      return legsOf([{ b: blk, i: 0, c: CRS[0], l: '⏚' }, { b: blk, i: 1 + within, c: CSIG, l: '' + (ntcPin) }]);
+    }
+    var SROLE = {
+      out: { t: 'Уличный датчик МЛ-773', s: 'на северную стену, в тень · из комплекта', ico: icoProbe },
+      supply: { t: 'Датчик подачи в гильзу', s: 'в гильзу на подаче контура · из комплекта', ico: icoProbe },
+      dhw: { t: 'Датчик бойлера', s: 'в гильзу бойлера ГВС · из комплекта', ico: icoTank },
+      cascade: { t: 'Датчик каскада', s: 'в гильзу за гидрострелкой · из комплекта', ico: icoProbe }
+    };
+    var dsList = [];
+    (f.sensors || []).forEach(function (sn) {
+      if (sn.src === 'ds') { dsList.push(sn); return; }
+      var lg = ntcLegs(), rl = SROLE[sn.role] || SROLE.supply;
+      if (!lg) { dsList.push(sn); return; }
+      up.push({ legs: lg, ico: rl.ico, title: sn.role === 'supply' ? rl.t + ' · ' + sn.label.replace(/^Подача /, '') : rl.t, sub: rl.s });
+    });
+    if (dsList.length) up.push({
+      legs: legsOf([{ b: T.ow, i: 0, c: CRS[0], l: '⏚' }, { b: T.ow, i: 1, c: CSIG, l: '1w' }]),
+      ico: icoProbe, title: 'Датчики 1-Wire × ' + dsList.length,
+      sub: cut(dsList.map(function (x) { return x.label; }).join(' · '), 44) + ' · параллельно'
+    });
+
+    // ── RS-485: адаптеры котлов, приборы воздуха, радиомодуль ──
+    function busLegs() {
+      return legsOf([{ b: T.rs, i: 0, c: CRS[0], l: '⏚' }, { b: T.rs, i: 1, c: CRS[1], l: 'B' }, { b: T.rs, i: 2, c: CRS[2], l: 'A' }]);
+    }
+    (tc.boilers || []).filter(function (b) { return b.iface === 'digital'; }).slice(0, 2).forEach(function (b, i) {
+      up.push({
+        legs: busLegs(), inline: 'Адаптер цифровых шин', clampsOut: ['ЦШ', 'ЦШ'], wiresOut: [CBUS, CBUS2], inlineOut: 'ЦШ котла',
+        ico: boilerIco(b.kind === 'gas'), title: 'Котёл ' + (i + 1) + ' — ' + (b.kind === 'gas' ? 'газовый' : 'электрический'),
+        sub: cut(nm['boiler' + i] || 'питание адаптера — от «+12 В выход»', 40)
+      });
+    });
+    var radioAir = !!(tc.airOn && tc.airQty > 0 && tc.airDevice && tc.airDevice.link === 'radio');
+    if (tc.airOn && tc.airQty > 0 && !radioAir) up.push({
+      legs: busLegs(), ico: tc.airKind === 'thermostat' ? icoPanel : icoPuck,
+      title: tc.airKind === 'thermostat' ? 'Комнатный термостат' : 'Датчик воздуха комнатный', sub: cut(nm.air || 'по шине RS-485', 32)
+    });
+    if (tc.needRadio) up.push({
+      legs: busLegs(), ico: function (a, c, s) { return icoModule(a, c, s, true); },
+      title: 'Радиомодуль МЛ-590', sub: 'радиодатчики 868 МГц · до 40 устройств'
+    });
+
+    // ── этажи ──
+    function split(list) {
+      list.forEach(function (d) {
+        d.xLo = Infinity; d.xHi = -Infinity;
+        d.legs.forEach(function (g) { var x = wireX(g.b, g.i); d.xLo = Math.min(d.xLo, x); d.xHi = Math.max(d.xHi, x); });
+      });
+      list.sort(function (a, b) { return (a.xLo - b.xLo) || (a.xHi - b.xHi); });
+      var cutAt = 0, runHi = -Infinity, best = null;
+      for (var s2 = 0; s2 <= list.length; s2++) {
+        if (s2 > 0) runHi = Math.max(runHi, list[s2 - 1].xHi);
+        if (s2 > 0 && s2 < list.length && runHi > list[s2].xLo) continue;
+        var d2 = Math.abs(s2 - list.length / 2);
+        if (best === null || d2 < best) { best = d2; cutAt = s2; }
+      }
+      return { L: list.slice(0, cutAt), R: list.slice(cutAt).reverse() };
+    }
+    var dS = split(dn), uS = split(up);
+    var nUp = Math.max(uS.L.length, uS.R.length, 0), nDn = Math.max(dS.L.length, dS.R.length, 1);
+    var CY = 26 + (nUp ? 4 + nUp * LS : 0), CB = CY + CH;
+
+    // ── в смете есть, но проводов к контроллеру не имеет ──
+    var offList = [];
+    if (tc.dhw === 'boiler_ct') offList.push({ t: 'Бойлер ГВС · на переключающем клапане котла', s: cut(nm.tank || 'бойлер косвенного нагрева', 40) + ' — клапан и датчик бойлера подключаются к самому котлу' });
+    if (tc.dhw === 'external') offList.push({ t: 'Бойлер ГВС · мимо контроллера', s: cut(nm.tank || 'бойлер косвенного нагрева', 40) + ' — у котла нет цифровой шины' });
+    if (tc.dhw === 'ct') offList.push({ t: 'ГВС от двухконтурного котла', s: 'проточный теплообменник котла' });
+    var ufh = items.ufh || null;
+    if (ufh && (ufh.blocks || ufh.stats || ufh.servos)) offList.push({
+      t: 'Автоматика радиаторов и тёплого пола (раздел 4.5)',
+      s: [ufh.stats ? 'термостаты × ' + ufh.stats : '', ufh.servos ? 'сервоприводы × ' + ufh.servos : '', ufh.blocks ? 'коммутационный блок × ' + ufh.blocks : ''].filter(Boolean).join(' · ') + ' — своя зональная система на 230 В'
+    });
+    if (radioAir) offList.push({ t: (tc.airKind === 'thermostat' ? 'Комнатный термостат' : 'Датчик воздуха') + ' × ' + tc.airQty, s: cut(nm.air || 'радиоканал 868 МГц', 44) + ' — по радио через МЛ-590' });
+    var OFF_ROW = 8.6, offBoxH = offList.length ? 9.6 + offList.length * OFF_ROW : 0;
+    var offH = offBoxH ? offBoxH + 6 : 0;
+    var H = CB + 14 + (nDn - 1) * LS + 40 + offH;
+
+    o.push(txt(W / 2, 8.4, 'Схема подключения автоматики котельной — ' + M.name, { size: 4.4, anchor: 'middle', weight: 'bold' }));
+    o.push(rrect(CX, CY, CW, CH, 6, { f: '#FCFDFE', c: '#94A3B8', w: 0.6 }));
+    o.push(rrect(CX + 5, CY + 7, CW - 10, CH - 24, 4, { f: FACE2, c: '#CBD5E1', w: 0.4 }));
+    o.push(txt(CX + CW / 2, CY + CH / 2 - 1, M.name, { size: 5, anchor: 'middle', fill: '#6B7280' }));
+    o.push(txt(CX + CW / 2, CY + CH / 2 + 6, 'универсальный контроллер', { size: 2.6, anchor: 'middle', fill: '#94A3B8' }));
+
+    var used = {};
+    function drawSide(list, side, dir) {
+      list.forEach(function (d, i) {
+        var lane = dir > 0 ? CB + 14 + i * LS : CY - 14 - i * LS;
+        var y0 = dir > 0 ? CB - 0.6 : CY + 0.6;
+        var dx = side < 0 ? DXL : DXR;
+        var legs = d.legs, Mn = legs.length;
+        var hasOut = !!(d.inline && d.wiresOut && d.clampsOut);
+        var mw = 28, mxc = side < 0 ? (DXL + CX) / 2 : (CX + CW + DXR) / 2;
+        var clStrip = hasOut ? d.clampsOut : legs.map(function (g) { return g.l; });
+        var Ms = clStrip.length;
+        var inX = hasOut ? (side > 0 ? mxc - mw / 2 : mxc + mw / 2) : dx - side * 2.4;
+        var rev = side > 0;
+        function offOf(k) { return ((rev ? Mn - 1 - k : k) - (Mn - 1) / 2) * P * (dir > 0 ? 1 : -1); }
+        function offS(k) { return ((rev ? Ms - 1 - k : k) - (Ms - 1) / 2) * P; }
+        legs.forEach(function (g, k) {
+          var cxw = wireX(g.b, g.i), yw = lane + offOf(k);
+          used[g.b.k] = true;
+          o.push(seg([[cxw, y0], [cxw, yw], [inX, yw]], g.c, 0.55));
+          o.push(circle(cxw, y0, 0.75, { f: g.c }));
+        });
+        if (d.jump) {
+          var xa = wireX(d.jump.from.b, d.jump.from.i), xb = wireX(d.jump.to.b, d.jump.to.i);
+          used[d.jump.from.b.k] = true; used[d.jump.to.b.k] = true;
+          o.push(seg([[xa, y0], [xa, y0 + 2.4], [xb, y0 + 2.4], [xb, y0]], CJ, 0.5, '1.3 1'));
+          o.push(circle(xa, y0, 0.75, { f: CJ })); o.push(circle(xb, y0, 0.75, { f: CJ }));
+        }
+        if (hasOut) {
+          var outX = side > 0 ? mxc + mw / 2 : mxc - mw / 2;
+          d.wiresOut.forEach(function (c, k2) {
+            var yy = lane + offS(k2) * (dir > 0 ? 1 : 1);
+            o.push(seg([[outX, yy], [dx - side * 2.4, yy]], c, 0.55));
+          });
+          if (d.inlineOut) o.push(txt((outX + dx - side * 2.4) / 2, lane - Ms * P / 2 - 1.4, d.inlineOut, { size: 2, anchor: 'middle', fill: '#475569' }));
+          var mh = Math.max(Mn, Ms) * P + 5.4;
+          o.push(rrect(mxc - mw / 2, lane - mh / 2, mw, mh, 1.2, { f: FACE2, c: INK, w: 0.5 }));
+          o.push(rrect(mxc - mw / 2 + 2.4, lane - mh / 2 + 1.6, mw - 4.8, 2, 0.4, { f: '#CBD5E1' }));
+          for (var g1 = 0; g1 < Mn; g1++) o.push(circle(mxc - mw / 2 + 2.2, lane + (g1 - (Mn - 1) / 2) * P * (dir > 0 ? 1 : -1), 0.7, { f: '#fff', c: INK, w: 0.3 }));
+          for (var g2 = 0; g2 < Ms; g2++) o.push(circle(mxc + mw / 2 - 2.2, lane + (g2 - (Ms - 1) / 2) * P, 0.7, { f: '#fff', c: INK, w: 0.3 }));
+          o.push(txt(mxc, lane + mh / 2 + 2.8, d.inline, { size: 2, anchor: 'middle' }));
+        }
+        o.push(vstrip(dx, lane, rev ? clStrip.slice().reverse() : clStrip, side));
+        var icx = side < 0 ? ICL : ICR;
+        o.push(seg([[icx - side * ICO * 0.5, lane], [dx + side * 2.4, lane]], INK, 0.4, '1 1'));
+        o.push(d.ico(icx, lane, ICO));
+        var tx2 = side < 0 ? icx - ICO * 0.55 - 4 : icx + ICO * 0.55 + 4;
+        var an = side < 0 ? 'end' : 'start';
+        o.push(txt(tx2, lane - 1.2, cut(d.title, 40), { size: 2.4, anchor: an, weight: 'bold' }));
+        if (d.sub) o.push(txt(tx2, lane + 2.2, cut(d.sub, side < 0 ? 40 : 46), { size: 2.1, anchor: an }));
+        if (d.nStub) {
+          var ny = lane + offS(Ms);
+          o.push(seg([[dx - side * 2.4, ny], [dx - side * 8, ny]], CN, 0.55));
+          o.push(txt(dx - side * 9, ny + 0.7, 'N щита', { size: 1.8, anchor: side > 0 ? 'end' : 'start' }));
+        }
+        if (d.pe) {
+          var pdir = rev ? -1 : 1, pey = lane + offS(Ms - 1);
+          o.push(peSeg([[dx, pey], [dx, pey + 2.2 * pdir]]));
+          o.push(gndSym(dx, pey + 2.2 * pdir, pdir));
+        }
+      });
+    }
+    drawSide(dS.L, -1, 1); drawSide(dS.R, 1, 1); drawSide(uS.L, -1, -1); drawSide(uS.R, 1, -1);
+
+    // ── ряды клемм поверх жил ──
+    function drawRow(row, y, upEdge) {
+      row.forEach(function (b) {
+        var on = !!used[b.k];
+        var col = on ? '#0F172A' : '#94A3B8';
+        o.push(pluggable(b.x, y, b.n, b.col, on, !!upEdge));
+        b.pl.forEach(function (lab, i) { o.push(txt(wireX(b, i), upEdge ? y + 9.6 : y - 1.8, lab, { size: 1.7, anchor: 'middle', fill: col })); });
+        o.push(txt(b.cx, upEdge ? y + 12.6 : y - 5.0, b.t, { size: 1.8, anchor: 'middle', weight: 'bold', fill: col }));
+      });
+    }
+    drawRow(bot, CB - 6.4, false);
+    drawRow(top, CY - 0.0, true);
+
+    // ── таблица: что ведёт контроллер ──
+    (function () {
+      var rw = [];
+      rw.push({ t: 'Отопление', s: 'контуров ' + (tc.circuitCount || 0) + ' · ПЗА по уличному датчику' });
+      if (tc.dhw === 'boiler') rw.push({ t: 'ГВС · загрузка бойлера', s: 'насос на выходе контроллера · датчик бойлера' });
+      else if (tc.dhw === 'boiler_ct') rw.push({ t: 'ГВС · через котёл', s: 'уставку котлу задаёт цифровая шина' });
+      (tc.boilers || []).filter(function (b) { return b.iface !== 'own'; }).slice(0, 2).forEach(function (b, i) {
+        rw.push({ t: 'Котёл ' + (i + 1) + ' · ' + (b.kind === 'gas' ? 'газовый' : 'электрический'), s: b.iface === 'digital' ? 'адаптер цифровых шин на RS-485' : 'реле контроллера · клеммы термостата' });
+      });
+      if (tc.leakQty > 0) rw.push({ t: 'Защита от протечки', s: 'шлейф на универсальный вход · кран на реле' });
+      var tw = 92, th = 6.4 + rw.length * 8.2, tx0 = 6, ty0 = CY + (CH - th) / 2;
+      if (CX < tx0 + tw + 4) return;   // широкий корпус занимает место таблицы
+      o.push(rrect(tx0, ty0, tw, th, 1.6, { f: '#F8FAFC', c: '#CBD5E1', w: 0.4 }));
+      o.push(txt(tx0 + 3, ty0 + 4.6, 'Что ведёт контроллер', { size: 2.6, weight: 'bold' }));
+      o.push(ln(tx0 + 3, ty0 + 6, tx0 + tw - 3, ty0 + 6, { c: '#CBD5E1', w: 0.3 }));
+      rw.forEach(function (r, i) {
+        var ry2 = ty0 + 10.6 + i * 8.2;
+        o.push(txt(tx0 + 3, ry2, r.t, { size: 2.4, weight: 'bold' }));
+        o.push(txt(tx0 + 3, ry2 + 3.4, cut(r.s, 44), { size: 2.2, fill: '#475569' }));
+      });
+    })();
+
+    if (offH) {
+      var oy = CB + 14 + (nDn - 1) * LS + 12;
+      o.push(rrect(12, oy, W - 24, offBoxH, 1.6, { f: FACE2, c: '#94A3B8', w: 0.5 }));
+      o.push(txt(17, oy + 5.8, 'В смете есть, но проводов к контроллеру не имеет', { size: 2.6, weight: 'bold' }));
+      o.push(ln(17, oy + 7.2, W - 17, oy + 7.2, { c: '#CBD5E1', w: 0.3 }));
+      offList.forEach(function (r, i) {
+        var ry3 = oy + 11.8 + i * OFF_ROW;
+        o.push(txt(17, ry3, r.t, { size: 2.4, weight: 'bold' }));
+        o.push(txt(17, ry3 + 3.4, r.s, { size: 2.1, fill: '#475569' }));
+      });
+    }
+
+    var lg = [[CL, 'L — фаза (общий контакт реле)'], [CN, 'N — нейтраль'], [null, 'PE — на шину заземления щита'],
+      [CSIG, 'датчики температуры'], [CRS[1], 'RS-485: ⏚ B A'], [CBUS, 'цифровая шина котла'],
+      [CD1, 'выход ОК / универсальный вход'], [CJ, 'перемычка блокировки: НЗ → общий']];
+    var lgY = H - 10;
+    lg.forEach(function (L, i) {
+      var col = i % 4, rw3 = Math.floor(i / 4);
+      var xx = 14 + col * 102, yy = lgY + rw3 * 5;
+      if (L[0] === null) o.push(peSeg([[xx, yy], [xx + 10, yy]]));
+      else o.push(seg([[xx, yy], [xx + 10, yy]], L[0], 0.8, L[0] === CJ ? '1.3 1' : null));
+      o.push(txt(xx + 12.5, yy + 1, L[1], { size: 2.1 }));
+    });
+    return { svg: o.join(''), w: W, h: H };
+  }
+
   // ─── Схема подключения автоматики тёплого пола (STE-3050) ──────────────
   // Композиция повторяет функциональную схему подключения из паспорта
   // (п. 3.5): термостаты зон сверху, плата посередине, приводы снизу,
@@ -3306,9 +4964,20 @@
   function ufhScheme(ufh) {
     ufh = ufh || {};
     var o = [], W = 420;
-    var INK = '#334155', FACE2 = '#F8FAFC';
+    var INK = '#334155', FACE2 = '#F8FAFC', GREY = '#94A3B8';
     var CL = '#DC2626', CN = '#2563EB', COPEN = '#B45309', CCLOSE = '#1F2937';
     var no = ufh.servoType === 'no', v24 = ufh.servoVolt === 24;
+    // Номера клемм термостата — только по паспорту; у моделей без паспорта в руках
+    // клеммы не выдумываем. Обе схемы — п. 5.2 паспортов STE-2001 (ред. 12.02.2025)
+    // и STE-2002 (ред. 12.12.2024):
+    //   3 А (STE-2001-13…, STE-2002-33…): L на клемму 2, N на 1, перемычка 2–5,
+    //     при нагреве напряжение на клемме 3;
+    //   16 А (STE-2001-11…, STE-2002-31…): L на клемму 3, N на 1, при нагреве
+    //     напряжение на клемме 4, нагрузка включается между клеммами 2 и 4.
+    var sid = ufh.statId || '';
+    var kind = /^STE-(2002-33|2001-13)/.test(sid) ? '3a' : (/^STE-(2002-31|2001-11)/.test(sid) ? '16a' : '');
+    var known = !!kind;
+    var T = kind === '16a' ? { N: 1, L: 3, U: 4 } : { N: 1, L: 2, U: 3 };
 
     function seg(pts, c, w, dash) {
       var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + n(p[0]) + ',' + n(p[1]); }).join(' ');
@@ -3316,227 +4985,516 @@
         '" stroke-linejoin="round" stroke-linecap="round"' + (dash ? ' stroke-dasharray="' + dash + '"' : '') + '/>';
     }
     function cut(s, k) { s = String(s || ''); return s.length > k ? s.slice(0, k - 1) + '…' : s; }
-    // комнатный термостат: корпус с экраном, как на схеме паспорта
-    function icoStat(cx, cy, s) {
-      return rrect(cx - s * 0.44, cy - s * 0.44, s * 0.88, s * 0.88, 1, { f: '#fff', c: INK, w: 0.5 }) +
-        rrect(cx - s * 0.32, cy - s * 0.30, s * 0.64, s * 0.42, 0.5, { f: '#DBEAFE', c: '#64748B', w: 0.35 }) +
-        txt(cx, cy + s * 0.02, '22', { size: s * 0.26, anchor: 'middle', fill: '#1D4ED8' }) +
-        circle(cx, cy + s * 0.28, s * 0.06, { f: '#F97316' });
-    }
     // термоэлектрический привод: колпачок со штоком
-    function icoAct(cx, cy, s) {
-      return rrect(cx - s * 0.34, cy - s * 0.40, s * 0.68, s * 0.62, s * 0.16, { f: '#F1F5F9', c: INK, w: 0.5 }) +
-        rrect(cx - s * 0.12, cy - s * 0.14, s * 0.24, s * 0.26, 0.3, { f: '#fff', c: INK, w: 0.35 }) +
-        rrect(cx - s * 0.2, cy + s * 0.22, s * 0.4, s * 0.16, 0.2, { f: '#CBD5E1', c: INK, w: 0.4 });
+    function icoAct(cx, cy, s, ghost) {
+      var c = ghost ? GREY : INK;
+      return rrect(cx - s * 0.34, cy - s * 0.40, s * 0.68, s * 0.62, s * 0.16, { f: ghost ? '#F8FAFC' : '#F1F5F9', c: c, w: 0.5 }) +
+        rrect(cx - s * 0.12, cy - s * 0.14, s * 0.24, s * 0.26, 0.3, { f: '#fff', c: c, w: 0.35 }) +
+        rrect(cx - s * 0.2, cy + s * 0.22, s * 0.4, s * 0.16, 0.2, { f: '#CBD5E1', c: c, w: 0.4 });
     }
-
-    // Раскладка колодок — по фотографии платы (паспорт STE-3050, п. 3.1):
-    //   поз. 3 и 2 (зоны) — ВЕРТИКАЛЬНЫЕ, контакты столбиком, 3 и 4 штуки;
-    //   поз. 11 INPUT (2), поз. 9 PUMP (2), поз. 10 Com/NC/NO (3) — ГОРИЗОНТАЛЬНЫЕ,
-    //   стоят в ряд внизу справа, рядом с ними винт заземления (поз. 1).
-    var CP = 2.6, BW = 5.4;
-    var HP = 3.2, HH = 5.2;
-    function blkH(x, y, nn, on) {
-      var s = rrect(x, y, nn * HP + 1.4, HH, 0.6,
-        { f: on ? '#27AE60' : '#DCE3EA', c: on ? '#14532D' : '#94A3B8', w: 0.4 });
-      for (var i = 0; i < nn; i++) s += circle(x + 0.7 + HP / 2 + i * HP, y + HH / 2, 0.85, { f: '#fff', c: '#334155', w: 0.26 });
-      return s;
-    }
-    function cxh(x, i) { return x + 0.7 + HP / 2 + i * HP; }
     // выноска-номер: связывает участок жил с таблицей кабелей внизу листа
     function mark(x, y, k) {
       return circle(x, y, 2.1, { f: '#fff', c: INK, w: 0.45 }) +
         txt(x, y + 0.8, String(k), { size: 2.3, anchor: 'middle', weight: 'bold' });
     }
-    function blkV(x, y, nn, on) {
-      var s = rrect(x, y, BW, nn * CP + 1.6, 0.6,
-        { f: on ? '#27AE60' : '#DCE3EA', c: on ? '#14532D' : '#94A3B8', w: 0.4 });
-      for (var i = 0; i < nn; i++) s += circle(x + BW / 2, y + 0.8 + CP / 2 + i * CP, 0.85, { f: '#fff', c: '#334155', w: 0.26 });
-      return s;
+    // Клеммные колодки платы — серые, как на фото из паспорта (пружинные, у каждого
+    // контакта большое круглое гнездо для провода, рычажок и малое гнездо).
+    // Режимы: 'on' — ярко, сюда заводят провод; 'pale' — такая же зона из сметы,
+    // подключается так же; 'dim' — не используется, плата показана тускло.
+    //   vertical: контакты столбиком, провод — слева (клеммы зон);
+    //   иначе контакты в ряд, провод — снизу (клеммы внизу справа).
+    function wago(x, y, w, h, nn, mode, vertical) {
+      var s = '<g opacity="' + (mode === 'on' ? 1 : (mode === 'pale' ? 0.85 : 0.3)) + '">';
+      if (mode === 'on') s += rrect(x - 1.3, y - 1.3, w + 2.6, h + 2.6, 1.6, { f: '#86EFAC', c: '#16A34A', w: 0.6 });
+      if (mode === 'pale') s += rrect(x - 0.7, y - 0.7, w + 1.4, h + 1.4, 1.2, { f: '#DCFCE7', c: '#86C7A0', w: 0.4 });
+      s += rrect(x, y, w, h, 0.8, { f: '#B8B8BC', c: '#6B7280', w: 0.3 });
+      if (vertical) s += rrect(x + w - 3.2, y, 3.2, h, 0.6, { f: '#9A9AA0', c: '#6B7280', w: 0.2 });
+      var ring = mode === 'on' ? '#15803D' : '#52525B';
+      for (var i = 0; i < nn; i++) {
+        if (vertical) {
+          var cy = y + (i + 0.5) * h / nn;
+          s += rrect(x + 8.2, cy - 1.5, 1.6, 3, 0.3, { f: '#D4D4D8', c: '#6B7280', w: 0.2 });
+          s += circle(x + 4.4, cy, 1.5, { f: '#27272A', c: ring, w: 0.4 });
+          s += circle(x + w - 5.4, cy, 0.8, { f: '#52525B' });
+        } else {
+          var cx = x + (i + 0.5) * w / nn;
+          s += circle(cx, y + 3.2, 0.8, { f: '#52525B' });
+          s += rrect(cx - 1.5, y + h / 2 - 0.8, 3, 1.6, 0.3, { f: '#D4D4D8', c: '#6B7280', w: 0.2 });
+          s += circle(cx, y + h - 3.6, 1.5, { f: '#27272A', c: ring, w: 0.4 });
+        }
+      }
+      return s + '</g>';
     }
-    function cyv(y, i) { return y + 0.8 + CP / 2 + i * CP; }
-    function labR(x, y, i, L) { return txt(x + BW + 0.9, cyv(y, i) + 0.75, L, { size: 1.9 }); }
-    function labL(x, y, i, L) { return txt(x - 0.9, cyv(y, i) + 0.75, L, { size: 1.9, anchor: 'end' }); }
+    // Положение на фото паспорта (862×402 px) → мм схемы. Фото масштабировано 0,4:
+    // так все колодки и детали платы стоят там же, где на настоящей плате.
+    var BX0 = 96, BY0 = 84;
+    function P(px, py) { return [(px - 112) * 0.4 + BX0, (py - 112) * 0.4 + BY0]; }
 
-    var zn = 8, zStep = 27, grpW = 50;
-    var mw3 = 8 + zn * zStep + 4 + grpW, mx = Math.round((W - mw3) / 2), z0 = mx + 8;
-    var my = 62, mh3 = 42;
-    var inY = my + 6, outY = my + 24;
-    var statCy = my - 16, actCy = my + mh3 + 16;
-    var nStat = Math.max(0, Math.min(ufh.stats || 0, zn));
-    var nAct = Math.max(0, Math.min(ufh.servos || 0, zn * 2));
-    var CLED = no ? '#F59E0B' : '#22C55E';
+    var stats = ufh.stats || 0, servos = ufh.servos || 0, blocks = Math.max(1, ufh.blocks || 1);
 
-    o.push(txt(W / 2, 9, 'Схема подключения автоматики тёплого пола — STOUT STE-3050',
+    o.push(txt(W / 2, 9, 'Схема подключения автоматики — вся плата, пример одной зоны: 1 термостат, 1 сервопривод',
       { size: 4.2, anchor: 'middle', weight: 'bold' }));
-    // Про связь с контроллером котельной пишем только когда автоматика есть
-    // в смете. Без неё Thermatic не подобран, сухому контакту идти некуда, и
-    // упоминание контроллера читалось бы как «его забыли поставить».
-    o.push(txt(W / 2, 14.4, 'раздел 4.3 сметы · отдельная зональная система 230 В' +
+    o.push(txt(W / 2, 14.4, 'раздел 4.5 сметы · STOUT STE-3050 · остальные зоны подключаются точно так же, каждая на свою клемму' +
       (ufh.auto ? ' · с контроллером котельной связана одним сухим контактом' : ''),
       { size: 2.2, anchor: 'middle', fill: '#475569' }));
 
-    // ── плата ──
-    o.push(rrect(mx, my, mw3, mh3, 1.6, { f: FACE2, c: INK, w: 0.55 }));
-    // шильдик — над платой справа, где нет ни жил, ни термостатов
-    o.push(txt(mx + mw3 - 4, my - 2.5, 'STOUT STE-3050' + (ufh.blocks > 1 ? '  × ' + ufh.blocks : '') +
-      ' · 8 зон · 230 В · до 10 А', { size: 2.5, anchor: 'end', weight: 'bold' }));
-
-    for (var z = 0; z < zn; z++) {
-      var zx = z0 + z * zStep, bx = zx + 9, live = z < nStat;
-      o.push(blkV(bx, inY, 3, live));
-      o.push(blkV(bx, outY, 4, z * 2 < nAct));
-      o.push(circle(bx + BW / 2, my + 3, 0.8, { f: live ? CLED : '#CBD5E1' }));
-      o.push(txt(bx + BW / 2, my + 20.4, 'зона ' + (z + 1),
-        { size: 1.8, anchor: 'middle', fill: live ? '#0F172A' : '#94A3B8' }));
-      if (z === 0) {
-        // подписи контактов — только там, где жилы не проходят
-        ['L', 'N', 'упр'].forEach(function (L, i) { o.push(labR(bx, inY, i, L)); });
-        o.push(labR(bx, outY, 0, 'L')); o.push(labR(bx, outY, 1, 'N'));
-        o.push(labL(bx, outY, 2, 'L')); o.push(labL(bx, outY, 3, 'N'));
+    // ── термостат зоны ──
+    var tx = 16, tw = 66, ty = 26, th = 40;
+    o.push(txt(tx, 19, 'Термостат зоны (по одному на комнату)', { size: 2.6, weight: 'bold' }));
+    o.push(txt(tx, 22.6, cut(ufh.statName, 46), { size: 2.1, fill: '#475569' }));
+    o.push(rrect(tx, ty, tw, th, 1.6, { f: '#fff', c: INK, w: 0.5 }));
+    o.push(rrect(tx + 6, ty + 5, tw - 12, 18, 1, { f: '#DBEAFE', c: '#64748B', w: 0.35 }));
+    o.push(txt(tx + tw / 2, ty + 17, '22', { size: 9, anchor: 'middle', fill: '#1D4ED8' }));
+    // терминал: номер клеммы n стоит в позиции X(n) слева направо 7…1, как в паспорте
+    function X(k) { return tx + 6 + (7 - k) * 8; }
+    var wy0;
+    if (known) {
+      var sy = ty + th + 4;                       // верх колодки термостата
+      o.push(rrect(tx, sy, tw, 10, 0.8, { f: '#E2E8F0', c: INK, w: 0.45 }));
+      var fn = kind === '16a' ? { 1: 'N', 2: 'N', 3: 'L', 4: 'L вых' } : { 1: 'N', 2: 'L', 3: 'NO', 4: 'NC', 5: 'COM' };
+      for (var k = 7; k >= 1; k--) {
+        o.push(circle(X(k), sy + 6.5, 1.5, { f: '#fff', c: INK, w: 0.35 }));
+        o.push(txt(X(k), sy + 3.6, String(k), { size: 2.2, anchor: 'middle', weight: 'bold' }));
+        if (fn[k]) o.push(txt(X(k), ty + th - 2.4, fn[k], { size: 2.1, anchor: 'middle' }));
       }
-      // термостат зоны — над своей колодкой, три жилы сбоку, каждая в свой контакт
-      if (live) {
-        o.push(icoStat(zx + 5, statCy, 13));
-        o.push(txt(zx + 5, statCy + 9.4, String(z + 1), { size: 1.9, anchor: 'middle' }));
-        // ближняя к колодке жила идёт в верхний контакт — пересечений нет
-        [[CL, 0, zx + 7.5], [CN, 1, zx + 5], [COPEN, 2, zx + 2.5]].forEach(function (wr) {
-          o.push(seg([[wr[2], statCy + 6], [wr[2], cyv(inY, wr[1])], [bx, cyv(inY, wr[1])]], wr[0], 0.5));
-        });
+      o.push(txt((X(6) + X(7)) / 2, ty + th - 2.4, 'датчик пола', { size: 1.7, anchor: 'middle', fill: '#475569' }));
+      // перемычка между клеммами 2 и 5 (3 А, п. 5.2.1); у 16 А её нет
+      if (kind === '3a') {
+        o.push(seg([[X(2), sy + 6.5], [X(2), sy - 2.2], [X(5), sy - 2.2], [X(5), sy + 6.5]], CCLOSE, 0.6, '1.2 0.8'));
+        o.push(txt(X(5) - 1.2, sy - 3.4, 'перемычка 2–5', { size: 1.8, anchor: 'middle', fill: '#475569' }));
       }
-      // приводы зоны: пара контактов 1-2 — влево, пара 3-4 — вправо
-      if (nAct > z * 2) {
-        o.push(icoAct(zx + 4, actCy, 8.5));
-        o.push(seg([[bx, cyv(outY, 0)], [zx + 2.5, cyv(outY, 0)], [zx + 2.5, actCy - 3.4]], CL, 0.5));
-        o.push(seg([[bx, cyv(outY, 1)], [zx + 5.5, cyv(outY, 1)], [zx + 5.5, actCy - 3.4]], CN, 0.5));
-      }
-      if (nAct > z * 2 + 1) {
-        o.push(icoAct(zx + 20.5, actCy, 8.5));
-        o.push(seg([[bx + BW, cyv(outY, 2)], [zx + 22, cyv(outY, 2)], [zx + 22, actCy - 3.4]], CL, 0.5));
-        o.push(seg([[bx + BW, cyv(outY, 3)], [zx + 19, cyv(outY, 3)], [zx + 19, actCy - 3.4]], CN, 0.5));
-      }
-    }
-
-    // ── правая группа: ряд горизонтальных колодок внизу, как на плате ──
-    var rx = z0 + zn * zStep + 4;
-    var pwX = rx, pmX = rx + 11, dryX = rx + 22, gndX = rx + 38, gy = my + 31;
-    o.push(blkH(pwX, gy, 2, true));
-    o.push(blkH(pmX, gy, 2, true));
-    o.push(blkH(dryX, gy, 3, true));
-    // винт заземления (поз. 1)
-    o.push(circle(gndX, gy + HH / 2, 1.6, { f: '#DCE3EA', c: '#14532D', w: 0.5 }));
-    o.push(seg([[gndX - 1.1, gy + HH / 2], [gndX + 1.1, gy + HH / 2]], '#14532D', 0.4));
-    o.push(seg([[gndX - 0.6, gy + HH / 2 + 0.7], [gndX + 0.6, gy + HH / 2 + 0.7]], '#14532D', 0.4));
-    // подписи контактов — там, где нет жил: у питания и сухого контакта снизу, у насоса сверху
-    ['L', 'N'].forEach(function (L, i) { o.push(txt(cxh(pwX, i), gy + HH + 2.4, L, { size: 1.7, anchor: 'middle' })); });
-    ['L', 'N'].forEach(function (L, i) { o.push(txt(cxh(pmX, i), gy - 1.2, L, { size: 1.7, anchor: 'middle' })); });
-    ['COM', 'NC', 'NO'].forEach(function (L, i) { o.push(txt(cxh(dryX, i), gy + HH + 2.4, L, { size: 1.5, anchor: 'middle' })); });
-    o.push(txt(gndX, gy + HH + 2.4, '⏚', { size: 1.7, anchor: 'middle' }));
-    // названия колодок — тремя строками, чтобы не наезжали друг на друга
-    o.push(txt(pwX, my + 20, 'Питание 230 В (поз. 11)', { size: 1.9 }));
-    o.push(txt(pmX, my + 23.6, 'Насос (поз. 9)', { size: 1.9 }));
-    o.push(txt(dryX + 6, my + 27.2, 'Сухой контакт (поз. 10)', { size: 1.9 }));
-    o.push(txt(gndX + 3, my + 41, 'земля (поз. 1)', { size: 1.7, anchor: 'end' }));
-    // переключатель задержки (поз. 8) и светодиоды платы
-    o.push(rrect(rx, my + 8, 18, 5, 0.6, { f: '#fff', c: INK, w: 0.4 }));
-    o.push(txt(rx + 9, my + 11.4, '30/45/60/120 с', { size: 1.6, anchor: 'middle' }));
-    o.push(txt(rx + 19, my + 11.7, 'задержка (поз. 8)', { size: 1.8 }));
-    [['POWER', '#22C55E'], ['BOILER', '#F59E0B'], ['PUMP', '#22C55E']].forEach(function (L, i) {
-      o.push(circle(rx + i * 14, my + 3, 0.8, { f: L[1] }));
-      o.push(txt(rx + 1.6 + i * 14, my + 3.8, L[0], { size: 1.5 }));
-    });
-
-    // ── насос: жилы вниз из-под колодки и вправо к насосу ──
-    o.push(seg([[cxh(pmX, 1), gy + HH], [cxh(pmX, 1), my + 46], [mx + mw3 + 12, my + 46]], CN, 0.5));
-    o.push(seg([[cxh(pmX, 0), gy + HH], [cxh(pmX, 0), my + 49.5], [mx + mw3 + 12, my + 49.5]], CL, 0.5));
-    o.push(seg([[mx + mw3 + 12, my + 46], [mx + mw3 + 12, my + 49.5]], INK, 0.4));
-    // УГО насоса — то же, что на принципиальной схеме: круг с треугольником
-    // по направлению потока, а не безымянный кружок
-    o.push(seg([[mx + mw3 + 12, my + 47.75], [mx + mw3 + 13.1, my + 47.75]], INK, 0.5));
-    o.push(pump(mx + mw3 + 16, my + 47.75, 'right'));
-    o.push(txt(mx + mw3 + 21, my + 47, 'Насос группы ТП', { size: 2.0 }));
-    o.push(txt(mx + mw3 + 21, my + 50.4, '— вариант Б', { size: 2.0, fill: '#475569' }));
-
-    // ── сухой контакт COM + NC: перемычкой вверх и влево к метке А ──
-    // Рисуется только при автоматике котельной в смете: метка А — ссылка на её
-    // лист, а без контроллера этого листа нет. Сами клеммы сухого контакта на
-    // плате остаются (они физически есть), но линия и пояснения к ним снимаются.
-    if (ufh.auto) {
-      var qx = rx - 4, qm = (cxh(dryX, 0) + cxh(dryX, 1)) / 2;
-      o.push(seg([[cxh(dryX, 0), gy], [cxh(dryX, 0), my + 29.5], [cxh(dryX, 1), my + 29.5], [cxh(dryX, 1), gy]], CCLOSE, 0.55));
-      o.push(seg([[qm, my + 29.5], [qm, my + 16.5], [qx, my + 16.5], [qx, 28]], CCLOSE, 0.6));
-      o.push(circle(qx, 25, 2.6, { f: '#fff', c: CCLOSE, w: 0.5 }));
-      o.push(txt(qx, 25.9, 'А', { size: 2.6, anchor: 'middle', weight: 'bold' }));
-      o.push(txt(12, 22, 'Сухой контакт COM + NC → метка А на схеме автоматики котельной, клеммы «Входы термостатов»' +
-        (ufh.ko ? ', вход контура ' + ufh.ko : '') + '.', { size: 2.1 }));
-      o.push(txt(12, 25.4, 'К котлу напрямую он НЕ идёт: котлом управляет Thermatic 3001. Зона активна — контакт размыкается, ' +
-        'контур просит тепло (задержка 30…120 с).', { size: 2.1 }));
-    }
-
-    // ── выноски кабелей ──
-    if (nStat > 0) o.push(mark(z0 - 3, my - 4, 1));
-    if (nAct > 0) o.push(mark(z0 - 3, my + 34, 2));
-    o.push(mark(pwX - 3.5, gy + HH / 2, 3));
-    o.push(mark(mx + mw3 + 6, my + 43.2, 4));
-    o.push(mark(qx - 3.5, my + 12, 5));
-
-    // ── подписи рядов и групп: всё в левом поле, жилы не пересекаются ──
-    o.push(txt(mx - 4, statCy - 2, 'Термостаты зон × ' + (ufh.stats || 0), { size: 2.3, anchor: 'end', weight: 'bold' }));
-    o.push(txt(mx - 4, statCy + 1.4, cut(ufh.statName, 30), { size: 2.0, anchor: 'end' }));
-    o.push(txt(mx - 4, statCy + 4.8, ({ mech: 'механический', electronic: 'электронный', touch: 'сенсорный' }[ufh.statCtrl] || 'механический') +
-      (ufh.statCurrent ? ', ' + ufh.statCurrent + ' А' : '') + ', по одному на комнату', { size: 2.0, anchor: 'end', fill: '#475569' }));
-    o.push(txt(mx - 4, cyv(inY, 1) + 0.7, 'Клеммы управляющих устройств (поз. 3):', { size: 2.0, anchor: 'end', weight: 'bold' }));
-    o.push(txt(mx - 4, cyv(inY, 1) + 4.1, '8 зон, в клемме три контакта L / N / «упр»', { size: 2.0, anchor: 'end', fill: '#475569' }));
-    o.push(txt(mx - 4, cyv(outY, 1) + 0.7, 'Клеммы исполнительных устройств (поз. 2):', { size: 2.0, anchor: 'end', weight: 'bold' }));
-    o.push(txt(mx - 4, cyv(outY, 1) + 4.1, '16 выходов, в клемме L N L N — два привода', { size: 2.0, anchor: 'end', fill: '#475569' }));
-    o.push(txt(mx - 4, actCy - 2, 'Сервоприводы петель × ' + (ufh.servos || 0), { size: 2.3, anchor: 'end', weight: 'bold' }));
-    o.push(txt(mx - 4, actCy + 1.4, cut(ufh.servoName, 30), { size: 2.0, anchor: 'end' }));
-    o.push(txt(mx - 4, actCy + 4.8, (no ? 'НО (нормально открытый)' : 'НЗ (нормально закрытый)') + ', ' +
-      (ufh.servoVolt || 230) + ' В — по смете', { size: 2.0, anchor: 'end', weight: 'bold', fill: no ? '#B45309' : '#0F172A' }));
-    if ((ufh.stats || 0) > zn) o.push(txt(mx + mw3 + 21, statCy, 'Зоны сверх восьми — на втором блоке', { size: 2.0, fill: '#B45309' }));
-
-    // ── примечания ──
-    var ny = actCy + 16;
-    o.push(txt(12, ny, 'Насос группы тёплого пола — один из двух вариантов, оба рабочие:', { size: 2.2, weight: 'bold' }));
-    o.push(txt(12, ny + 3.8, 'А. Насос на клемме «' + (ufh.ko || 'КО-1') + ' Насос» контроллера котельной. ' +
-      'Планка даёт только запрос тепла; закрылись все зоны — запрос снят, насос останавливает контроллер.', { size: 2.1 }));
-    o.push(txt(12, ny + 7.2, 'Б. Насос на клемму «Насос» планки (показана выше) — она отключит его сразу, как закроется ' +
-      'последняя зона. Тогда клемма «' + (ufh.ko || 'КО-1') + ' Насос» контроллера свободна.', { size: 2.1 }));
-    o.push(txt(12, ny + 10.6, 'Подключать насос к обоим выходам одновременно нельзя.', { size: 2.1, fill: '#475569' }));
-    var ny2 = ny + 15;
-    o.push(txt(12, ny2, 'Тип сервоприводов в смете — ' + (no ? 'НО, нормально открытые:' : 'НЗ, нормально закрытые:'),
-      { size: 2.2, weight: 'bold' })); ny2 += 3.8;
-    if (!no) {
-      o.push(txt(12, ny2, 'Зона запитана — клапан открывается. Термостат подаёт «управляющую фазу», когда в комнате ' +
-        'холодно (контакт нагрева). Светодиод зоны горит при протоке.', { size: 2.1 })); ny2 += 3.8;
+      wy0 = sy + 10;
     } else {
-      o.push(txt(12, ny2, 'Зона запитана — клапан ЗАКРЫВАЕТСЯ. Термостат подключать через обратный контакт ' +
-        '(охлаждение): «упр» должна появляться, когда тепло НЕ нужно.', { size: 2.1, fill: '#B45309' })); ny2 += 3.8;
-      o.push(txt(12, ny2, 'Индикация зон инверсная — светодиод горит, когда протока нет (паспорт STE-3050, п. 3.3). ' +
-        'По той же причине инвертируются насос и сухой контакт:', { size: 2.1, fill: '#B45309' })); ny2 += 3.8;
-      o.push(txt(12, ny2, 'запрос тепла уйдёт котлу при закрытых петлях. Для STE-3050 рекомендуются приводы НЗ — ' +
-        'замените их в разделе 4.3 сметы.', { size: 2.1, weight: 'bold', fill: '#DC2626' })); ny2 += 3.8;
+      o.push(txt(tx + tw / 2, ty + th - 3, 'клеммы — по паспорту термостата', { size: 1.9, anchor: 'middle', fill: '#B45309' }));
+      wy0 = ty + th;
     }
-    if (v24) { o.push(txt(12, ny2, '⚠ Приводы 24 В, а STE-3050 коммутирует 230 В: напрямую подключать нельзя — нужен контроллер на 24 В либо приводы 230 В.', { size: 2.1, weight: 'bold', fill: '#DC2626' })); ny2 += 3.8; }
+
+    // ── плата STE-3050: вид и расположение клемм — как на фото из паспорта (п. 3.1) ──
+    var nUsed = Math.max(1, Math.min(stats, 8));
+    var DIMT = '#94A3B8', DARK = '#0F172A';
+    var UPW = 18.8, UPH = 20, LOH = 22.8, ZP = 55.4 * 0.4;
+    var zx0 = P(147.5, 155)[0], zyU = P(147.5, 155)[1], zyL = P(147.5, 207)[1];
+    function cU(i) { return zyU + (i + 0.5) * UPH / 3; }
+    function cL(i) { return zyL + (i + 0.5) * LOH / 4; }
+    var holeX = zx0 + 4.4;                       // гнездо провода у клеммы зоны 1
+    // печатная плата и надписи на ней
+    o.push(txt(98, 81, 'Плата STOUT STE-3050 — вид сверху, как на фото в паспорте' + (blocks > 1 ? ' (в смете таких плат ' + blocks + ')' : ''), { size: 2.5, weight: 'bold' }));
+    o.push(rrect(98, 84, 248, 86, 2, { f: '#DCE6F0', c: '#94A3B8', w: 0.5 }));
+    // ряд «домиков» со светодиодами зон (поз. 4) и светодиоды POWER / BOILER / PUMP (поз. 5–7)
+    for (var h = 0; h < 8; h++) {
+      var hp = P(184 + 32.5 * h, 134);
+      o.push('<g opacity="0.6">' + seg([[hp[0] - 2, hp[1] + 1.2], [hp[0], hp[1] - 1.3], [hp[0] + 2, hp[1] + 1.2], [hp[0] - 2, hp[1] + 1.2]], '#475569', 0.3) +
+        rrect(hp[0] + 2.8, hp[1] - 0.5, 2.6, 1.3, 0.6, { f: h === 0 ? '#22C55E' : '#F1F5F9', c: '#94A3B8', w: 0.25 }) + '</g>');
+    }
+    [['POWER', 91.2], ['BOILER', 94.4], ['PUMP', 97.6]].forEach(function (L) {
+      o.push(txt(221, L[1] + 0.4, L[0], { size: 1.3, fill: DIMT, anchor: 'end' }));
+      o.push(circle(222.6, L[1], 0.55, { f: L[0] === 'BOILER' ? '#F59E0B' : '#22C55E' }));
+    });
+    // переключатель задержки (поз. 8)
+    o.push(rrect(254, 91.2, 13, 7.6, 0.6, { f: '#1F2937', c: '#0F172A', w: 0.3 }));
+    o.push(rrect(256, 92.6, 3.2, 1.8, 0.3, { f: '#F8FAFC' })); o.push(rrect(260.6, 92.6, 3.2, 1.8, 0.3, { f: '#F8FAFC' }));
+    o.push(rrect(256, 95.6, 3.2, 1.8, 0.3, { f: '#F8FAFC' })); o.push(rrect(260.6, 95.6, 3.2, 1.8, 0.3, { f: '#F8FAFC' }));
+    o.push(txt(269, 95.4, 'задержка насоса и котла (поз. 8)', { size: 1.4, fill: DIMT }));
+    // детали: предохранитель (зелёный), трансформатор (жёлтый), реле (чёрные) — приглушены
+    o.push('<g opacity="0.55">' +
+      rrect(283.2, 119.6, 13.6, 27.6, 1, { f: '#4CAF50', c: '#2E7D32', w: 0.4 }) + rrect(286, 127, 8, 12, 0.5, { f: '#2E7D32' }) +
+      rrect(311.2, 105.6, 20, 16, 1, { f: '#FACC15', c: '#92400E', w: 0.4 }) + rrect(314, 105.6, 3.4, 16, 0, { f: '#1F2937' }) + rrect(325.2, 105.6, 3.4, 16, 0, { f: '#1F2937' }) +
+      rrect(307.2, 128, 18, 21, 0.8, { f: '#111827' }) + rrect(326, 128, 18, 21, 0.8, { f: '#111827' }) +
+      circle(335, 97, 3.2, { f: '#1E3A8A' }) + circle(303, 109, 2.2, { f: '#1E3A8A' }) + '</g>');
+    // клеммы зон: сверху три контакта (L, N, ←), снизу четыре (L N L N, два привода)
+    for (var z = 0; z < 8; z++) {
+      var zx = zx0 + z * ZP, md = z === 0 ? 'on' : (z < nUsed ? 'pale' : 'dim');
+      var lc = md === 'dim' ? '#CBD5E1' : '#1E3A8A';
+      o.push(wago(zx, zyU, UPW, UPH, 3, md, true));
+      o.push(wago(zx, zyL, UPW, LOH, 4, md, true));
+      // надписи на плате: слева от клеммы зоны «L N ←» (у зоны 1 там жилы — вместо них метки на жилах)
+      if (z > 0) ['L', 'N', '←'].forEach(function (L, i) { o.push(txt(zx - 2.6, cU(i) + 0.6, L, { size: 1.6, anchor: 'middle', fill: lc })); });
+      ['L', 'N', 'L', 'N'].forEach(function (L, i) { o.push(txt(zx + UPW + 2.4, cL(i) + 0.6, L, { size: 1.5, anchor: 'middle', fill: lc })); });
+      o.push(txt(zx + UPW / 2, zyU - 1.4, 'зона ' + (z + 1) + (z === 0 ? ' (поз. 3, 2)' : ''), { size: 1.6, anchor: 'middle', weight: z === 0 ? 'bold' : undefined, fill: md === 'dim' ? DIMT : DARK }));
+    }
+
+    // жилы термостат → клемма зоны 1. Контакты на плате сверху вниз: L, N, «упр»
+    // (←). У термостата клеммы N, L, «упр» идут слева направо в обратном порядке, поэтому
+    // одно пересечение неизбежно: жила L перескакивает жилу N дугой.
+    var xN = known ? X(T.N) : 70, xL = known ? X(T.L) : 62, xU = known ? X(T.U) : 54;
+    o.push(seg([[xN, wy0], [xN, cU(1)], [holeX, cU(1)]], CN, 0.5));
+    o.push(seg([[xU, wy0], [xU, cU(2)], [holeX, cU(2)]], COPEN, 0.5));
+    o.push('<path d="M' + n(xL) + ',' + n(wy0) + ' L' + n(xL) + ',' + n(cU(0)) + ' L' + n(xN - 2.6) + ',' + n(cU(0)) + ' A2.6,2.6 0 0 1 ' + n(xN + 2.6) + ',' + n(cU(0)) +
+      ' L' + n(holeX) + ',' + n(cU(0)) + '" fill="none" stroke="' + CL + '" stroke-width="0.5" stroke-linejoin="round" stroke-linecap="round"/>');
+    [['L', 0, CL], ['N', 1, CN], ['упр', 2, COPEN]].forEach(function (t) {
+      o.push(rrect(100.2, cU(t[1]) - 1.5, t[0] === 'упр' ? 7 : 5, 3, 1.2, { f: '#fff', c: t[2], w: 0.35 }));
+      o.push(txt(100.2 + (t[0] === 'упр' ? 3.5 : 2.5), cU(t[1]) + 0.6, t[0], { size: 1.7, anchor: 'middle', weight: 'bold', fill: t[2] }));
+    });
+    o.push(mark(90, cU(1), 1));
+    // подписи жил — слева от жил, под термостатом; номера клемм — только в известной раскладке
+    o.push(txt(16, 92, known ? 'N → клемма ' + T.N : 'N', { size: 1.9, fill: CN }));
+    o.push(txt(16, 96, known ? 'L → клемма ' + T.L : 'L', { size: 1.9, fill: CL }));
+    o.push(txt(16, 100, known ? '«упр» ← клемма ' + T.U + (kind === '3a' ? ' (NO)' : '') : '«упр»', { size: 1.9, fill: COPEN }));
+
+    // ── сервопривод 1 и второй (по желанию): жилы уходят влево от клеммы приводов зоны 1 ──
+    // L сворачивает вниз левее N — жилы не пересекаются
+    var s1 = 50, s2 = 79, syc = 162;
+    o.push(icoAct(s1, syc, 12));
+    o.push(seg([[holeX, cL(0)], [s1 - 4, cL(0)], [s1 - 4, syc - 6]], CL, 0.5));
+    o.push(seg([[holeX, cL(1)], [s1 + 2, cL(1)], [s1 + 2, syc - 6]], CN, 0.5));
+    o.push(mark(88, cL(0), 2));
+    o.push(icoAct(s2, syc, 10, true));
+    o.push(seg([[holeX, cL(2)], [s2 - 3, cL(2)], [s2 - 3, syc - 5]], GREY, 0.45, '1.4 1'));
+    o.push(seg([[holeX, cL(3)], [s2 + 3, cL(3)], [s2 + 3, syc - 5]], GREY, 0.45, '1.4 1'));
+    o.push(txt(12, 172, 'Сервопривод — ' + (no ? 'НО' : 'НЗ') + ', ' + (ufh.servoVolt || 230) + ' В', { size: 2.1, weight: 'bold', fill: no ? '#B45309' : DARK }));
+    o.push(txt(12, 175.2, cut(ufh.servoName, 40), { size: 1.9 }));
+    o.push(txt(68, 154, 'второй — по желанию', { size: 1.7, fill: '#64748B' }));
+
+    // ── клеммы внизу справа: INPUT (поз. 11), PUMP (поз. 9), COM/NC/NO (поз. 10); провод входит снизу ──
+    var by = P(0, 276)[1], bh = 15.6, bx1 = 281.6, bx2 = 299.6, bx3 = 318.6;
+    o.push(wago(bx1, by, 16.4, bh, 2, 'on', false));
+    o.push(wago(bx2, by, 16.4, bh, 2, 'on', false));
+    o.push(wago(bx3, by, 24.6, bh, 3, ufh.auto ? 'on' : 'dim', false));
+    var hy = by + bh - 3.6;
+    function hx(x, w, nn, i) { return x + (i + 0.5) * w / nn; }
+    var DX = 356;
+    function lead(x, lvl, c) { o.push(seg([[x, hy], [x, lvl], [DX, lvl]], c, 0.5)); }
+    // Потребитель: рамка, значок оборудования в том же стиле, что на схемах Thermatic
+    // (icoBreaker / icoPump / icoPanel), и подпись справа от него.
+    function dest(y, t1, t2, ico) {
+      o.push(rrect(DX, y, 54, 12, 1, { f: '#fff', c: INK, w: 0.4 }));
+      if (ico) o.push(ico(DX + 6.5, y + 6, 8.4));
+      o.push(txt(DX + 32, y + 4.7, t1, { size: 1.8, anchor: 'middle', weight: 'bold' }));
+      if (t2) o.push(txt(DX + 32, y + 8.6, t2, { size: 1.5, anchor: 'middle', fill: '#475569' }));
+    }
+    // чем глубже уходит жила вниз, тем левее клемма — жилы не пересекаются
+    lead(hx(bx1, 16.4, 2, 1), 197, CN); lead(hx(bx1, 16.4, 2, 0), 202, CL);
+    dest(194, 'Щит · автомат 10 А', 'питание L, N + PE', icoBreaker); o.push(mark(DX - 4.5, 199.5, 3));
+    lead(hx(bx2, 16.4, 2, 1), 182, CN); lead(hx(bx2, 16.4, 2, 0), 187, CL);
+    dest(179, 'Насос группы ТП', 'вариант Б · до 3 А', icoPump); o.push(mark(DX - 4.5, 184.5, 4));
+    if (ufh.auto) {
+      lead(hx(bx3, 24.6, 3, 1), 168, CCLOSE); lead(hx(bx3, 24.6, 3, 0), 173, CCLOSE);
+      dest(164, 'Контроллер котельной', 'метка А · ' + (ufh.ko || 'вход термостатов'), icoPanel); o.push(mark(DX - 4.5, 170.5, 5));
+    } else {
+      o.push(txt(DX, 169, 'сухой контакт — не используется', { size: 1.6, fill: DIMT }));
+    }
+    // подписи клемм: названия на плате и номера позиций паспорта
+    o.push(txt(bx1 + 8.2, hy + 7.4, 'INPUT', { size: 1.3, anchor: 'middle', fill: '#475569' }));
+    o.push(txt(bx2 + 8.2, hy + 7.4, 'PUMP', { size: 1.3, anchor: 'middle', fill: '#475569' }));
+    // винт заземления (поз. 1): внизу в середине платы, два контакта и знак земли
+    var ex = P(425, 288)[0], ey = P(425, 288)[1];
+    o.push(wago(ex, ey, 12, 10.8, 2, 'on', false));
+    o.push(txt(ex + 6, ey - 1.2, '⏚', { size: 2.4, anchor: 'middle', fill: '#14532D' }));
+    o.push(txt(ex - 2, 174, 'Земля (поз. 1) — сюда защитный проводник (PE) питания платы', { size: 1.7, anchor: 'end', fill: '#475569' }));
+
+    // легенда подсветки
+    var lgY = 214;
+    function sw(x, f, c, t) { return rrect(x, lgY - 2.2, 6, 3.2, 0.5, { f: f, c: c, w: 0.4 }) + txt(x + 8, lgY + 0.4, t, { size: 1.9 }); }
+    o.push(sw(12, '#86EFAC', '#16A34A', 'ярко — сюда заводят провод'));
+    o.push(sw(100, '#DCFCE7', '#86C7A0', 'такие же зоны вашей сметы — подключаются так же'));
+    o.push(sw(260, '#E5E7EB', '#CBD5E1', 'тускло — не используется'));
+
+    // ── что в смете ──
+    var ny = 222;
+    o.push(txt(12, ny, 'Сколько всего — по вашей смете:', { size: 2.5, weight: 'bold' })); ny += 4;
+    if (stats) {
+      o.push(txt(12, ny, '• Термостатов ' + stats + ' — по одному на комнату: каждый подключается на свою клемму зоны платы (зона 1, 2, 3 … по порядку), как на схеме.', { size: 2.1 })); ny += 3.6;
+    }
+    if (servos) {
+      o.push(txt(12, ny, '• Сервоприводов ' + servos + ' — по одному на петлю тёплого пола или прибор. Приводы одной комнаты идут на клемму её зоны (до двух), если их больше — ' +
+        'вторая пара клемм той же зоны.', { size: 2.1 })); ny += 3.6;
+    }
+    o.push(txt(12, ny, '• Плата ' + blocks + ' шт. — на каждой 8 зон и 16 приводов (вместе ' + blocks * 8 + ' зон, ' + blocks * 16 + ' приводов). Зоны сверх восьми — на следующей плате.', { size: 2.1 })); ny += 3.6;
+    if (stats > blocks * 8 || servos > blocks * 16) {
+      o.push(txt(12, ny, '⚠ Термостатов или приводов больше, чем помещается на плате: проверьте число плат в смете.', { size: 2.1, weight: 'bold', fill: '#DC2626' })); ny += 3.6;
+    }
+    ny += 1.6;
+    o.push(txt(12, ny, 'Питание платы — да, 230 В нужно: L и N на клемму поз. 11 от отдельного автомата 10 А, защитный проводник на винт земли поз. 1.', { size: 2.1, weight: 'bold' })); ny += 3.6;
+    o.push(txt(12, ny, 'С платы 230 В получают приводы (клеммы поз. 2) и насос (поз. 9, вариант Б, до 3 А); термостат питается с клеммы зоны. Защитный проводник насоса идёт в щит, мимо платы.', { size: 2.1 })); ny += 5;
+    o.push(txt(12, ny, 'Насос группы тёплого пола — один из двух вариантов, оба рабочие:', { size: 2.2, weight: 'bold' })); ny += 3.8;
+    o.push(txt(12, ny, 'А. Насос на клемме «' + (ufh.ko || 'КО-1') + ' Насос» контроллера котельной. Плата даёт только запрос тепла; закрылись все зоны — запрос снят, насос останавливает контроллер.', { size: 2.1 })); ny += 3.4;
+    o.push(txt(12, ny, 'Б. Насос на клемму «Насос» платы (показана выше) — она отключит его сразу, как закроется последняя зона. Подключать насос к обоим выходам одновременно нельзя.', { size: 2.1 })); ny += 5;
+    o.push(txt(12, ny, 'Тип сервоприводов в смете — ' + (no ? 'НО, нормально открытые:' : 'НЗ, нормально закрытые:'), { size: 2.2, weight: 'bold' })); ny += 3.8;
+    if (!no) {
+      o.push(txt(12, ny, 'Зона запитана — клапан открывается. Когда в комнате холодно, термостат подаёт фазу с выходной клеммы на «упр» платы. Светодиод зоны на плате горит при протоке.', { size: 2.1 })); ny += 3.8;
+    } else {
+      o.push(txt(12, ny, 'Зона запитана — клапан ЗАКРЫВАЕТСЯ. Термостат подключать через обратный контакт (охлаждение): «упр» должна появляться, когда тепло НЕ нужно.', { size: 2.1, fill: '#B45309' })); ny += 3.8;
+      o.push(txt(12, ny, 'Индикация зон инверсная (паспорт STE-3050, п. 3.3), по той же причине инвертируются насос и сухой контакт: запрос тепла уйдёт котлу при закрытых петлях.', { size: 2.1, fill: '#B45309' })); ny += 3.8;
+      o.push(txt(12, ny, 'Для STE-3050 рекомендуются приводы НЗ — замените их в разделе 4.5 сметы.', { size: 2.1, weight: 'bold', fill: '#DC2626' })); ny += 3.8;
+    }
+    if (v24) { o.push(txt(12, ny, '⚠ Приводы 24 В, а STE-3050 коммутирует 230 В: напрямую подключать нельзя — нужен контроллер на 24 В либо приводы 230 В.', { size: 2.1, weight: 'bold', fill: '#DC2626' })); ny += 3.8; }
 
     // ── кабели: марки и сечения по выноскам 1…5 ──
-    ny2 += 1.2;
-    o.push(txt(12, ny2, 'Кабели в комплект поставки не входят. Марки и сечения (медь не менее 1,5 мм² — ПУЭ 7, табл. 7.1.1):',
-      { size: 2.2, weight: 'bold' })); ny2 += 3.8;
+    ny += 1.2;
+    o.push(txt(12, ny, 'Кабели — выноски 1…' + (ufh.auto ? 5 : 4) + ' на схеме (сколько жил и куда):', { size: 2.2, weight: 'bold' })); ny += 3.8;
     var cableList = [
-      '1. Термостат зоны → клемма поз. 3 — ВВГнг(А)-LS 3×1,5. Третья жила это «управляющая фаза», её термостат возвращает на плату. Термостату с собственным питанием (электронный, сенсорный) нужны все три жилы; термостату-контакту хватает L и «упр», ноль остаётся свободным.',
-      '2. Клемма поз. 2 → сервоприводы — ВВГнг(А)-LS 2×1,5 на каждый привод. Гибкий вывод самого привода наращивают в распаячной коробке, в клемму платы его не заводят.',
-      '3. Питание платы (INPUT, поз. 11) — ВВГнг(А)-LS 3×1,5 от отдельного автомата 10 А: суммарная нагрузка платы до 10 А. Защитный проводник — на винт заземления поз. 1.',
+      '1. Термостат → клемма зоны платы — ВВГнг(А)-LS 3×1,5: три жилы N, L и «упр». ' + (known
+        ? (kind === '3a'
+          ? 'У этого термостата: N — клемма 1, L — клемма 2 (и перемычка 2–5), «упр» — клемма 3. Четвёртая жила не нужна; датчик пола (клеммы 6–7) — отдельным кабелем.'
+          : 'У этого термостата (16 А): N — клемма 1, L — клемма 3, «упр» — клемма 4 (L вых). Четвёртая жила не нужна; датчик пола (клеммы 6–7) — отдельным кабелем.')
+        : 'Клеммы термостата — по его паспорту: питание L и N, выход нагрева идёт на «упр» платы. Механическому термостату без электроники ноль обычно не нужен.'),
+      '2. Клемма приводов → сервопривод — ВВГнг(А)-LS 2×1,5 на каждый привод: две жилы L и N. Гибкий вывод самого привода наращивают в распаячной коробке, в клемму платы его не заводят.',
+      '3. Питание платы (поз. 11) — ВВГнг(А)-LS 3×1,5 от отдельного автомата 10 А: суммарная нагрузка платы до 10 А. Защитный проводник — на винт заземления поз. 1.',
       '4. Насос (поз. 9) — ВВГнг(А)-LS 3×1,5 от клеммы насоса до насосной группы тёплого пола (вариант Б).'
     ];
-    // Пятая строка — про кабель до контроллера котельной; без автоматики в смете
-    // этого кабеля нет ни на листе, ни в подразделе 4.3.1.
-    if (ufh.auto) cableList.push('5. Сухой контакт (поз. 10) → контроллер котельной — экранированный МКЭШ 2×0,5 или UTP. Вести отдельно от силовых линий, пересекать их под 90°, экран и свободные жилы заземлять только со стороны контроллера (паспорт Thermatic 3001).');
-    cableList.forEach(function (L) { o.push(txt(12, ny2, L, { size: 2.1 })); ny2 += 3.4; });
-    o.push(txt(12, ny2, 'Метраж по ' + (ufh.auto ? 'этим пяти позициям' : 'этим четырём позициям') + ' посчитан и включён в подраздел 4.3.1 сметы «Провода и кабели (для тёплого пола)».', { size: 2.1, fill: '#475569' })); ny2 += 3.4;
+    if (ufh.auto) cableList.push('5. Сухой контакт (поз. 10) → контроллер котельной — экранированный МКЭШ 2×0,5 или UTP. Вести отдельно от силовых линий, не пересекать их под углом, отличным от прямого.');
+    cableList.forEach(function (L) { o.push(txt(12, ny, L, { size: 2.1 })); ny += 3.4; });
+    o.push(txt(12, ny, 'Сечение 1,5 мм² — практика монтажа, паспорта STE-3050 и STE-2002 сечения линий не задают (у термостата рекомендовано 1 мм² для нагрузки 3 А).', { size: 1.9, fill: '#475569' })); ny += 3.4;
+    o.push(txt(12, ny, 'Метраж по ' + (ufh.auto ? 'этим пяти позициям' : 'этим четырём позициям') + ' посчитан и включён в подраздел 4.5.1 сметы «Провода и кабели (автоматика отопления)».', { size: 2.1 }));
 
-    return { svg: o.join(''), w: W, h: ny2 + 6 };
+    return { svg: o.join(''), w: W, h: ny + 6 };
   }
+
+  // ─── Схема подключения зональной автоматики ENGO (центр коммутации ECB62-ZB) ───
+  // Клеммы и их порядок — по Quick Guide v6.1 производителя (engocontrols.com):
+  //   INPUT_A / INPUT_B — проводные зоны, по три контакта N, L, SLA (SLB);
+  //   OUTPUT_A, OUTPUT_B, OUTPUT_1…6 — приводы 230 В NC, по четыре контакта
+  //     N, SLx, N, SLx (до 6 приводов по 2 Вт на зону);
+  //   WIRELESS ZONE_1…6 — радиозоны Zigbee, клемм нет, привязка кнопками SELECT и PAIR;
+  //   POWER SUPPLY N L N L, PE, PUMP OUTPUT N L N L (до 3 А), BOILER OUTPUT NO COM NC (до 6 А).
+  // Проводной термостат — паспорта ESIMPLE-230 (N, L, SL) и EASY-230 (N, L, COM, NO;
+  // перемычка L–COM, жила на планку — с клеммы NO).
+  // e: bars, wired, radio, heads, servos, gateway, statKind ('simple' | 'easy'),
+  //    statName, servoName, servoVolt, auto (есть контроллер котельной), ko.
+  function ufhSchemeEngo(e) {
+    e = e || {};
+    var o = [], W = 420;
+    var DARK = '#0F172A', GREY = '#94A3B8';
+    var wired = e.wired || 0, radio = e.radio || 0, heads = e.heads || 0, servos = e.servos || 0;
+    var bars = Math.max(1, e.bars || 1), easy = e.statKind === 'easy';
+    var PE_ = 5.0;                                   // шаг контактов, мм схемы
+    var BXL = 14, BW = 330, BY = 80, BH = 110;
+    // положение на рисунке Quick Guide (2000 px) → схема; колонки: A, B, зоны 1…6
+    function gx(px) { return BXL + (px - 610) * BW / 1330; }
+    function col(k) { return gx(700 + 98 * k); }
+    var yT = BY + 8, yB = BY + BH - 14.4;            // верхний и нижний ряд клемм
+
+    function pill(x, y, t, c, w) {
+      return rrect(x - w / 2, y - 1.4, w, 2.8, 1.2, { f: '#fff', c: c, w: 0.35 }) +
+        txt(x, y + 0.6, t, { size: 1.6, anchor: 'middle', weight: 'bold', fill: c });
+    }
+    function mark(x, y, k) {
+      return circle(x, y, 2.1, { f: '#fff', c: INK, w: 0.45 }) + txt(x, y + 0.8, String(k), { size: 2.3, anchor: 'middle', weight: 'bold' });
+    }
+    function act(cx, cy, s, ghost) {
+      var c = ghost ? GREY : INK;
+      return rrect(cx - s * 0.34, cy - s * 0.40, s * 0.68, s * 0.62, s * 0.16, { f: ghost ? '#F8FAFC' : '#F1F5F9', c: c, w: 0.5 }) +
+        rrect(cx - s * 0.12, cy - s * 0.14, s * 0.24, s * 0.26, 0.3, { f: '#fff', c: c, w: 0.35 }) +
+        rrect(cx - s * 0.2, cy + s * 0.22, s * 0.4, s * 0.16, 0.2, { f: '#CBD5E1', c: c, w: 0.4 });
+    }
+
+    o.push(txt(W / 2, 9, 'Схема подключения автоматики — ENGO ECB62-ZB, пример: 1 зона, 1 термостат, 1 привод', { size: 4.0, anchor: 'middle', weight: 'bold' }));
+    o.push(txt(W / 2, 14.4, 'раздел 4.5 сметы · остальные зоны подключаются точно так же, каждая на свои клеммы' +
+      (e.auto ? ' · котёл на контроллере котельной через сухой контакт' : ''), { size: 2.2, anchor: 'middle', fill: '#475569' }));
+
+    // ── корпус: тёмный, с салатовой полосой индикации, как у прибора ──
+    o.push(txt(BXL + BW - 22, BY - 2.4, 'ENGO ECB62-ZB — вид с открытой крышкой, 330 × 110 мм' + (bars > 1 ? ' (в смете таких блоков ' + bars + ')' : ''), { size: 2.5, weight: 'bold', anchor: 'end' }));
+    o.push(rrect(BXL, BY, BW, BH, 3, { f: '#2B3036', c: '#111418', w: 0.6 }));
+    o.push(rrect(BXL + 3, BY + BH / 2 - 7.5, BW - 6, 15, 2, { f: '#8DC63F', c: '#5B8A1E', w: 0.3 }));
+    o.push(txt(BXL + BW - 6, BY + BH / 2 + 1.2, 'ENGO', { size: 3.4, anchor: 'end', weight: 'bold', fill: '#2B3036' }));
+
+    var haveWired = wired > 0, haveRadio = radio > 0 || !haveWired;
+    // режимы колонок: 0 — A, 1 — B, 2…7 — радиозоны 1…6
+    function modeCol(k) {
+      if (k === 0) return haveWired ? 'on' : 'dim';
+      if (k === 1) return wired > 1 ? 'pale' : 'dim';
+      if (k === 2) return haveRadio ? 'on' : 'dim';
+      return (k - 2) < radio ? 'pale' : 'dim';
+    }
+    function pm(m) { return m === 'on' ? true : (m === 'pale' ? 'pale' : false); }
+    var LB = '#E5E7EB';
+
+    // ── верхний ряд: INPUT_A, INPUT_B и радиозоны ──
+    ['INPUT_A', 'INPUT_B'].forEach(function (nm, k) {
+      var m = modeCol(k), x0 = col(k) - 1.5 * PE_;
+      o.push(pluggable(x0, yT, 3, '#DDE1E6', pm(m), true, null, PE_));
+      o.push(txt(col(k), yT - 1.6, nm, { size: 1.5, anchor: 'middle', fill: m === 'dim' ? '#6B7280' : LB }));
+      ['N', 'L', k ? 'SLB' : 'SLA'].forEach(function (L, i) {
+        o.push(txt(x0 + PE_ / 2 + i * PE_, yT + 9.4, L, { size: 1.4, anchor: 'middle', fill: m === 'dim' ? '#6B7280' : LB }));
+      });
+    });
+    for (var z = 1; z <= 6; z++) {
+      var cz = col(z + 1), mz = modeCol(z + 1);
+      o.push('<g' + (mz === 'dim' ? ' opacity="0.45"' : '') + '>' +
+        rrect(cz - 9, yT - 1.2, 18, 11.6, 1.6, { f: '#F1F5F9', c: mz === 'on' ? '#16A34A' : (mz === 'pale' ? '#86C7A0' : '#94A3B8'), w: mz === 'on' ? 1.0 : 0.5 }) +
+        [2.2, 3.6, 5.0].map(function (r) { return '<path d="M' + n(cz - r) + ',' + n(yT + 4.2) + ' A' + r + ',' + r + ' 0 0 1 ' + n(cz + r) + ',' + n(yT + 4.2) + '" fill="none" stroke="#475569" stroke-width="0.35"/>'; }).join('') +
+        circle(cz, yT + 5.2, 0.5, { f: '#475569' }) +
+        txt(cz, yT + 8.6, 'ZIGBEE', { size: 1.2, anchor: 'middle', fill: '#475569' }) + '</g>');
+      o.push(txt(cz, yT - 1.9, 'ZONE_' + z, { size: 1.5, anchor: 'middle', fill: mz === 'dim' ? '#6B7280' : LB }));
+    }
+    // кнопки SELECT / PAIR, светодиоды PUMP / BOILER / POWER и антенна
+    o.push(rrect(gx(1452), BY + BH / 2 - 17, 7, 7, 1, { f: '#E5E7EB', c: '#111418', w: 0.3 }));
+    o.push(rrect(gx(1498), BY + BH / 2 - 17, 7, 7, 1, { f: '#E5E7EB', c: '#111418', w: 0.3 }));
+    o.push(txt(gx(1452) + 3.5, BY + BH / 2 - 18.4, 'SELECT', { size: 1.3, anchor: 'middle', fill: LB }));
+    o.push(txt(gx(1498) + 3.5, BY + BH / 2 - 18.4, 'PAIR', { size: 1.3, anchor: 'middle', fill: LB }));
+    [['PUMP', 1550, '#22C55E'], ['BOILER', 1610, '#22C55E'], ['POWER', 1670, '#EF4444']].forEach(function (L) {
+      o.push(circle(gx(L[1]) + 3, BY + BH / 2 - 13.6, 1.2, { f: L[2], c: '#111418', w: 0.25 }));
+      o.push(txt(gx(L[1]) + 3, BY + BH / 2 - 18.4, L[0], { size: 1.3, anchor: 'middle', fill: LB }));
+    });
+    o.push(rrect(gx(1855), BY + 5, 14, 11, 1.4, { f: '#E5E7EB', c: '#111418', w: 0.3 }));
+    o.push(txt(gx(1855) + 7, BY + 3.4, 'ANTENNA', { size: 1.3, anchor: 'middle', fill: LB }));
+    // светодиоды зон 1…8
+    for (var l = 0; l < 8; l++) {
+      var lit = (l === 0 && haveWired) || (l === 2 && haveRadio) || (l === 1 && wired > 1) || (l > 2 && (l - 2) < radio);
+      o.push(circle(col(l), BY + BH / 2, 1.5, { f: lit ? '#22C55E' : '#C6E58B', c: '#5B8A1E', w: 0.3 }));
+      o.push(txt(col(l) + 3.2, BY + BH / 2 + 0.8, String(l + 1), { size: 1.6, fill: '#2B3036' }));
+    }
+
+    // ── нижний ряд: OUTPUT_A, OUTPUT_B, OUTPUT_1…6 (приводы), предохранитель, питание, PE, насос, котёл ──
+    var outNames = ['OUTPUT_A', 'OUTPUT_B', 'OUTPUT_1', 'OUTPUT_2', 'OUTPUT_3', 'OUTPUT_4', 'OUTPUT_5', 'OUTPUT_6'];
+    var xOut = [];
+    outNames.forEach(function (nm, k) {
+      var m = modeCol(k), x0 = col(k) - 2 * PE_;
+      xOut.push(x0);
+      o.push(pluggable(x0, yB, 4, '#DDE1E6', pm(m), false, null, PE_));
+      o.push(txt(col(k), yB - 1.6, nm, { size: 1.5, anchor: 'middle', fill: m === 'dim' ? '#6B7280' : LB }));
+    });
+    var xFu = gx(1440);
+    o.push(rrect(xFu, yB - 0.6, 26, 7.6, 1, { f: '#E5E7EB', c: '#111418', w: 0.3 }));
+    o.push(txt(xFu + 13, yB + 4.4, 'FUSE 10 A', { size: 1.7, anchor: 'middle', fill: '#2B3036' }));
+    var xPw = gx(1550), xPe = gx(1650), xPu = gx(1725), xBo = gx(1820);
+    o.push(pluggable(xPw, yB, 4, '#DDE1E6', true, false, null, PE_));
+    o.push(txt(xPw + 2 * PE_, yB - 1.6, 'POWER SUPPLY', { size: 1.3, anchor: 'middle', fill: LB }));
+    o.push(pluggable(xPe, yB, 3, '#DDE1E6', true, false, null, PE_));
+    o.push(txt(xPe + 1.5 * PE_, yB - 1.6, 'PE', { size: 1.5, anchor: 'middle', fill: LB }));
+    o.push(pluggable(xPu, yB, 4, '#DDE1E6', true, false, null, PE_));
+    o.push(txt(xPu + 2 * PE_, yB - 1.6, 'PUMP OUTPUT', { size: 1.3, anchor: 'middle', fill: LB }));
+    o.push(pluggable(xBo, yB, 3, '#DDE1E6', true, false, null, PE_));
+    o.push(txt(xBo + 1.5 * PE_, yB - 1.6, 'BOILER OUTPUT', { size: 1.3, anchor: 'middle', fill: LB }));
+    ['NO', 'COM', 'NC'].forEach(function (L, i) { o.push(txt(xBo + PE_ / 2 + i * PE_, yB + 9.4, L, { size: 1.4, anchor: 'middle', fill: LB })); });
+    ['N', 'L', 'N', 'L'].forEach(function (L, i) {
+      o.push(txt(xPw + PE_ / 2 + i * PE_, yB + 9.4, L, { size: 1.4, anchor: 'middle', fill: LB }));
+      o.push(txt(xPu + PE_ / 2 + i * PE_, yB + 9.4, L, { size: 1.4, anchor: 'middle', fill: LB }));
+    });
+    o.push(txt(xPe + 1.5 * PE_, yB + 9.4, '⏚', { size: 2.0, anchor: 'middle', fill: LB }));
+
+    // ── проводной термостат над INPUT_A: жилы идут прямо вниз, N → N, L → L, SL → SLA ──
+    var tx = col(0), bx = tx - 1.5 * PE_;            // центр термостата и левый контакт INPUT_A
+    if (haveWired) {
+      var ty = 22, tw = 56, th = 30;
+      o.push(txt(tx - tw / 2, ty - 1.6, 'Проводной термостат ENGO ' + (easy ? 'EASY' : 'SIMPLE') + ' · 230 В', { size: 2.0, weight: 'bold' }));
+      o.push(rrect(tx - tw / 2, ty, tw, th, 1.6, { f: '#fff', c: INK, w: 0.5 }));
+      o.push(rrect(tx - tw / 2 + 6, ty + 3, tw - 12, 11, 1, { f: '#DBEAFE', c: '#64748B', w: 0.35 }));
+      o.push(txt(tx, ty + 11, '22', { size: 6, anchor: 'middle', fill: '#1D4ED8' }));
+      // клеммы термостата: ESIMPLE — N, L, SL; EASY — N, L, COM, NO (перемычка L–COM)
+      var tt = easy ? ['N', 'L', 'COM', 'NO'] : ['N', 'L', 'SL'];
+      var sy = ty + th - 6;
+      o.push(rrect(tx - tw / 2 + 4, sy - 1.6, tw - 8, 7.6, 0.8, { f: '#E2E8F0', c: INK, w: 0.4 }));
+      var tpos = tt.map(function (L, i) { return bx + PE_ / 2 + i * PE_; });
+      tt.forEach(function (L, i) {
+        o.push(circle(tpos[i], sy + 1.2, 1.3, { f: '#fff', c: '#475569', w: 0.35 }));
+        o.push(ln(tpos[i] - 0.8, sy + 1.2, tpos[i] + 0.8, sy + 1.2, { c: '#475569', w: 0.3 }));
+        o.push(txt(tpos[i], sy + 4.9, L, { size: 1.5, anchor: 'middle' }));
+      });
+      var yCut = BY - 8, yEnd = yT + 3.2;
+      var cN = bx + PE_ / 2, cL = bx + PE_ * 1.5, cS = bx + PE_ * 2.5;   // контакты INPUT_A
+      o.push(seg([[tpos[0], sy + 6], [tpos[0], yEnd]], CN, 0.5));
+      o.push(seg([[tpos[1], sy + 6], [tpos[1], yEnd]], CL, 0.5));
+      if (easy) {
+        // перемычка L–COM на термостате; жила SL идёт с клеммы NO и выравнивается по контакту SLA
+        o.push('<path d="M' + n(tpos[1]) + ',' + n(sy + 6) + ' L' + n(tpos[1]) + ',' + n(sy + 8.6) + ' L' + n(tpos[2]) + ',' + n(sy + 8.6) + ' L' + n(tpos[2]) + ',' + n(sy + 6) +
+          '" fill="none" stroke="' + CCLOSE + '" stroke-width="0.5" stroke-dasharray="1.2 0.8"/>');
+        o.push(txt(tx + tw / 2 + 1.6, sy + 3.6, '← перемычка L–COM', { size: 1.4, fill: '#475569' }));
+        o.push(seg([[tpos[3], sy + 6], [tpos[3], yCut], [cS, yCut], [cS, yEnd]], COPEN, 0.5));
+      } else {
+        o.push(seg([[tpos[2], sy + 6], [tpos[2], yEnd]], COPEN, 0.5));
+      }
+      o.push(mark(tpos[1], (sy + 6 + yEnd) / 2 + 3, 1));
+      o.push(pill(tpos[0], BY - 4.2, 'N', CN, 3.6));
+      o.push(pill(tpos[1], BY - 4.2, 'L', CL, 3.6));
+      o.push(pill(easy ? cS : tpos[2], BY - 4.2, 'SL', COPEN, 4.6));
+    }
+
+    // ── радиотермостат над зоной 1: проводов нет, связь по радио ──
+    if (haveRadio) {
+      var rx = col(2), ry = 22, rw = 40, rh = 22;
+      o.push(txt(rx + 0.0, ry - 1.6, 'Радиотермостат ENGO E25 / ONE (Zigbee)', { size: 2.0, weight: 'bold' }));
+      o.push(rrect(rx - rw / 2 + 12, ry, rw, rh, 1.6, { f: '#fff', c: INK, w: 0.5 }));
+      o.push(rrect(rx - rw / 2 + 17, ry + 3, rw - 10, 9, 1, { f: '#DBEAFE', c: '#64748B', w: 0.35 }));
+      o.push(txt(rx + 12, ry + 10, '22', { size: 5, anchor: 'middle', fill: '#1D4ED8' }));
+      var rcx = rx + 12;
+      o.push('<path d="M' + n(rcx) + ',' + n(ry + rh + 0.5) + ' L' + n(rcx) + ',' + n(yT - 1.8) + '" fill="none" stroke="#475569" stroke-width="0.5" stroke-dasharray="1.4 1.1"/>');
+      o.push(txt(rcx + 2, (ry + rh + yT) / 2 + 0.6, 'по радио: SELECT → PAIR', { size: 1.7, fill: '#475569' }));
+      o.push(mark(rcx - 5, (ry + rh + yT) / 2, 2));
+    }
+
+    // ── приводы под OUTPUT: N и SLx идут прямо вниз ──
+    function actPair(k, n1) {
+      var x0 = xOut[k], cN1 = x0 + PE_ / 2, cS1 = x0 + PE_ * 1.5, cN2 = x0 + PE_ * 2.5, cS2 = x0 + PE_ * 3.5;
+      var sy0 = yB + 6.4 + 22, y0 = yB + 3.2;
+      o.push(act((cN1 + cS1) / 2, sy0, 11));
+      o.push(seg([[cN1, y0], [cN1, sy0 - 3.4]], CN, 0.5));
+      o.push(seg([[cS1, y0], [cS1, sy0 - 3.4]], COPEN, 0.5));
+      o.push(act((cN2 + cS2) / 2, sy0, 11, true));
+      o.push(seg([[cN2, y0], [cN2, sy0 - 3.4]], GREY, 0.45, '1.4 1'));
+      o.push(seg([[cS2, y0], [cS2, sy0 - 3.4]], GREY, 0.45, '1.4 1'));
+      o.push(txt(cN1, sy0 + 8, 'N', { size: 1.6, anchor: 'middle', fill: CN }));
+      o.push(txt(cS1, sy0 + 8, n1, { size: 1.6, anchor: 'middle', fill: COPEN }));
+      return sy0;
+    }
+    var sA = null;
+    if (haveWired) { sA = actPair(0, 'SLA'); o.push(mark(xOut[0] - 4.5, yB + 12, 3)); }
+    if (haveRadio) { sA = actPair(2, 'SL1'); if (!haveWired) o.push(mark(xOut[2] - 4.5, yB + 12, 3)); }
+    var sBase = (sA || yB + 28) + 9;
+    o.push(txt(14, sBase + 5, 'Сервопривод — ' + (e.servoVolt === 24 ? '24 В' : 'НЗ, 230 В'), { size: 2.1, weight: 'bold' }));
+    o.push(txt(14, sBase + 8.2, cut(e.servoName || 'сервопривод термоэлектрический NC', 44), { size: 1.9 }));
+    o.push(txt(14, sBase + 11.4, 'второй привод на ту же зону — пунктиром; до 6 приводов (2 Вт) на зону', { size: 1.8, fill: '#475569' }));
+
+    // ── питание, насос, котёл → щит, насос, котёл; уровни: чем левее клемма, тем глубже жила ──
+    var DX = 356, yb0 = yB + 3.2, lv0 = BY + BH + 6;
+    function hxp(x0, i) { return x0 + PE_ / 2 + i * PE_; }
+    function lead(x, lvl, c, dash) { o.push(seg([[x, yb0], [x, lvl], [DX, lvl]], c, 0.5, dash)); }
+    function dest(y, hgt, t1, t2, ico) {
+      o.push(rrect(DX, y, 54, hgt, 1, { f: '#fff', c: INK, w: 0.4 }));
+      if (ico) o.push(ico(DX + 6.5, y + hgt / 2, 8.4));
+      o.push(txt(DX + 32, y + hgt / 2 - 0.8, t1, { size: 1.8, anchor: 'middle', weight: 'bold' }));
+      if (t2) o.push(txt(DX + 32, y + hgt / 2 + 3, t2, { size: 1.5, anchor: 'middle', fill: '#475569' }));
+    }
+    var L0 = lv0, STEP = 5;
+    // котёл: COM (c1) выше, NO (c0) глубже
+    lead(hxp(xBo, 1), L0, CCLOSE); lead(hxp(xBo, 0), L0 + STEP, CCLOSE);
+    dest(L0 - 3.5, 11, e.auto ? 'Контроллер котельной' : 'Котёл', e.auto ? 'вход термостатов · COM + NO' : 'клеммы термостата · COM + NO', e.auto ? icoPanel : function (a, b, s) { return icoBoiler(a, b, s, true); });
+    o.push(mark(DX - 4.5, L0 + STEP / 2, 5));
+    // насос: L (c3) выше, N (c2) глубже — первая пара N L
+    lead(hxp(xPu, 1), L0 + 2 * STEP + 1, CL); lead(hxp(xPu, 0), L0 + 3 * STEP + 1, CN);
+    dest(L0 + 8.5, 12, 'Насос группы ТП', 'до 3 А · PE насоса в щит', icoPump);
+    o.push(mark(DX - 4.5, L0 + 13.5, 4));
+    // питание и PE → щит
+    lead(hxp(xPe, 0), L0 + 4 * STEP + 2, CPE2, '1.6 1.2');
+    lead(hxp(xPw, 1), L0 + 5 * STEP + 2, CL); lead(hxp(xPw, 0), L0 + 6 * STEP + 2, CN);
+    dest(L0 + 21, 15, 'Щит · автомат 10 А', 'питание L, N + PE', icoBreaker);
+    o.push(mark(DX - 4.5, L0 + 27, 6));
+
+    // ── шлюз Zigbee: нужен радиоголовкам и телефону; радиосвязь — пунктиром ──
+    if (e.gateway) {
+      var gxp = 292, gy = 18;
+      o.push(rrect(gxp, gy, 52, 17, 1.2, { f: '#fff', c: INK, w: 0.4 }));
+      o.push(icoModule(gxp + 8, gy + 9, 10, true));
+      o.push(txt(gxp + 28, gy + 7.2, 'Шлюз Zigbee', { size: 1.9, anchor: 'middle', weight: 'bold' }));
+      o.push(txt(gxp + 28, gy + 11, 'EGATEZB · Wi-Fi 2,4 ГГц', { size: 1.5, anchor: 'middle', fill: '#475569' }));
+      o.push('<path d="M' + n(gxp + 40) + ',' + n(gy + 17) + ' L' + n(gxp + 40) + ',' + n(BY + 5) + '" fill="none" stroke="#475569" stroke-width="0.5" stroke-dasharray="1.4 1.1"/>');
+    }
+
+    // ── что в смете и как подключать ──
+    var ny = Math.max(L0 + 6 * STEP + 14, sBase + 18);
+    function line(t, o2) { o.push(txt(12, ny, t, o2 || { size: 2.1 })); ny += 3.6; }
+    line('Сколько всего — по вашей смете:', { size: 2.5, weight: 'bold' });
+    line('• Блоков ECB62-ZB ' + bars + ' — на каждом 2 проводные зоны (A, B), 6 радиозон Zigbee, до 50 приводов 230 В.');
+    if (wired) line('• Проводных термостатов ' + wired + ' — каждый на свой INPUT (A, B): три жилы N, L, SL, четвёртой нет' +
+      (easy ? '; у EASY перемычка L–COM, жила SL идёт с клеммы NO.' : '.'));
+    if (radio) line('• Радиотермостатов ' + radio + ' — клемм на плате нет: SELECT выбирает зону, PAIR запускает привязку, на термостате удерживают кнопки до «bind»; плата и термостат — в одной сети шлюза.');
+    if (heads) line('• Радиоголовок ETRV ' + heads + ' — по радио через термостат E25 (до 6 голов на один), нужен шлюз.');
+    if (servos) line('• Сервоприводов ' + servos + ' — на OUTPUT своей зоны, клеммы N и SLx; до 6 приводов на зону, только НЗ (NC).');
+    ny += 1.4;
+    line('Питание платы — да, 230 В: POWER SUPPLY (N, L) и PE от отдельного автомата 10 А; на плате вставка 10 А, суммарная нагрузка до 10 А.', { size: 2.1, weight: 'bold' });
+    line('С платы 230 В получают приводы (OUTPUT), насос (PUMP OUTPUT, до 3 А) и проводные термостаты; PE насоса идёт в щит, мимо платы.');
+    line('Насос включается через 3 минуты после запроса тепла от любой зоны и выключается, когда запросов нет; котёл (BOILER OUTPUT, до 6 А) — так же.');
+    ny += 1.4;
+    line('Кабели — выноски 1…6 на схеме (сечения — паспорт ENGO ECB62-ZB, Quick Guide v6.1):', { size: 2.2, weight: 'bold' });
+    if (wired) line('1. Проводной термостат → INPUT: 3 жилы N, L, SL, 0,75–1,0 мм² (клемма принимает до 1,0): кабель ПВС 3×1,0 в гофре.');
+    line('2. Радиотермостат: провода нет; питание E25/ONE — свое (батарея или 230 В), смотрите паспорт термостата.');
+    line('3. Привод → OUTPUT: 2 жилы N и SLx; привод идёт с проводом, наращивать в коробке; сечение паспорт платы не задаёт.');
+    line('4. Насос → PUMP OUTPUT: 3 жилы N, L, PE, 1,0–1,5 мм². 5. Котёл → BOILER OUTPUT: 2 жилы COM–NO, 0,75–1,0 мм².');
+    line('6. Питание → POWER SUPPLY: 3 жилы N, L, PE, 1,0–1,5 мм² от отдельного автомата 10 А.');
+
+    return { svg: o.join(''), w: W, h: ny + 6 };
+  }
+
 
   /** Готовый лист: рамка + штамп формы 6 + схема. */
   function sheetSvg(cfg, opts) {
@@ -3548,7 +5506,7 @@
   }
 
   window.projectScheme = {
-    build: build, sheet: sheetSvg, automation: automation, automation1002: automation1002, ufhScheme: ufhScheme,
+    build: build, sheet: sheetSvg, automation: automation, automation1002: automation1002, automationSmart2: automationSmart2, automationH: automationH, automationMyheat: automationMyheat, automationEcto: automationEcto, ufhScheme: ufhScheme, ufhSchemeEngo: ufhSchemeEngo,
     snowScheme: snowScheme,
     // отдельные УГО пригодятся будущим листам узлов обвязки
     sym: {

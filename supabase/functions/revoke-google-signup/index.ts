@@ -19,9 +19,7 @@ const corsHeaders = {
 
 // Администраторам вход через Google разрешён, их аккаунты не удаляем ни при каких условиях
 const ADMIN_EMAILS = [
-  "kovdorekb@gmail.com",
   "kovdor24@yandex.ru",
-  "dima24ba@gmail.com",
 ];
 
 const json = (body: unknown, status = 200) =>

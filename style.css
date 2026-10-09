@@ -199,7 +199,8 @@ body.dark-mode #blk_zone_auto_item {
    и тёмную тему получает тем же правилом. Без него фон оставался #F8FAFC, а
    текст поверх него шёл светлым: в тёмной теме блок читался только наполовину. */
 body.dark-mode #blk_el_cost_box,
-body.dark-mode #blk_gas_cost_box {
+body.dark-mode #blk_gas_cost_box,
+body.dark-mode #blk_buffer_box {
     background: #161616 !important;
     border-color: #2A2A2A !important;
 }
@@ -871,6 +872,83 @@ body.dark-mode .sg-card .sg-pill.low { background: rgba(245, 158, 11, .2); color
     .sg-card .sg-sub { display: none; }
     .sg-card .sg-big b { font-size: 40px; }
 }
+
+/* Буферная ёмкость: окупаемость и прогноз тарифов (app.renderBufferUI, showBufferPayback, elForecastHtml).
+   Окно использует оформление окна «Гарантия STOUT» (.sg-card), здесь только то, чего в нём нет:
+   график накопленной экономии, ряд тарифов, мини-шкала в панели. */
+.bf-mini { margin-top: 8px; padding-top: 16px; }
+.bf-mini-track { position: relative; height: 8px; border-radius: 4px; background: var(--border); }
+.bf-mini-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+.bf-mini-fill.ok { background: linear-gradient(90deg, #22C55E, #16A34A); }
+.bf-mini-fill.low { background: linear-gradient(90deg, #FBBF24, #F59E0B); }
+.bf-mini-track u { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text-main); text-decoration: none; border-radius: 1px; }
+.bf-mini-track u span { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 2px; font-size: 9px; font-weight: 700; white-space: nowrap; color: var(--text-main); }
+.bf-mini-ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-sec); margin-top: 4px; }
+.bf-growth { display: flex; align-items: flex-start; gap: 6px; margin-top: 8px; font-size: 11px; line-height: 1.4; cursor: pointer; color: var(--text-main); }
+.bf-growth input { margin-top: 2px; flex: 0 0 auto; }
+.bf-btn { width: 100%; margin-top: 8px; padding: 7px 10px; border: 1px solid #203F6F; background: transparent; color: #203F6F; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.bf-btn:hover { background: #203F6F; color: #fff; }
+body.dark-mode .bf-btn { border-color: #7CC4F2; color: #7CC4F2; }
+body.dark-mode .bf-btn:hover { background: #7CC4F2; color: #111; }
+body.dark-mode .bf-mini-track { background: rgba(255, 255, 255, .16); }
+.sg-card .bf-chart { margin-top: 16px; }
+.sg-card .bf-ct, .sg-card .bf-tt { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-sec); margin-bottom: 4px; }
+.sg-card .bf-chart svg { display: block; width: 100%; height: auto; }
+.sg-card .bf-bar.ok { fill: #16A34A; }
+.sg-card .bf-bar.low { fill: #F59E0B; }
+.sg-card .bf-val { font-size: 11px; font-weight: 700; fill: var(--text-main); }
+.sg-card .bf-x { font-size: 11px; font-weight: 700; fill: var(--text-main); }
+.sg-card .bf-x2 { font-size: 9px; fill: var(--text-sec); }
+.sg-card .bf-cap { stroke: #203F6F; stroke-width: 1.5; stroke-dasharray: 5 4; }
+.sg-card .bf-cap-t { font-size: 11px; font-weight: 700; fill: #203F6F; }
+.sg-card .bf-base { stroke: var(--border); stroke-width: 1; }
+body.dark-mode .sg-card .bf-cap { stroke: #7CC4F2; }
+body.dark-mode .sg-card .bf-cap-t { fill: #7CC4F2; }
+body.dark-mode .sg-card .bf-base { stroke: rgba(255, 255, 255, .25); }
+.sg-card .sg-perks { margin-top: 12px; }
+.sg-card .bf-tt { margin-top: 14px; }
+.sg-card .bf-tariffs { display: flex; gap: 8px; }
+.sg-card .bf-t { flex: 1 1 0; background: var(--surface-light); border: 1px solid var(--border); border-radius: 10px; padding: 7px 9px; min-width: 0; }
+.sg-card .bf-t b { display: block; font-size: 12px; color: var(--text-main); }
+.sg-card .bf-t span { display: block; font-size: 12px; color: var(--text-main); margin-top: 1px; white-space: nowrap; }
+.sg-card .bf-t em { display: block; font-style: normal; font-size: 11px; font-weight: 700; color: #B45309; margin-top: 1px; }
+body.dark-mode .sg-card .bf-t { background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .16); }
+body.dark-mode .sg-card .bf-t em { color: #FBBF24; }
+.sg-card .bf-growth-win { margin-top: 12px; font-size: 12px; }
+@media (max-width: 520px) {
+    .sg-card .bf-tariffs { flex-wrap: wrap; }
+    .sg-card .bf-t { flex: 1 1 45%; }
+}
+/* Панель «Буферная ёмкость»: коротко на виду (app.renderBufferUI), всё остальное — под значком «i» */
+.bf-id { font-size: 12px; font-weight: 700; }
+.bf-dim { font-size: 11px; color: var(--text-sec); }
+.bf-chip { margin-top: 6px; padding-left: 8px; border-left: 3px solid #F59E0B; font-size: 11px; line-height: 1.45; }
+.bf-chip.err { border-left-color: #DC2626; }
+.bf-eco { margin-top: 8px; padding: 6px 8px; background: var(--primary-light); border-radius: 6px; font-size: 11px; font-weight: 700; color: var(--primary); line-height: 1.45; }
+.bf-eco span { font-weight: 500; }
+.bf-eco.neg { color: #B45309; }
+.bf-cost { margin-top: 6px; font-size: 11px; color: var(--text-sec); }
+/* Таблица вариантов объёма в подсказке: выбранный ряд выделен */
+#buffer_tip { max-height: 75vh; overflow-y: auto; }
+.tip-panel .bf-tbl { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 11px; }
+.tip-panel .bf-tbl th { text-align: right; font-weight: 600; color: var(--text-sec); padding: 2px 4px; border-bottom: 1px solid var(--border); font-size: 10px; }
+.tip-panel .bf-tbl th:first-child, .tip-panel .bf-tbl td:first-child { text-align: left; }
+.tip-panel .bf-tbl td { text-align: right; padding: 2px 3px; white-space: nowrap; }
+.tip-panel .bf-tbl tr.cur td { font-weight: 800; color: var(--primary); background: var(--primary-light); }
+
+/* Блок «Прогноз: счёт за сезон» в «Стоимости отопления»: четыре столбика по сезонам */
+.bf-fc { margin-top: 8px; padding: 8px 10px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 8px; }
+.bf-fc-t { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-sec); }
+.bf-fc-cols { display: flex; align-items: flex-end; gap: 6px; margin-top: 6px; }
+.bf-fc-col { flex: 1 1 0; text-align: center; min-width: 0; }
+.bf-fc-col i { display: block; width: 100%; max-width: 38px; margin: 2px auto 0; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, #F59E0B, #FBBF24); }
+.bf-fc-col:first-child i { background: linear-gradient(180deg, #203F6F, #3F9DE1); }
+.bf-fc-v { display: block; font-size: 11px; font-weight: 700; color: var(--text-main); }
+.bf-fc-col b { display: block; font-size: 10px; color: var(--text-main); margin-top: 3px; }
+.bf-fc-col em { display: block; font-style: normal; font-size: 10px; font-weight: 700; color: #B45309; }
+.bf-fc-s { margin-top: 6px; font-size: 10px; line-height: 1.4; color: var(--text-sec); }
+body.dark-mode .bf-fc { background: rgba(255, 255, 255, .05); border-color: rgba(255, 255, 255, .16); }
+body.dark-mode .bf-fc-col em { color: #FBBF24; }
 
 /* Строка не помещается в линию — app.fitDocSummary сжимает промежутки и отступы
    (и прячет значки, где они есть), чтобы «Дата» не уезжала одна на вторую строку.
@@ -4282,6 +4360,13 @@ body.profile-incomplete-lock #page_scale_wrapper {
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
+/* Окно «Переписка / Уведомления»: нижняя навигация (z-index 10000002) и плавающая кнопка
+   «умного заполнения» лежат выше него и перекрывали строку ввода с кнопкой отправки.
+   Класс ставят openNotificationsModal / closeNotificationsModal. */
+body.notif-open .mobile-bottom-nav,
+body.notif-open .ai-parse-fab,
+body.notif-open .to-top-btn { display: none !important; }
 
 /* Нижняя навигация калькулятора и плавающие кнопки лежат выше модалок
    (z-index 10000002/10000003) и, пока открыта админка, закрывали нижние строки
@@ -9555,6 +9640,13 @@ body.dark-mode .to-top-btn:hover {
     margin-left: 0; margin-right: auto;
 }
 .scheme-svg-wrap > svg, .automation-scheme > svg { width: 100%; height: 100%; }
+/* Схема платы зональной автоматики (над разделом 4.5): подписи у каждой клеммы
+   мелкие, в общей рамке в три колонки они не читаются. Эта схема идёт во всю
+   ширину таблицы сметы; высота — по пропорции самого листа (viewBox). */
+#ufh_scheme_row .automation-scheme,
+#automation_scheme_row .automation-scheme { width: 100%; max-width: 960px; height: auto; }
+#ufh_scheme_row .automation-scheme > svg,
+#automation_scheme_row .automation-scheme > svg { height: auto; }
 @media print {
     /* На печати общая рамка не нужна: лист занимает страницу целиком и
        раскладывается по своей пропорции. */
@@ -9641,6 +9733,8 @@ body.dark-mode .automation-scheme svg {
     border-radius: 8px; cursor: pointer;
 }
 #scheme_zoom_overlay .scheme-zoom-bar button:hover { background: rgba(255, 255, 255, 0.22); }
+#scheme_zoom_overlay .scheme-zoom-count { align-self: center; min-width: 44px; text-align: center; font-size: 13px; font-weight: 700; color: #E2E8F0; }
+@media (max-width: 600px) { #scheme_zoom_overlay .scheme-zoom-bar { flex-wrap: wrap; justify-content: center; gap: 6px; padding: 8px; } }
 #scheme_zoom_overlay .scheme-zoom-canvas {
     flex: 1 1 auto; overflow: auto; padding: 16px;
     cursor: grab; -webkit-overflow-scrolling: touch;
@@ -9689,7 +9783,7 @@ body.dark-mode .automation-scheme svg {
     #heat_loss_table_page {
         page: heat-loss-page !important;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
-        font-size: 8px;
+        font-size: 10px;
         color: #111;
         width: 100% !important;
         display: block !important;
@@ -9702,16 +9796,17 @@ body.dark-mode .automation-scheme svg {
     #heat_loss_table_page th {
         background: #f3f4f6 !important;
         color: #374151 !important;
-        font-size: 8px !important;
+        font-size: var(--hl-fs, 10px) !important;
         font-weight: 700 !important;
-        padding: 4px 3px !important;
+        white-space: normal !important;
+        padding: calc(var(--hl-fs, 10px) * 0.35) 4px !important;
         border: 1px solid #e5e7eb !important;
         text-align: center !important;
     }
     #heat_loss_table_page td {
         border: 1px solid #e5e7eb !important;
-        padding: 2px 3px !important;
-        font-size: 8px !important;
+        padding: calc(var(--hl-fs, 10px) * 0.25) 4px !important;
+        font-size: var(--hl-fs, 10px) !important;
     }
     #heat_loss_table_page .hl-title {
         font-size: 13px !important;
@@ -13132,15 +13227,44 @@ body.dark-mode .rs-scheme { border-color: #334155; }
 .rec-quota.bad { border-color: rgba(239, 68, 68, .5); background: rgba(239, 68, 68, .08); color: #b91c1c; }
 body.dark-mode .rec-quota.warn { color: #fbbf24; }
 body.dark-mode .rec-quota.bad { color: #f87171; }
-.rec-quota::after {
-    content: attr(data-tip); position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
-    width: max-content; max-width: min(340px, 80vw); white-space: pre-line; text-align: left;
-    font-weight: 400; font-size: 12px; line-height: 1.45; padding: 8px 10px; border-radius: 8px;
-    color: var(--text-main, #0f172a); background: var(--surface, #fff); border: 1px solid var(--border, #e2e8f0);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, .15); opacity: 0; pointer-events: none; transition: opacity .15s;
+/* Панель с шкалами (recognize.js, renderQuotaBadge). Прозрачный верхний
+   padding закрывает зазор под бейджем, чтобы наведение не гасло по пути. */
+.rec-quota .rq-pop {
+    position: absolute; right: 0; top: 100%; z-index: 30; box-sizing: border-box;
+    width: 320px; max-width: 80vw; padding-top: 6px; cursor: default; isolation: isolate;
+    white-space: normal; text-align: left; font-weight: 400; font-size: 12px; line-height: 1.4;
+    color: var(--text-main, #0f172a);
+    opacity: 0; visibility: hidden; transform: translateY(-4px);
+    transition: opacity .15s, transform .15s, visibility 0s .15s;
 }
-.rec-quota:hover::after, .rec-quota:focus::after, .rec-quota.open::after { opacity: 1; }
-body.dark-mode .rec-quota::after { background: #1e293b; border-color: #334155; color: #e2e8f0; }
+.rec-quota .rq-pop::before {
+    content: ''; position: absolute; left: 0; right: 0; top: 6px; bottom: 0; z-index: -1;
+    background: var(--surface, #fff); border: 1px solid var(--border, #e2e8f0); border-radius: 12px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .18);
+}
+.rec-quota:hover .rq-pop, .rec-quota:focus .rq-pop, .rec-quota.open .rq-pop {
+    opacity: 1; visibility: visible; transform: none; transition: opacity .15s, transform .15s;
+}
+.rq-pop { display: flex; flex-direction: column; gap: 9px; }
+.rq-pop > * { margin-left: 14px; margin-right: 14px; }
+.rq-pop > :nth-child(1) { margin-top: 14px; }
+.rq-pop > :last-child { margin-bottom: 14px; }
+.rq-h { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; font-weight: 600; }
+.rq-h b { font-size: 15px; font-weight: 700; white-space: nowrap; }
+.rq-rl, .rq-kv { display: flex; justify-content: space-between; gap: 12px; }
+.rq-rl { margin-bottom: 4px; }
+.rq-rl span:first-child, .rq-kv span:first-child { color: var(--text-muted, #64748b); }
+.rq-rl span:last-child, .rq-kv b { font-weight: 600; text-align: right; }
+.rq-bar { height: 8px; border-radius: 99px; background: rgba(100, 116, 139, .18); overflow: hidden; }
+.rq-bar i { display: block; height: 100%; border-radius: 99px; background: #22c55e; transition: width .4s ease; }
+.rq-bar i.warn { background: #f59e0b; }
+.rq-bar i.bad { background: #ef4444; }
+.rq-sep { height: 1px; background: var(--border, #e2e8f0); }
+.rq-cap { font-size: 11.5px; color: var(--text-muted, #64748b); }
+body.dark-mode .rec-quota .rq-pop { color: #e2e8f0; }
+body.dark-mode .rec-quota .rq-pop::before { background: #1e293b; border-color: #334155; }
+body.dark-mode .rq-sep { background: #334155; }
+body.dark-mode .rq-cap, body.dark-mode .rq-rl span:first-child, body.dark-mode .rq-kv span:first-child { color: #94a3b8; }
 
 /* Строка листа в таблице помещений: этаж и потолок правятся на весь лист
    разом — один лист плана это один этаж. */
@@ -13512,6 +13636,15 @@ body.dark-mode .rec-quota::after { background: #1e293b; border-color: #334155; c
     color: var(--text-sec); font-size: 12px; line-height: 1.4; text-align: center;
 }
 
+/* iOS приближает страницу, когда в фокус попадает поле со шрифтом меньше 16 px, и после
+   этого появляется горизонтальная прокрутка, а кнопка отправки уезжает за край. Правило
+   «Input sizing to prevent iOS zoom» выше касается только input, а в переписке поле —
+   textarea (и у монтажника, и в панели управления). */
+@media (pointer: coarse) {
+    .admin-chat-compose textarea,
+    #notif_pane_chat .admin-chat-compose textarea { font-size: 16px !important; }
+}
+
 /* Тонкие полосы прокрутки — обычные в админке слишком толстые для этой вёрстки */
 .admin-chat-list::-webkit-scrollbar, .admin-chat-body::-webkit-scrollbar { width: 6px; }
 .admin-chat-list::-webkit-scrollbar-thumb, .admin-chat-body::-webkit-scrollbar-thumb {
@@ -13811,12 +13944,12 @@ body.lk-docked #lk_rating_overlay .auth-modal-content {
    Множитель задаём свой и постоянный: в пристыкованном виде ширина окна уже не
    определяет размер панели. */
 body.lk-docked #admin_modal_overlay .auth-modal-content {
-    zoom: 0.8 !important;
+    zoom: var(--ui-zoom, 0.8) !important;
     position: fixed !important;
-    top: calc(var(--lk-dock-top, 80px) / 0.8) !important;
-    left: calc(var(--lk-dock-left, 104px) / 0.8) !important;
-    right: calc(var(--lk-dock-right, 16px) / 0.8) !important;
-    bottom: calc(var(--lk-dock-bottom, 16px) / 0.8) !important;
+    top: calc(var(--lk-dock-top, 80px) / var(--ui-zoom, 0.8)) !important;
+    left: calc(var(--lk-dock-left, 104px) / var(--ui-zoom, 0.8)) !important;
+    right: calc(var(--lk-dock-right, 16px) / var(--ui-zoom, 0.8)) !important;
+    bottom: calc(var(--lk-dock-bottom, 16px) / var(--ui-zoom, 0.8)) !important;
     width: auto !important;
     max-width: none !important;
     height: auto !important;
@@ -14398,6 +14531,16 @@ body.object-flat:not(.calc-detailed) #blk_flat_ufh,
 body.object-flat:not(.calc-detailed) #blk_flat_hot_riser_row,
 body.object-flat:not(.calc-detailed) #blk_water_filter_row,
 body.object-flat:not(.calc-detailed) #blk_water_reducer_row {
+    display: none !important;
+}
+
+/* Быстрый режим (дом и квартира): карточка узла ввода ХВС короче — остаются
+   редуктор, счётчик и защита от протечки. Кран, фильтрация, каркас и подпитка
+   отопления — в подробном; значения в смете не сбрасываются. */
+body:not(.calc-detailed) #blk_outdoor_faucet_row,
+body:not(.calc-detailed) #blk_water_filter_row,
+body:not(.calc-detailed) #blk_water_frame_row,
+body:not(.calc-detailed) #blk_heating_feed_row {
     display: none !important;
 }
 
@@ -17251,14 +17394,20 @@ body.dark-mode .hc-export-doc::after {
 
     #profile_modal_overlay .auth-modal-content {
         position: fixed !important;
-        top: 0 !important;
+        top: var(--vv-top, 0px) !important;
         left: 0 !important;
         right: 0 !important;
-        bottom: 0 !important;
+        bottom: auto !important;
         width: 100% !important;
         max-width: 100% !important;
-        height: 100% !important;
-        max-height: 100% !important;
+        /* Высота — видимая часть экрана, а не 100%/100vh: на iPhone они включают область
+           под нижней панелью Safari, и кнопка «Сохранить» уезжала под неё. --vv-h пишет
+           скрипт в index.html из visualViewport (он же учитывает клавиатуру); dvh — запасной
+           вариант, если скрипт не отработал. */
+        height: 100vh !important;
+        height: 100dvh !important;
+        height: var(--vv-h, 100dvh) !important;
+        max-height: none !important;
         margin: 0 !important;
         border-radius: 0 !important;
         transform: none !important;
@@ -17647,6 +17796,12 @@ body.theme-yandex #admin_modal_overlay {
 }
 #admin_content table.ad-dense td { padding-top: 3px !important; padding-bottom: 3px !important; font-size: 11.5px; }
 #admin_content table.ad-dense td * { line-height: 1.25; }
+/* Компактно: вторичные строки (адрес, возраст, активность, время на сайте) скрыты — они и задают высоту строки */
+#admin_content table.ad-dense .ad-more { display: none !important; }
+.ad-name-short { display: none; }
+#admin_content table.ad-dense .ad-name-full { display: none; }
+#admin_content table.ad-dense .ad-name-short { display: inline; }
+#admin_content table.ad-dense td img { width: 24px !important; height: 24px !important; }
 #ad_peek {
     position: absolute;
     top: 0;
@@ -18241,7 +18396,7 @@ body.dark-mode #admin_content .btn-icon {
 
 /* Меню «Размер интерфейса» у кнопки «Aa». Лежит в body вне zoom обёртки — обычные px. */
 .ui-scale-menu {
-    position: fixed; z-index: 100000; width: 250px; box-sizing: border-box;
+    position: fixed; z-index: 2000100; width: 250px; box-sizing: border-box;
     padding: 14px; border-radius: 12px;
     background: var(--surface, #fff); color: var(--text-main, #111827);
     border: 1px solid var(--border, #e5e7eb);
@@ -18682,6 +18837,8 @@ body.theme-yandex #profile_modal_overlay {
 /* Содержимое не растягивается на весь широкий экран: строки на 1700 px читаются хуже, а поля
    ввода оказываются далеко от подписей */
 #profile_modal_overlay .lk-pane > div[id^="profile_tab_"] { max-width: 1240px; }
+/* «Объекты»: в таблице смет шесть кнопок в ряду — на 1240 px она сжималась в половину широкого экрана */
+#profile_modal_overlay .lk-pane > #profile_tab_objects { max-width: 1760px; }
 
 /* Шапка раздела: пояснение слева, кнопки справа */
 #profile_modal_overlay .lk-pane .lk-head-hint {
@@ -19008,7 +19165,7 @@ body.theme-yandex #profile_modal_overlay {
         z-index: 3;
         background: var(--surface);
         margin-top: auto;
-        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+        padding: 12px 0 calc(14px + env(safe-area-inset-bottom, 0px));
     }
     body.dark-mode #profile_modal_overlay .lk-footer { background: #1E1E1E; }
 }
@@ -19471,3 +19628,121 @@ body.dark-mode .save-remind-field input { background: #121212; border-color: #4B
 .pr-offer-text { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text-main); font: inherit; font-size: 13px; line-height: 1.5; resize: vertical; }
 .pr-offer-btns { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .pr-offer-send { border-color: var(--primary) !important; color: var(--primary) !important; }
+
+/* «Почта» (админка): лимит писем EmailJS — шкала с двигаемыми порогами ступеней, режимы, список типов */
+#admin_mail_root { width: 100%; max-width: 100%; min-width: 0; align-self: stretch; box-sizing: border-box; }
+.mb-top { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr); gap: 12px; margin-bottom: 12px; }
+.mb-card { background: var(--surface-light); border: 1px solid var(--ad-line); border-radius: var(--ad-card-radius); padding: 14px 16px; min-width: 0; box-sizing: border-box; }
+.mb-cap { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-sec); margin: 0 0 8px; }
+.mb-big { display: flex; align-items: baseline; justify-content: space-between; gap: 6px 16px; flex-wrap: wrap; }
+.mb-big b { font-size: 32px; line-height: 1; font-weight: 800; color: var(--mb-col, var(--primary)); }
+.mb-big span { color: var(--text-sec); font-size: 13px; }
+.mb-gauge { position: relative; padding: 26px 10px 24px; user-select: none; -webkit-user-select: none; touch-action: none; }
+.mb-track { position: relative; height: 24px; border-radius: 12px; background: var(--surface); border: 1px solid var(--ad-line); cursor: crosshair; }
+.mb-zones { position: absolute; inset: 0; border-radius: 12px; overflow: hidden; }
+.mb-zones i { position: absolute; top: 0; bottom: 0; }
+.mb-used, .mb-fc { position: absolute; top: 2px; bottom: 2px; left: 2px; border-radius: 10px; background: var(--mb-col, var(--primary)); min-width: 4px; }
+.mb-fc { background: repeating-linear-gradient(135deg, var(--mb-col, var(--primary)) 0 5px, transparent 5px 10px); opacity: 0.4; border-radius: 10px; }
+.mb-now { position: absolute; top: -9px; width: 0; height: 0; margin-left: -6px; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid var(--text-main); pointer-events: none; }
+.mb-knob { position: absolute; top: -22px; height: 52px; width: 26px; margin-left: -13px; padding: 0; border: 0; background: none; cursor: ew-resize; display: flex; flex-direction: column; align-items: center; z-index: 2; touch-action: none; }
+.mb-knob::after { content: ""; flex: 1; width: 2px; background: currentColor; opacity: 0.55; }
+.mb-knob span { width: 20px; height: 20px; border-radius: 50%; background: var(--surface-light); border: 2px solid currentColor; font-size: 11px; font-weight: 800; line-height: 16px; text-align: center; color: var(--text-main); box-sizing: border-box; transition: transform 0.12s; }
+.mb-knob:hover span, .mb-knob:focus-visible span, .mb-knob.drag span { transform: scale(1.25); }
+.mb-knob:focus-visible { outline: none; }
+.mb-knob.t1 { color: #D97706; } .mb-knob.t2 { color: #EA580C; } .mb-knob.t3 { color: #DC2626; }
+.mb-scale { position: absolute; left: 10px; right: 10px; bottom: 4px; height: 14px; font-size: 10px; color: var(--text-sec); pointer-events: none; }
+.mb-scale i { position: absolute; transform: translateX(-50%); font-style: normal; }
+.mb-tip { position: absolute; top: -4px; transform: translate(-50%, -100%); background: var(--text-main); color: var(--surface-light); font-size: 11px; line-height: 1.35; padding: 6px 9px; border-radius: 8px; pointer-events: none; opacity: 0; transition: opacity 0.1s; z-index: 5; max-width: 280px; white-space: normal; text-align: center; }
+.mb-tip.on { opacity: 1; }
+.mb-tiers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 6px; }
+.mb-tier { border: 1px solid var(--ad-line); border-radius: 10px; padding: 8px 10px; font-size: 12px; min-width: 0; }
+.mb-tier b { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-main); margin-bottom: 3px; }
+.mb-tier b em { font-style: normal; width: 18px; height: 18px; border-radius: 50%; border: 2px solid currentColor; font-size: 10px; line-height: 14px; text-align: center; box-sizing: border-box; }
+.mb-tier.t1 b em { color: #D97706; } .mb-tier.t2 b em { color: #EA580C; } .mb-tier.t3 b em { color: #DC2626; }
+.mb-tier span { color: var(--text-sec); display: block; line-height: 1.4; }
+.mb-tier.off { background: color-mix(in srgb, #EF4444 8%, transparent); border-color: color-mix(in srgb, #EF4444 40%, transparent); }
+.mb-seg { display: inline-flex; border: 1px solid var(--ad-line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.mb-seg { max-width: 100%; }
+.mb-seg button { flex: 1 1 auto; white-space: normal; padding: 5px 11px; font-size: 12px; font-weight: 600; background: transparent; border: 0; border-right: 1px solid var(--ad-line); color: var(--text-sec); cursor: pointer; font-family: inherit; }
+.mb-seg button:last-child { border-right: 0; }
+.mb-seg button:hover:not(:disabled):not(.on) { color: var(--text-main); background: var(--primary-light); }
+.mb-seg button.on { background: var(--primary); color: #fff; }
+.mb-seg button.on.bad { background: #EF4444; }
+.mb-seg button.on.good { background: #10B981; }
+.mb-seg button:disabled { opacity: 0.55; cursor: default; }
+.mb-set { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.mb-set > b { font-size: 12.5px; color: var(--text-main); }
+.mb-set > span { font-size: 11.5px; color: var(--text-sec); line-height: 1.45; }
+.mb-rows { border: 1px solid var(--ad-line); border-radius: var(--ad-card-radius); overflow: hidden; background: var(--surface-light); }
+.mb-row { display: grid; grid-template-columns: minmax(180px, 2.2fr) minmax(120px, 1.2fr) 70px 90px minmax(150px, 1.6fr) 190px; gap: 10px 14px; align-items: center; padding: 8px 14px; border-top: 1px solid var(--ad-line); font-size: 12.5px; }
+.mb-row:first-child { border-top: 0; }
+.mb-row.head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-sec); background: var(--surface); }
+.mb-row .nm { min-width: 0; } .mb-row .nm b { display: block; color: var(--text-main); font-size: 13px; } .mb-row .nm span { display: block; font-size: 11px; color: var(--text-sec); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mb-row .c { text-align: center; }
+.mb-mini { display: flex; align-items: center; gap: 8px; }
+.mb-mini u { flex: 1; height: 6px; border-radius: 3px; background: var(--surface); border: 1px solid var(--ad-line); overflow: hidden; text-decoration: none; display: block; }
+.mb-mini u i { display: block; height: 100%; background: var(--primary); }
+.mb-mini em { font-style: normal; font-weight: 700; min-width: 22px; text-align: right; color: var(--text-main); }
+.mb-note { font-size: 12px; color: var(--text-sec); line-height: 1.5; margin: 8px 2px 12px; max-width: 900px; }
+.mb-log { display: grid; grid-template-columns: 90px minmax(120px, 1fr) minmax(0, 3fr) minmax(110px, 1fr) 60px; gap: 4px 12px; padding: 6px 14px; border-top: 1px solid var(--ad-line); font-size: 12px; }
+.mb-log > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media screen and (max-width: 980px) {
+    .mb-top { grid-template-columns: minmax(0, 1fr); }
+    .mb-seg { display: flex; }
+    .mb-row { grid-template-columns: minmax(0, 1fr) auto; }
+    .mb-row.head { display: none; }
+    .mb-row .nm { grid-column: 1 / -1; }
+    .mb-row .mb-mini { grid-column: 1 / -1; }
+    .mb-row .c { text-align: left; }
+    .mb-tiers { grid-template-columns: 1fr; }
+    .mb-log { grid-template-columns: 1fr 1fr; }
+    .mb-log > span:nth-child(3) { grid-column: 1 / -1; white-space: normal; }
+}
+
+/* Сверка схемы самосборной группы со сметой: рамки подписей поверх листа и подсветка строк (app.sgInit). */
+.sg-hot { fill: transparent; stroke: none; pointer-events: none; }
+.sg-hot.sg-miss { stroke: #ef4444; stroke-width: 2px; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; fill: rgba(239, 68, 68, 0.10); }
+.sg-hot.sg-hl { fill: rgba(37, 99, 235, 0.28); stroke: #2563eb; stroke-width: 2px; stroke-dasharray: none; vector-effect: non-scaling-stroke; }
+/* Зона наведения: подписи на листе мелкие, поэтому зона шире рамки подписи, но не заходит на соседние подписи. */
+.sg-hit { fill: transparent; stroke: none; pointer-events: all; cursor: pointer; }
+.sg-pt { display: none; fill: rgba(37, 99, 235, 0.35); stroke: #2563eb; stroke-width: 2px; vector-effect: non-scaling-stroke; pointer-events: none; }
+.sg-pt.sg-hl { display: block; }
+/* Листы насосных групп — крупнее общей рамки схем: на них мелкие подписи, а их надо читать и наводить мышью. */
+[id^="pump_group_scheme_row_"] .automation-scheme { width: 100%; max-width: 1040px; height: auto; }
+[id^="pump_group_scheme_row_"] .automation-scheme > svg { height: auto; }
+#print-area tr.sg-row-hl td { background: rgba(37, 99, 235, 0.20) !important; box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.55); }
+#print-area tr.sg-row-flash td { animation: sg-flash 1.8s ease-out; }
+@keyframes sg-flash { 0%, 40% { background: rgba(250, 204, 21, 0.55); } 100% { background: transparent; } }
+.sg-summary { font-size: 12px; line-height: 1.5; padding: 6px 10px; margin: 6px 0 2px; border-radius: 8px; background: var(--surface-light, rgba(127,127,127,.08)); }
+.sg-miss-txt { color: #ef4444; font-weight: 600; }
+.sg-ok-txt { color: #16a34a; font-weight: 600; }
+.sg-hint { color: var(--text-sec, #6b7280); }
+
+#sg-tip { display: none; position: fixed; z-index: 99999; max-width: 420px; padding: 8px 10px; border-radius: 8px; font-size: 12px; line-height: 1.4;
+    background: var(--surface, #fff); color: var(--text-main, #111827); border: 1px solid var(--primary, #2563eb); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); pointer-events: none; }
+#sg-tip .sg-tip-h { font-weight: 700; margin-bottom: 4px; }
+#sg-tip .sg-tip-row { margin-top: 2px; }
+#sg-tip .sg-tip-row span { color: var(--text-sec, #6b7280); white-space: nowrap; }
+#sg-tip .sg-tip-miss { color: #ef4444; font-weight: 600; }
+
+/* Строка с плашкой под заголовком подраздела (group-warn-row) на телефоне: мобильная карточка товара раскладывала её в сетку
+   «картинка | название | количество», и плашка сжималась в колонку шириной ~60 px. Как у строки со схемой — одним блоком на всю ширину. */
+@media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    /* Селектор не короче мобильной карточки товара (там девять :not) и на один класс специфичнее — иначе карточка перебивает. */
+    .inv-table tr.group-warn-row:not(.row-sec):not(.group-header):not(.row-subtotal):not(.empty-state-row):not(.hide-custom-work-btn):not(.hide-custom-eq-btn):not(.scheme-row) { display: block !important; }
+    .inv-table tr.group-warn-row:not(.row-sec):not(.group-header):not(.row-subtotal):not(.empty-state-row):not(.hide-custom-work-btn):not(.hide-custom-eq-btn):not(.scheme-row) > td { display: block !important; width: 100% !important; padding: 2px 0 8px !important; grid-column: 1 / -1 !important; }
+}
+
+/* Телефон: подписи на листе в смете мельче пальца (6–7 px), касание схемы должно её увеличивать, а не уводить к чужой строке.
+   Зоны подписей в смете на сенсорных экранах отключены; в полноэкранном просмотре (там лист увеличен) они работают. */
+@media (hover: none), screen and (max-width: 768px) {
+    .automation-scheme .sg-hit { pointer-events: none; }
+    #scheme_zoom_overlay .sg-hit { pointer-events: all; }
+}
+
+/* Поиск по кабинету не показываем, пока анкета не заполнена и не сохранена (app.cabinetSearchAllowed) */
+body.profile-incomplete-lock #lk_search_btn,
+body.profile-incomplete-lock #lk_search,
+body.profile-incomplete-lock .lk-rail-item:not([data-rail]):not(.lk-rail-logout) { display: none !important; }
+
+#profile_modal_overlay .auth-input[readonly] { opacity: .7; cursor: default; }

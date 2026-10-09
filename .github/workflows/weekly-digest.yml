@@ -1,0 +1,67 @@
+# Еженедельный дайджест новинок: страница в «Новостях» + объявление и пуш всем.
+#
+# По понедельникам скрипт tools/publish_digest.py берёт из очереди
+# content/digest.json очередной выпуск, собирает novosti/<дата>/index.html,
+# дописывает sitemap.xml и вызывает Edge Function send-push (reason = digest):
+# она кладёт объявление в колокольчик и будит телефоны.
+#
+# Нужны два секрета репозитория (Settings → Secrets and variables → Actions):
+#   DIGEST_PUSH_URL — адрес функции: https://<проект>.supabase.co/functions/v1/send-push
+#   DIGEST_SECRET   — тот же секрет, что в Edge Function Secrets Supabase
+# Без них страница выйдет, а рассылка будет пропущена и повторится при следующем запуске.
+#
+# Запустить вручную: Run workflow (dry_run — только показать текст).
+
+name: Еженедельный дайджест
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'      # понедельник, 09:00 по Москве
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Только показать, что было бы отправлено'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weekly-digest
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Что к отправке
+        run: python tools/publish_digest.py --dry-run
+
+      - name: Публикация и рассылка
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          DIGEST_PUSH_URL: ${{ secrets.DIGEST_PUSH_URL }}
+          DIGEST_SECRET: ${{ secrets.DIGEST_SECRET }}
+        run: python tools/publish_digest.py
+
+      - name: Коммит
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "выпусков не было — коммитить нечего"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Поимённо: параллельно работают люди и другие workflow, git add -A забрал бы чужое.
+          git add content/digest.json sitemap.xml novosti
+          git commit -m "Еженедельный дайджест новинок"
+          git pull --rebase
+          git push

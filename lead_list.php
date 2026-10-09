@@ -19,7 +19,7 @@
 error_reporting(0);
 ini_set('display_errors', 0);
 
-$ALLOWED_ORIGINS = ['https://heatcalc.ru', 'https://www.heatcalc.ru'];
+$ALLOWED_ORIGINS = ['https://heatcalc.ru', 'https://www.heatcalc.ru', 'https://localhost'];
 $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
 if (in_array($origin, $ALLOWED_ORIGINS, true)) {
     header('Access-Control-Allow-Origin: ' . $origin);
@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 const SUPABASE_HOST = 'https://ahanbwugsmcyvrwbmtlx.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_gcMJ-PvJmKavObbnePFGZQ_O-pu5O2p';
-const OWNER_EMAILS = ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'];
+const OWNER_EMAILS = ['kovdor24@yandex.ru'];
 const MAX_ROWS = 500;
 
 function bearerToken() {

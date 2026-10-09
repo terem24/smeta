@@ -9,6 +9,27 @@
     <link rel="canonical" href="https://heatcalc.ru/">
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
     <meta name="format-detection" content="telephone=no">
+    <script>
+    /* Видимая высота экрана для окна кабинета/анкеты (--vv-h, --vv-top в style.css).
+       На iPhone 100vh и height:100% включают область под нижней панелью Safari, и кнопка
+       «Сохранить» оказывалась под ней; visualViewport даёт реальную видимую часть и
+       учитывает экранную клавиатуру. */
+    (function () {
+        var vv = window.visualViewport, root = document.documentElement;
+        function set() {
+            var h = vv ? vv.height : window.innerHeight, t = vv ? vv.offsetTop : 0;
+            if (h > 0) root.style.setProperty('--vv-h', Math.round(h) + 'px');
+            root.style.setProperty('--vv-top', Math.round(t) + 'px');
+        }
+        // Напрямую, без requestAnimationFrame: во фоновых и встроенных браузерах кадры могут не идти,
+        // и высота застыла бы на старом значении
+        function sched() { set(); }
+        set();
+        window.addEventListener('resize', sched);
+        window.addEventListener('orientationchange', function () { setTimeout(set, 300); });
+        if (vv) { vv.addEventListener('resize', sched); vv.addEventListener('scroll', sched); }
+    })();
+    </script>
 
     <!-- Открытый граф: превью ссылки в Telegram, ВКонтакте, WhatsApp, Viber -->
     <meta property="og:type" content="website">
@@ -58,8 +79,7 @@
             { "@type": "Country", "name": "Россия" },
             { "@type": "City", "name": "Москва" },
             { "@type": "City", "name": "Санкт-Петербург" }
-          ],
-          "sameAs": [ "https://t.me/heatcalc" ]
+          ]
         },
         {
           "@type": "WebApplication",
@@ -113,7 +133,7 @@
         // Ставим до отрисовки, чтобы страница не прыгала с 0.8 на выбранный.
         try { var _z = parseFloat(localStorage.getItem('hc_ui_zoom')), _m = innerWidth / 1450; if (_z >= 0.8 && _z <= 1.2) { while (_z > _m && _z > 0.8) _z = _z > 1 ? 1 : _z > 0.9 ? 0.9 : 0.8; document.documentElement.style.setProperty('--ui-zoom', _z); } } catch (e) {}
         // Крупный текст (big_text.css) — тоже до отрисовки
-        try { if (localStorage.getItem('hc_big_text') === '1') { document.documentElement.setAttribute('data-big-text', ''); var _l = document.createElement('link'); _l.id = 'big_text_css'; _l.rel = 'stylesheet'; _l.href = 'big_text.css?v=9'; document.head.appendChild(_l); } } catch (e) {}
+        try { if (localStorage.getItem('hc_big_text') === '1') { document.documentElement.setAttribute('data-big-text', ''); var _l = document.createElement('link'); _l.id = 'big_text_css'; _l.rel = 'stylesheet'; _l.href = 'big_text.css?v=10'; document.head.appendChild(_l); } } catch (e) {}
     </script>
     <script>
         if ('serviceWorker' in navigator) {
@@ -173,10 +193,10 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=4.79">
+    <link rel="stylesheet" href="style.css?v=5.07">
 
     <script src="supabase-js.js" defer></script>
-    <script src="catalog.js?v=3.28" defer></script>
+    <script src="catalog.js?v=3.41" defer></script>
     <!-- Координаты и регионы населённых пунктов: карта проектов в админке и
          адрес объекта. Данные вшиты в файл, наружу никаких запросов. -->
     <script src="cities_geo.js?v=1.0" defer></script>
@@ -190,8 +210,7 @@
     <script src="gas_tariffs.js?v=1.0" defer></script>
     <!-- Цены дистрибьюторов поверх каталога. Отдельный файл, потому что каталог
          раз в месяц целиком переписывает автообновление цен Терем-онлайн. -->
-    <script src="dist_prices.js?v=1.1" defer></script>
-    <script src="gamification.js?v=2.2" defer></script>
+    <script src="dist_prices.js?v=1.2" defer></script>
     <!-- Пуш-уведомления Android-приложения. В браузере файл ничего не делает:
          плагина Capacitor нет, все методы тихо выходят. Подключать до app.js —
          app.init() дёргает appPush.init(). -->
@@ -202,8 +221,9 @@
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
-    <script src="short_names.js?v=1.1" defer></script>
-    <script src="app.js?v=11.13" defer></script>
+    <script src="short_names.js?v=1.2" defer></script>
+    <script src="avatars.js?v=1.0" defer></script>
+    <script src="app.js?v=11.97" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -216,7 +236,7 @@
          векторный композитор, что рисует лист схемы в проекте, поэтому нужен
          и движок листов (рамка/штамп из него не берутся, только текст). -->
     <script src="project_sheets.js?v=4.28" defer></script>
-    <script src="project_scheme.js?v=4.57" defer></script>
+    <script src="project_scheme.js?v=4.68" defer></script>
     <!-- Укладка тёплого пола по планам этажей. В калькуляторе нужна не ради
          листов, а ради сметы: длину трубы и число выходов коллектора берём
          из нарисованных петель (projectPlans.floorLoops). -->
@@ -240,15 +260,17 @@
          RecognizeMatch, docs.js — к WARRANTY_DB. -->
     <script>
         window.HC_LAZY = {
-            recognize: ['recognize_match.js?v=7.6', 'recognize_geo.js?v=1.2', 'recognize_files.js?v=2.9',
-                'recognize.js?v=9.21', 'recognize_plan.js?v=2.6', 'recognize_project.js?v=2.7', 'recognize_sketch.js?v=1.4'],
+            recognize: ['recognize_match.js?v=7.7', 'recognize_geo.js?v=1.2', 'recognize_files.js?v=2.9',
+                'recognize.js?v=9.23', 'recognize_plan.js?v=2.6', 'recognize_project.js?v=2.7', 'recognize_sketch.js?v=1.4'],
             docs: ['warranty.js?v=1.0', 'docs.js?v=3.5'],
+            kpshare: ['kp_share.js?v=1.3'],
             warranty_admin: ['warranty_admin.js?v=1.0'],
             pay_readiness: ['pay_readiness.js?v=1.2'],
-            excel: ['excel_export.js?v=1.4'],
+            excel: ['excel_export.js?v=1.5'],
             reprice: ['reprice.js?v=1.4'],
             qrcode: ['qrcode.min.js'],
-            html2pdf: ['https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js']
+            html2pdf: ['https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'],
+            sheetjs: ['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js']
         };
         (function () {
             var started = {};
@@ -293,7 +315,7 @@
     <script src="email.min.js" defer></script>
 
     <!-- Yandex.Metrika counter & Cookie Consent -->
-    <script src="cookie-consent.js?v=1.1" defer></script>
+    <script src="cookie-consent.js?v=1.2" defer></script>
     <!-- Плашка «поставьте приложение» — только Android и только не в самом
          приложении, остальное решает сам файл. -->
     <script src="install_app.js?v=1.0" defer></script>
@@ -656,22 +678,6 @@
                 </button>
 
                 <div class="header-divider"></div>
-
-                <!-- Открывает ту же врезку рейтинга, что и пункт меню: обычный переход по
-                     ссылке уводил со страницы вместе с меню. href оставлен для средней
-                     кнопки мыши и «открыть в новой вкладке». -->
-                <a class="btn-ctrl btn-trophy" href="/rating/" title="Рейтинг и достижения"
-                    onclick="event.preventDefault(); app.railGo('rating');">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M7 4h10v4a5 5 0 0 1-10 0V4z"></path>
-                        <path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5v1A3.5 3.5 0 0 0 6.5 11H7"></path>
-                        <path d="M17 5h2.5A1.5 1.5 0 0 1 21 6.5v1A3.5 3.5 0 0 1 17.5 11H17"></path>
-                        <path d="M12 13v4"></path>
-                        <path d="M9 21h6"></path>
-                        <path d="M10 17h4"></path>
-                    </svg>
-                </a>
 
                 <!-- Режим обучения. Раньше это была галочка отдельной строкой над колонками:
                      её не замечали, а на телефоне она занимала место в самом верху экрана.
@@ -1274,6 +1280,17 @@
                         style="margin-left: 4px; color: var(--primary); text-decoration: none; border-bottom: 1px dashed var(--primary); cursor: pointer;">Вернуть автоподбор</a></div>
             </div>
 
+            <!-- Насосные группы: готовые STOUT/ROMMER или самосборные из отдельных позиций, как в
+                 проектах (тариф «Профи», нержавеющая обвязка). Блок виден, когда в котельной есть
+                 коллектор (app.syncGroupsBuildUI). -->
+            <div class="control-item" id="blk_groups_build" style="display:none; margin-bottom: 16px;">
+                <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Насосные группы<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Готовые.</b> Насосная группа STOUT/ROMMER одной позицией и стальной коллектор.<div class="tip-p"><b>Самосборные.</b> Группа собирается из отдельных позиций, как в проектах: насос, краны, смеситель (термостатический или под сервопривод), обратный клапан. Коллектор — две трубы с тройниками на каждый контур. Функция тарифа «Профи», на нержавеющей или ППР обвязке.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_groups_build_note">Готовые насосные группы.</span></div></div></span></span>
+                <div class="tabs" id="groups_build_tabs">
+                    <div class="tab active" id="groups_build_ready" onclick="app.setGroupsBuild('ready', event)">Готовые</div>
+                    <div class="tab" id="groups_build_self" onclick="app.setGroupsBuild('self', event)">Самосборные</div>
+                </div>
+            </div>
+
             <!-- Инженерные настройки свёрнуты: большинство оставляет их по умолчанию.
                  Сводка значений в заголовке — чтобы нестандартный выбор был виден и в
                  свёрнутом виде (app.syncFineTune). -->
@@ -1500,6 +1517,15 @@
                                 onblur="app.setRes(this.innerText)"
                                 onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">3</div><button
                                 class="step-btn" onclick="app.updRes(1)">+</button>
+                        </div>
+                    </div>
+                    <!-- Чем греть горячую воду. Только подробный режим дома (app.syncUI):
+                         электрическая мощность и лимит участка считаются там же. -->
+                    <div id="blk_dhw_src"
+                        style="display:none; border-top:1px solid #E5E7EB; padding-top:8px;">
+                        <div class="tabs" style="font-size:11px;">
+                            <div class="tab dhw-src-tab active" data-src="boiler" onclick="app.setDhwSource('boiler', event)">От котла</div>
+                            <div class="tab dhw-src-tab" data-src="electric" onclick="app.setDhwSource('electric', event)">Электро</div>
                         </div>
                     </div>
                     <div id="blk_recirc_wrap"
@@ -2124,6 +2150,34 @@
                 </div>
             </div>
 
+            <!-- Буферная ёмкость (тепловой накопитель STOUT STT-0001…0004). Видна в подробном
+                 режиме и только без газового котла: накопитель окупается на электрокотле с
+                 двухтарифным счётчиком (app.bufferAvailable, показ — в app.syncUI). Содержимое
+                 блока рисует app.renderBufferUI(). -->
+            <div class="control-item toggle-item" id="blk_buffer" style="display:none;">
+                <div class="label-row" style="position:relative;">
+                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Буферная ёмкость<span class="ui-emo"> 🔋</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel" id="buffer_tip">Тепловой накопитель STOUT STT: ночью электрокотёл греет воду по дешёвому тарифу, днём система берёт тепло из ёмкости. Объём, затраты и окупаемость считаются автоматически.</div></span></span>
+                    <label class="switch"><input type="checkbox" id="chk_buffer"
+                            onchange="app.toggleBuffer(this.checked)"><span class="slider"></span></label>
+                </div>
+                <div id="blk_buffer_box"
+                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="lbl" style="font-size:12px;">Объём, л</span>
+                        <div class="stepper" style="width:124px;">
+                            <button class="step-btn" onclick="app.stepBufferVol(-1)">−</button>
+                            <div class="step-val" id="val_buffer_vol">—</div>
+                            <button class="step-btn" onclick="app.stepBufferVol(1)">+</button>
+                        </div>
+                    </div>
+                    <div id="buffer_vol_reset" style="display:none; text-align:right;">
+                        <span onclick="app.resetBufferVol()"
+                            style="font-size:10px; color:var(--primary); cursor:pointer; text-decoration:underline dotted;">вернуть автоподбор объёма</span>
+                    </div>
+                    <div id="buffer_body"></div>
+                </div>
+            </div>
+
             <!-- Стоимость отопления газом. Устроено как блок по электричеству, но
                  переключатель другой: магистральный газ считается по тарифу региона
                  (GAS_TARIFF_RU в catalog.js, подставляется по выбранному городу),
@@ -2354,7 +2408,6 @@
             <!-- Бланк «Гарантия на систему STOUT»: на экране скрыт, печатается последним
                  листом КП при доле STOUT не ниже порога (app.renderWarrantyPrint) -->
             <div id="warranty_print" class="warranty-print"></div>
-            <div id="contest_widget" class="no-print"></div>
             <div class="doc-footer" style="display: flex; flex-direction: column; align-items: stretch;">
                 <div class="discount-container no-print" id="discount_block" style="display: none; width: 100%; flex-direction: column; gap: 8px; margin-bottom: 12px; border-bottom: 1px dashed var(--border); padding-bottom: 12px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--text-sec);">
@@ -2754,18 +2807,6 @@
 
                 <div id="auth_method_view">
                     <div class="social-btn-wrapper">
-                        <!-- Google скрыт по умолчанию: показывается только тем, чья страна точно
-                             определена и это не Россия (app.applyRuLoginRestrictions). -->
-                        <button class="auth-btn-base btn-google" id="auth_google_btn" style="display: none;" onclick="app.loginGoogle()">
-                            <svg width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                            </svg>
-                            Продолжить с Google
-                        </button>
-
                         <button class="auth-btn-base btn-google btn-yandex" onclick="app.loginYandex()">
                             <span class="yandex-logo-badge">Я</span>
                             Яндекс ID
@@ -2833,6 +2874,8 @@
                                 <input type="checkbox" id="chk_privacy" required style="width: 15px; height: 15px; cursor: pointer; flex-shrink: 0;">
                                 <span>Согласен с <a href="privacy-policy.html" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: none;">политикой обработки персональных данных</a></span>
                             </label>
+                            <!-- Согласие на информационные письма в форме регистрации не спрашиваем:
+                                 форму не перегружаем, переключатель — в кабинете (Уведомления, #profile_mail_consent) -->
                         </div>
                     </div>
                     <div id="auth_error_msg" style="color: #ef4444; font-size: 13px; margin: 0 0 12px; display: none; text-align: left; line-height: 1.4;"></div>
@@ -2976,6 +3019,15 @@
                         <span class="share-opt-sub" style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">комнаты и отопление</span>
                     </div>
                 </div>
+                <!-- Гарантия на объект: лист гарантии STOUT в КП и в PDF (app.warrantyLinkData).
+                     Виден, когда доля STOUT не ниже порога. Без адреса и заказчика не добавляется. -->
+                <div class="share-option-card" id="card_opt_warranty" style="display: none;" onclick="app.toggleShareOption('warranty')" title="Лист гарантии STOUT на объект. Без адреса и ФИО заказчика он не добавляется">
+                    <input type="checkbox" id="share_opt_warranty" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
+                    <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
+                        <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Гарантия</span>
+                        <span class="share-opt-sub" style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">STOUT на объект</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Вид файла Excel: с разделами, как на экране, или списком, как обычный счёт.
@@ -3037,7 +3089,7 @@
         </div>
     </div>
 
-    <div id="profile_modal_overlay" class="auth-modal-overlay" style="display: none;">
+    <div id="profile_modal_overlay" class="auth-modal-overlay ym-hide-content" style="display: none;">
         <div class="auth-modal-content" style="box-sizing: border-box; transition: max-width 0.3s ease; display: flex; flex-direction: column;">
             <span id="profile_modal_close_btn" class="auth-modal-close" onclick="app.closeProfileModal()" style="top: 10px; right: 16px;">&times;</span>
 
@@ -3100,6 +3152,7 @@
                         </div>
                         <div class="lk-photo-actions">
                             <button type="button" class="lk-btn-sm" onclick="document.getElementById('profile_photo_file').click()">Загрузить фото</button>
+                            <button type="button" class="lk-btn-sm" onclick="app.openAvatarPicker()">Выбрать аватар</button>
                             <input type="file" id="profile_photo_file" accept="image/*" style="display: none;" onchange="app.handleProfilePhotoUpload(event)">
                             <button type="button" id="profile_photo_remove_btn" class="lk-btn-sm" onclick="app.removeProfilePhoto()">Удалить фото</button>
                         </div>
@@ -3126,8 +3179,9 @@
                         <div id="profile_phone_region" class="lk-field-note"></div>
                     </div>
                     <div class="lk-field lk-span-4">
-                        <label for="profile_email_input">Email для уведомлений</label>
+                        <label for="profile_email_input">Email</label>
                         <input type="email" id="profile_email_input" class="auth-input" placeholder="example@mail.ru">
+                        <div id="profile_email_unverified_hint" style="display:none; margin-top:6px; font-size:12px; color:#B45309; line-height:1.4;">Вы зарегистрировались по промокоду, и мы не отправляли на этот адрес код. Проверьте, что почта написана без ошибок: на неё придут сметы и ссылка для сброса пароля.</div>
                     </div>
                     <div class="lk-field lk-span-4">
                         <label for="profile_birth_date_input">Дата рождения</label>
@@ -3150,23 +3204,6 @@
                              блока (поле/кнопка либо название компании) — renderProfilePromoField -->
                         <label>Промокод</label>
                         <div id="profile_promo_box" class="lk-inline"></div>
-                    </div>
-
-                    <div class="lk-field lk-span-4">
-                        <!-- Необязательный вопрос: ответ дописывается к источнику регистрации
-                             (users.utm_source, сегмент «ask:») — см. app.saveHeardFrom -->
-                        <label for="profile_heard_from">Откуда узнали о сервисе</label>
-                        <select id="profile_heard_from" class="auth-input">
-                            <option value="">Не выбрано</option>
-                            <option value="поиск">Поиск Яндекс или Google</option>
-                            <option value="ИИ-помощник">ИИ-помощник (Алиса, ChatGPT)</option>
-                            <option value="знакомый">Рекомендация знакомого</option>
-                            <option value="магазин">Магазин или поставщик</option>
-                            <option value="Telegram">Telegram</option>
-                            <option value="видео">Видео</option>
-                            <option value="реклама">Реклама</option>
-                            <option value="другое">Другое</option>
-                        </select>
                     </div>
 
                     <div class="lk-field lk-span-12 profile-activity">
@@ -3311,6 +3348,19 @@
                 <div class="lk-section-head">
                     <div><h4>Уведомления</h4><div class="lk-sub">Куда и о чём сообщать, когда с вашей сметой что-то происходит</div></div>
                 </div>
+                <!-- Информационные письма: согласие хранится в users.mail_consent (миграция
+                     20261007_mail_consent.sql), читает и пишет app.refreshMailConsentUI / setMailConsent.
+                     Служебные письма (коды, статусы смет, предупреждения о доступе) отключить нельзя. -->
+                <div class="lk-card" style="margin-bottom: 14px;">
+                    <div class="lk-setting">
+                        <div class="lk-setting-text">
+                            <b>Информационные письма и поздравления</b>
+                            <span>Напоминания, советы по работе с калькулятором, поздравление с днём рождения. Служебные письма (коды, статусы смет) отключить нельзя</span>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="profile_mail_consent" onchange="app.setMailConsent(this.checked)"><span class="slider"></span></label>
+                    </div>
+                </div>
+
                 <!-- Личные уведомления в Telegram: подключение через бота (tg-webhook) и три
                      переключателя категорий (installer_settings.tgNotify, см. app.setTgNotify).
                      Состояние заполняет app.refreshTelegramConnectUI. -->
@@ -3379,17 +3429,7 @@
             </div>
         </div>
     </div>
-    <!-- Врезка «Баллы и рейтинг»: та же страница /rating/, но внутри рабочего экрана,
-         рядом с меню. Открывает и закрывает app.openRatingPanel / closeRatingPanel;
-         адрес подставляется при первом открытии, чтобы страница не грузилась зря. -->
-    <div id="lk_rating_overlay" class="auth-modal-overlay" style="display: none; z-index: 99997;">
-        <div class="auth-modal-content lk-rating-card">
-            <span class="auth-modal-close" onclick="app.closeRatingPanel()" style="top: 8px; right: 14px;">&times;</span>
-            <iframe id="lk_rating_frame" class="lk-rating-frame" title="Баллы и рейтинг" loading="lazy"></iframe>
-        </div>
-    </div>
-
-    <div id="admin_modal_overlay" class="auth-modal-overlay" style="display: none; z-index: 100000;">
+    <div id="admin_modal_overlay" class="auth-modal-overlay ym-hide-content" style="display: none; z-index: 100000;">
         <div class="auth-modal-content" style="display: flex; flex-direction: column;">
             <span class="auth-modal-close" onclick="app.closeAdminModal()">&times;</span>
             <!-- Тот же переключатель темы, что и в шапке сайта: панель открыта поверх
@@ -3468,7 +3508,7 @@
         </div>
     </div>
     <div id="swap_modal_overlay" class="auth-modal-overlay" style="display: none; z-index: 100002; backdrop-filter: blur(8px); background: rgba(15, 23, 42, 0.15);" onclick="if(event.target === this) app.closeSwapModal()">
-        <div class="auth-modal-content" style="max-width: 950px; width: 95%; max-height: 112vh; display: flex; flex-direction: column; padding: 24px 28px; box-sizing: border-box; border-radius: 24px; background: var(--bg); box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15); border: 1px solid var(--border); zoom: 0.8;">
+        <div class="auth-modal-content" style="max-width: 1300px; width: 95%; max-height: 112vh; display: flex; flex-direction: column; padding: 24px 28px; box-sizing: border-box; border-radius: 24px; background: var(--bg); box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15); border: 1px solid var(--border); zoom: 0.8;">
             <span class="auth-modal-close" onclick="app.closeSwapModal()" style="top: 20px; right: 24px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: var(--surface-light); border-radius: 50%; color: var(--text-main); font-size: 20px; cursor: pointer; transition: all 0.2s; border: none; font-weight: normal; line-height: 1;">&times;</span>
             <h3 id="swap_modal_title" style="margin-top: 0; margin-bottom: 12px; text-align: left; line-height: 1.4; color: var(--text-main);">Замена оборудования</h3>
             <div id="swap_modal_body" style="overflow-y: auto; flex-grow: 1; padding-right: 4px;"></div>
@@ -3575,7 +3615,7 @@
     </button>
 
     <!-- МОДАЛЬНОЕ ОКНО УВЕДОМЛЕНИЙ -->
-    <div id="notifications_modal_overlay" class="auth-modal-overlay" style="display: none; z-index: 99998;" onclick="if(event.target === this) app.closeNotificationsModal()">
+    <div id="notifications_modal_overlay" class="auth-modal-overlay ym-hide-content" style="display: none; z-index: 99998;" onclick="if(event.target === this) app.closeNotificationsModal()">
         <div class="auth-modal-content" style="max-width: 420px; width: 95%; max-height: 85vh; display: flex; flex-direction: column; padding: 18px; border-radius: 16px;">
             <span class="auth-modal-close" onclick="app.closeNotificationsModal()">&times;</span>
             <h3 class="auth-modal-title" style="margin-top: 0; margin-bottom: 15px; font-size: 15px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 8px; flex-shrink: 0; flex-wrap: wrap;">
@@ -3600,7 +3640,11 @@
             </div>
 
             <div id="notif_pane_chat" style="display: none; flex-direction: column; flex: 1; min-height: 0; margin: 0 -18px -18px; border-top: 1px solid var(--border); border-radius: 0 0 16px 16px; overflow: hidden;">
-                <div class="admin-chat-body" id="user_chat_body" style="min-height: 240px;"></div>
+                <div class="admin-chat-body" id="user_chat_body" style="min-height: 240px;" onscroll="app.userChatOnScroll(this)"></div>
+                <!-- «↓ Новое сообщение»: показывается из renderUserChatNewBtn -->
+                <div style="position: relative; height: 0; flex-shrink: 0;">
+                    <button id="user_chat_newbtn" type="button" onclick="app.userChatToBottom()" style="display: none; position: absolute; right: 14px; bottom: 10px; z-index: 2; padding: 6px 12px; border: none; border-radius: 16px; background: var(--primary); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.25);"></button>
+                </div>
                 <!-- Полоска «отвечаем на это сообщение»: появляется по клику на пузыре,
                      заполняется из renderUserReplyBar -->
                 <div id="user_chat_replybar"></div>
@@ -3729,7 +3773,5 @@
     </div>
     <div class="mobile-menu-backdrop" onclick="app.toggleMenu()"></div>
 
-    <!-- Тост конкурса STOUT -->
-    <div id="contest_toast" class="contest-toast no-print"></div>
 
 </body>

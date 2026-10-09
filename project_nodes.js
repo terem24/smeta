@@ -172,7 +172,7 @@
   var NODES = [
     ['gas_boiler', 'Обвязка газового котла', function (c) { return !!c.gas; }],
     ['el_boiler', 'Обвязка электрического котла', function (c) { return !!c.el; }],
-    ['boiler_circuit', 'Обвязка котлового контура', function (c) { return !!c.hydro; }],
+    ['boiler_circuit', 'Обвязка котлового контура', function (c) { return !!c.hydro && !c.hydro.buffer; }],
     ['indirect', 'Обвязка бойлера косвенного нагрева', function (c) { return !!c.indirect; }],
     ['exp_tank', 'Обвязка расширительного бака', function (c, x) { return c.tankHeating > 0 && !(c.tankDhw > 0); }],
     ['exp_tanks2', 'Обвязка расширительных баков', function (c) { return c.tankDhw > 0; }],
