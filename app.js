@@ -6260,6 +6260,7 @@ const app = {
 
     // Открыть ввод своего оборудования: умный поиск по каталогу (название/артикул) + ручной ввод
     addCustomEqPrompt: function (sectionTitle) {
+        const _passedSection = sectionTitle;   // раздел, если окно открыли из конкретного места
         sectionTitle = sectionTitle || '9. Дополнительные материалы';
         if (document.body.classList.contains('menu-open')) {
             try { this.toggleMenu(); } catch (e) { }
@@ -6288,6 +6289,32 @@ const app = {
         msgEl.className = 'calc-dialog-message';
         msgEl.innerText = 'Введите название или артикул — покажем совпадения из каталога, либо впишите своё вручную.';
         card.appendChild(msgEl);
+
+        // Раздел сметы, куда ляжет позиция. Кнопка теперь одна на всю смету, поэтому
+        // раздел выбирается здесь; по умолчанию — последний выбранный, иначе «9».
+        const secWrap = document.createElement('div');
+        secWrap.style.cssText = 'display:flex; align-items:center; gap:8px; margin:0 0 10px;';
+        const secLabel = document.createElement('span');
+        secLabel.style.cssText = 'font-size:12px; color:var(--text-sec); white-space:nowrap;';
+        secLabel.innerText = 'Раздел сметы:';
+        const secSelect = document.createElement('select');
+        secSelect.className = 'auth-input';
+        secSelect.style.cssText = 'flex:1; min-width:0; max-width:100%; height:34px; font-size:13px; margin:0;';
+        const _secList = this.getBillSections();
+        if (sectionTitle && !_secList.includes(sectionTitle)) _secList.unshift(sectionTitle);
+        const _secDefault = (_passedSection && _secList.includes(_passedSection)) ? _passedSection
+            : (this._lastAddSection && _secList.includes(this._lastAddSection) ? this._lastAddSection : sectionTitle);
+        _secList.forEach(s => {
+            const o = document.createElement('option');
+            o.value = s; o.textContent = s;
+            if (s === _secDefault) o.selected = true;
+            secSelect.appendChild(o);
+        });
+        sectionTitle = secSelect.value || sectionTitle;
+        secSelect.onchange = () => { sectionTitle = secSelect.value; this._lastAddSection = sectionTitle; };
+        secWrap.appendChild(secLabel);
+        secWrap.appendChild(secSelect);
+        card.appendChild(secWrap);
 
         const nameWrap = document.createElement('div');
         nameWrap.className = 'eq-name-wrap';
@@ -77919,13 +77946,9 @@ const app = {
                     : '';
                 rows += `<tr ${rowStyle}${rowClass} data-rk="${this._rowKey('e', title, lookupId)}" onclick="${rowClick}"><td class="col-idx">${recSelHtml}${globalIdx++}</td>${imgCellHtml}<td class="${nameClass}" ${nameClick}>${app.exportName(i)}${portTagHtml}${nameBtnHtml}${eqBadgeHtml}${swapInlineHtml}</td><td class="col-sku col-art ${showSku ? '' : 'hidden-col'}">${i.displaySku}</td><td class="col-brand">${i.brand || 'STOUT'}</td><td class="col-unit">${i.unit || 'шт'}</td><td class="col-qty">${qHtml}</td>${priceCell}${sumCell}</tr>` + locsRows;
             });
-            let addCustomRow = "";
-            if (this.state.viewMode === 'equipment') {
-                addCustomRow = `<tr class="hide-custom-eq-btn no-print"><td colspan="9">
-                    <div class="btn-add-custom" onclick="app.addCustomEqPrompt('${title.replace(/'/g, "\\'")}')">+ Добавить своё оборудование</div>
-                </td></tr>`;
-            }
-            h += rows + addCustomRow + `<tr class="row-subtotal"><td colspan="9">Итого: ${app.formatPriceHtml(secTotal, true)}</td></tr>`;
+            // Кнопка «Добавить своё оборудование» одна на всю смету (в конце таблицы),
+            // раздел выбирается в самом окне — девять одинаковых ссылок только шумели.
+            h += rows + `<tr class="row-subtotal"><td colspan="9">Итого: ${app.formatPriceHtml(secTotal, true)}</td></tr>`;
             sum += secTotal; bill = []; sectionHasAnalogItems = false;
         };
 
@@ -86945,6 +86968,11 @@ const app = {
         // поверх открытого окна замены.
         if (computeOnly) return;
 
+        if (this.state.viewMode === 'equipment' && !h.includes('empty-state-row') && h.includes('row-sec')) {
+            h += `<tr class="hide-custom-eq-btn no-print"><td colspan="9">
+                <div class="btn-add-custom" onclick="app.addCustomEqPrompt()">+ Добавить своё оборудование</div>
+            </td></tr>`;
+        }
         const _estBefore = this._estimateBefore();
         document.getElementById('tbody').innerHTML = h;
         document.getElementById('total_sum').innerHTML = app.formatPriceHtml(sum, true);
