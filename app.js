@@ -84733,7 +84733,7 @@ const app = {
                     // #10: у металлопластика соединения ПРЕСС, а не аксиальные — водорозетка берётся
                     // из линейки латунных пресс-фитингов (SFP-), а аксиальная монтажная гильза и
                     // пластиковый фиксатор поворота (это оснастка PEX-a) в смету не идут вовсе.
-                    addToBill(_waterSocket(), socketsCold, this.getDesc('socket', _isMpWater ? 'Пресс, угольник с ВР (ХВС)' : 'Тупиковая (ХВС)', socketsCold), grpCold);
+                    addToBill(_waterSocket(), socketsCold, this.getDesc('socket', _isMpWater ? 'водорозетка под пресс — угольник с ВР 1/2" (ХВС)' : 'Тупиковая (ХВС)', socketsCold), grpCold);
                     if (!_isMpWater) {
                         addToBill(catalog.water_parts.find(x => x.id === "SFA-0020-000016"), socketsCold, this.getDesc('sleeve', '1 шт на розетку'), grpCold);
                     }
@@ -84802,7 +84802,7 @@ const app = {
                     // точки. Аксиальные гильзы и фиксаторы поворота (оснастка PEX-a) не нужны вовсе.
                     const _mpRecirc = recirc && _isMpWater;
                     let socketItem = (recirc && !_isMpWater) ? catalog.water_fittings[1] : _waterSocket();
-                    let sName = (recirc && !_isMpWater) ? "Угольник проточный (Бронза)" : (_isMpWater ? "Пресс, угольник с ВР" : "Водорозетка тупиковая");
+                    let sName = (recirc && !_isMpWater) ? "Угольник проточный (Бронза)" : (_isMpWater ? "водорозетка под пресс — угольник с ВР 1/2\"" : "Водорозетка тупиковая");
                     let sCount = recirc ? 2 : 1;
                     addToBill(socketItem, totalMixers, this.getDesc('socket', sName, totalMixers), grpHot);
                     if (_mpRecirc) {
