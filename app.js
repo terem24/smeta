@@ -51999,7 +51999,7 @@ const app = {
         box.id = 'avatar_picker_overlay';
         box.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:100000; display:flex; align-items:center; justify-content:center; padding:16px;';
         box.onclick = (e) => { if (e.target === box) box.remove(); };
-        box.innerHTML = '<div style="background:var(--card-bg,#fff); color:var(--text-main,#222); border-radius:16px; padding:20px; width:100%; max-width:380px; max-height:92vh; overflow:auto; box-shadow:0 12px 40px rgba(0,0,0,.3);">'
+        box.innerHTML = '<div style="background:var(--surface,#fff); color:var(--text-main,#222); border-radius:16px; padding:20px; width:100%; max-width:380px; max-height:92vh; overflow:auto; box-shadow:0 12px 40px rgba(0,0,0,.3);">'
             + '<div style="font-size:17px; font-weight:700; margin-bottom:12px;">Выбор аватара</div>'
             + '<div style="text-align:center; margin-bottom:14px;"><img id="avatar_picker_preview" alt="" style="width:120px; height:120px; border-radius:50%; border:2px solid var(--primary,#FF6A00);"></div>'
             + '<div id="avatar_picker_body"></div>'
