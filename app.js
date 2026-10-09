@@ -36147,6 +36147,7 @@ const app = {
                 d.kind = 'boiler'; d.b = grp.getAttribute('data-hyd-b');
             } else if (p === 'load') d.kind = 'dhw';
             else if (p === 'hydro') d.kind = 'hydro';
+            else if (p === 'elwh') d.kind = 'elwh';
             // Пара от стрелки к отводам — вторичная сторона. Раньше падала в
             // 'main', и на ней загорался котловой контур, а сама пара — нет.
             else if (p === 'ssup' || p === 'sret') d.kind = 'sec';
@@ -36247,6 +36248,9 @@ const app = {
                     ? own.reduce((a, b) => a.concat(boilers(b)), [])
                     : boilers(null));
             }
+            // Электрический водонагреватель: только его вода (В1, Т3) с арматурой — котёл и
+            // контур отопления к нему отношения не имеют.
+            case 'elwh': return part('elwh');
             case 'main': return part('msup').concat(part('mret'), boilers(null), part('hydro'));
             // Вторичная пара: от корпуса стрелки ко всем отводам — ими она и
             // питается. Котловые стояки за стрелкой сюда не входят.
@@ -36370,12 +36374,14 @@ const app = {
         hydro: 'Гидрострелка развязывает котловой контур и контуры потребителей: насосы не мешают друг другу, а котёл всегда получает свой расход.',
         exptank: 'Расширительный бак принимает лишний объём воды при нагреве, чтобы давление в системе не росло.',
         boiler: 'Котёл греет воду и подаёт её в гребёнку по красному стояку. Остывшая возвращается по синему — через фильтр.',
+        elwh: 'Электрический водонагреватель: накопительный бак с ТЭНом, греется от розетки 230 В — котёл ему не нужен. Холодная вода приходит по В1 через обратный и предохранительный клапаны, горячая уходит по Т3 через термосмеситель.',
         tank: 'Бойлер косвенного нагрева: бак с водой для крана и душа. Своей горелки у него нет — воду греет котёл, прогоняя горячий теплоноситель через змеевик внутри бака.',
         coil: 'Змеевик — труба-спираль внутри бака, по ней идёт горячая вода от котла и отдаёт тепло воде для душа. Смешивания нет: это два разных контура.'
     },
     _hydSymText: function (sym) {
         if (!sym) return '';
         if (sym.type === 'valve3') {
+            if (/ГВС/.test(sym.name)) return 'Термостатический смесительный клапан: подмешивает холодную воду, чтобы из крана шла вода 45–50 °C и нельзя было обжечься, а бак можно было греть до 60 °C — против бактерий.';
             return /приоритет/i.test(sym.name)
                 ? 'Клапан приоритета: пока греется бойлер, переключает котёл целиком на него — горячая вода готовится быстрее.'
                 : 'Смесительный клапан подмешивает остывшую обратку в подачу: тёплому полу нужна вода не горячее 40–45 °C, а котёл даёт 60–80.';
@@ -36404,6 +36410,7 @@ const app = {
         const contour = d.kind === 'trunk' ? 'Контур радиаторов' + (d.mark ? ' ' + d.mark : '')
             : d.kind === 'ufh' ? 'Контур тёплого пола' + (d.mark ? ' ' + d.mark : '')
                 : d.kind === 'dhw' ? 'Контур загрузки бойлера'
+                : d.kind === 'elwh' ? 'Электрический водонагреватель'
                 : d.kind === 'snow' ? 'Контур снеготаяния' + (d.mark ? ' ' + d.mark : '')
                     : d.kind === 'boiler' ? 'Котёл'
                     : d.kind === 'main' ? 'Гребёнка котельной'
@@ -36758,7 +36765,7 @@ const app = {
         else if (hyd && d.kind === 'trunk') body = this._hydCardTrunk(hyd, d.mark);
         // У снеготаяния чисел на этой схеме нет — они на схеме узла; карточка
         // котла под его заголовком была бы про другое.
-        else if (hyd && d.kind && d.kind !== 'snow') body = this._hydCardBoiler(hyd);
+        else if (hyd && d.kind && d.kind !== 'snow' && d.kind !== 'elwh') body = this._hydCardBoiler(hyd);
         if (body && d.kind === 'main') body.title = 'Гребёнка и кольцо системы';
         if (body && (d.kind === 'hydro' || d.kind === 'sec')) body.title = 'Гидрострелка и кольцо системы';
         // Символ вне контуров (легенда, бак, бойлер): карточка — только что
@@ -52929,9 +52936,124 @@ const app = {
         return (it && kw > 0 && it.vol > 0) ? it.vol * 4.187 * this.WH_EL_DT / kw / 60 : 0;
     },
     whHeatText: function (it) {
-        const m = Math.round(this.whHeatMin(it));
+        return this.heatMinText(this.whHeatMin(it));
+    },
+    heatMinText: function (min) {
+        const m = Math.round(min);
         if (!m) return '—';
         return m >= 60 ? `${Math.floor(m / 60)}ч${m % 60 ? ' ' + (m % 60) + ' мин' : ''}` : `${m} мин`;
+    },
+
+    /**
+     * Нагрев бойлера косвенного нагрева с 15 до 60 °C — та же формула и тот же
+     * перепад, что у электрического водонагревателя (WH_EL_DT), чтобы времена
+     * можно было сравнивать. Мощность контура — меньшее из двух: сколько отдаёт
+     * котёл и сколько принимает змеевик (как в dhwLoadHydraulics). Без потерь тепла.
+     */
+    boilerHeatInfo: function (vol, coilKw, boilerKw) {
+        const kw = coilKw > 0 ? (boilerKw > 0 ? Math.min(coilKw, boilerKw) : coilKw) : (boilerKw || 0);
+        if (!(vol > 0) || !(kw > 0)) return null;
+        const min = vol * 4.187 * this.WH_EL_DT / kw / 60;
+        return { kw: kw, coilKw: coilKw || 0, boilerKw: boilerKw || 0, min: min, text: this.heatMinText(min), byCoil: coilKw > 0 && (!(boilerKw > 0) || coilKw <= boilerKw) };
+    },
+    _fmtKw: function (x) { return String(Math.round(x * 10) / 10).replace('.', ','); },
+    boilerHeatNote: function (vol, coilKw, boilerKw, tankName) {
+        const h = this.boilerHeatInfo(vol, coilKw, boilerKw);
+        if (!h) return '';
+        const f = x => this._fmtKw(x);
+        const src = h.coilKw > 0 && h.boilerKw > 0
+            ? `меньшее из двух: змеевик бойлера ${f(h.coilKw)} кВт и котёл ${f(h.boilerKw)} кВт`
+            : (h.coilKw > 0 ? `мощность змеевика бойлера ${f(h.coilKw)} кВт` : `мощность котла ${f(h.boilerKw)} кВт`);
+        return this.noteBox('info', `Нагрев бойлера — около ${h.text}.`,
+            `${vol} л, с 15 до 60 °C при ${f(h.kw)} кВт на нагрев.`,
+            `<div class="tip-p"><b>Расчёт:</b> t = V · c · ΔT / P = ${vol} л · 4,187 кДж/(кг·К) · ${this.WH_EL_DT} К / ${f(h.kw)} кВт ≈ ${Math.round(h.min)} мин. Мощность контура — ${src}${tankName ? ' (' + tankName + ')' : ''}. Справочная оценка без потерь тепла.</div>` +
+            `<div class="tip-p">Котёл подбирается так, чтобы бойлер прогревался за час, поэтому время зависит от того, что слабее — котёл или змеевик.</div>`);
+    },
+
+    /**
+     * Сравнение источников ГВС дома — «электрический водонагреватель» и «бойлер
+     * косвенного нагрева от котла» — на одной и той же смете. Два тихих прогона
+     * (как computeCheapBaseline): текущий источник и противоположный, каждый
+     * отдаёт итоги по оборудованию и монтажу, а также данные для времени нагрева.
+     * Предложение показывается, только когда объёмы совпадают (водонагреватель
+     * ставится автоматически один, бойлер — по расчёту, ряды объёмов разные).
+     */
+    computeDhwSwitch: function () {
+        this._dhwSwitch = null;
+        const st = this.state;
+        if (this.isFlat() || !st.detailedRooms || !st.hotWater) return;
+        const cur = this.dhwElectric() ? 'electric' : 'boiler';
+        const snapshot = JSON.parse(JSON.stringify(st));
+        this._dhwSimming = true;
+        const sim = (src) => {
+            st.dhwSource = src;
+            // как setDhwSource: у электрического водонагревателя нет рециркуляции
+            if (src === 'electric') st.recirc = false;
+            this._boilerRangeCache = null;
+            this.render(true);
+            return {
+                eq: Math.round(this.calcFinalTotal || 0), works: Math.round(this.lastWorksSum || 0),
+                plan: src === 'boiler' ? this.dhwTankPlan() : null,
+                load: src === 'boiler' && this._dhwLoad ? { ...this._dhwLoad } : null,
+                hp: src === 'electric' ? this.houseWhPlan() : null,
+                heaterMin: src === 'electric' && this.houseWhPlan() ? this.whHeatMin(this.houseWhPlan().item) : 0
+            };
+        };
+        try {
+            const A = sim(cur);
+            // восстановить состояние перед вторым прогоном: первый мог его поправить
+            Object.keys(st).forEach(k => { if (!(k in snapshot)) delete st[k]; });
+            Object.assign(st, JSON.parse(JSON.stringify(snapshot)));
+            const B = sim(cur === 'electric' ? 'boiler' : 'electric');
+            const E = cur === 'electric' ? A : B, K = cur === 'boiler' ? A : B;
+            if (E.hp && E.hp.item && K.plan && K.load && E.hp.totalVol === K.plan.vol) {
+                const bi = this.boilerHeatInfo(K.plan.vol, K.load.coilKw, K.load.boilerKw);
+                if (bi) {
+                    this._dhwSwitch = {
+                        match: true, cur: cur, vol: K.plan.vol,
+                        heater: { vol: E.hp.totalVol, min: E.heaterMin, kw: E.hp.kwUnit, qty: E.hp.qty },
+                        boiler: bi, tankName: K.load.tankName || '',
+                        now: { eq: A.eq, works: A.works }, other: { eq: B.eq, works: B.works }
+                    };
+                }
+            }
+        } catch (e) {
+            console.warn('[сравнение источников ГВС] прогон не посчитался:', e);
+            this._dhwSwitch = null;
+        } finally {
+            Object.keys(st).forEach(k => { if (!(k in snapshot)) delete st[k]; });
+            Object.assign(st, snapshot);
+            this._boilerRangeCache = null;
+            this._dhwSimming = false;
+        }
+    },
+    dhwSwitchNote: function () {
+        const w = this._dhwSwitch;
+        if (!w || !w.match) return '';
+        const f = x => this._fmtKw(x);
+        const toBoiler = w.cur === 'electric';
+        // время нагрева у того, на что предлагаем перейти, против того, что стоит сейчас
+        const tNew = toBoiler ? w.boiler.min : w.heater.min;
+        const tOld = toBoiler ? w.heater.min : w.boiler.min;
+        const ratio = tOld / tNew;
+        const rr = Math.round((ratio >= 1 ? ratio : 1 / ratio) * 10) / 10;
+        const times = `${String(rr).replace('.', ',')} ${Number.isInteger(rr) ? (rr % 10 >= 2 && rr % 10 <= 4 && (rr < 10 || rr > 20) ? 'раза' : 'раз') : 'раза'}`;
+        const cmp = ratio >= 1.05 ? `быстрее в ${times}` : (ratio <= 0.95 ? `медленнее в ${times}` : 'примерно так же');
+        const dEq = w.other.eq - w.now.eq, dWk = w.other.works - w.now.works, dSum = dEq + dWk;
+        const money = d => (d === 0 ? 'без разницы в цене' : (d > 0 ? 'дороже на ' : 'дешевле на ') + this.formatPriceHtml(Math.abs(d), true));
+        const sumTxt = Math.abs(dSum) < 1 ? 'по цене без разницы' : money(dSum);
+        const newName = toBoiler ? `Бойлер косвенного нагрева на ${w.vol} л` : `Электрический водонагреватель на ${w.vol} л`;
+        const oldTime = this.heatMinText(tOld), newTime = this.heatMinText(tNew);
+        const act = `<a href="#" style="text-decoration:underline;font-weight:700;color:inherit;" onclick="event.preventDefault();event.stopPropagation();app.setDhwSource('${toBoiler ? 'boiler' : 'electric'}', event)">${toBoiler ? 'Заменить на бойлер' : 'Заменить на электрический'}</a>`;
+        const heaterLine = `электрический водонагреватель — ${this.heatMinText(w.heater.min)} при ${f(w.heater.kw)} кВт`;
+        const boilerLine = `бойлер косвенного нагрева — ${w.boiler.text} при ${f(w.boiler.kw)} кВт (${w.boiler.coilKw > 0 && w.boiler.boilerKw > 0 ? 'меньшее из змеевика ' + f(w.boiler.coilKw) + ' кВт и котла ' + f(w.boiler.boilerKw) + ' кВт' : (w.boiler.coilKw > 0 ? 'змеевик' : 'котёл')})`;
+        return this.noteBox('info', `${newName} нагреется за ~${newTime} вместо ${oldTime} — ${cmp}; ${sumTxt}.`,
+            `Тот же объём воды. ${act}`,
+            `<div class="tip-p"><b>Нагрев ${w.vol} л с 15 до 60 °C:</b> ${heaterLine}; ${boilerLine}.</div>` +
+            `<div class="tip-p"><b>Цена замены (смета целиком):</b> оборудование — ${money(dEq)}, монтаж — ${money(dWk)}.</div>` +
+            `<div class="tip-p"><b>Что изменится:</b> ${toBoiler
+                ? `водонагреватель, его краны, термосмеситель, питание и бак на горячей линии заменятся бойлером с обвязкой от котла; мощность котла подберётся с учётом прогрева бака, а нагрузка на сеть станет меньше на ${f(w.heater.kw * (w.heater.qty || 1))} кВт`
+                : `бойлер косвенного нагрева с обвязкой от котла заменится электрическим водонагревателем с кранами, термосмесителем и питанием; рециркуляции ГВС у него нет; нагрузка на сеть вырастет на ${f(w.heater.kw * (w.heater.qty || 1))} кВт`}. Схема и компоновка пересоберутся. Время — без потерь тепла.</div>`);
     },
 
     /** Все модели ряда без дублей: основные позиции и их замены. */
@@ -57971,11 +58093,14 @@ const app = {
             const _hdrUfhTp = (item.name || '').match(/тёплого пола\s*(?:до\s*)?(\d+(?:[.,]\d+)?)\s*кВт/);
             const _hdrUfhTp2 = (item.name || '').match(/(\d+(?:[.,]\d+)?)\s*кВт\s*ТП/);
             const _hdrUfhSingle = !_hdrRad ? (item.name || '').match(/(\d+(?:[.,]\d+)?)\s*кВт/) : null;
-            let _hdrBadges = '';
-            if (_hdrDn) _hdrBadges += `<div style="background:var(--primary-light); color:var(--primary); padding:6px 12px; border-radius:10px; font-size:11px; font-weight:700; border:1px solid rgba(37,99,235,0.08);">Типоразмер: <span style="font-weight:800;">${_hdrDn}</span></div>`;
-            if (_hdrRad) _hdrBadges += `<div style="background:var(--primary-light); color:var(--primary); padding:6px 12px; border-radius:10px; font-size:11px; font-weight:700; border:1px solid rgba(37,99,235,0.08);">Радиаторы: <span style="font-weight:800;">${_hdrRad[1]} кВт</span></div>`;
-            if (_hdrUfhTp || _hdrUfhTp2) _hdrBadges += `<div style="background:var(--primary-light); color:var(--primary); padding:6px 12px; border-radius:10px; font-size:11px; font-weight:700; border:1px solid rgba(37,99,235,0.08);">Тёплый пол: <span style="font-weight:800;">${(_hdrUfhTp || _hdrUfhTp2)[1]} кВт</span></div>`;
-            if (!_hdrRad && !_hdrUfhTp && !_hdrUfhTp2 && _hdrUfhSingle) _hdrBadges += `<div style="background:var(--primary-light); color:var(--primary); padding:6px 12px; border-radius:10px; font-size:11px; font-weight:700; border:1px solid rgba(37,99,235,0.08);">Мощность: <span style="font-weight:800;">${_hdrUfhSingle[1]} кВт</span></div>`;
+            // Одна плашка вместо трёх: «DN25 · радиаторы 24 кВт» (цена рядом, отдельной плашкой).
+            const _hdrParts = [];
+            if (_hdrDn) _hdrParts.push(_hdrDn);
+            if (_hdrRad) _hdrParts.push(`радиаторы ${_hdrRad[1]} кВт`);
+            if (_hdrUfhTp || _hdrUfhTp2) _hdrParts.push(`тёплый пол ${(_hdrUfhTp || _hdrUfhTp2)[1]} кВт`);
+            if (!_hdrRad && !_hdrUfhTp && !_hdrUfhTp2 && _hdrUfhSingle) _hdrParts.push(`${_hdrUfhSingle[1]} кВт`);
+            const _hdrBadges = _hdrParts.length
+                ? `<div style="background:var(--primary-light); color:var(--primary); padding:6px 12px; border-radius:10px; font-size:13px; font-weight:800; border:1px solid rgba(37,99,235,0.08);">${_hdrParts.join(' · ')}</div>` : '';
             title.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:4px; gap:16px; flex-wrap:wrap;">
                     <div>
@@ -58512,10 +58637,11 @@ const app = {
                         `</div>`
                         : '')
                     : '') +
-                `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
-                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">Мощность:</span>` +
-                _umPowerBtns +
-                `<span onclick="app.setUfhMixPowerFilter('all')" ${_b(_umPower.length===0)}>Все</span>` +
+                // Мощность — одной строкой с горизонтальной прокруткой; выбранная кнопка прокручивается в видимую область.
+                `<div class="swap-pw-row" style="display:flex;gap:2px;align-items:center;flex-wrap:nowrap;overflow-x:auto;flex:1 1 100%;max-width:100%;padding-bottom:2px;-webkit-overflow-scrolling:touch;">` +
+                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;flex:0 0 auto;">Мощность:</span>` +
+                _umPowerBtns.replace(/margin:2px;"/g, 'margin:2px;flex:0 0 auto;white-space:nowrap;"').replace(/<span onclick="app\.setUfhMixPowerFilter\('(\d+)'\)"([^>]*background:var\(--primary\);)/g, '<span data-pw-active="1" onclick="app.setUfhMixPowerFilter(\'$1\')"$2') +
+                `<span onclick="app.setUfhMixPowerFilter('all')" ${_b(_umPower.length===0).replace('margin:2px;"', 'margin:2px;flex:0 0 auto;white-space:nowrap;"')}>Все</span>` +
                 `</div>` +
                 `</div>`;
             alts = alts.filter(a => {
@@ -59258,12 +59384,17 @@ const app = {
                 let isActive = _activeAltId ? (displayAlt.id === _activeAltId) : (displayAlt.id === item.id);
                 let activeClass = isActive ? "active-row" : "";
                 let activeStyle = isActive ? "background-color: var(--primary-light);" : "";
-                let badgeHtml = isActive ? `<span style="font-size: 10px; background: var(--primary); color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 8px;">Выбран</span>` : "";
+                let badgeHtml = isActive ? `<div style="margin-top:4px;"><span style="font-size: 11px; background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: bold;">✓ Выбран</span></div>` : "";
                 let diffHtml = getPriceDiffHtml(displayAlt.price, isActive);
                 let priceText = displayAlt.price > 0 ? this.formatPriceHtml(displayAlt.price, true) : "-";
                 let _rowCoilKw = _isTankItem ? _tankCoilKwMap[displayAlt.id] : null;
                 let _rowCoilStr = _rowCoilKw ? ` <span style="color:var(--text-sec);font-size:11px;font-weight:500;">(${_rowCoilKw} кВт)</span>` : '';
                 let _nameDisplay = displayAlt.name;
+                // Насосная группа: «Группа насосная DN25 (Прямая) - для радиаторов до 24 кВт» → заголовок и серая вторая строка.
+                if (this.selfGroupKindOfReady(displayAlt.id)) {
+                    const _sp = String(displayAlt.name).split(' - ');
+                    if (_sp.length === 2) _nameDisplay = `${_sp[0]}<div style="font-size:12px;font-weight:500;color:var(--text-sec);margin-top:2px;">${_sp[1]}</div>`;
+                }
                 // Пояснение под названием серым: ему не место в самом названии — цена и так в колонке.
                 const _hintText = displayAlt.hint || alt.hint || '';
                 const _hintHtml = _hintText
@@ -59293,24 +59424,35 @@ const app = {
             const _sgKind = this.selfGroupKindOfReady(item.originalId || item.id);
             if (_sgKind && this.state.groupsBuild !== 'self' && this.selfGroupsMode()) {
                 const _sgLbl = { direct: 'прямая', thermo: 'термостатическая', servo: 'под сервопривод' }[_sgKind];
-                const _sgSelf = Math.round(this.selfGroupPrice(_sgKind));
-                const _sgReady = Math.round(this.readyGroupPrice(_sgKind));
+                const _sgSelf = Math.round(this.selfGroupPrice(_sgKind, { noPump: true }));
+                const _sgReady = Math.round(this.readyGroupPrice(_sgKind, { noPump: true, noNodes: true }));
                 const _sgD = _sgReady > 0 ? Math.round((_sgSelf - _sgReady) / _sgReady * 100) : 0;
                 const _sgC = _sgD > 0 ? '#ef4444' : (_sgD < 0 ? '#16a34a' : 'var(--text-sec)');
                 const _sgAvail = this.selfGroupsAvailable();
-                const _sgNote = !this.isPro() ? 'Функция тарифа «Профи».'
-                    : !_sgAvail ? 'Нужна нержавеющая или ППР обвязка котельной.'
-                    : 'Переключит все насосные группы и коллектор на самосборные — они стыкуются только друг с другом. Вернуть можно в любой момент.';
+                const _sgNote = !this.isPro() ? 'Тариф «Профи»'
+                    : !_sgAvail ? 'Нужна нержавеющая или ППР обвязка'
+                    : '';
+                const _sgIcon = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1e3a8a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h4M17 8h4M3 16h4M17 16h4"/><rect x="7" y="5" width="10" height="14" rx="1.5"/><path d="M10 9h4M10 12h4M10 15h4"/></svg>`;
+                const _sgCmp = {
+                    direct: 'Краны, обратный клапан, термометры',
+                    thermo: 'Термосмеситель, краны, перемычка, термостат',
+                    servo: '3-ходовой клапан, краны, перемычка, термостат'
+                }[_sgKind];
+                // Раскрывающийся состав: число позиций и список с количеством (щелчок по нему не выбирает вариант).
+                const _sgLines = this.selfGroupLines(_sgKind, { noPump: true }).filter(l => l.item && l.q > 0);
+                const _sgList = _sgLines.map(l => `<li>${l.item.name} — ${l.q} шт.</li>`).join('');
+                const _sgParts = _sgLines.length
+                    ? `<details onclick="event.stopPropagation()" style="margin-top:4px;"><summary style="cursor:pointer;color:var(--primary);font-weight:600;">Состав: ${_sgLines.length} поз.</summary><ul style="margin:4px 0 0 16px;padding:0;font-size:12px;">${_sgList}</ul></details>` : '';
                 html += `
                     <tr class="swap-sub-head" style="border-top: 2px solid var(--border);">
                         <td colspan="6" style="padding:10px 8px 4px; font-size:12px; font-weight:800; color:var(--text-muted, #6B7280); text-align:left;">
-                            Собрать самосборную группу из отдельных позиций
+                            Самосборная группа (Профи)
                         </td>
                     </tr>
                     <tr style="cursor: pointer;" onclick="app.applySelfBuiltFromSwap('${_sgKind}', event)">
                         <td class="col-idx"></td>
-                        <td class="col-img" style="text-align:center;font-size:20px;">🧩</td>
-                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">Самосборная группа: ${_sgLbl}<div style="font-size:11px;font-weight:400;color:var(--text-sec);margin-top:2px;">Насос, краны, ${_sgKind === 'direct' ? 'обратный клапан' : (_sgKind === 'thermo' ? 'термосмеситель, перемычка, аварийный термостат' : '3-ходовой клапан, привод, перемычка, аварийный термостат')}, термометры. <b>Процент — к готовой «под ключ»: группа + насос + узлы МУ-25М = ${this.formatPriceHtml(_sgReady, true)}.</b> ${_sgNote}</div></td>
+                        <td class="col-img" style="text-align:center;">${_sgIcon}</td>
+                        <td class="col-name" style="font-size: 14px; font-weight: 600; text-align: left;">Самосборная: ${_sgLbl}<div style="font-size:12px;font-weight:400;color:var(--text-sec);margin-top:2px;">${_sgCmp}.<br>Без насоса. Готовая группа: ${this.formatPriceHtml(_sgReady, true)}${_sgNote ? '<br><b>' + _sgNote + '</b>' : ''}${_sgParts}</div></td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">STOUT / ROMMER</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px; color:${_sgC};">${_sgD > 0 ? '+' : ''}${_sgD}%</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${this.formatPriceHtml(_sgSelf, true)}</td>
@@ -59322,9 +59464,17 @@ const app = {
                 </tbody>
             </table>
         `;
+        if (this.selfGroupKindOfReady(item.originalId || item.id)) {
+            html += `<div style="font-size:12px;color:var(--text-sec);padding:8px 4px 0;">Процент — к выбранной группе. Насос не входит: он подбирается отдельно и ставится к любой группе.</div>`;
+        }
 
         body.innerHTML = html;
         modal.style.display = 'flex';
+        try {
+            const _pwRow = body.querySelector('.swap-pw-row');
+            const _pwOn = _pwRow && _pwRow.querySelector('[data-pw-active]');
+            if (_pwOn) _pwRow.scrollLeft = Math.max(0, _pwOn.offsetLeft - 80);
+        } catch (e) { }
     },
     // Вид готовой насосной группы по артикулу (для окна замены): прямая / термостатическая / под сервопривод.
     selfGroupKindOfReady: function (id) {
@@ -59334,7 +59484,7 @@ const app = {
         if (/^(SDG-0003|SDG-0007|RDG-1003|RDG-1004|RDG-2003)-/.test(s)) return 'servo';
         return null;
     },
-    applySelfBuiltFromSwap: function (kind, event) {
+    applySelfBuiltFromSwap: async function (kind, event) {
         if (!this.checkAccess('pro', event)) return;
         if (!this.selfGroupsMode()) {
             this.alert('Самосборные группы доступны в подробном режиме расчёта: включите его в панели слева.', 'Самосборные группы');
@@ -59344,6 +59494,8 @@ const app = {
             this.alert(this.isPro() ? 'Самосборные группы собираются на нержавеющей или ППР обвязке. Выберите её в разделе «Обвязка котельной».' : 'Самосборные группы — функция тарифа «Профи».', 'Самосборные группы');
             return;
         }
+        const _ok = await this.confirm('Все насосные группы и коллектор в смете станут самосборными: они стыкуются только друг с другом. Вернуть готовые можно в любой момент.', 'Переключить на самосборные?');
+        if (!_ok) return;
         this.state.groupsBuild = 'self';
         const m = document.getElementById('swap_modal_overlay');
         if (m) m.style.display = 'none';
@@ -72237,24 +72389,32 @@ const app = {
     },
     // Цена ОДНОЙ готовой группы вида kind «под ключ»: группа STOUT/ROMMER DN25 + насос + два присоединительных узла МУ-25М
     // (+ сервопривод у «под сервопривод»). Для сравнения с самосборной (коллектор в обоих вариантах свой, не входит).
-    readyGroupPrice: function (kind) {
+    // opt.noNodes — без присоединительных узлов МУ-25М (сравнение в окне замены: сама группа против самосборной).
+    // opt.noPump — без насоса (насос подбирается отдельно и ставится к любой группе, в сравнении окна замены не участвует).
+    readyGroupPrice: function (kind, opt) {
         if (kind === 'dhw') kind = 'direct';
         const rom = this.state.brandMode === 'rommer';
         const P = (it) => it ? ((rom && it.rommer && !Array.isArray(it.rommer)) ? (it.rommer.price || 0) : (it.price || 0)) : 0;
         const g = { direct: catalog.groups_dn25[0], thermo: catalog.groups_dn25[1], servo: catalog.groups_dn25[2] }[kind];
         const pump = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
         const servo = kind === 'servo' ? (this.state.servoType === 'sensor' ? catalog.servo_rotary_sensor : catalog.servo_rotary_std) : null;
-        return P(g) + P(pump) + 2 * P((catalog.gbm_nodes || [])[0]) + P(servo);
+        return P(g) + ((opt && opt.noPump) ? 0 : P(pump)) + ((opt && opt.noNodes) ? 0 : 2 * P((catalog.gbm_nodes || [])[0])) + P(servo);
     },
     // Цена ОДНОЙ самосборной группы вида kind по тому же составу, что идёт в смету.
-    selfGroupPrice: function (kind) {
+    selfGroupPrice: function (kind, opt) {
         const rom = this.state.brandMode === 'rommer';
         const P = (it) => it ? ((rom && it.rommer && !Array.isArray(it.rommer)) ? (it.rommer.price || 0) : (it.price || 0)) : 0;
+        return this.selfGroupLines(kind, opt).reduce((a, l) => a + P(l.item) * l.q, 0);
+    },
+    // Состав ОДНОЙ самосборной группы вида kind (строки selfKitLines); opt.noPump — без насоса и его присоединительного комплекта.
+    selfGroupLines: function (kind, opt) {
         const pump = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
         const servo = kind === 'servo' ? (this.state.servoType === 'sensor' ? catalog.servo_rotary_sensor : catalog.servo_rotary_std) : null;
         const ld = (this._selfLoads || {})[kind];
         const size = ld ? this.selfKitSize(ld.kw, ld.groups, ld.dt) : '34';
-        return this.selfKitLines(kind, pump, servo, { size }).reduce((a, l) => a + P(l.item) * l.q, 0);
+        const noPump = !!(opt && opt.noPump);
+        return this.selfKitLines(kind, pump, servo, { size })
+            .filter(l => !(noPump && (l.item === pump || (l.item && (l.item.id === 'SPC-0010-000025' || String(l.item.originalId || '').endsWith('_incl'))))));
     },
     // Плашка под заголовком подраздела самосборной группы: сколько стоит против готовой и кнопка возврата.
     selfGroupNote: function (title, bill) {
@@ -76431,6 +76591,9 @@ const app = {
             else this._cheapBase = null;
         }
 
+        // Замена электрического водонагревателя на бойлер: сравнение считается тихим прогоном
+        if (!computeOnly && !this._cheapComparing && !this._dhwSimming) this.computeDhwSwitch();
+
         // Update top left logo based on brandMode
         this.syncTopLogo();
         // Оформление под бренд следует за переключателем «Аналог» (brandMode)
@@ -78356,6 +78519,7 @@ const app = {
 
         this._whHeatWarn = '';
         this._whPipeWarn = '';
+        this._tankHeatWarn = '';
         if (this.dhwElectric()) {
             this.state.waterZones = this.state.waterZones || [];
             const _hp = this.houseWhPlan();
@@ -78368,7 +78532,7 @@ const app = {
                         ? `<b>Электрическая мощность:</b> ${_hp.qty > 1 ? _hp.qty + ' прибора берут' : 'прибор берёт'} ${_fmtH(_hp.kwTotal)} кВт. Из выделенных ${_lim} кВт ${Math.round(this.EL_HOUSEHOLD_RESERVE * 100)} % оставлено на освещение и быт, водонагревателю отдано не больше ${Math.round(this.WH_EL_HOUSE_SHARE * 100)} % остатка (${_fmtH(_hp.budgetKw)} кВт) — отопление в мороз важнее. Электрокотлу остаётся ${_fmtH(this.getElBoilerBudget())} кВт.`
                         : ''
                 });
-                this._whHeatWarn = _hb.warn;
+                this._whHeatWarn = _hb.warn + this.dhwSwitchNote();
                 addToBill({ ..._hp.item, alts: _hp.alts }, _hp.qty, _hb.tip);
                 markRigAnchor('dhw', _hp.item.id);
             }
@@ -78417,6 +78581,11 @@ const app = {
             }
             this._tankPorts = (_portSrc && _portSrc.ports) || null;
             this._tankPortsModel = _portSrc ? _portSrc.id : null;
+            {
+                const _lb = selBoilers.find(b => b && b.type === 'gas') || selBoilers[0] || null;
+                this._tankHeatWarn = this.boilerHeatNote(vol, this.tankCoilKw(this._tankPortsModel),
+                    _lb ? (parseFloat(_lb.power) || 0) : 0, _portSrc && _portSrc.name ? String(_portSrc.name).replace(/^Бойлер косвенного нагрева\s*/i, '') : '') + this.dhwSwitchNote();
+            }
         }
         // Дефицит мощности источника. Электрокотёл подбирается по выделенной на
         // участок мощности, и она бывает вдвое ниже теплопотерь: на 360 м² в
@@ -78527,6 +78696,7 @@ const app = {
         const _reqNote = this.projectReqsNote();
         if (_reqNote) boilerWarnHtml = _reqNote + (boilerWarnHtml || '');
         if (this._whHeatWarn) boilerWarnHtml = this._whHeatWarn + (boilerWarnHtml || '');
+        if (this._tankHeatWarn) boilerWarnHtml = this._tankHeatWarn + (boilerWarnHtml || '');
         flushBill("1. Котёл + водонагреватель", boilerWarnHtml);
 
         // === 2. ОБВЯЗКА КОТЕЛЬНОЙ ===
