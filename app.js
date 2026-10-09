@@ -52957,36 +52957,58 @@ const app = {
     },
 
     /**
-     * Что будет, если электрический водонагреватель дома заменить бойлером
-     * косвенного нагрева такого же объёма: тихий прогон сметы с источником ГВС
-     * «от котла» (как computeCheapBaseline). Результат — для плашки у водонагревателя:
-     * время нагрева у бойлера и у прибора. Только когда объёмы совпадают.
+     * Сравнение источников ГВС дома — «электрический водонагреватель» и «бойлер
+     * косвенного нагрева от котла» — на одной и той же смете. Два тихих прогона
+     * (как computeCheapBaseline): текущий источник и противоположный, каждый
+     * отдаёт итоги по оборудованию и монтажу, а также данные для времени нагрева.
+     * Предложение показывается, только когда объёмы совпадают (водонагреватель
+     * ставится автоматически один, бойлер — по расчёту, ряды объёмов разные).
      */
     computeDhwSwitch: function () {
         this._dhwSwitch = null;
-        if (!this.dhwElectric()) return;
-        const hp = this.houseWhPlan();
-        if (!hp || !hp.item) return;
-        const heater = { vol: hp.totalVol, min: this.whHeatMin(hp.item), kw: hp.kwUnit };
-        const snapshot = JSON.parse(JSON.stringify(this.state));
+        const st = this.state;
+        if (this.isFlat() || !st.detailedRooms || !st.hotWater) return;
+        const cur = this.dhwElectric() ? 'electric' : 'boiler';
+        const snapshot = JSON.parse(JSON.stringify(st));
         this._dhwSimming = true;
-        try {
-            this.state.dhwSource = 'boiler';
+        const sim = (src) => {
+            st.dhwSource = src;
+            // как setDhwSource: у электрического водонагревателя нет рециркуляции
+            if (src === 'electric') st.recirc = false;
             this._boilerRangeCache = null;
             this.render(true);
-            const plan = this.dhwTankPlan();
-            const L = this._dhwLoad;
-            if (plan && plan.vol === heater.vol && L) {
-                const h = this.boilerHeatInfo(plan.vol, L.coilKw, L.boilerKw);
-                const tank = (this.currentEquipmentList || []).find(i => /бойлер|водонагревател/i.test(String(i.name || '')) && !/термо|клапан|кронштейн/i.test(String(i.name || '')));
-                if (h) this._dhwSwitch = { match: true, vol: plan.vol, heater: heater, boiler: h, tankName: L.tankName || '', tankTitle: tank ? tank.name : '' };
+            return {
+                eq: Math.round(this.calcFinalTotal || 0), works: Math.round(this.lastWorksSum || 0),
+                plan: src === 'boiler' ? this.dhwTankPlan() : null,
+                load: src === 'boiler' && this._dhwLoad ? { ...this._dhwLoad } : null,
+                hp: src === 'electric' ? this.houseWhPlan() : null,
+                heaterMin: src === 'electric' && this.houseWhPlan() ? this.whHeatMin(this.houseWhPlan().item) : 0
+            };
+        };
+        try {
+            const A = sim(cur);
+            // восстановить состояние перед вторым прогоном: первый мог его поправить
+            Object.keys(st).forEach(k => { if (!(k in snapshot)) delete st[k]; });
+            Object.assign(st, JSON.parse(JSON.stringify(snapshot)));
+            const B = sim(cur === 'electric' ? 'boiler' : 'electric');
+            const E = cur === 'electric' ? A : B, K = cur === 'boiler' ? A : B;
+            if (E.hp && E.hp.item && K.plan && K.load && E.hp.totalVol === K.plan.vol) {
+                const bi = this.boilerHeatInfo(K.plan.vol, K.load.coilKw, K.load.boilerKw);
+                if (bi) {
+                    this._dhwSwitch = {
+                        match: true, cur: cur, vol: K.plan.vol,
+                        heater: { vol: E.hp.totalVol, min: E.heaterMin, kw: E.hp.kwUnit, qty: E.hp.qty },
+                        boiler: bi, tankName: K.load.tankName || '',
+                        now: { eq: A.eq, works: A.works }, other: { eq: B.eq, works: B.works }
+                    };
+                }
             }
         } catch (e) {
-            console.warn('[замена на бойлер] прогон не посчитался:', e);
+            console.warn('[сравнение источников ГВС] прогон не посчитался:', e);
             this._dhwSwitch = null;
         } finally {
-            Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
-            Object.assign(this.state, snapshot);
+            Object.keys(st).forEach(k => { if (!(k in snapshot)) delete st[k]; });
+            Object.assign(st, snapshot);
             this._boilerRangeCache = null;
             this._dhwSimming = false;
         }
@@ -52995,16 +53017,29 @@ const app = {
         const w = this._dhwSwitch;
         if (!w || !w.match) return '';
         const f = x => this._fmtKw(x);
-        const ratio = w.heater.min / w.boiler.min;
-        const rr = Math.round(ratio * 10) / 10;
-        const cmp = ratio >= 1.05
-            ? `быстрее в ${String(rr).replace('.', ',')} ${Number.isInteger(rr) ? (rr % 10 >= 2 && rr % 10 <= 4 && (rr < 10 || rr > 20) ? 'раза' : 'раз') : 'раза'}`
-            : (ratio <= 0.95 ? 'медленнее' : 'примерно так же');
-        const act = `<a href="#" style="text-decoration:underline;font-weight:700;color:inherit;" onclick="event.preventDefault();event.stopPropagation();app.setDhwSource('boiler', event)">Заменить на бойлер</a>`;
-        return this.noteBox('info', `Бойлер косвенного нагрева на ${w.vol} л нагреется за ~${w.boiler.text} вместо ${this.heatMinText(w.heater.min)} — ${cmp}.`,
+        const toBoiler = w.cur === 'electric';
+        // время нагрева у того, на что предлагаем перейти, против того, что стоит сейчас
+        const tNew = toBoiler ? w.boiler.min : w.heater.min;
+        const tOld = toBoiler ? w.heater.min : w.boiler.min;
+        const ratio = tOld / tNew;
+        const rr = Math.round((ratio >= 1 ? ratio : 1 / ratio) * 10) / 10;
+        const times = `${String(rr).replace('.', ',')} ${Number.isInteger(rr) ? (rr % 10 >= 2 && rr % 10 <= 4 && (rr < 10 || rr > 20) ? 'раза' : 'раз') : 'раза'}`;
+        const cmp = ratio >= 1.05 ? `быстрее в ${times}` : (ratio <= 0.95 ? `медленнее в ${times}` : 'примерно так же');
+        const dEq = w.other.eq - w.now.eq, dWk = w.other.works - w.now.works, dSum = dEq + dWk;
+        const money = d => (d === 0 ? 'без разницы в цене' : (d > 0 ? 'дороже на ' : 'дешевле на ') + this.formatPriceHtml(Math.abs(d), true));
+        const sumTxt = Math.abs(dSum) < 1 ? 'по цене без разницы' : money(dSum);
+        const newName = toBoiler ? `Бойлер косвенного нагрева на ${w.vol} л` : `Электрический водонагреватель на ${w.vol} л`;
+        const oldTime = this.heatMinText(tOld), newTime = this.heatMinText(tNew);
+        const act = `<a href="#" style="text-decoration:underline;font-weight:700;color:inherit;" onclick="event.preventDefault();event.stopPropagation();app.setDhwSource('${toBoiler ? 'boiler' : 'electric'}', event)">${toBoiler ? 'Заменить на бойлер' : 'Заменить на электрический'}</a>`;
+        const heaterLine = `электрический водонагреватель — ${this.heatMinText(w.heater.min)} при ${f(w.heater.kw)} кВт`;
+        const boilerLine = `бойлер косвенного нагрева — ${w.boiler.text} при ${f(w.boiler.kw)} кВт (${w.boiler.coilKw > 0 && w.boiler.boilerKw > 0 ? 'меньшее из змеевика ' + f(w.boiler.coilKw) + ' кВт и котла ' + f(w.boiler.boilerKw) + ' кВт' : (w.boiler.coilKw > 0 ? 'змеевик' : 'котёл')})`;
+        return this.noteBox('info', `${newName} нагреется за ~${newTime} вместо ${oldTime} — ${cmp}; ${sumTxt}.`,
             `Тот же объём воды. ${act}`,
-            `<div class="tip-p"><b>Сравнение (нагрев ${w.vol} л с 15 до 60 °C):</b> электрический водонагреватель — ${this.heatMinText(w.heater.min)} при ${f(w.heater.kw)} кВт; бойлер косвенного нагрева — ${w.boiler.text} при ${f(w.boiler.kw)} кВт (${w.boiler.coilKw > 0 && w.boiler.boilerKw > 0 ? 'меньшее из змеевика ' + f(w.boiler.coilKw) + ' кВт и котла ' + f(w.boiler.boilerKw) + ' кВт' : (w.boiler.coilKw > 0 ? 'змеевик' : 'котёл')}).</div>` +
-            `<div class="tip-p"><b>Что изменится при замене:</b> водонагреватель, его краны, термосмеситель, питание и бак на горячей линии заменятся бойлером с обвязкой от котла; схема и компоновка пересоберутся. Мощность котла подберётся с учётом прогрева бака, а электрическая нагрузка на сеть станет меньше на ${f(w.heater.kw)} кВт. Расчёт — без потерь тепла.</div>`);
+            `<div class="tip-p"><b>Нагрев ${w.vol} л с 15 до 60 °C:</b> ${heaterLine}; ${boilerLine}.</div>` +
+            `<div class="tip-p"><b>Цена замены (смета целиком):</b> оборудование — ${money(dEq)}, монтаж — ${money(dWk)}.</div>` +
+            `<div class="tip-p"><b>Что изменится:</b> ${toBoiler
+                ? `водонагреватель, его краны, термосмеситель, питание и бак на горячей линии заменятся бойлером с обвязкой от котла; мощность котла подберётся с учётом прогрева бака, а нагрузка на сеть станет меньше на ${f(w.heater.kw * (w.heater.qty || 1))} кВт`
+                : `бойлер косвенного нагрева с обвязкой от котла заменится электрическим водонагревателем с кранами, термосмесителем и питанием; рециркуляции ГВС у него нет; нагрузка на сеть вырастет на ${f(w.heater.kw * (w.heater.qty || 1))} кВт`}. Схема и компоновка пересоберутся. Время — без потерь тепла.</div>`);
     },
 
     /** Все модели ряда без дублей: основные позиции и их замены. */
@@ -78497,7 +78532,7 @@ const app = {
             {
                 const _lb = selBoilers.find(b => b && b.type === 'gas') || selBoilers[0] || null;
                 this._tankHeatWarn = this.boilerHeatNote(vol, this.tankCoilKw(this._tankPortsModel),
-                    _lb ? (parseFloat(_lb.power) || 0) : 0, _portSrc && _portSrc.name ? String(_portSrc.name).replace(/^Бойлер косвенного нагрева\s*/i, '') : '');
+                    _lb ? (parseFloat(_lb.power) || 0) : 0, _portSrc && _portSrc.name ? String(_portSrc.name).replace(/^Бойлер косвенного нагрева\s*/i, '') : '') + this.dhwSwitchNote();
             }
         }
         // Дефицит мощности источника. Электрокотёл подбирается по выделенной на
