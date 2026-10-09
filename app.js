@@ -904,7 +904,7 @@ const app = {
                         <div id="proj_city_suggestions" class="city-suggestions-dropdown"
                              style="display:none; position:absolute; top:calc(100% + 4px); left:0; width:100%; max-height:200px; overflow-y:auto; background:var(--surface); border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:9999;"></div>
                     </div>
-                    <div id="proj_addr_err" style="display:none; color:#EF4444; font-size:12px; line-height:1.35;"></div>
+                    <div id="proj_addr_err" style="display:none; color:var(--c-bad,#EF4444); font-size:12px; line-height:1.35;"></div>
                 </div>
                 <div class="calc-dialog-buttons">
                     <button class="calc-dialog-btn calc-dialog-btn-cancel" id="proj_cancel">Отмена</button>
@@ -7677,7 +7677,7 @@ const app = {
                     <div style="font-size:12px; color:var(--text-sec); margin:3px 0 5px;">
                         Сумма <b style="color:var(--primary);">${fmt(total)} ₽</b>${prev && delta ? ` <span style="color:${delta > 0 ? '#EF4444' : '#10B981'}; font-weight:700;">(${delta > 0 ? '+' : '−'}${fmt(Math.abs(delta))} ₽)</span>` : ''}${chs ? ` · ${esc(chs)}` : ''}
                     </div>
-                    ${mk ? `<div style="font-size:11.5px; color:#10B981; margin-bottom:4px;">${esc(mk)}</div>` : ''}
+                    ${mk ? `<div style="font-size:11.5px; color:var(--c-ok,#10B981); margin-bottom:4px;">${esc(mk)}</div>` : ''}
                     ${diffHtml}
                 </div>`;
         }).join('');
@@ -7930,9 +7930,9 @@ const app = {
         const canIssue = await this.kpCardCanIssue();
 
         const MARK = {
-            add: { bg: 'rgba(16,185,129,0.10)', tag: '<span style="color:#10B981; font-weight:700;">добавлено</span>' },
-            del: { bg: 'rgba(239,68,68,0.08)', tag: '<span style="color:#EF4444; font-weight:700;">удалено</span>' },
-            chg: { bg: 'rgba(245,158,11,0.10)', tag: '<span style="color:#D97706; font-weight:700;">изменено</span>' }
+            add: { bg: 'rgba(16,185,129,0.10)', tag: '<span style="color:var(--c-ok,#10B981); font-weight:700;">добавлено</span>' },
+            del: { bg: 'rgba(239,68,68,0.08)', tag: '<span style="color:var(--c-bad,#EF4444); font-weight:700;">удалено</span>' },
+            chg: { bg: 'rgba(245,158,11,0.10)', tag: '<span style="color:var(--c-warn,#D97706); font-weight:700;">изменено</span>' }
         };
         const tableHtml = (rs, title) => !rs.length ? '' : `
             <div style="font-size:12px; font-weight:800; text-transform:uppercase; color:var(--text-sec); margin:12px 0 6px;">${title}</div>
@@ -9106,7 +9106,7 @@ const app = {
             h += `</div>`;
             container.innerHTML = h;
         } catch (e) {
-            container.innerHTML = `<div class="lk-subhead">История общения</div><div class="lk-empty" style="color:#EF4444;">Не удалось загрузить историю.</div>`;
+            container.innerHTML = `<div class="lk-subhead">История общения</div><div class="lk-empty" style="color:var(--c-bad,#EF4444);">Не удалось загрузить историю.</div>`;
             console.warn('[renderManagerCommHistory]', e);
         }
     },
@@ -9227,7 +9227,7 @@ const app = {
             `;
         } catch (e) {
             console.warn('[renderDistributorPicker]', e);
-            subview.innerHTML = `<div class="lk-section-head"><div><h4>Мой менеджер</h4></div></div><div class="lk-empty" style="color:#EF4444;">Не удалось загрузить список поставщиков.</div>`;
+            subview.innerHTML = `<div class="lk-section-head"><div><h4>Мой менеджер</h4></div></div><div class="lk-empty" style="color:var(--c-bad,#EF4444);">Не удалось загрузить список поставщиков.</div>`;
         }
     },
 
@@ -9439,7 +9439,7 @@ const app = {
             .eq('manager_user_id', opts.managerId)
             .order('created_at', { ascending: true });
         if (error) {
-            listEl.innerHTML = `<div style="color:#EF4444; font-size:12px; padding:12px;">Ошибка загрузки переписки: ${error.message}</div>`;
+            listEl.innerHTML = `<div style="color:var(--c-bad,#EF4444); font-size:12px; padding:12px;">Ошибка загрузки переписки: ${error.message}</div>`;
             return;
         }
         this.renderChatBubbles(messages, opts.viewerUserId, listEl);
@@ -9876,7 +9876,7 @@ const app = {
             ${row('🔍', 'Распознавание смет всем монтажникам этой компании', recogOn, isViewer, '', 'dist_rec_' + idSafe)}
             ${designOk
                 ? row('📐', 'Листы проекта и редактор планов всем монтажникам этой компании', designOn, isViewer, 'design', 'dist_des_' + idSafe)
-                : `<span style="font-size:10px; color:#D97706;" title="Обновите recognize_archive.php на сервере">📐 нет на сервере</span>`}
+                : `<span style="font-size:10px; color:var(--c-warn,#D97706);" title="Обновите recognize_archive.php на сервере">📐 нет на сервере</span>`}
             ${(() => {
                 // Монтаж всей компании — хранится в базе (app_settings.works_access), не на сервере распознавания
                 const on = !!((this.worksAccess().dists || {})[d.id]);
@@ -9944,7 +9944,7 @@ const app = {
         // подсвечиваем прямо в списке.
         const innCell = (d) => d.inn
             ? `<span style="font-size:10px; color:var(--text-sec);">ИНН ${d.inn}</span><br>`
-            : `<span style="font-size:10px; color:#EF4444; font-weight:700;" title="Без ИНН по компании не собрать официальные данные — откройте «Изменить» и заполните">ИНН не указан</span><br>`;
+            : `<span style="font-size:10px; color:var(--c-bad,#EF4444); font-weight:700;" title="Без ИНН по компании не собрать официальные данные — откройте «Изменить» и заполните">ИНН не указан</span><br>`;
 
         // Срезы и поиск по списку компаний (по данным карточек; число приглашённых
         // подгружается позже отдельным запросом, поэтому среза «лимит исчерпан» нет)
@@ -9994,8 +9994,8 @@ const app = {
                 // А вот включённые свои цены без файла прайса — уже ошибка, её и подсвечиваем.
                 const priceCell = d.use_own_prices
                     ? (pl
-                        ? `<span style="color:#059669; font-weight:700;">Свои</span><br><span style="font-size:10px; color:var(--text-sec);">${pl.title || d.price_list_key}</span>`
-                        : `<span style="color:#EF4444; font-weight:700;" title="Свои цены включены, но прайс-лист не выбран — монтажники видят цены Терем-онлайн">Свои — нет прайса</span>`)
+                        ? `<span style="color:var(--c-ok,#059669); font-weight:700;">Свои</span><br><span style="font-size:10px; color:var(--text-sec);">${pl.title || d.price_list_key}</span>`
+                        : `<span style="color:var(--c-bad,#EF4444); font-weight:700;" title="Свои цены включены, но прайс-лист не выбран — монтажники видят цены Терем-онлайн">Свои — нет прайса</span>`)
                     : `<span style="color:var(--text-sec);">Терем</span>`;
                 tableRows += `<tr>
                     <td style="color:var(--text-sec);">${i + 1}</td>
@@ -10368,7 +10368,7 @@ const app = {
 
             if (error) {
                 const root = document.getElementById('kanban_root');
-                if (root) root.innerHTML = `<div style="color:#EF4444;">Ошибка загрузки истории: ${error.message}</div>`;
+                if (root) root.innerHTML = `<div style="color:var(--c-bad,#EF4444);">Ошибка загрузки истории: ${error.message}</div>`;
                 return;
             }
 
@@ -10715,7 +10715,7 @@ const app = {
                 // Номер КП с версией. Если текущий статус (одобрено, запрошен счёт)
                 // относится к более ранней версии — подпись, по какой именно.
                 const curV = c.currentMeta && Number(c.currentMeta.kp_version);
-                const kpLine = `<div style="font-size:10.5px; font-weight:600; color:var(--text-sec); font-family:monospace; margin:-3px 0 6px;">КП № ${c.calc_id}${c.kpVersion ? '-' + c.kpVersion : ''}${c.copiedFrom ? ` <span style="color:#7C3AED; font-family:inherit;" title="Копия чужой сметы, а не новый заказ">· копия ${c.copiedFrom}</span>` : ''}${curV && c.kpVersion && curV < c.kpVersion ? ` <span style="color:#D97706; font-family:inherit;" title="Текущий статус поставлен по более ранней версии КП">· статус по -${curV}</span>` : ''}</div>`;
+                const kpLine = `<div style="font-size:10.5px; font-weight:600; color:var(--text-sec); font-family:monospace; margin:-3px 0 6px;">КП № ${c.calc_id}${c.kpVersion ? '-' + c.kpVersion : ''}${c.copiedFrom ? ` <span style="color:#7C3AED; font-family:inherit;" title="Копия чужой сметы, а не новый заказ">· копия ${c.copiedFrom}</span>` : ''}${curV && c.kpVersion && curV < c.kpVersion ? ` <span style="color:var(--c-warn,#D97706); font-family:inherit;" title="Текущий статус поставлен по более ранней версии КП">· статус по -${curV}</span>` : ''}</div>`;
                 return `
                                     <div onclick="app.renderKanbanCardDetail('${c.calc_id}')" ${canDrag(c) ? `draggable="true" ondragstart="app.kanbanDragStart(event, '${c.calc_id}')" ondragend="app._kanbanDragId = null" title="Перетащите в другую колонку, чтобы сменить этап"` : ''} style="cursor:pointer; background:var(--surface); border-radius:8px; padding:10px 12px; font-size:12px; box-shadow:0 1px 3px rgba(0,0,0,0.15); transition:0.15s;" onmouseover="this.style.boxShadow='0 3px 8px rgba(0,0,0,0.2)'" onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.15)'">
                                         <div style="font-weight:700; color:var(--text-main); margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.project_name || 'Без названия'}</div>
@@ -10969,7 +10969,7 @@ const app = {
                 this._brData = await this.loadBranchData();
             } catch (e) {
                 console.error('[филиалы]', e);
-                root.innerHTML = `<div style="padding:20px; color:#EF4444;">Не удалось загрузить данные филиалов. Попробуйте обновить раздел.</div>`;
+                root.innerHTML = `<div style="padding:20px; color:var(--c-bad,#EF4444);">Не удалось загрузить данные филиалов. Попробуйте обновить раздел.</div>`;
                 return;
             }
             // Пока грузили, могли уйти в другой раздел
@@ -12263,7 +12263,7 @@ const app = {
             this._currentUserRow = uRow;
             this.renderCloudList(this._cloudEstimates, sharedStatuses, eventStatuses);
         } catch (error) {
-            if (hostEl) hostEl.innerHTML = `<div style="padding:20px; color:#EF4444;">Ошибка: ${error.message}</div>`;
+            if (hostEl) hostEl.innerHTML = `<div style="padding:20px; color:var(--c-bad,#EF4444);">Ошибка: ${error.message}</div>`;
         }
     },
 
@@ -14516,7 +14516,7 @@ const app = {
 
         const statusCard = isPro
             ? `<div class="lk-card lk-card-accent">
-                   <div class="lk-card-label" style="color:#D97706;">Тариф Профи активен</div>
+                   <div class="lk-card-label" style="color:var(--c-warn,#D97706);">Тариф Профи активен</div>
                    <div style="margin-top:6px; font-size:15px; font-weight:700; color:var(--text-main);">
                        ${untilText === 'навсегда' ? 'Действует бессрочно' : `Действует до ${untilText}`}
                    </div>
@@ -14770,7 +14770,7 @@ const app = {
             listHtml += `<div style="padding:12px; background:var(--bg); border:1px solid var(--border); border-radius:10px; margin-bottom:10px; display:flex; flex-direction:column; gap:6px;">
                             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
                                 <strong style="font-size:13.5px; color:var(--text-main); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${inv.projectName}</strong>
-                                <span style="font-size:10px; color:#10B981; font-weight:700; background:#ECFDF5; border:1px solid #10B981; padding:2px 6px; border-radius:4px; white-space:nowrap;">Счёт запрошен</span>
+                                <span style="font-size:10px; color:var(--c-ok,#10B981); font-weight:700; background:#ECFDF5; border:1px solid #10B981; padding:2px 6px; border-radius:4px; white-space:nowrap;">Счёт запрошен</span>
                             </div>
                             <div style="font-size:11px; color:var(--text-sec); font-weight:500;">Дата: ${inv.date}</div>
                             <div style="font-size:11.5px; color:var(--text-sec); border-top:1px dashed var(--border); padding-top:6px; margin-top:2px;">
@@ -15863,7 +15863,7 @@ const app = {
         if (act && grew.length) {
             const sum = grew.reduce((t, x) => t + x.diff, 0);
             act.innerHTML = `<div class="sm-row sm-link" onclick="document.getElementById('installer_reprice').scrollIntoView({ behavior: 'smooth', block: 'start' })" title="Показать, какие сметы">
-                    <span class="sm-row-label">💸 <b>${num(grew.length)} ${this.plural(grew.length, 'смета', 'сметы', 'смет')}</b> <span style="color:#EF4444;">— подорожало оборудование, пересчитайте перед звонком</span></span>
+                    <span class="sm-row-label">💸 <b>${num(grew.length)} ${this.plural(grew.length, 'смета', 'сметы', 'смет')}</b> <span style="color:var(--c-bad,#EF4444);">— подорожало оборудование, пересчитайте перед звонком</span></span>
                     <b>${rub(sum)}</b>
                 </div>`;
             const empty = document.getElementById('installer_actions_empty');
@@ -15893,7 +15893,7 @@ const app = {
                             <b style="font-size:12px; color:var(--text-main);">${esc(x.name)}</b>
                             <br><small style="color:var(--text-sec);">от ${esc(x.when)} · было ${num(Math.round(x.old))} ₽</small>
                         </div>
-                        <b style="flex:0 0 auto; font-size:12px; color:#EF4444;">${rub(x.diff)}</b>
+                        <b style="flex:0 0 auto; font-size:12px; color:var(--c-bad,#EF4444);">${rub(x.diff)}</b>
                     </div>`).join('')
                 : `<p class="lk-hint">Заметно ничего не подорожало — можно отправлять как есть.</p>`)
             + `<p class="lk-hint" style="margin-top:8px;">
@@ -19013,7 +19013,7 @@ const app = {
                     <b>продавцы</b> — оформление магазина, <b>монтажники</b> — тема бренда,
                     <b>администраторы, менеджеры и наблюдатели</b> — обычное оформление.
                     Вошедшим тема «Профи» (серые плашки в духе ya.ru, по умолчанию ночная) сама не включается — это личный выбор обладателя тарифа.
-                    ${canEdit ? '' : '<b style="color:#D97706;">Менять может только администратор.</b>'}
+                    ${canEdit ? '' : '<b style="color:var(--c-warn,#D97706);">Менять может только администратор.</b>'}
                 </div>
                 ${brandRow}
                 ${proRow}
@@ -20916,8 +20916,8 @@ const app = {
                         </div>
                         <div style="font-size: 12.5px; font-weight: 700; color: var(--text-main); line-height: 1.3;">Смета «${n.projectName}»</div>${n.kpNum ? `<div style="font-size: 11px; font-weight: 600; color: var(--text-sec); font-family: monospace;">КП № ${n.kpNum}</div>` : ''}
                         ${n.status === 'confirmed'
-                        ? `<div style="font-size: 12px; color: #10B981; font-weight: bold; margin: 4px 0;">🎉 Поздравляем! Смета одобрена заказчиком!</div><div style="font-size: 11px; color: var(--text-sec);">Сумма сметы: <b>${n.totalSum.toLocaleString()} ₽</b>. ${n.comment ? `<br><b>Комментарий:</b> "${n.comment}"` : ''}</div>`
-                        : `<div style="font-size: 12px; color: #EF4444; font-weight: bold; margin: 4px 0;">⚠️ Смета отклонена (требует доработки)</div><div style="font-size: 11px; color: var(--text-sec); font-style: italic; background: rgba(239,68,68,0.02); border-radius: 6px; padding: 6px; border: 1px dashed rgba(239,68,68,0.15); word-break: break-word;"><b>Замечания:</b> "${n.comment}"</div>`
+                        ? `<div style="font-size: 12px; color: var(--c-ok,#10B981); font-weight: bold; margin: 4px 0;">🎉 Поздравляем! Смета одобрена заказчиком!</div><div style="font-size: 11px; color: var(--text-sec);">Сумма сметы: <b>${n.totalSum.toLocaleString()} ₽</b>. ${n.comment ? `<br><b>Комментарий:</b> "${n.comment}"` : ''}</div>`
+                        : `<div style="font-size: 12px; color: var(--c-bad,#EF4444); font-weight: bold; margin: 4px 0;">⚠️ Смета отклонена (требует доработки)</div><div style="font-size: 11px; color: var(--text-sec); font-style: italic; background: rgba(239,68,68,0.02); border-radius: 6px; padding: 6px; border: 1px dashed rgba(239,68,68,0.15); word-break: break-word;"><b>Замечания:</b> "${n.comment}"</div>`
                     }
                     </div>
                 `;
@@ -22059,7 +22059,7 @@ const app = {
         hint.innerHTML = names.length
             ? `<span style="color:var(--text-sec);">Отмечено компаний: <b style="color:var(--text-main);">${names.length}</b> — ${names.join(', ')}.
                Наблюдатель увидит монтажников этих компаний, их расчёты, переписку с ними и их карточки в планировщике. Сверх того он всегда видит компании, где сам записан менеджером или директором, — отмечать их галочкой не нужно. Всё остальное на платформе от него закрыто.</span>`
-            : `<span style="color:#D97706;">Ни одна компания не отмечена — наблюдатель не увидит ни одного монтажника и ни одного расчёта.</span>`;
+            : `<span style="color:var(--c-warn,#D97706);">Ни одна компания не отмечена — наблюдатель не увидит ни одного монтажника и ни одного расчёта.</span>`;
     },
 
     // Отсечка выборки по монтажникам своих компаний. Пустой список подменяем
@@ -22668,11 +22668,11 @@ const app = {
         if (titleEl) {
             const role = this.getAdminRole();
             if (role === 'viewer') {
-                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:#EF4444; background:#FEE2E2; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Режим просмотра</span>';
+                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:var(--c-bad,#EF4444); background:#FEE2E2; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Режим просмотра</span>';
             } else if (role === 'manager') {
                 titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:#0F766E; background:#CCFBF1; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Менеджер</span>';
             } else if (role === 'super_admin') {
-                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:#10B981; background:#ECFDF5; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Владелец</span>';
+                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:var(--c-ok,#10B981); background:#ECFDF5; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Владелец</span>';
             } else {
                 titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:#3B82F6; background:#EFF6FF; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Администратор</span>';
             }
@@ -22841,7 +22841,7 @@ const app = {
                     ? new Date(u.last_visited).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
                     : '—';
                 const sawHint = u.sess_screens && u.sess_screens['hint:idle']
-                    ? '<span title="Подсказку «Смета за минуту» на сайте видел, но расчёт так и не начал" style="font-size:10px; font-weight:700; color:#D97706; background:rgba(217,119,6,0.1); padding:1px 6px; border-radius:6px; margin-left:6px; white-space:nowrap;">подсказка не помогла</span>'
+                    ? '<span title="Подсказку «Смета за минуту» на сайте видел, но расчёт так и не начал" style="font-size:10px; font-weight:700; color:var(--c-warn,#D97706); background:rgba(217,119,6,0.1); padding:1px 6px; border-radius:6px; margin-left:6px; white-space:nowrap;">подсказка не помогла</span>'
                     : '';
                 return `<div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; padding:10px 0; border-top:1px solid var(--border);">
                     <div style="flex:1 1 220px; min-width:0;">
@@ -23453,7 +23453,7 @@ const app = {
     loadAdminData: async function (offset = 0) {
         if (!this.hasAdminAccess()) {
             const content = document.getElementById('admin_content');
-            if (content) content.innerHTML = '<div style="padding:20px; color:#EF4444;">Доступ запрещен.</div>';
+            if (content) content.innerHTML = '<div style="padding:20px; color:var(--c-bad,#EF4444);">Доступ запрещен.</div>';
             return;
         }
 
@@ -23963,7 +23963,7 @@ const app = {
         } catch (error) {
             console.error("Admin Load Error:", error);
             if (loadSeq !== this._adminLoadSeq) return;
-            if (content) content.innerHTML = `<div style="padding:20px; color:#EF4444;">Ошибка: ${error.message}</div>`;
+            if (content) content.innerHTML = `<div style="padding:20px; color:var(--c-bad,#EF4444);">Ошибка: ${error.message}</div>`;
         }
     },
 
@@ -25080,7 +25080,7 @@ const app = {
             const baseT = stNow === 'sent' ? (asg(r.id).updated_at || r.at) : r.at;
             const ageD = baseT && !isNaN(new Date(baseT)) ? Math.floor((Date.now() - new Date(baseT)) / 86400000) : null;
             const stale = ageD !== null && ((stNow === 'new' && ageD >= 1) || (stNow === 'sent' && ageD >= 2));
-            const ageHtml = ageD === null || stNow === 'archive' || stNow === 'done' || stNow === 'rejected' ? '' : `<span style="${stale ? 'color:#DC2626; font-weight:700;' : ''}">${stNow === 'sent' ? 'у мастера' : 'ждёт'} ${ageD < 1 ? 'меньше суток' : ageD + ' дн.'}${stale ? ' ⚠' : ''}</span>`;
+            const ageHtml = ageD === null || stNow === 'archive' || stNow === 'done' || stNow === 'rejected' ? '' : `<span style="${stale ? 'color:var(--c-bad,#DC2626); font-weight:700;' : ''}">${stNow === 'sent' ? 'у мастера' : 'ждёт'} ${ageD < 1 ? 'меньше суток' : ageD + ' дн.'}${stale ? ' ⚠' : ''}</span>`;
             const isTest = this.isTestLead(r);
             const src = r.src ? `<span style="display:inline-block; background:var(--primary-light); color:var(--primary); border-radius:6px; padding:2px 8px; font-size:11px;">${esc(r.src === 'dom' ? 'страница /dom/' : r.src)}</span>`
                 : '<span style="color:var(--text-sec); font-size:11px;">напрямую</span>';
@@ -25099,7 +25099,7 @@ const app = {
             const boardBtn = !r.id ? '' : (!bd
                 ? `<button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;" title="Показать заявку мастерам на Профи: первый, кто возьмёт, получит телефон" onclick="app.publishLead(${i}, this)">Предложить Профи-мастерам</button>`
                 : (bd.status === 'open'
-                    ? `<span style="font-size:12px; color:#10B981; font-weight:600; align-self:center;">В ленте, свободна</span><button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;" onclick="app.unpublishLead(${i}, this)">Снять с ленты</button>`
+                    ? `<span style="font-size:12px; color:var(--c-ok,#10B981); font-weight:600; align-self:center;">В ленте, свободна</span><button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;" onclick="app.unpublishLead(${i}, this)">Снять с ленты</button>`
                     : `<span style="font-size:12px; color:var(--primary); font-weight:600; align-self:center;">Взята мастером${a.installer_name ? ': ' + esc(a.installer_name) : ''}</span>`));
             return `<div style="border:1px solid var(--border); border-left:3px solid ${stColor}; border-radius:10px; padding:14px; margin-bottom:10px; background:var(--surface);">
                 <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
@@ -25127,7 +25127,7 @@ const app = {
                     ${boardBtn}
                     <button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;"${r.id ? '' : ' disabled'}
                         onclick="app.saveLeadAssignment(${i}, 'status', '${st === 'archive' ? 'new' : 'archive'}', this)">${st === 'archive' ? 'Вернуть из архива' : 'В архив'}</button>
-                    <button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px; color:#DC2626;"${r.id ? '' : ' disabled'}
+                    <button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px; color:var(--c-bad,#DC2626);"${r.id ? '' : ' disabled'}
                         onclick="app.deleteLead(${i}, this)">Удалить</button>
                 </div>
             </div>`;
@@ -25166,10 +25166,10 @@ const app = {
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
                 <label style="font-size:12px; color:var(--text-sec); white-space:nowrap;"><input type="checkbox"${selShown && selShown === this._leadShownIds.length ? ' checked' : ''} onchange="app.toggleLeadSelAll(this.checked)"> выбрать все (${shownItems.length})</label>
                 <button id="lead_sel_arc" class="auth-btn-base" style="${btnS}"${sel.size ? '' : ' disabled'} onclick="app.archiveSelectedLeads(this)">В архив${sel.size ? ' (' + sel.size + ')' : ''}</button>
-                <button id="lead_sel_del" class="auth-btn-base" style="${btnS} color:#DC2626;"${sel.size ? '' : ' disabled'} onclick="app.deleteSelectedLeads(this)">Удалить выбранные${sel.size ? ' (' + sel.size + ')' : ''}</button>
+                <button id="lead_sel_del" class="auth-btn-base" style="${btnS} color:var(--c-bad,#DC2626);"${sel.size ? '' : ' disabled'} onclick="app.deleteSelectedLeads(this)">Удалить выбранные${sel.size ? ' (' + sel.size + ')' : ''}</button>
                 <span style="flex:1;"></span>
-                ${testCount ? `<button class="auth-btn-base" style="${btnS} color:#DC2626;" onclick="app.deleteTestLeads(this)">Удалить тестовые (${testCount})</button>` : ''}
-                <button class="auth-btn-base" style="${btnS} color:#DC2626;" onclick="app.deleteAllLeads(this)">Удалить все</button>
+                ${testCount ? `<button class="auth-btn-base" style="${btnS} color:var(--c-bad,#DC2626);" onclick="app.deleteTestLeads(this)">Удалить тестовые (${testCount})</button>` : ''}
+                <button class="auth-btn-base" style="${btnS} color:var(--c-bad,#DC2626);" onclick="app.deleteAllLeads(this)">Удалить все</button>
                 <button class="auth-btn-base" style="${btnS}" onclick="app._leadsData=null; app.renderAdminLeads()">Обновить</button>
             </div>
             ${list || '<div style="padding:20px; text-align:center; color:var(--text-sec); font-size:13px;">По этим условиям заявок нет.</div>'}`;
@@ -25286,10 +25286,10 @@ const app = {
             const overdue = i.status !== 'published' && (i.date || '') < today;
             const leadN = leadsBySlug[i.slug] || 0;
             const leadCell = `<td style="${td} white-space:nowrap; text-align:right;">${i.status !== 'published' ? '<span style="color:var(--text-sec);">—</span>'
-                : (leadsReady ? (leadN ? '<b style="color:#10B981;">' + leadN + '</b>' : '<span style="color:var(--text-sec);">0</span>')
+                : (leadsReady ? (leadN ? '<b style="color:var(--c-ok,#10B981);">' + leadN + '</b>' : '<span style="color:var(--text-sec);">0</span>')
                     : '<span style="color:var(--text-sec);">' + (this._articleLeadsFailed ? 'н/д' : '…') + '</span>')}</td>`;
             return `<tr>
-                <td style="${td} white-space:nowrap; ${overdue ? 'color:#D97706; font-weight:700;' : ''}">${d}${overdue ? ' ⏳' : ''}</td>
+                <td style="${td} white-space:nowrap; ${overdue ? 'color:var(--c-warn,#D97706); font-weight:700;' : ''}">${d}${overdue ? ' ⏳' : ''}</td>
                 <td style="${td}">
                     <div style="font-weight:600; color:var(--text-main);">${(() => { const am = this.articleAudienceMeta[i.audience]; return am ? `<span style="display:inline-block; margin-right:6px; padding:1px 7px; border-radius:6px; font-size:10px; font-weight:700; letter-spacing:.02em; vertical-align:1px; color:${am.color}; border:1px solid ${am.color};">${am.label}</span>` : ''; })()}${esc(i.title)}</div>
                     <div style="color:var(--text-sec); margin-top:2px;">${esc(i.cluster)} · запрос «${esc(i.query)}» · ${i.freq} в месяц${i.words ? ' · ' + i.words + ' слов' : ''}</div>
@@ -25504,7 +25504,7 @@ const app = {
             <div class="ad-sub" style="margin:0 0 12px; max-width:900px; line-height:1.5;">
                 Что открыто каждой учётной записи на её тарифе. Изменения сохраняются сразу и доходят до людей при следующем
                 открытии сайта или возвращении на вкладку. Точка в углу ячейки — значение отличается от исходного.
-                ${canEdit ? '' : '<b style="color:#D97706;">Менять таблицу может только администратор.</b>'}
+                ${canEdit ? '' : '<b style="color:var(--c-warn,#D97706);">Менять таблицу может только администратор.</b>'}
             </div>
             <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:var(--bg);">
                 <table class="tf-table" style="width:100%; min-width:760px; border-collapse:collapse;"><thead>${head1}${head2}</thead><tbody>${body}</tbody></table>
@@ -25566,7 +25566,7 @@ const app = {
             <p style="margin:0 0 12px; font-size:12.5px; line-height:1.5; color:var(--text-sec); max-width:900px;">
                 Какие вкладки панели видит каждая роль. Выключенного раздела у человека нет вовсе — ни кнопки, ни пункта в меню.
                 Наблюдатель и менеджер и во включённых разделах видят только свои компании и ничего не меняют.
-                ${canEdit ? '' : '<b style="color:#D97706;">Раздавать разделы может только владелец.</b>'}
+                ${canEdit ? '' : '<b style="color:var(--c-warn,#D97706);">Раздавать разделы может только владелец.</b>'}
             </p>
             <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:var(--bg);">
                 <table style="width:100%; min-width:620px; border-collapse:collapse;"><thead>${head}</thead><tbody>${body}</tbody></table>
@@ -25577,7 +25577,7 @@ const app = {
         const el = document.getElementById('admin_tariffs_status');
         if (!el) return;
         if (this._tariffSaving) el.innerHTML = '<span style="color:var(--text-sec);">Сохраняю…</span>';
-        else if (this._tariffSaveError) el.innerHTML = '<span style="color:#EF4444;">Не сохранено</span>';
+        else if (this._tariffSaveError) el.innerHTML = '<span style="color:var(--c-bad,#EF4444);">Не сохранено</span>';
         else el.innerHTML = '';
     },
 
@@ -25745,7 +25745,7 @@ const app = {
         const cards = `
             <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
                 <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${n(d.totalUsers)}</span></div>
-                <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: #10B981;">${n(d.totalEstimates)}</span></div>
+                <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: var(--c-ok,#10B981);">${n(d.totalEstimates)}</span></div>
                 <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование</span><span style="font-size: 20px; font-weight: 800; color: #6366F1; white-space: nowrap;" title="${n(d.totalEq)} ₽">${this.moneyCompact(d.totalEq)}</span></div>
                 <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы</span><span style="font-size: 20px; font-weight: 800; color: #F97316; white-space: nowrap;" title="${n(d.totalWorks)} ₽">${this.moneyCompact(d.totalWorks)}</span></div>
             </div>`;
@@ -25877,7 +25877,7 @@ const app = {
         // Текст у ролей разный, потому что чинится это по-разному: наблюдателю
         // компании отмечает владелец списком, менеджеру они берутся из привязки.
         const scopeWarnHtml = (this.isScopedAdmin() && !this.scopeDistIds().length)
-            ? `<div style="background:rgba(217,119,6,0.12); border:1px solid #D97706; color:#D97706; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:12px; line-height:1.5;">
+            ? `<div style="background:rgba(217,119,6,0.12); border:1px solid #D97706; color:var(--c-warn,#D97706); border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:12px; line-height:1.5;">
                    ${this.isViewerRole()
                     ? '👁 Вам не назначен ни один дистрибьютор, поэтому разделы пустые. Список компаний ставит владелец в вашей карточке.'
                     : '🤝 Вам не назначена компания, поэтому разделы пустые. Дистрибьютор ставится в вашей карточке — либо ваша почта вписывается в карточку самой компании, в поле менеджера или директора.'}
@@ -26040,7 +26040,7 @@ const app = {
         if (this._adminTab === 'subscription') {
             content.innerHTML = navHtml + '<div id="admin_subscription_box"></div>';
             if (typeof Subscription !== 'undefined') Subscription.render();
-            else content.insertAdjacentHTML('beforeend', '<div style="color:#EF4444; font-size:13px;">Модуль подписки (subscription.js) не загрузился — обновите страницу.</div>');
+            else content.insertAdjacentHTML('beforeend', '<div style="color:var(--c-bad,#EF4444); font-size:13px;">Модуль подписки (subscription.js) не загрузился — обновите страницу.</div>');
             return;
         }
 
@@ -26052,7 +26052,7 @@ const app = {
             }).catch(e => {
                 console.error('[панель] pay_readiness.js не загрузился:', e);
                 const box = document.getElementById('admin_payready_box');
-                if (box) box.innerHTML = '<div style="color:#EF4444; font-size:13px;">Модуль отчёта не загрузился — обновите страницу.</div>';
+                if (box) box.innerHTML = '<div style="color:var(--c-bad,#EF4444); font-size:13px;">Модуль отчёта не загрузился — обновите страницу.</div>';
             });
             return;
         }
@@ -26065,7 +26065,7 @@ const app = {
             }).catch(e => {
                 console.error('[панель] warranty_admin.js не загрузился:', e);
                 const box = document.getElementById('admin_warranty_box');
-                if (box) box.innerHTML = '<div style="color:#EF4444; font-size:13px;">Модуль гарантии не загрузился — обновите страницу.</div>';
+                if (box) box.innerHTML = '<div style="color:var(--c-bad,#EF4444); font-size:13px;">Модуль гарантии не загрузился — обновите страницу.</div>';
             });
             return;
         }
@@ -26219,7 +26219,7 @@ const app = {
         let h = `
                     <div class="admin-stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                         <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${totalUsers}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажников: <b>${installersCount || 0}</b> · продавцов: <b>${sellersCount || 0}</b></span></div>
-                        <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: #10B981;">${totalEstimates}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажниками: <b>${estInstallers || 0}</b> · продавцами: <b>${estSellers || 0}</b></span></div>
+                        <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: var(--c-ok,#10B981);">${totalEstimates}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажниками: <b>${estInstallers || 0}</b> · продавцами: <b>${estSellers || 0}</b></span></div>
                         <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #6366F1; white-space: nowrap;" title="${totalEq.toLocaleString('ru-RU')} ₽">${this.moneyCompact(totalEq)}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">средний чек: <b>${estWithEq ? Math.round(totalEq / estWithEq).toLocaleString('ru-RU') : 0} ₽</b></span></div>
                         <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316; white-space: nowrap;" title="${totalWorks.toLocaleString('ru-RU')} ₽">${this.moneyCompact(totalWorks)}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">смет с монтажом: <b>${estWithWorks || 0}</b> из ${totalEstimates} | средний чек: <b>${estWithWorks ? Math.round(totalWorks / estWithWorks).toLocaleString('ru-RU') : 0} ₽</b></span></div>
                     </div>
@@ -26408,7 +26408,7 @@ const app = {
                                     Целой компании — во вкладке «Дистрибьюторы», колонка «Доступ монтажникам»
                                 </span>
                             </div>
-                            ${designOk ? '' : `<span style="font-size:10.5px; color:#D97706;">${designOffHint}</span>`}
+                            ${designOk ? '' : `<span style="font-size:10.5px; color:var(--c-warn,#D97706);">${designOffHint}</span>`}
                         </div>
                     </div>
                     </details>`;
@@ -26462,7 +26462,7 @@ const app = {
                 // «Профи навсегда», а не «Профи до навсегда» — предлог нужен только перед датой
                 const term = dateStr === 'навсегда' ? 'Профи навсегда' : `Профи до ${dateStr}`;
                 const color = isExpired ? '#EF4444' : '#D97706';
-                tariffLabelShort = `<span style="color:${color}; font-weight:bold;">${term}</span>${isExpired ? ' <span style="font-size:10px; color:#EF4444;">(ИСТЁК)</span>' : ''}`;
+                tariffLabelShort = `<span style="color:${color}; font-weight:bold;">${term}</span>${isExpired ? ' <span style="font-size:10px; color:var(--c-bad,#EF4444);">(ИСТЁК)</span>' : ''}`;
                 tariffLabel = `<span style="color:${color}; font-weight:bold;">${term}</span> <span style="font-size:10px; color:${isExpired ? '#EF4444' : 'var(--text-sec)'};">(${proType})${isExpired ? ' (ИСТЁК)' : ''}</span>`;
             }
 
@@ -26471,7 +26471,7 @@ const app = {
             } else if (u.account_type === 'manager') {
                 badge = `<span style="color:#0F766E; font-weight:bold;">Менеджер</span><br><span style="font-size:10px; color:var(--text-sec);">Тариф: ${tariffLabelShort}</span>`;
             } else if (u.account_type === 'admin') {
-                badge = `<span style="color:#10B981; font-weight:bold;">Администратор</span><br><span style="font-size:10px; color:var(--text-sec);">Тариф: ${tariffLabelShort}</span>`;
+                badge = `<span style="color:var(--c-ok,#10B981); font-weight:bold;">Администратор</span><br><span style="font-size:10px; color:var(--text-sec);">Тариф: ${tariffLabelShort}</span>`;
             } else if (u.account_type === 'pro') {
                 badge = tariffLabel;
             } else {
@@ -27716,7 +27716,7 @@ const app = {
                     // выручкой будет нечем, и это должно быть видно сразу.
                     const innTd = x.inn
                         ? `<td style="text-align:center; font-size:12px; color:var(--text-sec);">${esc(x.inn)}</td>`
-                        : `<td style="text-align:center; font-size:11px; color:#EF4444;" title="Заполните ИНН в карточке дистрибьютора — без него официальные данные по компании не собрать">не указан</td>`;
+                        : `<td style="text-align:center; font-size:11px; color:var(--c-bad,#EF4444);" title="Заполните ИНН в карточке дистрибьютора — без него официальные данные по компании не собрать">не указан</td>`;
                     h += `<tr>
                         <td><b>${esc(x.name)}</b>${chips}</td>
                         ${innTd}
@@ -27748,7 +27748,7 @@ const app = {
         if (!recRes) {
             h += `<div style="font-size:12.5px; color:var(--text-sec);">Считаем архив распознаваний…</div>`;
         } else if (recRes.serverOld) {
-            h += `<div style="font-size:12.5px; color:#D97706;">На сервере старая версия <b>recognize_archive.php</b>: сводку по маркам она не считает. Выложите обновлённый файл на Beget.</div>`;
+            h += `<div style="font-size:12.5px; color:var(--c-warn,#D97706);">На сервере старая версия <b>recognize_archive.php</b>: сводку по маркам она не считает. Выложите обновлённый файл на Beget.</div>`;
         } else if (!recRes.data) {
             h += `<div style="font-size:12.5px; color:var(--text-sec);">Архив распознаваний не ответил: ${esc(recRes.error || 'причина неизвестна')}.</div>`;
         } else {
@@ -27963,7 +27963,7 @@ const app = {
         return `<td style="text-align:center;" title="${esc(title)}">
             <b style="color:var(--text-main);">${money(cur.revenue)}</b>
             <span style="font-size:11px; color:var(--text-sec);"> за ${esc(last)}</span>
-            ${dead ? `<br><span style="font-size:11px; color:#EF4444; font-weight:700;">не действует</span>` : ''}
+            ${dead ? `<br><span style="font-size:11px; color:var(--c-bad,#EF4444); font-weight:700;">не действует</span>` : ''}
             ${pctHtml}
         </td>`;
     },
@@ -29308,7 +29308,7 @@ const app = {
                         ${iconBtn('переименовать', '✏️', `app.dashRenameSection('${s.id}')`)}
                         ${iconBtn('выше', '▲', `app.dashMoveSection('${s.id}', -1)`)}
                         ${iconBtn('ниже', '▼', `app.dashMoveSection('${s.id}', 1)`)}
-                        ${iconBtn('убрать раздел', '×', `app.dashRemoveSection('${s.id}')`, 'color:#EF4444; font-size:15px;')}
+                        ${iconBtn('убрать раздел', '×', `app.dashRemoveSection('${s.id}')`, 'color:var(--c-bad,#EF4444); font-size:15px;')}
                    </div>`
                 : (s.title && s.items.some(w => B[w.id])
                     ? `<div style="font-size:15px; font-weight:800; color:var(--text-main); margin:0 0 10px;">${esc(s.title)}</div>`
@@ -29882,7 +29882,7 @@ const app = {
                            </div>`;
                     }
                     if (H.error) {
-                        return `<div style="font-size:11.5px; color:#EF4444; margin-top:10px;">История тарифа не прочиталась: ${esc(H.error)}</div>`;
+                        return `<div style="font-size:11.5px; color:var(--c-bad,#EF4444); margin-top:10px;">История тарифа не прочиталась: ${esc(H.error)}</div>`;
                     }
                     if (!H.has) return '';
                     const moves = [
@@ -30097,7 +30097,7 @@ const app = {
                 if (!tm) {
                     B.inv_timer = card(tHead + `<div style="padding:16px 0; color:var(--text-sec); font-size:12.5px;">Читаем ссылки клиентам…</div>`);
                 } else if (tm.error) {
-                    B.inv_timer = card(tHead + `<div style="padding:16px 0; color:#EF4444; font-size:12.5px;">Ссылки не прочитались: ${esc(tm.error)}</div>`);
+                    B.inv_timer = card(tHead + `<div style="padding:16px 0; color:var(--c-bad,#EF4444); font-size:12.5px;">Ссылки не прочитались: ${esc(tm.error)}</div>`);
                 } else if (!tm.timer.n && !tm.none.n) {
                     B.inv_timer = card(tHead + `<div style="padding:16px 0; color:var(--text-sec); font-size:12.5px;">Ссылок клиентам за этот период нет${region ? ` — по крайней мере у монтажников региона «${esc(region)}»` : ''}.</div>`);
                 } else {
@@ -30231,7 +30231,7 @@ const app = {
             if (!posReady) {
                 usageHtml = `<div style="font-size:12.5px; color:var(--text-sec); padding:10px 0;">Разбираем состав счетов…</div>`;
             } else if (usage && usage.error) {
-                usageHtml = `<div style="font-size:12.5px; color:#EF4444; padding:10px 0;">Счета не прочитались: ${esc(usage.error)}</div>`;
+                usageHtml = `<div style="font-size:12.5px; color:var(--c-bad,#EF4444); padding:10px 0;">Счета не прочитались: ${esc(usage.error)}</div>`;
             } else if (!usage || !usage.rows.length) {
                 usageHtml = `<div style="font-size:12.5px; color:var(--text-sec); padding:10px 0;">За последние полгода счетов с позициями нет.</div>`;
             } else {
@@ -30305,7 +30305,7 @@ const app = {
                         <td style="padding:7px 6px;"><b style="color:var(--text-main);">
                                 <span style="display:inline-block; width:11px; color:var(--text-sec); transform:rotate(${open ? 90 : 0}deg);">›</span>
                                 ${esc(x.name)}</b>
-                            <div style="font-size:11px; color:var(--text-sec);">ИНН ${esc(x.inn)}${x.co.region ? ' · ' + esc(x.co.region) : ''}${dead ? ' · <span style="color:#EF4444; font-weight:700;">не действует</span>' : ''}</div></td>
+                            <div style="font-size:11px; color:var(--text-sec);">ИНН ${esc(x.inn)}${x.co.region ? ' · ' + esc(x.co.region) : ''}${dead ? ' · <span style="color:var(--c-bad,#EF4444); font-weight:700;">не действует</span>' : ''}</div></td>
                         <td style="padding:7px 6px; text-align:right; white-space:nowrap;">
                             <b style="color:var(--text-main);">${money((x.revenue || 0) * 1000)}</b>
                             <div style="font-size:11px; color:var(--text-sec);">за ${esc(x.year || '—')} · ${trend(x.growth)}</div></td>
@@ -30457,7 +30457,7 @@ const app = {
                         ${man.map(m => gapLine(m, esc(m.id || '—'))).join('') || '<small style="color:var(--text-sec);">пусто</small>'}
                     </div>
                    </div>`
-                + (brokenN ? `<div style="font-size:11.5px; color:#D97706; margin-top:10px;">
+                + (brokenN ? `<div style="font-size:11.5px; color:var(--c-warn,#D97706); margin-top:10px;">
                         Ещё ${num(brokenN)} ${this.plural(brokenN, 'строка получила', 'строки получили', 'строк получили')} вместо артикула цену или слово
                         (${(S.brokenArticles || []).slice(0, 2).map(b => esc(b.id)).join(', ')}) — это съехавшая колонка в прайс-индексе, а не ошибка подбора.
                    </div>` : ''));
@@ -30625,7 +30625,7 @@ const app = {
                                 onclick="app.toggleChartBrand('${q(b.word)}')">${off ? '○' : '✓'}</button>
                         <button class="admin-btn" ${brandsViewer ? 'disabled' : ''}
                                 title="Удалить марку из списка совсем"
-                                style="height:19px; min-width:19px; padding:0 5px; font-size:11px; line-height:1; color:#EF4444;"
+                                style="height:19px; min-width:19px; padding:0 5px; font-size:11px; line-height:1; color:var(--c-bad,#EF4444);"
                                 onclick="app.removeChartBrand('${q(b.word)}')">✕</button>
                     </span>`;
             };
@@ -31195,14 +31195,14 @@ const app = {
             digest.push({ tone: toneOf(estP), html: `Смет за 30 дней: <b>${num(dm.ests)}</b>${pctWord(estP)} к предыдущим 30` });
             digest.push({ tone: da.newlyQuiet > dm.users ? 'down' : toneOf(actP),
                 html: `Монтажники: активных <b>${num(dm.active)}</b>${pctWord(actP)}, новых <b>${num(dm.users)}</b>`
-                    + (da.newlyQuiet ? `, затихли за месяц <b style="color:#EF4444;">${num(da.newlyQuiet)}</b>` : '') });
+                    + (da.newlyQuiet ? `, затихли за месяц <b style="color:var(--c-bad,#EF4444);">${num(da.newlyQuiet)}</b>` : '') });
             // Профи — единственная строка про деньги самого проекта, поэтому
             // стоит выше рыночных: истекающие важнее любого спроса.
             if (own.pro.expiring.length || own.pro.lapsed.length) {
                 digest.push({ tone: 'warn',
                     html: [
                         own.pro.expiring.length ? `Профи кончается у <b>${own.pro.expiring.length}</b> за 30 дней` : '',
-                        own.pro.lapsed.length ? `истёк и не вернулся у <b style="color:#EF4444;">${own.pro.lapsed.length}</b>` : ''
+                        own.pro.lapsed.length ? `истёк и не вернулся у <b style="color:var(--c-bad,#EF4444);">${own.pro.lapsed.length}</b>` : ''
                     ].filter(Boolean).join(', ') + ` <small style="color:var(--text-sec);">блок «Профи: сроки и отток»</small>` });
             }
             // Продления — единственная строка сводки про живые деньги, поэтому
@@ -31213,7 +31213,7 @@ const app = {
                 const paidMoves = (PH.extended || 0) + (PH.converted || 0) + (PH.returned || 0);
                 digest.push({ tone: paidMoves ? 'up' : (own.pro.expiring.length ? 'down' : 'flat'),
                     html: `Профи за 30 дней: продлили <b>${num(PH.extended || 0)}</b>, впервые оплатили <b>${num(PH.converted || 0)}</b>`
-                        + (PH.revoked ? `, сняли <b style="color:#EF4444;">${num(PH.revoked)}</b>` : '') });
+                        + (PH.revoked ? `, сняли <b style="color:var(--c-bad,#EF4444);">${num(PH.revoked)}</b>` : '') });
             }
             if (inv && !inv.error) {
                 const f0 = inv.funnel[0].n;
@@ -33088,7 +33088,7 @@ const app = {
                 ${aTile('Применили', applied, `${pct(applied, rows.length)} запусков`)}
                 ${aTile('Среднее время', this._fmtAiFillDur(rows.length ? totalSec / rows.length : 0), `всего: ${this._fmtAiFillDur(totalSec)}`)}
                 ${aTile('Реплик', msgs, `голосом ${pct(voice, msgs)}`)}
-                ${aTile('Не распознано', `<span style="${unrec ? 'color:#EF4444;' : ''}">${unrec}</span>`, 'фраз, которых система не поняла')}
+                ${aTile('Не распознано', `<span style="${unrec ? 'color:var(--c-bad,#EF4444);' : ''}">${unrec}</span>`, 'фраз, которых система не поняла')}
             </div>
             <div class="ad-chips">${chip('sessions', 'Сеансы')}${chip('accounts', 'По аккаунтам')}${chip('unrecognized', 'Нераспознанное')}</div>
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
@@ -33158,7 +33158,7 @@ const app = {
             const src = voice === 0 ? '⌨' : (voice === msgs ? '🎤' : '🎤⌨');
             const fields = Array.isArray(r.applied_fields) ? r.applied_fields : [];
             const result = r.outcome === 'applied'
-                ? `<span style="color:#10B981; font-weight:700;">✅ Применил ${fields.length}</span>` +
+                ? `<span style="color:var(--c-ok,#10B981); font-weight:700;">✅ Применил ${fields.length}</span>` +
                   (fields.length ? `<div style="font-size:11px; color:var(--text-sec); margin-top:2px;">${esc(fields.map(f => f.label + ': ' + f.display).join(' · '))}</div>` : '')
                 : `<span style="color:var(--text-sec);">Закрыл без применения</span>`;
             const unrec = Number(r.unrecognized) || 0;
@@ -33241,7 +33241,7 @@ const app = {
                     <td style="text-align:right; font-weight:700;">${a.runs}</td>
                     <td style="text-align:right; white-space:nowrap;">${this._fmtAiFillDur(a.sec)}</td>
                     <td style="text-align:right; white-space:nowrap;">${this._fmtAiFillDur(a.sec / a.runs)}</td>
-                    <td style="text-align:right; color:#10B981;">${a.applied} из ${a.runs}</td>
+                    <td style="text-align:right; color:var(--c-ok,#10B981);">${a.applied} из ${a.runs}</td>
                     <td style="text-align:right;">${a.msgs}</td>
                     <td style="text-align:right;">${a.msgs ? Math.round(a.voice * 100 / a.msgs) + '%' : '—'}</td>
                     <td style="text-align:right; color:${a.unrec ? '#EF4444' : 'var(--text-sec)'};">${a.unrec || '—'}</td>
@@ -33280,7 +33280,7 @@ const app = {
         list.forEach((e, i) => {
             h += `<tr>
                     <td style="color:var(--text-sec);">${i + 1}</td>
-                    <td style="color:#EF4444;">«${esc(e.text)}»</td>
+                    <td style="color:var(--c-bad,#EF4444);">«${esc(e.text)}»</td>
                     <td style="text-align:right; font-weight:700;">${e.count}</td>
                     <td style="text-align:right;">${e.voice}</td>
                     <td style="font-size:12px; color:var(--text-sec);">${esc(Array.from(e.who).join(', '))}</td>
@@ -33518,7 +33518,7 @@ const app = {
         const select = keys.length > 1
             ? `<select onchange="app._dp.key=this.value; app._dp.all=false; app.renderAdminDistPrices()" style="padding:6px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main);">
                 ${keys.map(k => `<option value="${esc(k)}" ${k === st.key ? 'selected' : ''}>${esc(DIST_PRICES[k].title || k)}</option>`).join('')}</select>` : '';
-        const tile = (label, value, sub, warn) => `<div class="control-card"><span class="lbl">${label}</span><span${warn ? ' style="color:#D97706;"' : ''}>${value}</span><span>${sub}</span></div>`;
+        const tile = (label, value, sub, warn) => `<div class="control-card"><span class="lbl">${label}</span><span${warn ? ' style="color:var(--c-warn,#D97706);"' : ''}>${value}</span><span>${sub}</span></div>`;
         const inp = 'padding:6px 8px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main); font-size:12.5px; width:100%; box-sizing:border-box;';
         const th = (col, label, right) => `<th style="${right ? 'text-align:right;' : ''} cursor:pointer; white-space:nowrap;" onclick="app.dpSort('${col}')">${label}<span id="dp_arr_${col}"></span></th>`;
 
@@ -33621,7 +33621,7 @@ const app = {
         const when = o.updated_at ? new Date(o.updated_at).toLocaleDateString('ru-RU') : '';
         const tip = esc([o.updated_by, when, o.note].filter(Boolean).join(' · '));
         const lbl = o.action === 'skip'
-            ? '<span style="font-size:10.5px; font-weight:700; color:#D97706;">не применять</span>'
+            ? '<span style="font-size:10.5px; font-weight:700; color:var(--c-warn,#D97706);">не применять</span>'
             : '<span style="font-size:10.5px; font-weight:700; color:#2563EB;">своя цена</span>';
         return `<span title="${tip}"><b>${fmt(r.eff)}</b><br>${lbl}<br><span style="font-size:10px; color:var(--text-sec);">${esc(String(o.updated_by || '').split('@')[0])}${when ? ', ' + when : ''}</span></span>`;
     },
@@ -33649,7 +33649,7 @@ const app = {
             </tr>`).join('')}</tbody></table></div>` : '';
         const head = ups + head0;
         if (meta.err) {
-            box.innerHTML = head + `<div class="ad-sub" style="color:#D97706;">Журнал недоступен: ${esc(meta.err)}. Если миграция 20261005_distributor_price_overrides.sql ещё не выполнена в Supabase — правки и журнал работать не будут.</div>`;
+            box.innerHTML = head + `<div class="ad-sub" style="color:var(--c-warn,#D97706);">Журнал недоступен: ${esc(meta.err)}. Если миграция 20261005_distributor_price_overrides.sql ещё не выполнена в Supabase — правки и журнал работать не будут.</div>`;
             return;
         }
         const names = {};
@@ -33723,7 +33723,7 @@ const app = {
         return `<div class="ad-chips" style="margin:0;">${names.map((t, i) => {
             const k = i + 1;
             const done = n > k, cur = n === k;
-            return `<span class="ad-chip${cur ? ' active' : ''}" style="cursor:default; ${done ? 'color:#10B981; border-color:#10B981;' : ''}">
+            return `<span class="ad-chip${cur ? ' active' : ''}" style="cursor:default; ${done ? 'color:var(--c-ok,#10B981); border-color:#10B981;' : ''}">
                 <span style="width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; background:${done ? '#10B981' : (cur ? 'var(--primary)' : 'var(--ad-line)')}; color:${done || cur ? '#fff' : 'var(--text-sec)'}; font-size:11px; font-weight:700;">${done ? '✓' : k}</span>${t}</span>`;
         }).join('')}</div>`;
     },
@@ -33870,18 +33870,18 @@ const app = {
         // Шаг 1: файлы ещё не выбраны
         if (!up) return steps + this.dpUpDropzone(false);
         if (up.busy) return steps + `<div class="ad-sub" style="padding:18px 0;">${esc(up.busy)}</div>`;
-        if (up.done) return steps + `<div style="padding:14px 16px; border-radius:12px; background:color-mix(in srgb, #10B981 14%, transparent); color:#059669; font-weight:600; line-height:1.5;">✓ ${esc(up.done)}</div>
+        if (up.done) return steps + `<div style="padding:14px 16px; border-radius:12px; background:color-mix(in srgb, #10B981 14%, transparent); color:var(--c-ok,#059669); font-weight:600; line-height:1.5;">✓ ${esc(up.done)}</div>
             <div style="margin-top:12px;">${this.dpUpDropzone(true)}</div>`;
         const items = Object.keys(up.inc).length;
         let h = steps;
-        if (up.err) h += `<div style="color:#EF4444; margin-bottom:8px;">${esc(up.err)}</div>`;
+        if (up.err) h += `<div style="color:var(--c-bad,#EF4444); margin-bottom:8px;">${esc(up.err)}</div>`;
         // Выбранные файлы — компактными плашками, рядом — выбрать другие
         h += `<div class="ad-chips" style="align-items:stretch; margin:12px 0;">${
             up.files.map(f => f.error
                 ? `<span class="ad-chip ad-count-bad" style="height:auto; min-height:30px; padding:6px 12px; white-space:normal; cursor:default;"><b>${esc(f.name)}</b> — ${esc(f.error)}</span>`
                 : `<span class="ad-chip" style="height:auto; min-height:30px; padding:6px 12px; white-space:normal; cursor:default; color:var(--text-main);"><b>${esc(f.name)}</b> <span style="color:var(--text-sec);">· ${num(f.count)} поз.${f.date ? ' · от ' + esc(new Date(f.date).toLocaleDateString('ru-RU')) : ''}</span></span>`).join('')}
             <div style="flex:0 0 auto;">${this.dpUpDropzone(true)}</div></div>`;
-        if (!items) return h + '<div style="color:#EF4444; font-weight:600;">В выбранных файлах нет ни одной позиции с артикулом и ценой — публиковать нечего. Проверьте требования к файлу.</div>';
+        if (!items) return h + '<div style="color:var(--c-bad,#EF4444); font-weight:600;">В выбранных файлах нет ни одной позиции с артикулом и ценой — публиковать нечего. Проверьте требования к файлу.</div>';
         const rep = up.rep;
         if (!rep) return h;
         const lab = 'display:inline-flex; align-items:center; gap:6px; margin-right:18px; cursor:pointer;';
@@ -33901,7 +33901,7 @@ const app = {
             h += `<details open style="margin:8px 0;"><summary style="cursor:pointer; font-weight:600;">Подозрительные цены: ${rep.sus.length}</summary>
                 <div style="font-size:12px; color:var(--text-sec); margin:4px 0;">Это позиции, где цена в файле сильно отличается от каталога или от прежнего прайса. Чаще всего причина — другая единица измерения (бухта вместо метра, упаковка вместо штуки). Если цена верна — публикуйте, нет — потом исключите позицию кнопкой «Править» в таблице ниже.</div>
                 <div style="overflow-x:auto; max-height:260px;"><table class="admin-table" style="width:100%; min-width:700px;"><thead><tr><th>Артикул</th><th>Название</th><th style="text-align:right;">Каталог</th><th style="text-align:right;">Был в прайсе</th><th style="text-align:right;">Станет</th><th>Почему</th></tr></thead><tbody>${
-                rep.sus.slice(0, 60).map(s => `<tr><td><b>${esc(s.id)}</b></td><td style="font-size:12px;">${esc(s.name)}</td><td style="text-align:right;">${fmt(s.base)}</td><td style="text-align:right;">${fmt(s.was)}</td><td style="text-align:right;"><b>${fmt(s.now)}</b></td><td style="font-size:12px;">${esc(s.why)}${s.ov ? `<br><b style="color:#059669;">✓ Уже есть правка: ${s.ov.action === 'skip' ? 'не применять — у монтажников останется цена Терем' : 'своя цена ' + fmt(s.ov.price) + ' ₽'}</b>` : ''}</td></tr>`).join('')}</tbody></table></div></details>`;
+                rep.sus.slice(0, 60).map(s => `<tr><td><b>${esc(s.id)}</b></td><td style="font-size:12px;">${esc(s.name)}</td><td style="text-align:right;">${fmt(s.base)}</td><td style="text-align:right;">${fmt(s.was)}</td><td style="text-align:right;"><b>${fmt(s.now)}</b></td><td style="font-size:12px;">${esc(s.why)}${s.ov ? `<br><b style="color:var(--c-ok,#059669);">✓ Уже есть правка: ${s.ov.action === 'skip' ? 'не применять — у монтажников останется цена Терем' : 'своя цена ' + fmt(s.ov.price) + ' ₽'}</b>` : ''}</td></tr>`).join('')}</tbody></table></div></details>`;
         }
         if (up.noArt.length) {
             h += `<details style="margin:8px 0;"><summary style="cursor:pointer; font-weight:600;">Строки без артикула (в прайс не попадут): ${up.noArt.length}</summary>
@@ -33912,7 +33912,7 @@ const app = {
         // Шаг 3: панель публикации прилипает к низу окна — кнопка всегда на виду,
         // как бы длинен ни был отчёт
         h += `<div class="dp-up-bar" style="position:sticky; bottom:0; z-index:5; margin-top:14px; padding:12px 16px; border:1px solid var(--ad-line); border-radius:var(--ad-card-radius); background:var(--surface); box-shadow:0 -8px 18px rgba(0,0,0,.10); display:flex; align-items:center; gap:10px 20px; flex-wrap:wrap;">
-                <label style="font-size:13px;">Дата прайса${up.files.some(f => f.date) ? '' : ' <span style="color:#D97706;">(в файле не найдена — укажите)</span>'}:
+                <label style="font-size:13px;">Дата прайса${up.files.some(f => f.date) ? '' : ' <span style="color:var(--c-warn,#D97706);">(в файле не найдена — укажите)</span>'}:
                     <input type="date" value="${esc(up.date)}" oninput="app._dpUp.date=this.value; app.dpUpRerenderBtn()" style="margin-left:6px; padding:5px 8px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main);"></label>
                 <label style="${lab} margin-right:0; font-size:13px;"><input type="checkbox" ${up.ack ? 'checked' : ''} onchange="app._dpUp.ack=this.checked; app.dpUpRerenderBtn()"> Я проверил отчёт</label>
                 <button id="dp_up_pub" class="admin-btn ad-primary" ${up.ack && up.date ? '' : 'disabled'} onclick="app.dpUpPublish()">Опубликовать прайс</button>
@@ -34245,9 +34245,9 @@ const app = {
                         <button class="admin-btn ad-primary" onclick="app.adminSuccessorDecide(${id}, 'approved')">Подтвердить</button>
                         <button class="admin-btn" onclick="app.adminSuccessorDecide(${id}, 'rejected')">Отклонить</button>`;
                 } else if (r.status === 'approved' && catalogArticle(r) === r.new_article) {
-                    actions = `<span style="color:#10B981; font-weight:700; font-size:12.5px;">✓ В каталоге</span>`;
+                    actions = `<span style="color:var(--c-ok,#10B981); font-weight:700; font-size:12.5px;">✓ В каталоге</span>`;
                 } else if (r.status === 'approved' && catalogArticle(r)) {
-                    actions = `<span style="color:#10B981; font-weight:700; font-size:12.5px;">✓ В каталоге, заменено дальше на ${esc(catalogArticle(r))}</span>`;
+                    actions = `<span style="color:var(--c-ok,#10B981); font-weight:700; font-size:12.5px;">✓ В каталоге, заменено дальше на ${esc(catalogArticle(r))}</span>`;
                 } else if (r.status === 'approved') {
                     actions = `
                         <span style="color:var(--text-sec); font-size:12.5px;">Ждёт переноса в каталог (раз в сутки)</span>
@@ -38388,7 +38388,7 @@ const app = {
                                     <h2 style="margin: 0; color: var(--text-main); font-size: 20px; overflow-wrap: anywhere;">${[user.last_name, user.first_name, user.middle_name].filter(Boolean).join(' ') || user.username || user.email || 'Без имени'}</h2>
                                     <div style="display: flex; gap: 15px; margin-top: 5px; font-size: 13px; color: var(--text-sec); flex-wrap: wrap;">
                                         <span>📱 ${user.phone || '—'}</span>
-                                        ${(user.account_type === 'pro' && user.demo_ends_at && new Date(user.demo_ends_at) < new Date()) ? '<b style="color:#EF4444;">⚠️ Тариф истёк</b>' : ''}
+                                        ${(user.account_type === 'pro' && user.demo_ends_at && new Date(user.demo_ends_at) < new Date()) ? '<b style="color:var(--c-bad,#EF4444);">⚠️ Тариф истёк</b>' : ''}
                                     </div>
                                     ${user.utm_source ? `<div style="display: inline-block; background: var(--primary-light); color: var(--primary); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-top: 8px;">${user.utm_source}</div>` : ''}
                                 </div>
@@ -38448,7 +38448,7 @@ const app = {
                             ${(() => {
                                 const flags = this.suspiciousProfileFlags(user);
                                 if (!flags.length) return '';
-                                return `<div style="background:rgba(217,119,6,0.12); border:1px solid #D97706; color:#D97706; border-radius:8px; padding:8px 12px; margin-bottom:12px; font-size:12px; line-height:1.4;">
+                                return `<div style="background:rgba(217,119,6,0.12); border:1px solid #D97706; color:var(--c-warn,#D97706); border-radius:8px; padding:8px 12px; margin-bottom:12px; font-size:12px; line-height:1.4;">
                                     <b>⚠️ Анкета похожа на выдуманную:</b> ${flags.join('; ')}.
                                 </div>`;
                             })()}
@@ -38465,7 +38465,7 @@ const app = {
                                     const list = this.regionByPhone(user.phone);
                                     if (!list.length) return `<div><span style="color:var(--text-sec);">Регион номера:</span> <b style="color:var(--text-main);">не определён</b></div>`;
                                     const match = this.phoneRegionMatches(user.phone, user.region);
-                                    return `<div><span style="color:var(--text-sec);">Регион номера:</span> <b style="color:${match === false ? '#D97706' : 'var(--text-main)'};">${list.join(' / ')}</b>${match === false ? ' <span style="color:#D97706;" title="Бывает при переезде или переносе номера — само по себе не значит обман">⚠ не совпадает с анкетой</span>' : (match ? ' <span style="color:#10B981;">✓</span>' : '')}</div>`;
+                                    return `<div><span style="color:var(--text-sec);">Регион номера:</span> <b style="color:${match === false ? '#D97706' : 'var(--text-main)'};">${list.join(' / ')}</b>${match === false ? ' <span style="color:var(--c-warn,#D97706);" title="Бывает при переезде или переносе номера — само по себе не значит обман">⚠ не совпадает с анкетой</span>' : (match ? ' <span style="color:var(--c-ok,#10B981);">✓</span>' : '')}</div>`;
                                 })()}
                                 <div style="grid-column: 1 / -1;"><span style="color:var(--text-sec);">Сфера деятельности:</span> ${(user.activity_types || []).length ? (user.activity_types || []).map(a => `<span style="background:var(--primary-light); color:var(--primary); font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; margin-left:4px;">${a}</span>`).join('') : ' <b style="color:var(--text-main);">—</b>'}</div>
                             </div>
@@ -38565,12 +38565,12 @@ const app = {
                         </div>
 
                         <div style="margin-top:20px; padding-top:20px; border-top:1px dashed var(--border);">
-                            <h4 style="margin:0 0 12px 0; font-size:14px; color:#EF4444;">⚠️ Опасная зона</h4>
+                            <h4 style="margin:0 0 12px 0; font-size:14px; color:var(--c-bad,#EF4444);">⚠️ Опасная зона</h4>
                             <div style="display:flex; gap:10px; flex-wrap:wrap;">
                                 <button class="auth-btn-base" style="margin:0; width:auto; height:34px; padding:0 16px; font-size:12px; background:var(--surface-light); color:${user.is_blocked ? '#10B981' : '#D97706'}; border:1px solid var(--border); ${isViewer ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.toggleUserBlocked('${user.id}', ${!user.is_blocked})">
                                     ${user.is_blocked ? '🔓 Разблокировать доступ' : '🔒 Заблокировать доступ'}
                                 </button>
-                                <button class="auth-btn-base" style="margin:0; width:auto; height:34px; padding:0 16px; font-size:12px; background:var(--surface-light); color:#EF4444; border:1px solid var(--border); ${isViewer ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.deleteUserCompletely('${user.id}')">
+                                <button class="auth-btn-base" style="margin:0; width:auto; height:34px; padding:0 16px; font-size:12px; background:var(--surface-light); color:var(--c-bad,#EF4444); border:1px solid var(--border); ${isViewer ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.deleteUserCompletely('${user.id}')">
                                     🗑 Удалить учётку и все данные
                                 </button>
                             </div>
@@ -38783,7 +38783,7 @@ const app = {
             `;
             container.innerHTML = html;
         } catch (e) {
-            container.innerHTML = `<div style="color:#EF4444; font-size:12px;">Ошибка загрузки прайс-листа/оборудования: ${e.message}</div>`;
+            container.innerHTML = `<div style="color:var(--c-bad,#EF4444); font-size:12px;">Ошибка загрузки прайс-листа/оборудования: ${e.message}</div>`;
         }
     },
 
@@ -38853,7 +38853,7 @@ const app = {
             extras = await this.loadAdminInstallerExtrasData();
         } catch (e) {
             const root = document.getElementById('admin_pricelist_root');
-            if (root) root.innerHTML = `<div style="color:#EF4444;">Ошибка загрузки: ${e.message}</div>`;
+            if (root) root.innerHTML = `<div style="color:var(--c-bad,#EF4444);">Ошибка загрузки: ${e.message}</div>`;
             return;
         }
 
@@ -39247,8 +39247,8 @@ const app = {
             'background:var(--surface);border-bottom:1px solid var(--border);color:var(--text-main);';
         el.innerHTML =
             '<b style="font-size:14px">Выпуск проекта</b>' +
-            '<span style="color:var(--text-sec)"><span style="color:#16a34a">✓ Расчёт</span> › <b style="color:var(--primary)">Разметка плана</b> › ' +
-            (ready ? '<b style="color:#16a34a">Листы проекта</b>' : 'Листы проекта') + '</span>' +
+            '<span style="color:var(--text-sec)"><span style="color:var(--c-ok,#16a34a)">✓ Расчёт</span> › <b style="color:var(--primary)">Разметка плана</b> › ' +
+            (ready ? '<b style="color:var(--c-ok,#16a34a)">Листы проекта</b>' : 'Листы проекта') + '</span>' +
             '<span style="flex:1 1 120px;color:' + (ready ? '#16a34a' : 'var(--text-sec)') + '">Условий выполнено: ' + done + ' из ' + all +
             (ready ? ' — можно выпускать' : '') + '</span>' +
             '<button type="button" style="' + btn + '" onclick="app.openProjectMarkup()">Открыть разметку</button>' +
@@ -40165,7 +40165,7 @@ const app = {
             await this.loadMailBudget();
         } catch (e) {
             const root = document.getElementById('admin_mail_root');
-            if (root) root.innerHTML = `<div style="color:#EF4444; padding:20px;">Не удалось прочитать данные: ${e.message || e}
+            if (root) root.innerHTML = `<div style="color:var(--c-bad,#EF4444); padding:20px;">Не удалось прочитать данные: ${e.message || e}
                 <div style="margin-top:8px; color:var(--text-sec); font-size:12px;">Похоже, миграция 20261005_mail_budget.sql ещё не выполнена в Supabase.</div></div>`;
             return;
         }
@@ -40261,7 +40261,7 @@ const app = {
         }).join('');
 
         const logRows = (this._mailLog || []).map(r => {
-            const stt = r.skipped ? '<span style="color:#D97706;">не отправлено</span>' : (r.ok ? 'отправлено' : '<span style="color:#EF4444;">ошибка</span>');
+            const stt = r.skipped ? '<span style="color:var(--c-warn,#D97706);">не отправлено</span>' : (r.ok ? 'отправлено' : '<span style="color:var(--c-bad,#EF4444);">ошибка</span>');
             return `<div class="mb-log"><span>${dt(r.created_at)}</span><span>${esc(kname(r.kind))}</span><span title="${esc(r.subject || '')}">${esc(r.subject || '')}</span><span>${stt}</span><span style="color:var(--text-sec);">${esc(r.source || '')}</span></div>`;
         }).join('');
 
@@ -40477,7 +40477,7 @@ const app = {
             }
         } catch (e) {
             const known = String(e.message || '').indexOf('inactivity_report') !== -1;
-            if (root()) root().innerHTML = `<div style="color:#EF4444; padding:20px;">
+            if (root()) root().innerHTML = `<div style="color:var(--c-bad,#EF4444); padding:20px;">
                 Не удалось прочитать журнал напоминаний: ${e.message || e}
                 ${known ? '<div style="margin-top:8px; color:var(--text-sec); font-size:12px;">Похоже, миграция 20260910_inactivity_report.sql ещё не выполнена в Supabase.</div>' : ''}
             </div>`;
@@ -40639,7 +40639,7 @@ const app = {
             // браузер почистил хранилище. Показываем найденные ключи: по ним
             // сразу видно, сессии нет совсем или она есть, но без токена.
             const found = (this._recognitionStorageKeys || []);
-            if (root()) root().innerHTML = `<div style="color:#EF4444; padding:20px;">
+            if (root()) root().innerHTML = `<div style="color:var(--c-bad,#EF4444); padding:20px;">
                 Список читается по вашей учётной записи, а токен сессии в браузере не найден.<br>
                 Попробуйте выйти и войти заново по email или через Яндекс ID.
                 <div style="margin-top:10px; color:var(--text-sec); font-size:12px;">
@@ -40665,7 +40665,7 @@ const app = {
             }
             this._adminPlansData = data;
         } catch (e) {
-            if (root()) root().innerHTML = `<div style="color:#EF4444; padding:20px;">Не удалось прочитать планы: ${e.message}</div>`;
+            if (root()) root().innerHTML = `<div style="color:var(--c-bad,#EF4444); padding:20px;">Не удалось прочитать планы: ${e.message}</div>`;
             return;
         }
         this.renderAdminPlansBody();
@@ -40755,7 +40755,7 @@ const app = {
                 </td>
                 <td>${thumbs}</td>
                 <td style="text-align:right;">${mb(p.bytes)}</td>
-                <td style="${old ? 'color:#D97706; font-weight:600;' : ''}">
+                <td style="${old ? 'color:var(--c-warn,#D97706); font-weight:600;' : ''}">
                     ${dt(p.touchedAt)}<br>
                     <span style="font-size:10px;">${p.ageDays} дн. назад</span>
                 </td>
@@ -40919,7 +40919,7 @@ const app = {
             // или когда браузер почистил хранилище. Обновление страницы тут не
             // поможет, нужен именно вход по email или через Яндекс ID.
             const found = (this._recognitionStorageKeys || []);
-            if (root) root.innerHTML = `<div style="color:#EF4444; padding:20px;">
+            if (root) root.innerHTML = `<div style="color:var(--c-bad,#EF4444); padding:20px;">
                 Архив читается по вашей учётной записи, а токен сессии в браузере не найден.<br>
                 Попробуйте выйти и войти заново по email или через Яндекс ID.
                 <div style="margin-top:10px; color:var(--text-sec); font-size:12px;">
@@ -40945,7 +40945,7 @@ const app = {
             }
         } catch (e) {
             const root = document.getElementById('admin_recognition_root');
-            if (root) root.innerHTML = `<div style="color:#EF4444; padding:20px;">Не удалось прочитать архив: ${e.message}</div>`;
+            if (root) root.innerHTML = `<div style="color:var(--c-bad,#EF4444); padding:20px;">Не удалось прочитать архив: ${e.message}</div>`;
             return;
         }
 
@@ -41420,7 +41420,7 @@ const app = {
                 <b>${manualOpen ? '▾' : '▸'} Ручные замены</b>
                 <span style="color:var(--text-sec);">разных: ${manualList.length} · случаев: ${manualTotal}</span>
                 <span style="color:var(--text-sec);" title="Строки, которые монтажник подобрал руками через поиск по каталогу. То, что повторяется, стоит дописать в каталог.">ⓘ</span>
-                ${serverOld ? `<span style="color:#D97706; font-weight:700;"
+                ${serverOld ? `<span style="color:var(--c-warn,#D97706); font-weight:700;"
                         title="Записи архива приходят без пометки о ручном подборе — значит на Beget лежит старая версия recognize_archive.php">⚠ сервер не обновлён</span>` : ''}
                 ${regions.length ? `<select onclick="event.stopPropagation();"
                         onchange="app.setRecognitionRegionFilter(this.value)"
@@ -41454,7 +41454,7 @@ const app = {
                 </div>` : `
                 <div style="padding:16px 12px; color:var(--text-sec); font-size:12.5px; line-height:1.5;">
                   ${serverOld
-                    ? `<b style="color:#D97706;">Сводка не собирается: на сервере старая версия recognize_archive.php.</b><br>
+                    ? `<b style="color:var(--c-warn,#D97706);">Сводка не собирается: на сервере старая версия recognize_archive.php.</b><br>
                        Записи приходят без пометки о том, какие строки монтажник подобрал вручную —
                        отличить их от автоподбора невозможно. Выложите обновлённый файл на Beget,
                        и сводка начнёт наполняться с ближайших распознаваний.`
@@ -41523,7 +41523,7 @@ const app = {
               ${!gapsOpen ? '' : (!recSum
                 ? '<div style="padding:16px 12px; color:var(--text-sec); font-size:12.5px;">Считаем сводку по архиву…</div>'
                 : recSum.serverOld
-                ? `<div style="padding:16px 12px; color:#D97706; font-size:12.5px; line-height:1.5;">
+                ? `<div style="padding:16px 12px; color:var(--c-warn,#D97706); font-size:12.5px; line-height:1.5;">
                      На сервере старая версия <b>recognize_archive.php</b> — она не умеет считать сводку.
                      Выложите обновлённый файл на Beget.</div>`
                 : !S
@@ -41829,7 +41829,7 @@ const app = {
     designAccessCell: function (u, isViewer) {
         // Переключатель есть и у администраторов — см. recognitionAccessCell
         if (!this.designAccessSupported()) {
-            return `<span style="font-size:10px; color:#D97706;" title="Обновите recognize_archive.php на сервере — в ответе нет раздела «проектирование»">нет на сервере</span>`;
+            return `<span style="font-size:10px; color:var(--c-warn,#D97706);" title="Обновите recognize_archive.php на сервере — в ответе нет раздела «проектирование»">нет на сервере</span>`;
         }
         const key = this.recognitionUserKey(u);
         if (!key) {
@@ -41967,7 +41967,7 @@ const app = {
             extras = await this.loadAdminInstallerExtrasData();
         } catch (e) {
             const root = document.getElementById('admin_equipment_root');
-            if (root) root.innerHTML = `<div style="color:#EF4444;">Ошибка загрузки: ${e.message}</div>`;
+            if (root) root.innerHTML = `<div style="color:var(--c-bad,#EF4444);">Ошибка загрузки: ${e.message}</div>`;
             return;
         }
 
@@ -42043,8 +42043,8 @@ const app = {
                             <b style="font-size:13px;">${g.name}</b>
                             <span style="font-size:11px; color:var(--text-sec);">${g.region ? '📍 ' + g.region : ''}</span>
                         </div>
-                        ${g.added.length ? `<div style="margin-bottom:8px;"><div style="font-size:11px; color:#10B981; font-weight:700; margin-bottom:4px;">+ Добавлено (${g.added.length})</div>${g.added.map(r => `<div style="display:flex; justify-content:space-between; gap:10px; padding:5px 8px; background:var(--bg); border-radius:6px; font-size:12px; margin-bottom:4px;"><span>${r.name}</span><b style="white-space:nowrap;">${fmt(r.price)} ₽</b></div>`).join('')}</div>` : ''}
-                        ${g.removed.length ? `<div style="margin-bottom:8px;"><div style="font-size:11px; color:#EF4444; font-weight:700; margin-bottom:4px;">− Удалено (${g.removed.length})</div>${g.removed.map(r => `<div style="display:flex; justify-content:space-between; gap:10px; padding:5px 8px; background:var(--bg); border-radius:6px; font-size:12px; margin-bottom:4px;"><span>${r.name}${r.qty > 1 ? ' × ' + r.qty : ''}</span><span style="white-space:nowrap; color:var(--text-sec);">${fmt(r.price)} ₽ · ${fmtDate(r.date)}</span></div>`).join('')}</div>` : ''}
+                        ${g.added.length ? `<div style="margin-bottom:8px;"><div style="font-size:11px; color:var(--c-ok,#10B981); font-weight:700; margin-bottom:4px;">+ Добавлено (${g.added.length})</div>${g.added.map(r => `<div style="display:flex; justify-content:space-between; gap:10px; padding:5px 8px; background:var(--bg); border-radius:6px; font-size:12px; margin-bottom:4px;"><span>${r.name}</span><b style="white-space:nowrap;">${fmt(r.price)} ₽</b></div>`).join('')}</div>` : ''}
+                        ${g.removed.length ? `<div style="margin-bottom:8px;"><div style="font-size:11px; color:var(--c-bad,#EF4444); font-weight:700; margin-bottom:4px;">− Удалено (${g.removed.length})</div>${g.removed.map(r => `<div style="display:flex; justify-content:space-between; gap:10px; padding:5px 8px; background:var(--bg); border-radius:6px; font-size:12px; margin-bottom:4px;"><span>${r.name}${r.qty > 1 ? ' × ' + r.qty : ''}</span><span style="white-space:nowrap; color:var(--text-sec);">${fmt(r.price)} ₽ · ${fmtDate(r.date)}</span></div>`).join('')}</div>` : ''}
                         ${g.swaps.length ? `<div><div style="font-size:11px; color:var(--primary); font-weight:700; margin-bottom:4px;">⇄ Замены (${g.swaps.length})</div>${g.swaps.map(r => `<div style="display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:5px 8px; background:var(--bg); border-radius:6px; font-size:12px; margin-bottom:4px; text-align:left;"><span><s style="color:var(--text-sec);">${r.fromName}</s> → <b>${r.toName}</b></span><span style="white-space:nowrap; color:var(--text-sec); font-size:10.5px;">${fmtDate(r.date)}</span></div>`).join('')}</div>` : ''}
                     </div>
                 `).join('');
@@ -42082,7 +42082,7 @@ const app = {
 
         root.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-wrap:wrap; gap:10px;">
-                <div style="font-size:13px; color:var(--text-sec);">Добавлено: <b style="color:#10B981;">${fAdded.length}</b> · Удалено: <b style="color:#EF4444;">${fRemoved.length}</b> · Замен: <b style="color:var(--primary);">${fSwaps.length}</b></div>
+                <div style="font-size:13px; color:var(--text-sec);">Добавлено: <b style="color:var(--c-ok,#10B981);">${fAdded.length}</b> · Удалено: <b style="color:var(--c-bad,#EF4444);">${fRemoved.length}</b> · Замен: <b style="color:var(--primary);">${fSwaps.length}</b></div>
                 <div class="admin-toolbar-row" style="display:flex; gap:8px; width:auto; flex-grow:1; justify-content:flex-end; flex-wrap:wrap;">
                     <input type="text" id="admin_eq_search" class="admin-tb-search" placeholder="🔍 Поиск по названию..." value="${(document.getElementById('admin_eq_search')?.value || '').replace(/"/g, '&quot;')}" style="width:200px; padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main); font-size:12px; outline:none; height:34px; box-sizing:border-box;" oninput="app.renderAdminEquipmentBody()">
                     <input type="number" id="admin_eq_min" class="admin-tb-min" placeholder="Цена от" value="${minPriceRaw || ''}" style="width:90px; padding:8px 8px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main); font-size:12px; outline:none; height:34px; box-sizing:border-box;" oninput="app.renderAdminEquipmentBody()">
@@ -42400,7 +42400,7 @@ const app = {
                 if (!sharedInvoice) {
                     if (statusContainer) {
                         statusContainer.innerHTML = `
-                            <div style="color: #EF4444; font-size: 12px;">⚠️ Запись коммерческого предложения удалена или отсутствует в базе.</div>
+                            <div style="color: var(--c-bad,#EF4444); font-size: 12px;">⚠️ Запись коммерческого предложения удалена или отсутствует в базе.</div>
                         `;
                     }
                     return;
@@ -42434,14 +42434,14 @@ const app = {
                 if (status === 'needs_revision' && clientComment) {
                     commentBlockHTML = `
                         <div style="margin-top: 12px; background: rgba(239, 68, 68, 0.05); border-left: 4px solid #EF4444; padding: 10px 14px; border-radius: 6px;">
-                            <div style="font-weight: 700; color: #EF4444; font-size: 11px; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.05em;">✍ Комментарий заказчика (Правки):</div>
+                            <div style="font-weight: 700; color: var(--c-bad,#EF4444); font-size: 11px; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.05em;">✍ Комментарий заказчика (Правки):</div>
                             <div style="font-size: 12.5px; color: var(--text-main); font-style: italic; white-space: pre-wrap; line-height: 1.4;">"${clientComment}"</div>
                         </div>
                     `;
                 } else if (status === 'confirmed') {
                     commentBlockHTML = `
                         <div style="margin-top: 12px; background: rgba(16, 185, 129, 0.05); border-left: 4px solid #10B981; padding: 10px 14px; border-radius: 6px;">
-                            <div style="font-weight: 700; color: #10B981; font-size: 11px; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.05em;">✓ Комментарий при согласовании:</div>
+                            <div style="font-weight: 700; color: var(--c-ok,#10B981); font-size: 11px; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.05em;">✓ Комментарий при согласовании:</div>
                             <div style="font-size: 12.5px; color: var(--text-main); font-style: italic; white-space: pre-wrap; line-height: 1.4;">${clientComment ? `"${clientComment}"` : '<i>Без дополнительных комментариев</i>'}</div>
                         </div>
                     `;
@@ -42468,7 +42468,7 @@ const app = {
                 console.error("Error loading shared status details:", e);
                 if (statusContainer) {
                     statusContainer.innerHTML = `
-                        <div style="color: #EF4444; font-size: 12px;">⚠️ Ошибка загрузки статуса предложения с сервера.</div>
+                        <div style="color: var(--c-bad,#EF4444); font-size: 12px;">⚠️ Ошибка загрузки статуса предложения с сервера.</div>
                     `;
                 }
             }
@@ -42836,7 +42836,7 @@ const app = {
         if (!hint || !hint.classList || !hint.classList.contains('pwd-layout-hint')) {
             hint = document.createElement('div');
             hint.className = 'pwd-layout-hint';
-            hint.style.cssText = 'color:#f59e0b; font-size:12px; line-height:1.3; text-align:left; margin:-6px 0 10px; display:none;';
+            hint.style.cssText = 'color:var(--c-warn,#f59e0b); font-size:12px; line-height:1.3; text-align:left; margin:-6px 0 10px; display:none;';
             hint.innerText = '⌨ Включена русская раскладка — переключите на английскую';
             input.insertAdjacentElement('afterend', hint);
         }
@@ -45976,7 +45976,7 @@ const app = {
                 <div style="${rowStyle}">
                     <span class="lbl" style="font-size:12px;" contenteditable="true"
                         onblur="app.updSnowZone(${z.id}, 'name', this.innerText)">${z.name}</span>
-                    <span style="color:#EF4444; font-size:16px; line-height:1; cursor:pointer; opacity:0.6; padding:0 4px;"
+                    <span style="color:var(--c-bad,#EF4444); font-size:16px; line-height:1; cursor:pointer; opacity:0.6; padding:0 4px;"
                         onclick="app.removeSnowZone(${z.id})" title="Убрать участок">×</span>
                 </div>
                 <div style="${rowStyle} margin-top:8px;">
@@ -55721,7 +55721,7 @@ const app = {
             s += `<b>Как подобран:</b> по паспортному числу выходов${deep ? ' плюс запас 2 выхода под насосно-смесительный узел' : ''} — у этого коллектора нет запорной и сливной гарнитуры, длина в норматив шкафа укладывается.<br>`;
         }
         if (deep) s += `<b>Почему углублённый:</b> в шкафу стоит насосно-смесительный узел, в обычные 120 мм глубины он не убирается. У ШРН-180 просвет 178 мм.<br>`;
-        if (cab.id && cab.id.startsWith('SCC-1003')) s += `<b style="color:#F59E0B;">Проверьте ввод труб:</b> у SCC-1003 нет боковой перфорации — подключение только снизу.<br>`;
+        if (cab.id && cab.id.startsWith('SCC-1003')) s += `<b style="color:var(--c-warn,#F59E0B);">Проверьте ввод труб:</b> у SCC-1003 нет боковой перфорации — подключение только снизу.<br>`;
         return s + `</span>`;
     },
     // ═══ «Подешевле»: техническая эквивалентность кандидата ═══════════════
@@ -56631,7 +56631,7 @@ const app = {
             `Эквивалентная длина <b>${String(r.eqLen).replace('.', ',')} м</b> при пределе <b>${r.limit.max} м</b>` +
             (r.limit.exact ? '' : ' (по типу котла, сверьтесь с паспортом)') +
             `, дымоход ${r.dn}.` +
-            (tight ? ` <span style="color:#EF4444; font-weight:700;">Не проходит.</span>` : '') +
+            (tight ? ` <span style="color:var(--c-bad,#EF4444); font-weight:700;">Не проходит.</span>` : '') +
             sysTip;
     },
     // Стоимость обвязки одного газового котла: дымоход, стабилизатор, фильтр,
@@ -58257,7 +58257,7 @@ const app = {
             if (basePrice > 0 && targetPrice > 0) {
                 let percentDiff = Math.round(((targetPrice - basePrice) / basePrice) * 100);
                 if (percentDiff > 0) {
-                    return `<span style="color: #ef4444; font-weight: bold;">+${percentDiff}%</span>`;
+                    return `<span style="color: var(--c-bad,#ef4444); font-weight: bold;">+${percentDiff}%</span>`;
                 } else if (percentDiff < 0) {
                     return `<span style="color: #22c55e; font-weight: bold;">${percentDiff}%</span>`;
                 } else {
@@ -64683,7 +64683,7 @@ const app = {
             '<p class="calc-dialog-message">Отмеченным комнатам площадь будет заменена измеренной по зонам планов этажей:</p>' +
             '<div style="display:flex; flex-direction:column; gap:6px; max-height:46vh; overflow-y:auto;">' + rowsHtml + '</div>' +
             (unmatched.length ? '<div style="font-size:11px; color:var(--text-sec);">Без зоны на плане: ' + esc(unmatched.join(', ')) + ' — не изменятся.</div>' : '') +
-            (dupNames.length ? '<div style="font-size:11px; color:#D97706;">Одинаковые названия комнат — ' + esc(dupNames.join(', ')) + ': непонятно, какой из них принадлежит зона. Дайте им разные имена.</div>' : '') +
+            (dupNames.length ? '<div style="font-size:11px; color:var(--c-warn,#D97706);">Одинаковые названия комнат — ' + esc(dupNames.join(', ')) + ': непонятно, какой из них принадлежит зона. Дайте им разные имена.</div>' : '') +
             '<div class="calc-dialog-buttons">' +
             '<button class="calc-dialog-btn calc-dialog-btn-cancel">Отмена</button>' +
             '<button class="calc-dialog-btn calc-dialog-btn-confirm">Применить</button>' +
@@ -66068,8 +66068,8 @@ const app = {
             `через луч идёт расход одного прибора, а общий расход этажа — забота подводки и насоса.<br>`;
         s += c.ok
             ? `Перепад между гребёнками при закрытых лучах — до ${Math.round(c.dpShut)} кПа (полный напор насоса), ` +
-              `паспорт допускает ${pp.dpMax} кПа (${pp.dpMaxRef}) — <b style="color:#10B981;">в пределах</b>.`
-            : `<b style="color:#EF4444;">Перепад между гребёнками при закрытых лучах — до ${Math.round(c.dpShut)} кПа, ` +
+              `паспорт допускает ${pp.dpMax} кПа (${pp.dpMaxRef}) — <b style="color:var(--c-ok,#10B981);">в пределах</b>.`
+            : `<b style="color:var(--c-bad,#EF4444);">Перепад между гребёнками при закрытых лучах — до ${Math.round(c.dpShut)} кПа, ` +
               `паспорт допускает ${pp.dpMax} кПа (${pp.dpMaxRef}).</b> Нужен перепускной клапан или насос с регулированием по перепаду.`;
         s += `<br><i>Сопротивление корпуса гребёнки на проход паспорт не нормирует, в расчёт оно не входит.</i>`;
         return `<span style="font-size:11px;line-height:1.5;">${s}</span>`;
@@ -66087,10 +66087,10 @@ const app = {
                 : '');
         if (h.pump) {
             s += `<br>Насос ${h.pump.label} на этом расходе даёт ` +
-                `<b style="color:#10B981;">${h.pump.avail.toFixed(1)} м</b> — запас ` +
+                `<b style="color:var(--c-ok,#10B981);">${h.pump.avail.toFixed(1)} м</b> — запас ` +
                 `${Math.round((h.pump.avail / h.head - 1) * 100)} %.`;
         } else {
-            s += `<br><b style="color:#EF4444;">Такое кольцо не продавливает даже насос 25/80</b> — ` +
+            s += `<br><b style="color:var(--c-bad,#EF4444);">Такое кольцо не продавливает даже насос 25/80</b> — ` +
                 `помогает не насос, а больший диаметр разводки.`;
         }
         // Почему групп именно столько: обе проверки рядом — паспортная мощность
@@ -66193,7 +66193,7 @@ const app = {
             `• Смесительный клапан узла: (G / Kvs)² = (${(w.nodeFlow || w.flow).toFixed(2)} / ${b.kvs})² = ${n1(w.dpValve)} кПа.<br>` +
             (w.trDp > 0 ? `• Транзит до коллектора ${w.floor}-го этажа ${w.tr ? w.tr.label : ''}: ${n1(w.trDp)} кПа.<br>` : '') +
             `• Итого с запасом 15 %: <b>${n1(w.need)} м</b>. Насос ${b.pump.label} на этом расходе даёт ` +
-            `<b>${n1(w.have)} м</b> — ${b.ok ? 'проходит' : '<b style="color:#EF4444;">не проходит</b>'}.` +
+            `<b>${n1(w.have)} м</b> — ${b.ok ? 'проходит' : '<b style="color:var(--c-bad,#EF4444);">не проходит</b>'}.` +
             (b.notes && b.notes.length ? '<br>' + b.notes.map(x => '• ' + x).join('<br>') : '');
     },
     /**
@@ -66583,7 +66583,7 @@ const app = {
                 r.worst.need.toFixed(1) + ' м напора.');
         }
         if (!r.ok) {
-            r.notes.push('<b style="color:#EF4444;">Напора не хватает:</b> худшему коллектору (' +
+            r.notes.push('<b style="color:var(--c-bad,#EF4444);">Напора не хватает:</b> худшему коллектору (' +
                 r.worst.label + ') нужно ' + r.worst.need.toFixed(1) + ' м, а насос ' + r.pump.label +
                 ' на расходе ' + r.worst.flow.toFixed(2) + ' м³/ч даёт ' + r.worst.have.toFixed(1) + ' м. ' +
                 'Разделите этот коллектор на два (меньше петель на гребёнку — меньше расход) ' +
@@ -67071,7 +67071,7 @@ const app = {
                     (nConv ? ' (радиаторы ' + nRad + ' + конвекторы ' + nConv + ')' : '') + '.');
         });
         if (!warns.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
-        box.innerHTML = '<div style="font-weight:700; color:#D97706; margin-bottom:2px;">⚠️ Расхождения с планами этажей</div>' +
+        box.innerHTML = '<div style="font-weight:700; color:var(--c-warn,#D97706); margin-bottom:2px;">⚠️ Расхождения с планами этажей</div>' +
             warns.map(w => '<div style="margin-top:2px;">• ' + w + '</div>').join('') +
             '<div style="margin-top:4px; opacity:0.8;">Поправьте план в редакторе («Планы этажей для проекта» → «Открыть редактор») или состав систем в комнатах.</div>';
         box.style.display = 'block';
@@ -67153,7 +67153,7 @@ const app = {
                 'лист канализации не сформируется.');
 
         if (!warns.length) { hide(); return; }
-        box.innerHTML = '<div style="font-weight:700; color:#D97706; margin-bottom:2px;">⚠️ Расхождения санузлов с планами</div>' +
+        box.innerHTML = '<div style="font-weight:700; color:var(--c-warn,#D97706); margin-bottom:2px;">⚠️ Расхождения санузлов с планами</div>' +
             warns.map(w => '<div style="margin-top:2px;">• ' + w + '</div>').join('') +
             '<div style="margin-top:4px; opacity:0.8;">Поправьте на планах («Планы этажей для проекта» → «Открыть редактор») или состав санузлов здесь.</div>';
         box.style.display = 'block';
@@ -68075,7 +68075,7 @@ const app = {
                                 <input type="checkbox" ${w.noHeater ? 'checked' : ''} onchange="app.updWindow(${r.id}, ${w.id}, 'noHeater', this.checked)" style="margin:0; width:12px; height:12px;">
                                 без прибора
                             </label>
-                            <span style="color:#EF4444; cursor:pointer; font-weight:700; padding:0 2px;" onclick="app.removeWindow(${r.id}, ${w.id})">✕</span>
+                            <span style="color:var(--c-bad,#EF4444); cursor:pointer; font-weight:700; padding:0 2px;" onclick="app.removeWindow(${r.id}, ${w.id})">✕</span>
                         </div>`).join('');
 
             let html = `<div class="zone-card" id="room_card_${r.id}" style="padding:9px 10px; margin-bottom:0; border:1px solid var(--border); border-left:4px solid ${accentColor}; border-radius:6px; background:${cardBg}; box-shadow:${cardShadow};">
@@ -68085,7 +68085,7 @@ const app = {
                             <span contenteditable="true" style="font-weight:700; color:var(--text-main); font-size:12px; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; outline:none;" onblur="app.updRoom(${r.id}, 'name', this.innerText)">${r.name}</span>
                             <span style="font-size:12px; font-weight:700; color:var(--text-main); white-space:nowrap;" title="${roomQTip}">${roomQ} Вт</span>
                             <span id="room_bal_${r.id}">${this.roomBalanceChipHtml(r.id)}</span>
-                            <span style="color:#EF4444; cursor:pointer; font-size:16px; line-height:1; opacity:0.6; padding:0 2px;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6" onclick="app.removeRoom(${r.id})">×</span>
+                            <span style="color:var(--c-bad,#EF4444); cursor:pointer; font-size:16px; line-height:1; opacity:0.6; padding:0 2px;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6" onclick="app.removeRoom(${r.id})">×</span>
                         </div>
 
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px 8px; margin-top:8px;">
@@ -69204,7 +69204,7 @@ const app = {
                                     <input type="number" id="thick_input_${idx}" class="wall-layer-thick" value="${l.thick}" min="${minThick}" max="${maxThick}" onfocus="document.querySelectorAll('.wall-layer-thick-slider-container').forEach(c => c.style.display='none'); document.getElementById('thick_slider_container_${idx}').style.display = 'flex'" oninput="document.getElementById('thick_slider_${idx}').value = this.value; app.updateWallLayer(${idx}, 'thick', this.value, true)" onchange="app.updateWallLayer(${idx}, 'thick', this.value, false)" style="width: 58px; height: 30px; font-size: 12.5px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-main); text-align: center; outline: none; font-weight: 600;">
                                     <span class="wall-layer-unit" style="font-size: 11.5px; color: var(--text-sec);">мм</span>
                                 </div>
-                                <button class="wall-layer-del" onclick="app.removeWallLayer(${idx})" style="background: transparent; border: none; color: #EF4444; font-size: 18px; cursor: pointer; line-height: 1; padding: 4px; opacity: 0.7; transition: 0.15s;">×</button>
+                                <button class="wall-layer-del" onclick="app.removeWallLayer(${idx})" style="background: transparent; border: none; color: var(--c-bad,#EF4444); font-size: 18px; cursor: pointer; line-height: 1; padding: 4px; opacity: 0.7; transition: 0.15s;">×</button>
                             </div>
                         </div>
                     </div>`;
@@ -69783,7 +69783,7 @@ const app = {
                 // Кнопки «Админка» здесь больше нет: тот же вход есть в левой панели
                 // разделов (пункт «Админка», см. syncRailUI), а два одинаковых входа
                 // рядом только занимали место в шапке.
-                authContainer.innerHTML = `<div style="display: flex; align-items: center; gap: 15px; padding-right: 15px; border-right: 1px solid var(--border);"><div style="font-size: 13px; font-weight: 600; color: var(--text-main); display: flex; align-items: center; cursor: pointer; transition: 0.2s; padding: 4px 8px; border-radius: 6px;" onclick="app.showProfileModal()" title="Настроить профиль" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='transparent'">${icon} ${infoHtml}</div>${this.isRailVisible() ? '' : '<div style="font-size: 12px; color: #EF4444; cursor:pointer; font-weight: 500; padding: 4px;" onclick="app.logout()">Выйти</div>'}</div>`;
+                authContainer.innerHTML = `<div style="display: flex; align-items: center; gap: 15px; padding-right: 15px; border-right: 1px solid var(--border);"><div style="font-size: 13px; font-weight: 600; color: var(--text-main); display: flex; align-items: center; cursor: pointer; transition: 0.2s; padding: 4px 8px; border-radius: 6px;" onclick="app.showProfileModal()" title="Настроить профиль" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='transparent'">${icon} ${infoHtml}</div>${this.isRailVisible() ? '' : '<div style="font-size: 12px; color: var(--c-bad,#EF4444); cursor:pointer; font-weight: 500; padding: 4px;" onclick="app.logout()">Выйти</div>'}</div>`;
             } else {
                 // Если пользователь не авторизован - показываем только одну аккуратную кнопку
                 authContainer.innerHTML = `
@@ -70266,7 +70266,7 @@ const app = {
         const rs = String(req.rreq).replace('.', ',');
         return ok
             ? `<span style="color:#22C55E; font-weight:600;">✓ Соответствует СП 50.13330: норма для г. ${req.city} — R ≥ ${rs}</span>`
-            : `<span style="color:#F59E0B; font-weight:600;">⚠ Ниже нормы СП 50.13330 для г. ${req.city} (R ≥ ${rs}) — дом будет терять больше нормативного, утеплите стену</span>`;
+            : `<span style="color:var(--c-warn,#F59E0B); font-weight:600;">⚠ Ниже нормы СП 50.13330 для г. ${req.city} (R ≥ ${rs}) — дом будет терять больше нормативного, утеплите стену</span>`;
     },
 
     calculateWallResistance: function () {
@@ -70362,7 +70362,7 @@ const app = {
                         <select onchange="app.updateFloorLayer(${fl}, ${idx}, 'thick', this.value)" style="width:72px; font-size:12.5px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; background:var(--surface-light); color:var(--text-main);">${this.floorLayerThicks(l.matId, l.thick).map(v => `<option value="${v}"${v === (parseInt(l.thick) || 0) ? ' selected' : ''}>${v}</option>`).join('')}</select>
                         <span style="font-size:11.5px; color:var(--text-sec);">мм</span>
                     </div>
-                    <button onclick="app.removeFloorLayer(${fl}, ${idx})" aria-label="Удалить слой" style="background:transparent; border:none; color:#EF4444; font-size:18px; cursor:pointer; line-height:1; padding:4px; opacity:0.7;">×</button>
+                    <button onclick="app.removeFloorLayer(${fl}, ${idx})" aria-label="Удалить слой" style="background:transparent; border:none; color:var(--c-bad,#EF4444); font-size:18px; cursor:pointer; line-height:1; padding:4px; opacity:0.7;">×</button>
                 </div>
             </div>`;
         }).join('');
@@ -70377,8 +70377,8 @@ const app = {
             let html = '';
             if (st) {
                 if (st.ok) html = `<span style="color:#22C55E;">✓ Утеплителя хватает</span>`;
-                else if (s.ufhInsNoAdd) html = `<span style="color:#F59E0B;">⚠ Внимание: утеплителя не хватает. Плиты в смету не добавлены.</span>`;
-                else html = `<span style="color:#F59E0B;">⚠ Внимание: утеплителя не хватает. Недостающее добавлено в смету.</span>`;
+                else if (s.ufhInsNoAdd) html = `<span style="color:var(--c-warn,#F59E0B);">⚠ Внимание: утеплителя не хватает. Плиты в смету не добавлены.</span>`;
+                else html = `<span style="color:var(--c-warn,#F59E0B);">⚠ Внимание: утеплителя не хватает. Недостающее добавлено в смету.</span>`;
             }
             eff.innerHTML = html;
         }
@@ -75256,7 +75256,7 @@ const app = {
                     `<b>Расчётные расходы по контурам:</b><br>` +
                     (hRQ > 0 ? `• Радиаторы: G = ${hPwr} кВт / (1.163 × ${hDtRad}°C) = <b>${hFlowRad} м³/ч</b><br>` : '') +
                     (hTQ > 0 ? `• Тёплый пол: G = ${hTpArea} м² × 80 Вт/м² / (1.163 × 5°C) = <b>${hFlowUfh} м³/ч</b><br>` : '') +
-                    (hFlowSum > 0 ? `• Суммарно: <b>${hFlowSum.toFixed(2)} м³/ч</b> — ${hFlowSum <= 3.0 ? '<b style="color:#10B981;">в пределах паспорта</b>' : '<b style="color:#EF4444;">больше паспортных 3,0 м³/ч</b>'}.<br>` : '') +
+                    (hFlowSum > 0 ? `• Суммарно: <b>${hFlowSum.toFixed(2)} м³/ч</b> — ${hFlowSum <= 3.0 ? '<b style="color:var(--c-ok,#10B981);">в пределах паспорта</b>' : '<b style="color:var(--c-bad,#EF4444);">больше паспортных 3,0 м³/ч</b>'}.<br>` : '') +
                     `<br><b>Паспортные данные:</b> Максимальный суммарный расход через коллектор — <b>3.0 м³/ч</b>.</span>`;
             }
             case 'pump_group': {
@@ -75291,8 +75291,8 @@ const app = {
                     let flow = parseFloat((pwrPer / (1.163 * dtRad)).toFixed(2));
                     let perNote = (grpQty > 1) ? ' на группу' : '';
                     let checkResult = (flow <= maxFlow)
-                        ? `<b style="color: #10B981;">✔ Проверка расхода пройдена:</b> расчетный расход ${flow} м³/ч${perNote} не превышает максимальный расход группы ${maxFlow} м³/ч.`
-                        : `<b style="color: #EF4444;">❌ Проверка расхода не пройдена:</b> расчетный расход ${flow} м³/ч${perNote} превышает максимальный расход группы ${maxFlow} м³/ч!`;
+                        ? `<b style="color: var(--c-ok,#10B981);">✔ Проверка расхода пройдена:</b> расчетный расход ${flow} м³/ч${perNote} не превышает максимальный расход группы ${maxFlow} м³/ч.`
+                        : `<b style="color: var(--c-bad,#EF4444);">❌ Проверка расхода не пройдена:</b> расчетный расход ${flow} м³/ч${perNote} превышает максимальный расход группы ${maxFlow} м³/ч!`;
 
                     calc = `<b>Подбор по тепловой нагрузке:</b><br>${limitText}<br>` +
                         (grpQty > 1 ? `<b>Нагрузка на одну группу:</b> групп ${grpQty} шт → Q = ${inputVal} / ${grpQty} = ${pwrPer} кВт.<br>` : '') +
@@ -75309,8 +75309,8 @@ const app = {
                         calc += `<br><b>Количество групп:</b> нагрузка радиаторного контура ${_loadKw.toFixed(1)} кВт, ` +
                             `паспортная производительность группы ${_capKw} кВт → ` +
                             (_fits
-                                ? `<b style="color:#10B981;">одной группы достаточно на все этажи</b> (радиаторы запитываются от общей группы, поэтажная балансировка — вентилями на стояках).`
-                                : `<b style="color:#F59E0B;">требуется ${Math.ceil(_loadKw / _capKw)} шт.</b> — одна группа не покрывает нагрузку.`);
+                                ? `<b style="color:var(--c-ok,#10B981);">одной группы достаточно на все этажи</b> (радиаторы запитываются от общей группы, поэтажная балансировка — вентилями на стояках).`
+                                : `<b style="color:var(--c-warn,#F59E0B);">требуется ${Math.ceil(_loadKw / _capKw)} шт.</b> — одна группа не покрывает нагрузку.`);
                     } else if (qty > 1) {
                         calc += `<br><b>Количество групп:</b> ${qty} шт. — по одной на каждый этаж с радиаторами.`;
                     }
@@ -75319,7 +75319,7 @@ const app = {
                         capacity = `<b>Паспортные характеристики (${item.id}):</b><br>` +
                             `• Мощность (с насосом на 2-й скорости, расход 2.9 м³/ч): для радиаторов до 34 кВт<br>` +
                             `• Максимальный расход клапана: <b>до 3.6 м³/ч</b> (DN32) — на 2-й скорости насоса ограничивает не клапан, а насос (2.9 м³/ч)<br>` +
-                            `• <b style="color:#F59E0B;">⚠ Насос в комплект не входит.</b> Расчёт на примере RCP-0004-3260180 (DN32, напор 6 м) на 2-й скорости; при другом насосе или скорости пересчитайте.`;
+                            `• <b style="color:var(--c-warn,#F59E0B);">⚠ Насос в комплект не входит.</b> Расчёт на примере RCP-0004-3260180 (DN32, напор 6 м) на 2-й скорости; при другом насосе или скорости пересчитайте.`;
                     } else if (isRommer) {
                         capacity = `<b>Паспортные характеристики (RDG-1001-002501):</b><br>` +
                             `• Мощность: для радиаторов до 23 кВт<br>` +
@@ -75354,8 +75354,8 @@ const app = {
                     let flow = parseFloat((pwrPer / (1.163 * 5)).toFixed(2));
                     let perNote = (grpQty > 1) ? ' на группу' : '';
                     let checkResult = (flow <= maxFlow)
-                        ? `<b style="color: #10B981;">✔ Проверка расхода пройдена:</b> расчетный расход ${flow} м³/ч${perNote} не превышает максимальный расход группы ${maxFlow} м³/ч.`
-                        : `<b style="color: #EF4444;">❌ Проверка расхода не пройдена:</b> расчетный расход ${flow} м³/ч${perNote} превышает максимальный расход группы ${maxFlow} м³/ч!`;
+                        ? `<b style="color: var(--c-ok,#10B981);">✔ Проверка расхода пройдена:</b> расчетный расход ${flow} м³/ч${perNote} не превышает максимальный расход группы ${maxFlow} м³/ч.`
+                        : `<b style="color: var(--c-bad,#EF4444);">❌ Проверка расхода не пройдена:</b> расчетный расход ${flow} м³/ч${perNote} превышает максимальный расход группы ${maxFlow} м³/ч!`;
 
                     calc = `<b>Подбор по площади теплого пола:</b><br>${limitText}<br>` +
                         `<b>Оценка тепловой мощности:</b> Q_тп ≈ ${inputVal} м² × 80 Вт/м² = ${ufhPwr} кВт.<br>` +
@@ -75369,7 +75369,7 @@ const app = {
                         capacity = `<b>Паспортные характеристики (${item.id}):</b><br>` +
                             `• Мощность (с насосом на 2-й скорости, расход 2.9 м³/ч): для радиаторов до 34 кВт, для тёплого пола до 17 кВт<br>` +
                             `• Максимальный расход клапана: <b>до 3.6 м³/ч</b> (DN32) — на 2-й скорости насоса ограничивает не клапан, а насос (2.9 м³/ч)<br>` +
-                            `• <b style="color:#F59E0B;">⚠ Насос в комплект не входит.</b> Расчёт на примере RCP-0004-3260180 (DN32, напор 6 м) на 2-й скорости; при другом насосе или скорости пересчитайте.`;
+                            `• <b style="color:var(--c-warn,#F59E0B);">⚠ Насос в комплект не входит.</b> Расчёт на примере RCP-0004-3260180 (DN32, напор 6 м) на 2-й скорости; при другом насосе или скорости пересчитайте.`;
                     } else if (isRommer) {
                         capacity = `<b>Паспортные характеристики (RDG-1002-002501):</b><br>` +
                             `• Мощность: для радиаторов до 23 кВт, для тёплого пола до 9 кВт<br>` +
@@ -75399,8 +75399,8 @@ const app = {
                 let maxFlow = isRommer ? 1.0 : 1.2;
                 let flow = parseFloat((ufhPwr / (1.163 * 5)).toFixed(2));
                 let checkResult = (flow <= maxFlow)
-                    ? `<b style="color: #10B981;">✔ Проверка расхода пройдена:</b> расчетный расход ${flow} м³/ч не превышает максимальный расход узла ${maxFlow} м³/ч.`
-                    : `<b style="color: #EF4444;">❌ Проверка расхода не пройдена:</b> расчетный расход ${flow} м³/ч превышает максимальный расход узла ${maxFlow} м³/ч!`;
+                    ? `<b style="color: var(--c-ok,#10B981);">✔ Проверка расхода пройдена:</b> расчетный расход ${flow} м³/ч не превышает максимальный расход узла ${maxFlow} м³/ч.`
+                    : `<b style="color: var(--c-bad,#EF4444);">❌ Проверка расхода не пройдена:</b> расчетный расход ${flow} м³/ч превышает максимальный расход узла ${maxFlow} м³/ч!`;
 
                 let calc = `<b>Подбор по площади теплого пола:</b><br>` +
                     `• Обслуживаемая площадь: ${area} м².<br>` +
@@ -75513,7 +75513,7 @@ const app = {
                 // их нет — поэтому решение остаётся за монтажником, а смета обязана
                 // сказать, чего в ней не хватает, а не молча выдать три котла.
                 let cascadeWarn = qty > 2
-                    ? `<br><b style="color:#F59E0B;">⚠️ Каскад из ${qty} настенных котлов.</b> ` +
+                    ? `<br><b style="color:var(--c-warn,#F59E0B);">⚠️ Каскад из ${qty} настенных котлов.</b> ` +
                       `На объект такой мощности (${targetPwr.toFixed(1)} кВт) обычно ставят один напольный котёл — ` +
                       `в подборе напольных котлов нет, проверьте вариант вручную. ` +
                       `Если оставляете каскад: нужны каскадный контроллер, ${qty} ${this.plural(qty, 'газовая подводка', 'газовые подводки', 'газовых подводок')} и ` +
@@ -75633,7 +75633,7 @@ const app = {
                     : (frostPick
                         ? `• <b style="color:${totalPwrLimit >= frostPick.frost ? '#22C55E' : '#F59E0B'};">Резерв на дежурное отопление +5 °C</b> (СП 60.13330.2020): нужно ${frostPick.frost.toFixed(1)} кВт, у котла ${totalPwrLimit} кВт — при аварии газового дом не разморозится, а часть помещений прогреется. Полный комфорт (${heatPwr.toFixed(1)} кВт) резерв держать не обязан — это экономит типоразмер и обвязку. Нужен полный резерв — выберите котёл мощнее кнопкой «Заменить».<br>`
                         : coverPct < 100
-                        ? `• <b style="color:#F59E0B;">Перекрывает ${coverPct} % расчётных теплопотерь</b> (${totalPwrLimit} из ${heatPwr.toFixed(1)} кВт) — ${elCapReason}.<br>` +
+                        ? `• <b style="color:var(--c-warn,#F59E0B);">Перекрывает ${coverPct} % расчётных теплопотерь</b> (${totalPwrLimit} из ${heatPwr.toFixed(1)} кВт) — ${elCapReason}.<br>` +
                           (elIsBackup
                               ? `• Каскад из двух электрокотлов ради резерва не собирается: это две обвязки, два стабилизатора и две линии 380 В ради нескольких дней в году. При аварии газового котла этот не вытянет дом целиком в самый мороз, но не даст системе разморозиться и прогреет часть помещений. Если нужен полный резерв — добавьте второй котёл кнопкой «Добавить своё оборудование».<br>`
                               : '')
@@ -75643,10 +75643,10 @@ const app = {
                 // Читается это иначе, чем нехватка выделенной мощности: котлы мощнее
                 // существуют, но они трёхфазные, и на этом объекте их не поставить.
                 let elPhaseLine = phaseCapKw
-                    ? `• <b style="color:#F59E0B;">Сеть на объекте однофазная, 220 В.</b> Электрокотлы мощнее ${phaseCapKw} кВт бывают только трёхфазными, поэтому подбор остановился на этом типоразмере, а не на расчётных ${targetPwr.toFixed(1)} кВт. Чтобы закрыть дом целиком: завести на участок три фазы, добавить второй источник тепла (газ, твёрдое топливо) или поставить каскад — но каскад на одной фазе собирается, только если выделенной мощности хватает на оба котла сразу.<br>`
+                    ? `• <b style="color:var(--c-warn,#F59E0B);">Сеть на объекте однофазная, 220 В.</b> Электрокотлы мощнее ${phaseCapKw} кВт бывают только трёхфазными, поэтому подбор остановился на этом типоразмере, а не на расчётных ${targetPwr.toFixed(1)} кВт. Чтобы закрыть дом целиком: завести на участок три фазы, добавить второй источник тепла (газ, твёрдое топливо) или поставить каскад — но каскад на одной фазе собирается, только если выделенной мощности хватает на оба котла сразу.<br>`
                     : '';
                 let elLimitLine = elLimitKw
-                    ? `• <b style="color:#F59E0B;">Ограничение по мощности на участок: ${this.elLimitKw()} кВт</b>, из них ${Math.round(this.EL_HOUSEHOLD_RESERVE * 100)} % оставлено на освещение и бытовые приборы — котлу доступно ${Math.round(elLimitKw * 10) / 10} кВт. Он подобран под этот потолок, а не под расчётные ${targetPwr.toFixed(1)} кВт. Каскад из двух котлов в этом случае не собирается — он взял бы из сети вдвое больше. Чтобы закрыть дом целиком, нужно увеличить выделенную мощность либо добавить второй источник тепла (газ, твёрдое топливо).<br>`
+                    ? `• <b style="color:var(--c-warn,#F59E0B);">Ограничение по мощности на участок: ${this.elLimitKw()} кВт</b>, из них ${Math.round(this.EL_HOUSEHOLD_RESERVE * 100)} % оставлено на освещение и бытовые приборы — котлу доступно ${Math.round(elLimitKw * 10) / 10} кВт. Он подобран под этот потолок, а не под расчётные ${targetPwr.toFixed(1)} кВт. Каскад из двух котлов в этом случае не собирается — он взял бы из сети вдвое больше. Чтобы закрыть дом целиком, нужно увеличить выделенную мощность либо добавить второй источник тепла (газ, твёрдое топливо).<br>`
                     : '';
 
                 return `<span style="${styles}"><span style="${head}">Электрический котёл STOUT ${seriesName}</span>` +
@@ -75769,7 +75769,7 @@ const app = {
                         ? `• На ${line}: ${qty} м (половина метража, округление вверх до кратного ${it.len} м — трубка идёт отрезками по ${it.len} м, поштучно её не делят).<br>`
                         : `• Трубками по ${it.len} м: ${qty} шт.<br>`) +
                     `<br><b>Как ставить:</b> Стыки проклеивать, а не оставлять враспор — через открытый шов уходит заметная часть эффекта. На отводах и арматуре изоляцию не разрывать: краны и фитинги отдают тепло не меньше прямых участков.<br><br>` +
-                    `<b style="color:#F59E0B;">Не нужна на объекте?</b> Весь раздел «2.9» выключается одним переключателем в его заголовке — построчно удалять не придётся.</span>`;
+                    `<b style="color:var(--c-warn,#F59E0B);">Не нужна на объекте?</b> Весь раздел «2.9» выключается одним переключателем в его заголовке — построчно удалять не придётся.</span>`;
             }
             case 'dhw_mix_valve': {
                 const v = val1 || {}, q = val2 || 0, fx = val3 || {};
@@ -75844,11 +75844,11 @@ const app = {
                         const dP = Rpm * meters * 1.3;                                 // Па на весь стояк
                         return `<br><b>Гидравлика (по фактической трубе):</b><br>` +
                             `• Внутренний Ø ${val6.bore.toFixed(1)} мм, расход G = ${G.toFixed(2)} м³/ч.<br>` +
-                            `• Скорость <b>v = ${v.toFixed(2)} м/с</b> ${v > 1.2 ? '— <b style="color:#F59E0B;">выше нормы 1,2 м/с</b>' : '(норма — не более 1,2 м/с)'}.<br>` +
+                            `• Скорость <b>v = ${v.toFixed(2)} м/с</b> ${v > 1.2 ? '— <b style="color:var(--c-warn,#F59E0B);">выше нормы 1,2 м/с</b>' : '(норма — не более 1,2 м/с)'}.<br>` +
                             `• Потери на трение ${Math.round(Rpm)} Па/м × ${meters} м + 30 % на отводы = <b>${(dP / 9806).toFixed(2)} м в. ст.</b> (${Math.round(dP)} Па).<br>` +
                             `• Это добавляется к сопротивлению контура: насос радиаторной группы (6 м напора) продавит стояк с запасом.<br>`;
                     })() : '') +
-                    `<br><b style="color:#F59E0B;">Проверьте по объекту:</b> метраж — оценка без реальной трассировки, плана дома с координатами шкафа у расчёта нет. Если котельная в дальнем углу от лестницы или шкаф второго этажа стоит не над ней, трассу надо промерить и поправить метраж вручную. Типоразмер меняется кнопкой замены в строке.</span>`;
+                    `<br><b style="color:var(--c-warn,#F59E0B);">Проверьте по объекту:</b> метраж — оценка без реальной трассировки, плана дома с координатами шкафа у расчёта нет. Если котельная в дальнем углу от лестницы или шкаф второго этажа стоит не над ней, трассу надо промерить и поправить метраж вручную. Типоразмер меняется кнопкой замены в строке.</span>`;
             }
             case 'insulated_pipe_red':
             case 'insulated_pipe_blue': {
@@ -76256,7 +76256,7 @@ const app = {
 
                 let warnWin = "";
                 if (o.count > o.win) {
-                    warnWin = `<br><span style="color:#F59E0B; font-weight:700; display:block; margin-top:4px;">⚠️ Окон (${o.win}) мало! Добавлено приборов: ${o.count - o.win} шт.</span>`;
+                    warnWin = `<br><span style="color:var(--c-warn,#F59E0B); font-weight:700; display:block; margin-top:4px;">⚠️ Окон (${o.win}) мало! Добавлено приборов: ${o.count - o.win} шт.</span>`;
                 }
 
                 return `<span style="font-size:12px; line-height:1.5; display:block; min-width:240px;">
@@ -77807,7 +77807,7 @@ const app = {
                 let qtyOpen = !!(this._qtyOpenIds && (this._qtyOpenIds[lookupId] || this._qtyOpenIds[_rowScoped]));
                 const _rk = `app.rowKey('${lookupId}','${_rowHash}')`;
                 let qtyEditable = `<span class="qty-step" onclick="event.stopPropagation(); app.stepQty(${_rk}, -1, ${i.q})">−</span><input type="number" class="qty-num-input" min="0" value="${i.q}" onclick="event.stopPropagation(); app.revealQty(${_rk})" onchange="event.stopPropagation(); app.setQty(${_rk}, this.value)" onkeydown="if(event.key==='Enter') this.blur();"><span class="qty-step" onclick="event.stopPropagation(); app.stepQty(${_rk}, 1, ${i.q})">+</span>`;
-                let qHtml = `<div class="qty-wrap${qtyOpen ? ' qty-open' : ''}">${qtyEditable}${tipHtml} <span class="opt-btn" onclick="event.stopPropagation(); app.toggleOpt(${_rk})" title="${!isOpt ? 'Удалить позицию' : 'Добавить позицию'}">${!isOpt ? '<span style="color:#EF4444; font-weight:bold; font-size:14px; line-height:1;">✖</span>' : '➕'}</span></div>`;
+                let qHtml = `<div class="qty-wrap${qtyOpen ? ' qty-open' : ''}">${qtyEditable}${tipHtml} <span class="opt-btn" onclick="event.stopPropagation(); app.toggleOpt(${_rk})" title="${!isOpt ? 'Удалить позицию' : 'Добавить позицию'}">${!isOpt ? '<span style="color:var(--c-bad,#EF4444); font-weight:bold; font-size:14px; line-height:1;">✖</span>' : '➕'}</span></div>`;
                 // imgId — артикул каталога у позиций со служебным id (распознанное,
                 // своё оборудование). Файл фото лежит именно под артикулом.
                 let imgContent = getImg(i.imgId ? { ...i, id: i.imgId } : i);
@@ -78660,8 +78660,8 @@ const app = {
             let baseItem = tankDb.find(x => x.vol === vol) || tankDb[tankDb.length - 1];
             t.alts = allTankDbs.flatMap(db => db.filter(x => x !== baseItem && x.vol === vol)).filter(Boolean);
 
-            let warnWall = isWall && targetVol > 200 ? `<br><b style="color:#EF4444; font-size:10px;">⚠️ Для настенного выбран максимальный объём 200л. Для бо́льшего объёма используйте напольный бойлер.</b>` : "";
-            let warn = targetVol > 500 ? `<br><b style="color:#EF4444; font-size:10px;">⚠️ Требуемый объем ГВС превышает 500л! Добавьте в смету второй бойлер вручную или проверьте количество потребителей ГВС.</b>` : warnWall;
+            let warnWall = isWall && targetVol > 200 ? `<br><b style="color:var(--c-bad,#EF4444); font-size:10px;">⚠️ Для настенного выбран максимальный объём 200л. Для бо́льшего объёма используйте напольный бойлер.</b>` : "";
+            let warn = targetVol > 500 ? `<br><b style="color:var(--c-bad,#EF4444); font-size:10px;">⚠️ Требуемый объем ГВС превышает 500л! Добавьте в смету второй бойлер вручную или проверьте количество потребителей ГВС.</b>` : warnWall;
 
             addToBill(t, 1, this.getDesc('boiler_tank', this.state.res, vol, hw_fixtures_vol, chosenBy) + warn);
             markRigAnchor('dhw', t.id);
@@ -80646,7 +80646,7 @@ const app = {
                       (ss_diameter >= 42 ? `• Ряд подбора сверху ограничен 42 мм — на 54 мм нет теплоизоляции в каталоге. Если расчёт упёрся в 42, проверьте скорость выше по строке.<br>` : ``) +
                       (ss_diameter <= 22 ? `• Снизу ряд ограничен 22 мм по той же причине: на 15 и 18 мм теплоизоляции в каталоге нет, хотя по скорости на малых котлах хватило бы и их.<br>` : ``)) +
                 (bothFuels
-                    ? `• <b style="color:#F59E0B;">Проверьте схему:</b> если котлы у вас работают ОДНОВРЕМЕННО (электрический как пиковый, а не резервный), диаметр надо считать по сумме ${gasKw + elKw} кВт — тогда замените трубу и фитинги вручную.<br>`
+                    ? `• <b style="color:var(--c-warn,#F59E0B);">Проверьте схему:</b> если котлы у вас работают ОДНОВРЕМЕННО (электрический как пиковый, а не резервный), диаметр надо считать по сумме ${gasKw + elKw} кВт — тогда замените трубу и фитинги вручную.<br>`
                     : '') +
                 // Напор встроенного насоса на расчётном расходе — тот бюджет, из
                 // которого оплачивается сопротивление всей обвязки. Считаем его на
@@ -80701,7 +80701,7 @@ const app = {
                     if (_h === null) return ``;
                     const _kindNote = (_pump.kind === 'residual')
                         ? `Это ОСТАТОЧНЫЙ напор: сопротивление самого котла из него уже вычтено, всё остальное — бюджет на обвязку.`
-                        : `<b style="color:#F59E0B;">Осторожно:</b> ${_pump.note || 'тип кривой не подтверждён по паспорту.'}`;
+                        : `<b style="color:var(--c-warn,#F59E0B);">Осторожно:</b> ${_pump.note || 'тип кривой не подтверждён по паспорту.'}`;
 
                     let _out = `<br><b>Напор встроенного насоса (${_pump.label}):</b><br>`
                         + `• Расход одного котла ${_b1.power || 0} кВт при Δt = ${dT} °C: <b>${_q1.toFixed(2)} м³/ч</b>.<br>`
@@ -80713,10 +80713,10 @@ const app = {
                         // Тот же запас, что требуется от насоса в разводке дома.
                         const _need = this.RAD_PUMP_RESERVE;
                         const _verdict = (_h <= 0 || _res < 1)
-                            ? `<b style="color:#EF4444;">напора НЕ ХВАТАЕТ</b> — контур нужно вести через гидрострелку с отдельным насосом`
+                            ? `<b style="color:var(--c-bad,#EF4444);">напора НЕ ХВАТАЕТ</b> — контур нужно вести через гидрострелку с отдельным насосом`
                             : (_res < _need)
-                                ? `<b style="color:#F59E0B;">напора впритык</b> — запас ${_res.toFixed(1)}× при желаемых ${_need}×`
-                                : `<b style="color:#16A34A;">напора хватает</b> — запас ${_res.toFixed(1)}×`;
+                                ? `<b style="color:var(--c-warn,#F59E0B);">напора впритык</b> — запас ${_res.toFixed(1)}× при желаемых ${_need}×`
+                                : `<b style="color:var(--c-ok,#16A34A);">напора хватает</b> — запас ${_res.toFixed(1)}×`;
                         _out += _dropLine + (_kpB.on ? `• Теплоноситель незамерзающий: потери × 1,54, насос на расходе × 1,1 (паспорт WARME Eco PRO 30).<br>` : '') + `• Итог: ${_verdict}.<br>`;
                         if (_pump.kind !== 'residual') {
                             _out += `• Вердикт опирается на непроверенную кривую (см. выше) — если её напор не остаточный, запас на деле меньше.<br>`;
@@ -87038,7 +87038,7 @@ const app = {
                     sumsHtml += `<span style="margin:0 10px; color:var(--border);">|</span> <span style="color:var(--text-sec); font-size:11px; margin-right:4px;">Монтаж:</span> <b id="anim_works_sum" style="font-size:14px;">0 ₽</b>`;
                 }
                 if (showHdrMargin) {
-                    sumsHtml += `<span style="margin:0 10px; color:var(--border);">|</span> <span style="color:var(--text-sec); font-size:11px; margin-right:4px;">Мне:</span> <b id="hdr_margin_sum" style="color:#10B981; font-size:14px; cursor:pointer;" title="Что остаётся вам по этому объекту — открыть вкладку «Деньги»" onclick="app.setViewMode('money')">0 ₽</b>`;
+                    sumsHtml += `<span style="margin:0 10px; color:var(--border);">|</span> <span style="color:var(--text-sec); font-size:11px; margin-right:4px;">Мне:</span> <b id="hdr_margin_sum" style="color:var(--c-ok,#10B981); font-size:14px; cursor:pointer;" title="Что остаётся вам по этому объекту — открыть вкладку «Деньги»" onclick="app.setViewMode('money')">0 ₽</b>`;
                 }
                 headerTotals.innerHTML = `<div class="header-totals-sums-row">${sumsHtml}</div>`;
                 headerTotals.dataset.isPro = String(showWorksTotal);
