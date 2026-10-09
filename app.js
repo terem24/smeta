@@ -1404,6 +1404,10 @@ const app = {
             const u = new URL(document.referrer);
             const host = u.hostname.replace(/^www\./, '');
             if (!host || /^(localhost|127\.|0\.0\.0\.0)/.test(host)) return '';
+            // Страницы входа — не источник: человек вернулся с них на сайт после входа через
+            // Яндекс ID или Google, а откуда пришёл до этого, уже не видно. Без этой строки
+            // каждая регистрация «с нуля» записывалась как «ref: oauth.yandex.ru».
+            if (/(^|\.)(oauth|passport)\.yandex\.(ru|com)$|(^|\.)accounts\.google\.com$|\.supabase\.co$/.test(host)) return '';
             if (/(^|\.)heatcalc\.ru$/.test(host)) {
                 const seg = u.pathname.replace(/^\/+|\/+$/g, '').split('/')[0];
                 return /^[\w-]{2,60}$/.test(seg) ? `ref: heatcalc.ru/${seg}` : '';
