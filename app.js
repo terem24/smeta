@@ -52021,7 +52021,6 @@ const app = {
         let html = row('Пол', chip(p.g === 'm', 'Мужской', "app.setAvatarPick('g','m')") + chip(p.g === 'f', 'Женский', "app.setAvatarPick('g','f')"));
         html += row('Чем занимаетесь', chip(p.role === 'installer', 'Монтажник отопления', "app.setAvatarPick('role','installer')") + chip(p.role === 'seller', 'Продавец', "app.setAvatarPick('role','seller')"));
         if (p.role === 'installer') html += row('Цвет каски: бренд, который считаете чаще', chip(p.brand === 'stout', 'STOUT (синий)', "app.setAvatarPick('brand','stout')") + chip(p.brand === 'rommer', 'ROMMER (красный)', "app.setAvatarPick('brand','rommer')"));
-        if (p.role === 'seller') html += row('Компания', chip(!!p.terem, 'ТЕРЕМ', "app.setAvatarPick('terem',true)") + chip(!p.terem, 'Другая', "app.setAvatarPick('terem',false)"));
         html += row('Причёска', [0, 1, 2].map(i => thumb({ hair: i }, p.hair === i, `app.setAvatarPick('hair',${i})`)).join(''));
         html += row('Регион (значок в углу)', Avatars.EMBLEMS.map(e => thumb({ emb: e.id }, p.emb === e.id, `app.setAvatarPick('emb','${e.id}')`).replace('<img ', `<img title="${e.label}" `)).join(''));
         body.innerHTML = html;
