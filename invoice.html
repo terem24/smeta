@@ -1498,6 +1498,99 @@
                 transform: translateY(16px);
                 pointer-events: none;
             }
+
+            /* При 1 шт «× цена» повторяет сумму справа сверху */
+            #equipment_tbody tr.qty-one td.col-price,
+            #works_tbody tr.qty-one td.col-price {
+                display: none !important;
+            }
+
+            /* Шапка: название и сайт — столбиком, а не слитно в одну строку */
+            .header-top {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+
+            /* Реквизиты банка на первом экране отнимали полэкрана: свёрнуты за
+               кнопкой. В PDF и при печати показываются всегда. */
+            body:not(.html2pdf-printing) .doc-header:not(.req-open) .header-bank {
+                display: none;
+            }
+
+            .doc-header .req-toggle {
+                display: block;
+                margin: 8px 0 0;
+                padding: 4px 0;
+                border: 0;
+                background: none;
+                color: var(--primary);
+                font: inherit;
+                font-size: 12px;
+                font-weight: 700;
+                cursor: pointer;
+            }
+
+            /* Фото на светлой теме: у плиток разные пропорции (дымоход 600×189),
+               белое поле снимка выглядело серой плиткой с полоской внутри */
+            #equipment_tbody td.col-img img,
+            #equipment_tbody td.col-img .table-img {
+                background: #fff !important;
+                border-radius: 9px !important;
+                padding: 3px !important;
+                box-sizing: border-box !important;
+            }
+
+            /* Нижняя панель с общей суммой; прячется, когда на экране итоговая карточка */
+            body.has-mob-total:not(.summary-visible) .mob-total-bar {
+                display: flex;
+            }
+
+            body.has-mob-total:not(.summary-visible) .fab-container {
+                bottom: 68px;
+            }
+        }
+
+        .req-toggle,
+        .mob-total-bar {
+            display: none;
+        }
+
+        .eq-legend {
+            display: none;
+            margin: -6px 0 10px;
+            font-size: 11px;
+            color: var(--text-sec);
+        }
+
+        .mob-total-bar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 950;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+            font-size: 13px;
+            color: var(--text-sec);
+        }
+
+        .mob-total-bar b {
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--text-main);
+            white-space: nowrap;
+        }
+
+        body.html2pdf-printing .mob-total-bar,
+        body.html2pdf-printing .req-toggle,
+        body.html2pdf-printing .eq-legend {
+            display: none !important;
         }
 
         @page {
@@ -3493,6 +3586,8 @@
                     К/сч. 30101810400000000225
                 </div>
             </div>
+            <button type="button" class="req-toggle no-print" aria-expanded="false"
+                onclick="const h=this.closest('.doc-header'); const o=h.classList.toggle('req-open'); this.setAttribute('aria-expanded', o); this.textContent = o ? 'Скрыть реквизиты ▴' : 'Реквизиты ▾';">Реквизиты ▾</button>
             <hr class="header-line">
         </header>
 
@@ -3575,6 +3670,7 @@
                     </label>
                 </div>
             </div>
+            <div id="eq_legend" class="eq-legend no-print">Значок <b>i</b> — пояснение к позиции (нажмите на него). Синий — в наличии, жёлтый — под заказ.</div>
             <div class="table-responsive">
                 <table class="spec-table">
                     <thead>
@@ -5629,6 +5725,11 @@
             document.getElementById('total_eq').textContent = `${(totals.equipment || 0).toLocaleString('ru-RU')} ₽`;
             document.getElementById('total_works').textContent = `${(totals.works || 0).toLocaleString('ru-RU')} ₽`;
             document.getElementById('grand_total').textContent = `${(totals.grandTotal || 0).toLocaleString('ru-RU')} ₽`;
+            const mobTotal = document.getElementById('mob_total');
+            if (mobTotal) {
+                mobTotal.textContent = `${(totals.grandTotal || 0).toLocaleString('ru-RU')} ₽`;
+                document.body.classList.toggle('has-mob-total', !!totals.grandTotal);
+            }
             // Смета без работ (продавец, или монтажник снял раздел при отправке):
             // строку «Итого по монтажным работам: 0 ₽» не показываем вовсе —
             // клиенту нечего оплачивать за монтаж, и упоминать его незачем.
@@ -5687,6 +5788,8 @@
                         if (i.isOpt) return; // Skip optional untoggled items
 
                         const tr = document.createElement('tr');
+                        // «× цена» под количеством на телефоне при 1 шт повторяет сумму — прячем (CSS .qty-one)
+                        if (Number(i.q) === 1) tr.classList.add('qty-one');
 
                         // Image file mapping. Фото лежат по артикулу, поэтому у
                         // строки без него сразу берём заглушку, а не ходим за
@@ -5860,6 +5963,7 @@
                     let secSum = 0;
                     activeWorks.forEach(w => {
                         const tr = document.createElement('tr');
+                        if (Number(w.q) === 1) tr.classList.add('qty-one');
 
                         let friendlyExplanation = '';
                         const nameLower = (w.name || '').toLowerCase();
@@ -6830,6 +6934,26 @@
         @media print { .sec-nav { display: none !important; } }
     </style>
     <div id="sec_nav" class="sec-nav no-print" aria-label="Разделы КП"></div>
+    <div class="mob-total-bar no-print"><span>Итого по КП</span><b id="mob_total">0 ₽</b></div>
+    <script>
+    // Пояснение значков «i» показываем, только если в смете они есть;
+    // нижняя панель с суммой прячется, пока на экране итоговая карточка.
+    (function () {
+        var tb = document.getElementById('equipment_tbody');
+        var legend = document.getElementById('eq_legend');
+        if (tb && legend) {
+            var upd = function () { legend.style.display = tb.querySelector('.info-icon') ? 'block' : 'none'; };
+            new MutationObserver(upd).observe(tb, { childList: true });
+            upd();
+        }
+        var card = document.querySelector('.summary-card');
+        if (card && 'IntersectionObserver' in window) {
+            new IntersectionObserver(function (e) {
+                document.body.classList.toggle('summary-visible', e[0].isIntersecting);
+            }).observe(card);
+        }
+    })();
+    </script>
     <script>
     // На телефоне круглые кнопки прячутся, пока страница крутится, и возвращаются
     // через 300 мс покоя: иначе закрывают суммы в строках сметы (стиль — .fab-scrolling).
