@@ -2495,8 +2495,8 @@ body.menu-open .mobile-menu-backdrop {
     border-radius: 6px;
     border: 1px solid transparent;
     font-size: 11px;
-    font-weight: 600;
-    line-height: 1.45;
+    font-weight: 500;
+    line-height: 1.4;
     text-transform: none;
     letter-spacing: normal;
     text-align: left;
@@ -2554,7 +2554,7 @@ body.dark-mode .sec-explain {
 /* Заголовок плашки — тем же цветом, только жирнее: цветной текст на цветном
    фоне и так контрастен, второй акцент делает строку пёстрой. */
 .note-box .note-text b {
-    font-weight: 800;
+    font-weight: 700;
 }
 
 .note-box .note-tip {
