@@ -52210,11 +52210,11 @@ const app = {
         box.onclick = (e) => { if (e.target === box) box.remove(); };
         box.innerHTML = '<div style="background:var(--surface,#fff); color:var(--text-main,#222); border-radius:16px; padding:20px; width:100%; max-width:380px; max-height:92vh; overflow:auto; box-shadow:0 12px 40px rgba(0,0,0,.3);">'
             + '<div style="font-size:17px; font-weight:700; margin-bottom:12px;">Выбор аватара</div>'
-            + '<div style="text-align:center; margin-bottom:14px;"><img id="avatar_picker_preview" alt="" style="width:120px; height:120px; border-radius:50%; border:2px solid var(--primary,#FF6A00);"></div>'
+            + '<div style="text-align:center; margin-bottom:14px;"><img id="avatar_picker_preview" alt="" style="width:120px; height:120px; border-radius:50%; border:2px solid #2563EB;"></div>'
             + '<div id="avatar_picker_body"></div>'
             + '<div style="display:flex; gap:8px; margin-top:16px;">'
             + '<button type="button" class="lk-btn-sm" style="flex:1;" onclick="app.closeAvatarPicker()">Отмена</button>'
-            + '<button type="button" class="lk-btn-sm" style="flex:1; background:var(--primary,#FF6A00); color:#fff;" onclick="app.saveAvatarPick()">Сохранить</button>'
+            + '<button type="button" class="lk-btn-sm" style="flex:1; background:#2563EB; color:#fff;" onclick="app.saveAvatarPick()">Сохранить</button>'
             + '</div></div>';
         document.body.appendChild(box);
         this.renderAvatarPicker();
@@ -52224,9 +52224,9 @@ const app = {
         const p = this._avatarPick;
         const body = document.getElementById('avatar_picker_body');
         if (!p || !body) return;
-        const chip = (active, label, js) => `<button type="button" onclick="${js}" style="padding:6px 12px; border-radius:999px; border:1px solid ${active ? 'var(--primary,#FF6A00)' : 'var(--border,#ddd)'}; background:${active ? 'var(--primary,#FF6A00)' : 'transparent'}; color:${active ? '#fff' : 'inherit'}; font-size:13px; cursor:pointer;">${label}</button>`;
+        const chip = (active, label, js) => `<button type="button" onclick="${js}" style="padding:6px 12px; border-radius:999px; border:1px solid ${active ? '#2563EB' : 'var(--border,#ddd)'}; background:${active ? '#2563EB' : 'transparent'}; color:${active ? '#fff' : 'inherit'}; font-size:13px; cursor:pointer;">${label}</button>`;
         const row = (title, inner) => `<div style="margin-bottom:12px;"><div style="font-size:12px; color:var(--text-sec,#777); margin-bottom:6px;">${title}</div><div style="display:flex; flex-wrap:wrap; gap:6px;">${inner}</div></div>`;
-        const thumb = (o, active, js) => `<img src="${Avatars.dataUri(Object.assign({}, p, o))}" alt="" onclick="${js}" style="width:46px; height:46px; border-radius:50%; cursor:pointer; border:2px solid ${active ? 'var(--primary,#FF6A00)' : 'transparent'};">`;
+        const thumb = (o, active, js) => `<img src="${Avatars.dataUri(Object.assign({}, p, o))}" alt="" onclick="${js}" style="width:46px; height:46px; border-radius:50%; cursor:pointer; border:2px solid ${active ? '#2563EB' : 'transparent'};">`;
         let html = row('Пол', chip(p.g === 'm', 'Мужской', "app.setAvatarPick('g','m')") + chip(p.g === 'f', 'Женский', "app.setAvatarPick('g','f')"));
         html += row('Чем занимаетесь', chip(p.role === 'installer', 'Монтажник отопления', "app.setAvatarPick('role','installer')") + chip(p.role === 'seller', 'Продавец', "app.setAvatarPick('role','seller')"));
         if (p.role === 'installer') html += row('Цвет каски: бренд, который считаете чаще', chip(p.brand === 'stout', 'STOUT (синий)', "app.setAvatarPick('brand','stout')") + chip(p.brand === 'rommer', 'ROMMER (красный)', "app.setAvatarPick('brand','rommer')"));
