@@ -58392,7 +58392,7 @@ const app = {
         // Контроллер котельной: фильтр по бренду и по числу зон, и что требуется сейчас.
         if (alts.some(a => a.ctrlRow)) {
             const _bf = this.state.ctrlBrandFilter || 'all';
-            const _zf = this.state.ctrlZonesFilter || 'all';
+            const _zf = this.state.ctrlZonesFilter || 'fit';
             const _need = this.ctrlNeedNow(this.thermaticConfig);
             const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
             const _zonesBtns = [1, 2, 3, 4].map(n => `<span onclick="app.setCtrlZonesFilter('${n}')" ${_b(_zf === String(n))}>${n}+</span>`).join('');
