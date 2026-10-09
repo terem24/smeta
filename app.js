@@ -48514,6 +48514,15 @@ const app = {
         const elPolisGbm = elPolis && spec.some(i => /быстрого\s+монтажа/i.test(nameOf(i)));
 
         const indirect = this.dhwTankOn() && has(/бойлер|водонагреват/i);
+        // Электрическое ГВС дома: водонагреватель из сметы вместо бойлера косвенного нагрева
+        const _whIds = new Set(this.elWhAll().map(a => a.id));
+        const elWhIt = this.dhwElectric() ? spec.find(i => _whIds.has(i.originalId || i.id)) : null;
+        const elWh = elWhIt ? (() => {
+            const cat = this.elWhAll().find(a => a.id === (elWhIt.originalId || elWhIt.id));
+            const kw = cat ? this.whKw(cat) : 0;
+            const _wp = this.houseWhPlan();
+            return { vol: cat ? cat.vol : undefined, kw: kw ? String(kw).replace('.', ',') : undefined, count: (_wp && _wp.qty) || 1 };
+        })() : null;
         let tankVol = null;
         if (indirect) {
             const it = spec.find(i => /бойлер|водонагреват/i.test(nameOf(i)));
@@ -48557,7 +48566,7 @@ const app = {
 
         // Контурность газового котла — из названия подобранной позиции,
         // запасной вариант — по правилу подбора (бойлер ⇒ одноконтурный)
-        let gasCircuits = indirect ? 1 : 2;
+        let gasCircuits = (indirect || elWh) ? 1 : 2;
         const gasIt = spec.find(i => isBoiler(i) && isGasB(i));
         const elIt = spec.find(i => isBoiler(i) && isElB(i));
         const gasCat = catB(gasIt);
@@ -48623,6 +48632,7 @@ const app = {
             gas: gas ? { circuits: gasCircuits, count: gasCount, name: nameOf(gasIt) || undefined } : null,
             el: el ? { count: elCount, status: s.boilerSeries === 'status', polis: elPolis, gbm: elPolisGbm, name: nameOf(elIt) || undefined } : null,
             indirect: indirect ? { vol: tankVol || undefined, wall: s.tankMount === 'wall' } : null,
+            elWh: elWh,
             fugas: fugas,
             loadPump: loadPump,
             dhwBuiltIn: dhwBuiltIn,
@@ -48692,7 +48702,7 @@ const app = {
                 // Буферная ёмкость стоит на месте разделителя (смета: коллектор без стрелки)
                 buffer: (function (b) { return b ? { vol: b.vol, id: b.id } : null; })(this.schemeBuffer(spec))
             } : null,
-            water: !!s.water || indirect,
+            water: !!s.water || indirect || !!elWh,
             recirc: !!s.recirc,
             tankHeating: volOf(tankHeat),
             tankDhw: volOf(tankDhw),
@@ -52574,8 +52584,7 @@ const app = {
         return (it && kw > 0 && it.vol > 0) ? it.vol * 4.187 * this.WH_EL_DT / kw / 60 : 0;
     },
     whHeatText: function (it) {
-        if (it && it.heat) return it.heat;
-        const m = Math.round(this.whHeatMin(it) / 5) * 5;
+        const m = Math.round(this.whHeatMin(it));
         if (!m) return '—';
         return m >= 60 ? `${Math.floor(m / 60)}ч${m % 60 ? ' ' + (m % 60) + ' мин' : ''}` : `${m} мин`;
     },
@@ -52633,6 +52642,28 @@ const app = {
         };
     },
 
+    /**
+     * Ручное количество водонагревателей (правка строки сметы, qtyOverrides) —
+     * в сам план: обвязка, питание, работы и плашки считаются от plan.qty, а не от
+     * строки. Автоматически ставится один, больше — только руками.
+     * Ключ правки — артикул подобранной позиции (с областью через «@» или без).
+     */
+    applyWhQty: function (p) {
+        const m = this.state.qtyOverrides;
+        if (!p || !p.item || !m) return p;
+        const id = p.item.id;
+        const key = Object.keys(m).find(k => k === id || k.split('@')[0] === id);
+        const ov = key === undefined ? NaN : parseInt(m[key], 10);
+        if (!(ov >= 1) || ov === p.qty) return p;
+        p.qty = ov;
+        p.totalVol = p.vol * ov;
+        p.kwTotal = p.kwUnit * ov;
+        p.shortVol = p.totalVol < p.needVol - 1e-9;
+        if (p.budgetKw > 0 && p.kwTotal > p.budgetKw + 1e-9) p.overBudget = true;
+        p.manualQty = true;
+        return p;
+    },
+
     /** Мощность электрического тёплого пола в квартире, кВт — она делит лимит с водонагревателем. */
     flatElUfhKw: function () {
         if (!this.usesElectricUfh() || !(this.state.systems || []).includes('tp')) return 0;
@@ -52654,7 +52685,7 @@ const app = {
     },
 
     flatWaterHeaterPlan: function () {
-        return this.pickElWaterHeater(this.flatWhVolume(), { maxUnits: 1, budgetKw: this.flatWhBudgetKw() });
+        return this.applyWhQty(this.pickElWaterHeater(this.flatWhVolume(), { maxUnits: 1, budgetKw: this.flatWhBudgetKw() }));
     },
 
     flatWaterHeater: function () {
@@ -52664,7 +52695,7 @@ const app = {
 
     // ===== Электрическое ГВС в доме (только подробный режим) =====
     //
-    // Вместо бойлера косвенного нагрева — STOUT SEW (до трёх штук по 100 л). Мощность
+    // Вместо бойлера косвенного нагрева — STOUT SEW, автоматически всегда один (больше — только вручную, количеством в смете). Мощность
     // делится с электрокотлом: водонагревателю отдаётся не больше WH_EL_HOUSE_SHARE доступной
     // мощности участка (по практике: отопление в мороз важнее), остальное — котлу
     // (getElBoilerBudget вычитает то, что водонагреватель взял по факту).
@@ -52693,9 +52724,9 @@ const app = {
     houseWhPlan: function () {
         if (!this.dhwElectric()) return null;
         const avail = this.houseWhAvailKw();
-        return this.pickElWaterHeater(this.dhwTankPlan().targetVol, {
-            maxUnits: 3, budgetKw: avail > 0 ? avail * this.WH_EL_HOUSE_SHARE : 0
-        });
+        return this.applyWhQty(this.pickElWaterHeater(this.dhwTankPlan().targetVol, {
+            maxUnits: 1, budgetKw: avail > 0 ? avail * this.WH_EL_HOUSE_SHARE : 0
+        }));
     },
     dhwElectricKw: function () {
         const p = this.houseWhPlan();
@@ -52755,7 +52786,12 @@ const app = {
         if (plan.shortVol) {
             warn += this.noteBox('warn', 'Нужный объём больше, чем даёт ряд.',
                 `Нужно ${Math.round(plan.needVol)} л, в смете ${plan.totalVol} л.`,
-                `<div class="tip-p">Электрические накопительные здесь — до ${plan.qty} шт. по 100 л. Для такого расхода ГВС надёжнее бойлер косвенного нагрева от котла.</div>`);
+                `<div class="tip-p">Автоматически ставится один электрический накопительный, не больше 100 л. Для такого расхода ГВС надёжнее бойлер косвенного нагрева от котла; если нужен именно электрический — количество можно увеличить вручную.</div>`);
+        }
+        if (this.whHeatMin(wh) > 0) {
+            warn += this.noteBox('info', `Нагрев бака — около ${this.whHeatText(wh)}.`,
+                `${wh.vol} л, ТЭН ${fmt(kw)} кВт, нагрев с 15 до 60 °C.`,
+                `<div class="tip-p"><b>Расчёт:</b> t = V · c · ΔT / P = ${wh.vol} л · 4,187 кДж/(кг·К) · ${this.WH_EL_DT} К / ${fmt(kw)} кВт ≈ ${Math.round(this.whHeatMin(wh))} мин. Справочная оценка без потерь тепла через стенки бака, на деле чуть дольше.</div>`);
         }
         if (wh.priceEst) {
             warn += this.noteBox('info', 'Цена STOUT SEW ориентировочная.',

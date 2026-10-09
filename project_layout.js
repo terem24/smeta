@@ -182,6 +182,13 @@
     return { d: 700, h: 1900 };
   }
 
+  // Электрический водонагреватель висит на стене: габариты по паспорту SEW (Ø425,
+  // высота по объёму), низ на 900 мм от пола — под прибор, не выше глаз.
+  function elWhSize(vol) {
+    var h = !vol || vol <= 30 ? 515 : vol <= 50 ? 675 : vol <= 80 ? 1000 : 1210;
+    return { d: 425, h: h, wall: true, z: 900, el: true };
+  }
+
   /** Контекст компоновки: реальные габариты и состав, из схемы + сметы */
   function buildCtx(scheme, items) {
     var nameOf = function (i) { return i && i.name ? String(i.name) : ''; };
@@ -213,7 +220,7 @@
       loops.push({ c: COL.cold, t: 'Подпитка системы отопления' });
       loops.push({ c: COL.supply, t: 'Подача отопления бойлера' });
       loops.push({ c: COL.ret, t: 'Обратка отопления бойлера' });
-    } else if (scheme.water && scheme.gas && scheme.gas.circuits === 2) {
+    } else if (scheme.elWh || (scheme.water && scheme.gas && scheme.gas.circuits === 2)) {
       loops.push({ c: COL.dhw, t: 'Линия ГВС' });
       loops.push({ c: COL.cold, t: 'Линия ХВС' });
     }
@@ -229,14 +236,15 @@
       // корпус электрокотла зависит от серии: STATUS или PLUS
       elKey: (scheme.el && scheme.el.status) ? 'boiler_status' : 'boiler_plus',
       hydro: !!scheme.hydro && !scheme.hydro.buffer,
-      indirect: scheme.indirect ? boilerTankSize(scheme.indirect.vol, scheme.indirect.wall) : null,
+      indirect: scheme.indirect ? boilerTankSize(scheme.indirect.vol, scheme.indirect.wall)
+        : (scheme.elWh ? elWhSize(scheme.elWh.vol) : null),
       tankH: tankSize(scheme.tankHeating),
       tankD: tankSize(scheme.tankDhw),
       // объёмы из сметы — по ним берётся кадр нужного типоразмера
       vol: {
         tankH: scheme.tankHeating || null,
         tankD: scheme.tankDhw || null,
-        indirect: (scheme.indirect && scheme.indirect.vol) || null
+        indirect: (scheme.indirect && scheme.indirect.vol) || (scheme.elWh && scheme.elWh.vol) || null
       },
       loops: loops,
       tp: !!scheme.tp,
@@ -248,7 +256,7 @@
           find(/кот[её]л/i, /электрическ/i) || 'Котёл газовый настенный',
         el: (scheme.el && scheme.el.name ? short(scheme.el.name) : null) ||
           find(/кот[её]л\s+электрическ|электрическ\S*\s+кот[её]л/i) || 'Котёл электрический',
-        boiler: find(/бойлер|водонагреват/i) || 'Бойлер косвенного нагрева',
+        boiler: find(/бойлер|водонагреват/i) || (scheme.elWh ? 'Электрический водонагреватель' : 'Бойлер косвенного нагрева'),
         hydro: find(/гидравлическ\S*\s+раздел|гидрострелк/i) || 'Гидравлический разделитель',
         pump: find(/циркуляционн\S*\s+насос|насос\s+циркуляционн/i, /рециркуляц/i) || 'Циркуляционный насос',
         tankH: 'Расширительный бак для отопления' + (scheme.tankHeating ? ' на ' + scheme.tankHeating + 'л' : ''),
@@ -484,7 +492,7 @@
     if (ctx.indirect) {
       var ib = B.indirect, iw = ib.w * s, ix = X(ib.x);
       if (ctx.indirect.wall) {
-        o.push(rect(ix, Y(1100 + ctx.indirect.h), iw, ctx.indirect.h * s, COL.body,
+        o.push(rect(ix, Y((ctx.indirect.z || 1100) + ctx.indirect.h), iw, ctx.indirect.h * s, COL.body,
           { stroke: '#9a9a9a', sw: 0.15, rx: 1.2 }));
       } else {
         var ih = ctx.indirect.h * s;
@@ -584,7 +592,7 @@
     if (ctx.tankH) co(X(B.tankH.x + B.tankH.w / 2), Y(ctx.tankH.h / 2), ctx.names.tankH);
     if (ctx.tp) co(X(lx0), Y(530), ctx.names.pump);
     if (ctx.indirect) co(X(B.indirect.x + B.indirect.w / 2),
-      Y(ctx.indirect.wall ? 1100 + ctx.indirect.h / 2 : ctx.indirect.h / 2), ctx.names.boiler);
+      Y(ctx.indirect.wall ? (ctx.indirect.z || 1100) + ctx.indirect.h / 2 : ctx.indirect.h / 2), ctx.names.boiler);
 
     // ─── легенда и примечание ───
     o.push(legend(ctx.loops, 30, 200));
@@ -774,7 +782,7 @@
         z: 0, h: ctx.tankD.h, fill: '#ffffff', stroke: '#9a9a9a' });
     if (ctx.indirect && B.indirect)
       it.push({ key: 'boiler', kind: 'tank', x: B.indirect.x, w: B.indirect.w, y: 40, d: ctx.indirect.d,
-        z: ctx.indirect.wall ? ROOM.wallTankZ : 0, h: ctx.indirect.h, fill: '#8a8a8a', stroke: '#5f5f5f' });
+        z: ctx.indirect.wall ? (ctx.indirect.z || ROOM.wallTankZ) : 0, h: ctx.indirect.h, fill: '#8a8a8a', stroke: '#5f5f5f' });
     // узел ввода воды — на левой стене
     it.push({ key: 'water', kind: 'box', x: 0, w: ROOM.wiD, y: ROOM.wiY, d: ROOM.wiH,
       z: ROOM.wiZ0, h: ROOM.wiZ1 - ROOM.wiZ0, fill: '#e8e8e8', stroke: '#8f8f8f' });

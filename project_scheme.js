@@ -451,6 +451,33 @@
     return o.join('');
   }
 
+
+  /** Электрический накопительный водонагреватель. (x,y) — левый верхний угол корпуса.
+   *  Компактный настенный 40×56, как настенный бойлер: тот же посадочный размер.
+   *  Внутри ТЭН-зигзаг, снизу кабель с вилкой — питание 230 В из розетки. */
+  function elWhTank(x, y, w, h, spec) {
+    var o = [];
+    spec = spec || {};
+    o.push(rrect(x, y, w, h, 5, { f: GREY.body, c: GREY.edge, w: 0.6 }));
+    o.push(txt(x + w / 2, y + 6.4, 'Электрический', { size: SZ.txt, anchor: 'middle', fit: w - 3 }));
+    o.push(txt(x + w / 2, y + 10.8, 'водонагреватель', { size: SZ.txt, anchor: 'middle', fit: w - 3 }));
+    var tail = [spec.count > 1 ? spec.count + ' шт. по' : '', spec.vol ? spec.vol + ' л' : '', spec.kw ? spec.kw + ' кВт' : ''].filter(Boolean).join(' ').replace(' л ', ' л, ');
+    // у нескольких приборов на схеме показан один — остальные подключаются тем же узлом
+    if (spec.count > 1) o.push(txt(x + w / 2, y + h + 14.5 + 6, 'Показан один из ' + spec.count + ',', { size: SZ.dia, anchor: 'middle' }) + txt(x + w / 2, y + h + 14.5 + 8.7, 'остальные — тем же узлом', { size: SZ.dia, anchor: 'middle' }));
+    if (tail) o.push(txt(x + w / 2, y + 16, tail, { size: SZ.dia, anchor: 'middle' }));
+    // ТЭН — зигзаг в нижней трети бака
+    var zy = y + h * 0.7, zx0 = x + 6, zx1 = x + w - 6, k = 6, pts = [];
+    for (var i = 0; i <= k; i++) pts.push([zx0 + (zx1 - zx0) * i / k, zy + (i % 2 ? 3 : -3)]);
+    o.push(pline(pts, { c: '#d9480f', w: 0.5 }));
+    // кабель питания и вилка
+    var cx = x + w / 2;
+    o.push(ln(cx, y + h, cx, y + h + 4.5));
+    o.push(rrect(cx - 2.2, y + h + 4.5, 4.4, 3.2, 0.6, { f: '#fff', c: '#000', w: LW.sym }));
+    o.push(ln(cx - 0.9, y + h + 7.7, cx - 0.9, y + h + 9.4));
+    o.push(ln(cx + 0.9, y + h + 7.7, cx + 0.9, y + h + 9.4));
+    return o.join('');
+  }
+
   /** Цветной патрубок-пилюля на кромке бойлера + марка. */
   function tankPort(x, y, color, mark) {
     return rrect(x - 1.5, y - 1.5, 3, 3, 1.5, { f: color, c: '#000', w: LW.thin }) +
@@ -534,6 +561,7 @@
     };
   }
   indirectTank = sym(indirectTank, 'tank', 'Бойлер косвенного нагрева');
+  elWhTank = sym(elWhTank, 'tank', 'Электрический водонагреватель');
   ballValve = sym(ballValve, 'valve', 'Шаровой кран');
   checkValve = sym(checkValve, 'check', 'Обратный клапан');
   pump = sym(pump, 'pump', 'Циркуляционный насос');
@@ -567,11 +595,11 @@
     cfg = cfg || {};
     var L = 25.07, R = 127.65, S = 39.07, top = 12.35, o = [];
     var cx = (L + S) / 2, tx = (S + R) / 2;
-    var twoC = !!(cfg.gas && cfg.gas.circuits === 2 && !cfg.indirect);
+    var twoC = !!(cfg.gas && cfg.gas.circuits === 2 && !cfg.indirect && !cfg.elWh);
     var nBoilers = (cfg.gas ? Math.max(1, cfg.gas.count || 1) : 0) +
       (cfg.el ? Math.max(1, cfg.el.count || 1) : 0);
     var usePump = !!(cfg.tp || cfg.snow || cfg.hydro || cfg.recirc || cfg.loadPump || (cfg.el && cfg.el.polis));
-    var useCheck = !!(nBoilers > 1 || cfg.indirect || cfg.tp || cfg.snow || cfg.hydro || cfg.recirc);
+    var useCheck = !!(nBoilers > 1 || cfg.indirect || cfg.elWh || cfg.tp || cfg.snow || cfg.hydro || cfg.recirc);
 
     // При автоматике узел ТП ведёт контроллер: смеситель с сервоприводом
     // вместо термостатического, плюс на схеме появляются датчики NTC
@@ -582,7 +610,7 @@
       ['Циркуляционный насос', function (c) { return pump(cx, c, 'left'); }, usePump],
       ['Термостатический смесительный клапан', function (c) { return valve3(cx + 1.21, c, 'therm', 'udr', 'l'); }, (!!cfg.tp || !!cfg.snow || !!cfg.dhwMix) && !mixServo],
       ['Клапан трехходовой с сервоприводом', function (c) { return valve3(cx + 1.21, c, 'servo', 'udr', 'l'); }, (!!cfg.tp || !!cfg.snow) && mixServo],
-      ['Предохранительный клапан', function (c) { return safetyValve(cx, c, false); }, (!!cfg.indirect && cfg.water !== false) || !!cfg.snow],
+      ['Предохранительный клапан', function (c) { return safetyValve(cx, c, false); }, ((!!cfg.indirect || !!cfg.elWh) && cfg.water !== false) || !!cfg.snow],
       ['Автоматический воздухоотводчик', function (c) { return airVent(cx, c + 3.77); }, !!cfg.hydro || !!cfg.airSep],
       ['Фильтр', function (c) { return filterSym(cx, c); }, true],
       ['Клапан приоритета бойлера', function (c) { return valve3(cx + 1.21, c, 'prio', 'udr', 'l'); }, !!cfg.fugas],
@@ -594,8 +622,8 @@
       ['Т2', 'Обратка радиаторного отопления', cfg.rad !== false],
       ['Т11', 'Подача напольного отопления', !!cfg.tp],
       ['Т21', 'Обратка напольного отопления', !!cfg.tp],
-      ['В1', 'Холодное водоснабжение', twoC || !!cfg.water || !!cfg.indirect],
-      ['Т3', 'Горячее водоснабжение', twoC || !!cfg.indirect],
+      ['В1', 'Холодное водоснабжение', twoC || !!cfg.water || !!cfg.indirect || !!cfg.elWh],
+      ['Т3', 'Горячее водоснабжение', twoC || !!cfg.indirect || !!cfg.elWh],
       ['Т4', 'Рециркуляция горячего водоснабжения', !!cfg.recirc],
       ['Т12', 'Подача на узел снеготаяния', !!cfg.snow],
       ['Т22', 'Обратка от узла снеготаяния', !!cfg.snow]
@@ -661,15 +689,15 @@
   function pipeLegend(cfg) {
     cfg = cfg || {};
     var o = [];
-    var twoC = !!(cfg.gas && cfg.gas.circuits === 2 && !cfg.indirect);
+    var twoC = !!(cfg.gas && cfg.gas.circuits === 2 && !cfg.indirect && !cfg.elWh);
     var rows = [
       [COL.ret, 'обратный трубопровод', true],
       [COL.supply, 'подающий трубопровод', true],
       [COL.loadR, 'обратный трубопровод загрузки бойлера', !!cfg.indirect],
       [COL.loadS, 'подающий трубопровод загрузки бойлера', !!cfg.indirect],
-      [COL.dhw, 'трубопровод горячего водоснабжения', twoC || !!cfg.indirect],
+      [COL.dhw, 'трубопровод горячего водоснабжения', twoC || !!cfg.indirect || !!cfg.elWh],
       [COL.recirc, 'трубопровод рециркуляции горячего водоснабжения', !!cfg.recirc],
-      [COL.cold, 'трубопровод холодного водоснабжения', twoC || !!cfg.water || !!cfg.indirect],
+      [COL.cold, 'трубопровод холодного водоснабжения', twoC || !!cfg.water || !!cfg.indirect || !!cfg.elWh],
     ].filter(function (r) { return r[2]; });
     // Штатно легенда занимает семь строк и упирается низом в 288,4 — дальше
     // внутренняя рамка листа (292). Со снеготаянием строк девять, и блок
@@ -915,7 +943,10 @@
     // Порядок полос обратный порядку стояков (левый стояк — дальняя полоса,
     // правый — ближняя), тогда спуски и подъёмы не пересекаются в принципе.
     var laneR = 272, laneS = 263;
-    var twoCirc = !!(cfg.gas && cfg.gas.circuits === 2 && !hasLoad);
+    // Электрический водонагреватель вместо бойлера: своя ветка В1/Т3 у правого края,
+    // змеевика и линий загрузки нет. Двухконтурный котёл рядом с ним ГВС не греет.
+    var hasEl = !!cfg.elWh && !cfg.indirect;
+    var twoCirc = !!(cfg.gas && cfg.gas.circuits === 2 && !hasLoad && !hasEl);
 
     // ── отводы коллектора и раскладка их полосы ────────────────────────────
     // Отводов столько, сколько насосных групп в спецификации (cfg.radGroups /
@@ -1153,7 +1184,7 @@
     // а без него систему нечем заполнить — монтажник должен видеть текстом,
     // откуда брать воду (замечание из ревью: «по этой схеме систему
     // физически нечем заполнить»).
-    if (!twoCirc && !cfg.indirect) {
+    if (!twoCirc && !cfg.indirect && !hasEl) {
       o.push(txt(302, 246, 'Примечание: заполнение и подпитка системы отопления —', { size: SZ.txt }));
       o.push(txt(302, 251, 'от ввода ХВС через шаровый кран 1/2" с обратным клапаном.', { size: SZ.txt }));
       o.push(txt(302, 256, 'Узел подпитки на схеме условно не показан.', { size: SZ.txt }));
@@ -1840,6 +1871,66 @@
         o.push(diaV(bx3, bottomValveY - 7.2, recDia));
         o.push(bottomMark(bx3, 'Т4', 'up'));
       }
+    }
+
+
+    // ── электрический водонагреватель (вместо бойлера косвенного нагрева) ──
+    // Узел в том же порядке, что обвязка в смете (elWhPiping):
+    //   В1: кран → обратный клапан и предохранительный 0,8 МПа (из комплекта) → кран → прибор;
+    //   Т3: прибор → кран → тройник расширительного бака → термосмеситель → кран → в разводку.
+    // Горячая колонка стоит левее холодной: бак на горячей линии, место слева от него свободно,
+    // а горизонтали портов не пересекают чужие стояки (порт Т3 выше порта В1).
+    if (hasEl) {
+      var eW = 40, eH = 56, eX = 415 - eW - 1.5, eY = 78;
+      o.push(elWhTank(eX, eY, eW, eH, cfg.elWh));
+      var ePT3 = eY + eH * 0.4, ePB1 = eY + eH - 8;
+      var hx = eX - 30, cx2 = eX - 5.5;           // колонки: горячая Т3 и холодная В1
+      var yTopE = bottomValveY - 2.5;
+      o.push(tankPort(eX, ePT3, COL.dhw, 'Т3'));
+      o.push(tankPort(eX, ePB1, COL.cold, 'В1'));
+      // В1 (правая колонка): снизу вверх до порта
+      o.push(hpipe(cx2, eX - 1.5, ePB1, COL.cold));
+      o.push(ln(cx2, ePB1, cx2, yTopE, { c: COL.cold, w: LW.pipe }));
+      o.push(ballValve(cx2, ePB1 + 13, true));                 // кран прибора (из комплекта подключения)
+      o.push(leaderValve(cx2, ePB1 + 13, '1/2"'));
+      o.push(hpipe(cx2, cx2 + 4.1, ePB1 + 26, COL.cold));       // отвод предохранительного клапана
+      o.push(safetyValve(cx2 + 6.6, ePB1 + 26, true));
+      o.push(leader(cx2 + 5.6, ePB1 + 24.9, '1/2"'));
+      o.push(checkValve(cx2, ePB1 + 40, 'up'));
+      o.push(leaderCheck(cx2, ePB1 + 40, '1/2"'));
+      o.push(ballValve(cx2, bottomValveY, true));
+      o.push(leaderValve(cx2, bottomValveY, '3/4"'));
+      o.push(diaV(cx2, bottomValveY - 7.2, sanDia));
+      o.push(bottomMark(cx2, 'В1', 'up'));
+      // Т3 (левая колонка): от порта влево и вниз
+      o.push(hpipe(hx, eX - 1.5, ePT3, COL.dhw));
+      o.push(ln(hx, ePT3, hx, yTopE, { c: COL.dhw, w: LW.pipe }));
+      o.push(ballValve(hx, ePT3 + 13, true));                   // кран прибора на горячей линии
+      o.push(leaderValve(hx, ePT3 + 13, '1/2"'));
+      var eDtY = 200;
+      if (cfg.tankDhw) {
+        var eDtX = hx - 13.5;
+        o.push(expTank(eDtX, eDtY, '#00ffff', cfg.tankDhw + ' л.'));
+        o.push(ln(eDtX, eDtY, eDtX, eDtY + 1.8, { c: COL.dhw, w: LW.pipe }));
+        o.push(ballValve(eDtX, eDtY + 4.3, true));
+        o.push(leaderValve(eDtX, eDtY + 4.3, '3/4"'));
+        o.push(ln(eDtX, eDtY + 6.8, eDtX, eDtY + 8.6, { c: COL.dhw, w: LW.pipe }));
+        o.push(hpipe(eDtX, hx, eDtY + 8.6, COL.dhw));
+      }
+      if (cfg.dhwMix) {
+        var emY = (cfg.tankDhw ? eDtY + 8.6 : eDtY) + 14;
+        o.push(hpipe(hx - 9, hx - 3.13, emY, COL.cold));
+        o.push(valve3(hx, emY, 'therm', 'udl', 'r'));
+        o.push(txtM(hx - 22.5, emY - 1.4, 'от В1', { size: SZ.txt }));
+        o.push(leader(hx - 0.96, emY - 4.4, cfg.dhwMix));
+      }
+      o.push(ballValve(hx, bottomValveY, true));
+      o.push(leaderValve(hx, bottomValveY, '3/4"'));
+      o.push(diaV(hx, bottomValveY - 7.2, sanDia));
+      o.push(bottomMark(hx, 'Т3', 'down'));
+      // питание: цепь отдельная — автомат и УЗО в щите, на воде они не показаны
+      o.push(txt(eX + eW / 2, eY + eH + 14.5, 'Питание ~230 В,', { size: SZ.dia, anchor: 'middle' }));
+      o.push(txt(eX + eW / 2, eY + eH + 17.2, 'автомат 10 А + УЗО', { size: SZ.dia, anchor: 'middle' }));
     }
 
     // ── зоны гидравлики: прозрачные накладки для карточек на экране ──
