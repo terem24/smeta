@@ -52,6 +52,17 @@ $files = @(
     'recognize_plan.js',
     'recognize_geo.js',
     'recognize_project.js',
+    'recognize_sketch.js',
+
+    # Подключены в index.html (часть — догружается по требованию), но в список не
+    # попадали: в приложении не работали ссылка клиенту, оплата, названия без
+    # моделей, определение региона по телефону и вкладки админки.
+    'kp_share.js',
+    'pay_readiness.js',
+    'phone_regions.js',
+    'short_names.js',
+    'subscription.js',
+    'warranty_admin.js',
 
     # Эти шесть подключены в index.html, но в список не попадали — внутри
     # приложения их просто не было. Без них молча отваливались обучение,

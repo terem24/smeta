@@ -28,7 +28,7 @@
 error_reporting(0);
 ini_set('display_errors', 0);
 
-$ALLOWED_ORIGINS = ['https://heatcalc.ru', 'https://www.heatcalc.ru', 'https://terem24.github.io', 'http://localhost:8080', 'http://127.0.0.1:8080'];
+$ALLOWED_ORIGINS = ['https://heatcalc.ru', 'https://www.heatcalc.ru', 'https://terem24.github.io', 'http://localhost:8080', 'http://127.0.0.1:8080', 'https://localhost'];
 $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
 if (in_array($origin, $ALLOWED_ORIGINS, true)) {
     header('Access-Control-Allow-Origin: ' . $origin);
