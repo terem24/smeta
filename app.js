@@ -58086,11 +58086,14 @@ const app = {
             const _hdrUfhTp = (item.name || '').match(/тёплого пола\s*(?:до\s*)?(\d+(?:[.,]\d+)?)\s*кВт/);
             const _hdrUfhTp2 = (item.name || '').match(/(\d+(?:[.,]\d+)?)\s*кВт\s*ТП/);
             const _hdrUfhSingle = !_hdrRad ? (item.name || '').match(/(\d+(?:[.,]\d+)?)\s*кВт/) : null;
-            let _hdrBadges = '';
-            if (_hdrDn) _hdrBadges += `<div style="background:var(--primary-light); color:var(--primary); padding:6px 12px; border-radius:10px; font-size:11px; font-weight:700; border:1px solid rgba(37,99,235,0.08);">Типоразмер: <span style="font-weight:800;">${_hdrDn}</span></div>`;
-            if (_hdrRad) _hdrBadges += `<div style="background:var(--primary-light); color:var(--primary); padding:6px 12px; border-radius:10px; font-size:11px; font-weight:700; border:1px solid rgba(37,99,235,0.08);">Радиаторы: <span style="font-weight:800;">${_hdrRad[1]} кВт</span></div>`;
-            if (_hdrUfhTp || _hdrUfhTp2) _hdrBadges += `<div style="background:var(--primary-light); color:var(--primary); padding:6px 12px; border-radius:10px; font-size:11px; font-weight:700; border:1px solid rgba(37,99,235,0.08);">Тёплый пол: <span style="font-weight:800;">${(_hdrUfhTp || _hdrUfhTp2)[1]} кВт</span></div>`;
-            if (!_hdrRad && !_hdrUfhTp && !_hdrUfhTp2 && _hdrUfhSingle) _hdrBadges += `<div style="background:var(--primary-light); color:var(--primary); padding:6px 12px; border-radius:10px; font-size:11px; font-weight:700; border:1px solid rgba(37,99,235,0.08);">Мощность: <span style="font-weight:800;">${_hdrUfhSingle[1]} кВт</span></div>`;
+            // Одна плашка вместо трёх: «DN25 · радиаторы 24 кВт» (цена рядом, отдельной плашкой).
+            const _hdrParts = [];
+            if (_hdrDn) _hdrParts.push(_hdrDn);
+            if (_hdrRad) _hdrParts.push(`радиаторы ${_hdrRad[1]} кВт`);
+            if (_hdrUfhTp || _hdrUfhTp2) _hdrParts.push(`тёплый пол ${(_hdrUfhTp || _hdrUfhTp2)[1]} кВт`);
+            if (!_hdrRad && !_hdrUfhTp && !_hdrUfhTp2 && _hdrUfhSingle) _hdrParts.push(`${_hdrUfhSingle[1]} кВт`);
+            const _hdrBadges = _hdrParts.length
+                ? `<div style="background:var(--primary-light); color:var(--primary); padding:6px 12px; border-radius:10px; font-size:13px; font-weight:800; border:1px solid rgba(37,99,235,0.08);">${_hdrParts.join(' · ')}</div>` : '';
             title.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:4px; gap:16px; flex-wrap:wrap;">
                     <div>
@@ -58627,10 +58630,11 @@ const app = {
                         `</div>`
                         : '')
                     : '') +
-                `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
-                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">Мощность:</span>` +
-                _umPowerBtns +
-                `<span onclick="app.setUfhMixPowerFilter('all')" ${_b(_umPower.length===0)}>Все</span>` +
+                // Мощность — одной строкой с горизонтальной прокруткой; выбранная кнопка прокручивается в видимую область.
+                `<div class="swap-pw-row" style="display:flex;gap:2px;align-items:center;flex-wrap:nowrap;overflow-x:auto;flex:1 1 100%;max-width:100%;padding-bottom:2px;-webkit-overflow-scrolling:touch;">` +
+                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;flex:0 0 auto;">Мощность:</span>` +
+                _umPowerBtns.replace(/margin:2px;"/g, 'margin:2px;flex:0 0 auto;white-space:nowrap;"').replace(/<span onclick="app\.setUfhMixPowerFilter\('(\d+)'\)"([^>]*background:var\(--primary\);)/g, '<span data-pw-active="1" onclick="app.setUfhMixPowerFilter(\'$1\')"$2') +
+                `<span onclick="app.setUfhMixPowerFilter('all')" ${_b(_umPower.length===0).replace('margin:2px;"', 'margin:2px;flex:0 0 auto;white-space:nowrap;"')}>Все</span>` +
                 `</div>` +
                 `</div>`;
             alts = alts.filter(a => {
@@ -59373,12 +59377,17 @@ const app = {
                 let isActive = _activeAltId ? (displayAlt.id === _activeAltId) : (displayAlt.id === item.id);
                 let activeClass = isActive ? "active-row" : "";
                 let activeStyle = isActive ? "background-color: var(--primary-light);" : "";
-                let badgeHtml = isActive ? `<span style="font-size: 10px; background: var(--primary); color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 8px;">Выбран</span>` : "";
+                let badgeHtml = isActive ? `<div style="margin-top:4px;"><span style="font-size: 11px; background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: bold;">✓ Выбран</span></div>` : "";
                 let diffHtml = getPriceDiffHtml(displayAlt.price, isActive);
                 let priceText = displayAlt.price > 0 ? this.formatPriceHtml(displayAlt.price, true) : "-";
                 let _rowCoilKw = _isTankItem ? _tankCoilKwMap[displayAlt.id] : null;
                 let _rowCoilStr = _rowCoilKw ? ` <span style="color:var(--text-sec);font-size:11px;font-weight:500;">(${_rowCoilKw} кВт)</span>` : '';
                 let _nameDisplay = displayAlt.name;
+                // Насосная группа: «Группа насосная DN25 (Прямая) - для радиаторов до 24 кВт» → заголовок и серая вторая строка.
+                if (this.selfGroupKindOfReady(displayAlt.id)) {
+                    const _sp = String(displayAlt.name).split(' - ');
+                    if (_sp.length === 2) _nameDisplay = `${_sp[0]}<div style="font-size:12px;font-weight:500;color:var(--text-sec);margin-top:2px;">${_sp[1]}</div>`;
+                }
                 // Пояснение под названием серым: ему не место в самом названии — цена и так в колонке.
                 const _hintText = displayAlt.hint || alt.hint || '';
                 const _hintHtml = _hintText
@@ -59408,24 +59417,35 @@ const app = {
             const _sgKind = this.selfGroupKindOfReady(item.originalId || item.id);
             if (_sgKind && this.state.groupsBuild !== 'self' && this.selfGroupsMode()) {
                 const _sgLbl = { direct: 'прямая', thermo: 'термостатическая', servo: 'под сервопривод' }[_sgKind];
-                const _sgSelf = Math.round(this.selfGroupPrice(_sgKind));
-                const _sgReady = Math.round(this.readyGroupPrice(_sgKind));
+                const _sgSelf = Math.round(this.selfGroupPrice(_sgKind, { noPump: true }));
+                const _sgReady = Math.round(this.readyGroupPrice(_sgKind, { noPump: true }));
                 const _sgD = _sgReady > 0 ? Math.round((_sgSelf - _sgReady) / _sgReady * 100) : 0;
                 const _sgC = _sgD > 0 ? '#ef4444' : (_sgD < 0 ? '#16a34a' : 'var(--text-sec)');
                 const _sgAvail = this.selfGroupsAvailable();
-                const _sgNote = !this.isPro() ? 'Функция тарифа «Профи».'
-                    : !_sgAvail ? 'Нужна нержавеющая или ППР обвязка котельной.'
-                    : 'Переключит все насосные группы и коллектор на самосборные — они стыкуются только друг с другом. Вернуть можно в любой момент.';
+                const _sgNote = !this.isPro() ? 'Тариф «Профи»'
+                    : !_sgAvail ? 'Нужна нержавеющая или ППР обвязка'
+                    : '';
+                const _sgIcon = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1e3a8a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h4M17 8h4M3 16h4M17 16h4"/><rect x="7" y="5" width="10" height="14" rx="1.5"/><path d="M10 9h4M10 12h4M10 15h4"/></svg>`;
+                const _sgCmp = {
+                    direct: 'Краны, обратный клапан, термометры',
+                    thermo: 'Термосмеситель, краны, перемычка, термостат',
+                    servo: '3-ходовой клапан, краны, перемычка, термостат'
+                }[_sgKind];
+                // Раскрывающийся состав: число позиций и список с количеством (щелчок по нему не выбирает вариант).
+                const _sgLines = this.selfGroupLines(_sgKind, { noPump: true }).filter(l => l.item && l.q > 0);
+                const _sgList = _sgLines.map(l => `<li>${l.item.name} — ${l.q} шт.</li>`).join('');
+                const _sgParts = _sgLines.length
+                    ? `<details onclick="event.stopPropagation()" style="margin-top:4px;"><summary style="cursor:pointer;color:var(--primary);font-weight:600;">Состав: ${_sgLines.length} поз.</summary><ul style="margin:4px 0 0 16px;padding:0;font-size:12px;">${_sgList}</ul></details>` : '';
                 html += `
                     <tr class="swap-sub-head" style="border-top: 2px solid var(--border);">
                         <td colspan="6" style="padding:10px 8px 4px; font-size:12px; font-weight:800; color:var(--text-muted, #6B7280); text-align:left;">
-                            Собрать самосборную группу из отдельных позиций
+                            Самосборная группа (Профи)
                         </td>
                     </tr>
                     <tr style="cursor: pointer;" onclick="app.applySelfBuiltFromSwap('${_sgKind}', event)">
                         <td class="col-idx"></td>
-                        <td class="col-img" style="text-align:center;font-size:20px;">🧩</td>
-                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">Самосборная группа: ${_sgLbl}<div style="font-size:11px;font-weight:400;color:var(--text-sec);margin-top:2px;">Насос, краны, ${_sgKind === 'direct' ? 'обратный клапан' : (_sgKind === 'thermo' ? 'термосмеситель, перемычка, аварийный термостат' : '3-ходовой клапан, привод, перемычка, аварийный термостат')}, термометры. <b>Процент — к готовой «под ключ»: группа + насос + узлы МУ-25М = ${this.formatPriceHtml(_sgReady, true)}.</b> ${_sgNote}</div></td>
+                        <td class="col-img" style="text-align:center;">${_sgIcon}</td>
+                        <td class="col-name" style="font-size: 14px; font-weight: 600; text-align: left;">Самосборная: ${_sgLbl}<div style="font-size:12px;font-weight:400;color:var(--text-sec);margin-top:2px;">${_sgCmp}.<br>Без насоса. Готовая с узлами МУ-25М: ${this.formatPriceHtml(_sgReady, true)}${_sgNote ? '<br><b>' + _sgNote + '</b>' : ''}${_sgParts}</div></td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">STOUT / ROMMER</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px; color:${_sgC};">${_sgD > 0 ? '+' : ''}${_sgD}%</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${this.formatPriceHtml(_sgSelf, true)}</td>
@@ -59437,9 +59457,17 @@ const app = {
                 </tbody>
             </table>
         `;
+        if (this.selfGroupKindOfReady(item.originalId || item.id)) {
+            html += `<div style="font-size:12px;color:var(--text-sec);padding:8px 4px 0;">Процент — к выбранной группе. Насос не входит: он подбирается отдельно и ставится к любой группе.</div>`;
+        }
 
         body.innerHTML = html;
         modal.style.display = 'flex';
+        try {
+            const _pwRow = body.querySelector('.swap-pw-row');
+            const _pwOn = _pwRow && _pwRow.querySelector('[data-pw-active]');
+            if (_pwOn) _pwRow.scrollLeft = Math.max(0, _pwOn.offsetLeft - 80);
+        } catch (e) { }
     },
     // Вид готовой насосной группы по артикулу (для окна замены): прямая / термостатическая / под сервопривод.
     selfGroupKindOfReady: function (id) {
@@ -59449,7 +59477,7 @@ const app = {
         if (/^(SDG-0003|SDG-0007|RDG-1003|RDG-1004|RDG-2003)-/.test(s)) return 'servo';
         return null;
     },
-    applySelfBuiltFromSwap: function (kind, event) {
+    applySelfBuiltFromSwap: async function (kind, event) {
         if (!this.checkAccess('pro', event)) return;
         if (!this.selfGroupsMode()) {
             this.alert('Самосборные группы доступны в подробном режиме расчёта: включите его в панели слева.', 'Самосборные группы');
@@ -59459,6 +59487,8 @@ const app = {
             this.alert(this.isPro() ? 'Самосборные группы собираются на нержавеющей или ППР обвязке. Выберите её в разделе «Обвязка котельной».' : 'Самосборные группы — функция тарифа «Профи».', 'Самосборные группы');
             return;
         }
+        const _ok = await this.confirm('Все насосные группы и коллектор в смете станут самосборными: они стыкуются только друг с другом. Вернуть готовые можно в любой момент.', 'Переключить на самосборные?');
+        if (!_ok) return;
         this.state.groupsBuild = 'self';
         const m = document.getElementById('swap_modal_overlay');
         if (m) m.style.display = 'none';
@@ -72352,24 +72382,31 @@ const app = {
     },
     // Цена ОДНОЙ готовой группы вида kind «под ключ»: группа STOUT/ROMMER DN25 + насос + два присоединительных узла МУ-25М
     // (+ сервопривод у «под сервопривод»). Для сравнения с самосборной (коллектор в обоих вариантах свой, не входит).
-    readyGroupPrice: function (kind) {
+    // opt.noPump — без насоса (насос подбирается отдельно и ставится к любой группе, в сравнении окна замены не участвует).
+    readyGroupPrice: function (kind, opt) {
         if (kind === 'dhw') kind = 'direct';
         const rom = this.state.brandMode === 'rommer';
         const P = (it) => it ? ((rom && it.rommer && !Array.isArray(it.rommer)) ? (it.rommer.price || 0) : (it.price || 0)) : 0;
         const g = { direct: catalog.groups_dn25[0], thermo: catalog.groups_dn25[1], servo: catalog.groups_dn25[2] }[kind];
         const pump = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
         const servo = kind === 'servo' ? (this.state.servoType === 'sensor' ? catalog.servo_rotary_sensor : catalog.servo_rotary_std) : null;
-        return P(g) + P(pump) + 2 * P((catalog.gbm_nodes || [])[0]) + P(servo);
+        return P(g) + ((opt && opt.noPump) ? 0 : P(pump)) + 2 * P((catalog.gbm_nodes || [])[0]) + P(servo);
     },
     // Цена ОДНОЙ самосборной группы вида kind по тому же составу, что идёт в смету.
-    selfGroupPrice: function (kind) {
+    selfGroupPrice: function (kind, opt) {
         const rom = this.state.brandMode === 'rommer';
         const P = (it) => it ? ((rom && it.rommer && !Array.isArray(it.rommer)) ? (it.rommer.price || 0) : (it.price || 0)) : 0;
+        return this.selfGroupLines(kind, opt).reduce((a, l) => a + P(l.item) * l.q, 0);
+    },
+    // Состав ОДНОЙ самосборной группы вида kind (строки selfKitLines); opt.noPump — без насоса и его присоединительного комплекта.
+    selfGroupLines: function (kind, opt) {
         const pump = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
         const servo = kind === 'servo' ? (this.state.servoType === 'sensor' ? catalog.servo_rotary_sensor : catalog.servo_rotary_std) : null;
         const ld = (this._selfLoads || {})[kind];
         const size = ld ? this.selfKitSize(ld.kw, ld.groups, ld.dt) : '34';
-        return this.selfKitLines(kind, pump, servo, { size }).reduce((a, l) => a + P(l.item) * l.q, 0);
+        const noPump = !!(opt && opt.noPump);
+        return this.selfKitLines(kind, pump, servo, { size })
+            .filter(l => !(noPump && (l.item === pump || (l.item && (l.item.id === 'SPC-0010-000025' || String(l.item.originalId || '').endsWith('_incl'))))));
     },
     // Плашка под заголовком подраздела самосборной группы: сколько стоит против готовой и кнопка возврата.
     selfGroupNote: function (title, bill) {

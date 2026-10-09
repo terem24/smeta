@@ -19214,6 +19214,15 @@ body.theme-yandex #profile_modal_overlay {
         grid-area: auto !important;
     }
 
+    /* Окно замены: колонка процента фиксированной ширины, иначе цена (она под процентом, в средней колонке)
+       встаёт на разный край у строк с «-35%», «0%» и «+120%» */
+    body:not(.hide-images-mode):not(.work-mode) #swap_modal_overlay .inv-table:not(.swap-two) tbody tr:not(.swap-sub-head):not(.row-sec):not(.group-header):not(.scheme-row) {
+        grid-template-columns: 64px minmax(0, 1fr) 58px !important;
+    }
+    body:not(.hide-images-mode):not(.work-mode) #swap_modal_overlay .inv-table:not(.swap-two) tbody tr:not(.swap-sub-head):not(.row-sec):not(.group-header):not(.scheme-row) td[style*="nowrap"] {
+        grid-column: 2 / 4;
+    }
+
     /* «Сметы» кабинета: общие правила карточек таблицы сметы (сумма поверх названия, статус
        в 1 px, дата и кнопки обрезаны, пустые строки истории) — заменяем своей раскладкой:
        название и сумма, статус и дата, под ними ряд кнопок */
