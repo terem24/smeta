@@ -2,7 +2,7 @@
 // Что отражает рисунок:
 //   пол        — причёска (м/ж), по отчеству и имени угадывается, если человек не выбрал сам;
 //   сфера      — монтажник в каске, продавец в рубашке с бейджем (users.activity_types);
-//                продавец из ТЕРЕМ (u.inTerem) — в красно-золотых цветах компании, из других компаний — в светлой рубашке;
+//                продавец из ТЕРЕМ (u.inTerem, почта teremopt.ru) — белая рубашка и синий галстук, из других компаний — серая рубашка без галстука;
 //                цвет каски и спецовки монтажника — бренд, который он считает чаще: синий STOUT, красный ROMMER;
 //   регион     — значок в углу: снежинка (Сибирь, Север, Дальний Восток), горы (Урал, Кавказ),
 //                солнце (юг), волны (Северо-Запад, Поволжье), купол (Центр), звезда (прочее).
@@ -15,8 +15,8 @@
     var HAIR = ['#2B2118', '#5A3A22', '#8A5A2B', '#D2A24C', '#B5502A', '#7C7C80'];
     // Фон по сфере: оранжевые для монтажников, синие для продавцов
     // Продавцы — спокойные зелёно-серые фоны, чтобы не путаться с цветом бренда монтажника
-    var BG = { installer: { stout: ['#D6E6FB', '#C7DBF7', '#DCEAFC'], rommer: ['#FADADA', '#F6C8C8', '#FBE0E0'] }, seller: { other: ['#DDEBE3', '#D0E4D9', '#E4EFE8'], terem: ['#F5E6CC', '#EFDDBB', '#F8EDD8'] } };
-    var SHIRT = { installer: { stout: ['#1E4F9E', '#1D5AB8', '#23468C'], rommer: ['#A52828', '#B32D2D', '#8F2323'] }, seller: { other: ['#FFFFFF', '#F4F6F8', '#EEF2F7'], terem: ['#EA2227', '#D81E23', '#C91B20'] } };
+    var BG = { installer: { stout: ['#D6E6FB', '#C7DBF7', '#DCEAFC'], rommer: ['#FADADA', '#F6C8C8', '#FBE0E0'] }, seller: { other: ['#DDEBE3', '#D0E4D9', '#E4EFE8'], terem: ['#DCE7F5', '#D2E0F2', '#E3ECF8'] } };
+    var SHIRT = { installer: { stout: ['#1E4F9E', '#1D5AB8', '#23468C'], rommer: ['#A52828', '#B32D2D', '#8F2323'] }, seller: { other: ['#CBD3DB', '#D3D9C9', '#D8CFC4'], terem: ['#FFFFFF', '#FAFBFD', '#F6F8FB'] } };
     // Каска и полоски на спецовке: синий — STOUT, красный — ROMMER
     var BRAND = { stout: { hat: '#2F7BE5', hatDark: '#1E5EBF', trim: '#9CC3F5' }, rommer: { hat: '#E03B3B', hatDark: '#B52626', trim: '#F4A3A3' } };
 
@@ -132,9 +132,10 @@
         s += '<path d="M6 64Q8 45 32 45Q56 45 58 64Z" fill="' + shirt + '"/>';
         if (role === 'seller') {
             var terem = !!opts.terem;
-            s += '<path d="M26 45.5L32 53l6-7.5" fill="none" stroke="' + (terem ? '#BE8A40' : '#C9D3DF') + '" stroke-width="1.4"/>';
-            if (g === 'm') s += '<path d="M32 51.5l-2 2.6 2 8.4 2-8.4z" fill="' + (terem ? '#BE8A40' : '#1F4E8C') + '"/>';
-            s += '<rect x="14" y="54" width="10" height="6" rx="1" fill="#fff" stroke="' + (terem ? '#BE8A40' : '#9AA9BA') + '" stroke-width=".8"/><path d="M16 56.7h6M16 58.4h4" stroke="' + (terem ? '#BE8A40' : '#9AA9BA') + '" stroke-width=".8"/>';
+            s += '<path d="M26 45.5L32 53l6-7.5" fill="none" stroke="#B4BEC9" stroke-width="1.4"/>';
+            // ТЕРЕМ — белая рубашка и синий галстук (мужчинам и женщинам), остальные — без галстука
+            if (terem) s += '<path d="M32 51.5l-2.2 2.8 2.2 8.2 2.2-8.2z" fill="#1F4E8C"/>';
+            s += '<rect x="14" y="54" width="10" height="6" rx="1" fill="#fff" stroke="#9AA9BA" stroke-width=".8"/><path d="M16 56.7h6M16 58.4h4" stroke="#9AA9BA" stroke-width=".8"/>';
         } else {
             s += '<path d="M24 46l8 8 8-8" fill="none" stroke="' + B.trim + '" stroke-width="2"/>';
             s += '<rect x="13" y="53" width="3" height="11" fill="' + B.trim + '" opacity=".9"/><rect x="48" y="53" width="3" height="11" fill="' + B.trim + '" opacity=".9"/>';

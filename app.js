@@ -8346,15 +8346,14 @@ const app = {
             return /терем/i.test(dn);
         } catch (e) { return false; }
     },
-    // Человек работает в ТЕРЕМ: закреплён за подразделением «ООО ТЕРЕМ ОП …» или пишет с почты teremopt.ru.
-    // Нужно аватарке продавца (красно-золотые цвета компании против обычных).
+    // Человек работает в ТЕРЕМ: основная или рабочая почта на teremopt.ru.
+    // Нужно аватарке продавца (белая рубашка с синим галстуком против обычной).
     isUserInTerem: function (u) {
         try {
             if (!u) return false;
             const mails = [u.email, u.work_email].filter(Boolean).map(x => String(x).trim().toLowerCase());
             if (mails.some(m => /@([a-z0-9-]+\.)*teremopt\.ru$/.test(m))) return true;
-            const d = ((this.adminData && this.adminData.distributors) || []).find(x => x.id === u.distributor_id);
-            return !!d && /терем/i.test(d.company_name || '');
+            return false;
         } catch (e) { return false; }
     },
 
@@ -23393,7 +23392,7 @@ const app = {
         try {
             // 1. Fetch Users (Paginated)
             let query = supabaseClient.from('users')
-                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at, sess_visits, sess_sec, sess_days, sess_screens', { count: 'exact' });
+                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, work_email, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at, sess_visits, sess_sec, sess_days, sess_screens', { count: 'exact' });
             query = this.buildAdminUserFilter(query);
 
             const sortType = document.getElementById('sort-installers')?.value || 'login_desc';
@@ -51990,7 +51989,7 @@ const app = {
             emb: Avatars.guessEmblem({ region: tgUser.region, city: tgUser.city }),
             hair: 0,
             brand: this.state.brandMode === 'rommer' ? 'rommer' : 'stout',
-            terem: this.isTeremStaff(),
+            terem: this.isUserInTerem({ email: tgUser.email, work_email: this._myWorkEmail }),
             seed: String(tgUser.authUserId || tgUser.email || tgUser.username || 'me')
         };
         this._avatarPick = pick;
