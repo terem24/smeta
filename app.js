@@ -10520,9 +10520,9 @@ const app = {
             // даже по пользователям, которых нет на текущей странице вкладки "Монтажники"
             let userMeta = {};
             try {
-                const { rows: allUsers } = await this.fetchAllRows('users', 'email, region, distributor_id', { order: 'id' });
+                const { rows: allUsers } = await this.fetchAllRows('users', 'email, region, distributor_id, is_test', { order: 'id' });
                 {
-                    (allUsers || []).forEach(u => { if (u.email) userMeta[u.email.toLowerCase()] = { region: u.region || null, distributor_id: u.distributor_id || null }; });
+                    (allUsers || []).forEach(u => { if (u.email) userMeta[u.email.toLowerCase()] = { region: u.region || null, distributor_id: u.distributor_id || null, is_test: !!u.is_test }; });
                 }
             } catch (e) {
                 console.warn('[renderAdminKanban] Не удалось загрузить регионы/дистрибьюторов пользователей:', e);
@@ -10582,6 +10582,7 @@ const app = {
                 if (meta) {
                     p.region = meta.region;
                     p.distributor_id = meta.distributor_id;
+                    p.isTest = !!meta.is_test;
                 }
             }
             p.totalSum = liveCalcMap[String(e.calc_id)] || 0;
@@ -10593,7 +10594,10 @@ const app = {
         // здесь, а не в выборке событий: дистрибьютор у сметы известен лишь после
         // сопоставления её автора со справочником пользователей (userMeta выше).
         const scopeDists = this.isScopedAdmin() ? this.managerDistIds().map(String) : null;
+        // Учётки с пометкой «тестовая» (users.is_test) в Планировщик не попадают: их
+        // отладочные расчёты засоряли список монтажников и счётчик брошенных.
         const list = Object.values(projects)
+            .filter(p => !p.isTest)
             .filter(p => !scopeDists || scopeDists.includes(String(p.distributor_id || '')));
         // Брошенный расчёт — тот, что остановился на «посчитано» и не стал сметой.
         // Карточку, застрявшую на разборе документа, сюда не относим: она и есть то,
@@ -23551,7 +23555,7 @@ const app = {
         try {
             // 1. Fetch Users (Paginated)
             let query = supabaseClient.from('users')
-                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, work_email, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at, sess_visits, sess_sec, sess_days, sess_screens', { count: 'exact' });
+                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, work_email, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, is_test, frozen_at, sess_visits, sess_sec, sess_days, sess_screens', { count: 'exact' });
             query = this.buildAdminUserFilter(query);
 
             const sortType = document.getElementById('sort-installers')?.value || 'login_desc';
@@ -38597,6 +38601,9 @@ const app = {
                                 <button class="auth-btn-base" style="margin:0; width:auto; height:34px; padding:0 16px; font-size:12px; background:var(--surface-light); color:${user.is_blocked ? '#10B981' : '#D97706'}; border:1px solid var(--border); ${isViewer ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.toggleUserBlocked('${user.id}', ${!user.is_blocked})">
                                     ${user.is_blocked ? '🔓 Разблокировать доступ' : '🔒 Заблокировать доступ'}
                                 </button>
+                                <button class="auth-btn-base" style="margin:0; width:auto; height:34px; padding:0 16px; font-size:12px; background:var(--surface-light); color:var(--text-main); border:1px solid var(--border); ${isViewer ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.toggleUserTest('${user.id}', ${!user.is_test})" title="Тестовая учётка не показывается в Планировщике и списке монтажников">
+                                    ${user.is_test ? '✅ Снять пометку «тестовая»' : '🧪 Пометить как тестовую'}
+                                </button>
                                 <button class="auth-btn-base" style="margin:0; width:auto; height:34px; padding:0 16px; font-size:12px; background:var(--surface-light); color:var(--c-bad,#EF4444); border:1px solid var(--border); ${isViewer ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.deleteUserCompletely('${user.id}')">
                                     🗑 Удалить учётку и все данные
                                 </button>
@@ -44096,6 +44103,28 @@ const app = {
             }
         } catch (e) {
             app.alert('Не удалось изменить статус блокировки: ' + e.message);
+        }
+    },
+    // Пометка «тестовая учётка» (users.is_test): её сметы скрыты в Планировщике.
+    // Данные не трогаем — пометка снимается тем же переключателем.
+    toggleUserTest: async function (userId, flag) {
+        if (this.isReadOnlyAdmin()) {
+            app.alert('Режим просмотра. Изменение пометки запрещено.');
+            return;
+        }
+        try {
+            const { data, error } = await supabaseClient.from('users').update({ is_test: flag }).eq('id', userId).select('id');
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                app.alert('Изменение не применилось — похоже, RLS-политика в Supabase не разрешает администратору редактировать пользователей.');
+                return;
+            }
+            const u = (this.adminData.users || []).find(x => String(x.id) === String(userId));
+            if (u) u.is_test = flag;
+            this._kanbanFullAt = 0; // карта авторов в Планировщике читается один раз — сбросим
+            this.viewAdminUser(userId);
+        } catch (e) {
+            app.alert('Не удалось изменить пометку: ' + e.message);
         }
     },
     // Снимает автоматическую заморозку за долгое отсутствие. Отдельно от
