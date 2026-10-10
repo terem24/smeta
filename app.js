@@ -46531,7 +46531,16 @@ const app = {
         // Что даёт выбранный режим — под переключателем «По площади / По комнатам»
         const modeSub = document.getElementById('mode_sub');
         if (modeSub) {
-            const mt = byRooms ? 'Точнее: нужен план дома или список комнат' : 'Оценка за минуту: нужен только метраж';
+            let mt = 'Оценка за минуту: нужен только метраж';
+            if (byRooms) {
+                const rooms = this.state.rooms || [];
+                let hasPlan = false;
+                try { hasPlan = !!this.planRowSummary(); } catch (e) { }
+                if (hasPlan) mt = 'Комнаты взяты с плана дома';
+                else if (rooms.length && this.state.roomsAutoSig && this.state.roomsAutoSig === this._roomsSig(rooms)) mt = 'Комнаты подставлены по площади — поправьте под ваш дом';
+                else if (rooms.length) mt = 'Расчёт по комнатам вашего дома';
+                else mt = 'Точнее: нужен план дома или список комнат';
+            }
             if (modeSub.textContent !== mt) modeSub.textContent = mt;
         }
         const quick = document.getElementById('pg_quick');
@@ -67974,6 +67983,12 @@ const app = {
 
         generatedRooms.sort((a, b) => b.area - a.area);
         this.state.rooms = generatedRooms;
+        // Отпечаток набора: пока он совпадает с текущими комнатами, они «подставлены сами»
+        // (подпись под переключателем режима); правка комнаты отпечаток ломает
+        this.state.roomsAutoSig = this._roomsSig(generatedRooms);
+    },
+    _roomsSig: function (rooms) {
+        return JSON.stringify((rooms || []).map(r => [r.name, r.area, (r.windows || []).length]));
     },
     /**
      * Подпись места установки прибора в смете и предупреждениях. У помещения без
