@@ -22709,13 +22709,13 @@ const app = {
         if (titleEl) {
             const role = this.getAdminRole();
             if (role === 'viewer') {
-                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:var(--c-bad,#EF4444); background:#FEE2E2; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Режим просмотра</span>';
+                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:var(--c-bad,#EF4444); background:#FEE2E2; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Режим просмотра</span>';
             } else if (role === 'manager') {
-                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:#0F766E; background:#CCFBF1; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Менеджер</span>';
+                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:#0F766E; background:#CCFBF1; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Менеджер</span>';
             } else if (role === 'super_admin') {
-                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:var(--c-ok,#10B981); background:#ECFDF5; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Владелец</span>';
+                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:var(--c-ok,#10B981); background:#ECFDF5; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Владелец</span>';
             } else {
-                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:#3B82F6; background:#EFF6FF; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Администратор</span>';
+                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:#3B82F6; background:#EFF6FF; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Администратор</span>';
             }
         }
         document.getElementById('admin_modal_overlay').style.display = 'flex';
@@ -26969,14 +26969,16 @@ const app = {
             else if (s && s.error) body = `<div class="ad-card-note ad-warn">Не загрузилось: ${esc(s.error)}</div>`;
             else body = o.body;
             const urgent = o.n > 0 && o.urgent;
+            // Пустая карточка на телефоне сворачивается в строку-ссылку (стили — в style.css)
+            const idle = o.n === 0 && s !== undefined && s !== 'loading' && !(s && s.error);
             return `
-            <div class="ad-card">
+            <div class="ad-card${idle ? ' ad-card-idle' : ''}"${idle ? ` onclick="app.switchAdminTab('${o.tab}')"` : ''}>
                 <div class="ad-card-h">
                     <span class="ad-card-title">${o.title}</span>
                     ${o.n != null ? `<span class="ad-count${urgent ? ' ad-count-bad' : (o.n ? ' ad-count-on' : '')}">${o.n}</span>` : ''}
                 </div>
                 <div class="ad-card-b">${body}</div>
-                <button class="admin-btn ad-card-act" onclick="app.switchAdminTab('${o.tab}')">${o.action} <span aria-hidden="true">→</span></button>
+                <button class="admin-btn ad-card-act" onclick="event.stopPropagation(); app.switchAdminTab('${o.tab}')">${o.action} <span aria-hidden="true">→</span></button>
             </div>`;
         };
         const row = (main, sub, right, cls) => `
@@ -38434,10 +38436,10 @@ const app = {
 
         let h = `
                     <button class="btn-header-blue" style="margin-bottom: 20px; width: fit-content;" onclick="app.renderAdminMain()">← Назад</button>
-                    <div style="background: var(--surface-light); padding: 25px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 30px;">
-                        <div style="display:flex; align-items:center; gap:20px; margin-bottom:25px; flex-wrap:wrap;">
+                    <div class="ad-ucard" style="background: var(--surface-light); padding: 25px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 30px;">
+                        <div class="ad-uhead" style="display:flex; align-items:center; gap:20px; margin-bottom:25px; flex-wrap:wrap;">
                             ${(user.avatar_url || window.Avatars) ? `<img src="${window.Avatars ? Avatars.forUser(Object.assign({}, user, { inTerem: this.isUserInTerem(user) })) : user.avatar_url}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--primary); ${this.proRing(this.isUserProActive(user))}">` : `<div style="width:80px; height:80px; border-radius:50%; background:var(--primary-light); display:flex; align-items:center; justify-content:center; font-size:40px; color:var(--primary);">👤</div>`}
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; width: 100%; flex-wrap: wrap;">
+                            <div class="ad-uhead-body" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; width: 100%; flex-wrap: wrap;">
                                 <div class="user-main-contacts" style="min-width:0;">
                                     <h2 style="margin: 0; color: var(--text-main); font-size: 20px; overflow-wrap: anywhere;">${[user.last_name, user.first_name, user.middle_name].filter(Boolean).join(' ') || user.username || user.email || 'Без имени'}</h2>
                                     <div style="display: flex; gap: 15px; margin-top: 5px; font-size: 13px; color: var(--text-sec); flex-wrap: wrap;">
@@ -38460,7 +38462,7 @@ const app = {
 
                         <!-- Плиток стало пять, и жёсткие три колонки резали бы их пополам:
                              раскладка сама решает, сколько поместится в ряд. -->
-                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:15px; margin-bottom:25px;">
+                        <div class="ad-ustats" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:15px; margin-bottom:25px;">
                             <div style="background:var(--bg); padding:15px; border-radius:12px; text-align:center; border:1px solid var(--border);">
                                 <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700; margin-bottom:5px;">Выручка (LTV)</div>
                                 <div style="font-size:20px; font-weight:800; color:var(--primary);">${ltv.toLocaleString()} ₽</div>
@@ -38525,7 +38527,7 @@ const app = {
                             </div>
                         </div>
 
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; padding-top:20px; border-top:1px dashed var(--border);">
+                        <div class="ad-u2col" style="display:grid; grid-template-columns: 1fr 1fr; gap:20px; padding-top:20px; border-top:1px dashed var(--border);">
                             <div>
                                 <h4 style="margin:0 0 15px 0; font-size:14px; color:var(--text-main);">⚙️ Управление тарифом</h4>
                                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
@@ -38561,7 +38563,7 @@ const app = {
                                         </select>
                                     </div>
                                     <div id="admin_edit_distributor_wrapper" style="display: block; grid-column: 1 / -1;">
-                                        <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Дистрибьютор / менеджер (для копии запроса счёта — не зависит от тарифа)</label>
+                                        <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Дистрибьютор / менеджер<span class="ad-lbl-long"> (для копии запроса счёта — не зависит от тарифа)</span></label>
                                         <select id="admin_edit_distributor" ${isViewer ? 'disabled' : ''} style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
                                             <option value="">Не выбран</option>
                                             ${(this.adminData.distributors || []).map(d => `<option value="${d.id}" ${user.distributor_id === d.id ? 'selected' : ''}>${d.company_name} (${d.promo_code})</option>`).join('')}
@@ -38597,7 +38599,7 @@ const app = {
                             </div>
                             <div style="font-size:12px;">
                                 <h4 style="margin:0 0 15px 0; font-size:14px; color:var(--text-main);">📂 Техническая инфо</h4>
-                                <div style="display:grid; grid-template-columns:1fr 1.5fr; gap:8px;">
+                                <div class="ad-utech" style="display:grid; grid-template-columns:1fr 1.5fr; gap:8px;">
                                     <span style="color:var(--text-sec);">Зарегистрирован:</span> <span style="color:var(--text-main); font-weight:600;">${date}</span>
                                     <span style="color:var(--text-sec);">Последний визит:</span> <span style="color:var(--text-main); font-weight:600;">${lastVis}</span>
                                     <span style="color:var(--text-sec);">Устройство:</span> <span id="admin_user_devices" style="color:var(--text-main); font-weight:600;">${user.last_device || 'Неизвестно'} <span style="color:var(--text-sec); font-weight:400;">(последнее)</span></span>
