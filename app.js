@@ -46463,6 +46463,13 @@ const app = {
             if (t.style.display !== want) t.style.display = want;
             setCls(t, 'pg-active', idx === 0 ? empty : true);
             if (idx > 0) els.forEach(e => setCls(e, 'pg-dim', empty));
+            // Свёрнутая группа (выбор запоминается). Группу «Дом» на пустом расчёте не сворачиваем:
+            // в ней единственное, что нужно сделать первым.
+            const closed = this._pgCollapsed().includes(idx + 1) && !(idx === 0 && empty);
+            setCls(t, 'pg-closed', closed);
+            els.forEach(e => setCls(e, 'pg-collapsed', closed));
+            // Переключатели «добавить в смету» — карточками, чтобы отличались от выбора из вариантов
+            if (idx === 2) els.forEach(e => { if (e.classList.contains('toggle-item')) setCls(e, 'pg-card', true); });
             if (idx === 2) {
                 const cnt = document.getElementById('pg_count3');
                 if (cnt) {
@@ -46483,6 +46490,16 @@ const app = {
             const d = ok ? '' : 'none';
             if (quick.style.display !== d) quick.style.display = d;
         }
+    },
+    _pgCollapsed: function () {
+        try { const a = JSON.parse(localStorage.getItem('hc_pg_closed') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+    },
+    togglePanelGroup: function (n) {
+        const a = this._pgCollapsed();
+        const i = a.indexOf(n);
+        if (i >= 0) a.splice(i, 1); else a.push(n);
+        try { localStorage.setItem('hc_pg_closed', JSON.stringify(a)); } catch (e) { }
+        this.syncPanelGroups();
     },
     installPanelGroups: function () {
         if (this._pgObs || typeof MutationObserver === 'undefined') return;

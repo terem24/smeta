@@ -794,9 +794,9 @@
             <!-- Заголовки групп колонки (app.syncPanelGroups): «Дом» → «Отопление и котельная» →
                  «Добавить в смету». Сами блоки не обёрнуты: у них сотни id и условий показа,
                  поэтому заголовок прячется скриптом, если ни одного блока группы не видно. -->
-            <div class="pg-title no-print" id="pg_t1" data-pg="1"><span class="pg-num">1</span><span class="pg-name">Дом</span>
+            <div class="pg-title no-print" id="pg_t1" data-pg="1" onclick="app.togglePanelGroup(1)" role="button" tabindex="0" title="Свернуть или развернуть группу"><span class="pg-num">1</span><span class="pg-name">Дом</span>
                 <span class="pg-hint" id="pg_hint1">Начните с площади</span>
-                <button type="button" class="pg-quick" id="pg_quick" onclick="app.showQuickStart()" style="display:none;" title="Подставить типовой объект и посмотреть, как выглядит смета">Типовой дом</button>
+                <button type="button" class="pg-quick" id="pg_quick" onclick="event.stopPropagation(); app.showQuickStart()" style="display:none;" title="Подставить типовой объект и посмотреть, как выглядит смета">Типовой дом</button>
             </div>
             <h3 style="margin-top: 0; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal;">Режим расчёта</h3>
             <div class="control-item" style="margin-bottom: 15px;">
@@ -1156,7 +1156,7 @@
             </div>
             </div>
 
-            <div class="pg-title no-print" id="pg_t2" data-pg="2"><span class="pg-num">2</span><span class="pg-name">Отопление и котельная</span></div>
+            <div class="pg-title no-print" id="pg_t2" data-pg="2" onclick="app.togglePanelGroup(2)" role="button" tabindex="0" title="Свернуть или развернуть группу"><span class="pg-num">2</span><span class="pg-name">Отопление и котельная</span></div>
             <div id="blk_fuel_type">
                 <h4 style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Тип котла</h4>
                 <div class="control-item">
@@ -1549,11 +1549,12 @@
                 </div>
             </div>
 
-            <div class="pg-title no-print" id="pg_t3" data-pg="3"><span class="pg-num">3</span><span class="pg-name">Добавить в смету</span><span class="pg-count" id="pg_count3" style="display:none;"></span></div>
+            <div class="pg-title no-print" id="pg_t3" data-pg="3" onclick="app.togglePanelGroup(3)" role="button" tabindex="0" title="Свернуть или развернуть группу"><span class="pg-num">3</span><span class="pg-name">Добавить в смету</span><span class="pg-count" id="pg_count3" style="display:none;"></span></div>
             <div class="control-item toggle-item" id="blk_hw_wrap">
                 <div class="label-row" id="blk_hw_row"><span class="lbl" id="lbl_hw">Горячая вода (Бойлер)</span><label class="switch"><input
                             type="checkbox" id="chk_hw" onchange="app.toggleHW(this.checked, event)"><span
                             class="slider"></span></label></div>
+                <div class="pg-sub">Бойлер и обвязка для горячей воды в доме</div>
 
                 <div id="blk_res"
                     style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
@@ -1635,6 +1636,7 @@
                 <div class="label-row"><span class="lbl">Водоснабжение</span><label class="switch"><input
                             type="checkbox" id="chk_water" onchange="app.toggleWater(this.checked, event)"><span
                             class="slider"></span></label></div>
+                <div class="pg-sub">Трубы и точки водоразбора — считаются по санузлам, не по метражу</div>
                 <div id="blk_water_zones" style="display:none; flex-direction:column; gap:10px; margin-top:10px;">
 
                     <!-- Быстрый режим квартиры: две цифры вместо списка приборов.
@@ -1710,6 +1712,7 @@
                     <label class="switch"><input type="checkbox" id="chk_water_input"
                         onchange="app.toggleWaterInput(this.checked, event)"><span class="slider"></span></label>
                 </div>
+                <div class="pg-sub">Редуктор, счётчик и защита от протечки на вводе воды</div>
                 <div id="blk_water_input_opts" style="display:none; flex-direction:column; gap:0; margin-top:10px; background:var(--surface-light); padding:10px 12px; border-radius:8px; border:1px solid var(--border);">
                     <!-- Показ только в квартире решает style.css (#blk_flat_hot_riser_row):
                          инлайновый display здесь перебивал бы правило, и строка
@@ -1828,6 +1831,7 @@
                     <label class="switch"><input type="checkbox" id="chk_well"
                         onchange="app.toggleWell(this.checked, event)"><span class="slider"></span></label>
                 </div>
+                <div class="pg-sub">Насос, обвязка, гидроаккумулятор и автоматика скважины</div>
                 <div id="blk_well" style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:var(--surface-light); padding:10px 12px; border-radius:8px; border:1px solid var(--border);">
                     <div class="control-item" style="margin-bottom: 5px;">
                         <div class="label-row"><span class="lbl" style="font-size:11px;">Глубина установки насоса</span>
@@ -1862,6 +1866,7 @@
                 <div class="label-row" style="position:relative;">
                     <span class="lbl" style="display:flex; align-items:center; gap:4px;">Автоматика<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Автоматизация уже подобранных систем: контроллер котельной и зональное управление радиаторами и тёплым полом.</div></span></span>
                 </div>
+                <div class="pg-sub">Контроллер котельной и зональное управление</div>
                 <!-- Подпункты — вложенные строки под заголовком «Автоматика»: без своих
                      пунктиров и отступов пункта панели, с левой линией и короткими
                      подписями, чтобы слово «Автоматика» не повторялось трижды. -->
@@ -2022,6 +2027,7 @@
                 <div class="label-row"><span class="lbl">Снеготаяние</span><label class="switch"><input
                             type="checkbox" id="chk_snow" onchange="app.toggleSnowMelt(this.checked, event)"><span
                             class="slider"></span></label></div>
+                <div class="pg-sub">Подогрев дорожек и площадок уличным контуром</div>
                 <div id="blk_snow_opts"
                     style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
                     <div id="snow_zones_list"></div>
@@ -2208,6 +2214,7 @@
                     <label class="switch"><input type="checkbox" id="chk_buffer"
                             onchange="app.toggleBuffer(this.checked)"><span class="slider"></span></label>
                 </div>
+                <div class="pg-sub">Копит тепло ночью по дешёвому тарифу</div>
                 <div id="blk_buffer_box"
                     style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
