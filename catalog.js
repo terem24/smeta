@@ -6590,14 +6590,14 @@ const catalog = {
         { id: "SAC-0020-401001", name: "Шпилька резьбовая М10х1000 мм", price: 296, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
         { id: "SAC-0020-401002", name: "Шпилька резьбовая М10х2000 мм", price: 590, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
         { id: "SAC-0020-401003", name: "Шпилька резьбовая М10х3000 мм", price: 885, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SAC-0020-411040", name: "Анкер забивной стальной M10х12х40 мм", price: 26, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SAC-0020-421040", name: "Анкер забивной стальной M10х12х35 мм", price: 91, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SAC-0020-411040", name: "Анкер забивной стальной M10х12х40 мм", price: 26, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SAC-0020-421040", name: "Анкер забивной стальной M10х12х35 мм", price: 91, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
         { id: "SAC-0022-600001", name: "Монтажная планка одинарная", price: 141, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SAC-0022-600100", name: "Монтажная планка двойная 100мм", price: 910, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SAC-0022-600150", name: "Монтажная планка двойная 150мм", price: 910, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" }
     ],
     ufh_mat: [
-        { id: "RMF-0001-032530", name: "Подложка для теплого пола 3 мм / 25 м × 1.2 м (30 м²)", thick: 3, len: 25, width: 1.2, pack_m2: 30, price: 2490, unit: "рул.", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "RMF-0001-032530", name: "Подложка для теплого пола 3 мм / 25 м × 1.2 м (30 м²)", thick: 3, len: 25, width: 1.2, pack_m2: 30, price: 2490, unit: "рул.", brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }
     ],
 
     // Автоматика котельной: контроллер отопления и блоки расширения к нему.
@@ -6609,7 +6609,7 @@ const catalog = {
     // расширения и аксессуары ZONT. Своего артикула SMH-3001-104212 в прайсе
     // пока нет — цена живёт только здесь и автообновлением не подхватывается.
     boiler_automation: [
-        { id: "SMH-3001-104212", name: "Контроллер Thermatic 3001", price: 67000, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SMH-3001-104212", name: "Контроллер Thermatic 3001", price: 67000, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-10-10" },
         // Блоки расширения контуров по шине RS-485. EX-108 даёт +3 контура и
         // питается от контроллера, EX-77 даёт +2, но требует отдельный БП 12 В.
         { id: "ML00007406", name: "Блок расширения EX-108 (+3 контура отопления)", price: 27900, brand: "ZONT", unit: "шт", circuits: 3, availability: "in_stock", price_date: "2026-09-23" },
@@ -6650,40 +6650,40 @@ const catalog = {
         // по уличному датчику. Чего у него нет — смесительных контуров:
         // насосом и приводом смесителя он не управляет вовсе, поэтому берётся
         // на котельную без смесительных узлов (см. app.boilerAutoModel).
-        { id: "SMH-1002-105210", name: "Контроллер Thermatic 1002", price: 15900, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SMH-1002-105210", name: "Контроллер Thermatic 1002", price: 15900, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-10-10" },
         // Первый котёл идёт по встроенной шине (OpenTherm, eBus, Navien,
         // Rinnai, BSB — все в самом приборе), поэтому адаптер покупается
         // только на второй котёл. Это и есть главная разница с 3001, где
         // разъёмы ЦШ1 и ЦШ2 из коробки пустые и плату надо брать на каждый.
-        { id: "SMH-0002-010570", name: "Адаптер цифровой шины OpenTherm, DIN, RS-485", price: 3590, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SMH-0002-010570", name: "Адаптер цифровой шины OpenTherm, DIN, RS-485", price: 3590, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-10-10" },
         // Датчики температуры. Проводных входов у прибора два (Т1, Т2), и один
         // датчик в гильзе уже лежит в коробке. Всё, что не влезло в два входа,
         // подключается по шине RS-485 — те же датчики, но вдвое дороже.
-        { id: "SMH-0002-010030", name: "Датчик температуры проводной, в гильзе", price: 1590, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SMH-0002-010040", name: "Датчик температуры проводной в гильзе, RS-485", price: 3390, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SMH-0002-010010", name: "Датчик температуры воздуха проводной", price: 1390, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SMH-0002-010030", name: "Датчик температуры проводной, в гильзе", price: 1590, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SMH-0002-010040", name: "Датчик температуры проводной в гильзе, RS-485", price: 3390, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SMH-0002-010010", name: "Датчик температуры воздуха проводной", price: 1390, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-10-10" },
         // Тот же артикул есть и в air_sensors — там он комнатный датчик для
         // регулирования по воздуху, здесь уличный для ПЗА. Позиция одна и та
         // же, роли разные, и в смете это разные строки с разными подсказками.
-        { id: "SMH-0002-010020", name: "Датчик температуры воздуха проводной, RS-485", price: 3190, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SMH-0002-010020", name: "Датчик температуры воздуха проводной, RS-485", price: 3190, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-10-10" },
         // Реле у прибора одно, встроенное (250 В / 3 А, переключающая группа).
         // Оно достаётся крану защиты от протечки — четырёхполюсному приводу
         // нужен именно переключающий контакт. Всё остальное, что надо
         // включать и выключать (насос загрузки бойлера, рециркуляция,
         // релейный котёл), просит отдельного выхода.
-        { id: "SMH-0002-010790", name: "Беспроводное реле 10 А, LoRa", price: 4590, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SMH-0002-010210", name: "Блок управления двумя розетками, RS-485", price: 3290, brand: "STOUT", unit: "шт", sys: "basic", availability: "on_order", price_date: "2026-09-20" },
+        { id: "SMH-0002-010790", name: "Беспроводное реле 10 А, LoRa", price: 4590, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SMH-0002-010210", name: "Блок управления двумя розетками, RS-485", price: 3290, brand: "STOUT", unit: "шт", sys: "basic", availability: "on_order", price_date: "2026-10-10" },
         // Манометр с электроконтактной приставкой — аналог датчика давления
         // ZONT у 3001, но заходит не на аналоговый вход, а в шлейф «сухих
         // контактов» Д1: он даёт не число, а «норма/тревога» (инструкция, п. 6.4).
-        { id: "SMH-0002-010100", name: "Датчик давления (манометр электроконтактный), проводной", price: 3590, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SMH-0002-010100", name: "Датчик давления (манометр электроконтактный), проводной", price: 3590, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-10-10" },
         // Шлейф Д1 у контроллера один, поэтому второй и следующие контактные
         // датчики заходят через разветвитель. Безадресный дешевле, но все
         // датчики на нём неразличимы — тревога общая. Как только в шлейфе
         // разные по смыслу датчики (протечка и давление), нужен адресный:
         // иначе реакция «перекрыть воду» сработает и от падения давления.
-        { id: "SMH-0002-010320", name: "Разветвитель контактных датчиков", price: 500, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SMH-0002-010550", name: "Разветвитель контактных датчиков адресный, RS-485", price: 1990, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SMH-0002-010320", name: "Разветвитель контактных датчиков", price: 500, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SMH-0002-010550", name: "Разветвитель контактных датчиков адресный, RS-485", price: 1990, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-10-10" },
 
         // --- ZONT: автоматика на замену Thermatic (тариф «Профи», 08.10.2026) ---
         //
@@ -6845,14 +6845,14 @@ const catalog = {
         // его легко пропустить. На сайте это «Термостат универсальный 3А
         // STE-3001, ON/OFF» — вкл/выкл с гистерезисом 0,5 °C, то есть ровно то,
         // что нужно контроллеру, и самый дешёвый вариант из всех.
-        { id: "STE-3001-130210", name: "Термостат комнатный STOUT STE-3001, 3 А, ON/OFF, белый", price: 1111, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "electronic", color: "white", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "STE-2001-130210", name: "Термостат комнатный STOUT 3 А, ON/OFF, механический, белый", price: 2356, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "mech", color: "white", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "STE-2001-130220", name: "Термостат комнатный STOUT 3 А, ON/OFF, механический, чёрный", price: 2474, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "mech", color: "black", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "STE-3002-331212", name: "Термостат комнатный STOUT STE-3002, 3 А, ON/OFF, электронный, белый", price: 5498, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "electronic", color: "white", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "STE-3002-331222", name: "Термостат комнатный STOUT STE-3002, 3 А, ON/OFF, электронный, чёрный", price: 5722, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "electronic", color: "black", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "STE-3003-231232", name: "Термостат комнатный STOUT STE-3003, 3 А, ON/OFF, с кнопками, серый", price: 3500, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "electronic", color: "gray", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "STE-2002-331212", name: "Терморегулятор комнатный STOUT 3 А, ON/OFF, сенсорный TFT, белый", price: 12763, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "touch", color: "white", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "STE-2002-331222", name: "Терморегулятор комнатный STOUT 3 А, ON/OFF, сенсорный TFT, чёрный", price: 13274, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "touch", color: "black", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "STE-3001-130210", name: "Термостат комнатный STOUT STE-3001, 3 А, ON/OFF, белый", price: 1111, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "electronic", color: "white", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "STE-2001-130210", name: "Термостат комнатный STOUT 3 А, ON/OFF, механический, белый", price: 2356, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "mech", color: "white", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "STE-2001-130220", name: "Термостат комнатный STOUT 3 А, ON/OFF, механический, чёрный", price: 2474, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "mech", color: "black", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "STE-3002-331212", name: "Термостат комнатный STOUT STE-3002, 3 А, ON/OFF, электронный, белый", price: 5498, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "electronic", color: "white", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "STE-3002-331222", name: "Термостат комнатный STOUT STE-3002, 3 А, ON/OFF, электронный, чёрный", price: 5722, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "electronic", color: "black", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "STE-3003-231232", name: "Термостат комнатный STOUT STE-3003, 3 А, ON/OFF, с кнопками, серый", price: 3500, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "electronic", color: "gray", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "STE-2002-331212", name: "Терморегулятор комнатный STOUT 3 А, ON/OFF, сенсорный TFT, белый", price: 12763, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "touch", color: "white", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "STE-2002-331222", name: "Терморегулятор комнатный STOUT 3 А, ON/OFF, сенсорный TFT, чёрный", price: 13274, brand: "STOUT", unit: "шт", kind: "dry", link: "dry", ctrlType: "touch", color: "black", availability: "in_stock", price_date: "2026-10-10" },
 
         // Приборы для базового уровня (Thermatic 1002). Отбираются по полю sys:
         // без него позиция считается принадлежащей 3001 (см. getThermaticConfig).
@@ -6863,10 +6863,10 @@ const catalog = {
         // 1002 нет вовсе, а единственный контактный вход Д1 занят охранным
         // шлейфом (протечка, давление). Двухпозиционным термостатом STOUT
         // этот контроллер не закрыть.
-        { id: "SMH-0002-010020", name: "Датчик температуры воздуха комнатный, RS-485", price: 3190, brand: "STOUT", unit: "шт", kind: "sensor", link: "wired", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SMH-0002-010410", name: "Датчик температуры воздуха комнатный, LoRa", price: 4590, brand: "STOUT", unit: "шт", kind: "sensor", link: "radio", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SMH-0002-010910", name: "Термостат комнатный проводной, RS-485", price: 6990, brand: "STOUT", unit: "шт", kind: "thermostat", link: "wired", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SMH-0002-010800", name: "Термостат комнатный беспроводной, LoRa", price: 6990, brand: "STOUT", unit: "шт", kind: "thermostat", link: "radio", sys: "basic", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "SMH-0002-010020", name: "Датчик температуры воздуха комнатный, RS-485", price: 3190, brand: "STOUT", unit: "шт", kind: "sensor", link: "wired", sys: "basic", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SMH-0002-010410", name: "Датчик температуры воздуха комнатный, LoRa", price: 4590, brand: "STOUT", unit: "шт", kind: "sensor", link: "radio", sys: "basic", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SMH-0002-010910", name: "Термостат комнатный проводной, RS-485", price: 6990, brand: "STOUT", unit: "шт", kind: "thermostat", link: "wired", sys: "basic", availability: "on_order", price_date: "2026-10-10" },
+        { id: "SMH-0002-010800", name: "Термостат комнатный беспроводной, LoRa", price: 6990, brand: "STOUT", unit: "шт", kind: "thermostat", link: "radio", sys: "basic", availability: "in_stock", price_date: "2026-10-10" }
     ],
     radio_modules: [
         { id: "ML00004741", name: "Радиомодуль МЛ-590 (868 МГц)", price: 3720, brand: "ZONT", unit: "шт", capacity: 40, availability: "in_stock", price_date: "2026-09-23" }
@@ -6880,7 +6880,7 @@ const catalog = {
         { id: "ML11025", name: "Датчик протечки воды АСТРА-361, проводной", price: 1140, brand: "ZONT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
         // Для Thermatic 1002 берём извещатель из его же линейки: шлейф у него
         // свой (вход Д1), и разветвители к нему идут из того же комплекта.
-        { id: "SMH-0002-010060", name: "Датчик протечки воды проводной", price: 1490, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SMH-0002-010060", name: "Датчик протечки воды проводной", price: 1490, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-10-10" },
         // Для MyHeat: Neptun SW005 — тот же датчик, что продаёт сам MyHeat (карточка «Нептун SW 005»).
         // Три провода: +12–24 В, сигнал (открытый коллектор, до 50 мА), GND; до 100 м от контроллера
         // (паспорт). Питается от контроллера, на каждый датчик — свой дискретный вход.
@@ -6890,34 +6890,34 @@ const catalog = {
     ],
     // Диаметр берётся по вводу ХВС (штатно 3/4"), остальные — для замены.
     leak_valves: [
-        { id: "SVM-0072-200020", name: "Клапан шаровой 2-ходовой зональный НВ 1/2\"", price: 2973, brand: "STOUT", unit: "шт", dn: 15, availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SVM-0072-200025", name: "Клапан шаровой 2-ходовой зональный НВ 3/4\"", price: 3312, brand: "STOUT", unit: "шт", dn: 20, availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SVM-0072-200125", name: "Клапан шаровой 2-ходовой зональный НВ 1\"", price: 4935, brand: "STOUT", unit: "шт", dn: 25, availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SVM-0072-200132", name: "Клапан шаровой 2-ходовой зональный НВ 1 1/4\"", price: 6710, brand: "STOUT", unit: "шт", dn: 32, availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SVM-0072-200020", name: "Клапан шаровой 2-ходовой зональный НВ 1/2\"", price: 2973, brand: "STOUT", unit: "шт", dn: 15, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SVM-0072-200025", name: "Клапан шаровой 2-ходовой зональный НВ 3/4\"", price: 3312, brand: "STOUT", unit: "шт", dn: 20, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SVM-0072-200125", name: "Клапан шаровой 2-ходовой зональный НВ 1\"", price: 4935, brand: "STOUT", unit: "шт", dn: 25, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SVM-0072-200132", name: "Клапан шаровой 2-ходовой зональный НВ 1 1/4\"", price: 6710, brand: "STOUT", unit: "шт", dn: 32, availability: "in_stock", price_date: "2026-10-10" },
         // Соленоид — дешёвая замена связке «шаровой кран + привод»: своего
         // привода ему не нужно, отсюда разница в цене почти впятеро. Но держит
         // открытое положение только под напряжением: пропало электричество —
         // вода перекрыта. Берём только нормально закрытые (SSV-0010): у
         // нормально открытых при отключении света протечка возобновится, и для
         // защиты они не годятся.
-        { id: "SSV-0010-220015", name: "Клапан соленоидный НЗ, 220 В, 1/2\"", price: 4982, brand: "STOUT", unit: "шт", dn: 15, solenoid: true, availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SSV-0010-220020", name: "Клапан соленоидный НЗ, 220 В, 3/4\"", price: 5849, brand: "STOUT", unit: "шт", dn: 20, solenoid: true, availability: "in_stock", price_date: "2026-09-20" }
+        { id: "SSV-0010-220015", name: "Клапан соленоидный НЗ, 220 В, 1/2\"", price: 4982, brand: "STOUT", unit: "шт", dn: 15, solenoid: true, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SSV-0010-220020", name: "Клапан соленоидный НЗ, 220 В, 3/4\"", price: 5849, brand: "STOUT", unit: "шт", dn: 20, solenoid: true, availability: "in_stock", price_date: "2026-10-10" }
     ],
     leak_actuators: [
-        { id: "SVM-0071-230004", name: "Сервопривод для шаровых зональных клапанов, ход 90°, 40 сек., 230 В, 4 полюса", price: 13265, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "SVM-0071-230004", name: "Сервопривод для шаровых зональных клапанов, ход 90°, 40 сек., 230 В, 4 полюса", price: 13265, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-10-10" }
     ],
 
     // Автоматическая подпитка системы отопления. Клапан механический и от
     // контроллера не зависит: сам держит заданное давление в контуре.
     feed_valves: [
-        { id: "SVS-0050-526115", name: "Клапан подпиточный автоматический 1/2\" ВН/ВН, с манометром", price: 5947, brand: "STOUT", unit: "шт", rommer: { id: "RVS-0050-001515", name: "Клапан подпиточный автоматический 1/2\" ВН/НР, с манометром", price: 2550, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }, availability: "in_stock", price_date: "2026-09-20" }
+        { id: "SVS-0050-526115", name: "Клапан подпиточный автоматический 1/2\" ВН/ВН, с манометром", price: 5947, brand: "STOUT", unit: "шт", rommer: { id: "RVS-0050-001515", name: "Клапан подпиточный автоматический 1/2\" ВН/НР, с манометром", price: 2550, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, availability: "in_stock", price_date: "2026-10-10" }
     ],
     // Обвязка линии подпитки: фильтр бережёт седло клапана от окалины и песка
     // из водопровода, обратный клапан не пускает теплоноситель обратно в ХВС.
     // Диаметр 1/2" — по присоединению самого подпиточного клапана.
     feed_line_parts: [
-        { id: "SFW-0011-000015", name: "Фильтр сетчатый муфтовый 1/2\"", price: 619, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SVC-0012-000015", name: "Клапан обратный пружинный с нейлоновым седлом 1/2\"", price: 893, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "SFW-0011-000015", name: "Фильтр сетчатый муфтовый 1/2\"", price: 619, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SVC-0012-000015", name: "Клапан обратный пружинный с нейлоновым седлом 1/2\"", price: 893, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-10-10" }
     ],
 
     // Позиции, которых не было ни в каталоге, ни в прайсе, но которые
@@ -6954,14 +6954,14 @@ const catalog = {
         // размера («28 (трубы до 20Ø)»), слова «гофра» там нет вовсе — поэтому
         // подбор по названию её не находил. Ряд заведён целиком, чтобы другие
         // размеры не пришлось добавлять поштучно. 0002 — красная, 0001 — синяя.
-        { id: "SPG-0002-502316", name: "Труба гофрированная ПНД 23 (для труб до 16 мм), красная, бухта 50 м", price: 19, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SPG-0002-502820", name: "Труба гофрированная ПНД 28 (для труб до 20 мм), красная, бухта 50 м", price: 24, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SPG-0002-503525", name: "Труба гофрированная ПНД 35 (для труб до 25 мм), красная, бухта 50 м", price: 35, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SPG-0002-504032", name: "Труба гофрированная ПНД 40 (для труб до 32 мм), красная, бухта 30 м", price: 46, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SPG-0001-502316", name: "Труба гофрированная ПНД 23 (для труб до 16 мм), синяя, бухта 50 м", price: 19, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SPG-0001-502820", name: "Труба гофрированная ПНД 28 (для труб до 20 мм), синяя, бухта 50 м", price: 24, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SPG-0001-503525", name: "Труба гофрированная ПНД 35 (для труб до 25 мм), синяя, бухта 50 м", price: 35, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SPG-0001-504032", name: "Труба гофрированная ПНД 40 (для труб до 32 мм), синяя, бухта 30 м", price: 46, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SPG-0002-502316", name: "Труба гофрированная ПНД 23 (для труб до 16 мм), красная, бухта 50 м", price: 19, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SPG-0002-502820", name: "Труба гофрированная ПНД 28 (для труб до 20 мм), красная, бухта 50 м", price: 24, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SPG-0002-503525", name: "Труба гофрированная ПНД 35 (для труб до 25 мм), красная, бухта 50 м", price: 35, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SPG-0002-504032", name: "Труба гофрированная ПНД 40 (для труб до 32 мм), красная, бухта 30 м", price: 46, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SPG-0001-502316", name: "Труба гофрированная ПНД 23 (для труб до 16 мм), синяя, бухта 50 м", price: 19, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SPG-0001-502820", name: "Труба гофрированная ПНД 28 (для труб до 20 мм), синяя, бухта 50 м", price: 24, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SPG-0001-503525", name: "Труба гофрированная ПНД 35 (для труб до 25 мм), синяя, бухта 50 м", price: 35, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SPG-0001-504032", name: "Труба гофрированная ПНД 40 (для труб до 32 мм), синяя, бухта 30 м", price: 46, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
 
         { id: "10.В.050.R.M.B", article: "10.В.050.R.M.B", name: "Трап регулируемый боковой, решетка металлическая 100х100 (белый) D 50", price: 1576.06, unit: "шт", brand: "Sinikon", availability: "in_stock", price_date: "2026-07-28" },
 
@@ -6995,84 +6995,84 @@ const catalog = {
 })();
 
 const titanRads = [
-    { id: "SRB-3320-050004", name: "Радиатор TITAN 4 секций", sec: 4, price: 7410, brand: "STOUT", power50: 128, passportPower: 198,
+    { id: "SRB-3320-050004", name: "Радиатор TITAN 4 секций", sec: 4, price: 7706, brand: "STOUT", power50: 128, passportPower: 198,
   availability: 'in_stock',
-  price_date: '2026-09-20' },
-    { id: "SRB-3320-050005", name: "Радиатор TITAN 5 секций", sec: 5, price: 8645, brand: "STOUT", power50: 128, passportPower: 198,
+  price_date: '2026-10-10' },
+    { id: "SRB-3320-050005", name: "Радиатор TITAN 5 секций", sec: 5, price: 8991, brand: "STOUT", power50: 128, passportPower: 198,
   availability: 'in_stock',
-  price_date: '2026-09-20' },
-    { id: "SRB-3320-050006", name: "Радиатор TITAN 6 секций", sec: 6, price: 9880, brand: "STOUT", power50: 128, passportPower: 198,
+  price_date: '2026-10-10' },
+    { id: "SRB-3320-050006", name: "Радиатор TITAN 6 секций", sec: 6, price: 10275, brand: "STOUT", power50: 128, passportPower: 198,
   availability: 'in_stock',
-  price_date: '2026-09-20' },
-    { id: "SRB-3320-050007", name: "Радиатор TITAN 7 секций", sec: 7, price: 11115, brand: "STOUT", power50: 128, passportPower: 198,
+  price_date: '2026-10-10' },
+    { id: "SRB-3320-050007", name: "Радиатор TITAN 7 секций", sec: 7, price: 11560, brand: "STOUT", power50: 128, passportPower: 198,
   availability: 'in_stock',
-  price_date: '2026-09-20' },
-    { id: "SRB-3320-050008", name: "Радиатор TITAN 8 секций", sec: 8, price: 12350, brand: "STOUT", power50: 128, passportPower: 198,
+  price_date: '2026-10-10' },
+    { id: "SRB-3320-050008", name: "Радиатор TITAN 8 секций", sec: 8, price: 12844, brand: "STOUT", power50: 128, passportPower: 198,
   availability: 'in_stock',
-  price_date: '2026-09-20' },
-    { id: "SRB-3320-050009", name: "Радиатор TITAN 9 секций", sec: 9, price: 13585, brand: "STOUT", power50: 128, passportPower: 198,
+  price_date: '2026-10-10' },
+    { id: "SRB-3320-050009", name: "Радиатор TITAN 9 секций", sec: 9, price: 14128, brand: "STOUT", power50: 128, passportPower: 198,
   availability: 'in_stock',
-  price_date: '2026-09-20' },
-    { id: "SRB-3320-050010", name: "Радиатор TITAN 10 секций", sec: 10, price: 14820, brand: "STOUT", power50: 128, passportPower: 198,
+  price_date: '2026-10-10' },
+    { id: "SRB-3320-050010", name: "Радиатор TITAN 10 секций", sec: 10, price: 15413, brand: "STOUT", power50: 128, passportPower: 198,
   availability: 'in_stock',
-  price_date: '2026-09-20' },
-    { id: "SRB-3320-050011", name: "Радиатор TITAN 11 секций", sec: 11, price: 16055, brand: "STOUT", power50: 128, passportPower: 198,
+  price_date: '2026-10-10' },
+    { id: "SRB-3320-050011", name: "Радиатор TITAN 11 секций", sec: 11, price: 16697, brand: "STOUT", power50: 128, passportPower: 198,
   availability: 'in_stock',
-  price_date: '2026-09-20' },
-    { id: "SRB-3320-050012", name: "Радиатор TITAN 12 секций", sec: 12, price: 17290, brand: "STOUT", power50: 128, passportPower: 198,
+  price_date: '2026-10-10' },
+    { id: "SRB-3320-050012", name: "Радиатор TITAN 12 секций", sec: 12, price: 17982, brand: "STOUT", power50: 128, passportPower: 198,
   availability: 'in_stock',
-  price_date: '2026-09-20' },
-    { id: "SRB-3320-050013", name: "Радиатор TITAN 13 секций", sec: 13, price: 18525, brand: "STOUT", power50: 128, passportPower: 198,
+  price_date: '2026-10-10' },
+    { id: "SRB-3320-050013", name: "Радиатор TITAN 13 секций", sec: 13, price: 19266, brand: "STOUT", power50: 128, passportPower: 198,
   availability: 'in_stock',
-  price_date: '2026-09-20' },
-    { id: "SRB-3320-050014", name: "Радиатор TITAN 14 секций", sec: 14, price: 19760, brand: "STOUT", power50: 128, passportPower: 198,
+  price_date: '2026-10-10' },
+    { id: "SRB-3320-050014", name: "Радиатор TITAN 14 секций", sec: 14, price: 20550, brand: "STOUT", power50: 128, passportPower: 198,
   availability: 'in_stock',
-  price_date: '2026-09-20' }
+  price_date: '2026-10-10' }
 ];
 
 // Стальные панельные радиаторы ROMMER Россия (СПР)
 // Типы 11/21/22/33 · Высоты 200-600мм · Compact (боковое) и Ventil (нижнее подключение)
 const steelRads = [
-    { id: "RRS-2010-113040", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 400, isPanel: true, price: 2804, brand: "ROMMER", power50: 285, passportPower: 441, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2020-113040", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 400, isPanel: true, bottom: true, price: 4727, brand: "ROMMER", power50: 285, passportPower: 441, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2010-113050", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 500, isPanel: true, price: 3215, brand: "ROMMER", power50: 327, passportPower: 506, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2020-113050", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 500, isPanel: true, bottom: true, price: 5135, brand: "ROMMER", power50: 327, passportPower: 506, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2010-113060", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 600, isPanel: true, price: 3623, brand: "ROMMER", power50: 368, passportPower: 570, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2020-113060", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 600, isPanel: true, bottom: true, price: 5568, brand: "ROMMER", power50: 368, passportPower: 570, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2010-113070", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 700, isPanel: true, price: 4019, brand: "ROMMER", power50: 410, passportPower: 635, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2020-113070", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 700, isPanel: true, bottom: true, price: 5974, brand: "ROMMER", power50: 410, passportPower: 635, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2010-113080", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 800, isPanel: true, price: 4469, brand: "ROMMER", power50: 451, passportPower: 699, availability: "on_order", price_date: "2026-09-20" },
-    { id: "RRS-2020-113080", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 800, isPanel: true, bottom: true, price: 6411, brand: "ROMMER", power50: 451, passportPower: 699, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2010-113090", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 900, isPanel: true, price: 4862, brand: "ROMMER", power50: 493, passportPower: 764, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2020-113090", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 900, isPanel: true, bottom: true, price: 6819, brand: "ROMMER", power50: 493, passportPower: 764, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2010-113100", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1000, isPanel: true, price: 5332, brand: "ROMMER", power50: 535, passportPower: 829, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2020-113100", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1000, isPanel: true, bottom: true, price: 7278, brand: "ROMMER", power50: 535, passportPower: 829, availability: "on_order", price_date: "2026-09-20" },
-    { id: "RRS-2010-113110", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1100, isPanel: true, price: 5976, brand: "ROMMER", power50: 577, passportPower: 893, availability: "on_order", price_date: "2026-09-20" },
-    { id: "RRS-2020-113110", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1100, isPanel: true, bottom: true, price: 7931, brand: "ROMMER", power50: 577, passportPower: 893, availability: "on_order", price_date: "2026-09-20" },
-    { id: "RRS-2010-113120", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1200, isPanel: true, price: 6406, brand: "ROMMER", power50: 619, passportPower: 958, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2020-113120", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1200, isPanel: true, bottom: true, price: 8352, brand: "ROMMER", power50: 619, passportPower: 958, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2010-113130", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1300, isPanel: true, price: 6798, brand: "ROMMER", power50: 660, passportPower: 1022, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2020-113130", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1300, isPanel: true, bottom: true, price: 8661, brand: "ROMMER", power50: 660, passportPower: 1022, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2010-113140", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1400, isPanel: true, price: 7240, brand: "ROMMER", power50: 702, passportPower: 1087, availability: "on_order", price_date: "2026-09-20" },
-    { id: "RRS-2020-113140", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1400, isPanel: true, bottom: true, price: 9193, brand: "ROMMER", power50: 702, passportPower: 1087, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2010-113150", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1500, isPanel: true, price: 7648, brand: "ROMMER", power50: 744, passportPower: 1152, availability: "on_order", price_date: "2026-09-20" },
-    { id: "RRS-2020-113150", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1500, isPanel: true, bottom: true, price: 9585, brand: "ROMMER", power50: 744, passportPower: 1152, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2010-113160", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1600, isPanel: true, price: 8176, brand: "ROMMER", power50: 785, passportPower: 1216, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2020-113160", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1600, isPanel: true, bottom: true, price: 10173, brand: "ROMMER", power50: 785, passportPower: 1216, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2010-113170", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1700, isPanel: true, price: 9074, brand: "ROMMER", power50: 827, passportPower: 1281, availability: "on_order", price_date: "2026-09-20" },
-    { id: "RRS-2020-113170", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1700, isPanel: true, bottom: true, price: 11246, brand: "ROMMER", power50: 827, passportPower: 1281, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2010-113180", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1800, isPanel: true, price: 9517, brand: "ROMMER", power50: 868, passportPower: 1345, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2020-113180", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1800, isPanel: true, bottom: true, price: 12029, brand: "ROMMER", power50: 868, passportPower: 1345, availability: "on_order", price_date: "2026-09-20" },
-    { id: "RRS-2010-113190", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1900, isPanel: true, price: 9968, brand: "ROMMER", power50: 910, passportPower: 1410, availability: "on_order", price_date: "2026-09-20" },
-    { id: "RRS-2020-113190", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1900, isPanel: true, bottom: true, price: 12480, brand: "ROMMER", power50: 910, passportPower: 1410, availability: "on_order", price_date: "2026-09-20" },
-    { id: "RRS-2010-113200", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 2000, isPanel: true, price: 10790, brand: "ROMMER", power50: 952, passportPower: 1475, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2020-113200", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 2000, isPanel: true, bottom: true, price: 13397, brand: "ROMMER", power50: 952, passportPower: 1475, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2010-113210", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 2100, isPanel: true, price: 11254, brand: "ROMMER", power50: 994, passportPower: 1539, availability: "on_order", price_date: "2026-09-20" },
-    { id: "RRS-2020-113210", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 2100, isPanel: true, bottom: true, price: 13860, brand: "ROMMER", power50: 994, passportPower: 1539, availability: "on_order", price_date: "2026-09-20" },
-    { id: "RRS-2010-113220", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 2200, isPanel: true, price: 11720, brand: "ROMMER", power50: 1036, passportPower: 1604, availability: "on_order", price_date: "2026-09-20" },
-    { id: "RRS-2020-113220", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 2200, isPanel: true, bottom: true, price: 14295, brand: "ROMMER", power50: 1036, passportPower: 1604, availability: "on_order", price_date: "2026-09-20" },
-    { id: "RRS-2010-113230", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 2300, isPanel: true, price: 12221, brand: "ROMMER", power50: 1077, passportPower: 1668, availability: "on_order", price_date: "2026-09-20" },
-    { id: "RRS-2020-113230", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 2300, isPanel: true, bottom: true, price: 14820, brand: "ROMMER", power50: 1077, passportPower: 1668, availability: "on_order", price_date: "2026-09-20" },
+    { id: "RRS-2010-113040", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 400, isPanel: true, price: 2944, brand: "ROMMER", power50: 285, passportPower: 441, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2020-113040", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 400, isPanel: true, bottom: true, price: 4963, brand: "ROMMER", power50: 285, passportPower: 441, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2010-113050", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 500, isPanel: true, price: 3376, brand: "ROMMER", power50: 327, passportPower: 506, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2020-113050", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 500, isPanel: true, bottom: true, price: 5392, brand: "ROMMER", power50: 327, passportPower: 506, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2010-113060", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 600, isPanel: true, price: 3804, brand: "ROMMER", power50: 368, passportPower: 570, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2020-113060", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 600, isPanel: true, bottom: true, price: 5846, brand: "ROMMER", power50: 368, passportPower: 570, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2010-113070", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 700, isPanel: true, price: 4220, brand: "ROMMER", power50: 410, passportPower: 635, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2020-113070", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 700, isPanel: true, bottom: true, price: 6273, brand: "ROMMER", power50: 410, passportPower: 635, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2010-113080", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 800, isPanel: true, price: 4692, brand: "ROMMER", power50: 451, passportPower: 699, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2020-113080", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 800, isPanel: true, bottom: true, price: 6732, brand: "ROMMER", power50: 451, passportPower: 699, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2010-113090", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 900, isPanel: true, price: 5105, brand: "ROMMER", power50: 493, passportPower: 764, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2020-113090", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 900, isPanel: true, bottom: true, price: 7160, brand: "ROMMER", power50: 493, passportPower: 764, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2010-113100", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1000, isPanel: true, price: 5599, brand: "ROMMER", power50: 535, passportPower: 829, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2020-113100", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1000, isPanel: true, bottom: true, price: 7642, brand: "ROMMER", power50: 535, passportPower: 829, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2010-113110", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1100, isPanel: true, price: 6275, brand: "ROMMER", power50: 577, passportPower: 893, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2020-113110", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1100, isPanel: true, bottom: true, price: 8328, brand: "ROMMER", power50: 577, passportPower: 893, availability: "on_order", price_date: "2026-10-10" },
+    { id: "RRS-2010-113120", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1200, isPanel: true, price: 6726, brand: "ROMMER", power50: 619, passportPower: 958, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2020-113120", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1200, isPanel: true, bottom: true, price: 8770, brand: "ROMMER", power50: 619, passportPower: 958, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2010-113130", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1300, isPanel: true, price: 7138, brand: "ROMMER", power50: 660, passportPower: 1022, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2020-113130", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1300, isPanel: true, bottom: true, price: 9094, brand: "ROMMER", power50: 660, passportPower: 1022, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2010-113140", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1400, isPanel: true, price: 7602, brand: "ROMMER", power50: 702, passportPower: 1087, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2020-113140", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1400, isPanel: true, bottom: true, price: 9653, brand: "ROMMER", power50: 702, passportPower: 1087, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2010-113150", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1500, isPanel: true, price: 8030, brand: "ROMMER", power50: 744, passportPower: 1152, availability: "on_order", price_date: "2026-10-10" },
+    { id: "RRS-2020-113150", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1500, isPanel: true, bottom: true, price: 10064, brand: "ROMMER", power50: 744, passportPower: 1152, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2010-113160", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1600, isPanel: true, price: 8585, brand: "ROMMER", power50: 785, passportPower: 1216, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2020-113160", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1600, isPanel: true, bottom: true, price: 10682, brand: "ROMMER", power50: 785, passportPower: 1216, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2010-113170", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1700, isPanel: true, price: 9528, brand: "ROMMER", power50: 827, passportPower: 1281, availability: "on_order", price_date: "2026-10-10" },
+    { id: "RRS-2020-113170", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1700, isPanel: true, bottom: true, price: 11808, brand: "ROMMER", power50: 827, passportPower: 1281, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2010-113180", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1800, isPanel: true, price: 9993, brand: "ROMMER", power50: 868, passportPower: 1345, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2020-113180", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1800, isPanel: true, bottom: true, price: 12630, brand: "ROMMER", power50: 868, passportPower: 1345, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2010-113190", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 1900, isPanel: true, price: 10466, brand: "ROMMER", power50: 910, passportPower: 1410, availability: "on_order", price_date: "2026-10-10" },
+    { id: "RRS-2020-113190", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 1900, isPanel: true, bottom: true, price: 13104, brand: "ROMMER", power50: 910, passportPower: 1410, availability: "on_order", price_date: "2026-10-10" },
+    { id: "RRS-2010-113200", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 2000, isPanel: true, price: 11330, brand: "ROMMER", power50: 952, passportPower: 1475, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2020-113200", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 2000, isPanel: true, bottom: true, price: 14067, brand: "ROMMER", power50: 952, passportPower: 1475, availability: "in_stock", price_date: "2026-10-10" },
+    { id: "RRS-2010-113210", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 2100, isPanel: true, price: 11817, brand: "ROMMER", power50: 994, passportPower: 1539, availability: "on_order", price_date: "2026-10-10" },
+    { id: "RRS-2020-113210", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 2100, isPanel: true, bottom: true, price: 14553, brand: "ROMMER", power50: 994, passportPower: 1539, availability: "on_order", price_date: "2026-10-10" },
+    { id: "RRS-2010-113220", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 2200, isPanel: true, price: 12306, brand: "ROMMER", power50: 1036, passportPower: 1604, availability: "on_order", price_date: "2026-10-10" },
+    { id: "RRS-2020-113220", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 2200, isPanel: true, bottom: true, price: 15010, brand: "ROMMER", power50: 1036, passportPower: 1604, availability: "on_order", price_date: "2026-10-10" },
+    { id: "RRS-2010-113230", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 2300, isPanel: true, price: 12832, brand: "ROMMER", power50: 1077, passportPower: 1668, availability: "on_order", price_date: "2026-10-10" },
+    { id: "RRS-2020-113230", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 2300, isPanel: true, bottom: true, price: 15561, brand: "ROMMER", power50: 1077, passportPower: 1668, availability: "on_order", price_date: "2026-10-10" },
     { id: "RRS-2010-113240", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 2400, isPanel: true, price: 12721, brand: "ROMMER", power50: 1119, passportPower: 1733, availability: "on_order", price_date: "2026-09-20" },
     { id: "RRS-2020-113240", name: "Стальной панельный Ventil (Тип 11)", height: 300, sec: 2400, isPanel: true, bottom: true, price: 15316, brand: "ROMMER", power50: 1119, passportPower: 1733, availability: "on_order", price_date: "2026-09-20" },
     { id: "RRS-2010-113250", name: "Стальной панельный Compact (Тип 11)", height: 300, sec: 2500, isPanel: true, price: 13185, brand: "ROMMER", power50: 1161, passportPower: 1798, availability: "on_order", price_date: "2026-09-20" },
