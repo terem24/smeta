@@ -123,9 +123,9 @@
    "freq": 23013,
    "audience": "owner",
    "data_block": "наши принципиальные схемы",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-10",
-   "published_at": null,
+   "published_at": "2026-10-10",
    "words": 698
   },
   {
