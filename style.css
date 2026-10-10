@@ -19981,8 +19981,13 @@ body.empty-fit-panel #header_totals { display: none !important; }
 .pg-tiles > .toggle-item.pg-card { margin: 0 !important; padding: 8px 10px !important; min-width: 0; }
 .pg-tiles > .toggle-item.pg-card:has(> .label-row input[type="checkbox"]:checked),
 .pg-tiles > .toggle-item.pg-card:has(.label-row input[type="checkbox"]:checked) { grid-column: 1 / -1; }
-.pg-tiles .label-row { gap: 8px; margin-bottom: 0; }
-.pg-tiles .label-row .lbl { line-height: 1.25; }
+/* Узкая плитка (панель ≈270 px): название с «i» не помещается рядом с переключателем и резалось
+   («Водоснабж…»). Переключатель переносится на свою строку справа, название получает всю ширину. */
+.pg-tiles .label-row { gap: 4px 8px; margin-bottom: 0; flex-wrap: wrap; }
+.pg-tiles .label-row > span:first-child { flex: 1 1 auto; min-width: 0; }
+.pg-tiles .label-row .switch { margin-left: auto; }
+.pg-tiles .label-row .lbl { line-height: 1.25; font-size: 12px; }
+.pg-tiles > .toggle-item.pg-card { padding: 7px 8px !important; }
 .pg-quick { cursor: pointer; background: transparent; border: 1px solid var(--primary); color: var(--primary); }
 .pg-quick:hover { background: var(--primary-light); }
 .pg-count { background: var(--primary-light); color: var(--text-main); border: 1px solid var(--border); }

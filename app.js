@@ -22394,6 +22394,7 @@ const app = {
         { id: 'recognize', group: 'Функции', label: 'Распознавание', list: true, hint: 'Вкладка «Распознавание»' },
         { id: 'design', group: 'Функции', label: 'Проект', list: true, hint: 'Листы проекта и редактор планов этажей' },
         { id: 'ufhplan', group: 'Функции', label: 'Раскладка ТП', hint: 'Модуль «План отопления» в режиме «По комнатам»: загрузить план дома, отметить комнаты с тёплым полом кликом, радиаторы под окнами — раскладка петель и трассы радиаторов под сметой и в КП. Кому открыт «Проект», он доступен и так' },
+        { id: 'opcost', group: 'Функции', label: 'Эксплуатация', hint: 'Группа «Эксплуатация» в панели параметров: во сколько обойдётся отопление электричеством или газом (тариф, сезон, окупаемость). Видна в режиме «По комнатам»; выключено — группы и пунктов «Стоимость отопления» нет' },
         { id: 'branding', group: 'Функции', label: 'Реквизиты', hint: 'Смена своего логотипа и реквизитов компании в кабинете. Они идут в шапку, КП, счёт и ссылку клиенту. Выключено — везде реквизиты дистрибьютора или ТЕРЕМ, уже введённые свои сохраняются и вернутся при включении' },
         { id: 'money', group: 'Функции', label: 'Деньги', hint: 'Вкладка «Деньги» (маржа по смете); гостю без входа не показывается никогда' },
         { id: 'docs', group: 'Функции', label: 'Документы', hint: 'Кнопка «Документы» в «Заказах и счетах»: договор подряда, акты, гарантийный талон' },
@@ -22419,6 +22420,8 @@ const app = {
         if (feature === 'design') return 'list';
         // Раскладка тёплого пола по плану — функция «Профи» (03.10.2026)
         if (feature === 'ufhplan') return pro ? 'on' : 'off';
+        // Группа «Эксплуатация» (стоимость отопления) — функция «Профи» (10.10.2026)
+        if (feature === 'opcost') return pro ? 'on' : 'off';
         // Свой логотип и реквизиты — функция «Профи» (05.10.2026); раньше были на любом тарифе
         if (feature === 'branding') return pro ? 'on' : 'off';
         if (feature === 'money') return (pro && (account === 'installer')) ? 'on' : 'off';
@@ -22436,6 +22439,7 @@ const app = {
     },
 
     canUseDocs: function () { return this.tariffAccess('docs') === 'on'; },
+    canUseOpCost: function () { return this.tariffAccess('opcost') === 'on'; },
     canUseBranding: function () { return this.tariffAccess('branding') === 'on'; },
     // Монтаж решается в три слоя, сильнейший первым:
     //   1) личная отметка в карточке пользователя (вкл или выкл);
@@ -69109,7 +69113,7 @@ const app = {
         // подобран, а расчётные теплопотери известны (подробный режим).
         const elCostBlk = document.getElementById('blk_el_cost');
         if (elCostBlk) {
-            const elCostOn = this.state.detailedRooms && this.state.fuels.includes('el');
+            const elCostOn = this.canUseOpCost() && this.state.detailedRooms && this.state.fuels.includes('el');
             elCostBlk.style.display = elCostOn ? 'block' : 'none';
             const elCostChk = document.getElementById('chk_el_cost');
             if (elCostChk) elCostChk.checked = !!this.state.showElCost;
@@ -69173,7 +69177,7 @@ const app = {
         // котла: подробный режим и включённая вкладка «🔥 Газ».
         const gasCostBlk = document.getElementById('blk_gas_cost');
         if (gasCostBlk) {
-            const gasCostOn = this.state.detailedRooms && this.state.fuels.includes('gas');
+            const gasCostOn = this.canUseOpCost() && this.state.detailedRooms && this.state.fuels.includes('gas');
             gasCostBlk.style.display = gasCostOn ? 'block' : 'none';
             const gasChk = document.getElementById('chk_gas_cost');
             if (gasChk) gasChk.checked = !!this.state.showGasCost;
