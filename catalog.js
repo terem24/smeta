@@ -2494,10 +2494,10 @@ const catalog = {
         { id: "SPX-0002-501620", name: "Труба 16x2.0 (500 м)", len: 500, price: 164, rommer: { id: "RPX-0002-501620", name: "Труба PEX-a 16x2.0 (500 м)", price: 90, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" }
     ],
     metal_plastic_pipes: [
-        { id: "SPM-0001-101620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0 (100 м)", len: 100, price: 157, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RPM-0002-201620", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 16x2.0, 100 м (продаётся бухтой 200 м)", price: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-17" } },
-        { id: "SPM-0001-201620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0 (200 м)", len: 200, price: 157, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RPM-0002-201620", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 16x2.0 (200 м)", len: 200, price: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-17" } },
-        { id: "SPM-0001-102020", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 20x2.0 (100 м)", len: 100, price: 266, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RPM-0002-102020", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 20x2.0 (100 м)", len: 100, price: 147, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-17" } },
-        { id: "SPM-0001-052630", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 26x3.0 (50 м)", len: 50, price: 483, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RPM-0002-052630", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 26x3.0 (50 м)", len: 50, price: 259, brand: "ROMMER", availability: "on_order", price_date: "2026-09-17" } },
+        { id: "SPM-0001-101620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0 (100 м)", len: 100, price: 157, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RPM-0002-201620", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 16x2.0, 100 м (продаётся бухтой 200 м)", price: 78, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
+        { id: "SPM-0001-201620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0 (200 м)", len: 200, price: 157, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RPM-0002-201620", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 16x2.0 (200 м)", len: 200, price: 78, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
+        { id: "SPM-0001-102020", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 20x2.0 (100 м)", len: 100, price: 266, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RPM-0002-102020", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 20x2.0 (100 м)", len: 100, price: 125, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
+        { id: "SPM-0001-052630", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 26x3.0 (50 м)", len: 50, price: 483, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RPM-0002-052630", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 26x3.0 (50 м)", len: 50, price: 220, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
         { id: "SPM-0001-053230", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 32x3.0 (50 м)", len: 50, price: 708, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RPM-0002-053230", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 32x3.0 (50 м)", len: 50, price: 371, brand: "ROMMER", availability: "on_order", price_date: "2026-09-17" } }
     ],
     stable_pipes: [
@@ -3175,8 +3175,8 @@ const catalog = {
     },
     hydro_thermometer_alts: [
         { id: "SIM-1001-637515", name: "Термометр осевой Dn63, гильза 75 мм, 1/2\"",    price: 864,  brand: "STOUT",  availability: "in_stock", price_date: "2026-09-23" },
-        { id: "SIM-1002-635015", name: "Термометр радиальный Dn63, гильза 50 мм, 1/2\"", price: 1331, brand: "STOUT",  availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RIM-0001-637515", name: "Термометр с погружной гильзой Dn63, 75 мм, 1/2\"",         price: 598,  brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "SIM-1002-635015", name: "Термометр радиальный Dn63, гильза 50 мм, 1/2\"", price: 1331, brand: "STOUT",  availability: "in_stock", price_date: "2026-10-10" },
+        { id: "RIM-0001-637515", name: "Термометр с погружной гильзой Dn63, 75 мм, 1/2\"",         price: 598,  brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }
     ],
     // Термостатический смесительный клапан на выходе ГВС из бойлера (антиожоговый).
     // Бак держат на 60–65 °C: при меньшей температуре в накопителе размножается
@@ -3192,8 +3192,8 @@ const catalog = {
     //   Kv 1,6 → 0,88 м³/ч;  Kv 1,8 → 0,99;  Kv 2,3 → 1,26;  Kv 2,5 → 1,37;  Kv 3,5 → 1,92
     dhw_mix_valves: [
         {
-            id: "SVM-0120-166020", name: "Клапан термостатический смесительный ГВС 3/4\" НР, 35–60 °C, Kv 1,6", price: 9922, kv: 1.6, size: "3/4\"", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20",
-            rommer: { id: "RVM-0122-166020", name: "Клапан термостатический смесительный ГВС 3/4\" НР, 35–60 °C, Kv 1,6", price: 3416, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }
+            id: "SVM-0120-166020", name: "Клапан термостатический смесительный ГВС 3/4\" НР, 35–60 °C, Kv 1,6", price: 9922, kv: 1.6, size: "3/4\"", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10",
+            rommer: { id: "RVM-0122-166020", name: "Клапан термостатический смесительный ГВС 3/4\" НР, 35–60 °C, Kv 1,6", price: 3416, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }
         },
         // Типоразмер и Kv в линейке не связаны (паспорт STOUT SVM-0110(120)(125), ред. 3
         // от 17.05.2021, табл. 3.4): у 3/4" есть Kv 1,8 и 2,3. Узел подмеса и разводка
@@ -3202,18 +3202,18 @@ const catalog = {
         // ручной заменой. Пары STOUT/ROMMER только с одинаковым Kv: подбор идёт по полю kv.
         // Серия SVM-0125 — центральное смешивание, 30–65 °C; уставка 45–50 °C в неё входит.
         {
-            id: "SVM-0125-186520", name: "Клапан термостатический смесительный ГВС 3/4\" НР, 30–65 °C, Kv 1,8", price: 8628, kv: 1.8, size: "3/4\"", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20",
-            rommer: { id: "RVM-1121-186520", name: "Клапан термостатический смесительный ГВС 3/4\" НР, 30–65 °C, Kv 1,8", price: 4501, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }
+            id: "SVM-0125-186520", name: "Клапан термостатический смесительный ГВС 3/4\" НР, 30–65 °C, Kv 1,8", price: 8628, kv: 1.8, size: "3/4\"", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10",
+            rommer: { id: "RVM-1121-186520", name: "Клапан термостатический смесительный ГВС 3/4\" НР, 30–65 °C, Kv 1,8", price: 4501, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }
         },
         // 3/4" с Kv 2,3 — только STOUT, у ROMMER в размере 3/4" наибольший Kv 1,8.
-        { id: "SVM-0125-236520", name: "Клапан термостатический смесительный ГВС 3/4\" НР, 30–65 °C, Kv 2,3", price: 8628, kv: 2.3, size: "3/4\"", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SVM-0125-236520", name: "Клапан термостатический смесительный ГВС 3/4\" НР, 30–65 °C, Kv 2,3", price: 8628, kv: 2.3, size: "3/4\"", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
         {
-            id: "SVM-0120-256025", name: "Клапан термостатический смесительный ГВС 1\" НР, 35–60 °C, Kv 2,5", price: 10721, kv: 2.5, size: "1\"", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20",
-            rommer: { id: "RVM-0232-256025", name: "Клапан термостатический смесительный ГВС 1\" НР, 35–60 °C, Kv 2,5", price: 3842, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }
+            id: "SVM-0120-256025", name: "Клапан термостатический смесительный ГВС 1\" НР, 35–60 °C, Kv 2,5", price: 10721, kv: 2.5, size: "1\"", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10",
+            rommer: { id: "RVM-0232-256025", name: "Клапан термостатический смесительный ГВС 1\" НР, 35–60 °C, Kv 2,5", price: 3842, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }
         },
         // 1 1/4" — только STOUT, у ROMMER этого Kv в линейке нет. Диапазон у него
         // 30–65 °C (исполнение с центральным смешиванием), уставка 45–50 °C в него входит.
-        { id: "SVM-0125-356532", name: "Клапан термостатический смесительный ГВС 1 1/4\" НР, 30–65 °C, Kv 3,5", price: 15097, kv: 3.5, size: "1 1/4\"", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "SVM-0125-356532", name: "Клапан термостатический смесительный ГВС 1 1/4\" НР, 30–65 °C, Kv 3,5", price: 15097, kv: 3.5, size: "1 1/4\"", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" }
     ],
     // Присоединение термостатического клапана ГВС 3/4": у него наружная резьба G под
     // накидную гайку с плоской прокладкой. Краны с гайкой дают и разъём, и отсечку; клапан
@@ -3221,11 +3221,11 @@ const catalog = {
     // гайкой в прайсе нет. Цена — РРЦ × 0,9, как у латунных резьбовых фитингов STOUT.
     dhw_mix_fittings: [
         // ВР 3/4" / гайка 3/4" — вместо крана Т3: американка бойлера НР вкручивается в ВР
-        { id: "SVB-0009-000020", name: "Кран шаровой с накидной гайкой прямой, ВР/накидная гайка 3/4\"", price: 1443, brand: "STOUT", availability: "on_order", price_date: "2026-09-20" },
+        { id: "SVB-0009-000020", name: "Кран шаровой с накидной гайкой прямой, ВР/накидная гайка 3/4\"", price: 1443, brand: "STOUT", availability: "on_order", price_date: "2026-10-10" },
         // НР 3/4" / гайка 3/4" — холодный вход и выход клапана
-        { id: "SVB-1009-000020", name: "Кран шаровой с накидной гайкой прямой, НР/накидная гайка 3/4\"", price: 1586, brand: "STOUT", availability: "on_order", price_date: "2026-09-20" },
+        { id: "SVB-1009-000020", name: "Кран шаровой с накидной гайкой прямой, НР/накидная гайка 3/4\"", price: 1586, brand: "STOUT", availability: "on_order", price_date: "2026-10-10" },
         // Бойлер с патрубком Т3 1": между американкой 1" (НР) и краном с гайкой 3/4" (ВР)
-        { id: "SFT-0007-000134", name: "Муфта переходная ВР 1\" × НР 3/4\"", price: 309, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "SFT-0007-000134", name: "Муфта переходная ВР 1\" × НР 3/4\"", price: 309, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" }
     ],
     // Теплоизоляция трубопроводов котельной. Подбирается по ВНУТРЕННЕМУ диаметру
     // трубки — он должен совпадать с наружным диаметром трубы, иначе изоляция либо
@@ -3243,25 +3243,25 @@ const catalog = {
     // подачи лежал синий артикул с подписью «красная». Цена у цветов одна, поэтому
     // итог сметы не менялся — но заказ по артикулу приезжал не того цвета.
     boiler_insulation: {
-        18: { red: { id: "RIC-0002-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (красная)", dn: 18, thick: 6, len: 2, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-             blue: { id: "RIC-0001-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (синяя)",   dn: 18, thick: 6, len: 2, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        22: { red: { id: "RIC-0002-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (красная)", dn: 22, thick: 6, len: 2, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-             blue: { id: "RIC-0001-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (синяя)",   dn: 22, thick: 6, len: 2, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        28: { red: { id: "RIC-0002-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (красная)", dn: 28, thick: 6, len: 2, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-             blue: { id: "RIC-0001-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (синяя)",   dn: 28, thick: 6, len: 2, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
+        18: { red: { id: "RIC-0002-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (красная)", dn: 18, thick: 6, len: 2, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
+             blue: { id: "RIC-0001-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (синяя)",   dn: 18, thick: 6, len: 2, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
+        22: { red: { id: "RIC-0002-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (красная)", dn: 22, thick: 6, len: 2, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
+             blue: { id: "RIC-0001-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (синяя)",   dn: 22, thick: 6, len: 2, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
+        28: { red: { id: "RIC-0002-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (красная)", dn: 28, thick: 6, len: 2, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
+             blue: { id: "RIC-0001-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (синяя)",   dn: 28, thick: 6, len: 2, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
         // K-FLEX цветовой разбивки не имеет — одна позиция на подачу и обратку.
         // Цена за трубку 2 м, поэтому unit «шт», а не «м», как у ПРОТЕКТ ПРО.
         35: { red: { id: "R09035215508", name: "Трубка K-FLEX ST 35/9, 2м", dn: 35, thick: 9, len: 2, price: 223, unit: "шт", brand: "K-FLEX", availability: "on_order", price_date: "2026-09-22" } },
         42: { red: { id: "R09042215508", name: "Трубка K-FLEX ST 42/9, 2м", dn: 42, thick: 9, len: 2, price: 254, unit: "шт", brand: "K-FLEX", availability: "in_stock", price_date: "2026-09-22" } }
     },
-    nipple_34: { id: "SFT-0003-003434", name: "Ниппель НН 3/4\"", price: 216, availability: "in_stock", price_date: "2026-09-20" },
+    nipple_34: { id: "SFT-0003-003434", name: "Ниппель НН 3/4\"", price: 216, availability: "in_stock", price_date: "2026-10-10" },
     // Предохранительный клапан бойлера RVS-0003-006015 — вход 1/2" ВР (паспорт ROMMER),
     // крестовина узла В1 — 3/4" ВР: между ними ниппель переходной НР 3/4" × 1/2".
     // Цена — прайс × 0,9, как у соседних ниппелей SFT-0004 в каталоге.
-    nipple_34_12: { id: "SFT-0004-003412", name: "Ниппель переходной 3/4\" x 1/2\" НР", price: 201, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
+    nipple_34_12: { id: "SFT-0004-003412", name: "Ниппель переходной 3/4\" x 1/2\" НР", price: 201, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
     // Переходные муфты (проставки) между патрубками котла 1" и группой быстрого монтажа —
     // паспорт STOUT POLIS, п. 6.2, Рис.5.
-    pump_union_1: { id: "SPC-0010-000025", name: "Присоединительный комплект G 1 1/2\" x Rp 1\"", price: 555, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
+    pump_union_1: { id: "SPC-0010-000025", name: "Присоединительный комплект G 1 1/2\" x Rp 1\"", price: 555, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
     coolants: [
         { id: "WARME-HYDRO-20", brand: "WARME", name: "Hydro, 20л", vol: 20, price: 1017, type: "water", availability: "in_stock", price_date: "2026-07-12" },
         { id: "WARME-ECO30-20", brand: "WARME", name: "Eco 30, 20кг", vol: 19, price: 4770, type: "eco30", availability: "in_stock", price_date: "2026-07-12" },
@@ -3272,11 +3272,11 @@ const catalog = {
     // паспорта ROMMER Profi RHS (2025), точки сняты с графика. cable / cable_mm2 —
     // штатный кабель насоса, длина м и сечение (те же паспорта, табл. размеров и табл. 2).
     well_pumps: [
-        { id: "RPW-0012-350215", name: "Насос скважинный 2-44, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 64, curve: [[0, 64], [0.3, 63], [0.6, 62], [0.9, 61], [1.2, 58], [1.5, 54], [1.8, 49], [2.1, 43], [2.4, 36], [2.7, 27]], cable: 50, cable_mm2: "3×0,75", price: 14179, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RPW-0012-350221", name: "Насос скважинный 2-63, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 89, curve: [[0, 89], [0.3, 89], [0.6, 87], [0.9, 85], [1.2, 81], [1.5, 76], [1.8, 68], [2.1, 60], [2.4, 51], [2.7, 38]], cable: 50, cable_mm2: "3×1,0", price: 17983, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RPW-0012-370227", name: "Насос скважинный 2-81, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 115, curve: [[0, 115], [0.3, 114], [0.6, 112], [0.9, 110], [1.2, 104], [1.5, 97], [1.8, 88], [2.1, 77], [2.4, 65], [2.7, 49]], cable: 70, cable_mm2: "3×1,0", price: 24382, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RPW-0012-380239", name: "Насос скважинный 2-111, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 166, curve: [[0, 166], [0.3, 164], [0.6, 161], [0.9, 159], [1.2, 151], [1.5, 141], [1.8, 127], [2.1, 112], [2.4, 94], [2.7, 70]], cable: 80, cable_mm2: "3×1,5", price: 38906, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RPW-0012-350321", name: "Насос скважинный 3-51, Ду 75 мм, с кабелем", q_max: 3.9, h_max: 84, curve: [[0, 84], [0.6, 82], [1.2, 78], [1.8, 74], [2.4, 67], [3, 53], [3.6, 34], [3.9, 23]], cable: 50, cable_mm2: "3×1,0", price: 20404, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RPW-0012-350215", name: "Насос скважинный 2-44, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 64, curve: [[0, 64], [0.3, 63], [0.6, 62], [0.9, 61], [1.2, 58], [1.5, 54], [1.8, 49], [2.1, 43], [2.4, 36], [2.7, 27]], cable: 50, cable_mm2: "3×0,75", price: 14179, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "RPW-0012-350221", name: "Насос скважинный 2-63, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 89, curve: [[0, 89], [0.3, 89], [0.6, 87], [0.9, 85], [1.2, 81], [1.5, 76], [1.8, 68], [2.1, 60], [2.4, 51], [2.7, 38]], cable: 50, cable_mm2: "3×1,0", price: 17983, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "RPW-0012-370227", name: "Насос скважинный 2-81, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 115, curve: [[0, 115], [0.3, 114], [0.6, 112], [0.9, 110], [1.2, 104], [1.5, 97], [1.8, 88], [2.1, 77], [2.4, 65], [2.7, 49]], cable: 70, cable_mm2: "3×1,0", price: 24382, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "RPW-0012-380239", name: "Насос скважинный 2-111, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 166, curve: [[0, 166], [0.3, 164], [0.6, 161], [0.9, 159], [1.2, 151], [1.5, 141], [1.8, 127], [2.1, 112], [2.4, 94], [2.7, 70]], cable: 80, cable_mm2: "3×1,5", price: 38906, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "RPW-0012-350321", name: "Насос скважинный 3-51, Ду 75 мм, с кабелем", q_max: 3.9, h_max: 84, curve: [[0, 84], [0.6, 82], [1.2, 78], [1.8, 74], [2.4, 67], [3, 53], [3.6, 34], [3.9, 23]], cable: 50, cable_mm2: "3×1,0", price: 20404, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
         { id: "RPW-0012-350326", name: "Насос скважинный 3-63, Ду 75 мм, с кабелем", q_max: 3.9, h_max: 104, curve: [[0, 104], [0.6, 102], [1.2, 97], [1.8, 92], [2.4, 83], [3, 66], [3.6, 43], [3.9, 28]], cable: 50, cable_mm2: "3×1,25", price: 23832, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
         { id: "RPW-0012-370331", name: "Насос скважинный 3-77, Ду 75 мм, с кабелем", q_max: 3.9, h_max: 124, curve: [[0, 124], [0.6, 121], [1.2, 116], [1.8, 110], [2.4, 99], [3, 79], [3.6, 51], [3.9, 34]], cable: 70, cable_mm2: "3×1,25", price: 35567, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
         { id: "RPW-0012-380337", name: "Насос скважинный 3-92, Ду 75 мм, с кабелем", q_max: 3.9, h_max: 148, curve: [[0, 148], [0.6, 145], [1.2, 138], [1.8, 131], [2.4, 118], [3, 94], [3.6, 61], [3.9, 40]], cable: 80, cable_mm2: "3×2,0", price: 38906, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
@@ -3354,9 +3354,9 @@ const catalog = {
     // Цена стоит ЗА МЕТР: строка добавляется в смету метражом, без asCoilPrice, и поля
     // len здесь быть не должно — иначе метры превратятся в бухты.
     water_pipes_mp: [
-        { id: "SPM-0001-101620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0", price: 157, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RPM-0002-201620", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 16x2.0", price: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-17" } },
-        { id: "SPM-0001-102020", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 20x2.0", price: 266, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RPM-0002-102020", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 20x2.0", price: 147, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-17" } },
-        { id: "SPM-0001-052630", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 26x3.0", price: 483, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RPM-0002-052630", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 26x3.0", price: 259, brand: "ROMMER", availability: "on_order", price_date: "2026-09-17" } },
+        { id: "SPM-0001-101620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0", price: 157, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RPM-0002-201620", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 16x2.0", price: 78, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
+        { id: "SPM-0001-102020", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 20x2.0", price: 266, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RPM-0002-102020", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 20x2.0", price: 125, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
+        { id: "SPM-0001-052630", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 26x3.0", price: 483, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RPM-0002-052630", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 26x3.0", price: 220, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
         { id: "SPM-0001-053230", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 32x3.0", price: 708, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RPM-0002-053230", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 32x3.0", price: 371, brand: "ROMMER", availability: "on_order", price_date: "2026-09-17" } }
     ],
     // Обе трубки — 18/6 SUPER PROTECT, красная на ГВС и синяя на ХВС.
@@ -5011,16 +5011,16 @@ const catalog = {
     // как самую дешёвую, а это другая комплектация, а не другой бренд. Выбор голой
     // рамы добавляет в смету вторую строку — панель смыва из flush_panels.
     installations: [
-        { id: "19101011001", name: "Инсталляция NOVAFLOW для подвесного унитаза (без панели)", price: 23116, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", noCheapen: true, series: "none" },
-        { id: "19101021001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA QUAD 001, белый глянец", price: 24536, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "QUAD", color: "white" },
-        { id: "19101031001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA QUAD 001, хром глянец", price: 27172, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "QUAD", color: "chrome" },
-        { id: "19101041001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA QUAD 001, чёрный мат", price: 26868, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "QUAD", color: "black" },
-        { id: "19101051001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA ORB 001, белый глянец", price: 24536, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "ORB", color: "white" },
-        { id: "19101061001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA ORB 001, хром глянец", price: 27172, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "ORB", color: "chrome" },
-        { id: "19101071001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA ORB 001, чёрный мат", price: 26868, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "ORB", color: "black" },
-        { id: "19101081001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA ELLIPSE 001, белый глянец", price: 24536, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "ELLIPSE", color: "white" },
-        { id: "19101091001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA ELLIPSE 001, хром глянец", price: 27172, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "ELLIPSE", color: "chrome" },
-        { id: "19101101001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA ELLIPSE 001, чёрный мат", price: 26868, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "ELLIPSE", color: "black" },
+        { id: "19101011001", name: "Инсталляция NOVAFLOW для подвесного унитаза (без панели)", price: 23116, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", noCheapen: true, series: "none" },
+        { id: "19101021001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA QUAD 001, белый глянец", price: 24536, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "QUAD", color: "white" },
+        { id: "19101031001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA QUAD 001, хром глянец", price: 27172, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "QUAD", color: "chrome" },
+        { id: "19101041001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA QUAD 001, чёрный мат", price: 26868, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "QUAD", color: "black" },
+        { id: "19101051001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA ORB 001, белый глянец", price: 24536, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "ORB", color: "white" },
+        { id: "19101061001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA ORB 001, хром глянец", price: 27172, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "ORB", color: "chrome" },
+        { id: "19101071001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA ORB 001, чёрный мат", price: 26868, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "ORB", color: "black" },
+        { id: "19101081001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA ELLIPSE 001, белый глянец", price: 24536, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "ELLIPSE", color: "white" },
+        { id: "19101091001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA ELLIPSE 001, хром глянец", price: 27172, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "ELLIPSE", color: "chrome" },
+        { id: "19101101001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA ELLIPSE 001, чёрный мат", price: 26868, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "ELLIPSE", color: "black" },
         // Артикул поставщика — AM101/1120-4:1 (сверено 10.09.2026, в наличии).
         // В поле article не ставим: под этим кодом у него лежат шесть карточек —
         // кнопки хром, белая и чёрная, от 28 724 до 32 700 ₽, причём хромовых две:
@@ -5031,74 +5031,74 @@ const catalog = {
     ],
     // Панели смыва РЕХАУ: нужны только при выборе инсталляции без панели.
     flush_panels: [
-        { id: "19102011001", name: "Панель смыва NOVA QUAD 001, белый глянец", price: 2914, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "QUAD", color: "white", panelMat: "plastic" },
-        { id: "19102021001", name: "Панель смыва NOVA QUAD 001, хром глянец", price: 5819, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "QUAD", color: "chrome", panelMat: "plastic" },
-        { id: "19102031001", name: "Панель смыва NOVA QUAD 001, серебро мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "QUAD", color: "silver", panelMat: "plastic" },
-        { id: "19102041001", name: "Панель смыва NOVA QUAD 001, графитовый мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "QUAD", color: "graphite", panelMat: "plastic" },
-        { id: "19102051001", name: "Панель смыва NOVA QUAD 001, чёрный мат", price: 5445, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "QUAD", color: "black", panelMat: "plastic" },
-        { id: "19102061001", name: "Панель смыва NOVA QUAD 001, золотой мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "QUAD", color: "gold", panelMat: "plastic" },
-        { id: "19102071001", name: "Панель смыва NOVA QUAD 001, розовое золото мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "QUAD", color: "rose", panelMat: "plastic" },
-        { id: "19102101001", name: "Панель смыва NOVA ELLIPSE 001, белый глянец", price: 2864, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ELLIPSE", color: "white", panelMat: "plastic" },
-        { id: "19102111001", name: "Панель смыва NOVA ELLIPSE 001, хром глянец", price: 5819, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ELLIPSE", color: "chrome", panelMat: "plastic" },
-        { id: "19102121001", name: "Панель смыва NOVA ELLIPSE 001, серебро мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ELLIPSE", color: "silver", panelMat: "plastic" },
-        { id: "19102131001", name: "Панель смыва NOVA ELLIPSE 001, графитовый мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ELLIPSE", color: "graphite", panelMat: "plastic" },
-        { id: "19102141001", name: "Панель смыва NOVA ELLIPSE 001, чёрный мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ELLIPSE", color: "black", panelMat: "plastic" },
-        { id: "19102151001", name: "Панель смыва NOVA ELLIPSE 001, золотой мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ELLIPSE", color: "gold", panelMat: "plastic" },
-        { id: "19102161001", name: "Панель смыва NOVA ELLIPSE 001, розовое золото мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ELLIPSE", color: "rose", panelMat: "plastic" },
-        { id: "19102201001", name: "Панель смыва NOVA ORB 001, белый глянец", price: 2864, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "ORB", color: "white", panelMat: "plastic" },
-        { id: "19102211001", name: "Панель смыва NOVA ORB 001, хром глянец", price: 5715, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "ORB", color: "chrome", panelMat: "plastic" },
-        { id: "19102221001", name: "Панель смыва NOVA ORB 001, серебро мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ORB", color: "silver", panelMat: "plastic" },
-        { id: "19102231001", name: "Панель смыва NOVA ORB 001, графитовый мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ORB", color: "graphite", panelMat: "plastic" },
-        { id: "19102241001", name: "Панель смыва NOVA ORB 001, чёрный мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ORB", color: "black", panelMat: "plastic" },
-        { id: "19102251001", name: "Панель смыва NOVA ORB 001, золотой мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ORB", color: "gold", panelMat: "plastic" },
-        { id: "19102261001", name: "Панель смыва NOVA ORB 001, розовое золото мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ORB", color: "rose", panelMat: "plastic" },
-        { id: "19102301001", name: "Панель смыва NOVA LONG 001, белый глянец", price: 2864, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "white", panelMat: "plastic" },
-        { id: "19102311001", name: "Панель смыва NOVA LONG 001, белый глянец, клавиши хром глянец", price: 2864, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "white", panelMat: "plastic" },
-        { id: "19102321001", name: "Панель смыва NOVA LONG 001, хром глянец", price: 5715, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "chrome", panelMat: "plastic" },
-        { id: "19102331001", name: "Панель смыва NOVA LONG 001, серебро мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "silver", panelMat: "plastic" },
-        { id: "19102341001", name: "Панель смыва NOVA LONG 001, графитовый мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "graphite", panelMat: "plastic" },
-        { id: "19102351001", name: "Панель смыва NOVA LONG 001, чёрный мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "black", panelMat: "plastic" },
-        { id: "19102361001", name: "Панель смыва NOVA LONG 001, чёрный мат, контур клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "black", panelMat: "plastic" },
-        { id: "19102371001", name: "Панель смыва NOVA LONG 001, золотой мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "gold", panelMat: "plastic" },
-        { id: "19102381001", name: "Панель смыва NOVA LONG 001, розовое золото мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "rose", panelMat: "plastic" },
-        { id: "19102401001", name: "Панель смыва NOVA ELLIPSE 002, белый глянец, контур клавиш хром глянец", price: 2864, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ELLIPSE", color: "white", panelMat: "plastic" },
-        { id: "19102411001", name: "Панель смыва NOVA ELLIPSE 002, хром глянец, контур клавиш хром глянец", price: 5715, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ELLIPSE", color: "chrome", panelMat: "plastic" },
-        { id: "19102421001", name: "Панель смыва NOVA ELLIPSE 002, серебро мат, контур клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ELLIPSE", color: "silver", panelMat: "plastic" },
-        { id: "19102431001", name: "Панель смыва NOVA ELLIPSE 002, графитовый мат, контур клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ELLIPSE", color: "graphite", panelMat: "plastic" },
-        { id: "19102441001", name: "Панель смыва NOVA ELLIPSE 002, чёрный мат, контур клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ELLIPSE", color: "black", panelMat: "plastic" },
-        { id: "19102451001", name: "Панель смыва NOVA ELLIPSE 002, золотой мат, контур клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ELLIPSE", color: "gold", panelMat: "plastic" },
-        { id: "19102461001", name: "Панель смыва NOVA ELLIPSE 002, розовое золото мат, контур клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ELLIPSE", color: "rose", panelMat: "plastic" },
-        { id: "19102501001", name: "Панель смыва NOVA LONG 002, белый глянец, нижняя полоса клавиш хром глянец", price: 2864, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "white", panelMat: "plastic" },
-        { id: "19102511001", name: "Панель смыва NOVA LONG 002, хром глянец, нижняя полоса клавиш хром глянец", price: 5715, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "chrome", panelMat: "plastic" },
-        { id: "19102521001", name: "Панель смыва NOVA LONG 002, серебро мат, нижняя полоса клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "silver", panelMat: "plastic" },
-        { id: "19102531001", name: "Панель смыва NOVA LONG 002, графитовый матовый, нижняя полоса клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "graphite", panelMat: "plastic" },
-        { id: "19102541001", name: "Панель смыва NOVA LONG 002, чёрный мат, нижняя полоса клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "black", panelMat: "plastic" },
-        { id: "19102551001", name: "Панель смыва NOVA LONG 002, золотой мат, нижняя полоса клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "gold", panelMat: "plastic" },
-        { id: "19102561001", name: "Панель смыва NOVA LONG 002, розовое золото, нижняя полоса клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "LONG", color: "rose", panelMat: "plastic" },
-        { id: "19102901001", name: "Панель смыва NOVA ORB GLASS, закалённое стекло, белый, клавиши и их контур хром глянец", price: 8665, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ORB", color: "white", panelMat: "glass" },
-        { id: "19102911001", name: "Панель смыва NOVA ORB GLASS, закалённое стекло, чёрный, клавиши и их контур хром глянец", price: 8665, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ORB", color: "black", panelMat: "glass" },
-        { id: "19102921001", name: "Панель смыва NOVA ORB GLASS, закалённое стекло, красный, клавиши и их контур хром глянец", price: 8665, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ORB", color: "red", panelMat: "glass" },
-        { id: "19102601001", name: "Панель смыва NOVA ORB STEEL, нержавеющая сталь, брашированная мат", price: 7227, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "ORB", color: "steel", panelMat: "steel" },
-        { id: "19102611001", name: "Панель смыва NOVA ORB STEEL, нержавеющая сталь глянец", price: 7227, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ORB", color: "steel", panelMat: "steel" },
-        { id: "19102621001", name: "Панель смыва NOVA ORB STEEL, нержавеющая сталь, брашированный графитовый мат", price: 12167, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "ORB", color: "graphite", panelMat: "steel" },
-        { id: "19102631001", name: "Панель смыва NOVA ORB STEEL, нержавеющая сталь, чёрный мат", price: 7227, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "ORB", color: "black", panelMat: "steel" },
-        { id: "19102641001", name: "Панель смыва NOVA ORB STEEL, нержавеющая сталь, брашированное розовое золото мат", price: 12167, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ORB", color: "rose", panelMat: "steel" },
-        { id: "19102651001", name: "Панель смыва NOVA ORB STEEL, нержавеющая сталь, брашированное циркониевое золото мат", price: 12167, brand: "REHAU", availability: "in_stock", price_date: "2026-09-23", series: "ORB", color: "gold", panelMat: "steel" },
-        { id: "19102661001", name: "Панель смыва NOVA ORB STEEL, нержавеющая сталь, брашированное титановое золото мат", price: 12167, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "ORB", color: "gold", panelMat: "steel" },
-        { id: "19102701001", name: "Панель смыва NOVA QUAD STEEL, нержавеющая сталь, брашированная мат", price: 7227, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "QUAD", color: "steel", panelMat: "steel" },
-        { id: "19102711001", name: "Панель смыва NOVA QUAD STEEL, нержавеющая сталь глянец", price: 7227, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "QUAD", color: "steel", panelMat: "steel" },
-        { id: "19102721001", name: "Панель смыва NOVA QUAD STEEL, нержавеющая сталь, брашированный графитовый мат", price: 12167, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "QUAD", color: "graphite", panelMat: "steel" },
-        { id: "19102731001", name: "Панель смыва NOVA QUAD STEEL, нержавеющая сталь, чёрный мат", price: 7227, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "QUAD", color: "black", panelMat: "steel" },
-        { id: "19102741001", name: "Панель смыва NOVA QUAD STEEL, нержавеющая сталь, брашированное розовое золото мат", price: 12167, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "QUAD", color: "rose", panelMat: "steel" },
-        { id: "19102751001", name: "Панель смыва NOVA QUAD STEEL, нержавеющая сталь, брашированное циркониевое золото мат", price: 12167, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "QUAD", color: "gold", panelMat: "steel" },
-        { id: "19102761001", name: "Панель смыва NOVA QUAD STEEL, нержавеющая сталь, брашированное титановое золото мат", price: 12167, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "QUAD", color: "gold", panelMat: "steel" },
-        { id: "19102801001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь, брашированная мат", price: 10138, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "PUBLIC", color: "steel", panelMat: "steel" },
-        { id: "19102811001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь глянец", price: 10138, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "PUBLIC", color: "steel", panelMat: "steel" },
-        { id: "19102821001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь, брашированный графитовый мат", price: 14195, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "PUBLIC", color: "graphite", panelMat: "steel" },
-        { id: "19102831001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь, чёрный мат", price: 14195, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "PUBLIC", color: "black", panelMat: "steel" },
-        { id: "19102841001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь, брашированное розовое золото мат", price: 14195, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "PUBLIC", color: "rose", panelMat: "steel" },
-        { id: "19102851001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь, брашированное циркониевое золото мат", price: 14195, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "PUBLIC", color: "gold", panelMat: "steel" },
-        { id: "19102861001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь, брашированное титановое золото мат", price: 14195, brand: "REHAU", availability: "on_order", price_date: "2026-09-23", series: "PUBLIC", color: "gold", panelMat: "steel" }
+        { id: "19102011001", name: "Панель смыва NOVA QUAD 001, белый глянец", price: 2914, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "QUAD", color: "white", panelMat: "plastic" },
+        { id: "19102021001", name: "Панель смыва NOVA QUAD 001, хром глянец", price: 5819, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "QUAD", color: "chrome", panelMat: "plastic" },
+        { id: "19102031001", name: "Панель смыва NOVA QUAD 001, серебро мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "QUAD", color: "silver", panelMat: "plastic" },
+        { id: "19102041001", name: "Панель смыва NOVA QUAD 001, графитовый мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "QUAD", color: "graphite", panelMat: "plastic" },
+        { id: "19102051001", name: "Панель смыва NOVA QUAD 001, чёрный мат", price: 5445, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "QUAD", color: "black", panelMat: "plastic" },
+        { id: "19102061001", name: "Панель смыва NOVA QUAD 001, золотой мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "QUAD", color: "gold", panelMat: "plastic" },
+        { id: "19102071001", name: "Панель смыва NOVA QUAD 001, розовое золото мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "QUAD", color: "rose", panelMat: "plastic" },
+        { id: "19102101001", name: "Панель смыва NOVA ELLIPSE 001, белый глянец", price: 2864, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ELLIPSE", color: "white", panelMat: "plastic" },
+        { id: "19102111001", name: "Панель смыва NOVA ELLIPSE 001, хром глянец", price: 5819, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ELLIPSE", color: "chrome", panelMat: "plastic" },
+        { id: "19102121001", name: "Панель смыва NOVA ELLIPSE 001, серебро мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ELLIPSE", color: "silver", panelMat: "plastic" },
+        { id: "19102131001", name: "Панель смыва NOVA ELLIPSE 001, графитовый мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ELLIPSE", color: "graphite", panelMat: "plastic" },
+        { id: "19102141001", name: "Панель смыва NOVA ELLIPSE 001, чёрный мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ELLIPSE", color: "black", panelMat: "plastic" },
+        { id: "19102151001", name: "Панель смыва NOVA ELLIPSE 001, золотой мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ELLIPSE", color: "gold", panelMat: "plastic" },
+        { id: "19102161001", name: "Панель смыва NOVA ELLIPSE 001, розовое золото мат", price: 5445, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ELLIPSE", color: "rose", panelMat: "plastic" },
+        { id: "19102201001", name: "Панель смыва NOVA ORB 001, белый глянец", price: 2864, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "ORB", color: "white", panelMat: "plastic" },
+        { id: "19102211001", name: "Панель смыва NOVA ORB 001, хром глянец", price: 5715, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ORB", color: "chrome", panelMat: "plastic" },
+        { id: "19102221001", name: "Панель смыва NOVA ORB 001, серебро мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ORB", color: "silver", panelMat: "plastic" },
+        { id: "19102231001", name: "Панель смыва NOVA ORB 001, графитовый мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ORB", color: "graphite", panelMat: "plastic" },
+        { id: "19102241001", name: "Панель смыва NOVA ORB 001, чёрный мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ORB", color: "black", panelMat: "plastic" },
+        { id: "19102251001", name: "Панель смыва NOVA ORB 001, золотой мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ORB", color: "gold", panelMat: "plastic" },
+        { id: "19102261001", name: "Панель смыва NOVA ORB 001, розовое золото мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ORB", color: "rose", panelMat: "plastic" },
+        { id: "19102301001", name: "Панель смыва NOVA LONG 001, белый глянец", price: 2864, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "white", panelMat: "plastic" },
+        { id: "19102311001", name: "Панель смыва NOVA LONG 001, белый глянец, клавиши хром глянец", price: 2864, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "white", panelMat: "plastic" },
+        { id: "19102321001", name: "Панель смыва NOVA LONG 001, хром глянец", price: 5715, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "chrome", panelMat: "plastic" },
+        { id: "19102331001", name: "Панель смыва NOVA LONG 001, серебро мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "silver", panelMat: "plastic" },
+        { id: "19102341001", name: "Панель смыва NOVA LONG 001, графитовый мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "graphite", panelMat: "plastic" },
+        { id: "19102351001", name: "Панель смыва NOVA LONG 001, чёрный мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "black", panelMat: "plastic" },
+        { id: "19102361001", name: "Панель смыва NOVA LONG 001, чёрный мат, контур клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "black", panelMat: "plastic" },
+        { id: "19102371001", name: "Панель смыва NOVA LONG 001, золотой мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "gold", panelMat: "plastic" },
+        { id: "19102381001", name: "Панель смыва NOVA LONG 001, розовое золото мат", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "rose", panelMat: "plastic" },
+        { id: "19102401001", name: "Панель смыва NOVA ELLIPSE 002, белый глянец, контур клавиш хром глянец", price: 2864, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ELLIPSE", color: "white", panelMat: "plastic" },
+        { id: "19102411001", name: "Панель смыва NOVA ELLIPSE 002, хром глянец, контур клавиш хром глянец", price: 5715, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ELLIPSE", color: "chrome", panelMat: "plastic" },
+        { id: "19102421001", name: "Панель смыва NOVA ELLIPSE 002, серебро мат, контур клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ELLIPSE", color: "silver", panelMat: "plastic" },
+        { id: "19102431001", name: "Панель смыва NOVA ELLIPSE 002, графитовый мат, контур клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ELLIPSE", color: "graphite", panelMat: "plastic" },
+        { id: "19102441001", name: "Панель смыва NOVA ELLIPSE 002, чёрный мат, контур клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ELLIPSE", color: "black", panelMat: "plastic" },
+        { id: "19102451001", name: "Панель смыва NOVA ELLIPSE 002, золотой мат, контур клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ELLIPSE", color: "gold", panelMat: "plastic" },
+        { id: "19102461001", name: "Панель смыва NOVA ELLIPSE 002, розовое золото мат, контур клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ELLIPSE", color: "rose", panelMat: "plastic" },
+        { id: "19102501001", name: "Панель смыва NOVA LONG 002, белый глянец, нижняя полоса клавиш хром глянец", price: 2864, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "white", panelMat: "plastic" },
+        { id: "19102511001", name: "Панель смыва NOVA LONG 002, хром глянец, нижняя полоса клавиш хром глянец", price: 5715, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "chrome", panelMat: "plastic" },
+        { id: "19102521001", name: "Панель смыва NOVA LONG 002, серебро мат, нижняя полоса клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "silver", panelMat: "plastic" },
+        { id: "19102531001", name: "Панель смыва NOVA LONG 002, графитовый матовый, нижняя полоса клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "graphite", panelMat: "plastic" },
+        { id: "19102541001", name: "Панель смыва NOVA LONG 002, чёрный мат, нижняя полоса клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "black", panelMat: "plastic" },
+        { id: "19102551001", name: "Панель смыва NOVA LONG 002, золотой мат, нижняя полоса клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "gold", panelMat: "plastic" },
+        { id: "19102561001", name: "Панель смыва NOVA LONG 002, розовое золото, нижняя полоса клавиш хром глянец", price: 5349, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "LONG", color: "rose", panelMat: "plastic" },
+        { id: "19102901001", name: "Панель смыва NOVA ORB GLASS, закалённое стекло, белый, клавиши и их контур хром глянец", price: 8665, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ORB", color: "white", panelMat: "glass" },
+        { id: "19102911001", name: "Панель смыва NOVA ORB GLASS, закалённое стекло, чёрный, клавиши и их контур хром глянец", price: 8665, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ORB", color: "black", panelMat: "glass" },
+        { id: "19102921001", name: "Панель смыва NOVA ORB GLASS, закалённое стекло, красный, клавиши и их контур хром глянец", price: 8665, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ORB", color: "red", panelMat: "glass" },
+        { id: "19102601001", name: "Панель смыва NOVA ORB STEEL, нержавеющая сталь, брашированная мат", price: 7227, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "ORB", color: "steel", panelMat: "steel" },
+        { id: "19102611001", name: "Панель смыва NOVA ORB STEEL, нержавеющая сталь глянец", price: 7227, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ORB", color: "steel", panelMat: "steel" },
+        { id: "19102621001", name: "Панель смыва NOVA ORB STEEL, нержавеющая сталь, брашированный графитовый мат", price: 12167, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "ORB", color: "graphite", panelMat: "steel" },
+        { id: "19102631001", name: "Панель смыва NOVA ORB STEEL, нержавеющая сталь, чёрный мат", price: 7227, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "ORB", color: "black", panelMat: "steel" },
+        { id: "19102641001", name: "Панель смыва NOVA ORB STEEL, нержавеющая сталь, брашированное розовое золото мат", price: 12167, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ORB", color: "rose", panelMat: "steel" },
+        { id: "19102651001", name: "Панель смыва NOVA ORB STEEL, нержавеющая сталь, брашированное циркониевое золото мат", price: 12167, brand: "REHAU", availability: "in_stock", price_date: "2026-10-10", series: "ORB", color: "gold", panelMat: "steel" },
+        { id: "19102661001", name: "Панель смыва NOVA ORB STEEL, нержавеющая сталь, брашированное титановое золото мат", price: 12167, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "ORB", color: "gold", panelMat: "steel" },
+        { id: "19102701001", name: "Панель смыва NOVA QUAD STEEL, нержавеющая сталь, брашированная мат", price: 7227, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "QUAD", color: "steel", panelMat: "steel" },
+        { id: "19102711001", name: "Панель смыва NOVA QUAD STEEL, нержавеющая сталь глянец", price: 7227, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "QUAD", color: "steel", panelMat: "steel" },
+        { id: "19102721001", name: "Панель смыва NOVA QUAD STEEL, нержавеющая сталь, брашированный графитовый мат", price: 12167, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "QUAD", color: "graphite", panelMat: "steel" },
+        { id: "19102731001", name: "Панель смыва NOVA QUAD STEEL, нержавеющая сталь, чёрный мат", price: 7227, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "QUAD", color: "black", panelMat: "steel" },
+        { id: "19102741001", name: "Панель смыва NOVA QUAD STEEL, нержавеющая сталь, брашированное розовое золото мат", price: 12167, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "QUAD", color: "rose", panelMat: "steel" },
+        { id: "19102751001", name: "Панель смыва NOVA QUAD STEEL, нержавеющая сталь, брашированное циркониевое золото мат", price: 12167, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "QUAD", color: "gold", panelMat: "steel" },
+        { id: "19102761001", name: "Панель смыва NOVA QUAD STEEL, нержавеющая сталь, брашированное титановое золото мат", price: 12167, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "QUAD", color: "gold", panelMat: "steel" },
+        { id: "19102801001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь, брашированная мат", price: 10138, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "PUBLIC", color: "steel", panelMat: "steel" },
+        { id: "19102811001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь глянец", price: 10138, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "PUBLIC", color: "steel", panelMat: "steel" },
+        { id: "19102821001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь, брашированный графитовый мат", price: 14195, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "PUBLIC", color: "graphite", panelMat: "steel" },
+        { id: "19102831001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь, чёрный мат", price: 14195, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "PUBLIC", color: "black", panelMat: "steel" },
+        { id: "19102841001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь, брашированное розовое золото мат", price: 14195, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "PUBLIC", color: "rose", panelMat: "steel" },
+        { id: "19102851001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь, брашированное циркониевое золото мат", price: 14195, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "PUBLIC", color: "gold", panelMat: "steel" },
+        { id: "19102861001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь, брашированное титановое золото мат", price: 14195, brand: "REHAU", availability: "on_order", price_date: "2026-10-10", series: "PUBLIC", color: "gold", panelMat: "steel" }
     ],
     sewer_silent: [
         { id: "SKB-0002-110100", name: "Труба канализационная бесшумная D 110 L 1000", price: 2044, brand: "STOUT", availability: "in_stock", rommer: { id: "500089", article: "500089", name: "Труба кан. ПП D 110 L 1000", price: 588, brand: "Sinikon",
@@ -7678,7 +7678,7 @@ const steelRads = [
     { id: "RRS-2010-226040", name: "Стальной панельный Compact (Тип 22)", height: 600, sec: 400, isPanel: true, price: 6478, brand: "ROMMER", power50: 769, passportPower: 1191, availability: "in_stock", price_date: "2026-09-23" },
     { id: "RRS-2020-226040", name: "Стальной панельный Ventil (Тип 22)", height: 600, sec: 400, isPanel: true, bottom: true, price: 8992, brand: "ROMMER", power50: 769, passportPower: 1191, availability: "in_stock", price_date: "2026-09-23" },
     { id: "RRS-2010-226050", name: "Стальной панельный Compact (Тип 22)", height: 600, sec: 500, isPanel: true, price: 7247, brand: "ROMMER", power50: 912, passportPower: 1412, availability: "in_stock", price_date: "2026-09-23" },
-    { id: "RRS-2020-226050", name: "Стальной панельный Ventil (Тип 22)", height: 600, sec: 500, isPanel: true, bottom: true, price: 9775, brand: "ROMMER", power50: 912, passportPower: 1412, availability: "in_stock", price_date: "2026-09-10" },
+    { id: "RRS-2020-226050", name: "Стальной панельный Ventil (Тип 22)", height: 600, sec: 500, isPanel: true, bottom: true, price: 10264, brand: "ROMMER", power50: 912, passportPower: 1412, availability: "in_stock", price_date: "2026-10-10" },
     { id: "RRS-2010-226060", name: "Стальной панельный Compact (Тип 22)", height: 600, sec: 600, isPanel: true, price: 8082, brand: "ROMMER", power50: 1056, passportPower: 1635, availability: "in_stock", price_date: "2026-09-23" },
     { id: "RRS-2020-226060", name: "Стальной панельный Ventil (Тип 22)", height: 600, sec: 600, isPanel: true, bottom: true, price: 10625, brand: "ROMMER", power50: 1056, passportPower: 1635, availability: "in_stock", price_date: "2026-09-23" },
     { id: "RRS-2010-226070", name: "Стальной панельный Compact (Тип 22)", height: 600, sec: 700, isPanel: true, price: 8886, brand: "ROMMER", power50: 1200, passportPower: 1858, availability: "in_stock", price_date: "2026-09-23" },
