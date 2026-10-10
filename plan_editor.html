@@ -213,6 +213,18 @@
   .wz-do .tx { flex: 1 1 360px; color: var(--text-main); font-size: 13.5px; line-height: 1.45; }
   .wz-do .tx b { color: #fff; }
   .wz-do button.go { font-size: 13.5px; padding: 6px 16px; }
+  /* Телефон: план на всю ширину, список комнат под ним (в ряд с колонкой 320 px
+     от плана оставалась миниатюра), шаги — номерами, текст шага — одной фразой */
+  @media (max-width: 720px) {
+    .wrap { flex-direction: column; padding: 6px; align-items: stretch; }
+    .cvbox, .side { flex: none; width: 100%; box-sizing: border-box; }
+    .wz-ar { display: none; }
+    .wz-st:not(.cur) { font-size: 0; padding: 4px; }
+    .wz-st:not(.cur) .n { margin-right: 0; font-size: 11px; }
+    .wz-do .tx { flex: 1 1 100%; font-size: 14px; }
+    .wz-do button { flex: 1 1 auto; }
+    .pj-head .sub { display: none; }
+  }
   .wz-todo { margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; border-radius: 8px; background: rgba(59,130,246,.16); border: 1px solid #3b82f6; }
   .wz-todo .tx { flex: 1 1 320px; font-size: 14px; color: var(--text-main); }
   .wz-todo .tx b { color: #fff; }
@@ -799,7 +811,7 @@ function loadPdfJs() {
   });
 }
 
-function applyPlanCanvas(c) {
+function applyPlanCanvas(c, later) {
   pushUndo('plan');
   var f = F();
   f.img = c.toDataURL('image/jpeg', 0.82);
@@ -816,6 +828,13 @@ function applyPlanCanvas(c) {
   // раскодирует обратно тот же JPEG.
   imgCache[cur] = c;
   draw(); renderZones();
+  // later — подписи и размеры картинки ещё читает модель: план уже на экране,
+  // а масштаб подберёт finishPlanLoad, когда ответ придёт
+  if (later) return;
+  finishPlanLoad();
+}
+
+function finishPlanLoad() {
   // Масштаб — единственное число разметки, которого нет ни на чертеже, ни в
   // расчёте. Комнаты этажа посчитаны — подбираем его по их площадям, и лист
   // сразу готов к «Распознать комнаты». Не вышло — как раньше, вручную.
@@ -2153,7 +2172,7 @@ function autoScale(silent) {
   // раньше становился тупиком: план второго этажа есть, комнат второго
   // этажа в расчёте нет.
   var d = null;
-  try { d = scaleFromDims(PDF_DIMS[cur]); }
+  try { d = scaleFromDims(PDF_DIMS[cur]) || scaleFromScanDims(SCAN_DIMS[cur]); }
   catch (e) { console.error('[plan_editor] dims:', e); }
   if (d) {
     var ddw = doorCheck(d.ppm);
@@ -2175,28 +2194,14 @@ function autoScale(silent) {
   var g = null;
   try { g = guessScale(); } catch (e) { console.error('[plan_editor] scale:', e); }
   if (!g) {
-    // Причин у отказа две, и лечатся они по-разному: либо заполнить комнаты в
-    // расчёте, либо задать масштаб руками. Общее «подобрать не удалось» не
-    // говорило ни о той, ни о другой — и кнопка выглядела просто сломанной.
     var tg = scaleTargets();
-    // Размеры на чертеже были, но не сошлись — об этом надо сказать отдельно,
-    // иначе совет «заполните комнаты» выглядит единственным выходом.
-    var pre = (PDF_DIMS[cur] && PDF_DIMS[cur].length)
-      ? 'С размерных линий чертежа масштаб снять не вышло. ' : '';
     // Масштаб придётся задавать руками — значит, кнопка «Масштаб» должна
     // быть на виду, а не за «Все инструменты».
     if (!silent) heroOff = true;
-    if (!silent) hint(pre + (tg.length < 2
-      ? 'Подбирать масштаб не по чему: в подробном расчёте нет комнат ' + (cur + 1) +
-        '-го этажа' + (tg.length ? ' (нашлась только одна)' : '') + '. Нужны хотя бы две ' +
-        'комнаты с площадью и отметкой «' + (cur + 1) + ' этаж». Проставьте этаж комнатам ' +
-        'в расчёте — или задайте масштаб кнопкой «Масштаб»: две точки отрезка с известной ' +
-        'длиной и его длина в метрах.'
-      : 'Масштаб по площадям комнат не подобрался: комнаты ' + (cur + 1) + '-го этажа из ' +
-        'расчёта (' + tg.length + ' шт.) не сошлись с комнатами на подложке — стены плана ' +
-        'читаются плохо или комнаты в расчёте от другого этажа. Задайте масштаб кнопкой ' +
-        '«Масштаб»: две точки отрезка с известной длиной — подойдёт размерная линия плана ' +
-        'или дверной проём 0,9 м.'));
+    // Причину монтажнику не расписываем — она ему ничего не даёт; в консоль, на случай разбора
+    console.info('[plan_editor] масштаб: размеров ' + ((PDF_DIMS[cur] || []).length + (SCAN_DIMS[cur] || []).length) +
+      ', комнат расчёта на этаже ' + tg.length);
+    if (!silent) hint('Масштаб сам не подобрался — задайте его по двери или размеру на плане.');
     return false;
   }
   // Проверяем не тем, чем подбирали: площади можно свести к чему угодно, если
@@ -2632,7 +2637,15 @@ var AREA_READ_PROMPT = 'Ты читаешь чертёж этажа частно
   'box_2d = [ymin, xmin, ymax, xmax] в координатах 0–1000 от размеров изображения и название комнаты, ' +
   'если оно написано рядом с площадью на плане («Спальня», «Кухня-гостиная»), иначе пустую строку. ' +
   'Название бери ровно как написано, ничего не придумывай. ' +
-  'Ответ — только JSON: {"labels":[{"m2":19.16,"name":"Спальня","box_2d":[210,300,225,350]}]}. Подписей нет — {"labels":[]}.';
+  'Кроме площадей верни размерные линии плана: для каждой — число в миллиметрах (например «3 350» или «15 910» ' +
+  'это 3350 и 15910) и две точки на концах самой линии (засечки или стрелки): from и to как [y, x] в координатах ' +
+  '0–1000. Бери только линии, где число — длина в мм; не бери отметки высот, номера осей, площади. Выбери до 12 ' +
+  'самых чётких, лучше длинных. И ещё rotate — на сколько градусов по часовой стрелке (0, 90, 180 или 270) надо ' +
+  'повернуть изображение, чтобы надписи на нём читались горизонтально слева направо. ' +
+  'Ответ — только JSON: {"rotate":0,"labels":[{"m2":19.16,"name":"Спальня","box_2d":[210,300,225,350]}],' +
+  '"dims":[{"mm":3350,"from":[352,300],"to":[352,520]}]}. Подписей нет — "labels":[], размеров нет — "dims":[].';
+/** Размерные линии, прочитанные с картинки: [{ mm, px }] — длина линии на подложке. */
+var SCAN_DIMS = {};
 function parseAreaReply(resp, W, H) {
   var txt = '';
   try { txt = resp.candidates[0].content.parts[0].text; } catch (e) { return []; }
@@ -2640,6 +2653,21 @@ function parseAreaReply(resp, W, H) {
   try { data = JSON.parse(String(txt).trim().replace(/^```json\s*/i, '').replace(/```$/, '')); } catch (e) { return []; }
   var list = (data && data.labels) || (Array.isArray(data) ? data : []);
   var out = [];
+  // Размеры и поворот едут свойствами того же массива: остальной код ждёт именно массив подписей
+  out.dims = [];
+  var rt = data ? +data.rotate : 0;
+  out.rot = (rt === 90 || rt === 180 || rt === 270) ? rt : 0;
+  ((data && data.dims) || []).forEach(function (q) {
+    var mm = parseFloat(String(q && q.mm).replace(/[\s,]/g, ''));
+    var a = q && q.from, b = q && q.to;
+    if (!(mm >= 500 && mm <= 30000) || !Array.isArray(a) || !Array.isArray(b)) return;
+    var dx = (b[1] - a[1]) / 1000 * W, dy = (b[0] - a[0]) / 1000 * H, len = Math.hypot(dx, dy);
+    if (!(len > 20) || !isFinite(len)) return;
+    // Размерные линии идут вдоль осей; сильно косая — модель промахнулась точкой
+    var ang = Math.atan2(Math.min(Math.abs(dx), Math.abs(dy)), Math.max(Math.abs(dx), Math.abs(dy)));
+    if (ang > 0.26) return;
+    out.dims.push({ mm: mm, px: len });
+  });
   list.forEach(function (it) {
     var a = parseFloat(String(it && (it.m2 != null ? it.m2 : it.area)).replace(',', '.'));
     var b = it && it.box_2d;
@@ -2838,6 +2866,27 @@ function scaleFromDims(items) {
   return { ppm: (sum / good.length) * 1000, n: good.length, total: ks.length };
 }
 
+/**
+ * Масштаб по размерным линиям, прочитанным с картинки (скан, фото): у каждой линии
+ * известны длина в мм и длина на подложке в пикселях. Берём медиану и отбрасываем
+ * выбросы: одна неверно прочитанная цифра не должна сдвигать результат. Общий размер
+ * в 10–15 м даёт погрешность около процента — точнее, чем цепочки подписей, где к
+ * размерам «в свету» прибавляется толщина стен.
+ */
+function scaleFromScanDims(dims) {
+  if (!dims || dims.length < 2) return null;
+  var ks = dims.map(function (d) { return d.px / d.mm; }).sort(function (a, b) { return a - b; });
+  var med = ks[Math.floor(ks.length / 2)];
+  var good = ks.filter(function (k) { return Math.abs(k - med) / med < 0.1; });
+  // две линии хватает, только если они сошлись между собой почти точно
+  if (good.length < 2 || (good.length === 2 && good[1] / good[0] > 1.04)) return null;
+  var sum = 0;
+  good.forEach(function (k) { sum += k; });
+  var ppm = sum / good.length * 1000;
+  if (!(ppm > 4 && ppm < 1500)) return null;
+  return { ppm: ppm, n: good.length, total: ks.length };
+}
+
 function loadPdfPlan(file, done) {
   hint('Читаю PDF…');
   var rd = new FileReader();
@@ -2931,8 +2980,9 @@ function renderPdfPage(page) {
   }).then(function () {
     // Страница-скан (текста почти нет) и подписей площадей не нашли — читаем картинку
     if (!(PDF_AREAS[fi] && PDF_AREAS[fi].length) && (!PDF_DIMS[fi] || PDF_DIMS[fi].length < 8)) {
-      return readAreaLabelsFromCanvas(c).then(function (labs) { PDF_AREAS[fi] = labs; });
+      return readAreaLabelsFromCanvas(c).then(function (labs) { PDF_AREAS[fi] = labs; SCAN_DIMS[fi] = labs.dims || []; });
     }
+    SCAN_DIMS[fi] = [];
   }).then(function () {
     applyPlanCanvas(c);
   });
@@ -2953,14 +3003,41 @@ function loadOne(file) {
         var c = document.createElement('canvas');
         c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
         c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-        // Подписи площадей на картинке читаем до масштаба: по ним он и подбирается
+        // План — на экран сразу, а подписи площадей и размеры читаем следом: по ним
+        // подбирается масштаб, но ждать ответа модели (до минуты) перед пустым
+        // холстом нельзя — выглядит как зависшая загрузка
         var fi0 = cur;
-        readAreaLabelsFromCanvas(c).then(function (labs) {
-          PDF_AREAS[fi0] = labs;
-          PDF_DIMS[fi0] = null;
-          applyPlanCanvas(c);
-          if (labs.length) hint('<span class=ok>На плане прочитано подписей площадей: ' + labs.length + '.</span> ' + (F().pxPerM ? '' : 'Дальше — масштаб.'));
+        PDF_AREAS[fi0] = []; PDF_DIMS[fi0] = null; SCAN_DIMS[fi0] = [];
+        applyPlanCanvas(c, true);
+        var finish = function (labs, turned) {
+          // за время ожидания этаж могли сменить на другую подложку — тогда не трогаем
+          if (imgCache[fi0] !== c) { done(); return; }
+          PDF_AREAS[fi0] = labs; SCAN_DIMS[fi0] = labs.dims || [];
+          // масштаб, заданный руками, пока читалась картинка, не перебиваем
+          if (!DATA.floors[fi0].pxPerM) {
+            var was = cur; cur = fi0;
+            try { finishPlanLoad(); } finally { cur = was; }
+          }
+          var m = [];
+          if (turned) m.push('план был повёрнут — развернули на ' + turned + '°');
+          if (labs.length) m.push('прочитано подписей площадей: ' + labs.length);
+          if (m.length) hint('<span class=ok>' + m.join('; ').replace(/^./, function (s) { return s.toUpperCase(); }) + '.</span> ' +
+            (F().pxPerM ? '' : 'Дальше — масштаб.'));
           done();
+        };
+        readAreaLabelsFromCanvas(c).then(function (labs) {
+          if (!labs.rot || imgCache[fi0] !== c) { finish(labs, 0); return; }
+          // Лист лежит боком: надписи вертикальные, и читаются они хуже, да и на экране
+          // план стоит не так, как задумал проектировщик. Поворачиваем и читаем заново.
+          var r = labs.rot, rc = document.createElement('canvas');
+          var sw = r !== 180;
+          rc.width = sw ? c.height : c.width; rc.height = sw ? c.width : c.height;
+          var rg = rc.getContext('2d');
+          rg.translate(rc.width / 2, rc.height / 2); rg.rotate(r * Math.PI / 180);
+          rg.drawImage(c, -c.width / 2, -c.height / 2);
+          var was2 = cur; cur = fi0;
+          try { applyPlanCanvas(rc, true); } finally { cur = was2; }
+          readAreaLabelsFromCanvas(rc).then(function (l2) { c = rc; finish(l2, r); });
         });
       };
       im.onerror = function () {
@@ -5475,9 +5552,8 @@ function wzBody(id) {
   var B = function (fn, t, cls) { return '<button class="' + (cls || '') + '" onclick="' + fn + '">' + t + '</button>'; };
   if (id === 'plan') return { noNext: true, acts: B("wzGo('plan')", 'Загрузить план', 'go'),
     tx: 'Загрузите план этажа — фото, скан или PDF. Масштаб и комнаты система найдёт сама.' };
-  if (id === 'scale') return { noNext: true, acts: B('autoScale()', 'Подобрать ещё раз'),
-    tx: '<b>Масштаб не подобрался сам</b> — на плане нет размеров. Кликните на плане две точки известного ' +
-      'отрезка (например, края дверного проёма, обычно 0,9 м) и впишите длину между ними в метрах.' };
+  if (id === 'scale') return { noNext: true, acts: B("setMode('scale')", 'Задать масштаб', 'go') + B('autoScale()', 'Подобрать ещё раз'),
+    tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане два края отрезка известной длины — например, дверной проём 0,9 м.' };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B('wzRect()', 'Обвести рамкой'),
     tx: 'Проверьте комнаты в списке справа и впишите названия — по ним комнаты перейдут в расчёт. ' +
       'Лишнюю уберите ✕. Комната не нашлась — обведите её рамкой.' };
@@ -5674,8 +5750,7 @@ function pjBody(id) {
       ? 'Этот этаж пока пуст. Если отопления на нём нет — ничего делать не нужно, для выпуска достаточно одного размеченного этажа. Иначе загрузите его план. '
       : 'Загрузите план этажа — фото, скан или PDF. ') + 'Масштаб и комнаты система найдёт сама.' };
   if (id === 'scale') return { noNext: true, acts: B('autoScale()', 'Подобрать ещё раз') + B("setMode('scale')", 'Задать вручную'),
-    tx: '<b>Масштаб не подобрался сам.</b> Нажмите «Задать вручную», кликните две точки известного отрезка ' +
-      '(например, края дверного проёма, обычно 0,9 м) и впишите длину в метрах.' };
+    tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане два края отрезка известной длины — например, дверной проём 0,9 м.' };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B("document.getElementById('ztype').value='tp';setMode('room')", 'Обвести кликом'),
     tx: 'Нажмите «Найти комнаты» — контуры найдутся по стенам плана и сопоставятся с комнатами расчёта: тёплый пол, котельная и санузлы отметятся сами. ' +
       'Проверьте зоны в списке справа, лишнюю уберите ✕. Комната не нашлась — «Обвести кликом» (клик внутри комнаты).' };

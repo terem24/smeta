@@ -39432,8 +39432,11 @@ const app = {
             'style="font:inherit;font-weight:600;padding:6px 14px;border-radius:8px;border:1px solid var(--primary);' +
             'background:var(--primary);color:var(--on-primary,#fff);cursor:pointer;">← К смете</button>' +
             '<b style="font-size:15px;">План дома</b>' +
-            '<span style="flex:1;min-width:0;color:var(--text-sec);">комнаты, тёплый пол и радиаторы' +
-            (modeNote ? ' · <span style="color:var(--primary)">' + modeNote + '</span>' : '') + '</span></div>' +
+            // на телефоне подзаголовок съедает четыре строки экрана — там его нет
+            (window.innerWidth < 720 ? '<span style="flex:1"></span>' :
+                '<span style="flex:1;min-width:0;color:var(--text-sec);">комнаты, тёплый пол и радиаторы' +
+                (modeNote ? ' · <span style="color:var(--primary)">' + modeNote + '</span>' : '') + '</span>') +
+            '</div>' +
             '<iframe id="ufhplan_frame" src="plan_editor.html?m=ufh" style="flex:1;border:0;width:100%;background:var(--bg);"></iframe>';
         document.body.appendChild(ov);
         const hdr = document.querySelector('.site-header');
