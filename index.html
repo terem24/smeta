@@ -193,7 +193,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=5.17">
+    <link rel="stylesheet" href="style.css?v=5.19">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.42" defer></script>
@@ -223,7 +223,7 @@
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
     <script src="short_names.js?v=1.2" defer></script>
     <script src="avatars.js?v=1.0" defer></script>
-    <script src="app.js?v=12.12" defer></script>
+    <script src="app.js?v=12.13" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -2337,7 +2337,7 @@
                         <div id="cheaper_wrapper" class="sku-toggle-group"
                             style="display: none; align-items: center; position: relative;"
                             onclick="app.handlePremiumToggleClick('cheaper', event)">
-                            <span class="sku-label" style="font-weight: 700;" title="Вторая смета подешевле: те же расчёты, позиции заменены на технически равнозначные — пары ROMMER и более выгодные варианты из каталога. Обоснование — на своей вкладке">ПОДЕШЕВЛЕ</span>
+                            <span class="sku-label" title="Вторая смета бюджетнее: те же расчёты, позиции заменены на технически равнозначные — пары ROMMER и более выгодные варианты из каталога. Обоснование — на своей вкладке">Бюджетнее</span>
 
                             <span id="cheaper_lock"
                                 style="display: none;"
@@ -2362,23 +2362,33 @@
                             <span class="sku-label">Схема</span><label class="switch"><input type="checkbox" id="chk_scheme"><span
                                     class="slider round"></span></label>
                         </div>
-                        <div class="sku-toggle-group" id="sku_wrapper"
-                            onclick="app.handlePremiumToggleClick('sku', event)">
-                            <span class="sku-label">Артикулы</span><label class="switch"><input
-                                    type="checkbox" id="chk_sku"><span
-                                    class="slider"></span></label>
-                        </div>
-                        <div class="sku-toggle-group" id="merge_wrapper"
-                            onclick="app.handlePremiumToggleClick('merge', event)">
-                            <span class="sku-label">Группировать</span><label
-                                class="switch"><input type="checkbox" id="chk_merge"><span
-                                    class="slider"></span></label>
-                        </div>
-                        <div class="sku-toggle-group" id="images_wrapper"
-                            onclick="app.toggleImages(event)">
-                            <span class="sku-label">Картинки</span><label class="switch"><input
-                                    type="checkbox" id="chk_images" checked><span
-                                    class="slider"></span></label>
+                        <!-- «Вид»: три переключателя оформления сметы (не меняют состав и цену).
+                             На телефоне весь .sku-control переезжает в боковое меню, и там панель
+                             раскрыта сразу, без кнопки (см. .mobile-sidebar .view-menu в style.css). -->
+                        <div class="view-menu" id="view_menu">
+                            <button type="button" class="view-menu-btn" id="view_menu_btn"
+                                aria-haspopup="true" aria-expanded="false"
+                                onclick="app.toggleViewMenu(event)"><span class="sku-label">Вид</span><span class="view-menu-caret">▾</span></button>
+                            <div class="view-menu-panel" id="view_menu_panel" onclick="event.stopPropagation()">
+                                <div class="sku-toggle-group" id="sku_wrapper"
+                                    onclick="app.handlePremiumToggleClick('sku', event)">
+                                    <span class="sku-label">Артикулы</span><label class="switch"><input
+                                            type="checkbox" id="chk_sku"><span
+                                            class="slider"></span></label>
+                                </div>
+                                <div class="sku-toggle-group" id="merge_wrapper"
+                                    onclick="app.handlePremiumToggleClick('merge', event)">
+                                    <span class="sku-label">Группировать</span><label
+                                        class="switch"><input type="checkbox" id="chk_merge"><span
+                                            class="slider"></span></label>
+                                </div>
+                                <div class="sku-toggle-group" id="images_wrapper"
+                                    onclick="app.toggleImages(event)">
+                                    <span class="sku-label">Картинки</span><label class="switch"><input
+                                            type="checkbox" id="chk_images" checked><span
+                                            class="slider"></span></label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
