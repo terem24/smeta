@@ -107,6 +107,11 @@ def check(slug, published=False):
     inst = for_installers(meta)
     if inst and ('utm_campaign=%s' % slug) not in h:
         bad.append('в статье для монтажника нет призыва в калькулятор')
+    # Регистрация по приглашениям: ссылка на калькулятор без кода SITE упирается в окно «Нужен промокод»
+    if 'class="head-link" href="/?ref=SITE&amp;' not in h:
+        bad.append('кнопка «Открыть калькулятор» без кода SITE')
+    if 'class="cta" href="/?ref=SITE&amp;' not in h:
+        bad.append('призыв в калькулятор без кода SITE')
     if inst and '#zayavka' in h:
         bad.append('в статье для монтажника форма заявки заказчика')
     has_dom = ('href="/dom/?src=%s"' % slug) in h
