@@ -7398,7 +7398,9 @@ const app = {
                 user_id: tgUser.id ? String(tgUser.id) : null,
                 user_name: tgUser.first_name || tgUser.username || null,
                 user_email: tgUser.email || null,
-                project_name: this.state.projectName || this.projectObjectTitle('') || null,
+                // Разбор документа без названия объекта подписывается по файлу
+                // (extra.title из RecognizeUI.cardTitle) — «Без названия» ничего не говорит.
+                project_name: this.state.projectName || this.projectObjectTitle('') || (extra && extra.title) || null,
                 meta: extra || null
             }]).then(({ error }) => { if (error) console.warn('[logInvoiceEvent] Ошибка записи:', error); });
         } catch (e) {
@@ -10520,9 +10522,9 @@ const app = {
             // даже по пользователям, которых нет на текущей странице вкладки "Монтажники"
             let userMeta = {};
             try {
-                const { rows: allUsers } = await this.fetchAllRows('users', 'email, region, distributor_id', { order: 'id' });
+                const { rows: allUsers } = await this.fetchAllRows('users', 'email, region, distributor_id, is_test', { order: 'id' });
                 {
-                    (allUsers || []).forEach(u => { if (u.email) userMeta[u.email.toLowerCase()] = { region: u.region || null, distributor_id: u.distributor_id || null }; });
+                    (allUsers || []).forEach(u => { if (u.email) userMeta[u.email.toLowerCase()] = { region: u.region || null, distributor_id: u.distributor_id || null, is_test: !!u.is_test }; });
                 }
             } catch (e) {
                 console.warn('[renderAdminKanban] Не удалось загрузить регионы/дистрибьюторов пользователей:', e);
@@ -10582,6 +10584,7 @@ const app = {
                 if (meta) {
                     p.region = meta.region;
                     p.distributor_id = meta.distributor_id;
+                    p.isTest = !!meta.is_test;
                 }
             }
             p.totalSum = liveCalcMap[String(e.calc_id)] || 0;
@@ -10593,7 +10596,10 @@ const app = {
         // здесь, а не в выборке событий: дистрибьютор у сметы известен лишь после
         // сопоставления её автора со справочником пользователей (userMeta выше).
         const scopeDists = this.isScopedAdmin() ? this.managerDistIds().map(String) : null;
+        // Учётки с пометкой «тестовая» (users.is_test) в Планировщик не попадают: их
+        // отладочные расчёты засоряли список монтажников и счётчик брошенных.
         const list = Object.values(projects)
+            .filter(p => !p.isTest)
             .filter(p => !scopeDists || scopeDists.includes(String(p.distributor_id || '')));
         // Брошенный расчёт — тот, что остановился на «посчитано» и не стал сметой.
         // Карточку, застрявшую на разборе документа, сюда не относим: она и есть то,
@@ -23551,7 +23557,7 @@ const app = {
         try {
             // 1. Fetch Users (Paginated)
             let query = supabaseClient.from('users')
-                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, work_email, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at, sess_visits, sess_sec, sess_days, sess_screens', { count: 'exact' });
+                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, work_email, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, is_test, frozen_at, sess_visits, sess_sec, sess_days, sess_screens', { count: 'exact' });
             query = this.buildAdminUserFilter(query);
 
             const sortType = document.getElementById('sort-installers')?.value || 'login_desc';
@@ -25463,8 +25469,8 @@ const app = {
         let i = 0;
         groups.forEach(g => { firstOfGroup.add(feats[i].id); i += g.span; });
 
-        const head1 = `<tr><th style="${th}"></th>${groups.map(g => `<th colspan="${g.span}" style="${th} ${sep} color:var(--text-main);">${esc(g.name)}</th>`).join('')}</tr>`;
-        const head2 = `<tr><th style="${th} text-align:left; padding-left:12px;">Тариф</th>${feats.map(f => `<th title="${esc(f.hint || '')}" style="${th} ${firstOfGroup.has(f.id) ? sep : ''} cursor:help;">${esc(f.label)}</th>`).join('')}</tr>`;
+        const head1 = `<tr><th class="tf-stick" style="${th}"></th>${groups.map(g => `<th colspan="${g.span}" style="${th} ${sep} color:var(--text-main);">${esc(g.name)}</th>`).join('')}</tr>`;
+        const head2 = `<tr><th class="tf-stick" style="${th} text-align:left; padding-left:12px;">Тариф</th>${feats.map(f => `<th title="${esc(f.hint || '')}" style="${th} ${firstOfGroup.has(f.id) ? sep : ''} cursor:help;">${esc(f.label)}</th>`).join('')}</tr>`;
 
         const dis = canEdit ? '' : 'disabled';
         const toggle = (a, p, f, v) => {
@@ -25492,13 +25498,13 @@ const app = {
         let body = '';
         let matrixChanged = 0;
         this.TARIFF_ACCOUNTS.forEach(a => {
-            body += `<tr><td colspan="${feats.length + 1}" style="padding:10px 12px 6px; text-align:left; border-bottom:1px solid var(--border); background:var(--surface-light);">
+            body += `<tr><td class="tf-grp" colspan="${feats.length + 1}" style="padding:10px 12px 6px; text-align:left; border-bottom:1px solid var(--border); background:var(--surface-light);"><div>
                     <b style="font-size:13px; color:var(--text-main);">${esc(a.label)}</b>
-                    <span style="font-size:11px; color:var(--text-sec); margin-left:6px;">${esc(a.hint)}</span></td></tr>`;
+                    <span style="font-size:11px; color:var(--text-sec); margin-left:6px;">${esc(a.hint)}</span></div></td></tr>`;
             this.TARIFF_PLANS.forEach(p => {
                 const mine = a.id === myAcc && p.id === myPlan;
-                body += `<tr${mine ? ' style="background:rgba(37,99,235,.06);"' : ''}>
-                    <td style="${td} text-align:left; padding-left:12px; white-space:nowrap; font-size:12.5px; font-weight:600; color:var(--text-main);">${esc(p.label)}${mine ? ' <span title="Под эту строку сейчас попадаете вы" style="font-size:10px; font-weight:700; color:var(--primary);">● вы</span>' : ''}</td>
+                body += `<tr class="${mine ? 'tf-mine' : ''}"${mine ? ' style="background:rgba(37,99,235,.06);"' : ''}>
+                    <td class="tf-stick" style="${td} text-align:left; padding-left:12px; white-space:nowrap; font-size:12.5px; font-weight:600; color:var(--text-main);">${esc(p.label)}${mine ? ' <span title="Под эту строку сейчас попадаете вы" style="font-size:10px; font-weight:700; color:var(--primary);">● вы</span>' : ''}</td>
                     ${feats.map(f => {
                         const v = this.tariffCell(a.id, p.id, f.id);
                         const changed = !f.locked && v !== this.tariffDefaultCell(a.id, p.id, f.id);
@@ -25533,7 +25539,7 @@ const app = {
                 открытии сайта или возвращении на вкладку. Точка в углу ячейки — значение отличается от исходного.
                 ${canEdit ? '' : '<b style="color:var(--c-warn,#D97706);">Менять таблицу может только администратор.</b>'}
             </div>
-            <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:var(--bg);">
+            <div class="tf-wrap">
                 <table class="tf-table" style="width:100%; min-width:760px; border-collapse:collapse;"><thead>${head1}${head2}</thead><tbody>${body}</tbody></table>
             </div>
             <details class="ad-collapse" style="margin-top:14px; max-width:900px;"><summary>Как читать таблицу</summary>
@@ -38597,6 +38603,9 @@ const app = {
                                 <button class="auth-btn-base" style="margin:0; width:auto; height:34px; padding:0 16px; font-size:12px; background:var(--surface-light); color:${user.is_blocked ? '#10B981' : '#D97706'}; border:1px solid var(--border); ${isViewer ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.toggleUserBlocked('${user.id}', ${!user.is_blocked})">
                                     ${user.is_blocked ? '🔓 Разблокировать доступ' : '🔒 Заблокировать доступ'}
                                 </button>
+                                <button class="auth-btn-base" style="margin:0; width:auto; height:34px; padding:0 16px; font-size:12px; background:var(--surface-light); color:var(--text-main); border:1px solid var(--border); ${isViewer ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.toggleUserTest('${user.id}', ${!user.is_test})" title="Тестовая учётка не показывается в Планировщике и списке монтажников">
+                                    ${user.is_test ? '✅ Снять пометку «тестовая»' : '🧪 Пометить как тестовую'}
+                                </button>
                                 <button class="auth-btn-base" style="margin:0; width:auto; height:34px; padding:0 16px; font-size:12px; background:var(--surface-light); color:var(--c-bad,#EF4444); border:1px solid var(--border); ${isViewer ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.deleteUserCompletely('${user.id}')">
                                     🗑 Удалить учётку и все данные
                                 </button>
@@ -44096,6 +44105,28 @@ const app = {
             }
         } catch (e) {
             app.alert('Не удалось изменить статус блокировки: ' + e.message);
+        }
+    },
+    // Пометка «тестовая учётка» (users.is_test): её сметы скрыты в Планировщике.
+    // Данные не трогаем — пометка снимается тем же переключателем.
+    toggleUserTest: async function (userId, flag) {
+        if (this.isReadOnlyAdmin()) {
+            app.alert('Режим просмотра. Изменение пометки запрещено.');
+            return;
+        }
+        try {
+            const { data, error } = await supabaseClient.from('users').update({ is_test: flag }).eq('id', userId).select('id');
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                app.alert('Изменение не применилось — похоже, RLS-политика в Supabase не разрешает администратору редактировать пользователей.');
+                return;
+            }
+            const u = (this.adminData.users || []).find(x => String(x.id) === String(userId));
+            if (u) u.is_test = flag;
+            this._kanbanFullAt = 0; // карта авторов в Планировщике читается один раз — сбросим
+            this.viewAdminUser(userId);
+        } catch (e) {
+            app.alert('Не удалось изменить пометку: ' + e.message);
         }
     },
     // Снимает автоматическую заморозку за долгое отсутствие. Отдельно от
