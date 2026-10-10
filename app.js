@@ -7398,7 +7398,9 @@ const app = {
                 user_id: tgUser.id ? String(tgUser.id) : null,
                 user_name: tgUser.first_name || tgUser.username || null,
                 user_email: tgUser.email || null,
-                project_name: this.state.projectName || this.projectObjectTitle('') || null,
+                // Разбор документа без названия объекта подписывается по файлу
+                // (extra.title из RecognizeUI.cardTitle) — «Без названия» ничего не говорит.
+                project_name: this.state.projectName || this.projectObjectTitle('') || (extra && extra.title) || null,
                 meta: extra || null
             }]).then(({ error }) => { if (error) console.warn('[logInvoiceEvent] Ошибка записи:', error); });
         } catch (e) {
