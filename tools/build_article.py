@@ -24,6 +24,9 @@ import io, json, os, re, sys, html
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SITE = 'https://heatcalc.ru'
 LEAD_PAGE = '/montazh-otopleniya-spb/'
+# Промокод читателей статей (distributors.promo_code, заведён 10.10.2026, лимит 200 приглашений).
+# Менять вместе со строкой «ref=SITE» в lead_block.
+SITE_INVITE = 'SITE'
 
 # Разрешённые типы блоков. Новый тип — дописать сюда и в render_block, иначе сборка
 # упадёт: лучше ошибка при сборке, чем кривая статья на сайте.
@@ -290,7 +293,7 @@ def lead_block(slug, meta):
             </p>
         </div>
 
-        <a class="cta" href="/?utm_source=article&amp;utm_medium=seo&amp;utm_campaign=%s">
+        <a class="cta" href="/?ref=SITE&amp;utm_source=article&amp;utm_medium=seo&amp;utm_campaign=%s">
             Попробовать калькулятор бесплатно
             <small>Смета, КП и документы для монтажника</small>
         </a>
@@ -401,7 +404,12 @@ def build(slug, publish=False):
         ],
     }
 
+    # Ссылки на калькулятор: код SITE пускает читателя статьи в регистрацию (она по приглашениям)
+    # и отделяет его от внешних площадок (код GEO); utm_campaign — какая статья привела
+    calc_url = '/?ref=%s&amp;utm_source=article&amp;utm_medium=seo&amp;utm_campaign=%s' % (SITE_INVITE, slug)
+
     page = TEMPLATE.format(
+        calc_url=calc_url,
         og_image=og_image,
         meta_title=esc(art['meta_title']),
         description=esc(art['description']),
@@ -512,7 +520,7 @@ TEMPLATE = '''<!DOCTYPE html>
         <div class="wrap">
             <a class="logo" href="/">HeatCalc<span>.ru</span></a>
             <div class="head-actions">
-                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <a class="head-link" href="{calc_url}">Открыть калькулятор →</a>
                 <button class="theme-toggle" type="button" aria-label="Сменить тему">
                     <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
                     <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
@@ -537,7 +545,7 @@ TEMPLATE = '''<!DOCTYPE html>
 
 {body}
 {dom_cta}
-        <a class="cta" href="/">
+        <a class="cta" href="{calc_url}">
             {cta_calc}
             <small>{cta_calc_note}</small>
         </a>
