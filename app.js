@@ -46436,6 +46436,67 @@ const app = {
             });
         } finally { this._foldBusy = false; }
     },
+    /**
+     * Заголовки групп колонки параметров («1 Дом» / «2 Отопление и котельная» / «3 Добавить в
+     * смету»). Блоки колонки не обёрнуты в группы — у них сотни id и условий показа, —
+     * поэтому группа это «элементы между двумя заголовками», а заголовок скрывается, если ни
+     * один из них не виден (например, в квартире нет котельной).
+     * Пока расчёт пуст: подсвечен шаг 1 с подсказкой «Начните с площади», остальные группы
+     * приглушены, у шага 1 — кнопка «Типовой дом». В группе 3 — счётчик включённого.
+     * Идемпотентно: меняет DOM только при реальном расхождении, иначе наблюдатель зациклится.
+     */
+    syncPanelGroups: function () {
+        const panel = document.querySelector('.input-panel');
+        if (!panel) return;
+        const titles = Array.from(panel.children).filter(e => e.classList && e.classList.contains('pg-title'));
+        if (!titles.length) return;
+        let empty = false;
+        try { empty = !!this.isCalcEmpty(); } catch (e) { }
+        const setCls = (el, cls, on) => { if (el.classList.contains(cls) !== on) el.classList.toggle(cls, on); };
+        const shown = el => el.getClientRects().length > 0;
+        titles.forEach((t, idx) => {
+            const els = [];
+            for (let n = t.nextElementSibling; n && !(n.classList && n.classList.contains('pg-title')); n = n.nextElementSibling) els.push(n);
+            const vis = els.filter(shown);
+            const show = vis.length > 0;
+            const want = show ? '' : 'none';
+            if (t.style.display !== want) t.style.display = want;
+            setCls(t, 'pg-active', idx === 0 ? empty : true);
+            if (idx > 0) els.forEach(e => setCls(e, 'pg-dim', empty));
+            if (idx === 2) {
+                const cnt = document.getElementById('pg_count3');
+                if (cnt) {
+                    const n = vis.filter(e => e.querySelector('input[type="checkbox"]:checked')).length;
+                    const txt = n ? 'включено ' + n : '';
+                    if (cnt.textContent !== txt) cnt.textContent = txt;
+                    const d = n ? '' : 'none';
+                    if (cnt.style.display !== d) cnt.style.display = d;
+                }
+            }
+        });
+        const hint = document.getElementById('pg_hint1');
+        if (hint) { const d = empty ? '' : 'none'; if (hint.style.display !== d) hint.style.display = d; }
+        const quick = document.getElementById('pg_quick');
+        if (quick) {
+            let ok = false;
+            try { ok = empty && this.onboardingAllowed(); } catch (e) { }
+            const d = ok ? '' : 'none';
+            if (quick.style.display !== d) quick.style.display = d;
+        }
+    },
+    installPanelGroups: function () {
+        if (this._pgObs || typeof MutationObserver === 'undefined') return;
+        const panel = document.querySelector('.input-panel');
+        if (!panel) return;
+        let t = 0;
+        const later = () => { if (t) return; t = setTimeout(() => { t = 0; this.syncPanelGroups(); }, 80); };
+        this._pgObs = new MutationObserver(later);
+        this._pgObs.observe(panel, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'hidden'] });
+        // Переключатель включили/выключили — атрибуты не меняются, наблюдатель этого не видит
+        panel.addEventListener('change', later);
+        later();
+    },
+
     installNoteFold: function () {
         if (this._noteFoldObs || typeof MutationObserver === 'undefined') return;
         let t = 0;
@@ -54755,6 +54816,7 @@ const app = {
         // Меню кабинета (панель слева и колонка в окне) строим до всего, что их читает
         this.buildCabinetMenus();
         this.installNoteFold();
+        this.installPanelGroups();
         // Global premium modal overrides
         window.alert = (msg) => app.alert(msg);
         window.confirm = (msg) => app.confirm(msg);
@@ -87038,6 +87100,7 @@ const app = {
         document.getElementById('total_sum').innerHTML = app.formatPriceHtml(sum, true);
         // Доля STOUT в строке параметров — считается по готовому списку оборудования
         this.renderStoutShareChip();
+        try { this.syncPanelGroups(); } catch (e) { }
         this._queueKpDayCheck();
         // Лист не скачет, а к новым строкам плавно едет (см. _estimateAfter).
         this._estimateAfter(_estBefore);
