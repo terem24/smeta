@@ -2242,14 +2242,14 @@ const RecognizeUI = {
             const top = d ? Math.max(0, ...Object.values(d.models || {}).map(Number)) : 0;
             const pct = Math.min(100, Math.round(top / 20 * 100));
             const left = this.fmtLeft(gReset.getTime() - Date.now());
-            text = d ? `🔍 ${pct}%` : '🔍 ∞';
+            text = d ? `🔍 ${pct}%` : '🔍 —';
             cls = top >= 20 ? 'bad' : top >= 15 ? 'warn' : 'ok';
-            tip = (d ? `Использовано сегодня: ${pct}%. Запросов на всём сайте: ${d.total}.` : 'Суточный счётчик по сайту ещё не включён на сервере.') +
+            tip = (d ? `Использовано сегодня: ${pct}%. Запросов на всём сайте: ${d.total}.` : 'Данные о запросах пока не получены. Обновится при следующей проверке.') +
                 `
 Счётчик обновится через ${left}.`;
             pop = head('Использовано сегодня', d ? pct + '%' : '—');
             if (d) pop += bar('Запросов на сайте: ' + d.total, top, 20, '', lvl(top / 20));
-            else pop += cap('Суточный счётчик по сайту ещё не включён на сервере.');
+            else pop += cap('Данные о запросах пока не получены. Обновится при следующей проверке.');
             pop += kv('Обновится через', left);
             if (q && q.used != null) pop += sep + kv('В этом месяце вами', String(q.used));
         } else if (!q) {
