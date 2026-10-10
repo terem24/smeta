@@ -144,6 +144,16 @@ EXTRA = '''  /* ручные добавки (tools/gen_big_text.py, EXTRA) */
   }
   html[data-big-text] .note-box .note-ico {
     font-size: 13px;
+  }
+  /* колонка параметров: пояснения и заголовки групп мельче названий пунктов (16,5 px) */
+  html[data-big-text] .pg-title {
+    font-size: 13px;
+  }
+  html[data-big-text] .pg-sub,
+  html[data-big-text] .mode-sub,
+  html[data-big-text] .pg-summary,
+  html[data-big-text] .pg-quick {
+    font-size: 13px;
   }'''
 
 

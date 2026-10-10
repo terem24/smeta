@@ -45667,7 +45667,7 @@ const app = {
     // масштаб страницы уже не поместить. Правила лежат в big_text.css, его собирает
     // tools/gen_big_text.py из style.css; грузится лениво, только когда режим включён.
     BIG_TEXT_KEY: 'hc_big_text',
-    BIG_TEXT_CSS_V: '12',
+    BIG_TEXT_CSS_V: '13',
 
     bigText: function () {
         try { return localStorage.getItem(this.BIG_TEXT_KEY) === '1'; } catch (e) { return false; }
@@ -46501,6 +46501,20 @@ const app = {
             // Переключатели «добавить в смету» — карточками, чтобы отличались от выбора из вариантов
             if (idx === 2) els.forEach(e => { if (e.classList.contains('toggle-item')) setCls(e, 'pg-card', true); });
         });
+        // Площадь при «запертых» комнатах — только значение (сумма комнат), без ползунка и ввода
+        const areaBox = document.getElementById('blk_main_area');
+        if (areaBox) {
+            const locked = this.roomsLocked();
+            setCls(areaBox, 'area-locked', locked);
+            const av = document.getElementById('val_area');
+            if (av) {
+                const ce = locked ? 'false' : 'true';
+                if (av.getAttribute('contenteditable') !== ce) av.setAttribute('contenteditable', ce);
+            }
+            const al = areaBox.querySelector('.lbl');
+            const at = locked ? 'Площадь по комнатам' : 'Основная площадь';
+            if (al && al.textContent !== at) al.textContent = at;
+        }
         const byRooms = !!this.state.detailedRooms;
         // Итог в строке «Параметры объекта»: регион и тип дома по нажатым кнопкам внутри
         const objSum = document.getElementById('obj_params_sum');
@@ -70216,7 +70230,23 @@ const app = {
         btnPrint.classList.toggle('btn-primary-action', !shareShown);
         btnPrint.classList.toggle('btn-secondary-action', shareShown);
     },
+    /**
+     * Комнаты в режиме «По комнатам» «заперты», когда их правили руками или они пришли с
+     * плана: тогда площадь — сумма комнат, и менять её ползунком нельзя (setArea пересоздаёт
+     * набор комнат и стирает правки). Пока комнат нет или они подставлены сами (отпечаток
+     * generateRoomsForDetailedCalculation совпадает) — ползунок работает.
+     */
+    roomsLocked: function () {
+        if (!this.state.detailedRooms) return false;
+        const rooms = this.state.rooms || [];
+        if (!rooms.length) return false;
+        let hasPlan = false;
+        try { hasPlan = !!this.planRowSummary(); } catch (e) { }
+        if (hasPlan) return true;
+        return !(this.state.roomsAutoSig && this.state.roomsAutoSig === this._roomsSig(rooms));
+    },
     setArea: function (v) {
+        if (this.roomsLocked()) { this.syncUI(); return; }
         v = parseInt(v);
         // Нижняя граница у квартиры своя: студии и однушки бывают от тридцати с
         // небольшим, и упирать их в домовые 50 м² значит завышать и теплопотери,
