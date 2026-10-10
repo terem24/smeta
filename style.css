@@ -938,7 +938,7 @@ body.dark-mode .sg-card .bf-t em { color: #FBBF24; }
 .bf-eco.neg { color: #B45309; }
 .bf-cost { margin-top: 6px; font-size: 11px; color: var(--text-sec); }
 /* Таблица вариантов объёма в подсказке: выбранный ряд выделен */
-#buffer_tip { max-height: 75vh; overflow-y: auto; }
+#buffer_tip { max-height: 320px; overflow-y: auto; }  /* отчёт с таблицей — единственная подсказка выше обычных 220 px */
 .tip-panel .bf-tbl { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 11px; }
 .tip-panel .bf-tbl th { text-align: right; font-weight: 600; color: var(--text-sec); padding: 2px 4px; border-bottom: 1px solid var(--border); font-size: 10px; }
 .tip-panel .bf-tbl th:first-child, .tip-panel .bf-tbl td:first-child { text-align: left; }
