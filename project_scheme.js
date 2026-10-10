@@ -304,17 +304,23 @@
   /** Гидравлический разделитель для схемы. (x,y) — центр корпуса 9×20.
    *  buf = { vol } — на его месте буферная ёмкость: те же подключения (воздухоотводчик сверху,
    *  дренаж снизу, термометр слева), корпус скруглён, внутри объём в литрах вместо кВт. */
-  var BUF_W = 16, BUF_H = 42;
+  // Буферная ёмкость (сотни литров) должна выглядеть крупнее электроводонагревателя на 100 л.
+  // Лист не вмещает оба в одном масштабе по высоте (буфер 1,6–2 м), поэтому при буфере водонагреватель
+  // рисуется сжатым (elWhSize, compact), а буфер — максимальным по месту: корпус 32×88, верх чуть выше
+  // подачи, низ до примечания.
+  var BUF_W = 32, BUF_H = 88, BUF_TOP = 146;
   function hydroSep(x, y, kw, noThermo, buf) {
     var w = buf ? BUF_W : 9, h = buf ? BUF_H : 20, o = [];
+    var yTherm = y;                       // термометр — на уровне патрубков, у ёмкости корпус ниже
+    if (buf) y = BUF_TOP + h / 2;
     if (buf) {
       // Буферная ёмкость — крупный серый корпус с теплоизоляцией, как у бойлера (объём сотни литров,
       // не гильза разделителя): полосы по верху и низу, подпись и объём вдоль корпуса.
       o.push(rrect(x - w / 2, y - h / 2, w, h, 4.5, { f: GREY.body, c: '#000', w: LW.sym }));
       o.push(pline([[x - w / 2, y - h / 2 + 3], [x + w / 2, y - h / 2 + 3]], { c: GREY.edge, w: 0.6 }));
       o.push(pline([[x - w / 2, y + h / 2 - 3], [x + w / 2, y + h / 2 - 3]], { c: GREY.edge, w: 0.6 }));
-      o.push(txt(x - 2.4, y, 'Буферная ёмкость', { size: SZ.txt, anchor: 'middle', rotate: -90 }));
-      o.push(txt(x + 2.8, y, buf.vol + ' л', { size: SZ.txt, anchor: 'middle', rotate: -90 }));
+      o.push(txt(x - 3.2, y, 'Буферная ёмкость', { size: SZ.txt * 1.15, anchor: 'middle', rotate: -90 }));
+      o.push(txt(x + 4.2, y, buf.vol + ' л', { size: SZ.txt * 1.15, anchor: 'middle', rotate: -90 }));
     } else {
       // Мощность на разделителе не пишем: он подбирается по расходу, а не по кВт котла.
       o.push(rrect(x - w / 2, y - h / 2, w, h, 1, { c: '#000', w: LW.sym }));
@@ -336,8 +342,8 @@
     // воздухоотводчик и слив (паспорт, ред. 30.03.2023, п. 5 и 4.3.6), термометру
     // места нет, и в смете его тогда нет (cfg.hydro.thermo === false).
     if (!noThermo) {
-      o.push(pline([[x - w / 2, y], [x - w / 2 - 2.2, y]]));
-      o.push(gauge(x - w / 2 - 4.2, y, 'Т'));
+      o.push(pline([[x - w / 2, yTherm], [x - w / 2 - 2.2, yTherm]]));
+      o.push(gauge(x - w / 2 - 4.2, yTherm, 'Т'));
     }
     return o.join('');
   }
@@ -466,9 +472,9 @@
   /** Размер электрического водонагревателя на листе. Ширина одна (под подпись),
    *  высота — по объёму: паспортные 515 / 675 / 1000 / 1210 мм в масштабе напольного
    *  бойлера (52×84 мм на 1200 мм). Меньший объём — заметно меньший бак. */
-  function elWhSize(vol) {
+  function elWhSize(vol, compact) {
     var mm = !vol || vol <= 30 ? 515 : vol <= 50 ? 675 : vol <= 80 ? 1000 : 1210;
-    return { w: 34, h: Math.max(50, Math.round(mm * 0.07)) };
+    return { w: 34, h: Math.max(50, Math.round(mm * (compact ? 0.045 : 0.07))) };
   }
 
   /** Электрический накопительный водонагреватель в стиле котлов листа: тот же серый
@@ -1453,10 +1459,12 @@
     if (cfg.hydro) {
       hydroX = Math.max(tapsEnd + 24, 296);
       secPair = { supply: 161, ret: 173 };
-      var xd = hydroX + 11, xu = hydroX + 16.5;
-      mRight = xu;
       // половина ширины корпуса: у буферной ёмкости он крупный, трубы подводятся к его боку
       var hbw = cfg.hydro.buffer ? BUF_W / 2 : 4.5;
+      // стояки котловой пары отодвинуты за корпус ёмкости
+      var hshift = cfg.hydro.buffer ? hbw - 8 : 0;
+      var xd = hydroX + 11 + hshift, xu = hydroX + 16.5 + hshift;
+      mRight = xu;
       // котловая пара к гидрострелке. Подача бежит от котлов вправо, к
       // стрелке (fwd); обратка — от стрелки влево, к котлам (rev).
       o.push('<g data-hyd-part="msup" data-hyd-dir="fwd">');
@@ -1487,15 +1495,16 @@
       // датчик «Каскад» — на подаче за гидрострелкой (по нему контроллер
       // ведёт общую температуру каскада)
       if (cfg.auto && cfg.auto.cascade) {
-        o.push(ln(hydroX - 10, secPair.supply - 2.4, hydroX - 10, secPair.supply, { w: LW.thin }));
-        o.push(gauge(hydroX - 10, secPair.supply - 4.95, 'Т'));
+        var cgX = hydroX - (cfg.hydro.buffer ? hbw + 4 : 10);
+        o.push(ln(cgX, secPair.supply - 2.4, cgX, secPair.supply, { w: LW.thin }));
+        o.push(gauge(cgX, secPair.supply - 4.95, 'Т'));
       }
       // вторичная пара к насосным группам: подача идёт от стрелки влево, к
       // отводам (rev), обратка собирается с отводов и идёт вправо (fwd).
       o.push('<g data-hyd-part="ssup" data-hyd-dir="rev">');
       o.push(hpipe(tapX0 - 8, hydroX - hbw, secPair.supply, COL.supply));
       o.push(tick(tapX0 - 8, secPair.supply, false, COL.supply));
-      o.push(openArrow(hydroX - 15, secPair.supply, 'left', COL.supply));
+      o.push(openArrow(hydroX - (cfg.hydro.buffer ? hbw + 3.2 : 15), secPair.supply, 'left', COL.supply));
       o.push('</g><g data-hyd-part="sret" data-hyd-dir="fwd">');
       o.push(hpipe(tapX0 - 8, hydroX - hbw, secPair.ret, COL.ret));
       o.push(tick(tapX0 - 8, secPair.ret, false, COL.ret));
@@ -1901,7 +1910,7 @@
     // Горячая колонка стоит левее холодной: бак на горячей линии, место слева от него свободно,
     // а горизонтали портов не пересекают чужие стояки (порт Т3 выше порта В1).
     if (hasEl) {
-      var eSz = elWhSize(cfg.elWh && cfg.elWh.vol), eW = eSz.w, eH = eSz.h, eX = 415 - eW - 1.5, eY = 78;
+      var eSz = elWhSize(cfg.elWh && cfg.elWh.vol, !!(cfg.hydro && cfg.hydro.buffer)), eW = eSz.w, eH = eSz.h, eX = 415 - eW - 1.5, eY = 78;
       // всё, что относится к водонагревателю, — одна группа маршрута: подсветка на экране
       // покажет только его воду, а не контур отопления
       o.push('<g data-hyd-part="elwh" data-hyd-dir="none">');
