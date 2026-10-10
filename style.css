@@ -17292,15 +17292,24 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
 }
 /* Конечного кадра нет намеренно: к концу анимации фон возвращается к своему
    обычному значению (у распознанных строк и подразделов он свой). */
+/* Цвет вспышки — акцент темы, а не зелёный (владелец 10.10.2026). Там, где --primary светлый
+   (ночные STOUT, ROMMER, «Профи»), берём тёмный фирменный оттенок темы. */
+:root {
+    --row-flash: color-mix(in srgb, var(--primary) 24%, transparent);
+    --row-flash-line: color-mix(in srgb, var(--primary) 80%, transparent);
+}
+body.brand-stout.dark-mode { --row-flash: rgba(74, 124, 194, 0.32); --row-flash-line: rgba(74, 124, 194, 0.9); }
+body.brand-rommer.dark-mode { --row-flash: rgba(169, 32, 40, 0.36); --row-flash-line: rgba(169, 32, 40, 0.95); }
+body.theme-yandex.dark-mode { --row-flash: rgba(255, 255, 255, 0.10); --row-flash-line: rgba(255, 255, 255, 0.5); }
 @keyframes rowJustAdded {
-    0%, 40% { background-color: rgba(34, 197, 94, 0.28); }
+    0%, 40% { background-color: var(--row-flash); }
 }
 .inv-table tr.row-sec.row-just-added td {
     animation: secJustAdded 7.8s ease-out;
     animation-delay: var(--flash-delay, 0ms);
 }
 @keyframes secJustAdded {
-    0%, 40% { box-shadow: inset 0 0 0 2px rgba(34, 197, 94, 0.9); background-color: rgba(34, 197, 94, 0.28); }
+    0%, 40% { box-shadow: inset 0 0 0 2px var(--row-flash-line); background-color: var(--row-flash); }
 }
 /* Распорка внизу колонки параметров: даёт прокрутить колонку так, чтобы
    нажатый переключатель остался на месте, когда блоки под ним скрылись
@@ -19976,18 +19985,37 @@ body.empty-fit-panel:not(.guest-mode) #btn_share_trigger,
 body.empty-fit-panel:not(.guest-mode) #btn_print_trigger,
 body.empty-fit-panel:not(.guest-mode) #btn_invoice_trigger { opacity: .45; pointer-events: none; }
 body.empty-fit-panel #header_totals { display: none !important; }
-/* Простые разделы — плитки в два столбца; включённая раскрывается на всю ширину (её настройки внутри) */
-.pg-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0; }
-.pg-tiles > .toggle-item.pg-card { margin: 0 !important; padding: 8px 10px !important; min-width: 0; }
-.pg-tiles > .toggle-item.pg-card:has(> .label-row input[type="checkbox"]:checked),
-.pg-tiles > .toggle-item.pg-card:has(.label-row input[type="checkbox"]:checked) { grid-column: 1 / -1; }
-/* Узкая плитка (панель ≈270 px): название с «i» не помещается рядом с переключателем и резалось
-   («Водоснабж…»). Переключатель переносится на свою строку справа, название получает всю ширину. */
-.pg-tiles .label-row { gap: 4px 8px; margin-bottom: 0; flex-wrap: wrap; }
+/* Подсказки «i» в колонке параметров — один вид и ограниченная высота: 12 px, ровные абзацы,
+   заголовки пунктов жирным, не выше ~220 px (остальное прокручивается). Раньше одни были в
+   полстраницы, другие в строку, и в узкой колонке вырастали столбиком. */
+.input-panel .tooltip-content.tip-panel {
+    font-size: 12px; line-height: 1.4; font-weight: 400; text-align: left;
+    padding: 10px 12px; border-radius: 10px;
+    max-height: 220px; overflow-y: auto;
+}
+.input-panel .tooltip-content.tip-panel .tip-p { margin-top: 6px; }
+.input-panel .tooltip-content.tip-panel b { color: #fff; font-weight: 600; }
+/* У верхнего края колонки подсказка раскрывается вниз, иначе её верх обрезается (app.initPanelTips) */
+.tooltip-wrapper.tip-down .tooltip-content { bottom: auto; top: 135%; }
+.tooltip-wrapper.tip-down .tooltip-content::after {
+    top: auto; bottom: 100%;
+    border-color: transparent transparent #1F2937 transparent;
+}
+/* Простые «добавить раздел» — один список-карточка: название слева, переключатель всегда на одном
+   месте справа при любом шрифте. Плитки в два столбца отменены: в узкой колонке переключатель
+   прыгал то рядом с названием, то на строку ниже. Включённая строка подсвечена цветом темы. */
+.pg-tiles { display: block; margin: 6px 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.pg-tiles > .toggle-item.pg-card {
+    margin: 0 !important; padding: 9px 12px !important;
+    border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent;
+}
+.pg-tiles > .toggle-item.pg-card:first-child { border-top: 0; }
+.pg-tiles > .toggle-item.pg-card:has(> .label-row input[type="checkbox"]:checked) {
+    border-top-color: var(--border); background: var(--primary-light);
+}
+.pg-tiles .label-row { margin-bottom: 0; gap: 8px; flex-wrap: nowrap; }
 .pg-tiles .label-row > span:first-child { flex: 1 1 auto; min-width: 0; }
-.pg-tiles .label-row .switch { margin-left: auto; }
-.pg-tiles .label-row .lbl { line-height: 1.25; font-size: 12px; }
-.pg-tiles > .toggle-item.pg-card { padding: 7px 8px !important; }
+.pg-tiles .label-row .switch { flex: none; margin-left: auto; }
 .pg-quick { cursor: pointer; background: transparent; border: 1px solid var(--primary); color: var(--primary); }
 .pg-quick:hover { background: var(--primary-light); }
 .pg-count { background: var(--primary-light); color: var(--text-main); border: 1px solid var(--border); }

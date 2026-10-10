@@ -1730,7 +1730,7 @@
 
             <div class="control-item toggle-item">
                 <div class="label-row" id="blk_water_input_row" style="position:relative;">
-                    <span class="lbl" id="lbl_water_input" style="display:flex; align-items:center; gap:4px;"><span id="lbl_water_input_txt">Узел ввода ХВС</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Что входит в узел и за что отвечает каждый переключатель.<div class="tip-p"><b>Редуктор давления.</b> Держит в доме постоянное давление 3–4 бара независимо от магистрали. Ночные скачки выше 6 бар рвут гибкую подводку.</div><div class="tip-p"><b>Счётчик воды.</b> Учёт воды из городской сети. На скважине не нужен.</div><div class="tip-p"><b>Защита от протечки.</b> Датчики на полу плюс краны с электроприводом на вводе: поймав воду, система перекрывает её за несколько секунд.</div><div class="tip-p"><b>Монтажный каркас.</b> Узел собирается на двух сантехнических шинах, а не по месту на стене: снимается и обслуживается целиком.</div><div class="tip-p"><b>Подпитка отопления.</b> <b>Ручная.</b> Кран с заглушкой: доливать давление вручную.<div class="tip-p"><b>Авто.</b> Автоматический подпиточный клапан: держит заданное давление сам. Если в смете есть контроллер отопления, к нему добавится датчик давления с оповещением.</div></div></div></span></span>
+                    <span class="lbl" id="lbl_water_input" style="display:flex; align-items:center; gap:4px;"><span id="lbl_water_input_txt">Узел ввода ХВС</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Редуктор давления, счётчик воды, защита от протечки, монтажный каркас и подпитка отопления (ручная или автоматическая). Каждый пункт включается переключателем ниже.</div></span></span>
                     <label class="switch"><input type="checkbox" id="chk_water_input"
                         onchange="app.toggleWaterInput(this.checked, event)"><span class="slider"></span></label>
                 </div>
@@ -1905,16 +1905,7 @@
                             style="font-size:12px; display:flex; align-items:center; gap:4px; margin-bottom:6px;">Управление<span
                                 class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0"
                                     role="button" aria-label="Подробнее">i</i>
-                                <div class="tooltip-content tip-panel"><b>Датчик осадков.</b> В смету добавляются
-                                    грунтовый датчик снега и влаги с блоком управления и кабель к нему. Контроллер
-                                    получает от датчика сухой контакт и включает контур сам, как только пошёл снег
-                                    и на улице холодно, а после — держит выбег, пока площадка не просохнет.<br><br>
-                                    <b>Ручной.</b> Датчика и кабеля в смете нет, узел дешевле. Включать приходится
-                                    самому — из приложения контроллера или выключателем.<br><br>
-                                    <b>На что влияет ещё.</b> В обоих режимах контур ведёт контроллер и всю зиму
-                                    держит дежурные +5…+8 °C: остывшую уличную стяжку разогреть с нуля — это часы,
-                                    а не минуты. Разница только в том, кто даёт команду выйти на рабочий режим.
-                                </div>
+                                <div class="tooltip-content tip-panel"><b>Датчик осадков.</b> Контур включается сам по снегу и холоду, после держит выбег до просыхания.<div class="tip-p"><b>Ручной.</b> Датчика и кабеля в смете нет, узел дешевле; включать самому. В обоих режимах контур держит дежурные +5…+8 °C.</div></div>
                             </span></span>
                         <div class="tabs" id="snow_ctrl_tabs" style="font-size:11px;">
                             <div class="tab active" id="snow_ctrl_sensor" onclick="app.setSnowCtrl('sensor')">Датчик
@@ -1934,18 +1925,7 @@
                                 style="font-size:12px; display:flex; align-items:center; gap:4px; margin-bottom:6px;">Труба
                                 петель<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0"
                                         role="button" aria-label="Подробнее">i</i>
-                                    <div class="tooltip-content tip-panel"><b>20х2.0 (красная).</b> Внутренний диаметр
-                                        16 мм. Потери в петле примерно на треть ниже, метр дешевле, петля выходит
-                                        длиннее — а значит меньше петель, меньше выходов коллектора и реже приходится
-                                        делить снеготаяние на два узла. Теплоносителя в контуре на 15 % больше.<br><br>
-                                        <b>20х2.8 (серая).</b> Внутренний 14,4 мм. Толстая стенка — запас на механику
-                                        там, где за петлю страшно: тяжёлый проезд, работы поверх готовой стяжки. За это
-                                        платите гидравликой: петля короче, петель больше, узлов может понадобиться
-                                        больше.<br><br>
-                                        <b>Общее у обеих.</b> PE-Xa/EVOH, обе переживают замерзание теплоносителя
-                                        (металлопластик в этом месте расслаивается по алюминию), обе на аксиальном
-                                        соединении. Различается только монтажная гильза — она обжимает трубу по стенке.
-                                    </div>
+                                    <div class="tooltip-content tip-panel"><b>20х2.0 (красная).</b> Потери в петле ниже на треть, метр дешевле, петли длиннее — меньше выходов коллектора.<div class="tip-p"><b>20х2.8 (серая).</b> Толстая стенка для тяжёлого проезда и работ по готовой стяжке; петли короче, их больше.</div><div class="tip-p">Обе переживают замерзание теплоносителя.</div></div>
                                 </span></span>
                             <div class="tabs" id="snow_pipe_tabs" style="font-size:11px;">
                                 <div class="tab active" id="snow_pipe_thin" onclick="app.setSnowPipe('thin')">

@@ -46625,6 +46625,12 @@ const app = {
             });
             if (isPanelTip) {
                 e.preventDefault();
+                // Вверху колонки места над значком мало — раскрываем вниз, чтобы верх подсказки не обрезался
+                const panel = wrap.closest('.input-panel');
+                if (panel) {
+                    const room = icon.getBoundingClientRect().top - panel.getBoundingClientRect().top;
+                    wrap.classList.toggle('tip-down', room < 240);
+                }
                 wrap.classList.toggle('tip-open');
             }
         });
