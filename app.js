@@ -44305,6 +44305,19 @@ const app = {
         }
         const phoneErr = this.checkPhoneValue(phone);
         if (phoneErr) { this.profileFieldError('profile_phone_input', phoneErr); return; }
+        // Тот же телефон уже в другой учётной записи — человек, скорее всего, входит второй
+        // почтой (mail.ru и yandex.ru у одного монтажника, 25.09.2026): получатся два
+        // профиля с разделёнными сметами. Не сохраняем и подсказываем, с какой почтой входить.
+        // Ошибка запроса не мешает сохранить анкету.
+        try {
+            // Читать чужие строки users браузеру нельзя (users_select_scoped), поэтому
+            // спрашиваем функцию базы: она отвечает только маскированной почтой
+            const { data: masked } = await supabaseClient.rpc('phone_taken_by_other', { p_phone: phone });
+            if (masked) {
+                this.profileFieldError('profile_phone_input', 'Этот телефон уже указан в другой учётной записи (' + masked + '). Войдите с той почтой, чтобы не потерять сметы. Если почта сменилась, напишите на support@heatcalc.ru.');
+                return;
+            }
+        } catch (dupErr) { console.warn('[saveProfile] Проверка телефона не удалась:', dupErr); }
         if (!birthDate) { this.profileFieldError('profile_birth_date_input', 'Пожалуйста, укажите дату рождения.'); return; }
         const profileAge = this.calcAge(birthDate);
         if (profileAge < 18 || profileAge > this.PROFILE_MAX_AGE) { this.profileFieldError('profile_birth_date_input', 'Возраст должен быть от 18 до ' + this.PROFILE_MAX_AGE + ' лет.'); return; }
