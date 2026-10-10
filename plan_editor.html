@@ -2193,7 +2193,7 @@ function autoScale(silent) {
   // раньше становился тупиком: план второго этажа есть, комнат второго
   // этажа в расчёте нет.
   var d = null;
-  try { d = scaleFromDims(PDF_DIMS[cur]) || scaleFromScanDims(SCAN_DIMS[cur]); }
+  try { d = scaleFromDims(PDF_DIMS[cur]) || scaleFromScanDims(SCAN_DIMS[cur]) || SCAN_OCR[cur] || null; }
   catch (e) { console.error('[plan_editor] dims:', e); }
   if (d) {
     var ddw = doorCheck(d.ppm);
@@ -2675,6 +2675,41 @@ var AREA_READ_PROMPT = 'Ты читаешь чертёж этажа частно
 var SCAN_DIMS = {};
 /** Картинку этажа ещё читает модель: шаг «Масштаб» пока не должен говорить «не нашёлся» */
 var SCAN_BUSY = {};
+/** Масштаб по цифрам размеров, прочитанным на устройстве (plan_ocr.js): { ppm, n, total, via } */
+var SCAN_OCR = {};
+var LOAD_TOK = {};     // номер загрузки подложки этажа: ответы от прошлой картинки игнорируем
+var scanExtra = '';    // что дописать в карточку «ИИ читает план» (например, «масштаб уже найден»)
+
+var ocrScriptP = null;
+function loadOcrModule() {
+  if (window.PlanOcr) return Promise.resolve();
+  if (!ocrScriptP) ocrScriptP = new Promise(function (ok, err) {
+    var s = document.createElement('script');
+    s.src = 'plan_ocr.js?v=1.0'; s.onload = ok;
+    s.onerror = function () { ocrScriptP = null; err(new Error('plan_ocr.js не загрузился')); };
+    document.head.appendChild(s);
+  });
+  return ocrScriptP;
+}
+
+/** Цифры размеров с картинки — на устройстве, без сервиса. Идёт параллельно с чтением ИИ. */
+function startOcr(c, fi) {
+  var t0 = Date.now(), tok = LOAD_TOK[fi];
+  var note = function (msg) { (SCAN_DIAG[fi] = SCAN_DIAG[fi] || {}).ocr = 'OCR: ' + msg; };
+  return loadOcrModule().then(function () { return window.PlanOcr.scale(c); }).then(function (r) {
+    if (LOAD_TOK[fi] !== tok) return null;      // за это время на этаж легла другая картинка
+    var sec = Math.round((Date.now() - t0) / 1000);
+    if (r) {
+      SCAN_OCR[fi] = { ppm: r.ppm, n: r.n, total: r.total };
+      note(r.ppm.toFixed(1) + ' px/м (' + r.via + ', пар ' + r.n + ' из ' + r.total + ') за ' + sec + ' с');
+    } else note('размеры не прочитались, ' + sec + ' с');
+    return r;
+  }, function (e) {
+    console.warn('[plan_editor] OCR:', e && e.message);
+    note('ошибка: ' + String(e && e.message).slice(0, 80));
+    return null;
+  });
+}
 
 /** Разбор подбора масштаба по картинке — для админа: что вернул сервис и на чём подбор встал.
  *  { read: строка про ответ, scale: строка про подбор }. Обычному пользователю не показывается. */
@@ -2691,7 +2726,7 @@ function scanWhy(msg) { (SCAN_DIAG[cur] = SCAN_DIAG[cur] || {}).scale = msg; }
 function scanDiagHtml() {
   var q = SCAN_DIAG[cur];
   if (!q || !isScanAdmin()) return '';
-  var t = [q.read, q.scale].filter(Boolean).join(' · ');
+  var t = [q.read, q.ocr, q.scale].filter(Boolean).join(' · ');
   return t ? '<div style="margin-top:6px;font-size:12px;color:#d8b26a;font-family:monospace">админ: ' +
     t.replace(/</g, '&lt;') + '</div>' : '';
 }
@@ -2745,6 +2780,7 @@ function scanBox(on, label) {
   if (!on) {
     if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
     if (el) el.remove();
+    scanExtra = '';
     return;
   }
   if (el) el.remove();
@@ -2763,7 +2799,7 @@ function scanBox(on, label) {
     var t = document.getElementById('sb_t');
     if (!t) { clearInterval(scanTimer); scanTimer = null; return; }
     t.textContent = label || 'ИИ читает ваш план';
-    document.getElementById('sb_s').textContent = stage + '…';
+    document.getElementById('sb_s').textContent = (scanExtra ? scanExtra + ' · ' : '') + stage + '…';
     document.getElementById('sb_n').textContent = Math.floor(s) + ' с';
     document.getElementById('sb_i').style.width = Math.round(94 * (1 - Math.exp(-s / 22))) + '%';
   };
@@ -2918,8 +2954,9 @@ function areaLabelsFrom(items) {
  * не путает этажи. Проверяется он тем же, чем и подбор по площадям, —
  * шириной дверных проёмов.
  */
-function scaleFromDims(items) {
-  if (!items || items.length < 4) return null;
+function scaleFromDims(items, loose) {
+  // loose — для цифр, прочитанных с картинки: хватает двух согласованных пар (точность 4 %)
+  if (!items || items.length < (loose ? 3 : 4)) return null;
   var toks = [];
   items.forEach(function (t) {
     // «4 732» и «4732» — одно и то же: в PDF разряды разделены пробелом
@@ -2931,7 +2968,8 @@ function scaleFromDims(items) {
   });
   if (toks.length < 3) return null;
 
-  var ks = [];
+  var ks = [], kp = [];
+  var need = loose ? 2 : 3;
   // sk — координата, по которой числа стоят в одну линию, ak — вдоль цепочки
   var walk = function (sk, ak) {
     var list = toks.slice().sort(function (a, b) { return a[sk] - b[sk]; });
@@ -2944,7 +2982,7 @@ function scaleFromDims(items) {
           var mm = (grp[i].v + grp[i - 1].v) / 2;
           if (d <= 2 || mm <= 0) continue;
           var k = d / mm;                       // пикселей в миллиметре
-          if (k > 0.004 && k < 1.5) ks.push(k); // 4..1500 px/м — вне этого чертежей не бывает
+          if (k > 0.004 && k < 1.5) { ks.push(k); kp.push({ k: k, a: grp[i - 1], b: grp[i] }); } // 4..1500 px/м — вне этого чертежей не бывает
         }
       }
       grp = [];
@@ -2957,12 +2995,25 @@ function scaleFromDims(items) {
   };
   walk('y', 'x');
   walk('x', 'y');
-  if (ks.length < 3) return null;
+  if (ks.length < need) return null;
 
   ks.sort(function (a, b) { return a - b; });
   var med = ks[Math.floor(ks.length / 2)];
   var good = ks.filter(function (k) { return Math.abs(k - med) / med < 0.12; });
-  if (good.length < 3) return null;
+  if (loose) {
+    // С картинки в пары попадают и ошибочно прочитанные числа, медиана по ним уезжает:
+    // берём самое людное скопление в 4 % — их и сверяет plan_ocr по общей размерной линии
+    // Две пары принимаем, только если они делят число (три подряд числа одной цепочки):
+    // случайно сошедшиеся пары из разных мест листа такого не дают
+    var bestC = [];
+    kp.forEach(function (p0) {
+      var cl = kp.filter(function (p) { return Math.abs(p.k - p0.k) / p0.k < 0.04; });
+      var linked = cl.some(function (p) { return cl.some(function (q) { return p !== q && (p.a === q.b || p.b === q.a); }); });
+      if (linked && cl.length > bestC.length) bestC = cl;
+    });
+    good = bestC.map(function (p) { return p.k; });
+  }
+  if (good.length < need) return null;
   var sum = 0;
   good.forEach(function (k) { sum += k; });
   return { ppm: (sum / good.length) * 1000, n: good.length, total: ks.length };
@@ -3082,7 +3133,11 @@ function renderPdfPage(page) {
   }).then(function () {
     // Страница-скан (текста почти нет) и подписей площадей не нашли — читаем картинку
     if (!(PDF_AREAS[fi] && PDF_AREAS[fi].length) && (!PDF_DIMS[fi] || PDF_DIMS[fi].length < 8)) {
-      return readAreaLabelsFromCanvas(c).then(function (labs) { PDF_AREAS[fi] = labs; SCAN_DIMS[fi] = labs.dims || []; });
+      delete SCAN_OCR[fi];
+      return Promise.all([readAreaLabelsFromCanvas(c), startOcr(c, fi)]).then(function (res) {
+        var labs = res[0];
+        PDF_AREAS[fi] = labs; SCAN_DIMS[fi] = labs.dims || [];
+      });
     }
     SCAN_DIMS[fi] = [];
   }).then(function () {
@@ -3111,16 +3166,27 @@ function loadOne(file) {
         var fi0 = cur;
         PDF_AREAS[fi0] = []; PDF_DIMS[fi0] = null; SCAN_DIMS[fi0] = [];
         SCAN_BUSY[fi0] = true;
+        var tok = LOAD_TOK[fi0] = (LOAD_TOK[fi0] || 0) + 1;
+        delete SCAN_OCR[fi0]; delete SCAN_DIAG[fi0];
         applyPlanCanvas(c, true);
+        // Цифры размеров читаем тут же, на устройстве: быстрее ИИ и не зависит от сервиса.
+        // Кто первым дал масштаб — тот и ставит; ИИ дочитывает подписи комнат.
+        startOcr(c, fi0).then(function (r) {
+          if (!r || LOAD_TOK[fi0] !== tok || DATA.floors[fi0].pxPerM) return;
+          scanExtra = 'Масштаб найден';
+          var was = cur; cur = fi0;
+          try { finishPlanLoad(); } finally { cur = was; }
+        });
         updateGuide();     // шаг «Масштаб» сразу пишет «ищу», а не «не нашёлся»
         var finish = function (labs, turned) {
           SCAN_BUSY[fi0] = false;
+          if (LOAD_TOK[fi0] !== tok) { done(); return; }
           // за время ожидания этаж могли сменить на другую подложку — тогда не трогаем
           if (imgCache[fi0] !== c) { done(); return; }
           PDF_AREAS[fi0] = labs; SCAN_DIMS[fi0] = labs.dims || [];
-          SCAN_DIAG[fi0] = { read: (labs.why ? 'ИИ: ' + labs.why : 'ИИ ответил за ' + (labs.sec || 0) + ' с: размерных линий ' +
+          (SCAN_DIAG[fi0] = SCAN_DIAG[fi0] || {}).read = (labs.why ? 'ИИ: ' + labs.why : 'ИИ ответил за ' + (labs.sec || 0) + ' с: размерных линий ' +
             (labs.rawDims || 0) + ', принято ' + (labs.dims || []).length + '; подписей площадей ' + (labs.rawLabels || 0) +
-            (turned ? '; лист развёрнут на ' + turned + '°' : '')) };
+            (turned ? '; лист развёрнут на ' + turned + '°' : ''));
           // масштаб, заданный руками, пока читалась картинка, не перебиваем
           if (!DATA.floors[fi0].pxPerM) {
             var was = cur; cur = fi0;
