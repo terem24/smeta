@@ -103,6 +103,7 @@ def fig_boiler():
         body += rbar(X0 + lo * scale, cy - 2, (hi - lo) * scale, 16, col, 0.95 if kind == 'b' else 0.8)
         lx = X0 + (ext or hi) * scale + 8
         body += t(lx, cy + 11, lab, 13, TXT, 'start', 600)
+    body += t((X0 + X1) / 2, H - 6, 'мощность котла, кВт', 12, MUT, 'middle')
     return svg_wrap(W, H, body, 'Мощность котла для дома 150 м² в Санкт-Петербурге, кВт: расчёты 102 проектов и ответы нейросетей'), W, H
 
 
