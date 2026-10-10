@@ -794,9 +794,8 @@
             <!-- Заголовки групп колонки (app.syncPanelGroups): «Дом» → «Отопление и котельная» →
                  «Добавить в смету». Сами блоки не обёрнуты: у них сотни id и условий показа,
                  поэтому заголовок прячется скриптом, если ни одного блока группы не видно. -->
-            <div class="pg-title no-print" id="pg_t1" data-pg="1" onclick="app.togglePanelGroup(1)" role="button" tabindex="0" title="Свернуть или развернуть группу"><span class="pg-num">1</span><span class="pg-name">Дом</span>
-                <span class="pg-hint" id="pg_hint1">Начните с площади</span>
-                <button type="button" class="pg-quick" id="pg_quick" onclick="event.stopPropagation(); app.showQuickStart()" style="display:none;" title="Подставить типовой объект и посмотреть, как выглядит смета">Типовой дом</button>
+            <div class="pg-title no-print" id="pg_t1" data-pg="1" onclick="app.togglePanelGroup(1)" role="button" tabindex="0" aria-label="Группа «Дом»: свернуть или развернуть"><span class="pg-num">1</span><span class="pg-name">Дом</span>
+                <button type="button" class="pg-quick" id="pg_quick" onclick="event.stopPropagation(); app.showQuickStart()" style="display:none;">Типовой дом</button>
             </div>
             <h3 style="margin-top: 0; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal;">Режим расчёта</h3>
             <div class="control-item" style="margin-bottom: 15px;">
@@ -1163,7 +1162,7 @@
             </div>
             </div>
 
-            <div class="pg-title no-print" id="pg_t2" data-pg="2" onclick="app.togglePanelGroup(2)" role="button" tabindex="0" title="Свернуть или развернуть группу"><span class="pg-num">2</span><span class="pg-name">Отопление и котельная</span></div>
+            <div class="pg-title no-print" id="pg_t2" data-pg="2" onclick="app.togglePanelGroup(2)" role="button" tabindex="0" aria-label="Группа «Отопление и котельная»: свернуть или развернуть"><span class="pg-num">2</span><span class="pg-name">Отопление и котельная</span></div>
             <div id="blk_fuel_type">
                 <h4 style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Тип котла</h4>
                 <div class="control-item">
@@ -1556,7 +1555,7 @@
                 </div>
             </div>
 
-            <div class="pg-title no-print" id="pg_t3" data-pg="3" onclick="app.togglePanelGroup(3)" role="button" tabindex="0" title="Свернуть или развернуть группу"><span class="pg-num">3</span><span class="pg-name">Добавить в смету</span><span class="pg-count" id="pg_count3" style="display:none;"></span></div>
+            <div class="pg-title no-print" id="pg_t3" data-pg="3" onclick="app.togglePanelGroup(3)" role="button" tabindex="0" aria-label="Группа «Добавить в смету»: свернуть или развернуть"><span class="pg-num">3</span><span class="pg-name">Добавить в смету</span></div>
             <div class="control-item toggle-item" id="blk_hw_wrap">
                 <div class="label-row" id="blk_hw_row"><span class="lbl" id="lbl_hw">Горячая вода (Бойлер)</span><label class="switch"><input
                             type="checkbox" id="chk_hw" onchange="app.toggleHW(this.checked, event)"><span

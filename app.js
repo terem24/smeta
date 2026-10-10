@@ -46498,24 +46498,8 @@ const app = {
             els.forEach(e => setCls(e, 'pg-collapsed', closed));
             // Переключатели «добавить в смету» — карточками, чтобы отличались от выбора из вариантов
             if (idx === 2) els.forEach(e => { if (e.classList.contains('toggle-item')) setCls(e, 'pg-card', true); });
-            if (idx === 2) {
-                const cnt = document.getElementById('pg_count3');
-                if (cnt) {
-                    const n = vis.filter(e => e.querySelector('input[type="checkbox"]:checked')).length;
-                    const txt = n ? 'включено ' + n : '';
-                    if (cnt.textContent !== txt) cnt.textContent = txt;
-                    const d = n ? '' : 'none';
-                    if (cnt.style.display !== d) cnt.style.display = d;
-                }
-            }
         });
         const byRooms = !!this.state.detailedRooms;
-        const hint = document.getElementById('pg_hint1');
-        if (hint) {
-            const d = empty ? '' : 'none'; if (hint.style.display !== d) hint.style.display = d;
-            const ht = byRooms ? 'Начните с плана дома' : 'Начните с площади';
-            if (hint.textContent !== ht) hint.textContent = ht;
-        }
         // Итог в строке «Параметры объекта»: регион и тип дома по нажатым кнопкам внутри
         const objSum = document.getElementById('obj_params_sum');
         if (objSum) {
@@ -46531,15 +46515,15 @@ const app = {
         // Что даёт выбранный режим — под переключателем «По площади / По комнатам»
         const modeSub = document.getElementById('mode_sub');
         if (modeSub) {
-            let mt = 'Оценка за минуту: нужен только метраж';
+            let mt = 'Оценка за минуту, нужен метраж';
             if (byRooms) {
                 const rooms = this.state.rooms || [];
                 let hasPlan = false;
                 try { hasPlan = !!this.planRowSummary(); } catch (e) { }
-                if (hasPlan) mt = 'Комнаты взяты с плана дома';
-                else if (rooms.length && this.state.roomsAutoSig && this.state.roomsAutoSig === this._roomsSig(rooms)) mt = 'Комнаты подставлены по площади — поправьте под ваш дом';
-                else if (rooms.length) mt = 'Расчёт по комнатам вашего дома';
-                else mt = 'Точнее: нужен план дома или список комнат';
+                if (hasPlan) mt = 'Комнаты взяты с плана';
+                else if (rooms.length && this.state.roomsAutoSig && this.state.roomsAutoSig === this._roomsSig(rooms)) mt = 'Комнаты подставлены сами — поправьте';
+                else if (rooms.length) mt = 'Расчёт по вашим комнатам';
+                else mt = 'Точнее: нужен план или комнаты';
             }
             if (modeSub.textContent !== mt) modeSub.textContent = mt;
         }
