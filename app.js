@@ -46509,7 +46509,8 @@ const app = {
             const act = id => { const a = document.querySelector('#' + id + ' .tab.active'); return a ? a.textContent.trim() : ''; };
             // Материал стен есть только у дома; блок свёрнут внутри «Параметров», поэтому
             // смотрим не на его видимость, а на тип объекта
-            const parts = [act('reg_tabs')];
+            // Выбран конкретный город — кнопки региона не нажаты, берём название города
+            const parts = [(this.state.selectedCity && this.state.selectedCity.name) || act('reg_tabs')];
             if (!document.body.classList.contains('object-flat') && !this.state.detailedRooms) parts.push(act('mat_tabs'));
             const st = parts.filter(Boolean).join(' · ');
             if (objSum.textContent !== st) objSum.textContent = st;
