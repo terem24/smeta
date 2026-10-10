@@ -25463,8 +25463,8 @@ const app = {
         let i = 0;
         groups.forEach(g => { firstOfGroup.add(feats[i].id); i += g.span; });
 
-        const head1 = `<tr><th style="${th}"></th>${groups.map(g => `<th colspan="${g.span}" style="${th} ${sep} color:var(--text-main);">${esc(g.name)}</th>`).join('')}</tr>`;
-        const head2 = `<tr><th style="${th} text-align:left; padding-left:12px;">Тариф</th>${feats.map(f => `<th title="${esc(f.hint || '')}" style="${th} ${firstOfGroup.has(f.id) ? sep : ''} cursor:help;">${esc(f.label)}</th>`).join('')}</tr>`;
+        const head1 = `<tr><th class="tf-stick" style="${th}"></th>${groups.map(g => `<th colspan="${g.span}" style="${th} ${sep} color:var(--text-main);">${esc(g.name)}</th>`).join('')}</tr>`;
+        const head2 = `<tr><th class="tf-stick" style="${th} text-align:left; padding-left:12px;">Тариф</th>${feats.map(f => `<th title="${esc(f.hint || '')}" style="${th} ${firstOfGroup.has(f.id) ? sep : ''} cursor:help;">${esc(f.label)}</th>`).join('')}</tr>`;
 
         const dis = canEdit ? '' : 'disabled';
         const toggle = (a, p, f, v) => {
@@ -25492,13 +25492,13 @@ const app = {
         let body = '';
         let matrixChanged = 0;
         this.TARIFF_ACCOUNTS.forEach(a => {
-            body += `<tr><td colspan="${feats.length + 1}" style="padding:10px 12px 6px; text-align:left; border-bottom:1px solid var(--border); background:var(--surface-light);">
+            body += `<tr><td class="tf-grp" colspan="${feats.length + 1}" style="padding:10px 12px 6px; text-align:left; border-bottom:1px solid var(--border); background:var(--surface-light);"><div>
                     <b style="font-size:13px; color:var(--text-main);">${esc(a.label)}</b>
-                    <span style="font-size:11px; color:var(--text-sec); margin-left:6px;">${esc(a.hint)}</span></td></tr>`;
+                    <span style="font-size:11px; color:var(--text-sec); margin-left:6px;">${esc(a.hint)}</span></div></td></tr>`;
             this.TARIFF_PLANS.forEach(p => {
                 const mine = a.id === myAcc && p.id === myPlan;
-                body += `<tr${mine ? ' style="background:rgba(37,99,235,.06);"' : ''}>
-                    <td style="${td} text-align:left; padding-left:12px; white-space:nowrap; font-size:12.5px; font-weight:600; color:var(--text-main);">${esc(p.label)}${mine ? ' <span title="Под эту строку сейчас попадаете вы" style="font-size:10px; font-weight:700; color:var(--primary);">● вы</span>' : ''}</td>
+                body += `<tr class="${mine ? 'tf-mine' : ''}"${mine ? ' style="background:rgba(37,99,235,.06);"' : ''}>
+                    <td class="tf-stick" style="${td} text-align:left; padding-left:12px; white-space:nowrap; font-size:12.5px; font-weight:600; color:var(--text-main);">${esc(p.label)}${mine ? ' <span title="Под эту строку сейчас попадаете вы" style="font-size:10px; font-weight:700; color:var(--primary);">● вы</span>' : ''}</td>
                     ${feats.map(f => {
                         const v = this.tariffCell(a.id, p.id, f.id);
                         const changed = !f.locked && v !== this.tariffDefaultCell(a.id, p.id, f.id);
@@ -25533,7 +25533,7 @@ const app = {
                 открытии сайта или возвращении на вкладку. Точка в углу ячейки — значение отличается от исходного.
                 ${canEdit ? '' : '<b style="color:var(--c-warn,#D97706);">Менять таблицу может только администратор.</b>'}
             </div>
-            <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:var(--bg);">
+            <div class="tf-wrap">
                 <table class="tf-table" style="width:100%; min-width:760px; border-collapse:collapse;"><thead>${head1}${head2}</thead><tbody>${body}</tbody></table>
             </div>
             <details class="ad-collapse" style="margin-top:14px; max-width:900px;"><summary>Как читать таблицу</summary>
