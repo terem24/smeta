@@ -345,6 +345,8 @@ def build(slug, publish=False):
 
     url = '%s/%s/' % (SITE, slug)
     body = '\n\n'.join(render_block(b) for b in art['blocks'])
+    # Слова считаем без подписей графиков: это не текст статьи
+    text_body = re.sub(r'<figure.*?</figure>', '', body, flags=re.S)
     # Блок прямого ответа. Стоит выше лида намеренно: ИИ-ответы Яндекса и Google
     # цитируют первый фрагмент, который отвечает на запрос буквально, а лид у нас
     # написан как зачин — он читается человеком, но моделью не извлекается.
@@ -393,7 +395,7 @@ def build(slug, publish=False):
              'publisher': {'@type': 'Organization', 'name': 'HeatCalc.ru', 'url': SITE + '/'},
              'isAccessibleForFree': True,
              'image': og_image,
-             'wordCount': len(plain(body).split()),
+             'wordCount': len(plain(text_body).split()),
              'citation': [{'@type': 'CreativeWork', 'name': n}
                           for n in norms_cited(plain(body) + ' ' + plain(render_faq(art['faq'])))]},
         ],
@@ -431,7 +433,7 @@ def build(slug, publish=False):
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, 'index.html')
     io.open(path, 'w', encoding='utf-8').write(page)
-    words = len(plain(body).split())
+    words = len(plain(text_body).split())
 
     # Отмечаем в расписании, что статья написана: по этому полю вкладка «Статьи»
     # в админке отличает готовое от запланированного. Статус published не трогаем —
