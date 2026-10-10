@@ -213,6 +213,27 @@
   .wz-do .tx { flex: 1 1 360px; color: var(--text-main); font-size: 13.5px; line-height: 1.45; }
   .wz-do .tx b { color: #fff; }
   .wz-do button.go { font-size: 13.5px; padding: 6px 16px; }
+  /* «ИИ читает план»: карточка по центру, пока модель отвечает */
+  #scanbox { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%); z-index: 80;
+             width: min(380px, calc(100vw - 32px)); box-sizing: border-box; padding: 18px 20px 16px;
+             background: var(--surface); color: var(--text-main); border: 1px solid var(--border);
+             border-radius: 14px; box-shadow: 0 14px 44px rgba(0,0,0,.4); animation: sbin .25s ease-out; }
+  #scanbox .sb-t { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; }
+  #scanbox .sb-spin { flex: 0 0 auto; width: 18px; height: 18px; border-radius: 50%;
+                      border: 3px solid rgba(128,128,128,.35); border-top-color: var(--primary);
+                      animation: sbspin .8s linear infinite; }
+  #scanbox .sb-bar { height: 8px; margin: 14px 0 9px; border-radius: 4px; overflow: hidden;
+                     background: rgba(128,128,128,.28); }
+  #scanbox .sb-bar i { display: block; height: 100%; width: 0; border-radius: 4px; transition: width .5s linear;
+                       background: linear-gradient(90deg, var(--primary), var(--primary) 35%, rgba(255,255,255,.75) 50%, var(--primary) 65%, var(--primary));
+                       background-size: 220% 100%; animation: sbshine 1.6s linear infinite; }
+  #scanbox .sb-s { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--text-sec); }
+  #scanbox .sb-x { margin-top: 12px; font-size: 13px; color: var(--text-sec); }
+  #scanbox .sb-x b { color: var(--primary); cursor: pointer; text-decoration: underline; font-weight: 600; }
+  @keyframes sbspin { to { transform: rotate(360deg); } }
+  @keyframes sbshine { from { background-position: 220% 0; } to { background-position: -120% 0; } }
+  @keyframes sbin { from { opacity: 0; transform: translate(-50%, -46%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+  @media (prefers-reduced-motion: reduce) { #scanbox, #scanbox .sb-spin, #scanbox .sb-bar i { animation: none; } }
   /* Телефон: план на всю ширину, список комнат под ним (в ряд с колонкой 320 px
      от плана оставалась миниатюра), шаги — номерами, текст шага — одной фразой */
   @media (max-width: 720px) {
@@ -2683,13 +2704,52 @@ function parseAreaReply(resp, W, H) {
   uniqueLabelNames(out);
   return out;
 }
-function readAreaLabelsFromCanvas(c) {
+/**
+ * Окно «ИИ читает план»: чтение идёт до минуты, и строка в правой колонке этого не
+ * показывала — человек думал, что загрузка встала, и уходил. Теперь по центру экрана
+ * карточка: крутилка, полоса хода и секунды. Полоса считается по времени (ответ модели
+ * по ходу не приходит), поэтому замедляется к концу и до последнего не доходит до края.
+ */
+var scanTimer = null;
+function scanBox(on, label) {
+  var el = document.getElementById('scanbox');
+  if (!on) {
+    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+    if (el) el.remove();
+    return;
+  }
+  if (el) el.remove();
+  el = document.createElement('div');
+  el.id = 'scanbox';
+  el.innerHTML = '<div class="sb-t"><span class="sb-spin"></span><span id="sb_t"></span></div>' +
+    '<div class="sb-bar"><i id="sb_i"></i></div>' +
+    '<div class="sb-s"><span id="sb_s"></span><span id="sb_n"></span></div>' +
+    '<div class="sb-x">Можно не ждать: <b onclick="scanBox(false);setMode(\'scale\')">задать масштаб вручную</b></div>';
+  document.body.appendChild(el);
+  var t0 = Date.now();
+  var tick = function () {
+    var s = (Date.now() - t0) / 1000;
+    var stage = s < 8 ? 'Загружаю план на распознавание' : s < 22 ? 'Ищу размерные линии и подписи комнат'
+      : s < 40 ? 'Считаю масштаб по размерам' : 'Ещё немного, чертёж сложный';
+    var t = document.getElementById('sb_t');
+    if (!t) { clearInterval(scanTimer); scanTimer = null; return; }
+    t.textContent = label || 'ИИ читает ваш план';
+    document.getElementById('sb_s').textContent = stage + '…';
+    document.getElementById('sb_n').textContent = Math.floor(s) + ' с';
+    document.getElementById('sb_i').style.width = Math.round(94 * (1 - Math.exp(-s / 22))) + '%';
+  };
+  tick();
+  if (scanTimer) clearInterval(scanTimer);
+  scanTimer = setInterval(tick, 500);
+}
+
+function readAreaLabelsFromCanvas(c, label) {
   return new Promise(function (resolve) {
     var finished = false;
-    var finish = function (v) { if (!finished) { finished = true; clearTimeout(tm); resolve(v || []); } };
-    var tm = setTimeout(function () { console.warn('[plan_editor] подписи площадей: не дождались ответа'); finish([]); }, 50000);
+    var finish = function (v) { if (!finished) { finished = true; clearTimeout(tm); scanBox(false); resolve(v || []); } };
+    var tm = setTimeout(function () { console.warn('[plan_editor] подписи площадей: не дождались ответа'); finish([]); }, 70000);
     try {
-      hint('Читаю подписи площадей на плане… (до минуты)');
+      scanBox(true, label);
       var k = Math.min(1, 1600 / Math.max(c.width, c.height));
       var t = document.createElement('canvas');
       t.width = Math.round(c.width * k); t.height = Math.round(c.height * k);
@@ -3012,6 +3072,7 @@ function loadOne(file) {
         PDF_AREAS[fi0] = []; PDF_DIMS[fi0] = null; SCAN_DIMS[fi0] = [];
         SCAN_BUSY[fi0] = true;
         applyPlanCanvas(c, true);
+        updateGuide();     // шаг «Масштаб» сразу пишет «ищу», а не «не нашёлся»
         var finish = function (labs, turned) {
           SCAN_BUSY[fi0] = false;
           // за время ожидания этаж могли сменить на другую подложку — тогда не трогаем
@@ -3042,7 +3103,7 @@ function loadOne(file) {
           rg.drawImage(c, -c.width / 2, -c.height / 2);
           var was2 = cur; cur = fi0;
           try { applyPlanCanvas(rc, true); } finally { cur = was2; }
-          readAreaLabelsFromCanvas(rc).then(function (l2) { c = rc; finish(l2, r); });
+          readAreaLabelsFromCanvas(rc, 'План повёрнут — читаю его заново').then(function (l2) { c = rc; finish(l2, r); });
         });
       };
       im.onerror = function () {
