@@ -891,7 +891,7 @@
                     <div
                         style="background: var(--surface-light); padding: 12px 15px; border-radius: 8px; border: 1px dashed #10B981; border-left: 4px solid #10B981; margin-bottom: 0;">
                         <div class="control-item" style="margin-bottom: 0;">
-                            <div class="label-row"><span class="lbl" style="color: #10B981;">Высота потолка 2
+                            <div class="label-row"><span class="lbl" style="color: var(--c-ok, #10B981);">Высота потолка 2
                                     этаж</span><span class="val"><span id="val_h2" class="editable-val"
                                         contenteditable="true" onblur="app.setH(2, this.innerText)"
                                         onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">2.7</span>
@@ -2417,7 +2417,7 @@
                     <!-- Обоснование варианта «Подешевле»: что и почему заменено.
                          Видна только при включённом режиме (app.syncCheaperTab). -->
                     <div id="tab_cheaper" class="tab tab-cheaper" style="font-size: 14px; font-weight: 700; display: none;"
-                        title="Что и почему заменено в варианте «Подешевле»"
+                        title="Что и почему заменено в варианте «Бюджетнее»"
                         onclick="app.setViewMode('cheaper')"><span class="ui-emo">💡 </span>Почему дешевле</div>
                 </div>
             </div>
@@ -2616,7 +2616,7 @@
                             <line x1="9" y1="9" x2="21" y2="9"></line>
                             <line x1="9" y1="15" x2="21" y2="15"></line>
                         </svg>
-                        <span style="flex-grow: 1; font-weight: 700; font-size: 14.5px; color: #10B981; text-align: left;">Панель управления (Админка)</span>
+                        <span style="flex-grow: 1; font-weight: 700; font-size: 14.5px; color: var(--c-ok, #10B981); text-align: left;">Панель управления (Админка)</span>
                         <svg viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" style="opacity: 0.5;">
                             <polyline points="9 18 15 12 9 6"></polyline>
                         </svg>
@@ -2688,7 +2688,7 @@
                             <polyline points="16 17 21 12 16 7"></polyline>
                             <line x1="21" y1="12" x2="9" y2="12"></line>
                         </svg>
-                        <span style="flex-grow: 1; font-weight: 600; font-size: 14.5px; color: #EF4444; text-align: left;">Выйти из аккаунта</span>
+                        <span style="flex-grow: 1; font-weight: 600; font-size: 14.5px; color: var(--c-bad, #EF4444); text-align: left;">Выйти из аккаунта</span>
                         <svg viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" style="opacity: 0.5;">
                             <polyline points="9 18 15 12 9 6"></polyline>
                         </svg>
