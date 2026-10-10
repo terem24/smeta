@@ -19855,3 +19855,30 @@ body.theme-shop #hdr_margin_sum { color: var(--primary) !important; }
         height: 8px;
     }
 }
+
+/* Меню «Вид» над сметой: Артикулы / Группировать / Картинки. Панель выпадает под кнопкой.
+   Весь .sku-control на телефоне переезжает в боковое меню — там панель раскрыта сразу. */
+.view-menu { position: relative; display: flex; align-items: center; }
+.view-menu-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 8px; border-radius: 8px; cursor: pointer;
+    background: transparent; border: 1px solid var(--border); color: var(--text-sec);
+    font: inherit;
+}
+.view-menu-btn:hover, .view-menu.open .view-menu-btn { border-color: var(--primary); color: var(--text-main); }
+.view-menu-btn .sku-label { margin: 0 !important; }
+.view-menu-caret { font-size: 10px; line-height: 1; transition: transform .15s ease; }
+.view-menu.open .view-menu-caret { transform: rotate(180deg); }
+.view-menu-panel {
+    display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 60;
+    flex-direction: column; gap: 10px; min-width: 190px; padding: 12px 14px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.view-menu.open .view-menu-panel { display: flex; }
+.view-menu-panel .sku-toggle-group { justify-content: space-between; gap: 16px; }
+.view-menu-panel .sku-label { text-transform: none; font-size: 12px; color: var(--text-main); }
+.mobile-sidebar .view-menu-btn { display: none; }
+.mobile-sidebar .view-menu,
+.mobile-sidebar .view-menu-panel { display: contents; }
+@media print { .view-menu { display: none !important; } }

@@ -46300,6 +46300,32 @@ const app = {
      * тот вешается только при отрисовке левой панели, а плашки живут в смете и
      * должны работать независимо от того, что там нарисовано.
      */
+    /**
+     * Меню «Вид» над сметой: Артикулы / Группировать / Картинки. Закрывается по клику
+     * вне панели и по Esc. Обработчики вешаем при первом открытии, один раз на документ.
+     */
+    toggleViewMenu: function (event) {
+        if (event) event.stopPropagation();
+        const menu = document.getElementById('view_menu');
+        if (!menu) return;
+        const open = menu.classList.toggle('open');
+        const btn = document.getElementById('view_menu_btn');
+        if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (!this._viewMenuBound) {
+            this._viewMenuBound = true;
+            const close = () => {
+                const m = document.getElementById('view_menu');
+                if (m && m.classList.contains('open')) {
+                    m.classList.remove('open');
+                    const b = document.getElementById('view_menu_btn');
+                    if (b) b.setAttribute('aria-expanded', 'false');
+                }
+            };
+            document.addEventListener('click', close);
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+        }
+    },
+
     toggleNoteTip: function (el) {
         document.querySelectorAll('.tooltip-wrapper.tip-open').forEach(w => {
             if (w !== el) w.classList.remove('tip-open');
