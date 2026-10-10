@@ -1272,6 +1272,12 @@
 
   html[data-big-text] #admin_content table.ad-dense td { font-size: 15.5px; }
 
+  @media screen and (max-width: 899.98px) {
+    html[data-big-text] #admin_content table.ad-dense td::before { font-size: 13px; }
+  }
+  @media screen and (max-width: 899.98px) {
+    html[data-big-text] #admin_content table.ad-dense .admin-action-btn { font-size: 15px; }
+  }
   html[data-big-text] .ad-peek-name { font-size: 18px; }
 
   html[data-big-text] .ad-peek-sub { font-size: 15.5px; }
@@ -1578,6 +1584,31 @@
 
   html[data-big-text] #sg-tip { font-size: 15.5px; }
 
+  html[data-big-text] .view-menu-caret { font-size: 14px; }
+
+  html[data-big-text] .view-menu-panel .sku-label { font-size: 15.5px; }
+
+  html[data-big-text] .pg-title { font-size: 15px; }
+
+  html[data-big-text] .pg-num { font-size: 14px; }
+
+  html[data-big-text] .pg-hint { font-size: 15px; }
+
+  html[data-big-text] .pg-title::after { font-size: 14px; }
+
+  html[data-big-text] .pg-quick,
+  html[data-big-text] .pg-count { font-size: 15px; }
+
+  html[data-big-text] .pg-sub { font-size: 15px; }
+
+  html[data-big-text] #plan_row_manual { font-size: 15.5px; }
+
+  html[data-big-text] .pg-summary { font-size: 15px; }
+
+  html[data-big-text] .pg-chev { font-size: 15px; }
+
+  html[data-big-text] .mode-sub { font-size: 15px; }
+
   /* инлайновые font-size */
   html[data-big-text] [style*="font-size:8.5px"], html[data-big-text] [style*="font-size: 8.5px"] { font-size: 12.5px !important; }
   html[data-big-text] [style*="font-size:9px"], html[data-big-text] [style*="font-size: 9px"] { font-size: 13px !important; }
@@ -1622,6 +1653,16 @@
     font-size: 12.5px;
   }
   html[data-big-text] .note-box .note-ico {
+    font-size: 13px;
+  }
+  /* колонка параметров: пояснения и заголовки групп мельче названий пунктов (16,5 px) */
+  html[data-big-text] .pg-title {
+    font-size: 13px;
+  }
+  html[data-big-text] .pg-sub,
+  html[data-big-text] .mode-sub,
+  html[data-big-text] .pg-summary,
+  html[data-big-text] .pg-quick {
     font-size: 13px;
   }
 }

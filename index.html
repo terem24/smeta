@@ -133,7 +133,7 @@
         // Ставим до отрисовки, чтобы страница не прыгала с 0.8 на выбранный.
         try { var _z = parseFloat(localStorage.getItem('hc_ui_zoom')), _m = innerWidth / 1450; if (_z >= 0.8 && _z <= 1.2) { while (_z > _m && _z > 0.8) _z = _z > 1 ? 1 : _z > 0.9 ? 0.9 : 0.8; document.documentElement.style.setProperty('--ui-zoom', _z); } } catch (e) {}
         // Крупный текст (big_text.css) — тоже до отрисовки
-        try { if (localStorage.getItem('hc_big_text') === '1') { document.documentElement.setAttribute('data-big-text', ''); var _l = document.createElement('link'); _l.id = 'big_text_css'; _l.rel = 'stylesheet'; _l.href = 'big_text.css?v=12'; document.head.appendChild(_l); } } catch (e) {}
+        try { if (localStorage.getItem('hc_big_text') === '1') { document.documentElement.setAttribute('data-big-text', ''); var _l = document.createElement('link'); _l.id = 'big_text_css'; _l.rel = 'stylesheet'; _l.href = 'big_text.css?v=13'; document.head.appendChild(_l); } } catch (e) {}
     </script>
     <script>
         if ('serviceWorker' in navigator) {
@@ -193,7 +193,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=5.24">
+    <link rel="stylesheet" href="style.css?v=5.26">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.42" defer></script>
@@ -223,7 +223,7 @@
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
     <script src="short_names.js?v=1.2" defer></script>
     <script src="avatars.js?v=1.0" defer></script>
-    <script src="app.js?v=12.23" defer></script>
+    <script src="app.js?v=12.26" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -794,9 +794,8 @@
             <!-- Заголовки групп колонки (app.syncPanelGroups): «Дом» → «Отопление и котельная» →
                  «Добавить в смету». Сами блоки не обёрнуты: у них сотни id и условий показа,
                  поэтому заголовок прячется скриптом, если ни одного блока группы не видно. -->
-            <div class="pg-title no-print" id="pg_t1" data-pg="1" onclick="app.togglePanelGroup(1)" role="button" tabindex="0" title="Свернуть или развернуть группу"><span class="pg-num">1</span><span class="pg-name">Дом</span>
-                <span class="pg-hint" id="pg_hint1">Начните с площади</span>
-                <button type="button" class="pg-quick" id="pg_quick" onclick="event.stopPropagation(); app.showQuickStart()" style="display:none;" title="Подставить типовой объект и посмотреть, как выглядит смета">Типовой дом</button>
+            <div class="pg-title no-print" id="pg_t1" data-pg="1" onclick="app.togglePanelGroup(1)" role="button" tabindex="0" aria-label="Группа «Дом»: свернуть или развернуть"><span class="pg-num">1</span><span class="pg-name">Дом</span>
+                <button type="button" class="pg-quick" id="pg_quick" onclick="event.stopPropagation(); app.showQuickStart()" style="display:none;">Типовой дом</button>
             </div>
             <h3 style="margin-top: 0; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal;">Режим расчёта</h3>
             <div class="control-item" style="margin-bottom: 15px;">
@@ -1163,7 +1162,7 @@
             </div>
             </div>
 
-            <div class="pg-title no-print" id="pg_t2" data-pg="2" onclick="app.togglePanelGroup(2)" role="button" tabindex="0" title="Свернуть или развернуть группу"><span class="pg-num">2</span><span class="pg-name">Отопление и котельная</span></div>
+            <div class="pg-title no-print" id="pg_t2" data-pg="2" onclick="app.togglePanelGroup(2)" role="button" tabindex="0" aria-label="Группа «Отопление и котельная»: свернуть или развернуть"><span class="pg-num">2</span><span class="pg-name">Отопление и котельная</span></div>
             <div id="blk_fuel_type">
                 <h4 style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Тип котла</h4>
                 <div class="control-item">
@@ -1556,7 +1555,7 @@
                 </div>
             </div>
 
-            <div class="pg-title no-print" id="pg_t3" data-pg="3" onclick="app.togglePanelGroup(3)" role="button" tabindex="0" title="Свернуть или развернуть группу"><span class="pg-num">3</span><span class="pg-name">Добавить в смету</span><span class="pg-count" id="pg_count3" style="display:none;"></span></div>
+            <div class="pg-title no-print" id="pg_t3" data-pg="3" onclick="app.togglePanelGroup(3)" role="button" tabindex="0" aria-label="Группа «Добавить в смету»: свернуть или развернуть"><span class="pg-num">3</span><span class="pg-name">Добавить в смету</span></div>
             <div class="control-item toggle-item" id="blk_hw_wrap">
                 <div class="label-row" id="blk_hw_row"><span class="lbl" id="lbl_hw">Горячая вода (Бойлер)</span><label class="switch"><input
                             type="checkbox" id="chk_hw" onchange="app.toggleHW(this.checked, event)"><span

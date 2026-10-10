@@ -22312,7 +22312,9 @@ const app = {
             // Только что нажали «Готово» в окне плана — показываем его итог
             // (с петлями и метрами), пока окно не откроют снова
             const done = sum && this._planDoneMsg;
-            sumEl.textContent = done ? 'Готово: ' + this._planDoneMsg : (sum || 'комнаты, тёплый пол и радиаторы — с плана');
+            // Плана нет — строка пустая (скрыта стилем): то, что даёт план, и так
+            // сказано в заголовке и подписи режима, а не в третий раз под кнопкой
+            sumEl.textContent = done ? 'Готово: ' + this._planDoneMsg : (sum || '');
             sumEl.style.color = done ? 'var(--success, #16a34a)' : '';
         }
         // Комнат нет — пустой переключатель «Расчёт по комнатам» прячется (см. syncUI),
@@ -45665,7 +45667,7 @@ const app = {
     // масштаб страницы уже не поместить. Правила лежат в big_text.css, его собирает
     // tools/gen_big_text.py из style.css; грузится лениво, только когда режим включён.
     BIG_TEXT_KEY: 'hc_big_text',
-    BIG_TEXT_CSS_V: '12',
+    BIG_TEXT_CSS_V: '13',
 
     bigText: function () {
         try { return localStorage.getItem(this.BIG_TEXT_KEY) === '1'; } catch (e) { return false; }
@@ -46498,31 +46500,30 @@ const app = {
             els.forEach(e => setCls(e, 'pg-collapsed', closed));
             // Переключатели «добавить в смету» — карточками, чтобы отличались от выбора из вариантов
             if (idx === 2) els.forEach(e => { if (e.classList.contains('toggle-item')) setCls(e, 'pg-card', true); });
-            if (idx === 2) {
-                const cnt = document.getElementById('pg_count3');
-                if (cnt) {
-                    const n = vis.filter(e => e.querySelector('input[type="checkbox"]:checked')).length;
-                    const txt = n ? 'включено ' + n : '';
-                    if (cnt.textContent !== txt) cnt.textContent = txt;
-                    const d = n ? '' : 'none';
-                    if (cnt.style.display !== d) cnt.style.display = d;
-                }
-            }
         });
-        const byRooms = !!this.state.detailedRooms;
-        const hint = document.getElementById('pg_hint1');
-        if (hint) {
-            const d = empty ? '' : 'none'; if (hint.style.display !== d) hint.style.display = d;
-            const ht = byRooms ? 'Начните с плана дома' : 'Начните с площади';
-            if (hint.textContent !== ht) hint.textContent = ht;
+        // Площадь при «запертых» комнатах — только значение (сумма комнат), без ползунка и ввода
+        const areaBox = document.getElementById('blk_main_area');
+        if (areaBox) {
+            const locked = this.roomsLocked();
+            setCls(areaBox, 'area-locked', locked);
+            const av = document.getElementById('val_area');
+            if (av) {
+                const ce = locked ? 'false' : 'true';
+                if (av.getAttribute('contenteditable') !== ce) av.setAttribute('contenteditable', ce);
+            }
+            const al = areaBox.querySelector('.lbl');
+            const at = locked ? 'Площадь по комнатам' : 'Основная площадь';
+            if (al && al.textContent !== at) al.textContent = at;
         }
+        const byRooms = !!this.state.detailedRooms;
         // Итог в строке «Параметры объекта»: регион и тип дома по нажатым кнопкам внутри
         const objSum = document.getElementById('obj_params_sum');
         if (objSum) {
             const act = id => { const a = document.querySelector('#' + id + ' .tab.active'); return a ? a.textContent.trim() : ''; };
             // Материал стен есть только у дома; блок свёрнут внутри «Параметров», поэтому
             // смотрим не на его видимость, а на тип объекта
-            const parts = [act('reg_tabs')];
+            // Выбран конкретный город — кнопки региона не нажаты, берём название города
+            const parts = [(this.state.selectedCity && this.state.selectedCity.name) || act('reg_tabs')];
             if (!document.body.classList.contains('object-flat') && !this.state.detailedRooms) parts.push(act('mat_tabs'));
             const st = parts.filter(Boolean).join(' · ');
             if (objSum.textContent !== st) objSum.textContent = st;
@@ -46530,7 +46531,16 @@ const app = {
         // Что даёт выбранный режим — под переключателем «По площади / По комнатам»
         const modeSub = document.getElementById('mode_sub');
         if (modeSub) {
-            const mt = byRooms ? 'Точнее: нужен план дома или список комнат' : 'Оценка за минуту: нужен только метраж';
+            let mt = 'Оценка за минуту, нужен метраж';
+            if (byRooms) {
+                const rooms = this.state.rooms || [];
+                let hasPlan = false;
+                try { hasPlan = !!this.planRowSummary(); } catch (e) { }
+                if (hasPlan) mt = 'Комнаты взяты с плана';
+                else if (rooms.length && this.state.roomsAutoSig && this.state.roomsAutoSig === this._roomsSig(rooms)) mt = 'Комнаты подставлены сами — поправьте';
+                else if (rooms.length) mt = 'Расчёт по вашим комнатам';
+                else mt = 'Точнее: нужен план или комнаты';
+            }
             if (modeSub.textContent !== mt) modeSub.textContent = mt;
         }
         const quick = document.getElementById('pg_quick');
@@ -67973,6 +67983,12 @@ const app = {
 
         generatedRooms.sort((a, b) => b.area - a.area);
         this.state.rooms = generatedRooms;
+        // Отпечаток набора: пока он совпадает с текущими комнатами, они «подставлены сами»
+        // (подпись под переключателем режима); правка комнаты отпечаток ломает
+        this.state.roomsAutoSig = this._roomsSig(generatedRooms);
+    },
+    _roomsSig: function (rooms) {
+        return JSON.stringify((rooms || []).map(r => [r.name, r.area, (r.windows || []).length]));
     },
     /**
      * Подпись места установки прибора в смете и предупреждениях. У помещения без
@@ -70214,7 +70230,23 @@ const app = {
         btnPrint.classList.toggle('btn-primary-action', !shareShown);
         btnPrint.classList.toggle('btn-secondary-action', shareShown);
     },
+    /**
+     * Комнаты в режиме «По комнатам» «заперты», когда их правили руками или они пришли с
+     * плана: тогда площадь — сумма комнат, и менять её ползунком нельзя (setArea пересоздаёт
+     * набор комнат и стирает правки). Пока комнат нет или они подставлены сами (отпечаток
+     * generateRoomsForDetailedCalculation совпадает) — ползунок работает.
+     */
+    roomsLocked: function () {
+        if (!this.state.detailedRooms) return false;
+        const rooms = this.state.rooms || [];
+        if (!rooms.length) return false;
+        let hasPlan = false;
+        try { hasPlan = !!this.planRowSummary(); } catch (e) { }
+        if (hasPlan) return true;
+        return !(this.state.roomsAutoSig && this.state.roomsAutoSig === this._roomsSig(rooms));
+    },
     setArea: function (v) {
+        if (this.roomsLocked()) { this.syncUI(); return; }
         v = parseInt(v);
         // Нижняя граница у квартиры своя: студии и однушки бывают от тридцати с
         // небольшим, и упирать их в домовые 50 м² значит завышать и теплопотери,

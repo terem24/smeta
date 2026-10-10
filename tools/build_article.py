@@ -27,7 +27,7 @@ LEAD_PAGE = '/montazh-otopleniya-spb/'
 
 # Разрешённые типы блоков. Новый тип — дописать сюда и в render_block, иначе сборка
 # упадёт: лучше ошибка при сборке, чем кривая статья на сайте.
-BLOCKS = {'h2', 'h3', 'p', 'list', 'table', 'callout', 'note', 'formula'}
+BLOCKS = {'h2', 'h3', 'p', 'list', 'table', 'callout', 'note', 'formula', 'figure'}
 
 
 def esc(s):
@@ -122,6 +122,14 @@ def render_block(b):
         if b.get('note'):
             res += '\n        <p class="note">%s</p>' % b['note']
         return res
+    if t == 'figure':
+        # График встроенным SVG из content/figures: его текст читают поисковики и ИИ-ответы,
+        # а цвета берутся из переменных seo.css и меняются вместе с темой.
+        svg = io.open(os.path.join(ROOT, b['src']), encoding='utf-8').read().strip()
+        cap = ('\n            <figcaption>%s</figcaption>' % b['caption']) if b.get('caption') else ''
+        return ('        <figure class="chart">\n'
+                '            <div class="chart-svg" role="img" aria-label="%s">%s</div>%s\n'
+                '        </figure>' % (esc(b['alt']), svg, cap))
     raise ValueError('неизвестный блок: %r' % t)
 
 
@@ -354,6 +362,9 @@ def build(slug, publish=False):
     robots = ('index, follow, max-snippet:-1, max-image-preview:large' if publish
               else 'noindex, follow')
 
+    # Своя картинка статьи (карточка 1200×630) вместо общей обложки сайта
+    og_image = SITE + '/' + art['og_image'] if art.get('og_image') else SITE + '/img/og_cover.png'
+
     ld = {
         '@context': 'https://schema.org',
         '@graph': [
@@ -381,6 +392,7 @@ def build(slug, publish=False):
              'author': {'@type': 'Person', 'name': 'Дмитрий Ибатуллин'},
              'publisher': {'@type': 'Organization', 'name': 'HeatCalc.ru', 'url': SITE + '/'},
              'isAccessibleForFree': True,
+             'image': og_image,
              'wordCount': len(plain(body).split()),
              'citation': [{'@type': 'CreativeWork', 'name': n}
                           for n in norms_cited(plain(body) + ' ' + plain(render_faq(art['faq'])))]},
@@ -388,6 +400,7 @@ def build(slug, publish=False):
     }
 
     page = TEMPLATE.format(
+        og_image=og_image,
         meta_title=esc(art['meta_title']),
         description=esc(art['description']),
         url=url,
@@ -449,7 +462,7 @@ TEMPLATE = '''<!DOCTYPE html>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/seo.css?v=7">
+    <link rel="stylesheet" href="/seo.css?v=8">
 
     <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
          Флаг общий с калькулятором — stout_save.darkMode. -->
@@ -477,11 +490,11 @@ TEMPLATE = '''<!DOCTYPE html>
     <meta property="og:url" content="{url}">
     <meta property="og:title" content="{og_title}">
     <meta property="og:description" content="{og_description}">
-    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image" content="{og_image}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta name="twitter:image" content="{og_image}">
 
     <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
          поэтому разойтись не могут. -->
