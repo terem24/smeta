@@ -45667,7 +45667,7 @@ const app = {
     // масштаб страницы уже не поместить. Правила лежат в big_text.css, его собирает
     // tools/gen_big_text.py из style.css; грузится лениво, только когда режим включён.
     BIG_TEXT_KEY: 'hc_big_text',
-    BIG_TEXT_CSS_V: '13',
+    BIG_TEXT_CSS_V: '14',
 
     bigText: function () {
         try { return localStorage.getItem(this.BIG_TEXT_KEY) === '1'; } catch (e) { return false; }
@@ -46486,7 +46486,10 @@ const app = {
         const shown = el => el.getClientRects().length > 0;
         titles.forEach((t, idx) => {
             const els = [];
-            for (let n = t.nextElementSibling; n && !(n.classList && n.classList.contains('pg-title')); n = n.nextElementSibling) els.push(n);
+            for (let n = t.nextElementSibling; n && !(n.classList && n.classList.contains('pg-title')); n = n.nextElementSibling) {
+                if (n.id === 'input_panel_spacer') continue;   // распорка конца колонки не блок группы
+                els.push(n);
+            }
             const vis = els.filter(shown);
             const show = vis.length > 0;
             const want = show ? '' : 'none';
@@ -46499,7 +46502,12 @@ const app = {
             setCls(t, 'pg-closed', closed);
             els.forEach(e => setCls(e, 'pg-collapsed', closed));
             // Переключатели «добавить в смету» — карточками, чтобы отличались от выбора из вариантов
-            if (idx === 2) els.forEach(e => { if (e.classList.contains('toggle-item')) setCls(e, 'pg-card', true); });
+            if (idx === 2) {
+                els.forEach(e => {
+                    if (e.classList.contains('toggle-item')) setCls(e, 'pg-card', true);
+                    else if (e.classList.contains('pg-tiles')) Array.from(e.children).forEach(c => { if (c.classList.contains('toggle-item')) setCls(c, 'pg-card', true); });
+                });
+            }
         });
         // Площадь при «запертых» комнатах — только значение (сумма комнат), без ползунка и ввода
         const areaBox = document.getElementById('blk_main_area');

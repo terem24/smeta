@@ -19959,17 +19959,29 @@ body.theme-shop #hdr_margin_sum { color: var(--primary) !important; }
     padding-top: 0 !important; padding-bottom: 0 !important; border-width: 0 !important;
     overflow: hidden !important; opacity: 0; pointer-events: none; visibility: hidden;
 }
-/* Пояснение одной строкой под названием пункта вместо значка «i» */
-.pg-sub { margin: -2px 0 0; font-size: 11px; line-height: 1.35; font-weight: 400; color: var(--text-sec); }
 /* «Добавить в смету»: переключатели — карточки (включённая подсвечена), чтобы не путать с выбором из вариантов */
-.input-panel > .toggle-item.pg-card {
+.toggle-item.pg-card {
     border: 1px solid var(--border); border-radius: 10px;
     padding: 8px 10px; margin-top: 6px; margin-bottom: 6px;
     transition: border-color .15s ease, background-color .15s ease;
 }
-.input-panel > .toggle-item.pg-card:has(> .label-row input[type="checkbox"]:checked) {
+.toggle-item.pg-card:has(> .label-row input[type="checkbox"]:checked) {
     border-color: var(--primary); background: var(--primary-light);
 }
+/* Пустой расчёт (body.empty-fit-panel ставит render по isCalcEmpty): отправлять и скачивать
+   нечего — кнопки приглушены и неактивны, нулевые итоги в шапке скрыты. «Проект» не трогаем:
+   листы можно открыть и без сметы. */
+body.empty-fit-panel #btn_share_trigger,
+body.empty-fit-panel #btn_print_trigger,
+body.empty-fit-panel #btn_invoice_trigger { opacity: .45; pointer-events: none; }
+body.empty-fit-panel #header_totals { display: none !important; }
+/* Простые разделы — плитки в два столбца; включённая раскрывается на всю ширину (её настройки внутри) */
+.pg-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0; }
+.pg-tiles > .toggle-item.pg-card { margin: 0 !important; padding: 8px 10px !important; min-width: 0; }
+.pg-tiles > .toggle-item.pg-card:has(> .label-row input[type="checkbox"]:checked),
+.pg-tiles > .toggle-item.pg-card:has(.label-row input[type="checkbox"]:checked) { grid-column: 1 / -1; }
+.pg-tiles .label-row { gap: 8px; margin-bottom: 0; }
+.pg-tiles .label-row .lbl { line-height: 1.25; }
 .pg-quick { cursor: pointer; background: transparent; border: 1px solid var(--primary); color: var(--primary); }
 .pg-quick:hover { background: var(--primary-light); }
 .pg-count { background: var(--primary-light); color: var(--text-main); border: 1px solid var(--border); }
