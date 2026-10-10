@@ -22304,6 +22304,8 @@ const app = {
         if (bU) {
             bU.style.display = ufh ? '' : 'none';
             bU.textContent = sum ? 'Открыть' : 'Загрузить план';
+            // Плана ещё нет — это главный шаг режима «По комнатам», кнопка заливная
+            if (bU.classList.contains('pg-btn-fill') === !!sum) bU.classList.toggle('pg-btn-fill', !sum);
         }
         const sumEl = document.getElementById('plan_row_sum');
         if (sumEl) {
@@ -76988,9 +76990,13 @@ const app = {
         // Вт/м² остаются по дому: уличная площадка к его площади не относится,
         // и делить сумму на площадь дома было бы враньём.
         const wPerM2 = this.state.area > 0 ? Math.round((parseFloat(pwr) * 1000) / this.state.area) : 0;
+        // Метод расчёта (как в getHouseHeatLoss): по комнатам — только когда режим включён и
+        // комнаты есть; иначе даже при «По комнатам» считается по площади
+        const _hlMethod = (this.state.detailedRooms && this.state.rooms && this.state.rooms.length > 0)
+            ? 'по комнатам' : 'по площади';
         const heatLossHtml = snowQ > 0
-            ? `<b>${pwrBoiler.toFixed(1)} кВт</b> (дом ${pwr} · ${wPerM2} Вт/м² + снеготаяние ${snowQ.toFixed(1)})`
-            : `<b>${pwr} кВт</b> (${wPerM2} Вт/м²)`;
+            ? `<b>${pwrBoiler.toFixed(1)} кВт</b> (дом ${pwr} · ${wPerM2} Вт/м², ${_hlMethod} + снеготаяние ${snowQ.toFixed(1)})`
+            : `<b>${pwr} кВт</b> (${wPerM2} Вт/м², ${_hlMethod})`;
 
         // Заголовок спецификации.
         //

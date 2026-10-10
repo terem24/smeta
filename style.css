@@ -19969,6 +19969,13 @@ body.theme-shop #hdr_margin_sum { color: var(--primary) !important; }
 .pg-quick { cursor: pointer; background: transparent; border: 1px solid var(--primary); color: var(--primary); }
 .pg-quick:hover { background: var(--primary-light); }
 .pg-count { background: var(--primary-light); color: var(--text-main); border: 1px solid var(--border); }
+/* «План дома» в режиме «По комнатам»: пока плана нет, «Загрузить план» — главная заливная кнопка,
+   «или ввести комнаты вручную» — заметная ссылка, а не серая приписка */
+#btn_ufhplan.pg-btn-fill {
+    background: var(--primary) !important; color: var(--on-primary, #fff) !important;
+    font-weight: 600; padding: 5px 14px !important;
+}
+#plan_row_manual { color: var(--primary) !important; font-size: 12px !important; text-decoration: underline; text-underline-offset: 2px; }
 /* «Параметры объекта»: итог и стрелка вместо переключателя */
 .pg-summary { margin-left: auto; margin-right: 8px; font-size: 11px; font-weight: 500; color: var(--text-sec); white-space: nowrap; }
 .pg-chev { flex: none; font-size: 11px; color: var(--text-sec); transition: transform .15s ease; }
