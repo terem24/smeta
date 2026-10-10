@@ -2210,7 +2210,12 @@ function autoScale(silent) {
         'Дальше — «Распознать комнаты».');
       return true;
     }
+    scanWhy('по размерам вышло ' + d.ppm.toFixed(1) + ' px/м (сошлось ' + d.n + ' из ' + d.total + '), но дверные проёмы при нём ' +
+      ddw.toFixed(2) + ' м — вне 0,6–1,3, отброшено');
     d = null;   // проёмы не сошлись — размеры не от этого плана, идём к площадям
+  } else {
+    var nd = (SCAN_DIMS[cur] || []).length;
+    scanWhy(nd ? 'линий принято ' + nd + ', но согласованных меньше двух (разброс больше 10 %)' : 'размерных линий нет');
   }
   var g = null;
   try { g = guessScale(); } catch (e) { console.error('[plan_editor] scale:', e); }
@@ -2219,6 +2224,7 @@ function autoScale(silent) {
     // Масштаб придётся задавать руками — значит, кнопка «Масштаб» должна
     // быть на виду, а не за «Все инструменты».
     if (!silent) heroOff = true;
+    scanWhy(((SCAN_DIAG[cur] || {}).scale || '') + '; по площадям: комнат расчёта на этаже ' + tg.length + ', не сошлось');
     // Причину монтажнику не расписываем — она ему ничего не даёт; в консоль, на случай разбора
     console.info('[plan_editor] масштаб: размеров ' + ((PDF_DIMS[cur] || []).length + (SCAN_DIMS[cur] || []).length) +
       ', комнат расчёта на этаже ' + tg.length);
@@ -2669,17 +2675,40 @@ var AREA_READ_PROMPT = 'Ты читаешь чертёж этажа частно
 var SCAN_DIMS = {};
 /** Картинку этажа ещё читает модель: шаг «Масштаб» пока не должен говорить «не нашёлся» */
 var SCAN_BUSY = {};
+
+/** Разбор подбора масштаба по картинке — для админа: что вернул сервис и на чём подбор встал.
+ *  { read: строка про ответ, scale: строка про подбор }. Обычному пользователю не показывается. */
+var SCAN_DIAG = {};
+function isScanAdmin() {
+  try {
+    if (localStorage.getItem('heatcalc_scan_debug') === '1') return true;   // ручной переключатель для разбора
+    var w = (window.parent && window.parent !== window) ? window.parent : window.opener;
+    var r = w && w.app && w.app.getAdminRole ? w.app.getAdminRole() : '';
+    return r === 'super_admin' || r === 'admin';
+  } catch (e) { return false; }
+}
+function scanWhy(msg) { (SCAN_DIAG[cur] = SCAN_DIAG[cur] || {}).scale = msg; }
+function scanDiagHtml() {
+  var q = SCAN_DIAG[cur];
+  if (!q || !isScanAdmin()) return '';
+  var t = [q.read, q.scale].filter(Boolean).join(' · ');
+  return t ? '<div style="margin-top:6px;font-size:12px;color:#d8b26a;font-family:monospace">админ: ' +
+    t.replace(/</g, '&lt;') + '</div>' : '';
+}
 function parseAreaReply(resp, W, H) {
   var txt = '';
-  try { txt = resp.candidates[0].content.parts[0].text; } catch (e) { return []; }
+  var bad = function (why) { var r = []; r.why = why; return r; };
+  try { txt = resp.candidates[0].content.parts[0].text; } catch (e) { return bad('в ответе нет текста'); }
   var data = null;
-  try { data = JSON.parse(String(txt).trim().replace(/^```json\s*/i, '').replace(/```$/, '')); } catch (e) { return []; }
+  try { data = JSON.parse(String(txt).trim().replace(/^```json\s*/i, '').replace(/```$/, '')); } catch (e) { return bad('ответ не разобрался как JSON: ' + String(txt).slice(0, 60)); }
   var list = (data && data.labels) || (Array.isArray(data) ? data : []);
   var out = [];
   // Размеры и поворот едут свойствами того же массива: остальной код ждёт именно массив подписей
   out.dims = [];
   var rt = data ? +data.rotate : 0;
   out.rot = (rt === 90 || rt === 180 || rt === 270) ? rt : 0;
+  out.rawDims = ((data && data.dims) || []).length;      // сколько линий вернула модель до отсева — для разбора админом
+  out.rawLabels = list.length;
   ((data && data.dims) || []).forEach(function (q) {
     var mm = parseFloat(String(q && q.mm).replace(/[\s,]/g, ''));
     var a = q && q.from, b = q && q.to;
@@ -2746,8 +2775,17 @@ function scanBox(on, label) {
 function readAreaLabelsFromCanvas(c, label) {
   return new Promise(function (resolve) {
     var finished = false;
-    var finish = function (v) { if (!finished) { finished = true; clearTimeout(tm); scanBox(false); resolve(v || []); } };
-    var tm = setTimeout(function () { console.warn('[plan_editor] подписи площадей: не дождались ответа'); finish([]); }, 70000);
+    // why — что пошло не так с сервисом; видно только админу (scanDiagText)
+    var why = '', t0 = Date.now();
+    var finish = function (v) {
+      if (finished) return;
+      finished = true; clearTimeout(tm); scanBox(false);
+      v = v || [];
+      v.sec = Math.round((Date.now() - t0) / 1000);
+      if (!v.why && why && v.rawDims === undefined) v.why = why;   // ответ разобран — прежняя ошибка первой модели не в счёт
+      resolve(v);
+    };
+    var tm = setTimeout(function () { why = 'нет ответа за 70 с'; console.warn('[plan_editor] подписи площадей: не дождались ответа'); finish([]); }, 70000);
     try {
       scanBox(true, label);
       var k = Math.min(1, 1600 / Math.max(c.width, c.height));
@@ -2766,10 +2804,12 @@ function readAreaLabelsFromCanvas(c, label) {
               { text: 'Найди подписи площадей помещений на этом плане.' }] }]
           })
         }).then(function (r) { return r.json(); }).then(function (resp) {
+          if (resp && resp.error) why = 'сервис вернул ошибку: ' + String(resp.error.message || resp.error).slice(0, 100);
           if (resp && resp.error && ++mi < models.length) { tryNext(); return; }
           finish(resp && !resp.error ? parseAreaReply(resp, c.width, c.height) : []);
         })['catch'](function (e) {
           console.warn('[plan_editor] подписи площадей:', e && e.message);
+          why = 'сервис недоступен: ' + String(e && e.message).slice(0, 80);
           if (++mi < models.length) tryNext(); else finish([]);
         });
       };
@@ -3078,6 +3118,9 @@ function loadOne(file) {
           // за время ожидания этаж могли сменить на другую подложку — тогда не трогаем
           if (imgCache[fi0] !== c) { done(); return; }
           PDF_AREAS[fi0] = labs; SCAN_DIMS[fi0] = labs.dims || [];
+          SCAN_DIAG[fi0] = { read: (labs.why ? 'ИИ: ' + labs.why : 'ИИ ответил за ' + (labs.sec || 0) + ' с: размерных линий ' +
+            (labs.rawDims || 0) + ', принято ' + (labs.dims || []).length + '; подписей площадей ' + (labs.rawLabels || 0) +
+            (turned ? '; лист развёрнут на ' + turned + '°' : '')) };
           // масштаб, заданный руками, пока читалась картинка, не перебиваем
           if (!DATA.floors[fi0].pxPerM) {
             var was = cur; cur = fi0;
@@ -5621,7 +5664,7 @@ function wzBody(id) {
   if (id === 'scale' && SCAN_BUSY[cur]) return { noNext: true, acts: B("setMode('scale')", 'Задать вручную'),
     tx: '<b>Ищу масштаб…</b> Читаю размеры на плане, это до минуты. Можно не ждать и задать его вручную.' };
   if (id === 'scale') return { noNext: true, acts: B("setMode('scale')", 'Задать масштаб', 'go') + B('autoScale()', 'Подобрать ещё раз'),
-    tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане два края отрезка известной длины — например, дверной проём 0,9 м.' };
+    tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане два края отрезка известной длины — например, дверной проём 0,9 м.' + scanDiagHtml() };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B('wzRect()', 'Обвести рамкой'),
     tx: 'Проверьте комнаты в списке справа и впишите названия — по ним комнаты перейдут в расчёт. ' +
       'Лишнюю уберите ✕. Комната не нашлась — обведите её рамкой.' };
@@ -5820,7 +5863,7 @@ function pjBody(id) {
   if (id === 'scale' && SCAN_BUSY[cur]) return { noNext: true, acts: B("setMode('scale')", 'Задать вручную'),
     tx: '<b>Ищу масштаб…</b> Читаю размеры на плане, это до минуты. Можно не ждать и задать его вручную.' };
   if (id === 'scale') return { noNext: true, acts: B('autoScale()', 'Подобрать ещё раз') + B("setMode('scale')", 'Задать вручную'),
-    tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане два края отрезка известной длины — например, дверной проём 0,9 м.' };
+    tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане два края отрезка известной длины — например, дверной проём 0,9 м.' + scanDiagHtml() };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B("document.getElementById('ztype').value='tp';setMode('room')", 'Обвести кликом'),
     tx: 'Нажмите «Найти комнаты» — контуры найдутся по стенам плана и сопоставятся с комнатами расчёта: тёплый пол, котельная и санузлы отметятся сами. ' +
       'Проверьте зоны в списке справа, лишнюю уберите ✕. Комната не нашлась — «Обвести кликом» (клик внутри комнаты).' };
