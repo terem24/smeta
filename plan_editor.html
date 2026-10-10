@@ -2646,6 +2646,8 @@ var AREA_READ_PROMPT = 'Ты читаешь чертёж этажа частно
   '"dims":[{"mm":3350,"from":[352,300],"to":[352,520]}]}. Подписей нет — "labels":[], размеров нет — "dims":[].';
 /** Размерные линии, прочитанные с картинки: [{ mm, px }] — длина линии на подложке. */
 var SCAN_DIMS = {};
+/** Картинку этажа ещё читает модель: шаг «Масштаб» пока не должен говорить «не нашёлся» */
+var SCAN_BUSY = {};
 function parseAreaReply(resp, W, H) {
   var txt = '';
   try { txt = resp.candidates[0].content.parts[0].text; } catch (e) { return []; }
@@ -3008,8 +3010,10 @@ function loadOne(file) {
         // холстом нельзя — выглядит как зависшая загрузка
         var fi0 = cur;
         PDF_AREAS[fi0] = []; PDF_DIMS[fi0] = null; SCAN_DIMS[fi0] = [];
+        SCAN_BUSY[fi0] = true;
         applyPlanCanvas(c, true);
         var finish = function (labs, turned) {
+          SCAN_BUSY[fi0] = false;
           // за время ожидания этаж могли сменить на другую подложку — тогда не трогаем
           if (imgCache[fi0] !== c) { done(); return; }
           PDF_AREAS[fi0] = labs; SCAN_DIMS[fi0] = labs.dims || [];
@@ -3023,6 +3027,7 @@ function loadOne(file) {
           if (labs.length) m.push('прочитано подписей площадей: ' + labs.length);
           if (m.length) hint('<span class=ok>' + m.join('; ').replace(/^./, function (s) { return s.toUpperCase(); }) + '.</span> ' +
             (F().pxPerM ? '' : 'Дальше — масштаб.'));
+          updateGuide();     // шаг «Масштаб» перестаёт писать «ищу»
           done();
         };
         readAreaLabelsFromCanvas(c).then(function (labs) {
@@ -5552,6 +5557,8 @@ function wzBody(id) {
   var B = function (fn, t, cls) { return '<button class="' + (cls || '') + '" onclick="' + fn + '">' + t + '</button>'; };
   if (id === 'plan') return { noNext: true, acts: B("wzGo('plan')", 'Загрузить план', 'go'),
     tx: 'Загрузите план этажа — фото, скан или PDF. Масштаб и комнаты система найдёт сама.' };
+  if (id === 'scale' && SCAN_BUSY[cur]) return { noNext: true, acts: B("setMode('scale')", 'Задать вручную'),
+    tx: '<b>Ищу масштаб…</b> Читаю размеры на плане, это до минуты. Можно не ждать и задать его вручную.' };
   if (id === 'scale') return { noNext: true, acts: B("setMode('scale')", 'Задать масштаб', 'go') + B('autoScale()', 'Подобрать ещё раз'),
     tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане два края отрезка известной длины — например, дверной проём 0,9 м.' };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B('wzRect()', 'Обвести рамкой'),
@@ -5749,6 +5756,8 @@ function pjBody(id) {
     tx: (pjTodo().fi !== cur && DATA.floors.length > 1
       ? 'Этот этаж пока пуст. Если отопления на нём нет — ничего делать не нужно, для выпуска достаточно одного размеченного этажа. Иначе загрузите его план. '
       : 'Загрузите план этажа — фото, скан или PDF. ') + 'Масштаб и комнаты система найдёт сама.' };
+  if (id === 'scale' && SCAN_BUSY[cur]) return { noNext: true, acts: B("setMode('scale')", 'Задать вручную'),
+    tx: '<b>Ищу масштаб…</b> Читаю размеры на плане, это до минуты. Можно не ждать и задать его вручную.' };
   if (id === 'scale') return { noNext: true, acts: B('autoScale()', 'Подобрать ещё раз') + B("setMode('scale')", 'Задать вручную'),
     tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане два края отрезка известной длины — например, дверной проём 0,9 м.' };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B("document.getElementById('ztype').value='tp';setMode('room')", 'Обвести кликом'),
