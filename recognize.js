@@ -2203,7 +2203,7 @@ const RecognizeUI = {
         const resetStr = reset.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', timeZone: 'Europe/Moscow' }) +
             ', 00:00 МСК — через ' + this.fmtLeft(reset.getTime() - Date.now());
         const perSheet = 'Один лист — один запрос; комплект листов проекта — от шести.';
-        // Суточный лимит Google — на ключ, то есть общий на всех, и его остаток
+        // Суточный лимит — на ключ, то есть общий на всех, и его остаток
         // никто не считает: о нём узнаём по отказу. Честно показать можно
         // только момент обнуления — полночь по тихоокеанскому времени.
         const gReset = new Date(this.nextGoogleReset());
@@ -2217,7 +2217,7 @@ const RecognizeUI = {
         // «сколько запросов на сайте» не нужна, ему важно, когда лимит снимется.
         const seeSite = admin || !!(q && q.tariff === 'admin' && !q.personal);
         const dayLine = (d && seeSite ? `Сегодня на всём сайте: ${d.total} запросов. ` : '') +
-            'Суточный лимит распознавания общий на всех пользователей, обнуляется в ' + gWhen + '.';
+            'Суточный лимит распознавания общий на всех пользователей, обновится через ' + this.fmtLeft(gReset.getTime() - Date.now()) + '.';
         // Всплывающая панель: шкалы вместо сплошного текста. Цвет шкалы — по
         // заполнению: до 70 % зелёная, до 90 % янтарная, дальше красная.
         const e = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -2239,32 +2239,19 @@ const RecognizeUI = {
             // Администратору — суточный расход по сайту: месячного лимита у него
             // нет, а упирается он именно в сутки Google. Порог бесплатного тарифа
             // ~20 запросов на модель в сутки — ориентир, Google его не подтверждает.
-            const perModel = d ? Object.keys(d.models || {}).map((m, i) => `• Канал ${i + 1}: ${d.models[m]} из ~20`) : [];
             const top = d ? Math.max(0, ...Object.values(d.models || {}).map(Number)) : 0;
-            text = d ? `🔍 ${d.total} сегодня` : '🔍 ∞';
+            const pct = Math.min(100, Math.round(top / 20 * 100));
+            const left = this.fmtLeft(gReset.getTime() - Date.now());
+            text = d ? `🔍 ${pct}%` : '🔍 ∞';
             cls = top >= 20 ? 'bad' : top >= 15 ? 'warn' : 'ok';
-            tip = (d ? `Запросов к распознаванию сегодня на всём сайте: ${d.total}` +
-                        (d.modes && d.modes.recognize != null ? ` (распознавание ${d.modes.recognize}, помощник ${d.modes.chat || 0})` : '') + '.' +
-                        (perModel.length ? '\nПо каналам, порог бесплатного тарифа ~20 в сутки на каждую:\n' + perModel.join('\n') : '')
-                     : 'Суточный счётчик по сайту ещё не включён на сервере.') +
-                (q && q.used != null ? `\nВ этом месяце вами: ${q.used} — месячного лимита у администратора нет.` : '') +
-                (this._apiCalls ? `\nЗа этот разбор: ${this._apiCalls}.` : '') +
-                `\nСутки Google обнуляются в ${gWhen}.\n${perSheet}`;
-            pop = head('Запросы сегодня, весь сайт', d ? String(d.total) : '—');
-            if (d) {
-                if (d.modes && d.modes.recognize != null) pop += kv('Распознавание / помощник', `${d.modes.recognize} / ${d.modes.chat || 0}`);
-                const ms = Object.keys(d.models || {});
-                if (ms.length) {
-                    pop += sep + cap('По каналам · порог бесплатного тарифа ~20 в сутки');
-                    ms.forEach((m, i) => { const n = Number(d.models[m]) || 0; pop += bar('Канал ' + (i + 1), n, 20, `${n} из ~20`); });
-                }
-            } else {
-                pop += cap('Суточный счётчик по сайту ещё не включён на сервере.');
-            }
-            pop += sep;
-            if (q && q.used != null) pop += kv('В этом месяце вами', `${q.used} · лимита нет`);
-            if (this._apiCalls) pop += kv('За этот разбор', String(this._apiCalls));
-            pop += kv('Сутки Google обнулятся', gWhen) + cap(perSheet);
+            tip = (d ? `Использовано сегодня: ${pct}%. Запросов на всём сайте: ${d.total}.` : 'Суточный счётчик по сайту ещё не включён на сервере.') +
+                `
+Счётчик обновится через ${left}.`;
+            pop = head('Использовано сегодня', d ? pct + '%' : '—');
+            if (d) pop += bar('Запросов на сайте: ' + d.total, top, 20, '', lvl(top / 20));
+            else pop += cap('Суточный счётчик по сайту ещё не включён на сервере.');
+            pop += kv('Обновится через', left);
+            if (q && q.used != null) pop += sep + kv('В этом месяце вами', String(q.used));
         } else if (!q) {
             // Сервер лимитов промолчал — ограничивать нечем.
             text = '🔍 ∞';
