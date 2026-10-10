@@ -23559,7 +23559,7 @@ const app = {
         try {
             // 1. Fetch Users (Paginated)
             let query = supabaseClient.from('users')
-                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, work_email, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, is_test, frozen_at, sess_visits, sess_sec, sess_days, sess_screens', { count: 'exact' });
+                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, work_email, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, is_test, frozen_at, registered_at, sess_visits, sess_sec, sess_days, sess_screens', { count: 'exact' });
             query = this.buildAdminUserFilter(query);
 
             const sortType = document.getElementById('sort-installers')?.value || 'login_desc';
@@ -26561,7 +26561,20 @@ const app = {
                 if (years > 0 && years < 120) ageStr = years + ' ' + this.plural(years, 'год', 'года', 'лет');
             }
             let activityBadges = (u.activity_types || []).map(a => `<span style="background:var(--primary-light); color:var(--primary); font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-right:3px;">${a}</span>`).join('');
-            let extraHTML = (birthStr || activityBadges) ? `<div style="font-size:10px; color:var(--text-sec); margin-top:2px;">${birthStr ? '🎂 ' + birthStr + (ageStr ? ' · ' + ageStr : '') + ' ' : ''}${activityBadges}</div>` : '';
+            // Где человек остановился при входе: за промокод при закрытой регистрации
+            // (окно «Нужен промокод» не закрыть, поэтому анкета до него не доходит) или за
+            // анкету. Старых учёток без registered_at это не касается.
+            const stuckPromo = !!(u.registered_at && !u.distributor_id && this.inviteOnlyRegistration()
+                && !['admin', 'manager'].includes(u.account_type));
+            const profileMissing = [!u.last_name && 'ФИО', !u.phone && 'телефон', !u.birth_date && 'дата рождения',
+                !u.region && 'регион', !u.city && 'город', !(u.activity_types || []).length && 'сфера деятельности'].filter(Boolean);
+            const stageChip = (txt, tip, col) => `<span title="${tip}" style="cursor:help; background:${col}22; color:${col}; font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-right:3px;">${txt}</span>`;
+            const stageHTML = (stuckPromo
+                ? stageChip('⛔ Не ввёл промокод', 'Вошёл, но калькулятор закрыт окном «Нужен промокод магазина»: промокод не ввёл, анкету не видел', 'var(--c-warn, #D97706)')
+                : '') + (profileMissing.length
+                ? stageChip('📝 Анкета не заполнена', 'Не заполнено: ' + profileMissing.join(', '), 'var(--text-sec, #6B7280)')
+                : '');
+            let extraHTML = (birthStr || activityBadges || stageHTML) ? `<div style="font-size:10px; color:var(--text-sec); margin-top:2px;">${birthStr ? '🎂 ' + birthStr + (ageStr ? ' · ' + ageStr : '') + ' ' : ''}${activityBadges}${stageHTML}</div>` : '';
 
             // Анкета не похожа на настоящую — помечаем строку. Не блокирует ничего:
             // решение по такой учётке принимает человек, см. suspiciousProfileFlags.
@@ -26570,7 +26583,7 @@ const app = {
                 ? `<span title="Сомнительная анкета: ${suspectFlags.join('; ')}" style="cursor:help; margin-right:4px;">⚠️</span>`
                 : '';
 
-            let searchStr = `${name} ${phone} ${u.email || ''} ${cityText} ${ipLoc} ${u.region || ''} ${(u.activity_types || []).join(' ')}${suspectFlags.length ? ' сомнительная анкета' : ''}`.toLowerCase();
+            let searchStr = `${name} ${phone} ${u.email || ''} ${cityText} ${ipLoc} ${u.region || ''} ${(u.activity_types || []).join(' ')}${suspectFlags.length ? ' сомнительная анкета' : ''}${stuckPromo ? ' не ввёл промокод' : ''}${profileMissing.length ? ' анкета не заполнена' : ''}`.toLowerCase();
 
             const distOptions = `<option value="">— Не назначен —</option>` + (this.adminData.distributors || []).map(d => `<option value="${d.id}" ${u.distributor_id === d.id ? 'selected' : ''}>${d.company_name} (${d.promo_code})</option>`).join('');
             // Ширину не ограничиваем: у дистрибьюторов длинные названия,
