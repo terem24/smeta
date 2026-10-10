@@ -22304,6 +22304,8 @@ const app = {
         if (bU) {
             bU.style.display = ufh ? '' : 'none';
             bU.textContent = sum ? 'Открыть' : 'Загрузить план';
+            // Плана ещё нет — это главный шаг режима «По комнатам», кнопка заливная
+            if (bU.classList.contains('pg-btn-fill') === !!sum) bU.classList.toggle('pg-btn-fill', !sum);
         }
         const sumEl = document.getElementById('plan_row_sum');
         if (sumEl) {
@@ -22389,7 +22391,7 @@ const app = {
         { id: 'analog', group: 'Функции', label: 'Бюджетнее', hint: 'Вторая смета бюджетнее: переключатель «Бюджетнее» в параметрах и в заголовках разделов сметы, вкладка «Почему дешевле». Выключен — переключателя не видно' },
         { id: 'recognize', group: 'Функции', label: 'Распознавание', list: true, hint: 'Вкладка «Распознавание»' },
         { id: 'design', group: 'Функции', label: 'Проект', list: true, hint: 'Листы проекта и редактор планов этажей' },
-        { id: 'ufhplan', group: 'Функции', label: 'Раскладка ТП', hint: 'Модуль «План отопления» в подробном режиме: загрузить план дома, отметить комнаты с тёплым полом кликом, радиаторы под окнами — раскладка петель и трассы радиаторов под сметой и в КП. Кому открыт «Проект», он доступен и так' },
+        { id: 'ufhplan', group: 'Функции', label: 'Раскладка ТП', hint: 'Модуль «План отопления» в режиме «По комнатам»: загрузить план дома, отметить комнаты с тёплым полом кликом, радиаторы под окнами — раскладка петель и трассы радиаторов под сметой и в КП. Кому открыт «Проект», он доступен и так' },
         { id: 'branding', group: 'Функции', label: 'Реквизиты', hint: 'Смена своего логотипа и реквизитов компании в кабинете. Они идут в шапку, КП, счёт и ссылку клиенту. Выключено — везде реквизиты дистрибьютора или ТЕРЕМ, уже введённые свои сохраняются и вернутся при включении' },
         { id: 'money', group: 'Функции', label: 'Деньги', hint: 'Вкладка «Деньги» (маржа по смете); гостю без входа не показывается никогда' },
         { id: 'docs', group: 'Функции', label: 'Документы', hint: 'Кнопка «Документы» в «Заказах и счетах»: договор подряда, акты, гарантийный талон' },
@@ -39385,7 +39387,7 @@ const app = {
         if (!this.state.detailedRooms) {
             this.toggleDetailedRooms(true);
             if (!this.state.detailedRooms) return;
-            modeNote = 'включён подробный режим расчёта — план работает в нём';
+            modeNote = 'включён режим «По комнатам» — план работает в нём';
         }
         this._planDoneMsg = '';
         if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
@@ -46507,8 +46509,30 @@ const app = {
                 }
             }
         });
+        const byRooms = !!this.state.detailedRooms;
         const hint = document.getElementById('pg_hint1');
-        if (hint) { const d = empty ? '' : 'none'; if (hint.style.display !== d) hint.style.display = d; }
+        if (hint) {
+            const d = empty ? '' : 'none'; if (hint.style.display !== d) hint.style.display = d;
+            const ht = byRooms ? 'Начните с плана дома' : 'Начните с площади';
+            if (hint.textContent !== ht) hint.textContent = ht;
+        }
+        // Итог в строке «Параметры объекта»: регион и тип дома по нажатым кнопкам внутри
+        const objSum = document.getElementById('obj_params_sum');
+        if (objSum) {
+            const act = id => { const a = document.querySelector('#' + id + ' .tab.active'); return a ? a.textContent.trim() : ''; };
+            // Материал стен есть только у дома; блок свёрнут внутри «Параметров», поэтому
+            // смотрим не на его видимость, а на тип объекта
+            const parts = [act('reg_tabs')];
+            if (!document.body.classList.contains('object-flat') && !this.state.detailedRooms) parts.push(act('mat_tabs'));
+            const st = parts.filter(Boolean).join(' · ');
+            if (objSum.textContent !== st) objSum.textContent = st;
+        }
+        // Что даёт выбранный режим — под переключателем «По площади / По комнатам»
+        const modeSub = document.getElementById('mode_sub');
+        if (modeSub) {
+            const mt = byRooms ? 'Точнее: нужен план дома или список комнат' : 'Оценка за минуту: нужен только метраж';
+            if (modeSub.textContent !== mt) modeSub.textContent = mt;
+        }
         const quick = document.getElementById('pg_quick');
         if (quick) {
             let ok = false;
@@ -54375,7 +54399,7 @@ const app = {
                                'санузел 1 — ванна, раковина, унитаз, стиральная машина'];
                 for (let i = 2; i <= nb; i++) parts.push('санузел ' + i + ' — душ, раковина, унитаз');
                 wDesc.innerHTML = '<span class="ui-emo">🚿 </span>Считаем точки: ' + parts.join('; ') +
-                    '. Другой набор — включите «Подробный» режим.';
+                    '. Другой набор — включите режим «По комнатам».';
             }
         }
         if (houseSimpleWater) {
@@ -59773,7 +59797,7 @@ const app = {
     applySelfBuiltFromSwap: async function (kind, event) {
         if (!this.checkAccess('pro', event)) return;
         if (!this.selfGroupsMode()) {
-            this.alert('Самосборные группы доступны в подробном режиме расчёта: включите его в панели слева.', 'Самосборные группы');
+            this.alert('Самосборные группы доступны в режиме «По комнатам»: включите его в панели слева.', 'Самосборные группы');
             return;
         }
         if (!this.selfGroupsAvailable()) {
@@ -64773,7 +64797,7 @@ const app = {
     refineAreasFromPlan: function () {
         if (!this.canUseDesign()) { this.alert('Раздел проектирования вам пока не открыт. Его включает администратор.', 'Площади по плану'); return; }
         if (!this.state.rooms || this.state.rooms.length === 0) {
-            this.alert('Сначала добавьте комнаты в подробном расчёте.', 'Площади по плану');
+            this.alert('Сначала добавьте комнаты в режиме «По комнатам».', 'Площади по плану');
             return;
         }
         const plans = this.currentPlans();
@@ -76979,9 +77003,13 @@ const app = {
         // Вт/м² остаются по дому: уличная площадка к его площади не относится,
         // и делить сумму на площадь дома было бы враньём.
         const wPerM2 = this.state.area > 0 ? Math.round((parseFloat(pwr) * 1000) / this.state.area) : 0;
+        // Метод расчёта (как в getHouseHeatLoss): по комнатам — только когда режим включён и
+        // комнаты есть; иначе даже при «По комнатам» считается по площади
+        const _hlMethod = (this.state.detailedRooms && this.state.rooms && this.state.rooms.length > 0)
+            ? 'по комнатам' : 'по площади';
         const heatLossHtml = snowQ > 0
-            ? `<b>${pwrBoiler.toFixed(1)} кВт</b> (дом ${pwr} · ${wPerM2} Вт/м² + снеготаяние ${snowQ.toFixed(1)})`
-            : `<b>${pwr} кВт</b> (${wPerM2} Вт/м²)`;
+            ? `<b>${pwrBoiler.toFixed(1)} кВт</b> (дом ${pwr} · ${wPerM2} Вт/м², ${_hlMethod} + снеготаяние ${snowQ.toFixed(1)})`
+            : `<b>${pwr} кВт</b> (${wPerM2} Вт/м², ${_hlMethod})`;
 
         // Заголовок спецификации.
         //
@@ -78919,7 +78947,7 @@ const app = {
                     `Электрокотёл ${_elKw} кВт — больше 15 кВт на участок.`,
                     'Проверьте расчёт.',
                     `<div class="tip-p"><b>${_warm ? 'Посчитайте дом по помещениям: быстрый расчёт — укрупнённая оценка.' : 'Если дом новый и утеплённый — нажмите «Тёплый» или посчитайте по помещениям.'}</b></div>` +
-                    `<div class="tip-p">Быстрый расчёт на кнопке «${_warm ? 'Тёплый' : this.state.mat === 1.3 ? 'Холодный' : 'Стандарт'}» — ` +
+                    `<div class="tip-p">Расчёт по площади на кнопке «${_warm ? 'Тёплый' : this.state.mat === 1.3 ? 'Холодный' : 'Стандарт'}» — ` +
                     `${this.quickWPerM2()} Вт на м² пола. Это практика, а не расчёт ограждений: для типового дома — привычные «1 кВт на 10 м²», ` +
                     `а в проектах на новые утеплённые дома теплопотери около 67 Вт/м², и котёл выходит на треть меньше.</div>` +
                     `<div class="tip-p"><b>Почему это важно:</b> частному дому обычно выделяют 15 кВт на весь участок. Котёл больше — ` +
@@ -78976,9 +79004,9 @@ const app = {
                 }, 0.115 + 0.043);
                 boilerWarnHtml = (boilerWarnHtml || '') + this.noteBox('info',
                     `Теплопотери ${_d > 0 ? 'выросли' : 'снизились'} на ${Math.abs(_d)} % после перехода к расчёту по помещениям.`,
-                    `Быстрый расчёт для этого дома — ${_qKw.toFixed(1)} кВт, по помещениям — ${_needKw.toFixed(1)} кВт.`,
-                    `<div class="tip-p">Быстрый расчёт — укрупнённая оценка: 37 Вт/м³ объёма с поправкой на климат и тип стены по кнопке. По помещениям считается каждое ограждение: стена по заданному пирогу${(this.state.wallLayers || []).length ? ` (R = ${Number(_R).toFixed(2).replace('.', ',')} м²·°C/Вт)` : ''}, окна, кровля, пол и вентиляция — по СП 50.13330.2024.</div>` +
-                    `<div class="tip-p"><b>Проверьте:</b> совпадает ли пирог стены, кровли и пола с тем, что на объекте. Кнопка «Кирпич» в быстром режиме — это не кирпичная стена в подробном: там по умолчанию газобетон 300 мм.</div>`);
+                    `Расчёт по площади для этого дома — ${_qKw.toFixed(1)} кВт, по помещениям — ${_needKw.toFixed(1)} кВт.`,
+                    `<div class="tip-p">Расчёт по площади — укрупнённая оценка: 37 Вт/м³ объёма с поправкой на климат и тип стены по кнопке. По помещениям считается каждое ограждение: стена по заданному пирогу${(this.state.wallLayers || []).length ? ` (R = ${Number(_R).toFixed(2).replace('.', ',')} м²·°C/Вт)` : ''}, окна, кровля, пол и вентиляция — по СП 50.13330.2024.</div>` +
+                    `<div class="tip-p"><b>Проверьте:</b> совпадает ли пирог стены, кровли и пола с тем, что на объекте. Кнопка «Кирпич» в режиме «По площади» — это не кирпичная стена в подробном: там по умолчанию газобетон 300 мм.</div>`);
             }
         }
         // Требования из примечаний проекта (распознавание комплекта листов):
