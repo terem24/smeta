@@ -801,9 +801,11 @@
             <h3 style="margin-top: 0; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal;">Режим расчёта</h3>
             <div class="control-item" style="margin-bottom: 15px;">
                 <div class="mode-selector-tabs">
-                    <div class="mode-tab active" id="mode_fast" onclick="app.toggleDetailedRooms(false, event)">Быстрый</div>
-                    <div class="mode-tab" id="mode_pro" onclick="app.toggleDetailedRooms(true, event)">Подробный</div>
+                    <div class="mode-tab active" id="mode_fast" onclick="app.toggleDetailedRooms(false, event)">По площади</div>
+                    <div class="mode-tab" id="mode_pro" onclick="app.toggleDetailedRooms(true, event)">По комнатам</div>
                 </div>
+                <!-- Что даёт выбранный режим: подпись меняет app.syncPanelGroups -->
+                <div class="mode-sub" id="mode_sub">Оценка за минуту: нужен только метраж</div>
             </div>
 
             <!-- План дома — одно место загрузки плана: из него комнаты уходят в расчёт
@@ -943,9 +945,14 @@
 
             <div class="control-item toggle-item" id="blk_fast_obj_params_toggle_wrap"
                 style="display:none; border-top: none; padding-top: 0; margin-top: 16px; border-bottom: 1px dashed var(--border); padding-bottom: 16px; margin-bottom: 16px;">
-                <div class="label-row" style="margin-bottom: 0;">
+                <!-- Раскрытие списка, а не «включить в смету»: вместо переключателя стрелка и итог
+                     («Центр · Стандарт», app.syncPanelGroups). Сам чекбокс остаётся — на нём вся логика. -->
+                <div class="label-row" style="margin-bottom: 0; cursor: pointer;"
+                    onclick="if (event.target.id === 'chk_fast_obj_params') return; var c = document.getElementById('chk_fast_obj_params'); if (c) c.click();">
                     <span class="lbl">Параметры объекта</span>
-                    <label class="switch"><input type="checkbox" id="chk_fast_obj_params"
+                    <span class="pg-summary" id="obj_params_sum"></span>
+                    <span class="pg-chev" aria-hidden="true">▾</span>
+                    <label class="switch" style="display: none;"><input type="checkbox" id="chk_fast_obj_params"
                             onchange="app.toggleFastObjectParams(this.checked, event)"><span
                             class="slider"></span></label>
                 </div>

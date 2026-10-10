@@ -19969,6 +19969,11 @@ body.theme-shop #hdr_margin_sum { color: var(--primary) !important; }
 .pg-quick { cursor: pointer; background: transparent; border: 1px solid var(--primary); color: var(--primary); }
 .pg-quick:hover { background: var(--primary-light); }
 .pg-count { background: var(--primary-light); color: var(--text-main); border: 1px solid var(--border); }
+/* «Параметры объекта»: итог и стрелка вместо переключателя */
+.pg-summary { margin-left: auto; margin-right: 8px; font-size: 11px; font-weight: 500; color: var(--text-sec); white-space: nowrap; }
+.pg-chev { flex: none; font-size: 11px; color: var(--text-sec); transition: transform .15s ease; }
+#blk_fast_obj_params_toggle_wrap:has(#chk_fast_obj_params:checked) .pg-chev { transform: rotate(180deg); }
+.mode-sub { margin-top: 6px; font-size: 11px; line-height: 1.35; color: var(--text-sec); }
 /* Пока площадь не задана, остальные группы приглушены (но доступны: наведение и фокус возвращают яркость) */
 .pg-dim { opacity: .5; transition: opacity .2s ease; }
 .pg-dim:hover, .pg-dim:focus-within { opacity: 1; }
