@@ -5095,7 +5095,7 @@ const app = {
 
     // Копия КП под новым 6-значным номером; оригинал остаётся как был. Причины:
     //   'stout'   — замена оборудования на STOUT ради гарантии на объект;
-    //   'cheaper' — включён режим «Подешевле», и состав сметы реально изменился;
+    //   'cheaper' — включён режим «Бюджетнее», и состав сметы реально изменился;
     //   'nextday' — КП, уже уходивший клиенту, открыт в другой день и изменён.
     // Правила против захламления (согласовано с владельцем 03.10.2026): копия заводится
     // только когда состав изменился (kpCompSig), в тот же день правки идут в ту же копию,
@@ -5134,7 +5134,7 @@ const app = {
             try { await this.saveToCloud(true); } catch (e) { console.warn('[forkKp] копия не сохранена', e); }
             const txt = {
                 stout: 'Замена на STOUT идёт в копии КП',
-                cheaper: 'Вариант «Подешевле» сохранён отдельным КП',
+                cheaper: 'Вариант «Бюджетнее» сохранён отдельным КП',
                 nextday: 'КП изменён после отправки в другой день — это новая копия'
             }[reason] || 'Создана копия КП';
             this.kpForkToast(txt + ' № ' + this.state.calc_id + '. Оригинал № ' + origNo + ' не изменён.');
@@ -5156,7 +5156,7 @@ const app = {
         setTimeout(() => { el.style.transition = 'opacity .4s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 450); }, 7000);
     },
 
-    // Подготовка к включению «Подешевле»: снимок состояния и состава до правки.
+    // Подготовка к включению «Бюджетнее»: снимок состояния и состава до правки.
     // null — копия не нужна (режим уже был, копия уже заведена сегодня, нет номера).
     cheapForkPre: function (turningOn) {
         if (!turningOn || this.cheapModeOn() || !this.state.tgUser || !this.state.calc_id || this.isKpForkToday()) return null;
@@ -7576,7 +7576,7 @@ const app = {
                 ver = last;
                 ver.last_at = now;
             } else {
-                // variant — версия собрана в режиме «Подешевле»: карточка сметы
+                // variant — версия собрана в режиме «Бюджетнее»: карточка сметы
                 // и заголовок КП показывают это словами, чтобы две версии одного
                 // объекта не путали (24.09.2026)
                 ver = { calc: calc, v: last ? last.v + 1 : 1, at: now, sig: sig, eq: eq, wk: wk, ch: [], items: items, ...(this.cheapModeOn() ? { variant: 'cheap' } : {}) };
@@ -7670,7 +7670,7 @@ const app = {
             const chs = (v.ch || []).map(c => this.KP_CHANNEL_LABELS[c] || c).join(', ');
             const badges = [];
             if (v.v === latest) badges.push(`<span style="background:#2563EB; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;">последняя</span>`);
-            if (v.variant === 'cheap') badges.push(`<span style="background:#7C3AED; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;" title="Версия собрана в режиме «Подешевле»">подешевле</span>`);
+            if (v.variant === 'cheap') badges.push(`<span style="background:#7C3AED; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;" title="Версия собрана в режиме «Бюджетнее»">бюджетнее</span>`);
             if (v.v === invoiceVer) badges.push(`<span style="background:#F97316; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;">по ней счёт</span>`);
             if (v.v === approvedVer) badges.push(`<span style="background:#10B981; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;">одобрена</span>`);
             if (v.v === issuedVer) badges.push(`<span style="background:#059669; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;">счёт выставлен</span>`);
@@ -18866,7 +18866,7 @@ const app = {
             opts.push({ v: 'standard', label: 'Стандарт', sub: 'обычное оформление калькулятора' });
             // Кнопка «Бренд» — только монтажникам и только пока администратор
             // не выключил тему бренда целиком (иначе выбор ни на что не влиял бы)
-            if (!office && this.brandThemeEnabled()) opts.push({ v: 'brand', label: 'Бренд', sub: 'в цветах STOUT или ROMMER — каких, решает переключатель «Подешевле»' });
+            if (!office && this.brandThemeEnabled()) opts.push({ v: 'brand', label: 'Бренд', sub: 'в цветах STOUT или ROMMER — каких, решает переключатель «Бюджетнее»' });
         }
         opts.push({ v: 'profi', label: 'Профи', sub: 'лаконичное серое оформление, ночной режим по умолчанию' });
         return opts;
@@ -19024,7 +19024,7 @@ const app = {
         const brandRow = row(
             sw(uiBrand, 'Включено — нажмите, чтобы вернуть монтажникам обычное оформление', 'Выключено — нажмите, чтобы включить тему бренда', `app.setBrandThemeEnabled(${uiBrand ? 'false' : 'true'})`),
             'Тема бренда для монтажников',
-            'шрифты и цвета stout.ru, при включённом «Подешевле» — rommer.ru; ночная тема работает. Выключено — у монтажников обычное оформление.');
+            'шрифты и цвета stout.ru, при включённом «Бюджетнее» — rommer.ru; ночная тема работает. Выключено — у монтажников обычное оформление.');
         const proRow = row(
             sw(proOn, 'Разрешено — нажмите, чтобы убрать выбор темы у тарифа «Профи»', 'Запрещено — нажмите, чтобы разрешить выбор темы', `app.setYandexThemeGroup('pro', ${proOn ? 'false' : 'true'})`),
             'Выбор оформления на тарифе «Профи»',
@@ -22304,6 +22304,8 @@ const app = {
         if (bU) {
             bU.style.display = ufh ? '' : 'none';
             bU.textContent = sum ? 'Открыть' : 'Загрузить план';
+            // Плана ещё нет — это главный шаг режима «По комнатам», кнопка заливная
+            if (bU.classList.contains('pg-btn-fill') === !!sum) bU.classList.toggle('pg-btn-fill', !sum);
         }
         const sumEl = document.getElementById('plan_row_sum');
         if (sumEl) {
@@ -22383,13 +22385,13 @@ const app = {
     ],
     TARIFF_FEATURES: [
         { id: 'stout', group: 'Ассортимент', label: 'STOUT', locked: true, hint: 'Основа расчёта: без него смету не собрать, поэтому выключить нельзя' },
-        { id: 'rommer', group: 'Ассортимент', label: 'ROMMER', hint: 'Замены позиций на ROMMER и ROMMER в поиске; без него нет и переключателя «Подешевле»' },
+        { id: 'rommer', group: 'Ассортимент', label: 'ROMMER', hint: 'Замены позиций на ROMMER и ROMMER в поиске; без него нет и переключателя «Бюджетнее»' },
         { id: 'terem', group: 'Ассортимент', label: 'ТЕРЕМ', hint: 'Прочие марки прайс-листа ТЕРЕМ: поиск при ручном добавлении и распознавание. Оборудование, которое подбирает сам расчёт, не затрагивается' },
         { id: 'works', group: 'Функции', label: 'Монтаж', hint: 'Монтажные работы: вкладка, сумма «Монтаж» в шапке, работы в печати, Excel, ссылке клиенту и счёте, расценки «Прайс» в кабинете' },
-        { id: 'analog', group: 'Функции', label: 'Подешевле', hint: 'Вторая смета подешевле: переключатель «Подешевле» в параметрах и в заголовках разделов сметы, вкладка «Почему дешевле». Выключен — переключателя не видно' },
+        { id: 'analog', group: 'Функции', label: 'Бюджетнее', hint: 'Вторая смета бюджетнее: переключатель «Бюджетнее» в параметрах и в заголовках разделов сметы, вкладка «Почему дешевле». Выключен — переключателя не видно' },
         { id: 'recognize', group: 'Функции', label: 'Распознавание', list: true, hint: 'Вкладка «Распознавание»' },
         { id: 'design', group: 'Функции', label: 'Проект', list: true, hint: 'Листы проекта и редактор планов этажей' },
-        { id: 'ufhplan', group: 'Функции', label: 'Раскладка ТП', hint: 'Модуль «План отопления» в подробном режиме: загрузить план дома, отметить комнаты с тёплым полом кликом, радиаторы под окнами — раскладка петель и трассы радиаторов под сметой и в КП. Кому открыт «Проект», он доступен и так' },
+        { id: 'ufhplan', group: 'Функции', label: 'Раскладка ТП', hint: 'Модуль «План отопления» в режиме «По комнатам»: загрузить план дома, отметить комнаты с тёплым полом кликом, радиаторы под окнами — раскладка петель и трассы радиаторов под сметой и в КП. Кому открыт «Проект», он доступен и так' },
         { id: 'branding', group: 'Функции', label: 'Реквизиты', hint: 'Смена своего логотипа и реквизитов компании в кабинете. Они идут в шапку, КП, счёт и ссылку клиенту. Выключено — везде реквизиты дистрибьютора или ТЕРЕМ, уже введённые свои сохраняются и вернутся при включении' },
         { id: 'money', group: 'Функции', label: 'Деньги', hint: 'Вкладка «Деньги» (маржа по смете); гостю без входа не показывается никогда' },
         { id: 'docs', group: 'Функции', label: 'Документы', hint: 'Кнопка «Документы» в «Заказах и счетах»: договор подряда, акты, гарантийный талон' },
@@ -39372,7 +39374,7 @@ const app = {
         if (!this.state.detailedRooms) {
             this.toggleDetailedRooms(true);
             if (!this.state.detailedRooms) return;
-            modeNote = 'включён подробный режим расчёта — план работает в нём';
+            modeNote = 'включён режим «По комнатам» — план работает в нём';
         }
         this._planDoneMsg = '';
         if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
@@ -44305,6 +44307,19 @@ const app = {
         }
         const phoneErr = this.checkPhoneValue(phone);
         if (phoneErr) { this.profileFieldError('profile_phone_input', phoneErr); return; }
+        // Тот же телефон уже в другой учётной записи — человек, скорее всего, входит второй
+        // почтой (mail.ru и yandex.ru у одного монтажника, 25.09.2026): получатся два
+        // профиля с разделёнными сметами. Не сохраняем и подсказываем, с какой почтой входить.
+        // Ошибка запроса не мешает сохранить анкету.
+        try {
+            // Читать чужие строки users браузеру нельзя (users_select_scoped), поэтому
+            // спрашиваем функцию базы: она отвечает только маскированной почтой
+            const { data: masked } = await supabaseClient.rpc('phone_taken_by_other', { p_phone: phone });
+            if (masked) {
+                this.profileFieldError('profile_phone_input', 'Этот телефон уже указан в другой учётной записи (' + masked + '). Войдите с той почтой, чтобы не потерять сметы. Если почта сменилась, напишите на support@heatcalc.ru.');
+                return;
+            }
+        } catch (dupErr) { console.warn('[saveProfile] Проверка телефона не удалась:', dupErr); }
         if (!birthDate) { this.profileFieldError('profile_birth_date_input', 'Пожалуйста, укажите дату рождения.'); return; }
         const profileAge = this.calcAge(birthDate);
         if (profileAge < 18 || profileAge > this.PROFILE_MAX_AGE) { this.profileFieldError('profile_birth_date_input', 'Возраст должен быть от 18 до ' + this.PROFILE_MAX_AGE + ' лет.'); return; }
@@ -44901,7 +44916,7 @@ const app = {
         // вызвать setViewMode можно и мимо них (сохранённый вид, ссылка).
         if (mode === 'works' && !this.canUseWorks()) mode = 'equipment';
         if (mode === 'works' && !this.checkAccess('pro')) return;
-        // «Обоснование» есть только в режиме «Подешевле»
+        // «Обоснование» есть только в режиме «Бюджетнее»
         if (mode === 'cheaper' && !this.cheapModeOn()) mode = 'equipment';
         // «Деньги» открывает таблица «Тарифы» (canUseMoney).
         // checkAccess('pro') тут не годится: он давно означает «авторизован».
@@ -44999,7 +45014,7 @@ const app = {
             return;
         }
 
-        // «Обоснование» варианта «Подешевле» — свой вид, как «Деньги»
+        // «Обоснование» варианта «Бюджетнее» — свой вид, как «Деньги»
         const panelCheaper = document.getElementById('panel_cheaper');
         if (panelCheaper && mode !== 'cheaper') panelCheaper.style.display = 'none';
         const tCheaper = document.getElementById('tab_cheaper');
@@ -46436,6 +46451,106 @@ const app = {
             });
         } finally { this._foldBusy = false; }
     },
+    /**
+     * Заголовки групп колонки параметров («1 Дом» / «2 Отопление и котельная» / «3 Добавить в
+     * смету»). Блоки колонки не обёрнуты в группы — у них сотни id и условий показа, —
+     * поэтому группа это «элементы между двумя заголовками», а заголовок скрывается, если ни
+     * один из них не виден (например, в квартире нет котельной).
+     * Пока расчёт пуст: подсвечен шаг 1 с подсказкой «Начните с площади», остальные группы
+     * приглушены, у шага 1 — кнопка «Типовой дом». В группе 3 — счётчик включённого.
+     * Идемпотентно: меняет DOM только при реальном расхождении, иначе наблюдатель зациклится.
+     */
+    syncPanelGroups: function () {
+        const panel = document.querySelector('.input-panel');
+        if (!panel) return;
+        const titles = Array.from(panel.children).filter(e => e.classList && e.classList.contains('pg-title'));
+        if (!titles.length) return;
+        let empty = false;
+        try { empty = !!this.isCalcEmpty(); } catch (e) { }
+        const setCls = (el, cls, on) => { if (el.classList.contains(cls) !== on) el.classList.toggle(cls, on); };
+        const shown = el => el.getClientRects().length > 0;
+        titles.forEach((t, idx) => {
+            const els = [];
+            for (let n = t.nextElementSibling; n && !(n.classList && n.classList.contains('pg-title')); n = n.nextElementSibling) els.push(n);
+            const vis = els.filter(shown);
+            const show = vis.length > 0;
+            const want = show ? '' : 'none';
+            if (t.style.display !== want) t.style.display = want;
+            setCls(t, 'pg-active', idx === 0 ? empty : true);
+            if (idx > 0) els.forEach(e => setCls(e, 'pg-dim', empty));
+            // Свёрнутая группа (выбор запоминается). Группу «Дом» на пустом расчёте не сворачиваем:
+            // в ней единственное, что нужно сделать первым.
+            const closed = this._pgCollapsed().includes(idx + 1) && !(idx === 0 && empty);
+            setCls(t, 'pg-closed', closed);
+            els.forEach(e => setCls(e, 'pg-collapsed', closed));
+            // Переключатели «добавить в смету» — карточками, чтобы отличались от выбора из вариантов
+            if (idx === 2) els.forEach(e => { if (e.classList.contains('toggle-item')) setCls(e, 'pg-card', true); });
+            if (idx === 2) {
+                const cnt = document.getElementById('pg_count3');
+                if (cnt) {
+                    const n = vis.filter(e => e.querySelector('input[type="checkbox"]:checked')).length;
+                    const txt = n ? 'включено ' + n : '';
+                    if (cnt.textContent !== txt) cnt.textContent = txt;
+                    const d = n ? '' : 'none';
+                    if (cnt.style.display !== d) cnt.style.display = d;
+                }
+            }
+        });
+        const byRooms = !!this.state.detailedRooms;
+        const hint = document.getElementById('pg_hint1');
+        if (hint) {
+            const d = empty ? '' : 'none'; if (hint.style.display !== d) hint.style.display = d;
+            const ht = byRooms ? 'Начните с плана дома' : 'Начните с площади';
+            if (hint.textContent !== ht) hint.textContent = ht;
+        }
+        // Итог в строке «Параметры объекта»: регион и тип дома по нажатым кнопкам внутри
+        const objSum = document.getElementById('obj_params_sum');
+        if (objSum) {
+            const act = id => { const a = document.querySelector('#' + id + ' .tab.active'); return a ? a.textContent.trim() : ''; };
+            // Материал стен есть только у дома; блок свёрнут внутри «Параметров», поэтому
+            // смотрим не на его видимость, а на тип объекта
+            const parts = [act('reg_tabs')];
+            if (!document.body.classList.contains('object-flat') && !this.state.detailedRooms) parts.push(act('mat_tabs'));
+            const st = parts.filter(Boolean).join(' · ');
+            if (objSum.textContent !== st) objSum.textContent = st;
+        }
+        // Что даёт выбранный режим — под переключателем «По площади / По комнатам»
+        const modeSub = document.getElementById('mode_sub');
+        if (modeSub) {
+            const mt = byRooms ? 'Точнее: нужен план дома или список комнат' : 'Оценка за минуту: нужен только метраж';
+            if (modeSub.textContent !== mt) modeSub.textContent = mt;
+        }
+        const quick = document.getElementById('pg_quick');
+        if (quick) {
+            let ok = false;
+            try { ok = empty && this.onboardingAllowed(); } catch (e) { }
+            const d = ok ? '' : 'none';
+            if (quick.style.display !== d) quick.style.display = d;
+        }
+    },
+    _pgCollapsed: function () {
+        try { const a = JSON.parse(localStorage.getItem('hc_pg_closed') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+    },
+    togglePanelGroup: function (n) {
+        const a = this._pgCollapsed();
+        const i = a.indexOf(n);
+        if (i >= 0) a.splice(i, 1); else a.push(n);
+        try { localStorage.setItem('hc_pg_closed', JSON.stringify(a)); } catch (e) { }
+        this.syncPanelGroups();
+    },
+    installPanelGroups: function () {
+        if (this._pgObs || typeof MutationObserver === 'undefined') return;
+        const panel = document.querySelector('.input-panel');
+        if (!panel) return;
+        let t = 0;
+        const later = () => { if (t) return; t = setTimeout(() => { t = 0; this.syncPanelGroups(); }, 80); };
+        this._pgObs = new MutationObserver(later);
+        this._pgObs.observe(panel, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'hidden'] });
+        // Переключатель включили/выключили — атрибуты не меняются, наблюдатель этого не видит
+        panel.addEventListener('change', later);
+        later();
+    },
+
     installNoteFold: function () {
         if (this._noteFoldObs || typeof MutationObserver === 'undefined') return;
         let t = 0;
@@ -54271,7 +54386,7 @@ const app = {
                                'санузел 1 — ванна, раковина, унитаз, стиральная машина'];
                 for (let i = 2; i <= nb; i++) parts.push('санузел ' + i + ' — душ, раковина, унитаз');
                 wDesc.innerHTML = '<span class="ui-emo">🚿 </span>Считаем точки: ' + parts.join('; ') +
-                    '. Другой набор — включите «Подробный» режим.';
+                    '. Другой набор — включите режим «По комнатам».';
             }
         }
         if (houseSimpleWater) {
@@ -54755,6 +54870,7 @@ const app = {
         // Меню кабинета (панель слева и колонка в окне) строим до всего, что их читает
         this.buildCabinetMenus();
         this.installNoteFold();
+        this.installPanelGroups();
         // Global premium modal overrides
         window.alert = (msg) => app.alert(msg);
         window.confirm = (msg) => app.confirm(msg);
@@ -55808,7 +55924,7 @@ const app = {
         if (cab.id && cab.id.startsWith('SCC-1003')) s += `<b style="color:var(--c-warn,#F59E0B);">Проверьте ввод труб:</b> у SCC-1003 нет боковой перфорации — подключение только снизу.<br>`;
         return s + `</span>`;
     },
-    // ═══ «Подешевле»: техническая эквивалентность кандидата ═══════════════
+    // ═══ «Бюджетнее»: техническая эквивалентность кандидата ═══════════════
     // До 24.09.2026 режим (тогда «Аналог») брал из списка замен позиции самую
     // дешёвую — только по цене. Так в смету попадал котёл 13 кВт вместо 24 и
     // комплект дымохода другой длины. Теперь кандидат из .alts проходит проверку:
@@ -59668,7 +59784,7 @@ const app = {
     applySelfBuiltFromSwap: async function (kind, event) {
         if (!this.checkAccess('pro', event)) return;
         if (!this.selfGroupsMode()) {
-            this.alert('Самосборные группы доступны в подробном режиме расчёта: включите его в панели слева.', 'Самосборные группы');
+            this.alert('Самосборные группы доступны в режиме «По комнатам»: включите его в панели слева.', 'Самосборные группы');
             return;
         }
         if (!this.selfGroupsAvailable()) {
@@ -59711,7 +59827,7 @@ const app = {
      * 4) не хватает ни одной — самая мощная.
      */
     /**
-     * «Подешевле»: стальной панельный ROMMER вместо секционного прибора — с тем
+     * «Бюджетнее»: стальной панельный ROMMER вместо секционного прибора — с тем
      * же подключением (нижнее у Space/TITAN, боковое у боковых серий; по
      * умолчанию серия Space, то есть нижнее), высотой 500 мм, подобранный по
      * требуемой мощности и ширине окна тем же pickPanelForWindow, что и
@@ -64668,7 +64784,7 @@ const app = {
     refineAreasFromPlan: function () {
         if (!this.canUseDesign()) { this.alert('Раздел проектирования вам пока не открыт. Его включает администратор.', 'Площади по плану'); return; }
         if (!this.state.rooms || this.state.rooms.length === 0) {
-            this.alert('Сначала добавьте комнаты в подробном расчёте.', 'Площади по плану');
+            this.alert('Сначала добавьте комнаты в режиме «По комнатам».', 'Площади по плану');
             return;
         }
         const plans = this.currentPlans();
@@ -76765,7 +76881,7 @@ const app = {
         this.updateHeaderCompanyDetails();
         this.updateDocumentTitle();
 
-        // «Подешевле»: честная разница — та же смета без режима считается
+        // «Бюджетнее»: честная разница — та же смета без режима считается
         // отдельным тихим прогоном (см. computeCheapBaseline), а не по позициям.
         if (!computeOnly && !this._cheapComparing) {
             if (this.cheapModeOn()) this.computeCheapBaseline();
@@ -76852,7 +76968,7 @@ const app = {
         // него "16.4" + 17.325 склеивалось в "16.417.325" — котёл подбирался на
         // 16.4 кВт, то есть тумблер «Учесть в мощности котла» не делал ничего.
         const pwrBoiler = parseFloat(pwr) + snowQ;
-        // Потребная мощность источника — для проверки кандидатов «Подешевле»
+        // Потребная мощность источника — для проверки кандидатов «Бюджетнее»
         this._cheapNeedKw = pwrBoiler;
 
         let regionName = "";
@@ -76874,9 +76990,13 @@ const app = {
         // Вт/м² остаются по дому: уличная площадка к его площади не относится,
         // и делить сумму на площадь дома было бы враньём.
         const wPerM2 = this.state.area > 0 ? Math.round((parseFloat(pwr) * 1000) / this.state.area) : 0;
+        // Метод расчёта (как в getHouseHeatLoss): по комнатам — только когда режим включён и
+        // комнаты есть; иначе даже при «По комнатам» считается по площади
+        const _hlMethod = (this.state.detailedRooms && this.state.rooms && this.state.rooms.length > 0)
+            ? 'по комнатам' : 'по площади';
         const heatLossHtml = snowQ > 0
-            ? `<b>${pwrBoiler.toFixed(1)} кВт</b> (дом ${pwr} · ${wPerM2} Вт/м² + снеготаяние ${snowQ.toFixed(1)})`
-            : `<b>${pwr} кВт</b> (${wPerM2} Вт/м²)`;
+            ? `<b>${pwrBoiler.toFixed(1)} кВт</b> (дом ${pwr} · ${wPerM2} Вт/м², ${_hlMethod} + снеготаяние ${snowQ.toFixed(1)})`
+            : `<b>${pwr} кВт</b> (${wPerM2} Вт/м², ${_hlMethod})`;
 
         // Заголовок спецификации.
         //
@@ -76894,12 +77014,12 @@ const app = {
                 // 0 кВт» в шапке читаются как ошибка — вместо них одна честная метка.
                 : `<span class="param-item"><span class="ui-emo">📋 </span>Объект: <b>по заявке</b></span>`);
         // «Проживающих» нужны расчёту горячей воды и водоснабжения — без них число лишнее.
-        // «Вариант: подешевле» тем, у кого есть тумблер «Подешевле», на экране дублирует его
+        // «Вариант: подешевле» тем, у кого есть тумблер «Бюджетнее», на экране дублирует его
         // (скрыт стилем .ds-variant-dup), но в печати и PDF остаётся: клиент тумблера не видит.
         const _hasArea = _flatSum || parseFloat(this.state.area) > 0;
         document.getElementById('doc_summary').innerHTML = `
             <span class="param-item"><span class="ui-emo">🔖 </span>№ КП: <b>${this.kpNumber() || '—'}</b></span>
-            ${this.cheapModeOn() ? `<span class="param-item ds-variant${this.canUseAnalog() ? ' ds-variant-dup' : ''}"><span class="ui-emo">💡 </span>Вариант: <b>подешевле</b></span>` : ''}
+            ${this.cheapModeOn() ? `<span class="param-item ds-variant${this.canUseAnalog() ? ' ds-variant-dup' : ''}"><span class="ui-emo">💡 </span>Вариант: <b>бюджетнее</b></span>` : ''}
             ${_objChip}
             ${_hasArea ? `<span class="param-item"><span class="ui-emo">🔥 </span>Теплопотери: ${heatLossHtml}</span>` : ''}
             <span class="param-item"><span class="ui-emo">📍 </span>Регион: <b>${regionName}</b></span>
@@ -77170,7 +77290,7 @@ const app = {
             // Для подсказки «из чего экономия»: цена исходного подбора против того,
             // что реально легло в смету за этот вызов (см. _savingsLog в render)
             // _from — позиция уже подменена до addToBill (панельный радиатор в
-            // «Подешевле»): «было» берём из неё, иначе журнал показал бы панель
+            // «Бюджетнее»): «было» берём из неё, иначе журнал показал бы панель
             // вместо секционного
             const _svFrom = item._from || null;
             const _svBase = Math.round((((_svFrom && _svFrom.price) || item.price) || 0) * qty);
@@ -77716,7 +77836,7 @@ const app = {
             const _sewerSwapSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 21h5v-5"></path></svg>`;
             const _analogBadge = (sectionHasAnalogItems && isPro && this.canUseAnalog()) ? `
                 <div class="row-sec-toggle-wrap sec-analog-badge${_secAnalogActive ? ' active' : ''} no-print" onclick="event.stopPropagation()" style="${isRevealed ? '' : 'display:none;'}">
-                    <span class="sec-analog-label">ПОДЕШЕВЛЕ</span>
+                    <span class="sec-analog-label">Бюджетнее</span>
                     <label class="switch">
                         <input type="checkbox" ${_secAnalogActive ? 'checked' : ''}
                             onchange="app.toggleSectionAnalog('${title.replace(/'/g, "\\'")}', this.checked)">
@@ -77766,7 +77886,10 @@ const app = {
                     if (i.group.includes("Газового")) icon = "🔥";
                     else if (i.group.includes("Электрического")) icon = "⚡";
                     else if (i.group.includes("Водонагревателя")) icon = "💧";
-                    let arrow = isCollapsed ? "▶" : "⤵";
+                    // Единственная подгруппа в разделе: значок только мешает («2. Обвязка котельной»
+                    // → «2.2 … ⚡»), заголовок и так говорит, о каком котле речь
+                    if (bill.every(x => x.group === i.group)) icon = "";
+                    let arrow = isCollapsed ? "▸" : "▾";
                     let txtUnit = isCollapsed ? "компл." : ""; let txtQty = isCollapsed ? "1" : ""; let txtSum = isCollapsed ? groupTotals[i.group].toLocaleString() : "";
                     let headStyle = "";
                     if (isSubSection) { headStyle = `style="background:var(--surface-light); border: ${dashStyle}; border-bottom: none; color:var(--text-main);"`; if (isCollapsed) headStyle = `style="background:var(--surface-light); border: ${dashStyle}; color:var(--text-main);"`; }
@@ -78097,7 +78220,7 @@ const app = {
                 if (!forceMerge) {
                     let groupId = 'works_' + g;
                     isCollapsed = (this.state.collapsedGroups.includes(groupId));
-                    let arrow = isCollapsed ? "▶" : "⤵";
+                    let arrow = isCollapsed ? "▸" : "▾";
                     let icon = "🔧";
 
                     // ИСПРАВЛЕНИЕ ВЕРСТКИ: colspan = 2 (т.к. 3 колонки скрыты CSS-ом)
@@ -78393,7 +78516,7 @@ const app = {
                 let db = (ft === 'gas')
                     ? catalog.boilers_gas
                     : (elSeries === 'polis' ? catalog.boilers_polis : catalog.boilers_status);
-                // POLIS встал по режиму «Подешевле» (а не по ручному выбору серии) —
+                // POLIS встал по режиму «Бюджетнее» (а не по ручному выбору серии) —
                 // в журнал обоснований нужны «было» (STATUS той же мощности) и «почему»:
                 // строка котла идёт через addToBill, и без этих полей замена в
                 // обосновании не видна (24.09.2026)
@@ -78811,7 +78934,7 @@ const app = {
                     `Электрокотёл ${_elKw} кВт — больше 15 кВт на участок.`,
                     'Проверьте расчёт.',
                     `<div class="tip-p"><b>${_warm ? 'Посчитайте дом по помещениям: быстрый расчёт — укрупнённая оценка.' : 'Если дом новый и утеплённый — нажмите «Тёплый» или посчитайте по помещениям.'}</b></div>` +
-                    `<div class="tip-p">Быстрый расчёт на кнопке «${_warm ? 'Тёплый' : this.state.mat === 1.3 ? 'Холодный' : 'Стандарт'}» — ` +
+                    `<div class="tip-p">Расчёт по площади на кнопке «${_warm ? 'Тёплый' : this.state.mat === 1.3 ? 'Холодный' : 'Стандарт'}» — ` +
                     `${this.quickWPerM2()} Вт на м² пола. Это практика, а не расчёт ограждений: для типового дома — привычные «1 кВт на 10 м²», ` +
                     `а в проектах на новые утеплённые дома теплопотери около 67 Вт/м², и котёл выходит на треть меньше.</div>` +
                     `<div class="tip-p"><b>Почему это важно:</b> частному дому обычно выделяют 15 кВт на весь участок. Котёл больше — ` +
@@ -78868,9 +78991,9 @@ const app = {
                 }, 0.115 + 0.043);
                 boilerWarnHtml = (boilerWarnHtml || '') + this.noteBox('info',
                     `Теплопотери ${_d > 0 ? 'выросли' : 'снизились'} на ${Math.abs(_d)} % после перехода к расчёту по помещениям.`,
-                    `Быстрый расчёт для этого дома — ${_qKw.toFixed(1)} кВт, по помещениям — ${_needKw.toFixed(1)} кВт.`,
-                    `<div class="tip-p">Быстрый расчёт — укрупнённая оценка: 37 Вт/м³ объёма с поправкой на климат и тип стены по кнопке. По помещениям считается каждое ограждение: стена по заданному пирогу${(this.state.wallLayers || []).length ? ` (R = ${Number(_R).toFixed(2).replace('.', ',')} м²·°C/Вт)` : ''}, окна, кровля, пол и вентиляция — по СП 50.13330.2024.</div>` +
-                    `<div class="tip-p"><b>Проверьте:</b> совпадает ли пирог стены, кровли и пола с тем, что на объекте. Кнопка «Кирпич» в быстром режиме — это не кирпичная стена в подробном: там по умолчанию газобетон 300 мм.</div>`);
+                    `Расчёт по площади для этого дома — ${_qKw.toFixed(1)} кВт, по помещениям — ${_needKw.toFixed(1)} кВт.`,
+                    `<div class="tip-p">Расчёт по площади — укрупнённая оценка: 37 Вт/м³ объёма с поправкой на климат и тип стены по кнопке. По помещениям считается каждое ограждение: стена по заданному пирогу${(this.state.wallLayers || []).length ? ` (R = ${Number(_R).toFixed(2).replace('.', ',')} м²·°C/Вт)` : ''}, окна, кровля, пол и вентиляция — по СП 50.13330.2024.</div>` +
+                    `<div class="tip-p"><b>Проверьте:</b> совпадает ли пирог стены, кровли и пола с тем, что на объекте. Кнопка «Кирпич» в режиме «По площади» — это не кирпичная стена в подробном: там по умолчанию газобетон 300 мм.</div>`);
             }
         }
         // Требования из примечаний проекта (распознавание комплекта листов):
@@ -82652,7 +82775,7 @@ const app = {
                                 }
                             }
 
-                            // «Подешевле»: стальной панельный с тем же подключением (cheapPanelFor).
+                            // «Бюджетнее»: стальной панельный с тем же подключением (cheapPanelFor).
                             // После подоконника — панель тоже должна под него встать.
                             {
                                 const _soRad = (this.state.sectionAnalog || {})['3. Приборы отопления'];
@@ -82876,7 +82999,7 @@ const app = {
                 }
                 totalRadCount = totalCount;
 
-                // «Подешевле»: стальной панельный с тем же подключением, по нагрузке на
+                // «Бюджетнее»: стальной панельный с тем же подключением, по нагрузке на
                 // один прибор (cheapPanelFor). originalId оставляем от секционного, чтобы
                 // правка количества руками (qtyOverrides) не потерялась при смене режима.
                 {
@@ -86496,7 +86619,7 @@ const app = {
             addToWorks("Монтаж гидравлической стрелки", arrowCount, 6500, "шт", obvyazkaGroup);
         }
         // Совмещённый узел STOUT «Коллектор-гидрострелка DN20/DN25»: раньше работы на
-        // него не было вовсе, и вариант «Подешевле» (пара ROMMER — коллектор +
+        // него не было вовсе, и вариант «Бюджетнее» (пара ROMMER — коллектор +
         // стрелка отдельно, 5 500 + 6 500) выходил по работам дороже основной сметы.
         // Расценка 6 500 — по слову владельца 24.09.2026. По названию, как у стрелки:
         // «гидравлическая стрелка» в нём не встречается, двойного счёта нет.
@@ -86546,7 +86669,7 @@ const app = {
         if (this.onRiser()) {
             // «панельн» — стальные панельные: в их названии слова «радиатор» нет
             // («Стальной панельный Ventil (Тип 11), 600 мм»), и в квартире с ними
-            // работы по замене приборов обнулялись (24.09.2026, режим «Подешевле»)
+            // работы по замене приборов обнулялись (24.09.2026, режим «Бюджетнее»)
             const _dev = this.currentEquipmentList
                 .filter(x => !x.group || !/^\d+\.\d+/.test(String(x.group)))
                 .filter(x => x.isPanel || /радиатор|конвектор|панельн/i.test(String(x.name || '')))
@@ -86666,7 +86789,7 @@ const app = {
         // не начислялись никогда. Открываем блок по числу радиаторов из сметы.
         // Стальные панельные («Стальной панельный Ventil (Тип 22), 900 мм») словом
         // «радиатор» не начинаются — без них блок гас, и в смете со стальными
-        // панелями (серия «стальной» или режим «Подешевле») пропадали работы по
+        // панелями (серия «стальной» или режим «Бюджетнее») пропадали работы по
         // термоголовкам и узлам подключения (24.09.2026)
         const _radQty = this.currentEquipmentList
             .filter(x => String(x.group || '').startsWith("3.") && (x.isPanel || /^радиатор|^конвектор|^стальной панельн/i.test(x.name || '')))
@@ -86737,7 +86860,7 @@ const app = {
             // «4.2. Утеплитель и крепёж»): мат STOUT — базовая; мат ROMMER — +10 %
             // (мельче, полезных 0,72 м² против 0,88, стыков больше); XPS с подложкой,
             // дюбелями и скобами — +30 % (листы крепить, трубу — такером).
-            // Так решил владелец 24.09.2026 под вариант «Подешевле», но правило
+            // Так решил владелец 24.09.2026 под вариант «Бюджетнее», но правило
             // общее: тот же XPS, выбранный руками, кладут так же.
             const _ufhBaseK = this.ufhBaseWorkFactor();
             addToWorks("Монтаж утеплителя для укладки ТП", tpArea, 350, "м²", tpGroup, _ufhBaseK.k);
@@ -87035,6 +87158,7 @@ const app = {
         document.getElementById('total_sum').innerHTML = app.formatPriceHtml(sum, true);
         // Доля STOUT в строке параметров — считается по готовому списку оборудования
         this.renderStoutShareChip();
+        try { this.syncPanelGroups(); } catch (e) { }
         this._queueKpDayCheck();
         // Лист не скачет, а к новым строкам плавно едет (см. _estimateAfter).
         this._estimateAfter(_estBefore);
@@ -87379,7 +87503,7 @@ const app = {
         // Открытая подсказка «из чего экономия» после пересчёта устарела
         const _spOpen = document.getElementById('savings_pop');
         if (_spOpen) _spOpen.remove();
-        // Процент — против той же сметы без «Подешевле» (computeCheapBaseline),
+        // Процент — против той же сметы без «Бюджетнее» (computeCheapBaseline),
         // а не по позициям: так в него входит и другая обвязка котельной.
         // Пока базовая смета не посчитана (или режим выключен) — по позициям.
         const _cb = this.cheapModeOn() ? this._cheapBase : null;
@@ -87513,7 +87637,7 @@ const app = {
         const empty = !rows && !sysNote;
         return `
             <div class="sp-head">${diff >= 0 ? 'Дешевле на' : 'Дороже на'} ${fmt(diff)}${pct ? ` · ${Math.abs(pct)} %` : ''}</div>
-            <div class="sp-sub">${_cb ? `Та же смета без «Подешевле»: ${fmt(base)} → ${fmt(fin)}` : 'Против исходного подбора по тем же позициям'}</div>
+            <div class="sp-sub">${_cb ? `Та же смета без «Бюджетнее»: ${fmt(base)} → ${fmt(fin)}` : 'Против исходного подбора по тем же позициям'}</div>
             ${rows}
             ${top ? `<div class="sp-title">Самые заметные замены</div>${top}` : ''}
             ${sysNote}
@@ -87521,7 +87645,7 @@ const app = {
             <div class="sp-foot"><a href="#" onclick="event.preventDefault(); app.toggleSavingsPopover(); app.setViewMode('cheaper');">Полное обоснование — на вкладке «Почему дешевле» →</a></div>`;
     },
 
-    // ═══ «Подешевле»: вторая смета, честная разница, обоснование ═════════════
+    // ═══ «Бюджетнее»: вторая смета, честная разница, обоснование ═════════════
     // Режим включён, когда бренд переключён на ROMMER целиком или хотя бы один
     // раздел переведён своим тумблером. Методику подбора он не трогает: те же
     // теплопотери, та же гидравлика, тот же расчёт диаметров — меняются только
@@ -87666,15 +87790,15 @@ const app = {
         const minorBase = minors.reduce((s, e) => s + (e.base || 0), 0);
         const minorSecs = [...new Set(minors.map(e => e.section || ''))].filter(Boolean);
 
-        const cards = compact ? `<div class="cr-line">Основная смета <b>${fmt(base)}</b> · вариант «Подешевле» <b>${fmt(fin)}</b> · ${diff >= 0 ? 'дешевле' : 'дороже'} на <b>${fmt(diff)}</b>${pct ? ` (${Math.abs(pct)} %)` : ''}</div>` : `
+        const cards = compact ? `<div class="cr-line">Основная смета <b>${fmt(base)}</b> · вариант «Бюджетнее» <b>${fmt(fin)}</b> · ${diff >= 0 ? 'дешевле' : 'дороже'} на <b>${fmt(diff)}</b>${pct ? ` (${Math.abs(pct)} %)` : ''}</div>` : `
             <div class="cr-cards">
                 <div class="cr-card"><div class="cr-l">Основная смета</div><div class="cr-v">${fmt(base)}</div><div class="cr-s">оборудование без режима</div></div>
-                <div class="cr-card"><div class="cr-l">Вариант «Подешевле»</div><div class="cr-v">${fmt(fin)}</div><div class="cr-s">оборудование в этой смете</div></div>
+                <div class="cr-card"><div class="cr-l">Вариант «Бюджетнее»</div><div class="cr-v">${fmt(fin)}</div><div class="cr-s">оборудование в этой смете</div></div>
                 <div class="cr-card"><div class="cr-l">${diff >= 0 ? 'Дешевле на' : 'Дороже на'}</div><div class="cr-v ${diff >= 0 ? 'cr-save' : 'cr-cost'}">${fmt(diff)}</div><div class="cr-s">${pct ? Math.abs(pct) + ' % от основной' : 'разница двух полных смет'}</div></div>
             </div>`;
 
         return `
-            ${compact ? '<div class="cr-title">Обоснование варианта «Подешевле»</div>' : ''}
+            ${compact ? '<div class="cr-title">Обоснование варианта «Бюджетнее»</div>' : ''}
             ${cards}
             <div class="cr-note">Обе сметы посчитаны одной методикой: теплопотери, мощность источника, гидравлика, диаметры и теплоотдача приборов те же. Разница — только в позициях, прошедших проверку параметров, и в системе обвязки котельной.</div>
             ${scheme.length ? `<div class="cr-h">Схемные отличия</div>${scheme.map(s => `<div class="cr-scheme">${s}</div>`).join('')}` : ''}
@@ -87689,7 +87813,7 @@ const app = {
         const panel = document.getElementById('panel_cheaper');
         if (!panel) return;
         if (!this.cheapModeOn()) { panel.innerHTML = ''; return; }
-        panel.innerHTML = `<div class="cheaper-panel"><h3 style="margin:0 0 12px; color:var(--text-main);">💡 Обоснование варианта «Подешевле»</h3>${this.cheaperReportHtml(false)}</div>`;
+        panel.innerHTML = `<div class="cheaper-panel"><h3 style="margin:0 0 12px; color:var(--text-main);">💡 Обоснование варианта «Бюджетнее»</h3>${this.cheaperReportHtml(false)}</div>`;
         // Стоимость обвязки по системам — отложенно: восемь тихих прогонов
         // сметы внутри отрисовки затянули бы саму отрисовку
         if (document.getElementById('cheaper_bp_totals') && !this._bpTotalsPending) {
@@ -87703,7 +87827,7 @@ const app = {
         }
     },
 
-    // Блок для печати и PDF — последняя страница КП в варианте «Подешевле»
+    // Блок для печати и PDF — последняя страница КП в варианте «Бюджетнее»
     renderCheaperPrint: function () {
         const el = document.getElementById('cheaper_print');
         if (!el) return;

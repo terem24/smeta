@@ -254,7 +254,7 @@ const WarrantyAdmin = {
             ).join('');
         }
         if (this._loadError) {
-            t.innerHTML = `<div style="color:#EF4444; font-size:13px;">Реестр не загрузился: ${this.esc(this._loadError)}</div>`;
+            t.innerHTML = `<div style="color:var(--c-bad,#EF4444); font-size:13px;">Реестр не загрузился: ${this.esc(this._loadError)}</div>`;
             return;
         }
         const list = this.shown();
@@ -276,7 +276,7 @@ const WarrantyAdmin = {
         };
         const rows = list.map(x => `<tr>
             <td style="${td} white-space:nowrap;">${e(this.dateRu(x.date))}<br><span style="font-size:10.5px; color:var(--text-sec);">№ ${e(x.calcId || '—')}</span></td>
-            <td style="${td}"><b>${e(x.address)}</b>${x.client ? '<br>' + e(x.client) : '<br><span style="font-size:10.5px; color:#D97706;">заказчик не указан</span>'}</td>
+            <td style="${td}"><b>${e(x.address)}</b>${x.client ? '<br>' + e(x.client) : '<br><span style="font-size:10.5px; color:var(--c-warn,#D97706);">заказчик не указан</span>'}</td>
             <td style="${td}">${e(x.installer)}${x.phone ? '<br><span style="font-size:10.5px; color:var(--text-sec);">' + e(x.phone) + '</span>' : ''}</td>
             <td style="${td} text-align:right;">${pctCell(x)}</td>
             <td style="${td} text-align:right; white-space:nowrap;">${this.rub(x.eq)}</td>
@@ -287,7 +287,7 @@ const WarrantyAdmin = {
                     style="width:62px; padding:5px 6px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text-main); font-size:12.5px; ${x.own ? 'font-weight:700;' : ''}"> %
             </td>
             <td style="${td} white-space:nowrap;">${x.passed
-                ? (x.hasDetails ? '<span style="color:#16A34A; font-weight:700;">бланк</span>' : '<span style="color:#D97706;" title="Порог пройден, но адрес или заказчик не заполнены — бланк не печатается">нет адреса</span>')
+                ? (x.hasDetails ? '<span style="color:var(--c-ok,#16A34A); font-weight:700;">бланк</span>' : '<span style="color:var(--c-warn,#D97706);" title="Порог пройден, но адрес или заказчик не заполнены — бланк не печатается">нет адреса</span>')
                 : '<span style="color:var(--text-sec);">—</span>'}</td>
             <td style="${td} white-space:nowrap; text-align:right;">
                 <button type="button" class="lk-btn-sm" onclick="app.viewAdminEstimate('${e(x.id)}')" title="Открыть смету">Смета</button>

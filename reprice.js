@@ -269,7 +269,7 @@ const Reprice = {
         const whenStr = when ? new Date(when).toLocaleDateString('ru-RU') : '';
 
         const head = Math.abs(total) < this.MIN_RUB
-            ? `<div style="font-size:14px; font-weight:700; color:#10B981; margin-bottom:4px;">Цены не изменились</div>
+            ? `<div style="font-size:14px; font-weight:700; color:var(--c-ok,#10B981); margin-bottom:4px;">Цены не изменились</div>
                <div style="font-size:12.5px; color:var(--text-sec);">Предложение можно отправлять как есть.</div>`
             : `<div style="font-size:14px; font-weight:700; color:${total > 0 ? '#EF4444' : '#10B981'}; margin-bottom:4px;">
                    Оборудование ${total > 0 ? 'подорожало' : 'подешевело'} на ${num(total)} ₽

@@ -19920,3 +19920,67 @@ body.theme-shop #hdr_margin_sum { color: var(--primary) !important; }
 .mobile-sidebar .view-menu,
 .mobile-sidebar .view-menu-panel { display: contents; }
 @media print { .view-menu { display: none !important; } }
+
+/* Заголовки групп колонки параметров: «1 Дом», «2 Отопление и котельная», «3 Добавить в
+   смету» (app.syncPanelGroups). Компактные — колонка сама подгоняется под высоту экрана. */
+.pg-title {
+    display: flex; align-items: center; gap: 7px;
+    margin: 14px 0 6px; padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-sec);
+}
+.pg-title:first-child, .input-panel-grip + .pg-title { margin-top: 0; padding-top: 0; border-top: 0; }
+.pg-num {
+    flex: none; width: 18px; height: 18px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); color: var(--text-sec);
+    font-size: 10px; font-weight: 700; letter-spacing: 0;
+}
+/* Текущий шаг — число залито акцентом, подпись темнее */
+.pg-title.pg-active { color: var(--text-main); }
+.pg-title.pg-active .pg-num { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); }
+.pg-hint { margin-left: 2px; font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-sec); }
+.pg-title { cursor: pointer; user-select: none; }
+.pg-name { margin-right: auto; }
+.pg-title::after { content: '▾'; flex: none; font-size: 10px; letter-spacing: 0; transition: transform .15s ease; }
+.pg-title.pg-closed::after { transform: rotate(-90deg); }
+.pg-quick, .pg-count {
+    font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none;
+    padding: 2px 9px; border-radius: 10px;
+}
+/* Свёрнутая группа: высота 0, а не display:none — иначе скрипт счёл бы группу пустой и спрятал заголовок */
+.pg-collapsed {
+    height: 0 !important; min-height: 0 !important; margin-top: 0 !important; margin-bottom: 0 !important;
+    padding-top: 0 !important; padding-bottom: 0 !important; border-width: 0 !important;
+    overflow: hidden !important; opacity: 0; pointer-events: none; visibility: hidden;
+}
+/* Пояснение одной строкой под названием пункта вместо значка «i» */
+.pg-sub { margin: -2px 0 0; font-size: 11px; line-height: 1.35; font-weight: 400; color: var(--text-sec); }
+/* «Добавить в смету»: переключатели — карточки (включённая подсвечена), чтобы не путать с выбором из вариантов */
+.input-panel > .toggle-item.pg-card {
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 10px; margin-top: 6px; margin-bottom: 6px;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+.input-panel > .toggle-item.pg-card:has(> .label-row input[type="checkbox"]:checked) {
+    border-color: var(--primary); background: var(--primary-light);
+}
+.pg-quick { cursor: pointer; background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+.pg-quick:hover { background: var(--primary-light); }
+.pg-count { background: var(--primary-light); color: var(--text-main); border: 1px solid var(--border); }
+/* «План дома» в режиме «По комнатам»: пока плана нет, «Загрузить план» — главная заливная кнопка,
+   «или ввести комнаты вручную» — заметная ссылка, а не серая приписка */
+#btn_ufhplan.pg-btn-fill {
+    background: var(--primary) !important; color: var(--on-primary, #fff) !important;
+    font-weight: 600; padding: 5px 14px !important;
+}
+#plan_row_manual { color: var(--primary) !important; font-size: 12px !important; text-decoration: underline; text-underline-offset: 2px; }
+/* «Параметры объекта»: итог и стрелка вместо переключателя */
+.pg-summary { margin-left: auto; margin-right: 8px; font-size: 11px; font-weight: 500; color: var(--text-sec); white-space: nowrap; }
+.pg-chev { flex: none; font-size: 11px; color: var(--text-sec); transition: transform .15s ease; }
+#blk_fast_obj_params_toggle_wrap:has(#chk_fast_obj_params:checked) .pg-chev { transform: rotate(180deg); }
+.mode-sub { margin-top: 6px; font-size: 11px; line-height: 1.35; color: var(--text-sec); }
+/* Пока площадь не задана, остальные группы приглушены (но доступны: наведение и фокус возвращают яркость) */
+.pg-dim { opacity: .5; transition: opacity .2s ease; }
+.pg-dim:hover, .pg-dim:focus-within { opacity: 1; }
