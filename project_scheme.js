@@ -304,16 +304,17 @@
   /** Гидравлический разделитель для схемы. (x,y) — центр корпуса 9×20.
    *  buf = { vol } — на его месте буферная ёмкость: те же подключения (воздухоотводчик сверху,
    *  дренаж снизу, термометр слева), корпус скруглён, внутри объём в литрах вместо кВт. */
+  var BUF_W = 16, BUF_H = 42;
   function hydroSep(x, y, kw, noThermo, buf) {
-    var w = 9, h = 20, o = [];
+    var w = buf ? BUF_W : 9, h = buf ? BUF_H : 20, o = [];
     if (buf) {
-      // Буферная ёмкость — серый корпус с теплоизоляцией, как у бойлера: полосы по верху и низу,
-      // внутри объём. Гидравлический разделитель — пустая белая гильза, их не спутать.
-      o.push(rrect(x - w / 2, y - h / 2, w, h, 3.6, { f: GREY.body, c: '#000', w: LW.sym }));
-      o.push(pline([[x - w / 2, y - h / 2 + 2.6], [x + w / 2, y - h / 2 + 2.6]], { c: GREY.edge, w: 0.6 }));
-      o.push(pline([[x - w / 2, y + h / 2 - 2.6], [x + w / 2, y + h / 2 - 2.6]], { c: GREY.edge, w: 0.6 }));
-      o.push(txt(x, y - 0.6, String(buf.vol), { size: SZ.txt, anchor: 'middle' }));
-      o.push(txt(x, y + 3.4, 'л', { size: SZ.txt, anchor: 'middle' }));
+      // Буферная ёмкость — крупный серый корпус с теплоизоляцией, как у бойлера (объём сотни литров,
+      // не гильза разделителя): полосы по верху и низу, подпись и объём вдоль корпуса.
+      o.push(rrect(x - w / 2, y - h / 2, w, h, 4.5, { f: GREY.body, c: '#000', w: LW.sym }));
+      o.push(pline([[x - w / 2, y - h / 2 + 3], [x + w / 2, y - h / 2 + 3]], { c: GREY.edge, w: 0.6 }));
+      o.push(pline([[x - w / 2, y + h / 2 - 3], [x + w / 2, y + h / 2 - 3]], { c: GREY.edge, w: 0.6 }));
+      o.push(txt(x - 2.4, y, 'Буферная ёмкость', { size: SZ.txt, anchor: 'middle', rotate: -90 }));
+      o.push(txt(x + 2.8, y, buf.vol + ' л', { size: SZ.txt, anchor: 'middle', rotate: -90 }));
     } else {
       // Мощность на разделителе не пишем: он подбирается по расходу, а не по кВт котла.
       o.push(rrect(x - w / 2, y - h / 2, w, h, 1, { c: '#000', w: LW.sym }));
@@ -668,12 +669,12 @@
     // гидравлический разделитель — ячейка 40 мм, символ по обмеру легенды
     if (cfg.hydro) {
       var hy0 = y, hy1 = y + 40;
-      var bx = cx, bw = 8.3, bt = hy0 + 11.3, bb = hy1 - 12.7;
+      var bx = cx, bw = cfg.hydro.buffer ? 12 : 8.3, bt = hy0 + 11.3, bb = hy1 - 12.7;
       o.push(airVent(bx, bt - 1.37));
       o.push(pline([[bx - 1.31, bt - 1.37], [bx - 1.31, bt]]));
       o.push(pline([[bx + 1.3, bt - 1.37], [bx + 1.3, bt]]));
       o.push(cfg.hydro.buffer
-        ? rrect(bx - bw / 2, bt, bw, bb - bt, 2.6, { f: GREY.body, c: '#000', w: LW.sym })
+        ? rrect(bx - bw / 2, bt, bw, bb - bt, 3.2, { f: GREY.body, c: '#000', w: LW.sym })
         : rrect(bx - bw / 2, bt, bw, bb - bt, 0.4, { c: '#000', w: LW.sym }));
       if (cfg.hydro.buffer) {
         o.push(pline([[bx - bw / 2, bt + 2], [bx + bw / 2, bt + 2]], { c: GREY.edge, w: 0.6 }));
@@ -1454,6 +1455,8 @@
       secPair = { supply: 161, ret: 173 };
       var xd = hydroX + 11, xu = hydroX + 16.5;
       mRight = xu;
+      // половина ширины корпуса: у буферной ёмкости он крупный, трубы подводятся к его боку
+      var hbw = cfg.hydro.buffer ? BUF_W / 2 : 4.5;
       // котловая пара к гидрострелке. Подача бежит от котлов вправо, к
       // стрелке (fwd); обратка — от стрелки влево, к котлам (rev).
       o.push('<g data-hyd-part="msup" data-hyd-dir="fwd">');
@@ -1472,11 +1475,11 @@
       o.push('<g data-hyd-part="hydro" data-hyd-dir="fwd">');
       o.push(vpipe(xd, mY.supply, secPair.supply, COL.supply, [mY.ret].concat(loadYs)));
       o.push('</g><g data-hyd-part="hydro" data-hyd-dir="rev">');
-      o.push(hpipe(hydroX + 4.5, xd, secPair.supply, COL.supply));
-      o.push(openArrow(hydroX + 6.4, secPair.supply, 'left', COL.supply));
+      o.push(hpipe(hydroX + hbw, xd, secPair.supply, COL.supply));
+      if (!cfg.hydro.buffer) o.push(openArrow(hydroX + 6.4, secPair.supply, 'left', COL.supply));
       o.push(vpipe(xu, mY.ret, secPair.ret, COL.ret, loadYs));
       o.push('</g><g data-hyd-part="hydro" data-hyd-dir="fwd">');
-      o.push(hpipe(hydroX + 4.5, xu, secPair.ret, COL.ret));
+      o.push(hpipe(hydroX + hbw, xu, secPair.ret, COL.ret));
       o.push(openArrow(xu - 0.8, secPair.ret, 'right', COL.ret));
       o.push('</g><g data-hyd-part="hydro" data-hyd-dir="none">');
       o.push(hydroSep(hydroX, 167, cfg.hydro.kw, cfg.hydro.thermo === false, cfg.hydro.buffer || null));
@@ -1490,13 +1493,13 @@
       // вторичная пара к насосным группам: подача идёт от стрелки влево, к
       // отводам (rev), обратка собирается с отводов и идёт вправо (fwd).
       o.push('<g data-hyd-part="ssup" data-hyd-dir="rev">');
-      o.push(hpipe(tapX0 - 8, hydroX - 4.5, secPair.supply, COL.supply));
+      o.push(hpipe(tapX0 - 8, hydroX - hbw, secPair.supply, COL.supply));
       o.push(tick(tapX0 - 8, secPair.supply, false, COL.supply));
       o.push(openArrow(hydroX - 15, secPair.supply, 'left', COL.supply));
       o.push('</g><g data-hyd-part="sret" data-hyd-dir="fwd">');
-      o.push(hpipe(tapX0 - 8, hydroX - 4.5, secPair.ret, COL.ret));
+      o.push(hpipe(tapX0 - 8, hydroX - hbw, secPair.ret, COL.ret));
       o.push(tick(tapX0 - 8, secPair.ret, false, COL.ret));
-      o.push(openArrow(hydroX - 6.4, secPair.ret, 'right', COL.ret));
+      o.push(openArrow(hydroX - (cfg.hydro.buffer ? hbw + 2.4 : 6.4), secPair.ret, 'right', COL.ret));
       o.push('</g>');
       srcY = { supply: secPair.supply, ret: secPair.ret, dhw: mY.dhw, cold: mY.cold };
     }
