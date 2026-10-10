@@ -19971,9 +19971,10 @@ body.theme-shop #hdr_margin_sum { color: var(--primary) !important; }
 /* Пустой расчёт (body.empty-fit-panel ставит render по isCalcEmpty): отправлять и скачивать
    нечего — кнопки приглушены и неактивны, нулевые итоги в шапке скрыты. «Проект» не трогаем:
    листы можно открыть и без сметы. */
-body.empty-fit-panel #btn_share_trigger,
-body.empty-fit-panel #btn_print_trigger,
-body.empty-fit-panel #btn_invoice_trigger { opacity: .45; pointer-events: none; }
+/* Гостю кнопки не отключаем: они и так приглушены (.guest-mode) и по клику ведут к регистрации. */
+body.empty-fit-panel:not(.guest-mode) #btn_share_trigger,
+body.empty-fit-panel:not(.guest-mode) #btn_print_trigger,
+body.empty-fit-panel:not(.guest-mode) #btn_invoice_trigger { opacity: .45; pointer-events: none; }
 body.empty-fit-panel #header_totals { display: none !important; }
 /* Простые разделы — плитки в два столбца; включённая раскрывается на всю ширину (её настройки внутри) */
 .pg-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0; }
