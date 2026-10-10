@@ -40769,7 +40769,7 @@ const app = {
                     </details>
                 </div>
             </div>
-            <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+            <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; width:100%; box-sizing:border-box;">
                 ${pTile('Объектов с планами', projects.length, 'у монтажников')}
                 ${pTile('Занято на диске', mb(data.totalBytes || 0), 'подложки этажей')}
                 ${pTile('Срок хранения', keep + ' дн.', 'с последней правки')}
@@ -40786,25 +40786,79 @@ const app = {
             return;
         }
 
-        h += `<table class="inv-table ad-sticky" style="margin-bottom:30px; table-layout:fixed; width:100%;">
+        // Сортировка по заголовку и поиск по монтажнику. По умолчанию — свежие правки сверху.
+        const sort = this._plansSort || { k: 'age', dir: 1 };
+        const sortVal = {
+            owner: p => String(p.owner || '').toLowerCase(),
+            floors: p => (p.files || []).length,
+            bytes: p => p.bytes || 0,
+            age: p => p.ageDays || 0,
+        }[sort.k] || (p => p.ageDays || 0);
+        const th = (k, label, style) => {
+            const on = sort.k === k;
+            const arrow = on ? (sort.dir > 0 ? ' ▲' : ' ▼') : '';
+            return `<th style="${style || ''} cursor:pointer; user-select:none; white-space:nowrap;${on ? ' color:var(--text-main);' : ''}"
+                        title="Сортировать" onclick="app.setPlansSort('${k}')">${label}<span style="font-size:9px;">${arrow}</span></th>`;
+        };
+        const matchQ = p => {
+            const q = String(this._plansQ || '').trim().toLowerCase();
+            return !q || String(p.owner || '').toLowerCase().includes(q) || String(p.key || '').toLowerCase().startsWith(q);
+        };
+
+        h = h.replace(/<div class="ad-chips">/, `<div class="ad-chips" style="align-items:center; width:100%; justify-content:flex-start;">`);
+        h += `<div style="display:flex; align-items:center; gap:10px; margin:0 0 10px; flex-wrap:wrap;">
+                <input type="search" id="plans_q" value="${esc(this._plansQ || '')}" placeholder="Поиск по монтажнику (почта)…"
+                       oninput="app.setPlansQ(this.value)" style="width:280px; max-width:100%;">
+                <span id="plans_shown" style="font-size:12px; color:var(--text-sec);"></span>
+            </div>
+            <table class="inv-table ad-sticky" style="margin-bottom:30px; width:100%;">
                 <thead><tr>
                     <th style="width:30px;">#</th>
-                    <th style="width:210px;">Монтажник</th>
-                    <th>Этажи</th>
-                    <th style="width:80px; text-align:right;">Размер</th>
-                    <th style="width:150px;">Последняя правка</th>
+                    ${th('owner', 'Монтажник', 'width:260px;')}
+                    ${th('floors', 'Этажи', '')}
+                    ${th('bytes', 'Размер', 'width:90px; text-align:right;')}
+                    ${th('age', 'Последняя правка', 'width:160px;')}
                     <th style="width:70px; text-align:center;">Действия</th>
-                </tr></thead><tbody>`;
+                </tr></thead><tbody id="plans_tbody"></tbody></table>`;
+        root.innerHTML = h;
+        this._plansView = { projects: shownProjects, keep, isViewer, esc, mb, dt, sortVal, sortDir: sort.dir, matchQ };
+        this.renderAdminPlansRows();
+    },
 
-        shownProjects.forEach((p, i) => {
+    setPlansSort: function (k) {
+        const s = this._plansSort || { k: 'age', dir: 1 };
+        this._plansSort = s.k === k ? { k, dir: -s.dir } : { k, dir: k === 'owner' ? 1 : (k === 'age' ? 1 : -1) };
+        this.renderAdminPlansBody();
+    },
+
+    setPlansQ: function (v) {
+        this._plansQ = v;
+        this.renderAdminPlansRows();
+    },
+
+    renderAdminPlansRows: function () {
+        const tb = document.getElementById('plans_tbody');
+        const v = this._plansView;
+        if (!tb || !v) return;
+        const { keep, isViewer, esc, mb, dt, sortVal, sortDir, matchQ } = v;
+        const rows = v.projects.filter(matchQ).sort((a, b) => {
+            const x = sortVal(a), y = sortVal(b);
+            return (x < y ? -1 : x > y ? 1 : 0) * sortDir;
+        });
+        const cnt = document.getElementById('plans_shown');
+        if (cnt) cnt.textContent = rows.length === v.projects.length ? '' : `Показано ${rows.length} из ${v.projects.length}`;
+        let h = '';
+        if (!rows.length) h = `<tr><td colspan="6" style="padding:24px; text-align:center; color:var(--text-sec);">Ничего не найдено.</td></tr>`;
+
+        rows.forEach((p, i) => {
             const old = p.ageDays >= keep - 14;
             const thumbs = (p.files || []).map(f => `
                 <a href="${this.PLANS_ENDPOINT}?k=${p.key}&n=${encodeURIComponent(f.name)}" target="_blank"
                    title="${f.floor} этаж, ${mb(f.bytes)}, ${dt(f.mtime)}"
                    style="display:inline-block; margin:0 6px 4px 0; text-align:center; text-decoration:none;">
                     <img src="${this.PLANS_ENDPOINT}?k=${p.key}&n=${encodeURIComponent(f.name)}"
-                         loading="lazy" style="width:58px; height:44px; object-fit:cover; border-radius:4px; border:1px solid var(--border); background:#fff;">
-                    <div style="font-size:9px; color:var(--text-sec);">${f.floor} эт.</div>
+                         loading="lazy" style="width:96px; height:72px; object-fit:cover; border-radius:4px; border:1px solid var(--border); background:#fff;">
+                    <div style="font-size:10px; color:var(--text-sec);">${f.floor} эт.</div>
                 </a>`).join('');
 
             h += `<tr>
@@ -40827,8 +40881,7 @@ const app = {
             </tr>`;
         });
 
-        h += `</tbody></table>`;
-        root.innerHTML = h;
+        tb.innerHTML = h;
     },
 
     setPlansOld: function (on) {
