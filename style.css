@@ -18009,6 +18009,25 @@ body.theme-yandex #admin_modal_overlay {
     background: var(--primary);
 }
 
+/* «Тарифы»: таблица шире экрана. Окно прокручивается по обеим осям — так горизонтальная
+   полоса всегда на виду (а не в самом низу длинной таблицы), шапка и столбец «Тариф»
+   залипают, а подпись группы строк остаётся у левого края при прокрутке вбок */
+#admin_tariffs_box .tf-wrap {
+    overflow: auto;
+    max-height: calc(100vh - 330px);
+    min-height: 260px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    overscroll-behavior: contain;
+}
+#admin_tariffs_box .tf-table thead tr:first-child th { position: sticky; top: 0; z-index: 3; }
+#admin_tariffs_box .tf-table thead tr:nth-child(2) th { position: sticky; top: 33px; z-index: 3; }
+#admin_tariffs_box .tf-table tr > :first-child.tf-stick { position: sticky; left: 0; z-index: 2; background: var(--bg); box-shadow: 1px 0 0 var(--border); }
+#admin_tariffs_box .tf-table thead tr > :first-child.tf-stick { z-index: 4; background: var(--surface-light); }
+#admin_tariffs_box .tf-table tr.tf-mine > :first-child.tf-stick { background: color-mix(in srgb, var(--primary) 9%, var(--bg)); }
+#admin_tariffs_box .tf-table td.tf-grp > div { position: sticky; left: 12px; width: max-content; max-width: calc(100vw - 160px); }
+
 /* Кнопки-слова в строках «Напоминаний» («Карточка», «Вернуть»): общий стиль .admin-action-btn
    рассчитан на квадрат-иконку 28 px, и подпись вылезала за него и налезала на соседнюю */
 #admin_inactive_root .admin-action-btn {
