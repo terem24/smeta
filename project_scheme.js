@@ -1578,6 +1578,13 @@
         // радиаторной группы и подачи ТП — без обратного клапана на Т11
         // соседний насос гонял бы паразитный поток через контур ТП.
         var gy = 212.5;
+        // Готовая заводская группа — в теплоизоляционном кожухе: пунктирный контур с серой
+        // подложкой вокруг пары стояков (обратка слева, подача справа). Самосборная — без контура.
+        if (cfg.groupsFactory && t.hyd && cfg.groupsFactory[t.hyd] && i > 0 && !t.snow) {
+          var gx0 = tapXs[i - 1] - 3.6, gx1 = x + 3.6, gyT = gy - 4.2, gyB = gy + 27;
+          o.push('<rect x="' + n(gx0) + '" y="' + n(gyT) + '" width="' + n(gx1 - gx0) + '" height="' + n(gyB - gyT) +
+            '" rx="2.2" fill="#8a8a8a" fill-opacity="0.13" stroke="#6b6b6b" stroke-width="0.35" stroke-dasharray="1.6 1.1"/>');
+        }
         o.push(vpipe(x, yStart, gy, t.color, crossFor(yStart)));
         o.push(checkValve(x, gy + 2.5, 'down'));
         o.push(leaderCheck(x, gy + 2.5, tSize));
