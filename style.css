@@ -19979,6 +19979,7 @@ body.theme-shop #hdr_margin_sum { color: var(--primary) !important; }
     background: var(--primary) !important; color: var(--on-primary, #fff) !important;
     font-weight: 600; padding: 5px 14px !important;
 }
+#plan_row_sum:empty { display: none; }
 #plan_row_manual { color: var(--primary) !important; font-size: 12px !important; text-decoration: underline; text-underline-offset: 2px; }
 /* «Параметры объекта»: итог и стрелка вместо переключателя */
 .pg-summary { margin-left: auto; margin-right: 8px; font-size: 11px; font-weight: 500; color: var(--text-sec); white-space: nowrap; }
