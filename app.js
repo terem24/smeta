@@ -56894,7 +56894,7 @@ const app = {
     // дом на температуру после ночного понижения, держать зиму холоднее расчётной
     // и работать с загрязнённым теплообменником. Меньше 1,1 не берут нигде, 1,15 —
     // обычная проектная норма.
-    BOILER_RESERVE_K: 1.15,
+    BOILER_RESERVE_K: 1,
     // Мощность нагрева бойлера, кВт на литр объёма: прогрев с 10 до 60 °C за час,
     // V · 4,187 кДж/(кг·К) · 50 К / 3600 с = V · 0,0582 кВт.
     DHW_TANK_KW_PER_L: 0.0582,
@@ -57072,6 +57072,14 @@ const app = {
               'В проектах на новые утеплённые дома выходит около 67 Вт/м² (кнопка «Тёплый»). Точнее — в режиме расчёта по помещениям';
     },
 
+    // Допуск на недобор: котёл подходит, если закрывает теплопотери и не меньше
+    // 90 % требуемой мощности (когда её определяет прогрев бойлера). Без допуска
+    // дом на 22,4 кВт с запасом 25,8 не принимал Haier 24 кВт и уходил на 32 кВт
+    // или в каскад из двух (решение владельца 10.10.2026).
+    BOILER_UNDERSHOOT_K: 0.9,
+    boilerPowerFloor: function (need) {
+        return Math.max(need.heat || 0, (need.kw || 0) * this.BOILER_UNDERSHOOT_K);
+    },
     boilerTargetPower: function (heatKw) {
         const heat = parseFloat(heatKw) || 0;
         const withReserve = heat * this.BOILER_RESERVE_K;
@@ -57099,9 +57107,10 @@ const app = {
     // Navien, что в таблице замены) и берётся самое дешёвое решение вместе с
     // обвязкой — один котёл на 32 кВт выходит вдвое дешевле двух восемнадцатых.
     // needCirc: 2 — двухконтурный (ГВС проточная), 1 — одноконтурный (ГВС бойлером).
-    pickGasBoiler: function (targetPower, needCirc) {
+    pickGasBoiler: function (targetPower, needCirc, floorPower) {
+        const floor = floorPower > 0 ? Math.min(floorPower, targetPower) : targetPower;
         const haier = catalog.boilers_gas.filter(x => x.circuits === needCirc).sort((a, b) => a.power - b.power);
-        const one = haier.find(x => x.power >= targetPower);
+        const one = haier.find(x => x.power >= floor);
         if (one) return { boiler: one, qty: 1 };
         // Открытая камера сгорания (atmo) в подбор не идёт: обвязка калькулятора
         // считает коаксиальный дымоход 60/100, а такому котлу нужна дымовая труба.
@@ -57112,7 +57121,7 @@ const app = {
             ((a.availability === 'in_stock' ? 0 : 1) - (b.availability === 'in_stock' ? 0 : 1)) * 0.001;
         let best = null, single = null;
         for (let n = 1; n <= 4; n++) {
-            const cand = pool.filter(x => x.power >= targetPower / n).sort(byPrice)[0];
+            const cand = pool.filter(x => x.power >= floor / n).sort(byPrice)[0];
             if (!cand) continue;
             const cost = (cand.price + this.gasRigCost(cand, n > 1)) * n;
             if (n === 1) single = { boiler: cand, cost: cost };
@@ -57129,7 +57138,7 @@ const app = {
         }
         // Не закрыли даже вчетвером — каскад из самых мощных, что есть в каталоге.
         const top = pool.slice().sort((a, b) => (b.power - a.power) || byPrice(a, b))[0];
-        return { boiler: top, qty: Math.max(2, Math.ceil(targetPower / top.power)) };
+        return { boiler: top, qty: Math.max(2, Math.ceil(floor / top.power)) };
     },
     openSwapModal: function (lookupId) {
         if (window.SessionTrack) SessionTrack.screen('catalog');
@@ -75704,8 +75713,8 @@ const app = {
                 let kStr = need ? String(need.k).replace('.', ',') : '';
                 let formulaStr = need
                     ? (need.tankVol > 0
-                        ? `Q_требуемая = max(Q_теплопотери × ${kStr} ; Q_нагрева_бойлера). Теплопотери — ${this.heatLossSourceText()}; коэффициент ${kStr} — запас по практике проектирования: на разогрев после понижения температуры, на зиму холоднее расчётной пятидневки и на загрязнение теплообменника. Мощности не складываются: котёл работает с приоритетом ГВС, на время нагрева бойлера отопление отключается.`
-                        : `Q_требуемая = Q_теплопотери × ${kStr}. Теплопотери — ${this.heatLossSourceText()}; коэффициент ${kStr} — запас по практике проектирования: на разогрев после понижения температуры, на зиму холоднее расчётной пятидневки и на загрязнение теплообменника.`)
+                        ? `Q_требуемая = max(Q_теплопотери ; Q_нагрева_бойлера). Теплопотери — ${this.heatLossSourceText()}. Запас сверх расчёта не закладывается; мощности не складываются: котёл работает с приоритетом ГВС, на время нагрева бойлера отопление отключается.`
+                        : `Q_требуемая = Q_теплопотери. Теплопотери — ${this.heatLossSourceText()}. Запас сверх расчёта не закладывается.`)
                     : `Q_требуемая = Q_теплопотери (${this.heatLossSourceText()}).`;
                 if (qty > 1) {
                     formulaStr += ` При каскаде: N_котлов = ⌈Q_требуемая / ${singlePower} кВт⌉.`;
@@ -75716,7 +75725,7 @@ const app = {
                 // понять, есть ли запас вообще, было не по чему.
                 let needLines = '';
                 if (need) {
-                    needLines += `• Запас на разогрев и отклонение от расчётной пятидневки (×${kStr}): ${need.withReserve.toFixed(1)} кВт.<br>`;
+                    if (need.k && need.k !== 1) needLines += `• Запас на разогрев и отклонение от расчётной пятидневки (×${kStr}): ${need.withReserve.toFixed(1)} кВт.<br>`;
                     if (need.tankVol > 0) {
                         needLines += `• Нагрев бойлера ${need.tankVol} л с 10 до 60 °C за час: ${need.dhwKw.toFixed(1)} кВт.<br>`;
                     }
@@ -78754,7 +78763,8 @@ const app = {
                     let targetPower = _gbNeed.kw;
 
                     // Расчет необходимого количества котлов (каскад)
-                    let qty = Math.ceil(targetPower / 24);
+                    const _gbFloor = this.boilerPowerFloor(_gbNeed);
+                    let qty = Math.ceil(_gbFloor / 24);
                     let powerPerBoiler = targetPower / qty;
 
                     let _gasSwapId = this.state.swaps && this.state.swaps['gas_boiler_auto'];
@@ -78765,7 +78775,7 @@ const app = {
                         // по её мощности, а не по 24 кВт Haier. Иначе дом на 30 кВт с
                         // выбранным котлом на 32 кВт получал два котла по 32.
                         if (gasBoiler && gasBoiler.power > 0) {
-                            qty = Math.max(1, Math.ceil(targetPower / gasBoiler.power));
+                            qty = Math.max(1, Math.ceil(_gbFloor / gasBoiler.power));
                             powerPerBoiler = targetPower / qty;
                         }
                     }
@@ -78775,7 +78785,7 @@ const app = {
                     let _gbBeyondHaier = false;
                     let _gbSingleAlt = null;
                     if (!gasBoiler) {
-                        const _pick = this.pickGasBoiler(targetPower, this.state.hotWater ? 1 : 2);
+                        const _pick = this.pickGasBoiler(targetPower, this.state.hotWater ? 1 : 2, _gbFloor);
                         if (_pick && _pick.boiler) {
                             gasBoiler = _pick.boiler;
                             qty = _pick.qty;
