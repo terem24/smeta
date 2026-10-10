@@ -22312,7 +22312,9 @@ const app = {
             // Только что нажали «Готово» в окне плана — показываем его итог
             // (с петлями и метрами), пока окно не откроют снова
             const done = sum && this._planDoneMsg;
-            sumEl.textContent = done ? 'Готово: ' + this._planDoneMsg : (sum || 'комнаты, тёплый пол и радиаторы — с плана');
+            // Плана нет — строка пустая (скрыта стилем): то, что даёт план, и так
+            // сказано в заголовке и подписи режима, а не в третий раз под кнопкой
+            sumEl.textContent = done ? 'Готово: ' + this._planDoneMsg : (sum || '');
             sumEl.style.color = done ? 'var(--success, #16a34a)' : '';
         }
         // Комнат нет — пустой переключатель «Расчёт по комнатам» прячется (см. syncUI),
@@ -23559,7 +23561,7 @@ const app = {
         try {
             // 1. Fetch Users (Paginated)
             let query = supabaseClient.from('users')
-                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, work_email, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, is_test, frozen_at, sess_visits, sess_sec, sess_days, sess_screens', { count: 'exact' });
+                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, work_email, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, is_test, frozen_at, registered_at, sess_visits, sess_sec, sess_days, sess_screens', { count: 'exact' });
             query = this.buildAdminUserFilter(query);
 
             const sortType = document.getElementById('sort-installers')?.value || 'login_desc';
@@ -26561,7 +26563,20 @@ const app = {
                 if (years > 0 && years < 120) ageStr = years + ' ' + this.plural(years, 'год', 'года', 'лет');
             }
             let activityBadges = (u.activity_types || []).map(a => `<span style="background:var(--primary-light); color:var(--primary); font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-right:3px;">${a}</span>`).join('');
-            let extraHTML = (birthStr || activityBadges) ? `<div style="font-size:10px; color:var(--text-sec); margin-top:2px;">${birthStr ? '🎂 ' + birthStr + (ageStr ? ' · ' + ageStr : '') + ' ' : ''}${activityBadges}</div>` : '';
+            // Где человек остановился при входе: за промокод при закрытой регистрации
+            // (окно «Нужен промокод» не закрыть, поэтому анкета до него не доходит) или за
+            // анкету. Старых учёток без registered_at это не касается.
+            const stuckPromo = !!(u.registered_at && !u.distributor_id && this.inviteOnlyRegistration()
+                && !['admin', 'manager'].includes(u.account_type));
+            const profileMissing = [!u.last_name && 'ФИО', !u.phone && 'телефон', !u.birth_date && 'дата рождения',
+                !u.region && 'регион', !u.city && 'город', !(u.activity_types || []).length && 'сфера деятельности'].filter(Boolean);
+            const stageChip = (txt, tip, col) => `<span title="${tip}" style="cursor:help; background:${col}22; color:${col}; font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-right:3px;">${txt}</span>`;
+            const stageHTML = (stuckPromo
+                ? stageChip('⛔ Не ввёл промокод', 'Вошёл, но калькулятор закрыт окном «Нужен промокод магазина»: промокод не ввёл, анкету не видел', 'var(--c-warn, #D97706)')
+                : '') + (profileMissing.length
+                ? stageChip('📝 Анкета не заполнена', 'Не заполнено: ' + profileMissing.join(', '), 'var(--text-sec, #6B7280)')
+                : '');
+            let extraHTML = (birthStr || activityBadges || stageHTML) ? `<div style="font-size:10px; color:var(--text-sec); margin-top:2px;">${birthStr ? '🎂 ' + birthStr + (ageStr ? ' · ' + ageStr : '') + ' ' : ''}${activityBadges}${stageHTML}</div>` : '';
 
             // Анкета не похожа на настоящую — помечаем строку. Не блокирует ничего:
             // решение по такой учётке принимает человек, см. suspiciousProfileFlags.
@@ -26570,7 +26585,7 @@ const app = {
                 ? `<span title="Сомнительная анкета: ${suspectFlags.join('; ')}" style="cursor:help; margin-right:4px;">⚠️</span>`
                 : '';
 
-            let searchStr = `${name} ${phone} ${u.email || ''} ${cityText} ${ipLoc} ${u.region || ''} ${(u.activity_types || []).join(' ')}${suspectFlags.length ? ' сомнительная анкета' : ''}`.toLowerCase();
+            let searchStr = `${name} ${phone} ${u.email || ''} ${cityText} ${ipLoc} ${u.region || ''} ${(u.activity_types || []).join(' ')}${suspectFlags.length ? ' сомнительная анкета' : ''}${stuckPromo ? ' не ввёл промокод' : ''}${profileMissing.length ? ' анкета не заполнена' : ''}`.toLowerCase();
 
             const distOptions = `<option value="">— Не назначен —</option>` + (this.adminData.distributors || []).map(d => `<option value="${d.id}" ${u.distributor_id === d.id ? 'selected' : ''}>${d.company_name} (${d.promo_code})</option>`).join('');
             // Ширину не ограничиваем: у дистрибьюторов длинные названия,
@@ -46485,31 +46500,16 @@ const app = {
             els.forEach(e => setCls(e, 'pg-collapsed', closed));
             // Переключатели «добавить в смету» — карточками, чтобы отличались от выбора из вариантов
             if (idx === 2) els.forEach(e => { if (e.classList.contains('toggle-item')) setCls(e, 'pg-card', true); });
-            if (idx === 2) {
-                const cnt = document.getElementById('pg_count3');
-                if (cnt) {
-                    const n = vis.filter(e => e.querySelector('input[type="checkbox"]:checked')).length;
-                    const txt = n ? 'включено ' + n : '';
-                    if (cnt.textContent !== txt) cnt.textContent = txt;
-                    const d = n ? '' : 'none';
-                    if (cnt.style.display !== d) cnt.style.display = d;
-                }
-            }
         });
         const byRooms = !!this.state.detailedRooms;
-        const hint = document.getElementById('pg_hint1');
-        if (hint) {
-            const d = empty ? '' : 'none'; if (hint.style.display !== d) hint.style.display = d;
-            const ht = byRooms ? 'Начните с плана дома' : 'Начните с площади';
-            if (hint.textContent !== ht) hint.textContent = ht;
-        }
         // Итог в строке «Параметры объекта»: регион и тип дома по нажатым кнопкам внутри
         const objSum = document.getElementById('obj_params_sum');
         if (objSum) {
             const act = id => { const a = document.querySelector('#' + id + ' .tab.active'); return a ? a.textContent.trim() : ''; };
             // Материал стен есть только у дома; блок свёрнут внутри «Параметров», поэтому
             // смотрим не на его видимость, а на тип объекта
-            const parts = [act('reg_tabs')];
+            // Выбран конкретный город — кнопки региона не нажаты, берём название города
+            const parts = [(this.state.selectedCity && this.state.selectedCity.name) || act('reg_tabs')];
             if (!document.body.classList.contains('object-flat') && !this.state.detailedRooms) parts.push(act('mat_tabs'));
             const st = parts.filter(Boolean).join(' · ');
             if (objSum.textContent !== st) objSum.textContent = st;
@@ -46517,7 +46517,16 @@ const app = {
         // Что даёт выбранный режим — под переключателем «По площади / По комнатам»
         const modeSub = document.getElementById('mode_sub');
         if (modeSub) {
-            const mt = byRooms ? 'Точнее: нужен план дома или список комнат' : 'Оценка за минуту: нужен только метраж';
+            let mt = 'Оценка за минуту, нужен метраж';
+            if (byRooms) {
+                const rooms = this.state.rooms || [];
+                let hasPlan = false;
+                try { hasPlan = !!this.planRowSummary(); } catch (e) { }
+                if (hasPlan) mt = 'Комнаты взяты с плана';
+                else if (rooms.length && this.state.roomsAutoSig && this.state.roomsAutoSig === this._roomsSig(rooms)) mt = 'Комнаты подставлены сами — поправьте';
+                else if (rooms.length) mt = 'Расчёт по вашим комнатам';
+                else mt = 'Точнее: нужен план или комнаты';
+            }
             if (modeSub.textContent !== mt) modeSub.textContent = mt;
         }
         const quick = document.getElementById('pg_quick');
@@ -67960,6 +67969,12 @@ const app = {
 
         generatedRooms.sort((a, b) => b.area - a.area);
         this.state.rooms = generatedRooms;
+        // Отпечаток набора: пока он совпадает с текущими комнатами, они «подставлены сами»
+        // (подпись под переключателем режима); правка комнаты отпечаток ломает
+        this.state.roomsAutoSig = this._roomsSig(generatedRooms);
+    },
+    _roomsSig: function (rooms) {
+        return JSON.stringify((rooms || []).map(r => [r.name, r.area, (r.windows || []).length]));
     },
     /**
      * Подпись места установки прибора в смете и предупреждениях. У помещения без

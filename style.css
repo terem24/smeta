@@ -19943,8 +19943,12 @@ body.theme-shop #hdr_margin_sum { color: var(--primary) !important; }
 .pg-hint { margin-left: 2px; font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-sec); }
 .pg-title { cursor: pointer; user-select: none; }
 .pg-name { margin-right: auto; }
-.pg-title::after { content: '▾'; flex: none; font-size: 10px; letter-spacing: 0; transition: transform .15s ease; }
+/* Стрелка группы видна при наведении и у свёрнутой группы — в покое не шумит */
+.pg-title::after { content: '▾'; flex: none; font-size: 10px; letter-spacing: 0; opacity: 0; transition: transform .15s ease, opacity .15s ease; }
+.pg-title:hover::after, .pg-title:focus-visible::after, .pg-title.pg-closed::after { opacity: 1; }
 .pg-title.pg-closed::after { transform: rotate(-90deg); }
+/* Пояснение под переключателем нужно, пока пункт не включён; у включённого — лишнее */
+.pg-card:has(> .label-row input[type="checkbox"]:checked) > .pg-sub { display: none; }
 .pg-quick, .pg-count {
     font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none;
     padding: 2px 9px; border-radius: 10px;
@@ -19975,6 +19979,7 @@ body.theme-shop #hdr_margin_sum { color: var(--primary) !important; }
     background: var(--primary) !important; color: var(--on-primary, #fff) !important;
     font-weight: 600; padding: 5px 14px !important;
 }
+#plan_row_sum:empty { display: none; }
 #plan_row_manual { color: var(--primary) !important; font-size: 12px !important; text-decoration: underline; text-underline-offset: 2px; }
 /* «Параметры объекта»: итог и стрелка вместо переключателя */
 .pg-summary { margin-left: auto; margin-right: 8px; font-size: 11px; font-weight: 500; color: var(--text-sec); white-space: nowrap; }
