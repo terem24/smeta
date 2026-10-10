@@ -4750,6 +4750,88 @@ body.modal-over-banner .hc-cookie-banner {
     #admin_content h4 { font-size: 14px !important; }
 }
 
+/* Короткий заголовок панели — только для телефона */
+.ad-t-short { display: none; }
+
+/* ── Админка на телефоне, второй проход (10.10.2026) ──
+   Первый проход переделал таблицы и фильтры, но три экрана остались «десктопными»,
+   потому что их размеры заданы inline-стилями: карточка монтажника, «Центр внимания»
+   и шапка панели. Разметка этих блоков получила классы (.ad-ucard, .ad-ustats,
+   .ad-card-idle, .ad-t-short…), правила ниже бьют по ним с !important — иначе
+   inline-стиль не переопределить. */
+@media screen and (max-width: 899.98px) {
+    /* Шапка: «Админка» + роль в одну строку вместо двух */
+    #admin_modal_overlay .auth-modal-title .ad-t-full { display: none; }
+    #admin_modal_overlay .auth-modal-title .ad-t-short { display: inline; margin: 0 !important; }
+    #admin_modal_overlay .auth-modal-title { margin-bottom: 8px !important; }
+
+    /* Строка «‹ Разделы» остаётся на виду при прокрутке раздела */
+    #admin_content .admin-mob-bar {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: var(--surface);
+    }
+
+    /* ── Центр внимания ── */
+    #admin_content .ad-cards { grid-template-columns: minmax(0, 1fr); gap: 8px; margin-bottom: 16px; }
+    #admin_content .ad-card { padding: 10px 12px; gap: 6px; }
+    /* Карточка без дел — строка-ссылка в 46px, и уходит вниз под те, где есть что делать */
+    #admin_content .ad-card-idle {
+        order: 1;
+        flex-direction: row;
+        align-items: center;
+        padding: 0 12px;
+        min-height: 46px;
+        cursor: pointer;
+    }
+    #admin_content .ad-card-idle .ad-card-b,
+    #admin_content .ad-card-idle .ad-card-act { display: none; }
+    #admin_content .ad-card-idle .ad-card-h { flex: 1; min-width: 0; }
+    #admin_content .ad-card-idle .ad-card-title::before { content: '✓ '; color: #10B981; }
+    #admin_content .ad-card-idle::after { content: '›'; font-size: 20px; line-height: 1; color: var(--text-sec); opacity: 0.5; }
+
+    /* ── Карточка монтажника ── */
+    /* Рамка и внутренний отступ 25px давали второй слой полей: текст сидел в колонке
+       шириной в две трети экрана. Рамка остаётся у самой панели. */
+    #admin_content .ad-ucard {
+        padding: 0 !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        margin-bottom: 16px !important;
+    }
+    #admin_content .ad-uhead { flex-wrap: nowrap !important; align-items: flex-start !important; gap: 12px !important; margin-bottom: 12px !important; }
+    #admin_content .ad-uhead > img,
+    #admin_content .ad-uhead > div:first-child:not(.ad-uhead-body) {
+        width: 48px !important;
+        height: 48px !important;
+        flex-shrink: 0;
+        font-size: 24px !important;
+    }
+    #admin_content .ad-uhead-body { flex: 1; width: auto !important; min-width: 0; gap: 6px !important; }
+    #admin_content .ad-uhead h2 { font-size: 16px !important; }
+    #admin_content .user-location-block { text-align: left !important; min-width: 0 !important; font-size: 12px !important; }
+    #admin_content .user-location-block > div { margin-bottom: 0 !important; }
+
+    /* Плитки: выручка во всю ширину, остальные парами; число 16px вместо 20 */
+    #admin_content .ad-ustats { grid-template-columns: 1fr 1fr !important; gap: 8px !important; margin-bottom: 14px !important; }
+    #admin_content .ad-ustats > div { padding: 8px 10px !important; min-width: 0; }
+    #admin_content .ad-ustats > div:first-child,
+    #admin_content .ad-ustats > div:nth-child(even):last-child { grid-column: 1 / -1; }
+    #admin_content .ad-ustats > div > div:first-child { font-size: 10px !important; margin-bottom: 2px !important; }
+    #admin_content .ad-ustats > div > div:nth-child(2) { font-size: 16px !important; line-height: 1.2; }
+
+    /* Тариф и техническая информация */
+    #admin_content .ad-u2col { gap: 14px !important; padding-top: 14px !important; }
+    /* Короткие поля (тип, дата, источник) — по два в ряд; общее правило выше сводит
+       любой grid-template-columns в одну колонку */
+    #admin_content .ad-u2col [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr 1fr !important; }
+    #admin_content .ad-lbl-long { display: none; }
+    #admin_content select { text-overflow: ellipsis; }
+    #admin_content .ad-utech { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr) !important; gap: 6px 10px !important; }
+}
+
 /* Unified Input & Button Height/Radius */
 .auth-input,
 .auth-btn-base {
