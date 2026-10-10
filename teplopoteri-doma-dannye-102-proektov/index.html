@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сколько ватт на м² теряет частный дом: данные 102 проектов отопления</title>
+    <meta name="description" content="Удельные теплопотери частного дома по расчётам 102 рабочих проектов: медиана 67 Вт/м², у половины проектов 58–77. Правило «1 кВт на 10 м²» завышает мощность в полтора раза. Данные, график и методика.">
+    <link rel="canonical" href="https://heatcalc.ru/teplopoteri-doma-dannye-102-proektov/">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <!-- Тот же шрифт, что в калькуляторе. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js?v=1.1" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/teplopoteri-doma-dannye-102-proektov/">
+    <meta property="og:title" content="Сколько ватт на м² теряет частный дом: данные 102 проектов отопления">
+    <meta property="og:description" content="Удельные теплопотери частного дома по расчётам 102 рабочих проектов: медиана 67 Вт/м², у половины проектов 58–77. Правило «1 кВт на 10 м²» завышает мощность в полтора раза. Данные, график и методика.">
+    <meta property="og:image" content="https://heatcalc.ru/img/data/teplopoteri-102-proektov-raspredelenie.png">
+    <meta property="og:image:width" content="1600">
+    <meta property="og:image:height" content="900">
+    <meta property="og:image:alt" content="Гистограмма: удельные теплопотери 102 проектов отопления, Вт на м². Медиана 67, правило «1 кВт на 10 м²» равно 100; 92 из 102 проектов ниже 100.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/data/teplopoteri-102-proektov-raspredelenie.png">
+
+    <!-- Страница с собственными данными: источник цифр для статьи на vc.ru и для ответов нейросетей.
+         Все числа из bench/heat_compare.js (корпус 102 проектов, пересчитано 09.10.2026). Вопросы и ответы
+         ниже обязаны дословно совпадать с разметкой. Названия проектов и бюро не публикуем. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/teplopoteri-doma-dannye-102-proektov/#article",
+      "headline": "Сколько ватт на м² теряет частный дом: данные 102 проектов отопления",
+      "description": "Удельные теплопотери частного дома по расчётам 102 рабочих проектов: медиана 67 Вт/м², у половины проектов 58–77. Правило «1 кВт на 10 м²» завышает мощность в полтора раза. Данные, график и методика.",
+      "inLanguage": "ru-RU",
+      "url": "https://heatcalc.ru/teplopoteri-doma-dannye-102-proektov/",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/teplopoteri-doma-dannye-102-proektov/#webpage"
+      },
+      "datePublished": "2026-10-09",
+      "dateModified": "2026-10-09",
+      "image": [
+        "https://heatcalc.ru/img/data/teplopoteri-102-proektov-raspredelenie.png",
+        "https://heatcalc.ru/img/data/teplopoteri-kvt-po-ploshchadi.png"
+      ],
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "citation": [
+        {
+          "@type": "CreativeWork",
+          "name": "СП 50.13330 «Тепловая защита зданий»"
+        },
+        {
+          "@type": "CreativeWork",
+          "name": "СП 131.13330.2020 «Строительная климатология»"
+        }
+      ]
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/teplopoteri-doma-dannye-102-proektov/#webpage",
+      "url": "https://heatcalc.ru/teplopoteri-doma-dannye-102-proektov/",
+      "name": "Сколько ватт на м² теряет частный дом: данные 102 проектов отопления",
+      "description": "Удельные теплопотери частного дома по расчётам 102 рабочих проектов: медиана 67 Вт/м², у половины проектов 58–77. Правило «1 кВт на 10 м²» завышает мощность в полтора раза. Данные, график и методика.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "datePublished": "2026-10-09",
+      "dateModified": "2026-10-09"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Теплопотери дома: данные 102 проектов",
+          "item": "https://heatcalc.ru/teplopoteri-doma-dannye-102-proektov/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Сколько ватт на квадратный метр теряет частный дом?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "По 102 рабочим проектам отопления частных домов медиана — 67 Вт на м² площади при −26 °C на улице и +22 °C в доме. У половины проектов цифра лежит между 58 и 77 Вт/м², самый «тёплый» дом теряет 33 Вт/м², самый «холодный» 159. Это только отопление, горячая вода не входит."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Правда ли, что на каждые 10 м² дома нужен 1 киловатт?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет, для современного утеплённого дома это завышение примерно в полтора раза. Правило даёт 100 Вт/м², а в проектах у 92 из 102 домов потери меньше 100 Вт/м². Правило подходит как грубая оценка для плохо утеплённого дома, но не для расчёта котла нового дома."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какую мощность отопления брать для дома 150 м²?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "По проектам медиана 10,0 кВт (у половины проектов от 8,7 до 11,6 кВт) при −26 °C, против 15 кВт по правилу «1 кВт на 10 м²». К этому прибавляется горячая вода, а запас над расчётом закладывают по инженерной практике, например коэффициент 1,15. Точную цифру даёт расчёт по ограждениям вашего дома."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Подходят ли эти цифры для Санкт-Петербурга и Москвы?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Данные получены при расчётной температуре около −26 °C, это уровень Москвы. Для Санкт-Петербурга с −24 °C разность температур меньше примерно на 4%, и цифры будут чуть ниже. Для регионов холоднее −26 °C они выше. Расчётную температуру города берут из СП 131.13330.2020."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Откуда взяты данные?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Из рабочих проектов отопления частных домов из открытой профессиональной подборки. Выбраны проекты с листом «Расчёт теплопотерь» по помещениям: 102 проекта и 1449 комнат. По каждому проекту суммарная тепловая нагрузка проектировщика поделена на отапливаемую площадь. Названия проектов и бюро не приводятся."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли по этим данным подобрать котёл?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет, они дают ориентир, а не расчёт. Мощность котла считают по ограждениям конкретного дома: Q = A·ΔT/R для каждой стены, окна, кровли и пола, плюс нагрев приточного воздуха, плюс горячая вода и запас. Медиана по проектам нужна, чтобы проверить, не завышен ли ваш результат."
+          }
+        }
+      ]
+    }
+  ]
+}
+    </script>
+
+    <style>
+        .data-fig { margin: 0 0 26px; }
+        .data-fig img { width: 100%; height: auto; display: block; border-radius: var(--radius); border: 1px solid var(--border); }
+        .data-fig figcaption { font-size: 13px; color: var(--text-sec); margin-top: 8px; line-height: 1.5; }
+    </style>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Теплопотери: данные 102 проектов</nav>
+
+        <h1>Сколько ватт на м² теряет частный дом: данные 102 проектов отопления</h1>
+
+        <p class="art-meta">Обновлено <time datetime="2026-10-09">9 октября 2026</time> · Автор: Дмитрий Ибатуллин, инженер</p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Сколько ватт на квадратный метр теряет частный дом?</p>
+            <p>По расчётам 102 рабочих проектов отопления частных домов медиана удельных теплопотерь — 67 Вт на м² площади при расчётной наружной температуре −26 °C; у половины проектов от 58 до 77 Вт/м². Правило «1 кВт на 10 м²» даёт 100 Вт/м² и завышает мощность примерно в полтора раза: 92 из 102 проектов теряют меньше 100 Вт/м².</p>
+        </div>
+
+        <figure class="data-fig">
+            <img src="/img/data/teplopoteri-102-proektov-raspredelenie.png" width="1600" height="900" alt="Гистограмма: удельные теплопотери 102 проектов отопления, Вт на м². Медиана 67, правило «1 кВт на 10 м²» равно 100; 92 из 102 проектов ниже 100.">
+            <figcaption>Распределение 102 проектов по удельным теплопотерям. Красным выделены проекты, где потери 100 Вт/м² и выше.</figcaption>
+        </figure>
+
+        <h2>Какие данные и как посчитаны</h2>
+
+        <p>Это рабочие проекты отопления частных домов из открытой профессиональной подборки. Выбраны проекты, в которых есть
+            лист «Расчёт теплопотерь» по каждому помещению: 102 проекта и 1449 комнат. По каждому проекту суммарная тепловая
+            нагрузка проектировщика поделена на отапливаемую площадь. Расчётная температура по медиане: на улице −26 °C,
+            в доме +22 °C. Названия проектов и бюро не приводятся.</p>
+
+        <h2>Результат: 67 Вт на м², а не 100</h2>
+
+        <ul>
+            <li>Медиана удельных теплопотерь: <strong>66,8 Вт/м²</strong>.</li>
+            <li>У половины проектов от 57,9 до 77,4 Вт/м².</li>
+            <li>Минимум 32,9, максимум 159,2 Вт/м².</li>
+            <li>Меньше 100 Вт/м² (правило «1 кВт на 10 м²») теряют <strong>92 из 102 проектов</strong>, меньше 80 Вт/м² — 81.</li>
+        </ul>
+
+        <div class="table-scroll">
+            <table>
+                <thead><tr><th>Потери, Вт/м²</th><th>Проектов</th></tr></thead>
+                <tbody>
+                <tr><td>30–40</td><td class="num">2</td></tr>
+                <tr><td>40–50</td><td class="num">12</td></tr>
+                <tr><td>50–60</td><td class="num">17</td></tr>
+                <tr><td>60–70</td><td class="num">32</td></tr>
+                <tr><td>70–80</td><td class="num">18</td></tr>
+                <tr><td>80–90</td><td class="num">9</td></tr>
+                <tr><td>90–100</td><td class="num">2</td></tr>
+                <tr><td>100–110</td><td class="num">5</td></tr>
+                <tr><td>110–120</td><td class="num">2</td></tr>
+                <tr><td>120–130</td><td class="num">2</td></tr>
+                <tr><td>130–140</td><td class="num">0</td></tr>
+                <tr><td>140–150</td><td class="num">0</td></tr>
+                <tr><td>150–160</td><td class="num">1</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>Что это значит для дома 100, 150 и 200 м²</h2>
+
+        <figure class="data-fig">
+            <img src="/img/data/teplopoteri-kvt-po-ploshchadi.png" width="1600" height="900" alt="Столбчатая диаграмма: мощность отопления по правилу и по проектам для домов 100, 150 и 200 м² при −26 °C." loading="lazy">
+            <figcaption>Мощность на отопление при −26 °C, без горячей воды.</figcaption>
+        </figure>
+
+        <div class="table-scroll">
+            <table>
+                <thead><tr><th>Площадь дома</th><th>По правилу 1 кВт на 10 м²</th><th>По проектам (медиана)</th><th>Половина проектов</th></tr></thead>
+                <tbody>
+                <tr><td>100 м²</td><td class="num">10,0 кВт</td><td class="num">6,7 кВт</td><td class="num">5,8–7,7 кВт</td></tr>
+                <tr><td>150 м²</td><td class="num">15,0 кВт</td><td class="num">10,0 кВт</td><td class="num">8,7–11,6 кВт</td></tr>
+                <tr><td>200 м²</td><td class="num">20,0 кВт</td><td class="num">13,4 кВт</td><td class="num">11,6–15,5 кВт</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>Из чего складывается разница</h2>
+
+        <p>Правило не знает, из чего построен дом. Проектировщик считает каждую конструкцию отдельно. Вот сопротивление
+            теплопередаче R (м²·°C/Вт), заложенное в этих проектах:</p>
+
+        <div class="table-scroll">
+            <table>
+                <thead><tr><th>Конструкция</th><th>Строк в расчётах</th><th>R, медиана</th><th>Половина проектов</th></tr></thead>
+                <tbody>
+                <tr><td>Стена</td><td class="num">2 300</td><td class="num">3,69</td><td class="num">2,84–4,61</td></tr>
+                <tr><td>Окно</td><td class="num">1 308</td><td class="num">0,65</td><td class="num">0,65</td></tr>
+                <tr><td>Кровля, перекрытие</td><td class="num">1 003</td><td class="num">5,36</td><td class="num">4,92–6,15</td></tr>
+                <tr><td>Пол</td><td class="num">881</td><td class="num">5,56</td><td class="num">4,98–6,65</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p>Для сравнения: СП 50.13330 для Москвы требует от стены около 3,1. Это современные утеплённые дома. Дом со стеной
+            R около 1,8 потеряет заметно больше.</p>
+
+        <h2>Как мы проверили собственный расчёт</h2>
+
+        <p>Калькулятор HeatCalc прогнан по тем же проектам: геометрия и температуры проектировщика, допущения калькулятора.
+            Формула оказалась верной: при R проектировщика она даёт 97% от его итога. Но когда стена не описана, прежний расчёт
+            брал R = 1,8 вместо 3,7 в проектах, и итог выходил на 24% выше. Теперь по умолчанию берётся норма СП 50.13330
+            для города, и расчёт выше проектировщика примерно на 9% (у половины проектов от −4 до +19%). Подробнее о формуле
+            и разборе комнаты — на странице <a href="/raschet-teplopoter/">расчёт теплопотерь</a>.</p>
+
+        <h2>Чего эти данные не доказывают</h2>
+
+        <ul>
+            <li>Это расчёты проектировщиков, а не измеренное потребление: фактический расход зависит от погоды, режима и жильцов.</li>
+            <li>Выборка — современные утеплённые дома. Старому дому без утепления нужна большая мощность.</li>
+            <li>Горячая вода в цифры не входит, её мощность прибавляется отдельно.</li>
+            <li>Запас над расчётом (например, коэффициент 1,15) — инженерная практика, а не норма.</li>
+        </ul>
+
+        <h2>Частые вопросы</h2>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6"/></svg><span class="faq-q">Сколько ватт на квадратный метр теряет частный дом?</span></summary>
+            <div class="answer">
+                <p>По 102 рабочим проектам отопления частных домов медиана — 67 Вт на м² площади при −26 °C на улице и +22 °C в доме. У половины проектов цифра лежит между 58 и 77 Вт/м², самый «тёплый» дом теряет 33 Вт/м², самый «холодный» 159. Это только отопление, горячая вода не входит.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6"/></svg><span class="faq-q">Правда ли, что на каждые 10 м² дома нужен 1 киловатт?</span></summary>
+            <div class="answer">
+                <p>Нет, для современного утеплённого дома это завышение примерно в полтора раза. Правило даёт 100 Вт/м², а в проектах у 92 из 102 домов потери меньше 100 Вт/м². Правило подходит как грубая оценка для плохо утеплённого дома, но не для расчёта котла нового дома.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6"/></svg><span class="faq-q">Какую мощность отопления брать для дома 150 м²?</span></summary>
+            <div class="answer">
+                <p>По проектам медиана 10,0 кВт (у половины проектов от 8,7 до 11,6 кВт) при −26 °C, против 15 кВт по правилу «1 кВт на 10 м²». К этому прибавляется горячая вода, а запас над расчётом закладывают по инженерной практике, например коэффициент 1,15. Точную цифру даёт расчёт по ограждениям вашего дома.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6"/></svg><span class="faq-q">Подходят ли эти цифры для Санкт-Петербурга и Москвы?</span></summary>
+            <div class="answer">
+                <p>Данные получены при расчётной температуре около −26 °C, это уровень Москвы. Для Санкт-Петербурга с −24 °C разность температур меньше примерно на 4%, и цифры будут чуть ниже. Для регионов холоднее −26 °C они выше. Расчётную температуру города берут из СП 131.13330.2020.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6"/></svg><span class="faq-q">Откуда взяты данные?</span></summary>
+            <div class="answer">
+                <p>Из рабочих проектов отопления частных домов из открытой профессиональной подборки. Выбраны проекты с листом «Расчёт теплопотерь» по помещениям: 102 проекта и 1449 комнат. По каждому проекту суммарная тепловая нагрузка проектировщика поделена на отапливаемую площадь. Названия проектов и бюро не приводятся.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7"/><circle cx="12" cy="17" r=".6"/></svg><span class="faq-q">Можно ли по этим данным подобрать котёл?</span></summary>
+            <div class="answer">
+                <p>Нет, они дают ориентир, а не расчёт. Мощность котла считают по ограждениям конкретного дома: Q = A·ΔT/R для каждой стены, окна, кровли и пола, плюс нагрев приточного воздуха, плюс горячая вода и запас. Медиана по проектам нужна, чтобы проверить, не завышен ли ваш результат.</p>
+            </div>
+        </details>
+
+        <h2>Что дальше</h2>
+        <p>
+            Посчитать мощность для своего дома по ограждениям можно в калькуляторе:
+            <a href="/kalkulyator-dlya-montazhnikov/">как получить доступ и что он считает</a>. Хозяину дома — страница
+            <a href="/dom/">«Сколько стоит отопление под ключ»</a>. Расчётная зима для города — в
+            <a href="/goroda/">списке городов</a>. Этот материал в виде статьи с разбором ошибки калькулятора:
+            <a href="https://vc.ru/story/3186157-oshibki-v-raschete-otopleniya" rel="noopener">на vc.ru</a>.
+        </p>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/goroda/">Все города</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/dogovor-na-montazh-otopleniya/">Договор и акты</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="/privacy-policy.html">Конфиденциальность</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

@@ -369,6 +369,29 @@ const PayReadiness = {
         return `<button type="button" class="admin-btn" onclick="PayReadiness.openOffer('${this.esc(p.id)}')">Предложить</button>${mark}`;
     },
 
+    // Ссылка, по которой сайт сам открывает окно оплаты выбранного тарифа (app.openPayFromUrl)
+    PAY_LINK: 'https://heatcalc.ru/?pay=',
+
+    // Что даёт каждая функция — для человека, а не для таблицы тарифов. Ключи — id функций.
+    OFFER_PERKS: {
+        rommer: 'Товары ROMMER и подбор аналогов — смета подороже или подешевле в один клик',
+        terem: 'Поиск по всему прайсу — любую позицию можно найти и добавить в смету',
+        works: 'Монтажные работы прямо в смете, КП и счёте — клиент видит полную стоимость',
+        analog: 'Вторая смета «Бюджетнее» с пояснением, на чём сэкономили, — удобно показать клиенту',
+        recognize: 'Смета из проекта: загрузите PDF, Excel или фото — калькулятор разберёт сам',
+        design: 'Листы проекта и план этажей — готовые чертежи к смете',
+        money: 'Ваша маржа по каждому разделу сметы — видно, сколько вы зарабатываете',
+        docs: 'Договор подряда, акты и гарантийный талон — одним нажатием',
+        disc1c: 'Скидки клиенту прямо в КП — без ручных пересчётов'
+    },
+
+    plural: function (n, one, few, many) {
+        const a = Math.abs(n) % 100, b = a % 10;
+        if (a > 10 && a < 20) return many;
+        if (b > 1 && b < 5) return few;
+        return b === 1 ? one : many;
+    },
+
     // Текст для человека p. Возвращает { text, missing } — missing: тарифы без ссылки на оплату
     offerText: function (p) {
         const S = (typeof Subscription !== 'undefined') ? Subscription : null;
@@ -377,32 +400,41 @@ const PayReadiness = {
         lines.push(p.first ? 'Здравствуйте, ' + p.first + '!' : 'Здравствуйте!');
         lines.push('');
         const facts = [];
-        if (p.est30 > 0) facts.push('смет за последний месяц — ' + p.est30);
-        if (p.invoices > 0) facts.push('отправленных КП и счетов — ' + p.invoices);
-        lines.push('Это команда HeatCalc.ru.' + (facts.length ? ' Вижу, что вы активно пользуетесь калькулятором (' + facts.join(', ') + ').' : ''));
-        lines.push('Предлагаем подключить тариф «Профи».');
-        lines.push('');
-        if (S) lines.push(S.benefitsText(account));
+        if (p.est30 > 0) facts.push(p.est30 + ' ' + this.plural(p.est30, 'смета', 'сметы', 'смет') + ' за месяц');
+        if (p.invoices > 0) facts.push(p.invoices + ' ' + this.plural(p.invoices, 'КП или счёт', 'КП и счёта', 'КП и счетов') + ' клиентам');
+        lines.push(facts.length
+            ? 'Вы уже собрали в HeatCalc ' + facts.join(' и ') + ' — отлично! Подключите «Профи», чтобы это шло ещё быстрее.'
+            : 'Это команда HeatCalc. Подключите «Профи» — сметы будут собираться ещё быстрее.');
+        // Функции, которые Профи добавляет сверх Базового (по таблице «Тарифы»), — простыми словами
+        const perks = S ? S.benefitRows(account)
+            .filter(r => r.pro !== 'off' && r.base === 'off' && this.OFFER_PERKS[r.f.id])
+            .map(r => this.OFFER_PERKS[r.f.id]) : [];
+        if (perks.length) {
+            lines.push('');
+            lines.push('Что вы получите:');
+            perks.forEach(t => lines.push('✔ ' + t));
+        }
         const missing = [];
         if (S) {
             const plans = S.planList(false).map(pl => S.resolve(pl.id, { region: p.rawRegion })).filter(Boolean);
             if (plans.length) {
                 lines.push('');
-                lines.push('Стоимость и оплата:');
+                lines.push('Оплата — в два нажатия: откройте ссылку, окно оплаты появится прямо в калькуляторе.');
                 plans.forEach(r => {
                     let row = '• ' + r.label + ' — ' + S.fmtRub(r.rub);
                     const pct = r.promo ? r.promoPct : r.termPct;
                     if (r.months > 1) row += ' (' + S.fmtRub(r.perMonth) + ' в месяц' + (pct > 0 ? ', скидка ' + pct + ' %' : '') + ')';
                     else if (pct > 0) row += ' (скидка ' + pct + ' %)';
-                    if (r.promo && r.promo.title) row += ' — акция «' + r.promo.title + '»';
+                    if (r.promo && r.promo.title) row += ', акция «' + r.promo.title + '»';
                     lines.push(row);
-                    if (r.url) lines.push('  Оплатить: ' + r.url); else missing.push(r.label);
+                    lines.push('  ' + this.PAY_LINK + encodeURIComponent(r.id));
+                    if (!r.url) missing.push(r.label);
                 });
                 lines.push('');
-                lines.push('После оплаты нажмите «Я оплатил» в окне тарифа — мы увидим заявку и подключим доступ.');
+                lines.push('После оплаты нажмите в окне «Я оплатил» — подключим доступ.');
             }
         }
-        lines.push('Если есть вопросы, просто ответьте на это сообщение.');
+        lines.push('Вопросы — просто ответьте на это сообщение.');
         return { text: lines.join('\n'), missing: missing };
     },
 
@@ -460,7 +492,8 @@ const PayReadiness = {
     sendOffer: async function () {
         const p = this._offerFor, ta = document.getElementById('pr_offer_text');
         if (!p || !ta || !ta.value.trim()) return;
-        const me = (typeof app !== 'undefined') && app._currentUserRow;
+        // _currentUserRow заполняется только при загрузке своих смет — берём строку так же, как переписка
+        const me = (typeof app !== 'undefined') && (app._meRow || app._currentUserRow || await app.resolveMeRow());
         if (!me || !me.id) { this.offerStatus('Не нашёл вашу учётную запись — скопируйте текст и отправьте вручную.'); return; }
         this.offerStatus('Отправляю…');
         try {

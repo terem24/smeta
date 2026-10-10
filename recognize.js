@@ -3898,6 +3898,7 @@ const RecognizeUI = {
             source: this._fileKind || (this._img ? 'image' : 'text'),
             fileName: this._fileName || null,
             rows: this._rows.length,
+            title: this.cardTitle(),
         });
         this.step(2);
         this.renderReview();
@@ -5103,6 +5104,30 @@ const RecognizeUI = {
         this._analogOn = this._rows.some(r => r._analogBase);
         if (!this._analogOn) this._analogSaved = 0;
         this.renderReview();
+    },
+
+    /**
+     * Короткое имя карточки в планировщике, пока монтажник не назвал объект сам.
+     * Порядок: имя файла без расширения → самый частый раздел документа →
+     * первая строка. «N листов» именем не считаем — по нему не понять, о чём файл.
+     */
+    cardTitle() {
+        const clip = (s, n) => {
+            s = String(s || '').replace(/\s+/g, ' ').trim();
+            return s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s;
+        };
+        const fn = String(this._fileName || '');
+        if (fn && !/^\d+\s+лист/i.test(fn) && !/,\s*\d+\s+файл/i.test(fn)) {
+            const base = fn.replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[_]+/g, ' ').trim();
+            if (base && !/^(img|image|scan|photo|screenshot|снимок|скриншот)[\s\-\d()]*$/i.test(base)) return clip(base, 40);
+        }
+        const rows = this._rows || [];
+        const cnt = {};
+        rows.forEach(r => { const s = r.section && String(r.section).trim(); if (s) cnt[s] = (cnt[s] || 0) + 1; });
+        const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+        if (top) return clip(top, 40);
+        const first = rows.find(r => r.raw || r.name);
+        return first ? clip(first.raw || first.name, 40) : '';
     },
 
     renderReview() {

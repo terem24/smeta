@@ -588,3 +588,21 @@ html.dark-mode .lead-form .lf-status.is-error { color: #F87171; }
     a { color: #000; }
     header.top, footer.bottom { background: none; }
 }
+
+/* Графики в статьях (блок figure в build_article.py): встроенный SVG, цвета берутся
+   из переменных темы, поэтому в тёмной теме график перекрашивается без отдельных правил. */
+.chart {
+    margin: 24px 0;
+    padding: 16px 16px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+html.dark-mode .chart { border-color: #2A2A2A; }
+.chart-svg svg { display: block; width: 100%; height: auto; max-width: 560px; margin: 0 auto; }
+.chart figcaption {
+    margin-top: 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-sec);
+}

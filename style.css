@@ -26,6 +26,12 @@
     --warn-bg: #FEF2F2;
     --warn-text: #991B1B;
     --warn-border: #FCA5A5;
+    /* Цвет ТЕКСТА по смыслу (ошибка / норма / внимание). В app.js вместо жёстких
+       #EF4444 / #10B981 / #D97706: на светлом фоне темнее (контраст ≥ 4,5:1), на тёмном
+       светлее. Внутри всплывающих подсказок (всегда тёмных) — светлые, см. ниже. */
+    --c-bad: #DC2626;
+    --c-ok: #059669;
+    --c-warn: #B45309;
     /* Единый словарь анимаций: длительности и кривые вместо разрозненных чисел по всему файлу */
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
     --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
@@ -46,6 +52,9 @@
 }
 
 body.dark-mode {
+    --c-bad: #F87171;
+    --c-ok: #34D399;
+    --c-warn: #FBBF24;
     --bg: #000000;
     /* Р“Р»СѓР±РѕРєРёР№ РїРѕР»РЅРѕС‡РЅС‹Р№ С„РѕРЅ */
     --surface: #121212;
@@ -668,7 +677,7 @@ input:checked+.slider:before {
 
 .tab.multi-active {
     background: var(--primary);
-    color: #fff;
+    color: var(--on-primary, #fff);
     font-weight: 700;
     box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
 }
@@ -1394,7 +1403,7 @@ body.dark-mode .swap-alt-badge {
 /* Главное действие — ради него смета и считается */
 .footer-btns .btn-primary-action {
     background-color: var(--primary);
-    color: #fff;
+    color: var(--on-primary, #fff);
     border: 1px solid var(--primary);
 }
 
@@ -2454,7 +2463,7 @@ body.menu-open .mobile-menu-backdrop {
 
 .qty-step:hover {
     background: var(--primary);
-    color: #fff;
+    color: var(--on-primary, #fff);
 }
 
 .qty-wrap.qty-open .qty-step {
@@ -2495,8 +2504,8 @@ body.menu-open .mobile-menu-backdrop {
     border-radius: 6px;
     border: 1px solid transparent;
     font-size: 11px;
-    font-weight: 600;
-    line-height: 1.45;
+    font-weight: 500;
+    line-height: 1.4;
     text-transform: none;
     letter-spacing: normal;
     text-align: left;
@@ -2554,7 +2563,7 @@ body.dark-mode .sec-explain {
 /* Заголовок плашки — тем же цветом, только жирнее: цветной текст на цветном
    фоне и так контрастен, второй акцент делает строку пёстрой. */
 .note-box .note-text b {
-    font-weight: 800;
+    font-weight: 700;
 }
 
 .note-box .note-tip {
@@ -2582,6 +2591,49 @@ body.dark-mode .sec-explain {
     color: var(--note-info-text, #1E40AF);
     border-color: var(--note-info-border, #93C5FD);
 }
+
+/* Подряд идущие синие плашки — одна строка «N пояснения», раскрывается по клику */
+.note-fold {
+    margin-top: 5px;
+    width: 100%;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: normal;
+    text-align: left;
+    white-space: normal;
+    cursor: default;
+}
+.note-fold > summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--note-info-border, #93C5FD);
+    background: var(--note-info-bg, #EFF6FF);
+    color: var(--note-info-text, #1E40AF);
+}
+.note-fold > summary::-webkit-details-marker { display: none; }
+.note-fold > summary::after { content: ' ▾'; }
+.note-fold[open] > summary::after { content: ' ▴'; }
+.note-fold > .note-box { margin-top: 4px; }
+
+/* «Понятно» — крестик у синей плашки; в печать и PDF не идёт */
+.note-box .note-ok {
+    flex-shrink: 0;
+    align-self: flex-start;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    opacity: .55;
+    font-size: 14px;
+    line-height: 1;
+    padding: 0 2px;
+    cursor: pointer;
+}
+.note-box .note-ok:hover { opacity: 1; }
+@media print { .note-box .note-ok { display: none !important; } }
+body.html2pdf-printing .note-box .note-ok { display: none !important; }
 
 /* Кружок «i» перекрашиваем под уровень: синий значок на янтарной плашке
    выглядел чужой кнопкой из другого места экрана. */
@@ -3186,7 +3238,7 @@ body.dark-mode .btn-add-zone:hover {
 
 .expand-locs-btn:hover {
     background: var(--primary);
-    color: #ffffff;
+    color: var(--on-primary, #fff);
 }
 
 .expand-locs-btn:active {
@@ -3205,6 +3257,10 @@ body.html2pdf-printing .expand-locs-btn {
 
 
 .tooltip-content {
+    /* подсказка всегда тёмная — цвета смысла в ней светлые в любой теме */
+    --c-bad: #F87171;
+    --c-ok: #34D399;
+    --c-warn: #FBBF24;
     visibility: hidden;
     position: absolute;
     z-index: 9999999 !important;
@@ -3753,7 +3809,7 @@ body.dark-mode .custom-modal {
 
 .custom-modal-btn {
     background: var(--primary);
-    color: #fff;
+    color: var(--on-primary, #fff);
     border: none;
     padding: 12px 20px;
     border-radius: 8px;
@@ -6303,7 +6359,7 @@ body.dark-mode .header-totals-block {
 .currency-toggle-btn.active {
     background: var(--primary);
     border-color: var(--primary);
-    color: #fff;
+    color: var(--on-primary, #fff);
 }
 
 .btn-trial-14 {
@@ -6390,7 +6446,7 @@ body.dark-mode .header-totals-block {
     width: 100%;
     padding: 10px 16px;
     background: var(--primary);
-    color: #fff;
+    color: var(--on-primary, #fff);
     border: none;
     border-radius: 10px;
     font-weight: 700;
@@ -6924,7 +6980,7 @@ body.menu-open .mobile-menu-backdrop {
     .mobile-sidebar #btn_share_trigger {
         background: var(--primary) !important;
         border-color: var(--primary) !important;
-        color: #fff !important;
+        color: var(--on-primary, #fff) !important;
     }
 
     .mobile-sidebar #btn_share_trigger svg {
@@ -7240,7 +7296,7 @@ body.dark-mode .calc-dialog-btn-cancel:hover {
 
 .calc-dialog-btn-confirm {
     background: var(--primary);
-    color: white;
+    color: var(--on-primary, #fff);
 }
 
 .calc-dialog-btn-confirm:hover {
@@ -7775,7 +7831,7 @@ body.dark-mode .calc-toast-close:hover {
     border: none;
     border-radius: 8px;
     background: var(--primary);
-    color: #fff;
+    color: var(--on-primary, #fff);
     font-size: 12px;
     cursor: pointer;
     transition: opacity 0.15s ease;
@@ -8597,7 +8653,7 @@ body.dark-mode .ai-parse-preview-check {
     font-weight: 700;
     cursor: pointer;
     background: var(--primary);
-    color: #fff;
+    color: var(--on-primary, #fff);
     white-space: nowrap;
 }
 
@@ -8835,7 +8891,7 @@ body.dark-mode .cookie-banner {
 
 .cookie-banner-btn {
     background: var(--primary);
-    color: #ffffff;
+    color: var(--on-primary, #fff);
     border: none;
     padding: 8px 18px;
     border-radius: 8px;
@@ -9164,13 +9220,13 @@ body.html2pdf-printing #blk_wall_layers {
 
 .mode-tab.active {
     background: var(--primary);
-    color: #ffffff;
+    color: var(--on-primary, #fff);
     box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
 }
 
 body.dark-mode .mode-tab.active {
     background: var(--primary);
-    color: #ffffff;
+    color: var(--on-primary, #fff);
     box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
 }
 
@@ -9364,13 +9420,13 @@ body.html2pdf-printing #blk_wall_layers {
 
 .mode-tab.active {
     background: var(--primary);
-    color: #ffffff;
+    color: var(--on-primary, #fff);
     box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
 }
 
 body.dark-mode .mode-tab.active {
     background: var(--primary);
-    color: #ffffff;
+    color: var(--on-primary, #fff);
     box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
 }
 
@@ -9605,7 +9661,7 @@ body.dark-mode .to-top-btn:hover {
         width: 38px;
         height: 38px;
         background: var(--primary); /* Яркая контрастная кнопка на мобилке */
-        color: #ffffff;
+        color: var(--on-primary, #fff);
         border: none;
         box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
     }
@@ -9733,6 +9789,8 @@ body.dark-mode .automation-scheme svg {
     border-radius: 8px; cursor: pointer;
 }
 #scheme_zoom_overlay .scheme-zoom-bar button:hover { background: rgba(255, 255, 255, 0.22); }
+#scheme_zoom_overlay .scheme-zoom-count { align-self: center; min-width: 44px; text-align: center; font-size: 13px; font-weight: 700; color: #E2E8F0; }
+@media (max-width: 600px) { #scheme_zoom_overlay .scheme-zoom-bar { flex-wrap: wrap; justify-content: center; gap: 6px; padding: 8px; } }
 #scheme_zoom_overlay .scheme-zoom-canvas {
     flex: 1 1 auto; overflow: auto; padding: 16px;
     cursor: grab; -webkit-overflow-scrolling: touch;
@@ -10979,7 +11037,7 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
 #profile_tab_summary .lk-btn-sm.is-active {
     background: var(--primary);
     border-color: var(--primary);
-    color: #fff;
+    color: var(--on-primary, #fff);
 }
 
 #profile_tab_summary .sm-head {
@@ -11920,7 +11978,7 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
 .grm-lb-tab.active {
     background: var(--primary);
     border-color: var(--primary);
-    color: #fff;
+    color: var(--on-primary, #fff);
 }
 .grm-lb {
     background: var(--surface);
@@ -11943,7 +12001,7 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
 .grm-lb-xp { font-weight: 800; color: var(--primary); font-size: 13px; }
 .grm-you {
     font-size: 10px; font-weight: 700; text-transform: uppercase;
-    background: var(--primary); color: #fff;
+    background: var(--primary); color: var(--on-primary, #fff);
     padding: 1px 6px; border-radius: 999px; margin-left: 4px;
 }
 .grm-lb-top1 { background: linear-gradient(90deg, rgba(250, 204, 21, 0.18), transparent); }
@@ -12082,7 +12140,7 @@ body.dark-mode .grm-prize-note { color: #fbbf24; }
 .grm-guest-btn {
     display: inline-block;
     background: var(--primary);
-    color: #fff;
+    color: var(--on-primary, #fff);
     text-decoration: none;
     font-weight: 700;
     font-size: 14px;
@@ -12206,7 +12264,7 @@ body.rec-sel-mode .inv-table .col-idx {
     border: 0;
     border-radius: 8px;
     background: var(--primary, #0284c7);
-    color: #fff;
+    color: var(--on-primary, #fff);
     font-size: 12.5px;
     font-weight: 700;
     cursor: pointer;
@@ -12774,7 +12832,7 @@ body.dark-mode .rec-nohave { color: #FBBF24; }
 .rec-cmp-switch .rec-btn-g.on {
     background: var(--primary, #0284c7);
     border-color: var(--primary, #0284c7);
-    color: #fff;
+    color: var(--on-primary, #fff);
 }
 
 /* Строка, где цена подобранного расходится с ценой документа в разы.
@@ -12854,7 +12912,7 @@ body.dark-mode .rec-nohave { color: #FBBF24; }
     padding: 1px 7px; border-radius: 999px;
     background: var(--border, #e2e8f0); color: var(--text-main, #0f172a);
 }
-.rec-tab.on em { background: var(--primary, #0284c7); color: #fff; }
+.rec-tab.on em { background: var(--primary, #0284c7); color: var(--on-primary, #fff); }
 .rec-tab i { font-style: normal; font-weight: 500; opacity: .6; font-size: 12px; }
 
 /* Итог по всему КП — одна строка на обеих вкладках. Ради этого ответа чужое
@@ -13177,7 +13235,7 @@ body.dark-mode .rs-scheme { border-color: #334155; }
 }
 .rec-thumb span {
     position: absolute; top: 4px; left: 4px;
-    background: var(--primary, #0284c7); color: #fff;
+    background: var(--primary, #0284c7); color: var(--on-primary, #fff);
     font-size: 11px; font-weight: 700; border-radius: 5px; padding: 1px 6px;
 }
 .rec-thumb-del {
@@ -13440,7 +13498,7 @@ body.dark-mode .rq-cap, body.dark-mode .rq-rl span:first-child, body.dark-mode .
     padding: 6px 10px 5px; border-radius: 14px;
     box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
 }
-.admin-chat-bubble.from-admin { align-self: flex-end; background: var(--primary); color: #fff; }
+.admin-chat-bubble.from-admin { align-self: flex-end; background: var(--primary); color: var(--on-primary, #fff); }
 .admin-chat-bubble.from-user { align-self: flex-start; background: var(--surface); color: var(--text-main); }
 .admin-chat-bubble.tail.from-admin { border-bottom-right-radius: 5px; }
 .admin-chat-bubble.tail.from-user { border-bottom-left-radius: 5px; }
@@ -13531,7 +13589,7 @@ body.dark-mode .rq-cap, body.dark-mode .rq-rl span:first-child, body.dark-mode .
 .admin-chat-send {
     flex-shrink: 0; width: 42px; height: 42px; padding: 0;
     background: var(--primary); border: none; border-radius: 50%;
-    color: #fff; font-size: 16px; cursor: pointer;
+    color: var(--on-primary, #fff); font-size: 16px; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     transition: transform .12s;
 }
@@ -13602,7 +13660,7 @@ body.dark-mode .rq-cap, body.dark-mode .rq-rl span:first-child, body.dark-mode .
     font-size: 12px; font-weight: 700; font-family: inherit;
     cursor: pointer; white-space: nowrap; transition: 0.15s;
 }
-.notif-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.notif-tab.active { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); }
 .notif-tab-badge {
     min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px;
     background: #EF4444; color: #fff; font-size: 9.5px; font-weight: 800;
@@ -14413,7 +14471,7 @@ body.lk-grabbing * {
 .btn-ctrl.is-on:hover {
     border-color: var(--primary);
     background: var(--primary);
-    color: #FFFFFF;
+    color: var(--on-primary, #fff);
 }
 
 .btn-ctrl.is-on:hover {
@@ -14529,6 +14587,16 @@ body.object-flat:not(.calc-detailed) #blk_flat_ufh,
 body.object-flat:not(.calc-detailed) #blk_flat_hot_riser_row,
 body.object-flat:not(.calc-detailed) #blk_water_filter_row,
 body.object-flat:not(.calc-detailed) #blk_water_reducer_row {
+    display: none !important;
+}
+
+/* Быстрый режим (дом и квартира): карточка узла ввода ХВС короче — остаются
+   редуктор, счётчик и защита от протечки. Кран, фильтрация, каркас и подпитка
+   отопления — в подробном; значения в смете не сбрасываются. */
+body:not(.calc-detailed) #blk_outdoor_faucet_row,
+body:not(.calc-detailed) #blk_water_filter_row,
+body:not(.calc-detailed) #blk_water_frame_row,
+body:not(.calc-detailed) #blk_heating_feed_row {
     display: none !important;
 }
 
@@ -15252,7 +15320,7 @@ body.dark-mode .ufh-plan-table tr.pl-hl > td { background: rgba(255, 193, 7, .22
        углами по краям полосы */
     body.theme-shop tr.group-header:not([style]) td {
         background-color: var(--primary);
-        color: #fff;
+        color: var(--on-primary, #fff);
         font-size: 11px;
         padding-top: 9px;
         padding-bottom: 8px;
@@ -15308,7 +15376,7 @@ body.dark-mode .ufh-plan-table tr.pl-hl > td { background: rgba(255, 193, 7, .22
     body.theme-shop .quick-start-cta {
         background-color: var(--primary);
         border-color: var(--primary);
-        color: #fff;
+        color: var(--on-primary, #fff);
     }
 
     body.theme-shop .footer-btns .btn-primary-action:hover,
@@ -15442,7 +15510,7 @@ body.dark-mode .ufh-plan-table tr.pl-hl > td { background: rgba(255, 193, 7, .22
 
     body.theme-shop .lk-rail-item.active {
         background: var(--primary);
-        color: #fff;
+        color: var(--on-primary, #fff);
     }
 
     body.theme-shop .lk-rail-item.active svg {
@@ -15517,7 +15585,7 @@ body.dark-mode .ufh-plan-table tr.pl-hl > td { background: rgba(255, 193, 7, .22
     body.theme-shop .calc-dialog-btn-confirm,
     body.theme-shop .btn-email-submit {
         background: var(--primary);
-        color: #fff;
+        color: var(--on-primary, #fff);
         border-radius: 10px;
         font-weight: 600;
         font-size: 12px;
@@ -15589,7 +15657,7 @@ body.dark-mode .ufh-plan-table tr.pl-hl > td { background: rgba(255, 193, 7, .22
 
     body.theme-shop .admin-action-btn.btn-msg:hover {
         background: var(--primary);
-        color: #fff;
+        color: var(--on-primary, #fff);
     }
 
     body.theme-shop .admin-action-btn.btn-del {
@@ -15916,6 +15984,7 @@ body.dark-mode .ufh-plan-table tr.pl-hl > td { background: rgba(255, 193, 7, .22
            Панели темнее обычной ночной темы (#0D0D0D / #171717 вместо
            #121212 / #1E1E1E) — по той же просьбе. */
         --primary: #E4E4E7;
+        --on-primary: #111; /* текст на заливке --primary: она светлая, белый не виден */
         --primary-light: #232326;
         --bg: #000000;
         --surface: #0D0D0D;
@@ -16008,6 +16077,7 @@ body.dark-mode .ufh-plan-table tr.pl-hl > td { background: rgba(255, 193, 7, .22
            и у суммы оборудования в шапке. Розовые оттенки (#C4343D / #E0505A)
            отвергнуты ещё раньше. */
         --primary: #E4E4E7;
+        --on-primary: #111;
         --primary-light: #232326;
         --bg: #000000;
         --surface: #0D0D0D;
@@ -16485,6 +16555,7 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
        радиус 100 px; значки 24 px толщиной ~1.5 px. */
     body.theme-yandex.dark-mode {
         --primary: #FFFFFF;
+        --on-primary: #111;
         --primary-light: #2E2E30;
         --bg: #18181A;
         --surface: #1F1F21;
@@ -16508,7 +16579,7 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
            владелец 24.09.2026 отверг: «режут глаз», чёрные заменил на серые по
            образцу); --primary остаётся белым для текстовых акцентов. Заливки
            переводит на --ya-fill список в конце блока. */
-        --ya-fill: #747476; /* белый 40 % на #18181A — активная плашка ya.ru ночью */
+        --ya-fill: #5E5E61; /* темнее прежних #747476: белый текст на них давал ~4,6:1 и плохо читался (09.10.2026, ~6,5:1) */
         --ya-on-primary: #FFFFFF;
         --ya-shadow: none;
         --bg-sec: #2E2E30;
@@ -17165,6 +17236,7 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
     body.theme-yandex.dark-mode #swap_modal_body .swap-tab.active,
     body.theme-yandex.dark-mode .cw-xp-block.filled,
     body.theme-yandex.dark-mode .tour-btn:not(.tour-btn-ghost),
+    body.theme-yandex.dark-mode .save-remind-ok,
     body.theme-yandex.dark-mode [style*="background:var(--primary)"],
     body.theme-yandex.dark-mode [style*="background: var(--primary)"],
     body.theme-yandex.dark-mode [style*="background-color:var(--primary)"],
@@ -17191,6 +17263,7 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
        белыми — как текстовые акценты темы. */
     body.theme-yandex.dark-mode .tour-anim {
         --primary: var(--ya-fill);
+        --on-primary: #fff;
     }
 
     body.theme-yandex.dark-mode .admin-chat-item.active .admin-chat-badge {
@@ -17219,15 +17292,24 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
 }
 /* Конечного кадра нет намеренно: к концу анимации фон возвращается к своему
    обычному значению (у распознанных строк и подразделов он свой). */
+/* Цвет вспышки — акцент темы, а не зелёный (владелец 10.10.2026). Там, где --primary светлый
+   (ночные STOUT, ROMMER, «Профи»), берём тёмный фирменный оттенок темы. */
+:root {
+    --row-flash: color-mix(in srgb, var(--primary) 24%, transparent);
+    --row-flash-line: color-mix(in srgb, var(--primary) 80%, transparent);
+}
+body.brand-stout.dark-mode { --row-flash: rgba(74, 124, 194, 0.32); --row-flash-line: rgba(74, 124, 194, 0.9); }
+body.brand-rommer.dark-mode { --row-flash: rgba(169, 32, 40, 0.36); --row-flash-line: rgba(169, 32, 40, 0.95); }
+body.theme-yandex.dark-mode { --row-flash: rgba(255, 255, 255, 0.10); --row-flash-line: rgba(255, 255, 255, 0.5); }
 @keyframes rowJustAdded {
-    0%, 40% { background-color: rgba(34, 197, 94, 0.28); }
+    0%, 40% { background-color: var(--row-flash); }
 }
 .inv-table tr.row-sec.row-just-added td {
     animation: secJustAdded 7.8s ease-out;
     animation-delay: var(--flash-delay, 0ms);
 }
 @keyframes secJustAdded {
-    0%, 40% { box-shadow: inset 0 0 0 2px rgba(34, 197, 94, 0.9); background-color: rgba(34, 197, 94, 0.28); }
+    0%, 40% { box-shadow: inset 0 0 0 2px var(--row-flash-line); background-color: var(--row-flash); }
 }
 /* Распорка внизу колонки параметров: даёт прокрутить колонку так, чтобы
    нажатый переключатель остался на месте, когда блоки под ним скрылись
@@ -17382,14 +17464,20 @@ body.dark-mode .hc-export-doc::after {
 
     #profile_modal_overlay .auth-modal-content {
         position: fixed !important;
-        top: 0 !important;
+        top: var(--vv-top, 0px) !important;
         left: 0 !important;
         right: 0 !important;
-        bottom: 0 !important;
+        bottom: auto !important;
         width: 100% !important;
         max-width: 100% !important;
-        height: 100% !important;
-        max-height: 100% !important;
+        /* Высота — видимая часть экрана, а не 100%/100vh: на iPhone они включают область
+           под нижней панелью Safari, и кнопка «Сохранить» уезжала под неё. --vv-h пишет
+           скрипт в index.html из visualViewport (он же учитывает клавиатуру); dvh — запасной
+           вариант, если скрипт не отработал. */
+        height: 100vh !important;
+        height: 100dvh !important;
+        height: var(--vv-h, 100dvh) !important;
+        max-height: none !important;
         margin: 0 !important;
         border-radius: 0 !important;
         transform: none !important;
@@ -17784,6 +17872,25 @@ body.theme-yandex #admin_modal_overlay {
 #admin_content table.ad-dense .ad-name-full { display: none; }
 #admin_content table.ad-dense .ad-name-short { display: inline; }
 #admin_content table.ad-dense td img { width: 24px !important; height: 24px !important; }
+/* Телефон, «Компактно»: карточка монтажника ужимается. Подписи столбцов убраны
+   у ячеек, чей смысл ясен из значения (имя, сумма, тариф, дистрибьютор, вход);
+   у переключателей доступа подписи остаются, но все три встают в один ряд. */
+@media screen and (max-width: 899.98px) {
+    #admin_content table.ad-dense tr { padding: 2px 10px !important; margin-bottom: 6px !important; }
+    #admin_content table.ad-dense td { padding-top: 2px !important; padding-bottom: 2px !important; }
+    #admin_content table.ad-dense td + td { border-top: none !important; }
+    #admin_content table.ad-dense td::before { margin-bottom: 1px; font-size: 9px; }
+    #admin_content table.ad-dense td[data-l="Имя / Контакты"]::before,
+    #admin_content table.ad-dense td[data-l^="Статистика"]::before,
+    #admin_content table.ad-dense td[data-l^="Тариф"]::before,
+    #admin_content table.ad-dense td[data-l="Дистрибьютор"]::before,
+    #admin_content table.ad-dense td[data-l="Вход"]::before,
+    #admin_content table.ad-dense td[data-l="Действия"]::before { content: none; }
+    #admin_content table.ad-dense td.admin-cell-half { width: 50% !important; }
+    #admin_content table.ad-dense td.admin-cell-half:nth-last-child(n+3):nth-last-child(-n+5) { width: 33.33% !important; padding-left: 4px !important; padding-right: 4px !important; }
+    #admin_content table.ad-dense select { padding: 2px 4px !important; }
+    #admin_content table.ad-dense .admin-action-btn { height: 28px !important; padding: 0 8px !important; font-size: 11px; }
+}
 #ad_peek {
     position: absolute;
     top: 0;
@@ -17809,7 +17916,7 @@ body.theme-yandex #admin_modal_overlay {
 .ad-kv span { color: var(--text-sec); flex: 0 0 auto; }
 .ad-kv b { font-weight: 600; color: var(--text-main); text-align: right; word-break: break-word; }
 .ad-peek-f { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--ad-line); }
-.ad-peek-main { background: var(--primary) !important; color: #fff !important; border-color: var(--primary) !important; }
+.ad-peek-main { background: var(--primary) !important; color: var(--on-primary, #fff) !important; border-color: var(--primary) !important; }
 @media screen and (max-width: 768px) {
     .ad-filters { grid-template-columns: 1fr 1fr; }
     #ad_peek { width: 100%; border-radius: 0; }
@@ -17911,6 +18018,25 @@ body.theme-yandex #admin_modal_overlay {
     background: var(--primary);
 }
 
+/* «Тарифы»: таблица шире экрана. Окно прокручивается по обеим осям — так горизонтальная
+   полоса всегда на виду (а не в самом низу длинной таблицы), шапка и столбец «Тариф»
+   залипают, а подпись группы строк остаётся у левого края при прокрутке вбок */
+#admin_tariffs_box .tf-wrap {
+    overflow: auto;
+    max-height: calc(100vh - 330px);
+    min-height: 260px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+    overscroll-behavior: contain;
+}
+#admin_tariffs_box .tf-table thead tr:first-child th { position: sticky; top: 0; z-index: 3; }
+#admin_tariffs_box .tf-table thead tr:nth-child(2) th { position: sticky; top: 33px; z-index: 3; }
+#admin_tariffs_box .tf-table tr > :first-child.tf-stick { position: sticky; left: 0; z-index: 2; background: var(--bg); box-shadow: 1px 0 0 var(--border); }
+#admin_tariffs_box .tf-table thead tr > :first-child.tf-stick { z-index: 4; background: var(--surface-light); }
+#admin_tariffs_box .tf-table tr.tf-mine > :first-child.tf-stick { background: color-mix(in srgb, var(--primary) 9%, var(--bg)); }
+#admin_tariffs_box .tf-table td.tf-grp > div { position: sticky; left: 12px; width: max-content; max-width: calc(100vw - 160px); }
+
 /* Кнопки-слова в строках «Напоминаний» («Карточка», «Вернуть»): общий стиль .admin-action-btn
    рассчитан на квадрат-иконку 28 px, и подпись вылезала за него и налезала на соседнюю */
 #admin_inactive_root .admin-action-btn {
@@ -17935,9 +18061,9 @@ body.theme-yandex #admin_modal_overlay {
 #admin_content .admin-btn.ad-primary:not([style*="background"]) {
     background: var(--primary);
     border-color: var(--primary);
-    color: #fff;
+    color: var(--on-primary, #fff);
 }
-#admin_content .admin-btn.ad-primary:not([style*="background"]):hover:not(:disabled) { filter: brightness(0.92); background: var(--primary); color: #fff; border-color: var(--primary); }
+#admin_content .admin-btn.ad-primary:not([style*="background"]):hover:not(:disabled) { filter: brightness(0.92); background: var(--primary); color: var(--on-primary, #fff); border-color: var(--primary); }
 @media screen and (min-width: 1025px) {
     #admin_content .admin-stat-grid.stat-5 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
 }
@@ -18368,7 +18494,7 @@ body.dark-mode #admin_content .btn-icon {
 #btn_ui_scale .ui-scale-badge {
     position: absolute; right: -2px; bottom: -2px;
     min-width: 14px; padding: 0 3px; border-radius: 7px;
-    background: var(--primary, #2563EB); color: #fff;
+    background: var(--primary, #2563EB); color: var(--on-primary, #fff);
     font-size: 9px; font-weight: 700; line-height: 14px; text-align: center;
     pointer-events: none;
 }
@@ -18393,7 +18519,7 @@ body.dark-mode #admin_content .btn-icon {
     background: transparent; color: inherit; border: 1px solid var(--border, #e5e7eb);
 }
 .ui-scale-step:hover:not(:disabled) { border-color: var(--primary, #2563EB); }
-.ui-scale-step.on { background: var(--primary, #2563EB); border-color: var(--primary, #2563EB); color: #fff; }
+.ui-scale-step.on { background: var(--primary, #2563EB); border-color: var(--primary, #2563EB); color: var(--on-primary, #fff); }
 .ui-scale-step:disabled { opacity: 0.35; cursor: not-allowed; }
 .ui-scale-note { font-size: 11.5px; opacity: 0.7; margin-top: 6px; }
 .ui-scale-row {
@@ -18416,7 +18542,7 @@ body.dark-mode #admin_content .btn-icon {
     display: inline-flex; align-items: center; justify-content: center; gap: 10px;
     margin-top: 16px; padding: 14px 28px; border-radius: 12px; cursor: pointer;
     font: inherit; font-size: 15px; font-weight: 700;
-    background: var(--primary); color: #fff; border: 1px solid var(--primary);
+    background: var(--primary); color: var(--on-primary, #fff); border: 1px solid var(--primary);
     box-shadow: 0 6px 16px color-mix(in srgb, var(--primary) 30%, transparent);
     transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
@@ -18819,6 +18945,8 @@ body.theme-yandex #profile_modal_overlay {
 /* Содержимое не растягивается на весь широкий экран: строки на 1700 px читаются хуже, а поля
    ввода оказываются далеко от подписей */
 #profile_modal_overlay .lk-pane > div[id^="profile_tab_"] { max-width: 1240px; }
+/* «Объекты»: в таблице смет шесть кнопок в ряду — на 1240 px она сжималась в половину широкого экрана */
+#profile_modal_overlay .lk-pane > #profile_tab_objects { max-width: 1760px; }
 
 /* Шапка раздела: пояснение слева, кнопки справа */
 #profile_modal_overlay .lk-pane .lk-head-hint {
@@ -19049,7 +19177,7 @@ body.theme-yandex #profile_modal_overlay {
     cursor: pointer;
 }
 .lk-btn:hover { background: var(--primary-light); border-color: transparent; color: var(--primary); }
-.lk-btn-primary, .lk-btn-primary:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
+.lk-btn-primary, .lk-btn-primary:hover { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); }
 .lk-btn-primary:hover { filter: brightness(0.94); }
 #profile_modal_overlay .lk-pane .lk-btn-yandex,
 #profile_modal_overlay .lk-pane .lk-btn-yandex:hover { background: #FC3F1D; border-color: #FC3F1D; color: #fff; }
@@ -19145,7 +19273,7 @@ body.theme-yandex #profile_modal_overlay {
         z-index: 3;
         background: var(--surface);
         margin-top: auto;
-        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+        padding: 12px 0 calc(14px + env(safe-area-inset-bottom, 0px));
     }
     body.dark-mode #profile_modal_overlay .lk-footer { background: #1E1E1E; }
 }
@@ -19191,6 +19319,15 @@ body.theme-yandex #profile_modal_overlay {
         display: block !important;
         width: 100% !important;
         grid-area: auto !important;
+    }
+
+    /* Окно замены: колонка процента фиксированной ширины, иначе цена (она под процентом, в средней колонке)
+       встаёт на разный край у строк с «-35%», «0%» и «+120%» */
+    body:not(.hide-images-mode):not(.work-mode) #swap_modal_overlay .inv-table:not(.swap-two) tbody tr:not(.swap-sub-head):not(.row-sec):not(.group-header):not(.scheme-row) {
+        grid-template-columns: 64px minmax(0, 1fr) 58px !important;
+    }
+    body:not(.hide-images-mode):not(.work-mode) #swap_modal_overlay .inv-table:not(.swap-two) tbody tr:not(.swap-sub-head):not(.row-sec):not(.group-header):not(.scheme-row) td[style*="nowrap"] {
+        grid-column: 2 / 4;
     }
 
     /* «Сметы» кабинета: общие правила карточек таблицы сметы (сумма поверх названия, статус
@@ -19469,7 +19606,7 @@ button.lk-icon-btn:hover { background: var(--primary-light); color: var(--primar
         box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);
     }
     body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .tab.tab-cheaper:hover { color: var(--primary); filter: brightness(0.97); }
-    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .tab.tab-cheaper.active { background: var(--primary); color: #fff; box-shadow: none; }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .tab.tab-cheaper.active { background: var(--primary); color: var(--on-primary, #fff); box-shadow: none; }
 
     /* Строка параметров: значения тёмные, а не синие (синее читалось как ссылки) */
     body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .doc-summary b { color: var(--text-main); }
@@ -19549,7 +19686,7 @@ button.lk-icon-btn:hover { background: var(--primary-light); color: var(--primar
 .save-remind-field input { width: 100%; box-sizing: border-box; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-light); color: var(--text-main); font-size: 16px; outline: none; transition: border-color .15s, box-shadow .15s; }
 .save-remind-field input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18); }
 body.dark-mode .save-remind-field input { background: #121212; border-color: #4B5563; }
-.save-remind-ok { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--primary); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; transition: background .15s, transform .1s; }
+.save-remind-ok { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--primary); color: var(--on-primary, #fff); font-size: 15px; font-weight: 700; cursor: pointer; transition: background .15s, transform .1s; }
 .save-remind-ok:hover { background: #2563EB; }
 .save-remind-ok:active { transform: scale(0.98); }
 .save-remind-ok:disabled { opacity: .7; cursor: default; }
@@ -19646,7 +19783,7 @@ body.dark-mode .save-remind-field input { background: #121212; border-color: #4B
 .mb-seg button { flex: 1 1 auto; white-space: normal; padding: 5px 11px; font-size: 12px; font-weight: 600; background: transparent; border: 0; border-right: 1px solid var(--ad-line); color: var(--text-sec); cursor: pointer; font-family: inherit; }
 .mb-seg button:last-child { border-right: 0; }
 .mb-seg button:hover:not(:disabled):not(.on) { color: var(--text-main); background: var(--primary-light); }
-.mb-seg button.on { background: var(--primary); color: #fff; }
+.mb-seg button.on { background: var(--primary); color: var(--on-primary, #fff); }
 .mb-seg button.on.bad { background: #EF4444; }
 .mb-seg button.on.good { background: #10B981; }
 .mb-seg button:disabled { opacity: 0.55; cursor: default; }
@@ -19678,3 +19815,226 @@ body.dark-mode .save-remind-field input { background: #121212; border-color: #4B
     .mb-log { grid-template-columns: 1fr 1fr; }
     .mb-log > span:nth-child(3) { grid-column: 1 / -1; white-space: normal; }
 }
+
+/* Сверка схемы самосборной группы со сметой: рамки подписей поверх листа и подсветка строк (app.sgInit). */
+.sg-hot { fill: transparent; stroke: none; pointer-events: none; }
+.sg-hot.sg-miss { stroke: #ef4444; stroke-width: 2px; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; fill: rgba(239, 68, 68, 0.10); }
+.sg-hot.sg-hl { fill: rgba(37, 99, 235, 0.28); stroke: #2563eb; stroke-width: 2px; stroke-dasharray: none; vector-effect: non-scaling-stroke; }
+/* Зона наведения: подписи на листе мелкие, поэтому зона шире рамки подписи, но не заходит на соседние подписи. */
+.sg-hit { fill: transparent; stroke: none; pointer-events: all; cursor: pointer; }
+.sg-pt { display: none; fill: rgba(37, 99, 235, 0.35); stroke: #2563eb; stroke-width: 2px; vector-effect: non-scaling-stroke; pointer-events: none; }
+.sg-pt.sg-hl { display: block; }
+/* Листы насосных групп — крупнее общей рамки схем: на них мелкие подписи, а их надо читать и наводить мышью. */
+[id^="pump_group_scheme_row_"] .automation-scheme { width: 100%; max-width: 1040px; height: auto; }
+[id^="pump_group_scheme_row_"] .automation-scheme > svg { height: auto; }
+#print-area tr.sg-row-hl td { background: rgba(37, 99, 235, 0.20) !important; box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.55); }
+#print-area tr.sg-row-flash td { animation: sg-flash 1.8s ease-out; }
+@keyframes sg-flash { 0%, 40% { background: rgba(250, 204, 21, 0.55); } 100% { background: transparent; } }
+.sg-summary { font-size: 12px; line-height: 1.5; padding: 6px 10px; margin: 6px 0 2px; border-radius: 8px; background: var(--surface-light, rgba(127,127,127,.08)); }
+.sg-miss-txt { color: #ef4444; font-weight: 600; }
+.sg-ok-txt { color: #16a34a; font-weight: 600; }
+.sg-hint { color: var(--text-sec, #6b7280); }
+
+#sg-tip { display: none; position: fixed; z-index: 99999; max-width: 420px; padding: 8px 10px; border-radius: 8px; font-size: 12px; line-height: 1.4;
+    background: var(--surface, #fff); color: var(--text-main, #111827); border: 1px solid var(--primary, #2563eb); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); pointer-events: none; }
+#sg-tip .sg-tip-h { font-weight: 700; margin-bottom: 4px; }
+#sg-tip .sg-tip-row { margin-top: 2px; }
+#sg-tip .sg-tip-row span { color: var(--text-sec, #6b7280); white-space: nowrap; }
+#sg-tip .sg-tip-miss { color: #ef4444; font-weight: 600; }
+
+/* Строка с плашкой под заголовком подраздела (group-warn-row) на телефоне: мобильная карточка товара раскладывала её в сетку
+   «картинка | название | количество», и плашка сжималась в колонку шириной ~60 px. Как у строки со схемой — одним блоком на всю ширину. */
+@media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    /* Селектор не короче мобильной карточки товара (там девять :not) и на один класс специфичнее — иначе карточка перебивает. */
+    .inv-table tr.group-warn-row:not(.row-sec):not(.group-header):not(.row-subtotal):not(.empty-state-row):not(.hide-custom-work-btn):not(.hide-custom-eq-btn):not(.scheme-row) { display: block !important; }
+    .inv-table tr.group-warn-row:not(.row-sec):not(.group-header):not(.row-subtotal):not(.empty-state-row):not(.hide-custom-work-btn):not(.hide-custom-eq-btn):not(.scheme-row) > td { display: block !important; width: 100% !important; padding: 2px 0 8px !important; grid-column: 1 / -1 !important; }
+}
+
+/* Телефон: подписи на листе в смете мельче пальца (6–7 px), касание схемы должно её увеличивать, а не уводить к чужой строке.
+   Зоны подписей в смете на сенсорных экранах отключены; в полноэкранном просмотре (там лист увеличен) они работают. */
+@media (hover: none), screen and (max-width: 768px) {
+    .automation-scheme .sg-hit { pointer-events: none; }
+    #scheme_zoom_overlay .sg-hit { pointer-events: all; }
+}
+
+/* Поиск по кабинету не показываем, пока анкета не заполнена и не сохранена (app.cabinetSearchAllowed) */
+body.profile-incomplete-lock #lk_search_btn,
+body.profile-incomplete-lock #lk_search,
+body.profile-incomplete-lock .lk-rail-item:not([data-rail]):not(.lk-rail-logout) { display: none !important; }
+
+#profile_modal_overlay .auth-input[readonly] { opacity: .7; cursor: default; }
+
+/* Итоги в шапке в темах «Профи», бренда и магазина: без «светофора» (синий/красный/зелёный).
+   Оборудование и монтаж — обычный цвет текста темы, «Мне» — акцент темы. */
+body.theme-yandex #anim_eq_sum,
+body.theme-yandex #anim_works_sum,
+body.theme-yandex .m-total-eq span,
+body.theme-yandex .m-total-work span,
+body.theme-brand #anim_eq_sum,
+body.theme-brand #anim_works_sum,
+body.theme-brand .m-total-eq span,
+body.theme-brand .m-total-work span,
+body.theme-shop #anim_eq_sum,
+body.theme-shop #anim_works_sum,
+body.theme-shop .m-total-eq span,
+body.theme-shop .m-total-work span { color: var(--text-main) !important; }
+body.theme-yandex #hdr_margin_sum,
+body.theme-brand #hdr_margin_sum,
+body.theme-shop #hdr_margin_sum { color: var(--primary) !important; }
+
+/* Отметка «38%» на полосе шапки висела под ней и ложилась на строку «№ КП / Объект /
+   Теплопотери». С мышью показываем её только при наведении на полосу (цифра и так в
+   подсказке, а длина заливки видна сразу); на сенсорных экранах — как было. */
+@media (hover: hover) and (pointer: fine) {
+    .header-fill-bar-marker {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity .15s ease;
+    }
+    .header-fill-bar:hover .header-fill-bar-marker { opacity: 1; }
+    /* Зона наведения шире самой полосы (3 px): уходит вниз, на кнопки шапки не заходит */
+    .header-fill-bar::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 100%;
+        height: 8px;
+    }
+}
+
+/* Меню «Вид» над сметой: Артикулы / Группировать / Картинки. Панель выпадает под кнопкой.
+   Весь .sku-control на телефоне переезжает в боковое меню — там панель раскрыта сразу. */
+.view-menu { position: relative; display: flex; align-items: center; }
+.view-menu-btn {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 8px; border-radius: 8px; cursor: pointer;
+    background: transparent; border: 1px solid var(--border); color: var(--text-sec);
+    font: inherit;
+}
+.view-menu-btn:hover, .view-menu.open .view-menu-btn { border-color: var(--primary); color: var(--text-main); }
+.view-menu-btn .sku-label { margin: 0 !important; }
+.view-menu-caret { font-size: 10px; line-height: 1; transition: transform .15s ease; }
+.view-menu.open .view-menu-caret { transform: rotate(180deg); }
+.view-menu-panel {
+    display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 60;
+    flex-direction: column; gap: 10px; min-width: 190px; padding: 12px 14px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.view-menu.open .view-menu-panel { display: flex; }
+.view-menu-panel .sku-toggle-group { justify-content: space-between; gap: 16px; }
+.view-menu-panel .sku-label { text-transform: none; font-size: 12px; color: var(--text-main); }
+.mobile-sidebar .view-menu-btn { display: none; }
+.mobile-sidebar .view-menu,
+.mobile-sidebar .view-menu-panel { display: contents; }
+@media print { .view-menu { display: none !important; } }
+
+/* Заголовки групп колонки параметров: «1 Дом», «2 Отопление и котельная», «3 Добавить в
+   смету» (app.syncPanelGroups). Компактные — колонка сама подгоняется под высоту экрана. */
+.pg-title {
+    display: flex; align-items: center; gap: 7px;
+    margin: 14px 0 6px; padding-top: 10px;
+    border-top: 1px solid var(--border);
+    font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-sec);
+}
+.pg-title:first-child, .input-panel-grip + .pg-title { margin-top: 0; padding-top: 0; border-top: 0; }
+.pg-num {
+    flex: none; width: 18px; height: 18px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); color: var(--text-sec);
+    font-size: 10px; font-weight: 700; letter-spacing: 0;
+}
+/* Текущий шаг — число залито акцентом, подпись темнее */
+.pg-title.pg-active { color: var(--text-main); }
+.pg-title.pg-active .pg-num { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); }
+.pg-hint { margin-left: 2px; font-size: 11px; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-sec); }
+.pg-title { cursor: pointer; user-select: none; }
+.pg-name { margin-right: auto; }
+/* Стрелка группы видна при наведении и у свёрнутой группы — в покое не шумит */
+.pg-title::after { content: '▾'; flex: none; font-size: 10px; letter-spacing: 0; opacity: 0; transition: transform .15s ease, opacity .15s ease; }
+.pg-title:hover::after, .pg-title:focus-visible::after, .pg-title.pg-closed::after { opacity: 1; }
+.pg-title.pg-closed::after { transform: rotate(-90deg); }
+/* Пояснение под переключателем нужно, пока пункт не включён; у включённого — лишнее */
+.pg-card:has(> .label-row input[type="checkbox"]:checked) > .pg-sub { display: none; }
+.pg-quick, .pg-count {
+    font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none;
+    padding: 2px 9px; border-radius: 10px;
+}
+/* Свёрнутая группа: высота 0, а не display:none — иначе скрипт счёл бы группу пустой и спрятал заголовок */
+.pg-collapsed {
+    height: 0 !important; min-height: 0 !important; margin-top: 0 !important; margin-bottom: 0 !important;
+    padding-top: 0 !important; padding-bottom: 0 !important; border-width: 0 !important;
+    overflow: hidden !important; opacity: 0; pointer-events: none; visibility: hidden;
+}
+/* «Добавить в смету»: переключатели — карточки (включённая подсвечена), чтобы не путать с выбором из вариантов */
+.toggle-item.pg-card {
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 8px 10px; margin-top: 6px; margin-bottom: 6px;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+.toggle-item.pg-card:has(> .label-row input[type="checkbox"]:checked) {
+    border-color: var(--primary); background: var(--primary-light);
+}
+/* Пустой расчёт (body.empty-fit-panel ставит render по isCalcEmpty): отправлять и скачивать
+   нечего — кнопки приглушены и неактивны, нулевые итоги в шапке скрыты. «Проект» не трогаем:
+   листы можно открыть и без сметы. */
+/* Гостю кнопки не отключаем: они и так приглушены (.guest-mode) и по клику ведут к регистрации. */
+body.empty-fit-panel:not(.guest-mode) #btn_share_trigger,
+body.empty-fit-panel:not(.guest-mode) #btn_print_trigger,
+body.empty-fit-panel:not(.guest-mode) #btn_invoice_trigger { opacity: .45; pointer-events: none; }
+body.empty-fit-panel #header_totals { display: none !important; }
+/* Подсказки «i» в колонке параметров — один вид и ограниченная высота: 12 px, ровные абзацы,
+   заголовки пунктов жирным, не выше ~220 px (остальное прокручивается). Раньше одни были в
+   полстраницы, другие в строку, и в узкой колонке вырастали столбиком. */
+.input-panel .tooltip-content.tip-panel {
+    font-size: 12px; line-height: 1.4; font-weight: 400; text-align: left;
+    padding: 10px 12px; border-radius: 10px;
+    max-height: 220px; overflow-y: auto;
+}
+.input-panel .tooltip-content.tip-panel .tip-p { margin-top: 6px; }
+.input-panel .tooltip-content.tip-panel b { color: #fff; font-weight: 600; }
+/* У верхнего края колонки подсказка раскрывается вниз, иначе её верх обрезается (app.initPanelTips) */
+.tooltip-wrapper.tip-down .tooltip-content { bottom: auto; top: 135%; }
+.tooltip-wrapper.tip-down .tooltip-content::after {
+    top: auto; bottom: 100%;
+    border-color: transparent transparent #1F2937 transparent;
+}
+/* Простые «добавить раздел» — один список-карточка: название слева, переключатель всегда на одном
+   месте справа при любом шрифте. Плитки в два столбца отменены: в узкой колонке переключатель
+   прыгал то рядом с названием, то на строку ниже. Включённая строка подсвечена цветом темы. */
+.pg-tiles { display: block; margin: 6px 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.pg-tiles > .toggle-item.pg-card {
+    margin: 0 !important; padding: 9px 12px !important;
+    border: 0; border-top: 1px solid var(--border); border-radius: 0; background: transparent;
+}
+.pg-tiles > .toggle-item.pg-card:first-child { border-top: 0; }
+.pg-tiles > .toggle-item.pg-card:has(> .label-row input[type="checkbox"]:checked) {
+    border-top-color: var(--border); background: var(--primary-light);
+}
+.pg-tiles .label-row { margin-bottom: 0; gap: 8px; flex-wrap: nowrap; }
+.pg-tiles .label-row > span:first-child { flex: 1 1 auto; min-width: 0; }
+.pg-tiles .label-row .switch { flex: none; margin-left: auto; }
+.pg-quick { cursor: pointer; background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+.pg-quick:hover { background: var(--primary-light); }
+.pg-count { background: var(--primary-light); color: var(--text-main); border: 1px solid var(--border); }
+/* «План дома» в режиме «По комнатам»: пока плана нет, «Загрузить план» — главная заливная кнопка,
+   «или ввести комнаты вручную» — заметная ссылка, а не серая приписка */
+#btn_ufhplan.pg-btn-fill {
+    background: var(--primary) !important; color: var(--on-primary, #fff) !important;
+    font-weight: 600; padding: 5px 14px !important;
+}
+#plan_row_sum:empty { display: none; }
+/* Комнаты заданы руками или с плана: площадь = их сумма, ползунка и ввода нет (app.roomsLocked) */
+#blk_main_area.area-locked #inp_area { display: none; }
+#blk_main_area.area-locked #val_area { border-bottom: 0; cursor: default; pointer-events: none; }
+#plan_row_manual { color: var(--primary) !important; font-size: 12px !important; text-decoration: underline; text-underline-offset: 2px; }
+/* «Параметры объекта»: итог и стрелка вместо переключателя */
+.pg-summary { margin-left: auto; margin-right: 8px; font-size: 11px; font-weight: 500; color: var(--text-sec); white-space: nowrap; }
+.pg-chev { flex: none; font-size: 11px; color: var(--text-sec); transition: transform .15s ease; }
+#blk_fast_obj_params_toggle_wrap:has(#chk_fast_obj_params:checked) .pg-chev { transform: rotate(180deg); }
+.mode-sub { margin-top: 6px; font-size: 11px; line-height: 1.35; color: var(--text-sec); }
+/* Пока площадь не задана, остальные группы приглушены (но доступны: наведение и фокус возвращают яркость) */
+.pg-dim { opacity: .5; transition: opacity .2s ease; }
+.pg-dim:hover, .pg-dim:focus-within { opacity: 1; }

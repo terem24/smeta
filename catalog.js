@@ -1043,7 +1043,8 @@ const getImg = (item) => {
         return `<div style="width:24px; height:24px; background:transparent; display:inline-flex; margin-right:8px; flex-shrink:0;"></div>`;
     }
 
-    let imgSrc = `img/${item.id}.jpg`;
+    // imgRef — пока нет фото самой позиции (новинка), берём фото аналога
+    let imgSrc = `img/${item.imgRef || item.id}.jpg`;
     return `<img src="${imgSrc}" class="prod-thumb" loading="lazy" decoding="async" onerror="this.onerror=null;this.style.visibility='hidden';">`;
 };
 const workPrices = {
@@ -2338,6 +2339,7 @@ const catalog = {
         { id: "CBL-UTP-AIR", name: "Кабель UTP cat.5 — линии комнатных приборов RS-485", price: 38, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-08-09" },
         { id: "CBL-MKESH-2X05-AIR", name: "Кабель МКЭШ 2×0,5 экран. — линии комнатных термостатов (сухой контакт)", price: 75, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-08-09" },
         { id: "CBL-VVG-4X15-LEAK", name: "Кабель ВВГнг(А)-LS 4×1,5 — привод крана защиты от протечки", price: 96, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-08-09" },
+        { id: "CBL-MKESH-3X05-LEAK", name: "Кабель МКЭШ 3×0,5 экран. — датчики протечки (питание, сигнал, земля)", price: 105, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-10-08" },
         { id: "CBL-MKESH-2X05-LEAK", name: "Кабель МКЭШ 2×0,5 экран. — датчики протечки", price: 75, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-08-09" },
         // Силовой ввод электрокотла. Сечение — из паспорта STOUT STATUS (Таб.1, п. 17):
         // 4 мм² до 12 кВт, 6 мм² на 14–21 кВт, 10 мм² на 24–27 кВт. Паспорт пишет «4×S»
@@ -2939,6 +2941,35 @@ const catalog = {
     pumps_mix: [
         { id: "SPC-0011-2560130", brand: "STOUT", name: "Насос 25/60-130", price: 12666, rommer: { id: "RCP-0004-2560130", name: "Насос циркуляционный PROFI 25/60-130", price: 5507, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" }
     ],
+    // Смесители самосборных насосных групп (режим «Самосборная», тариф «Профи»; состав — по
+    // проектам Galf: насос + смеситель + обратный клапан-перемычка, а не готовая группа).
+    // Артикулы и цены — прайс ТЕРЕМ на 10.2026. Наличие «под заказ» осознанно: позиции внесены
+    // руками, AutoPrice уточнит его сам. Цены — прайс ТЕРЕМ × коэффициент соседей по группе (STOUT ×0,836 по
+    // SVM-0120/SFT, ROMMER RVM ×0,889 по RVM-0005), как у остального каталога.
+    selfbuilt_mixer_thermo: { id: "SVM-0120-164320", name: "Клапан термостатический смесительный для систем отопления 3/4\" НР, 20–43 °C, Kv 1,6", price: 9918, brand: "STOUT", availability: "on_order", price_date: "2026-10-07", rommer: { id: "RVM-0121-164320", name: "Клапан термостатический смесительный для систем отопления 3/4\" НР, 20–43 °C, Kv 1,6", price: 3416, brand: "ROMMER", availability: "on_order", price_date: "2026-10-07" } },
+    // Защита и контроль самосборной группы (отчёт по паспортам STOUT SDG-0120 и SDG-0001: в заводских узлах есть
+    // аварийный накладной термостат на подаче тёплого пола и стрелочные термометры). Резьб нет — крепятся на трубу.
+    // Цены: STE ×0,836 (по STE-0010), SIM ×0,9 (по SIM-1001/1002); кабель — как остальной электромонтаж (ориентировочно).
+    selfbuilt_thermostat: { id: "STE-1007-200090", name: "Термостат накладной механический с пружинным фиксатором 0–90 °C", price: 1182, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    selfbuilt_thermometer_clip: { id: "SIM-1004-630015", name: "Термометр биметаллический накладной с пружиной, Dn 63 мм, 0–120 °C", price: 418, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    selfbuilt_cable_thermostat: { id: "CBL-VVG-3X15-THERMO", name: "Кабель ВВГнг(А)-LS 3×1,5 — защитный термостат в цепи питания насоса", price: 62, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-10-07" },
+    // Нижние выпуски группы на стену/коллектор, как на листах «Обвязка насосной группы» проектов: удлинитель и сгон под кран.
+    // Цены: прайс × 0,836 (серия SFT). Резьбы по названиям прайса: удлинитель внутренняя/наружная 3/4", сгон ВР-НР 3/4".
+    selfbuilt_extension_34: { id: "SFT-0001-003430", name: "Удлинитель внутренняя/наружная резьба 3/4\"x30 мм", price: 432, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    selfbuilt_longscrew_34: { id: "SFT-0032-034100", name: "Сгон 3/4\"x100 мм ВР-НР", price: 749, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    // Комплект на 1": удлинитель (в прайсе только хромированный) и сгон 1"x100 — те же нижние выпуски, что на листе 3/4". Цены прайс × 0,836 (серия SFT).
+    selfbuilt_extension_1: { id: "SFT-0002-000130", name: "Удлинитель внутренняя/наружная резьба хромированный 1\"x30 мм", price: 767, brand: "STOUT", availability: "on_order", price_date: "2026-10-08" },
+    selfbuilt_longscrew_1: { id: "SFT-0032-001100", name: "Сгон 1\"x100 мм ВР-НР", price: 834, brand: "STOUT", availability: "on_order", price_date: "2026-10-08" },
+    // Комплект на 1" (нагрузка выше предела по скорости в 3/4"): ниппель, тройник, обратный клапан, смесители 1". Цены: прайс × 0,836 (STOUT),
+    // × 0,899 (ROMMER RVC по RVC-0001-000020), × 0,889 (ROMMER RVM по RVM-0005). Тройник и ниппель — серии SFT, обратный клапан — SVC-0011.
+    selfbuilt_nipple_1: { id: "SFT-0004-000011", name: "Ниппель 1\" НР", price: 409, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    selfbuilt_tee_1: { id: "SFT-0020-000001", name: "Тройник 1\" ВР", price: 993, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    selfbuilt_check_1: { id: "SVC-0011-000025", name: "Клапан обратный пружинный 1\" ВР", price: 2339, brand: "STOUT", availability: "on_order", price_date: "2026-10-07", rommer: { id: "RVC-0001-000025", name: "Клапан обратный 1\"", price: 984, brand: "ROMMER", availability: "on_order", price_date: "2026-10-07" } },
+    selfbuilt_mixer_thermo_1: { id: "SVM-0120-164325", name: "Клапан термостатический смесительный для систем отопления 1\" НР, 20–43 °C, Kv 1,6", price: 9632, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    selfbuilt_mixer_3way_1: { id: "SVM-0003-012501", name: "Клапан смесительный 3-ходовой 1\", Kvs 8 м³/ч (под сервопривод)", price: 8377, brand: "STOUT", availability: "on_order", price_date: "2026-10-07", rommer: { id: "RVM-0003-010025", name: "Клапан смесительный 3-ходовой 1\", Kvs 10 м³/ч (под сервопривод)", price: 2603, brand: "ROMMER", availability: "on_order", price_date: "2026-10-07" } },
+    // Футорка: внутренняя 3/4" (принимает НР смесителя) и наружная 1" (в Rp 1" комплекта насоса).
+    selfbuilt_futorka_34_1: { id: "SFT-0028-000134", name: "Футорка внутренняя/наружная резьба 3/4\"х1\"", price: 248, brand: "STOUT", availability: "on_order", price_date: "2026-10-07" },
+    selfbuilt_mixer_3way: { id: "SVM-0003-012002", name: "Клапан смесительный 3-ходовой 3/4\", Kvs 6 м³/ч (под сервопривод)", price: 8070, brand: "STOUT", availability: "on_order", price_date: "2026-10-07", rommer: { id: "RVM-0003-006320", name: "Клапан смесительный 3-ходовой 3/4\", Kvs 6,3 м³/ч (под сервопривод)", price: 2539, brand: "ROMMER", availability: "on_order", price_date: "2026-10-07" } },
     // Соединение насосной группы с коллектором ROMMER RDG-0017: у коллектора сверху
     // G1 1/2" НР («подключение контуров 1 1/2" наружная резьба», rommer_266bcb1de3b1),
     // у групп STOUT и ROMMER снизу тоже G1 1/2" НР — напрямую не стыкуются. Нужна
@@ -2954,6 +2985,29 @@ const catalog = {
     // коллектор RDG-0016 (низ 1 1/4" НР), а в смете шёл к RDG-0017 и SDG-0016 с
     // низом 1 1/2" НР — не стыковался (паспорта rommer_c954b11233c3, rommer_266bcb1de3b1).
     // Цена — прайс × 0,9, как у RDG-0015-004002 (7256 / 8061,9).
+    // Гидрострелки GIDRUSS (самосборный коллектор, «Профи»): ряд по мощности и расходу, патрубки НР (паспорт производителя, web.gidruss.ru,
+    // раздел «Магистральное присоединение»). kw — максимальная мощность, flow — максимальная подача, м³/ч, port — резьба (1 / 11/4 / 11/2 / 2).
+    // Стальные GR (09Г2С) — по умолчанию, нержавеющие GRSS — в замене. Цены — teremonline.ru на 09.10.2026.
+    // GRSS-PF — нержавеющие под пресс-фитинг, садятся прямо на трубу магистрали (22/28/35 мм). Так стрелка чаще всего стоит в рабочих проектах отопления:
+    // из 75 проектов со стрелкой GRSS-60-28PF — 39, GRSS-40-22PF — 21, GRSS-100-35PF — 7; модель выбирают по диаметру магистрали.
+    // Паспорт web.gidruss.ru: 22PF — до 35 кВт и 1,7 м³/ч, 28PF — 60 и 2,6, 35PF — 100 и 4,3. d — наружный диаметр трубы, мм.
+    hydro_gidruss_pf: [
+        { id: "GG 40PA0 20", name: "Гидравлический разделитель GIDRUSS GRSS-40-22PF (нерж., под пресс-фитинг 22 мм)", price: 10200, brand: "GIDRUSS", kw: 35, flow: 1.7, d: 22, availability: "on_order", price_date: "2026-10-09" },
+        { id: "GG 60PA0 20", name: "Гидравлический разделитель GIDRUSS GRSS-60-28PF (нерж., под пресс-фитинг 28 мм)", price: 17200, brand: "GIDRUSS", kw: 60, flow: 2.6, d: 28, availability: "on_order", price_date: "2026-10-09" },
+        { id: "GG 10PA0 20", name: "Гидравлический разделитель GIDRUSS GRSS-100-35PF (нерж., под пресс-фитинг 35 мм)", price: 19600, brand: "GIDRUSS", kw: 100, flow: 4.3, d: 35, availability: "on_order", price_date: "2026-10-09" }
+    ],
+    hydro_gidruss: [
+        { id: "GR 60G0T 04", name: "Гидравлический разделитель GIDRUSS GR-60-25.EPP (до 60 кВт, G 1″ НР, сталь, EPP-изоляция)", price: 10200, brand: "GIDRUSS", kw: 60, flow: 2.6, port: "1", availability: "on_order", price_date: "2026-10-09" },
+        { id: "GR 80G0T 04", name: "Гидравлический разделитель GIDRUSS GR-80-32.EPP (до 80 кВт, G 1 1/4″ НР, сталь, EPP-изоляция)", price: 11200, brand: "GIDRUSS", kw: 80, flow: 3.4, port: "11/4", availability: "in_stock", price_date: "2026-10-09" },
+        { id: "11 00100 05", name: "Гидравлический разделитель GIDRUSS GR-100-32 (до 100 кВт, G 1 1/4″ НР, сталь)", price: 13200, brand: "GIDRUSS", kw: 100, flow: 4.3, port: "11/4", availability: "in_stock", price_date: "2026-10-09" },
+        { id: "11 00150 04", name: "Гидравлический разделитель GIDRUSS GR-150-40 (до 150 кВт, G 1 1/2″ НР, сталь)", price: 16200, brand: "GIDRUSS", kw: 150, flow: 6.4, port: "11/2", availability: "on_order", price_date: "2026-10-09" }
+    ],
+    hydro_gidruss_ss: [
+        { id: "GR 60GAT 04", name: "Гидравлический разделитель GIDRUSS GRSS-60-25.EPP (нерж., до 60 кВт, G 1″, EPP-изоляция)", price: 20200, brand: "GIDRUSS", kw: 60, flow: 2.6, port: "1", availability: "on_order", price_date: "2026-10-09" },
+        { id: "GR 80GAT 04", name: "Гидравлический разделитель GIDRUSS GRSS-80-32.EPP (нерж., до 80 кВт, G 1 1/4″, EPP-изоляция)", price: 22200, brand: "GIDRUSS", kw: 80, flow: 3.4, port: "11/4", availability: "on_order", price_date: "2026-10-09" },
+        { id: "12 00100 05", name: "Гидравлический разделитель GIDRUSS GRSS-100-32 (нерж., до 100 кВт, G 1 1/4″)", price: 26400, brand: "GIDRUSS", kw: 100, flow: 4.3, port: "11/4", availability: "on_order", price_date: "2026-10-09" },
+        { id: "12 00150 04", name: "Гидравлический разделитель GIDRUSS GRSS-150-40 (нерж., до 150 кВт, G 1 1/2″)", price: 35600, brand: "GIDRUSS", kw: 150, flow: 6.4, port: "11/2", availability: "on_order", price_date: "2026-10-09" }
+    ],
     hydro_arrow: { id: "SDG-0015-004001", name: "Гидравлическая стрелка 3 м³/ч", price: 23408, rommer: { id: "RDG-0015-004003", name: "Гидравлическая стрелка с накидными гайками 1 1/2″", price: 7828, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" },
     servo_rotary_sensor: { id: "SVM-0025-230017", name: "Сервопривод с датчиком", price: 43357, rommer: { id: "RVM-0015-230017", name: "Сервопривод с датчиком", price: 15459, brand: "ROMMER",
   availability: 'on_order',
@@ -3104,6 +3158,7 @@ const catalog = {
     buffer_nipple_112_34: { id: "SFT-0003-011234", name: "Ниппель переходной 1 1/2\" х 3/4\" НР", price: 818, brand: "STOUT", availability: "in_stock", price_date: "2026-10-05" },
     buffer_nipple_112_114: { id: "SFT-0003-112114", name: "Ниппель переходной 1 1/2\" х 1 1/4\" НР", price: 780, brand: "STOUT", availability: "in_stock", price_date: "2026-10-05" },
     buffer_coupling_34: { id: "SFT-0005-003434", name: "Муфта ВР 3/4\"", price: 306, brand: "STOUT", availability: "in_stock", price_date: "2026-10-05" },
+    hydro_tie_coupling_114_1: { id: "SFT-0005-001141", name: "Муфта переходная ВР 1 1/4\"х1\"", price: 830, brand: "STOUT", availability: "in_stock", price_date: "2026-10-09" },
     buffer_coupling_114: { id: "SFT-0005-114114", name: "Муфта ВР 1 1/4\"", price: 742, brand: "STOUT", availability: "in_stock", price_date: "2026-10-05" },
     // Контрольный термометр на третий штуцер G 1/2" гидроразделителя. Паспорт
     // «Гидравлический разделитель» (ред. 3 от 17.05.2021, п. 3.1) перечисляет три
@@ -4629,6 +4684,20 @@ const catalog = {
     // Предохранительный клапан и крепёж у Haier входят в комплект поставки,
     // поэтому отдельными позициями они не считаются.
     water_heaters_el: [
+    // ===== STOUT SEW — настенные, 2 кВт, из вилки (паспорт SEW от 30.09.2026) =====
+    // Новинка, на stout.ru и в прайсе ТЕРЕМ её ещё нет. Цена — ОРИЕНТИРОВОЧНАЯ (priceEst: true), взята у
+    // Haier A4 того же объёма (priceRef): завод тот же (Хайер Индастри Рус), ТЭН тот же (нержавейка 310S+Mo).
+    // Заводская цена появится ориентировочно в ноябре 2026 — AutoPrice.py подставит её и снимет priceEst.
+    // Данные паспорта: ТЭН 2 кВт, ~230 В, шнур с вилкой 1,5 м, IPX4, автомат 10 А + УЗО, бак — эмалированная
+    // сталь, магниевый анод 25х150, предохранительный клапан 0,8 МПа 1/2" и анкеры в комплекте, патрубки
+    // G 1/2" НР, не для проточного режима, температура 35…75 °C. kwMax — мощность числом для подбора по
+    // электрической мощности; wetKg — масса полного бака (корпус + вода) для проверки стены; heat — расчёт:
+    // V·4,187·45 К / 2 кВт (с 15 до 60 °C; на той же основе даны времена у Haier). Размеры A/B — расстояния
+    // от кронштейна до патрубков и до низа, мм.
+    { id: "SEW-030L-01", name: "Водонагреватель электрический, 30 л", vol: 30, kw: "2,0", kwMax: 2, heat: "47 мин", price: 10700, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-10-06", priceEst: true, priceRef: "GA04JGE01RU", imgRef: "haier_a2", wall: true, plug: true, ports: { cold: '1/2"', hot: '1/2"', thread: 'НР', src: 'паспорт SEW, табл. 2' }, ipx: "IPX4", kg: 11.5, wetKg: 41.5, dimA: 130, dimB: 515, pack: "425х425х530", warrantyTankY: 5, warrantyPartsY: 2, src: "паспорт SEW 30.09.2026", alts: [] },
+    { id: "SEW-050L-01", name: "Водонагреватель электрический, 50 л", vol: 50, kw: "2,0", kwMax: 2, heat: "1ч 19 мин", price: 11900, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-10-06", priceEst: true, priceRef: "GA04JHE01RU", imgRef: "haier_a2", wall: true, plug: true, ports: { cold: '1/2"', hot: '1/2"', thread: 'НР', src: 'паспорт SEW, табл. 2' }, ipx: "IPX4", kg: 14.5, wetKg: 64.5, dimA: 205, dimB: 675, pack: "425х425х690", warrantyTankY: 5, warrantyPartsY: 2, src: "паспорт SEW 30.09.2026", alts: [] },
+    { id: "SEW-080L-01", name: "Водонагреватель электрический, 80 л", vol: 80, kw: "2,0", kwMax: 2, heat: "2ч 6 мин", price: 14150, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-10-06", priceEst: true, priceRef: "GA04JEE01RU", imgRef: "haier_a2", wall: true, plug: true, ports: { cold: '1/2"', hot: '1/2"', thread: 'НР', src: 'паспорт SEW, табл. 2' }, ipx: "IPX4", kg: 21, wetKg: 101, dimA: 530, dimB: 1000, pack: "425х425х1015", warrantyTankY: 5, warrantyPartsY: 2, src: "паспорт SEW 30.09.2026", alts: [] },
+    { id: "SEW-100L-01", name: "Водонагреватель электрический, 100 л", vol: 100, kw: "2,0", kwMax: 2, heat: "2ч 37 мин", price: 16700, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-10-06", priceEst: true, priceRef: "GA04JFE01RU", imgRef: "haier_a2", wall: true, plug: true, ports: { cold: '1/2"', hot: '1/2"', thread: 'НР', src: 'паспорт SEW, табл. 2' }, ipx: "IPX4", kg: 24.5, wetKg: 124.5, dimA: 530, dimB: 1210, pack: "425х425х1225", warrantyTankY: 5, warrantyPartsY: 2, src: "паспорт SEW 30.09.2026", alts: [] },
         { id: "GA04JGE01RU", name: "Водонагреватель электрический Haier A4, 30 л, 1,75 кВт", vol: 30, kw: "1,75", heat: "50 мин", price: 10700, brand: "Haier", unit: "шт", availability: "on_order", price_date: "2026-09-23",
           alts: [{ id: "GA04J001DRU", name: "Водонагреватель электрический Haier C1, 30 л, 1,5 кВт", vol: 30, price: 8027, brand: "Haier",
   availability: 'in_stock',
@@ -4866,6 +4935,12 @@ const catalog = {
     // расширяется, и клапан стравливает несколько капель), но в квартире его не
     // ставит никто — вешать некуда, а капель принимают как данность. Смета
     // должна показывать то, что действительно смонтируют.
+    // Защита линии STOUT SEW: паспорт (п. 5) требует отдельный автомат на 10 А и УЗО. Автомата C10 в
+    // прайсе ТЕРЕМ нет; цена — как у C16 той же серии IEK (в серии ARMAT они стоят одинаково), priceEst.
+    // УЗО берётся из ufh_el_power (тот же 25 А / 30 мА), здесь не дублируется.
+    water_heater_power: [
+        { id: "MVA20-1-010-C", name: "Автоматический выключатель C10, 1P, 4,5 кА", price: 194, brand: "IEK", unit: "шт", availability: "on_order", price_date: "2026-10-06", priceEst: true }
+    ],
     water_heater_kit: [
         { id: "SVB-1007-200015", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 1110, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RBV-0005-0510215", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 358, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } }
     ],
@@ -6608,7 +6683,121 @@ const catalog = {
         // разные по смыслу датчики (протечка и давление), нужен адресный:
         // иначе реакция «перекрыть воду» сработает и от падения давления.
         { id: "SMH-0002-010320", name: "Разветвитель контактных датчиков", price: 500, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SMH-0002-010550", name: "Разветвитель контактных датчиков адресный, RS-485", price: 1990, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "SMH-0002-010550", name: "Разветвитель контактных датчиков адресный, RS-485", price: 1990, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
+
+        // --- ZONT: автоматика на замену Thermatic (тариф «Профи», 08.10.2026) ---
+        //
+        // Контроллеры в ассортименте ТЕРЕМ (teremonline.ru/brands/zont-69059/).
+        // Climatic.V2 — тот же прибор, что STOUT Thermatic 3001 (и цена та же),
+        // поэтому весь остальной состав раздела у него общий и не дублируется.
+        // SMART 2.0 — замена Thermatic 1002 на котельных без смесительных узлов,
+        // но по-другому устроенная (паспорт ML.TD.ZHCONT.001.01): питание 12 В
+        // (блок в комплекте), одно реле 3 А/240 В (переключающее: общий/НЗ/НР),
+        // три универсальных вход/выхода «открытый коллектор» до 100 мА — любую
+        // нагрузку 220 В они включают только через промежуточное реле 12 В, а
+        // цифровую шину котла даёт адаптер, который покупается на каждый котёл.
+        // Поле zont: true — позиция бренда ZONT, участвует в таблице замен.
+        { id: "ML00007105", name: "Контроллер Climatic.V2", price: 67000, brand: "ZONT", unit: "шт", zont: true, sys: "full", availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00004479", name: "Контроллер SMART 2.0 (GSM / Wi-Fi)", price: 16430, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
+        // Адаптер цифровой шины ZONT: OpenTherm, E-Bus, BridgeNet, BSB, Navien,
+        // Wolf, Kiturami. К SMART 2.0 по цифровой шине подключается один котёл —
+        // второй только релейно (паспорт, п. 1.2).
+        { id: "ML00005505", name: "Адаптер цифровых шин универсальный (DIN)", price: 3980, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
+        // Реле, на которое выход «открытый коллектор» включает нагрузку 220 В
+        // (насос, кран протечки, котёл, привод смесителя). Модульное, на DIN-рейку.
+        { id: "ML00000291", name: "Реле промежуточное 12 В DC на DIN-рейку", price: 958, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
+        // Датчики температуры SMART 2.0: два входа NTC и шина 1-Wire до 10 штук.
+        // Универсальные контроллеры серии H (PRO.V2) — замена Climatic.V2 на
+        // котельных со смесительными узлами, когда выходит дешевле (zontH: true).
+        // Выходов 220 В на борту нет: встроенные реле 3 А / 240 В (переключающие,
+        // 1 НЗ — 2 общий — 3 НР) и выходы «открытый коллектор», на которые каждую
+        // нагрузку берут через реле 12 В. Блок питания, три датчика в гильзе
+        // (четыре у H2000+) и уличный МЛ-773 идут в комплекте. Цены — zont.online
+        // на 08.10.2026: в ТЕРЕМ у H700+/H1500+ PRO.V2 цена нулевая («Уведомить»).
+        // Модельный ряд и клеммы — паспорт ML.TD.ZHContPRO.V2.001, стр. 10–15, 64–66.
+        { id: "ML00007752", name: "Контроллер H700+ PRO.V2", price: 22180, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00006584", name: "Контроллер H1000+ PRO.V2", price: 28200, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00007756", name: "Контроллер H1500+ PRO.V2", price: 30680, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00006086", name: "Контроллер H2000+ PRO.V2", price: 44300, brand: "ZONT", unit: "шт", zont: true, zontH: true, availability: "in_stock", price_date: "2026-10-08" },
+        // Блоки расширения серии H (RS-485): реле 3 А / 240 В, универсальные вход/выходы и NTC.
+        // Питание 9–18 В, блок в комплект не входит (берём ML13968). Совместимы с H1000+
+        // (до 2 блоков), H1500+ (1) и H2000+ (до 5); к H700+ блоки не подключаются.
+        { id: "ML00005703", name: "Блок расширения ZE-22 (2 реле, 2 вх/вых, 2 NTC)", price: 15150, brand: "ZONT", unit: "шт", zont: true, zontH: true, relays: 2, uni: 2, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00005696", name: "Блок расширения ZE-44 (4 реле, 4 вх/вых, 4 NTC)", price: 20500, brand: "ZONT", unit: "шт", zont: true, zontH: true, relays: 4, uni: 4, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00004775", name: "Датчик температуры NTC (воздух / теплоноситель)", price: 500, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
+        { id: "ML00003614", name: "Термодатчик теплоносителя DS18B20 (в гильзу)", price: 950, brand: "ZONT", unit: "шт", zont: true, sys: "basic", availability: "in_stock", price_date: "2026-10-08" },
+
+        // --- MyHeat: автоматика на замену Thermatic (тариф «Профи», 08.10.2026) ---
+        //
+        // Артикул — код ТЕРЕМ (teremonline.ru, продавец «MY HEAT»), цена — из
+        // price_index.json на 08.10.2026; на myheat.net цены выше на ~1 000 ₽.
+        // Приборы устроены иначе, чем у Thermatic и ZONT (паспорта myheat.net):
+        //   GO! / GO!+  — один котёл по цифровой шине, реле 1 шт. (3 А, сухой контакт);
+        //   Smart 2     — реле 1 + 4 универсальных вход/выхода DIO (открытый коллектор,
+        //                 нагрузку не держат), до 5 единиц оборудования; насосы
+        //                 и смесители — через RL2 (реле) / RL2S (симисторы), каждый блок
+        //                 занимает два DIO (паспорт RL2: «выходы ОК1 и ОК2 — к входам DIO»);
+        //   Eco Smart   — 6 реле 3 А + 4 симистора 1 А, питание от сети, радио в корпусе;
+        //   Pro         — 4 реле 3 А + 4 симистора 1 А, блоки RL6 / RL6S на шине EXT.
+        // Поле myheat: true — позиция бренда MyHeat, участвует в таблице замен.
+        { id: "6280", name: "Контроллер GO!", price: 15990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6279", name: "Контроллер GO!+ (аккумулятор, радиодатчик в комплекте)", price: 20990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6281", name: "Контроллер Smart 2 (GSM / Wi-Fi)", price: 17990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6284", name: "Контроллер Pro (модульный)", price: 41990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "7007", name: "Контроллер Eco Smart (аккумулятор, радио, 6 реле)", price: 46990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        // Датчик температуры NTC 10K в колбе: три штуки лежат в комплекте Eco Smart (паспорт, табл. 2).
+        { id: "6320", name: "Датчик температуры в колбе NTC 10K", price: 3190, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        // Блок дискретных входов DI6 (6 входов до 12 В) — к Pro по шине EXT: у самого Pro два дискретных входа.
+        { id: "6298", name: "Блок дискретных входов DI6 (6 входов 12 В)", price: 7490, brand: "MyHeat", unit: "шт", myheat: true, inputs: 6, availability: "in_stock", price_date: "2026-10-08" },
+        // Блоки расширения. RL2 / RL2S — только к Smart 2; RL6 / RL6S — к Pro (шина EXT);
+        // RL6W / RL6SW — по Wi-Fi к Eco Smart (до 3 шт. через собственную сеть контроллера, до 6 — через домашний роутер; паспорт блока).
+        { id: "6295", name: "Блок расширения RL2 (2 реле 3 А)", price: 3490, brand: "MyHeat", unit: "шт", myheat: true, relays: 2, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6296", name: "Блок расширения RL2S (2 симистора 1 А)", price: 3490, brand: "MyHeat", unit: "шт", myheat: true, triacs: 2, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6291", name: "Блок расширения RL6 (6 реле 3 А)", price: 8490, brand: "MyHeat", unit: "шт", myheat: true, relays: 6, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6292", name: "Блок расширения RL6S (6 симисторов 1 А)", price: 9490, brand: "MyHeat", unit: "шт", myheat: true, triacs: 6, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "7010", name: "Блок расширения RL6W (6 реле 3 А, Wi-Fi, DIN)", price: 14990, brand: "MyHeat", unit: "шт", myheat: true, relays: 6, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "7011", name: "Блок расширения RL6SW (6 симисторов 1 А, Wi-Fi, DIN)", price: 15990, brand: "MyHeat", unit: "шт", myheat: true, triacs: 6, availability: "in_stock", price_date: "2026-10-08" },
+        // Адаптеры цифровой шины: первый котёл ведётся шиной, встроенной в прибор,
+        // адаптер нужен второму (каскад) — у Pro и Eco Smart.
+        { id: "6309", name: "Адаптер цифровой шины для Pro", price: 6490, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "7008", name: "Адаптер цифровой шины для Eco Smart", price: 6990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        // Блок питания контроллера в комплекте у GO!, GO!+, Smart 2 и Pro (паспорта, табл. 2) —
+        // отдельно он нужен только блокам расширения, когда им не хватает питания прибора.
+        // Радиомодуль для радиодатчиков и радиотермостатов: у GO!+ и Eco Smart радио
+        // в корпусе, у Smart 2 и Pro — отдельный RDT2.
+        { id: "6288", name: "Радиомодуль RDT2 (868 МГц)", price: 4590, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6310", name: "Блок питания на DIN-рейку 12 В", price: 2290, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        // Датчик в гильзу на шину 1-Wire (DS18B20): до 5 датчиков на шину, кабель до 60 м.
+        { id: "6286", name: "Датчик температуры в колбе (1-Wire)", price: 1350, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        // Датчик давления 4–20 мА — только Pro, Eco Smart и блок IO4.
+        { id: "7002", name: "Датчик давления 4–20 мА", price: 5990, brand: "MyHeat", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+
+        // --- ectoControl: автоматика на замену Thermatic (тариф «Профи», 09.10.2026) ---
+        //
+        // Артикул и цена — раздел Ectocontrol прайса ТЕРЕМ (price_index.json, продавец
+        // «Ectocontrol»); паспорта и карточки — ecto-control.ru (Эктострой), v4.0:
+        //   один блок на все объекты: 3 встроенных реле 3 А / 250 В (контакты A-B-C),
+        //   3 проводных датчика температуры Т1…Т3, 5 контактных входов Д1…Д5, один вход
+        //   4–20 мА, порт ДОП (RS-485, до 32 устройств), радио 868 МГц, GSM + Wi-Fi;
+        //   блок питания 14 В, аккумулятор 12 В 1,2 А·ч и антенны лежат в коробке;
+        //   смесительными контурами ведёт сам блок ec01060 (4 канала, привод 230 В, 3 провода),
+        //   котлом по цифровой шине — адаптер на каждый котёл, реле — только сухой контакт.
+        // Поле ecto: true — позиция бренда ectoControl, участвует в таблице замен.
+        // Это не STOUT Thermatic 1002: у 1002 шина первого котла встроена и два контура,
+        // у v4.0 — адаптер на каждый котёл и смесители через отдельный блок.
+        { id: "ec01v40", name: "Центральный блок управления v4.0 (GSM / Wi-Fi, питание и аккумулятор в комплекте)", price: 18900, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        // Адаптер шины котла — на каждый котёл; Navien и eBus отличаются только протоколом.
+        { id: "ec01042", name: "Адаптер OpenTherm", price: 3590, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01045", name: "Адаптер eBus", price: 3590, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01058", name: "Адаптер Navien", price: 3590, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        // Цифровой датчик температуры в гильзе: порты Т1…Т3 блока и порты Т1…Т4 смесительного блока.
+        { id: "ec01003", name: "Датчик температуры проводной в гильзе", price: 1590, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01001", name: "Датчик температуры воздуха проводной", price: 1390, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01060", name: "Блок управления смесительными контурами (ПИД-регулятор), RS485 — 4 канала", price: 15990, brand: "ectoControl", unit: "шт", ecto: true, mixChannels: 4, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01025", name: "Блок управления на 10 реле проводной RS485 (12 А)", price: 11490, brand: "ectoControl", unit: "шт", ecto: true, relays: 10, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01033", name: "Разветвитель устройств RS485 (10 разъёмов порта ДОП)", price: 700, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01055", name: "Разветвитель для контактных датчиков адресный RS485 (8 входов)", price: 1990, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01011", name: "Провод для подключения котла/насоса", price: 290, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" }
     ],
 
     // Датчики воздуха для регулирования отопительного контура по температуре
@@ -6625,6 +6814,22 @@ const catalog = {
         { id: "ML00004436", name: "Радиодатчик температуры комнатный МЛ-740 (868 МГц)", price: 3450, brand: "ZONT", unit: "шт", kind: "sensor", link: "radio", availability: "in_stock", price_date: "2026-09-23" },
         { id: "ML00006088", name: "Комнатный термостат МЛ-232 (RS-485)", price: 6100, brand: "ZONT", unit: "шт", kind: "thermostat", link: "wired", availability: "in_stock", price_date: "2026-09-23" },
         { id: "ML00006557", name: "Комнатный термостат МЛ-332 (868 МГц)", price: 6900, brand: "ZONT", unit: "шт", kind: "thermostat", link: "radio", availability: "in_stock", price_date: "2026-09-23" },
+        // MyHeat (тариф «Профи»): проводной датчик и термостат идут по шине 1-Wire,
+        // термостат — и по радио (через RDT2 у Smart 2 и Pro, у GO!+ и Eco Smart радио в корпусе).
+        // Один артикул термостата работает и по проводу, и по радио (белый 6277, чёрный
+        // 6278 — разные исполнения корпуса); в каталоге они разведены по связи, чтобы
+        // у позиции был один артикул. Радиодатчика комнатного в прайсе ТЕРЕМ нет
+        // (6289 снят с производства) — при выборе «датчик по радио» берётся радиотермостат.
+        { id: "7000", name: "Датчик температуры комнатный проводной (1-Wire)", price: 1990, brand: "MyHeat", unit: "шт", kind: "sensor", link: "wired", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6277", name: "Комнатный термостат (проводной, 1-Wire), белый", price: 8990, brand: "MyHeat", unit: "шт", kind: "thermostat", link: "wired", color: "white", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        { id: "6278", name: "Комнатный термостат (868 МГц), чёрный", price: 8990, brand: "MyHeat", unit: "шт", kind: "thermostat", link: "radio", color: "black", myheat: true, availability: "in_stock", price_date: "2026-10-08" },
+        // ectoControl v4.0 (тариф «Профи»): комнатные приборы идут по порту ДОП (RS-485) или по радио 868 МГц —
+        // радио в самом блоке, отдельный модуль не нужен. Термостат ec01091 (ES-TSMB-01) работает только с v4.0,
+        // в прайсе ТЕРЕМ его нет — цена с ecto-control.ru. Радиотермостата в линейке нет: при выборе
+        // «термостат по радио» берётся беспроводной датчик.
+        { id: "ec01002", name: "Датчик температуры воздуха проводной RS485 (Modbus)", price: 3190, brand: "ectoControl", unit: "шт", kind: "sensor", link: "wired", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01005", name: "Беспроводной датчик температуры воздуха", price: 3490, brand: "ectoControl", unit: "шт", kind: "sensor", link: "radio", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01091", name: "Термостат проводной RS-485 (дисплей, реле 12 А)", price: 6990, brand: "ectoControl", unit: "шт", kind: "thermostat", link: "wired", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
         // Двухпозиционные термостаты STOUT (3 А, ON/OFF). Подключаются иначе —
         // не по шине, а сухим контактом на клеммы «Входы термостатов», которых
         // у контроллера ровно 3. Меняется и способ регулирования: контур
@@ -6675,7 +6880,13 @@ const catalog = {
         { id: "ML11025", name: "Датчик протечки воды АСТРА-361, проводной", price: 1140, brand: "ZONT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
         // Для Thermatic 1002 берём извещатель из его же линейки: шлейф у него
         // свой (вход Д1), и разветвители к нему идут из того же комплекта.
-        { id: "SMH-0002-010060", name: "Датчик протечки воды проводной", price: 1490, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "SMH-0002-010060", name: "Датчик протечки воды проводной", price: 1490, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-20" },
+        // Для MyHeat: Neptun SW005 — тот же датчик, что продаёт сам MyHeat (карточка «Нептун SW 005»).
+        // Три провода: +12–24 В, сигнал (открытый коллектор, до 50 мА), GND; до 100 м от контроллера
+        // (паспорт). Питается от контроллера, на каждый датчик — свой дискретный вход.
+        { id: "100035557500", name: "Датчик протечки воды Neptun SW005 (3 провода, 12–24 В)", price: 2999.75, brand: "Neptun", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-09-09" },
+        // ectoControl: контактный датчик на входы Д1…Д5 (тревога — замыкание), кабель 10 м в комплекте.
+        { id: "ec01006", name: "Датчик протечки воды проводной", price: 1490, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" }
     ],
     // Диаметр берётся по вводу ХВС (штатно 3/4"), остальные — для замены.
     leak_valves: [
@@ -6761,6 +6972,27 @@ const catalog = {
         { id: "6103", article: "6103", name: "Гель уплотнительный СантехМастерГель Синий, тюбик 60 г, блистер", price: 717, unit: "шт", brand: "СантехМастер", availability: "in_stock", price_date: "2026-07-28" }
     ]
 };
+
+// Ряд электрических водонагревателей: STOUT SEW впереди, Haier в заменах и наоборот.
+// Вручную alts у SEW не расписываем — иначе при каждой правке Haier два списка расходятся.
+(function () {
+    const L = catalog.water_heaters_el || [];
+    const sew = L.filter(x => x.brand === 'STOUT');
+    const hai = L.filter(x => x.brand !== 'STOUT');
+    const seen = new Set(), pool = [];
+    hai.forEach(m => [m].concat(m.alts || []).forEach(a => {
+        if (!a || seen.has(a.id)) return;
+        seen.add(a.id);
+        pool.push(a.alts ? Object.assign({}, a, { alts: undefined }) : a);
+    }));
+    const byVolPrice = (x, y) => (x.vol - y.vol) || ((x.price || 0) - (y.price || 0));
+    sew.forEach(m => { m.alts = pool.slice().sort(byVolPrice); });
+    hai.forEach(m => {
+        const have = new Set((m.alts || []).map(a => a.id));
+        const add = sew.filter(x => !have.has(x.id)).map(x => Object.assign({}, x, { alts: undefined }));
+        m.alts = (m.alts || []).concat(add).sort(byVolPrice);
+    });
+})();
 
 const titanRads = [
     { id: "SRB-3320-050004", name: "Радиатор TITAN 4 секций", sec: 4, price: 7410, brand: "STOUT", power50: 128, passportPower: 198,

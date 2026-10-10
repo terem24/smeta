@@ -14,7 +14,7 @@ index.html) выпускаются селекторы по атрибуту [sty
 
 Запускать после правок style.css, где менялись font-size:
     python tools/gen_big_text.py
-и поднять ?v= у big_text.css в app.js (BIG_TEXT_CSS_V).
+и поднять ?v= у big_text.css в ДВУХ местах: app.js (BIG_TEXT_CSS_V) и инлайн-скрипт в начале index.html (big_text.css?v=). Расходятся — человек получает старый файл.
 """
 import re
 import sys
@@ -136,6 +136,24 @@ EXTRA = '''  /* ручные добавки (tools/gen_big_text.py, EXTRA) */
   html[data-big-text] .inv-table td.col-brand {
     width: 86px;
     min-width: 86px;
+  }
+  /* плашки-замечания в смете: с общей прибавкой выходило 15 px — крупнее названий позиций */
+  html[data-big-text] .note-box,
+  html[data-big-text] .note-fold {
+    font-size: 12.5px;
+  }
+  html[data-big-text] .note-box .note-ico {
+    font-size: 13px;
+  }
+  /* колонка параметров: пояснения и заголовки групп мельче названий пунктов (16,5 px) */
+  html[data-big-text] .pg-title {
+    font-size: 13px;
+  }
+  html[data-big-text] .pg-sub,
+  html[data-big-text] .mode-sub,
+  html[data-big-text] .pg-summary,
+  html[data-big-text] .pg-quick {
+    font-size: 13px;
   }'''
 
 

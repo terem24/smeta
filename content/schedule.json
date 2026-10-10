@@ -67,9 +67,9 @@
    "freq": 160434,
    "audience": "owner",
    "data_block": "сравнение по теплоотдаче и цене",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-06",
-   "published_at": null,
+   "published_at": "2026-10-06",
    "words": 847
   },
   {
@@ -81,9 +81,9 @@
    "freq": 0,
    "audience": "pro",
    "data_block": "шаблон договора из сметы",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-07",
-   "published_at": null,
+   "published_at": "2026-10-07",
    "words": 705
   },
   {
@@ -95,9 +95,9 @@
    "freq": 336462,
    "audience": "owner",
    "data_block": "где применим по нашим расчётам",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-08",
-   "published_at": null,
+   "published_at": "2026-10-08",
    "words": 746
   },
   {
@@ -109,9 +109,9 @@
    "freq": 0,
    "audience": "pro",
    "data_block": "акты из сметы",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-09",
-   "published_at": null,
+   "published_at": "2026-10-09",
    "words": 546
   },
   {
@@ -127,6 +127,20 @@
    "date": "2026-10-10",
    "published_at": null,
    "words": 698
+  },
+  {
+   "slug": "neyroseti-moshchnost-kotla-150-m2",
+   "title": "Спросили у трёх нейросетей, какой котёл нужен дому 150 м²: что ответили и что не так",
+   "cluster": "Нейросети и расчёты",
+   "cluster_key": "ai",
+   "query": "нейросеть расчёт мощности котла",
+   "freq": 0,
+   "audience": "owner",
+   "data_block": "эксперимент: ответы трёх нейросетей и проверка",
+   "status": "queued",
+   "date": "2026-10-11",
+   "published_at": null,
+   "words": 849
   },
   {
    "slug": "kp-na-montazh-otopleniya",
@@ -213,6 +227,20 @@
    "words": 661
   },
   {
+   "slug": "diametr-trub-otopleniya",
+   "title": "Диаметр труб отопления: как посчитать",
+   "cluster": "Трубы и разводка",
+   "cluster_key": "pipe",
+   "query": "диаметр труб отопления",
+   "freq": 4600,
+   "audience": "pro",
+   "data_block": "наш гидравлический расчёт",
+   "status": "queued",
+   "date": "2026-10-18",
+   "published_at": null,
+   "words": 815
+  },
+  {
    "slug": "dopolnitelnye-raboty-po-hodu-montazha",
    "title": "Дополнительные работы по ходу монтажа: как оформить и получить деньги",
    "cluster": "Бизнес монтажника",
@@ -297,6 +325,20 @@
    "words": 666
   },
   {
+   "slug": "neyroset-v-rabote-montazhnika",
+   "title": "Нейросеть в работе монтажника: что поручить, а что считать самому",
+   "cluster": "Нейросети и расчёты",
+   "cluster_key": "ai",
+   "query": "нейросеть для монтажника отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "эксперимент: диаметр ветки 6 кВт",
+   "status": "queued",
+   "date": "2026-10-25",
+   "published_at": null,
+   "words": 654
+  },
+  {
    "slug": "skolko-stoit-otoplenie-doma",
    "title": "Сколько стоит отопление частного дома под ключ",
    "cluster": "Деньги: сметы, цены, приёмка",
@@ -351,6 +393,20 @@
    "date": "2026-10-31",
    "published_at": null,
    "words": 648
+  },
+  {
+   "slug": "raschet-moshchnosti-kotla",
+   "title": "Расчёт мощности котла: почему не 1 кВт на 10 м²",
+   "cluster": "Котёл и котельная",
+   "cluster_key": "boiler",
+   "query": "расчет мощности котла",
+   "freq": 1140,
+   "audience": "owner",
+   "data_block": "наш расчёт с запасом 1,15",
+   "status": "queued",
+   "date": "2026-11-01",
+   "published_at": null,
+   "words": 657
   },
   {
    "slug": "kotel-ne-greet-v-moroz",
@@ -421,6 +477,20 @@
    "date": "2026-11-07",
    "published_at": null,
    "words": 483
+  },
+  {
+   "slug": "proverka-rascheta-teplopoter",
+   "title": "Как проверить расчёт теплопотерь: метод трёх чисел на 102 проектах",
+   "cluster": "Нейросети и расчёты",
+   "cluster_key": "ai",
+   "query": "проверка расчёта теплопотерь",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "метод трёх чисел на 102 проектах",
+   "status": "queued",
+   "date": "2026-11-08",
+   "published_at": null,
+   "words": 567
   },
   {
    "slug": "dvuhtrubnaya-sistema",
@@ -1681,20 +1751,6 @@
    "date": "2027-04-07",
    "published_at": null,
    "words": 853
-  },
-  {
-   "slug": "diametr-trub-otopleniya",
-   "title": "Диаметр труб отопления: как посчитать",
-   "cluster": "Трубы и разводка",
-   "cluster_key": "pipe",
-   "query": "диаметр труб отопления",
-   "freq": 4600,
-   "audience": "pro",
-   "data_block": "наш гидравлический расчёт",
-   "status": "queued",
-   "date": "2027-04-08",
-   "published_at": null,
-   "words": 815
   },
   {
    "slug": "otoplenie-karkasnogo-doma",
@@ -3193,20 +3249,6 @@
    "date": "2027-10-12",
    "published_at": null,
    "words": 560
-  },
-  {
-   "slug": "raschet-moshchnosti-kotla",
-   "title": "Расчёт мощности котла: почему не 1 кВт на 10 м²",
-   "cluster": "Котёл и котельная",
-   "cluster_key": "boiler",
-   "query": "расчет мощности котла",
-   "freq": 1140,
-   "audience": "owner",
-   "data_block": "наш расчёт с запасом 1,15",
-   "status": "queued",
-   "date": "2027-10-14",
-   "published_at": null,
-   "words": 657
   },
   {
    "slug": "teplyy-pol-ploshchad-pokrytiya",

@@ -46,7 +46,7 @@ const Subscription = {
         rommer: 'ассортимент ROMMER и подбор аналогов',
         terem: 'весь прайс-лист ТЕРЕМ в поиске и распознавании',
         works: 'монтажные работы в смете, КП и счёте',
-        analog: 'вторая смета «Подешевле» с обоснованием',
+        analog: 'вторая смета «Бюджетнее» с обоснованием',
         recognize: 'распознавание смет и проектов из PDF, Excel и фото',
         design: 'листы проекта и редактор планов этажей',
         money: 'вкладка «Деньги» — маржа по каждому разделу сметы',
@@ -60,7 +60,7 @@ const Subscription = {
     TRIGGERS: [
         { where: 'Кабинет → «Профиль», карточка «Текущий тариф»', when: 'кнопка «Оформить Профи» / «Продлить»' },
         { where: 'Вкладка «Деньги» (маржа)', when: 'учётка без Профи нажимает вкладку или пытается изменить настройку маржи' },
-        { where: 'Переключатель «Подешевле» и ассортимент ROMMER', when: 'у учётки без Профи, если её тарифу «Профи» этот столбец открыт в таблице «Тарифы»' },
+        { where: 'Переключатель «Бюджетнее» и ассортимент ROMMER', when: 'у учётки без Профи, если её тарифу «Профи» этот столбец открыт в таблице «Тарифы»' },
         { where: 'Замки на переключателях сметы (режим Профи, функции с пометкой «Профи»)', when: 'нажатие на закрытый переключатель' },
         { where: 'Окно «Нужен промокод магазина»', when: 'ссылка «Посмотреть платные тарифы»' },
         { where: 'ИИ-помощник', when: 'вопрос про тариф или оплату — открывает окно и даёт ссылки на оплату' }
@@ -476,7 +476,7 @@ const Subscription = {
         const D = this._demand || {};
         let demand;
         if (D.loading || !this._demand) demand = '<div style="font-size:12.5px; color:var(--text-sec);">Считаем по журналу событий…</div>';
-        else if (D.error) demand = `<div style="font-size:12.5px; color:#EF4444;">Не посчиталось: ${this.esc(D.error)}</div>`;
+        else if (D.error) demand = `<div style="font-size:12.5px; color:var(--c-bad,#EF4444);">Не посчиталось: ${this.esc(D.error)}</div>`;
         else {
             const names = { '01': 'январь', '02': 'февраль', '03': 'март', '04': 'апрель', '05': 'май', '06': 'июнь', '07': 'июль', '08': 'август', '09': 'сентябрь', '10': 'октябрь', '11': 'ноябрь', '12': 'декабрь' };
             const keys = Object.keys(D.months).sort();
@@ -539,7 +539,7 @@ const Subscription = {
                 ? `в месяц (<span class="curr-amount" data-rub="${r.rub}">${Math.round(r.rub).toLocaleString('ru-RU')}</span> <span class="curr-symbol">₽</span> за ${this.esc(this.monthsWord(r.months))})`
                 : 'в месяц';
             const promoLine = r.promo
-                ? `<div style="font-size:11px; color:#D97706; font-weight:700; margin:2px 0 8px; text-align:center;">🔥 ${this.esc(r.promo.title || 'Акция')}${r.promo.to ? ' до ' + this.fmtDate(r.promo.to) : ''}<span style="color:var(--text-sec); font-weight:500;"> · было ${this.esc(this.fmtRub(r.baseRub))}</span></div>`
+                ? `<div style="font-size:11px; color:var(--c-warn,#D97706); font-weight:700; margin:2px 0 8px; text-align:center;">🔥 ${this.esc(r.promo.title || 'Акция')}${r.promo.to ? ' до ' + this.fmtDate(r.promo.to) : ''}<span style="color:var(--text-sec); font-weight:500;"> · было ${this.esc(this.fmtRub(r.baseRub))}</span></div>`
                 : '';
             const click = preview ? `Subscription.previewPlan('${p.id}')` : `app.openPaymentModal('${p.id}')`;
             return `<div class="tariff-card">
@@ -971,7 +971,7 @@ const Subscription = {
         const el = document.getElementById('sub_status');
         if (!el) return;
         if (this._saving) el.innerHTML = '<span style="color:var(--text-sec);">Сохраняю…</span>';
-        else if (this._saveError) el.innerHTML = '<span style="color:#EF4444;">Не сохранено</span>';
+        else if (this._saveError) el.innerHTML = '<span style="color:var(--c-bad,#EF4444);">Не сохранено</span>';
         else el.innerHTML = '';
     },
 
@@ -1017,7 +1017,7 @@ const Subscription = {
             <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:12px;">
                 <h3 style="margin:0; color:var(--text-main);">💳 Оплата подписки</h3>
                 <span id="sub_status" style="font-size:12px;"></span>
-                ${canEdit ? '' : '<span style="font-size:12px; color:#D97706; font-weight:600;">Только просмотр: менять может владелец.</span>'}
+                ${canEdit ? '' : '<span style="font-size:12px; color:var(--c-warn,#D97706); font-weight:600;">Только просмотр: менять может владелец.</span>'}
             </div>
             <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;">${tabs}</div>
             ${body}`;
@@ -1104,7 +1104,7 @@ const Subscription = {
         const months = Math.max(1, Math.round(this.num(p.months)) || 1);
         const rub = this.num(p.rub);
         const per = months > 1 ? `${this.fmtRub(Math.round(rub / months))} в месяц` : '';
-        const warn = !p.url ? '<div style="color:#EF4444;">Без ссылки окно оплаты покажет только «Я оплатил»</div>' : '';
+        const warn = !p.url ? '<div style="color:var(--c-bad,#EF4444);">Без ссылки окно оплаты покажет только «Я оплатил»</div>' : '';
         return `${this.fmtRub(rub)} за ${this.monthsWord(months)}${per ? '<br>' + per : ''}${warn}`;
     },
 
@@ -1183,7 +1183,7 @@ const Subscription = {
             const base = this.num(pl.rub), r = this.applyPromo(base, p);
             return `${this.esc(pl.label || pl.id)}: <b style="color:var(--text-main);">${this.fmtRub(r)}</b> <s>${this.fmtRub(base)}</s>`;
         });
-        const warn = !p.url ? ' <span style="color:#EF4444;">Нет своей ссылки — в окне оплаты останется ссылка на полную цену.</span>' : '';
+        const warn = !p.url ? ' <span style="color:var(--c-bad,#EF4444);">Нет своей ссылки — в окне оплаты останется ссылка на полную цену.</span>' : '';
         return 'По акции: ' + parts.join(' · ') + warn;
     },
 
@@ -1252,7 +1252,7 @@ const Subscription = {
                     <tbody>${priceRows}</tbody>
                 </table>
             </div>
-            <div id="sub_region_warn_${r.id}" style="font-size:12px; color:#EF4444; margin-top:6px;">${this.regionWarnHtml(r)}</div>
+            <div id="sub_region_warn_${r.id}" style="font-size:12px; color:var(--c-bad,#EF4444); margin-top:6px;">${this.regionWarnHtml(r)}</div>
         </div>`;
     },
 
@@ -1287,7 +1287,7 @@ const Subscription = {
                 <code>${this.TABLE}</code> и права: заявку пишет кто угодно, смотрит и подтверждает — администратор. После этого обновите страницу.
             </div>`;
         }
-        if (this._pay.error) return `<div style="color:#EF4444; font-size:13px;">Учёт не прочитан: ${this.esc(this._pay.error)}</div>`;
+        if (this._pay.error) return `<div style="color:var(--c-bad,#EF4444); font-size:13px;">Учёт не прочитан: ${this.esc(this._pay.error)}</div>`;
         const st = this.stats();
         const tile = (val, label, color) => `<div style="${this.ui.card} text-align:center; min-width:150px; flex:1;">
             <div style="font-size:22px; font-weight:800; color:${color || 'var(--text-main)'}; line-height:1.1;">${val}</div>
@@ -1324,12 +1324,12 @@ const Subscription = {
             const open = this._confirmId === r.id;
             let html = `<tr style="${r.status === 'requested' ? 'background:rgba(217,119,6,.06);' : ''}">
                 <td style="${this.ui.td} white-space:nowrap;">${this.fmtDateTime(r.created_at)}${r.source === 'manual' ? '<div style="font-size:10px; color:var(--text-sec);">записано вручную</div>' : ''}</td>
-                <td style="${this.ui.td}"><div style="font-weight:600;">${this.esc(r.email || '—')}</div>${u ? `<div style="font-size:11px; color:var(--text-sec);">${this.esc(this.userName(u))}${u.region ? ' · ' + this.esc(u.region) : ''}</div>` : '<div style="font-size:11px; color:#EF4444;">учётки с такой почтой нет</div>'}</td>
+                <td style="${this.ui.td}"><div style="font-weight:600;">${this.esc(r.email || '—')}</div>${u ? `<div style="font-size:11px; color:var(--text-sec);">${this.esc(this.userName(u))}${u.region ? ' · ' + this.esc(u.region) : ''}</div>` : '<div style="font-size:11px; color:var(--c-bad,#EF4444);">учётки с такой почтой нет</div>'}</td>
                 <td style="${this.ui.td} white-space:nowrap;">${this.esc(planLabel)}${r.months ? `<div style="font-size:11px; color:var(--text-sec);">${this.esc(this.monthsWord(r.months))}</div>` : ''}</td>
-                <td style="${this.ui.td} white-space:nowrap;">${r.rub != null ? this.fmtRub(r.rub) : '—'}${r.promo ? `<div style="font-size:11px; color:#D97706;">🔥 ${this.esc(r.promo)}</div>` : ''}</td>
+                <td style="${this.ui.td} white-space:nowrap;">${r.rub != null ? this.fmtRub(r.rub) : '—'}${r.promo ? `<div style="font-size:11px; color:var(--c-warn,#D97706);">🔥 ${this.esc(r.promo)}</div>` : ''}</td>
                 <td style="${this.ui.td}">${statusChip(r)}${r.status === 'paid' ? `<div style="font-size:11px; color:var(--text-sec); margin-top:3px;">${this.fmtDate(r.paid_at)} · <b style="color:var(--text-main);">${this.fmtRub(r.paid_rub != null ? r.paid_rub : r.rub)}</b>${r.pro_until ? '<br>Профи до ' + this.fmtDate(r.pro_until) : ''}</div>` : ''}${r.note ? `<div style="font-size:11px; color:var(--text-sec); margin-top:2px;">${this.esc(r.note)}</div>` : ''}</td>
                 <td style="${this.ui.td} white-space:nowrap; text-align:right;">
-                    ${r.status === 'requested' ? `<button class="admin-btn" ${dis} style="color:#10B981;" onclick="Subscription.openConfirm('${r.id}')">${open ? 'Свернуть' : '✓ Оплачено'}</button>
+                    ${r.status === 'requested' ? `<button class="admin-btn" ${dis} style="color:var(--c-ok,#10B981);" onclick="Subscription.openConfirm('${r.id}')">${open ? 'Свернуть' : '✓ Оплачено'}</button>
                     <button class="admin-btn" ${dis} onclick="Subscription.rejectRequest('${r.id}')">✗</button>` : ''}
                     <button class="admin-btn danger" ${dis} title="Удалить запись" onclick="Subscription.removePayment('${r.id}')">🗑</button>
                 </td></tr>`;
@@ -1342,7 +1342,7 @@ const Subscription = {
                         <label style="font-size:11px; color:var(--text-sec);">Дата оплаты<br><input id="sub_cf_date" type="date" value="${this.today()}" style="${this.ui.input} width:150px;"></label>
                         <label style="font-size:11px; color:var(--text-sec);">Месяцев Профи<br><input id="sub_cf_months" type="number" min="1" step="1" value="${months}" style="${this.ui.input} width:90px;"></label>
                         <label style="font-size:11px; color:var(--text-sec);">Заметка<br><input id="sub_cf_note" type="text" placeholder="например, номер перевода" style="${this.ui.input} width:220px;"></label>
-                        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-main); height:32px;"><input id="sub_cf_extend" type="checkbox" ${u ? 'checked' : 'disabled'} style="margin:0;"> продлить Профи в карточке${u ? ` <span style="color:var(--text-sec);">(до ${this.fmtDate(until)})</span>` : ' <span style="color:#EF4444;">— учётки нет</span>'}</label>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-main); height:32px;"><input id="sub_cf_extend" type="checkbox" ${u ? 'checked' : 'disabled'} style="margin:0;"> продлить Профи в карточке${u ? ` <span style="color:var(--text-sec);">(до ${this.fmtDate(until)})</span>` : ' <span style="color:var(--c-bad,#EF4444);">— учётки нет</span>'}</label>
                         <button class="admin-btn" style="background:#10B981; color:#fff; border-color:#10B981;" onclick="Subscription.confirmPaid('${r.id}')">Подтвердить оплату</button>
                     </div></td></tr>`;
             }
@@ -1434,7 +1434,7 @@ const Subscription = {
                 <p style="color:var(--text-sec); font-size:13px; margin:0 0 10px;">Тариф: ${this.esc(r.tariffName)} (${this.esc(this.fmtRub(r.rub))})</p>
                 <div style="display:inline-block; background:#fff; border-radius:10px; padding:6px; min-width:200px; min-height:200px;">
                     <img data-qr="${this.esc(r.url)}" data-size="200" alt="QR" style="width:200px; height:200px; display:${r.url ? 'block' : 'none'};">
-                    ${r.url ? '' : '<div style="font-size:12px; color:#EF4444; padding:80px 8px 0;">ссылки нет — QR не рисуется</div>'}
+                    ${r.url ? '' : '<div style="font-size:12px; color:var(--c-bad,#EF4444); padding:80px 8px 0;">ссылки нет — QR не рисуется</div>'}
                 </div>
                 ${s.note ? `<p style="font-size:12px; color:var(--text-sec); margin:8px 0 0; line-height:1.4;">${this.esc(s.note)}</p>` : ''}
                 <a href="${this.esc(r.url || '#')}" target="_blank" rel="noopener" class="btn-subscribe" style="margin:12px 0; text-decoration:none; height:44px;">🔗 Оплатить по ссылке</a>
@@ -1447,7 +1447,7 @@ const Subscription = {
             </div>
             <div style="font-size:12px; color:var(--text-sec); margin-top:10px; line-height:1.5;">
                 Цена: <b style="color:var(--text-main);">${this.esc(this.fmtRub(r.rub))}</b>${r.src === 'promo' ? ` по акции «${this.esc(r.promo.title || '')}» (было ${this.esc(this.fmtRub(r.baseRub))})` : (r.src === 'region' ? ` — региональная цена «${this.esc(r.rule.title || '')}»` : ' — общий тариф')}.
-                Ссылка: ${r.url ? `<a href="${this.esc(r.url)}" target="_blank" rel="noopener" style="color:var(--primary);">${this.esc(r.url.replace(/^https?:\/\//, ''))}</a>` : '<span style="color:#EF4444;">не задана</span>'}${r.url && !r.urlOwn ? ' <span style="color:#EF4444;">— это ссылка на другую сумму!</span>' : ''}.
+                Ссылка: ${r.url ? `<a href="${this.esc(r.url)}" target="_blank" rel="noopener" style="color:var(--primary);">${this.esc(r.url.replace(/^https?:\/\//, ''))}</a>` : '<span style="color:var(--c-bad,#EF4444);">не задана</span>'}${r.url && !r.urlOwn ? ' <span style="color:var(--c-bad,#EF4444);">— это ссылка на другую сумму!</span>' : ''}.
                 «Я оплатил» → заявка в раздел «Заявки и оплаты», уведомление в Телеграм и на почту.
             </div>
         </div>` : '';
@@ -1487,7 +1487,7 @@ const Subscription = {
                     <td style="${this.ui.td}"><b>${this.esc(r.f.label)}</b><div style="font-size:11px; color:var(--text-sec);">${this.esc(this.BENEFIT_TEXT[r.f.id] || r.f.hint || '')}</div></td>
                     <td style="${this.ui.td} text-align:center;">${cell('base', r)}</td>
                     <td style="${this.ui.td} text-align:center;">${cell('pro', r)}</td>
-                    <td style="${this.ui.td} text-align:center;">${gain ? '<span style="color:#10B981; font-weight:700;">★ преимущество</span>' : (r.pro === 'off' ? '<span style="color:var(--text-sec);">закрыто и на Профи</span>' : '<span style="color:var(--text-sec);">есть и на Базовом</span>')}</td>
+                    <td style="${this.ui.td} text-align:center;">${gain ? '<span style="color:var(--c-ok,#10B981); font-weight:700;">★ преимущество</span>' : (r.pro === 'off' ? '<span style="color:var(--text-sec);">закрыто и на Профи</span>' : '<span style="color:var(--text-sec);">есть и на Базовом</span>')}</td>
                 </tr>`;
             }).join('');
             const custom = (s.benefits[account] || []).join('\n');
@@ -1509,7 +1509,7 @@ const Subscription = {
             <p style="${this.ui.hint}">
                 Здесь те же переключатели, что в таблице «Тарифы»: строка «Профи» — что открывает подписка, строка «Базовый» — что есть и без неё.
                 Преимущество — то, что на Профи открыто, а на Базовом закрыто; из таких строк собирается текст в окне тарифа. Меняется сразу и у людей.
-                ${canCells ? '' : '<b style="color:#D97706;">Переключать функции может администратор.</b>'}
+                ${canCells ? '' : '<b style="color:var(--c-warn,#D97706);">Переключать функции может администратор.</b>'}
             </p>
             ${block('installer', '🔧 Монтажник', 'все, у кого в анкете есть монтаж, и гости без входа')}
             ${block('seller', '🏪 Продавец', 'в анкете только «продажа», без монтажа')}`;

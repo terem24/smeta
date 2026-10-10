@@ -21,10 +21,15 @@
             k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
         })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=109490947', 'ym');
 
+        // Страница счёта (invoice.html) показывает клиенту смету с названием объекта,
+        // адресом и контактами. Вебвизор записывает видимое на странице, поэтому
+        // там он выключен вместе с картой кликов: считаем только заходы и цели.
+        var isInvoicePage = window.location.pathname.indexOf('invoice.html') !== -1;
+
         ym(109490947, 'init', {
             ssr: true,
-            webvisor: true,
-            clickmap: true,
+            webvisor: !isInvoicePage,
+            clickmap: !isInvoicePage,
             ecommerce: "dataLayer",
             referrer: document.referrer,
             url: location.href,
@@ -33,8 +38,9 @@
         });
     };
 
-    // 2. Check if Consent is already given or if we are on the invoice page
-    if (localStorage.getItem('cookieConsent') === 'accepted' || window.location.pathname.indexOf('invoice.html') !== -1) {
+    // 2. Счётчик стартует только после согласия — на всех страницах, включая счёт для
+    //    клиента: политика (п. 7.4) обещает именно это, исключений в ней нет.
+    if (localStorage.getItem('cookieConsent') === 'accepted') {
         window.initMetrika();
         return;
     }

@@ -24,10 +24,13 @@ import io, json, os, re, sys, html
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SITE = 'https://heatcalc.ru'
 LEAD_PAGE = '/montazh-otopleniya-spb/'
+# Промокод читателей статей (distributors.promo_code, заведён 10.10.2026, лимит 200 приглашений).
+# Менять вместе со строкой «ref=SITE» в lead_block.
+SITE_INVITE = 'SITE'
 
 # Разрешённые типы блоков. Новый тип — дописать сюда и в render_block, иначе сборка
 # упадёт: лучше ошибка при сборке, чем кривая статья на сайте.
-BLOCKS = {'h2', 'h3', 'p', 'list', 'table', 'callout', 'note', 'formula'}
+BLOCKS = {'h2', 'h3', 'p', 'list', 'table', 'callout', 'note', 'formula', 'figure'}
 
 
 def esc(s):
@@ -122,6 +125,14 @@ def render_block(b):
         if b.get('note'):
             res += '\n        <p class="note">%s</p>' % b['note']
         return res
+    if t == 'figure':
+        # График встроенным SVG из content/figures: его текст читают поисковики и ИИ-ответы,
+        # а цвета берутся из переменных seo.css и меняются вместе с темой.
+        svg = io.open(os.path.join(ROOT, b['src']), encoding='utf-8').read().strip()
+        cap = ('\n            <figcaption>%s</figcaption>' % b['caption']) if b.get('caption') else ''
+        return ('        <figure class="chart">\n'
+                '            <div class="chart-svg" role="img" aria-label="%s">%s</div>%s\n'
+                '        </figure>' % (esc(b['alt']), svg, cap))
     raise ValueError('неизвестный блок: %r' % t)
 
 
@@ -282,7 +293,7 @@ def lead_block(slug, meta):
             </p>
         </div>
 
-        <a class="cta" href="/?utm_source=article&amp;utm_medium=seo&amp;utm_campaign=%s">
+        <a class="cta" href="/?ref=SITE&amp;utm_source=article&amp;utm_medium=seo&amp;utm_campaign=%s">
             Попробовать калькулятор бесплатно
             <small>Смета, КП и документы для монтажника</small>
         </a>
@@ -337,6 +348,8 @@ def build(slug, publish=False):
 
     url = '%s/%s/' % (SITE, slug)
     body = '\n\n'.join(render_block(b) for b in art['blocks'])
+    # Слова считаем без подписей графиков: это не текст статьи
+    text_body = re.sub(r'<figure.*?</figure>', '', body, flags=re.S)
     # Блок прямого ответа. Стоит выше лида намеренно: ИИ-ответы Яндекса и Google
     # цитируют первый фрагмент, который отвечает на запрос буквально, а лид у нас
     # написан как зачин — он читается человеком, но моделью не извлекается.
@@ -353,6 +366,9 @@ def build(slug, publish=False):
                  % (pub_date, human_date(pub_date)))
     robots = ('index, follow, max-snippet:-1, max-image-preview:large' if publish
               else 'noindex, follow')
+
+    # Своя картинка статьи (карточка 1200×630) вместо общей обложки сайта
+    og_image = SITE + '/' + art['og_image'] if art.get('og_image') else SITE + '/img/og_cover.png'
 
     ld = {
         '@context': 'https://schema.org',
@@ -381,13 +397,20 @@ def build(slug, publish=False):
              'author': {'@type': 'Person', 'name': 'Дмитрий Ибатуллин'},
              'publisher': {'@type': 'Organization', 'name': 'HeatCalc.ru', 'url': SITE + '/'},
              'isAccessibleForFree': True,
-             'wordCount': len(plain(body).split()),
+             'image': og_image,
+             'wordCount': len(plain(text_body).split()),
              'citation': [{'@type': 'CreativeWork', 'name': n}
                           for n in norms_cited(plain(body) + ' ' + plain(render_faq(art['faq'])))]},
         ],
     }
 
+    # Ссылки на калькулятор: код SITE пускает читателя статьи в регистрацию (она по приглашениям)
+    # и отделяет его от внешних площадок (код GEO); utm_campaign — какая статья привела
+    calc_url = '/?ref=%s&amp;utm_source=article&amp;utm_medium=seo&amp;utm_campaign=%s' % (SITE_INVITE, slug)
+
     page = TEMPLATE.format(
+        calc_url=calc_url,
+        og_image=og_image,
         meta_title=esc(art['meta_title']),
         description=esc(art['description']),
         url=url,
@@ -418,7 +441,7 @@ def build(slug, publish=False):
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, 'index.html')
     io.open(path, 'w', encoding='utf-8').write(page)
-    words = len(plain(body).split())
+    words = len(plain(text_body).split())
 
     # Отмечаем в расписании, что статья написана: по этому полю вкладка «Статьи»
     # в админке отличает готовое от запланированного. Статус published не трогаем —
@@ -449,7 +472,7 @@ TEMPLATE = '''<!DOCTYPE html>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/seo.css?v=7">
+    <link rel="stylesheet" href="/seo.css?v=8">
 
     <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
          Флаг общий с калькулятором — stout_save.darkMode. -->
@@ -477,11 +500,11 @@ TEMPLATE = '''<!DOCTYPE html>
     <meta property="og:url" content="{url}">
     <meta property="og:title" content="{og_title}">
     <meta property="og:description" content="{og_description}">
-    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image" content="{og_image}">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta name="twitter:image" content="{og_image}">
 
     <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
          поэтому разойтись не могут. -->
@@ -497,7 +520,7 @@ TEMPLATE = '''<!DOCTYPE html>
         <div class="wrap">
             <a class="logo" href="/">HeatCalc<span>.ru</span></a>
             <div class="head-actions">
-                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <a class="head-link" href="{calc_url}">Открыть калькулятор →</a>
                 <button class="theme-toggle" type="button" aria-label="Сменить тему">
                     <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
                     <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
@@ -522,7 +545,7 @@ TEMPLATE = '''<!DOCTYPE html>
 
 {body}
 {dom_cta}
-        <a class="cta" href="/">
+        <a class="cta" href="{calc_url}">
             {cta_calc}
             <small>{cta_calc_note}</small>
         </a>
@@ -553,7 +576,6 @@ TEMPLATE = '''<!DOCTYPE html>
                 <a href="{lead_page}">Монтаж в СПб</a>
                 <a href="/goroda/">Города</a>
                 <a href="/oferta.html">Оферта</a>
-                <a href="https://t.me/heatcalc">Поддержка</a>
             </p>
             <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
         </div>

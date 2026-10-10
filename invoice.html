@@ -1192,7 +1192,7 @@
                 border: none !important;
                 border-bottom: 1px solid var(--border) !important;
                 border-radius: 0 !important;
-                padding: 12px 0 !important;
+                padding: 12px 10px !important;
                 margin-bottom: 0 !important;
                 box-shadow: none !important;
             }
@@ -1349,7 +1349,7 @@
                 border: none !important;
                 border-bottom: 1px solid var(--border) !important;
                 border-radius: 0 !important;
-                padding: 12px 0 !important;
+                padding: 12px 10px !important;
                 margin-bottom: 0 !important;
                 box-shadow: none !important;
             }
@@ -1432,6 +1432,165 @@
             .sum-val {
                 white-space: nowrap !important;
             }
+
+            /* Шапка раздела: заголовок на всю ширину, кнопка и переключатель
+               картинок — второй строкой. В одну строку они не помещались, и
+               переключатель выезжал за правый край карточки. */
+            .sec-header-row {
+                flex-wrap: wrap;
+                gap: 8px 12px;
+            }
+
+            .sec-header-row .sec-title {
+                flex: 1 1 100%;
+            }
+
+            .sec-header-row .toggle-images-wrapper {
+                flex: 1 1 100%;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                gap: 8px 12px !important;
+            }
+
+            /* Строки разделов («1. КОТЁЛ…») и итоги разделов: общее правило
+               «td { padding: 0 }» выше обнуляло им отступы, и текст прилипал
+               к рамке, а «Итого по разделу» — к заголовку следующего раздела. */
+            #equipment_tbody tr.group-row td,
+            #works_tbody tr.group-row td {
+                padding: 16px 10px 8px !important;
+                background: var(--group-bg) !important;
+                color: var(--primary) !important;
+                font-size: 12px;
+            }
+
+            #equipment_tbody tr.subtotal-row td,
+            #works_tbody tr.subtotal-row td {
+                padding: 10px 10px 12px !important;
+                background: var(--soft) !important;
+                color: var(--text-main) !important;
+                font-style: normal;
+                font-weight: 700;
+                font-size: 13px;
+                text-align: right;
+            }
+
+            /* Быстрое меню разделов слева налезало на названия позиций */
+            .sec-nav {
+                display: none !important;
+            }
+
+            /* Кнопки печати/обновления: меньше, и пока страница крутится —
+               прячутся, чтобы не закрывать суммы в строках (см. скрипт ниже) */
+            .fab-container {
+                bottom: 16px;
+                right: 12px;
+                gap: 8px;
+                transition: opacity 0.2s ease, transform 0.2s ease;
+            }
+
+            .fab-container .fab-btn {
+                width: 46px;
+                height: 46px;
+            }
+
+            .fab-container.fab-scrolling {
+                opacity: 0;
+                transform: translateY(16px);
+                pointer-events: none;
+            }
+
+            /* При 1 шт «× цена» повторяет сумму справа сверху */
+            #equipment_tbody tr.qty-one td.col-price,
+            #works_tbody tr.qty-one td.col-price {
+                display: none !important;
+            }
+
+            /* Шапка: название и сайт — столбиком, а не слитно в одну строку */
+            .header-top {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+
+            /* Реквизиты банка на первом экране отнимали полэкрана: свёрнуты за
+               кнопкой. В PDF и при печати показываются всегда. */
+            body:not(.html2pdf-printing) .doc-header:not(.req-open) .header-bank {
+                display: none;
+            }
+
+            .doc-header .req-toggle {
+                display: block;
+                margin: 8px 0 0;
+                padding: 4px 0;
+                border: 0;
+                background: none;
+                color: var(--primary);
+                font: inherit;
+                font-size: 12px;
+                font-weight: 700;
+                cursor: pointer;
+            }
+
+            /* Фото на светлой теме: у плиток разные пропорции (дымоход 600×189),
+               белое поле снимка выглядело серой плиткой с полоской внутри */
+            #equipment_tbody td.col-img img,
+            #equipment_tbody td.col-img .table-img {
+                background: #fff !important;
+                border-radius: 9px !important;
+                padding: 3px !important;
+                box-sizing: border-box !important;
+            }
+
+            /* Нижняя панель с общей суммой; прячется, когда на экране итоговая карточка */
+            body.has-mob-total:not(.summary-visible) .mob-total-bar {
+                display: flex;
+            }
+
+            body.has-mob-total:not(.summary-visible) .fab-container {
+                bottom: 68px;
+            }
+        }
+
+        .req-toggle,
+        .mob-total-bar {
+            display: none;
+        }
+
+        .eq-legend {
+            display: none;
+            margin: -6px 0 10px;
+            font-size: 11px;
+            color: var(--text-sec);
+        }
+
+        .mob-total-bar {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 950;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+            font-size: 13px;
+            color: var(--text-sec);
+        }
+
+        .mob-total-bar b {
+            font-size: 17px;
+            font-weight: 800;
+            color: var(--text-main);
+            white-space: nowrap;
+        }
+
+        body.html2pdf-printing .mob-total-bar,
+        body.html2pdf-printing .req-toggle,
+        body.html2pdf-printing .eq-legend {
+            display: none !important;
         }
 
         @page {
@@ -3427,6 +3586,8 @@
                     К/сч. 30101810400000000225
                 </div>
             </div>
+            <button type="button" class="req-toggle no-print" aria-expanded="false"
+                onclick="const h=this.closest('.doc-header'); const o=h.classList.toggle('req-open'); this.setAttribute('aria-expanded', o); this.textContent = o ? 'Скрыть реквизиты ▴' : 'Реквизиты ▾';">Реквизиты ▾</button>
             <hr class="header-line">
         </header>
 
@@ -3509,6 +3670,7 @@
                     </label>
                 </div>
             </div>
+            <div id="eq_legend" class="eq-legend no-print">Значок <b>i</b> — пояснение к позиции (нажмите на него). Синий — в наличии, жёлтый — под заказ.</div>
             <div class="table-responsive">
                 <table class="spec-table">
                     <thead>
@@ -3884,7 +4046,7 @@
         // «Скидка 1С» таблицы «Тарифы» (app_settings.tariffs). Строка таблицы
         // определяется так же, как tariffAccountOfUser / tariffPlanOfUser в app.js.
         // Разделение клиентское, как и вся таблица тарифов.
-        const SUPER_ADMIN_EMAILS_1C = ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'];
+        const SUPER_ADMIN_EMAILS_1C = ['kovdor24@yandex.ru'];
         async function invoice1cAllowed() {
             const host = window.location.hostname;
             if (host === 'localhost' || host === '127.0.0.1') return true;
@@ -5368,10 +5530,10 @@
             // ?id= могла упираться в блокировку Supabase у части пользователей в РФ.
             try {
                 // Fetch invoice record from shared_invoices
+                // Чтение по номеру ссылки — через функцию базы: таблица закрыта от
+                // перебора, а саму смету по её id отдаёт get_shared_invoice
                 const { data, error } = await supabaseClient
-                    .from('shared_invoices')
-                    .select('*')
-                    .eq('id', id)
+                    .rpc('get_shared_invoice', { p_id: id })
                     .single();
 
                 if (error || !data) {
@@ -5560,9 +5722,14 @@
 
             // 3. Totals
             const totals = data.totals || {};
-            document.getElementById('total_eq').textContent = `${(totals.equipment || 0).toLocaleString()} ₽`;
-            document.getElementById('total_works').textContent = `${(totals.works || 0).toLocaleString()} ₽`;
-            document.getElementById('grand_total').textContent = `${(totals.grandTotal || 0).toLocaleString()} ₽`;
+            document.getElementById('total_eq').textContent = `${(totals.equipment || 0).toLocaleString('ru-RU')} ₽`;
+            document.getElementById('total_works').textContent = `${(totals.works || 0).toLocaleString('ru-RU')} ₽`;
+            document.getElementById('grand_total').textContent = `${(totals.grandTotal || 0).toLocaleString('ru-RU')} ₽`;
+            const mobTotal = document.getElementById('mob_total');
+            if (mobTotal) {
+                mobTotal.textContent = `${(totals.grandTotal || 0).toLocaleString('ru-RU')} ₽`;
+                document.body.classList.toggle('has-mob-total', !!totals.grandTotal);
+            }
             // Смета без работ (продавец, или монтажник снял раздел при отправке):
             // строку «Итого по монтажным работам: 0 ₽» не показываем вовсе —
             // клиенту нечего оплачивать за монтаж, и упоминать его незачем.
@@ -5579,7 +5746,7 @@
                 pct = Number(pct) || 0;
                 if (pct <= 0 || pct >= 100 || !(total > 0)) { row.style.display = 'none'; return; }
                 const rub = Math.round(total / (1 - pct / 100)) - Math.round(total);
-                document.getElementById(valId).textContent = `−${rub.toLocaleString()} ₽ (${pct} %)`;
+                document.getElementById(valId).textContent = `−${rub.toLocaleString('ru-RU')} ₽ (${pct} %)`;
                 row.style.display = '';
             };
             showDisc('disc_eq_row', 'disc_eq_val', obj.eqDiscount, totals.equipment || 0);
@@ -5621,6 +5788,8 @@
                         if (i.isOpt) return; // Skip optional untoggled items
 
                         const tr = document.createElement('tr');
+                        // «× цена» под количеством на телефоне при 1 шт повторяет сумму — прячем (CSS .qty-one)
+                        if (Number(i.q) === 1) tr.classList.add('qty-one');
 
                         // Image file mapping. Фото лежат по артикулу, поэтому у
                         // строки без него сразу берём заглушку, а не ходим за
@@ -5732,8 +5901,8 @@
                                     ${tipHtml}
                                 </div>
                             </td>
-                            <td class="col-price">${i.price.toLocaleString()} ₽</td>
-                            <td class="col-sum">${i.sum.toLocaleString()} ₽</td>
+                            <td class="col-price">${i.price.toLocaleString('ru-RU')} ₽</td>
+                            <td class="col-sum">${i.sum.toLocaleString('ru-RU')} ₽</td>
                         `;
                         tbody.appendChild(tr);
                         secSum += i.sum;
@@ -5743,7 +5912,7 @@
                     const subtotalTr = document.createElement('tr');
                     subtotalTr.className = 'subtotal-row';
                     subtotalTr.innerHTML = `
-                        <td colspan="${colspanVal}">Итого по разделу: ${secSum.toLocaleString()} ₽</td>
+                        <td colspan="${colspanVal}">Итого по разделу: ${secSum.toLocaleString('ru-RU')} ₽</td>
                     `;
                     tbody.appendChild(subtotalTr);
                 });
@@ -5794,6 +5963,7 @@
                     let secSum = 0;
                     activeWorks.forEach(w => {
                         const tr = document.createElement('tr');
+                        if (Number(w.q) === 1) tr.classList.add('qty-one');
 
                         let friendlyExplanation = '';
                         const nameLower = (w.name || '').toLowerCase();
@@ -5836,8 +6006,8 @@
                                      ${tipHtml}
                                 </div>
                             </td>
-                            <td class="col-price">${w.price.toLocaleString()} ₽</td>
-                            <td class="col-sum">${w.sum.toLocaleString()} ₽</td>
+                            <td class="col-price">${w.price.toLocaleString('ru-RU')} ₽</td>
+                            <td class="col-sum">${w.sum.toLocaleString('ru-RU')} ₽</td>
                         `;
                         tbody.appendChild(tr);
                         secSum += w.sum;
@@ -5847,7 +6017,7 @@
                     const subtotalTr = document.createElement('tr');
                     subtotalTr.className = 'subtotal-row';
                     subtotalTr.innerHTML = `
-                        <td colspan="6">Итого по разделу: ${secSum.toLocaleString()} ₽</td>
+                        <td colspan="6">Итого по разделу: ${secSum.toLocaleString('ru-RU')} ₽</td>
                     `;
                     tbody.appendChild(subtotalTr);
                 });
@@ -5969,7 +6139,7 @@
             if (!id || !supabaseClient || !invoiceData) return;
             if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return;
             try {
-                const req = supabaseClient.from('shared_invoices').select('object_info').eq('id', id).maybeSingle();
+                const req = supabaseClient.rpc('get_shared_invoice', { p_id: id }).maybeSingle();
                 const { data } = await Promise.race([
                     req,
                     new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
@@ -6764,6 +6934,41 @@
         @media print { .sec-nav { display: none !important; } }
     </style>
     <div id="sec_nav" class="sec-nav no-print" aria-label="Разделы КП"></div>
+    <div class="mob-total-bar no-print"><span>Итого по КП</span><b id="mob_total">0 ₽</b></div>
+    <script>
+    // Пояснение значков «i» показываем, только если в смете они есть;
+    // нижняя панель с суммой прячется, пока на экране итоговая карточка.
+    (function () {
+        var tb = document.getElementById('equipment_tbody');
+        var legend = document.getElementById('eq_legend');
+        if (tb && legend) {
+            var upd = function () { legend.style.display = tb.querySelector('.info-icon') ? 'block' : 'none'; };
+            new MutationObserver(upd).observe(tb, { childList: true });
+            upd();
+        }
+        var card = document.querySelector('.summary-card');
+        if (card && 'IntersectionObserver' in window) {
+            new IntersectionObserver(function (e) {
+                document.body.classList.toggle('summary-visible', e[0].isIntersecting);
+            }).observe(card);
+        }
+    })();
+    </script>
+    <script>
+    // На телефоне круглые кнопки прячутся, пока страница крутится, и возвращаются
+    // через 300 мс покоя: иначе закрывают суммы в строках сметы (стиль — .fab-scrolling).
+    (function () {
+        var fab = document.querySelector('.fab-container');
+        if (!fab) return;
+        var t = 0;
+        window.addEventListener('scroll', function () {
+            if (window.innerWidth > 768) return;
+            fab.classList.add('fab-scrolling');
+            clearTimeout(t);
+            t = setTimeout(function () { fab.classList.remove('fab-scrolling'); }, 300);
+        }, { passive: true });
+    })();
+    </script>
     <script>
     (function () {
         var SECS = [['equipment_container', 'Оборудование'], ['works_container', 'Монтажные работы'], ['kp_house_section', 'Мой дом'], ['ufh_plan_section', 'Схемы'], ['kp_warranty_sheet', 'Гарантия']];

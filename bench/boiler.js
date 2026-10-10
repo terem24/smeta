@@ -177,7 +177,7 @@ function swap() {
                     app._lastSwapLookupId = null;
                     let html = '';
                     try { app.openSwapModal(id); html = String(body.innerHTML || ''); } catch (e) { html = ''; }
-                    if (/Нержавеющая сталь AISI 304/.test(html)) ok++;
+                    if (/Нержавеющая сталь AISI 316L/.test(html)) ok++;
                     else bad.push(id);
                 });
             console.log('  ' + padR(sys + (sys === 'ppr' ? ' / ' + brand : ''), 18) +

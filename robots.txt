@@ -35,6 +35,11 @@ Disallow: /supabase/
 Disallow: /mobile-android/
 Disallow: /*.json$
 Disallow: /*.php$
+# Служебные параметры главной: код магазина (ref), идентификатор Метрики (cid), возврат со входа
+# через Яндекс ID (state, code), предпросмотр сметы из админки и ответы опросника. Яндекс подбирал
+# их из счётчика Метрики и заводил отдельными адресами главной (09.10.2026, Вебмастер → «Страницы
+# в поиске»); в индексе они ни к чему, а опросник несёт данные заказчика.
+Clean-param: ref&cid&state&code&admin_estimate_preview&opros&_openstat
 Clean-param: src&from&share&p&utm_source&utm_medium&utm_campaign&utm_term&utm_content&yclid&gclid
 
 # --- Роботы ИИ-поиска ---

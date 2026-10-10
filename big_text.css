@@ -58,9 +58,64 @@
 
   html[data-big-text] .sg-card .sg-foot { font-size: 15.5px; }
 
+  html[data-big-text] .sg-card .sg-rep { font-size: 15.5px; }
+
+  html[data-big-text] .sg-card .sg-noan { font-size: 15px; }
+
   @media (max-width: 520px) {
     html[data-big-text] .sg-card .sg-title { font-size: 18px; }
   }
+  html[data-big-text] .bf-mini-track u span { font-size: 13px; }
+
+  html[data-big-text] .bf-mini-ticks { font-size: 14px; }
+
+  html[data-big-text] .bf-growth { font-size: 15px; }
+
+  html[data-big-text] .bf-btn { font-size: 15.5px; }
+
+  html[data-big-text] .sg-card .bf-ct,
+  html[data-big-text] .sg-card .bf-tt { font-size: 15px; }
+
+  html[data-big-text] .sg-card .bf-val { font-size: 15px; }
+
+  html[data-big-text] .sg-card .bf-x { font-size: 15px; }
+
+  html[data-big-text] .sg-card .bf-x2 { font-size: 13px; }
+
+  html[data-big-text] .sg-card .bf-cap-t { font-size: 15px; }
+
+  html[data-big-text] .sg-card .bf-t b { font-size: 15.5px; }
+
+  html[data-big-text] .sg-card .bf-t span { font-size: 15.5px; }
+
+  html[data-big-text] .sg-card .bf-t em { font-size: 15px; }
+
+  html[data-big-text] .sg-card .bf-growth-win { font-size: 15.5px; }
+
+  html[data-big-text] .bf-id { font-size: 15.5px; }
+
+  html[data-big-text] .bf-dim { font-size: 15px; }
+
+  html[data-big-text] .bf-chip { font-size: 15px; }
+
+  html[data-big-text] .bf-eco { font-size: 15px; }
+
+  html[data-big-text] .bf-cost { font-size: 15px; }
+
+  html[data-big-text] .tip-panel .bf-tbl { font-size: 15px; }
+
+  html[data-big-text] .tip-panel .bf-tbl th { font-size: 14px; }
+
+  html[data-big-text] .bf-fc-t { font-size: 14px; }
+
+  html[data-big-text] .bf-fc-v { font-size: 15px; }
+
+  html[data-big-text] .bf-fc-col b { font-size: 14px; }
+
+  html[data-big-text] .bf-fc-col em { font-size: 14px; }
+
+  html[data-big-text] .bf-fc-s { font-size: 14px; }
+
   html[data-big-text] .sku-label { font-size: 14px; }
 
   html[data-big-text] .inv-table { font-size: 15.5px; }
@@ -172,6 +227,10 @@
   html[data-big-text] .sec-explain { font-size: 15px; }
 
   html[data-big-text] .note-box .note-ico { font-size: 15.5px; }
+
+  html[data-big-text] .note-fold { font-size: 15px; }
+
+  html[data-big-text] .note-box .note-ok { font-size: 17px; }
 
   html[data-big-text] .ph-top { font-size: 17px; }
 
@@ -559,6 +618,8 @@
   html[data-big-text] .scheme-zoom-btn { font-size: 16px; }
 
   html[data-big-text] #scheme_zoom_overlay .scheme-zoom-bar button { font-size: 18px; }
+
+  html[data-big-text] #scheme_zoom_overlay .scheme-zoom-count { font-size: 16.5px; }
 
   html[data-big-text] .sec-analog-label,
   html[data-big-text] .sec-toggle-label { font-size: 13px; }
@@ -970,6 +1031,12 @@
 
   html[data-big-text] .rec-quota .rq-pop { font-size: 15.5px; }
 
+  html[data-big-text] .rq-h { font-size: 16.5px; }
+
+  html[data-big-text] .rq-h b { font-size: 17.5px; }
+
+  html[data-big-text] .rq-cap { font-size: 15.5px; }
+
   html[data-big-text] .rec-plan-group-row { font-size: 16px; }
 
   html[data-big-text] .rec-plan-notes { font-size: 15.5px; }
@@ -1046,6 +1113,10 @@
 
   html[data-big-text] .admin-chat-readonly { font-size: 15.5px; }
 
+  @media (pointer: coarse) {
+    html[data-big-text] .admin-chat-compose textarea,
+    html[data-big-text] #notif_pane_chat .admin-chat-compose textarea { font-size: 18px; }
+  }
   html[data-big-text] .lk-rail-item { font-size: calc(15.5px * var(--lk-scale, 1)); }
 
   html[data-big-text] .lk-rail-badge { font-size: 13.5px; }
@@ -1201,6 +1272,12 @@
 
   html[data-big-text] #admin_content table.ad-dense td { font-size: 15.5px; }
 
+  @media screen and (max-width: 899.98px) {
+    html[data-big-text] #admin_content table.ad-dense td::before { font-size: 13px; }
+  }
+  @media screen and (max-width: 899.98px) {
+    html[data-big-text] #admin_content table.ad-dense .admin-action-btn { font-size: 15px; }
+  }
   html[data-big-text] .ad-peek-name { font-size: 18px; }
 
   html[data-big-text] .ad-peek-sub { font-size: 15.5px; }
@@ -1431,9 +1508,104 @@
 
   html[data-big-text] .lk-meta { font-size: 15.5px; }
 
-  html[data-big-text] .save-remind-sum { font-size: 16.5px; }
+  html[data-big-text] .save-remind-top h3 { font-size: 21px; }
 
-  html[data-big-text] .save-remind-off { font-size: 15.5px; }
+  html[data-big-text] .save-remind-lead { font-size: 15.5px; }
+
+  html[data-big-text] .save-remind-field span { font-size: 15.5px; }
+
+  html[data-big-text] .save-remind-field input { font-size: 18px; }
+
+  html[data-big-text] .save-remind-ok { font-size: 17.5px; }
+
+  html[data-big-text] .save-remind-links button { font-size: 16.5px; }
+
+  html[data-big-text] .pr-fun-row { font-size: 16.5px; }
+
+  html[data-big-text] .pr-fun-n span { font-size: 15.5px; }
+
+  html[data-big-text] .pr-table { font-size: 16.5px; }
+
+  html[data-big-text] .pr-table th { font-size: 15px; }
+
+  html[data-big-text] .pr-who span { font-size: 15px; }
+
+  html[data-big-text] .pr-score { font-size: 15.5px; }
+
+  html[data-big-text] .pr-field { font-size: 15.5px; }
+
+  html[data-big-text] .pr-input { font-size: 17px; }
+
+  html[data-big-text] .pr-res-l { font-size: 15.5px; }
+
+  html[data-big-text] .pr-res-v { font-size: 19.5px; }
+
+  html[data-big-text] .pr-act .pr-sent { font-size: 15px; }
+
+  html[data-big-text] .pr-offer-h { font-size: 17px; }
+
+  html[data-big-text] .pr-offer-text { font-size: 16.5px; }
+
+  html[data-big-text] .mb-cap { font-size: 15px; }
+
+  html[data-big-text] .mb-big span { font-size: 16.5px; }
+
+  html[data-big-text] .mb-knob span { font-size: 15px; }
+
+  html[data-big-text] .mb-scale { font-size: 14px; }
+
+  html[data-big-text] .mb-tip { font-size: 15px; }
+
+  html[data-big-text] .mb-tier { font-size: 15.5px; }
+
+  html[data-big-text] .mb-tier b { font-size: 15.5px; }
+
+  html[data-big-text] .mb-tier b em { font-size: 14px; }
+
+  html[data-big-text] .mb-seg button { font-size: 15.5px; }
+
+  html[data-big-text] .mb-set > b { font-size: 16px; }
+
+  html[data-big-text] .mb-set > span { font-size: 15.5px; }
+
+  html[data-big-text] .mb-row { font-size: 16px; }
+
+  html[data-big-text] .mb-row.head { font-size: 15px; }
+
+  html[data-big-text] .mb-row .nm b { font-size: 16.5px; }
+
+  html[data-big-text] .mb-row .nm span { font-size: 15px; }
+
+  html[data-big-text] .mb-note { font-size: 15.5px; }
+
+  html[data-big-text] .mb-log { font-size: 15.5px; }
+
+  html[data-big-text] .sg-summary { font-size: 15.5px; }
+
+  html[data-big-text] #sg-tip { font-size: 15.5px; }
+
+  html[data-big-text] .view-menu-caret { font-size: 14px; }
+
+  html[data-big-text] .view-menu-panel .sku-label { font-size: 15.5px; }
+
+  html[data-big-text] .pg-title { font-size: 15px; }
+
+  html[data-big-text] .pg-num { font-size: 14px; }
+
+  html[data-big-text] .pg-hint { font-size: 15px; }
+
+  html[data-big-text] .pg-title::after { font-size: 14px; }
+
+  html[data-big-text] .pg-quick,
+  html[data-big-text] .pg-count { font-size: 15px; }
+
+  html[data-big-text] #plan_row_manual { font-size: 15.5px; }
+
+  html[data-big-text] .pg-summary { font-size: 15px; }
+
+  html[data-big-text] .pg-chev { font-size: 15px; }
+
+  html[data-big-text] .mode-sub { font-size: 15px; }
 
   /* инлайновые font-size */
   html[data-big-text] [style*="font-size:8.5px"], html[data-big-text] [style*="font-size: 8.5px"] { font-size: 12.5px !important; }
@@ -1472,5 +1644,23 @@
   html[data-big-text] .inv-table td.col-brand {
     width: 86px;
     min-width: 86px;
+  }
+  /* плашки-замечания в смете: с общей прибавкой выходило 15 px — крупнее названий позиций */
+  html[data-big-text] .note-box,
+  html[data-big-text] .note-fold {
+    font-size: 12.5px;
+  }
+  html[data-big-text] .note-box .note-ico {
+    font-size: 13px;
+  }
+  /* колонка параметров: пояснения и заголовки групп мельче названий пунктов (16,5 px) */
+  html[data-big-text] .pg-title {
+    font-size: 13px;
+  }
+  html[data-big-text] .pg-sub,
+  html[data-big-text] .mode-sub,
+  html[data-big-text] .pg-summary,
+  html[data-big-text] .pg-quick {
+    font-size: 13px;
   }
 }

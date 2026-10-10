@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Какой котёл нужен дому 150 м²: ответы Gemini, ChatGPT и Алисы и проверка | HeatCalc.ru</title>
+    <meta name="description" content="Один вопрос про мощность котла для дома 150 м² в Санкт-Петербурге, три нейросети и сверка с расчётами 102 рабочих проектов: нейросети назвали 15–20 кВт, проекты дают около 10. Разбор и проверка за минуту.">
+    <link rel="canonical" href="https://heatcalc.ru/neyroseti-moshchnost-kotla-150-m2/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=8">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/neyroseti-moshchnost-kotla-150-m2/">
+    <meta property="og:title" content="Спросили у трёх нейросетей, какой котёл нужен дому 150 м²">
+    <meta property="og:description" content="Gemini, ChatGPT и Алиса назвали 15–20 кВт. Рабочие проекты таких домов дают около 10. Где ошибка.">
+    <meta property="og:image" content="https://heatcalc.ru/img/articles/neyroseti-moshchnost-kotla-150-m2.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/articles/neyroseti-moshchnost-kotla-150-m2.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/neyroseti-moshchnost-kotla-150-m2/#webpage",
+      "url": "https://heatcalc.ru/neyroseti-moshchnost-kotla-150-m2/",
+      "name": "Спросили у трёх нейросетей, какой котёл нужен дому 150 м²: что ответили и что не так",
+      "description": "Один вопрос про мощность котла для дома 150 м² в Санкт-Петербурге, три нейросети и сверка с расчётами 102 рабочих проектов: нейросети назвали 15–20 кВт, проекты дают около 10. Разбор и проверка за минуту.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "нейросеть расчёт мощности котла"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Спросили у трёх нейросетей, какой котёл нужен дому 150 м²: что ответили и что не так",
+          "item": "https://heatcalc.ru/neyroseti-moshchnost-kotla-150-m2/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Можно ли доверять нейросети при выборе мощности котла?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Как стартовой оценке — с оговорками. Нейросеть правильно знает формулы и порядок расчёта, но не видит ваш дом и по умолчанию берёт популярное правило «1 кВт на 10 м²». В нашем эксперименте три нейросети назвали 15–20 кВт, а проекты таких домов дают около 10 кВт. Окончательную мощность считают по конструкциям дома."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Сколько кВт нужно для отопления дома 150 м²?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Для современного утеплённого дома около 10 кВт теплопотерь при −26 °C (медиана 102 проектов), с запасом 1,15 — около 11,5 кВт. Для старого дома без утепления может понадобиться 15 кВт и больше. Горячая вода учитывается по большему из двух условий, а не прибавляется."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему нейросети называют 15–20 кВт?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "По их ответам видно, что они опираются на правило 100 Вт на квадратный метр, самое распространённое в интернете и в практике монтажников. Для старых домов оно разумно, для утеплённых завышает мощность примерно в полтора раза."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как быстро проверить ответ нейросети по мощности котла?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Разделите названную мощность на площадь дома и сравните с 58–77 Вт/м² для современного утеплённого дома. Если число заметно выше, уточните у нейросети, из чего построен дом, а затем посчитайте мощность по ограждениям."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/neyroseti-moshchnost-kotla-150-m2/#article",
+      "headline": "Спросили у трёх нейросетей, какой котёл нужен дому 150 м²: что ответили и что не так",
+      "description": "Один вопрос про мощность котла для дома 150 м² в Санкт-Петербурге, три нейросети и сверка с расчётами 102 рабочих проектов: нейросети назвали 15–20 кВт, проекты дают около 10. Разбор и проверка за минуту.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/neyroseti-moshchnost-kotla-150-m2/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-10-11",
+      "dateModified": "2026-10-11",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "image": "https://heatcalc.ru/img/articles/neyroseti-moshchnost-kotla-150-m2.png",
+      "wordCount": 849,
+      "citation": [
+        {
+          "@type": "CreativeWork",
+          "name": "СП 131.13330.2020"
+        },
+        {
+          "@type": "CreativeWork",
+          "name": "СП 60.13330.2020"
+        }
+      ]
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/?ref=SITE&amp;utm_source=article&amp;utm_medium=seo&amp;utm_campaign=neyroseti-moshchnost-kotla-150-m2">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Спросили у трёх нейросетей, какой котёл нужен дому 150 м²: что ответили и что не так</nav>
+
+        <h1>Спросили у трёх нейросетей, какой котёл нужен дому 150 м²: что ответили и что не так</h1>
+
+        <p class="art-meta"><time datetime="2026-10-11">11 октября 2026</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Какой мощности котёл нужен дому 150 м² и можно ли верить ответу нейросети?</p>
+            <p>Для современного утеплённого дома 150 м² по расчётам 102 рабочих проектов нужно около 10 кВт на отопление (медиана 67 Вт/м² при −26 °C, в Санкт-Петербурге чуть меньше), с запасом 1,15 — около 11,5 кВт. Gemini, ChatGPT и Алиса назвали 15–20 кВт: они опираются на правило «1 кВт на 10 м²», которое для таких домов завышает мощность примерно в полтора раза. Нейросеть верно умножает, но не знает ваш дом, поэтому проверять нужно исходные допущения, а не арифметику.</p>
+        </div>
+
+        <p class="lead">Мы задали Gemini, ChatGPT и Алисе один и тот же вопрос про котёл для дома 150 м² и сверили ответы с расчётами 102 рабочих проектов отопления. Нейросети уверенно назвали 15–20 кВт. Проектировщики для таких домов считают около 10. Показываем ответы как есть и объясняем, откуда расхождение и как проверить любой такой ответ за минуту.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#chto-my-sprosili-i-kak-proveryali">Что мы спросили и как проверяли</a></li>
+            <li><a href="#chto-otvetili-neyroseti">Что ответили нейросети</a></li>
+            <li><a href="#s-chem-sravnivaem">С чем сравниваем</a></li>
+            <li><a href="#chto-v-otvetah-verno">Что в ответах верно</a></li>
+            <li><a href="#chto-ne-tak">Что не так</a></li>
+            <li><a href="#chem-grozit-lishniy-zapas">Чем грозит лишний запас</a></li>
+            <li><a href="#kak-proverit-otvet-neyroseti-za-minutu">Как проверить ответ нейросети за минуту</a></li>
+            <li><a href="#ogranicheniya-etoy-proverki">Ограничения этой проверки</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="chto-my-sprosili-i-kak-proveryali">Что мы спросили и как проверяли</h2>
+
+        <p>10 октября 2026 года мы задали трём нейросетям один и тот же вопрос, без подсказок и уточнений: <strong>«Дом 150 м² в Санкт-Петербурге, кирпичный, утеплённый, два этажа. Какой мощности нужен котёл для отопления?»</strong> Gemini (режим «Авто», временный чат), ChatGPT (без входа в аккаунт) и Алиса AI отвечали по одному разу, мы взяли первый ответ.</p>
+
+        <p>Эталоном служат расчёты проектировщиков: <a href="/teplopoteri-doma-dannye-102-proektov/">102 рабочих проекта отопления частных домов</a>, где по каждому помещению посчитаны теплопотери. Медиана — <strong>67 Вт на м²</strong> при −26 °C на улице, у половины проектов от 58 до 77. Для дома 150 м² это 10,0 кВт (от 8,7 до 11,6).</p>
+
+        <h2 id="chto-otvetili-neyroseti">Что ответили нейросети</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Нейросеть</th><th>Первая фраза ответа</th><th>Как получилось число</th></tr>
+                <tr><td>Gemini</td><td>«Около 15–18 кВт»</td><td>Берёт 100 Вт/м²: 150 × 0,1 = 15 кВт. Добавляет запас 15–20 % и получает 18. С горячей водой советует 20–24 кВт</td></tr>
+                <tr><td>ChatGPT</td><td>«15–18 кВт для отопления»</td><td>В таблице у хорошо утеплённого дома 50–70 Вт/м², то есть 7,5–10,5 кВт, но итоговый диапазон назван 12–18 кВт. Уточняющие вопросы (потолки, горячая вода, утепление) задаёт после числа</td></tr>
+                <tr><td>Алиса AI</td><td>«15–20 кВт только для отопления»</td><td>С горячей водой советует 20–25 кВт. Называет надбавки за высоту потолков, окна и вентиляцию, ссылается на сайты-источники</td></tr>
+            </table>
+        </div>
+
+        <p>Все три ответа похожи: порядок цифр одинаковый, и он <strong>на 50–100 % выше</strong>, чем у проектировщиков. Ошибки в арифметике нет. Расхождение целиком в исходном допущении.</p>
+
+        <figure class="chart">
+            <div class="chart-svg" role="img" aria-label="Диапазоны мощности котла для дома 150 м² в Санкт-Петербурге: расчёты 102 проектов дают 8,7–11,6 кВт при медиане 10, три нейросети называют 15–20 кВт"><svg viewBox="0 0 480 374" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><title>Мощность котла для дома 150 м² в Санкт-Петербурге, кВт: расчёты 102 проектов и ответы нейросетей</title><line x1="128.0" y1="20" x2="128.0" y2="320" style="stroke:var(--text-sec,#6B7280);stroke-opacity:.22;stroke-width:1"/><text x="128.0" y="342.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">0</text><line x1="166.8" y1="20" x2="166.8" y2="320" style="stroke:var(--text-sec,#6B7280);stroke-opacity:.22;stroke-width:1"/><text x="166.8" y="342.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">5</text><line x1="205.7" y1="20" x2="205.7" y2="320" style="stroke:var(--text-sec,#6B7280);stroke-opacity:.22;stroke-width:1"/><text x="205.7" y="342.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">10</text><line x1="244.5" y1="20" x2="244.5" y2="320" style="stroke:var(--text-sec,#6B7280);stroke-opacity:.22;stroke-width:1"/><text x="244.5" y="342.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">15</text><line x1="283.4" y1="20" x2="283.4" y2="320" style="stroke:var(--text-sec,#6B7280);stroke-opacity:.22;stroke-width:1"/><text x="283.4" y="342.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">20</text><line x1="322.2" y1="20" x2="322.2" y2="320" style="stroke:var(--text-sec,#6B7280);stroke-opacity:.22;stroke-width:1"/><text x="322.2" y="342.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">25</text><line x1="217.3" y1="20" x2="217.3" y2="320" style="stroke:var(--primary,#2563EB);stroke-width:1.5;stroke-dasharray:5 4"/><text x="217.3" y="14.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:600;fill:var(--primary,#2563EB)" text-anchor="middle">с запасом 1,15: 11,5</text><text x="118.0" y="45.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-main,#111827)" text-anchor="end">Проекты, 102 дома</text><rect x="195.6" y="38.0" width="22.5" height="16" rx="4" style="fill:var(--primary,#2563EB);fill-opacity:0.95"/><text x="226.1" y="51.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;fill:var(--text-main,#111827)" text-anchor="start">медиана 10,0</text><text x="118.0" y="87.5" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-main,#111827)" text-anchor="end">Правило «1 кВт на</text><text x="118.0" y="102.5" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-main,#111827)" text-anchor="end">10 м²»</text><rect x="241.4" y="88.0" width="6.2" height="16" rx="4" style="fill:var(--text-sec,#6B7280);fill-opacity:0.80"/><text x="255.6" y="101.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;fill:var(--text-main,#111827)" text-anchor="start">15</text><text x="118.0" y="145.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-main,#111827)" text-anchor="end">Gemini</text><rect x="263.8" y="138.0" width="50.6" height="16" rx="4" style="fill:var(--text-sec,#6B7280);fill-opacity:0.28;stroke:var(--text-sec,#6B7280);stroke-width:1.5;stroke-dasharray:4 3"/><rect x="244.5" y="138.0" width="23.3" height="16" rx="4" style="fill:var(--text-sec,#6B7280);fill-opacity:0.80"/><text x="322.5" y="151.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;fill:var(--text-main,#111827)" text-anchor="start">15–18, с ГВС до 24</text><text x="118.0" y="195.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-main,#111827)" text-anchor="end">ChatGPT</text><rect x="244.5" y="188.0" width="23.3" height="16" rx="4" style="fill:var(--text-sec,#6B7280);fill-opacity:0.80"/><text x="275.8" y="201.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;fill:var(--text-main,#111827)" text-anchor="start">15–18</text><text x="118.0" y="230.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-main,#111827)" text-anchor="end">ChatGPT, его</text><text x="118.0" y="245.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-main,#111827)" text-anchor="end">таблица для</text><text x="118.0" y="260.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-main,#111827)" text-anchor="end">утеплённого</text><rect x="186.3" y="238.0" width="23.3" height="16" rx="4" style="fill:var(--text-sec,#6B7280);fill-opacity:0.80"/><text x="217.6" y="251.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;fill:var(--text-main,#111827)" text-anchor="start">7,5–10,5</text><text x="118.0" y="295.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-main,#111827)" text-anchor="end">Алиса</text><rect x="279.4" y="288.0" width="42.8" height="16" rx="4" style="fill:var(--text-sec,#6B7280);fill-opacity:0.28;stroke:var(--text-sec,#6B7280);stroke-width:1.5;stroke-dasharray:4 3"/><rect x="244.5" y="288.0" width="38.8" height="16" rx="4" style="fill:var(--text-sec,#6B7280);fill-opacity:0.80"/><text x="330.2" y="301.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;fill:var(--text-main,#111827)" text-anchor="start">15–20, с ГВС до 25</text><text x="229.0" y="368.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">мощность котла, кВт</text></svg></div>
+            <figcaption>Мощность котла для дома 150 м², кВт. Синее — расчёты проектировщиков (медиана 10,0, у половины проектов 8,7–11,6). Серое — ответы нейросетей, бледное с пунктиром — «с горячей водой» (ГВС). Пунктирная линия — медиана проектов с запасом 1,15.</figcaption>
+        </figure>
+
+        <h2 id="s-chem-sravnivaem">С чем сравниваем</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Источник</th><th>Мощность для дома 150 м²</th></tr>
+                <tr><td>102 рабочих проекта, медиана (−26 °C)</td><td class="num">10,0 кВт</td></tr>
+                <tr><td>То же с поправкой на Санкт-Петербург (−24 °C)</td><td class="num">около 9,6 кВт</td></tr>
+                <tr><td>Правило «1 кВт на 10 м²»</td><td class="num">15,0 кВт</td></tr>
+                <tr><td>Быстрый расчёт HeatCalc, кнопка «Тёплый» (как в проектах)</td><td class="num">10,0 кВт</td></tr>
+                <tr><td>Быстрый расчёт HeatCalc, «Стандарт» (привычное правило монтажников)</td><td class="num">15,0 кВт</td></tr>
+                <tr><td>Быстрый расчёт HeatCalc, «Холодный» (старый дом без утепления)</td><td class="num">19,5 кВт</td></tr>
+            </table>
+        </div>
+        <p class="note">Поправка на Санкт-Петербург: разность температур (22 − (−24)) к (22 − (−26)) даёт около 4 % меньше. Расчётные температуры городов берут из СП 131.13330.2020. Быстрый расчёт — укрупнённая оценка, точное число даёт расчёт по конструкциям дома.</p>
+
+        <p>Нейросети назвали число, которое соответствует кнопке «Стандарт» и правилу монтажников. Для <strong>старого дома без утепления</strong> оно подходит. Но в вопросе сказано «утеплённый», а для утеплённых домов проектировщики получают на треть меньше.</p>
+
+        <h2 id="chto-v-otvetah-verno">Что в ответах верно</h2>
+
+        <ul>
+            <li>Мощность зависит от утепления, окон, вентиляции и высоты потолков. Об этом сказали все три.</li>
+            <li>Горячую воду нужно учитывать отдельно. Это верно, но способ другой (см. ниже).</li>
+            <li>Точный выбор требует расчёта потерь через ограждения. ChatGPT сослался на СП 60.13330.2020: это норма по проектированию отопления, ссылка уместна, а сам подход — расчёт по потерям через ограждения — правильный.</li>
+            <li>Ответ ChatGPT содержит честную таблицу: «хорошо утеплённый — 50–70 Вт/м²». Если ей верить, мощность около 10 кВт, а не 15–18.</li>
+        </ul>
+
+        <h2 id="chto-ne-tak">Что не так</h2>
+
+        <h3>Число названо раньше, чем заданы вопросы</h3>
+
+        <p>Gemini и Алиса дали диапазон и только потом упомянули, что результат зависит от утепления и окон. ChatGPT задал уточняющие вопросы, но уже после числа. Человек запоминает первую цифру, а не оговорки под ней.</p>
+
+        <h3>База завышена, а запасы кладутся сверху</h3>
+
+        <p>Правило 100 Вт/м² даёт 15 кВт. Затем Gemini прибавляет 15–20 % и получает 18, а с горячей водой — 24. По инженерной практике запас берут один раз: теплопотери × 1,15. Для дома 150 м² это <strong>10 × 1,15 = 11,5 кВт</strong>. Коэффициент 1,15 — не норма, а практика проектирования, поэтому его не стоит складывать с другими надбавками.</p>
+
+        <h3>Горячая вода не прибавляется к отоплению</h3>
+
+        <p>Gemini и Алиса добавили к отоплению около 5 кВт «на горячую воду» (20–24 и 20–25 кВт), ChatGPT отметил, что требования к мощности будут выше. Если в доме бойлер косвенного нагрева, мощность считают по <strong>большему из двух условий</strong>: теплопотери с запасом и нагрев бака. Они не складываются. Для дома с потерями 10 кВт и бака на 200 литров это 11,6 кВт, а не 20–24.</p>
+
+        <h2 id="chem-grozit-lishniy-zapas">Чем грозит лишний запас</h2>
+
+        <ul>
+            <li>Дороже оборудование и монтаж: котёл, дымоход, подключение рассчитаны на другую мощность.</li>
+            <li>Котёл вдвое мощнее нужного чаще включается и выключается. Модулирующая горелка смягчает это, но не отменяет.</li>
+            <li>Для электрокотла лишние киловатты упираются в ток и фазы: 12 кВт — это 18 А на фазу при 380 В и 55 А при 220 В. Подробнее — в статье <a href="/elektrokotel-dlya-doma/">«Электрокотёл для дома»</a>.</li>
+        </ul>
+
+        <h2 id="kak-proverit-otvet-neyroseti-za-minutu">Как проверить ответ нейросети за минуту</h2>
+
+        <ol>
+            <li>Разделите названную мощность на площадь. 15 кВт на 150 м² — это 100 Вт/м².</li>
+            <li>Сравните с ориентиром: у современных утеплённых домов 58–77 Вт/м², медиана 67. У дома без утепления бывает 100 и больше.</li>
+            <li>Если число выше, спросите нейросеть, какой именно дом она имела в виду: какая стена, какие окна, какая крыша.</li>
+            <li>Проверьте, что горячая вода учтена по большему из двух условий, а не прибавлена к отоплению.</li>
+            <li>Точное число считайте по ограждениям вашего дома и расчётной температуре города (СП 131.13330.2020), а не по ответу в чате.</li>
+        </ol>
+
+        <div class="callout">
+            <p><strong>Как спросить, чтобы получить полезнее.</strong> Укажите город, материал и толщину утеплителя стен, площадь и тип окон, высоту потолков, перекрытия над подвалом и под крышей. Попросите расписать расчёт по конструкциям и назвать сопротивление теплопередаче каждой из них. После этого сравните итог со своим числом Вт/м².</p>
+        </div>
+
+        <h2 id="ogranicheniya-etoy-proverki">Ограничения этой проверки</h2>
+
+        <p>Это один вопрос, заданный один раз в три сервиса. Ответы нейросетей меняются от запроса к запросу, поэтому мы приводим их как пример, а не как рейтинг. Проекты в эталоне — современные утеплённые дома; для старого дома без утепления правило «1 кВт на 10 м²» может быть уместной грубой оценкой. Горячая вода в 67 Вт/м² не входит.</p>
+
+        <div class="callout dom-cta">
+            <p>
+                <strong>Сколько это будет стоить в вашем доме?</strong> Семь вопросов, две минуты,
+                без регистрации: получите цену отопления вилкой — оборудование и монтаж отдельно,
+                в трёх комплектациях.
+            </p>
+        </div>
+
+        <a class="cta" href="/dom/?src=neyroseti-moshchnost-kotla-150-m2">
+            Узнать цену для своего дома
+            <small>Отопление под ключ, результат сразу на экране</small>
+        </a>
+
+        <a class="cta" href="/?ref=SITE&amp;utm_source=article&amp;utm_medium=seo&amp;utm_campaign=neyroseti-moshchnost-kotla-150-m2">
+            Посчитать мощность по вашему дому
+            <small>По стенам, окнам, перекрытиям и городу, а не по правилу на квадратный метр</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли доверять нейросети при выборе мощности котла?</span></summary>
+            <div class="answer">
+                <p>Как стартовой оценке — с оговорками. Нейросеть правильно знает формулы и порядок расчёта, но не видит ваш дом и по умолчанию берёт популярное правило «1 кВт на 10 м²». В нашем эксперименте три нейросети назвали 15–20 кВт, а проекты таких домов дают около 10 кВт. Окончательную мощность считают по конструкциям дома.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько кВт нужно для отопления дома 150 м²?</span></summary>
+            <div class="answer">
+                <p>Для современного утеплённого дома около 10 кВт теплопотерь при −26 °C (медиана 102 проектов), с запасом 1,15 — около 11,5 кВт. Для старого дома без утепления может понадобиться 15 кВт и больше. Горячая вода учитывается по большему из двух условий, а не прибавляется.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему нейросети называют 15–20 кВт?</span></summary>
+            <div class="answer">
+                <p>По их ответам видно, что они опираются на правило 100 Вт на квадратный метр, самое распространённое в интернете и в практике монтажников. Для старых домов оно разумно, для утеплённых завышает мощность примерно в полтора раза.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как быстро проверить ответ нейросети по мощности котла?</span></summary>
+            <div class="answer">
+                <p>Разделите названную мощность на площадь дома и сравните с 58–77 Вт/м² для современного утеплённого дома. Если число заметно выше, уточните у нейросети, из чего построен дом, а затем посчитайте мощность по ограждениям.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=neyroseti-moshchnost-kotla-150-m2#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/elektrokotel-dlya-doma/">электрокотёл: сколько киловатт и сколько съест</a> · <a href="/shema-otopleniya-chastnogo-doma/">схема отопления частного дома: какие бывают</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=neyroseti-moshchnost-kotla-150-m2">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

@@ -371,7 +371,6 @@
                 <a href="/dogovor-na-montazh-otopleniya/">Договор и акты</a>
                 <a href="/oferta.html">Оферта</a>
                 <a href="/privacy-policy.html">Конфиденциальность</a>
-                <a href="https://t.me/heatcalc">Поддержка</a>
             </p>
             <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
         </div>
@@ -386,7 +385,7 @@
             var status = document.getElementById('lf_status');
             var done = document.getElementById('lead_done');
             var ENDPOINT = 'https://proxy.heatcalc.ru/lead.php';
-            var FALLBACK = 'Не получилось отправить заявку. Попробуйте ещё раз или напишите нам в Телеграм: t.me/heatcalc';
+            var FALLBACK = 'Не получилось отправить заявку. Попробуйте ещё раз';
 
             function setError(text) {
                 status.textContent = text;
@@ -513,7 +512,7 @@
                         try { if (window.ym) window.ym(109490947, 'reachGoal', 'lead_montazh'); } catch (e) {}
                         return;
                     }
-                    if (r.status === 429) setError('Слишком много заявок с этого адреса. Попробуйте через час или напишите в Телеграм: t.me/heatcalc');
+                    if (r.status === 429) setError('Слишком много заявок с этого адреса. Попробуйте через час');
                     else if (r.status === 422) setError('Заявка не отправлена: проверьте поля формы.');
                     else setError(FALLBACK);
                 }).catch(function () {
@@ -527,8 +526,7 @@
         })();
     </script>
     <noscript>
-        <p class="wrap">Форма заявки работает с включённым JavaScript. Без него напишите нам в Телеграм:
-            <a href="https://t.me/heatcalc">t.me/heatcalc</a>.</p>
+        <p class="wrap">Форма заявки работает с включённым JavaScript. Включите JavaScript и обновите страницу.</p>
     </noscript>
 
 </body>

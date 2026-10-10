@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Нейросеть для монтажника отопления: что поручить, что проверить | HeatCalc.ru</title>
+    <meta name="description" content="Где нейросеть экономит монтажнику время (письма, описание работ, чек-листы) и где ответ надо считать и проверять самому: диаметр трубы, мощность, артикулы, нормы. Проверка на ветке 6 кВт: Gemini, ChatGPT и Алиса назвали 20 и 25 мм.">
+    <link rel="canonical" href="https://heatcalc.ru/neyroset-v-rabote-montazhnika/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=8">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/neyroset-v-rabote-montazhnika/">
+    <meta property="og:title" content="Нейросеть в работе монтажника: что поручить, а что считать самому">
+    <meta property="og:description" content="Ветку 6 кВт три нейросети посчитали по-разному: 20 и 25 мм. По скорости воды хватало 16.">
+    <meta property="og:image" content="https://heatcalc.ru/img/articles/neyroset-v-rabote-montazhnika.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/articles/neyroset-v-rabote-montazhnika.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/neyroset-v-rabote-montazhnika/#webpage",
+      "url": "https://heatcalc.ru/neyroset-v-rabote-montazhnika/",
+      "name": "Нейросеть в работе монтажника: что поручить, а что считать самому",
+      "description": "Где нейросеть экономит монтажнику время (письма, описание работ, чек-листы) и где ответ надо считать и проверять самому: диаметр трубы, мощность, артикулы, нормы. Проверка на ветке 6 кВт: Gemini, ChatGPT и Алиса назвали 20 и 25 мм.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "нейросеть для монтажника отопления"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Нейросеть в работе монтажника: что поручить, а что считать самому",
+          "item": "https://heatcalc.ru/neyroset-v-rabote-montazhnika/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Можно ли составить смету на отопление с помощью нейросети?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Можно написать структуру и описание работ. Позиции, артикулы, цены и количества лучше брать из каталога и прайса: у нейросети нет вашего прайса, и артикул, названный в чате, нужно найти у поставщика. Расчёт диаметров и мощности проверяйте по формуле."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как проверить диаметр трубы, который назвала нейросеть?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Найдите расход: мощность в ваттах ÷ 1,163 ÷ перепад температур. Затем посчитайте скорость по внутреннему диаметру и сравните с пределом из таблицы И.1 СП 60.13330.2020: 1,2 м/с на магистрали и 1,0 м/с у прибора. Для ветки 6 кВт при 80/60 по скорости хватает PEX 16 мм."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему нейросети по-разному выбирают диаметр?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Выбор диаметра — не единственное значение, а компромисс: скорость, потери давления, длина ветки, запас на будущее. Нейросеть по-разному взвешивает эти факторы и не всегда называет допущения. В нашей проверке на одну задачу получились ответы 20 и 25 мм."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Для чего монтажнику нейросеть полезна уже сейчас?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Для текстов: письма клиентам, описание работ в КП, чек-листы приёмки, пересказ длинных паспортов. Там результат проверяется глазами и ошибка недорога. Для расчётов и подбора оборудования нужен инструмент с каталогом и нормами."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/neyroset-v-rabote-montazhnika/#article",
+      "headline": "Нейросеть в работе монтажника: что поручить, а что считать самому",
+      "description": "Где нейросеть экономит монтажнику время (письма, описание работ, чек-листы) и где ответ надо считать и проверять самому: диаметр трубы, мощность, артикулы, нормы. Проверка на ветке 6 кВт: Gemini, ChatGPT и Алиса назвали 20 и 25 мм.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/neyroset-v-rabote-montazhnika/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-10-25",
+      "dateModified": "2026-10-25",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "image": "https://heatcalc.ru/img/articles/neyroset-v-rabote-montazhnika.png",
+      "wordCount": 654,
+      "citation": [
+        {
+          "@type": "CreativeWork",
+          "name": "СП 60.13330.20200"
+        }
+      ]
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/?ref=SITE&amp;utm_source=article&amp;utm_medium=seo&amp;utm_campaign=neyroset-v-rabote-montazhnika">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Нейросеть в работе монтажника: что поручить, а что считать самому</nav>
+
+        <h1>Нейросеть в работе монтажника: что поручить, а что считать самому</h1>
+
+        <p class="art-meta"><time datetime="2026-10-25">25 октября 2026</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Что монтажнику можно поручить нейросети, а что нельзя?</p>
+            <p>Поручать можно тексты: письма клиенту, описание работ, чек-листы приёмки, пересказ паспортов. Расчёты, артикулы, цены и ссылки на нормы нужно проверять. На ветке 6 кВт (подача 80 °C, обратка 60 °C, PEX) три нейросети верно нашли расход около 260 л/ч, но диаметры назвали разные: 20 мм (Gemini и Алиса) и 25 мм (ChatGPT). По скорости воды хватало 16 мм: 0,6–0,7 м/с при пределе 1,2 м/с по таблице И.1 СП 60.13330.2020.</p>
+        </div>
+
+        <p class="lead">Нейросети уже пишут письма заказчикам и сметные описания, а некоторые монтажники доверяют им и расчёт. Мы проверили, где это работает: задали Gemini, ChatGPT и Алисе одну задачу на диаметр трубы с известным ответом и разобрали, что они сделали верно и где ответы расходятся. Ниже: что можно поручить, что нужно считать самому и как проверить любой ответ за минуту.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#gde-neyroset-ekonomit-vremya">Где нейросеть экономит время</a></li>
+            <li><a href="#chto-my-proverili-diametr-truby-dlya-vetki-6-kvt">Что мы проверили: диаметр трубы для ветки 6 кВт</a></li>
+            <li><a href="#kak-proverit-samomu-za-minutu">Как проверить самому за минуту</a></li>
+            <li><a href="#chto-proveryat-v-lyubom-otvete-neyroseti">Что проверять в любом ответе нейросети</a></li>
+            <li><a href="#kak-postavit-zadachu-chtoby-otvet-byl-poleznee">Как поставить задачу, чтобы ответ был полезнее</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="gde-neyroset-ekonomit-vremya">Где нейросеть экономит время</h2>
+
+        <p>Она хорошо делает то, где результат — текст, а правильность проверяет человек по здравому смыслу:</p>
+
+        <ul>
+            <li><strong>Письма и сообщения клиенту.</strong> Вежливый ответ на «почему так дорого», напоминание об оплате этапа, объяснение, почему нужна ревизия дымохода.</li>
+            <li><strong>Описание работ в КП словами.</strong> Что входит в монтаж котельной, как проходит опрессовка. Цены и количества при этом берут из сметы, а не из чата.</li>
+            <li><strong>Чек-листы.</strong> Приёмка объекта перед стяжкой, подготовка к запуску, что проверить при передаче заказчику.</li>
+            <li><strong>Пересказ паспортов и инструкций.</strong> Выжимка на русском из длинного техпаспорта. Цифры, диаметры и давления сверяйте с оригиналом.</li>
+            <li><strong>Черновики ответов на претензии.</strong> Структура и тон. Юридическую часть читает человек, который за неё отвечает.</li>
+        </ul>
+
+        <h2 id="chto-my-proverili-diametr-truby-dlya-vetki-6-kvt">Что мы проверили: диаметр трубы для ветки 6 кВт</h2>
+
+        <p>10 октября 2026 года мы задали трём нейросетям одну задачу: <strong>«Ветка отопления на 6 кВт, подача 80 градусов, обратка 60 градусов, труба PEX. Какой диаметр трубы взять?»</strong> У задачи есть проверяемый расчёт: расход 6000 ÷ 1,163 ÷ 20 ≈ 258 л/ч, а допустимая скорость берётся из таблицы И.1 СП 60.13330.2020 (1,2 м/с на магистрали, 1,0 м/с у прибора).</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Нейросеть</th><th>Что рекомендует</th><th>Расход</th><th>Что сказала о скорости</th></tr>
+                <tr><td>Gemini</td><td>PEX 20×2 мм</td><td>≈ 260 л/ч, верно</td><td>0,3–0,5 м/с. Для внутреннего диаметра 16 мм у нас получается 0,36 м/с, это сходится</td></tr>
+                <tr><td>ChatGPT</td><td>PEX 25×2,3 мм. Называет 16×2 «слишком малой» для ветки 6 кВт</td><td>≈ 258 л/ч, верно</td><td>Скорость не называет</td></tr>
+                <tr><td>Алиса AI</td><td>Трубу 20 мм</td><td>Числом не называет, только объясняет, что он зависит от перепада</td><td>0,5–0,7 м/с. Для внутреннего диаметра 16 мм получается 0,36 м/с: названная скорость не сходится с названным диаметром</td></tr>
+            </table>
+        </div>
+
+        <p>Все три нашли <strong>перепад 20 °C</strong> и поняли, что от него зависит расход. Расход у двух из них назван верно. Различие в выборе диаметра: 25 мм — на две ступени больше, чем нужно по скорости воды. У Алисы в одном ответе не сошлись диаметр и скорость.</p>
+
+        <h2 id="kak-proverit-samomu-za-minutu">Как проверить самому за минуту</h2>
+
+        <div class="formula">
+            <p><strong>G</strong> (л/ч) = мощность (Вт) ÷ 1,163 ÷ ΔT = 6000 ÷ 1,163 ÷ 20 = <strong>258 л/ч</strong></p>
+            <p><strong>v</strong> (м/с) = G ÷ 3600 ÷ площадь сечения (м²), где сечение считают по внутреннему диаметру</p>
+        </div>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>PEX, мм</th><th>Внутренний диаметр, мм</th><th>Скорость при 258 л/ч, м/с</th><th>Предел (СП 60.13330.2020, табл. И.1)</th></tr>
+                <tr><td>16×2</td><td class="num">12</td><td class="num">0,63</td><td class="num">1,2 магистраль, 1,0 узел прибора</td></tr>
+                <tr><td>20×2</td><td class="num">16</td><td class="num">0,36</td><td class="num">в пределах</td></tr>
+                <tr><td>25×2,3</td><td class="num">20,4</td><td class="num">0,22</td><td class="num">в пределах, но с большим запасом</td></tr>
+            </table>
+        </div>
+        <p class="note">Внутренние диаметры взяты ориентировочные, у разных производителей PEX они отличаются на десятые доли миллиметра. На выбор диаметра влияют ещё длина ветки и потери давления: 16 мм по скорости проходит, а на длинной ветке с большим числом приборов 20 мм бывает оправданным.</p>
+
+        <figure class="chart">
+            <div class="chart-svg" role="img" aria-label="Скорость воды в ветке 6 кВт: PEX 16×2 даёт 0,63 м/с, 20×2 даёт 0,36, 25×2,3 даёт 0,22; пределы СП 60.13330.2020 — 1,0 м/с у прибора и 1,2 м/с на магистрали"><svg viewBox="0 0 480 280" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><title>Скорость воды в ветке 6 кВт для PEX 16, 20 и 25 мм и пределы СП 60.13330.2020</title><line x1="130.0" y1="38" x2="130.0" y2="226" style="stroke:var(--text-sec,#6B7280);stroke-opacity:.22;stroke-width:1"/><text x="130.0" y="248.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">0,0</text><line x1="168.6" y1="38" x2="168.6" y2="226" style="stroke:var(--text-sec,#6B7280);stroke-opacity:.22;stroke-width:1"/><text x="168.6" y="248.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">0,2</text><line x1="207.1" y1="38" x2="207.1" y2="226" style="stroke:var(--text-sec,#6B7280);stroke-opacity:.22;stroke-width:1"/><text x="207.1" y="248.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">0,4</text><line x1="245.7" y1="38" x2="245.7" y2="226" style="stroke:var(--text-sec,#6B7280);stroke-opacity:.22;stroke-width:1"/><text x="245.7" y="248.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">0,6</text><line x1="284.3" y1="38" x2="284.3" y2="226" style="stroke:var(--text-sec,#6B7280);stroke-opacity:.22;stroke-width:1"/><text x="284.3" y="248.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">0,8</text><line x1="322.9" y1="38" x2="322.9" y2="226" style="stroke:var(--text-sec,#6B7280);stroke-opacity:.22;stroke-width:1"/><text x="322.9" y="248.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">1,0</text><line x1="361.4" y1="38" x2="361.4" y2="226" style="stroke:var(--text-sec,#6B7280);stroke-opacity:.22;stroke-width:1"/><text x="361.4" y="248.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">1,2</text><line x1="400.0" y1="38" x2="400.0" y2="226" style="stroke:var(--text-sec,#6B7280);stroke-opacity:.22;stroke-width:1"/><text x="400.0" y="248.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">1,4</text><line x1="322.9" y1="36" x2="322.9" y2="226" style="stroke:var(--primary,#2563EB);stroke-width:1.5;stroke-dasharray:5 4"/><line x1="361.4" y1="36" x2="361.4" y2="226" style="stroke:var(--primary,#2563EB);stroke-width:1.5;stroke-dasharray:5 4"/><text x="316.9" y="28.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:600;fill:var(--primary,#2563EB)" text-anchor="end">узел прибора 1,0</text><text x="367.4" y="28.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:600;fill:var(--primary,#2563EB)" text-anchor="start">магистраль 1,2</text><text x="120.0" y="62.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:14px;font-weight:600;fill:var(--text-main,#111827)" text-anchor="end">PEX 16×2</text><text x="120.0" y="79.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="end">по скорости хватает</text><rect x="130.0" y="50.0" width="121.5" height="18" rx="4" style="fill:var(--primary,#2563EB);fill-opacity:0.95"/><text x="259.5" y="64.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:14px;font-weight:600;fill:var(--text-main,#111827)" text-anchor="start">0,63</text><text x="120.0" y="124.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:14px;font-weight:600;fill:var(--text-main,#111827)" text-anchor="end">PEX 20×2</text><text x="120.0" y="141.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="end">Gemini, Алиса</text><rect x="130.0" y="112.0" width="69.4" height="18" rx="4" style="fill:var(--text-sec,#6B7280);fill-opacity:0.80"/><text x="207.4" y="126.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:14px;font-weight:600;fill:var(--text-main,#111827)" text-anchor="start">0,36</text><text x="120.0" y="186.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:14px;font-weight:600;fill:var(--text-main,#111827)" text-anchor="end">PEX 25×2,3</text><text x="120.0" y="203.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="end">ChatGPT</text><rect x="130.0" y="174.0" width="42.4" height="18" rx="4" style="fill:var(--text-sec,#6B7280);fill-opacity:0.80"/><text x="180.4" y="188.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:14px;font-weight:600;fill:var(--text-main,#111827)" text-anchor="start">0,22</text><text x="265.0" y="276.0" style="font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:400;fill:var(--text-sec,#6B7280)" text-anchor="middle">скорость воды, м/с (ветка 6 кВт, 80/60 °C, расход 258 л/ч)</text></svg></div>
+            <figcaption>Скорость воды при расходе 258 л/ч (ветка 6 кВт, график 80/60 °C). Пунктир — пределы таблицы И.1 СП 60.13330.2020. Подписи под названием трубы — кто из нейросетей её порекомендовал.</figcaption>
+        </figure>
+
+        <p>Итог: ответ «20 мм» разумен, ответ «25 мм» избыточен, ответ «16 мм слишком мало» неверен по скорости. Подробнее о том, как выбирают диаметр и когда решает не скорость, а потери давления, — в статье <a href="/diametr-trub-otopleniya/">«Диаметр труб отопления: как посчитать»</a>.</p>
+
+        <h2 id="chto-proveryat-v-lyubom-otvete-neyroseti">Что проверять в любом ответе нейросети</h2>
+
+        <ul>
+            <li><strong>Артикулы и цены.</strong> У нейросети нет вашего прайса и каталога. Артикул, который она назвала, нужно найти в каталоге поставщика, цену взять из прайса.</li>
+            <li><strong>Совместимость резьб.</strong> Наружная резьба с внутренней, размер в дюймах, накидная гайка: это определяет паспорт прибора, а не текстовая подсказка.</li>
+            <li><strong>Ссылки на нормы.</strong> Номер пункта и год редакции сверяйте по тексту документа. Актуальные тексты: faufcc.ru (реестр СП), docs.cntd.ru (поиск по тексту), protect.gost.ru (ГОСТы).</li>
+            <li><strong>Расчёты по неполным данным.</strong> Если нейросеть не спросила город, материал стен и перепад температур, число основано на предположении.</li>
+            <li><strong>Мощность по площади.</strong> Правило «1 кВт на 10 м²» завышает мощность утеплённого дома примерно в полтора раза: <a href="/neyroseti-moshchnost-kotla-150-m2/">нейросети его повторяют</a>.</li>
+        </ul>
+
+        <h2 id="kak-postavit-zadachu-chtoby-otvet-byl-poleznee">Как поставить задачу, чтобы ответ был полезнее</h2>
+
+        <ol>
+            <li>Назовите все вводные: мощность, температурный график, материал трубы, длину ветки, число приборов.</li>
+            <li>Попросите расписать расчёт по шагам, с формулами и единицами.</li>
+            <li>Спросите, на какой норме или справочнике основан результат, и проверьте ссылку по тексту.</li>
+            <li>Попросите назвать допущения, которые она сделала сама. Их и нужно перепроверить.</li>
+            <li>Сравните итог со своим расчётом или с калькулятором. Расхождение больше 10–15 % — повод искать причину.</li>
+        </ol>
+
+        <div class="callout">
+            <p><strong>Ответственность остаётся у вас.</strong> За смету, диаметры и монтаж перед заказчиком отвечает подрядчик, а не сервис, который подсказал число. Нейросеть полезна как быстрый помощник с черновиками, но расчёт и подбор оборудования должны проходить через инструмент, у которого есть каталог, нормы и воспроизводимая формула.</p>
+        </div>
+
+        <div class="callout dom-cta">
+            <p>
+                <strong>Сколько это будет стоить в вашем доме?</strong> Семь вопросов, две минуты,
+                без регистрации: получите цену отопления вилкой — оборудование и монтаж отдельно,
+                в трёх комплектациях.
+            </p>
+        </div>
+
+        <a class="cta" href="/dom/?src=neyroset-v-rabote-montazhnika">
+            Узнать цену для своего дома
+            <small>Отопление под ключ, результат сразу на экране</small>
+        </a>
+
+        <a class="cta" href="/?ref=SITE&amp;utm_source=article&amp;utm_medium=seo&amp;utm_campaign=neyroset-v-rabote-montazhnika">
+            Считать диаметры и смету в калькуляторе
+            <small>Расход и скорость на каждом участке, артикулы из каталога</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли составить смету на отопление с помощью нейросети?</span></summary>
+            <div class="answer">
+                <p>Можно написать структуру и описание работ. Позиции, артикулы, цены и количества лучше брать из каталога и прайса: у нейросети нет вашего прайса, и артикул, названный в чате, нужно найти у поставщика. Расчёт диаметров и мощности проверяйте по формуле.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как проверить диаметр трубы, который назвала нейросеть?</span></summary>
+            <div class="answer">
+                <p>Найдите расход: мощность в ваттах ÷ 1,163 ÷ перепад температур. Затем посчитайте скорость по внутреннему диаметру и сравните с пределом из таблицы И.1 СП 60.13330.2020: 1,2 м/с на магистрали и 1,0 м/с у прибора. Для ветки 6 кВт при 80/60 по скорости хватает PEX 16 мм.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему нейросети по-разному выбирают диаметр?</span></summary>
+            <div class="answer">
+                <p>Выбор диаметра — не единственное значение, а компромисс: скорость, потери давления, длина ветки, запас на будущее. Нейросеть по-разному взвешивает эти факторы и не всегда называет допущения. В нашей проверке на одну задачу получились ответы 20 и 25 мм.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Для чего монтажнику нейросеть полезна уже сейчас?</span></summary>
+            <div class="answer">
+                <p>Для текстов: письма клиентам, описание работ в КП, чек-листы приёмки, пересказ длинных паспортов. Там результат проверяется глазами и ошибка недорога. Для расчётов и подбора оборудования нужен инструмент с каталогом и нормами.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Считайте объекты в калькуляторе.</strong> Смета по актуальным ценам,
+                коммерческое предложение клиенту ссылкой или в PDF, договор подряда и акты —
+                из одной сметы. Регистрация бесплатная, занимает минуту.
+            </p>
+        </div>
+
+        <a class="cta" href="/?ref=SITE&amp;utm_source=article&amp;utm_medium=seo&amp;utm_campaign=neyroset-v-rabote-montazhnika">
+            Попробовать калькулятор бесплатно
+            <small>Смета, КП и документы для монтажника</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/diametr-trub-otopleniya/">диаметр труб отопления: как посчитать</a> · <a href="/kp-na-montazh-otopleniya/">коммерческое предложение на монтаж отопления: из чего собрать</a> · <a href="/neyroseti-moshchnost-kotla-150-m2/">спросили у трёх нейросетей, какой котёл нужен дому 150 м²: что ответили и что не так</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=neyroset-v-rabote-montazhnika">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
