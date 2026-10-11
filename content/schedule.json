@@ -137,9 +137,9 @@
    "freq": 0,
    "audience": "owner",
    "data_block": "эксперимент: ответы трёх нейросетей и проверка",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-11",
-   "published_at": null,
+   "published_at": "2026-10-11",
    "words": 849
   },
   {
