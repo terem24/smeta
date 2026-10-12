@@ -73239,10 +73239,18 @@ const app = {
     boilerMainManual: function () {
         const v = parseInt(this.state.boilerMainSize, 10);
         const sys = this.boilerPipeSystem();
-        if (this.BOILER_PAIR_MAX[sys]) return (v === 22 || v === 28) ? v : null;
-        if (sys !== 'ss304' && sys !== 'ss316') return null;
-        if (!(v >= 22 && v <= 42)) return null;
-        return (this.boilerPipeRange(sys) || []).some(r => r.size === v) ? v : null;
+        let ok;
+        if (this.BOILER_PAIR_MAX[sys]) ok = (v === 22 || v === 28);
+        else if (sys !== 'ss304' && sys !== 'ss316') ok = false;
+        else ok = (v >= 22 && v <= 42) && (this.boilerPipeRange(sys) || []).some(r => r.size === v);
+        if (!ok) return null;
+        // Красный диаметр (например, выбран раньше в другой системе или при другой нагрузке) не применяем:
+        // обвязка идёт по скорости, а в окне замены красная кнопка остаётся неактивной.
+        if (this._bpLoad) {
+            const kw = Math.max(this._bpLoad.gas || 0, this._bpLoad.el || 0);
+            if (this.boilerSpeedLevel(this.boilerMainSpeed(kw, v)) === 'bad') return null;
+        }
+        return v;
     },
 
     /** Скорость воды в магистрали логического Ø size (м/с) при мощности kw и текущем Δt. */
@@ -73293,6 +73301,12 @@ const app = {
 
     /** Переключатель диаметра в окне замены. null — вернуть рекомендованный по скорости. */
     setBoilerMainSize: function (val) {
+        // Красная плашка — диаметр не ставим: скорость вне рекомендации (см. boilerSpeedLevel).
+        if (val !== null && val !== undefined) {
+            const o = this.boilerMainOptions(this._bpLoad ? this._bpLoad.gas : 0, this._bpLoad ? this._bpLoad.el : 0);
+            const opt = o.options.find(x => x.size === parseInt(val, 10));
+            if (!opt || opt.level === 'bad') return;
+        }
         this.state.boilerMainSize = (val === null || val === undefined) ? null : parseInt(val, 10);
         this.syncUI();
         this.render();
@@ -73320,7 +73334,10 @@ const app = {
             const on = x.size === o.active;
             const col = COL[x.level].c;
             const title = o.pair ? `Ø${x.size} (труба ${x.phys})` : `Ø${x.size}`;
-            return `<span onclick="app.setBoilerMainSize(${x.size})" style="cursor:pointer;padding:4px 10px;border-radius:5px;font-size:12px;border:1px solid ${col};background:${on ? col : 'transparent'};color:${on ? '#fff' : 'var(--text-main)'};">`
+            // Красный диаметр не выбирается: кнопка неактивна.
+            const click = x.level === 'bad' ? '' : ` onclick="app.setBoilerMainSize(${x.size})"`;
+            const dim = x.level === 'bad' ? 'opacity:.45;cursor:not-allowed;' : 'cursor:pointer;';
+            return `<span${click} style="${dim}padding:4px 10px;border-radius:5px;font-size:12px;border:1px solid ${col};background:${on ? col : 'transparent'};color:${on ? '#fff' : 'var(--text-main)'};">`
                 + `${title} · ${x.v.toFixed(2).replace('.', ',')} м/с</span>`;
         };
         const pairNote = o.pair
