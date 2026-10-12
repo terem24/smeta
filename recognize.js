@@ -2359,6 +2359,7 @@ const RecognizeUI = {
                 let missed = false;
                 try {
                     await this.runPlan();
+                    app.setViewMode('equipment');
                 } catch (e) {
                     // Догадка ошиблась: помещений на листе не нашлось. Читаем
                     // его как смету — то есть так, как читали бы без догадки.
@@ -2395,7 +2396,7 @@ const RecognizeUI = {
                 // как планы, по своим правилам (или в окно «План дома»).
                 if (res.floorPlan) {
                     if (this.canPlanWindow()) { this.progressStop(); this.toPlanWindow(); }
-                    else await this.runPlan(true);
+                    else { await this.runPlan(true); app.setViewMode('equipment'); }
                     this._busy = false;
                     if (go) go.disabled = false;
                     return;
@@ -2467,7 +2468,7 @@ const RecognizeUI = {
                 // Читаем его как план — по своим правилам и в свой экран проверки.
                 if (!this._text && typeof RecognizePlan !== 'undefined' && RecognizePlan.isPlanResult(parsed)) {
                     if (this.canPlanWindow()) { this.progressStop(); this.toPlanWindow(); }
-                    else await this.runPlan(true);
+                    else { await this.runPlan(true); app.setViewMode('equipment'); }
                     this._busy = false;
                     if (go) go.disabled = false;
                     return;
