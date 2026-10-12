@@ -1,0 +1,13 @@
+Сторонние библиотеки, которые версия для передачи хранит у себя (папка vendor/).
+
+html2pdf.js 0.10.1 — файл html2pdf.bundle.min.js
+  Источник: https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/
+  Исходный код: https://github.com/eKoopmans/html2pdf.js
+  Лицензия: MIT
+
+SheetJS xlsx 0.18.5 — файл xlsx.full.min.js
+  Источник: https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/
+  Лицензия: Apache License 2.0 (SheetJS Community Edition), (C) SheetJS
+  Текст: https://www.apache.org/licenses/LICENSE-2.0
+
+Leaflet (leaflet.js, leaflet.css) — уже был в проекте, без изменений.

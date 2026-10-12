@@ -55,3 +55,6 @@ bench/windows_data/
 training/.env
 training/tools/osrm_cache.json
 training/trainer_links.txt
+
+# сборка версии для передачи (scripts/build_peredacha.py)
+dist-peredacha/
