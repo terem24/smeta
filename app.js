@@ -57939,7 +57939,8 @@ const app = {
                 `</div>`;
             // Диаметр магистрали — у любой строки котельной (труба и фитинги: от диаметра зависят оба).
             if (this._bpLoad) {
-                _bpFilterHtml += this.boilerMainBlockHtml(this._bpLoad.gas, this._bpLoad.el, this._bpPreview || undefined);
+                const _diamT = this._bpPreview ? null : this.boilerDiamTotals();
+                _bpFilterHtml += this.boilerMainBlockHtml(this._bpLoad.gas, this._bpLoad.el, this._bpPreview || undefined, _diamT);
             }
             customAlts = [
                 // ROMMER AISI 304 — для ПРОФИ (как и остальные позиции ROMMER), а до
@@ -73255,7 +73256,7 @@ const app = {
         if (!ok) return null;
         // Красный диаметр (например, выбран раньше в другой системе или при другой нагрузке) не применяем:
         // обвязка идёт по скорости, а в окне замены красная кнопка остаётся неактивной.
-        if (this._bpLoad) {
+        if (this._bpLoad && !this._bpForce) {
             const kw = Math.max(this._bpLoad.gas || 0, this._bpLoad.el || 0);
             if (this.boilerSpeedLevel(this.boilerMainSpeed(kw, v)) === 'bad') return null;
         }
@@ -73331,7 +73332,7 @@ const app = {
      * подсказкой по скорости, подобранный и рекомендованный диаметр, предупреждения.
      * Пустая строка, если выбор диаметра для текущей системы не предусмотрен.
      */
-    boilerMainBlockHtml: function (gasKw, elKw, sys) {
+    boilerMainBlockHtml: function (gasKw, elKw, sys, diam) {
         const cur = this.boilerPipeSystem();
         sys = sys || cur;
         if (sys !== 'ss304' && sys !== 'ss316' && !this.BOILER_PAIR_MAX[sys]) return '';
@@ -73369,6 +73370,20 @@ const app = {
             plate = `<div style="margin-top:6px;padding:6px 8px;border-radius:5px;background:${COL[lv].bg};color:${COL[lv].c};font-size:12px;">${text}</div>`;
         }
         const SYS_NAME = { ss316: 'нержавейку AISI 316L', ss304: 'нержавейку AISI 304', mp: 'металлопластик', mp_r: 'металлопластик ROMMER', stable: 'стабильную трубу', stable_r: 'стабильную трубу ROMMER', ppr: 'полипропилен' };
+        // Цена труб и фитингов при каждом Ø: разница с выбранным диаметром.
+        let priceTbl = '';
+        if (live && diam) {
+            const base = diam[o.active];
+            const fmt = (v) => Math.round(v).toLocaleString('ru-RU') + ' ₽';
+            const rows = Object.keys(diam).map(k => {
+                const s = Number(k), d = diam[k] - base;
+                const pct = base ? Math.round(d / base * 100) : 0;
+                const tag = s === o.active ? '<b>выбран</b>' : (d > 0 ? `<span style="color:var(--danger,#EF4444);">дороже на ${fmt(d)} (+${pct}%)</span>` : `<span style="color:var(--success,#16A34A);">дешевле на ${fmt(-d)} (${pct}%)</span>`);
+                return `<tr><td style="padding:2px 10px 2px 0;">Ø${s}</td><td style="padding:2px 10px 2px 0;text-align:right;">${fmt(diam[k])}</td><td style="padding:2px 0;">${tag}</td></tr>`;
+            }).join('');
+            priceTbl = `<div style="margin-top:8px;font-size:12px;color:var(--text-main);">Труба и фитинги котельной при каждом диаметре (та же смета, остальное не меняется):</div>`
+                + `<table style="margin-top:4px;font-size:12px;border-collapse:collapse;">${rows}</table>`;
+        }
         const previewNote = live ? ''
             : `<div style="margin-top:6px;font-size:12px;color:var(--text-sec);">Показано, что будет при замене на <b>${SYS_NAME[sys] || sys}</b>. Нажмите строку ещё раз — система заменится.</div>`;
         return `<div style="padding:8px 0 10px;border-bottom:1px solid var(--border);">`
@@ -73380,6 +73395,7 @@ const app = {
             + (manual && manual !== o.rec ? ` — <span style="cursor:pointer;color:var(--primary);text-decoration:underline;" onclick="app.setBoilerMainSize(null)">вернуть рекомендованный</span>` : '')
             + `</div>`
             + plate
+            + priceTbl
             + previewNote
             + `</div>`;
     },
@@ -73468,6 +73484,38 @@ const app = {
             Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
             Object.assign(this.state, snapshot);
             this._boilerRangeCache = null;
+            this.render(true);
+        }
+        return out;
+    },
+
+    /**
+     * Стоимость труб и фитингов котельной при каждом диаметре магистрали — для окна замены.
+     * Смета пересчитывается в памяти под каждый Ø (тем же приёмом, что boilerSystemTotals),
+     * состояние возвращается. Считаем строки обвязки котельной: труба, фитинги, переходники.
+     * Красные диаметры тоже считаем — иначе не понять, сколько стоит «не рекомендованный» вариант.
+     */
+    boilerDiamTotals: function () {
+        const sys = this.boilerPipeSystem();
+        const pair = !!this.BOILER_PAIR_MAX[sys];
+        if (sys !== 'ss304' && sys !== 'ss316' && !pair) return null;
+        const sizes = pair ? [22, 28] : [22, 28, 35, 42];
+        const snapshot = JSON.parse(JSON.stringify(this.state));
+        const out = {};
+        this._bpForce = true;
+        try {
+            sizes.forEach(s => {
+                this.state.boilerMainSize = s;
+                this.render(true);
+                const pipe = (this.currentEquipmentList || [])
+                    .filter(it => String(it.group || '').indexOf('2.') === 0 && this.isBoilerPipeRow(it))
+                    .reduce((a, it) => a + (it.price || 0) * (it.q || 1), 0);
+                out[s] = Math.round(pipe);
+            });
+        } finally {
+            this._bpForce = false;
+            Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
+            Object.assign(this.state, snapshot);
             this.render(true);
         }
         return out;
