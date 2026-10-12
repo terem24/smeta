@@ -49194,7 +49194,7 @@ const app = {
         // однотипных — работает. Поэтому суммируем внутри типа и берём максимум между
         // типами, как в смете (boilerPowerForPipes), иначе диаметр на схеме разошёлся бы
         // со спецификацией.
-        let boilerGasKw = 0, boilerElKw = 0;
+        let boilerGasKw = 0, boilerElKw = 0, boilerOneKw = 0;
         spec.forEach(i => {
             if (!isBoiler(i)) return;
             // У BAXI мощность в названии не пишется («ECO Nova 18F») — берём
@@ -49204,20 +49204,20 @@ const app = {
             const m = nameOf(i).match(/(\d{1,3})\s*кВт/i);
             const one = (c && c.power) ? +c.power : (m ? +m[1] : 0);
             if (!one) return;
+            if (one > boilerOneKw) boilerOneKw = one;
             const kw = one * (i.q || 1);
             if (isGasB(i)) boilerGasKw += kw;
             else boilerElKw += kw;
         });
-        let boilerKw = Math.max(boilerGasKw, boilerElKw);
-        if (!boilerKw) boilerKw = power;
         const isPpr = s.brandMode === 'rommer';
-        const dia = boilerKw <= 30
-            ? (isPpr ? 'Ø32х4,4 мм' : 'Ø22х1,2 мм')
-            : (isPpr ? 'Ø40х5,5 мм' : 'Ø28х1,2 мм');
-        // Резьба присоединения котлового контура — по тому же порогу, по которому
-        // смета берёт переходники к патрубкам котла и змеевика бойлера
-        // (RSS-1022-002234 3/4" на 22 мм против RSS-1022-000281 1" на 28 мм).
-        const mainThread = boilerKw <= 30 ? '3/4"' : '1"';
+        // Без распознанных котлов — общая мощность объекта, одним источником.
+        if (!boilerGasKw && !boilerElKw) boilerGasKw = power;
+        // Тот же подбор, что у сметы (boilerMainSizes): скорость, Δt, система обвязки.
+        // Порог «30 кВт» здесь больше не живёт — раньше он расходился со сметой.
+        const _schemeSizes = this.boilerMainSizes(boilerGasKw, boilerElKw, boilerOneKw);
+        const dia = this.boilerMainLabel(_schemeSizes.main);
+        // Резьба патрубка котла — по тому же типоразмеру, что и магистраль.
+        const mainThread = this.boilerMainThread(_schemeSizes.main);
 
         // Узел загрузки бойлера. POLIS клапаном приоритета управлять не может
         // (нет ни выхода на сервопривод, ни датчика бойлера) — если он
@@ -73169,6 +73169,68 @@ const app = {
     },
 
     /**
+     * Магистраль и подводка котельной — одна функция на смету и на схему.
+     *
+     * gasKw / elKw — суммы мощностей газовых и электрических котлов (внутри типа
+     * складываются, между типами берётся максимум: котлы друг друга дублируют),
+     * oneKw — мощность самого крупного котла каскада (для подводки каждого котла).
+     * Возвращает { main, tank, perBoiler, pick } — те же поля, что у boilerSizes.
+     * Схема обязана звать именно её: раньше она рисовала свой порог «30 кВт»,
+     * и на 18 кВт, на 10 K и на 60–100 кВт схема расходилась со сметой.
+     */
+    boilerMainSizes: function (gasKw, elKw, oneKw) {
+        const BP_MIN = 15, BP_MAX = 42;
+        const sys = this.boilerPipeSystem();
+        const kw = Math.max(gasKw || 0, elKw || 0);
+        // ППР, металлопластик и стабильная держатся ПАРЫ типоразмеров: граница между
+        // ними считается по скорости тем же boilerPickSize, что и у нержавейки.
+        // BP_PAIR — наибольший из двух типоразмеров пары.
+        const BP_PAIR = { mp: 26, mp_r: 26, ppr: 32, stable: 25, stable_r: 25 };
+        if (BP_PAIR[sys]) {
+            const pick = this.boilerPickSize(sys, kw);
+            const toPair = (p) => (p && p.size <= BP_PAIR[sys]) ? 22 : 28;
+            const d = toPair(pick);
+            const per = oneKw > 0 ? Math.min(toPair(this.boilerPickSize(sys, oneKw)), d) : d;
+            return { main: d, tank: 22, perBoiler: per, pick: pick };
+        }
+        const pick = this.boilerPickSize(sys, kw);
+        const range = this.boilerPipeRange(sys).map(r => r.size)
+            .filter(s => s >= BP_MIN && s <= BP_MAX);
+        const fit = (p) => range.find(s => s >= p) || range[range.length - 1];
+        const main = fit(pick.size);
+        // КАСКАД. Через обвязку каждого котла идёт только его расход: типоразмер
+        // подводки считаем по самому крупному котлу каскада.
+        const perBoiler = oneKw > 0 ? fit(this.boilerPickSize(sys, oneKw).size) : main;
+        return { main: main, tank: Math.min(22, main), perBoiler: Math.min(perBoiler, main), pick: pick };
+    },
+
+    /** Резьба патрубка котлового контура по типоразмеру магистрали (схема). */
+    boilerMainThread: function (size) {
+        if (size <= 22) return '3/4"';
+        if (size <= 35) return '1"';
+        return '1 1/4"';
+    },
+
+    /**
+     * Подпись диаметра магистрали котельной для схемы — той же трубы, что в смете.
+     * Нержавейка: Ø22х1,2 и т. п. Металлопластик/стабильная/ППР — наружный диаметр
+     * пресс- или аналоговой системы, как в строке трубы сметы.
+     */
+    boilerMainLabel: function (size) {
+        const sys = this.boilerPipeSystem();
+        if (sys === 'ppr') return size === 22 ? 'Ø32х4,4 мм' : 'Ø40х5,5 мм';
+        if (this.isMpSys(sys) || this.isStableSys(sys)) {
+            const od = size === 22 ? (this.isStableSys(sys) ? 25 : 26) : 32;
+            const row = (this.boilerPipeRange(sys) || []).find(r => r.size === od);
+            const wall = row ? ((od - row.inner) / 2).toFixed(1).replace('.', ',') : null;
+            return 'Ø' + od + (wall ? 'х' + wall : '') + ' мм';
+        }
+        const row = (this.boilerPipeRange(sys) || []).find(r => r.size === size);
+        const wall = row ? ((size - row.inner) / 2).toFixed(1).replace('.', ',') : null;
+        return 'Ø' + size + (wall ? 'х' + wall : '') + ' мм';
+    },
+
+    /**
      * Во что обойдётся раздел «2. Обвязка котельной» в каждой из систем.
      *
      * Возвращает по системе ДВА числа: `pipe` — труба с фитингами, `total` — весь
@@ -78535,55 +78597,18 @@ const app = {
         // main — магистраль, tank — подводка баков (тупиковая ветка, по скорости не
         // считается). Сверху ряд ограничен 42: на 54 нет теплоизоляции.
         const BP_MIN = 15, BP_MAX = 42;
+        // Сам подбор — в boilerMainSizes (его же зовёт схема). Здесь только сводим
+        // список котлов к суммам: газ и электро внутри типа складываются, между типами
+        // берётся максимум; для подводки важен самый крупный котёл каскада.
         const boilerSizes = (list) => {
-            const sys = this.boilerPipeSystem();
-            const kw = boilerPowerForPipes(list);
-            // ППР, металлопластик и стабильная держатся ПАРЫ типоразмеров: их линейки
-            // фитингов в котельной разобраны только под неё, и расширять ряд надо
-            // вместе с ревизией фитингов, а не здесь. Но ГРАНИЦА между двумя
-            // типоразмерами считается по скорости, тем же boilerPickSize, что и у
-            // нержавейки.
-            //
-            // Прежний порог «30 кВт» был выведен для нержавейки Ø22 и на другие трубы
-            // не переносится: у стабильной 25 он даёт 1,47 м/с, у ППР 32 наоборот
-            // занижает — там норма держится до 36–42 кВт. А главное, порог не видел
-            // переключатель Δt: в режиме 10 K расход вдвое выше, и на металлопластике
-            // 26 выходило 2,28 м/с при норме 1,2 — смета об этом молчала.
-            //
-            // BP_PAIR — наибольший из двух типоразмеров пары: подбор упёрся в него или
-            // ниже, значит идёт «малый» (логические 22), иначе «большой» (28).
-            const BP_PAIR = { mp: 26, mp_r: 26, ppr: 32, stable: 25, stable_r: 25 };
-            if (BP_PAIR[sys]) {
-                const pick = this.boilerPickSize(sys, kw);
-                const toPair = (p) => (p && p.size <= BP_PAIR[sys]) ? 22 : 28;
-                const d = toPair(pick);
-                // КАСКАД. Через обвязку каждого котла идёт только ЕГО расход, а не
-                // сумма, — как у нержавейки. Пока здесь стояло perBoiler = main, на
-                // каскаде из двух котлов подводка каждого считалась по суммарной
-                // мощности: на стабильной это 32 мм там, где хватает 25.
-                const one = Math.max.apply(null, [0].concat((list || []).filter(b => b).map(b => b.power || 0)));
-                const per = one > 0 ? Math.min(toPair(this.boilerPickSize(sys, one)), d) : d;
-                return { main: d, tank: 22, perBoiler: per, pick: pick };
-            }
-            const pick = this.boilerPickSize(sys, kw);
-            const range = this.boilerPipeRange(sys).map(r => r.size)
-                .filter(s => s >= BP_MIN && s <= BP_MAX);
-            const fit = (p) => range.find(s => s >= p) || range[range.length - 1];
-            const main = fit(pick.size);
-
-            // КАСКАД. Через общий участок идёт сумма, а через обвязку КАЖДОГО котла —
-            // только его собственный расход. Считать индивидуальную подводку по сумме
-            // нельзя: на четырёх котлах по 30 кВт это давало трубу 42 и переходник
-            // 1 1/2" на патрубок 3/4", тогда как краны и фильтр в той же обвязке
-            // стояли правильно — по 3/4". Берём мощность самого крупного котла в
-            // каскаде: типоразмер один на все обвязки, чтобы монтажник не собирал
-            // каждый котёл своим набором.
-            const one = Math.max.apply(null, [0].concat((list || [])
-                .filter(b => b).map(b => b.power || 0)));
-            const perBoiler = one > 0
-                ? fit(this.boilerPickSize(sys, one).size)
-                : main;
-            return { main: main, tank: Math.min(22, main), perBoiler: Math.min(perBoiler, main), pick: pick };
+            let gas = 0, el = 0, one = 0;
+            (list || []).forEach(b => {
+                if (!b) return;
+                const p = b.power || 0;
+                if (b.type === 'gas') gas += p; else el += p;
+                if (p > one) one = p;
+            });
+            return this.boilerMainSizes(gas, el, one);
         };
 
         const boilerPowerForPipes = (list) => {
