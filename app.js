@@ -73270,13 +73270,26 @@ const app = {
             : (sizes.find(s => s >= pick.size) || sizes[sizes.length - 1]);
         const options = sizes.map(s => {
             const v = this.boilerMainSpeed(kw, s);
-            return { size: s, phys: pair ? this.boilerPhysOd(sys, s) : s, v: v, high: v > this.BOILER_V_MAX, low: v < this.BOILER_V_LOW };
+            return { size: s, phys: pair ? this.boilerPhysOd(sys, s) : s, v: v, level: this.boilerSpeedLevel(v) };
         });
         return { kw: kw, options: options, rec: rec, active: this.boilerMainManual() || rec, pair: pair };
     },
 
     /** Предел снизу: при меньшей скорости в трубе копятся воздух и шлам (ориентир, не норма). */
     BOILER_V_LOW: 0.3,
+
+    /**
+     * Оценка скорости в магистрали для окна замены и подсказки:
+     *   ok   — 0,4…1,0 м/с (зелёная);
+     *   warn — 0,3…0,4 или 1,0…1,2 м/с (жёлтая, лёгкое предупреждение);
+     *   bad  — ниже 0,3 или выше 1,2 м/с (красная: диаметр заменить).
+     * Подбор по скорости этим не меняется — это только подсказка монтажнику.
+     */
+    boilerSpeedLevel: function (v) {
+        if (v > 1.2 || v < 0.3) return 'bad';
+        if (v >= 0.4 && v <= this.BOILER_V_MAX) return 'ok';
+        return 'warn';
+    },
 
     /** Переключатель диаметра в окне замены. null — вернуть рекомендованный по скорости. */
     setBoilerMainSize: function (val) {
@@ -73298,23 +73311,32 @@ const app = {
         const o = this.boilerMainOptions(gasKw, elKw);
         const manual = this.boilerMainManual();
         const cur = o.options.find(x => x.size === o.active);
+        const COL = {
+            ok: { c: 'var(--success, #16A34A)', bg: 'rgba(22,163,74,.12)' },
+            warn: { c: 'var(--warn, #D97706)', bg: 'rgba(245,158,11,.14)' },
+            bad: { c: 'var(--danger, #EF4444)', bg: 'rgba(239,68,68,.12)' }
+        };
         const btn = (x) => {
             const on = x.size === o.active;
-            const warn = (x.high || x.low) ? 'var(--danger, #EF4444)' : 'var(--success, #16A34A)';
+            const col = COL[x.level].c;
             const title = o.pair ? `Ø${x.size} (труба ${x.phys})` : `Ø${x.size}`;
-            return `<span onclick="app.setBoilerMainSize(${x.size})" style="cursor:pointer;padding:4px 10px;border-radius:5px;font-size:12px;border:1px solid ${warn};background:${on ? warn : 'transparent'};color:${on ? '#fff' : 'var(--text-main)'};">`
+            return `<span onclick="app.setBoilerMainSize(${x.size})" style="cursor:pointer;padding:4px 10px;border-radius:5px;font-size:12px;border:1px solid ${col};background:${on ? col : 'transparent'};color:${on ? '#fff' : 'var(--text-main)'};">`
                 + `${title} · ${x.v.toFixed(2).replace('.', ',')} м/с</span>`;
         };
         const pairNote = o.pair
             ? `<div style="font-size:11px;color:var(--text-muted, #6B7280);margin-top:4px;">Для этой системы — малый или большой диаметр пары.</div>`
             : '';
-        const rng = `${this.BOILER_V_LOW.toFixed(1).replace('.', ',')}–${this.BOILER_V_MAX.toFixed(1).replace('.', ',')} м/с`;
         const vTxt = cur ? cur.v.toFixed(2).replace('.', ',') : '';
-        const plate = (cur && (cur.high || cur.low))
-            ? `<div style="margin-top:6px;padding:6px 8px;border-radius:5px;background:rgba(239,68,68,.12);color:var(--danger,#EF4444);font-size:12px;"><b>Скорость ${vTxt} м/с — вне рекомендации (${rng}).</b> `
-              + `${cur.high ? 'Шум и износ' : 'Воздух и шлам'}: такой диаметр не стоит выбирать — ${cur.high ? 'возьмите больше' : 'возьмите меньше'}.</div>`
-            : `<div style="margin-top:6px;padding:6px 8px;border-radius:5px;background:rgba(22,163,74,.12);color:var(--success,#16A34A);font-size:12px;"><b>Скорость ${vTxt} м/с — в норме</b> (${rng}).</div>`;
-        const warnTxt = plate;
+        let plate = '';
+        if (cur) {
+            const lv = cur.level;
+            const text = lv === 'ok'
+                ? `<b>Скорость ${vTxt} м/с — в норме</b> (0,4–1,0 м/с).`
+                : (lv === 'warn'
+                    ? `<b>Скорость ${vTxt} м/с — на границе</b> (0,4–1,0 м/с норма). Допустимо, но лучше ${cur.v > this.BOILER_V_MAX ? 'взять диаметр больше' : 'взять диаметр меньше'}.`
+                    : `<b>Скорость ${vTxt} м/с — вне рекомендации.</b> ${cur.v > 1.2 ? 'Шум и износ' : 'Воздух и шлам'}: такой диаметр заменить — ${cur.v > 1.2 ? 'возьмите больше' : 'возьмите меньше'}.`);
+            plate = `<div style="margin-top:6px;padding:6px 8px;border-radius:5px;background:${COL[lv].bg};color:${COL[lv].c};font-size:12px;">${text}</div>`;
+        }
         return `<div style="padding:8px 0 10px;border-bottom:1px solid var(--border);">`
             + `<div style="font-size:12px;font-weight:700;color:var(--text-sec);margin-bottom:6px;">Диаметр магистрали котельной (меняет всю обвязку):</div>`
             + `<div style="display:flex;gap:6px;flex-wrap:wrap;">${o.options.map(btn).join('')}</div>`
@@ -73323,7 +73345,7 @@ const app = {
             + `Выбрано: <b>${this.boilerMainTitle(o.active)}</b>${manual ? ' (вручную)' : ''}. По скорости рекомендуем для вашей системы: <b>${this.boilerMainTitle(o.rec)}</b>`
             + (manual && manual !== o.rec ? ` — <span style="cursor:pointer;color:var(--primary);text-decoration:underline;" onclick="app.setBoilerMainSize(null)">вернуть рекомендованный</span>` : '')
             + `</div>`
-            + warnTxt
+            + plate
             + `</div>`;
     },
 
@@ -81121,8 +81143,7 @@ const app = {
                 `• Расход через контур: G = Q / (1,163 × Δt) = ${totalBoilerPower} / (1,163 × ${dT}) = <b>${flow.toFixed(2)} м³/ч</b> при Δt = ${dT} °C.<br>` +
                 `• Скорость: v = G / (3600 × S), труба ${label}, внутренний Ø ${String(inner).replace('.', ',')} мм → S = ${area.toExponential(2).replace('.', ',')} м² → <b>v = ${v.toFixed(2)} м/с</b>.<br>` +
                 (this.boilerMainManual() ? `• <b>Диаметр выбран вручную</b> (окно замены трубы котельной). По скорости рекомендован ${this.boilerMainTitle(this.boilerMainOptions(this._bpLoad ? this._bpLoad.gas : 0, this._bpLoad ? this._bpLoad.el : 0).rec)}.<br>` : '') +
-                (v > this.BOILER_V_MAX ? `<b style="color:var(--danger,#EF4444);">• Скорость выше предела ${this.BOILER_V_MAX.toFixed(1).replace('.', ',')} м/с — шум и износ, возьмите диаметр больше.</b><br>` : '') +
-                (v < this.BOILER_V_LOW ? `<b style="color:var(--warn,#F59E0B);">• Скорость ниже ${this.BOILER_V_LOW.toFixed(1).replace('.', ',')} м/с — возможен воздух и шлам, возьмите диаметр меньше.</b><br>` : '') +
+                (this.boilerSpeedLevel(v) === 'ok' ? '' : (this.boilerSpeedLevel(v) === 'warn' ? `<b style="color:var(--warn,#D97706);">• Скорость ${v.toFixed(2).replace('.', ',')} м/с — на границе (норма 0,4–1,0 м/с). Допустимо, лучше взять ${v > this.BOILER_V_MAX ? 'диаметр больше' : 'диаметр меньше'}.</b><br>` : `<b style="color:var(--danger,#EF4444);">• Скорость ${v.toFixed(2).replace('.', ',')} м/с — вне рекомендации: такой диаметр заменить, ${v > 1.2 ? 'взять больше (шум и износ)' : 'взять меньше (воздух и шлам)'}.</b><br>`)) +
                 (isStable
                     ? `• Предел котлового контура — не более ${_vTxt} м/с (практика проектирования, по шуму и износу). У стабильной трубы стенка самая толстая в каталоге: у 25х3,7 внутренний 17,6 мм против 20,0 у металлопластика 26 и 19,6 у нержавейки 22. Типоразмер подобран по скорости: 25 мм до ${_kwSmall} кВт, дальше 32 мм (при Δt = ${dT} °C).<br>` +
                       `• Больше 32 мм у стабильной трубы STOUT нет: с ${_kwBig} кВт (там на Ø32 те же ${_vTxt} м/с) обвязку надо вести нержавейкой — переключите систему в строке трубы.<br>` +
