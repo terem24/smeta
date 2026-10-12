@@ -768,7 +768,48 @@ function hint(s) {
     'Загрузите фото или скан плана этажа, затем задайте масштаб: кнопка «Масштаб» → две точки на плане → длина отрезка в метрах.';
 }
 
+// Пределы калькулятора: этажей и площадь дома. В окне раскладки план сверх
+// них не грузим — иначе он молча не попадёт в расчёт (app.MAX_AREA — источник)
+var UFH_MAX_FLOORS = 2;
+var UFH_MAX_AREA = 360;
+function ufhLimitM2() {
+  try { var a = window.parent && window.parent.app; if (a && a.MAX_AREA) return a.MAX_AREA; } catch (e) {}
+  return UFH_MAX_AREA;
+}
+function ufhFloorsFree() { return UFH ? Math.max(0, UFH_MAX_FLOORS - DATA.floors.length) : Infinity; }
+function ufhWarn(msg) {
+  try { window.parent.app.alert(msg); } catch (e) { alert(msg); }
+}
+/** Площадь всех комнат дома по плану, м² (как в расчёте: контур или напечатанная площадь) */
+function ufhAreaM2() {
+  var s = 0;
+  DATA.floors.forEach(function (f) {
+    if (!f || !f.pxPerM) return;
+    (f.zones || []).forEach(function (z) {
+      if (z.type === 'cold' || !z.pts || z.pts.length < 3 || isTpCopy(f, z)) return;
+      if (z.printedM2 > 0 && z.printedSig === JSON.stringify(z.pts)) { s += z.printedM2; return; }
+      var a = 0;
+      for (var i = 0; i < z.pts.length; i++) {
+        var p = z.pts[i], q = z.pts[(i + 1) % z.pts.length];
+        a += p[0] * q[1] - q[0] * p[1];
+      }
+      s += Math.abs(a / 2) / (f.pxPerM * f.pxPerM);
+    });
+  });
+  return s;
+}
+/** Строка-предупреждение, если площадь по плану больше предела; иначе пусто */
+function ufhAreaNote() {
+  var m2 = ufhAreaM2(), lim = ufhLimitM2();
+  return m2 > lim ? ' <span style="color:#d97706"><b>Площадь ' + Math.round(m2) + ' м² больше ' + lim +
+    ' м²</b> — калькулятор такой дом не посчитает. Уберите лишние помещения (подвал, гараж) или проверьте масштаб.</span>' : '';
+}
+
 function addFloor() {
+  if (UFH && !ufhFloorsFree()) {
+    ufhWarn('Калькулятор считает дома до ' + UFH_MAX_FLOORS + ' этажей — третий этаж в расчёт не войдёт.');
+    return;
+  }
   undoStack.push({ t: 'floorAdd' });
   DATA.floors.push({ img: null, w: 0, h: 0, pxPerM: 0, zones: [], rads: [] });
   cur = DATA.floors.length - 1; renderTabs(); draw(); renderZones();
@@ -3052,6 +3093,12 @@ function loadPdfPlan(file, done) {
       return pdf.numPages > 1 ? pickPdfPages(file, pdf.numPages) : [1];
     }).then(function (pages) {
       // Первая страница — в текущий этаж, каждая следующая — в новый
+      if (UFH && pages.length - 1 > ufhFloorsFree()) {
+        var keep = ufhFloorsFree() + 1;
+        ufhWarn('Калькулятор считает дома до ' + UFH_MAX_FLOORS + ' этажей. Из PDF в окно загружено ' + keep +
+          ' из ' + pages.length + ' страниц — остальные в расчёт не войдут.');
+        pages = pages.slice(0, keep);
+      }
       var chain = Promise.resolve();
       pages.forEach(function (pno, k) {
         chain = chain.then(function () {
@@ -3229,6 +3276,15 @@ function loadImage(inp) {
   var files = Array.prototype.slice.call(inp.files || []);
   inp.value = '';
   if (!files.length) return;
+  // Новые этажи: все файлы, кроме первого (он ложится на пустой текущий этаж)
+  var need = files.length > 1 ? files.length - (F().img ? 0 : 1) : 0;
+  if (UFH && need > ufhFloorsFree()) {
+    var fit = files.length - (need - ufhFloorsFree());
+    ufhWarn('Калькулятор считает дома до ' + UFH_MAX_FLOORS + ' этажей. Загружено ' + Math.max(0, fit) +
+      ' из ' + files.length + ' файлов — остальные в расчёт не войдут.');
+    files = files.slice(0, Math.max(0, fit));
+    if (!files.length) return;
+  }
   // Один файл — в текущий этаж (замена подложки). Несколько — по этажам:
   // первый в текущий, если тот пуст, дальше каждый файл в новый этаж.
   var chain = Promise.resolve();
@@ -5719,7 +5775,7 @@ function wzSummary() {
   return { plain: plain, floors: floors, over: over,
     html: '<b>Всё готово:</b> ' + plain + (floors > 1 ? ' (этажей: ' + floors + ')' : '') + '. ' +
       (over ? 'Калькулятор считает два этажа — третий и выше в смету не попадут. ' : '') +
-      'Нажмите «Готово — в смету»: комнаты перейдут в расчёт, раскладка — в смету и КП.' + lack };
+      'Нажмите «Готово — в смету»: комнаты перейдут в расчёт, раскладка — в смету и КП.' + ufhAreaNote() + lack };
 }
 
 /** Что сказать и какие кнопки показать на шаге. */
@@ -5733,7 +5789,7 @@ function wzBody(id) {
     tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане два края отрезка известной длины — например, дверной проём 0,9 м.' + scanDiagHtml() };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B('wzRect()', 'Обвести рамкой'),
     tx: 'Проверьте комнаты в списке справа и впишите названия — по ним комнаты перейдут в расчёт. ' +
-      'Лишнюю уберите ✕. Комната не нашлась — обведите её рамкой.' };
+      'Лишнюю уберите ✕. Комната не нашлась — обведите её рамкой.' + ufhAreaNote() };
   if (id === 'tp') return { acts: B('ufhCold()', 'Без обогрева') + B("setMode('coll')", 'Переставить коллектор'),
     tx: 'Кликните по комнатам, где нужен тёплый пол, — на плане или галочкой в списке справа. Петли разложатся ' +
       'сами. Лестницу, ванну, кухонный остров обведите кнопкой «Без обогрева». Коллектор встаёт у стены ' +
