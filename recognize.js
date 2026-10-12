@@ -2518,7 +2518,9 @@ const RecognizeUI = {
      */
     toPlanWindow() {
         const files = (this._files && this._files.length) ? this._files : [this._file];
-        this.setStatus('Это план дома — открыл его в окне «План дома»: там комнаты, тёплый пол и радиаторы.');
+        // После окна плана человек должен попасть на свою схему (вкладка 1),
+        // а не в мастер распознавания, где непонятно, что нажимать дальше
+        app.setViewMode('equipment');
         app.openUfhPlan(files);
     },
 
