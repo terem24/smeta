@@ -73196,7 +73196,8 @@ const app = {
         if (BP_PAIR[sys]) {
             const pick = this.boilerPickSize(sys, kw);
             const toPair = (p) => (p && p.size <= BP_PAIR[sys]) ? 22 : 28;
-            const d = toPair(pick);
+            // Ручной выбор малого или большого из пары перекрывает подбор по скорости.
+            const d = this.boilerMainManual() || toPair(pick);
             const per = oneKw > 0 ? Math.min(toPair(this.boilerPickSize(sys, oneKw)), d) : d;
             return { main: d, tank: 22, perBoiler: per, pick: pick };
         }
@@ -73214,39 +73215,61 @@ const app = {
     },
 
     /**
-     * Ручной диаметр магистрали котельной (нержавейка Ø22…42), или null — по скорости.
-     * Только для нержавейки: у металлопластика и ППР пара типоразмеров с фитингами
-     * своя, и ручной выбор там не разбирали.
+     * Системы с парой типоразмеров (металлопластик, стабильная, ППР): фитинги
+     * подобраны под логические 22 и 28, а труба — физическая: 26/32, 25/32, 32/40.
+     * Ручной выбор в них — только малый или большой из пары: Ø35/42 фитингов нет.
+     */
+    BOILER_PAIR_MAX: { mp: 26, mp_r: 26, ppr: 32, stable: 25, stable_r: 25 },
+
+    /** Физический наружный диаметр трубы под логический типоразмер (22 или 28). */
+    boilerPhysOd: function (sys, logical) {
+        if (sys === 'ppr') return logical === 22 ? 32 : 40;
+        if (sys === 'mp' || sys === 'mp_r') return logical === 22 ? 26 : 32;
+        if (sys === 'stable' || sys === 'stable_r') return logical === 22 ? 25 : 32;
+        return logical;
+    },
+
+    /**
+     * Ручной диаметр магистрали котельной, или null — по скорости.
+     * Нержавейка: Ø22…42 из ряда. Пара (металлопластик, стабильная, ППР): только 22 или 28.
      */
     boilerMainManual: function () {
         const v = parseInt(this.state.boilerMainSize, 10);
         const sys = this.boilerPipeSystem();
-        if (!(v >= 22 && v <= 42) || (sys !== 'ss304' && sys !== 'ss316')) return null;
+        if (this.BOILER_PAIR_MAX[sys]) return (v === 22 || v === 28) ? v : null;
+        if (sys !== 'ss304' && sys !== 'ss316') return null;
+        if (!(v >= 22 && v <= 42)) return null;
         return (this.boilerPipeRange(sys) || []).some(r => r.size === v) ? v : null;
     },
 
-    /** Скорость воды в магистрали Ø size (м/с) при мощности kw и текущем Δt. */
+    /** Скорость воды в магистрали логического Ø size (м/с) при мощности kw и текущем Δt. */
     boilerMainSpeed: function (kw, size) {
-        const r = (this.boilerPipeRange(this.boilerPipeSystem()) || []).find(x => x.size === size);
+        const sys = this.boilerPipeSystem();
+        const phys = this.BOILER_PAIR_MAX[sys] ? this.boilerPhysOd(sys, size) : size;
+        const r = (this.boilerPipeRange(sys) || []).find(x => x.size === phys);
         if (!r || !(kw > 0)) return 0;
         return (this.boilerFlow(kw) / 3600) / (Math.PI * Math.pow(r.inner / 1000, 2) / 4);
     },
 
     /**
-     * Варианты диаметра для окна замены (нержавейка): скорость у каждого Ø,
-     * рекомендованный по скорости, активный (ручной или рекомендованный).
+     * Варианты диаметра для окна замены: скорость у каждого, рекомендованный по скорости,
+     * активный (ручной или рекомендованный). Для пары — два варианта, для нержавейки — ряд.
      */
     boilerMainOptions: function (gasKw, elKw) {
         const kw = Math.max(gasKw || 0, elKw || 0);
         const sys = this.boilerPipeSystem();
-        const sizes = (this.boilerPipeRange(sys) || []).map(r => r.size).filter(s => s >= 22 && s <= 42);
+        const pair = !!this.BOILER_PAIR_MAX[sys];
+        const sizes = pair ? [22, 28]
+            : (this.boilerPipeRange(sys) || []).map(r => r.size).filter(s => s >= 22 && s <= 42);
         const pick = this.boilerPickSize(sys, kw);
-        const rec = sizes.find(s => s >= pick.size) || sizes[sizes.length - 1];
+        const rec = pair
+            ? (pick.size <= this.BOILER_PAIR_MAX[sys] ? 22 : 28)
+            : (sizes.find(s => s >= pick.size) || sizes[sizes.length - 1]);
         const options = sizes.map(s => {
             const v = this.boilerMainSpeed(kw, s);
-            return { size: s, v: v, high: v > this.BOILER_V_MAX, low: v < this.BOILER_V_LOW };
+            return { size: s, phys: pair ? this.boilerPhysOd(sys, s) : s, v: v, high: v > this.BOILER_V_MAX, low: v < this.BOILER_V_LOW };
         });
-        return { kw: kw, options: options, rec: rec, active: this.boilerMainManual() || rec };
+        return { kw: kw, options: options, rec: rec, active: this.boilerMainManual() || rec, pair: pair };
     },
 
     /** Предел снизу: при меньшей скорости в трубе копятся воздух и шлам (ориентир, не норма). */
@@ -73268,16 +73291,20 @@ const app = {
      */
     boilerMainBlockHtml: function (gasKw, elKw) {
         const sys = this.boilerPipeSystem();
-        if (sys !== 'ss304' && sys !== 'ss316') return '';
+        if (sys !== 'ss304' && sys !== 'ss316' && !this.BOILER_PAIR_MAX[sys]) return '';
         const o = this.boilerMainOptions(gasKw, elKw);
         const manual = this.boilerMainManual();
         const cur = o.options.find(x => x.size === o.active);
         const btn = (x) => {
             const on = x.size === o.active;
             const warn = x.high ? 'var(--danger, #EF4444)' : (x.low ? 'var(--warn, #F59E0B)' : 'var(--primary)');
+            const title = o.pair ? `Ø${x.size} (труба ${x.phys})` : `Ø${x.size}`;
             return `<span onclick="app.setBoilerMainSize(${x.size})" style="cursor:pointer;padding:4px 10px;border-radius:5px;font-size:12px;border:1px solid ${warn};background:${on ? warn : 'transparent'};color:${on ? '#fff' : 'var(--text-main)'};">`
-                + `Ø${x.size} · ${x.v.toFixed(2).replace('.', ',')} м/с</span>`;
+                + `${title} · ${x.v.toFixed(2).replace('.', ',')} м/с</span>`;
         };
+        const pairNote = o.pair
+            ? `<div style="font-size:11px;color:var(--text-muted, #6B7280);margin-top:4px;">Пара типоразмеров: фитинги этой системы подобраны под малый и большой диаметр, Ø35 и Ø42 здесь не предусмотрены.</div>`
+            : '';
         const warnTxt = cur && cur.high
             ? `<div style="margin-top:6px;padding:6px 8px;border-radius:5px;background:rgba(239,68,68,.12);color:var(--danger,#EF4444);font-size:12px;">Скорость ${cur.v.toFixed(2).replace('.', ',')} м/с выше предела ${this.BOILER_V_MAX.toFixed(1).replace('.', ',')} м/с: шум и износ. Возьмите диаметр больше.</div>`
             : (cur && cur.low
@@ -73286,6 +73313,7 @@ const app = {
         return `<div style="padding:8px 0 10px;border-bottom:1px solid var(--border);">`
             + `<div style="font-size:12px;font-weight:700;color:var(--text-sec);margin-bottom:6px;">Диаметр магистрали котельной (меняет всю обвязку):</div>`
             + `<div style="display:flex;gap:6px;flex-wrap:wrap;">${o.options.map(btn).join('')}</div>`
+            + pairNote
             + `<div style="margin-top:6px;font-size:12px;color:var(--text-main);">`
             + `Выбрано: <b>Ø${o.active}</b>${manual ? ' (вручную)' : ''}. По скорости рекомендуем для вашей системы: <b>Ø${o.rec}</b>`
             + (manual && manual !== o.rec ? ` — <span style="cursor:pointer;color:var(--primary);text-decoration:underline;" onclick="app.setBoilerMainSize(null)">вернуть рекомендованный</span>` : '')
