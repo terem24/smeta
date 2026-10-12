@@ -57939,7 +57939,7 @@ const app = {
                 `</div>`;
             // Диаметр магистрали — у любой строки котельной (труба и фитинги: от диаметра зависят оба).
             if (this._bpLoad) {
-                _bpFilterHtml += this.boilerMainBlockHtml(this._bpLoad.gas, this._bpLoad.el);
+                _bpFilterHtml += this.boilerMainBlockHtml(this._bpLoad.gas, this._bpLoad.el, this._bpPreview || undefined);
             }
             customAlts = [
                 // ROMMER AISI 304 — для ПРОФИ (как и остальные позиции ROMMER), а до
@@ -61110,6 +61110,7 @@ const app = {
     },
     // ═══════════════════════════════════════════════════════════════
     closeSwapModal: function () {
+        this._bpPreview = null;
         let modal = document.getElementById('swap_modal_overlay');
         if (modal) modal.style.display = 'none';
     },
@@ -61260,6 +61261,14 @@ const app = {
             // Строку в таблице ПРОФИ и так не видит, но выбор мог прийти и из
             // сохранённой сметы, поэтому проверяем ещё раз здесь.
             if ((_bpChosen === 'stable_r' || _bpChosen === 'mp_r') && !this.checkAccess('pro-brand')) return;
+            // Два щелчка. Первый — только показать замену: плашки диаметра и скорости
+            // пересчитываются под эту систему, смета не трогается. Второй по той же строке — заменяет.
+            if (_bpChosen !== this.boilerPipeSystem() && this._bpPreview !== _bpChosen) {
+                this._bpPreview = _bpChosen;
+                this.openSwapModal(originalId);
+                return;
+            }
+            this._bpPreview = null;
             this.state.boilerPipeSystem = _bpChosen;
             // Точечные замены прежней системы больше не к чему привязать: тех артикулов
             // в смете не осталось, а висящий ключ вернул бы чужую позицию при возврате.
@@ -73226,8 +73235,8 @@ const app = {
     },
 
     /** Подпись магистрали для людей: у пары — физическая труба и малый/большой, у нержавейки — Ø. */
-    boilerMainTitle: function (size) {
-        const sys = this.boilerPipeSystem();
+    boilerMainTitle: function (size, sys) {
+        sys = sys || this.boilerPipeSystem();
         if (!this.BOILER_PAIR_MAX[sys]) return 'Ø' + size;
         return 'труба Ø' + this.boilerPhysOd(sys, size) + (size === 22 ? ' (малый)' : ' (большой)');
     },
@@ -73254,8 +73263,8 @@ const app = {
     },
 
     /** Скорость воды в магистрали логического Ø size (м/с) при мощности kw и текущем Δt. */
-    boilerMainSpeed: function (kw, size) {
-        const sys = this.boilerPipeSystem();
+    boilerMainSpeed: function (kw, size, sys) {
+        sys = sys || this.boilerPipeSystem();
         const phys = this.BOILER_PAIR_MAX[sys] ? this.boilerPhysOd(sys, size) : size;
         const r = (this.boilerPipeRange(sys) || []).find(x => x.size === phys);
         if (!r || !(kw > 0)) return 0;
@@ -73266,9 +73275,10 @@ const app = {
      * Варианты диаметра для окна замены: скорость у каждого, рекомендованный по скорости,
      * активный (ручной или рекомендованный). Для пары — два варианта, для нержавейки — ряд.
      */
-    boilerMainOptions: function (gasKw, elKw) {
+    boilerMainOptions: function (gasKw, elKw, sys) {
         const kw = Math.max(gasKw || 0, elKw || 0);
-        const sys = this.boilerPipeSystem();
+        const cur = this.boilerPipeSystem();
+        sys = sys || cur;
         const pair = !!this.BOILER_PAIR_MAX[sys];
         const sizes = pair ? [22, 28]
             : (this.boilerPipeRange(sys) || []).map(r => r.size).filter(s => s >= 22 && s <= 42);
@@ -73277,10 +73287,12 @@ const app = {
             ? (pick.size <= this.BOILER_PAIR_MAX[sys] ? 22 : 28)
             : (sizes.find(s => s >= pick.size) || sizes[sizes.length - 1]);
         const options = sizes.map(s => {
-            const v = this.boilerMainSpeed(kw, s);
+            const v = this.boilerMainSpeed(kw, s, sys);
             return { size: s, phys: pair ? this.boilerPhysOd(sys, s) : s, v: v, level: this.boilerSpeedLevel(v) };
         });
-        return { kw: kw, options: options, rec: rec, active: this.boilerMainManual() || rec, pair: pair };
+        // Ручной выбор относится только к текущей системе; для просматриваемой — рекомендованный.
+        const manual = (sys === cur) ? this.boilerMainManual() : null;
+        return { kw: kw, sys: sys, options: options, rec: rec, active: manual || rec, pair: pair };
     },
 
     /** Предел снизу: при меньшей скорости в трубе копятся воздух и шлам (ориентир, не норма). */
@@ -73319,12 +73331,14 @@ const app = {
      * подсказкой по скорости, подобранный и рекомендованный диаметр, предупреждения.
      * Пустая строка, если выбор диаметра для текущей системы не предусмотрен.
      */
-    boilerMainBlockHtml: function (gasKw, elKw) {
-        const sys = this.boilerPipeSystem();
+    boilerMainBlockHtml: function (gasKw, elKw, sys) {
+        const cur = this.boilerPipeSystem();
+        sys = sys || cur;
         if (sys !== 'ss304' && sys !== 'ss316' && !this.BOILER_PAIR_MAX[sys]) return '';
-        const o = this.boilerMainOptions(gasKw, elKw);
-        const manual = this.boilerMainManual();
-        const cur = o.options.find(x => x.size === o.active);
+        const o = this.boilerMainOptions(gasKw, elKw, sys);
+        const manual = (sys === cur) ? this.boilerMainManual() : null;
+        const live = sys === cur;
+        const curOpt = o.options.find(x => x.size === o.active);
         const COL = {
             ok: { c: 'var(--success, #16A34A)', bg: 'rgba(22,163,74,.12)' },
             warn: { c: 'var(--warn, #D97706)', bg: 'rgba(245,158,11,.14)' },
@@ -73335,7 +73349,7 @@ const app = {
             const col = COL[x.level].c;
             const title = o.pair ? `Ø${x.size} (труба ${x.phys})` : `Ø${x.size}`;
             // Красный диаметр не выбирается: кнопка неактивна.
-            const click = x.level === 'bad' ? '' : ` onclick="app.setBoilerMainSize(${x.size})"`;
+            const click = (x.level === 'bad' || !live) ? '' : ` onclick="app.setBoilerMainSize(${x.size})"`;
             const dim = x.level === 'bad' ? 'opacity:.45;cursor:not-allowed;' : 'cursor:pointer;';
             return `<span${click} style="${dim}padding:4px 10px;border-radius:5px;font-size:12px;border:1px solid ${col};background:${on ? col : 'transparent'};color:${on ? '#fff' : 'var(--text-main)'};">`
                 + `${title} · ${x.v.toFixed(2).replace('.', ',')} м/с</span>`;
@@ -73343,26 +73357,30 @@ const app = {
         const pairNote = o.pair
             ? `<div style="font-size:11px;color:var(--text-muted, #6B7280);margin-top:4px;">Для этой системы — малый или большой диаметр пары.</div>`
             : '';
-        const vTxt = cur ? cur.v.toFixed(2).replace('.', ',') : '';
+        const vTxt = curOpt ? curOpt.v.toFixed(2).replace('.', ',') : '';
         let plate = '';
-        if (cur) {
-            const lv = cur.level;
+        if (curOpt) {
+            const lv = curOpt.level;
             const text = lv === 'ok'
                 ? `<b>Скорость ${vTxt} м/с — в норме</b> (0,4–1,0 м/с).`
                 : (lv === 'warn'
-                    ? `<b>Скорость ${vTxt} м/с — на границе</b> (0,4–1,0 м/с норма). Допустимо, но лучше ${cur.v > this.BOILER_V_MAX ? 'взять диаметр больше' : 'взять диаметр меньше'}.`
-                    : `<b>Скорость ${vTxt} м/с — вне рекомендации.</b> ${cur.v > 1.2 ? 'Шум и износ' : 'Воздух и шлам'}: такой диаметр заменить — ${cur.v > 1.2 ? 'возьмите больше' : 'возьмите меньше'}.`);
+                    ? `<b>Скорость ${vTxt} м/с — на границе</b> (0,4–1,0 м/с норма). Допустимо, но лучше ${curOpt.v > this.BOILER_V_MAX ? 'взять диаметр больше' : 'взять диаметр меньше'}.`
+                    : `<b>Скорость ${vTxt} м/с — вне рекомендации.</b> ${curOpt.v > 1.2 ? 'Шум и износ' : 'Воздух и шлам'}: такой диаметр заменить — ${curOpt.v > 1.2 ? 'возьмите больше' : 'возьмите меньше'}.`);
             plate = `<div style="margin-top:6px;padding:6px 8px;border-radius:5px;background:${COL[lv].bg};color:${COL[lv].c};font-size:12px;">${text}</div>`;
         }
+        const SYS_NAME = { ss316: 'нержавейку AISI 316L', ss304: 'нержавейку AISI 304', mp: 'металлопластик', mp_r: 'металлопластик ROMMER', stable: 'стабильную трубу', stable_r: 'стабильную трубу ROMMER', ppr: 'полипропилен' };
+        const previewNote = live ? ''
+            : `<div style="margin-top:6px;font-size:12px;color:var(--text-sec);">Показано, что будет при замене на <b>${SYS_NAME[sys] || sys}</b>. Нажмите строку ещё раз — система заменится.</div>`;
         return `<div style="padding:8px 0 10px;border-bottom:1px solid var(--border);">`
             + `<div style="font-size:12px;font-weight:700;color:var(--text-sec);margin-bottom:6px;">Диаметр магистрали котельной (меняет всю обвязку):</div>`
             + `<div style="display:flex;gap:6px;flex-wrap:wrap;">${o.options.map(btn).join('')}</div>`
             + pairNote
             + `<div style="margin-top:6px;font-size:12px;color:var(--text-main);">`
-            + `Выбрано: <b>${this.boilerMainTitle(o.active)}</b>${manual ? ' (вручную)' : ''}. По скорости рекомендуем для вашей системы: <b>${this.boilerMainTitle(o.rec)}</b>`
+            + `Выбрано: <b>${this.boilerMainTitle(o.active, sys)}</b>${manual ? ' (вручную)' : ''}. По скорости рекомендуем для вашей системы: <b>${this.boilerMainTitle(o.rec, sys)}</b>`
             + (manual && manual !== o.rec ? ` — <span style="cursor:pointer;color:var(--primary);text-decoration:underline;" onclick="app.setBoilerMainSize(null)">вернуть рекомендованный</span>` : '')
             + `</div>`
             + plate
+            + previewNote
             + `</div>`;
     },
 
