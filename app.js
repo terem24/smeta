@@ -73229,6 +73229,13 @@ const app = {
         return logical;
     },
 
+    /** Подпись магистрали для людей: у пары — физическая труба и малый/большой, у нержавейки — Ø. */
+    boilerMainTitle: function (size) {
+        const sys = this.boilerPipeSystem();
+        if (!this.BOILER_PAIR_MAX[sys]) return 'Ø' + size;
+        return 'труба Ø' + this.boilerPhysOd(sys, size) + (size === 22 ? ' (малый)' : ' (большой)');
+    },
+
     /**
      * Ручной диаметр магистрали котельной, или null — по скорости.
      * Нержавейка: Ø22…42 из ряда. Пара (металлопластик, стабильная, ППР): только 22 или 28.
@@ -73315,7 +73322,7 @@ const app = {
             + `<div style="display:flex;gap:6px;flex-wrap:wrap;">${o.options.map(btn).join('')}</div>`
             + pairNote
             + `<div style="margin-top:6px;font-size:12px;color:var(--text-main);">`
-            + `Выбрано: <b>Ø${o.active}</b>${manual ? ' (вручную)' : ''}. По скорости рекомендуем для вашей системы: <b>Ø${o.rec}</b>`
+            + `Выбрано: <b>${this.boilerMainTitle(o.active)}</b>${manual ? ' (вручную)' : ''}. По скорости рекомендуем для вашей системы: <b>${this.boilerMainTitle(o.rec)}</b>`
             + (manual && manual !== o.rec ? ` — <span style="cursor:pointer;color:var(--primary);text-decoration:underline;" onclick="app.setBoilerMainSize(null)">вернуть рекомендованный</span>` : '')
             + `</div>`
             + warnTxt
@@ -81115,7 +81122,7 @@ const app = {
                     : `• Каскад однотипных котлов складывается по мощности.<br>`) +
                 `• Расход через контур: G = Q / (1,163 × Δt) = ${totalBoilerPower} / (1,163 × ${dT}) = <b>${flow.toFixed(2)} м³/ч</b> при Δt = ${dT} °C.<br>` +
                 `• Скорость: v = G / (3600 × S), труба ${label}, внутренний Ø ${String(inner).replace('.', ',')} мм → S = ${area.toExponential(2).replace('.', ',')} м² → <b>v = ${v.toFixed(2)} м/с</b>.<br>` +
-                (this.boilerMainManual() ? `• <b>Диаметр выбран вручную</b> (окно замены трубы котельной). По скорости рекомендован Ø${this.boilerMainOptions(this._bpLoad ? this._bpLoad.gas : 0, this._bpLoad ? this._bpLoad.el : 0).rec}.<br>` : '') +
+                (this.boilerMainManual() ? `• <b>Диаметр выбран вручную</b> (окно замены трубы котельной). По скорости рекомендован ${this.boilerMainTitle(this.boilerMainOptions(this._bpLoad ? this._bpLoad.gas : 0, this._bpLoad ? this._bpLoad.el : 0).rec)}.<br>` : '') +
                 (v > this.BOILER_V_MAX ? `<b style="color:var(--danger,#EF4444);">• Скорость выше предела ${this.BOILER_V_MAX.toFixed(1).replace('.', ',')} м/с — шум и износ, возьмите диаметр больше.</b><br>` : '') +
                 (v < this.BOILER_V_LOW ? `<b style="color:var(--warn,#F59E0B);">• Скорость ниже ${this.BOILER_V_LOW.toFixed(1).replace('.', ',')} м/с — возможен воздух и шлам, возьмите диаметр меньше.</b><br>` : '') +
                 (isStable
