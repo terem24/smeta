@@ -57936,13 +57936,9 @@ const app = {
                 `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:4px;">Считать:</span>` +
                 `<span onclick="app.setSwapBpScope('pipe')" ${_bpB(_bpScope === 'pipe')}>Только трубы и фитинги</span>` +
                 `<span onclick="app.setSwapBpScope('rig')" ${_bpB(_bpScope === 'rig')}>С крепежом и теплоизоляцией</span>` +
-                `<span style="font-size:11px;color:var(--text-muted, #6B7280);margin-left:6px;">котёл, бойлер и насосы не в счёт — они одинаковы при любой трубе</span>` +
-                `<div style="flex-basis:100%;font-size:11px;color:var(--text-muted, #6B7280);line-height:1.4;">` +
-                `Диаметр у каждой системы свой: он подобран по скорости воды, а стенка у материалов разной толщины — ` +
-                `поэтому наружный размер отличается. Цены — по прайсу: «Эта позиция» — одна деталь, «Система» — все трубы и фитинги котельной.</div>` +
                 `</div>`;
-            // Ручной диаметр магистрали — только у строки трубы котельной в нержавейке.
-            if (_bpIsPipe && this._bpLoad) {
+            // Диаметр магистрали — у любой строки котельной (труба и фитинги: от диаметра зависят оба).
+            if (this._bpLoad) {
                 _bpFilterHtml += this.boilerMainBlockHtml(this._bpLoad.gas, this._bpLoad.el);
             }
             customAlts = [
@@ -73304,19 +73300,21 @@ const app = {
         const cur = o.options.find(x => x.size === o.active);
         const btn = (x) => {
             const on = x.size === o.active;
-            const warn = x.high ? 'var(--danger, #EF4444)' : (x.low ? 'var(--warn, #F59E0B)' : 'var(--primary)');
+            const warn = (x.high || x.low) ? 'var(--danger, #EF4444)' : 'var(--success, #16A34A)';
             const title = o.pair ? `Ø${x.size} (труба ${x.phys})` : `Ø${x.size}`;
             return `<span onclick="app.setBoilerMainSize(${x.size})" style="cursor:pointer;padding:4px 10px;border-radius:5px;font-size:12px;border:1px solid ${warn};background:${on ? warn : 'transparent'};color:${on ? '#fff' : 'var(--text-main)'};">`
                 + `${title} · ${x.v.toFixed(2).replace('.', ',')} м/с</span>`;
         };
         const pairNote = o.pair
-            ? `<div style="font-size:11px;color:var(--text-muted, #6B7280);margin-top:4px;">Пара типоразмеров: фитинги этой системы подобраны под малый и большой диаметр, Ø35 и Ø42 здесь не предусмотрены.</div>`
+            ? `<div style="font-size:11px;color:var(--text-muted, #6B7280);margin-top:4px;">Для этой системы — малый или большой диаметр пары.</div>`
             : '';
-        const warnTxt = cur && cur.high
-            ? `<div style="margin-top:6px;padding:6px 8px;border-radius:5px;background:rgba(239,68,68,.12);color:var(--danger,#EF4444);font-size:12px;">Скорость ${cur.v.toFixed(2).replace('.', ',')} м/с выше предела ${this.BOILER_V_MAX.toFixed(1).replace('.', ',')} м/с: шум и износ. Возьмите диаметр больше.</div>`
-            : (cur && cur.low
-                ? `<div style="margin-top:6px;padding:6px 8px;border-radius:5px;background:rgba(245,158,11,.14);color:var(--warn,#F59E0B);font-size:12px;">Скорость ${cur.v.toFixed(2).replace('.', ',')} м/с ниже ${this.BOILER_V_LOW.toFixed(1).replace('.', ',')} м/с: возможен воздух и шлам в трубе. Возьмите диаметр меньше.</div>`
-                : '');
+        const rng = `${this.BOILER_V_LOW.toFixed(1).replace('.', ',')}–${this.BOILER_V_MAX.toFixed(1).replace('.', ',')} м/с`;
+        const vTxt = cur ? cur.v.toFixed(2).replace('.', ',') : '';
+        const plate = (cur && (cur.high || cur.low))
+            ? `<div style="margin-top:6px;padding:6px 8px;border-radius:5px;background:rgba(239,68,68,.12);color:var(--danger,#EF4444);font-size:12px;"><b>Скорость ${vTxt} м/с — вне рекомендации (${rng}).</b> `
+              + `${cur.high ? 'Шум и износ' : 'Воздух и шлам'}: такой диаметр не стоит выбирать — ${cur.high ? 'возьмите больше' : 'возьмите меньше'}.</div>`
+            : `<div style="margin-top:6px;padding:6px 8px;border-radius:5px;background:rgba(22,163,74,.12);color:var(--success,#16A34A);font-size:12px;"><b>Скорость ${vTxt} м/с — в норме</b> (${rng}).</div>`;
+        const warnTxt = plate;
         return `<div style="padding:8px 0 10px;border-bottom:1px solid var(--border);">`
             + `<div style="font-size:12px;font-weight:700;color:var(--text-sec);margin-bottom:6px;">Диаметр магистрали котельной (меняет всю обвязку):</div>`
             + `<div style="display:flex;gap:6px;flex-wrap:wrap;">${o.options.map(btn).join('')}</div>`
