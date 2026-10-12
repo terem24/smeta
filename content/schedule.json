@@ -151,9 +151,9 @@
    "freq": 0,
    "audience": "pro",
    "data_block": "КП ссылкой и версии",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-12",
-   "published_at": null,
+   "published_at": "2026-10-12",
    "words": 511
   },
   {
