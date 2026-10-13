@@ -3805,6 +3805,9 @@ const RecognizeUI = {
         this._convBase = null;
         this._rows = items.map((i, n) => ({ ...i, _seq: n, _sel: false, _locked: false }));
         this._rows.forEach(r => this.attachSpec(r));
+        this._rows.forEach(r => this.checkRowSum(r));
+        // Ответ модели — для стенда: RecognizeUI.dumpReplay() отдаёт его json-ом.
+        try { this._replayItems = JSON.parse(JSON.stringify(items)); this._replayRes = { docTotals: res.docTotals || null }; } catch (e) { this._replayItems = null; }
         this._rows.forEach(r => { if (this.looksLikeWork(r)) r.kind = 'work'; });
         this.roundQty();
         this.inheritRepeats();
@@ -4014,13 +4017,56 @@ const RecognizeUI = {
      * («RVFF-0001-1» в названии и «520400» в колонке), склеиваем сами.
      */
     attachSpec(r) {
-        const code = String(r.code == null ? '' : r.code).replace(/\s+/g, '').trim();
+        let code = String(r.code == null ? '' : r.code).replace(/\s+/g, '').trim();
+        // Колонки «Код» нет (рукописная и текстовая смета), но артикул стоит прямо
+        // в названии — он весит ровно столько же и идёт тем же путём.
+        if (!code && r.kind !== 'work' && typeof RecognizeMatch !== 'undefined' && RecognizeMatch.findCodes) {
+            code = (RecognizeMatch.findCodes(r.raw)[0] || '').replace(/\s+/g, '');
+        }
         if (!code || r._spec || r.kind === 'work') return;
         const codes = [code];
         const part = String(r.raw || '').match(/[A-Z]{2,}[A-Z0-9.]*-\d{2,}[A-Z0-9.]*-\d+(?![\dA-Z])/);
         if (part && /^\d+$/.test(code) && !code.startsWith(part[0])) codes.unshift(part[0] + code);
         const tail = String(r.raw || '').match(/,\s*([A-Za-zА-Яа-я][A-Za-zА-Яа-я .\-]{2,24})\s*$/);
         r._spec = { codes, maker: r.maker || (tail ? tail[1].trim() : null), page: null };
+    },
+
+    /**
+     * Цена × количество против суммы строки, напечатанной в документе.
+     *
+     * Если они расходятся больше чем на 2 %, модель прочитала одно из трёх
+     * чисел неверно (перепутала колонку, потеряла разряд). Об этом лучше
+     * узнать сейчас: ошибка в цене или количестве уедет в смету молча.
+     */
+    checkRowSum(r) {
+        delete r._sumBad;
+        const price = this.docNum(r.price), sum = this.docNum(r.sum);
+        const q = (Number(r.qty) || 0) + (Number(r.qtyExtra) || 0);
+        if (!(price > 0 && sum > 0 && q > 0)) return;
+        if (Math.abs(price * q - sum) / sum > 0.02) {
+            r._sumBad = `${Math.round(price).toLocaleString('ru-RU')} × ${q} = ${
+                Math.round(price * q).toLocaleString('ru-RU')} ₽, а в документе ${Math.round(sum).toLocaleString('ru-RU')} ₽`;
+        }
+    },
+
+    /** Ответ модели последнего разбора — json для bench/replay (правая кнопка → консоль). */
+    dumpReplay(name) {
+        const data = { name: name || this._fileName || 'case', items: this._replayItems || [], ...(this._replayRes || {}) };
+        const json = JSON.stringify(data, null, 1);
+        try { navigator.clipboard.writeText(json); } catch (e) { /* без буфера — вернём строкой */ }
+        return json;
+    },
+
+    /** Откуда взяты позиции: по коду, аналогом «проверьте», без пары. */
+    sourceSummary() {
+        let code = 0, analog = 0;
+        for (const r of this._rows) {
+            const m = r._m;
+            if (!m || r._locked) continue;
+            if (m.byArticle) code++;
+            else if (m.analog) analog++;
+        }
+        return (code ? ` · по коду ${code}` : '') + (analog ? ` · аналогов (проверьте) ${analog}` : '');
     },
 
     /**
@@ -5169,7 +5215,8 @@ const RecognizeUI = {
         if (!r._m && this.notOurRange(r)) return false;
         if (!r._m && !this.looksLikeWork(r)) return true;     // нет в каталоге
         if (r._priceAlarm) return true;                       // цена не сходится
-        if (r._priceWarn) return true;                        // цена расходится больше чем вдвое
+        if (r._priceWarn) return true;
+        if (r._sumBad) return true;                           // цена × кол-во не равны сумме строки                        // цена расходится больше чем вдвое
         if (!((r.qty || 0) + (r.qtyExtra || 0))) return true; // нет количества
         return false;
     },
@@ -5315,6 +5362,8 @@ const RecognizeUI = {
                     m.needsApproval ? ' · <b>требует согласования</b>' : ''}${
                     r._priceFixed ? ' · <b>уточнено по цене</b>' : ''}</div>${
                     m.substituted ? `<div class="rec-art">${esc(m.substituted)}</div>` : ''}${
+                    m.guardNote ? `<div class="rec-art">${esc(m.guardNote)}</div>` : ''}${
+                    r._sumBad ? `<div class="rec-pricebad-note">Сумма строки не сходится: ${esc(r._sumBad)} — проверьте цену и количество</div>` : ''}${
                     this.renderAlts(r, n)}${
                     r._priceAlarm ? `<div class="rec-pricebad-note">Цена не сходится: ${
                         r._priceAlarm > 0 ? `у нас дороже в ${r._priceAlarm} раз` : `у нас дешевле в ${-r._priceAlarm} раз`
@@ -5575,6 +5624,7 @@ const RecognizeUI = {
             + (works.length ? ` · монтажных работ ${works.length}` : '')
             + (this._deep ? ` · из них углублённым поиском ${this._deep}` : '')
             + (fromMem ? ` · по вашим прошлым заменам ${fromMem}` : '')
+            + this.sourceSummary()
             + (this._mergeInfo ? ' · ' + this._mergeInfo : '')
             + (noQty ? ` · без количества ${noQty}` : '');
 
@@ -6129,6 +6179,13 @@ const RecognizeUI = {
             if (t) push(t.sum, t.label);
         }
         if (!out.length && parsed) push(parsed.docTotal, parsed.docTotalLabel);
+        // Итога всего документа нет, но сумма напечатана в шапке раздела
+        // («Водоснабжение … 264 576»): сверять строки можно и с ней.
+        if (!out.length && parsed) {
+            for (const t of (parsed.sectionTotals || [])) {
+                if (t) push(t.sum, 'раздел «' + String(t.section || '').slice(0, 40) + '»');
+            }
+        }
         return out;
     },
 
@@ -6461,6 +6518,7 @@ const RecognizeUI = {
             } else if (r._priceAlarm) {
                 diff = `<span class="rec-cmp-up" title="Не участвует в итогах">✕</span>`;
             }
+            if (comparable && r._priceWarn) diff += ` <span title="Цена расходится больше чем на 100% — проверьте подбор">⚠</span>`;
 
             // Точка уверенности подбора — тот же score, что и в таблице проверки.
             const score = m ? (r._locked ? 1 : (m.score || 0)) : 0;
@@ -6480,7 +6538,7 @@ const RecognizeUI = {
                        <span class="rec-art">с прайсом не сравнивается</span>`
                     : `<span class="rec-art">аналог не подобран</span>`;
 
-            return `${secHead}<tr${r._priceAlarm ? ' class="rec-pricebad"' : (isWork ? ' class="rec-workrow"' : '')}>
+            return `${secHead}<tr${r._priceAlarm ? ' class="rec-pricebad"' : (r._priceWarn ? ' class="rec-nomatch"' : (isWork ? ' class="rec-workrow"' : ''))}>
               <td>${r.docNo ? esc(r.docNo) : n + 1}</td>
               <td class="rec-raw">${esc(r.raw)}</td>
               <td>${qty || '—'} ${esc(r.unit || 'шт')}</td>
@@ -6685,6 +6743,9 @@ const RecognizeUI = {
         if (typeof RecognizeMatch === 'undefined' || !RecognizeMatch.SYSTEMS) return '';
         const cur = this._sysChosen || (this._sys && this._sys.main) || null;
         if (!cur) return '';
+        // Одна-две строки системы — переводить нечего, выбор только шумит.
+        const cn = this._sys && this._sys.counts ? this._sys.counts[cur] : 0;
+        if (!this._sysChosen && cn < 3) return '';
 
         const labels = {
             ppr: 'Полипропилен',
@@ -7863,7 +7924,8 @@ const RECOGNIZE_PROMPT = `Ты разбираешь рукописные сме�
     "note": "пояснение, если что-то неясно"
   }],
   "skipped": [{ "raw": "...", "reason": "вычеркнуто" }],
-  "docTotals": [{ "sum": число, "label": "как подписан итог" }]
+  "docTotals": [{ "sum": число, "label": "как подписан итог" }],
+  "sectionTotals": [{ "section": "заголовок раздела", "sum": число }]
 }
 
 ПРАВИЛА:
@@ -8021,6 +8083,12 @@ const RECOGNIZE_PROMPT = `Ты разбираешь рукописные сме�
     проверяется, все ли строки прочитаны, и посчитанная тобой сумма эту
     проверку обесценивает: она сойдётся всегда, даже если половина сметы
     потеряна.
+
+    СУММА В ШАПКЕ РАЗДЕЛА. В спецификациях сумма раздела печатается на самой
+    полосе заголовка: «Водоснабжение ........ 264 576». Это не итог документа,
+    но по ней проверяется, все ли строки раздела прочитаны: положи её в
+    "sectionTotals" ВЕРХНЕГО УРОВНЯ — заголовок в "section", число в "sum".
+    Заголовок по-прежнему не позиция и в "items" не попадает.
 
     Промежуточные итоги — «Итого по разделу», «Итого материалы», «Итого по
     странице», «Перенос на след. лист» — НЕ бери: это части, а не итоги к

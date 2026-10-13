@@ -12,6 +12,7 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = path.resolve(__dirname, '..');
 const src = fs.readFileSync(path.join(ROOT, 'catalog.js'), 'utf8') + '\n;\n' +
+    fs.readFileSync(path.join(ROOT, 'equivalents.js'), 'utf8') + '\n;\n' +
     fs.readFileSync(path.join(ROOT, 'recognize_match.js'), 'utf8') + '\n;\nglobalThis.__RM = RecognizeMatch;\n';
 const sb = { console, document: { createElement: () => ({ style: {} }) }, window: {},
     navigator: { userAgent: 'node' }, localStorage: { getItem: () => null, setItem: () => {} }, module: undefined };

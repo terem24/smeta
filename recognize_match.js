@@ -1221,9 +1221,29 @@ const RecognizeMatch = (function () {
     return best ? best.row.it : null;
   }
 
+  /**
+   * Внешняя таблица замен (equivalents.js): бренд и код чужого изделия → наш
+   * артикул. Пополняется файлом, без правки кода подбора; строки из неё
+   * проверяются после встроенных. Запись: { re: 'источник регулярки', flags,
+   * id, note } — id артикул нашей позиции.
+   */
+  function externalEquivalents() {
+    const src = (typeof globalThis !== 'undefined' && globalThis.RECOGNIZE_EQUIVALENTS) ||
+      (typeof window !== 'undefined' && window.RECOGNIZE_EQUIVALENTS) || [];
+    if (externalEquivalents.cache && externalEquivalents.src === src) return externalEquivalents.cache;
+    const list = [];
+    for (const e of src) {
+      try { list.push({ test: new RegExp(e.re, e.flags || 'i'), id: e.id, note: e.note || 'замена из таблицы equivalents.js' }); } catch (x) { /* битую строку пропускаем */ }
+    }
+    externalEquivalents.cache = list;
+    externalEquivalents.src = src;
+    return list;
+  }
+
   function matchEquivalent(rec) {
-    const raw = String(rec.raw || '');
-    for (const eq of EQUIVALENTS) {
+    // Код из колонки спецификации тоже часть строки: по нему замены и задаются.
+    const raw = String(rec.raw || '') + ((rec._spec && rec._spec.codes) ? ' ' + rec._spec.codes.join(' ') : '');
+    for (const eq of EQUIVALENTS.concat(externalEquivalents())) {
       if (!eq.test.test(raw)) continue;
       const art = typeof eq.id === 'function' ? eq.id(raw) : eq.id;
       const item = eq.name ? itemByName(eq.name) : (art ? itemByArticle(art) : null);
@@ -1386,6 +1406,17 @@ const RecognizeMatch = (function () {
     }
     articleIndex = map;
     return map;
+  }
+
+  /** Артикулы в тексте строки как напечатаны (для строк без колонки «Код»). */
+  function findCodes(raw) {
+    const out = [];
+    for (const t of String(raw || '').match(ARTICLE_TOKEN) || []) {
+      const key = normArticle(t);
+      if (key.length < 8 || !/[A-ZА-Я]/.test(key) || (key.match(/\d/g) || []).length < 2) continue;
+      if (!out.includes(t)) out.push(t);
+    }
+    return out;
   }
 
   function articleTokens(raw) {
@@ -1749,6 +1780,21 @@ const RecognizeMatch = (function () {
      */
     if (/^муфта(_ppr)?$/.test(t) && /переходн|редукц/i.test(String(rec.raw || ''))) {
       return { ...rec, type: 'переход' };
+    }
+
+    /**
+     * Слова названия главнее типа, который назвала модель.
+     *
+     * Тип — догадка по первому слову: «Кран незамерзающий …» она записывает как
+     * кран_шаровой, и подбор по форме искал латунный шаровой кран той же
+     * резьбы; «Угольник настенный с креплением» — как водорозетку, и уходил в
+     * тупиковую водорозетку, а не в угольник с креплением. Название точнее, и
+     * когда оно однозначно, тип снимается — позиция ищется по словам.
+     */
+    const rawText = String(rec.raw || '');
+    if (/незамерзающ/i.test(rawText) && /^кран/.test(t)) return { ...rec, type: 'прочее' };
+    if (/угольник\s+настенн[а-я]*\s+с\s+креплен/i.test(rawText) && /^водорозетк/.test(t)) {
+      return { ...rec, type: 'прочее' };
     }
 
     if (t && t !== 'прочее') return rec;
@@ -6536,13 +6582,16 @@ const RecognizeMatch = (function () {
       // Первый кандидат не прошёл — пробуем запасных: к крану ВР-НР подбор сперва
       // предлагает кран ВР/ВР, а верный кран ВР/НР стоит у него вторым.
       const alt = (m.alternatives || []).find((it) => it && !analogGuard(rec, it, sys));
+      // Что именно отклонила защита — на экране проверки это причина «жёлтого»:
+      // без неё строка просто «проверьте», и непонятно, на что смотреть.
+      const rejected = `первый кандидат «${String(m.item.name || '').slice(0, 60)}» отклонён: ${why}`;
       if (alt) {
         m = Object.assign({}, m, { item: alt, score: Math.min(Number(m.score) || 0, 0.8),
-          alternatives: (m.alternatives || []).filter((it) => it !== alt) });
+          alternatives: (m.alternatives || []).filter((it) => it !== alt), guardNote: rejected });
       } else {
         const f = byFeatures();
         if (!f) return { m: null, why: 'аналог отклонён: ' + why };
-        m = f;
+        m = Object.assign({}, f, { guardNote: rejected });
       }
       why = null;
     }
@@ -6571,7 +6620,7 @@ const RecognizeMatch = (function () {
 
   return {
     // Спецификация рабочего проекта: строка → запись, подбор по коду и аналог с защитами.
-    specItem, matchSpec, matchByCode, analogGuard, variantsOf, brandOfItem, specFields, threadKind, kindOfName,
+    specItem, matchSpec, matchByCode, analogGuard, variantsOf, brandOfItem, findCodes, specFields, threadKind, kindOfName,
     SYSTEMS, SECTIONS, detectSystem, systemProfile, guessSection, profileOf, suggest, matchItem, matchCatalog,
     isRadiator, matchRadiator, isPump, matchPump,
     // Тип, выведенный из текста строки: нужен интерфейсу проверки, чтобы
