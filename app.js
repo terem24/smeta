@@ -26267,8 +26267,9 @@ const app = {
             </div>`;
         const filtersOpen = this._usersFiltersOpen || activeCount > 0;
         const dense = this.usersDense();
-        // Переключатели доступа (распознавание, проектирование, монтаж) — только у администратора
-        const showToggles = this.hasFeatureRoleAccess();
+        // Переключатели доступа (сканы, проект, монтаж) видит только владелец:
+        // ни администратор, ни наблюдатель, ни менеджер их не получают
+        const showToggles = this.getAdminRole() === 'super_admin';
 
         let h = `
                     <div class="admin-stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
@@ -26428,7 +26429,7 @@ const app = {
                             </select>
                             <button class="admin-btn" style="height:28px;" ${isViewer ? 'disabled' : ''} onclick="app.bulkAssignDistributor()">Назначить</button>
                         </div>
-                        <div class="admin-bulk-line admin-bulk-toggles">
+                        ${showToggles ? `<div class="admin-bulk-line admin-bulk-toggles">
                             <div class="admin-bulk-group">
                                 <span class="admin-bulk-label" title="Регионы берутся из анкет монтажников. Выбранный здесь регион — общий для обоих переключателей рядом">🌍 Регион:</span>
                                 <select id="admin_bulk_region" ${isViewer ? 'disabled' : ''} style="flex:1; max-width:230px;" onchange="app.setBulkAccessRegion(this.value)">
@@ -26463,7 +26464,7 @@ const app = {
                                 </span>
                             </div>
                             ${designOk ? '' : `<span style="font-size:10.5px; color:var(--c-warn,#D97706);">${designOffHint}</span>`}
-                        </div>
+                        </div>` : ''}
                     </div>
                     </details>`;
                     })()}
@@ -26476,12 +26477,12 @@ const app = {
                             <th style="width:30px;">#</th>
                             <th style="width:280px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('name')" title="Сортировать по имени">Имя / Контакты${sortArrow('name')}</th>
                             <th style="width:165px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('ltv')" title="Сортировать по сумме">Статистика (LTV)${sortArrow('ltv')}</th>
-                            <th style="width:135px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('tariff')" title="Сортировать по тарифу">Тариф / Устройство${sortArrow('tariff')}</th>
+                            <th style="width:150px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('tariff')" title="Сортировать по тарифу">Тариф / Устройство${sortArrow('tariff')}</th>
                             <th style="width:205px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('dist')" title="Сортировать по дистрибьютору">Дистрибьютор${sortArrow('dist')}</th>
                             ${showToggles ? `
-                            <th class="ad-acc-th" style="width:100px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('recog')" title="Доступ монтажника к распознаванию смет. Клик — сортировать"><span class="ad-acc-full">Распознавание</span><span class="ad-acc-short">🔍</span>${sortArrow('recog')}</th>
-                            <th class="ad-acc-th" style="width:100px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('design')" title="Доступ к листам проекта и редактору планов. Клик — сортировать"><span class="ad-acc-full">Проектирование</span><span class="ad-acc-short">📐</span>${sortArrow('design')}</th>
-                            <th class="ad-acc-th" style="width:100px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('works')" title="Монтажные работы: личная отметка сильнее компании и таблицы «Тарифы». Клик — сортировать"><span class="ad-acc-full">Монтаж</span><span class="ad-acc-short">🔧</span>${sortArrow('works')}</th>` : ''}
+                            <th class="ad-acc-th" style="width:80px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('recog')" title="Доступ монтажника к распознаванию смет. Клик — сортировать"><span class="ad-acc-full">Сканы</span><span class="ad-acc-short">🔍</span>${sortArrow('recog')}</th>
+                            <th class="ad-acc-th" style="width:80px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('design')" title="Доступ к листам проекта и редактору планов. Клик — сортировать"><span class="ad-acc-full">Проект</span><span class="ad-acc-short">📐</span>${sortArrow('design')}</th>
+                            <th class="ad-acc-th" style="width:80px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('works')" title="Монтажные работы: личная отметка сильнее компании и таблицы «Тарифы». Клик — сортировать"><span class="ad-acc-full">Монтаж</span><span class="ad-acc-short">🔧</span>${sortArrow('works')}</th>` : ''}
                             <th style="text-align:right; cursor:pointer; user-select:none; width: 90px;" onclick="app.sortAdminColumn('login')" title="Сортировать по дате последнего входа">Вход${sortArrow('login')}</th>
                             <th style="text-align:center; width: 145px;">Действия</th>
                         </tr></thead>
