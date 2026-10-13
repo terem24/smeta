@@ -2162,6 +2162,17 @@ function scaleTargets() {
  *  через проёмы или рассыпаются на куски. Поэтому идём лесенкой пробных
  *  масштабов, у каждого меряем согласие с расчётом, а лучший уточняем ещё
  *  дважды — уже на его собственной сегментации. */
+/** Выпуклая оболочка точек [[x,y],…] — алгоритм цепочки Эндрю. */
+function convexHull(pts) {
+  var P = pts.map(function (q) { return [q[0], q[1]]; }).sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+  if (P.length < 3) return P;
+  var cross = function (o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); };
+  var lo = [], up = [], i;
+  for (i = 0; i < P.length; i++) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], P[i]) <= 0) lo.pop(); lo.push(P[i]); }
+  for (i = P.length - 1; i >= 0; i--) { while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], P[i]) <= 0) up.pop(); up.push(P[i]); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+}
+
 /** Сопоставление зон этажа с площадями экспликации — по всему этажу, а не по одной комнате.
  *  Каждой целевой площади (от большей к меньшей) ставим одну зону или пару соседних,
  *  чья сумма ближе всего к ней, в пределах 15 %. Пару берём только если она заметно
@@ -2632,21 +2643,26 @@ function autoRooms() {
   pushUndo('zones');
   var made = 0, missed = [], cnt = {}, boiler = hasBoilerZone() || cur !== 0;   // на 2 этаже котельную не заводим
   if (targets.length) {
-    var pairs = [];
-    targets.forEach(function (t, ti) {
-      var typed = zoneKindsOfRoom(t).length ? 0 : 1;
-      free.forEach(function (c, ci) { pairs.push([Math.abs(c.m2 - t.area), ti, ci, typed]); });
-    });
-    // При равной разнице площадей первыми выбирают комнаты, которым нужна
-    // зона: как было, пока в сопоставлении участвовали только они
-    pairs.sort(function (a, b) { return (a[0] - b[0]) || (a[3] - b[3]); });
+    // Сопоставление по всему этажу: одна зона или пара соседних (разбитая дверью
+    // или мебелью комната). Пару склеиваем выпуклой оболочкой, только если её
+    // площадь сходится с экспликацией в пределах 15 %; иначе берём одну, ближе всего.
+    var mm = matchAreasFloor(free.map(function (c) { return { m2: c.m2 }; }),
+      targets.map(function (t) { return { area: t.area }; }));
     var tU = {}, cU = {};
-    pairs.forEach(function (p) {
-      if (tU[p[1]] || cU[p[2]]) return;
-      var t = targets[p[1]];
-      if (p[0] > Math.max(2, 0.25 * t.area)) return;
-      tU[p[1]] = 1; cU[p[2]] = 1;
-      var pts = fitZonePts(free[p[2]].pts, F().pxPerM || 100, free[p[2]].printed);
+    mm.forEach(function (x) {
+      var t = targets[x.t], src = null, printed = null;
+      if (x.idx.length === 2) {
+        var hull = convexHull(free[x.idx[0]].pts.concat(free[x.idx[1]].pts));
+        if (hull.length >= 3 && Math.abs(area(hull) - t.area) / t.area <= 0.15) {
+          src = hull;
+        } else {
+          var k0 = Math.abs(free[x.idx[0]].m2 - t.area) <= Math.abs(free[x.idx[1]].m2 - t.area) ? x.idx[0] : x.idx[1];
+          x.idx = [k0];
+        }
+      }
+      if (!src) { src = free[x.idx[0]].pts; printed = free[x.idx[0]].printed; }
+      tU[x.t] = 1; x.idx.forEach(function (k) { cU[k] = 1; });
+      var pts = fitZonePts(src, F().pxPerM || 100, printed);
       // Раскладка: у комнаты без своего типа — контур «Помещение», чтобы
       // клик по ней включал тёплый пол, а не искал стены заново
       if (UFH && !zoneKindsOfRoom(t).length) {
@@ -2663,6 +2679,7 @@ function autoRooms() {
         made++;
       });
     });
+
     // Комната расчёта без контура на плане — называем её с площадью: монтажник
     // отметит её вручную. В тепловом режиме нужны все комнаты, не только типовые.
     targets.forEach(function (t, ti) {
