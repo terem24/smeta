@@ -17950,6 +17950,13 @@ body.theme-yandex #admin_modal_overlay {
 #admin_content table.ad-dense td * { line-height: 1.25; }
 /* Компактно: вторичные строки (адрес, возраст, активность, время на сайте) скрыты — они и задают высоту строки */
 #admin_content table.ad-dense .ad-more { display: none !important; }
+/* Переключатели доступа: в обычном виде заголовок переносится по словам, а не
+   наезжает на соседний столбец; в компактном — значок, подпись под переключателем скрыта */
+#admin_content table th.ad-acc-th { white-space: normal; overflow-wrap: anywhere; hyphens: auto; font-size: 10px; line-height: 1.2; padding-left: 4px; padding-right: 4px; }
+#admin_content table .ad-acc-short { display: none; }
+#admin_content table.ad-dense th.ad-acc-th .ad-acc-full { display: none; }
+#admin_content table.ad-dense th.ad-acc-th .ad-acc-short { display: inline; font-size: 13px; }
+#admin_content table.ad-dense .ad-acc-label { display: none; }
 .ad-name-short { display: none; }
 #admin_content table.ad-dense .ad-name-full { display: none; }
 #admin_content table.ad-dense .ad-name-short { display: inline; }

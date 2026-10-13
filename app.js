@@ -22513,7 +22513,7 @@ const app = {
                        onchange="app.setWorksUserFlag('${keyEsc}', this.checked)">
                 <span class="slider"></span>
             </label>
-            <span id="works_acc_${idSafe}" style="font-size:9.5px; color:${d.on ? '#10B981' : 'var(--text-sec)'}; white-space:nowrap;">${label}${d.by === 'own' && !isViewer
+            <span id="works_acc_${idSafe}" class="ad-acc-label" style="font-size:9.5px; color:${d.on ? '#10B981' : 'var(--text-sec)'}; white-space:nowrap;">${label}${d.by === 'own' && !isViewer
                 ? ` <a href="#" onclick="event.preventDefault(); event.stopPropagation(); app.setWorksUserFlag('${keyEsc}', null);" style="color:var(--primary); text-decoration:none;" title="Снять личную отметку">↺</a>` : ''}</span>
         </div>`;
     },
@@ -26267,6 +26267,8 @@ const app = {
             </div>`;
         const filtersOpen = this._usersFiltersOpen || activeCount > 0;
         const dense = this.usersDense();
+        // Переключатели доступа (распознавание, проектирование, монтаж) — только у администратора
+        const showToggles = this.hasFeatureRoleAccess();
 
         let h = `
                     <div class="admin-stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
@@ -26476,9 +26478,10 @@ const app = {
                             <th style="width:165px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('ltv')" title="Сортировать по сумме">Статистика (LTV)${sortArrow('ltv')}</th>
                             <th style="width:135px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('tariff')" title="Сортировать по тарифу">Тариф / Устройство${sortArrow('tariff')}</th>
                             <th style="width:205px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('dist')" title="Сортировать по дистрибьютору">Дистрибьютор${sortArrow('dist')}</th>
-                            <th style="width:100px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('recog')" title="Доступ монтажника к распознаванию смет. Клик — сортировать">Распознавание${sortArrow('recog')}</th>
-                            <th style="width:100px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('design')" title="Доступ к листам проекта и редактору планов. Клик — сортировать">Проектирование${sortArrow('design')}</th>
-                            <th style="width:100px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('works')" title="Монтажные работы: личная отметка сильнее компании и таблицы «Тарифы». Клик — сортировать">Монтаж${sortArrow('works')}</th>
+                            ${showToggles ? `
+                            <th class="ad-acc-th" style="width:100px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('recog')" title="Доступ монтажника к распознаванию смет. Клик — сортировать"><span class="ad-acc-full">Распознавание</span><span class="ad-acc-short">🔍</span>${sortArrow('recog')}</th>
+                            <th class="ad-acc-th" style="width:100px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('design')" title="Доступ к листам проекта и редактору планов. Клик — сортировать"><span class="ad-acc-full">Проектирование</span><span class="ad-acc-short">📐</span>${sortArrow('design')}</th>
+                            <th class="ad-acc-th" style="width:100px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('works')" title="Монтажные работы: личная отметка сильнее компании и таблицы «Тарифы». Клик — сортировать"><span class="ad-acc-full">Монтаж</span><span class="ad-acc-short">🔧</span>${sortArrow('works')}</th>` : ''}
                             <th style="text-align:right; cursor:pointer; user-select:none; width: 90px;" onclick="app.sortAdminColumn('login')" title="Сортировать по дате последнего входа">Вход${sortArrow('login')}</th>
                             <th style="text-align:center; width: 145px;">Действия</th>
                         </tr></thead>
@@ -26668,9 +26671,9 @@ const app = {
                         <td class="admin-cell-half"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount} | Ср.объект: ${u.avgArea} м²</span><span class="ad-more"><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${sessionLine}</span></span></td>
                         <td class="admin-cell-half">${badge}<br><span style="font-size:10px;color:var(--text-sec);">${device}</span></td>
                         <td onclick="event.stopPropagation();">${distCell}</td>
-                        <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${recCell}</td>
+                        ${showToggles ? `<td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${recCell}</td>
                         <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${desCell}</td>
-                        <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${this.worksAccessCell(u, !this.canEditTariffs())}</td>
+                        <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${this.worksAccessCell(u, !this.canEditTariffs())}</td>` : ''}
                         <td style="text-align:right; white-space:nowrap;" title="${lastVisTitle}">${lastVis}</td>
                         <td class="admin-cell-actions" onclick="event.stopPropagation();" style="text-align:center; white-space:nowrap;">
                             <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
@@ -41897,7 +41900,7 @@ const app = {
                        onchange="app.toggleRecognitionAccess('${keyEsc}', this.checked, this, '${cellId}')">
                 <span class="slider"></span>
             </label>
-            <span id="${cellId}" style="font-size:9.5px; color:${on ? '#10B981' : 'var(--text-sec)'};">${label}</span>
+            <span id="${cellId}" class="ad-acc-label" style="font-size:9.5px; color:${on ? '#10B981' : 'var(--text-sec)'};">${label}</span>
         </div>`;
     },
 
@@ -41988,7 +41991,7 @@ const app = {
                        onchange="app.toggleDesignAccess('${keyEsc}', this.checked, this, '${cellId}')">
                 <span class="slider"></span>
             </label>
-            <span id="${cellId}" style="font-size:9.5px; color:${on ? '#10B981' : 'var(--text-sec)'};">${label}</span>
+            <span id="${cellId}" class="ad-acc-label" style="font-size:9.5px; color:${on ? '#10B981' : 'var(--text-sec)'};">${label}</span>
         </div>`;
     },
 
