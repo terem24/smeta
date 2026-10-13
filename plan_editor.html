@@ -2162,6 +2162,36 @@ function scaleTargets() {
  *  через проёмы или рассыпаются на куски. Поэтому идём лесенкой пробных
  *  масштабов, у каждого меряем согласие с расчётом, а лучший уточняем ещё
  *  дважды — уже на его собственной сегментации. */
+/** Сопоставление зон этажа с площадями экспликации — по всему этажу, а не по одной комнате.
+ *  Каждой целевой площади (от большей к меньшей) ставим одну зону или пару соседних,
+ *  чья сумма ближе всего к ней, в пределах 15 %. Пару берём только если она заметно
+ *  точнее одиночной (на 5 % и больше): иначе правильную комнату разрежем надвое.
+ *  Пара — это разбивка одной комнаты на части (дверь, мебель). Возвращает
+ *  [{ t: индекс цели, idx: [индексы зон], e: относительная ошибка }]. */
+function matchAreasFloor(cands, targets) {
+  var used = {}, out = [];
+  var order = targets.map(function (t, i) { return i; })
+    .sort(function (a, b) { return targets[b].area - targets[a].area; });
+  order.forEach(function (ti) {
+    var t = targets[ti].area, best = null;
+    for (var i = 0; i < cands.length; i++) {
+      if (used[i]) continue;
+      var e1 = Math.abs(cands[i].m2 - t) / t;
+      if (!best || e1 < best.e) best = { idx: [i], e: e1 };
+      for (var j = i + 1; j < cands.length; j++) {
+        if (used[j]) continue;
+        var e2 = Math.abs(cands[i].m2 + cands[j].m2 - t) / t;
+        if (e2 < best.e - 0.05) best = { idx: [i, j], e: e2 };
+      }
+    }
+    if (best && best.e <= 0.15) {
+      best.idx.forEach(function (k) { used[k] = 1; });
+      out.push({ t: ti, idx: best.idx, e: best.e });
+    }
+  });
+  return out;
+}
+
 /** Масштаб перебором: для каждого пробного масштаба (40…130 px/м, обе маски)
  *  считаем, сколько площадей с плана совпало с целевыми один к одному (±15 %).
  *  Истинный масштаб даёт больше всего совпадений; удвоенный или половинный —
