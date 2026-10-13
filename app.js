@@ -39702,7 +39702,7 @@ const app = {
             const rooms = ((heat[fi] && heat[fi].rooms) || []).map(r => ({ name: r.name, area: r.area, q: r.total, qud: r.ufhQud, floor: fi + 1 }));
             let v = null;
             try { v = PP.ufhView(f, step, rooms, radOpts); } catch (e) { console.warn('[раскладка ТП] этаж ' + (fi + 1) + ':', e.message); }
-            if (v) out.push({ fl: fi + 1, svg: v.svg, rows: v.rows, radRows: v.radRows || [], radTee: v.radTee, radM: v.radM || 0 });
+            if (v) out.push({ fl: fi + 1, svg: v.svg, rows: v.rows, radRows: v.radRows || [], radTee: v.radTee, radM: v.radM || 0, roomArea: rooms });
         });
         return out;
     },
@@ -40106,7 +40106,7 @@ const app = {
         const n1 = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
         const parts = [];
         let anyTp = false, anyRad = false, tee = false;
-        const loopTr = (r, cls) => `<tr${cls ? ` class="${cls}"` : ''} data-pl="L${r.no}"><td style="text-align:center">${r.no}</td><td>${esc(r.name)}</td>` +
+        const loopTr = (r, cls, warn) => `<tr${cls ? ` class="${cls}"` : ''} data-pl="L${r.no}"><td style="text-align:center">${r.no}</td><td>${esc(r.name)}${warn ? warn : ''}</td>` +
             `<td style="text-align:right">${n1(r.area)} м²</td><td style="text-align:right">${n1(r.m)} м</td>` +
             `<td style="text-align:right">${r.step}</td><td style="text-align:right">${n1(r.flow)}</td></tr>`;
         views.forEach(V => {
@@ -40123,14 +40123,24 @@ const app = {
                     if (!byName[key]) { byName[key] = { name: key, rows: [] }; groups.push(byName[key]); }
                     byName[key].rows.push(r);
                 });
+                // Площадь петель помещения против площади в расчёте: расхождение > 10 % — предупреждение
+                const calc = {};
+                (v.roomArea || []).forEach(r => { calc[String(r.name || '').trim().toLowerCase()] = +r.area || 0; });
+                const calcArea = name => calc[String(name || '').trim().toLowerCase()] || 0;
+                const warnOf = (name, a) => { const ra = calcArea(name); return ra > 0 && Math.abs(a - ra) > 0.1 * ra ? ra : 0; };
+                const warnIc = (name, a) => { const ra = warnOf(name, a); return ra ? ` <span class="ufh-warn-ic" title="Площадь петель ${n1(a)} м², в расчёте помещения ${n1(ra)} м² — проверьте распознавание плана">⚠</span>` : ''; };
+                let mismatch = 0;
                 let body = '';
                 groups.forEach(g => {
-                    if (g.rows.length === 1) { body += loopTr(g.rows[0], 'ufh-solo'); return; }
-                    const gA = g.rows.reduce((s, r) => s + (r.area || 0), 0), gM = g.rows.reduce((s, r) => s + (r.m || 0), 0);
+                    const gA0 = g.rows.reduce((s, r) => s + (r.area || 0), 0);
+                    const wOn = warnOf(g.name, gA0) > 0;
+                    if (wOn) mismatch++;
+                    if (g.rows.length === 1) { body += loopTr(g.rows[0], wOn ? 'ufh-solo ufh-warn' : 'ufh-solo', warnIc(g.name, gA0)); return; }
+                    const gA = gA0, gM = g.rows.reduce((s, r) => s + (r.m || 0), 0);
                     const gF = g.rows.reduce((s, r) => s + (r.flow || 0), 0);
                     const steps = [...new Set(g.rows.map(r => r.step))];
-                    body += `<tr class="ufh-grp" onclick="app.ufhToggleGrp(this)" title="Раскрыть петли помещения">` +
-                        `<td style="text-align:center"><span class="ufh-arr">▸</span> ${g.rows.length}</td><td><b>${esc(g.name)}</b></td>` +
+                    body += `<tr class="ufh-grp${wOn ? ' ufh-warn' : ''}" onclick="app.ufhToggleGrp(this)" title="Раскрыть петли помещения">` +
+                        `<td style="text-align:center"><span class="ufh-arr">▸</span> ${g.rows.length}</td><td><b>${esc(g.name)}</b>${warnIc(g.name, gA)}</td>` +
                         `<td style="text-align:right">${n1(gA)} м²</td><td style="text-align:right">${n1(gM)} м</td>` +
                         `<td style="text-align:right">${steps.length === 1 ? steps[0] : '—'}</td><td style="text-align:right">${n1(gF)}</td></tr>`;
                     g.rows.forEach(r => { body += loopTr(r, 'ufh-sub'); });
@@ -40138,7 +40148,7 @@ const app = {
                 tpHtml = `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">` +
                     `<thead><tr style="color:var(--text-sec)"><th>Контур ТП</th><th style="text-align:left">Помещение</th><th style="text-align:right">Площадь</th>` +
                     `<th style="text-align:right">Длина петли</th><th style="text-align:right">Шаг, мм</th><th style="text-align:right">Расход, л/мин</th></tr></thead>` +
-                    `<tbody>${body}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.rows.length} ${this.loopsWord(v.rows.length)}, ${groups.length} пом.</td>` +
+                    `<tbody>${body}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.rows.length} ${this.loopsWord(v.rows.length)}, ${groups.length} пом.${mismatch ? ` · ⚠ не сходится: ${mismatch}` : ''}</td>` +
                     `<td style="text-align:right">${n1(sumA)} м²</td><td style="text-align:right">${n1(sumM)} м</td><td></td><td style="text-align:right">${n1(sumF)}</td></tr></tfoot></table>`;
             }
             if ((v.radRows || []).length) {
@@ -40181,6 +40191,8 @@ const app = {
 .ufh-plan-table .ufh-sub.show{display:table-row}
 .ufh-plan-table .ufh-sub td:nth-child(2){padding-left:18px}
 .ufh-plan-table td,.ufh-plan-table th{padding:3px 5px;border-bottom:1px solid rgba(127,127,127,.15)}
+.ufh-plan-table .ufh-warn td{background:rgba(220,60,60,.10)}
+.ufh-warn-ic{color:#c0392b;margin-left:4px;cursor:help;font-weight:700}
 .ufh-tbl-col.flat .ufh-grp{display:none}
 .ufh-tbl-col.flat .ufh-sub{display:table-row}
 #ufh_table_overlay{position:fixed;inset:0;z-index:100000;background:var(--bg,#fff);color:var(--text,#1a1a1a);display:flex;flex-direction:column}
