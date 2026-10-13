@@ -8,7 +8,10 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const ROOT = path.resolve(__dirname, '..');
 
-function load() {
+function load(opts) {
+    opts = opts || {};
+    const keep = new Set(opts.keep || []);
+    const out = { html: '' };
     const el = () => new Proxy(function () {}, {
         get: (t, k) => k === Symbol.toPrimitive ? () => '' : el(), apply: () => el(), set: () => true,
     });
@@ -17,7 +20,8 @@ function load() {
         setTimeout, clearTimeout, setInterval: () => 0,
         navigator: { userAgent: 'node' },
         localStorage: { getItem: () => null, setItem() {}, removeItem() {} },
-        document: { readyState: 'complete', getElementById: () => null, createElement: () => el(),
+        document: { readyState: 'complete',
+            getElementById: (id) => id === 'rec_body' ? { set innerHTML(v) { out.html = v; }, get innerHTML() { return out.html; } } : null, createElement: () => el(),
             addEventListener() {}, querySelector: () => null, querySelectorAll: () => [], body: el() },
         app: { state: { pprSystemBrand: 'proaqua' }, beginRecognitionCard() {} },
         module: undefined,
@@ -31,8 +35,8 @@ function load() {
     const U = sb.__U, M = sb.__M;
     M.setPriceIndex(JSON.parse(read('price_index.json')).items);
     // Всё, что рисует и ходит в сеть, — вхолостую.
-    for (const f of ['renderReview', 'saveDraft', 'step', 'progressTo', 'progressStop', 'setHead', 'dropDraft', 'renderCompare']) U[f] = () => {};
+    for (const f of ['renderReview', 'saveDraft', 'step', 'progressTo', 'progressStop', 'setHead', 'dropDraft', 'renderCompare']) if (!keep.has(f)) U[f] = () => {};
     U.cardTitle = () => 'bench';
-    return { U, M, sb };
+    return { U, M, sb, out };
 }
 module.exports = { load, ROOT };
