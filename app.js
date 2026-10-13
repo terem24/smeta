@@ -70983,7 +70983,14 @@ const app = {
         const req = this.ufhInsReq(fl);
         const base = (s.ufhBaseType === 'xps') ? 0.05 / this.UFH_INS_LAMBDA : this.UFH_INS_R_MAT;
         const own = this.ufhInsOwnR(fl);
-        return { req: req, base: base, own: own, total: base + own, ok: base + own >= req.r - 0.005 };
+        // Недостающее расчёт сам кладёт в смету (см. ufhInsSection), если не стоит «на объекте уже есть».
+        // Статус учитывает эти слои, иначе плашка «не хватает» висела бы и при уже добавленном утеплителе.
+        const haveR = base + own;
+        const autoOn = !(s.ufhInsNoAdd && s.detailedRooms);
+        const autoR = (autoOn && haveR < req.r - 0.005)
+            ? this.ufhInsLayers(req.r - haveR).reduce((x, l) => x + l.r, 0) : 0;
+        return { req: req, base: base, own: own, auto: autoR > 0, autoR: autoR,
+            total: haveR + autoR, ok: haveR + autoR >= req.r - 0.005 };
     },
 
     setUfhInsNoAdd: function (v) {
@@ -71031,7 +71038,7 @@ const app = {
             const n = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
             let html = '';
             if (st) {
-                if (st.ok) html = `<span style="color:#22C55E;">✓ Утеплителя хватает</span>`;
+                if (st.ok) html = `<span style="color:#22C55E;">✓ Утеплителя хватает${st.auto ? ', недостающее добавлено в смету' : ''}</span>`;
                 else if (s.ufhInsNoAdd) html = `<span style="color:var(--c-warn,#F59E0B);">⚠ Внимание: утеплителя не хватает. Плиты в смету не добавлены.</span>`;
                 else html = `<span style="color:var(--c-warn,#F59E0B);">⚠ Внимание: утеплителя не хватает. Недостающее добавлено в смету.</span>`;
             }
