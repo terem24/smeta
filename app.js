@@ -66112,6 +66112,12 @@ const app = {
         return { total: total, rows: rows, circuits: inp.circuits, consistent: total === inp.circuits };
     },
 
+    /** Открыть или свернуть разбивку групп по значку «i». Состояние только в памяти страницы. */
+    togglePumpPlanDetails: function () {
+        this._pumpPlanOpen = !this._pumpPlanOpen;
+        this.renderPumpPlanBlock();
+    },
+
     /**
      * Блок «Почему N групп» под поэтажными строками подробного режима. Скрыт в быстром
      * режиме и когда расчёт групп ещё не сделан.
@@ -66126,10 +66132,25 @@ const app = {
             return;
         }
         const floorTxt = fl => (!fl || !fl.length) ? '' : (fl.length > 1 ? ' · оба этажа' : ' · ' + fl[0] + ' этаж');
+        // Сводка всегда видна; разбивка по контурам — под значком «i».
+        const open = !!this._pumpPlanOpen && p.total > 0;
         const head = p.total === 0
             ? '<b>Насосных групп нет</b> — радиаторы и тёплый пол работают от насоса котла'
-            : '<b>Насосных групп: ' + p.total + '</b> — почему столько:';
-        let html = '<div style="font-weight:600; color:var(--text); margin-bottom:6px;">' + head + '</div>';
+            : '<b>Насосных групп: ' + p.total + '</b>';
+        const infoBtn = p.total > 0
+            ? '<span onclick="app.togglePumpPlanDetails()" title="Почему столько групп" ' +
+              'style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; ' +
+              'border-radius:50%; border:1px solid var(--text-sec); font-size:10px; font-weight:700; cursor:pointer; color:var(--text-sec);">' +
+              (open ? '×' : 'i') + '</span>'
+            : '';
+        let html = '<div style="display:flex; align-items:center; justify-content:space-between; font-weight:600; color:var(--text);">' +
+            '<span>' + head + '</span>' + infoBtn + '</div>';
+        if (!open) {
+            el.innerHTML = html;
+            el.style.display = 'block';
+            return;
+        }
+        html += '<div style="margin-top:6px;"></div>';
         p.rows.forEach(r => {
             html += '<div style="display:flex; justify-content:space-between; gap:8px; padding:3px 0; border-top:1px dashed var(--border);">' +
                 '<span style="color:var(--text);">' + r.title + floorTxt(r.floors) + '</span>' +
