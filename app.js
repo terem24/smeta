@@ -1187,7 +1187,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', pumpRadMode: 'auto', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
 
     lastSavedStateString: "",
 
@@ -66075,7 +66075,11 @@ const app = {
             const byHydro = parseInt(this._radGroupsByHydro, 10) || 0;
             const byPower = (cap > 0 && load > 0) ? Math.max(1, Math.ceil(load / cap)) : 0;
             let rule;
-            if (!(cap > 0)) rule = 'паспорт группы не распознан в каталоге: считаем по этажам';
+            if (inp.radMode === 'floors') {
+                rule = (inp.rQ > (inp.radAuto || 0))
+                    ? 'вручную по этажам: по мощности и гидравлике хватило бы ' + (inp.radAuto || 0)
+                    : 'вручную по этажам: совпадает с расчётом по мощности и гидравлике';
+            } else if (!(cap > 0)) rule = 'паспорт группы не распознан в каталоге: считаем по этажам';
             else if (byHydro > byPower) rule = 'по гидравлике: по мощности хватило бы ' + byPower + ', до дальних приборов не хватает напора';
             else if (byPower > byHydro) rule = 'по мощности: гидравлика прошла бы на ' + byHydro + ', ограничивает паспорт группы ' + cap + ' кВт';
             else if (inp.rQ > 1) rule = 'мощность и напор требуют одинаково';
@@ -66109,7 +66113,8 @@ const app = {
         if (inp.polisCircuits > 0) rows.push({ title: 'Котёл без встроенного насоса', floors: [], count: inp.polisCircuits, rule: 'выход коллектора под его контур' });
 
         const total = rows.reduce((a, r) => a + r.count, 0);
-        return { total: total, rows: rows, circuits: inp.circuits, consistent: total === inp.circuits };
+        return { total: total, rows: rows, circuits: inp.circuits, consistent: total === inp.circuits,
+            radSwitch: inp.rQ > 0, radMode: inp.radMode || 'auto' };
     },
 
     /** Открыть или свернуть разбивку групп по значку «i». Состояние только в памяти страницы. */
@@ -66137,6 +66142,15 @@ const app = {
         const head = p.total === 0
             ? '<b>Насосных групп нет</b> — радиаторы и тёплый пол работают от насоса котла'
             : '<b>Насосных групп: ' + p.total + '</b>';
+        // Переключатель групп радиаторов: «Авто» — минимум по расчёту, «По этажам» — не меньше одной на этаж.
+        const segBtn = (val, label) => '<span onclick="app.setPumpRadMode(\'' + val + '\')" style="padding:2px 8px; cursor:pointer; ' +
+            'border-radius:6px; ' + (p.radMode === val ? 'background:var(--text); color:var(--surface-light); font-weight:600;' : 'color:var(--text-sec);') +
+            '">' + label + '</span>';
+        const radSeg = p.radSwitch
+            ? '<div style="display:flex; align-items:center; gap:6px; margin:6px 0 4px;"><span style="color:var(--text-sec);">Группы радиаторов:</span>' +
+              '<span style="display:inline-flex; gap:2px; border:1px solid var(--border); border-radius:8px; padding:2px;">' +
+              segBtn('auto', 'Авто') + segBtn('floors', 'По этажам') + '</span></div>'
+            : '';
         const infoBtn = p.total > 0
             ? '<span onclick="app.togglePumpPlanDetails()" title="Почему столько групп" ' +
               'style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; ' +
@@ -66145,6 +66159,7 @@ const app = {
             : '';
         let html = '<div style="display:flex; align-items:center; justify-content:space-between; font-weight:600; color:var(--text);">' +
             '<span>' + head + '</span>' + infoBtn + '</div>';
+        html += radSeg;
         if (!open) {
             el.innerHTML = html;
             el.style.display = 'block';
@@ -68904,6 +68919,15 @@ const app = {
         }
         if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
     },
+    /**
+     * Переключатель групп радиаторов в подробном режиме: «auto» — минимум по мощности
+     * и гидравлике, «floors» — не меньше одной группы на этаж с радиаторами.
+     */
+    setPumpRadMode: function (mode) {
+        this.state.pumpRadMode = mode === 'floors' ? 'floors' : 'auto';
+        this.render();
+    },
+
     setColDnFilter: function (val) {
         this.state.colDnFilter = val;
         this.state.colLoopsFilter = [];
@@ -80464,6 +80488,9 @@ const app = {
                 this._radGroupsByHydro = _needByHydro;
                 rQ = Math.max(1, _needByPower, _needByHydro);
             }
+            // Авто-значение запоминаем до ручного режима — переключатель покажет, на сколько он отличается.
+            this._radGroupsAuto = rQ;
+            if (this.state.pumpRadMode === 'floors') rQ = Math.max(rQ, _radGroupsByFloors());
         }
 
         // Число групп радиаторного контура — его же гидравлика считает числом
@@ -80607,7 +80634,7 @@ const app = {
             let snowCircuits = (snowCalc && !snowCalc.impossible) ? Math.max(1, snowCalc.nodes || 1) : 0;
             let circuits = rQ + tQ + (tankNeedsPumpGroup ? 1 : 0) + polisCircuits + snowCircuits;
             this._pumpPlan = this.pumpGroupPlan({ rQ, tQ, hasRad, hasTp, tpF1, tpF2, tankPump: tankNeedsPumpGroup,
-                polisCircuits, snowCircuits, circuits });
+                polisCircuits, snowCircuits, circuits, radMode: this.state.pumpRadMode || 'auto', radAuto: this._radGroupsAuto });
             let idx = (circuits > 2) ? 1 : 0;
             let hCtx = { rQ, tQ, pwr, tpArea, snowN: snowCircuits };
             // Буферная ёмкость сама разделяет котловой и системный контуры (у неё отдельные пары патрубков
