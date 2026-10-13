@@ -2162,6 +2162,18 @@ function scaleTargets() {
  *  через проёмы или рассыпаются на куски. Поэтому идём лесенкой пробных
  *  масштабов, у каждого меряем согласие с расчётом, а лучший уточняем ещё
  *  дважды — уже на его собственной сегментации. */
+/** Итог этажа для сверки: сумма зон против суммы экспликации (комнаты расчёта этажа). */
+function floorSumNote() {
+  var zs = F().zones || [];
+  var mine = zs.reduce(function (s, z) { return s + (+zoneM2(z) || 0); }, 0);
+  var expl = calcRooms.filter(function (r) { return (+r.floor || 1) === cur + 1 && r.area > 0; })
+    .reduce(function (s, r) { return s + r.area; }, 0);
+  if (!expl) return ' Сумма зон этажа: ' + mine.toFixed(1).replace('.', ',') + ' м².';
+  var dev = (mine - expl) / expl * 100;
+  return ' Сумма зон этажа: ' + mine.toFixed(1).replace('.', ',') + ' м², по расчёту ' + expl.toFixed(1).replace('.', ',') +
+    ' м² — ' + (Math.abs(dev) <= 5 ? 'сходится.' : 'расхождение ' + (dev > 0 ? '+' : '') + dev.toFixed(0) + ' % — проверьте лишние зоны.');
+}
+
 /** Выпуклая оболочка точек [[x,y],…] — алгоритм цепочки Эндрю. */
 function convexHull(pts) {
   var P = pts.map(function (q) { return [q[0], q[1]]; }).sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
@@ -2734,12 +2746,12 @@ function autoRooms() {
     // режим на плане ведёт мастер (wzGo): на шаге «Комнаты» клик не должен включать тёплый пол
     renderZones(); draw();
     hint('<span class=ok>Найдено комнат: ' + rooms.length + '.</span> ' +
-      (cnt.tp ? 'Тёплый пол из расчёта уже отмечен: ' + cnt.tp + '.' : '') + lastRoomsNote);
+      (cnt.tp ? 'Тёплый пол из расчёта уже отмечен: ' + cnt.tp + '.' : '') + lastRoomsNote + floorSumNote());
     return;
   }
   hint('<span class=ok>Найдено комнат: ' + rooms.length + ', создано зон: ' +
     (parts.length ? parts.join(', ') : '0') + '.</span>' +
-    (missed.length ? ' Не совпали по площади: ' + missed.join(', ') + ' — обведите вручную.' : '') +
+    (missed.length ? ' Не совпали по площади: ' + missed.join(', ') + ' — обведите вручную.' : '') + floorSumNote() +
     (hasBoilerZone() ? '' : ' Котельную отметьте сами (тип зоны «Котельная») — ' +
       'без неё проект не выпускается.') +
     ' Лишние зоны удаляйте крестиком, имена правятся в списке.');
