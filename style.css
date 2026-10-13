@@ -20300,7 +20300,13 @@ body.empty-fit-panel #header_totals { display: none !important; }
 #admin_content.ad-busy { opacity: .45; transition: opacity .1s; cursor: progress; }
 
 
-/* Правая карточка расчёта доходит до низа окна, даже когда смета пустая (режим «По комнатам»). */
+/* Правая карточка растягивается на всю высоту окна в обоих режимах; футер — ниже, как и раньше. */
+.container:has(> #print-area.output-panel) {
+    min-height: calc(100vh - 130px);
+    align-items: stretch;
+}
 #print-area.output-panel {
-    min-height: calc(100vh - 30px);
+    min-height: 0;
+    margin-top: 0;
+    margin-bottom: 0;
 }
