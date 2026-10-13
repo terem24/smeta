@@ -39716,7 +39716,7 @@ const app = {
             const rooms = ((heat[fi] && heat[fi].rooms) || []).map(r => ({ name: r.name, area: r.area, q: r.total, qud: r.ufhQud, floor: fi + 1 }));
             let v = null;
             try { v = PP.ufhView(f, step, rooms, radOpts); } catch (e) { console.warn('[раскладка ТП] этаж ' + (fi + 1) + ':', e.message); }
-            if (v) out.push({ fl: fi + 1, svg: v.svg, rows: v.rows, radRows: v.radRows || [], radTee: v.radTee, radM: v.radM || 0 });
+            if (v) out.push({ fl: fi + 1, svg: v.svg, rows: v.rows, radRows: v.radRows || [], radTee: v.radTee, radM: v.radM || 0, roomArea: rooms });
         });
         return out;
     },
@@ -40037,6 +40037,39 @@ const app = {
             radTee: v.radTee, radM: r1(v.radM) }));
     },
 
+    // Строки помещения в таблице петель: раскрыть / свернуть петли этой группы
+    ufhToggleGrp: function (tr) {
+        const open = tr.classList.toggle('open');
+        for (let x = tr.nextElementSibling; x && x.classList.contains('ufh-sub'); x = x.nextElementSibling) x.classList.toggle('show', open);
+    },
+
+    // Группировка по помещениям: выключена — все петли списком
+    ufhToggleFlat: function (cb) {
+        const col = cb.closest('.ufh-tbl-col');
+        if (col) col.classList.toggle('flat', !cb.checked);
+    },
+
+    // Таблицы петель — на весь экран, как схемы; копия с текущим раскрытием групп
+    openUfhFullscreen: function (btn) {
+        const col = btn && btn.closest('.ufh-tbl-col');
+        if (!col) return;
+        const old = document.getElementById('ufh_table_overlay');
+        if (old) old.remove();
+        const ov = document.createElement('div');
+        ov.id = 'ufh_table_overlay';
+        ov.innerHTML = '<div class="ufh-ov-bar"><span class="ufh-ov-title">Петли тёплого пола</span>' +
+            '<button type="button" class="ufh-ov-close" aria-label="Закрыть">✕</button></div><div class="ufh-ov-body"></div>';
+        const copy = col.cloneNode(true);
+        const tb = copy.querySelector('.ufh-tb');
+        if (tb) tb.remove();
+        ov.querySelector('.ufh-ov-body').appendChild(copy);
+        const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
+        const onKey = e => { if (e.key === 'Escape') close(); };
+        ov.querySelector('.ufh-ov-close').onclick = close;
+        document.addEventListener('keydown', onKey);
+        document.body.appendChild(ov);
+    },
+
     // «петля / петли / петель»
     loopsWord: function (n) {
         const a = n % 10, b = n % 100;
@@ -40087,39 +40120,103 @@ const app = {
         const n1 = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
         const parts = [];
         let anyTp = false, anyRad = false, tee = false;
+        const loopTr = (r, cls, warn) => `<tr${cls ? ` class="${cls}"` : ''} data-pl="L${r.no}"><td style="text-align:center">${r.no}</td><td>${esc(r.name)}${warn ? warn : ''}</td>` +
+            `<td style="text-align:right">${n1(r.area)} м²</td><td style="text-align:right">${n1(r.m)} м</td>` +
+            `<td style="text-align:right">${r.step}</td><td style="text-align:right">${n1(r.flow)}</td></tr>`;
         views.forEach(V => {
             const fi = V.fl - 1, v = V;
-            let tables = '';
+            let tpHtml = '', radHtml = '';
             if (v.rows.length) {
                 anyTp = true;
                 const sumM = v.rows.reduce((s, r) => s + (r.m || 0), 0), sumF = v.rows.reduce((s, r) => s + (r.flow || 0), 0);
-                const tr = v.rows.map(r => `<tr data-pl="L${r.no}"><td style="text-align:center">${r.no}</td><td>${esc(r.name)}</td>` +
-                    `<td style="text-align:right">${n1(r.area)} м²</td><td style="text-align:right">${n1(r.m)} м</td>` +
-                    `<td style="text-align:right">${r.step}</td><td style="text-align:right">${n1(r.flow)}</td></tr>`).join('');
-                tables += `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">` +
+                const sumA = v.rows.reduce((s, r) => s + (r.area || 0), 0);
+                // Петли одного помещения — в одну группу (имя без хвоста «i/k»)
+                const groups = [], byName = {};
+                v.rows.forEach(r => {
+                    const key = String(r.name || '').replace(/\s+\d+\/\d+$/, '');
+                    if (!byName[key]) { byName[key] = { name: key, rows: [] }; groups.push(byName[key]); }
+                    byName[key].rows.push(r);
+                });
+                // Площадь петель помещения против площади в расчёте: расхождение > 10 % — предупреждение
+                const calc = {};
+                (v.roomArea || []).forEach(r => { calc[String(r.name || '').trim().toLowerCase()] = +r.area || 0; });
+                const calcArea = name => calc[String(name || '').trim().toLowerCase()] || 0;
+                const warnOf = (name, a) => { const ra = calcArea(name); return ra > 0 && Math.abs(a - ra) > 0.1 * ra ? ra : 0; };
+                const warnIc = (name, a) => { const ra = warnOf(name, a); return ra ? ` <span class="ufh-warn-ic" title="Площадь петель ${n1(a)} м², в расчёте помещения ${n1(ra)} м² — проверьте распознавание плана">⚠</span>` : ''; };
+                let mismatch = 0;
+                let body = '';
+                groups.forEach(g => {
+                    const gA0 = g.rows.reduce((s, r) => s + (r.area || 0), 0);
+                    const wOn = warnOf(g.name, gA0) > 0;
+                    if (wOn) mismatch++;
+                    if (g.rows.length === 1) { body += loopTr(g.rows[0], wOn ? 'ufh-solo ufh-warn' : 'ufh-solo', warnIc(g.name, gA0)); return; }
+                    const gA = gA0, gM = g.rows.reduce((s, r) => s + (r.m || 0), 0);
+                    const gF = g.rows.reduce((s, r) => s + (r.flow || 0), 0);
+                    const steps = [...new Set(g.rows.map(r => r.step))];
+                    body += `<tr class="ufh-grp${wOn ? ' ufh-warn' : ''}" onclick="app.ufhToggleGrp(this)" title="Раскрыть петли помещения">` +
+                        `<td style="text-align:center"><span class="ufh-arr">▸</span> ${g.rows.length}</td><td><b>${esc(g.name)}</b>${warnIc(g.name, gA)}</td>` +
+                        `<td style="text-align:right">${n1(gA)} м²</td><td style="text-align:right">${n1(gM)} м</td>` +
+                        `<td style="text-align:right">${steps.length === 1 ? steps[0] : '—'}</td><td style="text-align:right">${n1(gF)}</td></tr>`;
+                    g.rows.forEach(r => { body += loopTr(r, 'ufh-sub'); });
+                });
+                tpHtml = `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">` +
                     `<thead><tr style="color:var(--text-sec)"><th>Контур ТП</th><th style="text-align:left">Помещение</th><th style="text-align:right">Площадь</th>` +
                     `<th style="text-align:right">Длина петли</th><th style="text-align:right">Шаг, мм</th><th style="text-align:right">Расход, л/мин</th></tr></thead>` +
-                    `<tbody>${tr}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.rows.length} ${this.loopsWord(v.rows.length)}</td><td></td>` +
-                    `<td style="text-align:right">${n1(sumM)} м</td><td></td><td style="text-align:right">${n1(sumF)}</td></tr></tfoot></table>`;
+                    `<tbody>${body}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.rows.length} ${this.loopsWord(v.rows.length)}, ${groups.length} пом.${mismatch ? ` · ⚠ не сходится: ${mismatch}` : ''}</td>` +
+                    `<td style="text-align:right">${n1(sumA)} м²</td><td style="text-align:right">${n1(sumM)} м</td><td></td><td style="text-align:right">${n1(sumF)}</td></tr></tfoot></table>`;
             }
             if ((v.radRows || []).length) {
                 anyRad = true; tee = tee || !!v.radTee;
                 const tr = v.radRows.map(r => `<tr data-pl="R${r.no}"><td style="text-align:center">${r.kind === 'conv' ? 'К' : 'Р'}${r.no}</td><td>${esc(r.name)}</td>` +
                     `<td style="text-align:right">${n1(r.w)} м</td><td style="text-align:right">${r.L == null ? '—' : n1(r.L) + ' м'}</td></tr>`).join('');
-                tables += `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px">` +
+                radHtml = `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px">` +
                     `<thead><tr style="color:var(--text-sec)"><th>Прибор</th><th style="text-align:left">Помещение</th><th style="text-align:right">Длина прибора</th>` +
                     `<th style="text-align:right">${v.radTee ? 'Магистраль до прибора' : 'Трубы к прибору'}</th></tr></thead>` +
                     `<tbody>${tr}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.radRows.length} шт.</td><td></td>` +
                     `<td style="text-align:right">${n1(v.radM || 0)} м</td></tr></tfoot></table>`;
             }
+            // План слева, таблицы справа (на узком экране уходят под план — flex-wrap)
+            const col = (tpHtml || radHtml)
+                ? `<div class="ufh-tbl-col"><div class="ufh-tb">` +
+                    `<label class="ufh-tb-chk"><input type="checkbox" checked onchange="app.ufhToggleFlat(this)"> Группировать по помещениям</label>` +
+                    `<button type="button" class="ufh-tb-full" onclick="app.openUfhFullscreen(this)" title="Открыть таблицы на весь экран">⛶ На весь экран</button></div>` +
+                    tpHtml + radHtml + `</div>`
+                : '';
             parts.push(
                 `<div class="ufh-plan-block" style="margin:6px 0 14px">` +
                 (views.length > 1 ? `<div style="font-weight:700;margin:0 0 6px">${fi + 1}-й этаж</div>` : '') +
-                `<div class="automation-scheme" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${v.svg}` +
+                `<div class="ufh-plan-row">` +
+                `<div class="automation-scheme" style="flex:1 1 340px;min-width:0" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${v.svg}` +
                 `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button>` +
                 `<button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка контура или прибора при наведении — на плане и в таблице">${this._hydToggleLabel(false)}</button></div>` +
-                tables + `</div>`);
+                col + `</div></div>`);
         });
+        parts.unshift(`<style>
+.ufh-plan-row{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.ufh-tbl-col{flex:1 1 420px;min-width:0;overflow-x:auto}
+.ufh-tb{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:6px 0 2px;font-size:12px}
+.ufh-tb-chk{display:flex;align-items:center;gap:6px;color:var(--text-sec);cursor:pointer;user-select:none}
+.ufh-tb-full{background:none;border:1px solid var(--border,#d0d4da);border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer;color:inherit}
+.ufh-plan-table .ufh-grp{cursor:pointer;background:rgba(127,127,127,.08)}
+.ufh-plan-table .ufh-grp:hover{background:rgba(127,127,127,.16)}
+.ufh-plan-table .ufh-arr{display:inline-block;transition:transform .15s;font-size:11px}
+.ufh-plan-table .ufh-grp.open .ufh-arr{transform:rotate(90deg)}
+.ufh-plan-table .ufh-sub{display:none}
+.ufh-plan-table .ufh-sub.show{display:table-row}
+.ufh-plan-table .ufh-sub td:nth-child(2){padding-left:18px}
+.ufh-plan-table td,.ufh-plan-table th{padding:3px 5px;border-bottom:1px solid rgba(127,127,127,.15)}
+.ufh-plan-table .ufh-warn td{background:rgba(220,60,60,.10)}
+.ufh-warn-ic{color:#c0392b;margin-left:4px;cursor:help;font-weight:700}
+.ufh-tbl-col.flat .ufh-grp{display:none}
+.ufh-tbl-col.flat .ufh-sub{display:table-row}
+#ufh_table_overlay{position:fixed;inset:0;z-index:100000;background:var(--bg,#fff);color:var(--text,#1a1a1a);display:flex;flex-direction:column}
+.ufh-ov-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid rgba(127,127,127,.25)}
+.ufh-ov-title{font-weight:700;font-size:15px}
+.ufh-ov-close{background:none;border:1px solid rgba(127,127,127,.4);border-radius:6px;padding:4px 10px;cursor:pointer;color:inherit;font-size:14px}
+.ufh-ov-body{flex:1;overflow:auto;padding:16px;max-width:1100px;width:100%;margin:0 auto;box-sizing:border-box}
+.ufh-ov-body .ufh-plan-table{font-size:14px !important}
+.ufh-ov-body .ufh-plan-table td,.ufh-ov-body .ufh-plan-table th{padding:6px 8px}
+</style>`);
         if (!parts.length) return '';
         this.bindPlanHighlight();
         const notes = [];
