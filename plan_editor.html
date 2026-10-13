@@ -1606,8 +1606,8 @@ function roomAtPoint(ix, iy) {
   if (!L || m.labEdge[L]) return null;
   var ppm = (F().pxPerM || 100) * m.k;
   var m2 = m.labCnt[L] / (ppm * ppm);
-  if (m2 < 1 || m2 > 200) return null;
-  return traceLabel(m, L);
+  var pts = traceLabel(m, L);
+  return (pts && roomShapeOk(m2, pts, F().pxPerM || 100)) ? pts : null;
 }
 
 /** Прилипание краёв прямоугольника к внутренним граням стен (±20 px плана) */
@@ -1984,6 +1984,18 @@ function detectWindows() {
 }
 
 /** Все комнаты этажа из разметки watershed: [{pts, m2}] без «улицы» и мелочи */
+/** Похоже ли на комнату: не больше 70 м² и не рваная по форме. ppmImg — пикселей
+ *  картинки на метр (контур идёт в пикселях картинки, площадь — в маске). Улица и
+ *  наружная «полоса» за домом, которая утекла через открытые проёмы, — большие
+ *  и изрезанные: их площадь заливки в разы больше любой комнаты квартиры, а
+ *  занимаемый ими прямоугольник заполнен плохо (доля < 0,3). */
+function roomShapeOk(m2, pts, ppmImg) {
+  if (!(m2 >= 1) || m2 > 70) return false;
+  var xs = pts.map(function (q) { return q[0]; }), ys = pts.map(function (q) { return q[1]; });
+  var box = (Math.max.apply(null, xs) - Math.min.apply(null, xs)) * (Math.max.apply(null, ys) - Math.min.apply(null, ys));
+  return box > 0 && m2 * ppmImg * ppmImg / box > 0.3;   // доля площади в описывающем прямоугольнике
+}
+
 function enumerateRooms() {
   var m = labelRooms(); if (!m) return [];
   var ppm = (F().pxPerM || 100) * m.k, p2 = ppm * ppm;
@@ -1993,7 +2005,7 @@ function enumerateRooms() {
     var m2 = m.labCnt[L] / p2;
     if (m2 < 1.5 || m2 > 130) continue;
     var pts = traceLabel(m, L);
-    if (pts) out.push({ pts: pts, m2: m2 });
+    if (pts && roomShapeOk(m2, pts, F().pxPerM || 100)) out.push({ pts: pts, m2: m2 });
   }
   return out;
 }
