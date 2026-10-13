@@ -1993,6 +1993,7 @@
                      тумблера ниже, а в смете ничего не менял (замечание владельца 24.09.2026). -->
                 <div class="label-row" style="position:relative;">
                     <span class="lbl" style="display:flex; align-items:center; gap:4px;">Автоматика<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Автоматизация уже подобранных систем: контроллер котельной и зональное управление радиаторами и тёплым полом.</div></span></span>
+                    <label class="switch"><input type="checkbox" id="chk_auto_master" onchange="app.toggleAutoMaster(this.checked, event)"><span class="slider"></span></label>
                 </div>
                 <!-- Подпункты — вложенные строки под заголовком «Автоматика»: без своих
                      пунктиров и отступов пункта панели, с левой линией и короткими
@@ -2137,8 +2138,13 @@
                  Заголовок тем же <h4>, что и «Тип котла» с «Типом отопления»:
                  раньше здесь был мелкий .lbl-sub, и «Теплоноситель» читался как
                  подпись к соседнему блоку, а не как самостоятельный выбор. -->
-            <h4 id="lbl_coolant" style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Теплоноситель</h4>
-            <div class="control-item" id="blk_coolant_wrap">
+            <div class="control-item toggle-item" id="blk_coolant_row" style="display:none;">
+                <div class="label-row" style="position:relative;">
+                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Теплоноситель</span>
+                    <label class="switch"><input type="checkbox" id="chk_coolant" onchange="app.toggleCoolantShow(this.checked, event)"><span class="slider"></span></label>
+                </div>
+            </div>
+            <div class="control-item" id="blk_coolant_wrap" style="display:none; margin-top:-6px; margin-bottom:12px;">
                 <div class="tabs" id="blk_coolant">
                     <div class="tab cool-tab active" data-type="water" onclick="app.setCoolant('water', event)"><span class="ui-emo">💧 </span>Вода</div>
                     <div class="tab cool-tab" data-type="eco30" onclick="app.setCoolant('eco30', event)"><span class="ui-emo">❄️ </span>-30°C</div>

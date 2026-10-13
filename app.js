@@ -46339,6 +46339,31 @@ const app = {
         if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return few;
         return many;
     },
+    /** Общий тумблер «Автоматика»: выключение снимает оба подпункта, включение только открывает их. */
+    toggleAutoMaster: function (chk, event) {
+        if (!this.checkAccess('pro', event)) {
+            const c = document.getElementById('chk_auto_master');
+            if (c) c.checked = !!this.state.autoOn;
+            return;
+        }
+        this.state.autoOn = chk;
+        if (!chk) {
+            if (this.state.boilerAuto) this.toggleBoilerAuto(false, event);
+            if (this.state.ufhAuto) this.toggleUfhAuto(false, event);
+        }
+        this.syncUI();
+        this.render();
+        this.saveState();
+    },
+    /** Тумблер «Теплоноситель»: выключение возвращает «Воду» и прячет варианты. */
+    toggleCoolantShow: function (chk, event) {
+        this.state.coolantShow = chk;
+        if (!chk && this.state.coolant !== 'water') this.setCoolant('water', event);
+        this.syncUI();
+        this.render();
+        this.saveState();
+    },
+
     toggleUfhAuto: function (chk, event) {
         if (!this.checkAccess('pro', event)) {
             if (document.getElementById('chk_ufh_auto')) document.getElementById('chk_ufh_auto').checked = this.state.ufhAuto;
@@ -47147,6 +47172,9 @@ const app = {
         // одна строка, и только если что-то включено.
         if ($('blk_auto_header')) $('blk_auto_header').style.display = s.detailedRooms ? 'block' : 'none';
         if ($('blk_auto_fast_note')) $('blk_auto_fast_note').style.display = (!s.detailedRooms && anyOn) ? 'block' : 'none';
+        // Общий тумблер «Автоматика»: подпункты (котельная, радиаторы и тёплый пол) — только когда он включён.
+        if ($('chk_auto_master')) $('chk_auto_master').checked = !!s.autoOn;
+        if ($('blk_auto_box')) $('blk_auto_box').style.display = (s.detailedRooms && s.autoOn) ? 'flex' : 'none';
         if ($('chk_ufh_auto')) $('chk_ufh_auto').checked = !!s.ufhAuto;
         if ($('blk_zone_auto_box')) $('blk_zone_auto_box').style.display = s.ufhAuto ? 'flex' : 'none';
         const hasRad = (s.systems || []).includes('rad');
@@ -69846,7 +69874,14 @@ const app = {
         // полотенцесушитель, схема загрузки бойлера — в быстром режиме используются значения
         // по умолчанию, настроить их можно только в подробном режиме.
         const blkCoolantWrap = document.getElementById('blk_coolant_wrap');
-        if (blkCoolantWrap) blkCoolantWrap.style.display = this.state.detailedRooms ? 'block' : 'none';
+        // Теплоноситель — тумблер; три варианта показываем только когда он включён
+        // или когда выбран не «Вода» (чтобы не спрятать уже выбранное значение).
+        const _coolOn = !!this.state.coolantShow || (this.state.coolant && this.state.coolant !== 'water');
+        if (blkCoolantWrap) blkCoolantWrap.style.display = (this.state.detailedRooms && _coolOn) ? 'block' : 'none';
+        const blkCoolantRow = document.getElementById('blk_coolant_row');
+        if (blkCoolantRow) blkCoolantRow.style.display = this.state.detailedRooms ? 'block' : 'none';
+        const chkCoolant = document.getElementById('chk_coolant');
+        if (chkCoolant) chkCoolant.checked = !!_coolOn;
         // Заголовок «Теплоноситель» вынесен из блока отдельным <h4> — прячем его
         // вместе с вкладками, иначе в быстром режиме остаётся висеть без содержимого.
         const lblCoolant = document.getElementById('lbl_coolant');
