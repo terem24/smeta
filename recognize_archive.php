@@ -221,6 +221,21 @@ function readAccess() {
     ];
 }
 
+/**
+ * Записывает флаг под точным ключом и убирает старые записи того же человека
+ * в другом регистре («Zabelin@» и «zabelin@»). Клиент сверяет ключи без учёта
+ * регистра и берёт первое совпадение: оставшийся старый false перебивал бы
+ * только что включённый доступ — переключатель «нажимался», но не держался.
+ */
+function setAccessFlag(&$map, $name, $enabled) {
+    if (!is_array($map)) $map = [];
+    $lower = uLower($name);
+    foreach (array_keys($map) as $k) {
+        if ((string)$k !== $name && uLower((string)$k) === $lower) unset($map[$k]);
+    }
+    $map[$name] = $enabled;
+}
+
 function writeAccess($data) {
     @file_put_contents(accessPath(), json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
 }
@@ -990,9 +1005,9 @@ if (is_array($req) && !empty($req['action'])) {
             // ему доступ обязан пережить перезагрузку. Для всех остальных
             // отсутствие записи по-прежнему означает «выключено».
             if ($feature === 'design') {
-                $access['design'][$kind][$name] = $enabled;
+                setAccessFlag($access['design'][$kind], $name, $enabled);
             } else {
-                $access[$kind][$name] = $enabled;
+                setAccessFlag($access[$kind], $name, $enabled);
             }
         }
         writeAccess($access);

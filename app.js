@@ -22133,6 +22133,9 @@ const app = {
      */
     accessFlagFor: function (map, key) {
         if (!map || !key) return undefined;
+        // Точное совпадение важнее: на сервере может остаться старая запись того же
+        // человека в другом регистре, и она не должна перебивать новую
+        if (map[key] !== undefined) return !!map[key];
         const want = String(key).toLowerCase();
         for (const k of Object.keys(map)) {
             if (String(k).toLowerCase() === want) return !!map[k];
