@@ -12757,6 +12757,95 @@ body.dark-mode .rec-nohave { color: #FBBF24; }
 @keyframes rec-spin { to { transform: rotate(360deg); } }
 .rec-elapsed { margin-top: 8px; font-size: 12px; color: var(--text-sec, #94a3b8); }
 
+
+/* ===== Экран проверки: спокойная карточка состояния, панель, компактная таблица ===== */
+.rec-status {
+    margin-top: 12px; padding: 12px 14px; border-radius: 12px;
+    border: 1px solid var(--border, #e2e8f0); background: var(--surface, transparent);
+    display: flex; flex-direction: column; gap: 8px;
+}
+.rec-status-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rec-status-head b { font-size: 15px; }
+.rec-status-ico {
+    width: 20px; height: 20px; flex: 0 0 20px; border-radius: 50%; display: grid; place-items: center;
+    font-size: 12px; font-weight: 800; color: #fff; background: #16a34a;
+}
+.rec-status-ico.warn { background: #f59e0b; }
+.rec-status-time { margin-left: auto; font-size: 12px; color: var(--text-sec, #64748b); }
+.rec-chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.rec-chip {
+    display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 99px;
+    font-size: 11.5px; font-weight: 600; line-height: 1.6;
+    color: var(--text-sec, #64748b); background: var(--surface-light, #f1f5f9);
+}
+.rec-chip.ok { color: #15803d; background: rgba(22, 163, 74, .12); }
+.rec-chip.warn { color: #b45309; background: rgba(245, 158, 11, .15); }
+.rec-chip.bad { color: #b91c1c; background: rgba(239, 68, 68, .13); }
+body.dark-mode .rec-chip.ok { color: #4ade80; }
+body.dark-mode .rec-chip.warn { color: #fbbf24; }
+body.dark-mode .rec-chip.bad { color: #f87171; }
+.rec-status-totals { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.rec-status-totals b { font-size: 17px; font-variant-numeric: tabular-nums; }
+.rec-status-totals .rec-lbl { font-size: 12px; color: var(--text-sec, #64748b); }
+.rec-status-totals .rec-arrow { color: var(--text-sec, #94a3b8); }
+.rec-delta { margin-left: auto; font-weight: 700; font-size: 14px; }
+.rec-delta.up { color: #dc2626; } .rec-delta.down { color: #16a34a; }
+.rec-status-sub { flex-basis: 100%; font-size: 11.5px; color: var(--text-sec, #94a3b8); }
+.rec-note { border-radius: 8px; font-size: 12.5px; }
+.rec-note summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; padding: 5px 8px; border-radius: 8px; }
+.rec-note summary::-webkit-details-marker { display: none; }
+.rec-note summary::after { content: '▸'; margin-left: auto; opacity: .5; }
+.rec-note[open] summary::after { content: '▾'; }
+.rec-note.warn summary { background: rgba(245, 158, 11, .12); }
+.rec-note.bad summary { background: rgba(239, 68, 68, .11); }
+.rec-note.ok summary { background: rgba(22, 163, 74, .10); }
+.rec-note-ico { font-weight: 800; }
+.rec-note.warn .rec-note-ico { color: #d97706; } .rec-note.bad .rec-note-ico { color: #dc2626; } .rec-note.ok .rec-note-ico { color: #16a34a; }
+.rec-note-head { font-weight: 600; }
+.rec-note-sub { padding: 6px 10px 2px 30px; color: var(--text-sec, #64748b); line-height: 1.45; }
+
+/* Панель действий: слева режимы, справа действия; редкое — в меню «⋯». */
+.rec-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin: 12px 0 8px; }
+.rec-bar-left, .rec-bar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.rec-seg { display: inline-flex; border: 1px solid var(--border, #e2e8f0); border-radius: 9px; overflow: hidden; }
+.rec-seg button {
+    border: 0; background: transparent; padding: 6px 12px; font: inherit; font-size: 12.5px; font-weight: 600;
+    color: var(--text-sec, #64748b); cursor: pointer;
+}
+.rec-seg button.on { background: var(--primary, #0284c7); color: #fff; }
+.rec-seg button em { font-style: normal; opacity: .7; font-weight: 500; margin-left: 3px; }
+.rec-more { position: relative; }
+.rec-more > summary { list-style: none; cursor: pointer; padding: 6px 12px; }
+.rec-more > summary::-webkit-details-marker { display: none; }
+.rec-more-pop {
+    position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 220px; padding: 6px;
+    border: 1px solid var(--border, #e2e8f0); border-radius: 10px; background: var(--surface, #fff);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .16); display: flex; flex-direction: column;
+}
+.rec-more-pop button { text-align: left; border: 0; background: transparent; padding: 8px 10px; border-radius: 7px; font: inherit; font-size: 12.5px; cursor: pointer; color: var(--text-main, inherit); }
+.rec-more-pop button:hover { background: var(--surface-light, #f1f5f9); }
+
+/* Таблица: цвет — только полоской слева и чипами, без заливки строк. */
+.rec-rev-table { min-width: 1010px; }
+.rec-table.rec-rev-table tr.rec-nomatch td { background: transparent; }
+.rec-table.rec-rev-table tr.rec-nomatch td:first-child { box-shadow: inset 3px 0 0 #f59e0b; }
+.rec-table.rec-rev-table tr.rec-pricebad td { background: transparent; }
+.rec-table.rec-rev-table tr.rec-pricebad td:first-child { box-shadow: inset 3px 0 0 #ef4444; }
+.rec-m-name { font-weight: 500; line-height: 1.35; }
+.rec-m-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 3px; font-size: 11.5px; color: var(--text-sec, #64748b); }
+.rec-m-meta a { color: inherit; text-decoration: underline dotted; }
+.rec-why { margin-top: 3px; font-size: 11.5px; color: var(--text-sec, #64748b); }
+.rec-why summary { cursor: pointer; display: inline; }
+.rec-params .rec-params-row { display: flex; gap: 4px; margin-top: 3px; }
+.rec-params .rec-tgroup { opacity: .35; transition: opacity .15s; }
+.rec-table tr:hover .rec-tgroup, .rec-params .rec-tgroup:has(.on) { opacity: 1; }
+.rec-money { text-align: right; font-variant-numeric: tabular-nums; }
+.rec-table tr.rec-fold td {
+    cursor: pointer; padding: 8px 12px; color: var(--text-sec, #64748b);
+    background: var(--surface-light, #f1f5f9); font-size: 12.5px;
+}
+.rec-table tr.rec-fold:hover td { color: var(--primary, #0284c7); }
+
 /* ИИ-панель хода распознавания: справа от листов, в стиле калькулятора. */
 .rec-work { display: flex; align-items: flex-start; gap: 16px; margin-top: 12px; }
 .rec-work > .rec-imgs, .rec-work > .rec-prev-row { margin-top: 0; flex: 0 1 auto; max-width: 46%; }
