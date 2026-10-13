@@ -236,8 +236,14 @@ function setAccessFlag(&$map, $name, $enabled) {
     $map[$name] = $enabled;
 }
 
+/**
+ * Возвращает false, если файл не записан. Раньше ошибка глоталась, и админка
+ * показывала «сохранено», хотя доступ не сохранялся — например, когда папка
+ * archive/ недоступна для записи после переноса на сервере.
+ */
 function writeAccess($data) {
-    @file_put_contents(accessPath(), json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    return $json !== false && @file_put_contents(accessPath(), $json, LOCK_EX) !== false;
 }
 
 function readLimits() {
@@ -1010,7 +1016,11 @@ if (is_array($req) && !empty($req['action'])) {
                 setAccessFlag($access[$kind], $name, $enabled);
             }
         }
-        writeAccess($access);
+        if (!writeAccess($access)) {
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'error' => 'Сервер не смог сохранить доступ: нет прав на запись в папку archive/'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
         echo json_encode(array_merge(['ok' => true], $access), JSON_UNESCAPED_UNICODE);
         exit;
     }
