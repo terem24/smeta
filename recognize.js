@@ -1899,6 +1899,9 @@ const RecognizeUI = {
         () => 'Собираю помещения для расчёта по комнатам',
     ],
 
+    /** Сколько позиций в среднем на листе сметы — для ориентира, пока строк ещё нет. */
+    ROWS_PER_PAGE: 25,
+
     tickProgress() {
         const el = document.getElementById('rec_elapsed');
         if (!el) return;
@@ -1916,7 +1919,16 @@ const RecognizeUI = {
             const done = this._itemsSoFar || 0;
             // Ручной ввод строки в смету — поиск в прайсе, артикул, цена,
             // количество. Сорок секунд на позицию: оценка по нижней границе.
-            const saved = done ? Math.round(done * 40 / 60) : 0;
+            let saved = done ? Math.round(done * 40 / 60) : 0;
+            // Пока не прочитан ни один лист (одна картинка или первый лист
+            // ещё в работе), строк неизвестно, и плашка с экономией молчала.
+            // Даём ориентир по числу листов — и подписываем его ориентиром:
+            // настоящая цифра придёт, как только лист будет прочитан.
+            let estimate = false;
+            if (!done) {
+                const pages = this._imgs ? this._imgs.length : (this._img ? 1 : 0);
+                if (pages) { saved = Math.round(pages * this.ROWS_PER_PAGE * 40 / 60); estimate = true; }
+            }
             // Комплект листов проекта: руками — это не 40 с на помещение, а
             // разбор всех листов, окон, приборов, сантехники и примечаний
             // плюс сама смета. Итог — плашкой, «из чего» — строками по очереди
@@ -1938,7 +1950,7 @@ const RecognizeUI = {
             const proj = plan && plan.total >= 5;
             el.innerHTML = `<span class="rec-tip">${tip}</span>` +
                 `<span class="rec-tip-sec">${sec} с</span>` +
-                (!proj && saved >= 2 ? `<span class="rec-tip-save">вручную было бы ~${this.handTime(saved)}</span>` : '');
+                (!proj && saved >= 2 ? `<span class="rec-tip-save">вручную было бы ~${this.handTime(saved)}${estimate ? ' (ориентир по листу)' : ''}</span>` : '');
             // Плашка проекта — справа от этапов, на уровне полосы хода, а не
             // строкой ниже: так она видна без прокрутки.
             const side = document.getElementById('rec_pside');
