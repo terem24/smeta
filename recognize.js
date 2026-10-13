@@ -1816,7 +1816,11 @@ const RecognizeUI = {
         const box = document.createElement('div');
         box.className = 'rec-progress';
         box.id = 'rec_progress';
+        box.classList.add('rec-ai');
         box.innerHTML = `
+          <div class="rec-ai-head"><span class="rec-ai-orb" aria-hidden="true"></span>
+            <span class="rec-ai-title">ИИ разбирает документ</span>
+            <span class="rec-ai-live">в работе</span></div>
           <div class="rec-pbar"><div class="rec-pfill" id="rec_pfill"></div></div>
           <div class="rec-prow">
             <div class="rec-pstages">
@@ -1827,7 +1831,21 @@ const RecognizeUI = {
             <div class="rec-pside" id="rec_pside"></div>
           </div>
           <div class="rec-elapsed" id="rec_elapsed">0 с</div>`;
-        host.appendChild(box);
+        // Индикатор встаёт справа от листов — там пустое место, и ход работы
+        // виден сразу, без прокрутки. Листов нет (текст, план без картинки) —
+        // остаётся под кнопкой, как раньше.
+        const sheets = host.querySelector('.rec-imgs, .rec-prev-row');
+        if (sheets && sheets.style.display !== 'none' && sheets.parentNode) {
+            const wrap = document.createElement('div');
+            wrap.className = 'rec-work';
+            wrap.id = 'rec_work';
+            sheets.parentNode.insertBefore(wrap, sheets);
+            wrap.appendChild(sheets);
+            wrap.appendChild(box);
+            this._workSheets = sheets;
+        } else {
+            host.appendChild(box);
+        }
         // Индикатор встаёт под кнопкой «Распознать» — на ноутбуке он уходит
         // под нижний край, и плашку «сколько это руками» надо искать
         // прокруткой. Докручиваем до него сами, ровно насколько нужно.
@@ -2005,6 +2023,13 @@ const RecognizeUI = {
         if (this._timer) { clearInterval(this._timer); this._timer = null; }
         const box = document.getElementById('rec_progress');
         if (box) box.remove();
+        // Листы возвращаются на своё место, обёртка уходит.
+        const wrap = document.getElementById('rec_work');
+        if (wrap) {
+            if (this._workSheets && wrap.parentNode) wrap.parentNode.insertBefore(this._workSheets, wrap);
+            wrap.remove();
+        }
+        this._workSheets = null;
         // Разбор кончился — запросы потрачены, остаток в углу надо обновить.
         this.refreshQuotaBadge();
     },

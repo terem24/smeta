@@ -12756,6 +12756,84 @@ body.dark-mode .rec-nohave { color: #FBBF24; }
 }
 @keyframes rec-spin { to { transform: rotate(360deg); } }
 .rec-elapsed { margin-top: 8px; font-size: 12px; color: var(--text-sec, #94a3b8); }
+
+/* ИИ-панель хода распознавания: справа от листов, в стиле калькулятора. */
+.rec-work { display: flex; align-items: flex-start; gap: 16px; margin-top: 12px; }
+.rec-work > .rec-imgs, .rec-work > .rec-prev-row { margin-top: 0; flex: 0 1 auto; max-width: 46%; }
+.rec-work > .rec-progress { flex: 1 1 0; min-width: 0; margin-top: 0; }
+@media (max-width: 720px) {
+    .rec-work { flex-direction: column; }
+    .rec-work > .rec-imgs, .rec-work > .rec-prev-row { max-width: 100%; }
+    .rec-work > .rec-progress { width: 100%; }
+}
+.rec-ai {
+    position: relative; overflow: hidden;
+    padding: 14px 16px 12px; border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--primary, #0284c7) 28%, var(--border, #e2e8f0));
+    background:
+        radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--primary, #0284c7) 14%, transparent), transparent 60%),
+        var(--surface, transparent);
+}
+/* Бегущий блик по верхней кромке — признак, что работа идёт прямо сейчас. */
+.rec-ai::before {
+    content: ''; position: absolute; left: 0; top: 0; height: 2px; width: 40%;
+    background: linear-gradient(90deg, transparent, var(--primary, #0284c7), transparent);
+    animation: rec-ai-sweep 2.4s ease-in-out infinite;
+}
+@keyframes rec-ai-sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+.rec-ai-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.rec-ai-orb {
+    width: 22px; height: 22px; flex: 0 0 22px; border-radius: 50%; position: relative;
+    background: conic-gradient(from 0deg, var(--primary, #0284c7), #8b5cf6, #22d3ee, var(--primary, #0284c7));
+    animation: rec-spin 2.2s linear infinite;
+    box-shadow: 0 0 14px color-mix(in srgb, var(--primary, #0284c7) 55%, transparent);
+}
+.rec-ai-orb::after {
+    content: ''; position: absolute; inset: 4px; border-radius: 50%;
+    background: var(--surface, #fff);
+}
+.rec-ai-title { font-weight: 700; font-size: 14px; color: var(--text-main, #0f172a); }
+.rec-ai-live {
+    margin-left: auto; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--primary, #0284c7); display: inline-flex; align-items: center; gap: 6px;
+}
+.rec-ai-live::before {
+    content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+    animation: rec-ai-pulse 1.2s ease-in-out infinite;
+}
+@keyframes rec-ai-pulse { 0%, 100% { opacity: .25; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.15); } }
+.rec-ai .rec-pbar { height: 8px; }
+.rec-ai .rec-pfill {
+    background: linear-gradient(90deg, var(--primary, #0284c7), #8b5cf6, var(--primary, #0284c7));
+    background-size: 200% 100%; animation: rec-ai-flow 2s linear infinite;
+}
+@keyframes rec-ai-flow { to { background-position: -200% 0; } }
+.rec-ai .rec-pstages { gap: 7px; margin-top: 12px; }
+.rec-ai .rec-pstage { font-size: 13px; }
+.rec-ai .rec-pstage.done .dot { position: relative; }
+.rec-ai .rec-pstage.done .dot::after {
+    content: ''; position: absolute; left: 3px; top: 0px; width: 4px; height: 8px;
+    border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.rec-ai .rec-elapsed {
+    margin-top: 12px; padding-top: 10px; font-size: 12.5px;
+    border-top: 1px dashed var(--border, #e2e8f0);
+}
+/* Подсказка «печатается»: появляется со сдвигом и мигающим курсором. */
+.rec-ai .rec-tip { color: var(--text-main, #0f172a); animation: rec-tip-in .45s ease-out; }
+.rec-ai .rec-tip::after {
+    content: ''; display: inline-block; width: 2px; height: 1em; margin-left: 3px; vertical-align: -2px;
+    background: var(--primary, #0284c7); animation: rec-caret 1s steps(1) infinite;
+}
+@keyframes rec-tip-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes rec-caret { 50% { opacity: 0; } }
+.rec-ai .rec-tip-save {
+    margin-left: auto; padding: 3px 10px; border-radius: 99px; font-size: 12px;
+    background: color-mix(in srgb, #16a34a 14%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+    .rec-ai::before, .rec-ai-orb, .rec-ai-live::before, .rec-ai .rec-pfill, .rec-ai .rec-tip::after { animation: none; }
+}
 .rec-res { overflow-y: auto; flex: 1; min-height: 180px; }
 .rec-hit {
     display: flex; justify-content: space-between; gap: 12px;
