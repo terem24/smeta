@@ -20299,22 +20299,3 @@ body.empty-fit-panel #header_totals { display: none !important; }
 /* Список пользователей перечитывается: приглушаем таблицу, чтобы клик не казался мёртвым */
 #admin_content.ad-busy { opacity: .45; transition: opacity .1s; cursor: progress; }
 
-/* Заголовки подразделов раздела «Отопление и котельная»: один вид для всех. */
-.sec-title {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    position: relative;
-    margin: 0 0 6px;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1.3;
-    text-transform: none;
-    letter-spacing: normal;
-    color: var(--text-main);
-}
-
-/* Заголовки свёрнутых пунктов в шапке — тот же вид, что у подразделов. */
-.fine-tune-head > .sec-title {
-    margin: 0;
-}
