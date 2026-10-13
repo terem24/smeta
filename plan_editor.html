@@ -3236,15 +3236,46 @@ function scaleFromScanDims(dims) {
   return { ppm: ppm, n: good.length, total: ks.length };
 }
 
+/** Предупреждение: сюда грузят только планы дома, а не спецификации/сметы/накладные. */
+function warnNotPlan(name) {
+  hint('');
+  alert('«' + name + '» похоже на спецификацию или смету, а не на план дома.\n\n' +
+    'Здесь, в «Плане дома», загружают ТОЛЬКО поэтажные планы (чертёж с комнатами и стенами) — ' +
+    'по ним калькулятор находит комнаты, считает тёплый пол и радиаторы.\n\n' +
+    'Спецификацию загрузите на странице сметы («← К смете»), а сюда — PDF или картинку плана этажа.');
+}
+
+/** Имя файла похоже на спецификацию/накладную/счёт */
+function nameLooksLikeSpec(name) {
+  return /специф|specif|накладн|счет|счёт|invoice|смет[аы]|коммерческ|\bкп\b/i.test(name || '');
+}
+
+/** Текст страницы похож на таблицу спецификации (наименование / кол-во / ед. изм. …) */
+function textLooksLikeSpec(items) {
+  var t = (items || []).map(function (i) { return i.str || ''; }).join(' ').toLowerCase();
+  if (t.length < 40) return false;
+  var marks = [/наименование/, /кол-?во|количество/, /ед\.?\s?изм/, /артикул/, /примечани/, /масса|вес\b/, /цена|стоимость|сумма/, /поз\./, /завод|производител/];
+  var n = marks.filter(function (re) { return re.test(t); }).length;
+  var title = /специфик/.test(t);
+  return n >= 4 || (title && n >= 2);
+}
+
 function loadPdfPlan(file, done) {
   hint('Читаю PDF…');
+  if (nameLooksLikeSpec(file.name)) { warnNotPlan(file.name); if (done) done(); return; }
   var rd = new FileReader();
   rd.onload = function () {
     var pdfDoc = null;
+    var notPlan = false;
     loadPdfJs().then(function (pdfjs) {
       return pdfjs.getDocument({ data: rd.result }).promise;
     }).then(function (pdf) {
       pdfDoc = pdf;
+      return pdf.getPage(1).then(function (p) { return p.getTextContent(); })
+        .then(function (tc) { return textLooksLikeSpec(tc.items); }, function () { return false; });
+    }).then(function (isSpec) {
+      if (isSpec) { notPlan = true; throw new Error('not a plan'); }
+      var pdf = pdfDoc;
       return pdf.numPages > 1 ? pickPdfPages(file, pdf.numPages) : [1];
     }).then(function (pages) {
       // Первая страница — в текущий этаж, каждая следующая — в новый
@@ -3264,6 +3295,7 @@ function loadPdfPlan(file, done) {
     }).then(function () {
       if (done) done();
     }).catch(function (e) {
+      if (notPlan) { warnNotPlan(file.name); if (done) done(); return; }
       console.error('[plan_editor] pdf:', e);
       hint('');
       alert('Не удалось прочитать PDF «' + file.name +
@@ -3347,6 +3379,7 @@ function loadOne(file) {
     if (/pdf$/i.test(file.type) || /\.pdf$/i.test(file.name)) {
       loadPdfPlan(file, done); return;
     }
+    if (nameLooksLikeSpec(file.name)) { warnNotPlan(file.name); done(); return; }
     var rd = new FileReader();
     rd.onload = function () {
       var im = new Image();
