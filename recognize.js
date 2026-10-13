@@ -1917,6 +1917,12 @@ const RecognizeUI = {
         () => 'Собираю помещения для расчёта по комнатам',
     ],
 
+    /** Время ожидания: до минуты — секундами, дальше — целыми минутами («170 с» читается странно). */
+    fmtElapsed(sec) {
+        sec = Math.max(0, Math.round(sec));
+        return sec < 60 ? `${sec} с` : `${Math.round(sec / 60)} мин`;
+    },
+
     /** Сколько позиций в среднем на листе сметы — для ориентира, пока строк ещё нет. */
     ROWS_PER_PAGE: 25,
 
@@ -1967,7 +1973,7 @@ const RecognizeUI = {
             this._saveAt = -1;
             const proj = plan && plan.total >= 5;
             el.innerHTML = `<span class="rec-tip">${tip}</span>` +
-                `<span class="rec-tip-sec">${sec} с</span>` +
+                `<span class="rec-tip-sec">${this.fmtElapsed(sec)}</span>` +
                 (!proj && saved >= 2 ? `<span class="rec-tip-save">вручную было бы ~${this.handTime(saved)}${estimate ? ' (ориентир по листу)' : ''}</span>` : '');
             // Плашка проекта — справа от этапов, на уровне полосы хода, а не
             // строкой ниже: так она видна без прокрутки.
@@ -1978,7 +1984,7 @@ const RecognizeUI = {
             }
         } else {
             const s = el.querySelector('.rec-tip-sec');
-            if (s) s.textContent = sec + ' с';
+            if (s) s.textContent = this.fmtElapsed(sec);
         }
         this.tickSaving();
     },
@@ -6933,7 +6939,7 @@ const RecognizeUI = {
         const secs = Math.round((this._elapsed || 0) / 1000);
         return `<div class="rec-saved">
             <b>${found}</b> ${this.plural(found, 'позиция', 'позиции', 'позиций')} перенесено в смету
-            ${secs ? `за ${secs} с` : ''} — вручную это заняло бы около <b>${time}</b>
+            ${secs ? `за ${this.fmtElapsed(secs)}` : ''} — вручную это заняло бы около <b>${time}</b>
           </div>`;
     },
 
