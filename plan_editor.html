@@ -1429,6 +1429,31 @@ function chamferDist(B, W, H) {
  *  линии между простенками, и комната «вытекает» через окно на улицу. Поэтому
  *  тонкое возвращаем, если оно у самой стены (ближе 0,35 м): остекление и
  *  откосы встают на место, а трубы и подписи посреди комнаты остаются стёртыми. */
+/** Мебель и сантехника — мелкие тёмные фигуры внутри комнат (диван, ванна, шкаф,
+ *  штриховка). Стена — длинная связная линия, у мебели габариты меньше метра с
+ *  небольшим. Компоненты тёмной маски, у которых обе стороны короче minM метров,
+ *  стираем: они не делят комнату. Проверяем на связность 4-соседями. */
+function furnitureClear(bar, W, H, ppm, minM) {
+  var N = W * H, lab = new Int32Array(N), st = new Int32Array(N), L = 0, keep = [0];
+  var lim = (minM || 1.2) * ppm;
+  for (var i = 0; i < N; i++) {
+    if (!bar[i] || lab[i]) continue;
+    L++; var sp = 0, n = 0; st[sp++] = i; lab[i] = L;
+    var x0 = W, x1 = -1, y0 = H, y1 = -1;
+    while (sp) {
+      var c = st[--sp], cx = c % W, cy = (c - cx) / W; n++;
+      if (cx < x0) x0 = cx; if (cx > x1) x1 = cx; if (cy < y0) y0 = cy; if (cy > y1) y1 = cy;
+      if (cx && bar[c - 1] && !lab[c - 1]) { lab[c - 1] = L; st[sp++] = c - 1; }
+      if (cx < W - 1 && bar[c + 1] && !lab[c + 1]) { lab[c + 1] = L; st[sp++] = c + 1; }
+      if (cy && bar[c - W] && !lab[c - W]) { lab[c - W] = L; st[sp++] = c - W; }
+      if (cy < H - 1 && bar[c + W] && !lab[c + W]) { lab[c + W] = L; st[sp++] = c + W; }
+    }
+    keep.push(Math.max(x1 - x0, y1 - y0) >= lim ? 1 : 0);
+  }
+  for (var j = 0; j < N; j++) if (lab[j] && !keep[lab[j]]) bar[j] = 0;
+  return bar;
+}
+
 function cleanBar(bar, W, H, ppm) {
   var N = W * H, i, C0 = new Uint8Array(bar);
   openThin(C0, W, H, ppm);
@@ -1508,8 +1533,11 @@ function labelRooms() {
   // мелкий масштаб, где их больше. Режим 'clean' ищет комнаты по маске без
   // тонкого (openThin): стена остаётся, трубы и текст уходят. Режим выбирает
   // подбор масштаба (guessScale) и запоминает за этажом.
-  var B = m.bar;
-  if (mode === 'clean') B = cleanBar(m.bar, W, H, ppm);
+  // Мебель и сантехника стираются из маски до поиска комнат: мелкие тёмные
+  // фигуры внутри комнаты не должны резать её на куски (1,2 м — порог габарита)
+  var base = furnitureClear(new Uint8Array(m.bar), W, H, ppm, 1.2);
+  var B = base;
+  if (mode === 'clean') B = cleanBar(base, W, H, ppm);
   var d = chamferDist(B, W, H), i, x, y;
   var r = Math.max(3, Math.round(0.63 * ppm));
   var lab = new Int32Array(N), q = new Int32Array(N), qt = 0, L = 0;
@@ -1534,7 +1562,7 @@ function labelRooms() {
     if (id2 >= W && d[id2 - W] > 0 && !lab[id2 - W]) { lab[id2 - W] = Lc; q[qt++] = id2 - W; }
     if (id2 < N - W && d[id2 + W] > 0 && !lab[id2 + W]) { lab[id2 + W] = Lc; q[qt++] = id2 + W; }
   }
-  if (mode === 'raw' && L && GROW_ROOMS) growToWalls(lab, m.bar, W, H, ppm);
+  if (mode === 'raw' && L && GROW_ROOMS) growToWalls(lab, base, W, H, ppm);
   var cnt = new Int32Array(L + 1), edge = new Uint8Array(L + 1);
   var mn = new Int32Array(L + 1);
   for (i = 0; i <= L; i++) mn[i] = -1;
@@ -1569,7 +1597,9 @@ function traceLabel(m, L) {
     x += DX[dir]; y += DY[dir];
   } while (!(x === bx && y === by) && ++steps < maxSteps);
   if (pts.length < 8 || steps >= maxSteps) return null;
-  var simp = dpSimp(pts, 2.4);
+  // Контур комнаты: допуск — 0,1 м, а не 2,4 px. Иначе каждая неровность стены
+  // (пиксельная ступенька, штриховка у края) — отдельная ломаная линия.
+  var simp = dpSimp(pts, Math.max(2.4, 0.1 * (F().pxPerM || 100)));
   if (simp.length < 3 || simp.length > 200) return null;
   return simp.map(function (q) { return [Math.round(q[0] / m.k), Math.round(q[1] / m.k)]; });
 }
@@ -2572,7 +2602,11 @@ function autoRooms() {
         made++;
       });
     });
-    targets.forEach(function (t, ti) { if (!tU[ti] && zoneKindsOfRoom(t).length) missed.push(t.name); });
+    // Комната расчёта без контура на плане — называем её с площадью: монтажник
+    // отметит её вручную. В тепловом режиме нужны все комнаты, не только типовые.
+    targets.forEach(function (t, ti) {
+      if (!tU[ti] && (UFH || zoneKindsOfRoom(t).length)) missed.push((t.name || 'комната') + ' ' + t.area.toFixed(1).replace('.', ',') + ' м²');
+    });
   }
   // Зоны ТП на все найденные комнаты — только когда расчёта по этажу нет вовсе
   // (как и сказано в описании кнопки). Комнаты в расчёте есть, но типовые не
@@ -2586,7 +2620,6 @@ function autoRooms() {
       F().zones.push({ type: 'room', name: c.pname || '', nameSrc: c.pname ? 'plan' : undefined, pts: fitZonePts(c.pts, F().pxPerM || 100, c.printed) });
       cnt.room = (cnt.room || 0) + 1; made++;
     });
-    missed = [];
   }
   if (!made && !targets.length) {
     free.forEach(function (c) {
@@ -3867,6 +3900,7 @@ function acceptAllDisputed() {
 
 /** Площадь зоны для списка и расчёта: напечатанная на плане (PDF), пока контур не трогали, иначе по контуру */
 function zoneM2(z) {
+  if (z.manualM2 > 0) return z.manualM2;                 // площадь, вписанная вручную
   return (z.printedM2 > 0 && z.printedSig === JSON.stringify(z.pts)) ? z.printedM2 : area(z.pts);
 }
 function area(pts) {
@@ -4172,10 +4206,7 @@ cv.addEventListener('click', function (e) {
     if (hoverZ >= 0 && F().zones[hoverZ]) {
       var d = zoneDelPt(hoverZ);
       if (Math.hypot(p[0] - d[0], p[1] - d[1]) < 12 / cs()) {
-        pushUndo('zones');
-        F().zones.splice(hoverZ, 1);
-        hoverZ = hoverV = hoverE = -1; selZ = -1;
-        renderZones(); draw();
+        deleteZoneAt(hoverZ);
         return;
       }
     }
@@ -4353,10 +4384,7 @@ document.addEventListener('keydown', function (e) {
     var t = e.target && e.target.tagName;
     if (t !== 'INPUT' && t !== 'TEXTAREA' && t !== 'SELECT') {
       e.preventDefault();
-      pushUndo('zones');
-      F().zones.splice(selZ, 1);
-      selZ = -1; hoverZ = hoverV = hoverE = -1;
-      renderZones(); draw();
+      deleteZoneAt(selZ);
       return;
     }
   }
@@ -4904,6 +4932,20 @@ function makeBoiler(z) {
   hint('<span class=ok>Котельная отмечена: «' + (z.name || 'Котельная') + '».</span> Тёплый пол в ней остался. Нажмите «Сохранить».');
 }
 
+/** Удалить зону по индексу и сбросить всё, что на неё указывало: выбор, наведение,
+ *  перетаскивание, незавершённый контур. Без этого после удаления индексы и
+ *  перетаскивание указывали на чужую зону или на пустоту, и кнопки на плане
+ *  переставали реагировать. */
+function deleteZoneAt(i) {
+  if (!F().zones[i]) return;
+  pushUndo('zones');
+  F().zones.splice(i, 1);
+  selZ = -1; hoverZ = hoverV = hoverE = -1;
+  dragZ = null; dragA = null; tmp = []; polyCur = null;
+  justDragged = 0;
+  renderZones(); draw();
+}
+
 function renderZones() {
   var box = document.getElementById('zlist'); box.innerHTML = '';
   if (UFH) { renderZonesUfh(box); return; }
@@ -4960,11 +5002,21 @@ function renderZones() {
       ar.title = card ? 'Приборы взяты из карточки санузла в расчёте'
         : 'Впишите имя санузла так же, как в расчёте — приборы подставятся сами';
     } else {
-      ar.textContent = zoneM2(z).toFixed(1) + ' м²';
+      // площадь — поле: вписать вручную, если контур и подпись не сходятся
+      var am = document.createElement('input'); am.type = 'number'; am.step = '0.1'; am.min = '0';
+      am.className = 'ar-in'; am.title = 'Площадь, м² — можно вписать вручную';
+      am.value = zoneM2(z).toFixed(1);
+      am.onchange = function () {
+        pushUndo('zones');
+        var v = parseFloat(String(am.value).replace(',', '.'));
+        if (v > 0) z.manualM2 = Math.round(v * 100) / 100; else delete z.manualM2;
+        renderZones(); draw();
+      };
+      ar.appendChild(am); ar.appendChild(document.createTextNode(' м²'));
     }
     d.appendChild(ar);
     var del = document.createElement('span'); del.className = 'del'; del.textContent = '✕';
-    del.onclick = function () { pushUndo('zones'); F().zones.splice(i, 1); renderZones(); draw(); };
+    del.onclick = function () { deleteZoneAt(i); };
     d.appendChild(del);
     box.appendChild(d);
   });
