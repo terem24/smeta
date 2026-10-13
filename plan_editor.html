@@ -5170,24 +5170,26 @@ function collRotate(kind) {
 }
 
 /**
- * Повернуть радиатор на 90° (R над ним или Shift + правый клик). После поворота
- * прибор прижимается к ближайшей стене, параллельной ему в новом положении, в
- * пределах 0,5 м, — как при переносе, но без перетаскивания.
+ * Повернуть радиатор на 45° (R над ним или Shift + правый клик): 0 → 45 → 90 → 135 → 0.
+ * 45° нужен под эркер, где стена идёт наклонно. После поворота прибор прижимается
+ * к ближайшей стене, параллельной ему в новом положении, в пределах 0,5 м, —
+ * как при переносе, но без перетаскивания.
  */
 function radRotate(i) {
   var f = F(), r = f.rads[i];
   if (!r) return;
   pushUndo('zones');
   var ppm = f.pxPerM || 100;
-  r.ang = (((r.ang || 0) % 180) === 90) ? 0 : 90;
+  r.ang = (((r.ang || 0) + 45) % 180 + 180) % 180;
   var m = getMask();
   if (m) {
-    // стены, параллельные прибору: для горизонтального — сверху и снизу, для вертикального — слева и справа
-    var dirs = r.ang === 90 ? [[1, 0], [-1, 0]] : [[0, 1], [0, -1]];
+    // стены, параллельные прибору: нормаль к его оси (для 0° — сверху и снизу, для 90° — слева и справа, для 45° — по диагонали)
+    var a = r.ang * Math.PI / 180, nx = -Math.sin(a), ny = Math.cos(a);
+    var dirs = [[nx, ny], [-nx, -ny]];
     var R = Math.round(0.5 * ppm * m.k), sx = Math.round(r.x * m.k), sy = Math.round(r.y * m.k), best = null;
     dirs.forEach(function (dv) {
       for (var d = 1; d <= R; d++) {
-        var x = sx + dv[0] * d, y = sy + dv[1] * d;
+        var x = Math.round(sx + dv[0] * d), y = Math.round(sy + dv[1] * d);
         if (x < 0 || y < 0 || x >= m.w || y >= m.h) break;
         if (m.bar[y * m.w + x]) { if (!best || d < best.d) best = { d: d, dv: dv }; break; }
       }
@@ -5197,8 +5199,8 @@ function radRotate(i) {
       if (off > 0) { r.x = Math.round(r.x + best.dv[0] * off); r.y = Math.round(r.y + best.dv[1] * off); }
     }
   }
-  hint('<span class=ok>Радиатор повёрнут — ' + (r.ang === 90 ? 'вертикально' : 'горизонтально') + '.</span> ' +
-    'R над прибором или Shift + правый клик — повернуть ещё раз.');
+  hint('<span class=ok>Радиатор повёрнут на ' + r.ang + '°.</span> ' +
+    'R над прибором или Shift + правый клик — повернуть ещё на 45°.');
   renderZones(); draw();
 }
 
