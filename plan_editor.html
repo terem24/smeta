@@ -2546,6 +2546,7 @@ function autoMarkAll() {
       // что делать дальше, скажет строка мастера; здесь — только итог
       hint(F().pxPerM ? '<span class=ok>Найдено комнат: ' + zones + (rads ? ', радиаторов под окнами: ' + rads : '') + '.</span>' + lastRoomsNote +
         (zones ? '' : ' ' + (lastRoomsWhy || 'комнаты не найдены')) +
+        (zones ? floorSumNote() : '') +
         (bad.length ? ' <b>Осталось руками:</b> ' + bad.join('; ') + '.' : '') : '');
       return;
     }
