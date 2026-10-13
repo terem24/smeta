@@ -2184,6 +2184,29 @@ function doorCheck(ppm) {
   return dw;
 }
 
+/** Масштаб по дверным проёмам: двери на жилом плане — одного размера, 0,9 м.
+ *  Медиана ширины проёмов в пикселях даёт пикселей в метре. Ширина меряется при
+ *  масштабе, от которого зависят размеры проёмов в детекторе, поэтому пробуем
+ *  лесенку масштабов и берём точку, где он сходится сам с собой (± 25 %).
+ *  null — проёмов мало или ширины разъехались. */
+function doorScale() {
+  var f = F(), was = f.pxPerM, best = null;
+  try {
+    [40, 70, 110, 170, 260].forEach(function (t) {
+      f.pxPerM = t; resetScaleCaches();
+      detectWindows();
+      if (DOORS.length < 2) return;
+      var ws = DOORS.map(function (d) { return d.w; }).sort(function (a, b) { return a - b; });
+      var med = ws[ws.length >> 1];
+      var same = ws.filter(function (w) { return Math.abs(w - med) / med < 0.15; }).length;
+      var ppm = med / 0.9;
+      if (same < 2 || ppm < 10 || ppm > 600 || ppm / t < 0.75 || ppm / t > 1.33) return;
+      if (!best || same > best.n) best = { ppm: ppm, n: same, w: med };
+    });
+  } finally { f.pxPerM = was; resetScaleCaches(); }
+  return best;
+}
+
 /** Кнопка «Подобрать масштаб», она же автоподбор при загрузке плана.
  *  silent — молчать о неудаче: при загрузке плана комнат в расчёте может и
  *  не быть, ругаться тут не на что. */
@@ -2216,6 +2239,21 @@ function autoScale(silent) {
   } else {
     var nd = (SCAN_DIMS[cur] || []).length;
     scanWhy(nd ? 'линий принято ' + nd + ', но согласованных меньше двух (разброс больше 10 %)' : 'размерных линий нет');
+  }
+  // Без размеров чертежа — двери 0,9 м: надёжнее подбора по площадям, который
+  // зависит от того, что уже прочитано и посчитано.
+  if (!d) {
+    var ds = null;
+    try { ds = doorScale(); } catch (e) { console.error('[plan_editor] doors:', e); }
+    if (ds) {
+      if (!silent) pushUndo('scale');
+      F().pxPerM = ds.ppm;
+      resetScaleCaches();
+      renderZones(); draw(); updateGuide();
+      hint('<span class=ok>Масштаб взят по дверным проёмам</span> (проёмов ' + ds.n +
+        ', ширина ' + ds.w.toFixed(0) + ' px ≈ 0,9 м). Проверьте кнопкой «Масштаб» по любому известному размеру.');
+      return true;
+    }
   }
   var g = null;
   try { g = guessScale(); } catch (e) { console.error('[plan_editor] scale:', e); }
