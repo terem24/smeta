@@ -46758,8 +46758,18 @@ const app = {
             if (quick.style.display !== d) quick.style.display = d;
         }
     },
+    // Свёрнутые группы панели. Группа 4 («Эксплуатация») свёрнута по умолчанию и
+    // открывается щелчком. Один раз сбрасываем сохранённое состояние под новое умолчание.
     _pgCollapsed: function () {
-        try { const a = JSON.parse(localStorage.getItem('hc_pg_closed') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+        try {
+            let a = JSON.parse(localStorage.getItem('hc_pg_closed') || 'null');
+            if (!localStorage.getItem('hc_pg_v2')) {
+                a = [4];
+                localStorage.setItem('hc_pg_closed', JSON.stringify(a));
+                localStorage.setItem('hc_pg_v2', '1');
+            }
+            return Array.isArray(a) ? a : [4];
+        } catch (e) { return [4]; }
     },
     togglePanelGroup: function (n) {
         const a = this._pgCollapsed();
@@ -69272,14 +69282,21 @@ const app = {
         snow: ['blk_snow_pipe_row'],
         pump: ['rooms_pump_plan']
     },
+    // Открыто ли пункт тонкой настройки. Только на время сессии: после перезагрузки все пункты свёрнуты.
     fineTuneOpen: function () {
-        try { return JSON.parse(localStorage.getItem(this.FINE_TUNE_KEY) || '{}') || {}; } catch (e) { return {}; }
+        return this._fineTuneOpen || (this._fineTuneOpen = {});
     },
     toggleFineTune: function (key) {
         const o = this.fineTuneOpen();
         o[key] = !o[key];
-        try { localStorage.setItem(this.FINE_TUNE_KEY, JSON.stringify(o)); } catch (e) { /* приватное окно */ }
         this.syncFineTune();
+    },
+    /** Дымоход в подробном режиме: тело свёрнуто, раскрывается по заголовку. */
+    toggleChimneyBlock: function () {
+        this._chimOpen = !this._chimOpen;
+        const w = document.getElementById('ft_chim'), b = document.getElementById('chim_body');
+        if (w) w.classList.toggle('open', !!this._chimOpen);
+        if (b) b.style.display = this._chimOpen ? 'block' : 'none';
     },
     fineTuneSummary: function (key) {
         const s = this.state;

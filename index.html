@@ -1275,10 +1275,15 @@
                 style="display:none; position:relative; border-bottom:1px dashed var(--border); padding-bottom:16px; margin-bottom:16px;">
                 <!-- Подпись о длине трассы спрятана под «i»: position:relative у блока
                      нужен .tip-panel-wrap, иначе подсказка не появится. -->
-                <span class="lbl" style="display:flex; align-items:center; gap:4px; margin-bottom: 6px;">Дымоход<span
-                        class="tooltip-wrapper tip-panel-wrap" id="chim_note_wrap"><i class="info-icon" tabindex="0"
+                <div class="fine-tune" id="ft_chim">
+                <div class="fine-tune-head" onclick="app.toggleChimneyBlock()" role="button" tabindex="0">
+                    <span class="fine-tune-title">Дымоход<span class="tooltip-wrapper tip-panel-wrap" id="chim_note_wrap" onclick="event.stopPropagation()"><i class="info-icon" tabindex="0"
                             role="button" aria-label="Подробнее">i</i>
                         <div class="tooltip-content tip-panel" id="chim_note"></div></span></span>
+                    <span class="fine-tune-sum" id="chim_sum"></span>
+                    <span class="fine-tune-arrow">▸</span>
+                </div>
+                <div class="fine-tune-body" id="chim_body" style="display:none;">
                 <div class="tabs" style="margin-bottom: 6px;">
                     <div class="tab" id="chim_sys_coax" onclick="app.setChimneySystem('coax')">Коаксиальный</div>
                     <div class="tab" id="chim_sys_split" onclick="app.setChimneySystem('split')">Раздельный D80</div>
@@ -1309,6 +1314,8 @@
                     <span onclick="app.toggleChimneyMore()" id="chim_more_link"
                         style="font-size: 11px; color: var(--primary); border-bottom: 1px dashed var(--primary); cursor: pointer;">Котёл стоит дальше от стены</span>
                 </div>
+                </div>
+            </div>
             </div>
 
             <!-- Перепад котлового контура. От него зависит расход через обвязку, а
@@ -1369,7 +1376,7 @@
                 </div>
                 <div class="fine-tune-body" id="ft_boiler_body" style="display:none;">
             <div class="control-item" id="blk_boiler_dt" style="display:none; margin-bottom: 16px;">
-                <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Перепад котлового контура<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>20 K.</b> Паспортный режим котла: расход вдвое меньше, обвязка скромнее.<div class="tip-p"><b>10 K.</b> Режим 75/65: расход вдвое выше, диаметр обвязки на две ступени больше. Когда котёл работает на систему без гидрострелки.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_boiler_dt_note">Перепад 20 K. По нему считаются расход и диаметр обвязки котельной.</span></div></div></span></span>
+                <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Котловой перепад<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>20 K.</b> Паспортный режим котла: расход вдвое меньше, обвязка скромнее.<div class="tip-p"><b>10 K.</b> Режим 75/65: расход вдвое выше, диаметр обвязки на две ступени больше. Когда котёл работает на систему без гидрострелки.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_boiler_dt_note">Перепад 20 K. По нему считаются расход и диаметр обвязки котельной.</span></div></div></span></span>
                 <div class="tabs" id="boiler_dt_tabs">
                     <div class="tab active" id="boiler_dt_20" onclick="app.setBoilerDT(20)">20 K</div>
                     <div class="tab" id="boiler_dt_10" onclick="app.setBoilerDT(10)">10 K</div>
