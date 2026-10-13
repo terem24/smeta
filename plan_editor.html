@@ -460,7 +460,7 @@ var DATA = { floors: [{ img: null, w: 0, h: 0, pxPerM: 0, zones: [], rads: [] }]
 var cur = 0, mode = 'select', tmp = [], scalePts = [], dragA = null, imgCache = {};
 var scaleCur = null, scaleFree = false;   // след масштабной линейки и режим угла
 var imgFailed = {};   // этажи, чью подложку не удалось забрать с сервера
-var polyCur = null, closeTs = 0, undoStack = [];
+var polyCur = null, closeTs = 0, undoStack = [], redoStack = [];
 var TYPES = { tp: ['Тёплый пол', '#ff8000'], rad: ['Радиаторы', '#d22'],
   boiler: ['Котельная', '#5577aa'], wc: ['Санузел', '#0b7285'],
   // лестница, колонна, ванна, шкаф внутри тёплого пола — петли и подводки обходят
@@ -4182,6 +4182,11 @@ cv.addEventListener('mouseup', function (e) {
     draw();
   }
 });
+cv.addEventListener('wheel', function (e) {
+  if (!e.ctrlKey) return;                       // без Ctrl колесо прокручивает, как раньше
+  e.preventDefault();
+  zoomStep(e.deltaY < 0 ? 1 : -1);
+}, { passive: false });
 cv.addEventListener('click', function (e) {
   var p = evPt(e);
   // хвост переноса коллектора, и щелчок по его значку — не радиатор и не комната
@@ -4316,9 +4321,10 @@ cv.addEventListener('dblclick', function () {
 });
 
 // ─── Шаг назад: кнопка и Ctrl+Z ────────────────────────────────────────
-function pushUndo(t) {
-  var f = F();
-  var rec = { t: t, floor: cur, prev: {
+/** Снимок этажа для отмены и повтора (без подложки — она меняется отдельно). */
+function snapFloor(fi) {
+  var f = DATA.floors[fi];
+  return {
     pxPerM: f.pxPerM,
     zones: JSON.parse(JSON.stringify(f.zones)),
     rads: JSON.parse(JSON.stringify(f.rads || [])),
@@ -4327,21 +4333,39 @@ function pushUndo(t) {
     radColl: f.radColl ? { x: f.radColl.x, y: f.radColl.y } : null,
     collAng: f.collAng || 0, radCollAng: f.radCollAng || 0,
     fixtures: JSON.parse(JSON.stringify(f.fixtures || []))
-  } };
+  };
+}
+
+function pushUndo(t) {
+  var f = F();
+  var rec = { t: t, floor: cur, prev: snapFloor(cur) };
   if (t === 'plan') {
     rec.prev.img = f.img; rec.prev.imgFile = f.imgFile || null;
     rec.prev.w = f.w; rec.prev.h = f.h;
   }
   undoStack.push(rec);
   if (undoStack.length > 50) undoStack.shift();
+  redoStack.length = 0;   // новое действие отменяет повтор
 }
 
 function doUndo() {
   // в процессе рисования отменяется последняя точка
   if (mode === 'poly' && tmp.length) { tmp.pop(); draw(); return; }
   if (mode === 'scale' && scalePts.length) { scalePts.pop(); draw(); return; }
-  var rec = undoStack.pop();
-  if (!rec) { hint('Отменять больше нечего.'); return; }
+  stepHist(undoStack, redoStack, 'Отменять больше нечего.');
+}
+
+/** Повтор отменённого: то же восстановление, из стопки повтора. */
+function doRedo() {
+  if (mode === 'poly' || mode === 'scale') return;
+  stepHist(redoStack, undoStack, 'Повторять больше нечего.');
+}
+
+/** Восстановить снимок из from; текущее состояние кладётся в to — туда и обратно. */
+function stepHist(from, to, empty) {
+  var rec = from.pop();
+  if (!rec) { hint(empty); return; }
+  if (rec.t !== 'floorAdd' && rec.t !== 'plan') to.push({ t: rec.t, floor: rec.floor, prev: snapFloor(rec.floor) });
   if (rec.t === 'floorAdd') {
     if (DATA.floors.length > 1) {
       DATA.floors.pop();
@@ -4393,6 +4417,19 @@ var HOTKEYS = [
   { code: 'Slash', key: '?', shift: true, name: 'Список клавиш', run: function () { toggleHotkeyHelp(); } }
 ];
 
+/** Ctrl+D — копия выбранной зоны, сдвинутая на 0,5 м вправо и вниз. */
+function duplicateSelected() {
+  var zs = F().zones;
+  if (selZ < 0 || !zs[selZ]) { hint('Выберите зону щелчком, затем Ctrl+D.'); return; }
+  pushUndo('zones');
+  var z = zs[selZ], d = Math.round(0.5 * (F().pxPerM || 100));
+  var copy = JSON.parse(JSON.stringify(z));
+  copy.pts = copy.pts.map(function (q) { return [q[0] + d, q[1] + d]; });
+  delete copy.printedM2; delete copy.printedSig; delete copy.planM2;
+  zs.push(copy); selZ = zs.length - 1;
+  renderZones(); draw();
+}
+
 /** Клавиша из HOTKEYS → true, если сработала. Ctrl+S — сохранить, как в редакторах. */
 function runHotkey(e) {
   if (e.ctrlKey || e.metaKey) {
@@ -4429,6 +4466,9 @@ function toggleHotkeyHelp() {
     '<table style="border-collapse:collapse;font-size:13px">' + rows +
     '<tr><td><kbd>Ctrl+Z</kbd></td><td>Отменить</td></tr>' +
     '<tr><td><kbd>Ctrl+S</kbd></td><td>Сохранить</td></tr>' +
+    '<tr><td><kbd>Ctrl+Shift+Z</kbd></td><td>Повторить</td></tr>' +
+    '<tr><td><kbd>Ctrl+D</kbd></td><td>Копия выбранной зоны</td></tr>' +
+    '<tr><td><kbd>Ctrl+колесо</kbd></td><td>Масштаб</td></tr>' +
     '<tr><td><kbd>Enter</kbd></td><td>Замкнуть контур</td></tr>' +
     '<tr><td><kbd>Del</kbd></td><td>Удалить выбранную зону</td></tr>' +
     '<tr><td><kbd>Esc</kbd></td><td>Отмена текущего действия</td></tr>' +
@@ -4452,8 +4492,12 @@ document.addEventListener('keydown', function (e) {
   var tag = (document.activeElement && document.activeElement.tagName) || '';
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
   if (e.key === 'Escape' && document.getElementById('hk_help')) { document.getElementById('hk_help').remove(); return; }
-  if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyZ' || String(e.key).toLowerCase() === 'z')) {
-    e.preventDefault(); doUndo(); return;
+  var zk = (e.ctrlKey || e.metaKey) && (e.code === 'KeyZ' || String(e.key).toLowerCase() === 'z');
+  if (zk && e.shiftKey) { e.preventDefault(); doRedo(); return; }
+  if (zk) { e.preventDefault(); doUndo(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyY' || String(e.key).toLowerCase() === 'y')) { e.preventDefault(); doRedo(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyD' || String(e.key).toLowerCase() === 'd')) {
+    e.preventDefault(); duplicateSelected(); return;
   }
   if (runHotkey(e)) return;
   if (e.key === 'Enter' && mode === 'poly' && tmp.length >= 3) { closePoly(); return; }
