@@ -78018,7 +78018,7 @@ const app = {
                     // sortRank берём у ИСХОДНОЙ позиции, а не у finalItem: после ручной
                     // замены или подстановки ROMMER-аналога это уже другой объект, и
                     // дымоход после замены уехал бы из начала раздела вниз по цене.
-                    bill.push({ ...finalItem, sortRank: item.sortRank || 0, q: finalQty, sum: Math.round(finalItem.price * finalQty), basePrice: originalPrice, displaySku: finalItem.displaySku || finalItem.article || realSku(finalItem.id) || 'нет', qtyTip: finalTip || "", group: itemGroup, originalId: finalItem.originalId || item.id });
+                    bill.push({ ...finalItem, sortRank: item.sortRank || 0, recOrder: item.recOrder, q: finalQty, sum: Math.round(finalItem.price * finalQty), basePrice: originalPrice, displaySku: finalItem.displaySku || finalItem.article || realSku(finalItem.id) || 'нет', qtyTip: finalTip || "", group: itemGroup, originalId: finalItem.originalId || item.id });
                 }
             });
 
@@ -78194,6 +78194,8 @@ const app = {
                             id: eq.id, name: eq.name, price: eq.price, brand: eq.brand || ' ',
                             // Метка распознавания и артикул должны дожить до строки таблицы.
                             recognized: eq.recognized, article: eq.article,
+                            // Место строки в документе: без группировки смета идёт в его порядке.
+                            recOrder: eq.recognized ? this.state.userAddedEq.indexOf(eq) : undefined,
                             // Позиция не найдена ни в каталоге, ни в прайсе — артикула у неё
                             // нет. Служебный id ('rec_1785260223271_15') в колонке «Артикул» —
                             // мусор для монтажника и для клиента, поэтому пишем «нет».
@@ -78310,8 +78312,21 @@ const app = {
             // место. Цена — только вторичный признак, для строк с равной суммой.
             // Сортируем ДО currentEquipmentList, чтобы тот же порядок ушёл в КП и печать.
             const _bySumDesc = (a, b) => (b.sum || 0) - (a.sum || 0) || (b.price || 0) - (a.price || 0);
+            /**
+             * Распознанная смета — в порядке документа.
+             *
+             * Сверяют её с бумагой строка за строкой, а сортировка по сумме
+             * перемешивала всё: незамерзающий кран из начала счёта оказывался
+             * четырнадцатым. «Группировать» выключено — строки, пришедшие из
+             * распознавания, идут как в файле (recOrder — их место в документе);
+             * включено — как и раньше, по значимости внутри подразделов.
+             */
+            const _docOrder = (a, b) => (!this.state.groupItems && a.recOrder !== undefined && b.recOrder !== undefined)
+                ? a.recOrder - b.recOrder : 0;
             if (!forceMerge) {
                 bill.sort((a, b) => {
+                    const _d = _docOrder(a, b);
+                    if (_d) return _d;
                     let gA = a.group || "";
                     let gB = b.group || "";
                     // Позиция без подраздела принадлежит самому разделу, поэтому идёт
@@ -78334,7 +78349,7 @@ const app = {
                     return byRank !== 0 ? byRank : _bySumDesc(a, b);
                 });
             } else {
-                bill.sort(_bySumDesc);
+                bill.sort((a, b) => _docOrder(a, b) || _bySumDesc(a, b));
             }
 
             // Сохраняем элементы для коммерческого предложения клиенту

@@ -15,5 +15,4 @@ window.RECOGNIZE_EQUIVALENTS = [
     { re: 'EMW02\\.0?2T', id: 'SMB-6850-013402', note: 'замена по коду: коллектор Elsen EMW02.02T → STOUT SMB-6850-013402' },
     { re: 'EMW02\\.0?3T', id: 'SMB-6850-013403', note: 'замена по коду: коллектор Elsen EMW02.03T → STOUT SMB-6850-013403' },
     { re: 'EMW02\\.0?4T', id: 'SMB-6850-013404', note: 'замена по коду: коллектор Elsen EMW02.04T → STOUT SMB-6850-013404' },
-    { re: '003Z4082RLF', id: 'SVL-1176-000020', note: 'замена по коду: Ридан MVT-R Ду 20 → STOUT запорно-балансировочный прямой 3/4"' },
 ];
