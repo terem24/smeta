@@ -20313,3 +20313,8 @@ body.empty-fit-panel #header_totals { display: none !important; }
     letter-spacing: normal;
     color: var(--text-main);
 }
+
+/* Заголовки свёрнутых пунктов в шапке — тот же вид, что у подразделов. */
+.fine-tune-head > .sec-title {
+    margin: 0;
+}
