@@ -23,7 +23,6 @@ RM.setPriceIndex(JSON.parse(fs.readFileSync(path.join(ROOT, 'price_index.json'),
 // [название, код из колонки, производитель, ожидаемый артикул или null — «верного нет, пустая строка лучше»]
 const ROWS = [
     ['Кран незамерзающий водоразборный с антисифоном 400 мм, 1/2" HP (выход 3/4" HP), ROMMER RVFF-0001-1', '520400', 'ROMMER', 'RVFF-0001-1520400'],
-    ['Балансировочный клапан MVT-R LF, Ду 20 ВР, Kvs 2,86, Ридан', '003Z4082RLF', 'Ридан', 'SVL-1176-000020'],
     ['Хомут трубный быстрого монтажа 1" (32-35 мм)', 'TR32-35FGRS51', null, 'SAC-0020-200001'],
     ['Узел нижнего подключения для двухтрубной системы 1/2" НР х 3/4" НР, угловой, Giacomini', 'R388X012', 'Giacomini', 'SVH-0004-000020'],
     ['Шаровой кран латунный полнопр. 3/4" ВН-НР, ручка-бабочка, со сгоном, Giacomini', 'R859X325', 'Giacomini', 'SVB-0004-200020'],
@@ -50,7 +49,7 @@ for (const [name, code, maker, want] of ROWS) {
     console.log((good ? 'ok  ' : 'FAIL') + ' ' + name.slice(0, 52).padEnd(52) + ' → ' + (got || '—') + (good ? '' : '  (ждали ' + want + ')'));
 }
 // У коллектора должны быть варианты обоих брендов, а не по одному.
-const crec = RM.specItem({ name: ROWS[6][0], art: ROWS[6][1], codes: [ROWS[6][1]], maker: 'Elsen', qty: 1 });
+const crec = RM.specItem({ name: ROWS[5][0], art: ROWS[5][1], codes: [ROWS[5][1]], maker: 'Elsen', qty: 1 });
 const cur = RM.matchSpec(crec, null).m.item;
 const vr = RM.variantsOf(crec, cur, null, 3716, 4);
 const varOk = vr.stout.length >= 2 && vr.rommer.length >= 2;

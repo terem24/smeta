@@ -4163,6 +4163,13 @@ const RecognizeUI = {
         return json;
     },
 
+    /** Режим ROMMER включён, а строка осталась STOUT: пары нет (или выбор сделан вручную). */
+    noRommerPair() {
+        if (!this._analogOn || typeof RecognizeMatch === 'undefined' || !RecognizeMatch.brandOfItem) return [];
+        return this._rows.filter(r => r._m && r._m.item && !r._analogBase && !this.looksLikeWork(r)
+            && RecognizeMatch.brandOfItem(r._m.item) === 'STOUT');
+    },
+
     /** Откуда взяты позиции: по коду, аналогом «проверьте», без пары. */
     sourceSummary() {
         let code = 0, analog = 0;
@@ -5152,7 +5159,7 @@ const RecognizeUI = {
          * выбор «похожим по цене» нельзя — именно так балансировочный клапан
          * уходил в термостатический смесительный. Оставляем и помечаем.
          */
-        const deliberate = m.byEquivalent || m.byArticle || row._spec;
+        const deliberate = m.byEquivalent || m.byArticle;
         if (deliberate) {
             row._priceAlarm = op > dp ? Math.round(op / dp) : -Math.round(dp / op);
             return;
@@ -5673,8 +5680,7 @@ const RecognizeUI = {
             const m = r._m;
             const bi = m ? ((r._analogBase && r._analogBase.item) || m.item) : null;
             const op = bi ? this.ourUnitPriceOf(bi, r) : 0;
-            const ra = (bi && !r._locked && typeof RecognizeMatch !== 'undefined' && RecognizeMatch.rommerAlt)
-                ? RecognizeMatch.rommerAlt(bi, this._analogOn ? !!this._analogAny : true) : null;
+            const ra = (bi && (!r._locked || r._fromMem)) ? this.pairFor(r, bi, this._analogOn ? !!this._analogAny : true) : null;
             const bp = brand === 'rommer' ? (ra ? (this.ourUnitPriceOf(ra.item, r) || op) : op) : op;
             if (dp > 0 && op > 0 && qty > 0 && !r._priceAlarm) {
                 t.eqTheir += dp * qty; t.eqOur += bp * qty;
@@ -5743,6 +5749,8 @@ const RecognizeUI = {
                 badN ? chip('bad', `требуют решения ${badN}`) : '',
                 noQty ? chip('bad', `без количества ${noQty}`) : '',
                 this._deep ? chip('', `углублённо ${this._deep}`) : '',
+                this.noRommerPair().length ? chip('warn', `остались STOUT ${this.noRommerPair().length} — пары ROMMER нет`,
+                    'У этих позиций нет ROMMER-аналога в каталоге и прайсе: ' + this.noRommerPair().map(r => r._m.item.name).join('; ')) : '',
             ].filter(Boolean).join('');
             const secs = Math.round((this._elapsed || 0) / 1000);
             const min = Math.round(foundN * 40 / 60);
@@ -5869,7 +5877,7 @@ const RecognizeUI = {
             const m = r._m;
             if (!m || !m.item) continue;
             const base = (r._analogBase && r._analogBase.item) || m.item;
-            if (RecognizeMatch.rommerAlt(base, true)) pairs++;
+            if (this.pairFor(r, base, true)) pairs++;
         }
         if (!pairs && !this._analogOn) return '';
         const on = !!this._analogOn;
@@ -6724,8 +6732,7 @@ const RecognizeUI = {
             // смета «на ROMMER» всё равно наполовину STOUT. Включён режим «только
             // где дешевле» — считаем так же, чтобы цифры совпали с тем, что уедет.
             const anyAlt = this._analogOn ? !!this._analogAny : true;
-            const ra = (bi && !r._locked && typeof RecognizeMatch !== 'undefined' && RecognizeMatch.rommerAlt)
-                ? RecognizeMatch.rommerAlt(bi, anyAlt) : null;
+            const ra = (bi && (!r._locked || r._fromMem)) ? this.pairFor(r, bi, anyAlt) : null;
             const rp = ra ? (this.ourUnitPriceOf(ra.item, r) || op) : op;
             const bp = brand === 'rommer' ? rp : op;
             const dSum = dp * qty;
@@ -7078,6 +7085,14 @@ const RecognizeUI = {
         this.renderReview();
     },
 
+    /** ROMMER-пара строки: из каталога, по артикулу или по названию (см. RecognizeMatch.rommerPair). */
+    pairFor(r, item, any) {
+        if (typeof RecognizeMatch === 'undefined' || !item) return null;
+        if (!any) return RecognizeMatch.rommerAlt ? RecognizeMatch.rommerAlt(item, false) : null;
+        const sys = (this._sys && this._sys.main) || null;
+        return RecognizeMatch.rommerPair ? RecognizeMatch.rommerPair(r, item, sys, this.docPrice(r)) : null;
+    },
+
     /** Вернуть исходные позиции вместо аналогов. */
     revertAnalog() {
         for (const r of this._rows) {
@@ -7104,8 +7119,10 @@ const RecognizeUI = {
         let saved = 0, n = 0;
         for (const r of this._rows) {
             const m = r._m;
-            if (!m || !m.item || r._locked) continue;
-            const alt = RecognizeMatch.rommerAlt(m.item, !!any);
+            // Выбор человека не трогаем, а прошлую замену из памяти — можно: она
+            // про артикул, а бренд сметы сейчас выбран другой.
+            if (!m || !m.item || (r._locked && !r._fromMem)) continue;
+            const alt = this.pairFor(r, m.item, !!any);
             if (!alt) continue;
             r._analogBase = m;
             saved += alt.save * ((Number(r.qty) || 0) + (Number(r.qtyExtra) || 0));

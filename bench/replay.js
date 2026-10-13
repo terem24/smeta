@@ -52,6 +52,17 @@ for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json')).sort()) {
         try { out.html = ''; fn(); if (!out.html.includes(needle)) throw new Error('в выводе нет «' + needle + '»'); }
         catch (e) { bad++; console.log(`FAIL экран «${name}»: ${e.message}`); }
     }
+    // Режим ROMMER: везде, где у позиции есть пара, в смету идёт ROMMER.
+    if (c.rommer) {
+        U.setBrand('rommer');
+        for (const [no, want] of Object.entries(c.rommer)) {
+            const r = U._rows.find((x) => x.docNo === no);
+            const got = r && r._m && r._m.item ? String(r._m.item.article || r._m.item.id) : null;
+            total++;
+            if (got !== want) { bad++; console.log(`FAIL ROMMER, строка ${no}: ${got || '—'} (ждали ${want})`); }
+        }
+        U.setBrand('stout');
+    }
     // Серия уверенных строк сворачивается, а по клику раскрывается.
     if (c.foldCheck) {
         total++;

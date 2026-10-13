@@ -1119,8 +1119,6 @@ const RecognizeMatch = (function () {
   const EQUIVALENTS = [
     // Спецификации Galf Design: Ridan, Giacomini и Elsen в прайсе нет, а изделия
     // у STOUT и ROMMER есть — слова названий разные, поэтому замена задана явно.
-    { test: /балансировочн[\s\S]*mvt-?r[\s\S]*(ду|dn)\s*20/i, id: 'SVL-1176-000020',
-      note: 'прямая замена: балансировочный клапан Ридан MVT-R Ду 20 → STOUT запорно-балансировочный прямой 3/4"' },
     // Коллектор с регулирующими клапанами 1" × N × 3/4": у ROMMER хромированная серия RMB-0004.
     { test: /коллектор[\s\S]*регулирующ[\s\S]*1\s*["”']?\s*[xх×]\s*[234]\s*[xх×]\s*3\/4/i,
       id: (raw) => { const n = (raw.match(/1\s*["”']?\s*[xх×]\s*([234])\s*[xх×]\s*3\/4/i) || [])[1]; return n ? 'SMB-6850-01340' + n : null; },
@@ -5055,6 +5053,70 @@ const RecognizeMatch = (function () {
     };
   }
 
+  /**
+   * ROMMER-пара позиции для режима «смета на ROMMER».
+   *
+   * Связь поля rommer есть только у каталожных позиций, а ROMMER-версия лежит
+   * и в прайсе: «Угольник настенный с креплением 16» STOUT (SFA-0009-001612)
+   * имел пару RFA-0009-001612, но без связи подбор её не видел, и в смету «на
+   * ROMMER» уезжал STOUT. Ищем пару в три шага, от надёжного к догадке:
+   *   1. связь rommer в каталоге (rommerAlt);
+   *   2. тот же артикул с первой буквой R вместо S — так ROMMER нумерует фитинги
+   *      (SFA-0009-001612 → RFA-0009-001612);
+   *   3. позиция ROMMER того же предмета с тем же набором размеров в названии.
+   * Возвращает { item, save, percent, by } или null — тогда строка остаётся STOUT,
+   * и это видно на экране.
+   */
+  function rommerPair(rec, item, sysHint, docPrice) {
+    if (!item || brandOfItem(item) === 'ROMMER') return null;
+    const base = Number(item.price) || 0;
+    const wrap = (it, by) => ({
+      item: Object.assign({}, it, { brand: it.brand || 'ROMMER' }),
+      save: base - (Number(it.price) || 0),
+      percent: base ? Math.round((1 - (Number(it.price) || 0) / base) * 100) : 0,
+      by,
+    });
+    const link = rommerAlt(item, true);
+    if (link) return Object.assign({}, link, { by: 'связь' });
+
+    // Пары, которые ни связью, ни названием не найти: у STOUT это «Евроконус 16x2.2»,
+    // у ROMMER — «Переходник с накидной гайкой (евроконус) 16xG 3/4».
+    const KNOWN = { 'SFC-0020-001622': 'RFA-0034-001634', 'SFC-0020-002028': 'RFA-0034-002034' };
+    const a = String(item.article || item.id || '');
+    if (KNOWN[a]) {
+      const hit = itemByArticle(KNOWN[a]);
+      if (hit && Number(hit.price) > 0) return wrap(hit, 'таблица пар');
+    }
+    const m = a.match(/^S([A-Z]{2,3}-\d{4}-\d+)$/);
+    if (m) {
+      const hit = itemByArticle('R' + m[1]);
+      if (hit && Number(hit.price) > 0) return wrap(hit, 'артикул');
+    }
+
+    const nums = (t) => new Set(String(t || '').match(/\d+(?:\/\d+)?/g) || []);
+    // Признаки исполнения: одинаковые размеры у настенного угольника и угольника
+    // с резьбой — разные изделия. «Угольник-переходник с резьбой» и «угольник с
+    // резьбой» — одно и то же, слово «переходник» при резьбе ничего не добавляет.
+    const traits = (t) => {
+      const x = String(t || '').toLowerCase();
+      const thread = /резьб/.test(x);
+      return [/настенн/.test(x), /проточн/.test(x), /удлин/.test(x), /внутренн/.test(x), /наружн/.test(x),
+        !thread && /переход/.test(x), /американк|сгон/.test(x), /тупиков/.test(x)].join();
+    };
+    const want = nums(item.name);
+    if (!want.size) return null;
+    let vars;
+    try { vars = variantsOf(rec || { raw: item.name }, item, sysHint, docPrice, 8).rommer; } catch (e) { return null; }
+    for (const it of vars) {
+      const have = nums(it.name);
+      if (have.size === want.size && [...want].every((x) => have.has(x)) && kindOfName(it.name) === kindOfName(item.name)
+          && traits(it.name) === traits(item.name)) {
+        return wrap(it, 'название');
+      }
+    }
+    return null;
+  }
+
   /** Позиция каталога по id — для поиска поля rommer у прайсовой находки. */
   function findById(id) {
     if (!id || typeof catalog === 'undefined') return null;
@@ -6563,7 +6625,12 @@ const RecognizeMatch = (function () {
     // codes[0] — код, как он стоит в колонке; склейки «SMB 6851 013402» идут следом.
     const sys = specSystem(rec.raw, sp.codes && sp.codes[0], sp.maker);
     let m = null;
-    try { m = matchItem(rec, sys || sysHint); } catch (e) { m = null; }
+    // Система названа производителем или кодом (Elsen, EF…) — она главнее типа от
+    // модели: «Угольник 90° DN32, Elsen» приходит с типом угол_ppr, и подбор
+    // ставил полипропиленовый угольник (а потом защита отклоняла его и строка
+    // оставалась без пары), хотя аксиальный SFA-0007 лежит в каталоге.
+    const forced = sys ? Object.assign({}, rec, { _forceSys: sys }) : rec;
+    try { m = matchItem(forced, sys || sysHint); } catch (e) { m = null; }
     // Поиск по признакам — когда подбор по словам ничего не дал или все его
     // кандидаты отклонены защитой.
     const byFeatures = () => {
@@ -6626,7 +6693,7 @@ const RecognizeMatch = (function () {
     // Тип, выведенный из текста строки: нужен интерфейсу проверки, чтобы
     // строка-повтор наследовала предмет от той, что действительно назвала его.
     typeOf: (rec) => (normalizeType(rec).type || '').toLowerCase(),
-    matchPrice, matchByName, explainMiss, rommerAlt, packSize, packArea, pipeCoil, setPriceIndex, hasPriceIndex, convert, total,
+    matchPrice, matchByName, explainMiss, rommerAlt, rommerPair, packSize, packArea, pipeCoil, setPriceIndex, hasPriceIndex, convert, total,
     // Материал, названный в строке, и его имя по-русски: экран проверки пишет
     // им, чего именно у нас нет («полипропиленовой позиции такого размера»).
     namedSystem, systemLabel,
