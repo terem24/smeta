@@ -23653,7 +23653,11 @@ const app = {
                 await new Promise(res => setTimeout(res, 800));
                 usersRes = await runUsersQuery();
             }
-            if (!(usersRes.data || []).length && offset === 0) {
+            // Пустой ответ при включённом отборе — законный результат, а не сбой сети:
+            // повтор с паузой делаем только для списка без фильтров и поиска
+            const _pf = this._pendingAdminFilters || {};
+            const _filtered = !!_pf.search || Object.keys(this.USERS_FILTER_DEFAULTS).some(k => (_pf[k] || '') !== (this.USERS_FILTER_DEFAULTS[k] || ''));
+            if (!(usersRes.data || []).length && offset === 0 && !_filtered) {
                 await new Promise(res => setTimeout(res, 800));
                 try { const r2 = await runUsersQuery(); if ((r2.data || []).length) usersRes = r2; } catch (e2) { }
             }
@@ -25891,6 +25895,7 @@ const app = {
         const isViewer = this.isReadOnlyAdmin(); // наблюдатель или менеджер: панель только на просмотр
         const content = document.getElementById('admin_content');
         if (!content) return;
+        content.classList.remove('ad-busy');
         this.closeUserPeek();
         this.watchAdminStyle();
 
@@ -38060,6 +38065,9 @@ const app = {
         const inp = document.getElementById('admin_search_input');
         if (inp) inp.value = search || '';
         this._pendingAdminSearch = search || '';
+        // Мгновенный отклик: загрузка идёт секунды, а таблица до конца стояла как есть
+        const box = document.getElementById('admin_content');
+        if (box) box.classList.add('ad-busy');
         this.loadAdminData(0);
     },
     applyUsersSegment: function (id) {
