@@ -37623,6 +37623,12 @@ const app = {
     sgLab: function (kind) {
         return this.SELF_GROUP_LABELS[kind === 'dhw' ? 'direct' : kind];
     },
+    // Название насоса на подписи схемы: STOUT по умолчанию, ROMMER — когда у «2. Обвязка котельной» включён аналог (как в selfPumpHasNuts).
+    sgPumpText: function () {
+        const so = (this.state.sectionAnalog || {})['2. Обвязка котельной'];
+        const rom = so !== undefined ? so : this.state.brandMode === 'rommer';
+        return rom ? 'Циркуляционный насос ROMMER PROFI 25/60-180' : 'Циркуляционный насос STOUT SPC 25/60-180';
+    },
     sgRule: function (text) {
         return this.SELF_LABEL_RULES.find(r => r[0].test(String(text || ''))) || null;
     },
@@ -37823,7 +37829,15 @@ const app = {
         const lab = sgKind && this.SELF_GROUP_LABELS ? this.sgLab(sgKind) : null;
         if (lab) {
             const sc = Math.min(a.w / lab.w, a.h / lab.h), ox = (a.w - lab.w * sc) / 2, oy = (a.h - lab.h * sc) / 2;
-            overlay = lab.l.map((l, i) => {
+            // Подписи рисуем сами, шрифтом листов проекта: на картинке они стёрты. Текст начинается у левого края рамки подписи,
+            // выноска с точкой идёт от правого края (или от левого, если точка слева) — как на исходном листе.
+            const fnt = (window.projectSheets && window.projectSheets.FONT) || "'ISOCPEUR','GOST type A','Arial Narrow',sans-serif";
+            const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            overlay = lab.l.map(l => {
+                const text = /^Циркуляц/.test(l[0]) ? this.sgPumpText() : l[0];
+                const x = Math.round(ox + l[1] * sc), y = Math.round(oy + (l[2] + l[4]) / 2 * sc);
+                return `<text class="sg-label" x="${x}" y="${y}" font-family="${esc(fnt)}" font-size="${Math.round(13 * sc)}" dominant-baseline="middle" fill="#222">${esc(text)}</text>`;
+            }).join('') + lab.l.map((l, i) => {
                 const ok = this.sgRows(sgKind, this.sgRule(l[0])).length > 0;
                 const r = (v, o) => Math.round(o + v * sc);
                 const tip = ok ? '' : '<title>Этой позиции со схемы нет в смете</title>';

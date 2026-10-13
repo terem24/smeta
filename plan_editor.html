@@ -460,7 +460,7 @@ var DATA = { floors: [{ img: null, w: 0, h: 0, pxPerM: 0, zones: [], rads: [] }]
 var cur = 0, mode = 'select', tmp = [], scalePts = [], dragA = null, imgCache = {};
 var scaleCur = null, scaleFree = false;   // след масштабной линейки и режим угла
 var imgFailed = {};   // этажи, чью подложку не удалось забрать с сервера
-var polyCur = null, closeTs = 0, undoStack = [];
+var polyCur = null, closeTs = 0, undoStack = [], redoStack = [];
 var TYPES = { tp: ['Тёплый пол', '#ff8000'], rad: ['Радиаторы', '#d22'],
   boiler: ['Котельная', '#5577aa'], wc: ['Санузел', '#0b7285'],
   // лестница, колонна, ванна, шкаф внутри тёплого пола — петли и подводки обходят
@@ -1429,6 +1429,31 @@ function chamferDist(B, W, H) {
  *  линии между простенками, и комната «вытекает» через окно на улицу. Поэтому
  *  тонкое возвращаем, если оно у самой стены (ближе 0,35 м): остекление и
  *  откосы встают на место, а трубы и подписи посреди комнаты остаются стёртыми. */
+/** Мебель и сантехника — мелкие тёмные фигуры внутри комнат (диван, ванна, шкаф,
+ *  штриховка). Стена — длинная связная линия, у мебели габариты меньше метра с
+ *  небольшим. Компоненты тёмной маски, у которых обе стороны короче minM метров,
+ *  стираем: они не делят комнату. Проверяем на связность 4-соседями. */
+function furnitureClear(bar, W, H, ppm, minM) {
+  var N = W * H, lab = new Int32Array(N), st = new Int32Array(N), L = 0, keep = [0];
+  var lim = (minM || 1.2) * ppm;
+  for (var i = 0; i < N; i++) {
+    if (!bar[i] || lab[i]) continue;
+    L++; var sp = 0, n = 0; st[sp++] = i; lab[i] = L;
+    var x0 = W, x1 = -1, y0 = H, y1 = -1;
+    while (sp) {
+      var c = st[--sp], cx = c % W, cy = (c - cx) / W; n++;
+      if (cx < x0) x0 = cx; if (cx > x1) x1 = cx; if (cy < y0) y0 = cy; if (cy > y1) y1 = cy;
+      if (cx && bar[c - 1] && !lab[c - 1]) { lab[c - 1] = L; st[sp++] = c - 1; }
+      if (cx < W - 1 && bar[c + 1] && !lab[c + 1]) { lab[c + 1] = L; st[sp++] = c + 1; }
+      if (cy && bar[c - W] && !lab[c - W]) { lab[c - W] = L; st[sp++] = c - W; }
+      if (cy < H - 1 && bar[c + W] && !lab[c + W]) { lab[c + W] = L; st[sp++] = c + W; }
+    }
+    keep.push(Math.max(x1 - x0, y1 - y0) >= lim ? 1 : 0);
+  }
+  for (var j = 0; j < N; j++) if (lab[j] && !keep[lab[j]]) bar[j] = 0;
+  return bar;
+}
+
 function cleanBar(bar, W, H, ppm) {
   var N = W * H, i, C0 = new Uint8Array(bar);
   openThin(C0, W, H, ppm);
@@ -1508,8 +1533,11 @@ function labelRooms() {
   // мелкий масштаб, где их больше. Режим 'clean' ищет комнаты по маске без
   // тонкого (openThin): стена остаётся, трубы и текст уходят. Режим выбирает
   // подбор масштаба (guessScale) и запоминает за этажом.
-  var B = m.bar;
-  if (mode === 'clean') B = cleanBar(m.bar, W, H, ppm);
+  // Мебель и сантехника стираются из маски до поиска комнат: мелкие тёмные
+  // фигуры внутри комнаты не должны резать её на куски (1,2 м — порог габарита)
+  var base = furnitureClear(new Uint8Array(m.bar), W, H, ppm, 1.2);
+  var B = base;
+  if (mode === 'clean') B = cleanBar(base, W, H, ppm);
   var d = chamferDist(B, W, H), i, x, y;
   var r = Math.max(3, Math.round(0.63 * ppm));
   var lab = new Int32Array(N), q = new Int32Array(N), qt = 0, L = 0;
@@ -1534,7 +1562,7 @@ function labelRooms() {
     if (id2 >= W && d[id2 - W] > 0 && !lab[id2 - W]) { lab[id2 - W] = Lc; q[qt++] = id2 - W; }
     if (id2 < N - W && d[id2 + W] > 0 && !lab[id2 + W]) { lab[id2 + W] = Lc; q[qt++] = id2 + W; }
   }
-  if (mode === 'raw' && L && GROW_ROOMS) growToWalls(lab, m.bar, W, H, ppm);
+  if (mode === 'raw' && L && GROW_ROOMS) growToWalls(lab, base, W, H, ppm);
   var cnt = new Int32Array(L + 1), edge = new Uint8Array(L + 1);
   var mn = new Int32Array(L + 1);
   for (i = 0; i <= L; i++) mn[i] = -1;
@@ -1569,7 +1597,9 @@ function traceLabel(m, L) {
     x += DX[dir]; y += DY[dir];
   } while (!(x === bx && y === by) && ++steps < maxSteps);
   if (pts.length < 8 || steps >= maxSteps) return null;
-  var simp = dpSimp(pts, 2.4);
+  // Контур комнаты: допуск — 0,1 м, а не 2,4 px. Иначе каждая неровность стены
+  // (пиксельная ступенька, штриховка у края) — отдельная ломаная линия.
+  var simp = dpSimp(pts, Math.max(2.4, 0.1 * (F().pxPerM || 100)));
   if (simp.length < 3 || simp.length > 200) return null;
   return simp.map(function (q) { return [Math.round(q[0] / m.k), Math.round(q[1] / m.k)]; });
 }
@@ -1606,8 +1636,8 @@ function roomAtPoint(ix, iy) {
   if (!L || m.labEdge[L]) return null;
   var ppm = (F().pxPerM || 100) * m.k;
   var m2 = m.labCnt[L] / (ppm * ppm);
-  if (m2 < 1 || m2 > 200) return null;
-  return traceLabel(m, L);
+  var pts = traceLabel(m, L);
+  return (pts && roomShapeOk(m2, pts, F().pxPerM || 100)) ? pts : null;
 }
 
 /** Прилипание краёв прямоугольника к внутренним граням стен (±20 px плана) */
@@ -1984,6 +2014,18 @@ function detectWindows() {
 }
 
 /** Все комнаты этажа из разметки watershed: [{pts, m2}] без «улицы» и мелочи */
+/** Похоже ли на комнату: не больше 70 м² и не рваная по форме. ppmImg — пикселей
+ *  картинки на метр (контур идёт в пикселях картинки, площадь — в маске). Улица и
+ *  наружная «полоса» за домом, которая утекла через открытые проёмы, — большие
+ *  и изрезанные: их площадь заливки в разы больше любой комнаты квартиры, а
+ *  занимаемый ими прямоугольник заполнен плохо (доля < 0,3). */
+function roomShapeOk(m2, pts, ppmImg) {
+  if (!(m2 >= 1) || m2 > 70) return false;
+  var xs = pts.map(function (q) { return q[0]; }), ys = pts.map(function (q) { return q[1]; });
+  var box = (Math.max.apply(null, xs) - Math.min.apply(null, xs)) * (Math.max.apply(null, ys) - Math.min.apply(null, ys));
+  return box > 0 && m2 * ppmImg * ppmImg / box > 0.3;   // доля площади в описывающем прямоугольнике
+}
+
 function enumerateRooms() {
   var m = labelRooms(); if (!m) return [];
   var ppm = (F().pxPerM || 100) * m.k, p2 = ppm * ppm;
@@ -1993,7 +2035,7 @@ function enumerateRooms() {
     var m2 = m.labCnt[L] / p2;
     if (m2 < 1.5 || m2 > 130) continue;
     var pts = traceLabel(m, L);
-    if (pts) out.push({ pts: pts, m2: m2 });
+    if (pts && roomShapeOk(m2, pts, F().pxPerM || 100)) out.push({ pts: pts, m2: m2 });
   }
   return out;
 }
@@ -2120,9 +2162,102 @@ function scaleTargets() {
  *  через проёмы или рассыпаются на куски. Поэтому идём лесенкой пробных
  *  масштабов, у каждого меряем согласие с расчётом, а лучший уточняем ещё
  *  дважды — уже на его собственной сегментации. */
+/** Итог этажа для сверки. Зоны, созданные по площади экспликации (calc), сверяем с
+ *  её итогом; остальные — комнаты с подписями на плане вне экспликации (Хамам, Баня…). */
+function floorSumNote() {
+  var zs = F().zones || [], keyed = {}, extra = 0;
+  zs.forEach(function (z) {
+    var a = +zoneM2(z) || 0;
+    if (!z.calc) { extra += a; return; }
+    var k = (z.roomId != null ? 'id' + z.roomId : 'n' + (z.name || ''));
+    keyed[k] = Math.max(keyed[k] || 0, a);
+  });
+  var matched = Object.keys(keyed).reduce(function (s, k) { return s + keyed[k]; }, 0);
+  var expl = calcRooms.filter(function (r) { return (+r.floor || 1) === cur + 1 && r.area > 0; })
+    .reduce(function (s, r) { return s + r.area; }, 0);
+  var f1 = function (x) { return x.toFixed(1).replace('.', ','); };
+  if (!expl) return ' Сумма зон этажа: ' + f1(matched + extra) + ' м².';
+  var dev = (matched - expl) / expl * 100;
+  return ' По экспликации: ' + f1(matched) + ' из ' + f1(expl) + ' м² — ' +
+    (Math.abs(dev) <= 5 ? 'сходится.' : 'расхождение ' + (dev > 0 ? '+' : '') + dev.toFixed(0) + ' %.') +
+    (extra > 0.05 ? ' Вне экспликации (подписи на плане): ' + f1(extra) + ' м².' : '');
+}
+
+/** Выпуклая оболочка точек [[x,y],…] — алгоритм цепочки Эндрю. */
+function convexHull(pts) {
+  var P = pts.map(function (q) { return [q[0], q[1]]; }).sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+  if (P.length < 3) return P;
+  var cross = function (o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); };
+  var lo = [], up = [], i;
+  for (i = 0; i < P.length; i++) { while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], P[i]) <= 0) lo.pop(); lo.push(P[i]); }
+  for (i = P.length - 1; i >= 0; i--) { while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], P[i]) <= 0) up.pop(); up.push(P[i]); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
+}
+
+/** Сопоставление зон этажа с площадями экспликации — по всему этажу, а не по одной комнате.
+ *  Каждой целевой площади (от большей к меньшей) ставим одну зону или пару соседних,
+ *  чья сумма ближе всего к ней, в пределах 15 %. Пару берём только если она заметно
+ *  точнее одиночной (на 5 % и больше): иначе правильную комнату разрежем надвое.
+ *  Пара — это разбивка одной комнаты на части (дверь, мебель). Возвращает
+ *  [{ t: индекс цели, idx: [индексы зон], e: относительная ошибка }]. */
+function matchAreasFloor(cands, targets) {
+  var used = {}, out = [];
+  var order = targets.map(function (t, i) { return i; })
+    .sort(function (a, b) { return targets[b].area - targets[a].area; });
+  order.forEach(function (ti) {
+    var t = targets[ti].area, best = null;
+    for (var i = 0; i < cands.length; i++) {
+      if (used[i]) continue;
+      var e1 = Math.abs(cands[i].m2 - t) / t;
+      if (!best || e1 < best.e) best = { idx: [i], e: e1 };
+      for (var j = i + 1; j < cands.length; j++) {
+        if (used[j]) continue;
+        var e2 = Math.abs(cands[i].m2 + cands[j].m2 - t) / t;
+        if (e2 < best.e - 0.05) best = { idx: [i, j], e: e2 };
+      }
+    }
+    if (best && best.e <= 0.15) {
+      best.idx.forEach(function (k) { used[k] = 1; });
+      out.push({ t: ti, idx: best.idx, e: best.e });
+    }
+  });
+  return out;
+}
+
+/** Масштаб перебором: для каждого пробного масштаба (40…130 px/м, обе маски)
+ *  считаем, сколько площадей с плана совпало с целевыми один к одному (±15 %).
+ *  Истинный масштаб даёт больше всего совпадений; удвоенный или половинный —
+ *  меньше. Это надёжнее подгонки множителя: та на удвоенном масштабе сводила
+ *  7 из 11 площадей экспликации (площадь «в два раза больше»). Ничья — меньший
+ *  масштаб и «сырая» маска. */
+function scaleByMatch(targets) {
+  var best = null;
+  ['raw', 'clean'].forEach(function (mode) {
+    for (var ppmTry = 40; ppmTry <= 130; ppmTry += 4) {
+      var meas = roomAreasAt(ppmTry, mode), used = {}, ok = 0;
+      targets.forEach(function (t) {
+        var bi = -1, bd = 1e9;
+        meas.forEach(function (a, i) {
+          if (used[i]) return;
+          var d = Math.abs(a - t) / t;
+          if (d < bd) { bd = d; bi = i; }
+        });
+        if (bi >= 0 && bd <= 0.15) { used[bi] = 1; ok++; }
+      });
+      if (!best || ok > best.ok || (ok === best.ok && mode === 'raw' && best.mode === 'clean')) {
+        best = { ppm: ppmTry, ok: ok, mode: mode, total: targets.length };
+      }
+    }
+  });
+  return best;
+}
+
 function guessScale() {
   var targets = scaleTargets();
   if (targets.length < 2) return null;
+  // Сначала перебор по совпадениям: устойчив к удвоению масштаба
+  var byMatch = scaleByMatch(targets);
+  if (byMatch && byMatch.ok >= Math.min(3, targets.length)) return byMatch;
   // Подбор по одной маске: обычной ('raw') либо очищенной от тонкого ('clean')
   var score = function (ok, n) { return matchScore(ok, n, targets.length); };
   var fitMode = function (mode) {
@@ -2184,6 +2319,29 @@ function doorCheck(ppm) {
   return dw;
 }
 
+/** Масштаб по дверным проёмам: двери на жилом плане — одного размера, 0,9 м.
+ *  Медиана ширины проёмов в пикселях даёт пикселей в метре. Ширина меряется при
+ *  масштабе, от которого зависят размеры проёмов в детекторе, поэтому пробуем
+ *  лесенку масштабов и берём точку, где он сходится сам с собой (± 25 %).
+ *  null — проёмов мало или ширины разъехались. */
+function doorScale() {
+  var f = F(), was = f.pxPerM, best = null;
+  try {
+    [40, 70, 110, 170, 260].forEach(function (t) {
+      f.pxPerM = t; resetScaleCaches();
+      detectWindows();
+      if (DOORS.length < 2) return;
+      var ws = DOORS.map(function (d) { return d.w; }).sort(function (a, b) { return a - b; });
+      var med = ws[ws.length >> 1];
+      var same = ws.filter(function (w) { return Math.abs(w - med) / med < 0.15; }).length;
+      var ppm = med / 0.9;
+      if (same < 2 || ppm < 10 || ppm > 600 || ppm / t < 0.75 || ppm / t > 1.33) return;
+      if (!best || same > best.n) best = { ppm: ppm, n: same, w: med };
+    });
+  } finally { f.pxPerM = was; resetScaleCaches(); }
+  return best;
+}
+
 /** Кнопка «Подобрать масштаб», она же автоподбор при загрузке плана.
  *  silent — молчать о неудаче: при загрузке плана комнат в расчёте может и
  *  не быть, ругаться тут не на что. */
@@ -2216,6 +2374,21 @@ function autoScale(silent) {
   } else {
     var nd = (SCAN_DIMS[cur] || []).length;
     scanWhy(nd ? 'линий принято ' + nd + ', но согласованных меньше двух (разброс больше 10 %)' : 'размерных линий нет');
+  }
+  // Без размеров чертежа — двери 0,9 м: надёжнее подбора по площадям, который
+  // зависит от того, что уже прочитано и посчитано.
+  if (!d) {
+    var ds = null;
+    try { ds = doorScale(); } catch (e) { console.error('[plan_editor] doors:', e); }
+    if (ds) {
+      if (!silent) pushUndo('scale');
+      F().pxPerM = ds.ppm;
+      resetScaleCaches();
+      renderZones(); draw(); updateGuide();
+      hint('<span class=ok>Масштаб взят по дверным проёмам</span> (проёмов ' + ds.n +
+        ', ширина ' + ds.w.toFixed(0) + ' px ≈ 0,9 м). Проверьте кнопкой «Масштаб» по любому известному размеру.');
+      return true;
+    }
   }
   var g = null;
   try { g = guessScale(); } catch (e) { console.error('[plan_editor] scale:', e); }
@@ -2381,6 +2554,8 @@ function autoMarkAll() {
     if (UFH) {
       // что делать дальше, скажет строка мастера; здесь — только итог
       hint(F().pxPerM ? '<span class=ok>Найдено комнат: ' + zones + (rads ? ', радиаторов под окнами: ' + rads : '') + '.</span>' + lastRoomsNote +
+        (zones ? '' : ' ' + (lastRoomsWhy || 'комнаты не найдены')) +
+        (zones ? floorSumNote() : '') +
         (bad.length ? ' <b>Осталось руками:</b> ' + bad.join('; ') + '.' : '') : '');
       return;
     }
@@ -2428,8 +2603,10 @@ function hasBoilerZone() {
  *  котельная и санузлы, тип берётся из самой комнаты (zoneKindsOfRoom).
  *  Сопоставление по площади (лучшие пары, допуск 25% или 2 м²); без расчёта —
  *  зоны ТП для всех найденных комнат. Уже размеченные комнаты не трогаются. */
-var lastRoomsNote = '';   // итог сверки с подписанными площадями — для строки «Найдено комнат…»
+var lastRoomsNote = '';
+var lastRoomsWhy = '';   // почему комнаты не нашлись — для итоговой строки   // итог сверки с подписанными площадями — для строки «Найдено комнат…»
 function autoRooms() {
+  lastRoomsWhy = '';
   // Масштаба ещё нет — берём сами (размеры чертежа, двери, площади комнат), а не отправляем
   // монтажника за кнопкой. Спрашиваем руками только когда само не вышло.
   if (!F().pxPerM) { try { autoScale(true); } catch (e) { console.error('[plan_editor] scale:', e); } }
@@ -2459,7 +2636,9 @@ function autoRooms() {
     else { if (mode0) fl0.roomMask = mode0; else delete fl0.roomMask; resetScaleCaches(); }
   }
   if (!rooms.length) {
-    hint('Комнаты распознать не удалось (пёстрая подложка?) — обведите зоны вручную.');
+    lastRoomsWhy = !getMask() ? 'подложка ещё не прочитана — подождите секунду и нажмите «Найти комнаты» снова'
+      : 'контуры комнат не замкнулись (проёмы, рамка листа, пёстрая подложка) — обведите зоны вручную';
+    hint('Комнаты распознать не удалось: ' + lastRoomsWhy + '.');
     return;
   }
   // Подписи площадей на плане (PDF): сверяем масштаб и выбираем вариант контура,
@@ -2491,25 +2670,30 @@ function autoRooms() {
   pushUndo('zones');
   var made = 0, missed = [], cnt = {}, boiler = hasBoilerZone() || cur !== 0;   // на 2 этаже котельную не заводим
   if (targets.length) {
-    var pairs = [];
-    targets.forEach(function (t, ti) {
-      var typed = zoneKindsOfRoom(t).length ? 0 : 1;
-      free.forEach(function (c, ci) { pairs.push([Math.abs(c.m2 - t.area), ti, ci, typed]); });
-    });
-    // При равной разнице площадей первыми выбирают комнаты, которым нужна
-    // зона: как было, пока в сопоставлении участвовали только они
-    pairs.sort(function (a, b) { return (a[0] - b[0]) || (a[3] - b[3]); });
+    // Сопоставление по всему этажу: одна зона или пара соседних (разбитая дверью
+    // или мебелью комната). Пару склеиваем выпуклой оболочкой, только если её
+    // площадь сходится с экспликацией в пределах 15 %; иначе берём одну, ближе всего.
+    var mm = matchAreasFloor(free.map(function (c) { return { m2: c.m2 }; }),
+      targets.map(function (t) { return { area: t.area }; }));
     var tU = {}, cU = {};
-    pairs.forEach(function (p) {
-      if (tU[p[1]] || cU[p[2]]) return;
-      var t = targets[p[1]];
-      if (p[0] > Math.max(2, 0.25 * t.area)) return;
-      tU[p[1]] = 1; cU[p[2]] = 1;
-      var pts = fitZonePts(free[p[2]].pts, F().pxPerM || 100, free[p[2]].printed);
+    mm.forEach(function (x) {
+      var t = targets[x.t], src = null, printed = null;
+      if (x.idx.length === 2) {
+        var hull = convexHull(free[x.idx[0]].pts.concat(free[x.idx[1]].pts));
+        if (hull.length >= 3 && Math.abs(area(hull) - t.area) / t.area <= 0.15) {
+          src = hull;
+        } else {
+          var k0 = Math.abs(free[x.idx[0]].m2 - t.area) <= Math.abs(free[x.idx[1]].m2 - t.area) ? x.idx[0] : x.idx[1];
+          x.idx = [k0];
+        }
+      }
+      if (!src) { src = free[x.idx[0]].pts; printed = free[x.idx[0]].printed; }
+      tU[x.t] = 1; x.idx.forEach(function (k) { cU[k] = 1; });
+      var pts = fitZonePts(src, F().pxPerM || 100, printed);
       // Раскладка: у комнаты без своего типа — контур «Помещение», чтобы
       // клик по ней включал тёплый пол, а не искал стены заново
       if (UFH && !zoneKindsOfRoom(t).length) {
-        F().zones.push({ type: 'room', name: t.name, roomId: (t.id != null ? t.id : null), pts: pts });
+        F().zones.push({ type: 'room', name: t.name, roomId: (t.id != null ? t.id : null), pts: pts, calc: 1 });
         cnt.room = (cnt.room || 0) + 1; made++;
       }
       zoneKindsOfRoom(t).forEach(function (kind) {
@@ -2517,12 +2701,17 @@ function autoRooms() {
         // доме она одна — по ней собирается компоновка.
         if (kind === 'boiler' && boiler) return;
         if (kind === 'boiler') boiler = true;
-        F().zones.push({ type: kind, name: t.name, roomId: (t.id != null ? t.id : null), pts: pts });
+        F().zones.push({ type: kind, name: t.name, roomId: (t.id != null ? t.id : null), pts: pts, calc: 1 });
         cnt[kind] = (cnt[kind] || 0) + 1;
         made++;
       });
     });
-    targets.forEach(function (t, ti) { if (!tU[ti] && zoneKindsOfRoom(t).length) missed.push(t.name); });
+
+    // Комната расчёта без контура на плане — называем её с площадью: монтажник
+    // отметит её вручную. В тепловом режиме нужны все комнаты, не только типовые.
+    targets.forEach(function (t, ti) {
+      if (!tU[ti] && (UFH || zoneKindsOfRoom(t).length)) missed.push((t.name || 'комната') + ' ' + t.area.toFixed(1).replace('.', ',') + ' м²');
+    });
   }
   // Зоны ТП на все найденные комнаты — только когда расчёта по этажу нет вовсе
   // (как и сказано в описании кнопки). Комнаты в расчёте есть, но типовые не
@@ -2536,7 +2725,6 @@ function autoRooms() {
       F().zones.push({ type: 'room', name: c.pname || '', nameSrc: c.pname ? 'plan' : undefined, pts: fitZonePts(c.pts, F().pxPerM || 100, c.printed) });
       cnt.room = (cnt.room || 0) + 1; made++;
     });
-    missed = [];
   }
   if (!made && !targets.length) {
     free.forEach(function (c) {
@@ -2573,12 +2761,12 @@ function autoRooms() {
     // режим на плане ведёт мастер (wzGo): на шаге «Комнаты» клик не должен включать тёплый пол
     renderZones(); draw();
     hint('<span class=ok>Найдено комнат: ' + rooms.length + '.</span> ' +
-      (cnt.tp ? 'Тёплый пол из расчёта уже отмечен: ' + cnt.tp + '.' : '') + lastRoomsNote);
+      (cnt.tp ? 'Тёплый пол из расчёта уже отмечен: ' + cnt.tp + '.' : '') + lastRoomsNote + floorSumNote());
     return;
   }
   hint('<span class=ok>Найдено комнат: ' + rooms.length + ', создано зон: ' +
     (parts.length ? parts.join(', ') : '0') + '.</span>' +
-    (missed.length ? ' Не совпали по площади: ' + missed.join(', ') + ' — обведите вручную.' : '') +
+    (missed.length ? ' Не совпали по площади: ' + missed.join(', ') + ' — обведите вручную.' : '') + floorSumNote() +
     (hasBoilerZone() ? '' : ' Котельную отметьте сами (тип зоны «Котельная») — ' +
       'без неё проект не выпускается.') +
     ' Лишние зоны удаляйте крестиком, имена правятся в списке.');
@@ -3817,6 +4005,7 @@ function acceptAllDisputed() {
 
 /** Площадь зоны для списка и расчёта: напечатанная на плане (PDF), пока контур не трогали, иначе по контуру */
 function zoneM2(z) {
+  if (z.manualM2 > 0) return z.manualM2;                 // площадь, вписанная вручную
   return (z.printedM2 > 0 && z.printedSig === JSON.stringify(z.pts)) ? z.printedM2 : area(z.pts);
 }
 function area(pts) {
@@ -4098,6 +4287,11 @@ cv.addEventListener('mouseup', function (e) {
     draw();
   }
 });
+cv.addEventListener('wheel', function (e) {
+  if (!e.ctrlKey) return;                       // без Ctrl колесо прокручивает, как раньше
+  e.preventDefault();
+  zoomStep(e.deltaY < 0 ? 1 : -1);
+}, { passive: false });
 cv.addEventListener('click', function (e) {
   var p = evPt(e);
   // хвост переноса коллектора, и щелчок по его значку — не радиатор и не комната
@@ -4122,10 +4316,7 @@ cv.addEventListener('click', function (e) {
     if (hoverZ >= 0 && F().zones[hoverZ]) {
       var d = zoneDelPt(hoverZ);
       if (Math.hypot(p[0] - d[0], p[1] - d[1]) < 12 / cs()) {
-        pushUndo('zones');
-        F().zones.splice(hoverZ, 1);
-        hoverZ = hoverV = hoverE = -1; selZ = -1;
-        renderZones(); draw();
+        deleteZoneAt(hoverZ);
         return;
       }
     }
@@ -4235,9 +4426,10 @@ cv.addEventListener('dblclick', function () {
 });
 
 // ─── Шаг назад: кнопка и Ctrl+Z ────────────────────────────────────────
-function pushUndo(t) {
-  var f = F();
-  var rec = { t: t, floor: cur, prev: {
+/** Снимок этажа для отмены и повтора (без подложки — она меняется отдельно). */
+function snapFloor(fi) {
+  var f = DATA.floors[fi];
+  return {
     pxPerM: f.pxPerM,
     zones: JSON.parse(JSON.stringify(f.zones)),
     rads: JSON.parse(JSON.stringify(f.rads || [])),
@@ -4246,21 +4438,39 @@ function pushUndo(t) {
     radColl: f.radColl ? { x: f.radColl.x, y: f.radColl.y } : null,
     collAng: f.collAng || 0, radCollAng: f.radCollAng || 0,
     fixtures: JSON.parse(JSON.stringify(f.fixtures || []))
-  } };
+  };
+}
+
+function pushUndo(t) {
+  var f = F();
+  var rec = { t: t, floor: cur, prev: snapFloor(cur) };
   if (t === 'plan') {
     rec.prev.img = f.img; rec.prev.imgFile = f.imgFile || null;
     rec.prev.w = f.w; rec.prev.h = f.h;
   }
   undoStack.push(rec);
   if (undoStack.length > 50) undoStack.shift();
+  redoStack.length = 0;   // новое действие отменяет повтор
 }
 
 function doUndo() {
   // в процессе рисования отменяется последняя точка
   if (mode === 'poly' && tmp.length) { tmp.pop(); draw(); return; }
   if (mode === 'scale' && scalePts.length) { scalePts.pop(); draw(); return; }
-  var rec = undoStack.pop();
-  if (!rec) { hint('Отменять больше нечего.'); return; }
+  stepHist(undoStack, redoStack, 'Отменять больше нечего.');
+}
+
+/** Повтор отменённого: то же восстановление, из стопки повтора. */
+function doRedo() {
+  if (mode === 'poly' || mode === 'scale') return;
+  stepHist(redoStack, undoStack, 'Повторять больше нечего.');
+}
+
+/** Восстановить снимок из from; текущее состояние кладётся в to — туда и обратно. */
+function stepHist(from, to, empty) {
+  var rec = from.pop();
+  if (!rec) { hint(empty); return; }
+  if (rec.t !== 'floorAdd' && rec.t !== 'plan') to.push({ t: rec.t, floor: rec.floor, prev: snapFloor(rec.floor) });
   if (rec.t === 'floorAdd') {
     if (DATA.floors.length > 1) {
       DATA.floors.pop();
@@ -4287,12 +4497,119 @@ function doUndo() {
   renderTabs(); draw(); renderZones();
 }
 
+/**
+ * Быстрые клавиши — одна буква на инструмент, как в чертёжных программах.
+ * Работают по физической клавише (e.code): раскладка не мешает, русская или
+ * английская — одна и та же клавиша. Поле ввода имени и открытые окна их не
+ * перехватывают. Список — по «?» (Shift+/) и в подсказках кнопок.
+ */
+var HOTKEYS = [
+  { code: 'KeyV', key: 'V', name: 'Выбор и правка зон', run: function () { setMode('select'); } },
+  { code: 'KeyS', key: 'S', name: 'Масштаб: две точки', run: function () { setMode('scale'); }, btn: 'b_scale' },
+  { code: 'KeyQ', key: 'Q', name: 'Комната по клику', run: function () { setMode('room'); }, btn: 'b_room' },
+  { code: 'KeyW', key: 'W', name: 'Обвести прямоугольником', run: function () { setMode('rect'); }, btn: 'b_rect' },
+  { code: 'KeyE', key: 'E', name: 'Обвести контуром', run: function () { setMode('poly'); }, btn: 'b_poly' },
+  { code: 'KeyA', key: 'A', name: 'Радиатор', run: function () { setMode('rad'); }, btn: 'b_rad' },
+  { code: 'KeyC', key: 'C', name: 'Коллектор', run: function () { setMode('coll'); }, btn: 'b_coll' },
+  { code: 'KeyT', key: 'T', name: 'Санузел', run: function () { setMode('wc'); }, btn: 'b_wc' },
+  { code: 'KeyN', key: 'N', name: 'Распознать комнаты', run: function () { autoRooms(); }, btn: 'b_autorooms' },
+  { code: 'KeyH', key: 'H', name: 'Подсказки вкл / выкл', run: function () { toggleHints(); }, btn: 'b_hints' },
+  { code: 'Equal', key: '+', name: 'Приблизить', run: function () { zoomStep(1); } },
+  { code: 'NumpadAdd', key: '+', name: 'Приблизить', run: function () { zoomStep(1); } },
+  { code: 'Minus', key: '−', name: 'Отдалить', run: function () { zoomStep(-1); } },
+  { code: 'NumpadSubtract', key: '−', name: 'Отдалить', run: function () { zoomStep(-1); } },
+  { code: 'Digit0', key: '0', name: 'Масштаб экрана 100 %', run: function () { setZoom(1); } },
+  { code: 'Slash', key: '?', shift: true, name: 'Список клавиш', run: function () { toggleHotkeyHelp(); } }
+];
+
+/** Ctrl+D — копия выбранной зоны, сдвинутая на 0,5 м вправо и вниз. */
+function duplicateSelected() {
+  var zs = F().zones;
+  if (selZ < 0 || !zs[selZ]) { hint('Выберите зону щелчком, затем Ctrl+D.'); return; }
+  pushUndo('zones');
+  var z = zs[selZ], d = Math.round(0.5 * (F().pxPerM || 100));
+  var copy = JSON.parse(JSON.stringify(z));
+  copy.pts = copy.pts.map(function (q) { return [q[0] + d, q[1] + d]; });
+  delete copy.printedM2; delete copy.printedSig; delete copy.planM2;
+  zs.push(copy); selZ = zs.length - 1;
+  renderZones(); draw();
+}
+
+/** Клавиша из HOTKEYS → true, если сработала. Ctrl+S — сохранить, как в редакторах. */
+function runHotkey(e) {
+  if (e.ctrlKey || e.metaKey) {
+    if (!e.altKey && (e.code === 'KeyS' || String(e.key).toLowerCase() === 's')) {
+      var sb = document.getElementById('b_save');
+      if (sb) { e.preventDefault(); sb.click(); return true; }
+    }
+    return false;
+  }
+  if (e.altKey) return false;
+  for (var i = 0; i < HOTKEYS.length; i++) {
+    var h = HOTKEYS[i];
+    if (h.code !== e.code) continue;
+    if (h.shift && !e.shiftKey) continue;                // «?» — только с Shift
+    if (!h.shift && e.shiftKey && /^Key/.test(h.code)) continue;   // буквы — без Shift
+    if (!F().img && h.code !== 'KeyV') return false;     // без плана инструменты не нужны
+    e.preventDefault(); h.run();
+    return true;
+  }
+  return false;
+}
+
+/** Окно со списком клавиш: открыть и закрыть «?» или Esc. */
+function toggleHotkeyHelp() {
+  var old = document.getElementById('hk_help');
+  if (old) { old.remove(); return; }
+  var rows = HOTKEYS.filter(function (h, i, a) { return a.findIndex(function (x) { return x.name === h.name; }) === i; })
+    .map(function (h) { return '<tr><td><kbd>' + h.key + '</kbd></td><td>' + h.name + '</td></tr>'; }).join('');
+  var box = document.createElement('div');
+  box.id = 'hk_help';
+  box.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:9999;display:flex;align-items:center;justify-content:center';
+  box.innerHTML = '<div style="background:var(--panel,#fff);color:var(--text,#111);border-radius:10px;padding:16px 20px;min-width:300px;box-shadow:0 10px 30px rgba(0,0,0,.25)">' +
+    '<div style="font-weight:700;margin-bottom:8px">Быстрые клавиши</div>' +
+    '<table style="border-collapse:collapse;font-size:13px">' + rows +
+    '<tr><td><kbd>Ctrl+Z</kbd></td><td>Отменить</td></tr>' +
+    '<tr><td><kbd>Ctrl+S</kbd></td><td>Сохранить</td></tr>' +
+    '<tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Радиатор под курсором на 45°</td></tr>' +
+    '<tr><td><kbd>Пробел</kbd></td><td>Повернуть прибор под курсором (как в Revit)</td></tr>' +
+    '<tr><td><kbd>Ctrl+Shift+Z</kbd></td><td>Повторить</td></tr>' +
+    '<tr><td><kbd>Ctrl+D</kbd></td><td>Копия выбранной зоны</td></tr>' +
+    '<tr><td><kbd>Ctrl+колесо</kbd></td><td>Масштаб</td></tr>' +
+    '<tr><td><kbd>Enter</kbd></td><td>Замкнуть контур</td></tr>' +
+    '<tr><td><kbd>Del</kbd></td><td>Удалить выбранную зону</td></tr>' +
+    '<tr><td><kbd>Esc</kbd></td><td>Отмена текущего действия</td></tr>' +
+    '</table><div style="font-size:12px;opacity:.7;margin-top:8px">Закрыть — ? или Esc</div></div>';
+  box.addEventListener('click', function (e) { if (e.target === box) box.remove(); });
+  document.body.appendChild(box);
+}
+
+/** Подсказки на кнопках: в конце названия — клавиша, например «Комната (Q)». */
+function markHotkeyButtons() {
+  HOTKEYS.forEach(function (h) {
+    if (!h.btn) return;
+    var b = document.getElementById(h.btn);
+    if (b && b.title.indexOf('(' + h.key + ')') < 0) b.title = (b.title ? b.title + ' ' : '') + '(' + h.key + ')';
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', markHotkeyButtons);
+else markHotkeyButtons();
+
 document.addEventListener('keydown', function (e) {
   var tag = (document.activeElement && document.activeElement.tagName) || '';
-  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-  if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyZ' || String(e.key).toLowerCase() === 'z')) {
-    e.preventDefault(); doUndo(); return;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if (e.key === 'Escape' && document.getElementById('hk_help')) { document.getElementById('hk_help').remove(); return; }
+  var zk = (e.ctrlKey || e.metaKey) && (e.code === 'KeyZ' || String(e.key).toLowerCase() === 'z');
+  if (zk && e.shiftKey) { e.preventDefault(); doRedo(); return; }
+  if (zk) { e.preventDefault(); doUndo(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyY' || String(e.key).toLowerCase() === 'y')) { e.preventDefault(); doRedo(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyD' || String(e.key).toLowerCase() === 'd')) {
+    e.preventDefault(); duplicateSelected(); return;
   }
+  if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
+    if (radTurnAt(e.code === 'BracketLeft' ? -45 : 45)) { e.preventDefault(); return; }
+  }
+  if (runHotkey(e)) return;
   if (e.key === 'Enter' && mode === 'poly' && tmp.length >= 3) { closePoly(); return; }
   // Пробел — как в Revit: поворот прибора под курсором. R оставлена для привычки.
   if ((e.code === 'Space' || e.code === 'KeyR' || /^[rк]$/i.test(String(e.key))) && !e.ctrlKey && !e.metaKey && !e.altKey && mode !== 'poly') {
@@ -4304,10 +4621,7 @@ document.addEventListener('keydown', function (e) {
     var t = e.target && e.target.tagName;
     if (t !== 'INPUT' && t !== 'TEXTAREA' && t !== 'SELECT') {
       e.preventDefault();
-      pushUndo('zones');
-      F().zones.splice(selZ, 1);
-      selZ = -1; hoverZ = hoverV = hoverE = -1;
-      renderZones(); draw();
+      deleteZoneAt(selZ);
       return;
     }
   }
@@ -4855,6 +5169,20 @@ function makeBoiler(z) {
   hint('<span class=ok>Котельная отмечена: «' + (z.name || 'Котельная') + '».</span> Тёплый пол в ней остался. Нажмите «Сохранить».');
 }
 
+/** Удалить зону по индексу и сбросить всё, что на неё указывало: выбор, наведение,
+ *  перетаскивание, незавершённый контур. Без этого после удаления индексы и
+ *  перетаскивание указывали на чужую зону или на пустоту, и кнопки на плане
+ *  переставали реагировать. */
+function deleteZoneAt(i) {
+  if (!F().zones[i]) return;
+  pushUndo('zones');
+  F().zones.splice(i, 1);
+  selZ = -1; hoverZ = hoverV = hoverE = -1;
+  dragZ = null; dragA = null; tmp = []; polyCur = null;
+  justDragged = 0;
+  renderZones(); draw();
+}
+
 function renderZones() {
   var box = document.getElementById('zlist'); box.innerHTML = '';
   if (UFH) { renderZonesUfh(box); return; }
@@ -4911,11 +5239,21 @@ function renderZones() {
       ar.title = card ? 'Приборы взяты из карточки санузла в расчёте'
         : 'Впишите имя санузла так же, как в расчёте — приборы подставятся сами';
     } else {
-      ar.textContent = zoneM2(z).toFixed(1) + ' м²';
+      // площадь — поле: вписать вручную, если контур и подпись не сходятся
+      var am = document.createElement('input'); am.type = 'number'; am.step = '0.1'; am.min = '0';
+      am.className = 'ar-in'; am.title = 'Площадь, м² — можно вписать вручную';
+      am.value = zoneM2(z).toFixed(1);
+      am.onchange = function () {
+        pushUndo('zones');
+        var v = parseFloat(String(am.value).replace(',', '.'));
+        if (v > 0) z.manualM2 = Math.round(v * 100) / 100; else delete z.manualM2;
+        renderZones(); draw();
+      };
+      ar.appendChild(am); ar.appendChild(document.createTextNode(' м²'));
     }
     d.appendChild(ar);
     var del = document.createElement('span'); del.className = 'del'; del.textContent = '✕';
-    del.onclick = function () { pushUndo('zones'); F().zones.splice(i, 1); renderZones(); draw(); };
+    del.onclick = function () { deleteZoneAt(i); };
     d.appendChild(del);
     box.appendChild(d);
   });
@@ -5170,39 +5508,51 @@ function collRotate(kind) {
   renderZones(); draw();
 }
 
-/**
- * Повернуть радиатор на 45° (R над ним или Shift + правый клик): 0 → 45 → 90 → 135 → 0.
- * 45° нужен под эркер, где стена идёт наклонно. После поворота прибор прижимается
- * к ближайшей стене, параллельной ему в новом положении, в пределах 0,5 м, —
- * как при переносе, но без перетаскивания.
- */
+/** Прибор прилипает к стене по нормали его угла: лучи в обе стороны, ближайшая
+ *  стена — прибор отходит от неё на толщину стены и отступ. Работает для любого
+ *  угла, в том числе 45° у скошенных граней эркера. */
+function snapRadToWall(r, ang) {
+  var f = F(), m = getMask();
+  if (!m) return;
+  var ppm = f.pxPerM || 100, a = ang * Math.PI / 180, nx = -Math.sin(a), ny = Math.cos(a);
+  var R = Math.round(0.5 * ppm * m.k), sx = Math.round(r.x * m.k), sy = Math.round(r.y * m.k), best = null;
+  [1, -1].forEach(function (sg) {
+    for (var d = 1; d <= R; d++) {
+      var x = Math.round(sx + sg * nx * d), y = Math.round(sy + sg * ny * d);
+      if (x < 0 || y < 0 || x >= m.w || y >= m.h) break;
+      if (m.bar[y * m.w + x]) { if (!best || d < best.d) best = { d: d, sg: sg }; break; }
+    }
+  });
+  if (!best) return;
+  var off = best.d / m.k - 0.07 * ppm - 2;
+  if (off > 0) { r.x = Math.round(r.x + best.sg * nx * off); r.y = Math.round(r.y + best.sg * ny * off); }
+}
+
 function radRotate(i) {
   var f = F(), r = f.rads[i];
   if (!r) return;
   pushUndo('zones');
-  var ppm = f.pxPerM || 100;
-  r.ang = (((r.ang || 0) + 45) % 180 + 180) % 180;
-  var m = getMask();
-  if (m) {
-    // стены, параллельные прибору: нормаль к его оси (для 0° — сверху и снизу, для 90° — слева и справа, для 45° — по диагонали)
-    var a = r.ang * Math.PI / 180, nx = -Math.sin(a), ny = Math.cos(a);
-    var dirs = [[nx, ny], [-nx, -ny]];
-    var R = Math.round(0.5 * ppm * m.k), sx = Math.round(r.x * m.k), sy = Math.round(r.y * m.k), best = null;
-    dirs.forEach(function (dv) {
-      for (var d = 1; d <= R; d++) {
-        var x = Math.round(sx + dv[0] * d), y = Math.round(sy + dv[1] * d);
-        if (x < 0 || y < 0 || x >= m.w || y >= m.h) break;
-        if (m.bar[y * m.w + x]) { if (!best || d < best.d) best = { d: d, dv: dv }; break; }
-      }
-    });
-    if (best) {
-      var off = best.d / m.k - 0.07 * ppm - 2;
-      if (off > 0) { r.x = Math.round(r.x + best.dv[0] * off); r.y = Math.round(r.y + best.dv[1] * off); }
-    }
-  }
-  hint('<span class=ok>Радиатор повёрнут на ' + r.ang + '°.</span> ' +
-    'Пробел над прибором (как в Revit) или Shift + правый клик — повернуть ещё на 45°.');
+  r.ang = (((r.ang || 0) % 180) === 90) ? 0 : 90;
+  snapRadToWall(r, r.ang);
+  hint('<span class=ok>Радиатор повёрнут — ' + (r.ang === 90 ? 'вертикально' : 'горизонтально') + '.</span> ' +
+    'R над прибором или Shift + правый клик — повернуть ещё раз.');
   renderZones(); draw();
+}
+
+/** [ и ] над радиатором — поворот на 45° (скошенные грани эркера). Угол хранится в градусах,
+ *  прибор снова прижимается к стене по новой нормали. */
+function radTurnAt(delta) {
+  if (!UFH || !lastPt || !F().pxPerM) return false;
+  var ri = radAt(lastPt);
+  if (ri < 0) return false;
+  var r = F().rads[ri];
+  pushUndo('zones');
+  r.ang = (((r.ang || 0) + delta) % 360 + 360) % 360;
+  snapRadToWall(r, r.ang);
+  hint('<span class=ok>Радиатор повёрнут на ' + Math.round(r.ang) + '°.</span> ' +
+    '[ и ] — по 45°, R или пробел — 0° или 90°.');
+  renderZones(); draw();
+  return true;
 }
 
 /** R (и русская К) над коллектором или радиатором — повернуть его */
