@@ -6679,6 +6679,14 @@ const RecognizeUI = {
         this._cmpDiscount = discPct ? { brand, pct: discPct } : null;
         if (!discPct) this._cmpApplyDiscount = false;
 
+        const discountStrip = !discPct ? '' : `
+          <label class="rec-cmp-apply">
+            <input type="checkbox" ${this._cmpApplyDiscount ? 'checked' : ''}
+                   onchange="RecognizeUI.cmpApplyDiscount(this.checked)">
+            <span>Применить скидку <b>${discPct}%</b> при переносе в смету</span>
+            <span class="rec-art">скидка ставится на всю смету целиком, менять её потом можно ползунком в разделе «Оборудование»</span>
+          </label>`;
+
         const deltaBlock = !cmpN ? '' : delta < 0
             ? `<div class="rec-cmp-item"><div class="rec-cmp-val down">${money(-delta)} (${this.fmtPct(-pct)}%)</div>
                <div class="rec-cmp-lbl">У нас дешевле · ${brand === 'rommer' ? 'ROMMER' : 'STOUT'}</div></div>`

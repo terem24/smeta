@@ -17,7 +17,8 @@ const dir = path.join(__dirname, 'replay');
 let bad = 0, total = 0;
 for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json')).sort()) {
     const c = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8'));
-    const { U } = load();
+    const { U, out } = load({ keep: ['renderCompare', 'renderReview'] });
+    U.saveDraft = () => {};
     U._fileKind = 'pdf';
     U.startReview({ items: c.items, docTotals: c.docTotals, sectionTotals: c.sectionTotals });
     console.log(`\n${c.name}${c.synthetic ? '  (синтетический ответ модели — замените снятым с сайта)' : ''}`);
@@ -44,6 +45,12 @@ for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json')).sort()) {
     if (c.totalKind) {
         const t = U.totalCheck();
         total++; if (!t || t.kind !== c.totalKind) { bad++; console.log(`FAIL сверка суммы: ${t ? t.kind : 'нет'} (ждали ${c.totalKind})`); }
+    }
+    // Экраны не должны падать: сравнение цен и таблица проверки рисуются целиком.
+    for (const [name, fn, needle] of [['сравнение цен', () => U.renderCompare(), 'Итого по документу'], ['таблица проверки', () => U.renderReview(), 'rec-table']]) {
+        total++;
+        try { out.html = ''; fn(); if (!out.html.includes(needle)) throw new Error('в выводе нет «' + needle + '»'); }
+        catch (e) { bad++; console.log(`FAIL экран «${name}»: ${e.message}`); }
     }
     if (c.maxPpr != null) {
         const ppr = U._rows.filter((r) => r._m && r._m.item && /PP-?R|полипроп/i.test(r._m.item.name)).length;
