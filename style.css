@@ -20295,3 +20295,6 @@ body.empty-fit-panel #header_totals { display: none !important; }
 /* Пока площадь не задана, остальные группы приглушены (но доступны: наведение и фокус возвращают яркость) */
 .pg-dim { opacity: .5; transition: opacity .2s ease; }
 .pg-dim:hover, .pg-dim:focus-within { opacity: 1; }
+
+/* Список пользователей перечитывается: приглушаем таблицу, чтобы клик не казался мёртвым */
+#admin_content.ad-busy { opacity: .45; transition: opacity .1s; cursor: progress; }
