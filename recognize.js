@@ -6536,9 +6536,10 @@ const RecognizeUI = {
             const score = m ? (r._locked ? 1 : (m.score || 0)) : 0;
             const dotCls = score >= 0.9 ? 'high' : score >= 0.7 ? 'mid' : score > 0 ? 'low' : 'none';
             const ours = m
-                ? `<span class="rec-cmp-dot ${dotCls}"></span>${esc(bi.name)}${
-                    brand === 'rommer' && ra ? ` <span class="rec-art">→ ${esc(ra.item.name)}</span>` : ''}
-                   <div class="rec-art">${esc(bi.article || bi.id)}${
+                ? `<span class="rec-cmp-dot ${dotCls}"></span><a href="#" class="rec-altlink" title="Посмотреть варианты замены или найти другую позицию"
+                       onclick="RecognizeUI.cmpPick(${n});return false;">${esc(bi.name)}</a>${
+                    brand === 'rommer' && ra ? ` <span class="rec-art">→ ${esc(ra.item.name)} ${this.terLink(ra.item.article || ra.item.id)}</span>` : ''}
+                   <div class="rec-art">${this.terLink(bi.article || bi.id)}${
                     r._fromMem ? ' · по вашему прошлому выбору'
                         : (r._locked ? ' · выбрано вручную'
                             : (m.score < 1 ? ` · совпадение ${Math.round(m.score * 100)}%` : ''))}</div>${
@@ -6548,7 +6549,7 @@ const RecognizeUI = {
                 : isWork
                     ? `<span class="rec-work-tag">монтажная работа</span>
                        <span class="rec-art">с прайсом не сравнивается</span>`
-                    : `<span class="rec-art">аналог не подобран</span>`;
+                    : `<a href="#" class="rec-altlink" onclick="RecognizeUI.cmpPick(${n});return false;">аналог не подобран — найти</a>`;
 
             return `${secHead}<tr${r._priceAlarm ? ' class="rec-pricebad"' : (r._priceWarn ? ' class="rec-nomatch"' : (isWork ? ' class="rec-workrow"' : ''))}>
               <td>${r.docNo ? esc(r.docNo) : n + 1}</td>
@@ -6692,6 +6693,22 @@ const RecognizeUI = {
             <button class="calc-dialog-btn calc-dialog-btn-cancel" onclick="RecognizeUI.apply('new')">Создать новую смету</button>
             <button class="calc-dialog-btn calc-dialog-btn-confirm" onclick="RecognizeUI.apply('add')">Добавить в текущую смету</button>
           </div>`;
+    },
+
+    /** Артикул ссылкой на поиск teremonline.ru — открыть карточку позиции. */
+    terLink(article) {
+        const a = String(article == null ? '' : article);
+        if (!a) return '';
+        const esc = x => String(x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        return `<a href="https://www.teremonline.ru/search/?q=${encodeURIComponent(a)}" target="_blank" rel="noopener noreferrer"
+                   title="Открыть артикул на teremonline.ru">${esc(a)}</a>`;
+    },
+
+    /** Замена позиции прямо с экрана сравнения: варианты обоих брендов и поиск. */
+    cmpPick(n) {
+        const row = this._rows[n];
+        if (!row) return;
+        this.openSearch([n], { lead: n, onDone: () => this.renderCompare() });
     },
 
     /** Бренд, на который считается сравнение. Смету не трогает — только расчёт. */
@@ -7507,6 +7524,7 @@ const RecognizeUI = {
                 <span>Применить ко всем таким же — ещё ${opt.twins} ${
                     this.plural(opt.twins, 'строка', 'строки', 'строк')} с тем же наименованием</span>
               </label>` : ''}
+            <div id="rec_vars" class="rec-res"></div>
             <div id="rec_res" class="rec-res"></div>
             <div class="rec-foot" style="border:0;padding-top:6px">
               <button class="calc-dialog-btn calc-dialog-btn-cancel" id="rec_cx">Отмена</button>
@@ -7532,6 +7550,60 @@ const RecognizeUI = {
         // коллектором за 1 200, хотя слова совпадают.
         const docP = this.docPrice(row);
 
+        // Выбор позиции — из поиска или из готовых вариантов подбора.
+        const commit = (picked) => {
+            if (!picked) return;
+            this.snap();
+            // Галочка «ко всем таким же» снята — правим только ту
+            // строку, из которой подбор открыли.
+            const twinBox = ov.querySelector('#rec_twins');
+            const targets = (opt.selected || !twinBox || twinBox.checked)
+                ? indexes : [indexes[0]];
+
+            for (const n of targets) {
+                const r = this._rows[n];
+                if (!r) continue;
+                r._m = { item: picked, score: 1, alternatives: [] };
+                r._locked = true;
+                // Выбор сделан только что — в таблице он «выбран
+                // вручную», а «по прошлому выбору» станет со следующей
+                // сметы.
+                delete r._fromMem;
+                // Строку разбирали руками: поле _noMem поставила правка
+                // типа или диаметра, и держать его дальше нельзя —
+                // иначе сделанный сейчас выбор в следующий раз не
+                // подставится.
+                delete r._noMem;
+                delete r._priceAlarm;
+                delete r._priceWarn;
+                delete r._priceFixed;
+                // Исходная позиция при включённых аналогах больше не
+                // исходная: выбор человека — и есть позиция строки.
+                delete r._analogBase;
+                // Запоминаем каждую строку отдельно: наименования у них
+                // разные, а решение человек принял про каждое.
+                this.memRemember(r, picked);
+            }
+            close();
+            if (opt.onDone) opt.onDone(); else this.renderReview();
+        };
+
+        // Готовые варианты подбора обоих брендов — до поиска: чаще всего верная
+        // позиция уже среди них, и набирать запрос не нужно.
+        const vars = this.altsOf(row);
+        const varsBox = ov.querySelector('#rec_vars');
+        if (vars.length && varsBox) {
+            const brandOf = a => (RecognizeMatch.brandOfItem ? RecognizeMatch.brandOfItem(a) : 'other');
+            let last = null;
+            varsBox.innerHTML = '<div class="rec-art"><b>Варианты подбора</b></div>' + vars.map((a, k) => {
+                const b = brandOf(a);
+                const head = (b !== last && b !== 'other') ? `<div class="rec-art"><b>${b}</b></div>` : '';
+                last = b;
+                return `${head}<div class="rec-hit" data-v="${k}"><span>${esc(a.name)} <span class="rec-art">${esc(a.article || a.id)}</span></span><b>${Math.round(Number(a.price) || 0)} ₽</b></div>`;
+            }).join('') + '<div class="rec-art" style="padding-top:6px"><b>Поиск по каталогу</b></div>';
+            varsBox.querySelectorAll('.rec-hit').forEach(el => { el.onclick = () => commit(vars[+el.dataset.v]); });
+        }
+
         const run = () => {
             const w = norm(q.value).split(/\s+/).filter(Boolean);
             const hits = this.catIndex()
@@ -7548,40 +7620,7 @@ const RecognizeUI = {
                      <b>${it.price} ₽</b></div>`).join('')
                 : '<div class="rec-art" style="padding:10px">Ничего не найдено</div>';
             res.querySelectorAll('.rec-hit').forEach(el => {
-                el.onclick = () => {
-                    this.snap();
-                    const picked = hits[+el.dataset.i];
-
-                    // Галочка «ко всем таким же» снята — правим только ту
-                    // строку, из которой подбор открыли.
-                    const twinBox = ov.querySelector('#rec_twins');
-                    const targets = (opt.selected || !twinBox || twinBox.checked)
-                        ? indexes : [indexes[0]];
-
-                    for (const n of targets) {
-                        const r = this._rows[n];
-                        if (!r) continue;
-                        r._m = { item: picked, score: 1, alternatives: [] };
-                        r._locked = true;
-                        // Выбор сделан только что — в таблице он «выбран
-                        // вручную», а «по прошлому выбору» станет со следующей
-                        // сметы.
-                        delete r._fromMem;
-                        // Строку разбирали руками: поле _noMem поставила правка
-                        // типа или диаметра, и держать его дальше нельзя —
-                        // иначе сделанный сейчас выбор в следующий раз не
-                        // подставится.
-                        delete r._noMem;
-                        delete r._priceAlarm;
-                        delete r._priceWarn;
-                        delete r._priceFixed;
-                        // Запоминаем каждую строку отдельно: наименования у них
-                        // разные, а решение человек принял про каждое.
-                        this.memRemember(r, picked);
-                    }
-                    close();
-                    this.renderReview();
-                };
+                el.onclick = () => commit(hits[+el.dataset.i]);
             });
         };
         q.oninput = run;
