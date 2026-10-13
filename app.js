@@ -69303,9 +69303,8 @@ const app = {
     // заголовок.
     FINE_TUNE_KEY: 'heatcalc_fine_tune',
     FINE_TUNE_ROWS: {
-        boiler: ['blk_boiler_dt'],
-        rad: ['lbl_rad_regime', 'blk_rad_regime'],
-        ufh: ['blk_step_floor1', 'blk_step_floor2', 'blk_ufh_dt'],
+        // Одна «Тонкая настройка» на весь раздел котельной: котловой перепад, режим радиаторов, шаг тёплого пола.
+        eng: ['blk_boiler_dt', 'lbl_rad_regime', 'blk_rad_regime', 'blk_step_floor1', 'blk_step_floor2', 'blk_ufh_dt'],
         hw: ['blk_tank_pump_wrap'],
         snow: ['blk_snow_pipe_row'],
         pump: ['rooms_pump_plan']
@@ -69328,6 +69327,13 @@ const app = {
     },
     fineTuneSummary: function (key) {
         const s = this.state;
+        if (key === 'eng') {
+            const sys = s.systems || [];
+            const parts = [this.fineTuneSummary('boiler')];
+            if (sys.includes('rad')) parts.push(this.fineTuneSummary('rad'));
+            if (sys.includes('tp')) parts.push(this.fineTuneSummary('ufh'));
+            return parts.filter(Boolean).join(' · ');
+        }
         if (key === 'boiler') return `${this.boilerDT()} K`;
         if (key === 'pump') return this._pumpPlan ? `${this._pumpPlan.total} шт` : '';
         if (key === 'rad') return (this.RAD_REGIMES[s.radRegime] || this.RAD_REGIMES.r8060).label;

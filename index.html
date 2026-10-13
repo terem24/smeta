@@ -1368,13 +1368,14 @@
             <!-- Инженерные настройки свёрнуты: большинство оставляет их по умолчанию.
                  Сводка значений в заголовке — чтобы нестандартный выбор был виден и в
                  свёрнутом виде (app.syncFineTune). -->
-            <div class="fine-tune" id="ft_boiler">
-                <div class="fine-tune-head" onclick="app.toggleFineTune('boiler')" role="button" tabindex="0">
+            <div class="fine-tune" id="ft_eng">
+                <div class="fine-tune-head" onclick="app.toggleFineTune('eng')" role="button" tabindex="0">
                     <span class="fine-tune-title">Тонкая настройка</span>
-                    <span class="fine-tune-sum" id="ft_boiler_sum"></span>
+                    <span class="fine-tune-sum" id="ft_eng_sum"></span>
                     <span class="fine-tune-arrow">▸</span>
                 </div>
-                <div class="fine-tune-body" id="ft_boiler_body" style="display:none;">
+                <div class="fine-tune-body" id="ft_eng_body" style="display:none;">
+
             <div class="control-item" id="blk_boiler_dt" style="display:none; margin-bottom: 16px;">
                 <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Котловой перепад<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>20 K.</b> Паспортный режим котла: расход вдвое меньше, обвязка скромнее.<div class="tip-p"><b>10 K.</b> Режим 75/65: расход вдвое выше, диаметр обвязки на две ступени больше. Когда котёл работает на систему без гидрострелки.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_boiler_dt_note">Перепад 20 K. По нему считаются расход и диаметр обвязки котельной.</span></div></div></span></span>
                 <div class="tabs" id="boiler_dt_tabs">
@@ -1382,8 +1383,48 @@
                     <div class="tab" id="boiler_dt_10" onclick="app.setBoilerDT(10)">10 K</div>
                 </div>
             </div>
+                
+            <h4 id="lbl_rad_regime" style="position:relative; display:none; margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Режим системы<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>80/60.</b> Перепад 20 K, классика с котлом: расход вдвое меньше, трубы и насос скромнее.<div class="tip-p"><b>75/65.</b> Перепад 10 K, в нём заявлена паспортная мощность радиаторов; расход вдвое выше, расчёт с запасом.</div><div class="tip-p"><b>70/55.</b> Приборы отдают около 80 % паспорта и подбираются крупнее. Для конденсационного котла.</div><div class="tip-p"><b>55/45.</b> Приборы отдают около половины паспорта. Конденсационный котёл с полной конденсацией, тепловой насос.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_rad_regime_note">Перепад 20 K. Расход и напор считаются по нему.</span></div></div></span></h4>
+            <div class="control-item" id="blk_rad_regime" style="display:none;">
+                <div class="tabs" id="rad_regime_tabs">
+                    <div class="tab active" id="rad_regime_8060" onclick="app.setRadRegime('r8060')">80/60</div>
+                    <div class="tab" id="rad_regime_7565" onclick="app.setRadRegime('r7565')">75/65</div>
+                    <div class="tab" id="rad_regime_7055" onclick="app.setRadRegime('r7055')">70/55</div>
+                    <div class="tab" id="rad_regime_5545" onclick="app.setRadRegime('r5545')">55/45</div>
                 </div>
             </div>
+                
+                    <div class="control-item" id="blk_step_floor1" style="display:none; margin-bottom: 12px; margin-top: 6px;">
+                        <span class="lbl-sub" style="margin-bottom: 6px;">Шаг укладки трубы 1 этаж</span>
+                        <div class="tabs" id="ufh_step1_tabs">
+                            <div class="tab" id="ufh_step1_100" onclick="app.setUfhStep(1, 100)">100 мм</div>
+                            <div class="tab active" id="ufh_step1_150" onclick="app.setUfhStep(1, 150)">150 мм</div>
+                            <div class="tab" id="ufh_step1_200" onclick="app.setUfhStep(1, 200)">200 мм</div>
+                        </div>
+                    </div>
+                    <div class="control-item" id="blk_step_floor2" style="display:none; margin-bottom: 12px; margin-top: 6px;">
+                        <span class="lbl-sub" style="margin-bottom: 6px;">Шаг укладки трубы 2 этаж</span>
+                        <div class="tabs" id="ufh_step2_tabs">
+                            <div class="tab" id="ufh_step2_100" onclick="app.setUfhStep(2, 100)">100 мм</div>
+                            <div class="tab active" id="ufh_step2_150" onclick="app.setUfhStep(2, 150)">150 мм</div>
+                            <div class="tab" id="ufh_step2_200" onclick="app.setUfhStep(2, 200)">200 мм</div>
+                        </div>
+                    </div>
+                    <!-- Перепад контура: расчёт выбирает его сам от дешёвого к дорогому
+                         (шире перепад дешевле, чем насос посильнее). Здесь его можно
+                         задать вручную, когда ровность пола важнее стоимости насоса. -->
+                    <div class="control-item" id="blk_ufh_dt" style="display:none; margin-bottom: 12px; margin-top: 6px;">
+                        <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Перепад контура тёплого пола<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Авто.</b> Расчёт подбирает перепад сам: штатный насос узла на 5 К, затем на 7 К, потом насос мощнее.<div class="tip-p"><b>5 K</b> (40/35). Самый ровный пол, расход выше; на крупном коллекторе может понадобиться насос 25/80.</div><div class="tip-p"><b>7 K</b> (41/34). Штатного насоса хватает чаще, дальний конец петли холоднее.</div><div class="tip-p"><b>10 K</b> (42,5/32,5). Пол заметно неравномерный, насосу проще всего.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_ufh_dt_note">Перепад подбирается расчётом.</span></div></div></span></span>
+                        <div class="tabs" id="ufh_dt_tabs">
+                            <div class="tab active" id="ufh_dt_auto" onclick="app.setUfhDT(null)">авто</div>
+                            <div class="tab" id="ufh_dt_5" onclick="app.setUfhDT(5)">5 K</div>
+                            <div class="tab" id="ufh_dt_7" onclick="app.setUfhDT(7)">7 K</div>
+                            <div class="tab" id="ufh_dt_10" onclick="app.setUfhDT(10)">10 K</div>
+                        </div>
+                    </div>
+                                    </div>
+            </div>
+
 
             <h4 style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Тип отопления</h4>
             <div class="control-item">
@@ -1426,24 +1467,7 @@
             <!-- Инженерные настройки свёрнуты: большинство оставляет их по умолчанию.
                  Сводка значений в заголовке — чтобы нестандартный выбор был виден и в
                  свёрнутом виде (app.syncFineTune). -->
-            <div class="fine-tune" id="ft_rad">
-                <div class="fine-tune-head" onclick="app.toggleFineTune('rad')" role="button" tabindex="0">
-                    <span class="fine-tune-title">Тонкая настройка</span>
-                    <span class="fine-tune-sum" id="ft_rad_sum"></span>
-                    <span class="fine-tune-arrow">▸</span>
-                </div>
-                <div class="fine-tune-body" id="ft_rad_body" style="display:none;">
-            <h4 id="lbl_rad_regime" style="position:relative; display:none; margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Режим системы<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>80/60.</b> Перепад 20 K, классика с котлом: расход вдвое меньше, трубы и насос скромнее.<div class="tip-p"><b>75/65.</b> Перепад 10 K, в нём заявлена паспортная мощность радиаторов; расход вдвое выше, расчёт с запасом.</div><div class="tip-p"><b>70/55.</b> Приборы отдают около 80 % паспорта и подбираются крупнее. Для конденсационного котла.</div><div class="tip-p"><b>55/45.</b> Приборы отдают около половины паспорта. Конденсационный котёл с полной конденсацией, тепловой насос.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_rad_regime_note">Перепад 20 K. Расход и напор считаются по нему.</span></div></div></span></h4>
-            <div class="control-item" id="blk_rad_regime" style="display:none;">
-                <div class="tabs" id="rad_regime_tabs">
-                    <div class="tab active" id="rad_regime_8060" onclick="app.setRadRegime('r8060')">80/60</div>
-                    <div class="tab" id="rad_regime_7565" onclick="app.setRadRegime('r7565')">75/65</div>
-                    <div class="tab" id="rad_regime_7055" onclick="app.setRadRegime('r7055')">70/55</div>
-                    <div class="tab" id="rad_regime_5545" onclick="app.setRadRegime('r5545')">55/45</div>
-                </div>
-            </div>
-                </div>
-            </div>
+            
 
             <div id="blk_tp_sliders" style="display:none; border-top:1px dashed #E5E7EB; padding-top:15px;">
                 <div class="control-item">
@@ -1537,43 +1561,7 @@
                 <!-- Инженерные настройки свёрнуты: большинство оставляет их по умолчанию.
                      Сводка значений в заголовке — чтобы нестандартный выбор был виден и в
                      свёрнутом виде (app.syncFineTune). -->
-                <div class="fine-tune" id="ft_ufh">
-                    <div class="fine-tune-head" onclick="app.toggleFineTune('ufh')" role="button" tabindex="0">
-                        <span class="fine-tune-title">Тонкая настройка</span>
-                        <span class="fine-tune-sum" id="ft_ufh_sum"></span>
-                        <span class="fine-tune-arrow">▸</span>
-                    </div>
-                    <div class="fine-tune-body" id="ft_ufh_body" style="display:none;">
-                    <div class="control-item" id="blk_step_floor1" style="display:none; margin-bottom: 12px; margin-top: 6px;">
-                        <span class="lbl-sub" style="margin-bottom: 6px;">Шаг укладки трубы 1 этаж</span>
-                        <div class="tabs" id="ufh_step1_tabs">
-                            <div class="tab" id="ufh_step1_100" onclick="app.setUfhStep(1, 100)">100 мм</div>
-                            <div class="tab active" id="ufh_step1_150" onclick="app.setUfhStep(1, 150)">150 мм</div>
-                            <div class="tab" id="ufh_step1_200" onclick="app.setUfhStep(1, 200)">200 мм</div>
-                        </div>
-                    </div>
-                    <div class="control-item" id="blk_step_floor2" style="display:none; margin-bottom: 12px; margin-top: 6px;">
-                        <span class="lbl-sub" style="margin-bottom: 6px;">Шаг укладки трубы 2 этаж</span>
-                        <div class="tabs" id="ufh_step2_tabs">
-                            <div class="tab" id="ufh_step2_100" onclick="app.setUfhStep(2, 100)">100 мм</div>
-                            <div class="tab active" id="ufh_step2_150" onclick="app.setUfhStep(2, 150)">150 мм</div>
-                            <div class="tab" id="ufh_step2_200" onclick="app.setUfhStep(2, 200)">200 мм</div>
-                        </div>
-                    </div>
-                    <!-- Перепад контура: расчёт выбирает его сам от дешёвого к дорогому
-                         (шире перепад дешевле, чем насос посильнее). Здесь его можно
-                         задать вручную, когда ровность пола важнее стоимости насоса. -->
-                    <div class="control-item" id="blk_ufh_dt" style="display:none; margin-bottom: 12px; margin-top: 6px;">
-                        <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Перепад контура тёплого пола<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Авто.</b> Расчёт подбирает перепад сам: штатный насос узла на 5 К, затем на 7 К, потом насос мощнее.<div class="tip-p"><b>5 K</b> (40/35). Самый ровный пол, расход выше; на крупном коллекторе может понадобиться насос 25/80.</div><div class="tip-p"><b>7 K</b> (41/34). Штатного насоса хватает чаще, дальний конец петли холоднее.</div><div class="tip-p"><b>10 K</b> (42,5/32,5). Пол заметно неравномерный, насосу проще всего.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_ufh_dt_note">Перепад подбирается расчётом.</span></div></div></span></span>
-                        <div class="tabs" id="ufh_dt_tabs">
-                            <div class="tab active" id="ufh_dt_auto" onclick="app.setUfhDT(null)">авто</div>
-                            <div class="tab" id="ufh_dt_5" onclick="app.setUfhDT(5)">5 K</div>
-                            <div class="tab" id="ufh_dt_7" onclick="app.setUfhDT(7)">7 K</div>
-                            <div class="tab" id="ufh_dt_10" onclick="app.setUfhDT(10)">10 K</div>
-                        </div>
-                    </div>
-                    </div>
-                </div>
+                
             </div>
 
 
