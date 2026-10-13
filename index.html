@@ -936,11 +936,6 @@
                     style="display:none; padding: 8px 12px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 8px; font-size: 11px; color: var(--text-sec); text-align: center; line-height: 1.5;">
                 </div>
 
-                <!-- Почему столько насосных групп: заполняет app.renderPumpPlanBlock(), только в подробном режиме -->
-                <div id="rooms_pump_plan"
-                    style="display:none; margin-top: 8px; padding: 8px 12px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 8px; font-size: 11px; color: var(--text-sec); line-height: 1.5;">
-                </div>
-
                 <!-- Сверка приборов план↔расчёт: заполняет app.renderPlanChecks(), без расхождений скрыт -->
                 <div id="rooms_plan_checks"
                     style="display:none; padding: 8px 12px; background: var(--surface-light); border: 1px solid #F59E0B; border-left: 4px solid #F59E0B; border-radius: 8px; font-size: 11px; color: var(--text-sec); line-height: 1.5;">
@@ -2127,6 +2122,20 @@
             </div>
             <div id="blk_auto_fast_note" style="display:none; font-size:11px; line-height:1.5; color:var(--text-sec); padding:8px 0;">
                 Автоматика включена и посчитана в смете. Её настройки — в подробном режиме.
+            </div>
+
+            <!-- Насосные группы: свёрнуты, как «Тонкая настройка». В заголовке — число групп,
+                 внутри — переключатель групп радиаторов и разбивка по контурам. Только в
+                 подробном режиме (app.renderPumpPlanBlock, app.syncFineTune). -->
+            <div class="fine-tune" id="ft_pump" style="display:none;">
+                <div class="fine-tune-head" onclick="app.toggleFineTune('pump')" role="button" tabindex="0">
+                    <span class="fine-tune-title">Насосные группы</span>
+                    <span class="fine-tune-sum" id="ft_pump_sum"></span>
+                    <span class="fine-tune-arrow">▸</span>
+                </div>
+                <div class="fine-tune-body" id="ft_pump_body" style="display:none;">
+                    <div id="rooms_pump_plan" style="display:none;"></div>
+                </div>
             </div>
 
             <div class="pg-title no-print" id="pg_t4" data-pg="4" onclick="app.togglePanelGroup(4)" role="button" tabindex="0" aria-label="Группа «Эксплуатация»: свернуть или развернуть"><span class="pg-num">4</span><span class="pg-name">Эксплуатация</span></div>
