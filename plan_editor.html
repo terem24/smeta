@@ -2865,7 +2865,10 @@ var AREA_READ_PROMPT = 'Ты читаешь чертёж этажа частно
   '0–1000. Бери только линии, где число — длина в мм; не бери отметки высот, номера осей, площади. Выбери до 12 ' +
   'самых чётких, лучше длинных. И ещё rotate — на сколько градусов по часовой стрелке (0, 90, 180 или 270) надо ' +
   'повернуть изображение, чтобы надписи на нём читались горизонтально слева направо. ' +
-  'Ответ — только JSON: {"rotate":0,"labels":[{"m2":19.16,"name":"Спальня","box_2d":[210,300,225,350]}],' +
+  'Ещё определи doc — тип документа на изображении: "plan" если это поэтажный план/чертёж с комнатами и стенами, ' +
+  '"spec" если это спецификация, смета, накладная, счёт, прайс или другая таблица с позициями и количеством, ' +
+  '"other" для всего остального. ' +
+  'Ответ — только JSON: {"doc":"plan","rotate":0,"labels":[{"m2":19.16,"name":"Спальня","box_2d":[210,300,225,350]}],' +
   '"dims":[{"mm":3350,"from":[352,300],"to":[352,520]}]}. Подписей нет — "labels":[], размеров нет — "dims":[].';
 /** Размерные линии, прочитанные с картинки: [{ mm, px }] — длина линии на подложке. */
 var SCAN_DIMS = {};
@@ -2940,6 +2943,7 @@ function parseAreaReply(resp, W, H) {
   out.rot = (rt === 90 || rt === 180 || rt === 270) ? rt : 0;
   out.rawDims = ((data && data.dims) || []).length;      // сколько линий вернула модель до отсева — для разбора админом
   out.rawLabels = list.length;
+  out.doc = data && (data.doc === 'spec' || data.doc === 'plan' || data.doc === 'other') ? data.doc : '';
   ((data && data.dims) || []).forEach(function (q) {
     var mm = parseFloat(String(q && q.mm).replace(/[\s,]/g, ''));
     var a = q && q.from, b = q && q.to;
@@ -3002,6 +3006,18 @@ function scanBox(on, label) {
   tick();
   if (scanTimer) clearInterval(scanTimer);
   scanTimer = setInterval(tick, 500);
+}
+
+/** Скан оказался спецификацией, а не планом: откатываем подложку и объясняем */
+function rejectScanAsSpec(fi, c, name) {
+  var top = undoStack[undoStack.length - 1];
+  if (imgCache[fi] === c && top && top.t === 'plan' && top.floor === fi) {
+    var was = cur; cur = fi;
+    try { doUndo(); } finally { cur = was; }
+  }
+  delete PDF_AREAS[fi]; delete SCAN_DIMS[fi]; delete SCAN_OCR[fi]; delete SCAN_DIAG[fi];
+  warnNotPlan(name);
+  if (typeof updateGuide === 'function') updateGuide();
 }
 
 function readAreaLabelsFromCanvas(c, label) {
@@ -3295,7 +3311,7 @@ function loadPdfPlan(file, done) {
     }).then(function () {
       if (done) done();
     }).catch(function (e) {
-      if (notPlan) { warnNotPlan(file.name); if (done) done(); return; }
+      if (notPlan || (e && e.notPlan)) { warnNotPlan(file.name); if (done) done(); return; }
       console.error('[plan_editor] pdf:', e);
       hint('');
       alert('Не удалось прочитать PDF «' + file.name +
@@ -3364,6 +3380,7 @@ function renderPdfPage(page) {
       delete SCAN_OCR[fi];
       return Promise.all([readAreaLabelsFromCanvas(c), startOcr(c, fi)]).then(function (res) {
         var labs = res[0];
+        if (labs.doc === 'spec' && !labs.length) { var er = new Error('not a plan'); er.notPlan = true; throw er; }
         PDF_AREAS[fi] = labs; SCAN_DIMS[fi] = labs.dims || [];
       });
     }
@@ -3412,6 +3429,7 @@ function loadOne(file) {
           if (LOAD_TOK[fi0] !== tok) { done(); return; }
           // за время ожидания этаж могли сменить на другую подложку — тогда не трогаем
           if (imgCache[fi0] !== c) { done(); return; }
+          if (labs.doc === 'spec' && !labs.length) { rejectScanAsSpec(fi0, c, file.name); done(); return; }
           PDF_AREAS[fi0] = labs; SCAN_DIMS[fi0] = labs.dims || [];
           (SCAN_DIAG[fi0] = SCAN_DIAG[fi0] || {}).read = (labs.why ? 'ИИ: ' + labs.why : 'ИИ ответил за ' + (labs.sec || 0) + ' с: размерных линий ' +
             (labs.rawDims || 0) + ', принято ' + (labs.dims || []).length + '; подписей площадей ' + (labs.rawLabels || 0) +
