@@ -46726,7 +46726,7 @@ const app = {
             setCls(t, 'pg-closed', closed);
             els.forEach(e => setCls(e, 'pg-collapsed', closed));
             // Переключатели «добавить в смету» — карточками, чтобы отличались от выбора из вариантов
-            if (idx === 2) {
+            if (idx === 2 || idx === 3) {
                 els.forEach(e => {
                     if (e.classList.contains('toggle-item')) setCls(e, 'pg-card', true);
                     else if (e.classList.contains('pg-tiles')) Array.from(e.children).forEach(c => { if (c.classList.contains('toggle-item')) setCls(c, 'pg-card', true); });
@@ -46784,17 +46784,18 @@ const app = {
         }
     },
     // Свёрнутые группы панели. По умолчанию открыт только «Дом» (группа 1), остальные свёрнуты.
-    // Один раз сбрасываем сохранённое состояние под новое умолчание (ключ версии hc_pg_v3).
+    // Один раз сбрасываем сохранённое состояние под новое умолчание (ключ версии hc_pg_v4).
     _pgCollapsed: function () {
+        const DEF = [2, 3, 4, 5];
         try {
             let a = JSON.parse(localStorage.getItem('hc_pg_closed') || 'null');
-            if (!localStorage.getItem('hc_pg_v3')) {
-                a = [2, 3, 4];
+            if (!localStorage.getItem('hc_pg_v4')) {
+                a = DEF;
                 localStorage.setItem('hc_pg_closed', JSON.stringify(a));
-                localStorage.setItem('hc_pg_v3', '1');
+                localStorage.setItem('hc_pg_v4', '1');
             }
-            return Array.isArray(a) ? a : [2, 3, 4];
-        } catch (e) { return [2, 3, 4]; }
+            return Array.isArray(a) ? a : DEF;
+        } catch (e) { return DEF; }
     },
     togglePanelGroup: function (n) {
         const a = this._pgCollapsed();
@@ -47171,6 +47172,8 @@ const app = {
         // Пункт «Автоматика» — только в подробном режиме; в быстром вместо него
         // одна строка, и только если что-то включено.
         if ($('blk_auto_header')) $('blk_auto_header').style.display = s.detailedRooms ? 'block' : 'none';
+        // Группа «Автоматика» — только в подробном режиме: контейнер прячем целиком, иначе он держит группу на экране.
+        if ($('pg_tiles_auto')) $('pg_tiles_auto').style.display = s.detailedRooms ? '' : 'none';
         if ($('blk_auto_fast_note')) $('blk_auto_fast_note').style.display = (!s.detailedRooms && anyOn) ? 'block' : 'none';
         // Общий тумблер «Автоматика»: подпункты (котельная, радиаторы и тёплый пол) — только когда он включён.
         if ($('chk_auto_master')) $('chk_auto_master').checked = !!s.autoOn;
