@@ -48,5 +48,13 @@ for (const [name, code, maker, want] of ROWS) {
     if (good) ok++;
     console.log((good ? 'ok  ' : 'FAIL') + ' ' + name.slice(0, 52).padEnd(52) + ' → ' + (got || '—') + (good ? '' : '  (ждали ' + want + ')'));
 }
-console.log(`\n${ok} из ${ROWS.length}`);
-process.exit(ok === ROWS.length ? 0 : 1);
+// У коллектора должны быть варианты обоих брендов, а не по одному.
+const crec = RM.specItem({ name: ROWS[6][0], art: ROWS[6][1], codes: [ROWS[6][1]], maker: 'Elsen', qty: 1 });
+const cur = RM.matchSpec(crec, null).m.item;
+const vr = RM.variantsOf(crec, cur, null, 3716, 4);
+const varOk = vr.stout.length >= 2 && vr.rommer.length >= 2;
+console.log((varOk ? 'ok  ' : 'FAIL') + ` варианты коллектора: STOUT ${vr.stout.length}, ROMMER ${vr.rommer.length}`);
+if (varOk) ok++;
+
+console.log(`\n${ok} из ${ROWS.length + 1}`);
+process.exit(ok === ROWS.length + 1 ? 0 : 1);

@@ -3864,6 +3864,8 @@ const RecognizeUI = {
         this._onlyBad = false;       // новая смета показывается целиком
         this._ourWorks = null;       // прайс монтажа мог смениться между разборами
         this._analogOn = false;      // новое распознавание — режим аналогов сброшен
+        this._analogAny = false;
+        this._cmpBrand = 'stout';
         this._analogSaved = 0;
         this._deep = 0;
         // Ниже девяноста процентов смета получается дырявой, и монтажнику
@@ -4927,6 +4929,9 @@ const RecognizeUI = {
      */
     PRICE_GUARD_RATIO: 5,
 
+    /** Во сколько раз цены расходятся, чтобы строка попала в «проверьте» (более 100 %). */
+    PRICE_WARN_RATIO: 2,
+
     /**
      * Насколько узкой должна быть полоса цен при переподборе.
      *
@@ -4960,6 +4965,7 @@ const RecognizeUI = {
     priceGuard(row) {
         delete row._priceAlarm;
         delete row._priceFixed;
+        delete row._priceWarn;
         const m = row._m;
         if (!m || !m.item || row._locked) return;
 
@@ -4969,8 +4975,36 @@ const RecognizeUI = {
         const op = this.ourUnitPriceOf(m.item, row);
         if (!dp || !op) return;
 
+        /**
+         * Расхождение больше 100 % — повод проверить, а не молча принять.
+         *
+         * Подбор по словам не видит цену, и «Коллектор с регулирующими
+         * клапанами» мог уйти в коллектор другой серии вдвое дороже или
+         * дешевле. Порог PRICE_GUARD_RATIO (в пять раз) ловит только явный
+         * промах, а всё между ними проходило зелёным. Теперь вдвое и больше —
+         * строка в «проблемных» с пометкой, но подбор остаётся и в сравнение
+         * идёт: разница в два раза бывает и настоящей (чужая марка, скидка).
+         */
+        const ratio = Math.max(op / dp, dp / op);
+        if (ratio > this.PRICE_WARN_RATIO && ratio <= this.PRICE_GUARD_RATIO) {
+            row._priceWarn = op > dp ? Math.round(ratio * 10) / 10 : -Math.round(ratio * 10) / 10;
+        }
+
         const off = p => p > dp * this.PRICE_GUARD_RATIO || p * this.PRICE_GUARD_RATIO < dp;
         if (!off(op)) return;
+
+        /**
+         * Артикул, прямая замена и аналог спецификации выбраны по признаку, а
+         * не по словам: цена другой марки (Ридан за 7 545 ₽ против нашего
+         * запорно-балансировочного за 714 ₽) их не опровергает. Подменять такой
+         * выбор «похожим по цене» нельзя — именно так балансировочный клапан
+         * уходил в термостатический смесительный. Оставляем и помечаем.
+         */
+        const deliberate = m.byEquivalent || m.byArticle || row._spec;
+        if (deliberate) {
+            row._priceAlarm = op > dp ? Math.round(op / dp) : -Math.round(dp / op);
+            return;
+        }
 
         const alt = (m.alternatives || []).find(a =>
             a && Number(a.price) && !off(this.ourUnitPriceOf(a, row)));
@@ -5026,7 +5060,7 @@ const RecognizeUI = {
     // _rolledInto и _roll ссылаются на соседние строки того же массива. В
     // снимок они не идут: свёртка пересчитывается при каждой отрисовке, а
     // ссылка на строку в JSON превращается либо в её копию, либо в дыру.
-    SNAP_SKIP: ['alts', 'alternatives', 'rommer', 'comfort', '_item', '_rolledInto', '_roll'],
+    SNAP_SKIP: ['_varCache', 'alts', 'alternatives', 'rommer', 'comfort', '_item', '_rolledInto', '_roll'],
 
     snap() {
         // Любая правка делает исходную смету для пересчёта системы устаревшей.
@@ -5135,6 +5169,7 @@ const RecognizeUI = {
         if (!r._m && this.notOurRange(r)) return false;
         if (!r._m && !this.looksLikeWork(r)) return true;     // нет в каталоге
         if (r._priceAlarm) return true;                       // цена не сходится
+        if (r._priceWarn) return true;                        // цена расходится больше чем вдвое
         if (!((r.qty || 0) + (r.qtyExtra || 0))) return true; // нет количества
         return false;
     },
@@ -5256,7 +5291,7 @@ const RecognizeUI = {
             // наравне с неподобранным материалом значит пугать зря.
             // Чужой расходник жёлтым не красим: жёлтый значит «нужно решение»,
             // а решать тут нечего — такого товара у поставщика нет.
-            const cls = m ? (r._priceAlarm ? 'rec-pricebad' : '')
+            const cls = m ? (r._priceAlarm ? 'rec-pricebad' : (r._priceWarn ? 'rec-nomatch' : ''))
                 : (this.looksLikeWork(r) ? 'rec-workrow'
                     : (this.notOurRange(r) ? '' : 'rec-nomatch'));
 
@@ -5283,7 +5318,10 @@ const RecognizeUI = {
                     this.renderAlts(r, n)}${
                     r._priceAlarm ? `<div class="rec-pricebad-note">Цена не сходится: ${
                         r._priceAlarm > 0 ? `у нас дороже в ${r._priceAlarm} раз` : `у нас дешевле в ${-r._priceAlarm} раз`
-                    } — скорее всего подобрано другое изделие, проверьте 🔍</div>` : ''}`
+                    } — скорее всего подобрано другое изделие, проверьте 🔍</div>` : ''}${
+                    (!r._priceAlarm && r._priceWarn) ? `<div class="rec-pricebad-note">Цена расходится больше чем на 100%: ${
+                        r._priceWarn > 0 ? `у нас дороже в ${r._priceWarn} раза` : `у нас дешевле в ${-r._priceWarn} раза`
+                    } — проверьте, тот ли это предмет (варианты ниже)</div>` : ''}`
                 : (this.looksLikeWork(r)
                     ? `<span class="rec-work-tag">монтажная работа</span>
                        <span class="rec-art">уйдёт в раздел работ${
@@ -5460,9 +5498,10 @@ const RecognizeUI = {
             }
 
             const m = r._m;
-            const op = m ? this.ourUnitPriceOf(m.item, r) : 0;
-            const ra = (m && typeof RecognizeMatch !== 'undefined' && RecognizeMatch.rommerAlt)
-                ? RecognizeMatch.rommerAlt(m.item) : null;
+            const bi = m ? ((r._analogBase && r._analogBase.item) || m.item) : null;
+            const op = bi ? this.ourUnitPriceOf(bi, r) : 0;
+            const ra = (bi && !r._locked && typeof RecognizeMatch !== 'undefined' && RecognizeMatch.rommerAlt)
+                ? RecognizeMatch.rommerAlt(bi, this._analogOn ? !!this._analogAny : true) : null;
             const bp = brand === 'rommer' ? (ra ? (this.ourUnitPriceOf(ra.item, r) || op) : op) : op;
             if (dp > 0 && op > 0 && qty > 0 && !r._priceAlarm) {
                 t.eqTheir += dp * qty; t.eqOur += bp * qty;
@@ -6383,11 +6422,16 @@ const RecognizeUI = {
             const m = isWork ? null : r._m;
             const qty = this.docQty(r);
             const dp = this.docPrice(r);
-            const op = m ? this.ourUnitPriceOf(m.item, r) : 0;
-            // Цена той же позиции на ROMMER. Аналога нет (или он дороже) —
-            // остаётся исходная: смета «на ROMMER» всё равно наполовину STOUT.
-            const ra = (m && typeof RecognizeMatch !== 'undefined' && RecognizeMatch.rommerAlt)
-                ? RecognizeMatch.rommerAlt(m.item) : null;
+            // Исходная позиция (STOUT): при включённых аналогах в _m уже ROMMER, а
+            // цену STOUT и аналог для сравнения надо считать от неё.
+            const bi = m ? ((r._analogBase && r._analogBase.item) || m.item) : null;
+            const op = bi ? this.ourUnitPriceOf(bi, r) : 0;
+            // Цена той же позиции на ROMMER. Аналога нет — остаётся исходная:
+            // смета «на ROMMER» всё равно наполовину STOUT. Включён режим «только
+            // где дешевле» — считаем так же, чтобы цифры совпали с тем, что уедет.
+            const anyAlt = this._analogOn ? !!this._analogAny : true;
+            const ra = (bi && !r._locked && typeof RecognizeMatch !== 'undefined' && RecognizeMatch.rommerAlt)
+                ? RecognizeMatch.rommerAlt(bi, anyAlt) : null;
             const rp = ra ? (this.ourUnitPriceOf(ra.item, r) || op) : op;
             const bp = brand === 'rommer' ? rp : op;
             const dSum = dp * qty;
@@ -6422,9 +6466,9 @@ const RecognizeUI = {
             const score = m ? (r._locked ? 1 : (m.score || 0)) : 0;
             const dotCls = score >= 0.9 ? 'high' : score >= 0.7 ? 'mid' : score > 0 ? 'low' : 'none';
             const ours = m
-                ? `<span class="rec-cmp-dot ${dotCls}"></span>${esc(m.item.name)}${
+                ? `<span class="rec-cmp-dot ${dotCls}"></span>${esc(bi.name)}${
                     brand === 'rommer' && ra ? ` <span class="rec-art">→ ${esc(ra.item.name)}</span>` : ''}
-                   <div class="rec-art">${esc(m.item.article || m.item.id)}${
+                   <div class="rec-art">${esc(bi.article || bi.id)}${
                     r._fromMem ? ' · по вашему прошлому выбору'
                         : (r._locked ? ' · выбрано вручную'
                             : (m.score < 1 ? ` · совпадение ${Math.round(m.score * 100)}%` : ''))}</div>${
@@ -6582,6 +6626,20 @@ const RecognizeUI = {
 
     /** Бренд, на который считается сравнение. Смету не трогает — только расчёт. */
     cmpBrand(brand) {
+        /**
+         * Бренд сравнения теперь и бренд сметы.
+         *
+         * Раньше выбор ROMMER на экране сравнения только пересчитывал цифры, а
+         * в смету уезжали позиции STOUT — «смета на ROMMER, а внутри STOUT».
+         * Теперь выбор меняет сами позиции, и перенос берёт то, что видно в
+         * сравнении. Откат — выбор STOUT.
+         */
+        const want = brand === 'rommer';
+        if (want !== !!this._analogOn) {
+            this.snap();
+            if (this._analogOn) this.revertAnalog();
+            if (want) this.applyAnalog(true);
+        }
         this._cmpBrand = brand;
         this.renderCompare();
     },
@@ -6706,39 +6764,58 @@ const RecognizeUI = {
     /** Переключение всей сметы на аналоги ROMMER и обратно. */
     toggleAnalog() {
         this.snap();
-        if (this._analogOn) {
-            for (const r of this._rows) {
-                if (!r._analogBase) continue;
-                r._m = r._analogBase;
-                delete r._analogBase;
-            }
-            this._analogOn = false;
-            this._analogSaved = 0;
-            this._analogBase0 = 0;
-            this._analogCount = 0;
-        } else {
-            const st = this.analogStats();
-            this._analogBase0 = st ? st.base : 0;
-            this._analogCount = st ? st.n : 0;
-            let saved = 0;
-            for (const r of this._rows) {
-                const m = r._m;
-                if (!m || !m.item || r._locked) continue;
-                const alt = RecognizeMatch.rommerAlt(m.item);
-                if (!alt) continue;
-                r._analogBase = m;
-                saved += alt.save * ((Number(r.qty) || 0) + (Number(r.qtyExtra) || 0));
-                r._m = {
-                    ...m,
-                    item: alt.item,
-                    substituted: `аналог ROMMER вместо «${m.item.name}» — дешевле на ${alt.percent}%`,
-                    needsApproval: true,
-                };
-            }
-            this._analogOn = true;
-            this._analogSaved = saved;
-        }
+        if (this._analogOn) this.revertAnalog();
+        else this.applyAnalog(false);
+        // Бренд сравнения следует за тем, что реально уедет в смету.
+        this._cmpBrand = this._analogOn ? 'rommer' : 'stout';
         this.renderReview();
+    },
+
+    /** Вернуть исходные позиции вместо аналогов. */
+    revertAnalog() {
+        for (const r of this._rows) {
+            if (!r._analogBase) continue;
+            r._m = r._analogBase;
+            delete r._analogBase;
+        }
+        this._analogOn = false;
+        this._analogAny = false;
+        this._analogSaved = 0;
+        this._analogBase0 = 0;
+        this._analogCount = 0;
+    },
+
+    /**
+     * Заменить позиции на ROMMER. any=false — только там, где аналог дешевле
+     * (тумблер на экране проверки); any=true — везде, где у позиции есть
+     * ROMMER-версия: так выбирают «смета на ROMMER» на экране сравнения.
+     */
+    applyAnalog(any) {
+        const st = this.analogStats();
+        this._analogBase0 = st ? st.base : 0;
+        this._analogCount = st ? st.n : 0;
+        let saved = 0, n = 0;
+        for (const r of this._rows) {
+            const m = r._m;
+            if (!m || !m.item || r._locked) continue;
+            const alt = RecognizeMatch.rommerAlt(m.item, !!any);
+            if (!alt) continue;
+            r._analogBase = m;
+            saved += alt.save * ((Number(r.qty) || 0) + (Number(r.qtyExtra) || 0));
+            n++;
+            r._m = {
+                ...m,
+                item: alt.item,
+                substituted: alt.percent > 0
+                    ? `аналог ROMMER вместо «${m.item.name}» — дешевле на ${alt.percent}%`
+                    : `аналог ROMMER вместо «${m.item.name}»`,
+                needsApproval: true,
+            };
+        }
+        if (any) this._analogCount = n;
+        this._analogOn = true;
+        this._analogAny = !!any;
+        this._analogSaved = saved;
     },
 
     /**
@@ -7153,7 +7230,22 @@ const RecognizeUI = {
     altsOf(row) {
         const m = row && row._m;
         if (!m || !m.item) return [];
-        return (m.alternatives || []).filter(a => a && a.name && a !== m.item);
+        const base = (m.alternatives || []).filter(a => a && a.name && a !== m.item);
+        if (typeof RecognizeMatch === 'undefined' || !RecognizeMatch.variantsOf) return base;
+
+        // К соседям подбора добавляем варианты каждого бренда: серий у STOUT и у
+        // ROMMER несколько, а подбор показывал по одной. Считаем один раз на
+        // позицию — перерисовка идёт после каждой правки.
+        const sys = (this._sys && this._sys.main) || null;
+        const key = String(m.item.id) + '|' + sys;
+        if (!row._varCache || row._varCache.key !== key) {
+            let v = { stout: [], rommer: [] };
+            try { v = RecognizeMatch.variantsOf(row, m.item, sys, this.docPrice(row), 4); } catch (e) { /* без вариантов */ }
+            row._varCache = { key, list: v.stout.concat(v.rommer) };
+        }
+        const have = new Set(row._varCache.list.map(a => a.article || a.id));
+        const extra = base.filter(a => !have.has(a.article || a.id));
+        return row._varCache.list.concat(extra);
     },
 
     renderAlts(r, n) {
@@ -7161,18 +7253,30 @@ const RecognizeUI = {
         if (!alts.length) return '';
         const esc = s => String(s ?? '').replace(/[&<>"]/g,
             c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const brandOf = a => (RecognizeMatch.brandOfItem ? RecognizeMatch.brandOfItem(a) : 'other');
+        const cnt = { STOUT: 0, ROMMER: 0 };
+        alts.forEach(a => { const b = brandOf(a); if (cnt[b] !== undefined) cnt[b]++; });
+        const split = (cnt.STOUT || cnt.ROMMER)
+            ? ` (${[cnt.STOUT ? `STOUT ${cnt.STOUT}` : '', cnt.ROMMER ? `ROMMER ${cnt.ROMMER}` : ''].filter(Boolean).join(', ')})` : '';
 
         if (!r._altsOpen) {
             return `<div class="rec-art"><a href="#" class="rec-altlink"
                 onclick="RecognizeUI.toggleAlts(${n});return false;">ещё ${alts.length} ${
-                this.plural(alts.length, 'вариант', 'варианта', 'вариантов')} подбора</a></div>`;
+                this.plural(alts.length, 'вариант', 'варианта', 'вариантов')}${split}</a></div>`;
         }
 
+        let last = null;
         return `<div class="rec-alts">
-            ${alts.map((a, k) => `<div class="rec-alt"
-                onclick="RecognizeUI.pickAlt(${n},${k})">
-                <span>${esc(a.name)}</span><b>${Math.round(Number(a.price) || 0)} ₽</b>
-              </div>`).join('')}
+            ${alts.map((a, k) => {
+                const b = brandOf(a);
+                const head = (b !== last && b !== 'other')
+                    ? `<div class="rec-art"><b>${b}</b></div>` : '';
+                last = b;
+                return `${head}<div class="rec-alt" onclick="RecognizeUI.pickAlt(${n},${k})">
+                  <span>${esc(a.name)} <span class="rec-art">${esc(a.article || a.id)}</span></span>
+                  <b>${Math.round(Number(a.price) || 0)} ₽</b>
+                </div>`;
+            }).join('')}
             <a href="#" class="rec-altlink"
                onclick="RecognizeUI.toggleAlts(${n});return false;">свернуть</a>
           </div>`;
@@ -7213,6 +7317,7 @@ const RecognizeUI = {
         delete r._fromMem;
         delete r._noMem;
         delete r._priceAlarm;
+        delete r._priceWarn;
         delete r._priceFixed;
         this.memRemember(r, picked);
         this.renderReview();
@@ -7395,6 +7500,7 @@ const RecognizeUI = {
                         // подставится.
                         delete r._noMem;
                         delete r._priceAlarm;
+                        delete r._priceWarn;
                         delete r._priceFixed;
                         // Запоминаем каждую строку отдельно: наименования у них
                         // разные, а решение человек принял про каждое.

@@ -788,6 +788,13 @@ const RecognizeMatch = (function () {
     const pipes = { ppr: 0, ss: 0, mp: 0, pex: 0 };
 
     for (const r of (rows || [])) {
+      // Строка с кодом и производителем (Elsen, EF…) называет систему сама —
+      // без оглядки на то, что к ней подобрал поиск: подобранное по ошибке
+      // название («хомут» → труба PP-R) и давало полипропилен в смете без него.
+      if (r._spec) {
+        const ss = specSystem(r.raw, r._spec.codes && r._spec.codes[0], r._spec.maker);
+        if (ss && counts[ss] !== undefined) { counts[ss] += 3; continue; }
+      }
       const t = (r.type || '').toLowerCase();
       // Подобранная позиция знает свою систему точнее рукописной строки:
       // «Комби 25х3/4» молчит, «Муфта комбинированная ВР PP-R 25х3/4» — нет.
@@ -4983,7 +4990,7 @@ const RecognizeMatch = (function () {
     };
   }
 
-  function rommerAlt(item) {
+  function rommerAlt(item, any) {
     if (!item) return null;
     // Канализация удешевляется переходом на обычную серию, а не сменой бренда.
     const sewer = sewerBudgetAlt(item);
@@ -4993,7 +5000,8 @@ const RecognizeMatch = (function () {
     // Позиция могла прийти из прайса — там поля rommer нет, ищем в каталоге.
     const src = (item.rommer ? item : findById(item.id)) || item;
     const alt = src.rommer;
-    if (!alt || typeof alt.price !== 'number' || !base || alt.price >= base) return null;
+    // any — смета целиком «на ROMMER»: аналог нужен и тогда, когда он не дешевле.
+    if (!alt || typeof alt.price !== 'number' || !base || (!any && alt.price >= base)) return null;
     return {
       item: { ...alt, brand: alt.brand || 'ROMMER' },
       save: base - alt.price,
@@ -6433,6 +6441,70 @@ const RecognizeMatch = (function () {
     return best;
   }
 
+  /** Бренд позиции: из поля, а у прайсовых — по префиксу артикула (S… STOUT, R… ROMMER). */
+  function brandOfItem(it) {
+    const b = String((it && it.brand) || '').toUpperCase();
+    if (b === 'STOUT' || b === 'ROMMER') return b;
+    const a = String((it && (it.article || it.id)) || '');
+    if (/^S[A-Z]{2,3}-\d/.test(a)) return 'STOUT';
+    if (/^R[A-Z]{2,3}-\d/.test(a) || /rommer/i.test(String((it && it.name) || ''))) return 'ROMMER';
+    return 'other';
+  }
+
+  /**
+   * Варианты той же позиции у каждого бренда.
+   *
+   * Подбор отдаёт трёх соседей по оценке названия, и у коллектора с
+   * регулирующими клапанами вариантом оказывался один STOUT и один ROMMER, хотя
+   * серий у каждого бренда несколько (запорные, запорно-регулирующие, с
+   * расходомерами, хромированные). Здесь берутся ВСЕ позиции того же предмета,
+   * проходящие те же защиты по размеру, резьбе и системе, и из них по
+   * limit лучших у STOUT и у ROMMER: по совпадению слов, затем по близости к цене
+   * документа. Возвращает { stout: [...], rommer: [...] } без текущей позиции.
+   */
+  function variantsOf(rec, cur, sysHint, docPrice, limit) {
+    const out = { stout: [], rommer: [] };
+    const a = String((rec && rec.raw) || '');
+    const ka = kindOfName(a) || kindOfName(cur && cur.name);
+    if (!ka || ka === 'гайка' || ka === 'инструмент') return out;
+    const sa = recSystem(rec, sysHint);
+    const ia = inchSet(a);
+    const d = (sa === 'thread' && ia.size) ? null : (Number(rec.d) || null);
+    const wa = new Set(nameParts(a));
+    const pool = ka === 'муфта' || ka === 'переход' ? rowsOfKind('муфта').concat(rowsOfKind('переход')) : rowsOfKind(ka);
+    const scored = [];
+    const seen = new Set([cur && (cur.article || cur.id)]);
+    for (const row of pool) {
+      const it = row.it, b = String(it.name || '');
+      const key = it.article || it.id;
+      if (!(Number(it.price) > 0) || seen.has(key)) continue;
+      const br = brandOfItem(it);
+      if (br === 'other') continue;
+      if (sa) {
+        // Система известна и чужая — отсев. Неизвестная (коллектор, кран) не
+        // повод: у арматуры системы трубы в названии нет.
+        const sb = itemSystem(it);
+        if (sb && sb !== sa && sb !== 'thread' && !(sa === 'pex' && (sb === 'mp' || sb === 'axial'))) continue;
+      }
+      if (d && !hasSize(b, d, sa)) continue;
+      if (analogGuard(rec, it, sysHint)) continue;
+      seen.add(key);
+      let ov = 0;
+      for (const w of new Set(row.w)) if (wa.has(w)) ov++;
+      // Размеры весят вдвое: «1"х3х3/4"» — это три выхода, а не два.
+      const nb = new Set(b.match(/\d+(?:\/\d+)?/g) || []);
+      for (const n of new Set(a.match(/\d+(?:\/\d+)?/g) || [])) if (nb.has(n)) ov += 2;
+      const gap = docPrice > 0 ? Math.abs(Math.log(Number(it.price) / docPrice)) : 0;
+      scored.push({ it, br, ov, gap });
+    }
+    scored.sort((x, y) => (y.ov - x.ov) || (x.gap - y.gap) || (x.it.price - y.it.price));
+    for (const x of scored) {
+      const list = x.br === 'STOUT' ? out.stout : out.rommer;
+      if (list.length < (limit || 4)) list.push(x.it);
+    }
+    return out;
+  }
+
   /**
    * Подбор строки спецификации: код → аналог с защитами → ничего.
    * rec — строка из specItem (поле _spec: { codes, maker }).
@@ -6499,7 +6571,7 @@ const RecognizeMatch = (function () {
 
   return {
     // Спецификация рабочего проекта: строка → запись, подбор по коду и аналог с защитами.
-    specItem, matchSpec, matchByCode, analogGuard, specFields, threadKind, kindOfName,
+    specItem, matchSpec, matchByCode, analogGuard, variantsOf, brandOfItem, specFields, threadKind, kindOfName,
     SYSTEMS, SECTIONS, detectSystem, systemProfile, guessSection, profileOf, suggest, matchItem, matchCatalog,
     isRadiator, matchRadiator, isPump, matchPump,
     // Тип, выведенный из текста строки: нужен интерфейсу проверки, чтобы
