@@ -4368,12 +4368,94 @@ function doUndo() {
   renderTabs(); draw(); renderZones();
 }
 
+/**
+ * Быстрые клавиши — одна буква на инструмент, как в чертёжных программах.
+ * Работают по физической клавише (e.code): раскладка не мешает, русская или
+ * английская — одна и та же клавиша. Поле ввода имени и открытые окна их не
+ * перехватывают. Список — по «?» (Shift+/) и в подсказках кнопок.
+ */
+var HOTKEYS = [
+  { code: 'KeyV', key: 'V', name: 'Выбор и правка зон', run: function () { setMode('select'); } },
+  { code: 'KeyS', key: 'S', name: 'Масштаб: две точки', run: function () { setMode('scale'); }, btn: 'b_scale' },
+  { code: 'KeyQ', key: 'Q', name: 'Комната по клику', run: function () { setMode('room'); }, btn: 'b_room' },
+  { code: 'KeyW', key: 'W', name: 'Обвести прямоугольником', run: function () { setMode('rect'); }, btn: 'b_rect' },
+  { code: 'KeyE', key: 'E', name: 'Обвести контуром', run: function () { setMode('poly'); }, btn: 'b_poly' },
+  { code: 'KeyA', key: 'A', name: 'Радиатор', run: function () { setMode('rad'); }, btn: 'b_rad' },
+  { code: 'KeyC', key: 'C', name: 'Коллектор', run: function () { setMode('coll'); }, btn: 'b_coll' },
+  { code: 'KeyT', key: 'T', name: 'Санузел', run: function () { setMode('wc'); }, btn: 'b_wc' },
+  { code: 'KeyN', key: 'N', name: 'Распознать комнаты', run: function () { autoRooms(); }, btn: 'b_autorooms' },
+  { code: 'KeyH', key: 'H', name: 'Подсказки вкл / выкл', run: function () { toggleHints(); }, btn: 'b_hints' },
+  { code: 'Equal', key: '+', name: 'Приблизить', run: function () { zoomStep(1); } },
+  { code: 'NumpadAdd', key: '+', name: 'Приблизить', run: function () { zoomStep(1); } },
+  { code: 'Minus', key: '−', name: 'Отдалить', run: function () { zoomStep(-1); } },
+  { code: 'NumpadSubtract', key: '−', name: 'Отдалить', run: function () { zoomStep(-1); } },
+  { code: 'Digit0', key: '0', name: 'Масштаб экрана 100 %', run: function () { setZoom(1); } },
+  { code: 'Slash', key: '?', shift: true, name: 'Список клавиш', run: function () { toggleHotkeyHelp(); } }
+];
+
+/** Клавиша из HOTKEYS → true, если сработала. Ctrl+S — сохранить, как в редакторах. */
+function runHotkey(e) {
+  if (e.ctrlKey || e.metaKey) {
+    if (!e.altKey && (e.code === 'KeyS' || String(e.key).toLowerCase() === 's')) {
+      var sb = document.getElementById('b_save');
+      if (sb) { e.preventDefault(); sb.click(); return true; }
+    }
+    return false;
+  }
+  if (e.altKey) return false;
+  for (var i = 0; i < HOTKEYS.length; i++) {
+    var h = HOTKEYS[i];
+    if (h.code !== e.code) continue;
+    if (h.shift && !e.shiftKey) continue;                // «?» — только с Shift
+    if (!h.shift && e.shiftKey && /^Key/.test(h.code)) continue;   // буквы — без Shift
+    if (!F().img && h.code !== 'KeyV') return false;     // без плана инструменты не нужны
+    e.preventDefault(); h.run();
+    return true;
+  }
+  return false;
+}
+
+/** Окно со списком клавиш: открыть и закрыть «?» или Esc. */
+function toggleHotkeyHelp() {
+  var old = document.getElementById('hk_help');
+  if (old) { old.remove(); return; }
+  var rows = HOTKEYS.filter(function (h, i, a) { return a.findIndex(function (x) { return x.name === h.name; }) === i; })
+    .map(function (h) { return '<tr><td><kbd>' + h.key + '</kbd></td><td>' + h.name + '</td></tr>'; }).join('');
+  var box = document.createElement('div');
+  box.id = 'hk_help';
+  box.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:9999;display:flex;align-items:center;justify-content:center';
+  box.innerHTML = '<div style="background:var(--panel,#fff);color:var(--text,#111);border-radius:10px;padding:16px 20px;min-width:300px;box-shadow:0 10px 30px rgba(0,0,0,.25)">' +
+    '<div style="font-weight:700;margin-bottom:8px">Быстрые клавиши</div>' +
+    '<table style="border-collapse:collapse;font-size:13px">' + rows +
+    '<tr><td><kbd>Ctrl+Z</kbd></td><td>Отменить</td></tr>' +
+    '<tr><td><kbd>Ctrl+S</kbd></td><td>Сохранить</td></tr>' +
+    '<tr><td><kbd>Enter</kbd></td><td>Замкнуть контур</td></tr>' +
+    '<tr><td><kbd>Del</kbd></td><td>Удалить выбранную зону</td></tr>' +
+    '<tr><td><kbd>Esc</kbd></td><td>Отмена текущего действия</td></tr>' +
+    '</table><div style="font-size:12px;opacity:.7;margin-top:8px">Закрыть — ? или Esc</div></div>';
+  box.addEventListener('click', function (e) { if (e.target === box) box.remove(); });
+  document.body.appendChild(box);
+}
+
+/** Подсказки на кнопках: в конце названия — клавиша, например «Комната (Q)». */
+function markHotkeyButtons() {
+  HOTKEYS.forEach(function (h) {
+    if (!h.btn) return;
+    var b = document.getElementById(h.btn);
+    if (b && b.title.indexOf('(' + h.key + ')') < 0) b.title = (b.title ? b.title + ' ' : '') + '(' + h.key + ')';
+  });
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', markHotkeyButtons);
+else markHotkeyButtons();
+
 document.addEventListener('keydown', function (e) {
   var tag = (document.activeElement && document.activeElement.tagName) || '';
-  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if (e.key === 'Escape' && document.getElementById('hk_help')) { document.getElementById('hk_help').remove(); return; }
   if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyZ' || String(e.key).toLowerCase() === 'z')) {
     e.preventDefault(); doUndo(); return;
   }
+  if (runHotkey(e)) return;
   if (e.key === 'Enter' && mode === 'poly' && tmp.length >= 3) { closePoly(); return; }
   if ((e.code === 'KeyR' || /^[rк]$/i.test(String(e.key))) && !e.ctrlKey && !e.metaKey && !e.altKey && mode !== 'poly') {
     if (rotateUnderCursor()) { e.preventDefault(); return; }
