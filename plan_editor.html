@@ -2604,7 +2604,8 @@ function hasBoilerZone() {
  *  Сопоставление по площади (лучшие пары, допуск 25% или 2 м²); без расчёта —
  *  зоны ТП для всех найденных комнат. Уже размеченные комнаты не трогаются. */
 var lastRoomsNote = '';
-var lastRoomsWhy = '';   // почему комнаты не нашлись — для итоговой строки   // итог сверки с подписанными площадями — для строки «Найдено комнат…»
+var lastRoomsWhy = '';
+var lastSkipped = 0;   // сколько контуров пропущено как лишние (без подписи)   // почему комнаты не нашлись — для итоговой строки   // итог сверки с подписанными площадями — для строки «Найдено комнат…»
 function autoRooms() {
   lastRoomsWhy = '';
   // Масштаба ещё нет — берём сами (размеры чертежа, двери, площади комнат), а не отправляем
@@ -2718,14 +2719,20 @@ function autoRooms() {
   // сошлись — заливать весь этаж тёплым полом нельзя.
   // Раскладка: несовпавшие комнаты — контурами «Помещение» без имени. Тёплый
   // пол в них монтажник включит кликом, имя спросим тогда же.
+  // Лишние контуры (не совпавшие ни с одной строкой экспликации) не создаём зонами,
+  // если на них нет подписи с названием: иначе сумма этажа уходит на 30–160 % вверх.
+  // Их число показываем в подписи, чтобы монтажник проверил их руками.
+  var skippedExtra = 0;
   if (UFH) {
     free.forEach(function (c) {
       var cc = centroid(c.pts);
       if (F().zones.some(function (z) { return pip(cc, z.pts); })) return;
+      if (targets.length && !c.pname) { skippedExtra++; return; }
       F().zones.push({ type: 'room', name: c.pname || '', nameSrc: c.pname ? 'plan' : undefined, pts: fitZonePts(c.pts, F().pxPerM || 100, c.printed) });
       cnt.room = (cnt.room || 0) + 1; made++;
     });
   }
+  lastSkipped = skippedExtra;
   if (!made && !targets.length) {
     free.forEach(function (c) {
       F().zones.push({ type: 'tp', name: c.pname || '', nameSrc: c.pname ? 'plan' : undefined, pts: fitZonePts(c.pts, F().pxPerM || 100, c.printed) });
@@ -2761,7 +2768,8 @@ function autoRooms() {
     // режим на плане ведёт мастер (wzGo): на шаге «Комнаты» клик не должен включать тёплый пол
     renderZones(); draw();
     hint('<span class=ok>Найдено комнат: ' + rooms.length + '.</span> ' +
-      (cnt.tp ? 'Тёплый пол из расчёта уже отмечен: ' + cnt.tp + '.' : '') + lastRoomsNote + floorSumNote());
+      (cnt.tp ? 'Тёплый пол из расчёта уже отмечен: ' + cnt.tp + '.' : '') + lastRoomsNote + floorSumNote() +
+      (lastSkipped ? ' Лишних контуров без подписи пропущено: ' + lastSkipped + ' — проверьте вручную.' : ''));
     return;
   }
   hint('<span class=ok>Найдено комнат: ' + rooms.length + ', создано зон: ' +
