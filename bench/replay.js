@@ -52,6 +52,20 @@ for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.json')).sort()) {
         try { out.html = ''; fn(); if (!out.html.includes(needle)) throw new Error('в выводе нет «' + needle + '»'); }
         catch (e) { bad++; console.log(`FAIL экран «${name}»: ${e.message}`); }
     }
+    // Серия уверенных строк сворачивается, а по клику раскрывается.
+    if (c.foldCheck) {
+        total++;
+        try {
+            const keep = U._rows;
+            U._rows = Array.from({ length: 12 }, (_, i) => ({ docNo: String(i + 1), raw: 'x' + i, qty: 1, section: 'A', _m: { item: { id: 'Z' + i, name: 'n', price: 10 }, score: 1, byArticle: true, alternatives: [] } }));
+            out.html = ''; U.renderReview();
+            const folded = out.html.includes('rec-fold') && !out.html.includes('>n<');
+            U.toggleRun(0);
+            const opened = out.html.includes('свернуть 12');
+            U._rows = keep;
+            if (!folded || !opened) throw new Error(`свёрнуто: ${folded}, раскрыто: ${opened}`);
+        } catch (e) { bad++; console.log(`FAIL сворачивание уверенных строк: ${e.message}`); }
+    }
     if (c.maxPpr != null) {
         const ppr = U._rows.filter((r) => r._m && r._m.item && /PP-?R|полипроп/i.test(r._m.item.name)).length;
         total++; if (ppr > c.maxPpr) { bad++; console.log(`FAIL полипропиленовых позиций: ${ppr} (допустимо ${c.maxPpr})`); }

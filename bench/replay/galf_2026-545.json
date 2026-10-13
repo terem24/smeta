@@ -215,5 +215,6 @@
  },
  "order": "1,2,3,4,5,6,7,8,9,10,20,22,24",
  "system": "pex",
- "maxPpr": 0
+ "maxPpr": 0,
+ "foldCheck": true
 }
