@@ -46783,18 +46783,18 @@ const app = {
             if (quick.style.display !== d) quick.style.display = d;
         }
     },
-    // Свёрнутые группы панели. Группа 4 («Эксплуатация») свёрнута по умолчанию и
-    // открывается щелчком. Один раз сбрасываем сохранённое состояние под новое умолчание.
+    // Свёрнутые группы панели. По умолчанию открыт только «Дом» (группа 1), остальные свёрнуты.
+    // Один раз сбрасываем сохранённое состояние под новое умолчание (ключ версии hc_pg_v3).
     _pgCollapsed: function () {
         try {
             let a = JSON.parse(localStorage.getItem('hc_pg_closed') || 'null');
-            if (!localStorage.getItem('hc_pg_v2')) {
-                a = [4];
+            if (!localStorage.getItem('hc_pg_v3')) {
+                a = [2, 3, 4];
                 localStorage.setItem('hc_pg_closed', JSON.stringify(a));
-                localStorage.setItem('hc_pg_v2', '1');
+                localStorage.setItem('hc_pg_v3', '1');
             }
-            return Array.isArray(a) ? a : [4];
-        } catch (e) { return [4]; }
+            return Array.isArray(a) ? a : [2, 3, 4];
+        } catch (e) { return [2, 3, 4]; }
     },
     togglePanelGroup: function (n) {
         const a = this._pgCollapsed();
