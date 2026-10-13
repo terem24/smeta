@@ -4294,7 +4294,8 @@ document.addEventListener('keydown', function (e) {
     e.preventDefault(); doUndo(); return;
   }
   if (e.key === 'Enter' && mode === 'poly' && tmp.length >= 3) { closePoly(); return; }
-  if ((e.code === 'KeyR' || /^[rк]$/i.test(String(e.key))) && !e.ctrlKey && !e.metaKey && !e.altKey && mode !== 'poly') {
+  // Пробел — как в Revit: поворот прибора под курсором. R оставлена для привычки.
+  if ((e.code === 'Space' || e.code === 'KeyR' || /^[rк]$/i.test(String(e.key))) && !e.ctrlKey && !e.metaKey && !e.altKey && mode !== 'poly') {
     if (rotateUnderCursor()) { e.preventDefault(); return; }
   }
   // Delete — убрать зону, на которую наведён курсор: то же, что крестик,
@@ -5200,7 +5201,7 @@ function radRotate(i) {
     }
   }
   hint('<span class=ok>Радиатор повёрнут на ' + r.ang + '°.</span> ' +
-    'Клавиша R над прибором или Shift + правый клик — повернуть ещё на 45°.');
+    'Пробел над прибором (как в Revit) или Shift + правый клик — повернуть ещё на 45°.');
   renderZones(); draw();
 }
 
@@ -5743,7 +5744,7 @@ function wzBody(id) {
   if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('radcoll')", 'Переставить коллектор радиаторов'),
     tx: 'Радиаторы встают под найденными окнами. Лишний уберите кликом по значку, недостающий добавьте ' +
       'кликом у окна. Точка на приборе — подключение по модели из сметы (обычно правое нижнее); ' +
-      'правый клик по прибору — развернуть. Прибор и коллектор можно повернуть на 90°: клавиша R, пока ' +
+      'правый клик по прибору — развернуть. Прибор и коллектор можно повернуть: пробел, пока ' +
       'курсор над ним (у коллектора — ещё и правый клик). Трассы идут от коллектора радиаторов у стены ' +
       'котельной — его можно перетащить мышью.' };
   return { next: 'Готово — в смету', tx: wzSummary().html };
