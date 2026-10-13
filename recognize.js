@@ -1816,7 +1816,11 @@ const RecognizeUI = {
         const box = document.createElement('div');
         box.className = 'rec-progress';
         box.id = 'rec_progress';
+        box.classList.add('rec-ai');
         box.innerHTML = `
+          <div class="rec-ai-head"><span class="rec-ai-orb" aria-hidden="true"></span>
+            <span class="rec-ai-title">ИИ разбирает документ</span>
+            <span class="rec-ai-live">в работе</span></div>
           <div class="rec-pbar"><div class="rec-pfill" id="rec_pfill"></div></div>
           <div class="rec-prow">
             <div class="rec-pstages">
@@ -1827,7 +1831,21 @@ const RecognizeUI = {
             <div class="rec-pside" id="rec_pside"></div>
           </div>
           <div class="rec-elapsed" id="rec_elapsed">0 с</div>`;
-        host.appendChild(box);
+        // Индикатор встаёт справа от листов — там пустое место, и ход работы
+        // виден сразу, без прокрутки. Листов нет (текст, план без картинки) —
+        // остаётся под кнопкой, как раньше.
+        const sheets = host.querySelector('.rec-imgs, .rec-prev-row');
+        if (sheets && sheets.style.display !== 'none' && sheets.parentNode) {
+            const wrap = document.createElement('div');
+            wrap.className = 'rec-work';
+            wrap.id = 'rec_work';
+            sheets.parentNode.insertBefore(wrap, sheets);
+            wrap.appendChild(sheets);
+            wrap.appendChild(box);
+            this._workSheets = sheets;
+        } else {
+            host.appendChild(box);
+        }
         // Индикатор встаёт под кнопкой «Распознать» — на ноутбуке он уходит
         // под нижний край, и плашку «сколько это руками» надо искать
         // прокруткой. Докручиваем до него сами, ровно насколько нужно.
@@ -1899,6 +1917,12 @@ const RecognizeUI = {
         () => 'Собираю помещения для расчёта по комнатам',
     ],
 
+    /** Время ожидания: до минуты — секундами, дальше — целыми минутами («170 с» читается странно). */
+    fmtElapsed(sec) {
+        sec = Math.max(0, Math.round(sec));
+        return sec < 60 ? `${sec} с` : `${Math.round(sec / 60)} мин`;
+    },
+
     /** Сколько позиций в среднем на листе сметы — для ориентира, пока строк ещё нет. */
     ROWS_PER_PAGE: 25,
 
@@ -1949,7 +1973,7 @@ const RecognizeUI = {
             this._saveAt = -1;
             const proj = plan && plan.total >= 5;
             el.innerHTML = `<span class="rec-tip">${tip}</span>` +
-                `<span class="rec-tip-sec">${sec} с</span>` +
+                `<span class="rec-tip-sec">${this.fmtElapsed(sec)}</span>` +
                 (!proj && saved >= 2 ? `<span class="rec-tip-save">вручную было бы ~${this.handTime(saved)}${estimate ? ' (ориентир по листу)' : ''}</span>` : '');
             // Плашка проекта — справа от этапов, на уровне полосы хода, а не
             // строкой ниже: так она видна без прокрутки.
@@ -1960,7 +1984,7 @@ const RecognizeUI = {
             }
         } else {
             const s = el.querySelector('.rec-tip-sec');
-            if (s) s.textContent = sec + ' с';
+            if (s) s.textContent = this.fmtElapsed(sec);
         }
         this.tickSaving();
     },
@@ -2005,6 +2029,13 @@ const RecognizeUI = {
         if (this._timer) { clearInterval(this._timer); this._timer = null; }
         const box = document.getElementById('rec_progress');
         if (box) box.remove();
+        // Листы возвращаются на своё место, обёртка уходит.
+        const wrap = document.getElementById('rec_work');
+        if (wrap) {
+            if (this._workSheets && wrap.parentNode) wrap.parentNode.insertBefore(this._workSheets, wrap);
+            wrap.remove();
+        }
+        this._workSheets = null;
         // Разбор кончился — запросы потрачены, остаток в углу надо обновить.
         this.refreshQuotaBadge();
     },
@@ -6908,7 +6939,7 @@ const RecognizeUI = {
         const secs = Math.round((this._elapsed || 0) / 1000);
         return `<div class="rec-saved">
             <b>${found}</b> ${this.plural(found, 'позиция', 'позиции', 'позиций')} перенесено в смету
-            ${secs ? `за ${secs} с` : ''} — вручную это заняло бы около <b>${time}</b>
+            ${secs ? `за ${this.fmtElapsed(secs)}` : ''} — вручную это заняло бы около <b>${time}</b>
           </div>`;
     },
 
