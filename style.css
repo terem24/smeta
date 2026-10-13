@@ -18119,7 +18119,8 @@ body.theme-yandex #admin_modal_overlay {
 #admin_content table.ad-dense .ad-more { display: none !important; }
 /* Переключатели доступа: в обычном виде заголовок переносится по словам, а не
    наезжает на соседний столбец; в компактном — значок, подпись под переключателем скрыта */
-#admin_content table th.ad-acc-th { white-space: normal; overflow-wrap: anywhere; hyphens: auto; font-size: 10px; line-height: 1.2; padding-left: 4px; padding-right: 4px; }
+#admin_content table.ad-sticky thead th { white-space: nowrap; font-size: 10px; line-height: 1.2; letter-spacing: .02em; }
+#admin_content table th.ad-acc-th { padding-left: 4px; padding-right: 4px; }
 #admin_content table .ad-acc-short { display: none; }
 #admin_content table.ad-dense th.ad-acc-th .ad-acc-full { display: none; }
 #admin_content table.ad-dense th.ad-acc-th .ad-acc-short { display: inline; font-size: 13px; }
