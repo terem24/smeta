@@ -4466,6 +4466,7 @@ function toggleHotkeyHelp() {
     '<table style="border-collapse:collapse;font-size:13px">' + rows +
     '<tr><td><kbd>Ctrl+Z</kbd></td><td>Отменить</td></tr>' +
     '<tr><td><kbd>Ctrl+S</kbd></td><td>Сохранить</td></tr>' +
+    '<tr><td><kbd>[</kbd> <kbd>]</kbd></td><td>Радиатор под курсором на 45°</td></tr>' +
     '<tr><td><kbd>Ctrl+Shift+Z</kbd></td><td>Повторить</td></tr>' +
     '<tr><td><kbd>Ctrl+D</kbd></td><td>Копия выбранной зоны</td></tr>' +
     '<tr><td><kbd>Ctrl+колесо</kbd></td><td>Масштаб</td></tr>' +
@@ -4498,6 +4499,9 @@ document.addEventListener('keydown', function (e) {
   if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyY' || String(e.key).toLowerCase() === 'y')) { e.preventDefault(); doRedo(); return; }
   if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyD' || String(e.key).toLowerCase() === 'd')) {
     e.preventDefault(); duplicateSelected(); return;
+  }
+  if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
+    if (radTurnAt(e.code === 'BracketLeft' ? -45 : 45)) { e.preventDefault(); return; }
   }
   if (runHotkey(e)) return;
   if (e.key === 'Enter' && mode === 'poly' && tmp.length >= 3) { closePoly(); return; }
@@ -5402,32 +5406,51 @@ function collRotate(kind) {
  * прибор прижимается к ближайшей стене, параллельной ему в новом положении, в
  * пределах 0,5 м, — как при переносе, но без перетаскивания.
  */
+/** Прибор прилипает к стене по нормали его угла: лучи в обе стороны, ближайшая
+ *  стена — прибор отходит от неё на толщину стены и отступ. Работает для любого
+ *  угла, в том числе 45° у скошенных граней эркера. */
+function snapRadToWall(r, ang) {
+  var f = F(), m = getMask();
+  if (!m) return;
+  var ppm = f.pxPerM || 100, a = ang * Math.PI / 180, nx = -Math.sin(a), ny = Math.cos(a);
+  var R = Math.round(0.5 * ppm * m.k), sx = Math.round(r.x * m.k), sy = Math.round(r.y * m.k), best = null;
+  [1, -1].forEach(function (sg) {
+    for (var d = 1; d <= R; d++) {
+      var x = Math.round(sx + sg * nx * d), y = Math.round(sy + sg * ny * d);
+      if (x < 0 || y < 0 || x >= m.w || y >= m.h) break;
+      if (m.bar[y * m.w + x]) { if (!best || d < best.d) best = { d: d, sg: sg }; break; }
+    }
+  });
+  if (!best) return;
+  var off = best.d / m.k - 0.07 * ppm - 2;
+  if (off > 0) { r.x = Math.round(r.x + best.sg * nx * off); r.y = Math.round(r.y + best.sg * ny * off); }
+}
+
 function radRotate(i) {
   var f = F(), r = f.rads[i];
   if (!r) return;
   pushUndo('zones');
-  var ppm = f.pxPerM || 100;
   r.ang = (((r.ang || 0) % 180) === 90) ? 0 : 90;
-  var m = getMask();
-  if (m) {
-    // стены, параллельные прибору: для горизонтального — сверху и снизу, для вертикального — слева и справа
-    var dirs = r.ang === 90 ? [[1, 0], [-1, 0]] : [[0, 1], [0, -1]];
-    var R = Math.round(0.5 * ppm * m.k), sx = Math.round(r.x * m.k), sy = Math.round(r.y * m.k), best = null;
-    dirs.forEach(function (dv) {
-      for (var d = 1; d <= R; d++) {
-        var x = sx + dv[0] * d, y = sy + dv[1] * d;
-        if (x < 0 || y < 0 || x >= m.w || y >= m.h) break;
-        if (m.bar[y * m.w + x]) { if (!best || d < best.d) best = { d: d, dv: dv }; break; }
-      }
-    });
-    if (best) {
-      var off = best.d / m.k - 0.07 * ppm - 2;
-      if (off > 0) { r.x = Math.round(r.x + best.dv[0] * off); r.y = Math.round(r.y + best.dv[1] * off); }
-    }
-  }
+  snapRadToWall(r, r.ang);
   hint('<span class=ok>Радиатор повёрнут — ' + (r.ang === 90 ? 'вертикально' : 'горизонтально') + '.</span> ' +
     'R над прибором или Shift + правый клик — повернуть ещё раз.');
   renderZones(); draw();
+}
+
+/** [ и ] над радиатором — поворот на 45° (скошенные грани эркера). Угол хранится в градусах,
+ *  прибор снова прижимается к стене по новой нормали. */
+function radTurnAt(delta) {
+  if (!UFH || !lastPt || !F().pxPerM) return false;
+  var ri = radAt(lastPt);
+  if (ri < 0) return false;
+  var r = F().rads[ri];
+  pushUndo('zones');
+  r.ang = (((r.ang || 0) + delta) % 360 + 360) % 360;
+  snapRadToWall(r, r.ang);
+  hint('<span class=ok>Радиатор повёрнут на ' + Math.round(r.ang) + '°.</span> ' +
+    '[ и ] — по 45°, R — 0° или 90°.');
+  renderZones(); draw();
+  return true;
 }
 
 /** R (и русская К) над коллектором или радиатором — повернуть его */
