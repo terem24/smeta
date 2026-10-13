@@ -1344,6 +1344,20 @@
                 </div>
             </div>
 
+            <!-- Насосные группы: свёрнуты, как «Тонкая настройка». В заголовке — число групп,
+                 внутри — переключатель групп радиаторов и разбивка по контурам. Только в
+                 подробном режиме (app.renderPumpPlanBlock, app.syncFineTune). -->
+            <div class="fine-tune" id="ft_pump" style="display:none;">
+                <div class="fine-tune-head" onclick="app.toggleFineTune('pump')" role="button" tabindex="0">
+                    <span class="fine-tune-title">Насосные группы</span>
+                    <span class="fine-tune-sum" id="ft_pump_sum"></span>
+                    <span class="fine-tune-arrow">▸</span>
+                </div>
+                <div class="fine-tune-body" id="ft_pump_body" style="display:none;">
+                    <div id="rooms_pump_plan" style="display:none;"></div>
+                </div>
+            </div>
+
             <!-- Инженерные настройки свёрнуты: большинство оставляет их по умолчанию.
                  Сводка значений в заголовке — чтобы нестандартный выбор был виден и в
                  свёрнутом виде (app.syncFineTune). -->
@@ -1555,21 +1569,6 @@
                 </div>
             </div>
 
-            <!-- Теплоноситель стоит здесь, а не среди выбора систем: это свойство
-                 уже собранной системы, а не отдельный её узел. Виден только в
-                 подробном режиме (app.syncUI прячет и заголовок, и вкладки), и
-                 ниже него остаётся одно снеготаяние (владелец 26.09.2026).
-                 Заголовок тем же <h4>, что и «Тип котла» с «Типом отопления»:
-                 раньше здесь был мелкий .lbl-sub, и «Теплоноситель» читался как
-                 подпись к соседнему блоку, а не как самостоятельный выбор. -->
-            <h4 id="lbl_coolant" style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Теплоноситель</h4>
-            <div class="control-item" id="blk_coolant_wrap">
-                <div class="tabs" id="blk_coolant">
-                    <div class="tab cool-tab active" data-type="water" onclick="app.setCoolant('water', event)"><span class="ui-emo">💧 </span>Вода</div>
-                    <div class="tab cool-tab" data-type="eco30" onclick="app.setCoolant('eco30', event)"><span class="ui-emo">❄️ </span>-30°C</div>
-                    <div class="tab cool-tab" data-type="pro65" onclick="app.setCoolant('pro65', event)"><span class="ui-emo">❄️ </span>-40°C</div>
-                </div>
-            </div>
 
             <div class="pg-title no-print" id="pg_t3" data-pg="3" onclick="app.togglePanelGroup(3)" role="button" tabindex="0" aria-label="Группа «Добавить в смету»: свернуть или развернуть"><span class="pg-num">3</span><span class="pg-name">Добавить в смету</span></div>
             <!-- Простые «добавить раздел» — плитки в два столбца; включённая раскрывается на всю ширину -->
@@ -2124,19 +2123,22 @@
                 Автоматика включена и посчитана в смете. Её настройки — в подробном режиме.
             </div>
 
-            <!-- Насосные группы: свёрнуты, как «Тонкая настройка». В заголовке — число групп,
-                 внутри — переключатель групп радиаторов и разбивка по контурам. Только в
-                 подробном режиме (app.renderPumpPlanBlock, app.syncFineTune). -->
-            <div class="fine-tune" id="ft_pump" style="display:none;">
-                <div class="fine-tune-head" onclick="app.toggleFineTune('pump')" role="button" tabindex="0">
-                    <span class="fine-tune-title">Насосные группы</span>
-                    <span class="fine-tune-sum" id="ft_pump_sum"></span>
-                    <span class="fine-tune-arrow">▸</span>
-                </div>
-                <div class="fine-tune-body" id="ft_pump_body" style="display:none;">
-                    <div id="rooms_pump_plan" style="display:none;"></div>
+            <!-- Теплоноситель стоит здесь, а не среди выбора систем: это свойство
+                 уже собранной системы, а не отдельный её узел. Виден только в
+                 подробном режиме (app.syncUI прячет и заголовок, и вкладки), и
+                 ниже него остаётся одно снеготаяние (владелец 26.09.2026).
+                 Заголовок тем же <h4>, что и «Тип котла» с «Типом отопления»:
+                 раньше здесь был мелкий .lbl-sub, и «Теплоноситель» читался как
+                 подпись к соседнему блоку, а не как самостоятельный выбор. -->
+            <h4 id="lbl_coolant" style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Теплоноситель</h4>
+            <div class="control-item" id="blk_coolant_wrap">
+                <div class="tabs" id="blk_coolant">
+                    <div class="tab cool-tab active" data-type="water" onclick="app.setCoolant('water', event)"><span class="ui-emo">💧 </span>Вода</div>
+                    <div class="tab cool-tab" data-type="eco30" onclick="app.setCoolant('eco30', event)"><span class="ui-emo">❄️ </span>-30°C</div>
+                    <div class="tab cool-tab" data-type="pro65" onclick="app.setCoolant('pro65', event)"><span class="ui-emo">❄️ </span>-40°C</div>
                 </div>
             </div>
+
 
             <div class="pg-title no-print" id="pg_t4" data-pg="4" onclick="app.togglePanelGroup(4)" role="button" tabindex="0" aria-label="Группа «Эксплуатация»: свернуть или развернуть"><span class="pg-num">4</span><span class="pg-name">Эксплуатация</span></div>
             <!-- Во сколько обойдётся отопление электричеством. Условия те же, что
