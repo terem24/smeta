@@ -788,12 +788,23 @@ const RecognizeMatch = (function () {
     const pipes = { ppr: 0, ss: 0, mp: 0, pex: 0 };
 
     for (const r of (rows || [])) {
+      // Строка с кодом и производителем (Elsen, EF…) называет систему сама —
+      // без оглядки на то, что к ней подобрал поиск: подобранное по ошибке
+      // название («хомут» → труба PP-R) и давало полипропилен в смете без него.
+      if (r._spec) {
+        const ss = specSystem(r.raw, r._spec.codes && r._spec.codes[0], r._spec.maker);
+        if (ss && counts[ss] !== undefined) { counts[ss] += 3; continue; }
+      }
       const t = (r.type || '').toLowerCase();
       // Подобранная позиция знает свою систему точнее рукописной строки:
       // «Комби 25х3/4» молчит, «Муфта комбинированная ВР PP-R 25х3/4» — нет.
       const matched = ((r._m && r._m.item && r._m.item.name) || '').toLowerCase();
       const s = `${t} ${(r.raw || '').toLowerCase()} ${matched}`;
-      const isPipe = /^труба/.test(t) || /(^|[^а-яё])труб/.test(s);
+      // «Труба» считаем по тому, что НАПИСАНО в строке, а не по подобранному
+      // названию: хомут «трубный», по ошибке подобранный к трубе PP-R, давал
+      // смете десять очков полипропилена и объявлял основной системой её.
+      const own = `${t} ${(r.raw || '').toLowerCase()}`;
+      const isPipe = /^труба/.test(t) || /(^|[^а-яё])труб(?!н)/.test(own);
       const weight = isPipe ? 10 : 1;
 
       /**
@@ -810,7 +821,7 @@ const RecognizeMatch = (function () {
       let sys = null;
       if (/нерж|впр|aisi/.test(s)) sys = 'ss';
       else if (/металлопласт|мет\.?\s?пласт|pe-?(?:x|rt)[a-z]*\s*\/\s*al|al\s*\/\s*pe-?(?:x|rt)|пресс|мп\b/.test(s)) sys = 'mp';
-      else if (/аксиал|надвижн|pex|сшит/.test(s)) sys = 'pex';
+      else if (/аксиал|надвижн|pex|сшит|евроконус|гильз|elsen/.test(s)) sys = 'pex';
       else if (/ppr|ппр|полипропилен|стекло|pp-r/.test(s)) sys = 'ppr';
       if (!sys) continue;
 
@@ -1106,6 +1117,19 @@ const RecognizeMatch = (function () {
    * строки поставщика, справа — артикул каталога или прайса.
    */
   const EQUIVALENTS = [
+    // Спецификации Galf Design: Ridan, Giacomini и Elsen в прайсе нет, а изделия
+    // у STOUT и ROMMER есть — слова названий разные, поэтому замена задана явно.
+    { test: /балансировочн[\s\S]*mvt-?r[\s\S]*(ду|dn)\s*20/i, id: 'SVL-1176-000020',
+      note: 'прямая замена: балансировочный клапан Ридан MVT-R Ду 20 → STOUT запорно-балансировочный прямой 3/4"' },
+    // Коллектор с регулирующими клапанами 1" × N × 3/4": у ROMMER хромированная серия RMB-0004.
+    { test: /коллектор[\s\S]*регулирующ[\s\S]*1\s*["”']?\s*[xх×]\s*[234]\s*[xх×]\s*3\/4/i,
+      id: (raw) => { const n = (raw.match(/1\s*["”']?\s*[xх×]\s*([234])\s*[xх×]\s*3\/4/i) || [])[1]; return n ? 'SMB-6850-01340' + n : null; },
+      note: 'прямая замена: коллектор с регулирующими клапанами → STOUT хромированный регулирующий, проверьте число выходов и подключение' },
+    // Шаровой кран ВН-НР с ручкой-бабочкой — у STOUT это ВР/НР (Бабочка); раньше уходил в НР/НР.
+    { test: /шаров[\s\S]*(1\/2|3\/4|1)\s*["”']?\s*(вн|вр)\s*[-–\/]\s*нр[\s\S]*бабочк|шаров[\s\S]*бабочк[\s\S]*(вн|вр)\s*[-–\/]\s*нр/i,
+      id: (raw) => { const m = raw.match(/(?:^|[^\d\/])(1\/2|3\/4|1)\s*["”']?\s*(?:вн|вр)\s*[-–\/]\s*нр/i);
+        const t = m && { '1/2': '15', '3/4': '20', '1': '25' }[m[1]]; return t ? 'SVB-0004-2000' + t : null; },
+      note: 'прямая замена: шаровой кран ВН-НР с ручкой-бабочкой → STOUT ВР/НР (Бабочка)' },
     { test: /ermangizer|эрмангайзер/i, id: 'SCS-0001-000070',
       note: 'прямая замена: контроллер насоса → блок управления SIRIO UNIVERSAL' },
     { test: /блок управления смесительн|пид[- ]?регул/i, id: 'SMH-3001-104212',
@@ -1197,11 +1221,32 @@ const RecognizeMatch = (function () {
     return best ? best.row.it : null;
   }
 
+  /**
+   * Внешняя таблица замен (equivalents.js): бренд и код чужого изделия → наш
+   * артикул. Пополняется файлом, без правки кода подбора; строки из неё
+   * проверяются после встроенных. Запись: { re: 'источник регулярки', flags,
+   * id, note } — id артикул нашей позиции.
+   */
+  function externalEquivalents() {
+    const src = (typeof globalThis !== 'undefined' && globalThis.RECOGNIZE_EQUIVALENTS) ||
+      (typeof window !== 'undefined' && window.RECOGNIZE_EQUIVALENTS) || [];
+    if (externalEquivalents.cache && externalEquivalents.src === src) return externalEquivalents.cache;
+    const list = [];
+    for (const e of src) {
+      try { list.push({ test: new RegExp(e.re, e.flags || 'i'), id: e.id, note: e.note || 'замена из таблицы equivalents.js' }); } catch (x) { /* битую строку пропускаем */ }
+    }
+    externalEquivalents.cache = list;
+    externalEquivalents.src = src;
+    return list;
+  }
+
   function matchEquivalent(rec) {
-    const raw = String(rec.raw || '');
-    for (const eq of EQUIVALENTS) {
+    // Код из колонки спецификации тоже часть строки: по нему замены и задаются.
+    const raw = String(rec.raw || '') + ((rec._spec && rec._spec.codes) ? ' ' + rec._spec.codes.join(' ') : '');
+    for (const eq of EQUIVALENTS.concat(externalEquivalents())) {
       if (!eq.test.test(raw)) continue;
-      const item = eq.name ? itemByName(eq.name) : itemByArticle(eq.id);
+      const art = typeof eq.id === 'function' ? eq.id(raw) : eq.id;
+      const item = eq.name ? itemByName(eq.name) : (art ? itemByArticle(art) : null);
       if (!item) continue;
       return {
         item,
@@ -1363,6 +1408,17 @@ const RecognizeMatch = (function () {
     return map;
   }
 
+  /** Артикулы в тексте строки как напечатаны (для строк без колонки «Код»). */
+  function findCodes(raw) {
+    const out = [];
+    for (const t of String(raw || '').match(ARTICLE_TOKEN) || []) {
+      const key = normArticle(t);
+      if (key.length < 8 || !/[A-ZА-Я]/.test(key) || (key.match(/\d/g) || []).length < 2) continue;
+      if (!out.includes(t)) out.push(t);
+    }
+    return out;
+  }
+
   function articleTokens(raw) {
     const out = [];
     for (const t of String(raw || '').match(ARTICLE_TOKEN) || []) {
@@ -1423,6 +1479,40 @@ const RecognizeMatch = (function () {
     return null;
   }
 
+  /**
+   * Незамерзающий кран — отдельный предмет, а не шаровой.
+   *
+   * В спецификации он записан с резьбами («1/2" HP, выход 3/4" HP»), и подбор
+   * по форме видел в строке латунный кран той же резьбы: Кран шаровой 1/2" с
+   * баллом 1,00 уходил в смету вместо крана за 3 125 ₽ — тот лежит в каталоге
+   * по длине штока. Слово «незамерзающий» — факт об изделии, и оно главнее
+   * резьбы. Длина штока в строке — число перед «мм» («антисифоном 400 мм»);
+   * есть такая в каталоге — берём её, нет — ближайшую и просим проверить.
+   */
+  function matchFrostFree(rec) {
+    const raw = String((rec && rec.raw) || '');
+    if (!/незамерзающ/i.test(raw) || !/кран/i.test(raw)) return null;
+    const pool = buildNameIndex().rows.map((row) => row.it)
+      .filter((it) => /^кран незамерзающ/i.test(String(it.name || '')) && Number(it.price) > 0);
+    if (!pool.length) return null;
+    const lenOf = (it) => { const m = String(it.name).match(/длина\s+(\d{3})\s*мм/i); return m ? +m[1] : null; };
+    const want = (raw.match(/(?:^|[^\d])(\d{3})\s*мм/i) || [])[1];
+    if (!want) return null;
+    let best = null, bestDiff = Infinity;
+    for (const it of pool) {
+      const L = lenOf(it);
+      if (L == null) continue;
+      const diff = Math.abs(L - +want);
+      if (diff < bestDiff || (diff === bestDiff && brandRank(it) < brandRank(best))) { best = it; bestDiff = diff; }
+    }
+    if (!best) return null;
+    return {
+      item: best, score: bestDiff === 0 ? 0.95 : 0.7, alternatives: [],
+      substituted: bestDiff === 0 ? null : `в каталоге нет штока ${want} мм — подобран ближайший, проверьте`,
+      brandRank: brandRank(best),
+    };
+  }
+
   function matchItem(rec, sysHint) {
     // Приводим строку в порядок до всех поисков: по прайсу «Кран 15» иначе
     // ищется по числу 15, которого в названиях латунной арматуры нет, а
@@ -1436,6 +1526,7 @@ const RecognizeMatch = (function () {
     // и спорить с ним подбору по форме или по словам не о чем. Префиксный —
     // в самом конце, перед подбором по названию: там уже догадка.
     const hit = matchEquivalent(r) || matchByArticle(r, 'exact') || matchZont(r)
+      || matchFrostFree(r)
       || matchCatalog(r, sysHint) || matchPrice(r)
       || matchByArticle(r, 'prefix') || matchByName(r);
 
@@ -1689,6 +1780,21 @@ const RecognizeMatch = (function () {
      */
     if (/^муфта(_ppr)?$/.test(t) && /переходн|редукц/i.test(String(rec.raw || ''))) {
       return { ...rec, type: 'переход' };
+    }
+
+    /**
+     * Слова названия главнее типа, который назвала модель.
+     *
+     * Тип — догадка по первому слову: «Кран незамерзающий …» она записывает как
+     * кран_шаровой, и подбор по форме искал латунный шаровой кран той же
+     * резьбы; «Угольник настенный с креплением» — как водорозетку, и уходил в
+     * тупиковую водорозетку, а не в угольник с креплением. Название точнее, и
+     * когда оно однозначно, тип снимается — позиция ищется по словам.
+     */
+    const rawText = String(rec.raw || '');
+    if (/незамерзающ/i.test(rawText) && /^кран/.test(t)) return { ...rec, type: 'прочее' };
+    if (/угольник\s+настенн[а-я]*\s+с\s+креплен/i.test(rawText) && /^водорозетк/.test(t)) {
+      return { ...rec, type: 'прочее' };
     }
 
     if (t && t !== 'прочее') return rec;
@@ -4930,7 +5036,7 @@ const RecognizeMatch = (function () {
     };
   }
 
-  function rommerAlt(item) {
+  function rommerAlt(item, any) {
     if (!item) return null;
     // Канализация удешевляется переходом на обычную серию, а не сменой бренда.
     const sewer = sewerBudgetAlt(item);
@@ -4940,7 +5046,8 @@ const RecognizeMatch = (function () {
     // Позиция могла прийти из прайса — там поля rommer нет, ищем в каталоге.
     const src = (item.rommer ? item : findById(item.id)) || item;
     const alt = src.rommer;
-    if (!alt || typeof alt.price !== 'number' || !base || alt.price >= base) return null;
+    // any — смета целиком «на ROMMER»: аналог нужен и тогда, когда он не дешевле.
+    if (!alt || typeof alt.price !== 'number' || !base || (!any && alt.price >= base)) return null;
     return {
       item: { ...alt, brand: alt.brand || 'ROMMER' },
       save: base - alt.price,
@@ -5985,6 +6092,7 @@ const RecognizeMatch = (function () {
     const a = String(art || ''), m = String(maker || '').toLowerCase(), s = String(raw || '');
     if (/^VTi/i.test(a)) return 'ss';
     if (/^VTm/i.test(a)) return 'mp';
+    if (/elsen/.test(m) || /(^|[^a-zа-я])elsen([^a-zа-я]|$)/i.test(s) || /^EF[ABK]\d/i.test(a)) return 'pex';
     if (/uponor|kan-?therm|tece/.test(m) && /пресс|труб|фитинг|тройник|угол|муфт/i.test(s)) return 'mp';
     if (/нерж/i.test(s)) return 'ss';
     if (/металлопласт|металлополим/i.test(s)) return 'mp';
@@ -6227,7 +6335,11 @@ const RecognizeMatch = (function () {
     if (ka === 'клапан' && bar(a) && bar(b) && bar(a) !== bar(b)) return `клапан на ${bar(a)} бар, подобран на ${bar(b)}`;
     // Резьба: ВР-НР — ровно ВР-НР; внутренняя против наружной — разные концы.
     // Удлинитель без пометки — ВН: так его делают все, НН — особое исполнение.
-    const ta = threadKind(a) || (ka === 'удлинитель' ? 'ВН' : null), tb = threadKind(b);
+    let ta = threadKind(a) || (ka === 'удлинитель' ? 'ВН' : null);
+    const tb = threadKind(b);
+    // У аксиальных фитингов одна резьба на изделие, и одинокое «ВН» («Угольник-
+    // переходник ВН 16 x 1/2») — внутренняя резьба, а не ВР-НР, как у крана.
+    if (ta === 'ВН' && sys === 'pex' && tb === 'ВР' && !/нр|наружн/i.test(a)) ta = 'ВР';
     if (ta && tb) {
       const side = (t) => (t === 'ВР' || t === 'ВВ') ? 'в' : (t === 'НР' || t === 'НН') ? 'н' : t;
       if ((ta === 'ВН') !== (tb === 'ВН') || (ta !== 'ВН' && side(ta) !== side(tb))) return `резьба ${ta} против ${tb}`;
@@ -6235,7 +6347,7 @@ const RecognizeMatch = (function () {
     // Система трубопровода.
     const sa = sys || (isThreadedBrass(a) && (ta || /["']|дюйм|dn\s?\d/i.test(a)) ? 'thread' : null);
     const sb = itemSystem(it);
-    if (sa && sb && sa !== sb && !(sa === 'pex' && sb === 'mp')) return `другая система (${sa} → ${sb})`;
+    if (sa && sb && sa !== sb && !(sa === 'pex' && (sb === 'mp' || sb === 'axial'))) return `другая система (${sa} → ${sb})`;
     // Латунный резьбовой фитинг — не фитинг под трубу «25 х 1"» и не «Заглушка 25»
     // (у резьбового размер в дюймах, у фитинга под трубу — диаметр в мм).
     // «Угольник-переходник 3/4"х20» — тоже под трубу 20 мм, только записан наоборот.
@@ -6272,9 +6384,16 @@ const RecognizeMatch = (function () {
           // Energoflex: хвост кода — цвет (…SUPRS синий, …SUPRK красный); цвет — по слову строки.
           const red = /красн/i.test(raw), blue = /син/i.test(raw);
           let pool = cands;
+          // Код-префикс общий у ряда размеров («RVFF-0001-1…» — от 150 до 550 мм):
+          // длину и прочие трёхзначные размеры берём из названия строки.
+          const sizes = (String(raw || '').match(/(?<![\d.,])\d{3,4}(?![\d.,])/g) || []);
+          if (sizes.length) {
+            const bySize = cands.filter((it) => sizes.some((n) => new RegExp('(^|[^\\d])' + n + '([^\\d]|$)').test(String(it.name || ''))));
+            if (bySize.length) pool = bySize;
+          }
           if (red || blue) {
             const want = red ? 'K' : 'S';
-            const byColor = cands.filter((it) => normArticle(it.article || it.id).charAt(key.length) === want);
+            const byColor = pool.filter((it) => normArticle(it.article || it.id).charAt(key.length) === want);
             if (byColor.length) pool = byColor;
           }
           hit = pool.reduce((b, it) => (!b || (Number(it.price) || Infinity) < (Number(b.price) || Infinity)) ? it : b, null);
@@ -6344,7 +6463,7 @@ const RecognizeMatch = (function () {
         // Латунный фильтр, кран без префикса STOUT — тоже резьба, если в названии дюймы
         // (а фитинг под трубу отсечёт защита).
         const asThread = sa === 'thread' && !sb && ib.size;
-        if (sb !== sa && !asThread && !(sa === 'pex' && sb === 'mp')) continue;
+        if (sb !== sa && !asThread && !(sa === 'pex' && (sb === 'mp' || sb === 'axial'))) continue;
       }
       if (d && !hasSize(b, d, sa)) continue;
       // Евроконус — всегда 3/4": в названиях прайса («Евроконус 16x2.2») резьбу не пишут.
@@ -6366,6 +6485,70 @@ const RecognizeMatch = (function () {
           (key[1] === bestKey[1] && key[2] > bestKey[2])))) { best = it; bestKey = key; }
     }
     return best;
+  }
+
+  /** Бренд позиции: из поля, а у прайсовых — по префиксу артикула (S… STOUT, R… ROMMER). */
+  function brandOfItem(it) {
+    const b = String((it && it.brand) || '').toUpperCase();
+    if (b === 'STOUT' || b === 'ROMMER') return b;
+    const a = String((it && (it.article || it.id)) || '');
+    if (/^S[A-Z]{2,3}-\d/.test(a)) return 'STOUT';
+    if (/^R[A-Z]{2,3}-\d/.test(a) || /rommer/i.test(String((it && it.name) || ''))) return 'ROMMER';
+    return 'other';
+  }
+
+  /**
+   * Варианты той же позиции у каждого бренда.
+   *
+   * Подбор отдаёт трёх соседей по оценке названия, и у коллектора с
+   * регулирующими клапанами вариантом оказывался один STOUT и один ROMMER, хотя
+   * серий у каждого бренда несколько (запорные, запорно-регулирующие, с
+   * расходомерами, хромированные). Здесь берутся ВСЕ позиции того же предмета,
+   * проходящие те же защиты по размеру, резьбе и системе, и из них по
+   * limit лучших у STOUT и у ROMMER: по совпадению слов, затем по близости к цене
+   * документа. Возвращает { stout: [...], rommer: [...] } без текущей позиции.
+   */
+  function variantsOf(rec, cur, sysHint, docPrice, limit) {
+    const out = { stout: [], rommer: [] };
+    const a = String((rec && rec.raw) || '');
+    const ka = kindOfName(a) || kindOfName(cur && cur.name);
+    if (!ka || ka === 'гайка' || ka === 'инструмент') return out;
+    const sa = recSystem(rec, sysHint);
+    const ia = inchSet(a);
+    const d = (sa === 'thread' && ia.size) ? null : (Number(rec.d) || null);
+    const wa = new Set(nameParts(a));
+    const pool = ka === 'муфта' || ka === 'переход' ? rowsOfKind('муфта').concat(rowsOfKind('переход')) : rowsOfKind(ka);
+    const scored = [];
+    const seen = new Set([cur && (cur.article || cur.id)]);
+    for (const row of pool) {
+      const it = row.it, b = String(it.name || '');
+      const key = it.article || it.id;
+      if (!(Number(it.price) > 0) || seen.has(key)) continue;
+      const br = brandOfItem(it);
+      if (br === 'other') continue;
+      if (sa) {
+        // Система известна и чужая — отсев. Неизвестная (коллектор, кран) не
+        // повод: у арматуры системы трубы в названии нет.
+        const sb = itemSystem(it);
+        if (sb && sb !== sa && sb !== 'thread' && !(sa === 'pex' && (sb === 'mp' || sb === 'axial'))) continue;
+      }
+      if (d && !hasSize(b, d, sa)) continue;
+      if (analogGuard(rec, it, sysHint)) continue;
+      seen.add(key);
+      let ov = 0;
+      for (const w of new Set(row.w)) if (wa.has(w)) ov++;
+      // Размеры весят вдвое: «1"х3х3/4"» — это три выхода, а не два.
+      const nb = new Set(b.match(/\d+(?:\/\d+)?/g) || []);
+      for (const n of new Set(a.match(/\d+(?:\/\d+)?/g) || [])) if (nb.has(n)) ov += 2;
+      const gap = docPrice > 0 ? Math.abs(Math.log(Number(it.price) / docPrice)) : 0;
+      scored.push({ it, br, ov, gap });
+    }
+    scored.sort((x, y) => (y.ov - x.ov) || (x.gap - y.gap) || (x.it.price - y.it.price));
+    for (const x of scored) {
+      const list = x.br === 'STOUT' ? out.stout : out.rommer;
+      if (list.length < (limit || 4)) list.push(x.it);
+    }
+    return out;
   }
 
   /**
@@ -6399,13 +6582,16 @@ const RecognizeMatch = (function () {
       // Первый кандидат не прошёл — пробуем запасных: к крану ВР-НР подбор сперва
       // предлагает кран ВР/ВР, а верный кран ВР/НР стоит у него вторым.
       const alt = (m.alternatives || []).find((it) => it && !analogGuard(rec, it, sys));
+      // Что именно отклонила защита — на экране проверки это причина «жёлтого»:
+      // без неё строка просто «проверьте», и непонятно, на что смотреть.
+      const rejected = `первый кандидат «${String(m.item.name || '').slice(0, 60)}» отклонён: ${why}`;
       if (alt) {
         m = Object.assign({}, m, { item: alt, score: Math.min(Number(m.score) || 0, 0.8),
-          alternatives: (m.alternatives || []).filter((it) => it !== alt) });
+          alternatives: (m.alternatives || []).filter((it) => it !== alt), guardNote: rejected });
       } else {
         const f = byFeatures();
         if (!f) return { m: null, why: 'аналог отклонён: ' + why };
-        m = f;
+        m = Object.assign({}, f, { guardNote: rejected });
       }
       why = null;
     }
@@ -6434,7 +6620,7 @@ const RecognizeMatch = (function () {
 
   return {
     // Спецификация рабочего проекта: строка → запись, подбор по коду и аналог с защитами.
-    specItem, matchSpec, matchByCode, analogGuard, specFields, threadKind, kindOfName,
+    specItem, matchSpec, matchByCode, analogGuard, variantsOf, brandOfItem, findCodes, specFields, threadKind, kindOfName,
     SYSTEMS, SECTIONS, detectSystem, systemProfile, guessSection, profileOf, suggest, matchItem, matchCatalog,
     isRadiator, matchRadiator, isPump, matchPump,
     // Тип, выведенный из текста строки: нужен интерфейсу проверки, чтобы

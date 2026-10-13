@@ -800,6 +800,8 @@ const RecognizeUI = {
         this._onlyBad = false;
         this._profile = null;
         this._sys = null;
+        this._sysChosen = null;
+        this._convBase = null;
         this._sysFromModel = null;
         this._undo = [];
         this._tab = 'eq';
@@ -811,6 +813,7 @@ const RecognizeUI = {
         this._parseWarning = '';
         this._failedSheets = [];
         this._apiCalls = 0;
+        this._apiLog = [];
         this._fromCache = 0;
         this._cmpDiscount = null;
         this._cmpApplyDiscount = false;
@@ -1814,7 +1817,11 @@ const RecognizeUI = {
         const box = document.createElement('div');
         box.className = 'rec-progress';
         box.id = 'rec_progress';
+        box.classList.add('rec-ai');
         box.innerHTML = `
+          <div class="rec-ai-head"><span class="rec-ai-orb" aria-hidden="true"></span>
+            <span class="rec-ai-title">ИИ разбирает документ</span>
+            <span class="rec-ai-live">в работе</span></div>
           <div class="rec-pbar"><div class="rec-pfill" id="rec_pfill"></div></div>
           <div class="rec-prow">
             <div class="rec-pstages">
@@ -1825,7 +1832,21 @@ const RecognizeUI = {
             <div class="rec-pside" id="rec_pside"></div>
           </div>
           <div class="rec-elapsed" id="rec_elapsed">0 с</div>`;
-        host.appendChild(box);
+        // Индикатор встаёт справа от листов — там пустое место, и ход работы
+        // виден сразу, без прокрутки. Листов нет (текст, план без картинки) —
+        // остаётся под кнопкой, как раньше.
+        const sheets = host.querySelector('.rec-imgs, .rec-prev-row');
+        if (sheets && sheets.style.display !== 'none' && sheets.parentNode) {
+            const wrap = document.createElement('div');
+            wrap.className = 'rec-work';
+            wrap.id = 'rec_work';
+            sheets.parentNode.insertBefore(wrap, sheets);
+            wrap.appendChild(sheets);
+            wrap.appendChild(box);
+            this._workSheets = sheets;
+        } else {
+            host.appendChild(box);
+        }
         // Индикатор встаёт под кнопкой «Распознать» — на ноутбуке он уходит
         // под нижний край, и плашку «сколько это руками» надо искать
         // прокруткой. Докручиваем до него сами, ровно насколько нужно.
@@ -1897,6 +1918,68 @@ const RecognizeUI = {
         () => 'Собираю помещения для расчёта по комнатам',
     ],
 
+    /** Строка подобрана уверенно и решения не требует. */
+    isCalm(r) {
+        const m = r && r._m;
+        if (!m || r._sel || this.isProblem(r)) return false;
+        if (m.analog || m.needsApproval || r._priceWarn || r._sectionSure === false || r._sysMiss) return false;
+        return !!(r._locked || m.byArticle || (m.score || 0) >= 0.9);
+    },
+
+    /** Серии из четырёх и более подряд идущих уверенных строк: Map индекс → { start, end, len }. */
+    calmRuns() {
+        const out = new Map();
+        if (this._rows.length <= 10) return out;
+        let i = 0;
+        while (i < this._rows.length) {
+            if (!this.isCalm(this._rows[i])) { i++; continue; }
+            let j = i;
+            while (j + 1 < this._rows.length && this.isCalm(this._rows[j + 1])) j++;
+            if (j - i + 1 >= 4) {
+                const run = { start: i, end: j, len: j - i + 1 };
+                for (let k = i; k <= j; k++) out.set(k, run);
+            }
+            i = j + 1;
+        }
+        return out;
+    },
+
+    toggleRun(start) {
+        this._openRuns[start] = !this._openRuns[start];
+        this.renderReview();
+    },
+
+    /** Номера позиций документа идут подряд 1…N без дыр — пропущенной строки внутри листа нет. */
+    numberingGapless() {
+        const nums = (this._rows || []).map(r => /^\d+$/.test(String(r.docNo || '')) ? +r.docNo : null);
+        if (nums.length < 3 || nums.some(n => n === null)) return false;
+        const sorted = nums.slice().sort((a, b) => a - b);
+        return sorted.every((n, i) => n === sorted[0] + i);
+    },
+
+    /** Если ИИ отказывал или отвечал на запасной модели — это видно: объясняет долгий разбор. */
+    apiNote() {
+        const log = this._apiLog || [];
+        if (!log.length) return '';
+        const fails = log.filter(x => !x.ok).length;
+        const models = new Set(log.map(x => x.model));
+        const ms = log.reduce((a, x) => a + x.ms, 0);
+        if (!fails && models.size < 2) return '';
+        return ` <span class="rec-art">· ответ ИИ ${this.fmtElapsed(ms / 1000)}${fails ? `, отказов сервиса ${fails}` : ''}${models.size > 1 ? ', часть на запасной модели' : ''}</span>`;
+    },
+
+    /** Время ожидания: до минуты — секундами, дальше — целыми минутами («170 с» читается странно). */
+    fmtElapsed(sec) {
+        sec = Math.max(0, Math.round(sec));
+        return sec < 60 ? `${sec} с` : `${Math.round(sec / 60)} мин`;
+    },
+
+    /** Сколько позиций в среднем на листе сметы — для ориентира, пока строк ещё нет. */
+    ROWS_PER_PAGE: 25,
+
+    /** Раскрытые серии уверенных строк (индекс первой строки → true). */
+    _openRuns: {},
+
     tickProgress() {
         const el = document.getElementById('rec_elapsed');
         if (!el) return;
@@ -1914,7 +1997,16 @@ const RecognizeUI = {
             const done = this._itemsSoFar || 0;
             // Ручной ввод строки в смету — поиск в прайсе, артикул, цена,
             // количество. Сорок секунд на позицию: оценка по нижней границе.
-            const saved = done ? Math.round(done * 40 / 60) : 0;
+            let saved = done ? Math.round(done * 40 / 60) : 0;
+            // Пока не прочитан ни один лист (одна картинка или первый лист
+            // ещё в работе), строк неизвестно, и плашка с экономией молчала.
+            // Даём ориентир по числу листов — и подписываем его ориентиром:
+            // настоящая цифра придёт, как только лист будет прочитан.
+            let estimate = false;
+            if (!done) {
+                const pages = this._imgs ? this._imgs.length : (this._img ? 1 : 0);
+                if (pages) { saved = Math.round(pages * this.ROWS_PER_PAGE * 40 / 60); estimate = true; }
+            }
             // Комплект листов проекта: руками — это не 40 с на помещение, а
             // разбор всех листов, окон, приборов, сантехники и примечаний
             // плюс сама смета. Итог — плашкой, «из чего» — строками по очереди
@@ -1935,8 +2027,8 @@ const RecognizeUI = {
             this._saveAt = -1;
             const proj = plan && plan.total >= 5;
             el.innerHTML = `<span class="rec-tip">${tip}</span>` +
-                `<span class="rec-tip-sec">${sec} с</span>` +
-                (!proj && saved >= 2 ? `<span class="rec-tip-save">вручную было бы ~${this.handTime(saved)}</span>` : '');
+                `<span class="rec-tip-sec">${this.fmtElapsed(sec)}</span>` +
+                (!proj && saved >= 2 ? `<span class="rec-tip-save">вручную было бы ~${this.handTime(saved)}${estimate ? ' (ориентир по листу)' : ''}</span>` : '');
             // Плашка проекта — справа от этапов, на уровне полосы хода, а не
             // строкой ниже: так она видна без прокрутки.
             const side = document.getElementById('rec_pside');
@@ -1946,7 +2038,7 @@ const RecognizeUI = {
             }
         } else {
             const s = el.querySelector('.rec-tip-sec');
-            if (s) s.textContent = sec + ' с';
+            if (s) s.textContent = this.fmtElapsed(sec);
         }
         this.tickSaving();
     },
@@ -1991,6 +2083,13 @@ const RecognizeUI = {
         if (this._timer) { clearInterval(this._timer); this._timer = null; }
         const box = document.getElementById('rec_progress');
         if (box) box.remove();
+        // Листы возвращаются на своё место, обёртка уходит.
+        const wrap = document.getElementById('rec_work');
+        if (wrap) {
+            if (this._workSheets && wrap.parentNode) wrap.parentNode.insertBefore(this._workSheets, wrap);
+            wrap.remove();
+        }
+        this._workSheets = null;
         // Разбор кончился — запросы потрачены, остаток в углу надо обновить.
         this.refreshQuotaBadge();
     },
@@ -2342,6 +2441,7 @@ const RecognizeUI = {
         this._sysFromModel = null;
         this._mergeInfo = '';
         this._apiCalls = 0;
+        this._apiLog = [];
         this._fromCache = 0;
         // Комплект листов проекта — план наверняка; одиночные снимки —
         // по догадке (см. planScore): она бережёт запрос, который иначе
@@ -2702,6 +2802,7 @@ const RecognizeUI = {
                 // моделей) и отказы он не получает, а считались они раньше —
                 // один лист из двух съедал 13 запросов при лимите 5. Нагрузку
                 // на сам сервис честно считает прокси (суточный счётчик).
+                const t0 = Date.now();
                 const resp = await this.fetchRetry({
                     mode: 'recognize',
                     model: MODELS[mi],
@@ -2709,6 +2810,12 @@ const RecognizeUI = {
                     messages: [{ role: 'user', parts }],
                 });
                 const parsed = JSON.parse(resp);
+                // Журнал запросов: сколько ждали ответа, какая модель, был ли отказ.
+                // Без него «разбор стал дольше» не отличить от перегрузки сервиса.
+                (this._apiLog = this._apiLog || []).push({
+                    model: MODELS[mi], ms: Date.now() - t0, ok: !parsed.error, attempt,
+                    out: typeof resp === 'string' ? resp.length : 0,
+                });
                 if (!parsed.error) {
                     this._apiCalls = (this._apiCalls || 0) + 1;
                     return parsed;
@@ -3799,11 +3906,18 @@ const RecognizeUI = {
             RecognizeMatch.setPprBrand(app.state.pprSystemBrand || 'proaqua');
         }
 
-        this._rows = items.map(i => ({ ...i, _sel: false, _locked: false }));
+        this._sysChosen = null;
+        this._convBase = null;
+        this._rows = items.map((i, n) => ({ ...i, _seq: n, _sel: false, _locked: false }));
+        this._rows.forEach(r => this.attachSpec(r));
+        this._rows.forEach(r => this.checkRowSum(r));
+        // Ответ модели — для стенда: RecognizeUI.dumpReplay() отдаёт его json-ом.
+        try { this._replayItems = JSON.parse(JSON.stringify(items)); this._replayRes = { docTotals: res.docTotals || null }; } catch (e) { this._replayItems = null; }
         this._rows.forEach(r => { if (this.looksLikeWork(r)) r.kind = 'work'; });
         this.roundQty();
         this.inheritRepeats();
         this.inheritDocSections();
+        this.restoreDocOrder();
 
         // Тип показываем в том виде, в каком его понял подбор. Модель нет-нет
         // да и напишет его латиницей («kran_ppr»), и в таблице это выглядело
@@ -3858,6 +3972,9 @@ const RecognizeUI = {
         this._onlyBad = false;       // новая смета показывается целиком
         this._ourWorks = null;       // прайс монтажа мог смениться между разборами
         this._analogOn = false;      // новое распознавание — режим аналогов сброшен
+        this._analogAny = false;
+        this._cmpBrand = 'stout';
+        this._openRuns = {};
         this._analogSaved = 0;
         this._deep = 0;
         // Ниже девяноста процентов смета получается дырявой, и монтажнику
@@ -3951,14 +4068,30 @@ const RecognizeUI = {
     convertSystem(toSys) {
         if (!toSys || !this._rows.length || typeof RecognizeMatch === 'undefined') return;
 
-        const from = (this._sys && this._sys.main) || RecognizeMatch.detectSystem(this._rows);
-        if (from === toSys) return;
+        /**
+         * Пересчёт всегда идёт от ИСХОДНОЙ сметы, а не от результата прошлого.
+         *
+         * Раньше каждое нажатие переводило уже переведённые строки: диаметры
+         * пересчитывались по проходу ещё раз, углы множились на коэффициент
+         * гибкости ещё раз, а «исходной» системой считалась та, что угадал
+         * профиль по новому списку. Смета с каждым выбором дешевела и
+         * желтела, хотя монтажник лишь переключал одно и то же. Теперь основа
+         * запоминается один раз; любая ручная правка её сбрасывает (см. snap).
+         */
+        const cur = this._sysChosen || (this._sys && this._sys.main) || RecognizeMatch.detectSystem(this._rows);
+        if (cur === toSys) return;
+        const base = this._convBase || { sys: cur, rows: this._rows.map(r => ({ ...r })) };
 
         this.snap();
-        const converted = RecognizeMatch.convert(this._rows, from, toSys);
+        this._convBase = base;
+        this._sysChosen = toSys;
+
+        const fresh = base.rows.map(r => ({ ...r }));
+        // Вернулись к исходной системе — это откат, а не пересчёт «в себя».
+        const converted = toSys === base.sys ? null : RecognizeMatch.convert(fresh, base.sys, toSys);
 
         // convert() возвращает подбор в поле match — интерфейс проверки читает _m.
-        this._rows = converted.map(r => {
+        this._rows = converted ? converted.map(r => {
             // Замена, запомненная для прежней системы, к новой не относится:
             // написание строки не изменилось, а предмет — да.
             const row = { ...r, _m: r.match || null, _sel: false, _locked: false, _noMem: true };
@@ -3966,7 +4099,7 @@ const RecognizeUI = {
             delete row.match;
             if (r._note) row.note = [r.note, r._note].filter(Boolean).join('; ');
             return row;
-        });
+        }) : fresh;
 
         this._sys = RecognizeMatch.systemProfile(this._rows);
         this._rows.forEach(r => {
@@ -3977,6 +4110,108 @@ const RecognizeUI = {
         });
         this.refreshSuggestions();
         this.renderReview();
+    },
+
+    /**
+     * Печатная спецификация с колонкой «Код» идёт тем же путём, что спецификация
+     * проекта: код → аналог через защиты (всегда «проверьте») → причина отказа.
+     *
+     * Подбор по словам для такой строки опасен: он выдавал уверенный, но чужой
+     * артикул (хомут → труба, незамерзающий кран → шаровой). Производителя
+     * берём из поля модели, а если его нет — из последнего слова названия
+     * после запятой («…, Elsen», «…, Giacomini»). Код, оборванный переносом
+     * («RVFF-0001-1» в названии и «520400» в колонке), склеиваем сами.
+     */
+    attachSpec(r) {
+        let code = String(r.code == null ? '' : r.code).replace(/\s+/g, '').trim();
+        // Колонки «Код» нет (рукописная и текстовая смета), но артикул стоит прямо
+        // в названии — он весит ровно столько же и идёт тем же путём.
+        if (!code && r.kind !== 'work' && typeof RecognizeMatch !== 'undefined' && RecognizeMatch.findCodes) {
+            code = (RecognizeMatch.findCodes(r.raw)[0] || '').replace(/\s+/g, '');
+        }
+        if (!code || r._spec || r.kind === 'work') return;
+        const codes = [code];
+        const part = String(r.raw || '').match(/[A-Z]{2,}[A-Z0-9.]*-\d{2,}[A-Z0-9.]*-\d+(?![\dA-Z])/);
+        if (part && /^\d+$/.test(code) && !code.startsWith(part[0])) codes.unshift(part[0] + code);
+        const tail = String(r.raw || '').match(/,\s*([A-Za-zА-Яа-я][A-Za-zА-Яа-я .\-]{2,24})\s*$/);
+        r._spec = { codes, maker: r.maker || (tail ? tail[1].trim() : null), page: null };
+    },
+
+    /**
+     * Цена × количество против суммы строки, напечатанной в документе.
+     *
+     * Если они расходятся больше чем на 2 %, модель прочитала одно из трёх
+     * чисел неверно (перепутала колонку, потеряла разряд). Об этом лучше
+     * узнать сейчас: ошибка в цене или количестве уедет в смету молча.
+     */
+    checkRowSum(r) {
+        delete r._sumBad;
+        const price = this.docNum(r.price), sum = this.docNum(r.sum);
+        const q = (Number(r.qty) || 0) + (Number(r.qtyExtra) || 0);
+        if (!(price > 0 && sum > 0 && q > 0)) return;
+        if (Math.abs(price * q - sum) / sum > 0.02) {
+            r._sumBad = `${Math.round(price).toLocaleString('ru-RU')} × ${q} = ${
+                Math.round(price * q).toLocaleString('ru-RU')} ₽, а в документе ${Math.round(sum).toLocaleString('ru-RU')} ₽`;
+        }
+    },
+
+    /** Ответ модели последнего разбора — json для bench/replay (правая кнопка → консоль). */
+    dumpReplay(name) {
+        const data = { name: name || this._fileName || 'case', items: this._replayItems || [], apiLog: this._apiLog || [], ...(this._replayRes || {}) };
+        const json = JSON.stringify(data, null, 1);
+        try { navigator.clipboard.writeText(json); } catch (e) { /* без буфера — вернём строкой */ }
+        return json;
+    },
+
+    /** Откуда взяты позиции: по коду, аналогом «проверьте», без пары. */
+    sourceSummary() {
+        let code = 0, analog = 0;
+        for (const r of this._rows) {
+            const m = r._m;
+            if (!m || r._locked) continue;
+            if (m.byArticle) code++;
+            else if (m.analog) analog++;
+        }
+        return (code ? ` · по коду ${code}` : '') + (analog ? ` · аналогов (проверьте) ${analog}` : '');
+    },
+
+    /**
+     * Порядок строк — как в документе.
+     *
+     * Модель просят отдавать строки сверху вниз (правило 20), но на длинных
+     * таблицах она нет-нет да и переставит соседей, а сверяют экран проверки
+     * с бумагой строка за строкой. Номер позиции, проставленный в документе, —
+     * надёжнее её памяти: если номера есть у всех строк и не повторяются,
+     * строки встают по ним. Нумерация с повторами (в каждом разделе с единицы)
+     * сквозной не бывает — тогда сортируем только внутри подряд идущих строк
+     * одного раздела, чтобы не склеить разные разделы. Нет номеров — порядок
+     * модели остаётся как есть: придумывать его нам нечем.
+     */
+    restoreDocOrder() {
+        const num = r => {
+            const v = String(r.docNo == null ? '' : r.docNo).trim();
+            return /^\d+(?:\.\d+)?$/.test(v) ? parseFloat(v) : null;
+        };
+        const byNo = (a, b) => (num(a) - num(b)) || ((a._seq || 0) - (b._seq || 0));
+        const rows = this._rows;
+        if (rows.length < 2) return;
+
+        const nums = rows.map(num);
+        if (nums.every(n => n !== null) && new Set(nums).size === nums.length) {
+            this._rows = rows.slice().sort(byNo);
+            return;
+        }
+        const out = [];
+        for (let i = 0; i < rows.length;) {
+            let j = i;
+            while (j < rows.length && (rows[j].docSection || '') === (rows[i].docSection || '')) j++;
+            const run = rows.slice(i, j);
+            const rn = run.map(num);
+            const ok = run.length > 1 && rn.every(n => n !== null) && new Set(rn).size === rn.length;
+            out.push(...(ok ? run.sort(byNo) : run));
+            i = j;
+        }
+        this._rows = out;
     },
 
     /**
@@ -4817,6 +5052,18 @@ const RecognizeUI = {
             this.priceGuard(row);
             return;
         }
+        // Артикул из колонки «Код» — самый точный признак: нашёлся в прайсе, и
+        // слова названия уже не нужны. Код с переноса строки модель склеивает
+        // сама (правило 23), а здесь он ищется точно и по началу.
+        if (row.code && typeof RecognizeMatch !== 'undefined' && RecognizeMatch.matchByCode) {
+            const byCode = RecognizeMatch.matchByCode([String(row.code)], row.raw);
+            if (byCode) {
+                row._m = byCode;
+                row._sysMiss = null;
+                this.priceGuard(row);
+                return;
+            }
+        }
         row._sysMiss = null;   // пометку «у нас такого нет» ставит сам подбор
         row._m = (typeof RecognizeMatch !== 'undefined' && typeof catalog !== 'undefined')
             ? RecognizeMatch.matchItem(row, this._sys) : null;
@@ -4833,6 +5080,9 @@ const RecognizeUI = {
      * уже другой предмет.
      */
     PRICE_GUARD_RATIO: 5,
+
+    /** Во сколько раз цены расходятся, чтобы строка попала в «проверьте» (более 100 %). */
+    PRICE_WARN_RATIO: 2,
 
     /**
      * Насколько узкой должна быть полоса цен при переподборе.
@@ -4867,6 +5117,7 @@ const RecognizeUI = {
     priceGuard(row) {
         delete row._priceAlarm;
         delete row._priceFixed;
+        delete row._priceWarn;
         const m = row._m;
         if (!m || !m.item || row._locked) return;
 
@@ -4876,8 +5127,36 @@ const RecognizeUI = {
         const op = this.ourUnitPriceOf(m.item, row);
         if (!dp || !op) return;
 
+        /**
+         * Расхождение больше 100 % — повод проверить, а не молча принять.
+         *
+         * Подбор по словам не видит цену, и «Коллектор с регулирующими
+         * клапанами» мог уйти в коллектор другой серии вдвое дороже или
+         * дешевле. Порог PRICE_GUARD_RATIO (в пять раз) ловит только явный
+         * промах, а всё между ними проходило зелёным. Теперь вдвое и больше —
+         * строка в «проблемных» с пометкой, но подбор остаётся и в сравнение
+         * идёт: разница в два раза бывает и настоящей (чужая марка, скидка).
+         */
+        const ratio = Math.max(op / dp, dp / op);
+        if (ratio > this.PRICE_WARN_RATIO && ratio <= this.PRICE_GUARD_RATIO) {
+            row._priceWarn = op > dp ? Math.round(ratio * 10) / 10 : -Math.round(ratio * 10) / 10;
+        }
+
         const off = p => p > dp * this.PRICE_GUARD_RATIO || p * this.PRICE_GUARD_RATIO < dp;
         if (!off(op)) return;
+
+        /**
+         * Артикул, прямая замена и аналог спецификации выбраны по признаку, а
+         * не по словам: цена другой марки (Ридан за 7 545 ₽ против нашего
+         * запорно-балансировочного за 714 ₽) их не опровергает. Подменять такой
+         * выбор «похожим по цене» нельзя — именно так балансировочный клапан
+         * уходил в термостатический смесительный. Оставляем и помечаем.
+         */
+        const deliberate = m.byEquivalent || m.byArticle || row._spec;
+        if (deliberate) {
+            row._priceAlarm = op > dp ? Math.round(op / dp) : -Math.round(dp / op);
+            return;
+        }
 
         const alt = (m.alternatives || []).find(a =>
             a && Number(a.price) && !off(this.ourUnitPriceOf(a, row)));
@@ -4933,9 +5212,11 @@ const RecognizeUI = {
     // _rolledInto и _roll ссылаются на соседние строки того же массива. В
     // снимок они не идут: свёртка пересчитывается при каждой отрисовке, а
     // ссылка на строку в JSON превращается либо в её копию, либо в дыру.
-    SNAP_SKIP: ['alts', 'alternatives', 'rommer', 'comfort', '_item', '_rolledInto', '_roll'],
+    SNAP_SKIP: ['_varCache', 'alts', 'alternatives', 'rommer', 'comfort', '_item', '_rolledInto', '_roll'],
 
     snap() {
+        // Любая правка делает исходную смету для пересчёта системы устаревшей.
+        this._convBase = null;
         const seen = new WeakSet();
         const json = JSON.stringify(this._rows, (key, value) => {
             if (this.SNAP_SKIP.includes(key)) return undefined;
@@ -5040,6 +5321,8 @@ const RecognizeUI = {
         if (!r._m && this.notOurRange(r)) return false;
         if (!r._m && !this.looksLikeWork(r)) return true;     // нет в каталоге
         if (r._priceAlarm) return true;                       // цена не сходится
+        if (r._priceWarn) return true;
+        if (r._sumBad) return true;                           // цена × кол-во не равны сумме строки                        // цена расходится больше чем вдвое
         if (!((r.qty || 0) + (r.qtyExtra || 0))) return true; // нет количества
         return false;
     },
@@ -5089,6 +5372,8 @@ const RecognizeUI = {
     undo() {
         if (!this._undo.length) return;
         this._rows = JSON.parse(this._undo.pop());
+        this._convBase = null;
+        this._sysChosen = null;
         // Режим аналогов восстанавливаем по самим строкам, иначе после отката
         // кнопка осталась бы «включённой» при исходных позициях в таблице.
         this._analogOn = this._rows.some(r => r._analogBase);
@@ -5135,13 +5420,27 @@ const RecognizeUI = {
         // заголовки висели бы над ничем.
         const secState = { last: null };
 
+        // Подряд идущие строки, подобранные уверенно, сворачиваются в одну: глаз
+        // должен идти по тем, что требуют решения. Порядок документа при этом не
+        // меняется — свёрнутая группа стоит там, где стояли её строки.
+        const runs = this.calmRuns();
+
         const rows = this._rows.map((r, n) => {
+            const run = runs.get(n);
+            if (run && !this._onlyBad && !this._openRuns[run.start]) {
+                return n === run.start
+                    ? `<tr class="rec-fold" onclick="RecognizeUI.toggleRun(${run.start})">
+                         <td colspan="8">▸ ${run.len} ${this.plural(run.len, 'позиция подобрана', 'позиции подобраны', 'позиций подобрано')} уверенно
+                           <span class="rec-art">(№ ${esc(this._rows[run.start].docNo || run.start + 1)}–${esc(this._rows[run.end].docNo || run.end + 1)}) — показать</span></td></tr>`
+                    : '';
+            }
             // Отфильтрованную строку пропускаем, но номер n сохраняем: по нему
             // работают все кнопки строки, и пересчёт индексов после фильтра
             // отправил бы правку не туда.
             if (this._onlyBad && !this.isProblem(r)) return '';
 
-            const secHead = this.docSectionHead(r, 11, secState);
+            const secHead = this.docSectionHead(r, 8, secState) + ((run && n === run.start && this._openRuns[run.start] && !this._onlyBad)
+                ? `<tr class="rec-fold open" onclick="RecognizeUI.toggleRun(${run.start})"><td colspan="8">▾ свернуть ${run.len} уверенных</td></tr>` : '');
 
             const m = r._m;
             const qty = (r.qty || 0) + (r.qtyExtra || 0);
@@ -5159,7 +5458,7 @@ const RecognizeUI = {
             // наравне с неподобранным материалом значит пугать зря.
             // Чужой расходник жёлтым не красим: жёлтый значит «нужно решение»,
             // а решать тут нечего — такого товара у поставщика нет.
-            const cls = m ? (r._priceAlarm ? 'rec-pricebad' : '')
+            const cls = m ? (r._priceAlarm ? 'rec-pricebad' : (r._priceWarn ? 'rec-nomatch' : ''))
                 : (this.looksLikeWork(r) ? 'rec-workrow'
                     : (this.notOurRange(r) ? '' : 'rec-nomatch'));
 
@@ -5167,26 +5466,36 @@ const RecognizeUI = {
                 `<button class="rec-tbtn ${r.threadType === t ? 'on' : ''}"
                          onclick="RecognizeUI.thread(${n},'${t}')">${t}</button>`).join('');
 
-            // Подставленное из памяти замен подписываем иначе, чем выбранное
-            // только что: монтажник должен видеть, что артикул сюда поставил
-            // не подбор, а его собственное прошлое решение — и мочь от него
-            // отказаться, не разыскивая, где оно хранится.
-            const mark = r._fromMem
-                ? ` · по вашему прошлому выбору · <a href="#" class="rec-memforget"
-                     onclick="RecognizeUI.memForget(${n});return false;">забыть</a>`
-                : (r._locked ? ' · выбрано вручную'
-                    : (m && m.score < 1 ? ` · совпадение ${Math.round(m.score * 100)}%` : ''));
+            // Откуда взята позиция — чипом, а не строкой текста: цвет только у того,
+            // что требует взгляда. Прошлое решение монтажника подписано иначе, чем
+            // выбранное только что, и от него можно отказаться («забыть»).
+            const chips = [];
+            if (m) {
+                if (r._fromMem) chips.push(`<span class="rec-chip">из ваших замен · <a href="#" class="rec-memforget"
+                     onclick="RecognizeUI.memForget(${n});return false;">забыть</a></span>`);
+                else if (r._locked) chips.push('<span class="rec-chip">вручную</span>');
+                else if (m.byArticle) chips.push('<span class="rec-chip ok">по коду</span>');
+                else if (m.analog) chips.push('<span class="rec-chip warn">аналог</span>');
+                else if (m.score < 0.9) chips.push(`<span class="rec-chip warn">совпадение ${Math.round(m.score * 100)}%</span>`);
+                if (m.needsApproval && !m.analog && !r._locked) chips.push('<span class="rec-chip warn">согласовать</span>');
+                if (r._priceFixed) chips.push('<span class="rec-chip">по цене</span>');
+            }
+            // Подробности «почему так» — под спойлером: нужны, когда сомневаешься,
+            // и не должны занимать место, когда всё ясно.
+            const why = m ? [m.substituted, m.guardNote].filter(Boolean) : [];
 
             const match = m
-                ? `<div>${esc(m.item.name)}</div>
-                   <div class="rec-art">${esc(m.item.article || m.item.id)}${mark}${
-                    m.needsApproval ? ' · <b>требует согласования</b>' : ''}${
-                    r._priceFixed ? ' · <b>уточнено по цене</b>' : ''}</div>${
-                    m.substituted ? `<div class="rec-art">${esc(m.substituted)}</div>` : ''}${
-                    this.renderAlts(r, n)}${
+                ? `<div class="rec-m-name">${esc(m.item.name)}</div>
+                   <div class="rec-m-meta">${this.terLink(m.item.article || m.item.id)}${chips.join('')}</div>${
+                    r._sumBad ? `<div class="rec-pricebad-note">Сумма строки не сходится: ${esc(r._sumBad)} — проверьте цену и количество</div>` : ''}${
                     r._priceAlarm ? `<div class="rec-pricebad-note">Цена не сходится: ${
                         r._priceAlarm > 0 ? `у нас дороже в ${r._priceAlarm} раз` : `у нас дешевле в ${-r._priceAlarm} раз`
-                    } — скорее всего подобрано другое изделие, проверьте 🔍</div>` : ''}`
+                    } — скорее всего подобрано другое изделие, проверьте 🔍</div>` : ''}${
+                    (!r._priceAlarm && r._priceWarn) ? `<div class="rec-pricebad-note">Цена расходится больше чем на 100%: ${
+                        r._priceWarn > 0 ? `у нас дороже в ${r._priceWarn} раза` : `у нас дешевле в ${-r._priceWarn} раза`
+                    } — проверьте, тот ли это предмет</div>` : ''}${
+                    why.length ? `<details class="rec-why"><summary>почему так</summary>${why.map(x => `<div>${esc(x)}</div>`).join('')}</details>` : ''}${
+                    this.renderAlts(r, n)}`
                 : (this.looksLikeWork(r)
                     ? `<span class="rec-work-tag">монтажная работа</span>
                        <span class="rec-art">уйдёт в раздел работ${
@@ -5219,22 +5528,26 @@ const RecognizeUI = {
                          onchange="RecognizeUI.sel(${n},this.checked)"></td>
               <td class="rec-raw">${r.docNo ? `<span class="rec-docno">${esc(r.docNo)}</span>` : ''}${esc(r.raw)}
                   ${r._inherited ? `<div class="rec-art">наименование от строки выше: ${esc(r._inherited)}</div>` : ''}</td>
-              <td><input class="rec-f" value="${esc(cell(r.type))}"
-                         onchange="RecognizeUI.set(${n},'type',this.value)"></td>
-              <td><input class="rec-f rec-f-s" value="${esc(cell(r.d))}"
-                         onchange="RecognizeUI.set(${n},'d',this.value)"></td>
-              <td><input class="rec-f rec-f-s" value="${esc(cell(r.thread))}"
+              <td class="rec-params">
+                <input class="rec-f" value="${esc(cell(r.type))}" placeholder="тип"
+                       onchange="RecognizeUI.set(${n},'type',this.value)">
+                <div class="rec-params-row">
+                  <input class="rec-f rec-f-s" value="${esc(cell(r.d))}" placeholder="D" title="Диаметр"
+                         onchange="RecognizeUI.set(${n},'d',this.value)">
+                  <input class="rec-f rec-f-s" value="${esc(cell(r.thread))}" placeholder="резьба" title="Резьба"
                          onchange="RecognizeUI.set(${n},'thread',this.value)">
-                  <div class="rec-tgroup">${tbtns}</div></td>
+                </div>
+                <div class="rec-tgroup">${tbtns}</div></td>
               <td><input class="rec-f rec-f-s" value="${esc(cell(r.qty))}"
                          onchange="RecognizeUI.set(${n},'qty',this.value)">
                   ${r.qtyExtra ? `<span class="rec-art">+${r.qtyExtra}</span>` : ''}
                   ${r._packNote ? `<div class="rec-art">${esc(r._packNote)}</div>` : ''}
                   ${r._coilNote ? `<div class="rec-art">${esc(r._coilNote)}</div>` : ''}</td>
               <td>${match}</td>
-              <td>${m ? Math.round(this.ourUnitPrice(r) * 100) / 100 + ' ₽' : (docP ? `<span class="rec-art">${Math.round(docP)} ₽</span>` : '—')}</td>
-              <td><b>${m ? Math.round(this.ourUnitPrice(r) * qty) + ' ₽'
-                : (docP ? `<span class="rec-art">${Math.round(docP * qty)} ₽</span>` : '—')}</b></td>
+              <td class="rec-money">${m
+                ? `<b>${Math.round(this.ourUnitPrice(r) * qty).toLocaleString('ru-RU')} ₽</b>
+                   <div class="rec-art">${(Math.round(this.ourUnitPrice(r) * 100) / 100).toLocaleString('ru-RU')} ₽/шт</div>`
+                : (docP ? `<span class="rec-art">${Math.round(docP * qty).toLocaleString('ru-RU')} ₽<br>по документу</span>` : '—')}</td>
               <td>
                 <select class="rec-f${r._sectionSure === false ? ' rec-guess' : ''}"
                         onchange="RecognizeUI.set(${n},'section',this.value)">
@@ -5245,7 +5558,7 @@ const RecognizeUI = {
                 ${r._sectionSure === false ? '<div class="rec-art">раздел под вопросом</div>' : ''}
               </td>
               <td class="rec-acts">
-                <button onclick="RecognizeUI.search(${n})" title="Найти в каталоге">🔍</button>
+                <button onclick="RecognizeUI.search(${n})" title="Найти в каталоге или выбрать вариант">🔍</button>
                 <button onclick="RecognizeUI.del(${n})" title="Удалить строку">✕</button>
               </td></tr>`;
         }).join('');
@@ -5254,7 +5567,7 @@ const RecognizeUI = {
         // требуют, это справка о том, что модель увидела и не взяла.
         const skipRows = this._onlyBad ? '' : (this._skipped || []).map(s =>
             `<tr class="rec-skip"><td></td><td class="rec-raw">${esc(s.raw)}</td>
-             <td colspan="8">${esc(s.reason || 'вычеркнуто')}</td></tr>`).join('');
+             <td colspan="6">${esc(s.reason || 'вычеркнуто')}</td></tr>`).join('');
 
         const found = this._rows.filter(r => r._m);
         // Работы в проценте подбора не участвуют: артикула у них нет и быть не
@@ -5283,30 +5596,25 @@ const RecognizeUI = {
         if (!works.length && !this.missingWorks(works).length) this._tab = 'eq';
 
         document.getElementById('rec_body').innerHTML = `
-          ${this._parseWarning ? `<div class="rec-err">${esc(this._parseWarning)}
-             Проверьте, все ли строки сметы на месте.</div>` : ''}
-          ${this.renderSavedTime(found.length)}
           ${this.renderTabs(eqTotal, works)}
-          ${this.renderTotalCheck()}
-          ${this.renderTotalsStrip()}
+          ${this.renderStatusCard(found.length, eqTotal, works, noQty, badN)}
           ${this.renderControls(found.length, eqTotal, works, noQty, badN)}
           ${this.renderSelectionBar(selN)}
           <div class="rec-tablewrap">
             <table class="rec-table rec-rev-table">
-              <colgroup><col style="width:30px"><col style="width:170px"><col style="width:140px">
-                <col style="width:50px"><col style="width:100px"><col style="width:70px">
-                <col><col style="width:72px"><col style="width:82px">
-                <col style="width:190px"><col style="width:66px"></colgroup>
+              <colgroup><col style="width:30px"><col style="width:200px"><col style="width:150px">
+                <col style="width:62px"><col><col style="width:104px">
+                <col style="width:170px"><col style="width:62px"></colgroup>
               <thead><tr>
                 <th><input type="checkbox" ${this.allSelected() ? 'checked' : ''}
                            title="Выделить все строки / снять выделение"
                            onchange="RecognizeUI.selAll(this.checked)"></th>
-                <th>Как написано</th><th>Тип</th><th>D</th><th>Резьба</th><th>Кол.</th>
-                <th>Подобрано в каталоге</th><th>Цена</th><th>Сумма</th>
+                <th>Как написано</th><th>Параметры</th><th>Кол.</th>
+                <th>Подобрано в каталоге</th><th>Сумма</th>
                 <th>Раздел сметы</th><th></th>
               </tr></thead>
               <tbody>${rows}${skipRows}${
-            (this._onlyBad && !badN) ? `<tr><td colspan="11" class="rec-allclear">
+            (this._onlyBad && !badN) ? `<tr><td colspan="8" class="rec-allclear">
                  ✓ Проблемных строк не осталось — можно переносить смету.
                  <button class="rec-btn-g" onclick="RecognizeUI.toggleOnlyBad(false)">Показать все</button>
                </td></tr>` : ''}</tbody>
@@ -5363,9 +5671,10 @@ const RecognizeUI = {
             }
 
             const m = r._m;
-            const op = m ? this.ourUnitPriceOf(m.item, r) : 0;
-            const ra = (m && typeof RecognizeMatch !== 'undefined' && RecognizeMatch.rommerAlt)
-                ? RecognizeMatch.rommerAlt(m.item) : null;
+            const bi = m ? ((r._analogBase && r._analogBase.item) || m.item) : null;
+            const op = bi ? this.ourUnitPriceOf(bi, r) : 0;
+            const ra = (bi && !r._locked && typeof RecognizeMatch !== 'undefined' && RecognizeMatch.rommerAlt)
+                ? RecognizeMatch.rommerAlt(bi, this._analogOn ? !!this._analogAny : true) : null;
             const bp = brand === 'rommer' ? (ra ? (this.ourUnitPriceOf(ra.item, r) || op) : op) : op;
             if (dp > 0 && op > 0 && qty > 0 && !r._priceAlarm) {
                 t.eqTheir += dp * qty; t.eqOur += bp * qty;
@@ -5395,6 +5704,88 @@ const RecognizeUI = {
         t.pct = t.their > 0 ? (t.delta / t.their) * 100 : 0;
         t.brand = brand;
         return t;
+    },
+
+    /**
+     * Одна карточка состояния вместо трёх цветных плашек.
+     *
+     * Раньше над таблицей шли подряд: зелёная «перенесено за N», красная сверка
+     * итога, красная полоса сравнения, строка статистики — каждая со своим
+     * цветом и своим текстом, и важное (чего не хватает) тонуло в пёстром.
+     * Теперь: заголовок «подобрано N из M» с чипами-причинами, одна строка
+     * итога «по документу → у нас» и, только если есть о чём предупредить,
+     * одна строка-предупреждение, раскрывающаяся по клику. Цвет — только у
+     * проблем; всё остальное нейтральное.
+     *
+     * foundN === null — вкладка работ: заголовок «подобрано» там не нужен.
+     */
+    renderStatusCard(foundN, eqTotal, works, noQty, badN) {
+        const esc = s => String(s ?? '').replace(/[&<>"]/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const money = n => Math.round(n || 0).toLocaleString('ru-RU') + ' ₽';
+        let head = '';
+        if (foundN !== null) {
+            let code = 0, analog = 0, manual = 0;
+            for (const r of this._rows) {
+                const m = r._m;
+                if (!m) continue;
+                if (r._locked) manual++;
+                else if (m.byArticle) code++;
+                else if (m.analog) analog++;
+            }
+            const none = eqTotal - foundN;
+            const chip = (cls, t, title) => `<span class="rec-chip ${cls}"${title ? ` title="${esc(title)}"` : ''}>${t}</span>`;
+            const chips = [
+                code ? chip('ok', `по коду ${code}`) : '',
+                manual ? chip('', `вручную ${manual}`) : '',
+                analog ? chip('warn', `аналогов ${analog} — проверьте`, 'Подобраны по смыслу, а не по артикулу: сверьте размер, резьбу и исполнение') : '',
+                none > 0 ? chip('bad', `без пары ${none}`) : '',
+                badN ? chip('bad', `требуют решения ${badN}`) : '',
+                noQty ? chip('bad', `без количества ${noQty}`) : '',
+                this._deep ? chip('', `углублённо ${this._deep}`) : '',
+            ].filter(Boolean).join('');
+            const secs = Math.round((this._elapsed || 0) / 1000);
+            const min = Math.round(foundN * 40 / 60);
+            const time = (foundN && min >= 3)
+                ? `<span class="rec-status-time" title="Руками: поиск в прайсе, артикул, цена и количество — по 40 секунд на позицию">${secs ? `за ${this.fmtElapsed(secs)} · ` : ''}руками ~${this.handTime(min)}${this.apiNote()}</span>` : '';
+            const bad = badN || none > 0;
+            head = `<div class="rec-status-head">
+                <span class="rec-status-ico ${bad ? 'warn' : 'ok'}">${bad ? '!' : '✓'}</span>
+                <b>Подобрано ${foundN} из ${eqTotal}</b>
+                <span class="rec-chips">${chips}</span>
+                ${time}
+              </div>`;
+        }
+
+        let totals = '';
+        if (this.hasDocPrices()) {
+            const t = this.compareTotals();
+            if (t.their > 0) {
+                const d = t.delta === 0 ? 'разницы нет'
+                    : `${t.delta > 0 ? '+' : '−'}${money(Math.abs(t.delta))} (${t.delta > 0 ? '+' : ''}${this.fmtPct(t.pct)}%)`;
+                const sub = `оборудование ${money(t.eqTheir)} / ${money(t.eqOur)} · работы ${money(t.wTheir)} / ${money(t.wOur)}${
+                    t.eqDoc > 0 ? ` · по ценам документа ${money(t.eqDoc)}` : ''}${t.out > 0 ? ` · вне сравнения ${money(t.out)}` : ''}`;
+                totals = `<div class="rec-status-totals" title="${esc(sub)}">
+                    <span class="rec-lbl">По документу</span> <b>${money(t.their)}</b>
+                    <span class="rec-arrow">→</span>
+                    <span class="rec-lbl">У нас · ${t.brand === 'rommer' ? 'ROMMER' : 'STOUT'}</span> <b>${money(t.our)}</b>
+                    <span class="rec-delta ${t.delta > 0 ? 'up' : t.delta < 0 ? 'down' : ''}">${d}</span>
+                    <span class="rec-status-sub">${esc(sub)}</span>
+                  </div>`;
+            }
+        }
+
+        // Предупреждения: сверка итога и замечания разбора — одной раскрывающейся строкой.
+        const tc = this.totalCheckView();
+        const notes = [];
+        if (tc && tc.cls !== 'ok') notes.push({ cls: tc.cls, icon: tc.icon, head: tc.head, sub: tc.sub });
+        if (tc && tc.cls === 'ok') notes.push({ cls: 'ok', icon: '✓', head: tc.head, sub: tc.sub });
+        if (this._parseWarning) notes.push({ cls: 'warn', icon: '!', head: 'Замечание по разбору', sub: esc(this._parseWarning) + ' Проверьте, все ли строки сметы на месте.' });
+        const warn = notes.map(n => `<details class="rec-note ${n.cls}"${this._noteOpen ? ' open' : ''}>
+            <summary><span class="rec-note-ico">${n.icon}</span><span class="rec-note-head">${n.head}</span></summary>
+            <div class="rec-note-sub">${n.sub}</div></details>`).join('');
+
+        return `<div class="rec-status">${head}${totals}${warn}</div>`;
     },
 
     /** Полоса итога — одна и та же на обеих вкладках. */
@@ -5433,41 +5824,70 @@ const RecognizeUI = {
      * отдельно и появляются, только когда есть что с ними делать.
      */
     renderControls(foundN, eqTotal, works, noQty, badN) {
-        const fromMem = this._rows.filter(r => r._fromMem).length;
-        const stat = `Подобрано ${foundN} из ${eqTotal} (${
-            eqTotal ? Math.round(foundN / eqTotal * 100) : 0}%)`
-            + (works.length ? ` · монтажных работ ${works.length}` : '')
-            + (this._deep ? ` · из них углублённым поиском ${this._deep}` : '')
-            + (fromMem ? ` · по вашим прошлым заменам ${fromMem}` : '')
-            + (this._mergeInfo ? ' · ' + this._mergeInfo : '')
-            + (noQty ? ` · без количества ${noQty}` : '');
-
         // «Отменить» показываем, только когда есть что отменять: пустая серая
         // кнопка на экране ничего не сообщает.
         const undo = this._undo.length
             ? `<button class="rec-btn-g" title="Отменить последнее изменение"
-                       onclick="RecognizeUI.undo()">↶ Отменить</button>` : '';
+                       onclick="RecognizeUI.undo()">↶</button>` : '';
 
-        // «Сбросить» стоит рядом с «Отменить», но делает другое: «Отменить»
-        // откатывает одну правку, а это очищает разбор целиком и возвращает
-        // к загрузке. Раньше выйти из разобранной сметы можно было только
-        // применив её или перезагрузив страницу.
-        const reset = `<button class="rec-btn-g" title="Очистить разбор и загрузить другую смету"
-                       onclick="RecognizeUI.resetAll()">✕ Сбросить распознавание</button>`;
+        // Редкие действия — в меню «⋯»: «Сбросить» очищает разбор целиком, и
+        // держать его рядом с главными кнопками значит рисковать случайным
+        // нажатием.
+        const memN = this.memCount();
+        const more = `<details class="rec-more">
+            <summary class="rec-btn-g" title="Ещё">⋯</summary>
+            <div class="rec-more-pop">
+              ${memN ? `<button onclick="RecognizeUI.memAsk()" title="Артикулы, выбранные вами вручную на прошлых сметах">🧠 Мои замены: ${memN}</button>` : ''}
+              <button onclick="RecognizeUI.resetAll()" title="Очистить разбор и загрузить другую смету">✕ Сбросить распознавание</button>
+            </div></details>`;
 
-        return `<div class="rec-panel">
-            <div class="rec-panel-row">
+        return `<div class="rec-bar">
+            <div class="rec-bar-left">
               ${this.renderSystemSelect()}
+              ${this.renderBrandSwitch()}
               ${this.renderBadFilter(badN || 0)}
-              ${this.renderAnalogButton()}
               ${this.renderDocPriceButton()}
-              <span class="rec-tb-right">
-                ${this.renderRetryButton()}${this.renderMemoryButton()}${undo}${this.renderCompareButton()}${reset}
-              </span>
+            </div>
+            <div class="rec-bar-right">
+              ${this.renderRetryButton()}${undo}${this.renderCompareButton()}${more}
             </div>
             ${this.renderCoilBar()}
-            <div class="rec-panel-stat">${stat}</div>
           </div>`;
+    },
+
+    /**
+     * Бренд сметы одним переключателем STOUT | ROMMER.
+     *
+     * Вместо тумблера «Аналог ROMMER» (заменить только где дешевле) и отдельного
+     * выбора бренда на сравнении: бренд один, и он же уезжает в смету. ROMMER —
+     * там, где у позиции есть пара; остальное остаётся как есть и подписано.
+     */
+    renderBrandSwitch() {
+        if (typeof RecognizeMatch === 'undefined' || !RecognizeMatch.rommerAlt) return '';
+        let pairs = 0;
+        for (const r of this._rows) {
+            const m = r._m;
+            if (!m || !m.item) continue;
+            const base = (r._analogBase && r._analogBase.item) || m.item;
+            if (RecognizeMatch.rommerAlt(base, true)) pairs++;
+        }
+        if (!pairs && !this._analogOn) return '';
+        const on = !!this._analogOn;
+        return `<span class="rec-seg" title="Бренд сметы: ROMMER подставляется там, где у позиции есть пара (${pairs} поз.)">
+            <button class="${on ? '' : 'on'}" onclick="RecognizeUI.setBrand('stout')">STOUT</button>
+            <button class="${on ? 'on' : ''}" onclick="RecognizeUI.setBrand('rommer')">ROMMER <em>${pairs}</em></button>
+          </span>`;
+    },
+
+    /** Бренд сметы: меняет позиции и бренд сравнения вместе. */
+    setBrand(brand) {
+        const want = brand === 'rommer';
+        if (want === !!this._analogOn) return;
+        this.snap();
+        if (this._analogOn) this.revertAnalog();
+        if (want) this.applyAnalog(true);
+        this._cmpBrand = want ? 'rommer' : 'stout';
+        this.renderReview();
     },
 
     /** Действия над выделенными строками. Нет выделения — нет и панели. */
@@ -5821,8 +6241,7 @@ const RecognizeUI = {
 
         document.getElementById('rec_body').innerHTML = `
           ${this.renderTabs(this._rows.length - works.length, works)}
-          ${this.renderTotalCheck()}
-          ${this.renderTotalsStrip()}
+          ${this.renderStatusCard(null)}
           <div class="rec-toolbar">
             <button class="rec-btn-g" onclick="RecognizeUI.undo()" ${this._undo.length ? '' : 'disabled'}>↶ Отменить</button>
             <span class="rec-status">${works.length
@@ -5993,6 +6412,13 @@ const RecognizeUI = {
             if (t) push(t.sum, t.label);
         }
         if (!out.length && parsed) push(parsed.docTotal, parsed.docTotalLabel);
+        // Итога всего документа нет, но сумма напечатана в шапке раздела
+        // («Водоснабжение … 264 576»): сверять строки можно и с ней.
+        if (!out.length && parsed) {
+            for (const t of (parsed.sectionTotals || [])) {
+                if (t) push(t.sum, 'раздел «' + String(t.section || '').slice(0, 40) + '»');
+            }
+        }
         return out;
     },
 
@@ -6117,8 +6543,18 @@ const RecognizeUI = {
 
     /** Плашка сверки над таблицей проверки. */
     renderTotalCheck() {
+        const v = this.totalCheckView();
+        if (!v) return '';
+        return `<div class="rec-tcheck ${v.cls}">
+            <span class="rec-tcheck-ico">${v.icon}</span>
+            <div><b>${v.head}</b><div class="rec-tcheck-sub">${v.sub}</div></div>
+          </div>`;
+    },
+
+    /** Результат сверки итога как данные: { cls, icon, head, sub } или null. */
+    totalCheckView() {
         const t = this.totalCheck();
-        if (!t) return '';
+        if (!t) return null;
         const esc = s => String(s ?? '').replace(/[&<>"]/g,
             c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const money = n => Math.round(Math.abs(n) || 0).toLocaleString('ru-RU') + ' ₽';
@@ -6152,7 +6588,7 @@ const RecognizeUI = {
             short: {
                 cls: 'bad', icon: '!',
                 head: `Не сходится с итогом документа: не хватает ${money(t.delta)}`,
-                sub: `В документе ${money(t.doc)}${label}, строки таблицы дают ${money(t.sum)} — разница ${pct}%. Цены есть у всех строк, так что похоже на потерянную позицию: сверьте таблицу с оригиналом и допишите недостающее кнопкой поиска 🔍.` + from,
+                sub: `В документе ${money(t.doc)}${label}, строки таблицы дают ${money(t.sum)} — разница ${pct}%. ${this.numberingGapless() ? 'Нумерация позиций идёт без пропусков — вероятно, часть раздела на другом листе или итог раздела включает позиции, которых на этом листе нет: загрузите остальные листы или проверьте итог в оригинале.' : 'Цены есть у всех строк, так что похоже на потерянную позицию: сверьте таблицу с оригиналом и допишите недостающее кнопкой поиска 🔍.'}` + from,
             },
             over: {
                 cls: 'bad', icon: '!',
@@ -6160,13 +6596,7 @@ const RecognizeUI = {
                 sub: `В документе ${money(t.doc)}${label}, строки таблицы дают ${money(t.sum)} — разница ${pct}%. Причина может быть в задвоенной на стыке листов строке или в промежуточном итоге, попавшем в список отдельной позицией; посмотрите строки с самыми крупными суммами.` + from,
             },
         };
-        const v = TEXT[t.kind];
-        if (!v) return '';
-
-        return `<div class="rec-tcheck ${v.cls}">
-            <span class="rec-tcheck-ico">${v.icon}</span>
-            <div><b>${v.head}</b><div class="rec-tcheck-sub">${v.sub}</div></div>
-          </div>`;
+        return TEXT[t.kind] || null;
     },
 
     /**
@@ -6286,11 +6716,16 @@ const RecognizeUI = {
             const m = isWork ? null : r._m;
             const qty = this.docQty(r);
             const dp = this.docPrice(r);
-            const op = m ? this.ourUnitPriceOf(m.item, r) : 0;
-            // Цена той же позиции на ROMMER. Аналога нет (или он дороже) —
-            // остаётся исходная: смета «на ROMMER» всё равно наполовину STOUT.
-            const ra = (m && typeof RecognizeMatch !== 'undefined' && RecognizeMatch.rommerAlt)
-                ? RecognizeMatch.rommerAlt(m.item) : null;
+            // Исходная позиция (STOUT): при включённых аналогах в _m уже ROMMER, а
+            // цену STOUT и аналог для сравнения надо считать от неё.
+            const bi = m ? ((r._analogBase && r._analogBase.item) || m.item) : null;
+            const op = bi ? this.ourUnitPriceOf(bi, r) : 0;
+            // Цена той же позиции на ROMMER. Аналога нет — остаётся исходная:
+            // смета «на ROMMER» всё равно наполовину STOUT. Включён режим «только
+            // где дешевле» — считаем так же, чтобы цифры совпали с тем, что уедет.
+            const anyAlt = this._analogOn ? !!this._analogAny : true;
+            const ra = (bi && !r._locked && typeof RecognizeMatch !== 'undefined' && RecognizeMatch.rommerAlt)
+                ? RecognizeMatch.rommerAlt(bi, anyAlt) : null;
             const rp = ra ? (this.ourUnitPriceOf(ra.item, r) || op) : op;
             const bp = brand === 'rommer' ? rp : op;
             const dSum = dp * qty;
@@ -6320,14 +6755,16 @@ const RecognizeUI = {
             } else if (r._priceAlarm) {
                 diff = `<span class="rec-cmp-up" title="Не участвует в итогах">✕</span>`;
             }
+            if (comparable && r._priceWarn) diff += ` <span title="Цена расходится больше чем на 100% — проверьте подбор">⚠</span>`;
 
             // Точка уверенности подбора — тот же score, что и в таблице проверки.
             const score = m ? (r._locked ? 1 : (m.score || 0)) : 0;
             const dotCls = score >= 0.9 ? 'high' : score >= 0.7 ? 'mid' : score > 0 ? 'low' : 'none';
             const ours = m
-                ? `<span class="rec-cmp-dot ${dotCls}"></span>${esc(m.item.name)}${
-                    brand === 'rommer' && ra ? ` <span class="rec-art">→ ${esc(ra.item.name)}</span>` : ''}
-                   <div class="rec-art">${esc(m.item.article || m.item.id)}${
+                ? `<span class="rec-cmp-dot ${dotCls}"></span><a href="#" class="rec-altlink" title="Посмотреть варианты замены или найти другую позицию"
+                       onclick="RecognizeUI.cmpPick(${n});return false;">${esc(bi.name)}</a>${
+                    brand === 'rommer' && ra ? ` <span class="rec-art">→ ${esc(ra.item.name)} ${this.terLink(ra.item.article || ra.item.id)}</span>` : ''}
+                   <div class="rec-art">${this.terLink(bi.article || bi.id)}${
                     r._fromMem ? ' · по вашему прошлому выбору'
                         : (r._locked ? ' · выбрано вручную'
                             : (m.score < 1 ? ` · совпадение ${Math.round(m.score * 100)}%` : ''))}</div>${
@@ -6337,9 +6774,9 @@ const RecognizeUI = {
                 : isWork
                     ? `<span class="rec-work-tag">монтажная работа</span>
                        <span class="rec-art">с прайсом не сравнивается</span>`
-                    : `<span class="rec-art">аналог не подобран</span>`;
+                    : `<a href="#" class="rec-altlink" onclick="RecognizeUI.cmpPick(${n});return false;">аналог не подобран — найти</a>`;
 
-            return `${secHead}<tr${r._priceAlarm ? ' class="rec-pricebad"' : (isWork ? ' class="rec-workrow"' : '')}>
+            return `${secHead}<tr${r._priceAlarm ? ' class="rec-pricebad"' : (r._priceWarn ? ' class="rec-nomatch"' : (isWork ? ' class="rec-workrow"' : ''))}>
               <td>${r.docNo ? esc(r.docNo) : n + 1}</td>
               <td class="rec-raw">${esc(r.raw)}</td>
               <td>${qty || '—'} ${esc(r.unit || 'шт')}</td>
@@ -6408,20 +6845,12 @@ const RecognizeUI = {
         this._cmpDiscount = discPct ? { brand, pct: discPct } : null;
         if (!discPct) this._cmpApplyDiscount = false;
 
-        // Бренд сравнения и бренд переноса развязаны намеренно, но если они
-        // разошлись, скидка посчитана не для той сметы, которая уедет.
-        const moveBrand = this._analogOn ? 'rommer' : 'stout';
-        const brandMismatch = discPct && this._cmpApplyDiscount && moveBrand !== brand;
-
         const discountStrip = !discPct ? '' : `
           <label class="rec-cmp-apply">
             <input type="checkbox" ${this._cmpApplyDiscount ? 'checked' : ''}
                    onchange="RecognizeUI.cmpApplyDiscount(this.checked)">
             <span>Применить скидку <b>${discPct}%</b> при переносе в смету</span>
             <span class="rec-art">скидка ставится на всю смету целиком, менять её потом можно ползунком в разделе «Оборудование»</span>
-            ${brandMismatch ? `<span class="rec-cmp-warn">Сравнение считается на ${
-              brand === 'rommer' ? 'ROMMER' : 'STOUT'}, а в смету уедет ${
-              moveBrand === 'rommer' ? 'ROMMER' : 'STOUT'} — переключите тумблер «Аналог ROMMER» на экране проверки, иначе суммы не сойдутся</span>` : ''}
           </label>`;
 
         const deltaBlock = !cmpN ? '' : delta < 0
@@ -6483,8 +6912,38 @@ const RecognizeUI = {
           </div>`;
     },
 
+    /** Артикул ссылкой на поиск teremonline.ru — открыть карточку позиции. */
+    terLink(article) {
+        const a = String(article == null ? '' : article);
+        if (!a) return '';
+        const esc = x => String(x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        return `<a href="https://www.teremonline.ru/search/?q=${encodeURIComponent(a)}" target="_blank" rel="noopener noreferrer"
+                   title="Открыть артикул на teremonline.ru">${esc(a)}</a>`;
+    },
+
+    /** Замена позиции прямо с экрана сравнения: варианты обоих брендов и поиск. */
+    cmpPick(n) {
+        const row = this._rows[n];
+        if (!row) return;
+        this.openSearch([n], { lead: n, onDone: () => this.renderCompare() });
+    },
+
     /** Бренд, на который считается сравнение. Смету не трогает — только расчёт. */
     cmpBrand(brand) {
+        /**
+         * Бренд сравнения теперь и бренд сметы.
+         *
+         * Раньше выбор ROMMER на экране сравнения только пересчитывал цифры, а
+         * в смету уезжали позиции STOUT — «смета на ROMMER, а внутри STOUT».
+         * Теперь выбор меняет сами позиции, и перенос берёт то, что видно в
+         * сравнении. Откат — выбор STOUT.
+         */
+        const want = brand === 'rommer';
+        if (want !== !!this._analogOn) {
+            this.snap();
+            if (this._analogOn) this.revertAnalog();
+            if (want) this.applyAnalog(true);
+        }
         this._cmpBrand = brand;
         this.renderCompare();
     },
@@ -6528,8 +6987,11 @@ const RecognizeUI = {
      */
     renderSystemSelect() {
         if (typeof RecognizeMatch === 'undefined' || !RecognizeMatch.SYSTEMS) return '';
-        const cur = (this._sys && this._sys.main) || null;
+        const cur = this._sysChosen || (this._sys && this._sys.main) || null;
         if (!cur) return '';
+        // Одна-две строки системы — переводить нечего, выбор только шумит.
+        const cn = this._sys && this._sys.counts ? this._sys.counts[cur] : 0;
+        if (!this._sysChosen && cn < 3) return '';
 
         const labels = {
             ppr: 'Полипропилен',
@@ -6609,39 +7071,58 @@ const RecognizeUI = {
     /** Переключение всей сметы на аналоги ROMMER и обратно. */
     toggleAnalog() {
         this.snap();
-        if (this._analogOn) {
-            for (const r of this._rows) {
-                if (!r._analogBase) continue;
-                r._m = r._analogBase;
-                delete r._analogBase;
-            }
-            this._analogOn = false;
-            this._analogSaved = 0;
-            this._analogBase0 = 0;
-            this._analogCount = 0;
-        } else {
-            const st = this.analogStats();
-            this._analogBase0 = st ? st.base : 0;
-            this._analogCount = st ? st.n : 0;
-            let saved = 0;
-            for (const r of this._rows) {
-                const m = r._m;
-                if (!m || !m.item || r._locked) continue;
-                const alt = RecognizeMatch.rommerAlt(m.item);
-                if (!alt) continue;
-                r._analogBase = m;
-                saved += alt.save * ((Number(r.qty) || 0) + (Number(r.qtyExtra) || 0));
-                r._m = {
-                    ...m,
-                    item: alt.item,
-                    substituted: `аналог ROMMER вместо «${m.item.name}» — дешевле на ${alt.percent}%`,
-                    needsApproval: true,
-                };
-            }
-            this._analogOn = true;
-            this._analogSaved = saved;
-        }
+        if (this._analogOn) this.revertAnalog();
+        else this.applyAnalog(false);
+        // Бренд сравнения следует за тем, что реально уедет в смету.
+        this._cmpBrand = this._analogOn ? 'rommer' : 'stout';
         this.renderReview();
+    },
+
+    /** Вернуть исходные позиции вместо аналогов. */
+    revertAnalog() {
+        for (const r of this._rows) {
+            if (!r._analogBase) continue;
+            r._m = r._analogBase;
+            delete r._analogBase;
+        }
+        this._analogOn = false;
+        this._analogAny = false;
+        this._analogSaved = 0;
+        this._analogBase0 = 0;
+        this._analogCount = 0;
+    },
+
+    /**
+     * Заменить позиции на ROMMER. any=false — только там, где аналог дешевле
+     * (тумблер на экране проверки); any=true — везде, где у позиции есть
+     * ROMMER-версия: так выбирают «смета на ROMMER» на экране сравнения.
+     */
+    applyAnalog(any) {
+        const st = this.analogStats();
+        this._analogBase0 = st ? st.base : 0;
+        this._analogCount = st ? st.n : 0;
+        let saved = 0, n = 0;
+        for (const r of this._rows) {
+            const m = r._m;
+            if (!m || !m.item || r._locked) continue;
+            const alt = RecognizeMatch.rommerAlt(m.item, !!any);
+            if (!alt) continue;
+            r._analogBase = m;
+            saved += alt.save * ((Number(r.qty) || 0) + (Number(r.qtyExtra) || 0));
+            n++;
+            r._m = {
+                ...m,
+                item: alt.item,
+                substituted: alt.percent > 0
+                    ? `аналог ROMMER вместо «${m.item.name}» — дешевле на ${alt.percent}%`
+                    : `аналог ROMMER вместо «${m.item.name}»`,
+                needsApproval: true,
+            };
+        }
+        if (any) this._analogCount = n;
+        this._analogOn = true;
+        this._analogAny = !!any;
+        this._analogSaved = saved;
     },
 
     /**
@@ -6660,7 +7141,7 @@ const RecognizeUI = {
         const secs = Math.round((this._elapsed || 0) / 1000);
         return `<div class="rec-saved">
             <b>${found}</b> ${this.plural(found, 'позиция', 'позиции', 'позиций')} перенесено в смету
-            ${secs ? `за ${secs} с` : ''} — вручную это заняло бы около <b>${time}</b>
+            ${secs ? `за ${this.fmtElapsed(secs)}` : ''} — вручную это заняло бы около <b>${time}</b>${this.apiNote()}
           </div>`;
     },
 
@@ -7056,7 +7537,22 @@ const RecognizeUI = {
     altsOf(row) {
         const m = row && row._m;
         if (!m || !m.item) return [];
-        return (m.alternatives || []).filter(a => a && a.name && a !== m.item);
+        const base = (m.alternatives || []).filter(a => a && a.name && a !== m.item);
+        if (typeof RecognizeMatch === 'undefined' || !RecognizeMatch.variantsOf) return base;
+
+        // К соседям подбора добавляем варианты каждого бренда: серий у STOUT и у
+        // ROMMER несколько, а подбор показывал по одной. Считаем один раз на
+        // позицию — перерисовка идёт после каждой правки.
+        const sys = (this._sys && this._sys.main) || null;
+        const key = String(m.item.id) + '|' + sys;
+        if (!row._varCache || row._varCache.key !== key) {
+            let v = { stout: [], rommer: [] };
+            try { v = RecognizeMatch.variantsOf(row, m.item, sys, this.docPrice(row), 4); } catch (e) { /* без вариантов */ }
+            row._varCache = { key, list: v.stout.concat(v.rommer) };
+        }
+        const have = new Set(row._varCache.list.map(a => a.article || a.id));
+        const extra = base.filter(a => !have.has(a.article || a.id));
+        return row._varCache.list.concat(extra);
     },
 
     renderAlts(r, n) {
@@ -7064,18 +7560,30 @@ const RecognizeUI = {
         if (!alts.length) return '';
         const esc = s => String(s ?? '').replace(/[&<>"]/g,
             c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const brandOf = a => (RecognizeMatch.brandOfItem ? RecognizeMatch.brandOfItem(a) : 'other');
+        const cnt = { STOUT: 0, ROMMER: 0 };
+        alts.forEach(a => { const b = brandOf(a); if (cnt[b] !== undefined) cnt[b]++; });
+        const split = (cnt.STOUT || cnt.ROMMER)
+            ? ` (${[cnt.STOUT ? `STOUT ${cnt.STOUT}` : '', cnt.ROMMER ? `ROMMER ${cnt.ROMMER}` : ''].filter(Boolean).join(', ')})` : '';
 
         if (!r._altsOpen) {
             return `<div class="rec-art"><a href="#" class="rec-altlink"
                 onclick="RecognizeUI.toggleAlts(${n});return false;">ещё ${alts.length} ${
-                this.plural(alts.length, 'вариант', 'варианта', 'вариантов')} подбора</a></div>`;
+                this.plural(alts.length, 'вариант', 'варианта', 'вариантов')}${split}</a></div>`;
         }
 
+        let last = null;
         return `<div class="rec-alts">
-            ${alts.map((a, k) => `<div class="rec-alt"
-                onclick="RecognizeUI.pickAlt(${n},${k})">
-                <span>${esc(a.name)}</span><b>${Math.round(Number(a.price) || 0)} ₽</b>
-              </div>`).join('')}
+            ${alts.map((a, k) => {
+                const b = brandOf(a);
+                const head = (b !== last && b !== 'other')
+                    ? `<div class="rec-art"><b>${b}</b></div>` : '';
+                last = b;
+                return `${head}<div class="rec-alt" onclick="RecognizeUI.pickAlt(${n},${k})">
+                  <span>${esc(a.name)} <span class="rec-art">${esc(a.article || a.id)}</span></span>
+                  <b>${Math.round(Number(a.price) || 0)} ₽</b>
+                </div>`;
+            }).join('')}
             <a href="#" class="rec-altlink"
                onclick="RecognizeUI.toggleAlts(${n});return false;">свернуть</a>
           </div>`;
@@ -7116,6 +7624,7 @@ const RecognizeUI = {
         delete r._fromMem;
         delete r._noMem;
         delete r._priceAlarm;
+        delete r._priceWarn;
         delete r._priceFixed;
         this.memRemember(r, picked);
         this.renderReview();
@@ -7232,6 +7741,7 @@ const RecognizeUI = {
                 <span>Применить ко всем таким же — ещё ${opt.twins} ${
                     this.plural(opt.twins, 'строка', 'строки', 'строк')} с тем же наименованием</span>
               </label>` : ''}
+            <div id="rec_vars" class="rec-res"></div>
             <div id="rec_res" class="rec-res"></div>
             <div class="rec-foot" style="border:0;padding-top:6px">
               <button class="calc-dialog-btn calc-dialog-btn-cancel" id="rec_cx">Отмена</button>
@@ -7257,6 +7767,60 @@ const RecognizeUI = {
         // коллектором за 1 200, хотя слова совпадают.
         const docP = this.docPrice(row);
 
+        // Выбор позиции — из поиска или из готовых вариантов подбора.
+        const commit = (picked) => {
+            if (!picked) return;
+            this.snap();
+            // Галочка «ко всем таким же» снята — правим только ту
+            // строку, из которой подбор открыли.
+            const twinBox = ov.querySelector('#rec_twins');
+            const targets = (opt.selected || !twinBox || twinBox.checked)
+                ? indexes : [indexes[0]];
+
+            for (const n of targets) {
+                const r = this._rows[n];
+                if (!r) continue;
+                r._m = { item: picked, score: 1, alternatives: [] };
+                r._locked = true;
+                // Выбор сделан только что — в таблице он «выбран
+                // вручную», а «по прошлому выбору» станет со следующей
+                // сметы.
+                delete r._fromMem;
+                // Строку разбирали руками: поле _noMem поставила правка
+                // типа или диаметра, и держать его дальше нельзя —
+                // иначе сделанный сейчас выбор в следующий раз не
+                // подставится.
+                delete r._noMem;
+                delete r._priceAlarm;
+                delete r._priceWarn;
+                delete r._priceFixed;
+                // Исходная позиция при включённых аналогах больше не
+                // исходная: выбор человека — и есть позиция строки.
+                delete r._analogBase;
+                // Запоминаем каждую строку отдельно: наименования у них
+                // разные, а решение человек принял про каждое.
+                this.memRemember(r, picked);
+            }
+            close();
+            if (opt.onDone) opt.onDone(); else this.renderReview();
+        };
+
+        // Готовые варианты подбора обоих брендов — до поиска: чаще всего верная
+        // позиция уже среди них, и набирать запрос не нужно.
+        const vars = this.altsOf(row);
+        const varsBox = ov.querySelector('#rec_vars');
+        if (vars.length && varsBox) {
+            const brandOf = a => (RecognizeMatch.brandOfItem ? RecognizeMatch.brandOfItem(a) : 'other');
+            let last = null;
+            varsBox.innerHTML = '<div class="rec-art"><b>Варианты подбора</b></div>' + vars.map((a, k) => {
+                const b = brandOf(a);
+                const head = (b !== last && b !== 'other') ? `<div class="rec-art"><b>${b}</b></div>` : '';
+                last = b;
+                return `${head}<div class="rec-hit" data-v="${k}"><span>${esc(a.name)} <span class="rec-art">${esc(a.article || a.id)}</span></span><b>${Math.round(Number(a.price) || 0)} ₽</b></div>`;
+            }).join('') + '<div class="rec-art" style="padding-top:6px"><b>Поиск по каталогу</b></div>';
+            varsBox.querySelectorAll('.rec-hit').forEach(el => { el.onclick = () => commit(vars[+el.dataset.v]); });
+        }
+
         const run = () => {
             const w = norm(q.value).split(/\s+/).filter(Boolean);
             const hits = this.catIndex()
@@ -7273,39 +7837,7 @@ const RecognizeUI = {
                      <b>${it.price} ₽</b></div>`).join('')
                 : '<div class="rec-art" style="padding:10px">Ничего не найдено</div>';
             res.querySelectorAll('.rec-hit').forEach(el => {
-                el.onclick = () => {
-                    this.snap();
-                    const picked = hits[+el.dataset.i];
-
-                    // Галочка «ко всем таким же» снята — правим только ту
-                    // строку, из которой подбор открыли.
-                    const twinBox = ov.querySelector('#rec_twins');
-                    const targets = (opt.selected || !twinBox || twinBox.checked)
-                        ? indexes : [indexes[0]];
-
-                    for (const n of targets) {
-                        const r = this._rows[n];
-                        if (!r) continue;
-                        r._m = { item: picked, score: 1, alternatives: [] };
-                        r._locked = true;
-                        // Выбор сделан только что — в таблице он «выбран
-                        // вручную», а «по прошлому выбору» станет со следующей
-                        // сметы.
-                        delete r._fromMem;
-                        // Строку разбирали руками: поле _noMem поставила правка
-                        // типа или диаметра, и держать его дальше нельзя —
-                        // иначе сделанный сейчас выбор в следующий раз не
-                        // подставится.
-                        delete r._noMem;
-                        delete r._priceAlarm;
-                        delete r._priceFixed;
-                        // Запоминаем каждую строку отдельно: наименования у них
-                        // разные, а решение человек принял про каждое.
-                        this.memRemember(r, picked);
-                    }
-                    close();
-                    this.renderReview();
-                };
+                el.onclick = () => commit(hits[+el.dataset.i]);
             });
         };
         q.oninput = run;
@@ -7377,6 +7909,10 @@ const RecognizeUI = {
             noQtyRows.forEach(r => { r.qty = 1; if (!r.unit) r.unit = 'шт'; });
             qtyGuessed = n;
         }
+
+        // Бренд сравнения и есть бренд сметы: выбран ROMMER, а позиции ещё не
+        // заменены (сравнение открывали из старого состояния) — заменяем сейчас.
+        if (this._cmpBrand === 'rommer' && !this._analogOn) this.applyAnalog(true);
 
         this.step(3);
 
@@ -7649,6 +8185,7 @@ const RECOGNIZE_PROMPT = `Ты разбираешь рукописные сме�
     "qty": число или null,
     "qtyExtra": число,
     "unit": "шт"|"м"|"м2"|"точка"|"компл",
+    "code": "артикул из колонки «Код»/«Артикул» или null",
     "price": цена за единицу ИЗ ДОКУМЕНТА или null,
     "sum": сумма по строке ИЗ ДОКУМЕНТА или null,
     "sections": число секций радиатора или null,
@@ -7658,7 +8195,8 @@ const RECOGNIZE_PROMPT = `Ты разбираешь рукописные сме�
     "note": "пояснение, если что-то неясно"
   }],
   "skipped": [{ "raw": "...", "reason": "вычеркнуто" }],
-  "docTotals": [{ "sum": число, "label": "как подписан итог" }]
+  "docTotals": [{ "sum": число, "label": "как подписан итог" }],
+  "sectionTotals": [{ "section": "заголовок раздела", "sum": число }]
 }
 
 ПРАВИЛА:
@@ -7817,6 +8355,12 @@ const RECOGNIZE_PROMPT = `Ты разбираешь рукописные сме�
     проверку обесценивает: она сойдётся всегда, даже если половина сметы
     потеряна.
 
+    СУММА В ШАПКЕ РАЗДЕЛА. В спецификациях сумма раздела печатается на самой
+    полосе заголовка: «Водоснабжение ........ 264 576». Это не итог документа,
+    но по ней проверяется, все ли строки раздела прочитаны: положи её в
+    "sectionTotals" ВЕРХНЕГО УРОВНЯ — заголовок в "section", число в "sum".
+    Заголовок по-прежнему не позиция и в "items" не попадает.
+
     Промежуточные итоги — «Итого по разделу», «Итого материалы», «Итого по
     странице», «Перенос на след. лист» — НЕ бери: это части, а не итоги к
     оплате. Итог не читается или виден лишь частично -> не пиши его вовсе.
@@ -7852,6 +8396,12 @@ const RECOGNIZE_PROMPT = `Ты разбираешь рукописные сме�
     «редукция 50х25»). Второй размер и есть признак: увидел два диаметра или
     слово «переходная»/«редукция» — ставь type="переход", а не "муфта".
     В каталоге это разные изделия и разные артикулы.
+
+23. АРТИКУЛ. Если в документе есть колонка «Код» / «Артикул» / «Арт.», положи
+    её значение в "code" как напечатано. Длинный код в узкой колонке переносится
+    на вторую строку («RVFF-0001-1» и под ним «520400», «EFB03.1622E» и «K») —
+    это ОДИН код, склей части без пробела: "RVFF-0001-1520400". Колонку
+    «Страна» и «Производитель» в code не клади. Кода нет — поле не пиши вовсе (пустые null раздувают ответ).
 
 СЛОВАРЬ ТИПОВ (значение поля "type" пиши КИРИЛЛИЦЕЙ, ровно как здесь —
 "kran_ppr" вместо "кран_ppr" калькулятор не понимает):
