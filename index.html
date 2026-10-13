@@ -1165,7 +1165,7 @@
             <div class="pg-title no-print" id="pg_t2" data-pg="2" onclick="app.togglePanelGroup(2)" role="button" tabindex="0" aria-label="Группа «Отопление и котельная»: свернуть или развернуть"><span class="pg-num">2</span><span class="pg-name">Отопление и котельная</span></div>
             <div id="blk_fuel_type">
                 <h4 class="sec-title">Тип котла</h4>
-                <div class="control-item">
+                <div class="control-item" style="margin-top: 0; margin-bottom: 16px;">
                     <div class="tabs">
                         <div class="tab multi-active" id="fuel_el" onclick="app.toggleFuel('el')"><span class="ui-emo">⚡ </span>Электро</div>
                         <div class="tab" id="fuel_gas" onclick="app.toggleFuel('gas')"><span class="ui-emo">🔥 </span>Газ</div>
@@ -1180,7 +1180,7 @@
                  «сеть отключена». Условие показа общее для всей группы и то же,
                  что было у каждого пункта: подробный режим и электрокотёл
                  (app.syncUI). -->
-            <div class="control-item toggle-item" id="blk_el_group" style="display:none;">
+            <div class="control-item toggle-item" id="blk_el_group" style="display:none; margin-top: 0; margin-bottom: 16px;">
                 <!-- Заголовок — одна строка: название, следом сводка текущих
                      значений (её собирает app.syncUI), справа шеврон. Сводка
                      ужимается многоточием, а не переносится: строка должна
@@ -1200,7 +1200,7 @@
                  этот потолок и каскад в нём не собирает. Показывается только в
                  подробном режиме и только при включённом электрокотле
                  (app.syncUI). -->
-            <div class="control-item" id="blk_el_power_limit" style="display:none;">
+            <div class="control-item" id="blk_el_power_limit" style="display:none; margin-top: 0; margin-bottom: 16px;">
                 <!-- position:relative обязателен: tip-panel-wrap снимает позиционирование
                      с обёртки подсказки, и якорем становится эта строка. Без него
                      подсказка считает координаты от далёкого предка и уезжает за экран. -->
@@ -1244,7 +1244,7 @@
                  подробный режим и включённый электрокотёл (app.syncUI). В быстром
                  режиме выбор не применяется — сеть там считается трёхфазной,
                  см. app.elPhase(). Переключение обрабатывает app.setElPhase(). -->
-            <div class="control-item" id="blk_el_phase" style="display:none;">
+            <div class="control-item" id="blk_el_phase" style="display:none; margin-top: 0; margin-bottom: 16px;">
                 <div class="label-row" style="position:relative;">
                     <span class="lbl" style="display:flex; align-items:center; gap:4px;">Сеть
                         на объекте<span class="ui-emo"> ⚡</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>220 В.</b> Одна фаза, только котлы до 9 кВт: ток втрое больше, кабель считается по нему.<div class="tip-p"><b>380 В.</b> Три фазы — штатно для всей линейки электрокотлов.</div></div></span></span>
@@ -1272,18 +1272,18 @@
                  трасса это готовый комплект, и «0,8 м» — его собственная длина, а
                  не то, что меряют на объекте. Раскрываются ссылкой ниже. -->
             <div class="control-item toggle-item" id="blk_chimney"
-                style="display:none; position:relative; border-bottom:1px dashed var(--border); padding-bottom:16px; margin-bottom:16px;">
+                style="display:none; position:relative; border-bottom:1px dashed var(--border); padding-bottom:0; margin-top: 0; margin-bottom: 16px;">
                 <!-- Подпись о длине трассы спрятана под «i»: position:relative у блока
                      нужен .tip-panel-wrap, иначе подсказка не появится. -->
-                <div class="fine-tune" id="ft_chim">
-                <div class="fine-tune-head" onclick="app.toggleChimneyBlock()" role="button" tabindex="0">
-                    <span class="fine-tune-title">Дымоход<span class="tooltip-wrapper tip-panel-wrap" id="chim_note_wrap" onclick="event.stopPropagation()"><i class="info-icon" tabindex="0"
+                <div class="fine-tune" id="ft_chim" style="margin-top: 0; margin-bottom: 16px;">
+                <div class="fine-tune-head" onclick="app.toggleChimneyBlock()" role="button" tabindex="0" style="margin-top: 0; margin-bottom: 16px;">
+                    <span class="fine-tune-title sec-title">Дымоход<span class="tooltip-wrapper tip-panel-wrap" id="chim_note_wrap" onclick="event.stopPropagation()"><i class="info-icon" tabindex="0"
                             role="button" aria-label="Подробнее">i</i>
                         <div class="tooltip-content tip-panel" id="chim_note"></div></span></span>
                     <span class="fine-tune-sum" id="chim_sum"></span>
                     <span class="fine-tune-arrow">▸</span>
                 </div>
-                <div class="fine-tune-body" id="chim_body" style="display:none;">
+                <div class="fine-tune-body" id="chim_body" style="display:none; margin-top: 0; margin-bottom: 16px;">
                 <div class="tabs" style="margin-bottom: 6px;">
                     <div class="tab" id="chim_sys_coax" onclick="app.setChimneySystem('coax')">Коаксиальный</div>
                     <div class="tab" id="chim_sys_split" onclick="app.setChimneySystem('split')">Раздельный D80</div>
@@ -1330,7 +1330,7 @@
                  пятью радиаторами, и лучевые коллекторы прямо на котле с узлом
                  подмеса тёплого пола. Что именно собрано и с какими оговорками —
                  плашка в шапке раздела «2. Обвязка котельной». -->
-            <div class="control-item" id="blk_boiler_scheme" style="display:none; margin-bottom: 16px;">
+            <div class="control-item" id="blk_boiler_scheme" style="display:none; margin-top: 0; margin-bottom: 16px;">
                 <span class="sec-title">Схема котельной<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Без стрелки.</b> Радиаторы питает насос котла, тёплый пол — свой узел подмеса, бойлер — трёхходовой клапан. Для одного котла и простой системы.<div class="tip-p"><b>Со стрелкой.</b> Гидрострелка и насосная группа на каждый контур.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_boiler_scheme_note">Схему калькулятор подбирает сам.</span></div></div></span></span>
                 <div class="tabs" id="boiler_scheme_tabs">
                     <div class="tab" id="boiler_scheme_direct" onclick="app.setBoilerScheme('direct', event)">Без стрелки</div>
@@ -1343,7 +1343,7 @@
             <!-- Насосные группы: готовые STOUT/ROMMER или самосборные из отдельных позиций, как в
                  проектах (тариф «Профи», нержавеющая обвязка). Блок виден, когда в котельной есть
                  коллектор (app.syncGroupsBuildUI). -->
-            <div class="control-item" id="blk_groups_build" style="display:none; margin-bottom: 16px;">
+            <div class="control-item" id="blk_groups_build" style="display:none; margin-top: 0; margin-bottom: 16px;">
                 <span class="sec-title">Насосные группы<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Готовые.</b> Группа STOUT/ROMMER одной позицией и стальной коллектор.<div class="tip-p"><b>Самосборные.</b> Группа из отдельных позиций, как в проектах; коллектор — трубы с тройниками. Тариф «Профи», на нержавеющей или ППР обвязке.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_groups_build_note">Готовые насосные группы.</span></div></div></span></span>
                 <div class="tabs" id="groups_build_tabs">
                     <div class="tab active" id="groups_build_ready" onclick="app.setGroupsBuild('ready', event)">Готовые</div>
@@ -1354,13 +1354,13 @@
             <!-- Насосные группы: свёрнуты, как «Тонкая настройка». В заголовке — число групп,
                  внутри — переключатель групп радиаторов и разбивка по контурам. Только в
                  подробном режиме (app.renderPumpPlanBlock, app.syncFineTune). -->
-            <div class="fine-tune" id="ft_pump" style="display:none;">
-                <div class="fine-tune-head" onclick="app.toggleFineTune('pump')" role="button" tabindex="0">
-                    <span class="fine-tune-title">Насосные группы</span>
+            <div class="fine-tune" id="ft_pump" style="display:none; margin-top: 0; margin-bottom: 16px;">
+                <div class="fine-tune-head" onclick="app.toggleFineTune('pump')" role="button" tabindex="0" style="margin-top: 0; margin-bottom: 16px;">
+                    <span class="fine-tune-title sec-title">Насосные группы</span>
                     <span class="fine-tune-sum" id="ft_pump_sum"></span>
                     <span class="fine-tune-arrow">▸</span>
                 </div>
-                <div class="fine-tune-body" id="ft_pump_body" style="display:none;">
+                <div class="fine-tune-body" id="ft_pump_body" style="display:none; margin-top: 0; margin-bottom: 16px;">
                     <div id="rooms_pump_plan" style="display:none;"></div>
                 </div>
             </div>
@@ -1368,15 +1368,15 @@
             <!-- Инженерные настройки свёрнуты: большинство оставляет их по умолчанию.
                  Сводка значений в заголовке — чтобы нестандартный выбор был виден и в
                  свёрнутом виде (app.syncFineTune). -->
-            <div class="fine-tune" id="ft_eng">
-                <div class="fine-tune-head" onclick="app.toggleFineTune('eng')" role="button" tabindex="0">
-                    <span class="fine-tune-title">Тонкая настройка</span>
+            <div class="fine-tune" id="ft_eng" style="margin-top: 0; margin-bottom: 16px;">
+                <div class="fine-tune-head" onclick="app.toggleFineTune('eng')" role="button" tabindex="0" style="margin-top: 0; margin-bottom: 16px;">
+                    <span class="fine-tune-title sec-title">Тонкая настройка</span>
                     <span class="fine-tune-sum" id="ft_eng_sum"></span>
                     <span class="fine-tune-arrow">▸</span>
                 </div>
-                <div class="fine-tune-body" id="ft_eng_body" style="display:none;">
+                <div class="fine-tune-body" id="ft_eng_body" style="display:none; margin-top: 0; margin-bottom: 16px;">
 
-            <div class="control-item" id="blk_boiler_dt" style="display:none; margin-bottom: 16px;">
+            <div class="control-item" id="blk_boiler_dt" style="display:none; margin-top: 0; margin-bottom: 16px;">
                 <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Котловой перепад<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>20 K.</b> Паспортный режим котла: расход вдвое меньше, обвязка скромнее.<div class="tip-p"><b>10 K.</b> Режим 75/65: расход вдвое выше, диаметр обвязки на две ступени больше. Когда котёл работает на систему без гидрострелки.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_boiler_dt_note">Перепад 20 K. По нему считаются расход и диаметр обвязки котельной.</span></div></div></span></span>
                 <div class="tabs" id="boiler_dt_tabs">
                     <div class="tab active" id="boiler_dt_20" onclick="app.setBoilerDT(20)">20 K</div>
@@ -1385,7 +1385,7 @@
             </div>
                 
             <h4 class="sec-title" id="lbl_rad_regime">Режим системы<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>80/60.</b> Перепад 20 K, классика с котлом: расход вдвое меньше, трубы и насос скромнее.<div class="tip-p"><b>75/65.</b> Перепад 10 K, в нём заявлена паспортная мощность радиаторов; расход вдвое выше, расчёт с запасом.</div><div class="tip-p"><b>70/55.</b> Приборы отдают около 80 % паспорта и подбираются крупнее. Для конденсационного котла.</div><div class="tip-p"><b>55/45.</b> Приборы отдают около половины паспорта. Конденсационный котёл с полной конденсацией, тепловой насос.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_rad_regime_note">Перепад 20 K. Расход и напор считаются по нему.</span></div></div></span></h4>
-            <div class="control-item" id="blk_rad_regime" style="display:none;">
+            <div class="control-item" id="blk_rad_regime" style="display:none; margin-top: 0; margin-bottom: 16px;">
                 <div class="tabs" id="rad_regime_tabs">
                     <div class="tab active" id="rad_regime_8060" onclick="app.setRadRegime('r8060')">80/60</div>
                     <div class="tab" id="rad_regime_7565" onclick="app.setRadRegime('r7565')">75/65</div>
@@ -1394,7 +1394,7 @@
                 </div>
             </div>
                 
-                    <div class="control-item" id="blk_step_floor1" style="display:none; margin-bottom: 12px; margin-top: 6px;">
+                    <div class="control-item" id="blk_step_floor1" style="display:none; margin-top: 0; margin-bottom: 16px;">
                         <span class="lbl-sub" style="margin-bottom: 6px;">Шаг укладки трубы 1 этаж</span>
                         <div class="tabs" id="ufh_step1_tabs">
                             <div class="tab" id="ufh_step1_100" onclick="app.setUfhStep(1, 100)">100 мм</div>
@@ -1402,7 +1402,7 @@
                             <div class="tab" id="ufh_step1_200" onclick="app.setUfhStep(1, 200)">200 мм</div>
                         </div>
                     </div>
-                    <div class="control-item" id="blk_step_floor2" style="display:none; margin-bottom: 12px; margin-top: 6px;">
+                    <div class="control-item" id="blk_step_floor2" style="display:none; margin-top: 0; margin-bottom: 16px;">
                         <span class="lbl-sub" style="margin-bottom: 6px;">Шаг укладки трубы 2 этаж</span>
                         <div class="tabs" id="ufh_step2_tabs">
                             <div class="tab" id="ufh_step2_100" onclick="app.setUfhStep(2, 100)">100 мм</div>
@@ -1413,7 +1413,7 @@
                     <!-- Перепад контура: расчёт выбирает его сам от дешёвого к дорогому
                          (шире перепад дешевле, чем насос посильнее). Здесь его можно
                          задать вручную, когда ровность пола важнее стоимости насоса. -->
-                    <div class="control-item" id="blk_ufh_dt" style="display:none; margin-bottom: 12px; margin-top: 6px;">
+                    <div class="control-item" id="blk_ufh_dt" style="display:none; margin-top: 0; margin-bottom: 16px;">
                         <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Перепад контура тёплого пола<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Авто.</b> Расчёт подбирает перепад сам: штатный насос узла на 5 К, затем на 7 К, потом насос мощнее.<div class="tip-p"><b>5 K</b> (40/35). Самый ровный пол, расход выше; на крупном коллекторе может понадобиться насос 25/80.</div><div class="tip-p"><b>7 K</b> (41/34). Штатного насоса хватает чаще, дальний конец петли холоднее.</div><div class="tip-p"><b>10 K</b> (42,5/32,5). Пол заметно неравномерный, насосу проще всего.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_ufh_dt_note">Перепад подбирается расчётом.</span></div></div></span></span>
                         <div class="tabs" id="ufh_dt_tabs">
                             <div class="tab active" id="ufh_dt_auto" onclick="app.setUfhDT(null)">авто</div>
@@ -1427,7 +1427,7 @@
 
 
             <h4 class="sec-title">Тип отопления</h4>
-            <div class="control-item">
+            <div class="control-item" style="margin-top: 0; margin-bottom: 16px;">
                 <div class="tabs">
                     <div class="tab multi-active" id="sys_rad" onclick="app.toggleSys('rad', event)"><span class="ui-emo">🌡️ </span>Радиаторы</div>
                     <div class="tab" id="sys_tp" onclick="app.toggleSys('tp', event)"><span class="ui-emo">♨️ </span>Тёплый пол</div>
@@ -1438,7 +1438,7 @@
                  это продолжение того же выбора, и относится он к радиаторам:
                  без них показывать нечего (см. app.syncObjectTypeUI). -->
             <div id="blk_flat_riser">
-                <div class="control-item" style="margin-bottom: 12px;">
+                <div class="control-item" style="margin-top: 0; margin-bottom: 16px;">
                     <span class="sec-title">Как разведено отопление<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Стояки.</b> Радиатор висит на вертикальных трубах из пола или стены.<div class="tip-p"><b>Коллектор.</b> Шкаф с гребёнкой в прихожей или санузле, трубы по полу к каждому радиатору.</div></div></span></span>
                     <div class="tabs" id="flat_riser_tabs" style="font-size:11px;">
                         <div class="tab flat-riser-tab active" data-fr="riser" onclick="app.setFlatRiser('riser')">Стояки</div>
@@ -1454,7 +1454,7 @@
                  вместе со своими вкладками (см. syncUI), иначе в быстром режиме
                  и без радиаторов остаётся висеть без содержимого. -->
             <h4 class="sec-title" id="lbl_rad_scheme">Схема разводки радиаторов</h4>
-            <div class="control-item" id="blk_rad_scheme" style="display:none;">
+            <div class="control-item" id="blk_rad_scheme" style="display:none; margin-top: 0; margin-bottom: 16px;">
                 <div class="tabs" id="rad_scheme_tabs">
                     <div class="tab" id="rad_scheme_tee" onclick="app.setRadConnectionScheme('tee')">Тройниковая</div>
                     <div class="tab active" id="rad_scheme_manifold" onclick="app.setRadConnectionScheme('manifold')">Коллекторная</div>
@@ -1470,7 +1470,7 @@
             
 
             <div id="blk_tp_sliders" style="display:none; border-top:1px dashed #E5E7EB; padding-top:15px;">
-                <div class="control-item">
+                <div class="control-item" style="margin-top: 0; margin-bottom: 16px;">
                     <div class="label-row"><span class="lbl" id="lbl_tp1">Тёплый пол 1 этаж</span><span class="val"><span
                                 id="val_tp1" class="editable-val" contenteditable="true"
                                 onblur="app.updTp(1, this.innerText)"
@@ -1484,7 +1484,7 @@
                      врезка в общее имущество дома, поэтому он доступен только на
                      первом этаже, где под квартирой нежилое. -->
                 <div id="blk_flat_ufh">
-                    <div class="control-item" style="margin-bottom: 12px; margin-top: 6px;">
+                    <div class="control-item" style="margin-top: 0; margin-bottom: 16px;">
                         <span class="lbl" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Тип тёплого пола<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Электрический.</b> Нагревательный мат и терморегулятор на стене, согласований нет.<div class="tip-p"><b>Водяной.</b> Врезка в общедомовой стояк; согласуют только на первом этаже над нежилым.</div></div></span></span>
                         <div class="tabs" id="flat_ufh_kind_tabs">
                             <div class="tab flat-ufh-kind-tab" data-fk="electric"
@@ -1496,7 +1496,7 @@
                             style="margin-top:8px; font-size:11px; line-height:1.5; color:var(--text-sec);"></div>
                     </div>
                     <div id="blk_flat_ufh_el">
-                        <div class="control-item" style="margin-bottom: 12px;">
+                        <div class="control-item" style="margin-top: 0; margin-bottom: 16px;">
                             <span class="lbl" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Покрытие пола<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Плитка.</b> Мат Tropix 160 Вт/м² в слой плиточного клея.<div class="tip-p"><b>Ламинат.</b> Фольгированный мат Alumia 150 Вт/м² на подложку, без клея и стяжки.</div></div></span></span>
                             <div class="tabs" id="flat_ufh_cover_tabs">
                                 <div class="tab flat-ufh-cover-tab" data-fc="tile"
@@ -1505,7 +1505,7 @@
                                     onclick="app.setFlatUfhCover('laminate')">Ламинат</div>
                             </div>
                         </div>
-                        <div class="control-item" style="margin-bottom: 12px;">
+                        <div class="control-item" style="margin-top: 0; margin-bottom: 16px;">
                             <span class="lbl" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Терморегулятор<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Механический.</b> Колесо уставки — когда пол включают на сезон.<div class="tip-p"><b>Электронный.</b> Расписание по дням и часам.</div><div class="tip-p"><b>Wi-Fi.</b> То же расписание и управление с телефона.</div></div></span></span>
                             <div class="tabs" id="flat_ufh_ctrl_tabs">
                                 <div class="tab flat-ufh-ctrl-tab" data-fct="mech"
@@ -1517,7 +1517,7 @@
                             </div>
                         </div>
                         <div class="control-item"
-                            style="position:relative; margin-bottom: 12px; display:flex; justify-content:space-between; align-items:center;">
+                            style="position:relative; display:flex; justify-content:space-between; align-items:center; margin-top: 0; margin-bottom: 16px;">
                             <span class="lbl" style="display:flex; align-items:center; gap:4px;">Зон обогрева<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Терморегулятор ставится по одному на зону: у санузла и кухни разный график и разное покрытие.</div></span></span>
                             <div class="stepper" style="width:100px;">
                                 <button class="step-btn" onclick="app.updFlatUfhZones(-1)">−</button>
