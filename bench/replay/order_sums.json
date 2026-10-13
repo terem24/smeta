@@ -1,0 +1,53 @@
+{
+ "name": "Порядок, сумма строки и сумма раздела",
+ "items": [
+  {
+   "docNo": "3",
+   "docSection": "Раздел",
+   "raw": "Кран шаровой 1/2 ВР/НР",
+   "type": "кран_шаровой",
+   "thread": "1/2",
+   "threadType": "ВН",
+   "qty": 2,
+   "unit": "шт",
+   "price": 500,
+   "sum": 1000,
+   "kind": "equipment"
+  },
+  {
+   "docNo": "1",
+   "docSection": "Раздел",
+   "raw": "Хомут трубный 1 (32-35 мм)",
+   "type": "хомут",
+   "d": 32,
+   "qty": 10,
+   "unit": "шт",
+   "price": 88,
+   "sum": 8800,
+   "kind": "equipment"
+  },
+  {
+   "docNo": "2",
+   "docSection": "Раздел",
+   "raw": "Клипса 32",
+   "type": "клипса",
+   "d": 32,
+   "qty": 5,
+   "unit": "шт",
+   "price": 20,
+   "sum": 100,
+   "kind": "equipment"
+  }
+ ],
+ "order": "1,2,3",
+ "sumBad": [
+  1
+ ],
+ "sectionTotals": [
+  {
+   "section": "Раздел",
+   "sum": 12000
+  }
+ ],
+ "totalKind": "short"
+}
