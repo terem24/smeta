@@ -1164,7 +1164,7 @@
 
             <div class="pg-title no-print" id="pg_t2" data-pg="2" onclick="app.togglePanelGroup(2)" role="button" tabindex="0" aria-label="Группа «Отопление и котельная»: свернуть или развернуть"><span class="pg-num">2</span><span class="pg-name">Отопление и котельная</span></div>
             <div id="blk_fuel_type">
-                <h4 style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Тип котла</h4>
+                <h4 class="sec-title">Тип котла</h4>
                 <div class="control-item">
                     <div class="tabs">
                         <div class="tab multi-active" id="fuel_el" onclick="app.toggleFuel('el')"><span class="ui-emo">⚡ </span>Электро</div>
@@ -1331,7 +1331,7 @@
                  подмеса тёплого пола. Что именно собрано и с какими оговорками —
                  плашка в шапке раздела «2. Обвязка котельной». -->
             <div class="control-item" id="blk_boiler_scheme" style="display:none; margin-bottom: 16px;">
-                <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Схема котельной<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Без стрелки.</b> Радиаторы питает насос котла, тёплый пол — свой узел подмеса, бойлер — трёхходовой клапан. Для одного котла и простой системы.<div class="tip-p"><b>Со стрелкой.</b> Гидрострелка и насосная группа на каждый контур.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_boiler_scheme_note">Схему калькулятор подбирает сам.</span></div></div></span></span>
+                <span class="sec-title">Схема котельной<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Без стрелки.</b> Радиаторы питает насос котла, тёплый пол — свой узел подмеса, бойлер — трёхходовой клапан. Для одного котла и простой системы.<div class="tip-p"><b>Со стрелкой.</b> Гидрострелка и насосная группа на каждый контур.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_boiler_scheme_note">Схему калькулятор подбирает сам.</span></div></div></span></span>
                 <div class="tabs" id="boiler_scheme_tabs">
                     <div class="tab" id="boiler_scheme_direct" onclick="app.setBoilerScheme('direct', event)">Без стрелки</div>
                     <div class="tab" id="boiler_scheme_hydro" onclick="app.setBoilerScheme('hydro', event)">Со стрелкой</div>
@@ -1344,7 +1344,7 @@
                  проектах (тариф «Профи», нержавеющая обвязка). Блок виден, когда в котельной есть
                  коллектор (app.syncGroupsBuildUI). -->
             <div class="control-item" id="blk_groups_build" style="display:none; margin-bottom: 16px;">
-                <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Насосные группы<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Готовые.</b> Группа STOUT/ROMMER одной позицией и стальной коллектор.<div class="tip-p"><b>Самосборные.</b> Группа из отдельных позиций, как в проектах; коллектор — трубы с тройниками. Тариф «Профи», на нержавеющей или ППР обвязке.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_groups_build_note">Готовые насосные группы.</span></div></div></span></span>
+                <span class="sec-title">Насосные группы<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Готовые.</b> Группа STOUT/ROMMER одной позицией и стальной коллектор.<div class="tip-p"><b>Самосборные.</b> Группа из отдельных позиций, как в проектах; коллектор — трубы с тройниками. Тариф «Профи», на нержавеющей или ППР обвязке.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_groups_build_note">Готовые насосные группы.</span></div></div></span></span>
                 <div class="tabs" id="groups_build_tabs">
                     <div class="tab active" id="groups_build_ready" onclick="app.setGroupsBuild('ready', event)">Готовые</div>
                     <div class="tab" id="groups_build_self" onclick="app.setGroupsBuild('self', event)">Самосборные</div>
@@ -1384,7 +1384,7 @@
                 </div>
             </div>
                 
-            <h4 id="lbl_rad_regime" style="position:relative; display:none; margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Режим системы<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>80/60.</b> Перепад 20 K, классика с котлом: расход вдвое меньше, трубы и насос скромнее.<div class="tip-p"><b>75/65.</b> Перепад 10 K, в нём заявлена паспортная мощность радиаторов; расход вдвое выше, расчёт с запасом.</div><div class="tip-p"><b>70/55.</b> Приборы отдают около 80 % паспорта и подбираются крупнее. Для конденсационного котла.</div><div class="tip-p"><b>55/45.</b> Приборы отдают около половины паспорта. Конденсационный котёл с полной конденсацией, тепловой насос.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_rad_regime_note">Перепад 20 K. Расход и напор считаются по нему.</span></div></div></span></h4>
+            <h4 class="sec-title" id="lbl_rad_regime">Режим системы<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>80/60.</b> Перепад 20 K, классика с котлом: расход вдвое меньше, трубы и насос скромнее.<div class="tip-p"><b>75/65.</b> Перепад 10 K, в нём заявлена паспортная мощность радиаторов; расход вдвое выше, расчёт с запасом.</div><div class="tip-p"><b>70/55.</b> Приборы отдают около 80 % паспорта и подбираются крупнее. Для конденсационного котла.</div><div class="tip-p"><b>55/45.</b> Приборы отдают около половины паспорта. Конденсационный котёл с полной конденсацией, тепловой насос.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_rad_regime_note">Перепад 20 K. Расход и напор считаются по нему.</span></div></div></span></h4>
             <div class="control-item" id="blk_rad_regime" style="display:none;">
                 <div class="tabs" id="rad_regime_tabs">
                     <div class="tab active" id="rad_regime_8060" onclick="app.setRadRegime('r8060')">80/60</div>
@@ -1426,7 +1426,7 @@
             </div>
 
 
-            <h4 style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Тип отопления</h4>
+            <h4 class="sec-title">Тип отопления</h4>
             <div class="control-item">
                 <div class="tabs">
                     <div class="tab multi-active" id="sys_rad" onclick="app.toggleSys('rad', event)"><span class="ui-emo">🌡️ </span>Радиаторы</div>
@@ -1439,7 +1439,7 @@
                  без них показывать нечего (см. app.syncObjectTypeUI). -->
             <div id="blk_flat_riser">
                 <div class="control-item" style="margin-bottom: 12px;">
-                    <span class="lbl" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Как разведено отопление<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Стояки.</b> Радиатор висит на вертикальных трубах из пола или стены.<div class="tip-p"><b>Коллектор.</b> Шкаф с гребёнкой в прихожей или санузле, трубы по полу к каждому радиатору.</div></div></span></span>
+                    <span class="sec-title">Как разведено отопление<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Стояки.</b> Радиатор висит на вертикальных трубах из пола или стены.<div class="tip-p"><b>Коллектор.</b> Шкаф с гребёнкой в прихожей или санузле, трубы по полу к каждому радиатору.</div></div></span></span>
                     <div class="tabs" id="flat_riser_tabs" style="font-size:11px;">
                         <div class="tab flat-riser-tab active" data-fr="riser" onclick="app.setFlatRiser('riser')">Стояки</div>
                         <div class="tab flat-riser-tab" data-fr="own" onclick="app.setFlatRiser('own')">Коллектор</div>
@@ -1453,7 +1453,7 @@
                  к чужому блоку, а не как самостоятельная настройка. Прячется
                  вместе со своими вкладками (см. syncUI), иначе в быстром режиме
                  и без радиаторов остаётся висеть без содержимого. -->
-            <h4 id="lbl_rad_scheme" style="display:none; margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Схема разводки радиаторов</h4>
+            <h4 class="sec-title" id="lbl_rad_scheme">Схема разводки радиаторов</h4>
             <div class="control-item" id="blk_rad_scheme" style="display:none;">
                 <div class="tabs" id="rad_scheme_tabs">
                     <div class="tab" id="rad_scheme_tee" onclick="app.setRadConnectionScheme('tee')">Тройниковая</div>
