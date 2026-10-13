@@ -5541,10 +5541,7 @@ function radRotate(i) {
 
 /** [ и ] над радиатором — поворот на 45° (скошенные грани эркера). Угол хранится в градусах,
  *  прибор снова прижимается к стене по новой нормали. */
-function radTurnAt(delta) {
-  if (!UFH || !lastPt || !F().pxPerM) return false;
-  var ri = radAt(lastPt);
-  if (ri < 0) return false;
+function radTurnIdx(ri, delta) {
   var r = F().rads[ri];
   pushUndo('zones');
   r.ang = (((r.ang || 0) + delta) % 360 + 360) % 360;
@@ -5552,12 +5549,31 @@ function radTurnAt(delta) {
   hint('<span class=ok>Радиатор повёрнут на ' + Math.round(r.ang) + '°.</span> ' +
     '[ и ] — по 45°, R или пробел — 0° или 90°.');
   renderZones(); draw();
+}
+function radTurnAt(delta) {
+  if (!UFH || !lastPt || !F().pxPerM) return false;
+  var ri = radAt(lastPt);
+  if (ri < 0) return false;
+  radTurnIdx(ri, delta);
   return true;
+}
+/** Кнопки «↺ 45°» / «↻ 45°»: поворачивают прибор, над которым курсор был последним
+ *  (сам курсор уходит на кнопку, поэтому запоминаем прибор, а не точку). */
+function radTurnLast(delta) {
+  if (!lastRad || lastRad.f !== cur || !F().rads[lastRad.i]) {
+    hint('Наведите курсор на радиатор, затем нажмите кнопку поворота.');
+    return;
+  }
+  radTurnIdx(lastRad.i, delta);
 }
 
 /** R (и русская К) над коллектором или радиатором — повернуть его */
-var lastPt = null;
-cv.addEventListener('mousemove', function (e) { lastPt = evPt(e); });
+var lastPt = null, lastRad = null;   // lastRad — последний прибор под курсором, с этажом
+cv.addEventListener('mousemove', function (e) {
+  lastPt = evPt(e);
+  var ri = UFH && F().pxPerM ? radAt(lastPt) : -1;
+  if (ri >= 0) lastRad = { f: cur, i: ri };
+});
 cv.addEventListener('mouseleave', function () { lastPt = null; });
 function rotateUnderCursor() {
   if (!UFH || !lastPt || !F().pxPerM) return false;
@@ -6289,7 +6305,8 @@ function pjBody(id) {
   if (id === 'tp') return { acts: B("document.getElementById('ztype').value='tp';setMode('room')", 'Зона: клик по комнате') + B('ufhCold()', 'Без обогрева'),
     tx: 'Отметьте комнаты с тёплым полом: кликните по комнате на плане (если «Найти комнаты» уже отметило их по расчёту — проверьте). ' +
       'Лестницу, ванну, кухонный остров обведите кнопкой «Без обогрева».' };
-  if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('rad')", 'Радиатор вручную'),
+  if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('rad')", 'Радиатор вручную') +
+      B('radTurnLast(-45)', '↺ 45°') + B('radTurnLast(45)', '↻ 45°'),
     tx: 'Радиаторы встают под найденными окнами. Лишний уберите кликом по значку, недостающий добавьте кликом у окна.' };
   if (id === 'coll') return { acts: B("setMode('coll')", 'Коллектор ТП') + B("setMode('radcoll')", 'Коллектор радиаторов'),
     tx: 'Коллекторы встают у стены котельной сами. Чтобы переставить, нажмите кнопку и кликните в нужную комнату — коллектор прижмётся к стене. ' +
