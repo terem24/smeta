@@ -6620,22 +6620,6 @@ const RecognizeUI = {
         this._cmpDiscount = discPct ? { brand, pct: discPct } : null;
         if (!discPct) this._cmpApplyDiscount = false;
 
-        // Бренд сравнения и бренд переноса развязаны намеренно, но если они
-        // разошлись, скидка посчитана не для той сметы, которая уедет.
-        const moveBrand = this._analogOn ? 'rommer' : 'stout';
-        const brandMismatch = discPct && this._cmpApplyDiscount && moveBrand !== brand;
-
-        const discountStrip = !discPct ? '' : `
-          <label class="rec-cmp-apply">
-            <input type="checkbox" ${this._cmpApplyDiscount ? 'checked' : ''}
-                   onchange="RecognizeUI.cmpApplyDiscount(this.checked)">
-            <span>Применить скидку <b>${discPct}%</b> при переносе в смету</span>
-            <span class="rec-art">скидка ставится на всю смету целиком, менять её потом можно ползунком в разделе «Оборудование»</span>
-            ${brandMismatch ? `<span class="rec-cmp-warn">Сравнение считается на ${
-              brand === 'rommer' ? 'ROMMER' : 'STOUT'}, а в смету уедет ${
-              moveBrand === 'rommer' ? 'ROMMER' : 'STOUT'} — переключите тумблер «Аналог ROMMER» на экране проверки, иначе суммы не сойдутся</span>` : ''}
-          </label>`;
-
         const deltaBlock = !cmpN ? '' : delta < 0
             ? `<div class="rec-cmp-item"><div class="rec-cmp-val down">${money(-delta)} (${this.fmtPct(-pct)}%)</div>
                <div class="rec-cmp-lbl">У нас дешевле · ${brand === 'rommer' ? 'ROMMER' : 'STOUT'}</div></div>`
@@ -7692,6 +7676,10 @@ const RecognizeUI = {
             noQtyRows.forEach(r => { r.qty = 1; if (!r.unit) r.unit = 'шт'; });
             qtyGuessed = n;
         }
+
+        // Бренд сравнения и есть бренд сметы: выбран ROMMER, а позиции ещё не
+        // заменены (сравнение открывали из старого состояния) — заменяем сейчас.
+        if (this._cmpBrand === 'rommer' && !this._analogOn) this.applyAnalog(true);
 
         this.step(3);
 
