@@ -46339,6 +46339,31 @@ const app = {
         if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return few;
         return many;
     },
+    /** Общий тумблер «Автоматика»: выключение снимает оба подпункта, включение только открывает их. */
+    toggleAutoMaster: function (chk, event) {
+        if (!this.checkAccess('pro', event)) {
+            const c = document.getElementById('chk_auto_master');
+            if (c) c.checked = !!this.state.autoOn;
+            return;
+        }
+        this.state.autoOn = chk;
+        if (!chk) {
+            if (this.state.boilerAuto) this.toggleBoilerAuto(false, event);
+            if (this.state.ufhAuto) this.toggleUfhAuto(false, event);
+        }
+        this.syncUI();
+        this.render();
+        this.saveState();
+    },
+    /** Тумблер «Теплоноситель»: выключение возвращает «Воду» и прячет варианты. */
+    toggleCoolantShow: function (chk, event) {
+        this.state.coolantShow = chk;
+        if (!chk && this.state.coolant !== 'water') this.setCoolant('water', event);
+        this.syncUI();
+        this.render();
+        this.saveState();
+    },
+
     toggleUfhAuto: function (chk, event) {
         if (!this.checkAccess('pro', event)) {
             if (document.getElementById('chk_ufh_auto')) document.getElementById('chk_ufh_auto').checked = this.state.ufhAuto;
@@ -46758,8 +46783,18 @@ const app = {
             if (quick.style.display !== d) quick.style.display = d;
         }
     },
+    // Свёрнутые группы панели. По умолчанию открыт только «Дом» (группа 1), остальные свёрнуты.
+    // Один раз сбрасываем сохранённое состояние под новое умолчание (ключ версии hc_pg_v3).
     _pgCollapsed: function () {
-        try { const a = JSON.parse(localStorage.getItem('hc_pg_closed') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+        try {
+            let a = JSON.parse(localStorage.getItem('hc_pg_closed') || 'null');
+            if (!localStorage.getItem('hc_pg_v3')) {
+                a = [2, 3, 4];
+                localStorage.setItem('hc_pg_closed', JSON.stringify(a));
+                localStorage.setItem('hc_pg_v3', '1');
+            }
+            return Array.isArray(a) ? a : [2, 3, 4];
+        } catch (e) { return [2, 3, 4]; }
     },
     togglePanelGroup: function (n) {
         const a = this._pgCollapsed();
@@ -47137,6 +47172,9 @@ const app = {
         // одна строка, и только если что-то включено.
         if ($('blk_auto_header')) $('blk_auto_header').style.display = s.detailedRooms ? 'block' : 'none';
         if ($('blk_auto_fast_note')) $('blk_auto_fast_note').style.display = (!s.detailedRooms && anyOn) ? 'block' : 'none';
+        // Общий тумблер «Автоматика»: подпункты (котельная, радиаторы и тёплый пол) — только когда он включён.
+        if ($('chk_auto_master')) $('chk_auto_master').checked = !!s.autoOn;
+        if ($('blk_auto_box')) $('blk_auto_box').style.display = (s.detailedRooms && s.autoOn) ? 'flex' : 'none';
         if ($('chk_ufh_auto')) $('chk_ufh_auto').checked = !!s.ufhAuto;
         if ($('blk_zone_auto_box')) $('blk_zone_auto_box').style.display = s.ufhAuto ? 'flex' : 'none';
         const hasRad = (s.systems || []).includes('rad');
@@ -69272,14 +69310,21 @@ const app = {
         snow: ['blk_snow_pipe_row'],
         pump: ['rooms_pump_plan']
     },
+    // Открыто ли пункт тонкой настройки. Только на время сессии: после перезагрузки все пункты свёрнуты.
     fineTuneOpen: function () {
-        try { return JSON.parse(localStorage.getItem(this.FINE_TUNE_KEY) || '{}') || {}; } catch (e) { return {}; }
+        return this._fineTuneOpen || (this._fineTuneOpen = {});
     },
     toggleFineTune: function (key) {
         const o = this.fineTuneOpen();
         o[key] = !o[key];
-        try { localStorage.setItem(this.FINE_TUNE_KEY, JSON.stringify(o)); } catch (e) { /* приватное окно */ }
         this.syncFineTune();
+    },
+    /** Дымоход в подробном режиме: тело свёрнуто, раскрывается по заголовку. */
+    toggleChimneyBlock: function () {
+        this._chimOpen = !this._chimOpen;
+        const w = document.getElementById('ft_chim'), b = document.getElementById('chim_body');
+        if (w) w.classList.toggle('open', !!this._chimOpen);
+        if (b) b.style.display = this._chimOpen ? 'block' : 'none';
     },
     fineTuneSummary: function (key) {
         const s = this.state;
@@ -69829,7 +69874,14 @@ const app = {
         // полотенцесушитель, схема загрузки бойлера — в быстром режиме используются значения
         // по умолчанию, настроить их можно только в подробном режиме.
         const blkCoolantWrap = document.getElementById('blk_coolant_wrap');
-        if (blkCoolantWrap) blkCoolantWrap.style.display = this.state.detailedRooms ? 'block' : 'none';
+        // Теплоноситель — тумблер; три варианта показываем только когда он включён
+        // или когда выбран не «Вода» (чтобы не спрятать уже выбранное значение).
+        const _coolOn = !!this.state.coolantShow || (this.state.coolant && this.state.coolant !== 'water');
+        if (blkCoolantWrap) blkCoolantWrap.style.display = (this.state.detailedRooms && _coolOn) ? 'block' : 'none';
+        const blkCoolantRow = document.getElementById('blk_coolant_row');
+        if (blkCoolantRow) blkCoolantRow.style.display = this.state.detailedRooms ? 'block' : 'none';
+        const chkCoolant = document.getElementById('chk_coolant');
+        if (chkCoolant) chkCoolant.checked = !!_coolOn;
         // Заголовок «Теплоноситель» вынесен из блока отдельным <h4> — прячем его
         // вместе с вкладками, иначе в быстром режиме остаётся висеть без содержимого.
         const lblCoolant = document.getElementById('lbl_coolant');

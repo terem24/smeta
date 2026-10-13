@@ -1275,10 +1275,15 @@
                 style="display:none; position:relative; border-bottom:1px dashed var(--border); padding-bottom:16px; margin-bottom:16px;">
                 <!-- Подпись о длине трассы спрятана под «i»: position:relative у блока
                      нужен .tip-panel-wrap, иначе подсказка не появится. -->
-                <span class="lbl" style="display:flex; align-items:center; gap:4px; margin-bottom: 6px;">Дымоход<span
-                        class="tooltip-wrapper tip-panel-wrap" id="chim_note_wrap"><i class="info-icon" tabindex="0"
+                <div class="fine-tune" id="ft_chim">
+                <div class="fine-tune-head" onclick="app.toggleChimneyBlock()" role="button" tabindex="0">
+                    <span class="fine-tune-title">Дымоход<span class="tooltip-wrapper tip-panel-wrap" id="chim_note_wrap" onclick="event.stopPropagation()"><i class="info-icon" tabindex="0"
                             role="button" aria-label="Подробнее">i</i>
                         <div class="tooltip-content tip-panel" id="chim_note"></div></span></span>
+                    <span class="fine-tune-sum" id="chim_sum"></span>
+                    <span class="fine-tune-arrow">▸</span>
+                </div>
+                <div class="fine-tune-body" id="chim_body" style="display:none;">
                 <div class="tabs" style="margin-bottom: 6px;">
                     <div class="tab" id="chim_sys_coax" onclick="app.setChimneySystem('coax')">Коаксиальный</div>
                     <div class="tab" id="chim_sys_split" onclick="app.setChimneySystem('split')">Раздельный D80</div>
@@ -1309,6 +1314,8 @@
                     <span onclick="app.toggleChimneyMore()" id="chim_more_link"
                         style="font-size: 11px; color: var(--primary); border-bottom: 1px dashed var(--primary); cursor: pointer;">Котёл стоит дальше от стены</span>
                 </div>
+                </div>
+            </div>
             </div>
 
             <!-- Перепад котлового контура. От него зависит расход через обвязку, а
@@ -1369,7 +1376,7 @@
                 </div>
                 <div class="fine-tune-body" id="ft_boiler_body" style="display:none;">
             <div class="control-item" id="blk_boiler_dt" style="display:none; margin-bottom: 16px;">
-                <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Перепад котлового контура<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>20 K.</b> Паспортный режим котла: расход вдвое меньше, обвязка скромнее.<div class="tip-p"><b>10 K.</b> Режим 75/65: расход вдвое выше, диаметр обвязки на две ступени больше. Когда котёл работает на систему без гидрострелки.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_boiler_dt_note">Перепад 20 K. По нему считаются расход и диаметр обвязки котельной.</span></div></div></span></span>
+                <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Котловой перепад<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>20 K.</b> Паспортный режим котла: расход вдвое меньше, обвязка скромнее.<div class="tip-p"><b>10 K.</b> Режим 75/65: расход вдвое выше, диаметр обвязки на две ступени больше. Когда котёл работает на систему без гидрострелки.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_boiler_dt_note">Перепад 20 K. По нему считаются расход и диаметр обвязки котельной.</span></div></div></span></span>
                 <div class="tabs" id="boiler_dt_tabs">
                     <div class="tab active" id="boiler_dt_20" onclick="app.setBoilerDT(20)">20 K</div>
                     <div class="tab" id="boiler_dt_10" onclick="app.setBoilerDT(10)">10 K</div>
@@ -1506,7 +1513,7 @@
                         oninput="app.updTp(2,this.value)">
                 </div>
                 <div id="floor_layers_box_1" style="display: none; flex-direction: column; gap: 6px; margin: 6px 0 12px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-light);">
-                    <span style="font-size: 12px; font-weight: 600; color: var(--text-main); display:flex; align-items:center; gap:4px; position:relative;">Утепление под трубой, 1 этаж<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Слои под системой, снизу вверх. Норма — ГОСТ Р 70834-2023, табл. 2: недостающий утеплитель добавится в смету (раздел 4.2), ваши слои уменьшают добор.</div></span></span>
+                    <span style="font-size: 12px; font-weight: 600; color: var(--text-main); display:flex; align-items:center; gap:4px; position:relative;">Утепление под трубой, 1 этаж</span>
                     <div id="floor_layers_list_1" style="display: flex; flex-direction: column; gap: 6px;"></div>
                     <button class="btn-add-layer" onclick="app.addFloorLayer(1)" style="width: 100%; padding: 8px; background: transparent; border: 1px dashed var(--primary); color: var(--primary); border-radius: 8px; cursor: pointer; font-size: 12.5px;">+ Добавить слой</button>
                     <span id="lbl_floor_layers_sum_1" style="font-size: 11px; color: var(--text-main); font-weight: 500;"></span>
@@ -1986,6 +1993,7 @@
                      тумблера ниже, а в смете ничего не менял (замечание владельца 24.09.2026). -->
                 <div class="label-row" style="position:relative;">
                     <span class="lbl" style="display:flex; align-items:center; gap:4px;">Автоматика<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Автоматизация уже подобранных систем: контроллер котельной и зональное управление радиаторами и тёплым полом.</div></span></span>
+                    <label class="switch"><input type="checkbox" id="chk_auto_master" onchange="app.toggleAutoMaster(this.checked, event)"><span class="slider"></span></label>
                 </div>
                 <!-- Подпункты — вложенные строки под заголовком «Автоматика»: без своих
                      пунктиров и отступов пункта панели, с левой линией и короткими
@@ -2083,7 +2091,7 @@
                      без пола вводятся руками или из заявки. Состав — app.getZoneAutoKit(). -->
                 <div class="control-item" id="blk_zone_auto_item" style="margin-bottom:0; border-top:1px solid #E5E7EB; padding-top:10px;">
                     <div class="label-row" style="position:relative; margin-bottom:0;">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Радиаторы и тёплый пол<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Считается из подобранного: привод на каждый выход коллекторов тёплого пола и радиаторов, термостат в комнату, головка на прибор. Сменить комплект можно заменой на строке планки.<div class="tip-p" id="zone_auto_info_tip" style="color:#93C5FD;"></div></div></span></span>
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Радиаторы и тёплый пол</span>
                         <label class="switch"><input type="checkbox" id="chk_ufh_auto"
                                 onchange="app.toggleUfhAuto(this.checked, event)"><span class="slider"></span></label>
                     </div>
@@ -2130,8 +2138,13 @@
                  Заголовок тем же <h4>, что и «Тип котла» с «Типом отопления»:
                  раньше здесь был мелкий .lbl-sub, и «Теплоноситель» читался как
                  подпись к соседнему блоку, а не как самостоятельный выбор. -->
-            <h4 id="lbl_coolant" style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Теплоноситель</h4>
-            <div class="control-item" id="blk_coolant_wrap">
+            <div class="control-item toggle-item" id="blk_coolant_row" style="display:none;">
+                <div class="label-row" style="position:relative;">
+                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Теплоноситель</span>
+                    <label class="switch"><input type="checkbox" id="chk_coolant" onchange="app.toggleCoolantShow(this.checked, event)"><span class="slider"></span></label>
+                </div>
+            </div>
+            <div class="control-item" id="blk_coolant_wrap" style="display:none; margin-top:-6px; margin-bottom:12px;">
                 <div class="tabs" id="blk_coolant">
                     <div class="tab cool-tab active" data-type="water" onclick="app.setCoolant('water', event)"><span class="ui-emo">💧 </span>Вода</div>
                     <div class="tab cool-tab" data-type="eco30" onclick="app.setCoolant('eco30', event)"><span class="ui-emo">❄️ </span>-30°C</div>
