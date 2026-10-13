@@ -1513,7 +1513,7 @@
                         oninput="app.updTp(2,this.value)">
                 </div>
                 <div id="floor_layers_box_1" style="display: none; flex-direction: column; gap: 6px; margin: 6px 0 12px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-light);">
-                    <span style="font-size: 12px; font-weight: 600; color: var(--text-main); display:flex; align-items:center; gap:4px; position:relative;">Утепление под трубой, 1 этаж<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Слои под системой, снизу вверх. Норма — ГОСТ Р 70834-2023, табл. 2: недостающий утеплитель добавится в смету (раздел 4.2), ваши слои уменьшают добор.</div></span></span>
+                    <span style="font-size: 12px; font-weight: 600; color: var(--text-main); display:flex; align-items:center; gap:4px; position:relative;">Утепление под трубой, 1 этаж</span>
                     <div id="floor_layers_list_1" style="display: flex; flex-direction: column; gap: 6px;"></div>
                     <button class="btn-add-layer" onclick="app.addFloorLayer(1)" style="width: 100%; padding: 8px; background: transparent; border: 1px dashed var(--primary); color: var(--primary); border-radius: 8px; cursor: pointer; font-size: 12.5px;">+ Добавить слой</button>
                     <span id="lbl_floor_layers_sum_1" style="font-size: 11px; color: var(--text-main); font-weight: 500;"></span>
@@ -2091,7 +2091,7 @@
                      без пола вводятся руками или из заявки. Состав — app.getZoneAutoKit(). -->
                 <div class="control-item" id="blk_zone_auto_item" style="margin-bottom:0; border-top:1px solid #E5E7EB; padding-top:10px;">
                     <div class="label-row" style="position:relative; margin-bottom:0;">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Радиаторы и тёплый пол<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Считается из подобранного: привод на каждый выход коллекторов тёплого пола и радиаторов, термостат в комнату, головка на прибор. Сменить комплект можно заменой на строке планки.<div class="tip-p" id="zone_auto_info_tip" style="color:#93C5FD;"></div></div></span></span>
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Радиаторы и тёплый пол</span>
                         <label class="switch"><input type="checkbox" id="chk_ufh_auto"
                                 onchange="app.toggleUfhAuto(this.checked, event)"><span class="slider"></span></label>
                     </div>
