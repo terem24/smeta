@@ -3804,6 +3804,7 @@ const RecognizeUI = {
         this._sysChosen = null;
         this._convBase = null;
         this._rows = items.map((i, n) => ({ ...i, _seq: n, _sel: false, _locked: false }));
+        this._rows.forEach(r => this.attachSpec(r));
         this._rows.forEach(r => { if (this.looksLikeWork(r)) r.kind = 'work'; });
         this.roundQty();
         this.inheritRepeats();
@@ -3998,6 +3999,26 @@ const RecognizeUI = {
         });
         this.refreshSuggestions();
         this.renderReview();
+    },
+
+    /**
+     * Печатная спецификация с колонкой «Код» идёт тем же путём, что спецификация
+     * проекта: код → аналог через защиты (всегда «проверьте») → причина отказа.
+     *
+     * Подбор по словам для такой строки опасен: он выдавал уверенный, но чужой
+     * артикул (хомут → труба, незамерзающий кран → шаровой). Производителя
+     * берём из поля модели, а если его нет — из последнего слова названия
+     * после запятой («…, Elsen», «…, Giacomini»). Код, оборванный переносом
+     * («RVFF-0001-1» в названии и «520400» в колонке), склеиваем сами.
+     */
+    attachSpec(r) {
+        const code = String(r.code == null ? '' : r.code).replace(/\s+/g, '').trim();
+        if (!code || r._spec || r.kind === 'work') return;
+        const codes = [code];
+        const part = String(r.raw || '').match(/[A-Z]{2,}[A-Z0-9.]*-\d{2,}[A-Z0-9.]*-\d+(?![\dA-Z])/);
+        if (part && /^\d+$/.test(code) && !code.startsWith(part[0])) codes.unshift(part[0] + code);
+        const tail = String(r.raw || '').match(/,\s*([A-Za-zА-Яа-я][A-Za-zА-Яа-я .\-]{2,24})\s*$/);
+        r._spec = { codes, maker: r.maker || (tail ? tail[1].trim() : null), page: null };
     },
 
     /**
@@ -7726,6 +7747,7 @@ const RECOGNIZE_PROMPT = `Ты разбираешь рукописные сме�
     "qtyExtra": число,
     "unit": "шт"|"м"|"м2"|"точка"|"компл",
     "code": "артикул из колонки «Код»/«Артикул» или null",
+    "maker": "производитель, если назван в строке или в колонке «Производитель», иначе null",
     "price": цена за единицу ИЗ ДОКУМЕНТА или null,
     "sum": сумма по строке ИЗ ДОКУМЕНТА или null,
     "sections": число секций радиатора или null,

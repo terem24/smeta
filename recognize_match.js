@@ -1110,6 +1110,19 @@ const RecognizeMatch = (function () {
    * строки поставщика, справа — артикул каталога или прайса.
    */
   const EQUIVALENTS = [
+    // Спецификации Galf Design: Ridan, Giacomini и Elsen в прайсе нет, а изделия
+    // у STOUT и ROMMER есть — слова названий разные, поэтому замена задана явно.
+    { test: /балансировочн[\s\S]*mvt-?r[\s\S]*(ду|dn)\s*20/i, id: 'RVL-0001-100020',
+      note: 'прямая замена: балансировочный клапан Ridan MVT-R Ду 20 → ROMMER запорно-балансировочный 3/4"' },
+    // Коллектор с регулирующими клапанами 1" × N × 3/4": у ROMMER хромированная серия RMB-0004.
+    { test: /коллектор[\s\S]*регулирующ[\s\S]*1\s*["”']?\s*[xх×]\s*[234]\s*[xх×]\s*3\/4/i,
+      id: (raw) => { const n = (raw.match(/1\s*["”']?\s*[xх×]\s*([234])\s*[xх×]\s*3\/4/i) || [])[1]; return n ? 'RMB-0004-01340' + n : null; },
+      note: 'прямая замена: коллектор с регулирующими клапанами → ROMMER хромированный запорно-регулирующий, проверьте число выходов и подключение' },
+    // Шаровой кран ВН-НР с ручкой-бабочкой — у STOUT это ВР/НР (Бабочка); раньше уходил в НР/НР.
+    { test: /шаров[\s\S]*(1\/2|3\/4|1)\s*["”']?\s*(вн|вр)\s*[-–\/]\s*нр[\s\S]*бабочк|шаров[\s\S]*бабочк[\s\S]*(вн|вр)\s*[-–\/]\s*нр/i,
+      id: (raw) => { const m = raw.match(/(?:^|[^\d\/])(1\/2|3\/4|1)\s*["”']?\s*(?:вн|вр)\s*[-–\/]\s*нр/i);
+        const t = m && { '1/2': '15', '3/4': '20', '1': '25' }[m[1]]; return t ? 'SVB-0004-2000' + t : null; },
+      note: 'прямая замена: шаровой кран ВН-НР с ручкой-бабочкой → STOUT ВР/НР (Бабочка)' },
     { test: /ermangizer|эрмангайзер/i, id: 'SCS-0001-000070',
       note: 'прямая замена: контроллер насоса → блок управления SIRIO UNIVERSAL' },
     { test: /блок управления смесительн|пид[- ]?регул/i, id: 'SMH-3001-104212',
@@ -1205,7 +1218,8 @@ const RecognizeMatch = (function () {
     const raw = String(rec.raw || '');
     for (const eq of EQUIVALENTS) {
       if (!eq.test.test(raw)) continue;
-      const item = eq.name ? itemByName(eq.name) : itemByArticle(eq.id);
+      const art = typeof eq.id === 'function' ? eq.id(raw) : eq.id;
+      const item = eq.name ? itemByName(eq.name) : (art ? itemByArticle(art) : null);
       if (!item) continue;
       return {
         item,
@@ -6024,6 +6038,7 @@ const RecognizeMatch = (function () {
     const a = String(art || ''), m = String(maker || '').toLowerCase(), s = String(raw || '');
     if (/^VTi/i.test(a)) return 'ss';
     if (/^VTm/i.test(a)) return 'mp';
+    if (/elsen/.test(m) || /(^|[^a-zа-я])elsen([^a-zа-я]|$)/i.test(s) || /^EF[ABK]\d/i.test(a)) return 'pex';
     if (/uponor|kan-?therm|tece/.test(m) && /пресс|труб|фитинг|тройник|угол|муфт/i.test(s)) return 'mp';
     if (/нерж/i.test(s)) return 'ss';
     if (/металлопласт|металлополим/i.test(s)) return 'mp';
@@ -6266,7 +6281,11 @@ const RecognizeMatch = (function () {
     if (ka === 'клапан' && bar(a) && bar(b) && bar(a) !== bar(b)) return `клапан на ${bar(a)} бар, подобран на ${bar(b)}`;
     // Резьба: ВР-НР — ровно ВР-НР; внутренняя против наружной — разные концы.
     // Удлинитель без пометки — ВН: так его делают все, НН — особое исполнение.
-    const ta = threadKind(a) || (ka === 'удлинитель' ? 'ВН' : null), tb = threadKind(b);
+    let ta = threadKind(a) || (ka === 'удлинитель' ? 'ВН' : null);
+    const tb = threadKind(b);
+    // У аксиальных фитингов одна резьба на изделие, и одинокое «ВН» («Угольник-
+    // переходник ВН 16 x 1/2») — внутренняя резьба, а не ВР-НР, как у крана.
+    if (ta === 'ВН' && sys === 'pex' && tb === 'ВР' && !/нр|наружн/i.test(a)) ta = 'ВР';
     if (ta && tb) {
       const side = (t) => (t === 'ВР' || t === 'ВВ') ? 'в' : (t === 'НР' || t === 'НН') ? 'н' : t;
       if ((ta === 'ВН') !== (tb === 'ВН') || (ta !== 'ВН' && side(ta) !== side(tb))) return `резьба ${ta} против ${tb}`;
@@ -6274,7 +6293,7 @@ const RecognizeMatch = (function () {
     // Система трубопровода.
     const sa = sys || (isThreadedBrass(a) && (ta || /["']|дюйм|dn\s?\d/i.test(a)) ? 'thread' : null);
     const sb = itemSystem(it);
-    if (sa && sb && sa !== sb && !(sa === 'pex' && sb === 'mp')) return `другая система (${sa} → ${sb})`;
+    if (sa && sb && sa !== sb && !(sa === 'pex' && (sb === 'mp' || sb === 'axial'))) return `другая система (${sa} → ${sb})`;
     // Латунный резьбовой фитинг — не фитинг под трубу «25 х 1"» и не «Заглушка 25»
     // (у резьбового размер в дюймах, у фитинга под трубу — диаметр в мм).
     // «Угольник-переходник 3/4"х20» — тоже под трубу 20 мм, только записан наоборот.
@@ -6390,7 +6409,7 @@ const RecognizeMatch = (function () {
         // Латунный фильтр, кран без префикса STOUT — тоже резьба, если в названии дюймы
         // (а фитинг под трубу отсечёт защита).
         const asThread = sa === 'thread' && !sb && ib.size;
-        if (sb !== sa && !asThread && !(sa === 'pex' && sb === 'mp')) continue;
+        if (sb !== sa && !asThread && !(sa === 'pex' && (sb === 'mp' || sb === 'axial'))) continue;
       }
       if (d && !hasSize(b, d, sa)) continue;
       // Евроконус — всегда 3/4": в названиях прайса («Евроконус 16x2.2») резьбу не пишут.
