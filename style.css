@@ -20299,3 +20299,8 @@ body.empty-fit-panel #header_totals { display: none !important; }
 /* Список пользователей перечитывается: приглушаем таблицу, чтобы клик не казался мёртвым */
 #admin_content.ad-busy { opacity: .45; transition: opacity .1s; cursor: progress; }
 
+
+/* Правая карточка расчёта доходит до низа окна, даже когда смета пустая (режим «По комнатам»). */
+#print-area.output-panel {
+    min-height: calc(100vh - 30px);
+}
