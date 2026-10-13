@@ -7198,7 +7198,13 @@ const app = {
     // проекта, из localStorage чужого сеанса, — и тогда схемы рисовались
     // неавторизованному. Проверяем не только флаг, но и вход.
     schemeOn: function () {
-        return !!this.state.showScheme && !!this.state.tgUser;
+        return !!this.state.showScheme && !!this.state.tgUser && this.hasDistributor();
+    },
+
+    // Схемы и загрузка планов помещений доступны только при привязке к дистрибьютору.
+    // Без неё переключатель «Схема» скрыт, а схемы и план дома не рисуются.
+    hasDistributor: function () {
+        return !!this.state.distributorId;
     },
 
     // Запущено ли с локальной машины. Проверка была рассыпана по десятку мест
@@ -8737,6 +8743,8 @@ const app = {
             // Код из ссылки менеджера своё дело сделал
             this.clearInviteCode();
             this.saveState();
+            this.syncUI();
+            this.syncDesignUI();
         }
         return res;
     },
@@ -9284,6 +9292,8 @@ const app = {
             this.state.distributorInfo = null;
             this.saveState();
             await this.loadDistributorInfo();
+            this.syncUI();
+            this.syncDesignUI();
             this.showSupplierSection();
             app.alert('✅ Менеджер назначен!');
         } catch (e) {
@@ -22253,6 +22263,7 @@ const app = {
      * через дистрибьютора или через регион, как включит администратор.
      */
     canUseDesign: function () {
+        if (!this.hasDistributor()) return false;
         const d = this._accessLists && this._accessLists.design;
         const row = this.accessUserRow();
         const login = String(row.email || row.username || '').trim().toLowerCase();
@@ -39338,7 +39349,7 @@ const app = {
     // окном поверх калькулятора; данные — те же state.plans.
 
     canUseUfhPlan: function () {
-        if (!this.state.tgUser) return false;
+        if (!this.state.tgUser || !this.hasDistributor()) return false;
         return this.tariffAccess('ufhplan') === 'on' || this.canUseDesign();
     },
 
@@ -43927,6 +43938,9 @@ const app = {
                     this.updateHeaderCompanyDetails();
                     if (this.applyDistributorPrices()) this.render();
                 }
+                // Схемы и план дома зависят от привязки — пересчитываем видимость
+                this.syncUI();
+                this.syncDesignUI();
 
                 // City check removed immediately after registration; now validated on actions
             } else {
@@ -70246,6 +70260,9 @@ const app = {
         if (document.getElementById('chk_merge')) document.getElementById('chk_merge').checked = this.state.groupItems;
         if (document.getElementById('chk_sku')) document.getElementById('chk_sku').checked = this.state.showSku;
         if (document.getElementById('chk_scheme')) document.getElementById('chk_scheme').checked = this.state.showScheme;
+        // Переключатель «Схема» — только у привязанных к дистрибьютору
+        const schemeWrap = document.getElementById('scheme_wrapper');
+        if (schemeWrap) schemeWrap.style.display = this.hasDistributor() ? '' : 'none';
 
         // Логика доступа для переключателя "КАРТИНКИ"
         let imgWrapper = document.getElementById('images_wrapper');
