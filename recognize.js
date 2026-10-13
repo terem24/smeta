@@ -813,6 +813,7 @@ const RecognizeUI = {
         this._parseWarning = '';
         this._failedSheets = [];
         this._apiCalls = 0;
+        this._apiLog = [];
         this._fromCache = 0;
         this._cmpDiscount = null;
         this._cmpApplyDiscount = false;
@@ -1917,6 +1918,25 @@ const RecognizeUI = {
         () => 'Собираю помещения для расчёта по комнатам',
     ],
 
+    /** Номера позиций документа идут подряд 1…N без дыр — пропущенной строки внутри листа нет. */
+    numberingGapless() {
+        const nums = (this._rows || []).map(r => /^\d+$/.test(String(r.docNo || '')) ? +r.docNo : null);
+        if (nums.length < 3 || nums.some(n => n === null)) return false;
+        const sorted = nums.slice().sort((a, b) => a - b);
+        return sorted.every((n, i) => n === sorted[0] + i);
+    },
+
+    /** Если ИИ отказывал или отвечал на запасной модели — это видно: объясняет долгий разбор. */
+    apiNote() {
+        const log = this._apiLog || [];
+        if (!log.length) return '';
+        const fails = log.filter(x => !x.ok).length;
+        const models = new Set(log.map(x => x.model));
+        const ms = log.reduce((a, x) => a + x.ms, 0);
+        if (!fails && models.size < 2) return '';
+        return ` <span class="rec-art">· ответ ИИ ${this.fmtElapsed(ms / 1000)}${fails ? `, отказов сервиса ${fails}` : ''}${models.size > 1 ? ', часть на запасной модели' : ''}</span>`;
+    },
+
     /** Время ожидания: до минуты — секундами, дальше — целыми минутами («170 с» читается странно). */
     fmtElapsed(sec) {
         sec = Math.max(0, Math.round(sec));
@@ -2387,6 +2407,7 @@ const RecognizeUI = {
         this._sysFromModel = null;
         this._mergeInfo = '';
         this._apiCalls = 0;
+        this._apiLog = [];
         this._fromCache = 0;
         // Комплект листов проекта — план наверняка; одиночные снимки —
         // по догадке (см. planScore): она бережёт запрос, который иначе
@@ -2747,6 +2768,7 @@ const RecognizeUI = {
                 // моделей) и отказы он не получает, а считались они раньше —
                 // один лист из двух съедал 13 запросов при лимите 5. Нагрузку
                 // на сам сервис честно считает прокси (суточный счётчик).
+                const t0 = Date.now();
                 const resp = await this.fetchRetry({
                     mode: 'recognize',
                     model: MODELS[mi],
@@ -2754,6 +2776,12 @@ const RecognizeUI = {
                     messages: [{ role: 'user', parts }],
                 });
                 const parsed = JSON.parse(resp);
+                // Журнал запросов: сколько ждали ответа, какая модель, был ли отказ.
+                // Без него «разбор стал дольше» не отличить от перегрузки сервиса.
+                (this._apiLog = this._apiLog || []).push({
+                    model: MODELS[mi], ms: Date.now() - t0, ok: !parsed.error, attempt,
+                    out: typeof resp === 'string' ? resp.length : 0,
+                });
                 if (!parsed.error) {
                     this._apiCalls = (this._apiCalls || 0) + 1;
                     return parsed;
@@ -4094,7 +4122,7 @@ const RecognizeUI = {
 
     /** Ответ модели последнего разбора — json для bench/replay (правая кнопка → консоль). */
     dumpReplay(name) {
-        const data = { name: name || this._fileName || 'case', items: this._replayItems || [], ...(this._replayRes || {}) };
+        const data = { name: name || this._fileName || 'case', items: this._replayItems || [], apiLog: this._apiLog || [], ...(this._replayRes || {}) };
         const json = JSON.stringify(data, null, 1);
         try { navigator.clipboard.writeText(json); } catch (e) { /* без буфера — вернём строкой */ }
         return json;
@@ -6388,7 +6416,7 @@ const RecognizeUI = {
             short: {
                 cls: 'bad', icon: '!',
                 head: `Не сходится с итогом документа: не хватает ${money(t.delta)}`,
-                sub: `В документе ${money(t.doc)}${label}, строки таблицы дают ${money(t.sum)} — разница ${pct}%. Цены есть у всех строк, так что похоже на потерянную позицию: сверьте таблицу с оригиналом и допишите недостающее кнопкой поиска 🔍.` + from,
+                sub: `В документе ${money(t.doc)}${label}, строки таблицы дают ${money(t.sum)} — разница ${pct}%. ${this.numberingGapless() ? 'Нумерация позиций идёт без пропусков — вероятно, часть раздела на другом листе или итог раздела включает позиции, которых на этом листе нет: загрузите остальные листы или проверьте итог в оригинале.' : 'Цены есть у всех строк, так что похоже на потерянную позицию: сверьте таблицу с оригиналом и допишите недостающее кнопкой поиска 🔍.'}` + from,
             },
             over: {
                 cls: 'bad', icon: '!',
@@ -6939,7 +6967,7 @@ const RecognizeUI = {
         const secs = Math.round((this._elapsed || 0) / 1000);
         return `<div class="rec-saved">
             <b>${found}</b> ${this.plural(found, 'позиция', 'позиции', 'позиций')} перенесено в смету
-            ${secs ? `за ${this.fmtElapsed(secs)}` : ''} — вручную это заняло бы около <b>${time}</b>
+            ${secs ? `за ${this.fmtElapsed(secs)}` : ''} — вручную это заняло бы около <b>${time}</b>${this.apiNote()}
           </div>`;
     },
 
@@ -7984,7 +8012,6 @@ const RECOGNIZE_PROMPT = `Ты разбираешь рукописные сме�
     "qtyExtra": число,
     "unit": "шт"|"м"|"м2"|"точка"|"компл",
     "code": "артикул из колонки «Код»/«Артикул» или null",
-    "maker": "производитель, если назван в строке или в колонке «Производитель», иначе null",
     "price": цена за единицу ИЗ ДОКУМЕНТА или null,
     "sum": сумма по строке ИЗ ДОКУМЕНТА или null,
     "sections": число секций радиатора или null,
@@ -8200,7 +8227,7 @@ const RECOGNIZE_PROMPT = `Ты разбираешь рукописные сме�
     её значение в "code" как напечатано. Длинный код в узкой колонке переносится
     на вторую строку («RVFF-0001-1» и под ним «520400», «EFB03.1622E» и «K») —
     это ОДИН код, склей части без пробела: "RVFF-0001-1520400". Колонку
-    «Страна» и «Производитель» в code не клади. Кода нет — null, не выдумывай.
+    «Страна» и «Производитель» в code не клади. Кода нет — поле не пиши вовсе (пустые null раздувают ответ).
 
 СЛОВАРЬ ТИПОВ (значение поля "type" пиши КИРИЛЛИЦЕЙ, ровно как здесь —
 "kran_ppr" вместо "кран_ppr" калькулятор не понимает):
