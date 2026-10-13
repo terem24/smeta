@@ -1900,7 +1900,7 @@ const RecognizeUI = {
     ],
 
     /** Сколько позиций в среднем на листе сметы — для ориентира, пока строк ещё нет. */
-    ROWS_PER_PAGE: 15,
+    ROWS_PER_PAGE: 25,
 
     tickProgress() {
         const el = document.getElementById('rec_elapsed');
