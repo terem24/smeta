@@ -66264,64 +66264,42 @@ const app = {
             radSwitch: inp.rQ > 0, radMode: inp.radMode || 'auto' };
     },
 
-    /** Открыть или свернуть разбивку групп по значку «i». Состояние только в памяти страницы. */
-    togglePumpPlanDetails: function () {
-        this._pumpPlanOpen = !this._pumpPlanOpen;
-        this.renderPumpPlanBlock();
-    },
-
     /**
-     * Блок «Почему N групп» под поэтажными строками подробного режима. Скрыт в быстром
-     * режиме и когда расчёт групп ещё не сделан.
+     * Блок насосных групп в свёрнутом пункте «Насосные группы» (как «Тонкая настройка»).
+     * В заголовке — число групп, внутри — переключатель радиаторов и разбивка по контурам.
+     * Только в подробном режиме; в быстром пункт скрыт (syncFineTune).
      */
     renderPumpPlanBlock: function () {
-        const el = document.getElementById('rooms_pump_plan');
+        const el = document.getElementById("rooms_pump_plan");
         if (!el) return;
         const p = this._pumpPlan;
         if (!this.state.detailedRooms || !p || (p.total === 0 && p.rows.length === 0)) {
-            el.style.display = 'none';
-            el.innerHTML = '';
+            el.style.display = "none";
+            el.innerHTML = "";
+            this.syncFineTune();
             return;
         }
-        const floorTxt = fl => (!fl || !fl.length) ? '' : (fl.length > 1 ? ' · оба этажа' : ' · ' + fl[0] + ' этаж');
-        // Сводка всегда видна; разбивка по контурам — под значком «i».
-        const open = !!this._pumpPlanOpen && p.total > 0;
-        const head = p.total === 0
-            ? '<b>Насосных групп нет</b> — радиаторы и тёплый пол работают от насоса котла'
-            : '<b>Насосных групп: ' + p.total + '</b>';
-        // Переключатель групп радиаторов: «Авто» — минимум по расчёту, «По этажам» — не меньше одной на этаж.
-        const segBtn = (val, label) => '<span onclick="app.setPumpRadMode(\'' + val + '\')" style="padding:2px 8px; cursor:pointer; ' +
-            'border-radius:6px; ' + (p.radMode === val ? 'background:var(--text); color:var(--surface-light); font-weight:600;' : 'color:var(--text-sec);') +
-            '">' + label + '</span>';
-        const radSeg = p.radSwitch
-            ? '<div style="display:flex; align-items:center; gap:6px; margin:6px 0 4px;"><span style="color:var(--text-sec);">Группы радиаторов:</span>' +
-              '<span style="display:inline-flex; gap:2px; border:1px solid var(--border); border-radius:8px; padding:2px;">' +
-              segBtn('auto', 'Авто') + segBtn('floors', 'По этажам') + '</span></div>'
-            : '';
-        const infoBtn = p.total > 0
-            ? '<span onclick="app.togglePumpPlanDetails()" title="Почему столько групп" ' +
-              'style="display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; ' +
-              'border-radius:50%; border:1px solid var(--text-sec); font-size:10px; font-weight:700; cursor:pointer; color:var(--text-sec);">' +
-              (open ? '×' : 'i') + '</span>'
-            : '';
-        let html = '<div style="display:flex; align-items:center; justify-content:space-between; font-weight:600; color:var(--text);">' +
-            '<span>' + head + '</span>' + infoBtn + '</div>';
-        html += radSeg;
-        if (!open) {
-            el.innerHTML = html;
-            el.style.display = 'block';
-            return;
+        const tab = (val, label) => "<div class=\"tab" + (p.radMode === val ? " active" : "") +
+            "\" onclick=\"app.setPumpRadMode('" + val + "')\">" + label + "</div>";
+        const radTabs = p.radSwitch
+            ? "<div class=\"lbl-sub\" style=\"margin-bottom:6px;\">Группы радиаторов</div>" +
+              "<div class=\"tabs\" id=\"pump_rad_tabs\">" + tab("auto", "Авто") + tab("floors", "По этажам") + "</div>"
+            : "";
+        const floorTxt = fl => (!fl || !fl.length) ? "" : (fl.length > 1 ? " · оба этажа" : " · " + fl[0] + " этаж");
+        let html = radTabs;
+        if (p.total === 0) {
+            html += "<div style=\"font-size:11px; color:var(--text-sec);\">Насосных групп нет — радиаторы и тёплый пол работают от насоса котла</div>";
         }
-        html += '<div style="margin-top:6px;"></div>';
         p.rows.forEach(r => {
-            html += '<div style="display:flex; justify-content:space-between; gap:8px; padding:3px 0; border-top:1px dashed var(--border);">' +
-                '<span style="color:var(--text);">' + r.title + floorTxt(r.floors) + '</span>' +
-                '<b style="color:var(--text);">' + r.count + '</b></div>' +
-                '<div style="font-size:10px; line-height:1.4; margin-bottom:2px;">' + r.rule + '</div>';
+            html += "<div style=\"display:flex; justify-content:space-between; gap:8px; padding:4px 0; border-top:1px dashed var(--border);\">" +
+                "<span style=\"color:var(--text);\">" + r.title + floorTxt(r.floors) + "</span>" +
+                "<b style=\"color:var(--text);\">" + r.count + "</b></div>" +
+                "<div style=\"font-size:10px; line-height:1.4; color:var(--text-sec);\">" + r.rule + "</div>";
         });
-        if (!p.consistent) html += '<div style="color:#EF4444; margin-top:4px;">Сумма строк не сходится с коллектором — сообщите разработчику.</div>';
+        if (!p.consistent) html += "<div style=\"color:#EF4444; margin-top:4px;\">Сумма строк не сходится с коллектором — сообщите разработчику.</div>";
         el.innerHTML = html;
-        el.style.display = 'block';
+        el.style.display = "block";
+        this.syncFineTune();
     },
 
     // Радиаторный запорно-балансировочный клапан 1/2" (SVL) на обратке прибора:
@@ -69291,7 +69269,8 @@ const app = {
         rad: ['lbl_rad_regime', 'blk_rad_regime'],
         ufh: ['blk_step_floor1', 'blk_step_floor2', 'blk_ufh_dt'],
         hw: ['blk_tank_pump_wrap'],
-        snow: ['blk_snow_pipe_row']
+        snow: ['blk_snow_pipe_row'],
+        pump: ['rooms_pump_plan']
     },
     fineTuneOpen: function () {
         try { return JSON.parse(localStorage.getItem(this.FINE_TUNE_KEY) || '{}') || {}; } catch (e) { return {}; }
@@ -69305,6 +69284,7 @@ const app = {
     fineTuneSummary: function (key) {
         const s = this.state;
         if (key === 'boiler') return `${this.boilerDT()} K`;
+        if (key === 'pump') return this._pumpPlan ? `${this._pumpPlan.total} шт` : '';
         if (key === 'rad') return (this.RAD_REGIMES[s.radRegime] || this.RAD_REGIMES.r8060).label;
         if (key === 'ufh') {
             const dt = parseInt(s.ufhDT, 10) || null;
