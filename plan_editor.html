@@ -2162,9 +2162,40 @@ function scaleTargets() {
  *  через проёмы или рассыпаются на куски. Поэтому идём лесенкой пробных
  *  масштабов, у каждого меряем согласие с расчётом, а лучший уточняем ещё
  *  дважды — уже на его собственной сегментации. */
+/** Масштаб перебором: для каждого пробного масштаба (40…130 px/м, обе маски)
+ *  считаем, сколько площадей с плана совпало с целевыми один к одному (±15 %).
+ *  Истинный масштаб даёт больше всего совпадений; удвоенный или половинный —
+ *  меньше. Это надёжнее подгонки множителя: та на удвоенном масштабе сводила
+ *  7 из 11 площадей экспликации (площадь «в два раза больше»). Ничья — меньший
+ *  масштаб и «сырая» маска. */
+function scaleByMatch(targets) {
+  var best = null;
+  ['raw', 'clean'].forEach(function (mode) {
+    for (var ppmTry = 40; ppmTry <= 130; ppmTry += 4) {
+      var meas = roomAreasAt(ppmTry, mode), used = {}, ok = 0;
+      targets.forEach(function (t) {
+        var bi = -1, bd = 1e9;
+        meas.forEach(function (a, i) {
+          if (used[i]) return;
+          var d = Math.abs(a - t) / t;
+          if (d < bd) { bd = d; bi = i; }
+        });
+        if (bi >= 0 && bd <= 0.15) { used[bi] = 1; ok++; }
+      });
+      if (!best || ok > best.ok || (ok === best.ok && mode === 'raw' && best.mode === 'clean')) {
+        best = { ppm: ppmTry, ok: ok, mode: mode, total: targets.length };
+      }
+    }
+  });
+  return best;
+}
+
 function guessScale() {
   var targets = scaleTargets();
   if (targets.length < 2) return null;
+  // Сначала перебор по совпадениям: устойчив к удвоению масштаба
+  var byMatch = scaleByMatch(targets);
+  if (byMatch && byMatch.ok >= Math.min(3, targets.length)) return byMatch;
   // Подбор по одной маске: обычной ('raw') либо очищенной от тонкого ('clean')
   var score = function (ok, n) { return matchScore(ok, n, targets.length); };
   var fitMode = function (mode) {
