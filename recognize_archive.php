@@ -221,8 +221,25 @@ function readAccess() {
     ];
 }
 
+/**
+ * Запись в archive/*.json. Папка archive появляется только с первой присланной
+ * сметой, поэтому без mkdir запись молча не удавалась, а сервер всё равно
+ * отвечал ok: переключатель «включался», а после обновления страницы
+ * оказывался выключенным. Теперь папку создаём и о неудаче сообщаем.
+ */
+function writeJsonFile($path, $data) {
+    $dir = dirname($path);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
+        @file_put_contents($dir . '/.htaccess', "Deny from all\n");
+        @file_put_contents($dir . '/index.html', '');
+    }
+    $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    return $json !== false && @file_put_contents($path, $json, LOCK_EX) !== false;
+}
+
 function writeAccess($data) {
-    @file_put_contents(accessPath(), json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    return writeJsonFile(accessPath(), $data);
 }
 
 function readLimits() {
@@ -232,7 +249,7 @@ function readLimits() {
 }
 
 function writeLimits($data) {
-    @file_put_contents(limitsPath(), json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+    return writeJsonFile(limitsPath(), $data);
 }
 
 /**
@@ -965,7 +982,11 @@ if (is_array($req) && !empty($req['action'])) {
         // Пустое значение возвращает пользователя к общему лимиту.
         if ($req['limit'] === null || $req['limit'] === '') unset($limits[$user]);
         else $limits[$user] = max(0, (int)$req['limit']);
-        writeLimits($limits);
+        if (!writeLimits($limits)) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Сервер не смог записать archive/limits.json — проверьте права на папку archive']);
+            exit;
+        }
         echo json_encode(['ok' => true, 'user' => $user,
             'limit' => $limits[$user] ?? tariffLimit(userTariff($user, $token))], JSON_UNESCAPED_UNICODE);
         exit;
@@ -995,7 +1016,11 @@ if (is_array($req) && !empty($req['action'])) {
                 $access[$kind][$name] = $enabled;
             }
         }
-        writeAccess($access);
+        if (!writeAccess($access)) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Сервер не смог записать archive/access.json — проверьте права на папку archive']);
+            exit;
+        }
         echo json_encode(array_merge(['ok' => true], $access), JSON_UNESCAPED_UNICODE);
         exit;
     }
