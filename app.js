@@ -4722,7 +4722,8 @@ const app = {
         // больше недостаточно — верх листа уезжает вниз.
         const outPanel = document.querySelector('.output-panel');
         if (outPanel) {
-            const cardFit = document.body.classList.contains('empty-fit');
+            // Пустой расчёт в любом режиме (быстром и «По комнатам») растягиваем на экран.
+            const cardFit = document.body.classList.contains('empty-fit') || document.body.classList.contains('empty-fit-panel');
             const availOut = Math.floor((window.innerHeight - outPanel.getBoundingClientRect().top - 8) / k);
             const wanted = (cardFit && availOut > 0) ? (availOut + 'px') : '';
             if (outPanel.style.minHeight !== wanted) outPanel.style.minHeight = wanted;
