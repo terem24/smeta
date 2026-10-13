@@ -2162,16 +2162,25 @@ function scaleTargets() {
  *  через проёмы или рассыпаются на куски. Поэтому идём лесенкой пробных
  *  масштабов, у каждого меряем согласие с расчётом, а лучший уточняем ещё
  *  дважды — уже на его собственной сегментации. */
-/** Итог этажа для сверки: сумма зон против суммы экспликации (комнаты расчёта этажа). */
+/** Итог этажа для сверки. Зоны, созданные по площади экспликации (calc), сверяем с
+ *  её итогом; остальные — комнаты с подписями на плане вне экспликации (Хамам, Баня…). */
 function floorSumNote() {
-  var zs = F().zones || [];
-  var mine = zs.reduce(function (s, z) { return s + (+zoneM2(z) || 0); }, 0);
+  var zs = F().zones || [], keyed = {}, extra = 0;
+  zs.forEach(function (z) {
+    var a = +zoneM2(z) || 0;
+    if (!z.calc) { extra += a; return; }
+    var k = (z.roomId != null ? 'id' + z.roomId : 'n' + (z.name || ''));
+    keyed[k] = Math.max(keyed[k] || 0, a);
+  });
+  var matched = Object.keys(keyed).reduce(function (s, k) { return s + keyed[k]; }, 0);
   var expl = calcRooms.filter(function (r) { return (+r.floor || 1) === cur + 1 && r.area > 0; })
     .reduce(function (s, r) { return s + r.area; }, 0);
-  if (!expl) return ' Сумма зон этажа: ' + mine.toFixed(1).replace('.', ',') + ' м².';
-  var dev = (mine - expl) / expl * 100;
-  return ' Сумма зон этажа: ' + mine.toFixed(1).replace('.', ',') + ' м², по расчёту ' + expl.toFixed(1).replace('.', ',') +
-    ' м² — ' + (Math.abs(dev) <= 5 ? 'сходится.' : 'расхождение ' + (dev > 0 ? '+' : '') + dev.toFixed(0) + ' % — проверьте лишние зоны.');
+  var f1 = function (x) { return x.toFixed(1).replace('.', ','); };
+  if (!expl) return ' Сумма зон этажа: ' + f1(matched + extra) + ' м².';
+  var dev = (matched - expl) / expl * 100;
+  return ' По экспликации: ' + f1(matched) + ' из ' + f1(expl) + ' м² — ' +
+    (Math.abs(dev) <= 5 ? 'сходится.' : 'расхождение ' + (dev > 0 ? '+' : '') + dev.toFixed(0) + ' %.') +
+    (extra > 0.05 ? ' Вне экспликации (подписи на плане): ' + f1(extra) + ' м².' : '');
 }
 
 /** Выпуклая оболочка точек [[x,y],…] — алгоритм цепочки Эндрю. */
@@ -2684,7 +2693,7 @@ function autoRooms() {
       // Раскладка: у комнаты без своего типа — контур «Помещение», чтобы
       // клик по ней включал тёплый пол, а не искал стены заново
       if (UFH && !zoneKindsOfRoom(t).length) {
-        F().zones.push({ type: 'room', name: t.name, roomId: (t.id != null ? t.id : null), pts: pts });
+        F().zones.push({ type: 'room', name: t.name, roomId: (t.id != null ? t.id : null), pts: pts, calc: 1 });
         cnt.room = (cnt.room || 0) + 1; made++;
       }
       zoneKindsOfRoom(t).forEach(function (kind) {
@@ -2692,7 +2701,7 @@ function autoRooms() {
         // доме она одна — по ней собирается компоновка.
         if (kind === 'boiler' && boiler) return;
         if (kind === 'boiler') boiler = true;
-        F().zones.push({ type: kind, name: t.name, roomId: (t.id != null ? t.id : null), pts: pts });
+        F().zones.push({ type: kind, name: t.name, roomId: (t.id != null ? t.id : null), pts: pts, calc: 1 });
         cnt[kind] = (cnt[kind] || 0) + 1;
         made++;
       });
