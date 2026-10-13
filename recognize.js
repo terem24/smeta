@@ -800,6 +800,8 @@ const RecognizeUI = {
         this._onlyBad = false;
         this._profile = null;
         this._sys = null;
+        this._sysChosen = null;
+        this._convBase = null;
         this._sysFromModel = null;
         this._undo = [];
         this._tab = 'eq';
@@ -3799,11 +3801,14 @@ const RecognizeUI = {
             RecognizeMatch.setPprBrand(app.state.pprSystemBrand || 'proaqua');
         }
 
-        this._rows = items.map(i => ({ ...i, _sel: false, _locked: false }));
+        this._sysChosen = null;
+        this._convBase = null;
+        this._rows = items.map((i, n) => ({ ...i, _seq: n, _sel: false, _locked: false }));
         this._rows.forEach(r => { if (this.looksLikeWork(r)) r.kind = 'work'; });
         this.roundQty();
         this.inheritRepeats();
         this.inheritDocSections();
+        this.restoreDocOrder();
 
         // Тип показываем в том виде, в каком его понял подбор. Модель нет-нет
         // да и напишет его латиницей («kran_ppr»), и в таблице это выглядело
@@ -3951,14 +3956,30 @@ const RecognizeUI = {
     convertSystem(toSys) {
         if (!toSys || !this._rows.length || typeof RecognizeMatch === 'undefined') return;
 
-        const from = (this._sys && this._sys.main) || RecognizeMatch.detectSystem(this._rows);
-        if (from === toSys) return;
+        /**
+         * Пересчёт всегда идёт от ИСХОДНОЙ сметы, а не от результата прошлого.
+         *
+         * Раньше каждое нажатие переводило уже переведённые строки: диаметры
+         * пересчитывались по проходу ещё раз, углы множились на коэффициент
+         * гибкости ещё раз, а «исходной» системой считалась та, что угадал
+         * профиль по новому списку. Смета с каждым выбором дешевела и
+         * желтела, хотя монтажник лишь переключал одно и то же. Теперь основа
+         * запоминается один раз; любая ручная правка её сбрасывает (см. snap).
+         */
+        const cur = this._sysChosen || (this._sys && this._sys.main) || RecognizeMatch.detectSystem(this._rows);
+        if (cur === toSys) return;
+        const base = this._convBase || { sys: cur, rows: this._rows.map(r => ({ ...r })) };
 
         this.snap();
-        const converted = RecognizeMatch.convert(this._rows, from, toSys);
+        this._convBase = base;
+        this._sysChosen = toSys;
+
+        const fresh = base.rows.map(r => ({ ...r }));
+        // Вернулись к исходной системе — это откат, а не пересчёт «в себя».
+        const converted = toSys === base.sys ? null : RecognizeMatch.convert(fresh, base.sys, toSys);
 
         // convert() возвращает подбор в поле match — интерфейс проверки читает _m.
-        this._rows = converted.map(r => {
+        this._rows = converted ? converted.map(r => {
             // Замена, запомненная для прежней системы, к новой не относится:
             // написание строки не изменилось, а предмет — да.
             const row = { ...r, _m: r.match || null, _sel: false, _locked: false, _noMem: true };
@@ -3966,7 +3987,7 @@ const RecognizeUI = {
             delete row.match;
             if (r._note) row.note = [r.note, r._note].filter(Boolean).join('; ');
             return row;
-        });
+        }) : fresh;
 
         this._sys = RecognizeMatch.systemProfile(this._rows);
         this._rows.forEach(r => {
@@ -3977,6 +3998,45 @@ const RecognizeUI = {
         });
         this.refreshSuggestions();
         this.renderReview();
+    },
+
+    /**
+     * Порядок строк — как в документе.
+     *
+     * Модель просят отдавать строки сверху вниз (правило 20), но на длинных
+     * таблицах она нет-нет да и переставит соседей, а сверяют экран проверки
+     * с бумагой строка за строкой. Номер позиции, проставленный в документе, —
+     * надёжнее её памяти: если номера есть у всех строк и не повторяются,
+     * строки встают по ним. Нумерация с повторами (в каждом разделе с единицы)
+     * сквозной не бывает — тогда сортируем только внутри подряд идущих строк
+     * одного раздела, чтобы не склеить разные разделы. Нет номеров — порядок
+     * модели остаётся как есть: придумывать его нам нечем.
+     */
+    restoreDocOrder() {
+        const num = r => {
+            const v = String(r.docNo == null ? '' : r.docNo).trim();
+            return /^\d+(?:\.\d+)?$/.test(v) ? parseFloat(v) : null;
+        };
+        const byNo = (a, b) => (num(a) - num(b)) || ((a._seq || 0) - (b._seq || 0));
+        const rows = this._rows;
+        if (rows.length < 2) return;
+
+        const nums = rows.map(num);
+        if (nums.every(n => n !== null) && new Set(nums).size === nums.length) {
+            this._rows = rows.slice().sort(byNo);
+            return;
+        }
+        const out = [];
+        for (let i = 0; i < rows.length;) {
+            let j = i;
+            while (j < rows.length && (rows[j].docSection || '') === (rows[i].docSection || '')) j++;
+            const run = rows.slice(i, j);
+            const rn = run.map(num);
+            const ok = run.length > 1 && rn.every(n => n !== null) && new Set(rn).size === rn.length;
+            out.push(...(ok ? run.sort(byNo) : run));
+            i = j;
+        }
+        this._rows = out;
     },
 
     /**
@@ -4817,6 +4877,18 @@ const RecognizeUI = {
             this.priceGuard(row);
             return;
         }
+        // Артикул из колонки «Код» — самый точный признак: нашёлся в прайсе, и
+        // слова названия уже не нужны. Код с переноса строки модель склеивает
+        // сама (правило 23), а здесь он ищется точно и по началу.
+        if (row.code && typeof RecognizeMatch !== 'undefined' && RecognizeMatch.matchByCode) {
+            const byCode = RecognizeMatch.matchByCode([String(row.code)], row.raw);
+            if (byCode) {
+                row._m = byCode;
+                row._sysMiss = null;
+                this.priceGuard(row);
+                return;
+            }
+        }
         row._sysMiss = null;   // пометку «у нас такого нет» ставит сам подбор
         row._m = (typeof RecognizeMatch !== 'undefined' && typeof catalog !== 'undefined')
             ? RecognizeMatch.matchItem(row, this._sys) : null;
@@ -4936,6 +5008,8 @@ const RecognizeUI = {
     SNAP_SKIP: ['alts', 'alternatives', 'rommer', 'comfort', '_item', '_rolledInto', '_roll'],
 
     snap() {
+        // Любая правка делает исходную смету для пересчёта системы устаревшей.
+        this._convBase = null;
         const seen = new WeakSet();
         const json = JSON.stringify(this._rows, (key, value) => {
             if (this.SNAP_SKIP.includes(key)) return undefined;
@@ -5089,6 +5163,8 @@ const RecognizeUI = {
     undo() {
         if (!this._undo.length) return;
         this._rows = JSON.parse(this._undo.pop());
+        this._convBase = null;
+        this._sysChosen = null;
         // Режим аналогов восстанавливаем по самим строкам, иначе после отката
         // кнопка осталась бы «включённой» при исходных позициях в таблице.
         this._analogOn = this._rows.some(r => r._analogBase);
@@ -6528,7 +6604,7 @@ const RecognizeUI = {
      */
     renderSystemSelect() {
         if (typeof RecognizeMatch === 'undefined' || !RecognizeMatch.SYSTEMS) return '';
-        const cur = (this._sys && this._sys.main) || null;
+        const cur = this._sysChosen || (this._sys && this._sys.main) || null;
         if (!cur) return '';
 
         const labels = {
@@ -7649,6 +7725,7 @@ const RECOGNIZE_PROMPT = `Ты разбираешь рукописные сме�
     "qty": число или null,
     "qtyExtra": число,
     "unit": "шт"|"м"|"м2"|"точка"|"компл",
+    "code": "артикул из колонки «Код»/«Артикул» или null",
     "price": цена за единицу ИЗ ДОКУМЕНТА или null,
     "sum": сумма по строке ИЗ ДОКУМЕНТА или null,
     "sections": число секций радиатора или null,
@@ -7852,6 +7929,12 @@ const RECOGNIZE_PROMPT = `Ты разбираешь рукописные сме�
     «редукция 50х25»). Второй размер и есть признак: увидел два диаметра или
     слово «переходная»/«редукция» — ставь type="переход", а не "муфта".
     В каталоге это разные изделия и разные артикулы.
+
+23. АРТИКУЛ. Если в документе есть колонка «Код» / «Артикул» / «Арт.», положи
+    её значение в "code" как напечатано. Длинный код в узкой колонке переносится
+    на вторую строку («RVFF-0001-1» и под ним «520400», «EFB03.1622E» и «K») —
+    это ОДИН код, склей части без пробела: "RVFF-0001-1520400". Колонку
+    «Страна» и «Производитель» в code не клади. Кода нет — null, не выдумывай.
 
 СЛОВАРЬ ТИПОВ (значение поля "type" пиши КИРИЛЛИЦЕЙ, ровно как здесь —
 "kran_ppr" вместо "кран_ppr" калькулятор не понимает):

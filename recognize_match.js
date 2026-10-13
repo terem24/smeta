@@ -793,7 +793,11 @@ const RecognizeMatch = (function () {
       // «Комби 25х3/4» молчит, «Муфта комбинированная ВР PP-R 25х3/4» — нет.
       const matched = ((r._m && r._m.item && r._m.item.name) || '').toLowerCase();
       const s = `${t} ${(r.raw || '').toLowerCase()} ${matched}`;
-      const isPipe = /^труба/.test(t) || /(^|[^а-яё])труб/.test(s);
+      // «Труба» считаем по тому, что НАПИСАНО в строке, а не по подобранному
+      // названию: хомут «трубный», по ошибке подобранный к трубе PP-R, давал
+      // смете десять очков полипропилена и объявлял основной системой её.
+      const own = `${t} ${(r.raw || '').toLowerCase()}`;
+      const isPipe = /^труба/.test(t) || /(^|[^а-яё])труб(?!н)/.test(own);
       const weight = isPipe ? 10 : 1;
 
       /**
@@ -810,7 +814,7 @@ const RecognizeMatch = (function () {
       let sys = null;
       if (/нерж|впр|aisi/.test(s)) sys = 'ss';
       else if (/металлопласт|мет\.?\s?пласт|pe-?(?:x|rt)[a-z]*\s*\/\s*al|al\s*\/\s*pe-?(?:x|rt)|пресс|мп\b/.test(s)) sys = 'mp';
-      else if (/аксиал|надвижн|pex|сшит/.test(s)) sys = 'pex';
+      else if (/аксиал|надвижн|pex|сшит|евроконус|гильз|elsen/.test(s)) sys = 'pex';
       else if (/ppr|ппр|полипропилен|стекло|pp-r/.test(s)) sys = 'ppr';
       if (!sys) continue;
 
@@ -1423,6 +1427,40 @@ const RecognizeMatch = (function () {
     return null;
   }
 
+  /**
+   * Незамерзающий кран — отдельный предмет, а не шаровой.
+   *
+   * В спецификации он записан с резьбами («1/2" HP, выход 3/4" HP»), и подбор
+   * по форме видел в строке латунный кран той же резьбы: Кран шаровой 1/2" с
+   * баллом 1,00 уходил в смету вместо крана за 3 125 ₽ — тот лежит в каталоге
+   * по длине штока. Слово «незамерзающий» — факт об изделии, и оно главнее
+   * резьбы. Длина штока в строке — число перед «мм» («антисифоном 400 мм»);
+   * есть такая в каталоге — берём её, нет — ближайшую и просим проверить.
+   */
+  function matchFrostFree(rec) {
+    const raw = String((rec && rec.raw) || '');
+    if (!/незамерзающ/i.test(raw) || !/кран/i.test(raw)) return null;
+    const pool = buildNameIndex().rows.map((row) => row.it)
+      .filter((it) => /^кран незамерзающ/i.test(String(it.name || '')) && Number(it.price) > 0);
+    if (!pool.length) return null;
+    const lenOf = (it) => { const m = String(it.name).match(/длина\s+(\d{3})\s*мм/i); return m ? +m[1] : null; };
+    const want = (raw.match(/(?:^|[^\d])(\d{3})\s*мм/i) || [])[1];
+    if (!want) return null;
+    let best = null, bestDiff = Infinity;
+    for (const it of pool) {
+      const L = lenOf(it);
+      if (L == null) continue;
+      const diff = Math.abs(L - +want);
+      if (diff < bestDiff || (diff === bestDiff && brandRank(it) < brandRank(best))) { best = it; bestDiff = diff; }
+    }
+    if (!best) return null;
+    return {
+      item: best, score: bestDiff === 0 ? 0.95 : 0.7, alternatives: [],
+      substituted: bestDiff === 0 ? null : `в каталоге нет штока ${want} мм — подобран ближайший, проверьте`,
+      brandRank: brandRank(best),
+    };
+  }
+
   function matchItem(rec, sysHint) {
     // Приводим строку в порядок до всех поисков: по прайсу «Кран 15» иначе
     // ищется по числу 15, которого в названиях латунной арматуры нет, а
@@ -1436,6 +1474,7 @@ const RecognizeMatch = (function () {
     // и спорить с ним подбору по форме или по словам не о чем. Префиксный —
     // в самом конце, перед подбором по названию: там уже догадка.
     const hit = matchEquivalent(r) || matchByArticle(r, 'exact') || matchZont(r)
+      || matchFrostFree(r)
       || matchCatalog(r, sysHint) || matchPrice(r)
       || matchByArticle(r, 'prefix') || matchByName(r);
 
@@ -6272,9 +6311,16 @@ const RecognizeMatch = (function () {
           // Energoflex: хвост кода — цвет (…SUPRS синий, …SUPRK красный); цвет — по слову строки.
           const red = /красн/i.test(raw), blue = /син/i.test(raw);
           let pool = cands;
+          // Код-префикс общий у ряда размеров («RVFF-0001-1…» — от 150 до 550 мм):
+          // длину и прочие трёхзначные размеры берём из названия строки.
+          const sizes = (String(raw || '').match(/(?<![\d.,])\d{3,4}(?![\d.,])/g) || []);
+          if (sizes.length) {
+            const bySize = cands.filter((it) => sizes.some((n) => new RegExp('(^|[^\\d])' + n + '([^\\d]|$)').test(String(it.name || ''))));
+            if (bySize.length) pool = bySize;
+          }
           if (red || blue) {
             const want = red ? 'K' : 'S';
-            const byColor = cands.filter((it) => normArticle(it.article || it.id).charAt(key.length) === want);
+            const byColor = pool.filter((it) => normArticle(it.article || it.id).charAt(key.length) === want);
             if (byColor.length) pool = byColor;
           }
           hit = pool.reduce((b, it) => (!b || (Number(it.price) || Infinity) < (Number(b.price) || Infinity)) ? it : b, null);
