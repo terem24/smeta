@@ -66051,6 +66051,96 @@ const app = {
         return 4;
     },
 
+    /**
+     * Разбивка насосных групп по контурам — для блока «Почему N групп» в подробном
+     * режиме. Только объясняет числа, которые уже посчитаны в _renderInner (rQ, tQ,
+     * бойлер, снеготаяние, POLIS), и правил подбора не повторяет: поэтому сумма
+     * строк всегда совпадает с числом выходов коллектора (inp.circuits).
+     *
+     * inp: { rQ, tQ, hasRad, hasTp, tpF1, tpF2, tankPump, polisCircuits,
+     *        snowCircuits, circuits } — tpF1/tpF2 — петли и метры по этажам тёплого пола.
+     */
+    pumpGroupPlan: function (inp) {
+        const s = this.state;
+        const rows = [];
+        const rooms = (s.detailedRooms && s.rooms && s.rooms.length) ? s.rooms : null;
+        // Этажи, где есть нужный контур: по помещениям в подробном режиме, иначе по этажности.
+        const floorsOf = pred => rooms
+            ? [...new Set(rooms.filter(pred).map(r => (parseInt(r.floor, 10) === 2 ? 2 : 1)))].sort()
+            : (s.floors === 2 ? [1, 2] : [1]);
+
+        if (inp.rQ > 0) {
+            const cap = parseFloat(this._radGroupCapacityKw) || 0;
+            const load = parseFloat(this._radGroupLoadKw) || 0;
+            const byHydro = parseInt(this._radGroupsByHydro, 10) || 0;
+            const byPower = (cap > 0 && load > 0) ? Math.max(1, Math.ceil(load / cap)) : 0;
+            let rule;
+            if (!(cap > 0)) rule = 'паспорт группы не распознан в каталоге: считаем по этажам';
+            else if (byHydro > byPower) rule = 'по гидравлике: по мощности хватило бы ' + byPower + ', до дальних приборов не хватает напора';
+            else if (byPower > byHydro) rule = 'по мощности: гидравлика прошла бы на ' + byHydro + ', ограничивает паспорт группы ' + cap + ' кВт';
+            else if (inp.rQ > 1) rule = 'мощность и напор требуют одинаково';
+            else rule = 'одна группа проходит по мощности и напору';
+            rows.push({ title: 'Радиаторы', floors: floorsOf(r => !r.sys || r.sys.includes('rad')), count: inp.rQ, rule: rule });
+        }
+
+        // Тёплый пол: один смесительный узел на каждые 12 петель коллектора, поэтажно.
+        let tpSum = 0;
+        if (inp.tQ > 0) {
+            [inp.tpF1, inp.tpF2].forEach((tp, i) => {
+                const loops = (tp && tp.loops) || 0;
+                if (!(loops > 0)) return;
+                const n = Math.ceil(loops / 12);
+                tpSum += n;
+                rows.push({ title: 'Тёплый пол', floors: [i + 1], count: n,
+                    rule: loops + ' петель: по узлу на каждые 12 петель коллектора' });
+            });
+            // Запасная строка на случай, когда число узлов задано не по петлям.
+            if (inp.tQ > tpSum) rows.push({ title: 'Тёплый пол (прочее)', floors: [], count: inp.tQ - tpSum, rule: 'узел без расчёта петель' });
+        } else if (inp.hasTp && s.ufhMixType === 'std') {
+            rows.push({ title: 'Тёплый пол', floors: [], count: 0, rule: 'локальный узел подмеса, в группу коллектора не выводится' });
+        }
+
+        if (inp.tankPump) {
+            rows.push({ title: 'Бойлер ГВС', floors: [], count: 1, rule: 'загрузка своей группой: отопление во время нагрева не отключается' });
+        } else if (this.dhwTankOn && this.dhwTankOn()) {
+            rows.push({ title: 'Бойлер ГВС', floors: [], count: 0, rule: 'загрузка трёхходовым клапаном, группа не нужна' });
+        }
+        if (inp.snowCircuits > 0) rows.push({ title: 'Снеготаяние', floors: [], count: inp.snowCircuits, rule: 'по числу узлов, у каждого своя смесительная группа' });
+        if (inp.polisCircuits > 0) rows.push({ title: 'Котёл без встроенного насоса', floors: [], count: inp.polisCircuits, rule: 'выход коллектора под его контур' });
+
+        const total = rows.reduce((a, r) => a + r.count, 0);
+        return { total: total, rows: rows, circuits: inp.circuits, consistent: total === inp.circuits };
+    },
+
+    /**
+     * Блок «Почему N групп» под поэтажными строками подробного режима. Скрыт в быстром
+     * режиме и когда расчёт групп ещё не сделан.
+     */
+    renderPumpPlanBlock: function () {
+        const el = document.getElementById('rooms_pump_plan');
+        if (!el) return;
+        const p = this._pumpPlan;
+        if (!this.state.detailedRooms || !p || (p.total === 0 && p.rows.length === 0)) {
+            el.style.display = 'none';
+            el.innerHTML = '';
+            return;
+        }
+        const floorTxt = fl => (!fl || !fl.length) ? '' : (fl.length > 1 ? ' · оба этажа' : ' · ' + fl[0] + ' этаж');
+        const head = p.total === 0
+            ? '<b>Насосных групп нет</b> — радиаторы и тёплый пол работают от насоса котла'
+            : '<b>Насосных групп: ' + p.total + '</b> — почему столько:';
+        let html = '<div style="font-weight:600; color:var(--text); margin-bottom:6px;">' + head + '</div>';
+        p.rows.forEach(r => {
+            html += '<div style="display:flex; justify-content:space-between; gap:8px; padding:3px 0; border-top:1px dashed var(--border);">' +
+                '<span style="color:var(--text);">' + r.title + floorTxt(r.floors) + '</span>' +
+                '<b style="color:var(--text);">' + r.count + '</b></div>' +
+                '<div style="font-size:10px; line-height:1.4; margin-bottom:2px;">' + r.rule + '</div>';
+        });
+        if (!p.consistent) html += '<div style="color:#EF4444; margin-top:4px;">Сумма строк не сходится с коллектором — сообщите разработчику.</div>';
+        el.innerHTML = html;
+        el.style.display = 'block';
+    },
+
     // Радиаторный запорно-балансировочный клапан 1/2" (SVL) на обратке прибора:
     // настройка идёт оборотами шпинделя от закрытого положения.
     //
@@ -80048,6 +80138,8 @@ const app = {
 
         // Логика расчета насосных групп
         let rQ = 0, tQ = 0;
+        // Разбивка групп пересчитывается ниже, на выходах коллектора (см. pumpGroupPlan).
+        this._pumpPlan = null;
         if (hasTp && tpArea > 0) {
             let activeMixType = this.state.ufhMixType || 'std';
             if (activeMixType === 'std') {
@@ -80493,6 +80585,8 @@ const app = {
             // посчитанную группу.
             let snowCircuits = (snowCalc && !snowCalc.impossible) ? Math.max(1, snowCalc.nodes || 1) : 0;
             let circuits = rQ + tQ + (tankNeedsPumpGroup ? 1 : 0) + polisCircuits + snowCircuits;
+            this._pumpPlan = this.pumpGroupPlan({ rQ, tQ, hasRad, hasTp, tpF1, tpF2, tankPump: tankNeedsPumpGroup,
+                polisCircuits, snowCircuits, circuits });
             let idx = (circuits > 2) ? 1 : 0;
             let hCtx = { rQ, tQ, pwr, tpArea, snowN: snowCircuits };
             // Буферная ёмкость сама разделяет котловой и системный контуры (у неё отдельные пары патрубков
@@ -87475,6 +87569,7 @@ const app = {
         // (см. boilerSystemTotals) они не нужны и вредны: перерисовали бы экран
         // поверх открытого окна замены.
         if (computeOnly) return;
+        this.renderPumpPlanBlock();
 
         if (this.state.viewMode === 'equipment' && !h.includes('empty-state-row') && h.includes('row-sec')) {
             h += `<tr class="hide-custom-eq-btn no-print"><td colspan="9">
