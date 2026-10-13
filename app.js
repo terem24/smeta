@@ -47175,7 +47175,8 @@ const app = {
         if ($('blk_auto_header')) $('blk_auto_header').style.display = s.detailedRooms ? 'block' : 'none';
         // Группа «Автоматика» — только в подробном режиме: контейнер прячем целиком, иначе он держит группу на экране.
         if ($('pg_tiles_auto')) $('pg_tiles_auto').style.display = s.detailedRooms ? '' : 'none';
-        if ($('blk_auto_fast_note')) $('blk_auto_fast_note').style.display = (!s.detailedRooms && anyOn) ? 'block' : 'none';
+        // Группа «Автоматика» — только в режиме по комнатам. В быстром режиме подсказку не показываем, даже если автоматика включена.
+        if ($('blk_auto_fast_note')) $('blk_auto_fast_note').style.display = 'none';
         // Общий тумблер «Автоматика»: подпункты (котельная, радиаторы и тёплый пол) — только когда он включён.
         if ($('chk_auto_master')) $('chk_auto_master').checked = !!s.autoOn;
         if ($('blk_auto_box')) $('blk_auto_box').style.display = (s.detailedRooms && s.autoOn) ? 'flex' : 'none';
