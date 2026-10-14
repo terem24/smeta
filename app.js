@@ -55942,19 +55942,15 @@ const app = {
         let a = (areaPerNode > 0) ? areaPerNode : area;
         // Перепад — выбранный в настройках тёплого пола (5/7/10 К), по умолчанию 5.
         let flow = (a * 0.08) / (1.163 * (parseInt(this.state.ufhDT, 10) || 5));
-        if (brand === 'rommer') {
-            if (type === 'dn20') return a <= 120 && flow <= 1.6;
-            if (type === 'dn20_servo') return a <= 150 && flow <= 1.6;
-            if (type === 'dn25') return a <= 150 && flow <= 1.6;
-            if (type === 'dn25_servo') return a <= 116;
-        } else { // stout
-            // Предел расхода — скорость в патрубке не выше ~1 м/с: DN20 (ø20,9) ≈ 1,2 м³/ч,
-            // DN25 (ø27,2) ≈ 2,1 м³/ч. Раньше у DN20 стояло 0,9 без источника (≈0,7 м/с).
-            if (type === 'dn20') return a <= 120 && flow <= 1.2;
-            if (type === 'dn20_servo') return a <= 150 && flow <= 1.2;
-            if (type === 'dn25') return a <= 200 && flow <= 2.1;
-            if (type === 'dn25_servo') return a <= 153;
-            if (type === 'dn32_servo') return a <= 210;
+        // Предел — расходом (скорость в патрубке и потери на смесителе, см. groupFlowLimit)
+        // для позиции, которую смета ставит под этот тип. DN32 — по расходу насоса RCP-0004 (2,9 м³/ч, ≈ 210 м²).
+        const _rep = (brand === 'rommer')
+            ? { dn20: 'RDG-1002-002501', dn20_servo: 'RDG-1003-002501', dn25: 'RDG-1002-002501', dn25_servo: 'RDG-1003-002501' }
+            : { dn20: 'SDG-0002-002001', dn20_servo: 'SDG-0007-002001', dn25: 'SDG-0002-002501', dn25_servo: 'SDG-0003-002501' };
+        if (type === 'dn32_servo') return brand !== 'rommer' && a <= 210;
+        if (_rep[type]) {
+            const dn = /^dn20/.test(type) ? 20 : 25;
+            return flow <= this.groupFlowLimit({ id: _rep[type], name: 'DN' + dn }, 'ufh');
         }
         return false;
     },
@@ -66956,10 +66952,31 @@ const app = {
         if (/-0032\d\d$/.test(id)) return 32;
         return 25;
     },
-    groupFlowLimit: function (item, purpose) {
+    /**
+     * Kvs смесительного клапана группы, м³/ч — по техпаспортам: STOUT SDG-0002 (DN20/DN25) 3,5,
+     * SDG-0003 DN25 6, SDG-0007 DN20 4 / DN25 6 / DN32 18 (ред. 17.05.2021); ROMMER RDG-1002 2,11,
+     * RDG-1003 3,96 (паспорта 2024), RDG-1004 3,96 (rommer.ru). У прямых групп смесителя нет — null.
+     */
+    groupKvs: function (item) {
         const id = String((item && item.id) || '');
-        if (/^RDG-/.test(id) || (item && item.brand === 'ROMMER')) return purpose === 'ufh' ? 1.6 : 2.0;
-        return this.GROUP_FLOW_LIMIT[this.groupDn(item)] || 2.1;
+        let m = /^SDG-(\d{4})-\d{2}(\d{2})/.exec(id);
+        if (m) {
+            return { '0002-20': 3.5, '0002-25': 3.5, '0003-25': 6, '0007-20': 4, '0007-25': 6, '0007-32': 18 }[m[1] + '-' + m[2]] || null;
+        }
+        m = /^RDG-(1002|1003|1004)-/.exec(id);
+        if (m) return { 1002: 2.11, 1003: 3.96, 1004: 3.96 }[m[1]];
+        return null;
+    },
+    /**
+     * Предельный расход группы, м³/ч: меньшее из двух — скорость в патрубке ≤ ~1 м/с и потери на
+     * смесительном клапане ≤ 0,3 бар (G = Kvs × √0,3 ≈ 0,55 Kvs): больше половины напора насоса
+     * 25/60 (6 м ≈ 0,6 бар) клапан отнимать не должен.
+     */
+    groupFlowLimit: function (item, purpose) {
+        let lim = this.GROUP_FLOW_LIMIT[this.groupDn(item)] || 2.1;
+        const kvs = this.groupKvs(item);
+        if (kvs) lim = Math.min(lim, Math.round(kvs * Math.sqrt(0.3) * 100) / 100);
+        return lim;
     },
     /** Перепад, К, при котором группа работает в данном контуре. */
     groupDt: function (purpose) {
@@ -66989,11 +67006,10 @@ const app = {
         const cap = this.groupCapKw(item, purpose);
         const f = v => String(v).replace('.', ',');
         const id = String(item.id || '');
-        const kvsMap = { '0002-0020': 3.5, '0002-0025': 3.5, '0003-0025': 6, '0007-0020': 4, '0007-0025': 6, '0007-0032': 18 };
-        const kvs = kvsMap[(id.match(/^SDG-(\d{4})-(\d{4})/) || []).slice(1).join('-')];
+        const kvs = this.groupKvs(item);
         let s = `<b>Характеристики (${id}):</b><br>`;
-        if (kvs) s += `• Kvs смесительного клапана: <b>${f(kvs)} м³/ч</b> (паспорт STOUT ред. 3 от 17.05.2021).<br>`;
-        s += `• Предел расхода: <b>до ${f(lim)} м³/ч</b> (DN${dn}` + (isRommer ? ', по каталогу ROMMER' : ', скорость в патрубке ≤ 1 м/с') + `).<br>`;
+        if (kvs) s += `• Kvs смесительного клапана: <b>${f(kvs)} м³/ч</b> (техпаспорт ${/^RDG/.test(id) ? 'ROMMER' : 'STOUT'}).<br>`;
+        s += `• Предел расхода: <b>до ${f(lim)} м³/ч</b> (DN${dn}: скорость в патрубке ≤ 1 м/с` + (kvs ? ', потери на смесителе ≤ 0,3 бар' : '') + `).<br>`;
         s += `• Тянет в этом контуре: <b>${f(cap)} кВт</b> = ${f(lim)} × 1,163 × ΔT ${dt} К. Паспорт мощность в кВт не нормирует — она зависит от перепада и насоса.`;
         if (dn === 32) s += `<br>• <b style="color:var(--c-warn,#F59E0B);">⚠ Насос в комплект не входит.</b> Расчёт на примере RCP-0004-3260180 (DN32, напор 6 м) на 2-й скорости (расход 2,9 м³/ч); при другом насосе или скорости пересчитайте.`;
         return s;
@@ -67005,10 +67021,10 @@ const app = {
         // DN25 — 6, DN32 — 18; SDG-0003 (только DN25) — 6. ROMMER: узел подмеса RDG-0120-008100 — 3,42
         // (паспорт); паспортов на группы ROMMER нет, там прежние значения.
         if (brand === 'rommer') {
+            // RDG-1002 (термостатический) — 2,11; RDG-1003 (3-ходовой под сервопривод) — 3,96; узел RDG-0120-008100 — 3,42.
             if (type === 'std') return 3.42;
-            if (type === 'dn20' || type === 'dn20_servo') return 2.5;
-            if (type === 'dn32_servo') return 6.3;
-            return 4.0;
+            if (type === 'dn20' || type === 'dn25') return 2.11;
+            return 3.96;
         }
         if (type === 'std') return 3.5;
         if (type === 'dn20') return 3.5;
