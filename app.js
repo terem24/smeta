@@ -66851,7 +66851,7 @@ const app = {
             `• Расход через узел: G = Q / (1,163 × ΔT) = <b>${(w.nodeFlow || w.flow).toFixed(2)} м³/ч</b> при перепаде ${b.dT} К${w.nodeFlow ? " (узел один на все гребёнки — расход общий)" : ""}.<br>` +
             `• Самая длинная петля: ${n1(w.worstDp)} кПа.<br>` +
             `• Коллектор (расходомер, кран, сервопривод): ${this.UFH_MAN_DP} кПа.<br>` +
-            `• Смесительный клапан узла: (G / Kvs)² = (${(w.nodeFlow || w.flow).toFixed(2)} / ${b.kvs})² = ${n1(w.dpValve)} кПа.<br>` +
+            `• Потери группы/узла по паспортному графику при ${(w.nodeFlow || w.flow).toFixed(2)} м³/ч: ${n1(w.dpValve)} кПа (паспортный Kvs клапана ${b.kvs}, у группы целиком эффективный ниже).<br>` +
             (w.trDp > 0 ? `• Транзит до коллектора ${w.floor}-го этажа ${w.tr ? w.tr.label : ''}: ${n1(w.trDp)} кПа.<br>` : '') +
             `• Итого с запасом 15 %: <b>${n1(w.need)} м</b>. Насос ${b.pump.label} на этом расходе даёт ` +
             `<b>${n1(w.have)} м</b> — ${b.ok ? 'проходит' : '<b style="color:var(--c-bad,#EF4444);">не проходит</b>'}.` +
@@ -66970,6 +66970,47 @@ const app = {
         return 25;
     },
     /**
+     * Потери напора ВСЕЙ группы без насоса (клапан, краны, термометр, фитинги) по паспортным графикам
+     * STOUT «Потери напора у групп…» (ред. 17.05.2021) и узла SDG-0120-001, точки [Q м³/ч, ΔP м вод. ст.],
+     * снятые с графиков (±0,05 м). Они заметно выше, чем даёт Kvs одного клапана: у SDG-0002 DN25 при 2 м³/ч —
+     * 6,5 м, а (2/3,5)²·10,2 = 3,3 м; эффективный Kv группы 2,1–2,5 при паспортном клапана 3,5.
+     * У ROMMER (RDG-1002, RDG-1003) график — прямая по Kvs 2,11 и 3,96, считается по формуле.
+     */
+    GROUP_DP_M: {
+        std:        [[0, 0], [0.5, 0.25], [1, 0.95], [1.5, 2.0], [2, 3.5], [2.5, 5.9], [3, 8.8], [3.2, 10]],
+        dn20:       [[0.25, 0.31], [0.5, 0.6], [0.75, 1.01], [1, 1.57], [1.25, 2.25], [1.5, 3.16], [1.75, 4.22], [2, 5.49], [2.25, 6.9], [2.4, 7.85]],
+        dn20_servo: [[0.25, 0.28], [0.5, 0.46], [1, 0.93], [1.5, 1.71], [2, 2.92], [2.5, 4.49], [3, 6.43], [3.3, 7.65]],
+        dn25:       [[0.6, 1.33], [0.8, 1.81], [1, 2.31], [1.25, 3.09], [1.5, 4.04], [1.75, 5.18], [2, 6.49], [2.25, 7.95], [2.4, 8.8]],
+        dn25_servo: [[0.6, 0.93], [1, 1.22], [1.5, 1.66], [2, 2.21], [2.5, 2.85], [3, 3.62], [3.5, 4.47], [4, 5.41], [4.5, 6.46], [5, 7.7], [5.4, 8.82]],
+        dn32_servo: [[0, 0.13], [1, 0.2], [2, 0.38], [3, 0.65], [4, 1.0], [5, 1.4], [6, 2.0], [7, 2.7], [8, 3.5], [8.5, 4.0]]
+    },
+    /** Ключ кривой потерь для позиции каталога (STOUT) или типа узла; null — кривой нет. */
+    groupDpKey: function (item) {
+        const m = /^SDG-(\d{4})-\d{2}(\d{2})/.exec(String((item && item.id) || ''));
+        if (!m) return null;
+        if (m[1] === '0120') return 'std';
+        if (m[1] === '0002') return m[2] === '20' ? 'dn20' : 'dn25';
+        if (m[1] === '0003') return 'dn25_servo';
+        if (m[1] === '0007') return m[2] === '20' ? 'dn20_servo' : m[2] === '32' ? 'dn32_servo' : 'dn25_servo';
+        return null;
+    },
+    /** Потери напора группы/узла, кПа, при расходе flow (м³/ч): по кривой (между точками — линейно, за краями — по Q²), иначе по Kvs. */
+    groupDpKpa: function (type, brand, flow) {
+        const q = Math.max(0, parseFloat(flow) || 0);
+        const pts = (brand !== 'rommer') ? this.GROUP_DP_M[type] : null;
+        if (!pts) return Math.pow(q / this.ufhMixKvs(type, brand), 2) * 100;
+        let m;
+        if (q <= pts[0][0]) m = pts[0][1] * Math.pow(q / pts[0][0], 2);
+        else if (q >= pts[pts.length - 1][0]) { const L = pts[pts.length - 1]; m = L[1] * Math.pow(q / L[0], 2); }
+        else {
+            for (let i = 1; i < pts.length; i++) if (q <= pts[i][0]) {
+                const a = pts[i - 1], b = pts[i];
+                m = a[1] + (b[1] - a[1]) * (q - a[0]) / (b[0] - a[0]); break;
+            }
+        }
+        return m * 9.81;
+    },
+    /**
      * Kvs смесительного клапана группы, м³/ч — по техпаспортам: STOUT SDG-0002 (DN20/DN25) 3,5,
      * SDG-0003 DN25 6, SDG-0007 DN20 4 / DN25 6 / DN32 18 (ред. 17.05.2021); ROMMER RDG-1002 2,11,
      * RDG-1003 3,96 (паспорта 2024), RDG-1004 3,96 (rommer.ru). У прямых групп смесителя нет — null.
@@ -66992,12 +67033,14 @@ const app = {
      */
     groupFlowLimit: function (item, purpose) {
         let lim = this.GROUP_FLOW_LIMIT[this.groupDn(item)] || 2.1;
-        const kvs = this.groupKvs(item), dn = this.groupDn(item);
+        const dn = this.groupDn(item), key = this.groupDpKey(item), kvs = this.groupKvs(item);
         const pump = dn === 20 ? this.UFH_PUMPS.dn20 : dn === 25 ? this.UFH_PUMPS.dn25 : null;
-        if (kvs && pump) {
+        if ((key || kvs) && pump) {
+            const brand = /^RDG-/.test(String((item && item.id) || '')) ? 'rommer' : 'stout';
+            const t = key || ((kvs < 3 ? 'dn25' : 'dn25_servo'));
             let g = 0;
             for (let q = 0.02; q <= lim + 1e-9; q += 0.02) {
-                const dpM = Math.pow(q / kvs, 2) * 100 / 9.81;
+                const dpM = this.groupDpKpa(t, brand, q) / 9.81;
                 if (dpM <= 0.5 * this.pumpHeadAt(pump, q)) g = q; else break;
             }
             lim = Math.min(lim, Math.round(g * 100) / 100);
@@ -67260,7 +67303,7 @@ const app = {
                 });
                 const flow = rows.reduce((a, r) => a + r.flow, 0) * 0.06;   // м³/ч
                 const worstDp = rows.reduce((a, r) => Math.max(a, r.dp), 0);
-                const dpValve = Math.pow(flow / kvs, 2) * 100;              // кПа
+                const dpValve = this.groupDpKpa(type, brand, flow);             // кПа, по паспортной кривой группы
                 return Object.assign({}, m, { rows: rows, flow: flow, worstDp: worstDp, dpValve: dpValve });
             });
             // Транзит один на этаж, а не на каждый коллектор: его диаметр и потери
@@ -67287,7 +67330,7 @@ const app = {
             // 5,3 кПа на клапане вместо 21 и «проходит» там, где насос не тянет.
             if (type === 'std' && mans.length > 1) {
                 const nodeFlow = mans.reduce((a, m) => a + m.flow, 0);
-                mans.forEach(m => { m.nodeFlow = nodeFlow; m.dpValve = Math.pow(nodeFlow / kvs, 2) * 100; });
+                mans.forEach(m => { m.nodeFlow = nodeFlow; m.dpValve = this.groupDpKpa(type, brand, nodeFlow); });
             }
             // Групп на этаже может быть меньше, чем коллекторов: коллекторы делят группу
             // поровну (по кругу), и через её клапан и насос идёт их общий расход.
@@ -67300,7 +67343,7 @@ const app = {
                     grp.forEach((m, i) => { sums[i % nn] += m.flow; });
                     grp.forEach((m, i) => {
                         m.nodeFlow = sums[i % nn];
-                        m.dpValve = Math.pow(m.nodeFlow / kvs, 2) * 100;
+                        m.dpValve = this.groupDpKpa(type, brand, m.nodeFlow);
                     });
                 });
             }
