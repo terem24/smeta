@@ -66317,10 +66317,12 @@ const app = {
             [inp.tpF1, inp.tpF2].forEach((tp, i) => {
                 const loops = (tp && tp.loops) || 0;
                 if (!(loops > 0)) return;
-                const n = Math.ceil(loops / 12);
+                const mans = Math.ceil(loops / 12);
+                const n = Math.min(mans, (this._ufhNodes && this._ufhNodes[i + 1]) || mans);
                 tpSum += n;
                 rows.push({ title: 'Тёплый пол', floors: [i + 1], count: n,
-                    rule: loops + ' петель: по узлу на каждые 12 петель коллектора' });
+                    rule: loops + ' петель, коллекторов ' + mans + ': групп по мощности и расходу ' + n +
+                        (n < mans ? ' (одна группа питает несколько коллекторов)' : '') });
             });
             // Запасная строка на случай, когда число узлов задано не по петлям.
             if (inp.tQ > tpSum) rows.push({ title: 'Тёплый пол (прочее)', floors: [], count: inp.tQ - tpSum, rule: 'узел без расчёта петель' });
@@ -67167,6 +67169,21 @@ const app = {
             if (type === 'std' && mans.length > 1) {
                 const nodeFlow = mans.reduce((a, m) => a + m.flow, 0);
                 mans.forEach(m => { m.nodeFlow = nodeFlow; m.dpValve = Math.pow(nodeFlow / kvs, 2) * 100; });
+            }
+            // Групп на этаже может быть меньше, чем коллекторов: коллекторы делят группу
+            // поровну (по кругу), и через её клапан и насос идёт их общий расход.
+            if (type !== 'std' && this._ufhNodes) {
+                [1, 2].forEach(fl => {
+                    const grp = mans.filter(m => m.floor === fl);
+                    const nn = Math.min(grp.length, this._ufhNodes[fl] || grp.length);
+                    if (nn < 1 || nn >= grp.length) return;
+                    const sums = new Array(nn).fill(0);
+                    grp.forEach((m, i) => { sums[i % nn] += m.flow; });
+                    grp.forEach((m, i) => {
+                        m.nodeFlow = sums[i % nn];
+                        m.dpValve = Math.pow(m.nodeFlow / kvs, 2) * 100;
+                    });
+                });
             }
             mans.forEach(m => {
                 m.trDp = m.trDp || 0;
@@ -80395,7 +80412,7 @@ const app = {
         const tpF1 = tpFloorCalc(this.state.tp1, stepVal1, 0);
         const tpF2 = tpFloorCalc(this.state.floors === 2 ? this.state.tp2 : 0, stepVal2, 1);
         this._ufhFloorCalc = [tpF1, tpF2];   // для расшифровки строки трубы (getDesc)
-        let estMans = 0;
+        let estMans = 0, estNodes = 0;
         // Площадь, которую тянет ОДИН узел подмеса — по ней подбирается его
         // типоразмер (см. isUfhMixTypeCompatible). Делить общую площадь на число
         // коллекторов нельзя: при 200 м² на первом этаже (2 коллектора) и 50 м²
@@ -80410,8 +80427,28 @@ const app = {
             estMans = mans1 + mans2;
             const _tpA1 = parseFloat(this.state.tp1) || 0;
             const _tpA2 = (this.state.floors === 2) ? (parseFloat(this.state.tp2) || 0) : 0;
-            tpAreaPerMan = Math.max(mans1 > 0 ? _tpA1 / mans1 : 0, mans2 > 0 ? _tpA2 / mans2 : 0);
+            // Смесительных групп ставим по мощности, а не по гребёнкам: 12 петель — размер
+            // коллектора, а одна группа спокойно кормит два коллектора, если ей хватает
+            // расхода. Раньше групп было столько же, сколько коллекторов, и 120 м² пола
+            // давали две группы DN20 «до 5 кВт» вместо одной DN25 «до 12 кВт».
+            const _ovr = this.state.manualDnOverride, _isR = (this.state.brandMode === 'rommer');
+            const _nodeTypes = (_ovr === 'dn20' && !_isR) ? ['dn20', 'dn20_servo']
+                : (_ovr === 'dn25' || _isR || (pwr > 10) || (this.state.sectionAnalog && this.state.sectionAnalog['2.4. Гидравлика котельной'])) ? ['dn25', 'dn25_servo']
+                : ['dn20', 'dn20_servo', 'dn25', 'dn25_servo'];
+            const _nodesFor = (a, mans) => {
+                if (!(mans > 0)) return 0;
+                for (let n = 1; n < mans; n++) {
+                    if (_nodeTypes.some(t => this.isUfhMixTypeCompatible(t, a, this.state.brandMode, a / n))) return n;
+                }
+                return mans;
+            };
+            const nodes1 = _nodesFor(_tpA1, mans1), nodes2 = _nodesFor(_tpA2, mans2);
+            estNodes = nodes1 + nodes2;
+            this._ufhNodes = { 1: nodes1, 2: nodes2 };
+            tpAreaPerMan = Math.max(nodes1 > 0 ? _tpA1 / nodes1 : 0, nodes2 > 0 ? _tpA2 / nodes2 : 0);
             if (!(tpAreaPerMan > 0)) tpAreaPerMan = tpArea;
+        } else {
+            this._ufhNodes = null;
         }
         // Таблице замены и кнопке «Аналог» число коллекторов взять неоткуда —
         // они работают вне render(), поэтому кладём результат в объект.
@@ -80499,7 +80536,7 @@ const app = {
             if (activeMixType === 'std') {
                 tQ = 0;
             } else {
-                tQ = (estMans > 0 ? estMans : 1);
+                tQ = (estNodes > 0 ? estNodes : 1);
             }
         }
 
@@ -80549,7 +80586,7 @@ const app = {
             for (let _type of _candidates) {
                 if (this.isUfhMixTypeCompatible(_type, tpArea, _brand, tpAreaPerMan)) {
                     this.state.ufhMixType = _type;
-                    tQ = (estMans > 0 ? estMans : 1);
+                    tQ = (estNodes > 0 ? estNodes : 1);
                     needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup || _snowOnCollector;
                     break;
                 }
@@ -80616,7 +80653,7 @@ const app = {
                 this.state.ufhMixType = _bal.type;
                 // Пересчитываем то же, что и переход с локального узла на группу выше:
                 // групп ставится по одной на коллектор, а от их числа зависит коллектор котельной.
-                tQ = (estMans > 0 ? estMans : 1);
+                tQ = (estNodes > 0 ? estNodes : 1);
                 needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup || _snowOnCollector;
             }
             this._ufhBal = _bal;
