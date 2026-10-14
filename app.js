@@ -55427,7 +55427,6 @@ const app = {
                 catalog.groups_dn25[0],
                 catalog.groups_dn20[1],
                 catalog.groups_dn25[1],
-                catalog.groups_dn20[2],
                 catalog.groups_dn25[2],
                 catalog.groups_dn20.find(g => g.id === 'SDG-0007-002001'),
                 catalog.groups_dn25.find(g => g.id === 'SDG-0007-002501'),
