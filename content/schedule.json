@@ -179,9 +179,9 @@
    "freq": 0,
    "audience": "pro",
    "data_block": "вкладка «Деньги»",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-14",
-   "published_at": null,
+   "published_at": "2026-10-14",
    "words": 553
   },
   {
