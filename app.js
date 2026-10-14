@@ -71077,7 +71077,8 @@ const app = {
             const n = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
             let html = '';
             if (st) {
-                if (st.ok) html = `<span style="color:#22C55E;">✓ Утеплителя хватает${st.auto ? ', недостающее добавлено в смету' : ''}</span>`;
+                // Когда всё в порядке, подсказку не показываем: в левой панели и так тесно
+                if (st.ok) html = '';
                 else if (s.ufhInsNoAdd) html = `<span style="color:var(--c-warn,#F59E0B);">⚠ Внимание: утеплителя не хватает. Плиты в смету не добавлены.</span>`;
                 else html = `<span style="color:var(--c-warn,#F59E0B);">⚠ Внимание: утеплителя не хватает. Недостающее добавлено в смету.</span>`;
             }
