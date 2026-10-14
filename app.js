@@ -64096,8 +64096,8 @@ const app = {
      * выбор исполнения — общий по котельной, state.pumpType.
      */
     SNOW_PUMPS: [
-        { label: '25/60', cat: 'pumps_dn25', hMax: 6, qMax: 3.3 },
-        { label: '25/80', cat: 'pumps_dn25_80', hMax: 8, qMax: 5.5 }
+        { label: '25/60', cat: 'pumps_dn25', hMax: 6.1, qMax: 3.35, pts: [[0, 6.1], [1, 4.85], [2, 3.45], [3, 2.0], [3.35, 1.2]] },
+        { label: '25/80', cat: 'pumps_dn25_80', hMax: 8, qMax: 4.8, pts: [[0, 8.0], [1, 7.4], [2, 6.5], [3, 5.2], [4, 3.5], [4.8, 1.3]] }
     ],
     /**
      * Труба уличной петли. Обе — PE-Xa/EVOH, обе переживают замерзание
@@ -64262,7 +64262,7 @@ const app = {
     /** Напор насоса при подаче v (м³/ч), м. Без второго аргумента — 25/60. */
     snowPumpHead: function (v, pump) {
         const p = pump || this.SNOW_PUMPS[0];
-        return Math.max(0, p.hMax * (1 - Math.pow(v / p.qMax, 2)));
+        return this.pumpHeadAt(p, v);
     },
     /**
      * Требуемая температура подачи первичного контура, °C.
@@ -65807,9 +65807,26 @@ const app = {
     // H = hMax·(1 − (Q/qMax)²). В насосных группах STOUT стоит 25/60, в мощных
     // сборках 25/80; ими и проверяем, тянет ли группа посчитанное кольцо.
     RAD_PUMPS: [
-        { label: '25/60', hMax: 6, qMax: 3.3 },
-        { label: '25/80', hMax: 8, qMax: 5.5 }
+        { label: '25/60', hMax: 6.1, qMax: 3.35, pts: [[0, 6.1], [1, 4.85], [2, 3.45], [3, 2.0], [3.35, 1.2]] },
+        { label: '25/80', hMax: 8, qMax: 4.8, pts: [[0, 8.0], [1, 7.4], [2, 6.5], [3, 5.2], [4, 3.5], [4.8, 1.3]] }
     ],
+    /**
+     * Напор насоса при подаче v (м³/ч), м. Если у насоса есть точки pts — ломаная по паспортному графику
+     * (линейная интерполяция, за последней точкой 0), иначе прежняя квадратичная аппроксимация.
+     *
+     * Точки сняты с паспортных графиков при максимальной скорости (III), погрешность ±0,2 м:
+     *   25/60 — STOUT SPC-0011 (ред. 17.05.2021) и ROMMER RCP-0004 PROFI RATE: у обоих кривая почти прямая,
+     *           6,1 м при 0, 3,4–3,6 м при 2 м³/ч; у ROMMER она кончается на ≈ 3,35 м³/ч (у STOUT идёт до 4,0),
+     *           взято по ROMMER, то есть по более слабому;
+     *   25/80 — по ROMMER RCP-0004 (8,0 м, обрыв на ≈ 4,8 м³/ч; у STOUT напор выше: 4,95 м при 4 м³/ч);
+     *   15/60-130 — ROMMER RCP-0002 RATE (6,1 м, обрыв на 2,87 м³/ч).
+     * Прежняя формула H = hMax·(1 − (Q/qMax)²) с 6 м и 3,3 м³/ч завышала напор на малых расходах (на 2 м³/ч — 4,0 м
+     * против 3,45 по паспорту) и занижала на больших (на 3 м³/ч — 1,0 м против 2,0).
+     */
+    pumpHeadAt: function (pump, v) {
+        if (pump && pump.pts) return this.boilerPumpHead(pump, v) || 0;
+        return Math.max(0, pump.hMax * (1 - Math.pow(v / pump.qMax, 2)));
+    },
 
     // ─── Греющий контур бойлера ──────────────────────────────────────────────
     //
@@ -65971,9 +65988,9 @@ const app = {
         let pump = null;
         if (L.pump) {
             const _qP = flow * _kpL.flow;
-            const pick = this.RAD_PUMPS.find(pm => pm.hMax * (1 - Math.pow(_qP / pm.qMax, 2)) >= head)
+            const pick = this.RAD_PUMPS.find(pm => this.pumpHeadAt(pm, _qP) >= head)
                 || this.RAD_PUMPS[this.RAD_PUMPS.length - 1];
-            const avail = pick.hMax * (1 - Math.pow(_qP / pick.qMax, 2));
+            const avail = this.pumpHeadAt(pick, _qP);
             pump = { label: pick.label, avail: Math.max(0, avail), builtin: false,
                 ok: avail >= head };
         } else if (L.pumpCurve) {
@@ -66265,7 +66282,7 @@ const app = {
         };
         const fitsAt = (br) => {
             const r = headAt(br);
-            return this.RAD_PUMPS.some(pm => pm.hMax * (1 - Math.pow(r.flowBr / pm.qMax, 2)) >= r.head);
+            return this.RAD_PUMPS.some(pm => this.pumpHeadAt(pm, r.flowBr) >= r.head);
         };
 
         for (let br = 1; br <= 4; br++) {
@@ -66643,7 +66660,7 @@ const app = {
         const pumps = hasGroup ? this.RAD_PUMPS : [this.RAD_PUMPS[0]];
         const pump = pumps.map(pm => ({
             label: hasGroup ? pm.label : 'встроенный насос котла (принят по кривой ' + pm.label + ')',
-            avail: pm.hMax * (1 - Math.pow(flowBranch * _kp.flow / pm.qMax, 2))
+            avail: this.pumpHeadAt(pm, flowBranch * _kp.flow)
         }));
         const fit = pump.find(pm => pm.avail >= head) || null;
 
@@ -66922,13 +66939,13 @@ const app = {
      * здесь можно только в сторону запаса.
      */
     UFH_PUMPS: {
-        mix: { label: '25/60-130', hMax: 6, qMax: 3.0 },
-        dn20: { label: '15/60-130', hMax: 6, qMax: 2.5 },
-        dn25: { label: '25/60-180', hMax: 6, qMax: 3.3 },
-        dn25_80: { label: '25/80-180', hMax: 8, qMax: 5.5 }
+        mix: { label: '25/60-130', hMax: 6.1, qMax: 3.35, pts: [[0, 6.1], [1, 4.85], [2, 3.45], [3, 2.0], [3.35, 1.2]] },
+        dn20: { label: '15/60-130', hMax: 6.1, qMax: 2.87, pts: [[0, 6.1], [0.9, 4.85], [1.5, 3.95], [2.1, 2.85], [2.7, 1.55], [2.87, 1.2]] },
+        dn25: { label: '25/60-180', hMax: 6.1, qMax: 3.35, pts: [[0, 6.1], [1, 4.85], [2, 3.45], [3, 2.0], [3.35, 1.2]] },
+        dn25_80: { label: '25/80-180', hMax: 8, qMax: 4.8, pts: [[0, 8.0], [1, 7.4], [2, 6.5], [3, 5.2], [4, 3.5], [4.8, 1.3]] }
     },
     ufhPumpHead: function (v, pump) {
-        return Math.max(0, pump.hMax * (1 - Math.pow(v / pump.qMax, 2)));
+        return this.pumpHeadAt(pump, v);
     },
     /** Человеческое имя узла тёплого пола для заметок расчёта */
     _ufhMixLabel: function (type) {
@@ -66968,14 +66985,23 @@ const app = {
         return null;
     },
     /**
-     * Предельный расход группы, м³/ч: меньшее из двух — скорость в патрубке ≤ ~1 м/с и потери на
-     * смесительном клапане ≤ 0,3 бар (G = Kvs × √0,3 ≈ 0,55 Kvs): больше половины напора насоса
-     * 25/60 (6 м ≈ 0,6 бар) клапан отнимать не должен.
+     * Предельный расход группы, м³/ч: меньшее из двух — скорость в патрубке ≤ ~1 м/с и такой расход,
+     * при котором смесительный клапан (G/Kvs)² отнимает не больше половины напора штатного насоса группы
+     * на этом расходе (по паспортной кривой, см. pumpHeadAt): остальное нужно коллектору и петлям.
+     * Раньше стоял жёсткий предел 0,3 бар — он не зависел от насоса и от Kvs.
      */
     groupFlowLimit: function (item, purpose) {
         let lim = this.GROUP_FLOW_LIMIT[this.groupDn(item)] || 2.1;
-        const kvs = this.groupKvs(item);
-        if (kvs) lim = Math.min(lim, Math.round(kvs * Math.sqrt(0.3) * 100) / 100);
+        const kvs = this.groupKvs(item), dn = this.groupDn(item);
+        const pump = dn === 20 ? this.UFH_PUMPS.dn20 : dn === 25 ? this.UFH_PUMPS.dn25 : null;
+        if (kvs && pump) {
+            let g = 0;
+            for (let q = 0.02; q <= lim + 1e-9; q += 0.02) {
+                const dpM = Math.pow(q / kvs, 2) * 100 / 9.81;
+                if (dpM <= 0.5 * this.pumpHeadAt(pump, q)) g = q; else break;
+            }
+            lim = Math.min(lim, Math.round(g * 100) / 100);
+        }
         return lim;
     },
     /** Перепад, К, при котором группа работает в данном контуре. */
@@ -67009,7 +67035,7 @@ const app = {
         const kvs = this.groupKvs(item);
         let s = `<b>Характеристики (${id}):</b><br>`;
         if (kvs) s += `• Kvs смесительного клапана: <b>${f(kvs)} м³/ч</b> (техпаспорт ${/^RDG/.test(id) ? 'ROMMER' : 'STOUT'}).<br>`;
-        s += `• Предел расхода: <b>до ${f(lim)} м³/ч</b> (DN${dn}: скорость в патрубке ≤ 1 м/с` + (kvs ? ', потери на смесителе ≤ 0,3 бар' : '') + `).<br>`;
+        s += `• Предел расхода: <b>до ${f(lim)} м³/ч</b> (DN${dn}: скорость в патрубке ≤ 1 м/с` + (kvs ? ', потери на смесителе ≤ ½ напора насоса по его кривой' : '') + `).<br>`;
         s += `• Тянет в этом контуре: <b>${f(cap)} кВт</b> = ${f(lim)} × 1,163 × ΔT ${dt} К. Паспорт мощность в кВт не нормирует — она зависит от перепада и насоса.`;
         if (dn === 32) s += `<br>• <b style="color:var(--c-warn,#F59E0B);">⚠ Насос в комплект не входит.</b> Расчёт на примере RCP-0004-3260180 (DN32, напор 6 м) на 2-й скорости (расход 2,9 м³/ч); при другом насосе или скорости пересчитайте.`;
         return s;
