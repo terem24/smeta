@@ -23511,11 +23511,42 @@ const app = {
         }
 
         if (!this.adminTabNeedsHeavyData()) {
-            if (this.isScopedAdmin()) await this.resolveAdminScope();
-            const lists = await this.loadAdminLightData();
-            // На телефоне пустой раздел означает меню со сводкой наверху — её
-            // четыре числа тяжёлая загрузка сюда не приносит, считаем отдельно
-            const homeTotals = (this.isAdminMobile() && !this._adminTab) ? await this.loadAdminHomeTotals() : null;
+            // Предел ожидания: на телефоне при слабой сети запрос мог висеть десятки
+            // секунд (а за ним ещё два-три), и вместо панели человек видел одну
+            // надпись «Загрузка данных из базы...». Что не успело — берём пустым.
+            const within = (p, ms, fallback) => Promise.race([
+                Promise.resolve(p).catch(() => fallback),
+                new Promise(res => setTimeout(() => res(fallback), ms))
+            ]);
+            const onHome = this.isAdminMobile() && !this._adminTab;
+            // Меню разделов от данных не зависит — рисуем его сразу, а цифры сводки
+            // и списки догружаем следом и перерисовываем, если человек всё ещё на меню.
+            if (onHome && !(this.adminData && this.adminData.allUsersDropdown)) {
+                this.renderAdminMain();
+                const seq = this._adminHomeSeq = (this._adminHomeSeq || 0) + 1;
+                (async () => {
+                    try {
+                        if (this.isScopedAdmin()) await within(this.resolveAdminScope(), 15000, null);
+                        const [lists, totals] = await Promise.all([
+                            within(this.loadAdminLightData(), 20000, null),
+                            within(this.loadAdminHomeTotals(), 20000, null)
+                        ]);
+                        if (seq !== this._adminHomeSeq || this._adminTab) return;
+                        this.adminData = Object.assign(
+                            { users: [], userEstimates: [], recentEstimates: [], totalUsers: 0, totalEstimates: 0, totalEq: 0, totalWorks: 0, messageReceipts: null },
+                            this.adminData || {},
+                            lists ? { allUsersDropdown: lists.allUsersDropdown, distributors: lists.distributors, dropdownAvatars: lists.dropdownAvatars } : { allUsersDropdown: [], distributors: [] },
+                            totals || {}
+                        );
+                        this.renderAdminMain();
+                    } catch (e) { console.warn('[админка] меню: фоновая загрузка не удалась:', e); }
+                })();
+                return;
+            }
+            if (this.isScopedAdmin()) await within(this.resolveAdminScope(), 15000, null);
+            const lists = (await within(this.loadAdminLightData(), 25000, null))
+                || { allUsersDropdown: [], allMessages: [], distributors: [], estimates: null, dropdownAvatars: false };
+            const homeTotals = onHome ? await within(this.loadAdminHomeTotals(), 20000, null) : null;
             // Пустая заготовка обязательна: renderAdminMain разбирает adminData сразу,
             // ещё до ветвления по вкладкам. Ранее загруженное не теряем.
             this.adminData = Object.assign(
