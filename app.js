@@ -40135,6 +40135,39 @@ const app = {
             radTee: v.radTee, radM: r1(v.radM) }));
     },
 
+    // Значок ⚠ «площадь петель не сходится с расчётом»: окошко с полем площади прямо у значка.
+    // Правится площадь помещения в расчёте (та же, что в карточке слева); по умолчанию — площадь петель.
+    ufhFixArea: function (ev, el) {
+        ev.stopPropagation();
+        const old = document.getElementById('ufh_fix_pop');
+        if (old) old.remove();
+        const fl = +el.dataset.fl, name = String(el.dataset.name || '').trim().toLowerCase();
+        const room = (this.state.rooms || []).find(r => (parseInt(r.floor) || 1) === fl && String(r.name || '').trim().toLowerCase() === name);
+        if (!room) { alert('Помещение «' + el.dataset.name + '» не найдено в расчёте — поправьте его в списке помещений слева.'); return; }
+        const n1 = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+        const loop = Math.round(+el.dataset.loop * 10) / 10, calc = +el.dataset.calc;
+        const pop = document.createElement('div');
+        pop.id = 'ufh_fix_pop';
+        pop.style.cssText = 'position:fixed;z-index:100000;background:var(--surface,#fff);color:var(--text-main,#111);border:1px solid var(--border,#ccc);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);padding:10px 12px;width:270px;font-size:12px;line-height:1.35';
+        pop.innerHTML = `<div style="font-weight:700;margin-bottom:4px">${(room.name || '').replace(/</g, '&lt;')}</div>` +
+            `<div style="color:var(--text-sec,#888);margin-bottom:8px">Петли покрывают ${n1(loop)} м², в расчёте ${n1(calc)} м². Какая площадь верна?</div>` +
+            `<div style="display:flex;gap:6px;align-items:center"><input id="ufh_fix_in" type="number" step="0.1" min="1" max="150" value="${loop}" style="width:80px;height:28px;border:1px solid var(--border,#ccc);border-radius:6px;background:var(--surface,#fff);color:inherit;padding:0 6px"> м²` +
+            `<button type="button" id="ufh_fix_ok" style="margin-left:auto;height:28px;border:0;border-radius:6px;background:var(--primary,#3b82f6);color:#fff;padding:0 10px;font-weight:600;cursor:pointer">Применить</button></div>` +
+            `<div style="margin-top:6px;color:var(--text-muted,#888)">Проверьте по плану. Если распознан не тот контур — поправьте зону на плане.</div>`;
+        document.body.appendChild(pop);
+        const rc = el.getBoundingClientRect();
+        pop.style.left = Math.max(8, Math.min(rc.left, window.innerWidth - 286)) + 'px';
+        pop.style.top = Math.max(8, Math.min(rc.bottom + 6, window.innerHeight - pop.offsetHeight - 8)) + 'px';
+        const close = () => { pop.remove(); document.removeEventListener('mousedown', outside, true); };
+        const outside = e => { if (!pop.contains(e.target)) close(); };
+        setTimeout(() => document.addEventListener('mousedown', outside, true), 0);
+        const inp = document.getElementById('ufh_fix_in');
+        inp.focus(); inp.select();
+        const apply = () => { const v = parseFloat(inp.value); close(); if (v >= 1) this.updRoomArea(room.id, v, false); };
+        document.getElementById('ufh_fix_ok').onclick = apply;
+        inp.onkeydown = e => { if (e.key === 'Enter') apply(); else if (e.key === 'Escape') close(); };
+    },
+
     // Строки помещения в таблице петель: раскрыть / свернуть петли этой группы
     ufhToggleGrp: function (tr) {
         const open = tr.classList.toggle('open');
@@ -40240,7 +40273,7 @@ const app = {
                 (v.roomArea || []).forEach(r => { calc[String(r.name || '').trim().toLowerCase()] = +r.area || 0; });
                 const calcArea = name => calc[String(name || '').trim().toLowerCase()] || 0;
                 const warnOf = (name, a) => { const ra = calcArea(name); return ra > 0 && Math.abs(a - ra) > 0.1 * ra ? ra : 0; };
-                const warnIc = (name, a) => { const ra = warnOf(name, a); return ra ? ` <span class="ufh-warn-ic" title="Площадь петель ${n1(a)} м², в расчёте помещения ${n1(ra)} м² — проверьте распознавание плана">⚠</span>` : ''; };
+                const warnIc = (name, a) => { const ra = warnOf(name, a); return ra ? ` <span class="ufh-warn-ic" role="button" tabindex="0" data-fl="${fi + 1}" data-name="${esc(name).replace(/"/g, '&quot;')}" data-loop="${a}" data-calc="${ra}" onclick="app.ufhFixArea(event,this)" title="Площадь петель ${n1(a)} м², в расчёте помещения ${n1(ra)} м² — нажмите, чтобы исправить площадь">⚠</span>` : ''; };
                 let mismatch = 0;
                 let body = '';
                 groups.forEach(g => {
@@ -40304,7 +40337,7 @@ const app = {
 .ufh-plan-table .ufh-sub td:nth-child(2){padding-left:18px}
 .ufh-plan-table td,.ufh-plan-table th{padding:3px 5px;border-bottom:1px solid rgba(127,127,127,.15)}
 .ufh-plan-table .ufh-warn td{background:rgba(220,60,60,.10)}
-.ufh-warn-ic{color:#c0392b;margin-left:4px;cursor:help;font-weight:700}
+.ufh-warn-ic{color:#c0392b;margin-left:4px;cursor:pointer;font-weight:700}
 .ufh-tbl-col.flat .ufh-grp{display:none}
 .ufh-tbl-col.flat .ufh-sub{display:table-row}
 #ufh_table_overlay{position:fixed;inset:0;z-index:100000;background:var(--bg,#fff);color:var(--text,#1a1a1a);display:flex;flex-direction:column}
