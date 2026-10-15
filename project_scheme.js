@@ -1574,6 +1574,11 @@
         o.push(leader(x - 0.96, vy - 2.6, tSize));
         o.push(hpipe(x + 2.5, x + PAIR_STEP, vy, COL.supply));
         o.push(ln(x, vy + 2.5, x, t.snow ? HX_TOP : yTop, { c: t.color, w: LW.pipe }));
+        // Местный узел подмеса (позиция «Узел подмеса» в смете, без группы) — подпись
+        // вдоль обратки, без бренда: бренд зависит от режима STOUT/ROMMER, а схема одна.
+        if (cfg.tpUnit && t.hyd === 'tp' && !(cfg.tpGroups > 0)) {
+          o.push(txt(x - 2.6, 239, 'Узел подмеса', { size: SZ.dia, rotate: -90 }));
+        }
       } else if (t.pump || t.group) {
         // насосный стояк: обратный клапан + кран + насос. Узел един для
         // радиаторной группы и подачи ТП — без обратного клапана на Т11
@@ -2106,7 +2111,7 @@
       return ('0' + r.toString(16)).slice(-2);
     }).join('');
   }
-  var HALO = { f: '#BBF7D0', c: '#22C55E', w: 0.5 };
+  var HALO_LIT = { f: '#BBF7D0', c: '#22C55E', w: 0.5 };
   /**
    * Съёмная винтовая колодка Thermatic: цветной корпус с бликом, перегородки
    * между контактами, шлицевые винты и тёмное гнездо провода со стороны жилы.
@@ -2121,7 +2126,7 @@
     parts.forEach(function (g) {
       bound[k0 + g] = true;
       var gx = x + k0 * pp, gw = g * pp - (parts.length > 1 ? 0.6 : 0);
-      if (lit) s += rrect(gx - 0.9, y - 0.9, gw + 1.8, h + 1.8, 1.1, HALO);
+      if (lit) s += rrect(gx - 0.9, y - 0.9, gw + 1.8, h + 1.8, 1.1, HALO_LIT);
       if (pale) s += rrect(gx - 0.6, y - 0.6, gw + 1.2, h + 1.2, 1.0, { f: '#DCFCE7', c: '#86C7A0', w: 0.4 });
       s += rrect(gx, y, gw, h, 0.7, { f: shade(col, -0.35), c: shade(col, -0.6), w: 0.3 });
       s += rrect(gx + 0.25, y + 0.25, gw - 0.5, h - 0.5, 0.5, { f: col });
@@ -2142,7 +2147,7 @@
   /** Колодка потребителя: серая пружинная, провод входит с той стороны, откуда он идёт. */
   function vstrip(x, cy, labels, side) {
     var m = labels.length, h = m * P + 1.6, bw = 6.4, s = '';
-    s += rrect(x - bw / 2 - 0.9, cy - h / 2 - 0.9, bw + 1.8, h + 1.8, 1.2, HALO);
+    s += rrect(x - bw / 2 - 0.9, cy - h / 2 - 0.9, bw + 1.8, h + 1.8, 1.2, HALO_LIT);
     s += rrect(x - bw / 2, cy - h / 2, bw, h, 0.9, { f: '#B8B8BC', c: '#6B7280', w: 0.35 });
     s += rrect(x + side * (bw / 2 - 1.4) - 0.7, cy - h / 2, 1.4, h, 0.5, { f: '#9A9AA0' });
     labels.forEach(function (L, i) {
@@ -2888,7 +2893,7 @@
         if (b.jack) {
           // гнездо RJ45: металлический корпус с контактной колодкой, а не винтовые клеммы
           o.push('<g' + (on ? '' : ' opacity="0.4"') + '>' +
-            (on ? rrect(b.x - 0.9, y - 0.9, b.n * P + 1.8, 8.2, 1.1, HALO) : '') +
+            (on ? rrect(b.x - 0.9, y - 0.9, b.n * P + 1.8, 8.2, 1.1, HALO_LIT) : '') +
             rrect(b.x, y - 0.3, b.n * P, 7, 0.6, { f: '#CBD5E1', c: '#64748B', w: 0.35 }) +
             rrect(b.x + 0.9, y + 0.9, b.n * P - 1.8, 4.2, 0.4, { f: '#1F2937' }) +
             rrect(b.x + b.n * P / 2 - 0.9, y + 0.3, 1.8, 0.9, 0.2, { f: '#CBD5E1' }) +
@@ -3457,13 +3462,13 @@
         var g0 = '<g' + (on ? '' : ' opacity="0.4"') + '>';
         if (b.round) {
           // гнездо питания: чёрная втулка с центральным штырём
-          o.push(g0 + (on ? circle(b.cx, y + 3.2, 4.0, HALO) : '') +
+          o.push(g0 + (on ? circle(b.cx, y + 3.2, 4.0, HALO_LIT) : '') +
             circle(b.cx, y + 3.2, 2.7, { f: '#1F2937', c: '#111827', w: 0.4 }) +
             circle(b.cx, y + 3.2, 1.7, { f: '#374151' }) +
             circle(b.cx, y + 3.2, 0.7, { f: '#CBD5E1' }) + '</g>');
         } else if (b.jack) {
           // розетка 4P4C (RJ11): тёмный корпус, окно с четырьмя контактами и язычок
-          o.push(g0 + (on ? rrect(b.x - 0.9, y - 0.9, b.w + 1.8, 8.2, 1.1, HALO) : '') +
+          o.push(g0 + (on ? rrect(b.x - 0.9, y - 0.9, b.w + 1.8, 8.2, 1.1, HALO_LIT) : '') +
             rrect(b.x, y - 0.3, b.w, 7, 0.6, { f: '#4B5563', c: '#1F2937', w: 0.35 }) +
             rrect(b.x + 0.7, y + 1.2, b.w - 1.4, 4.4, 0.4, { f: '#111827' }) +
             rrect(b.cx - 1.1, y + 0.1, 2.2, 1.2, 0.2, { f: '#374151' }) +
@@ -3473,7 +3478,7 @@
         } else {
           // пружинная колодка: зелёный корпус, оранжевые рычажки, тёмные гнёзда провода
           var gw = b.n * P;
-          var sp = g0 + (on ? rrect(b.x - 0.9, y - 0.9, gw + 1.8, 8.2, 1.1, HALO) : '') +
+          var sp = g0 + (on ? rrect(b.x - 0.9, y - 0.9, gw + 1.8, 8.2, 1.1, HALO_LIT) : '') +
             rrect(b.x, y, gw, 6.4, 0.7, { f: '#1E8E4E', c: '#14532D', w: 0.35 }) +
             rrect(b.x + 0.25, y + 0.25, gw - 0.5, 1.1, 0.4, { f: '#4ADE80' });
           for (var i = 0; i < b.n; i++) {
