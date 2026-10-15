@@ -1,10 +1,13 @@
-/* Проверка гидравлики (app.syncHydroCheck, hydro_check.js). Цвета — из переменных темы,
-   поэтому тёмная тема подхватывается сама. */
-.hc-box { border: 1px solid var(--border, rgba(128,128,128,.3)); border-radius: 10px; padding: 8px 10px; font-size: 12px; }
-.hc-box > summary { cursor: pointer; font-weight: 700; list-style: none; }
-.hc-box > summary::-webkit-details-marker { display: none; }
-.hc-box > summary::before { content: '▸ '; }
-.hc-box[open] > summary::before { content: '▾ '; }
+/* Проверка гидравлики (app.syncHydroCheck, hydro_check.js): карточка справа от схемы котельной.
+   Контейнер #hydro_check_side рисует сама схема (app._renderSchemeVector). Цвета — из переменных
+   темы, поэтому тёмная тема подхватывается сама. */
+
+/* Схема и карточка в одну строку; на узком экране карточка уходит под схему */
+#dynamic_scheme.scheme-vector { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+#dynamic_scheme.scheme-vector .scheme-svg-wrap { flex: 0 0 auto; }
+.hc-side { flex: 1 1 300px; min-width: 280px; max-width: 560px; }
+.hc-card { border: 1px solid var(--border, rgba(128,128,128,.3)); border-radius: 10px; padding: 10px 12px; font-size: 12px; }
+.hc-sum { font-weight: 700; font-size: 13px; }
 .hc-sum.hc-ok { color: var(--c-ok, #059669); }
 .hc-sum.hc-tight { color: var(--c-warn, #B45309); }
 .hc-sum.hc-fail { color: var(--c-bad, #DC2626); }
@@ -16,3 +19,13 @@
 .hc-table tr.hc-fail td:last-child { color: var(--c-bad, #DC2626); }
 .hc-table tr.hc-more td { font-size: 10.5px; opacity: .8; padding-top: 0; padding-bottom: 6px; border-bottom: 1px solid var(--border, rgba(128,128,128,.2)); }
 .hc-note { margin-top: 6px; font-size: 11px; opacity: .8; }
+.hc-fixed { margin-top: 6px; font-size: 11.5px; font-weight: 600; color: var(--c-ok, #059669); }
+.hc-sec { margin-top: 8px; border-top: 1px solid var(--border, rgba(128,128,128,.2)); padding-top: 6px; }
+.hc-sec > summary { cursor: pointer; font-weight: 600; font-size: 12px; list-style: none; }
+.hc-sec > summary::-webkit-details-marker { display: none; }
+.hc-sec > summary::before { content: '▸ '; }
+.hc-sec[open] > summary::before { content: '▾ '; }
+.hc-list { margin: 4px 0 0; padding-left: 16px; font-size: 11px; line-height: 1.45; }
+.hc-btn { color: var(--primary, #2563eb); border-bottom: 1px dashed currentColor; text-decoration: none; cursor: pointer; }
+/* На печати карточка не нужна: схема печатается своим листом */
+@media print { .hc-side { display: none !important; } }
