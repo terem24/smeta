@@ -66427,8 +66427,9 @@ const app = {
      * насос идёт и расход узла подмеса пола (он берёт воду с той же подачи), его добавляем к
      * расходу на кривой — напор падает с расходом, и проверка идёт в невыгодную сторону.
      *
-     * null — решать нечем: котлов не один (каскад), нет паспортной кривой, она не подтверждена
-     * ('unknown'), у котла нет встроенного насоса. Тогда остаются прежние пороги.
+     * null — решать нечем: каскад однотипных котлов (radMainBoiler; газ с электрорезервом считается
+     * по газовому), у котла нет встроенного насоса или у электрокотла нет подтверждённой кривой
+     * (у газового — типовая, см. radBoilerPump). Тогда остаются прежние пороги.
      * Условие «запас не меньше RAD_PUMP_RESERVE» — то же, что требуется от насоса разводки.
      */
     // Насос котла для проверки кольца радиаторов. Своя паспортная остаточная кривая — как есть. У газового
@@ -66445,12 +66446,24 @@ const app = {
         }
         return null;
     },
+    // Котёл, чей насос гонит кольцо радиаторов: единственный, а при газе с электрическим резервом —
+    // газовый (он основной; электрокотёл включается в аварии и несёт ту же нагрузку своим насосом).
+    // Каскад из нескольких котлов одного типа — null: общего насоса у него нет.
+    radMainBoiler: function (boilers) {
+        const list = (boilers || []).filter(Boolean);
+        if (list.length === 1) return list[0];
+        if (list.length === 2) {
+            const gas = list.filter(b => b.type === 'gas');
+            if (gas.length === 1) return gas[0];
+        }
+        return null;
+    },
     radDirectByBoilerPump: function (loadKw, devicesCount, boilers, extraKw) {
         const kw = parseFloat(loadKw) || 0;
         if (!(kw > 0)) return null;
-        const list = (boilers || []).filter(Boolean);
-        if (list.length !== 1) return null;
-        const bp = this.radBoilerPump(list[0]);
+        const main = this.radMainBoiler(boilers);
+        if (!main) return null;
+        const bp = this.radBoilerPump(main);
         if (!bp) return null;
         const pump = bp.curve;
         const s = this.state;
@@ -80919,7 +80932,7 @@ const app = {
         // 'rule' — паспортной кривой нет, решали пороги (площадь, этаж, мощность).
         this._radGroupWhy = null;
         // Единственный котёл — кривую его насоса берёт и гидравлика кольца (radHydraulics), когда группы нет
-        this._radDirectBoiler = (selBoilers.length === 1) ? selBoilers[0] : null;
+        this._radDirectBoiler = this.radMainBoiler(selBoilers);
         if (hasRad && !_forceDirect) {
             // Схема «С гидрострелкой» ставит группу и там, где хватило бы насоса котла.
             // Если требуется коллектор (из-за другой насосной группы, т.е. tQ > 0), группа ставится на радиаторы тоже.
