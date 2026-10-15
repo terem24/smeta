@@ -9,7 +9,7 @@
 // В каждой ставке столько чисел, сколько периодов в году (EL_TARIFFS_META.periods):
 // тарифы пересматривают внутри года, обычно с 1 января и с 1 октября.
 // Взят первый диапазон потребления — отопление дома до 300 м² в него укладывается.
-const EL_TARIFFS_META = {"year": 2026, "updated": "2026-08-10", "source": "https://www.elec.ru/library/rd/tarify-elektroenergiya-2026/", "periods": [["01.01.2026", "30.09.2026"], ["01.10.2026", "31.12.2026"]]};
+const EL_TARIFFS_META = {"year": 2026, "updated": "2026-10-12", "source": "https://www.elec.ru/library/rd/tarify-elektroenergiya-2026/", "periods": [["01.01.2026", "30.09.2026"], ["01.10.2026", "31.12.2026"]]};
 const EL_TARIFFS = {
     "Адыгея": { urban: { single: [7.47, 8.31], day: [8.39, 9.33], night: [4.49, 5] }, electric: { single: [5.24, 5.83], day: [5.88, 6.54], night: [3.16, 3.52] }, rural: { single: [5.24, 5.83], day: [5.88, 6.54], night: [3.16, 3.52] } },
     "Алтай": { urban: { single: [7.96, 8.85], day: [9.16, 10.18], night: [6.35, 7.06] }, electric: { single: [5.81, 6.46], day: [6.68, 7.43], night: [4.64, 5.16] }, rural: { single: [5.81, 6.46], day: [6.68, 7.43], night: [4.64, 5.16] } },
