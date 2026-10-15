@@ -49111,7 +49111,7 @@ const app = {
         });
 
         // Шапка в духе листа «Гарантия STOUT»: заголовок, схема, статус-плашка
-        let html = '<div class="hc-card"><div class="hc-head"><div class="hc-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3.5 4.2 6 7.2 6 10.2A6 6 0 0 1 6 13.2C6 10.2 8.5 7.2 12 3z"/><path d="M9.2 13.4l2 2 3.6-3.8"/></svg></div>'
+        let html = '<div class="hc-card"><div class="hc-head">'
             + '<div class="hc-head-t"><div class="hc-title">Проверка гидравлики</div>'
             + (res.scheme ? '<div class="hc-sub">Схема: ' + esc(res.scheme.text) + '</div>' : '') + '</div>'
             + '<span class="hc-pill hc-' + state + '">' + pill + '</span></div><div class="hc-body">';
@@ -49122,14 +49122,12 @@ const app = {
             const cap = 3, pct = k => Math.max(2, Math.min(100, k / cap * 100));
             const wName = NAMES[res.worst.id] || res.worst.title;
             html += '<div class="hc-meter"><div class="hc-big hc-' + state + '">' + kFmt(res.worst.k) + '</div><div class="hc-meter-r">'
-                + '<div class="hc-need">запас напора; достаточно от +' + needPct + ' %</div>'
-                + '<div class="hc-bar"><i class="hc-' + state + '" style="width:' + pct(res.worst.k).toFixed(1) + '%"></i><b class="hc-mark" style="left:' + pct(res.reserve).toFixed(1) + '%"></b></div>'
-                + '<div class="hc-scale"><span style="left:0">нет напора</span><span style="left:' + pct(1).toFixed(1) + '%">0 % — ровно нужно</span><span style="right:0">+200 %</span></div></div>'
-                + '<div class="hc-cap">Насос даёт напора на столько процентов больше, чем нужно кольцу контура. Самый слабый контур — ' + esc(wName) + '.</div></div>';
+                + '<div class="hc-bar"><i class="hc-' + state + '" style="width:' + pct(res.worst.k).toFixed(1) + '%"></i><b class="hc-mark" style="left:' + pct(res.reserve).toFixed(1) + '%"></b></div></div>'
+                + '<div class="hc-cap">Запас напора у самого слабого контура — ' + esc(wName) + '. Достаточно от +' + needPct + ' % (метка на шкале).</div></div>';
         }
         (this._hcApplied || []).forEach(t => { html += '<div class="hc-msg hc-ok">✔ Исправлено автоматически: ' + esc(t) + '</div>'; });
         if (this._hcTried) html += '<div class="hc-msg hc-tight">' + esc(this._hcTried) + '</div>';
-        if (!s.detailedRooms) html += '<div class="hc-note">Быстрый расчёт: приборы и петли оценены по площади.' + (forPrint ? '' : ' Подробности — в режиме «По комнатам».') + '</div>';
+        if (!s.detailedRooms) html += '<div class="hc-note">Быстрый расчёт — оценка по площади' + (forPrint ? '' : '; точнее в режиме «По комнатам»') + '.</div>';
 
         // Переключатель автоподбора: включён — калькулятор сам добавит группу или ветку радиаторов, если их кольцо не
         // тянет насос (hydroNextFix); выключен — схему выбираете вы кнопками «Схема котельной». На печати не нужен.
@@ -49168,7 +49166,7 @@ const app = {
         });
         html += '</div>';
 
-        html += '<div class="hc-note">Напор — в метрах водяного столба (м вод. ст.). «Нужно» — потери самого трудного кольца контура, «Насос даёт» — напор насоса на этом расходе. Запас напора = на сколько процентов насос даёт больше нужного; достаточным считается от +' + needPct + ' %. У тёплого пола эти ' + needPct + ' % уже заложены в «Нужно».</div>';
+        html += '<div class="hc-note">Напор в м вод. ст. Запас = на сколько % насос даёт больше нужного кольцу; достаточно от +' + needPct + ' % (у тёплого пола они уже в «Нужно»).</div>';
         if (s.detailedRooms) html += this.hydroExtras(res, !!forPrint);
         return html + '</div></div>';
     },
