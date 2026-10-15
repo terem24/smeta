@@ -48326,7 +48326,8 @@ const app = {
         const cardHydro = document.getElementById('card_opt_hydro');
         if (cardHydro) {
             let okH = false;
-            try { okH = actionType === 'print' && !!this.hydroCardHtml(true); } catch (e) { okH = false; }
+            // Лист есть, пока включена схема: карточка живёт вместе с ней
+            try { okH = actionType === 'print' && this.schemeOn() && !!this.hydroCardHtml(true); } catch (e) { console.warn('[печать] карточка гидравлики:', e); okH = false; }
             cardHydro.style.display = okH ? 'flex' : 'none';
         }
         const cardHouse = document.getElementById('card_opt_house');
@@ -48589,7 +48590,10 @@ const app = {
         this.kpWarrantyOn = !!(cardWarrOpt && cardWarrOpt.style.display !== 'none' && chkWarrOpt && chkWarrOpt.checked);
         // Проверка гидравлики: лист в печати/PDF. Карточка есть только у печати; нет карточки — не печатаем
         const cardHydroOpt = document.getElementById('card_opt_hydro'), chkHydroOpt = document.getElementById('share_opt_hydro');
-        this.kpHydroOn = !!(cardHydroOpt && cardHydroOpt.style.display !== 'none' && chkHydroOpt && chkHydroOpt.checked);
+        // Не печатаем только когда монтажник сам снял галочку у видимой карточки. Раньше флаг был false при любой
+        // другой причине (карточки нет в окне Excel/«Поделиться», сбой при открытии окна) и оставался false до
+        // перезагрузки: печать по Ctrl+P потом не включала лист никогда.
+        this.kpHydroOn = !(cardHydroOpt && cardHydroOpt.style.display !== 'none' && chkHydroOpt && !chkHydroOpt.checked);
 
         this.closeShareOptionsModal();
 
@@ -49056,12 +49060,14 @@ const app = {
         if (this.state.viewMode !== 'equipment') return;
         const wrap = document.querySelector('.table-responsive');
         if (!wrap) return;
+        // Карточка живёт вместе со схемой: включили «Схему» — она справа, выключили — исчезает вместе с ней.
+        // Сама проверка и автоподбор считаются всегда, от переключателя схемы не зависят.
+        const scheme = document.getElementById('dynamic_scheme');
+        if (!scheme) return;
         const box = document.createElement('div');
         box.id = 'hydro_check_side';
         box.className = 'hc-side';
-        const scheme = document.getElementById('dynamic_scheme');
-        if (scheme) scheme.appendChild(box);
-        else { box.classList.add('hc-solo'); wrap.insertAdjacentElement('beforebegin', box); }
+        scheme.appendChild(box);
     },
 
     /**
@@ -90355,7 +90361,7 @@ function prepareForPrint() {
         // --- ШАГ 3б: ПРОВЕРКА ГИДРАВЛИКИ — отдельным листом после схемы, независимо от того, включена ли
         // схема: проверка считается всегда. Карточка та же, что на экране, но разделы раскрыты и без кнопок.
         // Выбор в окне печати — app.kpHydroOn (карточка «Гидравлика»); при печати без окна — печатаем. ---
-        if (app.kpHydroOn !== false && (showEq || showSchemeOpt)) {
+        if (app.kpHydroOn !== false && app.schemeOn() && (showEq || showSchemeOpt)) {
             try {
                 app.state.viewMode = 'equipment';
                 app.render();
@@ -90367,7 +90373,7 @@ function prepareForPrint() {
                     if (printBin.children.length > 0) hydroPage.classList.add('print-page-break');
                     printBin.appendChild(hydroPage);
                 }
-            } catch (e) { console.warn('[печать] проверка гидравлики пропущена', e); }
+            } catch (e) { console.error('[печать] лист проверки гидравлики не собрался:', e); }
         }
 
         // --- ШАГ 4: ТАБЛИЦА ТЕПЛОПОТЕРЬ (Подробный режим + готовый расчёт по комнатам,
@@ -90451,7 +90457,8 @@ window.addEventListener('beforeprint', prepareForPrint);
 // функцию — вызывается напрямую из executeDownload() после html2pdf() на мобильных/планшетах,
 // где событие 'afterprint' не наступает (не было настоящего window.print()).
 function cleanupAfterPrint() {
-    if (app) { app._printBinReady = false; app._exportShort = false; }
+    // Выбор в окне печати («Гидравлика») действует на одну печать; следующая (Ctrl+P) — по умолчанию с листом
+    if (app) { app._printBinReady = false; app._exportShort = false; app.kpHydroOn = undefined; }
     if (app && app.state && app.state.darkMode) {
         document.body.classList.add('dark-mode');
     }
