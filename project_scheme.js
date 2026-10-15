@@ -225,6 +225,18 @@
     return circle(x, y, 2) + txt(x, y + 1.28, letter, { size: SZ.txt, anchor: 'middle' });
   }
 
+  /** Клапан подпиточный (автоматический регулятор давления «после себя»):
+   *  проходной клапан-«бабочка» с мембранным приводом сверху. (x,y) — центр,
+   *  вдоль трубы 5 мм, как у шарового крана. */
+  function feedValve(x, y) {
+    var o = [];
+    o.push(pline([[x - 2.5, y - 1.5], [x - 2.5, y + 1.5], [x, y], [x + 2.5, y + 1.5], [x + 2.5, y - 1.5], [x, y]], { close: true }));
+    o.push(pline([[x, y], [x, y - 2.2]]));
+    o.push(path('M' + n(x - 1.4) + ',' + n(y - 2.2) + ' A1.4,1.4 0 0 1 ' + n(x + 1.4) + ',' + n(y - 2.2) + ' Z',
+      { c: '#000', w: LW.sym }));
+    return o.join('');
+  }
+
   /** Фильтр: ромб (полудиагональ 3.53), пунктирная ось горизонтальна. */
   function filterSym(x, y) {
     var r = 3.53, o = [];
@@ -590,6 +602,7 @@
   });
   safetyValve = sym(safetyValve, 'safety', 'Предохранительный клапан');
   airVent = sym(airVent, 'airvent', 'Автоматический воздухоотводчик');
+  feedValve = sym(feedValve, 'feedvalve', 'Клапан подпиточный автоматический');
   gauge = sym(gauge, 'gauge', function (x, y, letter) {
     return letter === 'М' ? 'Манометр' : 'Термометр / датчик температуры';
   });
@@ -604,6 +617,39 @@
     return kind === 'gas' ? 'Газовый котёл' : 'Электрический котёл';
   });
 
+  // ─── Узел подпитки системы отопления (раздел 6.6 сметы) ───────────────
+  // Врезка в линию ХВС: кран → [фильтр → подпиточный клапан → обратный клапан] →
+  // в обратку отопления. Ручная подпитка — кран и заглушка на конце линии.
+  // Рисуется отдельным фрагментом в правом верхнем поле листа (там свободно при
+  // любой котельной) — линия подпитки сама на схему котельной не врезается.
+  function feedNode(cfg) {
+    var f = cfg.feed, o = [], y = 56, x0 = 332, col = COL.cold;
+    o.push(txt(x0, 44, 'Узел подпитки системы отопления', { size: SZ.txt }));
+    o.push(txt(x0, y - 4.6, 'от В1', { size: SZ.dia }));
+    var x = x0;
+    function seg(x1) { o.push(ln(x, y, x1, y, { c: col, w: LW.pipe })); x = x1; }
+    function size(cx, s) { o.push(txtM(cx, y - 5.2, s, { size: SZ.dia, anchor: 'middle' })); }
+    seg(x0 + 7);
+    // кран и врезка — 3/4" (смета, 6.6); клапан, фильтр и обратный клапан — 1/2"
+    o.push(ballValve(x + 2.5, y, false)); size(x + 2.5, '3/4"'); x += 5;
+    if (f.auto) {
+      seg(x + 4);
+      o.push(filterSym(x + 3.53, y)); x += 7.06;
+      seg(x + 4);
+      o.push(feedValve(x + 2.5, y)); size(x + 2.5, '1/2"'); x += 5;
+      seg(x + 4);
+      o.push(checkValve(x + 2.5, y, 'right')); size(x + 2.5, '1/2"'); x += 5;
+      seg(x + 6);
+      o.push(txt(x0, y + 8, 'Подпиточный клапан автоматический, с фильтром и обратным клапаном', { size: SZ.dia }));
+    } else {
+      seg(x + 6);
+      o.push(ln(x, y - 1.8, x, y + 1.8, { w: LW.pipe }));
+      o.push(txt(x0, y + 8, 'Ручная подпитка: линия оканчивается заглушкой', { size: SZ.dia }));
+    }
+    o.push(txt(x0, y + 12, 'Врезка — в обратный трубопровод отопления', { size: SZ.dia }));
+    return o.join('');
+  }
+
   // ─── Таблица «Условные графические обозначения» ────────────────────────
   // Легенда фильтруется по составу конкретной схемы: символ, которого на
   // листе нет, в таблицу не попадает (раньше монтажник искал на схеме
@@ -617,7 +663,7 @@
     var nBoilers = (cfg.gas ? Math.max(1, cfg.gas.count || 1) : 0) +
       (cfg.el ? Math.max(1, cfg.el.count || 1) : 0);
     var usePump = !!(cfg.tp || cfg.snow || cfg.hydro || cfg.recirc || cfg.loadPump || (cfg.el && cfg.el.polis));
-    var useCheck = !!(nBoilers > 1 || cfg.indirect || cfg.elWh || (cfg.tp && (cfg.tpGroups > 0 || cfg.tpCheck !== false)) || cfg.snow || cfg.hydro || cfg.recirc);
+    var useCheck = !!(nBoilers > 1 || cfg.indirect || cfg.elWh || (cfg.tp && (cfg.tpGroups > 0 || cfg.tpCheck !== false)) || cfg.snow || cfg.hydro || cfg.recirc || !!(cfg.feed && cfg.feed.auto));
 
     // При автоматике узел ТП ведёт контроллер: смеситель с сервоприводом
     // вместо термостатического, плюс на схеме появляются датчики NTC
@@ -629,6 +675,7 @@
       ['Циркуляционный насос', function (c) { return pump(cx, c, 'left'); }, usePump],
       ['Термостатический смесительный клапан', function (c) { return valve3(cx + 1.21, c, 'therm', 'udr', 'l'); }, !!cfg.dhwMix || ((!!cfg.tp || !!cfg.snow) && !mixServo)],
       ['Клапан трехходовой с сервоприводом', function (c) { return valve3(cx + 1.21, c, 'servo', 'udr', 'l'); }, (!!cfg.tp || !!cfg.snow) && mixServo],
+      ['Клапан подпиточный автоматический', function (c) { return feedValve(cx, c); }, !!(cfg.feed && cfg.feed.auto)],
       ['Предохранительный клапан', function (c) { return safetyValve(cx, c, false); }, ((!!cfg.indirect || !!cfg.elWh) && cfg.water !== false) || !!cfg.snow],
       ['Автоматический воздухоотводчик', function (c) { return airVent(cx, c + 3.77); }, !!cfg.hydro || !!cfg.airSep],
       ['Фильтр', function (c) { return filterSym(cx, c); }, true],
@@ -1209,7 +1256,10 @@
     // а без него систему нечем заполнить — монтажник должен видеть текстом,
     // откуда брать воду (замечание из ревью: «по этой схеме систему
     // физически нечем заполнить»).
-    if (!twoCirc && !cfg.indirect && !hasEl) {
+    if (cfg.feed) {
+      // Узел подпитки подобран сметой (раздел 6.6) — рисуем его, а не пишем примечание
+      o.push(feedNode(cfg));
+    } else if (!twoCirc && !cfg.indirect && !hasEl) {
       o.push(txt(302, 246, 'Примечание: заполнение и подпитка системы отопления —', { size: SZ.txt }));
       o.push(txt(302, 251, 'от ввода ХВС через шаровый кран 1/2" с обратным клапаном.', { size: SZ.txt }));
       o.push(txt(302, 256, 'Узел подпитки на схеме условно не показан.', { size: SZ.txt }));
