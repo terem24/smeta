@@ -55994,21 +55994,51 @@ const app = {
     // areaPerNode необязателен: без него ведём себя как раньше и считаем, что
     // коллектор один. Так вызовы, которым число коллекторов неоткуда взять,
     // остаются рабочими.
-    isUfhMixTypeCompatible: function (type, area, brand, areaPerNode) {
-        if (type === 'std') {
-            // Перепад не задан монтажником — узел проверяем на штатных 5 и 7 К, как и подбор
-            // напора (ufhDtSets): на 5 К локальный узел кончается около 87 м² пола, на 7 К — около 120.
-            // Иначе пол в 100 м² без нужды уходил на группу с коллектором и гидрострелкой.
-            const _dtSet = this.ufhDtSets()[0];
-            const _dtMax = Math.max.apply(null, _dtSet);
-            let flowTotal = (area * 0.08) / (1.163 * _dtMax);
-            let limitArea = (brand === 'rommer') ? 100 : 120;
-            // STOUT: меньшее из скорости в 3/4" ≤ 1 м/с и потерь узла по паспортному графику SDG-0120-001
-            // не больше половины напора его насоса 25/60 (как у групп, см. groupFlowLimit). ROMMER: 1,0 м³/ч — заявленные 6 кВт узла
-            // RDG-0120-008100 при перепаде 5 К, паспорт кривой потерь не даёт.
-            let limitFlow = (brand === 'rommer') ? 1.0 : this.stdNodeFlowLimit();
-            return area <= limitArea && flowTotal <= limitFlow;
+    // Сколько локальных узлов подмеса (SDG-0120) нужно на площадь пола, 0 — не проходит и столько.
+    //
+    // Перепад не задан монтажником — узел проверяем на штатных 5 и 7 К, как и подбор напора
+    // (ufhDtSets): на 5 К один узел кончается около 87 м² пола, на 7 К — около 120. Больше — делим
+    // пол на два узла, у каждого свой коллектор (STD_NODES_MAX): два небольших узла с насосами
+    // дешевле группы DN25 с коллектором-гидрострелкой и группой радиаторов.
+    stdNodesFor: function (area, brand) {
+        if (!(area > 0)) return 0;
+        const _dtMax = Math.max.apply(null, this.ufhDtSets()[0]);
+        const limitArea = (brand === 'rommer') ? 100 : 120;
+        // STOUT: меньшее из скорости в 3/4" ≤ 1 м/с и потерь узла по паспортному графику SDG-0120-001
+        // не больше половины напора его насоса 25/60 (как у групп, см. groupFlowLimit). ROMMER: 1,0 м³/ч — заявленные 6 кВт узла
+        // RDG-0120-008100 при перепаде 5 К, паспорт кривой потерь не даёт.
+        const limitFlow = (brand === 'rommer') ? 1.0 : this.stdNodeFlowLimit();
+        for (let n = 1; n <= this.STD_NODES_MAX; n++) {
+            const a = area / n;
+            if (a <= limitArea && (a * 0.08) / (1.163 * _dtMax) <= limitFlow) return n;
         }
+        return 0;
+    },
+    STD_NODES_MAX: 2,
+    // Раскладка узлов подмеса по этажам: {1: n1, 2: n2, total}, либо null, если пол узлами не берётся.
+    // Один узел на оба этажа (как всегда было) — total 1; иначе каждый этаж считается своим узлом.
+    stdNodePlan: function (area, brand) {
+        const s = this.state;
+        const a1 = parseFloat(s.tp1) || 0, a2 = (s.floors === 2) ? (parseFloat(s.tp2) || 0) : 0;
+        const tot = a1 + a2;
+        if (!(tot > 0) || Math.abs(tot - area) > 0.5) {
+            const n = this.stdNodesFor(area, brand);
+            return n ? { 1: n, 2: 0, total: n } : null;
+        }
+        if (this.stdNodesFor(tot, brand) === 1) return { 1: a1 > 0 ? 1 : 0, 2: a2 > 0 ? 1 : 0, total: 1 };
+        const n1 = a1 > 0 ? this.stdNodesFor(a1, brand) : 0, n2 = a2 > 0 ? this.stdNodesFor(a2, brand) : 0;
+        if ((a1 > 0 && !n1) || (a2 > 0 && !n2) || n1 + n2 > this.STD_NODES_MAX) return null;
+        return { 1: n1, 2: n2, total: n1 + n2 };
+    },
+    // Число узлов по этажам, когда их больше одного (тогда коллекторов тоже не меньше): иначе null.
+    stdNodeSplit: function () {
+        if ((this.state.ufhMixType || 'std') !== 'std') return null;
+        const area = (parseFloat(this.state.tp1) || 0) + ((this.state.floors === 2) ? (parseFloat(this.state.tp2) || 0) : 0);
+        const p = this.stdNodePlan(area, this.state.brandMode);
+        return (p && p.total > 1) ? p : null;
+    },
+    isUfhMixTypeCompatible: function (type, area, brand, areaPerNode) {
+        if (type === 'std') return !!this.stdNodePlan(area, brand);
         let a = (areaPerNode > 0) ? areaPerNode : area;
         // Перепад — выбранный в настройках тёплого пола (5/7/10 К), по умолчанию 5.
         let flow = (a * 0.08) / (1.163 * (parseInt(this.state.ufhDT, 10) || 5));
@@ -62010,7 +62040,13 @@ const app = {
             else this.state.hydroArrowType = 'standard';
         }
         else if (originalId === 'SDG-0120-001000' || originalId === 'SDG-0002-002001' || originalId === 'SDG-0002-002501' || originalId === 'SDG-0003-002001' || originalId === 'SDG-0003-002501' || originalId === 'SDG-0007-003201') {
-            if (chosenId === 'SDG-0120-001000' || chosenId === 'RDG-0120-008100') this.state.ufhMixType = 'std';
+            if (chosenId === 'SDG-0120-001000' || chosenId === 'RDG-0120-008100') {
+                this.state.ufhMixType = 'std';
+                // Возврат с группы на узлы подмеса: прежние замены узла на группу снимаем, иначе смета
+                // продолжала бы показывать на месте узла выбранную ранее группу (без коллектора и стрелки).
+                ['SDG-0120-001000', 'SDG-0002-002001', 'SDG-0002-002501', 'SDG-0003-002001', 'SDG-0003-002501', 'SDG-0007-003201']
+                    .forEach(id => { delete this.state.swaps[id]; });
+            }
             else if (chosenId === 'SDG-0002-002001') { this.state.ufhMixType = 'dn20'; this.state.manualDnOverride = 'dn20'; }
             else if (chosenId === 'SDG-0002-002501' || chosenId === 'RDG-1002-002501') { this.state.ufhMixType = 'dn25'; this.state.manualDnOverride = 'dn25'; }
             else if (chosenId === 'SDG-0003-002001') { this.state.ufhMixType = 'dn20_servo'; this.state.manualDnOverride = 'dn20'; }
@@ -67321,8 +67357,11 @@ const app = {
         // на одну гребёнку не сажают — дальше второй коллектор. Ровно так же
         // делит петли смета (proc в render), иначе таблица расходомеров разъехалась
         // бы с составом.
+        // Узлов подмеса на этаже несколько (std, пол больше предела одного узла) — коллекторов не
+        // меньше, чем узлов: у каждого узла свой коллектор.
+        const _stdSplit = this.stdNodeSplit();
         floors.forEach(f => {
-            const n = Math.max(1, Math.ceil(f.loops / 12));
+            const n = Math.max(1, Math.ceil(f.loops / 12), Math.min(f.loops, (_stdSplit && _stdSplit[f.fl]) || 1));
             let idx = 0;
             for (let i = 0; i < n; i++) {
                 const sz = Math.floor(f.loops / n) + (i < (f.loops % n) ? 1 : 0);
@@ -67407,7 +67446,22 @@ const app = {
             // гребёнок две (два этажа), через его клапан и насос идёт их общий расход.
             // Раньше каждая гребёнка проверялась со своим расходом, будто узлов два:
             // 5,3 кПа на клапане вместо 21 и «проходит» там, где насос не тянет.
-            if (type === 'std' && mans.length > 1) {
+            // Исключение — пол, разбитый на несколько узлов (stdNodeSplit): там у каждого коллектора
+            // этажа свой узел, и расход считается по узлу, а не по всем гребёнкам сразу.
+            const _stdSp = (type === 'std') ? this.stdNodeSplit() : null;
+            if (_stdSp) {
+                [1, 2].forEach(fl => {
+                    const grp = mans.filter(m => m.floor === fl);
+                    const nn = Math.min(grp.length, _stdSp[fl] || 0);
+                    if (nn < 1) return;
+                    const sums = new Array(nn).fill(0);
+                    grp.forEach((m, i) => { sums[i % nn] += m.flow; });
+                    grp.forEach((m, i) => {
+                        m.nodeFlow = sums[i % nn];
+                        m.dpValve = this.groupDpKpa(type, brand, m.nodeFlow);
+                    });
+                });
+            } else if (type === 'std' && mans.length > 1) {
                 const nodeFlow = mans.reduce((a, m) => a + m.flow, 0);
                 mans.forEach(m => { m.nodeFlow = nodeFlow; m.dpValve = this.groupDpKpa(type, brand, nodeFlow); });
             }
@@ -80613,6 +80667,7 @@ const app = {
         // каждой трубы и каждого шага, и раньше вместо неё стояло глухое «80 м».
         const _ufhGeom = (hasTp && tpArea > 0) ? this.ufhGeom() : null;
         const _ufhCalc = (hasTp && tpArea > 0) ? this.ufhCalc() : null;
+        const _ufhCalcMixType = this.state.ufhMixType || 'std';
         this._ufhCalc = _ufhCalc;
         this._ufhInsPlan = null;   // заполняется в разделе «4.2. Утеплитель и крепёж»
         const tpFloorCalc = (area, step, gi) => {
@@ -80693,10 +80748,13 @@ const app = {
             if (areaChanged || !isCompatible) {
                 // Ручной override DN — не даём автопроверке по площади откатить его обратно на другой DN
                 let candidates = [];
+                // 'std' в ручном ряду не ставим: монтажник выбрал группу, а узлов подмеса теперь может
+                // быть несколько (stdNodePlan), и по расходу они прошли бы там, где группа не проходит —
+                // выбор молча вернулся бы на узлы. Не прошла по расходу — ниже fallback на под сервопривод.
                 if (this.state.manualDnOverride === 'dn20' && brand !== 'rommer') {
-                    candidates = ['dn20_servo', 'dn20', 'std'];
+                    candidates = ['dn20_servo', 'dn20'];
                 } else if (this.state.manualDnOverride === 'dn25') {
-                    candidates = ['dn25_servo', 'dn25', 'std'];
+                    candidates = ['dn25_servo', 'dn25'];
                 } else if (radNeedsDn25) {
                     // Если радиаторы или бренд требуют DN25, исключаем DN20 из кандидатов для унификации размеров
                     candidates = ['std', 'dn25', 'dn25_servo'];
@@ -80798,14 +80856,15 @@ const app = {
             let _useAnalogSec2 = this.state.sectionAnalog && this.state.sectionAnalog['2.4. Гидравлика котельной'];
             let _radNeedsDn25 = (_brand === 'rommer') || (this.state.manualDnOverride ? (this.state.manualDnOverride !== 'dn20') : ((pwr > 10) || _useAnalogSec2));
             let _candidates = _radNeedsDn25 ? ['dn25', 'dn25_servo'] : ['dn20', 'dn20_servo', 'dn25', 'dn25_servo'];
-            for (let _type of _candidates) {
-                if (this.isUfhMixTypeCompatible(_type, tpArea, _brand, tpAreaPerMan)) {
-                    this.state.ufhMixType = _type;
-                    tQ = (estNodes > 0 ? estNodes : 1);
-                    needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup || _snowOnCollector;
-                    break;
-                }
-            }
+            let _chosenType = _candidates.find(_t => this.isUfhMixTypeCompatible(_t, tpArea, _brand, tpAreaPerMan));
+            // Ни одна группа не прошла по расходу — берём под сервопривод (как выше, в подборе по
+            // площади): оставить 'std' нельзя, при коллекторе узел подмеса в смету не ставится, и пол
+            // остался бы вообще без смесителя. Это случай пола, который проходит несколькими узлами
+            // (stdNodePlan), а одной группой — нет; напор доберёт балансировка ниже.
+            if (!_chosenType) _chosenType = (_brand === 'rommer' || this.state.manualDnOverride === 'dn20') ? _candidates[_candidates.length - 1] : 'dn25_servo';
+            this.state.ufhMixType = _chosenType;
+            tQ = (estNodes > 0 ? estNodes : 1);
+            needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup || _snowOnCollector;
         }
         // Коллектор без единой группы — пустая железка: такое бывает, только если
         // «С гидрострелкой» попросили, а группу тёплого пола подобрать не из чего.
@@ -80824,12 +80883,18 @@ const app = {
         // больше, чем более сильный насос, и заодно открывает 25/80 узлам, у
         // которых своего запасного насоса нет (компактный узел подмеса и DN20).
         this._ufhBal = null;
+        // Расчёт петель делился на коллекторы по прежнему типу узла (несколько узлов подмеса — несколько
+        // коллекторов). Тип сменился на группу выше — пересчитываем, иначе таблица расходомеров
+        // покажет два коллектора, а в смете будет один.
+        if (hasTp && tpArea > 0 && (this.state.ufhMixType || 'std') !== _ufhCalcMixType) this._ufhCalc = this.ufhCalc();
         if (hasTp && tpArea > 0 && this._ufhCalc) {
             const _brand = this.state.brandMode;
             const _curType = this.state.ufhMixType || 'std';
             // Исполнение (обычный / под сервопривод) сохраняем: оно про управление,
             // а не про гидравлику — Kvs у пары одинаковый.
-            const _servo = /_servo$/.test(_curType);
+            // Несколько узлов подмеса, не прошедших по напору, поднимаем сразу до группы под сервопривод —
+            // тем же рядом, на который такой пол выходил, когда узел был один и не проходил по расходу.
+            const _servo = /_servo$/.test(_curType) || (_curType === 'std' && !!this.stdNodeSplit());
             const _order = ['std', _servo ? 'dn20_servo' : 'dn20', _servo ? 'dn25_servo' : 'dn25']
                 .concat(_brand === 'rommer' ? [] : ['dn32_servo']);   // DN32 у ROMMER нет
             const _at = _order.indexOf(_curType);
@@ -81691,9 +81756,15 @@ const app = {
             let desc = this.getDesc('ufh_mix', tpArea);
             let pumpItem = withRommerAlt(catalog.pumps_mix[0]);
 
-            addToBill({ ...mixItem, sortRank: -2 }, 1, desc, grpHydro);
+            // Пол больше предела одного узла — узлов несколько, у каждого свой коллектор и насос.
+            const _stdSp = this.stdNodeSplit();
+            const _nStd = _stdSp ? _stdSp.total : 1;
+            const _manyNote = _nStd > 1
+                ? `<div class="tip-p"><b>Почему ${_nStd} узла.</b> Весь пол на одном узле не проходит по расходу: на таком расходе скорость в патрубке 3/4" выше 1 м/с, а клапан узла съедает больше половины напора его насоса. Пол разбит на ${_nStd} контура — у каждого свой узел подмеса, насос и коллектор. Такая схема дешевле группы DN25 с коллектором-гидрострелкой: гидроразделение не нужно, узлы берут воду прямо с подачи котла, а радиаторы питает насос котла. Заменить на группу можно в окне замены этой позиции.</div>`
+                : '';
+            addToBill({ ...mixItem, sortRank: -2 }, _nStd, desc + _manyNote, grpHydro);
             if (pumpItem) {
-                addToBill({ ...pumpItem, sortRank: -1 }, 1, this.getDesc('pump_std'), grpHydro);
+                addToBill({ ...pumpItem, sortRank: -1 }, _nStd, this.getDesc('pump_std'), grpHydro);
             }
         }
 
@@ -85592,7 +85663,9 @@ const app = {
                 let l = fc.loops;
                 if (l <= 0) return;
                 loops += l;
-                let n = Math.ceil(l / 12);
+                // Несколько узлов подмеса на этаже — у каждого свой коллектор (то же правило в ufhCalc)
+                const _stdSp = this.stdNodeSplit();
+                let n = Math.max(Math.ceil(l / 12), Math.min(l, (_stdSp && _stdSp[fl]) || 1));
                 // Размеры гребёнок этажа. Одинаковые сливаются в смете в одну строку
                 // с количеством, поэтому таблицу расходомеров за всю такую группу
                 // отдаём её первой строке — иначе петли второго коллектора негде
@@ -85625,7 +85698,9 @@ const app = {
 
                         _ufhCabIdx++;
                         const _cabKey = 'cabinet_ufh_' + _ufhCabIdx;
-                        const _cabDeep = _ufhLocalMix && _ufhCabIdx === 1;
+                        // Шкаф с узлом подмеса — глубокий; узлов несколько — таких шкафов столько же
+                        const _stdSpC = _ufhLocalMix ? this.stdNodeSplit() : null;
+                        const _cabDeep = _ufhLocalMix && _ufhCabIdx <= (_stdSpC ? _stdSpC.total : 1);
                         const _ufhCab = this.cabinetBillItem(_cabKey, mSel.id, dispLoops, _cabDeep);
                         if (_ufhCab) {
                             this._cabinetCtx[_cabKey] = { loops: dispLoops, manifoldId: mSel.id, deep: _cabDeep };
