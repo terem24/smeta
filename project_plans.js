@@ -351,6 +351,10 @@
   // Подводки — вдоль стен: клетка зоны дальше LEAD_WALL_CELLS от стены дороже
   // на COST_MID (проектировщики Galf ведут пучок у стен и по коридорам).
   var LEAD_WALL_CELLS = 3, COST_MID = 2;
+  // Стена (клетка вне комнат между зонами) для подводки — не проход: контур зоны идёт по оси стены,
+  // и трасса по краю ложилась внутрь стены (15.10.2026). Есть двери — стену переходят только в проёме.
+  // COST_NEAR_WALL — надбавка за клетку у самой стены внутри комнаты (0, 1, 2 клетки: 3×, 2×, 1×).
+  var COST_WALL = 30, COST_WALL_DOOR = 300, COST_NEAR_WALL = 3;
 
   /**
    * Предел длины петли, м. Считает его смета (app.ufhLoopMax) — там известны и
@@ -1779,14 +1783,31 @@
       }
       g.zb = zb;
     }
+    var doorsG = ((f.geom && f.geom.doors) || []).filter(function (d) { return d && isFinite(d.x) && isFinite(d.y) && d.w > 0; });
+    var wallCost = doorsG.length ? COST_WALL_DOOR : COST_WALL;
     for (k = 0; k < N; k++) {
       var kx = k % g.W, ky = Math.floor(k / g.W);
       var outside = kx < zb[0] || ky < zb[1] || kx > zb[2] || ky > zb[3];
       cost[k] = slabOf[k] >= 0 ? (edge[k] ? COST_EDGE : COST_IN) :
-        (g.cold[k] || outside ? COST_IN : (own[k] ? COST_FREE : COST_OUT));
-      // середина комнаты дороже: подводки идут вдоль стен, как в проектах
-      if (own[k] && g.wallD && g.wallD[k] > LEAD_WALL_CELLS) cost[k] += COST_MID;
+        (g.cold[k] || outside ? COST_IN : (own[k] ? COST_FREE : wallCost));
+      // середина комнаты дороже: подводки идут вдоль стен, как в проектах, но не по самой стене
+      if (own[k] && g.wallD) {
+        if (g.wallD[k] > LEAD_WALL_CELLS) cost[k] += COST_MID;
+        else if (g.wallD[k] < 3 && slabOf[k] < 0) cost[k] += (3 - g.wallD[k]) * COST_NEAR_WALL;
+      }
     }
+    // проём двери: полоса в ширину полотна (минус косяки) и по 0,35 м в обе стороны — сквозь стену
+    doorsG.forEach(function (d) {
+      var da = (d.ang || 0) * Math.PI / 180, ux = Math.cos(da), uy = Math.sin(da);
+      var hu = d.w * 0.4, hv = 0.35 * g.ppm, rr = Math.abs(ux) * hu + Math.abs(uy) * hv, rv = Math.abs(uy) * hu + Math.abs(ux) * hv;
+      var c0 = cellAt(g, [d.x - rr, d.y - rv]), c1 = cellAt(g, [d.x + rr, d.y + rv]);
+      for (var y = Math.floor(c0 / g.W); y <= Math.floor(c1 / g.W); y++) {
+        for (var x = c0 % g.W; x <= c1 % g.W; x++) {
+          var q = y * g.W + x, cp = cellXY(g, q), du = (cp[0] - d.x) * ux + (cp[1] - d.y) * uy, dv = -(cp[0] - d.x) * uy + (cp[1] - d.y) * ux;
+          if (Math.abs(du) <= hu && Math.abs(dv) <= hv && slabOf[q] < 0 && !g.cold[q] && cost[q] > 3) cost[q] = 3;
+        }
+      }
+    });
     // нарисованные монтажником подводки — желательная трасса
     usableLeads(f).forEach(function (L) {
       var P = L.pts || [];
