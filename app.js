@@ -48999,13 +48999,13 @@ const app = {
                         : 'Тёплый пол (' + esc(worst.m.label) + '): запаса нет — добавлять петли нельзя без второго коллектора.');
                 }
             }
-            if (L.length) L.push('Оценка: потери растут как квадрат расхода, цифры приблизительные.');
-            html += sec('reach', 'На сколько хватит', ul(L));
+            // «Скорость воды и шум» ниже дописывается в этот же раздел
+            var reachL = L;
         }
 
-        // 3. Скорость воды и шум
+        // 3. Скорость воды и шум (в одном разделе с запасом: оба — про «выдержит ли»)
         {
-            const L = [];
+            const L = reachL;
             const names = { trunk: 'магистраль', trunkFar: 'магистраль, дальний участок', loop: 'луч до прибора' };
             if (h && h.parts) h.parts.forEach(p => {
                 if (!names[p.tag] || !(p.v > 0)) return;
@@ -49017,15 +49017,15 @@ const app = {
                 b.mans.forEach(m => (m.rows || []).forEach(r => { if (r.v > 0) vs.push(r.v); }));
                 if (vs.length) L.push('петли пола ' + (f2(Math.min.apply(null, vs)) === f2(Math.max.apply(null, vs)) ? f2(vs[0]) : f2(Math.min.apply(null, vs)) + '–' + f2(Math.max.apply(null, vs))) + ' м/с (норма от ' + f2(this.UFH_V_MIN) + ' до ' + f2(this.UFH_V_MAX) + ' м/с)');
             }
-            if (L.length) L.push('Предел по шуму — СП 60.13330.2020, табл. И.1.');
-            html += sec('speed', 'Скорость воды и шум', ul(L));
+            if (L.length) L.push('Запас — оценка (потери растут как квадрат расхода). Предел по шуму — СП 60.13330.2020, табл. И.1.');
+            html += sec('reach', 'Запас и скорость воды', ul(L));
         }
 
         // 4. Цена схемы
         {
             const sig = this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state);
             const c = (this._hcCompare && this._hcCompare.sig === sig) ? this._hcCompare : null;
-            let body = '<div class="hc-note">Схема: ' + esc((res.scheme && res.scheme.text) || '') + '.</div>';
+            let body = '';   // название схемы уже в шапке карточки
             if (c) {
                 const row = (t, v) => '<li>' + t + ': <b>' + rub(v) + '</b>' + (c.cur != null && v !== c.cur ? ' (' + (v > c.cur ? '+' : '−') + rub(Math.abs(v - c.cur)) + ' к нынешней)' : ' — нынешняя') + '</li>';
                 body += '<ul class="hc-list">' + row('со стрелкой', c.hydro)
@@ -49111,10 +49111,17 @@ const app = {
         });
 
         // Шапка в духе листа «Гарантия STOUT»: заголовок, схема, статус-плашка
-        let html = '<div class="hc-card"><div class="hc-head">'
+        // Карточку можно свернуть до заголовка (запоминается); на печати всегда развёрнута
+        if (this._hcCollapsed == null) { try { this._hcCollapsed = localStorage.getItem('hc_collapsed') === '1'; } catch (e) { this._hcCollapsed = false; } }
+        const collapsed = !forPrint && !!this._hcCollapsed;
+        let html = '<div class="hc-card' + (collapsed ? ' hc-collapsed' : '') + '"><div class="hc-head"'
+            + (forPrint ? '' : ' role="button" tabindex="0" aria-expanded="' + !collapsed + '" title="' + (collapsed ? 'Развернуть' : 'Свернуть') + '" onclick="app.toggleHydroCard()" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();app.toggleHydroCard();}"') + '>'
             + '<div class="hc-head-t"><div class="hc-title">Проверка гидравлики</div>'
-            + (res.scheme ? '<div class="hc-sub">Схема: ' + esc(res.scheme.text) + '</div>' : '') + '</div>'
-            + '<span class="hc-pill hc-' + state + '">' + pill + '</span></div><div class="hc-body">';
+            + (res.scheme && !collapsed ? '<div class="hc-sub">Схема: ' + esc(res.scheme.text) + '</div>' : '') + '</div>'
+            + '<span class="hc-pill hc-' + state + '">' + (collapsed && res.worst ? pill + ' · ' + kFmt(res.worst.k) : pill) + '</span>'
+            + (forPrint ? '' : '<span class="hc-fold"></span>') + '</div>';
+        if (collapsed) return html + '</div>';
+        html += '<div class="hc-body">';
 
         // Слабое звено: запас самого слабого контура на шкале, отметка — нужный запас
         if (res.worst) {
@@ -49135,7 +49142,7 @@ const app = {
             const autoOn = s.hydroAutoFix !== false;
             html += '<div class="hc-switch' + (autoOn ? ' on' : '') + '" role="switch" aria-checked="' + autoOn + '" tabindex="0" onclick="app.toggleHydroAutoFix(event)" onkeydown="if(event.key===\'Enter\'||event.key===\' \')app.toggleHydroAutoFix(event)">'
                 + '<span class="hc-sw"><i></i></span><span class="hc-sw-t"><b>Автоподбор схемы</b><small>'
-                + (autoOn ? 'Включён: если радиаторам не хватает напора, сам добавит группу или ветку.' : (s.detailedRooms
+                + (autoOn ? 'Сам добавит группу или ветку, если не хватает напора.' : (s.detailedRooms
                     ? 'Выключен: схему выбираете сами — слева, «Котельная и отопление», блок «Схема котельной» («Без стрелки» / «Со стрелкой»).'
                     : 'Выключен: схема остаётся как рассчитана. Выбрать «Без стрелки» или «Со стрелкой» можно в режиме «По комнатам».'))
                 + '</small></span></div>';
@@ -49168,9 +49175,16 @@ const app = {
         });
         html += '</div>';
 
-        html += '<div class="hc-note">Напор в м вод. ст. Запас = на сколько % насос даёт больше нужного кольцу; достаточно от +' + needPct + ' % (у тёплого пола они уже в «Нужно»).</div>';
+        // Пояснение единиц — одна короткая строка (порог «достаточно» уже назван над шкалой)
+        html += '<div class="hc-note">Напор в м вод. ст.; запас — на сколько % насос даёт больше нужного.</div>';
         if (s.detailedRooms) html += this.hydroExtras(res, !!forPrint);
         return html + '</div></div>';
+    },
+
+    toggleHydroCard: function () {
+        this._hcCollapsed = !this._hcCollapsed;
+        try { localStorage.setItem('hc_collapsed', this._hcCollapsed ? '1' : '0'); } catch (e) { }
+        this.syncHydroCheck();
     },
 
     syncHydroCheck: function () {
