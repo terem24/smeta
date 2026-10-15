@@ -70,6 +70,27 @@ const Tour = {
             anim: { type: 'press', label: '🎓 Обучение' }
         },
         {
+            // Что открыто именно этому человеку. Остальные шаги сами пропускают закрытое
+            // (GATES), и без этой карточки человек не знал бы, что что-то пропущено, —
+            // а закрытое тарифом как раз и надо назвать, чтобы было понятно, зачем «Профи».
+            key: 'plan',
+            sel: () => {
+                const b = document.getElementById('btn_tour');
+                if (b && b.offsetParent) return b;
+                return document.querySelector('.menu-toggle-btn');
+            },
+            title: 'Ваш тариф и что на нём открыто',
+            text: function () {
+                const p = this.planInfo();
+                const li = (arr, mark) => arr.map(x => mark + ' ' + x).join('<br>');
+                let t = (p.label ? 'Сейчас у вас: <b>' + p.label + '</b>. ' : '') +
+                    'Обучение покажет только то, что вам доступно.';
+                if (p.open.length) t += '<br><br><b>Открыто:</b><br>' + li(p.open, '✓');
+                if (p.closed.length) t += '<br><br><b>Не входит в тариф</b> (в обучении пропускаем):<br>' + li(p.closed, '–');
+                return t;
+            }
+        },
+        {
             // Ряд иконок в шапке объясняли только всплывающие подсказки, а их надо
             // сначала догадаться навести. Отсюда и вопрос «зачем эти кнопки».
             // Ролика у шага нет намеренно: текст и так длинный, шесть кнопок одним
@@ -178,6 +199,38 @@ const Tour = {
                 title: 'Спецификация готова',
                 text: 'Здесь подобранное оборудование: котёл, бойлер, радиаторы, трубы, автоматика — всё, что нужно отгрузить на объект. Любую позицию можно заменить на аналог, убрать или задать своё количество, и расчёт пересоберётся. Это ваша единственная вкладка со списком: монтажные работы у продавца не считаются и в документ не идут.'
             }
+        },
+        {
+            // Переключатель живёт в заголовке сметы; закрыт тарифом (столбец «Бюджетнее»)
+            // или без ROMMER — обёртка скрыта, шаг пропускается и по GATES.
+            key: 'cheaper', mob: 'output',
+            sel: '#cheaper_wrapper',
+            title: 'Бюджетнее',
+            text: 'Вторая смета с теми же расчётами, но позиции заменены на технически равнозначные — пары ROMMER и более выгодные варианты каталога. Включите, чтобы показать клиенту, сколько можно сэкономить; на вкладке «Почему дешевле» видно, что и на что заменено.',
+            anim: { type: 'toggle', label: 'Бюджетнее' }
+        },
+        {
+            key: 'scheme', mob: 'output',
+            sel: '#scheme_wrapper',
+            title: 'Схема котельной',
+            text: 'Принципиальная схема обвязки котельной под вашу смету: котёл, бойлер, насосы, группы и баки в том виде, как они подобраны. Схему можно отдать клиенту или монтажной бригаде вместе со сметой.',
+            anim: { type: 'toggle', label: 'Схема' }
+        },
+        {
+            // «По комнатам» + план дома: кнопка есть только в подробном режиме и только
+            // при открытой функции «Раскладка ТП» — иначе пропустится по GATES.
+            key: 'ufhplan', mob: 'inputs',
+            sel: '#btn_ufhplan',
+            title: 'План дома',
+            text: 'В режиме «По комнатам» загрузите план этажа: отметьте комнаты, тёплый пол кликом и радиаторы под окнами. Под сметой появится раскладка петель и трассы радиаторов — она же уйдёт в коммерческое предложение.',
+            anim: { type: 'press', label: 'Загрузить план' }
+        },
+        {
+            key: 'design', mob: 'output',
+            sel: '#btn_sheets_trigger',
+            title: 'Листы проекта',
+            text: 'Комплект листов для монтажа: принципиальная схема, узлы котельной, планы этажей и спецификации. Собирается из расчёта и открывается отдельным окном.',
+            anim: { type: 'press', label: 'Листы проекта' }
         },
         {
             key: 'works', mob: 'output',
@@ -333,13 +386,67 @@ const Tour = {
 
     // Шаг целиком выпадает: у продавца нет того, о чём он рассказывает.
     skipped: function (s) {
-        // «Документы» закрыты таблицей тарифов в панели управления — кнопки нет
+        // Функции тарифа: шаг показывается, только если таблица «Тарифы» (и личные
+        // отметки) открыли её этому человеку — то же самое решение, что прячет кнопку
+        // в интерфейсе, берём у app, а не повторяем здесь. Метода нет (старый app.js в
+        // кэше) — шаг остаётся, его уберёт проверка по скрытому элементу.
         try {
-            if (s && s.key === 'docs' && typeof app !== 'undefined' && typeof app.canUseDocs === 'function' && !app.canUseDocs()) return true;
-            // «Монтажные работы» закрыты столбцом «Монтаж» — вкладки нет
-            if (s && s.key === 'works' && typeof app !== 'undefined' && typeof app.canUseWorks === 'function' && !app.canUseWorks()) return true;
+            const gate = s && this.GATES[s.key];
+            if (gate && typeof app !== 'undefined' && typeof app[gate] === 'function' && !app[gate]()) return true;
         } catch (e) { }
         return !!(s && s.seller && s.seller.skip && this.isSeller());
+    },
+
+    // Шаг → метод app, который отвечает «открыта ли функция этому человеку».
+    // «Сканы» сюда не входят: у вкладки своя проверка (RecognizeUI), и скрытую кнопку
+    // пропускает общий механизм.
+    GATES: {
+        docs: 'canUseDocs',
+        works: 'canUseWorks',
+        money: 'canUseMoney',
+        cheaper: 'canUseAnalog',
+        design: 'canUseDesign',
+        ufhplan: 'canUseUfhPlan',
+        opcost: 'canUseOpCost',
+        branding: 'canUseBranding'
+    },
+
+    // Что открыто на тарифе — для шага «Ваш тариф». Берём те же признаки, что и
+    // GATES, плюс ассортимент: подписи совпадают со столбцами таблицы «Тарифы».
+    // Возвращает { open: [...], closed: [...], label } — подпись «Профи · Монтажник».
+    planInfo: function () {
+        const rows = [
+            ['canUseWorks', 'монтажные работы'],
+            ['canUseAnalog', 'вторая смета «Бюджетнее»'],
+            ['canUseMoney', 'вкладка «Деньги» — ваша маржа'],
+            ['canUseDocs', 'договор и акты'],
+            ['canUseBranding', 'свой логотип и реквизиты в документах'],
+            ['canUseUfhPlan', 'план отопления по комнатам'],
+            ['canUseOpCost', 'стоимость отопления за сезон'],
+            ['canUseDesign', 'листы проекта']
+        ];
+        const open = [], closed = [];
+        try {
+            rows.forEach(r => {
+                if (typeof app[r[0]] !== 'function') return;
+                (app[r[0]]() ? open : closed).push(r[1]);
+            });
+            if (typeof app.canUseBrand === 'function') {
+                (app.canUseBrand('ROMMER') ? open : closed).push('ассортимент ROMMER');
+            }
+        } catch (e) { }
+        let label = '';
+        try {
+            const plan = app.tariffPlan() === 'pro' ? 'Профи' : 'Базовый';
+            const acc = (app.TARIFF_ACCOUNTS.find(a => a.id === app.tariffAccount()) || {}).label || '';
+            label = plan + (acc ? ' · ' + acc : '');
+        } catch (e) { }
+        return { open: open, closed: closed, label: label };
+    },
+
+    // Метка для архива: «installer.pro» — по ней видно, на каком тарифе человек прошёл
+    planKey: function () {
+        try { return app.tariffAccount() + '.' + app.tariffPlan(); } catch (e) { return ''; }
     },
 
     // Шага у этого человека не будет вовсе: либо он убран по сфере деятельности,
@@ -399,9 +506,14 @@ const Tour = {
     // Возвращаем копию, а не правим сам шаг: сфера меняется на лету — и локальной
     // панелью на localhost, и правкой анкеты, — а исходные тексты нужны обратно.
     view: function (s) {
-        if (!s || !s.seller || !this.isSeller()) return s;
-        const v = Object.assign({}, s, s.seller);
-        delete v.seller;
+        if (!s) return s;
+        let v = s;
+        if (s.seller && this.isSeller()) {
+            v = Object.assign({}, s, s.seller);
+            delete v.seller;
+        }
+        // text-функция — для шагов, чей текст зависит от тарифа (см. шаг 'plan')
+        if (typeof v.text === 'function') v = Object.assign({}, v, { text: v.text.call(this) });
         return v;
     },
 
@@ -520,15 +632,34 @@ const Tour = {
 
     // Крестик на карточке и конец последнего шага. И то и другое — решение человека,
     // поэтому сами подсказки ему больше не включаем.
-    finish: function () {
+    //
+    // done = true — человек дошёл до последнего шага (кнопка «Готово» или хвост шагов
+    // пропущен по тарифу). Только тогда в учётку пишется отметка «прошёл обучение»;
+    // крестик на втором шаге её не ставит.
+    finish: function (done) {
+        if (done === true) this.reportDone();
         try { localStorage.setItem(this.LS_STEP, '0'); } catch (e) { }
         this._step = 0;
         this.rememberChoice();
         this.toggle(false);
     },
 
+    // Отметка в базе (users.tour_done_at, supabase/migrations/20261015_tour_done.sql).
+    // Видна в админке администратору, владельцу, менеджеру и наблюдателю. Ставится один
+    // раз — повторный проход её не меняет (так решает сама функция). Сбой молча
+    // игнорируем: обучение от записи не зависит, а миграция может быть ещё не выполнена.
+    reportDone: function () {
+        try {
+            const n = (this._plan || []).filter(Boolean).length;
+            if (typeof supabaseClient === 'undefined' || !this.allowed()) return;
+            Promise.resolve(supabaseClient.rpc('mark_tour_done', { p_steps: n, p_plan: this.planKey() }))
+                .then(r => { if (r && r.error) console.warn('[Tour] отметка не записана:', r.error.message); })
+                .catch(() => { });
+        } catch (e) { }
+    },
+
     next: function () {
-        if (this._step >= this.STEPS.length - 1) { this.finish(); return; }
+        if (this._step >= this.STEPS.length - 1) { this.finish(true); return; }
         this._step++;
         this.save();
         this.show();
@@ -648,7 +779,7 @@ const Tour = {
             // Шаг не про этого человека: у продавца нет того, что он показывает
             if (this.skipped(s)) {
                 this.unplan(this._step);
-                if (this._step >= this.STEPS.length - 1) { this.finish(); return; }
+                if (this._step >= this.STEPS.length - 1) { this.finish(true); return; }
                 this._step++;
                 continue;
             }
@@ -666,7 +797,7 @@ const Tour = {
             // Шаг пропущен на самом деле — вычёркиваем его из плана, иначе номер
             // следующей карточки перескочит через него.
             this.unplan(this._step);
-            if (this._step >= this.STEPS.length - 1) { this.finish(); return; }
+            if (this._step >= this.STEPS.length - 1) { this.finish(true); return; }
             this._step++;
         }
         this.save();

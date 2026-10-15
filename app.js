@@ -23882,6 +23882,26 @@ const app = {
             }
 
             if (isLtvSort) {
+            // 2в. Кто прошёл обучение до конца (tour.js → mark_tour_done). Отдельным
+            // запросом, а не в общем select: пока миграция 20261015_tour_done.sql не
+            // выполнена, колонки нет, и общий запрос уронил бы весь список. Здесь ошибка
+            // просто означает «отметок нет».
+            try {
+                if (userIds.length > 0) {
+                    const { data: tourRows, error: tourErr } = await supabaseClient.from('users')
+                        .select('id, tour_done_at, tour_done_steps, tour_done_plan')
+                        .in('id', userIds.map(String)).not('tour_done_at', 'is', null);
+                    if (!tourErr && tourRows) {
+                        const byTour = {};
+                        tourRows.forEach(r => { byTour[String(r.id)] = r; });
+                        users.forEach(u => {
+                            const r = byTour[String(u.id)];
+                            if (r) { u.tour_done_at = r.tour_done_at; u.tour_done_steps = r.tour_done_steps; u.tour_done_plan = r.tour_done_plan; }
+                        });
+                    }
+                }
+            } catch (e) { /* без отметок — не повод ломать список */ }
+
                 users.forEach(u => {
                     const uEsts = userEsts.filter(e => String(e.user_id) === String(u.id));
                     u.ltv = 0;
@@ -26642,7 +26662,13 @@ const app = {
             const profileMissing = [!u.last_name && 'ФИО', !u.phone && 'телефон', !u.birth_date && 'дата рождения',
                 !u.region && 'регион', !u.city && 'город', !(u.activity_types || []).length && 'сфера деятельности'].filter(Boolean);
             const stageChip = (txt, tip, col) => `<span title="${tip}" style="cursor:help; background:${col}22; color:${col}; font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-right:3px;">${txt}</span>`;
-            const stageHTML = (stuckPromo
+            // Зелёная галочка: прошёл обучение до последнего шага. Админка закрыта для
+            // обычных пользователей, так что отметку видят только администратор,
+            // владелец, менеджер и наблюдатель.
+            const tourDoneChip = u.tour_done_at
+                ? `<span title="Прошёл обучение до конца ${new Date(u.tour_done_at).toLocaleDateString('ru-RU')}${u.tour_done_steps ? ' (шагов: ' + u.tour_done_steps + ')' : ''}${u.tour_done_plan ? ', тариф: ' + u.tour_done_plan : ''}" style="cursor:help; background:#10B98122; color:#059669; font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-right:3px;">✓ Обучение</span>`
+                : '';
+            const stageHTML = tourDoneChip + (stuckPromo
                 ? stageChip('⛔ Не ввёл промокод', 'Вошёл, но калькулятор закрыт окном «Нужен промокод магазина»: промокод не ввёл, анкету не видел', 'var(--c-warn, #D97706)')
                 : '') + (profileMissing.length
                 ? stageChip('📝 Анкета не заполнена', 'Не заполнено: ' + profileMissing.join(', '), 'var(--text-sec, #6B7280)')
@@ -38229,6 +38255,7 @@ const app = {
                 ${rowKV('Смет сохранено', String(ests.length))}${rowKV('Оборудование', ests.length ? money(eqSum) : '')}${rowKV('Монтаж', wkSum ? money(wkSum) : '')}
                 ${rowKV('Визитов', u.sess_visits ? String(u.sess_visits) : '')}${rowKV('Время на сайте', mins ? mins + ' мин' : '')}
                 <div class="ad-peek-sec">История</div>
+                ${rowKV('Обучение', u.tour_done_at ? '<span style="color:#059669;">✓ пройдено ' + fmtD(u.tour_done_at) + '</span>' : '')}
                 ${rowKV('Регистрация', fmtD(u.created_at))}${rowKV('Последний вход', fmtD(u.last_visited))}${rowKV('Устройство', esc(u.last_device))}
                 <div id="ad_peek_ext"><div class="ad-peek-sec">Сметы и события</div><div class="ad-card-note">Загружаем…</div></div>
             </div>
