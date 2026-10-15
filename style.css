@@ -14845,6 +14845,7 @@ body.object-flat:not(.calc-detailed) #blk_water_reducer_row {
 body:not(.calc-detailed) #blk_outdoor_faucet_row,
 body:not(.calc-detailed) #blk_water_filter_row,
 body:not(.calc-detailed) #blk_water_frame_row,
+body:not(.calc-detailed) #blk_water_treatment_row,
 body:not(.calc-detailed) #blk_heating_feed_row {
     display: none !important;
 }
@@ -14967,6 +14968,7 @@ body.object-flat #blk_outdoor_faucet_row,
 body.object-flat #blk_water_meter_row,
 body.object-flat #blk_heating_feed_row,
 body.object-flat #blk_water_frame_row,
+body.object-flat #blk_water_treatment_row,
 body.object-flat #blk_fuel_type,
 body.object-flat #blk_floors_card,
 body.object-flat #blk_well_wrap,

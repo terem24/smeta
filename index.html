@@ -193,10 +193,10 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=5.34">
+    <link rel="stylesheet" href="style.css?v=5.35">
 
     <script src="supabase-js.js" defer></script>
-    <script src="catalog.js?v=3.42" defer></script>
+    <script src="catalog.js?v=3.43" defer></script>
     <!-- Координаты и регионы населённых пунктов: карта проектов в админке и
          адрес объекта. Данные вшиты в файл, наружу никаких запросов. -->
     <script src="cities_geo.js?v=1.0" defer></script>
@@ -223,7 +223,7 @@
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
     <script src="short_names.js?v=1.2" defer></script>
     <script src="avatars.js?v=1.0" defer></script>
-    <script src="app.js?v=12.39" defer></script>
+    <script src="app.js?v=12.40" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1905,6 +1905,14 @@
                         <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Монтажный каркас</span>
                         <label class="switch">
                             <input type="checkbox" id="chk_water_frame" onchange="app.toggleState('waterFrame', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div id="blk_water_treatment_row"
+                        style="position:relative; display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--border);">
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Обвязка под водоподготовку<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Байпас и разъёмные соединения на вводе под станцию обезжелезивания или умягчения. Саму станцию в смету не кладём: состав определяет анализ воды.</div></span></span>
+                        <label class="switch">
+                            <input type="checkbox" id="chk_water_treatment" onchange="app.toggleState('waterTreatment', this.checked)">
                             <span class="slider"></span>
                         </label>
                     </div>
