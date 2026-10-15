@@ -24,7 +24,11 @@ const OBJECTS = [
     { title: '150 м², электро, пол 130 м² (два узла подмеса)', o: { area: 150, fuels: ['el'], systems: ['rad', 'tp'], tp1: 130 } },
     { title: '180 м², газ + электрорезерв, радиаторы + пол 100 м²', o: { area: 180, fuels: ['gas', 'el'], systems: ['rad', 'tp'], tp1: 100 } },
     { title: '200 м², электро, пол 200 м² (группа DN25 под сервопривод)', o: { area: 200, fuels: ['el'], systems: ['tp'], tp1: 200 } },
-    { title: '150 м², газ, радиаторы + бойлер косвенного нагрева', o: { area: 150, fuels: ['gas'], systems: ['rad'], hotWater: true } }
+    { title: '150 м², газ, радиаторы + бойлер косвенного нагрева', o: { area: 150, fuels: ['gas'], systems: ['rad'], hotWater: true } },
+    // Автоисправление схемы по проверке: кольцо не тянуло — добавлены группа / ветка
+    { title: 'ИСПРАВЛЕНИЕ: 200 м², электро, режим 75/65 (добавляется ветка)', o: { area: 200, fuels: ['el'], systems: ['rad'], radRegime: 'r7565' } },
+    { title: 'ИСПРАВЛЕНИЕ: 240 м², 2 этажа, газ, тройниковая (добавляется группа)', o: { area: 240, floors: 2, fuels: ['gas'], systems: ['rad'], radConnectionScheme: 'tee' } },
+    { title: 'ОТКАТ: 280 м², электро, 75/65 (четырёх веток мало — схема остаётся)', o: { area: 280, fuels: ['el'], systems: ['rad'], radRegime: 'r7565' } }
 ];
 
 const f1 = v => (v == null ? '—' : v.toFixed(1));
@@ -42,6 +46,13 @@ OBJECTS.forEach(({ title, o }) => {
     if (mode === 'json') return;
     console.log('\n=== ' + title + ' ===');
     console.log('  схема: ' + (data.scheme && data.scheme.text));
+    (app._hcApplied || []).forEach(t => console.log('  ✔ исправлено: ' + t));
+    if (app._hcTried) console.log('  ↺ ' + app._hcTried);
+    // Дополнения карточки (подробный режим) не должны падать ни на одном объекте
+    try {
+        const ex = app.hydroExtras(res);
+        if (mode === 'extras') console.log(ex.replace(/<summary>/g, '\n  § ').replace(/<li>/g, '\n    - ').replace(/<[^>]*>/g, ''));
+    } catch (e) { bad++; console.log('  ✗ hydroExtras упал: ' + e.message); }
     res.rows.forEach(r => {
         console.log('  ' + r.verdictRu.padEnd(10) + ' ' + r.title.padEnd(62) + ' G ' + f2(r.flow) + '  нужно ' + f1(r.need) + '  насос ' + f1(r.have) + '  ×' + (r.k == null ? '—' : f2(r.k)));
         if (r.advice) console.log('             → ' + r.advice);

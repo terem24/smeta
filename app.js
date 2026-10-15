@@ -48826,10 +48826,216 @@ const app = {
     },
 
     /**
+     * Запас насоса по радиаторному кольцу: насос на рабочем расходе / требуемый напор. Нужен
+     * автоисправлению, чтобы понять, помогла ли добавленная группа или ветка.
+     */
+    hydroRadRatio: function () {
+        const h = this.radHydro;
+        if (!h || !(h.head > 0)) return 0;
+        const best = h.pump || (h.pumps || []).reduce((a, p) => (!a || p.avail > a.avail) ? p : a, null);
+        return best ? best.avail / h.head : 0;
+    },
+
+    /**
+     * Что исправить в схеме по результату расчёта: кольцо радиаторов не тянет насос.
+     * Без группы — ставим группу на коллектор (до подбора приборов оценка говорила, что хватит насоса
+     * котла); с группой, но ни один её насос не тянет — добавляем ветку (расход через каждую падает).
+     * Исправляются только радиаторы: у тёплого пола подъём узла/насоса/перепада уже встроен в ufhBalance,
+     * а диаметр магистрали радиаторов подбирается по запасу насоса в самой разводке.
+     * Монтажник выбрал «Без стрелки» вручную или отключил автоисправление — не трогаем.
+     * Возвращает { force, text, tried } либо null; force складывается в this._hcForce.
+     */
+    hydroNextFix: function () {
+        if (this.state.hydroAutoFix === false) return null;
+        if (this.boilerSchemeEff() === 'direct') return null;
+        const h = this.radHydro;
+        if (!h || !h.parts || !h.parts.length || !(h.head > 0)) return null;
+        const best = h.pump || (h.pumps || []).reduce((a, p) => (!a || p.avail > a.avail) ? p : a, null);
+        if (!best || best.avail >= h.head) return null;
+        if (!h.hasGroup) {
+            return { force: { radGroup: true },
+                text: 'Радиаторы: кольцо не тянуло насос котла — добавлена насосная группа на коллекторе',
+                tried: 'Насосная группа радиаторов запаса не добавила — проверьте диаметр подводки и нагрузку' };
+        }
+        const n = parseInt(h.branches, 10) || 1;
+        if (n >= 4) return null;
+        return { force: { radBranches: n + 1 },
+            text: 'Радиаторы: ни один насос группы не тянул кольцо — веток (групп) стало ' + (n + 1),
+            tried: 'Ещё одна ветка радиаторов запаса почти не добавила: держит не подводка, а луч с клапаном прибора' };
+    },
+
+    toggleHydroAutoFix: function (event) {
+        if (event) event.preventDefault();
+        this.state.hydroAutoFix = (this.state.hydroAutoFix === false);
+        this.render();
+        this.saveState();
+    },
+
+    /**
+     * Сколько стоит другая схема котельной: тихие прогоны со «стрелкой» и «без» (как у computeCheapBaseline),
+     * результат — в this._hcCompare, карточка показывает его строкой. Считается по нажатию, а не на каждом
+     * пересчёте: каждый прогон — полный расчёт сметы.
+     */
+    hydroCompareSchemes: function (event) {
+        if (event) event.preventDefault();
+        const snapshot = JSON.parse(JSON.stringify(this.state));
+        const forceBak = this._hcForce;
+        const out = { cur: null, hydro: null, direct: null, directWhy: '' };
+        this._cheapComparing = true;
+        try {
+            out.cur = Math.round(this.calcFinalTotal || 0);
+            this.state.boilerScheme = 'hydro';
+            this.render(true);
+            out.hydro = Math.round(this.calcFinalTotal || 0);
+            this.state.boilerScheme = 'direct';
+            if (this.boilerSchemeDirectImpossible()) {
+                out.directWhy = this.boilerSchemeDirectWhyText();
+            } else {
+                this.render(true);
+                out.direct = Math.round(this.calcFinalTotal || 0);
+            }
+        } catch (e) {
+            console.warn('[гидравлика] сравнение схем не посчиталось:', e);
+        } finally {
+            Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
+            Object.assign(this.state, snapshot);
+            this._hcForce = forceBak;
+            this._cheapComparing = false;
+        }
+        // Результат верен, пока не изменился расчёт: подпись состояния — как у кэша cheaperBpTotals
+        out.sig = this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state);
+        this._hcCompare = out;
+        this.render();
+    },
+
+    /**
+     * Дополнения карточки «Гидравлика» — только в подробном режиме («По комнатам»): там известны
+     * приборы и петли, и числа считаются по ним, а не по оценке. Всё берётся у тех же функций, что и
+     * сама смета (radHydraulics, radBalance, ufhBalance), своих расчётов нет, кроме запаса «на сколько
+     * хватит»: потери растут как квадрат расхода, поэтому расход можно поднять в √(запас) раз.
+     */
+    hydroExtras: function (res) {
+        this._hcOpen = this._hcOpen || {};
+        const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        const f0 = v => String(Math.round(v));
+        const f1 = v => v.toFixed(1).replace('.', ',');
+        const f2 = v => v.toFixed(2).replace('.', ',');
+        const rub = v => Math.round(v).toLocaleString('ru-RU') + ' ₽';
+        const h = this.radHydro, b = this._ufhBal;
+        const best = h ? (h.pump || (h.pumps || []).reduce((a, p) => (!a || p.avail > a.avail) ? p : a, null)) : null;
+        const ul = items => items.length ? '<ul class="hc-list">' + items.map(t => '<li>' + t + '</li>').join('') + '</ul>' : '';
+        const sec = (key, title, body) => body
+            ? '<details class="hc-sec"' + (this._hcOpen[key] ? ' open' : '') + ' ontoggle="app._hcOpen[\'' + key + '\']=this.open"><summary>' + title + '</summary>' + body + '</details>'
+            : '';
+        let html = '';
+
+        // 1. Что выставить при пуске (и режим насоса)
+        {
+            const L = [];
+            const bp = (h && h.hasGroup === false && this._radDirectBoiler) ? this.boilerPumpOf(this._radDirectBoiler) : null;
+            if (bp) L.push('Насос котла: ' + esc(bp.label) + '. Расчёт сделан по этой кривой — поставьте тот же режим скорости (заводская настройка может быть ниже, тогда напора на дальние приборы не хватит).');
+            else if (h && h.hasGroup) L.push('Насосные группы: расчёт по паспортной кривой насоса на максимальной скорости. После пуска скорость можно снизить, если шумит, а расходы на расходомерах и клапанах держатся.');
+            const bal = this.radBalance();
+            if (bal && bal.rows && bal.rows.length) {
+                const svl = bal.rows.filter(r => !r.noSvl);
+                const open = svl.filter(r => r.full)[0];
+                const tight = svl.filter(r => !r.full && r.turns != null).sort((x, y) => x.turns - y.turns)[0];
+                if (open || tight) L.push('Клапаны радиаторов: ' + (open ? 'самый дальний «' + esc(open.room || 'прибор') + '» — открыт' : '')
+                    + (open && tight ? '; ' : '') + (tight ? 'самый ближний «' + esc(tight.room || 'прибор') + '» — ' + f1(tight.turns).replace(',0', '') + ' об. от закрытого' : '')
+                    + '. Остальные — по таблице на листе «Гидравлический расчёт».');
+            }
+            if (b && b.mans && b.mans.length) {
+                b.mans.forEach(m => {
+                    const fl = (m.rows || []).map(r => r.flow).filter(v => v > 0);
+                    if (fl.length) { const lo = f1(Math.min.apply(null, fl)), hi = f1(Math.max.apply(null, fl)); L.push('Расходомеры пола, ' + esc(m.label) + ': ' + (lo === hi ? lo : 'от ' + lo + ' до ' + hi) + ' л/мин (по петлям — в подсказке к коллектору).'); }
+                });
+            }
+            html += sec('start', 'Что выставить при пуске', ul(L));
+        }
+
+        // 2. На сколько хватит
+        {
+            const L = [];
+            const reserve = res.reserve || this.RAD_PUMP_RESERVE;
+            if (h && best && h.head > 0) {
+                const f = Math.sqrt(best.avail / (h.head * reserve));
+                if (f > 1.02) {
+                    const extraKw = (f - 1) * h.watt / 1000;
+                    const avgDev = h.watt / Math.max(1, h.devices);
+                    L.push('Радиаторы: насос тянет ещё ≈ +' + f0(extraKw) + ' кВт нагрузки (≈ ' + f0(extraKw * 1000 / avgDev) + ' приборов вроде нынешних).');
+                } else {
+                    L.push('Радиаторы: запаса нет — новые приборы потребуют ветки или группы.');
+                }
+            }
+            if (b && b.mans && b.mans.length) {
+                const kf = this.coolantPumpK().flow;
+                let worst = null;
+                b.mans.forEach(m => {
+                    const k = this.ufhPumpHead((m.nodeFlow || m.flow) * kf, b.pump) / m.need;
+                    if (!worst || k < worst.k) worst = { k: k, m: m };
+                });
+                if (worst) {
+                    const area = (worst.m.rows || []).reduce((a, r) => a + (r.area || 0), 0);
+                    const f = Math.sqrt(Math.max(worst.k, 0));
+                    L.push(f > 1.02 ? 'Тёплый пол (' + esc(worst.m.label) + '): узел и насос тянут ещё ≈ +' + f0((f - 1) * area) + ' м² пола.'
+                        : 'Тёплый пол (' + esc(worst.m.label) + '): запаса нет — добавлять петли нельзя без второго коллектора.');
+                }
+            }
+            if (L.length) L.push('Оценка: потери растут как квадрат расхода, цифры приблизительные.');
+            html += sec('reach', 'На сколько хватит', ul(L));
+        }
+
+        // 3. Скорость воды и шум
+        {
+            const L = [];
+            const names = { trunk: 'магистраль', trunkFar: 'магистраль, дальний участок', loop: 'луч до прибора' };
+            if (h && h.parts) h.parts.forEach(p => {
+                if (!names[p.tag] || !(p.v > 0)) return;
+                const over = p.vLim && p.v > p.vLim;
+                L.push(names[p.tag] + ' ' + f2(p.v) + ' м/с (предел ' + f1(p.vLim || this.RAD_V_MAX) + ' м/с)' + (over ? ' — <b>выше предела, будет шуметь</b>' : ' — в норме'));
+            });
+            if (b && b.mans && b.mans.length) {
+                const vs = [];
+                b.mans.forEach(m => (m.rows || []).forEach(r => { if (r.v > 0) vs.push(r.v); }));
+                if (vs.length) L.push('петли пола ' + (f2(Math.min.apply(null, vs)) === f2(Math.max.apply(null, vs)) ? f2(vs[0]) : f2(Math.min.apply(null, vs)) + '–' + f2(Math.max.apply(null, vs))) + ' м/с (норма от ' + f2(this.UFH_V_MIN) + ' до ' + f2(this.UFH_V_MAX) + ' м/с)');
+            }
+            if (L.length) L.push('Предел по шуму — СП 60.13330.2020, табл. И.1.');
+            html += sec('speed', 'Скорость воды и шум', ul(L));
+        }
+
+        // 4. Цена схемы
+        {
+            const sig = this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state);
+            const c = (this._hcCompare && this._hcCompare.sig === sig) ? this._hcCompare : null;
+            let body = '<div class="hc-note">Схема: ' + esc((res.scheme && res.scheme.text) || '') + '.</div>';
+            if (c) {
+                const row = (t, v) => '<li>' + t + ': <b>' + rub(v) + '</b>' + (c.cur != null && v !== c.cur ? ' (' + (v > c.cur ? '+' : '−') + rub(Math.abs(v - c.cur)) + ' к нынешней)' : ' — нынешняя') + '</li>';
+                body += '<ul class="hc-list">' + row('со стрелкой', c.hydro)
+                    + (c.direct != null ? row('без стрелки', c.direct) : '<li>без стрелки: не собрать — ' + esc(c.directWhy) + '</li>') + '</ul>';
+            }
+            body += '<a href="#" class="hc-btn" onclick="app.hydroCompareSchemes(event)">' + (c ? 'Пересчитать цены схем' : 'Сколько стоит другая схема') + '</a>';
+            html += sec('price', 'Схема котельной и её цена', body);
+        }
+
+        // 6. Предупреждения тёплого пола
+        {
+            const d = this.buildUfhHydraulicsData();
+            const L = [];
+            if (d) {
+                (d.notes || []).forEach(t => L.push(esc(t)));
+                const hard = (d.loops || []).filter(r => r.dp > d.loopDpMax).length;
+                if (hard) L.push('Петель с потерями выше предела (' + f0(d.loopDpMax) + ' кПа): ' + hard + ' — укоротите или увеличьте их число.');
+            }
+            html += sec('ufh', 'Тёплый пол: предупреждения', ul(L));
+        }
+        return html;
+    },
+
+    /**
      * Карточка «Гидравлика» справа от схемы котельной (контейнер #hydro_check_side рисует сама схема,
-     * _renderSchemeVector, поэтому карточка появляется и исчезает вместе с ней). Не меняет смету:
-     * показывает, где запас насоса мал, и что с этим делать. В быстром расчёте приборы и петли оценены
-     * по площади — это сказано в карточке; точнее считает подробный режим.
+     * _renderSchemeVector, поэтому карточка появляется и исчезает вместе с ней). В быстром расчёте приборы и петли
+     * оценены по площади — это сказано в карточке; в подробном («По комнатам») добавляются разделы:
+     * что выставить при пуске, на сколько хватит, скорости воды, цена схемы, предупреждения пола.
      */
     syncHydroCheck: function () {
         const box = document.getElementById('hydro_check_side');
@@ -48849,8 +49055,10 @@ const app = {
                 + (c.fail ? 'Гидравлика: не хватает напора (контуров: ' + c.fail + ')'
                     : c.tight ? 'Гидравлика: впритык (контуров: ' + c.tight + ')'
                     : 'Гидравлика: напора хватает на всех контурах') + '</div>';
+            (this._hcApplied || []).forEach(t => { html += '<div class="hc-fixed">✔ Исправлено автоматически: ' + esc(t) + '</div>'; });
+            if (this._hcTried) html += '<div class="hc-note">' + esc(this._hcTried) + '</div>';
             if (res.scheme) html += '<div class="hc-note">Схема: ' + esc(res.scheme.text) + '.</div>';
-            if (!s.detailedRooms) html += '<div class="hc-note">Быстрый расчёт: приборы и петли оценены по площади. Точнее считает режим «По комнатам».</div>';
+            if (!s.detailedRooms) html += '<div class="hc-note">Быстрый расчёт: приборы и петли оценены по площади. Подробности (что выставить при пуске, на сколько хватит насоса, цена схемы) — в режиме «По комнатам».</div>';
             html += '<table class="hc-table"><thead><tr><th>Контур</th><th>G, м³/ч</th><th>Нужно, м</th><th>Насос, м</th><th>Запас</th></tr></thead><tbody>';
             res.rows.forEach(r => {
                 html += '<tr class="hc-' + r.verdict + '"><td>' + esc(r.title) + '</td><td>' + f2(r.flow) + '</td><td>' + f1(r.need)
@@ -48861,7 +49069,10 @@ const app = {
                 r.flags.forEach(fl => extra.push(esc(fl)));
                 if (extra.length) html += '<tr class="hc-more"><td colspan="5">' + extra.join('<br>') + '</td></tr>';
             });
-            html += '</tbody></table><div class="hc-note">«Нужно» — потери самого трудного кольца контура, «Насос» — что он даёт на этом расходе. Запас от ×' + f2(res.reserve) + ' считается достаточным (так же проверяется насос разводки); у тёплого пола запас 15 % уже заложен в «Нужно». Проверка смету не меняет: подсказывает, где слабо.</div></div>';
+            html += '</tbody></table><div class="hc-note">«Нужно» — потери самого трудного кольца контура, «Насос» — что он даёт на этом расходе. Запас от ×' + f2(res.reserve) + ' считается достаточным (так же проверяется насос разводки); у тёплого пола запас 15 % уже заложен в «Нужно».</div>';
+            if (s.detailedRooms) html += this.hydroExtras(res);
+            html += '<div class="hc-note"><a href="#" class="hc-btn" onclick="app.toggleHydroAutoFix(event)">'
+                + (s.hydroAutoFix === false ? 'Включить автоисправление схемы по этой проверке' : 'Отключить автоисправление схемы') + '</a></div></div>';
             box.innerHTML = html;
             box.style.display = '';
         } catch (e) {
@@ -78100,7 +78311,37 @@ const app = {
         if (computeOnly) return this._renderInner(true);
         this.initPanelFocusTracking();
         const _ia = this._inputAnchorBefore();
-        try { return this._renderInner(false); } finally {
+        try {
+            // Каждый пересчёт начинает без исправлений: они выводятся из результата этого же расчёта
+            this._hcForce = {};
+            this._hcApplied = [];
+            this._hcTried = null;
+            let _res = this._renderInner(false);
+            // Проверка гидравлики исправляет схему по результату: кольцо радиаторов не тянет насос —
+            // добавляем группу / ветку и пересчитываем, до двух раз. Помогло не по-настоящему
+            // (запас вырос меньше чем на 2 %) — откатываем и оставляем совет в карточке.
+            for (let _i = 0; _i < 2; _i++) {
+                const _fix = this.hydroNextFix();
+                if (!_fix) break;
+                const _before = this.hydroRadRatio(), _prev = Object.assign({}, this._hcForce);
+                Object.assign(this._hcForce, _fix.force);
+                _res = this._renderInner(false);
+                if (this.hydroRadRatio() > _before * 1.02) { this._hcApplied.push(_fix.text); continue; }
+                this._hcForce = _prev;
+                _res = this._renderInner(false);
+                this._hcTried = _fix.tried;
+                break;
+            }
+            // Групп и веток добавили, а кольцо всё равно не тянет — деньги потрачены зря: возвращаем схему
+            // как была, а в карточке остаётся предупреждение с советом
+            if (this._hcApplied.length && this.hydroRadRatio() < 1) {
+                this._hcForce = {};
+                this._hcApplied = [];
+                this._hcTried = 'Добавление групп и веток кольцо радиаторов не вытянуло — схему оставили как есть. Проверьте диаметр подводки и мощность приборов.';
+                _res = this._renderInner(false);
+            }
+            return _res;
+        } finally {
             this._inputAnchorAfter(_ia);
             // Сводка гидравлики читает то, что render посчитал, поэтому — после него
             this.syncHydroCheck();
@@ -81051,6 +81292,12 @@ const app = {
                     if (_needRadGroup) this._radGroupWhy = { kind: 'rule' };
                 }
             }
+            // Автоисправление по проверке гидравлики (hydroNextFix): кольцо радиаторов не потянуло насос котла —
+            // группа нужна, хотя оценка до подбора приборов говорила иначе.
+            if (!_needRadGroup && (this._hcForce || {}).radGroup) {
+                _needRadGroup = true;
+                this._radGroupWhy = { kind: 'hc' };
+            }
             if (_needRadGroup) rQ = _radGroupsByFloors();
         }
 
@@ -81216,6 +81463,8 @@ const app = {
             if (rQ > 0 && _rw && _rw.kind === 'nopump') {
                 const _f = v => v.toFixed(1).replace('.', ',');
                 why.push('насос котла не тянет радиаторы: нужно ' + _f(_rw.d.head * _rw.d.reserve) + ' м, даёт ' + _f(_rw.d.avail) + ' м' + (_rw.d.proxy ? ' (типовая кривая настенного котла)' : ''));
+            } else if (rQ > 0 && _rw && _rw.kind === 'hc') {
+                why.push('проверка гидравлики: кольцо радиаторов не тянет насос котла');
             } else if (rQ > 0 && _rw && _rw.kind === 'rule') {
                 // паспортной кривой насоса котла нет — решили пороги
                 if (this.state.area > 150) why.push('площадь больше 150 м²');
@@ -81336,6 +81585,9 @@ const app = {
                 const _needByHydro = this.radBranchesByHydraulics(_radLoadKw, this.totalDevicesCount);
                 this._radGroupsByHydro = _needByHydro;
                 rQ = Math.max(1, _needByPower, _needByHydro);
+                // Автоисправление по проверке гидравлики: реальное кольцо не потянул ни один насос группы —
+                // добавляем ветку (расход через каждую падает, потери подводки — вчетверо быстрее)
+                rQ = Math.max(rQ, parseInt((this._hcForce || {}).radBranches, 10) || 0);
             }
             // Авто-значение запоминаем до ручного режима — переключатель покажет, на сколько он отличается.
             this._radGroupsAuto = rQ;
