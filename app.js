@@ -48760,6 +48760,7 @@ const app = {
                 dpValve: m.dpValve,                 // смесительный клапан узла
                 trDp: m.trDp || 0,                  // транзит до коллектора
                 trM: m.trM || 0,
+                trN: m.trN || 1,                    // параллельных магистралей транзита
                 tr: m.tr ? (m.tr.label || m.tr.name || '') : '',
                 trV: m.trV || 0,
                 need: m.need, have: have,
@@ -66233,6 +66234,19 @@ const app = {
         });
         return fit || pool[pool.length - 1];
     },
+    /**
+     * Транзит с учётом параллельных магистралей: { tr, n }. Самая большая труба пула держит расход
+     * до UFH_TRANSIT_V_MAX; выше — кладём две параллельные трассы (расход пополам), а не гоним воду
+     * по одной на 2 м/с (шум и 90 кПа потерь). Больше двух не берём: так же, как две, сводят
+     * на коллекторе — дальше уже надо делить пол на узлы.
+     */
+    ufhTransitPlan: function (flow) {
+        const tr = this.ufhTransitPick(flow);
+        if (!tr) return null;
+        const A = Math.PI * tr.dIn * tr.dIn / 4;
+        const over = (flow / 3600) / A > this.UFH_TRANSIT_V_MAX;
+        return { tr: tr, n: over ? 2 : 1 };
+    },
     UFH_FLUID: { rho: 992, cp: 4.174, mu: 6.53e-4 },   // вода 40 °C
 
     // ─── Гидравлика радиаторной части ────────────────────────────────────────
@@ -67993,10 +68007,12 @@ const app = {
                 const grp = mans.filter(m => m.floor === fl && m.trM > 0);
                 if (!grp.length) return;
                 const trFlow = grp.reduce((a, m) => a + m.flow, 0);
-                const tr = this.ufhTransitPick(trFlow * dT / this.UFH_DTS[0]);
+                const plan = this.ufhTransitPlan(trFlow * dT / this.UFH_DTS[0]);
+                const tr = plan && plan.tr;
                 if (!tr) return;
-                const d = this.ufhFlowDrop(trFlow, grp[0].trM, calc.pipe, tr.dIn);
-                grp.forEach(m => { m.tr = tr; m.trV = d.v; m.trFlow = trFlow; m.trDp = d.dp; });
+                // n магистралей идут параллельно: расход делится поровну, потери — по одной трассе
+                const d = this.ufhFlowDrop(trFlow / plan.n, grp[0].trM, calc.pipe, tr.dIn);
+                grp.forEach(m => { m.tr = tr; m.trN = plan.n; m.trV = d.v; m.trFlow = trFlow; m.trDp = d.dp; });
             });
             // Узел подмеса std — один на весь пол, без коллектора котельной: если
             // гребёнок две (два этажа), через его клапан и насос идёт их общий расход.
@@ -86104,8 +86120,9 @@ const app = {
                 if (!(_area > 0)) return null;
                 const _h1 = (fl === 2) ? (parseFloat(this.state.h1) || 2.7) : 0;   // подъём на этаж
                 const _horiz = Math.sqrt(Math.max(1, _area));                      // средний ход по этажу до коллектора
-                const _meters = Math.ceil((_h1 + 1 + _horiz) * 2 * 1.1);           // подача+обратка, +10 % запас
                 const _man = (this._ufhBal && this._ufhBal.mans.find(m => m.floor === fl && m.tr)) || null;
+                // Расход выше предела самой большой трубы — две параллельные магистрали (см. ufhTransitPlan)
+                const _meters = Math.ceil((_h1 + 1 + _horiz) * 2 * 1.1) * ((_man && _man.trN) || 1);   // подача+обратка, +10 % запас
                 const _pool = _isMpUfh ? (catalog.metal_plastic_pipes || []) : (catalog.rad_pipes_grey || []);
                 const _base = (_man && _pool.find(x => x.id === _man.tr.id))
                     || _pool.find(x => x.id === (_isMpUfh ? 'SPM-0001-052630' : 'SPX-0001-002535'));
