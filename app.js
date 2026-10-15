@@ -55427,7 +55427,6 @@ const app = {
                 catalog.groups_dn25[0],
                 catalog.groups_dn20[1],
                 catalog.groups_dn25[1],
-                catalog.groups_dn20[2],
                 catalog.groups_dn25[2],
                 catalog.groups_dn20.find(g => g.id === 'SDG-0007-002001'),
                 catalog.groups_dn25.find(g => g.id === 'SDG-0007-002501'),
@@ -55935,24 +55934,26 @@ const app = {
     // остаются рабочими.
     isUfhMixTypeCompatible: function (type, area, brand, areaPerNode) {
         if (type === 'std') {
-            let flowTotal = (area * 0.08) / (1.163 * 5);
+            let flowTotal = (area * 0.08) / (1.163 * (parseInt(this.state.ufhDT, 10) || 5));
             let limitArea = (brand === 'rommer') ? 100 : 120;
-            let limitFlow = (brand === 'rommer') ? 1.0 : 1.2;
+            // STOUT: меньшее из скорости в 3/4" ≤ 1 м/с и потерь узла по паспортному графику SDG-0120-001
+            // не больше половины напора его насоса 25/60 (как у групп, см. groupFlowLimit). ROMMER: 1,0 м³/ч — заявленные 6 кВт узла
+            // RDG-0120-008100 при перепаде 5 К, паспорт кривой потерь не даёт.
+            let limitFlow = (brand === 'rommer') ? 1.0 : this.stdNodeFlowLimit();
             return area <= limitArea && flowTotal <= limitFlow;
         }
         let a = (areaPerNode > 0) ? areaPerNode : area;
-        let flow = (a * 0.08) / (1.163 * 5);
-        if (brand === 'rommer') {
-            if (type === 'dn20') return a <= 120 && flow <= 1.6;
-            if (type === 'dn20_servo') return a <= 150 && flow <= 1.6;
-            if (type === 'dn25') return a <= 150 && flow <= 1.6;
-            if (type === 'dn25_servo') return a <= 116;
-        } else { // stout
-            if (type === 'dn20') return a <= 120 && flow <= 0.9;
-            if (type === 'dn20_servo') return a <= 150 && flow <= 0.9;
-            if (type === 'dn25') return a <= 200 && flow <= 2.1;
-            if (type === 'dn25_servo') return a <= 153;
-            if (type === 'dn32_servo') return a <= 210;
+        // Перепад — выбранный в настройках тёплого пола (5/7/10 К), по умолчанию 5.
+        let flow = (a * 0.08) / (1.163 * (parseInt(this.state.ufhDT, 10) || 5));
+        // Предел — расходом (скорость в патрубке и потери на смесителе, см. groupFlowLimit)
+        // для позиции, которую смета ставит под этот тип. DN32 — по расходу насоса RCP-0004 (2,9 м³/ч, ≈ 210 м²).
+        const _rep = (brand === 'rommer')
+            ? { dn20: 'RDG-1002-002501', dn20_servo: 'RDG-1003-002501', dn25: 'RDG-1002-002501', dn25_servo: 'RDG-1003-002501' }
+            : { dn20: 'SDG-0002-002001', dn20_servo: 'SDG-0007-002001', dn25: 'SDG-0002-002501', dn25_servo: 'SDG-0003-002501' };
+        if (type === 'dn32_servo') return brand !== 'rommer' && a <= 210;
+        if (_rep[type]) {
+            const dn = /^dn20/.test(type) ? 20 : 25;
+            return flow <= this.groupFlowLimit({ id: _rep[type], name: 'DN' + dn }, 'ufh');
         }
         return false;
     },
@@ -56295,6 +56296,8 @@ const app = {
         const kw = n.match(/(\d+[.,]?\d*)\s?кВт/i);
         if (kw && !s.pump) s.power = num(kw[1]);
         else if (it.power != null) s.power = num(it.power);
+        // Насосные группы: мощность в названии больше не пишется — считаем из расхода и перепада.
+        if (/^(SDG|RDG)-\d{4}-\d{6}$/.test(String(it.id || '')) && /групп/i.test(n)) s.power = this.groupCapKw(it, 'rad');
         if (it.circuits != null) s.circuits = num(it.circuits);
         if (it.type) s.type = String(it.type);
         if (it.chimType) s.chimType = String(it.chimType);
@@ -58702,15 +58705,19 @@ const app = {
         } else if (_origId0 === 'SDG-0120-001000' || _origId0 === 'SDG-0002-002001' || _origId0 === 'SDG-0002-002501' || _origId0 === 'SDG-0003-002001' || _origId0 === 'SDG-0003-002501' || _origId0 === 'SDG-0007-003201' || _origId0 === 'SDG-0001-002001' || _origId0 === 'SDG-0001-002501' || _origId0 === 'SDG-0001-003201') {
             const _hdrDnMatch = (item.name || '').match(/DN(20|25|32)/);
             const _hdrDn = _hdrDnMatch ? `DN${_hdrDnMatch[1]}` : null;
-            const _hdrRad = (item.name || '').match(/для радиаторов\s*(?:до\s*)?(\d+(?:[.,]\d+)?)\s*кВт/);
-            const _hdrUfhTp = (item.name || '').match(/тёплого пола\s*(?:до\s*)?(\d+(?:[.,]\d+)?)\s*кВт/);
-            const _hdrUfhTp2 = (item.name || '').match(/(\d+(?:[.,]\d+)?)\s*кВт\s*ТП/);
-            const _hdrUfhSingle = !_hdrRad ? (item.name || '').match(/(\d+(?:[.,]\d+)?)\s*кВт/) : null;
+            // Мощность группы — расчётная для контура, где она стоит (см. groupCapKw), а не из названия.
+            const _hdrIsGroup = /^(SDG|RDG)-\d{4}-\d{6}$/.test(String(item.id || '')) && /групп/i.test(item.name || '');
+            const _hdrPurpose = (item._uiUfhOnly || (item._capUse && item._capUse.purpose === 'ufh')) ? 'ufh' : 'rad';
+            const _hdrCap = _hdrIsGroup ? String(this.groupCapKw(item, _hdrPurpose)).replace('.', ',') : null;
+            const _hdrRad = (_hdrCap && _hdrPurpose === 'rad') ? [null, _hdrCap] : null;
+            const _hdrUfhTp = (_hdrCap && _hdrPurpose === 'ufh') ? [null, _hdrCap] : null;
+            const _hdrUfhTp2 = null;
+            const _hdrUfhSingle = (!_hdrIsGroup && !_hdrRad) ? (item.name || '').match(/(\d+(?:[.,]\d+)?)\s*кВт/) : null;
             // Одна плашка вместо трёх: «DN25 · радиаторы 24 кВт» (цена рядом, отдельной плашкой).
             const _hdrParts = [];
             if (_hdrDn) _hdrParts.push(_hdrDn);
-            if (_hdrRad) _hdrParts.push(`радиаторы ${_hdrRad[1]} кВт`);
-            if (_hdrUfhTp || _hdrUfhTp2) _hdrParts.push(`тёплый пол ${(_hdrUfhTp || _hdrUfhTp2)[1]} кВт`);
+            if (_hdrRad) _hdrParts.push(`тянет ${_hdrRad[1]} кВт (радиаторы)`);
+            if (_hdrUfhTp || _hdrUfhTp2) _hdrParts.push(`тянет ${(_hdrUfhTp || _hdrUfhTp2)[1]} кВт (тёплый пол)`);
             if (!_hdrRad && !_hdrUfhTp && !_hdrUfhTp2 && _hdrUfhSingle) _hdrParts.push(`${_hdrUfhSingle[1]} кВт`);
             const _hdrBadges = _hdrParts.length
                 ? `<div style="background:var(--primary-light); color:var(--primary); padding:6px 12px; border-radius:10px; font-size:13px; font-weight:800; border:1px solid rgba(37,99,235,0.08);">${_hdrParts.join(' · ')}</div>` : '';
@@ -64092,8 +64099,8 @@ const app = {
      * выбор исполнения — общий по котельной, state.pumpType.
      */
     SNOW_PUMPS: [
-        { label: '25/60', cat: 'pumps_dn25', hMax: 6, qMax: 3.3 },
-        { label: '25/80', cat: 'pumps_dn25_80', hMax: 8, qMax: 5.5 }
+        { label: '25/60', cat: 'pumps_dn25', hMax: 6.1, qMax: 3.35, pts: [[0, 6.1], [1, 4.85], [2, 3.45], [3, 2.0], [3.35, 1.2]] },
+        { label: '25/80', cat: 'pumps_dn25_80', hMax: 8, qMax: 4.8, pts: [[0, 8.0], [1, 7.4], [2, 6.5], [3, 5.2], [4, 3.5], [4.8, 1.3]] }
     ],
     /**
      * Труба уличной петли. Обе — PE-Xa/EVOH, обе переживают замерзание
@@ -64258,7 +64265,7 @@ const app = {
     /** Напор насоса при подаче v (м³/ч), м. Без второго аргумента — 25/60. */
     snowPumpHead: function (v, pump) {
         const p = pump || this.SNOW_PUMPS[0];
-        return Math.max(0, p.hMax * (1 - Math.pow(v / p.qMax, 2)));
+        return this.pumpHeadAt(p, v);
     },
     /**
      * Требуемая температура подачи первичного контура, °C.
@@ -65803,9 +65810,26 @@ const app = {
     // H = hMax·(1 − (Q/qMax)²). В насосных группах STOUT стоит 25/60, в мощных
     // сборках 25/80; ими и проверяем, тянет ли группа посчитанное кольцо.
     RAD_PUMPS: [
-        { label: '25/60', hMax: 6, qMax: 3.3 },
-        { label: '25/80', hMax: 8, qMax: 5.5 }
+        { label: '25/60', hMax: 6.1, qMax: 3.35, pts: [[0, 6.1], [1, 4.85], [2, 3.45], [3, 2.0], [3.35, 1.2]] },
+        { label: '25/80', hMax: 8, qMax: 4.8, pts: [[0, 8.0], [1, 7.4], [2, 6.5], [3, 5.2], [4, 3.5], [4.8, 1.3]] }
     ],
+    /**
+     * Напор насоса при подаче v (м³/ч), м. Если у насоса есть точки pts — ломаная по паспортному графику
+     * (линейная интерполяция, за последней точкой 0), иначе прежняя квадратичная аппроксимация.
+     *
+     * Точки сняты с паспортных графиков при максимальной скорости (III), погрешность ±0,2 м:
+     *   25/60 — STOUT SPC-0011 (ред. 17.05.2021) и ROMMER RCP-0004 PROFI RATE: у обоих кривая почти прямая,
+     *           6,1 м при 0, 3,4–3,6 м при 2 м³/ч; у ROMMER она кончается на ≈ 3,35 м³/ч (у STOUT идёт до 4,0),
+     *           взято по ROMMER, то есть по более слабому;
+     *   25/80 — по ROMMER RCP-0004 (8,0 м, обрыв на ≈ 4,8 м³/ч; у STOUT напор выше: 4,95 м при 4 м³/ч);
+     *   15/60-130 — ROMMER RCP-0002 RATE (6,1 м, обрыв на 2,87 м³/ч).
+     * Прежняя формула H = hMax·(1 − (Q/qMax)²) с 6 м и 3,3 м³/ч завышала напор на малых расходах (на 2 м³/ч — 4,0 м
+     * против 3,45 по паспорту) и занижала на больших (на 3 м³/ч — 1,0 м против 2,0).
+     */
+    pumpHeadAt: function (pump, v) {
+        if (pump && pump.pts) return this.boilerPumpHead(pump, v) || 0;
+        return Math.max(0, pump.hMax * (1 - Math.pow(v / pump.qMax, 2)));
+    },
 
     // ─── Греющий контур бойлера ──────────────────────────────────────────────
     //
@@ -65967,9 +65991,9 @@ const app = {
         let pump = null;
         if (L.pump) {
             const _qP = flow * _kpL.flow;
-            const pick = this.RAD_PUMPS.find(pm => pm.hMax * (1 - Math.pow(_qP / pm.qMax, 2)) >= head)
+            const pick = this.RAD_PUMPS.find(pm => this.pumpHeadAt(pm, _qP) >= head)
                 || this.RAD_PUMPS[this.RAD_PUMPS.length - 1];
-            const avail = pick.hMax * (1 - Math.pow(_qP / pick.qMax, 2));
+            const avail = this.pumpHeadAt(pick, _qP);
             pump = { label: pick.label, avail: Math.max(0, avail), builtin: false,
                 ok: avail >= head };
         } else if (L.pumpCurve) {
@@ -66261,7 +66285,7 @@ const app = {
         };
         const fitsAt = (br) => {
             const r = headAt(br);
-            return this.RAD_PUMPS.some(pm => pm.hMax * (1 - Math.pow(r.flowBr / pm.qMax, 2)) >= r.head);
+            return this.RAD_PUMPS.some(pm => this.pumpHeadAt(pm, r.flowBr) >= r.head);
         };
 
         for (let br = 1; br <= 4; br++) {
@@ -66317,10 +66341,12 @@ const app = {
             [inp.tpF1, inp.tpF2].forEach((tp, i) => {
                 const loops = (tp && tp.loops) || 0;
                 if (!(loops > 0)) return;
-                const n = Math.ceil(loops / 12);
+                const mans = Math.ceil(loops / 12);
+                const n = Math.min(mans, (this._ufhNodes && this._ufhNodes[i + 1]) || mans);
                 tpSum += n;
                 rows.push({ title: 'Тёплый пол', floors: [i + 1], count: n,
-                    rule: loops + ' петель: по узлу на каждые 12 петель коллектора' });
+                    rule: loops + ' петель, коллекторов ' + mans + ': групп по мощности и расходу ' + n +
+                        (n < mans ? ' (одна группа питает несколько коллекторов)' : '') });
             });
             // Запасная строка на случай, когда число узлов задано не по петлям.
             if (inp.tQ > tpSum) rows.push({ title: 'Тёплый пол (прочее)', floors: [], count: inp.tQ - tpSum, rule: 'узел без расчёта петель' });
@@ -66637,7 +66663,7 @@ const app = {
         const pumps = hasGroup ? this.RAD_PUMPS : [this.RAD_PUMPS[0]];
         const pump = pumps.map(pm => ({
             label: hasGroup ? pm.label : 'встроенный насос котла (принят по кривой ' + pm.label + ')',
-            avail: pm.hMax * (1 - Math.pow(flowBranch * _kp.flow / pm.qMax, 2))
+            avail: this.pumpHeadAt(pm, flowBranch * _kp.flow)
         }));
         const fit = pump.find(pm => pm.avail >= head) || null;
 
@@ -66828,7 +66854,7 @@ const app = {
             `• Расход через узел: G = Q / (1,163 × ΔT) = <b>${(w.nodeFlow || w.flow).toFixed(2)} м³/ч</b> при перепаде ${b.dT} К${w.nodeFlow ? " (узел один на все гребёнки — расход общий)" : ""}.<br>` +
             `• Самая длинная петля: ${n1(w.worstDp)} кПа.<br>` +
             `• Коллектор (расходомер, кран, сервопривод): ${this.UFH_MAN_DP} кПа.<br>` +
-            `• Смесительный клапан узла: (G / Kvs)² = (${(w.nodeFlow || w.flow).toFixed(2)} / ${b.kvs})² = ${n1(w.dpValve)} кПа.<br>` +
+            `• Потери группы/узла по паспортному графику при ${(w.nodeFlow || w.flow).toFixed(2)} м³/ч: ${n1(w.dpValve)} кПа (паспортный Kvs клапана ${b.kvs}, у группы целиком эффективный ниже).<br>` +
             (w.trDp > 0 ? `• Транзит до коллектора ${w.floor}-го этажа ${w.tr ? w.tr.label : ''}: ${n1(w.trDp)} кПа.<br>` : '') +
             `• Итого с запасом 15 %: <b>${n1(w.need)} м</b>. Насос ${b.pump.label} на этом расходе даёт ` +
             `<b>${n1(w.have)} м</b> — ${b.ok ? 'проходит' : '<b style="color:var(--c-bad,#EF4444);">не проходит</b>'}.` +
@@ -66916,13 +66942,13 @@ const app = {
      * здесь можно только в сторону запаса.
      */
     UFH_PUMPS: {
-        mix: { label: '25/60-130', hMax: 6, qMax: 3.0 },
-        dn20: { label: '15/60-130', hMax: 6, qMax: 2.5 },
-        dn25: { label: '25/60-180', hMax: 6, qMax: 3.3 },
-        dn25_80: { label: '25/80-180', hMax: 8, qMax: 5.5 }
+        mix: { label: '25/60-130', hMax: 6.1, qMax: 3.35, pts: [[0, 6.1], [1, 4.85], [2, 3.45], [3, 2.0], [3.35, 1.2]] },
+        dn20: { label: '15/60-130', hMax: 6.1, qMax: 2.87, pts: [[0, 6.1], [0.9, 4.85], [1.5, 3.95], [2.1, 2.85], [2.7, 1.55], [2.87, 1.2]] },
+        dn25: { label: '25/60-180', hMax: 6.1, qMax: 3.35, pts: [[0, 6.1], [1, 4.85], [2, 3.45], [3, 2.0], [3.35, 1.2]] },
+        dn25_80: { label: '25/80-180', hMax: 8, qMax: 4.8, pts: [[0, 8.0], [1, 7.4], [2, 6.5], [3, 5.2], [4, 3.5], [4.8, 1.3]] }
     },
     ufhPumpHead: function (v, pump) {
-        return Math.max(0, pump.hMax * (1 - Math.pow(v / pump.qMax, 2)));
+        return this.pumpHeadAt(pump, v);
     },
     /** Человеческое имя узла тёплого пола для заметок расчёта */
     _ufhMixLabel: function (type) {
@@ -66931,12 +66957,162 @@ const app = {
         if (type === 'dn32_servo') return 'насосной группы DN32';
         return 'насосной группы DN25';
     },
+    /**
+     * Насосные группы: мощность в названиях («до 5/10/12/24 кВт») была зашита в каталог и
+     * не зависела от системы. Паспорта STOUT её не нормируют — она следует из расхода и
+     * перепада: Q = G × 1,163 × ΔT. Предел расхода — скорость в патрубке не выше ~1 м/с;
+     * для ROMMER — прежние пределы каталога (паспортов на группы нет).
+     */
+    GROUP_FLOW_LIMIT: { 20: 1.2, 25: 2.1, 32: 3.6 },
+    groupDn: function (item) {
+        const n = String((item && item.name) || ''), id = String((item && item.id) || '');
+        const m = /DN\s*(20|25|32)/i.exec(n);
+        if (m) return parseInt(m[1], 10);
+        if (/-0020\d\d$/.test(id)) return 20;
+        if (/-0032\d\d$/.test(id)) return 32;
+        return 25;
+    },
+    /**
+     * Потери напора ВСЕЙ группы без насоса (клапан, краны, термометр, фитинги) по паспортным графикам
+     * STOUT «Потери напора у групп…» (ред. 17.05.2021) и узла SDG-0120-001, точки [Q м³/ч, ΔP м вод. ст.],
+     * снятые с графиков (±0,05 м). Они заметно выше, чем даёт Kvs одного клапана: у SDG-0002 DN25 при 2 м³/ч —
+     * 6,5 м, а (2/3,5)²·10,2 = 3,3 м; эффективный Kv группы 2,1–2,5 при паспортном клапана 3,5.
+     * У ROMMER (RDG-1002, RDG-1003) график — прямая по Kvs 2,11 и 3,96, считается по формуле.
+     */
+    GROUP_DP_M: {
+        std:        [[0, 0], [0.5, 0.25], [1, 0.95], [1.5, 2.0], [2, 3.5], [2.5, 5.9], [3, 8.8], [3.2, 10]],
+        dn20:       [[0.25, 0.31], [0.5, 0.6], [0.75, 1.01], [1, 1.57], [1.25, 2.25], [1.5, 3.16], [1.75, 4.22], [2, 5.49], [2.25, 6.9], [2.4, 7.85]],
+        dn20_servo: [[0.25, 0.28], [0.5, 0.46], [1, 0.93], [1.5, 1.71], [2, 2.92], [2.5, 4.49], [3, 6.43], [3.3, 7.65]],
+        dn25:       [[0.6, 1.33], [0.8, 1.81], [1, 2.31], [1.25, 3.09], [1.5, 4.04], [1.75, 5.18], [2, 6.49], [2.25, 7.95], [2.4, 8.8]],
+        dn25_servo: [[0.6, 0.93], [1, 1.22], [1.5, 1.66], [2, 2.21], [2.5, 2.85], [3, 3.62], [3.5, 4.47], [4, 5.41], [4.5, 6.46], [5, 7.7], [5.4, 8.82]],
+        dn32_servo: [[0, 0.13], [1, 0.2], [2, 0.38], [3, 0.65], [4, 1.0], [5, 1.4], [6, 2.0], [7, 2.7], [8, 3.5], [8.5, 4.0]]
+    },
+    /** Предел расхода локального узла подмеса STOUT, м³/ч: потери по паспортной кривой ≤ ½ напора насоса 25/60. */
+    stdNodeFlowLimit: function () {
+        let g = 0;
+        for (let q = 0.02; q <= 2.5; q += 0.02) {
+            if (this.groupDpKpa('std', 'stout', q) / 9.81 <= 0.5 * this.pumpHeadAt(this.UFH_PUMPS.mix, q)) g = q; else break;
+        }
+        // Узел на 3/4": скорость в патрубке ≤ 1 м/с, как у DN20 (GROUP_FLOW_LIMIT[20]).
+        return Math.min(Math.round(g * 100) / 100, this.GROUP_FLOW_LIMIT[20]);
+    },
+    /** Ключ кривой потерь для позиции каталога (STOUT) или типа узла; null — кривой нет. */
+    groupDpKey: function (item) {
+        const m = /^SDG-(\d{4})-\d{2}(\d{2})/.exec(String((item && item.id) || ''));
+        if (!m) return null;
+        if (m[1] === '0120') return 'std';
+        if (m[1] === '0002') return m[2] === '20' ? 'dn20' : 'dn25';
+        if (m[1] === '0003') return 'dn25_servo';
+        if (m[1] === '0007') return m[2] === '20' ? 'dn20_servo' : m[2] === '32' ? 'dn32_servo' : 'dn25_servo';
+        return null;
+    },
+    /** Потери напора группы/узла, кПа, при расходе flow (м³/ч): по кривой (между точками — линейно, за краями — по Q²), иначе по Kvs. */
+    groupDpKpa: function (type, brand, flow) {
+        const q = Math.max(0, parseFloat(flow) || 0);
+        const pts = (brand !== 'rommer') ? this.GROUP_DP_M[type] : null;
+        if (!pts) return Math.pow(q / this.ufhMixKvs(type, brand), 2) * 100;
+        let m;
+        if (q <= pts[0][0]) m = pts[0][1] * Math.pow(q / pts[0][0], 2);
+        else if (q >= pts[pts.length - 1][0]) { const L = pts[pts.length - 1]; m = L[1] * Math.pow(q / L[0], 2); }
+        else {
+            for (let i = 1; i < pts.length; i++) if (q <= pts[i][0]) {
+                const a = pts[i - 1], b = pts[i];
+                m = a[1] + (b[1] - a[1]) * (q - a[0]) / (b[0] - a[0]); break;
+            }
+        }
+        return m * 9.81;
+    },
+    /**
+     * Kvs смесительного клапана группы, м³/ч — по техпаспортам: STOUT SDG-0002 (DN20/DN25) 3,5,
+     * SDG-0003 DN25 6, SDG-0007 DN20 4 / DN25 6 / DN32 18 (ред. 17.05.2021); ROMMER RDG-1002 2,11,
+     * RDG-1003 3,96 (паспорта 2024), RDG-1004 3,96 (rommer.ru). У прямых групп смесителя нет — null.
+     */
+    groupKvs: function (item) {
+        const id = String((item && item.id) || '');
+        let m = /^SDG-(\d{4})-\d{2}(\d{2})/.exec(id);
+        if (m) {
+            return { '0002-20': 3.5, '0002-25': 3.5, '0003-25': 6, '0007-20': 4, '0007-25': 6, '0007-32': 18 }[m[1] + '-' + m[2]] || null;
+        }
+        m = /^RDG-(1002|1003|1004)-/.exec(id);
+        if (m) return { 1002: 2.11, 1003: 3.96, 1004: 3.96 }[m[1]];
+        return null;
+    },
+    /**
+     * Предельный расход группы, м³/ч: меньшее из двух — скорость в патрубке ≤ ~1 м/с и такой расход,
+     * при котором смесительный клапан (G/Kvs)² отнимает не больше половины напора штатного насоса группы
+     * на этом расходе (по паспортной кривой, см. pumpHeadAt): остальное нужно коллектору и петлям.
+     * Раньше стоял жёсткий предел 0,3 бар — он не зависел от насоса и от Kvs.
+     */
+    groupFlowLimit: function (item, purpose) {
+        let lim = this.GROUP_FLOW_LIMIT[this.groupDn(item)] || 2.1;
+        const dn = this.groupDn(item), key = this.groupDpKey(item), kvs = this.groupKvs(item);
+        const pump = dn === 20 ? this.UFH_PUMPS.dn20 : dn === 25 ? this.UFH_PUMPS.dn25 : null;
+        if ((key || kvs) && pump) {
+            const brand = /^RDG-/.test(String((item && item.id) || '')) ? 'rommer' : 'stout';
+            const t = key || ((kvs < 3 ? 'dn25' : 'dn25_servo'));
+            let g = 0;
+            for (let q = 0.02; q <= lim + 1e-9; q += 0.02) {
+                const dpM = this.groupDpKpa(t, brand, q) / 9.81;
+                if (dpM <= 0.5 * this.pumpHeadAt(pump, q)) g = q; else break;
+            }
+            lim = Math.min(lim, Math.round(g * 100) / 100);
+        }
+        return lim;
+    },
+    /** Перепад, К, при котором группа работает в данном контуре. */
+    groupDt: function (purpose) {
+        if (purpose === 'ufh') return (this._ufhBal && this._ufhBal.dT) || parseInt(this.state.ufhDT, 10) || (this.UFH_DTS && this.UFH_DTS[0]) || 5;
+        if (purpose === 'snow') return 15;
+        if (purpose === 'dhw') return this.boilerDT();
+        return this.radDT();
+    },
+    /** Сколько кВт тянет одна группа в контуре purpose ('rad' | 'ufh' | 'snow' | 'dhw'). */
+    groupCapKw: function (item, purpose) {
+        const q = this.groupFlowLimit(item, purpose) * 1.163 * this.groupDt(purpose);
+        return Math.round(q * 10) / 10;
+    },
+    /** Подпись к названию группы: нагрузка на одну группу против того, сколько она тянет. */
+    groupLoadText: function (item, use) {
+        if (!item || !use || !(use.kw > 0)) return '';
+        const cap = this.groupCapKw(item, use.purpose);
+        if (!(cap > 0)) return '';
+        const f = v => String(Math.round(v * 10) / 10).replace('.', ',');
+        const pct = Math.round(use.kw / cap * 100);
+        const what = use.purpose === 'ufh' ? 'тёплый пол' : use.purpose === 'dhw' ? 'бойлер' : 'радиаторы';
+        return what + ': ' + f(use.kw) + ' из ' + f(cap) + ' кВт' + (use.qty > 1 ? ' на группу' : '') + ' (' + pct + ' %)' + (pct > 100 ? ' — не хватает' : '');
+    },
+    /** Блок «Характеристики» в подсказке насосной группы: Kvs из паспорта STOUT + расчётная мощность. */
+    groupCapacityHtml: function (item, purpose, isRommer) {
+        const dn = this.groupDn(item), lim = this.groupFlowLimit(item, purpose), dt = this.groupDt(purpose);
+        const cap = this.groupCapKw(item, purpose);
+        const f = v => String(v).replace('.', ',');
+        const id = String(item.id || '');
+        const kvs = this.groupKvs(item);
+        let s = `<b>Характеристики (${id}):</b><br>`;
+        if (kvs) s += `• Kvs смесительного клапана: <b>${f(kvs)} м³/ч</b> (техпаспорт ${/^RDG/.test(id) ? 'ROMMER' : 'STOUT'}).<br>`;
+        s += `• Предел расхода: <b>до ${f(lim)} м³/ч</b> (DN${dn}: скорость в патрубке ≤ 1 м/с` + (kvs ? ', потери на смесителе ≤ ½ напора насоса по его кривой' : '') + `).<br>`;
+        s += `• Тянет в этом контуре: <b>${f(cap)} кВт</b> = ${f(lim)} × 1,163 × ΔT ${dt} К. Паспорт мощность в кВт не нормирует — она зависит от перепада и насоса.`;
+        if (dn === 32) s += `<br>• <b style="color:var(--c-warn,#F59E0B);">⚠ Насос в комплект не входит.</b> Расчёт на примере RCP-0004-3260180 (DN32, напор 6 м) на 2-й скорости (расход 2,9 м³/ч); при другом насосе или скорости пересчитайте.`;
+        return s;
+    },
     /** Пропускная способность смесительного клапана узла, м³/ч при перепаде 1 бар */
     ufhMixKvs: function (type, brand) {
-        if (type === 'std') return (brand === 'rommer') ? 1.8 : 2.1;
-        if (type === 'dn20' || type === 'dn20_servo') return 2.5;
-        if (type === 'dn32_servo') return 6.3;
-        return 4.0;   // DN25
+        // STOUT — по техпаспортам (stout.ru, ред. 17.05.2021): узел подмеса SDG-0120-001 — 3,5;
+        // SDG-0002 (4-ходовой термостатический) DN20 и DN25 — 3,5; SDG-0007 (3-ходовой) DN20 — 4,
+        // DN25 — 6, DN32 — 18; SDG-0003 (только DN25) — 6. ROMMER: узел подмеса RDG-0120-008100 — 3,42
+        // (паспорт); паспортов на группы ROMMER нет, там прежние значения.
+        if (brand === 'rommer') {
+            // RDG-1002 (термостатический) — 2,11; RDG-1003 (3-ходовой под сервопривод) — 3,96; узел RDG-0120-008100 — 3,42.
+            if (type === 'std') return 3.42;
+            if (type === 'dn20' || type === 'dn25') return 2.11;
+            return 3.96;
+        }
+        if (type === 'std') return 3.5;
+        if (type === 'dn20') return 3.5;
+        if (type === 'dn20_servo') return 4;
+        if (type === 'dn25') return 3.5;
+        if (type === 'dn32_servo') return 18;
+        return 6;   // dn25_servo
     },
     /**
      * Раскладка петель тёплого пола: сколько петель, какой длины и какую
@@ -67139,7 +67315,7 @@ const app = {
                 });
                 const flow = rows.reduce((a, r) => a + r.flow, 0) * 0.06;   // м³/ч
                 const worstDp = rows.reduce((a, r) => Math.max(a, r.dp), 0);
-                const dpValve = Math.pow(flow / kvs, 2) * 100;              // кПа
+                const dpValve = this.groupDpKpa(type, brand, flow);             // кПа, по паспортной кривой группы
                 return Object.assign({}, m, { rows: rows, flow: flow, worstDp: worstDp, dpValve: dpValve });
             });
             // Транзит один на этаж, а не на каждый коллектор: его диаметр и потери
@@ -67166,7 +67342,22 @@ const app = {
             // 5,3 кПа на клапане вместо 21 и «проходит» там, где насос не тянет.
             if (type === 'std' && mans.length > 1) {
                 const nodeFlow = mans.reduce((a, m) => a + m.flow, 0);
-                mans.forEach(m => { m.nodeFlow = nodeFlow; m.dpValve = Math.pow(nodeFlow / kvs, 2) * 100; });
+                mans.forEach(m => { m.nodeFlow = nodeFlow; m.dpValve = this.groupDpKpa(type, brand, nodeFlow); });
+            }
+            // Групп на этаже может быть меньше, чем коллекторов: коллекторы делят группу
+            // поровну (по кругу), и через её клапан и насос идёт их общий расход.
+            if (type !== 'std' && this._ufhNodes) {
+                [1, 2].forEach(fl => {
+                    const grp = mans.filter(m => m.floor === fl);
+                    const nn = Math.min(grp.length, this._ufhNodes[fl] || grp.length);
+                    if (nn < 1 || nn >= grp.length) return;
+                    const sums = new Array(nn).fill(0);
+                    grp.forEach((m, i) => { sums[i % nn] += m.flow; });
+                    grp.forEach((m, i) => {
+                        m.nodeFlow = sums[i % nn];
+                        m.dpValve = this.groupDpKpa(type, brand, m.nodeFlow);
+                    });
+                });
             }
             mans.forEach(m => {
                 m.trDp = m.trDp || 0;
@@ -76263,7 +76454,7 @@ const app = {
                         ? "Для ROMMER по умолчанию всегда выбирается DN25."
                         : `Выбор типоразмера зависит от общей мощности системы: до 10 кВт — DN20, выше — DN25.<br><b>Текущие теплопотери:</b> ${inputVal} кВт.`;
 
-                    let maxFlow = isDn32 ? 2.9 : (isRommer ? 2.0 : (item.id.includes("2001") ? 0.9 : 2.1));
+                    let maxFlow = this.groupFlowLimit(item, 'rad');
                     // Паспортный расход — у ОДНОЙ группы, поэтому и нагрузку делим на число групп:
                     // иначе при двух группах проверка сравнивала всю мощность дома с пределом одной
                     // и всегда падала в ❌.
@@ -76297,24 +76488,7 @@ const app = {
                         calc += `<br><b>Количество групп:</b> ${qty} шт. — по одной на каждый этаж с радиаторами.`;
                     }
 
-                    if (isDn32) {
-                        capacity = `<b>Паспортные характеристики (${item.id}):</b><br>` +
-                            `• Мощность (с насосом на 2-й скорости, расход 2.9 м³/ч): для радиаторов до 34 кВт<br>` +
-                            `• Максимальный расход клапана: <b>до 3.6 м³/ч</b> (DN32) — на 2-й скорости насоса ограничивает не клапан, а насос (2.9 м³/ч)<br>` +
-                            `• <b style="color:var(--c-warn,#F59E0B);">⚠ Насос в комплект не входит.</b> Расчёт на примере RCP-0004-3260180 (DN32, напор 6 м) на 2-й скорости; при другом насосе или скорости пересчитайте.`;
-                    } else if (isRommer) {
-                        capacity = `<b>Паспортные характеристики (RDG-1001-002501):</b><br>` +
-                            `• Мощность: для радиаторов до 23 кВт<br>` +
-                            `• Максимальный расход: <b>до 2.0 м³/ч</b> (DN25)`;
-                    } else if (item.id.includes("2001")) {
-                        capacity = `<b>Паспортные характеристики (SDG-0001-002001):</b><br>` +
-                            `• Мощность: для радиаторов до 10 кВт<br>` +
-                            `• Максимальный расход: <b>до 0.9 м³/ч</b> (DN20, Kvs = 6.0)`;
-                    } else {
-                        capacity = `<b>Паспортные характеристики (SDG-0001-002501):</b><br>` +
-                            `• Мощность: для радиаторов до 24 кВт<br>` +
-                            `• Максимальный расход: <b>до 2.1 м³/ч</b> (DN25, Kvs = 8.8)`;
-                    }
+                    capacity = this.groupCapacityHtml(item, 'rad', isRommer);
                 } else if (purpose === 'ufh') {
                     title = isDn32 ? "Насосная группа STOUT DN32 (Смесительная)" : (isRommer ? "Насосная группа ROMMER DN25 (Смесительная)" : (item.id.includes("2001") ? "Насосная группа STOUT DN20 (Смесительная)" : "Насосная группа STOUT DN25 (Смесительная)"));
                     why = "Точное регулирование температуры теплоносителя в контуре водяного тёплого пола путём подмеса остывшей воды из обратной линии.";
@@ -76323,17 +76497,18 @@ const app = {
                         ? "Крупный контур/несколько петель тёплого пола, где групп DN20/DN25 недостаточно по расходу."
                         : (isRommer
                             ? "Для ROMMER по умолчанию всегда выбирается DN25."
-                            : `Выбор типоразмера зависит от площади тёплого пола: до 120 м² — DN20, выше — DN25.<br><b>Текущая площадь ТП:</b> ${inputVal} м².`);
+                            : `Типоразмер — по расходу на группу: предел DN20 ${String(this.groupFlowLimit({ id: 'SDG-0002-002001', name: 'DN20' }, 'ufh')).replace('.', ',')} м³/ч (≈ ${Math.floor(this.groupFlowLimit({ id: 'SDG-0002-002001', name: 'DN20' }, 'ufh') * 1.163 * this.groupDt('ufh') / 0.08)} м² пола при ΔT ${this.groupDt('ufh')} К), DN25 ${String(this.groupFlowLimit({ id: 'SDG-0002-002501', name: 'DN25' }, 'ufh')).replace('.', ',')} м³/ч (≈ ${Math.floor(this.groupFlowLimit({ id: 'SDG-0002-002501', name: 'DN25' }, 'ufh') * 1.163 * this.groupDt('ufh') / 0.08)} м²).<br><b>Текущая площадь ТП:</b> ${inputVal} м².`);
 
                     let ufhPwr = Math.round(inputVal * 0.08); // Approximate power: 80 W/m²
-                    let maxFlow = isDn32 ? 2.9 : (isRommer ? 1.6 : (item.id.includes("2001") ? 0.9 : 2.1));
-                    // Групп ставится по одной на каждый коллектор ТП, площадь между ними делится.
+                    let maxFlow = this.groupFlowLimit(item, 'ufh');
+                    // Групп ставится по расходу (одна группа может питать несколько коллекторов); площадь делится между группами.
                     // Паспортный расход — у одной группы, поэтому и сравнивать надо с долей, а не
                     // со всей площадью дома.
                     let grpQty = Math.max(1, parseInt(qty, 10) || 1);
                     let areaPer = Math.round((inputVal / grpQty) * 10) / 10;
                     let pwrPer = (grpQty > 1) ? Math.round(areaPer * 0.08 * 10) / 10 : ufhPwr;
-                    let flow = parseFloat((pwrPer / (1.163 * 5)).toFixed(2));
+                    const dtUfh = this.groupDt('ufh');
+                    let flow = parseFloat((pwrPer / (1.163 * dtUfh)).toFixed(2));
                     let perNote = (grpQty > 1) ? ' на группу' : '';
                     let checkResult = (flow <= maxFlow)
                         ? `<b style="color: var(--c-ok,#10B981);">✔ Проверка расхода пройдена:</b> расчетный расход ${flow} м³/ч${perNote} не превышает максимальный расход группы ${maxFlow} м³/ч.`
@@ -76341,30 +76516,13 @@ const app = {
 
                     calc = `<b>Подбор по площади теплого пола:</b><br>${limitText}<br>` +
                         `<b>Оценка тепловой мощности:</b> Q_тп ≈ ${inputVal} м² × 80 Вт/м² = ${ufhPwr} кВт.<br>` +
-                        (grpQty > 1 ? `<b>Нагрузка на одну группу:</b> групп ${grpQty} шт (по одной на коллектор ТП) → ${areaPer} м², Q ≈ ${pwrPer} кВт.<br>` : '') +
+                        (grpQty > 1 ? `<b>Нагрузка на одну группу:</b> групп ${grpQty} шт (одна группа может питать несколько коллекторов) → ${areaPer} м², Q ≈ ${pwrPer} кВт.<br>` : '') +
                         `<b>Формула расхода:</b> G = Q_тп / (c × ΔT)<br>` +
-                        `где c = 1.163 Вт·ч/(кг·°C), ΔT = 5°C (перепад температур тёплого пола).<br>` +
-                        `<b>Расчётный расход${perNote}:</b> G = ${pwrPer} / (1.163 × 5) = ${flow.toFixed(2)} м³/ч.<br>` +
+                        `где c = 1.163 Вт·ч/(кг·°C), ΔT = ${dtUfh}°C (перепад контура тёплого пола).<br>` +
+                        `<b>Расчётный расход${perNote}:</b> G = ${pwrPer} / (1.163 × ${dtUfh}) = ${flow.toFixed(2)} м³/ч.<br>` +
                         `${checkResult}`;
 
-                    if (isDn32) {
-                        capacity = `<b>Паспортные характеристики (${item.id}):</b><br>` +
-                            `• Мощность (с насосом на 2-й скорости, расход 2.9 м³/ч): для радиаторов до 34 кВт, для тёплого пола до 17 кВт<br>` +
-                            `• Максимальный расход клапана: <b>до 3.6 м³/ч</b> (DN32) — на 2-й скорости насоса ограничивает не клапан, а насос (2.9 м³/ч)<br>` +
-                            `• <b style="color:var(--c-warn,#F59E0B);">⚠ Насос в комплект не входит.</b> Расчёт на примере RCP-0004-3260180 (DN32, напор 6 м) на 2-й скорости; при другом насосе или скорости пересчитайте.`;
-                    } else if (isRommer) {
-                        capacity = `<b>Паспортные характеристики (RDG-1002-002501):</b><br>` +
-                            `• Мощность: для радиаторов до 23 кВт, для тёплого пола до 9 кВт<br>` +
-                            `• Максимальный расход: <b>до 1.6 м³/ч</b> (DN25, Kvs = 3.2)`;
-                    } else if (item.id.includes("2001")) {
-                        capacity = `<b>Паспортные характеристики (SDG-0002-002001):</b><br>` +
-                            `• Мощность: для радиаторов до 10 кВт, для тёплого пола до 5 кВт (до ~65 м²)<br>` +
-                            `• Максимальный расход: <b>до 0.9 м³/ч</b> (DN20, Kvs = 2.5)`;
-                    } else {
-                        capacity = `<b>Паспортные характеристики (SDG-0002-002501):</b><br>` +
-                            `• Мощность: для радиаторов до 24 кВт, для тёплого пола до 12 кВт (до ~153 м²)<br>` +
-                            `• Максимальный расход: <b>до 2.1 м³/ч</b> (DN25, Kvs = 4.0)`;
-                    }
+                    capacity = this.groupCapacityHtml(item, 'ufh', isRommer);
                 }
 
                 return `<span style="${styles}"><span style="${head}">${title}</span><b>Зачем:</b> ${why}<br><br>${calc}<br><br>${capacity}${purpose === 'ufh' ? this.ufhHeadHtml() : ''}</span>`;
@@ -78096,8 +78254,12 @@ const app = {
                 }
 
                 // Насосная группа встала в контур тёплого пола — в смете показываем только релевантную мощность
-                if (item._uiUfhOnly && finalItem.name) {
-                    finalItem.name = finalItem.name.replace(/для радиаторов\s*(?:до\s*)?\d+(?:[.,]\d+)?\s*кВт,\s*/i, '');
+                // Название группы — расчётное: сколько кВт она тянет в этом контуре при его
+                // перепаде и какая нагрузка на неё приходится (см. groupLoadText). Считается по
+                // фактически стоящей позиции, а не по подбору по умолчанию — ручная замена учтена.
+                if (item._capUse && finalItem.name) {
+                    const _lt = this.groupLoadText(finalItem, item._capUse);
+                    if (_lt) finalItem = Object.assign({}, finalItem, { name: finalItem.name + ' - ' + _lt });
                 }
 
                 // Разрешаем наличие с учетом даты обновления (лимит 31 день)
@@ -80396,7 +80558,7 @@ const app = {
         const tpF1 = tpFloorCalc(this.state.tp1, stepVal1, 0);
         const tpF2 = tpFloorCalc(this.state.floors === 2 ? this.state.tp2 : 0, stepVal2, 1);
         this._ufhFloorCalc = [tpF1, tpF2];   // для расшифровки строки трубы (getDesc)
-        let estMans = 0;
+        let estMans = 0, estNodes = 0;
         // Площадь, которую тянет ОДИН узел подмеса — по ней подбирается его
         // типоразмер (см. isUfhMixTypeCompatible). Делить общую площадь на число
         // коллекторов нельзя: при 200 м² на первом этаже (2 коллектора) и 50 м²
@@ -80411,8 +80573,28 @@ const app = {
             estMans = mans1 + mans2;
             const _tpA1 = parseFloat(this.state.tp1) || 0;
             const _tpA2 = (this.state.floors === 2) ? (parseFloat(this.state.tp2) || 0) : 0;
-            tpAreaPerMan = Math.max(mans1 > 0 ? _tpA1 / mans1 : 0, mans2 > 0 ? _tpA2 / mans2 : 0);
+            // Смесительных групп ставим по мощности, а не по гребёнкам: 12 петель — размер
+            // коллектора, а одна группа спокойно кормит два коллектора, если ей хватает
+            // расхода. Раньше групп было столько же, сколько коллекторов, и 120 м² пола
+            // давали две группы DN20 «до 5 кВт» вместо одной DN25 «до 12 кВт».
+            const _ovr = this.state.manualDnOverride, _isR = (this.state.brandMode === 'rommer');
+            const _nodeTypes = (_ovr === 'dn20' && !_isR) ? ['dn20', 'dn20_servo']
+                : (_ovr === 'dn25' || _isR || (pwr > 10) || (this.state.sectionAnalog && this.state.sectionAnalog['2.4. Гидравлика котельной'])) ? ['dn25', 'dn25_servo']
+                : ['dn20', 'dn20_servo', 'dn25', 'dn25_servo'];
+            const _nodesFor = (a, mans) => {
+                if (!(mans > 0)) return 0;
+                for (let n = 1; n < mans; n++) {
+                    if (_nodeTypes.some(t => this.isUfhMixTypeCompatible(t, a, this.state.brandMode, a / n))) return n;
+                }
+                return mans;
+            };
+            const nodes1 = _nodesFor(_tpA1, mans1), nodes2 = _nodesFor(_tpA2, mans2);
+            estNodes = nodes1 + nodes2;
+            this._ufhNodes = { 1: nodes1, 2: nodes2 };
+            tpAreaPerMan = Math.max(nodes1 > 0 ? _tpA1 / nodes1 : 0, nodes2 > 0 ? _tpA2 / nodes2 : 0);
             if (!(tpAreaPerMan > 0)) tpAreaPerMan = tpArea;
+        } else {
+            this._ufhNodes = null;
         }
         // Таблице замены и кнопке «Аналог» число коллекторов взять неоткуда —
         // они работают вне render(), поэтому кладём результат в объект.
@@ -80500,7 +80682,7 @@ const app = {
             if (activeMixType === 'std') {
                 tQ = 0;
             } else {
-                tQ = (estMans > 0 ? estMans : 1);
+                tQ = (estNodes > 0 ? estNodes : 1);
             }
         }
 
@@ -80550,7 +80732,7 @@ const app = {
             for (let _type of _candidates) {
                 if (this.isUfhMixTypeCompatible(_type, tpArea, _brand, tpAreaPerMan)) {
                     this.state.ufhMixType = _type;
-                    tQ = (estMans > 0 ? estMans : 1);
+                    tQ = (estNodes > 0 ? estNodes : 1);
                     needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup || _snowOnCollector;
                     break;
                 }
@@ -80617,7 +80799,7 @@ const app = {
                 this.state.ufhMixType = _bal.type;
                 // Пересчитываем то же, что и переход с локального узла на группу выше:
                 // групп ставится по одной на коллектор, а от их числа зависит коллектор котельной.
-                tQ = (estMans > 0 ? estMans : 1);
+                tQ = (estNodes > 0 ? estNodes : 1);
                 needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup || _snowOnCollector;
             }
             this._ufhBal = _bal;
@@ -80782,8 +80964,8 @@ const app = {
         if (rQ > 0) {
             const _grpsForCap = dn25 ? catalog.groups_dn25 : catalog.groups_dn20;
             const _directGrp = _grpsForCap && _grpsForCap[0];
-            const _capMatch = _directGrp && /для\s+радиаторов\s+(?:до\s+)?(\d+(?:[.,]\d+)?)\s*кВт/i.exec(_directGrp.name || '');
-            const _capKw = _capMatch ? parseFloat(_capMatch[1].replace(',', '.')) : 0;
+            // Сколько тянет одна группа при перепаде радиаторного контура — из расхода, а не из названия.
+            const _capKw = _directGrp ? this.groupCapKw(_directGrp, 'rad') : 0;
             // Радиаторная доля теплопотерь — та же, что в расчёте приборов ниже (radLoadKw).
             const _radLoadKw = this.radLoadKw(pwr, hasTp ? tpArea : 0);
             if (_capKw > 0) {
@@ -81223,7 +81405,30 @@ const app = {
 
             // Цена варианта «загрузка бойлера насосной группой» для таблицы замены: узел
             // плюс насос. Считаем здесь, потому что DN20/DN25 известен только тут.
-            this._tankLoadKitInfo = { price: ((grps[0] || {}).price || 0) + ((pmp || {}).price || 0), imgId: (grps[0] || {}).id };
+            // Группа загрузки бойлера: типоразмер — по мощности контура (меньшее из змеевика и котла) и тому,
+            // сколько тянет группа при перепаде котла; ручной DN и ROMMER (все группы DN25) не трогаем.
+            // Одна функция для сметы и для цены варианта в таблице замены схемы загрузки.
+            const _pickTankGroup = () => {
+                let base = grps[0], d25 = dn25, pumpItem = pmp;
+                if (!this.state.manualDnOverride && this.state.brandMode !== 'rommer' && catalog.groups_dn20 && catalog.groups_dn25) {
+                    const _tCoil = this.tankCoilKw(this._tankPortsModel);
+                    const _tBoiler = selBoilers.find(b => b && b.type === 'gas') || selBoilers[0] || null;
+                    const _tBKw = _tBoiler ? (parseFloat(_tBoiler.power) || 0) : 0;
+                    const _tKw = _tCoil > 0 ? (_tBKw > 0 ? Math.min(_tCoil, _tBKw) : _tCoil) : 0;
+                    if (_tKw > 0) {
+                        const _g20 = catalog.groups_dn20[0], _g25 = catalog.groups_dn25[0];
+                        if (this.groupCapKw(_g20, 'dhw') >= _tKw) { base = _g20; d25 = false; pumpItem = catalog.pumps_dn20[0]; }
+                        else {
+                            base = _g25; d25 = true;
+                            pumpItem = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
+                            pumpItem.alts = catalog.pumps_dn25;
+                        }
+                    }
+                }
+                return { base: base, dn25: d25, pump: pumpItem };
+            };
+            const _tankPick = _pickTankGroup();
+            this._tankLoadKitInfo = { price: ((_tankPick.base || {}).price || 0) + ((_tankPick.pump || {}).price || 0), imgId: (_tankPick.base || {}).id };
 
             // Добавляем группы и насосы
             // Насос — под ФАКТИЧЕСКИ стоящую группу, а не под флаг dn25: в DN20-группу
@@ -81239,7 +81444,7 @@ const app = {
                 // Строку запоминаем: гидравлику в её подсказку допишем ниже,
                 // когда приборы будут подобраны (см. radGroupHydroTip).
                 this._radGroupItemId = grps[0].id;
-                addToBill({ ...grps[0], sortRank: -2 }, rQ, this.getDesc('pump_group', grps[0], rQ, 'rad', pwr), grpHydro);
+                addToBill({ ...grps[0], sortRank: -2, _capUse: { purpose: 'rad', kw: (this._radGroupLoadKw || 0) / Math.max(1, rQ), qty: rQ } }, rQ, this.getDesc('pump_group', grps[0], rQ, 'rad', pwr), grpHydro);
                 // Считаем по ФАКТИЧЕСКИ стоящей группе (_actDn), а не по флагу dn25:
                 // ручная замена на DN20 или DN32 оставляет узел МУ-25М без места.
                 if (_actDn === 25) gbmNodeQty += rQ;
@@ -81254,8 +81459,7 @@ const app = {
                 // радиаторного контура. Автоподбор такую проверку делает сам (число групп
                 // считается по мощности выше), но ручную замену на меньший типоразмер
                 // он не отслеживал — смета молча оставалась недогруженной по мощности.
-                const _actCapM = /для\s+радиаторов\s+(?:до\s+)?(\d+(?:[.,]\d+)?)\s*кВт/i.exec(radGrpActual.name || '');
-                const _actCapKw = _actCapM ? parseFloat(_actCapM[1].replace(',', '.')) : 0;
+                const _actCapKw = this.groupCapKw(radGrpActual, 'rad');
                 const _loadKw = this._radGroupLoadKw || 0;
                 if (_actCapKw > 0 && _loadKw > 0 && (_actCapKw * rQ) < _loadKw) {
                     // Янтарная, а не красная: расчёт-то сошёлся, это ручная
@@ -81264,7 +81468,7 @@ const app = {
                     const _capTotal = Math.round(_actCapKw * rQ * 10) / 10;
                     hydroWarnHtml = this.noteBox('warn', 'Насосная группа не проходит по мощности.',
                         `${_capTotal} кВт против ${Math.round(_loadKw * 10) / 10} кВт на радиаторном контуре.`,
-                        `<div class="tip-p">«${radGrpActual.name}» — паспортная мощность ${_actCapKw} кВт` +
+                        `<div class="tip-p">«${radGrpActual.name}» — тянет при перепаде ${this.radDT()} К ${_actCapKw} кВт` +
                         (rQ > 1 ? ` × ${rQ} шт = <b>${_capTotal} кВт</b>` : ``) +
                         `, а на радиаторный контур приходится <b>${Math.round(_loadKw * 10) / 10} кВт</b>.</div>` +
                         `<div class="tip-p">Группа выбрана вручную — автоподбор такой типоразмер не поставил бы.</div>` +
@@ -81280,11 +81484,11 @@ const app = {
                 _selfKit('direct', 1, pmp, null, { sub: 'dhw', loadKw: _dhwKw, dt: this.boilerDT(), pumpExtra: { originalId: pmp.id + '_dhw', alts: _tankLoadAlts }, pumpDesc: this.getDesc('fugas_pump') });
             }
             if (tankNeedsPumpGroup && !_selfG) {
-                let tankBase = grps[0];
+                const _tp = _tankPick;
+                let tankBase = _tp.base, tankPumpItem = _tp.pump, tankDn25 = _tp.dn25;
                 // Мощность берём из паспортной мощности той же группы (для радиаторов) —
                 // физически это тот же узел, просто на контуре загрузки бойлера.
-                let tankCapM = /до\s+(\d+(?:[.,]\d+)?)\s*кВт/i.exec(tankBase.name || '');
-                let tankCapSuffix = tankCapM ? ` до ${tankCapM[1]} кВт` : '';
+                let tankCapSuffix = ` — тянет ${String(this.groupCapKw(tankBase, 'dhw')).replace('.', ',')} кВт`;
                 // originalId с суффиксом — чтобы swap/cycle-логика насосных групп DN20/DN25
                 // отопления (завязанная на реальный id этой позиции в каталоге) не задевала узел.
                 // alts перебиваем: у групп DN20/DN25 в init() подставлен общий список узлов
@@ -81297,12 +81501,11 @@ const app = {
                 // ROMMER-позиции — у аналога она своя (DN25 на 23 кВт против DN20 на 10).
                 if (tankBase.rommer) {
                     let rName = tankBase.rommer.name || '';
-                    let rCapM = /до\s+(\d+(?:[.,]\d+)?)\s*кВт/i.exec(rName);
-                    tankPumpGroup.rommer = { ...tankBase.rommer, name: rName.replace(/\s*-\s*для радиаторов.*$/i, '') + ` для бойлера${rCapM ? ` до ${rCapM[1]} кВт` : ''}` };
+                    tankPumpGroup.rommer = { ...tankBase.rommer, name: rName.replace(/\s*-\s*для радиаторов.*$/i, '') + ` для бойлера — тянет ${String(this.groupCapKw(tankBase.rommer, 'dhw')).replace('.', ',')} кВт` };
                 }
                 addToBill({ ...tankPumpGroup, sortRank: -2 }, 1, this.getDesc('fugas_pump'), grpHydro);
-                addToBill({ ...pmp, sortRank: -1 }, 1, this.getDesc('pump_std'), grpHydro);
-                if (dn25) gbmNodeQty += 1;
+                addToBill({ ...tankPumpItem, sortRank: -1 }, 1, this.getDesc('pump_std'), grpHydro);
+                if (tankDn25) gbmNodeQty += 1;
             }
             if (tQ > 0) {
                 let activeMixType = this.state.ufhMixType || 'std';
@@ -81326,7 +81529,7 @@ const app = {
                     _selfKit(_isServo ? 'servo' : 'thermo', tQ, _sPump, _sServo, { pumpDesc: _ufhPumpDesc(), loadKw: tpArea * 0.08, dt: parseInt(this.state.ufhDT, 10) || 5 });
                 } else if (activeMixType === 'dn32_servo') {
                     let ufhGrp = catalog.groups_dn32.find(g => g.id === 'SDG-0007-003201');
-                    addToBill({ ...ufhGrp, _uiUfhOnly: true, sortRank: -2 }, tQ, this.getDesc('pump_group', ufhGrp, tQ, 'ufh', tpArea), grpHydro);
+                    addToBill({ ...ufhGrp, _uiUfhOnly: true, _capUse: { purpose: 'ufh', kw: tpArea * 0.08 / Math.max(1, tQ), qty: tQ }, sortRank: -2 }, tQ, this.getDesc('pump_group', ufhGrp, tQ, 'ufh', tpArea), grpHydro);
 
                     let ufhPump = _ufhPumpPool.find(p => p.type === this.state.pumpType) || _ufhPumpPool[0];
                     addToBill({ ...ufhPump, sortRank: -1 }, tQ, _ufhPumpDesc(), grpHydro);
@@ -81337,7 +81540,7 @@ const app = {
                     }
                 } else if (activeMixType === 'dn25' || activeMixType === 'dn25_servo') {
                     let ufhGrp = (activeMixType === 'dn25_servo') ? catalog.groups_dn25[2] : catalog.groups_dn25[1];
-                    addToBill({ ...ufhGrp, _uiUfhOnly: true, sortRank: -2 }, tQ, this.getDesc('pump_group', ufhGrp, tQ, 'ufh', tpArea), grpHydro);
+                    addToBill({ ...ufhGrp, _uiUfhOnly: true, _capUse: { purpose: 'ufh', kw: tpArea * 0.08 / Math.max(1, tQ), qty: tQ }, sortRank: -2 }, tQ, this.getDesc('pump_group', ufhGrp, tQ, 'ufh', tpArea), grpHydro);
                     gbmNodeQty += tQ;
 
                     let ufhPump = _ufhPumpPool.find(p => p.type === this.state.pumpType) || _ufhPumpPool[0];
@@ -81350,8 +81553,12 @@ const app = {
                         }
                     }
                 } else if (activeMixType === 'dn20' || activeMixType === 'dn20_servo') {
-                    let ufhGrp = (activeMixType === 'dn20_servo') ? catalog.groups_dn20[2] : catalog.groups_dn20[1];
-                    addToBill({ ...ufhGrp, _uiUfhOnly: true, sortRank: -2 }, tQ, this.getDesc('pump_group', ufhGrp, tQ, 'ufh', tpArea), grpHydro);
+                    // DN20 «под сервопривод» — SDG-0007-002001 (3-ходовой, Kvs 4). Артикула SDG-0003-002001
+                    // у STOUT нет: паспорт SDG-0003 содержит только DN25 (002501-3), на stout.ru его тоже нет.
+                    let ufhGrp = (activeMixType === 'dn20_servo')
+                        ? (catalog.groups_dn20.find(g => g.id === 'SDG-0007-002001') || catalog.groups_dn20[2])
+                        : catalog.groups_dn20[1];
+                    addToBill({ ...ufhGrp, _uiUfhOnly: true, _capUse: { purpose: 'ufh', kw: tpArea * 0.08 / Math.max(1, tQ), qty: tQ }, sortRank: -2 }, tQ, this.getDesc('pump_group', ufhGrp, tQ, 'ufh', tpArea), grpHydro);
 
                     let ufhPump = catalog.pumps_dn20[0];
                     addToBill({ ...ufhPump, sortRank: -1 }, tQ, this.getDesc('pump_std'), grpHydro);
@@ -85641,10 +85848,9 @@ const app = {
              * паспортного «для тёплого пола до N кВт»: там перепад 10 К, здесь
              * 15 К — при том же расходе группа тянет в полтора раза больше.
              */
-            const _grpKw = n => {
-                const m = /т[её]плого пола до\s*(\d+(?:[.,]\d+)?)/i.exec(String(n || ''));
-                return m ? Math.round(parseFloat(m[1].replace(',', '.')) * 1.5) : 0;
-            };
+            // Теперь считается из расхода: предел группы по DN и перепад первички 15 К
+            // (раньше — 1,5 × паспортные «до 12 кВт» из названия, то есть 18 кВт для DN25).
+            const _grpKw = n => Math.round(this.groupCapKw({ name: n }, 'snow'));
             if (_primGroup) {
                 // Паспортные «для радиаторов до 24 кВт, для тёплого пола до 12»
                 // в этом разделе только сбивают: группа стоит на первичке
@@ -85847,7 +86053,7 @@ const app = {
             const _primKwBig = _grpKw(_primGroupBig && _primGroupBig.name);
             if (_primKw && _snowKw > _primKw) {
                 _snowWarnAll.push(`Узел на <b>${_snowKw} кВт</b>, а группа первичного контура DN25 рассчитана до ${_primKw} кВт ` +
-                    `(паспортные «для тёплого пола до 12 кВт» — это тот же расход при перепаде 10 К, на первичке снеготаяния перепад 15 К). ` +
+                    `(предел по расходу ≤ 1 м/с в патрубке при перепаде первички 15 К). ` +
                     (_primKwBig ? `В таблице замены есть DN32 — до ${_primKwBig} кВт. Насос к ней подбирается отдельно: 25/60-180 с присоединением 1½" в неё не встанет.` : ``));
             }
             // Янтарная: узел подобран и смонтируется, это оговорки к нему.
