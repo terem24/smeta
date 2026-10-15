@@ -22736,13 +22736,13 @@ const app = {
         if (titleEl) {
             const role = this.getAdminRole();
             if (role === 'viewer') {
-                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:var(--c-bad,#EF4444); background:#FEE2E2; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Режим просмотра</span>';
+                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:var(--c-bad,#EF4444); background:rgba(239,68,68,.16); padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Режим просмотра</span>';
             } else if (role === 'manager') {
-                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:#0F766E; background:#CCFBF1; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Менеджер</span>';
+                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:#14B8A6; background:rgba(20,184,166,.16); padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Менеджер</span>';
             } else if (role === 'super_admin') {
-                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:var(--c-ok,#10B981); background:#ECFDF5; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Владелец</span>';
+                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:var(--c-ok,#10B981); background:rgba(16,185,129,.16); padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Владелец</span>';
             } else {
-                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:#3B82F6; background:#EFF6FF; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Администратор</span>';
+                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:#3B82F6; background:rgba(59,130,246,.16); padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Администратор</span>';
             }
         }
         document.getElementById('admin_modal_overlay').style.display = 'flex';
@@ -23895,6 +23895,7 @@ const app = {
                     const { data: tourRows, error: tourErr } = await supabaseClient.from('users')
                         .select('id, tour_done_at, tour_done_steps, tour_done_plan')
                         .in('id', userIds.map(String)).not('tour_done_at', 'is', null);
+                    if (tourErr) console.warn('[админка] отметки обучения не прочитаны:', tourErr.message || tourErr);
                     if (!tourErr && tourRows) {
                         users.forEach(u => { u.tour_known = true; });
                         const byTour = {};
