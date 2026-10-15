@@ -1187,8 +1187,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
-
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', pumpRadMode: 'auto', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
     lastSavedStateString: "",
 
     get currentUser() {
@@ -4722,7 +4721,8 @@ const app = {
         // больше недостаточно — верх листа уезжает вниз.
         const outPanel = document.querySelector('.output-panel');
         if (outPanel) {
-            const cardFit = document.body.classList.contains('empty-fit');
+            // Пустой расчёт в любом режиме (быстром и «По комнатам») растягиваем на экран.
+            const cardFit = document.body.classList.contains('empty-fit') || document.body.classList.contains('empty-fit-panel');
             const availOut = Math.floor((window.innerHeight - outPanel.getBoundingClientRect().top - 8) / k);
             const wanted = (cardFit && availOut > 0) ? (availOut + 'px') : '';
             if (outPanel.style.minHeight !== wanted) outPanel.style.minHeight = wanted;
@@ -7198,7 +7198,13 @@ const app = {
     // проекта, из localStorage чужого сеанса, — и тогда схемы рисовались
     // неавторизованному. Проверяем не только флаг, но и вход.
     schemeOn: function () {
-        return !!this.state.showScheme && !!this.state.tgUser;
+        return !!this.state.showScheme && !!this.state.tgUser && this.hasDistributor();
+    },
+
+    // Схемы и загрузка планов помещений доступны только при привязке к дистрибьютору.
+    // Без неё переключатель «Схема» скрыт, а схемы и план дома не рисуются.
+    hasDistributor: function () {
+        return !!this.state.distributorId;
     },
 
     // Запущено ли с локальной машины. Проверка была рассыпана по десятку мест
@@ -8737,6 +8743,8 @@ const app = {
             // Код из ссылки менеджера своё дело сделал
             this.clearInviteCode();
             this.saveState();
+            this.syncUI();
+            this.syncDesignUI();
         }
         return res;
     },
@@ -9284,6 +9292,8 @@ const app = {
             this.state.distributorInfo = null;
             this.saveState();
             await this.loadDistributorInfo();
+            this.syncUI();
+            this.syncDesignUI();
             this.showSupplierSection();
             app.alert('✅ Менеджер назначен!');
         } catch (e) {
@@ -22253,6 +22263,7 @@ const app = {
      * через дистрибьютора или через регион, как включит администратор.
      */
     canUseDesign: function () {
+        if (!this.hasDistributor()) return false;
         const d = this._accessLists && this._accessLists.design;
         const row = this.accessUserRow();
         const login = String(row.email || row.username || '').trim().toLowerCase();
@@ -22502,7 +22513,7 @@ const app = {
                        onchange="app.setWorksUserFlag('${keyEsc}', this.checked)">
                 <span class="slider"></span>
             </label>
-            <span id="works_acc_${idSafe}" style="font-size:9.5px; color:${d.on ? '#10B981' : 'var(--text-sec)'}; white-space:nowrap;">${label}${d.by === 'own' && !isViewer
+            <span id="works_acc_${idSafe}" class="ad-acc-label" style="font-size:9.5px; color:${d.on ? '#10B981' : 'var(--text-sec)'}; white-space:nowrap;">${label}${d.by === 'own' && !isViewer
                 ? ` <a href="#" onclick="event.preventDefault(); event.stopPropagation(); app.setWorksUserFlag('${keyEsc}', null);" style="color:var(--primary); text-decoration:none;" title="Снять личную отметку">↺</a>` : ''}</span>
         </div>`;
     },
@@ -23499,11 +23510,42 @@ const app = {
         }
 
         if (!this.adminTabNeedsHeavyData()) {
-            if (this.isScopedAdmin()) await this.resolveAdminScope();
-            const lists = await this.loadAdminLightData();
-            // На телефоне пустой раздел означает меню со сводкой наверху — её
-            // четыре числа тяжёлая загрузка сюда не приносит, считаем отдельно
-            const homeTotals = (this.isAdminMobile() && !this._adminTab) ? await this.loadAdminHomeTotals() : null;
+            // Предел ожидания: на телефоне при слабой сети запрос мог висеть десятки
+            // секунд (а за ним ещё два-три), и вместо панели человек видел одну
+            // надпись «Загрузка данных из базы...». Что не успело — берём пустым.
+            const within = (p, ms, fallback) => Promise.race([
+                Promise.resolve(p).catch(() => fallback),
+                new Promise(res => setTimeout(() => res(fallback), ms))
+            ]);
+            const onHome = this.isAdminMobile() && !this._adminTab;
+            // Меню разделов от данных не зависит — рисуем его сразу, а цифры сводки
+            // и списки догружаем следом и перерисовываем, если человек всё ещё на меню.
+            if (onHome && !(this.adminData && this.adminData.allUsersDropdown)) {
+                this.renderAdminMain();
+                const seq = this._adminHomeSeq = (this._adminHomeSeq || 0) + 1;
+                (async () => {
+                    try {
+                        if (this.isScopedAdmin()) await within(this.resolveAdminScope(), 15000, null);
+                        const [lists, totals] = await Promise.all([
+                            within(this.loadAdminLightData(), 20000, null),
+                            within(this.loadAdminHomeTotals(), 20000, null)
+                        ]);
+                        if (seq !== this._adminHomeSeq || this._adminTab) return;
+                        this.adminData = Object.assign(
+                            { users: [], userEstimates: [], recentEstimates: [], totalUsers: 0, totalEstimates: 0, totalEq: 0, totalWorks: 0, messageReceipts: null },
+                            this.adminData || {},
+                            lists ? { allUsersDropdown: lists.allUsersDropdown, distributors: lists.distributors, dropdownAvatars: lists.dropdownAvatars } : { allUsersDropdown: [], distributors: [] },
+                            totals || {}
+                        );
+                        this.renderAdminMain();
+                    } catch (e) { console.warn('[админка] меню: фоновая загрузка не удалась:', e); }
+                })();
+                return;
+            }
+            if (this.isScopedAdmin()) await within(this.resolveAdminScope(), 15000, null);
+            const lists = (await within(this.loadAdminLightData(), 25000, null))
+                || { allUsersDropdown: [], allMessages: [], distributors: [], estimates: null, dropdownAvatars: false };
+            const homeTotals = onHome ? await within(this.loadAdminHomeTotals(), 20000, null) : null;
             // Пустая заготовка обязательна: renderAdminMain разбирает adminData сразу,
             // ещё до ветвления по вкладкам. Ранее загруженное не теряем.
             this.adminData = Object.assign(
@@ -23642,7 +23684,11 @@ const app = {
                 await new Promise(res => setTimeout(res, 800));
                 usersRes = await runUsersQuery();
             }
-            if (!(usersRes.data || []).length && offset === 0) {
+            // Пустой ответ при включённом отборе — законный результат, а не сбой сети:
+            // повтор с паузой делаем только для списка без фильтров и поиска
+            const _pf = this._pendingAdminFilters || {};
+            const _filtered = !!_pf.search || Object.keys(this.USERS_FILTER_DEFAULTS).some(k => (_pf[k] || '') !== (this.USERS_FILTER_DEFAULTS[k] || ''));
+            if (!(usersRes.data || []).length && offset === 0 && !_filtered) {
                 await new Promise(res => setTimeout(res, 800));
                 try { const r2 = await runUsersQuery(); if ((r2.data || []).length) usersRes = r2; } catch (e2) { }
             }
@@ -25880,6 +25926,7 @@ const app = {
         const isViewer = this.isReadOnlyAdmin(); // наблюдатель или менеджер: панель только на просмотр
         const content = document.getElementById('admin_content');
         if (!content) return;
+        content.classList.remove('ad-busy');
         this.closeUserPeek();
         this.watchAdminStyle();
 
@@ -26256,6 +26303,9 @@ const app = {
             </div>`;
         const filtersOpen = this._usersFiltersOpen || activeCount > 0;
         const dense = this.usersDense();
+        // Переключатели доступа (сканы, проект, монтаж) видит только владелец:
+        // ни администратор, ни наблюдатель, ни менеджер их не получают
+        const showToggles = this.getAdminRole() === 'super_admin';
 
         let h = `
                     <div class="admin-stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
@@ -26415,7 +26465,7 @@ const app = {
                             </select>
                             <button class="admin-btn" style="height:28px;" ${isViewer ? 'disabled' : ''} onclick="app.bulkAssignDistributor()">Назначить</button>
                         </div>
-                        <div class="admin-bulk-line admin-bulk-toggles">
+                        ${showToggles ? `<div class="admin-bulk-line admin-bulk-toggles">
                             <div class="admin-bulk-group">
                                 <span class="admin-bulk-label" title="Регионы берутся из анкет монтажников. Выбранный здесь регион — общий для обоих переключателей рядом">🌍 Регион:</span>
                                 <select id="admin_bulk_region" ${isViewer ? 'disabled' : ''} style="flex:1; max-width:230px;" onchange="app.setBulkAccessRegion(this.value)">
@@ -26450,7 +26500,7 @@ const app = {
                                 </span>
                             </div>
                             ${designOk ? '' : `<span style="font-size:10.5px; color:var(--c-warn,#D97706);">${designOffHint}</span>`}
-                        </div>
+                        </div>` : ''}
                     </div>
                     </details>`;
                     })()}
@@ -26463,11 +26513,12 @@ const app = {
                             <th style="width:30px;">#</th>
                             <th style="width:280px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('name')" title="Сортировать по имени">Имя / Контакты${sortArrow('name')}</th>
                             <th style="width:165px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('ltv')" title="Сортировать по сумме">Статистика (LTV)${sortArrow('ltv')}</th>
-                            <th style="width:135px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('tariff')" title="Сортировать по тарифу">Тариф / Устройство${sortArrow('tariff')}</th>
+                            <th style="width:150px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('tariff')" title="Сортировать по тарифу">Тариф / Устройство${sortArrow('tariff')}</th>
                             <th style="width:205px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('dist')" title="Сортировать по дистрибьютору">Дистрибьютор${sortArrow('dist')}</th>
-                            <th style="width:100px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('recog')" title="Доступ монтажника к распознаванию смет. Клик — сортировать">Распознавание${sortArrow('recog')}</th>
-                            <th style="width:100px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('design')" title="Доступ к листам проекта и редактору планов. Клик — сортировать">Проектирование${sortArrow('design')}</th>
-                            <th style="width:100px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('works')" title="Монтажные работы: личная отметка сильнее компании и таблицы «Тарифы». Клик — сортировать">Монтаж${sortArrow('works')}</th>
+                            ${showToggles ? `
+                            <th class="ad-acc-th" style="width:80px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('recog')" title="Доступ монтажника к распознаванию смет. Клик — сортировать"><span class="ad-acc-full">Сканы</span><span class="ad-acc-short">🔍</span>${sortArrow('recog')}</th>
+                            <th class="ad-acc-th" style="width:80px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('design')" title="Доступ к листам проекта и редактору планов. Клик — сортировать"><span class="ad-acc-full">Проект</span><span class="ad-acc-short">📐</span>${sortArrow('design')}</th>
+                            <th class="ad-acc-th" style="width:80px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('works')" title="Монтажные работы: личная отметка сильнее компании и таблицы «Тарифы». Клик — сортировать"><span class="ad-acc-full">Монтаж</span><span class="ad-acc-short">🔧</span>${sortArrow('works')}</th>` : ''}
                             <th style="text-align:right; cursor:pointer; user-select:none; width: 90px;" onclick="app.sortAdminColumn('login')" title="Сортировать по дате последнего входа">Вход${sortArrow('login')}</th>
                             <th style="text-align:center; width: 145px;">Действия</th>
                         </tr></thead>
@@ -26657,9 +26708,9 @@ const app = {
                         <td class="admin-cell-half"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount} | Ср.объект: ${u.avgArea} м²</span><span class="ad-more"><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${sessionLine}</span></span></td>
                         <td class="admin-cell-half">${badge}<br><span style="font-size:10px;color:var(--text-sec);">${device}</span></td>
                         <td onclick="event.stopPropagation();">${distCell}</td>
-                        <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${recCell}</td>
+                        ${showToggles ? `<td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${recCell}</td>
                         <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${desCell}</td>
-                        <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${this.worksAccessCell(u, !this.canEditTariffs())}</td>
+                        <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${this.worksAccessCell(u, !this.canEditTariffs())}</td>` : ''}
                         <td style="text-align:right; white-space:nowrap;" title="${lastVisTitle}">${lastVis}</td>
                         <td class="admin-cell-actions" onclick="event.stopPropagation();" style="text-align:center; white-space:nowrap;">
                             <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
@@ -37609,6 +37660,12 @@ const app = {
     sgLab: function (kind) {
         return this.SELF_GROUP_LABELS[kind === 'dhw' ? 'direct' : kind];
     },
+    // Название насоса на подписи схемы: STOUT по умолчанию, ROMMER — когда у «2. Обвязка котельной» включён аналог (как в selfPumpHasNuts).
+    sgPumpText: function () {
+        const so = (this.state.sectionAnalog || {})['2. Обвязка котельной'];
+        const rom = so !== undefined ? so : this.state.brandMode === 'rommer';
+        return rom ? 'Циркуляционный насос ROMMER PROFI 25/60-180' : 'Циркуляционный насос STOUT SPC 25/60-180';
+    },
     sgRule: function (text) {
         return this.SELF_LABEL_RULES.find(r => r[0].test(String(text || ''))) || null;
     },
@@ -37809,7 +37866,15 @@ const app = {
         const lab = sgKind && this.SELF_GROUP_LABELS ? this.sgLab(sgKind) : null;
         if (lab) {
             const sc = Math.min(a.w / lab.w, a.h / lab.h), ox = (a.w - lab.w * sc) / 2, oy = (a.h - lab.h * sc) / 2;
-            overlay = lab.l.map((l, i) => {
+            // Подписи рисуем сами, шрифтом листов проекта: на картинке они стёрты. Текст начинается у левого края рамки подписи,
+            // выноска с точкой идёт от правого края (или от левого, если точка слева) — как на исходном листе.
+            const fnt = (window.projectSheets && window.projectSheets.FONT) || "'ISOCPEUR','GOST type A','Arial Narrow',sans-serif";
+            const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+            overlay = lab.l.map(l => {
+                const text = /^Циркуляц/.test(l[0]) ? this.sgPumpText() : l[0];
+                const x = Math.round(ox + l[1] * sc), y = Math.round(oy + (l[2] + l[4]) / 2 * sc);
+                return `<text class="sg-label" x="${x}" y="${y}" font-family="${esc(fnt)}" font-size="${Math.round(13 * sc)}" dominant-baseline="middle" fill="#222">${esc(text)}</text>`;
+            }).join('') + lab.l.map((l, i) => {
                 const ok = this.sgRows(sgKind, this.sgRule(l[0])).length > 0;
                 const r = (v, o) => Math.round(o + v * sc);
                 const tip = ok ? '' : '<title>Этой позиции со схемы нет в смете</title>';
@@ -38031,6 +38096,9 @@ const app = {
         const inp = document.getElementById('admin_search_input');
         if (inp) inp.value = search || '';
         this._pendingAdminSearch = search || '';
+        // Мгновенный отклик: загрузка идёт секунды, а таблица до конца стояла как есть
+        const box = document.getElementById('admin_content');
+        if (box) box.classList.add('ad-busy');
         this.loadAdminData(0);
     },
     applyUsersSegment: function (id) {
@@ -39338,7 +39406,7 @@ const app = {
     // окном поверх калькулятора; данные — те же state.plans.
 
     canUseUfhPlan: function () {
-        if (!this.state.tgUser) return false;
+        if (!this.state.tgUser || !this.hasDistributor()) return false;
         return this.tariffAccess('ufhplan') === 'on' || this.canUseDesign();
     },
 
@@ -39688,7 +39756,7 @@ const app = {
             const rooms = ((heat[fi] && heat[fi].rooms) || []).map(r => ({ name: r.name, area: r.area, q: r.total, qud: r.ufhQud, floor: fi + 1 }));
             let v = null;
             try { v = PP.ufhView(f, step, rooms, radOpts); } catch (e) { console.warn('[раскладка ТП] этаж ' + (fi + 1) + ':', e.message); }
-            if (v) out.push({ fl: fi + 1, svg: v.svg, rows: v.rows, radRows: v.radRows || [], radTee: v.radTee, radM: v.radM || 0 });
+            if (v) out.push({ fl: fi + 1, svg: v.svg, rows: v.rows, radRows: v.radRows || [], radTee: v.radTee, radM: v.radM || 0, roomArea: rooms });
         });
         return out;
     },
@@ -40009,6 +40077,39 @@ const app = {
             radTee: v.radTee, radM: r1(v.radM) }));
     },
 
+    // Строки помещения в таблице петель: раскрыть / свернуть петли этой группы
+    ufhToggleGrp: function (tr) {
+        const open = tr.classList.toggle('open');
+        for (let x = tr.nextElementSibling; x && x.classList.contains('ufh-sub'); x = x.nextElementSibling) x.classList.toggle('show', open);
+    },
+
+    // Группировка по помещениям: выключена — все петли списком
+    ufhToggleFlat: function (cb) {
+        const col = cb.closest('.ufh-tbl-col');
+        if (col) col.classList.toggle('flat', !cb.checked);
+    },
+
+    // Таблицы петель — на весь экран, как схемы; копия с текущим раскрытием групп
+    openUfhFullscreen: function (btn) {
+        const col = btn && btn.closest('.ufh-tbl-col');
+        if (!col) return;
+        const old = document.getElementById('ufh_table_overlay');
+        if (old) old.remove();
+        const ov = document.createElement('div');
+        ov.id = 'ufh_table_overlay';
+        ov.innerHTML = '<div class="ufh-ov-bar"><span class="ufh-ov-title">Петли тёплого пола</span>' +
+            '<button type="button" class="ufh-ov-close" aria-label="Закрыть">✕</button></div><div class="ufh-ov-body"></div>';
+        const copy = col.cloneNode(true);
+        const tb = copy.querySelector('.ufh-tb');
+        if (tb) tb.remove();
+        ov.querySelector('.ufh-ov-body').appendChild(copy);
+        const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
+        const onKey = e => { if (e.key === 'Escape') close(); };
+        ov.querySelector('.ufh-ov-close').onclick = close;
+        document.addEventListener('keydown', onKey);
+        document.body.appendChild(ov);
+    },
+
     // «петля / петли / петель»
     loopsWord: function (n) {
         const a = n % 10, b = n % 100;
@@ -40059,39 +40160,103 @@ const app = {
         const n1 = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
         const parts = [];
         let anyTp = false, anyRad = false, tee = false;
+        const loopTr = (r, cls, warn) => `<tr${cls ? ` class="${cls}"` : ''} data-pl="L${r.no}"><td style="text-align:center">${r.no}</td><td>${esc(r.name)}${warn ? warn : ''}</td>` +
+            `<td style="text-align:right">${n1(r.area)} м²</td><td style="text-align:right">${n1(r.m)} м</td>` +
+            `<td style="text-align:right">${r.step}</td><td style="text-align:right">${n1(r.flow)}</td></tr>`;
         views.forEach(V => {
             const fi = V.fl - 1, v = V;
-            let tables = '';
+            let tpHtml = '', radHtml = '';
             if (v.rows.length) {
                 anyTp = true;
                 const sumM = v.rows.reduce((s, r) => s + (r.m || 0), 0), sumF = v.rows.reduce((s, r) => s + (r.flow || 0), 0);
-                const tr = v.rows.map(r => `<tr data-pl="L${r.no}"><td style="text-align:center">${r.no}</td><td>${esc(r.name)}</td>` +
-                    `<td style="text-align:right">${n1(r.area)} м²</td><td style="text-align:right">${n1(r.m)} м</td>` +
-                    `<td style="text-align:right">${r.step}</td><td style="text-align:right">${n1(r.flow)}</td></tr>`).join('');
-                tables += `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">` +
+                const sumA = v.rows.reduce((s, r) => s + (r.area || 0), 0);
+                // Петли одного помещения — в одну группу (имя без хвоста «i/k»)
+                const groups = [], byName = {};
+                v.rows.forEach(r => {
+                    const key = String(r.name || '').replace(/\s+\d+\/\d+$/, '');
+                    if (!byName[key]) { byName[key] = { name: key, rows: [] }; groups.push(byName[key]); }
+                    byName[key].rows.push(r);
+                });
+                // Площадь петель помещения против площади в расчёте: расхождение > 10 % — предупреждение
+                const calc = {};
+                (v.roomArea || []).forEach(r => { calc[String(r.name || '').trim().toLowerCase()] = +r.area || 0; });
+                const calcArea = name => calc[String(name || '').trim().toLowerCase()] || 0;
+                const warnOf = (name, a) => { const ra = calcArea(name); return ra > 0 && Math.abs(a - ra) > 0.1 * ra ? ra : 0; };
+                const warnIc = (name, a) => { const ra = warnOf(name, a); return ra ? ` <span class="ufh-warn-ic" title="Площадь петель ${n1(a)} м², в расчёте помещения ${n1(ra)} м² — проверьте распознавание плана">⚠</span>` : ''; };
+                let mismatch = 0;
+                let body = '';
+                groups.forEach(g => {
+                    const gA0 = g.rows.reduce((s, r) => s + (r.area || 0), 0);
+                    const wOn = warnOf(g.name, gA0) > 0;
+                    if (wOn) mismatch++;
+                    if (g.rows.length === 1) { body += loopTr(g.rows[0], wOn ? 'ufh-solo ufh-warn' : 'ufh-solo', warnIc(g.name, gA0)); return; }
+                    const gA = gA0, gM = g.rows.reduce((s, r) => s + (r.m || 0), 0);
+                    const gF = g.rows.reduce((s, r) => s + (r.flow || 0), 0);
+                    const steps = [...new Set(g.rows.map(r => r.step))];
+                    body += `<tr class="ufh-grp${wOn ? ' ufh-warn' : ''}" onclick="app.ufhToggleGrp(this)" title="Раскрыть петли помещения">` +
+                        `<td style="text-align:center"><span class="ufh-arr">▸</span> ${g.rows.length}</td><td><b>${esc(g.name)}</b>${warnIc(g.name, gA)}</td>` +
+                        `<td style="text-align:right">${n1(gA)} м²</td><td style="text-align:right">${n1(gM)} м</td>` +
+                        `<td style="text-align:right">${steps.length === 1 ? steps[0] : '—'}</td><td style="text-align:right">${n1(gF)}</td></tr>`;
+                    g.rows.forEach(r => { body += loopTr(r, 'ufh-sub'); });
+                });
+                tpHtml = `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">` +
                     `<thead><tr style="color:var(--text-sec)"><th>Контур ТП</th><th style="text-align:left">Помещение</th><th style="text-align:right">Площадь</th>` +
                     `<th style="text-align:right">Длина петли</th><th style="text-align:right">Шаг, мм</th><th style="text-align:right">Расход, л/мин</th></tr></thead>` +
-                    `<tbody>${tr}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.rows.length} ${this.loopsWord(v.rows.length)}</td><td></td>` +
-                    `<td style="text-align:right">${n1(sumM)} м</td><td></td><td style="text-align:right">${n1(sumF)}</td></tr></tfoot></table>`;
+                    `<tbody>${body}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.rows.length} ${this.loopsWord(v.rows.length)}, ${groups.length} пом.${mismatch ? ` · ⚠ не сходится: ${mismatch}` : ''}</td>` +
+                    `<td style="text-align:right">${n1(sumA)} м²</td><td style="text-align:right">${n1(sumM)} м</td><td></td><td style="text-align:right">${n1(sumF)}</td></tr></tfoot></table>`;
             }
             if ((v.radRows || []).length) {
                 anyRad = true; tee = tee || !!v.radTee;
                 const tr = v.radRows.map(r => `<tr data-pl="R${r.no}"><td style="text-align:center">${r.kind === 'conv' ? 'К' : 'Р'}${r.no}</td><td>${esc(r.name)}</td>` +
                     `<td style="text-align:right">${n1(r.w)} м</td><td style="text-align:right">${r.L == null ? '—' : n1(r.L) + ' м'}</td></tr>`).join('');
-                tables += `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px">` +
+                radHtml = `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px">` +
                     `<thead><tr style="color:var(--text-sec)"><th>Прибор</th><th style="text-align:left">Помещение</th><th style="text-align:right">Длина прибора</th>` +
                     `<th style="text-align:right">${v.radTee ? 'Магистраль до прибора' : 'Трубы к прибору'}</th></tr></thead>` +
                     `<tbody>${tr}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.radRows.length} шт.</td><td></td>` +
                     `<td style="text-align:right">${n1(v.radM || 0)} м</td></tr></tfoot></table>`;
             }
+            // План слева, таблицы справа (на узком экране уходят под план — flex-wrap)
+            const col = (tpHtml || radHtml)
+                ? `<div class="ufh-tbl-col"><div class="ufh-tb">` +
+                    `<label class="ufh-tb-chk"><input type="checkbox" checked onchange="app.ufhToggleFlat(this)"> Группировать по помещениям</label>` +
+                    `<button type="button" class="ufh-tb-full" onclick="app.openUfhFullscreen(this)" title="Открыть таблицы на весь экран">⛶ На весь экран</button></div>` +
+                    tpHtml + radHtml + `</div>`
+                : '';
             parts.push(
                 `<div class="ufh-plan-block" style="margin:6px 0 14px">` +
                 (views.length > 1 ? `<div style="font-weight:700;margin:0 0 6px">${fi + 1}-й этаж</div>` : '') +
-                `<div class="automation-scheme" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${v.svg}` +
+                `<div class="ufh-plan-row">` +
+                `<div class="automation-scheme" style="flex:1 1 340px;min-width:0" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${v.svg}` +
                 `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button>` +
                 `<button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка контура или прибора при наведении — на плане и в таблице">${this._hydToggleLabel(false)}</button></div>` +
-                tables + `</div>`);
+                col + `</div></div>`);
         });
+        parts.unshift(`<style>
+.ufh-plan-row{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.ufh-tbl-col{flex:1 1 420px;min-width:0;overflow-x:auto}
+.ufh-tb{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:6px 0 2px;font-size:12px}
+.ufh-tb-chk{display:flex;align-items:center;gap:6px;color:var(--text-sec);cursor:pointer;user-select:none}
+.ufh-tb-full{background:none;border:1px solid var(--border,#d0d4da);border-radius:6px;padding:3px 9px;font-size:12px;cursor:pointer;color:inherit}
+.ufh-plan-table .ufh-grp{cursor:pointer;background:rgba(127,127,127,.08)}
+.ufh-plan-table .ufh-grp:hover{background:rgba(127,127,127,.16)}
+.ufh-plan-table .ufh-arr{display:inline-block;transition:transform .15s;font-size:11px}
+.ufh-plan-table .ufh-grp.open .ufh-arr{transform:rotate(90deg)}
+.ufh-plan-table .ufh-sub{display:none}
+.ufh-plan-table .ufh-sub.show{display:table-row}
+.ufh-plan-table .ufh-sub td:nth-child(2){padding-left:18px}
+.ufh-plan-table td,.ufh-plan-table th{padding:3px 5px;border-bottom:1px solid rgba(127,127,127,.15)}
+.ufh-plan-table .ufh-warn td{background:rgba(220,60,60,.10)}
+.ufh-warn-ic{color:#c0392b;margin-left:4px;cursor:help;font-weight:700}
+.ufh-tbl-col.flat .ufh-grp{display:none}
+.ufh-tbl-col.flat .ufh-sub{display:table-row}
+#ufh_table_overlay{position:fixed;inset:0;z-index:100000;background:var(--bg,#fff);color:var(--text,#1a1a1a);display:flex;flex-direction:column}
+.ufh-ov-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid rgba(127,127,127,.25)}
+.ufh-ov-title{font-weight:700;font-size:15px}
+.ufh-ov-close{background:none;border:1px solid rgba(127,127,127,.4);border-radius:6px;padding:4px 10px;cursor:pointer;color:inherit;font-size:14px}
+.ufh-ov-body{flex:1;overflow:auto;padding:16px;max-width:1100px;width:100%;margin:0 auto;box-sizing:border-box}
+.ufh-ov-body .ufh-plan-table{font-size:14px !important}
+.ufh-ov-body .ufh-plan-table td,.ufh-ov-body .ufh-plan-table th{padding:6px 8px}
+</style>`);
         if (!parts.length) return '';
         this.bindPlanHighlight();
         const notes = [];
@@ -41886,7 +42051,7 @@ const app = {
                        onchange="app.toggleRecognitionAccess('${keyEsc}', this.checked, this, '${cellId}')">
                 <span class="slider"></span>
             </label>
-            <span id="${cellId}" style="font-size:9.5px; color:${on ? '#10B981' : 'var(--text-sec)'};">${label}</span>
+            <span id="${cellId}" class="ad-acc-label" style="font-size:9.5px; color:${on ? '#10B981' : 'var(--text-sec)'};">${label}</span>
         </div>`;
     },
 
@@ -41977,7 +42142,7 @@ const app = {
                        onchange="app.toggleDesignAccess('${keyEsc}', this.checked, this, '${cellId}')">
                 <span class="slider"></span>
             </label>
-            <span id="${cellId}" style="font-size:9.5px; color:${on ? '#10B981' : 'var(--text-sec)'};">${label}</span>
+            <span id="${cellId}" class="ad-acc-label" style="font-size:9.5px; color:${on ? '#10B981' : 'var(--text-sec)'};">${label}</span>
         </div>`;
     },
 
@@ -43927,6 +44092,9 @@ const app = {
                     this.updateHeaderCompanyDetails();
                     if (this.applyDistributorPrices()) this.render();
                 }
+                // Схемы и план дома зависят от привязки — пересчитываем видимость
+                this.syncUI();
+                this.syncDesignUI();
 
                 // City check removed immediately after registration; now validated on actions
             } else {
@@ -46202,6 +46370,31 @@ const app = {
         if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return few;
         return many;
     },
+    /** Общий тумблер «Автоматика»: выключение снимает оба подпункта, включение только открывает их. */
+    toggleAutoMaster: function (chk, event) {
+        if (!this.checkAccess('pro', event)) {
+            const c = document.getElementById('chk_auto_master');
+            if (c) c.checked = !!this.state.autoOn;
+            return;
+        }
+        this.state.autoOn = chk;
+        if (!chk) {
+            if (this.state.boilerAuto) this.toggleBoilerAuto(false, event);
+            if (this.state.ufhAuto) this.toggleUfhAuto(false, event);
+        }
+        this.syncUI();
+        this.render();
+        this.saveState();
+    },
+    /** Тумблер «Теплоноситель»: выключение возвращает «Воду» и прячет варианты. */
+    toggleCoolantShow: function (chk, event) {
+        this.state.coolantShow = chk;
+        if (!chk && this.state.coolant !== 'water') this.setCoolant('water', event);
+        this.syncUI();
+        this.render();
+        this.saveState();
+    },
+
     toggleUfhAuto: function (chk, event) {
         if (!this.checkAccess('pro', event)) {
             if (document.getElementById('chk_ufh_auto')) document.getElementById('chk_ufh_auto').checked = this.state.ufhAuto;
@@ -46564,7 +46757,7 @@ const app = {
             setCls(t, 'pg-closed', closed);
             els.forEach(e => setCls(e, 'pg-collapsed', closed));
             // Переключатели «добавить в смету» — карточками, чтобы отличались от выбора из вариантов
-            if (idx === 2) {
+            if (idx === 2 || idx === 3) {
                 els.forEach(e => {
                     if (e.classList.contains('toggle-item')) setCls(e, 'pg-card', true);
                     else if (e.classList.contains('pg-tiles')) Array.from(e.children).forEach(c => { if (c.classList.contains('toggle-item')) setCls(c, 'pg-card', true); });
@@ -46621,8 +46814,19 @@ const app = {
             if (quick.style.display !== d) quick.style.display = d;
         }
     },
+    // Свёрнутые группы панели. По умолчанию открыт только «Дом» (группа 1), остальные свёрнуты.
+    // Один раз сбрасываем сохранённое состояние под новое умолчание (ключ версии hc_pg_v4).
     _pgCollapsed: function () {
-        try { const a = JSON.parse(localStorage.getItem('hc_pg_closed') || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+        const DEF = [2, 3, 4, 5];
+        try {
+            let a = JSON.parse(localStorage.getItem('hc_pg_closed') || 'null');
+            if (!localStorage.getItem('hc_pg_v4')) {
+                a = DEF;
+                localStorage.setItem('hc_pg_closed', JSON.stringify(a));
+                localStorage.setItem('hc_pg_v4', '1');
+            }
+            return Array.isArray(a) ? a : DEF;
+        } catch (e) { return DEF; }
     },
     togglePanelGroup: function (n) {
         const a = this._pgCollapsed();
@@ -46999,7 +47203,13 @@ const app = {
         // Пункт «Автоматика» — только в подробном режиме; в быстром вместо него
         // одна строка, и только если что-то включено.
         if ($('blk_auto_header')) $('blk_auto_header').style.display = s.detailedRooms ? 'block' : 'none';
-        if ($('blk_auto_fast_note')) $('blk_auto_fast_note').style.display = (!s.detailedRooms && anyOn) ? 'block' : 'none';
+        // Группа «Автоматика» — только в подробном режиме: контейнер прячем целиком, иначе он держит группу на экране.
+        if ($('pg_tiles_auto')) $('pg_tiles_auto').style.display = s.detailedRooms ? '' : 'none';
+        // Группа «Автоматика» — только в режиме по комнатам. В быстром режиме подсказку не показываем, даже если автоматика включена.
+        if ($('blk_auto_fast_note')) $('blk_auto_fast_note').style.display = 'none';
+        // Общий тумблер «Автоматика»: подпункты (котельная, радиаторы и тёплый пол) — только когда он включён.
+        if ($('chk_auto_master')) $('chk_auto_master').checked = !!s.autoOn;
+        if ($('blk_auto_box')) $('blk_auto_box').style.display = (s.detailedRooms && s.autoOn) ? 'flex' : 'none';
         if ($('chk_ufh_auto')) $('chk_ufh_auto').checked = !!s.ufhAuto;
         if ($('blk_zone_auto_box')) $('blk_zone_auto_box').style.display = s.ufhAuto ? 'flex' : 'none';
         const hasRad = (s.systems || []).includes('rad');
@@ -49234,7 +49444,7 @@ const app = {
         // однотипных — работает. Поэтому суммируем внутри типа и берём максимум между
         // типами, как в смете (boilerPowerForPipes), иначе диаметр на схеме разошёлся бы
         // со спецификацией.
-        let boilerGasKw = 0, boilerElKw = 0;
+        let boilerGasKw = 0, boilerElKw = 0, boilerOneKw = 0;
         spec.forEach(i => {
             if (!isBoiler(i)) return;
             // У BAXI мощность в названии не пишется («ECO Nova 18F») — берём
@@ -49244,20 +49454,20 @@ const app = {
             const m = nameOf(i).match(/(\d{1,3})\s*кВт/i);
             const one = (c && c.power) ? +c.power : (m ? +m[1] : 0);
             if (!one) return;
+            if (one > boilerOneKw) boilerOneKw = one;
             const kw = one * (i.q || 1);
             if (isGasB(i)) boilerGasKw += kw;
             else boilerElKw += kw;
         });
-        let boilerKw = Math.max(boilerGasKw, boilerElKw);
-        if (!boilerKw) boilerKw = power;
         const isPpr = s.brandMode === 'rommer';
-        const dia = boilerKw <= 30
-            ? (isPpr ? 'Ø32х4,4 мм' : 'Ø22х1,2 мм')
-            : (isPpr ? 'Ø40х5,5 мм' : 'Ø28х1,2 мм');
-        // Резьба присоединения котлового контура — по тому же порогу, по которому
-        // смета берёт переходники к патрубкам котла и змеевика бойлера
-        // (RSS-1022-002234 3/4" на 22 мм против RSS-1022-000281 1" на 28 мм).
-        const mainThread = boilerKw <= 30 ? '3/4"' : '1"';
+        // Без распознанных котлов — общая мощность объекта, одним источником.
+        if (!boilerGasKw && !boilerElKw) boilerGasKw = power;
+        // Тот же подбор, что у сметы (boilerMainSizes): скорость, Δt, система обвязки.
+        // Порог «30 кВт» здесь больше не живёт — раньше он расходился со сметой.
+        const _schemeSizes = this.boilerMainSizes(boilerGasKw, boilerElKw, boilerOneKw);
+        const dia = this.boilerMainLabel(_schemeSizes.main);
+        // Резьба патрубка котла — по тому же типоразмеру, что и магистраль.
+        const mainThread = this.boilerMainThread(_schemeSizes.main);
 
         // Узел загрузки бойлера. POLIS клапаном приоритета управлять не может
         // (нет ни выхода на сервопривод, ни датчика бойлера) — если он
@@ -55257,7 +55467,6 @@ const app = {
                 catalog.groups_dn25[0],
                 catalog.groups_dn20[1],
                 catalog.groups_dn25[1],
-                catalog.groups_dn20[2],
                 catalog.groups_dn25[2],
                 catalog.groups_dn20.find(g => g.id === 'SDG-0007-002001'),
                 catalog.groups_dn25.find(g => g.id === 'SDG-0007-002501'),
@@ -55765,24 +55974,26 @@ const app = {
     // остаются рабочими.
     isUfhMixTypeCompatible: function (type, area, brand, areaPerNode) {
         if (type === 'std') {
-            let flowTotal = (area * 0.08) / (1.163 * 5);
+            let flowTotal = (area * 0.08) / (1.163 * (parseInt(this.state.ufhDT, 10) || 5));
             let limitArea = (brand === 'rommer') ? 100 : 120;
-            let limitFlow = (brand === 'rommer') ? 1.0 : 1.2;
+            // STOUT: меньшее из скорости в 3/4" ≤ 1 м/с и потерь узла по паспортному графику SDG-0120-001
+            // не больше половины напора его насоса 25/60 (как у групп, см. groupFlowLimit). ROMMER: 1,0 м³/ч — заявленные 6 кВт узла
+            // RDG-0120-008100 при перепаде 5 К, паспорт кривой потерь не даёт.
+            let limitFlow = (brand === 'rommer') ? 1.0 : this.stdNodeFlowLimit();
             return area <= limitArea && flowTotal <= limitFlow;
         }
         let a = (areaPerNode > 0) ? areaPerNode : area;
-        let flow = (a * 0.08) / (1.163 * 5);
-        if (brand === 'rommer') {
-            if (type === 'dn20') return a <= 120 && flow <= 1.6;
-            if (type === 'dn20_servo') return a <= 150 && flow <= 1.6;
-            if (type === 'dn25') return a <= 150 && flow <= 1.6;
-            if (type === 'dn25_servo') return a <= 116;
-        } else { // stout
-            if (type === 'dn20') return a <= 120 && flow <= 0.9;
-            if (type === 'dn20_servo') return a <= 150 && flow <= 0.9;
-            if (type === 'dn25') return a <= 200 && flow <= 2.1;
-            if (type === 'dn25_servo') return a <= 153;
-            if (type === 'dn32_servo') return a <= 210;
+        // Перепад — выбранный в настройках тёплого пола (5/7/10 К), по умолчанию 5.
+        let flow = (a * 0.08) / (1.163 * (parseInt(this.state.ufhDT, 10) || 5));
+        // Предел — расходом (скорость в патрубке и потери на смесителе, см. groupFlowLimit)
+        // для позиции, которую смета ставит под этот тип. DN32 — по расходу насоса RCP-0004 (2,9 м³/ч, ≈ 210 м²).
+        const _rep = (brand === 'rommer')
+            ? { dn20: 'RDG-1002-002501', dn20_servo: 'RDG-1003-002501', dn25: 'RDG-1002-002501', dn25_servo: 'RDG-1003-002501' }
+            : { dn20: 'SDG-0002-002001', dn20_servo: 'SDG-0007-002001', dn25: 'SDG-0002-002501', dn25_servo: 'SDG-0003-002501' };
+        if (type === 'dn32_servo') return brand !== 'rommer' && a <= 210;
+        if (_rep[type]) {
+            const dn = /^dn20/.test(type) ? 20 : 25;
+            return flow <= this.groupFlowLimit({ id: _rep[type], name: 'DN' + dn }, 'ufh');
         }
         return false;
     },
@@ -56125,6 +56336,8 @@ const app = {
         const kw = n.match(/(\d+[.,]?\d*)\s?кВт/i);
         if (kw && !s.pump) s.power = num(kw[1]);
         else if (it.power != null) s.power = num(it.power);
+        // Насосные группы: мощность в названии больше не пишется — считаем из расхода и перепада.
+        if (/^(SDG|RDG)-\d{4}-\d{6}$/.test(String(it.id || '')) && /групп/i.test(n)) s.power = this.groupCapKw(it, 'rad');
         if (it.circuits != null) s.circuits = num(it.circuits);
         if (it.type) s.type = String(it.type);
         if (it.chimType) s.chimType = String(it.chimType);
@@ -57977,11 +58190,12 @@ const app = {
                 `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:4px;">Считать:</span>` +
                 `<span onclick="app.setSwapBpScope('pipe')" ${_bpB(_bpScope === 'pipe')}>Только трубы и фитинги</span>` +
                 `<span onclick="app.setSwapBpScope('rig')" ${_bpB(_bpScope === 'rig')}>С крепежом и теплоизоляцией</span>` +
-                `<span style="font-size:11px;color:var(--text-muted, #6B7280);margin-left:6px;">котёл, бойлер и насосы не в счёт — они одинаковы при любой трубе</span>` +
-                `<div style="flex-basis:100%;font-size:11px;color:var(--text-muted, #6B7280);line-height:1.4;">` +
-                `Диаметр у каждой системы свой: он подобран по скорости воды, а стенка у материалов разной толщины — ` +
-                `поэтому наружный размер отличается. Цены — по прайсу: «Эта позиция» — одна деталь, «Система» — все трубы и фитинги котельной.</div>` +
                 `</div>`;
+            // Диаметр магистрали — у любой строки котельной (труба и фитинги: от диаметра зависят оба).
+            if (this._bpLoad) {
+                const _diamT = this._bpPreview ? null : this.boilerDiamTotals();
+                _bpFilterHtml += this.boilerMainBlockHtml(this._bpLoad.gas, this._bpLoad.el, this._bpPreview || undefined, _diamT);
+            }
             customAlts = [
                 // ROMMER AISI 304 — для ПРОФИ (как и остальные позиции ROMMER), а до
                 // 1 ноября 2026 — для всех, независимо от тарифа (переходный период после
@@ -58531,15 +58745,19 @@ const app = {
         } else if (_origId0 === 'SDG-0120-001000' || _origId0 === 'SDG-0002-002001' || _origId0 === 'SDG-0002-002501' || _origId0 === 'SDG-0003-002001' || _origId0 === 'SDG-0003-002501' || _origId0 === 'SDG-0007-003201' || _origId0 === 'SDG-0001-002001' || _origId0 === 'SDG-0001-002501' || _origId0 === 'SDG-0001-003201') {
             const _hdrDnMatch = (item.name || '').match(/DN(20|25|32)/);
             const _hdrDn = _hdrDnMatch ? `DN${_hdrDnMatch[1]}` : null;
-            const _hdrRad = (item.name || '').match(/для радиаторов\s*(?:до\s*)?(\d+(?:[.,]\d+)?)\s*кВт/);
-            const _hdrUfhTp = (item.name || '').match(/тёплого пола\s*(?:до\s*)?(\d+(?:[.,]\d+)?)\s*кВт/);
-            const _hdrUfhTp2 = (item.name || '').match(/(\d+(?:[.,]\d+)?)\s*кВт\s*ТП/);
-            const _hdrUfhSingle = !_hdrRad ? (item.name || '').match(/(\d+(?:[.,]\d+)?)\s*кВт/) : null;
+            // Мощность группы — расчётная для контура, где она стоит (см. groupCapKw), а не из названия.
+            const _hdrIsGroup = /^(SDG|RDG)-\d{4}-\d{6}$/.test(String(item.id || '')) && /групп/i.test(item.name || '');
+            const _hdrPurpose = (item._uiUfhOnly || (item._capUse && item._capUse.purpose === 'ufh')) ? 'ufh' : 'rad';
+            const _hdrCap = _hdrIsGroup ? String(this.groupCapKw(item, _hdrPurpose)).replace('.', ',') : null;
+            const _hdrRad = (_hdrCap && _hdrPurpose === 'rad') ? [null, _hdrCap] : null;
+            const _hdrUfhTp = (_hdrCap && _hdrPurpose === 'ufh') ? [null, _hdrCap] : null;
+            const _hdrUfhTp2 = null;
+            const _hdrUfhSingle = (!_hdrIsGroup && !_hdrRad) ? (item.name || '').match(/(\d+(?:[.,]\d+)?)\s*кВт/) : null;
             // Одна плашка вместо трёх: «DN25 · радиаторы 24 кВт» (цена рядом, отдельной плашкой).
             const _hdrParts = [];
             if (_hdrDn) _hdrParts.push(_hdrDn);
-            if (_hdrRad) _hdrParts.push(`радиаторы ${_hdrRad[1]} кВт`);
-            if (_hdrUfhTp || _hdrUfhTp2) _hdrParts.push(`тёплый пол ${(_hdrUfhTp || _hdrUfhTp2)[1]} кВт`);
+            if (_hdrRad) _hdrParts.push(`тянет ${_hdrRad[1]} кВт (радиаторы)`);
+            if (_hdrUfhTp || _hdrUfhTp2) _hdrParts.push(`тянет ${(_hdrUfhTp || _hdrUfhTp2)[1]} кВт (тёплый пол)`);
             if (!_hdrRad && !_hdrUfhTp && !_hdrUfhTp2 && _hdrUfhSingle) _hdrParts.push(`${_hdrUfhSingle[1]} кВт`);
             const _hdrBadges = _hdrParts.length
                 ? `<div style="background:var(--primary-light); color:var(--primary); padding:6px 12px; border-radius:10px; font-size:13px; font-weight:800; border:1px solid rgba(37,99,235,0.08);">${_hdrParts.join(' · ')}</div>` : '';
@@ -61151,6 +61369,7 @@ const app = {
     },
     // ═══════════════════════════════════════════════════════════════
     closeSwapModal: function () {
+        this._bpPreview = null;
         let modal = document.getElementById('swap_modal_overlay');
         if (modal) modal.style.display = 'none';
     },
@@ -61301,6 +61520,14 @@ const app = {
             // Строку в таблице ПРОФИ и так не видит, но выбор мог прийти и из
             // сохранённой сметы, поэтому проверяем ещё раз здесь.
             if ((_bpChosen === 'stable_r' || _bpChosen === 'mp_r') && !this.checkAccess('pro-brand')) return;
+            // Два щелчка. Первый — только показать замену: плашки диаметра и скорости
+            // пересчитываются под эту систему, смета не трогается. Второй по той же строке — заменяет.
+            if (_bpChosen !== this.boilerPipeSystem() && this._bpPreview !== _bpChosen) {
+                this._bpPreview = _bpChosen;
+                this.openSwapModal(originalId);
+                return;
+            }
+            this._bpPreview = null;
             this.state.boilerPipeSystem = _bpChosen;
             // Точечные замены прежней системы больше не к чему привязать: тех артикулов
             // в смете не осталось, а висящий ключ вернул бы чужую позицию при возврате.
@@ -63071,6 +63298,9 @@ const app = {
     bufferAvailable: function () {
         const s = this.state;
         if (!s.detailedRooms || this.isFlat()) return false;
+        // Ёмкость считается под электрокотёл: без площади дома и без подобранного котла её нечем греть.
+        if (!(parseFloat(s.area) > 0)) return false;
+        if (s.elBoilerPower == null && s.elBoilerCount == null) return false;
         const f = s.fuels || [];
         return f.includes('el') && !f.includes('gas');
     },
@@ -63909,8 +64139,8 @@ const app = {
      * выбор исполнения — общий по котельной, state.pumpType.
      */
     SNOW_PUMPS: [
-        { label: '25/60', cat: 'pumps_dn25', hMax: 6, qMax: 3.3 },
-        { label: '25/80', cat: 'pumps_dn25_80', hMax: 8, qMax: 5.5 }
+        { label: '25/60', cat: 'pumps_dn25', hMax: 6.1, qMax: 3.35, pts: [[0, 6.1], [1, 4.85], [2, 3.45], [3, 2.0], [3.35, 1.2]] },
+        { label: '25/80', cat: 'pumps_dn25_80', hMax: 8, qMax: 4.8, pts: [[0, 8.0], [1, 7.4], [2, 6.5], [3, 5.2], [4, 3.5], [4.8, 1.3]] }
     ],
     /**
      * Труба уличной петли. Обе — PE-Xa/EVOH, обе переживают замерзание
@@ -64075,7 +64305,7 @@ const app = {
     /** Напор насоса при подаче v (м³/ч), м. Без второго аргумента — 25/60. */
     snowPumpHead: function (v, pump) {
         const p = pump || this.SNOW_PUMPS[0];
-        return Math.max(0, p.hMax * (1 - Math.pow(v / p.qMax, 2)));
+        return this.pumpHeadAt(p, v);
     },
     /**
      * Требуемая температура подачи первичного контура, °C.
@@ -65620,9 +65850,26 @@ const app = {
     // H = hMax·(1 − (Q/qMax)²). В насосных группах STOUT стоит 25/60, в мощных
     // сборках 25/80; ими и проверяем, тянет ли группа посчитанное кольцо.
     RAD_PUMPS: [
-        { label: '25/60', hMax: 6, qMax: 3.3 },
-        { label: '25/80', hMax: 8, qMax: 5.5 }
+        { label: '25/60', hMax: 6.1, qMax: 3.35, pts: [[0, 6.1], [1, 4.85], [2, 3.45], [3, 2.0], [3.35, 1.2]] },
+        { label: '25/80', hMax: 8, qMax: 4.8, pts: [[0, 8.0], [1, 7.4], [2, 6.5], [3, 5.2], [4, 3.5], [4.8, 1.3]] }
     ],
+    /**
+     * Напор насоса при подаче v (м³/ч), м. Если у насоса есть точки pts — ломаная по паспортному графику
+     * (линейная интерполяция, за последней точкой 0), иначе прежняя квадратичная аппроксимация.
+     *
+     * Точки сняты с паспортных графиков при максимальной скорости (III), погрешность ±0,2 м:
+     *   25/60 — STOUT SPC-0011 (ред. 17.05.2021) и ROMMER RCP-0004 PROFI RATE: у обоих кривая почти прямая,
+     *           6,1 м при 0, 3,4–3,6 м при 2 м³/ч; у ROMMER она кончается на ≈ 3,35 м³/ч (у STOUT идёт до 4,0),
+     *           взято по ROMMER, то есть по более слабому;
+     *   25/80 — по ROMMER RCP-0004 (8,0 м, обрыв на ≈ 4,8 м³/ч; у STOUT напор выше: 4,95 м при 4 м³/ч);
+     *   15/60-130 — ROMMER RCP-0002 RATE (6,1 м, обрыв на 2,87 м³/ч).
+     * Прежняя формула H = hMax·(1 − (Q/qMax)²) с 6 м и 3,3 м³/ч завышала напор на малых расходах (на 2 м³/ч — 4,0 м
+     * против 3,45 по паспорту) и занижала на больших (на 3 м³/ч — 1,0 м против 2,0).
+     */
+    pumpHeadAt: function (pump, v) {
+        if (pump && pump.pts) return this.boilerPumpHead(pump, v) || 0;
+        return Math.max(0, pump.hMax * (1 - Math.pow(v / pump.qMax, 2)));
+    },
 
     // ─── Греющий контур бойлера ──────────────────────────────────────────────
     //
@@ -65784,9 +66031,9 @@ const app = {
         let pump = null;
         if (L.pump) {
             const _qP = flow * _kpL.flow;
-            const pick = this.RAD_PUMPS.find(pm => pm.hMax * (1 - Math.pow(_qP / pm.qMax, 2)) >= head)
+            const pick = this.RAD_PUMPS.find(pm => this.pumpHeadAt(pm, _qP) >= head)
                 || this.RAD_PUMPS[this.RAD_PUMPS.length - 1];
-            const avail = pick.hMax * (1 - Math.pow(_qP / pick.qMax, 2));
+            const avail = this.pumpHeadAt(pick, _qP);
             pump = { label: pick.label, avail: Math.max(0, avail), builtin: false,
                 ok: avail >= head };
         } else if (L.pumpCurve) {
@@ -66078,7 +66325,7 @@ const app = {
         };
         const fitsAt = (br) => {
             const r = headAt(br);
-            return this.RAD_PUMPS.some(pm => pm.hMax * (1 - Math.pow(r.flowBr / pm.qMax, 2)) >= r.head);
+            return this.RAD_PUMPS.some(pm => this.pumpHeadAt(pm, r.flowBr) >= r.head);
         };
 
         for (let br = 1; br <= 4; br++) {
@@ -66090,6 +66337,112 @@ const app = {
             if (br < 4 && headAt(br).head - headAt(br + 1).head < 0.1 * headAt(br).head) return br;
         }
         return 4;
+    },
+
+    /**
+     * Разбивка насосных групп по контурам — для блока «Почему N групп» в подробном
+     * режиме. Только объясняет числа, которые уже посчитаны в _renderInner (rQ, tQ,
+     * бойлер, снеготаяние, POLIS), и правил подбора не повторяет: поэтому сумма
+     * строк всегда совпадает с числом выходов коллектора (inp.circuits).
+     *
+     * inp: { rQ, tQ, hasRad, hasTp, tpF1, tpF2, tankPump, polisCircuits,
+     *        snowCircuits, circuits } — tpF1/tpF2 — петли и метры по этажам тёплого пола.
+     */
+    pumpGroupPlan: function (inp) {
+        const s = this.state;
+        const rows = [];
+        const rooms = (s.detailedRooms && s.rooms && s.rooms.length) ? s.rooms : null;
+        // Этажи, где есть нужный контур: по помещениям в подробном режиме, иначе по этажности.
+        const floorsOf = pred => rooms
+            ? [...new Set(rooms.filter(pred).map(r => (parseInt(r.floor, 10) === 2 ? 2 : 1)))].sort()
+            : (s.floors === 2 ? [1, 2] : [1]);
+
+        if (inp.rQ > 0) {
+            const cap = parseFloat(this._radGroupCapacityKw) || 0;
+            const load = parseFloat(this._radGroupLoadKw) || 0;
+            const byHydro = parseInt(this._radGroupsByHydro, 10) || 0;
+            const byPower = (cap > 0 && load > 0) ? Math.max(1, Math.ceil(load / cap)) : 0;
+            let rule;
+            if (inp.radMode === 'floors') {
+                rule = (inp.rQ > (inp.radAuto || 0))
+                    ? 'вручную по этажам: по мощности и гидравлике хватило бы ' + (inp.radAuto || 0)
+                    : 'вручную по этажам: совпадает с расчётом по мощности и гидравлике';
+            } else if (!(cap > 0)) rule = 'паспорт группы не распознан в каталоге: считаем по этажам';
+            else if (byHydro > byPower) rule = 'по гидравлике: по мощности хватило бы ' + byPower + ', до дальних приборов не хватает напора';
+            else if (byPower > byHydro) rule = 'по мощности: гидравлика прошла бы на ' + byHydro + ', ограничивает паспорт группы ' + cap + ' кВт';
+            else if (inp.rQ > 1) rule = 'мощность и напор требуют одинаково';
+            else rule = 'одна группа проходит по мощности и напору';
+            rows.push({ title: 'Радиаторы', floors: floorsOf(r => !r.sys || r.sys.includes('rad')), count: inp.rQ, rule: rule });
+        }
+
+        // Тёплый пол: один смесительный узел на каждые 12 петель коллектора, поэтажно.
+        let tpSum = 0;
+        if (inp.tQ > 0) {
+            [inp.tpF1, inp.tpF2].forEach((tp, i) => {
+                const loops = (tp && tp.loops) || 0;
+                if (!(loops > 0)) return;
+                const mans = Math.ceil(loops / 12);
+                const n = Math.min(mans, (this._ufhNodes && this._ufhNodes[i + 1]) || mans);
+                tpSum += n;
+                rows.push({ title: 'Тёплый пол', floors: [i + 1], count: n,
+                    rule: loops + ' петель, коллекторов ' + mans + ': групп по мощности и расходу ' + n +
+                        (n < mans ? ' (одна группа питает несколько коллекторов)' : '') });
+            });
+            // Запасная строка на случай, когда число узлов задано не по петлям.
+            if (inp.tQ > tpSum) rows.push({ title: 'Тёплый пол (прочее)', floors: [], count: inp.tQ - tpSum, rule: 'узел без расчёта петель' });
+        } else if (inp.hasTp && s.ufhMixType === 'std') {
+            rows.push({ title: 'Тёплый пол', floors: [], count: 0, rule: 'локальный узел подмеса, в группу коллектора не выводится' });
+        }
+
+        if (inp.tankPump) {
+            rows.push({ title: 'Бойлер ГВС', floors: [], count: 1, rule: 'загрузка своей группой: отопление во время нагрева не отключается' });
+        } else if (this.dhwTankOn && this.dhwTankOn()) {
+            rows.push({ title: 'Бойлер ГВС', floors: [], count: 0, rule: 'загрузка трёхходовым клапаном, группа не нужна' });
+        }
+        if (inp.snowCircuits > 0) rows.push({ title: 'Снеготаяние', floors: [], count: inp.snowCircuits, rule: 'по числу узлов, у каждого своя смесительная группа' });
+        if (inp.polisCircuits > 0) rows.push({ title: 'Котёл без встроенного насоса', floors: [], count: inp.polisCircuits, rule: 'выход коллектора под его контур' });
+
+        const total = rows.reduce((a, r) => a + r.count, 0);
+        return { total: total, rows: rows, circuits: inp.circuits, consistent: total === inp.circuits,
+            radSwitch: inp.rQ > 0, radMode: inp.radMode || 'auto' };
+    },
+
+    /**
+     * Блок насосных групп в свёрнутом пункте «Насосные группы» (как «Тонкая настройка»).
+     * В заголовке — число групп, внутри — переключатель радиаторов и разбивка по контурам.
+     * Только в подробном режиме; в быстром пункт скрыт (syncFineTune).
+     */
+    renderPumpPlanBlock: function () {
+        const el = document.getElementById("rooms_pump_plan");
+        if (!el) return;
+        const p = this._pumpPlan;
+        if (!this.state.detailedRooms || !p || (p.total === 0 && p.rows.length === 0)) {
+            el.style.display = "none";
+            el.innerHTML = "";
+            this.syncFineTune();
+            return;
+        }
+        const tab = (val, label) => "<div class=\"tab" + (p.radMode === val ? " active" : "") +
+            "\" onclick=\"app.setPumpRadMode('" + val + "')\">" + label + "</div>";
+        const radTabs = p.radSwitch
+            ? "<div class=\"lbl-sub\" style=\"margin-bottom:6px;\">Группы радиаторов</div>" +
+              "<div class=\"tabs\" id=\"pump_rad_tabs\">" + tab("auto", "Авто") + tab("floors", "По этажам") + "</div>"
+            : "";
+        const floorTxt = fl => (!fl || !fl.length) ? "" : (fl.length > 1 ? " · оба этажа" : " · " + fl[0] + " этаж");
+        let html = radTabs;
+        if (p.total === 0) {
+            html += "<div style=\"font-size:11px; color:var(--text-sec);\">Насосных групп нет — радиаторы и тёплый пол работают от насоса котла</div>";
+        }
+        p.rows.forEach(r => {
+            html += "<div style=\"display:flex; justify-content:space-between; gap:8px; padding:4px 0; border-top:1px dashed var(--border);\">" +
+                "<span style=\"color:var(--text);\">" + r.title + floorTxt(r.floors) + "</span>" +
+                "<b style=\"color:var(--text);\">" + r.count + "</b></div>" +
+                "<div style=\"font-size:10px; line-height:1.4; color:var(--text-sec);\">" + r.rule + "</div>";
+        });
+        if (!p.consistent) html += "<div style=\"color:#EF4444; margin-top:4px;\">Сумма строк не сходится с коллектором — сообщите разработчику.</div>";
+        el.innerHTML = html;
+        el.style.display = "block";
+        this.syncFineTune();
     },
 
     // Радиаторный запорно-балансировочный клапан 1/2" (SVL) на обратке прибора:
@@ -66350,7 +66703,7 @@ const app = {
         const pumps = hasGroup ? this.RAD_PUMPS : [this.RAD_PUMPS[0]];
         const pump = pumps.map(pm => ({
             label: hasGroup ? pm.label : 'встроенный насос котла (принят по кривой ' + pm.label + ')',
-            avail: pm.hMax * (1 - Math.pow(flowBranch * _kp.flow / pm.qMax, 2))
+            avail: this.pumpHeadAt(pm, flowBranch * _kp.flow)
         }));
         const fit = pump.find(pm => pm.avail >= head) || null;
 
@@ -66541,7 +66894,7 @@ const app = {
             `• Расход через узел: G = Q / (1,163 × ΔT) = <b>${(w.nodeFlow || w.flow).toFixed(2)} м³/ч</b> при перепаде ${b.dT} К${w.nodeFlow ? " (узел один на все гребёнки — расход общий)" : ""}.<br>` +
             `• Самая длинная петля: ${n1(w.worstDp)} кПа.<br>` +
             `• Коллектор (расходомер, кран, сервопривод): ${this.UFH_MAN_DP} кПа.<br>` +
-            `• Смесительный клапан узла: (G / Kvs)² = (${(w.nodeFlow || w.flow).toFixed(2)} / ${b.kvs})² = ${n1(w.dpValve)} кПа.<br>` +
+            `• Потери группы/узла по паспортному графику при ${(w.nodeFlow || w.flow).toFixed(2)} м³/ч: ${n1(w.dpValve)} кПа (паспортный Kvs клапана ${b.kvs}, у группы целиком эффективный ниже).<br>` +
             (w.trDp > 0 ? `• Транзит до коллектора ${w.floor}-го этажа ${w.tr ? w.tr.label : ''}: ${n1(w.trDp)} кПа.<br>` : '') +
             `• Итого с запасом 15 %: <b>${n1(w.need)} м</b>. Насос ${b.pump.label} на этом расходе даёт ` +
             `<b>${n1(w.have)} м</b> — ${b.ok ? 'проходит' : '<b style="color:var(--c-bad,#EF4444);">не проходит</b>'}.` +
@@ -66629,13 +66982,13 @@ const app = {
      * здесь можно только в сторону запаса.
      */
     UFH_PUMPS: {
-        mix: { label: '25/60-130', hMax: 6, qMax: 3.0 },
-        dn20: { label: '15/60-130', hMax: 6, qMax: 2.5 },
-        dn25: { label: '25/60-180', hMax: 6, qMax: 3.3 },
-        dn25_80: { label: '25/80-180', hMax: 8, qMax: 5.5 }
+        mix: { label: '25/60-130', hMax: 6.1, qMax: 3.35, pts: [[0, 6.1], [1, 4.85], [2, 3.45], [3, 2.0], [3.35, 1.2]] },
+        dn20: { label: '15/60-130', hMax: 6.1, qMax: 2.87, pts: [[0, 6.1], [0.9, 4.85], [1.5, 3.95], [2.1, 2.85], [2.7, 1.55], [2.87, 1.2]] },
+        dn25: { label: '25/60-180', hMax: 6.1, qMax: 3.35, pts: [[0, 6.1], [1, 4.85], [2, 3.45], [3, 2.0], [3.35, 1.2]] },
+        dn25_80: { label: '25/80-180', hMax: 8, qMax: 4.8, pts: [[0, 8.0], [1, 7.4], [2, 6.5], [3, 5.2], [4, 3.5], [4.8, 1.3]] }
     },
     ufhPumpHead: function (v, pump) {
-        return Math.max(0, pump.hMax * (1 - Math.pow(v / pump.qMax, 2)));
+        return this.pumpHeadAt(pump, v);
     },
     /** Человеческое имя узла тёплого пола для заметок расчёта */
     _ufhMixLabel: function (type) {
@@ -66644,12 +66997,162 @@ const app = {
         if (type === 'dn32_servo') return 'насосной группы DN32';
         return 'насосной группы DN25';
     },
+    /**
+     * Насосные группы: мощность в названиях («до 5/10/12/24 кВт») была зашита в каталог и
+     * не зависела от системы. Паспорта STOUT её не нормируют — она следует из расхода и
+     * перепада: Q = G × 1,163 × ΔT. Предел расхода — скорость в патрубке не выше ~1 м/с;
+     * для ROMMER — прежние пределы каталога (паспортов на группы нет).
+     */
+    GROUP_FLOW_LIMIT: { 20: 1.2, 25: 2.1, 32: 3.6 },
+    groupDn: function (item) {
+        const n = String((item && item.name) || ''), id = String((item && item.id) || '');
+        const m = /DN\s*(20|25|32)/i.exec(n);
+        if (m) return parseInt(m[1], 10);
+        if (/-0020\d\d$/.test(id)) return 20;
+        if (/-0032\d\d$/.test(id)) return 32;
+        return 25;
+    },
+    /**
+     * Потери напора ВСЕЙ группы без насоса (клапан, краны, термометр, фитинги) по паспортным графикам
+     * STOUT «Потери напора у групп…» (ред. 17.05.2021) и узла SDG-0120-001, точки [Q м³/ч, ΔP м вод. ст.],
+     * снятые с графиков (±0,05 м). Они заметно выше, чем даёт Kvs одного клапана: у SDG-0002 DN25 при 2 м³/ч —
+     * 6,5 м, а (2/3,5)²·10,2 = 3,3 м; эффективный Kv группы 2,1–2,5 при паспортном клапана 3,5.
+     * У ROMMER (RDG-1002, RDG-1003) график — прямая по Kvs 2,11 и 3,96, считается по формуле.
+     */
+    GROUP_DP_M: {
+        std:        [[0, 0], [0.5, 0.25], [1, 0.95], [1.5, 2.0], [2, 3.5], [2.5, 5.9], [3, 8.8], [3.2, 10]],
+        dn20:       [[0.25, 0.31], [0.5, 0.6], [0.75, 1.01], [1, 1.57], [1.25, 2.25], [1.5, 3.16], [1.75, 4.22], [2, 5.49], [2.25, 6.9], [2.4, 7.85]],
+        dn20_servo: [[0.25, 0.28], [0.5, 0.46], [1, 0.93], [1.5, 1.71], [2, 2.92], [2.5, 4.49], [3, 6.43], [3.3, 7.65]],
+        dn25:       [[0.6, 1.33], [0.8, 1.81], [1, 2.31], [1.25, 3.09], [1.5, 4.04], [1.75, 5.18], [2, 6.49], [2.25, 7.95], [2.4, 8.8]],
+        dn25_servo: [[0.6, 0.93], [1, 1.22], [1.5, 1.66], [2, 2.21], [2.5, 2.85], [3, 3.62], [3.5, 4.47], [4, 5.41], [4.5, 6.46], [5, 7.7], [5.4, 8.82]],
+        dn32_servo: [[0, 0.13], [1, 0.2], [2, 0.38], [3, 0.65], [4, 1.0], [5, 1.4], [6, 2.0], [7, 2.7], [8, 3.5], [8.5, 4.0]]
+    },
+    /** Предел расхода локального узла подмеса STOUT, м³/ч: потери по паспортной кривой ≤ ½ напора насоса 25/60. */
+    stdNodeFlowLimit: function () {
+        let g = 0;
+        for (let q = 0.02; q <= 2.5; q += 0.02) {
+            if (this.groupDpKpa('std', 'stout', q) / 9.81 <= 0.5 * this.pumpHeadAt(this.UFH_PUMPS.mix, q)) g = q; else break;
+        }
+        // Узел на 3/4": скорость в патрубке ≤ 1 м/с, как у DN20 (GROUP_FLOW_LIMIT[20]).
+        return Math.min(Math.round(g * 100) / 100, this.GROUP_FLOW_LIMIT[20]);
+    },
+    /** Ключ кривой потерь для позиции каталога (STOUT) или типа узла; null — кривой нет. */
+    groupDpKey: function (item) {
+        const m = /^SDG-(\d{4})-\d{2}(\d{2})/.exec(String((item && item.id) || ''));
+        if (!m) return null;
+        if (m[1] === '0120') return 'std';
+        if (m[1] === '0002') return m[2] === '20' ? 'dn20' : 'dn25';
+        if (m[1] === '0003') return 'dn25_servo';
+        if (m[1] === '0007') return m[2] === '20' ? 'dn20_servo' : m[2] === '32' ? 'dn32_servo' : 'dn25_servo';
+        return null;
+    },
+    /** Потери напора группы/узла, кПа, при расходе flow (м³/ч): по кривой (между точками — линейно, за краями — по Q²), иначе по Kvs. */
+    groupDpKpa: function (type, brand, flow) {
+        const q = Math.max(0, parseFloat(flow) || 0);
+        const pts = (brand !== 'rommer') ? this.GROUP_DP_M[type] : null;
+        if (!pts) return Math.pow(q / this.ufhMixKvs(type, brand), 2) * 100;
+        let m;
+        if (q <= pts[0][0]) m = pts[0][1] * Math.pow(q / pts[0][0], 2);
+        else if (q >= pts[pts.length - 1][0]) { const L = pts[pts.length - 1]; m = L[1] * Math.pow(q / L[0], 2); }
+        else {
+            for (let i = 1; i < pts.length; i++) if (q <= pts[i][0]) {
+                const a = pts[i - 1], b = pts[i];
+                m = a[1] + (b[1] - a[1]) * (q - a[0]) / (b[0] - a[0]); break;
+            }
+        }
+        return m * 9.81;
+    },
+    /**
+     * Kvs смесительного клапана группы, м³/ч — по техпаспортам: STOUT SDG-0002 (DN20/DN25) 3,5,
+     * SDG-0003 DN25 6, SDG-0007 DN20 4 / DN25 6 / DN32 18 (ред. 17.05.2021); ROMMER RDG-1002 2,11,
+     * RDG-1003 3,96 (паспорта 2024), RDG-1004 3,96 (rommer.ru). У прямых групп смесителя нет — null.
+     */
+    groupKvs: function (item) {
+        const id = String((item && item.id) || '');
+        let m = /^SDG-(\d{4})-\d{2}(\d{2})/.exec(id);
+        if (m) {
+            return { '0002-20': 3.5, '0002-25': 3.5, '0003-25': 6, '0007-20': 4, '0007-25': 6, '0007-32': 18 }[m[1] + '-' + m[2]] || null;
+        }
+        m = /^RDG-(1002|1003|1004)-/.exec(id);
+        if (m) return { 1002: 2.11, 1003: 3.96, 1004: 3.96 }[m[1]];
+        return null;
+    },
+    /**
+     * Предельный расход группы, м³/ч: меньшее из двух — скорость в патрубке ≤ ~1 м/с и такой расход,
+     * при котором смесительный клапан (G/Kvs)² отнимает не больше половины напора штатного насоса группы
+     * на этом расходе (по паспортной кривой, см. pumpHeadAt): остальное нужно коллектору и петлям.
+     * Раньше стоял жёсткий предел 0,3 бар — он не зависел от насоса и от Kvs.
+     */
+    groupFlowLimit: function (item, purpose) {
+        let lim = this.GROUP_FLOW_LIMIT[this.groupDn(item)] || 2.1;
+        const dn = this.groupDn(item), key = this.groupDpKey(item), kvs = this.groupKvs(item);
+        const pump = dn === 20 ? this.UFH_PUMPS.dn20 : dn === 25 ? this.UFH_PUMPS.dn25 : null;
+        if ((key || kvs) && pump) {
+            const brand = /^RDG-/.test(String((item && item.id) || '')) ? 'rommer' : 'stout';
+            const t = key || ((kvs < 3 ? 'dn25' : 'dn25_servo'));
+            let g = 0;
+            for (let q = 0.02; q <= lim + 1e-9; q += 0.02) {
+                const dpM = this.groupDpKpa(t, brand, q) / 9.81;
+                if (dpM <= 0.5 * this.pumpHeadAt(pump, q)) g = q; else break;
+            }
+            lim = Math.min(lim, Math.round(g * 100) / 100);
+        }
+        return lim;
+    },
+    /** Перепад, К, при котором группа работает в данном контуре. */
+    groupDt: function (purpose) {
+        if (purpose === 'ufh') return (this._ufhBal && this._ufhBal.dT) || parseInt(this.state.ufhDT, 10) || (this.UFH_DTS && this.UFH_DTS[0]) || 5;
+        if (purpose === 'snow') return 15;
+        if (purpose === 'dhw') return this.boilerDT();
+        return this.radDT();
+    },
+    /** Сколько кВт тянет одна группа в контуре purpose ('rad' | 'ufh' | 'snow' | 'dhw'). */
+    groupCapKw: function (item, purpose) {
+        const q = this.groupFlowLimit(item, purpose) * 1.163 * this.groupDt(purpose);
+        return Math.round(q * 10) / 10;
+    },
+    /** Подпись к названию группы: нагрузка на одну группу против того, сколько она тянет. */
+    groupLoadText: function (item, use) {
+        if (!item || !use || !(use.kw > 0)) return '';
+        const cap = this.groupCapKw(item, use.purpose);
+        if (!(cap > 0)) return '';
+        const f = v => String(Math.round(v * 10) / 10).replace('.', ',');
+        const pct = Math.round(use.kw / cap * 100);
+        const what = use.purpose === 'ufh' ? 'тёплый пол' : use.purpose === 'dhw' ? 'бойлер' : 'радиаторы';
+        return what + ': ' + f(use.kw) + ' из ' + f(cap) + ' кВт' + (use.qty > 1 ? ' на группу' : '') + ' (' + pct + ' %)' + (pct > 100 ? ' — не хватает' : '');
+    },
+    /** Блок «Характеристики» в подсказке насосной группы: Kvs из паспорта STOUT + расчётная мощность. */
+    groupCapacityHtml: function (item, purpose, isRommer) {
+        const dn = this.groupDn(item), lim = this.groupFlowLimit(item, purpose), dt = this.groupDt(purpose);
+        const cap = this.groupCapKw(item, purpose);
+        const f = v => String(v).replace('.', ',');
+        const id = String(item.id || '');
+        const kvs = this.groupKvs(item);
+        let s = `<b>Характеристики (${id}):</b><br>`;
+        if (kvs) s += `• Kvs смесительного клапана: <b>${f(kvs)} м³/ч</b> (техпаспорт ${/^RDG/.test(id) ? 'ROMMER' : 'STOUT'}).<br>`;
+        s += `• Предел расхода: <b>до ${f(lim)} м³/ч</b> (DN${dn}: скорость в патрубке ≤ 1 м/с` + (kvs ? ', потери на смесителе ≤ ½ напора насоса по его кривой' : '') + `).<br>`;
+        s += `• Тянет в этом контуре: <b>${f(cap)} кВт</b> = ${f(lim)} × 1,163 × ΔT ${dt} К. Паспорт мощность в кВт не нормирует — она зависит от перепада и насоса.`;
+        if (dn === 32) s += `<br>• <b style="color:var(--c-warn,#F59E0B);">⚠ Насос в комплект не входит.</b> Расчёт на примере RCP-0004-3260180 (DN32, напор 6 м) на 2-й скорости (расход 2,9 м³/ч); при другом насосе или скорости пересчитайте.`;
+        return s;
+    },
     /** Пропускная способность смесительного клапана узла, м³/ч при перепаде 1 бар */
     ufhMixKvs: function (type, brand) {
-        if (type === 'std') return (brand === 'rommer') ? 1.8 : 2.1;
-        if (type === 'dn20' || type === 'dn20_servo') return 2.5;
-        if (type === 'dn32_servo') return 6.3;
-        return 4.0;   // DN25
+        // STOUT — по техпаспортам (stout.ru, ред. 17.05.2021): узел подмеса SDG-0120-001 — 3,5;
+        // SDG-0002 (4-ходовой термостатический) DN20 и DN25 — 3,5; SDG-0007 (3-ходовой) DN20 — 4,
+        // DN25 — 6, DN32 — 18; SDG-0003 (только DN25) — 6. ROMMER: узел подмеса RDG-0120-008100 — 3,42
+        // (паспорт); паспортов на группы ROMMER нет, там прежние значения.
+        if (brand === 'rommer') {
+            // RDG-1002 (термостатический) — 2,11; RDG-1003 (3-ходовой под сервопривод) — 3,96; узел RDG-0120-008100 — 3,42.
+            if (type === 'std') return 3.42;
+            if (type === 'dn20' || type === 'dn25') return 2.11;
+            return 3.96;
+        }
+        if (type === 'std') return 3.5;
+        if (type === 'dn20') return 3.5;
+        if (type === 'dn20_servo') return 4;
+        if (type === 'dn25') return 3.5;
+        if (type === 'dn32_servo') return 18;
+        return 6;   // dn25_servo
     },
     /**
      * Раскладка петель тёплого пола: сколько петель, какой длины и какую
@@ -66852,7 +67355,7 @@ const app = {
                 });
                 const flow = rows.reduce((a, r) => a + r.flow, 0) * 0.06;   // м³/ч
                 const worstDp = rows.reduce((a, r) => Math.max(a, r.dp), 0);
-                const dpValve = Math.pow(flow / kvs, 2) * 100;              // кПа
+                const dpValve = this.groupDpKpa(type, brand, flow);             // кПа, по паспортной кривой группы
                 return Object.assign({}, m, { rows: rows, flow: flow, worstDp: worstDp, dpValve: dpValve });
             });
             // Транзит один на этаж, а не на каждый коллектор: его диаметр и потери
@@ -66879,7 +67382,22 @@ const app = {
             // 5,3 кПа на клапане вместо 21 и «проходит» там, где насос не тянет.
             if (type === 'std' && mans.length > 1) {
                 const nodeFlow = mans.reduce((a, m) => a + m.flow, 0);
-                mans.forEach(m => { m.nodeFlow = nodeFlow; m.dpValve = Math.pow(nodeFlow / kvs, 2) * 100; });
+                mans.forEach(m => { m.nodeFlow = nodeFlow; m.dpValve = this.groupDpKpa(type, brand, nodeFlow); });
+            }
+            // Групп на этаже может быть меньше, чем коллекторов: коллекторы делят группу
+            // поровну (по кругу), и через её клапан и насос идёт их общий расход.
+            if (type !== 'std' && this._ufhNodes) {
+                [1, 2].forEach(fl => {
+                    const grp = mans.filter(m => m.floor === fl);
+                    const nn = Math.min(grp.length, this._ufhNodes[fl] || grp.length);
+                    if (nn < 1 || nn >= grp.length) return;
+                    const sums = new Array(nn).fill(0);
+                    grp.forEach((m, i) => { sums[i % nn] += m.flow; });
+                    grp.forEach((m, i) => {
+                        m.nodeFlow = sums[i % nn];
+                        m.dpValve = this.groupDpKpa(type, brand, m.nodeFlow);
+                    });
+                });
             }
             mans.forEach(m => {
                 m.trDp = m.trDp || 0;
@@ -68834,6 +69352,15 @@ const app = {
         }
         if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
     },
+    /**
+     * Переключатель групп радиаторов в подробном режиме: «auto» — минимум по мощности
+     * и гидравлике, «floors» — не меньше одной группы на этаж с радиаторами.
+     */
+    setPumpRadMode: function (mode) {
+        this.state.pumpRadMode = mode === 'floors' ? 'floors' : 'auto';
+        this.render();
+    },
+
     setColDnFilter: function (val) {
         this.state.colDnFilter = val;
         this.state.colLoopsFilter = [];
@@ -69046,24 +69573,39 @@ const app = {
     // заголовок.
     FINE_TUNE_KEY: 'heatcalc_fine_tune',
     FINE_TUNE_ROWS: {
-        boiler: ['blk_boiler_dt'],
-        rad: ['lbl_rad_regime', 'blk_rad_regime'],
-        ufh: ['blk_step_floor1', 'blk_step_floor2', 'blk_ufh_dt'],
+        // Одна «Тонкая настройка» на весь раздел котельной: котловой перепад, режим радиаторов, шаг тёплого пола.
+        eng: ['blk_boiler_dt', 'lbl_rad_regime', 'blk_rad_regime', 'blk_step_floor1', 'blk_step_floor2', 'blk_ufh_dt'],
         hw: ['blk_tank_pump_wrap'],
-        snow: ['blk_snow_pipe_row']
+        snow: ['blk_snow_pipe_row'],
+        pump: ['rooms_pump_plan']
     },
+    // Открыто ли пункт тонкой настройки. Только на время сессии: после перезагрузки все пункты свёрнуты.
     fineTuneOpen: function () {
-        try { return JSON.parse(localStorage.getItem(this.FINE_TUNE_KEY) || '{}') || {}; } catch (e) { return {}; }
+        return this._fineTuneOpen || (this._fineTuneOpen = {});
     },
     toggleFineTune: function (key) {
         const o = this.fineTuneOpen();
         o[key] = !o[key];
-        try { localStorage.setItem(this.FINE_TUNE_KEY, JSON.stringify(o)); } catch (e) { /* приватное окно */ }
         this.syncFineTune();
+    },
+    /** Дымоход в подробном режиме: тело свёрнуто, раскрывается по заголовку. */
+    toggleChimneyBlock: function () {
+        this._chimOpen = !this._chimOpen;
+        const w = document.getElementById('ft_chim'), b = document.getElementById('chim_body');
+        if (w) w.classList.toggle('open', !!this._chimOpen);
+        if (b) b.style.display = this._chimOpen ? 'block' : 'none';
     },
     fineTuneSummary: function (key) {
         const s = this.state;
+        if (key === 'eng') {
+            const sys = s.systems || [];
+            const parts = [this.fineTuneSummary('boiler')];
+            if (sys.includes('rad')) parts.push(this.fineTuneSummary('rad'));
+            if (sys.includes('tp')) parts.push(this.fineTuneSummary('ufh'));
+            return parts.filter(Boolean).join(' · ');
+        }
         if (key === 'boiler') return `${this.boilerDT()} K`;
+        if (key === 'pump') return this._pumpPlan ? `${this._pumpPlan.total} шт` : '';
         if (key === 'rad') return (this.RAD_REGIMES[s.radRegime] || this.RAD_REGIMES.r8060).label;
         if (key === 'ufh') {
             const dt = parseInt(s.ufhDT, 10) || null;
@@ -69608,7 +70150,14 @@ const app = {
         // полотенцесушитель, схема загрузки бойлера — в быстром режиме используются значения
         // по умолчанию, настроить их можно только в подробном режиме.
         const blkCoolantWrap = document.getElementById('blk_coolant_wrap');
-        if (blkCoolantWrap) blkCoolantWrap.style.display = this.state.detailedRooms ? 'block' : 'none';
+        // Теплоноситель — тумблер; три варианта показываем только когда он включён
+        // или когда выбран не «Вода» (чтобы не спрятать уже выбранное значение).
+        const _coolOn = !!this.state.coolantShow || (this.state.coolant && this.state.coolant !== 'water');
+        if (blkCoolantWrap) blkCoolantWrap.style.display = (this.state.detailedRooms && _coolOn) ? 'block' : 'none';
+        const blkCoolantRow = document.getElementById('blk_coolant_row');
+        if (blkCoolantRow) blkCoolantRow.style.display = this.state.detailedRooms ? 'block' : 'none';
+        const chkCoolant = document.getElementById('chk_coolant');
+        if (chkCoolant) chkCoolant.checked = !!_coolOn;
         // Заголовок «Теплоноситель» вынесен из блока отдельным <h4> — прячем его
         // вместе с вкладками, иначе в быстром режиме остаётся висеть без содержимого.
         const lblCoolant = document.getElementById('lbl_coolant');
@@ -70278,6 +70827,9 @@ const app = {
         if (document.getElementById('chk_merge')) document.getElementById('chk_merge').checked = this.state.groupItems;
         if (document.getElementById('chk_sku')) document.getElementById('chk_sku').checked = this.state.showSku;
         if (document.getElementById('chk_scheme')) document.getElementById('chk_scheme').checked = this.state.showScheme;
+        // Переключатель «Схема» — только у привязанных к дистрибьютору
+        const schemeWrap = document.getElementById('scheme_wrapper');
+        if (schemeWrap) schemeWrap.style.display = this.hasDistributor() ? '' : 'none';
 
         // Логика доступа для переключателя "КАРТИНКИ"
         let imgWrapper = document.getElementById('images_wrapper');
@@ -70702,7 +71254,14 @@ const app = {
         const req = this.ufhInsReq(fl);
         const base = (s.ufhBaseType === 'xps') ? 0.05 / this.UFH_INS_LAMBDA : this.UFH_INS_R_MAT;
         const own = this.ufhInsOwnR(fl);
-        return { req: req, base: base, own: own, total: base + own, ok: base + own >= req.r - 0.005 };
+        // Недостающее расчёт сам кладёт в смету (см. ufhInsSection), если не стоит «на объекте уже есть».
+        // Статус учитывает эти слои, иначе плашка «не хватает» висела бы и при уже добавленном утеплителе.
+        const haveR = base + own;
+        const autoOn = !(s.ufhInsNoAdd && s.detailedRooms);
+        const autoR = (autoOn && haveR < req.r - 0.005)
+            ? this.ufhInsLayers(req.r - haveR).reduce((x, l) => x + l.r, 0) : 0;
+        return { req: req, base: base, own: own, auto: autoR > 0, autoR: autoR,
+            total: haveR + autoR, ok: haveR + autoR >= req.r - 0.005 };
     },
 
     setUfhInsNoAdd: function (v) {
@@ -70750,7 +71309,8 @@ const app = {
             const n = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
             let html = '';
             if (st) {
-                if (st.ok) html = `<span style="color:#22C55E;">✓ Утеплителя хватает</span>`;
+                // Когда всё в порядке, подсказку не показываем: в левой панели и так тесно
+                if (st.ok) html = '';
                 else if (s.ufhInsNoAdd) html = `<span style="color:var(--c-warn,#F59E0B);">⚠ Внимание: утеплителя не хватает. Плиты в смету не добавлены.</span>`;
                 else html = `<span style="color:var(--c-warn,#F59E0B);">⚠ Внимание: утеплителя не хватает. Недостающее добавлено в смету.</span>`;
             }
@@ -72585,9 +73145,11 @@ const app = {
     // при этом считалась, но только ради подсказки: цифра показывалась монтажнику
     // и никуда не шла. Здесь она наконец решает.
     //
-    // Предел скорости общий с разводкой дома (RAD_V_MAX_TRUNK): 1,2 м/с для
-    // магистральных участков по СП 60.13330.2020, по шуму и износу.
-    BOILER_V_MAX: 1.2,
+    // Предел скорости котлового контура: 1,0 м/с — практика проектирования котловых
+    // обвязок (по шуму и износу). Раньше стоял 1,2 м/с, и 22 мм выходила до 30 кВт;
+    // при 1,0 м/с граница 22 мм — 25 кВт при Δt 20 K. Разводка дома (RAD_V_MAX_TRUNK)
+    // отдельная, на неё этот предел не влияет.
+    BOILER_V_MAX: 1.0,
 
     // Перепад котлового контура. Паспортный режим котла — 20 K, и он же стоит по
     // умолчанию. Переключатель на 10 K живёт в подробном режиме: это режим 75/65,
@@ -73212,6 +73774,252 @@ const app = {
     },
 
     /**
+     * Магистраль и подводка котельной — одна функция на смету и на схему.
+     *
+     * gasKw / elKw — суммы мощностей газовых и электрических котлов (внутри типа
+     * складываются, между типами берётся максимум: котлы друг друга дублируют),
+     * oneKw — мощность самого крупного котла каскада (для подводки каждого котла).
+     * Возвращает { main, tank, perBoiler, pick } — те же поля, что у boilerSizes.
+     * Схема обязана звать именно её: раньше она рисовала свой порог «30 кВт»,
+     * и на 18 кВт, на 10 K и на 60–100 кВт схема расходилась со сметой.
+     */
+    boilerMainSizes: function (gasKw, elKw, oneKw) {
+        // Снизу 22: тоньше патрубка котла 3/4" не ставим (18 мм не садится без переходника).
+        const BP_MIN = 22, BP_MAX = 42;
+        const sys = this.boilerPipeSystem();
+        const kw = Math.max(gasKw || 0, elKw || 0);
+        // ППР, металлопластик и стабильная держатся ПАРЫ типоразмеров: граница между
+        // ними считается по скорости тем же boilerPickSize, что и у нержавейки.
+        // BP_PAIR — наибольший из двух типоразмеров пары.
+        const BP_PAIR = { mp: 26, mp_r: 26, ppr: 32, stable: 25, stable_r: 25 };
+        if (BP_PAIR[sys]) {
+            const pick = this.boilerPickSize(sys, kw);
+            const toPair = (p) => (p && p.size <= BP_PAIR[sys]) ? 22 : 28;
+            // Ручной выбор малого или большого из пары перекрывает подбор по скорости.
+            const d = this.boilerMainManual() || toPair(pick);
+            const per = oneKw > 0 ? Math.min(toPair(this.boilerPickSize(sys, oneKw)), d) : d;
+            return { main: d, tank: 22, perBoiler: per, pick: pick };
+        }
+        const pick = this.boilerPickSize(sys, kw);
+        const range = this.boilerPipeRange(sys).map(r => r.size)
+            .filter(s => s >= BP_MIN && s <= BP_MAX);
+        const fit = (p) => range.find(s => s >= p) || range[range.length - 1];
+        // Ручной выбор (окно замены) перекрывает подбор по скорости: всё, что
+        // зависит от магистрали — тройники, изоляция, коллектор, схема, — пойдёт по нему.
+        const main = this.boilerMainManual() || fit(pick.size);
+        // КАСКАД. Через обвязку каждого котла идёт только его расход: типоразмер
+        // подводки считаем по самому крупному котлу каскада.
+        const perBoiler = oneKw > 0 ? fit(this.boilerPickSize(sys, oneKw).size) : main;
+        return { main: main, tank: Math.min(22, main), perBoiler: Math.min(perBoiler, main), pick: pick };
+    },
+
+    /**
+     * Системы с парой типоразмеров (металлопластик, стабильная, ППР): фитинги
+     * подобраны под логические 22 и 28, а труба — физическая: 26/32, 25/32, 32/40.
+     * Ручной выбор в них — только малый или большой из пары: Ø35/42 фитингов нет.
+     */
+    BOILER_PAIR_MAX: { mp: 26, mp_r: 26, ppr: 32, stable: 25, stable_r: 25 },
+
+    /** Физический наружный диаметр трубы под логический типоразмер (22 или 28). */
+    boilerPhysOd: function (sys, logical) {
+        if (sys === 'ppr') return logical === 22 ? 32 : 40;
+        if (sys === 'mp' || sys === 'mp_r') return logical === 22 ? 26 : 32;
+        if (sys === 'stable' || sys === 'stable_r') return logical === 22 ? 25 : 32;
+        return logical;
+    },
+
+    /** Подпись магистрали для людей: у пары — физическая труба и малый/большой, у нержавейки — Ø. */
+    boilerMainTitle: function (size, sys) {
+        sys = sys || this.boilerPipeSystem();
+        if (!this.BOILER_PAIR_MAX[sys]) return 'Ø' + size;
+        return 'труба Ø' + this.boilerPhysOd(sys, size) + (size === 22 ? ' (малый)' : ' (большой)');
+    },
+
+    /**
+     * Ручной диаметр магистрали котельной, или null — по скорости.
+     * Нержавейка: Ø22…42 из ряда. Пара (металлопластик, стабильная, ППР): только 22 или 28.
+     */
+    boilerMainManual: function () {
+        const v = parseInt(this.state.boilerMainSize, 10);
+        const sys = this.boilerPipeSystem();
+        let ok;
+        if (this.BOILER_PAIR_MAX[sys]) ok = (v === 22 || v === 28);
+        else if (sys !== 'ss304' && sys !== 'ss316') ok = false;
+        else ok = (v >= 22 && v <= 42) && (this.boilerPipeRange(sys) || []).some(r => r.size === v);
+        if (!ok) return null;
+        // Красный диаметр (например, выбран раньше в другой системе или при другой нагрузке) не применяем:
+        // обвязка идёт по скорости, а в окне замены красная кнопка остаётся неактивной.
+        if (this._bpLoad && !this._bpForce) {
+            const kw = Math.max(this._bpLoad.gas || 0, this._bpLoad.el || 0);
+            if (this.boilerSpeedLevel(this.boilerMainSpeed(kw, v)) === 'bad') return null;
+        }
+        return v;
+    },
+
+    /** Скорость воды в магистрали логического Ø size (м/с) при мощности kw и текущем Δt. */
+    boilerMainSpeed: function (kw, size, sys) {
+        sys = sys || this.boilerPipeSystem();
+        const phys = this.BOILER_PAIR_MAX[sys] ? this.boilerPhysOd(sys, size) : size;
+        const r = (this.boilerPipeRange(sys) || []).find(x => x.size === phys);
+        if (!r || !(kw > 0)) return 0;
+        return (this.boilerFlow(kw) / 3600) / (Math.PI * Math.pow(r.inner / 1000, 2) / 4);
+    },
+
+    /**
+     * Варианты диаметра для окна замены: скорость у каждого, рекомендованный по скорости,
+     * активный (ручной или рекомендованный). Для пары — два варианта, для нержавейки — ряд.
+     */
+    boilerMainOptions: function (gasKw, elKw, sys) {
+        const kw = Math.max(gasKw || 0, elKw || 0);
+        const cur = this.boilerPipeSystem();
+        sys = sys || cur;
+        const pair = !!this.BOILER_PAIR_MAX[sys];
+        const sizes = pair ? [22, 28]
+            : (this.boilerPipeRange(sys) || []).map(r => r.size).filter(s => s >= 22 && s <= 42);
+        const pick = this.boilerPickSize(sys, kw);
+        const rec = pair
+            ? (pick.size <= this.BOILER_PAIR_MAX[sys] ? 22 : 28)
+            : (sizes.find(s => s >= pick.size) || sizes[sizes.length - 1]);
+        const options = sizes.map(s => {
+            const v = this.boilerMainSpeed(kw, s, sys);
+            return { size: s, phys: pair ? this.boilerPhysOd(sys, s) : s, v: v, level: this.boilerSpeedLevel(v) };
+        });
+        // Ручной выбор относится только к текущей системе; для просматриваемой — рекомендованный.
+        const manual = (sys === cur) ? this.boilerMainManual() : null;
+        return { kw: kw, sys: sys, options: options, rec: rec, active: manual || rec, pair: pair };
+    },
+
+    /** Предел снизу: при меньшей скорости в трубе копятся воздух и шлам (ориентир, не норма). */
+    BOILER_V_LOW: 0.3,
+
+    /**
+     * Оценка скорости в магистрали для окна замены и подсказки:
+     *   ok   — 0,4…1,0 м/с (зелёная);
+     *   warn — 0,3…0,4 или 1,0…1,2 м/с (жёлтая, лёгкое предупреждение);
+     *   bad  — ниже 0,3 или выше 1,2 м/с (красная: диаметр заменить).
+     * Подбор по скорости этим не меняется — это только подсказка монтажнику.
+     */
+    boilerSpeedLevel: function (v) {
+        if (v > 1.2 || v < 0.3) return 'bad';
+        if (v >= 0.4 && v <= this.BOILER_V_MAX) return 'ok';
+        return 'warn';
+    },
+
+    /** Переключатель диаметра в окне замены. null — вернуть рекомендованный по скорости. */
+    setBoilerMainSize: function (val) {
+        // Красная плашка — диаметр не ставим: скорость вне рекомендации (см. boilerSpeedLevel).
+        if (val !== null && val !== undefined) {
+            const o = this.boilerMainOptions(this._bpLoad ? this._bpLoad.gas : 0, this._bpLoad ? this._bpLoad.el : 0);
+            const opt = o.options.find(x => x.size === parseInt(val, 10));
+            if (!opt || opt.level === 'bad') return;
+        }
+        this.state.boilerMainSize = (val === null || val === undefined) ? null : parseInt(val, 10);
+        this.syncUI();
+        this.render();
+        this.saveState();
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
+
+    /**
+     * Блок «Диаметр магистрали» в окне замены трубы котельной: кнопки Ø с
+     * подсказкой по скорости, подобранный и рекомендованный диаметр, предупреждения.
+     * Пустая строка, если выбор диаметра для текущей системы не предусмотрен.
+     */
+    boilerMainBlockHtml: function (gasKw, elKw, sys, diam) {
+        const cur = this.boilerPipeSystem();
+        sys = sys || cur;
+        if (sys !== 'ss304' && sys !== 'ss316' && !this.BOILER_PAIR_MAX[sys]) return '';
+        const o = this.boilerMainOptions(gasKw, elKw, sys);
+        const manual = (sys === cur) ? this.boilerMainManual() : null;
+        const live = sys === cur;
+        const curOpt = o.options.find(x => x.size === o.active);
+        const COL = {
+            ok: { c: 'var(--success, #16A34A)', bg: 'rgba(22,163,74,.12)' },
+            warn: { c: 'var(--warn, #D97706)', bg: 'rgba(245,158,11,.14)' },
+            bad: { c: 'var(--danger, #EF4444)', bg: 'rgba(239,68,68,.12)' }
+        };
+        const btn = (x) => {
+            const on = x.size === o.active;
+            const col = COL[x.level].c;
+            const title = o.pair ? `Ø${x.size} (труба ${x.phys})` : `Ø${x.size}`;
+            // Красный диаметр не выбирается: кнопка неактивна.
+            const click = (x.level === 'bad' || !live) ? '' : ` onclick="app.setBoilerMainSize(${x.size})"`;
+            const dim = x.level === 'bad' ? 'opacity:.45;cursor:not-allowed;' : 'cursor:pointer;';
+            return `<span${click} style="${dim}padding:4px 10px;border-radius:5px;font-size:12px;border:1px solid ${col};background:${on ? col : 'transparent'};color:${on ? '#fff' : 'var(--text-main)'};">`
+                + `${title} · ${x.v.toFixed(2).replace('.', ',')} м/с</span>`;
+        };
+        const pairNote = o.pair
+            ? `<div style="font-size:11px;color:var(--text-muted, #6B7280);margin-top:4px;">Для этой системы — малый или большой диаметр пары.</div>`
+            : '';
+        const vTxt = curOpt ? curOpt.v.toFixed(2).replace('.', ',') : '';
+        let plate = '';
+        if (curOpt) {
+            const lv = curOpt.level;
+            const text = lv === 'ok'
+                ? `<b>Скорость ${vTxt} м/с — в норме</b> (0,4–1,0 м/с).`
+                : (lv === 'warn'
+                    ? `<b>Скорость ${vTxt} м/с — на границе</b> (0,4–1,0 м/с норма). Допустимо, но лучше ${curOpt.v > this.BOILER_V_MAX ? 'взять диаметр больше' : 'взять диаметр меньше'}.`
+                    : `<b>Скорость ${vTxt} м/с — вне рекомендации.</b> ${curOpt.v > 1.2 ? 'Шум и износ' : 'Воздух и шлам'}: такой диаметр заменить — ${curOpt.v > 1.2 ? 'возьмите больше' : 'возьмите меньше'}.`);
+            plate = `<div style="margin-top:6px;padding:6px 8px;border-radius:5px;background:${COL[lv].bg};color:${COL[lv].c};font-size:12px;">${text}</div>`;
+        }
+        const SYS_NAME = { ss316: 'нержавейку AISI 316L', ss304: 'нержавейку AISI 304', mp: 'металлопластик', mp_r: 'металлопластик ROMMER', stable: 'стабильную трубу', stable_r: 'стабильную трубу ROMMER', ppr: 'полипропилен' };
+        // Цена труб и фитингов при каждом Ø: разница с выбранным диаметром.
+        let priceTbl = '';
+        if (live && diam) {
+            const base = diam[o.active];
+            const fmt = (v) => Math.round(v).toLocaleString('ru-RU') + ' ₽';
+            const rows = Object.keys(diam).map(k => {
+                const s = Number(k), d = diam[k] - base;
+                const pct = base ? Math.round(d / base * 100) : 0;
+                const tag = s === o.active ? '<b>выбран</b>' : (d > 0 ? `<span style="color:var(--danger,#EF4444);">дороже на ${fmt(d)} (+${pct}%)</span>` : `<span style="color:var(--success,#16A34A);">дешевле на ${fmt(-d)} (${pct}%)</span>`);
+                return `<tr><td style="padding:2px 10px 2px 0;">Ø${s}</td><td style="padding:2px 10px 2px 0;text-align:right;">${fmt(diam[k])}</td><td style="padding:2px 0;">${tag}</td></tr>`;
+            }).join('');
+            priceTbl = `<div style="margin-top:8px;font-size:12px;color:var(--text-main);">Труба и фитинги котельной при каждом диаметре (та же смета, остальное не меняется):</div>`
+                + `<table style="margin-top:4px;font-size:12px;border-collapse:collapse;">${rows}</table>`;
+        }
+        const previewNote = live ? ''
+            : `<div style="margin-top:6px;font-size:12px;color:var(--text-sec);">Показано, что будет при замене на <b>${SYS_NAME[sys] || sys}</b>. Нажмите строку ещё раз — система заменится.</div>`;
+        return `<div style="padding:8px 0 10px;border-bottom:1px solid var(--border);">`
+            + `<div style="font-size:12px;font-weight:700;color:var(--text-sec);margin-bottom:6px;">Диаметр магистрали котельной (меняет всю обвязку):</div>`
+            + `<div style="display:flex;gap:6px;flex-wrap:wrap;">${o.options.map(btn).join('')}</div>`
+            + pairNote
+            + `<div style="margin-top:6px;font-size:12px;color:var(--text-main);">`
+            + `Выбрано: <b>${this.boilerMainTitle(o.active, sys)}</b>${manual ? ' (вручную)' : ''}. По скорости рекомендуем для вашей системы: <b>${this.boilerMainTitle(o.rec, sys)}</b>`
+            + (manual && manual !== o.rec ? ` — <span style="cursor:pointer;color:var(--primary);text-decoration:underline;" onclick="app.setBoilerMainSize(null)">вернуть рекомендованный</span>` : '')
+            + `</div>`
+            + plate
+            + priceTbl
+            + previewNote
+            + `</div>`;
+    },
+
+    /** Резьба патрубка котлового контура по типоразмеру магистрали (схема). */
+    boilerMainThread: function (size) {
+        if (size <= 22) return '3/4"';
+        if (size <= 35) return '1"';
+        return '1 1/4"';
+    },
+
+    /**
+     * Подпись диаметра магистрали котельной для схемы — той же трубы, что в смете.
+     * Нержавейка: Ø22х1,2 и т. п. Металлопластик/стабильная/ППР — наружный диаметр
+     * пресс- или аналоговой системы, как в строке трубы сметы.
+     */
+    boilerMainLabel: function (size) {
+        const sys = this.boilerPipeSystem();
+        if (sys === 'ppr') return size === 22 ? 'Ø32х4,4 мм' : 'Ø40х5,5 мм';
+        if (this.isMpSys(sys) || this.isStableSys(sys)) {
+            const od = size === 22 ? (this.isStableSys(sys) ? 25 : 26) : 32;
+            const row = (this.boilerPipeRange(sys) || []).find(r => r.size === od);
+            const wall = row ? ((od - row.inner) / 2).toFixed(1).replace('.', ',') : null;
+            return 'Ø' + od + (wall ? 'х' + wall : '') + ' мм';
+        }
+        const row = (this.boilerPipeRange(sys) || []).find(r => r.size === size);
+        const wall = row ? ((size - row.inner) / 2).toFixed(1).replace('.', ',') : null;
+        return 'Ø' + size + (wall ? 'х' + wall : '') + ' мм';
+    },
+
+    /**
      * Во что обойдётся раздел «2. Обвязка котельной» в каждой из систем.
      *
      * Возвращает по системе ДВА числа: `pipe` — труба с фитингами, `total` — весь
@@ -73269,6 +74077,38 @@ const app = {
             Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
             Object.assign(this.state, snapshot);
             this._boilerRangeCache = null;
+            this.render(true);
+        }
+        return out;
+    },
+
+    /**
+     * Стоимость труб и фитингов котельной при каждом диаметре магистрали — для окна замены.
+     * Смета пересчитывается в памяти под каждый Ø (тем же приёмом, что boilerSystemTotals),
+     * состояние возвращается. Считаем строки обвязки котельной: труба, фитинги, переходники.
+     * Красные диаметры тоже считаем — иначе не понять, сколько стоит «не рекомендованный» вариант.
+     */
+    boilerDiamTotals: function () {
+        const sys = this.boilerPipeSystem();
+        const pair = !!this.BOILER_PAIR_MAX[sys];
+        if (sys !== 'ss304' && sys !== 'ss316' && !pair) return null;
+        const sizes = pair ? [22, 28] : [22, 28, 35, 42];
+        const snapshot = JSON.parse(JSON.stringify(this.state));
+        const out = {};
+        this._bpForce = true;
+        try {
+            sizes.forEach(s => {
+                this.state.boilerMainSize = s;
+                this.render(true);
+                const pipe = (this.currentEquipmentList || [])
+                    .filter(it => String(it.group || '').indexOf('2.') === 0 && this.isBoilerPipeRow(it))
+                    .reduce((a, it) => a + (it.price || 0) * (it.q || 1), 0);
+                out[s] = Math.round(pipe);
+            });
+        } finally {
+            this._bpForce = false;
+            Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
+            Object.assign(this.state, snapshot);
             this.render(true);
         }
         return out;
@@ -75656,7 +76496,7 @@ const app = {
                         ? "Для ROMMER по умолчанию всегда выбирается DN25."
                         : `Выбор типоразмера зависит от общей мощности системы: до 10 кВт — DN20, выше — DN25.<br><b>Текущие теплопотери:</b> ${inputVal} кВт.`;
 
-                    let maxFlow = isDn32 ? 2.9 : (isRommer ? 2.0 : (item.id.includes("2001") ? 0.9 : 2.1));
+                    let maxFlow = this.groupFlowLimit(item, 'rad');
                     // Паспортный расход — у ОДНОЙ группы, поэтому и нагрузку делим на число групп:
                     // иначе при двух группах проверка сравнивала всю мощность дома с пределом одной
                     // и всегда падала в ❌.
@@ -75690,24 +76530,7 @@ const app = {
                         calc += `<br><b>Количество групп:</b> ${qty} шт. — по одной на каждый этаж с радиаторами.`;
                     }
 
-                    if (isDn32) {
-                        capacity = `<b>Паспортные характеристики (${item.id}):</b><br>` +
-                            `• Мощность (с насосом на 2-й скорости, расход 2.9 м³/ч): для радиаторов до 34 кВт<br>` +
-                            `• Максимальный расход клапана: <b>до 3.6 м³/ч</b> (DN32) — на 2-й скорости насоса ограничивает не клапан, а насос (2.9 м³/ч)<br>` +
-                            `• <b style="color:var(--c-warn,#F59E0B);">⚠ Насос в комплект не входит.</b> Расчёт на примере RCP-0004-3260180 (DN32, напор 6 м) на 2-й скорости; при другом насосе или скорости пересчитайте.`;
-                    } else if (isRommer) {
-                        capacity = `<b>Паспортные характеристики (RDG-1001-002501):</b><br>` +
-                            `• Мощность: для радиаторов до 23 кВт<br>` +
-                            `• Максимальный расход: <b>до 2.0 м³/ч</b> (DN25)`;
-                    } else if (item.id.includes("2001")) {
-                        capacity = `<b>Паспортные характеристики (SDG-0001-002001):</b><br>` +
-                            `• Мощность: для радиаторов до 10 кВт<br>` +
-                            `• Максимальный расход: <b>до 0.9 м³/ч</b> (DN20, Kvs = 6.0)`;
-                    } else {
-                        capacity = `<b>Паспортные характеристики (SDG-0001-002501):</b><br>` +
-                            `• Мощность: для радиаторов до 24 кВт<br>` +
-                            `• Максимальный расход: <b>до 2.1 м³/ч</b> (DN25, Kvs = 8.8)`;
-                    }
+                    capacity = this.groupCapacityHtml(item, 'rad', isRommer);
                 } else if (purpose === 'ufh') {
                     title = isDn32 ? "Насосная группа STOUT DN32 (Смесительная)" : (isRommer ? "Насосная группа ROMMER DN25 (Смесительная)" : (item.id.includes("2001") ? "Насосная группа STOUT DN20 (Смесительная)" : "Насосная группа STOUT DN25 (Смесительная)"));
                     why = "Точное регулирование температуры теплоносителя в контуре водяного тёплого пола путём подмеса остывшей воды из обратной линии.";
@@ -75716,17 +76539,18 @@ const app = {
                         ? "Крупный контур/несколько петель тёплого пола, где групп DN20/DN25 недостаточно по расходу."
                         : (isRommer
                             ? "Для ROMMER по умолчанию всегда выбирается DN25."
-                            : `Выбор типоразмера зависит от площади тёплого пола: до 120 м² — DN20, выше — DN25.<br><b>Текущая площадь ТП:</b> ${inputVal} м².`);
+                            : `Типоразмер — по расходу на группу: предел DN20 ${String(this.groupFlowLimit({ id: 'SDG-0002-002001', name: 'DN20' }, 'ufh')).replace('.', ',')} м³/ч (≈ ${Math.floor(this.groupFlowLimit({ id: 'SDG-0002-002001', name: 'DN20' }, 'ufh') * 1.163 * this.groupDt('ufh') / 0.08)} м² пола при ΔT ${this.groupDt('ufh')} К), DN25 ${String(this.groupFlowLimit({ id: 'SDG-0002-002501', name: 'DN25' }, 'ufh')).replace('.', ',')} м³/ч (≈ ${Math.floor(this.groupFlowLimit({ id: 'SDG-0002-002501', name: 'DN25' }, 'ufh') * 1.163 * this.groupDt('ufh') / 0.08)} м²).<br><b>Текущая площадь ТП:</b> ${inputVal} м².`);
 
                     let ufhPwr = Math.round(inputVal * 0.08); // Approximate power: 80 W/m²
-                    let maxFlow = isDn32 ? 2.9 : (isRommer ? 1.6 : (item.id.includes("2001") ? 0.9 : 2.1));
-                    // Групп ставится по одной на каждый коллектор ТП, площадь между ними делится.
+                    let maxFlow = this.groupFlowLimit(item, 'ufh');
+                    // Групп ставится по расходу (одна группа может питать несколько коллекторов); площадь делится между группами.
                     // Паспортный расход — у одной группы, поэтому и сравнивать надо с долей, а не
                     // со всей площадью дома.
                     let grpQty = Math.max(1, parseInt(qty, 10) || 1);
                     let areaPer = Math.round((inputVal / grpQty) * 10) / 10;
                     let pwrPer = (grpQty > 1) ? Math.round(areaPer * 0.08 * 10) / 10 : ufhPwr;
-                    let flow = parseFloat((pwrPer / (1.163 * 5)).toFixed(2));
+                    const dtUfh = this.groupDt('ufh');
+                    let flow = parseFloat((pwrPer / (1.163 * dtUfh)).toFixed(2));
                     let perNote = (grpQty > 1) ? ' на группу' : '';
                     let checkResult = (flow <= maxFlow)
                         ? `<b style="color: var(--c-ok,#10B981);">✔ Проверка расхода пройдена:</b> расчетный расход ${flow} м³/ч${perNote} не превышает максимальный расход группы ${maxFlow} м³/ч.`
@@ -75734,30 +76558,13 @@ const app = {
 
                     calc = `<b>Подбор по площади теплого пола:</b><br>${limitText}<br>` +
                         `<b>Оценка тепловой мощности:</b> Q_тп ≈ ${inputVal} м² × 80 Вт/м² = ${ufhPwr} кВт.<br>` +
-                        (grpQty > 1 ? `<b>Нагрузка на одну группу:</b> групп ${grpQty} шт (по одной на коллектор ТП) → ${areaPer} м², Q ≈ ${pwrPer} кВт.<br>` : '') +
+                        (grpQty > 1 ? `<b>Нагрузка на одну группу:</b> групп ${grpQty} шт (одна группа может питать несколько коллекторов) → ${areaPer} м², Q ≈ ${pwrPer} кВт.<br>` : '') +
                         `<b>Формула расхода:</b> G = Q_тп / (c × ΔT)<br>` +
-                        `где c = 1.163 Вт·ч/(кг·°C), ΔT = 5°C (перепад температур тёплого пола).<br>` +
-                        `<b>Расчётный расход${perNote}:</b> G = ${pwrPer} / (1.163 × 5) = ${flow.toFixed(2)} м³/ч.<br>` +
+                        `где c = 1.163 Вт·ч/(кг·°C), ΔT = ${dtUfh}°C (перепад контура тёплого пола).<br>` +
+                        `<b>Расчётный расход${perNote}:</b> G = ${pwrPer} / (1.163 × ${dtUfh}) = ${flow.toFixed(2)} м³/ч.<br>` +
                         `${checkResult}`;
 
-                    if (isDn32) {
-                        capacity = `<b>Паспортные характеристики (${item.id}):</b><br>` +
-                            `• Мощность (с насосом на 2-й скорости, расход 2.9 м³/ч): для радиаторов до 34 кВт, для тёплого пола до 17 кВт<br>` +
-                            `• Максимальный расход клапана: <b>до 3.6 м³/ч</b> (DN32) — на 2-й скорости насоса ограничивает не клапан, а насос (2.9 м³/ч)<br>` +
-                            `• <b style="color:var(--c-warn,#F59E0B);">⚠ Насос в комплект не входит.</b> Расчёт на примере RCP-0004-3260180 (DN32, напор 6 м) на 2-й скорости; при другом насосе или скорости пересчитайте.`;
-                    } else if (isRommer) {
-                        capacity = `<b>Паспортные характеристики (RDG-1002-002501):</b><br>` +
-                            `• Мощность: для радиаторов до 23 кВт, для тёплого пола до 9 кВт<br>` +
-                            `• Максимальный расход: <b>до 1.6 м³/ч</b> (DN25, Kvs = 3.2)`;
-                    } else if (item.id.includes("2001")) {
-                        capacity = `<b>Паспортные характеристики (SDG-0002-002001):</b><br>` +
-                            `• Мощность: для радиаторов до 10 кВт, для тёплого пола до 5 кВт (до ~65 м²)<br>` +
-                            `• Максимальный расход: <b>до 0.9 м³/ч</b> (DN20, Kvs = 2.5)`;
-                    } else {
-                        capacity = `<b>Паспортные характеристики (SDG-0002-002501):</b><br>` +
-                            `• Мощность: для радиаторов до 24 кВт, для тёплого пола до 12 кВт (до ~153 м²)<br>` +
-                            `• Максимальный расход: <b>до 2.1 м³/ч</b> (DN25, Kvs = 4.0)`;
-                    }
+                    capacity = this.groupCapacityHtml(item, 'ufh', isRommer);
                 }
 
                 return `<span style="${styles}"><span style="${head}">${title}</span><b>Зачем:</b> ${why}<br><br>${calc}<br><br>${capacity}${purpose === 'ufh' ? this.ufhHeadHtml() : ''}</span>`;
@@ -77187,7 +77994,11 @@ const app = {
             ${(this.state.hotWater || this.state.water) ? `<span class="param-item"><span class="ui-emo">👨‍👩‍👧 </span>Проживающих: <b>${this.state.res}</b></span>` : ''}`
                 // Смета без дома (заявка, вода по точкам): нули «0 м², 0 жильцов,
                 // 0 кВт» в шапке читаются как ошибка — вместо них одна честная метка.
-                : `<span class="param-item"><span class="ui-emo">📋 </span>Объект: <b>по заявке</b></span>`);
+                // Подпись только когда есть позиции без площади: вода по точкам или зональная
+                // автоматика по заявке. Пустой объект шапки не показывает совсем.
+                : (((this.state.waterZones || []).length > 0) || (this.zoneAutoOn() && !!this.za().req)
+                    ? `<span class="param-item"><span class="ui-emo">📋 </span>Объект: <b>по заявке</b></span>`
+                    : ''));
         // «Проживающих» нужны расчёту горячей воды и водоснабжения — без них число лишнее.
         // «Вариант: подешевле» тем, у кого есть тумблер «Бюджетнее», на экране дублирует его
         // (скрыт стилем .ds-variant-dup), но в печати и PDF остаётся: клиент тумблера не видит.
@@ -77485,8 +78296,12 @@ const app = {
                 }
 
                 // Насосная группа встала в контур тёплого пола — в смете показываем только релевантную мощность
-                if (item._uiUfhOnly && finalItem.name) {
-                    finalItem.name = finalItem.name.replace(/для радиаторов\s*(?:до\s*)?\d+(?:[.,]\d+)?\s*кВт,\s*/i, '');
+                // Название группы — расчётное: сколько кВт она тянет в этом контуре при его
+                // перепаде и какая нагрузка на неё приходится (см. groupLoadText). Считается по
+                // фактически стоящей позиции, а не по подбору по умолчанию — ручная замена учтена.
+                if (item._capUse && finalItem.name) {
+                    const _lt = this.groupLoadText(finalItem, item._capUse);
+                    if (_lt) finalItem = Object.assign({}, finalItem, { name: finalItem.name + ' - ' + _lt });
                 }
 
                 // Разрешаем наличие с учетом даты обновления (лимит 31 день)
@@ -77640,7 +78455,7 @@ const app = {
                     // sortRank берём у ИСХОДНОЙ позиции, а не у finalItem: после ручной
                     // замены или подстановки ROMMER-аналога это уже другой объект, и
                     // дымоход после замены уехал бы из начала раздела вниз по цене.
-                    bill.push({ ...finalItem, sortRank: item.sortRank || 0, q: finalQty, sum: Math.round(finalItem.price * finalQty), basePrice: originalPrice, displaySku: finalItem.displaySku || finalItem.article || realSku(finalItem.id) || 'нет', qtyTip: finalTip || "", group: itemGroup, originalId: finalItem.originalId || item.id });
+                    bill.push({ ...finalItem, sortRank: item.sortRank || 0, recOrder: item.recOrder, q: finalQty, sum: Math.round(finalItem.price * finalQty), basePrice: originalPrice, displaySku: finalItem.displaySku || finalItem.article || realSku(finalItem.id) || 'нет', qtyTip: finalTip || "", group: itemGroup, originalId: finalItem.originalId || item.id });
                 }
             });
 
@@ -77816,6 +78631,8 @@ const app = {
                             id: eq.id, name: eq.name, price: eq.price, brand: eq.brand || ' ',
                             // Метка распознавания и артикул должны дожить до строки таблицы.
                             recognized: eq.recognized, article: eq.article,
+                            // Место строки в документе: без группировки смета идёт в его порядке.
+                            recOrder: eq.recognized ? this.state.userAddedEq.indexOf(eq) : undefined,
                             // Позиция не найдена ни в каталоге, ни в прайсе — артикула у неё
                             // нет. Служебный id ('rec_1785260223271_15') в колонке «Артикул» —
                             // мусор для монтажника и для клиента, поэтому пишем «нет».
@@ -77932,8 +78749,21 @@ const app = {
             // место. Цена — только вторичный признак, для строк с равной суммой.
             // Сортируем ДО currentEquipmentList, чтобы тот же порядок ушёл в КП и печать.
             const _bySumDesc = (a, b) => (b.sum || 0) - (a.sum || 0) || (b.price || 0) - (a.price || 0);
+            /**
+             * Распознанная смета — в порядке документа.
+             *
+             * Сверяют её с бумагой строка за строкой, а сортировка по сумме
+             * перемешивала всё: незамерзающий кран из начала счёта оказывался
+             * четырнадцатым. «Группировать» выключено — строки, пришедшие из
+             * распознавания, идут как в файле (recOrder — их место в документе);
+             * включено — как и раньше, по значимости внутри подразделов.
+             */
+            const _docOrder = (a, b) => (!this.state.groupItems && a.recOrder !== undefined && b.recOrder !== undefined)
+                ? a.recOrder - b.recOrder : 0;
             if (!forceMerge) {
                 bill.sort((a, b) => {
+                    const _d = _docOrder(a, b);
+                    if (_d) return _d;
                     let gA = a.group || "";
                     let gB = b.group || "";
                     // Позиция без подраздела принадлежит самому разделу, поэтому идёт
@@ -77956,7 +78786,7 @@ const app = {
                     return byRank !== 0 ? byRank : _bySumDesc(a, b);
                 });
             } else {
-                bill.sort(_bySumDesc);
+                bill.sort((a, b) => _docOrder(a, b) || _bySumDesc(a, b));
             }
 
             // Сохраняем элементы для коммерческого предложения клиенту
@@ -78577,56 +79407,18 @@ const app = {
         //
         // main — магистраль, tank — подводка баков (тупиковая ветка, по скорости не
         // считается). Сверху ряд ограничен 42: на 54 нет теплоизоляции.
-        const BP_MIN = 15, BP_MAX = 42;
+        // Сам подбор — в boilerMainSizes (его же зовёт схема). Здесь только сводим
+        // список котлов к суммам: газ и электро внутри типа складываются, между типами
+        // берётся максимум; для подводки важен самый крупный котёл каскада.
         const boilerSizes = (list) => {
-            const sys = this.boilerPipeSystem();
-            const kw = boilerPowerForPipes(list);
-            // ППР, металлопластик и стабильная держатся ПАРЫ типоразмеров: их линейки
-            // фитингов в котельной разобраны только под неё, и расширять ряд надо
-            // вместе с ревизией фитингов, а не здесь. Но ГРАНИЦА между двумя
-            // типоразмерами считается по скорости, тем же boilerPickSize, что и у
-            // нержавейки.
-            //
-            // Прежний порог «30 кВт» был выведен для нержавейки Ø22 и на другие трубы
-            // не переносится: у стабильной 25 он даёт 1,47 м/с, у ППР 32 наоборот
-            // занижает — там норма держится до 36–42 кВт. А главное, порог не видел
-            // переключатель Δt: в режиме 10 K расход вдвое выше, и на металлопластике
-            // 26 выходило 2,28 м/с при норме 1,2 — смета об этом молчала.
-            //
-            // BP_PAIR — наибольший из двух типоразмеров пары: подбор упёрся в него или
-            // ниже, значит идёт «малый» (логические 22), иначе «большой» (28).
-            const BP_PAIR = { mp: 26, mp_r: 26, ppr: 32, stable: 25, stable_r: 25 };
-            if (BP_PAIR[sys]) {
-                const pick = this.boilerPickSize(sys, kw);
-                const toPair = (p) => (p && p.size <= BP_PAIR[sys]) ? 22 : 28;
-                const d = toPair(pick);
-                // КАСКАД. Через обвязку каждого котла идёт только ЕГО расход, а не
-                // сумма, — как у нержавейки. Пока здесь стояло perBoiler = main, на
-                // каскаде из двух котлов подводка каждого считалась по суммарной
-                // мощности: на стабильной это 32 мм там, где хватает 25.
-                const one = Math.max.apply(null, [0].concat((list || []).filter(b => b).map(b => b.power || 0)));
-                const per = one > 0 ? Math.min(toPair(this.boilerPickSize(sys, one)), d) : d;
-                return { main: d, tank: 22, perBoiler: per, pick: pick };
-            }
-            const pick = this.boilerPickSize(sys, kw);
-            const range = this.boilerPipeRange(sys).map(r => r.size)
-                .filter(s => s >= BP_MIN && s <= BP_MAX);
-            const fit = (p) => range.find(s => s >= p) || range[range.length - 1];
-            const main = fit(pick.size);
-
-            // КАСКАД. Через общий участок идёт сумма, а через обвязку КАЖДОГО котла —
-            // только его собственный расход. Считать индивидуальную подводку по сумме
-            // нельзя: на четырёх котлах по 30 кВт это давало трубу 42 и переходник
-            // 1 1/2" на патрубок 3/4", тогда как краны и фильтр в той же обвязке
-            // стояли правильно — по 3/4". Берём мощность самого крупного котла в
-            // каскаде: типоразмер один на все обвязки, чтобы монтажник не собирал
-            // каждый котёл своим набором.
-            const one = Math.max.apply(null, [0].concat((list || [])
-                .filter(b => b).map(b => b.power || 0)));
-            const perBoiler = one > 0
-                ? fit(this.boilerPickSize(sys, one).size)
-                : main;
-            return { main: main, tank: Math.min(22, main), perBoiler: Math.min(perBoiler, main), pick: pick };
+            let gas = 0, el = 0, one = 0;
+            (list || []).forEach(b => {
+                if (!b) return;
+                const p = b.power || 0;
+                if (b.type === 'gas') gas += p; else el += p;
+                if (p > one) one = p;
+            });
+            return this.boilerMainSizes(gas, el, one);
         };
 
         const boilerPowerForPipes = (list) => {
@@ -79808,7 +80600,7 @@ const app = {
         const tpF1 = tpFloorCalc(this.state.tp1, stepVal1, 0);
         const tpF2 = tpFloorCalc(this.state.floors === 2 ? this.state.tp2 : 0, stepVal2, 1);
         this._ufhFloorCalc = [tpF1, tpF2];   // для расшифровки строки трубы (getDesc)
-        let estMans = 0;
+        let estMans = 0, estNodes = 0;
         // Площадь, которую тянет ОДИН узел подмеса — по ней подбирается его
         // типоразмер (см. isUfhMixTypeCompatible). Делить общую площадь на число
         // коллекторов нельзя: при 200 м² на первом этаже (2 коллектора) и 50 м²
@@ -79823,8 +80615,28 @@ const app = {
             estMans = mans1 + mans2;
             const _tpA1 = parseFloat(this.state.tp1) || 0;
             const _tpA2 = (this.state.floors === 2) ? (parseFloat(this.state.tp2) || 0) : 0;
-            tpAreaPerMan = Math.max(mans1 > 0 ? _tpA1 / mans1 : 0, mans2 > 0 ? _tpA2 / mans2 : 0);
+            // Смесительных групп ставим по мощности, а не по гребёнкам: 12 петель — размер
+            // коллектора, а одна группа спокойно кормит два коллектора, если ей хватает
+            // расхода. Раньше групп было столько же, сколько коллекторов, и 120 м² пола
+            // давали две группы DN20 «до 5 кВт» вместо одной DN25 «до 12 кВт».
+            const _ovr = this.state.manualDnOverride, _isR = (this.state.brandMode === 'rommer');
+            const _nodeTypes = (_ovr === 'dn20' && !_isR) ? ['dn20', 'dn20_servo']
+                : (_ovr === 'dn25' || _isR || (pwr > 10) || (this.state.sectionAnalog && this.state.sectionAnalog['2.4. Гидравлика котельной'])) ? ['dn25', 'dn25_servo']
+                : ['dn20', 'dn20_servo', 'dn25', 'dn25_servo'];
+            const _nodesFor = (a, mans) => {
+                if (!(mans > 0)) return 0;
+                for (let n = 1; n < mans; n++) {
+                    if (_nodeTypes.some(t => this.isUfhMixTypeCompatible(t, a, this.state.brandMode, a / n))) return n;
+                }
+                return mans;
+            };
+            const nodes1 = _nodesFor(_tpA1, mans1), nodes2 = _nodesFor(_tpA2, mans2);
+            estNodes = nodes1 + nodes2;
+            this._ufhNodes = { 1: nodes1, 2: nodes2 };
+            tpAreaPerMan = Math.max(nodes1 > 0 ? _tpA1 / nodes1 : 0, nodes2 > 0 ? _tpA2 / nodes2 : 0);
             if (!(tpAreaPerMan > 0)) tpAreaPerMan = tpArea;
+        } else {
+            this._ufhNodes = null;
         }
         // Таблице замены и кнопке «Аналог» число коллекторов взять неоткуда —
         // они работают вне render(), поэтому кладём результат в объект.
@@ -79905,12 +80717,14 @@ const app = {
 
         // Логика расчета насосных групп
         let rQ = 0, tQ = 0;
+        // Разбивка групп пересчитывается ниже, на выходах коллектора (см. pumpGroupPlan).
+        this._pumpPlan = null;
         if (hasTp && tpArea > 0) {
             let activeMixType = this.state.ufhMixType || 'std';
             if (activeMixType === 'std') {
                 tQ = 0;
             } else {
-                tQ = (estMans > 0 ? estMans : 1);
+                tQ = (estNodes > 0 ? estNodes : 1);
             }
         }
 
@@ -79960,7 +80774,7 @@ const app = {
             for (let _type of _candidates) {
                 if (this.isUfhMixTypeCompatible(_type, tpArea, _brand, tpAreaPerMan)) {
                     this.state.ufhMixType = _type;
-                    tQ = (estMans > 0 ? estMans : 1);
+                    tQ = (estNodes > 0 ? estNodes : 1);
                     needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup || _snowOnCollector;
                     break;
                 }
@@ -80027,7 +80841,7 @@ const app = {
                 this.state.ufhMixType = _bal.type;
                 // Пересчитываем то же, что и переход с локального узла на группу выше:
                 // групп ставится по одной на коллектор, а от их числа зависит коллектор котельной.
-                tQ = (estMans > 0 ? estMans : 1);
+                tQ = (estNodes > 0 ? estNodes : 1);
                 needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup || _snowOnCollector;
             }
             this._ufhBal = _bal;
@@ -80192,8 +81006,8 @@ const app = {
         if (rQ > 0) {
             const _grpsForCap = dn25 ? catalog.groups_dn25 : catalog.groups_dn20;
             const _directGrp = _grpsForCap && _grpsForCap[0];
-            const _capMatch = _directGrp && /для\s+радиаторов\s+(?:до\s+)?(\d+(?:[.,]\d+)?)\s*кВт/i.exec(_directGrp.name || '');
-            const _capKw = _capMatch ? parseFloat(_capMatch[1].replace(',', '.')) : 0;
+            // Сколько тянет одна группа при перепаде радиаторного контура — из расхода, а не из названия.
+            const _capKw = _directGrp ? this.groupCapKw(_directGrp, 'rad') : 0;
             // Радиаторная доля теплопотерь — та же, что в расчёте приборов ниже (radLoadKw).
             const _radLoadKw = this.radLoadKw(pwr, hasTp ? tpArea : 0);
             if (_capKw > 0) {
@@ -80208,6 +81022,9 @@ const app = {
                 this._radGroupsByHydro = _needByHydro;
                 rQ = Math.max(1, _needByPower, _needByHydro);
             }
+            // Авто-значение запоминаем до ручного режима — переключатель покажет, на сколько он отличается.
+            this._radGroupsAuto = rQ;
+            if (this.state.pumpRadMode === 'floors') rQ = Math.max(rQ, _radGroupsByFloors());
         }
 
         // Число групп радиаторного контура — его же гидравлика считает числом
@@ -80350,6 +81167,8 @@ const app = {
             // посчитанную группу.
             let snowCircuits = (snowCalc && !snowCalc.impossible) ? Math.max(1, snowCalc.nodes || 1) : 0;
             let circuits = rQ + tQ + (tankNeedsPumpGroup ? 1 : 0) + polisCircuits + snowCircuits;
+            this._pumpPlan = this.pumpGroupPlan({ rQ, tQ, hasRad, hasTp, tpF1, tpF2, tankPump: tankNeedsPumpGroup,
+                polisCircuits, snowCircuits, circuits, radMode: this.state.pumpRadMode || 'auto', radAuto: this._radGroupsAuto });
             let idx = (circuits > 2) ? 1 : 0;
             let hCtx = { rQ, tQ, pwr, tpArea, snowN: snowCircuits };
             // Буферная ёмкость сама разделяет котловой и системный контуры (у неё отдельные пары патрубков
@@ -80409,7 +81228,7 @@ const app = {
                     (tQ > 0 && this.selfKitSize(tpArea * 0.08, tQ, parseInt(this.state.ufhDT, 10) || 5) === '1');
                 const _pprC = this.boilerPipeSystem() === 'ppr';
                 // ППР: коллектор из трубы PP-RCT 32 мм (в ведре метража это «22»), ветка 32 — переходы 32×3/4" и 32×1" одним размером.
-                const _D = _pprC ? 22 : Math.min(Math.max(boilerSizes(selBoilers).main, (_big || !_bufSep) ? 28 : 22), 35);
+                const _D = _pprC ? 22 : Math.min(Math.max(boilerSizes(selBoilers).main, _big ? 28 : 22), 35);
                 const _n = Math.max(2, circuits);
                 const _tee = _pprC ? this.selfFit('tee') : this.ssItem(_D === 22 ? catalog.ss_tee : (_D === 28 && _big ? catalog.ss_tee : catalog.ss_tee_red),
                     _D === 22 ? 'RSS-1013-000022' : (_D === 28 ? (_big ? 'RSS-1013-000028' : 'RSS-1014-282228') : (_big ? 'RSS-1014-352835' : 'RSS-1014-352235')));
@@ -80628,7 +81447,30 @@ const app = {
 
             // Цена варианта «загрузка бойлера насосной группой» для таблицы замены: узел
             // плюс насос. Считаем здесь, потому что DN20/DN25 известен только тут.
-            this._tankLoadKitInfo = { price: ((grps[0] || {}).price || 0) + ((pmp || {}).price || 0), imgId: (grps[0] || {}).id };
+            // Группа загрузки бойлера: типоразмер — по мощности контура (меньшее из змеевика и котла) и тому,
+            // сколько тянет группа при перепаде котла; ручной DN и ROMMER (все группы DN25) не трогаем.
+            // Одна функция для сметы и для цены варианта в таблице замены схемы загрузки.
+            const _pickTankGroup = () => {
+                let base = grps[0], d25 = dn25, pumpItem = pmp;
+                if (!this.state.manualDnOverride && this.state.brandMode !== 'rommer' && catalog.groups_dn20 && catalog.groups_dn25) {
+                    const _tCoil = this.tankCoilKw(this._tankPortsModel);
+                    const _tBoiler = selBoilers.find(b => b && b.type === 'gas') || selBoilers[0] || null;
+                    const _tBKw = _tBoiler ? (parseFloat(_tBoiler.power) || 0) : 0;
+                    const _tKw = _tCoil > 0 ? (_tBKw > 0 ? Math.min(_tCoil, _tBKw) : _tCoil) : 0;
+                    if (_tKw > 0) {
+                        const _g20 = catalog.groups_dn20[0], _g25 = catalog.groups_dn25[0];
+                        if (this.groupCapKw(_g20, 'dhw') >= _tKw) { base = _g20; d25 = false; pumpItem = catalog.pumps_dn20[0]; }
+                        else {
+                            base = _g25; d25 = true;
+                            pumpItem = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
+                            pumpItem.alts = catalog.pumps_dn25;
+                        }
+                    }
+                }
+                return { base: base, dn25: d25, pump: pumpItem };
+            };
+            const _tankPick = _pickTankGroup();
+            this._tankLoadKitInfo = { price: ((_tankPick.base || {}).price || 0) + ((_tankPick.pump || {}).price || 0), imgId: (_tankPick.base || {}).id };
 
             // Добавляем группы и насосы
             // Насос — под ФАКТИЧЕСКИ стоящую группу, а не под флаг dn25: в DN20-группу
@@ -80644,7 +81486,7 @@ const app = {
                 // Строку запоминаем: гидравлику в её подсказку допишем ниже,
                 // когда приборы будут подобраны (см. radGroupHydroTip).
                 this._radGroupItemId = grps[0].id;
-                addToBill({ ...grps[0], sortRank: -2 }, rQ, this.getDesc('pump_group', grps[0], rQ, 'rad', pwr), grpHydro);
+                addToBill({ ...grps[0], sortRank: -2, _capUse: { purpose: 'rad', kw: (this._radGroupLoadKw || 0) / Math.max(1, rQ), qty: rQ } }, rQ, this.getDesc('pump_group', grps[0], rQ, 'rad', pwr), grpHydro);
                 // Считаем по ФАКТИЧЕСКИ стоящей группе (_actDn), а не по флагу dn25:
                 // ручная замена на DN20 или DN32 оставляет узел МУ-25М без места.
                 if (_actDn === 25) gbmNodeQty += rQ;
@@ -80659,8 +81501,7 @@ const app = {
                 // радиаторного контура. Автоподбор такую проверку делает сам (число групп
                 // считается по мощности выше), но ручную замену на меньший типоразмер
                 // он не отслеживал — смета молча оставалась недогруженной по мощности.
-                const _actCapM = /для\s+радиаторов\s+(?:до\s+)?(\d+(?:[.,]\d+)?)\s*кВт/i.exec(radGrpActual.name || '');
-                const _actCapKw = _actCapM ? parseFloat(_actCapM[1].replace(',', '.')) : 0;
+                const _actCapKw = this.groupCapKw(radGrpActual, 'rad');
                 const _loadKw = this._radGroupLoadKw || 0;
                 if (_actCapKw > 0 && _loadKw > 0 && (_actCapKw * rQ) < _loadKw) {
                     // Янтарная, а не красная: расчёт-то сошёлся, это ручная
@@ -80669,7 +81510,7 @@ const app = {
                     const _capTotal = Math.round(_actCapKw * rQ * 10) / 10;
                     hydroWarnHtml = this.noteBox('warn', 'Насосная группа не проходит по мощности.',
                         `${_capTotal} кВт против ${Math.round(_loadKw * 10) / 10} кВт на радиаторном контуре.`,
-                        `<div class="tip-p">«${radGrpActual.name}» — паспортная мощность ${_actCapKw} кВт` +
+                        `<div class="tip-p">«${radGrpActual.name}» — тянет при перепаде ${this.radDT()} К ${_actCapKw} кВт` +
                         (rQ > 1 ? ` × ${rQ} шт = <b>${_capTotal} кВт</b>` : ``) +
                         `, а на радиаторный контур приходится <b>${Math.round(_loadKw * 10) / 10} кВт</b>.</div>` +
                         `<div class="tip-p">Группа выбрана вручную — автоподбор такой типоразмер не поставил бы.</div>` +
@@ -80685,11 +81526,11 @@ const app = {
                 _selfKit('direct', 1, pmp, null, { sub: 'dhw', loadKw: _dhwKw, dt: this.boilerDT(), pumpExtra: { originalId: pmp.id + '_dhw', alts: _tankLoadAlts }, pumpDesc: this.getDesc('fugas_pump') });
             }
             if (tankNeedsPumpGroup && !_selfG) {
-                let tankBase = grps[0];
+                const _tp = _tankPick;
+                let tankBase = _tp.base, tankPumpItem = _tp.pump, tankDn25 = _tp.dn25;
                 // Мощность берём из паспортной мощности той же группы (для радиаторов) —
                 // физически это тот же узел, просто на контуре загрузки бойлера.
-                let tankCapM = /до\s+(\d+(?:[.,]\d+)?)\s*кВт/i.exec(tankBase.name || '');
-                let tankCapSuffix = tankCapM ? ` до ${tankCapM[1]} кВт` : '';
+                let tankCapSuffix = ` — тянет ${String(this.groupCapKw(tankBase, 'dhw')).replace('.', ',')} кВт`;
                 // originalId с суффиксом — чтобы swap/cycle-логика насосных групп DN20/DN25
                 // отопления (завязанная на реальный id этой позиции в каталоге) не задевала узел.
                 // alts перебиваем: у групп DN20/DN25 в init() подставлен общий список узлов
@@ -80702,12 +81543,11 @@ const app = {
                 // ROMMER-позиции — у аналога она своя (DN25 на 23 кВт против DN20 на 10).
                 if (tankBase.rommer) {
                     let rName = tankBase.rommer.name || '';
-                    let rCapM = /до\s+(\d+(?:[.,]\d+)?)\s*кВт/i.exec(rName);
-                    tankPumpGroup.rommer = { ...tankBase.rommer, name: rName.replace(/\s*-\s*для радиаторов.*$/i, '') + ` для бойлера${rCapM ? ` до ${rCapM[1]} кВт` : ''}` };
+                    tankPumpGroup.rommer = { ...tankBase.rommer, name: rName.replace(/\s*-\s*для радиаторов.*$/i, '') + ` для бойлера — тянет ${String(this.groupCapKw(tankBase.rommer, 'dhw')).replace('.', ',')} кВт` };
                 }
                 addToBill({ ...tankPumpGroup, sortRank: -2 }, 1, this.getDesc('fugas_pump'), grpHydro);
-                addToBill({ ...pmp, sortRank: -1 }, 1, this.getDesc('pump_std'), grpHydro);
-                if (dn25) gbmNodeQty += 1;
+                addToBill({ ...tankPumpItem, sortRank: -1 }, 1, this.getDesc('pump_std'), grpHydro);
+                if (tankDn25) gbmNodeQty += 1;
             }
             if (tQ > 0) {
                 let activeMixType = this.state.ufhMixType || 'std';
@@ -80731,7 +81571,7 @@ const app = {
                     _selfKit(_isServo ? 'servo' : 'thermo', tQ, _sPump, _sServo, { pumpDesc: _ufhPumpDesc(), loadKw: tpArea * 0.08, dt: parseInt(this.state.ufhDT, 10) || 5 });
                 } else if (activeMixType === 'dn32_servo') {
                     let ufhGrp = catalog.groups_dn32.find(g => g.id === 'SDG-0007-003201');
-                    addToBill({ ...ufhGrp, _uiUfhOnly: true, sortRank: -2 }, tQ, this.getDesc('pump_group', ufhGrp, tQ, 'ufh', tpArea), grpHydro);
+                    addToBill({ ...ufhGrp, _uiUfhOnly: true, _capUse: { purpose: 'ufh', kw: tpArea * 0.08 / Math.max(1, tQ), qty: tQ }, sortRank: -2 }, tQ, this.getDesc('pump_group', ufhGrp, tQ, 'ufh', tpArea), grpHydro);
 
                     let ufhPump = _ufhPumpPool.find(p => p.type === this.state.pumpType) || _ufhPumpPool[0];
                     addToBill({ ...ufhPump, sortRank: -1 }, tQ, _ufhPumpDesc(), grpHydro);
@@ -80742,7 +81582,7 @@ const app = {
                     }
                 } else if (activeMixType === 'dn25' || activeMixType === 'dn25_servo') {
                     let ufhGrp = (activeMixType === 'dn25_servo') ? catalog.groups_dn25[2] : catalog.groups_dn25[1];
-                    addToBill({ ...ufhGrp, _uiUfhOnly: true, sortRank: -2 }, tQ, this.getDesc('pump_group', ufhGrp, tQ, 'ufh', tpArea), grpHydro);
+                    addToBill({ ...ufhGrp, _uiUfhOnly: true, _capUse: { purpose: 'ufh', kw: tpArea * 0.08 / Math.max(1, tQ), qty: tQ }, sortRank: -2 }, tQ, this.getDesc('pump_group', ufhGrp, tQ, 'ufh', tpArea), grpHydro);
                     gbmNodeQty += tQ;
 
                     let ufhPump = _ufhPumpPool.find(p => p.type === this.state.pumpType) || _ufhPumpPool[0];
@@ -80755,8 +81595,12 @@ const app = {
                         }
                     }
                 } else if (activeMixType === 'dn20' || activeMixType === 'dn20_servo') {
-                    let ufhGrp = (activeMixType === 'dn20_servo') ? catalog.groups_dn20[2] : catalog.groups_dn20[1];
-                    addToBill({ ...ufhGrp, _uiUfhOnly: true, sortRank: -2 }, tQ, this.getDesc('pump_group', ufhGrp, tQ, 'ufh', tpArea), grpHydro);
+                    // DN20 «под сервопривод» — SDG-0007-002001 (3-ходовой, Kvs 4). Артикула SDG-0003-002001
+                    // у STOUT нет: паспорт SDG-0003 содержит только DN25 (002501-3), на stout.ru его тоже нет.
+                    let ufhGrp = (activeMixType === 'dn20_servo')
+                        ? (catalog.groups_dn20.find(g => g.id === 'SDG-0007-002001') || catalog.groups_dn20[2])
+                        : catalog.groups_dn20[1];
+                    addToBill({ ...ufhGrp, _uiUfhOnly: true, _capUse: { purpose: 'ufh', kw: tpArea * 0.08 / Math.max(1, tQ), qty: tQ }, sortRank: -2 }, tQ, this.getDesc('pump_group', ufhGrp, tQ, 'ufh', tpArea), grpHydro);
 
                     let ufhPump = catalog.pumps_dn20[0];
                     addToBill({ ...ufhPump, sortRank: -1 }, tQ, this.getDesc('pump_std'), grpHydro);
@@ -80877,6 +81721,12 @@ const app = {
         _traceLens = this.boilerTraceLens(_wallCfg, (selBoilers || []).length);
 
         const _bpSizes = boilerSizes(selBoilers);
+        // Нагрузка подбора магистрали — для окна замены (блок «Диаметр магистрали»).
+        // Берём из этого же списка котлов, а не из последнего вызова подбора.
+        this._bpLoad = {
+            gas: (selBoilers || []).filter(b => b && b.type === 'gas').reduce((a, b) => a + (b.power || 0), 0),
+            el: (selBoilers || []).filter(b => b && b.type !== 'gas').reduce((a, b) => a + (b.power || 0), 0)
+        };
         const _bpPick = _bpSizes.pick;
         let ss_diameter = _bpSizes.main;
         let _tankSize = _bpSizes.tank;
@@ -80989,6 +81839,7 @@ const app = {
                     : (`Ø${ss_diameter} мм`);
             // Мощность, на которой в этой трубе скорость упирается в норму. Считаем, а
             // не вписываем числом: пороги у трёх систем разные и от Δt тоже зависят.
+            const _vTxt = this.BOILER_V_MAX.toFixed(1).replace(".", ",");
             const _kwAt = (innerMm) => Math.round(this.BOILER_V_MAX * Math.PI * Math.pow(innerMm / 1000, 2) / 4 * 3600 * 1.163 * dT);
             // Пара типоразмеров системы и мощности, на которых каждый упирается в норму.
             // Считаем из каталожного ряда, а не вписываем числами: у трёх систем они
@@ -81009,21 +81860,23 @@ const app = {
                     : `• Каскад однотипных котлов складывается по мощности.<br>`) +
                 `• Расход через контур: G = Q / (1,163 × Δt) = ${totalBoilerPower} / (1,163 × ${dT}) = <b>${flow.toFixed(2)} м³/ч</b> при Δt = ${dT} °C.<br>` +
                 `• Скорость: v = G / (3600 × S), труба ${label}, внутренний Ø ${String(inner).replace('.', ',')} мм → S = ${area.toExponential(2).replace('.', ',')} м² → <b>v = ${v.toFixed(2)} м/с</b>.<br>` +
+                (this.boilerMainManual() ? `• <b>Диаметр выбран вручную</b> (окно замены трубы котельной). По скорости рекомендован ${this.boilerMainTitle(this.boilerMainOptions(this._bpLoad ? this._bpLoad.gas : 0, this._bpLoad ? this._bpLoad.el : 0).rec)}.<br>` : '') +
+                (this.boilerSpeedLevel(v) === 'ok' ? '' : (this.boilerSpeedLevel(v) === 'warn' ? `<b style="color:var(--warn,#D97706);">• Скорость ${v.toFixed(2).replace('.', ',')} м/с — на границе (норма 0,4–1,0 м/с). Допустимо, лучше взять ${v > this.BOILER_V_MAX ? 'диаметр больше' : 'диаметр меньше'}.</b><br>` : `<b style="color:var(--danger,#EF4444);">• Скорость ${v.toFixed(2).replace('.', ',')} м/с — вне рекомендации: такой диаметр заменить, ${v > 1.2 ? 'взять больше (шум и износ)' : 'взять меньше (воздух и шлам)'}.</b><br>`)) +
                 (isStable
-                    ? `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). У стабильной трубы стенка самая толстая в каталоге: у 25х3,7 внутренний 17,6 мм против 20,0 у металлопластика 26 и 19,6 у нержавейки 22. Типоразмер подобран по скорости: 25 мм до ${_kwSmall} кВт, дальше 32 мм (при Δt = ${dT} °C).<br>` +
-                      `• Больше 32 мм у стабильной трубы STOUT нет: с ${_kwBig} кВт (там на Ø32 те же 1,2 м/с) обвязку надо вести нержавейкой — переключите систему в строке трубы.<br>` +
+                    ? `• Предел котлового контура — не более ${_vTxt} м/с (практика проектирования, по шуму и износу). У стабильной трубы стенка самая толстая в каталоге: у 25х3,7 внутренний 17,6 мм против 20,0 у металлопластика 26 и 19,6 у нержавейки 22. Типоразмер подобран по скорости: 25 мм до ${_kwSmall} кВт, дальше 32 мм (при Δt = ${dT} °C).<br>` +
+                      `• Больше 32 мм у стабильной трубы STOUT нет: с ${_kwBig} кВт (там на Ø32 те же ${_vTxt} м/с) обвязку надо вести нержавейкой — переключите систему в строке трубы.<br>` +
                       `• Соединение аксиальное, надвижной гильзой: на каждый конец трубы в смете идёт своя монтажная гильза ${isStableR ? 'RFA-0020' : 'SFA-0020'}. На 25 и 32 мм усилие большое — STOUT рекомендует электрический инструмент (техкаталог, стр. 70).<br>` + `• Линейки взаимозаменяемы: стабильная труба ROMMER испытана на герметичность соединения с аксиальным фитингом STOUT по ГОСТ Р 53630-2015 и ГОСТ 32415-2013 (презентация ROMMER «Стабильная труба», лист «Совместимость с фитингами»).<br>`
                     : isMp
-                    ? `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Типоразмер выбран по ней из пары 26 · 32: до ${_kwSmall} кВт идёт 26х3,0, дальше 32х3,0 (при Δt = ${dT} °C).<br>` +
-                      `• Больше 32 мм в линейке металлопластика ${isMpR ? 'ROMMER' : 'STOUT'} нет: с ${_kwBig} кВт (там на Ø32 те же 1,2 м/с) обвязку надо вести нержавейкой или полипропиленом — переключите систему в строке трубы.<br>` +
+                    ? `• Предел котлового контура — не более ${_vTxt} м/с (практика проектирования, по шуму и износу). Типоразмер выбран по ней из пары 26 · 32: до ${_kwSmall} кВт идёт 26х3,0, дальше 32х3,0 (при Δt = ${dT} °C).<br>` +
+                      `• Больше 32 мм в линейке металлопластика ${isMpR ? 'ROMMER' : 'STOUT'} нет: с ${_kwBig} кВт (там на Ø32 те же ${_vTxt} м/с) обвязку надо вести нержавейкой или полипропиленом — переключите систему в строке трубы.<br>` +
                       (isMpR ? `• Труба ROMMER PE-RT II/Al/PE-RT II, фитинги — латунный пресс STOUT: гарантию на соединение ROMMER даёт при винтовых и пресс-фитингах STOUT/ROMMER и соблюдении правил монтажа (листовка ROMMER, 2026).<br>` : '')
                     : isAnalog
-                    ? `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Типоразмер выбран по ней из пары 32 · 40: до ${_kwSmall} кВт идёт 32-я труба, дальше 40-я (при Δt = ${dT} °C). Границу считаем по внутреннему диаметру выбранного бренда — у STABI PLUS 32 он 23,2 мм, у DUO SDR 6 всего 21,3, и мощности выходят разные.<br>` +
-                      `• Больше 40 мм в обвязке не ставим: с ${_kwBig} кВт (там на 40-й те же 1,2 м/с) обвязку надо вести нержавейкой — переключите систему в строке трубы.<br>`
-                    : `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Типоразмер подобран по ней: взят самый тонкий из ряда 22 · 28 · 35 · 42, на котором скорость в норму укладывается.<br>` +
+                    ? `• Предел котлового контура — не более ${_vTxt} м/с (практика проектирования, по шуму и износу). Типоразмер выбран по ней из пары 32 · 40: до ${_kwSmall} кВт идёт 32-я труба, дальше 40-я (при Δt = ${dT} °C). Границу считаем по внутреннему диаметру выбранного бренда — у STABI PLUS 32 он 23,2 мм, у DUO SDR 6 всего 21,3, и мощности выходят разные.<br>` +
+                      `• Больше 40 мм в обвязке не ставим: с ${_kwBig} кВт (там на 40-й те же ${_vTxt} м/с) обвязку надо вести нержавейкой — переключите систему в строке трубы.<br>`
+                    : `• Предел котлового контура — не более ${_vTxt} м/с (практика проектирования, по шуму и износу). Типоразмер подобран по ней: взят самый тонкий из ряда 22 · 28 · 35 · 42, на котором скорость в предел укладывается. Меньше 22 мм в котловой обвязке не ставим: патрубок котла 3/4" под трубу 18 мм не садится без переходника.<br>` +
                       (dT === 10 ? `• Перепад котлового контура задан вручную — 10 K вместо паспортных 20. Расход вдвое выше, и диаметр обвязки поднялся примерно на две ступени. Переключается в подробном режиме, блок «Перепад котлового контура».<br>` : ``) +
                       (ss_diameter >= 42 ? `• Ряд подбора сверху ограничен 42 мм — на 54 мм нет теплоизоляции в каталоге. Если расчёт упёрся в 42, проверьте скорость выше по строке.<br>` : ``) +
-                      (ss_diameter <= 22 ? `• Снизу ряд ограничен 22 мм по той же причине: на 15 и 18 мм теплоизоляции в каталоге нет, хотя по скорости на малых котлах хватило бы и их.<br>` : ``)) +
+                      (ss_diameter <= 22 ? `• Снизу ряд начинается с 22 мм: тоньше патрубка котла 3/4" не ставим, даже если скорость укладывается.<br>` : ``)) +
                 (bothFuels
                     ? `• <b style="color:var(--c-warn,#F59E0B);">Проверьте схему:</b> если котлы у вас работают ОДНОВРЕМЕННО (электрический как пиковый, а не резервный), диаметр надо считать по сумме ${gasKw + elKw} кВт — тогда замените трубу и фитинги вручную.<br>`
                     : '') +
@@ -85037,10 +85890,9 @@ const app = {
              * паспортного «для тёплого пола до N кВт»: там перепад 10 К, здесь
              * 15 К — при том же расходе группа тянет в полтора раза больше.
              */
-            const _grpKw = n => {
-                const m = /т[её]плого пола до\s*(\d+(?:[.,]\d+)?)/i.exec(String(n || ''));
-                return m ? Math.round(parseFloat(m[1].replace(',', '.')) * 1.5) : 0;
-            };
+            // Теперь считается из расхода: предел группы по DN и перепад первички 15 К
+            // (раньше — 1,5 × паспортные «до 12 кВт» из названия, то есть 18 кВт для DN25).
+            const _grpKw = n => Math.round(this.groupCapKw({ name: n }, 'snow'));
             if (_primGroup) {
                 // Паспортные «для радиаторов до 24 кВт, для тёплого пола до 12»
                 // в этом разделе только сбивают: группа стоит на первичке
@@ -85243,7 +86095,7 @@ const app = {
             const _primKwBig = _grpKw(_primGroupBig && _primGroupBig.name);
             if (_primKw && _snowKw > _primKw) {
                 _snowWarnAll.push(`Узел на <b>${_snowKw} кВт</b>, а группа первичного контура DN25 рассчитана до ${_primKw} кВт ` +
-                    `(паспортные «для тёплого пола до 12 кВт» — это тот же расход при перепаде 10 К, на первичке снеготаяния перепад 15 К). ` +
+                    `(предел по расходу ≤ 1 м/с в патрубке при перепаде первички 15 К). ` +
                     (_primKwBig ? `В таблице замены есть DN32 — до ${_primKwBig} кВт. Насос к ней подбирается отдельно: 25/60-180 с присоединением 1½" в неё не встанет.` : ``));
             }
             // Янтарная: узел подобран и смонтируется, это оговорки к нему.
@@ -87371,6 +88223,7 @@ const app = {
         // (см. boilerSystemTotals) они не нужны и вредны: перерисовали бы экран
         // поверх открытого окна замены.
         if (computeOnly) return;
+        this.renderPumpPlanBlock();
 
         if (this.state.viewMode === 'equipment' && !h.includes('empty-state-row') && h.includes('row-sec')) {
             h += `<tr class="hide-custom-eq-btn no-print"><td colspan="9">

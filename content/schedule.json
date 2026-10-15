@@ -165,9 +165,9 @@
    "freq": 28015,
    "audience": "owner",
    "data_block": "состав системы из сметы",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-13",
-   "published_at": null,
+   "published_at": "2026-10-13",
    "words": 676
   },
   {
@@ -179,9 +179,9 @@
    "freq": 0,
    "audience": "pro",
    "data_block": "вкладка «Деньги»",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-14",
-   "published_at": null,
+   "published_at": "2026-10-14",
    "words": 553
   },
   {

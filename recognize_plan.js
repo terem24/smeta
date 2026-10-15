@@ -20,7 +20,7 @@
 
 const RecognizePlan = {
 
-    CACHE_KEY: 'rec_plans_v1',
+    CACHE_KEY: 'rec_plans_v2',
     CACHE_MAX: 40,
 
     /**
@@ -172,6 +172,39 @@ const RecognizePlan = {
      * имени файла. Задаётся при дочитывании: лист, добавленный к уже
      * прочитанному первому этажу, это скорее второй, а не ещё один первый.
      */
+    /**
+     * Экспликация на листе — главный источник: названия и площади берём из неё,
+     * как напечатаны. Помещение плана сверяем с ней по номеру, а без номера — по
+     * названию. Пункт экспликации, которого модель не нашла на чертеже, добавляем
+     * строкой. Помещение, которого в экспликации нет, остаётся как прочитано, с пометкой.
+     */
+    applyExplication(rooms, expl) {
+        const key = s => String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[^а-я0-9a-z]/g, '');
+        const num = s => String(s || '').trim().replace(/^0+(?=\d)/, '');
+        const items = (Array.isArray(expl) ? expl : []).map(e => {
+            if (!e) return null;
+            const area = this.num(e.area), name = this.cleanName(e.name);
+            if (!name || !(area > 0)) return null;
+            return { num: num(e.num), name, area: Math.round(area * 100) / 100, used: false };
+        }).filter(Boolean);
+        if (!items.length) return Array.isArray(rooms) ? rooms : [];
+        const out = (Array.isArray(rooms) ? rooms : []).map(r => {
+            r = r || {};
+            const rn = num(r.num), rk = key(r.name);
+            const e = items.find(x => !x.used && rn && x.num === rn) || items.find(x => !x.used && rk && key(x.name) === rk);
+            if (!e) return Object.assign({}, r, { note: [r.note, 'в экспликации такого помещения нет'].filter(Boolean).join('; ') });
+            e.used = true;
+            return Object.assign({}, r, { name: e.name, nameGuessed: false, area: e.area, areaSrc: 'table' });
+        });
+        items.filter(e => !e.used).forEach(e => out.push({
+            num: e.num, name: e.name, nameGuessed: false, area: e.area, areaSrc: 'table',
+            w: null, l: null, windows: null, panoramic: 0, outerWalls: null, orient: null, doubleHeight: false,
+            heated: !/гараж|котел|террас|балкон|лоджи|веранд|крыльц|тамбур/i.test(e.name), floor: null, confidence: null,
+            note: 'есть в экспликации, на чертеже не нашлось — проверьте',
+        }));
+        return out;
+    },
+
     normalizeSheet(parsed, i, fileName, sheetsTotal, fallback) {
         const hint = this.floorHint(fileName);
         let raw = this.num(parsed.floor);
@@ -199,7 +232,7 @@ const RecognizePlan = {
             unclear: Array.isArray(parsed.unclear) ? parsed.unclear.map(String).filter(Boolean) : [],
         };
 
-        const rows = (Array.isArray(parsed.rooms) ? parsed.rooms : []).map(r => {
+        const rows = this.applyExplication(parsed.rooms, parsed.explication).map(r => {
             r = r || {};
             let area = this.num(r.area);
             const w = this.num(r.w), l = this.num(r.l);
@@ -1420,6 +1453,7 @@ const FLOOR_PLAN_PROMPT = `Ты разбираешь ПЛАНЫ ЭТАЖЕЙ ж�
   "ceilingH": высота потолка в метрах или null,
   "hasTable": true | false,
   "totalArea": итог экспликации в м² или null,
+  "explication": [{"num": "1", "name": "Лестничный холл", "area": 15.9}] или [],
   "rooms": [{
     "num": "101" или null,
     "name": "Спальня",
@@ -1448,7 +1482,7 @@ const FLOOR_PLAN_PROMPT = `Ты разбираешь ПЛАНЫ ЭТАЖЕЙ ж�
 2. ЭТАЖ. Номер этажа бери из подписи листа: «План 1 этажа», «1-й этаж», «Первый этаж» -> 1; «второй», «2 эт.» -> 2; «подвал», «цокольный», «0 этаж» -> 0; «мансарда», «мансардный» -> этаж НАД верхним полным (в доме с одним этажом — 2, с двумя — 3). Номера помещений вида 101–114 означают первый этаж, 201–2xx — второй, 001–0xx — подвал. Имя файла в запросе — тоже подсказка («1 этаж.pdf»). Ничего этого нет -> floor=null, не угадывай.
    Если на ОДНОМ листе нарисовано несколько этажей или отдельным контуром показано помещение другого уровня («Мансарда 8,2 м2» поверх кухни) — у такого помещения проставь своё "floor", у остальных оставь null (возьмётся общий этаж листа).
 
-3. ЭКСПЛИКАЦИЯ ВАЖНЕЕ ЧЕРТЕЖА. Если на листе есть таблица «Экспликация помещений» (№, наименование, площадь) — список помещений и площади бери из неё (areaSrc="table"), а чертёж используй для окон и наружных стен: помещение с номером на плане ищи по тому же номеру в таблице. Число строк таблицы = число помещений. Итог таблицы (например «177,87») верни в totalArea как напечатан. НЕ СКЛАДЫВАЙ площади сам: по итогу проверяется, все ли помещения прочитаны, и посчитанная тобой сумма эту проверку обесценивает. Итога нет -> null.
+3. ЭКСПЛИКАЦИЯ ВАЖНЕЕ ЧЕРТЕЖА. Если на листе есть таблица «Экспликация помещений» (№, наименование, площадь) — сначала перепиши её в поле "explication" дословно: номер, наименование и площадь, как напечатаны, все строки. Список помещений и площади в rooms берутся ИЗ ЭТОЙ ТАБЛИЦЫ, а не из подписей на чертеже: name и area как в таблице (areaSrc="table"), помещение сопоставляй по номеру; чертёж нужен для окон и наружных стен. Подписи на плане с другой площадью (например «15,04» у гаража, где в таблице 37,0) — не используй. Число строк explication = числу помещений таблицы. Итог таблицы (например «177,87») верни в totalArea как напечатан. НЕ СКЛАДЫВАЙ площади сам: по итогу проверяется, все ли помещения прочитаны. Итога нет -> null. Таблицы нет -> "explication": [].
 
 4. ПЛОЩАДЬ. Подписана в помещении («19,16 м2», «S=12», «12 кв.м») -> area, areaSrc="label". Подписаны только размеры помещения («4х3,5», «4000х3500» в миллиметрах, размерные цепочки вдоль стен) -> area = произведение в метрах, areaSrc="dims", w и l заполни. Есть только общие габариты дома, размеры по осям или сетка клеток — оцени площадь помещения по его доле в плане (или по клеткам, если известен размер клетки), areaSrc="estimate", confidence не выше 0.5. Не по чему оценить -> area=null. Запятая в числе — десятичный разделитель: «13,77» -> 13.77. Не путай площадь с номером помещения и с высотой (H=2700).
 
