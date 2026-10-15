@@ -40308,8 +40308,25 @@ const app = {
             }
             if ((v.radRows || []).length) {
                 anyRad = true; tee = tee || !!v.radTee;
-                const tr = v.radRows.map(r => `<tr data-pl="R${r.no}"><td style="text-align:center">${r.kind === 'conv' ? 'К' : 'Р'}${r.no}</td><td>${esc(r.name)}</td>` +
-                    `<td style="text-align:right">${n1(r.w)} м</td><td style="text-align:right">${r.L == null ? '—' : n1(r.L) + ' м'}</td></tr>`).join('');
+                const radTr = (r, cls) => `<tr${cls ? ` class="${cls}"` : ''} data-pl="R${r.no}"><td style="text-align:center">${r.kind === 'conv' ? 'К' : 'Р'}${r.no}</td><td>${esc(r.name)}</td>` +
+                    `<td style="text-align:right">${n1(r.w)} м</td><td style="text-align:right">${r.L == null ? '—' : n1(r.L) + ' м'}</td></tr>`;
+                // Приборы одного помещения — в одну раскрывающуюся ветку, как петли тёплого пола
+                const rGroups = [], rByName = {};
+                v.radRows.forEach(r => {
+                    const key = String(r.name || '').trim();
+                    if (!rByName[key]) { rByName[key] = { name: key, rows: [] }; rGroups.push(rByName[key]); }
+                    rByName[key].rows.push(r);
+                });
+                let tr = '';
+                rGroups.forEach(g => {
+                    if (g.rows.length === 1) { tr += radTr(g.rows[0], 'ufh-solo'); return; }
+                    const gW = g.rows.reduce((s, r) => s + (r.w || 0), 0);
+                    const gL = g.rows.reduce((s, r) => s + (r.L || 0), 0);
+                    tr += `<tr class="ufh-grp" onclick="app.ufhToggleGrp(this)" title="Раскрыть приборы помещения">` +
+                        `<td style="text-align:center"><span class="ufh-arr">▸</span> ${g.rows.length}</td><td><b>${esc(g.name)}</b></td>` +
+                        `<td style="text-align:right">${n1(gW)} м</td><td style="text-align:right">${n1(gL)} м</td></tr>`;
+                    g.rows.forEach(r => { tr += radTr(r, 'ufh-sub'); });
+                });
                 radHtml = `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px">` +
                     `<thead><tr style="color:var(--text-sec)"><th>Прибор</th><th style="text-align:left">Помещение</th><th style="text-align:right">Длина прибора</th>` +
                     `<th style="text-align:right">${v.radTee ? 'Магистраль до прибора' : 'Трубы к прибору'}</th></tr></thead>` +
@@ -40367,16 +40384,17 @@ const app = {
         if (!parts.length) return '';
         this.bindPlanHighlight();
         const notes = [];
-        if (anyTp) notes.push('Петли тёплого пола разложены автоматически по плану помещений: улиткой, в узких местах змейкой, ' +
-            'отступ от стен 100 мм, подводки к коллектору — в теплоизоляции. Длины петель — с подводками.');
-        if (anyRad) notes.push((tee ? 'Радиаторы — тройниковая схема: подача и обратка одной магистралью через приборы. '
-            : 'Радиаторы — лучевая схема: к каждому прибору своя пара труб от коллектора радиаторов. ') +
-            'Трассы проложены по плану вдоль стен, в обход тёплого пола; длины — подача и обратка вместе, с подъёмами к прибору и коллектору.');
-        notes.push('Уточняется при монтаже.');
+        if (anyTp) notes.push('<b>Тёплый пол.</b> Петли уложены по плану автоматически: улиткой, в узких местах — змейкой. ' +
+            'Отступ от стен — 100 мм. Подводки к коллектору идут в теплоизоляции и входят в длину петли.');
+        if (anyRad) notes.push('<b>Радиаторы.</b> ' + (tee
+            ? 'Тройниковая схема: подача и обратка одной магистралью через все приборы. '
+            : 'Лучевая схема: к каждому прибору — своя пара труб от коллектора. ') +
+            'Трассы идут вдоль стен в обход тёплого пола. Длина — подача и обратка вместе, с подъёмами к прибору и коллектору.');
+        const hint = this.noteBox('info', '', 'Трассы и длины рассчитаны по плану.',
+            notes.join('<br><br>') + '<br><br>Точные длины уточняются при монтаже.');
         return `<div style="padding:8px 2px 2px"><div style="font-weight:700;font-size:14px;margin-bottom:6px">` +
             (anyRad && anyTp ? 'План отопления дома: тёплый пол и радиаторы' : anyRad ? 'Радиаторы на плане дома' : 'Раскладка тёплого пола по плану дома') +
-            `</div>` + parts.join('') +
-            `<div style="font-size:11px;color:var(--text-sec)">${notes.join(' ')}</div></div>`;
+            `</div>` + parts.join('') + hint + `</div>`;
     },
 
     // ═══ Напоминания тем, кто давно не заходил ═══════════════════════════
