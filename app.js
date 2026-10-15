@@ -49070,7 +49070,21 @@ const app = {
                 body += '<ul class="hc-list">' + row('со стрелкой', c.hydro)
                     + (c.direct != null ? row('без стрелки', c.direct) : '<li>без стрелки: не собрать — ' + esc(c.directWhy) + '</li>') + '</ul>';
             }
-            if (!forPrint) body += '<a href="#" class="hc-btn" onclick="app.hydroCompareSchemes(event)">' + (c ? 'Пересчитать цены схем' : 'Сколько стоит другая схема') + '</a>';
+            // Цены обновляются сами через 1,5 с после последней правки (два полных прогона сметы на каждый пересчёт
+            // были бы слишком тяжёлыми); сигнатура последней попытки не даёт зациклиться, если прогон сам её сдвинул
+            let pending = false;
+            if (!forPrint && !c && this._hcAutoSig !== sig) {
+                pending = true;
+                clearTimeout(this._hcAutoTimer);
+                this._hcAutoTimer = setTimeout(() => {
+                    if (this._cheapComparing) return;
+                    this._hcAutoSig = sig;
+                    this.hydroCompareSchemes(null);
+                }, 1500);
+            }
+            if (!forPrint) body += pending
+                ? '<div class="hc-note">Считаю цену другой схемы…</div>'
+                : '<a href="#" class="hc-btn" onclick="app.hydroCompareSchemes(event)">' + (c ? 'Пересчитать цены схем' : 'Сколько стоит другая схема') + '</a>';
             html += sec('price', 'Схема котельной и её цена', body);
         }
 
@@ -69219,9 +69233,13 @@ const app = {
             // Радиаторы ставим всем, тёплый пол — только там, где он уместен:
             // в котельной и кладовой его не делают, а площадь и петли за них
             // считались.
-            const sys = ['rad'];
-            if ((this.state.systems || []).includes('tp')
-                && this.roomWantsUfh({ name: roomName })) sys.push('tp');
+            // Набор берём из выбора «Тип отопления»: выбран только пол —
+            // радиаторы не добавляем (раньше они ставились тихо всегда).
+            const _sy = this.state.systems || [];
+            const wantTp = _sy.includes('tp') && this.roomWantsUfh({ name: roomName });
+            const sys = [];
+            if (_sy.includes('rad') || !wantTp) sys.push('rad');
+            if (wantTp) sys.push('tp');
 
             return {
                 id: Date.now() + i * 100,
