@@ -49076,34 +49076,86 @@ const app = {
         const on = !!(hc && s.objectType !== 'flat' && (s.fuels || []).length > 0 && s.area > 0);
         const res = on ? hc.evaluate(this.buildHydroCheckData(), { reserve: this.RAD_PUMP_RESERVE }) : null;
         if (!res || !res.rows.length) return '';
+        this._hcOpen = this._hcOpen || {};
         const f1 = v => (v == null ? '—' : v.toFixed(1).replace('.', ','));
         const f2 = v => (v == null ? '—' : v.toFixed(2).replace('.', ','));
         const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        // Запас — на сколько процентов напор насоса (в метрах водяного столба) больше того, что нужно кольцу:
+        // k = насос / нужно, запас = (k − 1) × 100 %. Минус — напора не хватает. Единица одна — проценты.
+        const kFmt = k => (k == null ? '—' : (k >= 6 ? '>+500 %' : (k >= 1 ? '+' : '−') + Math.round(Math.abs(k - 1) * 100) + ' %'));
+        const needPct = Math.round((res.reserve - 1) * 100);   // нужный запас напора, %
         const c = res.counts;
         const state = c.fail ? 'fail' : (c.tight ? 'tight' : 'ok');
-        let html = '<div class="hc-card"><div class="hc-sum hc-' + state + '">'
-            + (c.fail ? 'Гидравлика: не хватает напора (контуров: ' + c.fail + ')'
-                : c.tight ? 'Гидравлика: впритык (контуров: ' + c.tight + ')'
-                : 'Гидравлика: напора хватает на всех контурах') + '</div>';
-        (this._hcApplied || []).forEach(t => { html += '<div class="hc-fixed">✔ Исправлено автоматически: ' + esc(t) + '</div>'; });
-        if (this._hcTried) html += '<div class="hc-note">' + esc(this._hcTried) + '</div>';
-        if (res.scheme) html += '<div class="hc-note">Схема: ' + esc(res.scheme.text) + '.</div>';
-        if (!s.detailedRooms) html += '<div class="hc-note">Быстрый расчёт: приборы и петли оценены по площади.' + (forPrint ? '' : ' Подробности (что выставить при пуске, на сколько хватит насоса, цена схемы) — в режиме «По комнатам».') + '</div>';
-        html += '<table class="hc-table"><thead><tr><th>Контур</th><th>G, м³/ч</th><th>Нужно, м</th><th>Насос, м</th><th>Запас</th></tr></thead><tbody>';
+        const pill ={ ok: 'Всё в норме', tight: 'Впритык', fail: 'Не хватает напора' }[state];
+        const ICON = { ok: '✓', tight: '!', fail: '✕', unknown: '?' };
+        const RANK = { fail: 3, tight: 2, unknown: 1, ok: 0 };
+        const NAMES = { boiler: 'Котёл и обвязка', rad: 'Радиаторы', ufh: 'Тёплый пол', dhw: 'Бойлер ГВС' };
+
+        // Контуры одного вида (коллекторы тёплого пола) сворачиваем в одну строку чек-листа: по худшему
+        const groups = [];
         res.rows.forEach(r => {
-            html += '<tr class="hc-' + r.verdict + '"><td>' + esc(r.title) + '</td><td>' + f2(r.flow) + '</td><td>' + f1(r.need)
-                + '</td><td>' + f1(r.have) + '</td><td>' + (r.k == null ? '—' : (r.k > 20 ? '>×20' : '×' + f1(r.k))) + ' <b>' + esc(r.verdictRu) + '</b></td></tr>';
-            const extra = [];
-            if (r.pump) extra.push(esc(r.pump));
-            if (r.advice) extra.push(esc(r.advice));
-            r.flags.forEach(fl => extra.push(esc(fl)));
-            if (extra.length) html += '<tr class="hc-more"><td colspan="5">' + extra.join('<br>') + '</td></tr>';
+            let g = (r.id === 'ufh') ? groups.find(x => x.id === 'ufh') : null;
+            if (!g) { g = { id: r.id, rows: [] }; groups.push(g); }
+            g.rows.push(r);
         });
-        html += '</tbody></table><div class="hc-note">«Нужно» — потери самого трудного кольца контура, «Насос» — что он даёт на этом расходе. Запас от ×' + f2(res.reserve) + ' считается достаточным (так же проверяется насос разводки); у тёплого пола запас 15 % уже заложен в «Нужно».</div>';
+        groups.forEach(g => {
+            g.verdict = g.rows.reduce((a, r) => RANK[r.verdict] > RANK[a] ? r.verdict : a, 'ok');
+            const ks = g.rows.map(r => r.k).filter(k => k != null);
+            g.k = ks.length ? Math.min.apply(null, ks) : null;
+        });
+
+        // Шапка в духе листа «Гарантия STOUT»: заголовок, схема, статус-плашка
+        let html = '<div class="hc-card"><div class="hc-head"><div class="hc-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3.5 4.2 6 7.2 6 10.2A6 6 0 0 1 6 13.2C6 10.2 8.5 7.2 12 3z"/><path d="M9.2 13.4l2 2 3.6-3.8"/></svg></div>'
+            + '<div class="hc-head-t"><div class="hc-title">Проверка гидравлики</div>'
+            + (res.scheme ? '<div class="hc-sub">Схема: ' + esc(res.scheme.text) + '</div>' : '') + '</div>'
+            + '<span class="hc-pill hc-' + state + '">' + pill + '</span></div><div class="hc-body">';
+
+        // Слабое звено: запас самого слабого контура на шкале, отметка — нужный запас
+        if (res.worst) {
+            // Шкала: ноль слева — насос ничего не даёт, «ровно нужно» на трети (запас 0 %), правый край — вдвое больше нужного
+            const cap = 3, pct = k => Math.max(2, Math.min(100, k / cap * 100));
+            const wName = NAMES[res.worst.id] || res.worst.title;
+            html += '<div class="hc-meter"><div class="hc-big hc-' + state + '">' + kFmt(res.worst.k) + '</div><div class="hc-meter-r">'
+                + '<div class="hc-need">запас напора; достаточно от +' + needPct + ' %</div>'
+                + '<div class="hc-bar"><i class="hc-' + state + '" style="width:' + pct(res.worst.k).toFixed(1) + '%"></i><b class="hc-mark" style="left:' + pct(res.reserve).toFixed(1) + '%"></b></div>'
+                + '<div class="hc-scale"><span style="left:0">нет напора</span><span style="left:' + pct(1).toFixed(1) + '%">0 % — ровно нужно</span><span style="right:0">+200 %</span></div></div>'
+                + '<div class="hc-cap">Насос даёт напора на столько процентов больше, чем нужно кольцу контура. Самый слабый контур — ' + esc(wName) + '.</div></div>';
+        }
+        (this._hcApplied || []).forEach(t => { html += '<div class="hc-msg hc-ok">✔ Исправлено автоматически: ' + esc(t) + '</div>'; });
+        if (this._hcTried) html += '<div class="hc-msg hc-tight">' + esc(this._hcTried) + '</div>';
+        if (!s.detailedRooms) html += '<div class="hc-note">Быстрый расчёт: приборы и петли оценены по площади.' + (forPrint ? '' : ' Подробности — в режиме «По комнатам».') + '</div>';
+
+        // Чек-лист по контурам: одна строка — одно «проверено»; по нажатию — расход, напор, насос, совет
+        html += '<div class="hc-rows">';
+        groups.forEach((g, gi) => {
+            const key = 'row:' + g.id;
+            const many = g.rows.length > 1;
+            const first = g.rows[0];
+            let sub = '';
+            if (g.id === 'rad') sub = first.branches > 1 ? first.branches + ' ветки' : (first.hasGroup === false ? 'от насоса котла' : 'насосная группа');
+            else if (g.id === 'ufh') sub = many ? g.rows.length + ' коллектора' : String(first.title).replace(/^Тёплый пол:\s*/, '');
+            const resTxt = { ok: 'хватает', tight: 'впритык', fail: 'не хватает', unknown: 'нет данных' }[g.verdict];
+            html += '<details class="hc-row hc-' + g.verdict + '"' + ((forPrint || this._hcOpen[key]) ? ' open' : '')
+                + ' ontoggle="app._hcOpen[\'' + key + '\']=this.open"><summary><span class="hc-dot">' + ICON[g.verdict] + '</span>'
+                + '<span class="hc-name">' + esc(NAMES[g.id] || first.title) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>'
+                + '<span class="hc-res">' + resTxt + (g.k != null ? ' <b>' + (g.k >= 6 ? 'с большим запасом' : kFmt(g.k)) + '</b>' : '') + '</span><span class="hc-chev"></span></summary><div class="hc-det">';
+            g.rows.forEach(r => {
+                if (many) html += '<div class="hc-det-t">' + esc(String(r.title).replace(/^Тёплый пол:\s*/, '')) + '</div>';
+                html += '<div class="hc-facts"><div><span>Расход</span><b>' + f2(r.flow) + ' м³/ч</b></div><div><span>Нужно</span><b>' + f1(r.need) + ' м</b></div>'
+                    + '<div><span>Насос даёт</span><b>' + f1(r.have) + ' м</b></div><div><span>Запас напора</span><b>' + kFmt(r.k) + '</b></div></div>';
+                if (r.pump) html += '<div class="hc-det-p">' + esc(r.pump) + '</div>';
+                if (r.advice) html += '<div class="hc-advice">' + esc(r.advice) + '</div>';
+                r.flags.forEach(fl => { html += '<div class="hc-flag">' + esc(fl) + '</div>'; });
+            });
+            html += '</div></details>';
+        });
+        html += '</div>';
+
+        html += '<div class="hc-note">Напор — в метрах водяного столба (м вод. ст.). «Нужно» — потери самого трудного кольца контура, «Насос даёт» — напор насоса на этом расходе. Запас напора = на сколько процентов насос даёт больше нужного; достаточным считается от +' + needPct + ' %. У тёплого пола эти ' + needPct + ' % уже заложены в «Нужно».</div>';
         if (s.detailedRooms) html += this.hydroExtras(res, !!forPrint);
         if (!forPrint) html += '<div class="hc-note"><a href="#" class="hc-btn" onclick="app.toggleHydroAutoFix(event)">'
             + (s.hydroAutoFix === false ? 'Включить автоисправление схемы по этой проверке' : 'Отключить автоисправление схемы') + '</a></div>';
-        return html + '</div>';
+        return html + '</div></div>';
     },
 
     syncHydroCheck: function () {
@@ -49113,6 +49165,9 @@ const app = {
             const html = this.hydroCardHtml(false);
             box.innerHTML = html;
             box.style.display = html ? '' : 'none';
+            // схема и карточка делят строку пополам, пока карточка показана
+            const _sch = box.closest('#dynamic_scheme');
+            if (_sch) _sch.classList.toggle('hc-split', !!html);
         } catch (e) {
             box.innerHTML = '';
             box.style.display = 'none';
