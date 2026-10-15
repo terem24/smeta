@@ -36184,7 +36184,7 @@ const app = {
                         .hyd-ov .hyd-ov__flow { animation: none; }
                         .hyd-ov { transition: none; }
                     }
-                </style><div class="scheme-svg-wrap${this.hydEnabled() ? '' : ' hyd-off'}" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button><button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка пути воды при наведении. Числа и подсказки — на весь экран">${this._hydToggleLabel(false)}</button></div></div>`;
+                </style><div class="scheme-svg-wrap${this.hydEnabled() ? '' : ' hyd-off'}" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button><button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка пути воды при наведении. Числа и подсказки — на весь экран">${this._hydToggleLabel(false)}</button></div><div id="hydro_check_side" class="hc-side"></div></div>`;
     },
 
     // ── что под курсором и путь воды ───────────────────────────────────────
@@ -48826,49 +48826,46 @@ const app = {
     },
 
     /**
-     * Блок «Проверка гидравлики» под схемой котельной — только в подробном режиме, там известны
-     * приборы и петли. Не меняет смету: показывает, где запас насоса мал, и что с этим делать.
+     * Карточка «Гидравлика» справа от схемы котельной (контейнер #hydro_check_side рисует сама схема,
+     * _renderSchemeVector, поэтому карточка появляется и исчезает вместе с ней). Не меняет смету:
+     * показывает, где запас насоса мал, и что с этим делать. В быстром расчёте приборы и петли оценены
+     * по площади — это сказано в карточке; точнее считает подробный режим.
      */
     syncHydroCheck: function () {
-        const box = document.getElementById('blk_hydro_check');
+        const box = document.getElementById('hydro_check_side');
         if (!box) return;
         try {
             const hc = (typeof window !== 'undefined') ? window.hydroCheck : null;
             const s = this.state;
-            const on = !!(hc && s.detailedRooms && s.objectType !== 'flat' && (s.fuels || []).length > 0 && s.area > 0);
+            const on = !!(hc && s.objectType !== 'flat' && (s.fuels || []).length > 0 && s.area > 0);
             const res = on ? hc.evaluate(this.buildHydroCheckData(), { reserve: this.RAD_PUMP_RESERVE }) : null;
-            if (!res || !res.rows.length) { box.style.display = 'none'; return; }
+            if (!res || !res.rows.length) { box.innerHTML = ''; box.style.display = 'none'; return; }
             const f1 = v => (v == null ? '—' : v.toFixed(1).replace('.', ','));
             const f2 = v => (v == null ? '—' : v.toFixed(2).replace('.', ','));
+            const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
             const c = res.counts;
-            const head = document.getElementById('hydro_check_sum');
             const state = c.fail ? 'fail' : (c.tight ? 'tight' : 'ok');
-            if (head) {
-                head.className = 'hc-sum hc-' + state;
-                head.textContent = c.fail ? ('Гидравлика: не хватает напора — контуров ' + c.fail)
-                    : c.tight ? ('Гидравлика: впритык — контуров ' + c.tight)
-                    : 'Гидравлика: напора хватает на всех контурах';
-            }
-            const body = document.getElementById('hydro_check_body');
-            if (body) {
-                const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-                let html = '';
-                if (res.scheme) html += '<div class="hc-note">Схема: ' + esc(res.scheme.text) + '.</div>';
-                html += '<table class="hc-table"><thead><tr><th>Контур</th><th>G, м³/ч</th><th>Нужно, м</th><th>Насос, м</th><th>Запас</th></tr></thead><tbody>';
-                res.rows.forEach(r => {
-                    html += '<tr class="hc-' + r.verdict + '"><td>' + esc(r.title) + '</td><td>' + f2(r.flow) + '</td><td>' + f1(r.need)
-                        + '</td><td>' + f1(r.have) + '</td><td>' + (r.k == null ? '—' : (r.k > 20 ? '>×20' : '×' + f1(r.k))) + ' <b>' + esc(r.verdictRu) + '</b></td></tr>';
-                    const extra = [];
-                    if (r.pump) extra.push(esc(r.pump));
-                    if (r.advice) extra.push(esc(r.advice));
-                    r.flags.forEach(fl => extra.push(esc(fl)));
-                    if (extra.length) html += '<tr class="hc-more"><td colspan="5">' + extra.join('<br>') + '</td></tr>';
-                });
-                html += '</tbody></table><div class="hc-note">«Нужно» — потери самого трудного кольца контура, «Насос» — что он даёт на этом расходе. Запас от ×' + f2(res.reserve) + ' считается достаточным (так же проверяется насос разводки); у тёплого пола запас 15 % уже заложен в «Нужно». Проверка смету не меняет: подсказывает, где слабо.</div>';
-                body.innerHTML = html;
-            }
-            box.style.display = 'block';
+            let html = '<div class="hc-card"><div class="hc-sum hc-' + state + '">'
+                + (c.fail ? 'Гидравлика: не хватает напора (контуров: ' + c.fail + ')'
+                    : c.tight ? 'Гидравлика: впритык (контуров: ' + c.tight + ')'
+                    : 'Гидравлика: напора хватает на всех контурах') + '</div>';
+            if (res.scheme) html += '<div class="hc-note">Схема: ' + esc(res.scheme.text) + '.</div>';
+            if (!s.detailedRooms) html += '<div class="hc-note">Быстрый расчёт: приборы и петли оценены по площади. Точнее считает режим «По комнатам».</div>';
+            html += '<table class="hc-table"><thead><tr><th>Контур</th><th>G, м³/ч</th><th>Нужно, м</th><th>Насос, м</th><th>Запас</th></tr></thead><tbody>';
+            res.rows.forEach(r => {
+                html += '<tr class="hc-' + r.verdict + '"><td>' + esc(r.title) + '</td><td>' + f2(r.flow) + '</td><td>' + f1(r.need)
+                    + '</td><td>' + f1(r.have) + '</td><td>' + (r.k == null ? '—' : (r.k > 20 ? '>×20' : '×' + f1(r.k))) + ' <b>' + esc(r.verdictRu) + '</b></td></tr>';
+                const extra = [];
+                if (r.pump) extra.push(esc(r.pump));
+                if (r.advice) extra.push(esc(r.advice));
+                r.flags.forEach(fl => extra.push(esc(fl)));
+                if (extra.length) html += '<tr class="hc-more"><td colspan="5">' + extra.join('<br>') + '</td></tr>';
+            });
+            html += '</tbody></table><div class="hc-note">«Нужно» — потери самого трудного кольца контура, «Насос» — что он даёт на этом расходе. Запас от ×' + f2(res.reserve) + ' считается достаточным (так же проверяется насос разводки); у тёплого пола запас 15 % уже заложен в «Нужно». Проверка смету не меняет: подсказывает, где слабо.</div></div>';
+            box.innerHTML = html;
+            box.style.display = '';
         } catch (e) {
+            box.innerHTML = '';
             box.style.display = 'none';
         }
     },
