@@ -212,6 +212,30 @@
   .wz-do { margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .wz-do .tx { flex: 1 1 360px; color: var(--text-main); font-size: 13.5px; line-height: 1.45; }
   .wz-do .tx b { color: #fff; }
+  /* карточка шага в стиле ИИ-ассистента: свечение, значок ✦, чипы-подсказки */
+  .wz-do { padding: 10px 12px; border-radius: 12px; border: 1px solid rgba(124,140,255,.35);
+           background: linear-gradient(110deg, rgba(99,102,241,.16), rgba(56,189,248,.08) 60%, rgba(168,85,247,.10));
+           box-shadow: 0 0 0 1px rgba(255,255,255,.03) inset, 0 4px 18px rgba(99,102,241,.12); }
+  .wz-ai { flex: 1 1 360px; display: flex; gap: 11px; align-items: flex-start; min-width: 0; }
+  .wz-ai .ai-ic { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+                  font-size: 15px; color: #fff; background: linear-gradient(135deg, #6366f1, #a855f7 55%, #38bdf8);
+                  box-shadow: 0 2px 10px rgba(124,92,255,.45); animation: aipulse 2.8s ease-in-out infinite; }
+  .wz-ai .ai-body { min-width: 0; }
+  .wz-ai .ai-h { color: var(--text-main); font-size: 14px; line-height: 1.4; font-weight: 500; }
+  .wz-ai .ai-h b { color: inherit; }
+  .wz-ai .ai-step { display: inline-block; margin-right: 8px; padding: 1px 9px; border-radius: 10px; font-size: 11.5px;
+                    font-weight: 700; letter-spacing: .02em; color: #c7d2fe; background: rgba(99,102,241,.28); vertical-align: 1px; }
+  .wz-ai .ai-tips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+  .wz-ai .ai-tip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: 14px;
+                   font-size: 12px; color: var(--text-sec); background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); }
+  .wz-ai .ai-tip i { font-style: normal; font-weight: 600; font-size: 11.5px; padding: 1px 8px; border-radius: 10px;
+                     color: var(--text-main); background: rgba(255,255,255,.10); }
+  @keyframes aipulse { 0%, 100% { box-shadow: 0 2px 10px rgba(124,92,255,.45); } 50% { box-shadow: 0 2px 16px rgba(56,189,248,.7); } }
+  @media (prefers-reduced-motion: reduce) { .wz-ai .ai-ic { animation: none; } }
+  html.ufh.light .wz-do { background: linear-gradient(110deg, rgba(99,102,241,.08), rgba(56,189,248,.05) 60%, rgba(168,85,247,.06)); }
+  html.ufh.light .wz-ai .ai-step { color: #4338ca; background: rgba(99,102,241,.14); }
+  html.ufh.light .wz-ai .ai-tip { background: rgba(0,0,0,.03); border-color: rgba(0,0,0,.09); }
+  html.ufh.light .wz-ai .ai-tip i { background: rgba(0,0,0,.07); }
   .wz-do button.go { font-size: 13.5px; padding: 6px 16px; }
   /* «ИИ читает план»: карточка по центру, пока модель отвечает */
   #scanbox { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%); z-index: 80;
@@ -242,7 +266,7 @@
     .wz-ar { display: none; }
     .wz-st:not(.cur) { font-size: 0; padding: 4px; }
     .wz-st:not(.cur) .n { margin-right: 0; font-size: 11px; }
-    .wz-do .tx { flex: 1 1 100%; font-size: 14px; }
+    .wz-do .tx, .wz-ai { flex: 1 1 100%; font-size: 14px; }
     .wz-do button { flex: 1 1 auto; }
     .pj-head .sub { display: none; }
   }
@@ -6096,32 +6120,43 @@ function wzSummary() {
   return { plain: plain, floors: floors, over: over,
     html: '<b>Всё готово:</b> ' + plain + (floors > 1 ? ' (этажей: ' + floors + ')' : '') + '. ' +
       (over ? 'Калькулятор считает два этажа — третий и выше в смету не попадут. ' : '') +
-      'Нажмите «Готово — в смету»: комнаты перейдут в расчёт, раскладка — в смету и КП.' + lack };
+      lack };
+}
+
+var RAD_TIPS = [['Клик по значку', 'убрать'], ['Клик у окна', 'добавить'], ['ПКМ по прибору', 'развернуть'],
+  ['Пробел', 'повернуть под курсором'], ['Точка', 'подключение по модели'], ['Мышью', 'двигать коллектор']];
+
+/** Карточка «что делать на шаге» в стиле ИИ-ассистента: бейдж шага, короткая фраза, подсказки-чипы, кнопки. */
+function wzDoHtml(ci, n, b) {
+  var tips = (b.tips || []).map(function (t) { return '<span class="ai-tip"><i>' + t[0] + '</i>' + t[1] + '</span>'; }).join('');
+  return '<div class="wz-do"><div class="wz-ai"><span class="ai-ic">✦</span><div class="ai-body">' +
+    '<div class="ai-h"><span class="ai-step">Шаг ' + (ci + 1) + ' из ' + n + '</span>' + b.tx + '</div>' +
+    (tips ? '<div class="ai-tips">' + tips + '</div>' : '') + (b.diag || '') + '</div></div>' +
+    (b.acts || '') + (b.noNext ? '' : '<button class="go" onclick="' + (b.nextFn || 'wzNext()') + '">' + (b.next || 'Дальше →') + '</button>') + '</div>';
 }
 
 /** Что сказать и какие кнопки показать на шаге. */
 function wzBody(id) {
   var B = function (fn, t, cls) { return '<button class="' + (cls || '') + '" onclick="' + fn + '">' + t + '</button>'; };
   if (id === 'plan') return { noNext: true, acts: B("wzGo('plan')", 'Загрузить план', 'go'),
-    tx: 'Загрузите план этажа — фото, скан или PDF. Масштаб и комнаты система найдёт сама.' };
+    tx: 'Загрузите план этажа — масштаб и комнаты найду сама.',
+    tips: [['Фото', 'JPG, PNG'], ['Скан', 'любой'], ['PDF', 'страница с планом']] };
   if (id === 'scale' && SCAN_BUSY[cur]) return { noNext: true, acts: B("setMode('scale')", 'Задать вручную'),
-    tx: '<b>Ищу масштаб…</b> Читаю размеры на плане, это до минуты. Можно не ждать и задать его вручную.' };
+    tx: '<b>Ищу масштаб…</b> Читаю размеры на плане, до минуты.', tips: [['Не хотите ждать', 'задайте вручную']] };
   if (id === 'scale') return { noNext: true, acts: B("setMode('scale')", 'Задать масштаб', 'go') + B('autoScale()', 'Подобрать ещё раз'),
-    tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане два края отрезка известной длины — например, дверной проём 0,9 м.' + scanDiagHtml() };
+    tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане отрезок известной длины.',
+    tips: [['2 клика', 'по краям отрезка'], ['Например', 'дверной проём 0,9 м']], diag: scanDiagHtml() };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B('wzRect()', 'Обвести рамкой'),
-    tx: 'Проверьте комнаты в списке справа и впишите названия — по ним комнаты перейдут в расчёт. ' +
-      'Лишнюю уберите ✕. Комната не нашлась — обведите её рамкой.' };
+    tx: 'Проверьте найденные комнаты и впишите названия — по ним они перейдут в расчёт.',
+    tips: [['✕', 'убрать лишнюю'], ['«Обвести рамкой»', 'если комната не нашлась']] };
   if (id === 'tp') return { acts: B('ufhCold()', 'Без обогрева') + B("setMode('coll')", 'Переставить коллектор'),
-    tx: 'Кликните по комнатам, где нужен тёплый пол, — на плане или галочкой в списке справа. Петли разложатся ' +
-      'сами. Лестницу, ванну, кухонный остров обведите кнопкой «Без обогрева». Коллектор встаёт у стены ' +
-      'котельной — его можно перетащить мышью, а правый клик по нему (или R над ним) поворачивает на 90°.' };
-  if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('radcoll')", 'Переставить коллектор радиаторов'),
-    tx: 'Радиаторы встают под найденными окнами. Лишний уберите кликом по значку, недостающий добавьте ' +
-      'кликом у окна. Точка на приборе — подключение по модели из сметы (обычно правое нижнее); ' +
-      'правый клик по прибору — развернуть. Прибор и коллектор можно повернуть: пробел, пока ' +
-      'курсор над ним (у коллектора — ещё и правый клик). Трассы идут от коллектора радиаторов у стены ' +
-      'котельной — его можно перетащить мышью.' };
-  return { next: 'Готово — в смету', tx: wzSummary().html };
+    tx: 'Отметьте комнаты с тёплым полом — петли разложатся сами.',
+    tips: [['Клик по комнате', 'включить / выключить'], ['«Без обогрева»', 'лестница, ванна, остров'],
+      ['Мышью', 'двигать коллектор'], ['ПКМ или R', 'повернуть на 90°']] };
+  if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('radcoll')", 'Переставить коллектор радиаторов') + B('radRoutesReset()', 'Автотрассы'),
+    tx: 'Радиаторы поставлены под окнами — проверьте расстановку.', tips: RAD_TIPS };
+  return { next: 'Готово — в смету', tx: wzSummary().html,
+    tips: [['Комнаты', 'уйдут в расчёт'], ['Раскладка', 'попадёт в смету и КП']] };
 }
 
 function wzRender(box) {
@@ -6151,8 +6186,7 @@ function wzRender(box) {
   });
   h += '</div>';
   var b = wzBody(c);
-  h += '<div class="wz-do"><span class="tx"><b>Шаг ' + (ci + 1) + ' из ' + L.length + '.</b> ' + b.tx + '</span>' +
-    (b.acts || '') + (b.noNext ? '' : '<button class="go" onclick="wzNext()">' + (b.next || 'Дальше →') + '</button>') + '</div>';
+  h += wzDoHtml(ci, L.length, b);
   if (upState && upState.run) {
     h += '<div class="wz-up">Отправляю план на сервер: ' + (upState.done + 1) + ' из ' + upState.total +
       ' — ' + Math.round(upState.pct * 100) + '%</div>';
@@ -6301,30 +6335,34 @@ function pjBody(id) {
   var f = F();
   if (id === 'plan') return { noNext: true, acts: B("pjGo('plan')", 'Загрузить план', 'go'),
     tx: (pjTodo().fi !== cur && DATA.floors.length > 1
-      ? 'Этот этаж пока пуст. Если отопления на нём нет — ничего делать не нужно, для выпуска достаточно одного размеченного этажа. Иначе загрузите его план. '
-      : 'Загрузите план этажа — фото, скан или PDF. ') + 'Масштаб и комнаты система найдёт сама.' };
+      ? 'Этот этаж пока пуст. Нет отопления — пропустите: для выпуска хватит одного размеченного этажа.'
+      : 'Загрузите план этажа — масштаб и комнаты найду сама.'),
+    tips: [['Фото', 'JPG, PNG'], ['Скан', 'любой'], ['PDF', 'страница с планом']] };
   if (id === 'scale' && SCAN_BUSY[cur]) return { noNext: true, acts: B("setMode('scale')", 'Задать вручную'),
-    tx: '<b>Ищу масштаб…</b> Читаю размеры на плане, это до минуты. Можно не ждать и задать его вручную.' };
+    tx: '<b>Ищу масштаб…</b> Читаю размеры на плане, до минуты.', tips: [['Не хотите ждать', 'задайте вручную']] };
   if (id === 'scale') return { noNext: true, acts: B('autoScale()', 'Подобрать ещё раз') + B("setMode('scale')", 'Задать вручную'),
-    tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане два края отрезка известной длины — например, дверной проём 0,9 м.' + scanDiagHtml() };
+    tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане отрезок известной длины.',
+    tips: [['2 клика', 'по краям отрезка'], ['Например', 'дверной проём 0,9 м']], diag: scanDiagHtml() };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B("document.getElementById('ztype').value='tp';setMode('room')", 'Обвести кликом'),
-    tx: 'Нажмите «Найти комнаты» — контуры найдутся по стенам плана и сопоставятся с комнатами расчёта: тёплый пол, котельная и санузлы отметятся сами. ' +
-      'Проверьте зоны в списке справа, лишнюю уберите ✕. Комната не нашлась — «Обвести кликом» (клик внутри комнаты).' };
+    tx: 'Нажмите «Найти комнаты» — контуры найдутся по стенам и сопоставятся с расчётом.',
+    tips: [['Авто', 'тёплый пол, котельная, санузлы'], ['✕', 'убрать лишнюю зону'], ['«Обвести кликом»', 'если комната не нашлась']] };
   if (id === 'tp') return { acts: B("document.getElementById('ztype').value='tp';setMode('room')", 'Зона: клик по комнате') + B('ufhCold()', 'Без обогрева'),
-    tx: 'Отметьте комнаты с тёплым полом: кликните по комнате на плане (если «Найти комнаты» уже отметило их по расчёту — проверьте). ' +
-      'Лестницу, ванну, кухонный остров обведите кнопкой «Без обогрева».' };
+    tx: 'Отметьте комнаты с тёплым полом — проверьте, что нашлось само.',
+    tips: [['Клик по комнате', 'включить зону'], ['«Без обогрева»', 'лестница, ванна, остров']] };
   if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('rad')", 'Радиатор вручную') +
       B('radTurnLast(-45)', '↺ 45°') + B('radTurnLast(45)', '↻ 45°'),
-    tx: 'Радиаторы встают под найденными окнами. Лишний уберите кликом по значку, недостающий добавьте кликом у окна.' };
+    tx: 'Радиаторы поставлены под окнами — проверьте расстановку.', tips: RAD_TIPS };
   if (id === 'coll') return { acts: B("setMode('coll')", 'Коллектор ТП') + B("setMode('radcoll')", 'Коллектор радиаторов'),
-    tx: 'Коллекторы встают у стены котельной сами. Чтобы переставить, нажмите кнопку и кликните в нужную комнату — коллектор прижмётся к стене. ' +
-      'Правый клик по нему (или R над ним) поворачивает на 90°.' };
+    tx: 'Коллекторы встали у стены котельной сами — при необходимости переставьте.',
+    tips: [['Кнопка + клик в комнате', 'переставить'], ['ПКМ или R', 'повернуть на 90°']] };
   if (id === 'boiler') return { acts: (boilerLookalike() ? B('makeBoiler()', 'Сделать «' + boilerLookalike().name + '» котельной', 'go') : '') +
       B("document.getElementById('ztype').value='boiler';setMode('room')", 'Отметить котельную кликом'),
-    tx: (boilerLookalike() ? 'Зона «' + boilerLookalike().name + '» уже обведена, но как другой тип — нажмите первую кнопку. ' : '') + '<b>Обязательно:</b> отметьте котельную — кликните по её комнате на плане (котельная отмечается только на 1 этаже). По ней собирается компоновка котельной, ' +
-      'и без неё проект не выпускается. На этаже она одна.' };
+    tx: '<b>Обязательно:</b> отметьте котельную — без неё проект не выпускается.' +
+      (boilerLookalike() ? ' Зона «' + boilerLookalike().name + '» уже обведена, но как другой тип — нажмите первую кнопку.' : ''),
+    tips: [['Клик по комнате', 'отметить'], ['Только 1 этаж', 'и одна на этаж']] };
   if (id === 'wc') return { acts: B("document.getElementById('ztype').value='wc';setMode('room')", 'Санузел кликом') + B('toggleFixAuto()', 'Приборы: из расчёта'),
-    tx: 'Кликните по санузлам и впишите их имена как в расчёте — приборы расставятся сами по карточкам санузлов.' };
+    tx: 'Отметьте санузлы — приборы расставятся сами.',
+    tips: [['Клик по комнате', 'санузел'], ['Имя', 'как в расчёте']] };
   if (id === 'release') {
     var checks = pjChecks(), ownMiss = [];
     var L = pjSteps().filter(function (s) { return s.id !== 'release'; });
@@ -6361,8 +6399,8 @@ function pjRender(box) {
       '<button class="go" onclick="pjDoTodo()">' + td.btn + '</button></div>';
   }
   var b = pjBody(c);
-  h += '<div class="wz-do"><span class="tx"><b>Шаг ' + (ci + 1) + ' из ' + L.length + '.</b> ' + b.tx + '</span>' +
-    (b.acts || '') + (b.noNext ? '' : '<button class="go" onclick="pjNext()">' + (b.next || 'Дальше →') + '</button>') + '</div>';
+  b.nextFn = 'pjNext()';
+  h += wzDoHtml(ci, L.length, b);
   if (MODE_BAR[mode]) h += '<div class="wz-up" style="color:#9ccbe8">' + MODE_BAR[mode] + '</div>';
   if (upState && upState.run) {
     h += '<div class="wz-up">Отправляю план на сервер: ' + (upState.done + 1) + ' из ' + upState.total +
