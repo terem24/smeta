@@ -48867,19 +48867,38 @@ const app = {
         if (this.state.hydroAutoFix === false) return null;
         if (this.boilerSchemeEff() === 'direct') return null;
         const h = this.radHydro;
-        if (!h || !h.parts || !h.parts.length || !(h.head > 0)) return null;
-        const best = h.pump || (h.pumps || []).reduce((a, p) => (!a || p.avail > a.avail) ? p : a, null);
-        if (!best || best.avail >= h.head) return null;
-        if (!h.hasGroup) {
-            return { force: { radGroup: true },
-                text: 'Радиаторы: кольцо не тянуло насос котла — добавлена насосная группа на коллекторе',
-                tried: 'Насосная группа радиаторов запаса не добавила — проверьте диаметр подводки и нагрузку' };
+        const best = h && h.parts && h.parts.length && h.head > 0
+            ? (h.pump || (h.pumps || []).reduce((a, p) => (!a || p.avail > a.avail) ? p : a, null)) : null;
+        if (best && best.avail < h.head) {
+            if (!h.hasGroup) {
+                return { kind: 'rad', force: { radGroup: true },
+                    text: 'Радиаторы: кольцо не тянуло насос котла — добавлена насосная группа на коллектор',
+                    tried: 'Насосная группа радиаторов запаса не добавила — проверьте диаметр подводки и нагрузку' };
+            }
+            const n = parseInt(h.branches, 10) || 1;
+            if (n < 4) return { kind: 'rad', force: { radBranches: n + 1 },
+                text: 'Радиаторы: ни один насос группы не тянул кольцо — веток (групп) стало ' + (n + 1),
+                tried: 'Ещё одна ветка радиаторов запаса почти не добавила: держит не подводка, а луч с клапаном прибора' };
         }
-        const n = parseInt(h.branches, 10) || 1;
-        if (n >= 4) return null;
-        return { force: { radBranches: n + 1 },
-            text: 'Радиаторы: ни один насос группы не тянул кольцо — веток (групп) стало ' + (n + 1),
-            tried: 'Ещё одна ветка радиаторов запаса почти не добавила: держит не подводка, а луч с клапаном прибора' };
+        // Котловой контур: встроенный насос котла не тянет до гидроразделителя со своим насосом. Переводим
+        // котёл на схему «Со стрелкой» — контур котла отделяется, и его насос гонит только свой контур.
+        // Только при автоподборе схемы (монтажник сам выбрал «Без стрелки» — там не трогаем).
+        const b = this._boilerLoopHydro;
+        if (b && b.confirmed && b.need > 0 && b.have / b.need < 1 && this.boilerSchemeMode() === 'auto') {
+            return { kind: 'boiler', force: { boilerHydro: true },
+                text: 'Котловой контур: встроенный насос котла не тянул контур — схема переведена «Со стрелкой»',
+                tried: 'Со стрелкой котловой контур тоже не сходится — проверьте диаметр трубы обвязки котла' };
+        }
+        return null;
+    },
+
+    /** Запас напора контура, который исправляли: k = насос / нужно (для отката, как hydroRadRatio). */
+    hydroFixRatio: function (kind) {
+        if (kind === 'boiler') {
+            const b = this._boilerLoopHydro;
+            return (b && b.need > 0) ? b.have / b.need : 0;
+        }
+        return this.hydroRadRatio();
     },
 
     toggleHydroAutoFix: function (event) {
@@ -73783,6 +73802,9 @@ const app = {
         // Сам выбор в state сохраняется и вернётся вместе с подробным режимом.
         if (!this.state.detailedRooms) return 'auto';
         const v = this.state.boilerScheme;
+        // Автоисправление по проверке гидравлики: котловой контур не тянет — переводим на «Со стрелкой»
+        // (только если монтажник сам не выбрал «Без стрелки»; ручной выбор не перебиваем)
+        if (v !== 'direct' && v !== 'hydro' && this._hcForce && this._hcForce.boilerHydro) return 'hydro';
         return (v === 'direct' || v === 'hydro') ? v : 'auto';
     },
 
@@ -78429,6 +78451,7 @@ const app = {
             // Каждый пересчёт начинает без исправлений: они выводятся из результата этого же расчёта
             this._hcForce = {};
             this._hcApplied = [];
+            this._hcAppliedKinds = [];
             this._hcTried = null;
             let _res = this._renderInner(false);
             // Проверка гидравлики исправляет схему по результату: кольцо радиаторов не тянет насос —
@@ -78437,21 +78460,23 @@ const app = {
             for (let _i = 0; _i < 2; _i++) {
                 const _fix = this.hydroNextFix();
                 if (!_fix) break;
-                const _before = this.hydroRadRatio(), _prev = Object.assign({}, this._hcForce);
+                const _before = this.hydroFixRatio(_fix.kind), _prev = Object.assign({}, this._hcForce);
                 Object.assign(this._hcForce, _fix.force);
                 _res = this._renderInner(false);
-                if (this.hydroRadRatio() > _before * 1.02) { this._hcApplied.push(_fix.text); continue; }
+                if (this.hydroFixRatio(_fix.kind) > _before * 1.02) {
+                    this._hcApplied.push(_fix.text); this._hcAppliedKinds.push(_fix.kind); continue;
+                }
                 this._hcForce = _prev;
                 _res = this._renderInner(false);
                 this._hcTried = _fix.tried;
                 break;
             }
-            // Групп и веток добавили, а кольцо всё равно не тянет — деньги потрачены зря: возвращаем схему
-            // как была, а в карточке остаётся предупреждение с советом
-            if (this._hcApplied.length && this.hydroRadRatio() < 1) {
+            // Исправление добавили, а контур всё равно не тянет — возвращаем схему как была и оставляем совет
+            if (this._hcApplied.length && this._hcAppliedKinds.some(k => this.hydroFixRatio(k) < 1)) {
                 this._hcForce = {};
                 this._hcApplied = [];
-                this._hcTried = 'Добавление групп и веток кольцо радиаторов не вытянуло — схему оставили как есть. Проверьте диаметр подводки и мощность приборов.';
+                this._hcAppliedKinds = [];
+                this._hcTried = 'Исправление схемы контур не вытянуло — схему оставили как была. Проверьте диаметры и мощность приборов.';
                 _res = this._renderInner(false);
             }
             return _res;
