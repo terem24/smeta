@@ -511,6 +511,17 @@ h3 {
     color: var(--text-sec);
 }
 .fine-tune.open .fine-tune-arrow { transform: rotate(90deg); }
+/* Самостоятельная настройка (не «тонкая»): заголовок как у соседних <h4> панели */
+.fine-tune-lg .fine-tune-head {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: normal;
+    color: var(--text-main);
+    border-top: 0;
+    padding: 0 0 6px;
+}
+.fine-tune-lg .fine-tune-sum { text-align: right; font-size: 12px; }
 .fine-tune-body { padding-top: 10px; }
 .fine-tune-body > .control-item:last-child { margin-bottom: 0; }
 
@@ -14902,8 +14913,7 @@ body.object-flat #blk_mat_house {
 /* Тройниковая или коллекторная — это про разводку от коллектора. На стояках
    выбирать нечего, поэтому переключатель прячем вместе с его заголовком: он
    отдельным <h4> и сам по себе не скрывается. */
-body.object-flat.on-riser #blk_rad_scheme,
-body.object-flat.on-riser #lbl_rad_scheme {
+body.object-flat.on-riser #ft_radscheme {
     display: none !important;
 }
 

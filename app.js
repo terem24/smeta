@@ -46772,7 +46772,7 @@ const app = {
             setCls(t, 'pg-closed', closed);
             els.forEach(e => setCls(e, 'pg-collapsed', closed));
             // Переключатели «добавить в смету» — карточками, чтобы отличались от выбора из вариантов
-            if (idx === 2 || idx === 3) {
+            if (idx === 2 || idx === 3 || idx === 4) {
                 els.forEach(e => {
                     if (e.classList.contains('toggle-item')) setCls(e, 'pg-card', true);
                     else if (e.classList.contains('pg-tiles')) Array.from(e.children).forEach(c => { if (c.classList.contains('toggle-item')) setCls(c, 'pg-card', true); });
@@ -46832,13 +46832,24 @@ const app = {
     // Свёрнутые группы панели. По умолчанию открыт только «Дом» (группа 1), остальные свёрнуты.
     // Один раз сбрасываем сохранённое состояние под новое умолчание (ключ версии hc_pg_v4).
     _pgCollapsed: function () {
-        const DEF = [2, 3, 4, 5];
+        const DEF = [2, 3, 4, 5, 6];
         try {
             let a = JSON.parse(localStorage.getItem('hc_pg_closed') || 'null');
             if (!localStorage.getItem('hc_pg_v4')) {
                 a = DEF;
                 localStorage.setItem('hc_pg_closed', JSON.stringify(a));
                 localStorage.setItem('hc_pg_v4', '1');
+                localStorage.setItem('hc_pg_v5', '1');
+            }
+            // Между «Автоматикой» и «Экономикой» встала группа 5 «Добавить в смету»:
+            // «Экономика» стала шестой, её прежнее состояние переносим с 5 на 6,
+            // новая группа свёрнута по умолчанию.
+            if (!localStorage.getItem('hc_pg_v5') && Array.isArray(a)) {
+                const was5 = a.includes(5);
+                a = a.filter(x => x !== 5 && x !== 6);
+                if (was5) a.push(5, 6); else a.push(5);
+                localStorage.setItem('hc_pg_closed', JSON.stringify(a));
+                localStorage.setItem('hc_pg_v5', '1');
             }
             return Array.isArray(a) ? a : DEF;
         } catch (e) { return DEF; }
@@ -70263,7 +70274,8 @@ const app = {
         eng: ['blk_boiler_dt', 'lbl_rad_regime', 'blk_rad_regime', 'blk_step_floor1', 'blk_step_floor2', 'blk_ufh_dt'],
         hw: ['blk_tank_pump_wrap'],
         snow: ['blk_snow_pipe_row'],
-        pump: ['rooms_pump_plan']
+        pump: ['rooms_pump_plan'],
+        radscheme: ['blk_rad_scheme']
     },
     // Открыто ли пункт тонкой настройки. Только на время сессии: после перезагрузки все пункты свёрнуты.
     fineTuneOpen: function () {
@@ -70300,6 +70312,7 @@ const app = {
         }
         if (key === 'hw') return this.tankLoadSchemeEff() === 'pump' ? 'загрузка насосной группой' : 'загрузка 3-ходовым клапаном';
         if (key === 'snow') return s.snowPipe === 'thick' ? 'труба 20×2.8' : 'труба 20×2.0';
+        if (key === 'radscheme') return s.radConnectionScheme === 'tee' ? 'Тройниковая' : 'Коллекторная';
         return '';
     },
     syncFineTune: function () {
@@ -70586,10 +70599,6 @@ const app = {
         const radSchemeBlock = document.getElementById('blk_rad_scheme');
         const radSchemeOn = this.state.detailedRooms && hasRad;
         if (radSchemeBlock) radSchemeBlock.style.display = radSchemeOn ? 'block' : 'none';
-        // Заголовок вынесен из блока отдельным <h4> (как у «Теплоносителя») —
-        // прячем его вместе с вкладками, иначе он висит без содержимого.
-        const radSchemeLbl = document.getElementById('lbl_rad_scheme');
-        if (radSchemeLbl) radSchemeLbl.style.display = radSchemeOn ? 'block' : 'none';
         const isTeeScheme = this.state.radConnectionScheme === 'tee';
         const radSchemeManifoldTab = document.getElementById('rad_scheme_manifold');
         const radSchemeTeeTab = document.getElementById('rad_scheme_tee');

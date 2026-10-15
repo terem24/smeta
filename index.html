@@ -193,7 +193,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=5.36">
+    <link rel="stylesheet" href="style.css?v=5.37">
     <link rel="stylesheet" href="hydro_check.css?v=1.6">
 
     <script src="supabase-js.js" defer></script>
@@ -225,7 +225,7 @@
     <script src="short_names.js?v=1.2" defer></script>
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.1" defer></script>
-    <script src="app.js?v=12.59" defer></script>
+    <script src="app.js?v=12.60" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1455,11 +1455,22 @@
                  к чужому блоку, а не как самостоятельная настройка. Прячется
                  вместе со своими вкладками (см. syncUI), иначе в быстром режиме
                  и без радиаторов остаётся висеть без содержимого. -->
-            <h4 id="lbl_rad_scheme" style="display:none; margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Схема разводки радиаторов</h4>
-            <div class="control-item" id="blk_rad_scheme" style="display:none; margin-top: 0; margin-bottom: 16px;">
-                <div class="tabs" id="rad_scheme_tabs">
-                    <div class="tab" id="rad_scheme_tee" onclick="app.setRadConnectionScheme('tee')">Тройниковая</div>
-                    <div class="tab active" id="rad_scheme_manifold" onclick="app.setRadConnectionScheme('manifold')">Коллекторная</div>
+            <!-- Свёрнута по умолчанию (по умолчанию «Коллекторная»): большинство не
+                 меняет, а в заголовке видно выбранное. Разворот — app.toggleFineTune('radscheme'),
+                 сводку даёт fineTuneSummary. -->
+            <div class="fine-tune fine-tune-lg" id="ft_radscheme" style="display:none;">
+                <div class="fine-tune-head" onclick="app.toggleFineTune('radscheme')" role="button" tabindex="0">
+                    <span class="fine-tune-title" id="lbl_rad_scheme">Схема разводки радиаторов</span>
+                    <span class="fine-tune-sum" id="ft_radscheme_sum"></span>
+                    <span class="fine-tune-arrow">▸</span>
+                </div>
+                <div class="fine-tune-body" id="ft_radscheme_body" style="display:none;">
+                    <div class="control-item" id="blk_rad_scheme" style="display:none; margin-top: 0; margin-bottom: 0;">
+                        <div class="tabs" id="rad_scheme_tabs">
+                            <div class="tab" id="rad_scheme_tee" onclick="app.setRadConnectionScheme('tee')">Тройниковая</div>
+                            <div class="tab active" id="rad_scheme_manifold" onclick="app.setRadConnectionScheme('manifold')">Коллекторная</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1568,112 +1579,6 @@
 
 
             
-            <div class="pg-tiles" id="pg_tiles_end" style="margin:12px 0;">
-<div class="control-item toggle-item pg-card" id="blk_buffer" style="display:none;">
-                <div class="label-row" style="position:relative;">
-                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Буферная ёмкость<span class="ui-emo"> 🔋</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel" id="buffer_tip">Тепловой накопитель STOUT STT: ночью электрокотёл греет воду по дешёвому тарифу, днём тепло берётся из ёмкости.</div></span></span>
-                    <label class="switch"><input type="checkbox" id="chk_buffer"
-                            onchange="app.toggleBuffer(this.checked)"><span class="slider"></span></label>
-                </div>
-                <div id="blk_buffer_box"
-                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="lbl" style="font-size:12px;">Объём, л</span>
-                        <div class="stepper" style="width:124px;">
-                            <button class="step-btn" onclick="app.stepBufferVol(-1)">−</button>
-                            <div class="step-val" id="val_buffer_vol">—</div>
-                            <button class="step-btn" onclick="app.stepBufferVol(1)">+</button>
-                        </div>
-                    </div>
-                    <div id="buffer_vol_reset" style="display:none; text-align:right;">
-                        <span onclick="app.resetBufferVol()"
-                            style="font-size:10px; color:var(--primary); cursor:pointer; text-decoration:underline dotted;">вернуть автоподбор объёма</span>
-                    </div>
-                    <div id="buffer_body"></div>
-                </div>
-            </div>
-<div class="control-item toggle-item pg-card" id="blk_snow_header" style="display:none;">
-                <div class="label-row"><span style="display:flex; align-items:center; gap:4px; min-width:0;"><span class="lbl">Снеготаяние</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Подогрев дорожек и площадок уличным контуром на гликоле.</div></span></span><label class="switch"><input
-                            type="checkbox" id="chk_snow" onchange="app.toggleSnowMelt(this.checked, event)"><span
-                            class="slider"></span></label></div>
-                <div id="blk_snow_opts"
-                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
-                    <div id="snow_zones_list"></div>
-                    <div style="border-top:1px solid #E5E7EB; padding-top:8px;">
-                        <button
-                            style="margin: 0 auto; display: block; width: fit-content; padding: 5px 16px; font-size: 11px; font-weight: 700; background: var(--primary-light); border: 1px dashed var(--primary); color: var(--primary); border-radius: 20px; cursor: pointer; transition: 0.2s;"
-                            onclick="app.addSnowZone()"
-                            onmouseover="this.style.background='var(--primary)'; this.style.color='#fff';"
-                            onmouseout="this.style.background='var(--primary-light)'; this.style.color='var(--primary)';">+
-                            Добавить участок</button>
-                    </div>
-                    <div id="snow_summary"
-                        style="display:none; border-top:1px solid #E5E7EB; padding-top:4px; font-size:11px; line-height:1.5; color:var(--text-sec);">
-                    </div>
-                    <!-- position:relative обязателен: .tip-panel-wrap снимает позиционирование
-                         с самой обёртки подсказки, чтобы та привязалась к строке и не уезжала
-                         за левый край узкой панели. Без него точкой отсчёта становится
-                         случайный предок, и подсказка не появляется вовсе. -->
-                    <div style="border-top:1px solid #E5E7EB; padding-top:8px; position:relative;">
-                        <span class="lbl"
-                            style="font-size:12px; display:flex; align-items:center; gap:4px; margin-bottom:6px;">Управление<span
-                                class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0"
-                                    role="button" aria-label="Подробнее">i</i>
-                                <div class="tooltip-content tip-panel"><b>Датчик осадков.</b> Контур включается сам по снегу и холоду, после держит выбег до просыхания.<div class="tip-p"><b>Ручной.</b> Датчика и кабеля в смете нет, узел дешевле; включать самому. В обоих режимах контур держит дежурные +5…+8 °C.</div></div>
-                            </span></span>
-                        <div class="tabs" id="snow_ctrl_tabs" style="font-size:11px;">
-                            <div class="tab active" id="snow_ctrl_sensor" onclick="app.setSnowCtrl('sensor')">Датчик
-                                осадков</div>
-                            <div class="tab" id="snow_ctrl_manual" onclick="app.setSnowCtrl('manual')">Ручной</div>
-                        </div>
-                    </div>
-                    <div class="fine-tune" id="ft_snow">
-                        <div class="fine-tune-head" onclick="app.toggleFineTune('snow')" role="button" tabindex="0">
-                            <span class="fine-tune-title">Тонкая настройка</span>
-                            <span class="fine-tune-sum" id="ft_snow_sum"></span>
-                            <span class="fine-tune-arrow">▸</span>
-                        </div>
-                        <div class="fine-tune-body" id="ft_snow_body" style="display:none;">
-                        <div id="blk_snow_pipe_row" style="position:relative;">
-                            <span class="lbl"
-                                style="font-size:12px; display:flex; align-items:center; gap:4px; margin-bottom:6px;">Труба
-                                петель<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0"
-                                        role="button" aria-label="Подробнее">i</i>
-                                    <div class="tooltip-content tip-panel"><b>20х2.0 (красная).</b> Потери ниже на треть, метр дешевле, петли длиннее — меньше выходов коллектора.<div class="tip-p"><b>20х2.8 (серая).</b> Толстая стенка для проезда и работ по стяжке; петель больше. Обе переживают замерзание теплоносителя.</div></div>
-                                </span></span>
-                            <div class="tabs" id="snow_pipe_tabs" style="font-size:11px;">
-                                <div class="tab active" id="snow_pipe_thin" onclick="app.setSnowPipe('thin')">
-                                    20×2.0</div>
-                                <div class="tab" id="snow_pipe_thick" onclick="app.setSnowPipe('thick')">
-                                    20×2.8</div>
-                            </div>
-                        </div>
-                        </div>
-                    </div>
-                    <div
-                        style="position:relative; display:flex; justify-content:space-between; align-items:center; border-top:1px solid #E5E7EB; padding-top:8px;">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Учесть
-                            в мощности котла<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Нагрузка снеготаяния часто больше половины дома. Включено — котёл подбирается с ней; выключено — по дому, а контроллер гасит снеготаяние при нехватке мощности.</div></span></span><label class="switch"
-                            style="transform:scale(0.8); transform-origin:right;"><input type="checkbox"
-                                id="chk_snow_boiler" onchange="app.toggleSnowBoilerPower(this.checked)"><span
-                                class="slider"></span></label>
-                    </div>
-                </div>
-            </div>
-<div class="control-item toggle-item pg-card" id="blk_coolant_row" style="display:none;">
-                <div class="label-row" style="position:relative;">
-                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Теплоноситель</span>
-                    <label class="switch"><input type="checkbox" id="chk_coolant" onchange="app.toggleCoolantShow(this.checked, event)"><span class="slider"></span></label>
-                </div>
-            </div>
-<div class="control-item" style="margin:0; padding:0 12px 10px;" style="margin:0; padding:0 12px 10px;" id="blk_coolant_wrap" style="display:none; margin-top:-6px; margin-bottom:12px;">
-                <div class="tabs" id="blk_coolant">
-                    <div class="tab cool-tab active" data-type="water" onclick="app.setCoolant('water', event)"><span class="ui-emo">💧 </span>Вода</div>
-                    <div class="tab cool-tab" data-type="eco30" onclick="app.setCoolant('eco30', event)"><span class="ui-emo">❄️ </span>-30°C</div>
-                    <div class="tab cool-tab" data-type="pro65" onclick="app.setCoolant('pro65', event)"><span class="ui-emo">❄️ </span>-40°C</div>
-                </div>
-            </div>
-            </div>
 
             <div class="pg-title no-print" id="pg_t3" data-pg="3" onclick="app.togglePanelGroup(3)" role="button" tabindex="0" aria-label="Группа «Доп. системы и автоматика»: свернуть или развернуть"><span class="pg-num">3</span><span class="pg-name">Вода</span></div>
             <!-- Простые «добавить раздел» — плитки в два столбца; включённая раскрывается на всю ширину -->
@@ -2169,7 +2074,115 @@
                 Автоматика включена и посчитана в смете. Её настройки — в подробном режиме.
             </div>
 
-            <div class="pg-title no-print" id="pg_t5" data-pg="5" onclick="app.togglePanelGroup(5)" role="button" tabindex="0" aria-label="Группа «Экономика»: свернуть или развернуть"><span class="pg-num">5</span><span class="pg-name">Экономика</span></div>
+            <div class="pg-title no-print" id="pg_t5_extra" data-pg="5" onclick="app.togglePanelGroup(5)" role="button" tabindex="0" aria-label="Группа «Добавить в смету»: свернуть или развернуть"><span class="pg-num">5</span><span class="pg-name">Добавить в смету</span></div>
+            <div class="pg-tiles" id="pg_tiles_end" style="margin:12px 0;">
+<div class="control-item toggle-item pg-card" id="blk_buffer" style="display:none;">
+                <div class="label-row" style="position:relative;">
+                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Буферная ёмкость<span class="ui-emo"> 🔋</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel" id="buffer_tip">Тепловой накопитель STOUT STT: ночью электрокотёл греет воду по дешёвому тарифу, днём тепло берётся из ёмкости.</div></span></span>
+                    <label class="switch"><input type="checkbox" id="chk_buffer"
+                            onchange="app.toggleBuffer(this.checked)"><span class="slider"></span></label>
+                </div>
+                <div id="blk_buffer_box"
+                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="lbl" style="font-size:12px;">Объём, л</span>
+                        <div class="stepper" style="width:124px;">
+                            <button class="step-btn" onclick="app.stepBufferVol(-1)">−</button>
+                            <div class="step-val" id="val_buffer_vol">—</div>
+                            <button class="step-btn" onclick="app.stepBufferVol(1)">+</button>
+                        </div>
+                    </div>
+                    <div id="buffer_vol_reset" style="display:none; text-align:right;">
+                        <span onclick="app.resetBufferVol()"
+                            style="font-size:10px; color:var(--primary); cursor:pointer; text-decoration:underline dotted;">вернуть автоподбор объёма</span>
+                    </div>
+                    <div id="buffer_body"></div>
+                </div>
+            </div>
+<div class="control-item toggle-item pg-card" id="blk_snow_header" style="display:none;">
+                <div class="label-row"><span style="display:flex; align-items:center; gap:4px; min-width:0;"><span class="lbl">Снеготаяние</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Подогрев дорожек и площадок уличным контуром на гликоле.</div></span></span><label class="switch"><input
+                            type="checkbox" id="chk_snow" onchange="app.toggleSnowMelt(this.checked, event)"><span
+                            class="slider"></span></label></div>
+                <div id="blk_snow_opts"
+                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
+                    <div id="snow_zones_list"></div>
+                    <div style="border-top:1px solid #E5E7EB; padding-top:8px;">
+                        <button
+                            style="margin: 0 auto; display: block; width: fit-content; padding: 5px 16px; font-size: 11px; font-weight: 700; background: var(--primary-light); border: 1px dashed var(--primary); color: var(--primary); border-radius: 20px; cursor: pointer; transition: 0.2s;"
+                            onclick="app.addSnowZone()"
+                            onmouseover="this.style.background='var(--primary)'; this.style.color='#fff';"
+                            onmouseout="this.style.background='var(--primary-light)'; this.style.color='var(--primary)';">+
+                            Добавить участок</button>
+                    </div>
+                    <div id="snow_summary"
+                        style="display:none; border-top:1px solid #E5E7EB; padding-top:4px; font-size:11px; line-height:1.5; color:var(--text-sec);">
+                    </div>
+                    <!-- position:relative обязателен: .tip-panel-wrap снимает позиционирование
+                         с самой обёртки подсказки, чтобы та привязалась к строке и не уезжала
+                         за левый край узкой панели. Без него точкой отсчёта становится
+                         случайный предок, и подсказка не появляется вовсе. -->
+                    <div style="border-top:1px solid #E5E7EB; padding-top:8px; position:relative;">
+                        <span class="lbl"
+                            style="font-size:12px; display:flex; align-items:center; gap:4px; margin-bottom:6px;">Управление<span
+                                class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0"
+                                    role="button" aria-label="Подробнее">i</i>
+                                <div class="tooltip-content tip-panel"><b>Датчик осадков.</b> Контур включается сам по снегу и холоду, после держит выбег до просыхания.<div class="tip-p"><b>Ручной.</b> Датчика и кабеля в смете нет, узел дешевле; включать самому. В обоих режимах контур держит дежурные +5…+8 °C.</div></div>
+                            </span></span>
+                        <div class="tabs" id="snow_ctrl_tabs" style="font-size:11px;">
+                            <div class="tab active" id="snow_ctrl_sensor" onclick="app.setSnowCtrl('sensor')">Датчик
+                                осадков</div>
+                            <div class="tab" id="snow_ctrl_manual" onclick="app.setSnowCtrl('manual')">Ручной</div>
+                        </div>
+                    </div>
+                    <div class="fine-tune" id="ft_snow">
+                        <div class="fine-tune-head" onclick="app.toggleFineTune('snow')" role="button" tabindex="0">
+                            <span class="fine-tune-title">Тонкая настройка</span>
+                            <span class="fine-tune-sum" id="ft_snow_sum"></span>
+                            <span class="fine-tune-arrow">▸</span>
+                        </div>
+                        <div class="fine-tune-body" id="ft_snow_body" style="display:none;">
+                        <div id="blk_snow_pipe_row" style="position:relative;">
+                            <span class="lbl"
+                                style="font-size:12px; display:flex; align-items:center; gap:4px; margin-bottom:6px;">Труба
+                                петель<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0"
+                                        role="button" aria-label="Подробнее">i</i>
+                                    <div class="tooltip-content tip-panel"><b>20х2.0 (красная).</b> Потери ниже на треть, метр дешевле, петли длиннее — меньше выходов коллектора.<div class="tip-p"><b>20х2.8 (серая).</b> Толстая стенка для проезда и работ по стяжке; петель больше. Обе переживают замерзание теплоносителя.</div></div>
+                                </span></span>
+                            <div class="tabs" id="snow_pipe_tabs" style="font-size:11px;">
+                                <div class="tab active" id="snow_pipe_thin" onclick="app.setSnowPipe('thin')">
+                                    20×2.0</div>
+                                <div class="tab" id="snow_pipe_thick" onclick="app.setSnowPipe('thick')">
+                                    20×2.8</div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                    <div
+                        style="position:relative; display:flex; justify-content:space-between; align-items:center; border-top:1px solid #E5E7EB; padding-top:8px;">
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Учесть
+                            в мощности котла<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Нагрузка снеготаяния часто больше половины дома. Включено — котёл подбирается с ней; выключено — по дому, а контроллер гасит снеготаяние при нехватке мощности.</div></span></span><label class="switch"
+                            style="transform:scale(0.8); transform-origin:right;"><input type="checkbox"
+                                id="chk_snow_boiler" onchange="app.toggleSnowBoilerPower(this.checked)"><span
+                                class="slider"></span></label>
+                    </div>
+                </div>
+            </div>
+<div class="control-item toggle-item pg-card" id="blk_coolant_row" style="display:none;">
+                <div class="label-row" style="position:relative;">
+                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Теплоноситель</span>
+                    <label class="switch"><input type="checkbox" id="chk_coolant" onchange="app.toggleCoolantShow(this.checked, event)"><span class="slider"></span></label>
+                </div>
+            </div>
+<div class="control-item" style="margin:0; padding:0 12px 10px;" style="margin:0; padding:0 12px 10px;" id="blk_coolant_wrap" style="display:none; margin-top:-6px; margin-bottom:12px;">
+                <div class="tabs" id="blk_coolant">
+                    <div class="tab cool-tab active" data-type="water" onclick="app.setCoolant('water', event)"><span class="ui-emo">💧 </span>Вода</div>
+                    <div class="tab cool-tab" data-type="eco30" onclick="app.setCoolant('eco30', event)"><span class="ui-emo">❄️ </span>-30°C</div>
+                    <div class="tab cool-tab" data-type="pro65" onclick="app.setCoolant('pro65', event)"><span class="ui-emo">❄️ </span>-40°C</div>
+                </div>
+            </div>
+            </div>
+
+            <div class="pg-title no-print" id="pg_t5" data-pg="6" onclick="app.togglePanelGroup(6)" role="button" tabindex="0" aria-label="Группа «Экономика»: свернуть или развернуть"><span class="pg-num">6</span><span class="pg-name">Экономика</span></div>
             <!-- Во сколько обойдётся отопление электричеством. Условия те же, что
                  у ограничения мощности: подробный режим и включённый электрокотёл
                  (app.syncUI). Таблицу собирает app.renderElCostUI(). -->
