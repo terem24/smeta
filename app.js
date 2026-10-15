@@ -48939,9 +48939,9 @@ const app = {
         this.saveState();
     },
 
-    toggleHydroAutoFix: function (event) {
+    toggleHydroAutoFix: function (on, event) {
         if (event) event.preventDefault();
-        this.state.hydroAutoFix = (this.state.hydroAutoFix === false);
+        this.state.hydroAutoFix = !!on;
         this.render();
         this.saveState();
     },
@@ -49157,18 +49157,14 @@ const app = {
         const f1 = v => (v == null ? '—' : v.toFixed(1).replace('.', ','));
         const f2 = v => (v == null ? '—' : v.toFixed(2).replace('.', ','));
         const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-        // Запас — на сколько процентов напор насоса (в метрах водяного столба) больше того, что нужно кольцу:
-        // k = насос / нужно, запас = (k − 1) × 100 %. Минус — напора не хватает. Единица одна — проценты.
-        const kFmt = k => (k == null ? '—' : (k >= 6 ? '>+500 %' : (k >= 1 ? '+' : '−') + Math.round(Math.abs(k - 1) * 100) + ' %'));
-        const needPct = Math.round((res.reserve - 1) * 100);   // нужный запас напора, %
         const c = res.counts;
         // Быстрый расчёт — оценка по площади, без комнат и реальных петель: красным «не хватает» её не называем,
         // иначе монтажник чинит то, чего в проекте может не быть (по комнатам тот же дом часто проходит с запасом).
         const soft = !s.detailedRooms;
         const estFail = soft && c.fail > 0;
         const state = c.fail ? (soft ? 'tight' : 'fail') : (c.tight ? 'tight' : 'ok');
-        const pill = estFail ? 'Оценка: возможна нехватка напора'
-            : { ok: 'Всё в норме', tight: 'Впритык', fail: 'Не хватает напора' }[state];
+        const pill = estFail ? 'Оценка: может не хватить'
+            : { ok: 'Всё хватает', tight: 'Впритык', fail: 'Не хватает' }[state];
         // Кнопка «Укоротить петли»: есть смысл, если самая длинная петля заметно длиннее цели; цель — на 20 % короче
         const _ub = this._ufhBal;
         const _maxM = (_ub && _ub.mans) ? _ub.mans.reduce((a, m) => (m.rows || []).reduce((b, r) => Math.max(b, r.m || 0), a), 0) : 0;
@@ -49199,43 +49195,29 @@ const app = {
         const collapsed = !forPrint && !!this._hcCollapsed;
         let html = '<div class="hc-card' + (collapsed ? ' hc-collapsed' : '') + '"><div class="hc-head"'
             + (forPrint ? '' : ' role="button" tabindex="0" aria-expanded="' + !collapsed + '" title="' + (collapsed ? 'Развернуть' : 'Свернуть') + '" onclick="app.toggleHydroCard()" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();app.toggleHydroCard();}"') + '>'
-            + '<div class="hc-head-t"><div class="hc-title">Проверка гидравлики</div>'
-            + (res.scheme && !collapsed ? '<div class="hc-sub">Схема: ' + esc(res.scheme.text) + '</div>' : '') + '</div>'
-            + '<span class="hc-pill hc-' + state + '">' + (collapsed && res.worst ? pill + ' · ' + kFmt(res.worst.k) : pill) + '</span>'
+            + '<div class="hc-head-t"><div class="hc-title">Проверка подбора</div></div>'
+            + '<span class="hc-pill hc-' + state + '">' + pill + '</span>'
             + (forPrint ? '' : '<span class="hc-fold"></span>') + '</div>';
         if (collapsed) return html + '</div>';
         html += '<div class="hc-body">';
 
-        // Слабое звено: запас самого слабого контура на шкале, отметка — нужный запас
-        if (res.worst) {
-            // Шкала: ноль слева — насос ничего не даёт, «ровно нужно» на трети (запас 0 %), правый край — вдвое больше нужного
-            const cap = 3, pct = k => Math.max(2, Math.min(100, k / cap * 100));
+        // Одна строка-итог: какой контур слабее всех. Подробности — в чек-листе ниже
+        if (res.worst && state !== 'ok') {
             const wName = NAMES[res.worst.id] || res.worst.title;
-            html += '<div class="hc-meter"><div class="hc-big hc-' + state + '">' + kFmt(res.worst.k) + '</div><div class="hc-meter-r">'
-                + '<div class="hc-bar"><i class="hc-' + state + '" style="width:' + pct(res.worst.k).toFixed(1) + '%"></i><b class="hc-mark" style="left:' + pct(res.reserve).toFixed(1) + '%"></b></div></div>'
-                + '<div class="hc-cap">Слабее всех — ' + esc(wName) + '. Нужен запас от +' + needPct + ' %.</div></div>';
+            html += '<div class="hc-cap">' + (state === 'fail' ? 'Не хватает напора' : 'Впритык') + ': ' + esc(wName) + '.</div>';
         }
         // Почему красное стало жёлтым и что делать: одной кнопкой перейти к расчёту по реальным комнатам
         if (estFail) {
-            html += '<div class="hc-msg hc-tight hc-est">Это оценка по площади: она кладёт пол петлями ' + this.UFH_QUICK_LOOP_M
-                + ' м одним полем, комнат и их теплопотерь не знает. Чтобы получить точный вердикт, посчитайте по комнатам.'
+            html += '<div class="hc-msg hc-tight hc-est">Оценка по площади, комнат она не знает. Для точного ответа посчитайте по комнатам.'
                 + (forPrint ? '' : '<button type="button" class="hc-btn" onclick="app.toggleDetailedRooms(true, event)">Уточнить по комнатам</button>')
                 + '</div>';
         }
         (this._hcApplied || []).forEach(t => { html += '<div class="hc-msg hc-ok">✔ Исправлено автоматически: ' + esc(t) + '</div>'; });
         if (this._hcTried) html += '<div class="hc-msg hc-tight">' + esc(this._hcTried) + '</div>';
 
-        // Переключатель автоподбора: включён — калькулятор сам добавит группу или ветку радиаторов, если их кольцо не
-        // тянет насос (hydroNextFix); выключен — схему выбираете вы кнопками «Схема котельной». На печати не нужен.
-        if (!forPrint) {
-            const autoOn = s.hydroAutoFix !== false;
-            html += '<div class="hc-switch' + (autoOn ? ' on' : '') + '" role="switch" aria-checked="' + autoOn + '" tabindex="0" onclick="app.toggleHydroAutoFix(event)" onkeydown="if(event.key===\'Enter\'||event.key===\' \')app.toggleHydroAutoFix(event)">'
-                + '<span class="hc-sw"><i></i></span><span class="hc-sw-t"><b>Автоподбор схемы</b><small>'
-                + (autoOn ? 'Сам добавит группу или ветку, если не хватает напора.' : (s.detailedRooms
-                    ? 'Выключен: схему выбираете сами — слева, «Котельная и отопление», блок «Схема котельной» («Без стрелки» / «Со стрелкой»).'
-                    : 'Выключен: схема остаётся как рассчитана. Выбрать «Без стрелки» или «Со стрелкой» можно в режиме «По комнатам».'))
-                + '</small></span></div>';
-            if (!autoOn && c.fail) html += '<div class="hc-msg hc-tight">Автоподбор выключен — напора не хватает. ' + (s.detailedRooms ? 'Выберите «Со стрелкой» слева в блоке «Схема котельной»' : 'Перейдите в режим «По комнатам» и выберите «Со стрелкой» в блоке «Схема котельной»') + ' или включите автоподбор.</div>';
+        // Автоподбор включается тумблером под схемой котельной (слева). Здесь — только подсказка, если он выключен
+        if (!forPrint && s.hydroAutoFix === false && c.fail) {
+            html += '<div class="hc-msg hc-tight">Напора не хватает. ' + (s.detailedRooms ? 'Включите автоподбор схемы слева, под выбором схемы.' : 'Перейдите в «По комнатам» и включите автоподбор схемы.') + '</div>';
         }
 
         // Чек-лист по контурам: одна строка — одно «проверено»; по нажатию — расход, напор, насос, совет
@@ -49247,16 +49229,16 @@ const app = {
             let sub = '';
             if (g.id === 'rad') sub = first.branches > 1 ? first.branches + ' ветки' : (first.hasGroup === false ? 'от насоса котла' : 'насосная группа');
             else if (g.id === 'ufh') sub = many ? g.rows.length + ' коллектора' : String(first.title).replace(/^Тёплый пол:\s*/, '');
-            const resTxt = g.est ? 'оценка: может не хватить'
+            const resTxt = g.est ? 'может не хватить'
                 : { ok: 'хватает', tight: 'впритык', fail: 'не хватает', unknown: 'нет данных' }[g.verdict];
             html += '<details class="hc-row hc-' + g.verdict + '"' + ((forPrint || this._hcOpen[key]) ? ' open' : '')
                 + ' ontoggle="app._hcOpen[\'' + key + '\']=this.open"><summary><span class="hc-dot">' + ICON[g.verdict] + '</span>'
                 + '<span class="hc-name">' + esc(NAMES[g.id] || first.title) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>'
-                + '<span class="hc-res">' + resTxt + (g.k != null ? ' <b>' + (g.k >= 6 ? 'с большим запасом' : kFmt(g.k)) + '</b>' : '') + '</span><span class="hc-chev"></span></summary><div class="hc-det">';
+                + '<span class="hc-res">' + resTxt + '</span><span class="hc-chev"></span></summary><div class="hc-det">';
             g.rows.forEach(r => {
                 if (many) html += '<div class="hc-det-t">' + esc(String(r.title).replace(/^Тёплый пол:\s*/, '')) + '</div>';
-                html += '<div class="hc-facts"><div><span>Расход</span><b>' + f2(r.flow) + ' м³/ч</b></div><div><span>Нужно</span><b>' + f1(r.need) + ' м</b></div>'
-                    + '<div><span>Насос даёт</span><b>' + f1(r.have) + ' м</b></div><div><span>Запас напора</span><b>' + kFmt(r.k) + '</b></div></div>';
+                html += '<div class="hc-facts"><div><span>Расход</span><b>' + f2(r.flow) + ' м³/ч</b></div><div><span>Нужно напора</span><b>' + f1(r.need) + ' м</b></div>'
+                    + '<div><span>Насос даёт</span><b>' + f1(r.have) + ' м</b></div></div>';
                 if (r.pump) html += '<div class="hc-det-p">' + esc(r.pump) + '</div>';
                 if (r.id === 'ufh' && r.verdict === 'fail') {
                     // Пол: совет «разделить коллектор» превращаем в действие, которое здесь есть — предел длины петли
@@ -49273,8 +49255,8 @@ const app = {
         });
         html += '</div>';
 
-        // Пояснение единиц — одна короткая строка (порог «достаточно» уже назван над шкалой)
-        html += '<div class="hc-note">Напор в м вод. ст.; запас — на сколько % насос даёт больше нужного.</div>';
+        // Единица напора и что значит «впритык»
+        html += '<div class="hc-note">Напор в метрах водяного столба. «Впритык» — запаса почти нет.</div>';
         if (s.detailedRooms) html += this.hydroExtras(res, !!forPrint);
         return html + '</div></div>';
     },
@@ -71168,6 +71150,7 @@ const app = {
         if (document.getElementById('chk_hw')) document.getElementById('chk_hw').checked = this.state.hotWater;
         if (document.getElementById('chk_recirc')) document.getElementById('chk_recirc').checked = this.state.recirc;
         if (document.getElementById('chk_tank_pump')) document.getElementById('chk_tank_pump').checked = (this.tankLoadSchemeEff() === 'pump');
+        if (document.getElementById('chk_hydro_auto')) document.getElementById('chk_hydro_auto').checked = (this.state.hydroAutoFix !== false);
         if (document.getElementById('chk_water_input')) document.getElementById('chk_water_input').checked = this.state.waterInput;
         if (document.getElementById('blk_water_input_opts')) document.getElementById('blk_water_input_opts').style.display = this.state.waterInput ? 'flex' : 'none';
         if (document.getElementById('val_outdoor_faucet')) document.getElementById('val_outdoor_faucet').innerText = parseInt(this.state.outdoorFaucet) || 0;
