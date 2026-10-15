@@ -26809,6 +26809,12 @@ const app = {
                 ? `<span title="Сомнительная анкета: ${suspectFlags.join('; ')}" style="cursor:help; margin-right:4px;">⚠️</span>`
                 : '';
 
+            // Галочка у имени — вне .ad-more: в компактной плотности бейджи под именем
+            // спрятаны, а «прошёл обучение» должно быть видно сразу
+            const tourMark = u.tour_done_at
+                ? `<span title="Прошёл обучение до конца ${new Date(u.tour_done_at).toLocaleDateString('ru-RU')}${u.tour_done_steps ? ' (шагов: ' + u.tour_done_steps + ')' : ''}${u.tour_done_plan ? ', тариф: ' + u.tour_done_plan : ''}" style="cursor:help; color:#10B981; margin-right:4px;">✓🎓</span>`
+                : '';
+
             let searchStr = `${name} ${phone} ${u.email || ''} ${cityText} ${ipLoc} ${u.region || ''} ${(u.activity_types || []).join(' ')}${suspectFlags.length ? ' сомнительная анкета' : ''}${stuckPromo ? ' не ввёл промокод' : ''}${profileMissing.length ? ' анкета не заполнена' : ''}`.toLowerCase();
 
             const distOptions = `<option value="">— Не назначен —</option>` + (this.adminData.distributors || []).map(d => `<option value="${d.id}" ${u.distributor_id === d.id ? 'selected' : ''}>${d.company_name} (${d.promo_code})</option>`).join('');
@@ -26873,7 +26879,7 @@ const app = {
                         <!-- Нумерация сквозная по всему списку, а не по странице: на второй
                              странице отсчёт снова с 1 сбивал с толку (44 записи → 1…44) -->
                         <td class="ad-c-num" style="color:var(--text-sec);">${this._adminOffset + i + 1}</td>
-                        <td class="ad-c-name"><div style="display:flex; align-items:center;">${avatarImg} <div><b style="font-size:13px;">${suspectMark}<span class="ad-name-full">${name}</span><span class="ad-name-short">${nameShort}</span></b><br><span style="font-size:11px;color:var(--text-sec);">${phone}</span><span class="ad-more">${locHTML}${extraHTML}</span></div></div>${noDistWarn}</td>
+                        <td class="ad-c-name"><div style="display:flex; align-items:center;">${avatarImg} <div><b style="font-size:13px;">${suspectMark}${tourMark}<span class="ad-name-full">${name}</span><span class="ad-name-short">${nameShort}</span></b><br><span style="font-size:11px;color:var(--text-sec);">${phone}</span><span class="ad-more">${locHTML}${extraHTML}</span></div></div>${noDistWarn}</td>
                         <!-- admin-cell-half: на телефоне карточка ставит помеченную
                              пару в один ряд по половине ширины (см. style.css).
                              Содержимое коротких и однотипных ячеек — сумма со
