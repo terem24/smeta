@@ -63900,9 +63900,8 @@ const app = {
     bufferAvailable: function () {
         const s = this.state;
         if (!s.detailedRooms || this.isFlat()) return false;
-        // Ёмкость считается под электрокотёл: без площади дома и без подобранного котла её нечем греть.
+        // Ёмкость считается под электрокотёл: без площади дома её нечем греть.
         if (!(parseFloat(s.area) > 0)) return false;
-        if (s.elBoilerPower == null && s.elBoilerCount == null) return false;
         const f = s.fuels || [];
         return f.includes('el') && !f.includes('gas');
     },
