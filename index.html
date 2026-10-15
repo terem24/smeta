@@ -1806,6 +1806,14 @@
                             <span class="slider"></span>
                         </label>
                     </div>
+                    <div id="blk_water_treatment_row"
+                        style="position:relative; display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--border);">
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Обвязка под водоподготовку<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Байпас и разъёмные соединения на вводе под станцию обезжелезивания или умягчения. Саму станцию в смету не кладём: состав определяет анализ воды.</div></span></span>
+                        <label class="switch">
+                            <input type="checkbox" id="chk_water_treatment" onchange="app.toggleState('waterTreatment', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                     <div id="blk_heating_feed_row" style="padding:6px 0; border-top:1px solid var(--border);">
                         <div style="position:relative; display:flex; justify-content:space-between; align-items:center;">
                             <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Подпитка отопления</span>

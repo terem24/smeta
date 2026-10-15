@@ -1187,7 +1187,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
 
     lastSavedStateString: "",
 
@@ -47602,6 +47602,46 @@ const app = {
         this.saveState(); this.syncUI(); this.render();
     },
 
+    // Пропускная способность узла ввода на 3/4", м³/ч. Не норма, а ориентир
+    // производителя сборных узлов ввода (santehnik.shop, категория «Узел ВВО»):
+    // коллектор 3/4" с колбой тонкой очистки на картридже 10 мкм — 2,4 м³/ч,
+    // только с сетчатым фильтром грубой очистки — 3,84 м³/ч. У нашего картриджа
+    // 20 мкм предел выше, но паспортной цифры под него нет, поэтому берём
+    // осторожную. Для больших расходов узел считают отдельно (ввод 1").
+    WATER_NODE_FLOW_FINE: 2.4,
+    WATER_NODE_FLOW_COARSE: 3.84,
+
+    // Расчётный расход воды на вводе, м³/ч: сумма по приборам с теми же весами,
+    // что у подбора скважинного насоса (раздел 7), и тем же сглаживанием
+    // одновременности выше 4,5 м³/ч. Без заданных санузлов — 0 (проверять нечего).
+    waterNodeFlow: function () {
+        const zones = this.state.waterZones || [];
+        let q = 0;
+        zones.forEach(z => {
+            const f = (z && z.fixtures) || {};
+            q += (f.toilet || 0) * 0.1 + (f.basin || 0) * 0.15 + (f.shower || 0) * 0.3 + (f.bath || 0) * 0.4 +
+                (f.wash || 0) * 0.2 + (f.dish || 0) * 0.2 + (f.bidet || 0) * 0.15;
+        });
+        if (q > 4.5) q = 4.5 + (q - 4.5) * 0.5;
+        return q;
+    },
+
+    // Плашка раздела «6. Узел ввода ХВС»: хватает ли ввода 3/4" на расчётный расход.
+    // Молчит, пока расход укладывается: плашка «всё в порядке» только шумит.
+    waterNodeFlowNote: function () {
+        const q = this.waterNodeFlow();
+        if (q <= 0) return '';
+        const fine = this.filterLevel() !== 'none';
+        const lim = fine ? this.WATER_NODE_FLOW_FINE : this.WATER_NODE_FLOW_COARSE;
+        if (q <= lim) return '';
+        const fmt = v => v.toFixed(2).replace('.', ',');
+        return this.noteBox('warn', 'Узел ввода 3/4″ не тянет расход дома.',
+            `Расчёт ${fmt(q)} м³/ч, узел ${fine ? 'с колбой тонкой очистки' : 'без тонкой очистки'} — до ${fmt(lim)} м³/ч.`,
+            `<div class="tip-p"><b>Расчёт:</b> сумма по приборам из раздела водоснабжения (унитаз 0,1, умывальник 0,15, душ 0,3, ванна 0,4 м³/ч и т. д.) = ${fmt(q)} м³/ч.</div>` +
+            `<div class="tip-p"><b>Предел:</b> ${fmt(lim)} м³/ч — ориентир производителя сборных узлов ввода на 3/4″ (${fine ? 'с картриджем тонкой очистки 10 мкм' : 'с одним фильтром грубой очистки'}), в СП такой цифры нет. Скорость воды при этом в трубе DN20 около ${fmt(lim / 3600 / (Math.PI * 0.01 * 0.01))} м/с.</div>` +
+            `<div class="tip-p"><b>Что делать:</b> ввод и коллектор на 1″ (в смете останется 3/4″, пересчитайте позиции), либо вторую колбу параллельно, либо считать узел отдельно под ваш расход. На коротких пиках дом переживёт — но душ и стиральная одновременно дадут просадку.</div>`);
+    },
+
     setFeedType: function (type, event) {
         if (!this.checkAccess('pro', event)) return;
         this.state.feedType = type;
@@ -51765,7 +51805,7 @@ const app = {
 
         // Полный сброс данных расчета
         this.state = {
-            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
+            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
             autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null },
             // ВОЗВРАЩАЕМ АВТОРИЗАЦИЮ И ТАРИФ НА МЕСТО
             tgUser: currentTgUser,
@@ -53047,6 +53087,7 @@ const app = {
             // Каркас — про щит в котельной; квартирный узел собирается в нише
             // или в шкафу с коллекторами.
             this.state.waterFrame = false;
+            this.state.waterTreatment = false;
             // Счётчики в квартире не опция: без них платят по нормативу, и любой
             // расчёт без них неверен по деньгам.
             this.state.waterMeter = true;
@@ -69843,6 +69884,7 @@ const app = {
         if (document.getElementById('chk_water_meter')) document.getElementById('chk_water_meter').checked = !!this.state.waterMeter;
         if (document.getElementById('chk_water_leak_guard')) document.getElementById('chk_water_leak_guard').checked = !!this.state.waterLeakGuard;
         if (document.getElementById('chk_water_frame')) document.getElementById('chk_water_frame').checked = !!this.state.waterFrame;
+        if (document.getElementById('chk_water_treatment')) document.getElementById('chk_water_treatment').checked = !!this.state.waterTreatment;
         const _filterLvl = this.filterLevel();
         document.querySelectorAll('.water-filter-tab').forEach(t => {
             t.className = (t.dataset.flevel === _filterLvl) ? 'tab water-filter-tab active' : 'tab water-filter-tab';
@@ -71842,6 +71884,7 @@ const app = {
                 this.state.waterReducer = false;
                 this.state.waterMeter = true; // по умолчанию счётчик включён: он есть на виде узла
                 this.state.waterFrame = false;
+                this.state.waterTreatment = false;
                 this.state.heatingFeed = false;
             }
             this.saveState();
@@ -85879,8 +85922,26 @@ const app = {
                     addToBill(faucetItem, count, "", grp62);
                 }
 
+                // Полив и уличные краны — техническая вода: берём её до колб тонкой
+                // очистки, сразу за сетчатым фильтром. Иначе грядки пьют из картриджей
+                // и те садятся за сезон. Позиций на врезку не прибавляется — тройник и
+                // кран уже в наборе, меняется только место, поэтому подсказка.
+                const _fineOn = this.filterLevel() !== 'none';
                 catalog.outdoor_faucet.forEach(item => {
-                    addToBill(item, count, "", grp62);
+                    let tip = "";
+                    if (/Тройник/i.test(item.name)) {
+                        tip = this.autoTip(item.name, [
+                            `<b>Зачем:</b> Отвод технической воды на уличные краны и полив от линии ввода.`,
+                            `<b>Место:</b> ${_fineOn ? 'после сетчатого фильтра грубой очистки, <b>до колб Big Blue</b> — чистая вода идёт в дом, техническая мимо тонкой очистки.' : 'сразу за сетчатым фильтром грубой очистки.'}`,
+                            _fineOn ? `<b>Почему:</b> на полив уходят десятки кубометров за сезон. Если брать их после колб, картриджи вырабатываются в разы быстрее, а грядкам чистота питьевой воды не нужна.` : ``
+                        ]);
+                    } else if (/Кран шаровой/i.test(item.name)) {
+                        tip = this.autoTip(item.name, [
+                            `<b>Зачем:</b> Отсекает линию уличных кранов на зиму отдельно от дома: слили воду из линии — дом работает.`,
+                            `<b>Место:</b> первым на отводе технической воды, в тёплом помещении, ниже точки врезки.`
+                        ]);
+                    }
+                    addToBill(item, count, tip, grp62);
                 });
                 { const _n = this.findCatalogItemById("SFT-0004-003434"); addToBill({ id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: _n ? _n.price : 224, availability: _n ? _n.availability : undefined, brand: "STOUT" }, count, "", grp62); }
             }
@@ -85890,7 +85951,14 @@ const app = {
                 let bb = catalog.filter_big_blue;
                 addToBill(bb[0], 1, "", grp63);
                 addToBill(bb[1], 1, "", grp63);
-                addToBill(bb[2], 3, "", grp63);
+                // Три крана — это байпас: вход и выход колбы плюс перемычка между
+                // ними. Позиция была в наборе и раньше, но не объяснялась, и
+                // монтажник считал её лишней.
+                addToBill(bb[2], 3, this.autoTip(bb[2].name, [
+                    `<b>Зачем:</b> Три крана — это байпас вокруг колбы: вход, выход и перемычка между ними. Закрыли вход и выход, открыли перемычку — картридж меняется, а вода в доме не пропадает.`,
+                    `<b>Место:</b> два крана — до и после колбы, третий — на перемычке.`,
+                    `<b>Учтите:</b> в рабочем положении перемычка закрыта. Если её оставить открытой, вода пойдёт мимо фильтра.`
+                ]), grp63);
                 addToBill(bb[3], 1, "", grp63);
                 addToBill(bb[4], 2, "", grp63);
                 addToBill(bb[5], 2, "", grp63);
@@ -86065,7 +86133,29 @@ const app = {
                 }
             }
 
-            flushBill("6. Узел ввода ХВС");
+            // Обвязка под станцию водоподготовки (обезжелезивание, умягчение). Сама
+            // станция в смету не входит: состав определяет анализ воды, а в прайсе
+            // ТЕРЕМ таких станций нет. Здесь только то, что монтажник ставит на ввод
+            // заранее: байпас станции и разъёмные соединения, чтобы потом не резать
+            // готовый узел. Фитинги те же, что в остальных группах узла.
+            if (this.state.waterTreatment) {
+                const grp611 = "6.11. Обвязка под станцию водоподготовки";
+                addToBill(ballValve, 3, this.autoTip(ballValve.name, [
+                    `<b>Зачем:</b> Байпас станции: вход, выход и перемычка. Станция встаёт на регенерацию или в ремонт — дом остаётся с водой, пусть и без очистки.`,
+                    `<b>Место:</b> после колб Big Blue (если есть) и до коллектора водоснабжения. Станция — в разрыв линии чистой воды.`,
+                    `<b>Учтите:</b> в рабочем положении перемычка закрыта, иначе очищенная вода смешается с неочищенной.`
+                ]), grp611);
+                addToBill(union34, 2, this.autoTip(union34.name, [
+                    `<b>Зачем:</b> Разъёмное соединение с обеих сторон станции: снять её на ремонт или заменить, не разбирая узел ввода.`
+                ]), grp611);
+                addToBill(tee34, 2, this.autoTip(tee34.name, [
+                    `<b>Зачем:</b> Врезки байпаса станции на входе и выходе.`
+                ]), grp611);
+                addToBill(nipple34, 4, "", grp611);
+                addToBill(ext30, 2, "", grp611);
+            }
+
+            flushBill("6. Узел ввода ХВС", this.waterNodeFlowNote());
         }
 
         // === 7. СКВАЖИНА (Внешнее водоснабжение) ===
@@ -86872,6 +86962,7 @@ const app = {
             // цену каждой домовой сметы на 6 000 без ведома монтажника.
             // В квартире она есть: там гидравлики узла ввода за 20 000 нет.
             if (this.state.waterFrame) addToWorks("Сборка узла ввода на монтажном каркасе", 1, 5000, "компл", hvsGroup);
+            if (this.state.waterTreatment) addToWorks("Обвязка станции водоподготовки (байпас, разъёмные соединения)", 1, 4000, "компл", hvsGroup);
             if (this.state.outdoorFaucet > 0) {
                 let count = parseInt(this.state.outdoorFaucet) || 1;
                 addToWorks("Монтаж незамерзающего уличного крана", count, 5000, "шт", hvsGroup);
