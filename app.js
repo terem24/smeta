@@ -49353,7 +49353,7 @@ const app = {
         const estFail = soft && c.fail > 0;
         const state = c.fail ? (soft ? 'tight' : 'fail') : (c.tight ? 'tight' : 'ok');
         const pill = estFail ? 'Оценка: может не хватить'
-            : { ok: 'Всё хватает', tight: 'Впритык', fail: 'Не хватает' }[state];
+            : { ok: 'Всё проверено', tight: 'Впритык', fail: 'Не хватает' }[state];
         // Кнопка «Укоротить петли»: есть смысл, если самая длинная петля заметно длиннее цели; цель — на 20 % короче
         const _ub = this._ufhBal;
         const _maxM = (_ub && _ub.mans) ? _ub.mans.reduce((a, m) => (m.rows || []).reduce((b, r) => Math.max(b, r.m || 0), a), 0) : 0;
@@ -49419,7 +49419,7 @@ const app = {
             if (g.id === 'rad') sub = first.branches > 1 ? first.branches + ' ветки' : (first.hasGroup === false ? 'от насоса котла' : 'насосная группа');
             else if (g.id === 'ufh') sub = many ? g.rows.length + ' коллектора' : String(first.title).replace(/^Тёплый пол:\s*/, '');
             const resTxt = g.est ? 'может не хватить'
-                : { ok: 'хватает', tight: 'впритык', fail: 'не хватает', unknown: 'нет данных' }[g.verdict];
+                : { ok: 'ок', tight: 'впритык', fail: 'не хватает', unknown: 'нет данных' }[g.verdict];
             html += '<details class="hc-row hc-' + g.verdict + '"' + ((forPrint || this._hcOpen[key]) ? ' open' : '')
                 + ' ontoggle="app._hcOpen[\'' + key + '\']=this.open"><summary><span class="hc-dot">' + ICON[g.verdict] + '</span>'
                 + '<span class="hc-name">' + esc(NAMES[g.id] || first.title) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>'
