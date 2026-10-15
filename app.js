@@ -48874,6 +48874,10 @@ const app = {
                 title: 'Радиаторы: кольцо до самого дальнего прибора' + (h.branches > 1 ? ' (одна из ' + h.branches + ' веток)' : ''),
                 flow: h.flowBranch, need: h.head, have: best ? best.avail : null, pump: best ? best.label : null,
                 hasGroup: !!h.hasGroup, branches: h.branches, noisy: !!h.noisy,
+                // Участки, которые считает кольцо: трасса (подводка или стояк) и луч. Видны в карточке
+                // и в подсказке, чтобы монтажник видел, какую трубу проверяет
+                parts: (h.parts || []).filter(p => p.tag === 'trunk' || p.tag === 'trunkFar' || p.tag === 'loop')
+                    .map(p => ({ name: p.name, dp: p.dp, v: p.v || 0, d: p.d || null, len: p.len || null, tag: p.tag })),
                 // у котла без паспортной кривой стоит типовая или условная 25/60 — см. radHydraulics
                 confirmed: !(best && /типовая|принят по кривой/.test(best.label)) });
         }
@@ -49008,6 +49012,164 @@ const app = {
         out.sig = this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state);
         this._hcCompare = out;
         this.render();
+    },
+
+    /** Ручные правки радиаторного контура из state.hydroUserFix — в _hcForce, на каждом проходе. */
+    hydroUserForce: function () {
+        const u = this.state.hydroUserFix || {};
+        const out = {};
+        if (u.radGroup) out.radGroup = true;
+        if (u.radBranches) out.radBranches = u.radBranches;
+        return out;
+    },
+
+    /**
+     * Варианты исправления кольца радиаторов, которые можно предложить монтажнику: насосная группа
+     * (если её нет), вторая ветка (если групп меньше четырёх), следующий диаметр трассы. Каждый —
+     * { label, force, ov }; запас по каждому считается пробным прогоном в hydroFixPreview.
+     */
+    hydroRadCandidates: function () {
+        const h = this.radHydro;
+        if (!h || !h.parts || !h.parts.length) return [];
+        const out = [];
+        const n = parseInt(h.branches, 10) || 1;
+        if (!h.hasGroup) out.push({ label: 'Насосная группа радиаторов на коллекторе', force: { radGroup: true } });
+        else if (n < 4) out.push({ label: 'Вторая ветка: ' + n + ' → ' + (n + 1) + ' (расход на ветку меньше)', force: { radBranches: n + 1 } });
+        const tr = h.parts.find(p => p.tag === 'trunk');
+        const order = [16, 20, 25, 26, 32];
+        const i = tr && tr.d ? order.indexOf(tr.d) : -1;
+        if (i >= 0 && i < order.length - 1) {
+            out.push({ label: 'Трасса Ø' + tr.d + ' → Ø' + order[i + 1] + ' (меньше скорость и потери)', ov: { d: order[i + 1], len: tr.len || null } });
+        }
+        return out;
+    },
+
+    /**
+     * Что изменится: для каждого варианта пробный прогон сметы (как hydroCompareSchemes), запас до и после.
+     * Состояние возвращается как было, в карточке появляется список с кнопками «Применить».
+     */
+    hydroFixPreview: function (event) {
+        if (event) event.preventDefault();
+        const cands = this.hydroRadCandidates();
+        const before = this.hydroRadRatio();
+        const baseForce = Object.assign({}, this._hcForce);
+        const baseOv = this.state.radTrunkOv || null;
+        const items = [];
+        this._cheapComparing = true;
+        try {
+            cands.forEach(c => {
+                this._hcForce = Object.assign({}, baseForce, c.force || {});
+                this.state.radTrunkOv = c.ov || baseOv;
+                this.render(true);
+                items.push(Object.assign({}, c, { before: before, after: this.hydroRadRatio() }));
+            });
+        } catch (e) {
+            console.warn('[гидравлика] пробный прогон не посчитался:', e);
+        } finally {
+            this._hcForce = baseForce;
+            this.state.radTrunkOv = baseOv;
+            this._cheapComparing = false;
+        }
+        // Вариант, который запас не увеличивает (группа на котле с хорошим насосом, например), не предлагаем
+        const useful = items.filter(it => it.after > it.before * 1.02);
+        const sig = this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state);
+        this._hcPreview = { sig: sig, items: useful };
+        this.render();
+    },
+
+    /** Применить вариант из списка «Что изменится»: правка уходит в state и переживает пересчёт. */
+    hydroApplyFix: function (i, event) {
+        if (event) event.preventDefault();
+        const pv = this._hcPreview;
+        const it = pv && pv.items[i];
+        const sig = this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state);
+        if (!it || pv.sig !== sig) { this._hcPreview = null; this.render(); return; }
+        this.state.hydroUserFix = Object.assign({}, this.state.hydroUserFix || {}, it.force || {});
+        if (it.ov) this.state.radTrunkOv = it.ov;
+        this._hcPreview = null;
+        this.render();
+        this.saveState();
+    },
+
+    hydroClosePreview: function (event) {
+        if (event) event.preventDefault();
+        this._hcPreview = null;
+        this.syncHydroCheck();
+    },
+
+    /** Ручная трасса: диаметр и длина из полей карточки. Меняют и смету, и кольцо. */
+    setRadTrunkOv: function (event) {
+        if (event) event.preventDefault();
+        const dEl = document.getElementById('hc_trunk_d');
+        const lEl = document.getElementById('hc_trunk_len');
+        const d = dEl ? parseInt(dEl.value, 10) : 0;
+        const len = lEl ? parseFloat(String(lEl.value).replace(',', '.')) : 0;
+        if (!(d > 0)) return;
+        this.state.radTrunkOv = { d: d, len: len > 0 ? Math.round(len) : null };
+        this._hcPreview = null;
+        this.render();
+        this.saveState();
+    },
+
+    /** Снять все ручные правки контура радиаторов: вернуть автоподбор как был. */
+    resetRadManual: function (event) {
+        if (event) event.preventDefault();
+        this.state.hydroUserFix = null;
+        this.state.radTrunkOv = null;
+        this._hcPreview = null;
+        this.render();
+        this.saveState();
+    },
+
+    /** Список «Что изменится» под карточкой; пусто, если пробного прогона нет или состояние ушло вперёд. */
+    hydroPreviewHtml: function (forPrint) {
+        if (forPrint || !this._hcPreview) return '';
+        const sig = this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state);
+        if (this._hcPreview.sig !== sig) return '';
+        const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        const pct = k => (k >= 1 ? '+' : '') + Math.round((k - 1) * 100) + ' %';
+        const norm = this.RAD_PUMP_RESERVE;
+        const items = this._hcPreview.items;
+        let html = '<div class="hc-preview"><div class="hc-preview-t">Что изменится</div>';
+        if (!items.length) html += '<div class="hc-advice">Ни группа, ни ветка, ни диаметр трассы запас не увеличивают: держит луч до прибора или клапан. Проверьте мощность приборов и насос.</div>';
+        items.forEach((it, i) => {
+            const ok = it.after >= norm;
+            html += '<div class="hc-pv-item"><div><b>' + esc(it.label) + '</b></div>'
+                + '<div>Запас ' + pct(it.before) + ' → <b>' + pct(it.after) + '</b>'
+                + (ok ? ' — норма ' + pct(norm) + ' достигнута' : ' — норма ' + pct(norm) + ' ещё не достигнута') + '</div>'
+                + '<button type="button" class="hc-btn" onclick="app.hydroApplyFix(' + i + ', event)">Применить</button></div>';
+        });
+        html += '<button type="button" class="hc-btn hc-btn-ghost" onclick="app.hydroClosePreview(event)">Закрыть</button></div>';
+        return html;
+    },
+
+    /** Участки кольца (трасса, луч) и форма ручной трассы + сводка ручных правок. Только строка «Радиаторы». */
+    hydroPartsHtml: function (r, forPrint) {
+        const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        let html = '<div class="hc-parts">';
+        (r.parts || []).forEach(p => {
+            html += '<div class="hc-part"><span>' + esc(p.name) + '</span><b>' + (p.dp != null ? p.dp.toFixed(1).replace('.', ',') + ' кПа' : '—')
+                + (p.v > 0 ? ', ' + p.v.toFixed(2).replace('.', ',') + ' м/с' : '') + '</b></div>';
+        });
+        html += '</div>';
+        const trunk = (r.parts || []).find(p => p.tag === 'trunk');
+        if (trunk && !forPrint) {
+            const dSel = trunk.d || 25;
+            const opts = [16, 20, 25, 26, 32].map(d => '<option value="' + d + '"' + (d === dSel ? ' selected' : '') + '>Ø' + d + '</option>').join('');
+            html += '<div class="hc-trunk-form"><span>Трасса от котельной (подача + обратка):</span>'
+                + '<select id="hc_trunk_d">' + opts + '</select>'
+                + '<input id="hc_trunk_len" type="number" min="1" step="1" value="' + Math.round(trunk.len || 0) + '"> м'
+                + '<button type="button" class="hc-btn" onclick="app.setRadTrunkOv(event)">Пересчитать</button></div>';
+        }
+        const u = this.state.hydroUserFix || {};
+        const manual = [];
+        if (this.state.radTrunkOv) manual.push('трасса Ø' + this.state.radTrunkOv.d + (this.state.radTrunkOv.len ? ', ' + this.state.radTrunkOv.len + ' м' : ''));
+        if (u.radGroup) manual.push('насосная группа');
+        if (u.radBranches) manual.push(u.radBranches + ' ветки');
+        if (manual.length && !forPrint) {
+            html += '<div class="hc-advice">Ручная правка: ' + esc(manual.join(', ')) + '. <button type="button" class="hc-btn hc-btn-ghost" onclick="app.resetRadManual(event)">Снять</button></div>';
+        }
+        return html;
     },
 
     /**
@@ -49275,12 +49437,15 @@ const app = {
                     else html += '<div class="hc-advice">Напора не хватает, а петли уже короткие (' + Math.round(_maxM) + ' м). Нужен узел с большей пропускной способностью или два узла — выберите в блоке «Тёплый пол» слева.</div>';
                     if (!forPrint && parseInt(s.ufhLoopCut, 10) > 0)
                         html += '<div class="hc-advice">Предел длины петли задан вручную: ' + parseInt(s.ufhLoopCut, 10) + ' м. <button type="button" class="hc-btn hc-btn-ghost" onclick="app.setUfhLoopCut(0, event)">Снять</button></div>';
-                } else if (r.advice) html += '<div class="hc-advice">' + esc(r.advice) + '</div>';
+                } else if (r.advice) html += '<div class="hc-advice">' + esc(r.advice)
+                    + ((r.id === 'rad' && !forPrint && r.verdict !== 'ok') ? ' <button type="button" class="hc-btn" onclick="app.hydroFixPreview(event)">Что изменится</button>' : '') + '</div>';
+                if (r.id === 'rad') html += this.hydroPartsHtml(r, !!forPrint);
                 r.flags.forEach(fl => { html += '<div class="hc-flag">' + esc(fl) + '</div>'; });
             });
             html += '</div></details>';
         });
         html += '</div>';
+        html += this.hydroPreviewHtml(!!forPrint);
 
         // Единица напора и что значит «впритык»
         html += '<div class="hc-note">Напор в метрах водяного столба. «Впритык» — запаса почти нет.</div>';
@@ -78596,7 +78761,8 @@ const app = {
         const _ia = this._inputAnchorBefore();
         try {
             // Каждый пересчёт начинает без исправлений: они выводятся из результата этого же расчёта
-            this._hcForce = {};
+            // Ручные правки монтажника (кнопка «Что изменится») живут в state и накладываются на каждый проход
+            this._hcForce = Object.assign({}, this.hydroUserForce());
             this._hcApplied = [];
             this._hcAppliedKinds = [];
             this._hcTried = null;
@@ -78624,7 +78790,8 @@ const app = {
             }
             // Исправление добавили, а контур всё равно не тянет — возвращаем схему как была и оставляем совет
             if (this._hcApplied.length && this._hcAppliedKinds.some(k => this.hydroFixRatio(k) < 1)) {
-                this._hcForce = {};
+                // Откатываем исправления автоподбора, но не ручные правки монтажника
+                this._hcForce = Object.assign({}, this.hydroUserForce());
                 this._hcApplied = [];
                 this._hcAppliedKinds = [];
                 this._hcTried = 'Исправление схемы контур не вытянуло — схему оставили как была. Проверьте диаметры и мощность приборов.';
@@ -85516,7 +85683,10 @@ const app = {
                     // Оценка грубая, как и вся трассировка: плана дома с координатами
                     // шкафа у расчёта нет.
                     const _riserOneWay = 3.2 + 0.4 * Math.sqrt(floorArea);
-                    const _riserMeters = Math.ceil(_riserOneWay * 2 * 1.1);
+                    // Ручная правка трассы (state.radTrunkOv, кнопка в проверке гидравлики): длина и
+                    // диаметр — как ввёл монтажник, и смета, и кольцо берут одно и то же.
+                    const _radOv = this.state.radTrunkOv || null;
+                    const _riserMeters = _radOv && _radOv.len > 0 ? Math.ceil(_radOv.len) : Math.ceil(_riserOneWay * 2 * 1.1);
                     // Серую PEX-a на стояк не ставим, даже если ею разведён весь дом:
                     // коэффициент линейного расширения у неё ~0,18 мм/(м·К), и труба
                     // длиной 7–8 м при нагреве на 50 К удлиняется больше чем на 6 см.
@@ -85567,9 +85737,13 @@ const app = {
                     // Кольцо для второй проверки строит radHydraulics по this._radTrunk,
                     // поэтому запись подставляем на каждый шаг перебора.
                     let _riserPick = _riserD, _riserByHead = false;
+                    // Ручной диаметр не перебираем: монтажник выбрал его сам, а скорость и запас
+                    // показаны в карточке — он видит, что выбрал.
+                    const _riserForced = !!(_radOv && _radOv.d);
+                    if (_riserForced) _riserPick = _radOv.d;
                     const _riserSpan = { kw: _riserKw, len: _riserMeters, share: 0.5,
                         fam: _isMpPipe ? 'mp' : 'stable', riser: true };
-                    for (let _i = _riserOrder.indexOf(_riserD); _i < _riserOrder.length; _i++) {
+                    for (let _i = _riserOrder.indexOf(_riserD); _i < _riserOrder.length && !_riserForced; _i++) {
                         const _cand = _riserPool.find(x => x.id === _riserIds[_riserOrder[_i]]);
                         if (!_cand) continue;
                         if (_riserSpeed(_riserBore(_cand.name)) > this.RAD_V_MAX_TRUNK) continue;
@@ -85644,7 +85818,9 @@ const app = {
                     // Пара подача+обратка, +10% на подрезку и обходы. Оценка грубая, как и
                     // вся трассировка: плана дома с координатами котельной и шкафа нет.
                     const _trOneWay = 1 + 0.5 * Math.sqrt(floorArea);
-                    const _trMeters = Math.ceil(_trOneWay * 2 * 1.1);
+                    // Ручная правка трассы — см. стояк выше: длина и диаметр из state.radTrunkOv.
+                    const _trOv = this.state.radTrunkOv || null;
+                    const _trMeters = _trOv && _trOv.len > 0 ? Math.ceil(_trOv.len) : Math.ceil(_trOneWay * 2 * 1.1);
                     // Материал — как у стояка: серую PE-Xa на длинный магистральный участок
                     // не ставим (линейное расширение ~0,18 мм/(м·К)), подставляем стабильную
                     // PE-Xa/Al/PE-RT. Металлопластик оставляем как есть — у него тот же
@@ -85672,9 +85848,11 @@ const app = {
                     const _trOrder = [16, 20, 25, 26, 32];
                     // Скорость и запас насоса — оба критерия, как у стояка выше.
                     let _trPick = _trD, _trByHead = false;
+                    const _trForced = !!(_trOv && _trOv.d);
+                    if (_trForced) _trPick = _trOv.d;
                     const _trSpan = { kw: _trKw, len: _trMeters, share: 1,
                         fam: _isMpPipe ? 'mp' : 'stable', riser: false };
-                    for (let _i = _trOrder.indexOf(_trD); _i < _trOrder.length; _i++) {
+                    for (let _i = _trOrder.indexOf(_trD); _i < _trOrder.length && !_trForced; _i++) {
                         const _cand = _trPool.find(x => x.id === _trIds[_trOrder[_i]]);
                         if (!_cand) continue;
                         if (_trSpeed(_trBore(_cand.name)) > this.RAD_V_MAX_TRUNK) continue;
