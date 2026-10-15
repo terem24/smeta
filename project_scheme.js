@@ -617,16 +617,17 @@
     var nBoilers = (cfg.gas ? Math.max(1, cfg.gas.count || 1) : 0) +
       (cfg.el ? Math.max(1, cfg.el.count || 1) : 0);
     var usePump = !!(cfg.tp || cfg.snow || cfg.hydro || cfg.recirc || cfg.loadPump || (cfg.el && cfg.el.polis));
-    var useCheck = !!(nBoilers > 1 || cfg.indirect || cfg.elWh || cfg.tp || cfg.snow || cfg.hydro || cfg.recirc);
+    var useCheck = !!(nBoilers > 1 || cfg.indirect || cfg.elWh || (cfg.tp && (cfg.tpGroups > 0 || cfg.tpCheck !== false)) || cfg.snow || cfg.hydro || cfg.recirc);
 
     // При автоматике узел ТП ведёт контроллер: смеситель с сервоприводом
     // вместо термостатического, плюс на схеме появляются датчики NTC
-    var mixServo = !!(cfg.auto && cfg.auto.mixServo);
+    // (или по смете: группа «под сервопривод» с приводом — cfg.mixServo)
+    var mixServo = !!(cfg.mixServo || (cfg.auto && cfg.auto.mixServo));
     var rows = [
       ['Шаровый кран', function (c) { return ballValve(cx, c, false); }, true],
       ['Обратный клапан', function (c) { return checkValve(cx, c, 'right'); }, useCheck],
       ['Циркуляционный насос', function (c) { return pump(cx, c, 'left'); }, usePump],
-      ['Термостатический смесительный клапан', function (c) { return valve3(cx + 1.21, c, 'therm', 'udr', 'l'); }, (!!cfg.tp || !!cfg.snow || !!cfg.dhwMix) && !mixServo],
+      ['Термостатический смесительный клапан', function (c) { return valve3(cx + 1.21, c, 'therm', 'udr', 'l'); }, !!cfg.dhwMix || ((!!cfg.tp || !!cfg.snow) && !mixServo)],
       ['Клапан трехходовой с сервоприводом', function (c) { return valve3(cx + 1.21, c, 'servo', 'udr', 'l'); }, (!!cfg.tp || !!cfg.snow) && mixServo],
       ['Предохранительный клапан', function (c) { return safetyValve(cx, c, false); }, ((!!cfg.indirect || !!cfg.elWh) && cfg.water !== false) || !!cfg.snow],
       ['Автоматический воздухоотводчик', function (c) { return airVent(cx, c + 3.77); }, !!cfg.hydro || !!cfg.airSep],
@@ -1569,7 +1570,7 @@
         // смесью управляет контроллер, термоголовка дублировала бы его
         var vy = 215.27;
         o.push(vpipe(x, yStart, vy - 2.5, t.color, crossFor(yStart)));
-        o.push(valve3(x, vy, (cfg.auto && cfg.auto.mixServo) ? 'servo' : 'therm', 'udr', 'l'));
+        o.push(valve3(x, vy, (cfg.mixServo || (cfg.auto && cfg.auto.mixServo)) ? 'servo' : 'therm', 'udr', 'l'));
         o.push(leader(x - 0.96, vy - 2.6, tSize));
         o.push(hpipe(x + 2.5, x + PAIR_STEP, vy, COL.supply));
         o.push(ln(x, vy + 2.5, x, t.snow ? HX_TOP : yTop, { c: t.color, w: LW.pipe }));
@@ -1586,9 +1587,17 @@
             '" rx="2.2" fill="#8a8a8a" fill-opacity="0.13" stroke="#6b6b6b" stroke-width="0.35" stroke-dasharray="1.6 1.1"/>');
         }
         o.push(vpipe(x, yStart, gy, t.color, crossFor(yStart)));
-        o.push(checkValve(x, gy + 2.5, 'down'));
-        o.push(leaderCheck(x, gy + 2.5, tSize));
-        o.push(ln(x, gy + 5, x, gy + 9.6, { c: t.color, w: LW.pipe }));
+        // Местный узел подмеса ТП (контура без группы) собирается из отдельных позиций:
+        // обратный клапан рисуем, только если он есть в смете. Заводская группа
+        // несёт свой клапан внутри.
+        var noCheck = t.hyd === 'tp' && !(cfg.tpGroups > 0) && cfg.tpCheck === false;
+        if (noCheck) {
+          o.push(ln(x, gy, x, gy + 9.6, { c: t.color, w: LW.pipe }));
+        } else {
+          o.push(checkValve(x, gy + 2.5, 'down'));
+          o.push(leaderCheck(x, gy + 2.5, tSize));
+          o.push(ln(x, gy + 5, x, gy + 9.6, { c: t.color, w: LW.pipe }));
+        }
         o.push(ballValve(x, gy + 12.1, true));
         o.push(leaderValve(x, gy + 12.1, tSize));
         o.push(ln(x, gy + 14.6, x, gy + 18.24, { c: t.color, w: LW.pipe }));
