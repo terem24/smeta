@@ -40173,7 +40173,22 @@ const app = {
         setTimeout(() => document.addEventListener('mousedown', outside, true), 0);
         const inp = document.getElementById('ufh_fix_in');
         inp.focus(); inp.select();
-        const apply = () => { const v = parseFloat(inp.value); close(); if (v >= 1) this.updRoomArea(room.id, v, false); };
+        // Пересборка сметы перерисовывает таблицу и сбрасывает прокрутку — запоминаем её у всех
+        // прокручиваемых родителей значка (и у окна) и возвращаем после расчёта
+        const keep = [];
+        for (let p = el.parentElement; p; p = p.parentElement) if (p.scrollTop > 0) keep.push([p, p.scrollTop]);
+        const panel = document.querySelector('.input-panel');
+        if (panel && !keep.some(k => k[0] === panel)) keep.push([panel, panel.scrollTop]);
+        const wx = window.scrollX, wy = window.scrollY;
+        const restore = () => { keep.forEach(k => { k[0].scrollTop = k[1]; }); if (window.scrollY !== wy || window.scrollX !== wx) window.scrollTo(wx, wy); };
+        const apply = () => {
+            const v = parseFloat(inp.value); close();
+            if (!(v >= 1)) return;
+            this.updRoomArea(room.id, v, false);
+            restore();
+            requestAnimationFrame(() => { restore(); setTimeout(restore, 150); });
+        };
+        document.getElementById('ufh_fix_ok').onclick = apply;
         document.getElementById('ufh_fix_ok').onclick = apply;
         inp.onkeydown = e => { if (e.key === 'Enter') apply(); else if (e.key === 'Escape') close(); };
     },
