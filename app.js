@@ -36184,7 +36184,7 @@ const app = {
                         .hyd-ov .hyd-ov__flow { animation: none; }
                         .hyd-ov { transition: none; }
                     }
-                </style><div class="scheme-svg-wrap${this.hydEnabled() ? '' : ' hyd-off'}" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button><button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка пути воды при наведении. Числа и подсказки — на весь экран">${this._hydToggleLabel(false)}</button></div><div id="hydro_check_side" class="hc-side"></div></div>`;
+                </style><div class="scheme-svg-wrap${this.hydEnabled() ? '' : ' hyd-off'}" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button><button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка пути воды при наведении. Числа и подсказки — на весь экран">${this._hydToggleLabel(false)}</button></div></div>`;
     },
 
     // ── что под курсором и путь воды ───────────────────────────────────────
@@ -48320,6 +48320,15 @@ const app = {
             try { const shW = this.stoutShare(); okW = (actionType === 'print' || actionType === 'share') && !!this.state.tgUser && shW.pct !== null && shW.pct >= this.warrantyThreshold(); } catch (e) { okW = false; }
             cardWarr.style.display = okW ? 'flex' : 'none';
         }
+        // «Проверка гидравлики» — лист в печать/PDF, когда есть что показывать (контуры посчитаны)
+        const chkHydro = document.getElementById('share_opt_hydro');
+        if (chkHydro) chkHydro.checked = true;
+        const cardHydro = document.getElementById('card_opt_hydro');
+        if (cardHydro) {
+            let okH = false;
+            try { okH = actionType === 'print' && !!this.hydroCardHtml(true); } catch (e) { okH = false; }
+            cardHydro.style.display = okH ? 'flex' : 'none';
+        }
         const cardHouse = document.getElementById('card_opt_house');
         if (cardHouse) {
             let has = false;
@@ -48521,6 +48530,8 @@ const app = {
         if (cardHouseUi && chkHouseUi) cardHouseUi.classList.toggle('selected', chkHouseUi.checked);
         const cardWarrUi = document.getElementById('card_opt_warranty'), chkWarrUi = document.getElementById('share_opt_warranty');
         if (cardWarrUi && chkWarrUi) cardWarrUi.classList.toggle('selected', chkWarrUi.checked);
+        const cardHydroUi = document.getElementById('card_opt_hydro'), chkHydroUi = document.getElementById('share_opt_hydro');
+        if (cardHydroUi && chkHydroUi) cardHydroUi.classList.toggle('selected', chkHydroUi.checked);
 
         const cardNames = document.getElementById('card_opt_names');
         const chkNamesUi = document.getElementById('share_opt_names');
@@ -48576,6 +48587,9 @@ const app = {
         // Гарантия на объект: читают prepareForPrint и executeShareInvoice (через warrantyLinkEligible / warrantyFormEligible)
         const cardWarrOpt = document.getElementById('card_opt_warranty'), chkWarrOpt = document.getElementById('share_opt_warranty');
         this.kpWarrantyOn = !!(cardWarrOpt && cardWarrOpt.style.display !== 'none' && chkWarrOpt && chkWarrOpt.checked);
+        // Проверка гидравлики: лист в печати/PDF. Карточка есть только у печати; нет карточки — не печатаем
+        const cardHydroOpt = document.getElementById('card_opt_hydro'), chkHydroOpt = document.getElementById('share_opt_hydro');
+        this.kpHydroOn = !!(cardHydroOpt && cardHydroOpt.style.display !== 'none' && chkHydroOpt && chkHydroOpt.checked);
 
         this.closeShareOptionsModal();
 
@@ -48914,7 +48928,7 @@ const app = {
      * сама смета (radHydraulics, radBalance, ufhBalance), своих расчётов нет, кроме запаса «на сколько
      * хватит»: потери растут как квадрат расхода, поэтому расход можно поднять в √(запас) раз.
      */
-    hydroExtras: function (res) {
+    hydroExtras: function (res, forPrint) {
         this._hcOpen = this._hcOpen || {};
         const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
         const f0 = v => String(Math.round(v));
@@ -48925,7 +48939,7 @@ const app = {
         const best = h ? (h.pump || (h.pumps || []).reduce((a, p) => (!a || p.avail > a.avail) ? p : a, null)) : null;
         const ul = items => items.length ? '<ul class="hc-list">' + items.map(t => '<li>' + t + '</li>').join('') + '</ul>' : '';
         const sec = (key, title, body) => body
-            ? '<details class="hc-sec"' + (this._hcOpen[key] ? ' open' : '') + ' ontoggle="app._hcOpen[\'' + key + '\']=this.open"><summary>' + title + '</summary>' + body + '</details>'
+            ? '<details class="hc-sec"' + ((forPrint || this._hcOpen[key]) ? ' open' : '') + ' ontoggle="app._hcOpen[\'' + key + '\']=this.open"><summary>' + title + '</summary>' + body + '</details>'
             : '';
         let html = '';
 
@@ -49013,7 +49027,7 @@ const app = {
                 body += '<ul class="hc-list">' + row('со стрелкой', c.hydro)
                     + (c.direct != null ? row('без стрелки', c.direct) : '<li>без стрелки: не собрать — ' + esc(c.directWhy) + '</li>') + '</ul>';
             }
-            body += '<a href="#" class="hc-btn" onclick="app.hydroCompareSchemes(event)">' + (c ? 'Пересчитать цены схем' : 'Сколько стоит другая схема') + '</a>';
+            if (!forPrint) body += '<a href="#" class="hc-btn" onclick="app.hydroCompareSchemes(event)">' + (c ? 'Пересчитать цены схем' : 'Сколько стоит другая схема') + '</a>';
             html += sec('price', 'Схема котельной и её цена', body);
         }
 
@@ -49032,49 +49046,137 @@ const app = {
     },
 
     /**
-     * Карточка «Гидравлика» справа от схемы котельной (контейнер #hydro_check_side рисует сама схема,
-     * _renderSchemeVector, поэтому карточка появляется и исчезает вместе с ней). В быстром расчёте приборы и петли
-     * оценены по площади — это сказано в карточке; в подробном («По комнатам») добавляются разделы:
-     * что выставить при пуске, на сколько хватит, скорости воды, цена схемы, предупреждения пола.
+     * Контейнер карточки «Гидравлика» на экране. Справа от схемы котельной, а когда схема выключена —
+     * отдельным блоком над таблицей сметы: проверка считается всегда, и показывать её только вместе со
+     * схемой незачем. Зовётся из render() после вставки схемы; заполняет syncHydroCheck.
      */
+    placeHydroCheckBox: function () {
+        const old = document.getElementById('hydro_check_side');
+        if (old) old.remove();
+        if (this.state.viewMode !== 'equipment') return;
+        const wrap = document.querySelector('.table-responsive');
+        if (!wrap) return;
+        const box = document.createElement('div');
+        box.id = 'hydro_check_side';
+        box.className = 'hc-side';
+        const scheme = document.getElementById('dynamic_scheme');
+        if (scheme) scheme.appendChild(box);
+        else { box.classList.add('hc-solo'); wrap.insertAdjacentElement('beforebegin', box); }
+    },
+
+    /**
+     * HTML карточки «Гидравлика»: таблица контуров с вердиктами и, в подробном режиме («По комнатам»),
+     * разделы — что выставить при пуске, на сколько хватит, скорости воды, цена схемы, предупреждения пола.
+     * В быстром расчёте приборы и петли оценены по площади — это сказано в карточке.
+     * forPrint: для печатного листа — разделы раскрыты, кнопок нет. Пустая строка — показывать нечего.
+     */
+    hydroCardHtml: function (forPrint) {
+        const hc = (typeof window !== 'undefined') ? window.hydroCheck : null;
+        const s = this.state;
+        const on = !!(hc && s.objectType !== 'flat' && (s.fuels || []).length > 0 && s.area > 0);
+        const res = on ? hc.evaluate(this.buildHydroCheckData(), { reserve: this.RAD_PUMP_RESERVE }) : null;
+        if (!res || !res.rows.length) return '';
+        this._hcOpen = this._hcOpen || {};
+        const f1 = v => (v == null ? '—' : v.toFixed(1).replace('.', ','));
+        const f2 = v => (v == null ? '—' : v.toFixed(2).replace('.', ','));
+        const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        // Запас — на сколько процентов напор насоса (в метрах водяного столба) больше того, что нужно кольцу:
+        // k = насос / нужно, запас = (k − 1) × 100 %. Минус — напора не хватает. Единица одна — проценты.
+        const kFmt = k => (k == null ? '—' : (k >= 6 ? '>+500 %' : (k >= 1 ? '+' : '−') + Math.round(Math.abs(k - 1) * 100) + ' %'));
+        const needPct = Math.round((res.reserve - 1) * 100);   // нужный запас напора, %
+        const c = res.counts;
+        const state = c.fail ? 'fail' : (c.tight ? 'tight' : 'ok');
+        const pill ={ ok: 'Всё в норме', tight: 'Впритык', fail: 'Не хватает напора' }[state];
+        const ICON = { ok: '✓', tight: '!', fail: '✕', unknown: '?' };
+        const RANK = { fail: 3, tight: 2, unknown: 1, ok: 0 };
+        const NAMES = { boiler: 'Котёл и обвязка', rad: 'Радиаторы', ufh: 'Тёплый пол', dhw: 'Бойлер ГВС' };
+
+        // Контуры одного вида (коллекторы тёплого пола) сворачиваем в одну строку чек-листа: по худшему
+        const groups = [];
+        res.rows.forEach(r => {
+            let g = (r.id === 'ufh') ? groups.find(x => x.id === 'ufh') : null;
+            if (!g) { g = { id: r.id, rows: [] }; groups.push(g); }
+            g.rows.push(r);
+        });
+        groups.forEach(g => {
+            g.verdict = g.rows.reduce((a, r) => RANK[r.verdict] > RANK[a] ? r.verdict : a, 'ok');
+            const ks = g.rows.map(r => r.k).filter(k => k != null);
+            g.k = ks.length ? Math.min.apply(null, ks) : null;
+        });
+
+        // Шапка в духе листа «Гарантия STOUT»: заголовок, схема, статус-плашка
+        let html = '<div class="hc-card"><div class="hc-head"><div class="hc-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c3.5 4.2 6 7.2 6 10.2A6 6 0 0 1 6 13.2C6 10.2 8.5 7.2 12 3z"/><path d="M9.2 13.4l2 2 3.6-3.8"/></svg></div>'
+            + '<div class="hc-head-t"><div class="hc-title">Проверка гидравлики</div>'
+            + (res.scheme ? '<div class="hc-sub">Схема: ' + esc(res.scheme.text) + '</div>' : '') + '</div>'
+            + '<span class="hc-pill hc-' + state + '">' + pill + '</span></div><div class="hc-body">';
+
+        // Слабое звено: запас самого слабого контура на шкале, отметка — нужный запас
+        if (res.worst) {
+            // Шкала: ноль слева — насос ничего не даёт, «ровно нужно» на трети (запас 0 %), правый край — вдвое больше нужного
+            const cap = 3, pct = k => Math.max(2, Math.min(100, k / cap * 100));
+            const wName = NAMES[res.worst.id] || res.worst.title;
+            html += '<div class="hc-meter"><div class="hc-big hc-' + state + '">' + kFmt(res.worst.k) + '</div><div class="hc-meter-r">'
+                + '<div class="hc-need">запас напора; достаточно от +' + needPct + ' %</div>'
+                + '<div class="hc-bar"><i class="hc-' + state + '" style="width:' + pct(res.worst.k).toFixed(1) + '%"></i><b class="hc-mark" style="left:' + pct(res.reserve).toFixed(1) + '%"></b></div>'
+                + '<div class="hc-scale"><span style="left:0">нет напора</span><span style="left:' + pct(1).toFixed(1) + '%">0 % — ровно нужно</span><span style="right:0">+200 %</span></div></div>'
+                + '<div class="hc-cap">Насос даёт напора на столько процентов больше, чем нужно кольцу контура. Самый слабый контур — ' + esc(wName) + '.</div></div>';
+        }
+        (this._hcApplied || []).forEach(t => { html += '<div class="hc-msg hc-ok">✔ Исправлено автоматически: ' + esc(t) + '</div>'; });
+        if (this._hcTried) html += '<div class="hc-msg hc-tight">' + esc(this._hcTried) + '</div>';
+        if (!s.detailedRooms) html += '<div class="hc-note">Быстрый расчёт: приборы и петли оценены по площади.' + (forPrint ? '' : ' Подробности — в режиме «По комнатам».') + '</div>';
+
+        // Переключатель автоподбора: включён — калькулятор сам добавит группу или ветку радиаторов, если их кольцо не
+        // тянет насос (hydroNextFix); выключен — схему выбираете вы кнопками «Схема котельной». На печати не нужен.
+        if (!forPrint) {
+            const autoOn = s.hydroAutoFix !== false;
+            html += '<div class="hc-switch' + (autoOn ? ' on' : '') + '" role="switch" aria-checked="' + autoOn + '" tabindex="0" onclick="app.toggleHydroAutoFix(event)" onkeydown="if(event.key===\'Enter\'||event.key===\' \')app.toggleHydroAutoFix(event)">'
+                + '<span class="hc-sw"><i></i></span><span class="hc-sw-t"><b>Автоподбор схемы</b><small>'
+                + (autoOn ? 'Включён: если радиаторам не хватает напора, сам добавит группу или ветку.' : 'Выключен: схему котельной выбираете вы, кнопками «Схема котельной».')
+                + '</small></span></div>';
+            if (!autoOn && c.fail) html += '<div class="hc-msg hc-tight">Автоподбор выключен — напора не хватает. Выберите «Со стрелкой» в блоке «Схема котельной» или включите автоподбор.</div>';
+        }
+
+        // Чек-лист по контурам: одна строка — одно «проверено»; по нажатию — расход, напор, насос, совет
+        html += '<div class="hc-rows">';
+        groups.forEach((g, gi) => {
+            const key = 'row:' + g.id;
+            const many = g.rows.length > 1;
+            const first = g.rows[0];
+            let sub = '';
+            if (g.id === 'rad') sub = first.branches > 1 ? first.branches + ' ветки' : (first.hasGroup === false ? 'от насоса котла' : 'насосная группа');
+            else if (g.id === 'ufh') sub = many ? g.rows.length + ' коллектора' : String(first.title).replace(/^Тёплый пол:\s*/, '');
+            const resTxt = { ok: 'хватает', tight: 'впритык', fail: 'не хватает', unknown: 'нет данных' }[g.verdict];
+            html += '<details class="hc-row hc-' + g.verdict + '"' + ((forPrint || this._hcOpen[key]) ? ' open' : '')
+                + ' ontoggle="app._hcOpen[\'' + key + '\']=this.open"><summary><span class="hc-dot">' + ICON[g.verdict] + '</span>'
+                + '<span class="hc-name">' + esc(NAMES[g.id] || first.title) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>'
+                + '<span class="hc-res">' + resTxt + (g.k != null ? ' <b>' + (g.k >= 6 ? 'с большим запасом' : kFmt(g.k)) + '</b>' : '') + '</span><span class="hc-chev"></span></summary><div class="hc-det">';
+            g.rows.forEach(r => {
+                if (many) html += '<div class="hc-det-t">' + esc(String(r.title).replace(/^Тёплый пол:\s*/, '')) + '</div>';
+                html += '<div class="hc-facts"><div><span>Расход</span><b>' + f2(r.flow) + ' м³/ч</b></div><div><span>Нужно</span><b>' + f1(r.need) + ' м</b></div>'
+                    + '<div><span>Насос даёт</span><b>' + f1(r.have) + ' м</b></div><div><span>Запас напора</span><b>' + kFmt(r.k) + '</b></div></div>';
+                if (r.pump) html += '<div class="hc-det-p">' + esc(r.pump) + '</div>';
+                if (r.advice) html += '<div class="hc-advice">' + esc(r.advice) + '</div>';
+                r.flags.forEach(fl => { html += '<div class="hc-flag">' + esc(fl) + '</div>'; });
+            });
+            html += '</div></details>';
+        });
+        html += '</div>';
+
+        html += '<div class="hc-note">Напор — в метрах водяного столба (м вод. ст.). «Нужно» — потери самого трудного кольца контура, «Насос даёт» — напор насоса на этом расходе. Запас напора = на сколько процентов насос даёт больше нужного; достаточным считается от +' + needPct + ' %. У тёплого пола эти ' + needPct + ' % уже заложены в «Нужно».</div>';
+        if (s.detailedRooms) html += this.hydroExtras(res, !!forPrint);
+        return html + '</div></div>';
+    },
+
     syncHydroCheck: function () {
         const box = document.getElementById('hydro_check_side');
         if (!box) return;
         try {
-            const hc = (typeof window !== 'undefined') ? window.hydroCheck : null;
-            const s = this.state;
-            const on = !!(hc && s.objectType !== 'flat' && (s.fuels || []).length > 0 && s.area > 0);
-            const res = on ? hc.evaluate(this.buildHydroCheckData(), { reserve: this.RAD_PUMP_RESERVE }) : null;
-            if (!res || !res.rows.length) { box.innerHTML = ''; box.style.display = 'none'; return; }
-            const f1 = v => (v == null ? '—' : v.toFixed(1).replace('.', ','));
-            const f2 = v => (v == null ? '—' : v.toFixed(2).replace('.', ','));
-            const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-            const c = res.counts;
-            const state = c.fail ? 'fail' : (c.tight ? 'tight' : 'ok');
-            let html = '<div class="hc-card"><div class="hc-sum hc-' + state + '">'
-                + (c.fail ? 'Гидравлика: не хватает напора (контуров: ' + c.fail + ')'
-                    : c.tight ? 'Гидравлика: впритык (контуров: ' + c.tight + ')'
-                    : 'Гидравлика: напора хватает на всех контурах') + '</div>';
-            (this._hcApplied || []).forEach(t => { html += '<div class="hc-fixed">✔ Исправлено автоматически: ' + esc(t) + '</div>'; });
-            if (this._hcTried) html += '<div class="hc-note">' + esc(this._hcTried) + '</div>';
-            if (res.scheme) html += '<div class="hc-note">Схема: ' + esc(res.scheme.text) + '.</div>';
-            if (!s.detailedRooms) html += '<div class="hc-note">Быстрый расчёт: приборы и петли оценены по площади. Подробности (что выставить при пуске, на сколько хватит насоса, цена схемы) — в режиме «По комнатам».</div>';
-            html += '<table class="hc-table"><thead><tr><th>Контур</th><th>G, м³/ч</th><th>Нужно, м</th><th>Насос, м</th><th>Запас</th></tr></thead><tbody>';
-            res.rows.forEach(r => {
-                html += '<tr class="hc-' + r.verdict + '"><td>' + esc(r.title) + '</td><td>' + f2(r.flow) + '</td><td>' + f1(r.need)
-                    + '</td><td>' + f1(r.have) + '</td><td>' + (r.k == null ? '—' : (r.k > 20 ? '>×20' : '×' + f1(r.k))) + ' <b>' + esc(r.verdictRu) + '</b></td></tr>';
-                const extra = [];
-                if (r.pump) extra.push(esc(r.pump));
-                if (r.advice) extra.push(esc(r.advice));
-                r.flags.forEach(fl => extra.push(esc(fl)));
-                if (extra.length) html += '<tr class="hc-more"><td colspan="5">' + extra.join('<br>') + '</td></tr>';
-            });
-            html += '</tbody></table><div class="hc-note">«Нужно» — потери самого трудного кольца контура, «Насос» — что он даёт на этом расходе. Запас от ×' + f2(res.reserve) + ' считается достаточным (так же проверяется насос разводки); у тёплого пола запас 15 % уже заложен в «Нужно».</div>';
-            if (s.detailedRooms) html += this.hydroExtras(res);
-            html += '<div class="hc-note"><a href="#" class="hc-btn" onclick="app.toggleHydroAutoFix(event)">'
-                + (s.hydroAutoFix === false ? 'Включить автоисправление схемы по этой проверке' : 'Отключить автоисправление схемы') + '</a></div></div>';
+            const html = this.hydroCardHtml(false);
             box.innerHTML = html;
-            box.style.display = '';
+            box.style.display = html ? '' : 'none';
+            // схема и карточка делят строку пополам, пока карточка показана
+            const _sch = box.closest('#dynamic_scheme');
+            if (_sch) _sch.classList.toggle('hc-split', !!html);
         } catch (e) {
             box.innerHTML = '';
             box.style.display = 'none';
@@ -89060,6 +89162,9 @@ const app = {
                 tableWrapper.insertAdjacentHTML('beforebegin', schemeHtml);
             }
         }
+        // Карточка проверки гидравлики: справа от схемы, а когда схема выключена — отдельным блоком над
+        // таблицей. Содержимое заполняет syncHydroCheck после render().
+        this.placeHydroCheckBox();
         // Схема подключения автоматики — строкой таблицы над разделом
         // «2.9.1. Контроллер и связь». Живёт вместе с разделом: включили
         // автоматику — есть раздел и есть схема к нему.
@@ -90133,6 +90238,8 @@ function prepareForPrint() {
             const eqWp = eqClone.querySelector('#warranty_print'); if (eqWp) eqWp.remove();
             let eqScheme = eqClone.querySelector('#dynamic_scheme');
             if (eqScheme) eqScheme.remove();
+            // Карточка гидравлики печатается своим листом (шаг 3б), а не внутри таблицы сметы
+            const eqHydro = eqClone.querySelector('#hydro_check_side'); if (eqHydro) eqHydro.remove();
             // В КП из всех схем идут только схема котельной (отдельным листом, шаг 3) и
             // раскладка радиаторов и тёплого пола по плану (отдельным разделом, шаг 2б, как
             // в ссылке). Остальные схемы-строки таблицы — автоматика, узлы, вода — не печатаем.
@@ -90159,6 +90266,7 @@ function prepareForPrint() {
             const worksWp = worksClone.querySelector('#warranty_print'); if (worksWp) worksWp.remove();
             let worksScheme = worksClone.querySelector('#dynamic_scheme');
             if (worksScheme) worksScheme.remove();
+            const worksHydro = worksClone.querySelector('#hydro_check_side'); if (worksHydro) worksHydro.remove();
             let wTabs = worksClone.querySelector('.main-view-tabs');
             if (wTabs) wTabs.style.display = 'none';
 
@@ -90242,6 +90350,24 @@ function prepareForPrint() {
                 }
                 printBin.appendChild(schemeClone);
             }
+        }
+
+        // --- ШАГ 3б: ПРОВЕРКА ГИДРАВЛИКИ — отдельным листом после схемы, независимо от того, включена ли
+        // схема: проверка считается всегда. Карточка та же, что на экране, но разделы раскрыты и без кнопок.
+        // Выбор в окне печати — app.kpHydroOn (карточка «Гидравлика»); при печати без окна — печатаем. ---
+        if (app.kpHydroOn !== false && (showEq || showSchemeOpt)) {
+            try {
+                app.state.viewMode = 'equipment';
+                app.render();
+                const hydroHtml = app.hydroCardHtml(true);
+                if (hydroHtml) {
+                    const hydroPage = document.createElement('div');
+                    hydroPage.id = 'hydro_check_print';
+                    hydroPage.innerHTML = '<h2 class="hc-print-title">Проверка гидравлики котельной</h2>' + hydroHtml;
+                    if (printBin.children.length > 0) hydroPage.classList.add('print-page-break');
+                    printBin.appendChild(hydroPage);
+                }
+            } catch (e) { console.warn('[печать] проверка гидравлики пропущена', e); }
         }
 
         // --- ШАГ 4: ТАБЛИЦА ТЕПЛОПОТЕРЬ (Подробный режим + готовый расчёт по комнатам,
