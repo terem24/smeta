@@ -69238,8 +69238,9 @@ const app = {
             const _sy = this.state.systems || [];
             const wantTp = _sy.includes('tp') && this.roomWantsUfh({ name: roomName });
             const sys = [];
-            if (_sy.includes('rad') || !wantTp) sys.push('rad');
-            if (wantTp) sys.push('tp');
+            const tpOnly = _sy.includes('tp') && !_sy.includes('rad');
+            if (!tpOnly) sys.push('rad');
+            if (wantTp || tpOnly) sys.push('tp');
 
             return {
                 id: Date.now() + i * 100,
@@ -69480,6 +69481,17 @@ const app = {
         }
         c1.innerHTML = "";
         if (c2) c2.innerHTML = "";
+
+        // Короткое объяснение, откуда в комнатах радиаторы и пол: система задаётся
+        // у каждой комнаты, а «Тип отопления» только раздаёт набор по умолчанию.
+        if ((this.state.rooms || []).length) {
+            const _s = this.state.systems || [];
+            const _anyRad = this.state.rooms.some(r => !r.sys || r.sys.includes('rad'));
+            let _hint = '';
+            if (_s.includes('tp') && !_s.includes('rad') && !_anyRad) _hint = 'Выбран только тёплый пол — радиаторы не добавлены. Включить их в комнате можно галочкой «Радиаторы».';
+            else if (_s.includes('tp') && _anyRad) _hint = 'Радиаторы и пол задаются у каждой комнаты. Пол ставится только в жилых и влажных помещениях, в остальных остаются радиаторы.';
+            if (_hint) c1.insertAdjacentHTML('afterbegin', `<div style="font-size:11px;color:var(--text-muted);background:var(--surface-2,rgba(0,0,0,.04));border-radius:6px;padding:6px 8px;margin-bottom:6px;line-height:1.35;">ℹ️ ${_hint}</div>`);
+        }
 
         const hs = document.getElementById('rooms_heatloss_summary');
         if (!this.state.rooms) { if (hs) hs.style.display = 'none'; this.renderPlanChecks(); return; }
