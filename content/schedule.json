@@ -193,9 +193,9 @@
    "freq": 144240,
    "audience": "owner",
    "data_block": "расчёт по числу точек",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-15",
-   "published_at": null,
+   "published_at": "2026-10-15",
    "words": 707
   },
   {
