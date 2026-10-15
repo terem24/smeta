@@ -48780,6 +48780,100 @@ const app = {
     },
 
     /**
+     * Сводка контуров для проверки гидравлики (hydro_check.js): по каждому контуру — расход,
+     * требуемый напор и то, что даёт насос. Своего расчёта здесь нет: числа берутся у тех же
+     * функций, по которым собрана смета (radHydraulics, ufhBalance, вердикт по котловому контуру,
+     * dhwLoadHydraulics), поэтому сводка разойтись со сметой не может. Зовётся после render().
+     */
+    buildHydroCheckData: function () {
+        const rows = [];
+        const bl = this._boilerLoopHydro;
+        if (bl) rows.push({ id: 'boiler', title: 'Котловой контур: котёл, обвязка, гидроразделение',
+            flow: bl.flow, need: bl.need, have: bl.have, pump: bl.pump, confirmed: bl.confirmed });
+
+        const h = this.radHydro;
+        if (h && h.parts && h.parts.length) {
+            // Подходящий насос; если не тянет ни один — самый напористый, чтобы запас был виден числом
+            const best = h.pump || (h.pumps || []).reduce((a, p) => (!a || p.avail > a.avail) ? p : a, null);
+            rows.push({ id: 'rad',
+                title: 'Радиаторы: кольцо до самого дальнего прибора' + (h.branches > 1 ? ' (одна из ' + h.branches + ' веток)' : ''),
+                flow: h.flowBranch, need: h.head, have: best ? best.avail : null, pump: best ? best.label : null,
+                hasGroup: !!h.hasGroup, branches: h.branches, noisy: !!h.noisy,
+                // у котла без паспортной кривой стоит типовая или условная 25/60 — см. radHydraulics
+                confirmed: !(best && /типовая|принят по кривой/.test(best.label)) });
+        }
+
+        const b = this._ufhBal;
+        if (b && b.mans && b.mans.length) {
+            const kf = this.coolantPumpK().flow;
+            b.mans.forEach(m => rows.push({ id: 'ufh', title: 'Тёплый пол: ' + m.label,
+                flow: m.nodeFlow || m.flow, need: m.need,
+                have: this.ufhPumpHead((m.nodeFlow || m.flow) * kf, b.pump), pump: b.pump.label,
+                // запас 15 % уже внутри «нужно» (ufhBalance), второй раз его не требуем
+                reserve: 1 }));
+        }
+
+        const d = this.dhwLoadHydraulics();
+        if (d) rows.push({ id: 'dhw', title: 'Загрузка бойлера ГВС: змеевик',
+            flow: d.flow, need: d.head, have: d.pump ? d.pump.avail : null, pump: d.pump ? d.pump.label : null,
+            noisy: !!d.noisy, confirmed: d.pump ? !d.pump.unknown : undefined });
+
+        const why = this._bsAutoWhy || [];
+        return { rows: rows, scheme: {
+            hydro: !!this.needCollector,
+            text: (this.needCollector ? 'со стрелкой' : 'без стрелки') + (this.needCollector && why.length ? ': ' + why.join(', ') : '')
+        } };
+    },
+
+    /**
+     * Блок «Проверка гидравлики» под схемой котельной — только в подробном режиме, там известны
+     * приборы и петли. Не меняет смету: показывает, где запас насоса мал, и что с этим делать.
+     */
+    syncHydroCheck: function () {
+        const box = document.getElementById('blk_hydro_check');
+        if (!box) return;
+        try {
+            const hc = (typeof window !== 'undefined') ? window.hydroCheck : null;
+            const s = this.state;
+            const on = !!(hc && s.detailedRooms && s.objectType !== 'flat' && (s.fuels || []).length > 0 && s.area > 0);
+            const res = on ? hc.evaluate(this.buildHydroCheckData(), { reserve: this.RAD_PUMP_RESERVE }) : null;
+            if (!res || !res.rows.length) { box.style.display = 'none'; return; }
+            const f1 = v => (v == null ? '—' : v.toFixed(1).replace('.', ','));
+            const f2 = v => (v == null ? '—' : v.toFixed(2).replace('.', ','));
+            const c = res.counts;
+            const head = document.getElementById('hydro_check_sum');
+            const state = c.fail ? 'fail' : (c.tight ? 'tight' : 'ok');
+            if (head) {
+                head.className = 'hc-sum hc-' + state;
+                head.textContent = c.fail ? ('Гидравлика: не хватает напора — контуров ' + c.fail)
+                    : c.tight ? ('Гидравлика: впритык — контуров ' + c.tight)
+                    : 'Гидравлика: напора хватает на всех контурах';
+            }
+            const body = document.getElementById('hydro_check_body');
+            if (body) {
+                const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+                let html = '';
+                if (res.scheme) html += '<div class="hc-note">Схема: ' + esc(res.scheme.text) + '.</div>';
+                html += '<table class="hc-table"><thead><tr><th>Контур</th><th>G, м³/ч</th><th>Нужно, м</th><th>Насос, м</th><th>Запас</th></tr></thead><tbody>';
+                res.rows.forEach(r => {
+                    html += '<tr class="hc-' + r.verdict + '"><td>' + esc(r.title) + '</td><td>' + f2(r.flow) + '</td><td>' + f1(r.need)
+                        + '</td><td>' + f1(r.have) + '</td><td>' + (r.k == null ? '—' : (r.k > 20 ? '>×20' : '×' + f1(r.k))) + ' <b>' + esc(r.verdictRu) + '</b></td></tr>';
+                    const extra = [];
+                    if (r.pump) extra.push(esc(r.pump));
+                    if (r.advice) extra.push(esc(r.advice));
+                    r.flags.forEach(fl => extra.push(esc(fl)));
+                    if (extra.length) html += '<tr class="hc-more"><td colspan="5">' + extra.join('<br>') + '</td></tr>';
+                });
+                html += '</tbody></table><div class="hc-note">«Нужно» — потери самого трудного кольца контура, «Насос» — что он даёт на этом расходе. Запас от ×' + f2(res.reserve) + ' считается достаточным (так же проверяется насос разводки); у тёплого пола запас 15 % уже заложен в «Нужно». Проверка смету не меняет: подсказывает, где слабо.</div>';
+                body.innerHTML = html;
+            }
+            box.style.display = 'block';
+        } catch (e) {
+            box.style.display = 'none';
+        }
+    },
+
+    /**
      * Лист «Общие данные»: показатели по этажам, состав пола и технические
      * указания. Всё берётся из состояния расчёта и состава сметы — руками
      * вводить нечего, как и на остальных листах комплекта.
@@ -66433,8 +66527,9 @@ const app = {
      * насос идёт и расход узла подмеса пола (он берёт воду с той же подачи), его добавляем к
      * расходу на кривой — напор падает с расходом, и проверка идёт в невыгодную сторону.
      *
-     * null — решать нечем: котлов не один (каскад), нет паспортной кривой, она не подтверждена
-     * ('unknown'), у котла нет встроенного насоса. Тогда остаются прежние пороги.
+     * null — решать нечем: каскад однотипных котлов (radMainBoiler; газ с электрорезервом считается
+     * по газовому), у котла нет встроенного насоса или у электрокотла нет подтверждённой кривой
+     * (у газового — типовая, см. radBoilerPump). Тогда остаются прежние пороги.
      * Условие «запас не меньше RAD_PUMP_RESERVE» — то же, что требуется от насоса разводки.
      */
     // Насос котла для проверки кольца радиаторов. Своя паспортная остаточная кривая — как есть. У газового
@@ -66451,12 +66546,24 @@ const app = {
         }
         return null;
     },
+    // Котёл, чей насос гонит кольцо радиаторов: единственный, а при газе с электрическим резервом —
+    // газовый (он основной; электрокотёл включается в аварии и несёт ту же нагрузку своим насосом).
+    // Каскад из нескольких котлов одного типа — null: общего насоса у него нет.
+    radMainBoiler: function (boilers) {
+        const list = (boilers || []).filter(Boolean);
+        if (list.length === 1) return list[0];
+        if (list.length === 2) {
+            const gas = list.filter(b => b.type === 'gas');
+            if (gas.length === 1) return gas[0];
+        }
+        return null;
+    },
     radDirectByBoilerPump: function (loadKw, devicesCount, boilers, extraKw) {
         const kw = parseFloat(loadKw) || 0;
         if (!(kw > 0)) return null;
-        const list = (boilers || []).filter(Boolean);
-        if (list.length !== 1) return null;
-        const bp = this.radBoilerPump(list[0]);
+        const main = this.radMainBoiler(boilers);
+        if (!main) return null;
+        const bp = this.radBoilerPump(main);
         if (!bp) return null;
         const pump = bp.curve;
         const s = this.state;
@@ -78002,7 +78109,11 @@ const app = {
         if (computeOnly) return this._renderInner(true);
         this.initPanelFocusTracking();
         const _ia = this._inputAnchorBefore();
-        try { return this._renderInner(false); } finally { this._inputAnchorAfter(_ia); }
+        try { return this._renderInner(false); } finally {
+            this._inputAnchorAfter(_ia);
+            // Сводка гидравлики читает то, что render посчитал, поэтому — после него
+            this.syncHydroCheck();
+        }
     },
     _renderInner: function (computeOnly) {
         this.normalizeAreaNumbers();
@@ -80924,8 +81035,9 @@ const app = {
         // 'pump' — напора встроенного насоса котла хватает, группа не нужна; 'nopump' — не хватает;
         // 'rule' — паспортной кривой нет, решали пороги (площадь, этаж, мощность).
         this._radGroupWhy = null;
+        this._boilerLoopHydro = null;   // заполнит подсказка к трубе котельной ниже (вердикт по напору котла)
         // Единственный котёл — кривую его насоса берёт и гидравлика кольца (radHydraulics), когда группы нет
-        this._radDirectBoiler = (selBoilers.length === 1) ? selBoilers[0] : null;
+        this._radDirectBoiler = this.radMainBoiler(selBoilers);
         if (hasRad && !_forceDirect) {
             // Схема «С гидрострелкой» ставит группу и там, где хватило бы насоса котла.
             // Если требуется коллектор (из-за другой насосной группы, т.е. tQ > 0), группа ставится на радиаторы тоже.
@@ -82130,6 +82242,8 @@ const app = {
                           + _drop.parts.map(p => `${p.name} ${p.m.toFixed(2)}`).join(', ') + '.<br>'
                         : `• Потери контура посчитать не удалось: внутренний диаметр трубы Ø${_bpOuter} в каталожном ряду системы не найден.<br>`;
 
+                    // Числа этого вердикта запоминаем для сводной проверки гидравлики (hydro_check.js)
+                    this._boilerLoopHydro = null;
                     const _pump = this.boilerPumpOf(_b1);
                     if (!_pump) {
                         if ((selBoilers || []).some(b => b && b.noPump)) {
@@ -82159,6 +82273,8 @@ const app = {
                         + `• ${_kindNote}<br>`;
 
                     if (_drop) {
+                        this._boilerLoopHydro = { flow: _q1, need: _drop.total * _kpB.head, have: _h,
+                            pump: _pump.label, confirmed: _pump.kind === 'residual', boiler: _b1.power || 0 };
                         const _res = _drop.total > 0 ? (_h / (_drop.total * _kpB.head)) : 0;
                         // Тот же запас, что требуется от насоса в разводке дома.
                         const _need = this.RAD_PUMP_RESERVE;
