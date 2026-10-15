@@ -49125,6 +49125,17 @@ const app = {
         if (this._hcTried) html += '<div class="hc-msg hc-tight">' + esc(this._hcTried) + '</div>';
         if (!s.detailedRooms) html += '<div class="hc-note">Быстрый расчёт: приборы и петли оценены по площади.' + (forPrint ? '' : ' Подробности — в режиме «По комнатам».') + '</div>';
 
+        // Переключатель автоподбора: включён — калькулятор сам добавит группу или ветку радиаторов, если их кольцо не
+        // тянет насос (hydroNextFix); выключен — схему выбираете вы кнопками «Схема котельной». На печати не нужен.
+        if (!forPrint) {
+            const autoOn = s.hydroAutoFix !== false;
+            html += '<div class="hc-switch' + (autoOn ? ' on' : '') + '" role="switch" aria-checked="' + autoOn + '" tabindex="0" onclick="app.toggleHydroAutoFix(event)" onkeydown="if(event.key===\'Enter\'||event.key===\' \')app.toggleHydroAutoFix(event)">'
+                + '<span class="hc-sw"><i></i></span><span class="hc-sw-t"><b>Автоподбор схемы</b><small>'
+                + (autoOn ? 'Включён: если радиаторам не хватает напора, сам добавит группу или ветку.' : 'Выключен: схему котельной выбираете вы, кнопками «Схема котельной».')
+                + '</small></span></div>';
+            if (!autoOn && c.fail) html += '<div class="hc-msg hc-tight">Автоподбор выключен — напора не хватает. Выберите «Со стрелкой» в блоке «Схема котельной» или включите автоподбор.</div>';
+        }
+
         // Чек-лист по контурам: одна строка — одно «проверено»; по нажатию — расход, напор, насос, совет
         html += '<div class="hc-rows">';
         groups.forEach((g, gi) => {
@@ -49153,8 +49164,6 @@ const app = {
 
         html += '<div class="hc-note">Напор — в метрах водяного столба (м вод. ст.). «Нужно» — потери самого трудного кольца контура, «Насос даёт» — напор насоса на этом расходе. Запас напора = на сколько процентов насос даёт больше нужного; достаточным считается от +' + needPct + ' %. У тёплого пола эти ' + needPct + ' % уже заложены в «Нужно».</div>';
         if (s.detailedRooms) html += this.hydroExtras(res, !!forPrint);
-        if (!forPrint) html += '<div class="hc-note"><a href="#" class="hc-btn" onclick="app.toggleHydroAutoFix(event)">'
-            + (s.hydroAutoFix === false ? 'Включить автоисправление схемы по этой проверке' : 'Отключить автоисправление схемы') + '</a></div>';
         return html + '</div></div>';
     },
 
