@@ -1,117 +1,110 @@
 /* Проверка гидравлики (app.hydroCardHtml / syncHydroCheck, hydro_check.js).
-   Карточка в духе листа «Гарантия STOUT»: синяя шапка со статус-плашкой, шкала запаса, чек-лист контуров.
-   Цвета — из переменных темы (--surface, --text-main, --c-ok…), поэтому тёмная тема подхватывается сама. */
+   Спокойная карточка в стиле калькулятора: тот же размер текста, что у панелей и сметы, без цветной шапки —
+   цвет несут только статус и галочки контуров. Цвета — из переменных темы (--surface, --text-main, --c-ok…),
+   поэтому тёмная тема подхватывается сама. */
 
 /* Схема и карточка делят строку пополам (класс .hc-split ставит syncHydroCheck, пока карточка показана);
    на узком экране карточка уходит под схему */
-#dynamic_scheme.scheme-vector.hc-split { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+#dynamic_scheme.scheme-vector.hc-split { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
 #dynamic_scheme.scheme-vector.hc-split .scheme-svg-wrap {
-    flex: 0 0 calc(50% - 8px); width: calc(50% - 8px); max-width: none;
+    flex: 0 0 calc(50% - 7px); width: calc(50% - 7px); max-width: none;
     height: auto; aspect-ratio: 420 / 297;
 }
 #dynamic_scheme.scheme-vector.hc-split .scheme-svg-wrap > svg { height: 100%; }
-.hc-side { flex: 1 1 calc(50% - 8px); min-width: 0; }
+.hc-side { flex: 1 1 calc(50% - 7px); min-width: 0; }
 @media (max-width: 900px) {
     #dynamic_scheme.scheme-vector.hc-split .scheme-svg-wrap { flex-basis: 100%; width: 100%; }
     .hc-side { flex-basis: 100%; }
 }
-/* Схема выключена — карточка стоит отдельным блоком над таблицей сметы */
 .hc-solo { flex: none; max-width: 760px; margin-bottom: 20px; }
 
 .hc-card { background: var(--surface, #fff); color: var(--text-main, #111827); border: 1px solid var(--border, #E5E7EB);
-    border-radius: 16px; overflow: hidden; font-size: 13px; box-shadow: 0 1px 2px rgba(15, 23, 42, .06); }
+    border-radius: 10px; font-size: 12px; line-height: 1.35; padding: 8px 10px; }
 
-/* Шапка */
-.hc-head { display: flex; align-items: center; gap: 12px; padding: 14px 16px; color: #fff;
-    background: linear-gradient(135deg, #1e3a6e 0%, #25447f 100%); }
-.hc-ico { flex: none; width: 40px; height: 40px; border-radius: 12px; background: rgba(255, 255, 255, .14);
-    display: flex; align-items: center; justify-content: center; }
+/* Шапка: заголовок и статус в одну строку, без заливки */
+.hc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .hc-head-t { flex: 1; min-width: 0; }
-.hc-title { font-size: 16px; font-weight: 700; line-height: 1.2; }
-.hc-sub { font-size: 12px; opacity: .8; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hc-pill { flex: none; font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 999px; }
-.hc-pill.hc-ok { background: #d9f7e5; color: #0b7a3b; }
-.hc-pill.hc-tight { background: #fdecc8; color: #8a5a00; }
-.hc-pill.hc-fail { background: #fddcdc; color: #a31515; }
+.hc-title { font-size: 12px; font-weight: 700; }
+.hc-sub { font-size: 11px; color: var(--text-sec, #6B7280); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hc-pill { flex: none; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+.hc-pill.hc-ok { background: rgba(34, 197, 94, .14); color: var(--c-ok, #059669); }
+.hc-pill.hc-tight { background: rgba(245, 158, 11, .16); color: var(--c-warn, #B45309); }
+.hc-pill.hc-fail { background: rgba(239, 68, 68, .14); color: var(--c-bad, #DC2626); }
 
-.hc-body { padding: 14px 16px 12px; }
+.hc-body { padding: 0; }
 
-/* Шкала запаса: крупное число слева, полоса справа */
-.hc-meter { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: center; margin-bottom: 12px; }
-.hc-big { font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -.02em; }
+/* Запас самого слабого контура: число и тонкая шкала с меткой «достаточно» */
+.hc-meter { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: center; margin-bottom: 6px; }
+.hc-big { font-size: 16px; font-weight: 700; line-height: 1; }
 .hc-big.hc-ok { color: var(--c-ok, #059669); }
 .hc-big.hc-tight { color: var(--c-warn, #B45309); }
 .hc-big.hc-fail { color: var(--c-bad, #DC2626); }
-.hc-need { font-size: 11px; font-weight: 600; text-align: right; color: var(--text-sec, #6B7280); margin-bottom: 4px; }
-.hc-bar { position: relative; height: 10px; border-radius: 999px; background: var(--surface-light, #F3F4F6); }
+.hc-bar { position: relative; height: 5px; border-radius: 999px; background: var(--surface-light, #F3F4F6); }
 .hc-bar > i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; }
 .hc-bar > i.hc-ok { background: #22c55e; }
 .hc-bar > i.hc-tight { background: #f59e0b; }
 .hc-bar > i.hc-fail { background: #ef4444; }
-.hc-mark { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text-main, #111827); border-radius: 2px; }
-.hc-scale { position: relative; height: 14px; margin-top: 4px; font-size: 10.5px; color: var(--text-sec, #6B7280); }
-.hc-scale > span { position: absolute; top: 0; white-space: nowrap; }
-.hc-scale > span:nth-child(2) { transform: translateX(-50%); }
-.hc-cap { grid-column: 1 / -1; font-size: 11.5px; color: var(--text-sec, #6B7280); line-height: 1.35; }
+.hc-mark { position: absolute; top: -3px; bottom: -3px; width: 1.5px; background: var(--text-sec, #6B7280); border-radius: 2px; }
+.hc-cap { grid-column: 1 / -1; font-size: 11px; color: var(--text-sec, #6B7280); }
 
-.hc-msg { margin: 0 0 8px; padding: 8px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; line-height: 1.35; }
+.hc-msg { margin: 0 0 6px; padding: 5px 8px; border-radius: 8px; font-size: 11px; font-weight: 600; }
 .hc-msg.hc-ok { background: rgba(34, 197, 94, .12); color: var(--c-ok, #059669); }
 .hc-msg.hc-tight { background: rgba(245, 158, 11, .14); color: var(--c-warn, #B45309); }
-.hc-note { margin-top: 8px; font-size: 11px; line-height: 1.4; color: var(--text-sec, #6B7280); }
+.hc-note { margin-top: 6px; font-size: 10.5px; color: var(--text-sec, #6B7280); }
 
 /* Переключатель автоподбора: видно, включён он или нет (зелёный бегунок справа / серый слева) */
-.hc-switch { display: flex; align-items: center; gap: 12px; margin: 0 0 10px; padding: 9px 12px; cursor: pointer; user-select: none;
-    border: 1px solid var(--border, #E5E7EB); border-radius: 12px; background: var(--surface-light, #F9FAFB); }
+.hc-switch { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; padding: 5px 8px; cursor: pointer; user-select: none;
+    border: 1px solid var(--border, #E5E7EB); border-radius: 8px; background: var(--surface-light, #F9FAFB); }
 .hc-switch:focus-visible { outline: 2px solid var(--primary, #2563eb); outline-offset: 2px; }
-.hc-sw { flex: none; position: relative; width: 38px; height: 22px; border-radius: 999px; background: #9ca3af; transition: background .15s; }
-.hc-sw > i { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff;
+.hc-sw { flex: none; position: relative; width: 28px; height: 16px; border-radius: 999px; background: #9ca3af; transition: background .15s; }
+.hc-sw > i { position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff;
     box-shadow: 0 1px 2px rgba(0, 0, 0, .3); transition: transform .15s; }
 .hc-switch.on .hc-sw { background: #22c55e; }
-.hc-switch.on .hc-sw > i { transform: translateX(16px); }
+.hc-switch.on .hc-sw > i { transform: translateX(12px); }
 .hc-sw-t { min-width: 0; line-height: 1.25; }
-.hc-sw-t > b { display: block; font-size: 13px; }
-.hc-sw-t > small { display: block; margin-top: 1px; font-size: 11px; color: var(--text-sec, #6B7280); }
+.hc-sw-t > b { display: block; font-size: 12px; }
+.hc-sw-t > small { display: block; font-size: 10.5px; color: var(--text-sec, #6B7280); }
 
 /* Чек-лист контуров: строка = контур, по нажатию — цифры и совет */
-.hc-rows { display: flex; flex-direction: column; gap: 6px; }
-.hc-row { border: 1px solid var(--border, #E5E7EB); border-radius: 12px; background: var(--surface-light, #F9FAFB); }
-.hc-row > summary { display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer; list-style: none; }
+.hc-rows { display: flex; flex-direction: column; gap: 3px; }
+.hc-row { border: 1px solid var(--border, #E5E7EB); border-radius: 8px; background: var(--surface-light, #F9FAFB); }
+.hc-row > summary { display: flex; align-items: center; gap: 8px; padding: 5px 8px; cursor: pointer; list-style: none; }
 .hc-row > summary::-webkit-details-marker { display: none; }
-.hc-dot { flex: none; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: 800; color: #fff; background: #22c55e; }
+.hc-dot { flex: none; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; color: #fff; background: #22c55e; }
 .hc-row.hc-tight .hc-dot { background: #f59e0b; }
 .hc-row.hc-fail .hc-dot { background: #ef4444; }
 .hc-row.hc-unknown .hc-dot { background: #9ca3af; }
-.hc-name { flex: 1; min-width: 0; font-weight: 700; font-size: 13.5px; line-height: 1.2; }
-.hc-name > small { display: block; font-weight: 500; font-size: 11px; color: var(--text-sec, #6B7280); margin-top: 1px; }
-.hc-res { flex: none; font-size: 12px; font-weight: 600; text-align: right; color: var(--c-ok, #059669); }
+.hc-name { flex: 1; min-width: 0; font-weight: 600; font-size: 12px; }
+.hc-name > small { margin-left: 6px; font-weight: 400; font-size: 11px; color: var(--text-sec, #6B7280); }
+.hc-res { flex: none; font-size: 11px; font-weight: 500; text-align: right; color: var(--c-ok, #059669); }
 .hc-row.hc-tight .hc-res { color: var(--c-warn, #B45309); }
 .hc-row.hc-fail .hc-res { color: var(--c-bad, #DC2626); }
 .hc-row.hc-unknown .hc-res { color: var(--text-sec, #6B7280); }
-.hc-res > b { margin-left: 4px; font-weight: 800; }
-.hc-chev { flex: none; width: 8px; height: 8px; border-right: 2px solid var(--text-sec, #9CA3AF); border-bottom: 2px solid var(--text-sec, #9CA3AF);
-    transform: rotate(45deg); transition: transform .15s; margin: 0 2px 3px 2px; }
-.hc-row[open] .hc-chev { transform: rotate(-135deg); margin-bottom: -3px; }
-.hc-det { padding: 2px 12px 11px 46px; }
-.hc-det-t { margin-top: 8px; font-size: 11.5px; font-weight: 700; }
-.hc-facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 6px; }
-.hc-facts > div { background: var(--surface, #fff); border: 1px solid var(--border, #E5E7EB); border-radius: 10px; padding: 6px 8px; }
+.hc-res > b { margin-left: 3px; font-weight: 700; }
+.hc-chev { flex: none; width: 6px; height: 6px; border-right: 1.5px solid var(--text-sec, #9CA3AF); border-bottom: 1.5px solid var(--text-sec, #9CA3AF);
+    transform: rotate(45deg); transition: transform .15s; margin: 0 2px 2px 2px; }
+.hc-row[open] .hc-chev { transform: rotate(-135deg); margin-bottom: -2px; }
+.hc-det { padding: 0 8px 7px 32px; }
+.hc-det-t { margin-top: 5px; font-size: 11px; font-weight: 600; }
+.hc-facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 4px; }
+.hc-facts > div { background: var(--surface, #fff); border: 1px solid var(--border, #E5E7EB); border-radius: 6px; padding: 3px 6px; }
 .hc-facts span { display: block; font-size: 10px; color: var(--text-sec, #6B7280); }
-.hc-facts b { font-size: 12.5px; }
-.hc-det-p { margin-top: 6px; font-size: 11px; color: var(--text-sec, #6B7280); }
-.hc-advice { margin-top: 6px; font-size: 11.5px; font-weight: 600; color: var(--c-bad, #DC2626); line-height: 1.35; }
-.hc-flag { margin-top: 4px; font-size: 11px; color: var(--c-warn, #B45309); }
-@media (max-width: 520px) { .hc-facts { grid-template-columns: repeat(2, 1fr); } .hc-det { padding-left: 12px; } }
+.hc-facts b { font-size: 11.5px; font-weight: 600; }
+.hc-det-p { margin-top: 4px; font-size: 10.5px; color: var(--text-sec, #6B7280); }
+.hc-advice { margin-top: 4px; font-size: 11px; font-weight: 600; color: var(--c-bad, #DC2626); }
+.hc-flag { margin-top: 3px; font-size: 10.5px; color: var(--c-warn, #B45309); }
+@media (max-width: 520px) { .hc-facts { grid-template-columns: repeat(2, 1fr); } .hc-det { padding-left: 8px; } }
 
 /* Разделы подробного режима («По комнатам»): что выставить при пуске, на сколько хватит… */
-.hc-sec { margin-top: 6px; border-top: 1px solid var(--border, #E5E7EB); padding-top: 8px; }
-.hc-sec:first-of-type { margin-top: 10px; }
-.hc-sec > summary { cursor: pointer; font-weight: 700; font-size: 13px; list-style: none; display: flex; align-items: center; gap: 8px; }
+.hc-sec { margin-top: 4px; border-top: 1px solid var(--border, #E5E7EB); padding-top: 5px; }
+.hc-sec:first-of-type { margin-top: 8px; }
+.hc-sec > summary { cursor: pointer; font-weight: 600; font-size: 12px; list-style: none; display: flex; align-items: center; gap: 6px; }
 .hc-sec > summary::-webkit-details-marker { display: none; }
-.hc-sec > summary::after { content: ''; margin-left: auto; width: 7px; height: 7px; border-right: 2px solid var(--text-sec, #9CA3AF);
-    border-bottom: 2px solid var(--text-sec, #9CA3AF); transform: rotate(45deg); transition: transform .15s; }
+.hc-sec > summary::after { content: ''; margin-left: auto; width: 6px; height: 6px; border-right: 1.5px solid var(--text-sec, #9CA3AF);
+    border-bottom: 1.5px solid var(--text-sec, #9CA3AF); transform: rotate(45deg); transition: transform .15s; }
 .hc-sec[open] > summary::after { transform: rotate(-135deg); }
-.hc-sec ul { margin: 6px 0 2px; padding-left: 18px; font-size: 11.5px; line-height: 1.5; }
+.hc-sec ul { margin: 4px 0 2px; padding-left: 16px; font-size: 11px; line-height: 1.45; }
 .hc-btn { color: var(--primary, #2563eb); border-bottom: 1px dashed currentColor; text-decoration: none; cursor: pointer; }
 
 /* Печать: живая карточка скрыта, проверка гидравлики идёт своим листом (#hydro_check_print,
@@ -119,8 +112,8 @@
 @media print {
     .hc-side { display: none !important; }
     #hydro_check_print { padding: 6mm 8mm; color: #111; }
-    #hydro_check_print .hc-print-title { font-size: 16px; font-weight: 700; margin: 0 0 8px; }
-    #hydro_check_print .hc-card { box-shadow: none; }
+    #hydro_check_print .hc-print-title { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
+    #hydro_check_print .hc-card { border: none; padding: 0; font-size: 12px; }
     #hydro_check_print .hc-row > summary { cursor: default; }
     #hydro_check_print .hc-chev, #hydro_check_print .hc-sec > summary::after { display: none; }
     #hydro_check_print * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
