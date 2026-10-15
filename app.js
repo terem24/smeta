@@ -26696,29 +26696,35 @@ const app = {
             const sess = this.sessionSummary(u);
             const sessionLine = `<span title="${sess.title}" style="color:${sess.color};">${sess.text}</span>`;
 
+            // Телефон, «Компактно»: поле дистрибьютора свёрнуто, поэтому о его отсутствии говорим плашкой
+            // у имени. Сотрудникам дистрибьютор не нужен — для них плашки нет.
+            const noDistWarn = (!u.distributor_id && !['admin', 'viewer', 'manager'].includes(u.account_type))
+                ? '<span class="ad-warn">нет дистрибьютора</span>' : '';
+
             h += `<tr class="active-row admin-list-row" data-search="${searchStr}" style="cursor: pointer; transition: 0.2s;" onclick="app.openUserPeek('${u.id}')" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='transparent'">
                         <!-- Нумерация сквозная по всему списку, а не по странице: на второй
                              странице отсчёт снова с 1 сбивал с толку (44 записи → 1…44) -->
-                        <td style="color:var(--text-sec);">${this._adminOffset + i + 1}</td>
-                        <td><div style="display:flex; align-items:center;">${avatarImg} <div><b style="font-size:13px;">${suspectMark}<span class="ad-name-full">${name}</span><span class="ad-name-short">${nameShort}</span></b><br><span style="font-size:11px;color:var(--text-sec);">${phone}</span><span class="ad-more">${locHTML}${extraHTML}</span></div></div></td>
+                        <td class="ad-c-num" style="color:var(--text-sec);">${this._adminOffset + i + 1}</td>
+                        <td class="ad-c-name"><div style="display:flex; align-items:center;">${avatarImg} <div><b style="font-size:13px;">${suspectMark}<span class="ad-name-full">${name}</span><span class="ad-name-short">${nameShort}</span></b><br><span style="font-size:11px;color:var(--text-sec);">${phone}</span><span class="ad-more">${locHTML}${extraHTML}</span></div></div>${noDistWarn}</td>
                         <!-- admin-cell-half: на телефоне карточка ставит помеченную
                              пару в один ряд по половине ширины (см. style.css).
                              Содержимое коротких и однотипных ячеек — сумма со
                              сметами, тариф с устройством, два переключателя
                              доступа — отдельной строки на каждую не стоило. -->
-                        <td class="admin-cell-half"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount} | Ср.объект: ${u.avgArea} м²</span><span class="ad-more"><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${sessionLine}</span></span></td>
-                        <td class="admin-cell-half">${badge}<br><span style="font-size:10px;color:var(--text-sec);">${device}</span></td>
-                        <td onclick="event.stopPropagation();">${distCell}</td>
-                        ${showToggles ? `<td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${recCell}</td>
-                        <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${desCell}</td>
-                        <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${this.worksAccessCell(u, !this.canEditTariffs())}</td>` : ''}
-                        <td style="text-align:right; white-space:nowrap;" title="${lastVisTitle}">${lastVis}</td>
+                        <td class="admin-cell-half ad-c-stat"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount} | Ср.объект: ${u.avgArea} м²</span><span class="ad-more"><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${sessionLine}</span></span></td>
+                        <td class="admin-cell-half ad-c-tariff">${badge}<br class="ad-dev"><span class="ad-dev" style="font-size:10px;color:var(--text-sec);">${device}</span></td>
+                        <td class="ad-c-dist" onclick="event.stopPropagation();">${distCell}</td>
+                        ${showToggles ? `<td class="admin-cell-half ad-c-acc ad-c-rec" onclick="event.stopPropagation();" style="text-align:center;">${recCell}</td>
+                        <td class="admin-cell-half ad-c-acc ad-c-des" onclick="event.stopPropagation();" style="text-align:center;">${desCell}</td>
+                        <td class="admin-cell-half ad-c-acc ad-c-wrk" onclick="event.stopPropagation();" style="text-align:center;">${this.worksAccessCell(u, !this.canEditTariffs())}</td>` : ''}
+                        <td class="ad-c-vis" style="text-align:right; white-space:nowrap;" title="${lastVisTitle}">${lastVis}</td>
                         <td class="admin-cell-actions" onclick="event.stopPropagation();" style="text-align:center; white-space:nowrap;">
                             <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
                                 <button class="admin-action-btn btn-msg" onclick="app.adminMessageUser('${u.id}', '${nameEscaped}')" title="Написать пользователю"><span class="btn-icon">💬</span><span class="btn-text"> Написать</span></button>
                                 <button class="admin-action-btn btn-obj" onclick="app.adminViewUserEstimates('${nameEscaped}')" title="Открыть его объекты"><span class="btn-icon">📁</span><span class="btn-text"> Объекты</span></button>
                                 <button class="admin-action-btn ${u.is_blocked ? 'btn-block-blocked' : 'btn-block-active'}" onclick="app.toggleUserBlocked('${u.id}', ${!u.is_blocked})" ${isViewer ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} title="${u.is_blocked ? 'Разблокировать пользователя' : 'Заблокировать пользователя'}"><span class="btn-icon">${u.is_blocked ? '🔓' : '🔒'}</span><span class="btn-text"> ${u.is_blocked ? 'Разблок' : 'Блок'}</span></button>
                                 <button class="admin-action-btn btn-del" onclick="app.deleteUserCompletely('${u.id}')" ${isViewer ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} title="Удалить учётку безвозвратно"><span class="btn-icon">🗑</span><span class="btn-text"> Удалить</span></button>
+                                <button class="admin-action-btn ad-exp-btn" onclick="app.toggleUserRowOpen(this)" aria-expanded="false" title="Подробнее: дистрибьютор, статистика, блокировка и удаление"><span class="btn-icon">▾</span></button>
                             </div>
                         </td>
                     </tr>`;
@@ -38149,6 +38155,15 @@ const app = {
     usersDense: function () {
         // По умолчанию компактно; «Обычная плотность» запоминается как '0'
         try { return localStorage.getItem('admin_users_dense') !== '0'; } catch (e) { return true; }
+    },
+    // Телефон, «Компактно»: раскрыть карточку — дистрибьютор, статистика, блокировка и удаление
+    toggleUserRowOpen: function (btn) {
+        const tr = btn.closest('tr');
+        if (!tr) return;
+        const on = tr.classList.toggle('ad-open');
+        btn.setAttribute('aria-expanded', on ? 'true' : 'false');
+        const ic = btn.querySelector('.btn-icon');
+        if (ic) ic.textContent = on ? '▴' : '▾';
     },
     toggleUsersDense: function (btn) {
         const on = !this.usersDense();

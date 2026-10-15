@@ -20300,3 +20300,106 @@ body.empty-fit-panel #header_totals { display: none !important; }
 #admin_content.ad-busy { opacity: .45; transition: opacity .1s; cursor: progress; }
 
 
+
+/* ── Список пользователей на телефоне, «Компактно» (ad-dense) ──
+   Карточка в 3 строки вместо 9 блоков:
+     имя · дата входа  /  сумма и смет · тариф  /  три чипа доступа · кнопки.
+   Дистрибьютор, статистика распознавания, устройство, блокировка и удаление
+   ушли под «▾» (tr.ad-open). Проблемное (нет дистрибьютора, заблокирован) видно и в
+   свёрнутом виде. «Обычная плотность» остаётся прежней полной карточкой. */
+.ad-exp-btn, .ad-warn { display: none; }
+@media screen and (max-width: 899.98px) {
+    #admin_content table.ad-dense tr.admin-list-row {
+        display: grid !important;
+        grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+        column-gap: 6px !important;
+        row-gap: 4px !important;
+        position: relative;
+        padding: 8px 10px !important;
+        margin-bottom: 6px !important;
+        align-items: center;
+    }
+    #admin_content table.ad-dense tr.admin-list-row > td {
+        float: none !important;
+        width: auto !important;
+        min-width: 0;
+        padding: 0 !important;
+        border: none !important;
+    }
+    /* старое правило «три переключателя в ряд» (nth-last-child) ставит им 33 % — здесь размер даёт сетка */
+    #admin_content table.ad-dense tr.admin-list-row > td.admin-cell-half.admin-cell-half.admin-cell-half {
+        width: auto !important; padding: 0 !important;
+    }
+    #admin_content table.ad-dense tr.admin-list-row > td::before { content: none !important; }
+    #admin_content table.ad-dense td.ad-c-num { display: none !important; }
+
+    /* строка 1: имя (справа оставлено место под дату) */
+    #admin_content table.ad-dense td.ad-c-name { grid-column: 1 / -1; grid-row: 1; padding-right: 84px !important; }
+    #admin_content table.ad-dense td.ad-c-vis {
+        position: absolute; top: 8px; right: 10px;
+        font-size: 11px; color: var(--text-sec);
+    }
+    #admin_content table.ad-dense .ad-warn {
+        display: inline-block; margin: 3px 0 0 32px;
+        font-size: 10px; font-weight: 700; color: #fff; background: #EF4444;
+        padding: 1px 7px; border-radius: 6px;
+    }
+    #admin_content table.ad-dense tr.ad-open .ad-warn { display: none; }
+
+    /* строка 2: сумма и число смет · тариф */
+    #admin_content table.ad-dense td.ad-c-stat { grid-column: 1 / 8; grid-row: 2; font-size: 11px; }
+    #admin_content table.ad-dense td.ad-c-stat > br { display: none; }
+    #admin_content table.ad-dense td.ad-c-stat > span:not(.ad-more) { margin-left: 6px; }
+    #admin_content table.ad-dense td.ad-c-tariff { grid-column: 8 / -1; grid-row: 2; text-align: right !important; font-size: 11px; }
+    #admin_content table.ad-dense .ad-dev { display: none; }
+
+    /* строка 3: чипы доступа и кнопки */
+    #admin_content table.ad-dense td.ad-c-acc { grid-row: 3; text-align: center; }
+    #admin_content table.ad-dense td.ad-c-rec { grid-column: 1 / 3; }
+    #admin_content table.ad-dense td.ad-c-des { grid-column: 3 / 5; }
+    #admin_content table.ad-dense td.ad-c-wrk { grid-column: 5 / 7; }
+    #admin_content table.ad-dense td.ad-c-acc > div { gap: 0 !important; align-items: stretch !important; }
+    #admin_content table.ad-dense td.ad-c-acc .ad-acc-label { display: none !important; }
+    #admin_content table.ad-dense td.ad-c-acc label.switch { display: block; align-self: stretch; width: 100%; height: 30px; }
+    #admin_content table.ad-dense td.ad-c-acc .slider {
+        border-radius: 8px;
+        background-color: var(--surface-light, #F3F4F6);
+        border: 1px solid var(--border);
+    }
+    #admin_content table.ad-dense td.ad-c-acc .slider:before {
+        inset: 0; width: auto; height: auto; bottom: 0; left: 0;
+        background: none; box-shadow: none; border-radius: 0;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 15px; line-height: 1; filter: grayscale(1); opacity: .55;
+        transform: none !important;
+    }
+    #admin_content table.ad-dense td.ad-c-rec .slider:before { content: "🔍"; }
+    #admin_content table.ad-dense td.ad-c-des .slider:before { content: "📐"; }
+    #admin_content table.ad-dense td.ad-c-wrk .slider:before { content: "🔧"; }
+    #admin_content table.ad-dense td.ad-c-acc input:checked + .slider { background-color: var(--primary); border-color: var(--primary); }
+    #admin_content table.ad-dense td.ad-c-acc input:checked + .slider:before { filter: none; opacity: 1; transform: none !important; }
+    #admin_content table.ad-dense td.ad-c-acc input:disabled + .slider { opacity: .6; }
+
+    #admin_content table.ad-dense td.admin-cell-actions { grid-column: 7 / -1; grid-row: 3; }
+    #admin_content table.ad-dense td.admin-cell-actions > div { justify-content: flex-end !important; gap: 4px !important; flex-wrap: nowrap !important; }
+    #admin_content table.ad-dense td.admin-cell-actions .admin-action-btn {
+        flex: 0 0 auto !important; width: 34px !important; min-width: 34px; height: 30px !important; padding: 0 !important;
+        justify-content: center;
+    }
+    #admin_content table.ad-dense .admin-action-btn .btn-text { display: none !important; }
+    #admin_content table.ad-dense .ad-exp-btn { display: inline-flex !important; }
+    /* блокировка и удаление — только в раскрытой карточке: рядом со «Написать» их легко задеть */
+    #admin_content table.ad-dense tr:not(.ad-open) .btn-block-active,
+    #admin_content table.ad-dense tr:not(.ad-open) .btn-block-blocked,
+    #admin_content table.ad-dense tr:not(.ad-open) .btn-del { display: none !important; }
+
+    /* свёрнутое */
+    #admin_content table.ad-dense td.ad-c-dist { display: none !important; }
+    #admin_content table.ad-dense tr.ad-open td.ad-c-dist { display: block !important; grid-column: 1 / -1; grid-row: 4; }
+    #admin_content table.ad-dense tr.ad-open .ad-more { display: inline !important; }
+    #admin_content table.ad-dense tr.ad-open .ad-dev { display: inline !important; }
+    #admin_content table.ad-dense tr.ad-open td.ad-c-acc .ad-acc-label { display: block !important; font-size: 9px; margin-top: 2px; }
+    #admin_content table.ad-dense tr.ad-open td.ad-c-acc { grid-row: 3; }
+    #admin_content table.ad-dense tr.ad-open td.admin-cell-actions > div { gap: 3px !important; }
+    #admin_content table.ad-dense tr.ad-open td.admin-cell-actions .admin-action-btn { width: 30px !important; min-width: 30px; }
+}
