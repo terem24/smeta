@@ -25,6 +25,13 @@
 .hc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .hc-head-t { flex: 1; min-width: 0; }
 .hc-title { font-size: 12px; font-weight: 700; }
+/* Шапка — кнопка «свернуть/развернуть» всю карточку */
+.hc-head[role="button"] { cursor: pointer; user-select: none; }
+.hc-head[role="button"]:focus-visible { outline: 2px solid var(--primary, #2563eb); outline-offset: 2px; border-radius: 6px; }
+.hc-fold { flex: none; width: 7px; height: 7px; border-right: 1.5px solid var(--text-sec, #9CA3AF); border-bottom: 1.5px solid var(--text-sec, #9CA3AF);
+    transform: rotate(-135deg); margin: 3px 2px 0 2px; transition: transform .15s; }
+.hc-collapsed .hc-head { margin-bottom: 0; }
+.hc-collapsed .hc-fold { transform: rotate(45deg); margin-top: -3px; }
 .hc-sub { font-size: 11px; color: var(--text-sec, #6B7280); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hc-pill { flex: none; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
 .hc-pill.hc-ok { background: rgba(34, 197, 94, .14); color: var(--c-ok, #059669); }
