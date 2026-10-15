@@ -48882,6 +48882,14 @@ const app = {
             tried: 'Ещё одна ветка радиаторов запаса почти не добавила: держит не подводка, а луч с клапаном прибора' };
     },
 
+    /** Предел длины петли тёплого пола вручную (м); 0 — снять. Зовётся кнопкой в проверке гидравлики. */
+    setUfhLoopCut: function (m, event) {
+        if (event) event.preventDefault();
+        this.state.ufhLoopCut = m > 0 ? m : 0;
+        this.render();
+        this.saveState();
+    },
+
     toggleHydroAutoFix: function (event) {
         if (event) event.preventDefault();
         this.state.hydroAutoFix = (this.state.hydroAutoFix === false);
@@ -49091,8 +49099,18 @@ const app = {
         const kFmt = k => (k == null ? '—' : (k >= 6 ? '>+500 %' : (k >= 1 ? '+' : '−') + Math.round(Math.abs(k - 1) * 100) + ' %'));
         const needPct = Math.round((res.reserve - 1) * 100);   // нужный запас напора, %
         const c = res.counts;
-        const state = c.fail ? 'fail' : (c.tight ? 'tight' : 'ok');
-        const pill ={ ok: 'Всё в норме', tight: 'Впритык', fail: 'Не хватает напора' }[state];
+        // Быстрый расчёт — оценка по площади, без комнат и реальных петель: красным «не хватает» её не называем,
+        // иначе монтажник чинит то, чего в проекте может не быть (по комнатам тот же дом часто проходит с запасом).
+        const soft = !s.detailedRooms;
+        const estFail = soft && c.fail > 0;
+        const state = c.fail ? (soft ? 'tight' : 'fail') : (c.tight ? 'tight' : 'ok');
+        const pill = estFail ? 'Оценка: возможна нехватка напора'
+            : { ok: 'Всё в норме', tight: 'Впритык', fail: 'Не хватает напора' }[state];
+        // Кнопка «Укоротить петли»: есть смысл, если самая длинная петля заметно длиннее цели; цель — на 20 % короче
+        const _ub = this._ufhBal;
+        const _maxM = (_ub && _ub.mans) ? _ub.mans.reduce((a, m) => (m.rows || []).reduce((b, r) => Math.max(b, r.m || 0), a), 0) : 0;
+        const _cutTo = Math.max(40, Math.floor(_maxM * 0.8 / 5) * 5);
+        const cutOffer = (!soft && !forPrint && _maxM > 45 && _cutTo < _maxM) ? _cutTo : 0;
         const ICON = { ok: '✓', tight: '!', fail: '✕', unknown: '?' };
         const RANK = { fail: 3, tight: 2, unknown: 1, ok: 0 };
         const NAMES = { boiler: 'Котёл и обвязка', rad: 'Радиаторы', ufh: 'Тёплый пол', dhw: 'Бойлер ГВС' };
@@ -49108,6 +49126,8 @@ const app = {
             g.verdict = g.rows.reduce((a, r) => RANK[r.verdict] > RANK[a] ? r.verdict : a, 'ok');
             const ks = g.rows.map(r => r.k).filter(k => k != null);
             g.k = ks.length ? Math.min.apply(null, ks) : null;
+            g.est = soft && g.verdict === 'fail';
+            if (g.est) g.verdict = 'tight';
         });
 
         // Шапка в духе листа «Гарантия STOUT»: заголовок, схема, статус-плашка
@@ -49124,6 +49144,13 @@ const app = {
             html += '<div class="hc-meter"><div class="hc-big hc-' + state + '">' + kFmt(res.worst.k) + '</div><div class="hc-meter-r">'
                 + '<div class="hc-bar"><i class="hc-' + state + '" style="width:' + pct(res.worst.k).toFixed(1) + '%"></i><b class="hc-mark" style="left:' + pct(res.reserve).toFixed(1) + '%"></b></div></div>'
                 + '<div class="hc-cap">Запас напора у самого слабого контура — ' + esc(wName) + '. Достаточно от +' + needPct + ' % (метка на шкале).</div></div>';
+        }
+        // Почему красное стало жёлтым и что делать: одной кнопкой перейти к расчёту по реальным комнатам
+        if (estFail) {
+            html += '<div class="hc-msg hc-tight hc-est">Это оценка по площади: она кладёт пол петлями ' + this.UFH_QUICK_LOOP_M
+                + ' м одним полем, комнат и их теплопотерь не знает. Чтобы получить точный вердикт, посчитайте по комнатам.'
+                + (forPrint ? '' : '<button type="button" class="hc-btn" onclick="app.toggleDetailedRooms(true, event)">Уточнить по комнатам</button>')
+                + '</div>';
         }
         (this._hcApplied || []).forEach(t => { html += '<div class="hc-msg hc-ok">✔ Исправлено автоматически: ' + esc(t) + '</div>'; });
         if (this._hcTried) html += '<div class="hc-msg hc-tight">' + esc(this._hcTried) + '</div>';
@@ -49151,7 +49178,8 @@ const app = {
             let sub = '';
             if (g.id === 'rad') sub = first.branches > 1 ? first.branches + ' ветки' : (first.hasGroup === false ? 'от насоса котла' : 'насосная группа');
             else if (g.id === 'ufh') sub = many ? g.rows.length + ' коллектора' : String(first.title).replace(/^Тёплый пол:\s*/, '');
-            const resTxt = { ok: 'хватает', tight: 'впритык', fail: 'не хватает', unknown: 'нет данных' }[g.verdict];
+            const resTxt = g.est ? 'оценка: может не хватить'
+                : { ok: 'хватает', tight: 'впритык', fail: 'не хватает', unknown: 'нет данных' }[g.verdict];
             html += '<details class="hc-row hc-' + g.verdict + '"' + ((forPrint || this._hcOpen[key]) ? ' open' : '')
                 + ' ontoggle="app._hcOpen[\'' + key + '\']=this.open"><summary><span class="hc-dot">' + ICON[g.verdict] + '</span>'
                 + '<span class="hc-name">' + esc(NAMES[g.id] || first.title) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>'
@@ -49161,7 +49189,15 @@ const app = {
                 html += '<div class="hc-facts"><div><span>Расход</span><b>' + f2(r.flow) + ' м³/ч</b></div><div><span>Нужно</span><b>' + f1(r.need) + ' м</b></div>'
                     + '<div><span>Насос даёт</span><b>' + f1(r.have) + ' м</b></div><div><span>Запас напора</span><b>' + kFmt(r.k) + '</b></div></div>';
                 if (r.pump) html += '<div class="hc-det-p">' + esc(r.pump) + '</div>';
-                if (r.advice) html += '<div class="hc-advice">' + esc(r.advice) + '</div>';
+                if (r.id === 'ufh' && r.verdict === 'fail') {
+                    // Пол: совет «разделить коллектор» превращаем в действие, которое здесь есть — предел длины петли
+                    if (soft) { /* оценка: совет — в плашке выше («Уточнить по комнатам») */ }
+                    else if (cutOffer) html += '<div class="hc-advice">Напора не хватает. Самая длинная петля — ' + Math.round(_maxM) + ' м; короче петли — меньше расход и потери.'
+                        + '<button type="button" class="hc-btn" onclick="app.setUfhLoopCut(' + cutOffer + ', event)">Укоротить петли до ' + cutOffer + ' м</button></div>';
+                    else html += '<div class="hc-advice">Напора не хватает, а петли уже короткие (' + Math.round(_maxM) + ' м). Нужен узел с большей пропускной способностью или два узла — выберите в блоке «Тёплый пол» слева.</div>';
+                    if (!forPrint && parseInt(s.ufhLoopCut, 10) > 0)
+                        html += '<div class="hc-advice">Предел длины петли задан вручную: ' + parseInt(s.ufhLoopCut, 10) + ' м. <button type="button" class="hc-btn hc-btn-ghost" onclick="app.setUfhLoopCut(0, event)">Снять</button></div>';
+                } else if (r.advice) html += '<div class="hc-advice">' + esc(r.advice) + '</div>';
                 r.flags.forEach(fl => { html += '<div class="hc-flag">' + esc(fl) + '</div>'; });
             });
             html += '</div></details>';
@@ -66124,6 +66160,7 @@ const app = {
     UFH_V_MAX: 0.5,          // предельная скорость в петле, м/с (шум и износ)
     UFH_V_MIN: 0.15,         // ниже неё воздух из петли не выносится, м/с
     UFH_LOOP_MAX_M: 120,     // монтажный предел длины петли, м
+    UFH_QUICK_LOOP_M: 70,    // типичная петля в быстром расчёте (без комнат), м — практика раскладки, не норма
     UFH_LOCAL_K: 1.25,       // местные сопротивления петли (развороты улитки)
     UFH_MAN_DP: 10,          // коллектор: расходомер, кран, сервопривод — кПа
     UFH_TRANSIT_V_MAX: 1.2,  // предельная скорость в транзите, м/с (СП 60.13330.2020)
@@ -67849,9 +67886,16 @@ const app = {
                     const k = area / zSum;
                     zones = zones.map(z => ({ name: z.name, area: z.area * k, Q: z.Q * k }));
                 }
+                // Быстрый расчёт: пол одним полем, комнат нет. Резать его на петли предельной длины значит
+                // считать самый тяжёлый случай — в реальных комнатах петли заметно короче (медиана раскладки
+                // по комнатам ~60–70 м), и проверка гидравлики краснела там, где по комнатам запас +28 %.
+                // Берём типичную длину, а не предельную; метры трубы не меняются, растёт только число петель.
+                // Ручной предел длины петли (кнопка «Укоротить петли» в проверке гидравлики) главнее обоих.
+                const _cutUser = parseInt(s.ufhLoopCut, 10) || 0;
+                const lCut = Math.min(lMax, _cutUser > 0 ? _cutUser : (detailed ? lMax : this.UFH_QUICK_LOOP_M));
                 zones.forEach(z => {
                     const total = (z.area / (step / 1000)) * 1.1;
-                    const n = Math.max(1, Math.ceil(total / lMax));
+                    const n = Math.max(1, Math.ceil(total / lCut));
                     for (let i = 0; i < n; i++) {
                         rows.push({ name: z.name + (n > 1 ? ' ' + (i + 1) + '/' + n : ''),
                             area: z.area / n, m: total / n, Q: z.Q / n });

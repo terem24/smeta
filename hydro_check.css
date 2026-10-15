@@ -118,3 +118,7 @@
     #hydro_check_print .hc-chev, #hydro_check_print .hc-sec > summary::after { display: none; }
     #hydro_check_print * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+.hc-btn { display: inline-block; margin: 6px 0 0 0; padding: 5px 10px; border: 0; border-radius: 8px; background: var(--primary, #2563eb); color: #fff; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+.hc-btn:hover { filter: brightness(1.08); }
+.hc-btn-ghost { margin: 0 0 0 6px; padding: 2px 8px; background: transparent; color: var(--primary, #2563eb); border: 1px solid currentColor; }
+.hc-est .hc-btn { display: block; }
