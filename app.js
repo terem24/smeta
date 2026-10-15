@@ -5784,6 +5784,22 @@ const app = {
         this.setAiFabCollapsed(!btn.classList.contains('collapsed'));
     },
 
+    // Короткое всплывающее сообщение справа внизу, само исчезает (стиль .contest-toast)
+    showInfoToast: function (icon, title, sub, ms) {
+        let el = document.getElementById('info_toast');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'info_toast';
+            document.body.appendChild(el);
+        }
+        const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        el.innerHTML = `<span class="ct-icon">${icon}</span><div><div class="ct-title">${esc(title)}</div><div class="ct-sub">${esc(sub)}</div></div>`;
+        el.className = 'contest-toast visible no-print';
+        el.style.bottom = '150px';
+        clearTimeout(this._infoToastTimer);
+        this._infoToastTimer = setTimeout(() => el.classList.remove('visible'), ms || 7000);
+    },
+
     showAiParseToast: function (count) {
         let el = document.getElementById('ai_parse_toast');
         if (!el) {
@@ -46760,6 +46776,8 @@ const app = {
                 if (n.id === 'input_panel_spacer') continue;   // распорка конца колонки не блок группы
                 els.push(n);
             }
+            // Группа 5 «Добавить в смету» — только в режиме «По комнатам»; в «По площади» прячется целиком
+            if (idx === 4) els.forEach(e => setCls(e, 'pg-hide-area', !this.state.detailedRooms));
             const vis = els.filter(shown);
             const show = vis.length > 0;
             const want = show ? '' : 'none';
@@ -46776,8 +46794,6 @@ const app = {
                 els.forEach(e => {
                     if (e.classList.contains('toggle-item')) setCls(e, 'pg-card', true);
                     else if (e.classList.contains('pg-tiles')) Array.from(e.children).forEach(c => { if (c.classList.contains('toggle-item')) setCls(c, 'pg-card', true); });
-            // Группа 5 «Добавить в смету» — только в режиме «По комнатам»; в «По площади» прячется целиком
-            if (idx === 4) els.forEach(e => setCls(e, 'pg-hide-area', !this.state.detailedRooms));
                 });
             }
         });
@@ -72882,6 +72898,13 @@ const app = {
                 });
                 this.syncRoomsToState();
                 this.renderRoomsUI();
+                // Пол включился сам — объясняем, куда он лёг и как поправить
+                if (on && s === 'tp') {
+                    const skipped = this.state.rooms.filter(r => !(r.sys || []).includes('tp'));
+                    const names = skipped.slice(0, 3).map(r => r.name).filter(Boolean).join(', ');
+                    this.showInfoToast('🔥', 'Тёплый пол: ' + this.r2(this.state.tp1 + (this.state.floors === 2 ? this.state.tp2 : 0)) + ' м²',
+                        'Включён во всех жилых и влажных комнатах' + (skipped.length ? ', кроме ' + (names || 'технических') + (skipped.length > 3 ? ' и др.' : '') : '') + '. Поправьте в карточках комнат.');
+                }
             }
             this.syncUI(); this.render(); this.saveState();
         }, 50);
