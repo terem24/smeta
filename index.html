@@ -194,6 +194,7 @@
             rel="stylesheet">
     </noscript>
     <link rel="stylesheet" href="style.css?v=5.36">
+    <link rel="stylesheet" href="hydro_check.css?v=1.0">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.43" defer></script>
@@ -223,6 +224,7 @@
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
     <script src="short_names.js?v=1.2" defer></script>
     <script src="avatars.js?v=1.0" defer></script>
+    <script src="hydro_check.js?v=1.0" defer></script>
     <script src="app.js?v=12.49" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
@@ -1338,6 +1340,16 @@
                 </div>
                 <div style="margin-top:6px; font-size:11px;"><a href="#" id="lnk_boiler_scheme_auto" hidden onclick="app.setBoilerScheme('auto', event); return false;"
                         style="margin-left: 4px; color: var(--primary); text-decoration: none; border-bottom: 1px dashed var(--primary); cursor: pointer;">Вернуть автоподбор</a></div>
+            </div>
+
+            <!-- Проверка гидравлики: сводка по контурам (котёл, радиаторы, тёплый пол, бойлер) — расход,
+                 требуемый напор, что даёт насос, запас. Смету не меняет. Только подробный режим
+                 (app.syncHydroCheck, hydro_check.js). -->
+            <div class="control-item" id="blk_hydro_check" style="display:none; margin-top: 0; margin-bottom: 16px;">
+                <details class="hc-box">
+                    <summary id="hydro_check_sum" class="hc-sum">Гидравлика</summary>
+                    <div id="hydro_check_body"></div>
+                </details>
             </div>
 
             <!-- Насосные группы: готовые STOUT/ROMMER или самосборные из отдельных позиций, как в
