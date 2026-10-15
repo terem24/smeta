@@ -27,5 +27,16 @@
 .hc-sec[open] > summary::before { content: '▾ '; }
 .hc-list { margin: 4px 0 0; padding-left: 16px; font-size: 11px; line-height: 1.45; }
 .hc-btn { color: var(--primary, #2563eb); border-bottom: 1px dashed currentColor; text-decoration: none; cursor: pointer; }
-/* На печати карточка не нужна: схема печатается своим листом */
-@media print { .hc-side { display: none !important; } }
+/* Схема выключена — карточка стоит отдельным блоком над таблицей сметы */
+.hc-solo { flex: none; max-width: 760px; margin-bottom: 20px; }
+/* На печати живая карточка скрыта: проверка гидравлики идёт своим листом (#hydro_check_print,
+   app.prepareForPrint, шаг 3б) с раскрытыми разделами и без кнопок */
+@media print {
+    .hc-side { display: none !important; }
+    #hydro_check_print { padding: 6mm 8mm; color: #111; }
+    #hydro_check_print .hc-print-title { font-size: 16px; font-weight: 700; margin: 0 0 8px; }
+    #hydro_check_print .hc-card { border: none; padding: 0; font-size: 12px; }
+    #hydro_check_print .hc-table { font-size: 11.5px; }
+    #hydro_check_print .hc-sec > summary::before { content: ''; }
+    #hydro_check_print * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

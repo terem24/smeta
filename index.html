@@ -3112,6 +3112,15 @@
                         <span class="share-opt-sub" style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">комнаты и отопление</span>
                     </div>
                 </div>
+                <!-- Проверка гидравлики: лист с контурами, напором насосов и запасом (app.hydroCardHtml,
+                     hydro_check.js). Только печать/PDF; считается всегда, схема для неё не нужна. -->
+                <div class="share-option-card" id="card_opt_hydro" style="display: none;" onclick="app.toggleShareOption('hydro')" title="Лист проверки гидравлики: расход, требуемый напор, насос и запас по контурам котельной">
+                    <input type="checkbox" id="share_opt_hydro" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
+                    <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
+                        <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Гидравлика</span>
+                        <span class="share-opt-sub" style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">проверка напора</span>
+                    </div>
+                </div>
                 <!-- Гарантия на объект: лист гарантии STOUT в КП и в PDF (app.warrantyLinkData).
                      Виден, когда доля STOUT не ниже порога. Без адреса и заказчика не добавляется. -->
                 <div class="share-option-card" id="card_opt_warranty" style="display: none;" onclick="app.toggleShareOption('warranty')" title="Лист гарантии STOUT на объект. Без адреса и ФИО заказчика он не добавляется">
