@@ -81404,7 +81404,30 @@ const app = {
 
             // Цена варианта «загрузка бойлера насосной группой» для таблицы замены: узел
             // плюс насос. Считаем здесь, потому что DN20/DN25 известен только тут.
-            this._tankLoadKitInfo = { price: ((grps[0] || {}).price || 0) + ((pmp || {}).price || 0), imgId: (grps[0] || {}).id };
+            // Группа загрузки бойлера: типоразмер — по мощности контура (меньшее из змеевика и котла) и тому,
+            // сколько тянет группа при перепаде котла; ручной DN и ROMMER (все группы DN25) не трогаем.
+            // Одна функция для сметы и для цены варианта в таблице замены схемы загрузки.
+            const _pickTankGroup = () => {
+                let base = grps[0], d25 = dn25, pumpItem = pmp;
+                if (!this.state.manualDnOverride && this.state.brandMode !== 'rommer' && catalog.groups_dn20 && catalog.groups_dn25) {
+                    const _tCoil = this.tankCoilKw(this._tankPortsModel);
+                    const _tBoiler = selBoilers.find(b => b && b.type === 'gas') || selBoilers[0] || null;
+                    const _tBKw = _tBoiler ? (parseFloat(_tBoiler.power) || 0) : 0;
+                    const _tKw = _tCoil > 0 ? (_tBKw > 0 ? Math.min(_tCoil, _tBKw) : _tCoil) : 0;
+                    if (_tKw > 0) {
+                        const _g20 = catalog.groups_dn20[0], _g25 = catalog.groups_dn25[0];
+                        if (this.groupCapKw(_g20, 'dhw') >= _tKw) { base = _g20; d25 = false; pumpItem = catalog.pumps_dn20[0]; }
+                        else {
+                            base = _g25; d25 = true;
+                            pumpItem = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
+                            pumpItem.alts = catalog.pumps_dn25;
+                        }
+                    }
+                }
+                return { base: base, dn25: d25, pump: pumpItem };
+            };
+            const _tankPick = _pickTankGroup();
+            this._tankLoadKitInfo = { price: ((_tankPick.base || {}).price || 0) + ((_tankPick.pump || {}).price || 0), imgId: (_tankPick.base || {}).id };
 
             // Добавляем группы и насосы
             // Насос — под ФАКТИЧЕСКИ стоящую группу, а не под флаг dn25: в DN20-группу
@@ -81460,22 +81483,8 @@ const app = {
                 _selfKit('direct', 1, pmp, null, { sub: 'dhw', loadKw: _dhwKw, dt: this.boilerDT(), pumpExtra: { originalId: pmp.id + '_dhw', alts: _tankLoadAlts }, pumpDesc: this.getDesc('fugas_pump') });
             }
             if (tankNeedsPumpGroup && !_selfG) {
-                let tankBase = grps[0];
-                let tankPumpItem = pmp, tankDn25 = dn25;
-                // Типоразмер группы бойлера — по мощности контура загрузки (меньшее из змеевика и котла),
-                // а не по DN радиаторной группы: DN20 тянет ≈ 28 кВт при перепаде котла 20 К, DN25 ≈ 49.
-                // Ручной DN и ROMMER (там все группы DN25) не трогаем.
-                if (!this.state.manualDnOverride && this.state.brandMode !== 'rommer' && catalog.groups_dn20 && catalog.groups_dn25) {
-                    const _tCoil = this.tankCoilKw(this._tankPortsModel);
-                    const _tBoiler = selBoilers.find(b => b && b.type === 'gas') || selBoilers[0] || null;
-                    const _tBKw = _tBoiler ? (parseFloat(_tBoiler.power) || 0) : 0;
-                    const _tKw = _tCoil > 0 ? (_tBKw > 0 ? Math.min(_tCoil, _tBKw) : _tCoil) : 0;
-                    if (_tKw > 0) {
-                        const _g20 = catalog.groups_dn20[0], _g25 = catalog.groups_dn25[0];
-                        if (this.groupCapKw(_g20, 'dhw') >= _tKw) { tankBase = _g20; tankDn25 = false; tankPumpItem = catalog.pumps_dn20[0]; }
-                        else { tankBase = _g25; tankDn25 = true; tankPumpItem = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0]; tankPumpItem.alts = catalog.pumps_dn25; }
-                    }
-                }
+                const _tp = _tankPick;
+                let tankBase = _tp.base, tankPumpItem = _tp.pump, tankDn25 = _tp.dn25;
                 // Мощность берём из паспортной мощности той же группы (для радиаторов) —
                 // физически это тот же узел, просто на контуре загрузки бойлера.
                 let tankCapSuffix = ` — тянет ${String(this.groupCapKw(tankBase, 'dhw')).replace('.', ',')} кВт`;
