@@ -55989,7 +55989,12 @@ const app = {
     // остаются рабочими.
     isUfhMixTypeCompatible: function (type, area, brand, areaPerNode) {
         if (type === 'std') {
-            let flowTotal = (area * 0.08) / (1.163 * (parseInt(this.state.ufhDT, 10) || 5));
+            // Перепад не задан монтажником — узел проверяем на штатных 5 и 7 К, как и подбор
+            // напора (ufhDtSets): на 5 К локальный узел кончается около 87 м² пола, на 7 К — около 120.
+            // Иначе пол в 100 м² без нужды уходил на группу с коллектором и гидрострелкой.
+            const _dtSet = this.ufhDtSets()[0];
+            const _dtMax = Math.max.apply(null, _dtSet);
+            let flowTotal = (area * 0.08) / (1.163 * _dtMax);
             let limitArea = (brand === 'rommer') ? 100 : 120;
             // STOUT: меньшее из скорости в 3/4" ≤ 1 м/с и потерь узла по паспортному графику SDG-0120-001
             // не больше половины напора его насоса 25/60 (как у групп, см. groupFlowLimit). ROMMER: 1,0 м³/ч — заявленные 6 кВт узла
