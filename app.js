@@ -49181,7 +49181,7 @@ const app = {
             const wName = NAMES[res.worst.id] || res.worst.title;
             html += '<div class="hc-meter"><div class="hc-big hc-' + state + '">' + kFmt(res.worst.k) + '</div><div class="hc-meter-r">'
                 + '<div class="hc-bar"><i class="hc-' + state + '" style="width:' + pct(res.worst.k).toFixed(1) + '%"></i><b class="hc-mark" style="left:' + pct(res.reserve).toFixed(1) + '%"></b></div></div>'
-                + '<div class="hc-cap">Запас напора у самого слабого контура — ' + esc(wName) + '. Достаточно от +' + needPct + ' % (метка на шкале).</div></div>';
+                + '<div class="hc-cap">Слабее всех — ' + esc(wName) + '. Нужен запас от +' + needPct + ' %.</div></div>';
         }
         // Почему красное стало жёлтым и что делать: одной кнопкой перейти к расчёту по реальным комнатам
         if (estFail) {
@@ -49192,7 +49192,6 @@ const app = {
         }
         (this._hcApplied || []).forEach(t => { html += '<div class="hc-msg hc-ok">✔ Исправлено автоматически: ' + esc(t) + '</div>'; });
         if (this._hcTried) html += '<div class="hc-msg hc-tight">' + esc(this._hcTried) + '</div>';
-        if (!s.detailedRooms) html += '<div class="hc-note">Быстрый расчёт — оценка по площади' + (forPrint ? '' : '; точнее в режиме «По комнатам»') + '.</div>';
 
         // Переключатель автоподбора: включён — калькулятор сам добавит группу или ветку радиаторов, если их кольцо не
         // тянет насос (hydroNextFix); выключен — схему выбираете вы кнопками «Схема котельной». На печати не нужен.
@@ -56659,6 +56658,7 @@ const app = {
 
                 if (this.isUfhMixTypeCompatible(nextType, tpArea, brand, this.tpAreaPerMan || tpArea)) {
                     this.state.ufhMixType = nextType;
+                    this._ufhMixFromColl = null;
                     break;
                 }
             }
@@ -78536,7 +78536,11 @@ const app = {
             this._hcApplied = [];
             this._hcAppliedKinds = [];
             this._hcTried = null;
+            const _collBefore = this.needCollector;
             let _res = this._renderInner(false);
+            // Решение «нужна ли группа на коллекторе» берёт длины лучей и напор из прошлого прохода. Сменилось —
+            // пересчитываем на свежих данных, иначе итог зависит от того, с какой площади пришли
+            if (_collBefore !== undefined && this.needCollector !== _collBefore) _res = this._renderInner(false);
             // Проверка гидравлики исправляет схему по результату: кольцо радиаторов не тянет насос —
             // добавляем группу / ветку и пересчитываем, до двух раз. Помогло не по-настоящему
             // (запас вырос меньше чем на 2 %) — откатываем и оставляем совет в карточке.
@@ -81382,6 +81386,12 @@ const app = {
         // они работают вне render(), поэтому кладём результат в объект.
         this.tpAreaPerMan = tpAreaPerMan;
 
+        // Группа вместо узла подмеса, выбранная автоматически под коллектор (ниже), в state не закрепляется:
+        // условие ушло (площадь вернулась) — начинаем с узла подмеса, иначе коллектор со стрелкой остался бы навсегда
+        if (this._ufhMixFromColl && !this.state.manualDnOverride && this.state.ufhMixType === this._ufhMixFromColl) {
+            this.state.ufhMixType = 'std';
+        }
+        this._ufhMixFromColl = null;
         // Автоматически корректируем тип смесительного узла при изменении площади или несовместимости
         if (hasTp && tpArea > 0) {
             let brand = this.state.brandMode;
@@ -81550,6 +81560,7 @@ const app = {
             // (stdNodePlan), а одной группой — нет; напор доберёт балансировка ниже.
             if (!_chosenType) _chosenType = (_brand === 'rommer' || this.state.manualDnOverride === 'dn20') ? _candidates[_candidates.length - 1] : 'dn25_servo';
             this.state.ufhMixType = _chosenType;
+            this._ufhMixFromColl = _chosenType;
             tQ = (estNodes > 0 ? estNodes : 1);
             needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup || _snowOnCollector;
         }
@@ -81618,6 +81629,7 @@ const app = {
                     _dpOld.toFixed(1).replace('.', ',') + ' кПа, и коллектору «' + _first.worst.label + '» требовалось ' +
                     _needOld.toFixed(1).replace('.', ',') + ' м против ' + _haveOld.toFixed(1).replace('.', ',') + ' м у насоса.');
                 this.state.ufhMixType = _bal.type;
+                this._ufhMixFromColl = _bal.type;
                 // Пересчитываем то же, что и переход с локального узла на группу выше:
                 // групп ставится по одной на коллектор, а от их числа зависит коллектор котельной.
                 tQ = (estNodes > 0 ? estNodes : 1);
