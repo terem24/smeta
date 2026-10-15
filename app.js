@@ -46776,6 +46776,8 @@ const app = {
                 els.forEach(e => {
                     if (e.classList.contains('toggle-item')) setCls(e, 'pg-card', true);
                     else if (e.classList.contains('pg-tiles')) Array.from(e.children).forEach(c => { if (c.classList.contains('toggle-item')) setCls(c, 'pg-card', true); });
+            // Группа 5 «Добавить в смету» — только в режиме «По комнатам»; в «По площади» прячется целиком
+            if (idx === 4) els.forEach(e => setCls(e, 'pg-hide-area', !this.state.detailedRooms));
                 });
             }
         });

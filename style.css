@@ -20231,6 +20231,8 @@ body.theme-shop #hdr_margin_sum { color: var(--primary) !important; }
     font: inherit; font-size: 11px; font-weight: 600; letter-spacing: 0; text-transform: none;
     padding: 2px 9px; border-radius: 10px;
 }
+/* Группа «Добавить в смету» в режиме «По площади»: убрана целиком (заголовок скрывает скрипт) */
+.pg-hide-area { display: none !important; }
 /* Свёрнутая группа: высота 0, а не display:none — иначе скрипт счёл бы группу пустой и спрятал заголовок */
 .pg-collapsed {
     height: 0 !important; min-height: 0 !important; margin-top: 0 !important; margin-bottom: 0 !important;
