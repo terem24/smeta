@@ -2665,7 +2665,9 @@
   var RAD_IN_M = 0.12;
   // Цена клетки для трассы радиаторов: стена дорогая — переходить её трасса
   // будет там, где комнаты смыкаются (в проёме), а не где придётся.
-  var RCOST_WALL = 20, RCOST_MID = 2, RCOST_TP = 25, RCOST_COLD = 40, RCOST_OUT = 400;
+  // RCOST_EDGE — надбавка за клетку у самой стены (на 0, 1, 2 клетки от неё: 3×, 2×, 1× шага):
+  // контур зоны идёт по оси стены, и трасса по краю ложилась на стену и окна (15.10.2026).
+  var RCOST_WALL = 30, RCOST_WALL_DOOR = 300, RCOST_MID = 2, RCOST_EDGE = 4, RCOST_TP = 25, RCOST_COLD = 40, RCOST_OUT = 400;
   function radRoutes(f, stepMm, tee, connMap) {
     var rads = (f.rads || []).filter(function (r) { return r && isFinite(r.x) && isFinite(r.y); });
     if (!rads.length || !f.pxPerM) return null;
@@ -2706,11 +2708,28 @@
       });
     }
     var wd = wallDist(g, own), cost = new Float32Array(N);
+    // Двери — из геометрии редактора (f.geom.doors). Есть двери — стену трасса переходит
+    // только в проёме: проход вне двери стоит на порядок дороже. Нет данных о дверях — как раньше.
+    var doorsG = ((f.geom && f.geom.doors) || []).filter(function (d) { return d && isFinite(d.x) && isFinite(d.y) && d.w > 0; });
+    var wallCost = doorsG.length ? RCOST_WALL_DOOR : RCOST_WALL;
     for (k = 0; k < N; k++) {
       cost[k] = cold[k] ? RCOST_COLD : own[k]
-        ? 1 + (wd[k] > 2 ? RCOST_MID : 0) + (tpM[k] ? RCOST_TP : 0)
-        : (near[k] > 3 ? RCOST_OUT : RCOST_WALL);
+        ? 1 + (wd[k] > 2 ? RCOST_MID : (3 - wd[k]) * RCOST_EDGE) + (tpM[k] ? RCOST_TP : 0)
+        : (near[k] > 3 ? RCOST_OUT : wallCost);
     }
+    // Проём двери: полоса вдоль стены шириной в полотно (минус косяки) и по 0,35 м в обе стороны —
+    // сквозь толщину стены. Клетки проёма идут по цене обычной клетки комнаты.
+    doorsG.forEach(function (d) {
+      var da = (d.ang || 0) * Math.PI / 180, ux = Math.cos(da), uy = Math.sin(da);
+      var hu = d.w * 0.4, hv = 0.35 * ppm, rr = Math.abs(ux) * hu + Math.abs(uy) * hv, rv = Math.abs(uy) * hu + Math.abs(ux) * hv;
+      var c0 = cellAt(g, [d.x - rr, d.y - rv]), c1 = cellAt(g, [d.x + rr, d.y + rv]);
+      for (var y = Math.floor(c0 / g.W); y <= Math.floor(c1 / g.W); y++) {
+        for (var x = c0 % g.W; x <= c1 % g.W; x++) {
+          var q = y * g.W + x, cp = cellXY(g, q), du = (cp[0] - d.x) * ux + (cp[1] - d.y) * uy, dv = -(cp[0] - d.x) * uy + (cp[1] - d.y) * ux;
+          if (Math.abs(du) <= hu && Math.abs(dv) <= hv && !cold[q] && cost[q] > 3) cost[q] = 3;
+        }
+      }
+    });
     // Точка подключения прибора — по его модели (radConnSide): по умолчанию
     // правое нижнее, как у радиаторов сметы; «правое» — если стоять в комнате
     // лицом к прибору. Раньше трасса шла к краю, ближнему к коллектору, и на
