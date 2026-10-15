@@ -88473,7 +88473,10 @@ const app = {
         // разводке от этажного узла: в обоих случаях систему заполняет дом, и
         // залить в неё свою жидкость нельзя, она общая. Сначала условие стояло
         // на onRiser, и при «коллекторе в квартире» канистры возвращались.
-        let cl = this.isFlat() ? null : catalog.coolants.find(c => c.type === this.state.coolant);
+        // Заливку добавляем только при включённом тумблере «Теплоноситель» (раздел 5):
+        // та же логика, что в syncUI (_coolOn). Выключен — вода с Hydro в смету не идёт.
+        const _coolInBill = !!this.state.coolantShow || (this.state.coolant && this.state.coolant !== 'water');
+        let cl = (this.isFlat() || !_coolInBill) ? null : catalog.coolants.find(c => c.type === this.state.coolant);
         if (cl) {
             if (cl.type === 'pro65') {
                 let vP = vSys * 0.65; let vH = vSys * 0.35; let p1 = catalog.coolants[2]; let p2 = catalog.coolants[0];
