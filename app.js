@@ -66410,6 +66410,56 @@ const app = {
     },
 
     /**
+     * Тянет ли кольцо радиаторов встроенный насос котла — без гидрострелки и группы.
+     *
+     * Решает, нужна ли радиаторам насосная группа на коллекторе, когда других причин для
+     * коллектора нет (тёплый пол на группе, бойлер с группой, снеготаяние — они решаются
+     * отдельно). Раньше это решали пороги: площадь больше 150 м², второй этаж, мощность больше
+     * 20 кВт, — то есть гидрострелка ставилась и на доме, где насос котла прекрасно тянет.
+     *
+     * Считаем тем же кольцом, что radBranchesByHydraulics (подводка, коллектор, луч, клапан
+     * прибора), на одной ветке. Напор — по паспортной кривой насоса КОТЛА (BOILER_PUMPS), а не
+     * по группе. Кривая у STOUT STATUS, BAXI и Vaillant turboTEC «остаточная»: сопротивление
+     * котла из неё уже вычтено, поэтому RAD_BOILER_DP к кольцу не прибавляем. Через котёл и
+     * насос идёт и расход узла подмеса пола (он берёт воду с той же подачи), его добавляем к
+     * расходу на кривой — напор падает с расходом, и проверка идёт в невыгодную сторону.
+     *
+     * null — решать нечем: котлов не один (каскад), нет паспортной кривой, она не подтверждена
+     * ('unknown'), у котла нет встроенного насоса. Тогда остаются прежние пороги.
+     * Условие «запас не меньше RAD_PUMP_RESERVE» — то же, что требуется от насоса разводки.
+     */
+    radDirectByBoilerPump: function (loadKw, devicesCount, boilers, extraKw) {
+        const kw = parseFloat(loadKw) || 0;
+        if (!(kw > 0)) return null;
+        const list = (boilers || []).filter(Boolean);
+        if (list.length !== 1) return null;
+        const pump = this.boilerPumpOf(list[0]);
+        if (!pump || pump.kind !== 'residual') return null;
+        const s = this.state;
+        const area = parseFloat(s.area) || 100;
+        const _rp = this.radPlanRuns();
+        const avgRun = _rp ? _rp.avgRun : Math.sqrt(area / (s.floors === 2 ? 2 : 1)) + 3;
+        const n = Math.max(1, parseInt(devicesCount, 10) || Math.ceil(area / 18));
+        const flowAll = this.radFlowOf(kw * 1000);
+        // тот же «самый мощный прибор», что в radBranchesByHydraulics
+        const flowDev = flowAll / n * 1.5;
+        const span = this.radTrunkSpan(kw);
+        const dpLoop = this.radPipeDrop(flowDev, 16, 2 * avgRun * 1.1).dp
+            + Math.pow(flowDev / this.radValveKv().kv, 2) * 100;
+        const dTr = this.radPickDiam(span.kw);
+        const dp = this.radPipeDrop(flowAll * span.share, dTr, span.len).dp
+            + this.radManifoldDp(flowDev).dp + dpLoop;
+        const kp = this.coolantPumpK();
+        const head = dp / 9.81 * kp.head;
+        const flowPump = (flowAll + this.radFlowOf((parseFloat(extraKw) || 0) * 1000)) * kp.flow;
+        const avail = this.boilerPumpHead(pump, flowPump) || 0;
+        return {
+            fits: avail >= head * this.RAD_PUMP_RESERVE,
+            head: head, avail: avail, flow: flowPump, pump: pump, reserve: this.RAD_PUMP_RESERVE
+        };
+    },
+
+    /**
      * Разбивка насосных групп по контурам — для блока «Почему N групп» в подробном
      * режиме. Только объясняет числа, которые уже посчитаны в _renderInner (rQ, tQ,
      * бойлер, снеготаяние, POLIS), и правил подбора не повторяет: поэтому сумма
@@ -66749,12 +66799,16 @@ const app = {
         add('Клапан прибора (' + valve.label + ')', valveDp,
             { tag: 'valve', flow: flowWorst, kv: valve.kv });
         // Насосную группу считаем, только если она в смете есть. На небольшом
-        // одноэтажном доме (до 150 м², до 20 кВт, без других групп на коллекторе)
-        // радиаторы идут от встроенного насоса котла, группы нет вовсе — а её
+        // доме, где напора встроенного насоса котла хватает (radDirectByBoilerPump) и нет
+        // других групп на коллекторе, радиаторы идут от насоса котла, группы нет вовсе — а её
         // 12 кПа всё равно прибавлялись к кольцу и завышали требуемый напор.
         const hasGroup = (parseInt(this._radGroupsCount, 10) || 0) > 0;
         if (hasGroup) add('Насосная группа и обвязка', this.RAD_GROUP_DP, { tag: 'group' });
-        add('Теплообменник котла', this.RAD_BOILER_DP, { tag: 'boiler' });
+        // Без группы кольцо гонит встроенный насос котла. Есть его паспортная «остаточная» кривая
+        // (сопротивление котла уже вычтено) — считаем по ней и RAD_BOILER_DP не прибавляем.
+        const _bpCurve = (!hasGroup && this._radDirectBoiler) ? this.boilerPumpOf(this._radDirectBoiler) : null;
+        const _bpRes = (_bpCurve && _bpCurve.kind === 'residual') ? _bpCurve : null;
+        if (!_bpRes) add('Теплообменник котла', this.RAD_BOILER_DP, { tag: 'boiler' });
 
         const vMax = parts.reduce((a, p) => Math.max(a, p.v || 0), 0);
         // Шум проверяем у каждого участка по его собственному пределу: у
@@ -66770,10 +66824,11 @@ const app = {
         // у нас нет, поэтому берём младшую из группы (25/60) — у настенных
         // котлов там насос того же класса. Допущение помечено в подписи, чтобы
         // на листе не выглядело паспортной величиной.
-        const pumps = hasGroup ? this.RAD_PUMPS : [this.RAD_PUMPS[0]];
+        const pumps = hasGroup ? this.RAD_PUMPS
+            : (_bpRes ? [{ label: _bpRes.label, hMax: _bpRes.pts[0][1], curve: _bpRes }] : [this.RAD_PUMPS[0]]);
         const pump = pumps.map(pm => ({
-            label: hasGroup ? pm.label : 'встроенный насос котла (принят по кривой ' + pm.label + ')',
-            avail: this.pumpHeadAt(pm, flowBranch * _kp.flow)
+            label: hasGroup ? pm.label : (pm.curve ? 'встроенный насос котла: ' + pm.label : 'встроенный насос котла (принят по кривой ' + pm.label + ')'),
+            avail: pm.curve ? (this.boilerPumpHead(pm.curve, flowBranch * _kp.flow) || 0) : this.pumpHeadAt(pm, flowBranch * _kp.flow)
         }));
         const fit = pump.find(pm => pm.avail >= head) || null;
 
@@ -73256,9 +73311,10 @@ const app = {
     /**
      * Схема котельной, выбранная монтажником: 'auto' | 'direct' | 'hydro'.
      *
-     * 'auto'   — как было всегда: гидрострелку и насосные группы калькулятор
-     *            ставит сам (площадь больше 150 м², второй этаж, мощность выше
-     *            20 кВт, группа тёплого пола или бойлера).
+     * 'auto'   — гидрострелку и насосные группы калькулятор ставит сам: группа тёплого пола,
+     *            бойлера или снеготаяния, либо насос котла не тянет радиаторы (по паспортной
+     *            кривой, radDirectByBoilerPump). Кривой нет (газовые Haier/Navien, каскад) —
+     *            прежние пороги: площадь больше 150 м², второй этаж, мощность выше 20 кВт.
      * 'direct' — без гидрострелки. Радиаторы питает насос котла, тёплый пол —
      *            свой узел подмеса, бойлер — трёхходовой клапан котла. Так собраны
      *            и «котёл и пять радиаторов», и котельная с лучевыми коллекторами
@@ -73742,7 +73798,9 @@ const app = {
             : (had === true)
             ? 'Авто: со стрелкой' + (why.length ? ' (' + why.join(', ') + ')' : '') + '.'
             : (had === false)
-            ? 'Авто: без стрелки, систему тянет насос котла.'
+            ? 'Авто: без стрелки, систему тянет насос котла' + (this._radGroupWhy && this._radGroupWhy.kind === 'pump'
+                ? ' (кольцо радиаторов требует ' + (this._radGroupWhy.d.head * this._radGroupWhy.d.reserve).toFixed(1).replace('.', ',')
+                    + ' м с запасом, насос котла даёт ' + this._radGroupWhy.d.avail.toFixed(1).replace('.', ',') + ' м)' : '') + '.'
             : 'Авто.';
     },
 
@@ -80834,13 +80892,35 @@ const app = {
             }
             return Math.max(1, radFloorCount);
         };
+        // Как решено про группу радиаторов — для строки «Авто: …» под кнопками схемы:
+        // 'pump' — напора встроенного насоса котла хватает, группа не нужна; 'nopump' — не хватает;
+        // 'rule' — паспортной кривой нет, решали пороги (площадь, этаж, мощность).
+        this._radGroupWhy = null;
+        // Единственный котёл — кривую его насоса берёт и гидравлика кольца (radHydraulics), когда группы нет
+        this._radDirectBoiler = (selBoilers.length === 1) ? selBoilers[0] : null;
         if (hasRad && !_forceDirect) {
-            // Встроенного насоса настенного котла хватает на радиаторы мощностью до 20 кВт (площадь до 150 м2)
-            // Если требуется коллектор (из-за других насосных групп, т.е. tQ > 0), то на радиаторы также ставится группа.
             // Схема «С гидрострелкой» ставит группу и там, где хватило бы насоса котла.
-            if (_forceHydro || this.state.area > 150 || this.state.floors === 2 || pwr > 20 || tQ > 0) {
-                rQ = _radGroupsByFloors();
+            // Если требуется коллектор (из-за другой насосной группы, т.е. tQ > 0), группа ставится на радиаторы тоже.
+            // Иначе решает напор: тянет ли кольцо радиаторов встроенный насос котла (radDirectByBoilerPump).
+            // Паспортной кривой насоса нет (газовые Haier/Navien, каскад) — прежние пороги: площадь больше
+            // 150 м², второй этаж, мощность больше 20 кВт.
+            let _needRadGroup = _forceHydro || tQ > 0;
+            if (!_needRadGroup) {
+                const _ufhPrimKw = (hasTp && tpArea > 0) ? tpArea * 0.08 : 0;
+                // С буферной ёмкостью насос котла гонит только котловой контур до ёмкости, а радиаторы
+                // стоят за ней — напор котла к ним не относится, остаются прежние пороги.
+                const _direct = this.bufferActive() ? null
+                    : this.radDirectByBoilerPump(this.radLoadKw(pwr, hasTp ? tpArea : 0),
+                        this.totalDevicesCount, selBoilers, _ufhPrimKw);
+                if (_direct) {
+                    _needRadGroup = !_direct.fits;
+                    this._radGroupWhy = { kind: _direct.fits ? 'pump' : 'nopump', d: _direct };
+                } else {
+                    _needRadGroup = this.state.area > 150 || this.state.floors === 2 || pwr > 20;
+                    if (_needRadGroup) this._radGroupWhy = { kind: 'rule' };
+                }
             }
+            if (_needRadGroup) rQ = _radGroupsByFloors();
         }
 
         // Коллектор нужен, если есть хотя бы одна насосная группа — включая насосную группу
@@ -81001,7 +81081,12 @@ const app = {
         // Те же условия, что выше ставили группы; перечисляем только сработавшие.
         {
             const why = [];
-            if (rQ > 0) {
+            const _rw = this._radGroupWhy;
+            if (rQ > 0 && _rw && _rw.kind === 'nopump') {
+                const _f = v => v.toFixed(1).replace('.', ',');
+                why.push('насос котла не тянет радиаторы: нужно ' + _f(_rw.d.head * _rw.d.reserve) + ' м, даёт ' + _f(_rw.d.avail) + ' м');
+            } else if (rQ > 0 && _rw && _rw.kind === 'rule') {
+                // паспортной кривой насоса котла нет — решили пороги
                 if (this.state.area > 150) why.push('площадь больше 150 м²');
                 if (this.state.floors === 2) why.push('второй этаж');
                 if (pwr > 20) why.push('мощность больше 20 кВт');
