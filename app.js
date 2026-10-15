@@ -39814,7 +39814,17 @@ const app = {
             const rooms = ((heat[fi] && heat[fi].rooms) || []).map(r => ({ name: r.name, area: r.area, q: r.total, qud: r.ufhQud, floor: fi + 1 }));
             let v = null;
             try { v = PP.ufhView(f, step, rooms, radOpts); } catch (e) { console.warn('[раскладка ТП] этаж ' + (fi + 1) + ':', e.message); }
-            if (v) out.push({ fl: fi + 1, svg: v.svg, rows: v.rows, radRows: v.radRows || [], radTee: v.radTee, radM: v.radM || 0, roomArea: rooms });
+            // Тёплый пол и радиаторы — два отдельных плана: на одном трассы радиаторов тонут среди петель.
+            // svg — план тёплого пола (или радиаторов, если пола нет), svgRad — план радиаторов
+            let svg = v && v.svg, svgRad = '';
+            if (v && v.rows.length && (v.radRows || []).length) {
+                try {
+                    const vt = PP.ufhView(f, step, rooms, Object.assign({}, radOpts, { rads: false }));
+                    const vr = PP.ufhView(f, step, rooms, Object.assign({}, radOpts, { only: 'rad' }));
+                    if (vt && vr) { svg = vt.svg; svgRad = vr.svg; }
+                } catch (e) { console.warn('[план радиаторов] этаж ' + (fi + 1) + ':', e.message); }
+            }
+            if (v) out.push({ fl: fi + 1, svg, svgRad, rows: v.rows, radRows: v.radRows || [], radTee: v.radTee, radM: v.radM || 0, roomArea: rooms });
         });
         return out;
     },
@@ -40129,7 +40139,7 @@ const app = {
         const r1 = v => Math.round((v || 0) * 10) / 10;
         const views = this.ufhPlanViews();
         if (!views.length) return null;
-        return views.map(v => ({ fl: v.fl, svg: v.svg,
+        return views.map(v => ({ fl: v.fl, svg: v.svg, svgRad: v.svgRad || '',
             rows: v.rows.map(r => ({ no: r.no, name: r.name, area: r1(r.area), m: r1(r.m), step: r.step, flow: r1(r.flow) })),
             radRows: (v.radRows || []).map(r => ({ no: r.no, name: r.name, w: r1(r.w), L: r.L == null ? null : r1(r.L), kind: r.kind })),
             radTee: v.radTee, radM: r1(v.radM) }));
@@ -40307,20 +40317,26 @@ const app = {
                     `<td style="text-align:right">${n1(v.radM || 0)} м</td></tr></tfoot></table>`;
             }
             // План слева, таблицы справа (на узком экране уходят под план — flex-wrap)
-            const col = (tpHtml || radHtml)
+            const mkCol = (html, grp) => html
                 ? `<div class="ufh-tbl-col"><div class="ufh-tb">` +
-                    `<label class="ufh-tb-chk"><input type="checkbox" checked onchange="app.ufhToggleFlat(this)"> Группировать по помещениям</label>` +
+                    (grp ? `<label class="ufh-tb-chk"><input type="checkbox" checked onchange="app.ufhToggleFlat(this)"> Группировать по помещениям</label>` : `<span></span>`) +
                     `<button type="button" class="ufh-tb-full" onclick="app.openUfhFullscreen(this)" title="Открыть таблицы на весь экран">⛶ На весь экран</button></div>` +
-                    tpHtml + radHtml + `</div>`
+                    html + `</div>`
                 : '';
+            const planBox = svg => `<div class="automation-scheme" style="flex:1 1 340px;min-width:0" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${svg}` +
+                `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button>` +
+                `<button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка контура или прибора при наведении — на плане и в таблице">${this._hydToggleLabel(false)}</button></div>`;
+            // Есть и тёплый пол, и радиаторы — два плана друг под другом, у каждого своя таблица
+            const split = !!v.svgRad;
             parts.push(
                 `<div class="ufh-plan-block" style="margin:6px 0 14px">` +
                 (views.length > 1 ? `<div style="font-weight:700;margin:0 0 6px">${fi + 1}-й этаж</div>` : '') +
-                `<div class="ufh-plan-row">` +
-                `<div class="automation-scheme" style="flex:1 1 340px;min-width:0" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${v.svg}` +
-                `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button>` +
-                `<button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка контура или прибора при наведении — на плане и в таблице">${this._hydToggleLabel(false)}</button></div>` +
-                col + `</div></div>`);
+                (split ? `<div style="font-weight:600;margin:0 0 4px;color:var(--text-sec)">Тёплый пол</div>` : '') +
+                `<div class="ufh-plan-row">` + planBox(v.svg) +
+                (split ? mkCol(tpHtml, true) : mkCol(tpHtml + radHtml, true)) + `</div>` +
+                (split ? `<div style="font-weight:600;margin:14px 0 4px;color:var(--text-sec)">Радиаторы</div>` +
+                    `<div class="ufh-plan-row">` + planBox(v.svgRad) + mkCol(radHtml, false) + `</div>` : '') +
+                `</div>`);
         });
         parts.unshift(`<style>
 .ufh-plan-row{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}

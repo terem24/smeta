@@ -5218,7 +5218,9 @@
   function ufhView(f, stepMm, rooms, opts) {
     opts = opts || {};
     if (!f || !f.pxPerM) return null;
-    var hasTp = (f.zones || []).some(function (z) { return z.type === 'tp'; });
+    // opts.only === 'rad' — план только радиаторов: без петель и коллектора тёплого пола
+    var radOnly = opts.only === 'rad';
+    var hasTp = !radOnly && (f.zones || []).some(function (z) { return z.type === 'tp'; });
     var rows = hasTp ? loopRows(f, stepMm, rooms || []) : [];
     var RR = null;
     if (opts.rads && (f.rads || []).length) {
@@ -5242,7 +5244,7 @@
     // комнаты: тёплый пол — тёплой заливкой, прочие — контуром
     (f.zones || []).forEach(function (z) {
       if (!z.pts || z.pts.length < 3) return;
-      var st = z.type === 'tp' ? 'fill:#fff4e6;fill-opacity:0.45;stroke:#e8a45c;stroke-width:' + m(lw * 0.45)
+      var st = z.type === 'tp' && !radOnly ? 'fill:#fff4e6;fill-opacity:0.45;stroke:#e8a45c;stroke-width:' + m(lw * 0.45)
         : z.type === 'cold' ? 'fill:#e9e9e9;stroke:#9a9a9a;stroke-width:' + m(lw * 0.6)
           : 'fill:none;stroke:#8a94a6;stroke-width:' + m(lw * 0.6) + ';stroke-dasharray:' + m(lw * 3) + ',' + m(lw * 2);
       o.push('<polygon points="' + P(z.pts) + '" style="' + st + '"/>');
@@ -5424,7 +5426,7 @@
         '" text-anchor="middle" style="fill:' + COL_RAD + ';font-weight:700">' + bd[1] + '</text></g>');
     });
     // Коллектор радиаторов — когда он не там же, где коллектор тёплого пола
-    if (RR && !(f.coll && Math.hypot(RR.C.x - f.coll.x, RR.C.y - f.coll.y) < 0.3 * ppm)) {
+    if (RR && (radOnly || !(f.coll && Math.hypot(RR.C.x - f.coll.x, RR.C.y - f.coll.y) < 0.3 * ppm))) {
       var cw2 = radBodyW, ch2 = 0.22 * ppm, ra = RR.C.ang || 0, raV = ra % 180 === 90;
       o.push('<rect x="' + m(RR.C.x - cw2 / 2) + '" y="' + m(RR.C.y - ch2 / 2) + '" width="' + m(cw2) + '" height="' + m(ch2) +
         '" style="fill:#f8d0d0;stroke:' + COL_RAD + ';stroke-width:' + m(lw * 0.7) + '"' +
@@ -5433,7 +5435,7 @@
         '" text-anchor="middle" style="fill:' + COL_RAD + ';font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:' + m(fs * 0.2) + '">' +
         (RR.tee ? 'Магистраль радиаторов' : 'Коллектор радиаторов') + '</text>');
     }
-    if (f.coll) {
+    if (f.coll && !radOnly) {
       var cw = tpBodyW, ch = 0.22 * ppm, ca = collAngle(f, 'tp'), caV = ca % 180 === 90;
       o.push('<rect x="' + m(f.coll.x - cw / 2) + '" y="' + m(f.coll.y - ch / 2) + '" width="' + m(cw) + '" height="' + m(ch) +
         '" style="fill:#ffd9a8;stroke:#c25e00;stroke-width:' + m(lw * 0.7) + '"' +
