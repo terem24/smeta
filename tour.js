@@ -42,6 +42,11 @@ const Tour = {
     // ещё не заданного: новичку мы включаем подсказки сами, и без этой отметки они
     // возвращались бы после каждой перезагрузки тому, кто их выключил.
     LS_CHOICE: 'tour_choice',
+    // Прошёл до конца (на этом устройстве) и «не навязывать до»: после крестика или
+    // выключения кнопкой принудительное включение молчит SNOOZE_DAYS дней.
+    LS_DONE: 'tour_done',
+    LS_SNOOZE: 'tour_force_snooze',
+    SNOOZE_DAYS: 3,
 
     // Шаги. sel — либо строка для querySelector, либо функция, возвращающая элемент
     // (нужна там, где подсветить надо не сам переключатель, а блок вокруг него).
@@ -557,7 +562,61 @@ const Tour = {
     toggleFromButton: function () {
         if (!this.allowed()) return;
         this.rememberChoice();
+        if (this.active()) this.snoozeForce();
         this.toggle(!this.active());
+    },
+
+    // ── Принудительное включение из админки ──────────────────────────────
+    // Список лежит в app_settings.tour_force (вкладка «Тарифы → Обучение»):
+    //   users:   { почта: true|false }  — личная отметка, сильнее всего;
+    //   dists:   { id дистрибьютора: true };
+    //   regions: { регион: true };
+    //   tariffs: { 'installer.base': true } — строка таблицы «Тарифы»;
+    //   all:     true — всем, кто ещё не прошёл.
+    // Включает обучение только тому, кто его ещё не прошёл до конца; крестик или
+    // выключение кнопкой откладывают повтор на SNOOZE_DAYS дней, а не навсегда.
+    // Правило решения только здесь, админка его лишь показывает (forceDecisionFor).
+    forceDecisionFor: function (row, account, plan) {
+        const tf = (typeof app !== 'undefined' && app.appSettings && app.appSettings.tour_force) || null;
+        if (!tf) return { on: false, by: '' };
+        const login = String((row && (row.email || row.username)) || '').trim().toLowerCase();
+        const own = app.accessFlagFor(tf.users, login);
+        if (own !== undefined) return { on: own, by: 'own' };
+        const dist = row && row.distributor_id;
+        if (dist && (tf.dists || {})[dist]) return { on: true, by: 'dist' };
+        if (row && row.region && app.regionFlagFor(tf.regions, row.region)) return { on: true, by: 'region' };
+        if (account && (tf.tariffs || {})[account + '.' + plan]) return { on: true, by: 'tariff' };
+        if (tf.all) return { on: true, by: 'all' };
+        return { on: false, by: '' };
+    },
+
+    snoozeForce: function () {
+        try { localStorage.setItem(this.LS_SNOOZE, String(Date.now() + this.SNOOZE_DAYS * 864e5)); } catch (e) { }
+    },
+
+    applyForce: async function () {
+        try {
+            if (!this.allowed() || this.active()) return;
+            try { if (localStorage.getItem(this.LS_DONE) === '1') return; } catch (e) { }
+            try { if (Date.now() < parseInt(localStorage.getItem(this.LS_SNOOZE) || '0', 10)) return; } catch (e) { }
+            if (typeof app.loadAppSettings === 'function') await app.loadAppSettings();
+            const row = app.accessUserRow();
+            if (!row.distributor_id && app.state.distributorId) row.distributor_id = app.state.distributorId;
+            const d = this.forceDecisionFor(row, app.tariffAccount(), app.tariffPlan());
+            if (!d.on) return;
+            // Уже прошёл на другом устройстве — не гоняем второй раз. Не прочиталось
+            // (нет политики, нет колонки) — считаем, что не проходил.
+            try {
+                if (typeof supabaseClient !== 'undefined' && row.id) {
+                    const { data, error } = await supabaseClient.from('users').select('tour_done_at').eq('id', row.id).maybeSingle();
+                    if (!error && data && data.tour_done_at) { try { localStorage.setItem(this.LS_DONE, '1'); } catch (e) { } return; }
+                }
+            } catch (e) { }
+            if (this.active() || !this.allowed()) return;
+            this.rememberChoice();
+            try { localStorage.setItem(this.LS_STEP, '0'); } catch (e) { }
+            this.toggle(true);
+        } catch (e) { console.warn('[Tour] принудительное включение:', e); }
     },
 
     // Вид кнопки: включённый режим подсвечен, подсказка объясняет, что будет по нажатию
@@ -602,6 +661,7 @@ const Tour = {
             this.start();
             return;
         }
+        this.applyForce();
         // Сами подсказки больше никому не включаем на входе. Гостю обучение не
         // показываем вовсе (см. allowed). Вошедшему — потому что первым делом ему
         // показывают окно быстрого старта, а обучение включится после него: этим
@@ -638,6 +698,7 @@ const Tour = {
     // крестик на втором шаге её не ставит.
     finish: function (done) {
         if (done === true) this.reportDone();
+        else this.snoozeForce();
         try { localStorage.setItem(this.LS_STEP, '0'); } catch (e) { }
         this._step = 0;
         this.rememberChoice();
@@ -649,6 +710,7 @@ const Tour = {
     // раз — повторный проход её не меняет (так решает сама функция). Сбой молча
     // игнорируем: обучение от записи не зависит, а миграция может быть ещё не выполнена.
     reportDone: function () {
+        try { localStorage.setItem(this.LS_DONE, '1'); } catch (e) { }
         try {
             const n = (this._plan || []).filter(Boolean).length;
             if (typeof supabaseClient === 'undefined' || !this.allowed()) return;

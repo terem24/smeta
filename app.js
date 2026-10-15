@@ -25621,7 +25621,7 @@ const app = {
             if ((this.adminTabCell(r.id, tt.id) === 'on') !== this.adminTabDefault(tt.id, r.id, false)) tabsChanged++;
         }));
         const secChip = (id, label, n) => `<button class="ad-chip${sec === id ? ' active' : ''}" onclick="app.setTariffSection('${id}')">${label}${n ? ` <span class="ad-chip-n" title="Изменено относительно исходных значений">${n}</span>` : ''}</button>`;
-        const secChips = `<div class="ad-chips">${secChip('matrix', 'Тарифы и функции', matrixChanged)}${secChip('appearance', 'Оформление', 0)}${secChip('sections', 'Разделы панели по ролям', tabsChanged)}</div>`;
+        const secChips = `<div class="ad-chips">${secChip('matrix', 'Тарифы и функции', matrixChanged)}${secChip('appearance', 'Оформление', 0)}${secChip('sections', 'Разделы панели по ролям', tabsChanged)}${secChip('tour', 'Обучение', this.tourForceCount())}</div>`;
 
         const matrixHtml = `
             <div class="ad-sub" style="margin:0 0 12px; max-width:900px; line-height:1.5;">
@@ -25649,13 +25649,124 @@ const app = {
                 ${sec === 'matrix' ? `<button class="admin-btn" ${canEdit && hasSaved ? '' : 'disabled'} onclick="app.resetTariffs()">Вернуть исходные</button>` : ''}
             </div>
             ${secChips}
-            ${sec === 'matrix' ? matrixHtml : (sec === 'appearance' ? this.adminAppearanceBlockHtml() : this.adminTabsTableHtml(esc, th, td, sep))}`;
+            ${sec === 'matrix' ? matrixHtml : (sec === 'appearance' ? this.adminAppearanceBlockHtml() : (sec === 'tour' ? this.adminTourBlockHtml(esc) : this.adminTabsTableHtml(esc, th, td, sep)))}`;
         this.renderAdminTariffsStatus();
     },
 
     setTariffSection: function (id) {
         this._tariffSection = id;
         this.renderAdminTariffs();
+    },
+
+    // ═══ Принудительное обучение ═════════════════════════════════════════
+    // Кому включать режим обучения (tour.js) без их просьбы. Лежит в app_settings,
+    // ключ tour_force: { users: {почта: true|false}, dists: {id: true},
+    // regions: {регион: true}, tariffs: {'installer.base': true}, all: bool }.
+    // Решает, кому включать, Tour.forceDecisionFor — здесь только правка списка.
+    // Читать может любой (как таблицу тарифов), писать — администратор: политика
+    // is_admin() на самой таблице. Личная отметка сильнее группы в обе стороны.
+    tourForce: function () { return (this.appSettings && this.appSettings.tour_force) || {}; },
+
+    tourForceCount: function () {
+        const f = this.tourForce();
+        return Object.keys(f.users || {}).length + Object.keys(f.dists || {}).filter(k => f.dists[k]).length +
+            Object.keys(f.regions || {}).filter(k => f.regions[k]).length + Object.keys(f.tariffs || {}).filter(k => f.tariffs[k]).length + (f.all ? 1 : 0);
+    },
+
+    // kind: users | dists | regions | tariffs | all; value: true/false, null — снять
+    setTourForce: function (kind, key, value) {
+        if (!this.canEditTariffs()) { app.alert('Менять принудительное обучение может только администратор.'); return; }
+        if (!['users', 'dists', 'regions', 'tariffs', 'all'].includes(kind)) return;
+        key = String(key == null ? '' : key).trim();
+        if (kind === 'users') key = key.toLowerCase();
+        if (kind !== 'all' && !key) return;
+        const patch = (f) => {
+            f = JSON.parse(JSON.stringify(f || {}));
+            if (kind === 'all') { f.all = !!value; return f; }
+            f[kind] = f[kind] || {};
+            if (kind === 'users') Object.keys(f.users).forEach(k => { if (String(k).toLowerCase() === key) delete f.users[k]; });
+            if (value === true || (value === false && kind === 'users')) f[kind][key] = value;
+            else delete f[kind][key];
+            return f;
+        };
+        this.appSettings = Object.assign({}, this.appSettings, { tour_force: patch(this.tourForce()) });
+        this.refreshTourForceViews();
+        this._tourSaveChain = (this._tourSaveChain || Promise.resolve()).then(async () => {
+            try {
+                const { data, error: readErr } = await supabaseClient.from('app_settings')
+                    .select('value').eq('key', 'tour_force').maybeSingle();
+                if (readErr) throw readErr;
+                const value2 = patch((data && data.value) || {});
+                const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+                const { error } = await supabaseClient.from('app_settings')
+                    .upsert({ key: 'tour_force', value: value2, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+                if (error) throw error;
+                this.appSettings = Object.assign({}, this.appSettings, { tour_force: value2 });
+            } catch (e) {
+                console.error('[обучение] список не сохранён:', e);
+                await this.loadAppSettings(true);
+                app.alert('Не удалось сохранить: ' + (e.message || e));
+            } finally {
+                this.refreshTourForceViews();
+            }
+        });
+        return this._tourSaveChain;
+    },
+
+    refreshTourForceViews: function () {
+        if (this._tariffSection === 'tour' && document.getElementById('admin_tariffs_box')) this.renderAdminTariffs();
+        const sel = document.getElementById('ad_peek_tour');
+        if (sel && sel.dataset.login) sel.value = this.tourForceOwnValue(sel.dataset.login);
+    },
+
+    tourForceOwnValue: function (login) {
+        const v = this.accessFlagFor(this.tourForce().users, login);
+        return v === true ? 'on' : (v === false ? 'off' : '');
+    },
+
+    // Блок во вкладке «Тарифы → Обучение»
+    adminTourBlockHtml: function (esc) {
+        const canEdit = this.canEditTariffs();
+        const dis = canEdit ? '' : 'disabled';
+        const f = this.tourForce();
+        const js = s => esc(String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+        const box = 'border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin:0 0 12px; max-width:900px; background:var(--bg);';
+        const h = 'margin:0 0 8px; font-size:13px; font-weight:700; color:var(--text-main);';
+        const sub = 'font-size:11.5px; color:var(--text-sec); line-height:1.5; margin:0 0 8px;';
+        const chk = (on, kind, key, label, hint) => `<label style="display:inline-flex; align-items:center; gap:6px; margin:0 14px 6px 0; font-size:12.5px; cursor:${canEdit ? 'pointer' : 'default'};" ${hint ? `title="${esc(hint)}"` : ''}>
+            <input type="checkbox" ${dis} ${on ? 'checked' : ''} onchange="app.setTourForce('${kind}', '${js(key)}', this.checked)"> ${esc(label)}</label>`;
+
+        const tariffs = this.TARIFF_ACCOUNTS.map(a => `<div style="margin:0 0 4px;"><b style="font-size:12px; display:inline-block; min-width:96px;">${esc(a.label)}</b>${this.TARIFF_PLANS.map(p =>
+            chk(!!(f.tariffs || {})[a.id + '.' + p.id], 'tariffs', a.id + '.' + p.id, p.label, a.hint)).join('')}</div>`).join('');
+
+        const dists = (this.adminData.distributors || []).map(d => chk(!!(f.dists || {})[d.id], 'dists', d.id, d.company_name || d.id)).join('')
+            || '<span style="font-size:12px; color:var(--text-sec);">Дистрибьюторы ещё не загружены — откройте вкладку «Дистрибьюторы».</span>';
+
+        const regionsOn = Object.keys(f.regions || {}).filter(k => f.regions[k]);
+        const allRegions = [...new Set((this.adminData.allUsersDropdown || []).map(u => {
+            try { return this.normalizeUserRegionAndCity(u.region, u.city).region; } catch (e) { return ''; }
+        }).filter(Boolean))].filter(r => !regionsOn.includes(r)).sort((a, b) => a.localeCompare(b, 'ru'));
+        const regions = `<div style="margin:0 0 6px;">${regionsOn.map(r => `<span class="ad-chip active" style="margin:0 6px 6px 0;">${esc(r)} <a href="#" ${canEdit ? '' : 'style="pointer-events:none"'} onclick="event.preventDefault(); app.setTourForce('regions', '${js(r)}', null)" title="Убрать" style="color:inherit; text-decoration:none; margin-left:4px;">×</a></span>`).join('') || '<span style="font-size:12px; color:var(--text-sec);">Регионы не выбраны</span>'}</div>
+            <select ${dis} onchange="if(this.value){app.setTourForce('regions', this.value, true);}" style="max-width:320px; padding:4px 6px; font-size:12px;">
+                <option value="">+ Добавить регион…</option>${allRegions.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('')}</select>`;
+
+        const users = Object.keys(f.users || {}).sort().map(k => `<div style="font-size:12.5px; margin:0 0 4px;">${esc(k)} — <b style="color:${f.users[k] ? '#059669' : 'var(--text-sec)'};">${f.users[k] ? 'включено лично' : 'не навязывать'}</b>
+            <a href="#" ${canEdit ? '' : 'style="pointer-events:none"'} onclick="event.preventDefault(); app.setTourForce('users', '${js(k)}', null)" title="Снять личную отметку" style="color:var(--primary); text-decoration:none; margin-left:6px;">↺</a></div>`).join('')
+            || '<span style="font-size:12px; color:var(--text-sec);">Личных отметок нет. Ставятся в карточке человека (клик по строке в «Пользователях»).</span>';
+
+        return `
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:0 0 10px;">
+                <h3 style="margin:0; color:var(--text-main);">🎓 Принудительное обучение</h3></div>
+            <p style="margin:0 0 12px; font-size:12.5px; line-height:1.5; color:var(--text-sec); max-width:900px;">
+                Включит режим обучения у тех, кто попал в список и ещё не прошёл его до конца: при следующем заходе на сайт.
+                Закрыл крестиком или выключил кнопкой — повторно предложим через ${Tour.SNOOZE_DAYS} дня, пока не дойдёт до «Готово»;
+                прошедшему не включится. Личная отметка сильнее групп и в ту и в другую сторону.
+                ${canEdit ? '' : '<b style="color:var(--c-warn,#D97706);">Менять список может только администратор.</b>'}</p>
+            <div style="${box}"><div style="${h}">Всем, кто ещё не прошёл</div>${chk(!!f.all, 'all', '', 'Включить обучение всем непрошедшим', 'Самая широкая группа')}</div>
+            <div style="${box}"><div style="${h}">По тарифу и роли</div><p style="${sub}">Строка таблицы «Тарифы»: кто на каком тарифе и кем является.</p>${tariffs}</div>
+            <div style="${box}"><div style="${h}">По компании (дистрибьютору)</div>${dists}</div>
+            <div style="${box}"><div style="${h}">По региону</div>${regions}</div>
+            <div style="${box}"><div style="${h}">Личные отметки</div>${users}</div>`;
     },
 
     // Вторая таблица вкладки «Тарифы»: какие разделы панели видит каждая роль
@@ -38256,6 +38367,11 @@ const app = {
                 ${rowKV('Визитов', u.sess_visits ? String(u.sess_visits) : '')}${rowKV('Время на сайте', mins ? mins + ' мин' : '')}
                 <div class="ad-peek-sec">История</div>
                 ${rowKV('Обучение', u.tour_done_at ? '<span style="color:#059669;">✓ пройдено ' + fmtD(u.tour_done_at) + '</span>' : '')}
+                ${this.canEditTariffs() && (u.email || u.username) ? `<div class="ad-kv"><span title="Включить обучение этому человеку при следующем заходе, либо не навязывать, даже если включено его группе">Принудительно</span>
+                    <select id="ad_peek_tour" data-login="${esc(String(u.email || u.username).toLowerCase())}" onchange="app.setTourForce('users', this.dataset.login, this.value === 'on' ? true : (this.value === 'off' ? false : null))" style="font-size:11.5px; padding:2px 4px; max-width:150px;">
+                        <option value="" ${this.tourForceOwnValue(u.email || u.username) === '' ? 'selected' : ''}>как у группы</option>
+                        <option value="on" ${this.tourForceOwnValue(u.email || u.username) === 'on' ? 'selected' : ''}>включить</option>
+                        <option value="off" ${this.tourForceOwnValue(u.email || u.username) === 'off' ? 'selected' : ''}>не навязывать</option></select></div>` : ''}
                 ${rowKV('Регистрация', fmtD(u.created_at))}${rowKV('Последний вход', fmtD(u.last_visited))}${rowKV('Устройство', esc(u.last_device))}
                 <div id="ad_peek_ext"><div class="ad-peek-sec">Сметы и события</div><div class="ad-card-note">Загружаем…</div></div>
             </div>
