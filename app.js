@@ -23199,6 +23199,9 @@ const app = {
         // «Ходит, но не считает» — половину условия (3+ визита) знает сама база,
         // вторую половину (ни одного расчёта) досчитывает filterIdleVisitors.
         if (filters.idle === 'yes') query = query.gte('sess_visits', this.IDLE_MIN_VISITS);
+        // Обучение: 'no' — не прошли до конца, 'yes' — прошли (users.tour_done_at, см. tour.js)
+        if (filters.tour === 'no') query = query.is('tour_done_at', null);
+        else if (filters.tour === 'yes') query = query.not('tour_done_at', 'is', null);
         if (searchFilter) {
             // По словам: «Ибат», «Ибатуллин Д», «Ибатуллин Д.О.» — каждое слово (или буква)
             // должно встретиться в какой-нибудь из колонок. Целая фраза в одной колонке
@@ -23606,6 +23609,7 @@ const app = {
             recog: document.getElementById('admin_filter_recog')?.value || 'all',
             suspect: document.getElementById('admin_filter_suspect')?.value || 'all',
             idle: document.getElementById('admin_filter_idle')?.value || 'all',
+            tour: document.getElementById('admin_filter_tour')?.value || 'all',
             device: document.getElementById('admin_filter_device')?.value || 'all'
         };
 
@@ -23892,6 +23896,7 @@ const app = {
                         .select('id, tour_done_at, tour_done_steps, tour_done_plan')
                         .in('id', userIds.map(String)).not('tour_done_at', 'is', null);
                     if (!tourErr && tourRows) {
+                        users.forEach(u => { u.tour_known = true; });
                         const byTour = {};
                         tourRows.forEach(r => { byTour[String(r.id)] = r; });
                         users.forEach(u => {
@@ -23945,7 +23950,7 @@ const app = {
                 !!(af.region || '').trim() || (af.dist && af.dist !== 'all') ||
                 (af.activity && af.activity !== 'all') ||
                 (af.recog && af.recog !== 'all') || (af.suspect && af.suspect !== 'all') ||
-                (af.idle && af.idle !== 'all') ||
+                (af.idle && af.idle !== 'all') || (af.tour && af.tour !== 'all') ||
                 !!(af.search || '').trim();
             if (anyFilter) {
                 try {
@@ -26408,6 +26413,7 @@ const app = {
             recog: 'all',
             suspect: 'all',
             idle: 'all',
+            tour: 'all',
             device: 'all',
             search: ''
         };
@@ -26419,6 +26425,7 @@ const app = {
         const recogFilter = filters.recog || 'all';
         const suspectFilter = filters.suspect || 'all';
         const idleFilter = filters.idle || 'all';
+        const tourFilter = filters.tour || 'all';
         const deviceFilter = filters.device || 'all';
         const sortArrow = (key) => sortType === key + '_asc' ? ' ▲' : (sortType === key + '_desc' ? ' ▼' : '');
         // Проектирование: переключатели работают, только если на сервере лежит
@@ -26434,7 +26441,7 @@ const app = {
         // Быстрые срезы и сохранённые виды списка: девять фильтров в одну строку превращали
         // экран в панель самолёта, а нужные сочетания приходилось выставлять заново.
         const escH = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        const curF = { tariff: tariffFilter, expiry: expiryFilter, region: regionFilter, dist: distFilter, activity: activityFilter, recog: recogFilter, suspect: suspectFilter, idle: idleFilter, device: deviceFilter };
+        const curF = { tariff: tariffFilter, expiry: expiryFilter, region: regionFilter, dist: distFilter, activity: activityFilter, recog: recogFilter, suspect: suspectFilter, idle: idleFilter, tour: tourFilter, device: deviceFilter };
         const nonDefault = {};
         Object.keys(curF).forEach(k => { if (curF[k] !== this.USERS_FILTER_DEFAULTS[k]) nonDefault[k] = curF[k]; });
         const activeCount = Object.keys(nonDefault).length;
@@ -26521,6 +26528,13 @@ const app = {
                             <select id="admin_filter_idle" onchange="app.loadAdminData(0)" title="Заходил ${this.IDLE_MIN_VISITS} и более раз, но не начал ни одного расчёта и не сохранил ни одной сметы" style="background: var(--surface); color: var(--text-main); border: 1px solid ${idleFilter === 'yes' ? '#D97706' : 'var(--border)'}; border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="all" ${idleFilter === 'all' ? 'selected' : ''}>👣 Визиты: все</option>
                                 <option value="yes" ${idleFilter === 'yes' ? 'selected' : ''}>👣 Ходит, но не считает</option>
+                            </select>
+                            <!-- Обучение (tour.js): отметка лежит в users.tour_done_at, база её знает,
+                                 поэтому отбор идёт обычным запросом (buildAdminUserFilter). -->
+                            <select id="admin_filter_tour" onchange="app.loadAdminData(0)" title="Прошёл ли человек обучение до последнего шага" style="background: var(--surface); color: var(--text-main); border: 1px solid ${tourFilter === 'no' ? '#D97706' : 'var(--border)'}; border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
+                                <option value="all" ${tourFilter === 'all' ? 'selected' : ''}>🎓 Обучение: все</option>
+                                <option value="no" ${tourFilter === 'no' ? 'selected' : ''}>🎓 Не прошли</option>
+                                <option value="yes" ${tourFilter === 'yes' ? 'selected' : ''}>🎓 Прошли</option>
                             </select>
                             <!-- Категория устройства (компьютер/телефон/приложение) в базе не лежит —
                                  её выводит клиент из журнала визитов (см. deviceCategory), поэтому
@@ -26778,7 +26792,9 @@ const app = {
             // владелец, менеджер и наблюдатель.
             const tourDoneChip = u.tour_done_at
                 ? `<span title="Прошёл обучение до конца ${new Date(u.tour_done_at).toLocaleDateString('ru-RU')}${u.tour_done_steps ? ' (шагов: ' + u.tour_done_steps + ')' : ''}${u.tour_done_plan ? ', тариф: ' + u.tour_done_plan : ''}" style="cursor:help; background:#10B98122; color:#059669; font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-right:3px;">✓ Обучение</span>`
-                : '';
+                : (u.tour_known
+                    ? `<span title="Обучение до конца не проходил. Включить принудительно: «Тарифы → Обучение» или поле «Принудительно» в карточке человека" style="cursor:help; background:var(--text-sec, #6B7280)22; color:var(--text-sec, #6B7280); font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-right:3px;">🎓 обучение: нет</span>`
+                    : '');
             const stageHTML = tourDoneChip + (stuckPromo
                 ? stageChip('⛔ Не ввёл промокод', 'Вошёл, но калькулятор закрыт окном «Нужен промокод магазина»: промокод не ввёл, анкету не видел', 'var(--c-warn, #D97706)')
                 : '') + (profileMissing.length
@@ -38234,8 +38250,8 @@ const app = {
         document.body.removeChild(link);
     },
     // ═══ Список пользователей: срезы, сохранённые виды, плотность, быстрый просмотр ═══
-    USERS_FILTER_DEFAULTS: { tariff: 'all', expiry: 'all', region: '', dist: 'all', activity: 'all', recog: 'all', suspect: 'all', idle: 'all', device: 'all' },
-    USERS_FILTER_IDS: { tariff: 'admin_filter_tariff', expiry: 'admin_filter_expiry', region: 'admin_filter_region', dist: 'admin_filter_dist', activity: 'admin_filter_activity', recog: 'admin_filter_recog', suspect: 'admin_filter_suspect', idle: 'admin_filter_idle', device: 'admin_filter_device' },
+    USERS_FILTER_DEFAULTS: { tariff: 'all', expiry: 'all', region: '', dist: 'all', activity: 'all', recog: 'all', suspect: 'all', idle: 'all', tour: 'all', device: 'all' },
+    USERS_FILTER_IDS: { tariff: 'admin_filter_tariff', expiry: 'admin_filter_expiry', region: 'admin_filter_region', dist: 'admin_filter_dist', activity: 'admin_filter_activity', recog: 'admin_filter_recog', suspect: 'admin_filter_suspect', idle: 'admin_filter_idle', tour: 'admin_filter_tour', device: 'admin_filter_device' },
     USERS_SEGMENTS: [
         { id: 'all', label: 'Все', f: {} },
         { id: 'pro', label: 'Профи', f: { tariff: 'pro' } },
@@ -38243,7 +38259,8 @@ const app = {
         { id: 'expired', label: 'Срок истёк', f: { expiry: 'expired' } },
         { id: 'nodist', label: 'Без дистрибьютора', f: { dist: 'none' } },
         { id: 'idle', label: 'Ходят, но не считают', f: { idle: 'yes' } },
-        { id: 'suspect', label: 'Сомнительные анкеты', f: { suspect: 'yes' } }
+        { id: 'suspect', label: 'Сомнительные анкеты', f: { suspect: 'yes' } },
+        { id: 'tournot', label: 'Не прошли обучение', f: { tour: 'no' } }
     ],
 
     // Выставить фильтры списка (всё, чего нет в f, — по умолчанию) и перечитать список
