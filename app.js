@@ -55934,9 +55934,12 @@ const app = {
     // остаются рабочими.
     isUfhMixTypeCompatible: function (type, area, brand, areaPerNode) {
         if (type === 'std') {
-            let flowTotal = (area * 0.08) / (1.163 * 5);
+            let flowTotal = (area * 0.08) / (1.163 * (parseInt(this.state.ufhDT, 10) || 5));
             let limitArea = (brand === 'rommer') ? 100 : 120;
-            let limitFlow = (brand === 'rommer') ? 1.0 : 1.2;
+            // STOUT: меньшее из скорости в 3/4" ≤ 1 м/с и потерь узла по паспортному графику SDG-0120-001
+            // не больше половины напора его насоса 25/60 (как у групп, см. groupFlowLimit). ROMMER: 1,0 м³/ч — заявленные 6 кВт узла
+            // RDG-0120-008100 при перепаде 5 К, паспорт кривой потерь не даёт.
+            let limitFlow = (brand === 'rommer') ? 1.0 : this.stdNodeFlowLimit();
             return area <= limitArea && flowTotal <= limitFlow;
         }
         let a = (areaPerNode > 0) ? areaPerNode : area;
@@ -66983,6 +66986,15 @@ const app = {
         dn25:       [[0.6, 1.33], [0.8, 1.81], [1, 2.31], [1.25, 3.09], [1.5, 4.04], [1.75, 5.18], [2, 6.49], [2.25, 7.95], [2.4, 8.8]],
         dn25_servo: [[0.6, 0.93], [1, 1.22], [1.5, 1.66], [2, 2.21], [2.5, 2.85], [3, 3.62], [3.5, 4.47], [4, 5.41], [4.5, 6.46], [5, 7.7], [5.4, 8.82]],
         dn32_servo: [[0, 0.13], [1, 0.2], [2, 0.38], [3, 0.65], [4, 1.0], [5, 1.4], [6, 2.0], [7, 2.7], [8, 3.5], [8.5, 4.0]]
+    },
+    /** Предел расхода локального узла подмеса STOUT, м³/ч: потери по паспортной кривой ≤ ½ напора насоса 25/60. */
+    stdNodeFlowLimit: function () {
+        let g = 0;
+        for (let q = 0.02; q <= 2.5; q += 0.02) {
+            if (this.groupDpKpa('std', 'stout', q) / 9.81 <= 0.5 * this.pumpHeadAt(this.UFH_PUMPS.mix, q)) g = q; else break;
+        }
+        // Узел на 3/4": скорость в патрубке ≤ 1 м/с, как у DN20 (GROUP_FLOW_LIMIT[20]).
+        return Math.min(Math.round(g * 100) / 100, this.GROUP_FLOW_LIMIT[20]);
     },
     /** Ключ кривой потерь для позиции каталога (STOUT) или типа узла; null — кривой нет. */
     groupDpKey: function (item) {
@@ -81449,6 +81461,21 @@ const app = {
             }
             if (tankNeedsPumpGroup && !_selfG) {
                 let tankBase = grps[0];
+                let tankPumpItem = pmp, tankDn25 = dn25;
+                // Типоразмер группы бойлера — по мощности контура загрузки (меньшее из змеевика и котла),
+                // а не по DN радиаторной группы: DN20 тянет ≈ 28 кВт при перепаде котла 20 К, DN25 ≈ 49.
+                // Ручной DN и ROMMER (там все группы DN25) не трогаем.
+                if (!this.state.manualDnOverride && this.state.brandMode !== 'rommer' && catalog.groups_dn20 && catalog.groups_dn25) {
+                    const _tCoil = this.tankCoilKw(this._tankPortsModel);
+                    const _tBoiler = selBoilers.find(b => b && b.type === 'gas') || selBoilers[0] || null;
+                    const _tBKw = _tBoiler ? (parseFloat(_tBoiler.power) || 0) : 0;
+                    const _tKw = _tCoil > 0 ? (_tBKw > 0 ? Math.min(_tCoil, _tBKw) : _tCoil) : 0;
+                    if (_tKw > 0) {
+                        const _g20 = catalog.groups_dn20[0], _g25 = catalog.groups_dn25[0];
+                        if (this.groupCapKw(_g20, 'dhw') >= _tKw) { tankBase = _g20; tankDn25 = false; tankPumpItem = catalog.pumps_dn20[0]; }
+                        else { tankBase = _g25; tankDn25 = true; tankPumpItem = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0]; tankPumpItem.alts = catalog.pumps_dn25; }
+                    }
+                }
                 // Мощность берём из паспортной мощности той же группы (для радиаторов) —
                 // физически это тот же узел, просто на контуре загрузки бойлера.
                 let tankCapSuffix = ` — тянет ${String(this.groupCapKw(tankBase, 'dhw')).replace('.', ',')} кВт`;
@@ -81467,8 +81494,8 @@ const app = {
                     tankPumpGroup.rommer = { ...tankBase.rommer, name: rName.replace(/\s*-\s*для радиаторов.*$/i, '') + ` для бойлера — тянет ${String(this.groupCapKw(tankBase.rommer, 'dhw')).replace('.', ',')} кВт` };
                 }
                 addToBill({ ...tankPumpGroup, sortRank: -2 }, 1, this.getDesc('fugas_pump'), grpHydro);
-                addToBill({ ...pmp, sortRank: -1 }, 1, this.getDesc('pump_std'), grpHydro);
-                if (dn25) gbmNodeQty += 1;
+                addToBill({ ...tankPumpItem, sortRank: -1 }, 1, this.getDesc('pump_std'), grpHydro);
+                if (tankDn25) gbmNodeQty += 1;
             }
             if (tQ > 0) {
                 let activeMixType = this.state.ufhMixType || 'std';
