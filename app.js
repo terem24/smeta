@@ -66428,13 +66428,28 @@ const app = {
      * ('unknown'), у котла нет встроенного насоса. Тогда остаются прежние пороги.
      * Условие «запас не меньше RAD_PUMP_RESERVE» — то же, что требуется от насоса разводки.
      */
+    // Насос котла для проверки кольца радиаторов. Своя паспортная остаточная кривая — как есть. У газового
+    // настенного котла её нет (Haier — кривая не подтверждена, Navien — не опубликована), но насосы настенных
+    // котлов одного класса мощности близки, поэтому берём типовую кривую BAXI ECO Nova: она остаточная
+    // и ниже кривой Haier, то есть решение в запас. proxy: true — в подсказках это сказано прямо.
+    radBoilerPump: function (b) {
+        if (!b || b.noPump) return null;
+        const own = this.boilerPumpOf(b);
+        if (own && own.kind === 'residual') return { curve: own, proxy: false };
+        if (b.type === 'gas') {
+            const p = this.BOILER_PUMPS.find(x => x.id === 'baxi_econova');
+            if (p) return { curve: p, proxy: true };
+        }
+        return null;
+    },
     radDirectByBoilerPump: function (loadKw, devicesCount, boilers, extraKw) {
         const kw = parseFloat(loadKw) || 0;
         if (!(kw > 0)) return null;
         const list = (boilers || []).filter(Boolean);
         if (list.length !== 1) return null;
-        const pump = this.boilerPumpOf(list[0]);
-        if (!pump || pump.kind !== 'residual') return null;
+        const bp = this.radBoilerPump(list[0]);
+        if (!bp) return null;
+        const pump = bp.curve;
         const s = this.state;
         const area = parseFloat(s.area) || 100;
         const _rp = this.radPlanRuns();
@@ -66455,7 +66470,7 @@ const app = {
         const avail = this.boilerPumpHead(pump, flowPump) || 0;
         return {
             fits: avail >= head * this.RAD_PUMP_RESERVE,
-            head: head, avail: avail, flow: flowPump, pump: pump, reserve: this.RAD_PUMP_RESERVE
+            head: head, avail: avail, flow: flowPump, pump: pump, proxy: bp.proxy, reserve: this.RAD_PUMP_RESERVE
         };
     },
 
@@ -66806,8 +66821,9 @@ const app = {
         if (hasGroup) add('Насосная группа и обвязка', this.RAD_GROUP_DP, { tag: 'group' });
         // Без группы кольцо гонит встроенный насос котла. Есть его паспортная «остаточная» кривая
         // (сопротивление котла уже вычтено) — считаем по ней и RAD_BOILER_DP не прибавляем.
-        const _bpCurve = (!hasGroup && this._radDirectBoiler) ? this.boilerPumpOf(this._radDirectBoiler) : null;
-        const _bpRes = (_bpCurve && _bpCurve.kind === 'residual') ? _bpCurve : null;
+        const _bpSel = (!hasGroup && this._radDirectBoiler) ? this.radBoilerPump(this._radDirectBoiler) : null;
+        const _bpRes = _bpSel ? _bpSel.curve : null;
+        const _bpProxy = !!(_bpSel && _bpSel.proxy);
         if (!_bpRes) add('Теплообменник котла', this.RAD_BOILER_DP, { tag: 'boiler' });
 
         const vMax = parts.reduce((a, p) => Math.max(a, p.v || 0), 0);
@@ -66827,7 +66843,9 @@ const app = {
         const pumps = hasGroup ? this.RAD_PUMPS
             : (_bpRes ? [{ label: _bpRes.label, hMax: _bpRes.pts[0][1], curve: _bpRes }] : [this.RAD_PUMPS[0]]);
         const pump = pumps.map(pm => ({
-            label: hasGroup ? pm.label : (pm.curve ? 'встроенный насос котла: ' + pm.label : 'встроенный насос котла (принят по кривой ' + pm.label + ')'),
+            label: hasGroup ? pm.label : (pm.curve
+                ? (_bpProxy ? 'встроенный насос котла (паспортной кривой нет, взята типовая настенного котла: ' + pm.label + ')' : 'встроенный насос котла: ' + pm.label)
+                : 'встроенный насос котла (принят по кривой ' + pm.label + ')'),
             avail: pm.curve ? (this.boilerPumpHead(pm.curve, flowBranch * _kp.flow) || 0) : this.pumpHeadAt(pm, flowBranch * _kp.flow)
         }));
         const fit = pump.find(pm => pm.avail >= head) || null;
@@ -73800,7 +73818,8 @@ const app = {
             : (had === false)
             ? 'Авто: без стрелки, систему тянет насос котла' + (this._radGroupWhy && this._radGroupWhy.kind === 'pump'
                 ? ' (кольцо радиаторов требует ' + (this._radGroupWhy.d.head * this._radGroupWhy.d.reserve).toFixed(1).replace('.', ',')
-                    + ' м с запасом, насос котла даёт ' + this._radGroupWhy.d.avail.toFixed(1).replace('.', ',') + ' м)' : '') + '.'
+                    + ' м с запасом, насос котла даёт ' + this._radGroupWhy.d.avail.toFixed(1).replace('.', ',') + ' м'
+                    + (this._radGroupWhy.d.proxy ? '; кривая насоса типовая для настенных котлов, паспортной у этого котла нет' : '') + ')' : '') + '.'
             : 'Авто.';
     },
 
@@ -81084,7 +81103,7 @@ const app = {
             const _rw = this._radGroupWhy;
             if (rQ > 0 && _rw && _rw.kind === 'nopump') {
                 const _f = v => v.toFixed(1).replace('.', ',');
-                why.push('насос котла не тянет радиаторы: нужно ' + _f(_rw.d.head * _rw.d.reserve) + ' м, даёт ' + _f(_rw.d.avail) + ' м');
+                why.push('насос котла не тянет радиаторы: нужно ' + _f(_rw.d.head * _rw.d.reserve) + ' м, даёт ' + _f(_rw.d.avail) + ' м' + (_rw.d.proxy ? ' (типовая кривая настенного котла)' : ''));
             } else if (rQ > 0 && _rw && _rw.kind === 'rule') {
                 // паспортной кривой насоса котла нет — решили пороги
                 if (this.state.area > 150) why.push('площадь больше 150 м²');
