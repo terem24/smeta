@@ -89457,7 +89457,12 @@ const app = {
         // «загрузка бойлера» — прежняя подпись узла, оставлена для смет, сохранённых до
         // переименования в «для бойлера».
         let tankPumpGroupCount = this.currentEquipmentList.filter(x => /(загрузка|для) бойлера/i.test(x.name || '')).reduce((sum, x) => sum + x.q, 0);
-        if (tankPumpGroupCount > 0) {
+        // Самосборная группа загрузки бойлера в смете называется иначе («Самосборная группа: загрузка бойлера»),
+        // поэтому по имени её не находит: считаем по числу групп, которые собрал подбор.
+        if (this.selfGroups()) {
+            const nDhw = (this._selfCounts || {}).dhw || 0;
+            if (nDhw > 0) addToWorks("Сборка самосборной группы из деталей", nDhw, 6000, "компл", obvyazkaGroup);
+        } else if (tankPumpGroupCount > 0) {
             addToWorks("Монтаж насосной группы", tankPumpGroupCount, 6500, "шт", obvyazkaGroup);
         }
 
@@ -89609,10 +89614,28 @@ const app = {
         // 3. Распределительная гидравлика (Обвязка котельной)
         if (needCollector) {
             addToWorks("Монтаж коллектора и гидрострелки", 1, 12000, "шт", obvyazkaGroup);
-            addToWorks("Монтаж насосной группы", rQ + tQ, 6500, "шт", obvyazkaGroup);
+            if (this.selfGroups()) {
+                // Самосборная группа собирается из деталей: работы больше, чем на готовую (6 500 ₽).
+                const sc = this._selfCounts || {};
+                const nSelf = (sc.direct || 0) + (sc.thermo || 0) + (sc.servo || 0);
+                if (nSelf > 0) addToWorks("Сборка самосборной группы из деталей", nSelf, 6000, "компл", obvyazkaGroup);
+            } else {
+                addToWorks("Монтаж насосной группы", rQ + tQ, 6500, "шт", obvyazkaGroup);
+            }
         } else if (hasTp && tpArea > 0) {
             addToWorks("Сборка и установка узла подмеса", 1, 6000, "шт", obvyazkaGroup);
             addToWorks("Установка насоса", 1, 3000, "шт", obvyazkaGroup);
+        }
+        // Соединения самосборных групп: пресс на нержавейке, сварка на ППР — по числу соединений в комплектах.
+        if (this.selfGroups()) {
+            const joints = this.currentEquipmentList.filter(x => /^2\.4/.test(String(x.group || '')) &&
+                /^(RSS|SSS)-(1004|1013|1014|1021|1022|2004|2013|2014|2021|2022)-|^(SZI|SZE|SKO|STK)/.test(String(x.originalId || x.id || '')))
+                .reduce((s, x) => s + (x.q || 0), 0);
+            if (joints > 0) {
+                const ppr = this.boilerPipeSystem() === 'ppr';
+                addToWorks(ppr ? "Сварка соединений PP-RCT самосборных групп" : "Пресс-соединения самосборных групп",
+                    joints, ppr ? 350 : 400, "соед", obvyazkaGroup);
+            }
         }
 
         // 4. Трассы (Магистрали) (Обвязка котельной)
