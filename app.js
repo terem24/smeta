@@ -58985,11 +58985,21 @@ const app = {
             // они есть всегда, у XPS 50 мм — только там, где одной плиты мало.
             const _addMat = this.ufhInsAddCost(this.UFH_INS_R_MAT);
             const _addXps = this.ufhInsAddCost(0.05 / this.UFH_INS_LAMBDA);
-            customAlts = [
-                { id: 'mat', name: _matR ? 'Маты с бобышками ROMMER' : 'Маты с бобышками STOUT', brand: _matR ? 'ROMMER' : 'STOUT',
-                  price: p_mat * 1.05 / _matArea + _addMat, unitM2: p_mat / _matArea, unitPrice: p_mat, unitLabel: `за мат ${_fmtA(_matArea)} м²`,
+            // Мат с бобышками — обе марки рядом (STOUT и ROMMER), как и у остальных позиций.
+            // У ROMMER мат другой площади (0,72 м²), поэтому цена за м² и система считаются
+            // каждому по своей площади. Идентификаторы строк — настоящие артикулы: выбор идёт
+            // обычной ручной заменой (STOUT → forceStout, ROMMER → forceAnalog в addToBill).
+            const _matRowOf = (m, brand) => {
+                const area = (m && m.area) || 0.88;
+                return { id: m.id, name: 'Маты с бобышками ' + brand, brand: brand,
+                  pipeKind: 'mat', pipeActive: (this.state.ufhBaseType !== 'xps') && ((brand === 'ROMMER') === !!_matR),
+                  price: (m.price || 0) * 1.05 / area + _addMat, unitM2: (m.price || 0) / area, unitPrice: m.price || 0, unitLabel: `за мат ${_fmtA(area)} м²`,
                   sysText: 'мат с запасом 5 %, трубу держат бобышки — крепёж не нужен' + (_addMat > 0 ? ', плюс плиты добора до нормы' : ''),
-                  imgId: _matR ? _matR.id : _matCat?.id },
+                  imgId: m.id };
+            };
+            customAlts = [
+                ...(_matCat ? [_matRowOf(_matCat, 'STOUT')] : []),
+                ...((_matCat && _matCat.rommer) ? [_matRowOf(_matCat.rommer, 'ROMMER')] : []),
                 { id: 'xps', name: 'Пенополистирол XPS + скобы', brand: 'Technonicol',
                   price: _xpsSys + _addXps, unitM2: p_xps / _xpsArea, unitPrice: p_xps, unitLabel: `за лист ${_fmtA(_xpsArea)} м²`,
                   sysText: 'листы с запасом 5 %, подложка, дюбели, скобы, скотч' + (_addXps > 0 ? ', плюс второй слой до нормы' : ''),
@@ -60845,6 +60855,17 @@ const app = {
                 if (!baseItem && typeof steelRads !== 'undefined') {
                     baseItem = steelRads.find(x => x.id === lookupKey);
                 }
+                if (!baseItem && item.id && item.id !== lookupKey) {
+                    // Ключ строки с суффиксом узла («…_rad_node», «…_cw», «…_rad_trunk») в каталоге
+                    // не лежит, а сам артикул — лежит. Без этого строка копировалась как есть,
+                    // без пары ROMMER, и в таблице замены у фитингов обвязки ROMMER не было вовсе.
+                    for (let catKey in catalog) {
+                        if (Array.isArray(catalog[catKey])) {
+                            let found = catalog[catKey].find(x => x.id === item.id);
+                            if (found) { baseItem = found; break; }
+                        }
+                    }
+                }
                 if (!baseItem) {
                     baseItem = item;
                 }
@@ -60909,6 +60930,12 @@ const app = {
                             if (f) { analog = f; break; }
                         }
                     }
+                }
+                // Замена в списке может быть урезанной копией позиции (без поля .rommer) —
+                // пару берём из самой позиции каталога, иначе у неё в таблице нет ROMMER.
+                if (!analog && alt.id) {
+                    const _catAlt = this.findCatalogItemById(alt.id);
+                    if (_catAlt && _catAlt !== alt && _catAlt.rommer) analog = _catAlt.rommer;
                 }
 
                 let displayItemRommer = null;
