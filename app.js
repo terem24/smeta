@@ -39925,6 +39925,96 @@ const app = {
         if (touched || plansTouched) this.saveState();
     },
 
+    /**
+     * Комнаты с отмеченным на плане радиатором по этажам: { 1: Set(имя), 2: Set(...) }.
+     * Этаж без единой отметки в ответ не попадает — там прежнее правило (радиатор
+     * в каждой комнате с радиаторной системой). Есть отметки — радиатор ставится
+     * только в отмеченных комнатах: монтажник уже решил, где приборы, и смета не
+     * должна добавлять их «на всякий случай» в тамбуры и кухни без отметки.
+     */
+    /**
+     * Источник приборов: 'plan' — как отмечено на плане, 'loss' — по теплопотерям в каждой комнате.
+     * Пока монтажник не выбрал сам, при загруженном плане с отметками — 'plan', иначе 'loss'.
+     */
+    radSourceMode: function () {
+        if (this.state.radSource === 'plan' || this.state.radSource === 'loss') return this.state.radSource;
+        const fl = (this.currentPlans() || {}).floors || [];
+        return fl.some(f => f && (f.rads || []).length) ? 'plan' : 'loss';
+    },
+
+    /**
+     * Поставить на плане прибор у самой длинной стены комнаты (внутренняя сторона — по зоне).
+     * Дальше расчёт сам подберёт прибор под дефицит этой комнаты.
+     */
+    radDeficitAuto: function (roomId) {
+        const room = (this.state.rooms || []).find(r => r && r.id === roomId);
+        const plans = this.state.plans;
+        if (!room || !plans || !Array.isArray(plans.floors)) return;
+        const fi = (room.floor === 2 ? 2 : 1) - 1;
+        const f = plans.floors[fi];
+        const norm = s => String(s || '').trim().toLowerCase();
+        const zone = f && (f.zones || []).find(z => z && z.pts && z.pts.length > 2 && z.type !== 'cold' && norm(z.name) === norm(room.name));
+        if (!f || !f.pxPerM || !zone) { alert('На плане нет контура комнаты «' + room.name + '». Отметьте прибор на плане вручную.'); return; }
+        const pip = (p, P) => {
+            let c = false;
+            for (let a = 0, b = P.length - 1; a < P.length; b = a++)
+                if ((P[a][1] > p[1]) !== (P[b][1] > p[1]) && p[0] < (P[b][0] - P[a][0]) * (p[1] - P[a][1]) / (P[b][1] - P[a][1]) + P[a][0]) c = !c;
+            return c;
+        };
+        let best = null;
+        for (let i = 0; i < zone.pts.length; i++) {
+            const a = zone.pts[i], b = zone.pts[(i + 1) % zone.pts.length];
+            const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+            if (!best || L > best.L) best = { a, b, L };
+        }
+        if (!best || !(best.L > 0)) return;
+        const ux = (best.b[0] - best.a[0]) / best.L, uy = (best.b[1] - best.a[1]) / best.L;
+        const mid = [(best.a[0] + best.b[0]) / 2, (best.a[1] + best.b[1]) / 2];
+        // Угол — направление длины прибора; в расчёте нормаль к нему должна попадать в комнату
+        const ang = Math.atan2(uy, ux) * 180 / Math.PI;
+        const d = 0.3 * f.pxPerM, nx = -uy, ny = ux;
+        if (!pip([mid[0] + nx * d, mid[1] + ny * d], zone.pts) && !pip([mid[0] - nx * d, mid[1] - ny * d], zone.pts)) {
+            alert('Не нашли стену комнаты «' + room.name + '» на плане. Отметьте прибор на плане вручную.'); return;
+        }
+        f.rads = f.rads || [];
+        f.rads.push({ x: Math.round(mid[0]), y: Math.round(mid[1]), w: Math.round(f.pxPerM), ang: Math.round(ang * 10) / 10,
+            rid: 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5) });
+        this._plansRev = (this._plansRev || 0) + 1;
+        this._ufhGeomCache = null;
+        this.pushPlansToEditor();
+        this.saveState();
+        this.render();
+    },
+
+    // Открыть план, чтобы отметить прибор вручную
+    radDeficitOnPlan: function () { this.openPlanEditor(); },
+
+    planRadRoomSets: function () {
+        const out = {}, plans = this.currentPlans();
+        // Режим «по теплопотерям» — радиатор в каждой комнате по расчёту, без плана.
+        if (this.radSourceMode() !== 'plan' || !plans || !Array.isArray(plans.floors)) return out;
+        const norm = s => String(s || '').trim().toLowerCase();
+        const pip = (p, P) => {
+            let c = false;
+            for (let a = 0, b = P.length - 1; a < P.length; b = a++)
+                if ((P[a][1] > p[1]) !== (P[b][1] > p[1]) && p[0] < (P[b][0] - P[a][0]) * (p[1] - P[a][1]) / (P[b][1] - P[a][1]) + P[a][0]) c = !c;
+            return c;
+        };
+        plans.floors.forEach((f, fi) => {
+            if (!f || !f.pxPerM || fi > 1) return;
+            const zones = (f.zones || []).filter(z => z && z.pts && z.pts.length > 2 && z.type !== 'cold' && norm(z.name));
+            const set = new Set();   // этаж без отметок — пустой набор: в режиме «как на плане» приборов нет
+            f.rads.forEach(rd => {
+                const a = (rd.ang || 0) * Math.PI / 180, nx = -Math.sin(a), ny = Math.cos(a), d = 0.3 * f.pxPerM;
+                const z = [[rd.x + nx * d, rd.y + ny * d], [rd.x - nx * d, rd.y - ny * d]]
+                    .map(p => zones.find(q => pip(p, q.pts))).find(Boolean);
+                if (z) set.add(norm(z.name));
+            });
+            out[fi + 1] = set;
+        });
+        return out;
+    },
+
     radPlanRuns: function () {
         const PP = window.projectPlans, plans = this.currentPlans();
         if (!PP || !PP.radRoutes || !plans || !Array.isArray(plans.floors)) return null;
@@ -40327,9 +40417,29 @@ const app = {
             : 'Радиаторы — лучевая схема: к каждому прибору своя пара труб от коллектора радиаторов. ') +
             'Трассы проложены по плану вдоль стен, в обход тёплого пола; длины — подача и обратка вместе, с подъёмами к прибору и коллектору.');
         notes.push('Уточняется при монтаже.');
+        // Переключатель источника приборов: как на плане (по умолчанию при плане с отметками) или по теплопотерям.
+        const planMode = this.radSourceMode() === 'plan';
+        const segBtn = (on, mode, label) => `<button type="button" class="ufh-tb-full" onclick="app.setRadSource('${mode}')" ` +
+            `style="${on ? 'background:var(--primary,#2563eb);color:#fff;border-color:transparent;font-weight:600;' : ''}">${label}</button>`;
+        const radSwitch = `<div class="ufh-tb" style="margin:0 0 8px"><span style="color:var(--text-sec)">Приборы в смете:</span>` +
+            `<span style="display:flex;gap:6px;flex-wrap:wrap">` +
+            segBtn(planMode, 'plan', 'Как на плане — только отмеченные') +
+            segBtn(!planMode, 'loss', 'По теплопотерям — в каждую комнату') + `</span></div>`;
+        // Дефицит тепла в комнатах, где на плане прибора нет: на плане его добавить или поставить автоматически
+        let deficitBox = '';
+        if (planMode && (this._radDeficit || []).length) {
+            const rows = this._radDeficit.map(d => `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0">` +
+                `<span style="min-width:180px"><b>${esc(d.name)}</b> (${d.floor} эт.)</span>` +
+                `<span>теплопотери ${d.Q} Вт, дефицит <b>${d.deficit} Вт</b></span>` +
+                `<button type="button" class="ufh-tb-full" onclick="app.radDeficitOnPlan()">Отметить на плане</button>` +
+                `<button type="button" class="ufh-tb-full" onclick="app.radDeficitAuto(${d.id})">Поставить автоматически</button></div>`).join('');
+            deficitBox = this.noteBox('warn', 'Дефицит тепла: в этих комнатах на плане нет радиатора.',
+                'Добавьте прибор на плане или поставьте значок автоматически — подбор закроет дефицит.',
+                rows);
+        }
         return `<div style="padding:8px 2px 2px"><div style="font-weight:700;font-size:14px;margin-bottom:6px">` +
             (anyRad && anyTp ? 'План отопления дома: тёплый пол и радиаторы' : anyRad ? 'Радиаторы на плане дома' : 'Раскладка тёплого пола по плану дома') +
-            `</div>` + parts.join('') +
+            `</div>` + radSwitch + deficitBox + parts.join('') +
             `<div style="font-size:11px;color:var(--text-sec)">${notes.join(' ')}</div></div>`;
     },
 
@@ -84368,6 +84478,8 @@ const app = {
             let heatLoadTotal = Math.round(this.radLoadKw(pwr, hasTp ? tpArea : 0) * 1000);
 
             if (this.state.detailedRooms && this.state.rooms && this.state.rooms.length > 0) {
+                const _planRadSets = this.planRadRoomSets();
+                this._radDeficit = [];
                 this.state.rooms.forEach(r => {
                     let roomSCQCount = 0;
                     let roomFactPowerSum = 0;  // суммарная фактическая мощность приборов помещения
@@ -84377,6 +84489,20 @@ const app = {
                     let roomLoss = this.getRoomHeatLoss(r);
                     let roomHasTp = r.sys && r.sys.includes('tp');
                     let roomHasRad = !r.sys || r.sys.includes('rad');
+                    // На этаже есть отметки радиаторов на плане — прибор только в отмеченной
+                    // комнате. Без отметки радиатор не добавляем, а пишем, что комната без него.
+                    const _planRadSet = _planRadSets[parseInt(r.floor, 10) === 2 ? 2 : 1];
+                    if (roomHasRad && _planRadSet && !_planRadSet.has(String(r.name || '').trim().toLowerCase())) {
+                        roomHasRad = false;
+                        // Дефицит тепла комнаты без прибора на плане — в блок над планом
+                        // (кнопки «на план» и «поставить автоматически»).
+                        if (roomLoss.Q_sum > 0) {
+                            const _step = r.floor === 2 ? (this.state.ufhStep2 || 150) : (this.state.ufhStep1 || 150);
+                            const _qTp = roomHasTp ? this.roomTpArea(r) * this.ufhQudForRoom(_step, roomLoss.Tv, roomLoss.tKind) : 0;
+                            const _def = Math.round(roomLoss.Q_sum - _qTp);
+                            if (_def > 0) this._radDeficit.push({ id: r.id, name: r.name, floor: r.floor === 2 ? 2 : 1, Q: Math.round(roomLoss.Q_sum), deficit: _def });
+                        }
+                    }
 
                     // 2. Физический лимит теплоотдачи теплого пола по СП 60.13330.2020 (п. 6.4.8).
                     // Предел считается на температуру этого помещения: в прохладном
