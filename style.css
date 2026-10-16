@@ -20103,7 +20103,10 @@ body.dark-mode .save-remind-field input { background: #121212; border-color: #4B
 .sg-cmp-tbl th { text-align: left; font-weight: 600; font-size: 11px; color: var(--text-sec, #6b7280); padding: 4px 6px; border-bottom: 1px solid var(--border, #e5e7eb); }
 .sg-cmp-tbl td { padding: 5px 6px; border-bottom: 1px solid var(--border, #e5e7eb); vertical-align: top; line-height: 1.35; }
 .sg-cmp-tbl td.sg-cmp-n small { display: block; color: var(--text-sec, #6b7280); font-size: 11px; }
-.sg-cmp-tbl tr.sg-cmp-cur td { background: rgba(37, 99, 235, 0.10); }
+.sg-cmp-tbl tr[onclick] { cursor: pointer; }
+.sg-cmp-tbl tr[onclick]:hover td { background: rgba(127, 127, 127, 0.10); }
+.sg-cmp-tbl tr.sg-cmp-cur td { background: rgba(37, 99, 235, 0.18); }
+.sg-cmp-tbl tr.sg-cmp-cur td:first-child { box-shadow: inset 3px 0 0 #2563eb; }
 .sg-cmp-up { color: #d97706; font-weight: 600; }
 .sg-cmp-dn { color: #16a34a; font-weight: 600; }
 .sg-cmp-bad { color: #ef4444; font-weight: 600; }
@@ -20431,3 +20434,5 @@ body.empty-fit-panel #header_totals { display: none !important; }
     #admin_content table.ad-dense tr.ad-open td.admin-cell-actions > div { gap: 3px !important; }
     #admin_content table.ad-dense tr.ad-open td.admin-cell-actions .admin-action-btn { width: 30px !important; min-width: 30px; }
 }
+
+.sg-cmp-solo { margin: 10px 0 14px; font-size: 12px; max-width: 720px; }

@@ -37920,8 +37920,7 @@ const app = {
                     ` <span class="sg-hint">Наведите на подпись схемы или на строку сметы — соответствие подсветится.</span></div>`;
             }
             // Лист — миниатюрой общего размера, справа таблица «чем собрать группу»: цена и разница по пяти вариантам.
-            return sum + `<div class="sg-flex">` + this._renderSheetImage(p.url, p.kind) +
-                `<div class="sg-cmp no-print" data-sg-cmp="${p.kind}">${this.pumpGroupCompareHtml(p.kind)}</div></div>`;
+            return sum + this._renderSheetImage(p.url, p.kind);
         }).join('');
     },
     // ── Сравнение вариантов обвязки котельной справа от листа самосборной группы ──
@@ -37929,11 +37928,11 @@ const app = {
     // Вариант целиком задаёт систему труб и бренд раздела 2, остальная смета та же. Считается тихими прогонами render(true)
     // (как boilerSystemTotals), поэтому после отрисовки и с кэшем по подписи состояния.
     SG_VARIANTS: [
-        { key: 'ready_stout', label: 'Готовая STOUT', sub: 'в изоляции, стальной коллектор', ready: true, rom: false, sys: 'ss316' },
-        { key: 'ready_rommer', label: 'Готовая ROMMER', sub: 'в изоляции, стальной коллектор', ready: true, rom: true, sys: 'ss304' },
-        { key: 'ss304', label: 'Самосборная · нержавейка 304', sub: 'ROMMER, пресс', ready: false, rom: true, sys: 'ss304' },
-        { key: 'ss316', label: 'Самосборная · нержавейка 316L', sub: 'STOUT, пресс', ready: false, rom: false, sys: 'ss316' },
-        { key: 'ppr', label: 'Самосборная · ППР', sub: 'PP-RCT, сварка', ready: false, rom: true, sys: 'ppr' }
+        { key: 'ready_stout', label: 'Готовая STOUT', ready: true, rom: false, sys: 'ss316' },
+        { key: 'ready_rommer', label: 'Готовая ROMMER', ready: true, rom: true, sys: 'ss304' },
+        { key: 'ss304', label: 'Самосборная 304', ready: false, rom: true, sys: 'ss304' },
+        { key: 'ss316', label: 'Самосборная 316L', ready: false, rom: false, sys: 'ss316' },
+        { key: 'ppr', label: 'Самосборная ППР', ready: false, rom: true, sys: 'ppr' }
     ],
     // Какой из вариантов сейчас в смете.
     sgCurrentVariant: function () {
@@ -37945,13 +37944,20 @@ const app = {
     },
     pumpGroupCompareCompute: function () {
         const SEC = '2. Обвязка котельной';
-        const kinds = Object.keys(this._selfKinds || {}).filter(k => this._selfKinds[k]);
-        const counts = Object.assign({}, this._selfCounts);
-        const loads = Object.assign({}, this._selfLoads);
         const snapshot = JSON.parse(JSON.stringify(this.state));
         const out = {};
         this._cheapComparing = true;
+        let kinds = [], counts = {}, loads = {};
         try {
+            // Состав групп и их нагрузку берём из самосборного прогона: в готовом варианте подбор их не ставит.
+            this.state.groupsBuild = 'self';
+            this.state.boilerPipeSystem = 'ss316';
+            this.state.sectionAnalog = Object.assign({}, snapshot.sectionAnalog || {}, { [SEC]: false });
+            this._boilerRangeCache = null;
+            this.render(true);
+            kinds = Object.keys(this._selfKinds || {}).filter(k => this._selfKinds[k]);
+            counts = Object.assign({}, this._selfCounts);
+            loads = Object.assign({}, this._selfLoads);
             this.SG_VARIANTS.forEach(v => {
                 this.state.boilerPipeSystem = v.sys;
                 this.state.sectionAnalog = Object.assign({}, snapshot.sectionAnalog || {}, { [SEC]: v.rom });
@@ -37963,7 +37969,7 @@ const app = {
                 const works = (this.currentWorksList || []).filter(w => /^1\.2[\s.]/.test(String(w.group || '')))
                     .reduce((a, w) => a + (w.sum || 0), 0);
                 const r = { total: Math.round(total), works: Math.round(works), grp: {}, parts: {}, fit: {}, stock: {} };
-                const orderN = it => (it && it.availability === 'on_order') ? 1 : 0;
+                
                 kinds.forEach(k => {
                     const n = counts[k] || 1;
                     if (v.ready) {
@@ -37980,19 +37986,19 @@ const app = {
                         const pump0 = alt(catalog.pumps_dn25.find(pp => pp.type === this.state.pumpType) || catalog.pumps_dn25[0]);
                         const node0 = alt((catalog.gbm_nodes || [])[0]);
                         const servo0 = kk === 'servo' ? alt(this.state.servoType === 'sensor' ? catalog.servo_rotary_sensor : catalog.servo_rotary_std) : null;
-                        r.stock[k] = orderN(g0) + orderN(pump0) + 2 * orderN(node0) + orderN(servo0);
+                        r.stock[k] = [g0, pump0, node0, servo0].filter(it => it && it.availability === 'on_order').map(it => it.name);
                         const ld0 = loads[k];
                         if (ld0 && ld0.kw > 0 && ld0.groups > 0 && g0) {
                             const cap = this.groupCapKw(g0, kk === 'direct' ? (k === 'dhw' ? 'dhw' : 'rad') : 'ufh');
                             const per = ld0.kw / ld0.groups;
-                            if (cap > 0) r.fit[k] = { ok: per <= cap, txt: Math.round(per / cap * 100) + ' % паспортной мощности' };
+                            if (cap > 0) r.fit[k] = { ok: per <= cap, txt: Math.round(per / cap * 100) + ' %' };
                         }
                     } else {
                         const title = this.selfGroupTitle(k === 'dhw' ? 'direct' : k, k === 'dhw' ? 'dhw' : undefined);
                         const rows = items.filter(it => it.group === title);
                         r.grp[k] = Math.round(rows.reduce((a, it) => a + (it.price || 0) * (it.q || 1), 0) / n);
                         r.parts[k] = Math.round(rows.reduce((a, it) => a + (it.q || 1), 0) / n);
-                        r.stock[k] = rows.filter(it => it.availability === 'on_order').length;
+                        r.stock[k] = rows.filter(it => it.availability === 'on_order').map(it => it.name);
                         // Нагрузка на самосборную: скорость в трубе, расход насоса 25/60 и потери на смесителе (те же пределы, что в плашке подраздела).
                         const ld = loads[k];
                         if (ld && ld.kw > 0 && ld.groups > 0) {
@@ -38006,7 +38012,7 @@ const app = {
                             if (vel > 1.0) bad.push('скорость ' + vel.toFixed(2).replace('.', ',') + ' м/с');
                             if (G > 3.0) bad.push('расход выше 3 м³/ч');
                             if (dp > 0.6) bad.push('смеситель теряет ' + dp.toFixed(2).replace('.', ',') + ' бар');
-                            r.fit[k] = { ok: !bad.length, txt: bad.length ? bad.join('; ') : 'скорость ' + vel.toFixed(2).replace('.', ',') + ' м/с' + (big ? ', комплект 1″' : '') };
+                            r.fit[k] = { ok: !bad.length, txt: bad.length ? bad.join('; ') : vel.toFixed(2).replace('.', ',') + ' м/с' };
                         }
                     }
                 });
@@ -38020,6 +38026,12 @@ const app = {
             this.render(true);
         }
         return out;
+    },
+    // Таблица вариантов в готовом режиме: самосборных листов нет, но выбрать вариант и вернуться можно.
+    renderGroupCompareOnly: function () {
+        if (!this.isPro() || !this.needCollector) return '';
+        this.sgInit();
+        return `<div class="sg-cmp-solo no-print" data-sg-cmp="direct">${this.pumpGroupCompareHtml('direct')}</div>`;
     },
     _sgCmpCache: null,
     _sgCmpKey: function () {
@@ -38049,32 +38061,50 @@ const app = {
         } finally { this._sgCmpBusy = false; }
     },
     _sgCmpTable: function (kind, data) {
-        const f = v => Math.round(v).toLocaleString('ru-RU') + ' ₽';
+        const f = v => Math.round(v).toLocaleString('ru-RU') + ' ₽';
         const base = data.ready_stout;
         const pct = (v, b) => {
             if (!(b > 0)) return '';
             const p = Math.round((v - b) / b * 1000) / 10;
             if (p === 0) return '<span class="sg-cmp-base">база</span>';
-            return `<span class="${p > 0 ? 'sg-cmp-up' : 'sg-cmp-dn'}">${p > 0 ? '+' : '−'}${String(Math.abs(p)).replace('.', ',')} %</span>`;
+            return `<span class="${p > 0 ? 'sg-cmp-up' : 'sg-cmp-dn'}">${p > 0 ? '+' : '−'}${String(Math.abs(p)).replace('.', ',')} %</span>`;
         };
         const cur = this.sgCurrentVariant();
         const showW = Object.keys(data).some(k => data[k].works > 0);
-        const tool = { ready_stout: 'ключи', ready_rommer: 'ключи', ss304: 'пресс-клещи', ss316: 'пресс-клещи', ppr: 'сварочный аппарат' };
         const rows = this.SG_VARIANTS.map(v => {
             const d = data[v.key];
             if (!d) return '';
             const fit = d.fit[kind];
-            return `<tr class="${v.key === cur ? 'sg-cmp-cur' : ''}"><td class="sg-cmp-n"><b>${v.label}</b><small>${v.sub}</small></td>` +
+            const st = d.stock[kind] || [];
+            const esc = t => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+            const stockCell = st.length
+                ? `<span class="sg-cmp-up" title="Нет в наличии: ${esc(st.join('; '))}">${st.length} поз.</span>`
+                : '<span class="sg-cmp-dn">есть</span>';
+            return `<tr class="${v.key === cur ? 'sg-cmp-cur' : ''}" onclick="app.sgPickVariant('${v.key}')">` +
+                `<td class="sg-cmp-n"><b>${v.label}</b></td>` +
                 `<td>${f(d.grp[kind] || 0)}<br>${pct(d.grp[kind], base.grp[kind])}</td>` +
                 `<td>${f(d.total)}<br>${pct(d.total, base.total)}</td>` +
                 (showW ? `<td>${f(d.works)}<br>${pct(d.works, base.works)}</td>` : '') +
                 `<td>${fit ? `<span class="${fit.ok ? 'sg-cmp-dn' : 'sg-cmp-bad'}">${fit.ok ? 'тянет' : 'не тянет'}</span><br><small>${fit.txt}</small>` : '—'}</td>` +
-                `<td>${d.stock[kind] ? `<span class="sg-cmp-up">${d.stock[kind]} поз.</span>` : '<span class="sg-cmp-dn">всё в наличии</span>'}</td>` +
-                `<td>${d.parts[kind] || '—'}</td><td>${tool[v.key]}</td></tr>`;
+                `<td>${stockCell}</td>` +
+                `<td>${d.parts[kind] || '—'}</td></tr>`;
         }).join('');
-        const n = (this._selfCounts || {})[kind] || 1;
-        return `<table class="sg-cmp-tbl"><thead><tr><th>Вариант</th><th>Одна группа</th><th>Вся обвязка котельной</th>${showW ? '<th>Монтаж обвязки</th>' : ''}<th>Нагрузка</th><th>Под заказ</th><th>Деталей</th><th>Инструмент</th></tr></thead><tbody>${rows}</tbody></table>` +
-            `<div class="sg-cmp-note">Процент — к готовой STOUT. Групп этого вида в смете: ${n}. «Вся обвязка» — раздел 2 целиком (котёл, бойлер, насосы, гидравлика, трубы); «Нагрузка» — тянет ли группа расчётную нагрузку контура (у самосборной: скорость в трубе до 1,0 м/с, расход насоса до 3 м³/ч, потери на смесителе; у готовой: паспортная мощность); «Под заказ» — сколько позиций узла нет в наличии у ТЕРЕМ; «Деталей» — штук в одной группе (у готовой: группа, насос и два узла МУ-25М). Стальной коллектор готовой группы красится и работает без пресса; у самосборных коллектор — труба выбранной системы. Текущий вариант выделен.</div>`;
+        return `<table class="sg-cmp-tbl"><thead><tr><th>Вариант</th><th>Группа</th><th>Вся обвязка</th>${showW ? '<th>Монтаж</th>' : ''}<th>Нагрузка</th><th>Под заказ</th><th>Деталей</th></tr></thead><tbody>${rows}</tbody></table>` +
+            `<div class="sg-cmp-note">Нажмите вариант, чтобы применить. Проценты — к готовой STOUT.</div>`;
+    },
+    // Выбор варианта из таблицы: переключает группы, систему труб и бренд раздела 2 — как вручную в настройках.
+    sgPickVariant: function (key) {
+        const v = this.SG_VARIANTS.find(x => x.key === key);
+        if (!v || key === this.sgCurrentVariant()) return;
+        if (!v.ready && !this.isPro()) { this.showModal('pro'); return; }
+        this.state.groupsBuild = v.ready ? 'ready' : 'self';
+        this.state.boilerPipeSystem = v.sys;
+        this.state.sectionAnalog = Object.assign({}, this.state.sectionAnalog || {}, { '2. Обвязка котельной': v.rom });
+        this._boilerRangeCache = null;
+        this._sgCmpCache = null;
+        this.syncUI();
+        this.render();
+        this.saveState();
     },
     // Подсветка соответствия «подпись на схеме ↔ строка сметы». Слушатели на документе, ставятся один раз.
     sgInit: function () {
@@ -90300,6 +90330,7 @@ const app = {
         [['automation_scheme_row', '2.9.1.', () => this.thermaticConfig && this.renderAutomationScheme()],
          ['ufh_scheme_row', '4.5. Автоматика радиаторов', () => this.renderUfhScheme()],
          ['snow_scheme_row', '4.4.1', () => this.renderSnowScheme()],
+         ['pump_group_compare_row', '2.4. Гидравлика котельной', () => this.renderGroupCompareOnly()],
          ['pump_group_scheme_row_direct', '2.4.1. Самосборная группа', () => this.renderPumpGroupScheme('direct')],
          ['pump_group_scheme_row_thermo', '2.4.2. Самосборная группа', () => this.renderPumpGroupScheme('thermo')],
          ['pump_group_scheme_row_servo', '2.4.3. Самосборная группа', () => this.renderPumpGroupScheme('servo')],
