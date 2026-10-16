@@ -61522,6 +61522,110 @@ const app = {
     _swapDtK: function () {
         return Math.pow(this._swapDtGraph().dt / 50, 1.3);
     },
+    // Какому режиму системы (state.radRegime) отвечает график. У ГОСТ ΔT 70 и 90/70 режима в
+    // калькуляторе нет: это паспортный/справочный график, система под него не считается.
+    RAD_DT_REGIME: { en50: 'r8060', real: 'r7055', low: 'r5545' },
+    RAD_DT_SETUP: {
+        r8060: 'Подача 80 °C, обратка 60 °C, перепад 20 K. Уставка котла (или кривой погодозависимой автоматики при расчётной наружной температуре) — 80 °C. Расход через приборы выставить преднастройкой клапанов терморегуляторов и расходомерами на гребёнке под перепад 20 K: G = Q / (1,163 · 20). Насосная группа — прямая или со смесителем, настроенным на 80 °C.',
+        r7565: 'Подача 75 °C, обратка 65 °C, перепад 10 K — режим паспортной мощности по EN 442. Уставка котла 75 °C; расход вдвое выше, чем при 80/60: G = Q / (1,163 · 10). Насос и подводки должны его пропустить, расходомеры на гребёнке — на 10 K.',
+        r7055: 'Подача 70 °C, обратка 55 °C, перепад 15 K. Уставка котла (или смесителя насосной группы) — 70 °C при расчётной наружной температуре, у конденсационного котла — через кривую погодозависимой автоматики. Расход через приборы под перепад 15 K: G = Q / (1,163 · 15) — на 33 % больше, чем при 80/60; выставляется расходомерами на гребёнке и преднастройкой клапанов.',
+        r5545: 'Подача 55 °C, обратка 45 °C, перепад 10 K. Режим конденсационного котла с полной конденсацией и теплового насоса: подача 55 °C на кривой автоматики, смеситель насосной группы ограничивает подачу. Расход вдвое выше, чем при 80/60: G = Q / (1,163 · 10); насос и диаметры подводок считаются по нему.'
+    },
+    _fmtDtDelta: function (q, q70) {
+        const d = Math.round(q - q70), p = q70 > 0 ? Math.round((q - q70) / q70 * 100) : 0;
+        if (d === 0) return '0 Вт';
+        return `${d > 0 ? '+' : '−'}${Math.abs(d)} Вт · ${d > 0 ? '+' : '−'}${Math.abs(p)} %`;
+    },
+    // Тихий прогон сметы при другом режиме радиаторов (как computeDhwSwitch): расход, итог и
+    // что именно изменилось в позициях (диаметры труб, насосная группа, гидрострелка, приборы).
+    // Экран не трогает; после прогона состояние и список оборудования возвращаются как были.
+    _simRadRegime: function (key) {
+        if (!this.RAD_REGIMES[key]) return null;
+        const st = this.state;
+        const pack = () => {
+            const m = {};
+            (this.currentEquipmentList || []).forEach(x => {
+                const k = x.name; // одноимённые строки разных приборов складываем
+                if (!m[k]) m[k] = { name: x.name, q: 0, sum: 0, unit: x.unit || 'шт' };
+                m[k].q += Number(x.q) || 0; m[k].sum += Number(x.sum) || 0;
+            });
+            return { eq: m, total: this.calcFinalTotal || 0, load: parseFloat(this._radGroupLoadKw) || 0, dt: this.radDT() };
+        };
+        const snapshot = JSON.parse(JSON.stringify(st));
+        let A = null, B = null;
+        try {
+            A = pack();
+            st.radRegime = key;
+            this._boilerRangeCache = null;
+            this.render(true);
+            B = pack();
+        } catch (e) {
+            console.warn('[пересчёт режима радиаторов] прогон не посчитался:', e);
+            B = null;
+        } finally {
+            Object.keys(st).forEach(k => { if (!(k in snapshot)) delete st[k]; });
+            Object.assign(st, snapshot);
+            this._boilerRangeCache = null;
+            try { this.render(true); } catch (e) { console.warn('[пересчёт режима радиаторов] возврат не удался:', e); }
+        }
+        if (!A || !B) return null;
+        const diffs = [];
+        const keys = new Set([...Object.keys(A.eq), ...Object.keys(B.eq)]);
+        keys.forEach(k => {
+            const a = A.eq[k], b = B.eq[k];
+            const qa = a ? a.q : 0, qb = b ? b.q : 0;
+            if (Math.abs(qa - qb) < 1e-6) return;
+            diffs.push({ name: (b || a).name, unit: (b || a).unit, qa, qb, dsum: (b ? b.sum : 0) - (a ? a.sum : 0) });
+        });
+        diffs.sort((x, y) => Math.abs(y.dsum) - Math.abs(x.dsum));
+        return { A, B, diffs, dTotal: B.total - A.total };
+    },
+    // Блок «совпадает ли график с режимом системы»: что считается сейчас, как настроить
+    // выбранный график на объекте и что изменится в расходе и позициях сметы.
+    radDtCheckHtml: function (g, item) {
+        const sysKey = this.RAD_REGIMES[this.state.radRegime] ? this.state.radRegime : 'r8060';
+        const sys = this.RAD_REGIMES[sysKey];
+        const gKey = this.RAD_DT_REGIME[g.key] || null;
+        const origId = item.originalId || item.id;
+        const box = (bg, bd, html) => `<div style="margin-top:8px; padding:8px 10px; border-radius:10px; background:${bg}; border:1px solid ${bd}; font-size:12px; line-height:1.45; color:var(--text-main);">${html}</div>`;
+        const f1 = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
+        const money = v => (Math.round(v / 10) * 10).toLocaleString('ru-RU') + ' ₽';
+        if (gKey === sysKey) {
+            return box('#ECFDF5', 'rgba(16,185,129,0.25)',
+                `<b style="color:#047857;">✓ График совпадает с режимом системы (${sys.label}).</b> Подбор приборов, расход теплоносителя, диаметры труб и насосные группы в смете уже считаются по нему.<div style="margin-top:4px;"><b>Как это выставить на объекте:</b> ${this.RAD_DT_SETUP[sysKey]}</div>`);
+        }
+        if (!gKey) {
+            return box('#FFFBEB', 'rgba(245,158,11,0.35)',
+                `<b style="color:#B45309;">График справочный, режима системы под него нет.</b> Это паспортная или устаревшая точка: на объекте её не настраивают. Подбор приборов, расход и диаметры сейчас считаются по режиму <b>${sys.label}</b> (перепад ${sys.dt} K). Чтобы система и смета совпали, выберите график, у которого есть режим: 80/60, 70/55 или 55/45.`);
+        }
+        const target = this.RAD_REGIMES[gKey];
+        const sim = this._simRadRegime(gKey);
+        let simHtml = '';
+        if (sim) {
+            const _flow = (load, dt) => (load > 0 && dt > 0) ? (load * 1000) / (this.RAD_FLUID.cp * 1000 * this.RAD_FLUID.rho * dt) * 3600 : 0;
+            const fA = _flow(sim.A.load, sim.A.dt), fB = _flow(sim.B.load, sim.B.dt);
+            const parts = [];
+            if (fA > 0 && fB > 0) parts.push(`Расход через радиаторную часть: <b>${f1(fA)} → ${f1(fB)} м³/ч</b> (${fB >= fA ? '+' : '−'}${Math.abs(Math.round((fB / fA - 1) * 100))} %, G = Q / (1,163 · Δt): перепад ${sim.A.dt} → ${sim.B.dt} K).`);
+            else parts.push(`Перепад ${sim.A.dt} → ${sim.B.dt} K: при той же мощности расход меняется в ${f1(sim.A.dt / sim.B.dt)} раза.`);
+            if (!sim.diffs.length) parts.push('Позиции сметы не меняются: диаметры труб, насосные группы и приборы остаются прежними.');
+            else {
+                const rows = sim.diffs.slice(0, 8).map(d => `• ${d.name}: ${f1(d.qa)} → ${f1(d.qb)} ${d.unit}${Math.abs(d.dsum) >= 10 ? ' (' + (d.dsum > 0 ? '+' : '−') + money(Math.abs(d.dsum)) + ')' : ''}`).join('<br>');
+                parts.push(`Меняется в смете (${sim.diffs.length} поз.${sim.diffs.length > 8 ? ', крупнейшие' : ''}):<br>${rows}`);
+            }
+            if (!this.state.detailedRooms) parts.push('В быстром расчёте приборы по режиму не пересчитываются — включите подробный расчёт по комнатам, чтобы увидеть изменение приборов.');
+            parts.push(`Итог по оборудованию: <b>${sim.dTotal >= 0 ? '+' : '−'}${money(Math.abs(sim.dTotal))}</b>.`);
+            simHtml = `<div style="margin-top:6px;">${parts.join('<br>')}</div>`;
+        }
+        return box('#FFFBEB', 'rgba(245,158,11,0.35)',
+            `<b style="color:#B45309;">⚠ График не совпадает с режимом системы.</b> Показана теплоотдача при ${g.temps} °C, а смета (приборы, расход, диаметры, насосные группы) сейчас посчитана по режиму <b>${sys.label}</b>. Если на объекте будет ${target.label}, мощность приборов и гидравлика в смете расходятся с реальностью.` +
+            `<div style="margin-top:6px;"><b>Что изменится, если считать систему на ${target.label}:</b></div>${simHtml}` +
+            `<div style="margin-top:6px;"><b>Как это выставить на объекте:</b> ${this.RAD_DT_SETUP[gKey]}</div>` +
+            `<button onclick="app.applyRadRegimeFromSwap('${origId}','${gKey}')" class="swap-tab" style="margin:8px 0 0 0; padding:5px 12px;">Рассчитать систему на ${target.label}</button>`);
+    },
+    applyRadRegimeFromSwap: function (originalId, regimeKey) {
+        this.closeSwapModal();
+        this.setRadRegime(regimeKey);
+    },
     switchSwapDt: function (originalId, key) {
         const item = this._findSwapItem(originalId);
         if (!item) return;
@@ -61780,8 +61884,13 @@ const app = {
         const totalPower = Math.round((item.isPanel ? oldP50 : (oldSec * oldP50)) * this._swapDtK());
         const origPrice = item.price || 0;
         const priceStr = origPrice > 0 ? this.formatPriceHtml(origPrice, true) : '—';
-        const dtTabsHtml = this.RAD_DT_GRAPHS.map(g => `<button onclick="app.switchSwapDt('${origId}','${g.key}')"
-                class="swap-tab ${g.key === dtG.key ? 'active' : ''}" title="${g.temps} °C">${g.label}${g.recommended ? ' ★' : ''}</button>`).join('');
+        const _tot50 = item.isPanel ? oldP50 : (oldSec * oldP50);
+        const _tot70 = _tot50 * Math.pow(70 / 50, 1.3);
+        const dtTabsHtml = this.RAD_DT_GRAPHS.map(g => {
+            const q = _tot50 * Math.pow(g.dt / 50, 1.3);
+            return `<button onclick="app.switchSwapDt('${origId}','${g.key}')"
+                class="swap-tab ${g.key === dtG.key ? 'active' : ''}" title="${g.temps} °C: ${Math.round(q)} Вт" style="line-height:1.25;">${g.label}${g.recommended ? ' ★' : ''}<span style="display:block; font-size:10px; font-weight:600; opacity:0.85;">${g.key === 'gost' ? 'паспорт · ' + Math.round(q) + ' Вт' : Math.round(q) + ' Вт · ' + this._fmtDtDelta(q, _tot70).split(' · ')[1]}</span></button>`;
+        }).join('');
         const dtBlockHtml = `
                 <div>
                     <div style="font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">Температурный график (подача/обратка/воздух, °C):
@@ -61790,8 +61899,9 @@ const app = {
                     <div style="font-size:12px; color:var(--text-sec); line-height:1.45; margin-top:6px;">
                         <div><b style="color:var(--text-main);">Как получается:</b> ${dtG.how}</div>
                         <div style="margin-top:3px;"><b style="color:${dtG.recommended ? '#047857' : 'var(--text-main)'};">${dtG.recommended ? '★ ' : ''}Для реальной системы:</b> ${dtG.rec}</div>
-                        ${dtG.key === 'gost' ? '' : '<div style="margin-top:3px;">Мощность пересчитана с паспортной (ГОСТ, ΔT 70) по формуле Q = Q₇₀·(ΔT/70)<sup>1,3</sup>.</div>'}
+                        ${dtG.key === 'gost' ? '' : `<div style="margin-top:3px;">Мощность пересчитана с паспортной (ГОСТ, ΔT 70) по формуле Q = Q₇₀·(ΔT/70)<sup>1,3</sup>: <b>${this._fmtDtDelta(_tot50 * Math.pow(dtG.dt / 50, 1.3), _tot70)}</b> к паспорту.</div>`}
                     </div>
+                    ${this.radDtCheckHtml(dtG, item)}
                 </div>`;
 
         title.innerHTML = `
@@ -61802,7 +61912,7 @@ const app = {
                 </div>
                 <div style="display:flex; gap:8px; flex-shrink:0;">
                     <div style="background:var(--primary-light); color:var(--primary); padding:6px 12px; border-radius:10px; font-size:11px; font-weight:700; border:1px solid rgba(37,99,235,0.08);">
-                        Теплоотдача: <span style="font-weight:800;">${totalPower} Вт</span>
+                        Теплоотдача: <span style="font-weight:800;">${totalPower} Вт</span>${dtG.key === 'gost' ? '' : `<span style="font-weight:600; opacity:0.8;"> (${this._fmtDtDelta(totalPower, _tot70)} к паспорту)</span>`}
                     </div>
                     <div style="background:#ECFDF5; color:#047857; padding:6px 12px; border-radius:10px; font-size:11px; font-weight:700; border:1px solid rgba(16,185,129,0.08);">
                         Цена: <span style="font-weight:800;">${priceStr}</span>
@@ -77583,7 +77693,8 @@ const app = {
         if (!(p50 > 0)) return '';
         const rows = this.RAD_DT_GRAPHS.map(g => {
             const q = Math.round(p50 * Math.pow(g.dt / 50, 1.3));
-            return `${g.temps} (ΔT ${String(g.dt).replace('.', ',')}): <b>${q} Вт</b>${g.recommended ? ' ★' : ''}`;
+            const q70 = p50 * Math.pow(70 / 50, 1.3);
+            return `${g.temps} (ΔT ${String(g.dt).replace('.', ',')}): <b>${q} Вт</b>${g.key === 'gost' ? ' — паспорт' : ' (' + this._fmtDtDelta(q, q70) + ' к паспорту)'}${g.recommended ? ' ★' : ''}`;
         }).join('<br>');
         return `<span style="display:block; margin-top:8px; padding-top:6px; border-top:1px dashed #4B5563; font-size:11px; line-height:1.5;">` +
             `<b>Пересчёт на другие графики:</b><br>` +
