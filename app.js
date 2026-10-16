@@ -37375,10 +37375,22 @@ const app = {
      * уличным коллектором в полосу отводов не помещается. Здесь у него свой лист.
      */
     snowSchemeArt: function () {
+        const p = this.snowSchemeParams();
+        if (!p || !window.projectScheme.snowScheme) return null;
+        return window.projectScheme.snowScheme(p) || null;
+    },
+    // Монтажный вид узла (оборудование как на стене + таблица «что и куда»):
+    // те же параметры, что у принципиальной схемы, другой чертёж.
+    snowAssemblyArt: function () {
+        const p = this.snowSchemeParams();
+        if (!p || !window.projectScheme.snowAssembly) return null;
+        return window.projectScheme.snowAssembly(p) || null;
+    },
+    snowSchemeParams: function () {
         const sc = this.snowCalc;
         if (!sc || sc.impossible) return null;
-        if (!window.projectScheme || !window.projectScheme.snowScheme || !window.projectSheets) return null;
-        const a = window.projectScheme.snowScheme({
+        if (!window.projectScheme || !window.projectSheets) return null;
+        return {
             kw: Math.round(sc.Q * 10) / 10, area: sc.area, loops: sc.loops,
             // Группы на схеме котельной присоединяются резьбой DN25 (buildSchemeConfig) —
             // та же цифра подписывается на входе листа узла.
@@ -37396,10 +37408,11 @@ const app = {
             // термоголовка. Без автоматики котельной узел регулируется вручную;
             // базовый уровень смесителем тоже не управляет.
             auto: this.thermaticFull(), servo: this.thermaticFull()
-        });
-        return a || null;
+        };
     },
-    renderSnowScheme: function () { return this._renderArt(this.snowSchemeArt()); },
+    renderSnowScheme: function () {
+        return this._renderArt(this.snowSchemeArt()) + this._renderArt(this.snowAssemblyArt());
+    },
     /**
      * Узел обвязки коллекторов водоснабжения — над разделом «5.1. Внутреннее
      * водоснабжение». Включается тем же тумблером «Схема», что и
@@ -38217,6 +38230,7 @@ const app = {
         safe('tm', 'Схема подключения автоматики котельной', this.automationSchemeArt);
         safe('o', 'Схема подключения автоматики напольного отопления', this.ufhSchemeArt);
         safe('o', 'Схема узла снеготаяния', this.snowSchemeArt);
+        safe('o', 'Монтажная схема узла снеготаяния', this.snowAssemblyArt);
         return out;
     },
     exportAdminToExcel: function () {
