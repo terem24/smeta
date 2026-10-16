@@ -1035,6 +1035,293 @@
     return { svg: o.join(''), w: W, h: Math.round(H) };
   }
 
+  /**
+   * Монтажная схема узла снеготаяния — лист «как это выглядит на стене».
+   *
+   * К принципиальной схеме (snowScheme) — её иллюстрированная пара: те же
+   * блоки в том же порядке слева направо, но оборудование нарисовано так, как
+   * его увидит монтажник: латунные краны с термометрами, насос с круглой
+   * мотор-частью и клеммной коробкой, пластинчатый теплообменник в тёмной
+   * изоляции с четырьмя патрубками, группа безопасности, расширительный бак,
+   * коллектор с расходомерами (колбы с поплавком) и клапанами обратки.
+   * Номера в кружках связывают рисунок с таблицей «Что и куда подключать».
+   *
+   * Резьбу патрубков пишем только там, где она известна (sn.dn — резьба
+   * присоединения групп, как на схеме котельной); тип НР/ВР не указываем —
+   * он зависит от модели группы и берётся из её паспорта.
+   */
+  function snowAssembly(sn) {
+    if (!sn) return null;
+    var o = [], W = 420;
+    var ys = 52, yr = 88;                    // оси подачи и обратки
+    var NODES = Math.max(1, sn.nodes || 1);
+    var GL = sn.glycol, th = sn.dn === 25 ? '1"' : null;
+    var loopsNode = sn.loopsNode || sn.loops || 1;
+
+    // ── цвета и заливки ─────────────────────────────────────────────────
+    function lg(id, stops, horiz) {
+      return '<linearGradient id="sa-' + id + '" x1="0" y1="0" x2="' + (horiz ? 1 : 0) + '" y2="' + (horiz ? 0 : 1) + '">' +
+        stops.map(function (s) { return '<stop offset="' + s[0] + '" stop-color="' + s[1] + '"/>'; }).join('') + '</linearGradient>';
+    }
+    o.push('<defs>' +
+      lg('brass', [[0, '#F6E3A6'], [0.45, '#C99A3B'], [1, '#8A6420']]) +
+      lg('steel', [[0, '#FAFBFC'], [0.5, '#B9C1CB'], [1, '#7E8895']]) +
+      lg('pump', [[0, '#A9B4C2'], [1, '#56606E']]) +
+      lg('ins', [[0, '#5A6068'], [1, '#25282D']]) +
+      lg('tank', [[0, '#D2BCEB'], [0.45, '#A683D1'], [1, '#6C4A98']], true) +
+      lg('glass', [[0, '#FFFFFF'], [1, '#DCE8F4']], true) +
+      '</defs>');
+    function F(id) { return 'url(#sa-' + id + ')'; }
+    var BR = '#7A5A1C', ST = '#6B7480';
+
+    // ── детали ──────────────────────────────────────────────────────────
+    function pipeH(x0, x1, y, col) {
+      return rrect(x0, y - 1.7, x1 - x0, 3.4, 1.2, { f: col, c: 'rgba(0,0,0,.35)', w: 0.15 }) +
+        ln(x0 + 0.6, y - 0.7, x1 - 0.6, y - 0.7, { c: 'rgba(255,255,255,.5)', w: 0.35 });
+    }
+    function pipeV(x, y0, y1, col) {
+      return rrect(x - 1.7, y0, 3.4, y1 - y0, 1.2, { f: col, c: 'rgba(0,0,0,.35)', w: 0.15 }) +
+        ln(x - 0.7, y0 + 0.6, x - 0.7, y1 - 0.6, { c: 'rgba(255,255,255,.5)', w: 0.35 });
+    }
+    function chev(x, y, dir, col) {   // стрелка направления потока на трубе
+      var s = dir === 'left' ? -1 : 1;
+      return pline([[x - s * 1.6, y - 1.4], [x + s * 0.6, y], [x - s * 1.6, y + 1.4]], { c: '#fff', w: 0.5 });
+    }
+    function dial(x, y, r) {
+      var s = circle(x, y, r + 0.7, { f: F('steel'), c: ST, w: 0.2 }) + circle(x, y, r, { f: '#fff', c: '#222', w: 0.2 });
+      for (var k = -2; k <= 2; k++) {
+        var a = k * 0.55 - Math.PI / 2;
+        s += ln(x + Math.cos(a) * (r - 0.9), y + Math.sin(a) * (r - 0.9), x + Math.cos(a) * (r - 0.2), y + Math.sin(a) * (r - 0.2), { c: '#222', w: 0.15 });
+      }
+      return s + ln(x, y, x + r * 0.55, y - r * 0.5, { c: '#D00', w: 0.3 }) + circle(x, y, 0.4, { f: '#222' });
+    }
+    function nuts(x, y, hw, hh) {
+      return rrect(x - hw - 2.2, y - hh, 2.2, hh * 2, 0.5, { f: F('steel'), c: ST, w: 0.15 }) +
+        rrect(x + hw, y - hh, 2.2, hh * 2, 0.5, { f: F('steel'), c: ST, w: 0.15 });
+    }
+    /** Латунный шаровой кран, рукоять вдоль трубы; therm — стрелочный термометр сверху. */
+    function ball(x, y, hcol, therm) {
+      var s = nuts(x, y, 4.2, 2.6) + rrect(x - 4.2, y - 3.4, 8.4, 6.8, 1.4, { f: F('brass'), c: BR, w: 0.2 }) +
+        rrect(x - 0.9, y - 6.4, 1.8, 3, 0.3, { f: F('steel'), c: ST, w: 0.12 }) +
+        rrect(x - 5.5, y - 8.2, 11, 2, 1, { f: hcol, c: 'rgba(0,0,0,.3)', w: 0.15 });
+      if (therm) s += ln(x, y - 8.2, x, y - 10.4, { c: ST, w: 0.5 }) + dial(x, y - 14.2, 3.6);
+      return s;
+    }
+    function checkV(x, y, dir) {
+      var s = dir === 'left' ? -1 : 1;
+      return nuts(x, y, 4.5, 2.5) + rrect(x - 4.5, y - 3.2, 9, 6.4, 1.6, { f: F('brass'), c: BR, w: 0.2 }) +
+        pline([[x - s * 1.8, y - 1.6], [x + s * 1.8, y], [x - s * 1.8, y + 1.6]], { f: '#222', c: '#222', w: 0.15, close: true });
+    }
+    function pumpR(x, y) {
+      return rrect(x - 11.5, y - 4.6, 3, 9.2, 0.6, { f: F('steel'), c: ST, w: 0.15 }) +
+        rrect(x + 8.5, y - 4.6, 3, 9.2, 0.6, { f: F('steel'), c: ST, w: 0.15 }) +
+        rrect(x - 9, y - 7.5, 18, 15, 2.5, { f: F('pump'), c: '#2C3440', w: 0.25 }) +
+        rrect(x - 4, y - 14.2, 8, 5, 0.8, { f: '#2B3038', c: '#111', w: 0.2 }) +
+        circle(x, y, 7.4, { f: F('pump'), c: '#2C3440', w: 0.25 }) + circle(x, y, 4.8, { f: '#D3D9E0', c: '#6B7480', w: 0.2 }) +
+        pline([[x - 1.6, y - 2.2], [x + 2.2, y], [x - 1.6, y + 2.2]], { f: '#222', c: '#222', w: 0.15, close: true });
+    }
+    /** Трёхходовой смеситель на обратке: байпас вверх, привод вниз. */
+    function mixer(x, y, servo) {
+      var s = pipeV(x, ys, y - 6.4, COL.supply) + nuts(x, y, 5, 2.6) +
+        rrect(x - 5, y - 3.5, 10, 7, 1.4, { f: F('brass'), c: BR, w: 0.2 }) +
+        rrect(x - 2.6, y - 6.6, 5.2, 3.2, 0.5, { f: F('brass'), c: BR, w: 0.2 });
+      if (servo) {
+        s += rrect(x - 1.4, y + 3.5, 2.8, 2.6, 0.3, { f: F('steel'), c: ST, w: 0.12 }) +
+          rrect(x - 6, y + 6, 12, 10, 1.2, { f: '#F4F6F8', c: '#7B8591', w: 0.25 }) +
+          rrect(x - 6, y + 13.6, 12, 2.4, 0.8, { f: '#3A424D' }) +
+          txt(x, y + 12, 'M', { size: 3.2, anchor: 'middle' }) +
+          path('M' + n(x + 6) + ',' + n(y + 9) + ' q4,0 4,5 t0,6', { c: '#111', w: 0.5 });
+      } else {
+        s += rrect(x - 3, y + 3.5, 6, 8, 1.2, { f: '#EDEFF2', c: '#7B8591', w: 0.25 }) +
+          rrect(x - 4, y + 11.5, 8, 3, 1.2, { f: '#C0392B', c: 'rgba(0,0,0,.3)', w: 0.15 });
+      }
+      return s;
+    }
+    function hx(x0, x1) {
+      var y0 = ys - 12, y1 = yr + 12, cx = (x0 + x1) / 2, s = '';
+      s += rrect(x0, y0, x1 - x0, y1 - y0, 2.5, { f: F('ins'), c: '#111', w: 0.25 });
+      s += rrect(x0 + 3, (y0 + y1) / 2 - 15, x1 - x0 - 6, 30, 1, { f: '#E9EDF1', c: '#8A94A0', w: 0.2 });
+      s += txt(cx - 2.2, (y0 + y1) / 2 + 12, 'Теплообменник', { size: SZ.dia, rotate: -90 });
+      s += txt(cx + 3, (y0 + y1) / 2 + 12, (sn.plates ? sn.plates + ' пластин' : 'пластинчатый'), { size: SZ.dia, rotate: -90 });
+      [[x0 - 5, ys], [x0 - 5, yr], [x1, ys], [x1, yr]].forEach(function (p) {
+        s += rrect(p[0], p[1] - 2.6, 5, 5.2, 0.8, { f: F('brass'), c: BR, w: 0.2 });
+      });
+      var tg = { size: 2, fill: '#fff' };
+      s += txt(x0 + 1.4, ys + 0.7, 'П вход', tg) + txt(x0 + 1.4, yr + 0.7, 'П выход', tg);
+      s += txt(x1 - 1.4, ys + 0.7, 'В выход', { size: 2, fill: '#fff', anchor: 'end' }) +
+        txt(x1 - 1.4, yr + 0.7, 'В вход', { size: 2, fill: '#fff', anchor: 'end' });
+      return s;
+    }
+    function safety(x, y) {
+      return rrect(x - 1.8, y - 9, 3.6, 9, 0.4, { f: F('brass'), c: BR, w: 0.2 }) +
+        rrect(x - 7.5, y - 13, 15, 4, 1, { f: F('brass'), c: BR, w: 0.2 }) +
+        rrect(x - 7.6, y - 15, 2, 2.2, 0.3, { f: F('brass'), c: BR, w: 0.15 }) + dial(x - 6.6, y - 18.6, 3.6) +
+        rrect(x - 1.4, y - 17, 2.8, 4.2, 0.6, { f: F('brass'), c: BR, w: 0.15 }) + rrect(x - 1.9, y - 18.6, 3.8, 1.8, 0.5, { f: '#222' }) +
+        rrect(x + 2.6, y - 19, 5, 6.2, 0.8, { f: F('brass'), c: BR, w: 0.2 }) + rrect(x + 3, y - 22.6, 4.2, 3.8, 0.9, { f: '#C62828', c: 'rgba(0,0,0,.3)', w: 0.15 }) +
+        rrect(x + 7.6, y - 15.6, 3.2, 2.2, 0.4, { f: F('brass'), c: BR, w: 0.15 });
+    }
+    function sensor(x, y) {
+      return rrect(x - 1.5, y - 6, 3, 4.6, 0.5, { f: F('brass'), c: BR, w: 0.15 }) +
+        rrect(x - 2.6, y - 10.6, 5.2, 4.6, 0.8, { f: '#2B3038', c: '#111', w: 0.15 }) +
+        path('M' + n(x) + ',' + n(y - 10.6) + ' q0,-5 5,-5', { c: '#111', w: 0.5 });
+    }
+    function rot(x, y, deg, svg) { return '<g transform="rotate(' + deg + ' ' + n(x) + ' ' + n(y) + ')">' + svg + '</g>'; }
+
+    // ── порядок позиций: от него зависят номера на рисунке и в таблице ───
+    var keys = ['t12', 't22', 'g1', 'mix', 'hx', 'g2', 'safe', 'tank'];
+    if (sn.auto) keys.push('sens');
+    keys.push('col', 'loops');
+    function N(k) { return keys.indexOf(k) + 1; }
+    function call(k, cx, cy, tx, ty) {
+      return ln(cx, cy + (ty > cy ? 3 : -3), tx, ty, { w: 0.2 }) + circle(tx, ty, 0.5, { f: '#000' }) +
+        circle(cx, cy, 3, { f: '#fff', c: '#000', w: 0.3 }) +
+        txt(cx, cy + 1.15, String(N(k)), { size: 3.3, anchor: 'middle' });
+    }
+    function bracket(k, x0, x1, y, title) {
+      return ln(x0, y, x1, y, { w: 0.25 }) + ln(x0, y - 2, x0, y, { w: 0.25 }) + ln(x1, y - 2, x1, y, { w: 0.25 }) +
+        circle(x0 + 4, y + 4.4, 3, { f: '#fff', c: '#000', w: 0.3 }) +
+        txt(x0 + 4, y + 5.55, String(N(k)), { size: 3.3, anchor: 'middle' }) +
+        txt(x0 + 8.6, y + 5.6, title, { size: SZ.txt });
+    }
+
+    o.push(txt(W / 2, 13, NODES > 1 ? 'Монтажная схема узла снеготаяния (один из ' + NODES + ')' : 'Монтажная схема узла снеготаяния',
+      { size: 6.2, anchor: 'middle' }));
+    o.push(txt(W / 2, 19, 'вид спереди; порядок слева направо — как на принципиальной схеме', { size: SZ.dia, anchor: 'middle' }));
+    o.push(rrect(4, 22, 294, 128, 2, { f: '#F4F6F8', c: '#D5DAE0', w: 0.3 }));
+
+    // ── трубы (под арматурой) ───────────────────────────────────────────
+    var xg1 = 24, xg1e = 108, hx0 = 126, hx1 = 152, xg2 = 163, xg2e = 290, mx0 = 308, mx1 = 410;
+    o.push(pipeH(6, hx0 - 5, ys, COL.supply) + pipeH(6, hx0 - 5, yr, COL.ret));
+    o.push(pipeH(hx1 + 5, mx0 - 2, ys, COL.snowS) + pipeH(hx1 + 5, mx0 - 2, yr, COL.snowR));
+    o.push(chev(14, ys, 'right') + chev(14, yr, 'left') + chev(116, ys, 'right') + chev(116, yr, 'left'));
+    o.push(txtM(7, ys - 4, 'Т12', { size: SZ.txt }) + txtM(7, yr - 4, 'Т22', { size: SZ.txt }));
+    if (th) o.push(txtM(7, ys + 6.5, th, { size: SZ.dia }) + txtM(7, yr + 6.5, th, { size: SZ.dia }));
+
+    // ── блок 1: смесительная группа ─────────────────────────────────────
+    o.push(ball(34, ys, '#D32F2F', true) + ball(34, yr, '#1976D2', true));
+    o.push(mixer(62, yr, sn.servo));
+    o.push(pumpR(90, ys));
+    // ── теплообменник ───────────────────────────────────────────────────
+    o.push(hx(hx0, hx1));
+    // ── блок 2: вторичный контур ────────────────────────────────────────
+    o.push(pumpR(180, ys));
+    o.push(checkV(180, yr, 'left') + ball(196, yr, '#1976D2', false));
+    if (sn.auto) o.push(sensor(206, ys));
+    o.push(safety(236, ys));
+    if (sn.tank) {
+      var tx = 262;
+      o.push(pipeV(tx, yr, 100, COL.snowR));
+      o.push(rot(tx, 96, 90, ball(tx, 96, '#1976D2', false)));
+      o.push(rrect(tx - 3.5, 100, 7, 3.6, 0.6, { f: F('steel'), c: ST, w: 0.15 }));
+      o.push(rrect(tx - 10, 103.6, 20, 32, 9, { f: F('tank'), c: '#4B3170', w: 0.25 }));
+      o.push(rrect(tx - 2, 135.6, 4, 2.4, 0.5, { f: F('steel'), c: ST, w: 0.15 }));
+      o.push(txt(tx, 121, sn.tank + ' л', { size: SZ.txt, anchor: 'middle', fill: '#fff' }));
+      o.push(txt(tx - 12, 117, 'расширительный', { size: SZ.dia, anchor: 'end' }));
+      o.push(txt(tx - 12, 120.2, 'бак', { size: SZ.dia, anchor: 'end' }));
+    }
+    o.push(chev(222, ys, 'right') + chev(224, yr, 'left') + chev(282, ys, 'right') + chev(282, yr, 'left'));
+
+    // ── коллектор снеготаяния ───────────────────────────────────────────
+    o.push(rrect(mx0 - 8, 24, mx1 - mx0 + 14, 98, 3, { f: '#F4F6F8', c: '#9AA4AF', w: 0.35 }));
+    var nDraw = Math.min(loopsNode, 6), step = (mx1 - mx0 - 14) / nDraw, yLoop = 168;
+    [ys, yr].forEach(function (y) {
+      o.push(rrect(mx0 - 2.5, y - 3.2, 3, 6.4, 0.8, { f: F('brass'), c: BR, w: 0.15 }));
+      o.push(rrect(mx0, y - 3.8, mx1 - mx0, 7.6, 3.8, { f: F('steel'), c: ST, w: 0.2 }));
+    });
+    for (var i = 0; i < nDraw; i++) {
+      var lx = mx0 + 9 + i * step, rx = lx + step * 0.5;
+      // расходомер на подающей: колба с поплавком над гребёнкой
+      o.push(rrect(lx - 3.2, ys - 6, 6.4, 2.6, 0.6, { f: F('brass'), c: BR, w: 0.15 }));
+      o.push(rrect(lx - 2.4, ys - 17.6, 4.8, 11.8, 1.2, { f: F('glass'), c: '#6C7A89', w: 0.25 }));
+      o.push(rrect(lx - 3.2, ys - 20, 6.4, 2.6, 0.6, { f: F('brass'), c: BR, w: 0.15 }));
+      for (var t = 0; t < 4; t++) o.push(ln(lx + 1.2, ys - 15.6 + t * 2.8, lx + 2.4, ys - 15.6 + t * 2.8, { c: '#445', w: 0.15 }));
+      o.push(circle(lx, ys - 9.5 + (i % 3) * 1.6, 1.25, { f: '#E53935', c: '#7f1d1d', w: 0.15 }));
+      // клапан на обратной гребёнке: латунь с синим колпачком
+      o.push(rrect(rx - 2.6, yr - 11.5, 5.2, 7.5, 0.8, { f: F('brass'), c: BR, w: 0.2 }));
+      o.push(rrect(rx - 3.2, yr - 14.8, 6.4, 3.4, 1.2, { f: '#1E63B5', c: 'rgba(0,0,0,.3)', w: 0.15 }));
+    }
+    for (var j = 0; j < nDraw; j++) {
+      var lx2 = mx0 + 9 + j * step, rx2 = lx2 + step * 0.5;
+      o.push(pipeV(lx2, ys + 3.8, yLoop - 5, COL.snowS));
+      o.push(pipeV(rx2, yr + 3.8, yLoop - 5, COL.snowR));
+      o.push(pline([[lx2, yLoop - 5], [lx2, yLoop], [rx2, yLoop], [rx2, yLoop - 5]], { c: COL.snowS, w: 3.4 }));
+    }
+    o.push(chev(mx0 - 12, ys, 'right') + chev(mx0 - 12, yr, 'left'));
+    // площадка снаружи
+    o.push(rrect(mx0 - 8, yLoop + 5, mx1 - mx0 + 14, 8, 0.4, { f: '#E4E7EB', c: '#000', w: 0.2 }));
+    for (var hh = mx0 - 6; hh < mx1 + 4; hh += 7) o.push(ln(hh, yLoop + 13, hh + 4, yLoop + 6, { c: '#555', w: 0.1 }));
+
+    // ── номера и подписи блоков ─────────────────────────────────────────
+    o.push(call('t12', 16, 36, 16, ys - 1.8));
+    o.push(call('t22', 16, 102, 16, yr + 1.8));
+    o.push(call('mix', 78, 108, 68, yr + 11));
+    o.push(call('safe', 236, 30, 240, ys - 22.6 + 0.5));
+    if (sn.auto) o.push(call('sens', 210, 31, 207, ys - 15));
+    if (sn.tank) o.push(call('tank', 238, 130, tx - 10, 128));
+    o.push(bracket('g1', xg1, xg1e, 144, 'Насосная группа со смесителем'));
+    o.push(bracket('hx', hx0 - 5, hx1 + 5, 144, 'Теплообменник'));
+    o.push(bracket('g2', xg2, xg2e, 144, 'Насосная группа вторичного контура'));
+    o.push(circle(mx0 - 4, 28, 3, { f: '#fff', c: '#000', w: 0.3 }) + txt(mx0 - 4, 29.15, String(N('col')), { size: 3.3, anchor: 'middle' }) +
+      txt(mx0 + 0.5, 29.4, 'Коллектор снеготаяния', { size: SZ.txt }));
+    o.push(circle(mx0 - 4, yLoop + 20, 3, { f: '#fff', c: '#000', w: 0.3 }) + txt(mx0 - 4, yLoop + 21.15, String(N('loops')), { size: 3.3, anchor: 'middle' }) +
+      txt(mx0 + 0.5, yLoop + 21.4, 'Петли на площадке: ' + loopsNode + (loopsNode > nDraw ? ' (показано ' + nDraw + ')' : ''), { size: SZ.txt }));
+    o.push(txt(mx0 - 8, yLoop + 27.5, sn.dia + ' · шаг ' + sn.step + ' мм', { size: SZ.dia }));
+    o.push(txt(4, 164, 'П — первичный контур (вода котельной), В — вторичный контур (пропиленгликоль ' + GL + ' %)', { size: SZ.dia }));
+
+    // ── таблица «что и куда» ────────────────────────────────────────────
+    function wrap(s, maxW) {
+      var words = String(s).split(' '), lines = [], cur = '';
+      words.forEach(function (w) {
+        var t = cur ? cur + ' ' + w : w;
+        if (cur && textW(t, SZ.txt) > maxW) { lines.push(cur); cur = w; } else cur = t;
+      });
+      if (cur) lines.push(cur);
+      return lines;
+    }
+    var ROW = {
+      t12: ['Подача Т12', 'От подающего коллектора котельной (отвод Т12) → верхний патрубок насосной группы со смесителем', th || 'по паспорту группы'],
+      t22: ['Обратка Т22', 'Нижний патрубок насосной группы со смесителем → в обратный коллектор котельной (отвод Т22)', th || 'по паспорту группы'],
+      g1: ['Насосная группа со смесителем', 'Подача после насоса → верхний левый патрубок теплообменника («П вход»). Обратка с нижнего левого патрубка («П выход») → смеситель на обратной линии группы', th || 'по паспорту группы'],
+      mix: [sn.servo ? 'Сервопривод смесителя' : 'Термоголовка смесителя',
+        sn.servo ? 'Закрепить на корпусе смесителя под обратной линией; кабель — к контроллеру котельной по схеме подключения автоматики (раздел 2.9.1 сметы)'
+          : 'Закрепить на корпусе смесителя; температуру смешения выставить вручную по шкале головки', sn.servo ? 'кабель по схеме автоматики' : 'настройка вручную'],
+      hx: ['Теплообменник пластинчатый' + (sn.plates ? ', ' + sn.plates + ' пластин' : ''),
+        'Слева — первичный контур (вода котельной): вход сверху, выход снизу. Справа — вторичный контур (гликоль ' + GL + ' %): греется снизу вверх, поэтому вход гликоля снизу, выход сверху', 'по паспорту теплообменника'],
+      g2: ['Насосная группа вторичного контура', 'Подача: верхний правый патрубок теплообменника («В выход») → насос → подающая гребёнка коллектора. Обратка: обратная гребёнка → кран с обратным клапаном → нижний правый патрубок («В вход»)', 'по паспорту группы'],
+      safe: ['Группа безопасности, 3 бар', 'На подающей линии вторичного контура после насоса: предохранительный клапан, манометр и воздухоотводчик в одном узле. Сброс предохранительного клапана не заглушать', 'по паспорту группы'],
+      tank: ['Расширительный бак ' + sn.tank + ' л', 'К обратной линии вторичного контура через запорный кран; бак на кронштейне, воздушный ниппель снизу', 'по паспорту бака'],
+      sens: ['Датчик подачи', 'В гильзу на подающей линии вторичного контура; кабель — к контроллеру котельной. Контроллер держит ' + sn.supplyT + ' °C на подаче в петли', 'гильза по паспорту датчика'],
+      col: ['Коллектор снеготаяния', 'Подача вторичного контура — к верхней гребёнке с расходомерами, обратка — к нижней. На петлю: колба расходомера на подаче, клапан с синим колпачком на обратке; расход каждой петли выставляется по колбе', 'по паспорту коллектора'],
+      loops: ['Петли на площадке', 'Подающий конец петли — к выходу расходомера, обратный — к клапану обратной гребёнки. Петель на узле: ' + loopsNode + (NODES > 1 ? ' из ' + sn.loops : '') + '. Раствор пропиленгликоля ' + GL + ' %', sn.dia + ', шаг ' + sn.step + ' мм']
+    };
+    var ty0 = yLoop + 36;
+    var cA = 12, cB = 22, cC = 100, cD = 326, cE = 408, LH = 4.2;
+    o.push(txt(cA, ty0 - 2, 'Что и куда подключать', { size: SZ.head }));
+    var y = ty0 + 2;
+    o.push(ln(cA, y, cE, y));
+    function hrow(yy) {
+      o.push(txt(cA + 4, yy + 4.6, '№', { size: SZ.txt, anchor: 'middle' }));
+      o.push(txt(cB + 2, yy + 4.6, 'Позиция', { size: SZ.txt }));
+      o.push(txt(cC + 2, yy + 4.6, 'Откуда и куда подключается', { size: SZ.txt }));
+      o.push(txt(cD + 2, yy + 4.6, 'Размер', { size: SZ.txt }));
+    }
+    hrow(y); y += 6.4; o.push(ln(cA, y, cE, y));
+    keys.forEach(function (k) {
+      var r = ROW[k];
+      var L1 = wrap(r[0], cC - cB - 4), L2 = wrap(r[1], cD - cC - 4), L3 = wrap(r[2], cE - cD - 4);
+      var nl = Math.max(L1.length, L2.length, L3.length), h = nl * LH + 2;
+      o.push(txt(cA + 4, y + 1.2 + LH * 0.8, String(N(k)), { size: SZ.txt, anchor: 'middle' }));
+      L1.forEach(function (s, i) { o.push(txt(cB + 2, y + 1.2 + LH * 0.8 + i * LH, s, { size: SZ.txt })); });
+      L2.forEach(function (s, i) { o.push(txt(cC + 2, y + 1.2 + LH * 0.8 + i * LH, s, { size: SZ.txt })); });
+      L3.forEach(function (s, i) { o.push(txt(cD + 2, y + 1.2 + LH * 0.8 + i * LH, s, { size: SZ.txt })); });
+      y += h; o.push(ln(cA, y, cE, y));
+    });
+    var tEnd = y;
+    o.push(ln(cA, ty0 + 2, cA, tEnd) + ln(cB, ty0 + 2, cB, tEnd) + ln(cC, ty0 + 2, cC, tEnd) + ln(cD, ty0 + 2, cD, tEnd) + ln(cE, ty0 + 2, cE, tEnd));
+    o.push(txt(cA, tEnd + 5, 'Тип резьбы (наружная/внутренняя) у групп и коллектора — по паспорту модели; переходы на трубу подбираются по разделам 1–2 сметы.', { size: SZ.dia }));
+    return { svg: o.join(''), w: W, h: Math.round(tEnd + 10) };
+  }
+
   // ─── Композитор ────────────────────────────────────────────────────────
   /**
    * cfg: { gas: {circuits}|null, el: {}|null, indirect: {vol}|null,
@@ -5776,7 +6063,7 @@
 
   window.projectScheme = {
     build: build, sheet: sheetSvg, automation: automation, automation1002: automation1002, automationSmart2: automationSmart2, automationH: automationH, automationMyheat: automationMyheat, automationEcto: automationEcto, ufhScheme: ufhScheme, ufhSchemeEngo: ufhSchemeEngo,
-    snowScheme: snowScheme,
+    snowScheme: snowScheme, snowAssembly: snowAssembly,
     // отдельные УГО пригодятся будущим листам узлов обвязки
     sym: {
       ballValve: ballValve, checkValve: checkValve, pump: pump, valve3: valve3,
