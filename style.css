@@ -20094,9 +20094,20 @@ body.dark-mode .save-remind-field input { background: #121212; border-color: #4B
 .sg-hit { fill: transparent; stroke: none; pointer-events: all; cursor: pointer; }
 .sg-pt { display: none; fill: rgba(37, 99, 235, 0.35); stroke: #2563eb; stroke-width: 2px; vector-effect: non-scaling-stroke; pointer-events: none; }
 .sg-pt.sg-hl { display: block; }
-/* Листы насосных групп — крупнее общей рамки схем: на них мелкие подписи, а их надо читать и наводить мышью. */
-[id^="pump_group_scheme_row_"] .automation-scheme { width: 100%; max-width: 1040px; height: auto; }
-[id^="pump_group_scheme_row_"] .automation-scheme > svg { height: auto; }
+/* Листы насосных групп — миниатюрой общего размера (рамка схем), справа таблица сравнения вариантов. Читают лист на весь экран. */
+.sg-flex { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.sg-flex > .automation-scheme { flex: 0 0 auto; }
+.sg-cmp { flex: 1 1 420px; min-width: 0; font-size: 12px; margin-top: 10px; }
+.sg-cmp-wait { color: var(--text-sec, #6b7280); padding: 12px 0; }
+.sg-cmp-tbl { width: 100%; border-collapse: collapse; }
+.sg-cmp-tbl th { text-align: left; font-weight: 600; font-size: 11px; color: var(--text-sec, #6b7280); padding: 4px 6px; border-bottom: 1px solid var(--border, #e5e7eb); }
+.sg-cmp-tbl td { padding: 5px 6px; border-bottom: 1px solid var(--border, #e5e7eb); vertical-align: top; line-height: 1.35; }
+.sg-cmp-tbl td.sg-cmp-n small { display: block; color: var(--text-sec, #6b7280); font-size: 11px; }
+.sg-cmp-tbl tr.sg-cmp-cur td { background: rgba(37, 99, 235, 0.10); }
+.sg-cmp-up { color: #d97706; font-weight: 600; }
+.sg-cmp-dn { color: #16a34a; font-weight: 600; }
+.sg-cmp-base { color: var(--text-sec, #6b7280); }
+.sg-cmp-note { margin-top: 6px; color: var(--text-sec, #6b7280); font-size: 11px; line-height: 1.45; }
 #print-area tr.sg-row-hl td { background: rgba(37, 99, 235, 0.20) !important; box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.55); }
 #print-area tr.sg-row-flash td { animation: sg-flash 1.8s ease-out; }
 @keyframes sg-flash { 0%, 40% { background: rgba(250, 204, 21, 0.55); } 100% { background: transparent; } }
