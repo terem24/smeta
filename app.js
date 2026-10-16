@@ -49772,7 +49772,8 @@ const app = {
         } else if (!h.hasGroup) out.push({ label: 'Насосная группа радиаторов на коллекторе', btn: 'Добавить группу', force: { radGroup: true } });
         else if (n < 4) out.push({ label: 'Вторая ветка радиаторов: ' + n + ' → ' + (n + 1) + ' (расход на ветку меньше)', btn: 'Добавить ветку', force: { radBranches: n + 1 } });
         const tr = h.parts.find(p => p.tag === 'trunk');
-        const order = [16, 20, 25, 26, 32];
+        // Ø40 (PP-R ProAqua) смета кладёт пока только на трассу одноэтажного дома
+        const order = this.state.floors === 2 ? [16, 20, 25, 26, 32] : [16, 20, 25, 26, 32, 40];
         const i = tr && tr.d ? order.indexOf(tr.d) : -1;
         if (i >= 0 && i < order.length - 1) {
             out.push({ label: 'Подводка к коллектору Ø' + tr.d + ' → Ø' + order[i + 1] + ' (меньше скорость и потери)', btn: 'Сменить трубу', ov: { d: order[i + 1], len: tr.len || null } });
@@ -49903,7 +49904,7 @@ const app = {
         const trunk = (r.parts || []).find(p => p.tag === 'trunk');
         if (trunk && !forPrint) {
             const dSel = trunk.d || 25;
-            const opts = [16, 20, 25, 26, 32].map(d => '<option value="' + d + '"' + (d === dSel ? ' selected' : '') + '>Ø' + d + '</option>').join('');
+            const opts = (this.state.floors === 2 ? [16, 20, 25, 26, 32] : [16, 20, 25, 26, 32, 40]).map(d => '<option value="' + d + '"' + (d === dSel ? ' selected' : '') + '>Ø' + d + '</option>').join('');
             // Ручная трасса — за свёрнутым блоком: это запасной путь, а не первое, что нужно монтажнику.
             // Применяется сразу при изменении (как в основной ветке): пересчёт занимает десятки мс
             // Раскрытость запоминаем: карточка перерисовывается после каждой правки, и без этого блок схлопывался
@@ -67986,6 +67987,9 @@ const app = {
         return 'grey';   // серая PE-Xa и труба в теплоизоляции 16×2.2
     },
     radPipeId: function (d, family) {
+        // Ø40 в каталоге есть только как PP-R ProAqua DUO SDR 6 (PA39014): у PE-Xa, металлопласта и
+        // стабильной трубы этого размера нет, поэтому у любого семейства Ø40 — это PP-R.
+        if (parseInt(d, 10) === 40) family = 'ppr';
         const fam = this.RAD_PIPE_ID[family || this.radPipeFamily()] || this.RAD_PIPE_ID.grey;
         const dIn = fam[parseInt(d, 10)];
         // Диаметра нет в таблице семейства — раньше тихо считали как 16 мм. Теперь хотя бы пишем в консоль.
@@ -86886,7 +86890,8 @@ const app = {
                     let _riserPick = _riserD, _riserByHead = false;
                     // Ручной диаметр не перебираем: монтажник выбрал его сам, а скорость и запас
                     // показаны в карточке — он видит, что выбрал.
-                    const _riserForced = !!(_radOv && _radOv.d);
+                    // Ø40 (PP-R) смета кладёт только на трассу одного этажа — на стояк ручной выбор 40 не действует
+                    const _riserForced = !!(_radOv && _radOv.d && _radOv.d !== 40);
                     if (_riserForced) _riserPick = _radOv.d;
                     const _riserSpan = { kw: _riserKw, len: _riserMeters, share: 0.5,
                         fam: _isMpPipe ? 'mp' : 'stable', riser: true };
@@ -86992,7 +86997,10 @@ const app = {
                     const _trSpeed = (bore) => bore > 0
                         ? (_trFlow / 3600) / (Math.PI * Math.pow(bore / 1000, 2) / 4)
                         : 0;
-                    const _trOrder = [16, 20, 25, 26, 32];
+                    const _trOrder = [16, 20, 25, 26, 32, 40];
+                    // Ø40 есть в каталоге только как PP-R ProAqua DUO SDR 6 (PA39014, штука 4 м, внутренний
+                    // диаметр 26,6 мм по паспорту). Цена в позиции — за метр: asCoilPrice умножит на длину штуки.
+                    const _ppr40 = (() => { const it = this.findCatalogItemById('PA39014'); return it ? { ...it, len: 4, price: it.price / 4 } : null; })();
                     // Скорость и запас насоса — оба критерия, как у стояка выше.
                     let _trPick = _trD, _trByHead = false;
                     const _trForced = !!(_trOv && _trOv.d);
@@ -87000,15 +87008,19 @@ const app = {
                     const _trSpan = { kw: _trKw, len: _trMeters, share: 1,
                         fam: _isMpPipe ? 'mp' : 'stable', riser: false };
                     for (let _i = _trOrder.indexOf(_trD); _i < _trOrder.length && !_trForced; _i++) {
-                        const _cand = _trPool.find(x => x.id === _trIds[_trOrder[_i]]);
+                        const _is40 = _trOrder[_i] === 40;
+                        const _cand = _is40 ? _ppr40 : _trPool.find(x => x.id === _trIds[_trOrder[_i]]);
                         if (!_cand) continue;
-                        if (_trSpeed(_trBore(_cand.name)) > this.RAD_V_MAX_TRUNK) continue;
+                        if (_trSpeed(_is40 ? 26.6 : _trBore(_cand.name)) > this.RAD_V_MAX_TRUNK) continue;
+                        const _trPrev = _trPick;
                         _trPick = _trOrder[_i];
                         this._radTrunk = Object.assign({ d: _trPick }, _trSpan);
                         if (this.radRingHasReserve()) break;
+                        // Ø40 берём, только если он довёл запас до нормы: иначе дорогая труба задачу не решает
+                        if (_is40) { _trPick = _trPrev; break; }
                         _trByHead = true;
                     }
-                    const _trBase = _trPool.find(x => x.id === _trIds[_trPick]) || _trPool.find(x => x.id === _trIds[_trD]);
+                    const _trBase = (_trPick === 40 && _ppr40) ? _ppr40 : (_trPool.find(x => x.id === _trIds[_trPick]) || _trPool.find(x => x.id === _trIds[_trD]));
                     // Тот же участок, что считает гидравлика: итоговый типоразмер
                     // (после проверки по проходу), метраж, материал и нагрузка,
                     // на которую диаметр выбирался. См. стояк выше.
@@ -87029,7 +87041,8 @@ const app = {
                             `<b>Формула диаметра:</b> по мощности — до 4 кВт → 16 мм, до 8 кВт → 20 мм, до 16 кВт → 25 (26 у металлопластика) мм, свыше → 32 мм; затем проверка по фактическому внутреннему проходу трубы на скорость не выше 1,2 м/с (СП 60.13330.2020, таблица И.1 — магистраль с шаровыми кранами).<br>` +
                             `<b>Расчёт:</b> ${_trKw.toFixed(1)} кВт, площадь ${floorArea.toFixed(0)} м² → в одну сторону ${_trOneWay.toFixed(1)} м → ${_trMeters} м трубы → ${_trCoils} ${_trCoils === 1 ? 'бухта' : 'бухт(ы)'} по ${_trBase.len} м.` +
                             (_trPick !== _trD ? `<br><b>Поправка:</b> по таблице выходил Ø${_trD} мм, но по фактическому проходу трубы скорость превышала 1,2 м/с — взят следующий типоразмер Ø${_trPick} мм.` : ``) +
-                            (_trSwapped ? `<br><b>Материал:</b> вместо серой PE-Xa подставлена стабильная PE-Xa/Al/PE-RT: у серой линейное расширение примерно в семь раз выше, и на длинной магистрали её выгибает между креплениями.` : ``) +
+                            (_trSwapped && _trPick !== 40 ? `<br><b>Материал:</b> вместо серой PE-Xa подставлена стабильная PE-Xa/Al/PE-RT: у серой линейное расширение примерно в семь раз выше, и на длинной магистрали её выгибает между креплениями.` : ``) +
+                            (_trPick === 40 ? `<br><b>Материал:</b> Ø40 — PP-R ProAqua DUO SDR 6 (PN20, внутренний диаметр 26,6 мм), в каталоге других труб этого размера нет. По паспорту рабочее давление при 80 °C на 25 лет — 6,5 бар, при 95 °C — только 10 лет; режим выше 80 °C не использовать. Хомуты на Ø40 в смету не входят: подберите по наружному диаметру 40 мм.` : ``) +
                             `</span>`;
                         addToBill(asCoilPrice({ ..._trBase, originalId: 'rad_trunk_pipe_d' + _trD, alts: _trAlts, noCheapenAlts: true }), _trCoils, _trDesc, trunkGrp);
                         // Крепление: полимерная труба провисает, поэтому хомут на каждый метр
@@ -87047,11 +87060,12 @@ const app = {
                         // с хомутами, а чем она стыкуется с насосной группой и с
                         // коллектором — монтажник докупал сам.
                         const _trFamA = _isMpPipe ? 'mp' : 'grey';
-                        const _trAdId = (this.RAD_ADAPTER_EXT[_trFamA] || {})[_trPick];
+                        // Ø40 — PP-R: присоединение комбинированной муфтой с наружной резьбой 40×1" (PA23020)
+                        const _trAdId = _trPick === 40 ? 'PA23020' : (this.RAD_ADAPTER_EXT[_trFamA] || {})[_trPick];
                         const _trAd = _trAdId && this.findCatalogItemById(_trAdId);
                         if (_trAd) addToBill({ ..._trAd, originalId: _trAdId + '_rad_trunk' }, 4,
                             `Переходник трассы Ø${_trPick} — присоединение к насосной группе и к радиаторному коллектору: два конца × подача и обратка = 4 шт.`, trunkGrp);
-                        if (!_isMpPipe) {
+                        if (!_isMpPipe && _trPick !== 40) {
                             const _trSlId = this.RAD_SLEEVE[_trPick];
                             const _trSl = _trSlId && this.findCatalogItemById(_trSlId);
                             if (_trSl) addToBill({ ..._trSl, originalId: _trSlId + '_rad_trunk' }, 4,
