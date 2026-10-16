@@ -117,6 +117,8 @@ def http(url, payload, headers):
 def send_tg(post, link):
     token = (os.environ.get('TG_CHANNEL_BOT_TOKEN') or '').strip()
     chat = (os.environ.get('TG_CHANNEL_ID') or '').strip()
+    if chat and not chat.startswith(('@', '-')) and not chat.isdigit():
+        chat = '@' + chat   # юзернейм канала без @ Telegram не принимает
     if not (token and chat):
         return None
     payload = {'chat_id': chat, 'text': post['text'], 'parse_mode': 'HTML',
