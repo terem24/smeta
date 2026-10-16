@@ -45772,7 +45772,7 @@ const app = {
         if (!wasOpen) this.render();
     },
     toggleDark: function (chk, event) {
-        this.state.darkMode = chk; document.body.classList.toggle('dark-mode', chk); this.saveState();
+        this.state.darkMode = chk; document.body.classList.toggle('dark-mode', chk && !this.isShopTheme()); this.saveState();
     },
 
     // ═══════════════ Тема оформления ═══════════════
@@ -69713,8 +69713,11 @@ const app = {
             let floorSel = this.state.floors === 2 ? `<select style="font-size:10px; padding:0 2px 0 0; border:none; border-right:1px solid #D1D5DB; background:transparent; color:var(--text-sec); font-weight:600; margin-right:2px; outline:none; cursor:pointer;" onchange="app.updRoom(${r.id}, 'floor', parseInt(this.value))"><option value="1" ${r.floor === 1 ? 'selected' : ''}>1 Эт</option><option value="2" ${r.floor === 2 ? 'selected' : ''}>2 Эт</option></select>` : '';
             let accentColor = r.floor === 2 ? '#10B981' : 'var(--primary)';
 
-            let cardBg = this.state.darkMode ? 'var(--surface-light)' : '#fff';
-            let cardShadow = this.state.darkMode ? 'none' : '0 1px 2px rgba(0,0,0,0.02)';
+            // Тёмная ли страница на деле — по классу body, а не по state.darkMode: под
+            // магазинной темой флаг может быть true при светлой странице.
+            const pageDark = document.body.classList.contains('dark-mode');
+            let cardBg = pageDark ? 'var(--surface-light)' : '#fff';
+            let cardShadow = pageDark ? 'none' : '0 1px 2px rgba(0,0,0,0.02)';
 
             let roomIndex = 0;
             if (r.floor === 2) {
@@ -90781,7 +90784,10 @@ window.addEventListener('beforeprint', prepareForPrint);
 function cleanupAfterPrint() {
     // Выбор в окне печати («Гидравлика») действует на одну печать; следующая (Ctrl+P) — по умолчанию с листом
     if (app) { app._printBinReady = false; app._exportShort = false; app.kpHydroOn = undefined; }
-    if (app && app.state && app.state.darkMode) {
+    // Под магазинной темой (продавец) ночного режима на body нет намеренно — state.darkMode
+    // при этом может быть true (авто-тема вечером). Вернув класс вслепую, получали чёрные
+    // карточки с тёмным текстом на светлой странице.
+    if (app && app.state && app.state.darkMode && !(app.isShopTheme && app.isShopTheme())) {
         document.body.classList.add('dark-mode');
     }
 
