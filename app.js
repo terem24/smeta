@@ -58124,6 +58124,7 @@ const app = {
             this.state.installSwapMat = null;
             this.state.swapSortField = null;
             this.state.swapSortDir = null;
+            this.state.valveSwapFilter = null;
         }
 
         let item = this.currentEquipmentList.find(x => x.id === lookupId || x.displaySku === lookupId);
@@ -60214,6 +60215,36 @@ const app = {
             });
         }
 
+        // Шаровые краны: фильтры по бренду, диаметру, резьбе, ручке и форме (прямой/угловой).
+        // Признаки берутся из названия — отдельных полей в каталоге у кранов нет.
+        let _valveF = null;
+        if (/^Кран шаровой/i.test(item.name || '') && !_isTankItem) {
+            _valveF = this.state.valveSwapFilter || {};
+            const _vf = (k) => _valveF[k] || 'all';
+            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _dns = new Set();
+            alts.forEach(a => {
+                [a && a.name, a && a.rommer && !Array.isArray(a.rommer) ? a.rommer.name : null].forEach(n => {
+                    const d = n ? this._valveInfo(n).dn : null;
+                    if (d) _dns.add(d);
+                });
+            });
+            const _dnOrder = (d) => { const m = d.match(/^(\d+)(?: (\d)\/(\d))?$/); if (m) return +m[1] + (m[2] ? m[2] / m[3] : 0); const f = d.match(/^(\d)\/(\d)$/); return f ? f[1] / f[2] : 99; };
+            const _row = (label, kind, opts) =>
+                `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
+                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">${label}:</span>` +
+                opts.map(([v, t]) => `<span onclick="app.setValveFilter('${kind}','${v}')" ${_b(_vf(kind) === v)}>${t}</span>`).join('') +
+                `</div>`;
+            _tankFiltersHtml =
+                `<div style="display:flex;gap:6px 20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
+                _row('Бренд', 'brand', [['all', 'Все'], ['STOUT', 'STOUT'], ['ROMMER', 'ROMMER']]) +
+                _row('Диаметр', 'dn', [['all', 'Все'], ...[..._dns].sort((a, b) => _dnOrder(a) - _dnOrder(b)).map(d => [d, d + '"'])]) +
+                _row('Резьба', 'thr', [['all', 'Все'], ['ВР/ВР', 'ВР/ВР'], ['ВР/НР', 'ВР/НР'], ['НР/НР', 'НР/НР']]) +
+                _row('Ручка', 'handle', [['all', 'Все'], ['butterfly', 'Бабочка'], ['lever', 'Рычаг']]) +
+                _row('Форма', 'shape', [['all', 'Все'], ['straight', 'Прямой'], ['angle', 'Угловой']]) +
+                `</div>`;
+        }
+
         const _tsSortField = _isTankItem ? (this._tankSwapSort || 'price') : null;
         const _tsSortOrder = _isTankItem ? (this._tankSwapSortOrder || 'asc') : null;
         const _priceArrow = _tsSortField === 'price' ? (_tsSortOrder === 'asc' ? ' ▲' : ' ▼') : '';
@@ -60599,6 +60630,18 @@ const app = {
                     // ROMMER-позиции без "универсального корпуса" не пишут DN в названии — они все физически DN25
                     const _umRommerDnFallback = { 'RDG-1002-012501': 'DN25', 'RDG-1003-012501': 'DN25', 'RDG-1004-002501': 'DN25' };
                     candidates = candidates.filter(d => (d.name && d.name.includes(_umDnLabel)) || _umRommerDnFallback[d.id] === _umDnLabel);
+                }
+                if (_valveF) {
+                    candidates = candidates.filter(d => {
+                        if (d.id === item.id) return true; // выбранная позиция остаётся в списке
+                        const vi = this._valveInfo(d.name);
+                        const br = String(d.brand || 'STOUT').toUpperCase();
+                        return (!_valveF.brand || _valveF.brand === 'all' || br === _valveF.brand)
+                            && (!_valveF.dn || _valveF.dn === 'all' || vi.dn === _valveF.dn)
+                            && (!_valveF.thr || _valveF.thr === 'all' || vi.thr === _valveF.thr)
+                            && (!_valveF.handle || _valveF.handle === 'all' || vi.handle === _valveF.handle)
+                            && (!_valveF.shape || _valveF.shape === 'all' || vi.shape === _valveF.shape);
+                    });
                 }
                 candidates.forEach(displayAlt => {
                     let id = displayAlt.id;
@@ -77077,6 +77120,21 @@ const app = {
 
     setCtrlBrandFilter: function (val) {
         this.state.ctrlBrandFilter = val;
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
+    /** Признаки шарового крана по названию: диаметр, резьба, ручка, форма. */
+    _valveInfo: function (name) {
+        const n = String(name || '');
+        const dn = (n.match(/(\d+ \d\/\d|\d\/\d|\d+)"/) || [])[1] || null;
+        const thr = (n.match(/(ВР|НР)\/(ВР|НР)/) || [])[0] || null;
+        return {
+            dn, thr,
+            handle: /бабочк/i.test(n) ? 'butterfly' : 'lever',
+            shape: /углов/i.test(n) ? 'angle' : 'straight'
+        };
+    },
+    setValveFilter: function (kind, val) {
+        this.state.valveSwapFilter = Object.assign({}, this.state.valveSwapFilter, { [kind]: val });
         if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
     },
     setCtrlZonesFilter: function (val) {
