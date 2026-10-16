@@ -118,6 +118,43 @@ const Tour = {
             anim: { type: 'press', label: 'Загрузить план' }
         },
         {
+            // План открывается отдельным окном (iframe), подсвечивать внутри него нечего,
+            // поэтому порядок работы в окне рассказываем здесь, на кнопке, которая его
+            // открывает. Названия шагов и кнопок — как в мастере plan_editor.html.
+            key: 'planedit', mob: 'inputs',
+            sel: '#btn_ufhplan',
+            title: 'Как работать в окне плана',
+            text: 'После выбора файла откроется окно с мастером: <b>План → Масштаб → Комнаты → Тёплый пол → Радиаторы → Готово</b>. Масштаб и комнаты находятся сами; не нашлись — «Задать масштаб» (два клика по отрезку известной длины) или «Обвести рамкой».<br>' +
+                '<b>Комнаты:</b> проверьте названия — по ним они попадут в расчёт; лишнюю убирает ✕.<br>' +
+                '<b>Тёплый пол:</b> клик по комнате включает и выключает его; «Без обогрева» — для лестницы или ванны; коллектор тянется мышью, ПКМ или R поворачивает.<br>' +
+                '<b>Радиаторы:</b> «Под окна» ставит их сама, клик рядом с окном добавляет вручную, клик по значку убирает.<br>' +
+                'Кнопка «Готово — в смету» сохраняет план и возвращает в расчёт.',
+            anim: { type: 'plan' }
+        },
+        {
+            // Карточки комнат есть только в режиме «По комнатам». Пока он не включён,
+            // подсвечиваем вкладку режима и говорим, что сделать; шаг не пропадает.
+            key: 'roomcard', mob: 'inputs',
+            sel: () => {
+                const detailed = typeof app !== 'undefined' && app.state && app.state.detailedRooms;
+                if (detailed) {
+                    const c = Array.from(document.querySelectorAll('.zone-card[id^="room_card_"]'))
+                        .find(e => e.offsetParent);
+                    if (c) return c;
+                }
+                return document.getElementById('mode_pro');
+            },
+            title: 'Радиаторы и тёплый пол в комнате',
+            text: function () {
+                const on = typeof app !== 'undefined' && app.state && app.state.detailedRooms;
+                if (!on) {
+                    return 'Включите «По комнатам» — для каждой комнаты появится карточка. В ней отдельно выбирается <b>отопление</b>: радиаторы, тёплый пол или оба сразу. Комнаты берутся с загруженного плана или добавляются кнопкой «+ Добавить комнату».';
+                }
+                return 'Карточка комнаты: площадь, температура, этаж. Блок <b>«Отопление»</b> — кнопки «Радиаторы» и «Тёплый пол»; у тёплого пола появляется поле <b>«Площадь тёплого пола»</b> (пусто — вся комната, иначе площадь без отступов от стен и мебели). В блоке <b>«Окна»</b>: «+ окно», ширина, галочка «без прибора» — по окнам подбираются радиаторы. Тип помещения, наружные стены и сторона света — в «Уточнить». Новая комната — «+ Добавить комнату» под списком.';
+            },
+            anim: { type: 'pick', a: 'Радиаторы', b: 'Тёплый пол' }
+        },
+        {
             key: 'area', mob: 'inputs',
             sel: '#blk_main_area',
             title: 'Площадь дома',
@@ -408,6 +445,7 @@ const Tour = {
         cheaper: 'canUseAnalog',
         design: 'canUseDesign',
         ufhplan: 'canUseUfhPlan',
+        planedit: 'canUseUfhPlan',
         opcost: 'canUseOpCost',
         branding: 'canUseBranding'
     },
@@ -818,6 +856,53 @@ const Tour = {
     HAND: '<svg class="ta-hand-i" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' +
         '<path d="M5 2.5l13.5 7.8-6 1.6-3 6.6z" fill="#fff" stroke="#111827" stroke-width="1.3" stroke-linejoin="round"/></svg>',
 
+    // Ролик «план дома»: комната с окном и радиатором, на полу — улитка тёплого пола.
+    // Трубу не рисуем от руки: раскладку считает тот же projectPlans.floorLoops, что
+    // даёт петли в редакторе плана, на листах и в смете (цвета тоже оттуда: подача
+    // #ff8080, обратка #8080ff, подводка от коллектора тёмно-фиолетовая, углы скруглены
+    // в полшага укладки). projectPlans ещё не загрузился или раскладка не построилась —
+    // ролика нет, шаг остаётся с одним текстом.
+    planReel: function () {
+        const pp = window.projectPlans;
+        if (!pp || typeof pp.floorLoops !== 'function') return '';
+        const zone = [[60, 40], [460, 40], [460, 360], [60, 360]];
+        const f = { pxPerM: 100, coll: { x: 50, y: 368 }, leads: [], zones: [{ type: 'tp', name: 'Комната', pts: zone }] };
+        let L = null;
+        try {
+            const FL = pp.floorLoops(f, 150);
+            L = FL[0] && FL[0].loops && FL[0].loops[0];
+        } catch (e) { L = null; }
+        if (!L || !L.sup || !L.ret) return '';
+        const r = 7.5;   // полшага укладки 150 мм при 100 px/м
+        const path = P => {
+            let d = 'M' + P[0][0] + ',' + P[0][1];
+            for (let j = 1; j < P.length - 1; j++) {
+                const p0 = P[j - 1], p1 = P[j], p2 = P[j + 1];
+                const l1 = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1;
+                const l2 = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) || 1;
+                const r1 = Math.min(r, l1 / 2), r2 = Math.min(r, l2 / 2);
+                d += 'L' + (p1[0] + (p0[0] - p1[0]) / l1 * r1).toFixed(1) + ',' + (p1[1] + (p0[1] - p1[1]) / l1 * r1).toFixed(1) +
+                    'Q' + p1[0] + ',' + p1[1] + ' ' +
+                    (p1[0] + (p2[0] - p1[0]) / l2 * r2).toFixed(1) + ',' + (p1[1] + (p2[1] - p1[1]) / l2 * r2).toFixed(1);
+            }
+            return d + 'L' + P[P.length - 1][0] + ',' + P[P.length - 1][1];
+        };
+        const lead = (L.lead && L.lead.length > 1) ? '<path class="ta-plan-lead" d="' + path(L.lead) + '" pathLength="100"/>' : '';
+        return '<svg class="ta-plan-svg" viewBox="30 10 470 390" aria-hidden="true">' +
+            '<polygon class="ta-plan-zone" points="' + zone.map(p => p.join(',')).join(' ') + '"/>' +
+            '<rect class="ta-plan-wall" x="40" y="20" width="440" height="360"/>' +
+            lead +
+            '<path class="ta-plan-sup" d="' + path(L.sup) + '" pathLength="100"/>' +
+            '<path class="ta-plan-ret" d="' + path(L.ret) + '" pathLength="100"/>' +
+            '<rect class="ta-plan-coll" x="44" y="362" width="12" height="12"/>' +
+            '<line class="ta-plan-win" x1="190" y1="20" x2="330" y2="20"/>' +
+            '<rect class="ta-plan-rad" x="190" y="27" width="140" height="7" rx="2"/></svg>' +
+            '<span class="ta-plan-tag ta-plan-tag-sup">подача</span>' +
+            '<span class="ta-plan-tag ta-plan-tag-ret">обратка</span>' +
+            '<span class="ta-plan-tag ta-plan-tag-rad">радиатор</span>' +
+            '<span class="ta-hand ta-hand-plan">' + this.HAND + '</span>';
+    },
+
     reel: function (a) {
         if (!a || !a.type) return '';
         const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -836,6 +921,9 @@ const Tour = {
         } else if (a.type === 'press') {
             inner = '<span class="ta-btn">' + esc(a.label || '') + '</span>' +
                 '<span class="ta-ring ta-ring-btn"></span>' + hand('ta-hand-press');
+        } else if (a.type === 'plan') {
+            inner = this.planReel();
+            if (!inner) return '';
         } else if (a.type === 'rows') {
             inner = '<div class="ta-rows"><i></i><i></i><i></i><i></i></div>';
         } else {
@@ -1310,6 +1398,49 @@ body.dark-mode .ta-tab { background: #1E1E1E; border-color: #3A3A3A; }
 .ta-ring-btn { left: 50%; top: 50%; animation: ta-ring 2.6s ease-in-out infinite; }
 .ta-hand-press { left: 50%; top: 50%; animation: ta-tap 2.6s ease-in-out infinite; }
 @keyframes ta-press { 0%, 42% { transform: scale(1); } 52% { transform: scale(0.965); } 64%, 100% { transform: scale(1); } }
+
+/* План дома: клик по комнате — по полу ложится улитка (раскладка из projectPlans), под окном встаёт радиатор */
+.tour-anim-plan { height: 124px; }
+.ta-plan-svg { position: absolute; left: 14px; top: 8px; height: 108px; width: 130px; }
+.ta-plan-wall { fill: none; stroke: var(--text-sec); stroke-width: 4; }
+.ta-plan-zone { fill: transparent; animation: ta-plan-zone 6s ease-in-out infinite; }
+.ta-plan-win { stroke: #378ADD; stroke-width: 8; }
+.ta-plan-lead, .ta-plan-sup, .ta-plan-ret { fill: none; stroke-width: 5; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; opacity: 0; }
+.ta-plan-lead { stroke: #4d3f66; animation: ta-plan-draw-a 6s ease-in-out infinite; }
+.ta-plan-sup { stroke: #ff8080; animation: ta-plan-draw-a 6s ease-in-out infinite; }
+.ta-plan-ret { stroke: #8080ff; animation: ta-plan-draw-b 6s ease-in-out infinite; }
+.ta-plan-coll { fill: #4d3f66; opacity: 0; animation: ta-plan-show 6s ease-in-out infinite; }
+.ta-plan-rad { fill: #d22; opacity: 0; animation: ta-plan-rad 6s ease-in-out infinite; }
+.ta-plan-tag { position: absolute; left: 164px; font-size: 12px; font-weight: 700; opacity: 0.3; }
+.ta-plan-tag-sup { top: 22px; color: #ff6b6b; animation: ta-plan-tag-sup 6s ease-in-out infinite; }
+.ta-plan-tag-ret { top: 50px; color: #6b6bff; animation: ta-plan-tag-ret 6s ease-in-out infinite; }
+.ta-plan-tag-rad { top: 78px; color: #d22; animation: ta-plan-tag-rad 6s ease-in-out infinite; }
+.ta-hand-plan { left: 56px; top: 60px; animation: ta-plan-hand 6s ease-in-out infinite; }
+@keyframes ta-plan-hand {
+    0% { transform: translate(60px, 36px); opacity: 0; }
+    8% { opacity: 1; }
+    13%, 17% { transform: translate(0, 0); opacity: 1; }
+    15% { transform: translate(-2px, -2px); }
+    28%, 100% { transform: translate(0, 0); opacity: 0; }
+}
+@keyframes ta-plan-zone { 0%, 15% { fill: transparent; } 20%, 94% { fill: rgba(255, 128, 0, 0.14); } 100% { fill: transparent; } }
+@keyframes ta-plan-show { 0%, 17% { opacity: 0; } 20%, 94% { opacity: 1; } 99%, 100% { opacity: 0; } }
+@keyframes ta-plan-draw-a {
+    0%, 17% { stroke-dashoffset: 100; opacity: 0; }
+    18% { opacity: 1; }
+    50%, 94% { stroke-dashoffset: 0; opacity: 1; }
+    99%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes ta-plan-draw-b {
+    0%, 48% { stroke-dashoffset: 100; opacity: 0; }
+    49% { opacity: 1; }
+    78%, 94% { stroke-dashoffset: 0; opacity: 1; }
+    99%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes ta-plan-rad { 0%, 80% { opacity: 0; } 86%, 94% { opacity: 1; } 99%, 100% { opacity: 0; } }
+@keyframes ta-plan-tag-sup { 0%, 17% { opacity: 0.3; } 24%, 94% { opacity: 1; } 100% { opacity: 0.3; } }
+@keyframes ta-plan-tag-ret { 0%, 48% { opacity: 0.3; } 54%, 94% { opacity: 1; } 100% { opacity: 0.3; } }
+@keyframes ta-plan-tag-rad { 0%, 80% { opacity: 0.3; } 86%, 94% { opacity: 1; } 100% { opacity: 0.3; } }
 
 /* Смета собирается строками */
 .ta-rows { position: absolute; left: 16px; right: 16px; top: 12px; bottom: 12px; display: flex; flex-direction: column; justify-content: space-between; }
