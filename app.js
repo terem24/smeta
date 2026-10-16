@@ -34492,9 +34492,10 @@ const app = {
         };
         const filter = this._successorsFilter || 'new';
         const count = st => rows.filter(r => r.status === st).length;
-        const list = rows.filter(r => r.status === filter);
+        const list = filter === 'none' ? [] : rows.filter(r => r.status === filter);
+        const noneList = this.succNoSuccessor(rows);
 
-        const chip = (id, label) => {
+        const chip =(id, label) => {
             const on = filter === id;
             return `<button class="ad-chip${on ? ' active' : ''}" onclick="app._successorsFilter='${id}'; app.renderAdminMain()">${label} <span class="ad-chip-n">${count(id)}</span></button>`;
         };
@@ -34509,11 +34510,15 @@ const app = {
                             Старые сметы и ссылки клиентам продолжают работать.</div></div>
                     <button class="admin-btn" onclick="app.adminData.successors = null; app.renderAdminMain()">Обновить</button>
                 </div>
+                ${this.succScheduleHtml(rows, esc)}
                 <div class="ad-chips">
                     ${chip('new', 'Новые')}${chip('approved', 'Подтверждённые')}${chip('rejected', 'Отклонённые')}
+                    <button class="ad-chip${filter === 'none' ? ' active' : ''}" onclick="app._successorsFilter='none'; app.renderAdminMain()" title="Позиции «под заказ», для которых сайт не предложил замену">Без замены <span class="ad-chip-n">${noneList.length}</span></button>
                 </div>`;
 
-        if (!list.length) {
+        if (filter === 'none') {
+            h += this.succNoneHtml(noneList, esc, fmt);
+        } else if (!list.length) {
             const empty = this._successorsError
                 ? 'Список недоступен. Похоже, миграция supabase/migrations/20260913_catalog_successors.sql ещё не выполнена.'
                 : (filter === 'new'
@@ -34569,6 +34574,7 @@ const app = {
                         <input id="succ_name_${id}" type="text" value="${esc(nameValue)}" ${r.status === 'new' ? '' : 'disabled'}
                                style="flex:1 1 320px; min-width:0; padding:7px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main); font-size:13px;">
                     </div>
+                    ${r.status === 'new' ? this.succAltsHtml(r.old_article, id, esc, fmt) : ''}
                     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;">
                         ${actions}
                         <span style="margin-left:auto; font-size:11.5px; color:var(--text-sec); display:flex; gap:12px; flex-wrap:wrap;">
@@ -34581,6 +34587,181 @@ const app = {
 
         h += `</div>`;
         wrap.innerHTML = h;
+    },
+
+    // ── Расписание проверки наличия ─────────────────────────────────────────
+    // Лежит в app_settings.successor_schedule; читает его AutoSchedule.py, которому
+    // workflow'ы парсера цен каждый день задают вопрос «запускаться ли сегодня».
+    // Формат и логика — в шапке AutoSchedule.py; succNextRuns повторяет её decide().
+    SUCC_SCHEDULE_KEY: 'successor_schedule',
+    succSchedule: function () {
+        const v = (this.appSettings && this.appSettings[this.SUCC_SCHEDULE_KEY]) || {};
+        return { mode: v.mode === 'every' ? 'every' : 'monthly', every_days: Number(v.every_days) || 7,
+            anchor: v.anchor || '', extra_dates: Array.isArray(v.extra_dates) ? v.extra_dates : [] };
+    },
+    succNextRuns: function (st) {
+        const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        const out = [];
+        const base = new Date(); base.setHours(12, 0, 0, 0);
+        for (let i = 0; i < 400 && out.length < 3; i++) {
+            const d = new Date(base.getTime() + i * 86400000), key = iso(d);
+            let why = '';
+            if (st.extra_dates.indexOf(key) >= 0) why = 'разовая проверка';
+            else if (st.mode === 'every' && st.anchor) {
+                const diff = Math.round((d - new Date(st.anchor + 'T12:00:00')) / 86400000);
+                if (diff >= 0 && diff % st.every_days === 0) why = 'основные бренды';
+                else if (diff - 1 >= 0 && (diff - 1) % st.every_days === 0) why = 'остальные бренды';
+            } else if (st.mode === 'monthly') {
+                if (d.getDate() === 10) why = 'STOUT и ROMMER';
+                else if (d.getDate() === 20) why = 'остальные бренды';
+            }
+            if (why) out.push({ date: d, why: why });
+        }
+        return out;
+    },
+    succScheduleHtml: function (rows, esc) {
+        const st = this.succSchedule();
+        const fmtD = d => d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+        const seen = rows.reduce((m, r) => r.seen_at && r.seen_at > m ? r.seen_at : m, '');
+        const next = this.succNextRuns(st).map(x => `${fmtD(x.date)} <span style="color:var(--text-sec);">(${x.why})</span>`).join(' · ') || 'не запланирована';
+        const inp = 'padding:6px 8px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main); font-size:13px;';
+        const ro = this.isReadOnlyAdmin() ? 'disabled' : '';
+        const today = new Date().toISOString().slice(0, 10);
+        return `<div style="border:1px solid var(--border); border-radius:12px; padding:12px 16px; margin:4px 0 14px; background:var(--surface);">
+            <div style="font-weight:700; color:var(--text-main); margin-bottom:6px;">Когда проверять наличие</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-size:13px; color:var(--text-main);">
+                <select id="succ_mode" ${ro} onchange="app.succScheduleSave()" style="${inp}">
+                    <option value="monthly" ${st.mode === 'monthly' ? 'selected' : ''}>После обновления прайса: 10-го (STOUT, ROMMER) и 20-го (остальные)</option>
+                    <option value="every" ${st.mode === 'every' ? 'selected' : ''}>Каждые N дней</option></select>
+                <span style="${st.mode === 'every' ? '' : 'display:none;'}">каждые
+                    <input id="succ_days" type="number" min="1" max="60" value="${st.every_days}" ${ro} onchange="app.succScheduleSave()" style="${inp} width:64px;"> дн., начиная с
+                    <input id="succ_anchor" type="date" value="${esc(st.anchor || today)}" ${ro} onchange="app.succScheduleSave()" style="${inp}"></span>
+                <span>разовая проверка:
+                    <input id="succ_extra" type="date" min="${today}" ${ro} style="${inp}">
+                    <button class="admin-btn" ${ro} onclick="app.succScheduleAddDate()">Добавить</button></span>
+            </div>
+            ${st.extra_dates.length ? `<div style="font-size:12.5px; margin-top:8px;">Назначены: ${st.extra_dates.map(d => `<span class="ad-chip" style="cursor:default;">${esc(d)} <a href="#" onclick="app.succScheduleDropDate('${esc(d)}'); return false;" title="Убрать">✕</a></span>`).join(' ')}</div>` : ''}
+            <div style="font-size:12.5px; color:var(--text-sec); margin-top:8px; line-height:1.55;">Ближайшие проверки: ${next}.${seen ? ` Парсер в последний раз видел замену ${esc(new Date(seen).toLocaleDateString('ru-RU'))}.` : ''}
+                Проверка — это прогон парсера цен на GitHub (он же читает «Похожие» у позиций «под заказ»), занимает несколько часов. Сразу запустить можно вручную: GitHub → Actions → Weekly Price Parser → Run workflow.</div>
+        </div>`;
+    },
+    succScheduleSave: async function (patch) {
+        if (this.isReadOnlyAdmin()) return;
+        const v = id => (document.getElementById(id) || {}).value;
+        const val = Object.assign({}, this.succSchedule(), patch || {});
+        if (!patch) {
+            val.mode = v('succ_mode') === 'every' ? 'every' : 'monthly';
+            val.every_days = Math.min(60, Math.max(1, Math.round(Number(v('succ_days')) || 7)));
+            val.anchor = v('succ_anchor') || new Date().toISOString().slice(0, 10);
+        }
+        const me = (this._currentUserRow && this._currentUserRow.email) || null;
+        try {
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: this.SUCC_SCHEDULE_KEY, value: val, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            this.appSettings = Object.assign({}, this.appSettings, { [this.SUCC_SCHEDULE_KEY]: val });
+            this.renderAdminMain();
+        } catch (e) {
+            console.warn('[succScheduleSave]', e.message || e);
+            this.alert('Не удалось сохранить расписание: ' + (e.message || e));
+        }
+    },
+    succScheduleAddDate: function () {
+        const d = (document.getElementById('succ_extra') || {}).value;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) { this.alert('Выберите дату.'); return; }
+        const cur = this.succSchedule().extra_dates;
+        if (cur.indexOf(d) < 0) this.succScheduleSave({ extra_dates: cur.concat(d).sort() });
+    },
+    succScheduleDropDate: function (d) {
+        this.succScheduleSave({ extra_dates: this.succSchedule().extra_dates.filter(x => x !== d) });
+    },
+
+    // ── Варианты из каталога ────────────────────────────────────────────────
+    // Позиции той же группы каталога (тот же массив), в наличии, не снятые;
+    // сначала тот же бренд, потом ближе по цене (в пределах ±50 %).
+    succCatalogAlts: function (id) {
+        const old = this.findCatalogItemById(id);
+        if (!old) return { old: null, alts: [] };
+        let arr = null;
+        for (const key in catalog) {
+            const v = catalog[key];
+            if (Array.isArray(v) && v.some(it => it && it.id === old.id)) { arr = v; break; }
+        }
+        const price = Number(old.price) || 0;
+        const alts = (arr || []).filter(it => it && it.id !== old.id && typeof it.price === 'number' && it.price > 0
+            && it.availability !== 'on_order' && !it.discontinued
+            && (!price || (it.price >= price * 0.5 && it.price <= price * 1.5)))
+            .map(it => ({ it: it, same: (it.brand || '') === (old.brand || '') ? 1 : 0, d: price ? Math.abs(it.price - price) / price : 0 }))
+            .sort((a, b) => (b.same - a.same) || (a.d - b.d)).slice(0, 3).map(x => x.it);
+        return { old: old, alts: alts };
+    },
+    succAltsHtml: function (oldId, rowId, esc, fmt) {
+        const a = this.succCatalogAlts(oldId);
+        if (!a.old) return '';
+        const body = a.alts.length ? a.alts.map(it => `<div style="display:flex; gap:10px; align-items:center; padding:4px 0; font-size:12.5px;">
+                <span style="flex:1; min-width:0;"><b>${esc(it.article || it.id)}</b> ${esc(it.name)} <span style="color:var(--text-sec);">${esc(it.brand || '')}</span></span>
+                <span style="white-space:nowrap;">${fmt(it.price)} ₽</span>
+                <button class="admin-btn" onclick="app.succUseAlt('${esc(a.old.id)}', '${esc(it.id)}', ${rowId == null ? 'null' : Number(rowId)})">Заменить на эту</button></div>`).join('')
+            : '<span style="font-size:12.5px; color:var(--text-sec);">В той же группе каталога подходящих в наличии нет.</span>';
+        return `<div style="margin-top:12px; padding-top:10px; border-top:1px dashed var(--border);">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-sec); margin-bottom:2px;">Или из каталога калькулятора</div>${body}</div>`;
+    },
+    succUseAlt: async function (oldId, altId, rowId) {
+        const old = this.findCatalogItemById(oldId), alt = this.findCatalogItemById(altId);
+        if (!old || !alt) return;
+        if (!(await this.confirm('Заменить «' + old.name + '» на «' + alt.name + '»? Проверьте, что концы (резьба, размер) те же: смета стыкует трубы по артикулу старой позиции.'))) return;
+        const manual = { name: String(alt.name).slice(0, 300), price: Number(alt.price), article: String(alt.article || alt.id).slice(0, 60),
+            source: 'Каталог калькулятора, арт. ' + (alt.article || alt.id), photo: '' };
+        if (!(await this.saveOrderSwap(old.id, { status: 'swap', manual: manual }))) return;
+        // Замена с сайта по этой позиции больше не нужна, иначе перенос в каталог перепишет её поверх
+        const row = rowId == null ? null : (this.adminData.successors || []).find(r => Number(r.id) === rowId);
+        if (row) {
+            const patch = { status: 'rejected', decided_at: new Date().toISOString(), decided_by: (this._currentUserRow && this._currentUserRow.email) || null };
+            try {
+                const { data, error } = await supabaseClient.from('catalog_successors').update(patch).eq('id', rowId).select('id');
+                if (!error && data && data.length) Object.assign(row, patch);
+            } catch (e) { console.warn('[succUseAlt]', e.message || e); }
+        }
+        this.renderAdminMain();
+    },
+
+    // Позиции «под заказ», у которых нет ни одной пары в очереди и ни одного решения
+    succNoSuccessor: function (rows) {
+        const has = new Set();
+        rows.forEach(r => has.add(r.old_article));
+        const out = [], seen = new Set();
+        for (const key in catalog) {
+            const v = catalog[key];
+            if (!Array.isArray(v)) continue;
+            v.forEach(it => {
+                if (!it || typeof it.id !== 'string' || seen.has(it.id) || it.availability !== 'on_order' || it.discontinued) return;
+                seen.add(it.id);
+                if (has.has(it.id) || (it.article && has.has(it.article))) return;
+                const sw = this.orderSwaps()[it.id];
+                if (sw && (sw.status === 'swap' || ((sw.status === 'keep' || sw.status === 'gone') && sw.month === this.orderMonth()))) return;
+                out.push(it);
+            });
+        }
+        return out;
+    },
+    succNoneHtml: function (list, esc, fmt) {
+        let h = `<div class="ad-sub" style="margin:0 0 10px; max-width:900px; line-height:1.55;">Позиции каталога «под заказ», для которых сайт ТЕРЕМ не предложил замену. Выберите вариант из каталога, отметьте «снято» или оставьте.</div>`;
+        if (!list.length) return h + `<div style="padding:30px; text-align:center; color:var(--text-sec); background:var(--surface-light); border-radius:10px;">Все позиции «под заказ» разобраны.</div>`;
+        list.slice(0, 60).forEach(it => {
+            h += `<div style="border:1px solid var(--border); border-radius:12px; padding:12px 16px; margin-bottom:10px; background:var(--surface);">
+                <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:baseline;">
+                    <b>${esc(it.article || it.id)}</b><span style="font-size:13px;">${esc(it.name)}</span>
+                    <span style="font-size:12px; color:var(--text-sec);">${fmt(it.price)} ₽ · под заказ</span></div>
+                ${this.succAltsHtml(it.id, null, esc, fmt)}
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                    <button class="admin-btn" onclick="app.succGone('${esc(it.id)}', 'gone')">Снято, замены нет</button>
+                    <button class="admin-btn" onclick="app.succGone('${esc(it.id)}', 'keep')">Оставить под заказ (до конца месяца)</button></div></div>`;
+        });
+        if (list.length > 60) h += `<div class="ad-sub">Показаны первые 60 из ${list.length}.</div>`;
+        return h;
+    },
+    succGone: async function (id, status) {
+        if (await this.saveOrderSwap(id, { status: status })) this.renderAdminMain();
     },
 
     /**
