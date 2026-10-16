@@ -37944,6 +37944,7 @@ const app = {
         const SEC = '2. Обвязка котельной';
         const kinds = Object.keys(this._selfKinds || {}).filter(k => this._selfKinds[k]);
         const counts = Object.assign({}, this._selfCounts);
+        const loads = Object.assign({}, this._selfLoads);
         const snapshot = JSON.parse(JSON.stringify(this.state));
         const out = {};
         this._cheapComparing = true;
@@ -37958,7 +37959,8 @@ const app = {
                 const total = items.reduce((a, it) => a + (it.price || 0) * (it.q || 1), 0);
                 const works = (this.currentWorksList || []).filter(w => /^1\.2[\s.]/.test(String(w.group || '')))
                     .reduce((a, w) => a + (w.sum || 0), 0);
-                const r = { total: Math.round(total), works: Math.round(works), grp: {}, parts: {} };
+                const r = { total: Math.round(total), works: Math.round(works), grp: {}, parts: {}, fit: {}, stock: {} };
+                const orderN = it => (it && it.availability === 'on_order') ? 1 : 0;
                 kinds.forEach(k => {
                     const n = counts[k] || 1;
                     if (v.ready) {
@@ -37968,11 +37970,41 @@ const app = {
                         r.grp[k] = Math.round(this.readyGroupPrice(k));
                         this.state.brandMode = bm;
                         r.parts[k] = 4;
+                        // Позиции готового узла и их наличие (у ROMMER — по парам .rommer), нагрузка против паспортной мощности группы.
+                        const alt = it => it ? ((v.rom && it.rommer && !Array.isArray(it.rommer)) ? it.rommer : it) : null;
+                        const kk = k === 'dhw' ? 'direct' : k;
+                        const g0 = alt({ direct: catalog.groups_dn25[0], thermo: catalog.groups_dn25[1], servo: catalog.groups_dn25[2] }[kk]);
+                        const pump0 = alt(catalog.pumps_dn25.find(pp => pp.type === this.state.pumpType) || catalog.pumps_dn25[0]);
+                        const node0 = alt((catalog.gbm_nodes || [])[0]);
+                        const servo0 = kk === 'servo' ? alt(this.state.servoType === 'sensor' ? catalog.servo_rotary_sensor : catalog.servo_rotary_std) : null;
+                        r.stock[k] = orderN(g0) + orderN(pump0) + 2 * orderN(node0) + orderN(servo0);
+                        const ld0 = loads[k];
+                        if (ld0 && ld0.kw > 0 && ld0.groups > 0 && g0) {
+                            const cap = this.groupCapKw(g0, kk === 'direct' ? (k === 'dhw' ? 'dhw' : 'rad') : 'ufh');
+                            const per = ld0.kw / ld0.groups;
+                            if (cap > 0) r.fit[k] = { ok: per <= cap, txt: Math.round(per / cap * 100) + ' % паспортной мощности' };
+                        }
                     } else {
                         const title = this.selfGroupTitle(k === 'dhw' ? 'direct' : k, k === 'dhw' ? 'dhw' : undefined);
                         const rows = items.filter(it => it.group === title);
                         r.grp[k] = Math.round(rows.reduce((a, it) => a + (it.price || 0) * (it.q || 1), 0) / n);
                         r.parts[k] = Math.round(rows.reduce((a, it) => a + (it.q || 1), 0) / n);
+                        r.stock[k] = rows.filter(it => it.availability === 'on_order').length;
+                        // Нагрузка на самосборную: скорость в трубе, расход насоса 25/60 и потери на смесителе (те же пределы, что в плашке подраздела).
+                        const ld = loads[k];
+                        if (ld && ld.kw > 0 && ld.groups > 0) {
+                            const G = ld.kw / ld.groups / (1.163 * ld.dt);
+                            const big = this.selfKitSize(ld.kw, ld.groups, ld.dt) === '1';
+                            const dIn = big ? 0.0272 : 0.0216;
+                            const vel = G / 3600 / (Math.PI * dIn * dIn / 4);
+                            const kv = k === 'thermo' ? 1.6 : (k === 'servo' ? (big ? 8 : 6) : 0);
+                            const dp = kv ? Math.pow(G / kv, 2) : 0;
+                            const bad = [];
+                            if (vel > 1.0) bad.push('скорость ' + vel.toFixed(2).replace('.', ',') + ' м/с');
+                            if (G > 3.0) bad.push('расход выше 3 м³/ч');
+                            if (dp > 0.6) bad.push('смеситель теряет ' + dp.toFixed(2).replace('.', ',') + ' бар');
+                            r.fit[k] = { ok: !bad.length, txt: bad.length ? bad.join('; ') : 'скорость ' + vel.toFixed(2).replace('.', ',') + ' м/с' + (big ? ', комплект 1″' : '') };
+                        }
                     }
                 });
                 out[v.key] = r;
@@ -38028,15 +38060,18 @@ const app = {
         const rows = this.SG_VARIANTS.map(v => {
             const d = data[v.key];
             if (!d) return '';
+            const fit = d.fit[kind];
             return `<tr class="${v.key === cur ? 'sg-cmp-cur' : ''}"><td class="sg-cmp-n"><b>${v.label}</b><small>${v.sub}</small></td>` +
                 `<td>${f(d.grp[kind] || 0)}<br>${pct(d.grp[kind], base.grp[kind])}</td>` +
                 `<td>${f(d.total)}<br>${pct(d.total, base.total)}</td>` +
                 (showW ? `<td>${f(d.works)}<br>${pct(d.works, base.works)}</td>` : '') +
+                `<td>${fit ? `<span class="${fit.ok ? 'sg-cmp-dn' : 'sg-cmp-bad'}">${fit.ok ? 'тянет' : 'не тянет'}</span><br><small>${fit.txt}</small>` : '—'}</td>` +
+                `<td>${d.stock[kind] ? `<span class="sg-cmp-up">${d.stock[kind]} поз.</span>` : '<span class="sg-cmp-dn">всё в наличии</span>'}</td>` +
                 `<td>${d.parts[kind] || '—'}</td><td>${tool[v.key]}</td></tr>`;
         }).join('');
         const n = (this._selfCounts || {})[kind] || 1;
-        return `<table class="sg-cmp-tbl"><thead><tr><th>Вариант</th><th>Одна группа</th><th>Вся обвязка котельной</th>${showW ? '<th>Монтаж обвязки</th>' : ''}<th>Деталей</th><th>Инструмент</th></tr></thead><tbody>${rows}</tbody></table>` +
-            `<div class="sg-cmp-note">Процент — к готовой STOUT. Групп этого вида в смете: ${n}. «Вся обвязка» — раздел 2 целиком (котёл, бойлер, насосы, гидравлика, трубы); «Деталей» — штук в одной группе (у готовой: группа, насос и два узла МУ-25М). Стальной коллектор готовой группы красится и работает без пресса; у самосборных коллектор — труба выбранной системы. Текущий вариант выделен.</div>`;
+        return `<table class="sg-cmp-tbl"><thead><tr><th>Вариант</th><th>Одна группа</th><th>Вся обвязка котельной</th>${showW ? '<th>Монтаж обвязки</th>' : ''}<th>Нагрузка</th><th>Под заказ</th><th>Деталей</th><th>Инструмент</th></tr></thead><tbody>${rows}</tbody></table>` +
+            `<div class="sg-cmp-note">Процент — к готовой STOUT. Групп этого вида в смете: ${n}. «Вся обвязка» — раздел 2 целиком (котёл, бойлер, насосы, гидравлика, трубы); «Нагрузка» — тянет ли группа расчётную нагрузку контура (у самосборной: скорость в трубе до 1,0 м/с, расход насоса до 3 м³/ч, потери на смесителе; у готовой: паспортная мощность); «Под заказ» — сколько позиций узла нет в наличии у ТЕРЕМ; «Деталей» — штук в одной группе (у готовой: группа, насос и два узла МУ-25М). Стальной коллектор готовой группы красится и работает без пресса; у самосборных коллектор — труба выбранной системы. Текущий вариант выделен.</div>`;
     },
     // Подсветка соответствия «подпись на схеме ↔ строка сметы». Слушатели на документе, ставятся один раз.
     sgInit: function () {
