@@ -138,6 +138,8 @@
 .hc-trunk-form select, .hc-trunk-form input { font: inherit; font-size: 11px; padding: 2px 4px; border: 1px solid var(--border, #D1D5DB); border-radius: 6px; background: transparent; color: inherit; }
 .hc-trunk-form input { width: 56px; }
 .hc-trunk-form .hc-btn { margin: 0; }
+.hc-manual { margin-top: 6px; font-size: 10.5px; }
+.hc-manual > summary { cursor: pointer; color: var(--text-sec, #6B7280); text-decoration: underline dotted; }
 .hc-preview { margin-top: 8px; padding: 8px 10px; border: 1px solid var(--border, #E5E7EB); border-radius: 10px; font-size: 11px; }
 .hc-preview-t { font-weight: 700; margin-bottom: 4px; }
 .hc-pv-item { padding: 5px 0; border-top: 1px solid var(--border, #E5E7EB); }
