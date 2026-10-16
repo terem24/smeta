@@ -1248,8 +1248,24 @@
     }
     o.push(chev(mx0 - 12, ys, 'right') + chev(mx0 - 12, yr, 'left'));
     // площадка снаружи
-    o.push(rrect(mx0 - 8, yLoop + 5, mx1 - mx0 + 14, 8, 0.4, { f: '#E4E7EB', c: '#000', w: 0.2 }));
-    for (var hh = mx0 - 6; hh < mx1 + 4; hh += 7) o.push(ln(hh, yLoop + 13, hh + 4, yLoop + 6, { c: '#555', w: 0.1 }));
+    // Сечение пирога площадки. Толщины слоёв расчётом не заданы, поэтому они
+    // нарисованы условно (без масштаба) и не подписаны: на листе — только порядок
+    // слоёв и шаг укладки трубы, который берётся из расчёта.
+    var sx0 = mx0 - 8, sw = mx1 - mx0 + 14, sy = yLoop + 5, yy = sy;
+    var PIE = [['Покрытие', 4.5, '#CFD4DA'], ['Бетон с трубой', 11.5, '#B9BEC4'], ['Песок', 6, '#E8D9A8'], ['Основание', 5, '#A9AFB6']];
+    PIE.forEach(function (l) {
+      o.push(rrect(sx0, yy, sw, l[1], 0, { f: l[2], c: '#000', w: 0.2 }));
+      o.push(txt(sx0 + 2, yy + l[1] / 2 + 0.8, l[0], { size: SZ.dia }));
+      yy += l[1];
+    });
+    var pcy = sy + 4.5 + 11.5 / 2, px0 = sx0 + 52, pStep = 14, dimY = yy + 3.5;
+    for (var pk = 0; pk < 5; pk++) o.push(circle(px0 + pk * pStep, pcy, 2.2, { f: COL.snowS, c: '#000', w: 0.2 }));
+    o.push(ln(px0, pcy + 2.2, px0, dimY + 1.5, { w: 0.15 }) + ln(px0 + pStep, pcy + 2.2, px0 + pStep, dimY + 1.5, { w: 0.15 }) +
+      ln(px0, dimY, px0 + pStep, dimY, { w: 0.25 }) +
+      ln(px0 - 1, dimY + 1, px0 + 1, dimY - 1, { w: 0.3 }) + ln(px0 + pStep - 1, dimY + 1, px0 + pStep + 1, dimY - 1, { w: 0.3 }));
+    o.push(txt(px0 + pStep / 2, dimY + 4.6, 'шаг ' + sn.step + ' мм', { size: SZ.dia, anchor: 'middle' }));
+    o.push(txt(sx0, dimY + 4.6, 'труба ' + sn.dia, { size: SZ.dia }));
+    o.push(txt(sx0, dimY + 8.2, 'сечение площадки, слои без масштаба', { size: SZ.dia }));
 
     // ── номера и подписи блоков ─────────────────────────────────────────
     o.push(call('t12', 16, 36, 16, ys - 1.8));
@@ -1263,9 +1279,8 @@
     o.push(bracket('g2', xg2, xg2e, 144, 'Насосная группа вторичного контура'));
     o.push(circle(mx0 - 4, 28, 3, { f: '#fff', c: '#000', w: 0.3 }) + txt(mx0 - 4, 29.15, String(N('col')), { size: 3.3, anchor: 'middle' }) +
       txt(mx0 + 0.5, 29.4, 'Коллектор снеготаяния', { size: SZ.txt }));
-    o.push(circle(mx0 - 4, yLoop + 20, 3, { f: '#fff', c: '#000', w: 0.3 }) + txt(mx0 - 4, yLoop + 21.15, String(N('loops')), { size: 3.3, anchor: 'middle' }) +
-      txt(mx0 + 0.5, yLoop + 21.4, 'Петли на площадке: ' + loopsNode + (loopsNode > nDraw ? ' (показано ' + nDraw + ')' : ''), { size: SZ.txt }));
-    o.push(txt(mx0 - 8, yLoop + 27.5, sn.dia + ' · шаг ' + sn.step + ' мм', { size: SZ.dia }));
+    o.push(circle(mx0 - 4, yLoop + 50, 3, { f: '#fff', c: '#000', w: 0.3 }) + txt(mx0 - 4, yLoop + 51.15, String(N('loops')), { size: 3.3, anchor: 'middle' }) +
+      txt(mx0 + 0.5, yLoop + 51.4, 'Петли на площадке: ' + loopsNode + (loopsNode > nDraw ? ' (показано ' + nDraw + ')' : ''), { size: SZ.txt }));
     o.push(txt(4, 164, 'П — первичный контур (вода котельной), В — вторичный контур (пропиленгликоль ' + GL + ' %)', { size: SZ.dia }));
 
     // ── таблица «что и куда» ────────────────────────────────────────────
@@ -1294,7 +1309,7 @@
       col: ['Коллектор снеготаяния', 'Подача вторичного контура — к верхней гребёнке с расходомерами, обратка — к нижней. На петлю: колба расходомера на подаче, клапан с синим колпачком на обратке; расход каждой петли выставляется по колбе', 'по паспорту коллектора'],
       loops: ['Петли на площадке', 'Подающий конец петли — к выходу расходомера, обратный — к клапану обратной гребёнки. Петель на узле: ' + loopsNode + (NODES > 1 ? ' из ' + sn.loops : '') + '. Раствор пропиленгликоля ' + GL + ' %', sn.dia + ', шаг ' + sn.step + ' мм']
     };
-    var ty0 = yLoop + 36;
+    var ty0 = yLoop + 62;
     var cA = 12, cB = 22, cC = 100, cD = 326, cE = 408, LH = 4.2;
     o.push(txt(cA, ty0 - 2, 'Что и куда подключать', { size: SZ.head }));
     var y = ty0 + 2;
