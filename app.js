@@ -38210,7 +38210,8 @@ const app = {
     },
     // Таблица вариантов в готовом режиме: самосборных листов нет, но выбрать вариант и вернуться можно.
     renderGroupCompareOnly: function () {
-        if (!this.isPro() || !this.needCollector) return '';
+        // Таблица только в самосборном режиме — вместе с листами самосборных групп.
+        if (!this.isPro() || !this.needCollector || !this.selfGroups()) return '';
         this.sgInit();
         return `<div class="sg-cmp-solo no-print" data-sg-cmp="direct">${this.pumpGroupCompareHtml('direct')}</div>`;
     },
@@ -38255,7 +38256,6 @@ const app = {
         const rows = this.SG_VARIANTS.map(v => {
             const d = data[v.key];
             if (!d) return '';
-            const fit = d.fit[kind];
             const st = d.stock[kind] || [];
             const esc = t => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
             const stockCell = st.length
@@ -38266,11 +38266,10 @@ const app = {
                 `<td>${f(d.grp[kind] || 0)}<br>${pct(d.grp[kind], base.grp[kind])}</td>` +
                 `<td>${f(d.total)}<br>${pct(d.total, base.total)}</td>` +
                 (showW ? `<td>${f(d.works)}<br>${pct(d.works, base.works)}</td>` : '') +
-                `<td>${fit ? `<span class="${fit.ok ? 'sg-cmp-dn' : 'sg-cmp-bad'}">${fit.ok ? 'тянет' : 'не тянет'}</span><br><small>${fit.txt}</small>` : '—'}</td>` +
                 `<td>${stockCell}</td>` +
                 `<td>${d.parts[kind] || '—'}</td></tr>`;
         }).join('');
-        return `<table class="sg-cmp-tbl"><thead><tr><th>Вариант</th><th>Группа</th><th>Вся обвязка</th>${showW ? '<th>Монтаж</th>' : ''}<th>Нагрузка</th><th>Под заказ</th><th>Деталей</th></tr></thead><tbody>${rows}</tbody></table>` +
+        return `<table class="sg-cmp-tbl"><thead><tr><th>Вариант</th><th>Группа</th><th>Вся обвязка</th>${showW ? '<th>Монтаж</th>' : ''}<th>Под заказ</th><th>Деталей</th></tr></thead><tbody>${rows}</tbody></table>` +
             `<div class="sg-cmp-note">Нажмите вариант, чтобы применить. Проценты — к готовой STOUT.</div>`;
     },
     // Выбор варианта из таблицы: переключает группы, систему труб и бренд раздела 2 — как вручную в настройках.

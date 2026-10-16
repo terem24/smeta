@@ -3330,6 +3330,12 @@ body.html2pdf-printing .expand-locs-btn {
     position: static;
 }
 
+/* Точка отсчёта для подсказки — строка, а не прокручиваемая панель: строка должна быть
+   позиционирована, иначе подсказка уходила к панели и срезалась её прокруткой (за верхний край). */
+.label-row:has(.tip-panel-wrap) {
+    position: relative;
+}
+
 .tooltip-content.tip-panel {
     min-width: 0;
     left: 0;
