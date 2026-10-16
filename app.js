@@ -37832,6 +37832,9 @@ const app = {
             ["Сгон прямой 3 /4\" ВР-НР",1301,1119,1456,1138,1115,1128]
         ] }
     },
+    // Монтаж самосборного узла — на 30 % дороже готового (6 500 ₽ за группу и за коллектор-гидрострелку): собирать из деталей
+    // дольше, а соединения (пресс, сварка) входят в эту надбавку, отдельной строкой их не считаем.
+    SELF_WORK_UNIT: { group: Math.round(6500 * 1.3), collector: Math.round(6500 * 1.3) },
     // Подраздел сметы каждого вида группы (без номера) — по нему подпись схемы ищет свои строки.
     SELF_KIND_TITLE: { direct: 'Самосборная группа: прямая', thermo: 'Самосборная группа: термостатическая', servo: 'Самосборная группа: под сервопривод', dhw: 'Самосборная группа: загрузка бойлера' },
     // Сверка подписей схемы со сметой: [подпись, какие артикулы сметы её закрывают, искать во всей котельной?].
@@ -89461,7 +89464,7 @@ const app = {
         // поэтому по имени её не находит: считаем по числу групп, которые собрал подбор.
         if (this.selfGroups()) {
             const nDhw = (this._selfCounts || {}).dhw || 0;
-            if (nDhw > 0) addToWorks("Сборка самосборной группы из деталей", nDhw, 6000, "компл", obvyazkaGroup);
+            if (nDhw > 0) addToWorks("Сборка самосборной группы из деталей", nDhw, this.SELF_WORK_UNIT.group, "компл", obvyazkaGroup);
         } else if (tankPumpGroupCount > 0) {
             addToWorks("Монтаж насосной группы", tankPumpGroupCount, 6500, "шт", obvyazkaGroup);
         }
@@ -89615,27 +89618,18 @@ const app = {
         if (needCollector) {
             addToWorks("Монтаж коллектора и гидрострелки", 1, 12000, "шт", obvyazkaGroup);
             if (this.selfGroups()) {
-                // Самосборная группа собирается из деталей: работы больше, чем на готовую (6 500 ₽).
+                // Самосборная группа собирается из деталей: работы на 30 % больше готовой (6 500 ₽), соединения входят в эту ставку.
                 const sc = this._selfCounts || {};
                 const nSelf = (sc.direct || 0) + (sc.thermo || 0) + (sc.servo || 0);
-                if (nSelf > 0) addToWorks("Сборка самосборной группы из деталей", nSelf, 6000, "компл", obvyazkaGroup);
+                if (nSelf > 0) addToWorks("Сборка самосборной группы из деталей", nSelf, this.SELF_WORK_UNIT.group, "компл", obvyazkaGroup);
+                // Самосборный коллектор из трубы — та же надбавка к монтажу готового коллектора-гидрострелки (6 500 ₽).
+                addToWorks("Сборка самосборного коллектора из трубы", 1, this.SELF_WORK_UNIT.collector, "компл", obvyazkaGroup);
             } else {
                 addToWorks("Монтаж насосной группы", rQ + tQ, 6500, "шт", obvyazkaGroup);
             }
         } else if (hasTp && tpArea > 0) {
             addToWorks("Сборка и установка узла подмеса", 1, 6000, "шт", obvyazkaGroup);
             addToWorks("Установка насоса", 1, 3000, "шт", obvyazkaGroup);
-        }
-        // Соединения самосборных групп: пресс на нержавейке, сварка на ППР — по числу соединений в комплектах.
-        if (this.selfGroups()) {
-            const joints = this.currentEquipmentList.filter(x => /^2\.4/.test(String(x.group || '')) &&
-                /^(RSS|SSS)-(1004|1013|1014|1021|1022|2004|2013|2014|2021|2022)-|^(SZI|SZE|SKO|STK)/.test(String(x.originalId || x.id || '')))
-                .reduce((s, x) => s + (x.q || 0), 0);
-            if (joints > 0) {
-                const ppr = this.boilerPipeSystem() === 'ppr';
-                addToWorks(ppr ? "Сварка соединений PP-RCT самосборных групп" : "Пресс-соединения самосборных групп",
-                    joints, ppr ? 350 : 400, "соед", obvyazkaGroup);
-            }
         }
 
         // 4. Трассы (Магистрали) (Обвязка котельной)
