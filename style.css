@@ -15281,6 +15281,7 @@ body.dark-mode #hyd_card .hyd-card__p {
 .pl-act svg .pl-hl { filter: drop-shadow(0 0 3px rgba(255, 170, 0, .95)); }
 .ufh-plan-table tr[data-pl] { cursor: default; }
 .ufh-plan-table tr.pl-hl > td { background: rgba(255, 193, 7, .30); }
+.ufh-plan-table tr.ufh-grp.pl-hl > td { background: rgba(255, 193, 7, .30); }
 body.dark-mode .ufh-plan-table tr.pl-hl > td { background: rgba(255, 193, 7, .22); }
 @media print {
     .pl-act svg [data-pl]:not(.pl-hl) { opacity: 1; }
