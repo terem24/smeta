@@ -351,6 +351,10 @@
   // Подводки — вдоль стен: клетка зоны дальше LEAD_WALL_CELLS от стены дороже
   // на COST_MID (проектировщики Galf ведут пучок у стен и по коридорам).
   var LEAD_WALL_CELLS = 3, COST_MID = 2;
+  // Стена (клетка вне комнат между зонами) для подводки — не проход: контур зоны идёт по оси стены,
+  // и трасса по краю ложилась внутрь стены (15.10.2026). Есть двери — стену переходят только в проёме.
+  // COST_NEAR_WALL — надбавка за клетку у самой стены внутри комнаты (0, 1, 2 клетки: 3×, 2×, 1×).
+  var COST_WALL = 30, COST_WALL_DOOR = 300, COST_NEAR_WALL = 3;
 
   /**
    * Предел длины петли, м. Считает его смета (app.ufhLoopMax) — там известны и
@@ -1779,14 +1783,31 @@
       }
       g.zb = zb;
     }
+    var doorsG = ((f.geom && f.geom.doors) || []).filter(function (d) { return d && isFinite(d.x) && isFinite(d.y) && d.w > 0; });
+    var wallCost = doorsG.length ? COST_WALL_DOOR : COST_WALL;
     for (k = 0; k < N; k++) {
       var kx = k % g.W, ky = Math.floor(k / g.W);
       var outside = kx < zb[0] || ky < zb[1] || kx > zb[2] || ky > zb[3];
       cost[k] = slabOf[k] >= 0 ? (edge[k] ? COST_EDGE : COST_IN) :
-        (g.cold[k] || outside ? COST_IN : (own[k] ? COST_FREE : COST_OUT));
-      // середина комнаты дороже: подводки идут вдоль стен, как в проектах
-      if (own[k] && g.wallD && g.wallD[k] > LEAD_WALL_CELLS) cost[k] += COST_MID;
+        (g.cold[k] || outside ? COST_IN : (own[k] ? COST_FREE : wallCost));
+      // середина комнаты дороже: подводки идут вдоль стен, как в проектах, но не по самой стене
+      if (own[k] && g.wallD) {
+        if (g.wallD[k] > LEAD_WALL_CELLS) cost[k] += COST_MID;
+        else if (g.wallD[k] < 3 && slabOf[k] < 0) cost[k] += (3 - g.wallD[k]) * COST_NEAR_WALL;
+      }
     }
+    // проём двери: полоса в ширину полотна (минус косяки) и по 0,35 м в обе стороны — сквозь стену
+    doorsG.forEach(function (d) {
+      var da = (d.ang || 0) * Math.PI / 180, ux = Math.cos(da), uy = Math.sin(da);
+      var hu = d.w * 0.4, hv = 0.35 * g.ppm, rr = Math.abs(ux) * hu + Math.abs(uy) * hv, rv = Math.abs(uy) * hu + Math.abs(ux) * hv;
+      var c0 = cellAt(g, [d.x - rr, d.y - rv]), c1 = cellAt(g, [d.x + rr, d.y + rv]);
+      for (var y = Math.floor(c0 / g.W); y <= Math.floor(c1 / g.W); y++) {
+        for (var x = c0 % g.W; x <= c1 % g.W; x++) {
+          var q = y * g.W + x, cp = cellXY(g, q), du = (cp[0] - d.x) * ux + (cp[1] - d.y) * uy, dv = -(cp[0] - d.x) * uy + (cp[1] - d.y) * ux;
+          if (Math.abs(du) <= hu && Math.abs(dv) <= hv && slabOf[q] < 0 && !g.cold[q] && cost[q] > 3) cost[q] = 3;
+        }
+      }
+    });
     // нарисованные монтажником подводки — желательная трасса
     usableLeads(f).forEach(function (L) {
       var P = L.pts || [];
@@ -2665,7 +2686,9 @@
   var RAD_IN_M = 0.12;
   // Цена клетки для трассы радиаторов: стена дорогая — переходить её трасса
   // будет там, где комнаты смыкаются (в проёме), а не где придётся.
-  var RCOST_WALL = 20, RCOST_MID = 2, RCOST_TP = 25, RCOST_COLD = 40, RCOST_OUT = 400;
+  // RCOST_EDGE — надбавка за клетку у самой стены (на 0, 1, 2 клетки от неё: 3×, 2×, 1× шага):
+  // контур зоны идёт по оси стены, и трасса по краю ложилась на стену и окна (15.10.2026).
+  var RCOST_WALL = 30, RCOST_WALL_DOOR = 300, RCOST_MID = 2, RCOST_EDGE = 4, RCOST_TP = 25, RCOST_COLD = 40, RCOST_OUT = 400;
   function radRoutes(f, stepMm, tee, connMap) {
     var rads = (f.rads || []).filter(function (r) { return r && isFinite(r.x) && isFinite(r.y); });
     if (!rads.length || !f.pxPerM) return null;
@@ -2706,11 +2729,28 @@
       });
     }
     var wd = wallDist(g, own), cost = new Float32Array(N);
+    // Двери — из геометрии редактора (f.geom.doors). Есть двери — стену трасса переходит
+    // только в проёме: проход вне двери стоит на порядок дороже. Нет данных о дверях — как раньше.
+    var doorsG = ((f.geom && f.geom.doors) || []).filter(function (d) { return d && isFinite(d.x) && isFinite(d.y) && d.w > 0; });
+    var wallCost = doorsG.length ? RCOST_WALL_DOOR : RCOST_WALL;
     for (k = 0; k < N; k++) {
       cost[k] = cold[k] ? RCOST_COLD : own[k]
-        ? 1 + (wd[k] > 2 ? RCOST_MID : 0) + (tpM[k] ? RCOST_TP : 0)
-        : (near[k] > 3 ? RCOST_OUT : RCOST_WALL);
+        ? 1 + (wd[k] > 2 ? RCOST_MID : (3 - wd[k]) * RCOST_EDGE) + (tpM[k] ? RCOST_TP : 0)
+        : (near[k] > 3 ? RCOST_OUT : wallCost);
     }
+    // Проём двери: полоса вдоль стены шириной в полотно (минус косяки) и по 0,35 м в обе стороны —
+    // сквозь толщину стены. Клетки проёма идут по цене обычной клетки комнаты.
+    doorsG.forEach(function (d) {
+      var da = (d.ang || 0) * Math.PI / 180, ux = Math.cos(da), uy = Math.sin(da);
+      var hu = d.w * 0.4, hv = 0.35 * ppm, rr = Math.abs(ux) * hu + Math.abs(uy) * hv, rv = Math.abs(uy) * hu + Math.abs(ux) * hv;
+      var c0 = cellAt(g, [d.x - rr, d.y - rv]), c1 = cellAt(g, [d.x + rr, d.y + rv]);
+      for (var y = Math.floor(c0 / g.W); y <= Math.floor(c1 / g.W); y++) {
+        for (var x = c0 % g.W; x <= c1 % g.W; x++) {
+          var q = y * g.W + x, cp = cellXY(g, q), du = (cp[0] - d.x) * ux + (cp[1] - d.y) * uy, dv = -(cp[0] - d.x) * uy + (cp[1] - d.y) * ux;
+          if (Math.abs(du) <= hu && Math.abs(dv) <= hv && !cold[q] && cost[q] > 3) cost[q] = 3;
+        }
+      }
+    });
     // Точка подключения прибора — по его модели (radConnSide): по умолчанию
     // правое нижнее, как у радиаторов сметы; «правое» — если стоять в комнате
     // лицом к прибору. Раньше трасса шла к краю, ближнему к коллектору, и на
@@ -5218,7 +5258,9 @@
   function ufhView(f, stepMm, rooms, opts) {
     opts = opts || {};
     if (!f || !f.pxPerM) return null;
-    var hasTp = (f.zones || []).some(function (z) { return z.type === 'tp'; });
+    // opts.only === 'rad' — план только радиаторов: без петель и коллектора тёплого пола
+    var radOnly = opts.only === 'rad';
+    var hasTp = !radOnly && (f.zones || []).some(function (z) { return z.type === 'tp'; });
     var rows = hasTp ? loopRows(f, stepMm, rooms || []) : [];
     var RR = null;
     if (opts.rads && (f.rads || []).length) {
@@ -5242,7 +5284,7 @@
     // комнаты: тёплый пол — тёплой заливкой, прочие — контуром
     (f.zones || []).forEach(function (z) {
       if (!z.pts || z.pts.length < 3) return;
-      var st = z.type === 'tp' ? 'fill:#fff4e6;fill-opacity:0.45;stroke:#e8a45c;stroke-width:' + m(lw * 0.45)
+      var st = z.type === 'tp' && !radOnly ? 'fill:#fff4e6;fill-opacity:0.45;stroke:#e8a45c;stroke-width:' + m(lw * 0.45)
         : z.type === 'cold' ? 'fill:#e9e9e9;stroke:#9a9a9a;stroke-width:' + m(lw * 0.6)
           : 'fill:none;stroke:#8a94a6;stroke-width:' + m(lw * 0.6) + ';stroke-dasharray:' + m(lw * 3) + ',' + m(lw * 2);
       o.push('<polygon points="' + P(z.pts) + '" style="' + st + '"/>');
@@ -5424,7 +5466,7 @@
         '" text-anchor="middle" style="fill:' + COL_RAD + ';font-weight:700">' + bd[1] + '</text></g>');
     });
     // Коллектор радиаторов — когда он не там же, где коллектор тёплого пола
-    if (RR && !(f.coll && Math.hypot(RR.C.x - f.coll.x, RR.C.y - f.coll.y) < 0.3 * ppm)) {
+    if (RR && (radOnly || !(f.coll && Math.hypot(RR.C.x - f.coll.x, RR.C.y - f.coll.y) < 0.3 * ppm))) {
       var cw2 = radBodyW, ch2 = 0.22 * ppm, ra = RR.C.ang || 0, raV = ra % 180 === 90;
       o.push('<rect x="' + m(RR.C.x - cw2 / 2) + '" y="' + m(RR.C.y - ch2 / 2) + '" width="' + m(cw2) + '" height="' + m(ch2) +
         '" style="fill:#f8d0d0;stroke:' + COL_RAD + ';stroke-width:' + m(lw * 0.7) + '"' +
@@ -5433,7 +5475,7 @@
         '" text-anchor="middle" style="fill:' + COL_RAD + ';font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:' + m(fs * 0.2) + '">' +
         (RR.tee ? 'Магистраль радиаторов' : 'Коллектор радиаторов') + '</text>');
     }
-    if (f.coll) {
+    if (f.coll && !radOnly) {
       var cw = tpBodyW, ch = 0.22 * ppm, ca = collAngle(f, 'tp'), caV = ca % 180 === 90;
       o.push('<rect x="' + m(f.coll.x - cw / 2) + '" y="' + m(f.coll.y - ch / 2) + '" width="' + m(cw) + '" height="' + m(ch) +
         '" style="fill:#ffd9a8;stroke:#c25e00;stroke-width:' + m(lw * 0.7) + '"' +

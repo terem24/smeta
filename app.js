@@ -2695,6 +2695,7 @@ const app = {
         const _pre = this.cheapForkPre(val === 'rommer');
         this.state.brandMode = val;
         this.state.sectionAnalog = {}; // Сбрасываем точечные переопределения
+        this.state.pipeBrand = {};     // …и бренд труб, выбранный в таблице замены
         // Материал обвязки котельной тоже возвращаем к автовыбору по бренду: он и есть
         // «точечное переопределение», только своё (см. boilerPipeSystem).
         this.state.boilerPipeSystem = null;
@@ -22737,13 +22738,13 @@ const app = {
         if (titleEl) {
             const role = this.getAdminRole();
             if (role === 'viewer') {
-                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:var(--c-bad,#EF4444); background:#FEE2E2; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Режим просмотра</span>';
+                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:var(--c-bad,#EF4444); background:rgba(239,68,68,.16); padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Режим просмотра</span>';
             } else if (role === 'manager') {
-                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:#0F766E; background:#CCFBF1; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Менеджер</span>';
+                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:#14B8A6; background:rgba(20,184,166,.16); padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Менеджер</span>';
             } else if (role === 'super_admin') {
-                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:var(--c-ok,#10B981); background:#ECFDF5; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Владелец</span>';
+                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:var(--c-ok,#10B981); background:rgba(16,185,129,.16); padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Владелец</span>';
             } else {
-                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:#3B82F6; background:#EFF6FF; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Администратор</span>';
+                titleEl.innerHTML = '<span class="ad-t-full">Панель управления</span><span class="ad-t-short">Админка</span> <span style="font-size:12px; color:#3B82F6; background:rgba(59,130,246,.16); padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Администратор</span>';
             }
         }
         document.getElementById('admin_modal_overlay').style.display = 'flex';
@@ -23200,6 +23201,9 @@ const app = {
         // «Ходит, но не считает» — половину условия (3+ визита) знает сама база,
         // вторую половину (ни одного расчёта) досчитывает filterIdleVisitors.
         if (filters.idle === 'yes') query = query.gte('sess_visits', this.IDLE_MIN_VISITS);
+        // Обучение: 'no' — не прошли до конца, 'yes' — прошли (users.tour_done_at, см. tour.js)
+        if (filters.tour === 'no') query = query.is('tour_done_at', null);
+        else if (filters.tour === 'yes') query = query.not('tour_done_at', 'is', null);
         if (searchFilter) {
             // По словам: «Ибат», «Ибатуллин Д», «Ибатуллин Д.О.» — каждое слово (или буква)
             // должно встретиться в какой-нибудь из колонок. Целая фраза в одной колонке
@@ -23607,6 +23611,7 @@ const app = {
             recog: document.getElementById('admin_filter_recog')?.value || 'all',
             suspect: document.getElementById('admin_filter_suspect')?.value || 'all',
             idle: document.getElementById('admin_filter_idle')?.value || 'all',
+            tour: document.getElementById('admin_filter_tour')?.value || 'all',
             device: document.getElementById('admin_filter_device')?.value || 'all'
         };
 
@@ -23891,7 +23896,9 @@ const app = {
                     const { data: tourRows, error: tourErr } = await supabaseClient.from('users')
                         .select('id, tour_done_at, tour_done_steps, tour_done_plan')
                         .in('id', userIds.map(String)).not('tour_done_at', 'is', null);
+                    if (tourErr) console.warn('[админка] отметки обучения не прочитаны:', tourErr.message || tourErr);
                     if (!tourErr && tourRows) {
+                        users.forEach(u => { u.tour_known = true; });
                         const byTour = {};
                         tourRows.forEach(r => { byTour[String(r.id)] = r; });
                         users.forEach(u => {
@@ -23946,7 +23953,7 @@ const app = {
                 !!(af.region || '').trim() || (af.dist && af.dist !== 'all') ||
                 (af.activity && af.activity !== 'all') ||
                 (af.recog && af.recog !== 'all') || (af.suspect && af.suspect !== 'all') ||
-                (af.idle && af.idle !== 'all') ||
+                (af.idle && af.idle !== 'all') || (af.tour && af.tour !== 'all') ||
                 !!(af.search || '').trim();
             if (anyFilter) {
                 try {
@@ -24118,6 +24125,7 @@ const app = {
         { id: 'analytics', icon: '📈', label: 'Аналитика', hint: 'Спрос и конкуренты по регионам' },
         { id: 'aifill', icon: '✨', label: 'Умное заполнение', hint: 'Что говорили и писали в окно ✨' },
         { id: 'articles', icon: '📰', label: 'Статьи', hint: 'Очередь публикаций на год: даты, тексты, что уже вышло' },
+        { id: 'channel', icon: '📣', label: 'Канал', hint: 'Посты Telegram-канала @heatcalc_ru: план, тексты, утверждение' },
         { id: 'leads', icon: '📨', label: 'Заявки', hint: 'Заявки на монтаж: откуда пришли и что просят' },
         { id: 'warranty', icon: '🛡', label: 'Гарантия STOUT', hint: 'Объекты с долей STOUT: порог для бланка, порог по объекту, реестр' },
         { id: 'mailbudget', icon: '✉️', label: 'Почта', hint: 'Лимит писем, на что ушёл, отключение рассылок' }
@@ -24168,7 +24176,7 @@ const app = {
         { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'distprices', 'equipment', 'successors'] },
         { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription', 'payready', 'mailbudget'] },
         { id: 'ai', label: 'ИИ и файлы', icon: 'recognition', tabs: ['recognition', 'plans', 'aifill'] },
-        { id: 'content', label: 'Контент', icon: 'articles', tabs: ['articles'] }
+        { id: 'content', label: 'Контент', icon: 'articles', tabs: ['articles', 'channel'] }
     ],
 
     adminGroupOf: function (tabId) {
@@ -24376,7 +24384,7 @@ const app = {
     // «Заявки» — только владельцу: там имя и телефон заказчика, и видеть их
     // всем администраторам ни к чему. Ту же проверку делает lead_list.php,
     // клиентская здесь только чтобы не показывать пустую вкладку.
-    OWNER_ONLY_TABS: ['home', 'dashboard', 'analytics', 'aifill', 'articles', 'leads', 'subscription', 'payready'],
+    OWNER_ONLY_TABS: ['home', 'dashboard', 'analytics', 'aifill', 'articles', 'channel','leads', 'subscription', 'payready'],
 
     // Разделы, закрытые для наблюдателя и менеджера. «Дистрибьюторы» — карточки
     // компаний целиком: промокоды, свои цены, контакты директоров. Это хозяйство
@@ -25299,6 +25307,211 @@ const app = {
             ${list || '<div style="padding:20px; text-align:center; color:var(--text-sec); font-size:13px;">По этим условиям заявок нет.</div>'}`;
     },
 
+    // ═══ Вкладка «Канал» ═════════════════════════════════════════════════
+    //
+    // Посты Telegram-канала @heatcalc_ru (таблица channel_posts, правит только админ).
+    // Уходит в канал только «утверждён», в свой день, в 10:00 по Москве — робот
+    // .github/workflows/channel-post.yml. Картинки лежат в репозитории (channel/img/),
+    // в посте хранится путь к файлу.
+    CHANNEL_RUBRICS: {
+        feature: { label: 'Функция недели', color: '#2563EB' },
+        howto: { label: 'Как сделать', color: '#0891B2' },
+        pro: { label: 'Профи', color: '#7C3AED' },
+        market: { label: 'Новинки рынка', color: '#C2410C' },
+        events: { label: 'Обучение и выставки', color: '#B45309' },
+        digest: { label: 'Дайджест', color: '#059669' },
+        lifehack: { label: 'Лайфхак', color: '#65A30D' },
+        video: { label: 'Видео недели', color: '#DC2626' },
+        other: { label: 'Другое', color: '#6B7280' }
+    },
+
+    CHANNEL_STATUS: {
+        draft: { label: 'Черновик', color: '#9CA3AF' },
+        approved: { label: 'Утверждён', color: '#3B82F6' },
+        sent: { label: 'Опубликован', color: '#10B981' },
+        skip: { label: 'Отложен', color: '#6B7280' }
+    },
+
+    /** HTML поста Telegram → безопасный HTML превью: только теги, которые понимает Telegram. */
+    channelPreviewHtml: function (body) {
+        const esc = s => String(s).replace(/&(?!(amp|lt|gt|quot);)/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        let h = esc(body || '');
+        h = h.replace(/&lt;(\/?)(b|i|u|s|code)&gt;/g, '<$1$2>')
+            .replace(/&lt;a href="(https?:\/\/[^"<>]+)"&gt;/g, '<a href="$1" target="_blank" rel="noopener">')
+            .replace(/&lt;\/a&gt;/g, '</a>');
+        return h.replace(/\n/g, '<br>');
+    },
+
+    renderAdminChannel: async function () {
+        const box = document.getElementById('admin_channel_box');
+        if (!box) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        if (!this._channelPosts) {
+            box.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-sec); font-size:13px;">Загружаем посты…</div>';
+            const { data, error } = await supabaseClient.from('channel_posts').select('*')
+                .order('post_date', { ascending: true }).order('id', { ascending: true });
+            if (error) {
+                box.innerHTML = `<div style="padding:24px; color:var(--c-bad,#DC2626); font-size:13px;">Не удалось загрузить посты: ${esc(error.message)}
+                    <br><button class="auth-btn-base" style="margin-top:12px; width:auto; padding:0 14px; height:32px; font-size:12px;" onclick="app._channelPosts=null; app.renderAdminChannel()">Попробовать ещё раз</button></div>`;
+                return;
+            }
+            this._channelPosts = data || [];
+        }
+
+        const posts = this._channelPosts;
+        const f = this._channelFilter || (this._channelFilter = { status: '', showSent: false });
+        const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+        const counts = { draft: 0, approved: 0, sent: 0, skip: 0 };
+        posts.forEach(p => { counts[p.status] = (counts[p.status] || 0) + 1; });
+        const next = posts.find(p => p.status === 'approved');
+        const fmt = d => d ? d.split('-').reverse().join('.') : '—';
+        const wd = d => ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'][new Date(d + 'T12:00:00').getDay()];
+
+        const shown = posts.filter(p => (!f.status || p.status === f.status) && (f.showSent || f.status === 'sent' || p.status !== 'sent'));
+
+        const card = (n, label, color) => `
+            <div style="flex:1 1 120px; background:var(--surface-light); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">
+                <div style="font-size:22px; font-weight:800; color:${color}; line-height:1.2;">${n}</div>
+                <div style="font-size:11px; color:var(--text-sec); margin-top:2px;">${label}</div>
+            </div>`;
+        const pill = (meta) => `<span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; color:#fff; background:${meta.color}; white-space:nowrap;">${meta.label}</span>`;
+        const tag = (meta) => `<span style="display:inline-block; padding:1px 7px; border-radius:6px; font-size:10px; font-weight:700; color:${meta.color}; border:1px solid ${meta.color}; white-space:nowrap;">${meta.label}</span>`;
+
+        const rows = shown.map(p => {
+            const r = this.CHANNEL_RUBRICS[p.rubric] || this.CHANNEL_RUBRICS.other;
+            const st = this.CHANNEL_STATUS[p.status] || this.CHANNEL_STATUS.draft;
+            const open = this._channelOpen === p.id;
+            const late = p.status === 'approved' && p.post_date < today;
+            const plain = (p.body || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+            return `
+            <div style="border:1px solid ${open ? 'var(--primary)' : 'var(--border)'}; border-radius:10px; margin-bottom:8px; background:var(--surface);">
+                <div style="display:flex; gap:12px; align-items:flex-start; padding:10px 12px; cursor:pointer;" onclick="app._channelOpen=${open ? 'null' : p.id}; app.renderAdminChannel()">
+                    <div style="width:78px; flex:none; font-size:12px; ${late ? 'color:var(--c-warn,#D97706); font-weight:700;' : 'color:var(--text-main);'}">${fmt(p.post_date)}<div style="color:var(--text-sec); font-size:11px;">${wd(p.post_date)}${late ? ' ⏳' : ''}</div></div>
+                    ${p.image ? `<img src="/${esc(p.image)}" alt="" style="width:64px; height:40px; object-fit:cover; border-radius:6px; flex:none; border:1px solid var(--border);" onerror="this.style.display='none'">` : ''}
+                    <div style="flex:1; min-width:0;">
+                        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">${tag(r)}<b style="font-size:13px; color:var(--text-main);">${esc(p.title || 'Без названия')}</b></div>
+                        <div style="font-size:12px; color:var(--text-sec); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(plain.slice(0, 160))}</div>
+                    </div>
+                    <div style="flex:none;">${pill(st)}</div>
+                </div>
+                ${open ? this.channelEditorHtml(p) : ''}
+            </div>`;
+        }).join('');
+
+        box.innerHTML = `
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+                ${card(counts.draft || 0, 'черновики', '#9CA3AF')}
+                ${card(counts.approved || 0, 'утверждены, ждут дня', '#3B82F6')}
+                ${card(counts.sent || 0, 'опубликовано', '#10B981')}
+            </div>
+            <div style="background:var(--surface-light); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:12px; line-height:1.6; color:var(--text-sec);">
+                ${next ? `Следующий в канал — <b style="color:var(--text-main);">${esc(next.title || 'без названия')}</b>, ${fmt(next.post_date)}.` : 'Утверждённых постов нет — в канал ничего не уйдёт.'}
+                <br>В канал <a href="https://t.me/heatcalc_ru" target="_blank" rel="noopener" style="color:var(--primary);">@heatcalc_ru</a> уходят только <b>утверждённые</b> посты, в свой день в 10:00 по Москве, по одному в день. Черновики не уходят никогда.
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center;">
+                <select style="padding:7px 10px; font-size:12px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main);"
+                    onchange="app._channelFilter.status = this.value; app.renderAdminChannel()">
+                    <option value="">Все, кроме опубликованных</option>
+                    ${Object.keys(this.CHANNEL_STATUS).map(k => `<option value="${k}"${f.status === k ? ' selected' : ''}>${this.CHANNEL_STATUS[k].label}</option>`).join('')}
+                </select>
+                <span style="flex:1;"></span>
+                <button class="auth-btn-base" style="margin:0; width:auto; padding:0 12px; height:32px; font-size:12px;" onclick="app.channelNew()">+ Новый пост</button>
+                <button class="auth-btn-base" style="margin:0; width:auto; padding:0 12px; height:32px; font-size:12px;" onclick="app._channelPosts=null; app.renderAdminChannel()">Обновить</button>
+            </div>
+            ${rows || '<div style="padding:20px; text-align:center; color:var(--text-sec); font-size:13px;">Постов нет.</div>'}`;
+    },
+
+    channelEditorHtml: function (p) {
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const inp = 'width:100%; box-sizing:border-box; padding:7px 10px; font-size:13px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main);';
+        const lbl = 'display:block; font-size:11px; color:var(--text-sec); margin:8px 0 3px;';
+        const btn = 'margin:0; width:auto; padding:0 12px; height:32px; font-size:12px;';
+        const limit = p.image ? 1024 : 4096;
+        const len = (p.body || '').length;
+        return `
+        <div style="border-top:1px solid var(--border); padding:12px; display:flex; gap:16px; flex-wrap:wrap;" onclick="event.stopPropagation()">
+            <div style="flex:1 1 360px; min-width:0;">
+                <div style="display:flex; gap:8px;">
+                    <div style="flex:1;"><label style="${lbl}">Дата</label><input type="date" id="ch_date" value="${esc(p.post_date)}" style="${inp}"></div>
+                    <div style="flex:1;"><label style="${lbl}">Рубрика</label><select id="ch_rubric" style="${inp}">
+                        ${Object.keys(this.CHANNEL_RUBRICS).map(k => `<option value="${k}"${p.rubric === k ? ' selected' : ''}>${this.CHANNEL_RUBRICS[k].label}</option>`).join('')}
+                    </select></div>
+                </div>
+                <label style="${lbl}">Название (только для админки)</label>
+                <input id="ch_title" value="${esc(p.title)}" style="${inp}">
+                <label style="${lbl}">Текст поста — разметка Telegram: &lt;b&gt;жирный&lt;/b&gt;, &lt;i&gt;курсив&lt;/i&gt;, &lt;a href="…"&gt;ссылка&lt;/a&gt;</label>
+                <textarea id="ch_body" rows="14" style="${inp} font-family:inherit; line-height:1.45; resize:vertical;"
+                    oninput="document.getElementById('ch_prev').innerHTML = app.channelPreviewHtml(this.value); document.getElementById('ch_len').textContent = this.value.length">${esc(p.body)}</textarea>
+                <div style="font-size:11px; color:var(--text-sec); margin-top:3px;"><span id="ch_len">${len}</span> из ${limit} знаков${p.image ? ' (подпись к картинке)' : ''}</div>
+                <label style="${lbl}">Картинка — путь в репозитории (channel/img/…)</label>
+                <input id="ch_image" value="${esc(p.image || '')}" style="${inp}" placeholder="channel/img/feature-01.png">
+                <div style="display:flex; gap:8px;">
+                    <div style="flex:1;"><label style="${lbl}">Кнопка — текст</label><input id="ch_btext" value="${esc(p.button_text || '')}" style="${inp}" placeholder="Открыть калькулятор"></div>
+                    <div style="flex:2;"><label style="${lbl}">Кнопка — ссылка</label><input id="ch_burl" value="${esc(p.button_url || '')}" style="${inp}" placeholder="https://heatcalc.ru/"></div>
+                </div>
+                ${p.status === 'sent' ? `<div style="margin-top:10px; font-size:12px; color:var(--c-ok,#10B981);">Опубликован ${p.sent_at ? new Date(p.sent_at).toLocaleString('ru-RU') : ''}${p.tg_message_id ? ` · <a href="https://t.me/heatcalc_ru/${p.tg_message_id}" target="_blank" rel="noopener" style="color:var(--primary);">открыть в канале</a>` : ''}</div>` : ''}
+                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:12px;">
+                    <button class="auth-btn-base" style="${btn}" onclick="app.channelSave(${p.id})">Сохранить</button>
+                    ${p.status !== 'approved' && p.status !== 'sent' ? `<button class="auth-btn-base" style="${btn} background:#3B82F6; color:#fff;" onclick="app.channelSave(${p.id}, 'approved')">Утвердить</button>` : ''}
+                    ${p.status === 'approved' ? `<button class="auth-btn-base" style="${btn}" onclick="app.channelSave(${p.id}, 'draft')">Вернуть в черновик</button>` : ''}
+                    ${p.status !== 'skip' && p.status !== 'sent' ? `<button class="auth-btn-base" style="${btn}" onclick="app.channelSave(${p.id}, 'skip')">Отложить</button>` : ''}
+                    <span style="flex:1;"></span>
+                    <button class="auth-btn-base" style="${btn} color:var(--c-bad,#DC2626);" onclick="app.channelDelete(${p.id})">Удалить</button>
+                </div>
+            </div>
+            <div style="flex:0 1 340px; min-width:260px;">
+                <div style="font-size:11px; color:var(--text-sec); margin:8px 0 6px;">Как увидят в канале</div>
+                <div style="background:#0E1621; border-radius:12px; padding:8px; max-width:340px;">
+                    <div style="background:#182533; color:#E9EEF3; border-radius:10px; overflow:hidden; font-size:13px; line-height:1.45;">
+                        ${p.image ? `<img src="/${esc(p.image)}" alt="" style="width:100%; display:block;" onerror="this.outerHTML='<div style=&quot;padding:18px; text-align:center; color:#8696A8; font-size:11px;&quot;>картинка ${esc(p.image)} ещё не выложена на сайт</div>'">` : ''}
+                        <div id="ch_prev" style="padding:8px 10px; word-wrap:break-word;">${this.channelPreviewHtml(p.body)}</div>
+                    </div>
+                    ${p.button_url ? `<div style="margin-top:4px; background:#2B5278; color:#fff; text-align:center; border-radius:8px; padding:8px; font-size:13px;">${esc(p.button_text || 'Открыть')}</div>` : ''}
+                </div>
+            </div>
+        </div>`;
+    },
+
+    channelSave: async function (id, status) {
+        const v = k => (document.getElementById(k) || {}).value;
+        const row = {
+            post_date: v('ch_date'), rubric: v('ch_rubric'), title: (v('ch_title') || '').trim(),
+            body: v('ch_body') || '', image: (v('ch_image') || '').trim() || null,
+            button_text: (v('ch_btext') || '').trim() || null, button_url: (v('ch_burl') || '').trim() || null
+        };
+        if (status) row.status = status;
+        const limit = row.image ? 1024 : 4096;
+        if (row.body.length > limit) { alert('Текст длиннее ' + limit + ' знаков — Telegram не примет. Сократите.'); return; }
+        if (status === 'approved' && !row.body.trim()) { alert('Пустой пост утвердить нельзя.'); return; }
+        const { data, error } = await supabaseClient.from('channel_posts').update(row).eq('id', id).select().single();
+        if (error) { alert('Не сохранилось: ' + error.message); return; }
+        const i = this._channelPosts.findIndex(p => p.id === id);
+        if (i >= 0) this._channelPosts[i] = data;
+        if (status) this._channelOpen = null;
+        this.renderAdminChannel();
+    },
+
+    channelNew: async function () {
+        const last = (this._channelPosts || []).map(p => p.post_date).sort().pop();
+        const d = new Date((last || new Date().toISOString().slice(0, 10)) + 'T12:00:00');
+        d.setDate(d.getDate() + 1);
+        const { data, error } = await supabaseClient.from('channel_posts')
+            .insert({ post_date: d.toISOString().slice(0, 10), rubric: 'feature', title: 'Новый пост', body: '' }).select().single();
+        if (error) { alert('Не создалось: ' + error.message); return; }
+        this._channelPosts.push(data);
+        this._channelOpen = data.id;
+        this.renderAdminChannel();
+    },
+
+    channelDelete: async function (id) {
+        if (!confirm('Удалить пост? Вернуть будет нельзя.')) return;
+        const { error } = await supabaseClient.from('channel_posts').delete().eq('id', id);
+        if (error) { alert('Не удалилось: ' + error.message); return; }
+        this._channelPosts = this._channelPosts.filter(p => p.id !== id);
+        this.renderAdminChannel();
+    },
+
     ARTICLES_URL: '/content/schedule.json',
 
     articleStatusMeta: {
@@ -25622,7 +25835,7 @@ const app = {
             if ((this.adminTabCell(r.id, tt.id) === 'on') !== this.adminTabDefault(tt.id, r.id, false)) tabsChanged++;
         }));
         const secChip = (id, label, n) => `<button class="ad-chip${sec === id ? ' active' : ''}" onclick="app.setTariffSection('${id}')">${label}${n ? ` <span class="ad-chip-n" title="Изменено относительно исходных значений">${n}</span>` : ''}</button>`;
-        const secChips = `<div class="ad-chips">${secChip('matrix', 'Тарифы и функции', matrixChanged)}${secChip('appearance', 'Оформление', 0)}${secChip('sections', 'Разделы панели по ролям', tabsChanged)}</div>`;
+        const secChips = `<div class="ad-chips">${secChip('matrix', 'Тарифы и функции', matrixChanged)}${secChip('appearance', 'Оформление', 0)}${secChip('sections', 'Разделы панели по ролям', tabsChanged)}${secChip('tour', 'Обучение', this.tourForceCount())}</div>`;
 
         const matrixHtml = `
             <div class="ad-sub" style="margin:0 0 12px; max-width:900px; line-height:1.5;">
@@ -25650,13 +25863,124 @@ const app = {
                 ${sec === 'matrix' ? `<button class="admin-btn" ${canEdit && hasSaved ? '' : 'disabled'} onclick="app.resetTariffs()">Вернуть исходные</button>` : ''}
             </div>
             ${secChips}
-            ${sec === 'matrix' ? matrixHtml : (sec === 'appearance' ? this.adminAppearanceBlockHtml() : this.adminTabsTableHtml(esc, th, td, sep))}`;
+            ${sec === 'matrix' ? matrixHtml : (sec === 'appearance' ? this.adminAppearanceBlockHtml() : (sec === 'tour' ? this.adminTourBlockHtml(esc) : this.adminTabsTableHtml(esc, th, td, sep)))}`;
         this.renderAdminTariffsStatus();
     },
 
     setTariffSection: function (id) {
         this._tariffSection = id;
         this.renderAdminTariffs();
+    },
+
+    // ═══ Принудительное обучение ═════════════════════════════════════════
+    // Кому включать режим обучения (tour.js) без их просьбы. Лежит в app_settings,
+    // ключ tour_force: { users: {почта: true|false}, dists: {id: true},
+    // regions: {регион: true}, tariffs: {'installer.base': true}, all: bool }.
+    // Решает, кому включать, Tour.forceDecisionFor — здесь только правка списка.
+    // Читать может любой (как таблицу тарифов), писать — администратор: политика
+    // is_admin() на самой таблице. Личная отметка сильнее группы в обе стороны.
+    tourForce: function () { return (this.appSettings && this.appSettings.tour_force) || {}; },
+
+    tourForceCount: function () {
+        const f = this.tourForce();
+        return Object.keys(f.users || {}).length + Object.keys(f.dists || {}).filter(k => f.dists[k]).length +
+            Object.keys(f.regions || {}).filter(k => f.regions[k]).length + Object.keys(f.tariffs || {}).filter(k => f.tariffs[k]).length + (f.all ? 1 : 0);
+    },
+
+    // kind: users | dists | regions | tariffs | all; value: true/false, null — снять
+    setTourForce: function (kind, key, value) {
+        if (!this.canEditTariffs()) { app.alert('Менять принудительное обучение может только администратор.'); return; }
+        if (!['users', 'dists', 'regions', 'tariffs', 'all'].includes(kind)) return;
+        key = String(key == null ? '' : key).trim();
+        if (kind === 'users') key = key.toLowerCase();
+        if (kind !== 'all' && !key) return;
+        const patch = (f) => {
+            f = JSON.parse(JSON.stringify(f || {}));
+            if (kind === 'all') { f.all = !!value; return f; }
+            f[kind] = f[kind] || {};
+            if (kind === 'users') Object.keys(f.users).forEach(k => { if (String(k).toLowerCase() === key) delete f.users[k]; });
+            if (value === true || (value === false && kind === 'users')) f[kind][key] = value;
+            else delete f[kind][key];
+            return f;
+        };
+        this.appSettings = Object.assign({}, this.appSettings, { tour_force: patch(this.tourForce()) });
+        this.refreshTourForceViews();
+        this._tourSaveChain = (this._tourSaveChain || Promise.resolve()).then(async () => {
+            try {
+                const { data, error: readErr } = await supabaseClient.from('app_settings')
+                    .select('value').eq('key', 'tour_force').maybeSingle();
+                if (readErr) throw readErr;
+                const value2 = patch((data && data.value) || {});
+                const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+                const { error } = await supabaseClient.from('app_settings')
+                    .upsert({ key: 'tour_force', value: value2, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+                if (error) throw error;
+                this.appSettings = Object.assign({}, this.appSettings, { tour_force: value2 });
+            } catch (e) {
+                console.error('[обучение] список не сохранён:', e);
+                await this.loadAppSettings(true);
+                app.alert('Не удалось сохранить: ' + (e.message || e));
+            } finally {
+                this.refreshTourForceViews();
+            }
+        });
+        return this._tourSaveChain;
+    },
+
+    refreshTourForceViews: function () {
+        if (this._tariffSection === 'tour' && document.getElementById('admin_tariffs_box')) this.renderAdminTariffs();
+        const sel = document.getElementById('ad_peek_tour');
+        if (sel && sel.dataset.login) sel.value = this.tourForceOwnValue(sel.dataset.login);
+    },
+
+    tourForceOwnValue: function (login) {
+        const v = this.accessFlagFor(this.tourForce().users, login);
+        return v === true ? 'on' : (v === false ? 'off' : '');
+    },
+
+    // Блок во вкладке «Тарифы → Обучение»
+    adminTourBlockHtml: function (esc) {
+        const canEdit = this.canEditTariffs();
+        const dis = canEdit ? '' : 'disabled';
+        const f = this.tourForce();
+        const js = s => esc(String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+        const box = 'border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin:0 0 12px; max-width:900px; background:var(--bg);';
+        const h = 'margin:0 0 8px; font-size:13px; font-weight:700; color:var(--text-main);';
+        const sub = 'font-size:11.5px; color:var(--text-sec); line-height:1.5; margin:0 0 8px;';
+        const chk = (on, kind, key, label, hint) => `<label style="display:inline-flex; align-items:center; gap:6px; margin:0 14px 6px 0; font-size:12.5px; cursor:${canEdit ? 'pointer' : 'default'};" ${hint ? `title="${esc(hint)}"` : ''}>
+            <input type="checkbox" ${dis} ${on ? 'checked' : ''} onchange="app.setTourForce('${kind}', '${js(key)}', this.checked)"> ${esc(label)}</label>`;
+
+        const tariffs = this.TARIFF_ACCOUNTS.map(a => `<div style="margin:0 0 4px;"><b style="font-size:12px; display:inline-block; min-width:96px;">${esc(a.label)}</b>${this.TARIFF_PLANS.map(p =>
+            chk(!!(f.tariffs || {})[a.id + '.' + p.id], 'tariffs', a.id + '.' + p.id, p.label, a.hint)).join('')}</div>`).join('');
+
+        const dists = (this.adminData.distributors || []).map(d => chk(!!(f.dists || {})[d.id], 'dists', d.id, d.company_name || d.id)).join('')
+            || '<span style="font-size:12px; color:var(--text-sec);">Дистрибьюторы ещё не загружены — откройте вкладку «Дистрибьюторы».</span>';
+
+        const regionsOn = Object.keys(f.regions || {}).filter(k => f.regions[k]);
+        const allRegions = [...new Set((this.adminData.allUsersDropdown || []).map(u => {
+            try { return this.normalizeUserRegionAndCity(u.region, u.city).region; } catch (e) { return ''; }
+        }).filter(Boolean))].filter(r => !regionsOn.includes(r)).sort((a, b) => a.localeCompare(b, 'ru'));
+        const regions = `<div style="margin:0 0 6px;">${regionsOn.map(r => `<span class="ad-chip active" style="margin:0 6px 6px 0;">${esc(r)} <a href="#" ${canEdit ? '' : 'style="pointer-events:none"'} onclick="event.preventDefault(); app.setTourForce('regions', '${js(r)}', null)" title="Убрать" style="color:inherit; text-decoration:none; margin-left:4px;">×</a></span>`).join('') || '<span style="font-size:12px; color:var(--text-sec);">Регионы не выбраны</span>'}</div>
+            <select ${dis} onchange="if(this.value){app.setTourForce('regions', this.value, true);}" style="max-width:320px; padding:4px 6px; font-size:12px;">
+                <option value="">+ Добавить регион…</option>${allRegions.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('')}</select>`;
+
+        const users = Object.keys(f.users || {}).sort().map(k => `<div style="font-size:12.5px; margin:0 0 4px;">${esc(k)} — <b style="color:${f.users[k] ? '#059669' : 'var(--text-sec)'};">${f.users[k] ? 'включено лично' : 'не навязывать'}</b>
+            <a href="#" ${canEdit ? '' : 'style="pointer-events:none"'} onclick="event.preventDefault(); app.setTourForce('users', '${js(k)}', null)" title="Снять личную отметку" style="color:var(--primary); text-decoration:none; margin-left:6px;">↺</a></div>`).join('')
+            || '<span style="font-size:12px; color:var(--text-sec);">Личных отметок нет. Ставятся в карточке человека (клик по строке в «Пользователях»).</span>';
+
+        return `
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:0 0 10px;">
+                <h3 style="margin:0; color:var(--text-main);">🎓 Принудительное обучение</h3></div>
+            <p style="margin:0 0 12px; font-size:12.5px; line-height:1.5; color:var(--text-sec); max-width:900px;">
+                Включит режим обучения у тех, кто попал в список и ещё не прошёл его до конца: при следующем заходе на сайт.
+                Закрыл крестиком или выключил кнопкой — повторно предложим через ${Tour.SNOOZE_DAYS} дня, пока не дойдёт до «Готово»;
+                прошедшему не включится. Личная отметка сильнее групп и в ту и в другую сторону.
+                ${canEdit ? '' : '<b style="color:var(--c-warn,#D97706);">Менять список может только администратор.</b>'}</p>
+            <div style="${box}"><div style="${h}">Всем, кто ещё не прошёл</div>${chk(!!f.all, 'all', '', 'Включить обучение всем непрошедшим', 'Самая широкая группа')}</div>
+            <div style="${box}"><div style="${h}">По тарифу и роли</div><p style="${sub}">Строка таблицы «Тарифы»: кто на каком тарифе и кем является.</p>${tariffs}</div>
+            <div style="${box}"><div style="${h}">По компании (дистрибьютору)</div>${dists}</div>
+            <div style="${box}"><div style="${h}">По региону</div>${regions}</div>
+            <div style="${box}"><div style="${h}">Личные отметки</div>${users}</div>`;
     },
 
     // Вторая таблица вкладки «Тарифы»: какие разделы панели видит каждая роль
@@ -26162,6 +26486,12 @@ const app = {
             return;
         }
 
+        if (this._adminTab === 'channel') {
+            content.innerHTML = navHtml + '<div id="admin_channel_box"></div>';
+            this.renderAdminChannel();
+            return;
+        }
+
         if (this._adminTab === 'subscription') {
             content.innerHTML = navHtml + '<div id="admin_subscription_box"></div>';
             if (typeof Subscription !== 'undefined') Subscription.render();
@@ -26298,6 +26628,7 @@ const app = {
             recog: 'all',
             suspect: 'all',
             idle: 'all',
+            tour: 'all',
             device: 'all',
             search: ''
         };
@@ -26309,6 +26640,7 @@ const app = {
         const recogFilter = filters.recog || 'all';
         const suspectFilter = filters.suspect || 'all';
         const idleFilter = filters.idle || 'all';
+        const tourFilter = filters.tour || 'all';
         const deviceFilter = filters.device || 'all';
         const sortArrow = (key) => sortType === key + '_asc' ? ' ▲' : (sortType === key + '_desc' ? ' ▼' : '');
         // Проектирование: переключатели работают, только если на сервере лежит
@@ -26324,7 +26656,7 @@ const app = {
         // Быстрые срезы и сохранённые виды списка: девять фильтров в одну строку превращали
         // экран в панель самолёта, а нужные сочетания приходилось выставлять заново.
         const escH = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        const curF = { tariff: tariffFilter, expiry: expiryFilter, region: regionFilter, dist: distFilter, activity: activityFilter, recog: recogFilter, suspect: suspectFilter, idle: idleFilter, device: deviceFilter };
+        const curF = { tariff: tariffFilter, expiry: expiryFilter, region: regionFilter, dist: distFilter, activity: activityFilter, recog: recogFilter, suspect: suspectFilter, idle: idleFilter, tour: tourFilter, device: deviceFilter };
         const nonDefault = {};
         Object.keys(curF).forEach(k => { if (curF[k] !== this.USERS_FILTER_DEFAULTS[k]) nonDefault[k] = curF[k]; });
         const activeCount = Object.keys(nonDefault).length;
@@ -26411,6 +26743,13 @@ const app = {
                             <select id="admin_filter_idle" onchange="app.loadAdminData(0)" title="Заходил ${this.IDLE_MIN_VISITS} и более раз, но не начал ни одного расчёта и не сохранил ни одной сметы" style="background: var(--surface); color: var(--text-main); border: 1px solid ${idleFilter === 'yes' ? '#D97706' : 'var(--border)'}; border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="all" ${idleFilter === 'all' ? 'selected' : ''}>👣 Визиты: все</option>
                                 <option value="yes" ${idleFilter === 'yes' ? 'selected' : ''}>👣 Ходит, но не считает</option>
+                            </select>
+                            <!-- Обучение (tour.js): отметка лежит в users.tour_done_at, база её знает,
+                                 поэтому отбор идёт обычным запросом (buildAdminUserFilter). -->
+                            <select id="admin_filter_tour" onchange="app.loadAdminData(0)" title="Прошёл ли человек обучение до последнего шага" style="background: var(--surface); color: var(--text-main); border: 1px solid ${tourFilter === 'no' ? '#D97706' : 'var(--border)'}; border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
+                                <option value="all" ${tourFilter === 'all' ? 'selected' : ''}>🎓 Обучение: все</option>
+                                <option value="no" ${tourFilter === 'no' ? 'selected' : ''}>🎓 Не прошли</option>
+                                <option value="yes" ${tourFilter === 'yes' ? 'selected' : ''}>🎓 Прошли</option>
                             </select>
                             <!-- Категория устройства (компьютер/телефон/приложение) в базе не лежит —
                                  её выводит клиент из журнала визитов (см. deviceCategory), поэтому
@@ -26668,7 +27007,9 @@ const app = {
             // владелец, менеджер и наблюдатель.
             const tourDoneChip = u.tour_done_at
                 ? `<span title="Прошёл обучение до конца ${new Date(u.tour_done_at).toLocaleDateString('ru-RU')}${u.tour_done_steps ? ' (шагов: ' + u.tour_done_steps + ')' : ''}${u.tour_done_plan ? ', тариф: ' + u.tour_done_plan : ''}" style="cursor:help; background:#10B98122; color:#059669; font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-right:3px;">✓ Обучение</span>`
-                : '';
+                : (u.tour_known
+                    ? `<span title="Обучение до конца не проходил. Включить принудительно: «Тарифы → Обучение» или поле «Принудительно» в карточке человека" style="cursor:help; background:var(--text-sec, #6B7280)22; color:var(--text-sec, #6B7280); font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-right:3px;">🎓 обучение: нет</span>`
+                    : '');
             const stageHTML = tourDoneChip + (stuckPromo
                 ? stageChip('⛔ Не ввёл промокод', 'Вошёл, но калькулятор закрыт окном «Нужен промокод магазина»: промокод не ввёл, анкету не видел', 'var(--c-warn, #D97706)')
                 : '') + (profileMissing.length
@@ -26681,6 +27022,12 @@ const app = {
             const suspectFlags = this.suspiciousProfileFlags(u);
             const suspectMark = suspectFlags.length
                 ? `<span title="Сомнительная анкета: ${suspectFlags.join('; ')}" style="cursor:help; margin-right:4px;">⚠️</span>`
+                : '';
+
+            // Галочка у имени — вне .ad-more: в компактной плотности бейджи под именем
+            // спрятаны, а «прошёл обучение» должно быть видно сразу
+            const tourMark = u.tour_done_at
+                ? `<span title="Прошёл обучение до конца ${new Date(u.tour_done_at).toLocaleDateString('ru-RU')}${u.tour_done_steps ? ' (шагов: ' + u.tour_done_steps + ')' : ''}${u.tour_done_plan ? ', тариф: ' + u.tour_done_plan : ''}" style="cursor:help; color:#10B981; font-weight:700; margin-left:5px;">✓</span>`
                 : '';
 
             let searchStr = `${name} ${phone} ${u.email || ''} ${cityText} ${ipLoc} ${u.region || ''} ${(u.activity_types || []).join(' ')}${suspectFlags.length ? ' сомнительная анкета' : ''}${stuckPromo ? ' не ввёл промокод' : ''}${profileMissing.length ? ' анкета не заполнена' : ''}`.toLowerCase();
@@ -26747,7 +27094,7 @@ const app = {
                         <!-- Нумерация сквозная по всему списку, а не по странице: на второй
                              странице отсчёт снова с 1 сбивал с толку (44 записи → 1…44) -->
                         <td class="ad-c-num" style="color:var(--text-sec);">${this._adminOffset + i + 1}</td>
-                        <td class="ad-c-name"><div style="display:flex; align-items:center;">${avatarImg} <div><b style="font-size:13px;">${suspectMark}<span class="ad-name-full">${name}</span><span class="ad-name-short">${nameShort}</span></b><br><span style="font-size:11px;color:var(--text-sec);">${phone}</span><span class="ad-more">${locHTML}${extraHTML}</span></div></div>${noDistWarn}</td>
+                        <td class="ad-c-name"><div style="display:flex; align-items:center;">${avatarImg} <div><b style="font-size:13px;">${suspectMark}<span class="ad-name-full">${name}</span><span class="ad-name-short">${nameShort}</span>${tourMark}</b><br><span style="font-size:11px;color:var(--text-sec);">${phone}</span><span class="ad-more">${locHTML}${extraHTML}</span></div></div>${noDistWarn}</td>
                         <!-- admin-cell-half: на телефоне карточка ставит помеченную
                              пару в один ряд по половине ширины (см. style.css).
                              Содержимое коротких и однотипных ячеек — сумма со
@@ -34370,9 +34717,10 @@ const app = {
         };
         const filter = this._successorsFilter || 'new';
         const count = st => rows.filter(r => r.status === st).length;
-        const list = rows.filter(r => r.status === filter);
+        const list = filter === 'none' ? [] : rows.filter(r => r.status === filter);
+        const noneList = this.succNoSuccessor(rows);
 
-        const chip = (id, label) => {
+        const chip =(id, label) => {
             const on = filter === id;
             return `<button class="ad-chip${on ? ' active' : ''}" onclick="app._successorsFilter='${id}'; app.renderAdminMain()">${label} <span class="ad-chip-n">${count(id)}</span></button>`;
         };
@@ -34387,11 +34735,15 @@ const app = {
                             Старые сметы и ссылки клиентам продолжают работать.</div></div>
                     <button class="admin-btn" onclick="app.adminData.successors = null; app.renderAdminMain()">Обновить</button>
                 </div>
+                ${this.succScheduleHtml(rows, esc)}
                 <div class="ad-chips">
                     ${chip('new', 'Новые')}${chip('approved', 'Подтверждённые')}${chip('rejected', 'Отклонённые')}
+                    <button class="ad-chip${filter === 'none' ? ' active' : ''}" onclick="app._successorsFilter='none'; app.renderAdminMain()" title="Позиции «под заказ», для которых сайт не предложил замену">Без замены <span class="ad-chip-n">${noneList.length}</span></button>
                 </div>`;
 
-        if (!list.length) {
+        if (filter === 'none') {
+            h += this.succNoneHtml(noneList, esc, fmt);
+        } else if (!list.length) {
             const empty = this._successorsError
                 ? 'Список недоступен. Похоже, миграция supabase/migrations/20260913_catalog_successors.sql ещё не выполнена.'
                 : (filter === 'new'
@@ -34447,6 +34799,7 @@ const app = {
                         <input id="succ_name_${id}" type="text" value="${esc(nameValue)}" ${r.status === 'new' ? '' : 'disabled'}
                                style="flex:1 1 320px; min-width:0; padding:7px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main); font-size:13px;">
                     </div>
+                    ${r.status === 'new' ? this.succAltsHtml(r.old_article, id, esc, fmt) : ''}
                     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;">
                         ${actions}
                         <span style="margin-left:auto; font-size:11.5px; color:var(--text-sec); display:flex; gap:12px; flex-wrap:wrap;">
@@ -34459,6 +34812,181 @@ const app = {
 
         h += `</div>`;
         wrap.innerHTML = h;
+    },
+
+    // ── Расписание проверки наличия ─────────────────────────────────────────
+    // Лежит в app_settings.successor_schedule; читает его AutoSchedule.py, которому
+    // workflow'ы парсера цен каждый день задают вопрос «запускаться ли сегодня».
+    // Формат и логика — в шапке AutoSchedule.py; succNextRuns повторяет её decide().
+    SUCC_SCHEDULE_KEY: 'successor_schedule',
+    succSchedule: function () {
+        const v = (this.appSettings && this.appSettings[this.SUCC_SCHEDULE_KEY]) || {};
+        return { mode: v.mode === 'every' ? 'every' : 'monthly', every_days: Number(v.every_days) || 7,
+            anchor: v.anchor || '', extra_dates: Array.isArray(v.extra_dates) ? v.extra_dates : [] };
+    },
+    succNextRuns: function (st) {
+        const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        const out = [];
+        const base = new Date(); base.setHours(12, 0, 0, 0);
+        for (let i = 0; i < 400 && out.length < 3; i++) {
+            const d = new Date(base.getTime() + i * 86400000), key = iso(d);
+            let why = '';
+            if (st.extra_dates.indexOf(key) >= 0) why = 'разовая проверка';
+            else if (st.mode === 'every' && st.anchor) {
+                const diff = Math.round((d - new Date(st.anchor + 'T12:00:00')) / 86400000);
+                if (diff >= 0 && diff % st.every_days === 0) why = 'основные бренды';
+                else if (diff - 1 >= 0 && (diff - 1) % st.every_days === 0) why = 'остальные бренды';
+            } else if (st.mode === 'monthly') {
+                if (d.getDate() === 10) why = 'STOUT и ROMMER';
+                else if (d.getDate() === 20) why = 'остальные бренды';
+            }
+            if (why) out.push({ date: d, why: why });
+        }
+        return out;
+    },
+    succScheduleHtml: function (rows, esc) {
+        const st = this.succSchedule();
+        const fmtD = d => d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+        const seen = rows.reduce((m, r) => r.seen_at && r.seen_at > m ? r.seen_at : m, '');
+        const next = this.succNextRuns(st).map(x => `${fmtD(x.date)} <span style="color:var(--text-sec);">(${x.why})</span>`).join(' · ') || 'не запланирована';
+        const inp = 'padding:6px 8px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main); font-size:13px;';
+        const ro = this.isReadOnlyAdmin() ? 'disabled' : '';
+        const today = new Date().toISOString().slice(0, 10);
+        return `<div style="border:1px solid var(--border); border-radius:12px; padding:12px 16px; margin:4px 0 14px; background:var(--surface);">
+            <div style="font-weight:700; color:var(--text-main); margin-bottom:6px;">Когда проверять наличие</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-size:13px; color:var(--text-main);">
+                <select id="succ_mode" ${ro} onchange="app.succScheduleSave()" style="${inp}">
+                    <option value="monthly" ${st.mode === 'monthly' ? 'selected' : ''}>После обновления прайса: 10-го (STOUT, ROMMER) и 20-го (остальные)</option>
+                    <option value="every" ${st.mode === 'every' ? 'selected' : ''}>Каждые N дней</option></select>
+                <span style="${st.mode === 'every' ? '' : 'display:none;'}">каждые
+                    <input id="succ_days" type="number" min="1" max="60" value="${st.every_days}" ${ro} onchange="app.succScheduleSave()" style="${inp} width:64px;"> дн., начиная с
+                    <input id="succ_anchor" type="date" value="${esc(st.anchor || today)}" ${ro} onchange="app.succScheduleSave()" style="${inp}"></span>
+                <span>разовая проверка:
+                    <input id="succ_extra" type="date" min="${today}" ${ro} style="${inp}">
+                    <button class="admin-btn" ${ro} onclick="app.succScheduleAddDate()">Добавить</button></span>
+            </div>
+            ${st.extra_dates.length ? `<div style="font-size:12.5px; margin-top:8px;">Назначены: ${st.extra_dates.map(d => `<span class="ad-chip" style="cursor:default;">${esc(d)} <a href="#" onclick="app.succScheduleDropDate('${esc(d)}'); return false;" title="Убрать">✕</a></span>`).join(' ')}</div>` : ''}
+            <div style="font-size:12.5px; color:var(--text-sec); margin-top:8px; line-height:1.55;">Ближайшие проверки: ${next}.${seen ? ` Парсер в последний раз видел замену ${esc(new Date(seen).toLocaleDateString('ru-RU'))}.` : ''}
+                Проверка — это прогон парсера цен на GitHub (он же читает «Похожие» у позиций «под заказ»), занимает несколько часов. Сразу запустить можно вручную: GitHub → Actions → Weekly Price Parser → Run workflow.</div>
+        </div>`;
+    },
+    succScheduleSave: async function (patch) {
+        if (this.isReadOnlyAdmin()) return;
+        const v = id => (document.getElementById(id) || {}).value;
+        const val = Object.assign({}, this.succSchedule(), patch || {});
+        if (!patch) {
+            val.mode = v('succ_mode') === 'every' ? 'every' : 'monthly';
+            val.every_days = Math.min(60, Math.max(1, Math.round(Number(v('succ_days')) || 7)));
+            val.anchor = v('succ_anchor') || new Date().toISOString().slice(0, 10);
+        }
+        const me = (this._currentUserRow && this._currentUserRow.email) || null;
+        try {
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: this.SUCC_SCHEDULE_KEY, value: val, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            this.appSettings = Object.assign({}, this.appSettings, { [this.SUCC_SCHEDULE_KEY]: val });
+            this.renderAdminMain();
+        } catch (e) {
+            console.warn('[succScheduleSave]', e.message || e);
+            this.alert('Не удалось сохранить расписание: ' + (e.message || e));
+        }
+    },
+    succScheduleAddDate: function () {
+        const d = (document.getElementById('succ_extra') || {}).value;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d || '')) { this.alert('Выберите дату.'); return; }
+        const cur = this.succSchedule().extra_dates;
+        if (cur.indexOf(d) < 0) this.succScheduleSave({ extra_dates: cur.concat(d).sort() });
+    },
+    succScheduleDropDate: function (d) {
+        this.succScheduleSave({ extra_dates: this.succSchedule().extra_dates.filter(x => x !== d) });
+    },
+
+    // ── Варианты из каталога ────────────────────────────────────────────────
+    // Позиции той же группы каталога (тот же массив), в наличии, не снятые;
+    // сначала тот же бренд, потом ближе по цене (в пределах ±50 %).
+    succCatalogAlts: function (id) {
+        const old = this.findCatalogItemById(id);
+        if (!old) return { old: null, alts: [] };
+        let arr = null;
+        for (const key in catalog) {
+            const v = catalog[key];
+            if (Array.isArray(v) && v.some(it => it && it.id === old.id)) { arr = v; break; }
+        }
+        const price = Number(old.price) || 0;
+        const alts = (arr || []).filter(it => it && it.id !== old.id && typeof it.price === 'number' && it.price > 0
+            && it.availability !== 'on_order' && !it.discontinued
+            && (!price || (it.price >= price * 0.5 && it.price <= price * 1.5)))
+            .map(it => ({ it: it, same: (it.brand || '') === (old.brand || '') ? 1 : 0, d: price ? Math.abs(it.price - price) / price : 0 }))
+            .sort((a, b) => (b.same - a.same) || (a.d - b.d)).slice(0, 3).map(x => x.it);
+        return { old: old, alts: alts };
+    },
+    succAltsHtml: function (oldId, rowId, esc, fmt) {
+        const a = this.succCatalogAlts(oldId);
+        if (!a.old) return '';
+        const body = a.alts.length ? a.alts.map(it => `<div style="display:flex; gap:10px; align-items:center; padding:4px 0; font-size:12.5px;">
+                <span style="flex:1; min-width:0;"><b>${esc(it.article || it.id)}</b> ${esc(it.name)} <span style="color:var(--text-sec);">${esc(it.brand || '')}</span></span>
+                <span style="white-space:nowrap;">${fmt(it.price)} ₽</span>
+                <button class="admin-btn" onclick="app.succUseAlt('${esc(a.old.id)}', '${esc(it.id)}', ${rowId == null ? 'null' : Number(rowId)})">Заменить на эту</button></div>`).join('')
+            : '<span style="font-size:12.5px; color:var(--text-sec);">В той же группе каталога подходящих в наличии нет.</span>';
+        return `<div style="margin-top:12px; padding-top:10px; border-top:1px dashed var(--border);">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-sec); margin-bottom:2px;">Или из каталога калькулятора</div>${body}</div>`;
+    },
+    succUseAlt: async function (oldId, altId, rowId) {
+        const old = this.findCatalogItemById(oldId), alt = this.findCatalogItemById(altId);
+        if (!old || !alt) return;
+        if (!(await this.confirm('Заменить «' + old.name + '» на «' + alt.name + '»? Проверьте, что концы (резьба, размер) те же: смета стыкует трубы по артикулу старой позиции.'))) return;
+        const manual = { name: String(alt.name).slice(0, 300), price: Number(alt.price), article: String(alt.article || alt.id).slice(0, 60),
+            source: 'Каталог калькулятора, арт. ' + (alt.article || alt.id), photo: '' };
+        if (!(await this.saveOrderSwap(old.id, { status: 'swap', manual: manual }))) return;
+        // Замена с сайта по этой позиции больше не нужна, иначе перенос в каталог перепишет её поверх
+        const row = rowId == null ? null : (this.adminData.successors || []).find(r => Number(r.id) === rowId);
+        if (row) {
+            const patch = { status: 'rejected', decided_at: new Date().toISOString(), decided_by: (this._currentUserRow && this._currentUserRow.email) || null };
+            try {
+                const { data, error } = await supabaseClient.from('catalog_successors').update(patch).eq('id', rowId).select('id');
+                if (!error && data && data.length) Object.assign(row, patch);
+            } catch (e) { console.warn('[succUseAlt]', e.message || e); }
+        }
+        this.renderAdminMain();
+    },
+
+    // Позиции «под заказ», у которых нет ни одной пары в очереди и ни одного решения
+    succNoSuccessor: function (rows) {
+        const has = new Set();
+        rows.forEach(r => has.add(r.old_article));
+        const out = [], seen = new Set();
+        for (const key in catalog) {
+            const v = catalog[key];
+            if (!Array.isArray(v)) continue;
+            v.forEach(it => {
+                if (!it || typeof it.id !== 'string' || seen.has(it.id) || it.availability !== 'on_order' || it.discontinued) return;
+                seen.add(it.id);
+                if (has.has(it.id) || (it.article && has.has(it.article))) return;
+                const sw = this.orderSwaps()[it.id];
+                if (sw && (sw.status === 'swap' || ((sw.status === 'keep' || sw.status === 'gone') && sw.month === this.orderMonth()))) return;
+                out.push(it);
+            });
+        }
+        return out;
+    },
+    succNoneHtml: function (list, esc, fmt) {
+        let h = `<div class="ad-sub" style="margin:0 0 10px; max-width:900px; line-height:1.55;">Позиции каталога «под заказ», для которых сайт ТЕРЕМ не предложил замену. Выберите вариант из каталога, отметьте «снято» или оставьте.</div>`;
+        if (!list.length) return h + `<div style="padding:30px; text-align:center; color:var(--text-sec); background:var(--surface-light); border-radius:10px;">Все позиции «под заказ» разобраны.</div>`;
+        list.slice(0, 60).forEach(it => {
+            h += `<div style="border:1px solid var(--border); border-radius:12px; padding:12px 16px; margin-bottom:10px; background:var(--surface);">
+                <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:baseline;">
+                    <b>${esc(it.article || it.id)}</b><span style="font-size:13px;">${esc(it.name)}</span>
+                    <span style="font-size:12px; color:var(--text-sec);">${fmt(it.price)} ₽ · под заказ</span></div>
+                ${this.succAltsHtml(it.id, null, esc, fmt)}
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                    <button class="admin-btn" onclick="app.succGone('${esc(it.id)}', 'gone')">Снято, замены нет</button>
+                    <button class="admin-btn" onclick="app.succGone('${esc(it.id)}', 'keep')">Оставить под заказ (до конца месяца)</button></div></div>`;
+        });
+        if (list.length > 60) h += `<div class="ad-sub">Показаны первые 60 из ${list.length}.</div>`;
+        return h;
+    },
+    succGone: async function (id, status) {
+        if (await this.saveOrderSwap(id, { status: status })) this.renderAdminMain();
     },
 
     /**
@@ -37490,11 +38018,26 @@ const app = {
      * уличным коллектором в полосу отводов не помещается. Здесь у него свой лист.
      */
     snowSchemeArt: function () {
+        const p = this.snowSchemeParams();
+        if (!p || !window.projectScheme.snowScheme) return null;
+        return window.projectScheme.snowScheme(p) || null;
+    },
+    // Монтажный вид узла (оборудование как на стене + таблица «что и куда»):
+    // те же параметры, что у принципиальной схемы, другой чертёж.
+    snowAssemblyArt: function () {
+        const p = this.snowSchemeParams();
+        if (!p || !window.projectScheme.snowAssembly) return null;
+        return window.projectScheme.snowAssembly(p) || null;
+    },
+    snowSchemeParams: function () {
         const sc = this.snowCalc;
         if (!sc || sc.impossible) return null;
-        if (!window.projectScheme || !window.projectScheme.snowScheme || !window.projectSheets) return null;
-        const a = window.projectScheme.snowScheme({
+        if (!window.projectScheme || !window.projectSheets) return null;
+        return {
             kw: Math.round(sc.Q * 10) / 10, area: sc.area, loops: sc.loops,
+            // Группы на схеме котельной присоединяются резьбой DN25 (buildSchemeConfig) —
+            // та же цифра подписывается на входе листа узла.
+            dn: 25,
             // Узлы одинаковые, поэтому чертёж один на все — но с числом узлов и
             // числом петель именно на этом узле, иначе по схеме соберут половину.
             nodes: sc.nodes || 1, loopsNode: (sc.loopsPerNode || [])[0] || sc.loops,
@@ -37508,10 +38051,11 @@ const app = {
             // термоголовка. Без автоматики котельной узел регулируется вручную;
             // базовый уровень смесителем тоже не управляет.
             auto: this.thermaticFull(), servo: this.thermaticFull()
-        });
-        return a || null;
+        };
     },
-    renderSnowScheme: function () { return this._renderArt(this.snowSchemeArt()); },
+    renderSnowScheme: function () {
+        return this._renderArt(this.snowSchemeArt()) + this._renderArt(this.snowAssemblyArt());
+    },
     /**
      * Узел обвязки коллекторов водоснабжения — над разделом «5.1. Внутреннее
      * водоснабжение». Включается тем же тумблером «Схема», что и
@@ -37931,6 +38475,9 @@ const app = {
             ["Сгон прямой 3 /4\" ВР-НР",1301,1119,1456,1138,1115,1128]
         ] }
     },
+    // Монтаж самосборного узла — на 30 % дороже готового (6 500 ₽ за группу и за коллектор-гидрострелку): собирать из деталей
+    // дольше, а соединения (пресс, сварка) входят в эту надбавку, отдельной строкой их не считаем.
+    SELF_WORK_UNIT: { group: Math.round(6500 * 1.3), collector: Math.round(6500 * 1.3) },
     // Подраздел сметы каждого вида группы (без номера) — по нему подпись схемы ищет свои строки.
     SELF_KIND_TITLE: { direct: 'Самосборная группа: прямая', thermo: 'Самосборная группа: термостатическая', servo: 'Самосборная группа: под сервопривод', dhw: 'Самосборная группа: загрузка бойлера' },
     // Сверка подписей схемы со сметой: [подпись, какие артикулы сметы её закрывают, искать во всей котельной?].
@@ -38015,8 +38562,191 @@ const app = {
                     (missU.length ? ` <span class="sg-miss-txt">Нет в смете: ${missU.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
                     ` <span class="sg-hint">Наведите на подпись схемы или на строку сметы — соответствие подсветится.</span></div>`;
             }
+            // Лист — миниатюрой общего размера, справа таблица «чем собрать группу»: цена и разница по пяти вариантам.
             return sum + this._renderSheetImage(p.url, p.kind);
         }).join('');
+    },
+    // ── Сравнение вариантов обвязки котельной справа от листа самосборной группы ──
+    // Пять вариантов: готовая группа STOUT (стальной коллектор, нержавейка 316L), готовая ROMMER (304), самосборные на 304, 316L и ППР.
+    // Вариант целиком задаёт систему труб и бренд раздела 2, остальная смета та же. Считается тихими прогонами render(true)
+    // (как boilerSystemTotals), поэтому после отрисовки и с кэшем по подписи состояния.
+    SG_VARIANTS: [
+        { key: 'ready_stout', label: 'Готовая STOUT', ready: true, rom: false, sys: 'ss316' },
+        { key: 'ready_rommer', label: 'Готовая ROMMER', ready: true, rom: true, sys: 'ss304' },
+        { key: 'ss304', label: 'Самосборная 304', ready: false, rom: true, sys: 'ss304' },
+        { key: 'ss316', label: 'Самосборная 316L', ready: false, rom: false, sys: 'ss316' },
+        { key: 'ppr', label: 'Самосборная ППР', ready: false, rom: true, sys: 'ppr' }
+    ],
+    // Какой из вариантов сейчас в смете.
+    sgCurrentVariant: function () {
+        const so = (this.state.sectionAnalog || {})['2. Обвязка котельной'];
+        const rom = so !== undefined ? so : this.state.brandMode === 'rommer';
+        const sys = this.boilerPipeSystem();
+        if (this.selfGroups()) return sys;
+        return rom ? 'ready_rommer' : 'ready_stout';
+    },
+    pumpGroupCompareCompute: function () {
+        const SEC = '2. Обвязка котельной';
+        const snapshot = JSON.parse(JSON.stringify(this.state));
+        const out = {};
+        this._cheapComparing = true;
+        let kinds = [], counts = {}, loads = {};
+        try {
+            // Состав групп и их нагрузку берём из самосборного прогона: в готовом варианте подбор их не ставит.
+            this.state.groupsBuild = 'self';
+            this.state.boilerPipeSystem = 'ss316';
+            this.state.sectionAnalog = Object.assign({}, snapshot.sectionAnalog || {}, { [SEC]: false });
+            this._boilerRangeCache = null;
+            this.render(true);
+            kinds = Object.keys(this._selfKinds || {}).filter(k => this._selfKinds[k]);
+            counts = Object.assign({}, this._selfCounts);
+            loads = Object.assign({}, this._selfLoads);
+            this.SG_VARIANTS.forEach(v => {
+                this.state.boilerPipeSystem = v.sys;
+                this.state.sectionAnalog = Object.assign({}, snapshot.sectionAnalog || {}, { [SEC]: v.rom });
+                this.state.groupsBuild = v.ready ? 'ready' : 'self';
+                this._boilerRangeCache = null;
+                this.render(true);
+                const items = (this.currentEquipmentList || []).filter(it => String(it.group || '').indexOf('2.') === 0);
+                const total = items.reduce((a, it) => a + (it.price || 0) * (it.q || 1), 0);
+                const works = (this.currentWorksList || []).filter(w => /^1\.2[\s.]/.test(String(w.group || '')))
+                    .reduce((a, w) => a + (w.sum || 0), 0);
+                const r = { total: Math.round(total), works: Math.round(works), grp: {}, parts: {}, fit: {}, stock: {} };
+                
+                kinds.forEach(k => {
+                    const n = counts[k] || 1;
+                    if (v.ready) {
+                        // brandMode у readyGroupPrice берётся из состояния: на время прогона ставим бренд варианта.
+                        const bm = this.state.brandMode;
+                        this.state.brandMode = v.rom ? 'rommer' : 'stout';
+                        r.grp[k] = Math.round(this.readyGroupPrice(k));
+                        this.state.brandMode = bm;
+                        r.parts[k] = 4;
+                        // Позиции готового узла и их наличие (у ROMMER — по парам .rommer), нагрузка против паспортной мощности группы.
+                        const alt = it => it ? ((v.rom && it.rommer && !Array.isArray(it.rommer)) ? it.rommer : it) : null;
+                        const kk = k === 'dhw' ? 'direct' : k;
+                        const g0 = alt({ direct: catalog.groups_dn25[0], thermo: catalog.groups_dn25[1], servo: catalog.groups_dn25[2] }[kk]);
+                        const pump0 = alt(catalog.pumps_dn25.find(pp => pp.type === this.state.pumpType) || catalog.pumps_dn25[0]);
+                        const node0 = alt((catalog.gbm_nodes || [])[0]);
+                        const servo0 = kk === 'servo' ? alt(this.state.servoType === 'sensor' ? catalog.servo_rotary_sensor : catalog.servo_rotary_std) : null;
+                        r.stock[k] = [g0, pump0, node0, servo0].filter(it => it && it.availability === 'on_order').map(it => it.name);
+                        const ld0 = loads[k];
+                        if (ld0 && ld0.kw > 0 && ld0.groups > 0 && g0) {
+                            const cap = this.groupCapKw(g0, kk === 'direct' ? (k === 'dhw' ? 'dhw' : 'rad') : 'ufh');
+                            const per = ld0.kw / ld0.groups;
+                            if (cap > 0) r.fit[k] = { ok: per <= cap, txt: Math.round(per / cap * 100) + ' %' };
+                        }
+                    } else {
+                        const title = this.selfGroupTitle(k === 'dhw' ? 'direct' : k, k === 'dhw' ? 'dhw' : undefined);
+                        const rows = items.filter(it => it.group === title);
+                        r.grp[k] = Math.round(rows.reduce((a, it) => a + (it.price || 0) * (it.q || 1), 0) / n);
+                        r.parts[k] = Math.round(rows.reduce((a, it) => a + (it.q || 1), 0) / n);
+                        r.stock[k] = rows.filter(it => it.availability === 'on_order').map(it => it.name);
+                        // Нагрузка на самосборную: скорость в трубе, расход насоса 25/60 и потери на смесителе (те же пределы, что в плашке подраздела).
+                        const ld = loads[k];
+                        if (ld && ld.kw > 0 && ld.groups > 0) {
+                            const G = ld.kw / ld.groups / (1.163 * ld.dt);
+                            const big = this.selfKitSize(ld.kw, ld.groups, ld.dt) === '1';
+                            const dIn = big ? 0.0272 : 0.0216;
+                            const vel = G / 3600 / (Math.PI * dIn * dIn / 4);
+                            const kv = k === 'thermo' ? 1.6 : (k === 'servo' ? (big ? 8 : 6) : 0);
+                            const dp = kv ? Math.pow(G / kv, 2) : 0;
+                            const bad = [];
+                            if (vel > 1.0) bad.push('скорость ' + vel.toFixed(2).replace('.', ',') + ' м/с');
+                            if (G > 3.0) bad.push('расход выше 3 м³/ч');
+                            if (dp > 0.6) bad.push('смеситель теряет ' + dp.toFixed(2).replace('.', ',') + ' бар');
+                            r.fit[k] = { ok: !bad.length, txt: bad.length ? bad.join('; ') : vel.toFixed(2).replace('.', ',') + ' м/с' };
+                        }
+                    }
+                });
+                out[v.key] = r;
+            });
+        } finally {
+            this._cheapComparing = false;
+            Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
+            Object.assign(this.state, snapshot);
+            this._boilerRangeCache = null;
+            this.render(true);
+        }
+        return out;
+    },
+    // Таблица вариантов в готовом режиме: самосборных листов нет, но выбрать вариант и вернуться можно.
+    renderGroupCompareOnly: function () {
+        // Таблица только в самосборном режиме — вместе с листами самосборных групп.
+        if (!this.isPro() || !this.needCollector || !this.selfGroups()) return '';
+        this.sgInit();
+        return `<div class="sg-cmp-solo no-print" data-sg-cmp="direct">${this.pumpGroupCompareHtml('direct')}</div>`;
+    },
+    _sgCmpCache: null,
+    _sgCmpKey: function () {
+        return (this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state));
+    },
+    pumpGroupCompareHtml: function (kind) {
+        const c = this._sgCmpCache;
+        if (c && c.key === this._sgCmpKey() && c.data) return this._sgCmpTable(kind, c.data);
+        // Не считаем внутри render(): прогоны сами зовут render. Откладываем и заполняем готовые контейнеры.
+        if (!this._cheapComparing && !this._sgCmpBusy) {
+            clearTimeout(this._sgCmpTimer);
+            this._sgCmpTimer = setTimeout(() => this.sgCompareFill(), 350);
+        }
+        return `<div class="sg-cmp-wait">Считаю варианты обвязки…</div>`;
+    },
+    sgCompareFill: function () {
+        if (this._sgCmpBusy) return;
+        this._sgCmpBusy = true;
+        try {
+            const key = this._sgCmpKey();
+            let data = null;
+            try { data = this.pumpGroupCompareCompute(); } catch (e) { console.warn('[сравнение групп] не посчиталось:', e); }
+            this._sgCmpCache = { key: key, data: data };
+            document.querySelectorAll('[data-sg-cmp]').forEach(el => {
+                el.innerHTML = data ? this._sgCmpTable(el.getAttribute('data-sg-cmp'), data) : '<div class="sg-cmp-wait">Сравнение не посчиталось.</div>';
+            });
+        } finally { this._sgCmpBusy = false; }
+    },
+    _sgCmpTable: function (kind, data) {
+        const f = v => Math.round(v).toLocaleString('ru-RU') + ' ₽';
+        const base = data.ready_stout;
+        const pct = (v, b) => {
+            if (!(b > 0)) return '';
+            const p = Math.round((v - b) / b * 1000) / 10;
+            if (p === 0) return '<span class="sg-cmp-base">база</span>';
+            return `<span class="${p > 0 ? 'sg-cmp-up' : 'sg-cmp-dn'}">${p > 0 ? '+' : '−'}${String(Math.abs(p)).replace('.', ',')} %</span>`;
+        };
+        const cur = this.sgCurrentVariant();
+        const showW = Object.keys(data).some(k => data[k].works > 0);
+        const rows = this.SG_VARIANTS.map(v => {
+            const d = data[v.key];
+            if (!d) return '';
+            const st = d.stock[kind] || [];
+            const esc = t => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+            const stockCell = st.length
+                ? `<span class="sg-cmp-up" title="Нет в наличии: ${esc(st.join('; '))}">${st.length} поз.</span>`
+                : '<span class="sg-cmp-dn">есть</span>';
+            return `<tr class="${v.key === cur ? 'sg-cmp-cur' : ''}" onclick="app.sgPickVariant('${v.key}')">` +
+                `<td class="sg-cmp-n"><b>${v.label}</b></td>` +
+                `<td>${f(d.grp[kind] || 0)}<br>${pct(d.grp[kind], base.grp[kind])}</td>` +
+                `<td>${f(d.total)}<br>${pct(d.total, base.total)}</td>` +
+                (showW ? `<td>${f(d.works)}<br>${pct(d.works, base.works)}</td>` : '') +
+                `<td>${stockCell}</td>` +
+                `<td>${d.parts[kind] || '—'}</td></tr>`;
+        }).join('');
+        return `<table class="sg-cmp-tbl"><thead><tr><th>Вариант</th><th>Группа</th><th>Вся обвязка</th>${showW ? '<th>Монтаж</th>' : ''}<th>Под заказ</th><th>Деталей</th></tr></thead><tbody>${rows}</tbody></table>` +
+            `<div class="sg-cmp-note">Нажмите вариант, чтобы применить. Проценты — к готовой STOUT.</div>`;
+    },
+    // Выбор варианта из таблицы: переключает группы, систему труб и бренд раздела 2 — как вручную в настройках.
+    sgPickVariant: function (key) {
+        const v = this.SG_VARIANTS.find(x => x.key === key);
+        if (!v || key === this.sgCurrentVariant()) return;
+        if (!v.ready && !this.isPro()) { this.showModal('pro'); return; }
+        this.state.groupsBuild = v.ready ? 'ready' : 'self';
+        this.state.boilerPipeSystem = v.sys;
+        this.state.sectionAnalog = Object.assign({}, this.state.sectionAnalog || {}, { '2. Обвязка котельной': v.rom });
+        this._boilerRangeCache = null;
+        this._sgCmpCache = null;
+        this.syncUI();
+        this.render();
+        this.saveState();
     },
     // Подсветка соответствия «подпись на схеме ↔ строка сметы». Слушатели на документе, ставятся один раз.
     sgInit: function () {
@@ -38332,6 +39062,7 @@ const app = {
         safe('tm', 'Схема подключения автоматики котельной', this.automationSchemeArt);
         safe('o', 'Схема подключения автоматики напольного отопления', this.ufhSchemeArt);
         safe('o', 'Схема узла снеготаяния', this.snowSchemeArt);
+        safe('o', 'Монтажная схема узла снеготаяния', this.snowAssemblyArt);
         return out;
     },
     exportAdminToExcel: function () {
@@ -38376,8 +39107,8 @@ const app = {
         document.body.removeChild(link);
     },
     // ═══ Список пользователей: срезы, сохранённые виды, плотность, быстрый просмотр ═══
-    USERS_FILTER_DEFAULTS: { tariff: 'all', expiry: 'all', region: '', dist: 'all', activity: 'all', recog: 'all', suspect: 'all', idle: 'all', device: 'all' },
-    USERS_FILTER_IDS: { tariff: 'admin_filter_tariff', expiry: 'admin_filter_expiry', region: 'admin_filter_region', dist: 'admin_filter_dist', activity: 'admin_filter_activity', recog: 'admin_filter_recog', suspect: 'admin_filter_suspect', idle: 'admin_filter_idle', device: 'admin_filter_device' },
+    USERS_FILTER_DEFAULTS: { tariff: 'all', expiry: 'all', region: '', dist: 'all', activity: 'all', recog: 'all', suspect: 'all', idle: 'all', tour: 'all', device: 'all' },
+    USERS_FILTER_IDS: { tariff: 'admin_filter_tariff', expiry: 'admin_filter_expiry', region: 'admin_filter_region', dist: 'admin_filter_dist', activity: 'admin_filter_activity', recog: 'admin_filter_recog', suspect: 'admin_filter_suspect', idle: 'admin_filter_idle', tour: 'admin_filter_tour', device: 'admin_filter_device' },
     USERS_SEGMENTS: [
         { id: 'all', label: 'Все', f: {} },
         { id: 'pro', label: 'Профи', f: { tariff: 'pro' } },
@@ -38385,7 +39116,8 @@ const app = {
         { id: 'expired', label: 'Срок истёк', f: { expiry: 'expired' } },
         { id: 'nodist', label: 'Без дистрибьютора', f: { dist: 'none' } },
         { id: 'idle', label: 'Ходят, но не считают', f: { idle: 'yes' } },
-        { id: 'suspect', label: 'Сомнительные анкеты', f: { suspect: 'yes' } }
+        { id: 'suspect', label: 'Сомнительные анкеты', f: { suspect: 'yes' } },
+        { id: 'tournot', label: 'Не прошли обучение', f: { tour: 'no' } }
     ],
 
     // Выставить фильтры списка (всё, чего нет в f, — по умолчанию) и перечитать список
@@ -38508,7 +39240,11 @@ const app = {
                 ${rowKV('Смет сохранено', String(ests.length))}${rowKV('Оборудование', ests.length ? money(eqSum) : '')}${rowKV('Монтаж', wkSum ? money(wkSum) : '')}
                 ${rowKV('Визитов', u.sess_visits ? String(u.sess_visits) : '')}${rowKV('Время на сайте', mins ? mins + ' мин' : '')}
                 ${rowKV('Обучение', u.tour_done_at ? '<span style="color:#059669;">✓ пройдено ' + fmtD(u.tour_done_at) + '</span>' : '')}
-                <div class="ad-peek-sec">История</div>
+                ${this.canEditTariffs() && (u.email || u.username) ? `<div class="ad-kv"><span title="Включить обучение этому человеку при следующем заходе, либо не навязывать, даже если включено его группе">Принудительно</span>
+                    <select id="ad_peek_tour" data-login="${esc(String(u.email || u.username).toLowerCase())}" onchange="app.setTourForce('users', this.dataset.login, this.value === 'on' ? true : (this.value === 'off' ? false : null))" style="font-size:11.5px; padding:2px 4px; max-width:150px;">
+                        <option value="" ${this.tourForceOwnValue(u.email || u.username) === '' ? 'selected' : ''}>как у группы</option>
+                        <option value="on" ${this.tourForceOwnValue(u.email || u.username) === 'on' ? 'selected' : ''}>включить</option>
+                        <option value="off" ${this.tourForceOwnValue(u.email || u.username) === 'off' ? 'selected' : ''}>не навязывать</option></select></div>` : ''}
                 ${rowKV('Регистрация', fmtD(u.created_at))}${rowKV('Последний вход', fmtD(u.last_visited))}${rowKV('Устройство', esc(u.last_device))}
                 <div id="ad_peek_ext"><div class="ad-peek-sec">Сметы и события</div><div class="ad-card-note">Загружаем…</div></div>
             </div>
@@ -40078,10 +40814,7 @@ const app = {
                     if (vt && vr) { svg = vt.svg; svgRad = vr.svg; }
                 } catch (e) { console.warn('[план радиаторов] этаж ' + (fi + 1) + ':', e.message); }
             }
-            if (v) {
-                this.applyRadLenFromBill(v.radRows || [], radOpts);
-                out.push({ fl: fi + 1, svg, svgRad, rows: v.rows, radRows: v.radRows || [], radTee: v.radTee, radM: v.radM || 0, roomArea: rooms });
-            }
+            if (v) out.push({ fl: fi + 1, svg, svgRad, rows: v.rows, radRows: v.radRows || [], radTee: v.radTee, radM: v.radM || 0, roomArea: rooms });
         });
         return out;
     },
@@ -40536,6 +41269,7 @@ const app = {
             requestAnimationFrame(() => { restore(); setTimeout(restore, 150); });
         };
         document.getElementById('ufh_fix_ok').onclick = apply;
+        document.getElementById('ufh_fix_ok').onclick = apply;
         inp.onkeydown = e => { if (e.key === 'Enter') apply(); else if (e.key === 'Escape') close(); };
     },
 
@@ -40587,7 +41321,7 @@ const app = {
     bindPlanHighlight: function () {
         if (this._planHlBound) return;
         this._planHlBound = true;
-        // data-pl-grp — строка помещения с несколькими петлями/приборами: «L2,L3» зажигает все их значки на чертеже
+        // data-pl-grp — строка помещения с несколькими петлями: «L2,L3» зажигает все их значки на чертеже
         const holder = el => (el && el.closest) ? el.closest('[data-pl],[data-pl-grp]') : null;
         const scopeOf = el => el.closest('#scheme_zoom_overlay') || el.closest('.ufh-plan-block');
         document.addEventListener('mouseover', e => {
@@ -40674,9 +41408,8 @@ const app = {
             }
             if ((v.radRows || []).length) {
                 anyRad = true; tee = tee || !!v.radTee;
-                const n2 = v => (Math.round((v || 0) * 100) / 100).toFixed(2).replace('.', ',');
                 const radTr = (r, cls) => `<tr${cls ? ` class="${cls}"` : ''} data-pl="R${r.no}"><td style="text-align:center">${r.kind === 'conv' ? 'К' : 'Р'}${r.no}</td><td>${esc(r.name)}</td>` +
-                    `<td style="text-align:right">${n2(r.w)} м</td><td style="text-align:right">${r.L == null ? '—' : n1(r.L) + ' м'}</td></tr>`;
+                    `<td style="text-align:right">${n1(r.w)} м</td><td style="text-align:right">${r.L == null ? '—' : n1(r.L) + ' м'}</td></tr>`;
                 // Приборы одного помещения — в одну раскрывающуюся ветку, как петли тёплого пола
                 const rGroups = [], rByName = {};
                 v.radRows.forEach(r => {
@@ -40691,7 +41424,7 @@ const app = {
                     const gL = g.rows.reduce((s, r) => s + (r.L || 0), 0);
                     tr += `<tr class="ufh-grp" data-pl-grp="${g.rows.map(r => 'R' + r.no).join(',')}" onclick="app.ufhToggleGrp(this)" title="Раскрыть приборы помещения">` +
                         `<td style="text-align:center"><span class="ufh-arr">▸</span> ${g.rows.length}</td><td><b>${esc(g.name)}</b></td>` +
-                        `<td style="text-align:right">${n2(gW)} м</td><td style="text-align:right">${n1(gL)} м</td></tr>`;
+                        `<td style="text-align:right">${n1(gW)} м</td><td style="text-align:right">${n1(gL)} м</td></tr>`;
                     g.rows.forEach(r => { tr += radTr(r, 'ufh-sub'); });
                 });
                 radHtml = `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px">` +
@@ -40719,7 +41452,7 @@ const app = {
                 `<div class="ufh-plan-row">` + planBox(v.svg) +
                 (split ? mkCol(tpHtml, true) : mkCol(tpHtml + radHtml, true)) + `</div>` +
                 (split ? `<div style="font-weight:600;margin:14px 0 4px;color:var(--text-sec)">Радиаторы</div>` +
-                    `<div class="ufh-plan-row">` + planBox(v.svgRad) + mkCol(radHtml, true) + `</div>` : '') +
+                    `<div class="ufh-plan-row">` + planBox(v.svgRad) + mkCol(radHtml, false) + `</div>` : '') +
                 `</div>`);
         });
         parts.unshift(`<style>
@@ -40759,7 +41492,7 @@ const app = {
             'Трассы идут вдоль стен в обход тёплого пола. Длина — подача и обратка вместе, с подъёмами к прибору и коллектору.');
         const hint = this.noteBox('info', '', 'Трассы и длины рассчитаны по плану.',
             notes.join('<br><br>') + '<br><br>Точные длины уточняются при монтаже.');
-        // Переключатель источника приборов: по теплопотерям (по умолчанию) или как отмечено на плане.
+        // Переключатель источника приборов: как на плане (по умолчанию при плане с отметками) или по теплопотерям.
         const planMode = this.radSourceMode() === 'plan';
         const segBtn = (on, mode, label) => `<button type="button" class="ufh-tb-full" onclick="app.setRadSource('${mode}')" ` +
             `style="${on ? 'background:var(--primary,#2563eb);color:#fff;border-color:transparent;font-weight:600;' : ''}">${label}</button>`;
@@ -40782,15 +41515,6 @@ const app = {
         return `<div style="padding:8px 2px 2px"><div style="font-weight:700;font-size:14px;margin-bottom:6px">` +
             (anyRad && anyTp ? 'План отопления дома: тёплый пол и радиаторы' : anyRad ? 'Радиаторы на плане дома' : 'Раскладка тёплого пола по плану дома') +
             `</div>` + radSwitch + deficitBox + parts.join('') + hint + `</div>`;
-    },
-
-    // Источник приборов: 'plan' — как отмечено на плане, 'loss' — по теплопотерям в каждой комнате
-    setRadSource: function (mode) {
-        const val = mode === 'loss' ? 'loss' : 'plan';
-        if (this.radSourceMode() === val) return;
-        this.state.radSource = val;
-        this.saveState();
-        this.render();
     },
 
     // ═══ Напоминания тем, кто давно не заходил ═══════════════════════════
@@ -48444,6 +49168,8 @@ const app = {
         // «Аналог» на котельной молча ничего не делала бы с трубой, если монтажник
         // до того выбирал систему в таблице замены.
         if (title === "2. Обвязка котельной") this.state.boilerPipeSystem = null;
+        // То же с брендом труб из таблицы замены: тумблер раздела старше точечного выбора.
+        this.state.pipeBrand = {};
         this.saveState();
         this.render();
         this.cheapForkPost(_pre);
@@ -49370,6 +50096,10 @@ const app = {
                 title: 'Радиаторы: кольцо до самого дальнего прибора' + (h.branches > 1 ? ' (одна из ' + h.branches + ' веток)' : ''),
                 flow: h.flowBranch, need: h.head, have: best ? best.avail : null, pump: best ? best.label : null,
                 hasGroup: !!h.hasGroup, branches: h.branches, noisy: !!h.noisy,
+                // Участки, которые считает кольцо: трасса (подводка или стояк) и луч. Видны в карточке
+                // и в подсказке, чтобы монтажник видел, какую трубу проверяет
+                parts: (h.parts || []).filter(p => p.tag === 'trunk' || p.tag === 'trunkFar' || p.tag === 'loop')
+                    .map(p => ({ name: p.name, dp: p.dp, v: p.v || 0, d: p.d || null, len: p.len || null, tag: p.tag })),
                 // у котла без паспортной кривой стоит типовая или условная 25/60 — см. radHydraulics
                 confirmed: !(best && /типовая|принят по кривой/.test(best.label)) });
         }
@@ -49504,6 +50234,188 @@ const app = {
         out.sig = this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state);
         this._hcCompare = out;
         this.render();
+    },
+
+    /** Ручные правки радиаторного контура из state.hydroUserFix — в _hcForce, на каждом проходе. */
+    hydroUserForce: function () {
+        const u = this.state.hydroUserFix || {};
+        const out = {};
+        if (u.radGroup) out.radGroup = true;
+        if (u.radBranches) out.radBranches = u.radBranches;
+        return out;
+    },
+
+    /**
+     * Варианты исправления кольца радиаторов, которые можно предложить монтажнику: насосная группа
+     * (если её нет), вторая ветка (если групп меньше четырёх), следующий диаметр трассы. Каждый —
+     * { label, force, ov }; запас по каждому считается пробным прогоном в hydroFixPreview.
+     */
+    hydroRadCandidates: function () {
+        const h = this.radHydro;
+        if (!h || !h.parts || !h.parts.length) return [];
+        const out = [];
+        const n = parseInt(h.branches, 10) || 1;
+        // Схема «Без стрелки» группу и ветки на радиаторы не ставит: кольцо идёт от насоса котла. Поэтому
+        // варианты там — это переход на «Со стрелкой» вместе с исправлением; запас для них считается пробным
+        // прогоном уже в той схеме (см. hydroFixPreview), а не обещается заранее.
+        const direct = this.boilerSchemeEff() === 'direct';
+        if (direct) {
+            if (!h.hasGroup) {
+                out.push({ label: 'Со стрелкой: насосная группа радиаторов на коллекторе', btn: 'Перейти на «Со стрелкой» и добавить группу', force: { radGroup: true }, scheme: 'hydro' });
+                out.push({ label: 'Со стрелкой: насосная группа и вторая ветка радиаторов', btn: 'Перейти на «Со стрелкой» с группой и веткой', force: { radGroup: true, radBranches: 2 }, scheme: 'hydro' });
+            }
+        } else if (!h.hasGroup) out.push({ label: 'Насосная группа радиаторов на коллекторе', btn: 'Добавить группу', force: { radGroup: true } });
+        else if (n < 4) out.push({ label: 'Вторая ветка радиаторов: ' + n + ' → ' + (n + 1) + ' (расход на ветку меньше)', btn: 'Добавить ветку', force: { radBranches: n + 1 } });
+        const tr = h.parts.find(p => p.tag === 'trunk');
+        const order = [16, 20, 25, 26, 32];
+        const i = tr && tr.d ? order.indexOf(tr.d) : -1;
+        if (i >= 0 && i < order.length - 1) {
+            out.push({ label: 'Подводка к коллектору Ø' + tr.d + ' → Ø' + order[i + 1] + ' (меньше скорость и потери)', btn: 'Сменить трубу', ov: { d: order[i + 1], len: tr.len || null } });
+        }
+        return out;
+    },
+
+    /**
+     * Что изменится: для каждого варианта пробный прогон сметы (как hydroCompareSchemes), запас до и после.
+     * Состояние возвращается как было, в карточке появляется список с кнопками «Применить».
+     */
+    hydroFixPreview: function (event) {
+        if (event) event.preventDefault();
+        const cands = this.hydroRadCandidates();
+        const before = this.hydroRadRatio();
+        const baseForce = Object.assign({}, this._hcForce);
+        const baseOv = this.state.radTrunkOv || null;
+        const baseScheme = this.state.boilerScheme;
+        const items = [];
+        this._cheapComparing = true;
+        try {
+            cands.forEach(c => {
+                // Вариант со сменой схемы считается в этой схеме, иначе прогон ничего не покажет
+                this.state.boilerScheme = c.scheme || baseScheme;
+                this._hcForce = Object.assign({}, baseForce, c.force || {});
+                this.state.radTrunkOv = c.ov || baseOv;
+                this.render(true);
+                items.push(Object.assign({}, c, { before: before, after: this.hydroRadRatio() }));
+            });
+        } catch (e) {
+            console.warn('[гидравлика] пробный прогон не посчитался:', e);
+        } finally {
+            this._hcForce = baseForce;
+            this.state.radTrunkOv = baseOv;
+            this.state.boilerScheme = baseScheme;
+            this._cheapComparing = false;
+        }
+        // Вариант, который запас не увеличивает (группа на котле с хорошим насосом, например), не предлагаем
+        const useful = items.filter(it => it.after > it.before * 1.02);
+        const sig = this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state);
+        this._hcPreview = { sig: sig, items: useful };
+        this.render();
+    },
+
+    /** Применить вариант из списка «Что изменится»: правка уходит в state и переживает пересчёт. */
+    hydroApplyFix: function (i, event) {
+        if (event) event.preventDefault();
+        const pv = this._hcPreview;
+        const it = pv && pv.items[i];
+        const sig = this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state);
+        if (!it || pv.sig !== sig) { this._hcPreview = null; this.render(); return; }
+        if (it.scheme) {
+            // Сначала схема (она может не открыться без входа в PRO), и только потом — исправление
+            this._hcPreview = null;
+            this.setBoilerScheme(it.scheme, event);
+            if (this.state.boilerScheme !== it.scheme) return;
+        }
+        this.state.hydroUserFix = Object.assign({}, this.state.hydroUserFix || {}, it.force || {});
+        if (it.ov) this.state.radTrunkOv = it.ov;
+        this._hcPreview = null;
+        this.render();
+        this.saveState();
+    },
+
+    hydroClosePreview: function (event) {
+        if (event) event.preventDefault();
+        this._hcPreview = null;
+        this.syncHydroCheck();
+    },
+
+    /** Ручная трасса: диаметр и длина из полей карточки. Меняют и смету, и кольцо. */
+    setRadTrunkOv: function (event) {
+        if (event) event.preventDefault();
+        const dEl = document.getElementById('hc_trunk_d');
+        const lEl = document.getElementById('hc_trunk_len');
+        const d = dEl ? parseInt(dEl.value, 10) : 0;
+        const len = lEl ? parseFloat(String(lEl.value).replace(',', '.')) : 0;
+        if (!(d > 0)) return;
+        this.state.radTrunkOv = { d: d, len: len > 0 ? Math.round(len) : null };
+        this._hcPreview = null;
+        this.render();
+        this.saveState();
+    },
+
+    /** Снять все ручные правки контура радиаторов: вернуть автоподбор как был. */
+    resetRadManual: function (event) {
+        if (event) event.preventDefault();
+        this.state.hydroUserFix = null;
+        this.state.radTrunkOv = null;
+        this._hcPreview = null;
+        this.render();
+        this.saveState();
+    },
+
+    /** Список «Что изменится» под карточкой; пусто, если пробного прогона нет или состояние ушло вперёд. */
+    hydroPreviewHtml: function (forPrint) {
+        if (forPrint || !this._hcPreview) return '';
+        const sig = this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state);
+        if (this._hcPreview.sig !== sig) return '';
+        const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        const pct = k => (k >= 1 ? '+' : '') + Math.round((k - 1) * 100) + ' %';
+        const norm = this.RAD_PUMP_RESERVE;
+        const items = this._hcPreview.items;
+        let html = '<div class="hc-preview"><div class="hc-preview-t">Что добавить, чтобы хватило напора</div>';
+        if (!items.length) html += '<div class="hc-advice">Ни один вариант не даёт запаса: кольцо держит луч до прибора или клапан. Проверьте мощность приборов и насос.</div>';
+        else if (!items.some(it => it.after >= norm)) html += '<div class="hc-advice">Ни один вариант не доводит запас до нормы ' + pct(norm) + ': дальше упираются луч до прибора и клапан. Поможет меньшая мощность на прибор или второй прибор в помещении.</div>';
+        items.forEach((it, i) => {
+            const ok = it.after >= norm;
+            html += '<div class="hc-pv-item"><div><b>' + esc(it.label) + '</b></div>'
+                + '<div>Запас ' + pct(it.before) + ' → <b>' + pct(it.after) + '</b>'
+                + (ok ? ' — норма ' + pct(norm) + ' достигнута' : ' — норма ' + pct(norm) + ' ещё не достигнута') + '</div>'
+                + (it.scheme ? '<div class="hc-note">Схема котельной станет «Со стрелкой».</div>' : '')
+                + '<button type="button" class="hc-btn" onclick="app.hydroApplyFix(' + i + ', event)">' + esc(it.btn || 'Добавить') + '</button></div>';
+        });
+        html += '<button type="button" class="hc-btn hc-btn-ghost" onclick="app.hydroClosePreview(event)">Закрыть</button></div>';
+        return html;
+    },
+
+    /** Участки кольца (трасса, луч) и форма ручной трассы + сводка ручных правок. Только строка «Радиаторы». */
+    hydroPartsHtml: function (r, forPrint) {
+        const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        let html = '<div class="hc-parts">';
+        (r.parts || []).forEach(p => {
+            html += '<div class="hc-part"><span>' + esc(p.name) + '</span><b>' + (p.dp != null ? p.dp.toFixed(1).replace('.', ',') + ' кПа' : '—')
+                + (p.v > 0 ? ', ' + p.v.toFixed(2).replace('.', ',') + ' м/с' : '') + '</b></div>';
+        });
+        html += '</div>';
+        const trunk = (r.parts || []).find(p => p.tag === 'trunk');
+        if (trunk && !forPrint) {
+            const dSel = trunk.d || 25;
+            const opts = [16, 20, 25, 26, 32].map(d => '<option value="' + d + '"' + (d === dSel ? ' selected' : '') + '>Ø' + d + '</option>').join('');
+            // Ручная трасса — за свёрнутым блоком: это запасной путь, а не первое, что нужно монтажнику.
+            // Применяется сразу при изменении (как в основной ветке): пересчёт занимает десятки мс
+            html += '<details class="hc-manual"><summary>Своя подводка к котельной</summary>'
+                + '<div class="hc-trunk-form"><span>Диаметр и длина (подача + обратка):</span>'
+                + '<select id="hc_trunk_d" onchange="app.setRadTrunkOv(event)">' + opts + '</select>'
+                + '<input id="hc_trunk_len" type="number" min="1" step="1" value="' + Math.round(trunk.len || 0) + '" onchange="app.setRadTrunkOv(event)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}"> м</div></details>';
+        }
+        const u = this.state.hydroUserFix || {};
+        const manual = [];
+        if (this.state.radTrunkOv) manual.push('подводка Ø' + this.state.radTrunkOv.d + (this.state.radTrunkOv.len ? ', ' + this.state.radTrunkOv.len + ' м' : ''));
+        if (u.radGroup) manual.push('насосная группа');
+        if (u.radBranches) manual.push(u.radBranches + ' ветки');
+        if (manual.length && !forPrint) {
+            // Одна кнопка снимает все ручные правки разом; название говорит, что будет
+            html += '<div class="hc-advice">Вручную: ' + esc(manual.join(', ')) + '. <button type="button" class="hc-btn hc-btn-ghost" onclick="app.resetRadManual(event)">Вернуть автоподбор</button></div>';
+        }
+        return html;
     },
 
     /**
@@ -49687,7 +50599,7 @@ const app = {
         const estFail = soft && c.fail > 0;
         const state = c.fail ? (soft ? 'tight' : 'fail') : (c.tight ? 'tight' : 'ok');
         const pill = estFail ? 'Оценка: может не хватить'
-            : { ok: 'Всё хватает', tight: 'Впритык', fail: 'Не хватает' }[state];
+            : { ok: 'Всё проверено', tight: 'Впритык', fail: 'Не хватает' }[state];
         // Кнопка «Укоротить петли»: есть смысл, если самая длинная петля заметно длиннее цели; цель — на 20 % короче
         const _ub = this._ufhBal;
         const _maxM = (_ub && _ub.mans) ? _ub.mans.reduce((a, m) => (m.rows || []).reduce((b, r) => Math.max(b, r.m || 0), a), 0) : 0;
@@ -49753,7 +50665,7 @@ const app = {
             if (g.id === 'rad') sub = first.branches > 1 ? first.branches + ' ветки' : (first.hasGroup === false ? 'от насоса котла' : 'насосная группа');
             else if (g.id === 'ufh') sub = many ? g.rows.length + ' коллектора' : String(first.title).replace(/^Тёплый пол:\s*/, '');
             const resTxt = g.est ? 'может не хватить'
-                : { ok: 'хватает', tight: 'впритык', fail: 'не хватает', unknown: 'нет данных' }[g.verdict];
+                : { ok: 'ок', tight: 'впритык', fail: 'не хватает', unknown: 'нет данных' }[g.verdict];
             html += '<details class="hc-row hc-' + g.verdict + '"' + ((forPrint || this._hcOpen[key]) ? ' open' : '')
                 + ' ontoggle="app._hcOpen[\'' + key + '\']=this.open"><summary><span class="hc-dot">' + ICON[g.verdict] + '</span>'
                 + '<span class="hc-name">' + esc(NAMES[g.id] || first.title) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>'
@@ -49771,12 +50683,15 @@ const app = {
                     else html += '<div class="hc-advice">Напора не хватает, а петли уже короткие (' + Math.round(_maxM) + ' м). Нужен узел с большей пропускной способностью или два узла — выберите в блоке «Тёплый пол» слева.</div>';
                     if (!forPrint && parseInt(s.ufhLoopCut, 10) > 0)
                         html += '<div class="hc-advice">Предел длины петли задан вручную: ' + parseInt(s.ufhLoopCut, 10) + ' м. <button type="button" class="hc-btn hc-btn-ghost" onclick="app.setUfhLoopCut(0, event)">Снять</button></div>';
-                } else if (r.advice) html += '<div class="hc-advice">' + esc(r.advice) + '</div>';
+                } else if (r.advice) html += '<div class="hc-advice">' + esc(r.advice)
+                    + ((r.id === 'rad' && !forPrint && r.verdict !== 'ok') ? ' <button type="button" class="hc-btn" onclick="app.hydroFixPreview(event)">Что добавить</button>' : '') + '</div>';
+                if (r.id === 'rad') html += this.hydroPartsHtml(r, !!forPrint);
                 r.flags.forEach(fl => { html += '<div class="hc-flag">' + esc(fl) + '</div>'; });
             });
             html += '</div></details>';
         });
         html += '</div>';
+        html += this.hydroPreviewHtml(!!forPrint);
 
         // Единица напора и что значит «впритык»
         html += '<div class="hc-note">Напор в метрах водяного столба. «Впритык» — запаса почти нет.</div>';
@@ -58933,55 +59848,41 @@ const app = {
             ];
         }
         else if (item.originalId && (item.originalId.endsWith('_rad') || item.originalId.startsWith('SPI-0003-'))) {
-            let p_ins = 0, p_split = 0, p_ins_mp = 0, p_split_mp = 0;
-            let b_ins = 'STOUT', b_split = 'STOUT', b_ins_mp = 'STOUT', b_split_mp = 'STOUT';
-
-            let insulatedItem = catalog.insulated_pipes ? catalog.insulated_pipes[0] : null;
-            if (isRommer) {
-                p_ins = 138;
-                b_ins = 'ROMMER';
-            } else if (insulatedItem) {
-                p_ins = insulatedItem.price || 0;
-            }
-
-            let splitItem = catalog.rad_pipes_grey ? catalog.rad_pipes_grey[0] : null;
-            if (isRommer) {
-                p_split = 110;
-                b_split = 'ROMMER';
-            } else if (splitItem) {
-                p_split = splitItem.price || 0;
-            }
-
-            let insulatedMpItem = catalog.insulated_pipes_mp_red ? catalog.insulated_pipes_mp_red[0] : null;
-            if (insulatedMpItem) {
-                p_ins_mp = insulatedMpItem.price || 0;
-            }
-
-            let splitMpItem = catalog.water_pipes_mp ? catalog.water_pipes_mp[0] : null;
-            if (splitMpItem) {
-                p_split_mp = splitMpItem.price || 0;
-            }
-
-            const _stb16 = catalog.stable_pipes && catalog.stable_pipes[0];
-            const _stb16r = _stb16 && _stb16.rommer;
-            const _insImgId = isRommer ? (insulatedItem?.rommer?.[0]?.id) : insulatedItem?.id;
-            const _splitImgId = isRommer ? null : splitItem?.id;
+            // По строке на тип трубы и на бренд: STOUT и ROMMER рядом. Выбор бренда здесь — то же,
+            // что кнопка «Аналог», но для одной трубы (см. pipeBrandOverride), а цена «Система»
+            // считается полным пересчётом сметы под каждый вариант. У ROMMER нет трубы с готовой
+            // изоляцией: его вариант — труба и трубка изоляции отдельными позициями (см. addToBill).
+            const _rr = (it) => (it && it.rommer && !Array.isArray(it.rommer)) ? it.rommer : null;
+            const _insI = catalog.insulated_pipes && catalog.insulated_pipes[0];
+            const _insR = (_insI && Array.isArray(_insI.rommer)) ? _insI.rommer : null;
+            const _splitI = catalog.rad_pipes_grey && catalog.rad_pipes_grey[0];
+            const _insMpI = catalog.insulated_pipes_mp_red && catalog.insulated_pipes_mp_red[0];
+            const _splitMpI = catalog.water_pipes_mp && catalog.water_pipes_mp[0];
+            const _stbI = catalog.stable_pipes && catalog.stable_pipes[0];
             customAlts = [
-                { id: 'insulated', name: 'Труба PEX-a в теплоизоляции', brand: b_ins, price: p_ins, imgId: _insImgId },
-                { id: 'split', name: 'Труба PEX-a без изоляции', brand: b_split, price: p_split, imgId: _splitImgId },
-                { id: 'insulated_mp', name: 'Труба металлопластиковая в теплоизоляции', brand: b_ins_mp, price: p_ins_mp, imgId: insulatedMpItem?.id },
-                { id: 'split_mp', name: 'Труба металлопластиковая без изоляции', brand: b_split_mp, price: p_split_mp, imgId: splitMpItem?.id },
-                ...(_stb16 ? [{ id: 'stable_16', name: _stb16.name, brand: 'STOUT', price: _stb16.price, imgId: _stb16.id }] : []),
-                ...(_stb16r ? [{ id: 'stable_16_r', name: _stb16r.name, brand: 'ROMMER', price: _stb16r.price, imgId: _stb16r.id }] : [])
+                { id: 'insulated', name: 'Труба PEX-a в теплоизоляции', brand: 'STOUT', price: _insI ? (_insI.price || 0) : 0, imgId: _insI?.id },
+                ...(_insR ? [{ id: 'insulated_r', name: 'Труба PEX-a 16x2.2 + теплоизоляция (две позиции)', brand: 'ROMMER', price: _insR.reduce((t, x) => t + (x.price || 0), 0), imgId: _insR[0].id }] : []),
+                { id: 'split', name: 'Труба PEX-a без изоляции', brand: 'STOUT', price: _splitI ? (_splitI.price || 0) : 0, imgId: _splitI?.id },
+                ...(_rr(_splitI) ? [{ id: 'split_r', name: 'Труба PEX-a без изоляции', brand: 'ROMMER', price: _rr(_splitI).price || 0, imgId: _rr(_splitI).id }] : []),
+                { id: 'insulated_mp', name: 'Труба металлопластиковая в теплоизоляции', brand: 'STOUT', price: _insMpI ? (_insMpI.price || 0) : 0, imgId: _insMpI?.id },
+                { id: 'split_mp', name: 'Труба металлопластиковая без изоляции', brand: 'STOUT', price: _splitMpI ? (_splitMpI.price || 0) : 0, imgId: _splitMpI?.id },
+                ...(_rr(_splitMpI) ? [{ id: 'split_mp_r', name: 'Труба металлопластиковая без изоляции', brand: 'ROMMER', price: _rr(_splitMpI).price || 0, imgId: _rr(_splitMpI).id }] : []),
+                ...(_stbI ? [{ id: 'stable_16', name: _stbI.name, brand: 'STOUT', price: _stbI.price, imgId: _stbI.id }] : []),
+                ...(_rr(_stbI) ? [{ id: 'stable_16_r', name: _rr(_stbI).name, brand: 'ROMMER', price: _rr(_stbI).price, imgId: _rr(_stbI).id }] : [])
             ];
             // Две цены, как у трубы водоснабжения: труба за метр и система — труба
             // с тем, что меняется вместе с ней (евроконусы, фитинги, изоляция).
-            const _rt = this.pipeOptionTotals('pipeType', customAlts.map(a => a.id));
-            const _rCur = _rt[this.state.pipeType] || 0;
+            const _rIds = customAlts.map(a => a.id);
+            const _rt = this.stateOptionTotals(_rIds, id => this.applyPipeChoice('rad', id));
+            const _rBase = (this.state.pipeType === 'stable_16_r') ? 'stable_16' : this.state.pipeType;
+            const _rCurId = (_rIds.includes(_rBase + '_r') && this.pipeBrandNow('rad') === 'rommer') ? _rBase + '_r' : _rBase;
+            const _rCur = _rt[_rCurId] || 0;
             customAlts = customAlts.map(a => {
                 const d = (_rt[a.id] || 0) - _rCur;
                 return {
                     ...a,
+                    pipeKind: 'rad',
+                    pipeActive: a.id === _rCurId,
                     unitM2: a.price,
                     unitHead: 'Труба, за м',
                     sysHead: 'Система',
@@ -59043,29 +59944,26 @@ const app = {
             });
         }
         else if (item.originalId && (item.originalId.endsWith('_ufh') || item.originalId.startsWith('SPX-0002-') || item.originalId.startsWith('SPM-0001-'))) {
-            let p_pex = 0, p_mp = 0;
-            let b_pex = 'STOUT', b_mp = 'STOUT';
-
-            let pexItem = catalog.pipes ? catalog.pipes[0] : null;
-            if (isRommer) {
-                p_pex = pexItem?.rommer?.price || 7600;
-                b_pex = 'ROMMER';
-            } else {
-                p_pex = pexItem?.price || 15200;
-            }
-
-            let mpItem = catalog.metal_plastic_pipes ? catalog.metal_plastic_pipes[0] : null;
-            p_mp = mpItem?.price || 15151;
-
+            // По строке на материал и на бренд (STOUT и ROMMER рядом, как у разводки к радиаторам).
+            // Выбор бренда — «Аналог» для самой трубы петель (см. pipeBrandOverride); фитинги
+            // на петлю остаются по общему режиму бренда, как и в смете.
+            const _rr = (it) => (it && it.rommer && !Array.isArray(it.rommer)) ? it.rommer : null;
+            const pexItem = catalog.pipes ? catalog.pipes[0] : null;
+            const mpItem = catalog.metal_plastic_pipes ? catalog.metal_plastic_pipes[0] : null;
             // Стабильная — единственный из трёх вариантов, который меняет не только
             // цену: стенка на 0,6 мм толще, внутренний диаметр 11 мм вместо 12, и
             // петля по гидравлике выходит короче (см. ufhLoopMax).
-            let stbItem = catalog.stable_pipes ? catalog.stable_pipes[0] : null;
+            const stbItem = catalog.stable_pipes ? catalog.stable_pipes[0] : null;
             customAlts = [
-                { id: 'pex', name: 'Труба PEX-a 16x2.0 (полиэтилен)', brand: b_pex, price: p_pex, imgId: isRommer ? pexItem?.rommer?.id : pexItem?.id },
-                { id: 'metal_plastic', name: 'Труба металлопластиковая 16x2.0', brand: b_mp, price: p_mp, imgId: mpItem?.id },
-                ...(stbItem ? [{ id: 'stable', name: 'Труба стабильная PE-Xa/Al/PE-RT 16.2x2.6', brand: isRommer ? 'ROMMER' : 'STOUT', price: (isRommer && stbItem.rommer ? stbItem.rommer.price : stbItem.price), imgId: stbItem.id }] : [])
+                { id: 'pex', name: 'Труба PEX-a 16x2.0 (полиэтилен)', brand: 'STOUT', price: pexItem?.price || 0, imgId: pexItem?.id },
+                ...(_rr(pexItem) ? [{ id: 'pex_r', name: 'Труба PEX-a 16x2.0 (полиэтилен)', brand: 'ROMMER', price: _rr(pexItem).price || 0, imgId: _rr(pexItem).id }] : []),
+                { id: 'metal_plastic', name: 'Труба металлопластиковая 16x2.0', brand: 'STOUT', price: mpItem?.price || 0, imgId: mpItem?.id },
+                ...(_rr(mpItem) ? [{ id: 'metal_plastic_r', name: 'Труба металлопластиковая 16x2.0', brand: 'ROMMER', price: _rr(mpItem).price || 0, imgId: _rr(mpItem).id }] : []),
+                ...(stbItem ? [{ id: 'stable', name: 'Труба стабильная PE-Xa/Al/PE-RT 16.2x2.6', brand: 'STOUT', price: stbItem.price || 0, imgId: stbItem.id }] : []),
+                ...(_rr(stbItem) ? [{ id: 'stable_r', name: 'Труба стабильная PE-Xa/Al/PE-RT 16.2x2.6', brand: 'ROMMER', price: _rr(stbItem).price || 0, imgId: _rr(stbItem).id }] : [])
             ];
+            const _uCurBase = this.ufhPipe().material;
+            const _uCurId = (customAlts.some(a => a.id === _uCurBase + '_r') && this.pipeBrandNow('ufh') === 'rommer') ? _uCurBase + '_r' : _uCurBase;
             // Две цены: труба за метр и система целиком на весь пол.
             // Система — метраж трубы плюс то, что render() ставит на каждую петлю:
             // два евроконуса под стенку этой трубы, два фиксатора 90° и пара втулок.
@@ -59082,8 +59980,10 @@ const app = {
                 + 2 * _prc((catalog.parts || [])[2])
                 + _prc((catalog.protective_sleeves || [])[0]) + _prc((catalog.protective_sleeves || [])[1]);
             customAlts.forEach(alt => {
-                const p = this.UFH_PIPES.find(x => x.material === alt.id);
+                const p = this.UFH_PIPES.find(x => x.material === alt.id.replace(/_r$/, ''));
                 if (!p) return;
+                alt.pipeKind = 'ufh';
+                alt.pipeActive = (alt.id === _uCurId);
                 let meters = 0, loops = 0, area = _tpArea;
                 if (_fc.length && _tpArea > 0) {
                     (this._ufhFloorCalc || []).forEach((f, i) => {
@@ -59108,32 +60008,28 @@ const app = {
             });
         }
         else if (item.originalId && (item.originalId.endsWith('_water') || (item.originalId.startsWith('SPX-0001-') && !item.originalId.endsWith('_rad'))) && !item.originalId.startsWith('SMB-') && !item.originalId.startsWith('RMS-')) {
-            let p_pex = 0, p_mp = 0;
-            let b_pex = 'STOUT', b_mp = 'STOUT';
-
-            let pexItem = catalog.water_pipes ? catalog.water_pipes[0] : null;
-            if (isRommer) {
-                p_pex = pexItem?.rommer?.price || 110;
-                b_pex = 'ROMMER';
-            } else {
-                p_pex = pexItem?.price || 175;
-            }
-
-            let mpItem = catalog.water_pipes_mp ? catalog.water_pipes_mp[0] : null;
-            p_mp = mpItem?.price || 151.51;
-
-            // Две цены, как у обвязки котельной: труба за метр и система целиком.
-            // Система — труба с фитингами под неё (евроконусы, водорозетки, гильзы,
-            // фиксаторы), то есть всё, что в смете меняется вместе с трубой.
-            const _wt = this.waterPipeSystemTotals();
-            const _wCur = _wt[this.state.waterPipeMaterial === 'metal_plastic' ? 'metal_plastic' : 'pex'] || 0;
+            // По строке на материал и на бренд (STOUT и ROMMER рядом). Выбор бренда — «Аналог»
+            // для самой трубы (см. pipeBrandOverride); цена «Система» — полный пересчёт сметы.
+            const _rr = (it) => (it && it.rommer && !Array.isArray(it.rommer)) ? it.rommer : null;
+            const pexItem = catalog.water_pipes ? catalog.water_pipes[0] : null;
+            const mpItem = catalog.water_pipes_mp ? catalog.water_pipes_mp[0] : null;
             customAlts = [
-                { id: 'pex', name: 'Труба PEX-a (полиэтилен)', brand: b_pex, price: p_pex, imgId: isRommer ? pexItem?.rommer?.id : pexItem?.id },
-                { id: 'metal_plastic', name: 'Труба металлопластиковая', brand: b_mp, price: p_mp, imgId: mpItem?.id }
-            ].map(a => {
+                { id: 'pex', name: 'Труба PEX-a (полиэтилен)', brand: 'STOUT', price: pexItem?.price || 0, imgId: pexItem?.id },
+                ...(_rr(pexItem) ? [{ id: 'pex_r', name: 'Труба PEX-a (полиэтилен)', brand: 'ROMMER', price: _rr(pexItem).price || 0, imgId: _rr(pexItem).id }] : []),
+                { id: 'metal_plastic', name: 'Труба металлопластиковая', brand: 'STOUT', price: mpItem?.price || 0, imgId: mpItem?.id },
+                ...(_rr(mpItem) ? [{ id: 'metal_plastic_r', name: 'Труба металлопластиковая', brand: 'ROMMER', price: _rr(mpItem).price || 0, imgId: _rr(mpItem).id }] : [])
+            ];
+            const _wIds = customAlts.map(a => a.id);
+            const _wt = this.stateOptionTotals(_wIds, id => this.applyPipeChoice('water', id));
+            const _wBase = (this.state.waterPipeMaterial === 'metal_plastic') ? 'metal_plastic' : 'pex';
+            const _wCurId = (_wIds.includes(_wBase + '_r') && this.pipeBrandNow('water') === 'rommer') ? _wBase + '_r' : _wBase;
+            const _wCur = _wt[_wCurId] || 0;
+            customAlts = customAlts.map(a => {
                 const d = (_wt[a.id] || 0) - _wCur;
                 return {
                     ...a,
+                    pipeKind: 'water',
+                    pipeActive: a.id === _wCurId,
                     unitM2: a.price,
                     unitHead: 'Труба, за м',
                     sysHead: 'Система',
@@ -59174,11 +60070,21 @@ const app = {
             // они есть всегда, у XPS 50 мм — только там, где одной плиты мало.
             const _addMat = this.ufhInsAddCost(this.UFH_INS_R_MAT);
             const _addXps = this.ufhInsAddCost(0.05 / this.UFH_INS_LAMBDA);
-            customAlts = [
-                { id: 'mat', name: _matR ? 'Маты с бобышками ROMMER' : 'Маты с бобышками STOUT', brand: _matR ? 'ROMMER' : 'STOUT',
-                  price: p_mat * 1.05 / _matArea + _addMat, unitM2: p_mat / _matArea, unitPrice: p_mat, unitLabel: `за мат ${_fmtA(_matArea)} м²`,
+            // Мат с бобышками — обе марки рядом (STOUT и ROMMER), как и у остальных позиций.
+            // У ROMMER мат другой площади (0,72 м²), поэтому цена за м² и система считаются
+            // каждому по своей площади. Идентификаторы строк — настоящие артикулы: выбор идёт
+            // обычной ручной заменой (STOUT → forceStout, ROMMER → forceAnalog в addToBill).
+            const _matRowOf = (m, brand) => {
+                const area = (m && m.area) || 0.88;
+                return { id: m.id, name: 'Маты с бобышками ' + brand, brand: brand,
+                  pipeKind: 'mat', pipeActive: (this.state.ufhBaseType !== 'xps') && ((brand === 'ROMMER') === !!_matR),
+                  price: (m.price || 0) * 1.05 / area + _addMat, unitM2: (m.price || 0) / area, unitPrice: m.price || 0, unitLabel: `за мат ${_fmtA(area)} м²`,
                   sysText: 'мат с запасом 5 %, трубу держат бобышки — крепёж не нужен' + (_addMat > 0 ? ', плюс плиты добора до нормы' : ''),
-                  imgId: _matR ? _matR.id : _matCat?.id },
+                  imgId: m.id };
+            };
+            customAlts = [
+                ...(_matCat ? [_matRowOf(_matCat, 'STOUT')] : []),
+                ...((_matCat && _matCat.rommer) ? [_matRowOf(_matCat.rommer, 'ROMMER')] : []),
                 { id: 'xps', name: 'Пенополистирол XPS + скобы', brand: 'Technonicol',
                   price: _xpsSys + _addXps, unitM2: p_xps / _xpsArea, unitPrice: p_xps, unitLabel: `за лист ${_fmtA(_xpsArea)} м²`,
                   sysText: 'листы с запасом 5 %, подложка, дюбели, скобы, скотч' + (_addXps > 0 ? ', плюс второй слой до нормы' : ''),
@@ -60861,7 +61767,11 @@ const app = {
             // First determine isActive for each custom alt
             customAlts.forEach(alt => {
                 let isActive = false;
-                if (item.originalId === 'SAC-0022-283020_boiler') {
+                if (alt.pipeKind) {
+                    // Трубы: тип и бренд выбираются парой, активность посчитана при сборке списка.
+                    isActive = !!alt.pipeActive;
+                }
+                else if (item.originalId === 'SAC-0022-283020_boiler') {
                     if (alt.id === 'SAC-0022-283020') isActive = (this.state.boilerFrameType === 'profile_single');
                     else if (alt.id === 'SAC-0022-283020_double') isActive = (this.state.boilerFrameType === 'profile_double');
                     else if (alt.id === 'SAC-0020-200012_single') isActive = (this.state.boilerFrameType === 'direct_single');
@@ -61065,6 +61975,17 @@ const app = {
                 if (!baseItem && typeof steelRads !== 'undefined') {
                     baseItem = steelRads.find(x => x.id === lookupKey);
                 }
+                if (!baseItem && item.id && item.id !== lookupKey) {
+                    // Ключ строки с суффиксом узла («…_rad_node», «…_cw», «…_rad_trunk») в каталоге
+                    // не лежит, а сам артикул — лежит. Без этого строка копировалась как есть,
+                    // без пары ROMMER, и в таблице замены у фитингов обвязки ROMMER не было вовсе.
+                    for (let catKey in catalog) {
+                        if (Array.isArray(catalog[catKey])) {
+                            let found = catalog[catKey].find(x => x.id === item.id);
+                            if (found) { baseItem = found; break; }
+                        }
+                    }
+                }
                 if (!baseItem) {
                     baseItem = item;
                 }
@@ -61130,6 +62051,12 @@ const app = {
                             if (f) { analog = f; break; }
                         }
                     }
+                }
+                // Замена в списке может быть урезанной копией позиции (без поля .rommer) —
+                // пару берём из самой позиции каталога, иначе у неё в таблице нет ROMMER.
+                if (!analog && alt.id) {
+                    const _catAlt = this.findCatalogItemById(alt.id);
+                    if (_catAlt && _catAlt !== alt && _catAlt.rommer) analog = _catAlt.rommer;
                 }
 
                 let displayItemRommer = null;
@@ -62377,6 +63304,11 @@ const app = {
 
         this._openRadSwapModal(item);
     },
+    _fmtDtDelta: function (q, q70) {
+        const d = Math.round(q - q70), p = q70 > 0 ? Math.round((q - q70) / q70 * 100) : 0;
+        if (d === 0) return '0 Вт';
+        return `${d > 0 ? '+' : '−'}${Math.abs(d)} Вт · ${d > 0 ? '+' : '−'}${Math.abs(p)} %`;
+    },
     _renderRadSwapTable: function (item, minH, maxH, material = 'all', connection = 'all', color = 'all') {
         const origId = item.originalId || item.id;
         const oldSec = item.sec || 1;
@@ -62708,6 +63640,8 @@ const app = {
         if (!id) return null;
         const sid = String(id);
         if (sid.toLowerCase().includes('rommer')) return 'ROMMER';
+        // Строки таблицы замены труб: тип и бренд парой, у ROMMER приставка «_r».
+        if (/^(insulated|split|split_mp|stable_16|stable|pex|metal_plastic)_r$/.test(sid)) return 'ROMMER';
         for (const key in catalog) {
             const arr = catalog[key];
             if (!Array.isArray(arr)) continue;
@@ -63150,7 +64084,11 @@ const app = {
             this.state.swaps['well_pump_auto'] = chosenId;
         }
         else if (originalId.endsWith('_rad') || originalId.startsWith('SPI-0003-')) {
-            if (chosenId === 'insulated') this.state.pipeType = 'insulated';
+            if (/^(insulated|split|insulated_mp|split_mp|stable_16)(_r)?$/.test(chosenId)) {
+                // Строка таблицы — тип трубы вместе с брендом (см. applyPipeChoice).
+                this.applyPipeChoice('rad', chosenId);
+            }
+            else if (chosenId === 'insulated') this.state.pipeType = 'insulated';
             else if (chosenId === 'split') this.state.pipeType = 'split';
             else if (chosenId === 'insulated_mp') this.state.pipeType = 'insulated_mp';
             else if (chosenId === 'split_mp') this.state.pipeType = 'split_mp';
@@ -63192,7 +64130,12 @@ const app = {
         else if (originalId.endsWith('_ufh') || originalId.startsWith('SPX-0002-') || originalId.startsWith('SPM-0001-') || originalId.startsWith('SPS-0002-')) {
             // Типоразмер петли, а не только материал: от стенки зависят предельная
             // длина петли, число выходов коллектора и напор, который нужен насосу.
-            const _pp = this.UFH_PIPES.find(x => x.material === chosenId)
+            if (/^(pex|metal_plastic|stable)(_r)?$/.test(chosenId)) {
+                // Строка таблицы — материал вместе с брендом (см. applyPipeChoice).
+                this.applyPipeChoice('ufh', chosenId);
+            } else
+            // Старый путь — по артикулу бухты (сохранённые сметы, прямой выбор из каталога).
+            { const _pp = this.UFH_PIPES.find(x => x.material === chosenId)
                 || this.UFH_PIPES.find(x => x.coils.indexOf(chosenId) >= 0)
                 || this.UFH_PIPES.find(x => x.key === (chosenId.indexOf('SPS') >= 0 ? 'stable16'
                     : (chosenId.indexOf('SPM') >= 0 ? 'mp16' : 'pex16')));
@@ -63204,10 +64147,11 @@ const app = {
                 // под новую трубу. Запись о замене оставляем только за настоящим
                 // каталожным id (это выбор бренда), псевдоключ типоразмера снимаем.
                 if (chosenId === _pp.material) delete this.state.swaps[originalId];
-            }
+            } }
         }
         else if (originalId.endsWith('_water') || (originalId.startsWith('SPX-0001-') && !originalId.endsWith('_rad'))) {
-            if (chosenId.includes("SPX") || chosenId === 'pex') this.state.waterPipeMaterial = 'pex';
+            if (/^(pex|metal_plastic)(_r)?$/.test(chosenId)) this.applyPipeChoice('water', chosenId);
+            else if (chosenId.includes("SPX") || chosenId === 'pex') this.state.waterPipeMaterial = 'pex';
             else this.state.waterPipeMaterial = 'metal_plastic';
         }
         else if (originalId.startsWith('SMF-0001') || this.isXpsBaseId(originalId)) {
@@ -75409,19 +76353,10 @@ const app = {
 
     /** Переключатель диаметра в окне замены. null — вернуть рекомендованный по скорости. */
     setBoilerMainSize: function (val) {
-        const _prev = this._bpPreview;
-        const _sys = _prev || this.boilerPipeSystem();
         // Диаметр вне ряда системы не ставим; красный и жёлтый выбираются с предупреждением.
         if (val !== null && val !== undefined) {
-            const o = this.boilerMainOptions(this._bpLoad ? this._bpLoad.gas : 0, this._bpLoad ? this._bpLoad.el : 0, _sys);
+            const o = this.boilerMainOptions(this._bpLoad ? this._bpLoad.gas : 0, this._bpLoad ? this._bpLoad.el : 0);
             if (!o.options.find(x => x.size === parseInt(val, 10))) return;
-        }
-        // Просмотр замены (первый щелчок по строке другой системы): диаметр запоминаем
-        // за просматриваемой системой. Смету не трогаем — он применится вместе с заменой.
-        if (_prev) {
-            this._bpPreviewSize = (val === null || val === undefined) ? null : parseInt(val, 10);
-            if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
-            return;
         }
         this.state.boilerMainSize = (val === null || val === undefined) ? null : parseInt(val, 10);
         this.syncUI();
@@ -75469,7 +76404,7 @@ const app = {
             const on = x.size === o.active;
             const col = COL[x.level].c;
             const label = o.pair ? `Ø${x.size} (труба ${x.phys})` : `Ø${x.size}`;
-            const click = interactive ? ` onclick="app.setBoilerMainSize(${x.size})"` : '';
+            const click = live ? ` onclick="app.setBoilerMainSize(${x.size})"` : '';
             const p = priceOf(x.size);
             let price = '';
             if (p != null) {
@@ -75479,7 +76414,7 @@ const app = {
                 price = `<div style="font-size:11px;margin-top:1px;">${fmt(p)}${delta}</div>`;
             }
             const tip = why(x) || 'Скорость в норме (0,4–1,0 м/с)';
-            return `<span${click} title="${tip}" style="cursor:${interactive ? 'pointer' : 'default'};padding:4px 10px;border-radius:6px;font-size:12px;line-height:1.3;min-width:120px;border:1px solid ${col};background:${on ? col : 'transparent'};color:${on ? '#fff' : 'var(--text-main)'};">`
+            return `<span${click} title="${tip}" style="cursor:${live ? 'pointer' : 'default'};padding:4px 10px;border-radius:6px;font-size:12px;line-height:1.3;min-width:120px;border:1px solid ${col};background:${on ? col : 'transparent'};color:${on ? '#fff' : 'var(--text-main)'};">`
                 + `<b>${label}</b> · ${x.v.toFixed(2).replace('.', ',')} м/с${price}</span>`;
         };
         const info = `<div style="margin-top:6px;font-size:12px;color:var(--text-main);">`
@@ -75631,6 +76566,66 @@ const app = {
      */
     pipeOptionTotals: function (field, values) {
         return this.stateOptionTotals(values, v => { this.state[field] = v; });
+    },
+
+    /**
+     * Бренд труб, выбранный вручную в таблице замены.
+     *
+     * Три независимые линии — разводка к радиаторам (строки «…_rad»), петли тёплого пола
+     * («…_ufh») и водоснабжение («…_water»). state.pipeBrand[линия] = 'rommer' | 'stout';
+     * не задано — решают раздел («Аналог») и общий режим бренда, как всегда. Ручной выбор
+     * старше их обоих, но сбрасывается, когда монтажник сам переключает бренд кнопкой:
+     * тумблер раздела главнее точечного выбора (как и материал обвязки котельной).
+     * Выбор пары «STOUT ↔ ROMMER» в таблице даёт ровно то, что дала бы кнопка «Аналог»
+     * для этой трубы: тот же .rommer из каталога, тот же пересчёт сметы.
+     */
+    pipeBrandKind: function (key) {
+        const k = String(key || '');
+        // Только трубы: суффикс «_water» носят и коллекторы, «_rad» — не только трубы.
+        if (!/^(SPI|SPX|SPM|SPS)-/.test(k)) return null;
+        if (k.endsWith('_rad')) return 'rad';
+        if (k.endsWith('_ufh')) return 'ufh';
+        if (k.endsWith('_water')) return 'water';
+        return null;
+    },
+    pipeBrandOverride: function (key) {
+        const kind = this.pipeBrandKind(key);
+        return kind ? ((this.state.pipeBrand || {})[kind] || null) : null;
+    },
+    /** Какой бренд сейчас реально стоит у линии труб: ручной выбор, иначе — по строке в смете. */
+    pipeBrandNow: function (kind) {
+        const ov = (this.state.pipeBrand || {})[kind];
+        if (ov) return ov;
+        if (kind === 'rad' && this.state.pipeType === 'stable_16_r') return 'rommer';
+        const row = (this.currentEquipmentList || []).find(x => this.pipeBrandKind(x.originalId) === kind);
+        if (row && row.brand) return String(row.brand).toUpperCase() === 'ROMMER' ? 'rommer' : 'stout';
+        return this.state.brandMode === 'rommer' ? 'rommer' : 'stout';
+    },
+    /**
+     * Строка таблицы замены трубы → состояние. Идентификатор — тип трубы, у ROMMER
+     * с приставкой «_r» («insulated_r», «pex_r», «stable_16_r»): тип и бренд выбираются
+     * вместе, как и показаны в таблице. Вызывается и при выборе, и при расчёте цен
+     * вариантов, поэтому ничего, кроме state, не трогает.
+     */
+    applyPipeChoice: function (kind, id) {
+        const rommer = /_r$/.test(id);
+        const base = rommer ? String(id).slice(0, -2) : String(id);
+        if (!this.state.pipeBrand) this.state.pipeBrand = {};
+        this.state.pipeBrand[kind] = rommer ? 'rommer' : 'stout';
+        if (kind === 'rad') {
+            this.state.pipeType = base;
+        } else if (kind === 'ufh') {
+            const p = this.UFH_PIPES.find(x => x.material === base);
+            if (p) {
+                this.state.ufhPipe = p.key;
+                this.state.ufhPipeMaterial = p.material;
+                this._ufhGeomCache = null;
+            }
+        } else if (kind === 'water') {
+            this.state.waterPipeMaterial = base;
+        }
+        // Прежние замены по артикулу на этих строках противоречили бы выбору.
+        Object.keys(this.state.swaps || {}).forEach(k => { if (this.pipeBrandKind(k) === kind) delete this.state.swaps[k]; });
     },
     // То же, но вариант задаётся функцией: у транзита ТП выбор — это и типоразмер
     // в swaps, и флаг «отрезком», одним полем состояния его не описать.
@@ -77839,7 +78834,8 @@ const app = {
         if (!(p50 > 0)) return '';
         const rows = this.RAD_DT_GRAPHS.map(g => {
             const q = Math.round(p50 * Math.pow(g.dt / 50, 1.3));
-            return `${g.temps} (ΔT ${String(g.dt).replace('.', ',')}): <b>${q} Вт</b>${g.recommended ? ' ★' : ''}`;
+            const q70 = p50 * Math.pow(70 / 50, 1.3);
+            return `${g.temps} (ΔT ${String(g.dt).replace('.', ',')}): <b>${q} Вт</b>${g.key === 'gost' ? ' — паспорт' : ' (' + this._fmtDtDelta(q, q70) + ' к паспорту)'}${g.recommended ? ' ★' : ''}`;
         }).join('<br>');
         return `<span style="display:block; margin-top:8px; padding-top:6px; border-top:1px dashed #4B5563; font-size:11px; line-height:1.5;">` +
             `<b>Пересчёт на другие графики:</b><br>` +
@@ -79372,7 +80368,8 @@ const app = {
         const _ia = this._inputAnchorBefore();
         try {
             // Каждый пересчёт начинает без исправлений: они выводятся из результата этого же расчёта
-            this._hcForce = {};
+            // Ручные правки монтажника (кнопка «Что изменится») живут в state и накладываются на каждый проход
+            this._hcForce = Object.assign({}, this.hydroUserForce());
             this._hcApplied = [];
             this._hcAppliedKinds = [];
             this._hcTried = null;
@@ -79400,7 +80397,8 @@ const app = {
             }
             // Исправление добавили, а контур всё равно не тянет — возвращаем схему как была и оставляем совет
             if (this._hcApplied.length && this._hcAppliedKinds.some(k => this.hydroFixRatio(k) < 1)) {
-                this._hcForce = {};
+                // Откатываем исправления автоподбора, но не ручные правки монтажника
+                this._hcForce = Object.assign({}, this.hydroUserForce());
                 this._hcApplied = [];
                 this._hcAppliedKinds = [];
                 this._hcTried = 'Исправление схемы контур не вытянуло — схему оставили как была. Проверьте диаметры и мощность приборов.';
@@ -79646,7 +80644,10 @@ const app = {
             let forceAnalog = false;
             let forceStout = false;
 
-            let isCustomToggle = ['standard', 'basic', 'pro', 'std', 'comfort', 'economy', 'insulated', 'split', 'insulated_mp', 'split_mp', 'pex', 'metal_plastic', 'mat', 'xps', 'sirio', 'top', 'base', 'epc12auto', 'epc2', 'epc4', 'epc5', 'relay_krs5', 'scq', 'scn', 'straight', 'angled', 'proaqua', 'wavin', 'double', 'single', 'hidden', 'sensor', 'gbm', 'parts', 'gtube', 'shoe', 'shoe_np'].includes(manualSwapId);
+            let isCustomToggle = ['standard', 'basic', 'pro', 'std', 'comfort', 'economy', 'insulated', 'split', 'insulated_mp', 'split_mp', 'pex', 'metal_plastic', 'mat', 'xps', 'sirio', 'top', 'base', 'epc12auto', 'epc2', 'epc4', 'epc5', 'relay_krs5', 'scq', 'scn', 'straight', 'angled', 'proaqua', 'wavin', 'double', 'single', 'hidden', 'sensor', 'gbm', 'parts', 'gtube', 'shoe', 'shoe_np', 'insulated_r', 'split_r', 'split_mp_r', 'stable_16', 'stable_16_r', 'pex_r', 'metal_plastic_r', 'stable', 'stable_r'].includes(manualSwapId);
+            // Бренд труб, выбранный в таблице замены (см. pipeBrandOverride): тип трубы
+            // в state уже стоит, а бренд — это ровно «Аналог» для неё одной.
+            const _pipeBrandOv = (item.noMerge || (manualSwapId && !isCustomToggle)) ? null : this.pipeBrandOverride(lookupKey);
 
             if (manualSwapId && !isCustomToggle) {
                 let analog = item.rommer;
@@ -79747,6 +80748,9 @@ const app = {
                         }
                     }
                 }
+            } else if (_pipeBrandOv) {
+                if (_pipeBrandOv === 'rommer') forceAnalog = true;
+                else forceStout = true;
             } else if (useAnalog) {
                 let cheapest = this.getCheapestAlternative(item);
                 if (cheapest) {
@@ -79806,9 +80810,12 @@ const app = {
                     // идут труба и изоляционная трубка. Это две отдельные позиции, и в
                     // смете так и написано: иначе монтажник ждёт трубу в изоляции с завода.
                     tip = (tip || '') + `<span style="font-size:11px;line-height:1.5;"><br><b>Две позиции, а не одно изделие:</b> труба и теплоизоляция идут отдельно, трубку надевают на монтаже.</span>`;
-                    analog.forEach(sub => {
+                    analog.forEach((sub, _si) => {
                         let finalSub = { ...sub };
                         finalSub.brand = sub.brand || "ROMMER";
+                        // Труба набора несёт ключ исходной строки: по нему открывается таблица
+                        // замены трубы, иначе с ROMMER-набора нельзя было бы вернуться на STOUT.
+                        if (_si === 0 && activeItem.originalId) finalSub.originalId = activeItem.originalId;
                         itemsToAdd.push({ itm: finalSub, q: qty });
                     });
                 } else if (analog) {
@@ -86264,7 +87271,8 @@ const app = {
                         // а на объект приезжала бы бухта 200. Условие замены — как у мата
                         // ROMMER в тёплом полу: решает addToBill, здесь повторяем.
                         const _mpSecAn = (this.state.sectionAnalog || {})[currentSectionTitle];
-                        const _mpRommer = (_mpSecAn !== undefined) ? _mpSecAn : (this.state.brandMode === 'rommer');
+                        const _mpPb = (this.state.pipeBrand || {}).rad;
+                        const _mpRommer = _mpPb ? (_mpPb === 'rommer') : ((_mpSecAn !== undefined) ? _mpSecAn : (this.state.brandMode === 'rommer'));
                         let grayItem = asCoilPrice((neededPipe > 200 || _mpRommer) ? { ...catalog.metal_plastic_pipes[1] } : { ...catalog.metal_plastic_pipes[0] }); grayItem.originalId = grayItem.id + "_rad"; grayItem.alts = catalog.insulated_pipes_mp_red; grayItem.noCheapenAlts = true; addToBill(grayItem, Math.ceil(neededPipe / grayItem.len), this.getDesc('rad_pipe', neededPipe), pipeGrp);
                         let insLen = Math.ceil(neededPipe / 2); if (insLen % 2 !== 0) insLen++; addToBill(catalog.insulation[0], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы подачи (красная) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp); addToBill(catalog.insulation[1], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы обратки (синяя) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp);
                     } else if (this.state.pipeType === 'stable_16') {
@@ -86312,7 +87320,10 @@ const app = {
                     // Оценка грубая, как и вся трассировка: плана дома с координатами
                     // шкафа у расчёта нет.
                     const _riserOneWay = 3.2 + 0.4 * Math.sqrt(floorArea);
-                    const _riserMeters = Math.ceil(_riserOneWay * 2 * 1.1);
+                    // Ручная правка трассы (state.radTrunkOv, кнопка в проверке гидравлики): длина и
+                    // диаметр — как ввёл монтажник, и смета, и кольцо берут одно и то же.
+                    const _radOv = this.state.radTrunkOv || null;
+                    const _riserMeters = _radOv && _radOv.len > 0 ? Math.ceil(_radOv.len) : Math.ceil(_riserOneWay * 2 * 1.1);
                     // Серую PEX-a на стояк не ставим, даже если ею разведён весь дом:
                     // коэффициент линейного расширения у неё ~0,18 мм/(м·К), и труба
                     // длиной 7–8 м при нагреве на 50 К удлиняется больше чем на 6 см.
@@ -86363,9 +87374,13 @@ const app = {
                     // Кольцо для второй проверки строит radHydraulics по this._radTrunk,
                     // поэтому запись подставляем на каждый шаг перебора.
                     let _riserPick = _riserD, _riserByHead = false;
+                    // Ручной диаметр не перебираем: монтажник выбрал его сам, а скорость и запас
+                    // показаны в карточке — он видит, что выбрал.
+                    const _riserForced = !!(_radOv && _radOv.d);
+                    if (_riserForced) _riserPick = _radOv.d;
                     const _riserSpan = { kw: _riserKw, len: _riserMeters, share: 0.5,
                         fam: _isMpPipe ? 'mp' : 'stable', riser: true };
-                    for (let _i = _riserOrder.indexOf(_riserD); _i < _riserOrder.length; _i++) {
+                    for (let _i = _riserOrder.indexOf(_riserD); _i < _riserOrder.length && !_riserForced; _i++) {
                         const _cand = _riserPool.find(x => x.id === _riserIds[_riserOrder[_i]]);
                         if (!_cand) continue;
                         if (_riserSpeed(_riserBore(_cand.name)) > this.RAD_V_MAX_TRUNK) continue;
@@ -86440,7 +87455,9 @@ const app = {
                     // Пара подача+обратка, +10% на подрезку и обходы. Оценка грубая, как и
                     // вся трассировка: плана дома с координатами котельной и шкафа нет.
                     const _trOneWay = 1 + 0.5 * Math.sqrt(floorArea);
-                    const _trMeters = Math.ceil(_trOneWay * 2 * 1.1);
+                    // Ручная правка трассы — см. стояк выше: длина и диаметр из state.radTrunkOv.
+                    const _trOv = this.state.radTrunkOv || null;
+                    const _trMeters = _trOv && _trOv.len > 0 ? Math.ceil(_trOv.len) : Math.ceil(_trOneWay * 2 * 1.1);
                     // Материал — как у стояка: серую PE-Xa на длинный магистральный участок
                     // не ставим (линейное расширение ~0,18 мм/(м·К)), подставляем стабильную
                     // PE-Xa/Al/PE-RT. Металлопластик оставляем как есть — у него тот же
@@ -86468,9 +87485,11 @@ const app = {
                     const _trOrder = [16, 20, 25, 26, 32];
                     // Скорость и запас насоса — оба критерия, как у стояка выше.
                     let _trPick = _trD, _trByHead = false;
+                    const _trForced = !!(_trOv && _trOv.d);
+                    if (_trForced) _trPick = _trOv.d;
                     const _trSpan = { kw: _trKw, len: _trMeters, share: 1,
                         fam: _isMpPipe ? 'mp' : 'stable', riser: false };
-                    for (let _i = _trOrder.indexOf(_trD); _i < _trOrder.length; _i++) {
+                    for (let _i = _trOrder.indexOf(_trD); _i < _trOrder.length && !_trForced; _i++) {
                         const _cand = _trPool.find(x => x.id === _trIds[_trOrder[_i]]);
                         if (!_cand) continue;
                         if (_trSpeed(_trBore(_cand.name)) > this.RAD_V_MAX_TRUNK) continue;
@@ -87090,7 +88109,8 @@ const app = {
             // 200 лишних метров в смете. Условие замены то же, что у мата ROMMER ниже:
             // решение принимает addToBill, здесь его повторяем.
             const _upSecAn = (this.state.sectionAnalog || {})[currentSectionTitle];
-            const _upRommer = (_upSecAn !== undefined) ? _upSecAn : (this.state.brandMode === 'rommer');
+            const _upPb = (this.state.pipeBrand || {}).ufh;
+            const _upRommer = _upPb ? (_upPb === 'rommer') : ((_upSecAn !== undefined) ? _upSecAn : (this.state.brandMode === 'rommer'));
             const _upCoilIds = (_upRommer && _up.material === 'metal_plastic')
                 ? _up.coils.filter(id => id === 'SPM-0001-201620')
                 : _up.coils;
@@ -89360,7 +90380,12 @@ const app = {
         // «загрузка бойлера» — прежняя подпись узла, оставлена для смет, сохранённых до
         // переименования в «для бойлера».
         let tankPumpGroupCount = this.currentEquipmentList.filter(x => /(загрузка|для) бойлера/i.test(x.name || '')).reduce((sum, x) => sum + x.q, 0);
-        if (tankPumpGroupCount > 0) {
+        // Самосборная группа загрузки бойлера в смете называется иначе («Самосборная группа: загрузка бойлера»),
+        // поэтому по имени её не находит: считаем по числу групп, которые собрал подбор.
+        if (this.selfGroups()) {
+            const nDhw = (this._selfCounts || {}).dhw || 0;
+            if (nDhw > 0) addToWorks("Сборка самосборной группы из деталей", nDhw, this.SELF_WORK_UNIT.group, "компл", obvyazkaGroup);
+        } else if (tankPumpGroupCount > 0) {
             addToWorks("Монтаж насосной группы", tankPumpGroupCount, 6500, "шт", obvyazkaGroup);
         }
 
@@ -89512,7 +90537,16 @@ const app = {
         // 3. Распределительная гидравлика (Обвязка котельной)
         if (needCollector) {
             addToWorks("Монтаж коллектора и гидрострелки", 1, 12000, "шт", obvyazkaGroup);
-            addToWorks("Монтаж насосной группы", rQ + tQ, 6500, "шт", obvyazkaGroup);
+            if (this.selfGroups()) {
+                // Самосборная группа собирается из деталей: работы на 30 % больше готовой (6 500 ₽), соединения входят в эту ставку.
+                const sc = this._selfCounts || {};
+                const nSelf = (sc.direct || 0) + (sc.thermo || 0) + (sc.servo || 0);
+                if (nSelf > 0) addToWorks("Сборка самосборной группы из деталей", nSelf, this.SELF_WORK_UNIT.group, "компл", obvyazkaGroup);
+                // Самосборный коллектор из трубы — та же надбавка к монтажу готового коллектора-гидрострелки (6 500 ₽).
+                addToWorks("Сборка самосборного коллектора из трубы", 1, this.SELF_WORK_UNIT.collector, "компл", obvyazkaGroup);
+            } else {
+                addToWorks("Монтаж насосной группы", rQ + tQ, 6500, "шт", obvyazkaGroup);
+            }
         } else if (hasTp && tpArea > 0) {
             addToWorks("Сборка и установка узла подмеса", 1, 6000, "шт", obvyazkaGroup);
             addToWorks("Установка насоса", 1, 3000, "шт", obvyazkaGroup);
@@ -90183,6 +91217,7 @@ const app = {
         [['automation_scheme_row', '2.9.1.', () => this.thermaticConfig && this.renderAutomationScheme()],
          ['ufh_scheme_row', '4.5. Автоматика радиаторов', () => this.renderUfhScheme()],
          ['snow_scheme_row', '4.4.1', () => this.renderSnowScheme()],
+         ['pump_group_compare_row', '2.4. Гидравлика котельной', () => this.renderGroupCompareOnly()],
          ['pump_group_scheme_row_direct', '2.4.1. Самосборная группа', () => this.renderPumpGroupScheme('direct')],
          ['pump_group_scheme_row_thermo', '2.4.2. Самосборная группа', () => this.renderPumpGroupScheme('thermo')],
          ['pump_group_scheme_row_servo', '2.4.3. Самосборная группа', () => this.renderPumpGroupScheme('servo')],

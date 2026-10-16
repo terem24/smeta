@@ -123,6 +123,7 @@
   .zone input[type=text] { flex: 1 1 60px; min-width: 0; padding: 2px 5px; font-size: 12px; }
   .zone .ar { color: var(--text-main); font-size: 11.5px; white-space: nowrap; flex: 0 0 auto;
               font-variant-numeric: tabular-nums; }
+  .zone .ar-in { width: 54px; padding: 1px 3px; font-size: 11.5px; text-align: right; }
   .zone select.lay { flex: 0 0 auto; padding: 1px 2px; font-size: 11px; max-width: 74px; }
   .zone .del { color: var(--text-sec); cursor: pointer; font-weight: 700; padding: 0 2px;
                flex: 0 0 auto; }
@@ -1750,6 +1751,22 @@ function ortho(p, prev, useShift) {
   if (!useShift || !prev) return p;
   var dx = p[0] - prev[0], dy = p[1] - prev[1];
   return Math.abs(dx) >= Math.abs(dy) ? [p[0], prev[1]] : [prev[0], p[1]];
+}
+
+/**
+ * Точка контура по клику или курсору: Shift — строго 90° от прежней, иначе
+ * прилипание к стене и углу (snapWall). Alt отключает прилипание.
+ * polySnapped — для кружка-подсказки: точка сдвинулась к стене.
+ */
+var polySnapped = false;
+function polyPoint(p, prev, e) {
+  polySnapped = false;
+  if (e.shiftKey) return ortho(p, prev, true);
+  if (e.altKey) return p;
+  var q;
+  try { q = snapWall(p); } catch (err) { return p; }
+  polySnapped = q[0] !== p[0] || q[1] !== p[1];
+  return q;
 }
 
 // двери этажа: заполняются вместе с окнами в detectWindows
@@ -3911,6 +3928,23 @@ function draw() {
       cx.lineTo(polyCur[0] * k, polyCur[1] * k);
       cx.stroke(); cx.restore();
     }
+    // длина текущей стороны и площадь контура на ходу
+    if (polyCur && F().pxPerM) {
+      var lp = tmp[tmp.length - 1], pm = F().pxPerM;
+      var seg = Math.hypot(polyCur[0] - lp[0], polyCur[1] - lp[1]) / pm;
+      var txt = seg.toFixed(2).replace('.', ',') + ' м';
+      if (tmp.length >= 2) txt += ' · ' + area(tmp.concat([polyCur])).toFixed(1).replace('.', ',') + ' м²';
+      cx.font = 'bold 12px system-ui'; cx.textAlign = 'left';
+      var tw3 = cx.measureText(txt).width;
+      cx.fillStyle = 'rgba(255,255,255,.9)';
+      cx.fillRect(polyCur[0] * k + 10, polyCur[1] * k - 22, tw3 + 8, 17);
+      cx.fillStyle = '#0696D7';
+      cx.fillText(txt, polyCur[0] * k + 14, polyCur[1] * k - 9);
+    }
+    if (polyCur && polySnapped) {      // точка прилипла к стене или углу
+      cx.save(); cx.fillStyle = '#0696D7';
+      cx.beginPath(); cx.arc(polyCur[0] * k, polyCur[1] * k, 4, 0, 7); cx.fill(); cx.restore();
+    }
     if (tmp.length >= 3) {             // мишень замыкания на первой точке
       var nearS = polyCur && Math.hypot(polyCur[0] - tmp[0][0], polyCur[1] - tmp[0][1]) < 12 * F().w / 1200;
       cx.beginPath(); cx.arc(tmp[0][0] * k, tmp[0][1] * k, nearS ? 9 : 6, 0, 7);
@@ -4224,8 +4258,8 @@ cv.addEventListener('mousemove', function (e) {
   }
   if (mode === 'rect' && dragA) { tmp = [evPt(e)]; draw(); }
   else if (mode === 'poly') {
-    polyCur = ortho(evPt(e), tmp.length ? tmp[tmp.length - 1] : null, e.shiftKey);
-    if (tmp.length) draw();
+    polyCur = polyPoint(evPt(e), tmp.length ? tmp[tmp.length - 1] : null, e);
+    if (tmp.length || polySnapped) draw();
   } else if (mode === 'select' || mode === 'room') {
     var h2 = zoneHit(evPt(e));
     if (h2.zi !== hoverZ || h2.vi !== hoverV || h2.ei !== hoverE) {
@@ -4380,10 +4414,10 @@ cv.addEventListener('click', function (e) {
     }
   } else if (mode === 'poly') {
     if (Date.now() - closeTs < 500) return;   // хвост двойного клика после замыкания
-    p = ortho(p, tmp.length ? tmp[tmp.length - 1] : null, e.shiftKey);
-    // клик рядом с первой точкой — замкнуть контур
+    // клик рядом с первой точкой — замкнуть контур (до прилипания к стене)
     var tol = 12 * F().w / 1200;
     if (tmp.length >= 3 && Math.hypot(p[0] - tmp[0][0], p[1] - tmp[0][1]) < tol) { closePoly(); return; }
+    p = polyPoint(p, tmp.length ? tmp[tmp.length - 1] : null, e);
     tmp.push(p); draw();
   } else if (mode === 'room' && UFH && document.getElementById('ztype').value !== 'cold') {
     if (Date.now() - justDragged < 300) return;      // хвост правки контура
@@ -5074,7 +5108,25 @@ function addZone(pts, fitted) {
     // обвели комнату рамкой — это тёплый пол, спросим имя
     // На шаге «Комнаты» рамка обводит комнату без тёплого пола (тип «Помещение»)
     if (type === 'cold') { document.getElementById('ztype').value = 'tp'; setMode('room'); }
-    else { if (type === 'tp' && !F().coll) ufhAutoColl(F()); ufhAskName(nz); }
+    else {
+      if (type === 'tp' && !F().coll) ufhAutoColl(F());
+      // Тёплый пол на части комнаты (рамкой или по точкам): имя берём у комнаты,
+      // внутри которой он лежит, — спрашивать нечего. Разметка комнаты остаётся.
+      var host = null;
+      if (type === 'tp') {
+        var cc = centroid(nz.pts);
+        F().zones.forEach(function (q) {
+          if (q !== nz && q.type !== 'cold' && q.type !== 'tp' && q.name && pip(cc, q.pts)) host = q;
+        });
+      }
+      if (host) {
+        nz.name = host.name; if (host.roomId != null) nz.roomId = host.roomId;
+        renderZones(); draw();
+        hint('<span class=ok>Тёплый пол на части «' + host.name + '»: ' + Math.abs(area(nz.pts)).toFixed(1).replace('.', ',') +
+          ' м².</span> Контур можно поправить: тяните узлы, правый клик по стороне — добавить точку, по углу — убрать. Обведите ещё участок или кликните по следующей комнате.');
+      } else ufhAskName(nz);
+      if (type === 'tp' && (mode === 'poly' || mode === 'rect')) setMode('room');
+    }
   }
 }
 
@@ -5129,7 +5181,42 @@ function renderZonesUfh(box) {
       d.appendChild(inp);
     }
     var ar = document.createElement('span'); ar.className = 'ar';
-    ar.textContent = zoneM2(z).toFixed(1).replace('.', ',') + ' м²';
+    // тёплый пол на части комнаты: показываем, сколько из площади комнаты занято
+    var parts = 0, isPart = false;
+    if (!cold) {
+      f.zones.forEach(function (q) {
+        if (q === z || q.type !== 'tp' || !q.name || q.name !== z.name || JSON.stringify(q.pts) === key) return;
+        if (z.type === 'tp') isPart = true; else parts += zoneM2(q);
+      });
+    }
+    if (cold) ar.textContent = zoneM2(z).toFixed(1).replace('.', ',') + ' м²';
+    else {
+      // площадь — поле: вписать числом, если контур не нужен или не сходится с подписью
+      var am2 = document.createElement('input'); am2.type = 'number'; am2.step = '0.1'; am2.min = '0';
+      am2.className = 'ar-in'; am2.title = 'Площадь, м² — можно вписать числом';
+      am2.value = zoneM2(z).toFixed(1);
+      am2.onchange = function () {
+        pushUndo('zones');
+        var v = parseFloat(String(am2.value).replace(',', '.'));
+        f.zones.forEach(function (q) {
+          if (q !== z && JSON.stringify(q.pts) !== key) return;
+          if (v > 0) q.manualM2 = Math.round(v * 100) / 100; else delete q.manualM2;
+        });
+        renderZones(); draw();
+      };
+      ar.appendChild(am2); ar.appendChild(document.createTextNode(' м²'));
+      if (isPart) {
+        var pb = document.createElement('span'); pb.textContent = ' часть';
+        pb.style.cssText = 'font-size:11px;color:#d97706'; pb.title = 'Участок тёплого пола внутри комнаты «' + z.name + '»';
+        ar.appendChild(pb);
+      }
+      if (parts > 0) {
+        var ps = document.createElement('span');
+        ps.textContent = ' · ТП ' + parts.toFixed(1).replace('.', ',');
+        ps.style.cssText = 'font-size:11px;color:#16a34a'; ps.title = 'Тёплый пол занимает ' + parts.toFixed(1).replace('.', ',') + ' м² этой комнаты';
+        ar.appendChild(ps);
+      }
+    }
     var dsp = zoneDisputed(z);
     if (dsp) {
       d.style.background = 'rgba(245,158,11,.16)'; d.style.boxShadow = 'inset 3px 0 0 #f59e0b';
@@ -6034,6 +6121,15 @@ function wzNext() {
   if (i >= 0 && i + 1 < L.length) wzGo(ids[i + 1]);
 }
 
+/** Шаг «Тёплый пол»: обвести участок рамкой или по точкам (комната сложной формы, часть комнаты). */
+function wzTpDraw(m) {
+  document.getElementById('ztype').value = 'tp';
+  if (mode !== m) setMode(m);
+  hint(m === 'poly'
+    ? 'Кликайте углы участка по порядку. Замкнуть — клик по первой точке, двойной клик или Enter. Точки прилипают к стенам и углам, Alt — отключить. Shift — под 90°, Ctrl+Z — убрать точку.'
+    : 'Растяните рамку по участку мышью.');
+}
+
 /** «Обвести рамкой» на шаге «Комнаты»: контур комнаты без тёплого пола. */
 function wzRect() {
   document.getElementById('ztype').value = 'room';
@@ -6149,9 +6245,9 @@ function wzBody(id) {
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B('wzRect()', 'Обвести рамкой'),
     tx: 'Проверьте найденные комнаты и впишите названия — по ним они перейдут в расчёт.',
     tips: [['✕', 'убрать лишнюю'], ['«Обвести рамкой»', 'если комната не нашлась']] };
-  if (id === 'tp') return { acts: B('ufhCold()', 'Без обогрева') + B("setMode('coll')", 'Переставить коллектор'),
+  if (id === 'tp') return { acts: B("wzTpDraw('poly')", 'Обвести по точкам') + B("wzTpDraw('rect')", 'Обвести рамкой') + B('ufhCold()', 'Без обогрева') + B("setMode('coll')", 'Переставить коллектор'),
     tx: 'Отметьте комнаты с тёплым полом — петли разложатся сами.',
-    tips: [['Клик по комнате', 'включить / выключить'], ['«Без обогрева»', 'лестница, ванна, остров'],
+    tips: [['Клик по комнате', 'включить / выключить'], ['«По точкам»', 'сложная форма, часть комнаты'], ['Узлы контура', 'тянуть; ПКМ — точка'], ['«Без обогрева»', 'лестница, ванна, остров'],
       ['Мышью', 'двигать коллектор'], ['ПКМ или R', 'повернуть на 90°']] };
   if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('radcoll')", 'Переставить коллектор радиаторов') + B('radRoutesReset()', 'Автотрассы'),
     tx: 'Радиаторы поставлены под окнами — проверьте расстановку.', tips: RAD_TIPS };

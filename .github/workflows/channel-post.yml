@@ -1,0 +1,51 @@
+# Публикация в Telegram-канал HeatCalc (@heatcalc_ru).
+#
+# Посты пишутся и утверждаются в админке: «Контент → Канал» (таблица Supabase
+# channel_posts). Раз в сутки tools/channel_post.py берёт ОДИН утверждённый пост, чей
+# день настал, отправляет его и отмечает опубликованным. Черновики не уходят никогда.
+#
+# Пропуск к очереди — OIDC-токен GitHub (id-token: write), секретов для Supabase не нужно.
+# Секреты репозитория для Telegram:
+#   TG_CHANNEL_BOT_TOKEN — токен бота @heatcalc_post_bot (админ канала)
+#   TG_CHANNEL_ID        — @heatcalc_ru
+#
+# Вручную: кнопка Run workflow (dry_run — только показать, что ушло бы).
+
+name: Публикация в Telegram-канал
+
+on:
+  schedule:
+    - cron: '0 7 * * *'      # 10:00 по Москве
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Только показать, что ушло бы'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: channel-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    env:
+      TG_CHANNEL_BOT_TOKEN: ${{ secrets.TG_CHANNEL_BOT_TOKEN }}
+      TG_CHANNEL_ID: ${{ secrets.TG_CHANNEL_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Пост
+        env:
+          DRY: ${{ github.event.inputs.dry_run }}
+        run: |
+          if [ "$DRY" = "true" ]; then python tools/channel_post.py --dry-run; else python tools/channel_post.py; fi

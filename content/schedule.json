@@ -207,9 +207,9 @@
    "freq": 0,
    "audience": "pro",
    "data_block": "этапы оплаты из сметы",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-16",
-   "published_at": null,
+   "published_at": "2026-10-16",
    "words": 510
   },
   {

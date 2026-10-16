@@ -3102,6 +3102,7 @@
         .kp-fpanel { display: none; }
         .kp-fpanel.on { display: block; }
         .kp-fl-title { display: none; margin: 0 0 6px; font-weight: 700; }
+        .kp-plan-sub { margin: 10px 0 6px; font-weight: 600; font-size: 13px; color: #6b7280; break-after: avoid; page-break-after: avoid; }
 
         .kp-plan {
             position: relative;
@@ -4871,15 +4872,21 @@
                 const panel = kpEl('div', 'kp-fpanel');
                 panel.appendChild(kpEl('div', 'kp-fl-title', fl + '-й этаж'));
                 // План — главное на листе: по нажатию открывается крупно
-                const frame = kpEl('div', 'kp-plan');
-                frame.tabIndex = 0;
-                frame.setAttribute('role', 'button');
-                frame.setAttribute('aria-label', 'Открыть план ' + fl + '-го этажа крупно');
-                frame.appendChild(svg);
-                frame.appendChild(kpEl('span', 'kp-plan-hint', 'Нажмите, чтобы увеличить'));
-                frame.addEventListener('click', () => kpZoomPlan(svg));
-                frame.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); kpZoomPlan(svg); } });
-                panel.appendChild(frame);
+                const mkFrame = sv => {
+                    const frame = kpEl('div', 'kp-plan');
+                    frame.tabIndex = 0;
+                    frame.setAttribute('role', 'button');
+                    frame.setAttribute('aria-label', 'Открыть план ' + fl + '-го этажа крупно');
+                    frame.appendChild(sv);
+                    frame.appendChild(kpEl('span', 'kp-plan-hint', 'Нажмите, чтобы увеличить'));
+                    frame.addEventListener('click', () => kpZoomPlan(sv));
+                    frame.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); kpZoomPlan(sv); } });
+                    return frame;
+                };
+                // Тёплый пол и радиаторы — отдельные планы (svgRad есть, когда есть и то и другое)
+                const svgRad = v.svgRad ? sanitizePlanSvg(v.svgRad) : null;
+                if (svgRad) panel.appendChild(kpEl('div', 'kp-plan-sub', 'Тёплый пол'));
+                panel.appendChild(mkFrame(svg));
                 const rows = Array.isArray(v.rows) ? v.rows : [];
                 if (rows.length) {
                     anyTp = true;
@@ -4893,6 +4900,10 @@
                 const rr = Array.isArray(v.radRows) ? v.radRows : [];
                 if (rr.length) {
                     anyRad = true; anyTee = anyTee || !!v.radTee;
+                    if (svgRad) {
+                        panel.appendChild(kpEl('div', 'kp-plan-sub', 'Радиаторы'));
+                        panel.appendChild(mkFrame(svgRad));
+                    }
                     panel.appendChild(kpAcc('Приборы отопления', rr.length + ' шт. · трубы ' + n1(v.radM) + ' м',
                         kpTable([['Прибор', 'c'], ['Помещение', ''], ['Длина прибора', 'n'], [v.radTee ? 'Магистраль до прибора' : 'Трубы к прибору', 'n']],
                             rr.map(r => [(r.kind === 'conv' ? 'К' : 'Р') + (r.no || ''), String(r.name || ''), n1(r.w) + ' м', r.L == null ? '—' : n1(r.L) + ' м']),

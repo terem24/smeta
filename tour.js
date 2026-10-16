@@ -42,6 +42,11 @@ const Tour = {
     // ещё не заданного: новичку мы включаем подсказки сами, и без этой отметки они
     // возвращались бы после каждой перезагрузки тому, кто их выключил.
     LS_CHOICE: 'tour_choice',
+    // Прошёл до конца (на этом устройстве) и «не навязывать до»: после крестика или
+    // выключения кнопкой принудительное включение молчит SNOOZE_DAYS дней.
+    LS_DONE: 'tour_done',
+    LS_SNOOZE: 'tour_force_snooze',
+    SNOOZE_DAYS: 3,
 
     // Шаги. sel — либо строка для querySelector, либо функция, возвращающая элемент
     // (нужна там, где подсветить надо не сам переключатель, а блок вокруг него).
@@ -66,29 +71,8 @@ const Tour = {
                 return document.querySelector('.menu-toggle-btn');
             },
             title: 'Это режим обучения',
-            text: 'Калькулятор подсветит нужный элемент и объяснит, зачем он, — так по всему пути до готовой сметы. Включает и выключает подсказки кнопка со шапочкой выпускника в шапке сайта (на телефоне — внутри меню ☰). Крестик на карточке тоже выключает обучение; передумаете — нажмите кнопку ещё раз, и оно продолжится с того же места.',
+            text: 'Калькулятор подсветит нужный элемент и объяснит, зачем он, — так по всему пути до готовой сметы. Включает и выключает подсказки кнопка со шапочкой выпускника в шапке сайта (на телефоне — внутри меню ☰). Идём по порядку: шапка → параметры слева сверху вниз → смета справа → меню слева → ваш тариф. Крестик на карточке тоже выключает обучение; передумаете — нажмите кнопку ещё раз, и оно продолжится с того же места.',
             anim: { type: 'press', label: '🎓 Обучение' }
-        },
-        {
-            // Что открыто именно этому человеку. Остальные шаги сами пропускают закрытое
-            // (GATES), и без этой карточки человек не знал бы, что что-то пропущено, —
-            // а закрытое тарифом как раз и надо назвать, чтобы было понятно, зачем «Профи».
-            key: 'plan',
-            sel: () => {
-                const b = document.getElementById('btn_tour');
-                if (b && b.offsetParent) return b;
-                return document.querySelector('.menu-toggle-btn');
-            },
-            title: 'Ваш тариф и что на нём открыто',
-            text: function () {
-                const p = this.planInfo();
-                const li = (arr, mark) => arr.map(x => mark + ' ' + x).join('<br>');
-                let t = (p.label ? 'Сейчас у вас: <b>' + p.label + '</b>. ' : '') +
-                    'Обучение покажет только то, что вам доступно.';
-                if (p.open.length) t += '<br><br><b>Открыто:</b><br>' + li(p.open, '✓');
-                if (p.closed.length) t += '<br><br><b>Не входит в тариф</b> (в обучении пропускаем):<br>' + li(p.closed, '–');
-                return t;
-            }
         },
         {
             // Ряд иконок в шапке объясняли только всплывающие подсказки, а их надо
@@ -112,29 +96,6 @@ const Tour = {
             }
         },
         {
-            key: 'quick', mob: 'output',
-            sel: '#quick_start_row',
-            title: 'Быстрый старт',
-            text: 'Если хочется сразу увидеть готовую смету — возьмите типовой объект отсюда, а потом поправьте под свой. Или заполняйте параметры сами, шаг за шагом.',
-            seller: {
-                text: 'Клиент стоит у прилавка и точных данных не назвал — возьмите типовой объект отсюда и поправьте площадь под его дом. Готовый список оборудования будет на экране через несколько секунд. Или заполняйте параметры сами, шаг за шагом.'
-            },
-            anim: { type: 'press', label: '🏠 Типовой объект' },
-            done: () => app.state.area > 0
-        },
-        {
-            // Плавающая кнопка со звёздочкой. Гостю её не показывают, и на вкладках
-            // кроме «Оборудования» тоже (см. app.syncAiFabVisibility) — тогда шаг
-            // пропустится сам. Про то, как оно устроено внутри (разбор фразы по
-            // правилам, не языковая модель), человеку знать незачем: ему важно, что
-            // писать можно как говорится.
-            key: 'aifill', mob: 'inputs',
-            sel: '#ai_parse_fab_btn',
-            title: 'Заполнить одной фразой',
-            text: 'Кнопка «ИИ-заполнение» у края экрана: продиктуйте или впишите объект как рассказали бы на словах — «двести квадратов под Новосибирском, газ, тёплый пол на первом этаже, бойлер на четверых», — и параметры расставятся сами. Останется проверить и поправить. Кнопку можно перетащить в удобное место долгим нажатием.',
-            anim: { type: 'press', label: '✨ ИИ-заполнение' }
-        },
-        {
             // Подсвечиваем .control-item вокруг вкладок, а не сами вкладки: у
             // .mode-selector-tabs своя рамка, и вторая рамка подсветки вплотную к ней
             // читалась как дефект вёрстки.
@@ -146,6 +107,52 @@ const Tour = {
             title: 'По площади или по комнатам',
             text: 'По площади считает дом целиком: одна площадь, один регион, один материал стен. Этого хватает, чтобы за минуту подобрать котёл и получить смету на согласование. По комнатам разбирает дом: у каждой комнаты своя площадь, окна, сторона света и вентиляция; теплопотери выходят честнее, и радиаторы обычно крупнее на 20–30 %. Начинайте с «По площади», переключайтесь на «По комнатам», когда смета идёт в работу. Режим «По комнатам» доступен после входа в аккаунт.',
             anim: { type: 'pick', a: 'По площади', b: 'По комнатам' }
+        },
+        {
+            // «По комнатам» + план дома: кнопка есть только в подробном режиме и только
+            // при открытой функции «Раскладка ТП» — иначе пропустится по GATES.
+            key: 'ufhplan', mob: 'inputs',
+            sel: '#btn_ufhplan',
+            title: 'План дома',
+            text: 'В режиме «По комнатам» загрузите план этажа: отметьте комнаты, тёплый пол кликом и радиаторы под окнами. Под сметой появится раскладка петель и трассы радиаторов — она же уйдёт в коммерческое предложение.',
+            anim: { type: 'press', label: 'Загрузить план' }
+        },
+        {
+            // План открывается отдельным окном (iframe), подсвечивать внутри него нечего,
+            // поэтому порядок работы в окне рассказываем здесь, на кнопке, которая его
+            // открывает. Названия шагов и кнопок — как в мастере plan_editor.html.
+            key: 'planedit', mob: 'inputs',
+            sel: '#btn_ufhplan',
+            title: 'Как работать в окне плана',
+            text: 'После выбора файла откроется окно с мастером: <b>План → Масштаб → Комнаты → Тёплый пол → Радиаторы → Готово</b>. Масштаб и комнаты находятся сами; не нашлись — «Задать масштаб» (два клика по отрезку известной длины) или «Обвести рамкой».<br>' +
+                '<b>Комнаты:</b> проверьте названия — по ним они попадут в расчёт; лишнюю убирает ✕.<br>' +
+                '<b>Тёплый пол:</b> клик по комнате включает и выключает его; «Без обогрева» — для лестницы или ванны; коллектор тянется мышью, ПКМ или R поворачивает.<br>' +
+                '<b>Радиаторы:</b> «Под окна» ставит их сама, клик рядом с окном добавляет вручную, клик по значку убирает.<br>' +
+                'Кнопка «Готово — в смету» сохраняет план и возвращает в расчёт.',
+            anim: { type: 'plan' }
+        },
+        {
+            // Карточки комнат есть только в режиме «По комнатам». Пока он не включён,
+            // подсвечиваем вкладку режима и говорим, что сделать; шаг не пропадает.
+            key: 'roomcard', mob: 'inputs',
+            sel: () => {
+                const detailed = typeof app !== 'undefined' && app.state && app.state.detailedRooms;
+                if (detailed) {
+                    const c = Array.from(document.querySelectorAll('.zone-card[id^="room_card_"]'))
+                        .find(e => e.offsetParent);
+                    if (c) return c;
+                }
+                return document.getElementById('mode_pro');
+            },
+            title: 'Радиаторы и тёплый пол в комнате',
+            text: function () {
+                const on = typeof app !== 'undefined' && app.state && app.state.detailedRooms;
+                if (!on) {
+                    return 'Включите «По комнатам» — для каждой комнаты появится карточка. В ней отдельно выбирается <b>отопление</b>: радиаторы, тёплый пол или оба сразу. Комнаты берутся с загруженного плана или добавляются кнопкой «+ Добавить комнату».';
+                }
+                return 'Карточка комнаты: площадь, температура, этаж. Блок <b>«Отопление»</b> — кнопки «Радиаторы» и «Тёплый пол»; у тёплого пола появляется поле <b>«Площадь тёплого пола»</b> (пусто — вся комната, иначе площадь без отступов от стен и мебели). В блоке <b>«Окна»</b>: «+ окно», ширина, галочка «без прибора» — по окнам подбираются радиаторы. Тип помещения, наружные стены и сторона света — в «Уточнить». Новая комната — «+ Добавить комнату» под списком.';
+            },
+            anim: { type: 'pick', a: 'Радиаторы', b: 'Тёплый пол' }
         },
         {
             key: 'area', mob: 'inputs',
@@ -188,17 +195,27 @@ const Tour = {
             anim: { type: 'toggle', label: 'Горячая вода' }
         },
         {
-            key: 'eq', mob: 'output',
-            sel: '#tab_equipment',
-            title: 'Смета готова',
-            text: 'Здесь подобранное оборудование: котёл, бойлер, радиаторы, трубы, автоматика. Любую позицию можно заменить, убрать или задать своё количество — расчёт пересоберётся.',
-            anim: { type: 'rows' },
-            // У продавца это единственная вкладка со сметой, и «Оборудование» под
-            // номером 1 никуда не ведёт дальше: следующей идёт распознавание.
+            // Плавающая кнопка со звёздочкой. Гостю её не показывают, и на вкладках
+            // кроме «Оборудования» тоже (см. app.syncAiFabVisibility) — тогда шаг
+            // пропустится сам. Про то, как оно устроено внутри (разбор фразы по
+            // правилам, не языковая модель), человеку знать незачем: ему важно, что
+            // писать можно как говорится.
+            key: 'aifill', mob: 'inputs',
+            sel: '#ai_parse_fab_btn',
+            title: 'Заполнить одной фразой',
+            text: 'Кнопка «ИИ-заполнение» у края экрана: продиктуйте или впишите объект как рассказали бы на словах — «двести квадратов под Новосибирском, газ, тёплый пол на первом этаже, бойлер на четверых», — и параметры расставятся сами. Останется проверить и поправить. Кнопку можно перетащить в удобное место долгим нажатием.',
+            anim: { type: 'press', label: '✨ ИИ-заполнение' }
+        },
+        {
+            key: 'quick', mob: 'output',
+            sel: '#quick_start_row',
+            title: 'Быстрый старт',
+            text: 'Параметры слева можно не заполнять вручную: возьмите типовой объект отсюда и поправьте под свой — готовая смета появится за несколько секунд.',
             seller: {
-                title: 'Спецификация готова',
-                text: 'Здесь подобранное оборудование: котёл, бойлер, радиаторы, трубы, автоматика — всё, что нужно отгрузить на объект. Любую позицию можно заменить на аналог, убрать или задать своё количество, и расчёт пересоберётся. Это ваша единственная вкладка со списком: монтажные работы у продавца не считаются и в документ не идут.'
-            }
+                text: 'Клиент стоит у прилавка и точных данных не назвал — возьмите типовой объект отсюда и поправьте площадь под его дом. Готовый список оборудования будет на экране через несколько секунд. Или заполняйте параметры сами, шаг за шагом.'
+            },
+            anim: { type: 'press', label: '🏠 Типовой объект' },
+            done: () => app.state.area > 0
         },
         {
             // Переключатель живёт в заголовке сметы; закрыт тарифом (столбец «Бюджетнее»)
@@ -217,20 +234,17 @@ const Tour = {
             anim: { type: 'toggle', label: 'Схема' }
         },
         {
-            // «По комнатам» + план дома: кнопка есть только в подробном режиме и только
-            // при открытой функции «Раскладка ТП» — иначе пропустится по GATES.
-            key: 'ufhplan', mob: 'inputs',
-            sel: '#btn_ufhplan',
-            title: 'План дома',
-            text: 'В режиме «По комнатам» загрузите план этажа: отметьте комнаты, тёплый пол кликом и радиаторы под окнами. Под сметой появится раскладка петель и трассы радиаторов — она же уйдёт в коммерческое предложение.',
-            anim: { type: 'press', label: 'Загрузить план' }
-        },
-        {
-            key: 'design', mob: 'output',
-            sel: '#btn_sheets_trigger',
-            title: 'Листы проекта',
-            text: 'Комплект листов для монтажа: принципиальная схема, узлы котельной, планы этажей и спецификации. Собирается из расчёта и открывается отдельным окном.',
-            anim: { type: 'press', label: 'Листы проекта' }
+            key: 'eq', mob: 'output',
+            sel: '#tab_equipment',
+            title: 'Смета готова',
+            text: 'Здесь подобранное оборудование: котёл, бойлер, радиаторы, трубы, автоматика. Любую позицию можно заменить, убрать или задать своё количество — расчёт пересоберётся.',
+            anim: { type: 'rows' },
+            // У продавца это единственная вкладка со сметой, и «Оборудование» под
+            // номером 1 никуда не ведёт дальше: следующей идёт распознавание.
+            seller: {
+                title: 'Спецификация готова',
+                text: 'Здесь подобранное оборудование: котёл, бойлер, радиаторы, трубы, автоматика — всё, что нужно отгрузить на объект. Любую позицию можно заменить на аналог, убрать или задать своё количество, и расчёт пересоберётся. Это ваша единственная вкладка со списком: монтажные работы у продавца не считаются и в документ не идут.'
+            }
         },
         {
             key: 'works', mob: 'output',
@@ -288,6 +302,38 @@ const Tour = {
             }
         },
         {
+            key: 'send', mob: 'output',
+            sel: () => {
+                const share = document.getElementById('btn_share_trigger');
+                if (share && share.offsetParent) return share;
+                return document.getElementById('btn_print_trigger');
+            },
+            title: 'Отдать клиенту',
+            text: 'Ссылка открывает смету у клиента в браузере — он посмотрит её с телефона, согласует или попросит правки, а вы увидите это у себя. «Скачать» делает тот же документ в PDF или Excel.',
+            anim: { type: 'press', label: 'Ссылка для клиента' },
+            // В окне отправки продавцу не показывают галочку «Монтажные работы»
+            // (см. app.openShareOptionsModal): наружу уходит только оборудование.
+            seller: {
+                text: 'Ссылка открывает спецификацию у клиента в браузере — он посмотрит её с телефона прямо в зале, согласует или попросит правки, а вы увидите это у себя. «Скачать» делает тот же документ в PDF для печати или в Excel. В окне отправки выбирается только оборудование: монтажных работ в вашем документе нет ни в ссылке, ни в файле.'
+            }
+        },
+        {
+            // Третья кнопка в ряду под сметой. О ней обучение не говорило вовсе, а
+            // это единственный путь от расчёта к оплате.
+            key: 'invoice', mob: 'output',
+            sel: '#btn_invoice_trigger',
+            title: 'Запросить счёт',
+            text: 'Кнопка отправляет смету вашему менеджеру, чтобы он выставил счёт на оплату. Заказ после этого виден в разделе «Заказы» вместе со статусом: отправлено, согласовано, оплачено. Для отправки в профиле должны стоять имя, телефон, город и почта — без них менеджеру некуда ответить.',
+            anim: { type: 'press', label: 'Запросить счёт' }
+        },
+        {
+            key: 'design', mob: 'output',
+            sel: '#btn_sheets_trigger',
+            title: 'Листы проекта',
+            text: 'Комплект листов для монтажа: принципиальная схема, узлы котельной, планы этажей и спецификации. Собирается из расчёта и открывается отдельным окном.',
+            anim: { type: 'press', label: 'Листы проекта' }
+        },
+        {
             // На телефоне кнопка сохранения уезжает в свёрнутое меню шапки вместе со
             // всем рядом .header-main-controls, и шаг молча пропускался: обучение на
             // узком экране вообще не говорило, что смету надо сохранить, — а это
@@ -336,29 +382,21 @@ const Tour = {
             seller: { skip: true }
         },
         {
-            key: 'send', mob: 'output',
+            // Итог обучения: что открыто на тарифе и что добавит «Профи», с кнопками оплаты.
+            // Стоит последним намеренно: человек уже видел все функции и понимает, что за
+            // них платит. Закрытые тарифом шаги в обучении пропускались (GATES), а здесь
+            // они названы вслух — иначе непонятно, зачем «Профи».
+            key: 'plan',
             sel: () => {
-                const share = document.getElementById('btn_share_trigger');
-                if (share && share.offsetParent) return share;
-                return document.getElementById('btn_print_trigger');
+                const r = document.getElementById('lk_rail');
+                if (r && r.offsetParent) return r;
+                const b = document.getElementById('btn_tour');
+                if (b && b.offsetParent) return b;
+                return document.querySelector('.menu-toggle-btn');
             },
-            title: 'Отдать клиенту',
-            text: 'Ссылка открывает смету у клиента в браузере — он посмотрит её с телефона, согласует или попросит правки, а вы увидите это у себя. «Скачать» делает тот же документ в PDF или Excel.',
-            anim: { type: 'press', label: 'Ссылка для клиента' },
-            // В окне отправки продавцу не показывают галочку «Монтажные работы»
-            // (см. app.openShareOptionsModal): наружу уходит только оборудование.
-            seller: {
-                text: 'Ссылка открывает спецификацию у клиента в браузере — он посмотрит её с телефона прямо в зале, согласует или попросит правки, а вы увидите это у себя. «Скачать» делает тот же документ в PDF для печати или в Excel. В окне отправки выбирается только оборудование: монтажных работ в вашем документе нет ни в ссылке, ни в файле.'
-            }
-        },
-        {
-            // Третья кнопка в ряду под сметой. О ней обучение не говорило вовсе, а
-            // это единственный путь от расчёта к оплате.
-            key: 'invoice', mob: 'output',
-            sel: '#btn_invoice_trigger',
-            title: 'Запросить счёт',
-            text: 'Кнопка отправляет смету вашему менеджеру, чтобы он выставил счёт на оплату. Заказ после этого виден в разделе «Заказы» вместе со статусом: отправлено, согласовано, оплачено. Для отправки в профиле должны стоять имя, телефон, город и почта — без них менеджеру некуда ответить.',
-            anim: { type: 'press', label: 'Запросить счёт' },
+            title: 'Ваш тариф',
+            text: function () { return this.planText(); },
+            extra: function () { return this.planExtra(); },
             last: true
         }
     ],
@@ -407,41 +445,87 @@ const Tour = {
         cheaper: 'canUseAnalog',
         design: 'canUseDesign',
         ufhplan: 'canUseUfhPlan',
+        planedit: 'canUseUfhPlan',
         opcost: 'canUseOpCost',
         branding: 'canUseBranding'
     },
 
-    // Что открыто на тарифе — для шага «Ваш тариф». Берём те же признаки, что и
-    // GATES, плюс ассортимент: подписи совпадают со столбцами таблицы «Тарифы».
-    // Возвращает { open: [...], closed: [...], label } — подпись «Профи · Монтажник».
+    // Что открыто на тарифе и что добавит «Профи» — для последнего шага. Подписи
+    // совпадают со столбцами таблицы «Тарифы»; «открыто» берём теми же проверками, что и
+    // GATES (личные отметки и компания учтены), «что даст Профи» — по ячейке строки
+    // этого же человека на тарифе pro.
+    FEATURES: [
+        ['works', 'монтажные работы в смете и документах'],
+        ['analog', 'вторая смета «Бюджетнее» и вкладка «Почему дешевле»'],
+        ['money', 'вкладка «Деньги» — ваша маржа по объекту'],
+        ['docs', 'договор подряда и акты'],
+        ['branding', 'свой логотип и реквизиты в КП и счёте'],
+        ['ufhplan', 'план отопления по комнатам: раскладка петель и радиаторов'],
+        ['opcost', 'стоимость отопления за сезон'],
+        ['recognize', 'распознавание чужих смет, накладных и планов'],
+        ['design', 'листы проекта'],
+        ['rommer', 'ассортимент ROMMER']
+    ],
+
     planInfo: function () {
-        const rows = [
-            ['canUseWorks', 'монтажные работы'],
-            ['canUseAnalog', 'вторая смета «Бюджетнее»'],
-            ['canUseMoney', 'вкладка «Деньги» — ваша маржа'],
-            ['canUseDocs', 'договор и акты'],
-            ['canUseBranding', 'свой логотип и реквизиты в документах'],
-            ['canUseUfhPlan', 'план отопления по комнатам'],
-            ['canUseOpCost', 'стоимость отопления за сезон'],
-            ['canUseDesign', 'листы проекта']
-        ];
-        const open = [], closed = [];
+        const open = [], gain = [];
+        let label = '', isPro = false;
         try {
-            rows.forEach(r => {
-                if (typeof app[r[0]] !== 'function') return;
-                (app[r[0]]() ? open : closed).push(r[1]);
+            isPro = app.tariffPlan() === 'pro';
+            const acc = app.tariffAccount();
+            const m = { works: 'canUseWorks', analog: 'canUseAnalog', money: 'canUseMoney', docs: 'canUseDocs',
+                branding: 'canUseBranding', ufhplan: 'canUseUfhPlan', opcost: 'canUseOpCost', design: 'canUseDesign' };
+            this.FEATURES.forEach(f => {
+                const id = f[0];
+                let cur;
+                if (m[id] && typeof app[m[id]] === 'function') cur = !!app[m[id]]();
+                else if (id === 'rommer') cur = !!app.canUseBrand('ROMMER');
+                else cur = app.tariffAccess(id) !== 'off';
+                if (cur) { open.push(f[1]); return; }
+                // у «Профи» эта функция для этой учётки включена?
+                if (!isPro && app.tariffCell(acc, 'pro', id) !== 'off') gain.push(f[1]);
             });
-            if (typeof app.canUseBrand === 'function') {
-                (app.canUseBrand('ROMMER') ? open : closed).push('ассортимент ROMMER');
-            }
+            const accLabel = (app.TARIFF_ACCOUNTS.find(a => a.id === acc) || {}).label || '';
+            label = (isPro ? 'Профи' : 'Базовый') + (accLabel ? ' · ' + accLabel : '');
         } catch (e) { }
-        let label = '';
+        return { open: open, gain: gain, label: label, isPro: isPro };
+    },
+
+    planText: function () {
+        const p = this.planInfo();
+        const li = (arr, mark) => arr.map(x => mark + ' ' + x).join('<br>');
+        let t = (p.label ? 'Сейчас у вас: <b>' + p.label + '</b>.' : '');
+        if (p.open.length) t += '<br><br><b>Уже открыто:</b><br>' + li(p.open, '✓');
+        if (p.gain.length) {
+            t += '<br><br><b>Что добавит Профи:</b><br>' + li(p.gain, '＋');
+        } else if (p.isPro) {
+            t += '<br><br>Подписка Профи включает всё, что вы видели в обучении.';
+        }
+        return t;
+    },
+
+    // Кнопки оплаты под текстом последнего шага. Цены — из app.proPlan (региональная
+    // цена и акции модуля подписки), а не зашитые числа. Нажатие считается «дошёл до
+    // конца»: обучение закрывается, поверх открывается окно тарифа или оплаты.
+    planExtra: function () {
+        let m = null, y = null;
+        try { m = app.proPlan('month'); y = app.proPlan('year'); } catch (e) { }
+        const money = n => { try { return app.formatCurrencyAmount(n); } catch (e) { return String(n) + ' ₽'; } };
+        const isPro = this.planInfo().isPro;
+        let h = '<div class="tour-pay">';
+        if (m) h += '<button type="button" class="tour-btn tour-btn-pay" onclick="Tour.pay(\'month\')">' + (isPro ? 'Продлить на месяц' : 'Месяц') + ' · ' + money(m.rub) + '</button>';
+        if (y) h += '<button type="button" class="tour-btn tour-btn-pay" onclick="Tour.pay(\'year\')">' + (isPro ? 'Продлить на год' : 'Год') + ' · ' + money(Math.round(y.rub / 12)) + '/мес</button>';
+        h += '<a href="#" class="tour-pay-all" onclick="Tour.pay(); return false;">Сравнить тарифы и ввести промокод</a></div>';
+        return h;
+    },
+
+    // Без аргумента — окно с тарифами, с 'month' | 'year' — сразу окно оплаты
+    pay: function (type) {
+        this.finish(true);
         try {
-            const plan = app.tariffPlan() === 'pro' ? 'Профи' : 'Базовый';
-            const acc = (app.TARIFF_ACCOUNTS.find(a => a.id === app.tariffAccount()) || {}).label || '';
-            label = plan + (acc ? ' · ' + acc : '');
-        } catch (e) { }
-        return { open: open, closed: closed, label: label };
+            if (type) app.openPaymentModal(type);
+            else app.showModal('pro');
+        } catch (e) { console.warn('[Tour] оплата:', e); }
     },
 
     // Метка для архива: «installer.pro» — по ней видно, на каком тарифе человек прошёл
@@ -557,7 +641,61 @@ const Tour = {
     toggleFromButton: function () {
         if (!this.allowed()) return;
         this.rememberChoice();
+        if (this.active()) this.snoozeForce();
         this.toggle(!this.active());
+    },
+
+    // ── Принудительное включение из админки ──────────────────────────────
+    // Список лежит в app_settings.tour_force (вкладка «Тарифы → Обучение»):
+    //   users:   { почта: true|false }  — личная отметка, сильнее всего;
+    //   dists:   { id дистрибьютора: true };
+    //   regions: { регион: true };
+    //   tariffs: { 'installer.base': true } — строка таблицы «Тарифы»;
+    //   all:     true — всем, кто ещё не прошёл.
+    // Включает обучение только тому, кто его ещё не прошёл до конца; крестик или
+    // выключение кнопкой откладывают повтор на SNOOZE_DAYS дней, а не навсегда.
+    // Правило решения только здесь, админка его лишь показывает (forceDecisionFor).
+    forceDecisionFor: function (row, account, plan) {
+        const tf = (typeof app !== 'undefined' && app.appSettings && app.appSettings.tour_force) || null;
+        if (!tf) return { on: false, by: '' };
+        const login = String((row && (row.email || row.username)) || '').trim().toLowerCase();
+        const own = app.accessFlagFor(tf.users, login);
+        if (own !== undefined) return { on: own, by: 'own' };
+        const dist = row && row.distributor_id;
+        if (dist && (tf.dists || {})[dist]) return { on: true, by: 'dist' };
+        if (row && row.region && app.regionFlagFor(tf.regions, row.region)) return { on: true, by: 'region' };
+        if (account && (tf.tariffs || {})[account + '.' + plan]) return { on: true, by: 'tariff' };
+        if (tf.all) return { on: true, by: 'all' };
+        return { on: false, by: '' };
+    },
+
+    snoozeForce: function () {
+        try { localStorage.setItem(this.LS_SNOOZE, String(Date.now() + this.SNOOZE_DAYS * 864e5)); } catch (e) { }
+    },
+
+    applyForce: async function () {
+        try {
+            if (!this.allowed() || this.active()) return;
+            try { if (localStorage.getItem(this.LS_DONE) === '1') return; } catch (e) { }
+            try { if (Date.now() < parseInt(localStorage.getItem(this.LS_SNOOZE) || '0', 10)) return; } catch (e) { }
+            if (typeof app.loadAppSettings === 'function') await app.loadAppSettings();
+            const row = app.accessUserRow();
+            if (!row.distributor_id && app.state.distributorId) row.distributor_id = app.state.distributorId;
+            const d = this.forceDecisionFor(row, app.tariffAccount(), app.tariffPlan());
+            if (!d.on) return;
+            // Уже прошёл на другом устройстве — не гоняем второй раз. Не прочиталось
+            // (нет политики, нет колонки) — считаем, что не проходил.
+            try {
+                if (typeof supabaseClient !== 'undefined' && row.id) {
+                    const { data, error } = await supabaseClient.from('users').select('tour_done_at').eq('id', row.id).maybeSingle();
+                    if (!error && data && data.tour_done_at) { try { localStorage.setItem(this.LS_DONE, '1'); } catch (e) { } return; }
+                }
+            } catch (e) { }
+            if (this.active() || !this.allowed()) return;
+            this.rememberChoice();
+            try { localStorage.setItem(this.LS_STEP, '0'); } catch (e) { }
+            this.toggle(true);
+        } catch (e) { console.warn('[Tour] принудительное включение:', e); }
     },
 
     // Вид кнопки: включённый режим подсвечен, подсказка объясняет, что будет по нажатию
@@ -602,6 +740,7 @@ const Tour = {
             this.start();
             return;
         }
+        this.applyForce();
         // Сами подсказки больше никому не включаем на входе. Гостю обучение не
         // показываем вовсе (см. allowed). Вошедшему — потому что первым делом ему
         // показывают окно быстрого старта, а обучение включится после него: этим
@@ -660,6 +799,7 @@ const Tour = {
     // крестик на втором шаге её не ставит.
     finish: function (done) {
         if (done === true) this.reportDone();
+        else this.snoozeForce();
         try { localStorage.setItem(this.LS_STEP, '0'); } catch (e) { }
         this._step = 0;
         this.rememberChoice();
@@ -671,6 +811,7 @@ const Tour = {
     // раз — повторный проход её не меняет (так решает сама функция). Сбой молча
     // игнорируем: обучение от записи не зависит, а миграция может быть ещё не выполнена.
     reportDone: function () {
+        try { localStorage.setItem(this.LS_DONE, '1'); } catch (e) { }
         try {
             const n = (this._plan || []).filter(Boolean).length;
             if (typeof supabaseClient === 'undefined' || !this.allowed()) return;
@@ -715,6 +856,53 @@ const Tour = {
     HAND: '<svg class="ta-hand-i" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">' +
         '<path d="M5 2.5l13.5 7.8-6 1.6-3 6.6z" fill="#fff" stroke="#111827" stroke-width="1.3" stroke-linejoin="round"/></svg>',
 
+    // Ролик «план дома»: комната с окном и радиатором, на полу — улитка тёплого пола.
+    // Трубу не рисуем от руки: раскладку считает тот же projectPlans.floorLoops, что
+    // даёт петли в редакторе плана, на листах и в смете (цвета тоже оттуда: подача
+    // #ff8080, обратка #8080ff, подводка от коллектора тёмно-фиолетовая, углы скруглены
+    // в полшага укладки). projectPlans ещё не загрузился или раскладка не построилась —
+    // ролика нет, шаг остаётся с одним текстом.
+    planReel: function () {
+        const pp = window.projectPlans;
+        if (!pp || typeof pp.floorLoops !== 'function') return '';
+        const zone = [[60, 40], [460, 40], [460, 360], [60, 360]];
+        const f = { pxPerM: 100, coll: { x: 50, y: 368 }, leads: [], zones: [{ type: 'tp', name: 'Комната', pts: zone }] };
+        let L = null;
+        try {
+            const FL = pp.floorLoops(f, 150);
+            L = FL[0] && FL[0].loops && FL[0].loops[0];
+        } catch (e) { L = null; }
+        if (!L || !L.sup || !L.ret) return '';
+        const r = 7.5;   // полшага укладки 150 мм при 100 px/м
+        const path = P => {
+            let d = 'M' + P[0][0] + ',' + P[0][1];
+            for (let j = 1; j < P.length - 1; j++) {
+                const p0 = P[j - 1], p1 = P[j], p2 = P[j + 1];
+                const l1 = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) || 1;
+                const l2 = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) || 1;
+                const r1 = Math.min(r, l1 / 2), r2 = Math.min(r, l2 / 2);
+                d += 'L' + (p1[0] + (p0[0] - p1[0]) / l1 * r1).toFixed(1) + ',' + (p1[1] + (p0[1] - p1[1]) / l1 * r1).toFixed(1) +
+                    'Q' + p1[0] + ',' + p1[1] + ' ' +
+                    (p1[0] + (p2[0] - p1[0]) / l2 * r2).toFixed(1) + ',' + (p1[1] + (p2[1] - p1[1]) / l2 * r2).toFixed(1);
+            }
+            return d + 'L' + P[P.length - 1][0] + ',' + P[P.length - 1][1];
+        };
+        const lead = (L.lead && L.lead.length > 1) ? '<path class="ta-plan-lead" d="' + path(L.lead) + '" pathLength="100"/>' : '';
+        return '<svg class="ta-plan-svg" viewBox="30 10 470 390" aria-hidden="true">' +
+            '<polygon class="ta-plan-zone" points="' + zone.map(p => p.join(',')).join(' ') + '"/>' +
+            '<rect class="ta-plan-wall" x="40" y="20" width="440" height="360"/>' +
+            lead +
+            '<path class="ta-plan-sup" d="' + path(L.sup) + '" pathLength="100"/>' +
+            '<path class="ta-plan-ret" d="' + path(L.ret) + '" pathLength="100"/>' +
+            '<rect class="ta-plan-coll" x="44" y="362" width="12" height="12"/>' +
+            '<line class="ta-plan-win" x1="190" y1="20" x2="330" y2="20"/>' +
+            '<rect class="ta-plan-rad" x="190" y="27" width="140" height="7" rx="2"/></svg>' +
+            '<span class="ta-plan-tag ta-plan-tag-sup">подача</span>' +
+            '<span class="ta-plan-tag ta-plan-tag-ret">обратка</span>' +
+            '<span class="ta-plan-tag ta-plan-tag-rad">радиатор</span>' +
+            '<span class="ta-hand ta-hand-plan">' + this.HAND + '</span>';
+    },
+
     reel: function (a) {
         if (!a || !a.type) return '';
         const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -733,6 +921,9 @@ const Tour = {
         } else if (a.type === 'press') {
             inner = '<span class="ta-btn">' + esc(a.label || '') + '</span>' +
                 '<span class="ta-ring ta-ring-btn"></span>' + hand('ta-hand-press');
+        } else if (a.type === 'plan') {
+            inner = this.planReel();
+            if (!inner) return '';
         } else if (a.type === 'rows') {
             inner = '<div class="ta-rows"><i></i><i></i><i></i><i></i></div>';
         } else {
@@ -863,6 +1054,7 @@ const Tour = {
             '</div>' +
             '<div class="tour-card-title">' + v.title + '</div>' +
             '<div class="tour-card-text">' + v.text + '</div>' +
+            (typeof v.extra === 'function' ? v.extra.call(this) : '') +
             this.reel(v.anim) +
             '<div class="tour-card-btns">' +
             (this._step > 0 ? '<button type="button" class="tour-btn tour-btn-ghost" onclick="Tour.prev()">Назад</button>' : '') +
@@ -1067,6 +1259,9 @@ body.dark-mode .tour-card { background: #1E1E1E; border-color: #333333; }
     border: none; background: var(--primary); color: #fff; cursor: pointer;
 }
 .tour-btn-ghost { background: transparent; color: var(--text-sec); border: 1px solid var(--border); }
+.tour-pay { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+.tour-btn-pay { flex: 1 1 130px; padding: 8px 10px; }
+.tour-pay-all { flex: 1 1 100%; text-align: center; font-size: 12px; font-weight: 600; color: var(--primary); text-decoration: none; }
 
 /* Телефон лёжа: 375 px высоты на всё про всё. Карточка в 280–360 px не оставляет
    места подсвеченному элементу ни под собой, ни над собой, и расчёт из place()
@@ -1203,6 +1398,49 @@ body.dark-mode .ta-tab { background: #1E1E1E; border-color: #3A3A3A; }
 .ta-ring-btn { left: 50%; top: 50%; animation: ta-ring 2.6s ease-in-out infinite; }
 .ta-hand-press { left: 50%; top: 50%; animation: ta-tap 2.6s ease-in-out infinite; }
 @keyframes ta-press { 0%, 42% { transform: scale(1); } 52% { transform: scale(0.965); } 64%, 100% { transform: scale(1); } }
+
+/* План дома: клик по комнате — по полу ложится улитка (раскладка из projectPlans), под окном встаёт радиатор */
+.tour-anim-plan { height: 124px; }
+.ta-plan-svg { position: absolute; left: 14px; top: 8px; height: 108px; width: 130px; }
+.ta-plan-wall { fill: none; stroke: var(--text-sec); stroke-width: 4; }
+.ta-plan-zone { fill: transparent; animation: ta-plan-zone 6s ease-in-out infinite; }
+.ta-plan-win { stroke: #378ADD; stroke-width: 8; }
+.ta-plan-lead, .ta-plan-sup, .ta-plan-ret { fill: none; stroke-width: 5; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; opacity: 0; }
+.ta-plan-lead { stroke: #4d3f66; animation: ta-plan-draw-a 6s ease-in-out infinite; }
+.ta-plan-sup { stroke: #ff8080; animation: ta-plan-draw-a 6s ease-in-out infinite; }
+.ta-plan-ret { stroke: #8080ff; animation: ta-plan-draw-b 6s ease-in-out infinite; }
+.ta-plan-coll { fill: #4d3f66; opacity: 0; animation: ta-plan-show 6s ease-in-out infinite; }
+.ta-plan-rad { fill: #d22; opacity: 0; animation: ta-plan-rad 6s ease-in-out infinite; }
+.ta-plan-tag { position: absolute; left: 164px; font-size: 12px; font-weight: 700; opacity: 0.3; }
+.ta-plan-tag-sup { top: 22px; color: #ff6b6b; animation: ta-plan-tag-sup 6s ease-in-out infinite; }
+.ta-plan-tag-ret { top: 50px; color: #6b6bff; animation: ta-plan-tag-ret 6s ease-in-out infinite; }
+.ta-plan-tag-rad { top: 78px; color: #d22; animation: ta-plan-tag-rad 6s ease-in-out infinite; }
+.ta-hand-plan { left: 56px; top: 60px; animation: ta-plan-hand 6s ease-in-out infinite; }
+@keyframes ta-plan-hand {
+    0% { transform: translate(60px, 36px); opacity: 0; }
+    8% { opacity: 1; }
+    13%, 17% { transform: translate(0, 0); opacity: 1; }
+    15% { transform: translate(-2px, -2px); }
+    28%, 100% { transform: translate(0, 0); opacity: 0; }
+}
+@keyframes ta-plan-zone { 0%, 15% { fill: transparent; } 20%, 94% { fill: rgba(255, 128, 0, 0.14); } 100% { fill: transparent; } }
+@keyframes ta-plan-show { 0%, 17% { opacity: 0; } 20%, 94% { opacity: 1; } 99%, 100% { opacity: 0; } }
+@keyframes ta-plan-draw-a {
+    0%, 17% { stroke-dashoffset: 100; opacity: 0; }
+    18% { opacity: 1; }
+    50%, 94% { stroke-dashoffset: 0; opacity: 1; }
+    99%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes ta-plan-draw-b {
+    0%, 48% { stroke-dashoffset: 100; opacity: 0; }
+    49% { opacity: 1; }
+    78%, 94% { stroke-dashoffset: 0; opacity: 1; }
+    99%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes ta-plan-rad { 0%, 80% { opacity: 0; } 86%, 94% { opacity: 1; } 99%, 100% { opacity: 0; } }
+@keyframes ta-plan-tag-sup { 0%, 17% { opacity: 0.3; } 24%, 94% { opacity: 1; } 100% { opacity: 0.3; } }
+@keyframes ta-plan-tag-ret { 0%, 48% { opacity: 0.3; } 54%, 94% { opacity: 1; } 100% { opacity: 0.3; } }
+@keyframes ta-plan-tag-rad { 0%, 80% { opacity: 0.3; } 86%, 94% { opacity: 1; } 100% { opacity: 0.3; } }
 
 /* Смета собирается строками */
 .ta-rows { position: absolute; left: 16px; right: 16px; top: 12px; bottom: 12px; display: flex; flex-direction: column; justify-content: space-between; }

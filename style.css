@@ -3330,6 +3330,12 @@ body.html2pdf-printing .expand-locs-btn {
     position: static;
 }
 
+/* Точка отсчёта для подсказки — строка, а не прокручиваемая панель: строка должна быть
+   позиционирована, иначе подсказка уходила к панели и срезалась её прокруткой (за верхний край). */
+.label-row:has(.tip-panel-wrap) {
+    position: relative;
+}
+
 .tooltip-content.tip-panel {
     min-width: 0;
     left: 0;
@@ -15329,6 +15335,7 @@ body.dark-mode #hyd_card .hyd-card__p {
 .pl-act svg .pl-hl { filter: drop-shadow(0 0 3px rgba(255, 170, 0, .95)); }
 .ufh-plan-table tr[data-pl] { cursor: default; }
 .ufh-plan-table tr.pl-hl > td { background: rgba(255, 193, 7, .30); }
+.ufh-plan-table tr.ufh-grp.pl-hl > td { background: rgba(255, 193, 7, .30); }
 body.dark-mode .ufh-plan-table tr.pl-hl > td { background: rgba(255, 193, 7, .22); }
 @media print {
     .pl-act svg [data-pl]:not(.pl-hl) { opacity: 1; }
@@ -20141,9 +20148,25 @@ body.dark-mode .save-remind-field input { background: #121212; border-color: #4B
 .sg-hit { fill: transparent; stroke: none; pointer-events: all; cursor: pointer; }
 .sg-pt { display: none; fill: rgba(37, 99, 235, 0.35); stroke: #2563eb; stroke-width: 2px; vector-effect: non-scaling-stroke; pointer-events: none; }
 .sg-pt.sg-hl { display: block; }
-/* Листы насосных групп — крупнее общей рамки схем: на них мелкие подписи, а их надо читать и наводить мышью. */
-[id^="pump_group_scheme_row_"] .automation-scheme { width: 100%; max-width: 1040px; height: auto; }
-[id^="pump_group_scheme_row_"] .automation-scheme > svg { height: auto; }
+/* Листы насосных групп — миниатюрой общего размера (рамка схем), справа таблица сравнения вариантов. Читают лист на весь экран. */
+.sg-flex { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.sg-flex > .automation-scheme { flex: 0 0 auto; }
+.sg-cmp { flex: 1 1 420px; min-width: 0; font-size: 12px; margin-top: 10px; }
+.sg-cmp-wait { color: var(--text-sec, #6b7280); padding: 12px 0; }
+.sg-cmp-tbl { width: 100%; border-collapse: collapse; }
+.sg-cmp-tbl th { text-align: left; font-weight: 600; font-size: 11px; color: var(--text-sec, #6b7280); padding: 4px 6px; border-bottom: 1px solid var(--border, #e5e7eb); }
+.sg-cmp-tbl td { padding: 5px 6px; border-bottom: 1px solid var(--border, #e5e7eb); vertical-align: top; line-height: 1.35; }
+.sg-cmp-tbl td.sg-cmp-n small { display: block; color: var(--text-sec, #6b7280); font-size: 11px; }
+.sg-cmp-tbl tr[onclick] { cursor: pointer; }
+.sg-cmp-tbl tr[onclick]:hover td { background: rgba(127, 127, 127, 0.10); }
+.sg-cmp-tbl tr.sg-cmp-cur td { background: rgba(37, 99, 235, 0.18); }
+.sg-cmp-tbl tr.sg-cmp-cur td:first-child { box-shadow: inset 3px 0 0 #2563eb; }
+.sg-cmp-up { color: #d97706; font-weight: 600; }
+.sg-cmp-dn { color: #16a34a; font-weight: 600; }
+.sg-cmp-bad { color: #ef4444; font-weight: 600; }
+.sg-cmp-tbl small { color: var(--text-sec, #6b7280); font-size: 10.5px; }
+.sg-cmp-base { color: var(--text-sec, #6b7280); }
+.sg-cmp-note { margin-top: 6px; color: var(--text-sec, #6b7280); font-size: 11px; line-height: 1.45; }
 #print-area tr.sg-row-hl td { background: rgba(37, 99, 235, 0.20) !important; box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.55); }
 #print-area tr.sg-row-flash td { animation: sg-flash 1.8s ease-out; }
 @keyframes sg-flash { 0%, 40% { background: rgba(250, 204, 21, 0.55); } 100% { background: transparent; } }
@@ -20465,3 +20488,5 @@ body.empty-fit-panel #header_totals { display: none !important; }
     #admin_content table.ad-dense tr.ad-open td.admin-cell-actions > div { gap: 3px !important; }
     #admin_content table.ad-dense tr.ad-open td.admin-cell-actions .admin-action-btn { width: 30px !important; min-width: 30px; }
 }
+
+.sg-cmp-solo { margin: 10px 0 14px; font-size: 12px; max-width: 720px; }
