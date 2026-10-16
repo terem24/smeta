@@ -49884,9 +49884,9 @@ const app = {
             const dSel = trunk.d || 25;
             const opts = [16, 20, 25, 26, 32].map(d => '<option value="' + d + '"' + (d === dSel ? ' selected' : '') + '>Ø' + d + '</option>').join('');
             html += '<div class="hc-trunk-form"><span>Трасса от котельной (подача + обратка):</span>'
-                + '<select id="hc_trunk_d">' + opts + '</select>'
-                + '<input id="hc_trunk_len" type="number" min="1" step="1" value="' + Math.round(trunk.len || 0) + '"> м'
-                + '<button type="button" class="hc-btn" onclick="app.setRadTrunkOv(event)">Пересчитать</button></div>';
+                // Применяется сразу: при выборе диаметра, уходе из поля длины или Enter (пересчёт занимает десятки мс)
+                + '<select id="hc_trunk_d" onchange="app.setRadTrunkOv(event)">' + opts + '</select>'
+                + '<input id="hc_trunk_len" type="number" min="1" step="1" value="' + Math.round(trunk.len || 0) + '" onchange="app.setRadTrunkOv(event)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}"> м</div>';
         }
         const u = this.state.hydroUserFix || {};
         const manual = [];
