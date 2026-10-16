@@ -23885,7 +23885,6 @@ const app = {
                 userCalcStats = null;
             }
 
-            if (isLtvSort) {
             // 2в. Кто прошёл обучение до конца (tour.js → mark_tour_done). Отдельным
             // запросом, а не в общем select: пока миграция 20261015_tour_done.sql не
             // выполнена, колонки нет, и общий запрос уронил бы весь список. Здесь ошибка
@@ -23908,6 +23907,7 @@ const app = {
                 }
             } catch (e) { /* без отметок — не повод ломать список */ }
 
+            if (isLtvSort) {
                 users.forEach(u => {
                     const uEsts = userEsts.filter(e => String(e.user_id) === String(u.id));
                     u.ltv = 0;
