@@ -115,7 +115,8 @@ def http(url, payload, headers):
 
 
 def send_tg(post, link):
-    token, chat = os.environ.get('TG_CHANNEL_BOT_TOKEN'), os.environ.get('TG_CHANNEL_ID')
+    token = (os.environ.get('TG_CHANNEL_BOT_TOKEN') or '').strip()
+    chat = (os.environ.get('TG_CHANNEL_ID') or '').strip()
     if not (token and chat):
         return None
     payload = {'chat_id': chat, 'text': post['text'], 'parse_mode': 'HTML',
@@ -123,7 +124,24 @@ def send_tg(post, link):
                'reply_markup': {'inline_keyboard': [[{'text': post.get('button', 'Открыть'), 'url': link}]]}}
     code, body = http('https://api.telegram.org/bot%s/sendMessage' % token, payload,
                       {'Content-Type': 'application/json'})
+    if code != 200:
+        body += ' | ' + _tg_diag(token, chat)
     return code == 200, body
+
+
+def _tg_diag(token, chat):
+    """Почему не отправилось: чей это бот и видит ли он канал (токен в лог не попадает)."""
+    out = []
+    for method, extra in (('getMe', ''), ('getChat', '?chat_id=' + urllib.parse.quote(chat))):
+        try:
+            with urllib.request.urlopen('https://api.telegram.org/bot%s/%s%s' % (token, method, extra), timeout=30) as r:
+                d = json.loads(r.read().decode('utf-8'))
+                res = d.get('result', {})
+                out.append('%s ok: %s' % (method, res.get('username') or res.get('title')))
+        except urllib.error.HTTPError as e:
+            out.append('%s %s: %s' % (method, e.code, e.read().decode('utf-8', 'replace')[:120]))
+    out.append('id: длина %d, начинается с %r' % (len(chat), chat[:1]))
+    return '; '.join(out)
 
 
 def main():
