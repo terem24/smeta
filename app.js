@@ -40382,18 +40382,23 @@ const app = {
     bindPlanHighlight: function () {
         if (this._planHlBound) return;
         this._planHlBound = true;
-        const holder = el => (el && el.closest) ? el.closest('[data-pl]') : null;
+        // data-pl-grp — строка помещения с несколькими петлями: «L2,L3» зажигает все их значки на чертеже
+        const holder = el => (el && el.closest) ? el.closest('[data-pl],[data-pl-grp]') : null;
         const scopeOf = el => el.closest('#scheme_zoom_overlay') || el.closest('.ufh-plan-block');
         document.addEventListener('mouseover', e => {
             const t = holder(e.target);
             if (!t || !this.hydEnabled()) { if (this._planHl && !t) this.clearPlanHl(); return; }
             const sc = scopeOf(t);
             if (!sc) return;
-            const key = t.getAttribute('data-pl');
+            const grp = t.getAttribute('data-pl-grp');
+            const key = grp || t.getAttribute('data-pl');
             if (this._planHl && this._planHl.sc === sc && this._planHl.key === key) return;
             this.clearPlanHl();
             sc.classList.add('pl-act');
-            sc.querySelectorAll('[data-pl]').forEach(x => { if (x.getAttribute('data-pl') === key) x.classList.add('pl-hl'); });
+            const keys = new Set(grp ? grp.split(',') : [key]);
+            sc.querySelectorAll('[data-pl],[data-pl-grp]').forEach(x => {
+                if (keys.has(x.getAttribute('data-pl')) || (grp && x.getAttribute('data-pl-grp') === grp)) x.classList.add('pl-hl');
+            });
             this._planHl = { sc, key };
         });
         document.addEventListener('mouseout', e => {
@@ -40450,7 +40455,7 @@ const app = {
                     const gA = gA0, gM = g.rows.reduce((s, r) => s + (r.m || 0), 0);
                     const gF = g.rows.reduce((s, r) => s + (r.flow || 0), 0);
                     const steps = [...new Set(g.rows.map(r => r.step))];
-                    body += `<tr class="ufh-grp${wOn ? ' ufh-warn' : ''}" onclick="app.ufhToggleGrp(this)" title="Раскрыть петли помещения">` +
+                    body += `<tr class="ufh-grp${wOn ? ' ufh-warn' : ''}" data-pl-grp="${g.rows.map(r => 'L' + r.no).join(',')}" onclick="app.ufhToggleGrp(this)" title="Раскрыть петли помещения">` +
                         `<td style="text-align:center"><span class="ufh-arr">▸</span> ${g.rows.length}</td><td><b>${esc(g.name)}</b>${warnIc(g.name, gA)}</td>` +
                         `<td style="text-align:right">${n1(gA)} м²</td><td style="text-align:right">${n1(gM)} м</td>` +
                         `<td style="text-align:right">${steps.length === 1 ? steps[0] : '—'}</td><td style="text-align:right">${n1(gF)}</td></tr>`;
