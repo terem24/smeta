@@ -1,0 +1,78 @@
+# Автопостинг в каналы HeatCalc (Telegram @heatcalc_ru и MAX).
+#
+# Раз в сутки tools/channel_post.py берёт один пост: сначала свой из
+# content/channel_queue.json (если его день настал), иначе анонс уже опубликованной
+# статьи сайта. Что ушло — пишется в content/channel_state.json, поэтому одно и то же
+# дважды не уходит, а упавшая сеть повторяется отдельно.
+#
+# Секреты репозитория (Settings → Secrets → Actions). Нет секретов сети — она
+# пропускается, остальные работают:
+#   TG_CHANNEL_BOT_TOKEN — токен бота от @BotFather (бот должен быть админом канала)
+#   TG_CHANNEL_ID        — @heatcalc_ru
+#   MAX_BOT_TOKEN        — токен бота MAX (бот — админ канала)
+#   MAX_CHAT_ID          — числовой id канала в MAX
+#
+# Вручную: кнопка Run workflow. dry_run — показать, что ушло бы; post_id — отправить
+# конкретный пост очереди, не дожидаясь даты.
+
+name: Автопостинг в каналы
+
+on:
+  schedule:
+    - cron: '0 7 * * *'      # 10:00 по Москве
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Только показать, что ушло бы'
+        type: boolean
+        default: false
+      post_id:
+        description: 'id поста из очереди (пусто — по расписанию)'
+        type: string
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: channel-post
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    env:
+      TG_CHANNEL_BOT_TOKEN: ${{ secrets.TG_CHANNEL_BOT_TOKEN }}
+      TG_CHANNEL_ID: ${{ secrets.TG_CHANNEL_ID }}
+      MAX_BOT_TOKEN: ${{ secrets.MAX_BOT_TOKEN }}
+      MAX_CHAT_ID: ${{ secrets.MAX_CHAT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Пост
+        env:
+          DRY: ${{ github.event.inputs.dry_run }}
+          POST_ID: ${{ github.event.inputs.post_id }}
+        run: |
+          ARGS=""
+          if [ "$DRY" = "true" ]; then ARGS="$ARGS --dry-run"; fi
+          if [ -n "$POST_ID" ]; then ARGS="$ARGS --force $POST_ID"; fi
+          python tools/channel_post.py $ARGS
+
+      - name: Коммит состояния
+        if: ${{ always() && github.event.inputs.dry_run != 'true' }}
+        run: |
+          if [ -z "$(git status --porcelain content/channel_state.json)" ]; then
+            echo "состояние не менялось"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add content/channel_state.json
+          git commit -m "Автопостинг: состояние каналов"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push
