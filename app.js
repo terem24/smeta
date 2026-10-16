@@ -49906,7 +49906,8 @@ const app = {
             const opts = [16, 20, 25, 26, 32].map(d => '<option value="' + d + '"' + (d === dSel ? ' selected' : '') + '>Ø' + d + '</option>').join('');
             // Ручная трасса — за свёрнутым блоком: это запасной путь, а не первое, что нужно монтажнику.
             // Применяется сразу при изменении (как в основной ветке): пересчёт занимает десятки мс
-            html += '<details class="hc-manual"><summary>Своя подводка к котельной</summary>'
+            // Раскрытость запоминаем: карточка перерисовывается после каждой правки, и без этого блок схлопывался
+            html += '<details class="hc-manual"' + (this._hcOpen.manual ? ' open' : '') + ' ontoggle="app._hcOpen.manual=this.open"><summary>Своя подводка к котельной</summary>'
                 + '<div class="hc-trunk-form"><span>Диаметр и длина (подача + обратка):</span>'
                 + '<select id="hc_trunk_d" onchange="app.setRadTrunkOv(event)">' + opts + '</select>'
                 + '<input id="hc_trunk_len" type="number" min="1" step="1" value="' + Math.round(trunk.len || 0) + '" onchange="app.setRadTrunkOv(event)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}"> м</div></details>';
