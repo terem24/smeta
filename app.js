@@ -61619,40 +61619,84 @@ const app = {
         const sys = this.RAD_REGIMES[sysKey];
         const gKey = this.RAD_DT_REGIME[g.key] || null;
         const origId = item.originalId || item.id;
-        const box = (bg, bd, html) => `<div style="margin-top:8px; padding:8px 10px; border-radius:10px; background:${bg}; border:1px solid ${bd}; font-size:12px; line-height:1.45; color:var(--text-main);">${html}</div>`;
         const f1 = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
         const money = v => (Math.round(v / 10) * 10).toLocaleString('ru-RU') + ' ₽';
+        const signed = (v, fmt) => (v > 0 ? '+' : v < 0 ? '−' : '') + fmt(Math.abs(v));
+
+        // Одна карточка для всех состояний: цветная полоска слева, бейдж статуса, текст.
+        // Цвета — из палитры приложения (var(--primary), --surface), без жёлтого предупреждения.
+        const TONE = {
+            ok:  { bar: '#10B981', bg: 'rgba(16,185,129,0.07)', chip: '#059669', chipFg: '#fff' },
+            alt: { bar: 'var(--primary)', bg: 'var(--primary-light)', chip: 'var(--primary)', chipFg: 'var(--on-primary,#fff)' },
+            ref: { bar: '#94A3B8', bg: 'var(--surface-light)', chip: '#64748B', chipFg: '#fff' }
+        };
+        const card = (tone, badge, body) => {
+            const T = TONE[tone];
+            return `<div style="margin-top:10px; padding:12px 14px; border-radius:12px; background:${T.bg}; border-left:4px solid ${T.bar}; font-size:12px; line-height:1.5; color:var(--text-main);">` +
+                `<span style="display:inline-block; padding:2px 9px; border-radius:999px; background:${T.chip}; color:${T.chipFg}; font-size:11px; font-weight:700; margin-bottom:8px;">${badge}</span>` +
+                body + `</div>`;
+        };
+        const tile = (label, val) => `<div style="flex:1 1 130px; padding:8px 10px; border-radius:10px; background:var(--surface); border:1px solid var(--border);">` +
+            `<div style="font-size:10px; font-weight:600; color:var(--text-sec); text-transform:uppercase; letter-spacing:0.6px;">${label}</div>` +
+            `<div style="font-size:14px; font-weight:700; margin-top:3px; color:var(--text-main);">${val}</div></div>`;
+        const setup = (k) => `<div style="margin-top:10px; color:var(--text-sec);"><b style="color:var(--text-main);">Как выставить на объекте:</b> ${this.RAD_DT_SETUP[k]}</div>`;
+
         if (gKey === sysKey) {
-            return box('#ECFDF5', 'rgba(16,185,129,0.25)',
-                `<b style="color:#047857;">✓ График совпадает с режимом системы (${sys.label}).</b> Подбор приборов, расход теплоносителя, диаметры труб и насосные группы в смете уже считаются по нему.<div style="margin-top:4px;"><b>Как это выставить на объекте:</b> ${this.RAD_DT_SETUP[sysKey]}</div>`);
+            return card('ok', '✓ Совпадает с режимом системы',
+                `График ${sys.label} — тот же, на котором посчитаны приборы, расход, диаметры и насосные группы в смете.` + setup(sysKey));
         }
         if (!gKey) {
-            return box('#FFFBEB', 'rgba(245,158,11,0.35)',
-                `<b style="color:#B45309;">График справочный, режима системы под него нет.</b> Это паспортная или устаревшая точка: на объекте её не настраивают. Подбор приборов, расход и диаметры сейчас считаются по режиму <b>${sys.label}</b> (перепад ${sys.dt} K). Чтобы система и смета совпали, выберите график, у которого есть режим: 80/60, 70/55 или 55/45.`);
+            return card('ref', 'Справочный график',
+                `Режима системы под него нет: это паспортная или устаревшая точка, на объекте её не настраивают. ` +
+                `Смета сейчас считается по режиму <b>${sys.label}</b> (перепад ${sys.dt} K). ` +
+                `Чтобы совпасть с системой, выберите 80/60, 70/55 или 55/45.`);
         }
+
         const target = this.RAD_REGIMES[gKey];
         const sim = this._simRadRegime(gKey);
-        let simHtml = '';
-        if (sim) {
-            const _flow = (load, dt) => (load > 0 && dt > 0) ? (load * 1000) / (this.RAD_FLUID.cp * 1000 * this.RAD_FLUID.rho * dt) * 3600 : 0;
-            const fA = _flow(sim.A.load, sim.A.dt), fB = _flow(sim.B.load, sim.B.dt);
-            const parts = [];
-            if (fA > 0 && fB > 0) parts.push(`Расход через радиаторную часть: <b>${f1(fA)} → ${f1(fB)} м³/ч</b> (${fB >= fA ? '+' : '−'}${Math.abs(Math.round((fB / fA - 1) * 100))} %, G = Q / (1,163 · Δt): перепад ${sim.A.dt} → ${sim.B.dt} K).`);
-            else parts.push(`Перепад ${sim.A.dt} → ${sim.B.dt} K: при той же мощности расход меняется в ${f1(sim.A.dt / sim.B.dt)} раза.`);
-            if (!sim.diffs.length) parts.push('Позиции сметы не меняются: диаметры труб, насосные группы и приборы остаются прежними.');
-            else {
-                const rows = sim.diffs.slice(0, 8).map(d => `• ${d.name}: ${f1(d.qa)} → ${f1(d.qb)} ${d.unit}${Math.abs(d.dsum) >= 10 ? ' (' + (d.dsum > 0 ? '+' : '−') + money(Math.abs(d.dsum)) + ')' : ''}`).join('<br>');
-                parts.push(`Меняется в смете (${sim.diffs.length} поз.${sim.diffs.length > 8 ? ', крупнейшие' : ''}):<br>${rows}`);
-            }
-            if (!this.state.detailedRooms) parts.push('В быстром расчёте приборы по режиму не пересчитываются — включите подробный расчёт по комнатам, чтобы увидеть изменение приборов.');
-            parts.push(`Итог по оборудованию: <b>${sim.dTotal >= 0 ? '+' : '−'}${money(Math.abs(sim.dTotal))}</b>.`);
-            simHtml = `<div style="margin-top:6px;">${parts.join('<br>')}</div>`;
+        const head = `Смета посчитана на <b>${sys.label}</b>. Если на объекте будет <b>${target.label}</b>, смета изменится так:`;
+        if (!sim) {
+            return card('alt', 'Не совпадает с системой', head + setup(gKey) +
+                `<button onclick="app.applyRadRegimeFromSwap('${origId}','${gKey}')" style="margin-top:10px; padding:7px 14px; border:none; border-radius:8px; background:var(--primary); color:var(--on-primary,#fff); font-size:12px; font-weight:600; cursor:pointer;">Рассчитать систему на ${target.label}</button>`);
         }
-        return box('#FFFBEB', 'rgba(245,158,11,0.35)',
-            `<b style="color:#B45309;">⚠ График не совпадает с режимом системы.</b> Показана теплоотдача при ${g.temps} °C, а смета (приборы, расход, диаметры, насосные группы) сейчас посчитана по режиму <b>${sys.label}</b>. Если на объекте будет ${target.label}, мощность приборов и гидравлика в смете расходятся с реальностью.` +
-            `<div style="margin-top:6px;"><b>Что изменится, если считать систему на ${target.label}:</b></div>${simHtml}` +
-            `<div style="margin-top:6px;"><b>Как это выставить на объекте:</b> ${this.RAD_DT_SETUP[gKey]}</div>` +
-            `<button onclick="app.applyRadRegimeFromSwap('${origId}','${gKey}')" class="swap-tab" style="margin:8px 0 0 0; padding:5px 12px;">Рассчитать систему на ${target.label}</button>`);
+
+        // Расход через радиаторную часть при двух перепадах (G = Q / (1,163 · Δt))
+        const _flow = (load, dt) => (load > 0 && dt > 0) ? (load * 1000) / (this.RAD_FLUID.cp * 1000 * this.RAD_FLUID.rho * dt) * 3600 : 0;
+        const fA = _flow(sim.A.load, sim.A.dt), fB = _flow(sim.B.load, sim.B.dt);
+
+        // Почему дороже или дешевле: мощность одной секции при перепаде Δt пропорциональна Δt^1,3,
+        // значит на ту же теплопотерю нужно обратное число секций.
+        const ratio = Math.pow(sim.B.dt / sim.A.dt, 1.3);
+        const pct = Math.round(Math.abs(1 - ratio) * 100);
+        const more = ratio < 1;
+        const why = sim.dTotal === 0
+            ? 'Стоимость не меняется.'
+            : `<b>Почему ${sim.dTotal > 0 ? 'дороже' : 'дешевле'}:</b> при перепаде ${sim.B.dt} K одна секция отдаёт на ${pct} % ${more ? 'меньше' : 'больше'}, ` +
+              `а теплопотеря дома та же. Значит секций нужно ${more ? 'больше' : 'меньше'} — примерно в ${f1(1 / ratio)} раза.`;
+
+        const tiles = `<div style="display:flex; gap:8px; flex-wrap:wrap; margin:10px 0;">` +
+            (fA > 0 && fB > 0 ? tile('Расход радиаторов', `${f1(fA)} → ${f1(fB)} м³/ч <span style="font-weight:600; color:var(--text-sec);">(${signed(Math.round((fB / fA - 1) * 100), v => v + ' %')})</span>`) : '') +
+            tile('Смета, оборудование', `${money(sim.A.total)} → ${money(sim.B.total)}`) +
+            tile('Разница', `<span style="color:${sim.dTotal > 0 ? '#B91C1C' : sim.dTotal < 0 ? '#047857' : 'var(--text-main)'};">${sim.dTotal === 0 ? '0 ₽' : signed(Math.round(sim.dTotal), money)}</span>`) +
+            `</div>`;
+
+        let rows = '';
+        if (sim.diffs.length) {
+            rows = `<div style="font-size:11px; font-weight:600; color:var(--text-sec); margin-top:4px;">Что изменится в позициях:</div>` +
+                sim.diffs.slice(0, 6).map(d => `<div style="display:flex; justify-content:space-between; gap:10px; padding:3px 0; border-bottom:1px dashed var(--border);">` +
+                    `<span>${d.name}</span><span style="white-space:nowrap;"><b>${f1(d.qa)} → ${f1(d.qb)} ${d.unit}</b>` +
+                    (Math.abs(d.dsum) >= 10 ? ` <span style="color:var(--text-sec);">${signed(Math.round(d.dsum), money)}</span>` : '') + `</span></div>`).join('') +
+                (sim.diffs.length > 6 ? `<div style="color:var(--text-sec); margin-top:3px;">и ещё ${sim.diffs.length - 6} поз.</div>` : '');
+        } else if (this.state.detailedRooms) {
+            rows = `<div style="color:var(--text-sec);">Позиции сметы не меняются: приборы, диаметры труб и насосные группы остаются прежними.</div>`;
+        } else {
+            rows = `<div style="color:var(--text-sec);">В быстром расчёте приборы по режиму не пересчитываются — включите подробный расчёт по комнатам, чтобы увидеть изменение приборов.</div>`;
+        }
+
+        return card('alt', 'Не совпадает с системой', head + tiles +
+            `<div style="margin-bottom:6px;">${why}</div>` + rows +
+            setup(gKey) +
+            `<button onclick="app.applyRadRegimeFromSwap('${origId}','${gKey}')" style="margin-top:10px; padding:7px 14px; border:none; border-radius:8px; background:var(--primary); color:var(--on-primary,#fff); font-size:12px; font-weight:600; cursor:pointer;">Рассчитать систему на ${target.label}</button>`);
     },
     applyRadRegimeFromSwap: function (originalId, regimeKey) {
         this.closeSwapModal();
