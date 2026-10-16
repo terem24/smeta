@@ -61637,19 +61637,16 @@ const app = {
 
         // Насосная группа: вариант «Собрать из отдельных позиций» (тариф «Профи», нержавеющая обвязка).
         // Цена — комплект на одну группу, процент — к цене выбранной готовой группы вместе с насосом и узлами МУ-25М.
+        // Показываем только когда самосборные группы действительно включены: тариф «Профи», ss/ppr обвязка, подробный режим.
         {
             const _sgKind = this.selfGroupKindOfReady(item.originalId || item.id);
-            if (_sgKind && this.state.groupsBuild !== 'self' && this.selfGroupsMode()) {
+            if (_sgKind && this.state.groupsBuild !== 'self' && this.selfGroupsAvailable() && this.selfGroupsMode()) {
                 const _sgLbl = { direct: 'прямая', thermo: 'термостатическая', servo: 'под сервопривод' }[_sgKind];
                 const _sgSelf = Math.round(this.selfGroupPrice(_sgKind, { noPump: true }));
                 const _sgReady = Math.round(this.readyGroupPrice(_sgKind, { noPump: true, noNodes: true }));
                 const _sgReadyKit = Math.round(this.readyGroupPrice(_sgKind, { noPump: true }));
                 const _sgD = _sgReady > 0 ? Math.round((_sgSelf - _sgReady) / _sgReady * 100) : 0;
                 const _sgC = _sgD > 0 ? '#ef4444' : (_sgD < 0 ? '#16a34a' : 'var(--text-sec)');
-                const _sgAvail = this.selfGroupsAvailable();
-                const _sgNote = !this.isPro() ? 'Тариф «Профи»'
-                    : !_sgAvail ? 'Нужна нержавеющая или ППР обвязка'
-                    : '';
                 const _sgIcon = `<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1e3a8a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h4M17 8h4M3 16h4M17 16h4"/><rect x="7" y="5" width="10" height="14" rx="1.5"/><path d="M10 9h4M10 12h4M10 15h4"/></svg>`;
                 const _sgCmp = {
                     direct: 'Краны, обратный клапан, термометры',
@@ -61670,7 +61667,7 @@ const app = {
                     <tr style="cursor: pointer;" onclick="app.applySelfBuiltFromSwap('${_sgKind}', event)">
                         <td class="col-idx"></td>
                         <td class="col-img" style="text-align:center;">${_sgIcon}</td>
-                        <td class="col-name" style="font-size: 14px; font-weight: 600; text-align: left;">Самосборная: ${_sgLbl}<div style="font-size:12px;font-weight:400;color:var(--text-sec);margin-top:2px;">${_sgCmp}.<br>Без насоса. Готовая группа: ${this.formatPriceHtml(_sgReady, true)}, с узлами МУ-25М: ${this.formatPriceHtml(_sgReadyKit, true)}${_sgNote ? '<br><b>' + _sgNote + '</b>' : ''}${_sgParts}</div></td>
+                        <td class="col-name" style="font-size: 14px; font-weight: 600; text-align: left;">Самосборная: ${_sgLbl}<div style="font-size:12px;font-weight:400;color:var(--text-sec);margin-top:2px;">${_sgCmp}.<br>Без насоса. Готовая группа: ${this.formatPriceHtml(_sgReady, true)}, с узлами МУ-25М: ${this.formatPriceHtml(_sgReadyKit, true)}${_sgParts}</div></td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">STOUT / ROMMER</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px; color:${_sgC};">${_sgD > 0 ? '+' : ''}${_sgD}%</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${this.formatPriceHtml(_sgSelf, true)}</td>
@@ -61682,7 +61679,7 @@ const app = {
                 </tbody>
             </table>
         `;
-        if (this.selfGroupKindOfReady(item.originalId || item.id)) {
+        if (this.selfGroupKindOfReady(item.originalId || item.id) && this.selfGroupsAvailable() && this.selfGroupsMode() && this.state.groupsBuild !== 'self') {
             html += `<div style="font-size:12px;color:var(--text-sec);padding:8px 4px 0;">Процент — к выбранной группе. Насос не входит: он подбирается отдельно и ставится к любой группе.</div>`;
         }
 
