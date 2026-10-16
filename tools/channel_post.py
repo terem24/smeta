@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Автопостинг в каналы HeatCalc: Telegram (@heatcalc_ru) и MAX.
+"""Автопостинг в Telegram-канал HeatCalc (@heatcalc_ru).
 
 Запускается из .github/workflows/channel-post.yml раз в сутки. За прогон уходит
 не больше ОДНОГО поста: если Action неделю не работал, он догоняет по штуке в день,
@@ -11,12 +11,10 @@
   2. если своих нет — анонс опубликованной статьи сайта (content/schedule.json,
      есть published_at), которую ещё не анонсировали.
 
-Состояние — content/channel_state.json: для каждого поста отдельно «ушло в tg» и
-«ушло в max». Упала отправка в одну сеть — на следующем прогоне повторится только она.
+Состояние — content/channel_state.json: что уже ушло. Упала отправка — на следующем прогоне повторится.
 
-Переменные окружения (нет — эта сеть пропускается, остальные работают):
+Переменные окружения (нет — ничего не отправляется):
   TG_CHANNEL_BOT_TOKEN, TG_CHANNEL_ID    — токен бота (он админ канала) и @heatcalc_ru
-  MAX_BOT_TOKEN, MAX_CHAT_ID             — токен бота MAX (админ канала) и id канала
 
 Ключи: --dry-run — показать, что ушло бы, ничего не отправляя и не записывая;
        --force ID — отправить конкретный пост из очереди, не дожидаясь даты.
@@ -24,7 +22,7 @@
 Формат поста в channel_queue.json:
   {"id": "start-01", "date": "2026-10-17", "text": "<b>Заголовок</b>\\nТекст (HTML: b, i, a, code)",
    "url": "https://heatcalc.ru/...", "button": "Открыть калькулятор"}
-К ссылке автоматически добавляются UTM-метки (источник tg / max).
+К ссылке автоматически добавляются UTM-метки (источник tg).
 """
 import io, json, os, sys, datetime, html, urllib.request, urllib.error, urllib.parse
 
@@ -34,13 +32,7 @@ STATE = os.path.join(ROOT, 'content', 'channel_state.json')
 SCHEDULE = os.path.join(ROOT, 'content', 'schedule.json')
 ARTICLES = os.path.join(ROOT, 'content', 'articles')
 SITE = 'https://heatcalc.ru'
-NETS = ('tg', 'max')
-# Подпись «мы есть и в соседней сети» — для постов с "cross": true (приветствие, итоги).
-CROSS = {
-    'tg': 'Мы есть и в MAX: <a href="https://max.ru/join/ZThtCFO4VSuaLWrcevaNuSWLnShWmGDTzvdOxKE0-OA">'
-          'HeatCalc — для монтажников отопления</a>',
-    'max': 'Мы есть и в Telegram: <a href="https://t.me/heatcalc_ru">@heatcalc_ru</a>',
-}
+NETS = ('tg',)
 
 
 def read_json(p, default):
@@ -80,8 +72,8 @@ def article_post(slug):
 
 def active_nets():
     """Сети, для которых заведены секреты. Остальные не считаются «недоставленными»:
-    иначе пост без токена MAX застрял бы в очереди навсегда."""
-    need = {'tg': ('TG_CHANNEL_BOT_TOKEN', 'TG_CHANNEL_ID'), 'max': ('MAX_BOT_TOKEN', 'MAX_CHAT_ID')}
+    иначе пост без токена застрял бы в очереди навсегда."""
+    need = {'tg': ('TG_CHANNEL_BOT_TOKEN', 'TG_CHANNEL_ID')}
     nets = [n for n in NETS if all(os.environ.get(k) for k in need[n])]
     if '--dry-run' in sys.argv and not nets:
         return NETS
@@ -134,18 +126,6 @@ def send_tg(post, link):
     return code == 200, body
 
 
-def send_max(post, link):
-    token, chat = os.environ.get('MAX_BOT_TOKEN'), os.environ.get('MAX_CHAT_ID')
-    if not (token and chat):
-        return None
-    payload = {'text': post['text'], 'format': 'html',
-               'attachments': [{'type': 'inline_keyboard', 'payload': {
-                   'buttons': [[{'type': 'link', 'text': post.get('button', 'Открыть'), 'url': link}]]}}]}
-    code, body = http('https://platform-api.max.ru/messages?chat_id=%s' % chat, payload,
-                      {'Content-Type': 'application/json', 'Authorization': token})
-    return code == 200, body
-
-
 def main():
     dry = '--dry-run' in sys.argv
     force = sys.argv[sys.argv.index('--force') + 1] if '--force' in sys.argv else None
@@ -159,7 +139,7 @@ def main():
     print('пост:', pid)
     sent = state['sent'].setdefault(pid, {})
     failed = False
-    for net, fn in (('tg', send_tg), ('max', send_max)):
+    for net, fn in (('tg', send_tg),):
         if sent.get(net):
             continue
         link = utm(post.get('url') or SITE + '/', net, post.get('campaign') or pid)

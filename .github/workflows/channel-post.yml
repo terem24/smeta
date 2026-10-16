@@ -1,21 +1,18 @@
-# Автопостинг в каналы HeatCalc (Telegram @heatcalc_ru и MAX).
+# Автопостинг в Telegram-канал HeatCalc (@heatcalc_ru).
 #
 # Раз в сутки tools/channel_post.py берёт один пост: сначала свой из
 # content/channel_queue.json (если его день настал), иначе анонс уже опубликованной
 # статьи сайта. Что ушло — пишется в content/channel_state.json, поэтому одно и то же
 # дважды не уходит, а упавшая сеть повторяется отдельно.
 #
-# Секреты репозитория (Settings → Secrets → Actions). Нет секретов сети — она
-# пропускается, остальные работают:
+# Секреты репозитория (Settings → Secrets → Actions). Нет секретов — ничего не отправляется:
 #   TG_CHANNEL_BOT_TOKEN — токен бота от @BotFather (бот должен быть админом канала)
 #   TG_CHANNEL_ID        — @heatcalc_ru
-#   MAX_BOT_TOKEN        — токен бота MAX (бот — админ канала)
-#   MAX_CHAT_ID          — числовой id канала в MAX
 #
 # Вручную: кнопка Run workflow. dry_run — показать, что ушло бы; post_id — отправить
 # конкретный пост очереди, не дожидаясь даты.
 
-name: Автопостинг в каналы
+name: Автопостинг в Telegram-канал
 
 on:
   schedule:
@@ -44,8 +41,6 @@ jobs:
     env:
       TG_CHANNEL_BOT_TOKEN: ${{ secrets.TG_CHANNEL_BOT_TOKEN }}
       TG_CHANNEL_ID: ${{ secrets.TG_CHANNEL_ID }}
-      MAX_BOT_TOKEN: ${{ secrets.MAX_BOT_TOKEN }}
-      MAX_CHAT_ID: ${{ secrets.MAX_CHAT_ID }}
     steps:
       - uses: actions/checkout@v4
 
