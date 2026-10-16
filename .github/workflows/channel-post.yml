@@ -1,18 +1,17 @@
-# Автопостинг в Telegram-канал HeatCalc (@heatcalc_ru).
+# Публикация в Telegram-канал HeatCalc (@heatcalc_ru).
 #
-# Раз в сутки tools/channel_post.py берёт один пост: сначала свой из
-# content/channel_queue.json (если его день настал), иначе анонс уже опубликованной
-# статьи сайта. Что ушло — пишется в content/channel_state.json, поэтому одно и то же
-# дважды не уходит, а упавшая сеть повторяется отдельно.
+# Посты пишутся и утверждаются в админке: «Контент → Канал» (таблица Supabase
+# channel_posts). Раз в сутки tools/channel_post.py берёт ОДИН утверждённый пост, чей
+# день настал, отправляет его и отмечает опубликованным. Черновики не уходят никогда.
 #
-# Секреты репозитория (Settings → Secrets → Actions). Нет секретов — ничего не отправляется:
-#   TG_CHANNEL_BOT_TOKEN — токен бота от @BotFather (бот должен быть админом канала)
+# Пропуск к очереди — OIDC-токен GitHub (id-token: write), секретов для Supabase не нужно.
+# Секреты репозитория для Telegram:
+#   TG_CHANNEL_BOT_TOKEN — токен бота @heatcalc_post_bot (админ канала)
 #   TG_CHANNEL_ID        — @heatcalc_ru
 #
-# Вручную: кнопка Run workflow. dry_run — показать, что ушло бы; post_id — отправить
-# конкретный пост очереди, не дожидаясь даты.
+# Вручную: кнопка Run workflow (dry_run — только показать, что ушло бы).
 
-name: Автопостинг в Telegram-канал
+name: Публикация в Telegram-канал
 
 on:
   schedule:
@@ -23,13 +22,10 @@ on:
         description: 'Только показать, что ушло бы'
         type: boolean
         default: false
-      post_id:
-        description: 'id поста из очереди (пусто — по расписанию)'
-        type: string
-        default: ''
 
 permissions:
-  contents: write
+  contents: read
+  id-token: write
 
 concurrency:
   group: channel-post
@@ -51,23 +47,5 @@ jobs:
       - name: Пост
         env:
           DRY: ${{ github.event.inputs.dry_run }}
-          POST_ID: ${{ github.event.inputs.post_id }}
         run: |
-          ARGS=""
-          if [ "$DRY" = "true" ]; then ARGS="$ARGS --dry-run"; fi
-          if [ -n "$POST_ID" ]; then ARGS="$ARGS --force $POST_ID"; fi
-          python tools/channel_post.py $ARGS
-
-      - name: Коммит состояния
-        if: ${{ always() && github.event.inputs.dry_run != 'true' }}
-        run: |
-          if [ -z "$(git status --porcelain content/channel_state.json)" ]; then
-            echo "состояние не менялось"
-            exit 0
-          fi
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add content/channel_state.json
-          git commit -m "Автопостинг: состояние каналов"
-          git pull --rebase origin "${GITHUB_REF_NAME}"
-          git push
+          if [ "$DRY" = "true" ]; then python tools/channel_post.py --dry-run; else python tools/channel_post.py; fi

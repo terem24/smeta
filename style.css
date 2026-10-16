@@ -5595,6 +5595,54 @@ body.dark-mode .header-totals-block {
     }
 }
 
+/* Шапка сметы: ширины и выравнивание — как у ячеек столбца. В table-layout: fixed
+   ширину колонки задаёт первая строка (шапка), а не td; без этого шапка осталась
+   от старых ширин (75/45/60/85/95), ячейки — новых, и «Кол.», «Цена» съезжали. */
+@media (min-width: 768px) {
+    .inv-table th.col-idx,
+    .inv-table th.col-img,
+    .inv-table th.col-brand,
+    .inv-table th.col-unit,
+    .inv-table th.col-qty {
+        text-align: center;
+    }
+
+    .inv-table th.col-price,
+    .inv-table th.col-sum {
+        text-align: right;
+    }
+
+    .inv-table th.col-brand {
+        width: 85px;
+        min-width: 85px;
+        max-width: 85px;
+    }
+
+    .inv-table th.col-unit {
+        width: 60px;
+        min-width: 60px;
+        max-width: 60px;
+    }
+
+    .inv-table th.col-qty {
+        width: 100px;
+        min-width: 100px;
+        max-width: 100px;
+    }
+
+    .inv-table th.col-price {
+        width: 110px;
+        min-width: 110px;
+        max-width: 110px;
+    }
+
+    .inv-table th.col-sum {
+        width: 120px;
+        min-width: 120px;
+        max-width: 120px;
+    }
+}
+
 /* Окно замены с двумя ценами (основание и труба тёплого пола): материал
    отдельно и система целиком, под каждой ценой свой процент к выбранному.
    Обе ячейки цены и строки под названием — одного кегля, чтобы колонки
