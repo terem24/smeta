@@ -37903,8 +37903,127 @@ const app = {
                     (missU.length ? ` <span class="sg-miss-txt">Нет в смете: ${missU.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
                     ` <span class="sg-hint">Наведите на подпись схемы или на строку сметы — соответствие подсветится.</span></div>`;
             }
-            return sum + this._renderSheetImage(p.url, p.kind);
+            // Лист — миниатюрой общего размера, справа таблица «чем собрать группу»: цена и разница по пяти вариантам.
+            return sum + `<div class="sg-flex">` + this._renderSheetImage(p.url, p.kind) +
+                `<div class="sg-cmp no-print" data-sg-cmp="${p.kind}">${this.pumpGroupCompareHtml(p.kind)}</div></div>`;
         }).join('');
+    },
+    // ── Сравнение вариантов обвязки котельной справа от листа самосборной группы ──
+    // Пять вариантов: готовая группа STOUT (стальной коллектор, нержавейка 316L), готовая ROMMER (304), самосборные на 304, 316L и ППР.
+    // Вариант целиком задаёт систему труб и бренд раздела 2, остальная смета та же. Считается тихими прогонами render(true)
+    // (как boilerSystemTotals), поэтому после отрисовки и с кэшем по подписи состояния.
+    SG_VARIANTS: [
+        { key: 'ready_stout', label: 'Готовая STOUT', sub: 'в изоляции, стальной коллектор', ready: true, rom: false, sys: 'ss316' },
+        { key: 'ready_rommer', label: 'Готовая ROMMER', sub: 'в изоляции, стальной коллектор', ready: true, rom: true, sys: 'ss304' },
+        { key: 'ss304', label: 'Самосборная · нержавейка 304', sub: 'ROMMER, пресс', ready: false, rom: true, sys: 'ss304' },
+        { key: 'ss316', label: 'Самосборная · нержавейка 316L', sub: 'STOUT, пресс', ready: false, rom: false, sys: 'ss316' },
+        { key: 'ppr', label: 'Самосборная · ППР', sub: 'PP-RCT, сварка', ready: false, rom: true, sys: 'ppr' }
+    ],
+    // Какой из вариантов сейчас в смете.
+    sgCurrentVariant: function () {
+        const so = (this.state.sectionAnalog || {})['2. Обвязка котельной'];
+        const rom = so !== undefined ? so : this.state.brandMode === 'rommer';
+        const sys = this.boilerPipeSystem();
+        if (this.selfGroups()) return sys;
+        return rom ? 'ready_rommer' : 'ready_stout';
+    },
+    pumpGroupCompareCompute: function () {
+        const SEC = '2. Обвязка котельной';
+        const kinds = Object.keys(this._selfKinds || {}).filter(k => this._selfKinds[k]);
+        const counts = Object.assign({}, this._selfCounts);
+        const snapshot = JSON.parse(JSON.stringify(this.state));
+        const out = {};
+        this._cheapComparing = true;
+        try {
+            this.SG_VARIANTS.forEach(v => {
+                this.state.boilerPipeSystem = v.sys;
+                this.state.sectionAnalog = Object.assign({}, snapshot.sectionAnalog || {}, { [SEC]: v.rom });
+                this.state.groupsBuild = v.ready ? 'ready' : 'self';
+                this._boilerRangeCache = null;
+                this.render(true);
+                const items = (this.currentEquipmentList || []).filter(it => String(it.group || '').indexOf('2.') === 0);
+                const total = items.reduce((a, it) => a + (it.price || 0) * (it.q || 1), 0);
+                const works = (this.currentWorksList || []).filter(w => /^1\.2[\s.]/.test(String(w.group || '')))
+                    .reduce((a, w) => a + (w.sum || 0), 0);
+                const r = { total: Math.round(total), works: Math.round(works), grp: {}, parts: {} };
+                kinds.forEach(k => {
+                    const n = counts[k] || 1;
+                    if (v.ready) {
+                        // brandMode у readyGroupPrice берётся из состояния: на время прогона ставим бренд варианта.
+                        const bm = this.state.brandMode;
+                        this.state.brandMode = v.rom ? 'rommer' : 'stout';
+                        r.grp[k] = Math.round(this.readyGroupPrice(k));
+                        this.state.brandMode = bm;
+                        r.parts[k] = 4;
+                    } else {
+                        const title = this.selfGroupTitle(k === 'dhw' ? 'direct' : k, k === 'dhw' ? 'dhw' : undefined);
+                        const rows = items.filter(it => it.group === title);
+                        r.grp[k] = Math.round(rows.reduce((a, it) => a + (it.price || 0) * (it.q || 1), 0) / n);
+                        r.parts[k] = Math.round(rows.reduce((a, it) => a + (it.q || 1), 0) / n);
+                    }
+                });
+                out[v.key] = r;
+            });
+        } finally {
+            this._cheapComparing = false;
+            Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
+            Object.assign(this.state, snapshot);
+            this._boilerRangeCache = null;
+            this.render(true);
+        }
+        return out;
+    },
+    _sgCmpCache: null,
+    _sgCmpKey: function () {
+        return (this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state));
+    },
+    pumpGroupCompareHtml: function (kind) {
+        const c = this._sgCmpCache;
+        if (c && c.key === this._sgCmpKey() && c.data) return this._sgCmpTable(kind, c.data);
+        // Не считаем внутри render(): прогоны сами зовут render. Откладываем и заполняем готовые контейнеры.
+        if (!this._cheapComparing && !this._sgCmpBusy) {
+            clearTimeout(this._sgCmpTimer);
+            this._sgCmpTimer = setTimeout(() => this.sgCompareFill(), 350);
+        }
+        return `<div class="sg-cmp-wait">Считаю варианты обвязки…</div>`;
+    },
+    sgCompareFill: function () {
+        if (this._sgCmpBusy) return;
+        this._sgCmpBusy = true;
+        try {
+            const key = this._sgCmpKey();
+            let data = null;
+            try { data = this.pumpGroupCompareCompute(); } catch (e) { console.warn('[сравнение групп] не посчиталось:', e); }
+            this._sgCmpCache = { key: key, data: data };
+            document.querySelectorAll('[data-sg-cmp]').forEach(el => {
+                el.innerHTML = data ? this._sgCmpTable(el.getAttribute('data-sg-cmp'), data) : '<div class="sg-cmp-wait">Сравнение не посчиталось.</div>';
+            });
+        } finally { this._sgCmpBusy = false; }
+    },
+    _sgCmpTable: function (kind, data) {
+        const f = v => Math.round(v).toLocaleString('ru-RU') + ' ₽';
+        const base = data.ready_stout;
+        const pct = (v, b) => {
+            if (!(b > 0)) return '';
+            const p = Math.round((v - b) / b * 1000) / 10;
+            if (p === 0) return '<span class="sg-cmp-base">база</span>';
+            return `<span class="${p > 0 ? 'sg-cmp-up' : 'sg-cmp-dn'}">${p > 0 ? '+' : '−'}${String(Math.abs(p)).replace('.', ',')} %</span>`;
+        };
+        const cur = this.sgCurrentVariant();
+        const showW = Object.keys(data).some(k => data[k].works > 0);
+        const tool = { ready_stout: 'ключи', ready_rommer: 'ключи', ss304: 'пресс-клещи', ss316: 'пресс-клещи', ppr: 'сварочный аппарат' };
+        const rows = this.SG_VARIANTS.map(v => {
+            const d = data[v.key];
+            if (!d) return '';
+            return `<tr class="${v.key === cur ? 'sg-cmp-cur' : ''}"><td class="sg-cmp-n"><b>${v.label}</b><small>${v.sub}</small></td>` +
+                `<td>${f(d.grp[kind] || 0)}<br>${pct(d.grp[kind], base.grp[kind])}</td>` +
+                `<td>${f(d.total)}<br>${pct(d.total, base.total)}</td>` +
+                (showW ? `<td>${f(d.works)}<br>${pct(d.works, base.works)}</td>` : '') +
+                `<td>${d.parts[kind] || '—'}</td><td>${tool[v.key]}</td></tr>`;
+        }).join('');
+        const n = (this._selfCounts || {})[kind] || 1;
+        return `<table class="sg-cmp-tbl"><thead><tr><th>Вариант</th><th>Одна группа</th><th>Вся обвязка котельной</th>${showW ? '<th>Монтаж обвязки</th>' : ''}<th>Деталей</th><th>Инструмент</th></tr></thead><tbody>${rows}</tbody></table>` +
+            `<div class="sg-cmp-note">Процент — к готовой STOUT. Групп этого вида в смете: ${n}. «Вся обвязка» — раздел 2 целиком (котёл, бойлер, насосы, гидравлика, трубы); «Деталей» — штук в одной группе (у готовой: группа, насос и два узла МУ-25М). Стальной коллектор готовой группы красится и работает без пресса; у самосборных коллектор — труба выбранной системы. Текущий вариант выделен.</div>`;
     },
     // Подсветка соответствия «подпись на схеме ↔ строка сметы». Слушатели на документе, ставятся один раз.
     sgInit: function () {
