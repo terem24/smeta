@@ -34,7 +34,16 @@ const SCENES = {
     works:   { prep: AREA + `app.setViewMode('works');`, clip: [380, 55, 1060, 790] },
     cheaper: { prep: AREA + `app.setViewMode('equipment'); if (!app.state.cheaper) document.getElementById('cheaper_wrapper').click();`, clip: [380, 55, 1060, 600] },
     rooms:   { prep: AREA + `app.setViewMode('equipment'); document.getElementById('mode_pro').click();`, clip: [0, 55, 1440, 420] },
-    money:   { prep: AREA + `app.setViewMode('money');`, clip: [630, 210, 540, 530] }
+    money:   { prep: AREA + `app.setViewMode('money');`, clip: [630, 210, 540, 530] },
+    // el — выражение, дающее элемент: снимок обрезается по нему (pad — поля вокруг)
+    scheme:  { prep: AREA + `app.hasDistributor = () => true; app.setViewMode('equipment'); app.toggleScheme(true);`, el: `document.querySelector('.scheme-svg-wrap')`, pad: 12 },
+    // Стоимость отопления электричеством: электрокотёл (топливо по умолчанию), режим по комнатам
+    economy: { prep: `document.getElementById('inp_area').value = 150; app.setArea(150); app.setViewMode('equipment');
+                  document.getElementById('mode_pro').click();
+                  if (!document.getElementById('pg_t5').parentElement.classList.contains('open')) app.togglePanelGroup(6);
+                  app.toggleElCost(true);`,
+               el: `document.getElementById('pg_t5').parentElement`, pad: 10 },
+    opros:   { url: 'oprosnik.html', prep: ``, clip: [0, 0, 1440, 900] }
 };
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -86,7 +95,7 @@ async function main() {
             if (only && only !== name) continue;
             // каждая сцена — с чистой сметы: иначе «Бюджетнее» прошлой сцены остаётся включённым
             await js(`localStorage.removeItem('stout_save'); true`);
-            await c.send('Page.navigate', { url: SITE });
+            await c.send('Page.navigate', { url: SITE + (sc.url || '') });
             await sleep(3500);
             await js(`(() => { const s = document.createElement('style'); s.textContent = ${JSON.stringify(HIDE_CSS)}; document.head.appendChild(s);
                 document.body.classList.remove('auth-modal-open'); return true; })()`);
@@ -94,8 +103,15 @@ async function main() {
             await js(`(() => { ${NAME_JS} return true; })()`);
             await sleep(4000);   // всплывающие уведомления гаснут
             await js(`(() => { ${NAME_JS} return true; })()`);
-            const clip = sc.clip ? { x: sc.clip[0], y: sc.clip[1], width: sc.clip[2], height: sc.clip[3], scale: 1 } : undefined;
-            const shot = await c.send('Page.captureScreenshot', { format: 'png', clip, captureBeyondViewport: false });
+            let clip = sc.clip ? { x: sc.clip[0], y: sc.clip[1], width: sc.clip[2], height: sc.clip[3], scale: 1 } : undefined;
+            if (sc.el) {
+                const r = await js(`(() => { const e = ${sc.el}; if (!e) return null; window.scrollTo(0, 0);
+                    const b = e.getBoundingClientRect(); return [b.left + scrollX, b.top + scrollY, b.width, b.height]; })()`);
+                if (!r) { console.log('нет элемента', name); continue; }
+                const p = sc.pad || 0;
+                clip = { x: Math.max(0, r[0] - p), y: Math.max(0, r[1] - p), width: r[2] + 2 * p, height: Math.min(r[3] + 2 * p, 2400), scale: 1 };
+            }
+            const shot = await c.send('Page.captureScreenshot', { format: 'png', clip, captureBeyondViewport: !!sc.el });
             writeFileSync(join(OUT, name + '.png'), Buffer.from(shot.data, 'base64'));
             console.log('ok', name);
         }
