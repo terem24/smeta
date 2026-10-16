@@ -709,9 +709,31 @@ const Tour = {
         // занимается app.decideNewcomerDefaults и позовёт applyDefault сам.
     },
 
+    // Enter листает обучение вперёд, как «Дальше». Не трогаем поля ввода (там Enter
+    // нужен для данных) и кнопку «Дальше» карточки: её Enter нажимает сам браузер.
+    // Слушатель вешаем один раз; он сам проверяет, что обучение сейчас на экране.
+    bindKeys: function () {
+        if (this._keyBound) return;
+        this._keyBound = true;
+        document.addEventListener('keydown', e => {
+            if (e.key !== 'Enter' || e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+            if (!this.active() || this.blocked()) return;
+            const card = document.getElementById('tour_card');
+            if (!card || card.style.display === 'none') return;
+            const t = e.target;
+            if (t && t.closest) {
+                if (t.closest('input, textarea, select, [contenteditable="true"]')) return;
+                if (t.closest('#tour_card')) return;
+            }
+            e.preventDefault();
+            this.next();
+        });
+    },
+
     start: function () {
         if (!this.allowed()) return;
         this.injectStyles();
+        this.bindKeys();
         document.body.classList.add('tour-running');
         this.buildPlan();
         this.show();
