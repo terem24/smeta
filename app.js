@@ -24124,6 +24124,7 @@ const app = {
         { id: 'analytics', icon: '📈', label: 'Аналитика', hint: 'Спрос и конкуренты по регионам' },
         { id: 'aifill', icon: '✨', label: 'Умное заполнение', hint: 'Что говорили и писали в окно ✨' },
         { id: 'articles', icon: '📰', label: 'Статьи', hint: 'Очередь публикаций на год: даты, тексты, что уже вышло' },
+        { id: 'channel', icon: '📣', label: 'Канал', hint: 'Посты Telegram-канала @heatcalc_ru: план, тексты, утверждение' },
         { id: 'leads', icon: '📨', label: 'Заявки', hint: 'Заявки на монтаж: откуда пришли и что просят' },
         { id: 'warranty', icon: '🛡', label: 'Гарантия STOUT', hint: 'Объекты с долей STOUT: порог для бланка, порог по объекту, реестр' },
         { id: 'mailbudget', icon: '✉️', label: 'Почта', hint: 'Лимит писем, на что ушёл, отключение рассылок' }
@@ -24174,7 +24175,7 @@ const app = {
         { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'distprices', 'equipment', 'successors'] },
         { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription', 'payready', 'mailbudget'] },
         { id: 'ai', label: 'ИИ и файлы', icon: 'recognition', tabs: ['recognition', 'plans', 'aifill'] },
-        { id: 'content', label: 'Контент', icon: 'articles', tabs: ['articles'] }
+        { id: 'content', label: 'Контент', icon: 'articles', tabs: ['articles', 'channel'] }
     ],
 
     adminGroupOf: function (tabId) {
@@ -24382,7 +24383,7 @@ const app = {
     // «Заявки» — только владельцу: там имя и телефон заказчика, и видеть их
     // всем администраторам ни к чему. Ту же проверку делает lead_list.php,
     // клиентская здесь только чтобы не показывать пустую вкладку.
-    OWNER_ONLY_TABS: ['home', 'dashboard', 'analytics', 'aifill', 'articles', 'leads', 'subscription', 'payready'],
+    OWNER_ONLY_TABS: ['home', 'dashboard', 'analytics', 'aifill', 'articles', 'channel','leads', 'subscription', 'payready'],
 
     // Разделы, закрытые для наблюдателя и менеджера. «Дистрибьюторы» — карточки
     // компаний целиком: промокоды, свои цены, контакты директоров. Это хозяйство
@@ -25303,6 +25304,211 @@ const app = {
                 <button class="auth-btn-base" style="${btnS}" onclick="app._leadsData=null; app.renderAdminLeads()">Обновить</button>
             </div>
             ${list || '<div style="padding:20px; text-align:center; color:var(--text-sec); font-size:13px;">По этим условиям заявок нет.</div>'}`;
+    },
+
+    // ═══ Вкладка «Канал» ═════════════════════════════════════════════════
+    //
+    // Посты Telegram-канала @heatcalc_ru (таблица channel_posts, правит только админ).
+    // Уходит в канал только «утверждён», в свой день, в 10:00 по Москве — робот
+    // .github/workflows/channel-post.yml. Картинки лежат в репозитории (channel/img/),
+    // в посте хранится путь к файлу.
+    CHANNEL_RUBRICS: {
+        feature: { label: 'Функция недели', color: '#2563EB' },
+        howto: { label: 'Как сделать', color: '#0891B2' },
+        pro: { label: 'Профи', color: '#7C3AED' },
+        market: { label: 'Новинки рынка', color: '#C2410C' },
+        events: { label: 'Обучение и выставки', color: '#B45309' },
+        digest: { label: 'Дайджест', color: '#059669' },
+        lifehack: { label: 'Лайфхак', color: '#65A30D' },
+        video: { label: 'Видео недели', color: '#DC2626' },
+        other: { label: 'Другое', color: '#6B7280' }
+    },
+
+    CHANNEL_STATUS: {
+        draft: { label: 'Черновик', color: '#9CA3AF' },
+        approved: { label: 'Утверждён', color: '#3B82F6' },
+        sent: { label: 'Опубликован', color: '#10B981' },
+        skip: { label: 'Отложен', color: '#6B7280' }
+    },
+
+    /** HTML поста Telegram → безопасный HTML превью: только теги, которые понимает Telegram. */
+    channelPreviewHtml: function (body) {
+        const esc = s => String(s).replace(/&(?!(amp|lt|gt|quot);)/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        let h = esc(body || '');
+        h = h.replace(/&lt;(\/?)(b|i|u|s|code)&gt;/g, '<$1$2>')
+            .replace(/&lt;a href="(https?:\/\/[^"<>]+)"&gt;/g, '<a href="$1" target="_blank" rel="noopener">')
+            .replace(/&lt;\/a&gt;/g, '</a>');
+        return h.replace(/\n/g, '<br>');
+    },
+
+    renderAdminChannel: async function () {
+        const box = document.getElementById('admin_channel_box');
+        if (!box) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        if (!this._channelPosts) {
+            box.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-sec); font-size:13px;">Загружаем посты…</div>';
+            const { data, error } = await supabaseClient.from('channel_posts').select('*')
+                .order('post_date', { ascending: true }).order('id', { ascending: true });
+            if (error) {
+                box.innerHTML = `<div style="padding:24px; color:var(--c-bad,#DC2626); font-size:13px;">Не удалось загрузить посты: ${esc(error.message)}
+                    <br><button class="auth-btn-base" style="margin-top:12px; width:auto; padding:0 14px; height:32px; font-size:12px;" onclick="app._channelPosts=null; app.renderAdminChannel()">Попробовать ещё раз</button></div>`;
+                return;
+            }
+            this._channelPosts = data || [];
+        }
+
+        const posts = this._channelPosts;
+        const f = this._channelFilter || (this._channelFilter = { status: '', showSent: false });
+        const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+        const counts = { draft: 0, approved: 0, sent: 0, skip: 0 };
+        posts.forEach(p => { counts[p.status] = (counts[p.status] || 0) + 1; });
+        const next = posts.find(p => p.status === 'approved');
+        const fmt = d => d ? d.split('-').reverse().join('.') : '—';
+        const wd = d => ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'][new Date(d + 'T12:00:00').getDay()];
+
+        const shown = posts.filter(p => (!f.status || p.status === f.status) && (f.showSent || f.status === 'sent' || p.status !== 'sent'));
+
+        const card = (n, label, color) => `
+            <div style="flex:1 1 120px; background:var(--surface-light); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">
+                <div style="font-size:22px; font-weight:800; color:${color}; line-height:1.2;">${n}</div>
+                <div style="font-size:11px; color:var(--text-sec); margin-top:2px;">${label}</div>
+            </div>`;
+        const pill = (meta) => `<span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; color:#fff; background:${meta.color}; white-space:nowrap;">${meta.label}</span>`;
+        const tag = (meta) => `<span style="display:inline-block; padding:1px 7px; border-radius:6px; font-size:10px; font-weight:700; color:${meta.color}; border:1px solid ${meta.color}; white-space:nowrap;">${meta.label}</span>`;
+
+        const rows = shown.map(p => {
+            const r = this.CHANNEL_RUBRICS[p.rubric] || this.CHANNEL_RUBRICS.other;
+            const st = this.CHANNEL_STATUS[p.status] || this.CHANNEL_STATUS.draft;
+            const open = this._channelOpen === p.id;
+            const late = p.status === 'approved' && p.post_date < today;
+            const plain = (p.body || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+            return `
+            <div style="border:1px solid ${open ? 'var(--primary)' : 'var(--border)'}; border-radius:10px; margin-bottom:8px; background:var(--surface);">
+                <div style="display:flex; gap:12px; align-items:flex-start; padding:10px 12px; cursor:pointer;" onclick="app._channelOpen=${open ? 'null' : p.id}; app.renderAdminChannel()">
+                    <div style="width:78px; flex:none; font-size:12px; ${late ? 'color:var(--c-warn,#D97706); font-weight:700;' : 'color:var(--text-main);'}">${fmt(p.post_date)}<div style="color:var(--text-sec); font-size:11px;">${wd(p.post_date)}${late ? ' ⏳' : ''}</div></div>
+                    ${p.image ? `<img src="/${esc(p.image)}" alt="" style="width:64px; height:40px; object-fit:cover; border-radius:6px; flex:none; border:1px solid var(--border);" onerror="this.style.display='none'">` : ''}
+                    <div style="flex:1; min-width:0;">
+                        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">${tag(r)}<b style="font-size:13px; color:var(--text-main);">${esc(p.title || 'Без названия')}</b></div>
+                        <div style="font-size:12px; color:var(--text-sec); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(plain.slice(0, 160))}</div>
+                    </div>
+                    <div style="flex:none;">${pill(st)}</div>
+                </div>
+                ${open ? this.channelEditorHtml(p) : ''}
+            </div>`;
+        }).join('');
+
+        box.innerHTML = `
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+                ${card(counts.draft || 0, 'черновики', '#9CA3AF')}
+                ${card(counts.approved || 0, 'утверждены, ждут дня', '#3B82F6')}
+                ${card(counts.sent || 0, 'опубликовано', '#10B981')}
+            </div>
+            <div style="background:var(--surface-light); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:12px; line-height:1.6; color:var(--text-sec);">
+                ${next ? `Следующий в канал — <b style="color:var(--text-main);">${esc(next.title || 'без названия')}</b>, ${fmt(next.post_date)}.` : 'Утверждённых постов нет — в канал ничего не уйдёт.'}
+                <br>В канал <a href="https://t.me/heatcalc_ru" target="_blank" rel="noopener" style="color:var(--primary);">@heatcalc_ru</a> уходят только <b>утверждённые</b> посты, в свой день в 10:00 по Москве, по одному в день. Черновики не уходят никогда.
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center;">
+                <select style="padding:7px 10px; font-size:12px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main);"
+                    onchange="app._channelFilter.status = this.value; app.renderAdminChannel()">
+                    <option value="">Все, кроме опубликованных</option>
+                    ${Object.keys(this.CHANNEL_STATUS).map(k => `<option value="${k}"${f.status === k ? ' selected' : ''}>${this.CHANNEL_STATUS[k].label}</option>`).join('')}
+                </select>
+                <span style="flex:1;"></span>
+                <button class="auth-btn-base" style="margin:0; width:auto; padding:0 12px; height:32px; font-size:12px;" onclick="app.channelNew()">+ Новый пост</button>
+                <button class="auth-btn-base" style="margin:0; width:auto; padding:0 12px; height:32px; font-size:12px;" onclick="app._channelPosts=null; app.renderAdminChannel()">Обновить</button>
+            </div>
+            ${rows || '<div style="padding:20px; text-align:center; color:var(--text-sec); font-size:13px;">Постов нет.</div>'}`;
+    },
+
+    channelEditorHtml: function (p) {
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const inp = 'width:100%; box-sizing:border-box; padding:7px 10px; font-size:13px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main);';
+        const lbl = 'display:block; font-size:11px; color:var(--text-sec); margin:8px 0 3px;';
+        const btn = 'margin:0; width:auto; padding:0 12px; height:32px; font-size:12px;';
+        const limit = p.image ? 1024 : 4096;
+        const len = (p.body || '').length;
+        return `
+        <div style="border-top:1px solid var(--border); padding:12px; display:flex; gap:16px; flex-wrap:wrap;" onclick="event.stopPropagation()">
+            <div style="flex:1 1 360px; min-width:0;">
+                <div style="display:flex; gap:8px;">
+                    <div style="flex:1;"><label style="${lbl}">Дата</label><input type="date" id="ch_date" value="${esc(p.post_date)}" style="${inp}"></div>
+                    <div style="flex:1;"><label style="${lbl}">Рубрика</label><select id="ch_rubric" style="${inp}">
+                        ${Object.keys(this.CHANNEL_RUBRICS).map(k => `<option value="${k}"${p.rubric === k ? ' selected' : ''}>${this.CHANNEL_RUBRICS[k].label}</option>`).join('')}
+                    </select></div>
+                </div>
+                <label style="${lbl}">Название (только для админки)</label>
+                <input id="ch_title" value="${esc(p.title)}" style="${inp}">
+                <label style="${lbl}">Текст поста — разметка Telegram: &lt;b&gt;жирный&lt;/b&gt;, &lt;i&gt;курсив&lt;/i&gt;, &lt;a href="…"&gt;ссылка&lt;/a&gt;</label>
+                <textarea id="ch_body" rows="14" style="${inp} font-family:inherit; line-height:1.45; resize:vertical;"
+                    oninput="document.getElementById('ch_prev').innerHTML = app.channelPreviewHtml(this.value); document.getElementById('ch_len').textContent = this.value.length">${esc(p.body)}</textarea>
+                <div style="font-size:11px; color:var(--text-sec); margin-top:3px;"><span id="ch_len">${len}</span> из ${limit} знаков${p.image ? ' (подпись к картинке)' : ''}</div>
+                <label style="${lbl}">Картинка — путь в репозитории (channel/img/…)</label>
+                <input id="ch_image" value="${esc(p.image || '')}" style="${inp}" placeholder="channel/img/feature-01.png">
+                <div style="display:flex; gap:8px;">
+                    <div style="flex:1;"><label style="${lbl}">Кнопка — текст</label><input id="ch_btext" value="${esc(p.button_text || '')}" style="${inp}" placeholder="Открыть калькулятор"></div>
+                    <div style="flex:2;"><label style="${lbl}">Кнопка — ссылка</label><input id="ch_burl" value="${esc(p.button_url || '')}" style="${inp}" placeholder="https://heatcalc.ru/"></div>
+                </div>
+                ${p.status === 'sent' ? `<div style="margin-top:10px; font-size:12px; color:var(--c-ok,#10B981);">Опубликован ${p.sent_at ? new Date(p.sent_at).toLocaleString('ru-RU') : ''}${p.tg_message_id ? ` · <a href="https://t.me/heatcalc_ru/${p.tg_message_id}" target="_blank" rel="noopener" style="color:var(--primary);">открыть в канале</a>` : ''}</div>` : ''}
+                <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:12px;">
+                    <button class="auth-btn-base" style="${btn}" onclick="app.channelSave(${p.id})">Сохранить</button>
+                    ${p.status !== 'approved' && p.status !== 'sent' ? `<button class="auth-btn-base" style="${btn} background:#3B82F6; color:#fff;" onclick="app.channelSave(${p.id}, 'approved')">Утвердить</button>` : ''}
+                    ${p.status === 'approved' ? `<button class="auth-btn-base" style="${btn}" onclick="app.channelSave(${p.id}, 'draft')">Вернуть в черновик</button>` : ''}
+                    ${p.status !== 'skip' && p.status !== 'sent' ? `<button class="auth-btn-base" style="${btn}" onclick="app.channelSave(${p.id}, 'skip')">Отложить</button>` : ''}
+                    <span style="flex:1;"></span>
+                    <button class="auth-btn-base" style="${btn} color:var(--c-bad,#DC2626);" onclick="app.channelDelete(${p.id})">Удалить</button>
+                </div>
+            </div>
+            <div style="flex:0 1 340px; min-width:260px;">
+                <div style="font-size:11px; color:var(--text-sec); margin:8px 0 6px;">Как увидят в канале</div>
+                <div style="background:#0E1621; border-radius:12px; padding:8px; max-width:340px;">
+                    <div style="background:#182533; color:#E9EEF3; border-radius:10px; overflow:hidden; font-size:13px; line-height:1.45;">
+                        ${p.image ? `<img src="/${esc(p.image)}" alt="" style="width:100%; display:block;" onerror="this.outerHTML='<div style=&quot;padding:18px; text-align:center; color:#8696A8; font-size:11px;&quot;>картинка ${esc(p.image)} ещё не выложена на сайт</div>'">` : ''}
+                        <div id="ch_prev" style="padding:8px 10px; word-wrap:break-word;">${this.channelPreviewHtml(p.body)}</div>
+                    </div>
+                    ${p.button_url ? `<div style="margin-top:4px; background:#2B5278; color:#fff; text-align:center; border-radius:8px; padding:8px; font-size:13px;">${esc(p.button_text || 'Открыть')}</div>` : ''}
+                </div>
+            </div>
+        </div>`;
+    },
+
+    channelSave: async function (id, status) {
+        const v = k => (document.getElementById(k) || {}).value;
+        const row = {
+            post_date: v('ch_date'), rubric: v('ch_rubric'), title: (v('ch_title') || '').trim(),
+            body: v('ch_body') || '', image: (v('ch_image') || '').trim() || null,
+            button_text: (v('ch_btext') || '').trim() || null, button_url: (v('ch_burl') || '').trim() || null
+        };
+        if (status) row.status = status;
+        const limit = row.image ? 1024 : 4096;
+        if (row.body.length > limit) { alert('Текст длиннее ' + limit + ' знаков — Telegram не примет. Сократите.'); return; }
+        if (status === 'approved' && !row.body.trim()) { alert('Пустой пост утвердить нельзя.'); return; }
+        const { data, error } = await supabaseClient.from('channel_posts').update(row).eq('id', id).select().single();
+        if (error) { alert('Не сохранилось: ' + error.message); return; }
+        const i = this._channelPosts.findIndex(p => p.id === id);
+        if (i >= 0) this._channelPosts[i] = data;
+        if (status) this._channelOpen = null;
+        this.renderAdminChannel();
+    },
+
+    channelNew: async function () {
+        const last = (this._channelPosts || []).map(p => p.post_date).sort().pop();
+        const d = new Date((last || new Date().toISOString().slice(0, 10)) + 'T12:00:00');
+        d.setDate(d.getDate() + 1);
+        const { data, error } = await supabaseClient.from('channel_posts')
+            .insert({ post_date: d.toISOString().slice(0, 10), rubric: 'feature', title: 'Новый пост', body: '' }).select().single();
+        if (error) { alert('Не создалось: ' + error.message); return; }
+        this._channelPosts.push(data);
+        this._channelOpen = data.id;
+        this.renderAdminChannel();
+    },
+
+    channelDelete: async function (id) {
+        if (!confirm('Удалить пост? Вернуть будет нельзя.')) return;
+        const { error } = await supabaseClient.from('channel_posts').delete().eq('id', id);
+        if (error) { alert('Не удалилось: ' + error.message); return; }
+        this._channelPosts = this._channelPosts.filter(p => p.id !== id);
+        this.renderAdminChannel();
     },
 
     ARTICLES_URL: '/content/schedule.json',
@@ -26276,6 +26482,12 @@ const app = {
         if (this._adminTab === 'articles') {
             content.innerHTML = navHtml + '<div id="admin_articles_box"></div>';
             this.renderAdminArticles();
+            return;
+        }
+
+        if (this._adminTab === 'channel') {
+            content.innerHTML = navHtml + '<div id="admin_channel_box"></div>';
+            this.renderAdminChannel();
             return;
         }
 
