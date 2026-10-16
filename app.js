@@ -37380,6 +37380,9 @@ const app = {
         if (!window.projectScheme || !window.projectScheme.snowScheme || !window.projectSheets) return null;
         const a = window.projectScheme.snowScheme({
             kw: Math.round(sc.Q * 10) / 10, area: sc.area, loops: sc.loops,
+            // Группы на схеме котельной присоединяются резьбой DN25 (buildSchemeConfig) —
+            // та же цифра подписывается на входе листа узла.
+            dn: 25,
             // Узлы одинаковые, поэтому чертёж один на все — но с числом узлов и
             // числом петель именно на этом узле, иначе по схеме соберут половину.
             nodes: sc.nodes || 1, loopsNode: (sc.loopsPerNode || [])[0] || sc.loops,
