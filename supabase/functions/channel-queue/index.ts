@@ -7,7 +7,8 @@
 // Пропуск — OIDC-токен GitHub Actions: его подписывает GitHub, и выдать его может
 // только workflow этого репозитория. Общий секрет заводить не нужно.
 //
-//   POST {action: "due"}                    → один утверждённый пост, чей день настал (по Москве)
+//   POST {action: "due"}                    → один утверждённый пост, чей день настал (по Москве);
+//                                             публикация на паузе (app_settings.channel.paused) — null
 //   POST {action: "sent", id, message_id}   → отметить опубликованным
 //
 // Заголовок: Authorization: Bearer <OIDC-токен с audience heatcalc-channel>
@@ -37,6 +38,9 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch (_) { /* пустое тело */ }
 
   if (body.action === "due") {
+    // Общий выключатель из админки («Контент → Канал»): app_settings.channel.paused
+    const { data: st } = await db.from("app_settings").select("value").eq("key", "channel").maybeSingle();
+    if (st && st.value && st.value.paused) return json({ post: null, paused: true });
     const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
     const { data, error } = await db.from("channel_posts")
       .select("id, post_date, rubric, title, body, image, button_text, button_url")

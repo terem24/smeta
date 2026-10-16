@@ -25365,6 +25365,7 @@ const app = {
         const counts = { draft: 0, approved: 0, sent: 0, skip: 0 };
         posts.forEach(p => { counts[p.status] = (counts[p.status] || 0) + 1; });
         const next = posts.find(p => p.status === 'approved');
+        const paused = !!((this.appSettings || {}).channel || {}).paused;
         const fmt = d => d ? d.split('-').reverse().join('.') : '—';
         const wd = d => ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'][new Date(d + 'T12:00:00').getDay()];
 
@@ -25406,8 +25407,12 @@ const app = {
                 ${card(counts.sent || 0, 'опубликовано', '#10B981')}
             </div>
             <div style="background:var(--surface-light); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:12px; line-height:1.6; color:var(--text-sec);">
-                ${next ? `Следующий в канал — <b style="color:var(--text-main);">${esc(next.title || 'без названия')}</b>, ${fmt(next.post_date)}.` : 'Утверждённых постов нет — в канал ничего не уйдёт.'}
-                <br>В канал <a href="https://t.me/heatcalc_ru" target="_blank" rel="noopener" style="color:var(--primary);">@heatcalc_ru</a> уходят только <b>утверждённые</b> посты, в свой день в 10:00 по Москве, по одному в день. Черновики не уходят никогда.
+                <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
+                    <b style="font-size:13px; color:${paused ? 'var(--c-warn,#D97706)' : 'var(--c-ok,#10B981)'};">${paused ? '⏸ Публикация на паузе' : '▶ Публикация включена'}</b>
+                    <button class="auth-btn-base" style="margin:0; width:auto; padding:0 12px; height:28px; font-size:12px;" onclick="app.channelSetPaused(${!paused})">${paused ? 'Включить' : 'Поставить на паузу'}</button>
+                </div>
+                ${paused ? 'Пока пауза, в канал не уходит ничего, даже утверждённое.' : (next ? `Следующий в канал — <b style="color:var(--text-main);">${esc(next.title || 'без названия')}</b>, ${fmt(next.post_date)}.` : 'Утверждённых постов нет — в канал ничего не уйдёт.')}
+                <br>В канал <a href="https://t.me/heatcalc_ru" target="_blank" rel="noopener" style="color:var(--primary);">@heatcalc_ru</a> уходят утверждённые посты, в свой день в 10:00 по Москве, по одному в день. Снять пост — «Вернуть в черновик» или «Отложить»; новые посты создаются черновиками.
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center;">
                 <select style="padding:7px 10px; font-size:12px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main);"
@@ -25473,6 +25478,17 @@ const app = {
         </div>`;
     },
 
+    // Общий выключатель публикации: app_settings.channel.paused (читает Edge Function channel-queue)
+    channelSetPaused: async function (paused) {
+        const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+        const value = Object.assign({}, (this.appSettings || {}).channel, { paused: !!paused });
+        const { error } = await supabaseClient.from('app_settings')
+            .upsert({ key: 'channel', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+        if (error) { alert('Не сохранилось: ' + error.message); return; }
+        this.appSettings = Object.assign({}, this.appSettings, { channel: value });
+        this.renderAdminChannel();
+    },
+
     channelSave: async function (id, status) {
         const v = k => (document.getElementById(k) || {}).value;
         const row = {
@@ -25497,7 +25513,7 @@ const app = {
         const d = new Date((last || new Date().toISOString().slice(0, 10)) + 'T12:00:00');
         d.setDate(d.getDate() + 1);
         const { data, error } = await supabaseClient.from('channel_posts')
-            .insert({ post_date: d.toISOString().slice(0, 10), rubric: 'feature', title: 'Новый пост', body: '' }).select().single();
+            .insert({ post_date: d.toISOString().slice(0, 10), rubric: 'feature', title: 'Новый пост', body: '', status: 'draft' }).select().single();
         if (error) { alert('Не создалось: ' + error.message); return; }
         this._channelPosts.push(data);
         this._channelOpen = data.id;
