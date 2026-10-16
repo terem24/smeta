@@ -61373,7 +61373,7 @@ const app = {
         const materialsHtml = materials.map(m => {
             const on = m.key === currentM;
             return `<button onclick="app.switchSwapRadMaterial('${origId}','${m.key}')"
-                class="swap-tab ${on ? 'active' : ''}">${m.label}</button>`;
+                class="rsw-chip ${on ? 'active' : ''}">${m.label}</button>`;
         }).join('');
 
         const connections = [
@@ -61384,7 +61384,7 @@ const app = {
         const connectionsHtml = connections.map(c => {
             const on = c.key === currentC;
             return `<button onclick="app.switchSwapRadConnection('${origId}','${c.key}')"
-                class="swap-tab ${on ? 'active' : ''}">${c.label}</button>`;
+                class="rsw-chip ${on ? 'active' : ''}">${c.label}</button>`;
         }).join('');
 
         // Вкладки цвета — показываем, только если среди доступных серий текущего режима
@@ -61413,130 +61413,88 @@ const app = {
         const colorsHtml = showColorTabs ? ['all', ...colorsPresent].map(key => {
             const on = key === currentColor;
             const label = key === 'all' ? 'Все' : (colorLabels[key] || key);
-            const swatch = key === 'all' ? '' : `<span style="display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:5px; vertical-align:middle; background:${colorSwatches[key] || '#ccc'}; border:1px solid ${on ? '#fff' : 'var(--border)'}; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);"></span>`;
+            const swatch = key === 'all' ? '' : `<span class="rsw-dot" style="background:${colorSwatches[key] || '#ccc'};"></span>`;
             return `<button onclick="app.switchSwapRadColor('${origId}','${key}')"
-                class="swap-tab ${on ? 'active' : ''}">${swatch}${label}</button>`;
+                class="rsw-chip ${on ? 'active' : ''}">${swatch}${label}</button>`;
         }).join('') : '';
 
         const leftPct = heights.length > 1 ? (minIdx / (heights.length - 1)) * 100 : 0;
         const widthPct = heights.length > 1 ? ((maxIdx - minIdx) / (heights.length - 1)) * 100 : 100;
 
+        const swapStyle = `<style>
+            .swap-head { display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px 16px; border-bottom:1px solid var(--border); padding-bottom:10px; margin-bottom:12px; }
+            .swap-head-title { margin:0; font-size:18px; font-weight:700; color:var(--text-main); }
+            .swap-head-sub { font-size:12px; color:var(--text-sec); display:block; margin-top:2px; }
+            .swap-kpis { display:flex; gap:8px; flex-wrap:wrap; }
+            .swap-kpi { display:flex; flex-direction:column; padding:6px 12px; border-radius:10px; min-width:120px; }
+            .swap-kpi span { font-size:11px; font-weight:600; opacity:.85; }
+            .swap-kpi b { font-size:16px; font-weight:800; }
+            .swap-kpi-pw { background:var(--primary-light); color:var(--primary); }
+            .swap-kpi-price { background:#ECFDF5; color:#047857; }
+            .rsw-seg { display:flex; gap:4px; padding:4px; background:var(--surface-light,#f1f5f9); border:1px solid var(--border); border-radius:12px; margin-bottom:12px; }
+            .rsw-seg-btn { flex:1; height:40px; border:none; border-radius:9px; background:transparent; color:var(--text-main); font-size:14px; font-weight:700; cursor:pointer; font-family:inherit; transition:background .15s, color .15s; }
+            .rsw-seg-btn:hover:not(.active) { background:var(--primary-light); color:var(--primary); }
+            .rsw-seg-btn.active { background:var(--primary); color:var(--on-primary,#fff); box-shadow:0 2px 6px rgba(37,99,235,.3); }
+            .rsw-panel { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:2px 14px; margin-bottom:12px; }
+            .rsw-row { display:grid; grid-template-columns:150px 1fr; gap:8px 14px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); }
+            .rsw-row:last-child { border-bottom:none; }
+            .rsw-label { font-size:13px; font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+            .rsw-value { font-size:13px; font-weight:700; color:var(--primary); }
+            .rsw-chips { display:flex; flex-wrap:wrap; gap:6px; }
+            .rsw-chip { display:inline-flex; align-items:center; height:34px; padding:0 12px; border:1px solid var(--border); border-radius:17px; background:var(--surface); color:var(--text-main); font-size:13px; font-weight:600; line-height:1; white-space:nowrap; cursor:pointer; margin:0; outline:none; font-family:inherit; transition:background .15s, border-color .15s, color .15s; }
+            .rsw-chip:hover { border-color:var(--primary); color:var(--primary); }
+            .rsw-chip.active { background:var(--primary); border-color:var(--primary); color:var(--on-primary,#fff); font-weight:700; box-shadow:0 2px 6px rgba(37,99,235,.25); }
+            .rsw-chip.active:hover { color:var(--on-primary,#fff); }
+            .rsw-dot { display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:6px; border:1px solid var(--border); box-shadow:inset 0 0 0 1px rgba(0,0,0,.08); }
+            .rsw-chip.active .rsw-dot { border-color:#fff; }
+            .rsw-dt-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(128px,1fr)); gap:6px; padding:4px 0 12px; }
+            .rsw-card { position:relative; display:flex; flex-direction:column; gap:1px; text-align:left; padding:8px 10px; border:1px solid var(--border); border-radius:10px; background:var(--surface); color:var(--text-main); cursor:pointer; font-family:inherit; transition:border-color .15s, box-shadow .15s; }
+            .rsw-card:hover { border-color:var(--primary); }
+            .rsw-card.active { border:2px solid var(--primary); padding:7px 9px; background:var(--primary-light); }
+            .rsw-card-t { font-size:14px; font-weight:800; color:var(--text-main); }
+            .rsw-card-s { font-size:12px; color:var(--text-sec); }
+            .rsw-card-pw { font-size:13px; font-weight:700; margin-top:2px; color:var(--text-main); }
+            .rsw-card-pct { font-size:11px; color:var(--text-sec); }
+            .rsw-badge { position:absolute; top:-9px; right:6px; background:#047857; color:#fff; font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px; }
+            .rsw-foot { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:0 0 12px; font-size:12px; color:var(--text-sec); }
+            .rsw-foot details { flex:1 1 100%; }
+            .rsw-foot summary { cursor:pointer; color:var(--primary); font-weight:600; }
+            .rsw-foot-body { margin-top:8px; font-size:12.5px; line-height:1.5; color:var(--text-main); display:flex; flex-direction:column; gap:4px; }
+            .rsw-accept-btn { background:var(--primary); color:var(--on-primary,#fff); border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; }
+            .rsw-accept-btn:hover { filter:brightness(1.08); }
+            .rsw-accepted { background:#ECFDF5; color:#047857; border-radius:8px; padding:6px 10px; font-size:12px; font-weight:700; }
+            .swap-slider-container { position:relative; width:100%; height:28px; margin-top:2px; margin-bottom:2px; }
+            .swap-range-slider { position:absolute; width:100%; height:6px; top:11px; left:0; background:none; pointer-events:none; -webkit-appearance:none; appearance:none; margin:0; padding:0; }
+            .swap-range-slider::-webkit-slider-thumb { height:18px; width:18px; border-radius:50%; background:var(--surface); border:2px solid var(--primary); box-shadow:0 2px 4px rgba(0,0,0,.12); cursor:pointer; pointer-events:auto; -webkit-appearance:none; transition:transform .1s ease; }
+            .swap-range-slider::-webkit-slider-thumb:hover { transform:scale(1.15); }
+            .swap-range-slider::-moz-range-thumb { height:18px; width:18px; border-radius:50%; background:var(--surface); border:2px solid var(--primary); box-shadow:0 2px 4px rgba(0,0,0,.12); cursor:pointer; pointer-events:auto; }
+            .rsw-table-wrap { position:relative; max-height:min(44vh,420px); overflow:auto; border:1px solid var(--border); border-radius:12px; }
+            .rsw-table-wrap thead th { position:sticky; top:0; z-index:1; background:var(--surface); }
+            .rsw-table-wrap tr.rsw-active td { background:var(--primary-light); }
+            .inv-table tbody tr { transition: background-color 0.2s; }
+            .inv-table tbody tr:hover { background-color: var(--surface-light) !important; }
+            @media (max-width:640px) { .rsw-row { grid-template-columns:1fr; gap:6px; } }
+        </style>`;
+
         const rangeSliderHtml = `
-            <style>
-                .swap-tab {
-                    border: 1px solid var(--primary);
-                    outline: none;
-                    padding: 3px 10px;
-                    cursor: pointer;
-                    font-size: 12px;
-                    font-weight: 500;
-                    color: var(--primary);
-                    background: transparent;
-                    border-radius: 5px;
-                    margin: 2px;
-                    transition: all 0.15s ease;
-                }
-                .swap-tab:hover {
-                    background: var(--primary);
-                    color: var(--on-primary,#fff);
-                }
-                .swap-tab.active {
-                    font-weight: 700;
-                    background: var(--primary);
-                    color: var(--on-primary,#fff);
-                    box-shadow: none;
-                }
-                .swap-tabs-wrapper {
-                    display: flex;
-                    flex-wrap: wrap;
-                    width: 100%;
-                    background: transparent;
-                    border: none;
-                    padding: 0;
-                    box-sizing: border-box;
-                    align-items: center;
-                }
-                .swap-slider-container {
-                    position: relative;
-                    width: 100%;
-                    height: 24px;
-                    margin-top: 2px;
-                    margin-bottom: 2px;
-                }
-                .swap-range-slider {
-                    position: absolute;
-                    width: 100%;
-                    height: 6px;
-                    top: 9px;
-                    left: 0;
-                    background: none;
-                    pointer-events: none;
-                    -webkit-appearance: none;
-                    appearance: none;
-                    margin: 0;
-                    padding: 0;
-                }
-                .swap-range-slider::-webkit-slider-thumb {
-                    height: 16px;
-                    width: 16px;
-                    border-radius: 50%;
-                    background: var(--surface);
-                    border: 1px solid var(--border);
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-                    cursor: pointer;
-                    pointer-events: auto;
-                    -webkit-appearance: none;
-                    transition: transform 0.1s ease, border-color 0.1s ease;
-                }
-                .swap-range-slider::-webkit-slider-thumb:hover {
-                    transform: scale(1.15);
-                    border-color: var(--primary);
-                }
-                .swap-range-slider::-moz-range-thumb {
-                    height: 16px;
-                    width: 16px;
-                    border-radius: 50%;
-                    background: var(--surface);
-                    border: 1px solid var(--border);
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-                    cursor: pointer;
-                    pointer-events: auto;
-                    transition: transform 0.1s ease, border-color 0.1s ease;
-                }
-                .swap-range-slider::-moz-range-thumb:hover {
-                    transform: scale(1.15);
-                    border-color: var(--primary);
-                }
-                .inv-table tbody tr {
-                    transition: background-color 0.2s;
-                }
-                .inv-table tbody tr:hover {
-                    background-color: var(--surface-light) !important;
-                }
-            </style>
-            <div style="font-size:12px; font-weight:700; color:var(--text-main); font-family:sans-serif; margin-bottom:2px; display:flex; justify-content:space-between;">
-                <span>Диапазон высот:</span>
-                <span id="swapHeightLabel" style="color: var(--primary);">${minHeight} мм — ${maxHeight} мм</span>
-            </div>
             <div class="swap-slider-container" onclick="app.clickSwapSliderTrack(event, '${origId}')">
-                <div style="position:absolute; left:9px; right:9px; top:9px; height:6px; background:var(--border); border-radius:3px;"></div>
-                <div id="swapTrackHighlight" style="position:absolute; left:calc(9px + ${leftPct}% * 0.98); width:calc(${widthPct}% * 0.98); top:9px; height:6px; background:var(--primary); border-radius:3px;"></div>
-                
+                <div style="position:absolute; left:9px; right:9px; top:11px; height:6px; background:var(--border); border-radius:3px;"></div>
+                <div id="swapTrackHighlight" style="position:absolute; left:calc(9px + ${leftPct}% * 0.98); width:calc(${widthPct}% * 0.98); top:11px; height:6px; background:var(--primary); border-radius:3px;"></div>
+
                 <input type="range" min="0" max="${heights.length - 1}" value="${minIdx}" id="swapRadMinH"
                     class="swap-range-slider" style="z-index: ${this.state.swapLastActive === 'min' ? 10 : 9};"
                     oninput="app.onSliderDragging('${origId}')"
                     onchange="app.onMinSliderInput('${origId}', this)">
-                    
+
                 <input type="range" min="0" max="${heights.length - 1}" value="${maxIdx}" id="swapRadMaxH"
                     class="swap-range-slider" style="z-index: ${this.state.swapLastActive === 'max' ? 10 : 9};"
                     oninput="app.onSliderDragging('${origId}')"
                     onchange="app.onMaxSliderInput('${origId}', this)">
             </div>
-            
-            <div id="swapHeightTicks" style="display:flex; justify-content:space-between; width:100%; padding:0 8px; box-sizing:border-box; font-family:sans-serif; margin-top:-8px; margin-bottom:2px;">
+            <div id="swapHeightTicks" style="display:flex; justify-content:space-between; width:100%; padding:0 8px; box-sizing:border-box; font-family:sans-serif; margin-top:2px;">
                 ${heights.map((h, i) => {
             const active = i >= minIdx && i <= maxIdx;
-            return `<span data-idx="${i}" style="font-size:11px; font-weight:${active ? '700' : '500'}; color:${active ? 'var(--primary)' : 'var(--text-sec)'}; cursor:pointer; transition:all 0.15s ease;" onclick="app.clickSwapHeightScale('${origId}', ${i})">${h} мм</span>`;
+            return `<span data-idx="${i}" style="font-size:12px; font-weight:${active ? '700' : '500'}; color:${active ? 'var(--primary)' : 'var(--text-sec)'}; cursor:pointer; transition:all 0.15s ease;" onclick="app.clickSwapHeightScale('${origId}', ${i})">${h} мм</span>`;
         }).join('')}
             </div>
         `;
@@ -61552,96 +61510,125 @@ const app = {
         const panelTypeHtml = panelTypeFilters.map(pt => {
             const on = pt.key === currentPT;
             return `<button onclick="app.switchSwapPanelType('${origId}','${pt.key}')"
-                class="swap-tab ${on ? 'active' : ''}">${pt.label}</button>`;
+                class="rsw-chip ${on ? 'active' : ''}">${pt.label}</button>`;
         }).join('');
+
+        const hasPanelType = currentM === 'steel' && !isDesignMode;
+        // Одна строка на фильтр: подпись слева, чипы справа. Пояснение — в подсказке (title)
+        const sec = (title, hint, chips) => `
+            <div class="rsw-row" title="${hint}">
+                <div class="rsw-label">${title}</div>
+                <div class="rsw-chips">${chips}</div>
+            </div>`;
+        const filterSecs = [
+            sec('Тип прибора', 'Сталь — дешевле; алюминий — лёгкий и быстро греет; биметалл — для высокого давления и центрального отопления.', materialsHtml),
+            sec('Подключение', 'Боковое — трубы подходят сбоку; нижнее — трубы снизу, в полу.', connectionsHtml),
+            hasPanelType ? sec('Тип панели', 'Первая цифра — число панелей, вторая — рядов конвекторов.', panelTypeHtml) : '',
+            showColorTabs ? sec('Цвет', 'Цвет корпуса прибора.', colorsHtml) : '',
+        ].join('');
 
         const oldSec = item.sec || 1;
         const oldP50 = this.getPowerAtDt50(item);
+        // Мощность каталога хранится при ΔT 50; при другом перепаде Q = Q₅₀·(ΔT/50)^1,3
+        const base50 = item.isPanel ? oldP50 : (oldSec * oldP50);
+        const pwAt = dt => Math.round(base50 * Math.pow(dt / 50, 1.3));
         const dtG = this._swapDtGraph();
-        const totalPower = Math.round((item.isPanel ? oldP50 : (oldSec * oldP50)) * this._swapDtK());
+        const totalPower = pwAt(dtG.dt);
+        const passportW = pwAt(70);
+        const accepted = this.state.radRegime || 'r8060';
         const origPrice = item.price || 0;
         const priceStr = origPrice > 0 ? this.formatPriceHtml(origPrice, true) : '—';
-        const dtTabsHtml = this.RAD_DT_GRAPHS.map(g => `<button onclick="app.switchSwapDt('${origId}','${g.key}')"
-                class="swap-tab ${g.key === dtG.key ? 'active' : ''}" title="${g.temps} °C">${g.label}${g.recommended ? ' ★' : ''}</button>`).join('');
+
+        const dtCards = this.RAD_DT_GRAPHS.map(g => {
+            const [supply, ret, air] = g.temps.split('/');
+            const w = pwAt(g.dt);
+            const pct = g.key === 'gost'
+                ? 'паспорт (ГОСТ)'
+                : `${Math.round((w / passportW - 1) * 100)} % к паспорту`.replace('-', '−');
+            const badge = (g.regime && g.regime === accepted)
+                ? '<span class="rsw-badge">в смете</span>'
+                : (g.recommended ? '<span class="rsw-badge" style="background:#2563eb;">★ рекомендуем</span>' : '');
+            return `<button class="rsw-card ${g.key === dtG.key ? 'active' : ''}" onclick="app.switchSwapDt('${origId}','${g.key}')"
+                title="Подача ${supply} °C, обратка ${ret} °C, воздух ${air} °C">
+                <span class="rsw-card-t">${supply} / ${ret} °C</span>
+                <span class="rsw-card-s">ΔT ${String(g.dt).replace('.', ',')}</span>
+                <span class="rsw-card-pw">${w.toLocaleString('ru-RU')} Вт</span>
+                <span class="rsw-card-pct">${pct}</span>
+                ${badge}
+            </button>`;
+        }).join('');
+
+        const dtAcceptHtml = (() => {
+            if (!dtG.regime) {
+                return `<div class="rsw-foot">Этот график только для сверки с паспортом — в смету не переносится (там режимы 80/60, 70/55 и 55/45).</div>`;
+            }
+            if (dtG.regime === accepted) {
+                return `<div class="rsw-foot"><span class="rsw-accepted">✓ Принят для всей сметы</span><span>Приборы, трубы и насос считаются на этот график во всех разделах.</span></div>`;
+            }
+            return `<div class="rsw-foot">
+                <button class="rsw-accept-btn" onclick="app.acceptSwapDt('${origId}','${dtG.key}')">Принять ${dtG.temps.split('/').slice(0, 2).join('/')} для всей сметы</button>
+                <span>Сейчас в смете ${this.radRegime().label}. После принятия пересчитаются все разделы.</span>
+            </div>`;
+        })();
+
         const dtBlockHtml = `
-                <div>
-                    <div style="font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">Температурный график (подача/обратка/воздух, °C):
-                        <span class="tooltip-wrapper tip-panel-wrap note-tip" style="text-transform:none; letter-spacing:0;" onclick="event.stopPropagation(); app.toggleNoteTip(this);"><i class="info-icon" tabindex="0" role="button" aria-label="Формула пересчёта">i</i><div class="tooltip-content tip-panel"><b>Как пересчитана теплоотдача</b>${this.radDtInfoHtml(item.isPanel ? oldP50 : oldSec * oldP50)}</div></span></div>
-                    <div class="swap-tabs-wrapper">${dtTabsHtml}</div>
-                    <div style="font-size:12px; color:var(--text-sec); line-height:1.45; margin-top:6px;">
-                        <div><b style="color:var(--text-main);">Как получается:</b> ${dtG.how}</div>
-                        <div style="margin-top:3px;"><b style="color:${dtG.recommended ? '#047857' : 'var(--text-main)'};">${dtG.recommended ? '★ ' : ''}Для реальной системы:</b> ${dtG.rec}</div>
-                        ${dtG.key === 'gost' ? '' : '<div style="margin-top:3px;">Мощность пересчитана с паспортной (ГОСТ, ΔT 70) по формуле Q = Q₇₀·(ΔT/70)<sup>1,3</sup>.</div>'}
+            <div class="rsw-panel">
+                <div class="rsw-row" style="grid-template-columns:1fr; padding-bottom:6px;" title="Подача / обратка — температура воды в системе. Цифры в карточках — мощность выбранного прибора на этом графике.">
+                    <div class="rsw-label">Температурный график системы
+                        <span class="tooltip-wrapper tip-panel-wrap note-tip" style="text-transform:none;" onclick="event.stopPropagation(); app.toggleNoteTip(this);"><i class="info-icon" tabindex="0" role="button" aria-label="Формула пересчёта">i</i><div class="tooltip-content tip-panel"><b>Как пересчитана теплоотдача</b>${this.radDtInfoHtml(base50)}</div></span>
                     </div>
-                </div>`;
+                </div>
+                <div class="rsw-dt-cards">${dtCards}</div>
+                <div class="rsw-foot" style="padding-bottom:12px;">
+                    <details>
+                        <summary>Как считаем и что выбрать для вашей системы</summary>
+                        <div class="rsw-foot-body">
+                            <div><b>Как считаем:</b> ${dtG.how}</div>
+                            <div><b>Для вашей системы:</b> ${dtG.rec}</div>
+                            ${dtG.key === 'gost' ? '' : '<div>Мощность: Q = Q₅₀ · (ΔT/50)<sup>1,3</sup>, где Q₅₀ — мощность каталога при ΔT 50.</div>'}
+                        </div>
+                    </details>
+                </div>
+                ${dtAcceptHtml}
+            </div>`;
+
+        // Высота — строкой внутри общей панели фильтров (ползунки и подсказка — в title)
+        const heightBlockHtml = `
+            <div class="rsw-row" title="Тяните ползунки или нажмите значение под шкалой. Подбор покажет приборы только из этого диапазона.">
+                <div class="rsw-label">Высота <span class="rsw-value" id="swapHeightLabel">${minHeight} мм — ${maxHeight} мм</span></div>
+                <div>${rangeSliderHtml}</div>
+            </div>`;
 
         title.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:12px; gap:16px;">
+            <div class="swap-head">
                 <div>
-                    <h3 style="margin:0; font-size:18px; font-weight:700; color:var(--text-main);">Варианты замены</h3>
-                    <span style="font-size:12px; color:var(--text-sec); display:block; margin-top:2px; font-weight:500;">${item.name || ''}</span>
+                    <h3 class="swap-head-title">Варианты замены</h3>
+                    <span class="swap-head-sub">${item.name || ''}</span>
                 </div>
-                <div style="display:flex; gap:8px; flex-shrink:0;">
-                    <div style="background:var(--primary-light); color:var(--primary); padding:6px 12px; border-radius:10px; font-size:11px; font-weight:700; border:1px solid rgba(37,99,235,0.08);">
-                        Теплоотдача: <span style="font-weight:800;">${totalPower} Вт</span>
-                    </div>
-                    <div style="background:#ECFDF5; color:#047857; padding:6px 12px; border-radius:10px; font-size:11px; font-weight:700; border:1px solid rgba(16,185,129,0.08);">
-                        Цена: <span style="font-weight:800;">${priceStr}</span>
-                    </div>
+                <div class="swap-kpis">
+                    <div class="swap-kpi swap-kpi-pw"><span>Мощность при ${dtG.temps.split('/').slice(0, 2).join('/')} °C</span><b>${totalPower.toLocaleString('ru-RU')} Вт</b></div>
+                    <div class="swap-kpi swap-kpi-price"><span>Цена прибора</span><b>${priceStr}</b></div>
                 </div>
             </div>
         `;
 
         const designToggleHtml = `
-            <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <div class="rsw-seg">
                 <button onclick="app.switchSwapDesignMode('${origId}', false)"
-                    class="swap-tab ${!isDesignMode ? 'active' : ''}" style="flex:1; text-align:center; padding:7px 10px; font-size:13px;">Обычные радиаторы</button>
+                    class="rsw-seg-btn ${!isDesignMode ? 'active' : ''}">Обычные радиаторы</button>
                 <button onclick="app.switchSwapDesignMode('${origId}', true)"
-                    class="swap-tab ${isDesignMode ? 'active' : ''}" style="flex:1; text-align:center; padding:7px 10px; font-size:13px;">Дизайнерские радиаторы</button>
+                    class="rsw-seg-btn ${isDesignMode ? 'active' : ''}">Дизайнерские радиаторы</button>
             </div>
         `;
 
-        body.innerHTML = designToggleHtml + `
-            <div style="background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:20px; display:flex; flex-direction:column; gap:12px; margin-bottom:12px; box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.02), 0 4px 6px -4px rgba(15, 23, 42, 0.02);">
-                <div style="display:grid; grid-template-columns: ${(currentM === 'steel' && !isDesignMode) ? '1.1fr 1fr 1.3fr' : '1fr 1fr'}; gap:12px;">
-                    <div>
-                        <div style="font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">Тип прибора:</div>
-                        <div class="swap-tabs-wrapper">
-                            ${materialsHtml}
-                        </div>
-                    </div>
-                    <div>
-                        <div style="font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">Подключение:</div>
-                        <div class="swap-tabs-wrapper">
-                            ${connectionsHtml}
-                        </div>
-                    </div>
-                    ${(currentM === 'steel' && !isDesignMode) ? `
-                    <div>
-                        <div style="font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">Тип панели:</div>
-                        <div class="swap-tabs-wrapper">
-                            ${panelTypeHtml}
-                        </div>
-                    </div>` : ''}
-                    ${showColorTabs ? `
-                    <div style="grid-column: 1 / -1;">
-                        <div style="font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">Цвет:</div>
-                        <div class="swap-tabs-wrapper">
-                            ${colorsHtml}
-                        </div>
-                    </div>` : ''}
-                </div>
-
-                ${dtBlockHtml}
-                <div>
-                    <div style="font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:4px;">Высота прибора:</div>
-                    <div style="width:100%;">
-                        ${rangeSliderHtml}
-                    </div>
-                </div>
+        body.innerHTML = swapStyle + designToggleHtml + `
+            <div class="rsw-panel">
+                ${filterSecs}
+                ${heightBlockHtml}
             </div>
+            ${dtBlockHtml}
 
-            <div style="display:flex; flex-direction:row; flex-wrap:wrap; justify-content:space-between; margin-bottom:8px; padding:0 4px;">
+            <div style="display:flex; flex-direction:row; flex-wrap:wrap; justify-content:space-between; margin:10px 0 8px; padding:0 4px;">
                 ${(item.instanceKeys && item.instanceKeys.length > 1) ? `
                 <label style="display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:500; color:var(--text-main); cursor:pointer; user-select:none;">
                     <input type="checkbox" id="replaceGroupCb" style="width:16px; height:16px; border-radius:4px; border:1px solid var(--border); accent-color:var(--primary); cursor:pointer;" ${this.state.swapGroupReplace ? 'checked' : ''}>
@@ -61653,10 +61640,14 @@ const app = {
                     Применить ко всем приборам отопления в проекте
                 </label>
             </div>
-            
-            ${this._renderRadSwapTable(item, minHeight, maxHeight, currentM, currentC, currentColor)}
+
+            <div class="rsw-table-wrap" id="rswTableWrap">${this._renderRadSwapTable(item, minHeight, maxHeight, currentM, currentC, currentColor)}</div>
         `;
         modal.style.display = 'flex';
+        // Прокручиваем список к выбранному прибору, чтобы он был виден сразу, без поиска вниз
+        const rswWrap = document.getElementById('rswTableWrap');
+        const rswActive = rswWrap && rswWrap.querySelector('tr.rsw-active');
+        if (rswActive) rswWrap.scrollTop = Math.max(0, rswActive.offsetTop - rswActive.offsetHeight);
     },
     changeSwapHeightRange: function (originalId, newMinVal, newMaxVal) {
         const item = this.currentEquipmentList.find(x => (x.originalId || x.id) === originalId || x.id === originalId);
@@ -62051,8 +62042,8 @@ const app = {
         uniqueList.forEach(entry => {
             const candidate = entry.candidate;
             const isActive = entry.isActive;
-            const activeSt = isActive ? 'background:var(--primary-light);' : '';
-            const badge = isActive ? `<span style="font-size:10px;background:var(--primary);color:var(--on-primary,#fff);padding:2px 6px;border-radius:4px;font-weight:bold;margin-left:6px;">Выбран</span>` : '';
+            const activeCls = isActive ? ' class="rsw-active"' : '';
+            const badge = isActive ? `<span style="font-size:11px;background:var(--primary);color:var(--on-primary,#fff);padding:2px 7px;border-radius:4px;font-weight:700;margin-left:6px;">✓ Выбран</span>` : '';
 
             let diffHtml = `<span style="color:var(--text-sec);">—</span>`;
             if (origPrice > 0 && candidate.price > 0) {
@@ -62066,7 +62057,7 @@ const app = {
             const powerHtml = `<span style="font-size:11px;color:${powerCol};font-weight:600;"> (${Math.round(candPower * this._swapDtK())} Вт)</span>`;
             idx++;
 
-            rows += `<tr style="cursor:pointer;${activeSt}" onclick="app.selectSwapRadiator('${origId}','${candidate.id}',${candidate.sec},document.getElementById('replaceGroupCb')?.checked||false)">
+            rows += `<tr${activeCls} style="cursor:pointer;" onclick="app.selectSwapRadiator('${origId}','${candidate.id}',${candidate.sec},document.getElementById('replaceGroupCb')?.checked||false)">
                 <td style="text-align:center;font-size:13px;padding:7px 4px;">${idx}</td>
                 <td style="text-align:center;padding:4px;">${getImg(candidate)}</td>
                 <td style="font-size:13px;font-weight:600;padding:7px 6px;">${entry.name}${powerHtml}${badge}</td>
