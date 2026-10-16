@@ -75672,14 +75672,8 @@ const app = {
         if (this.BOILER_PAIR_MAX[sys]) ok = (v === 22 || v === 28);
         else if (sys !== 'ss304' && sys !== 'ss316') ok = false;
         else ok = (v >= 22 && v <= 42) && (this.boilerPipeRange(sys) || []).some(r => r.size === v);
-        if (!ok) return null;
-        // Красный диаметр (например, выбран раньше в другой системе или при другой нагрузке) не применяем:
-        // обвязка идёт по скорости, а в окне замены красная кнопка остаётся неактивной.
-        if (this._bpLoad && !this._bpForce) {
-            const kw = Math.max(this._bpLoad.gas || 0, this._bpLoad.el || 0);
-            if (this.boilerSpeedLevel(this.boilerMainSpeed(kw, v)) === 'bad') return null;
-        }
-        return v;
+        // Любой диаметр из ряда можно выбрать вручную; красный — с предупреждением (см. boilerMainBlockHtml).
+        return ok ? v : null;
     },
 
     /** Скорость воды в магистрали логического Ø size (м/с) при мощности kw и текущем Δt. */
@@ -75733,11 +75727,10 @@ const app = {
 
     /** Переключатель диаметра в окне замены. null — вернуть рекомендованный по скорости. */
     setBoilerMainSize: function (val) {
-        // Красная плашка — диаметр не ставим: скорость вне рекомендации (см. boilerSpeedLevel).
+        // Диаметр вне ряда системы не ставим; красный и жёлтый выбираются с предупреждением.
         if (val !== null && val !== undefined) {
             const o = this.boilerMainOptions(this._bpLoad ? this._bpLoad.gas : 0, this._bpLoad ? this._bpLoad.el : 0);
-            const opt = o.options.find(x => x.size === parseInt(val, 10));
-            if (!opt || opt.level === 'bad') return;
+            if (!o.options.find(x => x.size === parseInt(val, 10))) return;
         }
         this.state.boilerMainSize = (val === null || val === undefined) ? null : parseInt(val, 10);
         this.syncUI();
@@ -75764,57 +75757,54 @@ const app = {
             warn: { c: 'var(--warn, #D97706)', bg: 'rgba(245,158,11,.14)' },
             bad: { c: 'var(--danger, #EF4444)', bg: 'rgba(239,68,68,.12)' }
         };
+        const SYS_NAME = { ss316: 'нержавейку AISI 316L', ss304: 'нержавейку AISI 304', mp: 'металлопластик', mp_r: 'металлопластик ROMMER', stable: 'стабильную трубу', stable_r: 'стабильную трубу ROMMER', ppr: 'полипропилен' };
+        // Почему диаметр нежелателен — коротко. Выбрать можно любой: это предупреждение, не запрет.
+        const why = (x) => {
+            if (x.level === 'ok') return '';
+            if (x.v > this.BOILER_V_MAX) return x.v > 1.2
+                ? 'Шум и износ: скорость выше 1,2 м/с. Можно выбрать, но не рекомендуем.'
+                : 'Заметный шум: скорость выше 1,0 м/с. Лучше взять диаметр больше.';
+            return x.v < 0.3
+                ? 'Воздух и шлам: скорость ниже 0,3 м/с. Можно выбрать, но не рекомендуем.'
+                : 'Скорость ниже 0,4 м/с — на границе. Лучше взять диаметр меньше.';
+        };
+        // Цена труб и фитингов при каждом Ø — прямо у кнопки, с разницей к выбранному.
+        const fmt = (v) => Math.round(v).toLocaleString('ru-RU') + ' ₽';
+        const priceOf = (s) => (live && diam && diam[s] != null ? diam[s] : null);
+        const base = curOpt ? priceOf(curOpt.size) : null;
         const btn = (x) => {
             const on = x.size === o.active;
             const col = COL[x.level].c;
-            const title = o.pair ? `Ø${x.size} (труба ${x.phys})` : `Ø${x.size}`;
-            // Красный диаметр не выбирается: кнопка неактивна.
-            const click = (x.level === 'bad' || !live) ? '' : ` onclick="app.setBoilerMainSize(${x.size})"`;
-            const dim = x.level === 'bad' ? 'opacity:.45;cursor:not-allowed;' : 'cursor:pointer;';
-            return `<span${click} style="${dim}padding:4px 10px;border-radius:5px;font-size:12px;border:1px solid ${col};background:${on ? col : 'transparent'};color:${on ? '#fff' : 'var(--text-main)'};">`
-                + `${title} · ${x.v.toFixed(2).replace('.', ',')} м/с</span>`;
-        };
-        const pairNote = o.pair
-            ? `<div style="font-size:11px;color:var(--text-muted, #6B7280);margin-top:4px;">Для этой системы — малый или большой диаметр пары.</div>`
-            : '';
-        const vTxt = curOpt ? curOpt.v.toFixed(2).replace('.', ',') : '';
-        let plate = '';
-        if (curOpt) {
-            const lv = curOpt.level;
-            const text = lv === 'ok'
-                ? `<b>Скорость ${vTxt} м/с — в норме</b> (0,4–1,0 м/с).`
-                : (lv === 'warn'
-                    ? `<b>Скорость ${vTxt} м/с — на границе</b> (0,4–1,0 м/с норма). Допустимо, но лучше ${curOpt.v > this.BOILER_V_MAX ? 'взять диаметр больше' : 'взять диаметр меньше'}.`
-                    : `<b>Скорость ${vTxt} м/с — вне рекомендации.</b> ${curOpt.v > 1.2 ? 'Шум и износ' : 'Воздух и шлам'}: такой диаметр заменить — ${curOpt.v > 1.2 ? 'возьмите больше' : 'возьмите меньше'}.`);
-            plate = `<div style="margin-top:6px;padding:6px 8px;border-radius:5px;background:${COL[lv].bg};color:${COL[lv].c};font-size:12px;">${text}</div>`;
-        }
-        const SYS_NAME = { ss316: 'нержавейку AISI 316L', ss304: 'нержавейку AISI 304', mp: 'металлопластик', mp_r: 'металлопластик ROMMER', stable: 'стабильную трубу', stable_r: 'стабильную трубу ROMMER', ppr: 'полипропилен' };
-        // Цена труб и фитингов при каждом Ø: разница с выбранным диаметром.
-        let priceTbl = '';
-        if (live && diam) {
-            const base = diam[o.active];
-            const fmt = (v) => Math.round(v).toLocaleString('ru-RU') + ' ₽';
-            const rows = Object.keys(diam).map(k => {
-                const s = Number(k), d = diam[k] - base;
+            const label = o.pair ? `Ø${x.size} (труба ${x.phys})` : `Ø${x.size}`;
+            const click = live ? ` onclick="app.setBoilerMainSize(${x.size})"` : '';
+            const p = priceOf(x.size);
+            let price = '';
+            if (p != null) {
+                const d = base != null ? p - base : 0;
                 const pct = base ? Math.round(d / base * 100) : 0;
-                const tag = s === o.active ? '<b>выбран</b>' : (d > 0 ? `<span style="color:var(--danger,#EF4444);">дороже на ${fmt(d)} (+${pct}%)</span>` : `<span style="color:var(--success,#16A34A);">дешевле на ${fmt(-d)} (${pct}%)</span>`);
-                return `<tr><td style="padding:2px 10px 2px 0;">Ø${s}</td><td style="padding:2px 10px 2px 0;text-align:right;">${fmt(diam[k])}</td><td style="padding:2px 0;">${tag}</td></tr>`;
-            }).join('');
-            priceTbl = `<div style="margin-top:8px;font-size:12px;color:var(--text-main);">Труба и фитинги котельной при каждом диаметре (та же смета, остальное не меняется):</div>`
-                + `<table style="margin-top:4px;font-size:12px;border-collapse:collapse;">${rows}</table>`;
-        }
+                const delta = (on || d === 0) ? '' : ` <span style="color:${d > 0 ? 'var(--danger,#EF4444)' : 'var(--success,#16A34A)'};">${d > 0 ? '+' : ''}${pct}%</span>`;
+                price = `<div style="font-size:11px;margin-top:1px;">${fmt(p)}${delta}</div>`;
+            }
+            const tip = why(x) || 'Скорость в норме (0,4–1,0 м/с)';
+            return `<span${click} title="${tip}" style="cursor:${live ? 'pointer' : 'default'};padding:4px 10px;border-radius:6px;font-size:12px;line-height:1.3;min-width:120px;border:1px solid ${col};background:${on ? col : 'transparent'};color:${on ? '#fff' : 'var(--text-main)'};">`
+                + `<b>${label}</b> · ${x.v.toFixed(2).replace('.', ',')} м/с${price}</span>`;
+        };
+        const info = `<div style="margin-top:6px;font-size:12px;color:var(--text-main);">`
+            + `Выбрано: <b>${this.boilerMainTitle(o.active, sys)}</b>${manual ? ' (вручную)' : ''}`
+            + `, по скорости: <b>${this.boilerMainTitle(o.rec, sys)}</b>`
+            + (manual && manual !== o.rec ? ` · <span style="cursor:pointer;color:var(--primary);text-decoration:underline;" onclick="app.setBoilerMainSize(null)">вернуть рекомендованный</span>` : '')
+            + `</div>`;
+        const warnLine = (curOpt && curOpt.level !== 'ok')
+            ? `<div style="margin-top:3px;font-size:12px;color:${COL[curOpt.level].c};">${why(curOpt)}</div>`
+            : '';
         const previewNote = live ? ''
             : `<div style="margin-top:6px;font-size:12px;color:var(--text-sec);">Показано, что будет при замене на <b>${SYS_NAME[sys] || sys}</b>. Нажмите строку ещё раз — система заменится.</div>`;
-        return `<div style="padding:8px 0 10px;border-bottom:1px solid var(--border);">`
-            + `<div style="font-size:12px;font-weight:700;color:var(--text-sec);margin-bottom:6px;">Диаметр магистрали котельной (меняет всю обвязку):</div>`
-            + `<div style="display:flex;gap:6px;flex-wrap:wrap;">${o.options.map(btn).join('')}</div>`
-            + pairNote
-            + `<div style="margin-top:6px;font-size:12px;color:var(--text-main);">`
-            + `Выбрано: <b>${this.boilerMainTitle(o.active, sys)}</b>${manual ? ' (вручную)' : ''}. По скорости рекомендуем для вашей системы: <b>${this.boilerMainTitle(o.rec, sys)}</b>`
-            + (manual && manual !== o.rec ? ` — <span style="cursor:pointer;color:var(--primary);text-decoration:underline;" onclick="app.setBoilerMainSize(null)">вернуть рекомендованный</span>` : '')
-            + `</div>`
-            + plate
-            + priceTbl
+        return `<div style="padding:6px 0 8px;border-bottom:1px solid var(--border);">`
+            + `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">`
+            + `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:4px;">Магистраль котельной:</span>`
+            + `${o.options.map(btn).join('')}</div>`
+            + info
+            + warnLine
             + previewNote
             + `</div>`;
     },
@@ -75921,7 +75911,6 @@ const app = {
         const sizes = pair ? [22, 28] : [22, 28, 35, 42];
         const snapshot = JSON.parse(JSON.stringify(this.state));
         const out = {};
-        this._bpForce = true;
         try {
             sizes.forEach(s => {
                 this.state.boilerMainSize = s;
@@ -75932,7 +75921,6 @@ const app = {
                 out[s] = Math.round(pipe);
             });
         } finally {
-            this._bpForce = false;
             Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
             Object.assign(this.state, snapshot);
             this.render(true);
