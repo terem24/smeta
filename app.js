@@ -61117,6 +61117,44 @@ const app = {
     _getSwapHeightsAxis: function () {
         return this.state.swapDesignMode ? [1800, 2000] : [200, 300, 350, 400, 500, 600];
     },
+    // Температурные графики для пересчёта теплоотдачи радиатора в окне замены.
+    // В каталоге мощность хранится при ΔT 50; при другом напоре — Q = Q50·(ΔT/50)^n,
+    // n = 1,3 (усреднённый показатель для панельных и секционных приборов; сверка с таблицей
+    // Rommer/Stout из «Теплоотдача отличная»: 70→60→50 даёт 1 : 0,83 : 0,65, формула — 1 : 0,82 : 0,65).
+    // ΔT = (t_подачи + t_обратки)/2 − t_воздуха (20 °C). Паспортные значения Rommer/Stout — при ΔT 70.
+    RAD_DT_GRAPHS: [
+        { key: 'gost', dt: 70, label: 'ГОСТ · ΔT 70', temps: '100/80/20',
+          how: 'Среднее значение воды (100+80)/2 = 90 °C, минус воздух 20 °C = ΔT 70. Это режим, на котором завод измеряет теплоотдачу по ГОСТ 31311-2005 — именно эти цифры в паспорте.',
+          rec: 'В реальной системе такой график почти не встречается (вода 100 °C — это перегрев для частного дома): мощность из паспорта получится только на бумаге. Подходит для сверки с паспортом.' },
+        { key: 'ss90', dt: 60, label: '90/70 · ΔT 60', temps: '90/70/20',
+          how: '(90+70)/2 = 80 °C, минус 20 °C воздуха = ΔT 60. Классический график старых котельных и ТЭЦ.',
+          rec: 'Подходит для подключения к центральному отоплению и чугунным/твердотопливным котлам без ограничения температуры.' },
+        { key: 'en50', dt: 50, label: '80/60 · ΔT 50', temps: '80/60/20',
+          how: '(80+60)/2 = 70 °C, минус 20 °C = ΔT 50. Тот же напор, что у европейского стандарта EN 442 (75/65/20): (75+65)/2−20 = 50.',
+          rec: 'Типовой расчёт для газового котла в частном доме: котёл работает в нормальном режиме, радиаторы тёплые, а не обжигающие.' },
+        { key: 'real', dt: 42.5, label: '70/55 · ΔT 42,5', temps: '70/55/20', recommended: true,
+          how: '(70+55)/2 = 62,5 °C, минус 20 °C = ΔT 42,5. Мощность падает до ~52 % от паспортной (ΔT 70).',
+          rec: 'РЕКОМЕНДУЕМ для реальной системы: конденсационный или современный газовый котёл с погодозависимой автоматикой, в морозы работает с подачей 65–75 °C. Берите запас по мощности именно по этому графику.' },
+        { key: 'low', dt: 30, label: '55/45 · ΔT 30', temps: '55/45/20',
+          how: '(55+45)/2 = 50 °C, минус 20 °C = ΔT 30. Радиатор отдаёт примерно 33 % от паспортной мощности.',
+          rec: 'Для теплового насоса и конденсационного котла в режиме максимальной экономии. Радиаторов нужно в 2–3 раза больше, чем по паспорту.' }
+    ],
+    _swapDtGraph: function () {
+        const key = this.state.swapDtKey || 'gost';
+        return this.RAD_DT_GRAPHS.find(g => g.key === key) || this.RAD_DT_GRAPHS[0];
+    },
+    // Множитель пересчёта «мощность при ΔT 50 → мощность при выбранном графике»
+    _swapDtK: function () {
+        return Math.pow(this._swapDtGraph().dt / 50, 1.3);
+    },
+    switchSwapDt: function (originalId, key) {
+        const item = this._findSwapItem(originalId);
+        if (!item) return;
+        this.state.swapGroupReplace = document.getElementById('replaceGroupCb')?.checked || false;
+        this.state.swapAllReplace = document.getElementById('replaceAllCb')?.checked || false;
+        this.state.swapDtKey = key;
+        this._openRadSwapModal(item);
+    },
     _openRadSwapModal: function (item) {
         const modal = document.getElementById('swap_modal_overlay');
         const body = document.getElementById('swap_modal_body');
@@ -61363,9 +61401,23 @@ const app = {
 
         const oldSec = item.sec || 1;
         const oldP50 = this.getPowerAtDt50(item);
-        const totalPower = item.isPanel ? oldP50 : (oldSec * oldP50);
+        const dtG = this._swapDtGraph();
+        const totalPower = Math.round((item.isPanel ? oldP50 : (oldSec * oldP50)) * this._swapDtK());
         const origPrice = item.price || 0;
         const priceStr = origPrice > 0 ? this.formatPriceHtml(origPrice, true) : '—';
+        const dtTabsHtml = this.RAD_DT_GRAPHS.map(g => `<button onclick="app.switchSwapDt('${origId}','${g.key}')"
+                class="swap-tab ${g.key === dtG.key ? 'active' : ''}" title="${g.temps} °C">${g.label}${g.recommended ? ' ★' : ''}</button>`).join('');
+        const dtBlockHtml = `
+                <div>
+                    <div style="font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px;">Температурный график (подача/обратка/воздух, °C):
+                        <span class="tooltip-wrapper tip-panel-wrap note-tip" style="text-transform:none; letter-spacing:0;" onclick="event.stopPropagation(); app.toggleNoteTip(this);"><i class="info-icon" tabindex="0" role="button" aria-label="Формула пересчёта">i</i><div class="tooltip-content tip-panel"><b>Как пересчитана теплоотдача</b>${this.radDtInfoHtml(item.isPanel ? oldP50 : oldSec * oldP50)}</div></span></div>
+                    <div class="swap-tabs-wrapper">${dtTabsHtml}</div>
+                    <div style="font-size:12px; color:var(--text-sec); line-height:1.45; margin-top:6px;">
+                        <div><b style="color:var(--text-main);">Как получается:</b> ${dtG.how}</div>
+                        <div style="margin-top:3px;"><b style="color:${dtG.recommended ? '#047857' : 'var(--text-main)'};">${dtG.recommended ? '★ ' : ''}Для реальной системы:</b> ${dtG.rec}</div>
+                        ${dtG.key === 'gost' ? '' : '<div style="margin-top:3px;">Мощность пересчитана с паспортной (ГОСТ, ΔT 70) по формуле Q = Q₇₀·(ΔT/70)<sup>1,3</sup>.</div>'}
+                    </div>
+                </div>`;
 
         title.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:12px; gap:16px;">
@@ -61424,6 +61476,7 @@ const app = {
                     </div>` : ''}
                 </div>
 
+                ${dtBlockHtml}
                 <div>
                     <div style="font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:4px;">Высота прибора:</div>
                     <div style="width:100%;">
@@ -61854,7 +61907,7 @@ const app = {
             const priceHtml = candidate.price > 0 ? this.formatPriceHtml(candidate.price, true) : '—';
             const candPower = entry.isPanel ? candidate.power50 : (candidate.sec * candidate.power50);
             const powerCol = candPower >= targetPower ? '#22c55e' : candPower >= targetPower * 0.85 ? '#f59e0b' : '#ef4444';
-            const powerHtml = `<span style="font-size:11px;color:${powerCol};font-weight:600;"> (${candPower} Вт)</span>`;
+            const powerHtml = `<span style="font-size:11px;color:${powerCol};font-weight:600;"> (${Math.round(candPower * this._swapDtK())} Вт)</span>`;
             idx++;
 
             rows += `<tr style="cursor:pointer;${activeSt}" onclick="app.selectSwapRadiator('${origId}','${candidate.id}',${candidate.sec},document.getElementById('replaceGroupCb')?.checked||false)">
@@ -61874,7 +61927,7 @@ const app = {
             } else if (series.length === 0) {
                 emptyMsg = 'Нет серий, подходящих под выбранные фильтры (высота/цвет/подключение/тип прибора) — попробуйте расширить диапазон высот или изменить цвет/подключение.';
             } else if (!anyPassedPower) {
-                emptyMsg = `В выбранном диапазоне высот и фильтров нет варианта нужной мощности: требуется ≥${targetPower} Вт, максимум доступно ${maxPowerSeen} Вт. Расширьте диапазон высот, смените цвет/подключение — либо мощность для этой позиции нужно распределить на несколько приборов.`;
+                emptyMsg = `В выбранном диапазоне высот и фильтров нет варианта нужной мощности: требуется ≥${Math.round(targetPower * this._swapDtK())} Вт, максимум доступно ${Math.round(maxPowerSeen * this._swapDtK())} Вт. Расширьте диапазон высот, смените цвет/подключение — либо мощность для этой позиции нужно распределить на несколько приборов.`;
             } else if (anyPassedPowerFailedWidth) {
                 emptyMsg = `Мощности хватает, но по ширине под окно (${Math.round(winWidthM * 500)}–${Math.round(winWidthM * 900)} мм) ничего не подошло — попробуйте расширить диапазон высот или тип панели.`;
             } else {
@@ -77074,6 +77127,25 @@ const app = {
             `</span>`;
     },
 
+    // Блок для подсказок «i»: формула пересчёта теплоотдачи прибора на другие температурные
+    // графики и мощность этого прибора при каждом из них. p50 — суммарная мощность прибора
+    // при ΔT 50 (EN 442, 75/65/20); для конвекторов, у которых в каталоге дана power70,
+    // передаём power70·(50/70)^1,3 — то же число.
+    radDtInfoHtml: function (p50) {
+        p50 = Number(p50) || 0;
+        if (!(p50 > 0)) return '';
+        const rows = this.RAD_DT_GRAPHS.map(g => {
+            const q = Math.round(p50 * Math.pow(g.dt / 50, 1.3));
+            return `${g.temps} (ΔT ${String(g.dt).replace('.', ',')}): <b>${q} Вт</b>${g.recommended ? ' ★' : ''}`;
+        }).join('<br>');
+        return `<span style="display:block; margin-top:8px; padding-top:6px; border-top:1px dashed #4B5563; font-size:11px; line-height:1.5;">` +
+            `<b>Пересчёт на другие графики:</b><br>` +
+            `Q = Q₅₀ · (ΔT / 50)<sup>1,3</sup>, где ΔT = (t подачи + t обратки) / 2 − 20 °C, Q₅₀ = ${Math.round(p50)} Вт — теплоотдача при ΔT 50 (EN 442, 75/65/20). ` +
+            `Показатель 1,3 — по ГОСТ 31311-2005 (для разных приборов 1,25–1,35).<br>` +
+            `${rows}<br>` +
+            `<span style="color:#9CA3AF;">★ — график, рекомендуемый для реальной системы (современный котёл, подача 70 °C). Паспортные цифры (ΔT 70) в реальной системе не достигаются.</span></span>`;
+    },
+
     getDesc: function (type, val1, val2, val3, val4, val5, val6, val7) {
         const styles = "font-size:11px; line-height:1.4;";
         const head = "font-weight:700; color:#93C5FD; display:block; margin-bottom:9px; padding-bottom:7px; border-bottom:1px solid rgba(255,255,255,0.15);";
@@ -78177,7 +78249,7 @@ const app = {
                 return `<span style="${styles}"><span style="${head}">Евроконус 16</span><b>Зачем:</b> Подключение трубы к коллектору (разборное).<br><b>Формула:</b> 1 шт на каждый выход коллектора.<br><b>Кол-во:</b> ${val1} шт.</span>`;
 
             case 'convector':
-                return `<span style="${styles}"><span style="${head}">Внутрипольный конвектор</span><b>Мощность по ГОСТ (90/70°C):</b> ${val1} Вт.<br><b style="color:var(--primary);">Факт. теплоотдача (75/65°C):</b> ~${val2} Вт.<br><b>Примечание:</b> В реальной системе мощность падает на ~35%. Прибор подобран с нужным запасом.<br><b>Важно:</b> Требует глубину стяжки не менее 85 мм.</span>`;
+                return `<span style="${styles}"><span style="${head}">Внутрипольный конвектор</span><b>Мощность по ГОСТ (90/70°C):</b> ${val1} Вт.<br><b style="color:var(--primary);">Факт. теплоотдача (75/65°C):</b> ~${val2} Вт.<br><b>Примечание:</b> В реальной системе мощность падает на ~35%. Прибор подобран с нужным запасом.<br><b>Важно:</b> Требует глубину стяжки не менее 85 мм.${this.radDtInfoHtml(val1 * Math.pow(50 / 70, 1.3))}</span>`;
             case 'rad_tooltip': {
                 let o = val1;
                 let dev = (o.isRommer && o.item.rommer) ? o.item.rommer : o.item;
@@ -78217,10 +78289,11 @@ const app = {
                     ${tvLine}
                     <span style="color:${coverageColor}; font-weight:700;">${coverageIcon} Покрытие: ${margin + 100}% (${marginText})</span>
                     ${warnWin}
+                    ${this.radDtInfoHtml(isPanel ? dev.power50 : (dev.power50 || 0) * (dev.sec || 1))}
                 </span>`;
             }
             case 'rad_item_detailed':
-                return `<span style="${styles}"><span style="${head}">Прибор отопления</span><b>Мощность по ГОСТ (90/70°C):</b> ${val1} Вт.<br><b style="color:var(--primary);">Факт. теплоотдача (75/65°C):</b> ${val2} Вт.<br><b>Примечание:</b> Прибор подобран с учетом реального температурного графика современных котлов и правила перекрытия окна на 70%.</span>`;
+                return `<span style="${styles}"><span style="${head}">Прибор отопления</span><b>Мощность по ГОСТ (90/70°C):</b> ${val1} Вт.<br><b style="color:var(--primary);">Факт. теплоотдача (75/65°C):</b> ${val2} Вт.<br><b>Примечание:</b> Прибор подобран с учетом реального температурного графика современных котлов и правила перекрытия окна на 70%.${this.radDtInfoHtml(val1 * Math.pow(50 / 70, 1.3))}</span>`;
             case 'coolant': {
                 let cl = catalog.coolants.find(c => c.type === this.state.coolant) || catalog.coolants[0];
                 let isWater = (cl.type === 'water');
@@ -78965,7 +79038,7 @@ const app = {
                                 newDevInfo = this.getDesc('convector', activeItem.power70, factP70);
                             } else if (activeItem.sec !== undefined && activeItem.power50 !== undefined) {
                                 const totalP50 = activeItem.isPanel ? activeItem.power50 : activeItem.sec * activeItem.power50;
-                                newDevInfo = `<span style="font-size:11px; line-height:1.4;"><span style="font-weight:700; color:#93C5FD; display:block; margin-bottom:9px; padding-bottom:7px; border-bottom:1px solid rgba(255,255,255,0.15);">${activeItem.name}</span><b>Секций:</b> ${activeItem.sec}. <b>Мощность секции:</b> ${activeItem.power50} Вт (ΔT=50°C).<br><b style="color:var(--primary);">Суммарная мощность:</b> ~${totalP50} Вт.</span>`;
+                                newDevInfo = `<span style="font-size:11px; line-height:1.4;"><span style="font-weight:700; color:#93C5FD; display:block; margin-bottom:9px; padding-bottom:7px; border-bottom:1px solid rgba(255,255,255,0.15);">${activeItem.name}</span><b>Секций:</b> ${activeItem.sec}. <b>Мощность секции:</b> ${activeItem.power50} Вт (ΔT=50°C).<br><b style="color:var(--primary);">Суммарная мощность:</b> ~${totalP50} Вт.${this.radDtInfoHtml(totalP50)}</span>`;
                             }
                             if (newDevInfo) tip = locPart + '|||' + newDevInfo;
                         }
