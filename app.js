@@ -50181,6 +50181,11 @@ const app = {
                 html += '<div class="hc-facts"><div><span>Расход</span><b>' + f2(r.flow) + ' м³/ч</b></div><div><span>Нужно напора</span><b>' + f1(r.need) + ' м</b></div>'
                     + '<div><span>Насос даёт</span><b>' + f1(r.have) + ' м</b></div></div>';
                 if (r.pump) html += '<div class="hc-det-p">' + esc(r.pump) + '</div>';
+                // Запас насоса в процентах: насос даёт на k−1 больше, чем нужно; норма — запас RAD_PUMP_RESERVE
+                if (r.k != null && r.need > 0) {
+                    const pc = v => (v >= 0 ? '+' : '') + Math.round(v * 100) + ' %';
+                    html += '<div class="hc-det-p">Запас насоса ' + pc(r.k - 1) + ' (норма ' + pc((r.reserve || this.RAD_PUMP_RESERVE) - 1) + ')</div>';
+                }
                 if (r.id === 'ufh' && r.verdict === 'fail') {
                     // Пол: совет «разделить коллектор» превращаем в действие, которое здесь есть — предел длины петли
                     if (soft) { /* оценка: совет — в плашке выше («Уточнить по комнатам») */ }
@@ -67968,7 +67973,10 @@ const app = {
     RAD_PIPE_ID: {
         grey:   { 16: 0.0116, 20: 0.0144, 25: 0.0180, 26: 0.0180, 32: 0.0232 },
         mp:     { 16: 0.0120, 20: 0.0160, 25: 0.0200, 26: 0.0200, 32: 0.0260 },
-        stable: { 16: 0.0108, 20: 0.0142, 25: 0.0176, 26: 0.0176, 32: 0.0226 }
+        stable: { 16: 0.0108, 20: 0.0142, 25: 0.0176, 26: 0.0176, 32: 0.0226 },
+        // PP-R ProAqua DUO SDR 6, 40×6,7 мм: внутренний диаметр 26,6 мм — по паспорту (Таблица 2).
+        // Пока семейство не выбирается в интерфейсе, поэтому на смету и расчёт текущих домов не влияет.
+        ppr:    { 40: 0.0266 }
     },
     /** Семейство трубы радиаторной разводки по выбору в настройках. */
     radPipeFamily: function () {
@@ -67979,7 +67987,10 @@ const app = {
     },
     radPipeId: function (d, family) {
         const fam = this.RAD_PIPE_ID[family || this.radPipeFamily()] || this.RAD_PIPE_ID.grey;
-        return fam[parseInt(d, 10)] || fam[16];
+        const dIn = fam[parseInt(d, 10)];
+        // Диаметра нет в таблице семейства — раньше тихо считали как 16 мм. Теперь хотя бы пишем в консоль.
+        if (!dIn) console.warn('[радиаторы] нет внутреннего диаметра для Ø' + d + ' в семействе ' + (family || this.radPipeFamily()) + ', считаю как Ø16');
+        return dIn || fam[16];
     },
 
     /**
