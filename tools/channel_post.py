@@ -65,7 +65,7 @@ def article_post(slug):
         return None
     title = a.get('og_title') or a.get('title') or slug
     body = a.get('og_description') or a.get('description') or ''
-    text = '<b>%s</b>\n\n%s' % (html.escape(title), html.escape(body))
+    text = '📖 <b>%s</b>\n\n%s' % (html.escape(title), html.escape(body))
     return {'id': 'article-' + slug, 'text': text, 'url': '%s/%s/' % (SITE, slug),
             'button': 'Читать на сайте', 'campaign': 'article'}
 
@@ -114,6 +114,27 @@ def http(url, payload, headers):
         return e.code, e.read().decode('utf-8', 'replace')
 
 
+def send_photo(url, chat, path, caption, markup):
+    """sendPhoto: картинка уходит файлом из репозитория (multipart), подпись — HTML."""
+    b = '----heatcalc%d' % int(datetime.datetime.now().timestamp())
+    nl = b'\r\n'
+    body = b''
+    for k, v in (('chat_id', chat), ('caption', caption), ('parse_mode', 'HTML'),
+                 ('reply_markup', json.dumps(markup, ensure_ascii=False))):
+        body += ('--%s' % b).encode() + nl + ('Content-Disposition: form-data; name="%s"' % k).encode() + nl + nl
+        body += v.encode('utf-8') + nl
+    body += ('--%s' % b).encode() + nl
+    body += ('Content-Disposition: form-data; name="photo"; filename="%s"' % os.path.basename(path)).encode() + nl
+    body += b'Content-Type: image/png' + nl + nl + io.open(path, 'rb').read() + nl
+    body += ('--%s--' % b).encode() + nl
+    req = urllib.request.Request(url, body, {'Content-Type': 'multipart/form-data; boundary=' + b})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return r.status, r.read().decode('utf-8', 'replace')
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode('utf-8', 'replace')
+
+
 def send_tg(post, link):
     token = (os.environ.get('TG_CHANNEL_BOT_TOKEN') or '').strip()
     chat = (os.environ.get('TG_CHANNEL_ID') or '').strip()
@@ -121,11 +142,16 @@ def send_tg(post, link):
         chat = '@' + chat   # юзернейм канала без @ Telegram не принимает
     if not (token and chat):
         return None
-    payload = {'chat_id': chat, 'text': post['text'], 'parse_mode': 'HTML',
-               'link_preview_options': {'is_disabled': False, 'url': link},
-               'reply_markup': {'inline_keyboard': [[{'text': post.get('button', 'Открыть'), 'url': link}]]}}
-    code, body = http('https://api.telegram.org/bot%s/sendMessage' % token, payload,
-                      {'Content-Type': 'application/json'})
+    markup = {'inline_keyboard': [[{'text': post.get('button', 'Открыть'), 'url': link}]]}
+    api = 'https://api.telegram.org/bot%s/' % token
+    img = os.path.join(ROOT, post['image']) if post.get('image') else None
+    if img and os.path.exists(img) and len(post['text']) <= 1024:
+        code, body = send_photo(api + 'sendPhoto', chat, img, post['text'], markup)
+    else:
+        # link_preview отключён: карточка сайта с описанием делает пост «ботским»
+        payload = {'chat_id': chat, 'text': post['text'], 'parse_mode': 'HTML',
+                   'link_preview_options': {'is_disabled': True}, 'reply_markup': markup}
+        code, body = http(api + 'sendMessage', payload, {'Content-Type': 'application/json'})
     if code != 200:
         body += ' | ' + _tg_diag(token, chat)
     return code == 200, body
@@ -157,6 +183,8 @@ def main():
         return
     pid = post['id']
     print('пост:', pid)
+    if force:
+        state['sent'].pop(pid, None)   # --force: отправить заново, даже если уже уходило
     sent = state['sent'].setdefault(pid, {})
     failed = False
     for net, fn in (('tg', send_tg),):
