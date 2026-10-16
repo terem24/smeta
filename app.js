@@ -2695,6 +2695,7 @@ const app = {
         const _pre = this.cheapForkPre(val === 'rommer');
         this.state.brandMode = val;
         this.state.sectionAnalog = {}; // Сбрасываем точечные переопределения
+        this.state.pipeBrand = {};     // …и бренд труб, выбранный в таблице замены
         // Материал обвязки котельной тоже возвращаем к автовыбору по бренду: он и есть
         // «точечное переопределение», только своё (см. boilerPipeSystem).
         this.state.boilerPipeSystem = null;
@@ -48170,6 +48171,8 @@ const app = {
         // «Аналог» на котельной молча ничего не делала бы с трубой, если монтажник
         // до того выбирал систему в таблице замены.
         if (title === "2. Обвязка котельной") this.state.boilerPipeSystem = null;
+        // То же с брендом труб из таблицы замены: тумблер раздела старше точечного выбора.
+        this.state.pipeBrand = {};
         this.saveState();
         this.render();
         this.cheapForkPost(_pre);
@@ -58760,55 +58763,41 @@ const app = {
             ];
         }
         else if (item.originalId && (item.originalId.endsWith('_rad') || item.originalId.startsWith('SPI-0003-'))) {
-            let p_ins = 0, p_split = 0, p_ins_mp = 0, p_split_mp = 0;
-            let b_ins = 'STOUT', b_split = 'STOUT', b_ins_mp = 'STOUT', b_split_mp = 'STOUT';
-
-            let insulatedItem = catalog.insulated_pipes ? catalog.insulated_pipes[0] : null;
-            if (isRommer) {
-                p_ins = 138;
-                b_ins = 'ROMMER';
-            } else if (insulatedItem) {
-                p_ins = insulatedItem.price || 0;
-            }
-
-            let splitItem = catalog.rad_pipes_grey ? catalog.rad_pipes_grey[0] : null;
-            if (isRommer) {
-                p_split = 110;
-                b_split = 'ROMMER';
-            } else if (splitItem) {
-                p_split = splitItem.price || 0;
-            }
-
-            let insulatedMpItem = catalog.insulated_pipes_mp_red ? catalog.insulated_pipes_mp_red[0] : null;
-            if (insulatedMpItem) {
-                p_ins_mp = insulatedMpItem.price || 0;
-            }
-
-            let splitMpItem = catalog.water_pipes_mp ? catalog.water_pipes_mp[0] : null;
-            if (splitMpItem) {
-                p_split_mp = splitMpItem.price || 0;
-            }
-
-            const _stb16 = catalog.stable_pipes && catalog.stable_pipes[0];
-            const _stb16r = _stb16 && _stb16.rommer;
-            const _insImgId = isRommer ? (insulatedItem?.rommer?.[0]?.id) : insulatedItem?.id;
-            const _splitImgId = isRommer ? null : splitItem?.id;
+            // По строке на тип трубы и на бренд: STOUT и ROMMER рядом. Выбор бренда здесь — то же,
+            // что кнопка «Аналог», но для одной трубы (см. pipeBrandOverride), а цена «Система»
+            // считается полным пересчётом сметы под каждый вариант. У ROMMER нет трубы с готовой
+            // изоляцией: его вариант — труба и трубка изоляции отдельными позициями (см. addToBill).
+            const _rr = (it) => (it && it.rommer && !Array.isArray(it.rommer)) ? it.rommer : null;
+            const _insI = catalog.insulated_pipes && catalog.insulated_pipes[0];
+            const _insR = (_insI && Array.isArray(_insI.rommer)) ? _insI.rommer : null;
+            const _splitI = catalog.rad_pipes_grey && catalog.rad_pipes_grey[0];
+            const _insMpI = catalog.insulated_pipes_mp_red && catalog.insulated_pipes_mp_red[0];
+            const _splitMpI = catalog.water_pipes_mp && catalog.water_pipes_mp[0];
+            const _stbI = catalog.stable_pipes && catalog.stable_pipes[0];
             customAlts = [
-                { id: 'insulated', name: 'Труба PEX-a в теплоизоляции', brand: b_ins, price: p_ins, imgId: _insImgId },
-                { id: 'split', name: 'Труба PEX-a без изоляции', brand: b_split, price: p_split, imgId: _splitImgId },
-                { id: 'insulated_mp', name: 'Труба металлопластиковая в теплоизоляции', brand: b_ins_mp, price: p_ins_mp, imgId: insulatedMpItem?.id },
-                { id: 'split_mp', name: 'Труба металлопластиковая без изоляции', brand: b_split_mp, price: p_split_mp, imgId: splitMpItem?.id },
-                ...(_stb16 ? [{ id: 'stable_16', name: _stb16.name, brand: 'STOUT', price: _stb16.price, imgId: _stb16.id }] : []),
-                ...(_stb16r ? [{ id: 'stable_16_r', name: _stb16r.name, brand: 'ROMMER', price: _stb16r.price, imgId: _stb16r.id }] : [])
+                { id: 'insulated', name: 'Труба PEX-a в теплоизоляции', brand: 'STOUT', price: _insI ? (_insI.price || 0) : 0, imgId: _insI?.id },
+                ...(_insR ? [{ id: 'insulated_r', name: 'Труба PEX-a 16x2.2 + теплоизоляция (две позиции)', brand: 'ROMMER', price: _insR.reduce((t, x) => t + (x.price || 0), 0), imgId: _insR[0].id }] : []),
+                { id: 'split', name: 'Труба PEX-a без изоляции', brand: 'STOUT', price: _splitI ? (_splitI.price || 0) : 0, imgId: _splitI?.id },
+                ...(_rr(_splitI) ? [{ id: 'split_r', name: 'Труба PEX-a без изоляции', brand: 'ROMMER', price: _rr(_splitI).price || 0, imgId: _rr(_splitI).id }] : []),
+                { id: 'insulated_mp', name: 'Труба металлопластиковая в теплоизоляции', brand: 'STOUT', price: _insMpI ? (_insMpI.price || 0) : 0, imgId: _insMpI?.id },
+                { id: 'split_mp', name: 'Труба металлопластиковая без изоляции', brand: 'STOUT', price: _splitMpI ? (_splitMpI.price || 0) : 0, imgId: _splitMpI?.id },
+                ...(_rr(_splitMpI) ? [{ id: 'split_mp_r', name: 'Труба металлопластиковая без изоляции', brand: 'ROMMER', price: _rr(_splitMpI).price || 0, imgId: _rr(_splitMpI).id }] : []),
+                ...(_stbI ? [{ id: 'stable_16', name: _stbI.name, brand: 'STOUT', price: _stbI.price, imgId: _stbI.id }] : []),
+                ...(_rr(_stbI) ? [{ id: 'stable_16_r', name: _rr(_stbI).name, brand: 'ROMMER', price: _rr(_stbI).price, imgId: _rr(_stbI).id }] : [])
             ];
             // Две цены, как у трубы водоснабжения: труба за метр и система — труба
             // с тем, что меняется вместе с ней (евроконусы, фитинги, изоляция).
-            const _rt = this.pipeOptionTotals('pipeType', customAlts.map(a => a.id));
-            const _rCur = _rt[this.state.pipeType] || 0;
+            const _rIds = customAlts.map(a => a.id);
+            const _rt = this.stateOptionTotals(_rIds, id => this.applyPipeChoice('rad', id));
+            const _rBase = (this.state.pipeType === 'stable_16_r') ? 'stable_16' : this.state.pipeType;
+            const _rCurId = (_rIds.includes(_rBase + '_r') && this.pipeBrandNow('rad') === 'rommer') ? _rBase + '_r' : _rBase;
+            const _rCur = _rt[_rCurId] || 0;
             customAlts = customAlts.map(a => {
                 const d = (_rt[a.id] || 0) - _rCur;
                 return {
                     ...a,
+                    pipeKind: 'rad',
+                    pipeActive: a.id === _rCurId,
                     unitM2: a.price,
                     unitHead: 'Труба, за м',
                     sysHead: 'Система',
@@ -58870,29 +58859,26 @@ const app = {
             });
         }
         else if (item.originalId && (item.originalId.endsWith('_ufh') || item.originalId.startsWith('SPX-0002-') || item.originalId.startsWith('SPM-0001-'))) {
-            let p_pex = 0, p_mp = 0;
-            let b_pex = 'STOUT', b_mp = 'STOUT';
-
-            let pexItem = catalog.pipes ? catalog.pipes[0] : null;
-            if (isRommer) {
-                p_pex = pexItem?.rommer?.price || 7600;
-                b_pex = 'ROMMER';
-            } else {
-                p_pex = pexItem?.price || 15200;
-            }
-
-            let mpItem = catalog.metal_plastic_pipes ? catalog.metal_plastic_pipes[0] : null;
-            p_mp = mpItem?.price || 15151;
-
+            // По строке на материал и на бренд (STOUT и ROMMER рядом, как у разводки к радиаторам).
+            // Выбор бренда — «Аналог» для самой трубы петель (см. pipeBrandOverride); фитинги
+            // на петлю остаются по общему режиму бренда, как и в смете.
+            const _rr = (it) => (it && it.rommer && !Array.isArray(it.rommer)) ? it.rommer : null;
+            const pexItem = catalog.pipes ? catalog.pipes[0] : null;
+            const mpItem = catalog.metal_plastic_pipes ? catalog.metal_plastic_pipes[0] : null;
             // Стабильная — единственный из трёх вариантов, который меняет не только
             // цену: стенка на 0,6 мм толще, внутренний диаметр 11 мм вместо 12, и
             // петля по гидравлике выходит короче (см. ufhLoopMax).
-            let stbItem = catalog.stable_pipes ? catalog.stable_pipes[0] : null;
+            const stbItem = catalog.stable_pipes ? catalog.stable_pipes[0] : null;
             customAlts = [
-                { id: 'pex', name: 'Труба PEX-a 16x2.0 (полиэтилен)', brand: b_pex, price: p_pex, imgId: isRommer ? pexItem?.rommer?.id : pexItem?.id },
-                { id: 'metal_plastic', name: 'Труба металлопластиковая 16x2.0', brand: b_mp, price: p_mp, imgId: mpItem?.id },
-                ...(stbItem ? [{ id: 'stable', name: 'Труба стабильная PE-Xa/Al/PE-RT 16.2x2.6', brand: isRommer ? 'ROMMER' : 'STOUT', price: (isRommer && stbItem.rommer ? stbItem.rommer.price : stbItem.price), imgId: stbItem.id }] : [])
+                { id: 'pex', name: 'Труба PEX-a 16x2.0 (полиэтилен)', brand: 'STOUT', price: pexItem?.price || 0, imgId: pexItem?.id },
+                ...(_rr(pexItem) ? [{ id: 'pex_r', name: 'Труба PEX-a 16x2.0 (полиэтилен)', brand: 'ROMMER', price: _rr(pexItem).price || 0, imgId: _rr(pexItem).id }] : []),
+                { id: 'metal_plastic', name: 'Труба металлопластиковая 16x2.0', brand: 'STOUT', price: mpItem?.price || 0, imgId: mpItem?.id },
+                ...(_rr(mpItem) ? [{ id: 'metal_plastic_r', name: 'Труба металлопластиковая 16x2.0', brand: 'ROMMER', price: _rr(mpItem).price || 0, imgId: _rr(mpItem).id }] : []),
+                ...(stbItem ? [{ id: 'stable', name: 'Труба стабильная PE-Xa/Al/PE-RT 16.2x2.6', brand: 'STOUT', price: stbItem.price || 0, imgId: stbItem.id }] : []),
+                ...(_rr(stbItem) ? [{ id: 'stable_r', name: 'Труба стабильная PE-Xa/Al/PE-RT 16.2x2.6', brand: 'ROMMER', price: _rr(stbItem).price || 0, imgId: _rr(stbItem).id }] : [])
             ];
+            const _uCurBase = this.ufhPipe().material;
+            const _uCurId = (customAlts.some(a => a.id === _uCurBase + '_r') && this.pipeBrandNow('ufh') === 'rommer') ? _uCurBase + '_r' : _uCurBase;
             // Две цены: труба за метр и система целиком на весь пол.
             // Система — метраж трубы плюс то, что render() ставит на каждую петлю:
             // два евроконуса под стенку этой трубы, два фиксатора 90° и пара втулок.
@@ -58909,8 +58895,10 @@ const app = {
                 + 2 * _prc((catalog.parts || [])[2])
                 + _prc((catalog.protective_sleeves || [])[0]) + _prc((catalog.protective_sleeves || [])[1]);
             customAlts.forEach(alt => {
-                const p = this.UFH_PIPES.find(x => x.material === alt.id);
+                const p = this.UFH_PIPES.find(x => x.material === alt.id.replace(/_r$/, ''));
                 if (!p) return;
+                alt.pipeKind = 'ufh';
+                alt.pipeActive = (alt.id === _uCurId);
                 let meters = 0, loops = 0, area = _tpArea;
                 if (_fc.length && _tpArea > 0) {
                     (this._ufhFloorCalc || []).forEach((f, i) => {
@@ -58935,32 +58923,28 @@ const app = {
             });
         }
         else if (item.originalId && (item.originalId.endsWith('_water') || (item.originalId.startsWith('SPX-0001-') && !item.originalId.endsWith('_rad'))) && !item.originalId.startsWith('SMB-') && !item.originalId.startsWith('RMS-')) {
-            let p_pex = 0, p_mp = 0;
-            let b_pex = 'STOUT', b_mp = 'STOUT';
-
-            let pexItem = catalog.water_pipes ? catalog.water_pipes[0] : null;
-            if (isRommer) {
-                p_pex = pexItem?.rommer?.price || 110;
-                b_pex = 'ROMMER';
-            } else {
-                p_pex = pexItem?.price || 175;
-            }
-
-            let mpItem = catalog.water_pipes_mp ? catalog.water_pipes_mp[0] : null;
-            p_mp = mpItem?.price || 151.51;
-
-            // Две цены, как у обвязки котельной: труба за метр и система целиком.
-            // Система — труба с фитингами под неё (евроконусы, водорозетки, гильзы,
-            // фиксаторы), то есть всё, что в смете меняется вместе с трубой.
-            const _wt = this.waterPipeSystemTotals();
-            const _wCur = _wt[this.state.waterPipeMaterial === 'metal_plastic' ? 'metal_plastic' : 'pex'] || 0;
+            // По строке на материал и на бренд (STOUT и ROMMER рядом). Выбор бренда — «Аналог»
+            // для самой трубы (см. pipeBrandOverride); цена «Система» — полный пересчёт сметы.
+            const _rr = (it) => (it && it.rommer && !Array.isArray(it.rommer)) ? it.rommer : null;
+            const pexItem = catalog.water_pipes ? catalog.water_pipes[0] : null;
+            const mpItem = catalog.water_pipes_mp ? catalog.water_pipes_mp[0] : null;
             customAlts = [
-                { id: 'pex', name: 'Труба PEX-a (полиэтилен)', brand: b_pex, price: p_pex, imgId: isRommer ? pexItem?.rommer?.id : pexItem?.id },
-                { id: 'metal_plastic', name: 'Труба металлопластиковая', brand: b_mp, price: p_mp, imgId: mpItem?.id }
-            ].map(a => {
+                { id: 'pex', name: 'Труба PEX-a (полиэтилен)', brand: 'STOUT', price: pexItem?.price || 0, imgId: pexItem?.id },
+                ...(_rr(pexItem) ? [{ id: 'pex_r', name: 'Труба PEX-a (полиэтилен)', brand: 'ROMMER', price: _rr(pexItem).price || 0, imgId: _rr(pexItem).id }] : []),
+                { id: 'metal_plastic', name: 'Труба металлопластиковая', brand: 'STOUT', price: mpItem?.price || 0, imgId: mpItem?.id },
+                ...(_rr(mpItem) ? [{ id: 'metal_plastic_r', name: 'Труба металлопластиковая', brand: 'ROMMER', price: _rr(mpItem).price || 0, imgId: _rr(mpItem).id }] : [])
+            ];
+            const _wIds = customAlts.map(a => a.id);
+            const _wt = this.stateOptionTotals(_wIds, id => this.applyPipeChoice('water', id));
+            const _wBase = (this.state.waterPipeMaterial === 'metal_plastic') ? 'metal_plastic' : 'pex';
+            const _wCurId = (_wIds.includes(_wBase + '_r') && this.pipeBrandNow('water') === 'rommer') ? _wBase + '_r' : _wBase;
+            const _wCur = _wt[_wCurId] || 0;
+            customAlts = customAlts.map(a => {
                 const d = (_wt[a.id] || 0) - _wCur;
                 return {
                     ...a,
+                    pipeKind: 'water',
+                    pipeActive: a.id === _wCurId,
                     unitM2: a.price,
                     unitHead: 'Труба, за м',
                     sysHead: 'Система',
@@ -60653,7 +60637,11 @@ const app = {
             // First determine isActive for each custom alt
             customAlts.forEach(alt => {
                 let isActive = false;
-                if (item.originalId === 'SAC-0022-283020_boiler') {
+                if (alt.pipeKind) {
+                    // Трубы: тип и бренд выбираются парой, активность посчитана при сборке списка.
+                    isActive = !!alt.pipeActive;
+                }
+                else if (item.originalId === 'SAC-0022-283020_boiler') {
                     if (alt.id === 'SAC-0022-283020') isActive = (this.state.boilerFrameType === 'profile_single');
                     else if (alt.id === 'SAC-0022-283020_double') isActive = (this.state.boilerFrameType === 'profile_double');
                     else if (alt.id === 'SAC-0020-200012_single') isActive = (this.state.boilerFrameType === 'direct_single');
@@ -62434,6 +62422,8 @@ const app = {
         if (!id) return null;
         const sid = String(id);
         if (sid.toLowerCase().includes('rommer')) return 'ROMMER';
+        // Строки таблицы замены труб: тип и бренд парой, у ROMMER приставка «_r».
+        if (/^(insulated|split|split_mp|stable_16|stable|pex|metal_plastic)_r$/.test(sid)) return 'ROMMER';
         for (const key in catalog) {
             const arr = catalog[key];
             if (!Array.isArray(arr)) continue;
@@ -62872,7 +62862,11 @@ const app = {
             this.state.swaps['well_pump_auto'] = chosenId;
         }
         else if (originalId.endsWith('_rad') || originalId.startsWith('SPI-0003-')) {
-            if (chosenId === 'insulated') this.state.pipeType = 'insulated';
+            if (/^(insulated|split|insulated_mp|split_mp|stable_16)(_r)?$/.test(chosenId)) {
+                // Строка таблицы — тип трубы вместе с брендом (см. applyPipeChoice).
+                this.applyPipeChoice('rad', chosenId);
+            }
+            else if (chosenId === 'insulated') this.state.pipeType = 'insulated';
             else if (chosenId === 'split') this.state.pipeType = 'split';
             else if (chosenId === 'insulated_mp') this.state.pipeType = 'insulated_mp';
             else if (chosenId === 'split_mp') this.state.pipeType = 'split_mp';
@@ -62914,7 +62908,12 @@ const app = {
         else if (originalId.endsWith('_ufh') || originalId.startsWith('SPX-0002-') || originalId.startsWith('SPM-0001-') || originalId.startsWith('SPS-0002-')) {
             // Типоразмер петли, а не только материал: от стенки зависят предельная
             // длина петли, число выходов коллектора и напор, который нужен насосу.
-            const _pp = this.UFH_PIPES.find(x => x.material === chosenId)
+            if (/^(pex|metal_plastic|stable)(_r)?$/.test(chosenId)) {
+                // Строка таблицы — материал вместе с брендом (см. applyPipeChoice).
+                this.applyPipeChoice('ufh', chosenId);
+            } else
+            // Старый путь — по артикулу бухты (сохранённые сметы, прямой выбор из каталога).
+            { const _pp = this.UFH_PIPES.find(x => x.material === chosenId)
                 || this.UFH_PIPES.find(x => x.coils.indexOf(chosenId) >= 0)
                 || this.UFH_PIPES.find(x => x.key === (chosenId.indexOf('SPS') >= 0 ? 'stable16'
                     : (chosenId.indexOf('SPM') >= 0 ? 'mp16' : 'pex16')));
@@ -62926,10 +62925,11 @@ const app = {
                 // под новую трубу. Запись о замене оставляем только за настоящим
                 // каталожным id (это выбор бренда), псевдоключ типоразмера снимаем.
                 if (chosenId === _pp.material) delete this.state.swaps[originalId];
-            }
+            } }
         }
         else if (originalId.endsWith('_water') || (originalId.startsWith('SPX-0001-') && !originalId.endsWith('_rad'))) {
-            if (chosenId.includes("SPX") || chosenId === 'pex') this.state.waterPipeMaterial = 'pex';
+            if (/^(pex|metal_plastic)(_r)?$/.test(chosenId)) this.applyPipeChoice('water', chosenId);
+            else if (chosenId.includes("SPX") || chosenId === 'pex') this.state.waterPipeMaterial = 'pex';
             else this.state.waterPipeMaterial = 'metal_plastic';
         }
         else if (originalId.startsWith('SMF-0001') || this.isXpsBaseId(originalId)) {
@@ -75278,6 +75278,66 @@ const app = {
     pipeOptionTotals: function (field, values) {
         return this.stateOptionTotals(values, v => { this.state[field] = v; });
     },
+
+    /**
+     * Бренд труб, выбранный вручную в таблице замены.
+     *
+     * Три независимые линии — разводка к радиаторам (строки «…_rad»), петли тёплого пола
+     * («…_ufh») и водоснабжение («…_water»). state.pipeBrand[линия] = 'rommer' | 'stout';
+     * не задано — решают раздел («Аналог») и общий режим бренда, как всегда. Ручной выбор
+     * старше их обоих, но сбрасывается, когда монтажник сам переключает бренд кнопкой:
+     * тумблер раздела главнее точечного выбора (как и материал обвязки котельной).
+     * Выбор пары «STOUT ↔ ROMMER» в таблице даёт ровно то, что дала бы кнопка «Аналог»
+     * для этой трубы: тот же .rommer из каталога, тот же пересчёт сметы.
+     */
+    pipeBrandKind: function (key) {
+        const k = String(key || '');
+        // Только трубы: суффикс «_water» носят и коллекторы, «_rad» — не только трубы.
+        if (!/^(SPI|SPX|SPM|SPS)-/.test(k)) return null;
+        if (k.endsWith('_rad')) return 'rad';
+        if (k.endsWith('_ufh')) return 'ufh';
+        if (k.endsWith('_water')) return 'water';
+        return null;
+    },
+    pipeBrandOverride: function (key) {
+        const kind = this.pipeBrandKind(key);
+        return kind ? ((this.state.pipeBrand || {})[kind] || null) : null;
+    },
+    /** Какой бренд сейчас реально стоит у линии труб: ручной выбор, иначе — по строке в смете. */
+    pipeBrandNow: function (kind) {
+        const ov = (this.state.pipeBrand || {})[kind];
+        if (ov) return ov;
+        if (kind === 'rad' && this.state.pipeType === 'stable_16_r') return 'rommer';
+        const row = (this.currentEquipmentList || []).find(x => this.pipeBrandKind(x.originalId) === kind);
+        if (row && row.brand) return String(row.brand).toUpperCase() === 'ROMMER' ? 'rommer' : 'stout';
+        return this.state.brandMode === 'rommer' ? 'rommer' : 'stout';
+    },
+    /**
+     * Строка таблицы замены трубы → состояние. Идентификатор — тип трубы, у ROMMER
+     * с приставкой «_r» («insulated_r», «pex_r», «stable_16_r»): тип и бренд выбираются
+     * вместе, как и показаны в таблице. Вызывается и при выборе, и при расчёте цен
+     * вариантов, поэтому ничего, кроме state, не трогает.
+     */
+    applyPipeChoice: function (kind, id) {
+        const rommer = /_r$/.test(id);
+        const base = rommer ? String(id).slice(0, -2) : String(id);
+        if (!this.state.pipeBrand) this.state.pipeBrand = {};
+        this.state.pipeBrand[kind] = rommer ? 'rommer' : 'stout';
+        if (kind === 'rad') {
+            this.state.pipeType = base;
+        } else if (kind === 'ufh') {
+            const p = this.UFH_PIPES.find(x => x.material === base);
+            if (p) {
+                this.state.ufhPipe = p.key;
+                this.state.ufhPipeMaterial = p.material;
+                this._ufhGeomCache = null;
+            }
+        } else if (kind === 'water') {
+            this.state.waterPipeMaterial = base;
+        }
+        // Прежние замены по артикулу на этих строках противоречили бы выбору.
+        Object.keys(this.state.swaps || {}).forEach(k => { if (this.pipeBrandKind(k) === kind) delete this.state.swaps[k]; });
+    },
     // То же, но вариант задаётся функцией: у транзита ТП выбор — это и типоразмер
     // в swaps, и флаг «отрезком», одним полем состояния его не описать.
     stateOptionTotals: function (values, apply) {
@@ -79259,7 +79319,10 @@ const app = {
             let forceAnalog = false;
             let forceStout = false;
 
-            let isCustomToggle = ['standard', 'basic', 'pro', 'std', 'comfort', 'economy', 'insulated', 'split', 'insulated_mp', 'split_mp', 'pex', 'metal_plastic', 'mat', 'xps', 'sirio', 'top', 'base', 'epc12auto', 'epc2', 'epc4', 'epc5', 'relay_krs5', 'scq', 'scn', 'straight', 'angled', 'proaqua', 'wavin', 'double', 'single', 'hidden', 'sensor', 'gbm', 'parts', 'gtube', 'shoe', 'shoe_np'].includes(manualSwapId);
+            let isCustomToggle = ['standard', 'basic', 'pro', 'std', 'comfort', 'economy', 'insulated', 'split', 'insulated_mp', 'split_mp', 'pex', 'metal_plastic', 'mat', 'xps', 'sirio', 'top', 'base', 'epc12auto', 'epc2', 'epc4', 'epc5', 'relay_krs5', 'scq', 'scn', 'straight', 'angled', 'proaqua', 'wavin', 'double', 'single', 'hidden', 'sensor', 'gbm', 'parts', 'gtube', 'shoe', 'shoe_np', 'insulated_r', 'split_r', 'split_mp_r', 'stable_16', 'stable_16_r', 'pex_r', 'metal_plastic_r', 'stable', 'stable_r'].includes(manualSwapId);
+            // Бренд труб, выбранный в таблице замены (см. pipeBrandOverride): тип трубы
+            // в state уже стоит, а бренд — это ровно «Аналог» для неё одной.
+            const _pipeBrandOv = (item.noMerge || (manualSwapId && !isCustomToggle)) ? null : this.pipeBrandOverride(lookupKey);
 
             if (manualSwapId && !isCustomToggle) {
                 let analog = item.rommer;
@@ -79360,6 +79423,9 @@ const app = {
                         }
                     }
                 }
+            } else if (_pipeBrandOv) {
+                if (_pipeBrandOv === 'rommer') forceAnalog = true;
+                else forceStout = true;
             } else if (useAnalog) {
                 let cheapest = this.getCheapestAlternative(item);
                 if (cheapest) {
@@ -79419,9 +79485,12 @@ const app = {
                     // идут труба и изоляционная трубка. Это две отдельные позиции, и в
                     // смете так и написано: иначе монтажник ждёт трубу в изоляции с завода.
                     tip = (tip || '') + `<span style="font-size:11px;line-height:1.5;"><br><b>Две позиции, а не одно изделие:</b> труба и теплоизоляция идут отдельно, трубку надевают на монтаже.</span>`;
-                    analog.forEach(sub => {
+                    analog.forEach((sub, _si) => {
                         let finalSub = { ...sub };
                         finalSub.brand = sub.brand || "ROMMER";
+                        // Труба набора несёт ключ исходной строки: по нему открывается таблица
+                        // замены трубы, иначе с ROMMER-набора нельзя было бы вернуться на STOUT.
+                        if (_si === 0 && activeItem.originalId) finalSub.originalId = activeItem.originalId;
                         itemsToAdd.push({ itm: finalSub, q: qty });
                     });
                 } else if (analog) {
@@ -85857,7 +85926,8 @@ const app = {
                         // а на объект приезжала бы бухта 200. Условие замены — как у мата
                         // ROMMER в тёплом полу: решает addToBill, здесь повторяем.
                         const _mpSecAn = (this.state.sectionAnalog || {})[currentSectionTitle];
-                        const _mpRommer = (_mpSecAn !== undefined) ? _mpSecAn : (this.state.brandMode === 'rommer');
+                        const _mpPb = (this.state.pipeBrand || {}).rad;
+                        const _mpRommer = _mpPb ? (_mpPb === 'rommer') : ((_mpSecAn !== undefined) ? _mpSecAn : (this.state.brandMode === 'rommer'));
                         let grayItem = asCoilPrice((neededPipe > 200 || _mpRommer) ? { ...catalog.metal_plastic_pipes[1] } : { ...catalog.metal_plastic_pipes[0] }); grayItem.originalId = grayItem.id + "_rad"; grayItem.alts = catalog.insulated_pipes_mp_red; grayItem.noCheapenAlts = true; addToBill(grayItem, Math.ceil(neededPipe / grayItem.len), this.getDesc('rad_pipe', neededPipe), pipeGrp);
                         let insLen = Math.ceil(neededPipe / 2); if (insLen % 2 !== 0) insLen++; addToBill(catalog.insulation[0], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы подачи (красная) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp); addToBill(catalog.insulation[1], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы обратки (синяя) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp);
                     } else if (this.state.pipeType === 'stable_16') {
@@ -86694,7 +86764,8 @@ const app = {
             // 200 лишних метров в смете. Условие замены то же, что у мата ROMMER ниже:
             // решение принимает addToBill, здесь его повторяем.
             const _upSecAn = (this.state.sectionAnalog || {})[currentSectionTitle];
-            const _upRommer = (_upSecAn !== undefined) ? _upSecAn : (this.state.brandMode === 'rommer');
+            const _upPb = (this.state.pipeBrand || {}).ufh;
+            const _upRommer = _upPb ? (_upPb === 'rommer') : ((_upSecAn !== undefined) ? _upSecAn : (this.state.brandMode === 'rommer'));
             const _upCoilIds = (_upRommer && _up.material === 'metal_plastic')
                 ? _up.coils.filter(id => id === 'SPM-0001-201620')
                 : _up.coils;
