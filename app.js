@@ -37884,6 +37884,7 @@ const app = {
      * содержимого и от того, показаны ли цены, — заранее её не знает никто.
      */
     SCHEME_BOX_SCALE: 0.7,
+    SCHEME_BOX_MAX_W: 400,
     syncSchemeBox: function () {
         const rows = document.querySelectorAll('#print-area .inv-table tr');
         let row = null;
@@ -37895,7 +37896,9 @@ const app = {
         if (w < 320) return;
         // На экране лист держим меньше расчётной ширины: три колонки — это
         // ориентир, а не размер, читают схему всё равно на весь экран.
-        w = w * this.SCHEME_BOX_SCALE;
+        // Потолок ширины: миниатюра нужна, чтобы окинуть лист взглядом, а не читать.
+        // Без него на широком экране рамка вырастала до 580 px и выталкивала смету.
+        w = Math.min(w * this.SCHEME_BOX_SCALE, this.SCHEME_BOX_MAX_W);
         const st = document.documentElement.style;
         st.setProperty('--scheme-box-w', Math.round(w) + 'px');
         st.setProperty('--scheme-box-h', Math.round(w / 1.414) + 'px');
@@ -40284,7 +40287,7 @@ const app = {
                 `<div class="ufh-plan-block" style="margin:6px 0 14px">` +
                 (views.length > 1 ? `<div style="font-weight:700;margin:0 0 6px">${fi + 1}-й этаж</div>` : '') +
                 `<div class="ufh-plan-row">` +
-                `<div class="automation-scheme" style="flex:1 1 340px;min-width:0" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${v.svg}` +
+                `<div class="automation-scheme" style="flex:none" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${v.svg}` +
                 `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button>` +
                 `<button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка контура или прибора при наведении — на плане и в таблице">${this._hydToggleLabel(false)}</button></div>` +
                 col + `</div></div>`);
