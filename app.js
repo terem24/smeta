@@ -40483,7 +40483,7 @@ const app = {
                     if (g.rows.length === 1) { tr += radTr(g.rows[0], 'ufh-solo'); return; }
                     const gW = g.rows.reduce((s, r) => s + (r.w || 0), 0);
                     const gL = g.rows.reduce((s, r) => s + (r.L || 0), 0);
-                    tr += `<tr class="ufh-grp" onclick="app.ufhToggleGrp(this)" title="Раскрыть приборы помещения">` +
+                    tr += `<tr class="ufh-grp" data-pl-grp="${g.rows.map(r => 'R' + r.no).join(',')}" onclick="app.ufhToggleGrp(this)" title="Раскрыть приборы помещения">` +
                         `<td style="text-align:center"><span class="ufh-arr">▸</span> ${g.rows.length}</td><td><b>${esc(g.name)}</b></td>` +
                         `<td style="text-align:right">${n1(gW)} м</td><td style="text-align:right">${n1(gL)} м</td></tr>`;
                     g.rows.forEach(r => { tr += radTr(r, 'ufh-sub'); });
