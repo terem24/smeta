@@ -49760,13 +49760,22 @@ const app = {
         if (!h || !h.parts || !h.parts.length) return [];
         const out = [];
         const n = parseInt(h.branches, 10) || 1;
-        if (!h.hasGroup) out.push({ label: 'Насосная группа радиаторов на коллекторе', force: { radGroup: true } });
-        else if (n < 4) out.push({ label: 'Вторая ветка: ' + n + ' → ' + (n + 1) + ' (расход на ветку меньше)', force: { radBranches: n + 1 } });
+        // Схема «Без стрелки» группу и ветки на радиаторы не ставит: кольцо идёт от насоса котла. Поэтому
+        // варианты там — это переход на «Со стрелкой» вместе с исправлением; запас для них считается пробным
+        // прогоном уже в той схеме (см. hydroFixPreview), а не обещается заранее.
+        const direct = this.boilerSchemeEff() === 'direct';
+        if (direct) {
+            if (!h.hasGroup) {
+                out.push({ label: 'Со стрелкой: насосная группа радиаторов на коллекторе', btn: 'Перейти на «Со стрелкой» и добавить группу', force: { radGroup: true }, scheme: 'hydro' });
+                out.push({ label: 'Со стрелкой: насосная группа и вторая ветка радиаторов', btn: 'Перейти на «Со стрелкой» с группой и веткой', force: { radGroup: true, radBranches: 2 }, scheme: 'hydro' });
+            }
+        } else if (!h.hasGroup) out.push({ label: 'Насосная группа радиаторов на коллекторе', btn: 'Добавить группу', force: { radGroup: true } });
+        else if (n < 4) out.push({ label: 'Вторая ветка радиаторов: ' + n + ' → ' + (n + 1) + ' (расход на ветку меньше)', btn: 'Добавить ветку', force: { radBranches: n + 1 } });
         const tr = h.parts.find(p => p.tag === 'trunk');
         const order = [16, 20, 25, 26, 32];
         const i = tr && tr.d ? order.indexOf(tr.d) : -1;
         if (i >= 0 && i < order.length - 1) {
-            out.push({ label: 'Трасса Ø' + tr.d + ' → Ø' + order[i + 1] + ' (меньше скорость и потери)', ov: { d: order[i + 1], len: tr.len || null } });
+            out.push({ label: 'Подводка к коллектору Ø' + tr.d + ' → Ø' + order[i + 1] + ' (меньше скорость и потери)', btn: 'Сменить трубу', ov: { d: order[i + 1], len: tr.len || null } });
         }
         return out;
     },
@@ -49781,10 +49790,13 @@ const app = {
         const before = this.hydroRadRatio();
         const baseForce = Object.assign({}, this._hcForce);
         const baseOv = this.state.radTrunkOv || null;
+        const baseScheme = this.state.boilerScheme;
         const items = [];
         this._cheapComparing = true;
         try {
             cands.forEach(c => {
+                // Вариант со сменой схемы считается в этой схеме, иначе прогон ничего не покажет
+                this.state.boilerScheme = c.scheme || baseScheme;
                 this._hcForce = Object.assign({}, baseForce, c.force || {});
                 this.state.radTrunkOv = c.ov || baseOv;
                 this.render(true);
@@ -49795,6 +49807,7 @@ const app = {
         } finally {
             this._hcForce = baseForce;
             this.state.radTrunkOv = baseOv;
+            this.state.boilerScheme = baseScheme;
             this._cheapComparing = false;
         }
         // Вариант, который запас не увеличивает (группа на котле с хорошим насосом, например), не предлагаем
@@ -49811,6 +49824,12 @@ const app = {
         const it = pv && pv.items[i];
         const sig = this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state);
         if (!it || pv.sig !== sig) { this._hcPreview = null; this.render(); return; }
+        if (it.scheme) {
+            // Сначала схема (она может не открыться без входа в PRO), и только потом — исправление
+            this._hcPreview = null;
+            this.setBoilerScheme(it.scheme, event);
+            if (this.state.boilerScheme !== it.scheme) return;
+        }
         this.state.hydroUserFix = Object.assign({}, this.state.hydroUserFix || {}, it.force || {});
         if (it.ov) this.state.radTrunkOv = it.ov;
         this._hcPreview = null;
@@ -49857,14 +49876,16 @@ const app = {
         const pct = k => (k >= 1 ? '+' : '') + Math.round((k - 1) * 100) + ' %';
         const norm = this.RAD_PUMP_RESERVE;
         const items = this._hcPreview.items;
-        let html = '<div class="hc-preview"><div class="hc-preview-t">Что изменится</div>';
-        if (!items.length) html += '<div class="hc-advice">Ни группа, ни ветка, ни диаметр трассы запас не увеличивают: держит луч до прибора или клапан. Проверьте мощность приборов и насос.</div>';
+        let html = '<div class="hc-preview"><div class="hc-preview-t">Что добавить, чтобы хватило напора</div>';
+        if (!items.length) html += '<div class="hc-advice">Ни один вариант не даёт запаса: кольцо держит луч до прибора или клапан. Проверьте мощность приборов и насос.</div>';
+        else if (!items.some(it => it.after >= norm)) html += '<div class="hc-advice">Ни один вариант не доводит запас до нормы ' + pct(norm) + ': дальше упираются луч до прибора и клапан. Поможет меньшая мощность на прибор или второй прибор в помещении.</div>';
         items.forEach((it, i) => {
             const ok = it.after >= norm;
             html += '<div class="hc-pv-item"><div><b>' + esc(it.label) + '</b></div>'
                 + '<div>Запас ' + pct(it.before) + ' → <b>' + pct(it.after) + '</b>'
                 + (ok ? ' — норма ' + pct(norm) + ' достигнута' : ' — норма ' + pct(norm) + ' ещё не достигнута') + '</div>'
-                + '<button type="button" class="hc-btn" onclick="app.hydroApplyFix(' + i + ', event)">Применить</button></div>';
+                + (it.scheme ? '<div class="hc-note">Схема котельной станет «Со стрелкой».</div>' : '')
+                + '<button type="button" class="hc-btn" onclick="app.hydroApplyFix(' + i + ', event)">' + esc(it.btn || 'Добавить') + '</button></div>';
         });
         html += '<button type="button" class="hc-btn hc-btn-ghost" onclick="app.hydroClosePreview(event)">Закрыть</button></div>';
         return html;
@@ -49883,18 +49904,21 @@ const app = {
         if (trunk && !forPrint) {
             const dSel = trunk.d || 25;
             const opts = [16, 20, 25, 26, 32].map(d => '<option value="' + d + '"' + (d === dSel ? ' selected' : '') + '>Ø' + d + '</option>').join('');
-            html += '<div class="hc-trunk-form"><span>Трасса от котельной (подача + обратка):</span>'
-                // Применяется сразу: при выборе диаметра, уходе из поля длины или Enter (пересчёт занимает десятки мс)
+            // Ручная трасса — за свёрнутым блоком: это запасной путь, а не первое, что нужно монтажнику.
+            // Применяется сразу при изменении (как в основной ветке): пересчёт занимает десятки мс
+            html += '<details class="hc-manual"><summary>Своя подводка к котельной</summary>'
+                + '<div class="hc-trunk-form"><span>Диаметр и длина (подача + обратка):</span>'
                 + '<select id="hc_trunk_d" onchange="app.setRadTrunkOv(event)">' + opts + '</select>'
-                + '<input id="hc_trunk_len" type="number" min="1" step="1" value="' + Math.round(trunk.len || 0) + '" onchange="app.setRadTrunkOv(event)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}"> м</div>';
+                + '<input id="hc_trunk_len" type="number" min="1" step="1" value="' + Math.round(trunk.len || 0) + '" onchange="app.setRadTrunkOv(event)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}"> м</div></details>';
         }
         const u = this.state.hydroUserFix || {};
         const manual = [];
-        if (this.state.radTrunkOv) manual.push('трасса Ø' + this.state.radTrunkOv.d + (this.state.radTrunkOv.len ? ', ' + this.state.radTrunkOv.len + ' м' : ''));
+        if (this.state.radTrunkOv) manual.push('подводка Ø' + this.state.radTrunkOv.d + (this.state.radTrunkOv.len ? ', ' + this.state.radTrunkOv.len + ' м' : ''));
         if (u.radGroup) manual.push('насосная группа');
         if (u.radBranches) manual.push(u.radBranches + ' ветки');
         if (manual.length && !forPrint) {
-            html += '<div class="hc-advice">Ручная правка: ' + esc(manual.join(', ')) + '. <button type="button" class="hc-btn hc-btn-ghost" onclick="app.resetRadManual(event)">Снять</button></div>';
+            // Одна кнопка снимает все ручные правки разом; название говорит, что будет
+            html += '<div class="hc-advice">Вручную: ' + esc(manual.join(', ')) + '. <button type="button" class="hc-btn hc-btn-ghost" onclick="app.resetRadManual(event)">Вернуть автоподбор</button></div>';
         }
         return html;
     },
@@ -50165,7 +50189,7 @@ const app = {
                     if (!forPrint && parseInt(s.ufhLoopCut, 10) > 0)
                         html += '<div class="hc-advice">Предел длины петли задан вручную: ' + parseInt(s.ufhLoopCut, 10) + ' м. <button type="button" class="hc-btn hc-btn-ghost" onclick="app.setUfhLoopCut(0, event)">Снять</button></div>';
                 } else if (r.advice) html += '<div class="hc-advice">' + esc(r.advice)
-                    + ((r.id === 'rad' && !forPrint && r.verdict !== 'ok') ? ' <button type="button" class="hc-btn" onclick="app.hydroFixPreview(event)">Что изменится</button>' : '') + '</div>';
+                    + ((r.id === 'rad' && !forPrint && r.verdict !== 'ok') ? ' <button type="button" class="hc-btn" onclick="app.hydroFixPreview(event)">Что добавить</button>' : '') + '</div>';
                 if (r.id === 'rad') html += this.hydroPartsHtml(r, !!forPrint);
                 r.flags.forEach(fl => { html += '<div class="hc-flag">' + esc(fl) + '</div>'; });
             });
