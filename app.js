@@ -16103,6 +16103,10 @@ const app = {
             { id: 'brand', label: 'Бренд оборудования', opts: [{ v: 'stout', t: 'STOUT' }, { v: 'rommer', t: 'ROMMER', pro: 'rommer' }] }
         ] },
         { g: 'Котельная', items: [
+            { id: 'gasBoiler', label: 'Газовый котёл', opts: [{ v: 'trad', t: 'Традиционный' }, { v: 'cond', t: 'Конденсационный' }],
+                note: 'Из выбранного типа берётся самый выгодный вариант вместе с обвязкой. Если в нужной мощности такого котла нет, подбор идёт по всему списку.' },
+            { id: 'boiler', label: 'Бойлер', opts: [{ v: 'enamel', t: 'Эмаль' }, { v: 'stainless', t: 'Нержавейка' }],
+                note: 'Нержавеющие бойлеры в каталоге — напольные DUPLEX с комбинированным нагревом.' },
             { id: 'boilerPipe', label: 'Обвязка котельной', opts: [{ v: 'ss', t: 'Нержавейка' }, { v: 'ppr', t: 'ППР', pro: 'terem' }] },
             { id: 'pump', label: 'Насосы', opts: [{ v: 'speed3', t: '3-скоростные' }, { v: 'inverter', t: 'Частотные' }],
                 note: '3-скоростные: STOUT 25/60 и ROMMER PROFI. Частотные (с дисплеем): STOUT Mini, Mini Pro и ROMMER EVO. Из группы берётся самый дешёвый.' }
@@ -16179,6 +16183,12 @@ const app = {
             s.brandMode = p.brand;
             s.sectionAnalog = {}; s.pipeBrand = {}; s.boilerPipeSystem = null;
             if (p.brand === 'rommer') s.pprSystemBrand = 'proaqua';
+        }
+        if (has('gasBoiler')) s.gasBoilerPref = p.gasBoiler;
+        if (has('boiler')) {
+            s.tankVol = null;
+            if (p.boiler === 'stainless') { s.tankMount = 'floor'; s.tankHeat = 'comb'; s.boilerType = 'stainless'; }
+            else s.boilerType = (s.tankHeat === 'comb') ? 'standard' : 'optibase';
         }
         if (has('boilerPipe')) s.boilerPipeSystem = p.boilerPipe === 'ppr' ? 'ppr' : null;
         if (has('pump')) s.pumpType = p.pump === 'inverter' ? 'mini' : 'default';
@@ -16440,7 +16450,7 @@ const app = {
         home: [{ id: 'home', label: 'Дела' }, { id: 'summary', label: 'Показатели' }, { id: 'leads', label: 'Заявки' }],
         objects: [{ id: 'objects', label: 'Сметы' }, { id: 'oprosniki', label: 'Опросные листы' }, { id: 'orders', label: 'Документы' }],
         requisites: [{ id: 'requisites', label: 'Мои данные' }, { id: 'company', label: 'Реквизиты компании' }, { id: 'manager', label: 'Мой менеджер' }],
-        workprices: [{ id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }, { id: 'prefs', label: 'Любимые материалы' }],
+        workprices: [{ id: 'prefs', label: 'Любимые материалы' }, { id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }],
         // Разметка разделов — index.html (profile_tab_theme / _kp / _notify / _login),
         // «Тариф» — прежний profile_tab_subscription (renderSubscriptionTab)
         settings: [{ id: 'theme', label: 'Оформление' }, { id: 'kp', label: 'КП и счета' }, { id: 'notify', label: 'Уведомления' }, { id: 'subscription', label: 'Тариф' }, { id: 'login', label: 'Вход и безопасность' }]
@@ -16798,6 +16808,9 @@ const app = {
             this.showAdminModal();
             return;
         }
+        // «Прайс» открывается на «Любимых материалах» — это первая вкладка пункта; у продавца
+        // без монтажа в пункте остаётся «Своё оборудование», его не трогаем
+        if (section === 'workprices' && this.canUseWorks()) section = 'prefs';
         // Панель показывается только авторизованным (body.guest-mode в CSS), но клик
         // может прийти и от гостя — например, если он вышел из аккаунта, не перезагрузив
         // страницу. Тогда предлагаем вход, а не молча ничего не делаем: сам
@@ -60809,12 +60822,18 @@ const app = {
     // needCirc: 2 — двухконтурный (ГВС проточная), 1 — одноконтурный (ГВС бойлером).
     pickGasBoiler: function (targetPower, needCirc, floorPower) {
         const floor = floorPower > 0 ? Math.min(floorPower, targetPower) : targetPower;
-        const haier = catalog.boilers_gas.filter(x => x.circuits === needCirc).sort((a, b) => a.power - b.power);
+        // Предпочтение «Любимые материалы → Газовый котёл»: конденсационный — Haier (обычный) пропускаем
+        const gp = this.state.gasBoilerPref;
+        const haier = (gp === 'cond') ? [] : catalog.boilers_gas.filter(x => x.circuits === needCirc).sort((a, b) => a.power - b.power);
         const one = haier.find(x => x.power >= floor);
         if (one) return { boiler: one, qty: 1 };
         // Открытая камера сгорания (atmo) в подбор не идёт: обвязка калькулятора
         // считает коаксиальный дымоход 60/100, а такому котлу нужна дымовая труба.
-        const pool = this.gasBoilerPool().filter(x => x && x.power > 0 && x.circuits === needCirc && !x.atmo);
+        let pool = this.gasBoilerPool().filter(x => x && x.power > 0 && x.circuits === needCirc && !x.atmo);
+        if (gp === 'cond' || gp === 'trad') {
+            const byType = pool.filter(x => (gp === 'cond') === !!x.cond);
+            if (byType.length) pool = byType;
+        }
         if (!pool.length) return null;
         // При равной цене выигрывает тот, что в наличии.
         const byPrice = (a, b) => (a.price - b.price) +
