@@ -16103,6 +16103,10 @@ const app = {
             { id: 'brand', label: 'Бренд оборудования', opts: [{ v: 'stout', t: 'STOUT' }, { v: 'rommer', t: 'ROMMER', pro: 'rommer' }] }
         ] },
         { g: 'Котельная', items: [
+            { id: 'gasBoiler', label: 'Газовый котёл', opts: [{ v: 'trad', t: 'Традиционный' }, { v: 'cond', t: 'Конденсационный' }],
+                note: 'Из выбранного типа берётся самый выгодный вариант вместе с обвязкой. Если в нужной мощности такого котла нет, подбор идёт по всему списку.' },
+            { id: 'boiler', label: 'Бойлер', opts: [{ v: 'enamel', t: 'Эмаль' }, { v: 'stainless', t: 'Нержавейка' }],
+                note: 'Нержавеющие бойлеры в каталоге — напольные DUPLEX с комбинированным нагревом.' },
             { id: 'boilerPipe', label: 'Обвязка котельной', opts: [{ v: 'ss', t: 'Нержавейка' }, { v: 'ppr', t: 'ППР', pro: 'terem' }] },
             { id: 'pump', label: 'Насосы', opts: [{ v: 'speed3', t: '3-скоростные' }, { v: 'inverter', t: 'Частотные' }],
                 note: '3-скоростные: STOUT 25/60 и ROMMER PROFI. Частотные (с дисплеем): STOUT Mini, Mini Pro и ROMMER EVO. Из группы берётся самый дешёвый.' }
@@ -16179,6 +16183,12 @@ const app = {
             s.brandMode = p.brand;
             s.sectionAnalog = {}; s.pipeBrand = {}; s.boilerPipeSystem = null;
             if (p.brand === 'rommer') s.pprSystemBrand = 'proaqua';
+        }
+        if (has('gasBoiler')) s.gasBoilerPref = p.gasBoiler;
+        if (has('boiler')) {
+            s.tankVol = null;
+            if (p.boiler === 'stainless') { s.tankMount = 'floor'; s.tankHeat = 'comb'; s.boilerType = 'stainless'; }
+            else s.boilerType = (s.tankHeat === 'comb') ? 'standard' : 'optibase';
         }
         if (has('boilerPipe')) s.boilerPipeSystem = p.boilerPipe === 'ppr' ? 'ppr' : null;
         if (has('pump')) s.pumpType = p.pump === 'inverter' ? 'mini' : 'default';
@@ -16440,7 +16450,7 @@ const app = {
         home: [{ id: 'home', label: 'Дела' }, { id: 'summary', label: 'Показатели' }, { id: 'leads', label: 'Заявки' }],
         objects: [{ id: 'objects', label: 'Сметы' }, { id: 'oprosniki', label: 'Опросные листы' }, { id: 'orders', label: 'Документы' }],
         requisites: [{ id: 'requisites', label: 'Мои данные' }, { id: 'company', label: 'Реквизиты компании' }, { id: 'manager', label: 'Мой менеджер' }],
-        workprices: [{ id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }, { id: 'prefs', label: 'Любимые материалы' }],
+        workprices: [{ id: 'prefs', label: 'Любимые материалы' }, { id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }],
         // Разметка разделов — index.html (profile_tab_theme / _kp / _notify / _login),
         // «Тариф» — прежний profile_tab_subscription (renderSubscriptionTab)
         settings: [{ id: 'theme', label: 'Оформление' }, { id: 'kp', label: 'КП и счета' }, { id: 'notify', label: 'Уведомления' }, { id: 'subscription', label: 'Тариф' }, { id: 'login', label: 'Вход и безопасность' }]
@@ -16798,6 +16808,9 @@ const app = {
             this.showAdminModal();
             return;
         }
+        // «Прайс» открывается на «Любимых материалах» — это первая вкладка пункта; у продавца
+        // без монтажа в пункте остаётся «Своё оборудование», его не трогаем
+        if (section === 'workprices' && this.canUseWorks()) section = 'prefs';
         // Панель показывается только авторизованным (body.guest-mode в CSS), но клик
         // может прийти и от гостя — например, если он вышел из аккаунта, не перезагрузив
         // страницу. Тогда предлагаем вход, а не молча ничего не делаем: сам
@@ -60854,12 +60867,18 @@ const app = {
     // needCirc: 2 — двухконтурный (ГВС проточная), 1 — одноконтурный (ГВС бойлером).
     pickGasBoiler: function (targetPower, needCirc, floorPower) {
         const floor = floorPower > 0 ? Math.min(floorPower, targetPower) : targetPower;
-        const haier = catalog.boilers_gas.filter(x => x.circuits === needCirc).sort((a, b) => a.power - b.power);
+        // Предпочтение «Любимые материалы → Газовый котёл»: конденсационный — Haier (обычный) пропускаем
+        const gp = this.state.gasBoilerPref;
+        const haier = (gp === 'cond') ? [] : catalog.boilers_gas.filter(x => x.circuits === needCirc).sort((a, b) => a.power - b.power);
         const one = haier.find(x => x.power >= floor);
         if (one) return { boiler: one, qty: 1 };
         // Открытая камера сгорания (atmo) в подбор не идёт: обвязка калькулятора
         // считает коаксиальный дымоход 60/100, а такому котлу нужна дымовая труба.
-        const pool = this.gasBoilerPool().filter(x => x && x.power > 0 && x.circuits === needCirc && !x.atmo);
+        let pool = this.gasBoilerPool().filter(x => x && x.power > 0 && x.circuits === needCirc && !x.atmo);
+        if (gp === 'cond' || gp === 'trad') {
+            const byType = pool.filter(x => (gp === 'cond') === !!x.cond);
+            if (byType.length) pool = byType;
+        }
         if (!pool.length) return null;
         // При равной цене выигрывает тот, что в наличии.
         const byPrice = (a, b) => (a.price - b.price) +
@@ -61045,7 +61064,7 @@ const app = {
             alts = _pumpPool;
             if (isFirstOpen || !this.state.pumpSwap) {
                 const _cs = this.circPumpSpec(item);
-                this.state.pumpSwap = { eff: 'all', q: 'all', head: _cs.head != null ? String(_cs.head) : 'all', thr: _cs.thread || 'all', brand: 'all' };
+                this.state.pumpSwap = { eff: 'all', q: 'all', len: _cs.len != null ? String(_cs.len) : 'all', head: _cs.head != null ? String(_cs.head) : 'all', thr: _cs.thread || 'all', brand: 'all' };
             }
         }
         let _allVolsAlts = [];
@@ -63215,9 +63234,10 @@ const app = {
 
         // Циркуляционные насосы: фильтры по типу (энергоэффективный / 3-скоростной), расходу, напору,
         // подключению и бренду. Выбранный насос остаётся в списке при любом фильтре.
-        let _pumpF = null;
+        let _pumpF = null, _pumpCur = null;
         if (_isCircPump) {
             _pumpF = this.state.pumpSwap || {};
+            _pumpCur = this.circPumpSpec(item);
             const _pf = (k) => _pumpF[k] || 'all';
             const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             const _all = [];
@@ -63238,6 +63258,7 @@ const app = {
                 _row('Тип', 'eff', [['all', 'Все'], ['ec', 'Энергоэффективный'], ['3sp', '3-скоростной']]) +
                 _row('Расход', 'q', [['all', 'Все'], ..._uniq(s => s.q).sort((a, b) => a - b).map(q => [q, 'до ' + _fmtQ(q)])]) +
                 _row('Напор', 'head', [['all', 'Все'], ..._uniq(s => s.head).sort((a, b) => a - b).map(h => [h, h + ' м'])]) +
+                _row('Монтажная длина', 'len', [['all', 'Все'], ..._uniq(s => s.len).sort((a, b) => a - b).map(l => [l, l + ' мм'])]) +
                 _row('Подключение', 'thr', [['all', 'Все'], ..._uniq(s => s.thread).map(t => [t, 'G ' + t + '"'])]) +
                 _row('Бренд', 'brand', [['all', 'Все'], ['STOUT', 'STOUT'], ['ROMMER', 'ROMMER']]) +
                 `</div>`;
@@ -63694,7 +63715,7 @@ const app = {
                     });
                 }
                 if (_pumpF) {
-                    candidates.forEach(d => { d.hint = this.circPumpHint(d); });
+                    candidates.forEach(d => { d.hint = this.circPumpHint(d, _pumpCur); d.pumpBlock = !!this.circPumpVerdict(d, _pumpCur).block; });
                     candidates = candidates.filter(d => {
                         if (d.id === item.id) return true; // выбранный насос остаётся в списке
                         const s = this.circPumpSpec(d);
@@ -63702,6 +63723,7 @@ const app = {
                         return (f('eff') === 'all' || s.eff === f('eff'))
                             && (f('q') === 'all' || String(s.q) === f('q'))
                             && (f('head') === 'all' || String(s.head) === f('head'))
+                            && (f('len') === 'all' || String(s.len) === f('len'))
                             && (f('thr') === 'all' || s.thread === f('thr'))
                             && (f('brand') === 'all' || String(d.brand || 'STOUT').toUpperCase() === f('brand'));
                     });
@@ -63820,7 +63842,7 @@ const app = {
                         + `<td class="col-two col-two-s"><span class="two-lbl">Узел целиком</span><span class="two-val">${_sv > 0 ? this.formatPriceHtml(_sv, true) : '—'}</span>${_pc(_sv, _sysBase)}</td>`;
                 }
                 html += `
-                    <tr class="${activeClass}${_hyCls}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${displayAlt.id}')">
+                    <tr class="${activeClass}${_hyCls}" style="${displayAlt.pumpBlock ? 'opacity:.55; cursor:not-allowed;' : 'cursor: pointer;'} ${activeStyle}" ${displayAlt.pumpBlock ? '' : `onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${displayAlt.id}')"`}>
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img" style="text-align: center;">${img}</td>
                         <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(displayAlt.brand || 'STOUT')}${_nameDisplay}${_rowCoilStr}${badgeHtml}${_hyRowHtml}${_hintHtml}</td>
@@ -63908,8 +63930,14 @@ const app = {
         const dn = m ? parseInt(m[1], 10) : null;
         const q = m ? ((d.id === 'RCP-0030-2560180') ? 3.6 : (this.CIRC_PUMP_Q[m[0]] != null ? this.CIRC_PUMP_Q[m[0]] : null)) : null;
         const ec = d && (d.type === 'mini' || d.type === 'pro' || /частотн|EVO|Mini/i.test(name));
+        // Посадочное место: у группы DN25 — насос 180 мм, у узла подмеса — 25/60-130, у группы DN20 — 15/60-130.
+        // Другой типоразмер физически не встанет (см. комментарий в ufhBalance про 25/80).
+        const len = m ? parseInt(m[3], 10) : null;
         return {
             dn,
+            len,
+            seat: !m ? null : (dn === 15 ? 'dn20' : (len === 130 ? 'mix' : 'dn25')),
+            curveKey: m ? m[0] : null,
             head: m ? parseInt(m[2], 10) / 10 : null,
             q,
             thread: dn === 25 ? '1 1/2' : (dn === 15 ? '1' : null),
@@ -63917,9 +63945,57 @@ const app = {
             maxW: d && this.CIRC_PUMP_W[d.id] != null ? this.CIRC_PUMP_W[d.id] : null
         };
     },
-    circPumpHint: function (d) {
+    // Паспортная кривая насоса по типоразмеру (максимальная скорость; у STOUT и ROMMER берётся более слабая).
+    circPumpCurve: function (key) {
+        const U = this.UFH_PUMPS || {};
+        return { '25/60-180': U.dn25, '25/80-180': U.dn25_80, '25/60-130': U.mix, '15/60-130': U.dn20 }[key] || null;
+    },
+    // Режимы работы, которые в смете сейчас ложатся на насос этого посадочного места: { role, flow м³/ч, head м }.
+    circPumpDuty: function (seat) {
+        const out = [];
+        const k = this.coolantPumpK ? this.coolantPumpK() : { flow: 1 };
+        const b = this._ufhBal;
+        if (b && b.worst) {
+            const bs = b.type === 'std' ? 'mix' : (/^dn20/.test(b.type) ? 'dn20' : 'dn25');
+            if (bs === seat) out.push({ role: 'тёплый пол', flow: (b.worst.nodeFlow || b.worst.flow) * k.flow, head: b.worst.need });
+        }
+        const h = this.radHydro;
+        if (h && h.hasGroup && h.head > 0 && (this._radGroupDn === 20 ? 'dn20' : 'dn25') === seat) {
+            out.push({ role: 'радиаторы', flow: h.flowBranch * ((h.coolantK && h.coolantK.flow) || 1), head: h.head });
+        }
+        return out;
+    },
+    // Подходит ли насос d вместо текущего cur: { block } — не встанет (строку нельзя выбрать),
+    // { bad } — не тянет контур, { ok } — запас по напору. Пустой объект — проверять нечем.
+    circPumpVerdict: function (d, cur) {
+        const s = this.circPumpSpec(d);
+        const n1 = v => v.toFixed(1).replace('.', ',');
+        if (cur && cur.seat && s.seat && s.seat !== cur.seat) {
+            const why = s.dn !== cur.dn
+                ? `резьба G ${s.thread}" вместо G ${cur.thread}"`
+                : `монтажная длина ${s.len} мм вместо ${cur.len} мм`;
+            return { block: `не встанет в узел: ${why}` };
+        }
+        const curve = this.circPumpCurve(s.curveKey);
+        const duty = s.seat ? this.circPumpDuty(s.seat) : [];
+        if (!curve || !duty.length) return {};
+        let worst = null;
+        duty.forEach(t => {
+            const have = this.pumpHeadAt(curve, t.flow);
+            const k = t.head / Math.max(have, 0.01);
+            if (!worst || k > worst.k) worst = { k, have, t };
+        });
+        const txt = `${worst.t.role}: нужно ${n1(worst.t.head)} м при ${n1(worst.t.flow)} м³/ч, насос даёт ${n1(worst.have)} м`;
+        return worst.k > 1 ? { bad: `не тянет контур — ${txt}` }
+            : { ok: `тянет контур — ${txt} (запас ${Math.round((1 / worst.k - 1) * 100)} %)` };
+    },
+    circPumpHint: function (d, cur) {
         const s = this.circPumpSpec(d);
         const n = v => String(v).replace('.', ',');
+        const v = this.circPumpVerdict(d, cur);
+        const verdict = v.block ? `<div style="margin-top:2px;font-weight:700;color:#b91c1c;">✕ ${v.block}</div>`
+            : v.bad ? `<div style="margin-top:2px;font-weight:700;color:#b91c1c;">✕ ${v.bad}</div>`
+            : v.ok ? `<div style="margin-top:2px;font-weight:600;color:#047857;">✓ ${v.ok}</div>` : '';
         const parts = [
             s.eff === 'ec' ? 'энергоэффективный (частотное регулирование)' : '3-скоростной',
             s.maxW != null ? `<b>макс. ${s.maxW} Вт</b>` : 'макс. потребление: нет данных',
@@ -63927,7 +64003,7 @@ const app = {
             s.head != null ? `напор ${n(s.head)} м` : '',
             s.thread ? `подключение G ${s.thread}"` : ''
         ].filter(Boolean);
-        return parts.join(' · ');
+        return parts.join(' · ') + verdict;
     },
     setPumpSwapFilter: function (key, val) {
         this.state.pumpSwap = Object.assign({}, this.state.pumpSwap, { [key]: val });
@@ -86334,6 +86410,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // (та же оговорка, что и в фильтре типоразмера в таблице замены).
             const _actDnMatch = /DN\s*(\d+)/i.exec(radGrpActual.name || '');
             const _actDn = _actDnMatch ? parseInt(_actDnMatch[1], 10) : (dn25 ? 25 : 20);
+            this._radGroupDn = _actDn;   // окно замены насоса сверяет по нему посадочное место и гидравлику
 
             // Цена варианта «загрузка бойлера насосной группой» для таблицы замены: узел
             // плюс насос. Считаем здесь, потому что DN20/DN25 известен только тут.
