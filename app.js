@@ -40952,7 +40952,20 @@ const app = {
     radSourceMode: function () {
         if (this.state.radSource === 'plan' || this.state.radSource === 'loss') return this.state.radSource;
         const fl = (this.currentPlans() || {}).floors || [];
-        return fl.some(f => f && (f.rads || []).length) ? 'plan' : 'loss';
+        return this.planHasRads() ? 'plan' : 'loss';
+    },
+
+    // На плане есть хоть один отмеченный радиатор — только тогда выбор «как на плане» что-то значит
+    planHasRads: function () {
+        const fl = (this.currentPlans() || {}).floors || [];
+        return fl.some(f => f && (f.rads || []).length);
+    },
+
+    setRadSource: function (mode) {
+        if (mode !== 'plan' && mode !== 'loss') return;
+        this.state.radSource = mode;
+        this.saveState();
+        this.render();
     },
 
     /**
@@ -41514,6 +41527,7 @@ const app = {
                     `<div class="ufh-plan-row">` + planBox(v.svgRad) + mkCol(radHtml, false) + `</div>` : '') +
                 `</div>`);
         });
+        if (!parts.length) return '';   // нет ни одного этажа с планом — ни плашки, ни заголовка
         parts.unshift(`<style>
 .ufh-plan-row{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
 .ufh-tbl-col{flex:1 1 420px;min-width:0;overflow-x:auto}
@@ -41555,7 +41569,8 @@ const app = {
         const planMode = this.radSourceMode() === 'plan';
         const segBtn = (on, mode, label) => `<button type="button" class="ufh-tb-full" onclick="app.setRadSource('${mode}')" ` +
             `style="${on ? 'background:var(--primary,#2563eb);color:#fff;border-color:transparent;font-weight:600;' : ''}">${label}</button>`;
-        const radSwitch = `<div class="ufh-tb" style="margin:0 0 8px"><span style="color:var(--text-sec)">Приборы в смете:</span>` +
+        // Нет отметок радиаторов на плане — выбирать не из чего, переключатель скрыт
+        const radSwitch = !this.planHasRads() ? '' : `<div class="ufh-tb" style="margin:0 0 8px"><span style="color:var(--text-sec)">Приборы в смете:</span>` +
             `<span style="display:flex;gap:6px;flex-wrap:wrap">` +
             segBtn(planMode, 'plan', 'Как на плане — только отмеченные') +
             segBtn(!planMode, 'loss', 'По теплопотерям — в каждую комнату') + `</span></div>`;
@@ -62777,6 +62792,54 @@ const app = {
         const item = this._findSwapItem(originalId);
         if (item) this._openRadSwapModal(item);
     },
+    // Во сколько обойдётся смета при каждом из принимаемых графиков: тихие прогоны (render(true))
+    // на копии состояния, как computeDhwSwitch. Возвращает { regime: { total, d } }, d — разница
+    // с режимом, который стоит в смете сейчас. Результат кэшируется до смены состояния.
+    swapDtImpact: function () {
+        const st = this.state;
+        const cur = st.radRegime || 'r8060';
+        let sig;
+        try {
+            const probe = Object.assign({}, st);
+            delete probe.swapDtKey; delete probe.swapGroupReplace; delete probe.swapAllReplace;
+            sig = cur + '|' + JSON.stringify(probe);
+        } catch (e) { return null; }
+        if (this._swapDtImpactCache && this._swapDtImpactCache.sig === sig) return this._swapDtImpactCache.res;
+        const snapshot = JSON.parse(JSON.stringify(st));
+        const restore = () => {
+            Object.keys(st).forEach(k => { if (!(k in snapshot)) delete st[k]; });
+            Object.assign(st, JSON.parse(JSON.stringify(snapshot)));
+        };
+        const run = () => {
+            this._boilerRangeCache = null;
+            this._renderSimFull();
+            return Math.round((this.calcFinalTotal || 0) + (this.lastWorksSum || 0));
+        };
+        const totals = {};
+        let res = null;
+        try {
+            this.RAD_DT_GRAPHS.forEach(g => {
+                if (!g.regime || g.regime === cur) return;
+                st.radRegime = g.regime;
+                totals[g.regime] = run();
+                restore();
+            });
+        } catch (e) {
+            console.warn('[графики замены] прогон не посчитался:', e);
+            totals.__fail = true;
+        } finally {
+            restore();
+            // последний прогон — на исходном состоянии: вернуть экранные списки и итоги
+            try { totals[cur] = run(); } catch (e) { totals.__fail = true; }
+            this._boilerRangeCache = null;
+        }
+        if (!totals.__fail) {
+            res = {};
+            Object.keys(totals).forEach(k => { res[k] = { total: totals[k], d: totals[k] - totals[cur] }; });
+        }
+        this._swapDtImpactCache = { sig, res };
+        return res;
+    },
     // Множитель пересчёта «мощность при ΔT 50 → мощность при выбранном графике»
     _swapDtK: function () {
         return Math.pow(this._swapDtGraph().dt / 50, 1.3);
@@ -62933,6 +62996,10 @@ const app = {
             .rsw-card-s { font-size:12px; color:var(--text-sec); }
             .rsw-card-pw { font-size:13px; font-weight:700; margin-top:2px; color:var(--text-main); }
             .rsw-card-pct { font-size:11px; color:var(--text-sec); }
+            .rsw-card-d { font-size:11px; font-weight:700; margin-top:3px; padding-top:3px; border-top:1px dashed var(--border); }
+            .rsw-dup { color:#b45309; }
+            .rsw-ddown { color:#047857; }
+            .rsw-d0 { color:var(--text-sec); font-weight:600; }
             .rsw-badge { position:absolute; top:-9px; right:6px; background:#047857; color:#fff; font-size:10px; font-weight:700; padding:2px 7px; border-radius:999px; }
             .rsw-foot { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:0 0 12px; font-size:12px; color:var(--text-sec); }
             .rsw-foot details { flex:1 1 100%; }
@@ -63017,8 +63084,20 @@ const app = {
         const origPrice = item.price || 0;
         const priceStr = origPrice > 0 ? this.formatPriceHtml(origPrice, true) : '—';
 
+        const dtImpact = this.swapDtImpact();
+        const fmtDelta = d => {
+            if (Math.abs(d) < 50) return { cls: 'rsw-d0', txt: 'смета без изменений' };
+            const money = Math.abs(d).toLocaleString('ru-RU') + ' ₽';
+            return d > 0 ? { cls: 'rsw-dup', txt: `смета +${money}` } : { cls: 'rsw-ddown', txt: `смета −${money}` };
+        };
         const dtCards = this.RAD_DT_GRAPHS.map(g => {
             const [supply, ret, air] = g.temps.split('/');
+            const imp = g.regime && dtImpact ? dtImpact[g.regime] : null;
+            const impHtml = !g.regime
+                ? '<span class="rsw-card-d rsw-d0">только сверка</span>'
+                : (!imp ? '' : (g.regime === accepted
+                    ? '<span class="rsw-card-d rsw-d0">сейчас в смете</span>'
+                    : (() => { const f = fmtDelta(imp.d); return `<span class="rsw-card-d ${f.cls}">${f.txt}</span>`; })()));
             const w = pwAt(g.dt);
             const pct = g.key === 'gost'
                 ? 'паспорт (ГОСТ)'
@@ -63032,6 +63111,7 @@ const app = {
                 <span class="rsw-card-s">ΔT ${String(g.dt).replace('.', ',')}</span>
                 <span class="rsw-card-pw">${w.toLocaleString('ru-RU')} Вт</span>
                 <span class="rsw-card-pct">${pct}</span>
+                ${impHtml}
                 ${badge}
             </button>`;
         }).join('');
@@ -63043,9 +63123,13 @@ const app = {
             if (dtG.regime === accepted) {
                 return `<div class="rsw-foot"><span class="rsw-accepted">✓ Принят для всей сметы</span><span>Приборы, трубы и насос считаются на этот график во всех разделах.</span></div>`;
             }
+            const impA = dtImpact ? dtImpact[dtG.regime] : null;
+            const impTxt = impA && Math.abs(impA.d) >= 50
+                ? ` Вся смета (приборы, трубы, насос, котёл, работы) станет ${impA.d > 0 ? 'дороже' : 'дешевле'} на <b>${Math.abs(impA.d).toLocaleString('ru-RU')} ₽</b>, итого ${impA.total.toLocaleString('ru-RU')} ₽.`
+                : '';
             return `<div class="rsw-foot">
                 <button class="rsw-accept-btn" onclick="app.acceptSwapDt('${origId}','${dtG.key}')">Принять ${dtG.temps.split('/').slice(0, 2).join('/')} для всей сметы</button>
-                <span>Сейчас в смете ${this.radRegime().label}. После принятия пересчитаются все разделы.</span>
+                <span>Сейчас в смете ${this.radRegime().label}. После принятия пересчитаются все разделы.${impTxt}</span>
             </div>`;
         })();
 
@@ -63085,7 +63169,8 @@ const app = {
                 </div>
                 <div class="swap-kpis">
                     <div class="swap-kpi swap-kpi-pw"><span>Мощность при ${dtG.temps.split('/').slice(0, 2).join('/')} °C</span><b>${totalPower.toLocaleString('ru-RU')} Вт</b></div>
-                    <div class="swap-kpi swap-kpi-price"><span>Цена прибора</span><b>${priceStr}</b></div>
+                    <div class="swap-kpi swap-kpi-price"><span>Цена этого прибора</span><b>${priceStr}</b></div>
+                    ${(dtImpact && dtG.regime && dtImpact[dtG.regime]) ? `<div class="swap-kpi swap-kpi-pw"><span>Смета при ${dtG.temps.split('/').slice(0, 2).join('/')}</span><b>${dtImpact[dtG.regime].total.toLocaleString('ru-RU')} ₽</b></div>` : ''}
                 </div>
             </div>
         `;
@@ -80509,6 +80594,38 @@ const app = {
             this._inputAnchorAfter(_ia);
             // Сводка гидравлики читает то, что render посчитал, поэтому — после него
             this.syncHydroCheck();
+        }
+    },
+    // Тихий прогон с теми же исправлениями гидравлики, что у render(): без них смета на низком
+    // графике выходит дешевле настоящей (не хватает насосной группы / ветки). Экран не трогает.
+    _renderSimFull: function () {
+        this._hcForce = Object.assign({}, this.hydroUserForce());
+        this._hcApplied = [];
+        this._hcAppliedKinds = [];
+        this._hcTried = null;
+        const _collBefore = this.needCollector;
+        this._renderInner(true);
+        if (_collBefore !== undefined && this.needCollector !== _collBefore) this._renderInner(true);
+        for (let _i = 0; _i < 2; _i++) {
+            const _fix = this.hydroNextFix();
+            if (!_fix) break;
+            const _before = this.hydroFixRatio(_fix.kind), _prev = Object.assign({}, this._hcForce);
+            Object.assign(this._hcForce, _fix.force);
+            this._renderInner(true);
+            if (this.hydroFixRatio(_fix.kind) > _before * 1.02) {
+                this._hcApplied.push(_fix.text); this._hcAppliedKinds.push(_fix.kind); continue;
+            }
+            this._hcForce = _prev;
+            this._renderInner(true);
+            this._hcTried = _fix.tried;
+            break;
+        }
+        if (this._hcApplied.length && this._hcAppliedKinds.some(k => this.hydroFixRatio(k) < 1)) {
+            this._hcForce = Object.assign({}, this.hydroUserForce());
+            this._hcApplied = [];
+            this._hcAppliedKinds = [];
+            this._hcTried = 'Исправление схемы контур не вытянуло — схему оставили как была. Проверьте диаметры и мощность приборов.';
+            this._renderInner(true);
         }
     },
     _renderInner: function (computeOnly) {
