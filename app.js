@@ -60518,6 +60518,7 @@ const app = {
             this.state.swapSortField = null;
             this.state.swapSortDir = null;
             this.state.valveSwapFilter = null;
+            this.state.pumpSwap = null;
         }
 
         let item = this.currentEquipmentList.find(x => x.id === lookupId || x.displaySku === lookupId);
@@ -60608,6 +60609,18 @@ const app = {
                     || catalog.boilers_polis[catalog.boilers_polis.length - 1])
                 : null;
             alts = [statusBoiler, polisBoiler].filter(Boolean);
+        }
+        // Циркуляционные насосы: в таблице замены — весь ряд (DN15/DN25, 6 и 8 м напора), а не
+        // только типоразмер выбранного: иначе фильтры «Расход / Напор / Подключение» было бы нечем
+        // переключать. Открываемся на типоразмере выбранного насоса — список выглядит как раньше.
+        const _pumpPool = this.circPumpPool();
+        const _isCircPump = _pumpPool.some(p => p.id === _origId0 || (p.rommer && !Array.isArray(p.rommer) && p.rommer.id === _origId0));
+        if (_isCircPump) {
+            alts = _pumpPool;
+            if (isFirstOpen || !this.state.pumpSwap) {
+                const _cs = this.circPumpSpec(item);
+                this.state.pumpSwap = { eff: 'all', q: 'all', head: _cs.head != null ? String(_cs.head) : 'all', thr: _cs.thread || 'all', brand: 'all' };
+            }
         }
         let _allVolsAlts = [];
         let customAlts = null;
@@ -62774,6 +62787,36 @@ const app = {
                 `</div>`;
         }
 
+        // Циркуляционные насосы: фильтры по типу (энергоэффективный / 3-скоростной), расходу, напору,
+        // подключению и бренду. Выбранный насос остаётся в списке при любом фильтре.
+        let _pumpF = null;
+        if (_isCircPump) {
+            _pumpF = this.state.pumpSwap || {};
+            const _pf = (k) => _pumpF[k] || 'all';
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
+            const _all = [];
+            _pumpPool.forEach(p => {
+                _all.push({ id: p.id, name: p.name, type: p.type });
+                if (p.rommer && !Array.isArray(p.rommer)) _all.push({ id: p.rommer.id, name: p.rommer.name, type: p.type });
+            });
+            const _specs = _all.map(d => this.circPumpSpec(d));
+            const _uniq = (f) => [...new Set(_specs.map(f).filter(v => v != null))];
+            const _fmtQ = (q) => String(q).replace('.', ',') + ' м³/ч';
+            const _row = (label, key, opts) =>
+                `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
+                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">${label}:</span>` +
+                opts.map(([v, t]) => `<span onclick="app.setPumpSwapFilter('${key}','${v}')" ${_b(_pf(key) === v)}>${t}</span>`).join('') +
+                `</div>`;
+            _tankFiltersHtml =
+                `<div style="display:flex;gap:6px 20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
+                _row('Тип', 'eff', [['all', 'Все'], ['ec', 'Энергоэффективный'], ['3sp', '3-скоростной']]) +
+                _row('Расход', 'q', [['all', 'Все'], ..._uniq(s => s.q).sort((a, b) => a - b).map(q => [q, 'до ' + _fmtQ(q)])]) +
+                _row('Напор', 'head', [['all', 'Все'], ..._uniq(s => s.head).sort((a, b) => a - b).map(h => [h, h + ' м'])]) +
+                _row('Подключение', 'thr', [['all', 'Все'], ..._uniq(s => s.thread).map(t => [t, 'G ' + t + '"'])]) +
+                _row('Бренд', 'brand', [['all', 'Все'], ['STOUT', 'STOUT'], ['ROMMER', 'ROMMER']]) +
+                `</div>`;
+        }
+
         const _tsSortField = _isTankItem ? (this._tankSwapSort || 'price') : null;
         const _tsSortOrder = _isTankItem ? (this._tankSwapSortOrder || 'asc') : null;
         const _priceArrow = _tsSortField === 'price' ? (_tsSortOrder === 'asc' ? ' ▲' : ' ▼') : '';
@@ -63224,6 +63267,19 @@ const app = {
                             && (!_valveF.shape || _valveF.shape === 'all' || vi.shape === _valveF.shape);
                     });
                 }
+                if (_pumpF) {
+                    candidates.forEach(d => { d.hint = this.circPumpHint(d); });
+                    candidates = candidates.filter(d => {
+                        if (d.id === item.id) return true; // выбранный насос остаётся в списке
+                        const s = this.circPumpSpec(d);
+                        const f = (k) => _pumpF[k] || 'all';
+                        return (f('eff') === 'all' || s.eff === f('eff'))
+                            && (f('q') === 'all' || String(s.q) === f('q'))
+                            && (f('head') === 'all' || String(s.head) === f('head'))
+                            && (f('thr') === 'all' || s.thread === f('thr'))
+                            && (f('brand') === 'all' || String(d.brand || 'STOUT').toUpperCase() === f('brand'));
+                    });
+                }
                 candidates.forEach(displayAlt => {
                     let id = displayAlt.id;
                     if (seenIds.has(id)) return;
@@ -63404,6 +63460,47 @@ const app = {
             const _pwOn = _pwRow && _pwRow.querySelector('[data-pw-active]');
             if (_pwOn) _pwRow.scrollLeft = Math.max(0, _pwOn.offsetLeft - 80);
         } catch (e) { }
+    },
+    // Максимальная потребляемая мощность циркуляционных насосов, Вт. Только подтверждённые значения
+    // (ROMMER EVO — паспорт/Revit-каталог 45 Вт; STOUT Mini Pro 25/60-180 — 35 Вт). Остальные — null:
+    // в таблице показывается «нет данных», пока не внесены цифры из паспортов.
+    CIRC_PUMP_W: { 'RCP-0030-2560180': 45, 'SPC-0003-2560180': 35 },
+    // Расход (м³/ч) по типоразмеру — каталог Revit STOUT; у ROMMER EVO 25/60-180 свой, 3,6.
+    CIRC_PUMP_Q: { '25/60-180': 4, '25/60-130': 3.8, '25/80-180': 7.2 },
+    circPumpPool: function () {
+        return [].concat(catalog.pumps_dn20 || [], catalog.pumps_dn25 || [], catalog.pumps_dn25_80 || [], catalog.pumps_mix || []);
+    },
+    // Характеристики насоса по названию «DN/напор(дм)-монтажная длина» и артикулу.
+    circPumpSpec: function (d) {
+        const name = String((d && d.name) || '');
+        const m = name.match(/(\d+)\/(\d+)-(\d+)/);
+        const dn = m ? parseInt(m[1], 10) : null;
+        const q = m ? ((d.id === 'RCP-0030-2560180') ? 3.6 : (this.CIRC_PUMP_Q[m[0]] != null ? this.CIRC_PUMP_Q[m[0]] : null)) : null;
+        const ec = d && (d.type === 'mini' || d.type === 'pro' || /частотн|EVO|Mini/i.test(name));
+        return {
+            dn,
+            head: m ? parseInt(m[2], 10) / 10 : null,
+            q,
+            thread: dn === 25 ? '1 1/2' : (dn === 15 ? '1' : null),
+            eff: ec ? 'ec' : '3sp',
+            maxW: d && this.CIRC_PUMP_W[d.id] != null ? this.CIRC_PUMP_W[d.id] : null
+        };
+    },
+    circPumpHint: function (d) {
+        const s = this.circPumpSpec(d);
+        const n = v => String(v).replace('.', ',');
+        const parts = [
+            s.eff === 'ec' ? 'энергоэффективный (частотное регулирование)' : '3-скоростной',
+            s.maxW != null ? `<b>макс. ${s.maxW} Вт</b>` : 'макс. потребление: нет данных',
+            s.q != null ? `расход до ${n(s.q)} м³/ч` : '',
+            s.head != null ? `напор ${n(s.head)} м` : '',
+            s.thread ? `подключение G ${s.thread}"` : ''
+        ].filter(Boolean);
+        return parts.join(' · ');
+    },
+    setPumpSwapFilter: function (key, val) {
+        this.state.pumpSwap = Object.assign({}, this.state.pumpSwap, { [key]: val });
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
     },
     // Вид готовой насосной группы по артикулу (для окна замены): прямая / термостатическая / под сервопривод.
     selfGroupKindOfReady: function (id) {
