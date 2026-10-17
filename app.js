@@ -16219,18 +16219,22 @@ const app = {
     // карточку на 14 дней, открытие вкладки — насовсем.
     prefsHintWanted: function (estimatesCount) {
         try {
-            if (this.isSellerOnly() || estimatesCount < 1) return false;
+            if (this.isSellerOnly()) return false;
             if (Object.keys(this.getPrefs()).length) return false;
             if (localStorage.getItem('prefs_hint_seen') === '1') return false;
             return Date.now() > (parseInt(localStorage.getItem('prefs_hint_snooze'), 10) || 0);
         } catch (e) { return false; }
     },
-    // Окно после последнего шага обучения (tour.js, finish): один раз, тем, кому показывается
-    // карточка на «Главной», но без условия «есть сохранённая смета» — обучение уже пройдено.
+    // Окно-предложение: один раз любому вошедшему монтажнику (не продавцу) с пустыми предпочтениями —
+    // не зависит от обучения. Зовут после загрузки настроек из облака (pullInstallerSettingsFromCloud:
+    // иначе предложили бы тому, кто уже всё выбрал на другом устройстве) и по окончании обучения
+    // (tour.js, finish). Пока идёт обучение, другое окно поверх него не открываем.
     offerPrefsAfterTour: async function () {
         try {
             if (!this.state.tgUser || this.isSellerOnly() || Object.keys(this.getPrefs()).length) return;
             if (localStorage.getItem('prefs_offer_shown') === '1') return;
+            if (document.body.classList.contains('tour-running') || this._profileForceComplete || this.isProfileIncomplete()) return;
+            if (document.querySelector('.calc-dialog-overlay.active, #profile_modal_overlay.active, #custom_modal_overlay.active, #invite_gate_overlay')) return;
             localStorage.setItem('prefs_offer_shown', '1');
         } catch (e) { return; }
         const go = await this.confirm('Можно один раз отметить, что вы ставите чаще: нержавейка или ППР, секционные или стальные радиаторы, трубы, насосы, бренд. Новые сметы сразу будут считаться по вашему выбору. Изменить или сбросить можно в любой момент: «Прайс → Любимые материалы».', 'Любимые материалы', 'Настроить', 'Позже');
@@ -18378,6 +18382,7 @@ const app = {
                 if (!cloud.railLayoutTouch && this.installerSettings.railLayoutTouch) this.pushInstallerSettingsToCloud();
                 if (!cloud.margin && this.installerSettings.margin) this.pushInstallerSettingsToCloud();
                 if (!cloud.prefs && this.installerSettings.prefs) this.pushInstallerSettingsToCloud();
+                setTimeout(() => { try { this.offerPrefsAfterTour(); } catch (e) { } }, 4000);
                 if (this._activeProfileTab === 'workprices') this.renderWorkPricesTab();
                 if (this._activeProfileTab === 'equipment') this.renderEquipmentLibraryTab();
                 if (this._activeProfileTab === 'prefs') this.renderPrefsTab();
