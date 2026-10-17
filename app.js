@@ -7425,7 +7425,11 @@ const app = {
                 // (extra.title из RecognizeUI.cardTitle) — «Без названия» ничего не говорит.
                 project_name: this.state.projectName || this.projectObjectTitle('') || (extra && extra.title) || null,
                 meta: extra || null
-            }]).then(({ error }) => { if (error) console.warn('[logInvoiceEvent] Ошибка записи:', error); });
+            }]).then(({ error }) => {
+                if (error) { console.warn('[logInvoiceEvent] Ошибка записи:', error); return; }
+                // КП ушло клиенту — момент пользы для мягкого предложения Профи
+                if ((event === 'sent' || event === 'printed') && typeof Subscription !== 'undefined') Subscription.afterKpSent();
+            });
         } catch (e) {
             console.warn('[logInvoiceEvent] Исключение:', e);
         }
@@ -8225,7 +8229,7 @@ const app = {
         if (featureLvl === 'pro-brand' && !this.canUseBrand('ROMMER')) {
             if (event) event.preventDefault();
             // Окно тарифа — только когда Профи этой учётке ROMMER открывает
-            if (!isPro && this.tariffCell(this.tariffAccount(), 'pro', 'rommer') === 'on') this.showModal('pro');
+            if (!isPro && this.tariffCell(this.tariffAccount(), 'pro', 'rommer') === 'on') this.showModal('pro', { why: 'Вы хотели переключиться на ROMMER — ассортимент входит в Профи' });
             else app.alert('Ассортимент ROMMER для вашей учётной записи не подключён.');
             return false;
         }
@@ -8263,7 +8267,8 @@ const app = {
             !!lk && getComputedStyle(lk).display !== 'none');
     },
 
-    showModal: function (type) {
+    // ctx.why — что человек хотел сделать, когда упёрся в замок («Вы хотели: …»)
+    showModal: function (type, ctx) {
         let overlay = document.getElementById('custom_modal_overlay');
         let icon = document.getElementById('custom_modal_icon');
         let title = document.getElementById('custom_modal_title');
@@ -8306,6 +8311,13 @@ const app = {
                     Subscription.syncCards();
                 } catch (e) { console.warn('[подписка] окно тарифа по умолчанию:', e); }
             }
+            // Подпись «Вы хотели…» — по выключателю в «Оплата подписки» → «Подсказки оплаты»
+            try {
+                if (ctx && ctx.why && text && (typeof Subscription === 'undefined' || Subscription.nudgeSettings().lock)) {
+                    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+                    text.innerHTML = '<div style="font-weight:700; color:var(--text-main); margin-bottom:8px;">' + esc(ctx.why) + '</div>' + text.innerHTML;
+                }
+            } catch (e) { }
 
             let cards = document.querySelector('.tariff-cards');
             if (cards) cards.style.display = 'flex';
@@ -45915,6 +45927,8 @@ const app = {
                     this.state.demoUsed = true;
                     if (accType === 'pro' && new Date() > new Date(demoEnds)) {
                         accType = 'base';
+                        // Профи только что закончился: предложение продлить (после того, как обновится tgUser)
+                        if (typeof Subscription !== 'undefined') setTimeout(() => Subscription.afterProExpired(), 4000);
                         supabaseClient.from('users')
                             .update({ account_type: 'base' })
                             .eq('auth_user_id', authUserId)
@@ -45932,8 +45946,10 @@ const app = {
                             const daysLeft = Math.max(1, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
                             const endText = new Date(demoEnds).toLocaleDateString('ru-RU');
                             setTimeout(async () => {
+                                let priceTail = '';
+                                try { if (typeof Subscription !== 'undefined') { await this.loadAppSettings(); priceTail = Subscription.priceLine(); Subscription.nudgeTouch('trialEnd'); } } catch (e) { }
                                 const go = await app.confirmChoice(
-                                    'Доступ к функциям Профи заканчивается ' + endText + ' (осталось ' + daysLeft + ' дн.). Ваши сметы сохранятся, но функции Профи станут недоступны.',
+                                    'Доступ к функциям Профи заканчивается ' + endText + ' (осталось ' + daysLeft + ' дн.). Ваши сметы сохранятся, но функции Профи станут недоступны.' + (priceTail ? '\n\n' + priceTail : ''),
                                     'Профи скоро закончится', 'Оформить подписку', 'Позже');
                                 if (go) app.showModal('pro');
                             }, 1500);
@@ -47115,7 +47131,7 @@ const app = {
             if (!this.state.tgUser) { this.showAuthModal(); return; }
             // Окно тарифа — только если Профи этой же учётке вкладку открывает,
             // иначе оно обещало бы то, чего оплата не даст
-            if (!this.isPro() && this.tariffCell(this.tariffAccount(), 'pro', 'money') === 'on') { this.showModal('pro'); return; }
+            if (!this.isPro() && this.tariffCell(this.tariffAccount(), 'pro', 'money') === 'on') { this.showModal('pro', { why: 'Вы хотели открыть вкладку «Деньги» — маржа по разделам входит в Профи' }); return; }
             mode = 'equipment';
         }
         this.state.viewMode = mode;
@@ -50094,7 +50110,7 @@ const app = {
         // не PRO) тариф получил остальной функционал целиком, но не доступ к ассортименту ROMMER.
         // Группировку/артикулы/схему Базовому тарифу открываем.
         if (featureName === 'cheaper' && !isPro) {
-            this.showModal('pro');
+            this.showModal('pro', { why: 'Вы хотели включить вторую смету «Бюджетнее» — она входит в Профи' });
             return;
         }
 
@@ -52852,7 +52868,7 @@ const app = {
             const max = Subscription.limitSettings().perMonth;
             if (used.size < max) return true;
             const go = await this.confirmChoice(
-                'На бесплатном тарифе можно отправить клиентам ' + max + ' разных КП в месяц, в этом месяце вы уже отправили ' + used.size + '. Ранее отправленные КП можно отправлять снова. Счётчик обнулится 1 числа. Профи — без ограничения.',
+                'На бесплатном тарифе можно отправить клиентам ' + max + ' разных КП в месяц, в этом месяце вы уже отправили ' + used.size + '. Ранее отправленные КП можно отправлять снова. Счётчик обнулится 1 числа. Профи — без ограничения.' + (Subscription.priceLine() ? '\n\n' + Subscription.priceLine() : ''),
                 'Лимит бесплатных КП', 'Оформить Профи', 'Закрыть');
             if (go) this.showModal('pro');
             return false;
@@ -64843,7 +64859,7 @@ const app = {
         const _ctrlFrom = _ctrlOf(originalId), _ctrlTo = _ctrlOf(chosenId);
         if (_ctrlFrom && _ctrlTo) {
             // Автоматика ZONT — ассортимент тарифа «Профи».
-            if ((_ctrlTo.brand === 'zont' || _ctrlTo.brand === 'myheat' || _ctrlTo.brand === 'ecto') && !this.isPro()) { this.showModal('pro'); return; }
+            if ((_ctrlTo.brand === 'zont' || _ctrlTo.brand === 'myheat' || _ctrlTo.brand === 'ecto') && !this.isPro()) { this.showModal('pro', { why: 'Вы хотели подобрать автоматику ZONT / MyHeat — она входит в Профи' }); return; }
             const _byBill = this.boilerAutoModel({ tQ: this.tQ_val, snow: this.snowCalc }, true);
             delete this.state.swaps[originalId];
             this.state.boilerAutoBrand = _ctrlTo.brand;
@@ -77354,7 +77370,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     },
     setGroupsBuild: function (mode, event) {
         if (!this.checkAccess('pro', event)) { this.syncUI(); return; }
-        if (!this.isPro()) { this.showModal('pro'); this.syncUI(); return; }
+        if (!this.isPro()) { this.showModal('pro', { why: 'Вы хотели собрать смету по своим группам — это функция Профи' }); this.syncUI(); return; }
         this.state.groupsBuild = (mode === 'self') ? 'self' : 'ready';
         this.syncUI();
         this.render();

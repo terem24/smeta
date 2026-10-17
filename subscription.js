@@ -542,11 +542,19 @@ const Subscription = {
                 ? `<div style="font-size:11px; color:var(--c-warn,#D97706); font-weight:700; margin:2px 0 8px; text-align:center;">🔥 ${this.esc(r.promo.title || 'Акция')}${r.promo.to ? ' до ' + this.fmtDate(r.promo.to) : ''}<span style="color:var(--text-sec); font-weight:500;"> · было ${this.esc(this.fmtRub(r.baseRub))}</span></div>`
                 : '';
             const click = preview ? `Subscription.previewPlan('${p.id}')` : `app.openPaymentModal('${p.id}')`;
+            // Якорь: сколько сэкономит человек против помесячной оплаты
+            let saveLine = '';
+            if (r.months > 1) {
+                const mp = plans.find(x => Math.round(this.num(x.months)) === 1), mr = mp && this.resolve(mp.id, ctx);
+                const save = mr ? Math.round(mr.rub * r.months - r.rub) : 0;
+                if (save > 0) saveLine = `<div style="font-size:11px; color:#10B981; font-weight:700; margin:2px 0 6px; text-align:center;">Выгоднее помесячной оплаты на ${this.esc(this.fmtRub(save))}</div>`;
+            }
             return `<div class="tariff-card">
                         ${badge}
                         <h3>${this.esc(String(r.title).toUpperCase())}</h3>
                         <div class="price"><span class="curr-amount" data-rub="${r.perMonth}">${r.perMonth.toLocaleString('ru-RU')}</span> <span class="curr-symbol">₽</span></div>
                         <div class="price-sub">${sub}</div>
+                        ${saveLine}
                         ${promoLine}
                         <button type="button" class="btn-subscribe" onclick="${click}">Оформить подписку</button>
                     </div>`;
@@ -559,6 +567,168 @@ const Subscription = {
         if (!box) return;
         box.innerHTML = this.cardsHtml(null, false);
         try { app.applyPricingCurrencyDisplay(); } catch (e) { }
+    },
+
+    // ═══ Подсказки оплаты ════════════════════════════════════════════════
+    // Мягкие предложения Профи в момент пользы: после отправки КП и когда Профи
+    // закончился (за 3 дня до конца напоминает отдельный код при входе, он берёт
+    // отсюда текст цены). Настройки — app_settings.subscription.nudges. Показывается
+    // только человеку без Профи, не чаще gapDays и не больше трёх раз на причину; любой
+    // сбой — тишина. Окно с «Не сейчас» — тариф сам не включается и ничего не списывается.
+    NUDGE_DEFAULTS: { enabled: true, gapDays: 7, kp: true, kpFrom: 2, expiry: true, lock: true },
+    NUDGE_LS: 'hc_pay_nudge',
+
+    nudgeSettings: function () {
+        const t = Object.assign({}, this.NUDGE_DEFAULTS, this.raw().nudges || {});
+        t.gapDays = Math.min(60, Math.max(1, Math.round(this.num(t.gapDays)) || 7));
+        t.kpFrom = Math.min(20, Math.max(1, Math.round(this.num(t.kpFrom)) || 2));
+        return t;
+    },
+
+    setNudgeField: function (field, value) {
+        if (['enabled', 'gapDays', 'kp', 'kpFrom', 'expiry', 'lock'].indexOf(field) < 0) return;
+        if (field === 'gapDays') value = Math.min(60, Math.max(1, Math.round(this.num(value)) || 7));
+        else if (field === 'kpFrom') value = Math.min(20, Math.max(1, Math.round(this.num(value)) || 2));
+        else value = !!value;
+        this.apply(v => { v.nudges = Object.assign({}, v.nudges || {}, { [field]: value }); return v; });
+        this.render();
+    },
+
+    nudgeLoad: function () {
+        try { return JSON.parse(localStorage.getItem(this.NUDGE_LS) || '{}') || {}; } catch (e) { return {}; }
+    },
+
+    // Запомнить показ: общая пауза между подсказками и счётчик по причине
+    nudgeTouch: function (reason) {
+        const st = this.nudgeLoad();
+        st.t = Date.now();
+        st.by = st.by || {};
+        st.by[reason] = { n: ((st.by[reason] && st.by[reason].n) || 0) + 1, t: st.t };
+        try { localStorage.setItem(this.NUDGE_LS, JSON.stringify(st)); } catch (e) { }
+    },
+
+    nudgeGapOk: function (reason, cap) {
+        const st = this.nudgeLoad(), now = Date.now(), DAY = 86400000;
+        if (st.t && now - st.t < this.nudgeSettings().gapDays * DAY) return false;
+        if (((st.by && st.by[reason] && st.by[reason].n) || 0) >= cap) return false;
+        // Пробный период только что предлагали — не накладываем второе окно
+        try { const tr = JSON.parse(localStorage.getItem('hc_trial_offer') || '{}') || {}; if (tr.t && now - tr.t < DAY) return false; } catch (e) { }
+        return true;
+    },
+
+    // Подсказки получает только вошедший человек без Профи (free/base), не сотрудник ТЕРЕМ
+    nudgeEligible: function () {
+        try {
+            if (!this.nudgeSettings().enabled) return false;
+            const tg = (app.state && app.state.tgUser) || {};
+            if (!tg.authUserId && !tg.email && !tg.id) return false;
+            const acc = tg.account_type || app.state.accountType || 'base';
+            // 'pro' с истёкшим сроком — тоже адресат: у него isPro() уже ложь
+            if (['admin', 'viewer', 'manager'].indexOf(acc) >= 0) return false;
+            if (app.isPro() || app.isTeremStaff()) return false;
+            return true;
+        } catch (e) { return false; }
+    },
+
+    // Цена для окна: год как якорь («4 000 ₽ в месяц вместо 5 000») и действующая акция с датой
+    priceLine: function () {
+        try {
+            const plans = this.planList(false).map(p => this.resolve(p.id)).filter(Boolean);
+            if (!plans.length) return '';
+            const month = plans.find(r => r.months === 1);
+            const best = plans.filter(r => r.months > 1).sort((a, b) => b.months - a.months)[0];
+            const out = [];
+            if (best) {
+                const save = month ? Math.round(month.rub * best.months - best.rub) : 0;
+                out.push('Профи на ' + (best.months === 12 ? 'год' : this.monthsWord(best.months)) + ' — ' + this.fmtRub(best.perMonth) + ' в месяц'
+                    + (month ? ' вместо ' + this.fmtRub(month.rub) : '') + (save > 0 ? ', выгоднее на ' + this.fmtRub(save) : '') + '.');
+            } else if (month) out.push('Профи — ' + this.fmtRub(month.rub) + ' в месяц.');
+            const promo = plans.map(r => r.promo).find(Boolean);
+            if (promo) out.push('Акция «' + (promo.title || 'скидка') + '»' + (promo.to ? ' до ' + this.fmtDate(promo.to) : '') + '.');
+            return out.join('\n');
+        } catch (e) { return ''; }
+    },
+
+    // Сколько разных КП человек отправлял клиентам за всё время
+    kpCount: async function () {
+        const tg = (app.state && app.state.tgUser) || {};
+        if (!tg.id) return 0;
+        const { data, error } = await supabaseClient.from('invoice_events').select('calc_id')
+            .eq('user_id', String(tg.id)).in('event', ['printed', 'sent']).limit(1000);
+        if (error) throw error;
+        return new Set((data || []).map(r => String(r.calc_id))).size;
+    },
+
+    // Вызывается из app.logInvoiceEvent после отправки КП: ждём, пока закроется окно отправки
+    afterKpSent: function () {
+        setTimeout(async () => {
+            try {
+                if (this._nudgeBusy) return;
+                await app.loadAppSettings();
+                const s = this.nudgeSettings();
+                if (!s.kp || !this.nudgeEligible() || !this.nudgeGapOk('kp', 3)) return;
+                const n = await this.kpCount();
+                if (n < s.kpFrom) return;
+                await this.nudge('kp', { n: n });
+            } catch (e) { console.warn('[подсказка оплаты] КП:', e); }
+        }, 6000);
+    },
+
+    // Профи закончился: один раз при входе, пока человек его не продлил
+    afterProExpired: function () {
+        setTimeout(async () => {
+            try {
+                if (this._nudgeBusy) return;
+                await app.loadAppSettings();
+                if (!this.nudgeSettings().expiry || !this.nudgeEligible() || !this.nudgeGapOk('expired', 2)) return;
+                await this.nudge('expired', {});
+            } catch (e) { console.warn('[подсказка оплаты] конец Профи:', e); }
+        }, 2500);
+    },
+
+    nudge: async function (reason, ctx) {
+        ctx = ctx || {};
+        if (document.querySelector('#custom_modal_overlay.active')) return;
+        const benefits = this.benefitsText(this.userAccount());
+        const price = this.priceLine();
+        let title, lead, why;
+        if (reason === 'kp') {
+            title = 'КП ушло клиенту';
+            lead = 'Вы отправили клиентам КП: ' + (ctx.n || 1) + '. ';
+            why = 'Вы отправили КП клиентам — на Профи они уходят с работами и скидками';
+        } else {
+            title = 'Профи закончился';
+            lead = 'Доступ к функциям Профи закончился, ваши сметы сохранились. ';
+            why = 'Продлите Профи, чтобы вернуть его функции';
+        }
+        this._nudgeBusy = true;
+        this.nudgeTouch(reason);
+        try {
+            const yes = await app.confirmChoice(lead + benefits + (price ? '\n\n' + price : ''), title, 'Оформить Профи', 'Не сейчас');
+            if (yes) app.showModal('pro', { why: why });
+        } finally { this._nudgeBusy = false; }
+    },
+
+    viewNudges: function (canEdit) {
+        const t = this.nudgeSettings(), dis = !canEdit, u = this.ui;
+        const row = (title, hint, control) => `<div style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 0; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; font-weight:600; color:var(--text-main);">${title}</div><div style="font-size:12px; color:var(--text-sec); margin-top:2px; line-height:1.45;">${hint}</div></div>
+                <div style="flex:0 0 auto;">${control}</div></div>`;
+        return `<p style="${u.hint}">Мягкие предложения Профи в момент пользы. Их видит только вошедший человек без Профи (не сотрудник ТЕРЕМ): окно с кнопками «Оформить Профи» и «Не сейчас», тариф сам не включается. В тексте — преимущества из вкладки «Преимущества Профи», цена года в пересчёте на месяц и действующая акция с датой окончания.</p>
+            <div style="${u.card} max-width:760px;">
+                ${row('Подсказки оплаты', 'Общий выключатель. Выключено — подсказки не показываются никому. Напоминание за 3 дня до конца Профи и окно лимита КП это не затрагивает.',
+                    this.toggleHtml(!!t.enabled, `Subscription.setNudgeField('enabled', ${!t.enabled})`, dis))}
+                ${row('Не чаще, чем раз в … дней', 'Пауза между любыми двумя подсказками на одном устройстве. От 1 до 60.',
+                    `<input type="number" min="1" max="60" value="${t.gapDays}" ${dis ? 'disabled' : ''} onchange="Subscription.setNudgeField('gapDays', this.value)" style="${u.input} width:80px;">`)}
+                ${row('После отправки КП', 'Когда человек отправил КП клиенту (ссылкой, в PDF или Excel). Не больше трёх раз на человека.',
+                    this.toggleHtml(!!t.kp, `Subscription.setNudgeField('kp', ${!t.kp})`, dis))}
+                ${row('Начиная с какого по счёту КП', 'Первое КП подсказкой не омрачаем: по умолчанию с 2-го.',
+                    `<input type="number" min="1" max="20" value="${t.kpFrom}" ${dis ? 'disabled' : ''} onchange="Subscription.setNudgeField('kpFrom', this.value)" style="${u.input} width:80px;">`)}
+                ${row('Когда Профи закончился', 'При входе после окончания платного или пробного Профи. Не больше двух раз на человека.',
+                    this.toggleHtml(!!t.expiry, `Subscription.setNudgeField('expiry', ${!t.expiry})`, dis))}
+                ${row('Подпись «Вы хотели…» в окне тарифа', 'Когда человек нажал на закрытую функцию (ROMMER, «Бюджетнее», деньги, ZONT), вверху окна — что именно он хотел сделать.',
+                    this.toggleHtml(!!t.lock, `Subscription.setNudgeField('lock', ${!t.lock})`, dis))}
+            </div>`;
     },
 
     // ═══ Заявка «Я оплатил» ══════════════════════════════════════════════
@@ -956,7 +1126,8 @@ const Subscription = {
         { id: 'preview', icon: '👁', label: 'Как выглядит' },
         { id: 'benefits', icon: '⭐', label: 'Преимущества Профи' },
         { id: 'trial', icon: '🎁', label: 'Пробный период' },
-        { id: 'limit', icon: '🚦', label: 'Лимит КП' }
+        { id: 'limit', icon: '🚦', label: 'Лимит КП' },
+        { id: 'nudges', icon: '💬', label: 'Подсказки оплаты' }
     ],
 
     setView: function (v) {
@@ -1013,6 +1184,7 @@ const Subscription = {
         else if (this._view === 'benefits') body = this.viewBenefits(canEdit);
         else if (this._view === 'trial') body = this.viewTrial(canEdit);
         else if (this._view === 'limit') body = this.viewLimit(canEdit);
+        else if (this._view === 'nudges') body = this.viewNudges(canEdit);
         box.innerHTML = `
             <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:12px;">
                 <h3 style="margin:0; color:var(--text-main);">💳 Оплата подписки</h3>

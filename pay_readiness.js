@@ -511,6 +511,39 @@ const PayReadiness = {
         }
     },
 
+    // Горячие, которым ещё не предлагали и у кого ещё нет Профи
+    bulkTargets: function () {
+        if (!this._data) return [];
+        const sent = this.sentMap();
+        return this._data.people.filter(p => p.level === 'hot' && p.type !== 'pro' && !sent[p.id]);
+    },
+
+    // Каждому — своё сообщение (имя, их сметы и КП, цена с учётом региона), как из окна «Предложить»,
+    // только разом. Спрашиваем подтверждение с числом получателей; повторно тем же людям не уходит.
+    bulkOffer: async function () {
+        const list = this.bulkTargets();
+        if (!list.length) return;
+        const ok = await app.confirmChoice(
+            'Каждому из ' + list.length + ' горячих без Профи уйдёт личное сообщение в «Сообщения» с их цифрами, преимуществами и ссылками на оплату. Тем, кому уже предлагали, повторно не отправится. Текст можно посмотреть заранее в окне «Предложить» у любого из них.',
+            'Предложить всем горячим', 'Отправить ' + list.length, 'Отмена');
+        if (!ok) return;
+        const me = (app._meRow || app._currentUserRow || await app.resolveMeRow());
+        if (!me || !me.id) { app.alert('Не нашёл вашу учётную запись — отправьте по одному через «Предложить».'); return; }
+        const rows = list.map(p => ({ sender_id: me.id, recipient_id: p.id, text: this.offerText(p).text, type: 'private' }));
+        try {
+            const { data, error } = await supabaseClient.from('messages').insert(rows).select('id, recipient_id');
+            if (error) throw error;
+            const m = this.sentMap(), now = Date.now();
+            list.forEach(p => { m[p.id] = now; });
+            try { localStorage.setItem(this.LS_SENT, JSON.stringify(m)); } catch (e) { }
+            if (typeof appPush !== 'undefined') (data || []).forEach(r => { try { appPush.notify('broadcast', r.id); } catch (e) { } });
+            this.renderPeople();
+            app.alert('Отправлено: ' + list.length + '.');
+        } catch (e) {
+            app.alert('Не отправилось: ' + ((e && e.message) || e));
+        }
+    },
+
     setHeat: function (f) { this._heatFilter = f; this.renderPeople(); },
 
     renderPeople: function () {
@@ -534,7 +567,10 @@ const PayReadiness = {
             <td class="n"><span class="pr-score pr-${p.level}">${p.score}</span></td>
             <td>${p.offer === 'shop' ? 'Магазин' : 'Профи'}</td>
             <td class="pr-act">${this.offerCell(p)}</td></tr>`).join('');
-        el.innerHTML = `<div class="ad-chips" style="margin:0 0 4px;">${chips}</div>` + (list.length
+        const bulk = this.bulkTargets().length;
+        const bulkBtn = this._heatFilter === 'hot' && bulk
+            ? `<button type="button" class="admin-btn pr-offer-send" style="margin:8px 0;" onclick="PayReadiness.bulkOffer()">Предложить всем горячим (${bulk})</button>` : '';
+        el.innerHTML = `<div class="ad-chips" style="margin:0 0 4px;">${chips}</div>` + bulkBtn + (list.length
             ? `<div class="pr-wrap"><table class="pr-table pr-people"><thead><tr><th>Кто</th><th>Роль</th><th>Город</th><th>Дистрибьютор</th><th class="n">Смет 30д / всего</th><th class="n">КП, счетов</th><th class="n">Дней</th><th class="n">Балл</th><th>Что предлагать</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
             : '<div class="ad-card-note">В этой группе никого нет.</div>');
     }
