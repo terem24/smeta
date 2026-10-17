@@ -41104,37 +41104,51 @@ const app = {
      * не падают (общий участок несёт больше расхода, чем отдельный луч), поэтому подсказка показывает и их.
      * Нет комнат или тройниковая схема — пусто. Больше четырёх приборов на луче не группируем.
      */
-    radRoomShares: function () {
-        const devices = this.radDevices || [];
-        if (!devices.length || this.state.radConnectionScheme === 'tee') return [];
+    /**
+     * Группы приборов одной комнаты, которым можно дать один общий луч (2–4 прибора). Одно правило на подсказку
+     * и на расчёт кольца: общий участок несёт сумму расходов, диаметр — наименьший из 16/20/25 с потерями не больше
+     * 10 кПа, отвод к прибору — 1,5 м в одну сторону Ø16. Ключ — название комнаты в нижнем регистре.
+     * runs — луч каждого прибора, м в одну сторону (radDeviceRuns). Нет комнаты или нагрузки — прибор в группу не входит.
+     */
+    radSharedGroups: function (devices, runs) {
         const wOf = d => ((d.load != null ? d.load : d.watt) || 0);
-        const avgRun = this.avgRun || (Math.sqrt((this.state.area || 100) / (this.state.floors === 2 ? 2 : 1)) + 3);
-        const runs = this.radDeviceRuns(devices, avgRun);
-        const groups = {};
-        devices.forEach((d, i) => {
+        const STUB = 1.5, LIM = 10;
+        const raw = {};
+        (devices || []).forEach((d, i) => {
             const key = String(d.room || '').trim().toLowerCase();
             if (!key || !(wOf(d) > 0)) return;
-            (groups[key] = groups[key] || { room: d.room, items: [] }).items.push({ w: wOf(d), run: runs[i] });
+            (raw[key] = raw[key] || { room: d.room, idx: [] }).idx.push(i);
         });
-        const STUB = 1.5, LIM = 10;
-        const out = [];
-        Object.keys(groups).forEach(k => {
-            const g = groups[k], n = g.items.length;
+        const out = {};
+        Object.keys(raw).forEach(k => {
+            const g = raw[k], n = g.idx.length;
             if (n < 2 || n > 4) return;
-            const totalW = g.items.reduce((a, x) => a + x.w, 0);
-            const run = g.items.reduce((a, x) => a + x.run, 0) / n;
+            const items = g.idx.map(i => ({ i: i, w: wOf(devices[i]), run: runs[i] }));
+            const totalW = items.reduce((a, x) => a + x.w, 0);
+            const run = items.reduce((a, x) => a + x.run, 0) / n;
             const flowTot = this.radFlowOf(totalW);
             const L = 2 * run * 1.1, Ls = 2 * STUB * 1.1;
             let d = 25;
             for (const dd of [16, 20, 25]) { if (this.radPipeDrop(flowTot, dd, L).dp <= LIM) { d = dd; break; } }
-            const sepWorst = g.items.reduce((a, x) => Math.max(a, this.radPipeDrop(this.radFlowOf(x.w), 16, 2 * x.run * 1.1).dp), 0);
-            const shWorst = this.radPipeDrop(flowTot, d, L).dp
-                + g.items.reduce((a, x) => Math.max(a, this.radPipeDrop(this.radFlowOf(x.w), 16, Ls).dp), 0);
-            const sepPipe = g.items.reduce((a, x) => a + 2 * x.run * 1.1, 0);
-            out.push({ room: g.room, n: n, kw: totalW / 1000, d: d, sepDp: sepWorst, sharedDp: shWorst,
-                outputsSaved: n - 1, pipeSavedM: Math.round(sepPipe - (L + n * Ls)) });
+            out[k] = { room: g.room, items: items, n: n, totalW: totalW, run: run, flowTot: flowTot, L: L, Ls: Ls, d: d };
         });
-        return out.sort((a, b) => b.pipeSavedM - a.pipeSavedM);
+        return out;
+    },
+
+    radRoomShares: function () {
+        const devices = this.radDevices || [];
+        if (!devices.length || this.state.radConnectionScheme === 'tee') return [];
+        const avgRun = this.avgRun || (Math.sqrt((this.state.area || 100) / (this.state.floors === 2 ? 2 : 1)) + 3);
+        const groups = this.radSharedGroups(devices, this.radDeviceRuns(devices, avgRun));
+        return Object.keys(groups).map(k => {
+            const g = groups[k];
+            const sepWorst = g.items.reduce((a, x) => Math.max(a, this.radPipeDrop(this.radFlowOf(x.w), 16, 2 * x.run * 1.1).dp), 0);
+            const shWorst = this.radPipeDrop(g.flowTot, g.d, g.L).dp
+                + g.items.reduce((a, x) => Math.max(a, this.radPipeDrop(this.radFlowOf(x.w), 16, g.Ls).dp), 0);
+            const sepPipe = g.items.reduce((a, x) => a + 2 * x.run * 1.1, 0);
+            return { room: g.room, n: g.n, kw: g.totalW / 1000, d: g.d, sepDp: sepWorst, sharedDp: shWorst,
+                outputsSaved: g.n - 1, pipeSavedM: Math.round(sepPipe - (g.L + g.n * g.Ls)) };
+        }).sort((a, b) => b.pipeSavedM - a.pipeSavedM);
     },
 
     // ═══ КП «про этот дом», а не шаблон ══════════════════════════════════
@@ -69109,6 +69123,27 @@ const app = {
                 if (v > best) { best = v; worst = d; flowWorst = fl; worstRun = runs[i]; }
             });
         }
+        // Общий луч на комнату с несколькими приборами (этап 2). Включается state.radSharedBeams и пока не имеет
+        // кнопки в интерфейсе: смета ещё кладёт отдельный луч на каждый прибор, а расчёт и смета обязаны совпадать.
+        // Худший прибор — по потерям общего участка и отвода Ø16 плюс клапан; одиночный прибор — как раньше.
+        let shared = null;
+        if (!tee && s.radSharedBeams) {
+            const runsS = this.radDeviceRuns(devices, avgRun), kv0S = this.radValveKv().kv;
+            const groups = this.radSharedGroups(devices, runsS);
+            let bestS = -1;
+            devices.forEach((d, i) => {
+                const g = groups[String(d.room || '').trim().toLowerCase()];
+                const fl = this.radFlowOf(wOf(d));
+                let v, sh = null;
+                if (g) {
+                    const a = this.radPipeDrop(g.flowTot, g.d, g.L), b = this.radPipeDrop(fl, 16, g.Ls);
+                    v = a.dp + b.dp + Math.pow(fl / kv0S, 2) * 100; sh = { g: g, a: a, b: b };
+                } else {
+                    v = this.radPipeDrop(fl, 16, 2 * runsS[i] * 1.1).dp + Math.pow(fl / kv0S, 2) * 100;
+                }
+                if (v > bestS) { bestS = v; worst = d; flowWorst = fl; worstRun = runsS[i]; shared = sh; }
+            });
+        }
 
         const parts = [];
         let dp = 0;
@@ -69166,14 +69201,24 @@ const app = {
                 ', ' + trLen.toFixed(0) + ' м', tr.dp,
                 { v: tr.v, vLim: this.RAD_V_MAX_TRUNK, len: trLen,
                     tag: 'trunk', d: dTr, flow: flowTr, riser: !!span.riser });
-            const man = this.radManifoldDp(flowWorst);
+            // Через выход коллектора общего луча идёт расход всей комнаты, а не одного прибора
+            const manFlow = shared ? shared.g.flowTot : flowWorst;
+            const man = this.radManifoldDp(manFlow);
             add('Коллектор ' + man.passport.label, man.dp,
-                { tag: 'manifold', flow: flowWorst, manifold: man });
-            const loop = this.radPipeDrop(flowWorst, 16, 2 * worstRun * 1.1);
-            add('Луч Ø16 до прибора «' + (worst.room || 'самый дальний') + '», ' + (2 * worstRun * 1.1).toFixed(0) + ' м' +
-                (this.radPlanRuns() ? ' (по плану дома)' : ''), loop.dp,
-                { v: loop.v, vLim: this.RAD_V_MAX, len: 2 * worstRun * 1.1,
-                    tag: 'loop', d: 16, flow: flowWorst });
+                { tag: 'manifold', flow: manFlow, manifold: man });
+            if (shared) {
+                const gg = shared.g;
+                add('Луч Ø' + gg.d + ' до комнаты «' + (worst.room || '') + '», ' + gg.L.toFixed(0) + ' м, и отвод Ø16, ' + gg.Ls.toFixed(0) + ' м',
+                    shared.a.dp + shared.b.dp,
+                    { v: Math.max(shared.a.v, shared.b.v), vLim: this.RAD_V_MAX, len: gg.L + gg.Ls,
+                        tag: 'loop', d: gg.d, flow: gg.flowTot, shared: true });
+            } else {
+                const loop = this.radPipeDrop(flowWorst, 16, 2 * worstRun * 1.1);
+                add('Луч Ø16 до прибора «' + (worst.room || 'самый дальний') + '», ' + (2 * worstRun * 1.1).toFixed(0) + ' м' +
+                    (this.radPlanRuns() ? ' (по плану дома)' : ''), loop.dp,
+                    { v: loop.v, vLim: this.RAD_V_MAX, len: 2 * worstRun * 1.1,
+                        tag: 'loop', d: 16, flow: flowWorst });
+            }
         }
 
         // Клапан прибора на расчётной преднастройке: dp = (G/Kv)² · 100 кПа.
