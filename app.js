@@ -41081,6 +41081,49 @@ const app = {
         });
     },
 
+    /**
+     * Комнаты, где два-четыре прибора: один луч до комнаты и короткие отводы Ø16 к приборам вместо отдельного
+     * луча каждому. Только оценка для подсказки — ни смета, ни расчёт кольца её не используют (этап 1).
+     *
+     * Общий участок несёт сумму расходов приборов комнаты. Его диаметр — наименьший из 16/20/25, на котором
+     * потери не больше 10 кПа. Отвод к прибору — 1,5 м в одну сторону Ø16. Что экономим: выходы коллектора
+     * (один на комнату вместо одного на прибор) и трубу. Потери самого дальнего прибора при этом, как правило,
+     * не падают (общий участок несёт больше расхода, чем отдельный луч), поэтому подсказка показывает и их.
+     * Нет комнат или тройниковая схема — пусто. Больше четырёх приборов на луче не группируем.
+     */
+    radRoomShares: function () {
+        const devices = this.radDevices || [];
+        if (!devices.length || this.state.radConnectionScheme === 'tee') return [];
+        const wOf = d => ((d.load != null ? d.load : d.watt) || 0);
+        const avgRun = this.avgRun || (Math.sqrt((this.state.area || 100) / (this.state.floors === 2 ? 2 : 1)) + 3);
+        const runs = this.radDeviceRuns(devices, avgRun);
+        const groups = {};
+        devices.forEach((d, i) => {
+            const key = String(d.room || '').trim().toLowerCase();
+            if (!key || !(wOf(d) > 0)) return;
+            (groups[key] = groups[key] || { room: d.room, items: [] }).items.push({ w: wOf(d), run: runs[i] });
+        });
+        const STUB = 1.5, LIM = 10;
+        const out = [];
+        Object.keys(groups).forEach(k => {
+            const g = groups[k], n = g.items.length;
+            if (n < 2 || n > 4) return;
+            const totalW = g.items.reduce((a, x) => a + x.w, 0);
+            const run = g.items.reduce((a, x) => a + x.run, 0) / n;
+            const flowTot = this.radFlowOf(totalW);
+            const L = 2 * run * 1.1, Ls = 2 * STUB * 1.1;
+            let d = 25;
+            for (const dd of [16, 20, 25]) { if (this.radPipeDrop(flowTot, dd, L).dp <= LIM) { d = dd; break; } }
+            const sepWorst = g.items.reduce((a, x) => Math.max(a, this.radPipeDrop(this.radFlowOf(x.w), 16, 2 * x.run * 1.1).dp), 0);
+            const shWorst = this.radPipeDrop(flowTot, d, L).dp
+                + g.items.reduce((a, x) => Math.max(a, this.radPipeDrop(this.radFlowOf(x.w), 16, Ls).dp), 0);
+            const sepPipe = g.items.reduce((a, x) => a + 2 * x.run * 1.1, 0);
+            out.push({ room: g.room, n: n, kw: totalW / 1000, d: d, sepDp: sepWorst, sharedDp: shWorst,
+                outputsSaved: n - 1, pipeSavedM: Math.round(sepPipe - (L + n * Ls)) });
+        });
+        return out.sort((a, b) => b.pipeSavedM - a.pipeSavedM);
+    },
+
     // ═══ КП «про этот дом», а не шаблон ══════════════════════════════════
     // Раздел «Ваш дом» в начале КП (печать и ссылка клиенту): город и расчётная
     // температура, что заказчик просил в анкете и чем это закрыто, комнаты с
@@ -50426,6 +50469,16 @@ const app = {
                 html += '<div class="hc-det-p">Луч Ø16 теряет ' + Math.round(loop.dp) + ' кПа (больше 10). С лучом Ø20 было бы ' + Math.round(dp20)
                     + ' кПа, запас насоса ' + pc(r.have / needNew - 1) + ' вместо ' + pc(r.k - 1) + '. Луч Ø20 в смету пока не входит: нужны переходники на приборы.</div>';
             }
+        }
+        // Комнаты с несколькими приборами: общий луч и отводы Ø16 — подсказка, смета и расчёт кольца от неё не меняются
+        const shares = forPrint ? [] : this.radRoomShares().filter(x => x.pipeSavedM > 0).slice(0, 5);
+        if (shares.length) {
+            const f1 = v => v.toFixed(1).replace('.', ',');
+            html += '<details class="hc-manual"' + (this._hcOpen.shares ? ' open' : '') + ' ontoggle="app._hcOpen.shares=this.open"><summary>Несколько приборов в комнате: один луч</summary>'
+                + shares.map(x => '<div class="hc-det-p">' + esc(x.room) + ': ' + x.n + ' ' + this.plural(x.n, 'прибор', 'прибора', 'приборов') + ', ' + f1(x.kw)
+                    + ' кВт. Один луч Ø' + x.d + ' до комнаты и отводы Ø16 к приборам: на ' + x.outputsSaved + ' ' + this.plural(x.outputsSaved, 'выход', 'выхода', 'выходов')
+                    + ' коллектора меньше, труба короче на ~' + x.pipeSavedM + ' м; потери у дальнего прибора ' + Math.round(x.sepDp) + ' → ' + Math.round(x.sharedDp) + ' кПа.</div>').join('')
+                + '<div class="hc-det-p">Только оценка: в смету и в расчёт кольца такой луч пока не входит. На каждом приборе нужен клапан с преднастройкой, чтобы выровнять расход.</div></details>';
         }
         const trunk = (r.parts || []).find(p => p.tag === 'trunk');
         if (trunk && !forPrint) {
