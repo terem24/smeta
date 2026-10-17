@@ -234,7 +234,19 @@ const PayReadiness = {
     inputs: function () {
         let saved = {};
         try { saved = JSON.parse(localStorage.getItem(this.LS_KEY) || '{}') || {}; } catch (e) { }
-        return Object.assign({}, this.DEFAULTS, saved);
+        const inp = Object.assign({}, this.DEFAULTS, saved);
+        // Цена Профи — всегда из «Оплаты подписки» (месячный тариф, без региона и акций),
+        // чтобы расчёт не расходился с тем, что видят люди. Руками её тут не правят
+        const mp = this.proMonthPrice();
+        if (mp > 0) { inp.proPrice = mp; inp.proFromSettings = true; }
+        return inp;
+    },
+    proMonthPrice: function () {
+        try {
+            if (typeof Subscription === 'undefined') return 0;
+            const plan = Subscription.planList(false).find(p => Math.round(Subscription.num(p.months)) === 1);
+            return plan ? Math.round(Subscription.num(plan.rub)) : 0;
+        } catch (e) { return 0; }
     },
     setInput: function (key, val) {
         const inp = this.inputs();
@@ -327,7 +339,9 @@ const PayReadiness = {
         const el = document.getElementById('pr_forecast');
         if (!el || !this._data) return;
         const a = this._data, inp = this.inputs(), f = this.forecast(a, inp);
-        const field = (key, label, suffix) => `<label class="pr-field">${label}
+        const field = (key, label, suffix) => key === 'proPrice' && inp.proFromSettings
+            ? `<div class="pr-field">${label}<span><b>${Math.round(inp.proPrice).toLocaleString('ru-RU')}</b> ${suffix} <span class="ad-card-note" style="padding:0;">из «Оплаты подписки»</span></span></div>`
+            : `<label class="pr-field">${label}
             <span><input type="number" min="0" step="${key === 'conv' ? 5 : 100}" value="${inp[key]}" onchange="PayReadiness.setInput('${key}', this.value)" class="pr-input"> ${suffix}</span></label>`;
         let cur = '';
         try {
