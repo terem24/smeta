@@ -16123,6 +16123,8 @@ const app = {
             { id: 'ufhFix', label: 'Крепление труб тёплого пола', opts: [{ v: 'xps', t: 'Скобы (XPS)' }, { v: 'mat', t: 'Маты' }] }
         ] },
         { g: 'Водоснабжение и канализация', items: [
+            { id: 'wellPump', label: 'Управление скважинным насосом', opts: [{ v: 'relay', t: 'Релейное' }, { v: 'inverter', t: 'Частотное' }],
+                note: 'Релейное: пара реле давления и сухого хода ROMMER, а без доступа к ROMMER — электронное реле STOUT BRIO. Частотное: преобразователь STOUT SIRIO.' },
             { id: 'waterPipe', label: 'Трубы для водоснабжения', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'metal_plastic', t: 'Металлопластик' }] },
             { id: 'sewer', label: 'Канализация', opts: [{ v: 'economy', t: 'Обычная' }, { v: 'std', t: 'Бесшумная' }] }
         ] },
@@ -16209,6 +16211,7 @@ const app = {
         if (has('ufhFix')) s.ufhBaseType = p.ufhFix;
         if (has('waterPipe')) s.waterPipeMaterial = p.waterPipe;
         if (has('sewer')) s.sewerType = p.sewer;
+        if (has('wellPump')) s.wellAutoType = p.wellPump === 'inverter' ? 'sirio' : (this.canUseBrand('ROMMER') ? 'relay_krs5' : 'base');
         if (has('automation')) {
             s.airLink = p.automation;
             s.zoneAuto = Object.assign({}, s.zoneAuto || {}, { link: p.automation });
