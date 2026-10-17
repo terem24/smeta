@@ -50603,7 +50603,7 @@ const app = {
             html += '<div class="hc-advice">Ø16 не хватает у ' + weak.length + ' ' + this.plural(weak.length, 'прибора', 'приборов', 'приборов') + ': '
                 + weak.slice(0, 3).map(w => esc(w.room || 'прибор') + ' — ' + rm(w.dp) + ' кПа на луче ' + rm(w.run) + ' м').join('; ')
                 + (weak.length > 3 ? ' и ещё ' + (weak.length - 3) : '') + '. Предел — 10 кПа (≈1 м напора). '
-                + 'Включите «Автоподбор» в настройке «Лучи к приборам в комнате» (для комнат с несколькими приборами) или укоротите луч; один прибор на длинном луче поможет Ø20 (потери ' + rm(weak[0].dp20) + ' кПа вместо ' + rm(weak[0].dp) + ').</div>';
+                + 'Включите «Автоподбор трассы» в настройке «Лучи к приборам в комнате» (для комнат с несколькими приборами) или укоротите ветку; один прибор на длинном луче поможет Ø20 (потери ' + rm(weak[0].dp20) + ' кПа вместо ' + rm(weak[0].dp) + ').</div>';
         }
         // Комнаты с несколькими приборами: общий луч и отводы Ø16 — подсказка, смета и расчёт кольца от неё не меняются
         const shares = forPrint ? [] : this.radRoomShares().filter(x => x.pipeSavedM > 0).slice(0, 5);
@@ -72319,6 +72319,49 @@ const app = {
         else if (s.pipeType !== 'split') why = 'пока только для серой трубы PEX-a';
         return { mode: mode, why: why };
     },
+    /**
+     * Предупреждения по лучам к радиаторам для окна плана и сметы: [{ kind, title, text, fix }].
+     * Режим не меняется молча: «Автоподбор трассы» объединяет приборы комнаты только там, где общей
+     * трассы хватает по нагрузке, скорости и потерям; остальным оставляет отдельную ветку. «Ветка на
+     * каждый прибор» ничего не объединяет, и если не хватает — говорим, чего именно и что делать.
+     * Числа — из тех же расчётов, что смета (radLoopCheck, radHydro, _radManifoldsCount).
+     */
+    radBeamWarnings: function () {
+        const out = [], single = this.radBeamInfo().mode === 'single';
+        if (!(this.state.systems || []).includes('rad') || !(this.radDevices || []).length || this.state.radConnectionScheme === 'tee') return out;
+        const rm = v => Math.round(v);
+        const toAuto = single ? 'Переключите на «Автоподбор трассы» (приборы одной комнаты пойдут общей трассой), ' : 'Автоподбор уже объединил, где мог; ';
+        const weak = this.radLoopCheck();
+        if (weak.length) {
+            out.push({ kind: 'loss', title: 'Ø16 не хватает на длинных ветках',
+                text: weak.length + ' ' + this.plural(weak.length, 'прибор', 'прибора', 'приборов') + ': ' +
+                    weak.slice(0, 3).map(w => (w.room || 'прибор') + ' — ' + rm(w.dp) + ' кПа на ' + rm(w.run) + ' м').join('; ') +
+                    (weak.length > 3 ? ' и ещё ' + (weak.length - 3) : '') + '. Предел — 10 кПа (≈1 м напора) или скорость выше шумового предела.',
+                fix: toAuto + 'укоротите ветку (переставьте коллектор ближе) или поставьте на этот прибор Ø20: потери ' + rm(weak[0].dp20) + ' кПа вместо ' + rm(weak[0].dp) + '.' });
+        }
+        const h = this.radHydro;
+        if (h && h.parts && h.parts.length && h.head > 0) {
+            const best = h.pump || (h.pumps || []).reduce((a, p) => (!a || p.avail > a.avail) ? p : a, null);
+            if (best && best.avail < h.head) {
+                out.push({ kind: 'pump', title: 'Насос не тянет кольцо радиаторов',
+                    text: 'Нужно ' + h.head.toFixed(1).replace('.', ',') + ' м напора, насос («' + best.label + '») даёт ' + best.avail.toFixed(1).replace('.', ',') + ' м на рабочем расходе.',
+                    fix: toAuto + 'увеличьте диаметр подводки к коллектору, добавьте ветку (насосную группу) или возьмите насос напористее.' });
+            }
+            if (h.noisy) {
+                const lp = (h.loudParts || [])[0];
+                out.push({ kind: 'speed', title: 'Скорость воды выше предела',
+                    text: lp ? (lp.name + ': ' + (lp.v || 0).toFixed(2).replace('.', ',') + ' м/с при пределе ' + (lp.vLim || this.RAD_V_MAX) + ' м/с.') : 'На одном из участков вода быстрее шумового предела.',
+                    fix: 'Поставьте участок на размер крупнее или разделите нагрузку на две ветки.' });
+            }
+        }
+        const nm = this._radManifoldsCount || 1;
+        if (nm > 1) {
+            out.push({ kind: 'outputs', title: 'Выходов коллектора не хватает на одном шкафу',
+                text: 'Приборов столько, что на этаже ' + nm + ' ' + this.plural(nm, 'коллектор', 'коллектора', 'коллекторов') + ' по ' + (this.state.lastRadLoops || '—') + ' выходов; подводка в смете посчитана до одного.',
+                fix: toAuto + 'подводку к остальным коллекторам добавьте по месту.' });
+        }
+        return out;
+    },
     setRadConnectionScheme: function (scheme) {
         this.state.radConnectionScheme = (scheme === 'tee') ? 'tee' : 'manifold';
         // Держим в синхроне с меткой активного варианта в свап-модалке коллектора (там же можно
@@ -87691,7 +87734,7 @@ const app = {
                     this.groupWarns[pipeGrp] = (this.groupWarns[pipeGrp] || '') + this.noteBox('warn', 'Ø16 не хватает на длинных лучах.',
                         `${_weak.length} ${this.plural(_weak.length, 'прибор', 'прибора', 'приборов')}: луч теряет больше 10 кПа. Самый тяжёлый — «${_weak[0].room || 'прибор'}», ${Math.round(_weak[0].dp)} кПа на ${Math.round(_weak[0].run)} м.`,
                         `<div class="tip-p">Предел — 10 кПа (≈1 м напора) на луче от коллектора до прибора, подача и обратка. Дальше труба Ø16 съедает напор насоса, и дальним радиаторам его не хватает.</div>` +
-                        `<div class="tip-p"><b>Что делать:</b> включите «Автоподбор» в настройке «Лучи к приборам в комнате» (общий луч до комнаты, где приборов несколько), укоротите луч или поставьте для этого прибора Ø20: потери ${Math.round(_weak[0].dp20)} кПа вместо ${Math.round(_weak[0].dp)}.</div>`);
+                        `<div class="tip-p"><b>Что делать:</b> ${this.radBeamInfo().mode === 'single' ? 'включите «Автоподбор трассы» в настройке «Лучи к приборам в комнате» (общая трасса до комнаты, где приборов несколько), ' : 'Автоподбор объединил приборы, где общей трассы хватает; здесь — '}укоротите ветку или поставьте для этого прибора Ø20: потери ${Math.round(_weak[0].dp20)} кПа вместо ${Math.round(_weak[0].dp)}.</div>`);
                 }
                 this.neededPipe = neededPipe;
                 if (neededPipe > 0) {
@@ -88202,6 +88245,19 @@ const app = {
         // тяжелее насоса группы означает, что дальние приборы не прогреются,
         // и молчать об этом нельзя: в смете насос выбран по киловаттам.
         this.radHydro = this.radHydraulics();
+        // Насос, скорость и выходы коллектора по лучам к приборам — предупреждением в подразделе труб
+        // (Ø16 на длинных ветках уже предупреждён выше, при подсчёте трубы)
+        {
+            const _bw = this.radBeamWarnings().filter(w => w.kind !== 'loss');
+            if (_bw.length) {
+                this.groupWarns = this.groupWarns || {};
+                const _gk = '3.3. Трубы отопления';
+                _bw.forEach(w => {
+                    this.groupWarns[_gk] = (this.groupWarns[_gk] || '') + this.noteBox('warn', w.title + '.', w.text,
+                        '<div class="tip-p"><b>Что делать:</b> ' + w.fix + '</div>');
+                });
+            }
+        }
         // Гидравлика — в подсказку строки насосной группы. Раздел «2. Обвязка
         // котельной» уже сброшен в общий список (flushBill выше), поэтому
         // строка ищется в нём: подсказку группы собирали до подбора приборов.
@@ -92704,6 +92760,8 @@ async function notifyPayment() {
     app.alert('Спасибо! Мы проверяем поступление средств. Статус Профи будет активирован на email: ' + emailInput + ' в ближайшее время.');
 }
 window.notifyPayment = notifyPayment;
+// const app не становится свойством window: окно плана (iframe) и вкладки выпуска ищут калькулятор как parent.app / opener.app
+try { window.app = app; } catch (e) { }
 document.addEventListener('DOMContentLoaded', function () { app.init(); });
 
 // Автоматическая генерация мульти-страничного документа перед печатью. Вынесена в отдельную

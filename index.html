@@ -225,7 +225,7 @@
     <script src="short_names.js?v=1.2" defer></script>
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
-    <script src="app.js?v=13.16" defer></script>
+    <script src="app.js?v=13.17" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1476,10 +1476,10 @@
                         <div id="rad_shared_row" style="display:none; margin-top:8px;">
                             <div style="font-size:12px; margin-bottom:4px;">Лучи к приборам в комнате</div>
                             <div class="tabs" id="rad_beam_tabs">
-                                <div class="tab active" id="rad_beam_single" onclick="app.setRadBeamMode('single')">Своя ветка на каждый прибор</div>
-                                <div class="tab" id="rad_beam_auto" onclick="app.setRadBeamMode('auto')">Автоподбор</div>
+                                <div class="tab active" id="rad_beam_single" onclick="app.setRadBeamMode('single')">Ветка на каждый прибор</div>
+                                <div class="tab" id="rad_beam_auto" onclick="app.setRadBeamMode('auto')">Автоподбор трассы</div>
                             </div>
-                            <span style="display:block; opacity:.7; font-size:11px; margin-top:4px;">Автоподбор: в комнате с несколькими приборами один общий луч и короткие отводы — меньше выходов коллектора и трубы. Только серая PEX-a.</span>
+                            <span style="display:block; opacity:.7; font-size:11px; margin-top:4px;"><b>Автоподбор трассы:</b> программа сама решает, где приборам комнаты хватает одной общей трассы (по суммарной нагрузке, скорости воды и потерям), а где нужна отдельная ветка. <b>Ветка на каждый прибор:</b> ничего не объединяется; если Ø16, насоса или выходов коллектора не хватает — покажем предупреждение. Только серая PEX-a.</span>
                         </div>
                     </div>
                 </div>
