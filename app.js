@@ -83953,6 +83953,13 @@ const app = {
             } else {
                 addToBill(catalog.tank_kit, 1, "Подключение бака.");
             }
+            // Патрубок бака отопления 1" (в каталоге conn «1»: баки от 35 л), а накидная гайка узла подключения —
+            // 3/4". Между ними нужна муфта ВР 1" × НР 3/4": ВР садится на патрубок бака, НР — под гайку узла.
+            if (String(et.conn) === '1') {
+                const _tankRed = this.findCatalogItemById('SFT-0007-000134');
+                if (_tankRed) addToBill({ ..._tankRed, originalId: 'SFT-0007-000134_exp_heat' }, 1,
+                    `Муфта переходная ВР 1" × НР 3/4" на патрубке расширительного бака отопления ${et.vol} л: у бака резьба 1", накидная гайка узла подключения — 3/4".`);
+            }
         }
         let brand = this.state.brandMode;
         let radNeedsDn25 = (brand === 'rommer') || (this.state.manualDnOverride ? (this.state.manualDnOverride !== 'dn20') : ((pwr > 10) || useAnalogSec2));
