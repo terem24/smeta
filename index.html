@@ -226,7 +226,7 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.4" defer></script>
-    <script src="app.js?v=13.39" defer></script>
+    <script src="app.js?v=13.40" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1921,9 +1921,9 @@
                                     contenteditable="true" onblur="app.setWaterFlowManual(this.innerText)"
                                     onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">2</span> м³/ч</span>
                             </div>
-                            <input type="range" id="inp_wellFlow" min="0.5" max="10" step="0.1" value="2"
+                            <input type="range" id="inp_wellFlow" min="0.5" max="5" step="0.1" value="2"
                                 oninput="app.setWaterFlowManual(this.value)">
-                            <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-sec);"><span>0,5</span><span>10 м³/ч</span></div>
+                            <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-sec);"><span>0,5</span><span>5 м³/ч</span></div>
                         </div>
                     </div>
                 </div>

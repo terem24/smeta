@@ -245,7 +245,7 @@ console.log('\n=== Расход подбора: авто / вручную ===');
     if (auto.q !== app.waterPumpFlowAuto()) fail('авто: расход подбора ' + auto.q + ' ≠ waterPumpFlowAuto ' + app.waterPumpFlowAuto());
     if (app.waterFlowManual() !== 0) fail('авто: waterFlowManual должен быть 0');
     // Вручную в «По комнатам»: расход ровно как задан, нижняя граница не действует
-    [0.5, 1.0, 3.5, 10].forEach(v => {
+    [0.5, 1.0, 3.5, 5].forEach(v => {
         run('flow-man', { ...o, waterFlowManualOn: true, waterFlowManual: v });
         if (app._wellSel.q !== v) fail('вручную ' + v + ': расход подбора ' + app._wellSel.q);
         const r = app.waterHydroCheck();
@@ -255,7 +255,7 @@ console.log('\n=== Расход подбора: авто / вручную ===');
     });
     // Границы диапазона: 0,5…10
     run('flow-clamp-hi', { ...o, waterFlowManualOn: true, waterFlowManual: 99 });
-    if (app._wellSel.q !== 10) fail('99 м³/ч должно обрезаться до 10, а стало ' + app._wellSel.q);
+    if (app._wellSel.q !== 5) fail('99 м³/ч должно обрезаться до 5, а стало ' + app._wellSel.q);
     run('flow-clamp-lo', { ...o, waterFlowManualOn: true, waterFlowManual: 0.1 });
     if (app._wellSel.q !== 0.5) fail('0,1 м³/ч должно подниматься до 0,5, а стало ' + app._wellSel.q);
     // Быстрый расчёт: ручное значение игнорируется
@@ -278,7 +278,7 @@ console.log('\n=== Расход подбора: авто / вручную ===');
     // горячая линия не больше общего расхода
     const dd = app.buildWaterHydroData();
     if (dd.flows.hot > dd.flows.design + 1e-9) fail('горячий расход ' + dd.flows.hot + ' больше общего ' + dd.flows.design);
-    console.log('  авто ' + f2(auto.q) + ' м³/ч; вручную 0,5…10 — расход подбора и проверки совпадает с заданным; границы и быстрый расчёт — верно');
+    console.log('  авто ' + f2(auto.q) + ' м³/ч; вручную 0,5…5 — расход подбора и проверки совпадает с заданным; границы и быстрый расчёт — верно');
 }
 
 // ---------------------------------------------------------------------------
