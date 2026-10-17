@@ -117,7 +117,13 @@
 /* Печать: живая карточка скрыта, проверка гидравлики идёт своим листом (#hydro_check_print,
    app.prepareForPrint, шаг 3б) с раскрытыми строками и без кнопок */
 @media print {
-    .hc-side { display: none !important; }
+    .hc-side, #water_hydro_side { display: none !important; }
+    #water_hydro_print { padding: 6mm 8mm; color: #111; }
+    #water_hydro_print .hc-print-title { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
+    #water_hydro_print .hc-card { border: none; padding: 0; font-size: 12px; }
+    #water_hydro_print .hc-row > summary { cursor: default; }
+    #water_hydro_print .hc-chev { display: none; }
+    #water_hydro_print * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     #hydro_check_print { padding: 6mm 8mm; color: #111; }
     #hydro_check_print .hc-print-title { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
     #hydro_check_print .hc-card { border: none; padding: 0; font-size: 12px; }
@@ -144,3 +150,17 @@
 .hc-preview-t { font-weight: 700; margin-bottom: 4px; }
 .hc-pv-item { padding: 5px 0; border-top: 1px solid var(--border, #E5E7EB); }
 .hc-pv-item:first-of-type { border-top: 0; }
+
+/* Гидравлика водоснабжения (app.waterHydroHtml, water_hydro.js): карточка под насосом скважины, свёрнута по умолчанию */
+.whc { text-align: left; }
+.hc-water { flex: 1 1 100%; width: 100%; }
+.whc-chart { display: block; width: 100%; height: auto; max-height: 120px; margin: 4px 0 6px; color: var(--text-main, #111827); }
+@media print { .whc-chart { max-height: 110px; } }
+.whc-t { width: 100%; border-collapse: collapse; font-size: 11px; margin: 4px 0; }
+.whc-t th { text-align: left; font-weight: 600; color: var(--text-sec, #6B7280); padding: 2px 6px 2px 0; }
+.whc-t td { padding: 2px 6px 2px 0; border-top: 1px solid var(--border, #E5E7EB); }
+.whc-t td i { font-style: normal; color: var(--text-sec, #6B7280); margin-left: 4px; }
+.whc-t tr.whc-z td { font-weight: 600; background: rgba(127, 127, 127, .08); }
+.whc-t tr.whc-tight td:last-child { color: var(--c-warn, #B45309); }
+.whc-t tr.whc-fail td:last-child { color: var(--c-bad, #DC2626); }
+.whc-t tr.whc-ok td:last-child { color: var(--c-ok, #059669); }
