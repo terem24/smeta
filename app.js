@@ -24121,8 +24121,8 @@ const app = {
         { id: 'recognition', icon: '🔍', label: 'Распознавание', hint: 'Архив смет и месячные лимиты' },
         { id: 'plans', icon: '📐', label: 'Планы этажей', hint: 'Подложки планов на сервере' },
         { id: 'projects', icon: '📁', label: 'Проекты', hint: 'Выпущенные комплекты листов' },
-        { id: 'dashboard', icon: '📊', label: 'Дашборд', hint: 'Вся аналитика одним экраном' },
-        { id: 'analytics', icon: '📈', label: 'Аналитика', hint: 'Спрос и конкуренты по регионам' },
+        { id: 'dashboard', icon: '📊', label: 'Бизнес', hint: 'Как идут дела: сметы, монтажники, счета, Профи, отток' },
+        { id: 'analytics', icon: '📈', label: 'Рынок', hint: 'Спрос, наши места по группам, конкуренты, цены' },
         { id: 'aifill', icon: '✨', label: 'Умное заполнение', hint: 'Что говорили и писали в окно ✨' },
         { id: 'articles', icon: '📰', label: 'Статьи', hint: 'Очередь публикаций на год: даты, тексты, что уже вышло' },
         { id: 'channel', icon: '📣', label: 'Канал', hint: 'Посты Telegram-канала @heatcalc_ru: план, тексты, утверждение' },
@@ -26554,8 +26554,10 @@ const app = {
         }
 
         if (this._adminTab === 'analytics') {
-            content.innerHTML = navHtml;
-            this.renderAdminAnalytics();
+            // «Рынок»: подвкладка «Наши места» — прежняя таблица, остальные — разделы дашборда
+            content.innerHTML = navHtml + this.marketTabsHtml();
+            if ((this._marketTab || 'places') === 'places') this.renderAdminAnalytics();
+            else this.renderAdminDashboard();
             return;
         }
 
@@ -29247,16 +29249,55 @@ const app = {
         // предпросмотры выключенных блоков — иначе выбирать пришлось бы
         // вслепую, по одному названию.
         const B = this.dashBuildBlocks();
-        wrap.innerHTML = this.dashHeaderHtml() + this.dashNavHtml(B) + this.dashLayoutHtml(B) + this.dashGalleryHtml(B);
+        wrap.innerHTML = this.dashHeaderHtml() + this.dashNavHtml(B) + this.dashLayoutHtml(B) + this.dashGalleryHtml(B)
+            + (this.dashScopeSections().length ? '' : `<div style="padding:24px 0; color:var(--text-sec); font-size:13px;">
+                В этой вкладке нет разделов: в сохранённой раскладке их убрали. «✏️ Настроить» → «Сбросить» вернёт раскладку по умолчанию.</div>`);
     },
 
     // Дашборд — это 8 000 px блоков, и листать их вслепую неудобно. Полоса разделов прилипает
     // к верху и ведёт к нужному месту; показывается только в обычном режиме (в режиме правки
     // у разделов свои заголовки с кнопками) и только для разделов, где есть что показать.
+    // Раскладка одна, а показывают её две вкладки панели: «Бизнес» (мы: сметы, счета, Профи, отток)
+    // и «Рынок» (спрос, конкуренты, цены). Что куда — решает идентификатор раздела; раздел, которого
+    // нет в списке рынка (свой, добавленный в «Настроить»), идёт в «Бизнес».
+    DASH_MARKET_SECS: ['market', 'demand', 'prices'],
+    // Подвкладки «Рынка». places — прежняя таблица «Аналитики», остальные — разделы дашборда
+    MARKET_TABS: [
+        { id: 'places', t: 'Наши места по группам' },
+        { id: 'demand', t: 'Спрос', secs: ['demand'] },
+        { id: 'market', t: 'Обзор рынка', secs: ['market'] },
+        { id: 'prices', t: 'Цены', secs: ['prices'] }
+    ],
+
+    dashTabActive: function () {
+        return this._adminTab === 'dashboard' || (this._adminTab === 'analytics' && (this._marketTab || 'places') !== 'places');
+    },
+
+    dashScopeSections: function () {
+        const all = this.dashLayout().sections;
+        if (this._adminTab === 'analytics') {
+            const t = this.MARKET_TABS.filter(x => x.id === (this._marketTab || 'places'))[0];
+            const ids = (t && t.secs) || [];
+            return all.filter(s => ids.indexOf(s.id) >= 0);
+        }
+        return all.filter(s => this.DASH_MARKET_SECS.indexOf(s.id) < 0);
+    },
+
+    marketTabsHtml: function () {
+        const cur = this._marketTab || 'places';
+        return `<div class="ad-chips" style="margin-bottom:14px;">${this.MARKET_TABS.map(t =>
+            `<button class="ad-chip${cur === t.id ? ' active' : ''}" onclick="app.setMarketTab('${t.id}')">${t.t}</button>`).join('')}</div>`;
+    },
+
+    setMarketTab: function (id) {
+        this._marketTab = id;
+        this.renderAdminMain();
+    },
+
     dashNavHtml: function (B) {
         if (this._dashEdit) return '';
         const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-        const secs = this.dashLayout().sections.filter(s => s.title && s.items.some(w => B[w.id]));
+        const secs = this.dashScopeSections().filter(s => s.title && s.items.some(w => B[w.id]));
         if (secs.length < 2) return '';
         return `<div class="ad-chips ad-sticky-nav">${secs.map(s => `<button class="ad-chip" onclick="app.dashScrollTo('${s.id}')">${esc(s.title)}</button>`).join('')}</div>`;
     },
@@ -29845,23 +29886,24 @@ const app = {
         const updated = (brands && brands.updated) || (wordstat && wordstat.updated) || '—';
         const edit = !!this._dashEdit;
         const st = this.dashLayout().style;
+        const isMarket = this._adminTab === 'analytics';
 
         let h = `<div style="margin-bottom:18px;">
             <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:4px;">
-                <h3 style="margin:0; color:var(--text-main);">📊 Дашборд${region ? ` — ${esc(region)}` : ''}</h3>
+                <h3 style="margin:0; color:var(--text-main);">${isMarket ? '📈 Рынок' : '📊 Бизнес'}${region ? ` — ${esc(region)}` : ''}</h3>
                 <span style="font-size:12.5px; color:var(--text-sec);">данные на <b>${esc(updated)}</b>, последний закрытый месяц</span>
                 <div style="margin-left:auto; display:flex; gap:6px; flex-wrap:wrap;">
                     ${edit
                         ? `<button class="admin-btn" onclick="app.resetDashLayout()">Сбросить</button>
                            <button class="admin-btn" style="background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);" onclick="app.toggleDashEdit(false)">Готово</button>`
                         : `<button class="admin-btn" title="переставить блоки и настроить вид" onclick="app.toggleDashEdit(true)">✏️ Настроить</button>
-                           <button class="admin-btn" onclick="app.switchAdminTab('analytics')">Подробно →</button>
+                           ${isMarket ? '' : `<button class="admin-btn" onclick="app.switchAdminTab('analytics')">Рынок →</button>`}
                            <button class="admin-btn" onclick="app._analytics = null; app.renderAdminMain()">Обновить</button>`}
                 </div>
             </div>
-            <div style="font-size:12px; color:var(--text-sec); margin-bottom:12px;">
+            ${isMarket ? `<div style="font-size:12px; color:var(--text-sec); margin-bottom:12px;">
                 Спрос по Яндексу — это интерес, а не продажи: профессиональные позиции берут у дистрибьютора, не заходя в поиск.
-            </div>`;
+            </div>` : ''}`;
 
         if (regionList.length) {
             h += `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
@@ -29870,7 +29912,8 @@ const app = {
             </div>`;
         }
         const cmpBtn = (m, label) => `<button class="ad-chip${back === m ? ' active' : ''}" onclick="app.setAnalyticsCompare(${m})">${label}</button>`;
-        h += `<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:${edit ? 10 : 16}px;">
+        // База сравнения нужна только рыночным цифрам; в «Бизнесе» она не влияет ни на что видимое
+        if (isMarket) h += `<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:${edit ? 10 : 16}px;">
                 <span style="font-size:12px; color:var(--text-sec);">сравнивать:</span>
                 ${cmpBtn(1, 'с прошлым месяцем')}${cmpBtn(3, 'с кварталом')}${cmpBtn(12, 'с годом назад')}
               </div>`;
@@ -29907,7 +29950,7 @@ const app = {
                 style="width:24px; height:24px; padding:0; font-size:12px; line-height:1; border-radius:8px; ${extra || ''}"
                 onclick="${on}">${sym}</button>`;
 
-        const html = l.sections.map((s, si) => {
+        const html = this.dashScopeSections().map((s, si) => {
             const head = edit
                 ? `<div ondragover="app.dashDragOver(event)" ondrop="app.dashDropOnHeader(event, '${s.id}')"
                         style="display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin:0 0 10px;
@@ -32002,7 +32045,7 @@ const app = {
             this._dashOwn = res;
             this._dashStats = null;
             this._loadingDashOwn = false;
-            if (this._adminTab === 'dashboard') this.renderAdminMain();
+            if (this.dashTabActive()) this.renderAdminMain();
         })();
         return false;
     },
@@ -32146,7 +32189,7 @@ const app = {
             this._tariffEv = out;
             this._dashStats = null;
             this._loadingTariffEv = false;
-            if (this._adminTab === 'dashboard') this.renderAdminMain();
+            if (this.dashTabActive()) this.renderAdminMain();
         })();
         return false;
     },
@@ -32185,7 +32228,7 @@ const app = {
             this._dashEv = out;
             this._dashFunnel = null;
             this._loadingDashEv = false;
-            if (this._adminTab === 'dashboard') this.renderAdminMain();
+            if (this.dashTabActive()) this.renderAdminMain();
         })();
         return false;
     },
@@ -32566,7 +32609,7 @@ const app = {
             this._dashTimer = out;
             this._dashTimerStats = null;
             this._loadingDashTimer = false;
-            if (this._adminTab === 'dashboard') this.renderAdminMain();
+            if (this.dashTabActive()) this.renderAdminMain();
         })();
         return false;
     },
@@ -32716,7 +32759,7 @@ const app = {
             this._dashPos = out;
             this._dashPosStats = null;
             this._loadingDashPos = false;
-            if (this._adminTab === 'dashboard') this.renderAdminMain();
+            if (this.dashTabActive()) this.renderAdminMain();
         })();
         return false;
     },
