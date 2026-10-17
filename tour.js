@@ -493,13 +493,14 @@ const Tour = {
 
     planText: function () {
         const p = this.planInfo();
-        const li = (arr, mark) => arr.map(x => mark + ' ' + x).join('<br>');
-        let t = (p.label ? 'Сейчас у вас: <b>' + p.label + '</b>.' : '');
-        if (p.open.length) t += '<br><br><b>Уже открыто:</b><br>' + li(p.open, '✓');
+        const li = (arr, cls, mark) => '<ul class="tour-plan-list">' + arr.map(x =>
+            '<li class="' + cls + '"><span class="tour-plan-mark">' + mark + '</span><span>' + x + '</span></li>').join('') + '</ul>';
+        let t = (p.label ? '<div class="tour-plan-badge">' + (p.isPro ? '★ ' : '') + p.label + '</div>' : '');
+        if (p.open.length) t += '<div class="tour-plan-h">Уже открыто</div>' + li(p.open, 'tour-plan-ok', '✓');
         if (p.gain.length) {
-            t += '<br><br><b>Что добавит Профи:</b><br>' + li(p.gain, '＋');
+            t += '<div class="tour-plan-h">Откроет Профи</div>' + li(p.gain, 'tour-plan-no', '✕');
         } else if (p.isPro) {
-            t += '<br><br>Подписка Профи включает всё, что вы видели в обучении.';
+            t += '<div class="tour-plan-foot">Подписка Профи включает всё, что вы видели в обучении.</div>';
         }
         return t;
     },
@@ -513,8 +514,8 @@ const Tour = {
         const money = n => { try { return app.formatCurrencyAmount(n); } catch (e) { return String(n) + ' ₽'; } };
         const isPro = this.planInfo().isPro;
         let h = '<div class="tour-pay">';
-        if (m) h += '<button type="button" class="tour-btn tour-btn-pay" onclick="Tour.pay(\'month\')">' + (isPro ? 'Продлить на месяц' : 'Месяц') + ' · ' + money(m.rub) + '</button>';
-        if (y) h += '<button type="button" class="tour-btn tour-btn-pay" onclick="Tour.pay(\'year\')">' + (isPro ? 'Продлить на год' : 'Год') + ' · ' + money(Math.round(y.rub / 12)) + '/мес</button>';
+        if (y) h += '<button type="button" class="tour-pay-btn tour-pay-year" onclick="Tour.pay(\'year\')"><span class="tour-pay-tag">Выгоднее</span><b>' + (isPro ? 'Продлить на год' : 'Год') + '</b><span>' + money(Math.round(y.rub / 12)) + '/мес</span></button>';
+        if (m) h += '<button type="button" class="tour-pay-btn tour-pay-month" onclick="Tour.pay(\'month\')"><b>' + (isPro ? 'Продлить на месяц' : 'Месяц') + '</b><span>' + money(m.rub) + '</span></button>';
         h += '<a href="#" class="tour-pay-all" onclick="Tour.pay(); return false;">Сравнить тарифы и ввести промокод</a></div>';
         return h;
     },
@@ -1259,9 +1260,42 @@ body.dark-mode .tour-card { background: #1E1E1E; border-color: #333333; }
     border: none; background: var(--primary); color: #fff; cursor: pointer;
 }
 .tour-btn-ghost { background: transparent; color: var(--text-sec); border: 1px solid var(--border); }
-.tour-pay { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
-.tour-btn-pay { flex: 1 1 130px; padding: 8px 10px; }
-.tour-pay-all { flex: 1 1 100%; text-align: center; font-size: 12px; font-weight: 600; color: var(--primary); text-decoration: none; }
+.tour-plan-badge {
+    display: inline-block; margin: 2px 0 4px; padding: 4px 12px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 800; color: #fff;
+    background: linear-gradient(135deg, #3B82F6, #2563EB);
+}
+.tour-plan-h { margin: 10px 0 5px; font-size: 11px; font-weight: 800; letter-spacing: .4px; text-transform: uppercase; color: var(--text-sec); }
+.tour-plan-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.tour-plan-list li { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; line-height: 1.35; color: var(--text-main); }
+.tour-plan-mark {
+    flex: 0 0 18px; width: 18px; height: 18px; border-radius: 50%; margin-top: 1px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800; color: #fff;
+}
+.tour-plan-ok .tour-plan-mark { background: #10B981; }
+.tour-plan-no .tour-plan-mark { background: #EF4444; }
+.tour-plan-no { color: var(--text-sec); }
+.tour-plan-no span:last-child { text-decoration: line-through; text-decoration-color: rgba(239, 68, 68, 0.6); }
+.tour-plan-foot { margin-top: 10px; font-size: 12.5px; color: var(--text-sec); }
+.tour-pay { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.tour-pay-btn {
+    position: relative; font: inherit; width: 100%; min-height: 48px; padding: 8px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    border: none; border-radius: 12px; cursor: pointer; font-size: 14px;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+.tour-pay-btn b { font-weight: 800; }
+.tour-pay-btn span { font-weight: 700; }
+.tour-pay-btn:hover { transform: translateY(-1px); }
+.tour-pay-year { color: #fff; background: linear-gradient(135deg, #3B82F6, #1D4ED8); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.32); }
+.tour-pay-year:hover { box-shadow: 0 10px 22px rgba(37, 99, 235, 0.4); }
+.tour-pay-month { color: var(--primary); background: transparent; border: 1.5px solid var(--primary); }
+.tour-pay-tag {
+    position: absolute; top: -8px; right: 12px; padding: 1px 8px; border-radius: 999px;
+    font-size: 10px; font-weight: 800; color: #fff; background: #10B981;
+}
+.tour-pay-all { text-align: center; font-size: 12px; font-weight: 600; color: var(--primary); text-decoration: none; }
 
 /* Телефон лёжа: 375 px высоты на всё про всё. Карточка в 280–360 px не оставляет
    места подсвеченному элементу ни под собой, ни над собой, и расчёт из place()
