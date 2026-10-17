@@ -41156,9 +41156,10 @@ const app = {
             const L = 2 * run * 1.1, Ls = 2 * STUB * 1.1;
             let d = 25;
             for (const dd of [16, 20, 25]) { if (this.radPipeDrop(flowTot, dd, L).dp <= LIM) { d = dd; break; } }
-            // onlyD16 (расчёт и смета, этап 3а): группы, которым нужен Ø20/25, пока остаются отдельными лучами —
-            // переходники Ø20/25 на евроконусы коллектора в каталоге не подобраны. Подсказка (без флага) видит все.
-            if (onlyD16 && d !== 16) return;
+            // onlyD16 (расчёт и смета): общий луч Ø16 и Ø20 — евроконус на коллектор есть в каталоге (SFC-0020-001622 и
+            // SFC-0020-002028). Группам, которым нужен Ø25, евроконуса нет — они остаются отдельными лучами.
+            // Подсказка (без флага) видит все.
+            if (onlyD16 && d > 20) return;
             out[k] = { room: g.room, items: items, n: n, totalW: totalW, run: run, flowTot: flowTot, L: L, Ls: Ls, d: d };
         });
         return out;
@@ -87584,9 +87585,16 @@ const app = {
                 // Общий луч Ø16 на комнату с несколькими приборами (state.radSharedBeams, этап 3а): один луч до комнаты
                 // и короткие отводы вместо отдельного луча каждому. Только для Ø16 — те же труба и евроконусы у коллектора.
                 const _sh = this.radSharedActive() ? this.radSharedGroups(this.radDevices, this.radDeviceRuns(this.radDevices, avgRun), true) : null;
+                // Общий участок Ø20 считаем отдельной трубой (SPX-0001-002028), отводы к приборам — всегда Ø16
+                let _m20 = 0;
                 if (_sh && Object.keys(_sh).length) {
                     let _grouped = 0, _shM = 0;
-                    Object.keys(_sh).forEach(k => { _grouped += _sh[k].n; _shM += _sh[k].L + _sh[k].n * _sh[k].Ls; });
+                    Object.keys(_sh).forEach(k => {
+                        const g = _sh[k];
+                        _grouped += g.n;
+                        _shM += g.n * g.Ls + (g.d === 16 ? g.L : 0);
+                        if (g.d === 20) _m20 += g.L;
+                    });
                     totalMeters = (totalDevicesCount - _grouped) * avgRun * 2 * 1.1 + _shM;
                 }
                 let neededPipe = Math.ceil(totalMeters);
@@ -87630,11 +87638,34 @@ const app = {
                     addToBill(catalog.water_fittings[8], neededPipe, this.getDesc('double_clip', neededPipe, 'radiators'), pipeGrp);
                     // Тройники общих лучей: по одному на каждый отбор (приборов в комнате минус один), на подаче и на обратке
                     if (_sh) {
-                        let _teeQty = 0;
-                        Object.keys(_sh).forEach(k => { _teeQty += (_sh[k].n - 1) * 2; });
-                        const _teeItem = _teeQty > 0 ? this.findCatalogItemById('SFA-0013-000016') : null;
-                        if (_teeItem) addToBill({ ..._teeItem, originalId: 'SFA-0013-000016_rad_share' }, _teeQty,
-                            `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Общий луч Ø16 на комнату с несколькими приборами: от коллектора идёт одна труба, у приборов она делится тройниками на короткие отводы.<br><b>Расчёт:</b> по тройнику на каждый отбор (приборов в комнате минус один) × 2 (подача и обратка) = ${_teeQty} шт.</span>`, pipeGrp);
+                        // Тройники: на Ø16 — равнопроходные (n−1 на комнату); на Ø20 — (n−2) «20×20×16» по ходу общего
+                        // участка и один «20×16×16» на последнем отборе. Всё × 2 — подача и обратка.
+                        const _teeQ = {};
+                        Object.keys(_sh).forEach(k => {
+                            const g = _sh[k];
+                            if (g.d === 16) _teeQ['SFA-0013-000016'] = (_teeQ['SFA-0013-000016'] || 0) + (g.n - 1) * 2;
+                            else {
+                                if (g.n > 2) _teeQ['SFA-0014-202016'] = (_teeQ['SFA-0014-202016'] || 0) + (g.n - 2) * 2;
+                                _teeQ['SFA-0014-201616'] = (_teeQ['SFA-0014-201616'] || 0) + 2;
+                            }
+                        });
+                        Object.keys(_teeQ).forEach(id => {
+                            const it = _teeQ[id] > 0 ? this.findCatalogItemById(id) : null;
+                            if (it) addToBill({ ...it, originalId: id + '_rad_share' }, _teeQ[id],
+                                `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Общий луч на комнату с несколькими приборами: от коллектора идёт одна труба, у приборов она делится тройниками на короткие отводы Ø16.<br><b>Расчёт:</b> по тройнику на каждый отбор × 2 (подача и обратка) = ${_teeQ[id]} шт.</span>`, pipeGrp);
+                        });
+                        // Общий участок Ø20: труба и хомуты по метру (как у трассы до коллектора), без изоляции
+                        if (_m20 > 0) {
+                            const _p20 = this.findCatalogItemById('SPX-0001-002028');
+                            if (_p20) {
+                                const _m20c = Math.ceil(_m20);
+                                addToBill(asCoilPrice({ ..._p20, originalId: 'SPX-0001-002028_rad_share' }), Math.ceil(_m20c / (_p20.len || 100)),
+                                    `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Общий участок луча Ø20 до комнаты, где несколько приборов: по нему идёт сумма расходов, а отводы к приборам — Ø16.<br><b>Расчёт:</b> ${_m20c} м трубы (подача и обратка).</span>`, pipeGrp);
+                                const _cl20 = catalog.mounting_system.find(x => x.id === 'SAC-0020-000012');
+                                if (_cl20) addToBill({ ..._cl20, originalId: 'SAC-0020-000012_rad_share' }, _m20c,
+                                    `Хомут крепления общего участка Ø20 — по одному на метр каждой трубы. Требуется: ${_m20c} шт.`, pipeGrp);
+                            }
+                        }
                     }
                 }
 
@@ -88052,8 +88083,15 @@ const app = {
                     // написано полем connType/outSize. Выходы под обжим или на 1/2" — там
                     // нужен другой присоединитель, и подсовывать евроконус нельзя.
                     const _radEuro = (this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp') ? catalog.parts[3] : catalog.parts[1];
-                    const _radEuroQty = reqLoops * 2 * manifoldsCount;
+                    // Выходы общих лучей Ø20 садятся на евроконус 20×2,8 (SFC-0020-002028): их вычитаем из Ø16
+                    const _g20 = _sh ? Object.keys(_sh).filter(k => _sh[k].d === 20).length : 0;
+                    const _radEuroQty = reqLoops * 2 * manifoldsCount - 2 * _g20;
                     const _euroFits = !!_mConn && _mConn.connType === 'ek' && _mConn.outSize === '3/4';
+                    if (_g20 > 0 && _euroFits) {
+                        const _e20 = this.findCatalogItemById('SFC-0020-002028');
+                        if (_e20) addEurocone(_e20, 2 * _g20, _nodeWhere +
+                            `<b>Зачем:</b> Присоединение общего луча Ø20 к коллектору — по два на выход (подача и обратка).<br><b>Расчёт:</b> ${_g20} ${this.plural(_g20, 'общий луч', 'общих луча', 'общих лучей')} × 2 = ${2 * _g20} шт.</span>`, pipeGrp);
+                    }
                     if (_radEuro && _euroFits) addEurocone(_radEuro, _radEuroQty, _nodeWhere +
                         `<b>Зачем:</b> Присоединение луча к коллектору — по два на выход (подача и обратка). Вторая пара, у самого прибора, посчитана отдельной строкой в «3.1. Обвязка радиаторов».<br>` +
                         `<b>Расчёт:</b> ${reqLoops} вых. × 2` + (manifoldsCount > 1 ? ` × ${manifoldsCount} коллектора` : ``) + ` = ${_radEuroQty} шт.</span>`, pipeGrp);
