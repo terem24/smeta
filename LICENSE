@@ -1,0 +1,45 @@
+Copyright (c) 2024-2026 Ибатуллин Дмитрий (HeatCalc.ru). Все права защищены.
+Copyright (c) 2024-2026 Dmitry Ibatullin (HeatCalc.ru). All rights reserved.
+
+ПРОПРИЕТАРНОЕ ПРОГРАММНОЕ ОБЕСПЕЧЕНИЕ / PROPRIETARY SOFTWARE
+
+Исходный код, скрипты, базы данных (включая каталоги, цены и тарифы),
+алгоритмы и формулы расчёта, тексты, дизайн и иные материалы этого
+репозитория и сайта https://heatcalc.ru (далее — «Программа») являются
+объектами авторского права и принадлежат правообладателю.
+
+Публичная доступность репозитория НЕ означает передачи каких-либо прав.
+Без предварительного письменного разрешения правообладателя запрещается:
+
+  1. копировать, воспроизводить, распространять, публиковать Программу
+     или любую её часть;
+  2. изменять, дорабатывать, создавать производные произведения;
+  3. использовать Программу или её части, включая базы цен и логику
+     расчёта, в собственных или чужих сайтах, приложениях и сервисах,
+     в том числе коммерческих;
+  4. автоматически собирать (парсить, скрейпить) данные Программы
+     для создания аналогичных баз или сервисов;
+  5. удалять или изменять уведомления об авторских правах.
+
+Разрешено только: просматривать код в этом репозитории и пользоваться
+сайтом в соответствии с его офертой, а также делать форк на GitHub
+в пределах, прямо предусмотренных Условиями использования GitHub,
+исключительно для просмотра.
+
+Программа предоставляется «как есть», без каких-либо гарантий.
+Правообладатель не несёт ответственности за убытки, возникшие
+в связи с использованием Программы.
+
+По вопросам лицензирования: через форму обратной связи на https://heatcalc.ru
+
+---
+
+Copyright (c) 2024-2026 Dmitry Ibatullin (HeatCalc.ru). All rights reserved.
+
+This repository and the HeatCalc.ru website (the "Software") are proprietary.
+Public visibility of this repository does not grant any license. Without prior
+written permission of the copyright holder you may not copy, modify,
+distribute, scrape, or use the Software or any part of it (including source
+code, data sets, price databases and calculation logic) in any other product
+or service. Viewing the code and using the website under its terms of service
+is permitted. The Software is provided "AS IS", without warranty of any kind.
