@@ -50464,9 +50464,25 @@ const app = {
         const d = dEl ? parseInt(dEl.value, 10) : 0;
         const len = lEl ? parseFloat(String(lEl.value).replace(',', '.')) : 0;
         if (!(d > 0)) return;
+        // Для сравнения считаем запас автоподбора (без ручной подводки) пробным прогоном и возвращаем состояние
+        const prevOv = this.state.radTrunkOv || null;
+        let autoD = null, autoPct = null;
+        this._cheapComparing = true;
+        try {
+            this.state.radTrunkOv = null;
+            this.render(true);
+            const t = this.radHydro && (this.radHydro.parts || []).find(p => p.tag === 'trunk');
+            autoD = t ? t.d : null;
+            autoPct = Math.round((this.hydroRadRatio() - 1) * 100);
+        } catch (e) { autoD = null; autoPct = null; } finally {
+            this.state.radTrunkOv = prevOv;
+            this._cheapComparing = false;
+        }
         this.state.radTrunkOv = { d: d, len: len > 0 ? Math.round(len) : null };
         this._hcPreview = null;
         this.render();
+        this._hcManualCmp = { d: d, autoD: autoD, autoPct: autoPct, newPct: Math.round((this.hydroRadRatio() - 1) * 100) };
+        this.syncHydroCheck();
         this.saveState();
     },
 
@@ -50548,7 +50564,18 @@ const app = {
             html += '<details class="hc-manual"' + (this._hcOpen.manual ? ' open' : '') + ' ontoggle="app._hcOpen.manual=this.open"><summary>Своя подводка к котельной</summary>'
                 + '<div class="hc-trunk-form"><span>Диаметр и длина (подача + обратка):</span>'
                 + '<select id="hc_trunk_d" onchange="app.setRadTrunkOv(event)">' + opts + '</select>'
-                + '<input id="hc_trunk_len" type="number" min="1" step="1" value="' + Math.round(trunk.len || 0) + '" onchange="app.setRadTrunkOv(event)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}"> м</div></details>';
+                + '<input id="hc_trunk_len" type="number" min="1" step="1" value="' + Math.round(trunk.len || 0) + '" onchange="app.setRadTrunkOv(event)" onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}"> м</div>'
+                + (() => {
+                    // Что даёт выбранный диаметр по сравнению с автоподбором: меньшая труба сильнее тормозит воду
+                    const c = this._hcManualCmp, ov = this.state.radTrunkOv;
+                    if (!c || !ov || c.d !== ov.d || c.autoPct == null) return '';
+                    const sg = v => (v >= 0 ? '+' : '') + v + ' %';
+                    const worse = c.newPct < c.autoPct, same = c.newPct === c.autoPct;
+                    return '<div class="hc-det-p"' + (worse ? ' style="color:var(--c-bad,#DC2626);font-weight:600"' : '') + '>Ø' + c.d + ': запас насоса ' + sg(c.newPct)
+                        + ' (автоподбор' + (c.autoD ? ' Ø' + c.autoD : '') + ': ' + sg(c.autoPct) + ')'
+                        + (worse ? ' — хуже автоподбора: меньшая труба сильнее тормозит воду' : (same ? ' — как у автоподбора' : ' — лучше автоподбора')) + '</div>';
+                })()
+                + '</details>';
         }
         const u = this.state.hydroUserFix || {};
         const manual = [];
@@ -50822,7 +50849,7 @@ const app = {
                 // Запас насоса в процентах: насос даёт на k−1 больше, чем нужно; норма — запас RAD_PUMP_RESERVE
                 if (r.k != null && r.need > 0) {
                     const pc = v => (v >= 0 ? '+' : '') + Math.round(v * 100) + ' %';
-                    html += '<div class="hc-det-p">Запас насоса ' + pc(r.k - 1) + ' (норма ' + pc((r.reserve || this.RAD_PUMP_RESERVE) - 1) + ')</div>';
+                    html += '<div class="hc-det-p">Запас насоса ' + pc(r.k - 1) + ' (норма ' + pc((r.reserve || this.RAD_PUMP_RESERVE) - 1) + ' — по практике проектирования)</div>';
                 }
                 if (r.id === 'ufh' && r.verdict === 'fail') {
                     // Пол: совет «разделить коллектор» превращаем в действие, которое здесь есть — предел длины петли
