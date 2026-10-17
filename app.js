@@ -33134,7 +33134,7 @@ const app = {
         well_pumps: 'nasosy_skv', well_auto: 'nasosnaya_avtomatika', well_relays: 'nasosnaya_avtomatika',
         well_parts: 'fitingi_pnd',
         // Ввод ХВС и водоочистка
-        filter_big_blue: 'vodoochistka', water_input_node: 'vodoochistka',
+        filter_big_blue: 'vodoochistka', water_input_node: 'vodoochistka', water_node_1in: 'vodoochistka',
         // Дополнительные материалы
         insulation: 'teploizolyaciya', insulation_pro: 'teploizolyaciya',
         water_insulation: 'teploizolyaciya',
@@ -50133,6 +50133,41 @@ const app = {
         return base;
     },
 
+    // Узел ввода дома: 3/4" (по умолчанию) или 1". На 1" позиции главной линии заменяются своими 1" из
+    // catalog.water_node_1in (поле replaces — id позиции 3/4"); переходники 1" → 3/4" на входе не нужны.
+    // Подпитка отопления (6.6) и счётчик остаются как есть: подпитке 1" ни к чему, счётчика 1" в прайсе нет.
+    NODE1_DROP: ['SFT-0029-000134', 'SFT-0004-000134'],
+    // Расход, на который считается узел и подбирается насос, м³/ч: ручной («По комнатам»), иначе вероятностный
+    // (для скважины — не меньше нижней границы насоса). От него зависит размер узла ввода.
+    waterDesignFlow: function () {
+        const man = this.waterFlowManual();
+        if (man > 0) return man;
+        const p = this.waterPeakFlow().design;
+        return this.state.well ? Math.max(this.WATER_PUMP_FLOW_FLOOR, p) : Math.max(0.1, p);
+    },
+    // Скорость в узле выше этого — главная линия переходит на 1" (ориентир практики: шум и потери; тот же предел, что в проверке водоснабжения)
+    WATER_NODE_V_MAX: 2.0,
+    // Размер узла ввода считается сам: на 3/4" (внутренний проход ~20 мм) скорость при расчётном расходе
+    // не выше предела — 3/4", иначе 1". state.waterNodeSize = '1' | '34' принудительно (для стенда), по умолчанию — расчёт.
+    waterNodeSize: function () {
+        if (this.state.waterNodeSize === '1') return '1';
+        if (this.state.waterNodeSize === '34') return '34';
+        const q = this.waterDesignFlow();
+        const v = (q / 3600) / (Math.PI * 0.02 * 0.02 / 4);
+        return v > this.WATER_NODE_V_MAX ? '1' : '34';
+    },
+    nodeItem1: function (item) {
+        if (!item || this.waterNodeSize() !== '1') return item;
+        const t = (catalog.water_node_1in || []).find(x => x.replaces === item.id);
+        if (t) {
+            const out = { ...t };
+            delete out.replaces;
+            return out;
+        }
+        if (this.NODE1_DROP.includes(item.id)) return null;
+        return item;
+    },
+
     // Внутренний диаметр (м) по размеру позиции: «3/4"», «1 1/4"», «DN25», счётчик «ВСКМ-15».
     // Номинальный проход (DN), а не резьба: потери считаются по проходу.
     inchBore: function (name) {
@@ -50151,7 +50186,9 @@ const app = {
         const list = this.currentEquipmentList || [];
         const inNode = list.filter(i => /^6\./.test(String(i.sectionTitle || i.group || '')));
         const bore = re => { const it = inNode.find(i => re.test(String(i.name || ''))); return it ? this.inchBore(it.name) : null; };
-        const valves = inNode.filter(i => /Кран шаровой/i.test(String(i.name || ''))).map(i => this.inchBore(i.name)).filter(Boolean);
+        // Главная линия узла — подразделы 6.1, 6.4, 6.5; краны подпитки (6.6), уличных кранов (6.2) и байпаса идут на своих размерах
+        const mainLine = i => !i.group || /^6\.(1|4|5)\b/.test(String(i.group));
+        const valves = inNode.filter(i => mainLine(i) && /Кран шаровой/i.test(String(i.name || ''))).map(i => this.inchBore(i.name)).filter(Boolean);
         const out = {
             dIn: valves.length ? Math.min.apply(null, valves) : 0.02,
             sizes: { mesh: bore(/Фильтр сетчатый/i), fine: bore(/Колба/i), meter: bore(/Сч[её]тчик воды/i), reducer: bore(/Редуктор давления/i) },
@@ -50207,7 +50244,7 @@ const app = {
             control: pressureCtl && !mains ? 'pressure' : 'flow',
             collector: ns.collector,
             node: {
-                dIn: ns.dIn, len: 3, absent: !inp, sizes: ns.sizes,
+                dIn: ns.dIn, len: 3, absent: !inp, sizes: ns.sizes, size: this.waterNodeSize(),
                 devices: {
                     reducer: inp && !!s.waterReducer, meter: inp && !!s.waterMeter, leak: inp && !!s.waterLeakGuard,
                     filter: this.filterLevel() !== 'none' ? 'fine' : 'coarse'
@@ -50425,17 +50462,25 @@ const app = {
     // Плашка раздела «6. Узел ввода ХВС»: хватает ли ввода 3/4" на расчётный расход.
     // Молчит, пока расход укладывается: плашка «всё в порядке» только шумит.
     waterNodeFlowNote: function () {
-        const q = this.waterNodeFlow();
+        const q = this.waterDesignFlow();
         if (q <= 0) return '';
-        const fine = this.filterLevel() !== 'none';
-        const lim = fine ? this.WATER_NODE_FLOW_FINE : this.WATER_NODE_FLOW_COARSE;
-        if (q <= lim) return '';
         const fmt = v => v.toFixed(2).replace('.', ',');
-        return this.noteBox('warn', 'Узел ввода 3/4″ не тянет расход дома.',
-            `Расчёт ${fmt(q)} м³/ч, узел ${fine ? 'с колбой тонкой очистки' : 'без тонкой очистки'} — до ${fmt(lim)} м³/ч.`,
-            `<div class="tip-p"><b>Расчёт:</b> вероятностный — приборы заняты долю расчётного часа, считаются утренний и вечерний пик, берётся расход, который превышается не дольше 0,5 % часа: ${fmt(q)} м³/ч. Метод описан в карточке «Проверка водоснабжения».</div>` +
-            `<div class="tip-p"><b>Предел:</b> ${fmt(lim)} м³/ч — ориентир производителя сборных узлов ввода на 3/4″ (${fine ? 'с картриджем тонкой очистки 10 мкм' : 'с одним фильтром грубой очистки'}), в СП такой цифры нет. Скорость воды при этом в трубе DN20 около ${fmt(lim / 3600 / (Math.PI * 0.01 * 0.01))} м/с.</div>` +
-            `<div class="tip-p"><b>Что делать:</b> ввод и коллектор на 1″ (в смете останется 3/4″, пересчитайте позиции), либо вторую колбу параллельно, либо считать узел отдельно под ваш расход. На коротких пиках дом переживёт — но душ и стиральная одновременно дадут просадку.</div>`);
+        const big = this.waterNodeSize() === '1';
+        const fine = this.filterLevel() !== 'none';
+        // Пределы сборных узлов ввода даны на 3/4"; на 1" растут как сечение (d²)
+        const k = big ? Math.pow(25 / 20, 2) : 1;
+        const lim = (fine ? this.WATER_NODE_FLOW_FINE : this.WATER_NODE_FLOW_COARSE) * k;
+        const vMax = (this.WATER_NODE_V_MAX * 3600 * Math.PI * (big ? 0.025 : 0.02) * (big ? 0.025 : 0.02) / 4);
+        if (q <= Math.min(lim, vMax)) {
+            // Узел поднялся на 1" сам — скажем один раз, чем это вызвано
+            if (big) return this.noteBox('info', 'Узел ввода — 1″.', `Расчётный расход ${fmt(q)} м³/ч: на 3/4″ скорость воды в узле выше ${fmt(this.WATER_NODE_V_MAX)} м/с, поэтому главная линия собрана на 1″ (краны, фильтр, редуктор, тройник). Счётчик остаётся ВСКМ-20 — при необходимости замените в таблице замены.`);
+            return '';
+        }
+        return this.noteBox('warn', `Узел ввода ${big ? '1″' : '3/4″'} тесноват под расход дома.`,
+            `Расчёт ${fmt(q)} м³/ч, предел узла ${fmt(Math.min(lim, vMax))} м³/ч.`,
+            `<div class="tip-p"><b>Расчёт:</b> вероятностный — приборы заняты долю расчётного часа, считаются утренний и вечерний пики, берётся расход, который превышается не дольше 0,5 % часа: ${fmt(q)} м³/ч. Метод описан в карточке «Проверка водоснабжения».</div>` +
+            `<div class="tip-p"><b>Предел:</b> по ориентиру производителя сборных узлов ввода (${fine ? 'с колбой тонкой очистки' : 'с одним фильтром грубой очистки'}) и скорости воды не выше ${fmt(this.WATER_NODE_V_MAX)} м/с. В СП такой цифры нет.</div>` +
+            `<div class="tip-p"><b>Что делать:</b> вторую колбу параллельно или считать узел отдельно под ваш расход.</div>`);
     },
 
     setFeedType: function (type, event) {
@@ -91842,7 +91887,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // заголовок оставляем дословно прежним: под ним в сохранённых сметах
             // лежит свёрнутость подраздела, и переименование потеряло бы её.
             let grp61 = this.isFlat() ? "6.1. Ввод воды в квартиру" : "6.1. Ввод ХВС в дом";
-            ni.forEach(item => addToBill(item, 1, "", grp61));
+            ni.forEach(item => { const _m = this.nodeItem1(item); if (_m) addToBill(_m, 1, "", grp61); });
 
             if (this.state.outdoorFaucet > 0) {
                 let count = parseInt(this.state.outdoorFaucet) || 1;
@@ -91955,14 +92000,17 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             let nipple34 = _live({ id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: 207, brand: "STOUT" });
             let ext30 = _live({ id: "SFT-0002-003430", name: "Удлинитель ВН/ВР 3/4\" 30 мм", price: 501, brand: "STOUT" });
 
+            // Главная линия узла: на 1" — свои позиции (nodeItem1), подпитка отопления (6.6) остаётся на 3/4"
+            const nBall = this.nodeItem1(ballValve), nTee = this.nodeItem1(tee34), nUnion = this.nodeItem1(union34),
+                nNipple = this.nodeItem1(nipple34), nExt = this.nodeItem1(ext30);
             let grp64 = "6.4. ХВС в коллектор водоснабжения";
-            addToBill(tee34, 1, "", grp64); addToBill(ballValve, 1, "", grp64);
-            addToBill(union34, 1, "", grp64); addToBill(nipple34, 1, "", grp64); addToBill(ext30, 1, "", grp64);
+            addToBill(nTee, 1, "", grp64); addToBill(nBall, 1, "", grp64);
+            addToBill(nUnion, 1, "", grp64); addToBill(nNipple, 1, "", grp64); addToBill(nExt, 1, "", grp64);
 
             if (this.state.hotWater) {
                 let grp65 = "6.5. ХВС в бойлер";
-                addToBill(tee34, 1, "", grp65); addToBill(ballValve, 1, "", grp65);
-                addToBill(union34, 1, "", grp65); addToBill(nipple34, 1, "", grp65); addToBill(ext30, 1, "", grp65);
+                addToBill(nTee, 1, "", grp65); addToBill(nBall, 1, "", grp65);
+                addToBill(nUnion, 1, "", grp65); addToBill(nNipple, 1, "", grp65); addToBill(nExt, 1, "", grp65);
             }
 
             if (this.state.heatingFeed) {
@@ -92030,8 +92078,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // 6.4→6.6 обнулила бы их у всех.
             if (this.state.waterReducer) {
                 const grp67 = "6.7. Редуктор давления";
-                const red = catalog.water_pressure_reducer || [];
-                if (red.length >= 2) {
+                const red = (catalog.water_pressure_reducer || []).map(x => this.nodeItem1(x));
+                if (red.length >= 2 && red[0] && red[1]) {
                     addToBill(red[0], 1, this.autoTip(red[0].name, [
                         `<b>Зачем:</b> Держит в доме постоянное давление, каким бы оно ни было в магистрали. Ночные скачки выше 6 бар рвут гибкую подводку и выдавливают картриджи фильтров.`,
                         `<b>Место:</b> после фильтра грубой очистки, до коллектора водоснабжения.`,
@@ -92089,19 +92137,19 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // готовый узел. Фитинги те же, что в остальных группах узла.
             if (this.state.waterTreatment) {
                 const grp611 = "6.11. Обвязка под станцию водоподготовки";
-                addToBill(ballValve, 3, this.autoTip(ballValve.name, [
+                addToBill(nBall, 3, this.autoTip(nBall.name, [
                     `<b>Зачем:</b> Байпас станции: вход, выход и перемычка. Станция встаёт на регенерацию или в ремонт — дом остаётся с водой, пусть и без очистки.`,
                     `<b>Место:</b> после колб Big Blue (если есть) и до коллектора водоснабжения. Станция — в разрыв линии чистой воды.`,
                     `<b>Учтите:</b> в рабочем положении перемычка закрыта, иначе очищенная вода смешается с неочищенной.`
                 ]), grp611);
-                addToBill(union34, 2, this.autoTip(union34.name, [
+                addToBill(nUnion, 2, this.autoTip(nUnion.name, [
                     `<b>Зачем:</b> Разъёмное соединение с обеих сторон станции: снять её на ремонт или заменить, не разбирая узел ввода.`
                 ]), grp611);
-                addToBill(tee34, 2, this.autoTip(tee34.name, [
+                addToBill(nTee, 2, this.autoTip(nTee.name, [
                     `<b>Зачем:</b> Врезки байпаса станции на входе и выходе.`
                 ]), grp611);
-                addToBill(nipple34, 4, "", grp611);
-                addToBill(ext30, 2, "", grp611);
+                addToBill(nNipple, 4, "", grp611);
+                addToBill(nExt, 2, "", grp611);
             }
 
             flushBill("6. Узел ввода ХВС", this.waterNodeFlowNote());

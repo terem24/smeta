@@ -234,6 +234,78 @@ console.log('\n=== Монотонность и неизменность смет
 }
 
 // ---------------------------------------------------------------------------
+// Узел ввода 1": позиции из прайса вместо 3/4" и размеры в проверке
+// ---------------------------------------------------------------------------
+console.log('\n=== Узел ввода 3/4" / 1" ===');
+{
+    const o = { ...base, waterReducer: true, waterMeter: true, waterLeakGuard: true, heatingFeed: true, waterTreatment: true, wellDepth: 60, wellDist: 30, waterZones: house(3) };
+    const bill = (extra) => { run('node-size', { ...o, ...extra }); return (app.currentEquipmentList || []).filter(i => /^6\./.test(String(i.sectionTitle || i.group || ''))); };
+    const b34 = bill({}), b1 = bill({ waterNodeSize: '1' });
+    const ids = l => l.map(i => i.id);
+    // 1. каталог: у каждой замены есть позиция 3/4" в узле, цена и наличие заданы, id уникальны
+    const rep = app.__catalog.water_node_1in;
+    const all = [].concat(...Object.values(app.__catalog).filter(Array.isArray));
+    rep.forEach(r => {
+        if (!r.replaces || !r.price || !r.id) fail('в water_node_1in позиция без replaces/цены/id: ' + JSON.stringify(r).slice(0, 80));
+        if (!all.some(x => x.id === r.replaces)) fail(r.id + ': заменяемая позиция ' + r.replaces + ' не найдена в каталоге');
+        if (!/1"/.test(r.name)) fail(r.id + ': в названии нет размера 1"');
+    });
+    if (new Set(rep.map(r => r.id)).size !== rep.length) fail('в water_node_1in повторяются id');
+    // 2. по умолчанию — прежняя смета узла
+    if (b34.some(i => /^(SVB-\d+-2000|SFW-0001-0000)25|SFT-0020-000001|SVC-0011-000025/.test(i.id))) fail('при 3/4" в смете появились позиции 1"');
+    // 3. на 1" — позиции 1" вместо 3/4", переходников 1" → 3/4" нет
+    const want = ['SVB-0004-200025', 'SVB-1007-200025', 'SFW-0001-000025', 'SVC-0011-000025', 'SFT-0020-000001', 'SFT-0045-000001', 'SFT-0004-000011', 'SVS-1008-000025'];
+    want.forEach(w => { if (!ids(b1).includes(w)) fail('на 1" в смете нет ' + w); });
+    ['SFT-0029-000134', 'SFT-0004-000134', 'SVS-1010-000020', 'SFW-0001-000020', 'SVC-0011-000020', 'SVB-0004-200020'].forEach(w => { if (ids(b1).includes(w)) fail('на 1" остался 3/4" ' + w); });
+    // 4. подпитка отопления (6.6) осталась на 3/4"
+    const feed = b1.filter(i => /^6\.6/.test(String(i.group || '')));
+    if (feed.length && !feed.some(i => /3\/4/.test(i.name))) fail('подпитка отопления на 1" — должна остаться 3/4"');
+    // 5. счётчик остался прежним
+    if (!ids(b1).includes('72-20-243')) fail('на 1" пропал счётчик');
+    // 6. проверка читает размеры: узел 1", фильтр 1", редуктор 1", счётчик 3/4"
+    run('node-size-1', { ...o, waterNodeSize: '1' });
+    const ns = app.waterNodeSizes();
+    if (ns.dIn !== 0.025) fail('узел 1": dIn ' + ns.dIn);
+    if (ns.sizes.mesh !== 0.025 || ns.sizes.reducer !== 0.025) fail('узел 1": фильтр/редуктор ' + ns.sizes.mesh + '/' + ns.sizes.reducer);
+    if (ns.sizes.meter !== 0.02) fail('узел 1": счётчик должен остаться 3/4", а ' + ns.sizes.meter);
+    // 7. потери узла на 1" ниже, чем на 3/4", на тех же расходах
+    const hc = (size) => { run('node-cmp', { ...o, waterNodeSize: size }); const r = app.waterHydroCheck(); return r.scenarios.design.trunk.Hcoll; };
+    const h34 = hc('34'), h1 = hc('1');
+    if (!(h1 > h34)) fail('узел 1" не дал больше напора на коллекторе: ' + f1(h1) + ' против ' + f1(h34));
+    // 7б. Размер узла считается сам по расчётному расходу: скорость в 3/4" выше 2 м/с (около 2,26 м³/ч) — 1", иначе 3/4"
+    app.syncUI = () => {}; app.saveState = () => {};
+    const autoSize = (extra) => { run('node-auto', { ...base, wellDepth: 60, wellDist: 30, waterZones: house(3), ...extra }); return { size: app.waterNodeSize(), q: app.waterDesignFlow() }; };
+    const cases = [
+        [{}, '34'],                                                         // авто: расход по потребителям, не меньше 1,5
+        [{ waterFlowManualOn: true, waterFlowManual: 1.5 }, '34'],
+        [{ waterFlowManualOn: true, waterFlowManual: 2.2 }, '34'],          // v = 1,94 м/с
+        [{ waterFlowManualOn: true, waterFlowManual: 2.3 }, '1'],           // v = 2,03 м/с
+        [{ waterFlowManualOn: true, waterFlowManual: 3.5 }, '1'],
+        [{ well: false, mainsBar: 3 }, '34'],                               // городская вода, расход по потребителям
+        [{ waterNodeSize: '1' }, '1'], [{ waterNodeSize: '34', waterFlowManualOn: true, waterFlowManual: 4 }, '34'] // принудительно
+    ];
+    cases.forEach(([extra, want]) => {
+        const r = autoSize(extra);
+        if (r.size !== want) fail('размер узла при ' + JSON.stringify(extra) + ' (расход ' + f2(r.q) + ') — ' + r.size + ', ждали ' + want);
+    });
+    // граница: порог совпадает с физикой — при 2,3 м³/ч скорость в 3/4" выше предела, в 1" ниже
+    const vv = (q, d) => wh.velocity(q, d);
+    if (!(vv(2.3, 0.02) > wh.V_LIMIT.node && vv(2.3, 0.025) < wh.V_LIMIT.node)) fail('порог 3/4" → 1" не согласован с физикой');
+    // на 1" в смете главная линия 1", и проверка не ругается на скорость в узле
+    const q23 = autoSize({ waterFlowManualOn: true, waterFlowManual: 2.3 });
+    const rr = app.waterHydroCheck();
+    if (rr.flags.some(f => f.id === 'node_v')) fail('узел 1" при 2,3 м³/ч, а проверка жалуется на скорость в узле');
+    console.log('  размер узла сам: расход 1,5 → 3/4″; 2,2 → 3/4″; 2,3 → 1″ (скорость в 3/4″ ' + f2(vv(2.3, 0.02)) + ' м/с, в 1″ ' + f2(vv(2.3, 0.025)) + ')');
+    // 8. ROMMER: аналоги 1" подставляются
+    run('node-rommer', { ...o, waterNodeSize: '1', brandMode: 'rommer' });
+    const br = (app.currentEquipmentList || []).filter(i => /^6\./.test(String(i.sectionTitle || i.group || '')));
+    if (!br.some(i => /^RFW-0001-000025|^RVC-0001-000025|^RVS-0008-000025|^RBV-/.test(i.id) && /25$/.test(i.id))) fail('в режиме ROMMER нет аналогов 1"');
+    // 9. прибавка к смете
+    const sum = l => Math.round(l.reduce((a, i) => a + (i.price || 0) * (i.q || 1), 0));
+    console.log('  узел на 3/4": ' + sum(b34).toLocaleString('ru-RU') + ' ₽, на 1": ' + sum(b1).toLocaleString('ru-RU') + ' ₽; напор на коллекторе ' + f1(h34) + ' → ' + f1(h1) + ' м');
+}
+
+// ---------------------------------------------------------------------------
 // Расход подбора насоса: авто (по потребителям) и вручную (только «По комнатам»)
 // ---------------------------------------------------------------------------
 console.log('\n=== Расход подбора: авто / вручную ===');

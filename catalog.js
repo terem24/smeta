@@ -3636,6 +3636,23 @@ const catalog = {
         { id: "SVS-1014-000015", name: "Компенсатор гидроудара 1/2\" НР, хром", price: 2970, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10", rommer: { id: "RVS-1001-000015", name: "Компенсатор гидроудара мембранный 1/2\" НР, никель", price: 1484, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
         { id: "SFT-0029-003412", name: "Футорка 3/4\" x 1/2\"", price: 168, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" }
     ],
+    // Узел ввода на 1" (state.waterNodeSize === '1'): позиции 1" из прайса вместо 3/4" той же роли.
+    // replaces — id позиции 3/4", вместо которой встаёт эта (app.nodeItem1). Цены — по ставке 3/4"-соседа
+    // (каталог / прайс), наличие «под заказ» до первого прогона AutoPrice, который перепишет фактическим.
+    // Счётчика 1" здесь нет: в прайсе у Декаст нет названий, по которым можно отличить ВСКМ-25 нужной
+    // модификации, — счётчик остаётся ВСКМ-20, меняется вручную в таблице замены.
+    water_node_1in: [
+        { id: "SFT-0045-000001", name: "Сгон прямой 1\" ВР-НР", price: 1098, brand: "STOUT", replaces: "SFT-0045-000034", availability: "on_order", price_date: "2026-10-17" },
+        { id: "SVB-0004-200025", name: "Кран шаровой ВН-НР 1\"", price: 1927, brand: "STOUT", replaces: "SVB-0004-200020", availability: "on_order", price_date: "2026-10-17", rommer: { id: "RBV-0001-2110325", name: "Кран шаровой ВР/ВР, ручка рычаг 1\"", price: 1152, brand: "ROMMER", availability: "on_order", price_date: "2026-10-17" } },
+        { id: "SVB-1007-200025", name: "Кран шаровой ВН-НР 1\"", price: 2617, brand: "STOUT", replaces: "SVB-1007-200020", availability: "on_order", price_date: "2026-10-17", rommer: { id: "RBV-0005-0510225", name: "Кран шаровой с американкой ВР/НР 1\"", price: 1234, brand: "ROMMER", availability: "on_order", price_date: "2026-10-17" } },
+        { id: "SFT-0002-000120", name: "Удлинитель ВН/НР 1\" 20 мм", price: 641, brand: "STOUT", replaces: "SFT-0002-003420", availability: "on_order", price_date: "2026-10-17" },
+        { id: "SFT-0002-000130", name: "Удлинитель ВН/ВР 1\" 30 мм", price: 829, brand: "STOUT", replaces: "SFT-0002-003430", availability: "on_order", price_date: "2026-10-17" },
+        { id: "SFT-0004-000011", name: "Ниппель 1\" НР", price: 409, brand: "STOUT", replaces: "SFT-0004-003434", availability: "on_order", price_date: "2026-10-17" },
+        { id: "SFW-0001-000025", name: "Фильтр сетчатый косой 1\"", price: 1684, brand: "STOUT", replaces: "SFW-0001-000020", availability: "on_order", price_date: "2026-10-17", rommer: { id: "RFW-0001-000025", name: "Фильтр грубой очистки косой 500 мкм 1\"", price: 1079, brand: "ROMMER", availability: "on_order", price_date: "2026-10-17" } },
+        { id: "SVC-0011-000025", name: "Клапан обратный 1\" ВР", price: 2341, brand: "STOUT", replaces: "SVC-0011-000020", availability: "on_order", price_date: "2026-10-17", rommer: { id: "RVC-0001-000025", name: "Клапан обратный 1\"", price: 984, brand: "ROMMER", availability: "on_order", price_date: "2026-10-17" } },
+        { id: "SFT-0020-000001", name: "Тройник 1\" ВР", price: 995, brand: "STOUT", replaces: "SFT-0020-000034", availability: "on_order", price_date: "2026-10-17" },
+        { id: "SVS-1008-000025", name: "Редуктор давления поршневой с выходом под манометр, PN 25, 1\"", price: 7666, brand: "STOUT", replaces: "SVS-1010-000020", availability: "on_order", price_date: "2026-10-17", rommer: { id: "RVS-0008-000025", name: "Редуктор давления PN25 ВН/ВН 1\" с выходом под манометр", price: 4291, brand: "ROMMER", availability: "on_order", price_date: "2026-10-17" } }
+    ],
     water_input_node: [
         { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 629, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
         { id: "VTr.136.N.0504", name: "Тройник косой для гильзы под погружной датчик температуры 3/4'' х 1/2''", price: 561, brand: "VALTEC", availability: "in_stock", price_date: "2026-07-12" },
