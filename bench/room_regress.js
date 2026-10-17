@@ -20,7 +20,7 @@ function extractCode() {
   const NAMES = ['getMask', 'openThin', 'chamferDist', 'cleanBar', 'furnitureClear', 'growToWalls', 'labelRooms',
     'traceLabel', 'dpSimp', 'enumerateRooms', 'roomShapeOk', 'roomAtPoint', 'pip', 'fitAreaRatio', 'agreeCount',
     'matchScore', 'median', 'resetScaleCaches', 'roomAreasAt', 'scaleByMatch', 'scaleTargets', 'guessScale',
-    'area', 'centroid', 'wallFrame', 'overallDims', 'frameScaleCheck', 'frameInnerM2', 'isCell', 'roomAtLabel', 'rescueLabelRooms', 'fillShortRuns', 'eraseLabelText'];
+    'area', 'centroid', 'wallFrame', 'overallDims', 'frameScaleCheck', 'frameInnerM2', 'isCell', 'roomAtLabel', 'rescueLabelRooms', 'fillShortRuns', 'eraseLabelText', 'thickMask', 'convexHull'];
   let code = '';
   for (const n of NAMES) {
     const i = src.findIndex(l => l.startsWith('function ' + n + '('));
@@ -71,6 +71,7 @@ async function main() {
     await p.close();
   }
   for (const c of cases) {
+    if (!fs.existsSync(c.img)) { console.log(`SKIP ${c.name}: нет файла ${c.img}`); continue; }
     const p = await b.newPage();
     await p.goto('file://' + file);
     const data = 'data:image/png;base64,' + fs.readFileSync(c.img).toString('base64');

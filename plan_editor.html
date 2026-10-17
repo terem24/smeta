@@ -2068,6 +2068,66 @@ function roomShapeOk(m2, pts, ppmImg) {
   return box > 0 && m2 * ppmImg * ppmImg / box > 0.3;   // доля площади в описывающем прямоугольнике
 }
 
+/**
+ * Габарит здания по самой большой области толстого: стены — залитые серым или чёрным (на
+ * листе проекта тонкие линии — мебель, таблица, рамка, штамп — размыканием уходят, а стена
+ * в 0,2–0,4 м остаётся). Стена рвётся проёмами, поэтому берём не одну область, а все крупные
+ * (от 5 % самой большой) и объединяем рамки. Возвращает { x0, y0, x1, y1 } в пикселях
+ * подложки (с запасом 0,5 м на балкон и крыльцо) или null, если уверенности нет: стен мало
+ * или «габарит» занимает почти весь лист (залитые комнаты, чёрные поля снимка).
+ */
+function buildingEnvelope(m) {
+  var f = F(), ppm = (f.pxPerM || 60) * m.k, r = Math.max(2, Math.round(0.07 * ppm));
+  if (m.env !== undefined && m.envR === r) return m.env;
+  m.env = null; m.envR = r;
+  var src = imgCache[cur]; if (!src) return null;
+  var W = m.w, H = m.h, N = W * H, i, p;
+  var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  var g = cv.getContext('2d'); g.drawImage(src, 0, 0, W, H);
+  var d = g.getImageData(0, 0, W, H).data, A = new Uint8Array(N), inv = new Uint8Array(N);
+  for (i = 0, p = 0; i < N; i++, p += 4) {
+    var R = d[p], G = d[p + 1], B = d[p + 2], mx = Math.max(R, G, B), mn = Math.min(R, G, B);
+    A[i] = ((R * 3 + G * 6 + B) / 10 < 226 && mx - mn < 16) ? 1 : 0;      // серое или чёрное, не цветное
+    inv[i] = A[i] ? 0 : 1;
+  }
+  var d2 = chamferDist(inv, W, H), core = new Uint8Array(N);
+  for (i = 0; i < N; i++) core[i] = (A[i] && d2[i] > r) ? 1 : 0;
+  var d3 = chamferDist(core, W, H), O = new Uint8Array(N);
+  for (i = 0; i < N; i++) O[i] = (A[i] && d3[i] <= r) ? 1 : 0;
+  var seen = new Uint8Array(N), comps = [];
+  for (i = 0; i < N; i++) {
+    if (!O[i] || seen[i]) continue;
+    var q = [i], qh = 0, x0 = W, y0 = H, x1 = 0, y1 = 0;
+    seen[i] = 1;
+    while (qh < q.length) {
+      var id = q[qh++], px = id % W, py = (id / W) | 0;
+      if (px < x0) x0 = px; if (px > x1) x1 = px; if (py < y0) y0 = py; if (py > y1) y1 = py;
+      for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+        var nx = px + dx, ny = py + dy;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        var ni = ny * W + nx;
+        if (O[ni] && !seen[ni]) { seen[ni] = 1; q.push(ni); }
+      }
+    }
+    comps.push({ n: q.length, x0: x0, y0: y0, x1: x1, y1: y1 });
+  }
+  if (!comps.length) return null;
+  var big = Math.max.apply(null, comps.map(function (c) { return c.n; }));
+  if (big < N * 0.002) return null;
+  var ux0 = W, uy0 = H, ux1 = 0, uy1 = 0;
+  comps.forEach(function (c) {
+    if (c.n < big * 0.05 || c.n < 40) return;
+    ux0 = Math.min(ux0, c.x0); uy0 = Math.min(uy0, c.y0); ux1 = Math.max(ux1, c.x1); uy1 = Math.max(uy1, c.y1);
+  });
+  var share = (ux1 - ux0) * (uy1 - uy0) / N;
+  if (share > 0.7 || share < 0.02) return null;
+  var mg = 0.5 * ppm;
+  m.env = { x0: (ux0 - mg) / m.k, y0: (uy0 - mg) / m.k, x1: (ux1 + mg) / m.k, y1: (uy1 + mg) / m.k };
+  return m.env;
+}
+
+function inEnvelope(env, x, y) { return !env || (x >= env.x0 && x <= env.x1 && y >= env.y0 && y <= env.y1); }
+
 function enumerateRooms() {
   var m = labelRooms(); if (!m) return [];
   var ppm = (F().pxPerM || 100) * m.k, p2 = ppm * ppm;
@@ -2079,22 +2139,35 @@ function enumerateRooms() {
     var pts = traceLabel(m, L);
     if (pts && roomShapeOk(m2, pts, F().pxPerM || 100)) out.push({ pts: pts, m2: m2 });
   }
+  // Контуры вне здания (таблица экспликации, штамп, поля листа) — не комнаты. Фильтр включается,
+  // только если габарит найден уверенно и внутри осталась хотя бы горсть контуров (40 %):
+  // иначе прежнее поведение.
+  var env = null;
+  try { env = buildingEnvelope(m); } catch (e) { env = null; }
+  if (env) {
+    var keptRooms = out.filter(function (r) { var c = centroid(r.pts); return inEnvelope(env, c[0], c[1]); });
+    if (keptRooms.length && keptRooms.length >= out.length * 0.4) out = keptRooms;
+  }
   return out;
 }
 
-/** Копия маски, где свободные отрезки короче maxLen между двумя тёмными закрыты — дверной
+/** Копия маски, где свободные отрезки короче maxLen между двумя ТОЛСТЫМИ тёмными закрыты — дверной
  *  проём в стене (горизонтальной при horiz, иначе вертикальной) становится частью стены.
- *  Узкую комнату это не заливает: её отрезок вдоль стены длинный, а поперёк стены не трогаем. */
-function fillShortRuns(bar, W, H, maxLen, horiz) {
-  var out = new Uint8Array(bar), outer = horiz ? H : W, inner = horiz ? W : H, a, b, st, v;
+ *  Косяками считаются только отрезки толще minT (стена, а не контур кровати или линия окна):
+ *  иначе проход шире полутора шагов между кроватью и стеной закрывался бы как дверь.
+ *  Узкую комнату это не заливает: её отрезок вдоль стены длинный. */
+function fillShortRuns(bar, W, H, maxLen, horiz, minT) {
+  var out = new Uint8Array(bar), outer = horiz ? H : W, inner = horiz ? W : H, a, b, e, st, prevLen, dl, c;
+  minT = minT || 1;
   for (a = 0; a < outer; a++) {
-    st = -1;
-    for (b = 0; b < inner; b++) {
-      v = bar[horiz ? a * W + b : b * W + a];
-      if (v) {
-        if (st >= 0 && b - st <= maxLen) for (var c = st; c < b; c++) out[horiz ? a * W + c : c * W + a] = 1;
-        st = b + 1;
-      }
+    st = -1; prevLen = 0; b = 0;
+    while (b < inner) {
+      if (!bar[horiz ? a * W + b : b * W + a]) { b++; continue; }
+      e = b;
+      while (e < inner && bar[horiz ? a * W + e : e * W + a]) e++;
+      dl = e - b;
+      if (st >= 0 && b - st <= maxLen && prevLen >= minT && dl >= minT) for (c = st; c < b; c++) out[horiz ? a * W + c : c * W + a] = 1;
+      prevLen = dl; st = e; b = e;
     }
   }
   return out;
@@ -2128,6 +2201,22 @@ function eraseLabelText(bar, W, H, sx, sy, ppm) {
   return out;
 }
 
+/** Только толстое из маски (стены): размыкание радиусом ~0,06 м. Контуры мебели, линии окон и
+ *  дверные дуги тоньше и уходят — комната от подписи не режется на куски шкафами и кроватью.
+ *  Кэш на маске: считается один раз на масштаб. */
+function thickMask(m, ppm) {
+  var r = Math.max(2, Math.round(0.06 * ppm));
+  if (m.thick && m.thickR === r) return m.thick;
+  var W = m.w, H = m.h, N = W * H, i, inv = new Uint8Array(N), core = new Uint8Array(N);
+  for (i = 0; i < N; i++) inv[i] = m.bar[i] ? 0 : 1;
+  var d2 = chamferDist(inv, W, H);                     // от пикселя стены до ближайшего свободного
+  for (i = 0; i < N; i++) core[i] = (m.bar[i] && d2[i] > r) ? 1 : 0;
+  var d3 = chamferDist(core, W, H), out = new Uint8Array(N);
+  for (i = 0; i < N; i++) out[i] = (m.bar[i] && d3[i] <= r) ? 1 : 0;
+  m.thick = out; m.thickR = r;
+  return out;
+}
+
 /**
  * Комната от самой подписи площади — для тех, у кого нет «ядра». labelRooms отступает от стен
  * на 0,63 м, и кладовая 1,3 м² (или санузел 1,1×1,2) ядра не имеет вовсе: контура нет, хотя
@@ -2135,7 +2224,7 @@ function eraseLabelText(bar, W, H, sx, sy, ppm) {
  * маске с закрытыми дверными проёмами (fillShortRuns, проём до 1,1 м) — отдельно для проёмов
  * в горизонтальных, в вертикальных и в обеих стенах: узкая комната при закрытии «в обе стороны»
  * закрылась бы сама, а у комнаты с дверями в стенах обоих направлений иначе не выйдет. Берём
- * вариант, где залитое сходится с подписью (0,7–1,4), контур — тем же обходом, что у комнат.
+ * вариант, где площадь контура сходится с подписью (0,75–1,3), контур — тем же обходом, что у комнат.
  * null — не удалось (утекло, подпись на стене, площадь не сошлась).
  */
 function roomAtLabel(l) {
@@ -2145,48 +2234,69 @@ function roomAtLabel(l) {
   if (sx < 0 || sy < 0 || sx >= W || sy >= H) return null;
   var target = l.m2 * ppm * ppm, cap = Math.round(target * 2.2 + 80), sr = Math.round(0.5 * ppm);
   var gap = Math.max(3, Math.round(1.1 * ppm)), i;
-  var best = null, clean = eraseLabelText(m.bar, W, H, sx, sy, ppm);
-  [0, 1, 2].forEach(function (variant) {                 // проёмы в горизонтальных стенах / в вертикальных / в обеих
-    if (best) return;
-    var bar = variant === 2 ? fillShortRuns(fillShortRuns(clean, W, H, gap, true), W, H, gap, false) : fillShortRuns(clean, W, H, gap, variant === 0), d = chamferDist(bar, W, H);
-    [0.1, 0.05, 0.02].forEach(function (rr) {
+  // Один проход заливки: маска src, косяк не тоньше jamb, принимает ли результат strict (прежние
+  // правила: залитое 0,7–1,4 от подписи) или loose (контур или его оболочка 0,75–1,3, залитого от 40 %)
+  var attempt = function (src, jamb, strict) {
+    var best = null, clean = eraseLabelText(src, W, H, sx, sy, ppm);
+    [0, 1, 2].forEach(function (variant) {                 // проёмы в горизонтальных стенах / в вертикальных / в обеих
       if (best) return;
-      var rp = Math.max(1, Math.round(rr * ppm)), seed = -1, bd = 1e9;
-      for (var yy = Math.max(0, sy - sr); yy <= Math.min(H - 1, sy + sr); yy++) {     // подпись лежит на тёмном тексте — ищем свободный пиксель рядом
-        for (var xx = Math.max(0, sx - sr); xx <= Math.min(W - 1, sx + sr); xx++) {
-          if (d[yy * W + xx] <= rp) continue;
-          var dd = (xx - sx) * (xx - sx) + (yy - sy) * (yy - sy);
-          if (dd < bd) { bd = dd; seed = yy * W + xx; }
+      var bar = variant === 2 ? fillShortRuns(fillShortRuns(clean, W, H, gap, true, jamb), W, H, gap, false, jamb) : fillShortRuns(clean, W, H, gap, variant === 0, jamb), d = chamferDist(bar, W, H);
+      [0.1, 0.05, 0.02].forEach(function (rr) {
+        if (best) return;
+        var rp = Math.max(1, Math.round(rr * ppm)), seed = -1, bd = 1e9;
+        for (var yy = Math.max(0, sy - sr); yy <= Math.min(H - 1, sy + sr); yy++) {     // подпись лежит на тёмном тексте — ищем свободный пиксель рядом
+          for (var xx = Math.max(0, sx - sr); xx <= Math.min(W - 1, sx + sr); xx++) {
+            if (d[yy * W + xx] <= rp) continue;
+            var dd = (xx - sx) * (xx - sx) + (yy - sy) * (yy - sy);
+            if (dd < bd) { bd = dd; seed = yy * W + xx; }
+          }
         }
-      }
-      if (seed < 0) return;
-      var lab = new Uint8Array(N), q = [seed], qh = 0, ok = true;
-      lab[seed] = 1;
-      while (qh < q.length) {
-        var id = q[qh++], x = id % W, y = (id / W) | 0;
-        if (x === 0 || y === 0 || x === W - 1 || y === H - 1 || q.length > cap) { ok = false; break; }   // к краю плана или в соседние комнаты
-        var nb = [id - 1, id + 1, id - W, id + W];
-        for (i = 0; i < 4; i++) if (!lab[nb[i]] && d[nb[i]] > rp) { lab[nb[i]] = 1; q.push(nb[i]); }
-      }
-      if (!ok) return;
-      var cur2 = q.slice(), g;                       // обратный рост на радиус отступа, не заходя в стену
-      for (g = 0; g < rp; g++) {
-        var nxt = [];
-        for (i = 0; i < cur2.length; i++) {
-          var c0 = cur2[i], x0 = c0 % W, nb2 = [x0 ? c0 - 1 : -1, x0 < W - 1 ? c0 + 1 : -1, c0 >= W ? c0 - W : -1, c0 < N - W ? c0 + W : -1];
-          for (var j = 0; j < 4; j++) { var t = nb2[j]; if (t >= 0 && !lab[t] && !bar[t]) { lab[t] = 1; nxt.push(t); } }
+        if (seed < 0) return;
+        var lab = new Uint8Array(N), q = [seed], qh = 0, ok = true;
+        lab[seed] = 1;
+        while (qh < q.length) {
+          var id = q[qh++], x = id % W, y = (id / W) | 0;
+          if (x === 0 || y === 0 || x === W - 1 || y === H - 1 || q.length > cap) { ok = false; break; }   // к краю плана или в соседние комнаты
+          var nb = [id - 1, id + 1, id - W, id + W];
+          for (i = 0; i < 4; i++) if (!lab[nb[i]] && d[nb[i]] > rp) { lab[nb[i]] = 1; q.push(nb[i]); }
         }
-        cur2 = nxt;
-      }
-      var cnt = 0, first = -1;
-      for (i = 0; i < N; i++) if (lab[i]) { cnt++; if (first < 0) first = i; }
-      var r = cnt / target;
-      if (r < 0.7 || r > 1.4) return;
-      var pts = traceLabel({ w: W, h: H, k: m.k, labels: lab, labMin: [-1, first] }, 1);   // в маске 0/1, метка L = 1
-      if (pts) best = { pts: pts, m2: cnt / (ppm * ppm) };
+        if (!ok) return;
+        var cur2 = q.slice(), g;                       // обратный рост на радиус отступа, не заходя в стену
+        for (g = 0; g < rp; g++) {
+          var nxt = [];
+          for (i = 0; i < cur2.length; i++) {
+            var c0 = cur2[i], x0 = c0 % W, nb2 = [x0 ? c0 - 1 : -1, x0 < W - 1 ? c0 + 1 : -1, c0 >= W ? c0 - W : -1, c0 < N - W ? c0 + W : -1];
+            for (var j = 0; j < 4; j++) { var t = nb2[j]; if (t >= 0 && !lab[t] && !bar[t]) { lab[t] = 1; nxt.push(t); } }
+          }
+          cur2 = nxt;
+        }
+        var cnt = 0, first = -1;
+        for (i = 0; i < N; i++) if (lab[i]) { cnt++; if (first < 0) first = i; }
+        var r = cnt / target;
+        if (strict ? (r < 0.7 || r > 1.4) : r < 0.4) return;
+        var pts = traceLabel({ w: W, h: H, k: m.k, labels: lab, labMin: [-1, first] }, 1);   // в маске 0/1, метка L = 1
+        if (!pts) return;
+        if (strict) { best = { pts: pts, m2: cnt / (ppm * ppm) }; return; }
+        // Мебель с замкнутым контуром (кровать) выпадает из залитого, но входит в комнату; а обводка
+        // залитого может быть «подковой»: тогда комнатой берём выпуклую оболочку
+        var okA = function (poly) { var qa = area(poly) / l.m2; return qa >= 0.75 && qa <= 1.3; };
+        if (okA(pts)) best = { pts: pts, m2: area(pts) };
+        else {
+          var hull = convexHull(pts);
+          if (hull.length >= 3 && okA(hull)) best = { pts: hull, m2: area(hull) };
+        }
+      });
     });
-  });
-  return best;
+    return best;
+  };
+  // 1) прежний путь без изменений — всё, что находилось раньше, находится так же
+  var res = attempt(m.bar, 1, true);
+  if (res) return res;
+  // 2) мягче: сначала только толстое (стены), потом вся маска, косяки — только толстые отрезки
+  var tm = thickMask(m, ppm), thickCnt = 0, jamb = Math.max(3, Math.round(0.08 * ppm));
+  for (i = 0; i < N; i++) thickCnt += tm[i];
+  if (thickCnt > N * 0.002) res = attempt(tm, jamb, false);
+  return res || attempt(m.bar, jamb, false);
 }
 
 /** Достраиваем комнаты от подписей там, где ядро не нашлось. Два случая:
@@ -2200,6 +2310,15 @@ function rescueLabelRooms(rooms, labs) {
   var out = [], add = [];
   rooms.forEach(function (r) {
     var ins = labs.filter(function (l) { return pip([l.x, l.y], r.pts); });
+    if (ins.length === 1) {
+      // Одна подпись, но контур заметно не той площади (слит с соседом, обрезан мебелью): заливка
+      // от подписи берётся, только если она ближе к напечатанному
+      var A0 = area(r.pts), l0 = ins[0];
+      if (Math.abs(A0 - l0.m2) / l0.m2 > 0.25) {
+        var alt = fill(l0);
+        if (alt && Math.abs(alt.m2 - l0.m2) < Math.abs(A0 - l0.m2) - 0.05 * l0.m2) { alt.rescued = true; add.push(alt); return; }
+      }
+    }
     if (ins.length >= 2) {
       var parts = ins.map(fill);
       var good = parts.every(function (q, i) {
@@ -2213,6 +2332,12 @@ function rescueLabelRooms(rooms, labs) {
     if (out.concat(add).some(function (r) { return pip([l.x, l.y], r.pts); })) return;
     var r = fill(l);
     if (r) { r.rescued = true; add.push(r); }
+  });
+  // Контур, чей центр лёг внутрь достроенной комнаты (кольцо вокруг кровати, обрезок той же
+  // комнаты), — её же обломок: убираем, иначе он займёт место раньше и перекроет её
+  out = out.filter(function (r) {
+    var c = centroid(r.pts);
+    return !add.some(function (q) { return pip(c, q.pts); });
   });
   return out.concat(add);
 }
@@ -2325,6 +2450,7 @@ function scaleTargets() {
   if (t.length >= 2) return t;
   // комнат в расчёте нет — площади, напечатанные на самом плане (PDF или прочитанные со скана)
   var pr = (PDF_AREAS[cur] || []).map(function (l) { return l.m2; });
+  if (pr.length < 2 && PDF_AREAS[cur] && PDF_AREAS[cur].table) pr = PDF_AREAS[cur].table.rows.map(function (r) { return r.m2; });
   return pr.length >= 2 ? pr : t;
 }
 
@@ -2844,6 +2970,18 @@ function autoRooms() {
   // ближе всего к напечатанному
   var labs = PDF_AREAS[cur] || [], scaleNote = '';
   lastRoomsNote = '';
+  // Модель могла положить в подписи и числа таблицы-экспликации: подпись вне здания, чьё число есть
+  // в таблице, — это ячейка таблицы, а не комната
+  if (labs.table) {
+    var envT = null;
+    try { envT = buildingEnvelope(getMask()); } catch (e) { envT = null; }
+    if (envT) {
+      var labsT = labs.filter(function (l) {
+        return inEnvelope(envT, l.x, l.y) || !labs.table.rows.some(function (r) { return Math.abs(r.m2 - l.m2) < 0.005; });
+      });
+      labsT.table = labs.table; labs = labsT;
+    }
+  }
   // Подписей прочитано меньше, чем контуров крупнее 4 м² (перечёркнутые цифры, сжатая картинка):
   // перечитываем по кускам плана в большем разрешении и запускаем поиск заново
   var bigN = rooms.filter(function (r) { return r.m2 > 4; }).length;
@@ -2887,6 +3025,12 @@ function autoRooms() {
   var targets = calcRooms.filter(function (r) {
     return (+r.floor || 1) === cur + 1 && r.area > 0;
   });
+  // Таблица-экспликация на листе, а марок на плане не нашлось — строки таблицы работают как
+  // комнаты расчёта (сверка по площадям): названия и площади всё равно из таблицы
+  var tbl = labs.table || null;
+  if (!targets.length && tbl && !labs.some(function (l) { return l.fromTable; })) {
+    targets = tbl.rows.map(function (r) { return { name: r.name, area: r.m2, id: null, fromTable: true }; });
+  }
   var cellSkipped = 0;
   if (!targets.length && labs.length >= 2) {
     free = free.filter(function (c) {
@@ -2995,8 +3139,13 @@ function autoRooms() {
     sumWarn = 'Сумма найденных комнат ' + sumM2.toFixed(1).replace('.', ',') + ' м² больше внутренней площади габарита ' +
       inner.toFixed(1).replace('.', ',') + ' м² — часть контуров лишняя (мебель, шкафы) или масштаб неверен.';
   }
-  lastRoomsExtra = (frameWarn ? ' <b style="color:var(--warn-text)">' + frameWarn + '</b>' : '') + frameNote +
-    (sumWarn ? ' <b style="color:var(--warn-text)">' + sumWarn + '</b>' : '');
+  var tblWarn = '';
+  if (tbl && tbl.total > 0 && Math.abs(tbl.sum - tbl.total) / tbl.total > 0.01) {
+    tblWarn = 'Сумма строк таблицы ' + tbl.sum.toFixed(2).replace('.', ',') + ' м², а итог в ней ' + tbl.total.toFixed(2).replace('.', ',') +
+      ' м² — одна из цифр прочитана неверно, сверьте со схемой.';
+  }
+  lastRoomsExtra = (tblWarn ? ' <b style="color:var(--warn-text)">' + tblWarn + '</b>' : '') + (frameWarn ? ' <b style="color:var(--warn-text)">' + frameWarn + '</b>' : '') + frameNote +
+    (sumWarn ? ' <b style="color:var(--warn-text)">' + sumWarn + '</b>' : '') + ' ' + (roomsTotalHtml() || '');
   roomsLogBegin({ ppm: F().pxPerM, labs: labs, bigN: bigN, cells: lastSkipped, reread: rereadInfo,
     frame: fcv ? (fcv.scaleOk ? 'ok' : (fcv.axesOk ? 'fixed' : 'mismatch')) : 'none',
     sumWarn: !!sumWarn, inner: inner });
@@ -3076,6 +3225,32 @@ function roomsLogEnd() {
   ROOMS_LOG = null;
 }
 var SB_PUB_KEY = 'sb_publishable_gcMJ-PvJmKavObbnePFGZQ_O-pu5O2p';   // тот же публичный ключ, что в app.js
+
+/** «Итого» по комнатам этажа: сумма площадей зон (напечатанная на плане, если она принята) и с чем её
+ *  сверять — с таблицей-экспликацией листа (если прочитана) или с внутренней площадью габарита.
+ *  Зелёным при расхождении до 3 %, жёлтым иначе. '' — зон ещё нет. */
+function roomsTotalHtml() {
+  var f = F(), seen = {}, sum = 0, n = 0;
+  (f.zones || []).forEach(function (z) {
+    if (z.type === 'cold') return;
+    var key = JSON.stringify(z.pts);
+    if (seen[key]) return;                     // тёплый пол поверх комнаты — та же площадь
+    seen[key] = 1; n++; sum += +zoneM2(z) || 0;
+  });
+  if (!n) return '';
+  var fm = function (x) { return x.toFixed(1).replace('.', ','); };
+  var labs = PDF_AREAS[cur] || [], t = labs.table, ref = 0, txt;
+  if (t) ref = t.total > 0 ? t.total : t.sum;
+  if (ref > 0) {
+    var dev = (sum - ref) / ref * 100, ok = Math.abs(dev) <= 3;
+    txt = 'Итого: ' + fm(sum) + ' м² (в таблице ' + String(ref.toFixed(2)).replace('.', ',') + ' м², Δ ' + (dev > 0 ? '+' : '') + dev.toFixed(1).replace('.', ',') + ' %)';
+    return '<span style="color:' + (ok ? 'var(--ok)' : 'var(--warn-text)') + ';font-weight:600">' + txt + '</span>';
+  }
+  var inner = 0;
+  try { inner = frameInnerM2(); } catch (e) { inner = 0; }
+  txt = 'Итого: ' + fm(sum) + ' м²' + (inner > 0 ? ' (внутри габарита ' + fm(inner) + ' м²)' : '');
+  return '<span style="color:' + (inner > 0 && sum > inner * 1.03 ? 'var(--warn-text)' : 'var(--ok)') + ';font-weight:600">' + txt + '</span>';
+}
 
 /** Кнопка «Под окна»: расставить радиаторы по найденным окнам */
 function autoRads() {
@@ -3157,12 +3332,17 @@ var AREA_READ_PROMPT = 'Ты читаешь чертёж этажа частно
   'box_2d = [ymin, xmin, ymax, xmax] в координатах 0–1000 от размеров изображения и название комнаты, ' +
   'если оно написано рядом с площадью на плане («Спальня», «Кухня-гостиная»), иначе пустую строку. ' +
   'Название бери ровно как написано, ничего не придумывай. ' +
+  'Если на листе есть таблица-экспликация помещений (колонки «№», «Название», «Площадь», внизу итог), верни её отдельно ' +
+  'в "table": [{"no":"01","name":"Прихожая","m2":8.44}] и итог таблицы числом в "total"; в "labels" числа из таблицы не клади. ' +
+  'Марки помещений на самом плане (номер помещения в рамке или кружке внутри контура комнаты: 01, 02, …) верни в "marks": ' +
+  '[{"no":"01","box_2d":[ymin,xmin,ymax,xmax]}] — только марки на плане, не строки таблицы. Таблицы нет — "table":[], марок нет — "marks":[]. ' +
   'Кроме площадей верни размерные линии плана: для каждой — число в миллиметрах (например «3 350» или «15 910» ' +
   'это 3350 и 15910) и две точки на концах самой линии (засечки или стрелки): from и to как [y, x] в координатах ' +
   '0–1000. Бери только линии, где число — длина в мм; не бери отметки высот, номера осей, площади. Выбери до 12 ' +
   'самых чётких, лучше длинных. И ещё rotate — на сколько градусов по часовой стрелке (0, 90, 180 или 270) надо ' +
   'повернуть изображение, чтобы надписи на нём читались горизонтально слева направо. ' +
   'Ответ — только JSON: {"rotate":0,"labels":[{"m2":19.16,"name":"Спальня","box_2d":[210,300,225,350]}],' +
+  '"table":[{"no":"01","name":"Прихожая","m2":8.44}],"total":64.74,"marks":[{"no":"01","box_2d":[500,700,520,730]}],' +
   '"dims":[{"mm":3350,"from":[352,300],"to":[352,520]}]}. Подписей нет — "labels":[], размеров нет — "dims":[].';
 /** Размерные линии, прочитанные с картинки: [{ mm, px }] — длина линии на подложке. */
 var SCAN_DIMS = {};
@@ -3258,6 +3438,29 @@ function parseAreaReply(resp, W, H) {
     if (out.some(function (q) { return Math.abs(q.m2 - a) < 0.005 && Math.hypot(q.x - x, q.y - y) < 40; })) return;
     out.push({ m2: a, x: x, y: y, name: cleanRoomName(it.name), scan: true });      // scan — цифры читала модель, а не текстовый слой: могут быть неточны
   });
+  // Таблица-экспликация и марки помещений на плане: площади и названия берём из таблицы, к
+  // контуру привязываем по марке внутри него. Марка с номером из таблицы становится подписью
+  // (fromTable), и дальше всё идёт как с подписями площадей: сверка контура, масштаб, имя зоны.
+  var rows = [];
+  ((data && data.table) || []).forEach(function (q) {
+    var a = parseFloat(String(q && (q.m2 != null ? q.m2 : q.area)).replace(',', '.'));
+    var no = parseInt(String(q && q.no).replace(/\D/g, ''), 10);
+    if (!(a >= 0.5 && a <= 500)) return;
+    rows.push({ no: isFinite(no) ? no : null, name: cleanRoomName(q && q.name), m2: a });
+  });
+  if (rows.length >= 2) {
+    var tot = parseFloat(String(data && data.total).replace(',', '.')), usedNo = {}, nm = 0;
+    ((data && data.marks) || []).forEach(function (mk) {
+      var no = parseInt(String(mk && mk.no).replace(/\D/g, ''), 10), b = mk && mk.box_2d;
+      if (!isFinite(no) || usedNo[no] || !Array.isArray(b) || b.length < 4) return;
+      var row = rows.filter(function (r) { return r.no === no; })[0];
+      var x = (b[1] + b[3]) / 2 / 1000 * W, y = (b[0] + b[2]) / 2 / 1000 * H;
+      if (!row || !isFinite(x) || !isFinite(y)) return;
+      usedNo[no] = 1; nm++;
+      out.push({ m2: row.m2, x: x, y: y, name: row.name, scan: true, fromTable: true });
+    });
+    out.table = { rows: rows, total: tot > 0 ? tot : 0, sum: rows.reduce(function (t, r) { return t + r.m2; }, 0), marks: nm };
+  }
   uniqueLabelNames(out);
   return out;
 }
@@ -4359,8 +4562,10 @@ function draw() {
   }
   drawCompass(f);
   applyZoom();
-  document.getElementById('scale_note').textContent =
-    f.pxPerM ? f.pxPerM.toFixed(1) + ' px/м' : 'масштаб не задан';
+  var sn = document.getElementById('scale_note'), tot = UFH ? roomsTotalHtml() : '';
+  var scTxt = f.pxPerM ? f.pxPerM.toFixed(1) + ' px/м' : 'масштаб не задан';
+  if (tot) { sn.innerHTML = tot; sn.title = 'Масштаб ' + scTxt; }
+  else { sn.textContent = scTxt; sn.title = ''; }
 }
 
 /**
