@@ -18100,32 +18100,53 @@ body.theme-yandex #admin_modal_overlay {
 .ad-row-r { flex: 0 0 auto; color: var(--text-sec); }
 .ad-row-r.ad-bad { color: #EF4444; font-weight: 600; }
 .ad-card-act { align-self: flex-start; }
-/* «Сегодня»: список дел строками. Цвет точки — срочность (горит / пора / когда будет время) */
-.ad-todos { display: flex; flex-direction: column; gap: 8px; }
-.ad-todo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    text-align: left;
-    padding: 12px 14px;
+/* «Сегодня»: плитки на сетке. Цвет точки — срочность (горит / пора / когда будет время) */
+.ad-tiles { display: grid; gap: 14px; align-items: stretch; }
+.ad-tiles.ad-d-compact { gap: 8px; }
+.ad-tile {
+    display: flex; flex-direction: column; gap: 6px;
+    min-width: 0;
+    padding: 14px 16px;
     background: var(--surface-light);
     border: 1px solid var(--ad-line);
     border-radius: var(--ad-card-radius);
-    color: var(--text-main);
-    font: inherit;
-    cursor: pointer;
 }
-.ad-todo:hover { border-color: var(--primary); }
-.ad-todo-dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; background: #3B82F6; }
-.ad-todo-hot .ad-todo-dot { background: #EF4444; }
-.ad-todo-warm .ad-todo-dot { background: #F59E0B; }
-.ad-todo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.ad-todo-main b { font-size: 13.5px; font-weight: 700; }
-.ad-todo-main span { font-size: 12px; color: var(--text-sec); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ad-todo-r { flex: 0 0 auto; font-size: 12px; color: var(--text-sec); }
-.ad-todo-hot .ad-todo-r { color: #EF4444; font-weight: 600; }
-.ad-todo-go { flex: 0 0 auto; font-size: 20px; line-height: 1; color: var(--text-sec); opacity: 0.5; }
+.ad-tiles.ad-c-shadow .ad-tile { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06); }
+.ad-tiles.ad-d-compact .ad-tile { padding: 9px 11px; gap: 4px; }
+.ad-tile-h { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.ad-tile-h b { flex: 1; min-width: 0; font-size: 13.5px; color: var(--text-main); }
+.ad-tile-h:hover b { color: var(--primary); }
+.ad-tile-dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; background: #3B82F6; }
+.ad-tile-hot .ad-tile-dot { background: #EF4444; }
+.ad-tile-warm .ad-tile-dot { background: #F59E0B; }
+.ad-tile-empty .ad-tile-dot { background: var(--ad-line); }
+.ad-tile-go { font-size: 20px; line-height: 1; color: var(--text-sec); opacity: 0.5; }
+.ad-tile-sub { font-size: 12px; color: var(--text-sec); }
+.ad-tile-hot .ad-tile-sub { color: #EF4444; font-weight: 600; }
+.ad-tile-b { flex: 1; min-width: 0; }
+.ad-tile-note { font-size: 12px; color: var(--text-sec); line-height: 1.5; padding: 2px 0; }
+.ad-tile-note.ad-warn { color: #D97706; }
+.ad-trow { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--ad-line); font-size: 12px; }
+.ad-trow:last-child { border-bottom: 0; }
+.ad-trow-main { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ad-trow-main b { color: var(--text-main); font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ad-trow-main span { color: var(--text-sec); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ad-trow-r { flex: 0 0 auto; color: var(--text-sec); }
+.ad-trow-act { align-items: center; flex-wrap: wrap; }
+.ad-trow-btns { display: flex; gap: 6px; flex: 0 0 auto; }
+.ad-trow-btns .admin-btn { height: 28px; padding: 0 10px; font-size: 12px; }
+.ad-bad { color: #EF4444; font-weight: 600; font-style: normal; }
+.ad-tile-ctl { display: flex; gap: 5px; flex-wrap: wrap; padding-top: 8px; border-top: 1px dashed var(--ad-line); }
+.ad-tile-ctl .admin-btn { height: 26px; padding: 0 9px; font-size: 11.5px; }
+.ad-tile-panel {
+    display: flex; gap: 8px 16px; flex-wrap: wrap; align-items: center;
+    padding: 10px 12px; margin-bottom: 14px;
+    border: 1px dashed var(--primary); border-radius: 12px; background: var(--surface);
+    font-size: 11.5px; color: var(--text-sec);
+}
+.ad-tile-panel .admin-btn { height: 26px; padding: 0 9px; font-size: 11.5px; margin-left: 4px; }
+.ad-tile-hidden { flex-basis: 100%; }
+.admin-btn.ad-pick-on { background: var(--primary); color: var(--on-primary, #fff); border-color: var(--primary); }
 .ad-calm {
     display: flex; flex-direction: column; gap: 3px;
     padding: 14px 16px;
@@ -18138,8 +18159,8 @@ body.theme-yandex #admin_modal_overlay {
 .ad-map-fold { margin-top: 24px; }
 .ad-map-fold > summary { cursor: pointer; color: var(--text-sec); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
 @media screen and (max-width: 899.98px) {
-    #admin_content .ad-todo { flex-wrap: wrap; padding: 10px 12px; gap: 8px; }
-    #admin_content .ad-todo-r { order: 5; flex-basis: 100%; padding-left: 22px; }
+    #admin_content .ad-tiles { grid-template-columns: minmax(0, 1fr) !important; }
+    #admin_content .ad-tile { grid-column: auto !important; }
 }
 .ad-section-h { margin: 0 0 10px !important; color: var(--text-sec) !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: 0.06em; }
 .ad-map {

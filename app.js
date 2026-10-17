@@ -27384,10 +27384,106 @@ const app = {
 
     // ═══ «Сегодня» ════════════════════════════════════════════════════════
     // Стартовый экран владельца: не «что есть», а «что требует действия сегодня».
-    // Список строк, а не карточки: показывается только то, где есть дело, самое
-    // срочное сверху; когда дел нет — одна спокойная строка. Каждая строка — переход
-    // в раздел, где дело делают. Данные грузятся каждая сама и друг друга не ждут.
-    // Строки «Система» — не дела, а предупреждения: почта, свежесть аналитики, сбои загрузки.
+    // Плитки на сетке: показывается только то, где есть дело, срочное — вперёд. Размер, порядок,
+    // видимость и вид плиток настраиваются («✏️ Настроить») и хранятся в localStorage этого
+    // компьютера, как раскладка дашборда. Данные грузятся каждая сама и друг друга не ждут.
+    // Новая плитка — запись в TODAY_WIDGETS, её данные в renderAdminHome и строка в todayDefaultLayout.
+    TODAY_LAYOUT_KEY: 'heatcalc_today_layout_v1',
+    TODAY_WIDGETS: {
+        leads:   { t: 'Заявки на монтаж',      tab: 'leads',         act: 'Заявки' },
+        replies: { t: 'Монтажники ответили',   tab: 'messages',      act: 'Сообщения' },
+        inv:     { t: 'Ждут счёта',            tab: 'kanban',        act: 'Планировщик' },
+        pro:     { t: 'Профи заканчивается',   tab: 'stats',         act: 'Пользователи' },
+        ord:     { t: 'Под заказ в подборе',   tab: 'successors',    act: 'Решить' },
+        succ:    { t: 'Замены позиций',        tab: 'successors',    act: 'Замены' },
+        notif:   { t: 'Уведомления',           tab: 'notifications', act: 'Уведомления' },
+        mail:    { t: 'Почта: лимит писем',    tab: 'mailbudget',    act: 'Почта' },
+        data:    { t: 'Свежесть аналитики',    tab: 'analytics',     act: 'Рынок' }
+    },
+
+    todayDefaultLayout: function () {
+        return {
+            style: { cols: 4, density: 'cozy', card: 'shadow', urgentFirst: true },
+            items: [
+                { id: 'leads', span: 2 }, { id: 'replies', span: 2 }, { id: 'inv', span: 2 }, { id: 'pro', span: 2 },
+                { id: 'ord', span: 1 }, { id: 'succ', span: 1 }, { id: 'notif', span: 1 }, { id: 'mail', span: 1 }, { id: 'data', span: 1 }
+            ]
+        };
+    },
+
+    // Раскладка из localStorage, приведённая в порядок: неизвестные и повторные плитки выброшены,
+    // новые (появились в коде позже) дописаны в конец, ширины загнаны в 1…4
+    todayLayout: function () {
+        if (this._todayLayout) return this._todayLayout;
+        const def = this.todayDefaultLayout();
+        let l = null;
+        try { l = JSON.parse(localStorage.getItem(this.TODAY_LAYOUT_KEY) || 'null'); } catch (e) { l = null; }
+        const seen = {};
+        const items = ((l && Array.isArray(l.items)) ? l.items : [])
+            .filter(w => w && this.TODAY_WIDGETS[w.id] && !seen[w.id] && (seen[w.id] = 1))
+            .map(w => ({ id: w.id, span: Math.min(4, Math.max(1, Number(w.span) || 1)), hidden: !!w.hidden }));
+        def.items.forEach(w => { if (!seen[w.id]) items.push(w); });
+        const style = Object.assign({}, def.style, (l && l.style) || {});
+        style.cols = Math.min(4, Math.max(2, Number(style.cols) || 4));
+        this._todayLayout = { style: style, items: items };
+        return this._todayLayout;
+    },
+    todaySave: function () {
+        try { localStorage.setItem(this.TODAY_LAYOUT_KEY, JSON.stringify(this.todayLayout())); } catch (e) { }
+        this.renderAdminHome();
+    },
+    todayEdit: function (on) { this._todayEdit = !!on; this.renderAdminHome(); },
+    todayReset: function () {
+        try { localStorage.removeItem(this.TODAY_LAYOUT_KEY); } catch (e) { }
+        this._todayLayout = null;
+        this.renderAdminHome();
+    },
+    todayMove: function (id, dir) {
+        const items = this.todayLayout().items;
+        const i = items.findIndex(w => w.id === id), j = i + dir;
+        if (i < 0 || j < 0 || j >= items.length) return;
+        const t = items[i]; items[i] = items[j]; items[j] = t;
+        this.todaySave();
+    },
+    todaySize: function (id) {
+        const L = this.todayLayout(), w = L.items.find(x => x.id === id);
+        if (!w) return;
+        w.span = w.span >= L.style.cols ? 1 : w.span + 1;
+        this.todaySave();
+    },
+    todayHide: function (id, hidden) {
+        const w = this.todayLayout().items.find(x => x.id === id);
+        if (!w) return;
+        w.hidden = !!hidden;
+        this.todaySave();
+    },
+    todayStyle: function (key, val) {
+        const s = this.todayLayout().style;
+        s[key] = (key === 'cols') ? Number(val) : (val === 'true' ? true : val === 'false' ? false : val);
+        this.todaySave();
+    },
+
+    // Из плитки «Ждут счёта»: открыть карточку сметы на доске планировщика (там вся переписка и история)
+    todayOpenCard: async function (calcId) {
+        this.switchAdminTab('kanban');
+        for (let i = 0; i < 40; i++) {
+            await new Promise(r => setTimeout(r, 250));
+            if (this._adminTab !== 'kanban') return;
+            if (document.getElementById('kanban_root') && (this._kanbanEvents || []).some(e => String(e.calc_id) === String(calcId))) {
+                return this.renderKanbanCardDetail(calcId);
+            }
+        }
+    },
+    // Из плитки «Ждут счёта»: отметить «Счёт выставлен» прямо здесь — клиенту и монтажнику уйдёт
+    // то же уведомление, что с карточки доски
+    todayInvoiceIssued: async function (calcId) {
+        if (!await this.confirm('Отметить, что счёт по этой смете выставлен? Монтажнику уйдёт уведомление.', 'Счёт выставлен')) return;
+        await this.setInvoiceStatus(calcId, 'invoice_issued', {
+            comment: '',
+            onDone: async () => { this._homeState = null; this.renderAdminHome(); }
+        });
+    },
+
     renderAdminHome: function () {
         const box = document.getElementById('admin_home_box');
         if (!box) return;
@@ -27432,8 +27528,8 @@ const app = {
             return { n: count || 0 };
         });
         // Счета, которые запросили и не выставили. Событие «счёт выставлен» пишется только
-        // когда его отметили кнопкой на канбане, поэтому окно и срок — те же, что у блока
-        // «Ждут счёта» на дашборде (DASH_INVOICE_WAIT_WINDOW / DASH_INVOICE_WAIT_DAYS).
+        // когда его отметили кнопкой, поэтому окно и срок — те же, что у блока «Ждут счёта»
+        // на дашборде (DASH_INVOICE_WAIT_WINDOW / DASH_INVOICE_WAIT_DAYS).
         load('inv', async () => {
             const since = new Date(Date.now() - this.DASH_INVOICE_WAIT_WINDOW * day).toISOString();
             const res = await this.fetchAllRows('invoice_events', 'calc_id, event, created_at, project_name, user_name', {
@@ -27445,7 +27541,7 @@ const app = {
                 if (!r.calc_id) return;
                 const t = new Date(r.created_at).getTime();
                 if (isNaN(t)) return;
-                const c = by[r.calc_id] || (by[r.calc_id] = { req: 0, closed: false, name: '', project: '' });
+                const c = by[r.calc_id] || (by[r.calc_id] = { id: String(r.calc_id), req: 0, closed: false, name: '', project: '' });
                 if (r.event === 'invoice_requested') { if (!c.req || t < c.req) c.req = t; } else c.closed = true;
                 if (r.project_name) c.project = r.project_name;
                 if (r.user_name) c.name = r.user_name;
@@ -27456,7 +27552,7 @@ const app = {
             return { rows: rows };
         });
         // Почта и свежесть аналитики — предупреждения: если источник не ответил (нет миграции,
-        // нет файла), строки просто нет, а не красная ошибка на главном экране.
+        // нет файла), плитки просто нет, а не красная ошибка на главном экране.
         load('mail', async () => {
             try {
                 const { data, error } = await supabaseClient.rpc('mail_budget_state');
@@ -27478,12 +27574,12 @@ const app = {
         const pending = k => st[k] === undefined || st[k] === 'loading';
         const failed = k => !!(st[k] && st[k].error);
         const plural = (n, a, b, c) => { const m = n % 100, d = n % 10; return (m > 10 && m < 20) ? c : d === 1 ? a : (d >= 2 && d <= 4) ? b : c; };
-        const list3 = (arr, total) => arr.slice(0, 3).join(', ') + (total > 3 ? ' и ещё ' + (total - 3) : '');
         const ageTxt = d => d < 1 ? 'меньше суток' : d + ' ' + plural(d, 'день', 'дня', 'дней');
+        const clip = (s, n) => { s = String(s || '').replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n - 1) + '…' : s; };
 
-        // sev: 3 — горит, 2 — пора, 1 — когда будет время
-        const todo = [];
-        const sys = [];
+        // ── Данные плиток. null — дел нет. sev: 3 горит, 2 пора, 1 когда будет время ──
+        // lines — строки списка; note — одна фраза; html(span) — свой вид (кнопки в строках)
+        const W = {};
 
         if (st.leads && st.leads.ok) {
             const asg = id => (this._leadAssign || {})[id] || {};
@@ -27497,99 +27593,155 @@ const app = {
                 })
                 .sort((x, y) => (y.late - x.late) || (y.age - x.age));
             const late = list.filter(x => x.late).length;
-            if (list.length) todo.push({
-                sev: late ? 3 : 2, n: list.length, tab: 'leads', title: 'Заявки на монтаж',
-                sub: list3(list.map(x => (x.r.name || 'без имени') + (x.r.place ? ' (' + x.r.place + ')' : '')), list.length),
-                right: late ? 'просрочено ' + late : 'в работе'
-            });
+            if (list.length) W.leads = {
+                sev: late ? 3 : 2, n: list.length, sub: late ? 'просрочено ' + late : 'все в работе',
+                lines: list.map(x => ({
+                    main: x.r.name || 'без имени', sub: x.r.place || '',
+                    right: (x.s === 'sent' ? 'у мастера ' : 'ждёт ') + (x.age < 1 ? '<1 дн.' : x.age + ' дн.'), bad: x.late
+                }))
+            };
         }
 
-        // Ответы монтажников — то, что в боковой панели горит красной точкой
+        // Ответы монтажников — то, что в боковой панели горит точкой; по одной строке на человека
         const notifs = this._notifications || [];
         const replies = notifs.filter(n => n.type === 'installer_reply' && !n.isRead);
         if (replies.length) {
-            const oldest = Math.max.apply(null, replies.map(n => Math.floor((Date.now() - new Date(n.time)) / day) || 0));
-            const names = []; replies.forEach(n => { if (names.indexOf(n.senderName) < 0) names.push(n.senderName); });
-            todo.push({
-                sev: oldest >= 2 ? 3 : 2, n: replies.length, tab: 'messages', title: 'Монтажники ответили',
-                sub: list3(names, names.length), right: oldest >= 1 ? 'старейшее — ' + ageTxt(oldest) : 'сегодня'
+            const by = {};
+            replies.forEach(n => {
+                const k = n.senderId || n.senderName;
+                const age = Math.floor((Date.now() - new Date(n.time)) / day) || 0;
+                const g = by[k] || (by[k] = { name: n.senderName, n: 0, age: 0, text: '', t: 0 });
+                g.n++; g.age = Math.max(g.age, age);
+                const t = new Date(n.time).getTime() || 0;
+                if (t >= g.t) { g.t = t; g.text = n.comment; }
             });
+            const groups = Object.keys(by).map(k => by[k]).sort((a, b) => b.age - a.age);
+            const oldest = groups[0].age;
+            W.replies = {
+                sev: oldest >= 2 ? 3 : 2, n: replies.length, sub: oldest >= 1 ? 'старейшее — ' + ageTxt(oldest) : 'сегодня',
+                lines: groups.map(g => ({ main: g.name, sub: clip(g.text, 60), right: g.n > 1 ? g.n + ' сообщ.' : '', bad: g.age >= 2 }))
+            };
         }
 
         if (st.inv && st.inv.rows && st.inv.rows.length) {
             const rows = st.inv.rows, late = rows.filter(c => c.age >= this.DASH_INVOICE_WAIT_DAYS).length;
-            todo.push({
-                sev: late ? 3 : 2, n: rows.length, tab: 'kanban', title: 'Ждут счёта',
-                sub: list3(rows.map(c => c.project || c.name || 'смета'), rows.length),
-                right: 'ждёт ' + ageTxt(rows[0].age)
-            });
+            W.inv = {
+                sev: late ? 3 : 2, n: rows.length, sub: 'ждёт ' + ageTxt(rows[0].age),
+                html: span => {
+                    const max = span >= 4 ? 6 : span >= 2 ? 3 : 1;
+                    return rows.slice(0, max).map(c => `
+                        <div class="ad-trow ad-trow-act">
+                            <div class="ad-trow-main"><b>${esc(c.project || 'смета без названия')}</b>
+                                <span>${esc(c.name || '')}${c.name ? ' · ' : ''}${c.age >= this.DASH_INVOICE_WAIT_DAYS ? '<i class="ad-bad">ждёт ' + ageTxt(c.age) + '</i>' : 'ждёт ' + ageTxt(c.age)}</span></div>
+                            <span class="ad-trow-btns">
+                                <button type="button" class="admin-btn" onclick="app.todayOpenCard('${esc(c.id)}')">Открыть</button>
+                                <button type="button" class="admin-btn" onclick="app.todayInvoiceIssued('${esc(c.id)}')">✓ Выставлен</button>
+                            </span>
+                        </div>`).join('') + (rows.length > max ? `<div class="ad-tile-note">и ещё ${rows.length - max}</div>` : '');
+                }
+            };
         }
 
         if (st.pro && st.pro.rows && st.pro.rows.length) {
             const rows = st.pro.rows;
             const left = Math.max(0, Math.ceil((new Date(rows[0].demo_ends_at) - Date.now()) / day));
-            todo.push({
-                sev: left <= 2 ? 3 : 2, n: rows.length, tab: 'stats', title: 'Профи заканчивается',
-                sub: list3(rows.map(nameOf), rows.length), right: left <= 1 ? 'завтра или раньше' : 'через ' + left + ' дн.'
-            });
+            W.pro = {
+                sev: left <= 2 ? 3 : 2, n: rows.length, sub: left <= 1 ? 'ближайший — завтра или раньше' : 'ближайший — через ' + left + ' дн.',
+                lines: rows.map(u => {
+                    const l = Math.max(0, Math.ceil((new Date(u.demo_ends_at) - Date.now()) / day));
+                    return { main: nameOf(u), sub: new Date(u.demo_ends_at).toLocaleDateString('ru-RU'), right: l <= 1 ? 'завтра' : 'через ' + l + ' дн.', bad: l <= 2 };
+                })
+            };
         }
 
-        if (st.ord && st.ord.n) todo.push({
-            sev: 2, n: st.ord.n, tab: 'successors', title: 'Под заказ в подборе',
-            sub: 'Позиции, которые калькулятор ставит по умолчанию, но они «под заказ»', right: 'решение раз в месяц'
-        });
-        if (st.succ && st.succ.n) todo.push({
-            sev: 1, n: st.succ.n, tab: 'successors', title: 'Замены позиций',
-            sub: 'Новые замены снятых с поставки позиций ждут решения', right: ''
-        });
+        if (st.ord && st.ord.n) W.ord = { sev: 2, n: st.ord.n, note: 'Позиции, которые калькулятор ставит по умолчанию, но они «под заказ». Решение — раз в месяц.' };
+        if (st.succ && st.succ.n) W.succ = { sev: 1, n: st.succ.n, note: 'Новые замены снятых с поставки позиций ждут решения.' };
         const otherUnread = notifs.filter(n => !n.isRead && n.type !== 'installer_reply' && n.type !== 'admin_message').length;
-        if (otherUnread) todo.push({
-            sev: 1, n: otherUnread, tab: 'notifications', title: 'Уведомления',
-            sub: 'Статусы смет, счета, тариф', right: ''
-        });
+        if (otherUnread) W.notif = { sev: 1, n: otherUnread, note: 'Статусы смет, счета, тариф.' };
 
-        // ── Система ──
-        const s = st.mail && st.mail.s;
-        if (s && s.tiers && s.load_pct >= s.tiers.t1) sys.push({
-            sev: s.load_pct >= s.tiers.t3 ? 3 : 2, tab: 'mailbudget', title: 'Почта: лимит писем',
-            sub: 'Ушло ' + Math.round(s.pct) + '% из ' + s.limit + ' писем в месяц, к концу цикла ~' + Math.round(s.forecast_pct) + '%',
-            right: s.load_pct >= s.tiers.t3 ? 'рассылки отключаются' : 'подходит к порогу'
-        });
+        const ms = st.mail && st.mail.s;
+        if (ms && ms.tiers && ms.load_pct >= ms.tiers.t1) W.mail = {
+            sev: ms.load_pct >= ms.tiers.t3 ? 3 : 2, sub: ms.load_pct >= ms.tiers.t3 ? 'рассылки отключаются' : 'подходит к порогу',
+            note: 'Ушло ' + Math.round(ms.pct) + '% из ' + ms.limit + ' писем в месяц, к концу цикла ~' + Math.round(ms.forecast_pct) + '%.'
+        };
         // Недельный пульс собирается раз в неделю; больше 10 дней — сбор отстал
         const dd = st.data;
-        if (dd && dd.ageDays >= 10) sys.push({
-            sev: 2, tab: 'analytics', title: 'Аналитика не обновлялась',
-            sub: 'Последний сбор — ' + dd.updated + '. Запускается через GitHub Actions → Wordstat Analytics', right: ageTxt(dd.ageDays) + ' назад'
-        });
-        const LOAD_NAMES = { leads: ['Заявки', 'leads'], pro: ['Профи', 'stats'], ord: ['Под заказ', 'successors'], succ: ['Замены', 'successors'], inv: ['Счета', 'kanban'] };
-        Object.keys(LOAD_NAMES).forEach(k => {
-            if (failed(k)) sys.push({ sev: 2, tab: LOAD_NAMES[k][1], title: 'Не загрузилось: ' + LOAD_NAMES[k][0].toLowerCase(), sub: st[k].error, right: '' });
-        });
+        if (dd && dd.ageDays >= 10) W.data = {
+            sev: 2, sub: ageTxt(dd.ageDays) + ' назад',
+            note: 'Последний сбор — ' + dd.updated + '. Запускается через GitHub Actions → Wordstat Analytics.'
+        };
 
-        const sevCls = { 3: 'ad-todo-hot', 2: 'ad-todo-warm', 1: 'ad-todo-cool' };
-        const rowHtml = o => `
-            <button type="button" class="ad-todo ${sevCls[o.sev]}" onclick="app.switchAdminTab('${o.tab}')">
-                <span class="ad-todo-dot" aria-hidden="true"></span>
-                <span class="ad-todo-main"><b>${esc(o.title)}</b>${o.sub ? `<span>${esc(o.sub)}</span>` : ''}</span>
-                ${o.n ? `<span class="ad-count${o.sev === 3 ? ' ad-count-bad' : ' ad-count-on'}">${o.n}</span>` : ''}
-                ${o.right ? `<span class="ad-todo-r">${esc(o.right)}</span>` : ''}
-                <span class="ad-todo-go" aria-hidden="true">›</span>
-            </button>`;
-        const bySev = (a, b) => (b.sev - a.sev) || ((b.n || 0) - (a.n || 0));
-        todo.sort(bySev); sys.sort(bySev);
+        // ── Раскладка и плитки ──
+        const L = this.todayLayout(), edit = !!this._todayEdit;
+        const cols = this.isAdminMobile() ? 1 : L.style.cols;
+        const sevCls = { 3: 'ad-tile-hot', 2: 'ad-tile-warm', 1: 'ad-tile-cool' };
 
-        const PENDING_NAMES = { leads: 'заявки', pro: 'Профи', ord: 'подбор', succ: 'замены', inv: 'счета', mail: 'почту', data: 'аналитику' };
-        const waiting = Object.keys(PENDING_NAMES).filter(pending).map(k => PENDING_NAMES[k]);
-        const checked = 'заявки, сообщения, счета, Профи, подбор, замены, уведомления';
+        const tileHtml = (it, idx, total) => {
+            const meta = this.TODAY_WIDGETS[it.id], w = W[it.id] || null;
+            const span = Math.min(cols, it.span);
+            let body = '';
+            if (!w) body = '<div class="ad-tile-note">сейчас дел нет</div>';
+            else if (w.html) body = w.html(span);
+            else {
+                const max = span >= 4 ? 6 : span >= 2 ? 3 : 1;
+                if (w.lines) {
+                    body = w.lines.slice(0, max).map(r => `
+                        <div class="ad-trow"><div class="ad-trow-main"><b>${esc(r.main)}</b>${r.sub ? `<span>${esc(r.sub)}</span>` : ''}</div>
+                        ${r.right ? `<span class="ad-trow-r${r.bad ? ' ad-bad' : ''}">${esc(r.right)}</span>` : ''}</div>`).join('')
+                        + (w.lines.length > max ? `<div class="ad-tile-note">и ещё ${w.lines.length - max}</div>` : '');
+                } else if (w.note) body = `<div class="ad-tile-note">${esc(w.note)}</div>`;
+            }
+            const go = edit ? '' : ` onclick="app.switchAdminTab('${meta.tab}')" title="Открыть: ${esc(meta.act)}"`;
+            const ctl = edit ? `
+                <div class="ad-tile-ctl">
+                    <button type="button" class="admin-btn" title="раньше" ${idx === 0 ? 'disabled' : ''} onclick="app.todayMove('${it.id}', -1)">←</button>
+                    <button type="button" class="admin-btn" title="позже" ${idx === total - 1 ? 'disabled' : ''} onclick="app.todayMove('${it.id}', 1)">→</button>
+                    <button type="button" class="admin-btn" title="ширина плитки: нажмите, чтобы сменить" onclick="app.todaySize('${it.id}')">⇲ ширина ${span} из ${cols}</button>
+                    <button type="button" class="admin-btn ad-bad" title="убрать плитку" onclick="app.todayHide('${it.id}', true)">убрать</button>
+                </div>` : '';
+            return `<div class="ad-tile ${w ? sevCls[w.sev] : 'ad-tile-empty'}" style="grid-column:span ${span};">
+                <div class="ad-tile-h"${go}>
+                    <span class="ad-tile-dot" aria-hidden="true"></span><b>${esc(meta.t)}</b>
+                    ${w && w.n ? `<span class="ad-count${w.sev === 3 ? ' ad-count-bad' : ' ad-count-on'}">${w.n}</span>` : ''}
+                    ${edit ? '' : '<span class="ad-tile-go" aria-hidden="true">›</span>'}
+                </div>
+                ${w && w.sub ? `<div class="ad-tile-sub">${esc(w.sub)}</div>` : ''}
+                <div class="ad-tile-b">${body}</div>
+                ${ctl}
+            </div>`;
+        };
+
+        // Что показываем: в обычном режиме — только плитки с делами, срочные вперёд; в режиме правки — все
+        let shown = L.items.filter(it => edit ? !it.hidden : (!it.hidden && W[it.id]));
+        if (!edit && L.style.urgentFirst) {
+            shown = shown.map((it, i) => ({ it, i })).sort((a, b) => (W[b.it.id].sev - W[a.it.id].sev) || (a.i - b.i)).map(x => x.it);
+        }
+        const waiting = ['leads', 'pro', 'ord', 'succ', 'inv', 'mail', 'data'].filter(pending);
+        const failedNames = { leads: 'заявки', pro: 'Профи', ord: 'подбор', succ: 'замены', inv: 'счета' };
+        const failedKeys = Object.keys(failedNames).filter(failed);
 
         let main;
-        if (todo.length) main = `<div class="ad-todos">${todo.map(rowHtml).join('')}</div>`;
-        else if (waiting.length) main = `<div class="ad-card-note">Проверяем…</div>`;
-        else main = `<div class="ad-calm"><b>✓ Сегодня дел нет</b><span>Проверено: ${checked}.</span></div>`;
-        if (todo.length && waiting.length) main += `<div class="ad-card-note">Ещё проверяем: ${waiting.join(', ')}…</div>`;
-        const sysHtml = sys.length
-            ? `<h4 class="ad-section-h" style="margin-top:20px;">Система</h4><div class="ad-todos">${sys.map(rowHtml).join('')}</div>`
-            : (waiting.length ? '' : `<div class="ad-card-note ad-ok" style="margin-top:14px;">✓ Система: почта в пределах лимита, аналитика свежая</div>`);
+        if (shown.length) {
+            main = `<div class="ad-tiles ad-d-${esc(L.style.density)} ad-c-${esc(L.style.card)}" style="grid-template-columns:repeat(${cols}, minmax(0, 1fr));">
+                ${shown.map((it, i) => tileHtml(it, i, shown.length)).join('')}</div>`;
+        } else if (waiting.length) main = `<div class="ad-tile-note">Проверяем…</div>`;
+        else main = `<div class="ad-calm"><b>✓ Сегодня дел нет</b><span>Проверено: заявки, сообщения, счета, Профи, подбор, замены, уведомления, почта, аналитика.</span></div>`;
+        if (shown.length && waiting.length) main += `<div class="ad-tile-note" style="margin-top:8px;">Ещё проверяем: ${waiting.length} из 7…</div>`;
+        if (failedKeys.length) main += `<div class="ad-tile-note ad-warn" style="margin-top:8px;">Не загрузилось: ${failedKeys.map(k => failedNames[k] + ' (' + esc(st[k].error) + ')').join('; ')}</div>`;
+
+        // Панель настройки
+        let panel = '';
+        if (edit) {
+            const pick = (key, val, label) => `<button type="button" class="admin-btn${String(L.style[key]) === String(val) ? ' ad-pick-on' : ''}" onclick="app.todayStyle('${key}', '${val}')">${label}</button>`;
+            const hidden = L.items.filter(it => it.hidden);
+            panel = `<div class="ad-tile-panel">
+                <span>колонок: ${pick('cols', 2, '2')}${pick('cols', 3, '3')}${pick('cols', 4, '4')}</span>
+                <span>плотность: ${pick('density', 'cozy', 'просторно')}${pick('density', 'compact', 'компактно')}</span>
+                <span>карточки: ${pick('card', 'shadow', 'с тенью')}${pick('card', 'flat', 'плоские')}</span>
+                <span>срочное вперёд: ${pick('urgentFirst', 'true', 'да')}${pick('urgentFirst', 'false', 'нет')}</span>
+                ${hidden.length ? `<span class="ad-tile-hidden">скрыты: ${hidden.map(it => `<button type="button" class="admin-btn" onclick="app.todayHide('${it.id}', false)">+ ${esc(this.TODAY_WIDGETS[it.id].t)}</button>`).join('')}</span>` : ''}
+            </div>`;
+        }
 
         // Карта разделов — под сгибом: те же разделы, что в меню сверху
         const map = this.adminVisibleGroups(this.adminTabDefs()).filter(g => g.id !== 'overview' || g.defs.length > 1).map(g => `
@@ -27602,11 +27754,17 @@ const app = {
         const today = todayRaw.charAt(0).toUpperCase() + todayRaw.slice(1);
         box.innerHTML = `
             <div class="ad-page-h">
-                <div><h3>Сегодня</h3><div class="ad-sub">${esc(today)} · что требует действия, самое срочное сверху</div></div>
-                <button class="admin-btn" onclick="app._homeState=null; app._leadsData=null; app.renderAdminHome()">Обновить</button>
+                <div><h3>Сегодня</h3><div class="ad-sub">${esc(today)} · что требует действия${L.style.urgentFirst ? ', самое срочное сверху' : ''}</div></div>
+                <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                    ${edit
+                        ? `<button class="admin-btn" onclick="app.todayReset()">Сбросить</button>
+                           <button class="admin-btn ad-pick-on" onclick="app.todayEdit(false)">Готово</button>`
+                        : `<button class="admin-btn" title="размер, порядок и вид плиток" onclick="app.todayEdit(true)">✏️ Настроить</button>
+                           <button class="admin-btn" onclick="app._homeState=null; app._leadsData=null; app.renderAdminHome()">Обновить</button>`}
+                </div>
             </div>
+            ${panel}
             ${main}
-            ${sysHtml}
             <details class="ad-map-fold"><summary>Все разделы</summary><div class="ad-map">${map}</div></details>`;
     },
 
