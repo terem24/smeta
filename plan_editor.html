@@ -226,17 +226,18 @@
   .wz-ai .ai-h b { color: inherit; }
   .wz-ai .ai-step { display: inline-block; margin-right: 8px; padding: 1px 9px; border-radius: 10px; font-size: 11.5px;
                     font-weight: 700; letter-spacing: .02em; color: #c7d2fe; background: rgba(99,102,241,.28); vertical-align: 1px; }
-  .wz-ai .ai-tips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
-  .wz-ai .ai-tip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: 14px;
-                   font-size: 12px; color: var(--text-sec); background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); }
-  .wz-ai .ai-tip i { font-style: normal; font-weight: 600; font-size: 11.5px; padding: 1px 8px; border-radius: 10px;
+  /* подсказки — одной строкой под заголовком и кнопками, а не колонкой в узком блоке слева */
+  .wz-do .ai-tips { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 0; }
+  .wz-do .ai-tip { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px 1px 2px; border-radius: 12px;
+                   font-size: 11.5px; line-height: 1.5; color: var(--text-sec); background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.09); }
+  .wz-do .ai-tip i { font-style: normal; font-weight: 600; font-size: 11px; padding: 0 7px; border-radius: 10px;
                      color: var(--text-main); background: rgba(255,255,255,.10); }
   @keyframes aipulse { 0%, 100% { box-shadow: 0 2px 10px rgba(124,92,255,.45); } 50% { box-shadow: 0 2px 16px rgba(56,189,248,.7); } }
   @media (prefers-reduced-motion: reduce) { .wz-ai .ai-ic { animation: none; } }
   html.ufh.light .wz-do { background: linear-gradient(110deg, rgba(99,102,241,.08), rgba(56,189,248,.05) 60%, rgba(168,85,247,.06)); }
   html.ufh.light .wz-ai .ai-step { color: #4338ca; background: rgba(99,102,241,.14); }
-  html.ufh.light .wz-ai .ai-tip { background: rgba(0,0,0,.03); border-color: rgba(0,0,0,.09); }
-  html.ufh.light .wz-ai .ai-tip i { background: rgba(0,0,0,.07); }
+  html.ufh.light .wz-do .ai-tip { background: rgba(0,0,0,.03); border-color: rgba(0,0,0,.09); }
+  html.ufh.light .wz-do .ai-tip i { background: rgba(0,0,0,.07); }
   .wz-do button.go { font-size: 13.5px; padding: 6px 16px; }
   /* «ИИ читает план»: карточка по центру, пока модель отвечает */
   #scanbox { position: fixed; left: 50%; top: 40%; transform: translate(-50%, -50%); z-index: 80;
@@ -6227,8 +6228,9 @@ function wzDoHtml(ci, n, b) {
   var tips = (b.tips || []).map(function (t) { return '<span class="ai-tip"><i>' + t[0] + '</i>' + t[1] + '</span>'; }).join('');
   return '<div class="wz-do"><div class="wz-ai"><span class="ai-ic">✦</span><div class="ai-body">' +
     '<div class="ai-h"><span class="ai-step">Шаг ' + (ci + 1) + ' из ' + n + '</span>' + b.tx + '</div>' +
-    (tips ? '<div class="ai-tips">' + tips + '</div>' : '') + (b.diag || '') + '</div></div>' +
-    (b.acts || '') + (b.noNext ? '' : '<button class="go" onclick="' + (b.nextFn || 'wzNext()') + '">' + (b.next || 'Дальше →') + '</button>') + '</div>';
+    (b.diag || '') + '</div></div>' +
+    (b.acts || '') + (b.noNext ? '' : '<button class="go" onclick="' + (b.nextFn || 'wzNext()') + '">' + (b.next || 'Дальше →') + '</button>') +
+    (tips ? '<div class="ai-tips">' + tips + '</div>' : '') + '</div>';
 }
 
 /** Что сказать и какие кнопки показать на шаге. */
@@ -6247,7 +6249,7 @@ function wzBody(id) {
     tips: [['✕', 'убрать лишнюю'], ['«Обвести рамкой»', 'если комната не нашлась']] };
   if (id === 'tp') return { acts: B("wzTpDraw('poly')", 'Обвести по точкам') + B("wzTpDraw('rect')", 'Обвести рамкой') + B('ufhCold()', 'Без обогрева') + B("setMode('coll')", 'Переставить коллектор'),
     tx: 'Отметьте комнаты с тёплым полом — петли разложатся сами.',
-    tips: [['Клик по комнате', 'включить / выключить'], ['«По точкам»', 'сложная форма, часть комнаты'], ['Узлы контура', 'тянуть; ПКМ — точка'], ['«Без обогрева»', 'лестница, ванна, остров'],
+    tips: [['Клик по комнате', 'вкл / выкл'], ['«По точкам»', 'сложная форма'], ['Узлы контура', 'тянуть; ПКМ — точка'], ['«Без обогрева»', 'лестница, ванна'],
       ['Мышью', 'двигать коллектор'], ['ПКМ или R', 'повернуть на 90°']] };
   if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('radcoll')", 'Переставить коллектор радиаторов') + B('radRoutesReset()', 'Автотрассы'),
     tx: 'Радиаторы поставлены под окнами — проверьте расстановку.', tips: RAD_TIPS };
