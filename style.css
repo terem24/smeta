@@ -20581,3 +20581,18 @@ body.empty-fit-panel #header_totals { display: none !important; }
 }
 
 .sg-cmp-solo { margin: 10px 0 14px; font-size: 12px; max-width: 720px; }
+
+
+/* «Любимые материалы»: название слева, варианты справа; на узком экране — друг под другом,
+   иначе подпись пункта сжималась в колонку шириной в одну букву */
+#profile_tab_prefs .pref-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 10px; }
+#profile_tab_prefs .pref-row .lk-row-main { flex: 1 1 240px; min-width: 0; }
+#profile_tab_prefs .pref-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 0 1 auto; }
+@media (max-width: 700px) {
+    #profile_tab_prefs .pref-row { flex-direction: column; align-items: stretch; }
+    #profile_tab_prefs .pref-row .lk-row-main { flex: 0 0 auto; }
+    #profile_tab_prefs .pref-chips { justify-content: flex-start; }
+}
+@media (max-width: 700px) {
+    #profile_tab_prefs { padding-bottom: 72px; }
+}
