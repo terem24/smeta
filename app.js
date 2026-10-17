@@ -40952,7 +40952,20 @@ const app = {
     radSourceMode: function () {
         if (this.state.radSource === 'plan' || this.state.radSource === 'loss') return this.state.radSource;
         const fl = (this.currentPlans() || {}).floors || [];
-        return fl.some(f => f && (f.rads || []).length) ? 'plan' : 'loss';
+        return this.planHasRads() ? 'plan' : 'loss';
+    },
+
+    // На плане есть хоть один отмеченный радиатор — только тогда выбор «как на плане» что-то значит
+    planHasRads: function () {
+        const fl = (this.currentPlans() || {}).floors || [];
+        return fl.some(f => f && (f.rads || []).length);
+    },
+
+    setRadSource: function (mode) {
+        if (mode !== 'plan' && mode !== 'loss') return;
+        this.state.radSource = mode;
+        this.saveState();
+        this.render();
     },
 
     /**
@@ -41512,7 +41525,8 @@ const app = {
         const planMode = this.radSourceMode() === 'plan';
         const segBtn = (on, mode, label) => `<button type="button" class="ufh-tb-full" onclick="app.setRadSource('${mode}')" ` +
             `style="${on ? 'background:var(--primary,#2563eb);color:#fff;border-color:transparent;font-weight:600;' : ''}">${label}</button>`;
-        const radSwitch = `<div class="ufh-tb" style="margin:0 0 8px"><span style="color:var(--text-sec)">Приборы в смете:</span>` +
+        // Нет отметок радиаторов на плане — выбирать не из чего, переключатель скрыт
+        const radSwitch = !this.planHasRads() ? '' : `<div class="ufh-tb" style="margin:0 0 8px"><span style="color:var(--text-sec)">Приборы в смете:</span>` +
             `<span style="display:flex;gap:6px;flex-wrap:wrap">` +
             segBtn(planMode, 'plan', 'Как на плане — только отмеченные') +
             segBtn(!planMode, 'loss', 'По теплопотерям — в каждую комнату') + `</span></div>`;
