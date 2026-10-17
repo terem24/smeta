@@ -5629,8 +5629,14 @@ function radBeamBtn() {
   var tip = info.why ? 'Сейчас недоступно: ' + info.why + '.'
     : (auto ? 'Автоподбор трассы: программа сама решает, где приборам комнаты хватает общей трассы (по нагрузке, скорости воды и потерям), а где нужна отдельная ветка. Нажмите — ветка на каждый прибор.'
       : 'Ветка на каждый прибор: ничего не объединяется, при нехватке Ø16, насоса или выходов покажем предупреждение. Нажмите — автоподбор трассы.');
-  return '<button' + (info.why ? ' disabled' : '') + ' class="' + (auto ? 'go' : '') + '" title="' + tip + '" onclick="radBeamToggle()">' +
+  return '<button' + (info.why ? ' disabled' : '') + ' class="' + (auto ? 'go' : '') + '" title="' + tip + '" onmouseenter="radBeamTip(this)" onclick="radBeamToggle()">' +
     (auto ? 'Автоподбор трассы' : 'Ветка на каждый прибор') + '</button>';
+}
+
+/** Подсказка кнопки: сколько трубы и выходов экономит автоподбор против ветки на каждый прибор (считает калькулятор). */
+function radBeamTip(el) {
+  var h = radHostApp();
+  try { var t = h && !radBeamInfo().why && h.radBeamCompareText ? h.radBeamCompareText() : ''; if (t) el.title = el.title.split('\n\n')[0] + '\n\n' + t; } catch (e) {}
 }
 
 /** Предупреждения по лучам (из расчёта сметы): причина и что делать. Пусто — всё хватает. */
@@ -5655,6 +5661,7 @@ function radBeamToggle() {
     : '<span class=ok>Автоподбор трассы: ' + (n ? 'общая трасса в комнатах: ' + n + ', выходов коллектора: ' + (radCache.outs || '—') + '.'
       : 'объединять нечего — в комнатах по одному прибору или общей трассе не хватает по Ø16/Ø20, остаются отдельные ветки.') +
       '</span> Смета и гидравлика пересчитаны.');
+  try { var cmp = h.radBeamCompareText(); if (cmp) hint(document.getElementById('hint').innerHTML + '<br><span style="white-space:pre-line">' + cmp + '</span>'); } catch (e) {}
   renderZones(); renderSteps(); draw();
 }
 

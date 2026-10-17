@@ -72320,6 +72320,52 @@ const app = {
         return { mode: mode, why: why };
     },
     /**
+     * Сравнение режимов луча на текущем доме: труба радиаторов, выходы коллектора, напор кольца —
+     * по настоящему расчёту сметы в каждом режиме (второй режим считается пробным проходом render и
+     * тут же откатывается). Результат кэшируется по плану и составу комнат. null — режим недоступен.
+     */
+    radBeamCompare: function () {
+        const s = this.state, info = this.radBeamInfo();
+        if (info.why || !(this.radDevices || []).length) return null;
+        const key = (this._plansRev || 0) + '|' + JSON.stringify([s.rooms, s.pipeType, s.radRegime, s.area, s.floors, s.radType, s.swaps]);
+        if (!this._beamCmp || this._beamCmp.key !== key) {
+            const snap = () => {
+                const h = this.radHydro;
+                return { pipe: this.neededPipe || 0, outs: (s.lastRadLoops || 0) * (this._radManifoldsCount || 1),
+                    head: h && h.head > 0 ? h.head : null, pumpOk: !!(h && h.pump) };
+            };
+            const cur = info.mode, other = cur === 'auto' ? 'single' : 'auto', keep = { m: s.radBeamMode, b: s.radSharedBeams };
+            const here = snap();
+            let alt = null;
+            try {
+                s.radBeamMode = other; s.radSharedBeams = other === 'auto'; this._radPlanCache = null;
+                this.render(); alt = snap();
+            } finally {
+                s.radBeamMode = keep.m; s.radSharedBeams = keep.b; this._radPlanCache = null;
+                this.render();
+            }
+            this._beamCmp = { key: key, [cur]: here, [other]: alt };
+        }
+        return this._beamCmp;
+    },
+    // Текст подсказки: что даёт «Автоподбор трассы» против «Ветки на каждый прибор» — метры трубы, выходы, напор
+    radBeamCompareText: function () {
+        const c = this.radBeamCompare();
+        if (!c || !c.single || !c.auto) return '';
+        const a = c.auto, b = c.single, dm = Math.round(b.pipe - a.pipe), dout = Math.round(b.outs - a.outs);
+        const pct = b.pipe > 0 ? Math.round(dm / b.pipe * 100) : 0;
+        const f = v => String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        let t = 'Ветка на каждый прибор: труба ' + f(b.pipe) + ' м, выходов коллектора ' + b.outs + (b.head ? ', напор кольца ' + b.head.toFixed(1).replace('.', ',') + ' м' : '') + '.\n' +
+            'Автоподбор трассы: труба ' + f(a.pipe) + ' м, выходов коллектора ' + a.outs + (a.head ? ', напор кольца ' + a.head.toFixed(1).replace('.', ',') + ' м' : '') + '.\n';
+        if (dm > 0 || dout > 0) t += 'Экономия: ' + (dm > 0 ? f(dm) + ' м трубы (−' + pct + ' %)' : '') + (dm > 0 && dout > 0 ? ', ' : '') + (dout > 0 ? dout + ' ' + this.plural(dout, 'выход', 'выхода', 'выходов') + ' коллектора' : '') + '.';
+        else t += 'Здесь объединять нечего: общая трасса ничего не экономит.';
+        return t;
+    },
+    // Подсказка на вкладке настройки: считается при наведении, чтобы не гонять расчёт на каждой перерисовке
+    fillBeamTip: function (el) {
+        try { const t = this.radBeamCompareText(); if (t && el) el.title = t; } catch (e) { }
+    },
+    /**
      * Предупреждения по лучам к радиаторам для окна плана и сметы: [{ kind, title, text, fix }].
      * Режим не меняется молча: «Автоподбор трассы» объединяет приборы комнаты только там, где общей
      * трассы хватает по нагрузке, скорости и потерям; остальным оставляет отдельную ветку. «Ветка на
