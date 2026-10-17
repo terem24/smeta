@@ -2689,7 +2689,7 @@
   // RCOST_EDGE — надбавка за клетку у самой стены (на 0, 1, 2 клетки от неё: 3×, 2×, 1× шага):
   // контур зоны идёт по оси стены, и трасса по краю ложилась на стену и окна (15.10.2026).
   var RCOST_WALL = 30, RCOST_WALL_DOOR = 300, RCOST_MID = 2, RCOST_EDGE = 4, RCOST_TP = 25, RCOST_COLD = 40, RCOST_OUT = 400;
-  function radRoutes(f, stepMm, tee, connMap) {
+  function radRoutes(f, stepMm, tee, connMap, shareRooms) {
     var rads = (f.rads || []).filter(function (r) { return r && isFinite(r.x) && isFinite(r.y); });
     if (!rads.length || !f.pxPerM) return null;
     var rooms = (f.zones || []).filter(function (z) { return z && z.pts && z.pts.length > 2 && z.type !== 'cold'; });
@@ -2819,14 +2819,49 @@
       var z = zoneOfPoint(f, p);
       return z ? z.name || '' : '';
     };
+    var shareGroups = [];
     if (!tee) {
+      // Сначала трассы каждого прибора, потом — группы комнат с общим лучом (shareRooms: ключ комнаты → true)
+      var traced = [];
       rads.forEach(function (r, i) {
         var cells = trace(src, cellAt(g, conn[i]));
-        if (!cells) return;
-        addCells(cells, 1);
+        if (cells) traced.push({ i: i, cells: cells, room: roomOfConn(conn[i]) });
+      });
+      // Общий луч: одна труба от коллектора до входа в комнату (узел — первая клетка пути внутри комнаты),
+      // дальше короткие отводы от узла к каждому прибору. Коллектор в самой комнате — общего участка нет.
+      var byRoomT = {};
+      if (shareRooms) traced.forEach(function (t) {
+        var k = String(t.room || '').trim().toLowerCase();
+        if (k && shareRooms[k]) (byRoomT[k] = byRoomT[k] || []).push(t);
+      });
+      Object.keys(byRoomT).forEach(function (k) {
+        var mem = byRoomT[k];
+        if (mem.length < 2 || mem.length > 4) return;
+        var roomIdx = own[cellAt(g, conn[mem[0].i])], c0 = mem[0].cells, ni = -1, q0;
+        for (q0 = 0; q0 < c0.length; q0++) if (own[c0[q0]] === roomIdx) { ni = q0; break; }
+        if (ni < 1) return;
+        var Ncell = c0[ni];
+        var stubs = mem.map(function (t, mi) { return mi === 0 ? c0.slice(ni) : trace(Ncell, cellAt(g, conn[t.i])); });
+        if (stubs.some(function (s) { return !s || s.length < 1; })) return;
+        mem.forEach(function (t, mi) { t.shared = { key: k, Ncell: Ncell, head: c0.slice(0, ni + 1), stub: stubs[mi], first: mi === 0 }; });
+        shareGroups.push({ key: k, Ncell: Ncell, members: mem.map(function (t) { return t.i; }) });
+      });
+      traced.forEach(function (t) {
+        var i = t.i, sh = t.shared, cells = sh ? sh.head.concat(sh.stub.slice(1)) : t.cells;
+        if (sh) { if (sh.first) addCells(sh.head, 1); addCells(sh.stub, 1); } else addCells(cells, 1);
         var full = orthoPath([[C.x, C.y]].concat(cells.map(function (q) { return cellXY(g, q); }), [conn[i]]));
         var pts = clean(full);
-        items.push({ i: i, p: conn[i], pts: pts, full: full, L: 2 * (lenPoly(pts) / ppm + rise), room: roomOfConn(conn[i]) });
+        var it = { i: i, p: conn[i], pts: pts, full: full, L: 2 * (lenPoly(pts) / ppm + rise), room: t.room };
+        it.Lbill = it.L;
+        if (sh) {
+          var Npt = cellXY(g, sh.Ncell);
+          it.share = sh.key; it.shareFirst = sh.first; it.node = Npt;
+          it.sharedPts = clean(orthoPath([[C.x, C.y]].concat(sh.head.map(function (q) { return cellXY(g, q); }), [Npt])));
+          it.stubPts = clean(orthoPath([Npt].concat(sh.stub.slice(1).map(function (q) { return cellXY(g, q); }), [conn[i]])));
+          // в метраж трубы общий участок входит один раз — у первого прибора группы, у остальных только отвод
+          if (!sh.first) it.Lbill = 2 * (lenPoly(it.stubPts) / ppm + rise);
+        }
+        items.push(it);
       });
     } else {
       var left = rads.map(function (r, i) { return i; }), at = src, prevP = [C.x, C.y], trunk = [[C.x, C.y]];
@@ -2870,9 +2905,11 @@
       var P = it.pts, q = P[P.length - 1], pr = P[P.length - 2];
       if (pr) segs.push({ a: pr, b: q, n: tee ? 2 : 1 });
     });
-    var total = items.reduce(function (s, it) { return s + it.L; }, 0);
+    var total = items.reduce(function (s, it) { return s + (it.Lbill != null ? it.Lbill : it.L); }, 0);
     items.forEach(function (it) { if (sides[it.i]) { it.side = sides[it.i].side; it.end = sides[it.i].end; } });
-    return { C: C, tee: !!tee, items: items, segs: segs, totalM: total, sides: sides };
+    // выходов коллектора: приборы с отдельной веткой и по одному на группу с общим лучом
+    var outs = items.filter(function (it) { return !it.share; }).length + shareGroups.length;
+    return { C: C, tee: !!tee, items: items, segs: segs, totalM: total, sides: sides, shares: shareGroups, outs: outs };
   }
 
   /**
@@ -4744,7 +4781,7 @@
     var axes = vec ? axesBody(f, t, RADP) : '';
     o.push(axes);
     var RR = null;
-    try { RR = radRoutes(f, stepMm, !!opts.tee, opts.connMap || null); } catch (e) { RR = null; }
+    try { RR = radRoutes(f, stepMm, !!opts.tee, opts.connMap || null, opts.radShare || null); } catch (e) { RR = null; }
     var rooms = (opts.rooms || []).filter(function (r) { return (r.floor || 1) === num; });
     var lp = labelPlacer();
 
@@ -4752,16 +4789,64 @@
     var rg = 0.032 * ppm, collBody = 0;
     if (RR && RR.items.length) {
       if (!RR.tee && RR.items.every(function (it) { return it.full; })) {
-        var half = (RR.items.length * LANE_PITCH * rg) / 2 + 0.12 * ppm;
-        var rl = laneLines(RR.items.map(function (it) {
-          return { pts: collectorFan(it.full, RR.C, RR.C.ang || 0, 0.28 * ppm, half), target: it.p };
+        // Дорожки у коллектора: одна на прибор с отдельной веткой и одна на группу с общим лучом (общий участок
+        // до узла у комнаты). От узла к приборам — короткие отводы, свой пучок дорожек (stubs ниже).
+        var shGroups = {};
+        RR.items.forEach(function (it) { if (it.share) (shGroups[it.share] = shGroups[it.share] || []).push(it); });
+        var lanes = [], laneOf = [];
+        RR.items.forEach(function (it) {
+          if (it.share) {
+            if (it.shareFirst) { lanes.push({ item: it, group: it.share }); }
+          } else lanes.push({ item: it });
+        });
+        var half = (lanes.length * LANE_PITCH * rg) / 2 + 0.12 * ppm;
+        var rl = laneLines(lanes.map(function (ln) {
+          var it = ln.item;
+          return ln.group
+            ? { pts: collectorFan(it.sharedPts, RR.C, RR.C.ang || 0, 0.28 * ppm, half), target: it.node }
+            : { pts: collectorFan(it.full, RR.C, RR.C.ang || 0, 0.28 * ppm, half), target: it.p };
         }), rg);
-        collBody = RR.items.length * LANE_PITCH * rg + 0.16 * ppm;
-        RR.items.forEach(function (it, ii) {
-          [[rl[ii][0], V_RSUP], [rl[ii][1], V_RRET]].forEach(function (pr) {
+        collBody = lanes.length * LANE_PITCH * rg + 0.16 * ppm;
+        var drawPair = function (pair, wd) {
+          [[pair[0], V_RSUP], [pair[1], V_RRET]].forEach(function (pr) {
             o.push('<path d="' + pathR(pr[0], t, rg * t.s * 0.9) + '" style="fill:none;stroke:' + pr[1] +
-              ';stroke-width:0.32;stroke-linejoin:round;stroke-linecap:round"/>');
+              ';stroke-width:' + wd + ';stroke-linejoin:round;stroke-linecap:round"/>');
           });
+        };
+        // длина полилинии в единицах плана и точка на её середине — под подпись диаметра
+        var midOf = function (P) {
+          var tot = 0, i2;
+          for (i2 = 1; i2 < P.length; i2++) tot += Math.hypot(P[i2][0] - P[i2 - 1][0], P[i2][1] - P[i2 - 1][1]);
+          var acc = 0, half2 = tot / 2;
+          for (i2 = 1; i2 < P.length; i2++) {
+            var sl = Math.hypot(P[i2][0] - P[i2 - 1][0], P[i2][1] - P[i2 - 1][1]);
+            if (acc + sl >= half2 && sl > 0) { var u = (half2 - acc) / sl; return [P[i2 - 1][0] + (P[i2][0] - P[i2 - 1][0]) * u, P[i2 - 1][1] + (P[i2][1] - P[i2 - 1][1]) * u]; }
+            acc += sl;
+          }
+          return P[0];
+        };
+        lanes.forEach(function (ln, li) {
+          drawPair(rl[li], ln.group ? 0.5 : 0.32);
+          if (ln.group) {
+            // отводы от узла к приборам комнаты
+            var mem = shGroups[ln.group];
+            var rs = laneLines(mem.map(function (it) { return { pts: it.stubPts, target: it.p }; }), rg);
+            mem.forEach(function (it, mi) {
+              drawPair(rs[mi], 0.32);
+              // связка общей пары с началом отвода: ломаная до узла
+              [[rl[li][0], rs[mi][0], V_RSUP], [rl[li][1], rs[mi][1], V_RRET]].forEach(function (cn) {
+                var a2 = cn[0][cn[0].length - 1], b2 = cn[1][0];
+                if (Math.hypot(a2[0] - b2[0], a2[1] - b2[1]) > 0.05)
+                  o.push('<path d="' + pathR(orthoPath([a2, b2]), t, rg * t.s * 0.9) + '" style="fill:none;stroke:' + cn[2] +
+                    ';stroke-width:0.32;stroke-linejoin:round;stroke-linecap:round"/>');
+              });
+            });
+            var dTxt = opts.radShareD && opts.radShareD[ln.group] ? 'Ø' + opts.radShareD[ln.group] : '';
+            if (dTxt) {
+              var mp = midOf(rl[li][0]);
+              o.push(haloTxt(t.X(mp[0]), t.Y(mp[1]) - 1.2, dTxt, { size: 2.6, anchor: 'middle', fill: '#a61b1b' }));
+            }
+          }
         });
       } else drawBundle(o, RR.segs, t, f, 0.7);
     }
@@ -4828,7 +4913,8 @@
       plainTag(o, bp.p[0], bp.p[1], r, r.id);
     });
     if (RR && RR.C && collBody) {
-      var cLab = 'Коллектор отопления на ' + RR.items.length + ' ' + outWord(RR.items.length) +
+      var nOuts = RR.outs || RR.items.length;
+      var cLab = 'Коллектор отопления на ' + nOuts + ' ' + outWord(nOuts) +
         (opts.radTrunkTxt ? ', ' + opts.radTrunkTxt : '');
       var cwl = textW(cLab, 3.0), ccx = t.X(RR.C.x), ccy = t.Y(RR.C.y);
       var cp = lp.place([[0, 10], [0, -10], [0, 15], [0, -15], [cwl / 2 + 8, 0], [-cwl / 2 - 8, 0]].map(function (d) {
@@ -4858,7 +4944,7 @@
       'Стыки теплоизоляции проклеить лентой армированной;',
       'Радиаторы расположить по центру оконных проёмов, длина радиатора не меньше 75 % от светового проёма;',
       'Схема разводки — ' + (RR && RR.tee ? 'тройниковая (одна магистраль через приборы)' : 'лучевая от коллектора') + ';',
-      opts.radShareNote ? 'В комнатах с несколькими приборами в смете — один общий луч до комнаты и отводы Ø16 к приборам; на плане лучи показаны отдельно;' : null,
+      opts.radShareNote ? 'В комнатах с несколькими приборами — один общий луч до комнаты (диаметр подписан на трубе) и отводы Ø16 к приборам;' : null,
       'Размеры, нанесённые синим цветом, уточнить при монтаже;',
       'Трассы построены автоматически по разметке плана — уточнить при монтаже.'
     ].filter(Boolean);
@@ -5268,7 +5354,7 @@
     var rows = hasTp ? loopRows(f, stepMm, rooms || []) : [];
     var RR = null;
     if (opts.rads && (f.rads || []).length) {
-      try { RR = radRoutes(f, stepMm, !!opts.tee, opts.connMap || null); } catch (e) { RR = null; }
+      try { RR = radRoutes(f, stepMm, !!opts.tee, opts.connMap || null, opts.radShare || null); } catch (e) { RR = null; }
     }
     if (!rows.length && !RR) return null;
     var ppm = f.pxPerM, bundle = hasTp ? (floorLoops(f, stepMm, loopLimit(stepMm)).bundle || []) : [];

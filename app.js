@@ -41175,7 +41175,7 @@ const app = {
      * в нижнем регистре: «Ø16» по умолчанию, у комнат с общим лучом — «Ø20→16» или «Ø16 общий».
      */
     radPlanDia: function () {
-        const out = { radDia: {}, radTrunkTxt: '', radShareNote: false };
+        const out = { radDia: {}, radTrunkTxt: '', radShareNote: false, radShare: null, radShareD: {} };
         const h = this.radHydro;
         const tr = h && (h.parts || []).find(p => p.tag === 'trunk');
         if (tr && tr.d) out.radTrunkTxt = (tr.riser ? 'стояк' : 'подводка') + ' Ø' + tr.d;
@@ -41185,7 +41185,10 @@ const app = {
             const groups = this.radSharedGroups(devices, this.radDeviceRuns(devices, avgRun), true);
             Object.keys(groups).forEach(k => {
                 const g = groups[k];
-                out.radDia[String(g.room || '').trim().toLowerCase()] = g.d === 16 ? 'Ø16 общий' : 'Ø' + g.d + '→16';
+                const rk = String(g.room || '').trim().toLowerCase();
+                out.radDia[rk] = g.d === 16 ? 'Ø16 общий' : 'Ø' + g.d + '→16';
+                out.radShareD[rk] = g.d;
+                (out.radShare = out.radShare || {})[rk] = true;      // radRoutes рисует для этих комнат общий луч и отводы
                 out.radShareNote = true;
             });
         }
