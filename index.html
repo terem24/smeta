@@ -1471,6 +1471,12 @@
                             <div class="tab" id="rad_scheme_tee" onclick="app.setRadConnectionScheme('tee')">Тройниковая</div>
                             <div class="tab active" id="rad_scheme_manifold" onclick="app.setRadConnectionScheme('manifold')">Коллекторная</div>
                         </div>
+                        <!-- Общий луч: в комнате с несколькими приборами — один луч до комнаты и короткие отводы.
+                             Сейчас — для серой трубы PEX-a и режима «По комнатам», группы с лучом Ø16. -->
+                        <label id="rad_shared_row" style="display:none; margin-top:8px; font-size:12px; cursor:pointer;">
+                            <input type="checkbox" id="rad_shared_chk" onchange="app.setRadSharedBeams(this.checked)"> Общий луч на комнату с несколькими приборами
+                            <span style="display:block; opacity:.7; font-size:11px;">Меньше выходов коллектора и трубы. Только серая PEX-a.</span>
+                        </label>
                     </div>
                 </div>
             </div>

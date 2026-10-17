@@ -41110,13 +41110,39 @@ const app = {
      * 10 кПа, отвод к прибору — 1,5 м в одну сторону Ø16. Ключ — название комнаты в нижнем регистре.
      * runs — луч каждого прибора, м в одну сторону (radDeviceRuns). Нет комнаты или нагрузки — прибор в группу не входит.
      */
-    radSharedGroups: function (devices, runs) {
+    // Ключ группы: комната и этаж. Конвекторы в группы не входят — у них свой выход и свой луч.
+    radShareKey: function (d) {
+        return String((d && d.room) || '').trim().toLowerCase() + '|' + (d && d.floor === 2 ? 2 : 1);
+    },
+    // Общий луч в расчёте и смете включён: флаг, коллекторная схема, режим «По комнатам» и серая труба PEX-a.
+    // Остальные трубы (в изоляции, металлопласт, стабильная) пока не поддержаны — флаг на них не действует.
+    radSharedActive: function () {
+        const s = this.state;
+        return !!s.radSharedBeams && s.radConnectionScheme !== 'tee' && !!s.detailedRooms && s.pipeType === 'split';
+    },
+    // Выходы коллектора по этажам с учётом общих лучей: группа — один выход, остальные приборы — по одному.
+    radSharedOutPerFloor: function () {
+        const devices = this.radDevices || [];
+        const avgRun = this.avgRun || (Math.sqrt((this.state.area || 100) / (this.state.floors === 2 ? 2 : 1)) + 3);
+        const groups = this.radSharedGroups(devices, this.radDeviceRuns(devices, avgRun), true);
+        const out = {}, seen = {};
+        devices.forEach(d => {
+            const fl = d.floor === 2 ? 2 : 1, key = this.radShareKey(d);
+            if (d.kind !== 'conv' && groups[key]) {
+                if (seen[key]) return;
+                seen[key] = true;
+            }
+            out[fl] = (out[fl] || 0) + 1;
+        });
+        return out;
+    },
+    radSharedGroups: function (devices, runs, onlyD16) {
         const wOf = d => ((d.load != null ? d.load : d.watt) || 0);
         const STUB = 1.5, LIM = 10;
         const raw = {};
         (devices || []).forEach((d, i) => {
-            const key = String(d.room || '').trim().toLowerCase();
-            if (!key || !(wOf(d) > 0)) return;
+            if (d.kind === 'conv' || !String(d.room || '').trim() || !(wOf(d) > 0)) return;
+            const key = this.radShareKey(d);
             (raw[key] = raw[key] || { room: d.room, idx: [] }).idx.push(i);
         });
         const out = {};
@@ -41130,6 +41156,9 @@ const app = {
             const L = 2 * run * 1.1, Ls = 2 * STUB * 1.1;
             let d = 25;
             for (const dd of [16, 20, 25]) { if (this.radPipeDrop(flowTot, dd, L).dp <= LIM) { d = dd; break; } }
+            // onlyD16 (расчёт и смета, этап 3а): группы, которым нужен Ø20/25, пока остаются отдельными лучами —
+            // переходники Ø20/25 на евроконусы коллектора в каталоге не подобраны. Подсказка (без флага) видит все.
+            if (onlyD16 && d !== 16) return;
             out[k] = { room: g.room, items: items, n: n, totalW: totalW, run: run, flowTot: flowTot, L: L, Ls: Ls, d: d };
         });
         return out;
@@ -69127,12 +69156,12 @@ const app = {
         // кнопки в интерфейсе: смета ещё кладёт отдельный луч на каждый прибор, а расчёт и смета обязаны совпадать.
         // Худший прибор — по потерям общего участка и отвода Ø16 плюс клапан; одиночный прибор — как раньше.
         let shared = null;
-        if (!tee && s.radSharedBeams) {
+        if (!tee && this.radSharedActive()) {
             const runsS = this.radDeviceRuns(devices, avgRun), kv0S = this.radValveKv().kv;
-            const groups = this.radSharedGroups(devices, runsS);
+            const groups = this.radSharedGroups(devices, runsS, true);
             let bestS = -1;
             devices.forEach((d, i) => {
-                const g = groups[String(d.room || '').trim().toLowerCase()];
+                const g = d.kind === 'conv' ? null : groups[this.radShareKey(d)];
                 const fl = this.radFlowOf(wOf(d));
                 let v, sh = null;
                 if (g) {
@@ -72179,6 +72208,12 @@ const app = {
         this.render();
         this.saveState();
     },
+    // Общий луч на комнату с несколькими приборами (расчёт и смета: radSharedActive)
+    setRadSharedBeams: function (on) {
+        this.state.radSharedBeams = !!on;
+        this.render();
+        this.saveState();
+    },
     setRadConnectionScheme: function (scheme) {
         this.state.radConnectionScheme = (scheme === 'tee') ? 'tee' : 'manifold';
         // Держим в синхроне с меткой активного варианта в свап-модалке коллектора (там же можно
@@ -72574,6 +72609,10 @@ const app = {
         const radSchemeTeeTab = document.getElementById('rad_scheme_tee');
         if (radSchemeManifoldTab) radSchemeManifoldTab.className = isTeeScheme ? 'tab' : 'tab active';
         if (radSchemeTeeTab) radSchemeTeeTab.className = isTeeScheme ? 'tab active' : 'tab';
+        // Общий луч на комнату: показываем, когда он может сработать (коллекторная схема, серая PEX-a, «По комнатам»)
+        const radSharedRow = document.getElementById('rad_shared_row'), radSharedChk = document.getElementById('rad_shared_chk');
+        if (radSharedRow) radSharedRow.style.display = (radSchemeOn && !isTeeScheme && this.state.pipeType === 'split') ? 'block' : 'none';
+        if (radSharedChk) radSharedChk.checked = !!this.state.radSharedBeams;
 
         // Режим системы — рядом со схемой разводки: обе настройки про то, как
         // система устроена, и обе нужны только когда радиаторы есть.
@@ -86438,7 +86477,7 @@ const app = {
                             // Гидравлика считает по нагрузке: приборы округляются вверх
                             // до типоразмера, но термоголовка держит комнату по
                             // теплопотерям, и лишние ватты в расход не идут.
-                            app.radDevices.push({ room: r.name, watt: factPower, load: wLoad, kind: 'conv', win: w.id, radId: w.radId, lenMm: app._lastBillLenMm });
+                            app.radDevices.push({ room: r.name, watt: factPower, load: wLoad, kind: 'conv', win: w.id, radId: w.radId, lenMm: app._lastBillLenMm, floor: parseInt(r.floor, 10) === 2 ? 2 : 1 });
                             { const _fl = parseInt(r.floor, 10) === 2 ? 2 : 1; app._radDevPerFloor[_fl] = (app._radDevPerFloor[_fl] || 0) + 1; }
                         } else if (roomHasRad) {
                             let isRommer = (this.state.brandMode === 'rommer');
@@ -86849,7 +86888,7 @@ const app = {
                             // load — потребность места, watt — подобранный прибор (см. конвектор выше).
                             // Приборов на месте может быть больше одного (правка количества руками) —
                             // гидравлике нужен каждый: у каждого своё кольцо и свой расход.
-                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad', bottom: !!_radIsBottom, name: activeItem.name, win: w.id, radId: w.radId, lenMm: app._lastBillLenMm });
+                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad', bottom: !!_radIsBottom, name: activeItem.name, win: w.id, radId: w.radId, lenMm: app._lastBillLenMm, floor: parseInt(r.floor, 10) === 2 ? 2 : 1 });
                             { const _fl = parseInt(r.floor, 10) === 2 ? 2 : 1; app._radDevPerFloor[_fl] = (app._radDevPerFloor[_fl] || 0) + _radQty; }
                         }
                     });
@@ -87199,7 +87238,8 @@ const app = {
             // 10 на первом и 4 на втором давали два коллектора на 7, и трём приборам первого
             // этажа выхода не хватало. Без помещений (быстрый режим) — прежнее пополам.
             // Минимум — 2 выхода (меньше коллекторов в ряду нет).
-            const _perFloor = app._radDevPerFloor || {};
+            // С общими лучами выход коллектора — на группу приборов комнаты, а не на каждый прибор
+            const _perFloor = this.radSharedActive() ? this.radSharedOutPerFloor() : (app._radDevPerFloor || {});
             const _floorMax = (this.state.detailedRooms && Object.keys(_perFloor).length)
                 ? (this.state.floors === 2 ? Math.max(_perFloor[1] || 0, _perFloor[2] || 0) : ((_perFloor[1] || 0) + (_perFloor[2] || 0)))
                 : (this.state.floors === 2 ? Math.ceil(totalDevicesCount / 2) : totalDevicesCount);
@@ -87511,7 +87551,16 @@ const app = {
                 // средний луч с плана, а число лучей — сметы.
                 const _radPlan = this.radPlanRuns();
                 this._radPlanUsed = !!_radPlan;
-                let avgRun = _radPlan ? _radPlan.avgRun : Math.sqrt(floorArea) + 3; let totalMeters = totalDevicesCount * avgRun * 2 * 1.1; let neededPipe = Math.ceil(totalMeters);
+                let avgRun = _radPlan ? _radPlan.avgRun : Math.sqrt(floorArea) + 3; let totalMeters = totalDevicesCount * avgRun * 2 * 1.1;
+                // Общий луч Ø16 на комнату с несколькими приборами (state.radSharedBeams, этап 3а): один луч до комнаты
+                // и короткие отводы вместо отдельного луча каждому. Только для Ø16 — те же труба и евроконусы у коллектора.
+                const _sh = this.radSharedActive() ? this.radSharedGroups(this.radDevices, this.radDeviceRuns(this.radDevices, avgRun), true) : null;
+                if (_sh && Object.keys(_sh).length) {
+                    let _grouped = 0, _shM = 0;
+                    Object.keys(_sh).forEach(k => { _grouped += _sh[k].n; _shM += _sh[k].L + _sh[k].n * _sh[k].Ls; });
+                    totalMeters = (totalDevicesCount - _grouped) * avgRun * 2 * 1.1 + _shM;
+                }
+                let neededPipe = Math.ceil(totalMeters);
                 this.avgRun = avgRun;
                 this.neededPipe = neededPipe;
                 if (neededPipe > 0) {
@@ -87550,6 +87599,14 @@ const app = {
                         let insLen = Math.ceil(neededPipe / 2); if (insLen % 2 !== 0) insLen++; addToBill(catalog.insulation[0], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы подачи (красная) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp); addToBill(catalog.insulation[1], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы обратки (синяя) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp);
                     }
                     addToBill(catalog.water_fittings[8], neededPipe, this.getDesc('double_clip', neededPipe, 'radiators'), pipeGrp);
+                    // Тройники общих лучей: по одному на каждый отбор (приборов в комнате минус один), на подаче и на обратке
+                    if (_sh) {
+                        let _teeQty = 0;
+                        Object.keys(_sh).forEach(k => { _teeQty += (_sh[k].n - 1) * 2; });
+                        const _teeItem = _teeQty > 0 ? this.findCatalogItemById('SFA-0013-000016') : null;
+                        if (_teeItem) addToBill({ ..._teeItem, originalId: 'SFA-0013-000016_rad_share' }, _teeQty,
+                            `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Общий луч Ø16 на комнату с несколькими приборами: от коллектора идёт одна труба, у приборов она делится тройниками на короткие отводы.<br><b>Расчёт:</b> по тройнику на каждый отбор (приборов в комнате минус один) × 2 (подача и обратка) = ${_teeQty} шт.</span>`, pipeGrp);
+                    }
                 }
 
                 // Подводка к радиаторному коллектору: стояк при двух этажах, трасса от
