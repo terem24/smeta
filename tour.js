@@ -368,6 +368,16 @@ const Tour = {
             }
         },
         {
+            // Любимые материалы — вкладка внутри пункта «Прайс»; у продавца пункта нет, шаг
+            // пропустится сам (скрытый элемент), и отдельно его отключать незачем.
+            key: 'prefs',
+            sel: '.lk-rail-item[data-rail="workprices"]',
+            title: 'Любимые материалы',
+            text: 'В «Прайс → Любимые материалы» можно один раз отметить, что вы ставите чаще: нержавейка или ППР в котельной, секционные или стальные радиаторы, боковое или нижнее подключение, трубы, насосы, канализация, автоматика, бренд. Новые сметы сразу будут считаться по вашему выбору, а «Авто» оставляет решение калькулятору. Сбросить можно одной кнопкой.',
+            anim: { type: 'press', label: 'Любимые материалы' },
+            seller: { skip: true }
+        },
+        {
             // Документы живут не под сметой, а внутри карточки заказа, и найти их
             // сами не догадывались. Подсвечиваем вход — пункт «Заказы» в панели
             // разделов; у гостя и на телефоне панели нет, там шаг пропустится, как и
@@ -522,7 +532,7 @@ const Tour = {
 
     // Без аргумента — окно с тарифами, с 'month' | 'year' — сразу окно оплаты
     pay: function (type) {
-        this.finish(true);
+        this.finish(true, true);
         try {
             if (type) app.openPaymentModal(type);
             else app.showModal('pro');
@@ -798,13 +808,108 @@ const Tour = {
     // done = true — человек дошёл до последнего шага (кнопка «Готово» или хвост шагов
     // пропущен по тарифу). Только тогда в учётку пишется отметка «прошёл обучение»;
     // крестик на втором шаге её не ставит.
-    finish: function (done) {
+    finish: function (done, quiet) {
         if (done === true) this.reportDone();
         else this.snoozeForce();
         try { localStorage.setItem(this.LS_STEP, '0'); } catch (e) { }
         this._step = 0;
         this.rememberChoice();
         this.toggle(false);
+        // Последний шаг: поздравление с конфетти и фанфарами, в нём — предложение выбрать
+        // любимые материалы. quiet — когда обучение закрывают ради окна оплаты (pay).
+        if (done === true && !quiet) setTimeout(() => { try { this.celebrate(); } catch (e) { } }, 400);
+    },
+
+    // Поздравление после последнего шага. Всё свое, без CSS-файла: канва с конфетти из
+    // двух нижних углов, фанфары на WebAudio (звук стартует из клика «Готово», поэтому
+    // браузер его разрешает; если нет — тихо без звука) и карточка с кнопкой в «Любимые материалы».
+    celebrate: function () {
+        if (document.getElementById('tour_win')) return;
+        let canPrefs = false;
+        try { canPrefs = !!(typeof app !== 'undefined' && app.state && app.state.tgUser && !app.isSellerOnly()); } catch (e) { }
+        if (canPrefs) { try { localStorage.setItem('prefs_offer_shown', '1'); } catch (e) { } }
+
+        const wrap = document.createElement('div');
+        wrap.id = 'tour_win';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:60000100;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.55);padding:16px;';
+        wrap.innerHTML = '<div style="position:relative;max-width:420px;width:100%;background:var(--bg-card,#fff);color:var(--text-main,#0f172a);border-radius:18px;padding:28px 22px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);">'
+            + '<div style="font-size:56px;line-height:1;">🏆</div>'
+            + '<h3 style="margin:10px 0 8px;font-size:22px;">Поздравляем!</h3>'
+            + '<p style="margin:0 0 6px;font-size:15px;font-weight:600;">Обучение пройдено</p>'
+            + '<p style="margin:0 0 18px;font-size:14px;line-height:1.5;opacity:.85;">'
+            + (canPrefs ? 'Остался последний шаг: выберите любимые материалы, схемы и бренд — новые сметы будут считаться по ним сразу. Менять и сбрасывать можно в любой момент.'
+                : 'Теперь вы знаете весь путь от расчёта до счёта клиенту. Удачных смет!')
+            + '</p>'
+            + (canPrefs ? '<button type="button" id="tour_win_go" style="width:100%;padding:13px;border:0;border-radius:12px;background:var(--primary,#2563eb);color:#fff;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px;">Выбрать любимые материалы</button>' : '')
+            + '<button type="button" id="tour_win_close" style="width:100%;padding:11px;border:0;border-radius:12px;background:transparent;color:inherit;font-size:14px;cursor:pointer;opacity:.7;">' + (canPrefs ? 'Позже' : 'Закрыть') + '</button>'
+            + '</div>';
+        document.body.appendChild(wrap);
+
+        const cv = document.createElement('canvas');
+        cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:60000200;pointer-events:none;';
+        document.body.appendChild(cv);
+        const stopFx = this._confetti(cv);
+        this._fanfare();
+
+        const close = () => { stopFx(); cv.remove(); wrap.remove(); };
+        wrap.querySelector('#tour_win_close').onclick = close;
+        const go = wrap.querySelector('#tour_win_go');
+        if (go) go.onclick = () => { close(); try { app.showProfileModal(false, 'prefs'); } catch (e) { } };
+    },
+
+    _confetti: function (cv) {
+        const ctx = cv.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const fit = () => { cv.width = innerWidth * dpr; cv.height = innerHeight * dpr; };
+        fit();
+        const colors = ['#f43f5e', '#f59e0b', '#10b981', '#3b82f6', '#a855f7', '#facc15'];
+        const parts = [];
+        const burst = (side, n) => {
+            for (let i = 0; i < n; i++) {
+                const ang = (side === 'l' ? -1 : 1) * (0.35 + Math.random() * 0.55) - Math.PI / 2;
+                const sp = (9 + Math.random() * 11) * dpr;
+                parts.push({ x: (side === 'l' ? 0 : innerWidth) * dpr, y: innerHeight * 0.85 * dpr,
+                    vx: (side === 'l' ? 1 : -1) * Math.abs(Math.cos(ang)) * sp,
+                    vy: -Math.abs(Math.sin(ang)) * sp * 1.15, w: (6 + Math.random() * 6) * dpr, h: (4 + Math.random() * 5) * dpr,
+                    r: Math.random() * 6, vr: (Math.random() - .5) * .4, c: colors[(Math.random() * colors.length) | 0] });
+            }
+        };
+        burst('l', 90); burst('r', 90);
+        let t0 = performance.now(), raf = 0, stopped = false, again = false;
+        const tick = (now) => {
+            if (stopped) return;
+            const el = now - t0;
+            if (!again && el > 1400) { again = true; burst('l', 60); burst('r', 60); }
+            ctx.clearRect(0, 0, cv.width, cv.height);
+            for (let i = parts.length - 1; i >= 0; i--) {
+                const p = parts[i];
+                p.vy += 0.32 * dpr; p.vx *= 0.992; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+                if (p.y > cv.height + 40) { parts.splice(i, 1); continue; }
+                ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+            }
+            if (parts.length) raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        return () => { stopped = true; cancelAnimationFrame(raf); };
+    },
+
+    _fanfare: function () {
+        try {
+            const C = window.AudioContext || window.webkitAudioContext;
+            if (!C) return;
+            const ac = new C(), t = ac.currentTime;
+            // до-ми-соль-до с коротким тутти в конце — «приз получен»
+            [[523.25, 0, .16], [659.25, .16, .16], [783.99, .32, .16], [1046.5, .48, .5], [783.99, .48, .5], [659.25, .48, .5]].forEach(n => {
+                const o = ac.createOscillator(), g = ac.createGain();
+                o.type = 'square'; o.frequency.value = n[0];
+                g.gain.setValueAtTime(0.0001, t + n[1]);
+                g.gain.exponentialRampToValueAtTime(0.12, t + n[1] + .02);
+                g.gain.exponentialRampToValueAtTime(0.0001, t + n[1] + n[2]);
+                o.connect(g); g.connect(ac.destination);
+                o.start(t + n[1]); o.stop(t + n[1] + n[2] + .05);
+            });
+            setTimeout(() => { try { ac.close(); } catch (e) { } }, 1500);
+        } catch (e) { }
     },
 
     // Отметка в базе (users.tour_done_at, supabase/migrations/20261015_tour_done.sql).

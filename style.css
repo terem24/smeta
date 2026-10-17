@@ -11115,7 +11115,8 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
 #profile_tab_manager,
 #profile_tab_installers,
 #profile_tab_workprices,
-#profile_tab_equipment {
+#profile_tab_equipment,
+#profile_tab_prefs {
     flex: 1 !important;
     overflow-y: auto !important;
     min-height: 0 !important;
@@ -11792,12 +11793,14 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
    с историями: строки плотнее, чем в остальных разделах, иначе список выходит
    длиннее самой сметы */
 #profile_tab_workprices .lk-list,
-#profile_tab_equipment .lk-list {
+#profile_tab_equipment .lk-list,
+#profile_tab_prefs .lk-list {
     gap: 2px;
 }
 
 #profile_tab_workprices .lk-row,
-#profile_tab_equipment .lk-row {
+#profile_tab_equipment .lk-row,
+#profile_tab_prefs .lk-row {
     padding: 2px 8px;
     font-size: 12px;
     gap: 6px;
@@ -11805,12 +11808,14 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
 }
 
 #profile_tab_workprices .lk-subhead,
-#profile_tab_equipment .lk-subhead {
+#profile_tab_equipment .lk-subhead,
+#profile_tab_prefs .lk-subhead {
     margin: 10px 0 4px;
     font-size: 12px;
 }
 
-#profile_tab_equipment .lk-hint {
+#profile_tab_equipment .lk-hint,
+#profile_tab_prefs .lk-hint {
     margin-bottom: 8px;
 }
 

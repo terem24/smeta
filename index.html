@@ -193,7 +193,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=5.47">
+    <link rel="stylesheet" href="style.css?v=5.48">
     <link rel="stylesheet" href="hydro_check.css?v=1.12">
 
     <script src="supabase-js.js" defer></script>
@@ -226,12 +226,12 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.4" defer></script>
-    <script src="app.js?v=13.40" defer></script>
+    <script src="app.js?v=13.41" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
     <script src="session_track.js?v=1.2" defer></script>
-    <script src="tour.js?v=3.5" defer></script>
+    <script src="tour.js?v=3.8" defer></script>
     <!-- Подсказка «Смета за минуту» тем, кто заходит не первый раз и ничего не
          посчитал. После tour.js: берёт у обучения место баннера cookie. -->
     <script src="idle_hint.js?v=1.6" defer></script>
@@ -3570,6 +3570,8 @@
             <div id="profile_tab_workprices" style="display:none; text-align:left;"></div>
 
             <div id="profile_tab_equipment" style="display:none; text-align:left;"></div>
+
+            <div id="profile_tab_prefs" style="display:none; text-align:left;"></div>
 
             <!-- «Сохранить / Отмена» — только у разделов-форм (Мои данные, Реквизиты компании):
                  показ переключает app.setProfileTab. Остальные разделы сохраняются сами. -->

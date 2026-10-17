@@ -718,7 +718,7 @@ const app = {
         });
     },
 
-    confirm: function (msg, title = "Подтверждение") {
+    confirm: function (msg, title = "Подтверждение", okText = 'Да', cancelText = 'Отмена') {
         if (document.body.classList.contains('menu-open')) {
             try { this.toggleMenu(); } catch (e) { }
         }
@@ -744,7 +744,7 @@ const app = {
 
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'calc-dialog-btn calc-dialog-btn-cancel';
-            cancelBtn.innerText = 'Отмена';
+            cancelBtn.innerText = cancelText;
             cancelBtn.onclick = () => {
                 overlay.classList.remove('active');
                 setTimeout(() => {
@@ -755,7 +755,7 @@ const app = {
 
             const okBtn = document.createElement('button');
             okBtn.className = 'calc-dialog-btn calc-dialog-btn-confirm';
-            okBtn.innerText = 'Да';
+            okBtn.innerText = okText;
             okBtn.onclick = () => {
                 overlay.classList.remove('active');
                 setTimeout(() => {
@@ -16091,8 +16091,199 @@ const app = {
     // Профиль и компания / Мои объекты / Заказы и счета / Мой менеджер / Мои монтажники /
     // Прайс монтажа / Своё оборудование. Содержимое всех разделов, кроме реквизитов,
     // строится лениво при первом открытии раздела.
+    // ═══════════ «Предпочтения» (Прайс и оборудование → Предпочтения) ═══════════
+    // Любимые материалы, схемы и бренд монтажника. Хранятся в installerSettings.prefs
+    // (тот же push/pull в users.installer_settings, что у прайса монтажа) и подставляются
+    // в НОВУЮ смету из reset(). Открытые и сохранённые сметы не трогаем — иначе цены в уже
+    // отправленных КП поменялись бы сами. Пустое значение = «Авто»: калькулятор решает сам.
+    // Ручной выбор в самой смете (замены, swaps) главнее предпочтений.
+    // pro: 'rommer' — нужен столбец ROMMER в «Тарифах» (исходно Профи), 'terem' — столбец ТЕРЕМ.
+    PREF_DEFS: [
+        { g: 'Бренд', items: [
+            { id: 'brand', label: 'Бренд оборудования', opts: [{ v: 'stout', t: 'STOUT' }, { v: 'rommer', t: 'ROMMER', pro: 'rommer' }] }
+        ] },
+        { g: 'Котельная', items: [
+            { id: 'boilerPipe', label: 'Обвязка котельной', opts: [{ v: 'ss', t: 'Нержавейка' }, { v: 'ppr', t: 'ППР', pro: 'terem' }] },
+            { id: 'pump', label: 'Насосы', opts: [{ v: 'speed3', t: '3-скоростные' }, { v: 'inverter', t: 'Частотные' }],
+                note: '3-скоростные: STOUT 25/60 и ROMMER PROFI. Частотные (с дисплеем): STOUT Mini, Mini Pro и ROMMER EVO. Из группы берётся самый дешёвый.' }
+        ] },
+        { g: 'Радиаторы', items: [
+            { id: 'radKind', label: 'Радиаторы', opts: [{ v: 'section', t: 'Секционные' }, { v: 'steel', t: 'Стальные' }],
+                note: 'Конкретную серию калькулятор берёт самую дешёвую из доступных по подбору.' },
+            { id: 'radConn', label: 'Способ подключения радиаторов', opts: [{ v: 'side', t: 'Боковое' }, { v: 'bottom', t: 'Нижнее' }] },
+            { id: 'radScheme', label: 'Схема подключения', opts: [{ v: 'tee', t: 'Тройниковая' }, { v: 'manifold', t: 'Коллекторная' }] },
+            { id: 'radPipe', label: 'Трубы для радиаторов', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'mp', t: 'Металлопластик' }] }
+        ] },
+        { g: 'Тёплый пол', items: [
+            { id: 'ufhPipe', label: 'Трубы тёплого пола', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'metal_plastic', t: 'Металлопластик' }] },
+            { id: 'ufhFix', label: 'Крепление труб тёплого пола', opts: [{ v: 'xps', t: 'Скобы (XPS)' }, { v: 'mat', t: 'Маты' }] }
+        ] },
+        { g: 'Водоснабжение и канализация', items: [
+            { id: 'waterPipe', label: 'Трубы для водоснабжения', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'metal_plastic', t: 'Металлопластик' }] },
+            { id: 'sewer', label: 'Канализация', opts: [{ v: 'economy', t: 'Обычная' }, { v: 'std', t: 'Бесшумная' }] }
+        ] },
+        { g: 'Автоматика', items: [
+            { id: 'automation', label: 'Автоматика', opts: [{ v: 'wired', t: 'Проводная' }, { v: 'radio', t: 'Беспроводная' }] }
+        ] }
+    ],
+
+    getPrefs: function () {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const p = this.installerSettings.prefs;
+        return (p && typeof p === 'object') ? p : {};
+    },
+
+    // null — вариант доступен; иначе причина недоступности для подсказки
+    prefLock: function (key, v) {
+        const def = this.PREF_DEFS.reduce((a, g) => a.concat(g.items), []).find(x => x.id === key);
+        const opt = def && def.opts.find(o => o.v === v);
+        if (!opt || !opt.pro) return null;
+        const ok = opt.pro === 'rommer' ? this.canUseBrand('ROMMER') : this.tariffAccess('terem') === 'on';
+        if (ok) return null;
+        return this.isPro() ? 'Недоступно для вашей учётной записи' : 'Только на тарифе ПРОФИ';
+    },
+
+    setPref: function (key, v) {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const p = Object.assign({}, this.installerSettings.prefs || {});
+        if (!v || p[key] === v || this.prefLock(key, v)) delete p[key]; else p[key] = v;
+        this.installerSettings.prefs = p;
+        this.pushInstallerSettingsToCloud();
+        this.renderPrefsTab();
+    },
+
+    // Самая дешёвая за кВт секционная серия с нужным подключением (STOUT, у ROMMER — его цена)
+    prefCheapestSectional: function (conn) {
+        const side = ['space_ru', 'titan_side', 'aluminum'], bottom = ['space', 'titan'];
+        const types = conn === 'side' ? side : (conn === 'bottom' ? bottom : side.concat(bottom));
+        const rom = this.state.brandMode === 'rommer';
+        let best = null;
+        try {
+            this._getSecRadSeries().forEach(sr => {
+                if (!types.includes(sr.type) || !sr.arr || !sr.arr.length) return;
+                const it = sr.arr[0], src = (rom && it.rommer) ? it.rommer : it;
+                const pw = src.power50 || it.power50;
+                if (!pw || !src.price) return;
+                const cost = src.price / pw;
+                if (!best || cost < best.cost) best = { type: sr.type, cost };
+            });
+        } catch (e) { }
+        return best ? best.type : null;
+    },
+
+    // Проставляет предпочтения в this.state. Недоступное по тарифу молча пропускаем.
+    applyPrefs: function () {
+        const p = this.getPrefs(), s = this.state;
+        const has = (k) => p[k] && !this.prefLock(k, p[k]);
+        if (has('brand')) {
+            s.brandMode = p.brand;
+            s.sectionAnalog = {}; s.pipeBrand = {}; s.boilerPipeSystem = null;
+            if (p.brand === 'rommer') s.pprSystemBrand = 'proaqua';
+        }
+        if (has('boilerPipe')) s.boilerPipeSystem = p.boilerPipe === 'ppr' ? 'ppr' : null;
+        if (has('pump')) s.pumpType = p.pump === 'inverter' ? 'mini' : 'default';
+        if (has('radKind') || has('radConn')) {
+            s.radConnPref = has('radConn') ? p.radConn : null;
+            if (p.radKind === 'steel') s.radType = 'steel';
+            else { const t = this.prefCheapestSectional(s.radConnPref); if (t) s.radType = t; }
+        }
+        if (has('radScheme')) s.radConnectionScheme = p.radScheme;
+        if (has('radPipe')) {
+            const base = String(s.pipeType || 'insulated').replace(/_mp$/, '');
+            s.pipeType = p.radPipe === 'mp' ? ((base === 'insulated' || base === 'split') ? base : 'insulated') + '_mp' : base;
+        }
+        if (has('ufhPipe')) {
+            const up = this.UFH_PIPES.find(x => x.material === p.ufhPipe);
+            if (up) { s.ufhPipe = up.key; s.ufhPipeMaterial = up.material; this._ufhGeomCache = null; }
+        }
+        if (has('ufhFix')) s.ufhBaseType = p.ufhFix;
+        if (has('waterPipe')) s.waterPipeMaterial = p.waterPipe;
+        if (has('sewer')) s.sewerType = p.sewer;
+        if (has('automation')) {
+            s.airLink = p.automation;
+            s.zoneAuto = Object.assign({}, s.zoneAuto || {}, { link: p.automation });
+        }
+        if (typeof this.onRiser === 'function' && this.onRiser()) this.applyRiserRadType();
+    },
+
+    resetPrefs: async function () {
+        if (!await app.confirm('Сбросить все предпочтения? Новые сметы снова будут считаться по умолчанию (всё «Авто»). Открытые и сохранённые сметы не изменятся.')) return;
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        this.installerSettings.prefs = {};
+        this.pushInstallerSettingsToCloud();
+        this.renderPrefsTab();
+    },
+
+    // Предложение настроить «Любимые материалы»: в «Главная → Дела» для вошедшего монтажника
+    // (не продавца) с хотя бы одной сохранённой сметой, пока предпочтения пусты. «Позже» прячет
+    // карточку на 14 дней, открытие вкладки — насовсем.
+    prefsHintWanted: function (estimatesCount) {
+        try {
+            if (this.isSellerOnly()) return false;
+            if (Object.keys(this.getPrefs()).length) return false;
+            if (localStorage.getItem('prefs_hint_seen') === '1') return false;
+            return Date.now() > (parseInt(localStorage.getItem('prefs_hint_snooze'), 10) || 0);
+        } catch (e) { return false; }
+    },
+    // Окно-предложение: один раз любому вошедшему монтажнику (не продавцу) с пустыми предпочтениями —
+    // не зависит от обучения. Зовут после загрузки настроек из облака (pullInstallerSettingsFromCloud:
+    // иначе предложили бы тому, кто уже всё выбрал на другом устройстве) и по окончании обучения
+    // (tour.js, finish). Пока идёт обучение, другое окно поверх него не открываем.
+    offerPrefsAfterTour: async function () {
+        try {
+            if (!this.state.tgUser || this.isSellerOnly() || Object.keys(this.getPrefs()).length) return;
+            if (localStorage.getItem('prefs_offer_shown') === '1') return;
+            if (document.body.classList.contains('tour-running') || this._profileForceComplete || this.isProfileIncomplete()) return;
+            if (document.querySelector('.calc-dialog-overlay.active, #profile_modal_overlay.active, #custom_modal_overlay.active, #invite_gate_overlay')) return;
+            localStorage.setItem('prefs_offer_shown', '1');
+        } catch (e) { return; }
+        const go = await this.confirm('Можно один раз отметить, что вы ставите чаще: нержавейка или ППР, секционные или стальные радиаторы, трубы, насосы, бренд. Новые сметы сразу будут считаться по вашему выбору. Изменить или сбросить можно в любой момент: «Прайс → Любимые материалы».', 'Любимые материалы', 'Настроить', 'Позже');
+        if (go) this.showProfileModal(false, 'prefs');
+    },
+    prefsHintLater: function () {
+        try { localStorage.setItem('prefs_hint_snooze', String(Date.now() + 14 * 86400000)); } catch (e) { }
+        this.renderCabinetHome();
+    },
+
+    applyPrefsToCurrent: async function () {
+        if (!await app.confirm('Применить предпочтения к открытой смете? Цены в ней могут измениться, ручные замены сохранятся.')) return;
+        this.applyPrefs();
+        this.saveState(); this.syncUI(); this.render();
+        app.alert('✅ Предпочтения применены к открытой смете.');
+    },
+
+    renderPrefsTab: function () {
+        const box = document.getElementById('profile_tab_prefs');
+        if (!box) return;
+        try { localStorage.setItem('prefs_hint_seen', '1'); } catch (e) { }
+        this.pullInstallerSettingsFromCloud();
+        const p = this.getPrefs();
+        const locked = [];
+        let html = `<div class="lk-section-head"><div><h4>Любимые материалы</h4><div class="lk-sub">Что подставлять в новую смету по умолчанию. «Авто» — решает калькулятор. Ручной выбор в смете главнее.</div></div></div>`;
+        this.PREF_DEFS.forEach(g => {
+            html += `<div class="lk-subhead">${g.g}</div><div class="lk-list">`;
+            g.items.forEach(it => {
+                const btns = [`<button type="button" class="ad-chip${p[it.id] ? '' : ' active'}" onclick="app.setPref('${it.id}', '')">Авто</button>`].concat(it.opts.map(o => {
+                    const why = this.prefLock(it.id, o.v);
+                    if (why) locked.push(why);
+                    return `<button type="button" class="ad-chip${p[it.id] === o.v ? ' active' : ''}"${why ? ` disabled title="${why}" style="opacity:.5;cursor:not-allowed"` : ''} onclick="app.setPref('${it.id}', '${o.v}')">${o.t}${why ? ' 🔒' : ''}</button>`;
+                })).join('');
+                html += `<div class="lk-row" style="flex-wrap:wrap;gap:6px"><div class="lk-row-main"><b>${it.label}</b>${it.note ? `<div class="lk-sub">${it.note}</div>` : ''}</div><div class="lk-chips-inline" style="display:flex;gap:6px;flex-wrap:wrap">${btns}</div></div>`;
+            });
+            html += `</div>`;
+        });
+        if (locked.length) {
+            const pro = locked.some(w => w === 'Только на тарифе ПРОФИ');
+            html += `<p class="lk-hint">🔒 ${pro ? 'Отмеченные варианты доступны только на тарифе ПРОФИ. <a href="#" onclick="event.preventDefault(); app.closeProfileModal(); app.showModal(\'pro\')">Подключить ПРОФИ</a>' : 'Отмеченные варианты недоступны для вашей учётной записи.'}</p>`;
+        }
+        const any = Object.keys(p).length > 0;
+        html += `<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="lk-btn-sm" onclick="app.applyPrefsToCurrent()">Применить к открытой смете</button>`
+            + `<button type="button" class="lk-btn-sm"${any ? '' : ' disabled style="opacity:.5;cursor:not-allowed"'} onclick="app.resetPrefs()">Вернуть по умолчанию</button></div>`;
+        box.innerHTML = html;
+    },
+
     setProfileTab: function (tab) {
-        const tabs = ['home', 'requisites', 'company', 'subscription', 'objects', 'summary', 'leads', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment', 'settings', 'theme', 'kp', 'notify', 'login'];
+        const tabs = ['home', 'requisites', 'company', 'subscription', 'objects', 'summary', 'leads', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment', 'prefs', 'settings', 'theme', 'kp', 'notify', 'login'];
         if (!tabs.includes(tab)) tab = 'requisites';
         tab = this.cabinetResolveTab(tab);
         // Уходим со вкладки с открытым чатом — отписываемся от реалтайма, чтобы не копить
@@ -16166,6 +16357,8 @@ const app = {
             this.renderWorkPricesTab();
         } else if (tab === 'equipment') {
             this.renderEquipmentLibraryTab();
+        } else if (tab === 'prefs') {
+            this.renderPrefsTab();
         } else if (tab === 'theme') {
             this.renderThemeChoiceCard();
             this.renderAppearanceTab();
@@ -16247,7 +16440,7 @@ const app = {
         home: [{ id: 'home', label: 'Дела' }, { id: 'summary', label: 'Показатели' }, { id: 'leads', label: 'Заявки' }],
         objects: [{ id: 'objects', label: 'Сметы' }, { id: 'oprosniki', label: 'Опросные листы' }, { id: 'orders', label: 'Документы' }],
         requisites: [{ id: 'requisites', label: 'Мои данные' }, { id: 'company', label: 'Реквизиты компании' }, { id: 'manager', label: 'Мой менеджер' }],
-        workprices: [{ id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }],
+        workprices: [{ id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }, { id: 'prefs', label: 'Любимые материалы' }],
         // Разметка разделов — index.html (profile_tab_theme / _kp / _notify / _login),
         // «Тариф» — прежний profile_tab_subscription (renderSubscriptionTab)
         settings: [{ id: 'theme', label: 'Оформление' }, { id: 'kp', label: 'КП и счета' }, { id: 'notify', label: 'Уведомления' }, { id: 'subscription', label: 'Тариф' }, { id: 'login', label: 'Вход и безопасность' }]
@@ -16429,6 +16622,10 @@ const app = {
         cards.push(card('Сообщения', unread,
             unread ? `<div class="ad-card-note">Непрочитанных: ${unread}</div>` + act('Открыть', "app.railGo('messages')")
                 : '<div class="ad-card-note ad-ok">Новых сообщений нет</div>', true));
+        if (this.prefsHintWanted(ests.length)) {
+            cards.push(card('Любимые материалы', 1, '<div class="ad-card-note">Выберите материалы, схемы и бренд, которые вы ставите чаще всего, — новые сметы будут считаться по ним сразу.</div>'
+                + act('Настроить', "app.setProfileTab('prefs')") + ' ' + act('Позже', 'app.prefsHintLater()')));
+        }
         if (noCompany) {
             cards.push(card('Реквизиты компании', 1, '<div class="ad-card-note ad-warn">Название компании не заполнено — оно попадает в шапку КП и счёта.</div>' + act('Заполнить', "app.setProfileTab('company')")));
         }
@@ -18173,15 +18370,22 @@ const app = {
                     // главнее, но отсутствие ключа в облаке не стирает местный выбор
                     shortNamesDefault: (cloud.shortNamesDefault !== undefined)
                         ? cloud.shortNamesDefault
-                        : (this.installerSettings ? this.installerSettings.shortNamesDefault : undefined)
+                        : (this.installerSettings ? this.installerSettings.shortNamesDefault : undefined),
+                    // Любимые материалы («Прайс → Любимые материалы»): по тому же правилу, что margin
+                    prefs: (cloud.prefs && typeof cloud.prefs === 'object')
+                        ? cloud.prefs
+                        : ((this.installerSettings && this.installerSettings.prefs) || undefined)
                 };
                 this.saveInstallerSettingsLocal();
                 if (!cloudCompany && localCompany) this.pushInstallerSettingsToCloud();
                 if (!cloud.railLayout && this.installerSettings.railLayout) this.pushInstallerSettingsToCloud();
                 if (!cloud.railLayoutTouch && this.installerSettings.railLayoutTouch) this.pushInstallerSettingsToCloud();
                 if (!cloud.margin && this.installerSettings.margin) this.pushInstallerSettingsToCloud();
+                if (!cloud.prefs && this.installerSettings.prefs) this.pushInstallerSettingsToCloud();
+                setTimeout(() => { try { this.offerPrefsAfterTour(); } catch (e) { } }, 4000);
                 if (this._activeProfileTab === 'workprices') this.renderWorkPricesTab();
                 if (this._activeProfileTab === 'equipment') this.renderEquipmentLibraryTab();
+                if (this._activeProfileTab === 'prefs') this.renderPrefsTab();
                 if (this._activeProfileTab === 'company') this.fillCompanyDetailsForm();
                 this.refreshTelegramConnectUI();
                 this.updateHeaderCompanyDetails();
@@ -55164,6 +55368,7 @@ const app = {
         // никто больше не сошлётся, уберёт автоочистка по сроку хранения.
         try { localStorage.removeItem('floor_plans_v1'); } catch (e) { }
         this.loadPlanCheckData();
+        this.applyPrefs();
 
         // Плашка «цены изменились» и разбор «Что изменилось» под ней привязаны к
         // загруженной смете. После сброса на экране пустой расчёт, а плашка
@@ -60694,6 +60899,7 @@ const app = {
             this.state.swapSortField = null;
             this.state.swapSortDir = null;
             this.state.valveSwapFilter = null;
+            this.state.pumpSwap = null;
         }
 
         let item = this.currentEquipmentList.find(x => x.id === lookupId || x.displaySku === lookupId);
@@ -60784,6 +60990,18 @@ const app = {
                     || catalog.boilers_polis[catalog.boilers_polis.length - 1])
                 : null;
             alts = [statusBoiler, polisBoiler].filter(Boolean);
+        }
+        // Циркуляционные насосы: в таблице замены — весь ряд (DN15/DN25, 6 и 8 м напора), а не
+        // только типоразмер выбранного: иначе фильтры «Расход / Напор / Подключение» было бы нечем
+        // переключать. Открываемся на типоразмере выбранного насоса — список выглядит как раньше.
+        const _pumpPool = this.circPumpPool();
+        const _isCircPump = _pumpPool.some(p => p.id === _origId0 || (p.rommer && !Array.isArray(p.rommer) && p.rommer.id === _origId0));
+        if (_isCircPump) {
+            alts = _pumpPool;
+            if (isFirstOpen || !this.state.pumpSwap) {
+                const _cs = this.circPumpSpec(item);
+                this.state.pumpSwap = { eff: 'all', q: 'all', head: _cs.head != null ? String(_cs.head) : 'all', thr: _cs.thread || 'all', brand: 'all' };
+            }
         }
         let _allVolsAlts = [];
         let customAlts = null;
@@ -62950,6 +63168,36 @@ const app = {
                 `</div>`;
         }
 
+        // Циркуляционные насосы: фильтры по типу (энергоэффективный / 3-скоростной), расходу, напору,
+        // подключению и бренду. Выбранный насос остаётся в списке при любом фильтре.
+        let _pumpF = null;
+        if (_isCircPump) {
+            _pumpF = this.state.pumpSwap || {};
+            const _pf = (k) => _pumpF[k] || 'all';
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
+            const _all = [];
+            _pumpPool.forEach(p => {
+                _all.push({ id: p.id, name: p.name, type: p.type });
+                if (p.rommer && !Array.isArray(p.rommer)) _all.push({ id: p.rommer.id, name: p.rommer.name, type: p.type });
+            });
+            const _specs = _all.map(d => this.circPumpSpec(d));
+            const _uniq = (f) => [...new Set(_specs.map(f).filter(v => v != null))];
+            const _fmtQ = (q) => String(q).replace('.', ',') + ' м³/ч';
+            const _row = (label, key, opts) =>
+                `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
+                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">${label}:</span>` +
+                opts.map(([v, t]) => `<span onclick="app.setPumpSwapFilter('${key}','${v}')" ${_b(_pf(key) === v)}>${t}</span>`).join('') +
+                `</div>`;
+            _tankFiltersHtml =
+                `<div style="display:flex;gap:6px 20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
+                _row('Тип', 'eff', [['all', 'Все'], ['ec', 'Энергоэффективный'], ['3sp', '3-скоростной']]) +
+                _row('Расход', 'q', [['all', 'Все'], ..._uniq(s => s.q).sort((a, b) => a - b).map(q => [q, 'до ' + _fmtQ(q)])]) +
+                _row('Напор', 'head', [['all', 'Все'], ..._uniq(s => s.head).sort((a, b) => a - b).map(h => [h, h + ' м'])]) +
+                _row('Подключение', 'thr', [['all', 'Все'], ..._uniq(s => s.thread).map(t => [t, 'G ' + t + '"'])]) +
+                _row('Бренд', 'brand', [['all', 'Все'], ['STOUT', 'STOUT'], ['ROMMER', 'ROMMER']]) +
+                `</div>`;
+        }
+
         const _tsSortField = _isTankItem ? (this._tankSwapSort || 'price') : null;
         const _tsSortOrder = _isTankItem ? (this._tankSwapSortOrder || 'asc') : null;
         const _priceArrow = _tsSortField === 'price' ? (_tsSortOrder === 'asc' ? ' ▲' : ' ▼') : '';
@@ -63400,6 +63648,19 @@ const app = {
                             && (!_valveF.shape || _valveF.shape === 'all' || vi.shape === _valveF.shape);
                     });
                 }
+                if (_pumpF) {
+                    candidates.forEach(d => { d.hint = this.circPumpHint(d); });
+                    candidates = candidates.filter(d => {
+                        if (d.id === item.id) return true; // выбранный насос остаётся в списке
+                        const s = this.circPumpSpec(d);
+                        const f = (k) => _pumpF[k] || 'all';
+                        return (f('eff') === 'all' || s.eff === f('eff'))
+                            && (f('q') === 'all' || String(s.q) === f('q'))
+                            && (f('head') === 'all' || String(s.head) === f('head'))
+                            && (f('thr') === 'all' || s.thread === f('thr'))
+                            && (f('brand') === 'all' || String(d.brand || 'STOUT').toUpperCase() === f('brand'));
+                    });
+                }
                 candidates.forEach(displayAlt => {
                     let id = displayAlt.id;
                     if (seenIds.has(id)) return;
@@ -63581,6 +63842,52 @@ const app = {
             if (_pwOn) _pwRow.scrollLeft = Math.max(0, _pwOn.offsetLeft - 80);
         } catch (e) { }
     },
+    // Максимальная потребляемая мощность (P1) циркуляционных насосов, Вт — по карточкам stout.ru, rommer.ru
+    // и магазинов. Для остальных типоразмеров (25/80, 25/60-130, 15/60) данных нет: в таблице «нет данных».
+    // SPC-0011 — тот же 3-скоростной 25/60-180 (44/68/95 Вт, как SPC-0010); у самой карточки SPC-0011 мощности нет.
+    // SPC-0003 (Mini Pro) — 35 Вт по price.ru и паспорту аналога IMP NMT Mini Pro, на stout.ru не проверен.
+    CIRC_PUMP_W: {
+        'SPC-0011-2560180': 95, 'SPC-0010-2560180': 95,
+        'SPC-0002-2560180': 35, 'SPC-0003-2560180': 35,
+        'RCP-0004-2560180': 93, 'RCP-0030-2560180': 45
+    },
+    // Расход (м³/ч) по типоразмеру — каталог Revit STOUT; у ROMMER EVO 25/60-180 свой, 3,6.
+    CIRC_PUMP_Q: { '25/60-180': 4, '25/60-130': 3.8, '25/80-180': 7.2 },
+    circPumpPool: function () {
+        return [].concat(catalog.pumps_dn20 || [], catalog.pumps_dn25 || [], catalog.pumps_dn25_80 || [], catalog.pumps_mix || []);
+    },
+    // Характеристики насоса по названию «DN/напор(дм)-монтажная длина» и артикулу.
+    circPumpSpec: function (d) {
+        const name = String((d && d.name) || '');
+        const m = name.match(/(\d+)\/(\d+)-(\d+)/);
+        const dn = m ? parseInt(m[1], 10) : null;
+        const q = m ? ((d.id === 'RCP-0030-2560180') ? 3.6 : (this.CIRC_PUMP_Q[m[0]] != null ? this.CIRC_PUMP_Q[m[0]] : null)) : null;
+        const ec = d && (d.type === 'mini' || d.type === 'pro' || /частотн|EVO|Mini/i.test(name));
+        return {
+            dn,
+            head: m ? parseInt(m[2], 10) / 10 : null,
+            q,
+            thread: dn === 25 ? '1 1/2' : (dn === 15 ? '1' : null),
+            eff: ec ? 'ec' : '3sp',
+            maxW: d && this.CIRC_PUMP_W[d.id] != null ? this.CIRC_PUMP_W[d.id] : null
+        };
+    },
+    circPumpHint: function (d) {
+        const s = this.circPumpSpec(d);
+        const n = v => String(v).replace('.', ',');
+        const parts = [
+            s.eff === 'ec' ? 'энергоэффективный (частотное регулирование)' : '3-скоростной',
+            s.maxW != null ? `<b>макс. ${s.maxW} Вт</b>` : 'макс. потребление: нет данных',
+            s.q != null ? `расход до ${n(s.q)} м³/ч` : '',
+            s.head != null ? `напор ${n(s.head)} м` : '',
+            s.thread ? `подключение G ${s.thread}"` : ''
+        ].filter(Boolean);
+        return parts.join(' · ');
+    },
+    setPumpSwapFilter: function (key, val) {
+        this.state.pumpSwap = Object.assign({}, this.state.pumpSwap, { [key]: val });
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
     // Вид готовой насосной группы по артикулу (для окна замены): прямая / термостатическая / под сервопривод.
     selfGroupKindOfReady: function (id) {
         const s = String(id || '');
@@ -63707,6 +64014,14 @@ const app = {
             parts.push(`добор утеплителя под норму, ${add} ${add === 1 ? 'слой' : 'слоя'} плит — +${20 * add} %`);
         }
         return { k: k, label: parts.join('; ') };
+    },
+
+    // Предпочтение «боковое/нижнее» для стальных панелей: Compact — сбоку, Ventil (bottom) — снизу
+    steelByConnPref: function (list) {
+        const c = this.state.radConnPref;
+        if (c !== 'side' && c !== 'bottom') return list;
+        const f = list.filter(x => !!x.bottom === (c === 'bottom'));
+        return f.length ? f : list;
     },
 
     pickPanelForWindow: function (list, reqPwr, winW) {
@@ -88171,7 +88486,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                             let itemVega500Al = pickSect(vega500AlRads, p50_vega500Al, 12);
 
                             // === Панельные: выбираем тип (11/21/22/33) по мощности + диапазону ширины 50–90% ===
-                            const defaultSteelRads = steelRads.filter(s => app.getRadHeightFromId(s.id) === 500);
+                            const defaultSteelRads = app.steelByConnPref(steelRads.filter(s => app.getRadHeightFromId(s.id) === 500));
                             let bestPanel = this.pickPanelForWindow(defaultSteelRads, reqPwr, w.width);
 
                             let altsList = [itemSpace, itemTitan, itemSpaceRu, itemTitanSide, itemSpaceRu350, itemTitan350, itemTitan200, itemAluminum, itemAlum350, itemPlusAl, itemPlusAl200, bestPanel,
@@ -88517,7 +88832,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 let secPerRadTitan = Math.max(4, Math.min(14, Math.ceil(totalSecTitan / countTitan)));
                 let itemTitan = this.radBySec(titanRads, secPerRadTitan);
 
-                const defaultSteelRads = steelRads.filter(s => app.getRadHeightFromId(s.id) === 500);
+                const defaultSteelRads = app.steelByConnPref(steelRads.filter(s => app.getRadHeightFromId(s.id) === 500));
                 // Ширины окон в быстром режиме нет — берём ту же, что подставляется окну
                 // новой комнаты (getDefaultWindowWidth) при средней площади на окно.
                 let bestPanel = this.pickPanelForWindow(defaultSteelRads, loadPerWindow,
