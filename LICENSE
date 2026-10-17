@@ -1,45 +1,487 @@
-Copyright (c) 2024-2026 Ибатуллин Дмитрий (HeatCalc.ru). Все права защищены.
-Copyright (c) 2024-2026 Dmitry Ibatullin (HeatCalc.ru). All rights reserved.
+================================================================================
+ЛИЦЕНЗИОННОЕ УВЕДОМЛЕНИЕ И УСЛОВИЯ ИСПОЛЬЗОВАНИЯ / LICENSE NOTICE AND TERMS OF USE
+================================================================================
 
-ПРОПРИЕТАРНОЕ ПРОГРАММНОЕ ОБЕСПЕЧЕНИЕ / PROPRIETARY SOFTWARE
+Copyright (c) 2026 Ибатуллин Дмитрий (HeatCalc.ru). Все права защищены.
+Copyright (c) 2026 Dmitry Ibatullin (HeatCalc.ru). All rights reserved.
 
-Исходный код, скрипты, базы данных (включая каталоги, цены и тарифы),
-алгоритмы и формулы расчёта, тексты, дизайн и иные материалы этого
-репозитория и сайта https://heatcalc.ru (далее — «Программа») являются
-объектами авторского права и принадлежат правообладателю.
+Правообладатель / Rights holder: Ибатуллин Дмитрий (Dmitry Ibatullin),
+                                 владелец сервиса HeatCalc.ru
+Сайт / Website:                  https://heatcalc.ru
+Контакт для связи, лицензирования и претензий /
+Contact for licensing, notices and claims:   kovdor24@yandex.ru
 
-Публичная доступность репозитория НЕ означает передачи каких-либо прав.
-Без предварительного письменного разрешения правообладателя запрещается:
+Настоящий документ состоит из двух частей: РАЗДЕЛ I (на русском языке) и
+SECTION II (in English). В случае расхождений приоритет имеет русский текст.
 
-  1. копировать, воспроизводить, распространять, публиковать Программу
-     или любую её часть;
-  2. изменять, дорабатывать, создавать производные произведения;
-  3. использовать Программу или её части, включая базы цен и логику
-     расчёта, в собственных или чужих сайтах, приложениях и сервисах,
-     в том числе коммерческих;
-  4. автоматически собирать (парсить, скрейпить) данные Программы
-     для создания аналогичных баз или сервисов;
-  5. удалять или изменять уведомления об авторских правах.
 
-Разрешено только: просматривать код в этом репозитории и пользоваться
-сайтом в соответствии с его офертой, а также делать форк на GitHub
-в пределах, прямо предусмотренных Условиями использования GitHub,
-исключительно для просмотра.
+================================================================================
+РАЗДЕЛ I. НА РУССКОМ ЯЗЫКЕ
+================================================================================
 
-Программа предоставляется «как есть», без каких-либо гарантий.
-Правообладатель не несёт ответственности за убытки, возникшие
-в связи с использованием Программы.
+СТАТЬЯ 1. ОБЩИЕ ПОЛОЖЕНИЯ
 
-По вопросам лицензирования: через форму обратной связи на https://heatcalc.ru
+1.1. Программное обеспечение (программы для ЭВМ), исходные и объектные
+     коды, скрипты, базы данных (в том числе каталоги оборудования и
+     материалов, прайс-листы, индексы цен, тарифы, справочники), алгоритмы,
+     формулы и методики расчёта, структура и организация данных, пользовательский
+     интерфейс, дизайн, графические материалы, тексты, статьи, шаблоны
+     документов и иные материалы, размещённые в данном репозитории и на сайте
+     https://heatcalc.ru (включая мобильные приложения и их исходный код),
+     далее совместно — «Программа», являются результатами интеллектуальной
+     деятельности, охраняемыми в соответствии с частью четвёртой Гражданского
+     кодекса Российской Федерации (ГК РФ), в частности статьями 1225, 1228,
+     1229, 1259, 1260, 1261, 1270, 1333–1336 ГК РФ, а также международными
+     договорами Российской Федерации, включая Бернскую конвенцию об охране
+     литературных и художественных произведений.
 
----
+1.2. Исключительное право на Программу принадлежит правообладателю, указанному
+     выше. Охрана Программы возникает в силу факта её создания и не требует
+     регистрации или соблюдения каких-либо формальностей (ст. 1259 ГК РФ).
+     Отсутствие регистрации в Роспатенте не ограничивает объём охраны.
 
-Copyright (c) 2024-2026 Dmitry Ibatullin (HeatCalc.ru). All rights reserved.
+1.3. ПУБЛИЧНАЯ ДОСТУПНОСТЬ НЕ ЯВЛЯЕТСЯ ЛИЦЕНЗИЕЙ. Тот факт, что репозиторий
+     является общедоступным, что код Программы передаётся в браузер
+     пользователя при посещении сайта, либо иным образом доступен для просмотра,
+     не означает предоставления каких-либо прав на Программу, не является
+     публичной офертой на заключение лицензионного договора и не может
+     рассматриваться как согласие правообладателя на использование Программы
+     способами, не указанными в статье 3 настоящего документа. Любое
+     использование, прямо не разрешённое настоящим документом, запрещено
+     (ст. 1229, 1235, 1236 ГК РФ).
 
-This repository and the HeatCalc.ru website (the "Software") are proprietary.
-Public visibility of this repository does not grant any license. Without prior
-written permission of the copyright holder you may not copy, modify,
-distribute, scrape, or use the Software or any part of it (including source
-code, data sets, price databases and calculation logic) in any other product
-or service. Viewing the code and using the website under its terms of service
-is permitted. The Software is provided "AS IS", without warranty of any kind.
+1.4. Настоящий документ представляет собой условия, на которых правообладатель
+     разрешает ограниченное использование Программы. Начав использование
+     Программы или любой её части, лицо тем самым подтверждает, что ознакомилось
+     с настоящими условиями и принимает их в полном объёме (п. 3 ст. 438 ГК РФ).
+     Если лицо не согласно с условиями — оно обязано немедленно прекратить
+     любое использование Программы и удалить все её копии.
+
+СТАТЬЯ 2. ЗАПРЕЩЁННЫЕ ДЕЙСТВИЯ
+
+2.1. Без предварительного письменного разрешения правообладателя, выраженного
+     в отдельном подписанном соглашении или в письме с электронной почты
+     kovdor24@yandex.ru, ЗАПРЕЩАЕТСЯ:
+
+  а) воспроизводить (копировать, клонировать, скачивать с целью дальнейшего
+     использования, зеркалировать, создавать резервные копии для использования
+     вне личного ознакомления) Программу или любую её часть, полностью или
+     частично, в любой форме и любым способом (ст. 1270 ГК РФ);
+
+  б) распространять, публиковать, размещать в сети «Интернет», в том числе в
+     публичных и приватных репозиториях, на файлообменниках, в мессенджерах,
+     на хостингах и в магазинах приложений, предоставлять доступ третьим
+     лицам, продавать, сдавать в прокат, передавать в аренду, сублицензировать;
+
+  в) модифицировать, переводить, адаптировать, дорабатывать, переименовывать,
+     «ребрендировать», создавать производные произведения и сборники на основе
+     Программы, в том числе путём изменения внешнего вида при сохранении логики
+     и структуры данных (ст. 1270, 1260 ГК РФ);
+
+  г) использовать Программу или любую её часть (включая исходный код, алгоритмы,
+     формулы расчёта, структуры и содержание баз данных, цены, тарифы,
+     справочники, тексты, дизайн, интерфейсные решения) при создании, разработке,
+     обучении, наполнении или улучшении любых других программ, сайтов,
+     калькуляторов, мобильных приложений, сервисов, баз данных, вне зависимости
+     от того, является ли такое использование коммерческим;
+
+  д) извлекать и повторно использовать материалы баз данных, входящих в
+     Программу, как в полном объёме, так и существенную их часть, а равно
+     систематически извлекать несущественные части, если это противоречит
+     нормальному использованию базы данных или ущемляет законные интересы
+     правообладателя (ст. 1334 ГК РФ);
+
+  е) автоматически собирать данные Программы или сайта (парсинг, скрейпинг,
+     краулинг, использование ботов, скриптов, headless-браузеров и иных
+     автоматизированных средств), включая сбор цен, каталогов, расчётных
+     результатов, текстов и изображений, за исключением индексации сайта
+     поисковыми системами в соответствии с файлом robots.txt;
+
+  ж) использовать Программу, её части и результаты работы Программы для
+     обучения, дообучения, тонкой настройки (fine-tuning), оценки или
+     наполнения баз знаний и векторных хранилищ моделей машинного обучения,
+     нейронных сетей и систем искусственного интеллекта, за исключением
+     случаев, прямо разрешённых правообладателем;
+
+  з) декомпилировать, дизассемблировать, деобфусцировать, подвергать
+     обратному проектированию Программу, за исключением случаев, прямо
+     предусмотренных статьёй 1280 ГК РФ и не допускающих договорного
+     ограничения;
+
+  и) обходить, отключать, удалять или изменять технические средства защиты
+     авторских прав и ограничения доступа, включая проверки домена, лимиты,
+     ограничения подписки и авторизации, а также оказывать услуги по их обходу
+     (ст. 1299 ГК РФ);
+
+  к) удалять, скрывать или изменять уведомления об авторском праве, указания
+     имени правообладателя, наименование HeatCalc и иную информацию об авторском
+     праве, а также распространять экземпляры Программы, из которых такая
+     информация удалена или изменена (ст. 1300 ГК РФ);
+
+  л) выдавать Программу или её часть за собственную разработку, вводить
+     потребителей в заблуждение относительно происхождения сервиса, использовать
+     наименование «HeatCalc», «heatcalc.ru», логотип, дизайн, схожие до степени
+     смешения обозначения и доменные имена (ст. 1225, 1226 ГК РФ; Федеральный
+     закон от 26.07.2006 № 135-ФЗ «О защите конкуренции»);
+
+  м) использовать Программу для создания и предоставления конкурирующего
+     продукта или услуги.
+
+2.2. Запреты настоящей статьи распространяются на любые формы и способы
+     использования, в том числе на: размещение копий в публичных и частных
+     репозиториях (включая форки с целью дальнейшего использования), «перепаковку»
+     в мобильные и десктопные приложения, встраивание в иные сайты (включая
+     использование через iframe с целью выдать работу сервиса за чужой),
+     включение в сборники и шаблоны.
+
+2.3. Запрещается содействие, побуждение и техническая помощь третьим лицам
+     в совершении перечисленных действий.
+
+СТАТЬЯ 3. РАЗРЕШЁННОЕ ИСПОЛЬЗОВАНИЕ
+
+3.1. Правообладатель безвозмездно, на неисключительной основе, без права
+     сублицензирования и передачи третьим лицам разрешает следующее ограниченное
+     использование:
+
+  а) просмотр исходного кода в этом репозитории в веб-интерфейсе GitHub в
+     ознакомительных, образовательных или оценочных целях;
+
+  б) использование работающего сайта https://heatcalc.ru и мобильных
+     приложений HeatCalc по их прямому назначению — для выполнения расчётов
+     самим пользователем — в соответствии с публичной офертой (oferta.html)
+     и политикой конфиденциальности (privacy-policy.html);
+
+  в) создание форка в GitHub и его просмотр исключительно в пределах, прямо
+     предусмотренных Условиями использования GitHub, без права его
+     изменения, распространения и использования для иных целей;
+
+  г) индексация общедоступных страниц сайта поисковыми системами в
+     соответствии с robots.txt.
+
+3.2. Иные права на Программу, прямо не указанные в п. 3.1, правообладателем не
+     предоставляются и сохраняются за правообладателем в полном объёме
+     (принцип «всё, что прямо не разрешено, запрещено»).
+
+3.3. Разрешённое использование по п. 3.1 прекращается автоматически и немедленно
+     в случае нарушения лицом любого из условий настоящего документа.
+
+3.4. Права, предусмотренные п. 3.1, не распространяются на лиц, которым
+     правообладатель направил письменный запрет на использование.
+
+СТАТЬЯ 4. ВКЛАД ТРЕТЬИХ ЛИЦ (PULL REQUESTS, ISSUES, ПРЕДЛОЖЕНИЯ)
+
+4.1. Любые изменения, исправления, идеи и материалы, направленные лицом
+     правообладателю (в том числе в виде pull request, issue, комментария или
+     письма), считаются переданными безвозмездно. Направляя такой вклад, лицо
+     подтверждает, что является его автором либо обладает необходимыми
+     правами, и с момента направления передаёт правообладателю исключительное
+     право на вклад в полном объёме либо, если передача исключительного
+     права невозможна по закону, предоставляет правообладателю безвозмездную,
+     бессрочную, безотзывную, действующую на территории всего мира исключительную
+     лицензию с правом сублицензирования и внесения изменений.
+
+4.2. Правообладатель не обязан принимать, рассматривать или использовать
+     направленный вклад. Автор вклада не вправе требовать вознаграждения.
+
+СТАТЬЯ 5. КОМПОНЕНТЫ ТРЕТЬИХ ЛИЦ
+
+5.1. Настоящая лицензия не распространяется на компоненты, права на которые
+     принадлежат третьим лицам и которые распространяются на условиях собственных
+     лицензий, в том числе (перечень не исчерпывающий): библиотека Leaflet
+     (каталог vendor/), библиотека supabase-js, QRCode.js, EmailJS, шрифты
+     (каталог fonts/), иконки и иные открытые компоненты. В отношении таких
+     компонентов действуют условия их собственных лицензий; правообладатель
+     Программы не претендует на исключительные права на такие компоненты, но
+     сохраняет все права на их подбор, интеграцию и использование в составе
+     Программы.
+
+5.2. Цены, названия, артикулы и иные сведения о товарах третьих лиц, содержащиеся
+     в Программе, принадлежат соответствующим производителям и поставщикам и
+     используются в информационных целях. Охраняется самостоятельным образом
+     подбор, систематизация, структура и организация таких сведений как
+     базы данных и составного произведения (ст. 1260, 1334 ГК РФ), а также
+     результаты их обработки и расчётов.
+
+5.3. Наименования и обозначения производителей и товаров, упомянутые в
+     Программе, принадлежат их правообладателям и приведены для идентификации.
+
+СТАТЬЯ 6. ТОВАРНЫЕ ОБОЗНАЧЕНИЯ
+
+6.1. Наименования «HeatCalc», «HeatCalc.ru», доменные имена, логотипы и иные
+     средства индивидуализации сервиса являются средствами индивидуализации
+     правообладателя. Настоящий документ не предоставляет права их использования.
+
+СТАТЬЯ 7. ОТВЕТСТВЕННОСТЬ ЗА НАРУШЕНИЕ
+
+7.1. Нарушение условий настоящего документа, а также использование Программы
+     способами, не предусмотренными статьёй 3, является нарушением исключительного
+     права правообладателя и влечёт ответственность в соответствии с
+     законодательством Российской Федерации, в том числе:
+
+  а) гражданско-правовую — обязанность прекратить нарушение, удалить контрафактные
+     экземпляры и материалы, возместить убытки (ст. 15, 1250, 1252 ГК РФ), либо по
+     выбору правообладателя выплатить компенсацию в порядке ст. 1301 ГК РФ
+     (в размере от 10 000 до 5 000 000 рублей, определяемом по усмотрению суда,
+     либо в двукратном размере стоимости контрафактных экземпляров, либо в
+     двукратном размере стоимости права использования, определяемой исходя из цены,
+     которая при сравнимых обстоятельствах обычно взимается за правомерное
+     использование Программы), а также компенсацию по ст. 1311 ГК РФ, где
+     применимо; публикацию решения суда о допущенном нарушении (ст. 1252 ГК РФ);
+     уничтожение контрафактных экземпляров и оборудования (ст. 1252 ГК РФ);
+
+  б) обеспечение иска и принятие предварительных обеспечительных мер, в том числе
+     предварительной защиты исключительных прав в сети «Интернет» (ст. 144.1 ГПК РФ,
+     ст. 99 АПК РФ), внесудебную блокировку сайтов, нарушающих исключительные
+     права, в порядке ст. 15.2 Федерального закона от 27.07.2006 № 149-ФЗ
+     «Об информации, информационных технологиях и о защите информации», а также
+     требование к информационным посредникам (хостинг-провайдерам, регистраторам
+     доменных имён, владельцам площадок и сервисов, магазинам приложений)
+     удалить контент и прекратить нарушение (ст. 1253.1 ГК РФ);
+
+  в) административную — по ст. 7.12 КоАП РФ (ввоз, продажа, сдача в прокат или
+     иное незаконное использование экземпляров произведений в целях извлечения дохода);
+
+  г) уголовную — по ст. 146 УК РФ (нарушение авторских и смежных прав), в том
+     числе в крупном размере (от 100 000 рублей), а при наличии оснований —
+     по ст. 272 УК РФ (неправомерный доступ к компьютерной информации) и
+     ст. 273 УК РФ (создание, использование и распространение вредоносных
+     компьютерных программ), если действия лица связаны с обходом защиты и
+     несанкционированным доступом.
+
+7.2. Правообладатель вправе потребовать от нарушителя возмещения расходов на
+     установление факта нарушения, в том числе расходов на нотариальное
+     обеспечение доказательств (ст. 102 Основ законодательства РФ о нотариате;
+     ст. 64, 65 ГПК РФ; ст. 70 АПК РФ), судебных издержек и расходов на
+     оплату услуг представителя в разумных пределах.
+
+7.3. Правообладатель вправе без дополнительного уведомления обращаться с
+     заявлениями об удалении нарушающих материалов к хостинг-провайдерам,
+     операторам платформ (GitHub, GitLab, Bitbucket, магазины приложений и др.),
+     регистраторам доменных имён, поисковым системам и иным информационным
+     посредникам, в том числе в порядке процедур DMCA и аналогичных процедур
+     зарубежных юрисдикций.
+
+7.4. Правообладатель вправе сохранять и использовать в качестве доказательств
+     данные о нарушении (логи доступа, IP-адреса, скриншоты, архивные копии
+     страниц, записи систем мониторинга и аналитики) в соответствии с
+     политикой конфиденциальности и законодательством.
+
+7.5. Лицо, нарушившее условия настоящего документа, обязано возместить
+     правообладателю причинённые убытки в полном объёме сверх компенсации,
+     если иное не установлено законом. Уплата компенсации не освобождает от
+     обязанности прекратить нарушение.
+
+7.6. Бездействие или промедление правообладателя в защите нарушенных прав не
+     означает согласия на нарушение и отказа от права требовать его прекращения
+     и возмещения ущерба. Отказ от права на защиту допускается только в
+     письменной форме, подписанной правообладателем.
+
+СТАТЬЯ 8. ОТКАЗ ОТ ГАРАНТИЙ И ОГРАНИЧЕНИЕ ОТВЕТСТВЕННОСТИ
+
+8.1. Программа предоставляется «КАК ЕСТЬ» («AS IS»). Правообладатель не
+     гарантирует, что Программа соответствует целям пользователя, будет работать
+     без перерывов и ошибок, что результаты расчётов точны, полны и применимы
+     для конкретного объекта, что цены и тарифы актуальны на момент использования.
+
+8.2. Результаты расчётов, сметы, спецификации, подборы оборудования и иные
+     выходные данные Программы носят справочный, предварительный характер и не
+     заменяют проектную документацию, расчёты, выполненные квалифицированным
+     специалистом, и требования нормативных документов. Пользователь самостоятельно
+     проверяет результаты и несёт полную ответственность за их применение.
+
+8.3. В максимальной степени, допускаемой законом, правообладатель не несёт
+     ответственности за прямые и косвенные убытки, упущенную выгоду,
+     потерю данных, ущерб имуществу, жизни и здоровью, возникшие в связи с
+     использованием или невозможностью использования Программы либо
+     использованием её результатов. Эти ограничения не применяются в случаях,
+     когда исключение или ограничение ответственности недопустимо по закону.
+
+СТАТЬЯ 9. ПОРЯДОК НАПРАВЛЕНИЯ ПРЕТЕНЗИЙ И РАЗРЕШЕНИЕ СПОРОВ
+
+9.1. Запросы на получение разрешения (лицензии), уведомления о нарушениях и
+     иные обращения направляются на адрес электронной почты: kovdor24@yandex.ru.
+     Электронное письмо с указанного адреса, а равно письмо, направленное на него,
+     признаётся надлежащим уведомлением в той мере, в какой это допускается
+     законом (п. 2 ст. 434, ст. 165.1 ГК РФ).
+
+9.2. Лицензия на использование Программы за пределами статьи 3 может быть
+     предоставлена только на основании письменного лицензионного договора
+     (ст. 1235, 1286 ГК РФ), подписанного правообладателем. Никакие устные
+     заверения, переписка в мессенджерах и социальных сетях, действия по
+     игнорированию нарушения не заменяют такого договора.
+
+9.3. К отношениям, связанным с настоящим документом, применяется право
+     Российской Федерации. Споры подлежат рассмотрению в суде по месту
+     нахождения (жительства) правообладателя либо по месту нахождения (жительства)
+     ответчика — по выбору правообладателя, если иное не предусмотрено
+     императивными нормами закона. До обращения в суд правообладатель вправе
+     направить претензию; срок ответа на претензию — 10 (десять) календарных дней
+     с момента её направления на известный адрес электронной почты или иной
+     адрес нарушителя. Направление претензии является правом, а не обязанностью
+     правообладателя, если иное не установлено императивными нормами закона.
+
+СТАТЬЯ 10. ПРОЧИЕ УСЛОВИЯ
+
+10.1. Если какое-либо положение настоящего документа будет признано
+      недействительным или неисполнимым, это не влияет на действительность
+      остальных положений, которые остаются в силе.
+
+10.2. Правообладатель вправе изменять настоящий документ в одностороннем порядке.
+      Изменения вступают в силу с момента публикации новой редакции в этом
+      репозитории. Использование Программы после публикации означает согласие
+      с новой редакцией.
+
+10.3. Настоящий документ является выражением воли правообладателя в отношении
+      прав на Программу и может быть использован как доказательство наличия
+      запрета на использование в суде и при обращении к информационным
+      посредникам.
+
+
+================================================================================
+SECTION II. ENGLISH VERSION
+================================================================================
+
+1. OWNERSHIP AND SCOPE.
+   The source code, object code, scripts, databases (including equipment and
+   materials catalogs, price lists, price indexes, tariffs and reference
+   data), algorithms, calculation formulas and methodologies, data structures,
+   user interface, design, graphics, texts, document templates and all other
+   materials in this repository and on https://heatcalc.ru, including mobile
+   applications and their source code (collectively, the "Software"), are the
+   exclusive intellectual property of Dmitry Ibatullin (HeatCalc.ru) (the
+   "Rights Holder") and are protected by copyright, database rights and other
+   intellectual property laws of the Russian Federation (Part IV of the Civil
+   Code of the Russian Federation), the Berne Convention for the Protection of
+   Literary and Artistic Works, the WIPO Copyright Treaty, and the laws of other
+   jurisdictions, including 17 U.S.C. § 101 et seq. and the EU Database
+   Directive 96/9/EC, to the extent applicable.
+
+2. NO LICENSE BY PUBLIC AVAILABILITY.
+   The public visibility of this repository, the fact that the code is
+   delivered to a user's browser, or the ability to view or clone the Software,
+   does NOT constitute a license, a waiver of rights, an implied license or
+   consent to any use. All rights are expressly reserved.
+
+3. PROHIBITED ACTIONS.
+   Without the prior written permission of the Rights Holder, you may NOT:
+   (a) copy, reproduce, mirror, clone or download the Software or any part of it
+       for any purpose other than personal evaluation;
+   (b) distribute, publish, sell, rent, lease, sublicense or otherwise make the
+       Software available to third parties, including by hosting it in any
+       public or private repository, app store or website;
+   (c) modify, translate, adapt, rebrand, or create derivative works from the
+       Software;
+   (d) use the Software or any part of it (including source code, algorithms,
+       calculation formulas, database contents, prices, tariffs, texts, designs
+       and interface solutions) to develop, build, populate, train or improve
+       any other software, website, calculator, application, service or
+       database, whether commercial or non-commercial;
+   (e) extract or re-utilize all or a substantial part of any database
+       contained in the Software, or repeatedly and systematically extract
+       insubstantial parts thereof;
+   (f) scrape, crawl, harvest or otherwise automatically collect data from the
+       Software or the website (except indexing by search engines in accordance
+       with robots.txt);
+   (g) use the Software, its content or its outputs to train, fine-tune,
+       evaluate or populate knowledge bases or vector stores of machine
+       learning models or artificial intelligence systems, unless expressly
+       authorized in writing;
+   (h) decompile, disassemble, deobfuscate or reverse engineer the Software,
+       except to the extent such restriction is prohibited by applicable law;
+   (i) circumvent, disable or remove any technical protection measure or access
+       control (including domain checks, rate limits and subscription or
+       authorization restrictions), or provide tools or services to do so
+       (17 U.S.C. § 1201; Art. 1299 of the Russian Civil Code);
+   (j) remove or alter any copyright notice, attribution or rights management
+       information (17 U.S.C. § 1202; Art. 1300 of the Russian Civil Code);
+   (k) represent the Software or any part of it as your own work, or use the
+       names "HeatCalc" or "HeatCalc.ru", associated logos, domain names or
+       confusingly similar designations;
+   (l) use the Software to create or provide a competing product or service;
+   (m) induce, assist or enable any third party to do any of the above.
+
+4. PERMITTED USE.
+   The Rights Holder grants you a limited, revocable, non-exclusive,
+   non-transferable, non-sublicensable, royalty-free permission solely to:
+   (a) view the source code in the GitHub web interface for informational,
+       educational or evaluation purposes;
+   (b) use the live website and mobile applications for their intended
+       purpose, in accordance with the published offer (oferta.html) and
+       privacy policy (privacy-policy.html);
+   (c) fork the repository on GitHub solely to the extent expressly permitted
+       by the GitHub Terms of Service, for viewing only, without any right
+       to modify, distribute or otherwise use the fork; and
+   (d) allow search-engine indexing of public pages in accordance with
+       robots.txt.
+   This permission terminates automatically and immediately upon any breach of
+   these terms. All rights not expressly granted are reserved.
+
+5. CONTRIBUTIONS.
+   Any contribution you submit (pull request, issue, comment, patch, email)
+   is submitted gratuitously. You represent that you are its author or have the
+   necessary rights, and you hereby assign to the Rights Holder all rights in
+   the contribution or, where assignment is not possible under applicable law,
+   grant the Rights Holder an exclusive, perpetual, irrevocable, worldwide,
+   royalty-free, sublicensable license to use, modify and exploit it. The Rights
+   Holder has no obligation to accept or use any contribution.
+
+6. THIRD-PARTY COMPONENTS.
+   This notice does not apply to third-party components distributed under their
+   own licenses (including, without limitation: Leaflet in vendor/, supabase-js,
+   QRCode.js, EmailJS, and web fonts in fonts/). Those components remain subject
+   to their respective licenses. The Rights Holder retains all rights in the
+   selection, arrangement, integration and use of such components within the
+   Software, and in the selection and arrangement of third-party product,
+   price and tariff information (compilation and database rights). Third-party
+   product names and trademarks belong to their respective owners.
+
+7. REMEDIES AND ENFORCEMENT.
+   Any use of the Software other than as expressly permitted is an infringement
+   of the Rights Holder's rights. The Rights Holder reserves the right to seek
+   all available remedies, including injunctive relief, damages, statutory or
+   compensatory damages (including under Art. 1301 of the Russian Civil Code:
+   RUB 10,000 to RUB 5,000,000, or double the value of the infringing copies, or
+   double the license fee; and under 17 U.S.C. § 504 where applicable),
+   recovery of legal costs and attorney's fees, takedown of infringing content,
+   and criminal and administrative liability (including Art. 146 of the Criminal
+   Code and Art. 7.12 of the Administrative Offences Code of the Russian
+   Federation). The Rights Holder may submit takedown notices (including under
+   17 U.S.C. § 512 (DMCA) and equivalent laws) to hosting providers, code
+   hosting platforms, domain registrars, app stores, search engines and other
+   intermediaries without further notice. Failure or delay to enforce any right
+   is not a waiver of that right. A waiver is effective only if in writing and
+   signed by the Rights Holder.
+
+8. DISCLAIMER OF WARRANTY AND LIMITATION OF LIABILITY.
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
+   FOR A PARTICULAR PURPOSE, ACCURACY AND NON-INFRINGEMENT. CALCULATION RESULTS,
+   ESTIMATES AND EQUIPMENT SELECTIONS ARE FOR REFERENCE ONLY AND DO NOT REPLACE
+   PROFESSIONAL ENGINEERING DESIGN. TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE
+   RIGHTS HOLDER SHALL NOT BE LIABLE FOR ANY CLAIM, DAMAGES (DIRECT, INDIRECT,
+   INCIDENTAL OR CONSEQUENTIAL), LOSS OF PROFIT OR DATA, OR OTHER LIABILITY
+   ARISING FROM THE USE OF OR INABILITY TO USE THE SOFTWARE.
+
+9. GOVERNING LAW AND JURISDICTION.
+   These terms are governed by the laws of the Russian Federation. Disputes shall
+   be resolved by the competent court at the location of the Rights Holder or the
+   defendant, at the Rights Holder's election, unless mandatory law provides
+   otherwise.
+
+10. SEVERABILITY; CHANGES; ENTIRE TERMS.
+    If any provision is held invalid or unenforceable, the remaining provisions
+    remain in full force. The Rights Holder may amend these terms at any time by
+    publishing a new version in this repository; continued use constitutes
+    acceptance. A license beyond the scope of Section 4 may be granted only by a
+    written agreement signed by the Rights Holder.
+
+11. CONTACT.
+    Licensing requests, permission requests, infringement notices and any other
+    legal correspondence: kovdor24@yandex.ru
+
+
+================================================================================
+© 2026 Ибатуллин Дмитрий / Dmitry Ibatullin (HeatCalc.ru). Все права защищены.
+Любое неразрешённое использование преследуется по закону.
+Any unauthorized use will be prosecuted to the fullest extent of the law.
+================================================================================
