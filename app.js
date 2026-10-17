@@ -40810,6 +40810,7 @@ const app = {
             kinds: this.radKindsByRoom() };
         Object.assign(radOpts, this.radKindLinks());          // kindById, linkedRids — тип по номеру радиатора
         Object.assign(radOpts, this.radLenMaps());            // lenById, lenByRoom — длина по смете
+        Object.assign(radOpts, this.radPlanDia());            // radDia, radTrunkTxt, radShareNote — диаметры из расчёта
         const out = [];
         plans.floors.forEach((f0, fi) => {
             if (!f0 || !f0.pxPerM || fi > 1) return;
@@ -41162,6 +41163,29 @@ const app = {
             if (onlyD16 && d > 20) return;
             out[k] = { room: g.room, items: items, n: n, totalW: totalW, run: run, flowTot: flowTot, L: L, Ls: Ls, d: d };
         });
+        return out;
+    },
+
+    /**
+     * Диаметры радиаторных труб для листов плана: подводка (или стояк) к коллектору и Ø луча каждой комнаты —
+     * те же, что в расчёте кольца и смете, чтобы план не расходился с подбором. radDia — по названию комнаты
+     * в нижнем регистре: «Ø16» по умолчанию, у комнат с общим лучом — «Ø20→16» или «Ø16 общий».
+     */
+    radPlanDia: function () {
+        const out = { radDia: {}, radTrunkTxt: '', radShareNote: false };
+        const h = this.radHydro;
+        const tr = h && (h.parts || []).find(p => p.tag === 'trunk');
+        if (tr && tr.d) out.radTrunkTxt = (tr.riser ? 'стояк' : 'подводка') + ' Ø' + tr.d;
+        if (this.radSharedActive()) {
+            const devices = this.radDevices || [];
+            const avgRun = this.avgRun || (Math.sqrt((this.state.area || 100) / (this.state.floors === 2 ? 2 : 1)) + 3);
+            const groups = this.radSharedGroups(devices, this.radDeviceRuns(devices, avgRun), true);
+            Object.keys(groups).forEach(k => {
+                const g = groups[k];
+                out.radDia[String(g.room || '').trim().toLowerCase()] = g.d === 16 ? 'Ø16 общий' : 'Ø' + g.d + '→16';
+                out.radShareNote = true;
+            });
+        }
         return out;
     },
 

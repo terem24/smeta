@@ -4790,7 +4790,9 @@
       lp.add([tx - 2.4, ty - 2.2, tx + 2.4, ty + 1.4]);
       var z0 = zoneOfPoint(f, [r.x, r.y]);
       var rm0 = z0 ? rooms.filter(function (q) { return String(q.name || '').trim().toLowerCase() === String(z0.name || '').trim().toLowerCase(); })[0] : null;
-      radRows.push({ no: i + 1, room: rm0 ? rm0.name : (z0 && z0.name) || '', w: (r.w || 0) / ppm, L: it ? it.L : null });
+      var rmKey = String(rm0 ? rm0.name : (z0 && z0.name) || '').trim().toLowerCase();
+      radRows.push({ no: i + 1, room: rm0 ? rm0.name : (z0 && z0.name) || '', w: (r.w || 0) / ppm, L: it ? it.L : null,
+        dia: (opts.radDia && opts.radDia[rmKey]) || 'Ø16' });
     });
 
     // коллектор отопления: корпус вдоль стены, отводы к дому
@@ -4826,7 +4828,8 @@
       plainTag(o, bp.p[0], bp.p[1], r, r.id);
     });
     if (RR && RR.C && collBody) {
-      var cLab = 'Коллектор отопления на ' + RR.items.length + ' ' + outWord(RR.items.length);
+      var cLab = 'Коллектор отопления на ' + RR.items.length + ' ' + outWord(RR.items.length) +
+        (opts.radTrunkTxt ? ', ' + opts.radTrunkTxt : '');
       var cwl = textW(cLab, 3.0), ccx = t.X(RR.C.x), ccy = t.Y(RR.C.y);
       var cp = lp.place([[0, 10], [0, -10], [0, 15], [0, -15], [cwl / 2 + 8, 0], [-cwl / 2 - 8, 0]].map(function (d) {
         var bx = [ccx + d[0] - cwl / 2, ccy + d[1] - 2.6, ccx + d[0] + cwl / 2, ccy + d[1] + 1]; bx.p = [ccx + d[0], ccy + d[1]]; return bx;
@@ -4843,9 +4846,9 @@
     var yEnd = explTable(o, EX, EY, EW, ['№', 'Наименование', 'Площадь', 'Теплопотери'], rowsE, 'Экспликация помещений ' + num + ' этажа');
     if (radRows.length) {
       var rowsR = radRows.map(function (q) {
-        return ['Р' + q.no, q.room, q.w ? q.w.toFixed(1).replace('.', ',') + ' м' : '—', q.L ? q.L.toFixed(1).replace('.', ',') + ' м' : '—'];
+        return ['Р' + q.no, q.room, q.w ? q.w.toFixed(1).replace('.', ',') + ' м' : '—', q.L ? q.L.toFixed(1).replace('.', ',') + ' м, ' + q.dia : '—'];
       });
-      explTable(o, EX, yEnd + 8, EW, ['№', 'Помещение', 'Длина прибора', 'Труба Т1+Т2'], rowsR, 'Приборы отопления');
+      explTable(o, EX, yEnd + 8, EW, ['№', 'Помещение', 'Длина прибора', 'Труба Т1+Т2, Ø'], rowsR, 'Приборы отопления');
     }
 
     // общие условия — внизу слева, как в проектах
@@ -4855,9 +4858,10 @@
       'Стыки теплоизоляции проклеить лентой армированной;',
       'Радиаторы расположить по центру оконных проёмов, длина радиатора не меньше 75 % от светового проёма;',
       'Схема разводки — ' + (RR && RR.tee ? 'тройниковая (одна магистраль через приборы)' : 'лучевая от коллектора') + ';',
+      opts.radShareNote ? 'В комнатах с несколькими приборами в смете — один общий луч до комнаты и отводы Ø16 к приборам; на плане лучи показаны отдельно;' : null,
       'Размеры, нанесённые синим цветом, уточнить при монтаже;',
       'Трассы построены автоматически по разметке плана — уточнить при монтаже.'
-    ];
+    ].filter(Boolean);
     var Ny = 252;
     o.push(txt(24, Ny, 'Общие условия по системе радиаторного отопления:', { size: 3.2 }));
     notes.forEach(function (s3, i) { o.push(txt(24, Ny + 3.9 * (i + 1), (i + 1) + '. ' + s3, { size: 2.7 })); });
