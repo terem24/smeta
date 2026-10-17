@@ -106,6 +106,16 @@
     var v = velocity(q, d);
     return zeta * v * v / (2 * G);
   }
+  var D34 = 0.02;   // внутренний диаметр узла 3/4" — к нему приведены KV
+  // Kv позиции другого размера: пропускная способность растёт как сечение, d²
+  function kvAt(kv, d) { return kv * Math.pow((d > 0 ? d : D34) / D34, 2); }
+  // Внезапное изменение сечения между узлом и коллектором: расширение (1−β)², сужение 0,5·(1−β), на скорости в малом сечении
+  function stepLoss(q, d1, d2) {
+    if (!(q > 0) || !(d1 > 0) || !(d2 > 0) || d1 === d2) return 0;
+    var ds = Math.min(d1, d2), dl = Math.max(d1, d2), beta = (ds * ds) / (dl * dl);
+    var k = d2 > d1 ? Math.pow(1 - beta, 2) : 0.5 * (1 - beta);
+    return k * Math.pow(velocity(q, ds), 2) / (2 * G);
+  }
   function kvLoss(q, kv) { return (q > 0 && kv > 0) ? HEAD_BAR * Math.pow(q / kv, 2) : 0; }
 
   // Напор насоса по паспортной характеристике: линейно между точками; правее последней
@@ -131,7 +141,8 @@
    *   wellPipe: { od, wall, dIn },        // труба в скважине и траншее
    *   flows:  { design, peak },            // м³/ч: расчётный (как в подборе насоса) и сумма приборов
    *   control: 'flow' | 'pressure',        // автоматика по протоку или по давлению
-   *   node:   { dIn, len, absent, devices: { reducer, meter, filter: 'coarse'|'fine', leak } },
+   *   node:   { dIn, len, absent, sizes: { mesh, fine, meter, reducer } (внутр. диаметр позиции, м; нет — 3/4"), devices: { reducer, meter, filter: 'coarse'|'fine', leak } },
+   *   collector: { cold, hot } — внутренний диаметр входа коллектора, м (нет — как у узла),
    *   branch: { dIn, od, wall, label },
    *   zones:  [{ id, name, dist, points: [{ type, cold, hot }] }]
    * }
@@ -148,6 +159,8 @@
     var wp = d.wellPipe || { dIn: 0.026, od: 32, wall: 3 };
     var node = d.node || { dIn: 0.02, len: 3, devices: {} };
     var dev = node.devices || {};
+    var sz = node.sizes || {};
+    var szTag = function (v) { return (v > 0 && Math.abs(v - D34) > 1e-6) ? ' ' + fmt(v * 1000, 0) + ' мм' : ''; };
     var pressureCtl = d.control === 'pressure';
     var setH = SET_BAR * HEAD_BAR;
     var hasZones = (d.zones || []).length > 0;
@@ -197,16 +210,17 @@
         push('node_pipe', 'node', 'Узел ввода: труба и фитинги', pn.hf + localLoss(Q, dn, LOCAL.nodePipe), { v: pn.v, len: node.len || 3, vLimit: V_LIMIT.node });
         push('node_valves', 'node', 'Шаровые краны узла', localLoss(Q, dn, 2 * LOCAL.ball));
         if (dev.leak) push('node_leak', 'node', 'Кран защиты от протечки', localLoss(Q, dn, LOCAL.leak));
-        push('node_mesh', 'node', 'Фильтр грубой очистки', kvLoss(Q, KV.mesh));
-        if (dev.filter === 'fine') push('node_filter', 'node', 'Колба тонкой очистки', kvLoss(Q, KV.fine));
-        if (dev.meter) push('node_meter', 'node', 'Счётчик воды', kvLoss(Q, KV.meter));
+        push('node_mesh', 'node', 'Фильтр грубой очистки' + szTag(sz.mesh), kvLoss(Q, kvAt(KV.mesh, sz.mesh)));
+        if (dev.filter === 'fine') push('node_filter', 'node', 'Колба тонкой очистки' + szTag(sz.fine), kvLoss(Q, kvAt(KV.fine, sz.fine)));
+        if (dev.meter) push('node_meter', 'node', 'Счётчик воды' + szTag(sz.meter), kvLoss(Q, kvAt(KV.meter, sz.meter)));
       }
       if (!node.absent && dev.reducer) {
         // Редуктор держит уставку, пока на входе есть запас хотя бы 5 м; иначе открыт полностью
         if (H >= setH + 5) push('node_reducer', 'node', 'Редуктор давления держит ' + SET_BAR + ' бар', H - setH, { regulated: true });
-        else push('node_reducer', 'node', 'Редуктор давления (открыт полностью, уставку не держит)', kvLoss(Q, KV.reducerOpen), { regulated: false });
+        else push('node_reducer', 'node', 'Редуктор давления (открыт полностью, уставку не держит)', kvLoss(Q, kvAt(KV.reducerOpen, sz.reducer)), { regulated: false });
       }
-      push('collector', 'node', 'Коллектор водоснабжения', localLoss(Q, dn, LOCAL.collector));
+      var dc = (d.collector && d.collector.cold) || dn;
+      push('collector', 'node', 'Коллектор водоснабжения' + (dc !== dn ? ' (вход ' + fmt(dc * 1000, 0) + ' мм, узел ' + fmt(dn * 1000, 0) + ' мм)' : ''), localLoss(Q, dc, LOCAL.collector) + stepLoss(Q, dn, dc));
       out.Hcoll = H;
       out.v = { well: pl.v, node: pn.v };
       return out;
@@ -223,7 +237,8 @@
       var h = (zone.level === 1) ? 0 : floorsH;
       var parts = [];
       if (line === 'hot') {
-        var bo = kvLoss(Qhot, KV.boiler) + localLoss(Qhot, node.dIn || 0.02, LOCAL.hotManifold);
+        var dh = (d.collector && d.collector.hot) || node.dIn || 0.02;
+        var bo = kvLoss(Qhot, KV.boiler) + localLoss(Qhot, dh, LOCAL.hotManifold) + stepLoss(Qhot, node.dIn || 0.02, dh);
         H -= bo; parts.push({ title: 'Водонагреватель и гребёнка ГВС', dH: bo });
       }
       H -= h; if (h > 0) parts.push({ title: 'Высота прибора над вводом ' + h + ' м', dH: h });
@@ -361,9 +376,9 @@
     }
     // Ввод на 1″
     if (flag('node_v') && !(data.node && data.node.absent)) {
-      var a1 = clone(data); a1.node.dIn = 0.025;
+      var a1 = clone(data); a1.node.dIn = 0.025; a1.node.sizes = { mesh: 0.025, fine: 0.025, meter: 0.025, reducer: 0.025 }; a1.collector = { cold: 0.025, hot: 0.025 };
       var g1 = lossOf(res, 'node') - lossOf(evaluate(a1, { noAdvice: true, reserve: rv }), 'node');
-      if (g1 >= 1) out.push({ id: 'node1', gain: g1, text: 'Ввод и коллектор на 1″: потери узла ниже на ' + fmt(g1, 1) + ' м (сейчас ' + fmt(lossOf(res, 'node'), 1) + ' м), скорость в узле падает до ' + fmt(velocity(res.scenarios.design.Q, 0.025), 2) + ' м/с. В смете останется 3/4″ — пересчитайте позиции узла.' });
+      if (g1 >= 1) out.push({ id: 'node1', gain: g1, text: 'Ввод и коллектор на 1″: потери узла ниже на ' + fmt(g1, 1) + ' м (сейчас ' + fmt(lossOf(res, 'node'), 1) + ' м), скорость в узле падает до ' + fmt(velocity(res.scenarios.design.Q, 0.025), 2) + ' м/с. Замените краны, фильтр, счётчик и коллектор узла на 1″ в таблице замены.' });
     }
     if (res.static.verdict !== 'ok' && !res.static.capped) out.push({ id: 'reducer',
       actions: (data.node && !data.node.absent ? [{ fix: 'reducer', label: 'Включить редуктор' }] : []).concat(res.pump.mains ? [] : [{ fix: 'auto', arg: 'sirio', label: 'Автоматика SIRIO' }]),
@@ -375,7 +390,7 @@
 
   var api = {
     evaluate: evaluate, verdictOf: verdictOf, pipeLoss: pipeLoss, localLoss: localLoss, kvLoss: kvLoss, headAt: headAt,
-    velocity: velocity, FIXTURES: FIXTURES, LOCAL: LOCAL, KV: KV, V_LIMIT: V_LIMIT, RESERVE: RESERVE, SET_BAR: SET_BAR,
+    velocity: velocity, kvAt: kvAt, stepLoss: stepLoss, D34: D34, FIXTURES: FIXTURES, LOCAL: LOCAL, KV: KV, V_LIMIT: V_LIMIT, RESERVE: RESERVE, SET_BAR: SET_BAR,
     HEAD_BAR: HEAD_BAR, MIX_LINE: MIX_LINE
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

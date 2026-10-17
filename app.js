@@ -49860,6 +49860,48 @@ const app = {
         return base;
     },
 
+    // Внутренний диаметр (м) по размеру позиции: «3/4"», «1 1/4"», «DN25», счётчик «ВСКМ-15».
+    // Номинальный проход (DN), а не резьба: потери считаются по проходу.
+    inchBore: function (name) {
+        const n = String(name || '');
+        const BORE = { '1/2': 0.015, '3/4': 0.02, '1': 0.025, '1 1/4': 0.032, '1 1/2': 0.04, '2': 0.05 };
+        let m = /(\d\s+\d\/\d|\d\/\d|\d)\s*(?:"|″|”|дюйм)/.exec(n);
+        if (m) { const k = m[1].replace(/\s+/g, ' '); if (BORE[k]) return BORE[k]; }
+        m = /(?:DN|Ду)\s*(\d{2})/i.exec(n) || /ВСКМ-(\d{2})/.exec(n);
+        if (m) return (+m[1]) / 1000;
+        return null;
+    },
+
+    // Размеры узла ввода и коллекторов — по позициям, которые стоят в смете (с учётом замен): список
+    // currentEquipmentList к этому месту уже собран по разделам 5 и 6. Нет позиции — 3/4" (как в сборке узла).
+    waterNodeSizes: function () {
+        const list = this.currentEquipmentList || [];
+        const inNode = list.filter(i => /^6\./.test(String(i.sectionTitle || i.group || '')));
+        const bore = re => { const it = inNode.find(i => re.test(String(i.name || ''))); return it ? this.inchBore(it.name) : null; };
+        const valves = inNode.filter(i => /Кран шаровой/i.test(String(i.name || ''))).map(i => this.inchBore(i.name)).filter(Boolean);
+        const out = {
+            dIn: valves.length ? Math.min.apply(null, valves) : 0.02,
+            sizes: { mesh: bore(/Фильтр сетчатый/i), fine: bore(/Колба/i), meter: bore(/Сч[её]тчик воды/i), reducer: bore(/Редуктор давления/i) },
+            collector: { cold: null, hot: null }
+        };
+        Object.keys(out.sizes).forEach(k => { if (!out.sizes[k]) out.sizes[k] = out.dIn; });
+        // Коллекторы воды: вход берём из каталога по артикулу (inSize), иначе из названия
+        const all = [].concat(catalog.water_manifolds_cold || [], catalog.water_manifolds_hot || [], catalog.water_manifolds_stout || [], catalog.water_manifolds_rommer || [], catalog.manifolds_chrome_blocks || []);
+        const BORE = { '1/2': 0.015, '3/4': 0.02, '1': 0.025, '1 1/4': 0.032 };
+        list.filter(i => /^5\./.test(String(i.sectionTitle || i.group || '')) && /^[SR]MB-/.test(String(i.id || ''))).forEach(i => {
+            const base = all.find(x => x.id === String(i.id).replace(/_water$/, ''));
+            let d = base && base.inSize ? BORE[String(base.inSize)] : null;
+            if (!d) d = this.inchBore(i.name);
+            if (!d) return;
+            const hot = /ГВС|5\.2/.test(String(i.group || '') + String(i.sectionTitle || ''));
+            const key = hot ? 'hot' : 'cold';
+            out.collector[key] = out.collector[key] ? Math.min(out.collector[key], d) : d;
+        });
+        if (!out.collector.cold) out.collector.cold = out.collector.hot || out.dIn;
+        if (!out.collector.hot) out.collector.hot = out.collector.cold;
+        return out;
+    },
+
     buildWaterHydroData: function () {
         const s = this.state, sel = this._wellSel;
         const zones = s.waterZones || [];
@@ -49877,6 +49919,7 @@ const app = {
             Object.keys(wh.FIXTURES).forEach(k => { peak += (f[k] || 0) * wh.FIXTURES[k].q; });
         });
         const inp = !!s.waterInput;
+        const ns = this.waterNodeSizes();
         const pressureCtl = ['sirio', 'top', 'relay_krs5', 'epc12auto', 'epc2'].includes(s.wellAutoType);
         const floorsH = s.floors === 2 ? 3 : 0;
         return {
@@ -49887,8 +49930,9 @@ const app = {
             wellPipe: wp,
             flows: { design: mains ? Math.max(0.1, this.waterNodeFlow()) : sel.q, peak: peak },
             control: pressureCtl && !mains ? 'pressure' : 'flow',
+            collector: ns.collector,
             node: {
-                dIn: 0.02, len: 3, absent: !inp,
+                dIn: ns.dIn, len: 3, absent: !inp, sizes: ns.sizes,
                 devices: {
                     reducer: inp && !!s.waterReducer, meter: inp && !!s.waterMeter, leak: inp && !!s.waterLeakGuard,
                     filter: this.filterLevel() !== 'none' ? 'fine' : 'coarse'
@@ -49992,7 +50036,7 @@ const app = {
             + '<div class="hc-det-p">Предельный расход насоса ' + f1(res.pump.qMax) + ' м³/ч. Напор — по паспортной характеристике, линейно между точками.</div>');
         if (!res.pump.mains) html += row('well', wellFlag, 'Скважина и трасса', res.data.wellPipe.od + '×' + res.data.wellPipe.wall + ', ' + res.data.depth + ' + ' + res.data.dist + ' м',
             'потери ' + f1(sum('well')) + ' м', ladder('well'));
-        html += row('node', nodeFlag, 'Узел ввода и коллектор', res.data.node.absent ? 'узла в смете нет' : (res.pump.mains ? 'с редуктором или без' : (res.data.control === 'pressure' ? 'автоматика по давлению' : 'автоматика по протоку')),
+        html += row('node', nodeFlag, 'Узел ввода и коллектор', res.data.node.absent ? 'узла в смете нет' : 'узел ' + Math.round(res.data.node.dIn * 1000) + ' мм, коллектор ' + Math.round(((res.data.collector && res.data.collector.cold) || res.data.node.dIn) * 1000) + ' мм, ' + (res.pump.mains ? 'сеть' : (res.data.control === 'pressure' ? 'автоматика по давлению' : 'автоматика по протоку')),
             'потери ' + f1(sum('node')) + ' м', ladder('node'));
         const byZone = {};
         res.fixtures.forEach(r => { (byZone[r.zone] = byZone[r.zone] || []).push(r); });

@@ -116,7 +116,18 @@ console.log('=== Физика модуля ===');
     // Ламинарный режим: Re < 2300 — λ = 64/Re
     const lam = wh.pipeLoss(0.02, 0.0116, 10, 1.3e-6);
     if (!(lam.Re < 2300 && near(lam.lam, 64 / lam.Re, 1e-9))) fail('ламинарный режим считается не по 64/Re');
-    console.log('  трение, Kv, кривая насоса, согласие с wellLineLoss — проверено');
+    // Размеры узла: Kv растёт как сечение, расширение/сужение между узлом и коллектором — по ручному расчёту
+    if (!near(wh.kvAt(5, 0.025), 7.8125, 1e-9)) fail('kvAt: счётчик 1" должен иметь Kv 7,81, а не ' + wh.kvAt(5, 0.025));
+    if (!near(wh.kvAt(5, 0.02), 5, 1e-9)) fail('kvAt: 3/4" — это базовый Kv');
+    // 3/4" → 1" при 2 м³/ч: β = 0,64, k = (1−β)² = 0,1296, v = 1,768 м/с, потеря 0,0206 м
+    if (!near(wh.stepLoss(2, 0.02, 0.025), 0.0206, 0.02)) fail('расширение 3/4" → 1": ' + wh.stepLoss(2, 0.02, 0.025).toFixed(4) + ' м, ручной расчёт 0,0206');
+    // сужение — вдвое мягче по коэффициенту: 0,5·(1−β) = 0,18 на скорости в малом сечении
+    if (!near(wh.stepLoss(2, 0.025, 0.02), 0.18 * Math.pow(1.768, 2) / 19.62, 0.02)) fail('сужение 1" → 3/4" посчитано неверно');
+    if (wh.stepLoss(2, 0.02, 0.02) !== 0) fail('одинаковые сечения — потери нет');
+    // Разбор размера по названию позиции
+    [['Кран шаровой ВН-НР 3/4"', 0.02], ['Фильтр 1 1/4"', 0.032], ['Кран 1/2"', 0.015], ['Счётчик воды ВСКМ-15, 110 мм', 0.015], ['Узел DN25', 0.025], ['Труба 16x2.0', null]]
+        .forEach(([n, want]) => { if (app.inchBore(n) !== want) fail('inchBore("' + n + '") = ' + app.inchBore(n) + ', ждали ' + want); });
+    console.log('  трение, Kv, кривая насоса, размеры узла, согласие с wellLineLoss — проверено');
 }
 
 // ---------------------------------------------------------------------------
@@ -173,6 +184,40 @@ console.log('\n=== Монотонность и неизменность смет
     // Карточка строится и не падает
     try { const h = app.waterHydroHtml(app.waterHydroCheck(), false); if (!/Проверка водоснабжения/.test(h)) fail('карточка пустая'); else console.log('  карточка строится (' + h.length + ' симв.)'); }
     catch (e) { fail('waterHydroHtml упал: ' + e.message); }
+}
+
+// ---------------------------------------------------------------------------
+// Размеры узла ввода и коллекторов — по позициям сметы
+// ---------------------------------------------------------------------------
+console.log('\n=== Размеры узла по позициям сметы ===');
+{
+    run('sizes', { ...base, wellDepth: 60, wellDist: 30, waterZones: house(3) });
+    const real = app.waterNodeSizes();
+    // Как собрана смета сейчас: узел 3/4", коллекторы с входом 1" (water_manifolds_stout, inSize 1)
+    if (real.dIn !== 0.02) fail('узел в смете 3/4", а проверка видит ' + real.dIn);
+    if (real.collector.cold !== 0.025) fail('вход коллектора в смете 1", а проверка видит ' + real.collector.cold);
+    console.log('  из сметы: узел ' + real.dIn * 1000 + ' мм, коллектор ' + real.collector.cold * 1000 + ' мм');
+    // Подмена списка позиций: кран 1", счётчик ВСКМ-15, коллектор ГВС 3/4"
+    const keep = app.currentEquipmentList;
+    app.currentEquipmentList = [
+        { sectionTitle: '6. Узел ввода ХВС', name: 'Кран шаровой ВН-НР 1"' },
+        { sectionTitle: '6. Узел ввода ХВС', name: 'Счётчик воды ВСКМ-15, 110 мм' },
+        { sectionTitle: '5.2. Внутреннее ГВС', group: '5.2. Внутреннее ГВС', id: 'SMB-6851-343402_water', name: 'Коллектор 3/4"х3/4"х2 вых.' }
+    ];
+    const fake = app.waterNodeSizes();
+    app.currentEquipmentList = keep;
+    if (fake.dIn !== 0.025) fail('кран 1" — а узел ' + fake.dIn);
+    if (fake.sizes.meter !== 0.015) fail('ВСКМ-15 — а счётчик ' + fake.sizes.meter);
+    if (fake.sizes.mesh !== 0.025) fail('фильтр без размера должен брать диаметр узла, а взял ' + fake.sizes.mesh);
+    if (fake.collector.hot !== 0.02) fail('коллектор ГВС 3/4" — а вход ' + fake.collector.hot);
+    if (fake.collector.cold !== 0.02) fail('холодного коллектора в списке нет — берём как ГВС, а взял ' + fake.collector.cold);
+    console.log('  подмена: кран 1", ВСКМ-15, коллектор ГВС 3/4" — размеры прочитаны верно');
+    // Узкий счётчик теряет больше широкого — на тех же расходах
+    const data = app.buildWaterHydroData();
+    const ev = (sz) => { const d = JSON.parse(JSON.stringify(data)); d.node.sizes = Object.assign({}, d.node.sizes, sz); return wh.evaluate(d, { noAdvice: true }); };
+    const lo = (r) => r.scenarios.design.trunk.Hcoll;
+    if (!(lo(ev({ meter: 0.015 })) < lo(ev({ meter: 0.02 })) && lo(ev({ meter: 0.02 })) < lo(ev({ meter: 0.025 })))) fail('счётчик уже — напор на коллекторе должен быть ниже');
+    else console.log('  счётчик 1/2" → 3/4" → 1": напор на коллекторе ' + f1(lo(ev({ meter: 0.015 }))) + ' → ' + f1(lo(ev({ meter: 0.02 }))) + ' → ' + f1(lo(ev({ meter: 0.025 }))) + ' м');
 }
 
 // ---------------------------------------------------------------------------
