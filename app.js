@@ -61133,7 +61133,7 @@ const app = {
                 `</div>`;
             // Диаметр магистрали — у любой строки котельной (труба и фитинги: от диаметра зависят оба).
             if (this._bpLoad) {
-                const _diamT = this._bpPreview ? null : this.boilerDiamTotals();
+                const _diamT = this.boilerDiamTotals(this._bpPreview || undefined);
                 _bpFilterHtml += this.boilerMainBlockHtml(this._bpLoad.gas, this._bpLoad.el, this._bpPreview || undefined, _diamT);
             }
             customAlts = [
@@ -77820,7 +77820,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         };
         // Цена труб и фитингов при каждом Ø — прямо у кнопки, с разницей к выбранному.
         const fmt = (v) => Math.round(v).toLocaleString('ru-RU') + ' ₽';
-        const priceOf = (s) => (live && diam && diam[s] != null ? diam[s] : null);
+        const priceOf = (s) => (diam && diam[s] != null ? diam[s] : null);
         const base = curOpt ? priceOf(curOpt.size) : null;
         const btn = (x) => {
             const on = x.size === o.active;
@@ -77854,7 +77854,10 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             ? `<div style="margin-top:3px;font-size:12px;color:${COL[curOpt.level].c};">${why(curOpt)}</div>`
             : '';
         const previewNote = live ? ''
-            : `<div style="margin-top:6px;font-size:12px;color:var(--text-sec);">Показано, что будет при замене на <b>${SYS_NAME[sys] || sys}</b>. Нажмите строку ещё раз — система заменится.</div>`;
+            : `<div style="margin-top:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--text-sec);">`
+              + `<span>Пока это только просмотр: смета не изменилась.${o.pair && o.active === 28 ? ' Большой диаметр — только магистраль, подводки к котлу и баку остаются малыми.' : ''}</span>`
+              + `<span onclick="app.selectSwapAlternative(app._lastSwapLookupId,'bp_${sys}')" style="cursor:pointer;padding:6px 14px;border-radius:6px;background:var(--primary);color:#fff;font-weight:700;font-size:13px;">`
+              + `✓ Заменить на ${SYS_NAME[sys] || sys}, ${this.boilerMainTitle(o.active, sys)}</span></div>`;
         return `<div style="padding:6px 0 8px;border-bottom:1px solid var(--border);">`
             + `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">`
             + `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:4px;">Магистраль котельной:</span>`
@@ -77934,6 +77937,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         try {
             this.BOILER_PIPE_SYSTEMS.forEach(sys => {
                 this.state.boilerPipeSystem = sys;
+                // Диаметр, выбранный в окне замены, применяется к просматриваемой системе — цены в таблице идут по нему.
+                if (this._bpPreview === sys && this._bpPreviewSize) this.state.boilerMainSize = this._bpPreviewSize;
+                else this.state.boilerMainSize = snapshot.boilerMainSize;
                 this._boilerRangeCache = null;   // ряд зависит от системы и бренда ППР
                 this.render(true);
                 const r = sums();
@@ -77961,14 +77967,15 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
      * состояние возвращается. Считаем строки обвязки котельной: труба, фитинги, переходники.
      * Красные диаметры тоже считаем — иначе не понять, сколько стоит «не рекомендованный» вариант.
      */
-    boilerDiamTotals: function () {
-        const sys = this.boilerPipeSystem();
+    boilerDiamTotals: function (forSys) {
+        const sys = forSys || this.boilerPipeSystem();
         const pair = !!this.BOILER_PAIR_MAX[sys];
         if (sys !== 'ss304' && sys !== 'ss316' && !pair) return null;
         const sizes = pair ? [22, 28] : [22, 28, 35, 42];
         const snapshot = JSON.parse(JSON.stringify(this.state));
         const out = {};
         try {
+            if (forSys) { this.state.boilerPipeSystem = forSys; this._boilerRangeCache = null; }
             sizes.forEach(s => {
                 this.state.boilerMainSize = s;
                 this.render(true);
@@ -77980,6 +77987,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         } finally {
             Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
             Object.assign(this.state, snapshot);
+            this._boilerRangeCache = null;
             this.render(true);
         }
         return out;
