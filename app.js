@@ -59885,10 +59885,20 @@ const app = {
         const _pipeFamOf = (a) => /металлопласт/i.test(a.name || '') ? 'mp'
             : (/стабильн|Al\/PE/i.test(a.name || '') ? 'stable' : 'grey');
         const _pipeDOf = (a) => { const m = (a.name || '').match(/(\d+)(?:[.,]\d+)?\s*[xх×]\s*\d/i); return m ? parseInt(m[1], 10) : null; };
+        // Текущая труба тоже должна быть в списке (иначе не видно, подходит ли она сама): в alts
+        // у позиции лежат только «остальные» типоразмеры ряда.
+        if (item.len && alts.length > 0 && alts.every(a => a && a.len && /труба/i.test(a.name || ''))) {
+            const _curPipe = this.findCatalogItemById(item.id);
+            if (_curPipe && _curPipe.len && !alts.some(a => a.id === _curPipe.id || (a.rommer && a.rommer.id === _curPipe.id))) {
+                alts = [_curPipe].concat(alts);
+            }
+        }
         const _isPipeSwap = !!item.len && alts.length > 1 && alts.every(a => a && a.len && /труба/i.test(a.name || '') && _pipeDOf(a));
+        // Гидравлика по каждому варианту трубы: ключ «семейство|Ø», один на оба бренда
+        let _pipeHy = null;
         if (_isPipeSwap) {
             const _pKey = item.originalId || item.id || '';
-            if (!this._pipeSwap || this._pipeSwap.key !== _pKey) this._pipeSwap = { key: _pKey, fam: 'all', d: 'all' };
+            if (!this._pipeSwap || this._pipeSwap.key !== _pKey) this._pipeSwap = { key: _pKey, fam: 'all', d: 'all', fit: false };
             const _ps = this._pipeSwap;
             const _famName = { grey: 'Серая PE-Xa', mp: 'Металлопласт', stable: 'Стабильная PE-Xa/Al/PE-RT' };
             const _fams = ['grey', 'mp', 'stable'].filter(f => alts.some(a => _pipeFamOf(a) === f));
@@ -59899,40 +59909,61 @@ const app = {
                 + _fams.map(f => _chip(_ps.fam === f, `app.setPipeSwapFilter('fam','${f}')`, _famName[f])).join(''));
             const _dChips = _pRow('Диаметр:', _chip(_ps.d === 'all', "app.setPipeSwapFilter('d','all')", 'Все')
                 + _ds.map(d => _chip(String(_ps.d) === String(d), `app.setPipeSwapFilter('d','${d}')`, 'Ø' + d)).join(''));
-            alts = alts.filter(a => (_ps.fam === 'all' || _pipeFamOf(a) === _ps.fam) && (_ps.d === 'all' || String(_pipeDOf(a)) === String(_ps.d)));
-
-            // Плашка: какие варианты тянет магистраль этого участка, какие нет.
+            // Гидравлика каждого варианта — по тому же участку, который кладёт смета (this._radTrunk):
+            // скорость и потери в трубе, а затем всё кольцо целиком — хватает ли насосу запаса.
+            // Считаем по всему ряду, до фильтров: счётчик в плашке не должен зависеть от чипов.
             const _devs = this.radDevices || [];
             const _wOf = d => ((d.load != null ? d.load : d.watt) || 0);
             const _totalW = _devs.reduce((a, d) => a + _wOf(d), 0);
             let _hyHtml = '';
+            let _hyInfo = null;
             if (_totalW > 0) {
                 const _span = this._radTrunk || this.radTrunkSpan(_totalW / 1000);
                 const _br = Math.max(1, parseInt(this._radGroupsCount, 10) || 1);
                 const _flow = this.radFlowOf(_totalW) * (_span.share || 1) / _br;
                 const _lim = this.RAD_V_MAX_TRUNK;
-                const _rows = alts.map(a => {
-                    const r = this.radPipeDrop(_flow, _pipeDOf(a), _span.len, _pipeFamOf(a));
-                    const verdict = r.v > _lim ? 'fail' : (r.v > 0.9 * _lim ? 'tight' : 'ok');
-                    return { a: a, v: r.v, dp: r.dp, verdict: verdict };
-                });
                 const _n = v => v.toFixed(2).replace('.', ',');
-                const _cnt = k => _rows.filter(r => r.verdict === k).length;
-                const _meta = { ok: ['✓', '#16a34a', 'проходит'], tight: ['!', '#d97706', 'впритык'], fail: ['✕', '#ef4444', 'не проходит'] };
-                const _line = r => {
-                    const m = _meta[r.verdict];
-                    return `<div style="display:flex;gap:8px;align-items:baseline;font-size:12px;padding:2px 0;">` +
-                        `<span style="font-weight:800;color:${m[1]};width:12px;">${m[0]}</span>` +
-                        `<span style="font-weight:600;">${r.a.name}</span>` +
-                        `<span style="color:var(--text-sec);margin-left:auto;white-space:nowrap;">${_n(r.v)} м/с · ${_n(r.dp)} кПа на ${_span.len} м · ${m[2]}</span></div>`;
-                };
+                const _isTee = this.state.radConnectionScheme === 'tee';
+                const _savedTrunk = this._radTrunk;
+                _pipeHy = {};
+                alts.forEach(a => {
+                    const fam = _pipeFamOf(a), d = _pipeDOf(a), key = fam + '|' + d;
+                    if (_pipeHy[key]) return;
+                    const r = this.radPipeDrop(_flow, d, _span.len, fam);
+                    const why = [];
+                    let level = 'ok';
+                    const raise = (lv, txt) => { why.push(txt); if (lv === 'bad') level = 'bad'; else if (level === 'ok') level = 'warn'; };
+                    if (r.v > _lim) raise('bad', `скорость ${_n(r.v)} м/с выше предела ${_n(_lim)} м/с — шум и износ`);
+                    else if (r.v > 0.9 * _lim) raise('warn', `скорость ${_n(r.v)} м/с почти на пределе ${_n(_lim)} м/с`);
+                    else if (r.v < this.BOILER_V_LOW) raise('warn', `скорость ${_n(r.v)} м/с ниже ${_n(this.BOILER_V_LOW)} — копятся воздух и шлам, диаметр с запасом`);
+                    // Кольцо целиком с этой трубой на участке: сопротивление против кривой насоса
+                    let pumpTxt = '';
+                    if (!_isTee) {
+                        try {
+                            this._radTrunk = Object.assign({}, _span, { d: d, fam: fam === 'grey' ? null : fam });
+                            const h = this.radHydraulics();
+                            if (h) {
+                                if (!h.pump) raise('bad', `сопротивление кольца ${_n(h.dp)} кПа — насос не тянет`);
+                                else if (h.pump.avail < h.head * this.RAD_PUMP_RESERVE) raise('warn', `запас насоса меньше ${Math.round((this.RAD_PUMP_RESERVE - 1) * 100)} %`);
+                                else pumpTxt = `кольцо ${_n(h.dp)} кПа — насос тянет`;
+                            }
+                        } finally { this._radTrunk = _savedTrunk; }
+                    }
+                    _pipeHy[key] = { v: r.v, dp: r.dp, flow: _flow, len: _span.len, level: level, why: why, pump: pumpTxt };
+                });
+                const _cnt = k => Object.values(_pipeHy).filter(x => x.level === k).length;
+                _hyInfo = { flow: _flow, len: _span.len };
                 _hyHtml = `<div style="margin:8px 0 10px; padding:8px 12px; border:1px solid var(--border); border-radius:8px;">` +
                     `<div style="font-size:12px; font-weight:800; color:var(--text-main); margin-bottom:4px;">Гидравлика участка: расход ${_n(_flow)} м³/ч, длина ${_span.len} м. ` +
-                    `Проходят: ${_cnt('ok')}, впритык: ${_cnt('tight')}, не проходят: ${_cnt('fail')}.</div>` +
-                    `<div style="font-size:11px; color:var(--text-sec); margin-bottom:4px;">Предел по скорости ${_n(_lim)} м/с (шум в магистрали). Напор насоса здесь не сравнивается — его сводит карточка «Гидравлика».</div>` +
-                    _rows.map(_line).join('') + `</div>`;
+                    `<span style="color:#16a34a;">Подходят: ${_cnt('ok')}</span>, <span style="color:#d97706;">с оговоркой: ${_cnt('warn')}</span>, <span style="color:#ef4444;">не рекомендуем: ${_cnt('bad')}</span>.</div>` +
+                    `<div style="font-size:11px; color:var(--text-sec);">Проверяем три вещи: скорость в трубе (предел ${_n(_lim)} м/с, СП 60.13330.2020, табл. И.1), расход участка и сопротивление кольца против кривой насоса (запас ${Math.round((this.RAD_PUMP_RESERVE - 1) * 100)} %). ` +
+                    `Зелёная строка — все три в норме; жёлтая — работает, но впритык; красная — не рекомендуем, выбрать всё равно можно.</div>` +
+                    `</div>`;
             }
-            _bpFilterHtml = `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;padding:8px 0 4px;">${_famChips}${_dChips}</div>` + _hyHtml;
+            const _fitChip = _chip(!!_ps.fit, `app.setPipeSwapFilter('fit',${!_ps.fit})`, '✓ Только подходящие');
+            alts = alts.filter(a => (_ps.fam === 'all' || _pipeFamOf(a) === _ps.fam) && (_ps.d === 'all' || String(_pipeDOf(a)) === String(_ps.d))
+                && (!_ps.fit || !_pipeHy || (_pipeHy[_pipeFamOf(a) + '|' + _pipeDOf(a)] || {}).level === 'ok'));
+            _bpFilterHtml = `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;padding:8px 0 4px;">${_famChips}${_dChips}${_pipeHy ? _pRow('Гидравлика:', _fitChip) : ''}</div>` + _hyHtml;
         }
 
         // Для бойлеров: показываем позиции по swap-фильтрам
@@ -62245,7 +62276,7 @@ const app = {
                 let _isUfhMixItem = (_origId0 === 'SDG-0120-001000' || _origId0 === 'SDG-0002-002001' || _origId0 === 'SDG-0002-002501' || _origId0 === 'SDG-0003-002001' || _origId0 === 'SDG-0003-002501' || _origId0 === 'SDG-0007-003201');
                 let _isTeePipeItem = _origId0.startsWith('tee_pipe_d');
                 // Труба: фильтр по материалу/диаметру сужает список намеренно — текущую позицию в него не возвращаем.
-                let skipAdd = (_isTankItem || _origId0 === 'gas_boiler_auto' || _isThermoItem || _isActuatorItem || _isUfhMixItem || _isTeePipeItem || _isPipeSwap) && baseItem && !alts.some(x => x.id === baseItem.id);
+                let skipAdd = (_isTankItem || _origId0 === 'gas_boiler_auto' || _isThermoItem || _isActuatorItem || _isUfhMixItem || _isTeePipeItem || _isPipeSwap) && baseItem && (_isPipeSwap || !alts.some(x => x.id === baseItem.id));
                 if (!skipAdd) altsToProcess.unshift(baseItem);
             }
 
@@ -62425,6 +62456,19 @@ const app = {
                 let activeClass = isActive ? "active-row" : "";
                 let activeStyle = isActive ? "background-color: var(--primary-light);" : "";
                 let badgeHtml = isActive ? `<div style="margin-top:4px;"><span style="font-size: 11px; background: var(--primary); color: var(--on-primary,#fff); padding: 2px 8px; border-radius: 4px; font-weight: bold;">✓ Выбран</span></div>` : "";
+                // Труба: вердикт гидравлики участка — цветная кромка строки, плашка и причина
+                let _hyRowHtml = "";
+                const _hy = (_isPipeSwap && _pipeHy) ? _pipeHy[_pipeFamOf(displayAlt) + '|' + _pipeDOf(displayAlt)] : null;
+                if (_hy) {
+                    const _hn = v => v.toFixed(2).replace('.', ',');
+                    const _hm = { ok: ['#16a34a', 'rgba(22,163,74,.10)', '✓ Подходит'], warn: ['#d97706', 'rgba(245,158,11,.12)', '! С оговоркой'], bad: ['#ef4444', 'rgba(239,68,68,.10)', '✕ Не рекомендуем'] }[_hy.level];
+                    activeStyle += `box-shadow: inset 4px 0 0 ${_hm[0]};` + (isActive ? '' : `background-color:${_hm[1]};`);
+                    _hyRowHtml = `<div style="margin-top:4px;font-size:12px;font-weight:500;color:var(--text-main);">`
+                        + `<span style="display:inline-block;font-size:11px;font-weight:700;color:#fff;background:${_hm[0]};padding:1px 7px;border-radius:4px;margin-right:6px;">${_hm[2]}</span>`
+                        + `${_hn(_hy.v)} м/с · ${_hn(_hy.dp)} кПа на ${_hy.len} м · ${_hn(_hy.flow)} м³/ч`
+                        + (_hy.why.length ? `<div style="color:${_hm[0]};margin-top:2px;">${_hy.why.join('; ')}</div>` : (_hy.pump ? `<div style="color:var(--text-sec);margin-top:2px;">${_hy.pump}</div>` : ''))
+                        + `</div>`;
+                }
                 let diffHtml = getPriceDiffHtml(displayAlt.price, isActive);
                 let priceText = displayAlt.price > 0 ? this.formatPriceHtml(displayAlt.price, true) : "-";
                 let _rowCoilKw = _isTankItem ? _tankCoilKwMap[displayAlt.id] : null;
@@ -62453,7 +62497,7 @@ const app = {
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${displayAlt.id}')">
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img" style="text-align: center;">${img}</td>
-                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(displayAlt.brand || 'STOUT')}${_nameDisplay}${_rowCoilStr}${badgeHtml}${_hintHtml}</td>
+                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(displayAlt.brand || 'STOUT')}${_nameDisplay}${_rowCoilStr}${badgeHtml}${_hyRowHtml}${_hintHtml}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${displayAlt.brand || 'STOUT'}</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>
@@ -81856,6 +81900,11 @@ const app = {
                     availability: i.availability,
                     desc: i.qtyTip || "",
                     alts: i.alts,
+                    // Длина бухты и признак «цена за бухту»: без них окно замены не узнаёт трубу —
+                    // нет переключателей материала/диаметра, гидравлики, и «Изм. цена» сравнивает
+                    // бухту с ценой метра (везде −99 %).
+                    len: i.len,
+                    coilPriced: i.coilPriced,
                     originalId: i.originalId || i.id,
                     sec: i.sec,
                     isPanel: i.isPanel,
