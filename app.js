@@ -90457,14 +90457,18 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             }
             let waterEurocone = (this.state.waterPipeMaterial === 'metal_plastic') ? catalog.parts[3] : catalog.water_parts.find(x => x.id === "SFC-0020-001622");
             // #10: металлопластик монтируется на ПРЕСС-фитинги (SFP-), а не на аксиальные (SFA-).
-            // Водорозетка для пресса — угольник-переходник с внутренней резьбой 1/2"×16.
+            // Водорозетка для пресса — угольник настенный с креплением удлиненный 1/2"×16;
+            // короткий, настенный комплект и угольник-переходник — в модалке замены.
             const _isMpWater = (this.state.waterPipeMaterial === 'metal_plastic');
             const _waterSocket = () => {
                 if (!_isMpWater) return catalog.water_fittings[0];
-                const press = (catalog.water_fittings_press_mp || []).find(x => x.id === 'SFP-0010-001216');
+                const pressAll = catalog.water_fittings_press_mp || [];
+                const press = pressAll.find(x => x.id === 'SFP-0012-001216');
                 if (!press) return catalog.water_fittings[0];
                 const copy = { ...press, originalId: 'water_socket_mp' };
-                copy.alts = [catalog.water_fittings[0]];
+                copy.alts = ['SFP-0018-001216', 'SFP-0013-001216', 'SFP-0010-001216']
+                    .map(id => pressAll.find(x => x.id === id)).filter(Boolean)
+                    .concat([catalog.water_fittings[0]]);
                 return copy;
             };
             // Торец коллектора ХВС/ГВС: по умолчанию компенсатор гидроудара (паспорт STOUT, п. 7),
@@ -90638,7 +90642,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     // #10: у металлопластика соединения ПРЕСС, а не аксиальные — водорозетка берётся
                     // из линейки латунных пресс-фитингов (SFP-), а аксиальная монтажная гильза и
                     // пластиковый фиксатор поворота (это оснастка PEX-a) в смету не идут вовсе.
-                    addToBill(_waterSocket(), socketsCold, this.getDesc('socket', _isMpWater ? 'водорозетка под пресс — угольник с ВР 1/2" (ХВС)' : 'Тупиковая (ХВС)', socketsCold), grpCold);
+                    addToBill(_waterSocket(), socketsCold, this.getDesc('socket', _isMpWater ? 'водорозетка под пресс — угольник настенный с креплением (ХВС)' : 'Тупиковая (ХВС)', socketsCold), grpCold);
                     if (!_isMpWater) {
                         addToBill(catalog.water_parts.find(x => x.id === "SFA-0020-000016"), socketsCold, this.getDesc('sleeve', '1 шт на розетку'), grpCold);
                     }
