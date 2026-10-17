@@ -41119,7 +41119,10 @@ const app = {
     // Остальные трубы (в изоляции, металлопласт, стабильная) пока не поддержаны — флаг на них не действует.
     radSharedActive: function () {
         const s = this.state;
-        return !!s.radSharedBeams && s.radConnectionScheme !== 'tee' && !!s.detailedRooms && s.pipeType === 'split';
+        // Режим луча: 'auto' — общий луч на комнату; 'single' — своя ветка на каждый прибор (по умолчанию).
+        // radSharedBeams — прежний флаг (включён до появления режима): считаем его автоподбором.
+        const auto = s.radBeamMode ? s.radBeamMode === 'auto' : !!s.radSharedBeams;
+        return auto && s.radConnectionScheme !== 'tee' && !!s.detailedRooms && s.pipeType === 'split';
     },
     // Выходы коллектора по этажам с учётом общих лучей: группа — один выход, остальные приборы — по одному.
     radSharedOutPerFloor: function () {
@@ -41187,6 +41190,27 @@ const app = {
             });
         }
         return out;
+    },
+
+    /**
+     * Приборы, которым Ø16 не хватает: луч до прибора (подача и обратка) теряет больше 10 кПа (≈1 м напора) или
+     * вода в нём быстрее предела шума (RAD_V_MAX). Приборы в группах с общим лучом не считаем: у них луч подобран.
+     * Нужна подсказка и предупреждение в режиме «своя ветка на каждый прибор»: там Ø16 фиксирован.
+     */
+    radLoopCheck: function () {
+        const devices = this.radDevices || [];
+        if (!devices.length || this.state.radConnectionScheme === 'tee') return [];
+        const wOf = d => ((d.load != null ? d.load : d.watt) || 0);
+        const avgRun = this.avgRun || (Math.sqrt((this.state.area || 100) / (this.state.floors === 2 ? 2 : 1)) + 3);
+        const runs = this.radDeviceRuns(devices, avgRun);
+        const groups = this.radSharedActive() ? this.radSharedGroups(devices, runs, true) : {};
+        const out = [];
+        devices.forEach((d, i) => {
+            if (d.kind === 'conv' || !(wOf(d) > 0) || groups[this.radShareKey(d)]) return;
+            const fl = this.radFlowOf(wOf(d)), L = 2 * runs[i] * 1.1, a = this.radPipeDrop(fl, 16, L);
+            if (a.dp > 10 || a.v > this.RAD_V_MAX) out.push({ room: d.room, kw: wOf(d) / 1000, run: runs[i], dp: a.dp, v: a.v, dp20: this.radPipeDrop(fl, 20, L).dp });
+        });
+        return out.sort((x, y) => y.dp - x.dp);
     },
 
     radRoomShares: function () {
@@ -50568,6 +50592,15 @@ const app = {
                 html += '<div class="hc-det-p">Луч Ø16 теряет ' + Math.round(loop.dp) + ' кПа (больше 10). С лучом Ø20 было бы ' + Math.round(dp20)
                     + ' кПа, запас насоса ' + pc(r.have / needNew - 1) + ' вместо ' + pc(r.k - 1) + '. Луч Ø20 в смету пока не входит: нужны переходники на приборы.</div>';
             }
+        }
+        // Ø16 не хватает на отдельной ветке к прибору: предупреждение (красным) с тем, что делать
+        const weak = forPrint ? [] : this.radLoopCheck();
+        if (weak.length) {
+            const rm = v => Math.round(v);
+            html += '<div class="hc-advice">Ø16 не хватает у ' + weak.length + ' ' + this.plural(weak.length, 'прибора', 'приборов', 'приборов') + ': '
+                + weak.slice(0, 3).map(w => esc(w.room || 'прибор') + ' — ' + rm(w.dp) + ' кПа на луче ' + rm(w.run) + ' м').join('; ')
+                + (weak.length > 3 ? ' и ещё ' + (weak.length - 3) : '') + '. Предел — 10 кПа (≈1 м напора). '
+                + 'Включите «Автоподбор» в настройке «Лучи к приборам в комнате» (для комнат с несколькими приборами) или укоротите луч; один прибор на длинном луче поможет Ø20 (потери ' + rm(weak[0].dp20) + ' кПа вместо ' + rm(weak[0].dp) + ').</div>';
         }
         // Комнаты с несколькими приборами: общий луч и отводы Ø16 — подсказка, смета и расчёт кольца от неё не меняются
         const shares = forPrint ? [] : this.radRoomShares().filter(x => x.pipeSavedM > 0).slice(0, 5);
@@ -72264,8 +72297,12 @@ const app = {
         this.saveState();
     },
     // Общий луч на комнату с несколькими приборами (расчёт и смета: radSharedActive)
-    setRadSharedBeams: function (on) {
-        this.state.radSharedBeams = !!on;
+    setRadSharedBeams: function (on) { this.setRadBeamMode(on ? 'auto' : 'single'); },
+    // Режим луча к приборам: 'auto' — автоподбор (общий луч на комнату), 'single' — своя ветка на каждый прибор
+    setRadBeamMode: function (mode) {
+        this.state.radBeamMode = mode === 'auto' ? 'auto' : 'single';
+        this.state.radSharedBeams = this.state.radBeamMode === 'auto';
+        this._radPlanCache = null;
         this.render();
         this.saveState();
     },
@@ -72665,9 +72702,12 @@ const app = {
         if (radSchemeManifoldTab) radSchemeManifoldTab.className = isTeeScheme ? 'tab' : 'tab active';
         if (radSchemeTeeTab) radSchemeTeeTab.className = isTeeScheme ? 'tab active' : 'tab';
         // Общий луч на комнату: показываем, когда он может сработать (коллекторная схема, серая PEX-a, «По комнатам»)
-        const radSharedRow = document.getElementById('rad_shared_row'), radSharedChk = document.getElementById('rad_shared_chk');
+        const radSharedRow = document.getElementById('rad_shared_row');
         if (radSharedRow) radSharedRow.style.display = (radSchemeOn && !isTeeScheme && this.state.pipeType === 'split') ? 'block' : 'none';
-        if (radSharedChk) radSharedChk.checked = !!this.state.radSharedBeams;
+        const _beamAuto = this.state.radBeamMode ? this.state.radBeamMode === 'auto' : !!this.state.radSharedBeams;
+        const _tbSingle = document.getElementById('rad_beam_single'), _tbAuto = document.getElementById('rad_beam_auto');
+        if (_tbSingle) _tbSingle.className = _beamAuto ? 'tab' : 'tab active';
+        if (_tbAuto) _tbAuto.className = _beamAuto ? 'tab active' : 'tab';
 
         // Режим системы — рядом со схемой разводки: обе настройки про то, как
         // система устроена, и обе нужны только когда радиаторы есть.
@@ -87631,6 +87671,15 @@ const app = {
                 }
                 let neededPipe = Math.ceil(totalMeters);
                 this.avgRun = avgRun;
+                // Своя ветка Ø16 на каждый прибор: где её не хватает — предупреждаем в подразделе труб
+                const _weak = this.radLoopCheck();
+                if (_weak.length) {
+                    this.groupWarns = this.groupWarns || {};
+                    this.groupWarns[pipeGrp] = (this.groupWarns[pipeGrp] || '') + this.noteBox('warn', 'Ø16 не хватает на длинных лучах.',
+                        `${_weak.length} ${this.plural(_weak.length, 'прибор', 'прибора', 'приборов')}: луч теряет больше 10 кПа. Самый тяжёлый — «${_weak[0].room || 'прибор'}», ${Math.round(_weak[0].dp)} кПа на ${Math.round(_weak[0].run)} м.`,
+                        `<div class="tip-p">Предел — 10 кПа (≈1 м напора) на луче от коллектора до прибора, подача и обратка. Дальше труба Ø16 съедает напор насоса, и дальним радиаторам его не хватает.</div>` +
+                        `<div class="tip-p"><b>Что делать:</b> включите «Автоподбор» в настройке «Лучи к приборам в комнате» (общий луч до комнаты, где приборов несколько), укоротите луч или поставьте для этого прибора Ø20: потери ${Math.round(_weak[0].dp20)} кПа вместо ${Math.round(_weak[0].dp)}.</div>`);
+                }
                 this.neededPipe = neededPipe;
                 if (neededPipe > 0) {
                     // noCheapenAlts: в .alts у трубы — другой МАТЕРИАЛ (утеплённая ↔ голая),

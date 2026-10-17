@@ -1473,10 +1473,14 @@
                         </div>
                         <!-- Общий луч: в комнате с несколькими приборами — один луч до комнаты и короткие отводы.
                              Сейчас — для серой трубы PEX-a и режима «По комнатам», группы с лучом Ø16. -->
-                        <label id="rad_shared_row" style="display:none; margin-top:8px; font-size:12px; cursor:pointer;">
-                            <input type="checkbox" id="rad_shared_chk" onchange="app.setRadSharedBeams(this.checked)"> Общий луч на комнату с несколькими приборами
-                            <span style="display:block; opacity:.7; font-size:11px;">Меньше выходов коллектора и трубы. Только серая PEX-a.</span>
-                        </label>
+                        <div id="rad_shared_row" style="display:none; margin-top:8px;">
+                            <div style="font-size:12px; margin-bottom:4px;">Лучи к приборам в комнате</div>
+                            <div class="tabs" id="rad_beam_tabs">
+                                <div class="tab active" id="rad_beam_single" onclick="app.setRadBeamMode('single')">Своя ветка на каждый прибор</div>
+                                <div class="tab" id="rad_beam_auto" onclick="app.setRadBeamMode('auto')">Автоподбор</div>
+                            </div>
+                            <span style="display:block; opacity:.7; font-size:11px; margin-top:4px;">Автоподбор: в комнате с несколькими приборами один общий луч и короткие отводы — меньше выходов коллектора и трубы. Только серая PEX-a.</span>
+                        </div>
                     </div>
                 </div>
             </div>
