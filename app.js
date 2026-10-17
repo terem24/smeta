@@ -49801,6 +49801,37 @@ const app = {
     // превышается не дольше 0,5 % часа. Приборы — из зон водоснабжения плюс уличные краны узла ввода;
     // жильцы — state.res (нет — по площади). Старый способ (сумма весов приборов со сглаживанием выше 4,5 м³/ч)
     // остаётся по state.waterFlowMethod === 'sum': им считали все сметы до перехода.
+    WATER_FLOW_MIN: 0.5, WATER_FLOW_MAX: 10, WATER_PUMP_FLOW_FLOOR: 1.5,
+
+    // Расход для подбора насоса, заданный вручную, м³/ч; 0 — подбор автоматический. Ручной режим есть только
+    // «По комнатам» (приборы известны), в быстром расчёте значение игнорируется.
+    waterFlowManual: function () {
+        if (!this.state.detailedRooms || !this.state.waterFlowManualOn) return 0;
+        const v = parseFloat(this.state.waterFlowManual);
+        if (!(v > 0)) return 0;
+        return Math.min(this.WATER_FLOW_MAX, Math.max(this.WATER_FLOW_MIN, v));
+    },
+
+    // Расход подбора по потребителям (авто): вероятностный, но не меньше нижней границы насоса
+    waterPumpFlowAuto: function () {
+        return Math.max(this.WATER_PUMP_FLOW_FLOOR, this.waterPeakFlow().design);
+    },
+
+    setWaterFlowManualOn: function (on) {
+        this.state.waterFlowManualOn = !!on;
+        if (on && !(parseFloat(this.state.waterFlowManual) > 0)) this.state.waterFlowManual = Math.round(this.waterPumpFlowAuto() * 10) / 10;
+        this.saveState(); this.syncUI(); this.render();
+    },
+
+    setWaterFlowManual: function (v) {
+        let n = parseFloat(String(v).replace(',', '.'));
+        if (isNaN(n)) n = this.waterPumpFlowAuto();
+        n = Math.min(this.WATER_FLOW_MAX, Math.max(this.WATER_FLOW_MIN, Math.round(n * 10) / 10));
+        this.state.waterFlowManual = n;
+        this.state.waterFlowManualOn = true;
+        this.saveState(); this.syncUI(); this.render();
+    },
+
     waterPeakFlow: function () {
         const wh = (typeof window !== 'undefined') ? window.waterHydro : null;
         const zones = this.state.waterZones || [];
@@ -49953,8 +49984,9 @@ const app = {
             depth: mains ? 0 : (parseInt(s.wellDepth, 10) || 0), dist: mains ? 0 : (parseInt(s.wellDist, 10) || 0), inlet: 5,
             floorsH: mains ? floorsH : sel.floorsH,
             wellPipe: wp,
-            flows: { design: mains ? Math.max(0.1, this.waterNodeFlow()) : sel.q, hot: (mains ? this.waterPeakFlow() : (sel.peak || this.waterPeakFlow())).hot || null, peak: peak },
+            flows: { design: mains ? Math.max(0.1, this.waterNodeFlow()) : sel.q, hot: Math.min((mains ? this.waterPeakFlow() : (sel.peak || this.waterPeakFlow())).hot || 0, mains ? Math.max(0.1, this.waterNodeFlow()) : sel.q) || null, peak: peak },
             flowInfo: mains ? this.waterPeakFlow() : (sel.peak || this.waterPeakFlow()),
+            flowManual: mains ? 0 : (sel.manual || 0),
             control: pressureCtl && !mains ? 'pressure' : 'flow',
             collector: ns.collector,
             node: {
@@ -50056,11 +50088,12 @@ const app = {
         html += '<div class="hc-rows">';
         const fi = res.data.flowInfo;
         if (fi && fi.scenarios && fi.scenarios.length) {
-            html += row('flow', 'ok', 'Расчётный расход', fi.residents + ' ' + (fi.residents === 1 ? 'жилец' : (fi.residents < 5 ? 'жильца' : 'жильцов')) + ', вероятностный метод', f2(res.pump.Q) + ' м³/ч',
+            const man = res.data.flowManual || 0;
+            html += row('flow', 'ok', 'Расчётный расход', man > 0 ? 'задан вручную' : fi.residents + ' ' + (fi.residents === 1 ? 'жилец' : (fi.residents < 5 ? 'жильца' : 'жильцов')) + ', вероятностный метод', f2(res.pump.Q) + ' м³/ч',
                 '<table class="whc-t"><tr><th>Пик</th><th>Расчётный расход, м³/ч</th><th>в т. ч. ГВС, м³/ч</th><th>Занято в среднем, м³/ч</th></tr>'
                 + fi.scenarios.map(x => '<tr' + (x.id === fi.peakId ? ' class="whc-z"' : '') + '><td>' + esc(x.title) + '</td><td>' + f2(x.Q) + '</td><td>' + f2(x.Qhot) + '</td><td>' + f2(x.mean) + '</td></tr>').join('') + '</table>'
                 + '<div class="hc-det-p">Сумма расходов всех приборов — ' + f2(fi.sum) + ' м³/ч: так бывает, только если открыто всё сразу. Расчётный расход — тот, что за расчётный час превышается не дольше ' + Math.round((1 - fi.conf) * 1000) / 10 + ' % времени (около ' + Math.round((1 - fi.conf) * 3600) + ' с): каждый прибор занят долю часа, утром — умывальник, душ, унитаз, вечером — ванна, кухня, стирка, полив; суммарный расход считается точно по всем сочетаниям включённых приборов. Берётся больший из двух пиков'
-                + (res.pump.Q > fi.design + 1e-9 ? '; насос не берём меньше 1,5 м³/ч (пуски, полив)' : '') + '. Доли занятости — ориентиры практики, не таблица СП.'
+                + (man > 0 ? '. Расход для подбора задан вручную: ' + f2(man) + ' м³/ч, по потребителям было бы ' + f2(Math.max(1.5, fi.design)) + ' м³/ч' : (res.pump.Q > fi.design + 1e-9 ? '; насос не берём меньше 1,5 м³/ч (пуски, полив)' : '')) + '. Доли занятости — ориентиры практики, не таблица СП.'
                 + (fi.old != null ? ' По прежнему способу (сумма со сглаживанием) было бы ' + f2(fi.old) + ' м³/ч.' : '') + '</div>');
         }
         if (res.pump.mains) html += row('pump', 'ok', 'Городская сеть', 'давление задано вручную', f1(res.pump.head / 10) + ' бар на ' + f2(res.pump.Q) + ' м³/ч',
@@ -50090,6 +50123,8 @@ const app = {
             + '<div class="hc-det-p">Предохранительный клапан бойлера — на 6 бар; выше 5 бар гибкие подводки и картриджи работают на пределе.</div>');
         html += '</div>';
         res.flags.forEach(fl => { html += '<div class="hc-flag">' + esc(fl.text) + '</div>'; });
+        if (res.data.flowManual > 0 && res.data.flowInfo && res.data.flowManual < res.data.flowInfo.design - 1e-9)
+            html += '<div class="hc-flag">Расход для подбора задан вручную (' + f2(res.data.flowManual) + ' м³/ч) меньше расчётного по потребителям (' + f2(res.data.flowInfo.design) + ' м³/ч): в пик насос может не тянуть.</div>';
         if (res.scenarios.peak && res.peakWorst) {
             const pk = res.scenarios.peak, pw = res.peakWorst;
             html += '<div class="hc-det-p">Если включить все приборы сразу (' + f2(pk.Q) + ' м³/ч): насос даёт ' + f1(pk.trunk.pumpHead) + ' м, у «' + esc(pw.title) + '» (' + esc(pw.zone) + ') остаётся ' + f1(pw.have) + ' м при минимуме ' + f1(pw.need) + ' м'
@@ -74690,6 +74725,27 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         if (this.state.detailedRooms) this.renderRoomsUI();
         if (document.getElementById('chk_well')) document.getElementById('chk_well').checked = this.state.well;
         if (document.getElementById('blk_well')) document.getElementById('blk_well').style.display = this.state.well ? 'flex' : 'none';
+        {
+            const _fb = document.getElementById('blk_well_flow');
+            if (_fb) {
+                const _show = !!(this.state.well && this.state.detailedRooms);
+                _fb.style.display = _show ? '' : 'none';
+                if (_show) {
+                    const _on = !!this.waterFlowManual();
+                    const _chk = document.getElementById('chk_well_flow_manual'); if (_chk) _chk.checked = _on;
+                    const _mb = document.getElementById('blk_well_flow_manual'); if (_mb) _mb.style.display = _on ? '' : 'none';
+                    const _pf = this.waterPeakFlow(), _auto = this.waterPumpFlowAuto();
+                    const _au = document.getElementById('val_well_flow_auto');
+                    if (_au) _au.innerText = 'По потребителям: ' + _auto.toFixed(1).replace('.', ',') + ' м³/ч'
+                        + (_pf.design < this.WATER_PUMP_FLOW_FLOOR ? ' (расчёт ' + _pf.design.toFixed(2).replace('.', ',') + ', меньше нижней границы насоса ' + this.WATER_PUMP_FLOW_FLOOR.toString().replace('.', ',') + ')' : '');
+                    if (_on) {
+                        const _v = this.waterFlowManual();
+                        const _s = document.getElementById('inp_wellFlow'); if (_s) _s.value = _v;
+                        const _t = document.getElementById('val_wellFlow'); if (_t) _t.innerText = String(_v).replace('.', ',');
+                    }
+                }
+            }
+        }
         if (document.getElementById('inp_wellDepth')) { document.getElementById('inp_wellDepth').value = this.state.wellDepth; document.getElementById('val_wellDepth').innerText = this.state.wellDepth; }
         if (document.getElementById('inp_wellDist')) { document.getElementById('inp_wellDist').value = this.state.wellDist; document.getElementById('val_wellDist').innerText = this.state.wellDist; }
 
@@ -91665,8 +91721,10 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             let grpWell = "7. Внешнее водоснабжение";
             // Расход подбора — вероятностный (waterPeakFlow); меньше 1,5 м³/ч насос не берём: полив и пуски
             const _peak = this.waterPeakFlow();
-            let q = _peak.design;
-            if (q < 1.5) q = 1.5;
+            // Ручной расход («По комнатам») — как задан, без нижней границы: человек знает, под что берёт насос
+            const _manQ = this.waterFlowManual();
+            let q = _manQ > 0 ? _manQ : _peak.design;
+            if (!(_manQ > 0) && q < this.WATER_PUMP_FLOW_FLOOR) q = this.WATER_PUMP_FLOW_FLOOR;
 
             let floorsH = this.state.floors === 2 ? 3 : 0;
             // Потери в трубе — явно (wellLineLoss), а не «трасса/10». Запас 10 % остаётся
@@ -91712,7 +91770,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             }
             pump = { ...pump, originalId: 'well_pump_auto', alts: catalog.well_pumps };
             const pumpHead = pumpHeadAt(pump, q);
-            this._wellSel = { pump: pump, q: q, h: h, floorsH: floorsH, peak: _peak };
+            this._wellSel = { pump: pump, q: q, h: h, floorsH: floorsH, peak: _peak, manual: _manQ };
 
             // Кабель насоса: от насоса до верха скважины, трасса до дома и ~5 м до
             // автоматики. Длина и сечение штатного кабеля — из паспорта (cable, cable_mm2).

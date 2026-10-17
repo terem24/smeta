@@ -234,6 +234,54 @@ console.log('\n=== Монотонность и неизменность смет
 }
 
 // ---------------------------------------------------------------------------
+// Расход подбора насоса: авто (по потребителям) и вручную (только «По комнатам»)
+// ---------------------------------------------------------------------------
+console.log('\n=== Расход подбора: авто / вручную ===');
+{
+    app.syncUI = () => {}; app.saveState = () => {};
+    const o = { ...base, wellDepth: 60, wellDist: 30, waterZones: house(2) };
+    run('flow-auto', o);
+    const auto = app._wellSel;
+    if (auto.q !== app.waterPumpFlowAuto()) fail('авто: расход подбора ' + auto.q + ' ≠ waterPumpFlowAuto ' + app.waterPumpFlowAuto());
+    if (app.waterFlowManual() !== 0) fail('авто: waterFlowManual должен быть 0');
+    // Вручную в «По комнатам»: расход ровно как задан, нижняя граница не действует
+    [0.5, 1.0, 3.5, 10].forEach(v => {
+        run('flow-man', { ...o, waterFlowManualOn: true, waterFlowManual: v });
+        if (app._wellSel.q !== v) fail('вручную ' + v + ': расход подбора ' + app._wellSel.q);
+        const r = app.waterHydroCheck();
+        if (r.pump.Q !== v) fail('вручную ' + v + ': проверка считает на ' + r.pump.Q);
+        if (r.data.flowManual !== v) fail('вручную ' + v + ': flowManual в данных ' + r.data.flowManual);
+        if (r.scenarios.design.trunk.Hcoll == null) fail('вручную ' + v + ': нет напора на коллекторе');
+    });
+    // Границы диапазона: 0,5…10
+    run('flow-clamp-hi', { ...o, waterFlowManualOn: true, waterFlowManual: 99 });
+    if (app._wellSel.q !== 10) fail('99 м³/ч должно обрезаться до 10, а стало ' + app._wellSel.q);
+    run('flow-clamp-lo', { ...o, waterFlowManualOn: true, waterFlowManual: 0.1 });
+    if (app._wellSel.q !== 0.5) fail('0,1 м³/ч должно подниматься до 0,5, а стало ' + app._wellSel.q);
+    // Быстрый расчёт: ручное значение игнорируется
+    run('flow-quick', { ...o, detailedRooms: false, waterFlowManualOn: true, waterFlowManual: 7 });
+    if (app.waterFlowManual() !== 0) fail('быстрый расчёт: ручной расход должен игнорироваться');
+    // Больше расход — не слабее насос (при той же глубине): подбор не должен убывать
+    let prevHead = 0, prevPrice = 0, ok = true;
+    [1, 2, 3, 4, 5].forEach(v => {
+        run('flow-mono', { ...o, waterFlowManualOn: true, waterFlowManual: v });
+        const pr = app._wellSel.pump.price || 0;
+        if (v > 1 && pr < prevPrice - 1) ok = false;
+        prevPrice = pr;
+    });
+    if (!ok) fail('рост ручного расхода уронил цену подобранного насоса');
+    // Ручной расход меньше авто: в карточке есть предупреждение
+    run('flow-warn', { ...o, waterFlowManualOn: true, waterFlowManual: 0.5 });
+    const html = app.waterHydroHtml(app.waterHydroCheck(), false);
+    if (!/задан вручную/.test(html)) fail('в карточке нет пометки «задан вручную»');
+    if (!/меньше расчётного/.test(html)) fail('ручной расход меньше расчётного, а предупреждения нет');
+    // горячая линия не больше общего расхода
+    const dd = app.buildWaterHydroData();
+    if (dd.flows.hot > dd.flows.design + 1e-9) fail('горячий расход ' + dd.flows.hot + ' больше общего ' + dd.flows.design);
+    console.log('  авто ' + f2(auto.q) + ' м³/ч; вручную 0,5…10 — расход подбора и проверки совпадает с заданным; границы и быстрый расчёт — верно');
+}
+
+// ---------------------------------------------------------------------------
 // Размеры узла ввода и коллекторов — по позициям сметы
 // ---------------------------------------------------------------------------
 console.log('\n=== Размеры узла по позициям сметы ===');

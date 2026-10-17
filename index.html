@@ -226,7 +226,7 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.4" defer></script>
-    <script src="app.js?v=13.38" defer></script>
+    <script src="app.js?v=13.39" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1905,6 +1905,26 @@
                         </div>
                         <input type="range" id="inp_wellDist" min="0" max="150" step="1" value="10"
                             oninput="app.setWellDist(this.value)">
+                    </div>
+                    <!-- Расход для подбора насоса: только «По комнатам» (приборы известны). Авто — вероятностный
+                         расход по потребителям, вручную — своё число в диапазоне (app.syncUI, waterFlowManual). -->
+                    <div id="blk_well_flow" class="control-item" style="display:none; margin-bottom:5px;">
+                        <div class="label-row">
+                            <span class="lbl" style="font-size:11px;" title="Автоматически — вероятностный расчёт по приборам (утренний и вечерний пик). Вручную — расход, под который подбирается насос: полив, бассейн, запас.">Расход для подбора насоса, вручную</span>
+                            <label class="switch"><input type="checkbox" id="chk_well_flow_manual"
+                                onchange="app.setWaterFlowManualOn(this.checked)"><span class="slider"></span></label>
+                        </div>
+                        <div id="val_well_flow_auto" style="font-size:11px; color:var(--text-sec); margin:2px 0 0;"></div>
+                        <div id="blk_well_flow_manual" style="display:none; margin-top:6px;">
+                            <div class="label-row"><span class="lbl" style="font-size:11px;">Расход</span>
+                                <span class="val"><span id="val_wellFlow" class="editable-val"
+                                    contenteditable="true" onblur="app.setWaterFlowManual(this.innerText)"
+                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">2</span> м³/ч</span>
+                            </div>
+                            <input type="range" id="inp_wellFlow" min="0.5" max="10" step="0.1" value="2"
+                                oninput="app.setWaterFlowManual(this.value)">
+                            <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-sec);"><span>0,5</span><span>10 м³/ч</span></div>
+                        </div>
                     </div>
                 </div>
             </div>
