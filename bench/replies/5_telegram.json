@@ -1,0 +1,35 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\"rotate\":0,\"labels\":[{\"m2\":15.1,\"name\":\"\",\"box_2d\":[458,160,480,225]},{\"m2\":5.2,\"name\":\"\",\"box_2d\":[622,166,647,213]},{\"m2\":41.0,\"name\":\"\",\"box_2d\":[633,588,655,627]},{\"m2\":1.3,\"name\":\"\",\"box_2d\":[486,707,511,747]},{\"m2\":6.2,\"name\":\"\",\"box_2d\":[281,749,305,793]}],\"table\":[],\"total\":null,\"marks\":[],\"dims\":[{\"mm\":12480,\"from\":[901,48],\"to\":[901,890]},{\"mm\":6600,\"from\":[108,985],\"to\":[777,985]}]}",
+            "thoughtSignature": "EmkKZwFpFH0T1eCtmFTPFEHibjlnxGZlkf3g3bEcpkbM5w+W3TuMoyejjlREdGDs3QQ9i254wjLYdikHsj/BUHHX3eNXaeF+xyfx2BbHEscVTJSEd7Cqn6xWjJMbeM/WatewHDAPo611V4A="
+          }
+        ],
+        "role": "model"
+      },
+      "finishReason": "STOP",
+      "index": 0
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 1784,
+    "candidatesTokenCount": 232,
+    "totalTokenCount": 2016,
+    "promptTokensDetails": [
+      {
+        "modality": "IMAGE",
+        "tokenCount": 1080
+      },
+      {
+        "modality": "TEXT",
+        "tokenCount": 704
+      }
+    ],
+    "serviceTier": "standard"
+  },
+  "modelVersion": "gemini-3.6-flash",
+  "responseId": "uoHTauy-O_iixN8PiN6Z4AE"
+}

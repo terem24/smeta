@@ -2299,6 +2299,21 @@ function roomAtLabel(l) {
   return res || attempt(m.bar, jamb, false);
 }
 
+/** Открытое пространство: в одном контуре две и больше марок таблицы (прихожая, коридор и кухня-гостиная без
+ *  перегородок). Перегородок, которых на плане нет, не выдумываем: контур остаётся одной зоной, названной по
+ *  всем маркам, а площадь у неё — сумма строк таблицы (mergedM2). Плашка в подсказке говорит об этом прямо. */
+function mergeTableRooms(rooms, labs) {
+  return rooms.map(function (r) {
+    var ins = labs.filter(function (l) { return l.fromTable && pip([l.x, l.y], r.pts); });
+    if (ins.length < 2) return r;
+    ins.sort(function (a, b) { return (a.no || 0) - (b.no || 0); });
+    var nos = ins.map(function (l) { return l.no != null ? (l.no < 10 ? '0' : '') + l.no : '?'; });
+    return { pts: r.pts, m2: r.m2, merged: true, mergedM2: ins.reduce(function (t, l) { return t + l.m2; }, 0),
+      pname: ins.map(function (l) { return l.name; }).filter(Boolean).join(' + '),
+      mergedNote: nos.join('+') + (ins.every(function (l) { return l.name; }) ? ' (' + ins.map(function (l) { return l.name; }).join(', ') + ')' : '') };
+  });
+}
+
 /** Достраиваем комнаты от подписей там, где ядро не нашлось. Два случая:
  *  1) подпись вне любого контура — комната без ядра (кладовая 1,3 м²);
  *  2) в одном контуре две и больше подписей — маленькая комната слиплась с соседней через
@@ -2648,7 +2663,29 @@ function doorScale() {
 /** Кнопка «Подобрать масштаб», она же автоподбор при загрузке плана.
  *  silent — молчать о неудаче: при загрузке плана комнат в расчёте может и
  *  не быть, ругаться тут не на что. */
+/** Правдоподобие масштаба по габариту: рамка стен (buildingEnvelope, без запаса 0,5 м) в м² при этом масштабе,
+ *  делённая на сумму площадей, известных заранее (итог таблицы, подписи на плане, комнаты расчёта).
+ *  null — проверять нечем. { ok, ratio }: ok при 0,9–2,6. */
+function footprintCheck(ppm) {
+  var f = F(), m = getMask(), sum = 0, labs = PDF_AREAS[cur] || [];
+  if (!m || !ppm) return null;
+  if (labs.table) sum = labs.table.total > 0 ? labs.table.total : labs.table.sum;
+  else { var t = scaleTargets(); sum = t.reduce(function (a, b) { return a + b; }, 0); }
+  if (!(sum > 5)) return null;
+  var was = f.pxPerM, env = null;
+  f.pxPerM = ppm;
+  try { m.env = undefined; env = buildingEnvelope(m); } catch (e) { env = null; }
+  f.pxPerM = was; m.env = undefined;
+  if (!env) return null;
+  var mg = 0.5 * ppm;       // запас на балкон в габарите уже есть — убираем
+  var w = (env.x1 - env.x0) - 2 * mg / m.k, h = (env.y1 - env.y0) - 2 * mg / m.k;
+  if (!(w > 0 && h > 0)) return null;
+  var ratio = w * h / (ppm * ppm) / sum;
+  return { ok: ratio >= 0.9 && ratio <= 2.6, ratio: ratio };
+}
+
 function autoScale(silent) {
+  scaleDoubt = '';
   // Первый источник — размеры самого чертежа. Он не зависит от того,
   // заполнен ли расчёт, и потому закрывает случай, на котором шаг «Масштаб»
   // раньше становился тупиком: план второго этажа есть, комнат второго
@@ -2712,6 +2749,17 @@ function autoScale(silent) {
   // величина известная. Вышло полтора метра — подобрался не масштаб, а
   // совпадение, и такой лучше не ставить вовсе.
   var f = F(), dw = doorCheck(g.ppm);
+  // Подбор по площадям — самый слабый источник: ни размеров, ни дверей, которыми его можно подтвердить, нет.
+  // Единственная проверка, что осталась, — габарит здания: площадь рамки стен при таком масштабе должна быть
+  // в 0,9–2,6 раза больше суммы площадей комнат (стены, лестницы, выступы). Не сошлось — не принимаем молча.
+  var fp = footprintCheck(g.ppm);
+  if (fp && !fp.ok) {
+    scaleDoubt = 'Масштаб не подтверждён: подбор по площадям дал ' + g.ppm.toFixed(1) + ' px/м, но при нём габарит здания в ' +
+      fp.ratio.toFixed(1).replace('.', ',') + ' раза больше суммы комнат (должен быть 0,9–2,6) — задайте масштаб кнопкой «Масштаб» по размеру на плане.';
+    scanWhy('масштаб по площадям ' + g.ppm.toFixed(1) + ' px/м не прошёл проверку габаритом (' + fp.ratio.toFixed(2) + ')');
+    if (!silent) hint(scaleDoubt);
+    return false;
+  }
   // Проёмов не нашлось вовсе — проверить нечем, и тогда подбор должен сойтись
   // хотя бы по половине комнат этажа. Иначе на плане без читаемых стен
   // «сходились» три случайные площади, и масштаб уезжал в разы (39 px/м
@@ -2908,6 +2956,7 @@ function hasBoilerZone() {
  *  зоны ТП для всех найденных комнат. Уже размеченные комнаты не трогаются. */
 var lastRoomsNote = '';
 var lastRoomsWhy = '';
+var scaleDoubt = '';         // плашка «масштаб не подтверждён» — идёт в подсказку «Найти комнаты»
 var lastRoomsExtra = '';   // плашки габарита и суммы — в конец подсказки
 var rereadInfo = null;      // итог второго прохода чтения подписей { before, after } — для журнала
 var lastSkipped = 0;   // сколько контуров пропущено как лишние (без подписи)   // почему комнаты не нашлись — для итоговой строки   // итог сверки с подписанными площадями — для строки «Найдено комнат…»
@@ -2919,7 +2968,8 @@ function autoRooms() {
   if (!F().pxPerM) {
     heroOff = true;
     hint('Масштаб сам не подобрался' + (PDF_DIMS[cur] === undefined && F().img ? ' (подложка ещё читается — подождите секунду и повторите)' : '') +
-      '. Задайте его кнопкой «Масштаб»: две точки отрезка с известной длиной — дверной проём 0,9 м или размерная линия.');
+      '. Задайте его кнопкой «Масштаб»: две точки отрезка с известной длиной — дверной проём 0,9 м или размерная линия.' +
+      (scaleDoubt ? ' <b style="color:var(--warn-text)">' + scaleDoubt + '</b>' : ''));
     updateGuide();
     return;
   }
@@ -3012,6 +3062,7 @@ function autoRooms() {
     }
     rooms = reconcileRooms(rooms, labs);
     rooms = rescueLabelRooms(rooms, labs);
+    rooms = mergeTableRooms(rooms, labs);
     printedPairs(rooms, labs).forEach(function (pp) { if (pp.room.rescued) { pp.room.printed = pp.label.m2; if (pp.label.name) pp.room.pname = pp.label.name; } });
   }
   var free = rooms.filter(function (r) {
@@ -3099,7 +3150,7 @@ function autoRooms() {
       var cc = centroid(c.pts);
       if (F().zones.some(function (z) { return pip(cc, z.pts); })) return;
       if (targets.length && !c.pname) { skippedExtra++; return; }
-      F().zones.push({ type: 'room', name: c.pname || '', nameSrc: c.pname ? 'plan' : undefined, pts: fitZonePts(c.pts, F().pxPerM || 100, c.printed) });
+      F().zones.push({ type: 'room', name: c.pname || '', nameSrc: c.pname ? 'plan' : undefined, pts: fitZonePts(c.pts, F().pxPerM || 100, c.printed), mergedM2: c.mergedM2, mergedNote: c.mergedNote });
       cnt.room = (cnt.room || 0) + 1; made++;
     });
   }
@@ -3120,6 +3171,10 @@ function autoRooms() {
   // руками (подпись контура — printedSig), берётся напечатанная
   F().zones.forEach(function (z) {
     delete z.printedM2; delete z.printedSig; delete z.planM2;
+    if (z.mergedM2 && z.type !== 'cold') {      // объединённая зона: площадь — сумма строк таблицы, пока контур не двигали
+      z.planM2 = z.mergedM2; z.printedM2 = z.mergedM2; z.printedSig = JSON.stringify(z.pts);
+      return;
+    }
     if (!labs.length || z.type === 'cold') return;
     var inside = labs.filter(function (l) { return pip([l.x, l.y], z.pts); });
     if (inside.length !== 1) return;
@@ -3139,12 +3194,16 @@ function autoRooms() {
     sumWarn = 'Сумма найденных комнат ' + sumM2.toFixed(1).replace('.', ',') + ' м² больше внутренней площади габарита ' +
       inner.toFixed(1).replace('.', ',') + ' м² — часть контуров лишняя (мебель, шкафы) или масштаб неверен.';
   }
+  var mergedNotes = F().zones.filter(function (z) { return z.mergedNote; }).map(function (z) {
+    return 'объединены: ' + z.mergedNote + ', по таблице ' + z.mergedM2.toFixed(2).replace('.', ',') + ' м²';
+  });
   var tblWarn = '';
   if (tbl && tbl.total > 0 && Math.abs(tbl.sum - tbl.total) / tbl.total > 0.01) {
     tblWarn = 'Сумма строк таблицы ' + tbl.sum.toFixed(2).replace('.', ',') + ' м², а итог в ней ' + tbl.total.toFixed(2).replace('.', ',') +
       ' м² — одна из цифр прочитана неверно, сверьте со схемой.';
   }
-  lastRoomsExtra = (tblWarn ? ' <b style="color:var(--warn-text)">' + tblWarn + '</b>' : '') + (frameWarn ? ' <b style="color:var(--warn-text)">' + frameWarn + '</b>' : '') + frameNote +
+  lastRoomsExtra = (mergedNotes.length ? ' <b style="color:var(--warn-text)">Перегородок между этими помещениями на плане не видно, поэтому контур один — ' +
+    mergedNotes.join('; ') + '. Нужны отдельные комнаты — обведите их рамкой.</b>' : '') + (scaleDoubt ? ' <b style="color:var(--warn-text)">' + scaleDoubt + '</b>' : '') + (tblWarn ? ' <b style="color:var(--warn-text)">' + tblWarn + '</b>' : '') + (frameWarn ? ' <b style="color:var(--warn-text)">' + frameWarn + '</b>' : '') + frameNote +
     (sumWarn ? ' <b style="color:var(--warn-text)">' + sumWarn + '</b>' : '') + ' ' + (roomsTotalHtml() || '');
   roomsLogBegin({ ppm: F().pxPerM, labs: labs, bigN: bigN, cells: lastSkipped, reread: rereadInfo,
     frame: fcv ? (fcv.scaleOk ? 'ok' : (fcv.axesOk ? 'fixed' : 'mismatch')) : 'none',
@@ -3403,12 +3462,48 @@ function scanDiagHtml() {
   return t ? '<div style="margin-top:6px;font-size:12px;color:#d8b26a;font-family:monospace">админ: ' +
     t.replace(/</g, '&lt;') + '</div>' : '';
 }
+/** Разбор повреждённого JSON ответа: каждый массив-раздел отдельно, в нём — объект за объектом. null — нечего брать. */
+function salvageAreaJson(txt) {
+  var out = {}, got = 0;
+  ['labels', 'table', 'marks', 'dims'].forEach(function (key) {
+    var i = txt.indexOf('"' + key + '"'); if (i < 0) return;
+    i = txt.indexOf('[', i); if (i < 0) return;
+    var depth = 0, inStr = false, items = [], from = -1, k;
+    for (k = i; k < txt.length; k++) {
+      var ch = txt[k];
+      if (inStr) { if (ch === '\\') k++; else if (ch === '"') inStr = false; continue; }
+      if (ch === '"') inStr = true;
+      else if (ch === '{') { if (depth === 1) from = k; depth++; }
+      else if (ch === '[') depth++;
+      else if (ch === '}' || ch === ']') {
+        depth--;
+        if (ch === '}' && depth === 1 && from >= 0) {
+          try { items.push(JSON.parse(txt.slice(from, k + 1))); } catch (e) {}
+          from = -1;
+        }
+        if (depth === 0) break;
+      }
+    }
+    out[key] = items; got += items.length;
+  });
+  var t = /"total"\s*:\s*([0-9.,]+)/.exec(txt), r = /"rotate"\s*:\s*(\d+)/.exec(txt);
+  if (t) out.total = t[1];
+  if (r) out.rotate = +r[1];
+  return got ? out : null;
+}
+
 function parseAreaReply(resp, W, H) {
   var txt = '';
   var bad = function (why) { var r = []; r.why = why; return r; };
   try { txt = resp.candidates[0].content.parts[0].text; } catch (e) { return bad('в ответе нет текста'); }
   var data = null;
-  try { data = JSON.parse(String(txt).trim().replace(/^```json\s*/i, '').replace(/```$/, '')); } catch (e) { return bad('ответ не разобрался как JSON: ' + String(txt).slice(0, 60)); }
+  var clean = String(txt).trim().replace(/^```json\s*/i, '').replace(/```$/, '');
+  try { data = JSON.parse(clean); } catch (e) {
+    // Модель иногда ломает одну из двадцати размерных линий («[226,858]/to:[226,903]») — и пропадал весь ответ,
+    // включая таблицу и марки. Вытаскиваем разделы по одному, битые объекты внутри раздела пропускаем.
+    data = salvageAreaJson(clean);
+    if (!data) return bad('ответ не разобрался как JSON: ' + clean.slice(0, 60));
+  }
   var list = (data && data.labels) || (Array.isArray(data) ? data : []);
   var out = [];
   // Размеры и поворот едут свойствами того же массива: остальной код ждёт именно массив подписей
@@ -3426,7 +3521,7 @@ function parseAreaReply(resp, W, H) {
     // Размерные линии идут вдоль осей; сильно косая — модель промахнулась точкой
     var ang = Math.atan2(Math.min(Math.abs(dx), Math.abs(dy)), Math.max(Math.abs(dx), Math.abs(dy)));
     if (ang > 0.26) return;
-    out.dims.push({ mm: mm, px: len, horiz: Math.abs(dx) >= Math.abs(dy) });
+    out.dims.push({ mm: mm, px: len, horiz: Math.abs(dx) >= Math.abs(dy), x0: a[1] / 1000 * W, y0: a[0] / 1000 * H, x1: b[1] / 1000 * W, y1: b[0] / 1000 * H });
   });
   list.forEach(function (it) {
     var a = parseFloat(String(it && (it.m2 != null ? it.m2 : it.area)).replace(',', '.'));
@@ -3457,7 +3552,7 @@ function parseAreaReply(resp, W, H) {
       var x = (b[1] + b[3]) / 2 / 1000 * W, y = (b[0] + b[2]) / 2 / 1000 * H;
       if (!row || !isFinite(x) || !isFinite(y)) return;
       usedNo[no] = 1; nm++;
-      out.push({ m2: row.m2, x: x, y: y, name: row.name, scan: true, fromTable: true });
+      out.push({ m2: row.m2, x: x, y: y, name: row.name, no: row.no, scan: true, fromTable: true });
     });
     out.table = { rows: rows, total: tot > 0 ? tot : 0, sum: rows.reduce(function (t, r) { return t + r.m2; }, 0), marks: nm };
   }
@@ -3722,8 +3817,75 @@ function scaleFromDims(items, loose) {
  * в 10–15 м даёт погрешность около процента — точнее, чем цепочки подписей, где к
  * размерам «в свету» прибавляется толщина стен.
  */
+/**
+ * Размерные линии, прочитанные моделью, лежат на картинке со сдвигом: концы указаны на глаз и
+ * чаще короче настоящих (на листе А3 длина линии в 2260 мм выходила 43 px/м вместо 77). Здесь
+ * концы привязываются к реальным засечкам: вдоль оси линии ищутся места, где тёмное
+ * поперёк линии длиннее 5 px (засечка, стрелка, выносная линия), и каждый конец встаёт на
+ * ближайшую. Привязка принимается, только если обе засечки нашлись и длина изменилась не больше
+ * чем в 1,7 раза; иначе линия остаётся как прочитана, но помечается ненадёжной (snapped не ставится).
+ */
+function snapScanDims(c, dims) {
+  if (!dims || !dims.length || !c) return dims || [];
+  var W = c.width, H = c.height, g;
+  try { g = c.getContext('2d').getImageData(0, 0, W, H).data; } catch (e) { return dims; }
+  var dark = function (x, y) {
+    if (x < 0 || y < 0 || x >= W || y >= H) return false;
+    var p = (y * W + x) * 4;
+    return (g[p] * 3 + g[p + 1] * 6 + g[p + 2]) / 10 < 150;
+  };
+  return dims.map(function (d) {
+    if (d.x0 === undefined) return d;
+    var hz = d.horiz, a = hz ? d.x0 : d.y0, b = hz ? d.x1 : d.y1, fixed = Math.round(hz ? (d.y0 + d.y1) / 2 : (d.x0 + d.x1) / 2), t;
+    if (a > b) { t = a; a = b; b = t; }
+    var lo = Math.round(a), hi = Math.round(b), span = hi - lo;
+    if (!(span > 20)) return d;
+    var at = function (k, o) { return hz ? dark(k, fixed + o) : dark(fixed + o, k); };
+    var best = -1, bo = 0, o, k, n;
+    for (o = -10; o <= 10; o++) {                       // ось линии: ряд с наибольшим числом тёмных вдоль неё
+      n = 0;
+      for (k = lo; k <= hi; k++) if (at(k, o)) n++;
+      if (n > best) { best = n; bo = o; }
+    }
+    if (best < span * 0.4) return d;                    // линии под рукой нет
+    var line = fixed + bo, margin = Math.max(25, span * 0.35), ticks = [], last = -9;
+    for (k = Math.round(lo - margin); k <= Math.round(hi + margin); k++) {
+      var up = 0, dn = 0;
+      while (up < 14 && (hz ? dark(k, line - up - 1) : dark(line - up - 1, k))) up++;
+      while (dn < 14 && (hz ? dark(k, line + dn + 1) : dark(line + dn + 1, k))) dn++;
+      if (up + dn + 1 >= 6) { if (k - last > 3) ticks.push([k, k]); else ticks[ticks.length - 1][1] = k; last = k; }
+    }
+    var centers = ticks.map(function (q) { return (q[0] + q[1]) / 2; });
+    var near = function (v) {
+      var r = null, rd = margin + 1;
+      centers.forEach(function (q) { var dd = Math.abs(q - v); if (dd < rd) { rd = dd; r = q; } });
+      return r;
+    };
+    var na = near(a), nb = near(b);
+    if (na === null || nb === null || nb - na < 20) return d;
+    var ratio = (nb - na) / span;
+    if (ratio < 0.6 || ratio > 1.7) return d;
+    return { mm: d.mm, px: nb - na, horiz: hz, x0: d.x0, y0: d.y0, x1: d.x1, y1: d.y1, snapped: true };
+  });
+}
+
 function scaleFromScanDims(dims) {
   if (!dims || dims.length < 2) return null;
+  // Линии, концы которых привязаны к засечкам на картинке (snapScanDims), точнее остальных: на них
+  // ищем самое тесное скопление (±4 %), и три согласных линии — уже масштаб. Остальные (концы «на глаз»)
+  // в это скопление не идут, даже если их большинство.
+  var sn = dims.filter(function (d) { return d.snapped; }).map(function (d) { return d.px / d.mm * 1000; });
+  if (sn.length >= 3) {
+    var bestC = null;
+    sn.forEach(function (k) {
+      var mem = sn.filter(function (q) { return Math.abs(q / k - 1) <= 0.04; });
+      if (!bestC || mem.length > bestC.length) bestC = mem;
+    });
+    if (bestC && bestC.length >= 3) {
+      var mean = bestC.reduce(function (t, q) { return t + q; }, 0) / bestC.length;
+      if (mean > 4 && mean < 1500) return { ppm: mean, n: bestC.length, total: dims.length, via: 'ticks' };
+    }
+  }
   var ks = dims.map(function (d) { return d.px / d.mm; }).sort(function (a, b) { return a - b; });
   var med = ks[Math.floor(ks.length / 2)];
   var good = ks.filter(function (k) { return Math.abs(k - med) / med < 0.1; });
@@ -3950,7 +4112,7 @@ function renderPdfPage(page) {
       delete SCAN_OCR[fi];
       return Promise.all([readAreaLabelsFromCanvas(c), startOcr(c, fi)]).then(function (res) {
         var labs = res[0];
-        PDF_AREAS[fi] = labs; SCAN_DIMS[fi] = labs.dims || []; SCAN_READ[fi] = true; delete REREAD[fi];
+        PDF_AREAS[fi] = labs; SCAN_DIMS[fi] = snapScanDims(c, labs.dims || []); SCAN_READ[fi] = true; delete REREAD[fi];
       });
     }
     SCAN_DIMS[fi] = [];
@@ -3997,7 +4159,7 @@ function loadOne(file) {
           if (LOAD_TOK[fi0] !== tok) { done(); return; }
           // за время ожидания этаж могли сменить на другую подложку — тогда не трогаем
           if (imgCache[fi0] !== c) { done(); return; }
-          PDF_AREAS[fi0] = labs; SCAN_DIMS[fi0] = labs.dims || [];
+          PDF_AREAS[fi0] = labs; SCAN_DIMS[fi0] = snapScanDims(c, labs.dims || []);
           (SCAN_DIAG[fi0] = SCAN_DIAG[fi0] || {}).read = (labs.why ? 'ИИ: ' + labs.why : 'ИИ ответил за ' + (labs.sec || 0) + ' с: размерных линий ' +
             (labs.rawDims || 0) + ', принято ' + (labs.dims || []).length + '; подписей площадей ' + (labs.rawLabels || 0) +
             (turned ? '; лист развёрнут на ' + turned + '°' : ''));
@@ -5563,7 +5725,7 @@ function printedNote(labs) {
   labs.forEach(function (l) {
     var best = null, ba = Infinity;
     F().zones.forEach(function (z) {
-      if (!pip([l.x, l.y], z.pts)) return;
+      if (z.mergedM2 || !pip([l.x, l.y], z.pts)) return;      // объединённая зона сверяется суммой таблицы, не одной подписью
       var a = area(z.pts);
       if (a < ba) { ba = a; best = z; }
     });

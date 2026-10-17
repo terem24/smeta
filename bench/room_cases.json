@@ -19,7 +19,7 @@
   },
   {
     "name": "Лист проекта А3 «План мебели»: таблица 01–06 слева, план 1:50 справа (6.jpg, 64,74 м²)",
-    "img": "C:\\Users\\D6978~1.IBA\\AppData\\Local\\Temp\\claude\\C--Users-d-ibatullin-Yandex-Disk---------6--------------Otoplenie-Calc----------stout---rommer\\a22b0117-5092-48ce-88e3-2623532ad900\\images\u0006.jpg",
+    "img": "C:\\Users\\D6978~1.IBA\\AppData\\Local\\Temp\\claude\\C--Users-d-ibatullin-Yandex-Disk---------6--------------Otoplenie-Calc----------stout---rommer\\a22b0117-5092-48ce-88e3-2623532ad900\\images\\6.jpg",
     "areas": [
       8.44,
       8.24,
@@ -105,11 +105,13 @@
         "name": "Гараж"
       }
     ],
-    "note": "labs — марки 01–06 на плане в пикселях исходной картинки (как их вернёт модель в marks); для bench/room_drive.js"
+    "note": "labs — марки 01–06 на плане в пикселях исходной картинки (как их вернёт модель в marks); для bench/room_drive.js; reply: настоящий ответ gemini_proxy от 17.10.2026 (в dims битый JSON — приложение получает ответ именно таким)",
+    "reply": "bench/replies/6_sheet_table.json",
+    "ppmTrue": 76.8
   },
   {
     "name": "Скрин плана из Телеграма: дом 12480×6600, подписи 15,1 / 41 / 6,2 / 1,3 / 5,2 м² перечёркнуты (5.png)",
-    "img": "C:\\Users\\D6978~1.IBA\\AppData\\Local\\Temp\\claude\\C--Users-d-ibatullin-Yandex-Disk---------6--------------Otoplenie-Calc----------stout---rommer\\a22b0117-5092-48ce-88e3-2623532ad900\\images\u0005.png",
+    "img": "C:\\Users\\D6978~1.IBA\\AppData\\Local\\Temp\\claude\\C--Users-d-ibatullin-Yandex-Disk---------6--------------Otoplenie-Calc----------stout---rommer\\a22b0117-5092-48ce-88e3-2623532ad900\\images\\5.png",
     "areas": [
       41,
       15.1,
@@ -157,6 +159,8 @@
         "x": 237,
         "y": 545
       }
-    ]
+    ],
+    "reply": "bench/replies/5_telegram.json",
+    "ppmTrue": 86
   }
 ]

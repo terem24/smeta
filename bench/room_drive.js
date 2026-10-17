@@ -10,7 +10,7 @@
  * один раз выставить localStorage.heatcalc_design_access='1', перезагрузить, затем в консоли:
  *   var s=document.createElement('script');s.src='/bench/room_drive.js';document.head.appendChild(s)
  *   await RoomDrive.run({ src: '/_t/5.png', labs: [...], ppm0: 86 })
- * Кейс: { src | synth:true, labs:[{m2,x,y,name?}] в пикселях исходной картинки, ppm0 — масштаб
+ * Кейс: { src | synth:true, reply:'/bench/replies/…json' — настоящий ответ модели (тот же путь, что в приложении: разбор, привязка размеров к засечкам, масштаб, таблица/марки), forceRooms — искать комнаты и без масштаба, labs:[{m2,x,y,name?}] в пикселях исходной картинки, ppm0 — масштаб
  * до «Найти комнат» (как дали размеры/двери), dims:[{mm,px,horiz}] — общие размеры, table:{rows,total} }.
  * Возвращает { zones:[{type,name,m2}], sum, ppm, src, hint }.
  */
@@ -35,6 +35,21 @@
     cur = 0;
     if (DATA.floors.length > 1) DATA.floors.length = 1;
     applyPlanCanvas(cv, true);
+    if (c.reply) {
+      // Живой ответ модели (сохранённый JSON от gemini_proxy): тот же путь, что в приложении —
+      // разбор, привязка размеров к засечкам, подписи/таблица/марки, подбор масштаба
+      var resp = await (await fetch(c.reply)).json();
+      var rl = parseAreaReply(resp, cv.width, cv.height);
+      PDF_AREAS[0] = rl; PDF_DIMS[0] = null; SCAN_DIMS[0] = (typeof snapScanDims === 'function' ? snapScanDims(cv, rl.dims || []) : (rl.dims || []));
+      SCAN_READ[0] = false; SCAN_BUSY[0] = false; calcRooms = [];
+      F().pxPerM = 0; delete F().scaleSrc; resetScaleCaches();
+      var okScale = autoScale(true);
+      var info0 = { scaleOk: okScale, ppm: +(F().pxPerM || 0).toFixed(1), src: F().scaleSrc, doubt: (typeof scaleDoubt === 'string' ? scaleDoubt : ''), labels: rl.length, table: rl.table && rl.table.rows.length };
+      if (F().pxPerM || c.forceRooms) autoRooms();
+      var zs0 = F().zones.filter(function (z) { return z.type !== 'cold'; }).map(function (z) { return { type: z.type, name: z.name || '', m2: +(+zoneM2(z)).toFixed(1) }; });
+      var h0 = document.getElementById('hint');
+      return Object.assign(info0, { zones: zs0, sum: +zs0.reduce(function (s2, z) { return s2 + z.m2; }, 0).toFixed(1), hint: h0 ? h0.innerText.slice(0, 900) : '' });
+    }
     var labs = (c.labs || []).map(function (l) {
       return { m2: l.m2, x: l.x * (c.synth ? 1 : k), y: l.y * (c.synth ? 1 : k), name: l.name || '', scan: true, fromTable: !!c.table };
     });
