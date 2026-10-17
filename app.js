@@ -76875,6 +76875,17 @@ const app = {
         if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
     },
 
+    /** Диаметр в окне замены до подтверждения системы: смета не трогается, окно перерисовывается. */
+    setBoilerPreviewSize: function (val) {
+        if (!this._bpPreview) return;
+        const o = this.boilerMainOptions(this._bpLoad ? this._bpLoad.gas : 0, this._bpLoad ? this._bpLoad.el : 0, this._bpPreview);
+        const n = parseInt(val, 10);
+        if (!o.options.find(x => x.size === n)) return;
+        this._bpPreviewSize = n;
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
+
+
     /**
      * Блок «Диаметр магистрали» в окне замены трубы котельной: кнопки Ø с
      * подсказкой по скорости, подобранный и рекомендованный диаметр, предупреждения.
@@ -76914,7 +76925,8 @@ const app = {
             const on = x.size === o.active;
             const col = COL[x.level].c;
             const label = o.pair ? `Ø${x.size} (труба ${x.phys})` : `Ø${x.size}`;
-            const click = live ? ` onclick="app.setBoilerMainSize(${x.size})"` : '';
+            const click = live ? ` onclick="app.setBoilerMainSize(${x.size})"`
+                : (interactive ? ` onclick="app.setBoilerPreviewSize(${x.size})"` : '');
             const p = priceOf(x.size);
             let price = '';
             if (p != null) {
