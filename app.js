@@ -62729,7 +62729,7 @@ const app = {
         };
         const run = () => {
             this._boilerRangeCache = null;
-            this.render(true);
+            this._renderSimFull();
             return Math.round((this.calcFinalTotal || 0) + (this.lastWorksSum || 0));
         };
         const totals = {};
@@ -80511,6 +80511,38 @@ const app = {
             this._inputAnchorAfter(_ia);
             // Сводка гидравлики читает то, что render посчитал, поэтому — после него
             this.syncHydroCheck();
+        }
+    },
+    // Тихий прогон с теми же исправлениями гидравлики, что у render(): без них смета на низком
+    // графике выходит дешевле настоящей (не хватает насосной группы / ветки). Экран не трогает.
+    _renderSimFull: function () {
+        this._hcForce = Object.assign({}, this.hydroUserForce());
+        this._hcApplied = [];
+        this._hcAppliedKinds = [];
+        this._hcTried = null;
+        const _collBefore = this.needCollector;
+        this._renderInner(true);
+        if (_collBefore !== undefined && this.needCollector !== _collBefore) this._renderInner(true);
+        for (let _i = 0; _i < 2; _i++) {
+            const _fix = this.hydroNextFix();
+            if (!_fix) break;
+            const _before = this.hydroFixRatio(_fix.kind), _prev = Object.assign({}, this._hcForce);
+            Object.assign(this._hcForce, _fix.force);
+            this._renderInner(true);
+            if (this.hydroFixRatio(_fix.kind) > _before * 1.02) {
+                this._hcApplied.push(_fix.text); this._hcAppliedKinds.push(_fix.kind); continue;
+            }
+            this._hcForce = _prev;
+            this._renderInner(true);
+            this._hcTried = _fix.tried;
+            break;
+        }
+        if (this._hcApplied.length && this._hcAppliedKinds.some(k => this.hydroFixRatio(k) < 1)) {
+            this._hcForce = Object.assign({}, this.hydroUserForce());
+            this._hcApplied = [];
+            this._hcAppliedKinds = [];
+            this._hcTried = 'Исправление схемы контур не вытянуло — схему оставили как была. Проверьте диаметры и мощность приборов.';
+            this._renderInner(true);
         }
     },
     _renderInner: function (computeOnly) {
