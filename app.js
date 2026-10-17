@@ -27409,6 +27409,16 @@ const app = {
         prices:    { t: 'Прайсы дистрибьюторов',  tab: 'distprices', act: 'Прайсы',     desc: 'У кого из дистрибьюторов со своими ценами прайс старше месяца' }
     },
 
+    // Описание плитки по id. Плитка-ярлык раздела ('tab:<id вкладки>') — любой раздел админки,
+    // доступный роли: название и подсказка берутся из ADMIN_TAB_DEFS, нажатие открывает раздел
+    todayMeta: function (id) {
+        if (this.TODAY_WIDGETS[id]) return this.TODAY_WIDGETS[id];
+        if (String(id).indexOf('tab:') !== 0) return null;
+        const tid = id.slice(4);
+        const def = this.adminTabDefs().filter(t => t.id === tid && t.id !== 'home')[0];
+        return def ? { t: def.label, tab: def.id, act: def.label, desc: def.hint || '', shortcut: true, def: def } : null;
+    },
+
     todayDefaultLayout: function () {
         return {
             style: { cols: 4, density: 'cozy', card: 'shadow', urgentFirst: true },
@@ -27431,7 +27441,7 @@ const app = {
         try { l = JSON.parse(localStorage.getItem(this.TODAY_LAYOUT_KEY) || 'null'); } catch (e) { l = null; }
         const seen = {};
         const items = ((l && Array.isArray(l.items)) ? l.items : [])
-            .filter(w => w && this.TODAY_WIDGETS[w.id] && !seen[w.id] && (seen[w.id] = 1))
+            .filter(w => w && this.todayMeta(w.id) && !seen[w.id] && (seen[w.id] = 1))
             .map(w => ({ id: w.id, span: Math.min(4, Math.max(1, Number(w.span) || 1)), hidden: !!w.hidden }));
         def.items.forEach(w => { if (!seen[w.id]) items.push(w); });
         const style = Object.assign({}, def.style, (l && l.style) || {});
@@ -27459,16 +27469,29 @@ const app = {
     },
     todayGalleryHtml: function () {
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        const hidden = this.todayLayout().items.filter(it => it.hidden);
+        const items = this.todayLayout().items;
+        const hidden = items.filter(it => it.hidden);
         const cards = hidden.map(it => {
-            const m = this.TODAY_WIDGETS[it.id];
+            const m = this.todayMeta(it.id);
             return `<button type="button" class="ad-gal-card" onclick="app.todayAdd('${it.id}')">
                 <b>${esc(m.t)}</b><span>${esc(m.desc || 'Дела из раздела «' + m.act + '»')}</span><i>+ добавить</i></button>`;
         }).join('');
+        // Ярлыки: любой раздел админки, которого ещё нет на экране, по группам меню
+        const have = {}; items.forEach(it => { have[it.id] = 1; });
+        const groups = this.adminVisibleGroups(this.adminTabDefs()).map(g => {
+            const defs = g.defs.filter(t => t.id !== 'home' && !have['tab:' + t.id]);
+            if (!defs.length) return '';
+            return `<div class="ad-gal-grp">${esc(g.label)}</div><div class="ad-gal-grid">${defs.map(t => `
+                <button type="button" class="ad-gal-card" onclick="app.todayAddShortcut('${t.id}')">
+                    <b>${this.adminIcon(t)} ${esc(t.label)}</b><span>${esc(t.hint || '')}</span><i>+ ярлык</i></button>`).join('')}</div>`;
+        }).join('');
         return `<div class="ad-gal-bg" onclick="if (event.target === this) app.todayGallery(false)">
             <div class="ad-gal">
-                <div class="ad-gal-h"><h3>Добавить плитку</h3><button type="button" class="admin-btn" onclick="app.todayGallery(false)">Закрыть</button></div>
-                ${hidden.length ? `<div class="ad-gal-grid">${cards}</div>` : '<div class="ad-tile-note">Все плитки уже на экране.</div>'}
+                <div class="ad-gal-h"><h3>Добавить на экран «Сегодня»</h3><button type="button" class="admin-btn" onclick="app.todayGallery(false)">Закрыть</button></div>
+                <div class="ad-gal-grp">Плитки с делами и показателями</div>
+                ${hidden.length ? `<div class="ad-gal-grid">${cards}</div>` : '<div class="ad-tile-note">Все такие плитки уже на экране.</div>'}
+                <div class="ad-gal-grp" style="margin-top:18px;">Ярлыки разделов админки — нажатие открывает раздел</div>
+                ${groups || '<div class="ad-tile-note">Все разделы уже добавлены.</div>'}
             </div>
         </div>`;
     },
@@ -27491,9 +27514,20 @@ const app = {
         this.todaySave();
     },
     todayHide: function (id, hidden) {
-        const w = this.todayLayout().items.find(x => x.id === id);
+        const items = this.todayLayout().items;
+        const w = items.find(x => x.id === id);
         if (!w) return;
-        w.hidden = !!hidden;
+        // Ярлык раздела убираем совсем (вернуть можно из окна «+ Добавить плитку»), плитку с данными — прячем
+        if (String(id).indexOf('tab:') === 0) items.splice(items.indexOf(w), 1);
+        else w.hidden = !!hidden;
+        this.todaySave();
+    },
+    // Добавить ярлык любого раздела админки
+    todayAddShortcut: function (tabId) {
+        const items = this.todayLayout().items, id = 'tab:' + tabId;
+        if (!this.todayMeta(id) || items.some(x => x.id === id)) return;
+        items.unshift({ id: id, span: 1, hidden: false });
+        this._todayGallery = false;
         this.todaySave();
     },
     todayStyle: function (key, val) {
@@ -27855,9 +27889,11 @@ const app = {
         const L = this.todayLayout(), edit = !!this._todayEdit;
         const cols = this.isAdminMobile() ? 1 : L.style.cols;
         const sevCls = { 3: 'ad-tile-hot', 2: 'ad-tile-warm', 1: 'ad-tile-cool' };
+        // Ярлык раздела — плитка без данных: всегда на экране, в конце списка
+        L.items.forEach(it => { const m = this.todayMeta(it.id); if (m && m.shortcut) W[it.id] = { sev: 0, note: m.desc || m.act }; });
 
         const tileHtml = (it, idx, total) => {
-            const meta = this.TODAY_WIDGETS[it.id], w = W[it.id] || null;
+            const meta = this.todayMeta(it.id), w = W[it.id] || null;
             const span = Math.min(cols, it.span);
             let body = '';
             if (!w) body = '<div class="ad-tile-note">сейчас дел нет</div>';
@@ -27879,9 +27915,9 @@ const app = {
                     <button type="button" class="admin-btn" title="ширина плитки: нажмите, чтобы сменить" onclick="app.todaySize('${it.id}')">⇲ ширина ${span} из ${cols}</button>
                     <button type="button" class="admin-btn ad-bad" title="убрать плитку" onclick="app.todayHide('${it.id}', true)">убрать</button>
                 </div>` : '';
-            return `<div class="ad-tile ${w ? sevCls[w.sev] : 'ad-tile-empty'}" style="grid-column:span ${span};">
+            return `<div class="ad-tile ${w ? (sevCls[w.sev] || 'ad-tile-link') : 'ad-tile-empty'}" style="grid-column:span ${span};">
                 <div class="ad-tile-h"${go}>
-                    <span class="ad-tile-dot" aria-hidden="true"></span><b>${esc(meta.t)}</b>
+                    ${meta.shortcut ? `<span class="ad-tile-ico" aria-hidden="true">${this.adminIcon(meta.def)}</span>` : '<span class="ad-tile-dot" aria-hidden="true"></span>'}<b>${esc(meta.t)}</b>
                     ${w && w.n ? `<span class="ad-count${w.sev === 3 ? ' ad-count-bad' : ' ad-count-on'}">${w.n}</span>` : ''}
                     ${edit ? '' : '<span class="ad-tile-go" aria-hidden="true">›</span>'}
                 </div>
@@ -27907,7 +27943,11 @@ const app = {
                 ${shown.map((it, i) => tileHtml(it, i, shown.length)).join('')}</div>`;
         } else if (waiting.length) main = `<div class="ad-tile-note">Проверяем…</div>`;
         else main = `<div class="ad-calm"><b>✓ Сегодня дел нет</b><span>Проверено: заявки, сообщения, счета, Профи, подбор, замены, уведомления, почта, аналитика.</span></div>`;
-        if (shown.length && waiting.length) main += `<div class="ad-tile-note" style="margin-top:8px;">Ещё проверяем: ${waiting.length} из ${checkKeys.length}…</div>`;
+        // На экране одни ярлыки, дел нет — всё равно говорим об этом словами
+        if (shown.length && !edit && !waiting.length && !shown.some(it => (W[it.id] || {}).sev > 0)) {
+            main = `<div class="ad-calm" style="margin-bottom:14px;"><b>✓ Сегодня дел нет</b><span>Проверено: заявки, сообщения, счета, Профи, подбор, замены, уведомления, почта, аналитика.</span></div>` + main;
+        }
+        if (shown.length && waiting.length) main +=`<div class="ad-tile-note" style="margin-top:8px;">Ещё проверяем: ${waiting.length} из ${checkKeys.length}…</div>`;
         if (failedKeys.length) main += `<div class="ad-tile-note ad-warn" style="margin-top:8px;">Не загрузилось: ${failedKeys.map(k => failedNames[k] + ' (' + esc(st[k].error) + ')').join('; ')}</div>`;
 
         // Панель настройки
@@ -27946,8 +27986,18 @@ const app = {
             </div>
             ${panel}
             ${main}
-            ${edit && this._todayGallery ? this.todayGalleryHtml() : ''}
             <details class="ad-map-fold"><summary>Все разделы</summary><div class="ad-map">${map}</div></details>`;
+
+        // Окно «+ Добавить» живёт в <body>, а не в панели: у панели своя прокрутка и преобразования,
+        // и position:fixed внутри неё прижимается к её краям, а не к экрану
+        const oldGal = document.getElementById('today_gallery_root');
+        if (oldGal) oldGal.remove();
+        if (edit && this._todayGallery) {
+            const g = document.createElement('div');
+            g.id = 'today_gallery_root';
+            g.innerHTML = this.todayGalleryHtml();
+            document.body.appendChild(g);
+        }
     },
 
     // «Написать» из карточки монтажника — открываем вкладку сообщений сразу на его диалоге

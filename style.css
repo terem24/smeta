@@ -18157,6 +18157,15 @@ body.theme-yandex #admin_modal_overlay {
 .ad-gal-card b { font-size: 13.5px; }
 .ad-gal-card span { font-size: 12px; color: var(--text-sec); line-height: 1.45; flex: 1; }
 .ad-gal-card i { font-style: normal; font-size: 12px; font-weight: 700; color: var(--primary); }
+.ad-gal-card b .ad-ico { width: 15px; height: 15px; vertical-align: -2px; }
+.ad-gal-grp { margin: 0 0 8px; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-sec); }
+.ad-gal-grid + .ad-gal-grp { margin-top: 14px; }
+/* Ярлык раздела: плитка без данных */
+.ad-tile-ico { flex: 0 0 auto; display: inline-flex; color: var(--text-sec); }
+.ad-tile-ico .ad-ico { width: 16px; height: 16px; }
+.ad-tile-link .ad-tile-b .ad-tile-note { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+/* Выбранная кнопка настроек: в тёмной теме общий .admin-btn перекрывал заливку */
+#admin_content .admin-btn.ad-pick-on { background: var(--primary) !important; color: var(--on-primary, #fff) !important; border-color: var(--primary) !important; }
 .admin-btn.ad-pick-on { background: var(--primary); color: var(--on-primary, #fff); border-color: var(--primary); }
 .ad-calm {
     display: flex; flex-direction: column; gap: 3px;
