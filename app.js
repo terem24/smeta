@@ -16206,6 +16206,30 @@ const app = {
         if (typeof this.onRiser === 'function' && this.onRiser()) this.applyRiserRadType();
     },
 
+    resetPrefs: async function () {
+        if (!await app.confirm('Сбросить все предпочтения? Новые сметы снова будут считаться по умолчанию (всё «Авто»). Открытые и сохранённые сметы не изменятся.')) return;
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        this.installerSettings.prefs = {};
+        this.pushInstallerSettingsToCloud();
+        this.renderPrefsTab();
+    },
+
+    // Предложение настроить «Любимые материалы»: в «Главная → Дела» для вошедшего монтажника
+    // (не продавца) с хотя бы одной сохранённой сметой, пока предпочтения пусты. «Позже» прячет
+    // карточку на 14 дней, открытие вкладки — насовсем.
+    prefsHintWanted: function (estimatesCount) {
+        try {
+            if (this.isSellerOnly() || estimatesCount < 1) return false;
+            if (Object.keys(this.getPrefs()).length) return false;
+            if (localStorage.getItem('prefs_hint_seen') === '1') return false;
+            return Date.now() > (parseInt(localStorage.getItem('prefs_hint_snooze'), 10) || 0);
+        } catch (e) { return false; }
+    },
+    prefsHintLater: function () {
+        try { localStorage.setItem('prefs_hint_snooze', String(Date.now() + 14 * 86400000)); } catch (e) { }
+        this.renderCabinetHome();
+    },
+
     applyPrefsToCurrent: async function () {
         if (!await app.confirm('Применить предпочтения к открытой смете? Цены в ней могут измениться, ручные замены сохранятся.')) return;
         this.applyPrefs();
@@ -16216,6 +16240,7 @@ const app = {
     renderPrefsTab: function () {
         const box = document.getElementById('profile_tab_prefs');
         if (!box) return;
+        try { localStorage.setItem('prefs_hint_seen', '1'); } catch (e) { }
         this.pullInstallerSettingsFromCloud();
         const p = this.getPrefs();
         const locked = [];
@@ -16236,7 +16261,9 @@ const app = {
             const pro = locked.some(w => w === 'Только на тарифе ПРОФИ');
             html += `<p class="lk-hint">🔒 ${pro ? 'Отмеченные варианты доступны только на тарифе ПРОФИ. <a href="#" onclick="event.preventDefault(); app.closeProfileModal(); app.showModal(\'pro\')">Подключить ПРОФИ</a>' : 'Отмеченные варианты недоступны для вашей учётной записи.'}</p>`;
         }
-        html += `<div style="margin-top:12px"><button type="button" class="lk-btn-sm" onclick="app.applyPrefsToCurrent()">Применить к открытой смете</button></div>`;
+        const any = Object.keys(p).length > 0;
+        html += `<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="lk-btn-sm" onclick="app.applyPrefsToCurrent()">Применить к открытой смете</button>`
+            + `<button type="button" class="lk-btn-sm"${any ? '' : ' disabled style="opacity:.5;cursor:not-allowed"'} onclick="app.resetPrefs()">Вернуть по умолчанию</button></div>`;
         box.innerHTML = html;
     },
 
@@ -16580,6 +16607,10 @@ const app = {
         cards.push(card('Сообщения', unread,
             unread ? `<div class="ad-card-note">Непрочитанных: ${unread}</div>` + act('Открыть', "app.railGo('messages')")
                 : '<div class="ad-card-note ad-ok">Новых сообщений нет</div>', true));
+        if (this.prefsHintWanted(ests.length)) {
+            cards.push(card('Любимые материалы', 1, '<div class="ad-card-note">Выберите материалы, схемы и бренд, которые вы ставите чаще всего, — новые сметы будут считаться по ним сразу.</div>'
+                + act('Настроить', "app.setProfileTab('prefs')") + ' ' + act('Позже', 'app.prefsHintLater()')));
+        }
         if (noCompany) {
             cards.push(card('Реквизиты компании', 1, '<div class="ad-card-note ad-warn">Название компании не заполнено — оно попадает в шапку КП и счёта.</div>' + act('Заполнить', "app.setProfileTab('company')")));
         }
