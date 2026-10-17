@@ -50384,8 +50384,8 @@ const app = {
         } else if (!h.hasGroup) out.push({ label: 'Насосная группа радиаторов на коллекторе', btn: 'Добавить группу', force: { radGroup: true } });
         else if (n < 4) out.push({ label: 'Вторая ветка радиаторов: ' + n + ' → ' + (n + 1) + ' (расход на ветку меньше)', btn: 'Добавить ветку', force: { radBranches: n + 1 } });
         const tr = h.parts.find(p => p.tag === 'trunk');
-        // Ø40 (PP-R ProAqua) смета кладёт пока только на трассу одноэтажного дома
-        const order = this.state.floors === 2 ? [16, 20, 25, 26, 32] : [16, 20, 25, 26, 32, 40];
+        // Ø40 — PP-R ProAqua, на трассе одноэтажного дома и на стояке двухэтажного
+        const order = [16, 20, 25, 26, 32, 40];
         const i = tr && tr.d ? order.indexOf(tr.d) : -1;
         if (i >= 0 && i < order.length - 1) {
             out.push({ label: 'Подводка к коллектору Ø' + tr.d + ' → Ø' + order[i + 1] + ' (меньше скорость и потери)', btn: 'Сменить трубу', ov: { d: order[i + 1], len: tr.len || null } });
@@ -50557,7 +50557,7 @@ const app = {
         const trunk = (r.parts || []).find(p => p.tag === 'trunk');
         if (trunk && !forPrint) {
             const dSel = trunk.d || 25;
-            const opts = (this.state.floors === 2 ? [16, 20, 25, 26, 32] : [16, 20, 25, 26, 32, 40]).map(d => '<option value="' + d + '"' + (d === dSel ? ' selected' : '') + '>Ø' + d + '</option>').join('');
+            const opts = [16, 20, 25, 26, 32, 40].map(d => '<option value="' + d + '"' + (d === dSel ? ' selected' : '') + '>Ø' + d + '</option>').join('');
             // Ручная трасса — за свёрнутым блоком: это запасной путь, а не первое, что нужно монтажнику.
             // Применяется сразу при изменении (как в основной ветке): пересчёт занимает десятки мс
             // Раскрытость запоминаем: карточка перерисовывается после каждой правки, и без этого блок схлопывался
@@ -87713,7 +87713,10 @@ const app = {
                     const _riserSpeed = (bore) => bore > 0
                         ? (_riserFlow / 3600) / (Math.PI * Math.pow(bore / 1000, 2) / 4)
                         : 0;
-                    const _riserOrder = [16, 20, 25, 26, 32];
+                    const _riserOrder = [16, 20, 25, 26, 32, 40];
+                    // Ø40 — PP-R ProAqua (PA39014, штука 4 м, внутренний диаметр 26,6 мм по паспорту), как и на трассе
+                    // одноэтажного дома. Цена в позиции — за метр: asCoilPrice умножит на длину штуки.
+                    const _pprR40 = (() => { const it = this.findCatalogItemById('PA39014'); return it ? { ...it, len: 4, price: it.price / 4 } : null; })();
                     // Два критерия сразу: скорость (шум, таблица И.1) и запас насоса
                     // (напор). По скорости Ø25 на 75/65 проходит, а по напору кольцо
                     // остаётся без запаса — поднимаем типоразмер, пока не пройдут оба.
@@ -87722,21 +87725,24 @@ const app = {
                     let _riserPick = _riserD, _riserByHead = false;
                     // Ручной диаметр не перебираем: монтажник выбрал его сам, а скорость и запас
                     // показаны в карточке — он видит, что выбрал.
-                    // Ø40 (PP-R) смета кладёт только на трассу одного этажа — на стояк ручной выбор 40 не действует
-                    const _riserForced = !!(_radOv && _radOv.d && _radOv.d !== 40);
+                    const _riserForced = !!(_radOv && _radOv.d);
                     if (_riserForced) _riserPick = _radOv.d;
                     const _riserSpan = { kw: _riserKw, len: _riserMeters, share: 0.5,
                         fam: _isMpPipe ? 'mp' : 'stable', riser: true };
                     for (let _i = _riserOrder.indexOf(_riserD); _i < _riserOrder.length && !_riserForced; _i++) {
-                        const _cand = _riserPool.find(x => x.id === _riserIds[_riserOrder[_i]]);
+                        const _is40 = _riserOrder[_i] === 40;
+                        const _cand = _is40 ? _pprR40 : _riserPool.find(x => x.id === _riserIds[_riserOrder[_i]]);
                         if (!_cand) continue;
-                        if (_riserSpeed(_riserBore(_cand.name)) > this.RAD_V_MAX_TRUNK) continue;
+                        if (_riserSpeed(_is40 ? 26.6 : _riserBore(_cand.name)) > this.RAD_V_MAX_TRUNK) continue;
+                        const _riserPrev = _riserPick;
                         _riserPick = _riserOrder[_i];
                         this._radTrunk = Object.assign({ d: _riserPick }, _riserSpan);
                         if (this.radRingHasReserve()) break;
+                        // Ø40 берём, только если он довёл запас до нормы: иначе дорогая труба задачу не решает
+                        if (_is40) { _riserPick = _riserPrev; break; }
                         _riserByHead = true;   // по скорости прошёл, держит напор
                     }
-                    const _riserBase = _riserPool.find(x => x.id === _riserIds[_riserPick]) || _riserPool.find(x => x.id === _riserIds[_riserD]);
+                    const _riserBase = (_riserPick === 40 && _pprR40) ? _pprR40 : (_riserPool.find(x => x.id === _riserIds[_riserPick]) || _riserPool.find(x => x.id === _riserIds[_riserD]));
                     // Что легло на объект — то и считает гидравлика (radHydraulics).
                     // Записываем после проверки по проходу: до неё стоял табличный
                     // типоразмер, и кольцо считалось по трубе тоньше купленной.
@@ -87755,7 +87761,7 @@ const app = {
                             .filter(Boolean);
                         addToBill(asCoilPrice({ ..._riserBase, originalId: 'riser_pipe_d' + _riserD, alts: _riserAlts, noCheapenAlts: true }), _riserCoils,
                             this.getDesc('riser_pipe', _riserPick, _riserMeters, _riserKw, _riserOneWay, floorArea,
-                                { coil: _riserBase.len * _riserCoils, swapped: _riserSwapped, bore: _riserBore(_riserBase.name), tableD: _riserD }), riserGrp);
+                                { coil: _riserBase.len * _riserCoils, swapped: _riserSwapped, bore: _riserPick === 40 ? 26.6 : _riserBore(_riserBase.name), tableD: _riserD }), riserGrp);
                         // Крепление вертикального участка: полимерная труба провисает,
                         // поэтому хомут на каждый метр каждой из двух труб. Типоразмер —
                         // по наружному диаметру стояка.
@@ -87771,11 +87777,12 @@ const app = {
                         // Присоединения стояка — та же недостача, что и у трассы:
                         // внизу к насосной группе, наверху к коллектору второго этажа.
                         const _rsFam = _isMpPipe ? 'mp' : 'grey';
-                        const _rsAdId = (this.RAD_ADAPTER_EXT[_rsFam] || {})[_riserD];
+                        // Ø40 — PP-R: комбинированная муфта с наружной резьбой 40×1" (PA23020), как на трассе одного этажа
+                        const _rsAdId = _riserPick === 40 ? 'PA23020' : (this.RAD_ADAPTER_EXT[_rsFam] || {})[_riserD];
                         const _rsAd = _rsAdId && this.findCatalogItemById(_rsAdId);
                         if (_rsAd) addToBill({ ..._rsAd, originalId: _rsAdId + '_riser' }, 4,
                             `Переходник стояка Ø${_riserD} — присоединение внизу к насосной группе и наверху к коллектору второго этажа: два конца × подача и обратка = 4 шт.`, riserGrp);
-                        if (!_isMpPipe) {
+                        if (!_isMpPipe && _riserPick !== 40) {
                             const _rsSlId = this.RAD_SLEEVE[_riserD];
                             const _rsSl = _rsSlId && this.findCatalogItemById(_rsSlId);
                             if (_rsSl) addToBill({ ..._rsSl, originalId: _rsSlId + '_riser' }, 4,
