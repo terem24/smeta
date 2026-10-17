@@ -50872,7 +50872,8 @@ const app = {
         html += this.hydroPreviewHtml(!!forPrint);
 
         // Единица напора и что значит «впритык»
-        html += '<div class="hc-note">Напор в метрах водяного столба. «Впритык» — запаса почти нет.</div>';
+        // Пояснение нужно, только когда в карточке есть что пояснять; при «Всё проверено» это просто шум
+        if (c.tight || c.fail) html += '<div class="hc-note">Напор в метрах водяного столба. «Впритык» — запаса почти нет.</div>';
         if (s.detailedRooms) html += this.hydroExtras(res, !!forPrint);
         return html + '</div></div>';
     },
