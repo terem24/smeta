@@ -27398,7 +27398,15 @@ const app = {
         succ:    { t: 'Замены позиций',        tab: 'successors',    act: 'Замены' },
         notif:   { t: 'Уведомления',           tab: 'notifications', act: 'Уведомления' },
         mail:    { t: 'Почта: лимит писем',    tab: 'mailbudget',    act: 'Почта' },
-        data:    { t: 'Свежесть аналитики',    tab: 'analytics',     act: 'Рынок' }
+        data:    { t: 'Свежесть аналитики',    tab: 'analytics',     act: 'Рынок' },
+        // Плитки ниже по умолчанию выключены: добавляются кнопкой «+ Добавить плитку» (desc — подпись в окне выбора)
+        newusers:  { t: 'Новые монтажники',       tab: 'stats',    act: 'Пользователи', desc: 'Кто зарегистрировался за 7 дней и сколько из них посчитали хотя бы одну смету' },
+        ests:      { t: 'Сметы за день',          tab: 'estimates', act: 'Расчёты',      desc: 'Сколько смет сохранено сегодня и вчера, и как это против среднего за неделю' },
+        unanswered:{ t: 'Вопросы без ответа',     tab: 'messages', act: 'Сообщения',    desc: 'Монтажники, чей вопрос администрации ждёт ответа больше двух суток' },
+        suspect:   { t: 'Сомнительные анкеты',    tab: 'stats',    act: 'Пользователи', desc: 'Свежие регистрации (14 дней) с признаками выдуманной анкеты: ФИО наугад, чужой телефон, временная почта' },
+        posts:     { t: 'Посты канала',           tab: 'channel',  act: 'Канал',        desc: 'Посты на ближайшую неделю, которые ещё не утверждены, и просроченные утверждённые' },
+        payments:  { t: 'Оплаты Профи',           tab: 'subscription', act: 'Оплата',   desc: 'Сколько оплат подписки прошло за 7 дней и на какую сумму' },
+        prices:    { t: 'Прайсы дистрибьюторов',  tab: 'distprices', act: 'Прайсы',     desc: 'У кого из дистрибьюторов со своими ценами прайс старше месяца' }
     },
 
     todayDefaultLayout: function () {
@@ -27406,7 +27414,10 @@ const app = {
             style: { cols: 4, density: 'cozy', card: 'shadow', urgentFirst: true },
             items: [
                 { id: 'leads', span: 2 }, { id: 'replies', span: 2 }, { id: 'inv', span: 2 }, { id: 'pro', span: 2 },
-                { id: 'ord', span: 1 }, { id: 'succ', span: 1 }, { id: 'notif', span: 1 }, { id: 'mail', span: 1 }, { id: 'data', span: 1 }
+                { id: 'ord', span: 1 }, { id: 'succ', span: 1 }, { id: 'notif', span: 1 }, { id: 'mail', span: 1 }, { id: 'data', span: 1 },
+                { id: 'newusers', span: 2, hidden: true }, { id: 'ests', span: 1, hidden: true }, { id: 'unanswered', span: 2, hidden: true },
+                { id: 'suspect', span: 2, hidden: true }, { id: 'posts', span: 2, hidden: true }, { id: 'payments', span: 1, hidden: true },
+                { id: 'prices', span: 2, hidden: true }
             ]
         };
     },
@@ -27432,7 +27443,35 @@ const app = {
         try { localStorage.setItem(this.TODAY_LAYOUT_KEY, JSON.stringify(this.todayLayout())); } catch (e) { }
         this.renderAdminHome();
     },
-    todayEdit: function (on) { this._todayEdit = !!on; this.renderAdminHome(); },
+    todayEdit: function (on) { this._todayEdit = !!on; this._todayGallery = false; this.renderAdminHome(); },
+    // Окно «+ Добавить плитку»: всё, что сейчас выключено, с подписью, что плитка показывает
+    todayGallery: function (on) { this._todayGallery = !!on; this.renderAdminHome(); },
+    todayAdd: function (id) {
+        const w = this.todayLayout().items.find(x => x.id === id);
+        if (!w) return;
+        w.hidden = false;
+        // Добавленную плитку ставим в начало списка: иначе она уезжает в самый конец и её не найти
+        const items = this.todayLayout().items;
+        items.splice(items.indexOf(w), 1);
+        items.unshift(w);
+        this._todayGallery = false;
+        this.todaySave();
+    },
+    todayGalleryHtml: function () {
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const hidden = this.todayLayout().items.filter(it => it.hidden);
+        const cards = hidden.map(it => {
+            const m = this.TODAY_WIDGETS[it.id];
+            return `<button type="button" class="ad-gal-card" onclick="app.todayAdd('${it.id}')">
+                <b>${esc(m.t)}</b><span>${esc(m.desc || 'Дела из раздела «' + m.act + '»')}</span><i>+ добавить</i></button>`;
+        }).join('');
+        return `<div class="ad-gal-bg" onclick="if (event.target === this) app.todayGallery(false)">
+            <div class="ad-gal">
+                <div class="ad-gal-h"><h3>Добавить плитку</h3><button type="button" class="admin-btn" onclick="app.todayGallery(false)">Закрыть</button></div>
+                ${hidden.length ? `<div class="ad-gal-grid">${cards}</div>` : '<div class="ad-tile-note">Все плитки уже на экране.</div>'}
+            </div>
+        </div>`;
+    },
     todayReset: function () {
         try { localStorage.removeItem(this.TODAY_LAYOUT_KEY); } catch (e) { }
         this._todayLayout = null;
@@ -27570,6 +27609,97 @@ const app = {
             } catch (e) { return { skip: true }; }
         });
 
+        // ── Плитки, которые включают кнопкой «+ Добавить плитку»: грузим только включённые, остальные
+        // не стоят ни одного запроса. Не ответил источник (нет таблицы, нет прав) — плитки просто нет.
+        const L0 = this.todayLayout();
+        const on = id => { const it = L0.items.find(x => x.id === id); return !!it && !it.hidden; };
+        const soft = (key, fn) => load(key, async () => { try { return await fn(); } catch (e) { console.warn('[сегодня] ' + key + ':', e); return { skip: true }; } });
+        const iso = (daysAgo) => new Date(Date.now() - daysAgo * day).toISOString();
+        const dayKey = (t) => { const d = new Date(t); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); };
+
+        if (on('newusers')) soft('newusers', async () => {
+            const { data: us, error } = await supabaseClient.from('users')
+                .select('id, username, first_name, last_name, region, created_at')
+                .gte('created_at', iso(7)).order('created_at', { ascending: false }).limit(200);
+            if (error) throw error;
+            const ids = (us || []).map(u => u.id);
+            const had = {};
+            if (ids.length) {
+                const { data: es, error: e2 } = await supabaseClient.from('estimates').select('user_id').in('user_id', ids).limit(2000);
+                if (e2) throw e2;
+                (es || []).forEach(r => { had[r.user_id] = true; });
+            }
+            return { rows: (us || []).map(u => Object.assign(u, { counted: !!had[u.id] })) };
+        });
+        if (on('ests')) soft('ests', async () => {
+            const { data, error } = await supabaseClient.from('estimates').select('created_at')
+                .gte('created_at', iso(9)).order('created_at', { ascending: false }).limit(5000);
+            if (error) throw error;
+            const by = {};
+            (data || []).forEach(r => { const k = dayKey(r.created_at); by[k] = (by[k] || 0) + 1; });
+            const today = by[dayKey(Date.now())] || 0, yest = by[dayKey(Date.now() - day)] || 0;
+            let sum = 0; for (let i = 1; i <= 7; i++) sum += by[dayKey(Date.now() - i * day)] || 0;
+            return { today: today, yest: yest, avg: sum / 7 };
+        });
+        if (on('unanswered')) soft('unanswered', async () => {
+            const { data, error } = await supabaseClient.from('messages')
+                .select('id, created_at, sender_id, recipient_id, type, sender_name, text')
+                .gte('created_at', iso(30)).order('created_at', { ascending: false }).limit(3000);
+            if (error) throw error;
+            // Правило то же, что у письма «Вопрос без ответа» (remindAdminAboutStaleReply): вопрос — type 'reply'
+            // от монтажника; ответ — любое сообщение лично ему позже вопроса (объявление всем не в счёт)
+            const at = m => new Date(m.created_at).getTime();
+            const lastAnswer = {}, asks = {};
+            (data || []).forEach(m => {
+                if (m.recipient_id && m.recipient_id !== m.sender_id) lastAnswer[m.recipient_id] = Math.max(lastAnswer[m.recipient_id] || 0, at(m));
+                if (m.type === 'reply' && m.sender_id) (asks[m.sender_id] = asks[m.sender_id] || []).push(m);
+            });
+            const rows = [];
+            Object.keys(asks).forEach(id => {
+                const pend = asks[id].filter(m => at(m) > (lastAnswer[id] || 0)).sort((a, b) => at(a) - at(b));
+                if (!pend.length) return;
+                const age = Math.floor((Date.now() - at(pend[0])) / day);
+                if (age >= this.STALE_REPLY_DAYS) rows.push({ id: id, name: pend[0].sender_name || 'Монтажник', text: pend[0].text, age: age });
+            });
+            return { rows: rows.sort((a, b) => b.age - a.age) };
+        });
+        if (on('suspect')) soft('suspect', async () => {
+            const { data, error } = await supabaseClient.from('users')
+                .select('id, username, first_name, last_name, middle_name, phone, email, birth_date, region, location, created_at')
+                .gte('created_at', iso(14)).order('created_at', { ascending: false }).limit(300);
+            if (error) throw error;
+            const rows = [];
+            (data || []).forEach(u => { const f = this.suspiciousProfileFlags(u); if (f.length) rows.push({ u: u, flags: f }); });
+            return { rows: rows };
+        });
+        if (on('posts')) soft('posts', async () => {
+            const today = new Date(); const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            const { data, error } = await supabaseClient.from('channel_posts').select('id, post_date, rubric, title, status')
+                .in('status', ['draft', 'approved']).lte('post_date', ymd(new Date(Date.now() + 7 * day))).order('post_date', { ascending: true }).limit(60);
+            if (error) throw error;
+            return { rows: data || [], today: ymd(today) };
+        });
+        if (on('payments')) soft('payments', async () => {
+            const { data, error } = await supabaseClient.from('subscription_payments').select('paid_at, paid_rub, rub, email, plan, months')
+                .not('paid_at', 'is', null).gte('paid_at', iso(7)).order('paid_at', { ascending: false }).limit(200);
+            if (error) throw error;
+            return { rows: data || [] };
+        });
+        if (on('prices')) soft('prices', async () => {
+            const { data: ds, error } = await supabaseClient.from('distributors').select('company_name, price_list_key, is_active, use_own_prices');
+            if (error) throw error;
+            const { data: up, error: e2 } = await supabaseClient.from('distributor_price_uploads').select('price_list_key, price_date, uploaded_at')
+                .order('uploaded_at', { ascending: false }).limit(1000);
+            if (e2) throw e2;
+            const last = {};
+            (up || []).forEach(r => { const t = new Date(r.price_date || r.uploaded_at).getTime(); if (!isNaN(t) && !(last[r.price_list_key] >= t)) last[r.price_list_key] = t; });
+            const rows = (ds || []).filter(d => d.is_active && d.use_own_prices && d.price_list_key).map(d => ({
+                name: d.company_name || d.price_list_key,
+                age: last[d.price_list_key] ? Math.floor((Date.now() - last[d.price_list_key]) / day) : null
+            })).filter(r => r.age === null || r.age > 30).sort((a, b) => (b.age == null ? 1e9 : b.age) - (a.age == null ? 1e9 : a.age));
+            return { rows: rows };
+        });
+
         const nameOf = u => [u.last_name, u.first_name].filter(Boolean).join(' ') || u.username || u.email || 'без имени';
         const pending = k => st[k] === undefined || st[k] === 'loading';
         const failed = k => !!(st[k] && st[k].error);
@@ -27671,6 +27801,56 @@ const app = {
             note: 'Последний сбор — ' + dd.updated + '. Запускается через GitHub Actions → Wordstat Analytics.'
         };
 
+        // ── Плитки из окна «+ Добавить плитку» ──
+        const rub = n => Math.round(n).toLocaleString('ru-RU') + ' ₽';
+        const fullName = u => [u.last_name, u.first_name].filter(Boolean).join(' ') || u.username || 'без имени';
+        if (st.newusers && st.newusers.rows) {
+            const rows = st.newusers.rows, did = rows.filter(r => r.counted).length;
+            if (rows.length) W.newusers = {
+                sev: 1, n: rows.length, sub: did + ' из ' + rows.length + ' посчитали смету',
+                lines: rows.map(r => ({ main: fullName(r), sub: r.region || '', right: r.counted ? 'посчитал' : 'пока нет', bad: false }))
+            };
+        }
+        if (st.ests && st.ests.today != null) {
+            const e = st.ests, avg = Math.round(e.avg * 10) / 10;
+            const low = e.avg >= 3 && e.today < e.avg / 2 && new Date().getHours() >= 15;
+            W.ests = { sev: low ? 2 : 1, n: e.today, sub: 'сегодня · вчера ' + e.yest + ' · в среднем ' + avg + ' в день',
+                note: low ? 'Сегодня заметно меньше обычного.' : 'Сколько смет сохранено сегодня.' };
+        }
+        if (st.unanswered && st.unanswered.rows && st.unanswered.rows.length) {
+            const rows = st.unanswered.rows;
+            W.unanswered = { sev: rows[0].age >= 5 ? 3 : 2, n: rows.length, sub: 'старейший — ' + ageTxt(rows[0].age),
+                lines: rows.map(r => ({ main: r.name, sub: clip(r.text, 60), right: ageTxt(r.age), bad: r.age >= 5 })) };
+        }
+        if (st.suspect && st.suspect.rows && st.suspect.rows.length) {
+            const rows = st.suspect.rows;
+            W.suspect = { sev: 2, n: rows.length, sub: 'за 14 дней',
+                lines: rows.map(r => ({ main: fullName(r.u), sub: r.flags[0], right: r.flags.length > 1 ? '+' + (r.flags.length - 1) : '', bad: false })) };
+        }
+        if (st.posts && st.posts.rows && st.posts.rows.length) {
+            const rows = st.posts.rows, td = st.posts.today;
+            const late = rows.filter(p => p.status === 'approved' && p.post_date < td).length;
+            const drafts = rows.filter(p => p.status === 'draft');
+            const soonDraft = drafts.filter(p => p.post_date <= new Date(Date.now() + 2 * day).toISOString().slice(0, 10)).length;
+            if (late || drafts.length) W.posts = {
+                sev: (late || soonDraft) ? 3 : 2, n: drafts.length + late,
+                sub: (late ? 'просрочено ' + late : drafts.length + ' ждут утверждения'),
+                lines: rows.filter(p => p.status === 'draft' || p.post_date < td).map(p => ({
+                    main: p.title || p.rubric || 'пост', sub: p.rubric || '',
+                    right: p.status === 'approved' ? 'просрочен' : p.post_date, bad: p.status === 'approved' || p.post_date <= td }))
+            };
+        }
+        if (st.payments && st.payments.rows && st.payments.rows.length) {
+            const rows = st.payments.rows, sum = rows.reduce((a, r) => a + (Number(r.paid_rub) || Number(r.rub) || 0), 0);
+            W.payments = { sev: 1, n: rows.length, sub: rub(sum) + ' за 7 дней',
+                lines: rows.slice(0, 6).map(r => ({ main: r.email || 'без почты', sub: r.plan ? String(r.plan) + (r.months ? ', ' + r.months + ' мес.' : '') : '', right: rub(Number(r.paid_rub) || Number(r.rub) || 0), bad: false })) };
+        }
+        if (st.prices && st.prices.rows && st.prices.rows.length) {
+            const rows = st.prices.rows;
+            W.prices = { sev: 2, n: rows.length, sub: 'прайс старше месяца',
+                lines: rows.map(r => ({ main: r.name, sub: '', right: r.age == null ? 'прайса нет' : ageTxt(r.age), bad: r.age == null || r.age > 60 })) };
+        }
+
         // ── Раскладка и плитки ──
         const L = this.todayLayout(), edit = !!this._todayEdit;
         const cols = this.isAdminMobile() ? 1 : L.style.cols;
@@ -27716,7 +27896,8 @@ const app = {
         if (!edit && L.style.urgentFirst) {
             shown = shown.map((it, i) => ({ it, i })).sort((a, b) => (W[b.it.id].sev - W[a.it.id].sev) || (a.i - b.i)).map(x => x.it);
         }
-        const waiting = ['leads', 'pro', 'ord', 'succ', 'inv', 'mail', 'data'].filter(pending);
+        const checkKeys = ['leads', 'pro', 'ord', 'succ', 'inv', 'mail', 'data'].concat(['newusers', 'ests', 'unanswered', 'suspect', 'posts', 'payments', 'prices'].filter(on));
+        const waiting = checkKeys.filter(pending);
         const failedNames = { leads: 'заявки', pro: 'Профи', ord: 'подбор', succ: 'замены', inv: 'счета' };
         const failedKeys = Object.keys(failedNames).filter(failed);
 
@@ -27726,7 +27907,7 @@ const app = {
                 ${shown.map((it, i) => tileHtml(it, i, shown.length)).join('')}</div>`;
         } else if (waiting.length) main = `<div class="ad-tile-note">Проверяем…</div>`;
         else main = `<div class="ad-calm"><b>✓ Сегодня дел нет</b><span>Проверено: заявки, сообщения, счета, Профи, подбор, замены, уведомления, почта, аналитика.</span></div>`;
-        if (shown.length && waiting.length) main += `<div class="ad-tile-note" style="margin-top:8px;">Ещё проверяем: ${waiting.length} из 7…</div>`;
+        if (shown.length && waiting.length) main += `<div class="ad-tile-note" style="margin-top:8px;">Ещё проверяем: ${waiting.length} из ${checkKeys.length}…</div>`;
         if (failedKeys.length) main += `<div class="ad-tile-note ad-warn" style="margin-top:8px;">Не загрузилось: ${failedKeys.map(k => failedNames[k] + ' (' + esc(st[k].error) + ')').join('; ')}</div>`;
 
         // Панель настройки
@@ -27739,7 +27920,7 @@ const app = {
                 <span>плотность: ${pick('density', 'cozy', 'просторно')}${pick('density', 'compact', 'компактно')}</span>
                 <span>карточки: ${pick('card', 'shadow', 'с тенью')}${pick('card', 'flat', 'плоские')}</span>
                 <span>срочное вперёд: ${pick('urgentFirst', 'true', 'да')}${pick('urgentFirst', 'false', 'нет')}</span>
-                ${hidden.length ? `<span class="ad-tile-hidden">скрыты: ${hidden.map(it => `<button type="button" class="admin-btn" onclick="app.todayHide('${it.id}', false)">+ ${esc(this.TODAY_WIDGETS[it.id].t)}</button>`).join('')}</span>` : ''}
+                <span class="ad-tile-hidden"><button type="button" class="admin-btn ad-pick-on" onclick="app.todayGallery(true)">+ Добавить плитку${hidden.length ? ' (' + hidden.length + ')' : ''}</button></span>
             </div>`;
         }
 
@@ -27765,6 +27946,7 @@ const app = {
             </div>
             ${panel}
             ${main}
+            ${edit && this._todayGallery ? this.todayGalleryHtml() : ''}
             <details class="ad-map-fold"><summary>Все разделы</summary><div class="ad-map">${map}</div></details>`;
     },
 
