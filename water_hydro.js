@@ -266,6 +266,8 @@
       H: hMaxFix, bar: hMaxFix / HEAD_BAR, capped: !!capNote, capNote: capNote,
       verdict: hMaxFix / HEAD_BAR > STATIC_FAIL_BAR ? 'fail' : (hMaxFix / HEAD_BAR > STATIC_WARN_BAR ? 'tight' : 'ok')
     };
+    // Даже без расхода воды до приборов не доходит: насос не поднимает её на высоту
+    if (hMaxFix < 5) stat.verdict = 'fail';
 
     /* ---- рабочая точка насоса ---- */
     var curve0 = pump.curve && pump.curve.length ? pump.curve[0][1] : 0;
@@ -288,7 +290,8 @@
     if (!node.absent) velFlag('node_v', design.trunk.v.node, V_LIMIT.node, 'Скорость в узле ввода — ' + fmt(design.trunk.v.node, 2) + ' м/с (ориентир ' + fmt(V_LIMIT.node, 1) + '): шум и потери, ввод стоит делать на 1″.');
     if (pumpInfo.outOfRange) flags.push({ id: 'pump_q', level: 'fail', text: 'Расчётный расход ' + fmt(Qd, 2) + ' м³/ч больше предельного расхода насоса ' + fmt(pump.qMax, 1) + ' м³/ч.' });
     else if (pumpInfo.tail) flags.push({ id: 'pump_tail', level: 'tight', text: 'Рабочая точка насоса у края характеристики: ' + fmt(pHead, 0) + ' м из ' + fmt(curve0, 0) + ' м при нуле расхода. КПД и ресурс хуже.' });
-    if (stat.verdict !== 'ok') flags.push({ id: 'static', level: stat.verdict, text: 'При закрытых кранах давление до ' + fmt(stat.bar, 1) + ' бар' + (stat.capped ? '' : ' — автоматики по давлению и редуктора нет') + '.' });
+    if (stat.verdict === 'fail' && hMaxFix < 5) flags.push({ id: 'static_low', level: 'fail', text: 'Насос не поднимает воду на высоту подъёма: без расхода у приборов ' + fmt(stat.bar, 1) + ' бар.' });
+    else if (stat.verdict !== 'ok') flags.push({ id: 'static', level: stat.verdict, text: 'При закрытых кранах давление до ' + fmt(stat.bar, 1) + ' бар' + (stat.capped ? '' : ' — автоматики по давлению и редуктора нет') + '.' });
 
     var verdict = 'ok';
     var counts = { ok: 0, tight: 0, fail: 0, unknown: 0 };
@@ -338,7 +341,7 @@
       for (var i = 0; i < cand.length; i++) {
         var alt = clone(data); alt.pump = { id: cand[i].id, name: cand[i].name, curve: cand[i].curve, qMax: cand[i].q_max };
         if (evaluate(alt, { noAdvice: true, reserve: rv }).verdict === 'ok') {
-          out.push({ id: 'pump', pumpId: cand[i].id, text: 'Насос, при котором проходят все приборы: ' + cand[i].name + (cand[i].price ? ' (' + Math.round(cand[i].price).toLocaleString('ru-RU') + ' ₽)' : '') + ' — самый дешёвый из таких в каталоге.' });
+          out.push({ id: 'pump', pumpId: cand[i].id, actions: [{ fix: 'pump', arg: cand[i].id, label: 'Поставить этот насос' }], text: 'Насос, при котором проходят все приборы: ' + cand[i].name + (cand[i].price ? ' (' + Math.round(cand[i].price).toLocaleString('ru-RU') + ' ₽)' : '') + ' — самый дешёвый из таких в каталоге.' });
           break;
         }
       }
@@ -355,7 +358,9 @@
       var g1 = lossOf(res, 'node') - lossOf(evaluate(a1, { noAdvice: true, reserve: rv }), 'node');
       if (g1 >= 1) out.push({ id: 'node1', gain: g1, text: 'Ввод и коллектор на 1″: потери узла ниже на ' + fmt(g1, 1) + ' м (сейчас ' + fmt(lossOf(res, 'node'), 1) + ' м), скорость в узле падает до ' + fmt(velocity(res.scenarios.design.Q, 0.025), 2) + ' м/с. В смете останется 3/4″ — пересчитайте позиции узла.' });
     }
-    if (res.static.verdict !== 'ok' && !res.static.capped) out.push({ id: 'reducer', text: 'Редуктор давления в узле ввода (или автоматика по давлению: SIRIO, BRIO-TOP, EPC-12): сейчас при закрытых кранах ' + fmt(res.static.bar, 1) + ' бар.' });
+    if (res.static.verdict !== 'ok' && !res.static.capped) out.push({ id: 'reducer',
+      actions: (data.node && !data.node.absent ? [{ fix: 'reducer', label: 'Включить редуктор' }] : []).concat([{ fix: 'auto', arg: 'sirio', label: 'Автоматика SIRIO' }]),
+      text: 'Редуктор давления в узле ввода (или автоматика по давлению: SIRIO, BRIO-TOP, EPC-12): сейчас при закрытых кранах ' + fmt(res.static.bar, 1) + ' бар.' });
     var w = res.worst;
     if (w && w.verdict !== 'ok' && w.v > V_LIMIT.branch) out.push({ id: 'branch', text: 'Линия до «' + w.title + '» (' + w.zone + ') узкая: ' + fmt(w.v, 2) + ' м/с. Труба 20 мм на этой линии или короче трасса от коллектора.' });
     return out;

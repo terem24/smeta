@@ -165,8 +165,39 @@ console.log('\n=== Монотонность и неизменность смет
     if (snap() !== before) fail('waterHydroCheck изменил состояние или смету');
     else console.log('  состояние и смета до/после проверки совпадают');
     // Карточка строится и не падает
-    try { const h = app.waterHydroHtml(app.waterHydroCheck()); if (!/Гидравлика водоснабжения/.test(h)) fail('карточка пустая'); else console.log('  карточка строится (' + h.length + ' симв.)'); }
+    try { const h = app.waterHydroHtml(app.waterHydroCheck(), false); if (!/Проверка водоснабжения/.test(h)) fail('карточка пустая'); else console.log('  карточка строится (' + h.length + ' симв.)'); }
     catch (e) { fail('waterHydroHtml упал: ' + e.message); }
+}
+
+// ---------------------------------------------------------------------------
+// Кнопки «исправить»: совет применён — вердикт стал лучше и смета пересчиталась
+// ---------------------------------------------------------------------------
+console.log('\n=== Кнопки «исправить» ===');
+{
+    // syncUI пишет в профиль страницы, а в песочнице DOM-заглушка: нужен только пересчёт сметы
+    app.syncUI = () => {}; app.saveState = () => {};
+    // Слабый насос при глубине 60 м: совет «поставить насос» должен вылечить
+    run('fix-pump', { ...base, wellDepth: 60, wellDist: 30, waterZones: house(2), swaps: { well_pump_auto: 'RPW-0012-350215' } });
+    let r = app.waterHydroCheck();
+    const act = (r.advice || []).flatMap(a => a.actions || []).find(a => a.fix === 'pump');
+    if (!act) fail('для слабого насоса нет кнопки «поставить насос»');
+    else {
+        app.waterHydroFix(act.fix, act.arg);
+        const r2 = app.waterHydroCheck();
+        if (r2.verdict !== 'ok') fail('после замены насоса вердикт «' + r2.verdict + '», а не ok');
+        else console.log('  замена насоса: ' + r.verdict + ' → ' + r2.verdict + ' (' + r2.pump.name.replace('Насос скважинный ', '') + ')');
+    }
+    // Давление при закрытых кранах: «автоматика SIRIO» и «редуктор» обе снимают красное
+    ['auto', 'reducer'].forEach(kind => {
+        run('fix-' + kind, { ...base, wellDepth: 90, wellDist: 40, waterZones: house(3), wellAutoType: 'base' });
+        const a = app.waterHydroCheck();
+        const btn = (a.advice || []).flatMap(x => x.actions || []).find(x => x.fix === kind);
+        if (!btn) { fail('нет кнопки «' + kind + '» при давлении ' + a.static.bar.toFixed(1) + ' бар'); return; }
+        app.waterHydroFix(btn.fix, btn.arg);
+        const b = app.waterHydroCheck();
+        if (b.static.verdict === 'fail') fail('после «' + kind + '» давление при закрытых кранах всё ещё выше 6 бар');
+        else console.log('  ' + kind + ': ' + a.static.bar.toFixed(1) + ' → ' + b.static.bar.toFixed(1) + ' бар');
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -208,7 +239,7 @@ if (mode === 'sweep') {
         else if (bad2) cls.silentTight.push(entry);
     })))))));
     console.log('  объектов: ' + tot.n + ' за ' + ((Date.now() - t0) / 1000).toFixed(1) + ' с;  ок ' + tot.ok + ', впритык ' + tot.tight + ', не хватает ' + tot.fail);
-    console.log('  из красных: приборы без давления ' + tot.byFix + ', давление при закрытых кранах выше 6 бар ' + tot.byStatic + ', расход выше предела насоса ' + tot.byPump + ' (категории пересекаются)');
+    console.log('  из красных: приборы без давления ' + tot.byFix + ', давление при закрытых кранах вне нормы (выше 6 бар или воды нет) ' + tot.byStatic + ', расход выше предела насоса ' + tot.byPump + ' (категории пересекаются)');
     console.log('  проверка красная/жёлтая, смета тоже предупреждает (напора насосу не хватает): ' + cls.warned.length);
     console.log('  проверка КРАСНАЯ, а смета молчит: ' + cls.silentFail.length);
     console.log('  проверка жёлтая («впритык» у прибора), смета молчит: ' + cls.silentTight.length);
