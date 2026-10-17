@@ -18100,6 +18100,47 @@ body.theme-yandex #admin_modal_overlay {
 .ad-row-r { flex: 0 0 auto; color: var(--text-sec); }
 .ad-row-r.ad-bad { color: #EF4444; font-weight: 600; }
 .ad-card-act { align-self: flex-start; }
+/* «Сегодня»: список дел строками. Цвет точки — срочность (горит / пора / когда будет время) */
+.ad-todos { display: flex; flex-direction: column; gap: 8px; }
+.ad-todo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    padding: 12px 14px;
+    background: var(--surface-light);
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-card-radius);
+    color: var(--text-main);
+    font: inherit;
+    cursor: pointer;
+}
+.ad-todo:hover { border-color: var(--primary); }
+.ad-todo-dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; background: #3B82F6; }
+.ad-todo-hot .ad-todo-dot { background: #EF4444; }
+.ad-todo-warm .ad-todo-dot { background: #F59E0B; }
+.ad-todo-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ad-todo-main b { font-size: 13.5px; font-weight: 700; }
+.ad-todo-main span { font-size: 12px; color: var(--text-sec); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ad-todo-r { flex: 0 0 auto; font-size: 12px; color: var(--text-sec); }
+.ad-todo-hot .ad-todo-r { color: #EF4444; font-weight: 600; }
+.ad-todo-go { flex: 0 0 auto; font-size: 20px; line-height: 1; color: var(--text-sec); opacity: 0.5; }
+.ad-calm {
+    display: flex; flex-direction: column; gap: 3px;
+    padding: 14px 16px;
+    border: 1px solid color-mix(in srgb, #10B981 35%, var(--ad-line));
+    background: color-mix(in srgb, #10B981 7%, transparent);
+    border-radius: var(--ad-card-radius);
+}
+.ad-calm b { color: #10B981; font-size: 14px; }
+.ad-calm span { color: var(--text-sec); font-size: 12px; }
+.ad-map-fold { margin-top: 24px; }
+.ad-map-fold > summary { cursor: pointer; color: var(--text-sec); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
+@media screen and (max-width: 899.98px) {
+    #admin_content .ad-todo { flex-wrap: wrap; padding: 10px 12px; gap: 8px; }
+    #admin_content .ad-todo-r { order: 5; flex-basis: 100%; padding-left: 22px; }
+}
 .ad-section-h { margin: 0 0 10px !important; color: var(--text-sec) !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: 0.06em; }
 .ad-map {
     display: grid;
