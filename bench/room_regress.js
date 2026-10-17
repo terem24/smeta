@@ -11,6 +11,7 @@
 const fs = require('fs');
 const path = require('path');
 const root = path.join(__dirname, '..');
+const synth = require('./room_synth');
 const CHROME = process.env.CHROME_PATH || '/opt/pw-browsers/chromium';
 
 // Функции распознавания из plan_editor.html — построчно, по имени
@@ -18,7 +19,8 @@ function extractCode() {
   const src = fs.readFileSync(path.join(root, 'plan_editor.html'), 'utf8').split('\n');
   const NAMES = ['getMask', 'openThin', 'chamferDist', 'cleanBar', 'furnitureClear', 'growToWalls', 'labelRooms',
     'traceLabel', 'dpSimp', 'enumerateRooms', 'roomShapeOk', 'roomAtPoint', 'pip', 'fitAreaRatio', 'agreeCount',
-    'matchScore', 'median', 'resetScaleCaches', 'roomAreasAt', 'scaleByMatch', 'scaleTargets', 'guessScale'];
+    'matchScore', 'median', 'resetScaleCaches', 'roomAreasAt', 'scaleByMatch', 'scaleTargets', 'guessScale',
+    'area', 'centroid', 'wallFrame', 'overallDims', 'frameScaleCheck', 'frameInnerM2', 'isCell', 'roomAtLabel', 'rescueLabelRooms', 'fillShortRuns', 'eraseLabelText'];
   let code = '';
   for (const n of NAMES) {
     const i = src.findIndex(l => l.startsWith('function ' + n + '('));
@@ -26,7 +28,7 @@ function extractCode() {
     let j = i; while (src[j] !== '}') j++;
     code += src.slice(i, j + 1).join('\n') + '\n';
   }
-  return 'var calcRooms = [], PDF_AREAS = {}, GROW_ROOMS = true, maskCache = {}, wallMaskCache = {}, winCache = {}, DOORS = [];\n' + code;
+  return 'var calcRooms = [], PDF_AREAS = {}, GROW_ROOMS = true, maskCache = {}, wallMaskCache = {}, winCache = {}, DOORS = [], SCAN_DIMS = {};\n' + code;
 }
 
 async function main() {
@@ -36,11 +38,38 @@ async function main() {
     var DATA = { floors: [{ img: 'x', w: 0, h: 0, pxPerM: 0 }] }, cur = 0, imgCache = {};
     function F() { return DATA.floors[cur]; }
     ${extractCode()}
+    ${synth.pageScript()}
     </script></body>`;
   const file = path.join(require('os').tmpdir(), 'room_regress.html');
   fs.writeFileSync(file, html);
   const b = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
   let failed = 0;
+  // Синтетический кейс по присланному плану: габарит, клетушки, подписи
+  {
+    const p = await b.newPage();
+    await p.goto('file://' + file);
+    const r = await p.evaluate(() => {
+      const S = drawSynth();
+      DATA.floors[0].w = S.canvas.width; DATA.floors[0].h = S.canvas.height; imgCache[0] = S.canvas;
+      DATA.floors[0].pxPerM = S.ppm * 0.91;           // масштаб, ушедший на 9 %
+      SCAN_DIMS[0] = S.dims;
+      const fc = frameScaleCheck();
+      const out = { fc: fc && { ppm: +fc.ppm.toFixed(1), axesOk: fc.axesOk, scaleOk: fc.scaleOk }, frame: wallFrame() };
+      if (fc && fc.axesOk) { DATA.floors[0].pxPerM = fc.ppm; resetScaleCaches(); }
+      const rooms = rescueLabelRooms(enumerateRooms(), S.labs);
+      const kept = rooms.filter(x => !isCell(x, S.labs));
+      out.rooms = rooms.length; out.kept = kept.length;
+      out.areas = kept.map(x => +x.m2.toFixed(1)).sort((a, b) => b - a);
+      out.inner = +frameInnerM2().toFixed(1);
+      out.sum = +kept.reduce((s, x) => s + x.m2, 0).toFixed(1);
+      return out;
+    });
+    const exp = synth.expect;
+    const good = r.areas.length === exp.length && exp.every((e, i) => Math.abs(r.areas[i] - e) / e <= 0.10);
+    if (!good || !r.fc || !r.fc.scaleOk && !r.fc.axesOk) failed++;
+    console.log(`${good ? 'OK  ' : 'FAIL'} синтетика (дом 12480×6600, 5 подписей): габарит ${JSON.stringify(r.fc)}, контуров ${r.rooms}, после отсева клетушек ${r.kept}, площади ${r.areas.join('; ')} (эталон ${exp.join('; ')}), сумма ${r.sum} из внутренних ${r.inner} м²`);
+    await p.close();
+  }
   for (const c of cases) {
     const p = await b.newPage();
     await p.goto('file://' + file);
