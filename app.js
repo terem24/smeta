@@ -16281,7 +16281,7 @@ const app = {
                     if (why) locked.push(why);
                     return `<button type="button" class="ad-chip${p[it.id] === o.v ? ' active' : ''}"${why ? ` disabled title="${why}" style="opacity:.5;cursor:not-allowed"` : ''} onclick="app.setPref('${it.id}', '${o.v}')">${o.t}${why ? ' 🔒' : ''}</button>`;
                 })).join('');
-                html += `<div class="lk-row" style="flex-wrap:wrap;gap:6px"><div class="lk-row-main"><b>${it.label}</b>${it.note ? `<div class="lk-sub">${it.note}</div>` : ''}</div><div class="lk-chips-inline" style="display:flex;gap:6px;flex-wrap:wrap">${btns}</div></div>`;
+                html += `<div class="lk-row pref-row"><div class="lk-row-main"><b>${it.label}</b>${it.note ? `<div class="lk-sub">${it.note}</div>` : ''}</div><div class="pref-chips">${btns}</div></div>`;
             });
             html += `</div>`;
         });
