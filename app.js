@@ -49831,6 +49831,168 @@ const app = {
         return { v: v, hf: lam * (len / dIn) * v * v / (2 * 9.81), len: len, od: od, wall: wall, dIn: dIn };
     },
 
+    // ===== Проверка гидравлики водоснабжения: насос скважины → ввод → коллектор → прибор =====
+    //
+    // Сам расчёт — water_hydro.js (чистые функции, без состояния). Здесь только сбор исходных
+    // чисел: насос и расход берутся из раздела 7 (this._wellSel, тот же выбор, что в смете),
+    // труба линий — из раздела 5 (this._waterPipeSel с учётом замены в таблице), приборы и
+    // длины линий — из state.waterZones. Состав узла ввода — из state, как его собирает раздел 6.
+    // Смету не трогает: только читает.
+
+    // Размеры трубы по названию позиции каталога («16x2.0», «32х3.0»): наружный, стенка, внутренний.
+    pipeDims: function (item) {
+        const m = item && /(\d{2})\s*[хx]\s*(\d(?:[.,]\d+)?)/.exec(item.name || '');
+        if (!m) return null;
+        const od = +m[1], wall = parseFloat(m[2].replace(',', '.'));
+        return { od: od, wall: wall, dIn: (od - 2 * wall) / 1000 };
+    },
+
+    // Труба линий воды, как она стоит в смете: материал плюс замена из таблицы (по id позиции или её ROMMER-аналога)
+    waterBranchPipe: function () {
+        const base = this._waterPipeSel;
+        if (!base) return null;
+        const sw = this.state.swaps && this.state.swaps[base.originalId];
+        if (sw) {
+            const all = (catalog.water_pipes || []).concat(catalog.water_pipes_mp || []);
+            const hit = all.find(p => p.id === sw) || all.map(p => p.rommer).find(r => r && r.id === sw);
+            if (hit) return hit;
+        }
+        return base;
+    },
+
+    buildWaterHydroData: function () {
+        const s = this.state, sel = this._wellSel;
+        const zones = s.waterZones || [];
+        if (!s.well || !sel || !s.water || !zones.length) return null;
+        const wp = this.pipeDims(catalog.well_parts && catalog.well_parts[0]) || { od: 32, wall: 3, dIn: 0.026 };
+        const bp = this.waterBranchPipe();
+        const bd = this.pipeDims(bp) || { od: 16, wall: 2.2, dIn: 0.0116 };
+        const wh = window.waterHydro;
+        let peak = 0;
+        zones.forEach(z => {
+            const f = (z && z.fixtures) || {};
+            Object.keys(wh.FIXTURES).forEach(k => { peak += (f[k] || 0) * wh.FIXTURES[k].q; });
+        });
+        const inp = !!s.waterInput;
+        const pressureCtl = ['sirio', 'top', 'relay_krs5', 'epc12auto', 'epc2'].includes(s.wellAutoType);
+        return {
+            pump: { id: sel.pump.id, name: sel.pump.name, curve: sel.pump.curve, qMax: sel.pump.q_max },
+            depth: parseInt(s.wellDepth, 10) || 0, dist: parseInt(s.wellDist, 10) || 0, inlet: 5,
+            floorsH: sel.floorsH,
+            wellPipe: wp,
+            flows: { design: sel.q, peak: peak },
+            control: pressureCtl ? 'pressure' : 'flow',
+            node: {
+                dIn: 0.02, len: 3, absent: !inp,
+                devices: {
+                    reducer: inp && !!s.waterReducer, meter: inp && !!s.waterMeter, leak: inp && !!s.waterLeakGuard,
+                    filter: this.filterLevel() !== 'none' ? 'fine' : 'coarse'
+                }
+            },
+            branch: { dIn: bd.dIn, od: bd.od, wall: bd.wall, label: bd.od + '×' + bd.wall },
+            zones: zones.map(z => {
+                const f = (z && z.fixtures) || {};
+                const th = this.toiletHotOf(f);
+                const pts = [
+                    { type: 'toilet', cold: f.toilet || 0, hot: th },
+                    { type: 'basin', cold: f.basin || 0, hot: f.basin || 0 },
+                    { type: 'shower', cold: f.shower || 0, hot: f.shower || 0 },
+                    { type: 'bath', cold: f.bath || 0, hot: f.bath || 0 },
+                    { type: 'bidet', cold: f.bidet || 0, hot: f.bidet || 0 },
+                    { type: 'wash', cold: f.wash || 0, hot: 0 },
+                    { type: 'dish', cold: f.dish || 0, hot: 0 }
+                ].filter(p => p.cold || p.hot);
+                return { id: z.id, name: z.name, dist: +z.dist || 0, points: pts };
+            })
+        };
+    },
+
+    waterHydroCheck: function () {
+        const wh = (typeof window !== 'undefined') ? window.waterHydro : null;
+        if (!wh) return null;
+        const data = this.buildWaterHydroData();
+        if (!data) return null;
+        const res = wh.evaluate(data, { pumps: catalog.well_pumps, reserve: this.RAD_PUMP_RESERVE });
+        res.data = data;
+        return res;
+    },
+
+    /**
+     * Карточка «Гидравлика водоснабжения» под насосом скважины: одна строка-итог и
+     * раскрывающиеся ступени пути воды. Те же классы, что у карточки отопления (hydro_check.css).
+     */
+    waterHydroHtml: function (res) {
+        if (!res) return '';
+        const f1 = v => (v == null || !isFinite(v)) ? '—' : v.toFixed(1).replace('.', ',');
+        const f2 = v => (v == null || !isFinite(v)) ? '—' : v.toFixed(2).replace('.', ',');
+        const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        const ICON = { ok: '✓', tight: '!', fail: '✕', unknown: '?' };
+        const RU = { ok: 'ок', tight: 'впритык', fail: 'не хватает', unknown: 'нет данных' };
+        const PILL = { ok: 'Всё проверено', tight: 'Впритык', fail: 'Не хватает', unknown: 'Нет данных' };
+        const st = res.verdict === 'unknown' ? 'ok' : res.verdict;
+        const design = res.scenarios.design, stages = design.trunk.stages;
+        this._whcOpen = this._whcOpen || {};
+        const row = (key, verdict, name, sub, result, body) =>
+            '<details class="hc-row hc-' + verdict + '"' + (this._whcOpen[key] ? ' open' : '')
+            + ' ontoggle="app._whcOpen[\'' + key + '\']=this.open"><summary><span class="hc-dot">' + ICON[verdict] + '</span>'
+            + '<span class="hc-name">' + esc(name) + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</span>'
+            + '<span class="hc-res">' + esc(result) + '</span><span class="hc-chev"></span></summary><div class="hc-det">' + body + '</div></details>';
+        const ladder = grp => {
+            const list = stages.filter(x => x.group === grp && x.id !== 'pump');
+            if (!list.length) return '';
+            return '<table class="whc-t"><tr><th>Ступень</th><th>Потеря, м</th><th>Напор после, м</th></tr>'
+                + list.map(x => '<tr><td>' + esc(x.title) + (x.v != null ? ' <i>' + f2(x.v) + ' м/с</i>' : '') + '</td><td>' + f2(x.dH) + '</td><td>' + f1(x.H) + '</td></tr>').join('')
+                + '</table>';
+        };
+        const sum = grp => stages.filter(x => x.group === grp && x.id !== 'lift' && x.id !== 'auto' && !(x.regulated)).reduce((a, x) => a + x.dH, 0);
+        const wellFlag = res.flags.some(f => f.id === 'well_v' && f.level !== 'info') ? 'tight' : 'ok';
+        const nodeFlag = res.flags.some(f => f.id === 'node_v' && f.level !== 'info') ? 'tight' : 'ok';
+        const pumpFlag = res.pump.outOfRange ? 'fail' : (res.pump.tail ? 'tight' : 'ok');
+        let html = '<details class="hc-card whc" onclick="event.stopPropagation()"' + (this._whcOpen.card ? ' open' : '')
+            + ' ontoggle="if(event.target===this)app._whcOpen.card=this.open"><summary class="hc-head"><div class="hc-head-t"><div class="hc-title">Гидравлика водоснабжения: от насоса до прибора</div></div>'
+            + '<span class="hc-pill hc-' + st + '">' + PILL[res.verdict] + '</span><span class="hc-fold"></span></summary><div class="hc-body">';
+        const w = res.worst;
+        if (w) html += '<div class="hc-cap">Меньше всего давления у прибора «' + esc(w.title) + '» (' + esc(w.zone) + ', ' + (w.line === 'hot' ? 'ГВС' : 'ХВС')
+            + '): ' + f1(w.have) + ' м при минимуме ' + f1(w.need) + ' м.</div>';
+        html += '<div class="hc-rows">';
+        html += row('pump', pumpFlag, 'Насос', res.pump.name.replace(/^Насос скважинный /, ''), f1(res.pump.head) + ' м на ' + f2(res.pump.Q) + ' м³/ч',
+            '<div class="hc-facts"><div><span>Расход</span><b>' + f2(res.pump.Q) + ' м³/ч</b></div><div><span>Напор на расходе</span><b>' + f1(res.pump.head) + ' м</b></div>'
+            + '<div><span>Напор без расхода</span><b>' + f1(res.pump.headMax) + ' м</b></div></div>'
+            + '<div class="hc-det-p">Предельный расход насоса ' + f1(res.pump.qMax) + ' м³/ч. Напор взят с паспортной характеристики, линейно между точками.</div>');
+        html += row('well', wellFlag, 'Скважина и трасса', res.data.wellPipe.od + '×' + res.data.wellPipe.wall + ', ' + res.data.depth + ' + ' + res.data.dist + ' м',
+            'потери ' + f1(sum('well')) + ' м', ladder('well'));
+        html += row('node', nodeFlag, 'Узел ввода и коллектор', res.data.node.absent ? 'узла в смете нет' : (res.data.control === 'pressure' ? 'автоматика по давлению' : 'автоматика по протоку'),
+            'потери ' + f1(sum('node')) + ' м', ladder('node'));
+        // Приборы: сворачиваем по зонам, внутри — таблица
+        const byZone = {};
+        res.fixtures.forEach(r => { (byZone[r.zone] = byZone[r.zone] || []).push(r); });
+        let ftab = '<table class="whc-t"><tr><th>Прибор</th><th>Линия</th><th>Скорость, м/с</th><th>Напор у прибора, м</th><th>Нужно, м</th><th></th></tr>';
+        Object.keys(byZone).forEach(z => {
+            ftab += '<tr class="whc-z"><td colspan="6">' + esc(z) + '</td></tr>';
+            byZone[z].forEach(r => { ftab += '<tr class="whc-' + r.verdict + '"><td>' + esc(r.title) + (r.count > 1 ? ' ×' + r.count : '') + '</td><td>' + (r.line === 'hot' ? 'ГВС' : 'ХВС')
+                + '</td><td>' + f2(r.v) + '</td><td>' + f1(r.have) + '</td><td>' + f1(r.need) + '</td><td>' + ICON[r.verdict] + '</td></tr>'; });
+        });
+        ftab += '</table>';
+        const worstRow = w ? w : null;
+        html += row('fix', res.counts.fail ? 'fail' : (res.counts.tight ? 'tight' : 'ok'), 'Приборы', res.fixtures.length + ' линий',
+            worstRow ? 'худший ' + f1(worstRow.have) + ' м' : '—', ftab
+            + '<div class="hc-det-p">Напор у прибора — после подъёма на этаж, трубы ' + esc(res.data.branch.label) + ' от коллектора и фитингов линии. Минимум у прибора — ориентир практики, паспорт смесителя или машины может требовать больше.</div>');
+        const sv = res.static;
+        html += row('static', sv.verdict, 'Давление при закрытых кранах', sv.capped ? 'держит ' + sv.capNote : 'ограничителя нет', f1(sv.bar) + ' бар',
+            '<div class="hc-facts"><div><span>Напор насоса без расхода</span><b>' + f1(res.pump.headMax) + ' м</b></div><div><span>Минус подъём</span><b>' + res.data.depth + ' м</b></div><div><span>У прибора</span><b>' + f1(sv.bar) + ' бар</b></div></div>'
+            + '<div class="hc-det-p">Предохранительный клапан бойлера — на 6 бар; выше 5 бар гибкие подводки и картриджи работают на пределе.</div>');
+        html += '</div>';
+        res.flags.forEach(fl => { html += '<div class="hc-flag">' + esc(fl.text) + '</div>'; });
+        if (res.scenarios.peak && res.peakWorst) {
+            const pk = res.scenarios.peak, pw = res.peakWorst;
+            html += '<div class="hc-det-p">Если включить все приборы сразу (' + f2(pk.Q) + ' м³/ч): насос даёт ' + f1(pk.trunk.pumpHead) + ' м, у «' + esc(pw.title) + '» (' + esc(pw.zone) + ') остаётся ' + f1(pw.have) + ' м при минимуме ' + f1(pw.need) + ' м'
+                + (res.peakVerdict === 'ok' ? ' — хватает.' : ' — на пике просядет. Одновременность 100 % в доме не бывает, это справка.') + '</div>';
+        }
+        (res.advice || []).forEach(a => { html += '<div class="' + (res.verdict === 'ok' ? 'hc-det-p' : 'hc-advice') + '">' + esc(a.text) + '</div>'; });
+        html += '<div class="hc-note">Напор в метрах водяного столба (1 бар ≈ 10 м). Потери — по Дарси; местные сопротивления и Kv узла — ориентиры практики, не норма. Не проверено: дебит скважины, динамический уровень, объём гидроаккумулятора и частота пусков.</div>';
+        return html + '</div></details>';
+    },
+
     // Плашка раздела «6. Узел ввода ХВС»: хватает ли ввода 3/4" на расчётный расход.
     // Молчит, пока расход укладывается: плашка «всё в порядке» только шумит.
     waterNodeFlowNote: function () {
@@ -90424,6 +90586,10 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // ХВС, ГВС и рециркуляцию) и сколько смесителей с горячей водой.
         this._waterCollGroups = 0;
         this._waterHotFixtures = 0;
+        // Выбор, на котором собрана смета: из него проверка гидравлики воды (water_hydro.js)
+        // берёт насос и трубу, а не пересчитывает их заново и разойтись со сметой не может.
+        this._wellSel = null;
+        this._waterPipeSel = null;
         if (this.state.water && this.state.waterZones.length > 0) {
             let mainTitle = "5. Внутреннее водоснабжение";
             let collType = this.state.waterManifoldType || 'standard';
@@ -90455,6 +90621,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 waterPipe = { ...catalog.water_pipes[0], originalId: catalog.water_pipes[0].id + "_water" };
                 waterPipe.alts = [catalog.water_pipes_mp[0]];
             }
+            this._waterPipeSel = waterPipe;
             let waterEurocone = (this.state.waterPipeMaterial === 'metal_plastic') ? catalog.parts[3] : catalog.water_parts.find(x => x.id === "SFC-0020-001622");
             // #10: металлопластик монтируется на ПРЕСС-фитинги (SFP-), а не на аксиальные (SFA-).
             // Водорозетка для пресса — угольник настенный с креплением удлиненный 1/2"×16;
@@ -91355,6 +91522,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             }
             pump = { ...pump, originalId: 'well_pump_auto', alts: catalog.well_pumps };
             const pumpHead = pumpHeadAt(pump, q);
+            this._wellSel = { pump: pump, q: q, h: h, floorsH: floorsH };
 
             // Кабель насоса: от насоса до верха скважины, трасса до дома и ~5 м до
             // автоматики. Длина и сечение штатного кабеля — из паспорта (cable, cable_mm2).
@@ -91402,6 +91570,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     `<div class="tip-p">Автоматика по протоку выключает насос, когда вода перестала течь, а не по давлению. Напор насоса без расхода — ${_h0} м (паспорт), минус подъём ${parseInt(this.state.wellDepth) + floorsH} м — это около ${_pShut.toFixed(1).replace('.', ',')} бар. Предохранительный клапан бойлера рассчитан на 6 бар и будет сбрасывать воду, смесители и гибкие подводки работают на пределе.</div>` +
                     `<div class="tip-p"><b>Что делать:</b> включить редуктор давления в узле ввода или выбрать автоматику по давлению (SIRIO, BRIO-TOP, EPC-12).</div>`));
             }
+            // Гидравлика пути воды от насоса до приборов (water_hydro.js): раскрывающаяся карточка, смету не меняет
+            try { wellWarns.push(this.waterHydroHtml(this.waterHydroCheck())); }
+            catch (e) { console.warn('[гидравлика воды] проверка не посчиталась:', e); }
             const wellWarn = wellWarns.join('') || null;
 
             const cableLine = cableHave > 0

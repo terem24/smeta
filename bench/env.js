@@ -157,6 +157,8 @@ const load = (file, expose) => {
 load('boiler_wall.js', '');
 // Сводная проверка гидравлики: ставит window.hydroCheck, её зовёт app.syncHydroCheck
 load('hydro_check.js', '');
+// Проверка гидравлики водоснабжения: ставит window.waterHydro, её зовёт app.waterHydroCheck
+load('water_hydro.js', '');
 load('catalog.js', 'globalThis.__catalog = catalog;');
 load('dist_prices.js', 'globalThis.DIST_PRICES = DIST_PRICES;');
 load('app.js', 'globalThis.__app = app;');

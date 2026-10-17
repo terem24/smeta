@@ -144,3 +144,18 @@
 .hc-preview-t { font-weight: 700; margin-bottom: 4px; }
 .hc-pv-item { padding: 5px 0; border-top: 1px solid var(--border, #E5E7EB); }
 .hc-pv-item:first-of-type { border-top: 0; }
+
+/* Гидравлика водоснабжения (app.waterHydroHtml, water_hydro.js): карточка под насосом скважины, свёрнута по умолчанию */
+.whc { margin: 8px 0 2px; text-align: left; }
+.whc > summary.hc-head { list-style: none; cursor: pointer; margin-bottom: 0; }
+.whc > summary.hc-head::-webkit-details-marker { display: none; }
+.whc[open] > summary.hc-head { margin-bottom: 6px; }
+.whc[open] > summary .hc-fold { transform: rotate(45deg); margin-top: -3px; }
+.whc-t { width: 100%; border-collapse: collapse; font-size: 11px; margin: 4px 0; }
+.whc-t th { text-align: left; font-weight: 600; color: var(--text-sec, #6B7280); padding: 2px 6px 2px 0; }
+.whc-t td { padding: 2px 6px 2px 0; border-top: 1px solid var(--border, #E5E7EB); }
+.whc-t td i { font-style: normal; color: var(--text-sec, #6B7280); margin-left: 4px; }
+.whc-t tr.whc-z td { font-weight: 600; background: rgba(127, 127, 127, .08); }
+.whc-t tr.whc-tight td:last-child { color: var(--c-warn, #B45309); }
+.whc-t tr.whc-fail td:last-child { color: var(--c-bad, #DC2626); }
+.whc-t tr.whc-ok td:last-child { color: var(--c-ok, #059669); }
