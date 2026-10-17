@@ -49,7 +49,9 @@
     bath:   { title: 'Ванна',               q: 0.40, need: 5,  mixer: true },
     wash:   { title: 'Стиральная машина',   q: 0.20, need: 5 },
     dish:   { title: 'Посудомоечная машина', q: 0.20, need: 5 },
-    bidet:  { title: 'Биде',                q: 0.15, need: 3,  mixer: true }
+    bidet:  { title: 'Биде',                q: 0.15, need: 3,  mixer: true },
+    // Уличный кран (полив): в зонах санузлов его нет, в расчётном расходе есть — шланг вечером забирает заметную долю
+    faucet: { title: 'Уличный кран',        q: 0.70, need: 3 }
   };
   var MIX_LINE = 0.6;           // доля полного расхода прибора на каждой из двух линий смесителя
 
@@ -130,6 +132,89 @@
       }
     }
     return 0;
+  }
+
+  /* ---- Расчётный расход: вероятностный метод ----
+   *
+   * Сумма расходов всех приборов — это «все краны открыты сразу», в доме так не бывает. А «сумма с
+   * поправкой» не знает ни числа жильцов, ни того, чем заняты утром и вечером. Здесь расход берётся
+   * как в теории очередей: каждый прибор в расчётный час открыт с вероятностью p (доля времени), приборы
+   * независимы, суммарный расход — случайная величина; расчётный расход — такой, который за час
+   * превышается не дольше доли 1 − CONF (0,5 % ≈ 18 секунд из часа).
+   *
+   * 1. Занятость прибора. Для вида прибора задано, сколько секунд за расчётный час он открыт: на одного
+   *    жильца (унитаз, умывальник, душ, ванна) или на дом (машины). Секунды дома / 3600 — это среднее
+   *    число одновременно открытых приборов этого вида; делим его на число приборов вида, получаем p
+   *    каждого (не выше P_CAP: один душ не может быть занят весь час).
+   * 2. Два пика. Утром (сборы: умывальник, душ, унитаз) и вечером (ванна, готовка и посуда, стирка,
+   *    посудомойка) занятость разная. Считаем оба, берём больший: пики не складываются.
+   * 3. Распределение. Расход каждого прибора — вес q (м³/ч), он «включён» с вероятностью p. Сумма по
+   *    всем приборам — точная свёртка биномиальных величин (динамическое программирование по сетке
+   *    0,01 м³/ч), без нормального приближения: при пяти-десяти приборах оно ошибается в хвосте.
+   * 4. Расчётный расход — квантиль CONF этого распределения. Не больше суммы всех приборов.
+   *
+   * Горячая линия считается тем же способом по тем же включениям: вес горячей части смесителя —
+   * MIX_LINE · q, остальным приборам горячая не нужна.
+   *
+   * Числа занятости и CONF — ориентиры практики (не таблица СП): правятся в PEAK одним списком.
+   * Результат согласован с физикой: у одного прибора расчётный расход — его полный расход, а при
+   * большом числе приборов он стремится к сумме × средней занятости, а не к сумме.
+   */
+  var PEAK = {
+    conf: 0.995,
+    pCap: 0.6,
+    grid: 0.01,
+    // сек за расчётный час: r — на одного жильца, h — на дом
+    profiles: {
+      morning: { title: 'Утренний пик', toilet: { r: 60 }, basin: { r: 60 }, bidet: { r: 20 }, shower: { r: 250 }, bath: { r: 180 }, wash: { h: 70 },  dish: { h: 70 },  faucet: { h: 300 } },
+      evening: { title: 'Вечерний пик', toilet: { r: 60 }, basin: { r: 90 }, bidet: { r: 20 }, shower: { r: 170 }, bath: { r: 300 }, wash: { h: 170 }, dish: { h: 170 }, faucet: { h: 600 } }
+    }
+  };
+
+  // counts: { toilet: 3, basin: 4, ... } — приборы по видам; residents — число жильцов; hotCounts — приборы с горячей линией (по видам)
+  function peakFlow(counts, residents, hotCounts, opts) {
+    var conf = (opts && opts.conf) || PEAK.conf;
+    var N = Math.max(1, residents || 1);
+    var grid = PEAK.grid;
+    var types = Object.keys(FIXTURES).filter(function (t) { return (counts[t] || 0) > 0; });
+    var sum = 0;
+    types.forEach(function (t) { sum += FIXTURES[t].q * counts[t]; });
+    var out = { sum: sum, design: 0, hot: 0, scenarios: [], conf: conf, residents: N };
+    if (!types.length) return out;
+
+    Object.keys(PEAK.profiles).forEach(function (key) {
+      var prof = PEAK.profiles[key];
+      var maxUnits = Math.round(sum / grid) + 2;
+      var dist = new Array(maxUnits + 1), hdist = new Array(maxUnits + 1);
+      for (var i = 0; i <= maxUnits; i++) { dist[i] = 0; hdist[i] = 0; }
+      dist[0] = 1; hdist[0] = 1;
+      var mean = 0;
+      types.forEach(function (t) {
+        var pr = prof[t] || { r: 0 };
+        var secs = (pr.r || 0) * N + (pr.h || 0);
+        var n = counts[t];
+        var p = Math.min(PEAK.pCap, secs / 3600 / n);
+        if (!(p > 0)) return;
+        var w = Math.max(1, Math.round(FIXTURES[t].q / grid));
+        var hotN = (hotCounts && hotCounts[t]) || 0;
+        var wh = Math.max(0, Math.round(FIXTURES[t].q * MIX_LINE / grid));
+        mean += p * n * FIXTURES[t].q;
+        for (var k = 0; k < n; k++) {
+          // один прибор: сдвиг распределения на вес с вероятностью p
+          for (var j = maxUnits; j >= 0; j--) dist[j] = dist[j] * (1 - p) + (j >= w ? dist[j - w] * p : 0);
+          if (k < hotN) for (var j2 = maxUnits; j2 >= 0; j2--) hdist[j2] = hdist[j2] * (1 - p) + (j2 >= wh ? hdist[j2 - wh] * p : 0);
+        }
+      });
+      var quant = function (d) {
+        var c = 0;
+        for (var u = 0; u <= maxUnits; u++) { c += d[u]; if (c >= conf) return u * grid; }
+        return maxUnits * grid;
+      };
+      out.scenarios.push({ id: key, title: prof.title, Q: Math.min(sum, quant(dist)), Qhot: quant(hdist), mean: mean });
+    });
+    var best = out.scenarios.reduce(function (a, b) { return b.Q > a.Q ? b : a; });
+    out.design = best.Q; out.hot = Math.min(best.Qhot, best.Q); out.peakId = best.id;
+    return out;
   }
 
   function fmt(v, n) { return (v == null || !isFinite(v)) ? '—' : v.toFixed(n == null ? 1 : n).replace('.', ','); }
@@ -248,10 +333,10 @@
       return { H: H, v: bl.v, len: len, parts: parts };
     }
 
-    function scenario(Q, label) {
+    function scenario(Q, label, QhotGiven) {
       var t = trunk(Q);
       var hotShare = sumQ > 0 ? Math.min(1, sumHot / sumQ) : 0;
-      var Qhot = Q * hotShare;
+      var Qhot = QhotGiven != null ? QhotGiven : Q * hotShare;
       var rows = [];
       (d.zones || []).forEach(function (z) {
         (z.points || []).forEach(function (p) {
@@ -275,7 +360,7 @@
       return { label: label, Q: Q, trunk: t, hotQ: Qhot, rows: rows };
     }
 
-    var design = scenario(d.flows.design, 'расчётный расход');
+    var design = scenario(d.flows.design, 'расчётный расход', d.flows.hot);
     var peak = (d.flows.peak > d.flows.design * 1.02) ? scenario(d.flows.peak, 'все приборы сразу') : null;
 
     /* ---- давление при закрытых кранах ---- */
@@ -389,7 +474,7 @@
   }
 
   var api = {
-    evaluate: evaluate, verdictOf: verdictOf, pipeLoss: pipeLoss, localLoss: localLoss, kvLoss: kvLoss, headAt: headAt,
+    evaluate: evaluate, peakFlow: peakFlow, PEAK: PEAK, verdictOf: verdictOf, pipeLoss: pipeLoss, localLoss: localLoss, kvLoss: kvLoss, headAt: headAt,
     velocity: velocity, kvAt: kvAt, stepLoss: stepLoss, D34: D34, FIXTURES: FIXTURES, LOCAL: LOCAL, KV: KV, V_LIMIT: V_LIMIT, RESERVE: RESERVE, SET_BAR: SET_BAR,
     HEAD_BAR: HEAD_BAR, MIX_LINE: MIX_LINE
   };

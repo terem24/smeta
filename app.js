@@ -49796,19 +49796,44 @@ const app = {
     WATER_NODE_FLOW_FINE: 2.4,
     WATER_NODE_FLOW_COARSE: 3.84,
 
-    // Расчётный расход воды на вводе, м³/ч: сумма по приборам с теми же весами,
-    // что у подбора скважинного насоса (раздел 7), и тем же сглаживанием
-    // одновременности выше 4,5 м³/ч. Без заданных санузлов — 0 (проверять нечего).
-    waterNodeFlow: function () {
+    // Расчётный расход воды на вводе и у насоса, м³/ч — вероятностный метод (water_hydro.js, peakFlow):
+    // приборы заняты долю расчётного часа, считаем утренний и вечерний пик и берём расход, который
+    // превышается не дольше 0,5 % часа. Приборы — из зон водоснабжения плюс уличные краны узла ввода;
+    // жильцы — state.res (нет — по площади). Старый способ (сумма весов приборов со сглаживанием выше 4,5 м³/ч)
+    // остаётся по state.waterFlowMethod === 'sum': им считали все сметы до перехода.
+    waterPeakFlow: function () {
+        const wh = (typeof window !== 'undefined') ? window.waterHydro : null;
         const zones = this.state.waterZones || [];
-        let q = 0;
+        const counts = {}, hot = {};
+        let any = false;
         zones.forEach(z => {
             const f = (z && z.fixtures) || {};
-            q += (f.toilet || 0) * 0.1 + (f.basin || 0) * 0.15 + (f.shower || 0) * 0.3 + (f.bath || 0) * 0.4 +
-                (f.wash || 0) * 0.2 + (f.dish || 0) * 0.2 + (f.bidet || 0) * 0.15;
+            const th = this.toiletHotOf(f);
+            ['toilet', 'basin', 'shower', 'bath', 'wash', 'dish', 'bidet'].forEach(k => {
+                const n = f[k] || 0;
+                if (n) { counts[k] = (counts[k] || 0) + n; any = true; }
+            });
+            if (f.basin) hot.basin = (hot.basin || 0) + f.basin;
+            if (f.shower) hot.shower = (hot.shower || 0) + f.shower;
+            if (f.bath) hot.bath = (hot.bath || 0) + f.bath;
+            if (f.bidet) hot.bidet = (hot.bidet || 0) + f.bidet;
+            if (th) hot.toilet = (hot.toilet || 0) + th;
         });
-        if (q > 4.5) q = 4.5 + (q - 4.5) * 0.5;
-        return q;
+        if (!any) return { sum: 0, design: 0, hot: 0, scenarios: [], method: 'none', residents: 0 };
+        const taps = (!this.isFlat() && this.state.waterInput) ? (parseInt(this.state.outdoorFaucet) || 0) : 0;
+        if (taps > 0) counts.faucet = taps;
+        const residents = Math.max(1, parseInt(this.state.res) || this.flatResFromArea());
+        let sumOld = 0;
+        Object.keys(counts).forEach(k => { if (k !== 'faucet') sumOld += counts[k] * wh.FIXTURES[k].q; });
+        const oldQ = sumOld > 4.5 ? 4.5 + (sumOld - 4.5) * 0.5 : sumOld;
+        if (this.state.waterFlowMethod === 'sum' || !wh) return { sum: sumOld, design: oldQ, hot: oldQ * 0.4, scenarios: [], method: 'sum', residents: residents, old: oldQ };
+        const r = wh.peakFlow(counts, residents, hot);
+        r.method = 'prob'; r.old = oldQ;
+        return r;
+    },
+
+    waterNodeFlow: function () {
+        return this.waterPeakFlow().design;
     },
 
     // Потери напора в напорной трубе от насоса до дома, м, и скорость воды в ней.
@@ -49928,7 +49953,8 @@ const app = {
             depth: mains ? 0 : (parseInt(s.wellDepth, 10) || 0), dist: mains ? 0 : (parseInt(s.wellDist, 10) || 0), inlet: 5,
             floorsH: mains ? floorsH : sel.floorsH,
             wellPipe: wp,
-            flows: { design: mains ? Math.max(0.1, this.waterNodeFlow()) : sel.q, peak: peak },
+            flows: { design: mains ? Math.max(0.1, this.waterNodeFlow()) : sel.q, hot: (mains ? this.waterPeakFlow() : (sel.peak || this.waterPeakFlow())).hot || null, peak: peak },
+            flowInfo: mains ? this.waterPeakFlow() : (sel.peak || this.waterPeakFlow()),
             control: pressureCtl && !mains ? 'pressure' : 'flow',
             collector: ns.collector,
             node: {
@@ -50028,6 +50054,15 @@ const app = {
         });
 
         html += '<div class="hc-rows">';
+        const fi = res.data.flowInfo;
+        if (fi && fi.scenarios && fi.scenarios.length) {
+            html += row('flow', 'ok', 'Расчётный расход', fi.residents + ' ' + (fi.residents === 1 ? 'жилец' : (fi.residents < 5 ? 'жильца' : 'жильцов')) + ', вероятностный метод', f2(res.pump.Q) + ' м³/ч',
+                '<table class="whc-t"><tr><th>Пик</th><th>Расчётный расход, м³/ч</th><th>в т. ч. ГВС, м³/ч</th><th>Занято в среднем, м³/ч</th></tr>'
+                + fi.scenarios.map(x => '<tr' + (x.id === fi.peakId ? ' class="whc-z"' : '') + '><td>' + esc(x.title) + '</td><td>' + f2(x.Q) + '</td><td>' + f2(x.Qhot) + '</td><td>' + f2(x.mean) + '</td></tr>').join('') + '</table>'
+                + '<div class="hc-det-p">Сумма расходов всех приборов — ' + f2(fi.sum) + ' м³/ч: так бывает, только если открыто всё сразу. Расчётный расход — тот, что за расчётный час превышается не дольше ' + Math.round((1 - fi.conf) * 1000) / 10 + ' % времени (около ' + Math.round((1 - fi.conf) * 3600) + ' с): каждый прибор занят долю часа, утром — умывальник, душ, унитаз, вечером — ванна, кухня, стирка, полив; суммарный расход считается точно по всем сочетаниям включённых приборов. Берётся больший из двух пиков'
+                + (res.pump.Q > fi.design + 1e-9 ? '; насос не берём меньше 1,5 м³/ч (пуски, полив)' : '') + '. Доли занятости — ориентиры практики, не таблица СП.'
+                + (fi.old != null ? ' По прежнему способу (сумма со сглаживанием) было бы ' + f2(fi.old) + ' м³/ч.' : '') + '</div>');
+        }
         if (res.pump.mains) html += row('pump', 'ok', 'Городская сеть', 'давление задано вручную', f1(res.pump.head / 10) + ' бар на ' + f2(res.pump.Q) + ' м³/ч',
             '<div class="hc-det-p">Давление в сети — как в поле «Давление в сети» блока «Узел ввода». Меряйте его при включённом кране: в покое оно выше, чем под расходом.</div>');
         else html += row('pump', pumpFlag, 'Насос', res.pump.name.replace(/^Насос скважинный /, ''), f1(res.pump.head) + ' м на ' + f2(res.pump.Q) + ' м³/ч',
@@ -50146,7 +50181,7 @@ const app = {
         const fmt = v => v.toFixed(2).replace('.', ',');
         return this.noteBox('warn', 'Узел ввода 3/4″ не тянет расход дома.',
             `Расчёт ${fmt(q)} м³/ч, узел ${fine ? 'с колбой тонкой очистки' : 'без тонкой очистки'} — до ${fmt(lim)} м³/ч.`,
-            `<div class="tip-p"><b>Расчёт:</b> сумма по приборам из раздела водоснабжения (унитаз 0,1, умывальник 0,15, душ 0,3, ванна 0,4 м³/ч и т. д.) = ${fmt(q)} м³/ч.</div>` +
+            `<div class="tip-p"><b>Расчёт:</b> вероятностный — приборы заняты долю расчётного часа, считаются утренний и вечерний пик, берётся расход, который превышается не дольше 0,5 % часа: ${fmt(q)} м³/ч. Метод описан в карточке «Проверка водоснабжения».</div>` +
             `<div class="tip-p"><b>Предел:</b> ${fmt(lim)} м³/ч — ориентир производителя сборных узлов ввода на 3/4″ (${fine ? 'с картриджем тонкой очистки 10 мкм' : 'с одним фильтром грубой очистки'}), в СП такой цифры нет. Скорость воды при этом в трубе DN20 около ${fmt(lim / 3600 / (Math.PI * 0.01 * 0.01))} м/с.</div>` +
             `<div class="tip-p"><b>Что делать:</b> ввод и коллектор на 1″ (в смете останется 3/4″, пересчитайте позиции), либо вторую колбу параллельно, либо считать узел отдельно под ваш расход. На коротких пиках дом переживёт — но душ и стиральная одновременно дадут просадку.</div>`);
     },
@@ -91628,13 +91663,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         currentSectionTitle = "7. Внешнее водоснабжение";
         if (this.state.well) {
             let grpWell = "7. Внешнее водоснабжение";
-            let q = 0;
-            if (this.state.waterZones && this.state.waterZones.length > 0) {
-                this.state.waterZones.forEach(z => {
-                    q += (z.fixtures.toilet * 0.1) + (z.fixtures.basin * 0.15) + (z.fixtures.shower * 0.3) + ((z.fixtures.bath || 0) * 0.4) + (z.fixtures.wash * 0.2) + (z.fixtures.dish * 0.2) + ((z.fixtures.bidet || 0) * 0.15);
-                });
-            }
-            if (q > 4.5) q = 4.5 + (q - 4.5) * 0.5;
+            // Расход подбора — вероятностный (waterPeakFlow); меньше 1,5 м³/ч насос не берём: полив и пуски
+            const _peak = this.waterPeakFlow();
+            let q = _peak.design;
             if (q < 1.5) q = 1.5;
 
             let floorsH = this.state.floors === 2 ? 3 : 0;
@@ -91681,7 +91712,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             }
             pump = { ...pump, originalId: 'well_pump_auto', alts: catalog.well_pumps };
             const pumpHead = pumpHeadAt(pump, q);
-            this._wellSel = { pump: pump, q: q, h: h, floorsH: floorsH };
+            this._wellSel = { pump: pump, q: q, h: h, floorsH: floorsH, peak: _peak };
 
             // Кабель насоса: от насоса до верха скважины, трасса до дома и ~5 м до
             // автоматики. Длина и сечение штатного кабеля — из паспорта (cable, cable_mm2).

@@ -131,6 +131,53 @@ console.log('=== Физика модуля ===');
 }
 
 // ---------------------------------------------------------------------------
+// Вероятностный расход (peakFlow)
+// ---------------------------------------------------------------------------
+console.log('\n=== Вероятностный расход ===');
+{
+    const hot0 = {};
+    // 1. Один прибор: расчётный расход — его полный расход (занят с вероятностью p < 1 − conf?) — проверяем границы
+    const one = wh.peakFlow({ shower: 1 }, 3, { shower: 1 });
+    if (!(one.design > 0 && one.design <= wh.FIXTURES.shower.q + 1e-9)) fail('один душ: расчётный расход ' + one.design + ' вне (0; q]');
+    // 2. Не больше суммы всех приборов, не меньше расхода самого большого прибора, когда он вообще бывает занят
+    const c = { toilet: 3, basin: 4, shower: 2, bath: 1, wash: 1, dish: 1 };
+    const sum = wh.peakFlow(c, 4, {}).sum;
+    // 3. Монотонность по жильцам и вероятностей: больше людей — не меньше расход
+    let prev = 0;
+    [1, 2, 3, 4, 6, 8, 10].forEach(n => {
+        const r = wh.peakFlow(c, n, {});
+        if (r.design > sum + 1e-9) fail('расчётный расход ' + r.design + ' больше суммы приборов ' + sum);
+        if (r.design + 1e-9 < prev) fail('жильцов ' + n + ': расчётный расход упал (' + r.design.toFixed(2) + ' < ' + prev.toFixed(2) + ')');
+        prev = r.design;
+    });
+    // 4. Больше приборов — не меньше расход
+    const more = wh.peakFlow({ ...c, shower: 4, basin: 6 }, 4, {});
+    if (more.design + 1e-9 < wh.peakFlow(c, 4, {}).design) fail('приборов стало больше, а расход меньше');
+    // 5. Монте-Карло: распределение суммарного расхода против прямой симуляции (сид фиксирован)
+    let seed = 12345; const rnd = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+    const counts = { toilet: 2, basin: 3, shower: 2, wash: 1 }, N = 4;
+    const r = wh.peakFlow(counts, N, hot0);
+    const prof = wh.PEAK.profiles[r.peakId];
+    const items = [];
+    Object.keys(counts).forEach(t => { const pr = prof[t]; const p = Math.min(wh.PEAK.pCap, (((pr.r || 0) * N + (pr.h || 0)) / 3600) / counts[t]); for (let i = 0; i < counts[t]; i++) items.push([wh.FIXTURES[t].q, p]); });
+    const draws = []; for (let i = 0; i < 400000; i++) { let q = 0; for (const [w, p] of items) if (rnd() < p) q += w; draws.push(q); }
+    draws.sort((a, b) => a - b);
+    const mc = draws[Math.floor(draws.length * wh.PEAK.conf)];
+    if (Math.abs(mc - r.design) > 0.06) fail('квантиль по свёртке ' + r.design.toFixed(2) + ' м³/ч, по Монте-Карло ' + mc.toFixed(2));
+    else console.log('  свёртка против Монте-Карло: ' + r.design.toFixed(2) + ' и ' + mc.toFixed(2) + ' м³/ч (квантиль ' + wh.PEAK.conf + ')');
+    // 6. Пик: вечером с ванной и стиркой не меньше утреннего без них — оба считаются, берётся больший
+    const sc = wh.peakFlow({ toilet: 1, basin: 2, bath: 1, wash: 1, dish: 1 }, 4, {});
+    if (sc.design !== Math.max.apply(null, sc.scenarios.map(x => x.Q))) fail('расчётный расход — не больший из двух пиков');
+    // 7. Таблица для отчёта: расход по числу жильцов и санузлов
+    console.log('  расчётный расход, м³/ч (сумма приборов → вероятностный):');
+    [[1, 1], [2, 2], [3, 3], [5, 4]].forEach(([baths, N]) => {
+        const f = { toilet: baths, basin: baths + 1, shower: Math.max(0, baths - 1), bath: 1, wash: 1, dish: 1 };
+        const q = wh.peakFlow(f, N, {});
+        console.log('    санузлов ' + baths + ', жильцов ' + N + ': ' + f2(q.sum) + ' → ' + f2(q.design) + ' (' + q.scenarios.map(x => x.title.split(' ')[0].toLowerCase() + ' ' + f2(x.Q)).join(', ') + ')');
+    });
+}
+
+// ---------------------------------------------------------------------------
 // Типовые объекты
 // ---------------------------------------------------------------------------
 OBJECTS.forEach(({ title, o }) => {
@@ -263,6 +310,7 @@ if (mode === 'sweep') {
     // собственному расчёту (красная плашка раздела 7), проверка лишь подтверждает; настоящая находка —
     // когда смета молчит, а у прибора давления нет.
     const cls = { warned: [], silentFail: [], silentTight: [] };
+    const cmp = { n: 0, changed: 0, dPrice: 0, up: 0, down: 0, qNew: 0, qOld: 0 };
     const t0 = Date.now();
     depths.forEach(depth => dists.forEach(dist => bathsL.forEach(baths => floorsL.forEach(floors => lineL.forEach(line => mats.forEach(mat => autos.forEach(auto => {
         const o = { ...base, floors, wellDepth: depth, wellDist: dist, waterPipeMaterial: mat, wellAutoType: auto, waterZones: house(baths, line) };
@@ -273,6 +321,16 @@ if (mode === 'sweep') {
         tot.n++;
         if (!r) { tot.nullRes++; fail(title + ': нет результата'); return; }
         checks(title, o, r);
+        // Тот же объект по прежнему способу (сумма со сглаживанием): как меняется насос и цена
+        {
+            const newPump = sel.pump, newQ = sel.q;
+            app.state.waterFlowMethod = 'sum'; app.render();
+            const oldSel = app._wellSel;
+            cmp.n++;
+            if (oldSel.pump.id !== newPump.id) { cmp.changed++; cmp.dPrice += (newPump.price || 0) - (oldSel.pump.price || 0); if (newPump.price > oldSel.pump.price) cmp.up++; if (newPump.price < oldSel.pump.price) cmp.down++; }
+            cmp.qNew += newQ; cmp.qOld += oldSel.q;
+            app.state.waterFlowMethod = 'prob'; app.render();
+        }
         tot[r.verdict === 'unknown' ? 'ok' : r.verdict]++;
         if (r.counts.fail) tot.byFix++;
         if (r.static.verdict === 'fail') tot.byStatic++;
@@ -295,6 +353,7 @@ if (mode === 'sweep') {
     console.log('  проверка КРАСНАЯ, а смета молчит: ' + cls.silentFail.length);
     console.log('  проверка жёлтая («впритык» у прибора), смета молчит: ' + cls.silentTight.length);
     const show = (list, n) => list.slice(0, n).forEach(m => console.log('    · ' + m.title + ' → ' + m.pump.replace('Насос скважинный ', '') + '; ' + (m.worst ? m.worst.zone + '/' + m.worst.title + ' ' + (m.worst.line === 'hot' ? 'ГВС' : 'ХВС') + ' ' + f1(m.worst.have) + '/' + f1(m.worst.need) + ' м (' + m.worst.verdict + ')' : '') + (m.flags ? ' [' + m.flags + ']' : '')));
+    console.log('  вероятностный расход против суммы со сглаживанием: средний расчётный расход ' + f2(cmp.qNew / cmp.n) + ' против ' + f2(cmp.qOld / cmp.n) + ' м³/ч; насос другой в ' + cmp.changed + ' из ' + cmp.n + ' (дешевле ' + cmp.down + ', дороже ' + cmp.up + '), суммарно ' + Math.round(cmp.dPrice).toLocaleString('ru-RU') + ' ₽');
     if (cls.silentFail.length) { console.log('  — красные при молчании сметы:'); show(cls.silentFail, 30); }
     if (cls.silentTight.length) { console.log('  — жёлтые при молчании сметы:'); show(cls.silentTight, 15); }
 }
