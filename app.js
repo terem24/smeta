@@ -60439,20 +60439,9 @@ const app = {
         let _pipeSysCtx = null;
         // Трубы лучей, ХВС и тёплого пола — выбор «типа трубы» со своей таблицей (customAlts ниже):
         // гидравлика магистрали к ним не относится, у них свои переключатели «Материал / Бренд».
-        const _pipeKindItem = /(_rad|_water|_ufh)$/.test(_origId0) || _origId0.startsWith('ufh_transit_f');
+        const _pipeKindItem = /(_rad|_water|_ufh)$/.test(_origId0) || _origId0.startsWith('ufh_transit_f') || _origId0.startsWith('tee_pipe_d');
         if (_isPipeSwap && !_pipeKindItem) {
             const _pKey = item.originalId || item.id || '';
-            if (!this._pipeSwap || this._pipeSwap.key !== _pKey) this._pipeSwap = { key: _pKey, fam: 'all', d: 'all', brand: 'all', fit: false };
-            const _ps = this._pipeSwap;
-            const _famName = { grey: 'Сшитый PE-Xa (серая)', mp: 'Металлопласт', stable: 'Стабильная PE-Xa/Al/PE-RT', ppr: 'Полипропилен PP-R / PP-RCT' };
-            const _fams = ['grey', 'mp', 'stable', 'ppr'].filter(f => alts.some(a => _pipeFamOf(a) === f));
-            const _ds = [...new Set(alts.map(_pipeDOf))].sort((a, b) => a - b);
-            const _chip = (on, fn, label) => `<span class="swap-chip${on ? ' on' : ''}" onclick="${fn}">${label}</span>`;
-            const _pRow = (lbl, chips) => `<div class="swap-frow"><span class="swap-flbl">${lbl}</span>${chips}</div>`;
-            const _famChips = _pRow('Материал:', _chip(_ps.fam === 'all', "app.setPipeSwapFilter('fam','all')", 'Все')
-                + _fams.map(f => _chip(_ps.fam === f, `app.setPipeSwapFilter('fam','${f}')`, _famName[f])).join(''));
-            const _dChips = _pRow('Диаметр:', _chip(_ps.d === 'all', "app.setPipeSwapFilter('d','all')", 'Все')
-                + _ds.map(d => _chip(String(_ps.d) === String(d), `app.setPipeSwapFilter('d','${d}')`, 'Ø' + d)).join(''));
             // Гидравлика каждого варианта — по тому же участку, который кладёт смета (this._radTrunk):
             // скорость и потери в трубе, а затем всё кольцо целиком — хватает ли насосу запаса.
             // Считаем по всему ряду, до фильтров: счётчик в плашке не должен зависеть от чипов.
@@ -60461,8 +60450,8 @@ const app = {
             const _totalW = _devs.reduce((a, d) => a + _wOf(d), 0);
             let _hyHtml = '';
             let _hyInfo = null;
-            if (_totalW > 0) {
-                if (/^(rad_trunk_pipe_d|riser_pipe_d)/.test(_pKey)) _pipeSysCtx = {};
+            if (_totalW > 0 && /^(rad_trunk_pipe_d|riser_pipe_d)/.test(_pKey)) {
+                _pipeSysCtx = {};
                 const _span = this._radTrunk || this.radTrunkSpan(_totalW / 1000);
                 const _br = Math.max(1, parseInt(this._radGroupsCount, 10) || 1);
                 const _flow = this.radFlowOf(_totalW) * (_span.share || 1) / _br;
@@ -60518,13 +60507,15 @@ const app = {
                     `Зелёная строка — все три в норме; жёлтая — работает, но впритык; красная — не рекомендуем, выбрать всё равно можно.</div>` +
                     `</div>`;
             }
-            const _psBrands = [...new Set(alts.map(a => a.brand).filter(Boolean))];
-            const _brChips = _psBrands.length > 1 ? _pRow('Бренд:', _chip(_ps.brand === 'all', "app.setPipeSwapFilter('brand','all')", 'Все')
-                + _psBrands.map(b => _chip(_ps.brand === b, `app.setPipeSwapFilter('brand','${b}')`, b)).join('')) : '';
-            const _fitChip = _chip(!!_ps.fit, `app.setPipeSwapFilter('fit',${!_ps.fit})`, '✓ Только подходящие');
-            alts = alts.filter(a => (_ps.fam === 'all' || _pipeFamOf(a) === _ps.fam) && (_ps.d === 'all' || String(_pipeDOf(a)) === String(_ps.d)) && (!_ps.brand || _ps.brand === 'all' || a.brand === _ps.brand)
-                && (!_ps.fit || !_pipeHy || (_pipeHy[_pipeFamOf(a) + '|' + _pipeDOf(a)] || {}).level === 'ok'));
-            _bpFilterHtml = `<div class="swap-filters">${_famChips}${_dChips}${_brChips}${_pipeHy ? _pRow('Гидравлика:', _fitChip) : ''}</div>` + _hyHtml;
+            {
+                const _pf = this.pipeSwapFilterBlock({
+                    key: _pKey, items: alts, famOf: _pipeFamOf, dOf: _pipeDOf, brandOf: a => this.pipeBrandOf(a),
+                    levelOf: _pipeHy ? (a => (_pipeHy[_pipeFamOf(a) + '|' + _pipeDOf(a)] || {}).level) : null,
+                    keep: a => a.id === item.id || (a.rommer && !Array.isArray(a.rommer) && a.rommer.id === item.id)
+                });
+                alts = _pf.items;
+                _bpFilterHtml = _pf.html + _hyHtml;
+            }
         }
 
         // Для бойлеров: показываем позиции по swap-фильтрам
@@ -61207,32 +61198,23 @@ const app = {
                     sysText: _delta(a.sys).replace(/<[^>]+>/g, '').replace(' к выбранной системе', ' к выбранной')
                 };
             });
-            // Те же переключатели, что у остальных таблиц замены трубы: материал, бренд и
-            // «только подходящие» (скорость в магистрали этой системы в норме). Диаметр — блок выше.
+            // Общий блок фильтров (см. pipeSwapFilterBlock). Диаметр магистрали — блок кнопок выше,
+            // «подходит» — скорость в магистрали этой системы в норме (0,4–1,0 м/с).
             {
-                const _bk = item.originalId || item.id || '';
-                if (!this._bpSwapF || this._bpSwapF.key !== _bk) this._bpSwapF = { key: _bk, fam: 'all', brand: 'all', fit: false };
-                const _f = this._bpSwapF;
                 const _famOf = a => ({ ss304: 'ss', ss316: 'ss', mp: 'mp', mp_r: 'mp', stable: 'stable', stable_r: 'stable', ppr: 'ppr' })[a.sys] || a.sys;
-                const _famName = { ss: 'Нержавейка', mp: 'Металлопласт', stable: 'Стабильная PE-Xa/Al/PE-RT', ppr: 'Полипропилен' };
-                const _fams = ['ss', 'mp', 'stable', 'ppr'].filter(f => customAlts.some(a => _famOf(a) === f));
-                const _brands = [...new Set(customAlts.map(a => a.brand).filter(Boolean))];
                 const _fitOf = a => {
-                    if (!this._bpLoad) return true;
+                    if (!this._bpLoad) return null;
                     const o = this.boilerMainOptions(this._bpLoad.gas, this._bpLoad.el, a.sys);
                     const cur = o.options.find(x => x.size === o.active);
-                    return !cur || cur.level === 'ok';
+                    return cur ? cur.level : null;
                 };
-                const _cc = (on, key, val, label) => `<span class="swap-chip${on ? ' on' : ''}" onclick="app.setBpSwapFilter('${key}','${val}')">${label}</span>`;
-                const _rw = (lbl, chips) => `<div class="swap-frow"><span class="swap-flbl">${lbl}</span>${chips}</div>`;
                 const _curSys = this.boilerPipeSystem();
-                customAlts = customAlts.filter(a => a.sys === _curSys
-                    || ((_f.fam === 'all' || _famOf(a) === _f.fam) && (_f.brand === 'all' || a.brand === _f.brand) && (!_f.fit || _fitOf(a))));
-                _bpFilterHtml += `<div class="swap-filters">`
-                    + (_fams.length > 1 ? _rw('Материал:', _cc(_f.fam === 'all', 'fam', 'all', 'Все') + _fams.map(x => _cc(_f.fam === x, 'fam', x, _famName[x])).join('')) : '')
-                    + (_brands.length > 1 ? _rw('Бренд:', _cc(_f.brand === 'all', 'brand', 'all', 'Все') + _brands.map(x => _cc(_f.brand === x, 'brand', x, x)).join('')) : '')
-                    + (this._bpLoad ? _rw('Гидравлика:', _cc(!!_f.fit, 'fit', String(!_f.fit), '✓ Только подходящие')) : '')
-                    + `</div>`;
+                const _bf = this.pipeSwapFilterBlock({
+                    key: item.originalId || item.id || '', items: customAlts, famOf: _famOf, brandOf: a => a.brand,
+                    levelOf: this._bpLoad ? _fitOf : null, keep: a => a.sys === _curSys
+                });
+                customAlts = _bf.items;
+                _bpFilterHtml += _bf.html;
             }
         }
         else if (item.originalId && this.isPprArticle(item.originalId)) {
@@ -62434,28 +62416,12 @@ const app = {
         } else if (_origId0.startsWith('tee_pipe_d')) {
             const _tpMatOf = (id) => (id || '').startsWith('SPM-0001-') ? 'mp' : ((id || '').startsWith('SPS-0002-') ? 'stable' : 'grey');
             const _tpDiamOf = (name) => { const m = (name || '').match(/(\d+)(?:[.,]\d+)?[xх]/i); return m ? m[1] : null; };
-            const _tpm = this.state.teePipeSwapMaterial || 'all';
-            const _tpd = this.state.teePipeSwapDiam || 'all';
-            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
-            const _diamsAvail = [...new Set(alts.filter(a => _tpm === 'all' || _tpMatOf(a.id) === _tpm).map(a => _tpDiamOf(a.name)).filter(Boolean))].sort((a, b) => +a - +b);
-            const _diamBtns = _diamsAvail.map(d => `<span onclick="app.setTeePipeSwapDiam('${d}')" ${_b(_tpd===d)}>${d} мм</span>`).join('');
-            _tankFiltersHtml =
-                `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
-                `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
-                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">Труба:</span>` +
-                `<span onclick="app.setTeePipeSwapMaterial('grey')" ${_b(_tpm==='grey')}>Сшитый полиэтилен</span>` +
-                `<span onclick="app.setTeePipeSwapMaterial('mp')" ${_b(_tpm==='mp')}>Металлопластик</span>` +
-                `<span onclick="app.setTeePipeSwapMaterial('stable')" ${_b(_tpm==='stable')}>Стабил</span>` +
-                `<span onclick="app.setTeePipeSwapMaterial('all')" ${_b(_tpm==='all')}>Все</span>` +
-                `</div>` +
-                `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
-                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">Диаметр:</span>` +
-                _diamBtns +
-                `<span onclick="app.setTeePipeSwapDiam('all')" ${_b(_tpd==='all')}>Все</span>` +
-                `</div>` +
-                `</div>`;
-            if (_tpm !== 'all') alts = alts.filter(a => _tpMatOf(a.id) === _tpm);
-            if (_tpd !== 'all') alts = alts.filter(a => _tpDiamOf(a.name) === _tpd);
+            const _tf = this.pipeSwapFilterBlock({
+                key: item.originalId || item.id || '', items: alts, famOf: a => _tpMatOf(a.id), dOf: a => { const d = _tpDiamOf(a.name); return d ? parseInt(d, 10) : null; },
+                brandOf: a => this.pipeBrandOf(a), keep: a => a.id === item.id
+            });
+            alts = _tf.items;
+            _tankFiltersHtml = _tf.html;
         } else if (_origId0 === 'install_kit' || _origId0 === 'flush_panel') {
             // Инсталляции и панели смыва РЕХАУ различаются формой клавиш и цветом, панели —
             // ещё и материалом. Кнопки собираем из того, что реально есть в списке (у панелей
@@ -62655,31 +62621,18 @@ const app = {
         const _pkHasHy = !!(customAlts && customAlts.length > 1 && customAlts.some(a => a.hy));
         if (_pkIsKind || _pkHasHy) {
             const _pkKey = item.originalId || item.id || '';
-            if (!this._pipeKindFilt || this._pipeKindFilt.key !== _pkKey) this._pipeKindFilt = { key: _pkKey, fam: 'all', brand: 'all', d: 'all', fit: false };
-            const _pf = this._pipeKindFilt;
             const _pkFam = a => (/mp|metal_plastic/.test(a.id) || /металлопласт/i.test(a.name || '')) ? 'mp'
-                : ((/stable/.test(a.id) || /стабильн|Al\/PE/i.test(a.name || '')) ? 'stable' : 'pex');
-            const _pkD = a => _pipeDOf(a);
-            const _pkFamName = { pex: 'Сшитый PE-Xa', mp: 'Металлопласт', stable: 'Стабильная PE-Xa/Al/PE-RT' };
-            const _pkFams = ['pex', 'mp', 'stable'].filter(f => customAlts.some(a => _pkFam(a) === f));
-            const _pkBrands = [...new Set(customAlts.map(a => a.brand).filter(Boolean))];
-            const _pkChip = (on, key, val, label) => `<span class="swap-chip${on ? ' on' : ''}" onclick="app.setPipeKindFilter('${key}','${val}')">${label}</span>`;
-            const _pkRow = (lbl, chips) => `<div class="swap-frow"><span class="swap-flbl">${lbl}</span>${chips}</div>`;
+                : ((/stable/.test(a.id) || /стабильн|Al\/PE/i.test(a.name || '')) ? 'stable' : 'grey');
             // Счётчик плашки — по всему ряду, до фильтров (как у магистрали)
             const _pkCnt = k => customAlts.filter(a => a.hy && a.hy.level === k).length;
             const _pkTotals = { ok: _pkCnt('ok'), warn: _pkCnt('warn'), bad: _pkCnt('bad') };
             const _pkActiveOf = a => a.pipeActive || a.isActive;
-            const _pkDs = [...new Set(customAlts.map(_pkD).filter(Boolean))].sort((a, b) => a - b);
-            customAlts = customAlts.filter(a => _pkActiveOf(a)
-                || ((_pf.fam === 'all' || _pkFam(a) === _pf.fam) && (_pf.brand === 'all' || a.brand === _pf.brand)
-                    && (_pf.d === 'all' || String(_pkD(a)) === String(_pf.d))));
-            if (_pkHasHy) customAlts = customAlts.filter(a => _pkActiveOf(a) || !_pf.fit || !a.hy || a.hy.level === 'ok');
-            _tankFiltersHtml += `<div class="swap-filters">`
-                + (_pkFams.length > 1 ? _pkRow('Материал:', _pkChip(_pf.fam === 'all', 'fam', 'all', 'Все') + _pkFams.map(f => _pkChip(_pf.fam === f, 'fam', f, _pkFamName[f])).join('')) : '')
-                + (_pkDs.length > 1 ? _pkRow('Диаметр:', _pkChip(_pf.d === 'all', 'd', 'all', 'Все') + _pkDs.map(d => _pkChip(String(_pf.d) === String(d), 'd', d, 'Ø' + d)).join('')) : '')
-                + (_pkBrands.length > 1 ? _pkRow('Бренд:', _pkChip(_pf.brand === 'all', 'brand', 'all', 'Все') + _pkBrands.map(b => _pkChip(_pf.brand === b, 'brand', b, b)).join('')) : '')
-                + (_pkHasHy ? _pkRow('Гидравлика:', _pkChip(!!_pf.fit, 'fit', String(!_pf.fit), '✓ Только подходящие')) : '')
-                + `</div>`
+            const _pkF = this.pipeSwapFilterBlock({
+                key: _pkKey, items: customAlts, famOf: _pkFam, dOf: _pipeDOf, brandOf: a => this.pipeBrandOf(a),
+                levelOf: _pkHasHy ? (a => a.hy && a.hy.level) : null, keep: _pkActiveOf
+            });
+            customAlts = _pkF.items;
+            _tankFiltersHtml += _pkF.html
                 + (_pkHasHy ? `<div class="swap-hy-box"><div class="t">Гидравлика: <span class="ok">подходят ${_pkTotals.ok}</span>, <span class="warn">с оговоркой ${_pkTotals.warn}</span>, <span class="bad">не рекомендуем ${_pkTotals.bad}</span>.</div>`
                     + `<div class="d">Зелёная строка — в норме; жёлтая — работает, но впритык или с последствиями (больше петель, шум); красная — не рекомендуем, выбрать всё равно можно.</div></div>` : '');
         }
@@ -64610,6 +64563,7 @@ const app = {
     },
     // ═══════════════════════════════════════════════════════════════
     closeSwapModal: function () {
+        this._pipeFilt = null;
         this._bpPreview = null;
         this._bpPreviewSize = null;
         let modal = document.getElementById('swap_modal_overlay');
@@ -72874,19 +72828,50 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         this.state.expTankConnFilter = val;
         if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
     },
-    setPipeKindFilter: function (key, val) {
-        if (!this._pipeKindFilt) return;
-        this._pipeKindFilt[key] = (key === 'fit') ? (val === true || val === 'true') : val;
-        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    /**
+     * Общий блок фильтров таблицы замены трубы — один на все таблицы (магистраль и стояк,
+     * лучи, ХВС, тёплый пол, транзит, тройниковая магистраль, обвязка котельной):
+     * Материал · Диаметр · Бренд · ✓ Только подходящие. Строка фильтра показывается, только
+     * если в ней есть из чего выбирать. Вызывающий передаёт то, что умеет определить:
+     *   key     — ключ таблицы, у всех блоков одной таблицы один и тот же: иначе блоки сбрасывают состояние друг друга;
+     *   items   — варианты до фильтра;
+     *   famOf / dOf / brandOf — материал (grey|mp|stable|ppr|ss), диаметр, бренд варианта;
+     *   levelOf — 'ok' | 'warn' | 'bad' по гидравлике (нет — нет и чипа «Только подходящие»);
+     *   keep    — варианты, которые остаются в списке при любом фильтре (выбранный в смете).
+     * Возвращает { html, items }.
+     */
+    /** Бренд варианта трубы: из позиции, иначе по артикулу (R… — ROMMER, остальное — STOUT). */
+    pipeBrandOf: function (a) {
+        if (a.brand) return a.brand;
+        return this.brandOfSwapId(a.id) || (/^R/.test(String(a.id || '')) ? 'ROMMER' : 'STOUT');
     },
-    setBpSwapFilter: function (key, val) {
-        if (!this._bpSwapF) return;
-        this._bpSwapF[key] = (key === 'fit') ? (val === true || val === 'true') : val;
-        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    PIPE_FAM_NAME: { grey: 'Сшитый PE-Xa', mp: 'Металлопласт', stable: 'Стабильная PE-Xa/Al/PE-RT', ppr: 'Полипропилен', ss: 'Нержавейка' },
+    pipeSwapFilterBlock: function (cfg) {
+        if (!this._pipeFilt || this._pipeFilt.key !== cfg.key) this._pipeFilt = { key: cfg.key, fam: 'all', d: 'all', brand: 'all', fit: false };
+        const f = this._pipeFilt, items = cfg.items || [];
+        const keep = cfg.keep || (() => false);
+        const fams = ['grey', 'mp', 'stable', 'ppr', 'ss'].filter(x => cfg.famOf && items.some(a => cfg.famOf(a) === x));
+        const ds = cfg.dOf ? [...new Set(items.map(cfg.dOf).filter(Boolean))].sort((x, y) => x - y) : [];
+        const brands = cfg.brandOf ? [...new Set(items.map(cfg.brandOf).filter(Boolean))] : [];
+        const chip = (on, k, v, label) => `<span class="swap-chip${on ? ' on' : ''}" onclick="app.setPipeFilt('${k}','${v}')">${label}</span>`;
+        const row = (lbl, chips) => `<div class="swap-frow"><span class="swap-flbl">${lbl}</span>${chips}</div>`;
+        const hasLevel = !!cfg.levelOf && items.some(a => cfg.levelOf(a));
+        const html = `<div class="swap-filters">`
+            + (fams.length > 1 ? row('Материал:', chip(f.fam === 'all', 'fam', 'all', 'Все') + fams.map(x => chip(f.fam === x, 'fam', x, this.PIPE_FAM_NAME[x])).join('')) : '')
+            + (ds.length > 1 ? row('Диаметр:', chip(f.d === 'all', 'd', 'all', 'Все') + ds.map(d => chip(String(f.d) === String(d), 'd', d, 'Ø' + d)).join('')) : '')
+            + (brands.length > 1 ? row('Бренд:', chip(f.brand === 'all', 'brand', 'all', 'Все') + brands.map(b => chip(f.brand === b, 'brand', b, b)).join('')) : '')
+            + (hasLevel ? row('Гидравлика:', chip(!!f.fit, 'fit', String(!f.fit), '✓ Только подходящие')) : '')
+            + `</div>`;
+        const out = items.filter(a => keep(a)
+            || ((f.fam === 'all' || !cfg.famOf || cfg.famOf(a) === f.fam)
+                && (f.d === 'all' || !cfg.dOf || String(cfg.dOf(a)) === String(f.d))
+                && (f.brand === 'all' || !cfg.brandOf || cfg.brandOf(a) === f.brand)
+                && (!f.fit || !hasLevel || !cfg.levelOf(a) || cfg.levelOf(a) === 'ok')));
+        return { html: html, items: out };
     },
-    setPipeSwapFilter: function (key, val) {
-        if (!this._pipeSwap) return;
-        this._pipeSwap[key] = val;
+    setPipeFilt: function (key, val) {
+        if (!this._pipeFilt) return;
+        this._pipeFilt[key] = (key === 'fit') ? (val === true || val === 'true') : val;
         if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
     },
     setWellPumpFlow: function (val) {
