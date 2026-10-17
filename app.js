@@ -60426,7 +60426,7 @@ const app = {
         const _pipeKindItem = /(_rad|_water|_ufh)$/.test(_origId0) || _origId0.startsWith('ufh_transit_f');
         if (_isPipeSwap && !_pipeKindItem) {
             const _pKey = item.originalId || item.id || '';
-            if (!this._pipeSwap || this._pipeSwap.key !== _pKey) this._pipeSwap = { key: _pKey, fam: 'all', d: 'all', fit: false };
+            if (!this._pipeSwap || this._pipeSwap.key !== _pKey) this._pipeSwap = { key: _pKey, fam: 'all', d: 'all', brand: 'all', fit: false };
             const _ps = this._pipeSwap;
             const _famName = { grey: 'Сшитый PE-Xa (серая)', mp: 'Металлопласт', stable: 'Стабильная PE-Xa/Al/PE-RT', ppr: 'Полипропилен PP-R / PP-RCT' };
             const _fams = ['grey', 'mp', 'stable', 'ppr'].filter(f => alts.some(a => _pipeFamOf(a) === f));
@@ -60502,10 +60502,13 @@ const app = {
                     `Зелёная строка — все три в норме; жёлтая — работает, но впритык; красная — не рекомендуем, выбрать всё равно можно.</div>` +
                     `</div>`;
             }
+            const _psBrands = [...new Set(alts.map(a => a.brand).filter(Boolean))];
+            const _brChips = _psBrands.length > 1 ? _pRow('Бренд:', _chip(_ps.brand === 'all', "app.setPipeSwapFilter('brand','all')", 'Все')
+                + _psBrands.map(b => _chip(_ps.brand === b, `app.setPipeSwapFilter('brand','${b}')`, b)).join('')) : '';
             const _fitChip = _chip(!!_ps.fit, `app.setPipeSwapFilter('fit',${!_ps.fit})`, '✓ Только подходящие');
-            alts = alts.filter(a => (_ps.fam === 'all' || _pipeFamOf(a) === _ps.fam) && (_ps.d === 'all' || String(_pipeDOf(a)) === String(_ps.d))
+            alts = alts.filter(a => (_ps.fam === 'all' || _pipeFamOf(a) === _ps.fam) && (_ps.d === 'all' || String(_pipeDOf(a)) === String(_ps.d)) && (!_ps.brand || _ps.brand === 'all' || a.brand === _ps.brand)
                 && (!_ps.fit || !_pipeHy || (_pipeHy[_pipeFamOf(a) + '|' + _pipeDOf(a)] || {}).level === 'ok'));
-            _bpFilterHtml = `<div class="swap-filters">${_famChips}${_dChips}${_pipeHy ? _pRow('Гидравлика:', _fitChip) : ''}</div>` + _hyHtml;
+            _bpFilterHtml = `<div class="swap-filters">${_famChips}${_dChips}${_brChips}${_pipeHy ? _pRow('Гидравлика:', _fitChip) : ''}</div>` + _hyHtml;
         }
 
         // Для бойлеров: показываем позиции по swap-фильтрам
@@ -61188,6 +61191,33 @@ const app = {
                     sysText: _delta(a.sys).replace(/<[^>]+>/g, '').replace(' к выбранной системе', ' к выбранной')
                 };
             });
+            // Те же переключатели, что у остальных таблиц замены трубы: материал, бренд и
+            // «только подходящие» (скорость в магистрали этой системы в норме). Диаметр — блок выше.
+            {
+                const _bk = item.originalId || item.id || '';
+                if (!this._bpSwapF || this._bpSwapF.key !== _bk) this._bpSwapF = { key: _bk, fam: 'all', brand: 'all', fit: false };
+                const _f = this._bpSwapF;
+                const _famOf = a => ({ ss304: 'ss', ss316: 'ss', mp: 'mp', mp_r: 'mp', stable: 'stable', stable_r: 'stable', ppr: 'ppr' })[a.sys] || a.sys;
+                const _famName = { ss: 'Нержавейка', mp: 'Металлопласт', stable: 'Стабильная PE-Xa/Al/PE-RT', ppr: 'Полипропилен' };
+                const _fams = ['ss', 'mp', 'stable', 'ppr'].filter(f => customAlts.some(a => _famOf(a) === f));
+                const _brands = [...new Set(customAlts.map(a => a.brand).filter(Boolean))];
+                const _fitOf = a => {
+                    if (!this._bpLoad) return true;
+                    const o = this.boilerMainOptions(this._bpLoad.gas, this._bpLoad.el, a.sys);
+                    const cur = o.options.find(x => x.size === o.active);
+                    return !cur || cur.level === 'ok';
+                };
+                const _cc = (on, key, val, label) => `<span class="swap-chip${on ? ' on' : ''}" onclick="app.setBpSwapFilter('${key}','${val}')">${label}</span>`;
+                const _rw = (lbl, chips) => `<div class="swap-frow"><span class="swap-flbl">${lbl}</span>${chips}</div>`;
+                const _curSys = this.boilerPipeSystem();
+                customAlts = customAlts.filter(a => a.sys === _curSys
+                    || ((_f.fam === 'all' || _famOf(a) === _f.fam) && (_f.brand === 'all' || a.brand === _f.brand) && (!_f.fit || _fitOf(a))));
+                _bpFilterHtml += `<div class="swap-filters">`
+                    + (_fams.length > 1 ? _rw('Материал:', _cc(_f.fam === 'all', 'fam', 'all', 'Все') + _fams.map(x => _cc(_f.fam === x, 'fam', x, _famName[x])).join('')) : '')
+                    + (_brands.length > 1 ? _rw('Бренд:', _cc(_f.brand === 'all', 'brand', 'all', 'Все') + _brands.map(x => _cc(_f.brand === x, 'brand', x, x)).join('')) : '')
+                    + (this._bpLoad ? _rw('Гидравлика:', _cc(!!_f.fit, 'fit', String(!_f.fit), '✓ Только подходящие')) : '')
+                    + `</div>`;
+            }
         }
         else if (item.originalId && this.isPprArticle(item.originalId)) {
             customAlts = [
@@ -62609,9 +62639,11 @@ const app = {
         const _pkHasHy = !!(customAlts && customAlts.length > 1 && customAlts.some(a => a.hy));
         if (_pkIsKind || _pkHasHy) {
             const _pkKey = item.originalId || item.id || '';
-            if (!this._pipeKindFilt || this._pipeKindFilt.key !== _pkKey) this._pipeKindFilt = { key: _pkKey, fam: 'all', brand: 'all', fit: false };
+            if (!this._pipeKindFilt || this._pipeKindFilt.key !== _pkKey) this._pipeKindFilt = { key: _pkKey, fam: 'all', brand: 'all', d: 'all', fit: false };
             const _pf = this._pipeKindFilt;
-            const _pkFam = a => /mp|metal_plastic/.test(a.id) ? 'mp' : (/stable/.test(a.id) ? 'stable' : 'pex');
+            const _pkFam = a => (/mp|metal_plastic/.test(a.id) || /металлопласт/i.test(a.name || '')) ? 'mp'
+                : ((/stable/.test(a.id) || /стабильн|Al\/PE/i.test(a.name || '')) ? 'stable' : 'pex');
+            const _pkD = a => _pipeDOf(a);
             const _pkFamName = { pex: 'Сшитый PE-Xa', mp: 'Металлопласт', stable: 'Стабильная PE-Xa/Al/PE-RT' };
             const _pkFams = ['pex', 'mp', 'stable'].filter(f => customAlts.some(a => _pkFam(a) === f));
             const _pkBrands = [...new Set(customAlts.map(a => a.brand).filter(Boolean))];
@@ -62621,14 +62653,15 @@ const app = {
             const _pkCnt = k => customAlts.filter(a => a.hy && a.hy.level === k).length;
             const _pkTotals = { ok: _pkCnt('ok'), warn: _pkCnt('warn'), bad: _pkCnt('bad') };
             const _pkActiveOf = a => a.pipeActive || a.isActive;
-            if (_pkIsKind) {
-                customAlts = customAlts.filter(a => _pkActiveOf(a)
-                    || ((_pf.fam === 'all' || _pkFam(a) === _pf.fam) && (_pf.brand === 'all' || a.brand === _pf.brand)));
-            }
+            const _pkDs = [...new Set(customAlts.map(_pkD).filter(Boolean))].sort((a, b) => a - b);
+            customAlts = customAlts.filter(a => _pkActiveOf(a)
+                || ((_pf.fam === 'all' || _pkFam(a) === _pf.fam) && (_pf.brand === 'all' || a.brand === _pf.brand)
+                    && (_pf.d === 'all' || String(_pkD(a)) === String(_pf.d))));
             if (_pkHasHy) customAlts = customAlts.filter(a => _pkActiveOf(a) || !_pf.fit || !a.hy || a.hy.level === 'ok');
             _tankFiltersHtml += `<div class="swap-filters">`
-                + (_pkIsKind ? _pkRow('Материал:', _pkChip(_pf.fam === 'all', 'fam', 'all', 'Все') + _pkFams.map(f => _pkChip(_pf.fam === f, 'fam', f, _pkFamName[f])).join('')) : '')
-                + (_pkIsKind && _pkBrands.length > 1 ? _pkRow('Бренд:', _pkChip(_pf.brand === 'all', 'brand', 'all', 'Все') + _pkBrands.map(b => _pkChip(_pf.brand === b, 'brand', b, b)).join('')) : '')
+                + (_pkFams.length > 1 ? _pkRow('Материал:', _pkChip(_pf.fam === 'all', 'fam', 'all', 'Все') + _pkFams.map(f => _pkChip(_pf.fam === f, 'fam', f, _pkFamName[f])).join('')) : '')
+                + (_pkDs.length > 1 ? _pkRow('Диаметр:', _pkChip(_pf.d === 'all', 'd', 'all', 'Все') + _pkDs.map(d => _pkChip(String(_pf.d) === String(d), 'd', d, 'Ø' + d)).join('')) : '')
+                + (_pkBrands.length > 1 ? _pkRow('Бренд:', _pkChip(_pf.brand === 'all', 'brand', 'all', 'Все') + _pkBrands.map(b => _pkChip(_pf.brand === b, 'brand', b, b)).join('')) : '')
                 + (_pkHasHy ? _pkRow('Гидравлика:', _pkChip(!!_pf.fit, 'fit', String(!_pf.fit), '✓ Только подходящие')) : '')
                 + `</div>`
                 + (_pkHasHy ? `<div class="swap-hy-box"><div class="t">Гидравлика: <span class="ok">подходят ${_pkTotals.ok}</span>, <span class="warn">с оговоркой ${_pkTotals.warn}</span>, <span class="bad">не рекомендуем ${_pkTotals.bad}</span>.</div>`
@@ -72828,6 +72861,11 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     setPipeKindFilter: function (key, val) {
         if (!this._pipeKindFilt) return;
         this._pipeKindFilt[key] = (key === 'fit') ? (val === true || val === 'true') : val;
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
+    setBpSwapFilter: function (key, val) {
+        if (!this._bpSwapF) return;
+        this._bpSwapF[key] = (key === 'fit') ? (val === true || val === 'true') : val;
         if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
     },
     setPipeSwapFilter: function (key, val) {
