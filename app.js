@@ -50672,6 +50672,8 @@ const app = {
         if (event) event.preventDefault();
         this.state.hydroUserFix = null;
         this.state.radTrunkOv = null;
+        this.state.trunkPipeMat = null;
+        if (this.state.swaps) Object.keys(this.state.swaps).forEach(k => { if (/^(rad_trunk_pipe_d|riser_pipe_d)/.test(k)) delete this.state.swaps[k]; });
         this._hcPreview = null;
         this.render();
         this.saveState();
@@ -59853,6 +59855,7 @@ const app = {
     },
     openSwapModal: function (lookupId) {
         if (window.SessionTrack) SessionTrack.screen('catalog');
+        this.ensureSwapUiCss();
         // Полотенцесушители (SHQ-) заменяются собственным пикером с фильтрами по высоте/ширине/цвету (#5).
         if (lookupId && String(lookupId).startsWith('SHQ-')) { this.openTowelWarmerPicker(); return; }
         let isFirstOpen = (this._lastSwapLookupId !== lookupId) || !document.getElementById('swap_modal_overlay') || document.getElementById('swap_modal_overlay').style.display === 'none';
@@ -60012,7 +60015,8 @@ const app = {
         // материала и диаметра + плашка гидравлики по каждому варианту. Скорость и потери берём
         // тем же радиаторным расчётом, что и карточка «Гидравлика» (radPipeDrop), на расход этого участка.
         const _pipeFamOf = (a) => /металлопласт/i.test(a.name || '') ? 'mp'
-            : (/стабильн|Al\/PE/i.test(a.name || '') ? 'stable' : 'grey');
+            : (/PP-RCT|PP-R\b/i.test(a.name || '') ? 'ppr'
+            : (/стабильн|Al\/PE/i.test(a.name || '') ? 'stable' : 'grey'));
         const _pipeDOf = (a) => { const m = (a.name || '').match(/(\d+)(?:[.,]\d+)?\s*[xх×]\s*\d/i); return m ? parseInt(m[1], 10) : null; };
         // Текущая труба тоже должна быть в списке (иначе не видно, подходит ли она сама): в alts
         // у позиции лежат только «остальные» типоразмеры ряда.
@@ -60025,15 +60029,20 @@ const app = {
         const _isPipeSwap = !!item.len && alts.length > 1 && alts.every(a => a && a.len && /труба/i.test(a.name || '') && _pipeDOf(a));
         // Гидравлика по каждому варианту трубы: ключ «семейство|Ø», один на оба бренда
         let _pipeHy = null;
-        if (_isPipeSwap) {
+        // Магистраль радиаторов (стояк / трасса): к цене трубы добавляется цена узла целиком
+        let _pipeSysCtx = null;
+        // Трубы лучей, ХВС и тёплого пола — выбор «типа трубы» со своей таблицей (customAlts ниже):
+        // гидравлика магистрали к ним не относится, у них свои переключатели «Материал / Бренд».
+        const _pipeKindItem = /(_rad|_water|_ufh)$/.test(_origId0) || _origId0.startsWith('ufh_transit_f');
+        if (_isPipeSwap && !_pipeKindItem) {
             const _pKey = item.originalId || item.id || '';
             if (!this._pipeSwap || this._pipeSwap.key !== _pKey) this._pipeSwap = { key: _pKey, fam: 'all', d: 'all', fit: false };
             const _ps = this._pipeSwap;
-            const _famName = { grey: 'Серая PE-Xa', mp: 'Металлопласт', stable: 'Стабильная PE-Xa/Al/PE-RT' };
-            const _fams = ['grey', 'mp', 'stable'].filter(f => alts.some(a => _pipeFamOf(a) === f));
+            const _famName = { grey: 'Сшитый PE-Xa (серая)', mp: 'Металлопласт', stable: 'Стабильная PE-Xa/Al/PE-RT', ppr: 'Полипропилен PP-R / PP-RCT' };
+            const _fams = ['grey', 'mp', 'stable', 'ppr'].filter(f => alts.some(a => _pipeFamOf(a) === f));
             const _ds = [...new Set(alts.map(_pipeDOf))].sort((a, b) => a - b);
-            const _chip = (on, fn, label) => `<span onclick="${fn}" style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${on ? 'var(--primary)' : 'transparent'};color:${on ? '#fff' : 'var(--primary)'};font-weight:${on ? 700 : 400};margin:2px;">${label}</span>`;
-            const _pRow = (lbl, chips) => `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;"><span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">${lbl}</span>${chips}</div>`;
+            const _chip = (on, fn, label) => `<span class="swap-chip${on ? ' on' : ''}" onclick="${fn}">${label}</span>`;
+            const _pRow = (lbl, chips) => `<div class="swap-frow"><span class="swap-flbl">${lbl}</span>${chips}</div>`;
             const _famChips = _pRow('Материал:', _chip(_ps.fam === 'all', "app.setPipeSwapFilter('fam','all')", 'Все')
                 + _fams.map(f => _chip(_ps.fam === f, `app.setPipeSwapFilter('fam','${f}')`, _famName[f])).join(''));
             const _dChips = _pRow('Диаметр:', _chip(_ps.d === 'all', "app.setPipeSwapFilter('d','all')", 'Все')
@@ -60047,6 +60056,7 @@ const app = {
             let _hyHtml = '';
             let _hyInfo = null;
             if (_totalW > 0) {
+                if (/^(rad_trunk_pipe_d|riser_pipe_d)/.test(_pKey)) _pipeSysCtx = {};
                 const _span = this._radTrunk || this.radTrunkSpan(_totalW / 1000);
                 const _br = Math.max(1, parseInt(this._radGroupsCount, 10) || 1);
                 const _flow = this.radFlowOf(_totalW) * (_span.share || 1) / _br;
@@ -60065,11 +60075,13 @@ const app = {
                     if (r.v > _lim) raise('bad', `скорость ${_n(r.v)} м/с выше предела ${_n(_lim)} м/с — шум и износ`);
                     else if (r.v > 0.9 * _lim) raise('warn', `скорость ${_n(r.v)} м/с почти на пределе ${_n(_lim)} м/с`);
                     else if (r.v < this.BOILER_V_LOW) raise('warn', `скорость ${_n(r.v)} м/с ниже ${_n(this.BOILER_V_LOW)} — копятся воздух и шлам, диаметр с запасом`);
+                    // Серая PE-Xa на длинной магистрали: линейное расширение ~0,18 мм/(м·К), трубу выгибает между креплениями
+                    if (_pipeSysCtx && fam === 'grey') raise('warn', 'у серой PE-Xa большое линейное расширение — на магистрали нужны компенсирующие изгибы и частое крепление');
                     // Кольцо целиком с этой трубой на участке: сопротивление против кривой насоса
                     let pumpTxt = '';
                     if (!_isTee) {
                         try {
-                            this._radTrunk = Object.assign({}, _span, { d: d, fam: fam === 'grey' ? null : fam });
+                            this._radTrunk = Object.assign({}, _span, { d: d, fam: fam });
                             const h = this.radHydraulics();
                             if (h) {
                                 if (!h.pump) raise('bad', `сопротивление кольца ${_n(h.dp)} кПа — насос не тянет`);
@@ -60082,17 +60094,28 @@ const app = {
                 });
                 const _cnt = k => Object.values(_pipeHy).filter(x => x.level === k).length;
                 _hyInfo = { flow: _flow, len: _span.len };
-                _hyHtml = `<div style="margin:8px 0 10px; padding:8px 12px; border:1px solid var(--border); border-radius:8px;">` +
-                    `<div style="font-size:12px; font-weight:800; color:var(--text-main); margin-bottom:4px;">Гидравлика участка: расход ${_n(_flow)} м³/ч, длина ${_span.len} м. ` +
-                    `<span style="color:#16a34a;">Подходят: ${_cnt('ok')}</span>, <span style="color:#d97706;">с оговоркой: ${_cnt('warn')}</span>, <span style="color:#ef4444;">не рекомендуем: ${_cnt('bad')}</span>.</div>` +
-                    `<div style="font-size:11px; color:var(--text-sec);">Проверяем три вещи: скорость в трубе (предел ${_n(_lim)} м/с, СП 60.13330.2020, табл. И.1), расход участка и сопротивление кольца против кривой насоса (запас ${Math.round((this.RAD_PUMP_RESERVE - 1) * 100)} %). ` +
+                if (_pipeSysCtx) {
+                    _pipeSysCtx.len = _span.len;
+                    const _ids = [];
+                    alts.forEach(a => { _ids.push(a.id); if (a.rommer && !Array.isArray(a.rommer)) _ids.push(a.rommer.id); });
+                    if (!_ids.includes(item.id)) _ids.push(item.id);
+                    const _sig = JSON.stringify([_pKey, this.state.swaps, this.state.radTrunkOv, this.state.trunkPipeMat, this.state.pipeType, this.state.brandMode, this.state.area, this.state.floors, this.state.rooms && this.state.rooms.length]);
+                    if (!this._pipeSysCache || this._pipeSysCache.sig !== _sig) {
+                        this._pipeSysCache = { sig: _sig, totals: this.stateOptionTotals(_ids, id => this.applyTrunkChoice(_pKey, id)) };
+                    }
+                    _pipeSysCtx.totals = this._pipeSysCache.totals;
+                }
+                _hyHtml = `<div class="swap-hy-box">` +
+                    `<div class="t">Гидравлика участка: расход ${_n(_flow)} м³/ч, длина ${_span.len} м. ` +
+                    `<span class="ok">Подходят: ${_cnt('ok')}</span>, <span class="warn">с оговоркой: ${_cnt('warn')}</span>, <span class="bad">не рекомендуем: ${_cnt('bad')}</span>.</div>` +
+                    `<div class="d">Проверяем три вещи: скорость в трубе (предел ${_n(_lim)} м/с, СП 60.13330.2020, табл. И.1), расход участка и сопротивление кольца против кривой насоса (запас ${Math.round((this.RAD_PUMP_RESERVE - 1) * 100)} %). ` +
                     `Зелёная строка — все три в норме; жёлтая — работает, но впритык; красная — не рекомендуем, выбрать всё равно можно.</div>` +
                     `</div>`;
             }
             const _fitChip = _chip(!!_ps.fit, `app.setPipeSwapFilter('fit',${!_ps.fit})`, '✓ Только подходящие');
             alts = alts.filter(a => (_ps.fam === 'all' || _pipeFamOf(a) === _ps.fam) && (_ps.d === 'all' || String(_pipeDOf(a)) === String(_ps.d))
                 && (!_ps.fit || !_pipeHy || (_pipeHy[_pipeFamOf(a) + '|' + _pipeDOf(a)] || {}).level === 'ok'));
-            _bpFilterHtml = `<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start;padding:8px 0 4px;">${_famChips}${_dChips}${_pipeHy ? _pRow('Гидравлика:', _fitChip) : ''}</div>` + _hyHtml;
+            _bpFilterHtml = `<div class="swap-filters">${_famChips}${_dChips}${_pipeHy ? _pRow('Гидравлика:', _fitChip) : ''}</div>` + _hyHtml;
         }
 
         // Для бойлеров: показываем позиции по swap-фильтрам
@@ -60281,6 +60304,7 @@ const app = {
                 const d = (_rt[a.id] || 0) - _rCur;
                 return {
                     ...a,
+                    hy: this.swapHyRay(a.id),
                     pipeKind: 'rad',
                     pipeActive: a.id === _rCurId,
                     unitM2: a.price,
@@ -60335,6 +60359,7 @@ const app = {
                 const d = (_tt[a.id] || 0) - _tCur;
                 return {
                     ...a,
+                    hy: this.swapHyTransit(_oid, a.imgId),
                     unitM2: p ? (p.price || 0) : 0,
                     unitHead: 'Труба, за м',
                     sysHead: 'Система',
@@ -60402,10 +60427,25 @@ const app = {
                 alt.unitHead = 'Труба, за м';
                 alt.sysHead = 'Система';
                 alt.unitLabel = `Петель: ${loops}`;
+                alt._loops = loops;
+                alt._loopMax = this.ufhLoopMax(_stp[0], p);
                 // Итог системы на весь пол, как у трубы водоснабжения и радиаторов
                 alt.price = Math.round(meters * alt.price + loops * _perLoop(p));
                 alt.sysText = `труба ${Math.round(meters)} м${area !== _tpArea ? ' (на условные 100 м²)' : ''}, на каждую петлю ${p.connName} ×2, фиксатор 90° ×2, втулки`;
             });
+            // Гидравлика петель: у тонкостенной трубы предельная длина петли короче, петель
+            // выходит больше — это занятые выходы коллектора и расход насоса, не поломка.
+            {
+                const _curLoops = (customAlts.find(a => a.pipeActive) || {})._loops || 0;
+                customAlts.forEach(a => {
+                    if (!(a._loops > 0)) return;
+                    const more = _curLoops > 0 ? a._loops - _curLoops : 0;
+                    a.hy = this.swapHy(more > 0 ? 'warn' : 'ok',
+                        `предельная длина петли ${a._loopMax} м (шаг ${_stp[0]} мм) · петель ${a._loops}`,
+                        more > 0 ? [`петель больше на ${more} — нужны лишние выходы коллектора, растёт расход`] : [],
+                        more > 0 ? '' : 'число петель не растёт — коллектор и насос те же');
+                });
+            }
         }
         else if (item.originalId && (item.originalId.endsWith('_water') || (item.originalId.startsWith('SPX-0001-') && !item.originalId.endsWith('_rad'))) && !item.originalId.startsWith('SMB-') && !item.originalId.startsWith('RMS-')) {
             // По строке на материал и на бренд (STOUT и ROMMER рядом). Выбор бренда — «Аналог»
@@ -60424,10 +60464,30 @@ const app = {
             const _wBase = (this.state.waterPipeMaterial === 'metal_plastic') ? 'metal_plastic' : 'pex';
             const _wCurId = (_wIds.includes(_wBase + '_r') && this.pipeBrandNow('water') === 'rommer') ? _wBase + '_r' : _wBase;
             const _wCur = _wt[_wCurId] || 0;
+            // Скорость воды в подводке к одному прибору (типовой смеситель 0,2 л/с — по практике
+            // проектирования). Внутренний диаметр — из названия трубы: стенки у PEX-a и металлопласта разные.
+            const _wBore = (it) => {
+                const m = /(\d+(?:[.,]\d+)?)\s*[xх]\s*(\d+(?:[.,]\d+)?)/i.exec((it && it.name) || '');
+                return m ? (parseFloat(m[1].replace(',', '.')) - 2 * parseFloat(m[2].replace(',', '.'))) / 1000 : 0;
+            };
+            const _wHy = (a) => {
+                const it = a.id.replace(/_r$/, '') === 'metal_plastic' ? mpItem : pexItem;
+                const bore = _wBore(it);
+                if (!(bore > 0)) return null;
+                const q = 0.0002;   // м³/с
+                const v = q / (Math.PI * bore * bore / 4);
+                const n = x => x.toFixed(2).replace('.', ',');
+                const why = [];
+                let level = 'ok';
+                if (v > 3) { level = 'bad'; why.push(`скорость ${n(v)} м/с выше 3 м/с — шум и гидроудары`); }
+                else if (v > 2) { level = 'warn'; why.push(`скорость ${n(v)} м/с выше 2 м/с — слышно на подводке`); }
+                return this.swapHy(level, `${n(v)} м/с при 0,2 л/с (один прибор), внутренний Ø ${(bore * 1000).toFixed(1).replace('.', ',')} мм`, why);
+            };
             customAlts = customAlts.map(a => {
                 const d = (_wt[a.id] || 0) - _wCur;
                 return {
                     ...a,
+                    hy: _wHy(a),
                     pipeKind: 'water',
                     pipeActive: a.id === _wCurId,
                     unitM2: a.price,
@@ -60655,7 +60715,7 @@ const app = {
                 return `<div style="font-weight:600; font-size:11px; margin-top:2px; color:${d > 0 ? 'var(--danger, #EF4444)' : 'var(--success, #16A34A)'};">`
                     + `${sign}${Math.abs(d).toLocaleString('ru-RU')} ₽ к выбранной системе</div>`;
             };
-            const _bpB = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active ? 'var(--primary)' : 'transparent'};color:${active ? '#fff' : 'var(--primary)'};font-weight:${active ? 700 : 400};margin:2px;"`;
+            const _bpB = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             _bpFilterHtml =
                 `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
                 `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:4px;">Считать:</span>` +
@@ -61317,7 +61377,7 @@ const app = {
             const _wf = this.state.wellPumpFlowFilter || 'all';
             const _wc = this.state.wellPumpCableFilter || 'cable';
             const _wh = this.state.wellPumpHeadFilter || 'all';
-            const _wb = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _wb = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             const _getSeries = (name) => { const m = (name||'').match(/(\d+)-\d+/); return m ? m[1] : null; };
             const _getHead = (name) => { const m = (name||'').match(/\d+-(\d+)/); return m ? m[1] : null; };
             const _hasCable = (name) => (name||'').toLowerCase().includes('кабел');
@@ -61357,7 +61417,7 @@ const app = {
             let _sm = this.state.tankSwapMount || this.state.tankMount || 'floor';
             let _sh = this.state.tankSwapHeat || this.state.tankHeat || 'cos';
             let _sv = this.state.tankSwapVol;
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             // Уникальные объёмы из полного набора (без фильтра по литражу) — чтобы кнопки не исчезали
             let _vols = [...new Set(_allVolsAlts.map(x => x.vol))].sort((a,b) => a-b);
             let _volHtml = _vols.map(v => `<span onclick="app.setTankSwapVol(${v})" ${_b(_sv===v)}>${v} л</span>`).join('') +
@@ -61380,7 +61440,7 @@ const app = {
                 `</div>`;
         } else if (_isElBoiler) {
             let _sp = this.state.swapBoilerPower || item.power || 12;
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             // 6 и 15 кВт — типоразмеры линейки POLIS; без них при выбранном POLIS
             // ни одна кнопка мощности не была бы подсвечена.
             let _powers = [5, 6, 7, 9, 12, 14, 15, 18, 21, 24, 27];
@@ -61394,7 +61454,7 @@ const app = {
                 `</div>`;
         } else if (_origId0 === 'RFW-0080-256620') {
             const _sz = this.state.filterMagSize || 'all';
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             _tankFiltersHtml =
                 `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
                 `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
@@ -61419,7 +61479,7 @@ const app = {
             const _ec = this.state.expTankColorFilter || 'all';
             let _ev = this.state.expTankVolFilter || 'all';
             let _en = this.state.expTankConnFilter || 'all';
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             // Кнопки литража и резьбы строим по ряду, суженному только цветом: иначе
             // выбранный литраж выкинул бы из строки все остальные кнопки и вернуться
             // к «Все» было бы неоткуда.
@@ -61466,7 +61526,7 @@ const app = {
             }
             const _gc = this.state.gasBoilerCircuits || 'all';
             const _gt = this.state.gasBoilerCond || 'all';
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             _tankFiltersHtml =
                 `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
                 `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
@@ -61522,7 +61582,7 @@ const app = {
             const _al = this.state.airSwapLink || 'all';
             const _at = this.state.airSwapCtrl || 'all';
             const _ac = this.state.airSwapColor || 'all';
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active ? 'var(--primary)' : 'transparent'};color:${active ? '#fff' : 'var(--primary)'};font-weight:${active ? 700 : 400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             // «Релейный» — слово заказчика: так эти термостаты называют монтажники.
             // В подсказках остаётся техническое «сухой контакт» — там оно точнее.
             const _LINK = { wired: 'Проводной', radio: 'Беспроводной', dry: 'Релейный' };
@@ -61552,7 +61612,7 @@ const app = {
         // Дымоходы Vaillant (артикулы без префикса SCA-/RCA-) узнаём по самому каталогу.
         } else if (this.isChimneyKitRow(item.originalId)) {
             const _cht = this.state.chimneySwapType || 'all';
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             _tankFiltersHtml =
                 `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
                 `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
@@ -61582,7 +61642,7 @@ const app = {
             const _wout = this.state.waterManifoldOut || 'all';
             const _wct = this.state.waterManifoldConn || 'all';
             const _wloops = this.state.waterManifoldLoops || 'all';
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             _tankFiltersHtml =
                 `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
                 `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
@@ -61625,7 +61685,7 @@ const app = {
         } else if (item.originalId && item.originalId.startsWith('SCS-0001')) {
             const _wac = this.state.wellAutoCtrl || 'all';
             const _wad = this.state.wellAutoDrive || 'all';
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             _tankFiltersHtml =
                 `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
                 `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
@@ -61646,7 +61706,7 @@ const app = {
             const _mAirF = this.state.manifoldAirVentFilter || 'all';
             const _mDrainF = this.state.manifoldDrainFilter || 'all';
             const _mLoopsF = this.state.manifoldLoopsFilter || 'all';
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             const _mLoopsAvail = [...new Set([
                 ...catalog.manifolds.map(x => x.loops),
                 ...catalog.manifolds_full_kit.map(x => x.loops),
@@ -61685,7 +61745,7 @@ const app = {
             const _cMount = this.state.cabinetMountFilter || 'out';
             const _cDeep = (this.state.cabinetDepthFilter || 'std') === 'deep';
             const _cSize = this.state.cabinetSizeFilter === undefined ? 'all' : this.state.cabinetSizeFilter;
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             const _cPool = this.cabinetPool({ mount: _cMount, deep: _cDeep });
             const _cSizeBtns = _cPool.map((c, i) => `<span onclick="app.setCabinetSizeFilter(${i})" ${_b(_cSize === i)}>${c.outs[0]}–${c.outs[1]}</span>`).join('');
             _tankFiltersHtml =
@@ -61738,7 +61798,7 @@ const app = {
             const _umDn = this.state.ufhMixDnFilter || 'all';
             const _umKind = this.state.ufhMixKindFilter || 'all';
             const _umPower = Array.isArray(this.state.ufhMixPowerFilter) ? this.state.ufhMixPowerFilter : [];
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             const _umPowerOptions = [...new Set(
                 alts.filter(a => _umClassify(a.id).cat === _umCat).map(a => _umKwExtract(a.name)).filter(v => v !== null)
             )].sort((x, y) => x - y);
@@ -61815,7 +61875,7 @@ const app = {
             const _colDn = this.state.colDnFilter || 'all';
             const _colConn = this.state.colConnFilter || 'all';
             const _colLoops = Array.isArray(this.state.colLoopsFilter) ? this.state.colLoopsFilter : [];
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             const _colLoopsOptions = [...new Set(
                 alts.filter(a => (_colDn === 'all' || _colDnOf(a.id) === _colDn) && !_colFlexSet.has(a.id)).map(a => _colLoopsMap[a.id]).filter(v => v !== undefined)
             )].sort((x, y) => x - y);
@@ -61859,7 +61919,7 @@ const app = {
                 this.state.hsFlowFilter = _curFlow !== null ? [String(_curFlow)] : [];
             }
             const _hsFlow = Array.isArray(this.state.hsFlowFilter) ? this.state.hsFlowFilter : [];
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             const _hsFlowOptions = [...new Set(alts.map(a => _hsFlowOf(a.name)).filter(v => v !== null))].sort((x, y) => x - y);
             const _hsFlowToKwRad = (v) => Math.round(v * 1.163 * 10);
             const _hsFlowToKwUfh = (v) => Math.round(v * 1.163 * 5);
@@ -61898,7 +61958,7 @@ const app = {
             const _tw = this.state.thermoWifi || 'all';
             const _tco = this.state.thermoColor || 'all';
             const _tcur = this.state.thermoCurrent || 'all';
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             _tankFiltersHtml =
                 `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
                 `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
@@ -61940,7 +62000,7 @@ const app = {
             const _tpDiamOf = (name) => { const m = (name || '').match(/(\d+)(?:[.,]\d+)?[xх]/i); return m ? m[1] : null; };
             const _tpm = this.state.teePipeSwapMaterial || 'all';
             const _tpd = this.state.teePipeSwapDiam || 'all';
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             const _diamsAvail = [...new Set(alts.filter(a => _tpm === 'all' || _tpMatOf(a.id) === _tpm).map(a => _tpDiamOf(a.name)).filter(Boolean))].sort((a, b) => +a - +b);
             const _diamBtns = _diamsAvail.map(d => `<span onclick="app.setTeePipeSwapDiam('${d}')" ${_b(_tpd===d)}>${d} мм</span>`).join('');
             _tankFiltersHtml =
@@ -61972,7 +62032,7 @@ const app = {
             const _ipS = this.state.installSwapSeries || 'all';
             const _ipC = this.state.installSwapColor || 'all';
             const _ipM = this.state.installSwapMat || 'all';
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             const _serName = { QUAD: 'Прямоугольные', ORB: 'Круглые', ELLIPSE: 'Овальные', LONG: 'Длинные', PUBLIC: 'Антивандальные', none: 'Без панели' };
             const _colName = { white: 'Белый', chrome: 'Хром', black: 'Чёрный', silver: 'Серебро', graphite: 'Графит', gold: 'Золото', rose: 'Розовое золото', steel: 'Сталь', red: 'Красный' };
             const _matName = { plastic: 'Пластик', glass: 'Стекло', steel: 'Нерж. сталь' };
@@ -62019,7 +62079,7 @@ const app = {
             }
             const _at = this.state.actuatorType || 'all';
             const _av = this.state.actuatorVoltage || 'all';
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             _tankFiltersHtml =
                 `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
                 `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
@@ -62048,7 +62108,7 @@ const app = {
             const _bf = this.state.ctrlBrandFilter || 'all';
             const _zf = this.state.ctrlZonesFilter || 'fit';
             const _need = this.ctrlNeedNow(this.thermaticConfig);
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             const _zonesBtns = [1, 2, 3, 4].map(n => `<span onclick="app.setCtrlZonesFilter('${n}')" ${_b(_zf === String(n))}>${n}+</span>`).join('');
             const _needTxt = [
                 _need.mix ? _need.mix + ' ' + this.plural(_need.mix, 'смесительный контур', 'смесительных контура', 'смесительных контуров') : '',
@@ -62088,7 +62148,7 @@ const app = {
         if (/^Кран шаровой/i.test(item.name || '') && !_isTankItem) {
             _valveF = this.state.valveSwapFilter || {};
             const _vf = (k) => _valveF[k] || 'all';
-            const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
+            const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             const _dns = new Set();
             alts.forEach(a => {
                 [a && a.name, a && a.rommer && !Array.isArray(a.rommer) ? a.rommer.name : null].forEach(n => {
@@ -62144,13 +62204,49 @@ const app = {
         const _twoPrice = !!(customAlts && customAlts.some(a => a.unitM2 != null));
         const _twoHead = _twoPrice ? customAlts.find(a => a.unitM2 != null) : null;
         // Отдельной колонки «Изм. цена» тут нет: процент стоит под каждой из двух цен.
-        const _priceThs = _twoPrice
+        const _pipeSysOn = !!(_pipeSysCtx && _pipeSysCtx.len > 0);
+        const _priceThs = _pipeSysOn
+            ? `<th class="col-two" style="text-align:right;width:120px;">Труба, за м</th>` +
+              `<th class="col-two" style="text-align:right;width:150px;">Узел целиком, ${_pipeSysCtx.len} м</th>`
+            : _twoPrice
             ? `<th class="col-two" style="text-align:right;width:130px;">${_twoHead.unitHead || 'Мат / лист, за м²'}</th>` +
               `<th class="col-two" style="text-align:right;width:130px;${_sortStyle}" onclick="app.toggleSwapSort('price')">${_twoHead.sysHead || 'Система, за м²'}${_ssA('price')}</th>`
             : `<th class="col-pct" style="text-align: right; width: 110px;">Изм. цена (%)</th>` + _priceTh;
 
+        // Трубы лучей, ХВС и тёплого пола: те же переключатели «Материал / Бренд», что и у магистрали.
+        // Выбранный вариант остаётся в списке при любом фильтре — иначе проценты не к чему считать.
+        const _pkIsKind = !!(customAlts && customAlts.length > 1 && customAlts.every(a => a.pipeKind === 'rad' || a.pipeKind === 'ufh' || a.pipeKind === 'water'));
+        const _pkHasHy = !!(customAlts && customAlts.length > 1 && customAlts.some(a => a.hy));
+        if (_pkIsKind || _pkHasHy) {
+            const _pkKey = item.originalId || item.id || '';
+            if (!this._pipeKindFilt || this._pipeKindFilt.key !== _pkKey) this._pipeKindFilt = { key: _pkKey, fam: 'all', brand: 'all', fit: false };
+            const _pf = this._pipeKindFilt;
+            const _pkFam = a => /mp|metal_plastic/.test(a.id) ? 'mp' : (/stable/.test(a.id) ? 'stable' : 'pex');
+            const _pkFamName = { pex: 'Сшитый PE-Xa', mp: 'Металлопласт', stable: 'Стабильная PE-Xa/Al/PE-RT' };
+            const _pkFams = ['pex', 'mp', 'stable'].filter(f => customAlts.some(a => _pkFam(a) === f));
+            const _pkBrands = [...new Set(customAlts.map(a => a.brand).filter(Boolean))];
+            const _pkChip = (on, key, val, label) => `<span class="swap-chip${on ? ' on' : ''}" onclick="app.setPipeKindFilter('${key}','${val}')">${label}</span>`;
+            const _pkRow = (lbl, chips) => `<div class="swap-frow"><span class="swap-flbl">${lbl}</span>${chips}</div>`;
+            // Счётчик плашки — по всему ряду, до фильтров (как у магистрали)
+            const _pkCnt = k => customAlts.filter(a => a.hy && a.hy.level === k).length;
+            const _pkTotals = { ok: _pkCnt('ok'), warn: _pkCnt('warn'), bad: _pkCnt('bad') };
+            const _pkActiveOf = a => a.pipeActive || a.isActive;
+            if (_pkIsKind) {
+                customAlts = customAlts.filter(a => _pkActiveOf(a)
+                    || ((_pf.fam === 'all' || _pkFam(a) === _pf.fam) && (_pf.brand === 'all' || a.brand === _pf.brand)));
+            }
+            if (_pkHasHy) customAlts = customAlts.filter(a => _pkActiveOf(a) || !_pf.fit || !a.hy || a.hy.level === 'ok');
+            _tankFiltersHtml += `<div class="swap-filters">`
+                + (_pkIsKind ? _pkRow('Материал:', _pkChip(_pf.fam === 'all', 'fam', 'all', 'Все') + _pkFams.map(f => _pkChip(_pf.fam === f, 'fam', f, _pkFamName[f])).join('')) : '')
+                + (_pkIsKind && _pkBrands.length > 1 ? _pkRow('Бренд:', _pkChip(_pf.brand === 'all', 'brand', 'all', 'Все') + _pkBrands.map(b => _pkChip(_pf.brand === b, 'brand', b, b)).join('')) : '')
+                + (_pkHasHy ? _pkRow('Гидравлика:', _pkChip(!!_pf.fit, 'fit', String(!_pf.fit), '✓ Только подходящие')) : '')
+                + `</div>`
+                + (_pkHasHy ? `<div class="swap-hy-box"><div class="t">Гидравлика: <span class="ok">подходят ${_pkTotals.ok}</span>, <span class="warn">с оговоркой ${_pkTotals.warn}</span>, <span class="bad">не рекомендуем ${_pkTotals.bad}</span>.</div>`
+                    + `<div class="d">Зелёная строка — в норме; жёлтая — работает, но впритык или с последствиями (больше петель, шум); красная — не рекомендуем, выбрать всё равно можно.</div></div>` : '');
+        }
+
         let html = _tankFiltersHtml + `
-            <table class="inv-table${_twoPrice ? ' swap-two' : ''}" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <table class="inv-table${(_twoPrice || _pipeSysOn) ? ' swap-two' : ''}" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
                 <thead>
                     <tr>
                         <th class="col-idx" style="text-align: center; width: 40px;">#</th>
@@ -62256,9 +62352,13 @@ const app = {
             customAlts.forEach((alt, idx) => {
                 let isActive = alt.isActive;
 
-                let activeClass = isActive ? "active-row" : "";
+                let activeClass = (isActive ? "active-row" : "") + (alt.hy ? ' hy-' + alt.hy.level : '');
                 let activeStyle = isActive ? "background-color: var(--primary-light);" : "";
                 let badgeHtml = isActive ? `<span style="font-size: 10px; background: var(--primary); color: var(--on-primary,#fff); padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 8px;">Выбран</span>` : "";
+                // Вердикт гидравлики: плашка, числа, причины — тот же вид, что у магистрали
+                const _hyTags = { ok: '✓ Подходит', warn: '! С оговоркой', bad: '✕ Не рекомендуем' };
+                const _hyHtml = alt.hy ? `<div class="swap-hy-line ${alt.hy.level}"><span class="swap-hy-tag">${_hyTags[alt.hy.level]}</span>${alt.hy.line}`
+                    + (alt.hy.why.length ? `<div class="why">${alt.hy.why.join('; ')}</div>` : (alt.hy.sub ? `<div class="sub">${alt.hy.sub}</div>` : '')) + `</div>` : '';
                 let imgHtml = getImg(alt.imgId ? { ...alt, id: alt.imgId } : alt);
                 let diffHtml = getPriceDiffHtml(alt.price, isActive);
                 let priceText = alt.price > 0 ? this.formatPriceHtml(alt.price, true) : "-";
@@ -62279,7 +62379,7 @@ const app = {
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img">${imgHtml}</td>
-                        <td class="col-name two-name">${this.altBrandChip(alt.brand || 'STOUT')}${alt.name}${badgeHtml}${_sub}</td>
+                        <td class="col-name two-name">${this.altBrandChip(alt.brand || 'STOUT')}${alt.name}${badgeHtml}${_hyHtml}${_sub}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand || 'STOUT'}</td>
                         ${_cell('col-two-u', (_twoHead.unitHead || 'Мат / лист, за м²'), alt.unitM2, _baseUnit)}
                         ${_cell('col-two-s', (_twoHead.sysHead || 'Система, за м²'), alt.price, basePrice)}
@@ -62292,7 +62392,7 @@ const app = {
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img">${imgHtml}</td>
-                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(alt.brand || 'STOUT')}${alt.name}${badgeHtml}${alt.note || ''}</td>
+                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(alt.brand || 'STOUT')}${alt.name}${badgeHtml}${_hyHtml}${alt.note || ''}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand || 'STOUT'}</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>
@@ -62576,6 +62676,13 @@ const app = {
             const _activeAltId = (_swapRaw && _swapRaw !== item.id
                 && uniqueAlts.some(e => e.display && e.display.id === _swapRaw)) ? _swapRaw : null;
 
+            // Цена узла магистрали целиком для варианта: бухты на метраж участка + переходники,
+            // гильзы, хомуты, шпильки (radTrunkFittingsCost). База для процентов — текущая труба.
+            // Цена узла — полным пересчётом сметы под каждый вариант (stateOptionTotals): в неё входят труба,
+            // переходники, гильзы, хомуты и то, что меняется вместе с типоразмером (узел обвязки коллектора).
+            const _sysOf = (disp) => (_pipeSysCtx && _pipeSysCtx.totals && _pipeSysCtx.totals[disp.id]) || 0;
+            const _sysBase = _pipeSysOn ? ((_pipeSysCtx.totals || {})[item.id] || 0) : 0;
+
             uniqueAlts.forEach((entry, idx) => {
                 let alt = entry.original;
                 let displayAlt = entry.display;
@@ -62587,15 +62694,16 @@ const app = {
                 let badgeHtml = isActive ? `<div style="margin-top:4px;"><span style="font-size: 11px; background: var(--primary); color: var(--on-primary,#fff); padding: 2px 8px; border-radius: 4px; font-weight: bold;">✓ Выбран</span></div>` : "";
                 // Труба: вердикт гидравлики участка — цветная кромка строки, плашка и причина
                 let _hyRowHtml = "";
+                let _hyCls = "";
                 const _hy = (_isPipeSwap && _pipeHy) ? _pipeHy[_pipeFamOf(displayAlt) + '|' + _pipeDOf(displayAlt)] : null;
                 if (_hy) {
                     const _hn = v => v.toFixed(2).replace('.', ',');
-                    const _hm = { ok: ['#16a34a', 'rgba(22,163,74,.10)', '✓ Подходит'], warn: ['#d97706', 'rgba(245,158,11,.12)', '! С оговоркой'], bad: ['#ef4444', 'rgba(239,68,68,.10)', '✕ Не рекомендуем'] }[_hy.level];
-                    activeStyle += `box-shadow: inset 4px 0 0 ${_hm[0]};` + (isActive ? '' : `background-color:${_hm[1]};`);
-                    _hyRowHtml = `<div style="margin-top:4px;font-size:12px;font-weight:500;color:var(--text-main);">`
-                        + `<span style="display:inline-block;font-size:11px;font-weight:700;color:#fff;background:${_hm[0]};padding:1px 7px;border-radius:4px;margin-right:6px;">${_hm[2]}</span>`
+                    const _hm = { ok: '✓ Подходит', warn: '! С оговоркой', bad: '✕ Не рекомендуем' }[_hy.level];
+                    _hyCls = ' hy-' + _hy.level;
+                    _hyRowHtml = `<div class="swap-hy-line ${_hy.level}">`
+                        + `<span class="swap-hy-tag">${_hm}</span>`
                         + `${_hn(_hy.v)} м/с · ${_hn(_hy.dp)} кПа на ${_hy.len} м · ${_hn(_hy.flow)} м³/ч`
-                        + (_hy.why.length ? `<div style="color:${_hm[0]};margin-top:2px;">${_hy.why.join('; ')}</div>` : (_hy.pump ? `<div style="color:var(--text-sec);margin-top:2px;">${_hy.pump}</div>` : ''))
+                        + (_hy.why.length ? `<div class="why">${_hy.why.join('; ')}</div>` : (_hy.pump ? `<div class="sub">${_hy.pump}</div>` : ''))
                         + `</div>`;
                 }
                 let diffHtml = getPriceDiffHtml(displayAlt.price, isActive);
@@ -62622,14 +62730,28 @@ const app = {
                     _rowCoilStr = '';
                 }
 
+                // Узел магистрали целиком: труба нужной длины бухтами + переходники, гильзы, хомуты.
+                // Две цены — «за метр» и «узел», у каждой свой процент к выбранному варианту.
+                let _priceCells = `<td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
+                        <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>`;
+                if (_pipeSysOn) {
+                    const _sv = _sysOf(displayAlt);
+                    const _pc = (v, base) => {
+                        if (isActive) return `<span class="two-pct" style="color: var(--text-sec);">0%</span>`;
+                        if (!(base > 0 && v > 0)) return `<span class="two-pct" style="color: var(--text-sec);">—</span>`;
+                        const dd = Math.round((v - base) / base * 100);
+                        return `<span class="two-pct" style="color: ${dd > 0 ? 'var(--c-bad, #ef4444)' : (dd < 0 ? 'var(--c-ok, #16a34a)' : 'var(--text-sec)')};">${dd > 0 ? '+' : ''}${dd}%</span>`;
+                    };
+                    _priceCells = `<td class="col-two col-two-u"><span class="two-lbl">Труба, за м</span><span class="two-val">${displayAlt.price > 0 ? this.formatPriceHtml(displayAlt.price, true) : '—'}</span>${_pc(displayAlt.price, basePrice)}</td>`
+                        + `<td class="col-two col-two-s"><span class="two-lbl">Узел целиком</span><span class="two-val">${_sv > 0 ? this.formatPriceHtml(_sv, true) : '—'}</span>${_pc(_sv, _sysBase)}</td>`;
+                }
                 html += `
-                    <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${displayAlt.id}')">
+                    <tr class="${activeClass}${_hyCls}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${displayAlt.id}')">
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img" style="text-align: center;">${img}</td>
                         <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(displayAlt.brand || 'STOUT')}${_nameDisplay}${_rowCoilStr}${badgeHtml}${_hyRowHtml}${_hintHtml}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${displayAlt.brand || 'STOUT'}</td>
-                        <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
-                        <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>
+                        ${_priceCells}
                     </tr>
                 `;
             });
@@ -64135,6 +64257,33 @@ const app = {
         }
         return /^R[A-Z]{2}-\d/.test(sid) ? 'ROMMER' : null;
     },
+    /**
+     * Применяет выбор строки таблицы замены магистрали радиаторов к состоянию: материал, типоразмер, бренд.
+     * Состояние меняется и без перерисовки — этим же пользуется расчёт цены узла по каждому варианту
+     * (stateOptionTotals). Возвращает false, если артикул не из ряда магистрали.
+     */
+    applyTrunkChoice: function (originalId, chosenId) {
+        if (!this.state.swaps) this.state.swaps = {};
+        const pools = [['grey', catalog.rad_pipes_grey], ['mp', catalog.metal_plastic_pipes], ['stable', catalog.stable_pipes], ['ppr', this.radPprTrunkPool()]];
+        let item = null, mat = null, rommerSide = false;
+        for (const [m, pool] of pools) {
+            for (const x of pool) {
+                if (x.id === chosenId) { item = x; mat = m; }
+                else if (x.rommer && !Array.isArray(x.rommer) && x.rommer.id === chosenId) { item = x.rommer; mat = m; rommerSide = true; }
+                if (item) break;
+            }
+            if (item) break;
+        }
+        const dm = item && /(\d+)(?:[.,]\d+)?\s*[xх×]\s*\d/i.exec(item.name || '');
+        if (!item || !dm) return false;
+        const ov = this.state.radTrunkOv || null;
+        this.state.trunkPipeMat = mat;
+        this.state.radTrunkOv = { d: parseInt(dm[1], 10), len: ov && ov.len ? ov.len : null };
+        Object.keys(this.state.swaps).forEach(k => { if (/^(rad_trunk_pipe_d|riser_pipe_d)/.test(k)) delete this.state.swaps[k]; });
+        // Бренд: выбор ROMMER-исполнения остаётся заменой этой строки, STOUT — снимает её.
+        if (rommerSide) this.state.swaps[originalId] = chosenId;
+        return true;
+    },
     selectSwapAlternative: function (originalId, chosenId) {
         if (!this.state.swaps) this.state.swaps = {};
 
@@ -64189,6 +64338,21 @@ const app = {
                 this.logEquipmentSwap(originalId, chosenId);
                 this.closeSwapModal();
                 this.setSnowPipe(_sp.key);   // внутри syncUI + render + saveState
+                return;
+            }
+        }
+
+        // Магистраль радиаторов (стояк / трасса до коллектора). Строка таблицы — материал, типоразмер
+        // и бренд сразу: от них зависят переходники, гильзы, хомуты и гидравлика кольца. Поэтому, как
+        // и у уличной петли, подмены одной позиции нет — выбор уходит в ручную правку трассы
+        // (state.radTrunkOv, state.trunkPipeMat), и смета пересобирает весь узел. Метраж остаётся прежним.
+        if (/^(rad_trunk_pipe_d|riser_pipe_d)/.test(String(originalId))) {
+            if (this.applyTrunkChoice(originalId, chosenId)) {
+                this._hcPreview = null;
+                this.logEquipmentSwap(originalId, chosenId);
+                this.closeSwapModal();
+                this.render();
+                this.saveState();
                 return;
             }
         }
@@ -68875,7 +69039,7 @@ const app = {
         stable: { 16: 0.0108, 20: 0.0142, 25: 0.0176, 26: 0.0176, 32: 0.0226 },
         // PP-R ProAqua DUO SDR 6, 40×6,7 мм: внутренний диаметр 26,6 мм — по паспорту (Таблица 2).
         // Пока семейство не выбирается в интерфейсе, поэтому на смету и расчёт текущих домов не влияет.
-        ppr:    { 40: 0.0266 }
+        ppr:    { 20: 0.0144, 25: 0.0180, 32: 0.0232, 40: 0.0266 }
     },
     /** Семейство трубы радиаторной разводки по выбору в настройках. */
     radPipeFamily: function () {
@@ -68892,7 +69056,7 @@ const app = {
         const dIn = fam[parseInt(d, 10)];
         // Диаметра нет в таблице семейства — раньше тихо считали как 16 мм. Теперь хотя бы пишем в консоль.
         if (!dIn) console.warn('[радиаторы] нет внутреннего диаметра для Ø' + d + ' в семействе ' + (family || this.radPipeFamily()) + ', считаю как Ø16');
-        return dIn || fam[16];
+        return dIn || fam[16] || fam[20];
     },
 
     /**
@@ -68916,6 +69080,110 @@ const app = {
         mp:   { 16: 'SFP-0001-001216', 20: 'SFP-0001-001220', 25: 'SFP-0001-000126', 26: 'SFP-0001-000126', 32: 'SFP-0001-000132' }
     },
     RAD_SLEEVE: { 16: 'SFA-0020-000016', 20: 'SFA-0020-000020', 25: 'SFA-0020-000025', 32: 'SFA-0020-000032' },
+    /**
+     * Полипропилен в магистрали радиаторов. Основная сторона — Wavin PP-RCT STABI PLUS, ROMMER-сторона —
+     * ProAqua PP-R RUBIS (стекловолокно, PN 20, SDR 7,4), та же пара, что в обвязке котельной.
+     * Стенки по каталогу: 20×2,8, 25×3,5, 32×4,4, 40×5,5 (ГОСТ 32415-2013), внутренний диаметр 14,4 / 18,0 / 23,2 / 29,0 мм.
+     * Цена Wavin в каталоге — за штангу 4 м, ProAqua — за метр; пул приводит обе к цене за метр, как у остальных труб
+     * (asCoilPrice в render() домножит её на длину штанги).
+     */
+    RAD_PPR_ADAPTER: { 20: 'SZE02025RCT', 25: 'SZE02525RCT', 32: 'SZE03232RCT', 40: 'PA23020' },
+    /** Переходник «ППР — наружная резьба»: Wavin, а в паре с ProAqua (ROMMER-сторона) — его аналог ProAqua. */
+    radPprAdapter: function (id, rommerSide) {
+        if (/^PA/.test(String(id))) return this.findCatalogItemById(id);   // Ø40: ProAqua PA23020, пары Wavin нет
+        const e = (catalog.ppr_ekoplastik_adapter_mi || []).find(x => x.id === id);
+        if (!e) return null;
+        return (rommerSide && e.alts && e.alts[0]) ? e.alts[0] : e;
+    },
+    radPprTrunkPool: function () {
+        const rows = [[20, 'STRS020RCT', 'PA35008P', '20x2,8'], [25, 'STRS025RCT', 'PA35010P', '25x3,5'],
+            [32, 'STRS032RCT', 'PA35012P', '32x4,4']];
+        const wv = catalog.ppr_ekoplastik_pipe || [], pa = catalog.ppr_proaqua_pipe || [];
+        return rows.map(([d, wId, pId, nm]) => {
+            const w = wv.find(x => x.id === wId), pr = pa.find(x => x.id === pId);
+            if (!w) return null;
+            const out = { id: wId, name: `Труба PP-RCT STABI PLUS ${nm} (штанга 4 м)`, len: 4, price: (w.price || 0) / 4,
+                brand: 'Wavin', availability: w.availability, price_date: w.price_date };
+            if (pr) out.rommer = { id: pId, name: `Труба PP-R RUBIS стекловолокно PN 20 ${nm} (штанга 4 м)`, len: 4, price: pr.price || 0,
+                brand: 'ProAqua', availability: pr.availability, price_date: pr.price_date };
+            return out;
+        }).filter(Boolean).concat((() => {
+            // Ø40 есть в каталоге только как PP-R ProAqua DUO SDR 6 (PA39014): внутренний диаметр 26,6 мм по паспорту
+            const it = (catalog.ppr_proaqua_pipe || []).find(x => x.id === 'PA39014');
+            return it ? [{ id: 'PA39014', name: 'Труба PP-R DUO SDR 6 40x6,7 (штанга 4 м)', len: 4, price: it.price || 0, brand: 'ProAqua',
+                availability: it.availability, price_date: it.price_date }] : [];
+        })());
+    },
+    RAD_CLAMP: { 16: 'SAC-0020-000012', 20: 'SAC-0020-000012', 25: 'SAC-0020-000034', 26: 'SAC-0020-000034', 32: 'SAC-0020-000001', 40: 'SAC-0020-000114' },
+
+    /**
+     * Стоимость всего, что смета кладёт вместе с трубой магистрали (стояка или трассы), кроме самой
+     * трубы: четыре переходника, четыре гильзы (у металлопластика пресс-фитинг, гильз нет), хомут и
+     * шпилька на каждый метр. Состав — тот же, что в render(); нужна таблице замены, чтобы рядом с
+     * ценой метра трубы показать цену узла целиком — от типоразмера зависят и переходники, и хомуты.
+     * Цены фитингов — STOUT, как в смете по умолчанию.
+     */
+    radTrunkFittingsCost: function (d, family, meters, rommerSide) {
+        const price = (id) => { const it = id && this.findCatalogItemById(id); return it ? (it.price || 0) : 0; };
+        const mp = family === 'mp', ppr = family === 'ppr';
+        if (ppr) {
+            const ad = this.radPprAdapter(this.RAD_PPR_ADAPTER[d], rommerSide);
+            return 4 * (ad ? ad.price || 0 : 0) + meters * (price(this.RAD_CLAMP[d]) + price('SAC-0020-400100'));
+        }
+        let sum = 4 * price((this.RAD_ADAPTER_EXT[mp ? 'mp' : 'grey'] || {})[d]);
+        if (!mp) sum += 4 * price(this.RAD_SLEEVE[d]);
+        sum += meters * (price(this.RAD_CLAMP[d]) + price('SAC-0020-400100'));
+        return sum;
+    },
+
+    /** Разовая подключаемая таблица стилей окна замены: переключатели и плашки гидравлики (спокойные тона). */
+    ensureSwapUiCss: function () {
+        if (document.getElementById('swapUiCss')) return;
+        const s = document.createElement('style');
+        s.id = 'swapUiCss';
+        s.textContent = `
+.swap-filters{display:flex;gap:6px 18px;flex-wrap:wrap;align-items:center;padding:8px 0 4px;}
+.swap-frow{display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
+.swap-frow>.swap-flbl{font-size:12px;font-weight:700;color:var(--text-sec);margin-right:6px;}
+.swap-chip{cursor:pointer;padding:4px 12px;border-radius:8px;font-size:12px;line-height:1.3;border:1px solid rgba(127,138,160,.35);background:transparent;color:var(--text-sec);user-select:none;transition:background .15s,border-color .15s,color .15s;}
+.swap-chip:hover{border-color:var(--primary);color:var(--primary);}
+.swap-chip.on{background:var(--primary-light);border-color:var(--primary);color:var(--primary);font-weight:700;}
+.swap-hy-box{margin:8px 0 10px;padding:8px 12px;border:1px solid rgba(127,138,160,.3);border-radius:10px;}
+.swap-hy-box .t{font-size:12px;font-weight:700;color:var(--text-main);margin-bottom:4px;}
+.swap-hy-box .d{font-size:11px;color:var(--text-sec);line-height:1.45;}
+.swap-hy-box .ok,.swap-hy-line.ok .why{color:#4f8a6b;} .swap-hy-box .warn,.swap-hy-line.warn .why{color:#a47c2f;} .swap-hy-box .bad,.swap-hy-line.bad .why{color:#b06a6a;}
+body.dark-mode .swap-hy-box .ok,body.dark-mode .swap-hy-line.ok .why{color:#7fc4a0;} body.dark-mode .swap-hy-box .warn,body.dark-mode .swap-hy-line.warn .why{color:#d6b46c;} body.dark-mode .swap-hy-box .bad,body.dark-mode .swap-hy-line.bad .why{color:#d99a9a;}
+.inv-table tr.hy-ok:not(.active-row){background:rgba(95,158,122,.08);}
+.inv-table tr.hy-warn:not(.active-row){background:rgba(201,162,76,.09);}
+.inv-table tr.hy-bad:not(.active-row){background:rgba(190,120,120,.08);}
+.inv-table tr.hy-ok>td:first-child{box-shadow:inset 3px 0 0 rgba(95,158,122,.7);}
+.inv-table tr.hy-warn>td:first-child{box-shadow:inset 3px 0 0 rgba(201,162,76,.75);}
+.inv-table tr.hy-bad>td:first-child{box-shadow:inset 3px 0 0 rgba(190,120,120,.7);}
+.swap-hy-line{margin-top:4px;font-size:12px;font-weight:500;color:var(--text-main);}
+.swap-hy-line .why{margin-top:2px;}
+.swap-hy-line .sub{margin-top:2px;color:var(--text-sec);}
+.swap-hy-tag{display:inline-block;font-size:11px;font-weight:600;padding:1px 8px;border-radius:6px;margin-right:6px;}
+.swap-hy-line.ok .swap-hy-tag{background:rgba(95,158,122,.16);color:#4f8a6b;}
+.swap-hy-line.warn .swap-hy-tag{background:rgba(201,162,76,.18);color:#a47c2f;}
+.swap-hy-line.bad .swap-hy-tag{background:rgba(190,120,120,.16);color:#b06a6a;}
+body.dark-mode .swap-hy-line.ok .swap-hy-tag{background:rgba(127,196,160,.16);color:#7fc4a0;}
+body.dark-mode .swap-hy-line.warn .swap-hy-tag{background:rgba(214,180,108,.16);color:#d6b46c;}
+body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);color:#d99a9a;}
+@media (max-width:768px){
+.swap-filters{flex-direction:column;align-items:stretch;gap:4px;position:sticky;top:0;z-index:3;background:var(--surface,#fff);padding:6px 0 6px;margin:0 -2px;}
+.swap-frow{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:1px 2px;}
+.swap-frow::-webkit-scrollbar{display:none;}
+.swap-frow>.swap-flbl,.swap-chip{flex:0 0 auto;white-space:nowrap;}
+.swap-chip{padding:6px 12px;font-size:12.5px;}
+.swap-hy-box{padding:6px 10px;margin:6px 0 8px;}
+.swap-hy-box .t{font-size:11.5px;margin-bottom:0;}
+.swap-hy-box .d{display:none;}
+.swap-hy-line{font-size:11.5px;line-height:1.4;}
+.swap-hy-tag{display:inline-block;margin-bottom:2px;}
+}
+`;
+        document.head.appendChild(s);
+    },
 
     /**
      * Диаметр участка радиаторной магистрали — наименьший, на котором скорость
@@ -68939,6 +69207,56 @@ const app = {
             if (v <= this.RAD_V_MAX_TRUNK) return row[i];
         }
         return 32;
+    },
+    /**
+     * Вердикт гидравлики по одному варианту трубы для таблицы замены: уровень ok / warn / bad,
+     * строка с числами и причины. Числа — те же функции, что считают лист проекта.
+     */
+    swapHy: function (level, line, why, sub) {
+        return { level: level, line: line, why: why || [], sub: sub || '' };
+    },
+    /** Луч радиатора Ø16: тип трубы меняет семейство (внутренний диаметр), а с ним и потери самого дальнего луча и кольца. */
+    swapHyRay: function (altId) {
+        const base = String(altId).replace(/_r$/, '');
+        const fam = { insulated: 'grey', split: 'grey', insulated_mp: 'mp', split_mp: 'mp', stable_16: 'stable' }[base];
+        if (!fam) return null;
+        let h = null;
+        try { h = this.radHydraulics(); } catch (e) { h = null; }
+        const loop = h && (h.parts || []).find(x => x.tag === 'loop');
+        if (!loop) return null;
+        const n = v => v.toFixed(2).replace('.', ',');
+        const r = this.radPipeDrop(loop.flow, 16, loop.len, fam);
+        const lim = loop.vLim || this.RAD_V_MAX;
+        const why = [];
+        let level = 'ok';
+        const raise = (lv, t) => { why.push(t); if (lv === 'bad') level = 'bad'; else if (level === 'ok') level = 'warn'; };
+        if (r.v > lim) raise('bad', `скорость ${n(r.v)} м/с выше предела ${n(lim)} м/с — шум и износ`);
+        else if (r.v > 0.9 * lim) raise('warn', `скорость ${n(r.v)} м/с почти на пределе ${n(lim)} м/с`);
+        const dpAll = h.dp - loop.dp + r.dp;
+        const head = dpAll / 9.81 * (h.coolantK ? h.coolantK.head : 1);
+        const pump = (h.pumps || []).find(pm => pm.avail >= head);
+        let sub = '';
+        if (!pump) raise('bad', `сопротивление кольца ${n(dpAll)} кПа — насос не тянет`);
+        else if (pump.avail < head * this.RAD_PUMP_RESERVE) raise('warn', `запас насоса меньше ${Math.round((this.RAD_PUMP_RESERVE - 1) * 100)} %`);
+        else sub = `кольцо ${n(dpAll)} кПа — насос тянет`;
+        return this.swapHy(level, `${n(r.v)} м/с · ${n(r.dp)} кПа на ${loop.len.toFixed(0)} м · ${n(loop.flow)} м³/ч (самый дальний луч)`, why, sub);
+    },
+    /** Транзит тёплого пола: скорость и потери в трассе от насосной группы до коллектора этажа. */
+    swapHyTransit: function (origId, pipeId) {
+        const fl = parseInt(String(origId).replace('ufh_transit_f', '').charAt(0), 10) || 1;
+        const man = this._ufhBal && (this._ufhBal.mans || []).find(m => m.floor === fl && m.tr);
+        const row = [].concat(this.UFH_TRANSITS.pex, this.UFH_TRANSITS.mp).find(t => t.id === pipeId);
+        if (!man || !row || !(man.flow > 0)) return null;
+        const trN = man.trN || 1;
+        const flow = man.flow / trN;
+        const n = v => v.toFixed(2).replace('.', ',');
+        const d = this.ufhFlowDrop(flow, man.trM || 0, null, row.dIn);
+        const lim = this.UFH_TRANSIT_V_MAX;
+        const why = [];
+        let level = 'ok';
+        if (d.v > lim) { level = 'bad'; why.push(`скорость ${n(d.v)} м/с выше предела ${n(lim)} м/с — шум в перекрытии`); }
+        else if (d.v > 0.9 * lim) { level = 'warn'; why.push(`скорость ${n(d.v)} м/с почти на пределе ${n(lim)} м/с`); }
+        return this.swapHy(level, `${n(d.v)} м/с · ${n(d.dp)} кПа на ${man.trM || 0} м · ${n(flow)} м³/ч`, why);
     },
     radPipeDrop: function (flow, d, len, family) {
         const dr = this.snowPipeDrop(flow, this.radPipeId(d, family), this.RAD_FLUID);
@@ -72115,6 +72433,11 @@ const app = {
     },
     setExpTankConn: function (val) {
         this.state.expTankConnFilter = val;
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
+    setPipeKindFilter: function (key, val) {
+        if (!this._pipeKindFilt) return;
+        this._pipeKindFilt[key] = (key === 'fit') ? (val === true || val === 'true') : val;
         if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
     },
     setPipeSwapFilter: function (key, val) {
@@ -85340,6 +85663,10 @@ const app = {
             if (isAnalog) {
                 let ppr_diam = (diam === 22) ? 32 : 40;
                 let p_4m = this.getPprItem(catalog.ppr_ekoplastik_pipe, `STRS0${ppr_diam}RCT`);
+                // Цена Wavin в каталоге — за штангу 4 м, ProAqua — за метр (подтверждено владельцем 17.10.2026).
+                // Количество ниже считается штангами, поэтому цену ProAqua приводим к штанге — иначе труба
+                // на ProAqua стоила в смете вчетверо меньше.
+                if (p_4m && /ProAqua/i.test(p_4m.brand || '')) p_4m = { ...p_4m, price: (p_4m.price || 0) * 4, name: p_4m.name + ' (штанга 4 м)' };
                 if (p_4m) {
                     let qty_4m = Math.ceil(L / 4);
                     addToBill(p_4m, qty_4m, desc.replace('из нержавеющей стали AISI 304', `PP-RCT STABI PLUS ${ppr_diam}x${ppr_diam === 32 ? '4.4' : '5.5'} мм`).replace('нержавеющей трубы', 'трубы PP-RCT STABI PLUS'), grp);
@@ -88048,6 +88375,22 @@ const app = {
                 // нельзя, на малой площади подводка выходит двадцатой.
                 let _radConnPipe = null;
 
+                // Материал магистрали (стояк и трасса). По умолчанию — как в настройках, а серая
+                // PE-Xa на магистраль подменяется стабильной (см. ниже). Монтажник может выбрать
+                // любой из трёх в таблице замены (state.trunkPipeMat) — тогда подмены нет.
+                const _tkMatSel = ['grey', 'mp', 'stable', 'ppr'].includes(this.state.trunkPipeMat) ? this.state.trunkPipeMat : null;
+                const _tkMat = _tkMatSel || (_isMpPipe ? 'mp' : 'stable');
+                const _tkMp = _tkMat === 'mp';
+                const _tkPpr = _tkMat === 'ppr';
+                const _tkRom = this.state.brandMode === 'rommer' || Object.keys(this.state.swaps || {}).some(k => /^(rad_trunk|riser)_pipe_d/.test(k) && /^PA/.test(String(this.state.swaps[k])));
+                const _pprPool = this.radPprTrunkPool();
+                const _PPR_IDS = { 20: 'STRS020RCT', 25: 'STRS025RCT', 32: 'STRS032RCT', 40: 'PA39014' };
+                const _tkPool = { grey: catalog.rad_pipes_grey, mp: catalog.metal_plastic_pipes, stable: catalog.stable_pipes, ppr: _pprPool }[_tkMat];
+                const _tkIds = { grey: GREY_PIPE_IDS, mp: MP_PIPE_IDS, stable: STABLE_PIPE_IDS, ppr: _PPR_IDS }[_tkMat];
+                // Ряд для ручной замены — все четыре материала, по одному представителю на типоразмер.
+                const _tkAllAlts = [[catalog.rad_pipes_grey, GREY_PIPE_IDS], [catalog.metal_plastic_pipes, MP_PIPE_IDS], [catalog.stable_pipes, STABLE_PIPE_IDS], [_pprPool, _PPR_IDS]]
+                    .reduce((acc, [pool, ids]) => acc.concat(Object.values(ids).map(id => pool.find(x => x.id === id))), []).filter(Boolean);
+
                 // Стояк на второй этаж. Раньше при двух этажах в смету шли два
                 // радиаторных коллектора, а трубы между ними — ноль: neededPipe выше
                 // считает только участки «коллектор → прибор», каждый со своего этажа.
@@ -88065,7 +88408,7 @@ const app = {
                     // тройниковой схеме, поэтому и таблицы диаметров общие.
                     const _riserKw = (heatLoadTotal / 1000) / 2;
                     const _riserD0 = pickDiam(_riserKw);
-                    const _riserD = _isMpPipe ? mpDiamOf(_riserD0) : _riserD0;
+                    const _riserD = _tkMp ? mpDiamOf(_riserD0) : _riserD0;
                     // Метраж на одну трубу: вертикаль 3,2 м (этаж плюс перекрытие) и
                     // подход по этажу к месту шкафа — 0,4·√S, это примерно путь от
                     // середины плана к стене. Пара подача+обратка, +10% на запас.
@@ -88084,9 +88427,9 @@ const app = {
                     // Подставляем стабильную PE-Xa/Al/PE-RT: алюминиевый слой снижает
                     // расширение примерно в семь раз. Металлопластик оставляем как есть —
                     // у него тот же алюминий и та же низкая температурная деформация.
-                    const _riserPool = _isMpPipe ? catalog.metal_plastic_pipes : catalog.stable_pipes;
-                    const _riserIds = _isMpPipe ? MP_PIPE_IDS : STABLE_PIPE_IDS;
-                    const _riserSwapped = !_isMpPipe && !_isStablePipe;
+                    const _riserPool = _tkPool;
+                    const _riserIds = _tkIds;
+                    const _riserSwapped = !_tkMatSel && !_isMpPipe && !_isStablePipe;
                     // Таблица выше подбирает диаметр по мощности и о трубе ничего не знает,
                     // а внутренний проход у одного и того же наружного размера разный:
                     // 25х3,5 серой PEX-a — это 18 мм, 25х3,7 стабильной — 17,6 мм,
@@ -88120,33 +88463,41 @@ const app = {
                         ? (_riserFlow / 3600) / (Math.PI * Math.pow(bore / 1000, 2) / 4)
                         : 0;
                     const _riserOrder = [16, 20, 25, 26, 32, 40];
-                    // Ø40 — PP-R ProAqua (PA39014, штука 4 м, внутренний диаметр 26,6 мм по паспорту), как и на трассе
-                    // одноэтажного дома. Цена в позиции — за метр: asCoilPrice умножит на длину штуки.
-                    const _pprR40 = (() => { const it = this.findCatalogItemById('PA39014'); return it ? { ...it, len: 4, price: it.price / 4 } : null; })();
+                    // Ø40 — PP-R ProAqua DUO SDR 6 (PA39014, штанга 4 м, внутренний диаметр 26,6 мм по паспорту), как и на трассе
+                    // одноэтажного дома. Позиция из пула ППР: цена за метр (ProAqua в каталоге за метр), asCoilPrice умножит на длину штанги.
+                    const _pprR40 = _pprPool.find(x => x.id === 'PA39014') || null;
                     // Два критерия сразу: скорость (шум, таблица И.1) и запас насоса
                     // (напор). По скорости Ø25 на 75/65 проходит, а по напору кольцо
                     // остаётся без запаса — поднимаем типоразмер, пока не пройдут оба.
                     // Кольцо для второй проверки строит radHydraulics по this._radTrunk,
                     // поэтому запись подставляем на каждый шаг перебора.
-                    let _riserPick = _riserD, _riserByHead = false;
+                    let _riserPick = _tkPpr ? Math.max(_riserD, 20) : _riserD, _riserByHead = false;
                     // Ручной диаметр не перебираем: монтажник выбрал его сам, а скорость и запас
                     // показаны в карточке — он видит, что выбрал.
                     const _riserForced = !!(_radOv && _radOv.d);
                     if (_riserForced) _riserPick = _radOv.d;
                     const _riserSpan = { kw: _riserKw, len: _riserMeters, share: 0.5,
-                        fam: _isMpPipe ? 'mp' : 'stable', riser: true };
-                    for (let _i = _riserOrder.indexOf(_riserD); _i < _riserOrder.length && !_riserForced; _i++) {
-                        const _is40 = _riserOrder[_i] === 40;
-                        const _cand = _is40 ? _pprR40 : _riserPool.find(x => x.id === _riserIds[_riserOrder[_i]]);
-                        if (!_cand) continue;
-                        if (_riserSpeed(_is40 ? 26.6 : _riserBore(_cand.name)) > this.RAD_V_MAX_TRUNK) continue;
-                        const _riserPrev = _riserPick;
-                        _riserPick = _riserOrder[_i];
-                        this._radTrunk = Object.assign({ d: _riserPick }, _riserSpan);
-                        if (this.radRingHasReserve()) break;
-                        // Ø40 берём, только если он довёл запас до нормы: иначе дорогая труба задачу не решает
-                        if (_is40) { _riserPick = _riserPrev; break; }
-                        _riserByHead = true;   // по скорости прошёл, держит напор
+                        fam: _tkMat, riser: true };
+                    // Два прохода: сначала берём типоразмер, который таблица замены назовёт
+                    // «Подходит» (скорость не выше 90 % предела — выше уже «с оговоркой»), и только
+                    // если такого нет в ряду, — тот, что проходит по самому пределу.
+                    for (const _kf of [0.9, 1]) {
+                        let _riserFound = false;
+                        for (let _i = _riserOrder.indexOf(_riserD); _i < _riserOrder.length && !_riserForced; _i++) {
+                            const _is40 = _riserOrder[_i] === 40;
+                            const _cand = _is40 ? _pprR40 : _riserPool.find(x => x.id === _riserIds[_riserOrder[_i]]);
+                            if (!_cand) continue;
+                            if (_riserSpeed(_is40 ? 26.6 : _riserBore(_cand.name)) > this.RAD_V_MAX_TRUNK * _kf) continue;
+                            const _riserPrev = _riserPick;
+                            _riserPick = _riserOrder[_i];
+                            _riserFound = true;
+                            this._radTrunk = Object.assign({ d: _riserPick }, _riserSpan);
+                            if (this.radRingHasReserve()) break;
+                            // Ø40 берём, только если он довёл запас до нормы: иначе дорогая труба задачу не решает
+                            if (_is40) { _riserPick = _riserPrev; break; }
+                            _riserByHead = true;   // по скорости прошёл, держит напор
+                        }
+                        if (_riserFound || _riserForced) break;
                     }
                     const _riserBase = (_riserPick === 40 && _pprR40) ? _pprR40 : (_riserPool.find(x => x.id === _riserIds[_riserPick]) || _riserPool.find(x => x.id === _riserIds[_riserD]));
                     // Что легло на объект — то и считает гидравлика (radHydraulics).
@@ -88161,17 +88512,14 @@ const app = {
                         // Типоразмерный ряд того же материала — в ручную замену. noCheapenAlts:
                         // режим «Аналог» иначе подставил бы Ø16 вместо Ø25, потому что бухта
                         // дешевле, и стояк перестал бы проходить по расходу.
-                        const _riserAlts = Object.values(_riserIds)
-                            .filter(id => id !== _riserBase.id)
-                            .map(id => _riserPool.find(x => x.id === id))
-                            .filter(Boolean);
-                        addToBill(asCoilPrice({ ..._riserBase, originalId: 'riser_pipe_d' + _riserD, alts: _riserAlts, noCheapenAlts: true }), _riserCoils,
+                        const _riserAlts = _tkAllAlts.filter(x => x.id !== _riserBase.id);
+                        addToBill(asCoilPrice({ ..._riserBase, originalId: 'riser_pipe_d' + _riserD0, alts: _riserAlts, noCheapenAlts: true }), _riserCoils,
                             this.getDesc('riser_pipe', _riserPick, _riserMeters, _riserKw, _riserOneWay, floorArea,
                                 { coil: _riserBase.len * _riserCoils, swapped: _riserSwapped, bore: _riserPick === 40 ? 26.6 : _riserBore(_riserBase.name), tableD: _riserD }), riserGrp);
                         // Крепление вертикального участка: полимерная труба провисает,
                         // поэтому хомут на каждый метр каждой из двух труб. Типоразмер —
                         // по наружному диаметру стояка.
-                        const _clampId = { 16: 'SAC-0020-000012', 20: 'SAC-0020-000012', 25: 'SAC-0020-000034', 26: 'SAC-0020-000034', 32: 'SAC-0020-000001', 40: 'SAC-0020-000114' }[_riserPick];
+                        const _clampId = this.RAD_CLAMP[_riserPick];
                         const _riserClamp = _clampId && catalog.mounting_system.find(x => x.id === _clampId);
                         if (_riserClamp) {
                             addToBill({ ..._riserClamp, originalId: _clampId + '_riser' }, _riserMeters,
@@ -88182,13 +88530,13 @@ const app = {
                         }
                         // Присоединения стояка — та же недостача, что и у трассы:
                         // внизу к насосной группе, наверху к коллектору второго этажа.
-                        const _rsFam = _isMpPipe ? 'mp' : 'grey';
-                        // Ø40 — PP-R: комбинированная муфта с наружной резьбой 40×1" (PA23020), как на трассе одного этажа
-                        const _rsAdId = _riserPick === 40 ? 'PA23020' : (this.RAD_ADAPTER_EXT[_rsFam] || {})[_riserD];
-                        const _rsAd = _rsAdId && this.findCatalogItemById(_rsAdId);
+                        const _rsFam = _tkMp ? 'mp' : 'grey';
+                        // Полипропилен (любой типоразмер, и Ø40 автоподбора) — комбинированная муфта с наружной резьбой; у Ø40 это PA23020, 40×1"
+                        const _rsAdId = (_tkPpr || _riserPick === 40) ? this.RAD_PPR_ADAPTER[_riserPick] : (this.RAD_ADAPTER_EXT[_rsFam] || {})[_riserD];
+                        const _rsAd = _rsAdId && ((_tkPpr && _riserPick !== 40) ? this.radPprAdapter(_rsAdId, _tkRom) : this.findCatalogItemById(_rsAdId));
                         if (_rsAd) addToBill({ ..._rsAd, originalId: _rsAdId + '_riser' }, 4,
                             `Переходник стояка Ø${_riserD} — присоединение внизу к насосной группе и наверху к коллектору второго этажа: два конца × подача и обратка = 4 шт.`, riserGrp);
-                        if (!_isMpPipe && _riserPick !== 40) {
+                        if (!_tkMp && !_tkPpr && _riserPick !== 40) {
                             const _rsSlId = this.RAD_SLEEVE[_riserD];
                             const _rsSl = _rsSlId && this.findCatalogItemById(_rsSlId);
                             if (_rsSl) addToBill({ ..._rsSl, originalId: _rsSlId + '_riser' }, 4,
@@ -88209,7 +88557,7 @@ const app = {
                     // Дом одноэтажный, коллектор один — трасса несёт мощность всех приборов.
                     const _trKw = heatLoadTotal / 1000;
                     const _trD0 = pickDiam(_trKw);
-                    const _trD = _isMpPipe ? mpDiamOf(_trD0) : _trD0;
+                    const _trD = _tkMp ? mpDiamOf(_trD0) : _trD0;
                     // Ход по этажу от котельной до шкафа — 0,5·√S (котельная обычно у стены,
                     // шкаф ближе к середине плана) плюс 1 м на обвязку у самого коллектора.
                     // Пара подача+обратка, +10% на подрезку и обходы. Оценка грубая, как и
@@ -88222,9 +88570,9 @@ const app = {
                     // не ставим (линейное расширение ~0,18 мм/(м·К)), подставляем стабильную
                     // PE-Xa/Al/PE-RT. Металлопластик оставляем как есть — у него тот же
                     // алюминиевый слой.
-                    const _trPool = _isMpPipe ? catalog.metal_plastic_pipes : catalog.stable_pipes;
-                    const _trIds = _isMpPipe ? MP_PIPE_IDS : STABLE_PIPE_IDS;
-                    const _trSwapped = !_isMpPipe && !_isStablePipe;
+                    const _trPool = _tkPool;
+                    const _trIds = _tkIds;
+                    const _trSwapped = !_tkMatSel && !_isMpPipe && !_isStablePipe;
                     // Подобранный по мощности типоразмер проверяем по фактическому проходу
                     // трубы и, если скорость вылезает за предел RAD_V_MAX_TRUNK (1,2 м/с),
                     // берём следующий из ряда — та же проверка, что у стояка.
@@ -88243,27 +88591,33 @@ const app = {
                         ? (_trFlow / 3600) / (Math.PI * Math.pow(bore / 1000, 2) / 4)
                         : 0;
                     const _trOrder = [16, 20, 25, 26, 32, 40];
-                    // Ø40 есть в каталоге только как PP-R ProAqua DUO SDR 6 (PA39014, штука 4 м, внутренний
-                    // диаметр 26,6 мм по паспорту). Цена в позиции — за метр: asCoilPrice умножит на длину штуки.
-                    const _ppr40 = (() => { const it = this.findCatalogItemById('PA39014'); return it ? { ...it, len: 4, price: it.price / 4 } : null; })();
+                    // Ø40 — PP-R ProAqua DUO SDR 6 (PA39014, штанга 4 м, внутренний диаметр 26,6 мм по паспорту).
+                    // Позиция из пула ППР: цена за метр (ProAqua в каталоге за метр), asCoilPrice умножит на длину штанги.
+                    const _ppr40 = _pprPool.find(x => x.id === 'PA39014') || null;
                     // Скорость и запас насоса — оба критерия, как у стояка выше.
-                    let _trPick = _trD, _trByHead = false;
+                    let _trPick = _tkPpr ? Math.max(_trD, 20) : _trD, _trByHead = false;
                     const _trForced = !!(_trOv && _trOv.d);
                     if (_trForced) _trPick = _trOv.d;
                     const _trSpan = { kw: _trKw, len: _trMeters, share: 1,
-                        fam: _isMpPipe ? 'mp' : 'stable', riser: false };
-                    for (let _i = _trOrder.indexOf(_trD); _i < _trOrder.length && !_trForced; _i++) {
-                        const _is40 = _trOrder[_i] === 40;
-                        const _cand = _is40 ? _ppr40 : _trPool.find(x => x.id === _trIds[_trOrder[_i]]);
-                        if (!_cand) continue;
-                        if (_trSpeed(_is40 ? 26.6 : _trBore(_cand.name)) > this.RAD_V_MAX_TRUNK) continue;
-                        const _trPrev = _trPick;
-                        _trPick = _trOrder[_i];
-                        this._radTrunk = Object.assign({ d: _trPick }, _trSpan);
-                        if (this.radRingHasReserve()) break;
-                        // Ø40 берём, только если он довёл запас до нормы: иначе дорогая труба задачу не решает
-                        if (_is40) { _trPick = _trPrev; break; }
-                        _trByHead = true;
+                        fam: _tkMat, riser: false };
+                    // Два прохода — как у стояка: сначала «Подходит» (скорость до 90 % предела).
+                    for (const _kf of [0.9, 1]) {
+                        let _trFound = false;
+                        for (let _i = _trOrder.indexOf(_trD); _i < _trOrder.length && !_trForced; _i++) {
+                            const _is40 = _trOrder[_i] === 40;
+                            const _cand = _is40 ? _ppr40 : _trPool.find(x => x.id === _trIds[_trOrder[_i]]);
+                            if (!_cand) continue;
+                            if (_trSpeed(_is40 ? 26.6 : _trBore(_cand.name)) > this.RAD_V_MAX_TRUNK * _kf) continue;
+                            const _trPrev = _trPick;
+                            _trPick = _trOrder[_i];
+                            _trFound = true;
+                            this._radTrunk = Object.assign({ d: _trPick }, _trSpan);
+                            if (this.radRingHasReserve()) break;
+                            // Ø40 берём, только если он довёл запас до нормы: иначе дорогая труба задачу не решает
+                            if (_is40) { _trPick = _trPrev; break; }
+                            _trByHead = true;
+                        }
+                        if (_trFound || _trForced) break;
                     }
                     const _trBase = (_trPick === 40 && _ppr40) ? _ppr40 : (_trPool.find(x => x.id === _trIds[_trPick]) || _trPool.find(x => x.id === _trIds[_trD]));
                     // Тот же участок, что считает гидравлика: итоговый типоразмер
@@ -88276,10 +88630,7 @@ const app = {
                         // Типоразмерный ряд того же материала — в ручную замену. noCheapenAlts:
                         // «Аналог» иначе подставил бы Ø16 вместо Ø25, потому что бухта дешевле,
                         // и трасса перестала бы проходить по расходу.
-                        const _trAlts = Object.values(_trIds)
-                            .filter(id => id !== _trBase.id)
-                            .map(id => _trPool.find(x => x.id === id))
-                            .filter(Boolean);
+                        const _trAlts = _tkAllAlts.filter(x => x.id !== _trBase.id);
                         const _trDesc = `<span style="font-size:11px;line-height:1.5;">` +
                             `<b>Зачем:</b> Трасса от насосной группы котельной до радиаторного коллектора: лучи Ø16 считаются только от коллектора к приборам, а сама подводка к шкафу — это отдельный участок, который несёт расход всех приборов дома сразу.<br>` +
                             `<b>Формула метража:</b> (1 м на обвязку у коллектора + 0,5·√площади этажа) × 2 (подача и обратка) × 1,1 (запас на подрезку и обходы).<br>` +
@@ -88289,10 +88640,10 @@ const app = {
                             (_trSwapped && _trPick !== 40 ? `<br><b>Материал:</b> вместо серой PE-Xa подставлена стабильная PE-Xa/Al/PE-RT: у серой линейное расширение примерно в семь раз выше, и на длинной магистрали её выгибает между креплениями.` : ``) +
                             (_trPick === 40 ? `<br><b>Материал:</b> Ø40 — PP-R ProAqua DUO SDR 6 (PN20, внутренний диаметр 26,6 мм), в каталоге других труб этого размера нет. По паспорту рабочее давление при 80 °C на 25 лет — 6,5 бар, при 95 °C — только 10 лет; режим выше 80 °C не использовать. Хомуты — на 40 мм (1 1/4″, 40–45 мм).` : ``) +
                             `</span>`;
-                        addToBill(asCoilPrice({ ..._trBase, originalId: 'rad_trunk_pipe_d' + _trD, alts: _trAlts, noCheapenAlts: true }), _trCoils, _trDesc, trunkGrp);
+                        addToBill(asCoilPrice({ ..._trBase, originalId: 'rad_trunk_pipe_d' + _trD0, alts: _trAlts, noCheapenAlts: true }), _trCoils, _trDesc, trunkGrp);
                         // Крепление: полимерная труба провисает, поэтому хомут на каждый метр
                         // каждой из двух труб. Типоразмер — по наружному диаметру трассы.
-                        const _trClampId = { 16: 'SAC-0020-000012', 20: 'SAC-0020-000012', 25: 'SAC-0020-000034', 26: 'SAC-0020-000034', 32: 'SAC-0020-000001', 40: 'SAC-0020-000114' }[_trPick];
+                        const _trClampId = this.RAD_CLAMP[_trPick];
                         const _trClamp = _trClampId && catalog.mounting_system.find(x => x.id === _trClampId);
                         if (_trClamp) {
                             addToBill({ ..._trClamp, originalId: _trClampId + '_rad_trunk' }, _trMeters,
@@ -88304,13 +88655,13 @@ const app = {
                         // Присоединения трассы. Раньше в подраздел уходила голая труба
                         // с хомутами, а чем она стыкуется с насосной группой и с
                         // коллектором — монтажник докупал сам.
-                        const _trFamA = _isMpPipe ? 'mp' : 'grey';
-                        // Ø40 — PP-R: присоединение комбинированной муфтой с наружной резьбой 40×1" (PA23020)
-                        const _trAdId = _trPick === 40 ? 'PA23020' : (this.RAD_ADAPTER_EXT[_trFamA] || {})[_trPick];
-                        const _trAd = _trAdId && this.findCatalogItemById(_trAdId);
+                        const _trFamA = _tkMp ? 'mp' : 'grey';
+                        // Полипропилен (любой типоразмер, и Ø40 автоподбора) — комбинированная муфта с наружной резьбой; у Ø40 это PA23020, 40×1"
+                        const _trAdId = (_tkPpr || _trPick === 40) ? this.RAD_PPR_ADAPTER[_trPick] : (this.RAD_ADAPTER_EXT[_trFamA] || {})[_trPick];
+                        const _trAd = _trAdId && ((_tkPpr && _trPick !== 40) ? this.radPprAdapter(_trAdId, _tkRom) : this.findCatalogItemById(_trAdId));
                         if (_trAd) addToBill({ ..._trAd, originalId: _trAdId + '_rad_trunk' }, 4,
                             `Переходник трассы Ø${_trPick} — присоединение к насосной группе и к радиаторному коллектору: два конца × подача и обратка = 4 шт.`, trunkGrp);
-                        if (!_isMpPipe && _trPick !== 40) {
+                        if (!_tkMp && !_tkPpr && _trPick !== 40) {
                             const _trSlId = this.RAD_SLEEVE[_trPick];
                             const _trSl = _trSlId && this.findCatalogItemById(_trSlId);
                             if (_trSl) addToBill({ ..._trSl, originalId: _trSlId + '_rad_trunk' }, 4,
