@@ -77812,11 +77812,11 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         const why = (x) => {
             if (x.level === 'ok') return '';
             if (x.v > this.BOILER_V_MAX) return x.v > 1.2
-                ? 'Шум и износ: скорость выше 1,2 м/с. Можно выбрать, но не рекомендуем.'
-                : 'Заметный шум: скорость выше 1,0 м/с. Лучше взять диаметр больше.';
+                ? 'Скорость выше 1,2 м/с: шум в трубах и на кранах, быстрый износ фитингов и гидроудары. Выбрать можно, но не рекомендуем — возьмите диаметр больше.'
+                : 'Скорость 1,0–1,2 м/с: возможен шум на поворотах и кранах, выше потери напора. Работает, но лучше диаметр больше.';
             return x.v < 0.3
-                ? 'Воздух и шлам: скорость ниже 0,3 м/с. Можно выбрать, но не рекомендуем.'
-                : 'Скорость ниже 0,4 м/с — на границе. Лучше взять диаметр меньше.';
+                ? 'Скорость ниже 0,3 м/с: воздух и шлам оседают в трубе, радиаторы греют хуже, возможны завоздушивание и перегрев котла. Выбрать можно, но не рекомендуем — возьмите диаметр меньше.'
+                : 'Скорость 0,3–0,4 м/с: работает, но воздух и шлам выводятся хуже, а труба стоит дороже без пользы. Лучше диаметр меньше.';
         };
         // Цена труб и фитингов при каждом Ø — прямо у кнопки, с разницей к выбранному.
         const fmt = (v) => Math.round(v).toLocaleString('ru-RU') + ' ₽';
@@ -77846,6 +77846,10 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             + `, по скорости: <b>${this.boilerMainTitle(o.rec, sys)}</b>`
             + (manual && manual !== o.rec ? ` · <span style="cursor:pointer;color:var(--primary);text-decoration:underline;" onclick="app.${live ? 'setBoilerMainSize' : 'setBoilerPreviewSize'}(null)">вернуть рекомендованный</span>` : '')
             + `</div>`;
+        const legend = `<div style="margin-top:4px;font-size:11px;color:var(--text-sec);">`
+            + `<span style="color:${COL.ok.c};">●</span> норма 0,4–1,0 м/с · `
+            + `<span style="color:${COL.warn.c};">●</span> работает, но с оговорками · `
+            + `<span style="color:${COL.bad.c};">●</span> не рекомендуем. Наведите на кнопку — увидите, чем это грозит.</div>`;
         const warnLine = (curOpt && curOpt.level !== 'ok')
             ? `<div style="margin-top:3px;font-size:12px;color:${COL[curOpt.level].c};">${why(curOpt)}</div>`
             : '';
@@ -77857,6 +77861,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             + `${o.options.map(btn).join('')}</div>`
             + info
             + warnLine
+            + legend
             + previewNote
             + `</div>`;
     },
