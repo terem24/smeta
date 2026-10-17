@@ -49,6 +49,12 @@ const OBJECTS = [
     { title: 'Длинные линии 25 м до санузла', o: { ...base, wellDepth: 40, wellDist: 20, waterZones: [Z('Кухня', 25, { basin: 1, dish: 1 }), Z('Санузел 1', 25, { toilet: 1, basin: 1, shower: 1, wash: 1 })] } },
     { title: 'Без узла ввода (вода сразу на коллектор)', o: { ...base, waterInput: false, wellDepth: 30, wellDist: 15, waterZones: house(2) } },
     { title: 'Колба тонкой очистки Big Blue в узле, по протоку, редуктор', o: { ...base, wellDepth: 60, wellDist: 30, waterZones: house(3), wellAutoType: 'base', waterReducer: true, bigBlueFilter: true, waterFilterLevel: 'basic' } },
+    { title: 'Городская вода 3 бар, дом, 2 санузла', o: { ...base, well: false, mainsBar: 3, waterZones: house(2) } },
+    { title: 'Городская вода 1,2 бар, 3 санузла (слабая сеть)', o: { ...base, well: false, mainsBar: 1.2, waterZones: house(3) } },
+    { title: 'Городская вода 6,5 бар без редуктора', o: { ...base, well: false, mainsBar: 6.5, waterZones: house(2) } },
+    { title: 'Городская вода 6,5 бар с редуктором', o: { ...base, well: false, mainsBar: 6.5, waterReducer: true, waterZones: house(2) } },
+    { title: 'Городская вода, сеть не задана (проверки нет)', o: { ...base, well: false, mainsBar: 0, waterZones: house(2) } },
+    { title: '2 этажа: санузел 1 на первом, санузел 2 наверху', o: { ...base, floors: 2, well: false, mainsBar: 1.6, waterZones: (() => { const z = house(2); z[1].level = 1; z[2].level = 2; return z; })() } },
     { title: 'Насос заменён вручную на самый слабый 2-44 при глубине 60 м', o: { ...base, wellDepth: 60, wellDist: 30, waterZones: house(2), swaps: { well_pump_auto: 'RPW-0012-350215' } } }
 ];
 
@@ -63,7 +69,7 @@ function run(title, o) {
 }
 
 function checks(title, o, r) {
-    if (!r) { fail(title + ': проверка не вернула результат'); return; }
+    if (!r) { if (o.well === false && !(o.mainsBar > 0)) return; fail(title + ': проверка не вернула результат'); return; }
     const d = r.scenarios.design;
     // 3. баланс напора по общей части
     const st = d.trunk.stages;
@@ -123,7 +129,7 @@ OBJECTS.forEach(({ title, o }) => {
         static: r && r.static.bar, flags: r && r.flags.map(f => f.id) });
     if (mode === 'json') return;
     console.log('\n=== ' + title + ' ===');
-    if (!r) { console.log('  (нет данных: скважина или санузлы не заданы)'); return; }
+    if (!r) { console.log('  (нет данных: скважина / давление в сети или санузлы не заданы)'); return; }
     console.log('  вердикт: ' + r.verdict + '   насос: ' + r.pump.name + ' — ' + f1(r.pump.head) + ' м на ' + f2(r.pump.Q) + ' м³/ч (при нуле ' + f1(r.pump.headMax) + ')');
     stagesText(r).forEach(s => console.log('    ' + s.title.padEnd(62) + ' −' + f2(s.dH).padStart(6) + '  → ' + f1(s.H).padStart(6) + ' м' + (s.v != null ? '   ' + f2(s.v) + ' м/с' : '')));
     const w = r.worst;
