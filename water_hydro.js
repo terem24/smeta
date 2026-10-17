@@ -459,12 +459,6 @@
       var gain = lossOf(res, 'well') - lossOf(evaluate(a40, { noAdvice: true, reserve: rv }), 'well');
       if (gain >= 1.5) out.push({ id: 'pipe40', gain: gain, text: 'Труба 40×3,7 вместо 32×3: потери скважина — ввод ниже на ' + fmt(gain, 1) + ' м (сейчас ' + fmt(lossOf(res, 'well'), 1) + ' м). В самой скважине 32 мм остаётся из-за оголовка, 40 мм берут на горизонтальном участке.' });
     }
-    // Ввод на 1″
-    if (flag('node_v') && !(data.node && data.node.absent) && !(data.node && data.node.size === '1' && data.node.dIn >= 0.025)) {
-      var a1 = clone(data); a1.node.dIn = 0.025; a1.node.sizes = { mesh: 0.025, fine: 0.025, meter: 0.025, reducer: 0.025 }; a1.collector = { cold: 0.025, hot: 0.025 };
-      var g1 = lossOf(res, 'node') - lossOf(evaluate(a1, { noAdvice: true, reserve: rv }), 'node');
-      if (g1 >= 1) out.push({ id: 'node1', gain: g1, actions: (data.node && data.node.size === '1') ? [] : [{ fix: 'node1', label: 'Узел ввода на 1″' }], text: 'Узел ввода на 1″: потери узла ниже на ' + fmt(g1, 1) + ' м (сейчас ' + fmt(lossOf(res, 'node'), 1) + ' м), скорость в узле падает до ' + fmt(velocity(res.scenarios.design.Q, 0.025), 2) + ' м/с. Счётчик остаётся ВСКМ-20 — при необходимости замените вручную.' });
-    }
     if (res.static.verdict !== 'ok' && !res.static.capped) out.push({ id: 'reducer',
       actions: (data.node && !data.node.absent ? [{ fix: 'reducer', label: 'Включить редуктор' }] : []).concat(res.pump.mains ? [] : [{ fix: 'auto', arg: 'sirio', label: 'Автоматика SIRIO' }]),
       text: 'Редуктор давления в узле ввода' + (res.pump.mains ? '' : ' (или автоматика по давлению: SIRIO, BRIO-TOP, EPC-12)') + ': сейчас при закрытых кранах ' + fmt(res.static.bar, 1) + ' бар.' });

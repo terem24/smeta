@@ -50124,7 +50124,25 @@ const app = {
     // catalog.water_node_1in (поле replaces — id позиции 3/4"); переходники 1" → 3/4" на входе не нужны.
     // Подпитка отопления (6.6) и счётчик остаются как есть: подпитке 1" ни к чему, счётчика 1" в прайсе нет.
     NODE1_DROP: ['SFT-0029-000134', 'SFT-0004-000134'],
-    waterNodeSize: function () { return this.state.waterNodeSize === '1' ? '1' : '34'; },
+    // Расход, на который считается узел и подбирается насос, м³/ч: ручной («По комнатам»), иначе вероятностный
+    // (для скважины — не меньше нижней границы насоса). От него зависит размер узла ввода.
+    waterDesignFlow: function () {
+        const man = this.waterFlowManual();
+        if (man > 0) return man;
+        const p = this.waterPeakFlow().design;
+        return this.state.well ? Math.max(this.WATER_PUMP_FLOW_FLOOR, p) : Math.max(0.1, p);
+    },
+    // Скорость в узле выше этого — главная линия переходит на 1" (ориентир практики: шум и потери; тот же предел, что в проверке водоснабжения)
+    WATER_NODE_V_MAX: 2.0,
+    // Размер узла ввода считается сам: на 3/4" (внутренний проход ~20 мм) скорость при расчётном расходе
+    // не выше предела — 3/4", иначе 1". state.waterNodeSize = '1' | '34' принудительно (для стенда), по умолчанию — расчёт.
+    waterNodeSize: function () {
+        if (this.state.waterNodeSize === '1') return '1';
+        if (this.state.waterNodeSize === '34') return '34';
+        const q = this.waterDesignFlow();
+        const v = (q / 3600) / (Math.PI * 0.02 * 0.02 / 4);
+        return v > this.WATER_NODE_V_MAX ? '1' : '34';
+    },
     nodeItem1: function (item) {
         if (!item || this.waterNodeSize() !== '1') return item;
         const t = (catalog.water_node_1in || []).find(x => x.replaces === item.id);
@@ -50135,10 +50153,6 @@ const app = {
         }
         if (this.NODE1_DROP.includes(item.id)) return null;
         return item;
-    },
-    setWaterNodeSize: function (v) {
-        this.state.waterNodeSize = (v === '1') ? '1' : '34';
-        this.saveState(); this.syncUI(); this.render();
     },
 
     // Внутренний диаметр (м) по размеру позиции: «3/4"», «1 1/4"», «DN25», счётчик «ВСКМ-15».
@@ -50403,7 +50417,6 @@ const app = {
         if (kind === 'pump' && arg) { s.swaps = s.swaps || {}; s.swaps['well_pump_auto'] = arg; }
         else if (kind === 'reducer') s.waterReducer = true;
         else if (kind === 'auto' && arg) s.wellAutoType = arg;
-        else if (kind === 'node1') s.waterNodeSize = '1';
         else return;
         this.saveState(); this.syncUI(); this.render();
     },
@@ -50436,17 +50449,25 @@ const app = {
     // Плашка раздела «6. Узел ввода ХВС»: хватает ли ввода 3/4" на расчётный расход.
     // Молчит, пока расход укладывается: плашка «всё в порядке» только шумит.
     waterNodeFlowNote: function () {
-        const q = this.waterNodeFlow();
+        const q = this.waterDesignFlow();
         if (q <= 0) return '';
-        const fine = this.filterLevel() !== 'none';
-        const lim = fine ? this.WATER_NODE_FLOW_FINE : this.WATER_NODE_FLOW_COARSE;
-        if (q <= lim) return '';
         const fmt = v => v.toFixed(2).replace('.', ',');
-        return this.noteBox('warn', 'Узел ввода 3/4″ не тянет расход дома.',
-            `Расчёт ${fmt(q)} м³/ч, узел ${fine ? 'с колбой тонкой очистки' : 'без тонкой очистки'} — до ${fmt(lim)} м³/ч.`,
-            `<div class="tip-p"><b>Расчёт:</b> вероятностный — приборы заняты долю расчётного часа, считаются утренний и вечерний пик, берётся расход, который превышается не дольше 0,5 % часа: ${fmt(q)} м³/ч. Метод описан в карточке «Проверка водоснабжения».</div>` +
-            `<div class="tip-p"><b>Предел:</b> ${fmt(lim)} м³/ч — ориентир производителя сборных узлов ввода на 3/4″ (${fine ? 'с картриджем тонкой очистки 10 мкм' : 'с одним фильтром грубой очистки'}), в СП такой цифры нет. Скорость воды при этом в трубе DN20 около ${fmt(lim / 3600 / (Math.PI * 0.01 * 0.01))} м/с.</div>` +
-            `<div class="tip-p"><b>Что делать:</b> ввод и коллектор на 1″ (в смете останется 3/4″, пересчитайте позиции), либо вторую колбу параллельно, либо считать узел отдельно под ваш расход. На коротких пиках дом переживёт — но душ и стиральная одновременно дадут просадку.</div>`);
+        const big = this.waterNodeSize() === '1';
+        const fine = this.filterLevel() !== 'none';
+        // Пределы сборных узлов ввода даны на 3/4"; на 1" растут как сечение (d²)
+        const k = big ? Math.pow(25 / 20, 2) : 1;
+        const lim = (fine ? this.WATER_NODE_FLOW_FINE : this.WATER_NODE_FLOW_COARSE) * k;
+        const vMax = (this.WATER_NODE_V_MAX * 3600 * Math.PI * (big ? 0.025 : 0.02) * (big ? 0.025 : 0.02) / 4);
+        if (q <= Math.min(lim, vMax)) {
+            // Узел поднялся на 1" сам — скажем один раз, чем это вызвано
+            if (big) return this.noteBox('info', 'Узел ввода — 1″.', `Расчётный расход ${fmt(q)} м³/ч: на 3/4″ скорость воды в узле выше ${fmt(this.WATER_NODE_V_MAX)} м/с, поэтому главная линия собрана на 1″ (краны, фильтр, редуктор, тройник). Счётчик остаётся ВСКМ-20 — при необходимости замените в таблице замены.`);
+            return '';
+        }
+        return this.noteBox('warn', `Узел ввода ${big ? '1″' : '3/4″'} тесноват под расход дома.`,
+            `Расчёт ${fmt(q)} м³/ч, предел узла ${fmt(Math.min(lim, vMax))} м³/ч.`,
+            `<div class="tip-p"><b>Расчёт:</b> вероятностный — приборы заняты долю расчётного часа, считаются утренний и вечерний пики, берётся расход, который превышается не дольше 0,5 % часа: ${fmt(q)} м³/ч. Метод описан в карточке «Проверка водоснабжения».</div>` +
+            `<div class="tip-p"><b>Предел:</b> по ориентиру производителя сборных узлов ввода (${fine ? 'с колбой тонкой очистки' : 'с одним фильтром грубой очистки'}) и скорости воды не выше ${fmt(this.WATER_NODE_V_MAX)} м/с. В СП такой цифры нет.</div>` +
+            `<div class="tip-p"><b>Что делать:</b> вторую колбу параллельно или считать узел отдельно под ваш расход.</div>`);
     },
 
     setFeedType: function (type, event) {
@@ -74972,11 +74993,6 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         if (document.getElementById('blk_water_input_opts')) document.getElementById('blk_water_input_opts').style.display = this.state.waterInput ? 'flex' : 'none';
         if (document.getElementById('val_outdoor_faucet')) document.getElementById('val_outdoor_faucet').innerText = parseInt(this.state.outdoorFaucet) || 0;
         if (document.getElementById('chk_water_reducer')) document.getElementById('chk_water_reducer').checked = !!this.state.waterReducer;
-        {
-            const _nr = document.getElementById('blk_node_size_row');
-            if (_nr) _nr.style.display = this.isFlat() ? 'none' : 'flex';
-            const _ns = document.getElementById('sel_node_size'); if (_ns) _ns.value = this.waterNodeSize();
-        }
         if (document.getElementById('inp_mains_bar')) document.getElementById('inp_mains_bar').value = this.state.mainsBar > 0 ? this.state.mainsBar : '';
         if (document.getElementById('chk_water_meter')) document.getElementById('chk_water_meter').checked = !!this.state.waterMeter;
         if (document.getElementById('chk_water_leak_guard')) document.getElementById('chk_water_leak_guard').checked = !!this.state.waterLeakGuard;

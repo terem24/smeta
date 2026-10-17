@@ -272,20 +272,30 @@ console.log('\n=== Узел ввода 3/4" / 1" ===');
     const hc = (size) => { run('node-cmp', { ...o, waterNodeSize: size }); const r = app.waterHydroCheck(); return r.scenarios.design.trunk.Hcoll; };
     const h34 = hc('34'), h1 = hc('1');
     if (!(h1 > h34)) fail('узел 1" не дал больше напора на коллекторе: ' + f1(h1) + ' против ' + f1(h34));
-    // 7б. кнопка «Узел ввода на 1″» в советах: есть при тесном узле 3/4", нажатие переключает размер, после — совета нет
-    run('node-advice', { ...base, wellDepth: 90, wellDist: 40, waterFlowManualOn: true, waterFlowManual: 3.2, waterReducer: true, waterZones: house(3) });
-    const adv = (app.waterHydroCheck().advice || []).flatMap(x => x.actions || []).find(x => x.fix === 'node1');
-    if (!adv) fail('на 3/4" при 3,2 м³/ч нет кнопки «Узел ввода на 1″»');
-    else {
-        const before = app.waterHydroCheck().scenarios.design.trunk.Hcoll;
-        app.syncUI = () => {}; app.saveState = () => {};
-        app.waterHydroFix('node1', '');
-        const after = app.waterHydroCheck();
-        if (app.state.waterNodeSize !== '1') fail('кнопка не переключила размер узла');
-        if (!(after.scenarios.design.trunk.Hcoll > before)) fail('после «Узел ввода на 1″» напор на коллекторе не вырос');
-        if ((after.advice || []).some(x => x.id === 'node1')) fail('на 1" совет про 1" остался');
-        else console.log('  кнопка «Узел ввода на 1″»: напор на коллекторе ' + f1(before) + ' → ' + f1(after.scenarios.design.trunk.Hcoll) + ' м');
-    }
+    // 7б. Размер узла считается сам по расчётному расходу: скорость в 3/4" выше 2 м/с (около 2,26 м³/ч) — 1", иначе 3/4"
+    app.syncUI = () => {}; app.saveState = () => {};
+    const autoSize = (extra) => { run('node-auto', { ...base, wellDepth: 60, wellDist: 30, waterZones: house(3), ...extra }); return { size: app.waterNodeSize(), q: app.waterDesignFlow() }; };
+    const cases = [
+        [{}, '34'],                                                         // авто: расход по потребителям, не меньше 1,5
+        [{ waterFlowManualOn: true, waterFlowManual: 1.5 }, '34'],
+        [{ waterFlowManualOn: true, waterFlowManual: 2.2 }, '34'],          // v = 1,94 м/с
+        [{ waterFlowManualOn: true, waterFlowManual: 2.3 }, '1'],           // v = 2,03 м/с
+        [{ waterFlowManualOn: true, waterFlowManual: 3.5 }, '1'],
+        [{ well: false, mainsBar: 3 }, '34'],                               // городская вода, расход по потребителям
+        [{ waterNodeSize: '1' }, '1'], [{ waterNodeSize: '34', waterFlowManualOn: true, waterFlowManual: 4 }, '34'] // принудительно
+    ];
+    cases.forEach(([extra, want]) => {
+        const r = autoSize(extra);
+        if (r.size !== want) fail('размер узла при ' + JSON.stringify(extra) + ' (расход ' + f2(r.q) + ') — ' + r.size + ', ждали ' + want);
+    });
+    // граница: порог совпадает с физикой — при 2,3 м³/ч скорость в 3/4" выше предела, в 1" ниже
+    const vv = (q, d) => wh.velocity(q, d);
+    if (!(vv(2.3, 0.02) > wh.V_LIMIT.node && vv(2.3, 0.025) < wh.V_LIMIT.node)) fail('порог 3/4" → 1" не согласован с физикой');
+    // на 1" в смете главная линия 1", и проверка не ругается на скорость в узле
+    const q23 = autoSize({ waterFlowManualOn: true, waterFlowManual: 2.3 });
+    const rr = app.waterHydroCheck();
+    if (rr.flags.some(f => f.id === 'node_v')) fail('узел 1" при 2,3 м³/ч, а проверка жалуется на скорость в узле');
+    console.log('  размер узла сам: расход 1,5 → 3/4″; 2,2 → 3/4″; 2,3 → 1″ (скорость в 3/4″ ' + f2(vv(2.3, 0.02)) + ' м/с, в 1″ ' + f2(vv(2.3, 0.025)) + ')');
     // 8. ROMMER: аналоги 1" подставляются
     run('node-rommer', { ...o, waterNodeSize: '1', brandMode: 'rommer' });
     const br = (app.currentEquipmentList || []).filter(i => /^6\./.test(String(i.sectionTitle || i.group || '')));
