@@ -77720,6 +77720,11 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     /** Диаметр в окне замены до подтверждения системы: смета не трогается, окно перерисовывается. */
     setBoilerPreviewSize: function (val) {
         if (!this._bpPreview) return;
+        if (val === null || val === undefined) {
+            this._bpPreviewSize = null;
+            if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+            return;
+        }
         const o = this.boilerMainOptions(this._bpLoad ? this._bpLoad.gas : 0, this._bpLoad ? this._bpLoad.el : 0, this._bpPreview);
         const n = parseInt(val, 10);
         if (!o.options.find(x => x.size === n)) return;
@@ -77785,7 +77790,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         const info = `<div style="margin-top:6px;font-size:12px;color:var(--text-main);">`
             + `Выбрано: <b>${this.boilerMainTitle(o.active, sys)}</b>${manual ? ' (вручную)' : ''}`
             + `, по скорости: <b>${this.boilerMainTitle(o.rec, sys)}</b>`
-            + (manual && manual !== o.rec ? ` · <span style="cursor:pointer;color:var(--primary);text-decoration:underline;" onclick="app.setBoilerMainSize(null)">вернуть рекомендованный</span>` : '')
+            + (manual && manual !== o.rec ? ` · <span style="cursor:pointer;color:var(--primary);text-decoration:underline;" onclick="app.${live ? 'setBoilerMainSize' : 'setBoilerPreviewSize'}(null)">вернуть рекомендованный</span>` : '')
             + `</div>`;
         const warnLine = (curOpt && curOpt.level !== 'ok')
             ? `<div style="margin-top:3px;font-size:12px;color:${COL[curOpt.level].c};">${why(curOpt)}</div>`
