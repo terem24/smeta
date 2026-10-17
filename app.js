@@ -50412,6 +50412,21 @@ const app = {
                 + (p.v > 0 ? ', ' + p.v.toFixed(2).replace('.', ',') + ' м/с' : '') + '</b></div>';
         });
         html += '</div>';
+        // Луч Ø16 до дальнего прибора теряет много напора (больше 10 кПа ≈ 1 м): Ø20 потерял бы примерно втрое
+        // меньше. Это подсказка, а не пересчёт: луч Ø20 в смету пока не входит (у приборов клапаны и евроконусы
+        // на 16 мм, нужны переходники), поэтому ни расчёт, ни смета от неё не меняются.
+        const loop = (r.parts || []).find(p => p.tag === 'loop' && p.d === 16);
+        // В строку проверки участки приходят без расхода — расход самого мощного прибора берём из расчёта кольца
+        const loopFlow = this.radHydro ? this.radHydro.flowWorst : 0;
+        if (loop && loop.dp > 10 && loopFlow > 0 && loop.len > 0 && r.have > 0 && r.need > 0 && r.k != null) {
+            const dp20 = this.radPipeDrop(loopFlow, 20, loop.len).dp;
+            const needNew = r.need - (loop.dp - dp20) / 9.81 * this.coolantPumpK().head;
+            if (needNew > 0) {
+                const pc = v => (v >= 0 ? '+' : '') + Math.round(v * 100) + ' %';
+                html += '<div class="hc-det-p">Луч Ø16 теряет ' + Math.round(loop.dp) + ' кПа (больше 10). С лучом Ø20 было бы ' + Math.round(dp20)
+                    + ' кПа, запас насоса ' + pc(r.have / needNew - 1) + ' вместо ' + pc(r.k - 1) + '. Луч Ø20 в смету пока не входит: нужны переходники на приборы.</div>';
+            }
+        }
         const trunk = (r.parts || []).find(p => p.tag === 'trunk');
         if (trunk && !forPrint) {
             const dSel = trunk.d || 25;
