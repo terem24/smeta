@@ -55461,6 +55461,15 @@ const app = {
         window.scrollTo(0, 0);
         const siteHeader = document.querySelector('.site-header');
         if (siteHeader) siteHeader.classList.remove('scrolled');
+        // Распорка колонки параметров (_inputAnchorAfter) подкладывалась под прежний, длинный
+        // расчёт. Пустой расчёт короче колонки, но распорка оставалась и держала вертикальную
+        // полосу прокрутки, которой тут быть не должно.
+        const inPanel = document.querySelector('.input-panel');
+        if (inPanel) {
+            const sp = document.getElementById('input_panel_spacer');
+            if (sp) sp.remove();
+            inPanel.scrollTop = 0;
+        }
         // Распознавание держит своё состояние на RecognizeUI, а не в app.state,
         // поэтому сброс расчёта его не касался: монтажник жал «Сбросить всё»,
         // возвращался во вкладку распознавания и видел там прежнюю смету с
