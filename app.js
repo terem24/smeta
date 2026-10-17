@@ -24102,7 +24102,7 @@ const app = {
     // на большом экране и список-меню на телефоне (buildAdminMobileHome), поэтому
     // он лежит здесь, а не внутри renderAdminMain. hint виден только в меню.
     ADMIN_TAB_DEFS: [
-        { id: 'home', icon: '🏠', label: 'Центр внимания', hint: 'Что требует действия сегодня' },
+        { id: 'home', icon: '🏠', label: 'Сегодня', hint: 'Что требует действия: заявки, сообщения, счета, система' },
         { id: 'stats', icon: '👥', label: 'Пользователи', hint: 'Монтажники, тарифы, доступы' },
         { id: 'estimates', icon: '📋', label: 'Расчёты', hint: 'Все сохранённые сметы' },
         { id: 'messages', icon: '💬', label: 'Сообщения', hint: 'Переписка с монтажниками и объявления' },
@@ -27380,10 +27380,12 @@ const app = {
         if (c) c.scrollTop = 0;
     },
 
-    // ═══ «Центр внимания» ═════════════════════════════════════════════════
+    // ═══ «Сегодня» ════════════════════════════════════════════════════════
     // Стартовый экран владельца: не «что есть», а «что требует действия сегодня».
-    // Каждая карточка — одно дело и переход в раздел, где его делают. Данные грузятся
-    // каждая сама и друг друга не ждут: медленная карточка не держит остальные.
+    // Список строк, а не карточки: показывается только то, где есть дело, самое
+    // срочное сверху; когда дел нет — одна спокойная строка. Каждая строка — переход
+    // в раздел, где дело делают. Данные грузятся каждая сама и друг друга не ждут.
+    // Строки «Система» — не дела, а предупреждения: почта, свежесть аналитики, сбои загрузки.
     renderAdminHome: function () {
         const box = document.getElementById('admin_home_box');
         if (!box) return;
@@ -27393,9 +27395,10 @@ const app = {
             if (st[key] !== undefined) return;
             st[key] = 'loading';
             fn().then(v => { st[key] = v; })
-                .catch(e => { console.warn('[центр внимания] ' + key + ':', e); st[key] = { error: String((e && e.message) || e) }; })
+                .catch(e => { console.warn('[сегодня] ' + key + ':', e); st[key] = { error: String((e && e.message) || e) }; })
                 .then(() => { if (this._adminTab === 'home') this.renderAdminHome(); });
         };
+        const day = 864e5;
 
         load('leads', async () => {
             const token = await this.recognitionToken();
@@ -27411,7 +27414,7 @@ const app = {
             const { data, error } = await supabaseClient.from('users')
                 .select('id, username, first_name, last_name, email, demo_ends_at')
                 .gte('demo_ends_at', now.toISOString())
-                .lte('demo_ends_at', new Date(now.getTime() + 7 * 864e5).toISOString())
+                .lte('demo_ends_at', new Date(now.getTime() + 7 * day).toISOString())
                 .order('demo_ends_at', { ascending: true }).limit(20);
             if (error) throw error;
             return { rows: data || [] };
@@ -27426,37 +27429,60 @@ const app = {
             if (error) throw error;
             return { n: count || 0 };
         });
+        // Счета, которые запросили и не выставили. Событие «счёт выставлен» пишется только
+        // когда его отметили кнопкой на канбане, поэтому окно и срок — те же, что у блока
+        // «Ждут счёта» на дашборде (DASH_INVOICE_WAIT_WINDOW / DASH_INVOICE_WAIT_DAYS).
+        load('inv', async () => {
+            const since = new Date(Date.now() - this.DASH_INVOICE_WAIT_WINDOW * day).toISOString();
+            const res = await this.fetchAllRows('invoice_events', 'calc_id, event, created_at, project_name, user_name', {
+                order: 'created_at', cap: 5000, page: 1000,
+                build: qy => qy.gte('created_at', since).in('event', ['invoice_requested', 'invoice_issued', 'paid', 'rejected'])
+            });
+            const by = {};
+            res.rows.forEach(r => {
+                if (!r.calc_id) return;
+                const t = new Date(r.created_at).getTime();
+                if (isNaN(t)) return;
+                const c = by[r.calc_id] || (by[r.calc_id] = { req: 0, closed: false, name: '', project: '' });
+                if (r.event === 'invoice_requested') { if (!c.req || t < c.req) c.req = t; } else c.closed = true;
+                if (r.project_name) c.project = r.project_name;
+                if (r.user_name) c.name = r.user_name;
+            });
+            const rows = Object.keys(by).map(k => by[k]).filter(c => c.req && !c.closed)
+                .map(c => Object.assign(c, { age: Math.floor((Date.now() - c.req) / day) }))
+                .sort((a, b) => b.age - a.age);
+            return { rows: rows };
+        });
+        // Почта и свежесть аналитики — предупреждения: если источник не ответил (нет миграции,
+        // нет файла), строки просто нет, а не красная ошибка на главном экране.
+        load('mail', async () => {
+            try {
+                const { data, error } = await supabaseClient.rpc('mail_budget_state');
+                if (error || !data) return { skip: true };
+                return { s: data };
+            } catch (e) { return { skip: true }; }
+        });
+        load('data', async () => {
+            try {
+                const r = await fetch('analytics/wordstat_pulse.json?ts=' + new Date().toISOString().slice(0, 10), { cache: 'no-store' });
+                if (!r.ok) return { skip: true };
+                const j = await r.json();
+                const t = new Date(j && j.updated).getTime();
+                return isNaN(t) ? { skip: true } : { ageDays: Math.floor((Date.now() - t) / day), updated: j.updated };
+            } catch (e) { return { skip: true }; }
+        });
 
         const nameOf = u => [u.last_name, u.first_name].filter(Boolean).join(' ') || u.username || u.email || 'без имени';
-        const day = 864e5;
-        const card = (o) => {
-            const s = o.state;
-            let body;
-            if (s === undefined || s === 'loading') body = '<div class="ad-card-note">Загружаем…</div>';
-            else if (s && s.error) body = `<div class="ad-card-note ad-warn">Не загрузилось: ${esc(s.error)}</div>`;
-            else body = o.body;
-            const urgent = o.n > 0 && o.urgent;
-            // Пустая карточка на телефоне сворачивается в строку-ссылку (стили — в style.css)
-            const idle = o.n === 0 && s !== undefined && s !== 'loading' && !(s && s.error);
-            return `
-            <div class="ad-card${idle ? ' ad-card-idle' : ''}"${idle ? ` onclick="app.switchAdminTab('${o.tab}')"` : ''}>
-                <div class="ad-card-h">
-                    <span class="ad-card-title">${o.title}</span>
-                    ${o.n != null ? `<span class="ad-count${urgent ? ' ad-count-bad' : (o.n ? ' ad-count-on' : '')}">${o.n}</span>` : ''}
-                </div>
-                <div class="ad-card-b">${body}</div>
-                <button class="admin-btn ad-card-act" onclick="event.stopPropagation(); app.switchAdminTab('${o.tab}')">${o.action} <span aria-hidden="true">→</span></button>
-            </div>`;
-        };
-        const row = (main, sub, right, cls) => `
-            <div class="ad-row">
-                <div class="ad-row-main"><b>${esc(main)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}</div>
-                <div class="ad-row-r${cls ? ' ' + cls : ''}">${right}</div>
-            </div>`;
-        const ok = t => `<div class="ad-card-note ad-ok">✓ ${t}</div>`;
+        const pending = k => st[k] === undefined || st[k] === 'loading';
+        const failed = k => !!(st[k] && st[k].error);
+        const plural = (n, a, b, c) => { const m = n % 100, d = n % 10; return (m > 10 && m < 20) ? c : d === 1 ? a : (d >= 2 && d <= 4) ? b : c; };
+        const list3 = (arr, total) => arr.slice(0, 3).join(', ') + (total > 3 ? ' и ещё ' + (total - 3) : '');
+        const ageTxt = d => d < 1 ? 'меньше суток' : d + ' ' + plural(d, 'день', 'дня', 'дней');
 
-        // Заявки: ждут мастера, и сколько ждут
-        let leadsN = null, leadsLate = 0, leadsBody = '';
+        // sev: 3 — горит, 2 — пора, 1 — когда будет время
+        const todo = [];
+        const sys = [];
+
         if (st.leads && st.leads.ok) {
             const asg = id => (this._leadAssign || {})[id] || {};
             const list = (this._leadsData || []).filter(r => !this.isTestLead(r))
@@ -27468,42 +27494,102 @@ const app = {
                     return { r, s, age, late: (s === 'new' && age >= 1) || (s === 'sent' && age >= 2) };
                 })
                 .sort((x, y) => (y.late - x.late) || (y.age - x.age));
-            // Число в углу карточки — все заявки в работе (новые и у мастера); красным оно
-            // становится, только если есть просроченные. Раньше считались одни просроченные,
-            // и свежая заявка лежала в списке при счётчике 0.
-            leadsN = list.length;
-            leadsLate = list.filter(x => x.late).length;
-            leadsBody = list.length
-                ? list.slice(0, 5).map(x => row(x.r.name || 'без имени', (x.r.place || '') + (x.r.src && x.r.src !== 'dom' ? ' · ' + x.r.src : ''),
-                    (x.s === 'sent' ? 'у мастера ' : 'ждёт ') + (x.age < 1 ? 'меньше суток' : x.age + ' дн.'), x.late ? 'ad-bad' : '')).join('')
-                + (list.length > 5 ? `<div class="ad-card-note">и ещё ${list.length - 5}</div>` : '')
-                : ok('Все заявки в работе, просроченных нет');
+            const late = list.filter(x => x.late).length;
+            if (list.length) todo.push({
+                sev: late ? 3 : 2, n: list.length, tab: 'leads', title: 'Заявки на монтаж',
+                sub: list3(list.map(x => (x.r.name || 'без имени') + (x.r.place ? ' (' + x.r.place + ')' : '')), list.length),
+                right: late ? 'просрочено ' + late : 'в работе'
+            });
         }
 
-        const proRows = (st.pro && st.pro.rows) || [];
-        const proBody = proRows.length
-            ? proRows.slice(0, 5).map(u => {
-                const left = Math.max(0, Math.ceil((new Date(u.demo_ends_at) - Date.now()) / day));
-                return row(nameOf(u), new Date(u.demo_ends_at).toLocaleDateString('ru-RU'), left <= 1 ? 'завтра или раньше' : 'через ' + left + ' дн.', left <= 2 ? 'ad-bad' : '');
-            }).join('') + (proRows.length > 5 ? `<div class="ad-card-note">и ещё ${proRows.length - 5}</div>` : '')
-            : ok('В ближайшие 7 дней Профи ни у кого не заканчивается');
+        // Ответы монтажников — то, что в боковой панели горит красной точкой
+        const notifs = this._notifications || [];
+        const replies = notifs.filter(n => n.type === 'installer_reply' && !n.isRead);
+        if (replies.length) {
+            const oldest = Math.max.apply(null, replies.map(n => Math.floor((Date.now() - new Date(n.time)) / day) || 0));
+            const names = []; replies.forEach(n => { if (names.indexOf(n.senderName) < 0) names.push(n.senderName); });
+            todo.push({
+                sev: oldest >= 2 ? 3 : 2, n: replies.length, tab: 'messages', title: 'Монтажники ответили',
+                sub: list3(names, names.length), right: oldest >= 1 ? 'старейшее — ' + ageTxt(oldest) : 'сегодня'
+            });
+        }
 
-        const succN = st.succ && st.succ.n;
-        const ordN = st.ord && st.ord.n;
-        const unread = (this._notifications || []).filter(x => !x.isRead).length;
+        if (st.inv && st.inv.rows && st.inv.rows.length) {
+            const rows = st.inv.rows, late = rows.filter(c => c.age >= this.DASH_INVOICE_WAIT_DAYS).length;
+            todo.push({
+                sev: late ? 3 : 2, n: rows.length, tab: 'kanban', title: 'Ждут счёта',
+                sub: list3(rows.map(c => c.project || c.name || 'смета'), rows.length),
+                right: 'ждёт ' + ageTxt(rows[0].age)
+            });
+        }
 
-        const cards = [
-            card({ title: 'Заявки на монтаж', n: leadsN, urgent: leadsLate > 0, state: st.leads, body: leadsBody, tab: 'leads', action: 'Открыть заявки' }),
-            card({ title: 'Профи заканчивается', n: proRows.length, urgent: true, state: st.pro, body: proBody, tab: 'stats', action: 'Открыть пользователей' }),
-            card({ title: 'Под заказ в подборе', n: ordN == null ? null : ordN, urgent: true, state: st.ord,
-                body: ordN ? `<div class="ad-card-note">Позиций, которые калькулятор ставит по умолчанию, но они «под заказ»: <b>${ordN}</b>. Решение — раз в месяц.</div>` : ok('По всем позициям решение на этот месяц есть'), tab: 'successors', action: 'Решить' }),
-            card({ title: 'Замены позиций', n: succN == null ? null : succN, urgent: false, state: st.succ,
-                body: succN ? `<div class="ad-card-note">Новых замен снятых позиций, которые ждут решения: <b>${succN}</b>.</div>` : ok('Новых замен нет'), tab: 'successors', action: 'Открыть замены' }),
-            card({ title: 'Уведомления', n: unread, urgent: false, state: 'ready',
-                body: unread ? `<div class="ad-card-note">Непрочитанных уведомлений: <b>${unread}</b>.</div>` : ok('Непрочитанного нет'), tab: 'notifications', action: 'Открыть уведомления' })
-        ].join('');
+        if (st.pro && st.pro.rows && st.pro.rows.length) {
+            const rows = st.pro.rows;
+            const left = Math.max(0, Math.ceil((new Date(rows[0].demo_ends_at) - Date.now()) / day));
+            todo.push({
+                sev: left <= 2 ? 3 : 2, n: rows.length, tab: 'stats', title: 'Профи заканчивается',
+                sub: list3(rows.map(nameOf), rows.length), right: left <= 1 ? 'завтра или раньше' : 'через ' + left + ' дн.'
+            });
+        }
 
-        // Карта разделов: то, что раньше было двадцатью вкладками в два ряда
+        if (st.ord && st.ord.n) todo.push({
+            sev: 2, n: st.ord.n, tab: 'successors', title: 'Под заказ в подборе',
+            sub: 'Позиции, которые калькулятор ставит по умолчанию, но они «под заказ»', right: 'решение раз в месяц'
+        });
+        if (st.succ && st.succ.n) todo.push({
+            sev: 1, n: st.succ.n, tab: 'successors', title: 'Замены позиций',
+            sub: 'Новые замены снятых с поставки позиций ждут решения', right: ''
+        });
+        const otherUnread = notifs.filter(n => !n.isRead && n.type !== 'installer_reply' && n.type !== 'admin_message').length;
+        if (otherUnread) todo.push({
+            sev: 1, n: otherUnread, tab: 'notifications', title: 'Уведомления',
+            sub: 'Статусы смет, счета, тариф', right: ''
+        });
+
+        // ── Система ──
+        const s = st.mail && st.mail.s;
+        if (s && s.tiers && s.load_pct >= s.tiers.t1) sys.push({
+            sev: s.load_pct >= s.tiers.t3 ? 3 : 2, tab: 'mailbudget', title: 'Почта: лимит писем',
+            sub: 'Ушло ' + Math.round(s.pct) + '% из ' + s.limit + ' писем в месяц, к концу цикла ~' + Math.round(s.forecast_pct) + '%',
+            right: s.load_pct >= s.tiers.t3 ? 'рассылки отключаются' : 'подходит к порогу'
+        });
+        // Недельный пульс собирается раз в неделю; больше 10 дней — сбор отстал
+        const dd = st.data;
+        if (dd && dd.ageDays >= 10) sys.push({
+            sev: 2, tab: 'analytics', title: 'Аналитика не обновлялась',
+            sub: 'Последний сбор — ' + dd.updated + '. Запускается через GitHub Actions → Wordstat Analytics', right: ageTxt(dd.ageDays) + ' назад'
+        });
+        const LOAD_NAMES = { leads: ['Заявки', 'leads'], pro: ['Профи', 'stats'], ord: ['Под заказ', 'successors'], succ: ['Замены', 'successors'], inv: ['Счета', 'kanban'] };
+        Object.keys(LOAD_NAMES).forEach(k => {
+            if (failed(k)) sys.push({ sev: 2, tab: LOAD_NAMES[k][1], title: 'Не загрузилось: ' + LOAD_NAMES[k][0].toLowerCase(), sub: st[k].error, right: '' });
+        });
+
+        const sevCls = { 3: 'ad-todo-hot', 2: 'ad-todo-warm', 1: 'ad-todo-cool' };
+        const rowHtml = o => `
+            <button type="button" class="ad-todo ${sevCls[o.sev]}" onclick="app.switchAdminTab('${o.tab}')">
+                <span class="ad-todo-dot" aria-hidden="true"></span>
+                <span class="ad-todo-main"><b>${esc(o.title)}</b>${o.sub ? `<span>${esc(o.sub)}</span>` : ''}</span>
+                ${o.n ? `<span class="ad-count${o.sev === 3 ? ' ad-count-bad' : ' ad-count-on'}">${o.n}</span>` : ''}
+                ${o.right ? `<span class="ad-todo-r">${esc(o.right)}</span>` : ''}
+                <span class="ad-todo-go" aria-hidden="true">›</span>
+            </button>`;
+        const bySev = (a, b) => (b.sev - a.sev) || ((b.n || 0) - (a.n || 0));
+        todo.sort(bySev); sys.sort(bySev);
+
+        const PENDING_NAMES = { leads: 'заявки', pro: 'Профи', ord: 'подбор', succ: 'замены', inv: 'счета', mail: 'почту', data: 'аналитику' };
+        const waiting = Object.keys(PENDING_NAMES).filter(pending).map(k => PENDING_NAMES[k]);
+        const checked = 'заявки, сообщения, счета, Профи, подбор, замены, уведомления';
+
+        let main;
+        if (todo.length) main = `<div class="ad-todos">${todo.map(rowHtml).join('')}</div>`;
+        else if (waiting.length) main = `<div class="ad-card-note">Проверяем…</div>`;
+        else main = `<div class="ad-calm"><b>✓ Сегодня дел нет</b><span>Проверено: ${checked}.</span></div>`;
+        if (todo.length && waiting.length) main += `<div class="ad-card-note">Ещё проверяем: ${waiting.join(', ')}…</div>`;
+        const sysHtml = sys.length
+            ? `<h4 class="ad-section-h" style="margin-top:20px;">Система</h4><div class="ad-todos">${sys.map(rowHtml).join('')}</div>`
+            : (waiting.length ? '' : `<div class="ad-card-note ad-ok" style="margin-top:14px;">✓ Система: почта в пределах лимита, аналитика свежая</div>`);
+
+        // Карта разделов — под сгибом: те же разделы, что в меню сверху
         const map = this.adminVisibleGroups(this.adminTabDefs()).filter(g => g.id !== 'overview' || g.defs.length > 1).map(g => `
             <div class="ad-map-group">
                 <div class="ad-map-title">${this.adminIcon({ id: g.icon })}<span>${g.label}</span></div>
@@ -27514,12 +27600,12 @@ const app = {
         const today = todayRaw.charAt(0).toUpperCase() + todayRaw.slice(1);
         box.innerHTML = `
             <div class="ad-page-h">
-                <div><h3>Центр внимания</h3><div class="ad-sub">${esc(today)} · что требует действия сегодня</div></div>
+                <div><h3>Сегодня</h3><div class="ad-sub">${esc(today)} · что требует действия, самое срочное сверху</div></div>
                 <button class="admin-btn" onclick="app._homeState=null; app._leadsData=null; app.renderAdminHome()">Обновить</button>
             </div>
-            <div class="ad-cards">${cards}</div>
-            <h4 class="ad-section-h">Все разделы</h4>
-            <div class="ad-map">${map}</div>`;
+            ${main}
+            ${sysHtml}
+            <details class="ad-map-fold"><summary>Все разделы</summary><div class="ad-map">${map}</div></details>`;
     },
 
     // «Написать» из карточки монтажника — открываем вкладку сообщений сразу на его диалоге
