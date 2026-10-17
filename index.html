@@ -197,7 +197,7 @@
     <link rel="stylesheet" href="hydro_check.css?v=1.12">
 
     <script src="supabase-js.js" defer></script>
-    <script src="catalog.js?v=3.43" defer></script>
+    <script src="catalog.js?v=3.44" defer></script>
     <!-- Координаты и регионы населённых пунктов: карта проектов в админке и
          адрес объекта. Данные вшиты в файл, наружу никаких запросов. -->
     <script src="cities_geo.js?v=1.0" defer></script>
@@ -225,8 +225,8 @@
     <script src="short_names.js?v=1.2" defer></script>
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
-    <script src="water_hydro.js?v=1.4" defer></script>
-    <script src="app.js?v=13.41" defer></script>
+    <script src="water_hydro.js?v=1.5" defer></script>
+    <script src="app.js?v=13.42" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1774,6 +1774,14 @@
                             <input type="checkbox" id="chk_flat_kitchen_riser" onchange="app.toggleFlatKitchenRiser(this.checked)">
                             <span class="slider"></span>
                         </label>
+                    </div>
+                    <div id="blk_node_size_row"
+                        style="display:flex; justify-content:space-between; align-items:center; padding:6px 0;">
+                        <span class="lbl" style="font-size:12px;" title="Диаметр главной линии узла: краны, сетчатый фильтр, обратный клапан, тройник и редуктор. На 1″ ставятся позиции 1″ из прайса. Счётчик остаётся ВСКМ-20 — при необходимости замените вручную.">Диаметр узла ввода</span>
+                        <select id="sel_node_size" style="width:100px;" onchange="app.setWaterNodeSize(this.value)">
+                            <option value="34">3/4″</option>
+                            <option value="1">1″</option>
+                        </select>
                     </div>
                     <div id="blk_mains_bar_row"
                         style="display:flex; justify-content:space-between; align-items:center; padding:6px 0;">

@@ -33121,7 +33121,7 @@ const app = {
         well_pumps: 'nasosy_skv', well_auto: 'nasosnaya_avtomatika', well_relays: 'nasosnaya_avtomatika',
         well_parts: 'fitingi_pnd',
         // Ввод ХВС и водоочистка
-        filter_big_blue: 'vodoochistka', water_input_node: 'vodoochistka',
+        filter_big_blue: 'vodoochistka', water_input_node: 'vodoochistka', water_node_1in: 'vodoochistka',
         // Дополнительные материалы
         insulation: 'teploizolyaciya', insulation_pro: 'teploizolyaciya',
         water_insulation: 'teploizolyaciya',
@@ -50120,6 +50120,27 @@ const app = {
         return base;
     },
 
+    // Узел ввода дома: 3/4" (по умолчанию) или 1". На 1" позиции главной линии заменяются своими 1" из
+    // catalog.water_node_1in (поле replaces — id позиции 3/4"); переходники 1" → 3/4" на входе не нужны.
+    // Подпитка отопления (6.6) и счётчик остаются как есть: подпитке 1" ни к чему, счётчика 1" в прайсе нет.
+    NODE1_DROP: ['SFT-0029-000134', 'SFT-0004-000134'],
+    waterNodeSize: function () { return this.state.waterNodeSize === '1' ? '1' : '34'; },
+    nodeItem1: function (item) {
+        if (!item || this.waterNodeSize() !== '1') return item;
+        const t = (catalog.water_node_1in || []).find(x => x.replaces === item.id);
+        if (t) {
+            const out = { ...t };
+            delete out.replaces;
+            return out;
+        }
+        if (this.NODE1_DROP.includes(item.id)) return null;
+        return item;
+    },
+    setWaterNodeSize: function (v) {
+        this.state.waterNodeSize = (v === '1') ? '1' : '34';
+        this.saveState(); this.syncUI(); this.render();
+    },
+
     // Внутренний диаметр (м) по размеру позиции: «3/4"», «1 1/4"», «DN25», счётчик «ВСКМ-15».
     // Номинальный проход (DN), а не резьба: потери считаются по проходу.
     inchBore: function (name) {
@@ -50138,7 +50159,9 @@ const app = {
         const list = this.currentEquipmentList || [];
         const inNode = list.filter(i => /^6\./.test(String(i.sectionTitle || i.group || '')));
         const bore = re => { const it = inNode.find(i => re.test(String(i.name || ''))); return it ? this.inchBore(it.name) : null; };
-        const valves = inNode.filter(i => /Кран шаровой/i.test(String(i.name || ''))).map(i => this.inchBore(i.name)).filter(Boolean);
+        // Главная линия узла — подразделы 6.1, 6.4, 6.5; краны подпитки (6.6), уличных кранов (6.2) и байпаса идут на своих размерах
+        const mainLine = i => !i.group || /^6\.(1|4|5)\b/.test(String(i.group));
+        const valves = inNode.filter(i => mainLine(i) && /Кран шаровой/i.test(String(i.name || ''))).map(i => this.inchBore(i.name)).filter(Boolean);
         const out = {
             dIn: valves.length ? Math.min.apply(null, valves) : 0.02,
             sizes: { mesh: bore(/Фильтр сетчатый/i), fine: bore(/Колба/i), meter: bore(/Сч[её]тчик воды/i), reducer: bore(/Редуктор давления/i) },
@@ -50194,7 +50217,7 @@ const app = {
             control: pressureCtl && !mains ? 'pressure' : 'flow',
             collector: ns.collector,
             node: {
-                dIn: ns.dIn, len: 3, absent: !inp, sizes: ns.sizes,
+                dIn: ns.dIn, len: 3, absent: !inp, sizes: ns.sizes, size: this.waterNodeSize(),
                 devices: {
                     reducer: inp && !!s.waterReducer, meter: inp && !!s.waterMeter, leak: inp && !!s.waterLeakGuard,
                     filter: this.filterLevel() !== 'none' ? 'fine' : 'coarse'
@@ -50380,6 +50403,7 @@ const app = {
         if (kind === 'pump' && arg) { s.swaps = s.swaps || {}; s.swaps['well_pump_auto'] = arg; }
         else if (kind === 'reducer') s.waterReducer = true;
         else if (kind === 'auto' && arg) s.wellAutoType = arg;
+        else if (kind === 'node1') s.waterNodeSize = '1';
         else return;
         this.saveState(); this.syncUI(); this.render();
     },
@@ -74948,6 +74972,11 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         if (document.getElementById('blk_water_input_opts')) document.getElementById('blk_water_input_opts').style.display = this.state.waterInput ? 'flex' : 'none';
         if (document.getElementById('val_outdoor_faucet')) document.getElementById('val_outdoor_faucet').innerText = parseInt(this.state.outdoorFaucet) || 0;
         if (document.getElementById('chk_water_reducer')) document.getElementById('chk_water_reducer').checked = !!this.state.waterReducer;
+        {
+            const _nr = document.getElementById('blk_node_size_row');
+            if (_nr) _nr.style.display = this.isFlat() ? 'none' : 'flex';
+            const _ns = document.getElementById('sel_node_size'); if (_ns) _ns.value = this.waterNodeSize();
+        }
         if (document.getElementById('inp_mains_bar')) document.getElementById('inp_mains_bar').value = this.state.mainsBar > 0 ? this.state.mainsBar : '';
         if (document.getElementById('chk_water_meter')) document.getElementById('chk_water_meter').checked = !!this.state.waterMeter;
         if (document.getElementById('chk_water_leak_guard')) document.getElementById('chk_water_leak_guard').checked = !!this.state.waterLeakGuard;
@@ -91765,7 +91794,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // заголовок оставляем дословно прежним: под ним в сохранённых сметах
             // лежит свёрнутость подраздела, и переименование потеряло бы её.
             let grp61 = this.isFlat() ? "6.1. Ввод воды в квартиру" : "6.1. Ввод ХВС в дом";
-            ni.forEach(item => addToBill(item, 1, "", grp61));
+            ni.forEach(item => { const _m = this.nodeItem1(item); if (_m) addToBill(_m, 1, "", grp61); });
 
             if (this.state.outdoorFaucet > 0) {
                 let count = parseInt(this.state.outdoorFaucet) || 1;
@@ -91878,14 +91907,17 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             let nipple34 = _live({ id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: 207, brand: "STOUT" });
             let ext30 = _live({ id: "SFT-0002-003430", name: "Удлинитель ВН/ВР 3/4\" 30 мм", price: 501, brand: "STOUT" });
 
+            // Главная линия узла: на 1" — свои позиции (nodeItem1), подпитка отопления (6.6) остаётся на 3/4"
+            const nBall = this.nodeItem1(ballValve), nTee = this.nodeItem1(tee34), nUnion = this.nodeItem1(union34),
+                nNipple = this.nodeItem1(nipple34), nExt = this.nodeItem1(ext30);
             let grp64 = "6.4. ХВС в коллектор водоснабжения";
-            addToBill(tee34, 1, "", grp64); addToBill(ballValve, 1, "", grp64);
-            addToBill(union34, 1, "", grp64); addToBill(nipple34, 1, "", grp64); addToBill(ext30, 1, "", grp64);
+            addToBill(nTee, 1, "", grp64); addToBill(nBall, 1, "", grp64);
+            addToBill(nUnion, 1, "", grp64); addToBill(nNipple, 1, "", grp64); addToBill(nExt, 1, "", grp64);
 
             if (this.state.hotWater) {
                 let grp65 = "6.5. ХВС в бойлер";
-                addToBill(tee34, 1, "", grp65); addToBill(ballValve, 1, "", grp65);
-                addToBill(union34, 1, "", grp65); addToBill(nipple34, 1, "", grp65); addToBill(ext30, 1, "", grp65);
+                addToBill(nTee, 1, "", grp65); addToBill(nBall, 1, "", grp65);
+                addToBill(nUnion, 1, "", grp65); addToBill(nNipple, 1, "", grp65); addToBill(nExt, 1, "", grp65);
             }
 
             if (this.state.heatingFeed) {
@@ -91953,8 +91985,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // 6.4→6.6 обнулила бы их у всех.
             if (this.state.waterReducer) {
                 const grp67 = "6.7. Редуктор давления";
-                const red = catalog.water_pressure_reducer || [];
-                if (red.length >= 2) {
+                const red = (catalog.water_pressure_reducer || []).map(x => this.nodeItem1(x));
+                if (red.length >= 2 && red[0] && red[1]) {
                     addToBill(red[0], 1, this.autoTip(red[0].name, [
                         `<b>Зачем:</b> Держит в доме постоянное давление, каким бы оно ни было в магистрали. Ночные скачки выше 6 бар рвут гибкую подводку и выдавливают картриджи фильтров.`,
                         `<b>Место:</b> после фильтра грубой очистки, до коллектора водоснабжения.`,
@@ -92012,19 +92044,19 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // готовый узел. Фитинги те же, что в остальных группах узла.
             if (this.state.waterTreatment) {
                 const grp611 = "6.11. Обвязка под станцию водоподготовки";
-                addToBill(ballValve, 3, this.autoTip(ballValve.name, [
+                addToBill(nBall, 3, this.autoTip(nBall.name, [
                     `<b>Зачем:</b> Байпас станции: вход, выход и перемычка. Станция встаёт на регенерацию или в ремонт — дом остаётся с водой, пусть и без очистки.`,
                     `<b>Место:</b> после колб Big Blue (если есть) и до коллектора водоснабжения. Станция — в разрыв линии чистой воды.`,
                     `<b>Учтите:</b> в рабочем положении перемычка закрыта, иначе очищенная вода смешается с неочищенной.`
                 ]), grp611);
-                addToBill(union34, 2, this.autoTip(union34.name, [
+                addToBill(nUnion, 2, this.autoTip(nUnion.name, [
                     `<b>Зачем:</b> Разъёмное соединение с обеих сторон станции: снять её на ремонт или заменить, не разбирая узел ввода.`
                 ]), grp611);
-                addToBill(tee34, 2, this.autoTip(tee34.name, [
+                addToBill(nTee, 2, this.autoTip(nTee.name, [
                     `<b>Зачем:</b> Врезки байпаса станции на входе и выходе.`
                 ]), grp611);
-                addToBill(nipple34, 4, "", grp611);
-                addToBill(ext30, 2, "", grp611);
+                addToBill(nNipple, 4, "", grp611);
+                addToBill(nExt, 2, "", grp611);
             }
 
             flushBill("6. Узел ввода ХВС", this.waterNodeFlowNote());
