@@ -133,7 +133,7 @@
 /* Участки кольца, форма ручной трассы и список «Что изменится» */
 .hc-parts { margin-top: 6px; font-size: 10.5px; color: var(--text-sec, #6B7280); }
 .hc-part { display: flex; justify-content: space-between; gap: 8px; padding: 1px 0; }
-.hc-part b { white-space: nowrap; color: var(--text, #111827); font-weight: 600; }
+.hc-part b { white-space: nowrap; color: var(--text-main, #111827); font-weight: 600; }
 .hc-trunk-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; font-size: 10.5px; }
 .hc-trunk-form select, .hc-trunk-form input { font: inherit; font-size: 11px; padding: 2px 4px; border: 1px solid var(--border, #D1D5DB); border-radius: 6px; background: transparent; color: inherit; }
 .hc-trunk-form input { width: 56px; }
