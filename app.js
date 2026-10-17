@@ -72309,6 +72309,16 @@ const app = {
         this.render();
         this.saveState();
     },
+    // Режим луча для окна плана: { mode, why } — why не пусто, если переключатель сейчас не действует
+    radBeamInfo: function () {
+        const s = this.state;
+        const mode = (s.radBeamMode ? s.radBeamMode === 'auto' : !!s.radSharedBeams) ? 'auto' : 'single';
+        let why = '';
+        if (s.radConnectionScheme === 'tee') why = 'в тройниковой схеме коллектора нет';
+        else if (!s.detailedRooms) why = 'нужен режим «По комнатам»';
+        else if (s.pipeType !== 'split') why = 'пока только для серой трубы PEX-a';
+        return { mode: mode, why: why };
+    },
     setRadConnectionScheme: function (scheme) {
         this.state.radConnectionScheme = (scheme === 'tee') ? 'tee' : 'manifold';
         // Держим в синхроне с меткой активного варианта в свап-модалке коллектора (там же можно

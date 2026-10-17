@@ -5585,17 +5585,68 @@ var radCache = { key: null, val: [], items: [] };
 // калькулятор при открытии окна (app.radConnMap)
 var RAD_CONN = {};
 try { RAD_CONN = JSON.parse(localStorage.getItem('heatcalc_rad_conn') || '{}') || {}; } catch (e) {}
+/** Калькулятор, в котором открыто окно плана (iframe мастера или вкладка редактора). */
+function radHostApp() {
+  try { if (window.parent && window.parent !== window && window.parent.app) return window.parent.app; } catch (e) {}
+  try { if (window.opener && !window.opener.closed && window.opener.app) return window.opener.app; } catch (e) {}
+  return null;
+}
+
+/** Режим луча: { mode: 'single'|'auto', why } — why не пусто, когда переключатель не действует. Без калькулятора — из сохранения. */
+function radBeamInfo() {
+  var h = radHostApp();
+  try { if (h && h.radBeamInfo) return h.radBeamInfo(); } catch (e) {}
+  var st = {};
+  try { st = JSON.parse(localStorage.getItem('stout_save')) || {}; } catch (e) {}
+  var auto = st.radBeamMode ? st.radBeamMode === 'auto' : !!st.radSharedBeams;
+  return { mode: auto ? 'auto' : 'single', why: st.radConnectionScheme === 'tee' ? 'в тройниковой схеме коллектора нет' : '' };
+}
+
+/** Комнаты с общей трассой — те же, что у сметы (калькулятор считает их по нагрузке приборов); null — режим «на каждый прибор». */
+function radShareRooms() {
+  var h = radHostApp(), info = radBeamInfo();
+  if (info.mode !== 'auto' || info.why || !h || !h.radPlanDia) return null;
+  try { return h.radPlanDia().radShare || null; } catch (e) { return null; }
+}
+
 function ufhRadRoutes(f, stepMm) {
   if (!window.projectPlans || !projectPlans.radRoutes || dragZ || dragC) return radCache.val;
   var tee = false;
   try { tee = (JSON.parse(localStorage.getItem('stout_save')) || {}).radConnectionScheme === 'tee'; } catch (e) {}
-  var key = cur + '|' + stepMm + '|' + tee + '|' + JSON.stringify([f.zones, f.rads, f.coll, f.radColl || null]);
+  var share = tee ? null : radShareRooms();
+  var key = cur + '|' + stepMm + '|' + tee + '|' + JSON.stringify(share) + '|' + JSON.stringify([f.zones, f.rads, f.coll, f.radColl || null]);
   if (radCache.key === key) return radCache.val;
-  var segs = [], items = [];
-  try { var R = projectPlans.radRoutes(f, stepMm, tee, RAD_CONN); segs = R ? R.segs : []; items = R ? R.items : []; }
+  var segs = [], items = [], outs = 0;
+  try { var R = projectPlans.radRoutes(f, stepMm, tee, RAD_CONN, share); segs = R ? R.segs : []; items = R ? R.items : []; outs = R ? R.outs || 0 : 0; }
   catch (e) { console.error('[plan_editor] трассы радиаторов:', e); }
-  radCache = { key: key, val: segs, items: items };
+  radCache = { key: key, val: segs, items: items, outs: outs };
   return segs;
+}
+
+/** Кнопка рядом с «Автотрассы»: ветка на каждый прибор ↔ одна трасса на комнату. */
+function radBeamBtn() {
+  var info = radBeamInfo(), auto = info.mode === 'auto';
+  var tip = info.why ? 'Сейчас недоступно: ' + info.why + '.'
+    : (auto ? 'Сейчас: одна трасса на комнату, к приборам отводы. Нажмите — своя ветка на каждый прибор.'
+      : 'Сейчас: своя ветка от коллектора на каждый прибор. Нажмите — одна трасса на комнату с несколькими приборами.');
+  return '<button' + (info.why ? ' disabled' : '') + ' class="' + (auto ? 'go' : '') + '" title="' + tip + '" onclick="radBeamToggle()">' +
+    (auto ? 'Одна трасса на комнату' : 'Ветка на каждый прибор') + '</button>';
+}
+
+function radBeamToggle() {
+  var h = radHostApp(), info = radBeamInfo();
+  if (!h || !h.setRadBeamMode) { hint('Переключатель работает из калькулятора — откройте план из сметы.'); return; }
+  if (info.why) { hint('Общая трасса сейчас недоступна: ' + info.why + '.'); return; }
+  h.setRadBeamMode(info.mode === 'auto' ? 'single' : 'auto');
+  radCache.key = null;
+  var f = F(); ufhRadRoutes(f, UFH_STEP[cur] || 150);
+  var shared = radShareRooms(), n = shared ? Object.keys(shared).length : 0;
+  hint(info.mode === 'auto'
+    ? '<span class=ok>К каждому прибору — своя ветка от коллектора.</span> Выходов коллектора: ' + (radCache.outs || (f.rads || []).length) + '. Смета и гидравлика пересчитаны.'
+    : '<span class=ok>' + (n ? 'Комнат с одной общей трассой: ' + n + '. Выходов коллектора: ' + (radCache.outs || '—') + '.'
+      : 'Комнат, где можно объединить приборы, нет — по одному прибору или нагрузка не даёт общего Ø16/Ø20.') +
+      '</span> Смета и гидравлика пересчитаны.');
+  renderZones(); renderSteps(); draw();
 }
 
 /** Комната прибора — по ней берётся модель из сметы (как в radRoutes). */
@@ -6251,7 +6302,7 @@ function wzBody(id) {
     tx: 'Отметьте комнаты с тёплым полом — петли разложатся сами.',
     tips: [['Клик по комнате', 'вкл / выкл'], ['«По точкам»', 'сложная форма'], ['Узлы контура', 'тянуть; ПКМ — точка'], ['«Без обогрева»', 'лестница, ванна'],
       ['Мышью', 'двигать коллектор'], ['ПКМ или R', 'повернуть на 90°']] };
-  if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('radcoll')", 'Переставить коллектор радиаторов') + B('radRoutesReset()', 'Автотрассы'),
+  if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('radcoll')", 'Переставить коллектор радиаторов') + B('radRoutesReset()', 'Автотрассы') + radBeamBtn(),
     tx: 'Радиаторы поставлены под окнами — проверьте расстановку.', tips: RAD_TIPS };
   return { next: 'Готово — в смету', tx: wzSummary().html,
     tips: [['Комнаты', 'уйдут в расчёт'], ['Раскладка', 'попадёт в смету и КП']] };
