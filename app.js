@@ -718,7 +718,7 @@ const app = {
         });
     },
 
-    confirm: function (msg, title = "Подтверждение") {
+    confirm: function (msg, title = "Подтверждение", okText = 'Да', cancelText = 'Отмена') {
         if (document.body.classList.contains('menu-open')) {
             try { this.toggleMenu(); } catch (e) { }
         }
@@ -744,7 +744,7 @@ const app = {
 
             const cancelBtn = document.createElement('button');
             cancelBtn.className = 'calc-dialog-btn calc-dialog-btn-cancel';
-            cancelBtn.innerText = 'Отмена';
+            cancelBtn.innerText = cancelText;
             cancelBtn.onclick = () => {
                 overlay.classList.remove('active');
                 setTimeout(() => {
@@ -755,7 +755,7 @@ const app = {
 
             const okBtn = document.createElement('button');
             okBtn.className = 'calc-dialog-btn calc-dialog-btn-confirm';
-            okBtn.innerText = 'Да';
+            okBtn.innerText = okText;
             okBtn.onclick = () => {
                 overlay.classList.remove('active');
                 setTimeout(() => {
@@ -16224,6 +16224,17 @@ const app = {
             if (localStorage.getItem('prefs_hint_seen') === '1') return false;
             return Date.now() > (parseInt(localStorage.getItem('prefs_hint_snooze'), 10) || 0);
         } catch (e) { return false; }
+    },
+    // Окно после последнего шага обучения (tour.js, finish): один раз, тем, кому показывается
+    // карточка на «Главной», но без условия «есть сохранённая смета» — обучение уже пройдено.
+    offerPrefsAfterTour: async function () {
+        try {
+            if (!this.state.tgUser || this.isSellerOnly() || Object.keys(this.getPrefs()).length) return;
+            if (localStorage.getItem('prefs_offer_shown') === '1') return;
+            localStorage.setItem('prefs_offer_shown', '1');
+        } catch (e) { return; }
+        const go = await this.confirm('Можно один раз отметить, что вы ставите чаще: нержавейка или ППР, секционные или стальные радиаторы, трубы, насосы, бренд. Новые сметы сразу будут считаться по вашему выбору. Изменить или сбросить можно в любой момент: «Прайс → Любимые материалы».', 'Любимые материалы', 'Настроить', 'Позже');
+        if (go) this.showProfileModal(false, 'prefs');
     },
     prefsHintLater: function () {
         try { localStorage.setItem('prefs_hint_snooze', String(Date.now() + 14 * 86400000)); } catch (e) { }

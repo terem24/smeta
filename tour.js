@@ -815,6 +815,8 @@ const Tour = {
         this._step = 0;
         this.rememberChoice();
         this.toggle(false);
+        // Последний шаг после обучения: предложение выбрать любимые материалы (один раз)
+        if (done === true) setTimeout(() => { try { if (typeof app !== 'undefined' && app.offerPrefsAfterTour) app.offerPrefsAfterTour(); } catch (e) { } }, 600);
     },
 
     // Отметка в базе (users.tour_done_at, supabase/migrations/20261015_tour_done.sql).
