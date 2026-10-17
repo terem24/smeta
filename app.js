@@ -77778,8 +77778,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 price = `<div style="font-size:11px;margin-top:1px;">${fmt(p)}${delta}</div>`;
             }
             const tip = why(x) || 'Скорость в норме (0,4–1,0 м/с)';
-            return `<span${click} title="${tip}" style="cursor:${live ? 'pointer' : 'default'};padding:4px 10px;border-radius:6px;font-size:12px;line-height:1.3;min-width:120px;border:1px solid ${col};background:${on ? col : 'transparent'};color:${on ? '#fff' : 'var(--text-main)'};">`
-                + `<b>${label}</b> · ${x.v.toFixed(2).replace('.', ',')} м/с${price}</span>`;
+            const recMark = x.size === o.rec ? ` <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding:1px 5px;border-radius:4px;margin-left:2px;background:${on ? 'rgba(255,255,255,.25)' : COL[x.level].bg};color:${on ? '#fff' : col};">рекомендуем</span>` : '';
+            return `<span${click} title="${tip}" style="cursor:${live ? 'pointer' : 'default'};padding:4px 10px;border-radius:6px;font-size:12px;line-height:1.3;min-width:120px;border:1px solid ${col};background:${on ? col : COL[x.level].bg};color:${on ? '#fff' : 'var(--text-main)'};">`
+                + `<b>${label}</b> · ${x.v.toFixed(2).replace('.', ',')} м/с${recMark}${price}</span>`;
         };
         const info = `<div style="margin-top:6px;font-size:12px;color:var(--text-main);">`
             + `Выбрано: <b>${this.boilerMainTitle(o.active, sys)}</b>${manual ? ' (вручную)' : ''}`
