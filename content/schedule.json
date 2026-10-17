@@ -221,9 +221,9 @@
    "freq": 259218,
    "audience": "owner",
    "data_block": "наш гидравлический расчёт",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-17",
-   "published_at": null,
+   "published_at": "2026-10-17",
    "words": 661
   },
   {
