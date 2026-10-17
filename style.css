@@ -20339,11 +20339,15 @@ body.theme-shop #hdr_margin_sum { color: var(--primary) !important; }
 .view-menu-caret { font-size: 10px; line-height: 1; transition: transform .15s ease; }
 .view-menu.open .view-menu-caret { transform: rotate(180deg); }
 .view-menu-panel {
-    display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 60;
+    display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 400;
     flex-direction: column; gap: 10px; min-width: 190px; padding: 12px 14px;
     background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
+.view-menu.open { z-index: 400; }
+/* Вся шапка сметы — выше липкой строки параметров (.doc-summary, z 300): меню «Вид» выпадает
+   поверх неё, а не прячется под ней. Сама шапка не липкая, на раскладку не влияет. */
+@media screen { .doc-header { position: relative; z-index: 310; } }
 .view-menu.open .view-menu-panel { display: flex; }
 .view-menu-panel .sku-toggle-group { justify-content: space-between; gap: 16px; }
 .view-menu-panel .sku-label { text-transform: none; font-size: 12px; color: var(--text-main); }
