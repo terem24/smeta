@@ -1,8 +1,14 @@
-const CACHE_NAME = 'heatcalc-v34.90';
+const CACHE_NAME = 'heatcalc-v34.91';
 // Подложки планов этажей — отдельным кэшем, который переживает смену версии
 // приложения. В общем кэше они терялись бы при каждом выпуске, а это как раз
 // то, что монтажник открывает на объекте, где связи может не быть.
 const PLANS_CACHE = 'heatcalc-plans';
+// Фото позиций (img/<артикул>.jpg) — тоже отдельный кэш, переживающий выпуски.
+// Выпуски идут по несколько в день, и раньше каждый сносил вместе со старым
+// кэшем все накопленные фотографии: после него смета заново качала их с
+// сервера по одной. Файл под артикулом не меняется; если фото заменили —
+// поднять номер в имени кэша, и все скачаются заново.
+const IMG_CACHE = 'heatcalc-img-1';
 const ASSETS = [
   '/',
   '/index.html',
@@ -89,7 +95,7 @@ self.addEventListener('activate', (e) => {
     const filled = (await cache.keys()).length > 0;
     const keys = await caches.keys();
     await Promise.all(keys.map((key) => {
-      if (key === CACHE_NAME || key === PLANS_CACHE) return null;
+      if (key === CACHE_NAME || key === PLANS_CACHE || key === IMG_CACHE) return null;
       if (!filled) {
         console.log('[Service Worker] Keeping old cache until the new one is filled:', key);
         return null;
@@ -127,6 +133,24 @@ self.addEventListener('fetch', (e) => {
 
   // Пропускаем не-GET запросы и сторонние API (например, Supabase)
   if (e.request.method !== 'GET' || !e.request.url.startsWith(self.location.origin)) {
+    return;
+  }
+
+  // Фото позиций: из кэша сразу и без фонового перекачивания. Общий обработчик
+  // ниже на каждый показ картинки ещё раз качал её с сервера (stale-while-
+  // revalidate) — в смете на сотню строк это сотня лишних запросов, которые
+  // занимают те же несколько соединений и задерживают сами фото.
+  let isItemPhoto = false;
+  try { isItemPhoto = /\/img\/[^/]+\.(jpg|png|webp)$/i.test(new URL(e.request.url).pathname); } catch (err) { /* не наш случай */ }
+  if (isItemPhoto) {
+    e.respondWith(
+      caches.open(IMG_CACHE).then((cache) =>
+        cache.match(e.request, { ignoreSearch: true }).then((hit) => hit || fetch(e.request).then((res) => {
+          if (res && res.status === 200 && res.type === 'basic') cache.put(e.request, res.clone());
+          return res;
+        }))
+      )
+    );
     return;
   }
 

@@ -1045,7 +1045,7 @@ const getImg = (item) => {
 
     // imgRef — пока нет фото самой позиции (новинка), берём фото аналога
     let imgSrc = `img/${item.imgRef || item.id}.jpg`;
-    return `<img src="${imgSrc}" class="prod-thumb" loading="lazy" decoding="async" onerror="this.onerror=null;this.style.visibility='hidden';">`;
+    return `<img src="${imgSrc}" class="prod-thumb" loading="lazy" decoding="async" onerror="if(!this.dataset.r){this.dataset.r=1;var s=this.src;setTimeout(function(i){i.src=s.split('?')[0]+'?r='+Date.now();},1500,this);}else{this.style.visibility='hidden';}">`;
 };
 const workPrices = {
     boiler_gas: 20000,
