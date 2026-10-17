@@ -41484,6 +41484,7 @@ const app = {
                     `<div class="ufh-plan-row">` + planBox(v.svgRad) + mkCol(radHtml, false) + `</div>` : '') +
                 `</div>`);
         });
+        if (!parts.length) return '';   // нет ни одного этажа с планом — ни плашки, ни заголовка
         parts.unshift(`<style>
 .ufh-plan-row{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
 .ufh-tbl-col{flex:1 1 420px;min-width:0;overflow-x:auto}
