@@ -235,9 +235,9 @@
    "freq": 4600,
    "audience": "pro",
    "data_block": "наш гидравлический расчёт",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-18",
-   "published_at": null,
+   "published_at": "2026-10-18",
    "words": 815
   },
   {

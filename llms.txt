@@ -140,6 +140,7 @@
 - [Бойлер косвенного нагрева: как подобрать объём](https://heatcalc.ru/boyler-kosvennogo-nagreva/) — бойлер косвенного нагрева
 - [Аванс и оплата по этапам: как не работать в долг](https://heatcalc.ru/avans-i-oplata-po-etapam/) — аванс по договору подряда монтаж
 - [Подбор циркуляционного насоса: напор и расход](https://heatcalc.ru/podbor-tsirkulyatsionnogo-nasosa/) — циркуляционный насос
+- [Диаметр труб отопления: как посчитать](https://heatcalc.ru/diametr-trub-otopleniya/) — диаметр труб отопления
 
 ## Примечания для моделей
 
