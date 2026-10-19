@@ -89457,6 +89457,17 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     if (meters <= 0) return;
                     let base = pipePool.find(x => x.id === pipeIds[d]);
                     if (!base) return;
+                    // Бухта 500 м (STOUT, Ø16) — тем же правилом, что у радиаторной разводки: берём её,
+                    // только если она не добавляет метров против 100-метровой; при равенстве — если бухт меньше.
+                    // У ROMMER 500 м нет, там остаётся 100 м как раньше.
+                    const _trPb = (this.state.pipeBrand || {}).rad;
+                    const _trSecAn = (this.state.sectionAnalog || {})[currentSectionTitle];
+                    const _trRommer = _trPb ? (_trPb === 'rommer') : ((_trSecAn !== undefined) ? _trSecAn : (this.state.brandMode === 'rommer'));
+                    const _tr500 = pipePool.find(x => x.id === 'SPM-0001-501620');
+                    if (isMp && d === 16 && !_trRommer && _tr500) {
+                        const _rl = (len) => Math.ceil(meters / len);
+                        if (_rl(500) * 500 < _rl(100) * 100 || (_rl(500) * 500 === _rl(100) * 100 && _rl(500) < _rl(100))) base = _tr500;
+                    }
                     let coils = Math.ceil(meters / base.len);
                     // Синтетический originalId (не "SPX-0001-…"/"SPM-0001-…") — иначе попадает под старые
                     // условия переключателя материала ХВС/тёплого пола в openSwapModal/selectSwapAlternative
