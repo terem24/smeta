@@ -14615,6 +14615,15 @@ const app = {
         container.innerHTML = `
             <div class="lk-section-head"><div><h4>Тариф</h4><div class="lk-sub">Что доступно сейчас и что даёт Профи</div></div></div>
             ${statusCard}
+            <div style="margin:0 0 12px; padding:12px 14px; border:1px solid var(--border-color, #E5E7EB); border-radius:10px;">
+                <label style="display:flex; gap:10px; align-items:flex-start; cursor:pointer;">
+                    <input type="checkbox" ${this.poolCoilsOn() ? 'checked' : ''} onchange="app.setPoolCoils(this.checked)" style="margin-top:3px;">
+                    <span>
+                        <span style="display:block; font-weight:700; color:var(--text-main);">Подбирать бухты по всей смете</span>
+                        <span style="display:block; margin-top:2px; font-size:11.5px; color:var(--text-sec); line-height:1.4;">Одинаковые трубы из всех разделов складываются в общий подбор: меньше обрезков. Остаток бухты виден на экране и не попадает в печать и КП. По умолчанию включено на Профи.</span>
+                    </span>
+                </label>
+            </div>
             <div class="lk-card-label" style="margin:16px 0 8px;">Что даёт тариф Профи</div>
             <div class="lk-list">
                 ${perks.map(([icon, title, text]) => `
@@ -17824,6 +17833,85 @@ const app = {
         this.installerSettings.shortNamesDefault = !!on;
         this.pushInstallerSettingsToCloud();
     },
+    // Объединение бухт по смете. Флаг в installerSettings.poolCoils; ключа нет — по тарифу:
+    // ПРОФИ включено, Базовый выключено.
+    poolCoilsOn: function () {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const v = this.installerSettings.poolCoils;
+        return v === undefined ? !!this.isPro() : !!v;
+    },
+    setPoolCoils: function (on) {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        this.installerSettings.poolCoils = !!on;
+        this.pushInstallerSettingsToCloud();
+        this.render();
+    },
+    // Бухты STOUT, сгруппированные по диаметру (16x2.0, 20x2.0, …), от большой к малой.
+    coilPoolNew: function () {
+        const fam = {}, byId = {};
+        (catalog.metal_plastic_pipes || []).forEach(c => {
+            if (!/^SPM-0001-/.test(c.id) || !(c.len > 0)) return;
+            const m = /(\d+x\d+\.\d)/i.exec(c.name || '');
+            if (!m) return;
+            (fam[m[1]] = fam[m[1]] || []).push(c);
+            byId[c.id] = m[1];
+        });
+        Object.keys(fam).forEach(k => fam[k].sort((a, b) => b.len - a.len));
+        return { fam: fam, byId: byId, metres: {}, parts: {} };
+    },
+    /**
+     * Минимум лишних метров, при равенстве — минимум бухт. lens — длины бухт от большой к малой.
+     * Последняя (самая малая) добирается с округлением вверх; остальные перебираются.
+     */
+    coilPoolPlan: function (need, lens) {
+        let best = null;
+        const rec = (i, left, counts) => {
+            const top = Math.ceil(Math.max(0, left) / lens[i]);
+            if (i === lens.length - 1) {
+                const cc = counts.concat([top]);
+                const metres = cc.reduce((s, n, j) => s + n * lens[j], 0);
+                const rolls = cc.reduce((s, n) => s + n, 0);
+                if (!best || metres < best.metres || (metres === best.metres && rolls < best.rolls)) best = { counts: cc, metres: metres, rolls: rolls };
+                return;
+            }
+            for (let n = 0; n <= top; n++) rec(i + 1, left - n * lens[i], counts.concat([n]));
+        };
+        rec(0, need, []);
+        return best;
+    },
+    /** Строки блока «Трубы: бухты по всей смете» и строка остатка (только на экране). */
+    coilPoolRows: function (pool) {
+        const rows = [];
+        const dims = [...new Set(Object.keys(pool.metres).map(id => pool.byId[id]))];
+        dims.forEach(dim => {
+            const coils = pool.fam[dim];
+            const need = coils.reduce((s, c) => s + (pool.metres[c.id] || 0), 0);
+            const plan = this.coilPoolPlan(need, coils.map(c => c.len));
+            const secs = {};
+            coils.forEach(c => (pool.parts[c.id] || []).forEach(p => { secs[p.sec] = (secs[p.sec] || 0) + p.m; }));
+            const from = Object.keys(secs).map(s => `${s}: ${secs[s]} м`).join('; ');
+            const tip = `Объединено по смете: ${need} м (${from}). Подобрано: ` +
+                coils.map((c, j) => plan.counts[j] ? `${plan.counts[j]} × ${c.len} м` : null).filter(Boolean).join(' + ') +
+                ` = ${plan.metres} м.`;
+            coils.forEach((c, j) => {
+                const n = plan.counts[j];
+                if (!n) return;
+                const { rommer, ...base } = c; // ROMMER-пары в объединённой строке не нужны
+                const price = (c.price || 0) * c.len;
+                rows.push({ ...base, price: price, basePrice: price, coilPriced: true, originalId: c.id + '_pool',
+                    q: n, sum: Math.round(price * n), sortRank: 0, unit: 'шт', brand: 'STOUT',
+                    displaySku: c.id, qtyTip: tip, group: 'Трубы: бухты по всей смете' });
+            });
+            const left = plan.metres - need;
+            if (left > 0) {
+                rows.push({ id: 'pool_left_' + dim, name: `Остаток бухт Ø${dim.split('x')[0]}: ${left} м`, price: 0, basePrice: 0,
+                    q: 0, sum: 0, sortRank: 0, unit: 'м', brand: 'STOUT', originalId: 'pool_left_' + dim,
+                    screenOnly: true, qtyTip: 'Не входит в смету, печать и КП. Можно записать на следующий объект.',
+                    group: 'Трубы: бухты по всей смете' });
+            }
+        });
+        return rows;
+    },
     // Поля раздела «КП и счета»: сроки и сокращение названий. Зовётся при открытии раздела
     // и после прихода настроек из облака (через fillCompanyDetailsForm)
     fillKpSettingsForm: function () {
@@ -18387,6 +18475,10 @@ const app = {
                     shortNamesDefault: (cloud.shortNamesDefault !== undefined)
                         ? cloud.shortNamesDefault
                         : (this.installerSettings ? this.installerSettings.shortNamesDefault : undefined),
+                    // Объединение бухт по смете («Настройки → Тариф»): облако главнее, без ключа — местный выбор
+                    poolCoils: (cloud.poolCoils !== undefined)
+                        ? cloud.poolCoils
+                        : (this.installerSettings ? this.installerSettings.poolCoils : undefined),
                     // Любимые материалы («Прайс → Любимые материалы»): по тому же правилу, что margin
                     prefs: (cloud.prefs && typeof cloud.prefs === 'object')
                         ? cloud.prefs
@@ -82901,6 +82993,10 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         this.fitDocSummary();
 
         let bill = [];
+        // Объединение бухт по смете (настройка «Тариф»: по умолчанию включено для ПРОФИ).
+        // Покупки бухт копятся здесь по метрам, а блок «Трубы: бухты по всей смете» выводится
+        // в конце (см. coilPoolRows). Выключено — каждый раздел покупает свои бухты, как раньше.
+        const _coilPool = this.poolCoilsOn() ? this.coilPoolNew() : null;
         let currentSectionTitle = '';
         let sectionHasAnalogItems = false;
         // Контекст коллекторных шкафов: под каким коллектором и на сколько выходов стоит
@@ -82945,6 +83041,13 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             if (typeof manualSwapId === 'string') {
                 const _sm = manualSwapId.match(/^(.+)__x(\d+)$/);
                 if (_sm) { manualSwapId = _sm[1]; _setMul = Math.max(1, parseInt(_sm[2]) || 1); }
+            }
+            // Бухта STOUT — в копилку смены по метрам, а не в раздел. Замена вручную и ROMMER не объединяем.
+            if (_coilPool && !useAnalog && !manualSwapId && item.coilPriced && _coilPool.byId[item.id]) {
+                const _m = qty * (item.len || 0);
+                _coilPool.metres[item.id] = (_coilPool.metres[item.id] || 0) + _m;
+                (_coilPool.parts[item.id] = _coilPool.parts[item.id] || []).push({ sec: secTitle, m: _m });
+                return;
             }
             let activeItem = item;
             let forceAnalog = false;
@@ -83691,6 +83794,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
 
             // Сохраняем элементы для коммерческого предложения клиенту
             bill.forEach(i => {
+                if (i.screenOnly) return; // остаток бухты — только на экране, не в КП и выгрузках
                 this.currentEquipmentList.push({
                     id: i.id,
                     name: i.name,
@@ -83990,8 +84094,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // Позиции, пришедшие из распознавания, подсвечиваются, чтобы
                 // монтажник видел, что калькулятор добавил не сам.
                 const recClass = i.recognized ? ' row-recognized' : '';
-                let rowClass = (isOpt || recClass)
-                    ? ` class="${isOpt ? 'row-opt-out' : ''}${recClass}"`
+                let rowClass = (isOpt || recClass || i.screenOnly)
+                    ? ` class="${isOpt ? 'row-opt-out' : ''}${recClass}${i.screenOnly ? ' no-print' : ''}"`
                     : '';
                 // Инлайн-кнопка «Аналог» рядом с названием — видна только в режиме «без картинок»
                 // (body.hide-images-mode), где столбец с фото и его кнопкой замены скрыт. Так замену
@@ -92798,6 +92902,10 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             } else {
                 addToBill(cl, Math.ceil(vSys / cl.vol), this.getDesc('coolant', Math.round(vSys)), "9. Дополнительные материалы");
             }
+        }
+        if (_coilPool && Object.keys(_coilPool.metres).length) {
+            bill = this.coilPoolRows(_coilPool);
+            flushBill('Трубы: бухты по всей смете');
         }
         flushBill("9. Дополнительные материалы");
         // ==========================================
