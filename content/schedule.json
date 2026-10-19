@@ -249,9 +249,9 @@
    "freq": 0,
    "audience": "pro",
    "data_block": "порядок допсоглашения",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-19",
-   "published_at": null,
+   "published_at": "2026-10-19",
    "words": 537
   },
   {
