@@ -20925,7 +20925,7 @@ const app = {
             this._adminTab = 'messages';
             // Пришли посмотреть, что нового: есть непрочитанные уведомления — открываем
             // вкладку «Уведомления», нет — оставляем переписку на том диалоге, где остановились.
-            const unread = (this._notifications || []).filter(n => !n.isRead).length;
+            const unread = this.adminNotifFeed().filter(n => !n.isRead).length;
             if (unread > 0) this._adminTab = 'notifications';
             this.showAdminModal();
             this.fetchNotifications();
@@ -26436,7 +26436,7 @@ const app = {
     buildAdminMobileHome: function () {
         const d = this.adminData || {};
         const n = (v) => Number(v || 0).toLocaleString('ru-RU');
-        const unread = (this._notifications || []).filter(x => !x.isRead).length;
+        const unread = this.adminNotifFeed().filter(x => !x.isRead).length;
 
         const cards = `
             <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
@@ -26610,7 +26610,7 @@ const app = {
         // Перетаскивание вкладок отключено с введением групп (см. ADMIN_GROUPS): порядок
         // внутри группы задан в коде, а сохранённый плоский порядок больше ничего не меняет.
         const canReorder = false;
-        const tabUnread = (this._notifications || []).filter(x => !x.isRead).length;
+        const tabUnread = this.adminNotifFeed().filter(x => !x.isRead).length;
         // Два уровня: группы (Клиенты, Продажи, Каталог…) и вкладки текущей группы.
         // У группы из одной вкладки (Сообщения, Контент) второго ряда нет.
         const groups = this.adminVisibleGroups(ADMIN_TAB_DEFS);
@@ -36859,6 +36859,13 @@ const app = {
     // в «Сообщениях», а автонапоминания базы падали в чат с менеджером и тонули там.
     // Над лентой — проверка каналов: что выключено и что именно включить, чтобы
     // уведомления доходили не только до открытой вкладки.
+    // Лента «Уведомления» в панели управления. Ответы монтажников сюда не попадают:
+    // они лежат в «Сообщениях» (переписка). В колокольчике, звуке и всплывашке они есть —
+    // это общий _notifications, а здесь его просто не показываем.
+    adminNotifFeed: function () {
+        return (this._notifications || []).filter(n => n.type !== 'installer_reply');
+    },
+
     renderAdminNotifications: function () {
         const box = document.getElementById('admin_notif_box');
         if (!box) return;
@@ -36878,7 +36885,7 @@ const app = {
         }
 
         if (!this.installerSettings) this.loadInstallerSettingsLocal();
-        const items = this._notifications || [];
+        const items = this.adminNotifFeed();
         const fresh = items.filter(n => !n.isRead);
         const old = items.filter(n => n.isRead);
         const isManager = this.isManagerRole();
