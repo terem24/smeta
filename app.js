@@ -69769,6 +69769,7 @@ const app = {
         'SPS-0002-002537': { pool: 'axial_fittings_pex', adapter: 'SFA-0001-002534', elbow: 'SFA-0007-000025' },
         'SPS-0002-003247': { pool: 'axial_fittings_pex', adapter: 'SFA-0001-003234', elbow: 'SFA-0007-000032' },
         'SPM-0001-101620': { pool: 'water_fittings_press_mp', adapter: 'SFP-0001-003416', elbow: 'SFP-0009-001616' },
+        'SPM-0001-501620': { pool: 'water_fittings_press_mp', adapter: 'SFP-0001-003416', elbow: 'SFP-0009-001616' },
         'SPM-0001-102020': { pool: 'water_fittings_press_mp', adapter: 'SFP-0001-003420', elbow: 'SFP-0009-002020' },
         'SPM-0001-052630': { pool: 'water_fittings_press_mp', adapter: 'SFP-0001-003426', elbow: 'SFP-0009-002626' },
         'SPM-0001-053230': { pool: 'water_fittings_press_mp', adapter: 'SFP-0001-000132', elbow: 'SFP-0009-003232', thread1: true }
@@ -71211,7 +71212,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             note: 'Сшитый полиэтилен с кислородным барьером и памятью формы — основная труба тёплого пола.' },
         { key: 'mp16', material: 'metal_plastic', label: 'Металлопластик 16×2.0', short: 'МП 16×2.0',
             dIn: 0.012, lm: 0.113, conn: 'SFC-0020-001620', connName: 'евроконус 16×2.0',
-            coils: ['SPM-0001-201620', 'SPM-0001-101620'],
+            coils: ['SPM-0001-501620', 'SPM-0001-201620', 'SPM-0001-101620'],
             note: 'PE-Xb/Al/PE-Xb. Держит форму руками, но алюминиевый слой не прощает перегиба и замерзания.' },
         { key: 'stable16', material: 'stable', label: 'Стабильная 16,2×2.6', short: '16,2×2.6',
             dIn: 0.011, lm: 0.095, conn: 'SFC-0020-001622', connName: 'евроконус 16×2.2',
@@ -89621,7 +89622,14 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         const _mpSecAn = (this.state.sectionAnalog || {})[currentSectionTitle];
                         const _mpPb = (this.state.pipeBrand || {}).rad;
                         const _mpRommer = _mpPb ? (_mpPb === 'rommer') : ((_mpSecAn !== undefined) ? _mpSecAn : (this.state.brandMode === 'rommer'));
-                        let grayItem = asCoilPrice((neededPipe > 200 || _mpRommer) ? { ...catalog.metal_plastic_pipes[1] } : { ...catalog.metal_plastic_pipes[0] }); grayItem.originalId = grayItem.id + "_rad"; grayItem.alts = catalog.insulated_pipes_mp_red; grayItem.noCheapenAlts = true; addToBill(grayItem, Math.ceil(neededPipe / grayItem.len), this.getDesc('rad_pipe', neededPipe), pipeGrp);
+                        // Бухта 500 м (STOUT) — только когда она не добавляет метров против 200-метровой:
+                        // при равном метраже берём её, если бухт меньше. У ROMMER 500 м нет.
+                        const _mpRolls = (len) => Math.ceil(neededPipe / len);
+                        const _mp500 = catalog.metal_plastic_pipes.find(x => x.id === 'SPM-0001-501620');
+                        const _use500 = !_mpRommer && neededPipe > 200 && !!_mp500
+                            && (_mpRolls(500) * 500 < _mpRolls(200) * 200
+                                || (_mpRolls(500) * 500 === _mpRolls(200) * 200 && _mpRolls(500) < _mpRolls(200)));
+                        let grayItem = asCoilPrice(_use500 ? { ..._mp500 } : ((neededPipe > 200 || _mpRommer) ? { ...catalog.metal_plastic_pipes[1] } : { ...catalog.metal_plastic_pipes[0] })); grayItem.originalId = grayItem.id + "_rad"; grayItem.alts = catalog.insulated_pipes_mp_red; grayItem.noCheapenAlts = true; addToBill(grayItem, Math.ceil(neededPipe / grayItem.len), this.getDesc('rad_pipe', neededPipe), pipeGrp);
                         let insLen = Math.ceil(neededPipe / 2); if (insLen % 2 !== 0) insLen++; addToBill(catalog.insulation[0], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы подачи (красная) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp); addToBill(catalog.insulation[1], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы обратки (синяя) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp);
                     } else if (this.state.pipeType === 'stable_16') {
                         let coils = Math.ceil(neededPipe / 100);
