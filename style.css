@@ -14909,14 +14909,9 @@ body.object-flat:not(.calc-detailed) #blk_water_reducer_row {
     display: none !important;
 }
 
-/* Быстрый режим (дом и квартира): карточка узла ввода ХВС короче. Давление в сети,
-   редуктор, счётчик и защита от протечки — только в подробном расчёте по комнатам;
-   кран, фильтрация, каркас и подпитка отопления тоже там. Значения в смете не
-   сбрасываются. */
-body:not(.calc-detailed) #blk_mains_bar_row,
-body:not(.calc-detailed) #blk_water_reducer_row,
-body:not(.calc-detailed) #blk_water_meter_row,
-body:not(.calc-detailed) #blk_water_leak_row,
+/* Быстрый режим (дом и квартира): карточка узла ввода ХВС короче — остаются
+   редуктор, счётчик и защита от протечки. Кран, фильтрация, каркас и подпитка
+   отопления — в подробном; значения в смете не сбрасываются. */
 body:not(.calc-detailed) #blk_outdoor_faucet_row,
 body:not(.calc-detailed) #blk_water_filter_row,
 body:not(.calc-detailed) #blk_water_frame_row,
