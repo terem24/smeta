@@ -14615,6 +14615,24 @@ const app = {
         container.innerHTML = `
             <div class="lk-section-head"><div><h4>Тариф</h4><div class="lk-sub">Что доступно сейчас и что даёт Профи</div></div></div>
             ${statusCard}
+            <div style="margin:0 0 12px; padding:12px 14px; border:1px solid var(--border-color, #E5E7EB); border-radius:10px;">
+                <label style="display:flex; gap:10px; align-items:flex-start; cursor:pointer;">
+                    <input type="checkbox" ${this.poolCoilsOn() ? 'checked' : ''} onchange="app.setPoolCoils(this.checked)" style="margin-top:3px;">
+                    <span>
+                        <span style="display:block; font-weight:700; color:var(--text-main);">Подбирать бухты по всей смете</span>
+                        <span style="display:block; margin-top:2px; font-size:11.5px; color:var(--text-sec); line-height:1.4;">Одинаковые трубы из всех разделов складываются в общий подбор: меньше обрезков. Остаток бухты виден на экране и не попадает в печать и КП. По умолчанию включено на Профи.</span>
+                        <span style="display:block; margin-top:6px; font-size:12px; color:var(--text-main); line-height:1.4;">${(() => {
+                            const st = this._poolStats;
+                            if (!st) return 'Откройте смету с трубами: здесь появится, сколько это экономит.';
+                            if (!(st.unM > 0)) return 'В текущей смете нет бухт металлопластика, экономии нет.';
+                            const eco = st.metres > 0
+                                ? `экономия <b>${Math.round(st.metres)} м</b> и <b>${this.formatCurrencyAmount(st.rub)}</b>`
+                                : 'экономии нет: здесь уже покупается минимум бухт';
+                            return (this.poolCoilsOn() ? 'Сейчас включено: ' : 'Сейчас выключено. Включение даёт: ') + `в текущей смете ${eco}.`;
+                        })()}</span>
+                    </span>
+                </label>
+            </div>
             <div class="lk-card-label" style="margin:16px 0 8px;">Что даёт тариф Профи</div>
             <div class="lk-list">
                 ${perks.map(([icon, title, text]) => `
@@ -17824,6 +17842,90 @@ const app = {
         this.installerSettings.shortNamesDefault = !!on;
         this.pushInstallerSettingsToCloud();
     },
+    // Объединение бухт по смете. Флаг в installerSettings.poolCoils; ключа нет — по тарифу:
+    // ПРОФИ включено, Базовый выключено.
+    poolCoilsOn: function () {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const v = this.installerSettings.poolCoils;
+        return v === undefined ? !!this.isPro() : !!v;
+    },
+    setPoolCoils: function (on) {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        this.installerSettings.poolCoils = !!on;
+        this.pushInstallerSettingsToCloud();
+        this.render();
+    },
+    // Бухты STOUT, сгруппированные по диаметру (16x2.0, 20x2.0, …), от большой к малой.
+    coilPoolNew: function () {
+        const fam = {}, byId = {};
+        (catalog.metal_plastic_pipes || []).forEach(c => {
+            if (!/^SPM-0001-/.test(c.id) || !(c.len > 0)) return;
+            const m = /(\d+x\d+\.\d)/i.exec(c.name || '');
+            if (!m) return;
+            (fam[m[1]] = fam[m[1]] || []).push(c);
+            byId[c.id] = m[1];
+        });
+        Object.keys(fam).forEach(k => fam[k].sort((a, b) => b.len - a.len));
+        return { fam: fam, byId: byId, metres: {}, need: {}, parts: {}, rub: 0, on: false };
+    },
+    /**
+     * Минимум лишних метров, при равенстве — минимум бухт. lens — длины бухт от большой к малой.
+     * Последняя (самая малая) добирается с округлением вверх; остальные перебираются.
+     */
+    coilPoolPlan: function (need, lens) {
+        let best = null;
+        const rec = (i, left, counts) => {
+            const top = Math.ceil(Math.max(0, left) / lens[i]);
+            if (i === lens.length - 1) {
+                const cc = counts.concat([top]);
+                const metres = cc.reduce((s, n, j) => s + n * lens[j], 0);
+                const rolls = cc.reduce((s, n) => s + n, 0);
+                if (!best || metres < best.metres || (metres === best.metres && rolls < best.rolls)) best = { counts: cc, metres: metres, rolls: rolls };
+                return;
+            }
+            for (let n = 0; n <= top; n++) rec(i + 1, left - n * lens[i], counts.concat([n]));
+        };
+        rec(0, need, []);
+        return best;
+    },
+    /** Строки блока «Трубы: бухты по всей смете» и строка остатка (только на экране). */
+    coilPoolRows: function (pool) {
+        const rows = [];
+        let boughtM = 0, boughtR = 0; // что покупаем при объединении — для экономии в тарифе
+        const dims = [...new Set(Object.keys(pool.metres).map(id => pool.byId[id]))];
+        dims.forEach(dim => {
+            const coils = pool.fam[dim];
+            const need = coils.reduce((s, c) => s + (pool.need[c.id] || 0), 0);
+            const plan = this.coilPoolPlan(need, coils.map(c => c.len));
+            const secs = {};
+            coils.forEach(c => (pool.parts[c.id] || []).forEach(p => { secs[p.sec] = (secs[p.sec] || 0) + p.m; }));
+            const from = Object.keys(secs).map(s => `${s}: ${secs[s]} м`).join('; ');
+            const tip = `Объединено по смете: ${need} м (${from}). Подобрано: ` +
+                coils.map((c, j) => plan.counts[j] ? `${plan.counts[j]} × ${c.len} м` : null).filter(Boolean).join(' + ') +
+                ` = ${plan.metres} м.`;
+            coils.forEach((c, j) => {
+                const n = plan.counts[j];
+                if (!n) return;
+                const { rommer, ...base } = c; // ROMMER-пары в объединённой строке не нужны
+                const price = (c.price || 0) * c.len;
+                boughtM += n * c.len; boughtR += price * n;
+                rows.push({ ...base, price: price, basePrice: price, coilPriced: true, originalId: c.id + '_pool',
+                    q: n, sum: Math.round(price * n), sortRank: 0, unit: 'шт', brand: 'STOUT',
+                    displaySku: c.id, qtyTip: tip, group: 'Трубы: бухты по всей смете' });
+            });
+            const left = plan.metres - need;
+            if (left > 0) {
+                rows.push({ id: 'pool_left_' + dim, name: `Остаток бухт Ø${dim.split('x')[0]}: ${left} м`, price: 0, basePrice: 0,
+                    q: 0, sum: 0, sortRank: 0, unit: 'м', brand: 'STOUT', originalId: 'pool_left_' + dim,
+                    screenOnly: true, qtyTip: 'Не входит в смету, печать и КП. Можно записать на следующий объект.',
+                    group: 'Трубы: бухты по всей смете' });
+            }
+        });
+        // Экономия = покупки по разделам минус покупки по всей смете (метры бухт, включая остаток, и рубли)
+        const unM = Object.values(pool.metres).reduce((s, m) => s + m, 0);
+        this._poolStats = { metres: unM - boughtM, rub: Math.round(pool.rub - boughtR), boughtM: boughtM, unM: unM };
+        return rows;
+    },
     // Поля раздела «КП и счета»: сроки и сокращение названий. Зовётся при открытии раздела
     // и после прихода настроек из облака (через fillCompanyDetailsForm)
     fillKpSettingsForm: function () {
@@ -18387,6 +18489,10 @@ const app = {
                     shortNamesDefault: (cloud.shortNamesDefault !== undefined)
                         ? cloud.shortNamesDefault
                         : (this.installerSettings ? this.installerSettings.shortNamesDefault : undefined),
+                    // Объединение бухт по смете («Настройки → Тариф»): облако главнее, без ключа — местный выбор
+                    poolCoils: (cloud.poolCoils !== undefined)
+                        ? cloud.poolCoils
+                        : (this.installerSettings ? this.installerSettings.poolCoils : undefined),
                     // Любимые материалы («Прайс → Любимые материалы»): по тому же правилу, что margin
                     prefs: (cloud.prefs && typeof cloud.prefs === 'object')
                         ? cloud.prefs
@@ -69776,6 +69882,7 @@ const app = {
         'SPS-0002-002537': { pool: 'axial_fittings_pex', adapter: 'SFA-0001-002534', elbow: 'SFA-0007-000025' },
         'SPS-0002-003247': { pool: 'axial_fittings_pex', adapter: 'SFA-0001-003234', elbow: 'SFA-0007-000032' },
         'SPM-0001-101620': { pool: 'water_fittings_press_mp', adapter: 'SFP-0001-003416', elbow: 'SFP-0009-001616' },
+        'SPM-0001-501620': { pool: 'water_fittings_press_mp', adapter: 'SFP-0001-003416', elbow: 'SFP-0009-001616' },
         'SPM-0001-102020': { pool: 'water_fittings_press_mp', adapter: 'SFP-0001-003420', elbow: 'SFP-0009-002020' },
         'SPM-0001-052630': { pool: 'water_fittings_press_mp', adapter: 'SFP-0001-003426', elbow: 'SFP-0009-002626' },
         'SPM-0001-053230': { pool: 'water_fittings_press_mp', adapter: 'SFP-0001-000132', elbow: 'SFP-0009-003232', thread1: true }
@@ -71218,7 +71325,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             note: 'Сшитый полиэтилен с кислородным барьером и памятью формы — основная труба тёплого пола.' },
         { key: 'mp16', material: 'metal_plastic', label: 'Металлопластик 16×2.0', short: 'МП 16×2.0',
             dIn: 0.012, lm: 0.113, conn: 'SFC-0020-001620', connName: 'евроконус 16×2.0',
-            coils: ['SPM-0001-201620', 'SPM-0001-101620'],
+            coils: ['SPM-0001-501620', 'SPM-0001-201620', 'SPM-0001-101620'],
             note: 'PE-Xb/Al/PE-Xb. Держит форму руками, но алюминиевый слой не прощает перегиба и замерзания.' },
         { key: 'stable16', material: 'stable', label: 'Стабильная 16,2×2.6', short: '16,2×2.6',
             dIn: 0.011, lm: 0.095, conn: 'SFC-0020-001622', connName: 'евроконус 16×2.2',
@@ -82907,6 +83014,12 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         this.fitDocSummary();
 
         let bill = [];
+        // Объединение бухт по смете (настройка «Тариф»: по умолчанию включено для ПРОФИ).
+        // Покупки бухт копятся здесь по метрам, а блок «Трубы: бухты по всей смете» выводится
+        // в конце (см. coilPoolRows). Выключено — каждый раздел покупает свои бухты, как раньше.
+        // Собираем всегда: при выключенной опции по тем же покупкам считается, сколько дало бы объединение.
+        const _coilPool = this.coilPoolNew();
+        _coilPool.on = this.poolCoilsOn();
         let currentSectionTitle = '';
         let sectionHasAnalogItems = false;
         // Контекст коллекторных шкафов: под каким коллектором и на сколько выходов стоит
@@ -82951,6 +83064,16 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             if (typeof manualSwapId === 'string') {
                 const _sm = manualSwapId.match(/^(.+)__x(\d+)$/);
                 if (_sm) { manualSwapId = _sm[1]; _setMul = Math.max(1, parseInt(_sm[2]) || 1); }
+            }
+            // Бухта STOUT — в копилку смены по метрам, а не в раздел. Замена вручную и ROMMER не объединяем.
+            if (_coilPool && !useAnalog && !manualSwapId && item.coilPriced && _coilPool.byId[item.id]) {
+                const _m = qty * (item.len || 0);
+                _coilPool.metres[item.id] = (_coilPool.metres[item.id] || 0) + _m;
+                _coilPool.rub += qty * (item.price || 0);
+                // Потребность — точная, если её знает место покупки; иначе купленные метры (округлённые)
+                _coilPool.need[item.id] = (_coilPool.need[item.id] || 0) + (item._needM !== undefined ? item._needM : _m);
+                (_coilPool.parts[item.id] = _coilPool.parts[item.id] || []).push({ sec: secTitle, m: _m });
+                if (_coilPool.on) return;
             }
             let activeItem = item;
             let forceAnalog = false;
@@ -83697,6 +83820,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
 
             // Сохраняем элементы для коммерческого предложения клиенту
             bill.forEach(i => {
+                if (i.screenOnly) return; // остаток бухты — только на экране, не в КП и выгрузках
                 this.currentEquipmentList.push({
                     id: i.id,
                     name: i.name,
@@ -83996,8 +84120,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // Позиции, пришедшие из распознавания, подсвечиваются, чтобы
                 // монтажник видел, что калькулятор добавил не сам.
                 const recClass = i.recognized ? ' row-recognized' : '';
-                let rowClass = (isOpt || recClass)
-                    ? ` class="${isOpt ? 'row-opt-out' : ''}${recClass}"`
+                let rowClass = (isOpt || recClass || i.screenOnly)
+                    ? ` class="${isOpt ? 'row-opt-out' : ''}${recClass}${i.screenOnly ? ' no-print' : ''}"`
                     : '';
                 // Инлайн-кнопка «Аналог» рядом с названием — видна только в режиме «без картинок»
                 // (body.hide-images-mode), где столбец с фото и его кнопкой замены скрыт. Так замену
@@ -89463,6 +89587,17 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     if (meters <= 0) return;
                     let base = pipePool.find(x => x.id === pipeIds[d]);
                     if (!base) return;
+                    // Бухта 500 м (STOUT, Ø16) — тем же правилом, что у радиаторной разводки: берём её,
+                    // только если она не добавляет метров против 100-метровой; при равенстве — если бухт меньше.
+                    // У ROMMER 500 м нет, там остаётся 100 м как раньше.
+                    const _trPb = (this.state.pipeBrand || {}).rad;
+                    const _trSecAn = (this.state.sectionAnalog || {})[currentSectionTitle];
+                    const _trRommer = _trPb ? (_trPb === 'rommer') : ((_trSecAn !== undefined) ? _trSecAn : (this.state.brandMode === 'rommer'));
+                    const _tr500 = pipePool.find(x => x.id === 'SPM-0001-501620');
+                    if (isMp && d === 16 && !_trRommer && _tr500) {
+                        const _rl = (len) => Math.ceil(meters / len);
+                        if (_rl(500) * 500 < _rl(100) * 100 || (_rl(500) * 500 === _rl(100) * 100 && _rl(500) < _rl(100))) base = _tr500;
+                    }
                     let coils = Math.ceil(meters / base.len);
                     // Синтетический originalId (не "SPX-0001-…"/"SPM-0001-…") — иначе попадает под старые
                     // условия переключателя материала ХВС/тёплого пола в openSwapModal/selectSwapAlternative
@@ -89474,6 +89609,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     // дешёвая позиция за метр там всегда Ø16, и «Аналог» схлопывал бы в неё
                     // магистраль любого диаметра. Бренд позиции переключается своим .rommer.
                     boughtItem.noCheapenAlts = true;
+                    boughtItem._needM = meters; // точная потребность — для объединения бухт по смете
                     let desc = `<span style="font-size:11px;line-height:1.5;">` +
                         `<b>Зачем:</b> ${label} В тройниковой схеме труба идёт единой магистралью мимо всех радиаторов (а не отдельным лучом на каждый прибор, как в коллекторной) — у котла/стояка несёт расход сразу всех приборов, к концу трассы — расход одного-двух последних.<br>` +
                         `<b>Формула метража:</b> ` + (this._radPlanUsed
@@ -89628,7 +89764,14 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         const _mpSecAn = (this.state.sectionAnalog || {})[currentSectionTitle];
                         const _mpPb = (this.state.pipeBrand || {}).rad;
                         const _mpRommer = _mpPb ? (_mpPb === 'rommer') : ((_mpSecAn !== undefined) ? _mpSecAn : (this.state.brandMode === 'rommer'));
-                        let grayItem = asCoilPrice((neededPipe > 200 || _mpRommer) ? { ...catalog.metal_plastic_pipes[1] } : { ...catalog.metal_plastic_pipes[0] }); grayItem.originalId = grayItem.id + "_rad"; grayItem.alts = catalog.insulated_pipes_mp_red; grayItem.noCheapenAlts = true; addToBill(grayItem, Math.ceil(neededPipe / grayItem.len), this.getDesc('rad_pipe', neededPipe), pipeGrp);
+                        // Бухта 500 м (STOUT) — только когда она не добавляет метров против 200-метровой:
+                        // при равном метраже берём её, если бухт меньше. У ROMMER 500 м нет.
+                        const _mpRolls = (len) => Math.ceil(neededPipe / len);
+                        const _mp500 = catalog.metal_plastic_pipes.find(x => x.id === 'SPM-0001-501620');
+                        const _use500 = !_mpRommer && neededPipe > 200 && !!_mp500
+                            && (_mpRolls(500) * 500 < _mpRolls(200) * 200
+                                || (_mpRolls(500) * 500 === _mpRolls(200) * 200 && _mpRolls(500) < _mpRolls(200)));
+                        let grayItem = asCoilPrice(_use500 ? { ..._mp500 } : ((neededPipe > 200 || _mpRommer) ? { ...catalog.metal_plastic_pipes[1] } : { ...catalog.metal_plastic_pipes[0] })); grayItem.originalId = grayItem.id + "_rad"; grayItem.alts = catalog.insulated_pipes_mp_red; grayItem.noCheapenAlts = true; grayItem._needM = neededPipe; addToBill(grayItem, Math.ceil(neededPipe / grayItem.len), this.getDesc('rad_pipe', neededPipe), pipeGrp);
                         let insLen = Math.ceil(neededPipe / 2); if (insLen % 2 !== 0) insLen++; addToBill(catalog.insulation[0], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы подачи (красная) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp); addToBill(catalog.insulation[1], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы обратки (синяя) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp);
                     } else if (this.state.pipeType === 'stable_16') {
                         let coils = Math.ceil(neededPipe / 100);
@@ -92786,6 +92929,12 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             } else {
                 addToBill(cl, Math.ceil(vSys / cl.vol), this.getDesc('coolant', Math.round(vSys)), "9. Дополнительные материалы");
             }
+        }
+        // Строки считаем всегда: из них берётся экономия для «Настройки → Тариф». В смету пишем, только если включено.
+        const _poolRows = (_coilPool && Object.keys(_coilPool.metres).length) ? this.coilPoolRows(_coilPool) : [];
+        if (_coilPool && _coilPool.on && _poolRows.length) {
+            bill = _poolRows;
+            flushBill('Трубы: бухты по всей смете');
         }
         flushBill("9. Дополнительные материалы");
         // ==========================================
