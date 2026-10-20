@@ -1352,61 +1352,61 @@ const catalog = {
     // подача в змеевик), датчик бойлера NTC в комплекте (стр. 37). Внешний
     // комплект нужен только двухконтурным 2.18/2.24. См. dhwValve у boilers_vaillant.
     boilers_gas: [
-        { id: "GE0Q6QE0CRU", name: "Котёл газовый, одноконтурный (18 кВт)", article: "GE0Q6QE0CRU", price: 56091, power: 18, circuits: 1, dhwValve: true, type: "gas", brand: "Haier", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "GE0Q6RE0CRU", name: "Котёл газовый, одноконтурный (24 кВт)", article: "GE0Q6RE0CRU", price: 57117, power: 24, circuits: 1, dhwValve: true, type: "gas", brand: "Haier", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "GE0Q6NE0CRU", name: "Котёл газовый, двухконтурный (18 кВт)", article: "GE0Q6NE0CRU", price: 57117, power: 18, circuits: 2, type: "gas", brand: "Haier", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "GE0Q6PE0CRU", name: "Котёл газовый, двухконтурный (24 кВт)", article: "GE0Q6PE0CRU", price: 58097, power: 24, circuits: 2, type: "gas", brand: "Haier", availability: "in_stock", price_date: "2026-09-22" }
+        { id: "GE0Q6QE0CRU", name: "Котёл газовый, одноконтурный (18 кВт)", article: "GE0Q6QE0CRU", price: 56091, power: 18, circuits: 1, dhwValve: true, type: "gas", brand: "Haier", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "GE0Q6RE0CRU", name: "Котёл газовый, одноконтурный (24 кВт)", article: "GE0Q6RE0CRU", price: 57117, power: 24, circuits: 1, dhwValve: true, type: "gas", brand: "Haier", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "GE0Q6NE0CRU", name: "Котёл газовый, двухконтурный (18 кВт)", article: "GE0Q6NE0CRU", price: 57117, power: 18, circuits: 2, type: "gas", brand: "Haier", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "GE0Q6PE0CRU", name: "Котёл газовый, двухконтурный (24 кВт)", article: "GE0Q6PE0CRU", price: 58097, power: 24, circuits: 2, type: "gas", brand: "Haier", availability: "in_stock", price_date: "2026-10-20" }
     ],
     boilers_baxi: [
         // ECO Nova
-        { id: "100023936", name: "ECO Nova 10F", price: 58000, power: 10, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "100023937", name: "ECO Nova 14F", price: 58350, power: 14, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "100023938", name: "ECO Nova 18F", price: 59140, power: 18, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "100023939", name: "ECO Nova 24F", price: 59920, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "100023940", name: "ECO Nova 31F", price: 82220, power: 31, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "100023941", name: "ECO Nova 1.24F", price: 59640, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "100023942", name: "ECO Nova 1.31F", price: 81010, power: 31, circuits: 1, type: "gas", brand: "BAXI", availability: "on_order", price_date: "2026-09-22" },
+        { id: "100023936", name: "ECO Nova 10F", price: 58000, power: 10, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "100023937", name: "ECO Nova 14F", price: 58350, power: 14, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "100023938", name: "ECO Nova 18F", price: 59140, power: 18, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "100023939", name: "ECO Nova 24F", price: 59920, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "100023940", name: "ECO Nova 31F", price: 82220, power: 31, circuits: 2, type: "gas", brand: "BAXI", availability: "on_order", price_date: "2026-10-20" },
+        { id: "100023941", name: "ECO Nova 1.24F", price: 59640, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "100023942", name: "ECO Nova 1.31F", price: 81010, power: 31, circuits: 1, type: "gas", brand: "BAXI", availability: "on_order", price_date: "2026-10-20" },
         // ECO4S
-        { id: "7659666", name: "ECO4S 1.24 F", price: 67400, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "7659668", name: "ECO4S 10 F", price: 68470, power: 10, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "7659669", name: "ECO4S 18 F", price: 71320, power: 18, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "7659670", name: "ECO4S 24 F", price: 73820, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "7659762", name: "ECO4S 24", price: 68760, power: 24, circuits: 2, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "7659666", name: "ECO4S 1.24 F", price: 67400, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "7659668", name: "ECO4S 10 F", price: 68470, power: 10, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "7659669", name: "ECO4S 18 F", price: 71320, power: 18, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "7659670", name: "ECO4S 24 F", price: 73820, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "7659762", name: "ECO4S 24", price: 68760, power: 24, circuits: 2, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         // ECO Life
-        { id: "7860077", name: "ECO Life 1.14F", price: 62130, power: 14, circuits: 1, type: "gas", brand: "BAXI", availability: "on_order", price_date: "2026-09-22" },
-        { id: "7814104", name: "ECO Life 24F", price: 62840, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "7813724", name: "ECO Life 31F", price: 86360, power: 31, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "7814105", name: "ECO Life 1.24F", price: 62630, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "7814108", name: "ECO Life 1.31F", price: 85070, power: 31, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "7860077", name: "ECO Life 1.14F", price: 62130, power: 14, circuits: 1, type: "gas", brand: "BAXI", availability: "on_order", price_date: "2026-10-20" },
+        { id: "7814104", name: "ECO Life 24F", price: 62840, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "7813724", name: "ECO Life 31F", price: 86360, power: 31, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "7814105", name: "ECO Life 1.24F", price: 62630, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "7814108", name: "ECO Life 1.31F", price: 85070, power: 31, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         // LUNA 3
-        { id: "CSE45224366", name: "LUNA 3 240 i", price: 93120, power: 24, circuits: 2, type: "gas", atmo: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-22" },
-        { id: "CSE45624366", name: "LUNA 3 240 Fi", price: 106450, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "CSE45628366", name: "LUNA 3 280 Fi", price: 114930, power: 28, circuits: 2, type: "gas", brand: "BAXI", availability: "on_order", price_date: "2026-09-22" },
-        { id: "CSE45631366", name: "LUNA 3 310 Fi", price: 117560, power: 31, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "CSE45531366", name: "LUNA 3 1.310 Fi", price: 103100, power: 31, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "CSE45224366", name: "LUNA 3 240 i", price: 93120, power: 24, circuits: 2, type: "gas", atmo: true, brand: "BAXI", availability: "on_order", price_date: "2026-10-20" },
+        { id: "CSE45624366", name: "LUNA 3 240 Fi", price: 106450, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSE45628366", name: "LUNA 3 280 Fi", price: 114930, power: 28, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSE45631366", name: "LUNA 3 310 Fi", price: 117560, power: 31, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSE45531366", name: "LUNA 3 1.310 Fi", price: 103100, power: 31, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         // ECO Four
-        { id: "CSE46114354", name: "ECO Four 1.14", price: 62490, power: 14, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "CSE46514354", name: "ECO Four 1.14 F", price: 74390, power: 14, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "CSE46124354", name: "ECO Four 1.24", price: 70470, power: 24, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "CSE46524354", name: "ECO Four 1.24 F", price: 78590, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "CSE46224354", name: "ECO Four 24", price: 81150, power: 24, circuits: 2, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "CSE46624354", name: "ECO Four 24 F", price: 90490, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "CSE46114354", name: "ECO Four 1.14", price: 62490, power: 14, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSE46514354", name: "ECO Four 1.14 F", price: 74390, power: 14, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSE46124354", name: "ECO Four 1.24", price: 70470, power: 24, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSE46524354", name: "ECO Four 1.24 F", price: 78590, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSE46224354", name: "ECO Four 24", price: 81150, power: 24, circuits: 2, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSE46624354", name: "ECO Four 24 F", price: 90490, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         // LUNA 3 Comfort
-        { id: "CSE45224358", name: "LUNA 3 Comfort 240 i", price: 96190, power: 24, circuits: 2, type: "gas", atmo: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-22" },
-        { id: "CSE45624358", name: "LUNA 3 Comfort 240 Fi", price: 113220, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "CSE45124358", name: "LUNA 3 Comfort 1.240 i", price: 91060, power: 24, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "CSE45524358", name: "LUNA 3 Comfort 1.240 Fi", price: 101960, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "CSE45631358", name: "LUNA 3 Comfort 310 Fi", price: 122550, power: 31, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "CSE45531358", name: "LUNA 3 Comfort 1.310 Fi", price: 110370, power: 31, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "CSE45224358", name: "LUNA 3 Comfort 240 i", price: 96190, power: 24, circuits: 2, type: "gas", atmo: true, brand: "BAXI", availability: "on_order", price_date: "2026-10-20" },
+        { id: "CSE45624358", name: "LUNA 3 Comfort 240 Fi", price: 113220, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSE45124358", name: "LUNA 3 Comfort 1.240 i", price: 91060, power: 24, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSE45524358", name: "LUNA 3 Comfort 1.240 Fi", price: 101960, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSE45631358", name: "LUNA 3 Comfort 310 Fi", price: 122550, power: 31, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSE45531358", name: "LUNA 3 Comfort 1.310 Fi", price: 110370, power: 31, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         // NUVOLA 3 Comfort
-        { id: "CSB45424358", name: "NUVOLA 3 Comfort 240 i", price: 165370, power: 24, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-22" },
-        { id: "CSB45428358", name: "NUVOLA 3 Comfort 280 i", price: 173920, power: 28, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-22" },
-        { id: "CSB45724358", name: "NUVOLA 3 Comfort 240 Fi", price: 180760, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "CSB45728358", name: "NUVOLA 3 Comfort 280 Fi", price: 186250, power: 28, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "CSB45732358", name: "NUVOLA 3 Comfort 320 Fi", price: 204560, power: 32, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "CSB45424358", name: "NUVOLA 3 Comfort 240 i", price: 165370, power: 24, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSB45428358", name: "NUVOLA 3 Comfort 280 i", price: 173920, power: 28, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSB45724358", name: "NUVOLA 3 Comfort 240 Fi", price: 180760, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSB45728358", name: "NUVOLA 3 Comfort 280 Fi", price: 186250, power: 28, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "CSB45732358", name: "NUVOLA 3 Comfort 320 Fi", price: 204560, power: 32, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         // NUVOLA Duo-tec+ (конденсационный, встроенный бойлер)
-        { id: "7219553", name: "NUVOLA Duo-tec+ 16", price: 201920, power: 16, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-22" },
-        { id: "7219554", name: "NUVOLA Duo-tec+ 24", price: 208050, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-22" },
+        { id: "7219553", name: "NUVOLA Duo-tec+ 16", price: 201920, power: 16, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-10-20" },
+        { id: "7219554", name: "NUVOLA Duo-tec+ 24", price: 208050, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-10-20" },
         { id: "7219555", name: "NUVOLA Duo-tec+ 33", price: 293645, power: 33, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         // LUNA Platinum+ (конденсационный)
         { id: "7219688", name: "LUNA Platinum+ 1.12 GA", price: 172425, power: 12, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
@@ -1417,17 +1417,17 @@ const catalog = {
         { id: "7219693", name: "LUNA Platinum+ 33 GA", price: 207195, power: 33, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
         // LUNA Duo-tec E (конденсационный)
         { id: "A7720022", name: "LUNA Duo-tec E 1.12", price: 116990, power: 12, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
-        { id: "A7720023", name: "LUNA Duo-tec E 1.24", price: 116990, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "A7720024", name: "LUNA Duo-tec E 1.28", price: 126970, power: 28, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "A7720025", name: "LUNA Duo-tec E 24", price: 125260, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-22" },
+        { id: "A7720023", name: "LUNA Duo-tec E 1.24", price: 116990, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "A7720024", name: "LUNA Duo-tec E 1.28", price: 126970, power: 28, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "A7720025", name: "LUNA Duo-tec E 24", price: 125260, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-10-20" },
         { id: "A7720026", name: "LUNA Duo-tec E 28", price: 116990, power: 28, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         { id: "A7720027", name: "LUNA Duo-tec E 33", price: 116990, power: 33, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
-        { id: "A7720028", name: "LUNA Duo-tec E 40", price: 151190, power: 40, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "A7720028", name: "LUNA Duo-tec E 40", price: 151190, power: 40, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         // LUNA Duo-tec MP (конденсационный)
-        { id: "7106815", name: "LUNA Duo-tec MP 1.35", price: 229920, power: 35, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "7106815", name: "LUNA Duo-tec MP 1.35", price: 229920, power: 35, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         // Duo-tec Compact (конденсационный)
-        { id: "A7722037", name: "Duo-tec Compact 1.24", price: 97400, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "A7722038", name: "Duo-tec Compact 24", price: 105170, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "A7722037", name: "Duo-tec Compact 1.24", price: 97400, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "A7722038", name: "Duo-tec Compact 24", price: 105170, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-10-20" },
         { id: "A7722039", name: "Duo-tec Compact 28", price: 97400, power: 28, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         // LUNA AIR / IN Plus (конденсационный, уличный/внутренний)
         { id: "A7810404", name: "LUNA AIR 24", price: 191330, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
@@ -1455,9 +1455,9 @@ const catalog = {
     // dhw — производительность ГВС, л/мин; dhwDt — при каком ΔT (у Vaillant 30 °C, без поля — 25 °C).
     boilers_vaillant: [
         // Традиционные (закрытая камера), двухконтурные
-        { id: "0010020901", name: "turboFIT VUW 242/5-2", price: 100221, power: 24, circuits: 2, dhw: 11, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "on_order", price_date: "2026-09-22" },
-        { id: "0010015249", name: "turboTEC pro VUW 242/5-3", price: 145037, power: 24, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "0010015263", name: "turboTEC plus VUW 242/5-5", price: 180763, power: 24, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "0010020901", name: "turboFIT VUW 242/5-2", price: 100221, power: 24, circuits: 2, dhw: 11, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "on_order", price_date: "2026-10-20" },
+        { id: "0010015249", name: "turboTEC pro VUW 242/5-3", price: 145037, power: 24, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "0010015263", name: "turboTEC plus VUW 242/5-5", price: 180763, power: 24, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-10-20" },
         { id: "0010015264", name: "turboTEC plus VUW 282/5-5", price: 199129, power: 28, circuits: 2, dhw: 13.4, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "on_order", price_date: "2026-09-22" },
         // Традиционные, одноконтурные VU — клапан бойлера встроен
         { id: "0010015254", name: "turboTEC plus VU 202/5-5", price: 148039, power: 20, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
@@ -2302,31 +2302,31 @@ const catalog = {
     //   термостаты привязываются к планке напрямую, шлюз нужен телефону.
     //   ETRV — только в паре с E25 (до 6 голов на один) и только через шлюз EGATEZB.
     zone_engo: {
-        bar: { id: "ECB62-ZB", name: "Центр коммутации ENGO ECB62-ZB: 6 зон Zigbee + 2 проводные, 230 В", price: 34500, brand: "ENGO", unit: "шт", zonesWired: 2, zonesRadio: 6, maxActuators: 50, availability: "in_stock", price_date: "2026-09-09" },
-        gateway: { id: "EGATEZB", name: "Шлюз интернет Zigbee ENGO EGATEZB", price: 33925, brand: "ENGO", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        repeater: { id: "EREPEATER", name: "Репитер Zigbee ENGO (вилка)", price: 5800, brand: "ENGO", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
+        bar: { id: "ECB62-ZB", name: "Центр коммутации ENGO ECB62-ZB: 6 зон Zigbee + 2 проводные, 230 В", price: 31050, brand: "ENGO", unit: "шт", zonesWired: 2, zonesRadio: 6, maxActuators: 50, availability: "in_stock", price_date: "2026-10-20" },
+        gateway: { id: "EGATEZB", name: "Шлюз интернет Zigbee ENGO EGATEZB", price: 30533, brand: "ENGO", unit: "шт", availability: "on_order", price_date: "2026-10-20" },
+        repeater: { id: "EREPEATER", name: "Репитер Zigbee ENGO (вилка)", price: 5220, brand: "ENGO", unit: "шт", availability: "on_order", price_date: "2026-10-20" },
         wired: [
-            { id: "ESIMPLE-230W", name: "Терморегулятор проводной ENGO SIMPLE, 230 В, белый", price: 7500, brand: "ENGO", unit: "шт", color: "white", prog: false, availability: "in_stock", price_date: "2026-09-09" },
-            { id: "ESIMPLE-230B", name: "Терморегулятор проводной ENGO SIMPLE, 230 В, чёрный", price: 7500, brand: "ENGO", unit: "шт", color: "black", prog: false, availability: "in_stock", price_date: "2026-09-09" },
-            { id: "EASY-230W", name: "Терморегулятор проводной программируемый ENGO EASY, 230 В, белый", price: 11500, brand: "ENGO", unit: "шт", color: "white", prog: true, availability: "in_stock", price_date: "2026-09-09" },
-            { id: "EASY-230B", name: "Терморегулятор проводной программируемый ENGO EASY, 230 В, чёрный", price: 11500, brand: "ENGO", unit: "шт", color: "black", prog: true, availability: "in_stock", price_date: "2026-09-09" }
+            { id: "ESIMPLE-230W", name: "Терморегулятор проводной ENGO SIMPLE, 230 В, белый", price: 6750, brand: "ENGO", unit: "шт", color: "white", prog: false, availability: "in_stock", price_date: "2026-10-20" },
+            { id: "ESIMPLE-230B", name: "Терморегулятор проводной ENGO SIMPLE, 230 В, чёрный", price: 6750, brand: "ENGO", unit: "шт", color: "black", prog: false, availability: "in_stock", price_date: "2026-10-20" },
+            { id: "EASY-230W", name: "Терморегулятор проводной программируемый ENGO EASY, 230 В, белый", price: 10350, brand: "ENGO", unit: "шт", color: "white", prog: true, availability: "in_stock", price_date: "2026-10-20" },
+            { id: "EASY-230B", name: "Терморегулятор проводной программируемый ENGO EASY, 230 В, чёрный", price: 10350, brand: "ENGO", unit: "шт", color: "black", prog: true, availability: "on_order", price_date: "2026-10-20" }
         ],
         // heads: true — термостат умеет быть хозяином радиоголовок ETRV (только E25).
         radio: [
-            { id: "E25-BATW", name: "Терморегулятор беспроводной ENGO E25 Zigbee, батарейки, белый", price: 19300, brand: "ENGO", unit: "шт", color: "white", power: "bat", heads: true, availability: "in_stock", price_date: "2026-09-09" },
-            { id: "E25-BATB", name: "Терморегулятор беспроводной ENGO E25 Zigbee, батарейки, чёрный", price: 19300, brand: "ENGO", unit: "шт", color: "black", power: "bat", heads: true, availability: "in_stock", price_date: "2026-09-09" },
-            { id: "E25-230W", name: "Терморегулятор беспроводной ENGO E25 Zigbee, 230 В, белый", price: 19300, brand: "ENGO", unit: "шт", color: "white", power: "230", heads: true, availability: "in_stock", price_date: "2026-09-09" },
-            { id: "E25-230B", name: "Терморегулятор беспроводной ENGO E25 Zigbee, 230 В, чёрный", price: 19300, brand: "ENGO", unit: "шт", color: "black", power: "230", heads: true, availability: "in_stock", price_date: "2026-09-09" },
-            { id: "EONE-BATW", name: "Терморегулятор беспроводной ENGO ONE Zigbee, аккумулятор, датчик влажности, белый", price: 27200, brand: "ENGO", unit: "шт", color: "white", power: "bat", heads: false, availability: "in_stock", price_date: "2026-09-09" },
-            { id: "EONE-BATB", name: "Терморегулятор беспроводной ENGO ONE Zigbee, аккумулятор, датчик влажности, чёрный", price: 27200, brand: "ENGO", unit: "шт", color: "black", power: "bat", heads: false, availability: "in_stock", price_date: "2026-09-09" },
-            { id: "EONE-230W", name: "Терморегулятор ENGO ONE Zigbee, 230 В, датчик влажности, белый", price: 27200, brand: "ENGO", unit: "шт", color: "white", power: "230", heads: false, availability: "in_stock", price_date: "2026-09-09" },
-            { id: "EONE-230B", name: "Терморегулятор ENGO ONE Zigbee, 230 В, датчик влажности, чёрный", price: 27200, brand: "ENGO", unit: "шт", color: "black", power: "230", heads: false, availability: "in_stock", price_date: "2026-09-09" }
+            { id: "E25-BATW", name: "Терморегулятор беспроводной ENGO E25 Zigbee, батарейки, белый", price: 17370, brand: "ENGO", unit: "шт", color: "white", power: "bat", heads: true, availability: "in_stock", price_date: "2026-10-20" },
+            { id: "E25-BATB", name: "Терморегулятор беспроводной ENGO E25 Zigbee, батарейки, чёрный", price: 17370, brand: "ENGO", unit: "шт", color: "black", power: "bat", heads: true, availability: "in_stock", price_date: "2026-10-20" },
+            { id: "E25-230W", name: "Терморегулятор беспроводной ENGO E25 Zigbee, 230 В, белый", price: 17370, brand: "ENGO", unit: "шт", color: "white", power: "230", heads: true, availability: "on_order", price_date: "2026-10-20" },
+            { id: "E25-230B", name: "Терморегулятор беспроводной ENGO E25 Zigbee, 230 В, чёрный", price: 17370, brand: "ENGO", unit: "шт", color: "black", power: "230", heads: true, availability: "on_order", price_date: "2026-10-20" },
+            { id: "EONE-BATW", name: "Терморегулятор беспроводной ENGO ONE Zigbee, аккумулятор, датчик влажности, белый", price: 24480, brand: "ENGO", unit: "шт", color: "white", power: "bat", heads: false, availability: "in_stock", price_date: "2026-10-20" },
+            { id: "EONE-BATB", name: "Терморегулятор беспроводной ENGO ONE Zigbee, аккумулятор, датчик влажности, чёрный", price: 24480, brand: "ENGO", unit: "шт", color: "black", power: "bat", heads: false, availability: "in_stock", price_date: "2026-10-20" },
+            { id: "EONE-230W", name: "Терморегулятор ENGO ONE Zigbee, 230 В, датчик влажности, белый", price: 24480, brand: "ENGO", unit: "шт", color: "white", power: "230", heads: false, availability: "in_stock", price_date: "2026-10-20" },
+            { id: "EONE-230B", name: "Терморегулятор ENGO ONE Zigbee, 230 В, датчик влажности, чёрный", price: 24480, brand: "ENGO", unit: "шт", color: "black", power: "230", heads: false, availability: "in_stock", price_date: "2026-10-20" }
         ],
         heads: [
-            { id: "ETRV-M30", name: "Радиоголовка термостатическая ENGO ETRV Zigbee, M30x1,5, батарейки, белая", price: 10800, brand: "ENGO", unit: "шт", thread: "M30", availability: "in_stock", price_date: "2026-09-09" },
-            { id: "ETRV-M28", name: "Радиоголовка термостатическая ENGO ETRV Zigbee, M28x1,5, батарейки, белая", price: 10800, brand: "ENGO", unit: "шт", thread: "M28", availability: "in_stock", price_date: "2026-09-09" }
+            { id: "ETRV-M30", name: "Радиоголовка термостатическая ENGO ETRV Zigbee, M30x1,5, батарейки, белая", price: 9720, brand: "ENGO", unit: "шт", thread: "M30", availability: "in_stock", price_date: "2026-10-20" },
+            { id: "ETRV-M28", name: "Радиоголовка термостатическая ENGO ETRV Zigbee, M28x1,5, батарейки, белая", price: 9720, brand: "ENGO", unit: "шт", thread: "M28", availability: "on_order", price_date: "2026-10-20" }
         ],
-        actuator: { id: "E30NC-230", name: "Сервопривод термоэлектрический ENGO, NC, M30x1,5, 230 В", price: 3950, brand: "ENGO", unit: "шт", type: "nc", voltage: 230, availability: "in_stock", price_date: "2026-09-09" }
+        actuator: { id: "E30NC-230", name: "Сервопривод термоэлектрический ENGO, NC, M30x1,5, 230 В", price: 3555, brand: "ENGO", unit: "шт", type: "nc", voltage: 230, availability: "in_stock", price_date: "2026-10-20" }
     },
     // Кабель к автоматике тёплого пола. В прайсе STOUT его нет — это
     // электромонтажный материал, цены ориентировочные и подлежат уточнению
@@ -3696,7 +3696,7 @@ const catalog = {
         // article его не ставим: под кодом «ВП-20» у поставщика лежат сразу три
         // разные карточки — Big Blue 20 за 770 ₽, SLIM LINE 10 за 140 ₽ и ещё одна
         // за 410 ₽, и парсер взял бы первую попавшуюся. Строка ведётся руками.
-        { id: "ВП-20 М-20 ББ", name: "Картридж Big Blue 20", price: 770, brand: "АКВАБРАЙТ", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "ВП-20 М-20 ББ", name: "Картридж Big Blue 20", price: 770, brand: "АКВАБРАЙТ", availability: "in_stock", price_date: "2026-10-20" },
         { id: "SVB-1007-200020", name: "Кран шаровой ВН-НР 3/4\"", price: 1681, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10", rommer: { id: "RBV-0001-2110320", name: "Кран шаровой ВР/ВР, ручка рычаг 3/4\"", price: 594, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
         { id: "SFT-0002-003480", name: "Удлинитель ВН/ВР 3/4\" 80 мм", price: 1125, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
         { id: "SFT-0002-003430", name: "Удлинитель ВН/ВР 3/4\" 30 мм", price: 541, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
@@ -5403,7 +5403,7 @@ const catalog = {
   price_date: '2026-09-23' }, comfort: { id: "516007K", article: "516007.K", name: "Ревизия с крышкой D 110 Comfort", price: 461, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-23' }, price_date: "2026-10-10" },
-        { id: "NO.1.110", article: "NO.1.110", name: "Аэратор канализационный D 110", price: 865, brand: "Sinikon", availability: "in_stock", price_date: "2026-09-14" },
+        { id: "NO.1.110", article: "NO.1.110", name: "Аэратор канализационный D 110", price: 865, brand: "Sinikon", availability: "in_stock", price_date: "2026-10-20" },
         { id: "SKB-0007-000058", name: "Муфта ремонтная D 58", price: 469, brand: "STOUT", availability: "in_stock", rommer: { id: "526003R", article: "526003.R", name: "Муфта рем. D 050 ПП", price: 93, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-23' }, comfort: { id: "526003K", article: "526003.K", name: "Муфта рем. D 050 Comfort", price: 130, brand: "Sinikon",
@@ -6718,10 +6718,10 @@ const catalog = {
         { id: "MB5030500200", article: "MB5030500200", name: "Лён сантехнический коса Mr.Bond, 200 г", price: 985, brand: "Mr.Bond", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
         { id: "MB5050500070", article: "MB5050500070", name: "Паста для пропитки льна Mr.Bond, 70 г", price: 295, brand: "Mr.Bond", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
         { id: "MB5050500250", article: "MB5050500250", name: "Паста для пропитки льна Mr.Bond, 250 г", price: 496, brand: "Mr.Bond", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-        { id: "4040", article: "4040", name: "Паста уплотнительная Aquaflax nano, 30 г", price: 94, brand: "Aquaflax", unit: "шт", availability: "in_stock", price_date: "2026-09-07" },
-        { id: "4041", article: "4041", name: "Паста уплотнительная Aquaflax nano, 80 г", price: 175, brand: "Aquaflax", unit: "шт", availability: "in_stock", price_date: "2026-09-07" },
-        { id: "4042", article: "4042", name: "Паста уплотнительная Aquaflax nano, 270 г", price: 464.5, brand: "Aquaflax", unit: "шт", availability: "in_stock", price_date: "2026-09-07" },
-        { id: "4062", article: "4062", name: "Нить сантехническая уплотнительная SPRINT", price: 266, brand: "SPRINT", unit: "шт", availability: "in_stock", price_date: "2026-09-07" },
+        { id: "4040", article: "4040", name: "Паста уплотнительная Aquaflax nano, 30 г", price: 94, brand: "Aquaflax", unit: "шт", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "4041", article: "4041", name: "Паста уплотнительная Aquaflax nano, 80 г", price: 175, brand: "Aquaflax", unit: "шт", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "4042", article: "4042", name: "Паста уплотнительная Aquaflax nano, 270 г", price: 464.5, brand: "Aquaflax", unit: "шт", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "4062", article: "4062", name: "Нить сантехническая уплотнительная SPRINT", price: 266, brand: "SPRINT", unit: "шт", availability: "in_stock", price_date: "2026-10-20" },
         { id: "MB402700650", article: "MB402700650", name: "Обезжириватель резьбы Mr.Bond, 650 мл", price: 935, brand: "Mr.Bond", unit: "шт", availability: "in_stock", price_date: "2026-09-23" }
     ],
 
@@ -6798,7 +6798,7 @@ const catalog = {
         // цифрового: его берут к контроллерам с аналоговым входом, и в копилке
         // промахов «преобразователь давления 4…20 мА» стоял шесть раз, пока в
         // каталоге лежало только исполнение MLD-10.01.
-        { id: "ML00005518", name: "Датчик давления MLD 4–20 мА, нерж. сталь", price: 5580, brand: "ZONT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "ML00005518", name: "Датчик давления MLD 4–20 мА, нерж. сталь", price: 5580, brand: "ZONT", unit: "шт", availability: "in_stock", price_date: "2026-10-20" },
         // Плата цифровой шины: одна на котёл, максимум две. Разъёмы ЦШ1 и ЦШ2
         // на плате контроллера из коробки пустые. В прайсе позиция названа
         // «для ZONT CLIMATIC» — это тот же прибор, Thermatic 3001 = Climatic.V2.
@@ -7058,7 +7058,7 @@ const catalog = {
         // Для MyHeat: Neptun SW005 — тот же датчик, что продаёт сам MyHeat (карточка «Нептун SW 005»).
         // Три провода: +12–24 В, сигнал (открытый коллектор, до 50 мА), GND; до 100 м от контроллера
         // (паспорт). Питается от контроллера, на каждый датчик — свой дискретный вход.
-        { id: "100035557500", name: "Датчик протечки воды Neptun SW005 (3 провода, 12–24 В)", price: 2999.75, brand: "Neptun", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "100035557500", name: "Датчик протечки воды Neptun SW005 (3 провода, 12–24 В)", price: 1690, brand: "Neptun", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-20" },
         // ectoControl: контактный датчик на входы Д1…Д5 (тревога — замыкание), кабель 10 м в комплекте.
         { id: "ec01006", name: "Датчик протечки воды проводной", price: 1490, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" }
     ],
