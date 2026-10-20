@@ -1458,15 +1458,15 @@ const catalog = {
         { id: "0010020901", name: "turboFIT VUW 242/5-2", price: 100221, power: 24, circuits: 2, dhw: 11, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "on_order", price_date: "2026-10-20" },
         { id: "0010015249", name: "turboTEC pro VUW 242/5-3", price: 145037, power: 24, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-10-20" },
         { id: "0010015263", name: "turboTEC plus VUW 242/5-5", price: 180763, power: 24, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-10-20" },
-        { id: "0010015264", name: "turboTEC plus VUW 282/5-5", price: 199129, power: 28, circuits: 2, dhw: 13.4, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "on_order", price_date: "2026-09-22" },
+        { id: "0010015264", name: "turboTEC plus VUW 282/5-5", price: 199129, power: 28, circuits: 2, dhw: 13.4, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "on_order", price_date: "2026-10-20" },
         // Традиционные, одноконтурные VU — клапан бойлера встроен
-        { id: "0010015254", name: "turboTEC plus VU 202/5-5", price: 148039, power: 20, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "0010015255", name: "turboTEC plus VU 242/5-5", price: 162541, power: 24, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "0010015256", name: "turboTEC plus VU 282/5-5", price: 178416, power: 28, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "0010020413", name: "turboTEC plus VU 322/5-5", price: 187667, power: 32, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "0010015254", name: "turboTEC plus VU 202/5-5", price: 148039, power: 20, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "0010015255", name: "turboTEC plus VU 242/5-5", price: 162541, power: 24, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "0010015256", name: "turboTEC plus VU 282/5-5", price: 178416, power: 28, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "0010020413", name: "turboTEC plus VU 322/5-5", price: 187667, power: 32, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-10-20" },
         // Конденсационные, двухконтурные (60/100 PP)
-        { id: "0010026102", name: "ecoTEC intro VUW 18/24 AS/1-1 (H-RU)", price: 160259, power: 18, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-09-22" },
-        { id: "0010026103", name: "ecoTEC intro VUW 24/28 AS/1-1 (H-RU)", price: 168173, power: 24, circuits: 2, dhw: 13.4, dhwDt: 30, type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-09-22" },
+        { id: "0010026102", name: "ecoTEC intro VUW 18/24 AS/1-1 (H-RU)", price: 160259, power: 18, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-10-20" },
+        { id: "0010026103", name: "ecoTEC intro VUW 24/28 AS/1-1 (H-RU)", price: 168173, power: 24, circuits: 2, dhw: 13.4, dhwDt: 30, type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-10-20" },
         // Конденсационные, одноконтурные VU (60/100 PP) — клапан бойлера встроен
         { id: "0010043977", name: "ecoTEC plus VU 20CS/1-5 (N-INT4)", price: 206801, power: 20, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "in_stock", price_date: "2026-10-20" },
         { id: "0010043979", name: "ecoTEC plus VU 25CS/1-5 (N-INT4)", price: 218102, power: 25, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "in_stock", price_date: "2026-10-20" },
@@ -1501,30 +1501,30 @@ const catalog = {
     // без dhwSensor). dhw — л/мин при ΔT 25 °C (из прайса).
     boilers_navien: [
         // Deluxe C Plus 2026 — двухконтурные, панель на корпусе, OpenTherm, режим ТП
-        { id: "PNGB3520016L002", name: "Deluxe C Plus 2026 -16k", price: 48670, power: 16, circuits: 2, dhw: 13.8, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-09-22" },
-        { id: "PNGB3520020L002", name: "Deluxe C Plus 2026 -20k", price: 53777, power: 20, circuits: 2, dhw: 13.8, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-09-22" },
-        { id: "PNGB3520024L002", name: "Deluxe C Plus 2026 -24k", price: 49728, power: 24, circuits: 2, dhw: 13.8, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "PNGB3520030L002", name: "Deluxe C Plus 2026 -30k", price: 57712, power: 30, circuits: 2, dhw: 17.2, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-09-22" },
+        { id: "PNGB3520016L002", name: "Deluxe C Plus 2026 -16k", price: 48670, power: 16, circuits: 2, dhw: 13.8, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-10-20" },
+        { id: "PNGB3520020L002", name: "Deluxe C Plus 2026 -20k", price: 53777, power: 20, circuits: 2, dhw: 13.8, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-10-20" },
+        { id: "PNGB3520024L002", name: "Deluxe C Plus 2026 -24k", price: 49728, power: 24, circuits: 2, dhw: 13.8, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "PNGB3520030L002", name: "Deluxe C Plus 2026 -30k", price: 57712, power: 30, circuits: 2, dhw: 17.2, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-10-20" },
         // Deluxe One 2026 — одноконтурные, клапан встроен, датчик бойлера в комплекте.
         // dhwPorts — патрубки котла на бойлер: у Deluxe One ДВА, «Загрузка бойлера» и
         // «Обратка бойлера», G1/2" (руководство Deluxe One 24/30/35/40K, стр. 36 и 63):
         // обратка змеевика возвращается в котёл, а не в общую обратку.
-        { id: "PNGB3500024L006", name: "Deluxe One 2026 -24k", price: 50209, power: 24, circuits: 1, dhwValve: true, dhwPorts: { n: 2, size: '1/2"' }, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-09-22" },
-        { id: "PNGB3500030L010", name: "Deluxe One 2026 -30k", price: 58001, power: 30, circuits: 1, dhwValve: true, dhwPorts: { n: 2, size: '1/2"' }, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "PNGB3500035L010", name: "Deluxe One 2026 -35k", price: 59636, power: 35, circuits: 1, dhwValve: true, dhwPorts: { n: 2, size: '1/2"' }, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "PNGB3500040L006", name: "Deluxe One 2026 -40k", price: 62521, power: 40, circuits: 1, dhwValve: true, dhwPorts: { n: 2, size: '1/2"' }, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "PNGB3500024L006", name: "Deluxe One 2026 -24k", price: 50209, power: 24, circuits: 1, dhwValve: true, dhwPorts: { n: 2, size: '1/2"' }, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "PNGB3500030L010", name: "Deluxe One 2026 -30k", price: 58001, power: 30, circuits: 1, dhwValve: true, dhwPorts: { n: 2, size: '1/2"' }, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-10-20" },
+        { id: "PNGB3500035L010", name: "Deluxe One 2026 -35k", price: 59636, power: 35, circuits: 1, dhwValve: true, dhwPorts: { n: 2, size: '1/2"' }, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "PNGB3500040L006", name: "Deluxe One 2026 -40k", price: 62521, power: 40, circuits: 1, dhwValve: true, dhwPorts: { n: 2, size: '1/2"' }, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-10-20" },
         // NGB210 — бюджетные двухконтурные
-        { id: "PNGB2100013L001", name: "NGB210-13K", price: 38186, power: 13, circuits: 2, dhw: 13.7, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "PNGB2100016L001", name: "NGB210-16K", price: 38667, power: 16, circuits: 2, dhw: 13.7, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "PNGB2100024L001", name: "NGB210-24K", price: 39148, power: 24, circuits: 2, dhw: 13.7, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "PNGB2100032L002", name: "NGB210-32K", price: 45977, power: 32, circuits: 2, dhw: 18, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "PNGB2100013L001", name: "NGB210-13K", price: 38186, power: 13, circuits: 2, dhw: 13.7, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "PNGB2100016L001", name: "NGB210-16K", price: 38667, power: 16, circuits: 2, dhw: 13.7, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "PNGB2100024L001", name: "NGB210-24K", price: 39148, power: 24, circuits: 2, dhw: 13.7, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "PNGB2100032L002", name: "NGB210-32K", price: 45977, power: 32, circuits: 2, dhw: 18, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-10-20" },
         // NGB210 SYS — бюджетные одноконтурные, клапан встроен, датчик в комплекте
-        { id: "PNGB2100020L002", name: "NGB210 SYS-20H", price: 41649, power: 20, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "PNGB2100024L002", name: "NGB210 SYS-24H", price: 43572, power: 24, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "PNGB2100032L001", name: "NGB210 SYS-32H", price: 49440, power: 32, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "PNGB2100020L002", name: "NGB210 SYS-20H", price: 41649, power: 20, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-10-20" },
+        { id: "PNGB2100024L002", name: "NGB210 SYS-24H", price: 43572, power: 24, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "PNGB2100032L001", name: "NGB210 SYS-32H", price: 49440, power: 32, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-10-20" },
         // NCB700 — конденсационные двухконтурные (дымоход — универсальный ROMMER для конденсационных)
-        { id: "PNCB7000028L001", name: "NCB700-24K", price: 83576, power: 24, circuits: 2, dhw: 16.1, type: "gas", cond: true, brand: "Navien", availability: "on_order", price_date: "2026-09-22" },
-        { id: "PNCB7000041L001", name: "NCB700-35K", price: 94584, power: 35, circuits: 2, dhw: 22.9, type: "gas", cond: true, brand: "Navien", availability: "on_order", price_date: "2026-09-22" }
+        { id: "PNCB7000028L001", name: "NCB700-24K", price: 83576, power: 24, circuits: 2, dhw: 16.1, type: "gas", cond: true, brand: "Navien", availability: "on_order", price_date: "2026-10-20" },
+        { id: "PNCB7000041L001", name: "NCB700-35K", price: 94584, power: 35, circuits: 2, dhw: 22.9, type: "gas", cond: true, brand: "Navien", availability: "on_order", price_date: "2026-10-20" }
     ],
     // PLUS СНЯТ С ПРОИЗВОДСТВА. Из подбора и из таблицы замен убран — см. app.init()
     // (alts гасятся) и render() (серия читается как STATUS). Массив оставлен НАМЕРЕННО:
@@ -1975,7 +1975,7 @@ const catalog = {
     ],
     valves: [
         // STOUT SFB-0001-000001 (комплект Fugas) снят с производства — заменён на комплект BAXI.
-        { id: "BX4991100069", name: "Комплект 3-х ход. клапана", price: 7630, brand: "BAXI", availability: "on_order", price_date: "2026-09-22" }
+        { id: "BX4991100069", name: "Комплект 3-х ход. клапана", price: 7630, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" }
     ],
     // ports.fem — патрубки с ВНУТРЕННЕЙ резьбой (по паспорту). Без поля все патрубки
     // считаются наружной резьбой. ROMMER GT (паспорт rommer_e750a8c2fb98): ХВС G3/4" НР,
@@ -2211,7 +2211,7 @@ const catalog = {
         { id: "SFA-0020-000016", name: "Монтажная гильза 16", price: 122, brand: "STOUT", unit: "шт", rommer: { id: "RFA-0020-000016", name: "Монтажная гильза 16", price: 94, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, availability: "in_stock", price_date: "2026-10-10" },
         { id: "RFA-0020-000016", name: "Монтажная гильза 16", price: 94, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-10-10" },
         { id: "SFA-0001-001612", name: "Переходник 16xR 1/2\" НР", price: 324, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "703102", name: "Настенный регулятор Vartronic, цвет белый", price: 10942, brand: "Varmann", unit: "шт", availability: "in_stock", price_date: "2026-09-22" }
+        { id: "703102", name: "Настенный регулятор Vartronic, цвет белый", price: 10942, brand: "Varmann", unit: "шт", availability: "in_stock", price_date: "2026-10-20" }
     ],
     rad_tube_set: [
         { id: "SFA-0025-001650", name: "Трубка Г-образная 16/500 мм (для радиат.)", price: 3206, brand: "STOUT", rommer: { id: "RFA-0025-001650", name: "Трубка Г-образная для подключения радиатора 16/500", price: 1417, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, availability: "in_stock", price_date: "2026-10-10" },
@@ -2521,8 +2521,8 @@ const catalog = {
         { id: "SPI-0002-053230", name: "Труба металлопластиковая в теплоизоляции (синяя) 32x3.0 (50 м)", len: 50, price: 749, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" }
     ],
     insulated_pipes: [
-        { id: "SPI-0003-001622", name: "Труба 16x2.2 в теплоизоляции (красная)", len: 100, price: 220, rommer: [{ id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, { id: "EFXT018062SUPRK-400", name: "Теплоизоляция 18/6 (Красная)", price: 27.5, brand: "Energoflex", availability: "in_stock", price_date: "2026-09-22" }], availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SPI-0004-001622", name: "Труба 16x2.2 в теплоизоляции (синяя)", len: 100, price: 220, rommer: [{ id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, { id: "EFXT018062SUPRS-400", name: "Теплоизоляция 18/6 (Синяя)", price: 27.5, brand: "Energoflex", availability: "in_stock", price_date: "2026-09-22" }], availability: "in_stock", price_date: "2026-10-10" }
+        { id: "SPI-0003-001622", name: "Труба 16x2.2 в теплоизоляции (красная)", len: 100, price: 220, rommer: [{ id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, { id: "EFXT018062SUPRK-400", name: "Теплоизоляция 18/6 (Красная)", price: 27.5, brand: "Energoflex", availability: "in_stock", price_date: "2026-10-20" }], availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SPI-0004-001622", name: "Труба 16x2.2 в теплоизоляции (синяя)", len: 100, price: 220, rommer: [{ id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, { id: "EFXT018062SUPRS-400", name: "Теплоизоляция 18/6 (Синяя)", price: 27.5, brand: "Energoflex", availability: "in_stock", price_date: "2026-10-20" }], availability: "in_stock", price_date: "2026-10-10" }
     ],
     rad_pipes_grey: [
         { id: "SPX-0001-001622", name: "Труба PEX-a/EVOH серая 16x2.2 (100м)", len: 100, price: 190, rommer: { id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, availability: "in_stock", price_date: "2026-10-10" },
@@ -2768,7 +2768,7 @@ const catalog = {
     // Цена розничная, с карточки ТЕРЕМ: в прайсе (price_index.json) этого артикула нет,
     // так что AutoPrice её не пересчитывает — обновлять руками.
     gbm_nodes: [
-        { id: "ASKON-MU-25M", article: "МУ-25М", name: "Многофункциональный узел для быстрого монтажа", price: 8588, unit: "шт", brand: "Askon", availability: "in_stock", price_date: "2026-09-22" }
+        { id: "ASKON-MU-25M", article: "МУ-25М", name: "Многофункциональный узел для быстрого монтажа", price: 8588, unit: "шт", brand: "Askon", availability: "in_stock", price_date: "2026-10-20" }
     ],
     // Насосные группы с пластинчатым теплообменником: разделяют первичный контур
     // (вода котельной) и вторичный, залитый другой средой. Отсюда и применение в
@@ -3252,8 +3252,8 @@ const catalog = {
              blue: { id: "RIC-0001-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (синяя)",   dn: 28, thick: 6, len: 2, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
         // K-FLEX цветовой разбивки не имеет — одна позиция на подачу и обратку.
         // Цена за трубку 2 м, поэтому unit «шт», а не «м», как у ПРОТЕКТ ПРО.
-        35: { red: { id: "R09035215508", name: "Трубка K-FLEX ST 35/9, 2м", dn: 35, thick: 9, len: 2, price: 223, unit: "шт", brand: "K-FLEX", availability: "on_order", price_date: "2026-09-22" } },
-        42: { red: { id: "R09042215508", name: "Трубка K-FLEX ST 42/9, 2м", dn: 42, thick: 9, len: 2, price: 254, unit: "шт", brand: "K-FLEX", availability: "in_stock", price_date: "2026-09-22" } }
+        35: { red: { id: "R09035215508", name: "Трубка K-FLEX ST 35/9, 2м", dn: 35, thick: 9, len: 2, price: 223, unit: "шт", brand: "K-FLEX", availability: "in_stock", price_date: "2026-10-20" } },
+        42: { red: { id: "R09042215508", name: "Трубка K-FLEX ST 42/9, 2м", dn: 42, thick: 9, len: 2, price: 254, unit: "шт", brand: "K-FLEX", availability: "in_stock", price_date: "2026-10-20" } }
     },
     nipple_34: { id: "SFT-0003-003434", name: "Ниппель НН 3/4\"", price: 216, availability: "in_stock", price_date: "2026-10-10" },
     // Предохранительный клапан бойлера RVS-0003-006015 — вход 1/2" ВР (паспорт ROMMER),
@@ -3291,12 +3291,12 @@ const catalog = {
         { id: "RPW-1012-3703110", name: "Насос скважинный RHS 3-110, кабель 70 м", q_max: 7.9, h_max: 128, curve: [[0, 128], [1, 125], [2, 120], [3, 115], [4, 107], [5, 95], [6, 80], [7, 63], [8, 35]], cable: 70, cable_mm2: "3×4,0", watt: 2200, price: 89612, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }
     ],
     well_parts: [
-        { id: "10011032", name: "Труба ПНД 32х3.0 питьевая (кратно 5м)", price: 117.8, brand: "CYKLON", unit: "м", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "10011032", name: "Труба ПНД 32х3.0 питьевая (кратно 5м)", price: 117.8, brand: "CYKLON", unit: "м", availability: "in_stock", price_date: "2026-10-20" },
         { id: "75618", name: "Трос 4 мм нерж.сталь (кратно 10м)", price: 70, brand: "UNIPUMP", unit: "м", availability: "in_stock", price_date: "2026-06-06" },
         { id: "39023", name: "Зажим (хомут) для троса 4-5 мм", price: 36, brand: "UNIPUMP", unit: "шт" },
-        { id: "83652", name: "Оголовок скважинный 133-152/32", price: 3828, brand: "UNIPUMP", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "83652", name: "Оголовок скважинный 133-152/32", price: 3828, brand: "UNIPUMP", availability: "in_stock", price_date: "2026-10-20" },
         { id: "SVC-0011-000032", name: "Клапан обратный с металлическим седлом, 1 1/4\"", price: 3870, brand: "STOUT", unit: "шт", rommer: { id: "RVC-0001-000032", name: "Клапан обратный с метал. седлом 1 1/4\"", price: 1575, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "53003214", name: "Муфта ПНД 32х1 1/4\" НР", price: 108, brand: "Политэк", unit: "шт", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "53003214", name: "Муфта ПНД 32х1 1/4\" НР", price: 111, brand: "Политэк", unit: "шт", availability: "in_stock", price_date: "2026-10-20" },
         { id: "31852", name: "Коуш для крепления троса до 5 мм", price: 21, brand: "UNIPUMP", unit: "шт" },
         { id: "STW-0001-000024", name: "Расширительный бак гидроаккумулятор 24 л (синий)", price: 3442, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-10-10" },
         { id: "STW-0002-000050", name: "Гидроаккумулятор STOUT 50 л (для водоснабжения)", price: 9648, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-10-10" },
@@ -3377,8 +3377,8 @@ const catalog = {
     // режут трубку не по метру: Energoflex Super Protect идёт палками по 2 м, как и
     // ПРОТЕКТ ПРО в boiler_insulation. Метраж в смете округляется до кратного len.
     water_insulation: [
-        { id: "EFXT018062SUPRK-400", name: "Теплоизоляция 18/6 (Красная)", price: 27.5, len: 2, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "EFXT018062SUPRS-400", name: "Теплоизоляция 18/6 (Синяя)", price: 27.5, len: 2, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-22" }
+        { id: "EFXT018062SUPRK-400", name: "Теплоизоляция 18/6 (Красная)", price: 27.5, len: 2, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "EFXT018062SUPRS-400", name: "Теплоизоляция 18/6 (Синяя)", price: 27.5, len: 2, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-10-20" }
     ],
     insulation_pro: [
         { id: "RIC-0001-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (синяя)",  dn: 18, thick: 6, len: 2, pack: 184, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
@@ -3606,12 +3606,12 @@ const catalog = {
         { id: "RMB-0016-011203", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х1/2\"х3 вых.", price: 1779, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 3, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-10-10" },
         { id: "RMB-0016-011204", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х1/2\"х4 вых.", price: 2296, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 4, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-10-10" },
         // С шаровыми кранами, макс. 95°C / 10 бар
-        { id: "RMB-0007CF-341202", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х2 вых.", price: 1071, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 2, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RMB-0007CF-341203", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х3 вых.", price: 1436, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 3, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RMB-0007CF-341204", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х4 вых.", price: 1912, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 4, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RMB-0008CF-011202", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х2 вых.", price: 1282, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 2, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RMB-0008CF-011203", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х3 вых.", price: 1696, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 3, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RMB-0008CF-011204", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х4 вых.", price: 2225, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 4, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "RMB-0007CF-341202", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х2 вых.", price: 1071, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 2, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "RMB-0007CF-341203", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х3 вых.", price: 1436, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 3, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "RMB-0007CF-341204", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х4 вых.", price: 1912, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 4, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "RMB-0008CF-011202", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х2 вых.", price: 1282, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 2, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "RMB-0008CF-011203", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х3 вых.", price: 1696, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 3, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "RMB-0008CF-011204", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х4 вых.", price: 2225, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 4, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-10-20" },
         { id: "RMB-0007-341202", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х2 вых.", price: 1077, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 2, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-10-10" },
         { id: "RMB-0007-341203", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х3 вых.", price: 1443, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 3, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-10-10" },
         { id: "RMB-0007-341204", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х4 вых.", price: 1922, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 4, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-10-10" },
@@ -3657,9 +3657,9 @@ const catalog = {
     water_input_node: [
         { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 629, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
         { id: "VTr.136.N.0504", name: "Тройник косой для гильзы под погружной датчик температуры 3/4'' х 1/2''", price: 561, brand: "VALTEC", availability: "in_stock", price_date: "2026-07-12" },
-        { id: "CBL 10-4", name: "Греющий кабель для водопровода, 4 м", price: 7829, brand: "SelfTec DW", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "CBL 10-4", name: "Греющий кабель для водопровода, 4 м", price: 7829, brand: "SelfTec DW", availability: "in_stock", price_date: "2026-10-20" },
         { id: "SFT-0029-000134", name: "Переходник ВР-НР 1\" х 3/4\"", price: 255, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "6395", name: "Пятивыводной штуцер", price: 836, brand: "Aquario", availability: "on_order", price_date: "2026-09-22" },
+        { id: "6395", name: "Пятивыводной штуцер", price: 836, brand: "Aquario", availability: "on_order", price_date: "2026-10-20" },
         { id: "SFT-0004-000134", name: "Ниппель 1\" х 3/4\" НР", price: 378, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
         { id: "SVB-0004-200020", name: "Кран шаровой ВН-НР 3/4\"", price: 1260, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10", rommer: { id: "RBV-0001-2110320", name: "Кран шаровой ВР/ВР, ручка рычаг 3/4\"", price: 594, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
         { id: "SFT-0002-003420", name: "Удлинитель ВН/НР 3/4\" 20 мм", price: 432, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
@@ -3679,18 +3679,18 @@ const catalog = {
         { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 629, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" }
     ],
     outdoor_faucets: [
-        { id: "RVFF-0001-1520150", name: "Кран незамерзающий, длина 150 мм", price: 2335, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RVFF-0001-1520200", name: "Кран незамерзающий, длина 200 мм", price: 2476, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RVFF-0001-1520250", name: "Кран незамерзающий, длина 250 мм", price: 2625, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RVFF-0001-1520300", name: "Кран незамерзающий, длина 300 мм", price: 2782, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RVFF-0001-1520350", name: "Кран незамерзающий, длина 350 мм", price: 2948, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RVFF-0001-1520400", name: "Кран незамерзающий, длина 400 мм", price: 3125, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RVFF-0001-1520450", name: "Кран незамерзающий, длина 450 мм", price: 3313, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RVFF-0001-1520500", name: "Кран незамерзающий, длина 500 мм", price: 3511, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RVFF-0001-1520550", name: "Кран незамерзающий, длина 550 мм", price: 3722, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-22" }
+        { id: "RVFF-0001-1520150", name: "Кран незамерзающий, длина 150 мм", price: 2335, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "RVFF-0001-1520200", name: "Кран незамерзающий, длина 200 мм", price: 2476, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "RVFF-0001-1520250", name: "Кран незамерзающий, длина 250 мм", price: 2625, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "RVFF-0001-1520300", name: "Кран незамерзающий, длина 300 мм", price: 2782, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "RVFF-0001-1520350", name: "Кран незамерзающий, длина 350 мм", price: 2948, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "RVFF-0001-1520400", name: "Кран незамерзающий, длина 400 мм", price: 3125, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "RVFF-0001-1520450", name: "Кран незамерзающий, длина 450 мм", price: 3313, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "RVFF-0001-1520500", name: "Кран незамерзающий, длина 500 мм", price: 3511, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "RVFF-0001-1520550", name: "Кран незамерзающий, длина 550 мм", price: 3722, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-20" }
     ],
     filter_big_blue: [
-        { id: "75185", name: "Колба Big Blue 20'", price: 4531, brand: "UNIPUMP", availability: "on_order", price_date: "2026-09-22" },
+        { id: "75185", name: "Колба Big Blue 20'", price: 4531, brand: "UNIPUMP", availability: "in_stock", price_date: "2026-10-20" },
         // Артикул поставщика у этого картриджа — просто «ВП-20» (АКВАБРАЙТ,
         // пористость 20 мкм, Big Blue 20, 770 ₽ — сверено 10.09.2026). В поле
         // article его не ставим: под кодом «ВП-20» у поставщика лежат сразу три
@@ -3726,14 +3726,14 @@ const catalog = {
     // галочка по умолчанию снята. ВСКМ-20 — крыльчатый, 3/4", под горизонтальную
     // установку; сгоны разъёмные, чтобы снять счётчик на поверку не разбирая узел.
     water_meter: [
-        { id: "72-20-243", name: "Счётчик воды ВСКМ-20 крыльчатый, 3/4\"", price: 2509, brand: "Декаст", unit: "шт", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "72-20-243", name: "Счётчик воды ВСКМ-20 крыльчатый, 3/4\"", price: 2635, brand: "Декаст", unit: "шт", availability: "in_stock", price_date: "2026-10-20" },
         { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 629, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" }
     ],
     // Вторая ступень фильтрации («Премиум»): к колбе с картриджем 20 мкм добавляется
     // вторая на 5 мкм. Первая снимает песок и окалину, вторая — взвесь, из-за которой
     // текут буксы смесителей и залипают картриджи термостатов.
     filter_big_blue_stage2: [
-        { id: "75185", name: "Колба Big Blue 20'", price: 4531, brand: "UNIPUMP", availability: "on_order", price_date: "2026-09-22" },
+        { id: "75185", name: "Колба Big Blue 20'", price: 4531, brand: "UNIPUMP", availability: "in_stock", price_date: "2026-10-20" },
         { id: "ВП-5 М-20 ББ", name: "Картридж Big Blue 20 тонкой очистки, 5 мкм", price: 770, brand: "АКВАБРАЙТ", availability: "in_stock", price_date: "2026-10-20" },
         { id: "SFT-0004-000134", name: "Ниппель 1\" х 3/4\" НР", price: 378, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
         { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 629, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" }
@@ -3784,106 +3784,106 @@ const catalog = {
     // так же, как у остальных сторонних брендов (Aquario, UNIPUMP, Аквабрайт,
     // ZONT), у которых коэффициент проверен и равен единице.
     ufh_mats_tile: [
-        { id: "100035705800", name: "Мат нагревательный Tropix 80 Вт / 0,5 м²", area: 0.5, watt: 80, price: 3790, brand: "Теплолюкс", unit: "шт", availability: "on_order", price_date: "2026-09-22",
+        { id: "100035705800", name: "Мат нагревательный Tropix 80 Вт / 0,5 м²", area: 0.5, watt: 80, price: 3790, brand: "Теплолюкс", unit: "шт", availability: "on_order", price_date: "2026-10-20",
           alts: [{ id: "21RT0400R", name: "Мат нагревательный Ридан Comfort Mat-150 75 Вт / 0,5 м²", area: 0.5, watt: 75, price: 3100, brand: "Ридан",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "21RT0415R", name: "Мат нагревательный Ридан TF-150 75 Вт / 0,5 м²", area: 0.5, watt: 75, price: 5400, brand: "Ридан",
+  price_date: '2026-10-20' }, { id: "21RT0415R", name: "Мат нагревательный Ридан TF-150 75 Вт / 0,5 м²", area: 0.5, watt: 75, price: 5400, brand: "Ридан",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "100035700800", name: "Мат нагревательный Ultra 90 Вт / 0,5 м²", area: 0.5, watt: 90, price: 7332, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035700800", name: "Мат нагревательный Ultra 90 Вт / 0,5 м²", area: 0.5, watt: 90, price: 7332, brand: "Теплолюкс",
   availability: 'in_stock',
   price_date: '2026-10-20' }] },
-        { id: "100035712600", name: "Мат нагревательный Tropix 160 Вт / 1 м²", area: 1.0, watt: 160, price: 4490, brand: "Теплолюкс", unit: "шт", availability: "in_stock", price_date: "2026-09-22",
+        { id: "100035712600", name: "Мат нагревательный Tropix 160 Вт / 1 м²", area: 1.0, watt: 160, price: 4490, brand: "Теплолюкс", unit: "шт", availability: "in_stock", price_date: "2026-10-20",
           alts: [{ id: "21RT0401R", name: "Мат нагревательный Ридан Comfort Mat-150 150 Вт / 1 м²", area: 1.0, watt: 150, price: 3900, brand: "Ридан",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "100035656900", name: "Мат нагревательный Warmstad 175 Вт / 1,2 м²", area: 1.2, watt: 175, price: 2690, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035656900", name: "Мат нагревательный Warmstad 175 Вт / 1,2 м²", area: 1.2, watt: 175, price: 2690, brand: "Теплолюкс",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "21RT0416R", name: "Мат нагревательный Ридан TF-150 150 Вт / 1 м²", area: 1.0, watt: 150, price: 6900, brand: "Ридан",
+  price_date: '2026-10-20' }, { id: "21RT0416R", name: "Мат нагревательный Ридан TF-150 150 Вт / 1 м²", area: 1.0, watt: 150, price: 6900, brand: "Ридан",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "100035685600", name: "Мат нагревательный Alumia 150 Вт / 1 м²", area: 1.0, watt: 150, price: 4090, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035685600", name: "Мат нагревательный Alumia 150 Вт / 1 м²", area: 1.0, watt: 150, price: 4090, brand: "Теплолюкс",
   availability: 'on_order',
-  price_date: '2026-09-22' }, { id: "100035705900", name: "Мат нагревательный Ultra 170 Вт / 1 м²", area: 1.0, watt: 170, price: 8558, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035705900", name: "Мат нагревательный Ultra 170 Вт / 1 м²", area: 1.0, watt: 170, price: 8558, brand: "Теплолюкс",
   availability: 'in_stock',
   price_date: '2026-10-20' }, { id: "100035700000", name: "Мат нагревательный ProfiMat 180 Вт / 1 м²", area: 1.0, watt: 180, price: 5990, brand: "Теплолюкс",
-  availability: 'on_order',
-  price_date: '2026-09-22' }, { id: "TVK-130-1", name: "Термомат THERMO 130 Вт / 1 м²", area: 1.0, watt: 130, price: 8989, brand: "THERMO",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "TVK-180-1", name: "Термомат THERMO 180 Вт / 1 м²", area: 1.0, watt: 180, price: 10996, brand: "THERMO",
-  availability: 'on_order',
-  price_date: '2026-09-22' }] },
-        { id: "100035712700", name: "Мат нагревательный Tropix 240 Вт / 1,5 м²", area: 1.5, watt: 240, price: 5390, brand: "Теплолюкс", unit: "шт", availability: "on_order", price_date: "2026-09-22",
+  price_date: '2026-10-20' }, { id: "TVK-130-1", name: "Термомат THERMO 130 Вт / 1 м²", area: 1.0, watt: 130, price: 8989, brand: "THERMO",
+  availability: 'in_stock',
+  price_date: '2026-10-20' }, { id: "TVK-180-1", name: "Термомат THERMO 180 Вт / 1 м²", area: 1.0, watt: 180, price: 10996, brand: "THERMO",
+  availability: 'in_stock',
+  price_date: '2026-10-20' }] },
+        { id: "100035712700", name: "Мат нагревательный Tropix 240 Вт / 1,5 м²", area: 1.5, watt: 240, price: 5390, brand: "Теплолюкс", unit: "шт", availability: "on_order", price_date: "2026-10-20",
           alts: [{ id: "21RT0402R", name: "Мат нагревательный Ридан Comfort Mat-150 225 Вт / 1,5 м²", area: 1.5, watt: 225, price: 4850, brand: "Ридан",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "100035657000", name: "Мат нагревательный Warmstad 220 Вт / 1,5 м²", area: 1.5, watt: 220, price: 3090, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035657000", name: "Мат нагревательный Warmstad 220 Вт / 1,5 м²", area: 1.5, watt: 220, price: 3090, brand: "Теплолюкс",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "100035685700", name: "Мат нагревательный Alumia 225 Вт / 1,5 м²", area: 1.5, watt: 225, price: 4790, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035685700", name: "Мат нагревательный Alumia 225 Вт / 1,5 м²", area: 1.5, watt: 225, price: 4790, brand: "Теплолюкс",
   availability: 'on_order',
-  price_date: '2026-09-22' }, { id: "21RT0417R", name: "Мат нагревательный Ридан TF-150 225 Вт / 1,5 м²", area: 1.5, watt: 225, price: 8400, brand: "Ридан",
+  price_date: '2026-10-20' }, { id: "21RT0417R", name: "Мат нагревательный Ридан TF-150 225 Вт / 1,5 м²", area: 1.5, watt: 225, price: 8400, brand: "Ридан",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "100035706000", name: "Мат нагревательный Ultra 260 Вт / 1,5 м²", area: 1.5, watt: 260, price: 10132, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035706000", name: "Мат нагревательный Ultra 260 Вт / 1,5 м²", area: 1.5, watt: 260, price: 10132, brand: "Теплолюкс",
   availability: 'in_stock',
   price_date: '2026-10-20' }, { id: "100035700100", name: "Мат нагревательный ProfiMat 270 Вт / 1,5 м²", area: 1.5, watt: 270, price: 6790, brand: "Теплолюкс",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "TVK-130-1.5", name: "Термомат THERMO 195 Вт / 1,5 м²", area: 1.5, watt: 195, price: 11029, brand: "THERMO",
+  price_date: '2026-10-20' }, { id: "TVK-130-1.5", name: "Термомат THERMO 195 Вт / 1,5 м²", area: 1.5, watt: 195, price: 11029, brand: "THERMO",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "TVK-180-1.5", name: "Термомат THERMO 270 Вт / 1,5 м²", area: 1.5, watt: 270, price: 13508, brand: "THERMO",
+  price_date: '2026-10-20' }, { id: "TVK-180-1.5", name: "Термомат THERMO 270 Вт / 1,5 м²", area: 1.5, watt: 270, price: 13508, brand: "THERMO",
   availability: 'in_stock',
-  price_date: '2026-09-22' }] },
-        { id: "100035712800", name: "Мат нагревательный Tropix 320 Вт / 2 м²", area: 2.0, watt: 320, price: 5990, brand: "Теплолюкс", unit: "шт", availability: "in_stock", price_date: "2026-09-22",
+  price_date: '2026-10-20' }] },
+        { id: "100035712800", name: "Мат нагревательный Tropix 320 Вт / 2 м²", area: 2.0, watt: 320, price: 5990, brand: "Теплолюкс", unit: "шт", availability: "in_stock", price_date: "2026-10-20",
           alts: [{ id: "21RT0403R", name: "Мат нагревательный Ридан Comfort Mat-150 300 Вт / 2 м²", area: 2.0, watt: 300, price: 5750, brand: "Ридан",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "100035657100", name: "Мат нагревательный Warmstad 300 Вт / 2 м²", area: 2.0, watt: 300, price: 3490, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035657100", name: "Мат нагревательный Warmstad 300 Вт / 2 м²", area: 2.0, watt: 300, price: 3490, brand: "Теплолюкс",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "21RT0404R", name: "Мат нагревательный Ридан Comfort Mat-150 375 Вт / 2,5 м²", area: 2.5, watt: 375, price: 6600, brand: "Ридан",
+  price_date: '2026-10-20' }, { id: "21RT0404R", name: "Мат нагревательный Ридан Comfort Mat-150 375 Вт / 2,5 м²", area: 2.5, watt: 375, price: 6600, brand: "Ридан",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "100035685800", name: "Мат нагревательный Alumia 300 Вт / 2 м²", area: 2.0, watt: 300, price: 5590, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035685800", name: "Мат нагревательный Alumia 300 Вт / 2 м²", area: 2.0, watt: 300, price: 5590, brand: "Теплолюкс",
   availability: 'on_order',
-  price_date: '2026-09-22' }, { id: "21RT0418R", name: "Мат нагревательный Ридан TF-150 300 Вт / 2 м²", area: 2.0, watt: 300, price: 9850, brand: "Ридан",
+  price_date: '2026-10-20' }, { id: "21RT0418R", name: "Мат нагревательный Ридан TF-150 300 Вт / 2 м²", area: 2.0, watt: 300, price: 9850, brand: "Ридан",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "21RT0419R", name: "Мат нагревательный Ридан TF-150 375 Вт / 2,5 м²", area: 2.5, watt: 375, price: 11300, brand: "Ридан",
+  price_date: '2026-10-20' }, { id: "21RT0419R", name: "Мат нагревательный Ридан TF-150 375 Вт / 2,5 м²", area: 2.5, watt: 375, price: 11300, brand: "Ридан",
   availability: 'in_stock',
-  price_date: '2026-09-22' }, { id: "100035719600", name: "Мат нагревательный Ultra 345 Вт / 2 м²", area: 2.0, watt: 345, price: 11358, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035719600", name: "Мат нагревательный Ultra 345 Вт / 2 м²", area: 2.0, watt: 345, price: 11358, brand: "Теплолюкс",
   availability: 'in_stock',
   price_date: '2026-10-20' }, { id: "100035685900", name: "Мат нагревательный Alumia 375 Вт / 2,5 м²", area: 2.5, watt: 375, price: 6590, brand: "Теплолюкс",
   availability: 'on_order',
-  price_date: '2026-09-23' }, { id: "100035712900", name: "Мат нагревательный Tropix 400 Вт / 2,5 м²", area: 2.5, watt: 400, price: 6990, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035712900", name: "Мат нагревательный Tropix 400 Вт / 2,5 м²", area: 2.5, watt: 400, price: 6990, brand: "Теплолюкс",
   availability: 'in_stock',
-  price_date: '2026-09-23' }, { id: "100035706100", name: "Мат нагревательный Ultra 445 Вт / 2,5 м²", area: 2.5, watt: 445, price: 13282, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035706100", name: "Мат нагревательный Ultra 445 Вт / 2,5 м²", area: 2.5, watt: 445, price: 13282, brand: "Теплолюкс",
   availability: 'in_stock',
   price_date: '2026-10-20' }, { id: "100035700200", name: "Мат нагревательный ProfiMat 360 Вт / 2 м²", area: 2.0, watt: 360, price: 7990, brand: "Теплолюкс",
   availability: 'in_stock',
-  price_date: '2026-09-23' }, { id: "100035700300", name: "Мат нагревательный ProfiMat 450 Вт / 2,5 м²", area: 2.5, watt: 450, price: 8990, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035700300", name: "Мат нагревательный ProfiMat 450 Вт / 2,5 м²", area: 2.5, watt: 450, price: 8990, brand: "Теплолюкс",
   availability: 'in_stock',
-  price_date: '2026-09-23' }, { id: "TVK-130-2", name: "Термомат THERMO 260 Вт / 2 м²", area: 2.0, watt: 260, price: 12932, brand: "THERMO",
+  price_date: '2026-10-20' }, { id: "TVK-130-2", name: "Термомат THERMO 260 Вт / 2 м²", area: 2.0, watt: 260, price: 12932, brand: "THERMO",
   availability: 'in_stock',
-  price_date: '2026-09-23' }, { id: "TVK-180-2", name: "Термомат THERMO 360 Вт / 2 м²", area: 2.0, watt: 360, price: 15848, brand: "THERMO",
-  availability: 'on_order',
-  price_date: '2026-09-23' }] },
-        { id: "100035712900", name: "Мат нагревательный Tropix 400 Вт / 2,5 м²", area: 2.5, watt: 400, price: 6990, brand: "Теплолюкс", unit: "шт", availability: "in_stock", price_date: "2026-09-23",
+  price_date: '2026-10-20' }, { id: "TVK-180-2", name: "Термомат THERMO 360 Вт / 2 м²", area: 2.0, watt: 360, price: 15848, brand: "THERMO",
+  availability: 'in_stock',
+  price_date: '2026-10-20' }] },
+        { id: "100035712900", name: "Мат нагревательный Tropix 400 Вт / 2,5 м²", area: 2.5, watt: 400, price: 6990, brand: "Теплолюкс", unit: "шт", availability: "in_stock", price_date: "2026-10-20",
           alts: [{ id: "21RT0404R", name: "Мат нагревательный Ридан Comfort Mat-150 375 Вт / 2,5 м²", area: 2.5, watt: 375, price: 6600, brand: "Ридан",
   availability: 'in_stock',
-  price_date: '2026-09-23' }, { id: "100035657200", name: "Мат нагревательный Warmstad 400 Вт / 2,7 м²", area: 2.7, watt: 400, price: 3990, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035657200", name: "Мат нагревательный Warmstad 400 Вт / 2,7 м²", area: 2.7, watt: 400, price: 3990, brand: "Теплолюкс",
   availability: 'in_stock',
-  price_date: '2026-09-23' }, { id: "21RT0405R", name: "Мат нагревательный Ридан Comfort Mat-150 450 Вт / 3 м²", area: 3.0, watt: 450, price: 7400, brand: "Ридан",
+  price_date: '2026-10-20' }, { id: "21RT0405R", name: "Мат нагревательный Ридан Comfort Mat-150 450 Вт / 3 м²", area: 3.0, watt: 450, price: 7400, brand: "Ридан",
   availability: 'in_stock',
-  price_date: '2026-09-23' }, { id: "21RT0419R", name: "Мат нагревательный Ридан TF-150 375 Вт / 2,5 м²", area: 2.5, watt: 375, price: 11300, brand: "Ридан",
+  price_date: '2026-10-20' }, { id: "21RT0419R", name: "Мат нагревательный Ридан TF-150 375 Вт / 2,5 м²", area: 2.5, watt: 375, price: 11300, brand: "Ридан",
   availability: 'in_stock',
-  price_date: '2026-09-23' }, { id: "100035685900", name: "Мат нагревательный Alumia 375 Вт / 2,5 м²", area: 2.5, watt: 375, price: 6590, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035685900", name: "Мат нагревательный Alumia 375 Вт / 2,5 м²", area: 2.5, watt: 375, price: 6590, brand: "Теплолюкс",
   availability: 'on_order',
-  price_date: '2026-09-23' }, { id: "21RT0420R", name: "Мат нагревательный Ридан TF-150 450 Вт / 3 м²", area: 3.0, watt: 450, price: 12650, brand: "Ридан",
+  price_date: '2026-10-20' }, { id: "21RT0420R", name: "Мат нагревательный Ридан TF-150 450 Вт / 3 м²", area: 3.0, watt: 450, price: 12650, brand: "Ридан",
   availability: 'in_stock',
-  price_date: '2026-09-23' }, { id: "100035706100", name: "Мат нагревательный Ultra 445 Вт / 2,5 м²", area: 2.5, watt: 445, price: 13282, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035706100", name: "Мат нагревательный Ultra 445 Вт / 2,5 м²", area: 2.5, watt: 445, price: 13282, brand: "Теплолюкс",
   availability: 'in_stock',
   price_date: '2026-10-20' }, { id: "100035686000", name: "Мат нагревательный Alumia 450 Вт / 3 м²", area: 3.0, watt: 450, price: 7590, brand: "Теплолюкс",
   availability: 'on_order',
-  price_date: '2026-09-23' }, { id: "100035719300", name: "Мат нагревательный Tropix 480 Вт / 3 м²", area: 3.0, watt: 480, price: 7790, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035719300", name: "Мат нагревательный Tropix 480 Вт / 3 м²", area: 3.0, watt: 480, price: 7790, brand: "Теплолюкс",
   availability: 'in_stock',
-  price_date: '2026-09-23' }, { id: "100035713600", name: "Мат нагревательный Ultra 530 Вт / 3 м²", area: 3.0, watt: 530, price: 14858, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035713600", name: "Мат нагревательный Ultra 530 Вт / 3 м²", area: 3.0, watt: 530, price: 14858, brand: "Теплолюкс",
   availability: 'in_stock',
   price_date: '2026-10-20' }, { id: "100035700300", name: "Мат нагревательный ProfiMat 450 Вт / 2,5 м²", area: 2.5, watt: 450, price: 8990, brand: "Теплолюкс",
   availability: 'in_stock',
-  price_date: '2026-09-23' }, { id: "100035700400", name: "Мат нагревательный ProfiMat 540 Вт / 3 м²", area: 3.0, watt: 540, price: 9990, brand: "Теплолюкс",
+  price_date: '2026-10-20' }, { id: "100035700400", name: "Мат нагревательный ProfiMat 540 Вт / 3 м²", area: 3.0, watt: 540, price: 9990, brand: "Теплолюкс",
   availability: 'in_stock',
-  price_date: '2026-09-23' }, { id: "TVK-130-3", name: "Термомат THERMO 390 Вт / 3 м²", area: 3.0, watt: 390, price: 15522, brand: "THERMO",
+  price_date: '2026-10-20' }, { id: "TVK-130-3", name: "Термомат THERMO 390 Вт / 3 м²", area: 3.0, watt: 390, price: 15522, brand: "THERMO",
   availability: 'in_stock',
   price_date: '2026-09-23' }, { id: "TVK-180-3", name: "Термомат THERMO 540 Вт / 3 м²", area: 3.0, watt: 540, price: 19026, brand: "THERMO",
   availability: 'on_order',
