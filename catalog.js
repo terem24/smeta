@@ -3005,9 +3005,9 @@ const catalog = {
     ],
     hydro_gidruss_ss: [
         { id: "GR 60GAT 04", name: "Гидравлический разделитель GIDRUSS GRSS-60-25.EPP (нерж., до 60 кВт, G 1″, EPP-изоляция)", price: 20200, brand: "GIDRUSS", kw: 60, flow: 2.6, port: "1", availability: "in_stock", price_date: "2026-10-20" },
-        { id: "GR 80GAT 04", name: "Гидравлический разделитель GIDRUSS GRSS-80-32.EPP (нерж., до 80 кВт, G 1 1/4″, EPP-изоляция)", price: 22200, brand: "GIDRUSS", kw: 80, flow: 3.4, port: "11/4", availability: "on_order", price_date: "2026-10-09" },
-        { id: "12 00100 05", name: "Гидравлический разделитель GIDRUSS GRSS-100-32 (нерж., до 100 кВт, G 1 1/4″)", price: 26400, brand: "GIDRUSS", kw: 100, flow: 4.3, port: "11/4", availability: "on_order", price_date: "2026-10-09" },
-        { id: "12 00150 04", name: "Гидравлический разделитель GIDRUSS GRSS-150-40 (нерж., до 150 кВт, G 1 1/2″)", price: 35600, brand: "GIDRUSS", kw: 150, flow: 6.4, port: "11/2", availability: "on_order", price_date: "2026-10-09" }
+        { id: "GR 80GAT 04", name: "Гидравлический разделитель GIDRUSS GRSS-80-32.EPP (нерж., до 80 кВт, G 1 1/4″, EPP-изоляция)", price: 22200, brand: "GIDRUSS", kw: 80, flow: 3.4, port: "11/4", availability: "on_order", price_date: "2026-10-20" },
+        { id: "12 00100 05", name: "Гидравлический разделитель GIDRUSS GRSS-100-32 (нерж., до 100 кВт, G 1 1/4″)", price: 26400, brand: "GIDRUSS", kw: 100, flow: 4.3, port: "11/4", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "12 00150 04", name: "Гидравлический разделитель GIDRUSS GRSS-150-40 (нерж., до 150 кВт, G 1 1/2″)", price: 35600, brand: "GIDRUSS", kw: 150, flow: 6.4, port: "11/2", availability: "in_stock", price_date: "2026-10-20" }
     ],
     hydro_arrow: { id: "SDG-0015-004001", name: "Гидравлическая стрелка 3 м³/ч", price: 23408, rommer: { id: "RDG-0015-004003", name: "Гидравлическая стрелка с накидными гайками 1 1/2″", price: 7828, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, availability: "in_stock", price_date: "2026-10-10" },
     servo_rotary_sensor: { id: "SVM-0025-230017", name: "Сервопривод с датчиком", price: 43357, rommer: { id: "RVM-0015-230017", name: "Сервопривод с датчиком", price: 15459, brand: "ROMMER",
@@ -6959,19 +6959,19 @@ const catalog = {
         // Поле ecto: true — позиция бренда ectoControl, участвует в таблице замен.
         // Это не STOUT Thermatic 1002: у 1002 шина первого котла встроена и два контура,
         // у v4.0 — адаптер на каждый котёл и смесители через отдельный блок.
-        { id: "ec01v40", name: "Центральный блок управления v4.0 (GSM / Wi-Fi, питание и аккумулятор в комплекте)", price: 18900, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01v40", name: "Центральный блок управления v4.0 (GSM / Wi-Fi, питание и аккумулятор в комплекте)", price: 18900, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-20" },
         // Адаптер шины котла — на каждый котёл; Navien и eBus отличаются только протоколом.
-        { id: "ec01042", name: "Адаптер OpenTherm", price: 3590, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
-        { id: "ec01045", name: "Адаптер eBus", price: 3590, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
-        { id: "ec01058", name: "Адаптер Navien", price: 3590, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01042", name: "Адаптер OpenTherm", price: 3590, brand: "ectoControl", unit: "шт", ecto: true, availability: "on_order", price_date: "2026-10-20" },
+        { id: "ec01045", name: "Адаптер eBus", price: 3590, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-20" },
+        { id: "ec01058", name: "Адаптер Navien", price: 3590, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-20" },
         // Цифровой датчик температуры в гильзе: порты Т1…Т3 блока и порты Т1…Т4 смесительного блока.
-        { id: "ec01003", name: "Датчик температуры проводной в гильзе", price: 1590, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
-        { id: "ec01001", name: "Датчик температуры воздуха проводной", price: 1390, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
-        { id: "ec01060", name: "Блок управления смесительными контурами (ПИД-регулятор), RS485 — 4 канала", price: 15990, brand: "ectoControl", unit: "шт", ecto: true, mixChannels: 4, availability: "in_stock", price_date: "2026-10-09" },
-        { id: "ec01025", name: "Блок управления на 10 реле проводной RS485 (12 А)", price: 11490, brand: "ectoControl", unit: "шт", ecto: true, relays: 10, availability: "in_stock", price_date: "2026-10-09" },
-        { id: "ec01033", name: "Разветвитель устройств RS485 (10 разъёмов порта ДОП)", price: 700, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
-        { id: "ec01055", name: "Разветвитель для контактных датчиков адресный RS485 (8 входов)", price: 1990, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
-        { id: "ec01011", name: "Провод для подключения котла/насоса", price: 290, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" }
+        { id: "ec01003", name: "Датчик температуры проводной в гильзе", price: 1590, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-20" },
+        { id: "ec01001", name: "Датчик температуры воздуха проводной", price: 1390, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-20" },
+        { id: "ec01060", name: "Блок управления смесительными контурами (ПИД-регулятор), RS485 — 4 канала", price: 15990, brand: "ectoControl", unit: "шт", ecto: true, mixChannels: 4, availability: "in_stock", price_date: "2026-10-20" },
+        { id: "ec01025", name: "Блок управления на 10 реле проводной RS485 (12 А)", price: 11490, brand: "ectoControl", unit: "шт", ecto: true, relays: 10, availability: "in_stock", price_date: "2026-10-20" },
+        { id: "ec01033", name: "Разветвитель устройств RS485 (10 разъёмов порта ДОП)", price: 700, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-20" },
+        { id: "ec01055", name: "Разветвитель для контактных датчиков адресный RS485 (8 входов)", price: 1990, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-20" },
+        { id: "ec01011", name: "Провод для подключения котла/насоса", price: 290, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-20" }
     ],
 
     // Датчики воздуха для регулирования отопительного контура по температуре
@@ -7001,9 +7001,9 @@ const catalog = {
         // радио в самом блоке, отдельный модуль не нужен. Термостат ec01091 (ES-TSMB-01) работает только с v4.0,
         // в прайсе ТЕРЕМ его нет — цена с ecto-control.ru. Радиотермостата в линейке нет: при выборе
         // «термостат по радио» берётся беспроводной датчик.
-        { id: "ec01002", name: "Датчик температуры воздуха проводной RS485 (Modbus)", price: 3190, brand: "ectoControl", unit: "шт", kind: "sensor", link: "wired", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
-        { id: "ec01005", name: "Беспроводной датчик температуры воздуха", price: 3490, brand: "ectoControl", unit: "шт", kind: "sensor", link: "radio", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
-        { id: "ec01091", name: "Термостат проводной RS-485 (дисплей, реле 12 А)", price: 6990, brand: "ectoControl", unit: "шт", kind: "thermostat", link: "wired", ecto: true, availability: "in_stock", price_date: "2026-10-09" },
+        { id: "ec01002", name: "Датчик температуры воздуха проводной RS485 (Modbus)", price: 3190, brand: "ectoControl", unit: "шт", kind: "sensor", link: "wired", ecto: true, availability: "in_stock", price_date: "2026-10-20" },
+        { id: "ec01005", name: "Беспроводной датчик температуры воздуха", price: 3490, brand: "ectoControl", unit: "шт", kind: "sensor", link: "radio", ecto: true, availability: "in_stock", price_date: "2026-10-20" },
+        { id: "ec01091", name: "Термостат проводной RS-485 (дисплей, реле 12 А)", price: 6990, brand: "ectoControl", unit: "шт", kind: "thermostat", link: "wired", ecto: true, availability: "in_stock", price_date: "2026-10-20" },
         // Двухпозиционные термостаты STOUT (3 А, ON/OFF). Подключаются иначе —
         // не по шине, а сухим контактом на клеммы «Входы термостатов», которых
         // у контроллера ровно 3. Меняется и способ регулирования: контур
@@ -7060,7 +7060,7 @@ const catalog = {
         // (паспорт). Питается от контроллера, на каждый датчик — свой дискретный вход.
         { id: "100035557500", name: "Датчик протечки воды Neptun SW005 (3 провода, 12–24 В)", price: 1690, brand: "Neptun", unit: "шт", myheat: true, availability: "in_stock", price_date: "2026-10-20" },
         // ectoControl: контактный датчик на входы Д1…Д5 (тревога — замыкание), кабель 10 м в комплекте.
-        { id: "ec01006", name: "Датчик протечки воды проводной", price: 1490, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-09" }
+        { id: "ec01006", name: "Датчик протечки воды проводной", price: 1490, brand: "ectoControl", unit: "шт", ecto: true, availability: "in_stock", price_date: "2026-10-20" }
     ],
     // Диаметр берётся по вводу ХВС (штатно 3/4"), остальные — для замены.
     leak_valves: [
