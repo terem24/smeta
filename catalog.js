@@ -1407,12 +1407,12 @@ const catalog = {
         // NUVOLA Duo-tec+ (конденсационный, встроенный бойлер)
         { id: "7219553", name: "NUVOLA Duo-tec+ 16", price: 201920, power: 16, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-22" },
         { id: "7219554", name: "NUVOLA Duo-tec+ 24", price: 208050, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-22" },
-        { id: "7219555", name: "NUVOLA Duo-tec+ 33", price: 293645, power: 33, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
+        { id: "7219555", name: "NUVOLA Duo-tec+ 33", price: 293645, power: 33, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         // LUNA Platinum+ (конденсационный)
         { id: "7219688", name: "LUNA Platinum+ 1.12 GA", price: 172425, power: 12, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
         { id: "7219689", name: "LUNA Platinum+ 1.18 GA", price: 181450, power: 18, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
-        { id: "7219690", name: "LUNA Platinum+ 1.24 GA", price: 186010, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
-        { id: "7219691", name: "LUNA Platinum+ 1.32 GA", price: 200925, power: 32, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
+        { id: "7219690", name: "LUNA Platinum+ 1.24 GA", price: 186010, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "7219691", name: "LUNA Platinum+ 1.32 GA", price: 200925, power: 32, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         { id: "7219692", name: "LUNA Platinum+ 24 GA", price: 199215, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
         { id: "7219693", name: "LUNA Platinum+ 33 GA", price: 207195, power: 33, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
         // LUNA Duo-tec E (конденсационный)
@@ -1430,9 +1430,9 @@ const catalog = {
         { id: "A7722038", name: "Duo-tec Compact 24", price: 105170, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
         { id: "A7722039", name: "Duo-tec Compact 28", price: 97400, power: 28, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-07-13" },
         // LUNA AIR / IN Plus (конденсационный, уличный/внутренний)
-        { id: "A7810404", name: "LUNA AIR 24", price: 191330, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
-        { id: "A7810405", name: "LUNA AIR 28", price: 194655, power: 28, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
-        { id: "A7810446", name: "LUNA IN PLUS 1.24", price: 202920, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" }
+        { id: "A7810404", name: "LUNA AIR 24", price: 191330, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "A7810405", name: "LUNA AIR 28", price: 194655, power: 28, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "A7810446", name: "LUNA IN PLUS 1.24", price: 202920, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" }
     ],
     // Vaillant — как BAXI, только в таблице замены газового котла (автоподбор остаётся
     // на Haier). Отобраны из прайса ТЕРЕМ 08.2026 только котлы с закрытой камерой и
@@ -4957,7 +4957,9 @@ const catalog = {
   availability: 'in_stock',
   price_date: '2026-09-23' }, { id: "GA0G66000RU", name: "Водонагреватель электрический Haier A1, 80 л, 1,5 кВт", vol: 80, price: 11890, brand: "Haier",
   availability: 'in_stock',
-  price_date: '2026-09-23' }, { id: "GA04JEE01RU", name: "Водонагреватель электрический Haier A4, 80 л, 1,75 кВт", vol: 80, price: 14150, brand: "Haier" }, { id: "GA07N0E03RU", name: "Водонагреватель электрический Haier FCD-JTHA, 80 л, 1,5 кВт, горизонтальный", vol: 80, price: 14529, brand: "Haier" }, { id: "GA0S40E1CRU", name: "Водонагреватель электрический Haier Color, 80 л, 1,5 кВт", vol: 80, price: 14683, brand: "Haier",
+  price_date: '2026-09-23' }, { id: "GA04JEE01RU", name: "Водонагреватель электрический Haier A4, 80 л, 1,75 кВт", vol: 80, price: 14150, brand: "Haier",
+  availability: 'in_stock',
+  price_date: '2026-10-20' }, { id: "GA07N0E03RU", name: "Водонагреватель электрический Haier FCD-JTHA, 80 л, 1,5 кВт, горизонтальный", vol: 80, price: 14529, brand: "Haier" }, { id: "GA0S40E1CRU", name: "Водонагреватель электрический Haier Color, 80 л, 1,5 кВт", vol: 80, price: 14683, brand: "Haier",
   availability: 'on_order',
   price_date: '2026-09-23' }, { id: "GA0GHAE01RU", name: "Водонагреватель электрический Haier B1 Slim, 80 л, 1,5 кВт", vol: 80, price: 15000, brand: "Haier" }, { id: "GA0G7JE00RU", name: "Водонагреватель электрический Haier VH1, 80 л, 2,4 кВт", vol: 80, price: 15245, brand: "Haier" }, { id: "GA0G72E1CRU", name: "Водонагреватель электрический Haier A5, 80 л, 1,5 кВт", vol: 80, price: 15500, brand: "Haier" }, { id: "GA0G7LE00RU", name: "Водонагреватель электрический Haier VH3, 80 л, 3,3 кВт", vol: 80, price: 17380, brand: "Haier" }, { id: "GA0GHME00RU", name: "Водонагреватель электрический Haier F3, 80 л, 1,5 / 3 кВт", vol: 80, price: 21752, brand: "Haier",
   availability: 'in_stock',
@@ -5003,7 +5005,9 @@ const catalog = {
   availability: 'on_order',
   price_date: '2026-09-23' }, { id: "GA0S41E1CRU", name: "Водонагреватель электрический Haier Color, 50 л, 1,5 кВт", vol: 50, price: 10808, brand: "Haier",
   availability: 'on_order',
-  price_date: '2026-09-23' }, { id: "GA04JHE01RU", name: "Водонагреватель электрический Haier A4, 50 л, 1,75 кВт", vol: 50, price: 11900, brand: "Haier" }, { id: "GA0GH8E01RU", name: "Водонагреватель электрический Haier B1 Slim, 50 л, 1,5 кВт", vol: 50, price: 12650, brand: "Haier" }, { id: "GA07M0E09RU", name: "Водонагреватель электрический Haier FCD-JTHA, 50 л, 1,5 кВт, горизонтальный", vol: 50, price: 12699, brand: "Haier" }, { id: "GA0G7KE00RU", name: "Водонагреватель электрический Haier VH1, 50 л, 2,4 кВт", vol: 50, price: 13415, brand: "Haier" }, { id: "GA0G70E1CRU", name: "Водонагреватель электрический Haier A5, 50 л, 1,5 кВт", vol: 50, price: 13800, brand: "Haier" }, { id: "GA0G7HE00RU", name: "Водонагреватель электрический Haier VH3, 50 л, 3,3 кВт", vol: 50, price: 15550, brand: "Haier" }, { id: "GA0GHNE00RU", name: "Водонагреватель электрический Haier F3, 50 л, 1,5 / 3 кВт", vol: 50, price: 18194, brand: "Haier",
+  price_date: '2026-09-23' }, { id: "GA04JHE01RU", name: "Водонагреватель электрический Haier A4, 50 л, 1,75 кВт", vol: 50, price: 11900, brand: "Haier",
+  availability: 'in_stock',
+  price_date: '2026-10-20' }, { id: "GA0GH8E01RU", name: "Водонагреватель электрический Haier B1 Slim, 50 л, 1,5 кВт", vol: 50, price: 12650, brand: "Haier" }, { id: "GA07M0E09RU", name: "Водонагреватель электрический Haier FCD-JTHA, 50 л, 1,5 кВт, горизонтальный", vol: 50, price: 12699, brand: "Haier" }, { id: "GA0G7KE00RU", name: "Водонагреватель электрический Haier VH1, 50 л, 2,4 кВт", vol: 50, price: 13415, brand: "Haier" }, { id: "GA0G70E1CRU", name: "Водонагреватель электрический Haier A5, 50 л, 1,5 кВт", vol: 50, price: 13800, brand: "Haier" }, { id: "GA0G7HE00RU", name: "Водонагреватель электрический Haier VH3, 50 л, 3,3 кВт", vol: 50, price: 15550, brand: "Haier" }, { id: "GA0GHNE00RU", name: "Водонагреватель электрический Haier F3, 50 л, 1,5 / 3 кВт", vol: 50, price: 18194, brand: "Haier",
   availability: 'in_stock',
   price_date: '2026-09-23' }, { id: "TD0050870RU", name: "Водонагреватель электрический Haier F4 INOX, 50 л, 0,7 / 1,3 / 2,0 кВт, горизонтальный", vol: 50, price: 20024, brand: "Haier",
   availability: 'in_stock',
@@ -5061,7 +5065,9 @@ const catalog = {
   availability: 'on_order',
   price_date: '2026-09-23' }, { id: "GA0S41E1CRU", name: "Водонагреватель электрический Haier Color, 50 л, 1,5 кВт", vol: 50, price: 10808, brand: "Haier",
   availability: 'on_order',
-  price_date: '2026-09-23' }, { id: "GA04JHE01RU", name: "Водонагреватель электрический Haier A4, 50 л, 1,75 кВт", vol: 50, price: 11900, brand: "Haier" }, { id: "GA0GH8E01RU", name: "Водонагреватель электрический Haier B1 Slim, 50 л, 1,5 кВт", vol: 50, price: 12650, brand: "Haier" }, { id: "GA07M0E09RU", name: "Водонагреватель электрический Haier FCD-JTHA, 50 л, 1,5 кВт, горизонтальный", vol: 50, price: 12699, brand: "Haier" }, { id: "GA0G7KE00RU", name: "Водонагреватель электрический Haier VH1, 50 л, 2,4 кВт", vol: 50, price: 13415, brand: "Haier" }, { id: "GA0G70E1CRU", name: "Водонагреватель электрический Haier A5, 50 л, 1,5 кВт", vol: 50, price: 13800, brand: "Haier" }, { id: "GA0G7HE00RU", name: "Водонагреватель электрический Haier VH3, 50 л, 3,3 кВт", vol: 50, price: 15550, brand: "Haier" }, { id: "GA0GHNE00RU", name: "Водонагреватель электрический Haier F3, 50 л, 1,5 / 3 кВт", vol: 50, price: 18194, brand: "Haier",
+  price_date: '2026-09-23' }, { id: "GA04JHE01RU", name: "Водонагреватель электрический Haier A4, 50 л, 1,75 кВт", vol: 50, price: 11900, brand: "Haier",
+  availability: 'in_stock',
+  price_date: '2026-10-20' }, { id: "GA0GH8E01RU", name: "Водонагреватель электрический Haier B1 Slim, 50 л, 1,5 кВт", vol: 50, price: 12650, brand: "Haier" }, { id: "GA07M0E09RU", name: "Водонагреватель электрический Haier FCD-JTHA, 50 л, 1,5 кВт, горизонтальный", vol: 50, price: 12699, brand: "Haier" }, { id: "GA0G7KE00RU", name: "Водонагреватель электрический Haier VH1, 50 л, 2,4 кВт", vol: 50, price: 13415, brand: "Haier" }, { id: "GA0G70E1CRU", name: "Водонагреватель электрический Haier A5, 50 л, 1,5 кВт", vol: 50, price: 13800, brand: "Haier" }, { id: "GA0G7HE00RU", name: "Водонагреватель электрический Haier VH3, 50 л, 3,3 кВт", vol: 50, price: 15550, brand: "Haier" }, { id: "GA0GHNE00RU", name: "Водонагреватель электрический Haier F3, 50 л, 1,5 / 3 кВт", vol: 50, price: 18194, brand: "Haier",
   availability: 'in_stock',
   price_date: '2026-09-23' }, { id: "TD0050870RU", name: "Водонагреватель электрический Haier F4 INOX, 50 л, 0,7 / 1,3 / 2,0 кВт, горизонтальный", vol: 50, price: 20024, brand: "Haier",
   availability: 'in_stock',
@@ -5073,7 +5079,9 @@ const catalog = {
   availability: 'in_stock',
   price_date: '2026-09-23' }, { id: "GA0G66000RU", name: "Водонагреватель электрический Haier A1, 80 л, 1,5 кВт", vol: 80, price: 11890, brand: "Haier",
   availability: 'in_stock',
-  price_date: '2026-09-23' }, { id: "GA04JEE01RU", name: "Водонагреватель электрический Haier A4, 80 л, 1,75 кВт", vol: 80, price: 14150, brand: "Haier" }, { id: "GA07N0E03RU", name: "Водонагреватель электрический Haier FCD-JTHA, 80 л, 1,5 кВт, горизонтальный", vol: 80, price: 14529, brand: "Haier" }, { id: "GA0S40E1CRU", name: "Водонагреватель электрический Haier Color, 80 л, 1,5 кВт", vol: 80, price: 14683, brand: "Haier",
+  price_date: '2026-09-23' }, { id: "GA04JEE01RU", name: "Водонагреватель электрический Haier A4, 80 л, 1,75 кВт", vol: 80, price: 14150, brand: "Haier",
+  availability: 'in_stock',
+  price_date: '2026-10-20' }, { id: "GA07N0E03RU", name: "Водонагреватель электрический Haier FCD-JTHA, 80 л, 1,5 кВт, горизонтальный", vol: 80, price: 14529, brand: "Haier" }, { id: "GA0S40E1CRU", name: "Водонагреватель электрический Haier Color, 80 л, 1,5 кВт", vol: 80, price: 14683, brand: "Haier",
   availability: 'on_order',
   price_date: '2026-09-23' }, { id: "GA0GHAE01RU", name: "Водонагреватель электрический Haier B1 Slim, 80 л, 1,5 кВт", vol: 80, price: 15000, brand: "Haier" }, { id: "GA0G7JE00RU", name: "Водонагреватель электрический Haier VH1, 80 л, 2,4 кВт", vol: 80, price: 15245, brand: "Haier" }, { id: "GA0G72E1CRU", name: "Водонагреватель электрический Haier A5, 80 л, 1,5 кВт", vol: 80, price: 15500, brand: "Haier" }, { id: "GA0G7LE00RU", name: "Водонагреватель электрический Haier VH3, 80 л, 3,3 кВт", vol: 80, price: 17380, brand: "Haier" }, { id: "GA0GHME00RU", name: "Водонагреватель электрический Haier F3, 80 л, 1,5 / 3 кВт", vol: 80, price: 21752, brand: "Haier",
   availability: 'in_stock',
@@ -6095,7 +6103,7 @@ const catalog = {
         { id: "SZE03232RCT", article: "SZE03232RCT", name: "Муфта комбинированная с НР PP-RCT 32х1\"'", price: 1076, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SZE03232OKRCT", article: "SZE03232OKRCT", name: "Муфта комбинированная с НР PP-RCT 32х1\"", price: 1284, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SZE04040RCT", article: "SZE04040RCT", name: "Муфта комбинированная с НР PP-RCT 40х1 1/4''", price: 2493, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-        { id: "SZE05050XX", article: "SZE05050XX", name: "Муфта комбинированная с НР PP-RCT 50x1 1/2\"", price: 3351, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-06-06" },
+        { id: "SZE05050XX", article: "SZE05050XX", name: "Муфта комбинированная с НР PP-RCT 50x1 1/2\"", price: 3351, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-10-20" },
         { id: "SZE06363RCT", article: "SZE06363RCT", name: "Муфта комбинированная с НР PP-RCT 63х2''", price: 5202, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SSHI02020LFRCT", article: "SSHI02020LFRCT", name: "Муфта комбинированная с НР PP-RCT 20х1/2''", price: 1125, brand: "Wavin", unit: "шт", availability: "on_order", price_date: "2026-09-23" },
         { id: "SSHI02525RCT", article: "SSHI02525RCT", name: "Муфта комбинированная с НР PP-RCT 25х3/4\"", price: 1875, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
@@ -6123,7 +6131,7 @@ const catalog = {
         { id: "SHM02025RCT", article: "SHM02025RCT", name: "Муфта комбинированная с НР PP-RCT 20x3/4''", price: 505, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SHM02532RCT", article: "SHM02532RCT", name: "Муфта комбинированная с НР PP-RCT 25х1\"", price: 720, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SHM03240XX", article: "SHM03240XX", name: "Муфта комбинированная с НР PP-RCT 32х1 1/4\"", price: 541, brand: "Wavin", unit: "шт", availability: "in_stock",
-  price_date: '2026-07-12' }
+  price_date: '2026-10-20' }
     ],
     ppr_ekoplastik_coupling: [
         { id: "SNA020RCTX", article: "SNA020RCTX", name: "Муфта PP-RCT 20", price: 41, brand: "Wavin", unit: "шт", availability: "in_stock",
@@ -6327,7 +6335,7 @@ const catalog = {
         { id: "PA22014P", article: "PA22014P", price: 140, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 25х3/4", unit: "шт",
   price_date: '2026-09-23' },
         { id: "PA22013P", article: "PA22013P", price: 175, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 25х1", unit: "шт",
-  price_date: '2026-07-12' },
+  price_date: '2026-10-20' },
         { id: "PA22015P", article: "PA22015P", price: 149, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 32х1/2", unit: "шт",
   price_date: '2026-09-23' },
         { id: "PA22016P", article: "PA22016P", price: 150, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 32х3/4", unit: "шт",
