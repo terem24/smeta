@@ -263,9 +263,9 @@
    "freq": 9600,
    "audience": "owner",
    "data_block": "состав системы",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-20",
-   "published_at": null,
+   "published_at": "2026-10-20",
    "words": 647
   },
   {

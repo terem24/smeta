@@ -142,6 +142,7 @@
 - [Подбор циркуляционного насоса: напор и расход](https://heatcalc.ru/podbor-tsirkulyatsionnogo-nasosa/) — циркуляционный насос
 - [Диаметр труб отопления: как посчитать](https://heatcalc.ru/diametr-trub-otopleniya/) — диаметр труб отопления
 - [Дополнительные работы по ходу монтажа: как оформить и получить деньги](https://heatcalc.ru/dopolnitelnye-raboty-po-hodu-montazha/) — дополнительные работы договор подряда
+- [Датчики протечки и аварийное отключение](https://heatcalc.ru/datchiki-protechki/) — датчик протечки воды
 
 ## Примечания для моделей
 
