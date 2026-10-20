@@ -1416,19 +1416,19 @@ const catalog = {
         { id: "7219692", name: "LUNA Platinum+ 24 GA", price: 199215, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
         { id: "7219693", name: "LUNA Platinum+ 33 GA", price: 207195, power: 33, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
         // LUNA Duo-tec E (конденсационный)
-        { id: "A7720022", name: "LUNA Duo-tec E 1.12", price: 116990, power: 12, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-07-13" },
+        { id: "A7720022", name: "LUNA Duo-tec E 1.12", price: 116990, power: 12, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         { id: "A7720023", name: "LUNA Duo-tec E 1.24", price: 116990, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
         { id: "A7720024", name: "LUNA Duo-tec E 1.28", price: 126970, power: 28, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
         { id: "A7720025", name: "LUNA Duo-tec E 24", price: 125260, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-22" },
-        { id: "A7720026", name: "LUNA Duo-tec E 28", price: 116990, power: 28, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-07-13" },
-        { id: "A7720027", name: "LUNA Duo-tec E 33", price: 116990, power: 33, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-07-13" },
+        { id: "A7720026", name: "LUNA Duo-tec E 28", price: 116990, power: 28, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "A7720027", name: "LUNA Duo-tec E 33", price: 116990, power: 33, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         { id: "A7720028", name: "LUNA Duo-tec E 40", price: 151190, power: 40, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
         // LUNA Duo-tec MP (конденсационный)
         { id: "7106815", name: "LUNA Duo-tec MP 1.35", price: 229920, power: 35, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
         // Duo-tec Compact (конденсационный)
         { id: "A7722037", name: "Duo-tec Compact 1.24", price: 97400, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
         { id: "A7722038", name: "Duo-tec Compact 24", price: 105170, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "A7722039", name: "Duo-tec Compact 28", price: 97400, power: 28, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-07-13" },
+        { id: "A7722039", name: "Duo-tec Compact 28", price: 97400, power: 28, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         // LUNA AIR / IN Plus (конденсационный, уличный/внутренний)
         { id: "A7810404", name: "LUNA AIR 24", price: 191330, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
         { id: "A7810405", name: "LUNA AIR 28", price: 194655, power: 28, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-10-20" },
@@ -6364,7 +6364,7 @@ const catalog = {
         { id: "PA23014P", article: "PA23014P", price: 196, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 25х3/4", unit: "шт",
   price_date: '2026-09-23' },
         { id: "PA23013P", article: "PA23013P", price: 175, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 25х1", unit: "шт",
-  price_date: '2026-07-12' },
+  price_date: '2026-10-20' },
         { id: "PA23015P", article: "PA23015P", price: 182, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 32х1/2", unit: "шт",
   price_date: '2026-09-23' },
         { id: "PA23016P", article: "PA23016P", price: 201, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 32х3/4", unit: "шт",
@@ -6442,7 +6442,7 @@ const catalog = {
         { id: "PA12546P", article: "PA12546P", price: 314, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 90х75", unit: "шт",
   price_date: '2026-09-23' },
         { id: "PA12547P", article: "PA12547P", price: 175, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 110х75", unit: "шт",
-  price_date: '2026-07-12' },
+  price_date: '2026-10-20' },
         { id: "PA12548P", article: "PA12548P", price: 420, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 110х90", unit: "шт",
   price_date: '2026-09-23' }
     ],
