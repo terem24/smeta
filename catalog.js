@@ -1468,9 +1468,9 @@ const catalog = {
         { id: "0010026102", name: "ecoTEC intro VUW 18/24 AS/1-1 (H-RU)", price: 160259, power: 18, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-09-22" },
         { id: "0010026103", name: "ecoTEC intro VUW 24/28 AS/1-1 (H-RU)", price: 168173, power: 24, circuits: 2, dhw: 13.4, dhwDt: 30, type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-09-22" },
         // Конденсационные, одноконтурные VU (60/100 PP) — клапан бойлера встроен
-        { id: "0010043977", name: "ecoTEC plus VU 20CS/1-5 (N-INT4)", price: 206801, power: 20, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-08-18" },
-        { id: "0010043979", name: "ecoTEC plus VU 25CS/1-5 (N-INT4)", price: 218102, power: 25, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-08-18" },
-        { id: "0010043980", name: "ecoTEC plus VU 30CS/1-5 (N-INT4)", price: 238607, power: 30, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-08-18" }
+        { id: "0010043977", name: "ecoTEC plus VU 20CS/1-5 (N-INT4)", price: 206801, power: 20, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "0010043979", name: "ecoTEC plus VU 25CS/1-5 (N-INT4)", price: 218102, power: 25, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "0010043980", name: "ecoTEC plus VU 30CS/1-5 (N-INT4)", price: 238607, power: 30, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "in_stock", price_date: "2026-10-20" }
     ],
     // Аксессуары Vaillant, которые ставит подбор (см. render(), раздел 2.1):
     //   306257 — датчик бойлера NTC: одноконтурному VU вместо комплекта 3-х ходового
@@ -1482,11 +1482,11 @@ const catalog = {
     //     ТЕРЕМ регуляторов нет — цены из прайса × 0,8, «под заказ».
     vaillant_acc: [
         { id: "306257", name: "Датчик температуры бойлера NTC (для одноконтурных VU)", price: 3000, brand: "Vaillant", availability: "in_stock" },
-        { id: "0020018266", name: "Комнатный регулятор температуры VRT 50 (eBUS)", price: 14466, brand: "Vaillant", role: "room", availability: "on_order", price_date: "2026-08-18" },
-        { id: "0020260945", name: "Комнатный регулятор VRT 380 (eBUS, модулирующий)", price: 27906, brand: "Vaillant", role: "room", availability: "on_order", price_date: "2026-08-18" },
-        { id: "0020171319", name: "Погодозависимый регулятор multiMATIC VRC 700/6", price: 47925, brand: "Vaillant", role: "weather", availability: "on_order", price_date: "2026-08-18" },
-        { id: "0020260915", name: "Погодозависимый регулятор sensoCOMFORT VRC 720", price: 57650, brand: "Vaillant", role: "weather", availability: "on_order", price_date: "2026-08-18" },
-        { id: "0020139895", name: "Коммутационный модуль VR 32 (каскад, на каждый котёл сверх первого)", price: 12182, brand: "Vaillant", role: "cascade", availability: "on_order", price_date: "2026-08-20" }
+        { id: "0020018266", name: "Комнатный регулятор температуры VRT 50 (eBUS)", price: 14466, brand: "Vaillant", role: "room", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "0020260945", name: "Комнатный регулятор VRT 380 (eBUS, модулирующий)", price: 27906, brand: "Vaillant", role: "room", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "0020171319", name: "Погодозависимый регулятор multiMATIC VRC 700/6", price: 47925, brand: "Vaillant", role: "weather", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "0020260915", name: "Погодозависимый регулятор sensoCOMFORT VRC 720", price: 57650, brand: "Vaillant", role: "weather", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "0020139895", name: "Коммутационный модуль VR 32 (каскад, на каждый котёл сверх первого)", price: 12182, brand: "Vaillant", role: "cascade", availability: "in_stock", price_date: "2026-10-20" }
     ],
     // Navien — тоже только таблица замены. Из прайса ТЕРЕМ 08.2026 взяты линейки без
     // дублей: Deluxe C Plus 2026 (двухконтурный, OpenTherm), Deluxe One 2026
@@ -3734,7 +3734,7 @@ const catalog = {
     // текут буксы смесителей и залипают картриджи термостатов.
     filter_big_blue_stage2: [
         { id: "75185", name: "Колба Big Blue 20'", price: 4531, brand: "UNIPUMP", availability: "on_order", price_date: "2026-09-22" },
-        { id: "ВП-5 М-20 ББ", name: "Картридж Big Blue 20 тонкой очистки, 5 мкм", price: 770, brand: "АКВАБРАЙТ", availability: "in_stock", price_date: "2026-07-29" },
+        { id: "ВП-5 М-20 ББ", name: "Картридж Big Blue 20 тонкой очистки, 5 мкм", price: 770, brand: "АКВАБРАЙТ", availability: "in_stock", price_date: "2026-10-20" },
         { id: "SFT-0004-000134", name: "Ниппель 1\" х 3/4\" НР", price: 378, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
         { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 629, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" }
     ],
@@ -4666,13 +4666,13 @@ const catalog = {
   price_date: '2026-10-20' }, { id: "TVK-130-12", name: "Термомат THERMO 1560 Вт / 12 м²", area: 12.0, watt: 1560, price: 49014, brand: "THERMO",
   availability: 'on_order',
   price_date: '2026-09-23' }] },
-        { id: "100035699900", name: "Мат нагревательный Alumia 2250 Вт / 15 м²", area: 15.0, watt: 2250, price: 59308, brand: "Теплолюкс", unit: "шт", availability: "on_order", price_date: "2026-07-29",
+        { id: "100035699900", name: "Мат нагревательный Alumia 2250 Вт / 15 м²", area: 15.0, watt: 2250, price: 59308, brand: "Теплолюкс", unit: "шт", availability: "in_stock", price_date: "2026-10-20",
           alts: [{ id: "100035719100", name: "Мат нагревательный ProfiMat 2700 Вт / 15 м²", area: 15.0, watt: 2700, price: 30190, brand: "Теплолюкс",
   availability: 'on_order',
   price_date: '2026-09-23' }, { id: "100035705400", name: "Мат нагревательный Alumia 2700 Вт / 18 м²", area: 18.0, watt: 2700, price: 76282, brand: "Теплолюкс",
   availability: 'in_stock',
   price_date: '2026-10-20' }] },
-        { id: "100035705400", name: "Мат нагревательный Alumia 2700 Вт / 18 м²", area: 18.0, watt: 2700, price: 76282, brand: "Теплолюкс", unit: "шт", availability: "on_order", price_date: "2026-07-29",
+        { id: "100035705400", name: "Мат нагревательный Alumia 2700 Вт / 18 м²", area: 18.0, watt: 2700, price: 76282, brand: "Теплолюкс", unit: "шт", availability: "in_stock", price_date: "2026-10-20",
           alts: [] }
     ],
     // ===== Питание тёплого пола: линия от щита =====
@@ -4920,7 +4920,7 @@ const catalog = {
   price_date: '2026-09-23' }, { id: "TD0050876RU", name: "Водонагреватель электрический Haier F6 INOX, 100 л, 0,7 / 1,3 / 2,0 кВт, горизонтальный", vol: 100, price: 30800, brand: "Haier",
   availability: 'in_stock',
   price_date: '2026-09-23' }] },
-        { id: "GA04JHE01RU", name: "Водонагреватель электрический Haier A4, 50 л, 1,75 кВт", vol: 50, kw: "1,75", heat: "1ч 30 мин", price: 11900, brand: "Haier", unit: "шт", availability: "on_order", price_date: "2026-08-06",
+        { id: "GA04JHE01RU", name: "Водонагреватель электрический Haier A4, 50 л, 1,75 кВт", vol: 50, kw: "1,75", heat: "1ч 30 мин", price: 11900, brand: "Haier", unit: "шт", availability: "in_stock", price_date: "2026-10-20",
           alts: [{ id: "GA04J001DRU", name: "Водонагреватель электрический Haier C1, 30 л, 1,5 кВт", vol: 30, price: 8027, brand: "Haier",
   availability: 'in_stock',
   price_date: '2026-09-23' }, { id: "GA04J401DRU", name: "Водонагреватель электрический Haier A1, 30 л, 1,5 кВт", vol: 30, price: 8942, brand: "Haier",
@@ -4980,7 +4980,7 @@ const catalog = {
   price_date: '2026-09-23' }, { id: "TD0050876RU", name: "Водонагреватель электрический Haier F6 INOX, 100 л, 0,7 / 1,3 / 2,0 кВт, горизонтальный", vol: 100, price: 30800, brand: "Haier",
   availability: 'in_stock',
   price_date: '2026-09-23' }] },
-        { id: "GA04JEE01RU", name: "Водонагреватель электрический Haier A4, 80 л, 1,75 кВт", vol: 80, kw: "1,75", heat: "2ч 20 мин", price: 14150, brand: "Haier", unit: "шт", availability: "on_order", price_date: "2026-08-06",
+        { id: "GA04JEE01RU", name: "Водонагреватель электрический Haier A4, 80 л, 1,75 кВт", vol: 80, kw: "1,75", heat: "2ч 20 мин", price: 14150, brand: "Haier", unit: "шт", availability: "in_stock", price_date: "2026-10-20",
           alts: [{ id: "GA04J001DRU", name: "Водонагреватель электрический Haier C1, 30 л, 1,5 кВт", vol: 30, price: 8027, brand: "Haier",
   availability: 'in_stock',
   price_date: '2026-09-23' }, { id: "GA04J401DRU", name: "Водонагреватель электрический Haier A1, 30 л, 1,5 кВт", vol: 30, price: 8942, brand: "Haier",
@@ -6106,9 +6106,9 @@ const catalog = {
         { id: "SZE05050XX", article: "SZE05050XX", name: "Муфта комбинированная с НР PP-RCT 50x1 1/2\"", price: 3351, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-10-20" },
         { id: "SZE06363RCT", article: "SZE06363RCT", name: "Муфта комбинированная с НР PP-RCT 63х2''", price: 5202, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SSHI02020LFRCT", article: "SSHI02020LFRCT", name: "Муфта комбинированная с НР PP-RCT 20х1/2''", price: 1125, brand: "Wavin", unit: "шт", availability: "on_order", price_date: "2026-09-23" },
-        { id: "SSHI02525RCT", article: "SSHI02525RCT", name: "Муфта комбинированная с НР PP-RCT 25х3/4\"", price: 1875, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "SSHI02525RCT", article: "SSHI02525RCT", name: "Муфта комбинированная с НР PP-RCT 25х3/4\"", price: 1875, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-10-20" },
         { id: "SSHE02020LFRCT", article: "SSHE02020LFRCT", name: "Муфта комбинированная с НР PP-RCT 20х1/2''", price: 1386, brand: "Wavin", unit: "шт", availability: "on_order", price_date: "2026-09-23" },
-        { id: "SSHE02525RCT", article: "SSHE02525RCT", name: "Муфта комбинированная с НР PP-RCT 25х3/4\"", price: 2687, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "SSHE02525RCT", article: "SSHE02525RCT", name: "Муфта комбинированная с НР PP-RCT 25х3/4\"", price: 2687, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-10-20" },
         { id: "SSI02020RCT", article: "SSI02020RCT", name: "Муфта комбинированная с НР PP-RCT 20х1/2\"", price: 802, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SSI02525RCT", article: "SSI02525RCT", name: "Муфта комбинированная с НР PP-RCT 25х3/4\"", price: 1240, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SSI03232RCT", article: "SSI03232RCT", name: "Муфта комбинированная с НР PP-RCT 32х1\"", price: 2079, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
@@ -7137,7 +7137,7 @@ const catalog = {
         { id: "SPG-0001-503525", name: "Труба гофрированная ПНД 35 (для труб до 25 мм), синяя, бухта 50 м", price: 35, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
         { id: "SPG-0001-504032", name: "Труба гофрированная ПНД 40 (для труб до 32 мм), синяя, бухта 30 м", price: 46, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10" },
 
-        { id: "10.В.050.R.M.B", article: "10.В.050.R.M.B", name: "Трап регулируемый боковой, решетка металлическая 100х100 (белый) D 50", price: 1576.06, unit: "шт", brand: "Sinikon", availability: "in_stock", price_date: "2026-07-28" },
+        { id: "10.В.050.R.M.B", article: "10.В.050.R.M.B", name: "Трап регулируемый боковой, решетка металлическая 100х100 (белый) D 50", price: 1576.06, unit: "шт", brand: "Sinikon", availability: "in_stock", price_date: "2026-10-20" },
 
         // Лента армированная: в прайсе лежит на листе «Энергофлекс», но строка
         // собирается без слова «лента», поэтому по названию не находится.
@@ -8756,7 +8756,7 @@ const towelWarmersElectric = [
     { id: "SHQ-F2QQ-008050", name: "Полотенцесушитель эл. FORTE quadro 80×50, Чёрный матовый", price: 15096, series: "FORTE", shape: "quadro", size: "80×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
     { id: "SHQ-P2QR-008050", name: "Полотенцесушитель эл. PIANO quadro 80×50, Чёрный матовый", price: 14892, series: "PIANO", shape: "quadro", size: "80×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
     { id: "SHQ-P1QR-008050", name: "Полотенцесушитель эл. PIANO quadro 80×50, Полированный", price: 17850, series: "PIANO", shape: "quadro", size: "80×50", color: "polished", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SHQ-S3QQ-008050", name: "Полотенцесушитель эл. SOUL quadro 80×50, Оружейная сталь", price: 44627, series: "SOUL", shape: "quadro", size: "80×50", color: "gunmetal", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-07-24" },
+    { id: "SHQ-S3QQ-008050", name: "Полотенцесушитель эл. SOUL quadro 80×50, Оружейная сталь", price: 44627, series: "SOUL", shape: "quadro", size: "80×50", color: "gunmetal", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-10-20" },
     { id: "SHQ-T2QQ-008050", name: "Полотенцесушитель эл. TECHNO quadro 80×50, Чёрный матовый", price: 15606, series: "TECHNO", shape: "quadro", size: "80×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
     { id: "SHQ-G4QQ-008050", name: "Полотенцесушитель эл. GRUNGE quadro 80×50, Графит", price: 18768, series: "GRUNGE", shape: "quadro", size: "80×50", color: "graphite", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
     { id: "SHQ-N4QQ-007050", name: "Полотенцесушитель эл. NEOSOUL quadro 70×50, Графит", price: 17646, series: "NEOSOUL", shape: "quadro", size: "70×50", color: "graphite", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
