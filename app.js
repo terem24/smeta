@@ -7600,12 +7600,17 @@ const app = {
      */
     capturePriceSnapshot: function () {
         try {
-            const prices = {}, qty = {}, names = {}, packs = {};
+            const prices = {}, qty = {}, names = {}, packs = {}, ids = {};
             (this.currentEquipmentList || []).forEach(it => {
                 const art = String((it && (it.originalId || it.id)) || '');
                 if (!art || art.indexOf('custom_collapsed_') === 0) return;
                 if (typeof it.price === 'number' && it.price > 0) {
                     prices[art] = it.price;
+                    // Ключ слепка — артикул исходной позиции, а цена — той, что
+                    // стоит в смете сейчас. После замены на аналог это разные
+                    // позиции: сверка сравнивала цену аналога с ценой оригинала
+                    // и объявляла «изменение» там, где каталог не двигался.
+                    if (it.id && String(it.id) !== art) ids[art] = String(it.id);
                     // Количество и название — чтобы сверка цен показывала не голый
                     // артикул, а строку сметы: «Радиатор Space 11 секций, 4 шт»
                     qty[art] = Number(it.q) || 1;
@@ -7636,6 +7641,7 @@ const app = {
                 qty: qty,
                 names: names,
                 packs: packs,
+                ids: ids,
                 works: works
             };
             this.saveState();

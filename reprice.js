@@ -57,7 +57,10 @@ const Reprice = {
                 // Сколько метров в одной строке сметы: у трубы и бухты цена в каталоге
                 // за метр, а в смете — за штангу или бухту целиком. У смет постарше
                 // этого поля нет — тогда множитель 1, как и было.
-                pack: Number(row.snap.packs && row.snap.packs[art]) || 1
+                pack: Number(row.snap.packs && row.snap.packs[art]) || 1,
+                // Фактическая позиция в смете, если её заменили на аналог: цену
+                // в каталоге ищем по ней, а не по артикулу исходной.
+                lookupId: (row.snap.ids && row.snap.ids[art]) || art
             }));
         } else if (row.share) {
             try {
@@ -67,6 +70,7 @@ const Reprice = {
                     when = data.created_at;
                     items = data.eq.map(it => ({
                         art: String((it && (it.originalId || it.id)) || ''),
+                        lookupId: String((it && (it.id || it.originalId)) || ''),
                         name: (it && it.name) || '',
                         was: Number(it && it.price) || 0,
                         q: Number(it && it.q) || 1
@@ -249,7 +253,7 @@ const Reprice = {
         let wasAll = 0, nowAll = 0, gone = 0;
         const changed = [], order = [];
         items.forEach(it => {
-            const raw = lookup(it.art, price);
+            const raw = lookup(it.lookupId || it.art, price);
             // Приводим каталожную цену к единице строки сметы: у трубы это штанга или
             // бухта (it.pack метров), у всего остального множитель 1.
             const now = raw === undefined ? undefined : asBill(raw * (it.pack || 1));
@@ -260,7 +264,7 @@ const Reprice = {
             if (Math.abs(now - it.was) * it.q >= this.MIN_RUB) {
                 changed.push({ ...it, now: now, diff: (now - it.was) * it.q, pct: (now - it.was) / it.was * 100 });
             }
-            if (lookup(it.art, avail) === 'on_order') order.push(it);
+            if (lookup(it.lookupId || it.art, avail) === 'on_order') order.push(it);
         });
         changed.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
 
