@@ -154,8 +154,23 @@
 /* Гидравлика водоснабжения (app.waterHydroHtml, water_hydro.js): карточка под насосом скважины, свёрнута по умолчанию */
 .whc { text-align: left; }
 .hc-water { flex: 1 1 100%; width: 100%; }
-.whc-chart { display: block; width: 100%; height: auto; max-height: 120px; margin: 4px 0 6px; color: var(--text-main, #111827); }
-@media print { .whc-chart { max-height: 110px; } }
+.whc-cbox { max-width: 560px; margin: 6px 0 10px; }
+.whc-ctitle { font-weight: 700; font-size: 12px; margin-bottom: 2px; }
+.whc-chart { display: block; width: 100%; height: auto; margin: 4px 0 6px; color: var(--text-main, #111827); overflow: visible; }
+.whc-pt { cursor: pointer; outline: none; }
+.whc-pt .whc-dot { transition: r .12s; }
+.whc-pt:hover .whc-dot, .whc-pt:focus .whc-dot, .whc-pt.whc-sel .whc-dot { r: 5; fill: currentColor; }
+.whc-tip { font-size: 12px; line-height: 1.4; min-height: 2.8em; padding: 6px 9px; border-radius: 8px; background: var(--bg-soft, rgba(127,127,127,.10)); color: var(--text-sec, #6B7280); }
+.whc-tip.whc-tip-on { color: var(--text-main, #111827); }
+.whc-tip b { font-weight: 700; }
+.whc-key { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 11px; color: var(--text-sec, #6B7280); margin: 6px 0 2px; }
+.whc-key i { display: inline-block; vertical-align: middle; width: 18px; margin-right: 5px; }
+.whc-k-line { height: 3px; border-radius: 2px; }
+.whc-k-dash { height: 0; border-top: 2px dashed #DC2626; }
+.whc-how { font-size: 11px; line-height: 1.4; color: var(--text-sec, #6B7280); }
+.hc-in-table { max-width: none; margin: 10px 0 14px; }
+.hc-in-table .hc-card { max-width: 900px; }
+@media print { .whc-tip, .whc-how { display: none; } .whc-chart { max-height: 110px; } }
 .whc-t { width: 100%; border-collapse: collapse; font-size: 11px; margin: 4px 0; }
 .whc-t th { text-align: left; font-weight: 600; color: var(--text-sec, #6B7280); padding: 2px 6px 2px 0; }
 .whc-t td { padding: 2px 6px 2px 0; border-top: 1px solid var(--border, #E5E7EB); }

@@ -1187,7 +1187,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: true, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, mainsBar: 3, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', pumpRadMode: 'auto', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: false, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, mainsBar: 3, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', pumpRadMode: 'auto', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
     lastSavedStateString: "",
 
     get currentUser() {
@@ -14587,20 +14587,20 @@ const app = {
             if (endsAt) daysLeft = Math.max(0, Math.ceil((endsAt - now) / 86400000));
         }
 
-        const statusCard = isPro
-            ? `<div class="lk-card lk-card-accent">
-                   <div class="lk-card-label" style="color:var(--c-warn,#D97706);">Тариф Профи активен</div>
-                   <div style="margin-top:6px; font-size:15px; font-weight:700; color:var(--text-main);">
-                       ${untilText === 'навсегда' ? 'Действует бессрочно' : `Действует до ${untilText}`}
+        // Те же строки .lk-setting, что в «Оформлении» и «Уведомлениях»: текст слева, действие справа
+        let statusSub;
+        if (untilText === 'навсегда') statusSub = 'Действует бессрочно';
+        else if (untilText) statusSub = `Действует до ${untilText}` + (daysLeft !== null ? ` · осталось дней: ${daysLeft}` : '');
+        else statusSub = 'Срок действия не ограничен';
+
+        const statusCard = `<div class="lk-card">
+                   <div class="lk-setting">
+                       <div class="lk-setting-text">
+                           <b>${isPro ? 'Тариф Профи активен' : 'Базовый тариф'}</b>
+                           <span>${isPro ? statusSub : 'Расчёт, смета, работы и выгрузка КП доступны полностью'}</span>
+                       </div>
+                       <button type="button" class="lk-btn-sm" onclick="app.closeProfileModal(); app.showModal('pro');">${isPro ? 'Продлить подписку' : 'Оформить Профи'}</button>
                    </div>
-                   ${daysLeft !== null ? `<div style="margin-top:2px; font-size:12px; color:var(--text-sec);">Осталось дней: ${daysLeft}</div>` : ''}
-                   <button type="button" class="auth-btn-base btn-email-submit" style="margin:12px 0 0; max-width:220px; height:38px; font-size:13px;" onclick="app.closeProfileModal(); app.showModal('pro');">Продлить подписку</button>
-               </div>`
-            : `<div class="lk-card">
-                   <div class="lk-card-label">Текущий тариф</div>
-                   <div style="margin-top:6px; font-size:15px; font-weight:700; color:var(--text-main);">Базовый</div>
-                   <div style="margin-top:2px; font-size:12px; color:var(--text-sec);">Расчёт, смета, работы и выгрузка КП доступны полностью.</div>
-                   <button type="button" class="auth-btn-base btn-email-submit" style="margin:12px 0 0; max-width:220px; height:38px; font-size:13px;" onclick="app.closeProfileModal(); app.showModal('pro');">Оформить Профи</button>
                </div>`;
 
         // Список ровно того, что на Базовом тарифе недоступно: бренд ROMMER и аналоги
@@ -14614,34 +14614,12 @@ const app = {
 
         container.innerHTML = `
             <div class="lk-section-head"><div><h4>Тариф</h4><div class="lk-sub">Что доступно сейчас и что даёт Профи</div></div></div>
-            ${statusCard}
-            <div style="margin:0 0 12px; padding:12px 14px; border:1px solid var(--border-color, #E5E7EB); border-radius:10px;">
-                <label style="display:flex; gap:10px; align-items:flex-start; cursor:pointer;">
-                    <input type="checkbox" ${this.poolCoilsOn() ? 'checked' : ''} onchange="app.setPoolCoils(this.checked)" style="margin-top:3px;">
-                    <span>
-                        <span style="display:block; font-weight:700; color:var(--text-main);">Подбирать бухты по всей смете</span>
-                        <span style="display:block; margin-top:2px; font-size:11.5px; color:var(--text-sec); line-height:1.4;">Одинаковые трубы из всех разделов складываются в общий подбор: меньше обрезков. Остаток бухты виден на экране и не попадает в печать и КП. По умолчанию включено на Профи.</span>
-                        <span style="display:block; margin-top:6px; font-size:12px; color:var(--text-main); line-height:1.4;">${(() => {
-                            const st = this._poolStats;
-                            if (!st) return 'Откройте смету с трубами: здесь появится, сколько это экономит.';
-                            if (!(st.unM > 0)) return 'В текущей смете нет бухт металлопластика, экономии нет.';
-                            const eco = st.metres > 0
-                                ? `экономия <b>${Math.round(st.metres)} м</b> и <b>${this.formatCurrencyAmount(st.rub)}</b>`
-                                : 'экономии нет: здесь уже покупается минимум бухт';
-                            return (this.poolCoilsOn() ? 'Сейчас включено: ' : 'Сейчас выключено. Включение даёт: ') + `в текущей смете ${eco}.`;
-                        })()}</span>
-                    </span>
-                </label>
-            </div>
-            <div class="lk-card-label" style="margin:16px 0 8px;">Что даёт тариф Профи</div>
-            <div class="lk-list">
+            <div style="margin-bottom:14px;">${statusCard}</div>
+            <div class="lk-card-label" style="margin:0 0 8px;">Что даёт тариф Профи</div>
+            <div class="lk-card">
                 ${perks.map(([icon, title, text]) => `
-                    <div class="lk-row" style="align-items:flex-start;">
-                        <span style="font-size:15px; line-height:1.2;">${icon}</span>
-                        <span style="flex:1; min-width:0;">
-                            <span style="display:block; font-weight:700; color:var(--text-main);">${title}</span>
-                            <span style="display:block; margin-top:2px; font-size:11.5px; color:var(--text-sec); line-height:1.4;">${text}</span>
-                        </span>
+                    <div class="lk-setting">
+                        <div class="lk-setting-text"><b>${title}</b><span>${text}</span></div>
                     </div>
                 `).join('')}
             </div>
@@ -16291,6 +16269,26 @@ const app = {
         const p = this.getPrefs();
         const locked = [];
         let html = `<div class="lk-section-head"><div><h4>Любимые материалы</h4><div class="lk-sub">Что подставлять в новую смету по умолчанию. «Авто» — решает калькулятор. Ручной выбор в смете главнее.</div></div></div>`;
+        html += `<div class="lk-subhead">Подбор труб</div>
+            <div class="lk-card">
+                <div class="lk-setting">
+                    <div class="lk-setting-text">
+                        <b>Подбирать бухты по всей смете</b>
+                        <span>Одинаковые трубы из всех разделов складываются в общий подбор: меньше обрезков. Остаток бухты виден на экране и не попадает в печать и КП. По умолчанию включено на Профи.</span>
+                        <span style="color:var(--text-main);">${(() => {
+                            const st = this._poolStats;
+                            if (!st) return 'Откройте смету с трубами: здесь появится, сколько это экономит.';
+                            if (!(st.unM > 0)) return 'В текущей смете нет бухт металлопластика, экономии нет.';
+                            const eco = st.metres > 0
+                                ? `экономия <b>${Math.round(st.metres)} м</b> и <b>${this.formatCurrencyAmount(st.rub)}</b>`
+                                : 'экономии нет: здесь уже покупается минимум бухт';
+                            return (this.poolCoilsOn() ? 'Сейчас включено: ' : 'Сейчас выключено. Включение даёт: ') + `в текущей смете ${eco}.`;
+                        })()}</span>
+                    </div>
+                    <label class="switch"><input type="checkbox" ${this.poolCoilsOn() ? 'checked' : ''} onchange="app.setPoolCoils(this.checked)"><span class="slider"></span></label>
+                </div>
+            </div>
+        `;
         this.PREF_DEFS.forEach(g => {
             html += `<div class="lk-subhead">${g.g}</div><div class="lk-list">`;
             g.items.forEach(it => {
@@ -39120,6 +39118,10 @@ const app = {
     renderHvsNodeScheme: function () {
         const s = this.state;
         if (!s.waterInput) return '';
+        // На всех трёх листах ГОСТ счётчик нарисован и подписан. Без счётчика
+        // в смете лист врал бы, а дорисовать/стереть в нём нельзя — берём вид
+        // узла в сборе: кадры сделаны на каждое сочетание опций.
+        if (!s.waterMeter) return this.renderHvsNodeView();
         // Кранов на листах один или два, поэтому для сравнения приводим смету
         // к этому же диапазону: узел с тремя кранами всё равно ближе к листу
         // с двумя, а без крана — к листу с одним.
@@ -50589,7 +50591,10 @@ const app = {
         return html + '</div></div>';
     },
 
-    /** График напора по ступеням пути воды: ломаная «напор после ступени», красная пунктирная — минимум у худшего прибора. */
+    /**
+     * График напора по ступеням пути воды: ломаная «напор после ступени», красная пунктирная — минимум у худшего прибора.
+     * Интерактивный: наведение/нажатие на точку показывает, что это за ступень, сколько на ней потеряно и сколько осталось.
+     */
     waterHydroChart: function (res) {
         const st = res.scenarios.design.trunk.stages;
         const w = res.worst;
@@ -50598,24 +50603,70 @@ const app = {
         if (pts.length < 3) return '';
         const need = w ? w.need : 0;
         const hi = Math.max.apply(null, pts.concat([need])), lo = Math.min.apply(null, pts.concat([0, need]));
-        const W = 360, H = 96, L = 26, R = 8, T = 8, B = 16;
+        const W = 360, H = 120, L = 26, R = 10, T = 16, B = 18;
         const x = i => L + (W - L - R) * i / (pts.length - 1);
         const y = v => T + (H - T - B) * (1 - (v - lo) / ((hi - lo) || 1));
         const col = { ok: '#059669', tight: '#B45309', fail: '#DC2626', unknown: '#6B7280' }[res.verdict] || '#059669';
         const line = pts.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
         const area = line + ' L' + x(pts.length - 1).toFixed(1) + ' ' + y(lo).toFixed(1) + ' L' + x(0).toFixed(1) + ' ' + y(lo).toFixed(1) + ' Z';
         const fmt = v => Math.round(v);
+        const f1 = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
+        const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
         const last = pts.length - 1;
-        return '<svg class="whc-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Напор по пути воды: от насоса до самого слабого прибора">'
+        const mains = !!res.pump.mains;
+        // Подпись к каждой точке: заголовок и строка «что случилось с напором»
+        const tips = st.map((s, i) => i === 0
+            ? { t: s.title, d: 'Отсюда вода начинает путь. Напор на старте — ' + f1(s.H) + ' м (≈ ' + f1(s.H / 10) + ' бар).' }
+            : { t: s.title, d: (s.dH > 0.05 ? 'На этой ступени теряется ' + f1(s.dH) + ' м напора' : 'Здесь напор почти не падает') + ' — дальше остаётся ' + f1(s.H) + ' м.' });
+        if (w) {
+            const ok = w.have >= w.need;
+            tips.push({ t: 'Самый слабый прибор: «' + w.title + '» (' + w.zone + ', ' + (w.line === 'hot' ? 'ГВС' : 'ХВС') + ')',
+                d: 'До него доходит ' + f1(w.have) + ' м, ему нужно не меньше ' + f1(w.need) + ' м — ' + (ok ? 'запас ' + f1(w.have - w.need) + ' м, хватает.' : 'не хватает ' + f1(w.need - w.have) + ' м.') });
+        }
+        const dots = pts.map((v, i) => {
+            const tp = tips[i];
+            if (!tp) return '';
+            const end = i === 0 || i === last;
+            return '<g class="whc-pt" tabindex="0" data-t="' + esc(tp.t) + '" data-d="' + esc(tp.d) + '" '
+                + 'onmouseenter="app.whcChartTip(this)" onfocus="app.whcChartTip(this)" onclick="app.whcChartTip(this)">'
+                + '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="9" fill="transparent"/>'
+                + '<circle class="whc-dot" cx="' + x(i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="' + (end ? 3.5 : 2.5) + '" fill="' + (end ? col : 'var(--surface, #fff)') + '" stroke="' + col + '" stroke-width="1.5"/></g>';
+        }).join('');
+        const dflt = 'Нажмите или наведите на точку на графике — покажу, что происходит с напором на этом участке.';
+        const key = '<div class="whc-tip">' + esc(dflt) + '</div>'
+            + '<div class="whc-key"><span><i class="whc-k-line" style="background:' + col + '"></i>напор воды в трубе</span>'
+            + '<span><i class="whc-k-dash"></i>минимум, при котором прибор работает</span></div>'
+            + '<div class="whc-how">Слева — откуда идёт вода, справа — самый слабый прибор. На трубах, узле и подъёме напор теряется, поэтому линия идёт вниз. Пока в конце она выше красной пунктирной — приборам хватает. 10 м напора ≈ 1 бар.</div></div>';
+        return '<div class="whc-cbox"><div class="whc-ctitle">Куда уходит напор по дороге воды</div>'
+            + '<svg class="whc-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Напор по пути воды: от ' + (mains ? 'сети' : 'насоса') + ' до самого слабого прибора">'
             + '<path d="' + area + '" fill="' + col + '" fill-opacity=".10"/>'
             + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0).toFixed(1) + '" y2="' + y(0).toFixed(1) + '" stroke="currentColor" stroke-opacity=".25"/>'
             + (need > 0 ? '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(need).toFixed(1) + '" y2="' + y(need).toFixed(1) + '" stroke="#DC2626" stroke-dasharray="4 3"/><text x="' + (W - R) + '" y="' + (y(need) - 3).toFixed(1) + '" text-anchor="end" font-size="9" fill="#DC2626">минимум ' + fmt(need) + ' м</text>' : '')
             + '<path d="' + line + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round"/>'
-            + '<circle cx="' + x(0).toFixed(1) + '" cy="' + y(pts[0]).toFixed(1) + '" r="3" fill="' + col + '"/><circle cx="' + x(last).toFixed(1) + '" cy="' + y(pts[last]).toFixed(1) + '" r="3" fill="' + col + '"/>'
-            + '<text x="' + (x(0) + 5).toFixed(1) + '" y="' + (y(pts[0]) + 3).toFixed(1) + '" font-size="9" fill="currentColor">' + fmt(pts[0]) + ' м</text>'
-            + '<text x="' + (x(last) - 5).toFixed(1) + '" y="' + (y(pts[last]) - 6).toFixed(1) + '" text-anchor="end" font-size="9" fill="currentColor">' + fmt(pts[last]) + ' м</text>'
-            + '<text x="' + L + '" y="' + (H - 3) + '" font-size="9" fill="currentColor" fill-opacity=".6">' + (res.pump.mains ? 'сеть' : 'насос') + '</text>'
-            + '<text x="' + (W - R) + '" y="' + (H - 3) + '" text-anchor="end" font-size="9" fill="currentColor" fill-opacity=".6">самый слабый прибор</text></svg>';
+            + dots
+            + '<text x="' + (x(0) + 6).toFixed(1) + '" y="' + (y(pts[0]) - 6).toFixed(1) + '" font-size="9" fill="currentColor">' + fmt(pts[0]) + ' м</text>'
+            + '<text x="' + (x(last) - 6).toFixed(1) + '" y="' + (y(pts[last]) - 6).toFixed(1) + '" text-anchor="end" font-size="9" fill="currentColor">' + fmt(pts[last]) + ' м</text>'
+            + '<text x="' + L + '" y="' + (H - 4) + '" font-size="9" fill="currentColor" fill-opacity=".6">' + (mains ? 'сеть' : 'насос') + '</text>'
+            + '<text x="' + (W - R) + '" y="' + (H - 4) + '" text-anchor="end" font-size="9" fill="currentColor" fill-opacity=".6">самый слабый прибор</text></svg>'
+            + key;
+    },
+
+    /** Подсказка к точке графика напора воды: заполняет строку под графиком, точку подсвечивает. */
+    whcChartTip: function (g) {
+        const box = g && g.closest ? g.closest('.whc-cbox') : null;
+        if (!box) return;
+        const tip = box.querySelector('.whc-tip');
+        if (tip) {
+            tip.textContent = '';
+            const b = document.createElement('b');
+            b.textContent = g.getAttribute('data-t') || '';
+            tip.appendChild(b);
+            tip.appendChild(document.createElement('br'));
+            tip.appendChild(document.createTextNode(g.getAttribute('data-d') || ''));
+            tip.classList.add('whc-tip-on');
+        }
+        box.querySelectorAll('.whc-pt.whc-sel').forEach(e => e.classList.remove('whc-sel'));
+        g.classList.add('whc-sel');
     },
 
     toggleWaterHydroCard: function () {
@@ -50635,29 +50686,61 @@ const app = {
         this.saveState(); this.syncUI(); this.render();
     },
 
-    /** Экранный контейнер карточки воды: в схеме на новой строке под карточкой отопления, без схемы — блоком над сметой. */
+    /**
+     * Экранный контейнер карточки воды. Сначала — блоком над сметой (запасное место); если в смете есть раздел
+     * водоснабжения, relocateWaterHydroBox переносит его туда, где вода: карточка про воду, а не про котельную.
+     */
     placeWaterHydroBox: function () {
         const old = document.getElementById('water_hydro_side');
         if (old) old.remove();
         if (this.state.viewMode !== 'equipment') return;
         const box = document.createElement('div');
         box.id = 'water_hydro_side';
-        const scheme = document.getElementById('dynamic_scheme');
-        if (scheme) { box.className = 'hc-side hc-water'; scheme.appendChild(box); return; }
         const wrap = document.querySelector('.table-responsive');
         if (!wrap || !wrap.parentNode) return;
         box.className = 'hc-solo';
         wrap.parentNode.insertBefore(box, wrap);
     },
 
+    /**
+     * Переносит карточку «Проверка водоснабжения» в раздел водоснабжения: под первую из его схем
+     * (схема раздела «5.1», иначе схема узла ввода «6.»), а если схем нет или они выключены — строкой под заголовком раздела.
+     * Раздела воды в смете нет — остаётся там, где поставила placeWaterHydroBox. Зовётся из render() после вставки схем.
+     */
+    relocateWaterHydroBox: function () {
+        const box = document.getElementById('water_hydro_side');
+        if (!box) return;
+        const area = document.getElementById('print-area');
+        if (!area) return;
+        const row = ['water_scheme_row', 'hvs_node_scheme_row'].map(id => area.querySelector('#' + id)).find(Boolean);
+        if (!row) {
+            const sec = Array.from(area.querySelectorAll('tr.row-sec')).find(tr => {
+                if (tr.classList.contains('disabled-section')) return false;
+                const t = ((tr.querySelector('.row-sec-title') || {}).dataset || {}).title || '';
+                return t.startsWith('5.1.') || t.startsWith('5. Внутреннее водоснабжение');
+            });
+            if (!sec) return;
+            const cells = sec.closest('table').querySelector('tr');
+            sec.insertAdjacentHTML('afterend', '<tr id="water_hydro_row" class="scheme-row"><td colspan="' + ((cells && cells.cells.length) || sec.cells.length || 8) + '"></td></tr>');
+            const td = sec.nextElementSibling.firstElementChild;
+            box.className = 'hc-solo hc-in-table';
+            td.appendChild(box);
+            return;
+        }
+        box.className = 'hc-solo hc-in-table';
+        row.firstElementChild.appendChild(box);
+    },
+
     syncWaterHydro: function () {
         const box = document.getElementById('water_hydro_side');
         if (!box) return;
+        const tr = box.closest('#water_hydro_row');
         try {
             const html = this.waterHydroHtml(this.waterHydroCheck(), false);
             box.innerHTML = html;
             box.style.display = html ? '' : 'none';
-        } catch (e) { box.innerHTML = ''; box.style.display = 'none'; }
+            if (tr) tr.style.display = html ? '' : 'none';
+        } catch (e) { box.innerHTML = ''; box.style.display = 'none'; if (tr) tr.style.display = 'none'; }
     },
 
     // Плашка раздела «6. Узел ввода ХВС»: хватает ли ввода 3/4" на расчётный расход.
@@ -55604,7 +55687,7 @@ const app = {
 
         // Полный сброс данных расчета
         this.state = {
-            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
+            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: false, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
             autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null },
             // ВОЗВРАЩАЕМ АВТОРИЗАЦИЮ И ТАРИФ НА МЕСТО
             tgUser: currentTgUser,
@@ -93984,6 +94067,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             hdrRow.insertAdjacentHTML(atSec ? 'afterend' : 'beforebegin',
                 `<tr id="${rowId}" class="scheme-row"><td colspan="${cols}">${html}</td></tr>`);
         });
+        // Карточка «Проверка водоснабжения» — в раздел воды, под его первую схему
+        this.relocateWaterHydroBox();
         // Рамку схем считаем после вставки: до неё колонки таблицы ещё не той
         // ширины, а схемы уже в документе и подхватят переменные сразу.
         this.syncSchemeBox();
@@ -94979,6 +95064,7 @@ function prepareForPrint() {
             // Карточка гидравлики печатается своим листом (шаг 3б), а не внутри таблицы сметы
             const eqHydro = eqClone.querySelector('#hydro_check_side'); if (eqHydro) eqHydro.remove();
             const eqWater = eqClone.querySelector('#water_hydro_side'); if (eqWater) eqWater.remove();
+            const eqWaterRow = eqClone.querySelector('#water_hydro_row'); if (eqWaterRow) eqWaterRow.remove();
             // В КП из всех схем идут только схема котельной (отдельным листом, шаг 3) и
             // раскладка радиаторов и тёплого пола по плану (отдельным разделом, шаг 2б, как
             // в ссылке). Остальные схемы-строки таблицы — автоматика, узлы, вода — не печатаем.
@@ -95007,6 +95093,7 @@ function prepareForPrint() {
             if (worksScheme) worksScheme.remove();
             const worksHydro = worksClone.querySelector('#hydro_check_side'); if (worksHydro) worksHydro.remove();
             const worksWater = worksClone.querySelector('#water_hydro_side'); if (worksWater) worksWater.remove();
+            const worksWaterRow = worksClone.querySelector('#water_hydro_row'); if (worksWaterRow) worksWaterRow.remove();
             let wTabs = worksClone.querySelector('.main-view-tabs');
             if (wTabs) wTabs.style.display = 'none';
 
