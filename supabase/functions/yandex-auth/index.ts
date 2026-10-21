@@ -30,6 +30,7 @@ const ALLOWED_APP_REDIRECTS = [
 const ALLOWED_ORIGINS = [
   "https://heatcalc.ru",
   "https://www.heatcalc.ru",
+  "https://new.heatcalc.ru",
   "https://terem24.github.io",
   "http://localhost:8080",
   "http://127.0.0.1:8080",
