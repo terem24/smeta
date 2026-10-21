@@ -14615,24 +14615,6 @@ const app = {
         container.innerHTML = `
             <div class="lk-section-head"><div><h4>Тариф</h4><div class="lk-sub">Что доступно сейчас и что даёт Профи</div></div></div>
             <div style="margin-bottom:14px;">${statusCard}</div>
-            <div class="lk-card" style="margin-bottom:14px;">
-                <div class="lk-setting">
-                    <div class="lk-setting-text">
-                        <b>Подбирать бухты по всей смете</b>
-                        <span>Одинаковые трубы из всех разделов складываются в общий подбор: меньше обрезков. Остаток бухты виден на экране и не попадает в печать и КП. По умолчанию включено на Профи.</span>
-                        <span style="color:var(--text-main);">${(() => {
-                            const st = this._poolStats;
-                            if (!st) return 'Откройте смету с трубами: здесь появится, сколько это экономит.';
-                            if (!(st.unM > 0)) return 'В текущей смете нет бухт металлопластика, экономии нет.';
-                            const eco = st.metres > 0
-                                ? `экономия <b>${Math.round(st.metres)} м</b> и <b>${this.formatCurrencyAmount(st.rub)}</b>`
-                                : 'экономии нет: здесь уже покупается минимум бухт';
-                            return (this.poolCoilsOn() ? 'Сейчас включено: ' : 'Сейчас выключено. Включение даёт: ') + `в текущей смете ${eco}.`;
-                        })()}</span>
-                    </div>
-                    <label class="switch"><input type="checkbox" ${this.poolCoilsOn() ? 'checked' : ''} onchange="app.setPoolCoils(this.checked)"><span class="slider"></span></label>
-                </div>
-            </div>
             <div class="lk-card-label" style="margin:0 0 8px;">Что даёт тариф Профи</div>
             <div class="lk-card">
                 ${perks.map(([icon, title, text]) => `
@@ -16287,6 +16269,26 @@ const app = {
         const p = this.getPrefs();
         const locked = [];
         let html = `<div class="lk-section-head"><div><h4>Любимые материалы</h4><div class="lk-sub">Что подставлять в новую смету по умолчанию. «Авто» — решает калькулятор. Ручной выбор в смете главнее.</div></div></div>`;
+        html += `<div class="lk-subhead">Подбор труб</div>
+            <div class="lk-card">
+                <div class="lk-setting">
+                    <div class="lk-setting-text">
+                        <b>Подбирать бухты по всей смете</b>
+                        <span>Одинаковые трубы из всех разделов складываются в общий подбор: меньше обрезков. Остаток бухты виден на экране и не попадает в печать и КП. По умолчанию включено на Профи.</span>
+                        <span style="color:var(--text-main);">${(() => {
+                            const st = this._poolStats;
+                            if (!st) return 'Откройте смету с трубами: здесь появится, сколько это экономит.';
+                            if (!(st.unM > 0)) return 'В текущей смете нет бухт металлопластика, экономии нет.';
+                            const eco = st.metres > 0
+                                ? `экономия <b>${Math.round(st.metres)} м</b> и <b>${this.formatCurrencyAmount(st.rub)}</b>`
+                                : 'экономии нет: здесь уже покупается минимум бухт';
+                            return (this.poolCoilsOn() ? 'Сейчас включено: ' : 'Сейчас выключено. Включение даёт: ') + `в текущей смете ${eco}.`;
+                        })()}</span>
+                    </div>
+                    <label class="switch"><input type="checkbox" ${this.poolCoilsOn() ? 'checked' : ''} onchange="app.setPoolCoils(this.checked)"><span class="slider"></span></label>
+                </div>
+            </div>
+        `;
         this.PREF_DEFS.forEach(g => {
             html += `<div class="lk-subhead">${g.g}</div><div class="lk-list">`;
             g.items.forEach(it => {
