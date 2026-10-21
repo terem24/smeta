@@ -193,8 +193,8 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=5.49">
-    <link rel="stylesheet" href="hydro_check.css?v=1.12">
+    <link rel="stylesheet" href="style.css?v=5.52">
+    <link rel="stylesheet" href="hydro_check.css?v=1.13">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.45" defer></script>
@@ -226,12 +226,12 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.6" defer></script>
-    <script src="app.js?v=13.54" defer></script>
+    <script src="app.js?v=13.60" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
     <script src="session_track.js?v=1.2" defer></script>
-    <script src="tour.js?v=3.8" defer></script>
+    <script src="tour.js?v=4.1" defer></script>
     <!-- Подсказка «Смета за минуту» тем, кто заходит не первый раз и ничего не
          посчитал. После tour.js: берёт у обучения место баннера cookie. -->
     <script src="idle_hint.js?v=1.6" defer></script>
@@ -239,7 +239,7 @@
          векторный композитор, что рисует лист схемы в проекте, поэтому нужен
          и движок листов (рамка/штамп из него не берутся, только текст). -->
     <script src="project_sheets.js?v=4.28" defer></script>
-    <script src="project_scheme.js?v=4.79" defer></script>
+    <script src="project_scheme.js?v=4.80" defer></script>
     <!-- Укладка тёплого пола по планам этажей. В калькуляторе нужна не ради
          листов, а ради сметы: длину трубы и число выходов коллектора берём
          из нарисованных петель (projectPlans.floorLoops). -->
@@ -578,6 +578,42 @@
             })();
         </script>
     </div>
+    <!-- Страховка от вечной загрузки: если app.init() упал на чьих-то сохранённых
+         данных, строка с прелоадером в app.js до скрытия не доходит, и человек
+         видит «Загрузка калькулятора» бесконечно, без единого слова о причине.
+         Через 15 с снимаем завесу и показываем первую ошибку страницы. -->
+    <script>
+        (function () {
+            var firstErr = '';
+            window.addEventListener('error', function (e) {
+                if (!firstErr) firstErr = (e.message || 'ошибка') + (e.filename ? ' — ' + e.filename.split('/').pop() + ':' + e.lineno : '');
+            });
+            window.addEventListener('unhandledrejection', function (e) {
+                if (!firstErr) firstErr = String((e.reason && (e.reason.stack || e.reason.message)) || e.reason || 'ошибка').slice(0, 300);
+            });
+            setTimeout(function () {
+                var pre = document.getElementById('stout_preloader');
+                if (!pre || app_ready()) return;
+                pre.innerHTML = '<div style="max-width:420px;padding:0 20px;color:#E5E7EB;font:14px/1.5 system-ui,sans-serif;text-align:center">' +
+                    '<div style="font-weight:700;font-size:16px;margin-bottom:8px">Калькулятор загрузился с ошибкой</div>' +
+                    '<div style="color:#9CA3AF;font-size:12.5px;word-break:break-word;margin-bottom:16px"></div>' +
+                    '<button id="hc_fail_reset" style="background:#F97316;color:#fff;border:0;border-radius:8px;padding:10px 18px;font-weight:600;cursor:pointer;margin:0 6px 8px">Очистить кэш и перезагрузить</button>' +
+                    '<button id="hc_fail_hide" style="background:#374151;color:#fff;border:0;border-radius:8px;padding:10px 18px;font-weight:600;cursor:pointer;margin:0 6px 8px">Открыть как есть</button></div>';
+                pre.querySelector('div > div:nth-child(2)').textContent = firstErr;
+                document.getElementById('hc_fail_hide').onclick = function () { pre.remove(); };
+                document.getElementById('hc_fail_reset').onclick = function () {
+                    var done = function () { location.reload(); };
+                    try {
+                        var p = [];
+                        if (navigator.serviceWorker) p.push(navigator.serviceWorker.getRegistrations().then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); }));
+                        if (window.caches) p.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }));
+                        Promise.all(p).then(done, done);
+                    } catch (_) { done(); }
+                };
+            }, 15000);
+            function app_ready() { return typeof app !== 'undefined' && app.isAppReady && !document.getElementById('stout_preloader'); }
+        })();
+    </script>
     <div id="page_scale_wrapper">
         <header class="site-header">
             <div id="header_fill_bar" class="header-fill-bar no-print" style="display:none;" title="Примерная оценка укомплектованности объекта оборудованием">

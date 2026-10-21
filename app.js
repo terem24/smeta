@@ -1187,7 +1187,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: true, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, mainsBar: 3, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', pumpRadMode: 'auto', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: false, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, mainsBar: 3, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', pumpRadMode: 'auto', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
     lastSavedStateString: "",
 
     get currentUser() {
@@ -23299,6 +23299,26 @@ const app = {
         this.loadAdminData(0);
     },
 
+    // «Распознал и не сохранил»: в архиве распознаваний есть накладные, а среди сохранённых
+    // смет нет ни одной с отметкой from_recognition. Условие то же, что у оранжевой
+    // строки «Распознано» в списке. Архив тянется отдельно (ensureRecognitionCounts) —
+    // ждём его до восьми секунд; не пришёл — отбор невозможен, список не режем.
+    filterRecLost: async function (users) {
+        this.ensureRecognitionCounts();
+        for (let i = 0; i < 40 && !this._recCounts; i++) await new Promise(r => setTimeout(r, 200));
+        const box = this._recCounts;
+        if (!box || box.error || box.serverOld) return users;
+        const withDocs = users.filter(u => { const st = this.recognitionStatsFor(u); return st && st.docs > 0; });
+        const kept = new Set();
+        const ids = withDocs.map(u => String(u.id));
+        for (let i = 0; i < ids.length; i += 100) {
+            const r = await supabaseClient.from('estimates').select('user_id, from_recognition:calc_data->>from_recognition').in('user_id', ids.slice(i, i + 100));
+            if (r.error) throw r.error;
+            (r.data || []).forEach(e => { if (e.from_recognition === 'true' || e.from_recognition === true) kept.add(String(e.user_id)); });
+        }
+        return withDocs.filter(u => !kept.has(String(u.id)));
+    },
+
     filterIdleVisitors: async function (users) {
         if (!users.length) return users;
         const ids = users.map(u => String(u.id));
@@ -23549,6 +23569,11 @@ const app = {
         // «Ходит, но не считает» — половину условия (3+ визита) знает сама база,
         // вторую половину (ни одного расчёта) досчитывает filterIdleVisitors.
         if (filters.idle === 'yes') query = query.gte('sess_visits', this.IDLE_MIN_VISITS);
+        // «Не заходили N дней»: вход старше порога либо входа не было вовсе
+        const inactiveDays = parseInt(filters.inactive, 10);
+        if (inactiveDays > 0) {
+            query = query.or(`last_visited.is.null,last_visited.lt.${new Date(Date.now() - inactiveDays * 864e5).toISOString()}`);
+        }
         // Обучение: 'no' — не прошли до конца, 'yes' — прошли (users.tour_done_at, см. tour.js)
         if (filters.tour === 'no') query = query.is('tour_done_at', null);
         else if (filters.tour === 'yes') query = query.not('tour_done_at', 'is', null);
@@ -23960,7 +23985,9 @@ const app = {
             suspect: document.getElementById('admin_filter_suspect')?.value || 'all',
             idle: document.getElementById('admin_filter_idle')?.value || 'all',
             tour: document.getElementById('admin_filter_tour')?.value || 'all',
-            device: document.getElementById('admin_filter_device')?.value || 'all'
+            device: document.getElementById('admin_filter_device')?.value || 'all',
+            inactive: document.getElementById('admin_filter_inactive')?.value || 'all',
+            reclost: document.getElementById('admin_filter_reclost')?.value || 'all'
         };
 
         const estSearchInputBefore = document.getElementById('admin_est_search_input');
@@ -24005,6 +24032,9 @@ const app = {
             // считается на клиенте по журналу визитов, база о нём не знает.
             const deviceFilter = (this._pendingAdminFilters && this._pendingAdminFilters.device) || 'all';
             const isDeviceFilter = deviceFilter !== 'all';
+            // «Распознал, но не сохранил»: архив распознаваний лежит на Beget, сметы — в базе,
+            // поэтому отбор клиентский и список нужен целиком.
+            const isRecLostFilter = ((this._pendingAdminFilters && this._pendingAdminFilters.reclost) || 'all') === 'yes';
 
             if (sortType === 'login_desc') {
                 query = query
@@ -24043,7 +24073,7 @@ const app = {
             // Запрос шлём до двух раз: на нестабильной сети (другие ноутбуки, VPN, расширения)
             // первый ответ бывает пустым или обрывается, а со второго раза приходит список.
             const runUsersQuery = async () => {
-                const wholeList = isClientSort || isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter;
+                const wholeList = isClientSort || isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter || isRecLostFilter;
                 const r = wholeList ? await query : await query.range(offset, offset + this._adminPageSize - 1);
                 if (r.error) throw r.error;
                 return r;
@@ -24083,6 +24113,9 @@ const app = {
             if (isDeviceFilter) {
                 users = await this.filterByDevice(users, deviceFilter);
             }
+            if (isRecLostFilter) {
+                users = await this.filterRecLost(users);
+            }
             // Сколько среди отобранных продавцов и сколько монтажников — для карточки
             // «Пользователей». Один человек может отметить обе сферы, поэтому числа
             // не обязаны складываться в общее. Когда отбор шёл на клиенте, список
@@ -24090,7 +24123,7 @@ const app = {
             // лёгких запроса-счётчика с теми же фильтрами, что и у таблицы.
             let sellersCount = 0, installersCount = 0;
             const hasActivity = (u, word) => (u.activity_types || []).some(a => String(a).toLowerCase().indexOf(word) !== -1);
-            if (isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter) {
+            if (isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter || isRecLostFilter) {
                 totalUsers = users.length;
                 sellersCount = users.filter(u => hasActivity(u, 'продав')).length;
                 installersCount = users.filter(u => hasActivity(u, 'монтаж')).length;
@@ -26601,7 +26634,13 @@ const app = {
                 const headRows = t.tHead ? t.tHead.rows : null;
                 if (!headRows || !headRows.length) return;
                 const heads = [...headRows[headRows.length - 1].cells]
-                    .map(th => (th.textContent || '').replace(/[▲▼↕]/g, '').trim());
+                    .map(th => {
+                        // У столбцов доступа в шапке два текста — слово и значок (.ad-acc-short);
+                        // подписью ячейки берём только слово, иначе «Сканы🔍» дублирует значок
+                        const c = th.cloneNode(true);
+                        c.querySelectorAll('.ad-acc-short').forEach(n => n.remove());
+                        return (c.textContent || '').replace(/[▲▼↕]/g, '').trim();
+                    });
                 [...t.tBodies].forEach(tb => [...tb.rows].forEach(tr => {
                     let col = 0;
                     [...tr.cells].forEach(td => {
@@ -26996,6 +27035,8 @@ const app = {
             idle: 'all',
             tour: 'all',
             device: 'all',
+            inactive: 'all',
+            reclost: 'all',
             search: ''
         };
         const tariffFilter = filters.tariff;
@@ -27008,6 +27049,8 @@ const app = {
         const idleFilter = filters.idle || 'all';
         const tourFilter = filters.tour || 'all';
         const deviceFilter = filters.device || 'all';
+        const inactiveFilter = filters.inactive || 'all';
+        const recLostFilter = filters.reclost || 'all';
         const sortArrow = (key) => sortType === key + '_asc' ? ' ▲' : (sortType === key + '_desc' ? ' ▼' : '');
         // Проектирование: переключатели работают, только если на сервере лежит
         // обновлённый recognize_archive.php (см. designAccessSupported).
@@ -27022,7 +27065,7 @@ const app = {
         // Быстрые срезы и сохранённые виды списка: девять фильтров в одну строку превращали
         // экран в панель самолёта, а нужные сочетания приходилось выставлять заново.
         const escH = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        const curF = { tariff: tariffFilter, expiry: expiryFilter, region: regionFilter, dist: distFilter, activity: activityFilter, recog: recogFilter, suspect: suspectFilter, idle: idleFilter, tour: tourFilter, device: deviceFilter };
+        const curF = { tariff: tariffFilter, expiry: expiryFilter, region: regionFilter, dist: distFilter, activity: activityFilter, recog: recogFilter, suspect: suspectFilter, idle: idleFilter, tour: tourFilter, device: deviceFilter, inactive: inactiveFilter, reclost: recLostFilter };
         const nonDefault = {};
         Object.keys(curF).forEach(k => { if (curF[k] !== this.USERS_FILTER_DEFAULTS[k]) nonDefault[k] = curF[k]; });
         const activeCount = Object.keys(nonDefault).length;
@@ -27125,6 +27168,16 @@ const app = {
                                 <option value="desktop" ${deviceFilter === 'desktop' ? 'selected' : ''}>💻 Компьютер</option>
                                 <option value="mobile" ${deviceFilter === 'mobile' ? 'selected' : ''}>📱 Мобильный (сайт)</option>
                                 <option value="app" ${deviceFilter === 'app' ? 'selected' : ''}>📲 Приложение</option>
+                            </select>
+                            <select id="admin_filter_inactive" onchange="app.loadAdminData(0)" title="Последний вход давнее выбранного срока или входа не было вовсе" style="background: var(--surface); color: var(--text-main); border: 1px solid ${inactiveFilter !== 'all' ? '#D97706' : 'var(--border)'}; border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
+                                <option value="all" ${inactiveFilter === 'all' ? 'selected' : ''}>🕓 Вход: любой</option>
+                                <option value="7" ${inactiveFilter === '7' ? 'selected' : ''}>🕓 Не заходили 7+ дней</option>
+                                <option value="30" ${inactiveFilter === '30' ? 'selected' : ''}>🕓 Не заходили 30+ дней</option>
+                                <option value="90" ${inactiveFilter === '90' ? 'selected' : ''}>🕓 Не заходили 90+ дней</option>
+                            </select>
+                            <select id="admin_filter_reclost" onchange="app.loadAdminData(0)" title="Разбирал накладные распознаванием, но ни одной сметы из распознанного не сохранил" style="background: var(--surface); color: var(--text-main); border: 1px solid ${recLostFilter === 'yes' ? '#D97706' : 'var(--border)'}; border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
+                                <option value="all" ${recLostFilter === 'all' ? 'selected' : ''}>🔍 Распознавание: любое</option>
+                                <option value="yes" ${recLostFilter === 'yes' ? 'selected' : ''}>🔍 Распознал, не сохранил</option>
                             </select>
                             <select id="admin_filter_activity" onchange="app.loadAdminData(0)" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="all" ${activityFilter === 'all' ? 'selected' : ''}>Вся сфера деят-ти</option>
@@ -27346,7 +27399,7 @@ const app = {
 
             let cityText = u.city || 'Город не указан';
             let ipLoc = u.location || 'Неизвестно';
-            let locHTML = `<div style="font-size:10px;color:var(--text-sec); margin-top:2px;">📍 ${cityText}${u.region ? ', ' + u.region : ''} <span class="admin-ip-location" style="color: #888; font-size: 0.85em; margin-left:5px;">(IP: ${ipLoc})</span></div>`;
+            let locHTML = `<div style="font-size:10px;color:var(--text-sec); margin-top:2px;">📍 ${(u.region && u.region !== u.city) ? u.region : cityText} <span class="admin-ip-location" style="color: #888; font-size: 0.85em; margin-left:5px;">(IP: ${ipLoc})</span></div>`;
 
             let birthStr = u.birth_date ? new Date(u.birth_date).toLocaleDateString('ru-RU') : '';
             // Возраст: год минус год, и ещё минус один, если день рождения
@@ -27376,12 +27429,15 @@ const app = {
                 : (u.tour_known
                     ? `<span title="Обучение до конца не проходил. Включить принудительно: «Тарифы → Обучение» или поле «Принудительно» в карточке человека" style="cursor:help; background:var(--text-sec, #6B7280)22; color:var(--text-sec, #6B7280); font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-right:3px;">🎓 обучение: нет</span>`
                     : '');
-            const stageHTML = tourDoneChip + (stuckPromo
+            // Сигналы (не ввёл промокод, анкета не заполнена) видны в строке всегда, а дата
+            // рождения, обучение и бейджи сферы уходят под «▾» — см. .ad-more / .ad-sig в style.css
+            const stageHTML = (stuckPromo
                 ? stageChip('⛔ Не ввёл промокод', 'Вошёл, но калькулятор закрыт окном «Нужен промокод магазина»: промокод не ввёл, анкету не видел', 'var(--c-warn, #D97706)')
                 : '') + (profileMissing.length
                 ? stageChip('📝 Анкета не заполнена', 'Не заполнено: ' + profileMissing.join(', '), 'var(--text-sec, #6B7280)')
                 : '');
-            let extraHTML = (birthStr || activityBadges || stageHTML) ? `<div style="font-size:10px; color:var(--text-sec); margin-top:2px;">${birthStr ? '🎂 ' + birthStr + (ageStr ? ' · ' + ageStr : '') + ' ' : ''}${activityBadges}${stageHTML}</div>` : '';
+            let extraHTML = (birthStr || tourDoneChip) ? `<div style="font-size:10px; color:var(--text-sec); margin-top:2px;">${birthStr ? '🎂 ' + birthStr + (ageStr ? ' · ' + ageStr : '') + ' ' : ''}${tourDoneChip}</div>` : '';
+            const sigHTML = (activityBadges || stageHTML) ? `<span class="ad-sig" style="display:block; margin-top:2px; font-size:10px;">${activityBadges}${stageHTML}</span>` : '';
 
             // Анкета не похожа на настоящую — помечаем строку. Не блокирует ничего:
             // решение по такой учётке принимает человек, см. suspiciousProfileFlags.
@@ -27460,13 +27516,13 @@ const app = {
                         <!-- Нумерация сквозная по всему списку, а не по странице: на второй
                              странице отсчёт снова с 1 сбивал с толку (44 записи → 1…44) -->
                         <td class="ad-c-num" style="color:var(--text-sec);">${this._adminOffset + i + 1}</td>
-                        <td class="ad-c-name"><div style="display:flex; align-items:center;">${avatarImg} <div><b style="font-size:13px;">${suspectMark}<span class="ad-name-full">${name}</span><span class="ad-name-short">${nameShort}</span>${tourMark}</b><br><span style="font-size:11px;color:var(--text-sec);">${phone}</span><span class="ad-more">${locHTML}${extraHTML}</span></div></div>${noDistWarn}</td>
+                        <td class="ad-c-name"><div style="display:flex; align-items:center;">${avatarImg} <div><b style="font-size:13px;">${suspectMark}<span class="ad-name-full">${name}</span><span class="ad-name-short">${nameShort}</span>${tourMark}</b><br><span style="font-size:11px;color:var(--text-sec);">${phone}${u.city ? ' · ' + u.city : ''}</span>${sigHTML}<span class="ad-more">${locHTML}${extraHTML}</span></div></div>${noDistWarn}</td>
                         <!-- admin-cell-half: на телефоне карточка ставит помеченную
                              пару в один ряд по половине ширины (см. style.css).
                              Содержимое коротких и однотипных ячеек — сумма со
                              сметами, тариф с устройством, два переключателя
                              доступа — отдельной строки на каждую не стоило. -->
-                        <td class="admin-cell-half ad-c-stat"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount} | Ср.объект: ${u.avgArea} м²</span><span class="ad-more"><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${sessionLine}</span></span></td>
+                        <td class="admin-cell-half ad-c-stat"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span class="ad-short" style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount}${u.recStats && u.recStats.docs > 0 ? ` · <span style="color:${recLostColor};" title="Разобрано накладных распознаванием (в сметах: ${inBillTxt})">распозн. ${u.recStats.docs}</span>` : ''}</span><span class="ad-full" style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount} | Ср.объект: ${u.avgArea} м²</span><span class="ad-more"><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${sessionLine}</span></span></td>
                         <td class="admin-cell-half ad-c-tariff">${badge}<br class="ad-dev"><span class="ad-dev" style="font-size:10px;color:var(--text-sec);">${device}</span></td>
                         <td class="ad-c-dist" onclick="event.stopPropagation();">${distCell}</td>
                         ${showToggles ? `<td class="admin-cell-half ad-c-acc ad-c-rec" onclick="event.stopPropagation();" style="text-align:center;">${recCell}</td>
@@ -27476,9 +27532,12 @@ const app = {
                         <td class="admin-cell-actions" onclick="event.stopPropagation();" style="text-align:center; white-space:nowrap;">
                             <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
                                 <button class="admin-action-btn btn-msg" onclick="app.adminMessageUser('${u.id}', '${nameEscaped}')" title="Написать пользователю"><span class="btn-icon">💬</span><span class="btn-text"> Написать</span></button>
+                                <button class="admin-action-btn ad-menu-btn" onclick="app.toggleUserMenu(this)" title="Ещё: объекты, блокировка, удаление" aria-haspopup="true"><span class="btn-icon">⋯</span></button>
+                                <span class="ad-act-sec">
                                 <button class="admin-action-btn btn-obj" onclick="app.adminViewUserEstimates('${nameEscaped}')" title="Открыть его объекты"><span class="btn-icon">📁</span><span class="btn-text"> Объекты</span></button>
                                 <button class="admin-action-btn ${u.is_blocked ? 'btn-block-blocked' : 'btn-block-active'}" onclick="app.toggleUserBlocked('${u.id}', ${!u.is_blocked})" ${isViewer ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} title="${u.is_blocked ? 'Разблокировать пользователя' : 'Заблокировать пользователя'}"><span class="btn-icon">${u.is_blocked ? '🔓' : '🔒'}</span><span class="btn-text"> ${u.is_blocked ? 'Разблок' : 'Блок'}</span></button>
                                 <button class="admin-action-btn btn-del" onclick="app.deleteUserCompletely('${u.id}')" ${isViewer ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} title="Удалить учётку безвозвратно"><span class="btn-icon">🗑</span><span class="btn-text"> Удалить</span></button>
+                                </span>
                                 <button class="admin-action-btn ad-exp-btn" onclick="app.toggleUserRowOpen(this)" aria-expanded="false" title="Подробнее: дистрибьютор, статистика, блокировка и удаление"><span class="btn-icon">▾</span></button>
                             </div>
                         </td>
@@ -39071,6 +39130,10 @@ const app = {
     renderHvsNodeScheme: function () {
         const s = this.state;
         if (!s.waterInput) return '';
+        // На всех трёх листах ГОСТ счётчик нарисован и подписан. Без счётчика
+        // в смете лист врал бы, а дорисовать/стереть в нём нельзя — берём вид
+        // узла в сборе: кадры сделаны на каждое сочетание опций.
+        if (!s.waterMeter) return this.renderHvsNodeView();
         // Кранов на листах один или два, поэтому для сравнения приводим смету
         // к этому же диапазону: узел с тремя кранами всё равно ближе к листу
         // с двумя, а без крана — к листу с одним.
@@ -39997,14 +40060,17 @@ const app = {
         document.body.removeChild(link);
     },
     // ═══ Список пользователей: срезы, сохранённые виды, плотность, быстрый просмотр ═══
-    USERS_FILTER_DEFAULTS: { tariff: 'all', expiry: 'all', region: '', dist: 'all', activity: 'all', recog: 'all', suspect: 'all', idle: 'all', tour: 'all', device: 'all' },
-    USERS_FILTER_IDS: { tariff: 'admin_filter_tariff', expiry: 'admin_filter_expiry', region: 'admin_filter_region', dist: 'admin_filter_dist', activity: 'admin_filter_activity', recog: 'admin_filter_recog', suspect: 'admin_filter_suspect', idle: 'admin_filter_idle', tour: 'admin_filter_tour', device: 'admin_filter_device' },
+    USERS_FILTER_DEFAULTS: { tariff: 'all', expiry: 'all', region: '', dist: 'all', activity: 'all', recog: 'all', suspect: 'all', idle: 'all', tour: 'all', device: 'all', inactive: 'all', reclost: 'all' },
+    USERS_FILTER_IDS: { tariff: 'admin_filter_tariff', expiry: 'admin_filter_expiry', region: 'admin_filter_region', dist: 'admin_filter_dist', activity: 'admin_filter_activity', recog: 'admin_filter_recog', suspect: 'admin_filter_suspect', idle: 'admin_filter_idle', tour: 'admin_filter_tour', device: 'admin_filter_device', inactive: 'admin_filter_inactive', reclost: 'admin_filter_reclost' },
     USERS_SEGMENTS: [
         { id: 'all', label: 'Все', f: {} },
         { id: 'pro', label: 'Профи', f: { tariff: 'pro' } },
         { id: 'base', label: 'Базовые', f: { tariff: 'base' } },
         { id: 'expired', label: 'Срок истёк', f: { expiry: 'expired' } },
+        { id: 'paid', label: 'Платные', f: { tariff: 'pro_paid' } },
         { id: 'nodist', label: 'Без дистрибьютора', f: { dist: 'none' } },
+        { id: 'inactive7', label: 'Не заходили 7+ дней', f: { inactive: '7' } },
+        { id: 'reclost', label: 'Распознали и не сохранили', f: { reclost: 'yes' } },
         { id: 'idle', label: 'Ходят, но не считают', f: { idle: 'yes' } },
         { id: 'suspect', label: 'Сомнительные анкеты', f: { suspect: 'yes' } },
         { id: 'tournot', label: 'Не прошли обучение', f: { tour: 'no' } }
@@ -40073,6 +40139,28 @@ const app = {
         try { return localStorage.getItem('admin_users_dense') !== '0'; } catch (e) { return true; }
     },
     // Телефон, «Компактно»: раскрыть карточку — дистрибьютор, статистика, блокировка и удаление
+    // Компьютер: объекты, блокировка и удаление спрятаны в меню «⋯» — «Удалить» не должно лежать
+    // рядом с «Написать». Меню рисуется поверх таблицы (position: fixed), чтобы его не обрезала
+    // прокрутка списка; закрывается кликом в сторону и прокруткой.
+    closeUserMenus: function () {
+        document.querySelectorAll('.ad-act-sec.open').forEach(m => m.classList.remove('open'));
+    },
+    toggleUserMenu: function (btn) {
+        const wrap = btn.parentNode && btn.parentNode.querySelector('.ad-act-sec');
+        if (!wrap) return;
+        const was = wrap.classList.contains('open');
+        this.closeUserMenus();
+        if (was) return;
+        if (!this._userMenuBound) {
+            this._userMenuBound = true;
+            document.addEventListener('click', e => { if (!e.target.closest('.ad-menu-btn')) app.closeUserMenus(); }, true);
+            window.addEventListener('scroll', () => app.closeUserMenus(), true);
+        }
+        wrap.classList.add('open');
+        const r = btn.getBoundingClientRect();
+        wrap.style.top = Math.min(r.bottom + 4, window.innerHeight - wrap.offsetHeight - 8) + 'px';
+        wrap.style.left = Math.max(8, r.right - wrap.offsetWidth) + 'px';
+    },
     toggleUserRowOpen: function (btn) {
         const tr = btn.closest('tr');
         if (!tr) return;
@@ -50515,7 +50603,10 @@ const app = {
         return html + '</div></div>';
     },
 
-    /** График напора по ступеням пути воды: ломаная «напор после ступени», красная пунктирная — минимум у худшего прибора. */
+    /**
+     * График напора по ступеням пути воды: ломаная «напор после ступени», красная пунктирная — минимум у худшего прибора.
+     * Интерактивный: наведение/нажатие на точку показывает, что это за ступень, сколько на ней потеряно и сколько осталось.
+     */
     waterHydroChart: function (res) {
         const st = res.scenarios.design.trunk.stages;
         const w = res.worst;
@@ -50524,24 +50615,70 @@ const app = {
         if (pts.length < 3) return '';
         const need = w ? w.need : 0;
         const hi = Math.max.apply(null, pts.concat([need])), lo = Math.min.apply(null, pts.concat([0, need]));
-        const W = 360, H = 96, L = 26, R = 8, T = 8, B = 16;
+        const W = 360, H = 120, L = 26, R = 10, T = 16, B = 18;
         const x = i => L + (W - L - R) * i / (pts.length - 1);
         const y = v => T + (H - T - B) * (1 - (v - lo) / ((hi - lo) || 1));
         const col = { ok: '#059669', tight: '#B45309', fail: '#DC2626', unknown: '#6B7280' }[res.verdict] || '#059669';
         const line = pts.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
         const area = line + ' L' + x(pts.length - 1).toFixed(1) + ' ' + y(lo).toFixed(1) + ' L' + x(0).toFixed(1) + ' ' + y(lo).toFixed(1) + ' Z';
         const fmt = v => Math.round(v);
+        const f1 = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
+        const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
         const last = pts.length - 1;
-        return '<svg class="whc-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Напор по пути воды: от насоса до самого слабого прибора">'
+        const mains = !!res.pump.mains;
+        // Подпись к каждой точке: заголовок и строка «что случилось с напором»
+        const tips = st.map((s, i) => i === 0
+            ? { t: s.title, d: 'Отсюда вода начинает путь. Напор на старте — ' + f1(s.H) + ' м (≈ ' + f1(s.H / 10) + ' бар).' }
+            : { t: s.title, d: (s.dH > 0.05 ? 'На этой ступени теряется ' + f1(s.dH) + ' м напора' : 'Здесь напор почти не падает') + ' — дальше остаётся ' + f1(s.H) + ' м.' });
+        if (w) {
+            const ok = w.have >= w.need;
+            tips.push({ t: 'Самый слабый прибор: «' + w.title + '» (' + w.zone + ', ' + (w.line === 'hot' ? 'ГВС' : 'ХВС') + ')',
+                d: 'До него доходит ' + f1(w.have) + ' м, ему нужно не меньше ' + f1(w.need) + ' м — ' + (ok ? 'запас ' + f1(w.have - w.need) + ' м, хватает.' : 'не хватает ' + f1(w.need - w.have) + ' м.') });
+        }
+        const dots = pts.map((v, i) => {
+            const tp = tips[i];
+            if (!tp) return '';
+            const end = i === 0 || i === last;
+            return '<g class="whc-pt" tabindex="0" data-t="' + esc(tp.t) + '" data-d="' + esc(tp.d) + '" '
+                + 'onmouseenter="app.whcChartTip(this)" onfocus="app.whcChartTip(this)" onclick="app.whcChartTip(this)">'
+                + '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="9" fill="transparent"/>'
+                + '<circle class="whc-dot" cx="' + x(i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="' + (end ? 3.5 : 2.5) + '" fill="' + (end ? col : 'var(--surface, #fff)') + '" stroke="' + col + '" stroke-width="1.5"/></g>';
+        }).join('');
+        const dflt = 'Нажмите или наведите на точку на графике — покажу, что происходит с напором на этом участке.';
+        const key = '<div class="whc-tip">' + esc(dflt) + '</div>'
+            + '<div class="whc-key"><span><i class="whc-k-line" style="background:' + col + '"></i>напор воды в трубе</span>'
+            + '<span><i class="whc-k-dash"></i>минимум, при котором прибор работает</span></div>'
+            + '<div class="whc-how">Слева — откуда идёт вода, справа — самый слабый прибор. На трубах, узле и подъёме напор теряется, поэтому линия идёт вниз. Пока в конце она выше красной пунктирной — приборам хватает. 10 м напора ≈ 1 бар.</div></div>';
+        return '<div class="whc-cbox"><div class="whc-ctitle">Куда уходит напор по дороге воды</div>'
+            + '<svg class="whc-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Напор по пути воды: от ' + (mains ? 'сети' : 'насоса') + ' до самого слабого прибора">'
             + '<path d="' + area + '" fill="' + col + '" fill-opacity=".10"/>'
             + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0).toFixed(1) + '" y2="' + y(0).toFixed(1) + '" stroke="currentColor" stroke-opacity=".25"/>'
             + (need > 0 ? '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(need).toFixed(1) + '" y2="' + y(need).toFixed(1) + '" stroke="#DC2626" stroke-dasharray="4 3"/><text x="' + (W - R) + '" y="' + (y(need) - 3).toFixed(1) + '" text-anchor="end" font-size="9" fill="#DC2626">минимум ' + fmt(need) + ' м</text>' : '')
             + '<path d="' + line + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round"/>'
-            + '<circle cx="' + x(0).toFixed(1) + '" cy="' + y(pts[0]).toFixed(1) + '" r="3" fill="' + col + '"/><circle cx="' + x(last).toFixed(1) + '" cy="' + y(pts[last]).toFixed(1) + '" r="3" fill="' + col + '"/>'
-            + '<text x="' + (x(0) + 5).toFixed(1) + '" y="' + (y(pts[0]) + 3).toFixed(1) + '" font-size="9" fill="currentColor">' + fmt(pts[0]) + ' м</text>'
-            + '<text x="' + (x(last) - 5).toFixed(1) + '" y="' + (y(pts[last]) - 6).toFixed(1) + '" text-anchor="end" font-size="9" fill="currentColor">' + fmt(pts[last]) + ' м</text>'
-            + '<text x="' + L + '" y="' + (H - 3) + '" font-size="9" fill="currentColor" fill-opacity=".6">' + (res.pump.mains ? 'сеть' : 'насос') + '</text>'
-            + '<text x="' + (W - R) + '" y="' + (H - 3) + '" text-anchor="end" font-size="9" fill="currentColor" fill-opacity=".6">самый слабый прибор</text></svg>';
+            + dots
+            + '<text x="' + (x(0) + 6).toFixed(1) + '" y="' + (y(pts[0]) - 6).toFixed(1) + '" font-size="9" fill="currentColor">' + fmt(pts[0]) + ' м</text>'
+            + '<text x="' + (x(last) - 6).toFixed(1) + '" y="' + (y(pts[last]) - 6).toFixed(1) + '" text-anchor="end" font-size="9" fill="currentColor">' + fmt(pts[last]) + ' м</text>'
+            + '<text x="' + L + '" y="' + (H - 4) + '" font-size="9" fill="currentColor" fill-opacity=".6">' + (mains ? 'сеть' : 'насос') + '</text>'
+            + '<text x="' + (W - R) + '" y="' + (H - 4) + '" text-anchor="end" font-size="9" fill="currentColor" fill-opacity=".6">самый слабый прибор</text></svg>'
+            + key;
+    },
+
+    /** Подсказка к точке графика напора воды: заполняет строку под графиком, точку подсвечивает. */
+    whcChartTip: function (g) {
+        const box = g && g.closest ? g.closest('.whc-cbox') : null;
+        if (!box) return;
+        const tip = box.querySelector('.whc-tip');
+        if (tip) {
+            tip.textContent = '';
+            const b = document.createElement('b');
+            b.textContent = g.getAttribute('data-t') || '';
+            tip.appendChild(b);
+            tip.appendChild(document.createElement('br'));
+            tip.appendChild(document.createTextNode(g.getAttribute('data-d') || ''));
+            tip.classList.add('whc-tip-on');
+        }
+        box.querySelectorAll('.whc-pt.whc-sel').forEach(e => e.classList.remove('whc-sel'));
+        g.classList.add('whc-sel');
     },
 
     toggleWaterHydroCard: function () {
@@ -50561,29 +50698,61 @@ const app = {
         this.saveState(); this.syncUI(); this.render();
     },
 
-    /** Экранный контейнер карточки воды: в схеме на новой строке под карточкой отопления, без схемы — блоком над сметой. */
+    /**
+     * Экранный контейнер карточки воды. Сначала — блоком над сметой (запасное место); если в смете есть раздел
+     * водоснабжения, relocateWaterHydroBox переносит его туда, где вода: карточка про воду, а не про котельную.
+     */
     placeWaterHydroBox: function () {
         const old = document.getElementById('water_hydro_side');
         if (old) old.remove();
         if (this.state.viewMode !== 'equipment') return;
         const box = document.createElement('div');
         box.id = 'water_hydro_side';
-        const scheme = document.getElementById('dynamic_scheme');
-        if (scheme) { box.className = 'hc-side hc-water'; scheme.appendChild(box); return; }
         const wrap = document.querySelector('.table-responsive');
         if (!wrap || !wrap.parentNode) return;
         box.className = 'hc-solo';
         wrap.parentNode.insertBefore(box, wrap);
     },
 
+    /**
+     * Переносит карточку «Проверка водоснабжения» в раздел водоснабжения: под первую из его схем
+     * (схема раздела «5.1», иначе схема узла ввода «6.»), а если схем нет или они выключены — строкой под заголовком раздела.
+     * Раздела воды в смете нет — остаётся там, где поставила placeWaterHydroBox. Зовётся из render() после вставки схем.
+     */
+    relocateWaterHydroBox: function () {
+        const box = document.getElementById('water_hydro_side');
+        if (!box) return;
+        const area = document.getElementById('print-area');
+        if (!area) return;
+        const row = ['water_scheme_row', 'hvs_node_scheme_row'].map(id => area.querySelector('#' + id)).find(Boolean);
+        if (!row) {
+            const sec = Array.from(area.querySelectorAll('tr.row-sec')).find(tr => {
+                if (tr.classList.contains('disabled-section')) return false;
+                const t = ((tr.querySelector('.row-sec-title') || {}).dataset || {}).title || '';
+                return t.startsWith('5.1.') || t.startsWith('5. Внутреннее водоснабжение');
+            });
+            if (!sec) return;
+            const cells = sec.closest('table').querySelector('tr');
+            sec.insertAdjacentHTML('afterend', '<tr id="water_hydro_row" class="scheme-row"><td colspan="' + ((cells && cells.cells.length) || sec.cells.length || 8) + '"></td></tr>');
+            const td = sec.nextElementSibling.firstElementChild;
+            box.className = 'hc-solo hc-in-table';
+            td.appendChild(box);
+            return;
+        }
+        box.className = 'hc-solo hc-in-table';
+        row.firstElementChild.appendChild(box);
+    },
+
     syncWaterHydro: function () {
         const box = document.getElementById('water_hydro_side');
         if (!box) return;
+        const tr = box.closest('#water_hydro_row');
         try {
             const html = this.waterHydroHtml(this.waterHydroCheck(), false);
             box.innerHTML = html;
             box.style.display = html ? '' : 'none';
-        } catch (e) { box.innerHTML = ''; box.style.display = 'none'; }
+            if (tr) tr.style.display = html ? '' : 'none';
+        } catch (e) { box.innerHTML = ''; box.style.display = 'none'; if (tr) tr.style.display = 'none'; }
     },
 
     // Плашка раздела «6. Узел ввода ХВС»: хватает ли ввода 3/4" на расчётный расход.
@@ -55530,7 +55699,7 @@ const app = {
 
         // Полный сброс данных расчета
         this.state = {
-            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
+            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: false, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
             autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null },
             // ВОЗВРАЩАЕМ АВТОРИЗАЦИЮ И ТАРИФ НА МЕСТО
             tgUser: currentTgUser,
@@ -93913,6 +94082,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             hdrRow.insertAdjacentHTML(atSec ? 'afterend' : 'beforebegin',
                 `<tr id="${rowId}" class="scheme-row"><td colspan="${cols}">${html}</td></tr>`);
         });
+        // Карточка «Проверка водоснабжения» — в раздел воды, под его первую схему
+        this.relocateWaterHydroBox();
         // Рамку схем считаем после вставки: до неё колонки таблицы ещё не той
         // ширины, а схемы уже в документе и подхватят переменные сразу.
         this.syncSchemeBox();
@@ -94908,6 +95079,7 @@ function prepareForPrint() {
             // Карточка гидравлики печатается своим листом (шаг 3б), а не внутри таблицы сметы
             const eqHydro = eqClone.querySelector('#hydro_check_side'); if (eqHydro) eqHydro.remove();
             const eqWater = eqClone.querySelector('#water_hydro_side'); if (eqWater) eqWater.remove();
+            const eqWaterRow = eqClone.querySelector('#water_hydro_row'); if (eqWaterRow) eqWaterRow.remove();
             // В КП из всех схем идут только схема котельной (отдельным листом, шаг 3) и
             // раскладка радиаторов и тёплого пола по плану (отдельным разделом, шаг 2б, как
             // в ссылке). Остальные схемы-строки таблицы — автоматика, узлы, вода — не печатаем.
@@ -94936,6 +95108,7 @@ function prepareForPrint() {
             if (worksScheme) worksScheme.remove();
             const worksHydro = worksClone.querySelector('#hydro_check_side'); if (worksHydro) worksHydro.remove();
             const worksWater = worksClone.querySelector('#water_hydro_side'); if (worksWater) worksWater.remove();
+            const worksWaterRow = worksClone.querySelector('#water_hydro_row'); if (worksWaterRow) worksWaterRow.remove();
             let wTabs = worksClone.querySelector('.main-view-tabs');
             if (wTabs) wTabs.style.display = 'none';
 

@@ -3650,10 +3650,6 @@
       t: 'Насосная группа со смесителем × ' + tc.mixCount,
       s: cut(nm.mixGroup || 'узел тёплого пола', 44) + ' — температуру держит термостатическая головка'
     });
-    if (onBlocks.length) offList.push({
-      t: 'Блоки расширения ' + (f.blocks && f.blocks.n44 ? 'ZE-44 × ' + f.blocks.n44 : '') + (f.blocks && f.blocks.n22 ? (f.blocks.n44 ? ' · ' : '') + 'ZE-22 × ' + f.blocks.n22 : '') + ' (RS-485)',
-      s: cut(onBlocks.map(function (a) { return a.label; }).join(', '), 70) + ' — клеммы блока по его паспорту'
-    });
     var ufh = items.ufh || null;
     if (ufh && (ufh.blocks || ufh.stats || ufh.servos)) offList.push({
       t: 'Автоматика радиаторов и тёплого пола (раздел 4.5)',
@@ -5383,6 +5379,10 @@
     if (tc.dhw === 'boiler_ct') offList.push({ t: 'Бойлер ГВС · на переключающем клапане котла', s: cut(nm.tank || 'бойлер косвенного нагрева', 40) + ' — клапан и датчик бойлера подключаются к самому котлу' });
     if (tc.dhw === 'external') offList.push({ t: 'Бойлер ГВС · мимо контроллера', s: cut(nm.tank || 'бойлер косвенного нагрева', 40) + ' — у котла нет цифровой шины' });
     if (tc.dhw === 'ct') offList.push({ t: 'ГВС от двухконтурного котла', s: 'проточный теплообменник котла' });
+    if (onBlocks.length) offList.push({
+      t: 'Блоки расширения ' + (f.blocks && f.blocks.n44 ? 'ZE-44 × ' + f.blocks.n44 : '') + (f.blocks && f.blocks.n22 ? (f.blocks.n44 ? ' · ' : '') + 'ZE-22 × ' + f.blocks.n22 : '') + ' (RS-485)',
+      s: cut(onBlocks.map(function (a) { return a.label; }).join(', '), 70) + ' — клеммы блока по его паспорту'
+    });
     var ufh = items.ufh || null;
     if (ufh && (ufh.blocks || ufh.stats || ufh.servos)) offList.push({
       t: 'Автоматика радиаторов и тёплого пола (раздел 4.5)',
