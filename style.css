@@ -20613,14 +20613,13 @@ body.empty-fit-panel #header_totals { display: none !important; }
     #admin_content table.ad-dense tr:not(.ad-open) .ad-sig { display: none !important; }
 }
 @media screen and (min-width: 900px) {
-    #admin_content table .ad-menu-btn,
-    #admin_content table .ad-exp-btn { display: inline-flex !important; }
-    #admin_content table tr.admin-list-row:not(.ad-open) .ad-more,
-    #admin_content table tr.admin-list-row:not(.ad-open) .ad-dev { display: none !important; }
-    #admin_content table tr.admin-list-row.ad-open .ad-more,
-    #admin_content table tr.admin-list-row.ad-open .ad-dev { display: inline !important; }
-    #admin_content table tr.admin-list-row:not(.ad-open) td.ad-c-acc .ad-acc-label { display: none !important; }
-    #admin_content table tr.admin-list-row.ad-open td.ad-c-acc .ad-acc-label { display: block !important; }
+    #admin_content table .ad-menu-btn { display: inline-flex !important; }
+    /* «Компактно»: детали свёрнуты под «▾». «Подробно» показывает их сразу, без ▾ */
+    #admin_content table.ad-dense .ad-exp-btn { display: inline-flex !important; }
+    #admin_content table.ad-dense tr.admin-list-row:not(.ad-open) .ad-dev { display: none !important; }
+    #admin_content table.ad-dense tr.admin-list-row.ad-open .ad-more,
+    #admin_content table.ad-dense tr.admin-list-row.ad-open .ad-dev { display: inline !important; }
+    #admin_content table.ad-dense tr.admin-list-row.ad-open td.ad-c-acc .ad-acc-label { display: block !important; }
     #admin_content table .ad-act-sec { display: none !important; }
     #admin_content table .ad-act-sec.open {
         display: flex !important;
@@ -20644,3 +20643,6 @@ body.empty-fit-panel #header_totals { display: none !important; }
     }
     #admin_content table .ad-act-sec.open .admin-action-btn .btn-text { display: inline !important; }
 }
+/* Статистика: в «Подробно» — полная строка, в «Компактно» — короткая (с распознаванием) */
+#admin_content table:not(.ad-dense) .ad-short { display: none; }
+#admin_content table.ad-dense .ad-full { display: none; }

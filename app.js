@@ -27383,7 +27383,7 @@ const app = {
 
             let cityText = u.city || 'Город не указан';
             let ipLoc = u.location || 'Неизвестно';
-            let locHTML = `<div style="font-size:10px;color:var(--text-sec); margin-top:2px;">📍 ${cityText}${u.region ? ', ' + u.region : ''} <span class="admin-ip-location" style="color: #888; font-size: 0.85em; margin-left:5px;">(IP: ${ipLoc})</span></div>`;
+            let locHTML = `<div style="font-size:10px;color:var(--text-sec); margin-top:2px;">📍 ${(u.region && u.region !== u.city) ? u.region : cityText} <span class="admin-ip-location" style="color: #888; font-size: 0.85em; margin-left:5px;">(IP: ${ipLoc})</span></div>`;
 
             let birthStr = u.birth_date ? new Date(u.birth_date).toLocaleDateString('ru-RU') : '';
             // Возраст: год минус год, и ещё минус один, если день рождения
@@ -27506,7 +27506,7 @@ const app = {
                              Содержимое коротких и однотипных ячеек — сумма со
                              сметами, тариф с устройством, два переключателя
                              доступа — отдельной строки на каждую не стоило. -->
-                        <td class="admin-cell-half ad-c-stat"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount}${u.recStats && u.recStats.docs > 0 ? ` · <span style="color:${recLostColor};" title="Разобрано накладных распознаванием (в сметах: ${inBillTxt})">распозн. ${u.recStats.docs}</span>` : ''}</span><span class="ad-more"><br><span style="font-size:10px;color:var(--text-sec);">Ср.объект: ${u.avgArea} м²</span><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${sessionLine}</span></span></td>
+                        <td class="admin-cell-half ad-c-stat"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span class="ad-short" style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount}${u.recStats && u.recStats.docs > 0 ? ` · <span style="color:${recLostColor};" title="Разобрано накладных распознаванием (в сметах: ${inBillTxt})">распозн. ${u.recStats.docs}</span>` : ''}</span><span class="ad-full" style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount} | Ср.объект: ${u.avgArea} м²</span><span class="ad-more"><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${sessionLine}</span></span></td>
                         <td class="admin-cell-half ad-c-tariff">${badge}<br class="ad-dev"><span class="ad-dev" style="font-size:10px;color:var(--text-sec);">${device}</span></td>
                         <td class="ad-c-dist" onclick="event.stopPropagation();">${distCell}</td>
                         ${showToggles ? `<td class="admin-cell-half ad-c-acc ad-c-rec" onclick="event.stopPropagation();" style="text-align:center;">${recCell}</td>
