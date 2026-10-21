@@ -16274,11 +16274,11 @@ const app = {
                 <div class="lk-setting">
                     <div class="lk-setting-text">
                         <b>Подбирать бухты по всей смете</b>
-                        <span>Одинаковые трубы из всех разделов складываются в общий подбор: меньше обрезков. Остаток бухты виден на экране и не попадает в печать и КП. По умолчанию включено на Профи.</span>
+                        <span>Одинаковые трубы в бухтах (металлопластик, PE-Xa, PEX-a/EVOH и стабильная — тёплый пол и радиаторы) из всех разделов складываются в общий подбор: меньше обрезков. Полипропилен и стальные трубы продаются штангами, их не объединить. Остаток бухты виден на экране и не попадает в печать и КП. По умолчанию включено на Профи.</span>
                         <span style="color:var(--text-main);">${(() => {
                             const st = this._poolStats;
                             if (!st) return 'Откройте смету с трубами: здесь появится, сколько это экономит.';
-                            if (!(st.unM > 0)) return 'В текущей смете нет бухт металлопластика, экономии нет.';
+                            if (!(st.unM > 0)) return 'В текущей смете нет труб в бухтах (тёплый пол, радиаторы), объединять нечего.';
                             const eco = st.metres > 0
                                 ? `экономия <b>${Math.round(st.metres)} м</b> и <b>${this.formatCurrencyAmount(st.rub)}</b>`
                                 : 'экономии нет: здесь уже покупается минимум бухт';
@@ -17853,18 +17853,30 @@ const app = {
         this.pushInstallerSettingsToCloud();
         this.render();
     },
-    // Бухты STOUT, сгруппированные по диаметру (16x2.0, 20x2.0, …), от большой к малой.
+    // Серии труб в бухтах, которые объединяются по смете: префикс артикула → каталог и название материала.
+    // Объединяется только то, что продаётся бухтой и режется с неё на разные участки; полипропилен
+    // (штанги по 4 м) и стальные трубы (мерные длины) обрезком на другой участок не идут.
+    COIL_POOL_SERIES: [
+        { prefix: 'SPM-0001-', cat: 'metal_plastic_pipes', label: 'металлопластик' },
+        { prefix: 'SPX-0002-', cat: 'pipes', label: 'PE-Xa' },
+        { prefix: 'SPX-0001-', cat: 'rad_pipes_grey', label: 'PEX-a/EVOH' },
+        { prefix: 'SPS-0002-', cat: 'stable_pipes', label: 'стабильная' }
+    ],
+    // Бухты STOUT, сгруппированные по серии и диаметру (артикул кончается типоразмером: …-101620 → 1620), от большой к малой.
     coilPoolNew: function () {
-        const fam = {}, byId = {};
-        (catalog.metal_plastic_pipes || []).forEach(c => {
-            if (!/^SPM-0001-/.test(c.id) || !(c.len > 0)) return;
-            const m = /(\d+x\d+\.\d)/i.exec(c.name || '');
-            if (!m) return;
-            (fam[m[1]] = fam[m[1]] || []).push(c);
-            byId[c.id] = m[1];
+        const fam = {}, byId = {}, label = {};
+        this.COIL_POOL_SERIES.forEach(sr => {
+            (catalog[sr.cat] || []).forEach(c => {
+                if (!c.id || c.id.indexOf(sr.prefix) !== 0 || !(c.len > 0)) return;
+                const dimCode = c.id.slice(-4);
+                const key = sr.prefix + dimCode;
+                (fam[key] = fam[key] || []).push(c);
+                byId[c.id] = key;
+                label[key] = `${sr.label} Ø${parseInt(dimCode.slice(0, 2), 10)}`;
+            });
         });
         Object.keys(fam).forEach(k => fam[k].sort((a, b) => b.len - a.len));
-        return { fam: fam, byId: byId, metres: {}, need: {}, parts: {}, rub: 0, on: false };
+        return { fam: fam, byId: byId, label: label, metres: {}, need: {}, parts: {}, rub: 0, on: false };
     },
     /**
      * Минимум лишних метров, при равенстве — минимум бухт. lens — длины бухт от большой к малой.
@@ -17913,7 +17925,7 @@ const app = {
             });
             const left = plan.metres - need;
             if (left > 0) {
-                rows.push({ id: 'pool_left_' + dim, name: `Остаток бухт Ø${dim.split('x')[0]}: ${left} м`, price: 0, basePrice: 0,
+                rows.push({ id: 'pool_left_' + dim, name: `Остаток бухт (${pool.label[dim]}): ${left} м`, price: 0, basePrice: 0,
                     q: 0, sum: 0, sortRank: 0, unit: 'м', brand: 'STOUT', originalId: 'pool_left_' + dim,
                     screenOnly: true, qtyTip: 'Не входит в смету, печать и КП. Можно записать на следующий объект.',
                     group: 'Трубы: бухты по всей смете' });
@@ -89774,14 +89786,14 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         let insLen = Math.ceil(neededPipe / 2); if (insLen % 2 !== 0) insLen++; addToBill(catalog.insulation[0], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы подачи (красная) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp); addToBill(catalog.insulation[1], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы обратки (синяя) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp);
                     } else if (this.state.pipeType === 'stable_16') {
                         let coils = Math.ceil(neededPipe / 100);
-                        let stbItem = asCoilPrice({ ...catalog.stable_pipes[0], originalId: catalog.stable_pipes[0].id + "_rad" }); stbItem.alts = catalog.insulated_pipes; stbItem.noCheapenAlts = true; addToBill(stbItem, coils, this.getDesc('rad_pipe', neededPipe), pipeGrp);
+                        let stbItem = asCoilPrice({ ...catalog.stable_pipes[0], originalId: catalog.stable_pipes[0].id + "_rad" }); stbItem.alts = catalog.insulated_pipes; stbItem.noCheapenAlts = true; stbItem._needM = neededPipe; addToBill(stbItem, coils, this.getDesc('rad_pipe', neededPipe), pipeGrp);
                         let insLen = Math.ceil(neededPipe / 2); if (insLen % 2 !== 0) insLen++; addToBill(catalog.insulation[0], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы подачи (красная) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp); addToBill(catalog.insulation[1], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы обратки (синяя) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp);
                     } else if (this.state.pipeType === 'stable_16_r') {
                         let coils = Math.ceil(neededPipe / 100);
                         let stbItem = asCoilPrice({ ...catalog.stable_pipes[0].rommer, originalId: catalog.stable_pipes[0].id + "_rad" }); stbItem.alts = catalog.insulated_pipes; stbItem.noCheapenAlts = true; addToBill(stbItem, coils, this.getDesc('rad_pipe', neededPipe), pipeGrp);
                         let insLen = Math.ceil(neededPipe / 2); if (insLen % 2 !== 0) insLen++; addToBill(catalog.insulation[0], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы подачи (красная) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp); addToBill(catalog.insulation[1], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы обратки (синяя) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp);
                     } else { // 'split'
-                        let grayItem = asCoilPrice((neededPipe > 200) ? { ...catalog.rad_pipes_grey[1] } : { ...catalog.rad_pipes_grey[0] }); grayItem.originalId = grayItem.id + "_rad"; grayItem.alts = catalog.insulated_pipes; grayItem.noCheapenAlts = true; addToBill(grayItem, Math.ceil(neededPipe / grayItem.len), this.getDesc('rad_pipe', neededPipe), pipeGrp);
+                        let grayItem = asCoilPrice((neededPipe > 200) ? { ...catalog.rad_pipes_grey[1] } : { ...catalog.rad_pipes_grey[0] }); grayItem.originalId = grayItem.id + "_rad"; grayItem.alts = catalog.insulated_pipes; grayItem.noCheapenAlts = true; grayItem._needM = neededPipe; addToBill(grayItem, Math.ceil(neededPipe / grayItem.len), this.getDesc('rad_pipe', neededPipe), pipeGrp);
                         let insLen = Math.ceil(neededPipe / 2); if (insLen % 2 !== 0) insLen++; addToBill(catalog.insulation[0], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы подачи (красная) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp); addToBill(catalog.insulation[1], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы обратки (синяя) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp);
                     }
                     addToBill(catalog.water_fittings[8], neededPipe, this.getDesc('double_clip', neededPipe, 'radiators'), pipeGrp);
@@ -90712,8 +90724,10 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 const _last = (ci === _coils.length - 1);
                 const _q = _last ? Math.ceil(_left / _len) : Math.floor(_left / _len);
                 if (!(_q > 0)) return;
+                const _needHere = Math.min(_left, _q * _len); // точная потребность — для объединения бухт по смете
                 _left -= _q * _len;
                 const _it = asCoilPrice({ ...c, originalId: c.id + "_ufh" });
+                _it._needM = _needHere;
                 // noCheapenAlts: в .alts — выбор МАТЕРИАЛА и типоразмера петли (PEX-a,
                 // металлопластик, стабильная), список для таблицы замены. Режим ROMMER
                 // выбирал из него по цене и подменял металлопластик трубой PEX-a: она
@@ -92931,6 +92945,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         }
         // Строки считаем всегда: из них берётся экономия для «Настройки → Тариф». В смету пишем, только если включено.
         const _poolRows = (_coilPool && Object.keys(_coilPool.metres).length) ? this.coilPoolRows(_coilPool) : [];
+        if (!_poolRows.length) this._poolStats = { metres: 0, rub: 0, boughtM: 0, unM: 0 };
         if (_coilPool && _coilPool.on && _poolRows.length) {
             bill = _poolRows;
             flushBill('Трубы: бухты по всей смете');
