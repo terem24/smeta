@@ -14587,20 +14587,20 @@ const app = {
             if (endsAt) daysLeft = Math.max(0, Math.ceil((endsAt - now) / 86400000));
         }
 
-        const statusCard = isPro
-            ? `<div class="lk-card lk-card-accent">
-                   <div class="lk-card-label" style="color:var(--c-warn,#D97706);">Тариф Профи активен</div>
-                   <div style="margin-top:6px; font-size:15px; font-weight:700; color:var(--text-main);">
-                       ${untilText === 'навсегда' ? 'Действует бессрочно' : `Действует до ${untilText}`}
+        // Те же строки .lk-setting, что в «Оформлении» и «Уведомлениях»: текст слева, действие справа
+        let statusSub;
+        if (untilText === 'навсегда') statusSub = 'Действует бессрочно';
+        else if (untilText) statusSub = `Действует до ${untilText}` + (daysLeft !== null ? ` · осталось дней: ${daysLeft}` : '');
+        else statusSub = 'Срок действия не ограничен';
+
+        const statusCard = `<div class="lk-card">
+                   <div class="lk-setting">
+                       <div class="lk-setting-text">
+                           <b>${isPro ? 'Тариф Профи активен' : 'Базовый тариф'}</b>
+                           <span>${isPro ? statusSub : 'Расчёт, смета, работы и выгрузка КП доступны полностью'}</span>
+                       </div>
+                       <button type="button" class="lk-btn-sm" onclick="app.closeProfileModal(); app.showModal('pro');">${isPro ? 'Продлить подписку' : 'Оформить Профи'}</button>
                    </div>
-                   ${daysLeft !== null ? `<div style="margin-top:2px; font-size:12px; color:var(--text-sec);">Осталось дней: ${daysLeft}</div>` : ''}
-                   <button type="button" class="auth-btn-base btn-email-submit" style="margin:12px 0 0; max-width:220px; height:38px; font-size:13px;" onclick="app.closeProfileModal(); app.showModal('pro');">Продлить подписку</button>
-               </div>`
-            : `<div class="lk-card">
-                   <div class="lk-card-label">Текущий тариф</div>
-                   <div style="margin-top:6px; font-size:15px; font-weight:700; color:var(--text-main);">Базовый</div>
-                   <div style="margin-top:2px; font-size:12px; color:var(--text-sec);">Расчёт, смета, работы и выгрузка КП доступны полностью.</div>
-                   <button type="button" class="auth-btn-base btn-email-submit" style="margin:12px 0 0; max-width:220px; height:38px; font-size:13px;" onclick="app.closeProfileModal(); app.showModal('pro');">Оформить Профи</button>
                </div>`;
 
         // Список ровно того, что на Базовом тарифе недоступно: бренд ROMMER и аналоги
@@ -14614,14 +14614,13 @@ const app = {
 
         container.innerHTML = `
             <div class="lk-section-head"><div><h4>Тариф</h4><div class="lk-sub">Что доступно сейчас и что даёт Профи</div></div></div>
-            ${statusCard}
-            <div style="margin:0 0 12px; padding:12px 14px; border:1px solid var(--border-color, #E5E7EB); border-radius:10px;">
-                <label style="display:flex; gap:10px; align-items:flex-start; cursor:pointer;">
-                    <input type="checkbox" ${this.poolCoilsOn() ? 'checked' : ''} onchange="app.setPoolCoils(this.checked)" style="margin-top:3px;">
-                    <span>
-                        <span style="display:block; font-weight:700; color:var(--text-main);">Подбирать бухты по всей смете</span>
-                        <span style="display:block; margin-top:2px; font-size:11.5px; color:var(--text-sec); line-height:1.4;">Одинаковые трубы из всех разделов складываются в общий подбор: меньше обрезков. Остаток бухты виден на экране и не попадает в печать и КП. По умолчанию включено на Профи.</span>
-                        <span style="display:block; margin-top:6px; font-size:12px; color:var(--text-main); line-height:1.4;">${(() => {
+            <div style="margin-bottom:14px;">${statusCard}</div>
+            <div class="lk-card" style="margin-bottom:14px;">
+                <div class="lk-setting">
+                    <div class="lk-setting-text">
+                        <b>Подбирать бухты по всей смете</b>
+                        <span>Одинаковые трубы из всех разделов складываются в общий подбор: меньше обрезков. Остаток бухты виден на экране и не попадает в печать и КП. По умолчанию включено на Профи.</span>
+                        <span style="color:var(--text-main);">${(() => {
                             const st = this._poolStats;
                             if (!st) return 'Откройте смету с трубами: здесь появится, сколько это экономит.';
                             if (!(st.unM > 0)) return 'В текущей смете нет бухт металлопластика, экономии нет.';
@@ -14630,18 +14629,15 @@ const app = {
                                 : 'экономии нет: здесь уже покупается минимум бухт';
                             return (this.poolCoilsOn() ? 'Сейчас включено: ' : 'Сейчас выключено. Включение даёт: ') + `в текущей смете ${eco}.`;
                         })()}</span>
-                    </span>
-                </label>
+                    </div>
+                    <label class="switch"><input type="checkbox" ${this.poolCoilsOn() ? 'checked' : ''} onchange="app.setPoolCoils(this.checked)"><span class="slider"></span></label>
+                </div>
             </div>
-            <div class="lk-card-label" style="margin:16px 0 8px;">Что даёт тариф Профи</div>
-            <div class="lk-list">
+            <div class="lk-card-label" style="margin:0 0 8px;">Что даёт тариф Профи</div>
+            <div class="lk-card">
                 ${perks.map(([icon, title, text]) => `
-                    <div class="lk-row" style="align-items:flex-start;">
-                        <span style="font-size:15px; line-height:1.2;">${icon}</span>
-                        <span style="flex:1; min-width:0;">
-                            <span style="display:block; font-weight:700; color:var(--text-main);">${title}</span>
-                            <span style="display:block; margin-top:2px; font-size:11.5px; color:var(--text-sec); line-height:1.4;">${text}</span>
-                        </span>
+                    <div class="lk-setting">
+                        <div class="lk-setting-text"><b>${title}</b><span>${text}</span></div>
                     </div>
                 `).join('')}
             </div>
