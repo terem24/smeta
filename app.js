@@ -23289,6 +23289,26 @@ const app = {
         this.loadAdminData(0);
     },
 
+    // «Распознал и не сохранил»: в архиве распознаваний есть накладные, а среди сохранённых
+    // смет нет ни одной с отметкой from_recognition. Условие то же, что у оранжевой
+    // строки «Распознано» в списке. Архив тянется отдельно (ensureRecognitionCounts) —
+    // ждём его до восьми секунд; не пришёл — отбор невозможен, список не режем.
+    filterRecLost: async function (users) {
+        this.ensureRecognitionCounts();
+        for (let i = 0; i < 40 && !this._recCounts; i++) await new Promise(r => setTimeout(r, 200));
+        const box = this._recCounts;
+        if (!box || box.error || box.serverOld) return users;
+        const withDocs = users.filter(u => { const st = this.recognitionStatsFor(u); return st && st.docs > 0; });
+        const kept = new Set();
+        const ids = withDocs.map(u => String(u.id));
+        for (let i = 0; i < ids.length; i += 100) {
+            const r = await supabaseClient.from('estimates').select('user_id, from_recognition:calc_data->>from_recognition').in('user_id', ids.slice(i, i + 100));
+            if (r.error) throw r.error;
+            (r.data || []).forEach(e => { if (e.from_recognition === 'true' || e.from_recognition === true) kept.add(String(e.user_id)); });
+        }
+        return withDocs.filter(u => !kept.has(String(u.id)));
+    },
+
     filterIdleVisitors: async function (users) {
         if (!users.length) return users;
         const ids = users.map(u => String(u.id));
@@ -23539,6 +23559,11 @@ const app = {
         // «Ходит, но не считает» — половину условия (3+ визита) знает сама база,
         // вторую половину (ни одного расчёта) досчитывает filterIdleVisitors.
         if (filters.idle === 'yes') query = query.gte('sess_visits', this.IDLE_MIN_VISITS);
+        // «Не заходили N дней»: вход старше порога либо входа не было вовсе
+        const inactiveDays = parseInt(filters.inactive, 10);
+        if (inactiveDays > 0) {
+            query = query.or(`last_visited.is.null,last_visited.lt.${new Date(Date.now() - inactiveDays * 864e5).toISOString()}`);
+        }
         // Обучение: 'no' — не прошли до конца, 'yes' — прошли (users.tour_done_at, см. tour.js)
         if (filters.tour === 'no') query = query.is('tour_done_at', null);
         else if (filters.tour === 'yes') query = query.not('tour_done_at', 'is', null);
@@ -23950,7 +23975,9 @@ const app = {
             suspect: document.getElementById('admin_filter_suspect')?.value || 'all',
             idle: document.getElementById('admin_filter_idle')?.value || 'all',
             tour: document.getElementById('admin_filter_tour')?.value || 'all',
-            device: document.getElementById('admin_filter_device')?.value || 'all'
+            device: document.getElementById('admin_filter_device')?.value || 'all',
+            inactive: document.getElementById('admin_filter_inactive')?.value || 'all',
+            reclost: document.getElementById('admin_filter_reclost')?.value || 'all'
         };
 
         const estSearchInputBefore = document.getElementById('admin_est_search_input');
@@ -23995,6 +24022,9 @@ const app = {
             // считается на клиенте по журналу визитов, база о нём не знает.
             const deviceFilter = (this._pendingAdminFilters && this._pendingAdminFilters.device) || 'all';
             const isDeviceFilter = deviceFilter !== 'all';
+            // «Распознал, но не сохранил»: архив распознаваний лежит на Beget, сметы — в базе,
+            // поэтому отбор клиентский и список нужен целиком.
+            const isRecLostFilter = ((this._pendingAdminFilters && this._pendingAdminFilters.reclost) || 'all') === 'yes';
 
             if (sortType === 'login_desc') {
                 query = query
@@ -24033,7 +24063,7 @@ const app = {
             // Запрос шлём до двух раз: на нестабильной сети (другие ноутбуки, VPN, расширения)
             // первый ответ бывает пустым или обрывается, а со второго раза приходит список.
             const runUsersQuery = async () => {
-                const wholeList = isClientSort || isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter;
+                const wholeList = isClientSort || isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter || isRecLostFilter;
                 const r = wholeList ? await query : await query.range(offset, offset + this._adminPageSize - 1);
                 if (r.error) throw r.error;
                 return r;
@@ -24073,6 +24103,9 @@ const app = {
             if (isDeviceFilter) {
                 users = await this.filterByDevice(users, deviceFilter);
             }
+            if (isRecLostFilter) {
+                users = await this.filterRecLost(users);
+            }
             // Сколько среди отобранных продавцов и сколько монтажников — для карточки
             // «Пользователей». Один человек может отметить обе сферы, поэтому числа
             // не обязаны складываться в общее. Когда отбор шёл на клиенте, список
@@ -24080,7 +24113,7 @@ const app = {
             // лёгких запроса-счётчика с теми же фильтрами, что и у таблицы.
             let sellersCount = 0, installersCount = 0;
             const hasActivity = (u, word) => (u.activity_types || []).some(a => String(a).toLowerCase().indexOf(word) !== -1);
-            if (isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter) {
+            if (isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter || isRecLostFilter) {
                 totalUsers = users.length;
                 sellersCount = users.filter(u => hasActivity(u, 'продав')).length;
                 installersCount = users.filter(u => hasActivity(u, 'монтаж')).length;
@@ -26986,6 +27019,8 @@ const app = {
             idle: 'all',
             tour: 'all',
             device: 'all',
+            inactive: 'all',
+            reclost: 'all',
             search: ''
         };
         const tariffFilter = filters.tariff;
@@ -26998,6 +27033,8 @@ const app = {
         const idleFilter = filters.idle || 'all';
         const tourFilter = filters.tour || 'all';
         const deviceFilter = filters.device || 'all';
+        const inactiveFilter = filters.inactive || 'all';
+        const recLostFilter = filters.reclost || 'all';
         const sortArrow = (key) => sortType === key + '_asc' ? ' ▲' : (sortType === key + '_desc' ? ' ▼' : '');
         // Проектирование: переключатели работают, только если на сервере лежит
         // обновлённый recognize_archive.php (см. designAccessSupported).
@@ -27012,7 +27049,7 @@ const app = {
         // Быстрые срезы и сохранённые виды списка: девять фильтров в одну строку превращали
         // экран в панель самолёта, а нужные сочетания приходилось выставлять заново.
         const escH = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        const curF = { tariff: tariffFilter, expiry: expiryFilter, region: regionFilter, dist: distFilter, activity: activityFilter, recog: recogFilter, suspect: suspectFilter, idle: idleFilter, tour: tourFilter, device: deviceFilter };
+        const curF = { tariff: tariffFilter, expiry: expiryFilter, region: regionFilter, dist: distFilter, activity: activityFilter, recog: recogFilter, suspect: suspectFilter, idle: idleFilter, tour: tourFilter, device: deviceFilter, inactive: inactiveFilter, reclost: recLostFilter };
         const nonDefault = {};
         Object.keys(curF).forEach(k => { if (curF[k] !== this.USERS_FILTER_DEFAULTS[k]) nonDefault[k] = curF[k]; });
         const activeCount = Object.keys(nonDefault).length;
@@ -27115,6 +27152,16 @@ const app = {
                                 <option value="desktop" ${deviceFilter === 'desktop' ? 'selected' : ''}>💻 Компьютер</option>
                                 <option value="mobile" ${deviceFilter === 'mobile' ? 'selected' : ''}>📱 Мобильный (сайт)</option>
                                 <option value="app" ${deviceFilter === 'app' ? 'selected' : ''}>📲 Приложение</option>
+                            </select>
+                            <select id="admin_filter_inactive" onchange="app.loadAdminData(0)" title="Последний вход давнее выбранного срока или входа не было вовсе" style="background: var(--surface); color: var(--text-main); border: 1px solid ${inactiveFilter !== 'all' ? '#D97706' : 'var(--border)'}; border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
+                                <option value="all" ${inactiveFilter === 'all' ? 'selected' : ''}>🕓 Вход: любой</option>
+                                <option value="7" ${inactiveFilter === '7' ? 'selected' : ''}>🕓 Не заходили 7+ дней</option>
+                                <option value="30" ${inactiveFilter === '30' ? 'selected' : ''}>🕓 Не заходили 30+ дней</option>
+                                <option value="90" ${inactiveFilter === '90' ? 'selected' : ''}>🕓 Не заходили 90+ дней</option>
+                            </select>
+                            <select id="admin_filter_reclost" onchange="app.loadAdminData(0)" title="Разбирал накладные распознаванием, но ни одной сметы из распознанного не сохранил" style="background: var(--surface); color: var(--text-main); border: 1px solid ${recLostFilter === 'yes' ? '#D97706' : 'var(--border)'}; border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
+                                <option value="all" ${recLostFilter === 'all' ? 'selected' : ''}>🔍 Распознавание: любое</option>
+                                <option value="yes" ${recLostFilter === 'yes' ? 'selected' : ''}>🔍 Распознал, не сохранил</option>
                             </select>
                             <select id="admin_filter_activity" onchange="app.loadAdminData(0)" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="all" ${activityFilter === 'all' ? 'selected' : ''}>Вся сфера деят-ти</option>
@@ -27366,12 +27413,15 @@ const app = {
                 : (u.tour_known
                     ? `<span title="Обучение до конца не проходил. Включить принудительно: «Тарифы → Обучение» или поле «Принудительно» в карточке человека" style="cursor:help; background:var(--text-sec, #6B7280)22; color:var(--text-sec, #6B7280); font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-right:3px;">🎓 обучение: нет</span>`
                     : '');
-            const stageHTML = tourDoneChip + (stuckPromo
+            // Сигналы (не ввёл промокод, анкета не заполнена) видны в строке всегда, а дата
+            // рождения, обучение и бейджи сферы уходят под «▾» — см. .ad-more / .ad-sig в style.css
+            const stageHTML = (stuckPromo
                 ? stageChip('⛔ Не ввёл промокод', 'Вошёл, но калькулятор закрыт окном «Нужен промокод магазина»: промокод не ввёл, анкету не видел', 'var(--c-warn, #D97706)')
                 : '') + (profileMissing.length
                 ? stageChip('📝 Анкета не заполнена', 'Не заполнено: ' + profileMissing.join(', '), 'var(--text-sec, #6B7280)')
                 : '');
-            let extraHTML = (birthStr || activityBadges || stageHTML) ? `<div style="font-size:10px; color:var(--text-sec); margin-top:2px;">${birthStr ? '🎂 ' + birthStr + (ageStr ? ' · ' + ageStr : '') + ' ' : ''}${activityBadges}${stageHTML}</div>` : '';
+            let extraHTML = (birthStr || tourDoneChip) ? `<div style="font-size:10px; color:var(--text-sec); margin-top:2px;">${birthStr ? '🎂 ' + birthStr + (ageStr ? ' · ' + ageStr : '') + ' ' : ''}${tourDoneChip}</div>` : '';
+            const sigHTML = (activityBadges || stageHTML) ? `<span class="ad-sig" style="display:block; margin-top:2px; font-size:10px;">${activityBadges}${stageHTML}</span>` : '';
 
             // Анкета не похожа на настоящую — помечаем строку. Не блокирует ничего:
             // решение по такой учётке принимает человек, см. suspiciousProfileFlags.
@@ -27450,13 +27500,13 @@ const app = {
                         <!-- Нумерация сквозная по всему списку, а не по странице: на второй
                              странице отсчёт снова с 1 сбивал с толку (44 записи → 1…44) -->
                         <td class="ad-c-num" style="color:var(--text-sec);">${this._adminOffset + i + 1}</td>
-                        <td class="ad-c-name"><div style="display:flex; align-items:center;">${avatarImg} <div><b style="font-size:13px;">${suspectMark}<span class="ad-name-full">${name}</span><span class="ad-name-short">${nameShort}</span>${tourMark}</b><br><span style="font-size:11px;color:var(--text-sec);">${phone}</span><span class="ad-more">${locHTML}${extraHTML}</span></div></div>${noDistWarn}</td>
+                        <td class="ad-c-name"><div style="display:flex; align-items:center;">${avatarImg} <div><b style="font-size:13px;">${suspectMark}<span class="ad-name-full">${name}</span><span class="ad-name-short">${nameShort}</span>${tourMark}</b><br><span style="font-size:11px;color:var(--text-sec);">${phone}${u.city ? ' · ' + u.city : ''}</span>${sigHTML}<span class="ad-more">${locHTML}${extraHTML}</span></div></div>${noDistWarn}</td>
                         <!-- admin-cell-half: на телефоне карточка ставит помеченную
                              пару в один ряд по половине ширины (см. style.css).
                              Содержимое коротких и однотипных ячеек — сумма со
                              сметами, тариф с устройством, два переключателя
                              доступа — отдельной строки на каждую не стоило. -->
-                        <td class="admin-cell-half ad-c-stat"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount} | Ср.объект: ${u.avgArea} м²</span><span class="ad-more"><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${sessionLine}</span></span></td>
+                        <td class="admin-cell-half ad-c-stat"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount}${u.recStats && u.recStats.docs > 0 ? ` · <span style="color:${recLostColor};" title="Разобрано накладных распознаванием (в сметах: ${inBillTxt})">распозн. ${u.recStats.docs}</span>` : ''}</span><span class="ad-more"><br><span style="font-size:10px;color:var(--text-sec);">Ср.объект: ${u.avgArea} м²</span><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${sessionLine}</span></span></td>
                         <td class="admin-cell-half ad-c-tariff">${badge}<br class="ad-dev"><span class="ad-dev" style="font-size:10px;color:var(--text-sec);">${device}</span></td>
                         <td class="ad-c-dist" onclick="event.stopPropagation();">${distCell}</td>
                         ${showToggles ? `<td class="admin-cell-half ad-c-acc ad-c-rec" onclick="event.stopPropagation();" style="text-align:center;">${recCell}</td>
@@ -27466,9 +27516,12 @@ const app = {
                         <td class="admin-cell-actions" onclick="event.stopPropagation();" style="text-align:center; white-space:nowrap;">
                             <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
                                 <button class="admin-action-btn btn-msg" onclick="app.adminMessageUser('${u.id}', '${nameEscaped}')" title="Написать пользователю"><span class="btn-icon">💬</span><span class="btn-text"> Написать</span></button>
+                                <button class="admin-action-btn ad-menu-btn" onclick="app.toggleUserMenu(this)" title="Ещё: объекты, блокировка, удаление" aria-haspopup="true"><span class="btn-icon">⋯</span></button>
+                                <span class="ad-act-sec">
                                 <button class="admin-action-btn btn-obj" onclick="app.adminViewUserEstimates('${nameEscaped}')" title="Открыть его объекты"><span class="btn-icon">📁</span><span class="btn-text"> Объекты</span></button>
                                 <button class="admin-action-btn ${u.is_blocked ? 'btn-block-blocked' : 'btn-block-active'}" onclick="app.toggleUserBlocked('${u.id}', ${!u.is_blocked})" ${isViewer ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} title="${u.is_blocked ? 'Разблокировать пользователя' : 'Заблокировать пользователя'}"><span class="btn-icon">${u.is_blocked ? '🔓' : '🔒'}</span><span class="btn-text"> ${u.is_blocked ? 'Разблок' : 'Блок'}</span></button>
                                 <button class="admin-action-btn btn-del" onclick="app.deleteUserCompletely('${u.id}')" ${isViewer ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} title="Удалить учётку безвозвратно"><span class="btn-icon">🗑</span><span class="btn-text"> Удалить</span></button>
+                                </span>
                                 <button class="admin-action-btn ad-exp-btn" onclick="app.toggleUserRowOpen(this)" aria-expanded="false" title="Подробнее: дистрибьютор, статистика, блокировка и удаление"><span class="btn-icon">▾</span></button>
                             </div>
                         </td>
@@ -39987,14 +40040,17 @@ const app = {
         document.body.removeChild(link);
     },
     // ═══ Список пользователей: срезы, сохранённые виды, плотность, быстрый просмотр ═══
-    USERS_FILTER_DEFAULTS: { tariff: 'all', expiry: 'all', region: '', dist: 'all', activity: 'all', recog: 'all', suspect: 'all', idle: 'all', tour: 'all', device: 'all' },
-    USERS_FILTER_IDS: { tariff: 'admin_filter_tariff', expiry: 'admin_filter_expiry', region: 'admin_filter_region', dist: 'admin_filter_dist', activity: 'admin_filter_activity', recog: 'admin_filter_recog', suspect: 'admin_filter_suspect', idle: 'admin_filter_idle', tour: 'admin_filter_tour', device: 'admin_filter_device' },
+    USERS_FILTER_DEFAULTS: { tariff: 'all', expiry: 'all', region: '', dist: 'all', activity: 'all', recog: 'all', suspect: 'all', idle: 'all', tour: 'all', device: 'all', inactive: 'all', reclost: 'all' },
+    USERS_FILTER_IDS: { tariff: 'admin_filter_tariff', expiry: 'admin_filter_expiry', region: 'admin_filter_region', dist: 'admin_filter_dist', activity: 'admin_filter_activity', recog: 'admin_filter_recog', suspect: 'admin_filter_suspect', idle: 'admin_filter_idle', tour: 'admin_filter_tour', device: 'admin_filter_device', inactive: 'admin_filter_inactive', reclost: 'admin_filter_reclost' },
     USERS_SEGMENTS: [
         { id: 'all', label: 'Все', f: {} },
         { id: 'pro', label: 'Профи', f: { tariff: 'pro' } },
         { id: 'base', label: 'Базовые', f: { tariff: 'base' } },
         { id: 'expired', label: 'Срок истёк', f: { expiry: 'expired' } },
+        { id: 'paid', label: 'Платные', f: { tariff: 'pro_paid' } },
         { id: 'nodist', label: 'Без дистрибьютора', f: { dist: 'none' } },
+        { id: 'inactive7', label: 'Не заходили 7+ дней', f: { inactive: '7' } },
+        { id: 'reclost', label: 'Распознали и не сохранили', f: { reclost: 'yes' } },
         { id: 'idle', label: 'Ходят, но не считают', f: { idle: 'yes' } },
         { id: 'suspect', label: 'Сомнительные анкеты', f: { suspect: 'yes' } },
         { id: 'tournot', label: 'Не прошли обучение', f: { tour: 'no' } }
@@ -40063,6 +40119,28 @@ const app = {
         try { return localStorage.getItem('admin_users_dense') !== '0'; } catch (e) { return true; }
     },
     // Телефон, «Компактно»: раскрыть карточку — дистрибьютор, статистика, блокировка и удаление
+    // Компьютер: объекты, блокировка и удаление спрятаны в меню «⋯» — «Удалить» не должно лежать
+    // рядом с «Написать». Меню рисуется поверх таблицы (position: fixed), чтобы его не обрезала
+    // прокрутка списка; закрывается кликом в сторону и прокруткой.
+    closeUserMenus: function () {
+        document.querySelectorAll('.ad-act-sec.open').forEach(m => m.classList.remove('open'));
+    },
+    toggleUserMenu: function (btn) {
+        const wrap = btn.parentNode && btn.parentNode.querySelector('.ad-act-sec');
+        if (!wrap) return;
+        const was = wrap.classList.contains('open');
+        this.closeUserMenus();
+        if (was) return;
+        if (!this._userMenuBound) {
+            this._userMenuBound = true;
+            document.addEventListener('click', e => { if (!e.target.closest('.ad-menu-btn')) app.closeUserMenus(); }, true);
+            window.addEventListener('scroll', () => app.closeUserMenus(), true);
+        }
+        wrap.classList.add('open');
+        const r = btn.getBoundingClientRect();
+        wrap.style.top = Math.min(r.bottom + 4, window.innerHeight - wrap.offsetHeight - 8) + 'px';
+        wrap.style.left = Math.max(8, r.right - wrap.offsetWidth) + 'px';
+    },
     toggleUserRowOpen: function (btn) {
         const tr = btn.closest('tr');
         if (!tr) return;
