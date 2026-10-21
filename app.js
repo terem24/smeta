@@ -26624,7 +26624,13 @@ const app = {
                 const headRows = t.tHead ? t.tHead.rows : null;
                 if (!headRows || !headRows.length) return;
                 const heads = [...headRows[headRows.length - 1].cells]
-                    .map(th => (th.textContent || '').replace(/[▲▼↕]/g, '').trim());
+                    .map(th => {
+                        // У столбцов доступа в шапке два текста — слово и значок (.ad-acc-short);
+                        // подписью ячейки берём только слово, иначе «Сканы🔍» дублирует значок
+                        const c = th.cloneNode(true);
+                        c.querySelectorAll('.ad-acc-short').forEach(n => n.remove());
+                        return (c.textContent || '').replace(/[▲▼↕]/g, '').trim();
+                    });
                 [...t.tBodies].forEach(tb => [...tb.rows].forEach(tr => {
                     let col = 0;
                     [...tr.cells].forEach(td => {

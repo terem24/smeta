@@ -20646,3 +20646,20 @@ body.empty-fit-panel #header_totals { display: none !important; }
 /* Статистика: в «Подробно» — полная строка, в «Компактно» — короткая (с распознаванием) */
 #admin_content table:not(.ad-dense) .ad-short { display: none; }
 #admin_content table.ad-dense .ad-full { display: none; }
+/* Телефон, «Подробно»: карточка без лишних подписей и переносов.
+   Подписи столбцов, смысл которых ясен из значения, убраны (как в «Компактно»);
+   подпись остаётся только у трёх доступов, и они встают в один ряд. Статистика и тариф —
+   на всю ширину, чтобы строки распознавания и визитов не рвались пополам. */
+@media screen and (max-width: 899.98px) {
+    #admin_content table:not(.ad-dense) td[data-l="Имя / Контакты"]::before,
+    #admin_content table:not(.ad-dense) td[data-l^="Статистика"]::before,
+    #admin_content table:not(.ad-dense) td[data-l^="Тариф"]::before,
+    #admin_content table:not(.ad-dense) td[data-l="Дистрибьютор"]::before,
+    #admin_content table:not(.ad-dense) td[data-l="Вход"]::before,
+    #admin_content table:not(.ad-dense) td[data-l="Действия"]::before { content: none; }
+    #admin_content table:not(.ad-dense) td.ad-c-stat,
+    #admin_content table:not(.ad-dense) td.ad-c-tariff { width: 100% !important; }
+    #admin_content table:not(.ad-dense) td.ad-c-tariff br.ad-dev { display: none; }
+    #admin_content table:not(.ad-dense) td.ad-c-tariff .ad-dev { margin-left: 8px; }
+    #admin_content table:not(.ad-dense) td.ad-c-acc { width: 33.33% !important; padding-left: 4px !important; padding-right: 4px !important; }
+}
