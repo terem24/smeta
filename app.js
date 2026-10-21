@@ -50587,7 +50587,10 @@ const app = {
         return html + '</div></div>';
     },
 
-    /** График напора по ступеням пути воды: ломаная «напор после ступени», красная пунктирная — минимум у худшего прибора. */
+    /**
+     * График напора по ступеням пути воды: ломаная «напор после ступени», красная пунктирная — минимум у худшего прибора.
+     * Интерактивный: наведение/нажатие на точку показывает, что это за ступень, сколько на ней потеряно и сколько осталось.
+     */
     waterHydroChart: function (res) {
         const st = res.scenarios.design.trunk.stages;
         const w = res.worst;
@@ -50596,24 +50599,70 @@ const app = {
         if (pts.length < 3) return '';
         const need = w ? w.need : 0;
         const hi = Math.max.apply(null, pts.concat([need])), lo = Math.min.apply(null, pts.concat([0, need]));
-        const W = 360, H = 96, L = 26, R = 8, T = 8, B = 16;
+        const W = 360, H = 120, L = 26, R = 10, T = 16, B = 18;
         const x = i => L + (W - L - R) * i / (pts.length - 1);
         const y = v => T + (H - T - B) * (1 - (v - lo) / ((hi - lo) || 1));
         const col = { ok: '#059669', tight: '#B45309', fail: '#DC2626', unknown: '#6B7280' }[res.verdict] || '#059669';
         const line = pts.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
         const area = line + ' L' + x(pts.length - 1).toFixed(1) + ' ' + y(lo).toFixed(1) + ' L' + x(0).toFixed(1) + ' ' + y(lo).toFixed(1) + ' Z';
         const fmt = v => Math.round(v);
+        const f1 = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
+        const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
         const last = pts.length - 1;
-        return '<svg class="whc-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Напор по пути воды: от насоса до самого слабого прибора">'
+        const mains = !!res.pump.mains;
+        // Подпись к каждой точке: заголовок и строка «что случилось с напором»
+        const tips = st.map((s, i) => i === 0
+            ? { t: s.title, d: 'Отсюда вода начинает путь. Напор на старте — ' + f1(s.H) + ' м (≈ ' + f1(s.H / 10) + ' бар).' }
+            : { t: s.title, d: (s.dH > 0.05 ? 'На этой ступени теряется ' + f1(s.dH) + ' м напора' : 'Здесь напор почти не падает') + ' — дальше остаётся ' + f1(s.H) + ' м.' });
+        if (w) {
+            const ok = w.have >= w.need;
+            tips.push({ t: 'Самый слабый прибор: «' + w.title + '» (' + w.zone + ', ' + (w.line === 'hot' ? 'ГВС' : 'ХВС') + ')',
+                d: 'До него доходит ' + f1(w.have) + ' м, ему нужно не меньше ' + f1(w.need) + ' м — ' + (ok ? 'запас ' + f1(w.have - w.need) + ' м, хватает.' : 'не хватает ' + f1(w.need - w.have) + ' м.') });
+        }
+        const dots = pts.map((v, i) => {
+            const tp = tips[i];
+            if (!tp) return '';
+            const end = i === 0 || i === last;
+            return '<g class="whc-pt" tabindex="0" data-t="' + esc(tp.t) + '" data-d="' + esc(tp.d) + '" '
+                + 'onmouseenter="app.whcChartTip(this)" onfocus="app.whcChartTip(this)" onclick="app.whcChartTip(this)">'
+                + '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="9" fill="transparent"/>'
+                + '<circle class="whc-dot" cx="' + x(i).toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="' + (end ? 3.5 : 2.5) + '" fill="' + (end ? col : 'var(--surface, #fff)') + '" stroke="' + col + '" stroke-width="1.5"/></g>';
+        }).join('');
+        const dflt = 'Нажмите или наведите на точку на графике — покажу, что происходит с напором на этом участке.';
+        const key = '<div class="whc-tip">' + esc(dflt) + '</div>'
+            + '<div class="whc-key"><span><i class="whc-k-line" style="background:' + col + '"></i>напор воды в трубе</span>'
+            + '<span><i class="whc-k-dash"></i>минимум, при котором прибор работает</span></div>'
+            + '<div class="whc-how">Слева — откуда идёт вода, справа — самый слабый прибор. На трубах, узле и подъёме напор теряется, поэтому линия идёт вниз. Пока в конце она выше красной пунктирной — приборам хватает. 10 м напора ≈ 1 бар.</div></div>';
+        return '<div class="whc-cbox"><div class="whc-ctitle">Куда уходит напор по дороге воды</div>'
+            + '<svg class="whc-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Напор по пути воды: от ' + (mains ? 'сети' : 'насоса') + ' до самого слабого прибора">'
             + '<path d="' + area + '" fill="' + col + '" fill-opacity=".10"/>'
             + '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0).toFixed(1) + '" y2="' + y(0).toFixed(1) + '" stroke="currentColor" stroke-opacity=".25"/>'
             + (need > 0 ? '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(need).toFixed(1) + '" y2="' + y(need).toFixed(1) + '" stroke="#DC2626" stroke-dasharray="4 3"/><text x="' + (W - R) + '" y="' + (y(need) - 3).toFixed(1) + '" text-anchor="end" font-size="9" fill="#DC2626">минимум ' + fmt(need) + ' м</text>' : '')
             + '<path d="' + line + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round"/>'
-            + '<circle cx="' + x(0).toFixed(1) + '" cy="' + y(pts[0]).toFixed(1) + '" r="3" fill="' + col + '"/><circle cx="' + x(last).toFixed(1) + '" cy="' + y(pts[last]).toFixed(1) + '" r="3" fill="' + col + '"/>'
-            + '<text x="' + (x(0) + 5).toFixed(1) + '" y="' + (y(pts[0]) + 3).toFixed(1) + '" font-size="9" fill="currentColor">' + fmt(pts[0]) + ' м</text>'
-            + '<text x="' + (x(last) - 5).toFixed(1) + '" y="' + (y(pts[last]) - 6).toFixed(1) + '" text-anchor="end" font-size="9" fill="currentColor">' + fmt(pts[last]) + ' м</text>'
-            + '<text x="' + L + '" y="' + (H - 3) + '" font-size="9" fill="currentColor" fill-opacity=".6">' + (res.pump.mains ? 'сеть' : 'насос') + '</text>'
-            + '<text x="' + (W - R) + '" y="' + (H - 3) + '" text-anchor="end" font-size="9" fill="currentColor" fill-opacity=".6">самый слабый прибор</text></svg>';
+            + dots
+            + '<text x="' + (x(0) + 6).toFixed(1) + '" y="' + (y(pts[0]) - 6).toFixed(1) + '" font-size="9" fill="currentColor">' + fmt(pts[0]) + ' м</text>'
+            + '<text x="' + (x(last) - 6).toFixed(1) + '" y="' + (y(pts[last]) - 6).toFixed(1) + '" text-anchor="end" font-size="9" fill="currentColor">' + fmt(pts[last]) + ' м</text>'
+            + '<text x="' + L + '" y="' + (H - 4) + '" font-size="9" fill="currentColor" fill-opacity=".6">' + (mains ? 'сеть' : 'насос') + '</text>'
+            + '<text x="' + (W - R) + '" y="' + (H - 4) + '" text-anchor="end" font-size="9" fill="currentColor" fill-opacity=".6">самый слабый прибор</text></svg>'
+            + key;
+    },
+
+    /** Подсказка к точке графика напора воды: заполняет строку под графиком, точку подсвечивает. */
+    whcChartTip: function (g) {
+        const box = g && g.closest ? g.closest('.whc-cbox') : null;
+        if (!box) return;
+        const tip = box.querySelector('.whc-tip');
+        if (tip) {
+            tip.textContent = '';
+            const b = document.createElement('b');
+            b.textContent = g.getAttribute('data-t') || '';
+            tip.appendChild(b);
+            tip.appendChild(document.createElement('br'));
+            tip.appendChild(document.createTextNode(g.getAttribute('data-d') || ''));
+            tip.classList.add('whc-tip-on');
+        }
+        box.querySelectorAll('.whc-pt.whc-sel').forEach(e => e.classList.remove('whc-sel'));
+        g.classList.add('whc-sel');
     },
 
     toggleWaterHydroCard: function () {
@@ -50633,29 +50682,61 @@ const app = {
         this.saveState(); this.syncUI(); this.render();
     },
 
-    /** Экранный контейнер карточки воды: в схеме на новой строке под карточкой отопления, без схемы — блоком над сметой. */
+    /**
+     * Экранный контейнер карточки воды. Сначала — блоком над сметой (запасное место); если в смете есть раздел
+     * водоснабжения, relocateWaterHydroBox переносит его туда, где вода: карточка про воду, а не про котельную.
+     */
     placeWaterHydroBox: function () {
         const old = document.getElementById('water_hydro_side');
         if (old) old.remove();
         if (this.state.viewMode !== 'equipment') return;
         const box = document.createElement('div');
         box.id = 'water_hydro_side';
-        const scheme = document.getElementById('dynamic_scheme');
-        if (scheme) { box.className = 'hc-side hc-water'; scheme.appendChild(box); return; }
         const wrap = document.querySelector('.table-responsive');
         if (!wrap || !wrap.parentNode) return;
         box.className = 'hc-solo';
         wrap.parentNode.insertBefore(box, wrap);
     },
 
+    /**
+     * Переносит карточку «Проверка водоснабжения» в раздел водоснабжения: под первую из его схем
+     * (схема раздела «5.1», иначе схема узла ввода «6.»), а если схем нет или они выключены — строкой под заголовком раздела.
+     * Раздела воды в смете нет — остаётся там, где поставила placeWaterHydroBox. Зовётся из render() после вставки схем.
+     */
+    relocateWaterHydroBox: function () {
+        const box = document.getElementById('water_hydro_side');
+        if (!box) return;
+        const area = document.getElementById('print-area');
+        if (!area) return;
+        const row = ['water_scheme_row', 'hvs_node_scheme_row'].map(id => area.querySelector('#' + id)).find(Boolean);
+        if (!row) {
+            const sec = Array.from(area.querySelectorAll('tr.row-sec')).find(tr => {
+                if (tr.classList.contains('disabled-section')) return false;
+                const t = ((tr.querySelector('.row-sec-title') || {}).dataset || {}).title || '';
+                return t.startsWith('5.1.') || t.startsWith('5. Внутреннее водоснабжение');
+            });
+            if (!sec) return;
+            const cells = sec.closest('table').querySelector('tr');
+            sec.insertAdjacentHTML('afterend', '<tr id="water_hydro_row" class="scheme-row"><td colspan="' + ((cells && cells.cells.length) || sec.cells.length || 8) + '"></td></tr>');
+            const td = sec.nextElementSibling.firstElementChild;
+            box.className = 'hc-solo hc-in-table';
+            td.appendChild(box);
+            return;
+        }
+        box.className = 'hc-solo hc-in-table';
+        row.firstElementChild.appendChild(box);
+    },
+
     syncWaterHydro: function () {
         const box = document.getElementById('water_hydro_side');
         if (!box) return;
+        const tr = box.closest('#water_hydro_row');
         try {
             const html = this.waterHydroHtml(this.waterHydroCheck(), false);
             box.innerHTML = html;
             box.style.display = html ? '' : 'none';
-        } catch (e) { box.innerHTML = ''; box.style.display = 'none'; }
+            if (tr) tr.style.display = html ? '' : 'none';
+        } catch (e) { box.innerHTML = ''; box.style.display = 'none'; if (tr) tr.style.display = 'none'; }
     },
 
     // Плашка раздела «6. Узел ввода ХВС»: хватает ли ввода 3/4" на расчётный расход.
@@ -93982,6 +94063,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             hdrRow.insertAdjacentHTML(atSec ? 'afterend' : 'beforebegin',
                 `<tr id="${rowId}" class="scheme-row"><td colspan="${cols}">${html}</td></tr>`);
         });
+        // Карточка «Проверка водоснабжения» — в раздел воды, под его первую схему
+        this.relocateWaterHydroBox();
         // Рамку схем считаем после вставки: до неё колонки таблицы ещё не той
         // ширины, а схемы уже в документе и подхватят переменные сразу.
         this.syncSchemeBox();
@@ -94977,6 +95060,7 @@ function prepareForPrint() {
             // Карточка гидравлики печатается своим листом (шаг 3б), а не внутри таблицы сметы
             const eqHydro = eqClone.querySelector('#hydro_check_side'); if (eqHydro) eqHydro.remove();
             const eqWater = eqClone.querySelector('#water_hydro_side'); if (eqWater) eqWater.remove();
+            const eqWaterRow = eqClone.querySelector('#water_hydro_row'); if (eqWaterRow) eqWaterRow.remove();
             // В КП из всех схем идут только схема котельной (отдельным листом, шаг 3) и
             // раскладка радиаторов и тёплого пола по плану (отдельным разделом, шаг 2б, как
             // в ссылке). Остальные схемы-строки таблицы — автоматика, узлы, вода — не печатаем.
@@ -95005,6 +95089,7 @@ function prepareForPrint() {
             if (worksScheme) worksScheme.remove();
             const worksHydro = worksClone.querySelector('#hydro_check_side'); if (worksHydro) worksHydro.remove();
             const worksWater = worksClone.querySelector('#water_hydro_side'); if (worksWater) worksWater.remove();
+            const worksWaterRow = worksClone.querySelector('#water_hydro_row'); if (worksWaterRow) worksWaterRow.remove();
             let wTabs = worksClone.querySelector('.main-view-tabs');
             if (wTabs) wTabs.style.display = 'none';
 
