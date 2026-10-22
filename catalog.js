@@ -1519,9 +1519,9 @@ const catalog = {
         { id: "PNGB2100024L001", name: "NGB210-24K", price: 39148, power: 24, circuits: 2, dhw: 13.7, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-10-20" },
         { id: "PNGB2100032L002", name: "NGB210-32K", price: 45977, power: 32, circuits: 2, dhw: 18, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-10-20" },
         // NGB210 SYS — бюджетные одноконтурные, клапан встроен, датчик в комплекте
-        { id: "PNGB2100020L002", name: "NGB210 SYS-20H", price: 41649, power: 20, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-10-20" },
-        { id: "PNGB2100024L002", name: "NGB210 SYS-24H", price: 43572, power: 24, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-10-20" },
-        { id: "PNGB2100032L001", name: "NGB210 SYS-32H", price: 49440, power: 32, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "PNGB2100020L002", name: "NGB210 SYS-20H", price: 41649, power: 20, circuits: 1, dhwValve: true, dhwPorts: { n: 2, size: '1/2"' }, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-10-20" },
+        { id: "PNGB2100024L002", name: "NGB210 SYS-24H", price: 43572, power: 24, circuits: 1, dhwValve: true, dhwPorts: { n: 2, size: '1/2"' }, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-10-20" },
+        { id: "PNGB2100032L001", name: "NGB210 SYS-32H", price: 49440, power: 32, circuits: 1, dhwValve: true, dhwPorts: { n: 2, size: '1/2"' }, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-10-20" },
         // NCB700 — конденсационные двухконтурные (дымоход — универсальный ROMMER для конденсационных)
         { id: "PNCB7000028L001", name: "NCB700-24K", price: 83576, power: 24, circuits: 2, dhw: 16.1, type: "gas", cond: true, brand: "Navien", availability: "on_order", price_date: "2026-10-20" },
         { id: "PNCB7000041L001", name: "NCB700-35K", price: 94584, power: 35, circuits: 2, dhw: 22.9, type: "gas", cond: true, brand: "Navien", availability: "on_order", price_date: "2026-10-20" }
