@@ -155,7 +155,10 @@ const Tour = {
             // Строка с радиатором: ищем по названию. В окне замены радиатора есть фильтры
             // «Тип прибора», «Подключение» (боковое или нижнее) и «Высота».
             block: 'basic', key: 'replace', mob: 'output',
-            sel: () => { const r = Tour.radRow(); return r ? r.tr : document.getElementById('tab_equipment'); },
+            // Радиаторы могут лежать в свёрнутом подразделе сметы (группировка у Профи) — тогда
+            // их строк на экране нет, и подсветка уезжала на вкладку «Оборудование». Разворачиваем.
+            before: () => Tour.openRadGroup(),
+            sel: () => { const r = Tour.radRow() || Tour.anySwapRow(); return r ? r.tr : document.getElementById('tab_equipment'); },
             title: 'Замена радиатора',
             text: 'Любую позицию сметы можно заменить. Окно замены открывается по фото.',
             snap: () => JSON.stringify({ sw: Tour.st().swaps || {}, c: Tour.radConn() }),
@@ -163,7 +166,7 @@ const Tour = {
                 { label: 'Нажмите на фото радиатора и выберите другой', done: snap => JSON.stringify(Tour.st().swaps || {}) !== JSON.stringify(JSON.parse(snap).sw) },
                 { label: 'Смените подключение: фильтр «Подключение» в окне замены', done: snap => { const c = Tour.radConn(); return !!c && c !== JSON.parse(snap).c; } }
             ],
-            point: () => { const r = Tour.radRow(); return r ? r.btn : null; }
+            point: () => { const r = Tour.radRow() || Tour.anySwapRow(); return r ? r.btn : null; }
         },
         {
             // На телефоне дискета спрятана в меню шапки — сохранить можно и кнопкой в карточке.
@@ -188,6 +191,7 @@ const Tour = {
             text: 'Количество меняется прямо в строке, лишнее убирает ✖, замена — по фото.',
             snap: () => JSON.stringify([Tour.st().qtyOverrides || {}, Tour.st().optItems || {}]),
             tasks: [{ label: 'Поменяйте количество в любой строке или уберите позицию крестиком', done: snap => JSON.stringify([Tour.st().qtyOverrides || {}, Tour.st().optItems || {}]) !== snap }],
+            noMobTasks: true,
             point: () => { const i = document.querySelector('.qty-num-input'); return (i && i.offsetParent) ? i : null; },
             seller: { title: 'Спецификация' }
         },
@@ -367,8 +371,32 @@ const Tour = {
         return null;
     },
 
+    RAD_RE: /радиатор/i,
+    RAD_NOT: /коллектор|шкаф|клапан|головк|узел|фитинг|кронштейн|набор|комплект|кран/i,
+
+    // Сначала строка, название которой начинается с «Радиатор» (перед ним в тексте строки
+    // только номер): «Монтажный набор для подключения радиатора» стоит в смете выше самих
+    // радиаторов, и стрелка уводила в его окно замены. Нет такой — любая строка со словом.
     radRow: function () {
-        return this.swapRow(t => /радиатор/i.test(t) && !/коллектор|шкаф|клапан|головк|узел|фитинг|кронштейн/i.test(t));
+        return this.swapRow(t => /^\s*\d*\s*радиатор/i.test(t)) ||
+            this.swapRow(t => this.RAD_RE.test(t) && !this.RAD_NOT.test(t));
+    },
+
+    // Радиатора в смете не видно — любая строка, которую можно заменить: подсветка на строке
+    // сметы честнее, чем на вкладке, где нажимать нечего.
+    anySwapRow: function () {
+        return this.swapRow(() => true);
+    },
+
+    // Подраздел с радиаторами свёрнут (app.toggleGroup) — разворачиваем
+    openRadGroup: function () {
+        try {
+            if (this.radRow() || !app.state.groupItems) return;
+            const cg = app.state.collapsedGroups || [];
+            const it = (app.currentEquipmentList || []).find(i => i && i.group && cg.indexOf(i.group) > -1 &&
+                this.RAD_RE.test(i.name || '') && !this.RAD_NOT.test(i.name || ''));
+            if (it) app.toggleGroup(it.group);
+        } catch (e) { }
     },
 
     // Как подключён радиатор в первой строке сметы: 'low' — нижнее, 'side' — боковое
@@ -376,7 +404,16 @@ const Tour = {
         const r = this.radRow();
         if (!r) return '';
         const t = r.tr.textContent || '';
-        return /боков/i.test(t) ? 'side' : (/нижн/i.test(t) ? 'low' : '');
+        // У каталога «(боковое подключение)», у моделей из прайса сокращённо — «(500мм, бок.)»
+        if (/боков|бок\./i.test(t)) return 'side';
+        if (/нижн|ниж\./i.test(t)) return 'low';
+        // В названии не сказано («Радиатор TITAN 11 секций») — по серии, как решает окно замены
+        try {
+            const sku = (t.match(/[A-Z]{3}-\d{4}-\d{6}/) || [])[0];
+            const s = sku && app._getSecRadSeries().find(x => x.arr && x.arr.some(y => y.id === sku));
+            if (s && !s.universal) return s.bottom ? 'low' : 'side';
+        } catch (e) { }
+        return '';
     },
 
     // Настоящее сохранение из карточки: на телефоне дискета спрятана в меню ☰, и
@@ -1132,16 +1169,36 @@ const Tour = {
 
     // Куда показывать пальцем в окне замены: пока модель не выбрана — на первую строку
     // списка, пока не сменили подключение — на нужную кнопку фильтра «Подключение».
+    // У радиатора своё окно (строки selectSwapRadiator, фильтры .rsw-chip с
+    // switchSwapRadConnection), у прочих позиций — общее (selectSwapAlternative, .swap-chip).
     swapPointTarget: function (step) {
         const body = document.getElementById('swap_modal_body');
         if (!body) return null;
         const fl = this.taskFlags(step);
-        const rows = Array.prototype.slice.call(body.querySelectorAll('tr[onclick*="selectSwapAlternative"]'))
+        const rows = Array.prototype.slice.call(body.querySelectorAll('tr[onclick*="selectSwapAlternative"], tr[onclick*="selectSwapRadiator"]'))
             .filter(r => r.offsetParent && !/selected|active/.test(r.className));
         if (fl[0] && !fl[1]) {
-            const chip = Array.prototype.slice.call(body.querySelectorAll('.swap-chip'))
-                .find(c => c.offsetParent && !c.classList.contains('on') && /боков|нижн/i.test(c.textContent || ''));
-            if (chip) return chip;
+            // Нужное подключение — противоположное тому, что было при входе на шаг
+            let was = '';
+            try { was = JSON.parse(this._snap).c; } catch (e) { }
+            const want = was === 'side' ? 'bottom' : 'side';
+            const rc = Array.prototype.slice.call(body.querySelectorAll('[onclick*="switchSwapRadConnection"]')).filter(c => c.offsetParent);
+            if (rc.length) {
+                const chip = rc.find(c => c.getAttribute('onclick').indexOf("'" + want + "'") > -1);
+                // Фильтр уже переключён — показываем на модель с новым подключением
+                if (chip && !chip.classList.contains('active')) return chip;
+                // С новым подключением в этом материале нет прибора нужной мощности — список
+                // пуст. Показываем на «Тип прибора → Все»: там модели находятся.
+                if (!rows.length) {
+                    const all = Array.prototype.slice.call(body.querySelectorAll('[onclick*="switchSwapRadMaterial"]'))
+                        .find(c => c.offsetParent && c.getAttribute('onclick').indexOf("'all'") > -1 && !c.classList.contains('active'));
+                    if (all) return all;
+                }
+            } else {
+                const chip = Array.prototype.slice.call(body.querySelectorAll('.swap-chip'))
+                    .find(c => c.offsetParent && !c.classList.contains('on') && /боков|нижн/i.test(c.textContent || ''));
+                if (chip) return chip;
+            }
         }
         return rows[0] || null;
     },
@@ -1170,8 +1227,16 @@ const Tour = {
     },
 
     // ── Задания: «сделайте сами», проверяются по состоянию калькулятора ─────
+    // noMobTasks — на телефоне задания у шага нет: в мобильной смете колонка количества и
+    // крестик скрыты, и задание «поменяйте количество» там было не выполнить ничем.
+    tasksOf: function (step) {
+        if (!step || !step.tasks) return null;
+        if (step.noMobTasks && window.innerWidth < 760) return null;
+        return step.tasks;
+    },
+
     taskFlags: function (step) {
-        return (step && step.tasks || []).map(t => { try { return !!t.done(this._snap); } catch (e) { return false; } });
+        return (this.tasksOf(step) || []).map(t => { try { return !!t.done(this._snap); } catch (e) { return false; } });
     },
 
     tasksPending: function (step) {
@@ -1180,7 +1245,7 @@ const Tour = {
 
     tasksHtml: function (step) {
         const fl = this.taskFlags(step);
-        return (step.tasks || []).map((t, i) =>
+        return (this.tasksOf(step) || []).map((t, i) =>
             '<div class="tour-task' + (fl[i] ? ' is-done' : '') + '"><span class="tour-task-mark">' + (fl[i] ? '✓' : '') +
             '</span><span class="tour-task-t">' + t.label + '</span></div>').join('');
     },
@@ -1196,7 +1261,7 @@ const Tour = {
             h += '<button type="button" class="tour-btn tour-btn-ghost tour-btn-skip" onclick="Tour.next()" title="Пропустить задание">Пропустить</button>';
         } else {
             const label = step.last ? 'Готово' : (lastInBlock ? 'Завершить блок' : 'Дальше');
-            h += '<button type="button" class="tour-btn' + (step.tasks ? ' tour-btn-ready' : '') + '" onclick="Tour.next()" title="' + label + ' (или клавиша Enter)">' +
+            h += '<button type="button" class="tour-btn' + (this.tasksOf(step) ? ' tour-btn-ready' : '') + '" onclick="Tour.next()" title="' + label + ' (или клавиша Enter)">' +
                 label + '<kbd class="tour-kbd">Enter ↵</kbd></button>';
         }
         return h;
@@ -1261,44 +1326,69 @@ const Tour = {
     updatePointer: function () {
         try {
             const step = this.STEPS[this._step];
-            if (!this.active() || this._view !== 'step' || !step || !step.tasks || this.blocked() || !this.tasksPending(step)) { this.hidePointer(); return; }
+            if (!this.active() || this._view !== 'step' || !step || !this.tasksOf(step) || this.blocked() || !this.tasksPending(step)) { this.hidePointer(); return; }
             const card = document.getElementById('tour_card');
             if (!card || card.style.display === 'none') { this.hidePointer(); return; }
             const t = this.pointEl(step);
             if (!t) { this.hidePointer(); return; }
+            // В окне замены нужная строка или фильтр часто ниже края окна (на телефоне список
+            // моделей начинается на втором экране). Подкручиваем к каждой новой цели и ещё
+            // 2,5 с после этого, если она уехала под карточку (окно дорисовывает картинки и
+            // строку сдвигает вниз); дальше человек листает сам, и обучение с ним не борется.
+            if (this.swapOpen()) {
+                if (this._swapScrolled !== t) { this._swapScrolled = t; this._swapSeenAt = Date.now(); this._swapDone = false; }
+                const rr = t.getBoundingClientRect(), cr = card.getBoundingClientRect();
+                const ty = rr.top + Math.min(rr.height / 2, 24);
+                const hidden = rr.bottom < 0 || rr.top > window.innerHeight ||
+                    (ty > cr.top && ty < cr.bottom && rr.left < cr.right && rr.right > cr.left);
+                if (!this._swapDone || (hidden && Date.now() - this._swapSeenAt < 2500)) {
+                    this._swapDone = true;
+                    try { t.scrollIntoView({ behavior: 'auto', block: 'center' }); } catch (e) { }
+                }
+            }
             const r = t.getBoundingClientRect();
             if (r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth) { this.hidePointer(); return; }
+            const x = r.width > 260 ? r.left + 70 : r.left + r.width / 2;
+            const y = r.top + Math.min(r.height / 2, 24);
+            const px = Math.round(Math.max(6, Math.min(x, window.innerWidth - 6)));
+            const py = Math.round(Math.max(6, Math.min(y, window.innerHeight - 6)));
+            // Элемент закрыт чем-то сверху — открытым меню ☰, окном, самой карточкой. Стрелка
+            // поверх меню показывала «в пустоту»: на пункт меню, которого задание не касается.
+            // Показываем только на то, что сейчас можно нажать.
+            const top = document.elementFromPoint(px, py);
+            if (!top || !(t === top || t.contains(top) || top.contains(t))) { this.hidePointer(); return; }
             let p = document.getElementById('tour_pointer');
             if (!p) {
                 p = document.createElement('div');
                 p.id = 'tour_pointer';
                 p.setAttribute('aria-hidden', 'true');
-                // Бордовая стрелка с «хвостом»: хвост тянется от карточки к элементу, и стрелка
-                // каждый раз как бы приезжает по нему — взгляд сам идёт от текста задания к кнопке.
-                p.innerHTML = '<span class="tp-ring"></span><span class="tp-hand"><span class="tp-tail"></span>' +
-                    '<svg class="tp-arrow" viewBox="0 0 24 24" width="38" height="38" aria-hidden="true">' +
-                    '<path d="M5 2.5l13.5 7.8-6 1.6-3 6.6z" fill="#9F1239" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></span>';
+                // Бордовая стрелка прилетает со стороны карточки и смотрит туда, куда летит:
+                // наконечник на элементе, хвост за ним сужается и гаснет к карточке — взгляд
+                // идёт от текста задания к кнопке. Всё внутри .tp-rot повёрнуто по направлению
+                // «элемент → карточка» (--ang), поэтому рисуем как будто карточка справа.
+                p.innerHTML = '<span class="tp-ring"></span><span class="tp-hand"><span class="tp-rot">' +
+                    '<span class="tp-tail"></span>' +
+                    '<svg class="tp-arrow" viewBox="0 0 30 24" width="35" height="28" aria-hidden="true">' +
+                    '<path d="M1 12L27 1.5 20.5 12 27 22.5z" fill="#9F1239" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>' +
+                    '</span></span>';
                 document.body.appendChild(p);
             }
-            const x = r.width > 260 ? r.left + 70 : r.left + r.width / 2;
-            const y = r.top + Math.min(r.height / 2, 24);
-            const px = Math.round(Math.max(6, Math.min(x, window.innerWidth - 6)));
-            const py = Math.round(Math.max(6, Math.min(y, window.innerHeight - 6)));
             p.style.left = px + 'px';
             p.style.top = py + 'px';
-            // Откуда «приезжает» стрелка: со стороны карточки (но не дальше 140 px — иначе
-            // хвост уйдёт за экран); карточка рядом или перекрыта — сверху-слева.
+            // Откуда прилетает: со стороны карточки. Пролёт короткий — 56 px: длинный (было
+            // до 140) начинался на соседнем тумблере, и на снимке экрана стрелка «показывала»
+            // не туда. Карточка совсем рядом — прилетаем справа снизу.
             const c = card.getBoundingClientRect();
             let dx = (c.left + c.width / 2) - px, dy = (c.top + c.height / 2) - py;
             let len = Math.hypot(dx, dy);
             if (len < 70) { dx = 1; dy = 0.7; len = Math.hypot(dx, dy); }
-            const d = Math.min(len, 140);
             const ux = dx / len, uy = dy / len;
+            const tl = Math.round(Math.max(40, Math.min(len - 40, 120)));
             const set = (k, v) => { if (p.style.getPropertyValue(k) !== v) p.style.setProperty(k, v); };
-            set('--fx', Math.round(ux * d) + 'px');
-            set('--fy', Math.round(uy * d) + 'px');
+            set('--fx', Math.round(ux * 56) + 'px');
+            set('--fy', Math.round(uy * 56) + 'px');
             set('--ang', Math.round(Math.atan2(uy, ux) * 180 / Math.PI) + 'deg');
-            set('--tl', Math.round(d) + 'px');
+            set('--tl', tl + 'px');
             p.style.display = '';
         } catch (e) { }
     },
@@ -1514,7 +1604,7 @@ const Tour = {
             '<div class="tour-prog"><i style="width:' + Math.round(n / Math.max(total, 1) * 100) + '%"></i></div>' +
             '<div class="tour-card-title">' + v.title + '</div>' +
             '<div class="tour-card-text">' + v.text + '</div>' +
-            (step.tasks ? '<div class="tour-tasks' + (this.tasksPending(step) ? '' : ' is-done') + '" id="tour_tasks">' + this.tasksHtml(step) + '</div>' : '') +
+            (this.tasksOf(step) ? '<div class="tour-tasks' + (this.tasksPending(step) ? '' : ' is-done') + '" id="tour_tasks">' + this.tasksHtml(step) + '</div>' : '') +
             (step.actions ? '<div class="tour-actions">' + step.actions.map(a =>
                 '<button type="button" class="tour-act" onclick="' + a.run + '">' + a.label + '</button>').join('') + '</div>' : '') +
             (typeof v.extra === 'function' ? v.extra.call(this) : '') +
@@ -1568,6 +1658,18 @@ const Tour = {
             card.style.left = ''; card.style.top = '';
             card.style.bottom = (this.bottomBusy() + 12) + 'px';
             card.style.right = '12px';
+            // Телефон: карточка во всю ширину закрывала низ окна, а список моделей там и
+            // кончается — докрутить строку выше нельзя, и стрелке некуда было показать.
+            // Нужное место в нижней половине экрана — карточку наверх.
+            if (window.innerWidth < 760) {
+                let low = false;
+                try {
+                    const pt = this.pointEl(this.STEPS[this._step]);
+                    const r = pt && pt.getBoundingClientRect();
+                    low = !!(r && r.top + Math.min(r.height / 2, 24) > window.innerHeight * 0.55);
+                } catch (e) { }
+                if (low) { card.classList.add('tour-card-swap-top'); card.style.bottom = ''; }
+            }
             return;
         }
         if (narrow) {
@@ -1595,7 +1697,7 @@ const Tour = {
     placeNear: function (card, w, h, left, top, busy) {
         try {
             const step = this.STEPS[this._step];
-            if (!this.active() || this._view !== 'step' || !step || !step.tasks || !this.tasksPending(step)) return;
+            if (!this.active() || this._view !== 'step' || !step || !this.tasksOf(step) || !this.tasksPending(step)) return;
             const t = this.pointEl(step);
             if (!t) return;
             const b = t.getBoundingClientRect();
@@ -1648,11 +1750,11 @@ const Tour = {
         if (shown.dataset.seller !== (this.isSeller() ? '1' : '0')) { this.buildPlan(); this.show(); return; }
         if (this.skipped(step)) { this.show(); return; }
         // Человек выполнил (или отменил) задание — обновляем галочки и кнопки
-        if (step.tasks && shown.dataset.t !== this.taskFlags(step).join('')) this.refreshTasks();
+        if (this.tasksOf(step) && shown.dataset.t !== this.taskFlags(step).join('')) this.refreshTasks();
         // Всё выполнено и секунда прошла — дальше сами (см. refreshTasks)
         if (this._autoAt && Date.now() >= this._autoAt) {
             this._autoAt = 0;
-            if (step.tasks && !this.tasksPending(step)) { this.next(); return; }
+            if (this.tasksOf(step) && !this.tasksPending(step)) { this.next(); return; }
         }
         // Смета перерисовалась, элемент уехал или исчез — поправляем подсветку
         const el = this.target(step);
@@ -1909,21 +2011,23 @@ body.dark-mode .tour-blk-ic { background: #1E1E1E; border-color: #333333; }
     position: absolute; left: -26px; top: -26px; width: 52px; height: 52px; box-sizing: border-box;
     border: 4px solid #9F1239; border-radius: 50%; opacity: 0; animation: tp-ring 2.2s ease-out infinite;
 }
-#tour_pointer .tp-hand { position: absolute; left: -5px; top: -4px; line-height: 0; animation: tp-fly 2.2s cubic-bezier(.3, .1, .2, 1) infinite; }
-#tour_pointer .tp-arrow { filter: drop-shadow(0 2px 4px rgba(159, 18, 57, 0.55)); }
-/* Хвост — след за стрелкой, тянется в сторону карточки */
-#tour_pointer .tp-tail { position: absolute; left: 7px; top: 4px; width: 0; height: 0; transform-origin: 0 0; transform: rotate(var(--ang, 45deg)); animation: tp-tail 2.2s ease-out infinite; }
-#tour_pointer .tp-tail::before { content: ''; position: absolute; left: 0; top: -5px; width: var(--tl, 110px); height: 10px; border-radius: 10px;
-    background: linear-gradient(90deg, rgba(159, 18, 57, 0.9), rgba(159, 18, 57, 0)); clip-path: polygon(0 35%, 100% 0, 100% 100%, 0 65%); }
+#tour_pointer .tp-hand { position: absolute; left: 0; top: 0; width: 0; height: 0; animation: tp-fly 2.2s cubic-bezier(.3, .1, .2, 1) infinite; }
+/* Повёрнутая система: ось x смотрит от элемента к карточке, наконечник в нуле */
+#tour_pointer .tp-rot { position: absolute; left: 0; top: 0; width: 0; height: 0; transform: rotate(var(--ang, 35deg)); }
+#tour_pointer .tp-arrow { position: absolute; left: -1px; top: -14px; filter: drop-shadow(0 2px 3px rgba(159, 18, 57, 0.5)); animation: tp-tap 2.2s ease-in-out infinite; }
+/* Хвост: широкий у стрелки, сужается в точку и гаснет к карточке */
+#tour_pointer .tp-tail { position: absolute; left: 20px; top: -5px; width: var(--tl, 90px); height: 10px;
+    background: linear-gradient(90deg, rgba(159, 18, 57, 0.85), rgba(159, 18, 57, 0)); clip-path: polygon(0 0, 100% 50%, 0 100%);
+    animation: tp-tail 2.2s ease-out infinite; }
 @keyframes tp-fly {
-    0% { transform: translate(var(--fx, 90px), var(--fy, 60px)); opacity: 0; }
-    10% { opacity: 1; }
-    50% { transform: translate(0, 0); }
-    60% { transform: translate(3px, 4px); }
-    70%, 88% { transform: translate(0, 0); opacity: 1; }
+    0% { transform: translate(var(--fx, 46px), var(--fy, 32px)); opacity: 0; }
+    12% { opacity: 1; }
+    40%, 90% { transform: translate(0, 0); opacity: 1; }
     100% { transform: translate(0, 0); opacity: 0; }
 }
-@keyframes tp-tail { 0%, 8% { opacity: 0; } 20%, 48% { opacity: 1; } 62%, 100% { opacity: 0; } }
+/* Тычок наконечником в элемент — вдоль направления полёта */
+@keyframes tp-tap { 0%, 44% { transform: translateX(0); } 52% { transform: translateX(-5px); } 62%, 100% { transform: translateX(0); } }
+@keyframes tp-tail { 0%, 6% { opacity: 0; } 16%, 46% { opacity: 1; } 70%, 100% { opacity: 0.25; } }
 @keyframes tp-ring { 0%, 48% { opacity: 0; transform: scale(.4); } 56% { opacity: .95; transform: scale(.7); } 90%, 100% { opacity: 0; transform: scale(1.35); } }
 
 /* Окно замены на весь экран: карточка — только рамка с заданием в углу */
@@ -1952,6 +2056,10 @@ body.dark-mode .tour-btn-ready { animation-name: tour-ready-dark; }
 /* Телефон: кнопки и крестик — не меньше 44 px под палец */
 @media (max-width: 760px) {
     .tour-card-swap { left: 8px !important; right: 8px !important; width: auto; max-height: 32vh; }
+    .tour-card-swap.tour-card-swap-top { top: 8px !important; bottom: auto !important; }
+    /* В окне замены на телефоне от карточки остаётся задание: заголовок съедал строки
+       списка моделей, на которые показывает стрелка */
+    .tour-card-swap .tour-card-title { display: none; }
     body.tour-typing .tour-card, body.tour-typing #tour_pointer { display: none !important; }
     /* Открыто меню ☰: оно выпадает сверху на всю ширину и тянется почти до низа (его высота —
        экран минус 130 px). Полноценная карточка внизу ложилась поверх нижних пунктов меню и
