@@ -100,6 +100,19 @@
       P('U', '3/4', 1, EXT('газ'))
     ]
   };
+  var NAVIEN_SYS = {
+    // Руководство NGB210 System 20H/24H/32H/36H, стр. 49 («Присоединительные размеры»): ОВ G3/4",
+    // контур загрузки бойлера G1/2", газ G3/4"; стр. 32 — подача и обратка бойлера выходят на два
+    // патрубка (без бойлера их закольцовывают гофротрубой из комплекта). НР/ВР в таблице не указаны
+    // (на стр. 36 — «гайки на входных и выходных патрубках» без рода резьбы), поэтому конец U.
+    src: 'Navien NGB210 System, руководство, стр. 32, 36, 49',
+    dhwValve: true,
+    ports: [
+      P('U', '3/4', 2, { role: 'подача и обратка отопления' }),
+      P('U', '1/2', 2, { role: 'загрузка и обратка бойлера' }),
+      P('U', '3/4', 1, EXT('газ'))
+    ]
+  };
   var STOUT_STATUS = {
     // Паспорт SEB-3101 (stout_bf87195c29c2), табл. 1: подача и обратка 3/4" НР.
     src: 'STOUT STATUS, паспорт (stout_bf87195c29c2)',
@@ -146,6 +159,7 @@
     'SEB-3101-000005': STOUT_STATUS, 'SEB-3101-000007': STOUT_STATUS, 'SEB-3101-000009': STOUT_STATUS, 'SEB-3101-000012': STOUT_STATUS, 'SEB-3101-000014': STOUT_STATUS, 'SEB-3101-000018': STOUT_STATUS, 'SEB-3101-000021': STOUT_STATUS, 'SEB-3101-000024': STOUT_STATUS, 'SEB-3101-000027': STOUT_STATUS,
     'PNGB3500024L006': NAVIEN_ONE, 'PNGB3500030L010': NAVIEN_ONE,
     'PNGB3500035L010': NAVIEN_ONE, 'PNGB3500040L006': NAVIEN_ONE,
+    'PNGB2100020L002': NAVIEN_SYS, 'PNGB2100024L002': NAVIEN_SYS, 'PNGB2100032L001': NAVIEN_SYS,
     'SWH-4110-050100': SS_DUPLEX, 'SWH-4110-050150': SS_DUPLEX, 'SWH-4110-050200': SS_DUPLEX,
     'SWH-4110-050300': SS_DUPLEX, 'SWH-4110-050500': SS_DUPLEX,
     'RWH-2110-000150': ROMMER_GT, 'RWH-2110-000200': ROMMER_GT,
