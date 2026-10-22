@@ -59155,6 +59155,10 @@ const app = {
             steelRads[0],           // Стальные панельные
         ];
         const allRadArrays = [catalog.rads, titanRads, spaceRuRads, spaceRu350Rads, titanSideRads, titanSide350Rads, titanSide200Rads, aluminumRads, aluminum350Rads, rommerPlusAlRads, rommerPlusAl200Rads, steelRads];
+        // Серии, добавленные позже (ROMMER, VEGA, ALPHA, TITAN графит, дизайн-радиаторы), — из
+        // того же списка, что и окно замены. Без .alts у строки нет кнопки замены: выбрал в
+        // окне ALPHA — и поменять радиатор второй раз было уже нечем.
+        try { this._getSecRadSeries().forEach(s => { if (s.arr && allRadArrays.indexOf(s.arr) < 0) allRadArrays.push(s.arr); }); } catch (e) { }
         allRadArrays.forEach(arr => arr.forEach(rad => { rad.alts = radAlts; }));
         let hAlts = catalog.h_valves; catalog.h_valves.forEach(v => { v.alts = hAlts; });
         const allTankArrays = [catalog.tanks_optibase, catalog.tanks_standard, catalog.tanks_stainless, catalog.tanks_floor_comb, catalog.tanks_wall_cos, catalog.tanks_wall_comb].filter(Boolean);
