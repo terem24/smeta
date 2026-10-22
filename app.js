@@ -70783,7 +70783,8 @@ const app = {
      * Возвращает число компенсаторов на линию (n), лишний метраж трубы на обе линии (extraM),
      * неподвижные опоры (fixed) и угольники PP-R (elbows) в сумме на обе линии.
      */
-    radTrunkComp: function (mat, d, oneWayM) {
+    radTrunkComp: function (mat, d, oneWayM, legs) {
+        legs = Math.max(1, legs || 1);
         const c = this.RAD_COMP[mat] || this.RAD_COMP.stable;
         const t = parseInt(this.radRegime().label, 10) || 80;
         const dT = Math.max(1, t - this.RAD_COMP_T_MONTAGE);
@@ -70806,15 +70807,16 @@ const app = {
         if (!cp || !(cp.len > 0)) return '';
         const f = (v, n) => v.toFixed(n == null ? 0 : n).replace('.', ',');
         const st = 'font-size:11px;line-height:1.5;';
-        let s = `<span style="${st}"><b>Температурное удлинение (${cp.doc}, ${cp.ref}):</b> ΔL = α·L·Δt = ${f(cp.alpha, 3)} × ${f(cp.len, 1)} м × ${cp.dT} °C = <b>${f(cp.dL)} мм</b> на линию (подача ${cp.t} °C, монтаж ${this.RAD_COMP_T_MONTAGE} °C).<br>`;
+        let s = `<span style="${st}"><b>Температурное удлинение (${cp.doc}, ${cp.ref}):</b> ΔL = α·L·Δt = ${f(cp.alpha, 3)} × ${f(cp.len, 1)} м × ${cp.dT} °C = <b>${f(cp.dL)} мм</b> на линию (подача ${cp.t} °C, монтаж ${this.RAD_COMP_T_MONTAGE} °C).<br>` +
+            (cp.legs > 1 ? `<b>Участки:</b> магистраль идёт вдоль стен с поворотами — ${cp.legs} прямых участка(ов) по ≈ ${f(cp.len, 1)} м (длина трассы делится на сторону дома √S); удлинение воспринимают повороты.<br>` : ``);
         if (cp.n === 0) {
             s += cp.lyre
                 ? `<b>Компенсатор не нужен:</b> прямой участок не длиннее ${cp.lmax} м — удлинение воспринимают повороты трассы.`
                 : `<b>Компенсатор не нужен:</b> прямой участок не длиннее ${f(cp.lmax, 1)} м. Свободное плечо у поворота — не меньше Lк = ${cp.k}·√(d·ΔL) = <b>${f(cp.lkAll)} мм</b>; трубу у поворота закрепляйте на этом расстоянии.`;
         } else {
             s += cp.lyre
-                ? `<b>Лировидные компенсаторы:</b> участок ${f(cp.len, 1)} м длиннее ${cp.lmax} м — на каждую линию ${cp.n} шт. (h = 15·dн, r₁ = 5·dн, п. 10.7), по ≈ 40·dн трубы на компенсатор.`
-                : `<b>П-образные компенсаторы:</b> участок ${f(cp.len, 1)} м длиннее ${f(cp.lmax, 1)} м, при которых хватает плеча ${this.RAD_COMP_ARM_MM} мм у поворота, — на каждую линию ${cp.n} шт.; вылет Lк = ${cp.k}·√(d·ΔL) = <b>${f(cp.lk)} мм</b> на участок ${f(cp.sec, 1)} м, лишней трубы 2·Lк на компенсатор.`;
+                ? `<b>Лировидные компенсаторы:</b> участок ${f(cp.len, 1)} м длиннее ${cp.lmax} м — на каждую линию ${cp.n * cp.legs} шт. (h = 15·dн, r₁ = 5·dн, п. 10.7), по ≈ 40·dн трубы на компенсатор.`
+                : `<b>П-образные компенсаторы:</b> участок ${f(cp.len, 1)} м длиннее ${f(cp.lmax, 1)} м, при которых хватает плеча ${this.RAD_COMP_ARM_MM} мм у поворота, — на каждую линию ${cp.n * cp.legs} шт.; вылет Lк = ${cp.k}·√(d·ΔL) = <b>${f(cp.lk)} мм</b> на участок ${f(cp.sec, 1)} м, лишней трубы 2·Lк на компенсатор.`;
             s += `<br><b>В смете:</b> +${cp.extraM} м трубы, ${cp.fixed} ${this.plural(cp.fixed, 'неподвижная опора', 'неподвижные опоры', 'неподвижных опор')} (по две у каждого компенсатора на каждой линии)` + (cp.elbows ? `, ${cp.elbows} угольников 90°` : ``) + `.`;
         }
         s += `<br><i>Плечо ${this.RAD_COMP_ARM_MM} мм у поворота и Δt от +${this.RAD_COMP_T_MONTAGE} °C — практика проектирования, не из документа.${cp.mat === 'ppr' ? ' Для стабилизированной PP-R труба расширяется меньше — расчёт с запасом.' : ''}${cp.mat === 'grey' ? ' В паспорте STOUT α = 0,15 мм/(м·К), по СП 344 — 0,19; берём норму.' : ''}</i></span>`;
@@ -70830,7 +70832,7 @@ const app = {
         if (cp.elbows > 0) {
             const el = (catalog.ppr_proaqua_elbow90 || []).find(x => x.id === this.RAD_PPR_ELBOW[pick]);
             if (el) addToBill({ ...el, originalId: el.id + '_' + tag + '_comp' }, cp.elbows,
-                `Угольники 90° для П-образных компенсаторов PP-R: по четыре на компенсатор на каждой линии (${cp.n} × 2 линии × 4).`, grp);
+                `Угольники 90° для П-образных компенсаторов PP-R: по четыре на компенсатор на каждой линии (${cp.n * cp.legs} × 2 линии × 4).`, grp);
         }
     },
     radPprTrunkPool: function () {
@@ -90051,6 +90053,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 ].filter(Boolean);
 
                 const materialName = isMp ? 'металлопластиковая труба (латунные пресс-фитинги)' : (isStable ? 'стабильная труба PE-Xa/Al/PE-RT (аксиальные фитинги, как у серой PEX-a)' : 'серая труба PEX-a (аксиальные фитинги)');
+                // Подсказки о компенсации удлинений по диаметру магистрали (заполняются ниже, до покупки труб).
+                const _teeCompNote = {};
                 const buyPipe = (meters, d, label) => {
                     if (meters <= 0) return;
                     let base = pipePool.find(x => x.id === pipeIds[d]);
@@ -90091,20 +90095,39 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         `• Расчётная длина трассы (туда): ${trunkOneWay.toFixed(1)} м → магистраль (подача+обратка+запас): ${trunkMeters} м, отводы к радиаторам: ${branchMeters} м.<br>` +
                         `• Материал: ${materialName}.<br>` +
                         `• Этот участок: Ø${d}мм, ${meters} м → ${coils} ${coils === 1 ? 'бухта' : 'бухт(ы)'} по ${base.len} м.` +
-                        `</span>`;
+                        `</span>` + (label === 'Магистраль тройниковой разводки.' ? (_teeCompNote[d] || '') : '');
                     addToBill(boughtItem, coils, desc, pipeGrp);
                 };
                 // Группируем по диаметру, чтобы одинаковый диаметр на разных участках (или совпавший
                 // с диаметром отводов 16мм) не превращался в задвоенную строку сметы одной и той же трубы.
+                // Компенсация температурных удлинений: магистраль делим пополам по диаметрам, у каждой
+                // половины своя длина и свой диаметр (см. radTrunkComp). Лишняя труба на компенсаторы
+                // уходит в метраж своего диаметра, неподвижные опоры — отдельной строкой.
+                const _teeMat = isMp ? 'mp' : (isStable ? 'stable' : 'grey');
+                // Диаметры половин совпали — считаем магистраль одним участком, а не двумя.
+                // Магистраль тройниковой схемы идёт вдоль стен: прямой участок — примерно сторона дома
+                // (√ площади этажа), между участками повороты, которые и берут удлинение. Длину трассы
+                // делим на такие участки; на каждом проверяем, хватает ли ему плеча (radTrunkComp).
+                const _teeSame = dNear === dFar;
+                const _teeLegs = Math.max(1, Math.ceil(trunkOneWay / Math.sqrt(Math.max(floorArea, 1))));
+                const _teeLeg = trunkOneWay / _teeLegs;
+                const _teeLegsNear = _teeSame ? _teeLegs : Math.max(1, Math.ceil(_teeLegs / 2));
+                const _teeCompNear = this.radTrunkComp(_teeMat, dNear, _teeLeg, _teeLegsNear);
+                const _teeCompFar = _teeSame ? null : this.radTrunkComp(_teeMat, dFar, _teeLeg, Math.max(1, _teeLegs - _teeLegsNear));
+                _teeCompNote[dNear] = this.radTrunkCompNote(_teeCompNear);
+                if (_teeCompFar) _teeCompNote[dFar] = this.radTrunkCompNote(_teeCompFar);
                 let pipeByDiam = {};
-                pipeByDiam[dNear] = (pipeByDiam[dNear] || 0) + metersNear;
-                pipeByDiam[dFar] = (pipeByDiam[dFar] || 0) + metersFar;
+                pipeByDiam[dNear] = (pipeByDiam[dNear] || 0) + metersNear + _teeCompNear.extraM;
+                pipeByDiam[dFar] = (pipeByDiam[dFar] || 0) + metersFar + (_teeCompFar ? _teeCompFar.extraM : 0);
                 pipeByDiam[16] = (pipeByDiam[16] || 0) + branchMeters;
                 const labelByDiam = { 16: 'Отводы от магистрали к радиаторам.' };
                 Object.keys(pipeByDiam).forEach(dKey => {
                     let d = Number(dKey);
                     buyPipe(pipeByDiam[dKey], d, labelByDiam[d] || 'Магистраль тройниковой разводки.');
                 });
+
+                this.radTrunkCompItems(_teeCompNear, dNear, false, addToBill, pipeGrp, 'tee_near');
+                this.radTrunkCompItems(_teeCompFar, dFar, false, addToBill, pipeGrp, 'tee_far');
 
                 const teeToBranchId = (d) => {
                     if (teeIds[d]) return teeIds[d];
