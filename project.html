@@ -573,35 +573,8 @@ if (payload && payload.items && payload.items.length) {
         sheet: numOf('v')(vNodeStart) }) }];
   }
   var vPipeNo = vNodeStart + vNodes.length;
-  // Обвязка узла ввода ХВС: вид собран 3D-рендером, потому что на листах
-  // проектов-образцов узел с редуктором и счётчиком не нарисован ни разу.
-  // Примечания — по тому, что реально стоит на виде узла (подписи деталей
-  // рендера). Раньше текст про счётчик и редуктор печатался всегда, даже у
-  // узла, где их нет ни на виде, ни в смете.
-  var hvsNotes = function (photo) {
-    var names = ((photo && photo.marks) || []).map(function (m) { return String(m.t || ''); }).join(' | ');
-    var meter = /сч[её]тчик/i.test(names), reducer = /редуктор/i.test(names);
-    var filter = /фильтр/i.test(names), check = /обратн/i.test(names);
-    var out = [];
-    if (filter && (meter || reducer)) {
-      out.push('Косой фильтр ставится раньше ' +
-        [meter ? 'счётчика' : '', reducer ? 'редуктора' : ''].filter(Boolean).join(' и ') +
-        ': песок и окалина из магистрали сажают ' +
-        [meter ? 'крыльчатку счётчика' : '', reducer ? 'седло редуктора' : ''].filter(Boolean).join(' и ') + '.');
-    } else if (filter) {
-      out.push('Фильтр ставится первым по ходу воды, сразу за вводным краном: песок и окалина ' +
-        'из магистрали оседают в нём, а не в арматуре узла.');
-    }
-    if (check && reducer) out.push('Обратный клапан — после редуктора; перед ним он отсекает редуктор ' +
-      'от магистрали, и настроить его нечем.');
-    out.push('После сборки провести гидравлическое испытание давлением 10 бар.');
-    return out;
-  };
-  var vPipe = (window.projectNodeSheets && (payload.node3d || {}).hvs_in)
-    ? [projectNodeSheets.piping({ code: MARK.v.code, sheet: numOf('v')(vPipeNo),
-        title: 'Обвязка узла ввода ХВС', photo: payload.node3d.hvs_in,
-        notes: hvsNotes(payload.node3d.hvs_in) })].filter(Boolean)
-    : [];
+  // Своего вида узла ввода ХВС на листах нет: только листы проектов-образцов.
+  var vPipe = [];
   var vSpecStart = vPipeNo + vPipe.length;
   var vSpec = itemsBy.v.length ? projectSheets.fromEquipment(itemsBy.v, {
     title: 'Спецификация материалов и оборудования водоснабжения',
