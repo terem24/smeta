@@ -47,8 +47,8 @@ const KpOutcome = {
         { key: 'self_buy', label: 'Клиент купил оборудование сам' },
         { key: 'other_brand', label: 'Выбрали другой бренд', ask: 'Какой бренд?' },
         { key: 'postponed', label: 'Стройку отложили' },
-        { key: 'calc_error', label: 'В смете ошибка, посчитано не то', need: true, ask: 'Что именно не так? По этим ответам дорабатываем калькулятор' },
-        { key: 'other', label: 'Другое', need: true, ask: 'Коротко: почему отказались' }
+        { key: 'calc_error', label: 'В смете ошибка, посчитано не то', need: true, ask: 'Что не так в смете?' },
+        { key: 'other', label: 'Другое', need: true, ask: 'Почему отказались?' }
     ],
     MIN_COMMENT: 10,
 
@@ -255,14 +255,14 @@ const KpOutcome = {
             overlay.className = 'calc-dialog-overlay kpo-overlay';
             const state = {}; // calcId → { mode: 'won'|'lost', pick, comment }
 
+            // Коротко: почему окно, что даёт, что будет без отметки
             const lead = () => {
-                if (opts.staff) return 'Отметка ставится за монтажника и видна ему в истории сметы.';
-                const blocked = items.filter(k => k.blocking).length;
+                if (opts.staff) return 'Монтажник увидит отметку в истории сметы.';
+                if (opts.gate) return `Новые КП не отправляются, пока у ${this.GATE} КП нет итога. Отметьте — и отправка откроется. Считать можно как обычно.`;
                 const gateLine = this.gateApplies()
-                    ? `<br><b>На тарифе без Профи</b>: когда без итога ${this.GATE} КП и больше (дольше ${this.GRACE_DAYS} дн. после этого окна), новые КП не отправляются, пока не отметите старые.`
+                    ? `<br><small>Без Профи: если итога нет у ${this.GATE} КП, новые не отправятся. Считать можно всегда.</small>`
                     : '';
-                if (opts.gate) return `Отправка новых КП приостановлена: без итога ${blocked} КП. Отметьте, чем они закончились, — это несколько секунд, и отправка откроется сразу.`;
-                return `Этим КП больше ${this.DAYS} дней. Отметьте, чем закончилось: так видно, какие сметы работают, а причины отказов помогают нам дорабатывать калькулятор.${gateLine}`;
+                return `КП ушли клиентам больше ${this.DAYS} дней назад. Отметьте итог — в «Моих показателях» будет видно, сколько КП стали сделками. Ошибка в смете — напишите, исправим.${gateLine}`;
             };
 
             const itemHtml = (k) => {
@@ -272,7 +272,7 @@ const KpOutcome = {
                 const who = opts.staff && k.userName ? `<div class="kpo-sub">${this.esc(k.userName)}</div>` : '';
                 let body = '';
                 if (st.mode === 'won') {
-                    body = `<div class="kpo-q">Где покупают оборудование?</div>
+                    body = `<div class="kpo-q">Где покупают?</div>
                         <div class="kpo-chips">${this.WHERE.map(w => `<button type="button" class="kpo-chip${st.pick === w.key ? ' on' : ''}" data-act="pick" data-id="${k.calcId}" data-v="${w.key}">${this.esc(w.label)}</button>`).join('')}</div>
                         <textarea class="kpo-ta" data-id="${k.calcId}" rows="2" placeholder="Комментарий, если есть">${this.esc(st.comment || '')}</textarea>
                         <div class="kpo-row"><button type="button" class="kpo-btn" data-act="back" data-id="${k.calcId}">Назад</button><button type="button" class="kpo-btn kpo-ok" data-act="save" data-id="${k.calcId}">Сохранить</button></div>`;
@@ -287,8 +287,8 @@ const KpOutcome = {
                         <button type="button" class="kpo-btn kpo-won" data-act="won" data-id="${k.calcId}">✓ Клиент согласился</button>
                         <button type="button" class="kpo-btn kpo-lost" data-act="lost" data-id="${k.calcId}">✕ Отказ</button>
                         ${left > 0
-                            ? `<button type="button" class="kpo-btn" data-act="extend" data-id="${k.calcId}" title="Ещё ${this.DAYS} дней. Осталось продлений: ${left}">⏳ Ещё думает (+${this.DAYS} дн., осталось ${left})</button>`
-                            : `<span class="kpo-sub">Продления закончились — отметьте итог</span>`}
+                            ? `<button type="button" class="kpo-btn" data-act="extend" data-id="${k.calcId}" title="Спросим снова через ${this.DAYS} дней. Продлений осталось: ${left}">⏳ Думает, +${this.DAYS} дн.</button>`
+                            : `<span class="kpo-sub">Продлений больше нет</span>`}
                     </div>`;
                 }
                 return `<div class="kpo-item${k.blocking && !opts.staff ? ' kpo-block' : ''}" data-item="${k.calcId}">
@@ -306,7 +306,7 @@ const KpOutcome = {
                     <h3 class="calc-dialog-title">${opts.gate ? 'Отметьте итог КП' : 'Чем закончились КП?'}</h3>
                     <p class="calc-dialog-message">${lead()}</p>
                     <div class="kpo-list">${items.map(itemHtml).join('')}</div>
-                    <div class="calc-dialog-buttons"><button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" data-act="close">${opts.gate ? 'Отметить позже' : 'Позже'}</button></div>
+                    <div class="calc-dialog-buttons"><button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" data-act="close">${opts.gate || opts.staff ? 'Закрыть' : 'Напомнить завтра'}</button></div>
                 </div>`;
             };
 
@@ -344,7 +344,7 @@ const KpOutcome = {
                         if (!st.pick) { st.err = st.mode === 'won' ? 'Выберите, где покупают.' : 'Выберите причину.'; return render(); }
                         if (st.mode === 'lost') {
                             const r = this.REASONS.find(x => x.key === st.pick);
-                            if (r && r.need && comment.length < this.MIN_COMMENT) { st.err = 'Напишите пару слов, почему: без этого причину не разобрать.'; return render(); }
+                            if (r && r.need && comment.length < this.MIN_COMMENT) { st.err = 'Напишите коротко, что не так.'; return render(); }
                         }
                         btn.disabled = true;
                         const meta = st.mode === 'won' ? { where: st.pick } : { reason: st.pick };
@@ -353,7 +353,7 @@ const KpOutcome = {
                         meta.label = st.mode === 'won' ? this.whereLabel(st.pick) : this.reasonLabel(st.pick);
                         await this.write(k, st.mode, meta, !!opts.staff);
                         if (st.mode === 'won' && st.pick === 'terem' && !opts.staff) {
-                            setTimeout(() => app.alert('Отмечено. Чтобы счёт выставил ваш поставщик, откройте смету в «Мои объекты» и нажмите «Получить счёт».'), 300);
+                            setTimeout(() => app.alert('Отмечено. Счёт: «Мои объекты» → смета → «Получить счёт».'), 300);
                         }
                     } else return;
                     items.splice(items.indexOf(k), 1);
@@ -414,8 +414,8 @@ const KpOutcome = {
             + (open.length
                 ? `<div class="lk-list">${rowsHtml}</div>`
                   + (open.length > 8 ? `<p class="lk-hint" style="margin-top:6px;">и ещё ${open.length - 8}</p>` : '')
-                  + `<p class="lk-hint" style="margin-top:6px;">КП ушло клиенту больше ${this.DAYS} дней назад, а чем закончилось — неизвестно. Позвоните монтажнику или отметьте сами, если знаете: нажмите на строку.</p>`
-                : `<p class="lk-hint">У всех КП ваших монтажников итог отмечен или срок ещё не вышел.</p>`);
+                  + `<p class="lk-hint" style="margin-top:6px;">Больше ${this.DAYS} дней без итога. Позвоните монтажнику или нажмите на строку и отметьте сами.</p>`
+                : `<p class="lk-hint">КП без итога нет.</p>`);
         return {
             html: html,
             open: open.length,
