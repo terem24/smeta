@@ -49272,6 +49272,138 @@ const app = {
             `<div class="tooltip-content tip-panel">${content}</div></span>`;
     },
 
+    // «i» экономики (стоимость отопления, автоматика, ёмкость): вместо всплывашки в узкой левой
+    // панели, где её не видно, открывает окно по центру в оформлении «Окупаемость ёмкости».
+    // Текст берётся из скрытого .tooltip-content в момент нажатия, поэтому живые подсказки
+    // (например #buffer_tip) работают без изменений.
+    ecoTipHtml: function (title, sub, content, kind) {
+        if (!content) return '';
+        const q = s => String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+        return `<span class="tooltip-wrapper tip-panel-wrap eco-tip" data-title="${q(title)}" data-sub="${q(sub)}"${kind ? ' data-kind="' + kind + '"' : ''}>` +
+            `<i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i>` +
+            `<div class="tooltip-content tip-panel">${content}</div></span>`;
+    },
+    // Каркас окна экономики: оверлей, шапка, кнопка «Понятно», Esc и клик мимо. Возвращает карточку.
+    _ecoShell: function (title, sub, body) {
+        const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay';
+        const card = document.createElement('div');
+        card.className = 'calc-dialog-card sg-card';
+        card.innerHTML = `
+            <div class="sg-head">
+                <div class="sg-shield"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div>
+                <div class="sg-ht"><div class="sg-title">${esc(title) || 'Как посчитано'}</div>${sub ? `<div class="sg-sub">${esc(sub)}</div>` : ''}</div>
+            </div>
+            <div class="sg-body eco-body"><div class="eco-in">${body}</div>
+                <div class="calc-dialog-buttons"><button type="button" class="calc-dialog-btn" id="eco_ok">Понятно</button></div>
+            </div>`;
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+        const onKey = ev => { if (ev.key === 'Escape') close(); };
+        const close = () => {
+            document.removeEventListener('keydown', onKey);
+            overlay.classList.remove('active');
+            setTimeout(() => overlay.remove(), 200);
+        };
+        document.addEventListener('keydown', onKey);
+        card.querySelector('#eco_ok').onclick = close;
+        overlay.addEventListener('click', ev => { if (ev.target === overlay) close(); });
+        setTimeout(() => overlay.classList.add('active'), 10);
+        return card;
+    },
+    showEcoInfo: function (wrap) {
+        const src = wrap && wrap.querySelector('.tooltip-content');
+        if (!src) return;
+        if (wrap.dataset.kind === 'elcost') return this.showElCostModal(src.innerHTML);
+        this._ecoShell(wrap.dataset.title, wrap.dataset.sub, src.innerHTML);
+    },
+    // Есть ли у региона ступени тарифа (независимо от галочки в панели).
+    elTiersAvailable: function (tar) {
+        if (!tar || !tar.exact || tar.manual || typeof EL_TIERS === 'undefined') return false;
+        const t = EL_TIERS[tar.region];
+        return !!(t && t[tar.category] && t[tar.category].single);
+    },
+    /**
+     * Окно «Стоимость отопления»: счёт по месяцам столбиками (цвет — диапазон тарифа) и три
+     * переключателя сценария — тариф, потолок мощности, ступени. Нажатие на столбик — подробности
+     * месяца. Сценарии считаются заново тем же calcElHeatingCost, поэтому цифры совпадают с панелью.
+     */
+    showElCostModal: function (srcHtml) {
+        const base = this.calcElHeatingCost();
+        if (!base) return;
+        const money = v => Math.round(v).toLocaleString('ru-RU');
+        const t2 = v => (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+        const kw1 = v => (Math.round(v * 10) / 10).toString().replace('.', ',');
+        const hasTiers = this.elTiersAvailable(base.tariff);
+        const hasCap = base.boilerKw > 0 && base.boilerKw < base.kw - 0.05;
+        const seasonDoc = hasTiers ? this.EL_TIER_SEASON[base.tariff.region] : null;
+        const sc = { two: base.twoRate, cap: true, tiers: !!base.tierSet, boost: !!this.state.elTiersBoost, sel: -1 };
+        const sub = (base.boilerKw > 0 ? 'электрокотёл ' + kw1(base.boilerKw) + ' кВт' : 'по теплопотерям ' + kw1(base.kw) + ' кВт') + (base.tariff.region ? ' · ' + base.tariff.region : '');
+        const card = this._ecoShell('Стоимость отопления', sub, '');
+        const host = card.querySelector('.eco-in');
+        const draw = () => {
+            this.state.elTiersBoost = sc.boost;
+            const r = this.calcElHeatingCost({ twoRate: sc.two, noCap: !sc.cap, noTiers: !sc.tiers });
+            const act = r.months.filter(m => !m.off);
+            if (sc.sel < 0 || sc.sel >= act.length) sc.sel = act.reduce((b, m, i) => m.cost > act[b].cost ? i : b, 0);
+            const avg = r.seasonKwh > 0 ? r.seasonCost / r.seasonKwh : 0;
+            const dv = r.seasonCost - base.seasonCost;
+            const chip = (k, v, label) => `<button type="button" class="eco-chip${sc[k] === v ? ' on' : ''}" data-k="${k}" data-v="${v}">${label}</button>`;
+            let h = `<div class="eco-ctl">` +
+                `<div class="eco-grp"><span>Тариф</span>${chip('two', false, 'Один')}${chip('two', true, 'День-ночь')}</div>` +
+                (hasCap ? `<div class="eco-grp"><span>Мощность</span>${chip('cap', true, 'Лимит ' + kw1(base.boilerKw) + ' кВт')}${chip('cap', false, 'Без лимита')}</div>` : '') +
+                (hasTiers ? `<div class="eco-grp"><span>Ступени</span>${chip('tiers', true, 'Учесть')}${chip('tiers', false, 'Нет')}</div>` : '') +
+                (hasTiers && sc.tiers && !seasonDoc ? `<div class="eco-grp"><span>Пороги</span>${chip('boost', false, 'Как в таблице')}${chip('boost', true, '×1,8 электроотопление')}</div>` : '') + `</div>`;
+            h += `<div class="sg-perks eco-perks">` +
+                `<div><b>${t2(avg)} ₽</b><span>средний за кВт·ч</span></div>` +
+                `<div><b>${money(r.seasonCost)} ₽</b><span>за сезон${Math.abs(dv) > 1 ? ` · <em class="${dv > 0 ? 'up' : 'dn'}">${dv > 0 ? '+' : '−'}${money(Math.abs(dv))} к смете</em>` : ''}</span></div>` +
+                `<div><b>${money(r.seasonCost / r.activeMonths)} ₽</b><span>в месяц, ${r.activeMonths} мес.</span></div></div>`;
+            const VW = 600, VH = 190, pl = 8, pr = 8, pt = 22, pb = 26;
+            const mx = Math.max(...act.map(m => m.cost), 1) * 1.1;
+            const bw = (VW - pl - pr) / act.length;
+            const bars = act.map((m, i) => {
+                const x = pl + i * bw + bw * 0.14, w = bw * 0.72;
+                const hh = Math.max(2, (VH - pt - pb) * m.cost / mx), y = VH - pb - hh;
+                return `<g class="eco-col${i === sc.sel ? ' sel' : ''}" data-i="${i}"><rect x="${(pl + i * bw).toFixed(1)}" y="0" width="${bw.toFixed(1)}" height="${VH}" fill="transparent"/>` +
+                    `<rect class="eco-bar t${m.tier}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${hh.toFixed(1)}" rx="3"/>` +
+                    `<text class="bf-val" x="${(x + w / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle">${Math.round(m.cost / 1000)}</text>` +
+                    `<text class="bf-x" x="${(x + w / 2).toFixed(1)}" y="${VH - 8}" text-anchor="middle">${m.name.slice(0, 3)}</text></g>`;
+            }).join('');
+            h += `<div class="bf-chart"><div class="bf-ct">Счёт по месяцам, тыс. ₽ · нажмите на столбик</div><svg viewBox="0 0 ${VW} ${VH}" role="img" aria-label="Счёт за отопление по месяцам">${bars}</svg>`;
+            if (r.tierSet) {
+                const hl = this.elTierLimits(r.tierSet, true);
+                h += `<div class="eco-leg"><i class="t1"></i>до ${hl[0]}<i class="t2"></i>до ${hl[1]}<i class="t3"></i>выше, кВт·ч в месяц</div>`;
+                const ex = seasonDoc ? `Повышенные пороги для электроотопления: ${seasonDoc.src}.` : (sc.boost ? 'Пороги ×1,8 применены по федеральному правилу (Постановление № 183): регион должен его ввести — проверьте решение вашего региона.' : 'Для электроотопления без газа регион может повысить пороги до ×1,8 в отопительный период — для вашего региона документ не найден.');
+                h += `<div class="eco-note">${ex}</div>`;
+                if (r.tierSet.conflict) h += `<div class="eco-note">Источники тарифов расходятся по порогам вашего региона — сверьте с квитанцией.</div>`;
+            }
+            h += `</div>`;
+            const m = act[sc.sel];
+            const tot = m.kwh + (r.tierSet ? this.EL_TIER_BASE_KWH : 0);
+            h += `<div class="eco-det"><b>${m.name}</b> · ${money(m.kwh)} кВт·ч` + (r.tierSet ? ` (с бытовыми ${money(tot)})` : '') + ' · ' +
+                (r.tierSet ? `<span class="t${m.tier}">${m.tier}-й диапазон</span> · ` : '') + `<b>${money(m.cost)} ₽</b>` +
+                (m.capped ? ' · <span class="t2">упёрся в мощность котла</span>' : '') + `</div>`;
+            if (r.tierSet) {
+                const ts = r.tierSet;
+                h += `<div class="eco-pr">` + [0, 1, 2].map(j => `<div class="t${j + 1}"><em>${j + 1}-й диапазон</em><b>${sc.two ? t2(ts.day[j]) + ' / ' + t2(ts.night[j]) : t2(ts.single[j])}</b></div>`).join('') + `</div>`;
+            } else if (!hasTiers) {
+                h += `<div class="eco-note">Ступеней по объёму в регионе нет (единый тариф или норма на человека) — цена одна.</div>`;
+            }
+            if (sc.cap && hasCap && r.capped) h += `<div class="eco-note">Лимит урезает расход: за сезон не добирается ${money(r.seasonKwhNeed - r.seasonKwh)} кВт·ч — в морозы мощности не хватит.</div>`;
+            h += `<details class="eco-more"><summary>Откуда цифры</summary>${srcHtml}` +
+                (hasTiers ? `<div class="tip-p">Ступени: пороги и цены региона — elec.ru; к отоплению добавлено ${this.EL_TIER_BASE_KWH} кВт·ч бытовых (оценка). Повышенные пороги для электроотопления учтены в регионах, где найден документ (Санкт-Петербург, Ленинградская, Калужская, Челябинская, Оренбургская, Иркутская, Амурская, Мурманская, Еврейская АО, Тыва, Хакасия, Бурятия); в остальных регион вправе повысить их до ×1,8 — включается кнопкой «Пороги».</div>` : '') + `</details>`;
+            host.innerHTML = h;
+        };
+        host.addEventListener('click', ev => {
+            const c = ev.target.closest('.eco-chip');
+            if (c) { sc[c.dataset.k] = c.dataset.v === 'true'; draw(); if (c.dataset.k === 'boost') { this.renderElCostUI(); this.saveState(); } return; }
+            const g = ev.target.closest('.eco-col');
+            if (g) { sc.sel = +g.dataset.i; draw(); }
+        });
+        draw();
+    },
+
     /**
      * Подсказки левой панели по нажатию.
      *
@@ -49286,6 +49418,13 @@ const app = {
         document.addEventListener('click', (e) => {
             const icon = e.target.closest && e.target.closest('.info-icon');
             const wrap = icon && icon.parentElement;
+            // «i» экономики открывает окно по центру, а не всплывашку в панели
+            if (wrap && wrap.classList.contains('eco-tip')) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.showEcoInfo(wrap);
+                return;
+            }
             const isPanelTip = wrap && wrap.querySelector('.tooltip-content.tip-panel');
             // Клик мимо (или по другой иконке) закрывает уже открытые
             document.querySelectorAll('.tooltip-wrapper.tip-open').forEach(w => {
@@ -67526,8 +67665,8 @@ const app = {
      * @returns {{day:number, night:number, region:string|null, exact:boolean,
      *            manual:boolean, category:string|null}}
      */
-    getElTariff: function () {
-        const twoRate = this.state.elTariffMode === 'day_night';
+    getElTariff: function (forceTwo) {
+        const twoRate = (typeof forceTwo === 'boolean') ? forceTwo : this.state.elTariffMode === 'day_night';
         if (this.state.elTariffManual) {
             const d = parseFloat(this.state.elTariff) || this.EL_TARIFF_DEFAULT_DAY;
             return {
@@ -67582,17 +67721,93 @@ const app = {
             ? { kw: budget, fromLimit: true }
             : { kw: boiler, fromLimit: false };
     },
-    calcElHeatingCost: function () {
+    // ===== Ступенчатый тариф =====
+    // Во многих регионах цена за кВт·ч растёт ступенями от месячного объёма: до порога — первый
+    // диапазон, затем второй и третий. Пороги и цены — EL_TIERS (el_tariffs.js, собирает AutoTariff.py
+    // с elec.ru; 68 регионов из 85, у остальных нет раскладки «2 периода × 3 диапазона» —
+    // социальная норма на человека или единый тариф). Объём — весь месяц дома, а не только отопление:
+    // отоплению достаётся то, что сверх бытовых EL_TIER_BASE_KWH (практика, не норма).
+    EL_TIER_BASE_KWH: 300,
+    // Повышенные пороги для домов с электроотоплением без газа в отопительный период (Постановление
+    // Правительства № 183 от 20.02.2025: региональный орган может применить к порогам коэффициент
+    // до 1,8; владелец подтверждает электроотопление документами). Решение — за регионом, в таблице
+    // elec.ru его нет, поэтому здесь только регионы, где найден документ или сообщение поставщика
+    // (проверено 21.10.2026). limits — пороги 1-го и 2-го диапазонов, кВт·ч в месяц, действуют во все
+    // месяцы отопительного расчёта (октябрь–апрель); k — множитель к порогам из таблицы.
+    // Остальные регионы не подтверждены: для них галочка «×1,8» в окне, по умолчанию выключена.
+    EL_TIER_SEASON: {
+        'Калининградская область': { limits: [4194, 5872], src: 'Янтарьэнергосбыт: дома с электроотоплением в отопительный период, ×1,8 к 2330 / 3262' },
+        'Санкт-Петербург': { limits: [2100, 3900], src: 'КРТ Санкт-Петербурга: в отопительный период октябрь–май' },
+        'Оренбургская область': { k: 1.8, src: 'сезонный коэффициент 1,8 для домов с электроотоплением (Восток-Электра)' },
+        'Челябинская область': { limits: [7020, 10800], src: 'Уралэнергосбыт: ИЖС с электроотоплением, октябрь–май' },
+        'Иркутская область': { limits: [7020, 10800], src: 'правительство области: январь–май и сентябрь–декабрь' },
+        'Калужская область': { limits: [5850, 9000], src: 'приказ № 456-РК: частные дома с электроотоплением, октябрь–апрель' },
+        'Ленинградская область': { limits: [2700, 4500], src: 'Комитет по ТЭК Ленобласти: отопительный период октябрь–май, второй порог не менялся' },
+        'Амурская область': { limits: [7020, 10800], src: 'коэффициент 1,8 введён с 2025 года' },
+        'Еврейская АО': { limits: [7020, 10800], src: 'коэффициент 1,8 введён с 2025 года' },
+        'Мурманская область': { limits: [7020, 10800], src: 'лимиты повышены с 2025 года (газификация ниже 5 %)' },
+        'Тыва': { limits: [7020, 10800], src: 'коэффициент 1,8 с 2025 года (газификация ниже 5 %)' },
+        'Хакасия': { limits: [7020, 10800], src: 'коэффициент 1,8 с 2025 года (газификация ниже 5 %)' },
+        'Бурятия': { limits: [7020, 10800], src: 'коэффициент 1,8 с 2025 года (газификация ниже 5 %)' }
+    },
+    getElTierSet: function (tar) {
+        if (this.state.elTiers === false) return null;
+        if (!tar || !tar.exact || tar.manual || typeof EL_TIERS === 'undefined') return null;
+        const t = EL_TIERS[tar.region];
+        const set = t && t[tar.category];
+        if (!set || !set.single) return null;
+        const i = Math.min(this.elTariffPeriod(), set.single.length - 1);
+        return {
+            region: tar.region, category: tar.category, limits: (set.limits || t.limits).slice(), conflict: !!t.conflict,
+            season: this.EL_TIER_SEASON[tar.region] || null,
+            single: set.single[i], day: (set.day || set.single)[i], night: (set.night || set.single)[i]
+        };
+    },
+    // Пороги диапазонов для месяца: в отопительный период у части регионов они шире — по документу
+    // региона (EL_TIER_SEASON) либо, если документа нет, по галочке «×1,8» в окне.
+    elTierLimits: function (ts, heating) {
+        const sv = heating && ts.season;
+        if (sv && sv.limits) return sv.limits.slice();
+        if (sv && sv.k) return ts.limits.map(x => Math.round(x * sv.k));
+        if (heating && !sv && this.state.elTiersBoost) return ts.limits.map(x => Math.round(x * 1.8));
+        return ts.limits.slice();
+    },
+    toggleElBoost: function (on) {
+        this.state.elTiersBoost = !!on;
+        this.renderElCostUI();
+        this.saveState();
+    },
+    // Счёт за месяц при объёме kd (день) + kn (ночь): каждая ступень — по своей цене.
+    elTierBill: function (ts, lim, twoRate, kd, kn) {
+        const tot = kd + kn;
+        if (!(tot > 0)) return 0;
+        const sl = [Math.min(tot, lim[0]), Math.max(0, Math.min(tot, lim[1]) - lim[0]), Math.max(0, tot - lim[1])];
+        let c = 0;
+        for (let j = 0; j < 3; j++) {
+            if (!(sl[j] > 0)) continue;
+            c += twoRate ? sl[j] / tot * (kd * ts.day[j] + kn * ts.night[j]) : sl[j] * ts.single[j];
+        }
+        return c;
+    },
+    toggleElTiers: function (on) {
+        this.state.elTiers = !!on;
+        this.syncUI();
+        this.saveState();
+    },
+    // opt (только для сравнений в окне «Стоимость отопления»): { noCap } — без потолка мощности,
+    // { twoRate: true|false } — принудительно два тарифа или один; без opt — как заданы в панели.
+    calcElHeatingCost: function (opt) {
         const s = this.calcHeatingSeason();
         if (!s) return null;
         const tIn = 20;
-        const twoRate = this.state.elTariffMode === 'day_night';
-        const tar = this.getElTariff();
+        const twoRate = (opt && typeof opt.twoRate === 'boolean') ? opt.twoRate : this.state.elTariffMode === 'day_night';
+        const tar = this.getElTariff(twoRate);
         const tariffDay = tar.day;
         const tariffNight = twoRate ? tar.night : tariffDay;
         // Потолок мощности. Нужен, только если котёл слабее теплопотерь: иначе
         // он и так закрывает дом целиком, и ограничение ничего не меняет.
-        const cap = this.getElHeatCapKw();
+        const cap = (opt && opt.noCap) ? { kw: 0, fromLimit: false } : this.getElHeatCapKw();
+        const tierSet = (opt && opt.noTiers) ? null : this.getElTierSet(tar);
         const capKw = (cap.kw > 0 && cap.kw < s.kw) ? cap.kw : 0;
         // КПД ТЭНового котла принимаем за единицу: вся электроэнергия уходит в
         // теплоноситель, теряется только на корпусе, и это доли процента.
@@ -67624,11 +67839,21 @@ const app = {
                 if (kwhDay > maxDay) { kwhDay = maxDay; capped = true; }
             }
             const kwh = kwhDay + kwhNight;
-            const cost = kwhDay * tariffDay + kwhNight * tariffNight;
+            let cost = kwhDay * tariffDay + kwhNight * tariffNight;
+            const costFlat = cost;
+            let tier = 1;
+            if (tierSet) {
+                const lim = this.elTierLimits(tierSet, !m.off);
+                const B = this.EL_TIER_BASE_KWH;
+                const bd = twoRate ? B * 0.85 : B, bn = twoRate ? B * 0.15 : 0;
+                cost = this.elTierBill(tierSet, lim, twoRate, kwhDay + bd, kwhNight + bn) - this.elTierBill(tierSet, lim, twoRate, bd, bn);
+                const tot = kwh + B;
+                tier = tot > lim[1] ? 3 : (tot > lim[0] ? 2 : 1);
+            }
             seasonKwh += kwh;
             seasonKwhNight += kwhNight;
             seasonCost += cost;
-            return { ...m, kwh, kwhNeed: m.kwh, kwhNight, cost, capped: kwh < m.kwh - 0.5 };
+            return { ...m, kwh, kwhNeed: m.kwh, kwhNight, cost, costFlat, tier, capped: kwh < m.kwh - 0.5 };
         });
         // Потребность дома в тепле за сезон — то, что котёл закрыл бы, будь он
         // по расчёту. Разница с seasonKwh и есть непокрытая часть.
@@ -67642,7 +67867,8 @@ const app = {
             months, seasonKwh, seasonKwhNeed, seasonKwhNight, seasonCost, activeMonths,
             avgMonthCost: seasonCost / activeMonths,
             tOt, zOt, gsop, kw, twoRate, tariffDay, tariffNight, tariff: tar,
-            capKw, capped, capFromLimit: cap.fromLimit,
+            capKw, capped, capFromLimit: cap.fromLimit, tierSet,
+            seasonCostFlat: months.reduce((a, m) => a + m.costFlat, 0),
             boilerKw: parseFloat(this._elBoilerKw) || 0,
             gasKw: parseFloat(this._gasBoilerKw) || 0
         };
@@ -67804,7 +68030,16 @@ const app = {
             let shift = Math.min(eFull, dayPD);
             const room = Math.max(0, kwCap * this.EL_NIGHT_HOURS - nightPD - loss);
             if (shift > room) { shift = room; limited = true; }
-            saving += m.days * (shift * (r.tariffDay - r.tariffNight) - loss * r.tariffNight);
+            if (r.tierSet) {
+                // Ступенчатый тариф: перенос дневного расхода на ночь счёт по ступеням меняет по-своему —
+                // считаем месяц целиком до и после (с бытовыми, как в calcElHeatingCost)
+                const ts = r.tierSet, lim = this.elTierLimits(ts, true);
+                const bd = this.EL_TIER_BASE_KWH * 0.85, bn = this.EL_TIER_BASE_KWH * 0.15;
+                const kd = m.kwh - m.kwhNight, kn = m.kwhNight, S = shift * m.days, Lm = loss * m.days;
+                saving += this.elTierBill(ts, lim, true, kd + bd, kn + bn) - this.elTierBill(ts, lim, true, kd - S + bd, kn + S + Lm + bn);
+            } else {
+                saving += m.days * (shift * (r.tariffDay - r.tariffNight) - loss * r.tariffNight);
+            }
             shiftSum += shift * m.days; days += m.days;
         });
         const capex = cap.tank + cap.rig + cap.exp + (cap.fill || 0) - (cap.saved || 0);
@@ -68365,7 +68600,8 @@ const app = {
             const yStr = Number.isInteger(y) ? `${y} ${word(y)}` : `${String(y).replace('.', ',')} сезона`;
             payback = `<div style="margin-top:3px;">Автоматика в смете — ${money(cost.total)} ₽, окупается за <b>${y < 1 ? 'один сезон' : yStr}</b>.</div>`;
         }
-        const tip = this.tipHtml(
+        this.initPanelTips();
+        const tip = this.ecoTipHtml('Экономия от автоматики котельной', `≈ ${Math.round(sv.pct * 100)} % за сезон`,
             `<div class="tip-p">Оценка <b>сверху</b>: сколько выйдет на самом деле, зависит от того, как хозяин пользуется расписанием, и от инерции системы. На тёплых полах с постоянным проживанием экономия ближе к нижней границе.</div>` +
             `<div class="tip-p"><b>Из чего сложилось:</b></div>` +
             sv.parts.map(p => `<div class="tip-p">• ${p.label} — <b>${Math.round(p.pct * 100)} %</b></div>`).join('') +
@@ -76784,7 +77020,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             : r.tariff.exact
                 ? `<div class="tip-p">Тариф региона: <b>${r.tariff.region}</b>, категория «${catName[r.tariff.category] || r.tariff.category}»${meta ? `, ${meta.year} год` : ''}. Дом с электрокотлом относится к льготной категории по закону, поэтому ставка ниже обычной городской. В сельской местности бывает ещё ниже — сверьтесь с квитанцией.</div>`
                 : `<div class="tip-p">⚠️ ${r.tariff.region ? `Тариф региона <b>${r.tariff.region}</b> в справочнике отсутствует` : 'Город не выбран'}, подставлена средняя цифра ${r.tariffDay} ₽/кВт·ч. По стране разброс от 3 до 12 ₽ — возьмите цену из квитанции и впишите вручную.</div>`;
-        const tip = this.tipHtml(
+        const tip = this.ecoTipHtml('Стоимость отопления', `${r.boilerKw > 0 ? 'электрокотёл ' + elCapKw + ' кВт' : 'по теплопотерям дома'} · ${r.twoRate ? 'день-ночь' : 'один тариф'}`,
             elSrc +
             `<div class="tip-p">Ориентировочно, <b>только отопление</b> — ГВС, снеготаяние и прочая бытовая нагрузка не учтены.</div>` +
             `<div class="tip-p">Теплопотери дома <b>${r.kw.toFixed(1)} кВт</b> при расчётной зиме ${this.getDesignTemp()} °C. Отопительный период <b>${Math.round(r.zOt)} суток</b> со средней ${r.tOt.toFixed(1)} °C, ГСОП ${Math.round(r.gsop).toLocaleString('ru-RU')} °C·сут (от 20 °C в помещении).</div>` +
@@ -76794,7 +77030,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             `<div class="tip-p">Средние температуры месяцев <b>выведены из ГСОП</b>, а не взяты по факту прошлой зимы.</div>` +
             (r.twoRate
                 ? `<div class="tip-p">Ночная зона <b>${this.EL_NIGHT_HOURS} ч</b> (23:00–07:00) по ${r.tariffNight} ₽ — на неё приходится <b>${Math.round(r.seasonKwhNight / r.seasonKwh * 100)} %</b> расхода: ночью холоднее средней за сутки, и котёл работает напряжённее, чем просто треть времени.</div>`
-                : ''));
+                : ''), 'elcost');
         const rows = r.months.map(m => m.off
             ? `<tr style="opacity:0.45;">
                 <td style="padding:2px 4px;">${m.name}</td>
@@ -76805,7 +77041,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 <td style="padding:2px 4px; text-align:right; color:var(--text-sec);">${m.tAvg.toFixed(1)}</td>
                 <td style="padding:2px 4px; text-align:right;">${money(m.kwh)}${(m.capped && !gasCovers) ? `<span style="color:#B45309;" title="Месяц упёрся в мощность котла: по теплопотерям требовалось ${money(m.kwhNeed)} кВт·ч">*</span>` : ''}</td>
                 ${r.twoRate ? `<td style="padding:2px 4px; text-align:right; color:var(--text-sec);">${money(m.kwhNight)}</td>` : ''}
-                <td style="padding:2px 4px; text-align:right; font-weight:700; color:var(--primary);">${money(m.cost)}</td>
+                <td style="padding:2px 4px; text-align:right; font-weight:700; color:var(--primary);">${money(m.cost)}${m.tier > 1 ? `<sup title="Месяц выходит за порог ступени: ${m.tier}-й диапазон тарифа" style="color:#B45309;">${m.tier}</sup>` : ''}</td>
             </tr>`).join('');
         // Сноска о потолке мощности. Без неё цифры читаются как ошибка: в
         // подсказке теплопотери 29 кВт, а расход в таблице как у котла на 12 —
@@ -76845,7 +77081,21 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             </table>${capNote}
             <div style="position:relative; margin-top:6px; padding:6px 8px; background:var(--primary-light); border-radius:6px; font-size:11px; font-weight:700; color:var(--primary); display:flex; align-items:center; justify-content:space-between; gap:6px;">
                 <span>В среднем ${money(r.avgMonthCost)} ₽ в месяц<span class="ui-emo"> ⚡</span></span>${tip}
-            </div>${this.elForecastHtml(r)}${this.bufferCostLineHtml(r)}${this.boilerAutoSaveHtml(r.seasonCost, r.activeMonths, 'el')}`;
+            </div>${this.elTierLineHtml(r)}${this.elForecastHtml(r)}${this.bufferCostLineHtml(r)}${this.boilerAutoSaveHtml(r.seasonCost, r.activeMonths, 'el')}`;
+    },
+    // Строка под средним счётом: ступени тарифа региона. Показываем, только если для региона они есть;
+    // галочка выключает их — расчёт возвращается к первому диапазону.
+    elTierLineHtml: function (r) {
+        const tar = r && r.tariff;
+        if (!tar || !tar.exact || tar.manual || typeof EL_TIERS === 'undefined' || !EL_TIERS[tar.region]) return '';
+        const set = EL_TIERS[tar.region][tar.category];
+        if (!set || !set.single) return '';
+        const on = !!r.tierSet;
+        const lim = (on && r.tierSet) ? this.elTierLimits(r.tierSet, true) : (set.limits || EL_TIERS[tar.region].limits);
+        const up = on ? r.months.filter(m => m.tier > 1).length : 0;
+        const dv = on ? r.seasonCost - r.seasonCostFlat : 0;
+        return `<label class="bf-growth"><input type="checkbox" ${on ? 'checked' : ''} onchange="app.toggleElTiers(this.checked)"> Ступенчатый тариф региона: до ${lim[0]} / ${lim[1]} кВт·ч в месяц</label>` +
+            (on ? `<div style="margin-top:3px; font-size:11px; color:var(--text-sec);">${up ? `${up} мес. выходят за первый диапазон, надбавка ${Math.round(dv).toLocaleString('ru-RU')} ₽ за сезон` : 'Дом укладывается в первый диапазон — на счёт не влияет'}</div>` : '');
     },
     // Как вырастет счёт за отопление за три сезона вперёд: столбики по прогнозу Минэкономразвития
     // (EL_TARIFF_FORECAST). Считаем от сезонного счёта этого же расчёта; потребление то же, дорожает тариф.
@@ -76959,7 +77209,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 : r.tariff.exact
                     ? `<div class="tip-p">Тариф региона: <b>${r.tariff.region}</b>, ${r.tariff.rub.toFixed(2)} ₽/м³ — категория «отопление».${r.tariff.auto && typeof GAS_TARIFFS_UPDATED !== 'undefined' ? ` Справочник обновлён ${GAS_TARIFFS_UPDATED}.` : ''} Регионы пересматривают тарифы дважды в год, перед подписанием сверьте с квитанцией.</div>`
                     : `<div class="tip-p">⚠️ Тариф вашего региона <b>в таблице отсутствует</b>, подставлена средняя цифра ${r.tariff.rub.toFixed(2)} ₽/м³. Между регионами разброс до 30 % — возьмите цену из квитанции и впишите вручную.</div>`;
-        const tip = this.tipHtml(
+        this.initPanelTips();
+        const tip = this.ecoTipHtml('Стоимость отопления газом', r.lpg ? 'сжиженный газ' : 'природный газ',
             src +
             `<div class="tip-p">Ориентировочно, <b>только отопление</b> — ГВС, снеготаяние и газовая плита не учтены.</div>` +
             `<div class="tip-p">Расход считается от тепла: <b>${r.seasonKwh.toFixed(0)} кВт·ч</b> за сезон делим на ${r.lpg ? `${this.LPG_KWH_PER_LITER} кВт·ч/л` : `${this.GAS_KWH_PER_M3} кВт·ч/м³`} и КПД котла ${Math.round(this.GAS_BOILER_EFF * 100)} % — выходит ${r.kwhPerUnit.toFixed(2)} кВт·ч с ${r.unit}.</div>` +

@@ -22,10 +22,9 @@
 Из каждой — одноставочный тариф и двухзонный (день / ночь).
 
 Оговорки, сознательно принятые:
-  * Берём ПЕРВЫЙ диапазон потребления. С 2025 года тариф в ряде регионов
-    растёт ступенями по объёму (в Подмосковье: до 3900 кВт·ч в месяц,
-    3900–6000, свыше). Отопление дома до 300 м² в первую ступень
-    укладывается; кто вылезает — правит цифру руками.
+  * В EL_TARIFFS — ПЕРВЫЙ диапазон потребления. Ступени (пороги и три цены)
+    разбирает parse_tiers в EL_TIERS: калькулятор считает по ним каждый
+    месяц, где у региона есть раскладка «2 периода × 3 диапазона".
   * Тарифы делятся на периоды внутри года (обычно с 1 января и с 1 октября).
     Храним оба, выбирает нужный уже калькулятор по текущей дате.
   * Трёхзонный тариф не берём: в калькуляторе его нет.
@@ -185,7 +184,9 @@ def row_numbers(cells):
     внутри периода, периоды слева направо."""
     out = []
     for c in cells:
-        t = c.replace(" ", "")
+        # «8,67 (8,06***)» — льготная ставка в скобках к основной (Коряжма):
+        # берём основную, иначе колонки сдвигаются на одну
+        t = re.sub(r"\([^)]*\)", "", c).replace(" ", "").replace("*", "")
         if NUM_RE.match(t):
             out.append(float(t.replace(",", ".")))
     return out
@@ -332,13 +333,244 @@ def parse_region(html):
     return data, periods
 
 
+# ─── Ступенчатые тарифы ────────────────────────────────────────────────
+# Во многих регионах цена растёт ступенями от объёма за месяц: до порога —
+# первый диапазон, дальше второй и третий. Пороги и три цены на период лежат
+# на той же странице источника (сноска «Тарифы разбиты по 3 диапазонам»).
+# Берём только расклад «2 периода × 3 диапазона» — шесть чисел в строке.
+# Регионы с социальной нормой на человека (Владимирская, Забайкальский край…:
+# 4 числа) и без ступеней (Москва: 2 числа) в EL_TIERS не попадают, у них
+# калькулятор остаётся на первом тарифе.
+_NUM_CLEAN = re.compile(r"\([^)]*\)")
+
+
+def tier_numbers(cells):
+    out = []
+    for c in cells:
+        t = _NUM_CLEAN.sub("", c).replace(" ", "").replace("*", "")
+        if NUM_RE.match(t):
+            out.append(float(t.replace(",", ".")))
+    return out
+
+
+def tier_limits(text):
+    """Пороги диапазонов, кВт·ч в месяц: [до первого, до второго] или None."""
+    m = re.search(r"Первый диапазон\s*:?\s*до\s*([\d\s]+?)\s*кВт", text)
+    n = re.search(r"Второй диапазон\s*:?\s*от\s*[\d\s]+?\s*до\s*([\d\s]+?)\s*кВт", text)
+    if not m or not n:
+        return None
+    a = int(re.sub(r"\s", "", m.group(1)))
+    b = int(re.sub(r"\s", "", n.group(1)))
+    return [a, b] if 0 < a < b else None
+
+
+def parse_tiers(html):
+    """{'limits': [a, b], 'electric': {'single': [[р1д1,д2,д3],[р2д1,д2,д3]], ...}, ...}
+    или None, если у региона нет раскладки «2 периода × 3 диапазона»."""
+    m = re.search(r"<table[^>]*>(.*?)</table>", html, re.S)
+    if not m:
+        return None
+    body = re.sub(r"<(script|style)[^>]*>.*?</>", " ", html, flags=re.S)
+    limits = tier_limits(text_of(body))
+    if not limits:
+        return None
+    rows = re.findall(r"<tr[^>]*>(.*?)</tr>", m.group(1), re.S)
+    head = " ".join(text_of(c) for r in rows[:3] for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", r, re.S)).lower()
+    # Периоды снаружи, диапазоны внутри: «полугодие/дата … 1 диапазон 2 диапазон 3 диапазон …»
+    if head.count("диапазон") != 6:
+        return None
+    out = {}
+    cat = None
+    for r in rows:
+        cells = [text_of(c) for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", r, re.S)]
+        if not cells:
+            continue
+        line = " ".join(cells).lower()
+        nums = tier_numbers(cells)
+        if ("населен" in line or "жител" in line) and not nums:
+            if "сельск" in line:
+                cat = "rural"
+            elif "электроплит" in line or "электроотопительн" in line:
+                cat = "electric"
+            elif "городск" in line:
+                cat = "urban"
+            else:
+                cat = None
+            if cat:
+                out.setdefault(cat, {})
+            continue
+        if not cat or len(nums) != 6:
+            continue
+        label = " ".join(c for c in cells if not NUM_RE.match(_NUM_CLEAN.sub("", c).replace(" ", ""))).lower()
+        key = None
+        if "одноставочный" in label and "зон" not in label:
+            key = "single"
+        elif "дневная зона" in label:
+            key = "day"
+        elif "ночная зона" in label:
+            key = "night"
+        if key:
+            out[cat].setdefault(key, [nums[:3], nums[3:]])
+    if not out.get("electric") or not out["electric"].get("single"):
+        return None
+    out["limits"] = limits
+    return out
+
+
+def dump_tiers_js(tiers):
+    lines = ["// Ступенчатые тарифы: пороги диапазонов (кВт·ч в месяц) и по три цены на каждый период.",
+             "// Формат: { limits: [до 1-го, до 2-го], electric: { single: [[период1: д1,д2,д3], [период2: д1,д2,д3]], day, night }, … }",
+             "// Регионы без раскладки «2 периода × 3 диапазона» сюда не попадают — для них действует первый тариф.",
+             "const EL_TIERS = {"]
+    for region in sorted(tiers):
+        t = tiers[region]
+        parts = ["limits: [%d, %d]" % tuple(t["limits"])] + (["conflict: true"] if t.get("conflict") else [])
+        for cat in ("urban", "electric", "rural"):
+            if cat not in t:
+                continue
+            inner = ", ".join(
+                "%s: [%s]" % (k, ", ".join("[%s]" % ", ".join(js_num(x) for x in per) for per in t[cat][k]))
+                for k in ("single", "day", "night") if t[cat].get(k))
+            if inner and t[cat].get("limits"):
+                inner = "limits: [%d, %d], " % tuple(t[cat]["limits"]) + inner
+            if inner:
+                parts.append("%s: { %s }" % (cat, inner))
+        lines.append('    "%s": { %s },' % (region, ", ".join(parts)))
+    lines.append("};")
+    return "\n".join(lines) + "\n"
+
+
+# ─── Пороги диапазонов по категориям (energoseti.ru) ──────────────────
+# На страницах elec.ru порог один на весь регион («Первый диапазон: до …» в сноске), а у части
+# регионов он свой для дома с электроотоплением и для города: Калининград 2330/3262 против
+# 1200/3900, Калуга 3900/6000 против 1200/6000, Карелия 1920/2950 против 1240/1910. Категорийные
+# пороги берём с energoseti.ru; если у региона там один блок — он общий. Расхождение с elec.ru по
+# городской категории помечаем conflict: так сверяют квитанцию вручную.
+ES_SLUG = {   # регион -> адрес страницы на energoseti.ru
+    "Алтайский край": "altayskiy-kray",
+    "Амурская область": "amurskaya-oblast",
+    "Архангельская область": "arhangelskaya-oblast",
+    "Астраханская область": "astrahanskaya-oblast",
+    "Белгородская область": "belgorodskaya-oblast",
+    "Брянская область": "bryanskaya-oblast",
+    "Челябинская область": "chelyabinskaya-oblast",
+    "Чечня": "chechenskaya-respublika",
+    "Чувашия": "chuvashskaya-respublika",
+    "Еврейская АО": "evreyskaya-avtonomnaya-oblast",
+    "Хабаровский край": "habarovskiy-kray",
+    "Иркутская область": "irkutskaya-oblast",
+    "Ивановская область": "ivanovskaya-oblast",
+    "Кабардино-Балкария": "kabardino-balkarskaya-respublika",
+    "Калининградская область": "kaliningradskaya-oblast",
+    "Калужская область": "kaluzhskaya-oblast",
+    "Карачаево-Черкесия": "karachaevo-cherkesskaya-respublika",
+    "Кемеровская область": "kemerovskaya-oblast",
+    "Кировская область": "kirovskaya-oblast",
+    "Костромская область": "kostromskaya-oblast",
+    "Курганская область": "kurganskaya-oblast",
+    "Курская область": "kurskaya-oblast",
+    "Ленинградская область": "leningradskaya-oblast",
+    "Липецкая область": "lipeckaya-oblast",
+    "Московская область": "moskovskaya-oblast",
+    "Мурманская область": "murmanskaya-oblast",
+    "Новгородская область": "novgorodskaya-oblast",
+    "Новосибирская область": "novosibirskaya-oblast",
+    "Омская область": "omskaya-oblast",
+    "Оренбургская область": "orenburgskaya-oblast",
+    "Пензенская область": "penzenskaya-oblast",
+    "Пермский край": "permskiy-kray",
+    "Приморский край": "primorskiy-kray",
+    "Псковская область": "pskovskaya-oblast",
+    "Алтай": "respublika-altay",
+    "Башкортостан": "respublika-bashkortostan",
+    "Бурятия": "respublika-buryatiya",
+    "Дагестан": "respublika-dagestan",
+    "Хакасия": "respublika-hakasiya",
+    "Ингушетия": "respublika-ingushetiya",
+    "Калмыкия": "respublika-kalmykiya",
+    "Карелия": "respublika-kareliya",
+    "Коми": "respublika-komi",
+    "Крым": "respublika-krym",
+    "Марий Эл": "respublika-mariy-el",
+    "Мордовия": "respublika-mordoviya",
+    "Северная Осетия": "respublika-severnaya-osetiya-alaniya",
+    "Татарстан": "respublika-tatarstan",
+    "Тыва": "respublika-tyva",
+    "Ростовская область": "rostovskaya-oblast",
+    "Рязанская область": "ryazanskaya-oblast",
+    "Самарская область": "samarskaya-oblast",
+    "Санкт-Петербург": "sankt-peterburg",
+    "Саратовская область": "saratovskaya-oblast",
+    "Севастополь": "sevastopol",
+    "Смоленская область": "smolenskaya-oblast",
+    "Ставропольский край": "stavropolskiy-kray",
+    "Свердловская область": "sverdlovskaya-oblast",
+    "Тамбовская область": "tambovskaya-oblast",
+    "Томская область": "tomskaya-oblast",
+    "Тульская область": "tulskaya-oblast",
+    "Тверская область": "tverskaya-oblast",
+    "Тюменская область": "tyumenskaya-oblast",
+    "Удмуртия": "udmurtskaya-respublika",
+    "Ульяновская область": "ulyanovskaya-oblast",
+    "Волгоградская область": "volgogradskaya-oblast",
+    "Вологодская область": "vologodskaya-oblast",
+    "Воронежская область": "voronezhskaya-oblast",
+    "Ярославская область": "yaroslavskaya-oblast",
+    "Адыгея": "respublika-adygeya",
+    "Краснодарский край": "krasnodarskiy-kray"
+}
+ES_BASE = "https://energoseti.ru/rate/"
+_ES_RX = re.compile(r"Первый диапазон:\s*до\s*(\d+)[^В]*?Второй диапазон:\s*от\s*\d+\s*до\s*(\d+)")
+_ES_HEAD = re.compile(
+    r"(Тарифы для сельского населения"
+    r"|Тарифы на электроэнергию для населения, проживающего в городских населенных пунктах в домах, оборудованных[^:]*?установками"
+    r"|Тарифы на электроэнергию для населения, проживающего в городских населенных пунктах"
+    r"|Тарифы на электроэнергию для потребителей, приравненных[^:]*)")
+
+
+def es_limits(region):
+    """{'all': [a, b]} или {'urban': [...], 'electric': [...], 'rural': [...]}; None — нет данных."""
+    slug = ES_SLUG.get(region)
+    if not slug:
+        return None
+    html = fetch(ES_BASE + slug, tries=2)
+    if not html:
+        return None
+    t = re.sub(r"<(script|style)[^>]*>.*?</>", " ", html, flags=re.S)
+    t = text_of(t)
+    a = t.find("Через разделитель")
+    b = t.find("Одноставочный тариф", a)
+    if a < 0 or b < 0:
+        return None
+    seg = re.sub(r"^Через разделитель[^:]*: ", "", t[a:b])
+    parts = _ES_HEAD.split(seg)
+    out = {}
+    if len(parts) == 1:
+        m = _ES_RX.search(seg)
+        return {"all": [int(m.group(1)), int(m.group(2))]} if m else None
+    for i in range(1, len(parts), 2):
+        m = _ES_RX.search(parts[i + 1] if i + 1 < len(parts) else "")
+        if not m:
+            continue
+        h = parts[i]
+        k = ("rural" if "сельск" in h else
+             "electric" if ("электроплит" in h or "электроотопит" in h) else
+             "urban" if "городск" in h else "other")
+        out.setdefault(k, [int(m.group(1)), int(m.group(2))])
+    if not out:
+        # один общий блок порогов перед первой таблицей цен
+        m = _ES_RX.search(seg)
+        return {"all": [int(m.group(1)), int(m.group(2))]} if m else None
+    return out
+
+
 def js_num(v):
     """Число в JS: без хвостовых нулей, но и без экспоненты."""
     s = ("%.2f" % v).rstrip("0").rstrip(".")
     return s or "0"
 
 
-def dump_js(tariffs, meta):
+def dump_js(tariffs, meta, tiers=None):
     lines = []
     lines.append("// Тарифы на электроэнергию для населения по регионам, ₽/кВт·ч с НДС.")
     lines.append("// Файл собирает AutoTariff.py, руками не править — перезапишется.")
@@ -368,7 +600,10 @@ def dump_js(tariffs, meta):
         if parts:
             lines.append('    "%s": { %s },' % (region, ", ".join(parts)))
     lines.append("};")
-    return "\n".join(lines) + "\n"
+    out = "\n".join(lines) + "\n"
+    if tiers:
+        out += "\n" + dump_tiers_js(tiers)
+    return out
 
 
 def main():
@@ -392,6 +627,7 @@ def main():
     print("Страниц регионов в источнике: %d" % len(slugs))
 
     tariffs = {}
+    tiers = {}
     unknown = []
     period_votes = {}
     for i, slug in enumerate(slugs, 1):
@@ -407,6 +643,19 @@ def main():
             print("  %s: таблица не разобралась" % region)
             continue
         tariffs[region] = data
+        tr = parse_tiers(html)
+        if tr:
+            lim = es_limits(region)
+            if lim:
+                base = lim.get("all") or lim.get("urban")
+                if base and base != tr["limits"]:
+                    tr["conflict"] = True
+                for cat in ("urban", "electric", "rural"):
+                    cl = lim.get(cat) or lim.get("all")
+                    if cl and cat in tr:
+                        tr[cat]["limits"] = cl
+                time.sleep(0.3)
+            tiers[region] = tr
         # Даты периодов в шапке пишут не все регионы (кое-где просто «I и II
         # полугодие»), да и границы у регионов расходятся. В meta кладём самый
         # частый расклад — по нему калькулятор выбирает, какое из чисел ставки
@@ -436,8 +685,13 @@ def main():
         "periods": [list(p) for p in meta_periods],
     }
     with open(OUT_FILE, "w", encoding="utf-8") as f:
-        f.write(dump_js(tariffs, meta))
-    print("Готово: %d регионов в %s" % (len(tariffs), OUT_FILE))
+        f.write(dump_js(tariffs, meta, tiers))
+    cat_n = sum(1 for t in tiers.values() if t.get("electric", {}).get("limits"))
+    print("Готово: %d регионов в %s, со ступенями: %d, с категорийными порогами: %d, спорных: %d"
+          % (len(tariffs), OUT_FILE, len(tiers), cat_n, sum(1 for t in tiers.values() if t.get("conflict"))))
+    # Если energoseti.ru сменит вёрстку, пороги молча откатятся к elec.ru — это видно по счётчику
+    if tiers and cat_n < len(tiers) * 0.8:
+        print("ВНИМАНИЕ: категорийные пороги получены не у всех регионов со ступенями — проверить разбор energoseti.ru")
     return 0
 
 

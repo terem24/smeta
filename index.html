@@ -193,7 +193,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=5.54">
+    <link rel="stylesheet" href="style.css?v=5.55">
     <link rel="stylesheet" href="hydro_check.css?v=1.13">
 
     <script src="supabase-js.js" defer></script>
@@ -204,7 +204,7 @@
     <!-- Тарифы на электроэнергию по регионам для прогноза стоимости отопления.
          Файл собирает AutoTariff.py раз в месяц через GitHub Actions, регион
          берётся из cities_geo.js — поэтому подключать надо после него. -->
-    <script src="el_tariffs.js?v=1.0" defer></script>
+    <script src="el_tariffs.js?v=1.2" defer></script>
     <!-- Тарифы на природный газ по регионам, категория «бытовое отопление».
          Файл собирает AutoGasTariff.py раз в месяц через GitHub Actions,
          регион берётся из cities_geo.js — подключать после него. -->
@@ -226,7 +226,7 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.6" defer></script>
-    <script src="app.js?v=13.61" defer></script>
+    <script src="app.js?v=13.62" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -2152,7 +2152,7 @@
             <div class="pg-tiles" id="pg_tiles_end" style="margin:12px 0;">
 <div class="control-item toggle-item pg-card" id="blk_buffer" style="display:none;">
                 <div class="label-row" style="position:relative;">
-                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Буферная ёмкость<span class="ui-emo"> 🔋</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel" id="buffer_tip">Тепловой накопитель STOUT STT: ночью электрокотёл греет воду по дешёвому тарифу, днём тепло берётся из ёмкости.</div></span></span>
+                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Буферная ёмкость<span class="ui-emo"> 🔋</span><span class="tooltip-wrapper tip-panel-wrap eco-tip" data-title="Буферная ёмкость" data-sub="как подобрана и из чего затраты"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel" id="buffer_tip">Тепловой накопитель STOUT STT: ночью электрокотёл греет воду по дешёвому тарифу, днём тепло берётся из ёмкости.</div></span></span>
                     <label class="switch"><input type="checkbox" id="chk_buffer"
                             onchange="app.toggleBuffer(this.checked)"><span class="slider"></span></label>
                 </div>
