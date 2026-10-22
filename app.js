@@ -84117,6 +84117,23 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
              */
             const _docOrder = (a, b) => (!this.state.groupItems && a.recOrder !== undefined && b.recOrder !== undefined)
                 ? a.recOrder - b.recOrder : 0;
+            // Раздел 1 читается по смыслу, а не по цене: газовый котёл, затем
+            // электрический (резерв или основной), затем прочие теплогенераторы,
+            // и только потом бойлер / буферная ёмкость. По сумме бойлер на 150 л
+            // вставал между газовым и электрокотлом. Класс — по названию, чтобы
+            // ручная замена и своё оборудование в этом разделе стояли так же.
+            const _isSec1 = title === "1. Котёл + водонагреватель";
+            if (_isSec1) {
+                const _sec1Rank = (it) => {
+                    const n = String(it.name || '').toLowerCase().replace(/ё/g, 'е');
+                    if (/котел/.test(n) && /газ/.test(n)) return -4;
+                    if (/котел/.test(n) && /электр/.test(n)) return -3;
+                    if (/котел|тепловой насос/.test(n)) return -2;
+                    if (/бойлер|водонагрев|буфер|теплоаккум|емкост/.test(n)) return -1;
+                    return it.sortRank || 0;
+                };
+                bill.forEach(it => { it.sortRank = _sec1Rank(it); });
+            }
             if (!forceMerge) {
                 bill.sort((a, b) => {
                     const _d = _docOrder(a, b);
@@ -84143,7 +84160,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     return byRank !== 0 ? byRank : _bySumDesc(a, b);
                 });
             } else {
-                bill.sort((a, b) => _docOrder(a, b) || _bySumDesc(a, b));
+                bill.sort((a, b) => _docOrder(a, b)
+                    || (_isSec1 ? (a.sortRank || 0) - (b.sortRank || 0) : 0)
+                    || _bySumDesc(a, b));
             }
 
             // Сохраняем элементы для коммерческого предложения клиенту
