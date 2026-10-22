@@ -15360,6 +15360,17 @@ const app = {
                     </div>`;
         }).join('');
 
+        // ── Итог КП ─────────────────────────────────────────────────────────
+        // Отметки «согласился / отказ» из окна итога (kp_outcome.js). КП с итогом
+        // ни на столе, ни в ожидании звонка уже не висит.
+        const kpList = window.KpOutcome ? KpOutcome.build(rows, now) : [];
+        const kpClosed = {};
+        kpList.forEach(k => { if (k.outcome) kpClosed[k.calcId] = k.outcome; });
+        const kpCur = kpList.filter(k => inCur(k.firstSentAt));
+        const kpWon = kpCur.filter(k => k.outcome === 'won').length;
+        const kpLost = kpCur.filter(k => k.outcome === 'lost').length;
+        const kpOpen = kpList.filter(k => k.overdue).length;
+
         // ── Деньги на столе ─────────────────────────────────────────────────
         // Сметы, по которым решение ещё не принято, и одобренные без счёта.
         // Старше 90 дней — уже не «на столе», а несбывшаяся сделка.
@@ -15367,7 +15378,7 @@ const app = {
         cards.forEach(c => {
             const lastMove = Math.max(...Object.values(c.first));
             if (now - lastMove > 90 * DAY) return;
-            const done = c.first.invoice_requested || c.first.invoice_issued || c.first.paid || c.first.rejected;
+            const done = c.first.invoice_requested || c.first.invoice_issued || c.first.paid || c.first.rejected || kpClosed[c.id];
             if (done) return;
             const e = estOfCalc[c.id];
             const item = { id: c.id, name: c.project || (e && e.name) || 'Без названия', sum: sumOfCalc[c.id] || 0,
@@ -15406,7 +15417,7 @@ const app = {
             const sent = c.first.sent || c.first.printed || null;
             const opened = c.first.opened || null;
             const moved = c.first.confirmed || c.first.invoice_requested || c.first.invoice_issued
-                || c.first.paid || c.first.needs_revision || c.first.rejected;
+                || c.first.paid || c.first.needs_revision || c.first.rejected || kpClosed[c.id];
             if (moved || (!sent && !opened)) return;
             const last = Math.max(sent || 0, opened || 0);
             const days = Math.floor((now - last) / DAY);
@@ -15490,7 +15501,7 @@ const app = {
         cards.forEach(c => {
             const L = lastOf[c.id] || {};
             const sentLast = Math.max(L.sent || 0, L.printed || 0);
-            const done = L.invoice_requested || L.invoice_issued || L.paid || L.rejected;
+            const done = L.invoice_requested || L.invoice_issued || L.paid || L.rejected || kpClosed[c.id];
             const name = c.project || 'Без названия';
             if (done) return;
             if (L.confirmed && now - L.confirmed < 60 * DAY) {
@@ -15517,8 +15528,11 @@ const app = {
                     text: `клиент открывал смету ${hot.length} ${this.plural(hot.length, 'раз', 'раза', 'раз')} за 3 дня — самое время позвонить`, sum: sumOfCalc[c.id] || 0 });
             }
         });
+        // КП без итога дольше 30 дней — одной строкой, открывает окно отметки
+        if (kpOpen) actions.push({ w: 0, color: '#F97316', icon: '🏁', name: kpOpen + ' ' + this.plural(kpOpen, 'КП', 'КП', 'КП') + ' без итога',
+            text: 'отметьте, чем закончились', sum: 0, onclick: 'KpOutcome.check(true).then(() => app.renderInstallerSummaryTab())' });
         actions.sort((x, y) => x.w - y.w || y.sum - x.sum);
-        const actionRow = (x) => `<div class="sm-row sm-link"${x.estId ? ` onclick="app.loadSingleEstimate('${x.estId}')" title="Открыть смету"` : ''}>
+        const actionRow = (x) => `<div class="sm-row sm-link"${x.onclick ? ` onclick="${x.onclick}"` : (x.estId ? ` onclick="app.loadSingleEstimate('${x.estId}')" title="Открыть смету"` : '')}>
                     <span class="sm-row-label">${x.icon} <b>${esc(x.name)}</b> <span style="color:${x.color};">— ${x.text}</span></span>
                     <b>${x.sum ? money(x.sum) : ''}</b>
                 </div>`;
@@ -15574,6 +15588,8 @@ const app = {
                 ${tile('Смет', num(inv.cohortN), 'за ' + (P === 365 ? 'год' : P + ' дней'), trend(inv.cohortN, invPrev.cohortN, 'up'), 'Считаем от первого действия со сметой')}
                 ${tile('Дошло до счёта', num(fAuto ? fAuto.n : 0), convCur != null ? Math.round(convCur) + '% ваших смет' : '', trend(convCur, convPrev, 'up'))}
                 ${tile('Ждут ответа', num(stale.length), 'молчат ' + this.INSTALLER_STALE_DAYS + '+ дней')}
+                ${kpWon + kpLost ? tile('Итоги КП', Math.round(kpWon / (kpWon + kpLost) * 100) + '%',
+                    'согласились ' + num(kpWon) + ' из ' + num(kpWon + kpLost), '', 'По КП, ушедшим клиентам за период, у которых отмечен итог: согласился или отказ') : ''}
                 ${seller
                     ? tile('Средний чек', oCur.total ? money(oCur.total) : '—', oCur.area ? Math.round(oCur.area) + ' м²' : '', trend(oCur.total, oPrev.total, 'up'))
                     : tile('Средний объект', oCur.area ? Math.round(oCur.area) + ' м²' : '—', oCur.total ? money(oCur.total) : '', trend(oCur.area, oPrev.area, 'up'))}
