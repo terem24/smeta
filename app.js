@@ -4377,7 +4377,8 @@ const app = {
                             addBubble('assistant', '<i>Предложена оптимизация сметы под бренд Rommer. Нажмите «Применить изменения» для пересчета.</i>');
                         } else if (cmd.action === 'generate_share_link') {
                             addBubble('assistant', '<i>Генерирую коммерческое предложение...</i>');
-                            setTimeout(() => this.executeShareInvoice(true, true), 1500);
+                            // Та же проверка, что у кнопки «Отправить»: итог старых КП и лимит
+                            setTimeout(async () => { if (await this.sendLimitOk()) this.executeShareInvoice(true, true); }, 1500);
                         } else if (cmd.action === 'add_note' && cmd.data && cmd.data.note) {
                             this.state.projectName = cmd.data.note;
                             this.saveState();
