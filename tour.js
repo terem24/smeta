@@ -94,17 +94,21 @@ const Tour = {
             sel: '#blk_main_area',
             title: 'Площадь дома',
             text: 'Главное число расчёта: от него зависят котёл, радиаторы и трубы.',
-            tasks: [{ label: 'Поставьте 150 м² — ползунком или впишите число', done: () => Math.round(Tour.st().area) === 150 }],
-            point: '#inp_area'
+            tasks: [{ label: 'Поставьте 150 м²: потяните ползунок или нажмите на число и впишите', done: () => Math.round(Tour.st().area) === 150 }],
+            point: '#val_area'
         },
         {
             block: 'basic', key: 'fuel', mob: 'inputs',
             sel: () => document.getElementById('fuel_gas') && document.getElementById('fuel_gas').closest('.control-item'),
             title: 'Тип котла',
             text: 'Можно один котёл или оба сразу — например, газ и резервный электро.',
-            snap: () => JSON.stringify(Tour.st().fuels || []),
-            tasks: [{ label: 'Нажмите «Газ»', done: snap => JSON.stringify(Tour.st().fuels || []) !== snap }],
-            point: '#fuel_gas'
+            // Кнопки — переключатели, и «можно выбрать оба» из одной строки понимают не все:
+            // второе задание заставляет включить вторую кнопку, не выключая первую.
+            tasks: [
+                { label: 'Дом газифицирован — оставьте включённым только «Газ»', done: () => { const f = Tour.st().fuels || []; if (f.length === 1 && f[0] === 'gas') Tour._gasOnlyAt = Date.now(); return Tour._gasOnlyAt >= Tour._enteredAt; } },
+                { label: 'Заказчик попросил ещё и электрокотёл про запас — включите «Электро»: пусть горят обе кнопки', done: () => { const f = Tour.st().fuels || []; return f.indexOf('gas') > -1 && f.indexOf('el') > -1; } }
+            ],
+            point: () => document.getElementById((Tour.st().fuels || []).indexOf('gas') < 0 ? 'fuel_gas' : 'fuel_el')
         },
         {
             block: 'basic', key: 'sys', mob: 'inputs',
@@ -182,6 +186,9 @@ const Tour = {
             sel: '#tab_equipment',
             title: 'Смета',
             text: 'Количество меняется прямо в строке, лишнее убирает ✖, замена — по фото.',
+            snap: () => JSON.stringify([Tour.st().qtyOverrides || {}, Tour.st().optItems || {}]),
+            tasks: [{ label: 'Поменяйте количество в любой строке или уберите позицию крестиком', done: snap => JSON.stringify([Tour.st().qtyOverrides || {}, Tour.st().optItems || {}]) !== snap }],
+            point: () => { const i = document.querySelector('.qty-num-input'); return (i && i.offsetParent) ? i : null; },
             seller: { title: 'Спецификация' }
         },
         {
@@ -1108,9 +1115,35 @@ const Tour = {
         if (document.getElementById('quick_start_overlay')) return true;
         // Окно замены позиции лежит поверх сметы и само объясняет, что выбирать; карточка
         // поверх него закрывала бы список аналогов. Закроют окно — tick вернёт карточку.
-        const sw = document.getElementById('swap_modal_overlay');
-        if (sw && getComputedStyle(sw).display !== 'none' && sw.getClientRects().length) return true;
+        // Исключение — шаг про замену: задание выполняется как раз в этом окне, и карточка,
+        // пропавшая в самый нужный момент, заставляла перечитывать задание по памяти. Здесь
+        // она не прячется, а сжимается до рамки с заданием (см. place и .tour-card-swap).
+        if (this.swapOpen()) {
+            const cur = this._view === 'step' && this.STEPS[this._step];
+            return !(cur && cur.key === 'replace');
+        }
         return false;
+    },
+
+    swapOpen: function () {
+        const sw = document.getElementById('swap_modal_overlay');
+        return !!(sw && getComputedStyle(sw).display !== 'none' && sw.getClientRects().length);
+    },
+
+    // Куда показывать пальцем в окне замены: пока модель не выбрана — на первую строку
+    // списка, пока не сменили подключение — на нужную кнопку фильтра «Подключение».
+    swapPointTarget: function (step) {
+        const body = document.getElementById('swap_modal_body');
+        if (!body) return null;
+        const fl = this.taskFlags(step);
+        const rows = Array.prototype.slice.call(body.querySelectorAll('tr[onclick*="selectSwapAlternative"]'))
+            .filter(r => r.offsetParent && !/selected|active/.test(r.className));
+        if (fl[0] && !fl[1]) {
+            const chip = Array.prototype.slice.call(body.querySelectorAll('.swap-chip'))
+                .find(c => c.offsetParent && !c.classList.contains('on') && /боков|нижн/i.test(c.textContent || ''));
+            if (chip) return chip;
+        }
+        return rows[0] || null;
     },
 
     hideCard: function () {
@@ -1214,15 +1247,24 @@ const Tour = {
         if (p) p.style.display = 'none';
     },
 
+    // Элемент, на который показывает палец: point шага, иначе подсвеченный элемент.
+    // Окно замены лежит поверх страницы — там показываем на его строки и фильтры.
+    pointEl: function (step) {
+        if (!step) return null;
+        let t = null;
+        if (this.swapOpen() && step.key === 'replace') t = this.swapPointTarget(step);
+        if (!t && step.point) t = typeof step.point === 'function' ? step.point() : document.querySelector(step.point);
+        if (!t || !t.offsetParent) t = this.target(step);
+        return t || null;
+    },
+
     updatePointer: function () {
         try {
             const step = this.STEPS[this._step];
             if (!this.active() || this._view !== 'step' || !step || !step.tasks || this.blocked() || !this.tasksPending(step)) { this.hidePointer(); return; }
             const card = document.getElementById('tour_card');
             if (!card || card.style.display === 'none') { this.hidePointer(); return; }
-            let t = null;
-            if (step.point) t = typeof step.point === 'function' ? step.point() : document.querySelector(step.point);
-            if (!t || !t.offsetParent) t = this.target(step);
+            const t = this.pointEl(step);
             if (!t) { this.hidePointer(); return; }
             const r = t.getBoundingClientRect();
             if (r.bottom < 0 || r.top > window.innerHeight || r.right < 0 || r.left > window.innerWidth) { this.hidePointer(); return; }
@@ -1231,13 +1273,32 @@ const Tour = {
                 p = document.createElement('div');
                 p.id = 'tour_pointer';
                 p.setAttribute('aria-hidden', 'true');
-                p.innerHTML = '<span class="tp-ring"></span><span class="tp-hand">' + this.HAND + '</span>';
+                // Бордовая стрелка с «хвостом»: хвост тянется от карточки к элементу, и стрелка
+                // каждый раз как бы приезжает по нему — взгляд сам идёт от текста задания к кнопке.
+                p.innerHTML = '<span class="tp-ring"></span><span class="tp-hand"><span class="tp-tail"></span>' +
+                    '<svg class="tp-arrow" viewBox="0 0 24 24" width="38" height="38" aria-hidden="true">' +
+                    '<path d="M5 2.5l13.5 7.8-6 1.6-3 6.6z" fill="#9F1239" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg></span>';
                 document.body.appendChild(p);
             }
             const x = r.width > 260 ? r.left + 70 : r.left + r.width / 2;
             const y = r.top + Math.min(r.height / 2, 24);
-            p.style.left = Math.round(Math.max(6, Math.min(x, window.innerWidth - 6))) + 'px';
-            p.style.top = Math.round(Math.max(6, Math.min(y, window.innerHeight - 6))) + 'px';
+            const px = Math.round(Math.max(6, Math.min(x, window.innerWidth - 6)));
+            const py = Math.round(Math.max(6, Math.min(y, window.innerHeight - 6)));
+            p.style.left = px + 'px';
+            p.style.top = py + 'px';
+            // Откуда «приезжает» стрелка: со стороны карточки (но не дальше 140 px — иначе
+            // хвост уйдёт за экран); карточка рядом или перекрыта — сверху-слева.
+            const c = card.getBoundingClientRect();
+            let dx = (c.left + c.width / 2) - px, dy = (c.top + c.height / 2) - py;
+            let len = Math.hypot(dx, dy);
+            if (len < 70) { dx = 1; dy = 0.7; len = Math.hypot(dx, dy); }
+            const d = Math.min(len, 140);
+            const ux = dx / len, uy = dy / len;
+            const set = (k, v) => { if (p.style.getPropertyValue(k) !== v) p.style.setProperty(k, v); };
+            set('--fx', Math.round(ux * d) + 'px');
+            set('--fy', Math.round(uy * d) + 'px');
+            set('--ang', Math.round(Math.atan2(uy, ux) * 180 / Math.PI) + 'deg');
+            set('--tl', Math.round(d) + 'px');
             p.style.display = '';
         } catch (e) { }
     },
@@ -1500,6 +1561,15 @@ const Tour = {
 
     place: function (card, el) {
         const narrow = window.innerWidth < 760;
+        card.style.right = '';
+        // Окно замены на весь экран: карточка сжимается до рамки с заданием в нижнем углу
+        if (this.swapOpen()) {
+            card.className = 'tour-card tour-card-swap';
+            card.style.left = ''; card.style.top = '';
+            card.style.bottom = (this.bottomBusy() + 12) + 'px';
+            card.style.right = '12px';
+            return;
+        }
         if (narrow) {
             const top = this._dock === 'top';
             card.className = 'tour-card tour-card-bottom' + (top ? ' tour-card-atop' : '');
@@ -1516,6 +1586,37 @@ const Tour = {
         const top = window.innerHeight - busy - h - 16;
         card.style.left = Math.round(Math.max(8, left)) + 'px';
         card.style.top = Math.round(Math.max(8, top)) + 'px';
+        this.placeNear(card, w, h, left, top, busy);
+    },
+
+    // Угол — постоянное место, но если место действия далеко от него (поле слева, карточка
+    // справа внизу), задание читают по памяти, а карточку даже не замечают. Тогда карточка
+    // встаёт рядом с тем, куда показывает палец: под ним, иначе над, иначе сбоку.
+    placeNear: function (card, w, h, left, top, busy) {
+        try {
+            const step = this.STEPS[this._step];
+            if (!this.active() || this._view !== 'step' || !step || !step.tasks || !this.tasksPending(step)) return;
+            const t = this.pointEl(step);
+            if (!t) return;
+            const b = t.getBoundingClientRect();
+            if (b.bottom < 0 || b.top > window.innerHeight) return;
+            const far = Math.hypot((b.left + b.width / 2) - (left + w / 2), (b.top + b.height / 2) - (top + h / 2));
+            if (far < 420) return;
+            const gap = 14, floor = window.innerHeight - busy - 8;
+            let L = b.left + b.width / 2 - w / 2, T = b.bottom + gap;
+            if (T + h > floor) {
+                if (b.top - gap - h > 8) T = b.top - gap - h;
+                else {
+                    const roomR = window.innerWidth - b.right - gap - 8, roomL = b.left - gap - 8;
+                    if (roomR >= w) { L = b.right + gap; T = b.top; }
+                    else if (roomL >= w) { L = b.left - gap - w; T = b.top; }
+                }
+            }
+            L = Math.max(8, Math.min(L, window.innerWidth - w - 8));
+            T = Math.max(8, Math.min(T, floor - h));
+            card.style.left = Math.round(L) + 'px';
+            card.style.top = Math.round(T) + 'px';
+        } catch (e) { }
     },
 
     // Сколько снизу занято чужим: сейчас это баннер cookie, но если появится ещё
@@ -1568,7 +1669,25 @@ const Tour = {
         this.updatePointer();
     },
 
+    // Телефон: нажали в поле — открылась клавиатура, и карточка поверх страницы закрывает поле,
+    // в которое надо вписать значение. Пока человек печатает, карточка и палец прячутся
+    // (см. body.tour-typing в стилях); ушёл из поля — возвращаются.
+    hookTyping: function () {
+        if (this._typingHooked) return;
+        this._typingHooked = true;
+        // Число площади — не input, а contenteditable-span, поэтому смотрим и на isContentEditable
+        const isField = t => !!(t && t.tagName && !(t.closest && t.closest('#tour_card')) &&
+            ((/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && !/^(checkbox|radio|button|range|submit)$/.test(t.type || '')) || t.isContentEditable));
+        document.addEventListener('focusin', e => {
+            if (window.innerWidth < 760 && this.active() && isField(e.target)) document.body.classList.add('tour-typing');
+        });
+        document.addEventListener('focusout', () => {
+            setTimeout(() => { if (!isField(document.activeElement)) document.body.classList.remove('tour-typing'); }, 150);
+        });
+    },
+
     injectStyles: function () {
+        this.hookTyping();
         if (document.getElementById('tour_styles')) return;
         const st = document.createElement('style');
         st.id = 'tour_styles';
@@ -1787,13 +1906,30 @@ body.dark-mode .tour-blk-ic { background: #1E1E1E; border-color: #333333; }
 /* Палец и кольцо на настоящем элементе страницы */
 #tour_pointer { position: fixed; z-index: 59999990; width: 0; height: 0; pointer-events: none; }
 #tour_pointer .tp-ring {
-    position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; box-sizing: border-box;
-    border: 3px solid var(--primary); border-radius: 50%; animation: tp-ring 1.5s ease-out infinite;
+    position: absolute; left: -26px; top: -26px; width: 52px; height: 52px; box-sizing: border-box;
+    border: 4px solid #9F1239; border-radius: 50%; opacity: 0; animation: tp-ring 2.2s ease-out infinite;
 }
-#tour_pointer .tp-hand { position: absolute; left: -4px; top: -3px; line-height: 0; animation: tp-tap 1.5s ease-in-out infinite; }
-#tour_pointer .ta-hand-i { filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45)); }
-@keyframes tp-ring { 0% { opacity: .9; transform: scale(.45); } 70%, 100% { opacity: 0; transform: scale(1.25); } }
-@keyframes tp-tap { 0%, 100% { transform: translate(10px, 12px); } 40%, 55% { transform: translate(0, 0); } }
+#tour_pointer .tp-hand { position: absolute; left: -5px; top: -4px; line-height: 0; animation: tp-fly 2.2s cubic-bezier(.3, .1, .2, 1) infinite; }
+#tour_pointer .tp-arrow { filter: drop-shadow(0 2px 4px rgba(159, 18, 57, 0.55)); }
+/* Хвост — след за стрелкой, тянется в сторону карточки */
+#tour_pointer .tp-tail { position: absolute; left: 7px; top: 4px; width: 0; height: 0; transform-origin: 0 0; transform: rotate(var(--ang, 45deg)); animation: tp-tail 2.2s ease-out infinite; }
+#tour_pointer .tp-tail::before { content: ''; position: absolute; left: 0; top: -5px; width: var(--tl, 110px); height: 10px; border-radius: 10px;
+    background: linear-gradient(90deg, rgba(159, 18, 57, 0.9), rgba(159, 18, 57, 0)); clip-path: polygon(0 35%, 100% 0, 100% 100%, 0 65%); }
+@keyframes tp-fly {
+    0% { transform: translate(var(--fx, 90px), var(--fy, 60px)); opacity: 0; }
+    10% { opacity: 1; }
+    50% { transform: translate(0, 0); }
+    60% { transform: translate(3px, 4px); }
+    70%, 88% { transform: translate(0, 0); opacity: 1; }
+    100% { transform: translate(0, 0); opacity: 0; }
+}
+@keyframes tp-tail { 0%, 8% { opacity: 0; } 20%, 48% { opacity: 1; } 62%, 100% { opacity: 0; } }
+@keyframes tp-ring { 0%, 48% { opacity: 0; transform: scale(.4); } 56% { opacity: .95; transform: scale(.7); } 90%, 100% { opacity: 0; transform: scale(1.35); } }
+
+/* Окно замены на весь экран: карточка — только рамка с заданием в углу */
+.tour-card-swap { left: auto !important; top: auto !important; width: 300px; max-height: 60vh; border: 2px solid #9F1239; box-shadow: 0 14px 38px rgba(159, 18, 57, 0.28); }
+.tour-card-swap .tour-card-text, .tour-card-swap .tour-actions, .tour-card-swap .tour-prog, .tour-card-swap .tour-card-blocks,
+.tour-card-swap .tour-btn-back { display: none; }
 
 /* Тёмная тема: кнопки читаются, а не сливаются с карточкой */
 body.dark-mode .tour-btn-ghost { color: #E5E7EB; border-color: #4B5563; }
@@ -1815,6 +1951,17 @@ body.dark-mode .tour-btn-ready { animation-name: tour-ready-dark; }
 
 /* Телефон: кнопки и крестик — не меньше 44 px под палец */
 @media (max-width: 760px) {
+    .tour-card-swap { left: 8px !important; right: 8px !important; width: auto; max-height: 32vh; }
+    body.tour-typing .tour-card, body.tour-typing #tour_pointer { display: none !important; }
+    /* Открыто меню ☰: оно выпадает сверху на всю ширину и тянется почти до низа (его высота —
+       экран минус 130 px). Полноценная карточка внизу ложилась поверх нижних пунктов меню и
+       перекрывала их. Пока меню открыто, карточка — тонкая полоса: только задание и кнопки. */
+    body.menu-open .tour-card { padding: 6px 12px 4px; max-height: 120px; bottom: 6px !important; top: auto !important; }
+    body.menu-open .tour-card .tour-card-head, body.menu-open .tour-card .tour-prog, body.menu-open .tour-card .tour-card-title,
+    body.menu-open .tour-card .tour-card-text, body.menu-open .tour-card .tour-actions, body.menu-open .tour-card .tour-plan-badge { display: none !important; }
+    body.menu-open .tour-card .tour-tasks { margin: 0 0 4px; padding: 6px 10px; }
+    body.menu-open .tour-card .tour-btn { min-height: 38px; }
+    body.menu-open .tour-card .tour-card-btns { position: static; margin: 0; padding: 0; }
     .tour-card { padding: 12px 14px 10px; }
     .tour-card-free { width: auto; }
     .tour-btn { min-height: 44px; }
