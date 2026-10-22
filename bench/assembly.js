@@ -34,6 +34,11 @@ const OBJECTS = [
 
 const KIND = ac.KIND_RU;
 
+// Режим CI (`node bench/assembly.js ci`): код выхода 1, если объект не сходится по резьбе, а его нет в
+// bench/assembly_known.txt (по названию на строку). Известные расхождения не гасят красным каждую выкладку,
+// но новое расхождение — гасит. Починил объект — убери строку из файла; стенд подскажет, что она лишняя.
+const failed = [];
+
 OBJECTS.forEach(({ title, o }) => {
     app.state.brandMode = 'stout';
     app.__setup(o);
@@ -58,7 +63,7 @@ OBJECTS.forEach(({ title, o }) => {
         });
         return;
     }
-    if (!r.problems.length) console.log('  резьба сходится');
+    if (!r.problems.length) console.log('  резьба сходится'); else failed.push(title);
     r.problems.forEach(p => {
         console.log('  ✗ ' + p.text);
         if (mode === 'detail' && r.balance[p.size]) r.balance[p.size].who.forEach(w =>
@@ -70,3 +75,15 @@ OBJECTS.forEach(({ title, o }) => {
     if (r.ext.length) console.log('  уходит из котельной: ' +
         r.ext.map(e => e.n + '× ' + KIND[e.p.kind] + ' ' + e.p.size + '" (' + (e.p.role || e.it.name) + ')').join('; '));
 });
+
+if (mode === 'ci') {
+    const fs = require('fs');
+    const known = fs.readFileSync(require('path').join(__dirname, 'assembly_known.txt'), 'utf8')
+        .split(String.fromCharCode(10)).map(x => x.trim()).filter(x => x && x[0] !== '#');
+    const fresh = failed.filter(t => known.indexOf(t) < 0);
+    const fixed = known.filter(t => failed.indexOf(t) < 0);
+    console.log('[ci] не сходится: ' + failed.length + ', из них новых: ' + fresh.length);
+    fixed.forEach(t => console.log('[ci] уже сходится, убери из assembly_known.txt: ' + t));
+    fresh.forEach(t => console.log('[ci] НОВОЕ расхождение: ' + t));
+    process.exitCode = fresh.length ? 1 : 0;
+}
