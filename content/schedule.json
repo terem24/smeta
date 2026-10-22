@@ -291,9 +291,9 @@
    "freq": 144272,
    "audience": "owner",
    "data_block": "расчёт по расчётной зиме",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-22",
-   "published_at": null,
+   "published_at": "2026-10-22",
    "words": 699
   },
   {
