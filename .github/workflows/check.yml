@@ -54,5 +54,10 @@ jobs:
       - name: Стыковка обвязки котельной
         run: node bench/assembly.js ci
 
+      # Не потерялся ли обязательный узел (дымоход, бак ГВС, сервопривод...). Правила и их
+      # обоснование — completeness_check.js; известные находки — bench/completeness_known.txt.
+      - name: Комплектность сметы
+        run: node bench/completeness.js ci
+
       - name: Стенды распознавания и порядка сметы
         run: node bench/all.js
