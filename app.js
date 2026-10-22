@@ -9747,6 +9747,8 @@ const app = {
 
         const f0 = inv.funnel[0].n || 1;
         const fAuto = inv.funnel[inv.autoLast || 0];
+        // КП, ушедшие клиенту больше 30 дней назад без итога (kp_outcome.js)
+        const kpo = window.KpOutcome ? KpOutcome.managerBlock(rows, emails) : null;
 
         host.innerHTML = `
             <div class="lk-subhead">Сводка по монтажникам</div>
@@ -9756,9 +9758,12 @@ const app = {
                     inv.waiting.length ? '#F97316' : null)}
                 ${tile('Смет за ' + this.MANAGER_SUMMARY_DAYS + ' дней', num(inv.cohortN),
                     'до запроса счёта дошло ' + (f0 ? Math.round((fAuto ? fAuto.n : 0) / f0 * 100) : 0) + '%')}
+                ${kpo ? tile('КП без итога', num(kpo.open), kpo.total ? 'итог отмечен у ' + kpo.closedShare + '% КП' : 'КП клиентам ещё не уходили',
+                    kpo.open ? '#F97316' : null) : ''}
             </div>
             <div class="lk-subhead">Ждут от вас счёта</div>
             ${waitHtml}
+            ${kpo ? kpo.html : ''}
             <div class="lk-subhead">Кто затих</div>
             ${quietHtml}
             <div id="manager_price_gaps"></div>
@@ -10242,6 +10247,12 @@ const app = {
         // Пишет база раз в сутки (send_kp_invoice_reminders): КП ушло клиенту N дней
         // назад, счёт не запрошен — напомнили монтажнику и менеджеру
         kp_reminder_sent: { label: 'Напоминание: КП без счёта', color: '#F59E0B' },
+        // Итог КП (kp_outcome.js): ставит монтажник в окне «Чем закончились КП?»
+        // или менеджер за него. Продление — техническая отметка, карточку не двигает.
+        won: { label: 'Клиент согласился', color: '#059669' },
+        lost: { label: 'Отказ клиента', color: '#DC2626' },
+        extended: { label: 'Срок ответа продлён', color: '#94A3B8' },
+        kp_outcome_reminder: { label: 'Напоминание: отметить итог КП', color: '#F59E0B' },
     },
     // Технические отметки: пишутся в ту же таблицу invoice_events, но воронкой не являются.
     // Карточка канбана живёт в колонке своего ПОСЛЕДНЕГО события, а событие, не входящее ни в
@@ -10254,7 +10265,7 @@ const app = {
     // прыгала бы из «В оплату» обратно «На согласование» при каждом открытии.
     // В воронке дашборда шаг всё равно учитывается: она считает по INVOICE_FLOW,
     // а не по колонкам канбана.
-    ADMIN_KANBAN_TECH_EVENTS: ['offline_link', 'opened', 'kp_reminder_sent'],
+    ADMIN_KANBAN_TECH_EVENTS: ['offline_link', 'opened', 'kp_reminder_sent', 'extended', 'kp_outcome_reminder'],
     /**
      * Подпись и цвет события с учётом способа отправки. «Отправлено клиенту» —
      * одна колонка канбана, но в истории и в текущем статусе видно, чем ушло:
@@ -10265,6 +10276,8 @@ const app = {
         const base = this.ADMIN_KANBAN_EVENT_META[ev] || { label: ev, color: '#94A3B8' };
         const ch = meta && meta.channel;
         if (ev === 'sent' && ch === 'link') return Object.assign({}, base, { label: 'Отправлено: ссылка' });
+        // Итог КП: где покупают или причина отказа
+        if ((ev === 'won' || ev === 'lost') && meta && meta.label) return Object.assign({}, base, { label: (ev === 'won' ? 'Согласились: ' : 'Отказ: ') + meta.label });
         if (ev === 'printed') {
             const label = ch === 'pdf' ? 'Отправлено: PDF' : ch === 'excel' ? 'Отправлено: Excel' : 'Отправлено: PDF или Excel';
             return Object.assign({}, base, { label: label });
@@ -10292,6 +10305,10 @@ const app = {
         { key: 'draft', label: 'Расчёты', color: '#60A5FA', events: ['calculated', 'saved'] },
         { key: 'review', label: 'На согласовании', color: '#818CF8', events: ['sent', 'printed', 'confirmed', 'needs_revision', 'refresh_requested', 'invoice_reminder_sent', 'invoice_reminder_declined'] },
         { key: 'payment', label: 'В оплату', color: '#F59E0B', events: ['invoice_requested', 'invoice_issued', 'rejected', 'paid'] },
+        // Чем кончилось КП, ушедшее мимо счёта: согласились (купили у другого
+        // продавца, клиент сам) или отказ с причиной. Запрос счёта после «согласился»
+        // уводит карточку в «В оплату» — последнее событие главнее.
+        { key: 'outcome', label: 'Итог', color: '#059669', events: ['won', 'lost'] },
     ],
 
     /**
@@ -10695,7 +10712,7 @@ const app = {
             const list = st ? filtered.filter(p => stageOf(p.current) === st) : [];
             return { n: list.length, sum: list.reduce((a, c) => a + (c.totalSum || 0), 0) };
         };
-        const stApproval = stageStat(STAGES[STAGES.length - 2]), stPay = stageStat(STAGES[STAGES.length - 1]);
+        const stApproval = stageStat(STAGES.find(s => s.key === 'review')), stPay = stageStat(STAGES.find(s => s.key === 'payment'));
         const rub = (v) => Math.round(v).toLocaleString('ru-RU') + ' ₽';
         const kTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
         const kanbanStats = `
@@ -10745,7 +10762,9 @@ const app = {
         // загруженным событиям — отдельный запрос к Supabase не делаем, egress не растёт.
         // Фильтры канбана (монтажник/регион/период) на сводку намеренно не влияют: это не
         // часть воронки, а состояние связи в целом, поэтому окно всегда одно — 30 дней.
-        const offlineHtml = this.buildOfflineLinkSummaryHtml(this._kanbanEvents);
+        const offlineHtml = this.buildOfflineLinkSummaryHtml(this._kanbanEvents)
+            // Причины отказов — по тем же карточкам, что на доске (свой филиал у менеджера)
+            + (window.KpOutcome ? KpOutcome.reasonsHtml((ids => this._kanbanEvents.filter(e => ids.has(e.calc_id)))(new Set(list.map(p => p.calc_id)))) : '');
 
         // Данные упёрлись в потолок строк — говорим об этом прямо. Молчаливая
         // обрезка читается как «столько всего и есть», а это не так; заодно на
@@ -11574,7 +11593,8 @@ const app = {
                 ? `<button class="auth-btn-base btn-header-blue" style="margin:0; background:#059669; color:#fff; border:none; height:34px; padding:0 16px; width:auto;" onclick="app.setInvoiceStatus('${calcId}', 'paid')">💰 Оплачено</button>`
                 : `<button class="auth-btn-base btn-header-blue" style="margin:0; background:#10B981; color:#fff; border:none; height:34px; padding:0 16px; width:auto;" onclick="app.setInvoiceStatus('${calcId}', 'invoice_issued')">✓ Счёт выставлен</button>
                    <button class="auth-btn-base" style="margin:0; background:#EF4444; color:#fff; border:none; height:34px; padding:0 16px; width:auto;" onclick="app.setInvoiceStatus('${calcId}', 'rejected')">✕ Отклонить запрос</button>`);
-            const moveBtn = `<button class="auth-btn-base" style="margin:0; background:var(--surface); color:var(--text-main); border:1px solid var(--border); height:34px; padding:0 16px; width:auto;" onclick="app.moveKanbanCard('${calcId}')">⇄ Сменить этап</button>`;
+            const moveBtn = `<button class="auth-btn-base" style="margin:0; background:var(--surface); color:var(--text-main); border:1px solid var(--border); height:34px; padding:0 16px; width:auto;" onclick="app.moveKanbanCard('${calcId}')">⇄ Сменить этап</button>`
+                + (window.KpOutcome ? `<button class="auth-btn-base" style="margin:0; background:var(--surface); color:var(--text-main); border:1px solid var(--border); height:34px; padding:0 16px; width:auto;" onclick="KpOutcome.openForCalc('${calcId}', () => app.renderAdminKanban().then(() => app.renderKanbanCardDetail('${calcId}')))" title="Клиент согласился или отказался — если знаете раньше монтажника">🏁 Итог КП</button>` : '');
             actionsHtml = `
                 <div style="background: var(--surface-light); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; text-align: left;">
                     <h4 style="margin-top:0; margin-bottom:12px; color:var(--text-main); font-size:14px;">🛠 Действия менеджера</h4>
@@ -11750,6 +11770,11 @@ const app = {
             return;
         }
         const cur = this.kanbanCurrentEvent(calcId);
+        // В «Итог» — через окно итога КП: где покупают или причина отказа
+        if (stageKey === 'outcome') {
+            if (window.KpOutcome) await KpOutcome.openForCalc(calcId, () => this.kanbanReloadBoard());
+            return;
+        }
         if (stageKey && !this.KANBAN_MANUAL_STATUSES[stageKey]) {
             app.alert('В эту колонку карточка попадает сама, когда монтажник разбирает документ. Руками сюда не переносится.');
             return;
@@ -11760,6 +11785,14 @@ const app = {
         const pick = await this.chooseKanbanStatus(cur ? cur.event : null, stageKey || null, cur ? cur.project_name : '');
         if (!pick) return;
         await this.setInvoiceStatus(calcId, pick.status, { comment: pick.comment, stayOnBoard: !!stageKey });
+    },
+
+    // Дочитать новые события и перерисовать доску, оставаясь на ней (как перенос
+    // карточки в setInvoiceStatus): доска дописывает себя в конец раздела
+    kanbanReloadBoard: async function () {
+        const root = document.getElementById('kanban_root');
+        if (root) root.remove();
+        await this.renderAdminKanban();
     },
 
     // Перетаскивание на доске. Мышью: на телефоне HTML-перетаскивание не
@@ -12350,6 +12383,7 @@ const app = {
         needs_revision: 'revision', rejected: 'revision',
         refresh_requested: 'refresh',
         invoice_reminder_declined: 'saved',
+        won: 'confirmed', lost: 'revision',
     },
 
     renderCloudList: function (data, sharedStatuses = {}, eventStatuses = {}) {
@@ -14633,7 +14667,7 @@ const app = {
     // запрошен счёт. Черновики (calculated/saved) сюда не попадают — они в «Мои объекты».
     // «Клиент открыл» сюда намеренно не входит: монтажник открывает свою же
     // ссылку, чтобы проверить смету, и черновик уезжал бы в заказы сам собой.
-    ORDER_EVENT_KEYS: ['sent', 'printed', 'invoice_requested', 'confirmed', 'needs_revision', 'refresh_requested', 'invoice_issued', 'rejected', 'invoice_reminder_sent', 'invoice_reminder_declined', 'paid'],
+    ORDER_EVENT_KEYS: ['sent', 'printed', 'invoice_requested', 'confirmed', 'needs_revision', 'refresh_requested', 'invoice_issued', 'rejected', 'invoice_reminder_sent', 'invoice_reminder_declined', 'paid', 'won', 'lost'],
 
     // Одна строка истории статусов: бейдж события, комментарий/версия КП, дата-время.
     // Общий рендер для раскрывающейся истории в «Моих объектах» (toggleObjectHistory) —
@@ -46416,6 +46450,8 @@ const app = {
                 // Заходит не первый раз, а посчитать так ничего и не начал — через
                 // полминуты на пустом калькуляторе предложим типовой объект.
                 if (window.IdleHint) IdleHint.consider(uRow);
+                // КП ушли клиентам больше 30 дней назад, а итога нет — спросим, чем кончилось
+                if (window.KpOutcome) KpOutcome.afterLogin();
 
                 // Промокод, введённый при регистрации, применяем один раз — при первом
                 // входе, когда запись в users уже создана и ещё нет привязки к поставщику
@@ -53927,6 +53963,9 @@ const app = {
     sendLimitOk: async function () {
         try {
             await this.loadAppSettings();
+            // Сначала итог старых КП (kp_outcome.js): без Профи два КП без итога
+            // останавливают отправку новых, окно отметки открывается тут же
+            if (window.KpOutcome && !(await KpOutcome.gateOk())) return false;
             if (typeof Subscription === 'undefined' || !Subscription.limitApplies()) return true;
             const tg = this.state.tgUser || {};
             if (!tg.id) return true;

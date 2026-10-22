@@ -392,7 +392,9 @@ const Subscription = {
     // Профи (free и base); пробный и платный Профи, менеджеры, наблюдатели, админы
     // и (по умолчанию) сотрудники ТЕРЕМ лимит не видят. Любой сбой при подсчёте —
     // пропускаем: лимит не должен мешать работать.
-    LIMIT_DEFAULTS: { enabled: false, from: '', perMonth: 3, excludeTerem: true },
+    // outcomeGate — блок отправки, пока у двух КП нет итога (kp_outcome.js). Включён по
+    // умолчанию и от «Включить лимит» не зависит; excludeTerem действует на оба.
+    LIMIT_DEFAULTS: { enabled: false, from: '', perMonth: 3, excludeTerem: true, outcomeGate: true },
 
     limitSettings: function () {
         const t = Object.assign({}, this.LIMIT_DEFAULTS, this.raw().limit || {});
@@ -408,8 +410,8 @@ const Subscription = {
     },
 
     setLimitField: function (field, value) {
-        if (['enabled', 'from', 'perMonth', 'excludeTerem'].indexOf(field) < 0) return;
-        if (field === 'enabled' || field === 'excludeTerem') value = !!value;
+        if (['enabled', 'from', 'perMonth', 'excludeTerem', 'outcomeGate'].indexOf(field) < 0) return;
+        if (field === 'enabled' || field === 'excludeTerem' || field === 'outcomeGate') value = !!value;
         else if (field === 'perMonth') value = Math.min(100, Math.max(1, Math.round(this.num(value)) || 3));
         else value = /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? String(value) : '';
         this.apply(v => { v.limit = Object.assign({}, v.limit || {}, { [field]: value }); return v; });
@@ -497,6 +499,7 @@ const Subscription = {
                 ${row('Бесплатных КП в месяц', 'Календарный месяц, считаются разные КП. От 1 до 100.', `<input type="number" min="1" max="100" value="${t.perMonth}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('perMonth', this.value)" style="${u.input} width:80px;">`)}
                 ${row('Действует с даты', 'Нажмите и выберите день в календаре (включительно). Без даты — сразу, как только лимит включён.', `<button type="button" ${dis ? 'disabled' : ''} onclick="Subscription.openLimitFrom()" style="${u.input} min-width:230px; text-align:left; cursor:${dis ? 'default' : 'pointer'};">${t.from ? 'с ' + this.fmtDate(t.from) : 'Сразу, как только включён'}</button>`)}
                 ${row('Не применять к сотрудникам ТЕРЕМ', 'Почта @teremopt.ru или привязка к компании «ТЕРЕМ».', this.toggleHtml(!!t.excludeTerem, `Subscription.setLimitField('excludeTerem', ${!t.excludeTerem})`, dis))}
+                ${row('Блок за КП без итога', 'Отдельно от лимита выше. Без Профи: когда у ' + (window.KpOutcome ? KpOutcome.GATE : 2) + ' КП нет итога дольше ' + (window.KpOutcome ? KpOutcome.DAYS + KpOutcome.GRACE_DAYS : 33) + ' дней после отправки (с учётом продлений), новое КП не уходит, пока монтажник не отметит «согласился» или «отказ» с причиной. Окно «Чем закончились КП?» при входе показывается всем, независимо от этого переключателя.', this.toggleHtml(t.outcomeGate !== false, `Subscription.setLimitField('outcomeGate', ${t.outcomeGate === false})`, dis))}
             </div>
             <div style="${u.card} max-width:760px; margin-top:14px;">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;"><b style="font-size:14px; color:var(--text-main);">Сколько КП отправляют бесплатные мастера</b>
