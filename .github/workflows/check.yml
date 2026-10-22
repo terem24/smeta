@@ -1,0 +1,58 @@
+name: Проверка кода
+
+# Ловит то, что раньше ловилось руками перед пушем (CLAUDE.md, правило четвёртое):
+# синтаксическую ошибку в любом .js сайта и поломку стендов расчёта.
+# app.js грузится одним файлом, поэтому одна запятая не там кладёт калькулятор целиком.
+#
+# Красный значок значит «не выкладывать как есть». Саму выкладку (deploy-beget.yml) эта
+# проверка не останавливает: они идут параллельно, ради скорости выкладки. Если нужна
+# жёсткая связка — завести в deploy-beget ожидание этого прогона.
+#
+# Стенды, которым нужны чужие проекты (bench/project.js, эталоны в .gitignore), здесь не
+# запускаются — их гоняют локально перед правкой распознавания.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Забрать исходники
+        uses: actions/checkout@v4
+
+      - name: Поставить Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Все .js в корне — это и есть код сайта (скрипты в подпапках и сторонние
+      # библиотеки сюда не входят). Печатаем все ошибки сразу, а не по первой.
+      - name: Синтаксис скриптов сайта
+        run: |
+          bad=0
+          for f in ./*.js; do
+            if ! node --check "$f" 2> /tmp/err.txt; then
+              echo "::error file=${f#./}::синтаксическая ошибка"
+              cat /tmp/err.txt
+              bad=1
+            fi
+          done
+          exit $bad
+
+      # Не сходится по резьбе — известные объекты перечислены в bench/assembly_known.txt;
+      # красным становится только новое расхождение.
+      - name: Стыковка обвязки котельной
+        run: node bench/assembly.js ci
+
+      - name: Стенды распознавания и порядка сметы
+        run: node bench/all.js

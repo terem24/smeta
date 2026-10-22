@@ -71,6 +71,9 @@ const mkEl = () => new Proxy({
             querySelector: () => null, querySelectorAll: () => [], style: { setProperty: noop, removeProperty: noop }
         };
         if (k === 'firstChild' || k === 'lastChild' || k === 'nextSibling') return null;
+        // Код сметы вставляет блоки в ячейки через firstElementChild.appendChild (relocateWaterHydroBox):
+        // без узла-заглушки здесь возвращалась функция, и расчёт падал на первом же объекте.
+        if (k === 'firstElementChild' || k === 'lastElementChild' || k === 'nextElementSibling' || k === 'previousElementSibling') return mkEl();
         if (k === 'getBoundingClientRect') return () => ({ width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0 });
         if (k === 'querySelector') return () => mkEl();
         if (k === 'querySelectorAll') return () => [];
