@@ -16735,7 +16735,8 @@ const app = {
     // в НОВУЮ смету из reset(). Открытые и сохранённые сметы не трогаем — иначе цены в уже
     // отправленных КП поменялись бы сами. Пустое значение = «Авто»: калькулятор решает сам.
     // Ручной выбор в самой смете (замены, swaps) главнее предпочтений.
-    // pro: 'rommer' — нужен столбец ROMMER в «Тарифах» (исходно Профи), 'terem' — столбец ТЕРЕМ.
+    // pro: 'rommer' — нужен столбец ROMMER в «Тарифах» (исходно Профи), 'terem' — столбец ТЕРЕМ,
+    // 'pro' — вариант только на тарифе ПРОФИ.
     PREF_DEFS: [
         { g: 'Бренд', items: [
             { id: 'brand', label: 'Бренд оборудования', opts: [{ v: 'stout', t: 'STOUT' }, { v: 'rommer', t: 'ROMMER', pro: 'rommer' }] }
@@ -16753,14 +16754,14 @@ const app = {
             { id: 'radKind', label: 'Радиаторы', opts: [{ v: 'section', t: 'Секционные' }, { v: 'steel', t: 'Стальные' }],
                 note: 'Серия — самая дешёвая из подходящих.' },
             { id: 'radConn', label: 'Способ подключения радиаторов', opts: [{ v: 'side', t: 'Боковое' }, { v: 'bottom', t: 'Нижнее' }] },
-            { id: 'radScheme', label: 'Схема подключения', opts: [{ v: 'tee', t: 'Тройниковая' }, { v: 'manifold', t: 'Коллекторная' }] },
+            { id: 'radScheme', label: 'Схема подключения', opts: [{ v: 'tee', t: 'Тройниковая', pro: 'pro' }, { v: 'manifold', t: 'Коллекторная' }] },
             { id: 'radPipe', label: 'Трубы для радиаторов', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'mp', t: 'Металлопластик' }] },
             { id: 'radBeam', label: 'Лучи к приборам в комнате', opts: [{ v: 'single', t: 'Ветка на каждый прибор' }, { v: 'auto', t: 'Автоподбор трассы' }],
                 note: 'Авто — общая трасса на комнату включается сама, если смета выходит дешевле не меньше чем на 3 % и 10 000 ₽. Работает при коллекторной схеме, режиме «По комнатам» и серой трубе PEX-a.' }
         ] },
         { g: 'Тёплый пол', items: [
             { id: 'ufhPipe', label: 'Трубы тёплого пола', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'metal_plastic', t: 'Металлопластик' }] },
-            { id: 'ufhFix', label: 'Крепление труб тёплого пола', opts: [{ v: 'xps', t: 'Скобы (XPS)' }, { v: 'mat', t: 'Маты' }] }
+            { id: 'ufhFix', label: 'Крепление труб тёплого пола', opts: [{ v: 'xps', t: 'Скобы (XPS)', pro: 'pro' }, { v: 'mat', t: 'Маты' }] }
         ] },
         { g: 'Водоснабжение и канализация', items: [
             { id: 'wellPump', label: 'Управление скважинным насосом', opts: [{ v: 'relay', t: 'Релейное' }, { v: 'inverter', t: 'Частотное' }],
@@ -16769,7 +16770,7 @@ const app = {
             { id: 'sewer', label: 'Канализация', opts: [{ v: 'economy', t: 'Обычная' }, { v: 'std', t: 'Бесшумная' }] }
         ] },
         { g: 'Автоматика', items: [
-            { id: 'automation', label: 'Автоматика', opts: [{ v: 'wired', t: 'Проводная' }, { v: 'radio', t: 'Беспроводная' }] }
+            { id: 'automation', label: 'Автоматика', opts: [{ v: 'wired', t: 'Проводная' }, { v: 'radio', t: 'Беспроводная', pro: 'pro' }] }
         ] }
     ],
 
@@ -16784,7 +16785,7 @@ const app = {
         const def = this.PREF_DEFS.reduce((a, g) => a.concat(g.items), []).find(x => x.id === key);
         const opt = def && def.opts.find(o => o.v === v);
         if (!opt || !opt.pro) return null;
-        const ok = opt.pro === 'rommer' ? this.canUseBrand('ROMMER') : this.tariffAccess('terem') === 'on';
+        const ok = opt.pro === 'pro' ? this.isPro() : (opt.pro === 'rommer' ? this.canUseBrand('ROMMER') : this.tariffAccess('terem') === 'on');
         if (ok) return null;
         return this.isPro() ? 'Недоступно для вашей учётной записи' : 'Только на тарифе ПРОФИ';
     },
@@ -28597,7 +28598,13 @@ const app = {
         def.items.forEach(w => { if (!seen[w.id]) items.push(w); });
         const style = Object.assign({}, def.style, (l && l.style) || {});
         style.cols = Math.min(4, Math.max(2, Number(style.cols) || 4));
-        this._todayLayout = { style: style, items: items };
+        // v2 (23.10.2026): плитки «Новые монтажники», «Сметы за день», «Оплаты Профи» и ярлыки Планировщика,
+        // Расчётов и Распознавания заменил дашборд за период (kpiHtml) — один раз убираем их с экрана
+        const dropV2 = { 'tab:kanban': 1, 'tab:estimates': 1, 'tab:recognition': 1 };
+        const hideV2 = { newusers: 1, ests: 1, payments: 1 };
+        const kept = (l && l.v === 2) ? items : items.filter(w => !dropV2[w.id]).map(w => hideV2[w.id] ? Object.assign(w, { hidden: true }) : w);
+        this._todayLayout = { v: 2, style: style, items: kept };
+        if (!(l && l.v === 2)) { try { localStorage.setItem(this.TODAY_LAYOUT_KEY, JSON.stringify(this._todayLayout)); } catch (e) { } }
         return this._todayLayout;
     },
     todaySave: function () {
@@ -28706,6 +28713,470 @@ const app = {
             comment: '',
             onDone: async () => { this._homeState = null; this.renderAdminHome(); }
         });
+    },
+
+    // ═══ «Сегодня»: срез показателей за выбранный период ══════════════════
+    // Верх экрана — дашборд владельца: период (день … всё время) и пять виджетов (новые пользователи,
+    // планировщик КП и счетов, расчёты, распознавание, оплаты Профи). У каждого виджета четыре вида:
+    // цифры, график по времени, диаграмма состава, таблица. Выбранный период и виды помнит localStorage.
+    // Окна скользящие: «неделя» — последние 7 суток, сравнение — с предыдущими 7 сутками.
+    // Новая метрика — строка в kpiBuild (виджет), новый источник — kpiStart.
+    KPI_PERIOD_KEY: 'heatcalc_kpi_period_v1',
+    KPI_VIEWS_KEY: 'heatcalc_kpi_views_v1',
+    KPI_PERIODS: [
+        { id: 'day', label: 'День', days: 1, n: 24, full: 'за последние сутки' },
+        { id: 'week', label: 'Неделя', days: 7, n: 7, full: 'за последние 7 дней' },
+        { id: 'month', label: '30 дней', days: 30, n: 30, full: 'за последние 30 дней' },
+        { id: 'quarter', label: 'Квартал', days: 91, n: 13, full: 'за последний квартал' },
+        { id: 'half', label: 'Полгода', days: 182, n: 26, full: 'за последние полгода' },
+        { id: 'year', label: 'Год', days: 365, n: 12, full: 'за последний год' },
+        { id: 'all', label: 'Всё время', days: null, n: 12, full: 'за всё время' }
+    ],
+    KPI_VIEWS: [
+        { id: 'num', label: 'Цифры' }, { id: 'chart', label: 'График' },
+        { id: 'pie', label: 'Диаграмма' }, { id: 'table', label: 'Таблица' }
+    ],
+    KPI_EVENTS: ['sent', 'printed', 'confirmed', 'needs_revision', 'rejected', 'invoice_requested', 'invoice_issued', 'paid', 'won', 'lost'],
+    KPI_C: { blue: '#3B82F6', green: '#10B981', amber: '#F59E0B', red: '#EF4444', violet: '#8B5CF6', gray: '#94A3B8', teal: '#0D9488' },
+
+    kpiPeriod: function () {
+        if (!this._kpiPeriodId) {
+            let v = null;
+            try { v = localStorage.getItem(this.KPI_PERIOD_KEY); } catch (e) { }
+            this._kpiPeriodId = this.KPI_PERIODS.some(p => p.id === v) ? v : 'week';
+        }
+        return this.KPI_PERIODS.filter(p => p.id === this._kpiPeriodId)[0];
+    },
+    kpiSetPeriod: function (id) {
+        if (!this.KPI_PERIODS.some(p => p.id === id)) return;
+        this._kpiPeriodId = id;
+        try { localStorage.setItem(this.KPI_PERIOD_KEY, id); } catch (e) { }
+        this.renderAdminHome();
+    },
+    kpiViewOf: function (w) {
+        if (!this._kpiViews) {
+            let v = null;
+            try { v = JSON.parse(localStorage.getItem(this.KPI_VIEWS_KEY) || 'null'); } catch (e) { }
+            this._kpiViews = (v && typeof v === 'object') ? v : {};
+        }
+        const x = this._kpiViews[w];
+        return this.KPI_VIEWS.some(k => k.id === x) ? x : 'num';
+    },
+    kpiSetView: function (w, view) {
+        this.kpiViewOf(w);
+        this._kpiViews[w] = view;
+        try { localStorage.setItem(this.KPI_VIEWS_KEY, JSON.stringify(this._kpiViews)); } catch (e) { }
+        this.renderAdminHome();
+    },
+
+    // Загрузка одного источника для периода: результат кэшируется по периоду, переключение туда-обратно мгновенное
+    kpiLoad: function (pid, key, fn) {
+        const box = this._kpiSt || (this._kpiSt = {});
+        const S = box[pid] || (box[pid] = {});
+        if (S[key] !== undefined) return;
+        S[key] = 'loading';
+        fn().then(v => { S[key] = v; })
+            .catch(e => { console.warn('[сегодня/срез] ' + key + ':', e); S[key] = { error: String((e && e.message) || e) }; })
+            .then(() => { if (this._adminTab === 'home') this.renderAdminHome(); });
+    },
+    // Запросы берут два периода сразу (текущий и предыдущий — для сравнения)
+    kpiStart: function (p) {
+        const day = 864e5, from = p.days ? Date.now() - 2 * p.days * day : 0;
+        const since = from ? new Date(from).toISOString() : null;
+        const ge = (qy, col) => since ? qy.gte(col, since) : qy;
+        const L = this.kpiLoad.bind(this, p.id);
+        L('tests', async () => {
+            try {
+                const { data, error } = await supabaseClient.from('users').select('id, email').eq('is_test', true).limit(2000);
+                if (error) throw error;
+                return { rows: data || [] };
+            } catch (e) { return { rows: [] }; }
+        });
+        L('users', async () => {
+            const r = await this.fetchAllRows('users', 'id, created_at, activity_types, account_type, is_test', { order: 'id', cap: 20000, build: qy => ge(qy, 'created_at') });
+            return { rows: r.rows, capped: r.capped };
+        });
+        L('ests', async () => {
+            const r = await this.fetchAllRows('estimates', 'id, created_at, user_id, total_sum', { order: 'id', cap: 20000, build: qy => ge(qy, 'created_at') });
+            return { rows: r.rows, capped: r.capped };
+        });
+        L('evs', async () => {
+            const r = await this.fetchAllRows('invoice_events', 'calc_id, event, created_at, user_email', {
+                order: 'created_at', cap: 20000, build: qy => ge(qy.in('event', this.KPI_EVENTS), 'created_at')
+            });
+            return { rows: r.rows, capped: r.capped };
+        });
+        L('pay', async () => {
+            const r = await this.fetchAllRows('subscription_payments', 'paid_at, paid_rub, rub, email, plan, months', {
+                order: 'paid_at', cap: 5000, build: qy => ge(qy.not('paid_at', 'is', null), 'paid_at')
+            });
+            return { rows: r.rows };
+        });
+        L('rec', async () => {
+            const headers = await this.recognitionAuthHeaders();
+            if (!headers) throw new Error('нет сессии для доступа к архиву');
+            const d = p.days ? Math.min(365, Math.ceil(p.days * 2)) : 365;
+            const r = await fetch(`${this.RECOGNIZE_ARCHIVE}?list=1&days=${d}&limit=500`, { headers });
+            if (r.status === 403) throw new Error('архив открыт владельцу, администраторам и наблюдателям');
+            const j = await r.json();
+            if (!j || !Array.isArray(j.rows)) throw new Error((j && j.error) || 'архив ответил непонятным');
+            return { rows: j.rows, capped: j.rows.length >= 500, limited: !p.days || p.days * 2 > 365 };
+        });
+    },
+
+    // Подписи столбцов графика: окно делится на n равных отрезков, считая от «сейчас» назад
+    kpiBuckets: function (p, firstTs) {
+        const day = 864e5, now = Date.now(), n = p.n;
+        const from = p.days ? now - p.days * day : Math.min(firstTs || now, now - 30 * day);
+        const w = (now - from) / n;
+        const labels = [], tips = [];
+        const f2 = x => String(x).padStart(2, '0');
+        for (let i = 0; i < n; i++) {
+            const s = new Date(from + i * w), e = new Date(from + (i + 1) * w - 1);
+            const dm = d => f2(d.getDate()) + '.' + f2(d.getMonth() + 1);
+            if (p.id === 'day') { labels.push(f2(s.getHours()) + ':00'); tips.push(dm(s) + ' ' + f2(s.getHours()) + ':00'); }
+            else if (w >= 25 * day) {
+                labels.push(s.toLocaleDateString('ru-RU', { month: 'short', year: '2-digit' }).replace('.', ''));
+                tips.push(dm(s) + ' — ' + dm(e) + '.' + e.getFullYear());
+            }
+            else if (w > 1.5 * day) { labels.push(dm(s)); tips.push(dm(s) + ' — ' + dm(e)); }
+            else { labels.push(dm(s)); tips.push(dm(s)); }
+        }
+        return { from: from, w: w, n: n, labels: labels, tips: tips, at: t => (t < from || t > now) ? -1 : Math.min(n - 1, Math.floor((t - from) / w)) };
+    },
+
+    kpiDelta: function (cur, prev, o) {
+        o = o || {};
+        if (prev == null) return '';
+        let diff, txt;
+        if (o.ratio) { diff = cur - prev; txt = (diff > 0 ? '+' : '') + Math.round(diff) + ' п.п.'; }
+        else {
+            if (!prev) return cur ? '<i class="kpi-d kpi-d-up" title="В предыдущем таком же периоде было 0">новое</i>' : '';
+            diff = (cur - prev) / prev * 100; txt = (diff > 0 ? '+' : '') + Math.round(diff) + '%';
+        }
+        const flat = Math.abs(diff) < 0.5;
+        const good = o.inv ? diff < 0 : diff > 0;
+        const cls = flat ? 'flat' : (good ? 'up' : 'down');
+        const prevTxt = o.ratio ? Math.round(prev) + '%' : (o.fmt ? o.fmt(prev) : Math.round(prev).toLocaleString('ru-RU'));
+        return `<i class="kpi-d kpi-d-${cls}" title="В предыдущем таком же периоде: ${prevTxt}">${flat ? '＝' : (diff > 0 ? '▲' : '▼')} ${txt}</i>`;
+    },
+
+    // Все цифры периода из загруженных источников. Возвращает описание виджетов; чего нет — widget.wait / widget.err
+    kpiBuild: function (p, S) {
+        const day = 864e5, now = Date.now(), C = this.KPI_C;
+        const fmt = n => Math.round(n).toLocaleString('ru-RU');
+        const rub = n => fmt(n) + ' ₽';
+        const pct = (a, b) => b > 0 ? Math.min(100, Math.round(a / b * 100)) : null;
+        const ok = k => S[k] && S[k] !== 'loading' && !S[k].error;
+        const bad = k => S[k] && S[k].error ? S[k].error : null;
+        const t0 = s => { const t = Date.parse(s); return isNaN(t) ? null : t; };
+        const cur0 = p.days ? now - p.days * day : 0;
+        const prev0 = p.days ? cur0 - p.days * day : null;
+        const cls = t => t == null ? null : (t >= cur0 ? 'cur' : (prev0 != null && t >= prev0 ? 'prev' : null));
+        const hasPrev = !!p.days;
+
+        // Начало данных — для «всего времени» (границы столбцов графика)
+        let first = now;
+        const scan = (k, f) => { if (ok(k)) S[k].rows.forEach(r => { const t = t0(r[f]); if (t != null && t < first) first = t; }); };
+        scan('users', 'created_at'); scan('ests', 'created_at'); scan('evs', 'created_at'); scan('pay', 'paid_at');
+        if (ok('rec')) S.rec.rows.forEach(r => { const t = t0(r.savedAt || r.day); if (t != null && t < first) first = t; });
+        const B = this.kpiBuckets(p, first);
+        const zeros = () => new Array(B.n).fill(0);
+
+        const testIds = {}, testMail = {};
+        if (ok('tests')) S.tests.rows.forEach(u => { if (u.id) testIds[u.id] = 1; if (u.email) testMail[String(u.email).toLowerCase()] = 1; });
+        const testsWait = !ok('tests') && !bad('tests');
+
+        const out = {};
+
+        // ── Новые пользователи ──
+        {
+            const w = { id: 'users', title: 'Новые пользователи', tab: 'stats', act: 'Пользователи' };
+            if (bad('users')) w.err = bad('users');
+            else if (!ok('users') || testsWait) w.wait = true;
+            else {
+                const kinds = [['installer', 'Монтажники', C.blue], ['seller', 'Продавцы', C.green], ['other', 'Менеджеры и прочие', C.gray]];
+                const cnt = { cur: { installer: 0, seller: 0, other: 0 }, prev: { installer: 0, seller: 0, other: 0 } };
+                const ser = { installer: zeros(), seller: zeros(), other: zeros() };
+                const newIds = {};
+                S.users.rows.forEach(u => {
+                    if (u.is_test || testIds[u.id]) return;
+                    const t = t0(u.created_at), c = cls(t);
+                    if (!c) return;
+                    const a = this.tariffAccountOfUser(u), k = a === 'seller' ? 'seller' : a === 'installer' ? 'installer' : 'other';
+                    cnt[c][k]++;
+                    if (c === 'cur') { ser[k][B.at(t)]++; newIds[u.id] = 1; }
+                });
+                const tot = k => cnt[k].installer + cnt[k].seller + cnt[k].other;
+                let did = null;
+                if (ok('ests')) {
+                    const has = {};
+                    S.ests.rows.forEach(r => { if (newIds[r.user_id]) has[r.user_id] = 1; });
+                    did = Object.keys(has).length;
+                }
+                w.nums = [
+                    { l: 'Всего новых', v: fmt(tot('cur')), d: hasPrev ? this.kpiDelta(tot('cur'), tot('prev')) : '', big: true },
+                    { l: 'Монтажники', v: fmt(cnt.cur.installer), d: hasPrev ? this.kpiDelta(cnt.cur.installer, cnt.prev.installer) : '' },
+                    { l: 'Продавцы', v: fmt(cnt.cur.seller), d: hasPrev ? this.kpiDelta(cnt.cur.seller, cnt.prev.seller) : '' },
+                    { l: 'Посчитали смету', v: did == null ? '…' : fmt(did), s: did == null ? '' : (tot('cur') ? 'это ' + pct(did, tot('cur')) + '% новых' : '') }
+                ];
+                if (cnt.cur.other) w.nums.splice(3, 0, { l: 'Менеджеры и прочие', v: fmt(cnt.cur.other) });
+                const used = kinds.filter(k => cnt.cur[k[0]] > 0 || k[0] !== 'other');
+                w.chart = { labels: B.labels, tips: B.tips, stack: true, series: used.map(k => ({ name: k[1], color: k[2], vals: ser[k[0]] })) };
+                w.groups = [{ title: 'Кто пришёл', items: kinds.map(k => ({ label: k[1], value: cnt.cur[k[0]], color: k[2] })) }];
+                if (did != null) w.groups.push({ title: 'Посчитали смету', items: [{ label: 'Посчитали', value: did, color: C.green }, { label: 'Пока нет', value: Math.max(0, tot('cur') - did), color: C.gray }] });
+                w.table = this.kpiTable(B, w.chart.series);
+                if (S.users.capped) w.note = 'Пользователей больше, чем читается за один раз: цифры занижены.';
+            }
+            out.users = w;
+        }
+
+        // ── Планировщик: КП и счета ──
+        {
+            const w = { id: 'planner', title: 'Планировщик: КП и счета', tab: 'kanban', act: 'Планировщик', wide: true };
+            if (bad('evs')) w.err = bad('evs');
+            else if (!ok('evs') || testsWait) w.wait = true;
+            else {
+                const grp = { sent: ['sent', 'printed'], ok: ['confirmed'], rev: ['needs_revision'], rej: ['rejected'], req: ['invoice_requested'], iss: ['invoice_issued'], paid: ['paid'], won: ['won'], lost: ['lost'] };
+                const of = {}; Object.keys(grp).forEach(g => grp[g].forEach(e => { of[e] = g; }));
+                const cnt = { cur: {}, prev: {} }, ser = {};
+                Object.keys(grp).forEach(g => { cnt.cur[g] = 0; cnt.prev[g] = 0; ser[g] = zeros(); });
+                const seen = {};
+                S.evs.rows.slice().sort((a, b) => String(a.created_at) < String(b.created_at) ? -1 : 1).forEach(r => {
+                    const g = of[r.event]; if (!g || !r.calc_id) return;
+                    if (r.user_email && testMail[String(r.user_email).toLowerCase()]) return;
+                    const t = t0(r.created_at), c = cls(t); if (!c) return;
+                    const key = g + '|' + r.calc_id;
+                    if (seen[key]) return; seen[key] = 1;
+                    cnt[c][g]++;
+                    if (c === 'cur') ser[g][B.at(t)]++;
+                });
+                const c = cnt.cur, q = cnt.prev;
+                const cv = pct(c.ok, c.sent), cvp = hasPrev ? pct(q.ok, q.sent) : null;
+                const cr = pct(c.req, c.sent);
+                const wait = Math.max(0, c.sent - c.ok - c.rev - c.rej);
+                const dl = (g, inv) => hasPrev ? this.kpiDelta(c[g], q[g], { inv: inv }) : '';
+                w.nums = [
+                    { l: 'КП отправлено', v: fmt(c.sent), d: dl('sent'), big: true },
+                    { l: 'Одобрено', v: fmt(c.ok), d: dl('ok'), tone: 'good' },
+                    { l: 'На доработке', v: fmt(c.rev), d: dl('rev', true) },
+                    { l: 'Отклонено', v: fmt(c.rej), d: dl('rej', true), tone: c.rej ? 'bad' : '' },
+                    { l: 'Конверсия КП → одобрено', v: cv == null ? '—' : cv + '%', d: (cv != null && cvp != null) ? this.kpiDelta(cv, cvp, { ratio: true }) : '', big: true },
+                    { l: 'Счетов запрошено', v: fmt(c.req), d: dl('req') },
+                    { l: 'Счетов выставлено', v: fmt(c.iss), d: dl('iss') },
+                    { l: 'Оплачено', v: fmt(c.paid), d: dl('paid'), tone: 'good' },
+                    { l: 'Конверсия КП → счёт', v: cr == null ? '—' : cr + '%', s: 'запрошено / отправлено' },
+                    { l: 'Реализовано', v: fmt(c.won), s: 'отметка монтажника', d: dl('won') },
+                    { l: 'Не реализовано', v: fmt(c.lost), d: dl('lost', true) }
+                ];
+                w.chart = { labels: B.labels, tips: B.tips, stack: false, series: [
+                    { name: 'КП отправлено', color: C.blue, vals: ser.sent },
+                    { name: 'Одобрено', color: C.green, vals: ser.ok },
+                    { name: 'Запрошен счёт', color: C.amber, vals: ser.req }
+                ] };
+                w.groups = [
+                    { title: 'Итог КП', items: [
+                        { label: 'Одобрено', value: c.ok, color: C.green }, { label: 'На доработке', value: c.rev, color: C.amber },
+                        { label: 'Отклонено', value: c.rej, color: C.red }, { label: 'Ждут ответа', value: wait, color: C.gray }] },
+                    { title: 'Путь к оплате', items: [
+                        { label: 'Запрошено', value: c.req, color: C.blue }, { label: 'Выставлено', value: c.iss, color: C.violet },
+                        { label: 'Оплачено', value: c.paid, color: C.green }] }
+                ];
+                w.table = this.kpiTable(B, [
+                    { name: 'Отправлено', vals: ser.sent }, { name: 'Одобрено', vals: ser.ok }, { name: 'Доработка', vals: ser.rev },
+                    { name: 'Отклонено', vals: ser.rej }, { name: 'Счёт запрошен', vals: ser.req }, { name: 'Выставлен', vals: ser.iss }, { name: 'Оплачено', vals: ser.paid }]);
+                w.note = 'Считается по событиям периода: каждая смета — один раз на этап. «Одобрено» и «отклонено» относятся и к КП, отправленным раньше.'
+                    + (S.evs.capped ? ' Событий больше, чем читается за один раз: цифры занижены.' : '');
+            }
+            out.planner = w;
+        }
+
+        // ── Расчёты ──
+        {
+            const w = { id: 'ests', title: 'Расчёты', tab: 'estimates', act: 'Расчёты' };
+            if (bad('ests')) w.err = bad('ests');
+            else if (!ok('ests') || testsWait) w.wait = true;
+            else {
+                const cnt = { cur: 0, prev: 0 }, sum = { cur: 0, prev: 0 }, au = { cur: {}, prev: {} }, ser = zeros(), serNew = zeros();
+                const newIds = {};
+                if (ok('users')) S.users.rows.forEach(u => { const t = t0(u.created_at); if (t != null && t >= cur0) newIds[u.id] = 1; });
+                let fromNew = 0;
+                S.ests.rows.forEach(r => {
+                    if (testIds[r.user_id]) return;
+                    const t = t0(r.created_at), c = cls(t); if (!c) return;
+                    cnt[c]++; sum[c] += Number(r.total_sum) || 0; if (r.user_id) au[c][r.user_id] = 1;
+                    if (c === 'cur') { const i = B.at(t); if (newIds[r.user_id]) { serNew[i]++; fromNew++; } else ser[i]++; }
+                });
+                const a = Object.keys(au.cur).length, ap = Object.keys(au.prev).length;
+                const dd = p.days || Math.max(1, Math.ceil((now - first) / day));
+                w.nums = [
+                    { l: 'Смет сохранено', v: fmt(cnt.cur), d: hasPrev ? this.kpiDelta(cnt.cur, cnt.prev) : '', big: true },
+                    { l: 'Активных авторов', v: fmt(a), d: hasPrev ? this.kpiDelta(a, ap) : '' },
+                    { l: 'В среднем в день', v: (Math.round(cnt.cur / dd * 10) / 10).toLocaleString('ru-RU') },
+                    { l: 'Сумма смет', v: rub(sum.cur), d: hasPrev ? this.kpiDelta(sum.cur, sum.prev, { fmt: rub }) : '' },
+                    { l: 'Средняя смета', v: cnt.cur ? rub(sum.cur / cnt.cur) : '—' }
+                ];
+                w.chart = { labels: B.labels, tips: B.tips, stack: true, series: [
+                    { name: 'Прежние пользователи', color: C.blue, vals: ser }, { name: 'Новые пользователи', color: C.violet, vals: serNew }] };
+                w.groups = [{ title: 'Чьи сметы', items: [
+                    { label: 'Прежних пользователей', value: cnt.cur - fromNew, color: C.blue }, { label: 'Новых', value: fromNew, color: C.violet }] }];
+                w.table = this.kpiTable(B, [{ name: 'Прежние', vals: ser }, { name: 'Новые', vals: serNew }]);
+                if (S.ests.capped) w.note = 'Смет больше, чем читается за один раз: цифры занижены.';
+            }
+            out.ests = w;
+        }
+
+        // ── Распознавание ──
+        {
+            const w = { id: 'rec', title: 'Распознавание', tab: 'recognition', act: 'Распознавание' };
+            if (bad('rec')) w.err = bad('rec');
+            else if (!ok('rec') || testsWait) w.wait = true;
+            else {
+                const cnt = { cur: { docs: 0, plans: 0, calls: 0 }, prev: { docs: 0, plans: 0, calls: 0 } }, us = { cur: {}, prev: {} };
+                const sd = zeros(), sp = zeros();
+                S.rec.rows.forEach(r => {
+                    const u = String(r.user || '').toLowerCase();
+                    if (u && testMail[u]) return;
+                    const t = t0(r.savedAt || r.day), c = cls(t); if (!c) return;
+                    const plan = r.source === 'floor_plan' || String(r.mode || '').indexOf('plan') === 0;
+                    cnt[c][plan ? 'plans' : 'docs']++; cnt[c].calls += Number(r.calls) || 0;
+                    if (u) us[c][u] = 1;
+                    if (c === 'cur') (plan ? sp : sd)[B.at(t)]++;
+                });
+                const c = cnt.cur, q = cnt.prev, all = c.docs + c.plans, allp = q.docs + q.plans;
+                const nu = Object.keys(us.cur).length, nup = Object.keys(us.prev).length;
+                w.nums = [
+                    { l: 'Распознаваний', v: fmt(all), d: hasPrev ? this.kpiDelta(all, allp) : '', big: true },
+                    { l: 'Накладные и сметы', v: fmt(c.docs), d: hasPrev ? this.kpiDelta(c.docs, q.docs) : '' },
+                    { l: 'Планы этажей', v: fmt(c.plans), d: hasPrev ? this.kpiDelta(c.plans, q.plans) : '' },
+                    { l: 'Пользователей', v: fmt(nu), d: hasPrev ? this.kpiDelta(nu, nup) : '' },
+                    { l: 'Запросов к модели', v: fmt(c.calls), d: hasPrev ? this.kpiDelta(c.calls, q.calls) : '', s: 'с них считается лимит' }
+                ];
+                w.chart = { labels: B.labels, tips: B.tips, stack: true, series: [
+                    { name: 'Накладные и сметы', color: C.teal, vals: sd }, { name: 'Планы этажей', color: C.violet, vals: sp }] };
+                w.groups = [{ title: 'Что распознавали', items: [{ label: 'Накладные и сметы', value: c.docs, color: C.teal }, { label: 'Планы этажей', value: c.plans, color: C.violet }] }];
+                w.table = this.kpiTable(B, [{ name: 'Накладные и сметы', vals: sd }, { name: 'Планы этажей', vals: sp }]);
+                if (S.rec.capped || S.rec.limited) w.note = S.rec.capped
+                    ? 'Сервер отдаёт не больше 500 последних записей архива: за длинный период цифры занижены.'
+                    : 'Архив читается не глубже года.';
+            }
+            out.rec = w;
+        }
+
+        // ── Оплаты Профи ──
+        {
+            const w = { id: 'pay', title: 'Оплаты Профи', tab: 'subscription', act: 'Оплата' };
+            if (bad('pay')) w.err = bad('pay');
+            else if (!ok('pay') || testsWait) w.wait = true;
+            else {
+                const cnt = { cur: 0, prev: 0 }, sum = { cur: 0, prev: 0 }, scount = zeros(), ssum = zeros(), plans = {};
+                S.pay.rows.forEach(r => {
+                    if (r.email && testMail[String(r.email).toLowerCase()]) return;
+                    const t = t0(r.paid_at), c = cls(t); if (!c) return;
+                    const v = Number(r.paid_rub) || Number(r.rub) || 0;
+                    cnt[c]++; sum[c] += v;
+                    if (c === 'cur') { const i = B.at(t); scount[i]++; ssum[i] += v; const k = r.plan ? String(r.plan) : 'без тарифа'; plans[k] = (plans[k] || 0) + v; }
+                });
+                w.nums = [
+                    { l: 'Оплат', v: fmt(cnt.cur), d: hasPrev ? this.kpiDelta(cnt.cur, cnt.prev) : '', big: true },
+                    { l: 'Сумма', v: rub(sum.cur), d: hasPrev ? this.kpiDelta(sum.cur, sum.prev, { fmt: rub }) : '' },
+                    { l: 'Средний чек', v: cnt.cur ? rub(sum.cur / cnt.cur) : '—' }
+                ];
+                w.chart = { labels: B.labels, tips: B.tips, stack: false, unit: ' ₽', series: [{ name: 'Сумма оплат', color: C.green, vals: ssum }] };
+                const palette = [C.green, C.blue, C.amber, C.violet, C.teal, C.gray];
+                w.groups = [{ title: 'Сумма по тарифам, ₽', items: Object.keys(plans).map((k, i) => ({ label: k, value: Math.round(plans[k]), color: palette[i % palette.length] })) }];
+                w.table = this.kpiTable(B, [{ name: 'Оплат', vals: scount }, { name: 'Сумма, ₽', vals: ssum.map(Math.round) }]);
+            }
+            out.pay = w;
+        }
+        return out;
+    },
+
+    // Таблица «столбец графика × ряд» с итогом сверху
+    kpiTable: function (B, series) {
+        const rows = [];
+        for (let i = B.n - 1; i >= 0; i--) rows.push({ l: B.tips[i], v: series.map(s => s.vals[i] || 0) });
+        return { head: series.map(s => s.name), rows: rows, total: series.map(s => s.vals.reduce((a, b) => a + b, 0)) };
+    },
+
+    // Столбцы на HTML, а не на SVG: SVG растягивается вместе с подписями, и в узкой карточке они мельчают
+    kpiChartHtml: function (ch, esc) {
+        const S = ch.series, n = ch.labels.length;
+        const tot = i => ch.stack ? S.reduce((a, s) => a + (s.vals[i] || 0), 0) : Math.max.apply(null, S.map(s => s.vals[i] || 0));
+        let max = 0; for (let i = 0; i < n; i++) max = Math.max(max, tot(i));
+        if (!max) return '<div class="ad-tile-note">За этот период данных нет.</div>';
+        // Верх оси — «круглое» чётное число, чтобы середина тоже была целой
+        const mag = Math.pow(10, Math.floor(Math.log10(max)));
+        const top = Math.max(2, [1, 2, 4, 6, 8, 10].map(k => k * mag).filter(v => v >= max)[0] || 10 * mag);
+        const f = v => Math.round(v).toLocaleString('ru-RU');
+        const step = Math.ceil(n / 8);
+        const seg = (s, v, i, h) => `<i class="kpi-ch-s" style="height:${h}%;background:${s.color}" title="${esc(ch.tips[i])} · ${esc(s.name)}: ${f(v)}${ch.unit || ''}"></i>`;
+        let cols = '';
+        for (let i = 0; i < n; i++) {
+            let bars;
+            if (ch.stack) bars = S.map(s => { const v = s.vals[i] || 0; return v ? seg(s, v, i, v / top * 100) : ''; }).join('');
+            else bars = S.map(s => { const v = s.vals[i] || 0; return v ? seg(s, v, i, v / top * 100) : '<i class="kpi-ch-s kpi-ch-0"></i>'; }).join('');
+            cols += `<div class="kpi-ch-c"><div class="kpi-ch-bars${ch.stack ? ' kpi-ch-stack' : ''}" title="${esc(ch.tips[i])}">${bars}</div>`
+                + `<span class="kpi-ch-l">${(i % step === 0 || i === n - 1) ? esc(ch.labels[i]) : ''}</span></div>`;
+        }
+        const legend = S.length > 1 ? `<div class="kpi-leg">${S.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('')}</div>` : '';
+        return `${legend}<div class="kpi-ch" role="img" aria-label="График по времени">
+            <div class="kpi-ch-y"><span>${f(top)}</span><span>${f(top / 2)}</span><span>0</span></div>
+            <div class="kpi-ch-p"><div class="kpi-ch-g"><i></i><i></i><i></i></div><div class="kpi-ch-cols">${cols}</div></div></div>`;
+    },
+
+    kpiDonutHtml: function (grp, esc) {
+        const items = grp.items, total = items.reduce((a, b) => a + b.value, 0);
+        const f = v => Math.round(v).toLocaleString('ru-RU');
+        if (!total) return `<div class="kpi-pie"><div class="kpi-pie-t">${esc(grp.title)}</div><div class="ad-tile-note">Данных нет.</div></div>`;
+        const R = 40, Cc = 2 * Math.PI * R;
+        let off = 0, arcs = '';
+        items.forEach(it => {
+            if (!it.value) return;
+            const len = it.value / total * Cc;
+            arcs += `<circle cx="60" cy="60" r="${R}" fill="none" stroke="${it.color}" stroke-width="18" stroke-dasharray="${len} ${Cc - len}" stroke-dashoffset="${-off}" transform="rotate(-90 60 60)"><title>${esc(it.label)}: ${f(it.value)} (${Math.round(it.value / total * 100)}%)</title></circle>`;
+            off += len;
+        });
+        const leg = items.map(it => `<div class="kpi-pie-r"><i style="background:${it.color}"></i><span>${esc(it.label)}</span><b>${f(it.value)}</b><em>${Math.round(it.value / total * 100)}%</em></div>`).join('');
+        return `<div class="kpi-pie"><div class="kpi-pie-t">${esc(grp.title)}</div>
+            <div class="kpi-pie-b"><svg viewBox="0 0 120 120" width="120" height="120" role="img">${arcs}
+            <text x="60" y="58" text-anchor="middle" class="kpi-pie-n">${f(total)}</text><text x="60" y="73" text-anchor="middle" class="kpi-ax">всего</text></svg>
+            <div class="kpi-pie-l">${leg}</div></div></div>`;
+    },
+
+    kpiWidgetHtml: function (w, esc) {
+        const view = this.kpiViewOf(w.id);
+        const tabs = this.KPI_VIEWS.map(v => `<button type="button" class="kpi-vb${v.id === view ? ' on' : ''}" onclick="app.kpiSetView('${w.id}','${v.id}')">${v.label}</button>`).join('');
+        let body;
+        if (w.err) body = `<div class="ad-tile-note ad-warn">Не загрузилось: ${esc(w.err)}</div>`;
+        else if (w.wait) body = '<div class="kpi-skel"><i></i><i></i><i></i></div>';
+        else if (view === 'chart') body = this.kpiChartHtml(w.chart, esc);
+        else if (view === 'pie') body = `<div class="kpi-pies">${w.groups.map(g => this.kpiDonutHtml(g, esc)).join('')}</div>`;
+        else if (view === 'table') {
+            const t = w.table;
+            body = `<div class="kpi-tw"><table class="kpi-t"><thead><tr><th>Период</th>${t.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
+                <tr class="kpi-tt"><td>Итого</td>${t.total.map(v => `<td>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>
+                ${t.rows.map(r => `<tr><td>${esc(r.l)}</td>${r.v.map(v => `<td${v ? '' : ' class="z"'}>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>`).join('')}
+                </tbody></table></div>`;
+        } else body = `<div class="kpi-nums">${w.nums.map(m => `<div class="kpi-n${m.big ? ' kpi-n-big' : ''}${m.tone ? ' kpi-n-' + m.tone : ''}">
+                <span class="kpi-nl">${esc(m.l)}</span><b>${esc(m.v)}</b>${m.d ? `<span class="kpi-nd">${m.d}</span>` : ''}${m.s ? `<span class="kpi-ns">${esc(m.s)}</span>` : ''}</div>`).join('')}</div>`;
+        const note = (!w.err && !w.wait && w.note) ? `<div class="kpi-note">${esc(w.note)}</div>` : '';
+        return `<section class="kpi-w${w.wide ? ' kpi-wide' : ''}">
+            <div class="kpi-h"><b onclick="app.switchAdminTab('${w.tab}')" title="Открыть раздел: ${esc(w.act)}">${esc(w.title)} <span aria-hidden="true">›</span></b>
+                <span class="kpi-vs">${tabs}</span></div>
+            <div class="kpi-b">${body}</div>${note}</section>`;
+    },
+
+    kpiHtml: function (esc) {
+        const p = this.kpiPeriod();
+        this.kpiStart(p);
+        const S = (this._kpiSt || {})[p.id] || {};
+        const W = this.kpiBuild(p, S);
+        const chips = this.KPI_PERIODS.map(x => `<button type="button" class="kpi-chip${x.id === p.id ? ' on' : ''}" onclick="app.kpiSetPeriod('${x.id}')">${x.label}</button>`).join('');
+        const order = ['planner', 'users', 'ests', 'rec', 'pay'];
+        return `<div class="kpi-bar"><div class="kpi-chips" role="tablist" aria-label="Период">${chips}</div>
+                <span class="kpi-cmp">Показатели ${p.full}${p.days ? ' · стрелки — сравнение с предыдущим таким же периодом' : ''}</span></div>
+            <div class="kpi-grid">${order.map(k => this.kpiWidgetHtml(W[k], esc)).join('')}</div>`;
     },
 
     renderAdminHome: function () {
@@ -29126,16 +29597,18 @@ const app = {
         const today = todayRaw.charAt(0).toUpperCase() + todayRaw.slice(1);
         box.innerHTML = `
             <div class="ad-page-h">
-                <div><h3>Сегодня</h3><div class="ad-sub">${esc(today)} · что требует действия${L.style.urgentFirst ? ', самое срочное сверху' : ''}</div></div>
+                <div><h3>Сегодня</h3><div class="ad-sub">${esc(today)} · показатели за период и дела, требующие внимания</div></div>
                 <div style="display:flex; gap:6px; flex-wrap:wrap;">
                     ${edit
                         ? `<button class="admin-btn" onclick="app.todayReset()">Сбросить</button>
                            <button class="admin-btn ad-pick-on" onclick="app.todayEdit(false)">Готово</button>`
                         : `<button class="admin-btn" title="размер, порядок и вид плиток" onclick="app.todayEdit(true)">✏️ Настроить</button>
-                           <button class="admin-btn" onclick="app._homeState=null; app._leadsData=null; app.renderAdminHome()">Обновить</button>`}
+                           <button class="admin-btn" onclick="app._homeState=null; app._leadsData=null; app._kpiSt=null; app.renderAdminHome()">Обновить</button>`}
                 </div>
             </div>
             ${panel}
+            ${this.kpiHtml(esc)}
+            <h4 class="ad-section-h">Требует внимания</h4>
             ${main}
             <details class="ad-map-fold"><summary>Все разделы</summary><div class="ad-map">${map}</div></details>`;
 
@@ -95998,14 +96471,15 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     // Переключение отображения цен подписки Профи между рублями и тенге (KZT).
     // Оплата фактически всегда проходит в рублях (ссылки Т-Банка), тенге — только для удобства просмотра.
     setPricingCurrency(cur) {
-        if (cur !== 'RUB' && cur !== 'KZT') return;
+        if (cur !== 'RUB') return;
         this.pricingCurrency = cur;
         try { localStorage.setItem('pricing_currency', cur); } catch (e) { }
         this.applyPricingCurrencyDisplay();
     },
 
     applyPricingCurrencyDisplay() {
-        this.pricingCurrency = this.pricingCurrency || localStorage.getItem('pricing_currency') || 'RUB';
+        // Цены в тенге отключены: всегда рубли (в т.ч. если в localStorage остался 'KZT').
+        this.pricingCurrency = 'RUB';
         const cur = this.pricingCurrency;
 
         document.querySelectorAll('.currency-toggle-btn').forEach(btn => {
