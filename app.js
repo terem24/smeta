@@ -90482,6 +90482,13 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // типоразмер — присоединять пресс-фитинг наугад к «двадцать пятой»
                 // нельзя, на малой площади подводка выходит двадцатой.
                 let _radConnPipe = null;
+                // Перемычки к соседним коллекторам на этаже (приборы не влезли в самый большой коллектор):
+                // коллекторы считаем стоящими рядом, по 2 м на подачу и на обратку (+10 % на подрезку).
+                // Эти метры входят в бухту магистрали (труба того же типоразмера), а не покупаются отдельной
+                // бухтой: на перемычку нужны единицы метров, бухта — 50–100 м.
+                const _jumpExtraMf = this.state.radConnectionScheme !== 'tee' ? Math.max(0, (this._radManifoldsCount || 0) - _floorCounts.length) : 0;
+                const _jumpM = _jumpExtraMf > 0 ? Math.ceil(_jumpExtraMf * 2 * 2 * 1.1) : 0;
+                const _jumpNote = _jumpM ? `<span style="font-size:11px;line-height:1.5;"><b>Перемычки к соседним коллекторам:</b> +${_jumpM} м трубы этого же типоразмера входят в метраж (${_jumpExtraMf} доп. ${this.plural(_jumpExtraMf, 'коллектор', 'коллектора', 'коллекторов')} × 2 м × 2 линии × 1,1; коллекторы считаем стоящими рядом).</span>` : '';
 
                 // Материал магистрали (стояк и трасса). По умолчанию — как в настройках, а серая
                 // PE-Xa на магистраль подменяется стабильной (см. ниже). Монтажник может выбрать
@@ -90617,14 +90624,14 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     if (_riserBase) {
                         _radConnPipe = { pick: _riserPick, base: _riserBase };
                         const _riserComp = this.radTrunkComp(_tkMat, _riserPick, _radOv && _radOv.len > 0 ? _radOv.len / 2 : _riserOneWay);
-                        const _riserCoils = Math.ceil((_riserMeters + _riserComp.extraM) / _riserBase.len);
+                        const _riserCoils = Math.ceil((_riserMeters + _riserComp.extraM + _jumpM) / _riserBase.len);
                         // Типоразмерный ряд того же материала — в ручную замену. noCheapenAlts:
                         // режим «Аналог» иначе подставил бы Ø16 вместо Ø25, потому что бухта
                         // дешевле, и стояк перестал бы проходить по расходу.
                         const _riserAlts = _tkAllAlts.filter(x => x.id !== _riserBase.id);
                         addToBill(asCoilPrice({ ..._riserBase, originalId: 'riser_pipe_d' + _riserD0, alts: _riserAlts, noCheapenAlts: true }), _riserCoils,
                             this.getDesc('riser_pipe', _riserPick, _riserMeters, _riserKw, _riserOneWay, floorArea,
-                                { coil: _riserBase.len * _riserCoils, swapped: _riserSwapped, bore: _riserPick === 40 ? 26.6 : _riserBore(_riserBase.name), tableD: _riserD }) + this.radTrunkCompNote(_riserComp), riserGrp);
+                                { coil: _riserBase.len * _riserCoils, swapped: _riserSwapped, bore: _riserPick === 40 ? 26.6 : _riserBore(_riserBase.name), tableD: _riserD }) + this.radTrunkCompNote(_riserComp) + _jumpNote, riserGrp);
                         this.radTrunkCompItems(_riserComp, _riserPick, _tkPpr, addToBill, riserGrp, 'riser');
                         // Крепление вертикального участка: полимерная труба провисает,
                         // поэтому хомут на каждый метр каждой из двух труб. Типоразмер —
@@ -90737,7 +90744,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     if (_trBase) {
                         _radConnPipe = { pick: _trPick, base: _trBase };
                         const _trComp = this.radTrunkComp(_tkMat, _trPick, _trOv && _trOv.len > 0 ? _trOv.len / 2 : _trOneWay);
-                        const _trCoils = Math.ceil((_trMeters + _trComp.extraM) / _trBase.len);
+                        const _trCoils = Math.ceil((_trMeters + _trComp.extraM + _jumpM) / _trBase.len);
                         // Типоразмерный ряд того же материала — в ручную замену. noCheapenAlts:
                         // «Аналог» иначе подставил бы Ø16 вместо Ø25, потому что бухта дешевле,
                         // и трасса перестала бы проходить по расходу.
@@ -90751,7 +90758,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                             (_trSwapped && _trPick !== 40 ? `<br><b>Материал:</b> вместо серой PE-Xa подставлена стабильная PE-Xa/Al/PE-RT: у серой линейное расширение примерно в семь раз выше, и на длинной магистрали её выгибает между креплениями.` : ``) +
                             (_trPick === 40 ? `<br><b>Материал:</b> Ø40 — PP-R ProAqua DUO SDR 6 (PN20, внутренний диаметр 26,6 мм), в каталоге других труб этого размера нет. По паспорту рабочее давление при 80 °C на 25 лет — 6,5 бар, при 95 °C — только 10 лет; режим выше 80 °C не использовать. Хомуты — на 40 мм (1 1/4″, 40–45 мм).` : ``) +
                             `</span>`;
-                        addToBill(asCoilPrice({ ..._trBase, originalId: 'rad_trunk_pipe_d' + _trD0, alts: _trAlts, noCheapenAlts: true }), _trCoils, _trDesc + this.radTrunkCompNote(_trComp), trunkGrp);
+                        addToBill(asCoilPrice({ ..._trBase, originalId: 'rad_trunk_pipe_d' + _trD0, alts: _trAlts, noCheapenAlts: true }), _trCoils, _trDesc + this.radTrunkCompNote(_trComp) + _jumpNote, trunkGrp);
                         this.radTrunkCompItems(_trComp, _trPick, _tkPpr, addToBill, trunkGrp, 'trunk');
                         // Крепление: полимерная труба провисает, поэтому хомут на каждый метр
                         // каждой из двух труб. Типоразмер — по наружному диаметру трассы.
@@ -90941,12 +90948,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // и PP-R равнопроходных в каталоге нет, там врезку подбирают по месту.
                 const _extraMf = manifoldsCount - _floorCounts.length;
                 if (_extraMf > 0 && _radConnPipe && this.state.radConnectionScheme !== 'tee') {
-                    const _jBase = _radConnPipe.base, _jPick = _radConnPipe.pick;
-                    const _jMeters = Math.ceil(_extraMf * 2 * 2 * 1.1);
-                    const _jCoils = Math.ceil(_jMeters / (_jBase.len || 1));
+                    const _jPick = _radConnPipe.pick;
                     const _jWhere = `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Перемычка от магистрали к соседнему коллектору: приборы этажа не влезли в один коллектор, магистраль приходит к первому, остальные подключаются от неё.<br>`;
-                    addToBill(asCoilPrice({ ..._jBase, originalId: 'rad_jumper_pipe_d' + _jPick, noCheapenAlts: true }), _jCoils,
-                        _jWhere + `<b>Расчёт:</b> ${_extraMf} доп. ${this.plural(_extraMf, 'коллектор', 'коллектора', 'коллекторов')} × 2 м × 2 линии (подача и обратка) × 1,1 = ${_jMeters} м → ${_jCoils} ${_jCoils === 1 ? 'бухта' : 'бухт(ы)'} по ${_jBase.len} м. Считаем, что коллекторы стоят рядом.</span>`, pipeGrp);
                     const _jTee = (_tkMat === 'grey' || _tkMat === 'stable') ? this.findCatalogItemById('SFA-0013-0000' + _jPick) : null;
                     if (_jTee) addToBill({ ..._jTee, originalId: _jTee.id + '_rad_jumper' }, _extraMf * 2,
                         _jWhere + `<b>Расчёт:</b> врезка в подачу и в обратку на каждый доп. коллектор: ${_extraMf} × 2 = ${_extraMf * 2} шт.</span>`, pipeGrp);
