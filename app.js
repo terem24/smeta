@@ -10278,6 +10278,9 @@ const app = {
         const ch = meta && meta.channel;
         if (ev === 'sent' && ch === 'link') return Object.assign({}, base, { label: 'Отправлено: ссылка' });
         // Итог КП: где покупают или причина отказа
+        // Объект реализован? Да / Нет с причиной — отметка монтажника (app.askRealized)
+        if (ev === 'won' && meta && meta.realized === true) return Object.assign({}, base, { label: 'Реализовано' });
+        if (ev === 'lost' && meta && meta.realized === false) return Object.assign({}, base, { label: 'Не реализовано' + (meta.label ? ': ' + meta.label : '') });
         if ((ev === 'won' || ev === 'lost') && meta && meta.label) return Object.assign({}, base, { label: (ev === 'won' ? 'Согласились: ' : 'Отказ: ') + meta.label });
         if (ev === 'printed') {
             const label = ch === 'pdf' ? 'Отправлено: PDF' : ch === 'excel' ? 'Отправлено: Excel' : 'Отправлено: PDF или Excel';
@@ -12482,6 +12485,7 @@ const app = {
             // на две строки, и список смет читался как таблица внутри таблицы
             this._rowMenus[item.id] = [
                 { label: 'Сравнить цены с сегодняшними', js: `app.lazy('reprice').then(() => Reprice.open('${item.id}'))` },
+                item.calc_id ? { label: 'Объект реализован? Да / Нет', js: `app.askRealized('${item.id}')` } : null,
                 item.calc_id ? { label: 'История статусов', js: `app.toggleObjectHistory('${item.calc_id}', '${item.id}')` } : null,
                 // Итог КП можно отметить сразу, не дожидаясь окна через 30 дней (kp_outcome.js).
                 // Есть событие журнала — смета уже уходила клиенту.
@@ -12609,6 +12613,51 @@ const app = {
     // клиенту, и скачивание умеют работать только с открытым расчётом — иначе они
     // молча сделали бы своё дело над той сметой, что была открыта до этого.
     // Поэтому сначала загружаем выбранную, а потом запускаем действие.
+    /**
+     * «Объект реализован?» — итог по самой смете, а не по решению клиента: работает и для
+     * смет, которые никуда не отправляли (договорились на словах). Да → событие won,
+     * Нет → lost с причиной; оба несут meta.realized, по нему kanbanEventView даёт
+     * подписи «Реализовано» / «Не реализовано: причина».
+     */
+    askRealized: function (id) {
+        const item = (this._cloudEstimates || []).find(e => String(e.id) === String(id));
+        if (!item || !item.calc_id) { app.alert('У этой сметы нет номера КП. Откройте и сохраните её заново.'); return; }
+        this.closeCabinetRowMenu();
+        const cur = (this._cloudEventStatuses || {})[String(item.calc_id)];
+        const curLabel = cur ? this.kanbanEventView(cur.event, cur.meta).label : 'Сохранена';
+        this.showPlainModal('Объект реализован?',
+            `<div style="font-size:13px; color:var(--text-sec); margin-bottom:10px;">${item.project_name || ''} · КП № ${item.calc_id}<br>Сейчас: <b>${curLabel}</b></div>
+             <div style="display:flex; gap:10px;">
+                <button type="button" class="custom-modal-btn" style="flex:1;" onclick="app.setRealized('${item.id}', true)">Да</button>
+                <button type="button" class="custom-modal-btn" style="flex:1;" onclick="app.setRealized('${item.id}', false)">Нет</button>
+             </div>`);
+    },
+
+    setRealized: async function (id, yes) {
+        const item = (this._cloudEstimates || []).find(e => String(e.id) === String(id));
+        if (!item || !item.calc_id) return;
+        let reason = '';
+        if (!yes) {
+            const why = await app.prompt('Почему не реализован? Укажите причину (обязательно):', '', 'Причина');
+            if (why === null) return;
+            if (!why.trim()) { app.alert('Причина обязательна.'); return; }
+            reason = why.trim();
+        }
+        this.closePlainModal();
+        try {
+            if (!window.KpOutcome) throw new Error('модуль итогов не загружен, обновите страницу');
+            const meta = yes ? { realized: true, manual: true } : { realized: false, reason: 'other', label: reason, manual: true };
+            await KpOutcome.write({ calcId: item.calc_id, project: item.project_name || '', kpVersion: Number(item.kp_version) || 0 }, yes ? 'won' : 'lost', meta, false);
+            this._cloudEventStatuses = this._cloudEventStatuses || {};
+            this._cloudEventStatuses[String(item.calc_id)] = { calc_id: String(item.calc_id), event: yes ? 'won' : 'lost', meta: meta, created_at: new Date().toISOString() };
+            this.renderCloudList(this._cloudEstimates, this._cloudSharedStatuses || {}, this._cloudEventStatuses);
+            if (window.KpOutcome && KpOutcome.refreshAttention) KpOutcome.refreshAttention();
+        } catch (e) {
+            console.error('[setRealized]', e);
+            app.alert('Не удалось сохранить: ' + (e.message || e));
+        }
+    },
+
     cloudRowAction: async function (id, what) {
         if (what === 'download') { this.askDownloadFormat(id); return; }
         await this.loadSingleEstimate(id);
