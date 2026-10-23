@@ -394,11 +394,25 @@ const Subscription = {
     // пропускаем: лимит не должен мешать работать.
     // outcomeGate — блок отправки, пока у двух КП нет итога (kp_outcome.js). Включён по
     // умолчанию и от «Включить лимит» не зависит; excludeTerem действует на оба.
-    LIMIT_DEFAULTS: { enabled: false, from: '', perMonth: 3, excludeTerem: true, outcomeGate: true },
+    LIMIT_DEFAULTS: { enabled: false, from: '', perMonth: 3, excludeTerem: true, outcomeGate: true,
+        // Окно «Чем закончились КП?» (kp_outcome.js): включено ли, кому показывать,
+        // срок ответа и границы, в которых монтажник сам меняет срок («КП и счета»),
+        // число продлений, порог блока отправки и льгота после срока
+        outcomeOn: true, outcomeAudBase: true, outcomeAudPro: true, outcomeAudMgr: true,
+        outcomeDays: 30, outcomeDaysMin: 14, outcomeDaysMax: 60, outcomeExt: 2, outcomeGateN: 2, outcomeGrace: 3 },
 
     limitSettings: function () {
         const t = Object.assign({}, this.LIMIT_DEFAULTS, this.raw().limit || {});
         t.perMonth = Math.min(100, Math.max(1, Math.round(this.num(t.perMonth)) || 3));
+        // Целое из цифр, иначе значение по умолчанию — как разбирает те же поля база
+        // (send_kp_outcome_reminders: ширина w цифр), чтобы окно и рассылка не расходились
+        const cl = (v, lo, hi, d, w) => { const x = String(v == null ? '' : v).trim(); return new RegExp('^\\d{1,' + (w || 3) + '}$').test(x) ? Math.min(hi, Math.max(lo, parseInt(x, 10))) : d; };
+        t.outcomeDaysMin = cl(t.outcomeDaysMin, 7, 90, 14);
+        t.outcomeDaysMax = Math.max(t.outcomeDaysMin, cl(t.outcomeDaysMax, 7, 180, 60));
+        t.outcomeDays = Math.min(t.outcomeDaysMax, Math.max(t.outcomeDaysMin, cl(t.outcomeDays, 7, 180, 30)));
+        t.outcomeExt = cl(t.outcomeExt, 0, 5, 2, 2);
+        t.outcomeGateN = cl(t.outcomeGateN, 1, 10, 2);
+        t.outcomeGrace = cl(t.outcomeGrace, 0, 30, 3);
         return t;
     },
 
@@ -410,8 +424,11 @@ const Subscription = {
     },
 
     setLimitField: function (field, value) {
-        if (['enabled', 'from', 'perMonth', 'excludeTerem', 'outcomeGate'].indexOf(field) < 0) return;
-        if (field === 'enabled' || field === 'excludeTerem' || field === 'outcomeGate') value = !!value;
+        const BOOL = ['enabled', 'excludeTerem', 'outcomeGate', 'outcomeOn', 'outcomeAudBase', 'outcomeAudPro', 'outcomeAudMgr'];
+        const NUM = { outcomeDays: [7, 180, 30], outcomeDaysMin: [7, 90, 14], outcomeDaysMax: [7, 180, 60], outcomeExt: [0, 5, 2], outcomeGateN: [1, 10, 2], outcomeGrace: [0, 30, 3] };
+        if (['from', 'perMonth'].indexOf(field) < 0 && BOOL.indexOf(field) < 0 && !NUM[field]) return;
+        if (BOOL.indexOf(field) >= 0) value = !!value;
+        else if (NUM[field]) { const n = Math.round(this.num(value)); value = isFinite(n) ? Math.min(NUM[field][1], Math.max(NUM[field][0], n)) : NUM[field][2]; }
         else if (field === 'perMonth') value = Math.min(100, Math.max(1, Math.round(this.num(value)) || 3));
         else value = /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? String(value) : '';
         this.apply(v => { v.limit = Object.assign({}, v.limit || {}, { [field]: value }); return v; });
@@ -499,7 +516,21 @@ const Subscription = {
                 ${row('Бесплатных КП в месяц', 'Календарный месяц, считаются разные КП. От 1 до 100.', `<input type="number" min="1" max="100" value="${t.perMonth}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('perMonth', this.value)" style="${u.input} width:80px;">`)}
                 ${row('Действует с даты', 'Нажмите и выберите день в календаре (включительно). Без даты — сразу, как только лимит включён.', `<button type="button" ${dis ? 'disabled' : ''} onclick="Subscription.openLimitFrom()" style="${u.input} min-width:230px; text-align:left; cursor:${dis ? 'default' : 'pointer'};">${t.from ? 'с ' + this.fmtDate(t.from) : 'Сразу, как только включён'}</button>`)}
                 ${row('Не применять к сотрудникам ТЕРЕМ', 'Почта @teremopt.ru или привязка к компании «ТЕРЕМ».', this.toggleHtml(!!t.excludeTerem, `Subscription.setLimitField('excludeTerem', ${!t.excludeTerem})`, dis))}
-                ${row('Блок за КП без итога', 'Отдельно от лимита выше. Без Профи: когда у ' + (window.KpOutcome ? KpOutcome.GATE : 2) + ' КП нет итога дольше ' + (window.KpOutcome ? KpOutcome.DAYS + KpOutcome.GRACE_DAYS : 33) + ' дней после отправки (с учётом продлений), новое КП не уходит, пока монтажник не отметит «согласился» или «отказ» с причиной. Окно «Чем закончились КП?» при входе показывается всем, независимо от этого переключателя.', this.toggleHtml(t.outcomeGate !== false, `Subscription.setLimitField('outcomeGate', ${t.outcomeGate === false})`, dis))}
+            </div>
+            <div style="${u.card} max-width:760px; margin-top:14px;">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;"><b style="font-size:14px; color:var(--text-main);">Итог КП</b></div>
+                <p style="${u.hint}">Через заданный срок после отправки КП клиенту монтажнику при входе показывается окно «Чем закончились КП?»: согласился, отказ с причиной или «ещё думает» (продление). Причины отказов собираются в «Планировщике». Срок и сообщения менеджерам в 09:20 считает та же настройка.</p>
+                ${row('Окно «Чем закончились КП?»', 'Общий выключатель окна, блока и сообщений на 30-й день. Выключено — никому ничего не показывается, как до запуска.', this.toggleHtml(t.outcomeOn !== false, `Subscription.setLimitField('outcomeOn', ${t.outcomeOn === false})`, dis))}
+                ${row('Показывать монтажникам без Профи', 'Базовый и бесплатный тариф. Единственные, для кого действует блок отправки.', this.toggleHtml(t.outcomeAudBase !== false, `Subscription.setLimitField('outcomeAudBase', ${t.outcomeAudBase === false})`, dis))}
+                ${row('Показывать монтажникам на Профи', 'Окно и сообщения. Блока отправки у Профи нет. Сам Профи окно отключить не может.', this.toggleHtml(t.outcomeAudPro !== false, `Subscription.setLimitField('outcomeAudPro', ${t.outcomeAudPro === false})`, dis))}
+                ${row('Показывать менеджерам и админам', 'Если они сами отправляли КП клиентам. Отметка итога за монтажника в планировщике и сводке менеджера работает всегда.', this.toggleHtml(t.outcomeAudMgr !== false, `Subscription.setLimitField('outcomeAudMgr', ${t.outcomeAudMgr === false})`, dis))}
+                ${row('Срок ответа, дней', 'По умолчанию для всех. Считается от последней отправки КП: ссылкой, PDF, печатью или Excel.', `<input type="number" min="7" max="180" value="${t.outcomeDays}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('outcomeDays', this.value)" style="${u.input} width:80px;">`)}
+                ${row('Монтажник может менять срок от, дней', 'Нижняя граница личной настройки в «Настройки → КП и счета». Срок вне границ приводится к ближайшей.', `<input type="number" min="7" max="90" value="${t.outcomeDaysMin}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('outcomeDaysMin', this.value)" style="${u.input} width:80px;">`)}
+                ${row('Монтажник может менять срок до, дней', 'Верхняя граница личной настройки.', `<input type="number" min="7" max="180" value="${t.outcomeDaysMax}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('outcomeDaysMax', this.value)" style="${u.input} width:80px;">`)}
+                ${row('Продлений «ещё думает»', 'Сколько раз можно продлить срок одного КП. 0 — без продлений.', `<input type="number" min="0" max="5" value="${t.outcomeExt}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('outcomeExt', this.value)" style="${u.input} width:80px;">`)}
+                ${row('Блок отправки без Профи', 'Если выключить, окно остаётся, а отправка КП не блокируется. Не зависит от «Лимита КП» выше.', this.toggleHtml(t.outcomeGate !== false, `Subscription.setLimitField('outcomeGate', ${t.outcomeGate === false})`, dis))}
+                ${row('Блок: сколько КП без итога', 'Когда столько КП без итога просрочены дольше льготы, новое КП не уходит, пока монтажник не отметит итог.', `<input type="number" min="1" max="10" value="${t.outcomeGateN}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('outcomeGateN', this.value)" style="${u.input} width:80px;">`)}
+                ${row('Блок: льгота после срока, дней', 'Сколько дней после срока КП ещё не блокирует отправку.', `<input type="number" min="0" max="30" value="${t.outcomeGrace}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('outcomeGrace', this.value)" style="${u.input} width:80px;">`)}
             </div>
             <div style="${u.card} max-width:760px; margin-top:14px;">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;"><b style="font-size:14px; color:var(--text-main);">Сколько КП отправляют бесплатные мастера</b>

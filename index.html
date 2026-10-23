@@ -226,7 +226,7 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.6" defer></script>
-    <script src="app.js?v=13.71" defer></script>
+    <script src="app.js?v=13.72" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -247,10 +247,10 @@
     <!-- Подписка Профи: цены и ссылки на оплату, акции, региональные цены,
          учёт заявок и оплат, вкладка «Оплата подписки» в панели. Нужен и вне
          панели: окно тарифа и окно оплаты берут цены отсюда. -->
-    <script src="subscription.js?v=1.8" defer></script>
+    <script src="subscription.js?v=1.9" defer></script>
     <!-- Итог КП: окно «Чем закончились КП?» через 30 дней после отправки, продления,
          блок отправки без Профи, сводка менеджера и причины отказов в планировщике -->
-    <script src="kp_outcome.js?v=1.2" defer></script>
+    <script src="kp_outcome.js?v=1.3" defer></script>
     <!-- Отложенные модули. Ничего из перечисленного ниже при открытии страницы
          не нужно: распознавание, документы, выгрузка в Excel, разбор цен,
          QR-код и библиотека печати в PDF. Раньше они грузились вместе с
@@ -3529,6 +3529,15 @@
                             <span>Считается от отправки КП клиенту — ссылкой или файлом. Если счёт за это время не запрошен, напоминание придёт вам и вашему менеджеру. По умолчанию 10 дней, 0 — без напоминаний.</span>
                         </div>
                         <input type="number" id="profile_kp_reminder_days" class="auth-input lk-num" min="0" max="90" step="1" placeholder="10" onchange="app.setKpReminderDays(this.value.trim()); this.value = String(app.kpReminderDaysDefault())">
+                    </div>
+                    <!-- Срок ответа по КП: через сколько дней спросить «чем закончилось».
+                         Границы и показ задаёт админ (Лимит КП → Итог КП); kp_outcome.js -->
+                    <div class="lk-setting" id="profile_kp_outcome_row" style="display:none">
+                        <div class="lk-setting-text">
+                            <b>Спросить про итог КП через, дней</b>
+                            <span id="profile_kp_outcome_hint">Через сколько дней после отправки КП клиенту спросить, чем закончилось.</span>
+                        </div>
+                        <input type="number" id="profile_kp_outcome_days" class="auth-input lk-num" min="14" max="60" step="1" placeholder="30" onchange="app.setKpOutcomeDays(this.value.trim()); app.fillKpOutcomeRow()">
                     </div>
                     <!-- Названия без моделей и артикулов по умолчанию: с этим положением открывается
                          галочка в окне отправки (share_opt_names). installerSettings.shortNamesDefault -->

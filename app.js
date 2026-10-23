@@ -17994,6 +17994,9 @@ const app = {
         if (daysEl) daysEl.value = String(this.invoiceValidDaysDefault());
         const kpDaysEl = document.getElementById('profile_kp_reminder_days');
         if (kpDaysEl) kpDaysEl.value = String(this.kpReminderDaysDefault());
+        // Настройки админа могли ещё не приехать — дочитываем и перерисовываем строку
+        this.fillKpOutcomeRow();
+        if (typeof this.loadAppSettings === 'function') this.loadAppSettings().then(() => this.fillKpOutcomeRow()).catch(() => { });
         const shortEl = document.getElementById('profile_short_names');
         if (shortEl) shortEl.checked = this.shortNamesDefault();
         this.fillSaveReminderForm();
@@ -18038,6 +18041,40 @@ const app = {
         if (this.installerSettings.kpReminderDays === n) return;
         this.installerSettings.kpReminderDays = n;
         this.pushInstallerSettingsToCloud();
+    },
+    // ── Срок ответа по КП («Чем закончились КП?», kp_outcome.js) ─────────────
+    // Монтажник меняет срок сам, но в границах, которые поставил админ («Оплата
+    // подписки» → «Лимит КП» → «Итог КП»). users.installer_settings.kpOutcomeDays;
+    // пусто — срок по умолчанию. Окно, блок и сообщения в 09:20 берут то же число.
+    kpOutcomeDaysDefault: function () {
+        return window.KpOutcome ? KpOutcome.myDays() : 30;
+    },
+    setKpOutcomeDays: function (v) {
+        if (!window.KpOutcome) return;
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const c = KpOutcome.cfg();
+        let n = Math.round(Number(v));
+        // Пусто или мусор — возвращаем срок по умолчанию (ключ убираем)
+        if (!isFinite(n) || n <= 0) { n = undefined; }
+        else n = Math.min(c.outcomeDaysMax, Math.max(c.outcomeDaysMin, n));
+        if (this.installerSettings.kpOutcomeDays === n) return;
+        if (n === undefined) delete this.installerSettings.kpOutcomeDays;
+        else this.installerSettings.kpOutcomeDays = n;
+        this.pushInstallerSettingsToCloud();
+    },
+    // Строка видна, пока окно включено админом для этого человека (Профи тоже:
+    // отключить окно нельзя нигде, меняется только срок)
+    fillKpOutcomeRow: function () {
+        const row = document.getElementById('profile_kp_outcome_row');
+        if (!row) return;
+        const on = !!(window.KpOutcome && KpOutcome.enabledForMe() && KpOutcome.audience() !== 'manager');
+        row.style.display = on ? '' : 'none';
+        if (!on) return;
+        const c = KpOutcome.cfg();
+        const el = document.getElementById('profile_kp_outcome_days');
+        if (el) { el.min = String(c.outcomeDaysMin); el.max = String(c.outcomeDaysMax); el.placeholder = String(c.outcomeDays); el.value = String(KpOutcome.myDays()); }
+        const hint = document.getElementById('profile_kp_outcome_hint');
+        if (hint) hint.textContent = 'Через сколько дней после отправки КП клиенту спросить, чем закончилось: согласился, отказ или ещё думает. От ' + c.outcomeDaysMin + ' до ' + c.outcomeDaysMax + ' дней, по умолчанию ' + c.outcomeDays + '.';
     },
     // ── Личные уведомления в Telegram ────────────────────────────────────────
     // Юзернейм бота для монтажников (не бот владельца из tg_notify.php — тот
@@ -18550,6 +18587,10 @@ const app = {
                     shortNamesDefault: (cloud.shortNamesDefault !== undefined)
                         ? cloud.shortNamesDefault
                         : (this.installerSettings ? this.installerSettings.shortNamesDefault : undefined),
+                    // Личный срок ответа по КП («КП и счета»): облако главнее, без ключа — местный
+                    kpOutcomeDays: (cloud.kpOutcomeDays !== undefined)
+                        ? cloud.kpOutcomeDays
+                        : (this.installerSettings ? this.installerSettings.kpOutcomeDays : undefined),
                     // Объединение бухт по смете («Настройки → Тариф»): облако главнее, без ключа — местный выбор
                     poolCoils: (cloud.poolCoils !== undefined)
                         ? cloud.poolCoils
