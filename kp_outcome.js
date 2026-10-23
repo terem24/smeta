@@ -300,12 +300,18 @@ const KpOutcome = {
                 </div>`;
             };
 
+            // На телефоне — по одному КП: отметил, и следующее встаёт на его место
+            const one = window.matchMedia && window.matchMedia('(max-width: 480px)').matches;
             const render = () => {
                 if (!items.length) return close(true);
+                const shown = one ? items.slice(0, 1) : items;
+                const pager = one && items.length > 1
+                    ? `<div class="kpo-row kpo-pager"><span class="kpo-sub">Осталось ${items.length}</span><button type="button" class="kpo-btn" data-act="next">Следующее ›</button></div>`
+                    : '';
                 overlay.innerHTML = `<div class="calc-dialog-card kpo-card">
                     <h3 class="calc-dialog-title">${opts.gate ? 'Отметьте итог КП' : 'Чем закончились КП?'}</h3>
                     <p class="calc-dialog-message">${lead()}</p>
-                    <div class="kpo-list">${items.map(itemHtml).join('')}</div>
+                    <div class="kpo-list">${shown.map(itemHtml).join('')}</div>${pager}
                     <div class="calc-dialog-buttons"><button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" data-act="close">${opts.gate || opts.staff ? 'Закрыть' : 'Напомнить завтра'}</button></div>
                 </div>`;
             };
@@ -328,6 +334,8 @@ const KpOutcome = {
                 if (!btn || btn.disabled) return;
                 const act = btn.getAttribute('data-act'), id = btn.getAttribute('data-id');
                 if (act === 'close') return close(false);
+                // «Следующее» — текущее КП уходит в конец очереди, без отметки
+                if (act === 'next') { items.push(items.shift()); return render(); }
                 const k = items.find(x => x.calcId === id);
                 if (!k) return;
                 const st = state[id] = state[id] || {};
@@ -480,8 +488,11 @@ const KpOutcome = {
         const st = document.createElement('style');
         st.id = 'kpo_css';
         st.textContent = `
-.kpo-card { max-width: 560px; text-align: left; }
-.kpo-list { display: flex; flex-direction: column; gap: 10px; max-height: 56vh; overflow-y: auto; }
+/* Окно не выше экрана (и экрана с открытой клавиатурой — dvh): прокручивается
+   только список КП, заголовок и «Напомнить завтра» всегда видны */
+.kpo-card { max-width: 560px; text-align: left; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); box-sizing: border-box; }
+.kpo-list { display: flex; flex-direction: column; gap: 10px; flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.kpo-list > .kpo-item { flex-shrink: 0; }
 .kpo-item { border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--surface-light); }
 .kpo-item.kpo-block { border-left: 3px solid #EF4444; }
 .kpo-name { font-weight: 700; font-size: 14px; color: var(--text-main); }
@@ -498,7 +509,13 @@ const KpOutcome = {
 .kpo-chip.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); }
 .kpo-ta { width: 100%; box-sizing: border-box; margin-top: 8px; font: inherit; font-size: 16px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg, var(--surface)); color: var(--text-main); resize: vertical; }
 .kpo-err { font-size: 12px; color: #EF4444; margin-top: 6px; }
-@media (max-width: 480px) { .kpo-btn { flex: 1 1 100%; } .calc-dialog-card.kpo-card { padding: 16px; width: 100%; } }
+@media (max-width: 480px) {
+  .kpo-btn { flex: 1 1 100%; }
+  .kpo-pager { justify-content: space-between; margin-top: 0; }
+  .kpo-pager .kpo-btn { flex: 0 0 auto; }
+  .kpo-won, .kpo-lost, .kpo-row .kpo-ok, .kpo-row [data-act="back"] { flex: 1 1 calc(50% - 4px); }
+  .calc-dialog-card.kpo-card { padding: 16px; width: 100%; gap: 12px; }
+}
 `;
         document.head.appendChild(st);
     }
