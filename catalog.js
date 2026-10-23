@@ -1299,10 +1299,10 @@ const catalog = {
         { id: "SVB-0002-200020", name: "Кран шаровой 3/4\" ВР/ВР (Бабочка)", price: 1136, rommer: { id: "RBV-0003-2110220", name: "Кран шаровой ВР/ВР бабочка 3/4\"", price: 579, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, availability: "in_stock", price_date: "2026-10-10" },
         { id: "RVS-0003-006015", name: "Клапан предохранительный 6 бар", price: 518, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
         { id: "SFT-0031-000034", name: "Крестовина 3/4\" ВР", price: 1244, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SVC-0012-000020", name: "Клапан обратный пружинный 3/4\"", price: 1241, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SVC-0012-000020", name: "Клапан обратный пружинный 3/4\"", price: 1241, brand: "STOUT", rommer: { id: "RVC-0001-000020", name: "Клапан обратный 3/4\"", price: 641, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, availability: "in_stock", price_date: "2026-10-10" },
         { id: "SVB-0006-200020", name: "Кран шаровой 3/4\" НР/НР (Вход ХВС)", price: 1357, rommer: { id: "RBV-0007-2410220", name: "Кран шаровой 3/4\" НР/НР", price: 652, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, availability: "in_stock", price_date: "2026-10-10" },
         { id: "RBV-0007-2410220", name: "Кран шаровой 3/4\" НР/НР", price: 652, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SVC-0012-000020", name: "Обратный клапан 3/4\" (Для рециркуляции)", price: 1241, availability: "in_stock", price_date: "2026-10-10" }
+        { id: "SVC-0012-000020", name: "Обратный клапан 3/4\" (Для рециркуляции)", price: 1241, brand: "STOUT", rommer: { id: "RVC-0001-000020", name: "Клапан обратный 3/4\"", price: 641, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, availability: "in_stock", price_date: "2026-10-10" }
     ],
     // Латунные шаровые краны STOUT с ROMMER-аналогами — ходовой ряд 1/2…2".
     // В смете их пишут по условному проходу («кран 15») или по исполнению
