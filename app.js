@@ -12463,7 +12463,10 @@ const app = {
                 ? `<button class="lk-btn-sm kpo-btn-mark" onclick="event.stopPropagation(); KpOutcome.markFromList('${item.calc_id}')" title="Клиент согласился, отказался или ещё думает">Отметить итог</button>` : '';
 
             // Кнопка "Получить счёт" если статус confirmed
-            const isConfirmed = sharedInvoiceId && sharedStatuses[sharedInvoiceId] === 'confirmed';
+            // Счёт уже выставлен или оплачен (последнее событие журнала) — кнопка «Получить счёт»
+            // рядом со статусом «Счёт выставлен» дублировала бы его, заказывать нечего
+            const invoiceDone = !!(lastEv && (lastEv.event === 'invoice_issued' || lastEv.event === 'paid'));
+            const isConfirmed = sharedInvoiceId && sharedStatuses[sharedInvoiceId] === 'confirmed' && !invoiceDone;
             let getInvoiceBtn = '';
             if (isConfirmed) {
                 getInvoiceBtn = `<button class="btn-get-invoice" id="btn_invoice_${item.id}" onclick="event.stopPropagation(); app.sendEstimateInvoiceToManager('${item.id}', this)" title="Заказать счёт у менеджера">📄 Получить счёт</button>`;
