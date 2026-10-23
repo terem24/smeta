@@ -109,6 +109,7 @@ const Tour = {
                 { label: 'Дом газифицирован — включите «Газ»', done: () => (Tour.st().fuels || []).indexOf('gas') > -1 },
                 { label: 'Электрокотёл оставьте включённым как запасной: пусть горят обе кнопки', done: () => { const f = Tour.st().fuels || []; return f.indexOf('gas') > -1 && f.indexOf('el') > -1; } }
             ],
+            now: () => { const f = Tour.st().fuels || []; return f.length ? f.map(x => x === 'gas' ? 'Газ' : 'Электро').join(' + ') : 'ничего'; },
             point: () => document.getElementById((Tour.st().fuels || []).indexOf('gas') < 0 ? 'fuel_gas' : 'fuel_el')
         },
         {
@@ -122,6 +123,7 @@ const Tour = {
                 // Включённая кнопка при площади 0 м² ничего не добавляет в смету
                 { label: 'Задайте площадь тёплого пола — например, 60 м²: нажмите на число и впишите', done: () => (Tour.st().systems || []).indexOf('tp') > -1 && Number(Tour.st().tp1) > 0 }
             ],
+            now: () => { const s = Tour.st().systems || []; const n = s.map(x => x === 'rad' ? 'Радиаторы' : 'Тёплый пол' + (Number(Tour.st().tp1) > 0 ? ' ' + Number(Tour.st().tp1) + ' м²' : ' 0 м²')); return n.length ? n.join(' + ') : 'ничего'; },
             point: () => {
                 const s = Tour.st().systems || [];
                 if (s.indexOf('rad') < 0) return document.getElementById('sys_rad');
@@ -138,6 +140,7 @@ const Tour = {
                 { label: 'Включите «Горячая вода»', done: () => !!Tour.st().hotWater },
                 { label: 'Поставьте 4 жильца', done: () => !!Tour.st().hotWater && Number(Tour.st().res) === 4 }
             ],
+            now: () => Tour.st().hotWater ? 'горячая вода включена, жильцов: ' + Number(Tour.st().res) : 'горячая вода выключена',
             point: () => Tour.st().hotWater ? document.querySelector('#blk_res .step-btn:last-child') : document.querySelector('#blk_hw_row .switch')
         },
         {
@@ -157,6 +160,7 @@ const Tour = {
                 { label: 'Включите «Скважинный насос»', done: () => !!Tour.st().well },
                 { label: 'Глубина установки — 60 м (нажмите на число и впишите)', done: () => !!Tour.st().well && Number(Tour.st().wellDepth) === 60 }
             ],
+            now: () => Tour.st().well ? 'насос включён, глубина ' + Number(Tour.st().wellDepth) + ' м' : 'насос выключен',
             point: () => Tour.st().well ? document.getElementById('inp_wellDepth') : document.querySelector('#blk_well_wrap .switch')
         },
         {
@@ -168,11 +172,11 @@ const Tour = {
             before: () => Tour.openRadGroup(),
             sel: () => { const r = Tour.radRow() || Tour.anySwapRow(); return r ? r.tr : document.getElementById('tab_equipment'); },
             title: 'Замена радиатора',
-            text: 'Любую позицию сметы можно заменить. Окно замены открывается по фото.',
+            text: 'Любую позицию сметы можно заменить. Окно замены открывается по клику на фото позиции; фильтры «Тип прибора» и «Подключение» — внутри этого окна.',
             snap: () => JSON.stringify({ sw: Tour.st().swaps || {}, c: Tour.radConn() }),
             tasks: [
                 { label: 'Нажмите на фото радиатора и выберите другой', done: snap => JSON.stringify(Tour.st().swaps || {}) !== JSON.stringify(JSON.parse(snap).sw) },
-                { label: 'Смените подключение: фильтр «Подключение» в окне замены', done: snap => { const c = Tour.radConn(); return !!c && c !== JSON.parse(snap).c; } }
+                { label: 'Смените подключение: в открытом окне замены нажмите фильтр «Подключение»', done: snap => { const c = Tour.radConn(); return !!c && c !== JSON.parse(snap).c; } }
             ],
             point: () => { const r = Tour.radRow() || Tour.anySwapRow(); return r ? r.btn : null; }
         },
@@ -1254,9 +1258,11 @@ const Tour = {
 
     tasksHtml: function (step) {
         const fl = this.taskFlags(step);
+        let nowLine = '';
+        try { const n = typeof step.now === 'function' ? step.now() : ''; if (n) nowLine = '<div class="tour-now">Сейчас: ' + this.esc(n) + '</div>'; } catch (e) { }
         return (this.tasksOf(step) || []).map((t, i) =>
             '<div class="tour-task' + (fl[i] ? ' is-done' : '') + '"><span class="tour-task-mark">' + (fl[i] ? '✓' : '') +
-            '</span><span class="tour-task-t">' + t.label + (this._pre && this._pre[i] && fl[i] ? ' <i class="tour-task-pre">уже стоит</i>' : '') + '</span></div>').join('');
+            '</span><span class="tour-task-t">' + t.label + (this._pre && this._pre[i] && fl[i] ? ' <i class="tour-task-pre">уже стоит</i>' : '') + '</span></div>').join('') + nowLine;
     },
 
     // Кнопки внизу карточки. Пока задание не сделано — тихое «Пропустить»; сделано —
@@ -1267,7 +1273,7 @@ const Tour = {
         let h = '';
         if (this._prevIdx(this._step) >= 0) h += '<button type="button" class="tour-btn tour-btn-ghost tour-btn-back" onclick="Tour.prev()" title="Назад" aria-label="Назад">←</button>';
         if (pending) {
-            h += '<button type="button" class="tour-btn tour-btn-ghost tour-btn-skip" onclick="Tour.next()" title="Пропустить задание">Пропустить</button>';
+            h += '<button type="button" class="tour-btn tour-btn-ghost tour-btn-skip" onclick="Tour.next()" title="Перейти к следующему шагу, не выполняя задание">Пропустить шаг</button>';
         } else {
             const label = step.last ? 'Готово' : (lastInBlock ? 'Завершить блок' : 'Дальше');
             h += '<button type="button" class="tour-btn' + (this.tasksOf(step) ? ' tour-btn-ready' : '') + '" onclick="Tour.next()" title="' + label + ' (или клавиша Enter)">' +
@@ -1992,7 +1998,8 @@ body.dark-mode .tour-card { background: #1E1E1E; border-color: #333333; }
 body.dark-mode .tour-note { color: #FDE68A; background: rgba(245, 158, 11, 0.16); border-color: rgba(245, 158, 11, 0.5); }
 
 .tour-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-.tour-btn-skip { font-weight: 600; }
+.tour-btn-skip { font-weight: 600; border-style: dashed; }
+.tour-now { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--border); font-size: 12px; font-weight: 600; color: var(--text-sec); }
 .tour-card-btns .tour-btn-back { margin-right: auto; min-width: 40px; padding: 8px 12px; font-size: 16px; }
 .tour-btn-ready { animation: tour-ready 1.8s ease-in-out infinite; }
 @keyframes tour-ready { 0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.45); } 50% { box-shadow: 0 0 0 6px rgba(99, 102, 241, 0); } }
