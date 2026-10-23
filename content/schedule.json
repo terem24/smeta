@@ -305,9 +305,9 @@
    "freq": 0,
    "audience": "pro",
    "data_block": "раздельные позиции оборудования и работ",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-23",
-   "published_at": null,
+   "published_at": "2026-10-23",
    "words": 520
   },
   {
