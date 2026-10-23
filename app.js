@@ -4190,6 +4190,9 @@ const app = {
     // Плавающая кнопка "умного" заполнения параметров дома по свободному тексту/голосу
     openAiParseModal: function () {
         if (!this.state.tgUser) { this.showAuthModal(); return; }
+        // Окно ИИ-ассистента открывается только на тарифе «Профи» (кнопка на Базовом
+        // скрыта, но модалку могут вызвать и из других мест).
+        if (!this.isPro()) { this.showModal('pro'); return; }
         if (document.body.classList.contains('menu-open')) {
             try { this.toggleMenu(); } catch (e) { }
         }
@@ -4674,7 +4677,8 @@ const app = {
         const btn = document.getElementById('ai_parse_fab_btn');
         if (!btn) return;
         const mobHide = this.isMobileLayout() && (this.state.mobTab || 'inputs') !== 'inputs';
-        const hide = !this.state.tgUser || (this.state.viewMode || 'equipment') !== 'equipment' || mobHide;
+        // ИИ-ассистент — функция тарифа «Профи»: на Базовом кнопки нет совсем.
+        const hide = !this.state.tgUser || !this.isPro() || (this.state.viewMode || 'equipment') !== 'equipment' || mobHide;
         btn.style.display = hide ? 'none' : 'flex';
         // Лист сметы на десктопе освобождает под кнопку правое поле (style.css, .ai-fab-visible)
         document.body.classList.toggle('ai-fab-visible', !hide);
@@ -5820,6 +5824,9 @@ const app = {
         // Кнопка для гостя скрыта (см. syncUI), но на всякий случай дублируем проверку —
         // распознанные параметры пишутся в state напрямую, минуя проверки тарифа
         if (!this.state.tgUser) { this.showAuthModal(); return; }
+        // Окно ИИ-ассистента открывается только на тарифе «Профи» (кнопка на Базовом
+        // скрыта, но модалку могут вызвать и из других мест).
+        if (!this.isPro()) { this.showModal('pro'); return; }
         if (document.body.classList.contains('menu-open')) {
             try { this.toggleMenu(); } catch (e) { }
         }
