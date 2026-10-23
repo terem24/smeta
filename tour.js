@@ -94,7 +94,7 @@ const Tour = {
             sel: '#blk_main_area',
             title: 'Площадь дома',
             text: 'Главное число расчёта: от него зависят котёл, радиаторы и трубы. Смета справа пересчитывается сразу после каждого действия.',
-            tasks: [{ label: 'Поставьте 150 м²: нажмите на число справа и впишите с клавиатуры (или потяните ползунок)', done: () => Math.round(Tour.st().area) === 150 }],
+            tasks: [{ label: 'Поставьте 150 м²: нажмите на число справа, впишите и нажмите Enter (или потяните ползунок)', done: () => Math.round(Tour.st().area) === 150 }],
             point: '#val_area'
         },
         {
@@ -121,7 +121,7 @@ const Tour = {
                 { label: 'Включите «Радиаторы»', done: () => (Tour.st().systems || []).indexOf('rad') > -1 },
                 { label: 'Включите «Тёплый пол»', done: () => (Tour.st().systems || []).indexOf('tp') > -1 },
                 // Включённая кнопка при площади 0 м² ничего не добавляет в смету
-                { label: 'Задайте площадь тёплого пола — например, 60 м²: нажмите на число и впишите', done: () => (Tour.st().systems || []).indexOf('tp') > -1 && Number(Tour.st().tp1) > 0 }
+                { label: 'Задайте площадь тёплого пола — например, 60 м²: нажмите на число, впишите и нажмите Enter', done: () => (Tour.st().systems || []).indexOf('tp') > -1 && Number(Tour.st().tp1) > 0 }
             ],
             now: () => { const s = Tour.st().systems || []; const n = s.map(x => x === 'rad' ? 'Радиаторы' : 'Тёплый пол' + (Number(Tour.st().tp1) > 0 ? ' ' + Number(Tour.st().tp1) + ' м²' : ' 0 м²')); return n.length ? n.join(' + ') : 'ничего'; },
             point: () => {
@@ -158,7 +158,7 @@ const Tour = {
             text: 'Насос подберётся по глубине и расходу воды.',
             tasks: [
                 { label: 'Включите «Скважинный насос»', done: () => !!Tour.st().well },
-                { label: 'Глубина установки — 60 м (нажмите на число и впишите)', done: () => !!Tour.st().well && Number(Tour.st().wellDepth) === 60 }
+                { label: 'Глубина установки — 60 м (нажмите на число, впишите, Enter)', done: () => !!Tour.st().well && Number(Tour.st().wellDepth) === 60 }
             ],
             now: () => Tour.st().well ? 'насос включён, глубина ' + Number(Tour.st().wellDepth) + ' м' : 'насос выключен',
             point: () => Tour.st().well ? document.getElementById('inp_wellDepth') : document.querySelector('#blk_well_wrap .switch')
@@ -827,6 +827,8 @@ const Tour = {
         const b = this.ls(this.LS_BLOCK), v = this.ls(this.LS_VIEW), n = this._savedStep(), s = this.STEPS[n];
         if (v === 'step' && this.blockById(b) && s && s.block === b) {
             this._block = b; this._step = n; this._view = 'step';
+            const first = this.STEPS.findIndex(x => x.block === b);
+            if (n > first) this._resumeNote = 'Продолжаем с места, где остановились: «' + s.title + '»';
         } else if (v === 'done' && this.blockById(b)) {
             this._block = b; this._view = 'done';
         } else {
@@ -872,6 +874,20 @@ const Tour = {
         this.save();
         this.buildPlan();
         this.show();
+    },
+
+    resume: function () {
+        this._view = 'step'; this._lastShown = -1;
+        this.save();
+        this.show();
+    },
+
+    // 6. Учебный дом можно собрать заново: app.reset() сам спрашивает подтверждение, а
+    // начинать блок сначала имеет смысл, только если состояние и правда сбросили.
+    resetDemo: async function () {
+        const before = JSON.stringify(this.st());
+        try { await app.reset(); } catch (e) { return; }
+        if (JSON.stringify(this.st()) !== before) this.startBlock('basic');
     },
 
     openMenu: function () {
@@ -986,6 +1002,7 @@ const Tour = {
     //   kind === true  — закрыл сам после «всё пройдено»: при следующем запуске список блоков
     //   kind === 'pay' — ушёл к оплате тарифа: не откладываем показ на 3 дня
     finish: function (kind) {
+        if (kind !== true && kind !== 'pay' && this._view === 'step') this.logEv('close');
         if (kind !== true && kind !== 'pay') this.snoozeForce();
         if (kind === true) this.resetPosition(); else this.save();
         this.rememberChoice();
@@ -1088,6 +1105,19 @@ const Tour = {
     // Видна в админке администратору, владельцу, менеджеру и наблюдателю. Ставится один
     // раз — повторный проход её не меняет (так решает сама функция). Сбой молча
     // игнорируем: обучение от записи не зависит, а миграция может быть ещё не выполнена.
+    // Где обучение бросают: шаг, на котором нажали «Пропустить шаг» или закрыли крестиком.
+    // Пишем в журнал на сервере (supabase/migrations/20261023_tour_events.sql); без миграции
+    // запрос тихо падает, обучение от него не зависит.
+    logEv: function (kind) {
+        try {
+            if (typeof supabaseClient === 'undefined' || !this.allowed()) return;
+            const st = this.STEPS[this._step];
+            Promise.resolve(supabaseClient.rpc('log_tour_event', {
+                p_kind: kind, p_block: this._block || '', p_step: (st && st.key) || '', p_plan: this.planKey()
+            })).catch(() => { });
+        } catch (e) { }
+    },
+
     reportDone: function (steps) {
         try { localStorage.setItem(this.LS_DONE, '1'); } catch (e) { }
         try {
@@ -1113,6 +1143,7 @@ const Tour = {
     },
 
     next: function () {
+        try { if (this._view === 'step' && this.tasksPending(this.STEPS[this._step])) this.logEv('skip'); } catch (e) { }
         const j = this._nextIdx(this._step);
         if (j < 0) { this.endBlock(); return; }
         this._step = j;
@@ -1465,9 +1496,16 @@ const Tour = {
                 '<span class="tour-blk-body"><b>' + b.title + (b.must && !done ? ' <i class="tour-blk-must">главный</i>' : '') + '</b>' +
                 '<small>' + b.sub + '</small><small class="tour-blk-meta">' + meta + '</small></span>' + st + '</button>';
         }).join('');
+        let resumeBtn = '';
+        const rs = this.STEPS[this._step], rb = this.blockById(this._block);
+        if (rb && rs && rs.block === rb.id && !dm[rb.id] && this._step > this.STEPS.findIndex(x => x.block === rb.id)) {
+            resumeBtn = '<button type="button" class="tour-btn tour-btn-ready tour-resume" onclick="Tour.resume()">▶ Продолжить: «' +
+                this.esc(rb.title) + '», ' + this.esc(rs.title) + '</button>';
+        }
         card.innerHTML = this.headHtml('Обучение · пройдено ' + doneN + ' из ' + vis.length) +
             '<div class="tour-card-title">Что хотите освоить?</div>' +
             '<div class="tour-card-text">Короткие блоки. Начните с первого — соберёте и сохраните учебный дом.</div>' +
+            resumeBtn +
             '<div class="tour-blks">' + rows + '</div>' +
             '<div class="tour-card-foot">Кнопка 🎓 в шапке включает и выключает обучение (на телефоне — в меню ☰).' +
             (rec ? '<span class="tour-kbd-line"> Клавиша <kbd class="tour-kbd tour-kbd-plain">Enter ↵</kbd> — начать «' + rec.title + '».</span>' : '') + '</div>';
@@ -1493,7 +1531,8 @@ const Tour = {
                 if (s.hotWater) chips.push('бойлер');
                 if (s.water) chips.push('водоснабжение');
                 if (s.well) chips.push('скважинный насос');
-                body = 'Объект собран и лежит в «Объектах».' +
+                try { const t = document.getElementById('total_sum'); const tt = t && (t.textContent || '').trim(); if (tt) chips.push('смета ' + tt); } catch (e) { }
+                body = 'Объект собран и лежит в «Объектах». Следующий шаг — отправить смету клиенту: ссылка, PDF или Excel.' +
                     (chips.length ? '<div class="tour-chips">' + chips.map(c => '<span>' + c + '</span>').join('') + '</div>' : '');
             } else {
                 body = 'Вернуться к нему можно из списка блоков.';
@@ -1505,6 +1544,8 @@ const Tour = {
             body = 'Практика засчитывается после сохранения объекта.';
             btns = '<button type="button" class="tour-btn tour-btn-ready" onclick="Tour.doneAction()">К сохранению<kbd class="tour-kbd">Enter ↵</kbd></button>';
         }
+        const locked = ok ? this.lockedSteps(b.id) : [];
+        if (locked.length) body += '<div class="tour-locked">Не показали — не входит в ваш тариф: ' + locked.map(x => this.esc(x)).join(', ') + '.</div>';
         card.innerHTML = this.headHtml(ok ? 'Блок пройден' : 'Блок не засчитан') +
             '<div class="tour-card-title tour-done-title">' + (ok ? '<span class="tour-done-mark">✓</span> ' : '') + b.title + '</div>' +
             '<div class="tour-card-text">' + body + '</div>' +
@@ -1519,6 +1560,20 @@ const Tour = {
         if (!ok) { this.startBlock(this._block || 'basic', 'save'); return; }
         const rec = this.recommended();
         if (rec) this.openBlock(rec.id); else this.finish(true);
+    },
+
+    // Шаги блока, которых нет из-за тарифа или личных доступов (а не из-за экрана): человек
+    // должен знать, что пропустил, а не гадать, куда делась часть обучения.
+    lockedSteps: function (id) {
+        const out = [];
+        this.STEPS.forEach(st => {
+            if (st.block !== id) return;
+            try {
+                const gate = this.GATES[st.key];
+                if (gate && typeof app !== 'undefined' && typeof app[gate] === 'function' && !app[gate]() && !(st.seller && st.seller.skip && this.isSeller())) out.push(st.title);
+            } catch (e) { }
+        });
+        return out;
     },
 
     // Список и итог — карточка по центру, без привязки к элементу страницы
@@ -1626,10 +1681,13 @@ const Tour = {
             (step.actions ? '<div class="tour-actions">' + step.actions.map(a =>
                 '<button type="button" class="tour-act" onclick="' + a.run + '">' + a.label + '</button>').join('') + '</div>' : '') +
             (typeof v.extra === 'function' ? v.extra.call(this) : '') +
+            (step.block === 'basic' && this._step > this.STEPS.findIndex(x => x.block === 'basic') ?
+                '<div class="tour-card-foot"><a href="#" class="tour-reset" onclick="Tour.resetDemo();return false;">↺ Накрутил лишнего — начать учебный дом заново</a></div>' : '') +
             '<div class="tour-note" id="tour_note" role="status"></div>' +
             '<div class="tour-card-btns" id="tour_btns">' + this.btnsHtml(step) + '</div>';
         this.chooseDock(card, el);
         this.updatePointer();
+        if (this._resumeNote) { this.note(this._resumeNote); this._resumeNote = ''; }
     },
 
     // ── Где стоит карточка ──────────────────────────────────────────────
@@ -1999,6 +2057,9 @@ body.dark-mode .tour-note { color: #FDE68A; background: rgba(245, 158, 11, 0.16)
 
 .tour-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .tour-btn-skip { font-weight: 600; border-style: dashed; }
+.tour-resume { width: 100%; margin: 0 0 10px; justify-content: flex-start; text-align: left; }
+.tour-reset { color: var(--text-sec); text-decoration: underline dotted; }
+.tour-locked { margin-top: 8px; font-size: 12px; line-height: 1.4; color: var(--text-sec); }
 .tour-now { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--border); font-size: 12px; font-weight: 600; color: var(--text-sec); }
 .tour-card-btns .tour-btn-back { margin-right: auto; min-width: 40px; padding: 8px 12px; font-size: 16px; }
 .tour-btn-ready { animation: tour-ready 1.8s ease-in-out infinite; }
