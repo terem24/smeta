@@ -1196,7 +1196,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: false, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, mainsBar: 3, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', pumpRadMode: 'auto', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: false, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, mainsBar: 3, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, elBoilerBrand: null, elBoilerLine: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', pumpRadMode: 'auto', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
     lastSavedStateString: "",
 
     get currentUser() {
@@ -35955,7 +35955,7 @@ const app = {
     PRICE_GROUP_BY_CATALOG_KEY: {
         // Котёл + водонагреватель
         boilers_gas: 'kotly_gaz', boilers_baxi: 'kotly_gaz', boilers_vaillant: 'kotly_gaz', boilers_navien: 'kotly_gaz',
-        boilers_plus: 'kotly_el', boilers_status: 'kotly_el', boilers_polis: 'kotly_el',
+        boilers_plus: 'kotly_el', boilers_status: 'kotly_el', boilers_polis: 'kotly_el', boilers_el_analogs: 'kotly_el',
         tanks_optibase: 'boylery_kn', tanks_standard: 'boylery_kn', tanks_stainless: 'boylery_kn',
         chimneys: 'dymohody',
         // Радиаторное отопление
@@ -56140,7 +56140,7 @@ const app = {
         // Поле type у стабилизаторов значит совсем другое, поэтому смотрим его
         // только у позиций, найденных в котловых массивах каталога.
         const _boilerById = {};
-        ['boilers_gas', 'boilers_baxi', 'boilers_vaillant', 'boilers_navien', 'boilers_plus', 'boilers_status', 'boilers_polis']
+        ['boilers_gas', 'boilers_baxi', 'boilers_vaillant', 'boilers_navien', 'boilers_plus', 'boilers_status', 'boilers_polis', 'boilers_el_analogs']
             .forEach(k => (catalog[k] || []).forEach(x => { _boilerById[x.id] = x; }));
         const catB = i => (i && (_boilerById[i.id] || _boilerById[i.originalId])) || null;
         const isBoiler = i => !!catB(i) || /котел|котёл/i.test(nameOf(i));
@@ -58817,7 +58817,7 @@ const app = {
 
         // Полный сброс данных расчета
         this.state = {
-            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: false, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
+            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: false, waterFrame: false, waterTreatment: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, elBoilerBrand: null, elBoilerLine: null, bufferTank: false, bufferKind: 'plain', bufferVolManual: null, elTariffGrowth: true, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', groupsBuild: 'ready', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
             autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null },
             // ВОЗВРАЩАЕМ АВТОРИЗАЦИЮ И ТАРИФ НА МЕСТО
             tgUser: currentTgUser,
@@ -62325,6 +62325,8 @@ const app = {
         const _boilerSwapStub = [{ id: 'boiler_series_swap', name: 'Другая серия электрокотла', brand: 'STOUT', price: 0 }];
         catalog.boilers_status.forEach(b => { b.alts = _boilerSwapStub; });
         catalog.boilers_polis.forEach(b => { b.alts = _boilerSwapStub; });
+        // Аналоги других брендов — то же самое: кнопка замены есть, список собирает openSwapModal.
+        (catalog.boilers_el_analogs || []).forEach(b => { b.alts = _boilerSwapStub; });
         // PLUS снят с производства: из подбора и замен убран, в каталоге оставлен только
         // ради распознавания — старые сметы и накладные с ним продолжают разбираться.
         catalog.boilers_plus.forEach(b => { b.alts = []; });
@@ -62937,7 +62939,7 @@ const app = {
             }
         }
         else if (originalId.startsWith('SPC-') && originalId.includes('180')) { if (this.state.pumpType === 'default') this.state.pumpType = 'std'; else if (this.state.pumpType === 'std') this.state.pumpType = 'mini'; else if (this.state.pumpType === 'mini') this.state.pumpType = 'pro'; else this.state.pumpType = 'default'; }
-        else if (originalId.startsWith('SEB-')) {
+        else if (this.isElBoilerId(originalId)) {
             // STATUS ↔ POLIS. PLUS снят с производства и в переборе не участвует; если
             // серия досталась из сохранённой сметы, возвращаемся с неё на STATUS.
             // POLIS пропускаем там, где его нельзя предлагать вовсе — без газового котла
@@ -63541,6 +63543,89 @@ const app = {
     // у него нет, погодозависимости и управления каскадом тоже.
     polisAvailable: function () {
         return (this.state.fuels || []).includes('gas');
+    },
+    // ═══════════════ Электрокотлы других брендов (catalog.boilers_el_analogs) ═══════════════
+    // Аналоги STATUS (tier 'status') и POLIS (tier 'polis'): ZOTA, ЭВАН, Protherm, Vaillant,
+    // Thermex, РЭКО. Живут как STATUS/POLIS: серию решает boilerSeries, бренд — state.elBoilerBrand
+    // (пусто или 'STOUT' — каталог STOUT, как раньше). Поля позиции те же, что у STATUS/POLIS
+    // (power, exp, noPump, noBus, volt), поэтому подбор и обвязка в render() ветки не добавляют.
+    isElBoilerId: function (id) {
+        id = String(id || '');
+        return id.startsWith('SEB-') || !!this.elAnalogById(id);
+    },
+    elAnalogById: function (id) {
+        return (catalog.boilers_el_analogs || []).find(x => x.id === id) || null;
+    },
+    // Линейка бренда для подбора: от меньшей мощности к большей, как boilers_status.
+    // series — линейка бренда (MK-X, MK-X Plus…): у бренда их может быть несколько в одном классе,
+    // и без неё типоразмеры разных линеек смешались бы в одну очередь. Нет такой линейки в классе
+    // (выбрали MK-X, а серию переключили на POLIS) — берём любую линейку бренда в этом классе.
+    elAnalogPool: function (tier, brand, series) {
+        const all = (catalog.boilers_el_analogs || []).filter(x => x.tier === tier && x.brand === brand);
+        const own = series ? all.filter(x => x.series === series) : [];
+        return (own.length ? own : all)
+            .sort((a, b) => a.power - b.power || a.price - b.price);
+    },
+    // Серия электрокотла в окне замены: фильтры. Значения 'all' ничего не отсекают.
+    EL_SWAP_FILTER_DEFAULT: { tier: 'all', brand: 'all', volt: 'all', pump: false, tank: false, wifi: 'all', bus: 'all', heater: 'all', stock: false },
+    elSwapFilter: function () {
+        return Object.assign({}, this.EL_SWAP_FILTER_DEFAULT, this.state.elSwapFilter || {});
+    },
+    // Проходит ли позиция фильтры. Неизвестное поле (например, volt не указан в карточке)
+    // не отсекает позицию по этому признаку: лучше показать и пометить, чем спрятать.
+    elMatchesFilter: function (x, f) {
+        const tier = x.tier || ((x.id || '').includes('5101') ? 'polis' : 'status');
+        if (f.tier !== 'all' && tier !== f.tier) return false;
+        if (f.brand !== 'all' && (x.brand || 'STOUT') !== f.brand) return false;
+        if (f.volt !== 'all') {
+            const v = x.volt ? String(x.volt) : (x.power <= 9 ? '220/380' : '380');
+            if (!v.includes(f.volt)) return false;
+        }
+        if (f.pump && x.noPump) return false;
+        if (f.tank && !(x.exp > 0)) return false;
+        const wifi = this.elWifiOf(x);
+        if (f.wifi === 'built' && wifi !== 'built') return false;
+        if (f.wifi === 'any' && wifi === 'none') return false;
+        if (f.bus === 'ot' && this.elBusOf(x) !== 'ot') return false;
+        if (f.heater !== 'all' && (x.heater || 'ten') !== f.heater) return false;
+        if (f.stock && x.availability !== 'in_stock') return false;
+        return true;
+    },
+    // Wi-Fi и шина у STOUT в каталоге не записаны: STATUS работает по OpenTherm и берёт
+    // модуль STOUT WiFi отдельно («опция»), у POLIS нет ни шины, ни Wi-Fi.
+    elWifiOf: function (x) {
+        if (x.wifi) return x.wifi;
+        return ((x.id || '').includes('3101') || (x.id || '').includes('2201')) ? 'opt' : 'none';
+    },
+    elBusOf: function (x) {
+        if (x.bus) return x.bus;
+        return x.noBus ? 'none' : 'ot';
+    },
+    setElSwapFilter: function (key, val) {
+        const f = this.elSwapFilter();
+        f[key] = (typeof f[key] === 'boolean') ? !f[key] : val;
+        this.state.elSwapFilter = f;
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
+    resetElSwapFilter: function () {
+        this.state.elSwapFilter = null;
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
+    // Короткая строка свойств для списка замены: насос, бак, Wi-Fi, шина, нагрев, напряжение.
+    elBoilerFacts: function (x) {
+        const bus = { ot: 'OpenTherm', ebus: 'eBUS' }[this.elBusOf(x)];
+        const heater = { ten_ss: 'ТЭН нерж.', ten_block: 'блочный ТЭН', ten: 'ТЭН' }[x.heater || 'ten'];
+        const unv = x.unv || [];
+        const wifi = this.elWifiOf(x);
+        const parts = [
+            x.noPump ? 'без насоса' : 'насос',
+            x.exp > 0 ? `бак ${x.exp} л` : (unv.includes('exp') ? 'бак: уточнить' : 'без бака'),
+            wifi === 'built' ? 'Wi-Fi встроен' : (wifi === 'opt' ? 'Wi-Fi опция' : null),
+            bus || null,
+            heater,
+            x.volt ? `${x.volt} В` : null
+        ];
+        return parts.filter(Boolean).join(' · ');
     },
     // Все газовые котлы, из которых собирается таблица замены: Haier (автоподбор),
     // BAXI и Vaillant. Одно место вместо пяти перечислений — новый бренд добавляется
@@ -64418,8 +64503,9 @@ const app = {
                 this.state.tankSwapHeat = null;
                 this.state.tankSwapVol = null;
             }
-            if (!_lkId.startsWith('SEB-')) {
+            if (!this.isElBoilerId(_lkId)) {
                 this.state.swapBoilerPower = null;
+                this.state.elSwapFilter = null;
             }
             if (_lkId !== 'RFW-0080-256620') {
                 this.state.filterMagSize = null;
@@ -64513,13 +64599,13 @@ const app = {
         }
 
         let alts = item.alts || [];
-        const _isElBoiler = _origId0.startsWith('SEB-');
+        const _isElBoiler = this.isElBoilerId(_origId0);
         if (_isElBoiler) {
             // Мощность берём из каталога по артикулу: в строке сметы её нет. flushBill
             // складывает позицию по фиксированному набору полей, и .power туда не входит —
             // из-за этого фильтр молча падал на запасные 12 кВт, и котлу на 27 кВт
             // предлагались замены на 12.
-            const _elCat = [catalog.boilers_status, catalog.boilers_polis, catalog.boilers_plus]
+            const _elCat = [catalog.boilers_status, catalog.boilers_polis, catalog.boilers_plus, catalog.boilers_el_analogs]
                 .reduce((a, arr) => a.concat(arr || []), [])
                 .find(x => x.id === _origId0 || x.id === item.id);
             const _itemPower = item.power || (_elCat && _elCat.power) || 12;
@@ -64531,17 +64617,39 @@ const app = {
             // 6/9/12/15), поэтому в каждой берём ближайший котёл НЕ СЛАБЕЕ выбранной
             // мощности: 6→STATUS 7, 14→POLIS 15. Со строгим равенством список для
             // мощностей 6 и 15 кВт схлопывался до одной серии и уйти с неё было некуда.
-            let statusBoiler = catalog.boilers_status.find(x => x.power >= selectedPower);
             // PLUS снят с производства — в замену не предлагаем (в каталоге он остаётся
             // только для распознавания старых смет и накладных).
             // Выше 15 кВт линейка POLIS кончается, но из списка он не исчезает: это
             // резервный котёл, закрывать всю мощность объекта он не обязан — предлагаем
             // старший в линейке, а долю теплопотерь показывает подсказка позиции.
-            let polisBoiler = this.polisAvailable()
-                ? (catalog.boilers_polis.find(x => x.power >= selectedPower)
-                    || catalog.boilers_polis[catalog.boilers_polis.length - 1])
-                : null;
-            alts = [statusBoiler, polisBoiler].filter(Boolean);
+            // Список строится по линейкам «бренд × класс»: у каждой — ближайший котёл не слабее
+            // выбранной мощности. Фильтры окна (класс, бренд, напряжение, насос, бак, Wi-Fi, шина,
+            // нагрев, наличие) режут линейку ДО выбора типоразмера, иначе фильтр «насос встроен»
+            // оставлял бы в списке пустое место вместо следующего подходящего котла.
+            const _elF = this.elSwapFilter();
+            const _lines = {};
+            const _polisOk = this.polisAvailable();
+            const _addLine = x => {
+                const tier = x.tier || (String(x.id).includes('5101') ? 'polis' : 'status');
+                if (tier === 'polis' && !_polisOk) return;
+                const k = (x.brand || 'STOUT') + '|' + tier + '|' + (x.series || '');
+                (_lines[k] = _lines[k] || { tier: tier, list: [] }).list.push(x);
+            };
+            catalog.boilers_status.forEach(_addLine);
+            catalog.boilers_polis.forEach(_addLine);
+            (catalog.boilers_el_analogs || []).forEach(_addLine);
+            alts = [];
+            Object.keys(_lines).forEach(k => {
+                const ln = _lines[k];
+                const lst = ln.list.filter(x => this.elMatchesFilter(x, _elF)).sort((a, b) => a.power - b.power);
+                if (!lst.length) return;
+                const pick = lst.find(x => x.power >= selectedPower)
+                    || (ln.tier === 'polis' ? lst[lst.length - 1] : null);
+                if (pick) alts.push(pick);
+            });
+            alts.sort((a, b) => ((a.tier || (String(a.id).includes('5101') ? 'polis' : 'status')) === 'polis' ? 1 : 0)
+                - ((b.tier || (String(b.id).includes('5101') ? 'polis' : 'status')) === 'polis' ? 1 : 0)
+                || (a.price || 0) - (b.price || 0));
         }
         // Циркуляционные насосы: в таблице замены — весь ряд (DN15/DN25, 6 и 8 м напора), а не
         // только типоразмер выбранного: иначе фильтры «Расход / Напор / Подключение» было бы нечем
@@ -66024,14 +66132,29 @@ const app = {
             const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
             // 6 и 15 кВт — типоразмеры линейки POLIS; без них при выбранном POLIS
             // ни одна кнопка мощности не была бы подсвечена.
-            let _powers = [5, 6, 7, 9, 12, 14, 15, 18, 21, 24, 27];
-            let _powerHtml = _powers.map(p => `<span onclick="app.setBoilerSwapPower(${p})" ${_b(_sp===p)}>${p} кВт</span>`).join('');
+            let _powers = [3, 4.5, 5, 6, 7, 7.5, 9, 12, 14, 15, 18, 21, 24, 27, 28, 30, 36, 45];
+            let _powerHtml = _powers.map(p => `<span onclick="app.setBoilerSwapPower(${p})" ${_b(_sp===p)}>${String(p).replace('.', ',')} кВт</span>`).join('');
+            // Фильтры по свойствам: класс, бренд, напряжение, насос/бак/Wi-Fi/шина, нагрев, наличие.
+            // Wi-Fi и шина берутся у STOUT по правилу elWifiOf/elBusOf, остальное — из каталога.
+            const _ef = this.elSwapFilter();
+            const _brands = ['STOUT'].concat([...new Set((catalog.boilers_el_analogs || []).map(x => x.brand))]);
+            const _row = (lbl, chips) => `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
+                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">${lbl}</span>${chips}</div>`;
+            const _chip = (key, val, label) => `<span onclick="app.setElSwapFilter('${key}','${val}')" ${_b(_ef[key] === val)}>${label}</span>`;
+            const _tgl = (key, label) => `<span onclick="app.setElSwapFilter('${key}')" ${_b(!!_ef[key])}>${label}</span>`;
             _tankFiltersHtml =
-                `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
-                `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
-                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">Мощность:</span>` +
-                _powerHtml +
-                `</div>` +
+                `<div style="display:flex;flex-direction:column;gap:6px;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
+                _row('Мощность:', _powerHtml) +
+                _row('Класс:', _chip('tier', 'all', 'Все') + _chip('tier', 'status', 'STATUS · всё внутри') + _chip('tier', 'polis', 'POLIS · эконом')) +
+                _row('Бренд:', _chip('brand', 'all', 'Все') + _brands.map(br => _chip('brand', br, br)).join('')) +
+                _row('Сеть:', _chip('volt', 'all', 'Любая') + _chip('volt', '220', '220 В') + _chip('volt', '380', '380 В')) +
+                _row('В комплекте:', _tgl('pump', 'Насос') + _tgl('tank', 'Расширительный бак')) +
+                _row('Wi-Fi:', _chip('wifi', 'all', 'Не важно') + _chip('wifi', 'built', 'Встроенный') + _chip('wifi', 'any', 'Встроенный или модуль')) +
+                _row('Шина:', _chip('bus', 'all', 'Не важно') + _chip('bus', 'ot', 'OpenTherm')) +
+                _row('Нагрев:', _chip('heater', 'all', 'Любой') + _chip('heater', 'ten_ss', 'ТЭН нерж.') + _chip('heater', 'ten', 'ТЭН') + _chip('heater', 'ten_block', 'Блочный ТЭН')) +
+                _row('Наличие:', _tgl('stock', 'Только в наличии')) +
+                `<div style="font-size:11px;color:var(--text-sec);padding:2px 2px 0;">Трёхходовой клапан и датчик бойлера в котёл не встроены ни у одной модели — их добавляет смета вместе с бойлером. ` +
+                `<span onclick="app.resetElSwapFilter()" style="cursor:pointer;color:var(--primary);font-weight:700;">Сбросить фильтры</span></div>` +
                 `</div>`;
         } else if (_origId0 === 'RFW-0080-256620') {
             const _sz = this.state.filterMagSize || 'all';
@@ -67359,8 +67482,16 @@ const app = {
                 }
                 // Пояснение под названием серым: ему не место в самом названии — цена и так в колонке.
                 const _hintText = displayAlt.hint || alt.hint || '';
-                const _hintHtml = _hintText
+                let _hintHtml = _hintText
                     ? `<div style="font-size:11px;font-weight:400;color:${(displayAlt.hintWarn || alt.hintWarn) ? '#B45309' : 'var(--text-sec)'};margin-top:2px;">${_hintText}</div>` : '';
+                // Электрокотёл: серым — что внутри (насос, бак, Wi-Fi, шина, нагрев, сеть).
+                // Поля, которых нет в карточке товара, помечены «уточнить» / предупреждением.
+                if (_isElBoiler && displayAlt.type === 'el') {
+                    const _unv = displayAlt.unv || [];
+                    _hintHtml += `<div style="font-size:11px;font-weight:400;color:var(--text-sec);margin-top:2px;">${this.elBoilerFacts(displayAlt)}</div>` +
+                        (displayAlt.synthId ? `<div style="font-size:11px;font-weight:400;color:#B45309;margin-top:2px;">Артикул условный — заменить артикулом из прайса ТЕРЕМ</div>` : '') +
+                        (_unv.length ? `<div style="font-size:11px;font-weight:400;color:#B45309;margin-top:2px;">Сверить с паспортом: ${_unv.map(u => ({ exp: 'бак', volt: 'напряжение', wifi: 'Wi-Fi', weather: 'погодозависимость', noPump: 'насос' }[u] || u)).join(', ')}</div>` : '');
+                }
                 if (_origId0 === 'gas_boiler_auto' && alt.power != null && alt.brand !== 'Haier') {
                     const _cirStr = alt.circuits === 1 ? 'одноконтурный' : alt.circuits === 2 ? 'двухконтурный' : '';
                     _nameDisplay = `Котёл газовый, ${_cirStr} (${alt.power} кВт) ${displayAlt.name}`;
@@ -68980,7 +69111,8 @@ const app = {
             // Электрокотёл живёт не в swaps, а в boilerSeries + elBoilerPower — сброс
             // позиции должен снимать и их, иначе выбранный руками типоразмер пережил бы
             // возврат к умолчанию и котёл остался бы прежним.
-            if (originalId && originalId.startsWith('SEB-')) {
+            if (originalId && this.isElBoilerId(originalId)) {
+                if (this.state.elBoilerBrand) { this.state.elBoilerBrand = null; this.state.elBoilerLine = null; changed = true; }
                 if (this.state.elBoilerPower != null) { this.state.elBoilerPower = null; changed = true; }
                 if (this.state.elBoilerCount != null) { this.state.elBoilerCount = null; changed = true; }
                 if (this.state.boilerSeriesManual) { this.state.boilerSeriesManual = false; changed = true; }
@@ -69447,10 +69579,16 @@ const app = {
                 if (_airIds.includes(k)) delete this.state.swaps[k];
             });
         }
-        else if (originalId.startsWith('SEB-')) {
+        else if (this.isElBoilerId(originalId)) {
             // PLUS в списке замен больше нет (снят с производства), поэтому и ветки под
             // него нет: всё, что не POLIS, — это STATUS.
-            if (chosenId.includes("5101") || chosenId.includes("polis")) this.state.boilerSeries = 'polis';
+            // Котёл другого бренда: класс берём из каталога (tier), бренд запоминаем —
+            // подбор в render() возьмёт линейку этого бренда. STOUT снимает бренд.
+            const _chosenAn = this.elAnalogById(chosenId);
+            this.state.elBoilerBrand = _chosenAn ? _chosenAn.brand : null;
+            this.state.elBoilerLine = _chosenAn ? _chosenAn.series : null;
+            if (_chosenAn) this.state.boilerSeries = _chosenAn.tier;
+            else if (chosenId.includes("5101") || chosenId.includes("polis")) this.state.boilerSeries = 'polis';
             else this.state.boilerSeries = 'status';
             // Серию выбрали руками — режим «Аналог» больше не переставляет её на POLIS сам.
             this.state.boilerSeriesManual = true;
@@ -69459,7 +69597,7 @@ const app = {
             // теплопотерям — и выбранный руками POLIS 6 кВт тут же возвращался к 15 кВт.
             // Для резервного котла это и есть смысл ручного выбора: монтажник осознанно
             // ставит меньший, а долю теплопотерь ему показывает подсказка позиции.
-            const _elPick = [catalog.boilers_status, catalog.boilers_polis, catalog.boilers_plus]
+            const _elPick = [catalog.boilers_status, catalog.boilers_polis, catalog.boilers_plus, catalog.boilers_el_analogs]
                 .reduce((a, arr) => a.concat(arr || []), [])
                 .find(x => x.id === chosenId);
             this.state.elBoilerPower = _elPick ? _elPick.power : null;
@@ -88376,6 +88514,13 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 let db = (ft === 'gas')
                     ? catalog.boilers_gas
                     : (elSeries === 'polis' ? catalog.boilers_polis : catalog.boilers_status);
+                // Бренд-аналог выбран в таблице замены: берём линейку этого бренда в той же
+                // серии (STATUS-класс или POLIS-класс). Нет линейки (у бренда нет эконом-версии,
+                // а серию переключили) — остаёмся на STOUT, а не оставляем смету без котла.
+                if (ft === 'el' && this.state.elBoilerBrand && this.state.elBoilerBrand !== 'STOUT') {
+                    const _ap = this.elAnalogPool(elSeries === 'polis' ? 'polis' : 'status', this.state.elBoilerBrand, this.state.elBoilerLine);
+                    if (_ap.length) db = _ap;
+                }
                 // POLIS встал по режиму «Бюджетнее» (а не по ручному выбору серии) —
                 // в журнал обоснований нужны «было» (STATUS той же мощности) и «почему»:
                 // строка котла идёт через addToBill, и без этих полей замена в
