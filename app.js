@@ -12471,6 +12471,11 @@ const app = {
             this._rowMenus[item.id] = [
                 { label: 'Сравнить цены с сегодняшними', js: `app.lazy('reprice').then(() => Reprice.open('${item.id}'))` },
                 item.calc_id ? { label: 'История статусов', js: `app.toggleObjectHistory('${item.calc_id}', '${item.id}')` } : null,
+                // Итог КП можно отметить сразу, не дожидаясь окна через 30 дней (kp_outcome.js).
+                // Есть событие журнала — смета уже уходила клиенту.
+                (item.calc_id && lastEv && window.KpOutcome)
+                    ? { label: (lastEv.event === 'won' || lastEv.event === 'lost') ? 'Изменить итог КП' : 'Отметить итог КП',
+                        js: `KpOutcome.openForCalc('${item.calc_id}', () => app.loadFromCloudList(), true)` } : null,
                 canDelete ? { label: 'Удалить смету', js: `app.deleteEstimate('${item.id}', event)`, danger: true } : null
             ].filter(Boolean);
 
@@ -12486,7 +12491,7 @@ const app = {
                             <button class="lk-btn-sm" onclick="event.stopPropagation(); app.cloudRowAction('${item.id}', 'open')" title="Открыть расчёт в калькуляторе">Открыть</button>
                             ${shareBtn}
                             <button class="lk-btn-sm" onclick="event.stopPropagation(); app.cloudRowAction('${item.id}', 'download')" title="Скачать смету: PDF или Excel">Скачать</button>
-                            <button class="lk-btn-sm lk-btn-more" onclick="event.stopPropagation(); app.cabinetRowMenu(this, '${item.id}')" title="Ещё: цены, история, удаление" aria-label="Ещё действия">⋯</button>
+                            <button class="lk-btn-sm lk-btn-more" onclick="event.stopPropagation(); app.cabinetRowMenu(this, '${item.id}')" title="Ещё: цены, история, итог КП, удаление" aria-label="Ещё действия">⋯</button>
                         </div>
                     </td>
                 </tr>
@@ -23233,6 +23238,10 @@ const app = {
         this.closeUserPeek();
         this.closeAdminSearch();
         document.getElementById('admin_modal_overlay').style.display = 'none';
+        // Окно «+ Добавить плитку» живёт в <body>: без этого оно оставалось висеть над калькулятором
+        this._todayGallery = false;
+        const todayGal = document.getElementById('today_gallery_root');
+        if (todayGal) todayGal.remove();
         // Данные разделов держим только пока панель открыта: следующее открытие
         // должно показать свежие, а не то, что успело устареть за день. Обнуляем
         // не в null, а в пустую заготовку: к adminData обращаются из десятков мест
