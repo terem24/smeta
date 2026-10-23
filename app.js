@@ -63424,6 +63424,8 @@ const app = {
 
         const _isTankItem = (lookupId || '').startsWith('SWH') || (lookupId || '').startsWith('RWH');
         let _tankFiltersHtml = _bpFilterHtml;
+        // Узел подмеса / насосная группа тёплого пола: что будет со сметой целиком при каждом варианте (mixSwapOptions)
+        let _mixSim = null;
         if (_origId0 === 'well_pump_auto') {
             const _wf = this.state.wellPumpFlowFilter || 'all';
             const _wc = this.state.wellPumpCableFilter || 'cable';
@@ -63857,7 +63859,36 @@ const app = {
             const _umHasUnit = alts.some(a => _umClassify(a.id).cat === 'unit');
             const _umKindsPresent = [...new Set(alts.filter(a => _umClassify(a.id).cat === 'group').map(a => _umClassify(a.id).kind).filter(Boolean))];
             const _umShowKind = _umKindsPresent.length > 1;
+            // Каждый вариант считаем целиком (сколько станет смета, собирается ли выбранное). Расчёт в памяти, ~40 мс на
+            // вариант; повторно — только когда сменилась сама смета, а не фильтр.
+            {
+                const _mixKey = item.originalId || item.id;
+                const _mixIds = alts.filter(a => a && _umClassify(a.id).cat === _umCat).map(a => a.id);
+                const _mixSig = JSON.stringify([_mixKey, _mixIds, this.state.swaps, this.state.ufhMixType, this.state.manualDnOverride,
+                    this.state.brandMode, this.state.area, this.state.floors, this.state.tp1, this.state.tp2, this.state.systems,
+                    this.state.fuels, this.state.boilerScheme, this.state.detailedRooms, this.state.rooms && this.state.rooms.length]);
+                if (!this._mixSimCache || this._mixSimCache.sig !== _mixSig) {
+                    this._mixSimCache = { sig: _mixSig, runs: this.mixSwapOptions(_mixKey, _mixIds) };
+                }
+                _mixSim = this._mixSimCache.runs;
+            }
+            const _umFit = this.state.ufhMixFitFilter === 'all' ? 'all' : 'fit';
+            const _umBrand = this.state.ufhMixBrandFilter || 'all';
+            const _umBrands = [...new Set(alts.map(a => String((a && a.brand) || 'STOUT').toUpperCase()))];
             _tankFiltersHtml =
+                `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
+                `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
+                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">Подходит:</span>` +
+                `<span onclick="app.setUfhMixFitFilter('fit')" ${_b(_umFit==='fit')}>Этой системе</span>` +
+                `<span onclick="app.setUfhMixFitFilter('all')" ${_b(_umFit==='all')}>Все</span>` +
+                `</div>` +
+                (_umBrands.length > 1 ?
+                    `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
+                    `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">Бренд:</span>` +
+                    _umBrands.map(br => `<span onclick="app.setUfhMixBrandFilter('${br}')" ${_b(_umBrand===br)}>${br}</span>`).join('') +
+                    `<span onclick="app.setUfhMixBrandFilter('all')" ${_b(_umBrand==='all')}>Все</span>` +
+                    `</div>` : '') +
+                `</div>` +
                 `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
                 (_umHasUnit ?
                     `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
@@ -63894,11 +63925,17 @@ const app = {
             alts = alts.filter(a => {
                 const c = _umClassify(a.id);
                 if (c.cat !== _umCat) return false;
+                // Выбранная сейчас позиция остаётся в списке при любом фильтре: от неё считается разница
+                if (a.id === item.id) return true;
                 if (c.cat === 'group') {
                     if (_umDn !== 'all' && c.dn !== _umDn) return false;
                     if (_umKind !== 'all' && c.kind !== _umKind) return false;
                 }
                 if (_umPower.length > 0 && !_umPower.includes(String(_umKwExtract(a.name)))) return false;
+                // Выбранная сейчас позиция остаётся в списке при любом фильтре: от неё считается разница
+                const _isCur = a.id === item.id;
+                if (!_isCur && _umFit === 'fit' && !(_mixSim && _mixSim[a.id] && _mixSim[a.id].fits)) return false;
+                if (!_isCur && _umBrand !== 'all' && String(a.brand || 'STOUT').toUpperCase() !== _umBrand) return false;
                 return true;
             });
         } else if ((catalog.collectors_dn20 && catalog.collectors_dn20.some(c => c.id === _origId0)) || (catalog.collectors_dn25 && catalog.collectors_dn25.some(c => c.id === _origId0)) || (catalog.collectors_dn32 && catalog.collectors_dn32.some(c => c.id === _origId0)) || _origId0 === 'SDG-0018-002502' || _origId0 === 'SDG-0018-002503' || _origId0 === 'SDG-0018-004002' || _origId0 === 'SDG-0018-004003') {
@@ -64278,7 +64315,8 @@ const app = {
             : _twoPrice
             ? `<th class="col-two" style="text-align:right;width:130px;">${_twoHead.unitHead || 'Мат / лист, за м²'}</th>` +
               `<th class="col-two" style="text-align:right;width:130px;${_sortStyle}" onclick="app.toggleSwapSort('price')">${_twoHead.sysHead || 'Система, за м²'}${_ssA('price')}</th>`
-            : `<th class="col-pct" style="text-align: right; width: 110px;">Изм. цена (%)</th>` + _priceTh;
+            : `<th class="col-pct" style="text-align: right; width: 110px;">Изм. цена (%)</th>` + _priceTh
+              + (_mixSim ? `<th style="text-align:right;width:150px;">Вся смета, ±</th>` : '');
 
         // Трубы лучей, ХВС и тёплого пола: те же переключатели «Материал / Бренд», что и у магистрали.
         // Выбранный вариант остаётся в списке при любом фильтре — иначе проценты не к чему считать.
@@ -64805,6 +64843,35 @@ const app = {
                 // Две цены — «за метр» и «узел», у каждой свой процент к выбранному варианту.
                 let _priceCells = `<td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>`;
+                // Вся смета при этой замене: разница с текущей сметой в рублях и процентах, а под названием — что при этом
+                // появится или уйдёт (коллектор, насос, группа радиаторов). Расчёт — mixSwapOptions.
+                let _mixHint = '';
+                if (_mixSim && _mixSim[displayAlt.id]) {
+                    const _ms = _mixSim[displayAlt.id], _base = _mixSim[''];
+                    const _d = isActive ? 0 : Math.round(_ms.total - _base.total);
+                    const _dp = _base.total > 0 ? (_d / _base.total * 100) : 0;
+                    const _col = _d > 0 ? 'var(--c-bad,#ef4444)' : (_d < 0 ? '#16a34a' : 'var(--text-sec)');
+                    const _fmtD = Math.abs(_d).toLocaleString('ru-RU') + ' ₽';
+                    _priceCells += `<td style="text-align:right;font-weight:700;font-size:13px;white-space:nowrap;color:${_col};">` +
+                        (_d === 0 ? '0 ₽' : (_d > 0 ? '+' : '−') + _fmtD) +
+                        `<div style="font-size:11px;font-weight:600;">${_d === 0 ? '' : (_d > 0 ? '+' : '−') + Math.abs(_dp).toFixed(1).replace('.', ',') + ' %'}</div></td>`;
+                    if (!isActive) {
+                        const _nm = n => String(n).replace(/:.*$/, '').replace(/\s+[-–]\s+.*$/, '').replace(/,\s*1 1\/4".*$/, '').slice(0, 70);
+                        const _add = [], _rem = [];
+                        Object.keys(_ms.rows).forEach(k => {
+                            const a1 = _ms.rows[k], b1 = _base.rows[k];
+                            if (!b1) _add.push(_nm(a1.name));
+                            else if (a1.q !== b1.q) (a1.q > b1.q ? _add : _rem).push(_nm(a1.name) + ' (' + b1.q + ' → ' + a1.q + ' шт)');
+                        });
+                        Object.keys(_base.rows).forEach(k => { if (!_ms.rows[k]) _rem.push(_nm(_base.rows[k].name)); });
+                        const _lst = a => a.slice(0, 3).join('; ') + (a.length > 3 ? ' и ещё ' + (a.length - 3) : '');
+                        const _parts = [];
+                        if (_add.length) _parts.push('появится: ' + _lst(_add));
+                        if (_rem.length) _parts.push('уйдёт: ' + _lst(_rem));
+                        if (!_ms.fits && _ms.why) _parts.push('<span style="color:#B45309;">не подходит этой системе: ' + _ms.why + '</span>');
+                        if (_parts.length) _mixHint = `<div style="font-size:11px;font-weight:400;color:var(--text-sec);margin-top:2px;">${_parts.join('<br>')}</div>`;
+                    }
+                }
                 if (_pipeSysOn) {
                     const _sv = _sysOf(displayAlt);
                     const _pc = (v, base) => {
@@ -64820,7 +64887,7 @@ const app = {
                     <tr class="${activeClass}${_hyCls}" style="${displayAlt.pumpBlock ? 'opacity:.55; cursor:not-allowed;' : 'cursor: pointer;'} ${activeStyle}" ${displayAlt.pumpBlock ? '' : `onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${displayAlt.id}')"`}>
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img" style="text-align: center;">${img}</td>
-                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(displayAlt.brand || 'STOUT')}${_nameDisplay}${_rowCoilStr}${badgeHtml}${_hyRowHtml}${_hintHtml}</td>
+                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(displayAlt.brand || 'STOUT')}${_nameDisplay}${_rowCoilStr}${badgeHtml}${_hyRowHtml}${_hintHtml}${_mixHint}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${displayAlt.brand || 'STOUT'}</td>
                         ${_priceCells}
                     </tr>
@@ -66464,6 +66531,91 @@ const app = {
         if (rommerSide) this.state.swaps[originalId] = chosenId;
         return true;
     },
+    /**
+     * Выбор узла подмеса / насосной группы тёплого пола в окне замены → состояние. Вызывается и при выборе,
+     * и при расчёте цены варианта целиком (mixSwapOptions), поэтому ничего, кроме state, не трогает.
+     */
+    applyMixSwapState: function (originalId, chosenId) {
+        if (!this.state.swaps) this.state.swaps = {};
+        if (chosenId === 'SDG-0120-001000' || chosenId === 'RDG-0120-008100') {
+            this.state.ufhMixType = 'std';
+            // Возврат с группы на узлы подмеса: прежние замены узла на группу снимаем, иначе смета
+            // продолжала бы показывать на месте узла выбранную ранее группу (без коллектора и стрелки).
+            ['SDG-0120-001000', 'SDG-0002-002001', 'SDG-0002-002501', 'SDG-0003-002001', 'SDG-0003-002501', 'SDG-0007-003201']
+                .forEach(id => { delete this.state.swaps[id]; });
+        }
+        else if (chosenId === 'SDG-0002-002001') { this.state.ufhMixType = 'dn20'; this.state.manualDnOverride = 'dn20'; }
+        else if (chosenId === 'SDG-0002-002501' || chosenId === 'RDG-1002-002501') { this.state.ufhMixType = 'dn25'; this.state.manualDnOverride = 'dn25'; }
+        else if (chosenId === 'SDG-0003-002001') { this.state.ufhMixType = 'dn20_servo'; this.state.manualDnOverride = 'dn20'; }
+        else if (chosenId === 'SDG-0003-002501' || chosenId === 'RDG-1003-002501') { this.state.ufhMixType = 'dn25_servo'; this.state.manualDnOverride = 'dn25'; }
+        else if (chosenId === 'SDG-0007-003201') { this.state.ufhMixType = 'dn32_servo'; this.state.manualDnOverride = 'dn25'; }
+    },
+    /**
+     * Какой тип узла тёплого пола (state.ufhMixType) даёт выбор этой строки в окне замены, null — смесителя нет
+     * (прямая группа для радиаторов тёплый пол не смешивает). Соответствие то же, что в applyMixSwapState.
+     */
+    mixTypeOfSwapId: function (id) {
+        if (id === 'SDG-0120-001000' || id === 'RDG-0120-008100') return 'std';
+        if (id === 'SDG-0002-002001') return 'dn20';
+        if (id === 'SDG-0002-002501' || id === 'RDG-1002-002501') return 'dn25';
+        if (id === 'SDG-0003-002001') return 'dn20_servo';
+        if (id === 'SDG-0003-002501' || id === 'RDG-1003-002501') return 'dn25_servo';
+        if (id === 'SDG-0007-003201') return 'dn32_servo';
+        return null;
+    },
+
+    /**
+     * Что будет со сметой при каждом варианте узла подмеса / группы: полный пересчёт в памяти под каждый
+     * (тот же приём, что stateOptionTotals), состояние возвращается. По каждому варианту:
+     *   total — вся смета (оборудование), ₽;
+     *   fits  — собралось ли то, что выбрали (расчёт не заменил тип сам, напор и расход проходят);
+     *   added / removed — позиции, которые появились или ушли вместе с заменой (коллектор, насос, группа радиаторов).
+     */
+    mixSwapOptions: function (originalId, ids) {
+        const snapshot = JSON.parse(JSON.stringify(this.state));
+        const runs = {};
+        const rowsOf = () => {
+            const rows = {};
+            (this.currentEquipmentList || []).forEach(it => {
+                const k = it.originalId || it.id;
+                const r = rows[k] || (rows[k] = { name: it.name, sum: 0, q: 0 });
+                r.sum += (it.price || 0) * (it.q || 1);
+                r.q += (it.q || 1);
+            });
+            return rows;
+        };
+        try {
+            // '' — смета как есть, без замены: от неё считается разница (повторный выбор текущей строки
+            // выставил бы ручной DN и дал бы другую смету, чем сейчас)
+            ['', ...ids].forEach(id => {
+                this.state.swaps = Object.assign({}, snapshot.swaps || {});
+                if (id) {
+                    this.applyMixSwapState(originalId, id);
+                    this.state.swaps[originalId] = id;
+                }
+                this._renderSimFull();
+                const want = this.mixTypeOfSwapId(id);
+                const rows = rowsOf();
+                const why = !want ? 'смесителя нет — группа для радиаторов, тёплый пол она не смешивает'
+                    : this.state.ufhMixType !== want ? 'расчёт собирает котельную иначе (схема со стрелкой или пол этим узлом не проходит)'
+                    : (this._ufhBal && this._ufhBal.ok === false) ? 'не хватает напора для коллектора пола'
+                    : (want !== 'std' && !this.isUfhMixTypeCompatible(want, this.tpArea || 0, this.state.brandMode, this.tpAreaPerMan || this.tpArea || 0)) ? 'не тянет расход тёплого пола' : '';
+                runs[id] = {
+                    why: why,
+                    rows: rows,
+                    total: Object.keys(rows).reduce((s, k) => s + rows[k].sum, 0),
+                    fits: !!want && this.state.ufhMixType === want && !(this._ufhBal && this._ufhBal.ok === false)
+                        && (want === 'std' || this.isUfhMixTypeCompatible(want, this.tpArea || 0, this.state.brandMode, this.tpAreaPerMan || this.tpArea || 0))
+                };
+            });
+        } finally {
+            Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
+            Object.assign(this.state, snapshot);
+            this._renderSimFull();
+        }
+        return runs;
+    },
+
     selectSwapAlternative: function (originalId, chosenId) {
         if (!this.state.swaps) this.state.swaps = {};
 
@@ -67024,18 +67176,7 @@ const app = {
             else this.state.hydroArrowType = 'standard';
         }
         else if (originalId === 'SDG-0120-001000' || originalId === 'SDG-0002-002001' || originalId === 'SDG-0002-002501' || originalId === 'SDG-0003-002001' || originalId === 'SDG-0003-002501' || originalId === 'SDG-0007-003201') {
-            if (chosenId === 'SDG-0120-001000' || chosenId === 'RDG-0120-008100') {
-                this.state.ufhMixType = 'std';
-                // Возврат с группы на узлы подмеса: прежние замены узла на группу снимаем, иначе смета
-                // продолжала бы показывать на месте узла выбранную ранее группу (без коллектора и стрелки).
-                ['SDG-0120-001000', 'SDG-0002-002001', 'SDG-0002-002501', 'SDG-0003-002001', 'SDG-0003-002501', 'SDG-0007-003201']
-                    .forEach(id => { delete this.state.swaps[id]; });
-            }
-            else if (chosenId === 'SDG-0002-002001') { this.state.ufhMixType = 'dn20'; this.state.manualDnOverride = 'dn20'; }
-            else if (chosenId === 'SDG-0002-002501' || chosenId === 'RDG-1002-002501') { this.state.ufhMixType = 'dn25'; this.state.manualDnOverride = 'dn25'; }
-            else if (chosenId === 'SDG-0003-002001') { this.state.ufhMixType = 'dn20_servo'; this.state.manualDnOverride = 'dn20'; }
-            else if (chosenId === 'SDG-0003-002501' || chosenId === 'RDG-1003-002501') { this.state.ufhMixType = 'dn25_servo'; this.state.manualDnOverride = 'dn25'; }
-            else if (chosenId === 'SDG-0007-003201') { this.state.ufhMixType = 'dn32_servo'; this.state.manualDnOverride = 'dn25'; }
+            this.applyMixSwapState(originalId, chosenId);
         }
         else if (originalId === 'SDG-0001-002001' || originalId === 'SDG-0001-002501' || originalId === 'SDG-0001-003201') {
             if (chosenId === 'SDG-0001-002001') this.state.manualDnOverride = 'dn20';
@@ -75035,6 +75176,16 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         this.state.ufhMixPowerFilter = [];
         if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
     },
+    setUfhMixFitFilter: function (val) {
+        this.state.ufhMixFitFilter = (val === 'all') ? 'all' : 'fit';
+        this.state.ufhMixPowerFilter = [];
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
+    setUfhMixBrandFilter: function (val) {
+        this.state.ufhMixBrandFilter = val;
+        this.state.ufhMixPowerFilter = [];
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
     setUfhMixPowerFilter: function (val) {
         if (val === 'all') {
             this.state.ufhMixPowerFilter = [];
@@ -79102,6 +79253,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
      *            бойлера или снеготаяния, либо насос котла не тянет радиаторы (по паспортной
      *            кривой, radDirectByBoilerPump). Кривой нет (газовые Haier/Navien, каскад) —
      *            прежние пороги: площадь больше 150 м², второй этаж, мощность выше 20 кВт.
+     *            Стрелка ставится и при двух источниках тепла (газ + резервный электро, каскад) или при двух
+     *            узлах подмеса пола (_bsAutoHydro): котёл один и не больше одного насоса у потребителей —
+     *            условие схемы без стрелки (практика проектирования).
      * 'direct' — без гидрострелки. Радиаторы питает насос котла, тёплый пол —
      *            свой узел подмеса, бойлер — трёхходовой клапан котла. Так собраны
      *            и «котёл и пять радиаторов», и котельная с лучевыми коллекторами
@@ -86912,7 +87066,18 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             this.state.ufhMixType = 'std';
         }
         const _forceDirect = (_bScheme === 'direct') && !_schemeBlockedUfh;
-        const _forceHydro = (_bScheme === 'hydro');
+        // Автоподбор ставит гидрострелку и там, где насос котла «потянул бы» радиаторы: без неё работает
+        // только котёл один и не больше одного насоса у потребителей (так же написано в подсказке к ручной
+        // схеме «Без стрелки»). Два источника тепла (газ + резервный электро, каскад) или два узла подмеса
+        // в одном кольце с котловым насосом — несколько насосов без гидравлического разделения: они гонят
+        // воду друг через друга, а неработающий котёл шунтирует контур. Практика проектирования, не пункт СП.
+        this._bsAutoHydro = [];
+        if (_bScheme === 'auto' && (hasRad || (hasTp && tpArea > 0))) {
+            if (selBoilers.length > 1) this._bsAutoHydro.push('два источника тепла');
+            const _stdPl = (hasTp && tpArea > 0) ? this.stdNodePlan(tpArea, this.state.brandMode) : null;
+            if (_stdPl && _stdPl.total > 1) this._bsAutoHydro.push('тёплый пол — два узла подмеса с насосами');
+        }
+        const _forceHydro = (_bScheme === 'hydro') || this._bsAutoHydro.length > 0;
 
         // Логика расчета насосных групп
         let rQ = 0, tQ = 0;
@@ -87151,7 +87316,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 if (this.state.floors === 2) why.push('второй этаж');
                 if (pwr > 20) why.push('мощность больше 20 кВт');
             }
-            if (tQ > 0) why.push('группа тёплого пола');
+            (this._bsAutoHydro || []).forEach(w => why.push(w));
+            if (tQ > 0 && !(this._bsAutoHydro || []).length) why.push('группа тёплого пола');
             if (tankNeedsPumpGroup) why.push('насосная группа бойлера');
             if (_snowOnCollector) why.push('снеготаяние');
             this._bsAutoWhy = why;
