@@ -584,16 +584,10 @@ const Subscription = {
         return 'В Профи: ' + items.join(', ') + '.';
     },
 
-    // Короткий блок для окна тарифа: строка-заголовок и теги вместо длинного абзаца
-    benefitsHtml: function (account) {
-        account = account || this.userAccount();
-        const custom = (this.settings().benefits[account] || []).map(s => String(s || '').trim()).filter(Boolean);
-        const items = custom.length ? custom : this.benefitRows(account)
-            .filter(r => r.pro !== 'off' && r.base === 'off')
-            .map(r => this.BENEFIT_TEXT[r.f.id] || r.f.label.toLowerCase());
-        if (!items.length) return '<div class="pro-lead">В Профи все функции калькулятора без ограничений</div>';
-        return '<div class="pro-lead">В Профи входит</div><div class="pro-chips">'
-            + items.map(t => `<span>${this.esc(t)}</span>`).join('') + '</div>';
+    // Блок для окна тарифа: одна ссылка на страницу сравнения. Список функций
+    // здесь не выводим — он на tariffs.html, а окно должно вести к оплате.
+    benefitsHtml: function () {
+        return '<a class="pro-compare" href="tariffs.html" target="_blank" rel="noopener">Что входит в Профи и чем он отличается от Базового</a>';
     },
 
     cardsHtml: function (ctx, preview) {

@@ -16797,7 +16797,7 @@ const app = {
         const name = opt ? opt.t : '';
         // Окно тарифа лежит ниже кабинета (как у «Оформить Профи» в профиле), поэтому кабинет закрываем
         try { this.closeProfileModal(); } catch (e) { }
-        this.showModal('pro', { why: 'Вы хотели выбрать «' + name + '»' + (def ? ' (' + def.label.toLowerCase() + ')' : '') + ': этот вариант входит в Профи' });
+        this.showModal('pro', { why: '«' + name + '»' + (def ? ' (' + def.label.toLowerCase() + ')' : '') + ' — вариант из Профи' });
     },
 
     setPref: function (key, v) {
