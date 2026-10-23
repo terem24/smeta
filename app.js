@@ -56014,7 +56014,11 @@ const app = {
                     // десктоп: медиазапросы @media (max-width: 768px) внутри него не срабатывают,
                     // поэтому смета собирается обычной таблицей, а не мобильными карточками с
                     // зажатыми колонками. Тот же параметр стоит в invoice.html.
-                    html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 900 },
+                    // Ширина именно 1280, а не 900: html2pdf задаёт высоту виртуального окна по
+                    // высоте всей сметы, окно получается «портретным», и запрос
+                    // (max-width: 1024px) and (orientation: portrait) срабатывал при 900 —
+                    // смета выходила мобильными карточками. Выше 1024 он не сработает никогда.
+                    html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 1280 },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
                     pagebreak: { mode: ['css', 'legacy'] }
                 };
