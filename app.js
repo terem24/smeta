@@ -18526,8 +18526,8 @@ const app = {
     // (штанги по 4 м) и стальные трубы (мерные длины) обрезком на другой участок не идут.
     COIL_POOL_SERIES: [
         { prefix: 'SPM-0001-', cat: 'metal_plastic_pipes', label: 'металлопластик' },
-        { prefix: 'SPX-0002-', cat: 'pipes', label: 'PE-Xa' },
-        { prefix: 'SPX-0001-', cat: 'rad_pipes_grey', label: 'PEX-a/EVOH' },
+        { prefix: 'SPX-0002-', cat: 'pipes', label: 'PE-Xa красная' },
+        { prefix: 'SPX-0001-', cat: 'rad_pipes_grey', label: 'PEX-a/EVOH серая' },
         { prefix: 'SPS-0002-', cat: 'stable_pipes', label: 'стабильная' }
     ],
     // Бухты STOUT, сгруппированные по серии и диаметру (артикул кончается типоразмером: …-101620 → 1620), от большой к малой.
@@ -18577,7 +18577,7 @@ const app = {
         const fm = v => String(Math.round(v * 10) / 10).replace('.', ',');
         const rub = v => this.formatPriceHtml(v, true);
         let boughtM = 0, boughtR = 0, unM = 0, unR = 0; // купили вместе / купили бы по разделам
-        const lines = [];
+        const lines = [], cards = [];
         const dims = [...new Set(Object.keys(pool.metres).map(id => pool.byId[id]))];
         dims.forEach(dim => {
             const coils = pool.fam[dim];
@@ -18605,29 +18605,50 @@ const app = {
             const saveM = dimUnM - dimBM, saveR = dimUnR - dimBR;
             lines.push(`• <b>${pool.label[dim]}</b>: нужно ${fm(need)} м. По разделам пришлось бы купить ${fm(dimUnM)} м (${rub(dimUnR)}) — ${from}. Вместе: ${buy} = ${dimBM} м (${rub(dimBR)}). ` +
                 (saveM > 0 ? `Экономия <b>${fm(saveM)} м</b> и <b>${rub(saveR)}</b>.` : 'Экономии нет: бухт и так минимум.'));
-            const left = plan.metres - need;
-            if (left > 0) {
-                const leftR = Math.round(left * (coils[0].price || 0));
-                rows.push({ id: 'pool_left_' + dim, name: `Остаток от бухт (${pool.label[dim]}) — не входит в смету`, price: 0, basePrice: 0,
-                    q: Math.round(left * 10) / 10, sum: 0, sortRank: 0, unit: 'м', brand: 'STOUT', originalId: 'pool_left_' + dim,
-                    screenOnly: true,
-                    qtyTip: `Бухты продаются целиком: куплено на ${fm(left)} м больше, чем нужно по смете (нужно ${fm(need)} м, куплено ${plan.metres} м). ` +
-                        `Эти метры уже оплачены в строках выше (≈ ${this.formatPriceHtml(leftR, true)}) и останутся у монтажника — их можно пустить на следующий объект. ` +
-                        'Строка справочная: цена 0 ₽, в итог, печать и КП не входит.' });
-            }
+            // Остаток — не позиция сметы, а справка: его деньги уже внутри бухт выше. Показываем в карточке материала.
+            const left = Math.max(0, dimBM - need);
+            cards.push({ name: pool.label[dim], need: need, from: from, buy: buy,
+                unM: dimUnM, unR: dimUnR, unRolls: coils.reduce((a, c) => a + Math.round((pool.metres[c.id] || 0) / c.len), 0),
+                bM: dimBM, bR: dimBR, bRolls: plan.counts.reduce((a, n) => a + n, 0),
+                left: left, leftR: Math.round(left * (coils[0].price || 0)) });
         });
         const saveM = Math.max(0, unM - boughtM), saveR = Math.max(0, Math.round(unR - boughtR));
         const pct = unM > 0 ? Math.round(saveM / unM * 1000) / 10 : 0;
         this._poolStats = { metres: saveM, rub: saveR, boughtM: boughtM, unM: unM, pct: pct, unRub: Math.round(unR) };
         const head = saveM > 0
             ? `Объединение бухт сэкономило <b>${fm(saveM)} м</b> трубы (${fm(pct)} %) и <b>${rub(saveR)}</b>: ${fm(boughtM)} м вместо ${fm(unM)} м при покупке по разделам.`
-            : `Объединение бухт: экономии нет — по разделам и вместе выходит ${fm(boughtM)} м, бухт и так минимум.`;
+            : (cards.reduce((x, c) => x + c.unRolls, 0) > cards.reduce((x, c) => x + c.bRolls, 0)
+                ? `Объединение бухт: метры и рубли те же (${fm(boughtM)} м), но бухт меньше — меньше позиций и обрезков.`
+                : `Объединение бухт: экономии нет — по разделам и вместе выходит ${fm(boughtM)} м, бухт и так минимум.`);
         const method = '<b>Как считаем.</b><br>' +
             '• Трубы STOUT в бухтах (металлопластик, PE-Xa, PEX-a/EVOH, стабильная) из <u>всех</u> разделов сметы складываются по метрам — отдельно для каждого материала и диаметра.<br>' +
             '• Без объединения каждый раздел покупает целые бухты сам, и у каждого остаётся свой обрезок.<br>' +
             '• С объединением бухты подбираются один раз на всю смету: минимум лишних метров, при равенстве — минимум бухт. Что осталось после последней бухты — в строке «Остаток», на экране.<br>' +
             '• Экономия = «купили бы по разделам» минус «куплено вместе». Полипропилен и сталь не объединяются (штанги, мерные длины); ROMMER и трубы, заменённые вручную, считаются отдельно.<br><br>';
-        this._poolNote = this.noteBox('info', 'Бухты по всей смете.', head, method + lines.join('<br>'));
+        // Видимая сводка по каждому материалу: раздельно / вместе / экономия — в метрах, бухтах, процентах и рублях.
+        const row = (lbl, val, tip, color) => `<div${tip ? ` title="${tip.replace(/"/g, '&quot;')}"` : ''} style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">` +
+            `<span style="color:var(--text-sec);">${lbl}</span><span style="text-align:right;${color ? 'color:' + color + ';font-weight:600;' : ''}">${val}</span></div>`;
+        const pl = n => { const m10 = n % 10, m100 = n % 100; return (m10 === 1 && m100 !== 11) ? 'бухта' : (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) ? 'бухты' : 'бухт'; };
+        const card = (c, isTotal) => {
+            const sM = Math.max(0, c.unM - c.bM), sR = Math.max(0, Math.round(c.unR - c.bR));
+            const sP = c.unM > 0 ? Math.round(sM / c.unM * 1000) / 10 : 0;
+            const green = 'var(--success, #16a34a)';
+            return `<div style="padding:7px 0;border-top:1px solid var(--border);font-size:12px;line-height:1.55;">` +
+                `<div style="display:flex;justify-content:space-between;gap:8px;"><b>${c.name}</b><span style="color:var(--text-sec);">нужно ${fm(c.need)} м</span></div>` +
+                row('По разделам', `${fm(c.unM)} м · ${c.unRolls} ${pl(c.unRolls)} · ${rub(c.unR)}`, c.from ? `Если бы каждый раздел покупал бухты сам — ${c.from}` : 'Каждый раздел покупает целые бухты сам') +
+                row('Вместе', `${fm(c.bM)} м · ${c.bRolls} ${pl(c.bRolls)} · ${rub(c.bR)}`, c.buy ? `Объединено: ${c.buy}` : '') +
+                row('Экономия', sM > 0 ? `${fm(sM)} м (${fm(sP)} %) · ${rub(sR)}` : (c.unRolls > c.bRolls ? `метры и рубли те же, бухт меньше на ${c.unRolls - c.bRolls}` : 'нет — бухт и так минимум'), 'Экономия = «по разделам» минус «вместе»', (sM > 0 || c.unRolls > c.bRolls) ? green : '') +
+                (c.left > 0 && !isTotal ? `<div style="font-size:11px;color:var(--text-sec);" title="Бухты продаются целиком. Эти метры уже оплачены в бухтах выше, в КП и печать не входят.">Остаток после раскроя: ${fm(c.left)} м (≈ ${rub(c.leftR)} уже в цене бухт, остаётся у монтажника)</div>` : '') +
+                `</div>`;
+        };
+        let cardsHtml = cards.map(c => card(c, false)).join('');
+        if (cards.length > 1) {
+            const t = cards.reduce((a, c) => ({ name: 'Всего', need: a.need + c.need, from: '', buy: '', unM: a.unM + c.unM, unR: a.unR + c.unR, unRolls: a.unRolls + c.unRolls,
+                bM: a.bM + c.bM, bR: a.bR + c.bR, bRolls: a.bRolls + c.bRolls, left: 0, leftR: 0 }), { need: 0, unM: 0, unR: 0, unRolls: 0, bM: 0, bR: 0, bRolls: 0 });
+            cardsHtml += card(t, true);
+        }
+        this._poolNote = this.noteBox('info', 'Бухты по всей смете.', head, method + lines.join('<br>')) +
+            `<div class="no-print" onclick="event.stopPropagation();" style="margin:4px 0 2px;">${cardsHtml}</div>`;
         return rows;
     },
     // Поля раздела «КП и счета»: сроки и сокращение названий. Зовётся при открытии раздела
