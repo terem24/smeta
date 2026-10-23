@@ -16556,7 +16556,7 @@ const app = {
                             if (!st) return 'Откройте смету с трубами — покажем экономию.';
                             if (!(st.unM > 0)) return 'В текущей смете объединять нечего.';
                             const eco = st.metres > 0
-                                ? `экономия <b>${Math.round(st.metres)} м</b> и <b>${this.formatCurrencyAmount(st.rub)}</b>`
+                                ? `экономия <b>${Math.round(st.metres)} м</b> трубы (${String(st.pct).replace('.', ',')} % от ${Math.round(st.unM)} м) и <b>${this.formatCurrencyAmount(st.rub)}</b>`
                                 : 'экономии нет, бухт и так минимум';
                             return (this.poolCoilsOn() ? 'В текущей смете: ' : 'Включение даст: ') + `${eco}.`;
                         })()}</span>
@@ -18159,7 +18159,7 @@ const app = {
             });
         });
         Object.keys(fam).forEach(k => fam[k].sort((a, b) => b.len - a.len));
-        return { fam: fam, byId: byId, label: label, metres: {}, need: {}, parts: {}, rub: 0, on: false };
+        return { fam: fam, byId: byId, label: label, metres: {}, need: {}, parts: {}, rub: 0, rubById: {}, on: false, closed: false };
     },
     /**
      * Минимум лишних метров, при равенстве — минимум бухт. lens — длины бухт от большой к малой.
@@ -18181,10 +18181,18 @@ const app = {
         rec(0, need, []);
         return best;
     },
-    /** Строки блока «Трубы: бухты по всей смете» и строка остатка (только на экране). */
+    /**
+     * Строки блока «5.5. Трубы: бухты по всей смете» и строка остатка (только на экране).
+     * Заодно считает, что дало объединение: сколько метров и рублей ушло бы, если бы
+     * каждый раздел покупал бухты сам (pool.metres / pool.rubById — покупки по разделам),
+     * против подбора на всю смету. Итог — this._poolStats и плашка раздела this._poolNote.
+     */
     coilPoolRows: function (pool) {
         const rows = [];
-        let boughtM = 0, boughtR = 0; // что покупаем при объединении — для экономии в тарифе
+        const fm = v => String(Math.round(v * 10) / 10).replace('.', ',');
+        const rub = v => this.formatPriceHtml(v, true);
+        let boughtM = 0, boughtR = 0, unM = 0, unR = 0; // купили вместе / купили бы по разделам
+        const lines = [];
         const dims = [...new Set(Object.keys(pool.metres).map(id => pool.byId[id]))];
         dims.forEach(dim => {
             const coils = pool.fam[dim];
@@ -18192,31 +18200,49 @@ const app = {
             const plan = this.coilPoolPlan(need, coils.map(c => c.len));
             const secs = {};
             coils.forEach(c => (pool.parts[c.id] || []).forEach(p => { secs[p.sec] = (secs[p.sec] || 0) + p.m; }));
-            const from = Object.keys(secs).map(s => `${s}: ${secs[s]} м`).join('; ');
-            const tip = `Объединено по смете: ${need} м (${from}). Подобрано: ` +
-                coils.map((c, j) => plan.counts[j] ? `${plan.counts[j]} × ${c.len} м` : null).filter(Boolean).join(' + ') +
-                ` = ${plan.metres} м.`;
+            const from = Object.keys(secs).map(s => `${s}: ${fm(secs[s])} м`).join('; ');
+            const dimUnM = coils.reduce((s, c) => s + (pool.metres[c.id] || 0), 0);
+            const dimUnR = coils.reduce((s, c) => s + (pool.rubById[c.id] || 0), 0);
+            let dimBM = 0, dimBR = 0;
+            const buy = coils.map((c, j) => plan.counts[j] ? `${plan.counts[j]} × ${c.len} м` : null).filter(Boolean).join(' + ');
+            const tip = `Объединено по смете: ${fm(need)} м (${from}). Подобрано: ${buy} = ${plan.metres} м.`;
             coils.forEach((c, j) => {
                 const n = plan.counts[j];
                 if (!n) return;
                 const { rommer, ...base } = c; // ROMMER-пары в объединённой строке не нужны
                 const price = (c.price || 0) * c.len;
-                boughtM += n * c.len; boughtR += price * n;
+                dimBM += n * c.len; dimBR += price * n;
                 rows.push({ ...base, price: price, basePrice: price, coilPriced: true, originalId: c.id + '_pool',
                     q: n, sum: Math.round(price * n), sortRank: 0, unit: 'шт', brand: 'STOUT',
-                    displaySku: c.id, qtyTip: tip, group: 'Трубы: бухты по всей смете' });
+                    displaySku: c.id, qtyTip: tip });
             });
+            boughtM += dimBM; boughtR += dimBR; unM += dimUnM; unR += dimUnR;
+            const saveM = dimUnM - dimBM, saveR = dimUnR - dimBR;
+            lines.push(`• <b>${pool.label[dim]}</b>: нужно ${fm(need)} м. По разделам пришлось бы купить ${fm(dimUnM)} м (${rub(dimUnR)}) — ${from}. Вместе: ${buy} = ${dimBM} м (${rub(dimBR)}). ` +
+                (saveM > 0 ? `Экономия <b>${fm(saveM)} м</b> и <b>${rub(saveR)}</b>.` : 'Экономии нет: бухт и так минимум.'));
             const left = plan.metres - need;
             if (left > 0) {
-                rows.push({ id: 'pool_left_' + dim, name: `Остаток бухт (${pool.label[dim]}): ${left} м`, price: 0, basePrice: 0,
-                    q: 0, sum: 0, sortRank: 0, unit: 'м', brand: 'STOUT', originalId: 'pool_left_' + dim,
-                    screenOnly: true, qtyTip: 'Не входит в смету, печать и КП. Можно записать на следующий объект.',
-                    group: 'Трубы: бухты по всей смете' });
+                const leftR = Math.round(left * (coils[0].price || 0));
+                rows.push({ id: 'pool_left_' + dim, name: `Остаток от бухт (${pool.label[dim]}) — не входит в смету`, price: 0, basePrice: 0,
+                    q: Math.round(left * 10) / 10, sum: 0, sortRank: 0, unit: 'м', brand: 'STOUT', originalId: 'pool_left_' + dim,
+                    screenOnly: true,
+                    qtyTip: `Бухты продаются целиком: куплено на ${fm(left)} м больше, чем нужно по смете (нужно ${fm(need)} м, куплено ${plan.metres} м). ` +
+                        `Эти метры уже оплачены в строках выше (≈ ${this.formatPriceHtml(leftR, true)}) и останутся у монтажника — их можно пустить на следующий объект. ` +
+                        'Строка справочная: цена 0 ₽, в итог, печать и КП не входит.' });
             }
         });
-        // Экономия = покупки по разделам минус покупки по всей смете (метры бухт, включая остаток, и рубли)
-        const unM = Object.values(pool.metres).reduce((s, m) => s + m, 0);
-        this._poolStats = { metres: unM - boughtM, rub: Math.round(pool.rub - boughtR), boughtM: boughtM, unM: unM };
+        const saveM = Math.max(0, unM - boughtM), saveR = Math.max(0, Math.round(unR - boughtR));
+        const pct = unM > 0 ? Math.round(saveM / unM * 1000) / 10 : 0;
+        this._poolStats = { metres: saveM, rub: saveR, boughtM: boughtM, unM: unM, pct: pct, unRub: Math.round(unR) };
+        const head = saveM > 0
+            ? `Объединение бухт сэкономило <b>${fm(saveM)} м</b> трубы (${fm(pct)} %) и <b>${rub(saveR)}</b>: ${fm(boughtM)} м вместо ${fm(unM)} м при покупке по разделам.`
+            : `Объединение бухт: экономии нет — по разделам и вместе выходит ${fm(boughtM)} м, бухт и так минимум.`;
+        const method = '<b>Как считаем.</b><br>' +
+            '• Трубы STOUT в бухтах (металлопластик, PE-Xa, PEX-a/EVOH, стабильная) из <u>всех</u> разделов сметы складываются по метрам — отдельно для каждого материала и диаметра.<br>' +
+            '• Без объединения каждый раздел покупает целые бухты сам, и у каждого остаётся свой обрезок.<br>' +
+            '• С объединением бухты подбираются один раз на всю смету: минимум лишних метров, при равенстве — минимум бухт. Что осталось после последней бухты — в строке «Остаток», на экране.<br>' +
+            '• Экономия = «купили бы по разделам» минус «куплено вместе». Полипропилен и сталь не объединяются (штанги, мерные длины); ROMMER и трубы, заменённые вручную, считаются отдельно.<br><br>';
+        this._poolNote = this.noteBox('info', 'Бухты по всей смете.', head, method + lines.join('<br>'));
         return rows;
     },
     // Поля раздела «КП и счета»: сроки и сокращение названий. Зовётся при открытии раздела
@@ -51444,11 +51470,11 @@ const app = {
                 if (!this.state.disabledSections.includes("2.2 Монтаж узла ввода ХВС")) {
                     this.state.disabledSections.push("2.2 Монтаж узла ввода ХВС");
                 }
-            } else if (name.startsWith("5.")) {
+            } else if (name.startsWith("5.") && !name.startsWith("5.5.")) {
                 // If ALL rendered "5." sections are disabled, disable works
                 const all5Titles = Array.from(document.querySelectorAll('.row-sec-title'))
                     .map(el => el.getAttribute('data-title'))
-                    .filter(t => t && t.startsWith('5.'));
+                    .filter(t => t && t.startsWith('5.') && !t.startsWith('5.5.'));
                 const other5Titles = all5Titles.filter(t => t !== name);
                 const allOthersDisabled = other5Titles.every(t => this.state.disabledSections.includes(t));
                 if (allOthersDisabled) {
@@ -51507,7 +51533,7 @@ const app = {
                 // Disable all active "5." equipment sections
                 const all5Titles = Array.from(document.querySelectorAll('.row-sec-title'))
                     .map(el => el.getAttribute('data-title'))
-                    .filter(t => t && t.startsWith('5.'));
+                    .filter(t => t && t.startsWith('5.') && !t.startsWith('5.5.'));
                 all5Titles.forEach(t => {
                     if (!this.state.disabledSections.includes(t)) {
                         this.state.disabledSections.push(t);
@@ -51554,7 +51580,7 @@ const app = {
             } else if (name === "6. Узел ввода ХВС") {
                 const wIdx = this.state.disabledSections.indexOf("2.2 Монтаж узла ввода ХВС");
                 if (wIdx > -1) this.state.disabledSections.splice(wIdx, 1);
-            } else if (name.startsWith("5.")) {
+            } else if (name.startsWith("5.") && !name.startsWith("5.5.")) {
                 // If we enable any "5." section, we must enable "2.3 Внутреннее водоснабжение"
                 const wIdx = this.state.disabledSections.indexOf("2.3 Внутреннее водоснабжение");
                 if (wIdx > -1) this.state.disabledSections.splice(wIdx, 1);
@@ -51586,7 +51612,7 @@ const app = {
                 if (oIdx > -1) this.state.disabledSections.splice(oIdx, 1);
             } else if (name === "2.3 Внутреннее водоснабжение") {
                 // Enable all "5." equipment sections
-                this.state.disabledSections = this.state.disabledSections.filter(x => !x.startsWith("5."));
+                this.state.disabledSections = this.state.disabledSections.filter(x => !x.startsWith("5.") || x.startsWith("5.5."));
             } else if (name === "2.1 Внешнее водоснабжение") {
                 // Enable all "7." equipment sections
                 this.state.disabledSections = this.state.disabledSections.filter(x => !x.startsWith("7."));
@@ -84101,6 +84127,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 else if (group.startsWith("5.2.")) secTitle = "5.2. Внутреннее ГВС";
                 else if (group.startsWith("5.3.")) secTitle = "5.3. Рециркуляция";
                 else if (group.startsWith("5.4.")) secTitle = "5.4. Общие материалы";
+                else if (group.startsWith("5.5.")) secTitle = group;
                 else if (group.startsWith("7.1.")) secTitle = "7.1. Обвязка скважинного насоса";
                 else if (group.startsWith("8.")) secTitle = group;
                 else if (group.startsWith("9. Своё оборудование")) secTitle = "9. Своё оборудование";
@@ -84121,10 +84148,11 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 if (_sm) { manualSwapId = _sm[1]; _setMul = Math.max(1, parseInt(_sm[2]) || 1); }
             }
             // Бухта STOUT — в копилку смены по метрам, а не в раздел. Замена вручную и ROMMER не объединяем.
-            if (_coilPool && !useAnalog && !manualSwapId && item.coilPriced && _coilPool.byId[item.id]) {
+            if (_coilPool && !_coilPool.closed && !useAnalog && !manualSwapId && item.coilPriced && _coilPool.byId[item.id]) {
                 const _m = qty * (item.len || 0);
                 _coilPool.metres[item.id] = (_coilPool.metres[item.id] || 0) + _m;
                 _coilPool.rub += qty * (item.price || 0);
+                _coilPool.rubById[item.id] = (_coilPool.rubById[item.id] || 0) + qty * (item.price || 0);
                 // Потребность — точная, если её знает место покупки; иначе купленные метры (округлённые)
                 _coilPool.need[item.id] = (_coilPool.need[item.id] || 0) + (item._needM !== undefined ? item._needM : _m);
                 (_coilPool.parts[item.id] = _coilPool.parts[item.id] || []).push({ sec: secTitle, m: _m });
@@ -84762,7 +84790,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
 
             const isDisabled = this.state.disabledSections && (
                 this.state.disabledSections.includes(title) ||
-                (title.startsWith("5.") && this.state.disabledSections.includes("2.3 Внутреннее водоснабжение")) ||
+                (title.startsWith("5.") && !title.startsWith("5.5.") && this.state.disabledSections.includes("2.3 Внутреннее водоснабжение")) ||
                 (title.startsWith("7.") && this.state.disabledSections.includes("2.1 Внешнее водоснабжение")) ||
                 (title.startsWith("8.") && this.state.disabledSections.includes("3.1 Внутренняя канализация"))
             );
@@ -85129,6 +85157,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 const _rk = `app.rowKey('${lookupId}','${_rowHash}')`;
                 let qtyEditable = `<span class="qty-step" onclick="event.stopPropagation(); app.stepQty(${_rk}, -1, ${i.q})">−</span><input type="number" class="qty-num-input" min="0" value="${i.q}" onclick="event.stopPropagation(); app.revealQty(${_rk})" onchange="event.stopPropagation(); app.setQty(${_rk}, this.value)" onkeydown="if(event.key==='Enter') this.blur();"><span class="qty-step" onclick="event.stopPropagation(); app.stepQty(${_rk}, 1, ${i.q})">+</span>`;
                 let qHtml = `<div class="qty-wrap${qtyOpen ? ' qty-open' : ''}">${qtyEditable}${tipHtml} <span class="opt-btn" onclick="event.stopPropagation(); app.toggleOpt(${_rk})" title="${!isOpt ? 'Удалить позицию' : 'Добавить позицию'}">${!isOpt ? '<span style="color:var(--c-bad,#EF4444); font-weight:bold; font-size:14px; line-height:1;">✖</span>' : '➕'}</span></div>`;
+                // Справочная строка (остаток бухт): количество не правится и позицию не удалить — это не покупка
+                if (i.screenOnly) qHtml = `<div class="qty-wrap"><b>${i.q}</b>${tipHtml}</div>`;
                 // imgId — артикул каталога у позиций со служебным id (распознанное,
                 // своё оборудование). Файл фото лежит именно под артикулом.
                 let imgContent = getImg(i.imgId ? { ...i, id: i.imgId } : i);
@@ -93066,6 +93096,24 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             }
         }
 
+        // === 5.5. ТРУБЫ: БУХТЫ ПО ВСЕЙ СМЕТЕ ===
+        // Блок идёт сразу за разделом 5. Трубы из разделов 1–5 уже накоплены в _coilPool; после
+        // вывода блока копилка закрывается, и трубы поздних разделов покупаются как обычно.
+        let _poolDone = false;
+        const _runCoilPool = () => {
+            if (_poolDone) return;
+            _poolDone = true;
+            // Строки считаем всегда: из них берётся экономия для «Настройки → Тариф». В смету пишем, только если включено.
+            const _poolRows = (_coilPool && Object.keys(_coilPool.metres).length) ? this.coilPoolRows(_coilPool) : [];
+            if (!_poolRows.length) { this._poolStats = { metres: 0, rub: 0, boughtM: 0, unM: 0, pct: 0, unRub: 0 }; this._poolNote = ''; }
+            if (_coilPool && _coilPool.on && _poolRows.length) {
+                _coilPool.closed = true;
+                bill = _poolRows;
+                flushBill('5.5. Трубы: бухты по всей смете', this._poolNote);
+            }
+        };
+        if (_coilPool && _coilPool.on) _runCoilPool();
+
         // === 6. УЗЕЛ ВВОДА ВОДЫ В КВАРТИРУ ===
         //
         // Отдельный раздел, а не ветка внутри домового: у них разный состав до
@@ -94067,13 +94115,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 addToBill(cl, Math.ceil(vSys / cl.vol), this.getDesc('coolant', Math.round(vSys)), "9. Дополнительные материалы");
             }
         }
-        // Строки считаем всегда: из них берётся экономия для «Настройки → Тариф». В смету пишем, только если включено.
-        const _poolRows = (_coilPool && Object.keys(_coilPool.metres).length) ? this.coilPoolRows(_coilPool) : [];
-        if (!_poolRows.length) this._poolStats = { metres: 0, rub: 0, boughtM: 0, unM: 0 };
-        if (_coilPool && _coilPool.on && _poolRows.length) {
-            bill = _poolRows;
-            flushBill('Трубы: бухты по всей смете');
-        }
+        // Объединение включено — блок уже выведен после раздела 5 (см. _runCoilPool). Выключено —
+        // строки всё равно считаем: из них берётся экономия для «Настройки → Тариф».
+        _runCoilPool();
         flushBill("9. Дополнительные материалы");
         // ==========================================
         // БЛОК: 1.1 Монтаж котла и бойлера, 1.2 Монтаж обвязки котельной, 2.2 Монтаж узла ввода ХВС
@@ -95472,24 +95516,14 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         return value.toLocaleString('ru-RU') + ' ₸';
     },
 
-    // Единый источник данных о тарифах Профи — используется и модалкой оплаты, и командой ИИ-агента.
-    proPaymentLinks: {
-        // Запасные значения без модуля подписки; ссылки на 900 и 3 900 ₽ вносятся во вкладке «Оплата подписки»
-        object: { url: "", tariffName: "Профи: один расчёт", rub: 990 },
-        month: { url: "", tariffName: "Профи 1 месяц", rub: 3950 },
-        year: { url: "https://t.tb.ru/pm_short/3wV0dltaezz", tariffName: "Профи 1 год", rub: 29000 }
-    },
-
-    // Цена и ссылка тарифа для этого человека: настройки вкладки «Оплата подписки»
-    // (subscription.js — региональная цена, акции), а без модуля — зашитые выше.
-    // Возвращает { url, tariffName, rub, months, promo, id }.
+    // Цена и ссылка тарифа для этого человека. Единственный источник — вкладка «Оплата подписки»
+    // (app_settings.subscription: тарифы, региональные цены, акции), считает Subscription.resolve.
+    // Своих цен здесь нет: раньше они дублировались в коде и расходились с настройками.
+    // Возвращает { url, tariffName, rub, months, promo, id } или null, если такого тарифа нет.
     proPlan: function (type) {
-        if (typeof Subscription !== 'undefined') {
-            const r = Subscription.resolve(type);
-            if (r) return { id: r.id, url: r.url, tariffName: r.tariffName, rub: r.rub, months: r.months, promo: r.promo ? (r.promo.title || 'акция') : null };
-        }
-        const p = this.proPaymentLinks[type];
-        return p ? { id: type, url: p.url, tariffName: p.tariffName, rub: p.rub, months: type === 'year' ? 12 : 1, promo: null } : null;
+        if (typeof Subscription === 'undefined') return null;
+        const r = Subscription.resolve(type);
+        return r ? { id: r.id, url: r.url, tariffName: r.tariffName, rub: r.rub, months: r.months, promo: r.promo ? (r.promo.title || 'акция') : null } : null;
     },
 
     openPaymentModal(type) {
