@@ -30241,6 +30241,10 @@ const app = {
         inv_funnel:    { t: 'Смета → счёт',                       icon: '🧭', sec: 'us' },
         inv_speed:     { t: 'Сколько это занимает',               icon: '⏱️', sec: 'us' },
         inv_waiting:   { t: 'Ждут счёта',                         icon: '🔔', sec: 'us' },
+        // Чем кончились КП: согласились / отказ / без ответа, по дистрибьюторам и
+        // тарифам (kp_outcome.js, события won / lost). Новый блок: у кого раскладка
+        // уже сохранена, его добавляют из полки скрытых блоков.
+        kp_outcome:    { t: 'КП → сделка',                        icon: '🏁', sec: 'us' },
         // Срок действия счёта по ссылке: отвечают ли клиенты быстрее, когда
         // цены вот-вот скроются. Считается по самим ссылкам (shared_invoices),
         // а не по событиям: там лежат и срок, и момент ответа, и просьбы обновить.
@@ -30298,6 +30302,7 @@ const app = {
                     { id: 'activity', span: 2 }, { id: 'quiet_list', span: 2 },
                     { id: 'inv_funnel', span: 2 }, { id: 'inv_speed', span: 2 },
                     { id: 'inv_waiting', span: 4 },
+                    { id: 'kp_outcome', span: 4 },
                     { id: 'inv_timer', span: 4 },
                     { id: 'own_projects', span: 1 }, { id: 'own_rec', span: 1 },
                     { id: 'rec_regions', span: 2 }, { id: 'rec_gaps', span: 2 },
@@ -31255,6 +31260,7 @@ const app = {
         // своих: без ownReady считать её не из чего.
         const evReady = this.ensureDashboardEvents();
         const inv = (evReady && ownReady) ? this.dashboardInvoiceFunnel(region) : null;
+        const kpo = (evReady && ownReady) ? this.dashboardKpOutcome(region) : null;
         // Таймер счёта — по строкам ссылок клиентам; регион берётся из своих
         // монтажников, поэтому тоже ждёт ownReady.
         const timerReady = this.ensureDashboardTimer();
@@ -31276,7 +31282,7 @@ const app = {
             // нет, блоки не исчезают, а честно показывают, что идёт счёт: иначе
             // полдашборда мигало бы пустотой при каждом открытии.
             ['own_ests', 'own_active', 'own_users', 'own_projects', 'own_rec', 'own_invoices',
-             'est_vs_demand', 'activity', 'quiet_list', 'inv_funnel', 'inv_speed', 'inv_waiting', 'inv_timer',
+             'est_vs_demand', 'activity', 'quiet_list', 'inv_funnel', 'inv_speed', 'inv_waiting', 'kp_outcome', 'inv_timer',
              'funnel', 'demo_soon', 'pro_active', 'chek', 'group_usage', 'dist_money'].forEach(id => {
                 B[id] = card(head(this.DASH_WIDGETS[id].t, 'сметы, монтажники, проекты')
                     + `<div style="padding:16px 0; color:var(--text-sec); font-size:12.5px;">Считаем свои сметы и монтажников…</div>`);
@@ -31631,6 +31637,81 @@ const app = {
                             Ещё ${num(inv.waitingOld)} — старше месяца; в список не берём: это уже не «дожать», а несостоявшаяся сделка.
                        </div>` : '')
                     + (inv.capped ? `<div style="font-size:11.5px; color:#F97316; margin-top:8px;">История событий обрезана по потолку строк — числа неполные.</div>` : ''));
+            }
+
+            // ── КП → сделка ──────────────────────────────────────────────────
+            // Чем кончились КП, ушедшие клиентам: согласились / отказ / без ответа,
+            // с разрезом по дистрибьюторам и тарифам. «В срок» — КП, у которых срок
+            // ответа ещё идёт: в конверсию не входят, иначе свежие её занижали бы.
+            {
+                const hd = head('КП → сделка', 'согласились, отказ и без ответа по КП, ушедшим клиентам · по дистрибьюторам и тарифам');
+                const note = (t, color) => `<div style="padding:16px 0; color:${color || 'var(--text-sec)'}; font-size:12.5px; line-height:1.55;">${t}</div>`;
+                const fd = (t) => new Date(t).toLocaleDateString('ru-RU');
+                if (!kpo) {
+                    B.kp_outcome = card(hd + note('Читаем события смет…'));
+                } else if (kpo.error) {
+                    B.kp_outcome = card(hd + note('События не прочитались: ' + esc(kpo.error), '#EF4444'));
+                } else if (!kpo.total.n) {
+                    B.kp_outcome = card(hd + note(`С ${fd(kpo.since)} КП клиентам${region ? ` у монтажников региона «${esc(region)}»` : ''} ещё не уходили. Итоги отмечаются с этого дня: до запуска такой кнопки не было, и «без ответа» у старых КП значило бы не ответ клиента, а отсутствие кнопки.`));
+                } else {
+                    const T = kpo.total, cv = KpOutcome.conv(T);
+                    const pctS = (r) => r === null ? '—' : Math.round(r * 100) + '%';
+                    const firstDue = fd(kpo.since + KpOutcome.DAYS * 86400000);
+                    const seg = (n, color, label) => n ? `<div title="${label}: ${n}" style="flex:${n} 1 0; min-width:3px; background:${color};"></div>` : '';
+                    const legend = (color, label, n) => `<span style="display:inline-flex; align-items:center; gap:5px; margin-right:12px; font-size:12px; color:var(--text-main); white-space:nowrap;"><i style="width:9px; height:9px; border-radius:50%; background:${color}; display:inline-block;"></i>${label} <b>${num(n)}</b></span>`;
+                    const TARIFFS = { paid: 'Профи · оплата', promo: 'Профи · промокод', trial: 'Профи · пробный', base: 'Базовый', staff: 'Менеджеры и админы', unknown: 'Автор не определён' };
+                    const dists = {};
+                    ((this.adminData && this.adminData.distributors) || []).forEach(d => { dists[String(d.id)] = d.company_name; });
+                    const mkRows = (map, label, limit) => {
+                        const all = Object.keys(map).map(k => ({ k: k, b: map[k], name: label(k) })).sort((a, b) => b.b.n - a.b.n);
+                        const shown = limit ? all.slice(0, limit) : all;
+                        return shown.map(x => {
+                            const c = KpOutcome.conv(x.b);
+                            // На одной-двух решённых КП процент говорит о случайности: серым
+                            const few = c.decided < 5;
+                            const cell = (v, color) => `<td style="text-align:right; padding:5px 0 5px 8px; ${color ? 'color:' + color + ';' : ''}">${v}</td>`;
+                            return `<tr style="border-top:1px solid var(--border);">
+                                <td style="padding:5px 0; color:var(--text-main); max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(x.name)}">${esc(x.name)}</td>
+                                ${cell(num(x.b.n))}${cell(num(x.b.won), x.b.won ? '#10B981' : '')}${cell(num(x.b.lost), x.b.lost ? '#EF4444' : '')}
+                                ${cell(num(x.b.silent), x.b.silent ? '#F97316' : '')}${cell(num(x.b.wait), 'var(--text-sec)')}
+                                <td style="text-align:right; padding:5px 0 5px 8px; font-weight:700; color:${few ? 'var(--text-sec)' : 'var(--text-main)'};" ${few ? 'title="решённых КП меньше пяти — процент случаен"' : ''}>${pctS(c.rate)}</td>
+                            </tr>`;
+                        }).join('') + (limit && all.length > limit ? `<tr><td colspan="7" style="padding:6px 0; color:var(--text-sec); font-size:11.5px;">и ещё ${num(all.length - limit)}</td></tr>` : '');
+                    };
+                    const tbl = (title, body) => `<div style="flex:1 1 340px; min-width:0; overflow-x:auto;">
+                        <div style="font-size:12px; font-weight:700; color:var(--text-sec); margin:16px 0 6px;">${title}</div>
+                        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                            <thead><tr style="color:var(--text-sec);"><th style="text-align:left; font-weight:600; padding:4px 0;"></th>
+                                <th style="text-align:right; font-weight:600; padding-left:8px;">КП</th>
+                                <th style="text-align:right; font-weight:600; padding-left:8px;" title="клиент согласился (в том числе счёт запрошен, выставлен, оплачен)">согл.</th>
+                                <th style="text-align:right; font-weight:600; padding-left:8px;">отказ</th>
+                                <th style="text-align:right; font-weight:600; padding-left:8px;" title="срок ответа вышел, итога нет">без ответа</th>
+                                <th style="text-align:right; font-weight:600; padding-left:8px;" title="срок ответа ещё идёт — в конверсию не входят">в срок</th>
+                                <th style="text-align:right; font-weight:600; padding-left:8px;" title="согласились / (согласились + отказ + без ответа)">конв.</th></tr></thead>
+                            <tbody>${body}</tbody></table></div>`;
+                    B.kp_outcome = card(hd
+                        + `<div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-top:12px;">
+                            <span style="font-size:${sp('kp_outcome') >= 2 ? 36 : 26}px; font-weight:800; color:var(--text-main); line-height:1;">${pctS(cv.rate)}</span>
+                            <span style="font-size:12.5px; color:var(--text-sec);">${cv.decided
+                                ? `согласились ${num(T.won)} из ${num(cv.decided)} КП, по которым срок ответа вышел или итог есть`
+                                : `срок ответа ещё не вышел ни у одного КП — цифры появятся с ${firstDue}`}</span>
+                          </div>`
+                        + `<div style="display:flex; height:10px; border-radius:999px; overflow:hidden; background:rgba(127,127,127,.18); margin:12px 0 8px;">
+                            ${seg(T.won, '#10B981', 'согласились')}${seg(T.lost, '#EF4444', 'отказ')}${seg(T.silent, '#F97316', 'без ответа')}${seg(T.wait, 'rgba(127,127,127,.45)', 'в срок')}
+                          </div>`
+                        + `<div>${legend('#10B981', 'согласились', T.won)}${legend('#EF4444', 'отказ', T.lost)}${legend('#F97316', 'без ответа', T.silent)}${legend('rgba(127,127,127,.6)', 'в срок', T.wait)}</div>`
+                        + `<div style="display:flex; gap:24px; flex-wrap:wrap;">`
+                        + tbl('По дистрибьюторам', mkRows(kpo.byDist, k => k ? (dists[k] || ('Дистрибьютор ' + k.slice(0, 6))) : 'Без дистрибьютора', rows('kp_outcome', 6, 8, 12)))
+                        + tbl('По тарифам', mkRows(kpo.byTariff, k => TARIFFS[k] || k, 0))
+                        + `</div>`
+                        + `<div style="font-size:11.5px; color:var(--text-sec); margin-top:12px; line-height:1.55;">
+                            Считаются КП, отправленные клиентам с ${fd(kpo.since)}: до запуска (23.10.2026) итоги не отмечали, и по старым КП «без ответа» значило бы просто «кнопки не было».
+                            «Согласились» включает КП, по которым запросили или выставили счёт, — они закрываются сами. «В срок» в конверсию не входят.
+                            ${cv.marked !== null ? `Итог (согласился или отказ) отмечен у <b style="color:var(--text-main);">${pctS(cv.marked)}</b> КП, по которым срок вышел; остальные — молчание.` : ''}
+                            Срок ответа здесь — по умолчанию (${KpOutcome.DAYS} дн.), личный срок монтажника не учитывается; тариф — нынешний, а не на день отправки.
+                           </div>`
+                        + (kpo.capped ? `<div style="font-size:11.5px; color:#F97316; margin-top:8px;">История событий обрезана по потолку строк — числа неполные.</div>` : ''));
+                }
             }
 
             // Таймер счёта: две колонки — ссылки со сроком действия и без него.
@@ -32933,6 +33014,7 @@ const app = {
 
             this._dashOwn = res;
             this._dashStats = null;
+            this._dashKpo = null;
             this._loadingDashOwn = false;
             if (this.dashTabActive()) this.renderAdminMain();
         })();
@@ -33116,6 +33198,7 @@ const app = {
             }
             this._dashEv = out;
             this._dashFunnel = null;
+            this._dashKpo = null;
             this._loadingDashEv = false;
             if (this.dashTabActive()) this.renderAdminMain();
         })();
@@ -33203,6 +33286,40 @@ const app = {
         out.capped = !!ev.capped;
         out.error = ev.error || null;
         this._dashFunnel[key] = out;
+        return out;
+    },
+
+    /**
+     * Чем кончились КП (согласились / отказ / без ответа) по дистрибьюторам и
+     * тарифам. Расчёт — KpOutcome.stats; здесь только привязка автора КП к
+     * дистрибьютору и тарифу по его почте и регион (как у воронки счетов).
+     * Тариф — нынешний, а не на момент отправки: история тарифа по КП не пишется.
+     */
+    dashboardKpOutcome: function (region) {
+        const ev = this._dashEv, own = this._dashOwn;
+        if (!ev || !own || !window.KpOutcome) return null;
+        const key = region || '*';
+        this._dashKpo = this._dashKpo || {};
+        if (this._dashKpo[key]) return this._dashKpo[key];
+        const now = Date.now(), byEmail = {};
+        (own.users || []).forEach(u => {
+            if (!u.email) return;
+            let tariff = 'base';
+            if (['admin', 'viewer', 'manager'].includes(u.account_type)) tariff = 'staff';
+            else if (u.account_type === 'pro' && (!u.demo_ends_at || new Date(u.demo_ends_at).getTime() > now)) {
+                // Те же три вида Профи, что в «Профи: сроки и отток»
+                tariff = u.pro_expires_at ? 'paid' : (u.distributor_id ? 'promo' : 'trial');
+            }
+            byEmail[String(u.email).toLowerCase()] = { dist: u.distributor_id ? String(u.distributor_id) : '', tariff: tariff, region: u.region || '' };
+        });
+        const out = KpOutcome.stats(ev.rows, {
+            userOf: e => byEmail[e] || null,
+            // При выбранном регионе КП без известного автора не берём — как в воронке счетов
+            keep: region ? ((k, u) => !!u && u.region === region) : null
+        });
+        out.error = ev.error || null;
+        out.capped = !!ev.capped;
+        this._dashKpo[key] = out;
         return out;
     },
 
