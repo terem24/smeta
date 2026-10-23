@@ -17249,6 +17249,22 @@ const app = {
             });
         }
 
+        // Вкладка «Профиль» на телефоне: те же пункты из CABINET_MENU, что и на панели слева
+        const mobMenu = document.getElementById('profile_menu_items');
+        if (mobMenu && !mobMenu.children.length) {
+            const chev = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" style="color: var(--text-sec); opacity: 0.5;"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+            mobMenu.innerHTML = this.CABINET_MENU.filter(it => it.id !== 'calc' && it.kind !== 'logout' && it.kind !== 'search' && !it.link && it.only !== 'rail').map(it => {
+                const adm = it.id === 'admin';
+                const col = adm ? 'var(--c-ok, #10B981)' : 'var(--text-main)';
+                const idAttr = adm ? ' id="profile_admin_item"' : '';
+                const badge = it.badge ? '<span id="profile_menu_messages_badge" style="display: none; background: #EF4444; color: white; border-radius: 10px; font-size: 11px; font-weight: 800; min-width: 20px; height: 20px; padding: 0 6px; align-items: center; justify-content: center; line-height: 1;">0</span>' : '';
+                const go = `app.railGo('${it.id}')`;
+                return `<div${idAttr} class="profile-menu-item" data-mob="${it.id}" onclick="${go}" style="display: ${it.hide ? 'none' : 'flex'}; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.2s;">`
+                    + `<span style="display:flex; flex-shrink: 0; color: ${adm ? col : 'var(--text-sec)'};">${svg(it, 22)}</span>`
+                    + `<span class="mob-menu-label" style="flex-grow: 1; font-weight: ${adm ? 700 : 600}; font-size: 14.5px; color: ${col}; text-align: left;">${esc(it.nav)}</span>${badge}${chev}</div>`;
+            }).join('');
+        }
+
         if (nav && !nav.querySelector('.lk-nav-item')) {
             let h = '<button type="button" class="lk-nav-search" onclick="app.openCabinetSearch()" title="Поиск по разделам и сметам (Ctrl+K)"><svg class="ad-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span>Поиск</span><kbd>Ctrl K</kbd></button>';
             this.CABINET_MENU.forEach(it => {
@@ -18440,6 +18456,11 @@ const app = {
                 el.title = L.title;
             });
         }
+        // Те же правила видимости и подписи — для пунктов вкладки «Профиль» на телефоне
+        const mobInst = document.querySelector('#profile_menu_items [data-mob="installers"]');
+        if (mobInst) mobInst.style.display = (navInstallers && navInstallers.style.display !== 'none') ? 'flex' : 'none';
+        const mobWp = document.querySelector('#profile_menu_items [data-mob="workprices"] .mob-menu-label');
+        if (mobWp && wpItem) mobWp.textContent = sellerNoWorks ? 'Своё оборудование' : wpItem.nav;
         const lkBar = document.getElementById('lk_subtabs');
         if (lkBar && this._activeProfileTab && this.isOverlayOpen('profile_modal_overlay')) this.renderCabinetSubtabs(this._activeProfileTab);
 
@@ -57963,6 +57984,7 @@ const app = {
             logoutItem.style.display = tgUser ? 'flex' : 'none';
         }
 
+        this.syncRailUI();
         // Динамическое скрытие/показ кнопки админки
         const adminItem = document.getElementById('profile_admin_item');
         if (adminItem) {
