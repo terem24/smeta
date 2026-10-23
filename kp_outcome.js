@@ -21,10 +21,18 @@
 // Всё считается по журналу invoice_events: отдельной таблицы нет, история КП и
 // доска планировщика читают те же строки.
 const KpOutcome = {
-    DAYS: 30,
-    MAX_EXT: 2,
-    GATE: 2,
-    GRACE_DAYS: 3,
+    // Настройки задаёт админ («Оплата подписки» → «Лимит КП» → «Итог КП»),
+    // без них (страница ещё не прочитала настройки) — эти значения
+    FALLBACK: { outcomeOn: true, outcomeAudBase: true, outcomeAudPro: true, outcomeAudMgr: true, outcomeGate: true,
+        outcomeDays: 30, outcomeDaysMin: 14, outcomeDaysMax: 60, outcomeExt: 2, outcomeGateN: 2, outcomeGrace: 3, excludeTerem: true },
+    cfg: function () {
+        try { if (typeof Subscription !== 'undefined' && Subscription.limitSettings) return Subscription.limitSettings(); } catch (e) { }
+        return this.FALLBACK;
+    },
+    get DAYS() { return this.cfg().outcomeDays; },
+    get MAX_EXT() { return this.cfg().outcomeExt; },
+    get GATE() { return this.cfg().outcomeGateN; },
+    get GRACE_DAYS() { return this.cfg().outcomeGrace; },
     // Старые КП, ушедшие задолго до появления окна, получают срок не раньше этого
     // дня: иначе в первый же вход у всех разом сработал бы блок
     START: '2026-10-23',
@@ -64,8 +72,36 @@ const KpOutcome = {
      * В расчёт идут только сметы, хоть раз ушедшие клиенту. Владелец КП — автор
      * первой отправки: «счёт выставлен» пишет менеджер под своим именем.
      */
-    build: function (rows, now) {
+    // Кто смотрит: менеджер/админ/наблюдатель, Профи или Базовый (бесплатный)
+    audience: function () {
+        if (typeof app === 'undefined') return 'base';
+        if (app.getAdminRole() !== 'base') return 'manager';
+        return app.isPro() ? 'pro' : 'base';
+    },
+    // Включено ли окно этому человеку: общий выключатель и галочка его аудитории
+    enabledForMe: function () {
+        const c = this.cfg();
+        if (!c.outcomeOn) return false;
+        const a = this.audience();
+        return a === 'manager' ? c.outcomeAudMgr !== false : (a === 'pro' ? c.outcomeAudPro !== false : c.outcomeAudBase !== false);
+    },
+    // Личный срок монтажника («Настройки → КП и счета») внутри границ админа
+    myDays: function () {
+        const c = this.cfg();
+        let v = NaN;
+        try {
+            if (typeof app !== 'undefined') {
+                if (!app.installerSettings && app.loadInstallerSettingsLocal) app.loadInstallerSettingsLocal();
+                v = Math.round(Number(app.installerSettings && app.installerSettings.kpOutcomeDays));
+            }
+        } catch (e) { }
+        if (!isFinite(v) || v <= 0) return c.outcomeDays;
+        return Math.min(c.outcomeDaysMax, Math.max(c.outcomeDaysMin, v));
+    },
+
+    build: function (rows, now, days) {
         now = now || Date.now();
+        const D = days || this.DAYS;
         const start = new Date(this.START + 'T00:00:00').getTime();
         const by = {};
         (rows || []).forEach(r => {
@@ -85,7 +121,7 @@ const KpOutcome = {
             // Отказ закрывает КП, пока клиенту не ушла новая версия: вернулся — снова в работе
             const lost = evs.slice().reverse().find(e => e.event === 'lost' && new Date(e.created_at).getTime() >= lastSentAt);
             const outcome = won ? 'won' : (lost ? 'lost' : null);
-            const due = Math.max(lastSentAt, lastExtAt, start - this.DAYS * this.DAY) + this.DAYS * this.DAY;
+            const due = Math.max(lastSentAt, lastExtAt, start - D * this.DAY) + D * this.DAY;
             const overdue = !outcome && now >= due;
             let kpV = 0;
             evs.forEach(e => { const v = e.meta && Number(e.meta.kp_version); if (v > kpV) kpV = v; });
@@ -102,6 +138,7 @@ const KpOutcome = {
                 outcome: outcome,
                 outcomeEvent: outcome === 'won' ? won : (outcome === 'lost' ? lost : null),
                 due: due,
+                days: D,
                 overdue: overdue,
                 overdueDays: overdue ? Math.floor((now - due) / this.DAY) : 0,
                 blocking: overdue && now >= due + this.GRACE_DAYS * this.DAY
@@ -137,7 +174,7 @@ const KpOutcome = {
         }
         // КП, которые я отправлял, но первым их отправил кто-то другой (копия, общий
         // расчёт), — не мои: отвечать за них должен автор
-        const list = this.build(rows).filter(k => String(k.userId || '') === me);
+        const list = this.build(rows, undefined, this.myDays()).filter(k => String(k.userId || '') === me);
         await this.attachSums(list);
         return list;
     },
@@ -159,7 +196,7 @@ const KpOutcome = {
     // Касается ли блок этого человека. Как лимит КП: только без Профи, не сотрудники
     gateApplies: function () {
         if (typeof app === 'undefined') return false;
-        if (typeof Subscription !== 'undefined' && Subscription.limitSettings && Subscription.limitSettings().outcomeGate === false) return false;
+        if (this.cfg().outcomeGate === false || !this.enabledForMe()) return false;
         if (app.getAdminRole() !== 'base') return false;
         if (app.isPro()) return false;
         const tg = app.state.tgUser || {};
@@ -199,6 +236,9 @@ const KpOutcome = {
     check: async function (force) {
         try {
             if (typeof app === 'undefined' || !this.myId()) return;
+            // Настройки админа (кому показывать, срок) — до проверки, а не после
+            try { await app.loadAppSettings(); } catch (e) { }
+            if (!this.enabledForMe()) return;
             const day = new Date().toISOString().slice(0, 10);
             let shown = '';
             try { shown = localStorage.getItem('kp_outcome_day') || ''; } catch (e) { }
@@ -236,8 +276,9 @@ const KpOutcome = {
     },
 
     extend: async function (k, staff) {
-        const until = Date.now() + this.DAYS * this.DAY;
-        await this.write(k, 'extended', { n: k.ext + 1, until: new Date(until).toISOString(), comment: 'Продлено на ' + this.DAYS + ' дн., до ' + this.fmtDate(until) }, staff);
+        const d = k.days || this.DAYS;
+        const until = Date.now() + d * this.DAY;
+        await this.write(k, 'extended', { n: k.ext + 1, until: new Date(until).toISOString(), comment: 'Продлено на ' + d + ' дн., до ' + this.fmtDate(until) }, staff);
     },
 
     // ── Окно ───────────────────────────────────────────────────────────────
@@ -262,7 +303,7 @@ const KpOutcome = {
                 const gateLine = this.gateApplies()
                     ? `<br><small>Без Профи: если итога нет у ${this.GATE} КП, новые не отправятся. Считать можно всегда.</small>`
                     : '';
-                return `КП ушли клиентам больше ${this.DAYS} дней назад. Отметьте итог — в «Моих показателях» будет видно, сколько КП стали сделками. Ошибка в смете — напишите, исправим.${gateLine}`;
+                return `КП ушли клиентам больше ${(items[0] && items[0].days) || this.DAYS} дней назад. Отметьте итог — в «Моих показателях» будет видно, сколько КП стали сделками. Ошибка в смете — напишите, исправим.${gateLine}`;
             };
 
             const itemHtml = (k) => {
@@ -287,7 +328,7 @@ const KpOutcome = {
                         <button type="button" class="kpo-btn kpo-won" data-act="won" data-id="${k.calcId}">✓ Клиент согласился</button>
                         <button type="button" class="kpo-btn kpo-lost" data-act="lost" data-id="${k.calcId}">✕ Отказ</button>
                         ${left > 0
-                            ? `<button type="button" class="kpo-btn" data-act="extend" data-id="${k.calcId}" title="Спросим снова через ${this.DAYS} дней. Продлений осталось: ${left}">⏳ Думает, +${this.DAYS} дн.</button>`
+                            ? `<button type="button" class="kpo-btn" data-act="extend" data-id="${k.calcId}" title="Спросим снова через ${k.days || this.DAYS} дней. Продлений осталось: ${left}">⏳ Думает, +${k.days || this.DAYS} дн.</button>`
                             : `<span class="kpo-sub">Продлений больше нет</span>`}
                     </div>`;
                 }

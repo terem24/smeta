@@ -3530,6 +3530,15 @@
                         </div>
                         <input type="number" id="profile_kp_reminder_days" class="auth-input lk-num" min="0" max="90" step="1" placeholder="10" onchange="app.setKpReminderDays(this.value.trim()); this.value = String(app.kpReminderDaysDefault())">
                     </div>
+                    <!-- Срок ответа по КП: через сколько дней спросить «чем закончилось».
+                         Границы и показ задаёт админ (Лимит КП → Итог КП); kp_outcome.js -->
+                    <div class="lk-setting" id="profile_kp_outcome_row" style="display:none">
+                        <div class="lk-setting-text">
+                            <b>Спросить про итог КП через, дней</b>
+                            <span id="profile_kp_outcome_hint">Через сколько дней после отправки КП клиенту спросить, чем закончилось.</span>
+                        </div>
+                        <input type="number" id="profile_kp_outcome_days" class="auth-input lk-num" min="14" max="60" step="1" placeholder="30" onchange="app.setKpOutcomeDays(this.value.trim()); app.fillKpOutcomeRow()">
+                    </div>
                     <!-- Названия без моделей и артикулов по умолчанию: с этим положением открывается
                          галочка в окне отправки (share_opt_names). installerSettings.shortNamesDefault -->
                     <div class="lk-setting">
