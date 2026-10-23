@@ -155,9 +155,16 @@ const KpOutcome = {
 
     // Свои отправленные КП за год и вся их история. Два запроса: в истории есть
     // строки не от меня («счёт выставлен» пишет менеджер).
-    loadMine: async function () {
+    // noSums — без сумм смет (для значка и подсветки они не нужны); reuse — взять
+    // результат последнего чтения, если ему меньше 30 секунд (вход: значок и окно
+    // читают одно и то же)
+    loadMine: async function (noSums, reuse) {
         const me = this.myId();
         if (!me || typeof supabaseClient === 'undefined') return [];
+        if (reuse && this._mine && this._mineFor === me && Date.now() - this._mineAt < 30000) {
+            if (!noSums && !this._mineSums) { await this.attachSums(this._mine); this._mineSums = true; }
+            return this._mine;
+        }
         const since = new Date(Date.now() - 365 * this.DAY).toISOString();
         const { data: mine, error } = await supabaseClient.from('invoice_events').select('calc_id')
             .eq('user_id', me).in('event', this.SEND_EVENTS).gte('created_at', since).limit(2000);
@@ -168,15 +175,137 @@ const KpOutcome = {
         for (let i = 0; i < ids.length; i += 80) {
             const { data, error: e2 } = await supabaseClient.from('invoice_events')
                 .select('calc_id, event, user_id, user_name, user_email, project_name, meta, created_at')
-                .in('calc_id', ids.slice(i, i + 80)).in('event', this.EVENTS).limit(5000);
+                .in('calc_id', ids.slice(i, i + 80)).in('event', this.EVENTS.concat(this.NEWS_EVENTS)).limit(5000);
             if (e2) throw e2;
             rows.push(...(data || []));
         }
         // КП, которые я отправлял, но первым их отправил кто-то другой (копия, общий
         // расчёт), — не мои: отвечать за них должен автор
         const list = this.build(rows, undefined, this.myDays()).filter(k => String(k.userId || '') === me);
-        await this.attachSums(list);
+        // Что нового по КП: последнее событие не от меня (клиент, менеджер)
+        const news = this.newsMap(rows, me);
+        list.forEach(k => { k.news = news[k.calcId] || null; });
+        this._mine = list; this._mineAt = Date.now(); this._mineFor = me; this._mineSums = false;
+        if (!noSums) { await this.attachSums(list); this._mineSums = true; }
         return list;
+    },
+
+    // Последнее «новое» событие по каждому КП: ответ клиента, счёт, оплата, отметка
+    // менеджера. То, что сделал сам монтажник, новостью для него не считается.
+    newsMap: function (rows, me) {
+        const m = {};
+        (rows || []).forEach(r => {
+            if (!r || !r.calc_id || this.NEWS_EVENTS.indexOf(r.event) < 0) return;
+            if (String(r.user_id || '') === me) return;
+            const t = Date.parse(r.created_at);
+            if (!(t > ((m[r.calc_id] || {}).at || 0))) return;
+            m[r.calc_id] = { event: r.event, at: t };
+        });
+        return m;
+    },
+
+    // ── Значок на «Объектах» и подсветка в списке ─────────────────────────
+    // Что требует внимания монтажника: КП, по которым вышел срок ответа и нет итога
+    // («overdue»), и КП, по которым что-то изменилось с прошлого раза («news»: клиент
+    // одобрил или просит правки, выставлен счёт, менеджер отметил итог). Число таких
+    // КП — на значке иконки «Объекты», как непрочитанные на телефоне. «Новое» гасится,
+    // когда человек увидел список; «нужен итог» — только когда итог отмечен.
+    NEWS_EVENTS: ['confirmed', 'needs_revision', 'refresh_requested', 'invoice_issued', 'paid', 'rejected', 'won', 'lost'],
+
+    seenKey: function () { return 'kp_seen_' + this.myId(); },
+    seenLoad: function () {
+        try { const v = JSON.parse(localStorage.getItem(this.seenKey()) || 'null'); return v && typeof v === 'object' ? v : null; } catch (e) { return null; }
+    },
+    seenSave: function (map) { try { localStorage.setItem(this.seenKey(), JSON.stringify(map)); } catch (e) { } },
+
+    // Что с этим КП: 'overdue' | 'news' | null (по последнему подсчёту)
+    attnOf: function (calcId) { return (this._attn && calcId && this._attn.by[String(calcId)]) || null; },
+
+    /**
+     * Пересчитать, что требует внимания, и перекрасить значок. true — набор изменился.
+     * Первый запуск на устройстве «новым» уже случившееся не считает: иначе в первый
+     * же вход значок показал бы всю историю.
+     */
+    refreshAttention: async function () {
+        try {
+            if (typeof app === 'undefined' || !this.myId()) return false;
+            try { await app.loadAppSettings(); } catch (e) { }
+            const list = await this.loadMine(true);
+            const on = this.enabledForMe();
+            let seen = this.seenLoad();
+            const fresh = seen === null;
+            if (fresh) seen = {};
+            const by = {}, newsAt = {};
+            list.forEach(k => {
+                const nw = k.news;
+                if (fresh && nw) seen[k.calcId] = nw.at;
+                if (on && k.overdue) by[k.calcId] = 'overdue';
+                else if (nw && nw.at > (seen[k.calcId] || 0)) { by[k.calcId] = 'news'; newsAt[k.calcId] = nw.at; }
+            });
+            if (fresh) this.seenSave(seen);
+            const prev = this._attn ? JSON.stringify(this._attn.by) : null;
+            this._attn = { by: by, newsAt: newsAt, count: Object.keys(by).length, at: Date.now() };
+            this.paintBadge();
+            return prev !== JSON.stringify(by);
+        } catch (e) {
+            console.warn('[итог КП] значок не посчитан:', e);
+            return false;
+        }
+    },
+
+    // «Новое» увидено: гасим его на значке и в следующих отрисовках списка
+    markNewsSeen: function () {
+        const a = this._attn;
+        if (!a) return;
+        const seen = this.seenLoad() || {};
+        let ch = false;
+        Object.keys(a.by).forEach(id => {
+            if (a.by[id] === 'news' && a.newsAt[id]) { seen[id] = a.newsAt[id]; delete a.by[id]; ch = true; }
+        });
+        if (ch) { a.count = Object.keys(a.by).length; this.seenSave(seen); this.paintBadge(); }
+    },
+
+    // Значок-счётчик на иконке «Объекты»: в боковом меню и в списке разделов на телефоне
+    paintBadge: function (tries) {
+        this.injectCss();
+        const n = this._attn ? this._attn.count : 0;
+        const els = document.querySelectorAll('.lk-rail-item[data-rail="objects"], #profile_nav .lk-nav-item[data-tab="objects"]');
+        // Меню кабинета строится при первом открытии — значок докрасится, когда оно появится
+        if (!els.length && n && (tries || 0) < 6) { setTimeout(() => this.paintBadge((tries || 0) + 1), 2000); return; }
+        els.forEach(el => {
+            if (!el.dataset.kpoTitle) el.dataset.kpoTitle = el.title || '';
+            let b = el.querySelector('.kpo-badge');
+            if (!n) {
+                if (b) b.remove();
+                el.classList.remove('kpo-has-badge');
+                el.title = el.dataset.kpoTitle;
+                return;
+            }
+            if (!b) { b = document.createElement('span'); b.className = 'kpo-badge'; el.appendChild(b); }
+            b.textContent = n > 9 ? '9+' : String(n);
+            el.classList.add('kpo-has-badge');
+            el.title = (el.dataset.kpoTitle ? el.dataset.kpoTitle + ' · ' : '') + 'Требуют внимания: ' + n + ' КП (итог или новый статус)';
+        });
+    },
+
+    // Список «Объектов» нарисован: подсчёт мог устареть — обновляем и перерисовываем;
+    // «новое» гасится через несколько секунд после показа, когда его успели увидеть
+    afterListRender: function () {
+        this.injectCss();
+        clearTimeout(this._seenTimer);
+        if (!this._attn || Date.now() - this._attn.at > 60000) {
+            this.refreshAttention().then(changed => {
+                if (changed && app._cloudEstimates && typeof app.renderCloudList === 'function') {
+                    app.renderCloudList(app._cloudEstimates, app._cloudSharedStatuses || {}, app._cloudEventStatuses || {});
+                }
+            });
+        }
+        this._seenTimer = setTimeout(() => this.markNewsSeen(), 3500);
+    },
+
+    // «Отметить итог» из списка «Объектов»: после записи пересчитать значок и список
+    markFromList: function (calcId) {
+        return this.openForCalc(calcId, () => this.refreshAttention().then(() => { if (typeof app.loadFromCloudList === 'function') app.loadFromCloudList(); }), true);
     },
 
     // Сумма сметы — для узнавания объекта в окне. Не нашлась — окно и без неё понятно.
@@ -230,7 +359,8 @@ const KpOutcome = {
     // ничего не отметив; блок проверяется при отправке независимо от этого.
     afterLogin: function () {
         if (this._loginTimer) return;
-        this._loginTimer = setTimeout(() => { this._loginTimer = null; this.check(); }, 5000);
+        // Сначала значок на «Объектах», затем окно: оба читают одни и те же события
+        this._loginTimer = setTimeout(() => { this._loginTimer = null; this.refreshAttention().then(() => this.check()); }, 5000);
     },
 
     check: async function (force) {
@@ -243,7 +373,7 @@ const KpOutcome = {
             let shown = '';
             try { shown = localStorage.getItem('kp_outcome_day') || ''; } catch (e) { }
             if (!force && shown === day) return;
-            const list = (await this.loadMine()).filter(k => k.overdue);
+            const list = (await this.loadMine(false, true)).filter(k => k.overdue);
             if (!list.length) return;
             // Не поверх другого окна и не посреди обучения: попробуем при следующем входе
             if (!force && (document.querySelector('.calc-dialog-overlay.active, #custom_modal_overlay.active') || document.body.classList.contains('tour-active'))) return;
@@ -408,6 +538,8 @@ const KpOutcome = {
                     } else return;
                     items.splice(items.indexOf(k), 1);
                     delete state[id];
+                    // Отметили — значок на «Объектах» пересчитывается
+                    if (!opts.staff) this.refreshAttention();
                     if (typeof opts.onDone === 'function') opts.onDone(k);
                     render();
                 } catch (err) {
@@ -606,6 +738,23 @@ const KpOutcome = {
 .kpo-chip.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); }
 .kpo-ta { width: 100%; box-sizing: border-box; margin-top: 8px; font: inherit; font-size: 16px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg, var(--surface)); color: var(--text-main); resize: vertical; }
 .kpo-err { font-size: 12px; color: #EF4444; margin-top: 6px; }
+/* Значок «сколько КП требуют внимания» на иконке «Объекты» — как непрочитанные на телефоне */
+.kpo-badge { box-sizing: border-box; min-width: 17px; height: 17px; padding: 0 5px; border-radius: 999px; background: #EF4444; color: #fff;
+  font-size: 10px; font-weight: 800; line-height: 17px; text-align: center; box-shadow: 0 2px 5px rgba(239, 68, 68, .45); pointer-events: none; }
+.lk-rail-item .kpo-badge { position: absolute; top: 2px; right: 8px; }
+.lk-nav-item .kpo-badge { margin-left: auto; flex: 0 0 auto; }
+.lk-rail-item.kpo-has-badge { animation: kpo-glow 2.4s ease-in-out infinite; }
+@keyframes kpo-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } 50% { box-shadow: 0 0 0 3px rgba(239, 68, 68, .28); } }
+@media (prefers-reduced-motion: reduce) { .lk-rail-item.kpo-has-badge { animation: none; box-shadow: 0 0 0 2px rgba(239, 68, 68, .3); } }
+/* Подсветка строк списка смет: нужен итог (оранжевая) / появилось новое (синяя) */
+tr.kpo-row-overdue > td:first-child { box-shadow: inset 4px 0 0 #F97316; }
+tr.kpo-row-news > td:first-child { box-shadow: inset 4px 0 0 #3B82F6; }
+tr.kpo-row-overdue, tr.kpo-row-news { background: rgba(249, 115, 22, .06); }
+tr.kpo-row-news { background: rgba(59, 130, 246, .07); }
+.kpo-chip-attn { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; color: #fff; vertical-align: middle; white-space: nowrap; }
+.kpo-chip-attn.kpo-over { background: #F97316; }
+.kpo-chip-attn.kpo-new { background: #3B82F6; }
+.lk-btn-sm.kpo-btn-mark { background: #F97316; border-color: #F97316; color: #fff; font-weight: 700; }
 @media (max-width: 480px) {
   .kpo-btn { flex: 1 1 100%; }
   .kpo-pager { justify-content: space-between; margin-top: 0; }
