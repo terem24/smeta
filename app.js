@@ -42334,7 +42334,7 @@ const app = {
         const s = this.state;
         // Режим луча: 'auto' — общий луч на комнату; 'single' — своя ветка на каждый прибор (по умолчанию).
         // radSharedBeams — прежний флаг (включён до появления режима): считаем его автоподбором.
-        const auto = s.radBeamMode ? s.radBeamMode === 'auto' : !!s.radSharedBeams;
+        const auto = this.radBeamAutoOn();
         return auto && s.radConnectionScheme !== 'tee' && !!s.detailedRooms && s.pipeType === 'split';
     },
     // Выходы коллектора по этажам с учётом общих лучей: группа — один выход, остальные приборы — по одному.
@@ -74923,18 +74923,36 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     },
     // Общий луч на комнату с несколькими приборами (расчёт и смета: radSharedActive)
     setRadSharedBeams: function (on) { this.setRadBeamMode(on ? 'auto' : 'single'); },
-    // Режим луча к приборам: 'auto' — автоподбор (общий луч на комнату), 'single' — своя ветка на каждый прибор
+    // Режим луча в state: 'single' | 'auto' | 'smart'. 'smart' — «Авто по экономии»: общая трасса включается,
+    // только если пробный расчёт сметы нашёл экономию не меньше порога (radBeamSmartDecide). Старый флаг
+    // radSharedBeams — это 'auto'.
+    RAD_BEAM_SMART_PCT: 0.03,
+    RAD_BEAM_SMART_RUB: 10000,
+    radBeamModeRaw: function () {
+        const s = this.state, m = s.radBeamMode;
+        return (m === 'auto' || m === 'smart' || m === 'single') ? m : (s.radSharedBeams ? 'auto' : 'single');
+    },
+    // Общая трасса включена прямо сейчас: 'auto' — всегда, 'smart' — если расчёт нашёл экономию выше порога.
+    radBeamAutoOn: function () {
+        const m = this.radBeamModeRaw();
+        return m === 'auto' || (m === 'smart' && !!this._beamSmartOn);
+    },
+    // Режим луча к приборам: 'auto' — автоподбор (общий луч на комнату), 'single' — своя ветка на каждый прибор,
+    // 'smart' — «Авто по экономии»
     setRadBeamMode: function (mode) {
-        this.state.radBeamMode = mode === 'auto' ? 'auto' : 'single';
+        this.state.radBeamMode = (mode === 'auto' || mode === 'smart') ? mode : 'single';
         this.state.radSharedBeams = this.state.radBeamMode === 'auto';
+        this._beamSmartOn = false;
+        this._beamCmp = null;
         this._radPlanCache = null;
+        this.syncUI();
         this.render();
         this.saveState();
     },
     // Режим луча для окна плана: { mode, why } — why не пусто, если переключатель сейчас не действует
     radBeamInfo: function () {
         const s = this.state;
-        const mode = (s.radBeamMode ? s.radBeamMode === 'auto' : !!s.radSharedBeams) ? 'auto' : 'single';
+        const mode = this.radBeamAutoOn() ? 'auto' : 'single';
         let why = '';
         if (s.radConnectionScheme === 'tee') why = 'в тройниковой схеме коллектора нет';
         else if (!s.detailedRooms) why = 'нужен режим «По комнатам»';
@@ -74954,21 +74972,59 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             const snap = () => {
                 const h = this.radHydro;
                 return { pipe: this.neededPipe || 0, outs: (s.lastRadLoops || 0) * (this._radManifoldsCount || 1),
-                    head: h && h.head > 0 ? h.head : null, pumpOk: !!(h && h.pump) };
+                    head: h && h.head > 0 ? h.head : null, pumpOk: !!(h && h.pump),
+                    sum: (this.currentEquipmentList || []).reduce((a, x) => a + (x.sum || 0), 0) };
             };
             const cur = info.mode, other = cur === 'auto' ? 'single' : 'auto', keep = { m: s.radBeamMode, b: s.radSharedBeams };
             const here = snap();
             let alt = null;
+            this._beamTrial = true;   // пробные проходы не должны запускать решение «Авто» (radBeamSmartDecide)
             try {
                 s.radBeamMode = other; s.radSharedBeams = other === 'auto'; this._radPlanCache = null;
                 this.render(); alt = snap();
             } finally {
                 s.radBeamMode = keep.m; s.radSharedBeams = keep.b; this._radPlanCache = null;
                 this.render();
+                this._beamTrial = false;
             }
             this._beamCmp = { key: key, [cur]: here, [other]: alt };
         }
         return this._beamCmp;
+    },
+    // «Авто по экономии»: сравниваем смету в двух режимах (radBeamCompare — пробные проходы render) и включаем
+    // общую трассу, только если экономия не меньше порога (доля сметы И сумма) и насос не теряет запас.
+    // Решение принимается в конце render; если оно изменилось — один пересчёт.
+    radBeamSmartDecide: function () {
+        if (this._beamTrial || this._beamSmartBusy) return;
+        if (this.radBeamModeRaw() !== 'smart') { this._beamSmartOn = false; this.updateBeamSummary(); return; }
+        let want = false;
+        if (!this.radBeamInfo().why) {
+            const c = this.radBeamCompare();
+            if (c && c.single && c.auto) {
+                const rub = c.single.sum - c.auto.sum;
+                want = rub >= this.RAD_BEAM_SMART_RUB && rub >= this.RAD_BEAM_SMART_PCT * c.single.sum && !(c.single.pumpOk && !c.auto.pumpOk);
+            }
+        }
+        if (want !== !!this._beamSmartOn) {
+            this._beamSmartOn = want;
+            this._beamSmartBusy = true;
+            try { this.render(); } finally { this._beamSmartBusy = false; }
+        }
+        this.updateBeamSummary();
+    },
+    // Итог под вкладками «Лучи к приборам»: что решило «Авто» и сколько это даёт. Только по уже посчитанному сравнению.
+    updateBeamSummary: function () {
+        const el = document.getElementById('lbl_rad_beam_sum');
+        if (!el) return;
+        const c = this._beamCmp;
+        if (this.radBeamModeRaw() !== 'smart' || this.radBeamInfo().why || !c || !c.single || !c.auto) { el.textContent = ''; return; }
+        const rub = Math.round(c.single.sum - c.auto.sum), pct = c.single.sum > 0 ? rub / c.single.sum * 100 : 0;
+        const f = v => String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        const pc = (this.RAD_BEAM_SMART_PCT * 100).toFixed(0), thr = f(this.RAD_BEAM_SMART_RUB);
+        el.innerHTML = this._beamSmartOn
+            ? `Авто включил общую трассу: экономия ≈ <b>${f(rub)} ₽</b> (${pct.toFixed(1).replace('.', ',')} % сметы).`
+            : (rub > 0 ? `Авто не включает общую трассу: экономия ≈ ${f(rub)} ₽ (${pct.toFixed(1).replace('.', ',')} %) ниже порога — ${pc} % сметы и ${thr} ₽.`
+                       : `Авто не включает общую трассу: она ничего не экономит.`);
     },
     // Текст подсказки: что даёт «Автоподбор трассы» против «Ветки на каждый прибор» — метры трубы, выходы, напор
     radBeamCompareText: function () {
@@ -74981,6 +75037,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             'Автоподбор трассы: труба ' + f(a.pipe) + ' м, выходов коллектора ' + a.outs + (a.head ? ', напор кольца ' + a.head.toFixed(1).replace('.', ',') + ' м' : '') + '.\n';
         if (dm > 0 || dout > 0) t += 'Экономия: ' + (dm > 0 ? f(dm) + ' м трубы (−' + pct + ' %)' : '') + (dm > 0 && dout > 0 ? ', ' : '') + (dout > 0 ? dout + ' ' + this.plural(dout, 'выход', 'выхода', 'выходов') + ' коллектора' : '') + '.';
         else t += 'Здесь объединять нечего: общая трасса ничего не экономит.';
+        // Рубли — по настоящей смете в каждом режиме (труба, выходы коллектора, шкаф, узел обвязки, фитинги)
+        const rub = Math.round(b.sum - a.sum);
+        if (b.sum > 0 && rub !== 0) t += '\nСмета: ' + (rub > 0 ? 'экономия ' : 'общая трасса дороже на ') + f(Math.abs(rub)) + ' ₽ (' + (Math.abs(rub) / b.sum * 100).toFixed(1).replace('.', ',') + ' % сметы).';
         return t;
     },
     // Подсказка на вкладке настройки: считается при наведении, чтобы не гонять расчёт на каждой перерисовке
@@ -75428,10 +75487,12 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // Общий луч на комнату: показываем, когда он может сработать (коллекторная схема, серая PEX-a, «По комнатам»)
         const radSharedRow = document.getElementById('rad_shared_row');
         if (radSharedRow) radSharedRow.style.display = (radSchemeOn && !isTeeScheme && this.state.pipeType === 'split') ? 'block' : 'none';
-        const _beamAuto = this.state.radBeamMode ? this.state.radBeamMode === 'auto' : !!this.state.radSharedBeams;
-        const _tbSingle = document.getElementById('rad_beam_single'), _tbAuto = document.getElementById('rad_beam_auto');
-        if (_tbSingle) _tbSingle.className = _beamAuto ? 'tab' : 'tab active';
-        if (_tbAuto) _tbAuto.className = _beamAuto ? 'tab active' : 'tab';
+        const _beamRaw = this.radBeamModeRaw();
+        const _tbSingle = document.getElementById('rad_beam_single'), _tbAuto = document.getElementById('rad_beam_auto'), _tbSmart = document.getElementById('rad_beam_smart');
+        if (_tbSingle) _tbSingle.className = _beamRaw === 'single' ? 'tab active' : 'tab';
+        if (_tbAuto) _tbAuto.className = _beamRaw === 'auto' ? 'tab active' : 'tab';
+        if (_tbSmart) _tbSmart.className = _beamRaw === 'smart' ? 'tab active' : 'tab';
+        this.updateBeamSummary();
 
         // Режим системы — рядом со схемой разводки: обе настройки про то, как
         // система устроена, и обе нужны только когда радиаторы есть.
@@ -94840,6 +94901,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // свежие цифры в _roomBalance — обновляем плашки, не пересобирая список.
         if (this.state.detailedRooms) this.updateRoomBalanceChips();
         this.updatePlanRowWarn();
+        this.radBeamSmartDecide();
     },
 
     // ─── Подсказка «из чего складывается экономия» ──────────────────────────

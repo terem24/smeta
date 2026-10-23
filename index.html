@@ -226,7 +226,7 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.6" defer></script>
-    <script src="app.js?v=13.81" defer></script>
+    <script src="app.js?v=13.82" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1518,8 +1518,10 @@
                             <div class="tabs" id="rad_beam_tabs">
                                 <div class="tab active" id="rad_beam_single" onmouseenter="app.fillBeamTip(this)" onclick="app.setRadBeamMode('single')">Ветка на каждый прибор</div>
                                 <div class="tab" id="rad_beam_auto" onmouseenter="app.fillBeamTip(this)" onclick="app.setRadBeamMode('auto')">Автоподбор трассы</div>
+                                <div class="tab" id="rad_beam_smart" onmouseenter="app.fillBeamTip(this)" onclick="app.setRadBeamMode('smart')" title="Общая трасса включается сама, когда экономия от 3 % сметы и от 10 000 ₽">Авто по экономии</div>
                             </div>
-                            <span style="display:block; opacity:.7; font-size:11px; margin-top:4px;"><b>Автоподбор трассы:</b> программа сама решает, где приборам комнаты хватает одной общей трассы (по суммарной нагрузке, скорости воды и потерям), а где нужна отдельная ветка. <b>Ветка на каждый прибор:</b> ничего не объединяется; если Ø16, насоса или выходов коллектора не хватает — покажем предупреждение. Только серая PEX-a.</span>
+                            <span style="display:block; opacity:.7; font-size:11px; margin-top:4px;"><b>Автоподбор трассы:</b> программа сама решает, где приборам комнаты хватает одной общей трассы (по суммарной нагрузке, скорости воды и потерям), а где нужна отдельная ветка. <b>Ветка на каждый прибор:</b> ничего не объединяется; если Ø16, насоса или выходов коллектора не хватает — покажем предупреждение. <b>Авто по экономии:</b> общая трасса включается сама, если смета выходит дешевле не меньше чем на 3 % и на 10 000 ₽ и насос не теряет запас. Только серая PEX-a.</span>
+                            <div id="lbl_rad_beam_sum" style="font-size:11px; line-height:1.4; margin-top:4px;"></div>
                         </div>
                     </div>
                 </div>
