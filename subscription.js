@@ -1299,9 +1299,12 @@ const Subscription = {
         const cards = this.planList(true).map(p => this.planCardHtml(p, canEdit)).join('');
         return `
             <p style="${this.ui.hint}">
-                Цена и ссылка на перевод у каждого тарифа. QR-код рисуется из ссылки сам: вставили новую ссылку — код обновился и в окне оплаты.
-                Ссылка на перевод физлицу берётся в приложении банка (Т-Банк: «Переводы» → «Ссылка на перевод» → задать сумму → «Скопировать»).
-                <b>Сумма зашита в ссылке</b>, поэтому меняя цену — меняйте и ссылку, иначе человек переведёт старую сумму.
+                <b>Тарифы бывают двух типов</b> (тип выбирается в самой карточке):<br>
+                · <b>Подписка</b> — оплата продлевает Профи на заданное число месяцев.<br>
+                · <b>Один объект</b> — оплата даёт один расчёт: человек сам открывает Профи для одной сохранённой сметы, и в ней можно править заданное число дней
+                (площадь не больше ±30 %, тот же город). Профи на весь аккаунт такая оплата не включает. Подтверждаете её так же, как подписку, во вкладке «Заявки и оплаты».<br>
+                QR-код рисуется из ссылки сам: вставили новую ссылку — код обновился и в окне оплаты. Если в ссылке на перевод сумму вводит сам человек,
+                напишите ему в подписи под QR, сколько переводить; если сумма зашита в ссылке — меняя цену, меняйте и ссылку.
             </p>
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px; margin-bottom:14px;">${cards}</div>
             <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;">
@@ -1315,8 +1318,15 @@ const Subscription = {
             </div>`;
     },
 
+    // Тип тарифа в карточке: подписка (months) или «Один объект» (days > 0)
+    setPlanKind: function (id, kind) {
+        if (kind === 'object') this.setPlanField(id, 'days', 30);
+        else this.setPlanField(id, 'days', 0);
+    },
+
     planCardHtml: function (p, canEdit) {
         const dis = canEdit ? '' : 'disabled';
+        const isObj = Math.round(this.num(p.days)) > 0;
         const base = this.BASE_PLANS[p.id];
         const changed = base && (this.num(p.rub) !== base.rub || (p.url || '') !== base.url || p.label !== base.label || p.title !== base.title || p.enabled === false);
         const inp = (field, val, type, extra) => `<input ${dis} type="${type || 'text'}" value="${this.esc(val)}" ${extra || ''} onchange="Subscription.setPlanField('${p.id}','${field}',this.value)" style="${this.ui.input} width:100%;">`;
@@ -1330,9 +1340,15 @@ const Subscription = {
                 <div style="flex:1; min-width:0;">
                     ${lbl('Заголовок карточки')}${inp('title', p.title || '')}
                     ${lbl('Название тарифа (в окне оплаты и заявке)')}${inp('label', p.label || '')}
+                    ${lbl('Тип тарифа')}
+                    <select ${dis} onchange="Subscription.setPlanKind('${p.id}', this.value)" style="${this.ui.input} width:100%;">
+                        <option value="sub" ${isObj ? '' : 'selected'}>Подписка: продлевает Профи на месяцы</option>
+                        <option value="object" ${isObj ? 'selected' : ''}>Один объект: Профи для одной сметы</option>
+                    </select>
                     <div style="display:flex; gap:10px;">
-                        <div style="flex:1;">${lbl('Месяцев')}${inp('months', p.months || 1, 'number', 'min="1" step="1"')}</div>
-                        <div style="flex:1;">${lbl('Дней на правки')}${inp('days', Math.round(this.num(p.days)) || 0, 'number', 'min="0" step="1" title="Больше 0 — тариф «Один расчёт»: оплата даёт кредит на один объект, столько дней можно править смету. 0 — обычная подписка на месяцы"')}</div>
+                        <div style="flex:1;">${isObj
+                            ? lbl('Дней на правки') + inp('days', Math.round(this.num(p.days)) || 30, 'number', 'min="1" max="366" step="1"')
+                            : lbl('Месяцев') + inp('months', p.months || 1, 'number', 'min="1" step="1"')}</div>
                         <div style="flex:2;">${lbl('Цена, ₽')}${inp('rub', Math.round(this.num(p.rub)), 'number', 'min="0" step="10"')}</div>
                     </div>
                     ${lbl('Ссылка на перевод')}${inp('url', p.url || '', 'url', 'placeholder="https://www.tbank.ru/cf/…"')}
