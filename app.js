@@ -30266,7 +30266,10 @@ const app = {
         // Чем кончились КП: согласились / отказ / без ответа, по дистрибьюторам и
         // тарифам (kp_outcome.js, события won / lost). Новый блок: у кого раскладка
         // уже сохранена, его добавляют из полки скрытых блоков.
-        kp_outcome:    { t: 'КП → сделка',                        icon: '🏁', sec: 'us' },
+        // auto — новый блок сам встаёт в уже сохранённую раскладку один раз (потом
+        // убрать его можно, и он не вернётся: id запоминается в layout.known)
+        results:       { t: 'Итоги',                              icon: '🏁', sec: 'us', auto: { sec: 'us', first: true, span: 4 } },
+        kp_outcome:    { t: 'КП → сделка',                        icon: '🏁', sec: 'us', auto: { sec: 'us', after: 'inv_waiting', span: 4 } },
         // Срок действия счёта по ссылке: отвечают ли клиенты быстрее, когда
         // цены вот-вот скроются. Считается по самим ссылкам (shared_invoices),
         // а не по событиям: там лежат и срок, и момент ответа, и просьбы обновить.
@@ -30318,6 +30321,7 @@ const app = {
                     { id: 'sources', span: 4 }
                 ] },
                 { id: 'us', title: 'Мы', items: [
+                    { id: 'results', span: 4 },
                     { id: 'own_ests', span: 1 }, { id: 'own_active', span: 1 },
                     { id: 'own_users', span: 1 }, { id: 'own_invoices', span: 1 },
                     { id: 'pro_active', span: 2 }, { id: 'demo_soon', span: 2 },
@@ -30372,7 +30376,25 @@ const app = {
             }))
         };
         clean.style.cols = Math.min(4, Math.max(2, Number(clean.style.cols) || 4));
+        // Новые блоки (auto): у кого раскладка сохранена раньше, их нет — ставим один раз
+        // и запоминаем в known, чтобы убранный вручную блок не возвращался
+        const known = Array.isArray(l.known) ? l.known.filter(x => typeof x === 'string') : [];
+        let added = false;
+        Object.keys(this.DASH_WIDGETS).forEach(id => {
+            const a = this.DASH_WIDGETS[id].auto;
+            if (!a || known.indexOf(id) >= 0) return;
+            known.push(id);
+            if (seen[id]) return;                      // уже стоит на дашборде
+            const sec = clean.sections.find(x => x.id === a.sec);
+            if (!sec) return;
+            let at = 0;
+            if (!a.first) { const i = sec.items.findIndex(w => w.id === a.after); at = i >= 0 ? i + 1 : sec.items.length; }
+            sec.items.splice(at, 0, { id: id, span: Math.min(4, Math.max(1, a.span || 2)) });
+            added = true;
+        });
+        clean.known = known;
         this._dashLayout = clean;
+        if (added) this.saveDashLayout();
         return clean;
     },
 
@@ -31283,6 +31305,7 @@ const app = {
         const evReady = this.ensureDashboardEvents();
         const inv = (evReady && ownReady) ? this.dashboardInvoiceFunnel(region) : null;
         const kpo = (evReady && ownReady) ? this.dashboardKpOutcome(region) : null;
+        const res = (evReady && ownReady) ? this.dashboardResults(region) : null;
         // Таймер счёта — по строкам ссылок клиентам; регион берётся из своих
         // монтажников, поэтому тоже ждёт ownReady.
         const timerReady = this.ensureDashboardTimer();
@@ -31304,7 +31327,7 @@ const app = {
             // нет, блоки не исчезают, а честно показывают, что идёт счёт: иначе
             // полдашборда мигало бы пустотой при каждом открытии.
             ['own_ests', 'own_active', 'own_users', 'own_projects', 'own_rec', 'own_invoices',
-             'est_vs_demand', 'activity', 'quiet_list', 'inv_funnel', 'inv_speed', 'inv_waiting', 'kp_outcome', 'inv_timer',
+             'est_vs_demand', 'activity', 'quiet_list', 'inv_funnel', 'inv_speed', 'inv_waiting', 'results', 'kp_outcome', 'inv_timer',
              'funnel', 'demo_soon', 'pro_active', 'chek', 'group_usage', 'dist_money'].forEach(id => {
                 B[id] = card(head(this.DASH_WIDGETS[id].t, 'сметы, монтажники, проекты')
                     + `<div style="padding:16px 0; color:var(--text-sec); font-size:12.5px;">Считаем свои сметы и монтажников…</div>`);
@@ -31659,6 +31682,93 @@ const app = {
                             Ещё ${num(inv.waitingOld)} — старше месяца; в список не берём: это уже не «дожать», а несостоявшаяся сделка.
                        </div>` : '')
                     + (inv.capped ? `<div style="font-size:11.5px; color:#F97316; margin-top:8px;">История событий обрезана по потолку строк — числа неполные.</div>` : ''));
+            }
+
+            // ── Итоги ────────────────────────────────────────────────────────
+            // Участники, регистрации, расчёты, счета и что ушло в реализацию. У каждой
+            // строки свой период (по умолчанию «Все»), справа — число и доля успешных;
+            // ниже — каждое КП с его конечным статусом. Расчёт — KpOutcome.prep / metric.
+            {
+                const hd = head('Итоги', 'участники, регистрации, расчёты, счета и что ушло в реализацию · у каждой строки свой период');
+                const note = (t, color) => `<div style="padding:16px 0; color:${color || 'var(--text-sec)'}; font-size:12.5px; line-height:1.55;">${t}</div>`;
+                if (!res) {
+                    B.results = card(hd + note('Читаем события смет…'));
+                } else if (res.error) {
+                    B.results = card(hd + note('События не прочитались: ' + esc(res.error), '#EF4444'));
+                } else {
+                    const per = this.dashResPeriods();
+                    const daysOf = (k) => (KpOutcome.PERIODS.find(p => p.key === per[k]) || {}).days || 0;
+                    const pctS = (r) => r === null ? '—' : Math.round(r * 100) + '%';
+                    const chips = (row) => KpOutcome.PERIODS.map(p => `<button class="admin-btn" onclick="app.dashResPeriod('${row}', '${p.key}')"
+                            style="height:22px; padding:0 8px; font-size:11px; ${per[row] === p.key ? 'background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);' : ''}">${p.label}</button>`).join('');
+                    const line = (row, title, m, sub) => `<div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; padding:11px 0; border-bottom:1px solid var(--border);">
+                        <div style="flex:1 1 220px; min-width:0;">
+                            <div style="font-size:13px; font-weight:700; color:var(--text-main);">${title}</div>
+                            <div style="font-size:11.5px; color:var(--text-sec); margin-top:2px; line-height:1.45;">${sub}</div>
+                        </div>
+                        <div style="text-align:right; min-width:120px;">
+                            <span style="font-size:24px; font-weight:800; color:var(--text-main); line-height:1;">${num(m.n)}</span>
+                            <span style="font-size:13px; font-weight:800; color:#10B981; margin-left:6px;" title="доля успешных">${m.pct === null ? '' : pctS(m.pct)}</span>
+                        </div>
+                        <div style="display:flex; gap:4px; flex-wrap:wrap; flex:0 1 270px; justify-content:flex-end; min-height:22px;">
+                            ${row ? chips(row) : `<span style="font-size:11px; color:var(--text-sec);">на сегодня</span>`}
+                        </div>
+                    </div>`;
+                    const mU = KpOutcome.metric(res, 'users', 0);
+                    const mR = KpOutcome.metric(res, 'regs', daysOf('regs'));
+                    const mC = KpOutcome.metric(res, 'calcs', daysOf('calcs'));
+                    const mI = KpOutcome.metric(res, 'invoices', daysOf('invoices'));
+                    const mD = KpOutcome.metric(res, 'deals', daysOf('deals'));
+                    const okOf = (m) => `${num(m.ok)} из ${num(m.total)}`;
+                    const lines = line('', 'Участников', mU, `посчитали хотя бы одну смету: ${okOf(mU)}`)
+                        + line('regs', 'Новых регистраций', mR, `из них посчитали хотя бы одну смету: ${okOf(mR)}`)
+                        + line('calcs', 'Расчётов', mC, `сохранены или отправлены; из них ушли клиенту (КП): ${okOf(mC)}`)
+                        + line('invoices', 'Счетов', mI, `запрошено или выставлено; из них выставлено: ${okOf(mI)}`)
+                        + line('deals', 'Ушло в реализацию', mD, `из ${num(mD.total)} КП, отправленных клиентам: отклонено ${num(mD.b.lost)}${mD.b.auto ? ` (авто — ${num(mD.b.auto)})` : ''}, без ответа ${num(mD.b.silent)}, ждём ответа ${num(mD.b.wait)}`);
+
+                    // Каждое КП и его конечный статус
+                    const STATUS = {
+                        won: { c: '#10B981', t: 'Ушло в реализацию' }, lost: { c: '#EF4444', t: 'Отклонено' },
+                        auto: { c: '#B45309', t: 'Отклонено (авто)' }, silent: { c: '#F97316', t: 'Без ответа' }, wait: { c: '#64748B', t: 'Ждём ответа' }
+                    };
+                    const now = Date.now();
+                    const all = mD.list.slice().sort((a, b) => b.lastSentAt - a.lastSentAt).map(k => ({ k: k, s: KpOutcome.statusInfo(k, now) }));
+                    const count = {}; all.forEach(x => { count[x.s.key] = (count[x.s.key] || 0) + 1; });
+                    const fl = this._resFilter || 'all';
+                    const fchip = (key, label, n) => `<button class="admin-btn" onclick="app.dashResFilter('${key}')"
+                            style="height:24px; padding:0 9px; font-size:11.5px; ${fl === key ? 'background:var(--primary); color:var(--on-primary,#fff); border-color:var(--primary);' : ''}">${label} <b>${num(n)}</b></button>`;
+                    const shown = all.filter(x => fl === 'all' || x.s.key === fl);
+                    const cap = this._resShowAll ? 500 : 30;
+                    const trs = shown.slice(0, cap).map(x => {
+                        const st = STATUS[x.s.key];
+                        return `<tr style="border-top:1px solid var(--border);">
+                            <td style="padding:6px 8px 6px 0; max-width:230px;"><div style="color:var(--text-main); font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(x.k.project || '')}">${esc(x.k.project || 'Без названия')}</div>
+                                <div style="color:var(--text-sec); font-size:11px; font-family:monospace;">КП № ${esc(x.k.calcId)}${x.k.kpVersion ? '-' + x.k.kpVersion : ''}</div></td>
+                            <td style="padding:6px 8px; color:var(--text-sec); white-space:nowrap; max-width:150px; overflow:hidden; text-overflow:ellipsis;">${esc(x.k.userName || x.k.userEmail || '—')}</td>
+                            <td style="padding:6px 8px; color:var(--text-sec); white-space:nowrap;">${KpOutcome.fmtDate(x.k.lastSentAt)}</td>
+                            <td style="padding:6px 0 6px 8px;"><span style="display:inline-block; background:${st.c}; color:#fff; font-size:10.5px; font-weight:800; border-radius:999px; padding:2px 9px; white-space:nowrap;">${st.t}</span>
+                                ${x.s.detail ? `<div style="color:var(--text-sec); font-size:11px; margin-top:2px;" ${x.s.comment ? `title="${esc(x.s.comment)}"` : ''}>${esc(x.s.detail)}</div>` : ''}</td>
+                        </tr>`;
+                    }).join('');
+                    const listHtml = `<div style="margin-top:16px;">
+                        <div style="font-size:12px; font-weight:700; color:var(--text-sec); margin-bottom:8px;">Каждое КП и его конечный статус · за период строки «Ушло в реализацию»</div>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+                            ${fchip('all', 'Все', all.length)}${fchip('won', 'Ушло в реализацию', count.won || 0)}${fchip('lost', 'Отклонено', count.lost || 0)}${fchip('auto', 'Отклонено (авто)', count.auto || 0)}${fchip('silent', 'Без ответа', count.silent || 0)}${fchip('wait', 'Ждём ответа', count.wait || 0)}
+                        </div>
+                        ${shown.length ? `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px;">
+                            <thead><tr style="color:var(--text-sec); text-align:left;"><th style="font-weight:600; padding:4px 0;">Объект</th><th style="font-weight:600; padding:4px 8px;">Монтажник</th><th style="font-weight:600; padding:4px 8px;">Отправлено</th><th style="font-weight:600; padding:4px 0 4px 8px;">Конечный статус</th></tr></thead>
+                            <tbody>${trs}</tbody></table></div>
+                            ${shown.length > cap ? `<div style="padding-top:8px;"><button class="admin-btn" onclick="app.dashResShowAll()">Показать все ${num(shown.length)}</button></div>` : ''}`
+                            : `<div style="font-size:12.5px; color:var(--text-sec); padding:8px 0;">В этом периоде КП с таким статусом нет.</div>`}
+                    </div>`;
+                    B.results = card(hd + `<div style="margin-top:6px;">${lines}</div>` + listHtml
+                        + `<div style="font-size:11.5px; color:var(--text-sec); margin-top:12px; line-height:1.55;">
+                            Зелёная цифра — доля успешных. «Ушло в реализацию» — КП, по которому клиент согласился (в том числе запрошен, выставлен или оплачен счёт); доля — от всех КП периода.
+                            КП без ответа больше ${KpOutcome.cfg().outcomeAutoMonths || 12} мес. становится «Отклонено (авто)». До 23.10.2026 итоги не отмечали, поэтому у старых КП «без ответа» значит «итога нет».
+                            События читаются за последние ${this.DASH_EV_DAYS} дней.
+                           </div>`
+                        + (res.capped ? `<div style="font-size:11.5px; color:#F97316; margin-top:8px;">История событий обрезана по потолку строк — числа неполные.</div>` : ''));
+                }
             }
 
             // ── КП → сделка ──────────────────────────────────────────────────
@@ -33037,6 +33147,7 @@ const app = {
             this._dashOwn = res;
             this._dashStats = null;
             this._dashKpo = null;
+            this._dashRes = null;
             this._loadingDashOwn = false;
             if (this.dashTabActive()) this.renderAdminMain();
         })();
@@ -33221,6 +33332,7 @@ const app = {
             this._dashEv = out;
             this._dashFunnel = null;
             this._dashKpo = null;
+            this._dashRes = null;
             this._loadingDashEv = false;
             if (this.dashTabActive()) this.renderAdminMain();
         })();
@@ -33310,6 +33422,45 @@ const app = {
         this._dashFunnel[key] = out;
         return out;
     },
+
+    /**
+     * Данные виджета «Итоги»: участники, регистрации, расчёты, счета, КП. Считает
+     * KpOutcome.prep один раз на регион, период режет KpOutcome.metric при отрисовке.
+     */
+    dashboardResults: function (region) {
+        const ev = this._dashEv, own = this._dashOwn;
+        if (!ev || !own || !window.KpOutcome) return null;
+        const key = region || '*';
+        this._dashRes = this._dashRes || {};
+        if (this._dashRes[key]) return this._dashRes[key];
+        const byEmail = {};
+        (own.users || []).forEach(u => { if (u.email) byEmail[String(u.email).toLowerCase()] = { region: u.region || '' }; });
+        const P = KpOutcome.prep(ev.rows, own.users, own.estimates, { userOf: e => byEmail[e] || null, region: region || '' });
+        P.error = ev.error || null;
+        P.capped = !!ev.capped;
+        this._dashRes[key] = P;
+        return P;
+    },
+    // Период каждой строки «Итогов»: по умолчанию «Все», выбор помнится в браузере
+    DASH_RES_KEY: 'dash_res_periods',
+    dashResPeriods: function () {
+        if (this._resPeriods) return this._resPeriods;
+        let saved = null;
+        try { saved = JSON.parse(localStorage.getItem(this.DASH_RES_KEY) || 'null'); } catch (e) { }
+        const ok = window.KpOutcome ? KpOutcome.PERIODS.map(p => p.key) : ['all'];
+        const out = {};
+        ['regs', 'calcs', 'invoices', 'deals'].forEach(k => { out[k] = (saved && ok.indexOf(saved[k]) >= 0) ? saved[k] : 'all'; });
+        return (this._resPeriods = out);
+    },
+    dashResPeriod: function (row, key) {
+        const p = this.dashResPeriods();
+        if (!(row in p)) return;
+        p[row] = key;
+        try { localStorage.setItem(this.DASH_RES_KEY, JSON.stringify(p)); } catch (e) { }
+        this.dashRerender();
+    },
+    dashResFilter: function (key) { this._resFilter = key; this._resShowAll = false; this.dashRerender(); },
+    dashResShowAll: function () { this._resShowAll = true; this.dashRerender(); },
 
     /**
      * Чем кончились КП (согласились / отказ / без ответа) по дистрибьюторам и

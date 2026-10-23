@@ -24,7 +24,8 @@ const KpOutcome = {
     // Настройки задаёт админ («Оплата подписки» → «Лимит КП» → «Итог КП»),
     // без них (страница ещё не прочитала настройки) — эти значения
     FALLBACK: { outcomeOn: true, outcomeAudBase: true, outcomeAudPro: true, outcomeAudMgr: true, outcomeGate: true,
-        outcomeDays: 30, outcomeDaysMin: 14, outcomeDaysMax: 60, outcomeExt: 2, outcomeGateN: 2, outcomeGrace: 3, excludeTerem: true },
+        outcomeDays: 30, outcomeDaysMin: 14, outcomeDaysMax: 60, outcomeExt: 2, outcomeGateN: 2, outcomeGrace: 3,
+        outcomeAutoMonths: 12, excludeTerem: true },
     cfg: function () {
         try { if (typeof Subscription !== 'undefined' && Subscription.limitSettings) return Subscription.limitSettings(); } catch (e) { }
         return this.FALLBACK;
@@ -56,7 +57,9 @@ const KpOutcome = {
         { key: 'other_brand', label: 'Выбрали другой бренд', ask: 'Какой бренд?' },
         { key: 'postponed', label: 'Стройку отложили' },
         { key: 'calc_error', label: 'В смете ошибка, посчитано не то', need: true, ask: 'Что не так в смете?' },
-        { key: 'other', label: 'Другое', need: true, ask: 'Почему отказались?' }
+        { key: 'other', label: 'Другое', need: true, ask: 'Почему отказались?' },
+        // Служебная: ставит система, когда ответа не было слишком долго. В окне итога её нет
+        { key: 'timeout', label: 'Нет ответа (авто)', sys: true }
     ],
     MIN_COMMENT: 10,
 
@@ -120,7 +123,18 @@ const KpOutcome = {
             const won = evs.slice().reverse().find(e => this.WON_EVENTS.includes(e.event));
             // Отказ закрывает КП, пока клиенту не ушла новая версия: вернулся — снова в работе
             const lost = evs.slice().reverse().find(e => e.event === 'lost' && new Date(e.created_at).getTime() >= lastSentAt);
-            const outcome = won ? 'won' : (lost ? 'lost' : null);
+            // Без ответа слишком долго (по умолчанию 12 месяцев с последней отправки или
+            // продления) — КП само становится «отклонено». В базе то же делает ежедневная
+            // close_stale_kp_outcomes (пишет событие lost, reason timeout); здесь — чтобы
+            // статус был верным и до её запуска. 0 месяцев — выключено.
+            const autoM = this.cfg().outcomeAutoMonths;
+            let autoLost = false;
+            if (!won && !lost && autoM > 0) {
+                const dd = new Date(Math.max(lastSentAt, lastExtAt));
+                dd.setMonth(dd.getMonth() + autoM);
+                autoLost = now >= dd.getTime();
+            }
+            const outcome = won ? 'won' : ((lost || autoLost) ? 'lost' : null);
             const due = Math.max(lastSentAt, lastExtAt, start - D * this.DAY) + D * this.DAY;
             const overdue = !outcome && now >= due;
             let kpV = 0;
@@ -136,7 +150,8 @@ const KpOutcome = {
                 kpVersion: kpV,
                 ext: ext.length,
                 outcome: outcome,
-                outcomeEvent: outcome === 'won' ? won : (outcome === 'lost' ? lost : null),
+                outcomeEvent: outcome === 'won' ? won : (outcome === 'lost' ? (lost || { event: 'lost', meta: { reason: 'timeout', auto: true, label: 'Нет ответа ' + autoM + ' мес. (авто)' } }) : null),
+                auto: autoLost || !!(lost && lost.meta && lost.meta.auto),
                 due: due,
                 days: D,
                 overdue: overdue,
@@ -451,7 +466,7 @@ const KpOutcome = {
                 } else if (st.mode === 'lost') {
                     const r = this.REASONS.find(x => x.key === st.pick);
                     body = `<div class="kpo-q">Почему отказались?</div>
-                        <div class="kpo-chips">${this.REASONS.map(x => `<button type="button" class="kpo-chip${st.pick === x.key ? ' on' : ''}" data-act="pick" data-id="${k.calcId}" data-v="${x.key}">${this.esc(x.label)}</button>`).join('')}</div>
+                        <div class="kpo-chips">${this.REASONS.filter(x => !x.sys).map(x => `<button type="button" class="kpo-chip${st.pick === x.key ? ' on' : ''}" data-act="pick" data-id="${k.calcId}" data-v="${x.key}">${this.esc(x.label)}</button>`).join('')}</div>
                         <textarea class="kpo-ta" data-id="${k.calcId}" rows="2" placeholder="${this.esc((r && r.ask) || 'Комментарий, если есть')}${r && r.need ? ' (обязательно)' : ''}">${this.esc(st.comment || '')}</textarea>
                         <div class="kpo-row"><button type="button" class="kpo-btn" data-act="back" data-id="${k.calcId}">Назад</button><button type="button" class="kpo-btn kpo-ok" data-act="save" data-id="${k.calcId}">Сохранить</button></div>`;
                 } else {
@@ -629,6 +644,87 @@ const KpOutcome = {
             marked: decided ? (b.won + b.lost) / decided : null,
             decided: decided
         };
+    },
+
+    // ── Виджет «Итоги» на дашборде владельца ──────────────────────────────
+    PERIODS: [
+        { key: '7', label: '7 дн.', days: 7 }, { key: '30', label: '30 дн.', days: 30 },
+        { key: 'q', label: 'Квартал', days: 91 }, { key: 'y', label: 'Год', days: 365 }, { key: 'all', label: 'Все', days: 0 }
+    ],
+
+    /**
+     * Данные для виджета: считаются один раз, дальше metric() режет их по периоду.
+     * rows — события invoice_events; users — пользователи (id, email, created_at);
+     * estimates — сметы (user_id). opts.userOf(email) → { region } для фильтра по региону,
+     * opts.region — выбранный регион (иначе все).
+     *
+     * «Расчёт» — смета, которую сохранили или отправили клиенту: черновик, где нажали
+     * только «посчитать», расчётом не считаем. «Счёт» — запрошен или выставлен.
+     */
+    prep: function (rows, users, estimates, opts) {
+        opts = opts || {};
+        const now = opts.now || Date.now();
+        const region = opts.region || '';
+        const regionOf = (email) => { const u = opts.userOf && opts.userOf(String(email || '').toLowerCase()); return u ? (u.region || '') : null; };
+        const hasEst = {};
+        (estimates || []).forEach(e => { if (e && e.user_id != null) hasEst[String(e.user_id)] = true; });
+        const us = (users || []).filter(u => !region || (u.region || '') === region)
+            .map(u => ({ t: Date.parse(u.created_at) || 0, ok: !!hasEst[String(u.id)] }));
+        const by = {};
+        (rows || []).forEach(r => {
+            if (!r || !r.calc_id) return;
+            const c = by[r.calc_id] || (by[r.calc_id] = { id: String(r.calc_id), email: '', real: 0, sent: 0, inv: 0, issued: 0 });
+            const t = Date.parse(r.created_at);
+            if (!t) return;
+            if (r.user_email && !c.email) c.email = String(r.user_email).toLowerCase();
+            const min = (f) => { c[f] = c[f] ? Math.min(c[f], t) : t; };
+            if (['saved', 'sent', 'printed'].indexOf(r.event) >= 0) min('real');
+            if (r.event === 'sent' || r.event === 'printed') min('sent');
+            if (r.event === 'invoice_requested' || r.event === 'invoice_issued') min('inv');
+            if (r.event === 'invoice_issued') min('issued');
+        });
+        const keepCard = (email) => !region || regionOf(email) === region;
+        const cards = Object.keys(by).map(k => by[k]).filter(c => keepCard(c.email));
+        const kps = this.build(rows, now).filter(k => keepCard(k.userEmail));
+        return { now: now, users: us, cards: cards, kps: kps };
+    },
+
+    // Показатель по периоду: n — число, total — с чем сравниваем, ok — сколько успешных
+    metric: function (P, kind, days) {
+        const since = days ? P.now - days * this.DAY : 0;
+        const pct = (a, b) => b ? a / b : null;
+        if (kind === 'users') { const ok = P.users.filter(u => u.ok).length; return { n: P.users.length, total: P.users.length, ok: ok, pct: pct(ok, P.users.length) }; }
+        if (kind === 'regs') { const s = P.users.filter(u => u.t >= since), ok = s.filter(u => u.ok).length; return { n: s.length, total: s.length, ok: ok, pct: pct(ok, s.length) }; }
+        if (kind === 'calcs') { const s = P.cards.filter(c => c.real && c.real >= since), ok = s.filter(c => c.sent).length; return { n: s.length, total: s.length, ok: ok, pct: pct(ok, s.length) }; }
+        if (kind === 'invoices') { const s = P.cards.filter(c => c.inv && c.inv >= since), ok = s.filter(c => c.issued).length; return { n: s.length, total: s.length, ok: ok, pct: pct(ok, s.length) }; }
+        // deals: КП, отправленные в период, и чем они кончились
+        const s = P.kps.filter(k => k.firstSentAt >= since);
+        const b = { won: 0, lost: 0, auto: 0, silent: 0, wait: 0 };
+        s.forEach(k => {
+            if (k.outcome === 'won') b.won++;
+            else if (k.outcome === 'lost') { b.lost++; if (k.auto) b.auto++; }
+            else if (k.overdue) b.silent++;
+            else b.wait++;
+        });
+        return { n: b.won, total: s.length, ok: b.won, pct: pct(b.won, s.length), b: b, list: s };
+    },
+
+    // Конечный статус КП: ключ, подпись и пояснение (причина, где покупают, срок)
+    statusInfo: function (k, now) {
+        now = now || Date.now();
+        const m = (k.outcomeEvent && k.outcomeEvent.meta) || {};
+        if (k.outcome === 'won') {
+            const ev = k.outcomeEvent && k.outcomeEvent.event;
+            const how = ev === 'won' ? (m.label || this.whereLabel(m.where) || '')
+                : ({ invoice_requested: 'счёт запрошен', invoice_issued: 'счёт выставлен', paid: 'оплачено' }[ev] || '');
+            return { key: 'won', label: 'Ушло в реализацию', detail: how, comment: m.comment || '' };
+        }
+        if (k.outcome === 'lost') {
+            if (k.auto) return { key: 'auto', label: 'Отклонено (авто)', detail: m.label || 'нет ответа', comment: '' };
+            return { key: 'lost', label: 'Отклонено', detail: m.label || this.reasonLabel(m.reason) || '', comment: m.comment || '' };
+        }
+        if (k.overdue) return { key: 'silent', label: 'Без ответа', detail: k.overdueDays ? 'срок вышел ' + k.overdueDays + ' дн. назад' : 'срок вышел', comment: '' };
+        return { key: 'wait', label: 'Ждём ответа', detail: 'срок до ' + this.fmtDate(k.due), comment: '' };
     },
 
     // ── Сводка менеджера ──────────────────────────────────────────────────
