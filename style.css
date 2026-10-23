@@ -20859,3 +20859,41 @@ body.empty-fit-panel #header_totals { display: none !important; }
     #admin_content table:not(.ad-dense) td.ad-c-tariff .ad-dev { margin-left: 8px; }
     #admin_content table:not(.ad-dense) td.ad-c-acc { width: 33.33% !important; padding-left: 4px !important; padding-right: 4px !important; }
 }
+
+/* ═══════ «МОИ ПОКАЗАТЕЛИ»: блоки, которые можно двигать, убирать и переключать по виду (23.10.2026) ═══════ */
+.sw { position: relative; border-radius: 12px; }
+.sw.sw-edit { outline: 1.5px dashed var(--border); outline-offset: 2px; margin: 0 0 16px; padding: 0 10px 10px; }
+.sw.sw-edit.sw-drop { outline-color: var(--primary); background: rgba(59, 130, 246, .07); }
+.sw-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 8px 0; margin-bottom: 4px; border-bottom: 1px solid var(--border); cursor: grab; user-select: none; -webkit-user-select: none; }
+.sw-bar:active { cursor: grabbing; }
+.sw-grip { color: var(--text-sec); font-size: 17px; line-height: 1; padding: 0 2px; }
+.sw-title { margin-right: auto; font-size: 12.5px; font-weight: 700; color: var(--text-main); }
+.sw-chip, .sw-btn { font: inherit; font-size: 11.5px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); cursor: pointer; }
+.sw-btn:disabled { opacity: .35; cursor: default; }
+.sw-chip.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); }
+.sw-btn.danger { color: #EF4444; }
+.sw-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; padding: 10px 12px; border: 1px dashed var(--primary); border-radius: 12px; background: rgba(59, 130, 246, .06); font-size: 12.5px; color: var(--text-main); }
+.sw-toolbar .sw-note { flex: 1 1 240px; color: var(--text-sec); }
+.sw-compact { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 8px 0; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.sw-compact b { font-size: 13px; color: var(--text-main); }
+.sw-compact span { font-size: 12.5px; color: var(--text-sec); }
+.sw-compact span b { color: var(--text-main); font-size: 12.5px; }
+.sw-donut { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; padding: 8px 0 4px; color: var(--text-main); }
+.sw-legend > div { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-main); margin: 3px 0; }
+.sw-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+.sw-legend .sw-legend-sub { font-size: 11.5px; color: var(--text-sec); margin-top: 6px; }
+.sw-legend-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
+.sw-legend-row span { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-sec); }
+.sw-legend-row i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.sw-hbar { display: grid; grid-template-columns: minmax(120px, 34%) 1fr auto; align-items: center; gap: 10px; padding: 5px 0; font-size: 12.5px; color: var(--text-main); }
+.sw-hbar > div { height: 10px; border-radius: 999px; background: rgba(127, 127, 127, .18); overflow: hidden; }
+.sw-hbar > div > i { display: block; height: 100%; border-radius: 999px; background: #EF4444; }
+.sw-bars { display: flex; align-items: flex-end; gap: 10px; height: 150px; padding: 8px 4px 0; }
+.sw-bar-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 3px; }
+.sw-bar-stack { flex: 1 1 auto; width: 100%; max-width: 54px; display: flex; align-items: flex-end; gap: 2px; min-height: 0; }
+.sw-bar-stack i { flex: 1 1 0; border-radius: 4px 4px 0 0; min-height: 2px; }
+.sw-bar-col small { font-size: 10.5px; color: var(--text-sec); white-space: nowrap; }
+.sw-bar-col b { font-size: 11px; color: var(--text-main); min-height: 13px; }
+.sw-market-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 2px 0 8px; }
+.sw-market-bar .sw-sep { width: 1px; height: 16px; background: var(--border); }
+.sw-edit .sw-bar + .lk-section-head { display: none; }
