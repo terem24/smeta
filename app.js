@@ -49226,7 +49226,8 @@ const app = {
     showEcoInfo: function (wrap) {
         const src = wrap && wrap.querySelector('.tooltip-content');
         if (!src) return;
-        if (wrap.dataset.kind === 'elcost') return this.showElCostModal(src.innerHTML);
+        // Без площади расчёта нет — тогда обычное окно с текстом подсказки
+        if (wrap.dataset.kind === 'elcost' && this.calcElHeatingCost()) return this.showElCostModal(src.innerHTML);
         this._ecoShell(wrap.dataset.title, wrap.dataset.sub, src.innerHTML);
     },
     // Есть ли у региона ступени тарифа (независимо от галочки в панели).

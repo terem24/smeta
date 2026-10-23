@@ -226,7 +226,7 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.6" defer></script>
-    <script src="app.js?v=13.69" defer></script>
+    <script src="app.js?v=13.70" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -2266,7 +2266,7 @@
             <div class="control-item toggle-item" id="blk_el_cost" style="display:none;">
                 <div class="label-row" style="position:relative;">
                     <span class="lbl" style="display:flex; align-items:center; gap:4px;">Стоимость
-                        отопления<span class="ui-emo"> ⚡</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление электричеством: расход и счёт по месяцам, итог за сезон.<div class="tip-p"><b>Один тариф.</b> Круглые сутки.</div><div class="tip-p"><b>День-ночь.</b> Двухтарифный счётчик: ночь 23:00–07:00 по своей цене.</div></div></span></span>
+                        отопления<span class="ui-emo"> ⚡</span><span class="tooltip-wrapper tip-panel-wrap eco-tip" data-title="Стоимость отопления электричеством" data-sub="как считается" data-kind="elcost" onclick="event.stopPropagation(); app.showEcoInfo(this);"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление электричеством: расход и счёт по месяцам, итог за сезон.<div class="tip-p"><b>Один тариф.</b> Круглые сутки.</div><div class="tip-p"><b>День-ночь.</b> Двухтарифный счётчик: ночь 23:00–07:00 по своей цене.</div></div></span></span>
                     <label class="switch"><input type="checkbox" id="chk_el_cost"
                             onchange="app.toggleElCost(this.checked)"><span class="slider"></span></label>
                 </div>
@@ -2358,7 +2358,7 @@
             <div class="control-item toggle-item" id="blk_gas_cost" style="display:none;">
                 <div class="label-row" style="position:relative;">
                     <span class="lbl" style="display:flex; align-items:center; gap:4px;">Стоимость
-                        отопления<span class="ui-emo"> 🔥</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление газом: расход и счёт по месяцам, итог за сезон.<div class="tip-p"><b>Сжиженный.</b> Пропан-бутан из газгольдера или баллонов, цену задаёт поставщик.</div><div class="tip-p"><b>Магистральный.</b> Газ из трубы; тариф региона подставляется по выбранному городу.</div></div></span></span>
+                        отопления<span class="ui-emo"> 🔥</span><span class="tooltip-wrapper tip-panel-wrap eco-tip" data-title="Стоимость отопления газом" data-sub="как считается" onclick="event.stopPropagation(); app.showEcoInfo(this);"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление газом: расход и счёт по месяцам, итог за сезон.<div class="tip-p"><b>Сжиженный.</b> Пропан-бутан из газгольдера или баллонов, цену задаёт поставщик.</div><div class="tip-p"><b>Магистральный.</b> Газ из трубы; тариф региона подставляется по выбранному городу.</div></div></span></span>
                     <label class="switch"><input type="checkbox" id="chk_gas_cost"
                             onchange="app.toggleGasCost(this.checked)"><span class="slider"></span></label>
                 </div>
