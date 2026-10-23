@@ -16405,6 +16405,16 @@ const app = {
         return this.isPro() ? 'Недоступно для вашей учётной записи' : 'Только на тарифе ПРОФИ';
     },
 
+    // Нажатие на закрытый тарифом вариант «Любимых материалов»: окно тарифа с причиной
+    showPrefLock: function (key, v) {
+        const def = this.PREF_DEFS.reduce((a, g) => a.concat(g.items), []).find(x => x.id === key);
+        const opt = def && def.opts.find(o => o.v === v);
+        const name = opt ? opt.t : '';
+        // Окно тарифа лежит ниже кабинета (как у «Оформить Профи» в профиле), поэтому кабинет закрываем
+        try { this.closeProfileModal(); } catch (e) { }
+        this.showModal('pro', { why: 'Вы хотели выбрать «' + name + '»' + (def ? ' (' + def.label.toLowerCase() + ')' : '') + ': этот вариант входит в Профи' });
+    },
+
     setPref: function (key, v) {
         if (!this.installerSettings) this.loadInstallerSettingsLocal();
         const p = Object.assign({}, this.installerSettings.prefs || {});
@@ -16555,6 +16565,11 @@ const app = {
                 const btns = [`<button type="button" class="ad-chip${p[it.id] ? '' : ' active'}" onclick="app.setPref('${it.id}', '')">Авто</button>`].concat(it.opts.map(o => {
                     const why = this.prefLock(it.id, o.v);
                     if (why) locked.push(why);
+                    // Закрытый тарифом вариант не гасим: нажатие открывает окно тарифа с «Вы хотели…».
+                    // Выключенной остаётся только кнопка, недоступная этой учётке даже на Профи.
+                    if (why === 'Только на тарифе ПРОФИ') {
+                        return `<button type="button" class="ad-chip" title="${why}" style="opacity:.6;cursor:pointer" onclick="app.showPrefLock('${it.id}', '${o.v}')">${o.t} 🔒</button>`;
+                    }
                     return `<button type="button" class="ad-chip${p[it.id] === o.v ? ' active' : ''}"${why ? ` disabled title="${why}" style="opacity:.5;cursor:not-allowed"` : ''} onclick="app.setPref('${it.id}', '${o.v}')">${o.t}${why ? ' 🔒' : ''}</button>`;
                 })).join('');
                 html += `<div class="lk-row pref-row"><div class="lk-row-main"><b>${it.label}</b>${it.note ? `<div class="lk-sub">${it.note}</div>` : ''}</div><div class="pref-chips">${btns}</div></div>`;
