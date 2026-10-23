@@ -200,7 +200,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=5.58">
+    <link rel="stylesheet" href="style.css?v=5.61">
     <link rel="stylesheet" href="hydro_check.css?v=1.13">
 
     <script src="supabase-js.js" defer></script>
@@ -233,7 +233,7 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.6" defer></script>
-    <script src="app.js?v=13.89" defer></script>
+    <script src="app.js?v=14.00" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -254,10 +254,10 @@
     <!-- Подписка Профи: цены и ссылки на оплату, акции, региональные цены,
          учёт заявок и оплат, вкладка «Оплата подписки» в панели. Нужен и вне
          панели: окно тарифа и окно оплаты берут цены отсюда. -->
-    <script src="subscription.js?v=1.14" defer></script>
+    <script src="subscription.js?v=1.16" defer></script>
     <!-- Итог КП: окно «Чем закончились КП?» через 30 дней после отправки, продления,
          блок отправки без Профи, сводка менеджера и причины отказов в планировщике -->
-    <script src="kp_outcome.js?v=1.8" defer></script>
+    <script src="kp_outcome.js?v=1.9" defer></script>
     <!-- Отложенные модули. Ничего из перечисленного ниже при открытии страницы
          не нужно: распознавание, документы, выгрузка в Excel, разбор цен,
          QR-код и библиотека печати в PDF. Раньше они грузились вместе с
@@ -1380,7 +1380,7 @@
                  подмеса тёплого пола. Что именно собрано и с какими оговорками —
                  плашка в шапке раздела «2. Обвязка котельной». -->
             <div class="control-item" id="blk_boiler_scheme" style="display:none; margin-top: 0; margin-bottom: 16px;">
-                <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Схема котельной<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Без стрелки.</b> Радиаторы питает насос котла, тёплый пол — свой узел подмеса, бойлер — трёхходовой клапан. Для одного котла и простой системы.<div class="tip-p"><b>Со стрелкой.</b> Гидрострелка и насосная группа на каждый контур.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_boiler_scheme_note">Схему калькулятор подбирает сам.</span></div></div></span></span>
+                <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Схема котельной<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Без стрелки.</b> Радиаторы питает насос котла, тёплый пол — свой узел подмеса, бойлер — трёхходовой клапан. Для одного котла и простой системы.<div class="tip-p"><b>Со стрелкой.</b> Гидрострелка и насосная группа на каждый контур.</div><div class="tip-p"><b>Автоподбор</b> ставит стрелку, если котла два (газ и резервный электро, каскад), у потребителей больше одного своего насоса (два узла подмеса пола, насосная группа бойлера, снеготаяние) или насос котла не тянет радиаторы. Без разделения несколько насосов гонят воду друг через друга, а неработающий котёл шунтирует контур. Это практика проектирования, а не пункт СП.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_boiler_scheme_note">Схему калькулятор подбирает сам.</span></div></div></span></span>
                 <div class="tabs" id="boiler_scheme_tabs">
                     <div class="tab" id="boiler_scheme_direct" onclick="app.setBoilerScheme('direct', event)">Без стрелки</div>
                     <div class="tab" id="boiler_scheme_hydro" onclick="app.setBoilerScheme('hydro', event)">Со стрелкой</div>
@@ -2931,10 +2931,12 @@
 
                 <button id="custom_modal_btn_trial" class="btn-trial-14" style="display:none;" onclick="app.activateTrial14()">Попробовать бесплатно 14 дней</button>
 
+                <!-- Переключатель валюты (RUB/KZT) отключён: цены в тенге не показываем.
                 <div class="currency-toggle" id="pricing_currency_toggle">
                     <button type="button" class="currency-toggle-btn active" data-currency="RUB" onclick="app.setPricingCurrency('RUB')">₽ RUB</button>
                     <button type="button" class="currency-toggle-btn" data-currency="KZT" onclick="app.setPricingCurrency('KZT')">₸ KZT</button>
                 </div>
+                -->
 
                 <!-- Карточки рисует Subscription.syncCards по настройкам «Оплата подписки» (цены, регион, акции).
                      Цен в разметке нет намеренно: любая зашитая здесь цена расходится с настройками. -->

@@ -4190,6 +4190,9 @@ const app = {
     // Плавающая кнопка "умного" заполнения параметров дома по свободному тексту/голосу
     openAiParseModal: function () {
         if (!this.state.tgUser) { this.showAuthModal(); return; }
+        // Окно ИИ-ассистента открывается только на тарифе «Профи» (кнопка на Базовом
+        // скрыта, но модалку могут вызвать и из других мест).
+        if (!this.isPro()) { this.showModal('pro'); return; }
         if (document.body.classList.contains('menu-open')) {
             try { this.toggleMenu(); } catch (e) { }
         }
@@ -4674,7 +4677,8 @@ const app = {
         const btn = document.getElementById('ai_parse_fab_btn');
         if (!btn) return;
         const mobHide = this.isMobileLayout() && (this.state.mobTab || 'inputs') !== 'inputs';
-        const hide = !this.state.tgUser || (this.state.viewMode || 'equipment') !== 'equipment' || mobHide;
+        // ИИ-ассистент — функция тарифа «Профи»: на Базовом кнопки нет совсем.
+        const hide = !this.state.tgUser || !this.isPro() || (this.state.viewMode || 'equipment') !== 'equipment' || mobHide;
         btn.style.display = hide ? 'none' : 'flex';
         // Лист сметы на десктопе освобождает под кнопку правое поле (style.css, .ai-fab-visible)
         document.body.classList.toggle('ai-fab-visible', !hide);
@@ -5820,6 +5824,9 @@ const app = {
         // Кнопка для гостя скрыта (см. syncUI), но на всякий случай дублируем проверку —
         // распознанные параметры пишутся в state напрямую, минуя проверки тарифа
         if (!this.state.tgUser) { this.showAuthModal(); return; }
+        // Окно ИИ-ассистента открывается только на тарифе «Профи» (кнопка на Базовом
+        // скрыта, но модалку могут вызвать и из других мест).
+        if (!this.isPro()) { this.showModal('pro'); return; }
         if (document.body.classList.contains('menu-open')) {
             try { this.toggleMenu(); } catch (e) { }
         }
@@ -10391,8 +10398,8 @@ const app = {
         kp_reminder_sent: { label: 'Напоминание: КП без счёта', color: '#F59E0B' },
         // Итог КП (kp_outcome.js): ставит монтажник в окне «Чем закончились КП?»
         // или менеджер за него. Продление — техническая отметка, карточку не двигает.
-        won: { label: 'Клиент согласился', color: '#059669' },
-        lost: { label: 'Отказ клиента', color: '#DC2626' },
+        won: { label: 'Реализовано', color: '#059669' },
+        lost: { label: 'Не реализовано', color: '#DC2626' },
         extended: { label: 'Срок ответа продлён', color: '#94A3B8' },
         kp_outcome_reminder: { label: 'Напоминание: отметить итог КП', color: '#F59E0B' },
     },
@@ -10420,9 +10427,8 @@ const app = {
         if (ev === 'sent' && ch === 'link') return Object.assign({}, base, { label: 'Отправлено: ссылка' });
         // Итог КП: где покупают или причина отказа
         // Объект реализован? Да / Нет с причиной — отметка монтажника (app.askRealized)
-        if (ev === 'won' && meta && meta.realized === true) return Object.assign({}, base, { label: 'Реализовано' });
-        if (ev === 'lost' && meta && meta.realized === false) return Object.assign({}, base, { label: 'Не реализовано' + (meta.label ? ': ' + meta.label : '') });
-        if ((ev === 'won' || ev === 'lost') && meta && meta.label) return Object.assign({}, base, { label: (ev === 'won' ? 'Согласились: ' : 'Отказ: ') + meta.label });
+        if (ev === 'won') return Object.assign({}, base, { label: 'Реализовано' });
+        if (ev === 'lost') return Object.assign({}, base, { label: 'Не реализовано' + (meta && meta.label ? ': ' + meta.label : '') });
         if (ev === 'printed') {
             const label = ch === 'pdf' ? 'Отправлено: PDF' : ch === 'excel' ? 'Отправлено: Excel' : 'Отправлено: PDF или Excel';
             return Object.assign({}, base, { label: label });
@@ -12597,6 +12603,8 @@ const app = {
                 }
             }
 
+            // Название, сумма и версия для окна «Объект реализован?» (у сметы без событий в журнале их взять неоткуда)
+            (this._kpoInfo = this._kpoInfo || {})[String(item.calc_id || '')] = { project: item.project_name || '', sum: Number(item.total_sum) || 0, kpVersion: Number(item.kp_ver) || 0 };
             // Что требует внимания (kp_outcome.js): «нужен итог» — срок ответа клиента вышел,
             // «новое» — со времени прошлого просмотра изменился статус. Строка подсвечена,
             // у «нужен итог» кнопка «Отметить итог» на виду, а не в меню «⋯».
@@ -12626,18 +12634,17 @@ const app = {
             // на две строки, и список смет читался как таблица внутри таблицы
             this._rowMenus[item.id] = [
                 { label: 'Сравнить цены с сегодняшними', js: `app.lazy('reprice').then(() => Reprice.open('${item.id}'))` },
-                item.calc_id ? { label: 'Объект реализован? Да / Нет', js: `app.askRealized('${item.id}')` } : null,
                 item.calc_id ? { label: 'История статусов', js: `app.toggleObjectHistory('${item.calc_id}', '${item.id}')` } : null,
-                // Итог КП можно отметить сразу, не дожидаясь окна через 30 дней (kp_outcome.js).
-                // Есть событие журнала — смета уже уходила клиенту.
-                (item.calc_id && lastEv && window.KpOutcome)
-                    ? { label: (lastEv.event === 'won' || lastEv.event === 'lost') ? 'Изменить итог КП' : 'Отметить итог КП',
-                        js: `KpOutcome.markFromList('${item.calc_id}')` } : null,
+                // Итог можно отметить сразу, не дожидаясь окна через 30 дней (kp_outcome.js), и у
+                // сметы, которую клиенту не отправляли: договорились на словах
+                (item.calc_id && window.KpOutcome)
+                    ? { label: (lastEv && (lastEv.event === 'won' || lastEv.event === 'lost')) ? 'Объект реализован? Изменить' : 'Объект реализован? Да / Нет',
+                        js: `KpOutcome.markFromList('${item.calc_id}', app._kpoInfo['${item.calc_id}'])` } : null,
                 canDelete ? { label: 'Удалить смету', js: `app.deleteEstimate('${item.id}', event)`, danger: true } : null
             ].filter(Boolean);
 
             h += `
-                <tr class="active-row${attn ? ' kpo-row-' + attn : ''}" style="cursor: pointer;" onclick="app.loadSingleEstimate('${item.id}')">
+                <tr class="active-row${attn ? ' kpo-row-' + attn : (lastEv && lastEv.event === 'won' ? ' kpo-row-done-won' : (lastEv && lastEv.event === 'lost' ? ' kpo-row-done-lost' : ''))}" style="cursor: pointer;" onclick="app.loadSingleEstimate('${item.id}')">
                     <td style="font-weight:600;">${item.project_name}${item.calc_id ? `<div style="font-size:11px; font-weight:600; color:var(--text-sec); font-family:monospace; margin-top:2px;" title="Номер КП. Цифра после дефиса — версия: растёт, когда смету с правками снова отправляют клиенту">КП № ${item.calc_id}${Number(item.kp_ver) ? '-' + Number(item.kp_ver) : ''}${item.cf_calc ? ` <span style="color:#7C3AED;" title="Копия чужой сметы — оригинал КП № ${item.cf_calc}">· 📎 копия ${item.cf_calc}</span>` : ''}</div>` : ''}</td>
                     <td style="color:var(--primary); font-weight:bold;">${sum}</td>
                     <td>${statusBadge}</td>
@@ -12756,47 +12763,16 @@ const app = {
     // Поэтому сначала загружаем выбранную, а потом запускаем действие.
     /**
      * «Объект реализован?» — итог по самой смете, а не по решению клиента: работает и для
-     * смет, которые никуда не отправляли (договорились на словах). Да → событие won,
-     * Нет → lost с причиной; оба несут meta.realized, по нему kanbanEventView даёт
-     * подписи «Реализовано» / «Не реализовано: причина».
+     * смет, которые никуда не отправляли (договорились на словах). Теперь это то же окно,
+     * что и «итог КП» (KpOutcome.openDialog): Да → событие won (где покупают — по желанию),
+     * Нет → lost с причиной из списка; оба несут meta.realized.
      */
     askRealized: function (id) {
         const item = (this._cloudEstimates || []).find(e => String(e.id) === String(id));
         if (!item || !item.calc_id) { app.alert('У этой сметы нет номера КП. Откройте и сохраните её заново.'); return; }
         this.closeCabinetRowMenu();
-        const cur = (this._cloudEventStatuses || {})[String(item.calc_id)];
-        const curLabel = cur ? this.kanbanEventView(cur.event, cur.meta).label : 'Сохранена';
-        this.showPlainModal('Объект реализован?',
-            `<div style="font-size:13px; color:var(--text-sec); margin-bottom:10px;">${item.project_name || ''} · КП № ${item.calc_id}<br>Сейчас: <b>${curLabel}</b></div>
-             <div style="display:flex; gap:10px;">
-                <button type="button" class="custom-modal-btn" style="flex:1;" onclick="app.setRealized('${item.id}', true)">Да</button>
-                <button type="button" class="custom-modal-btn" style="flex:1;" onclick="app.setRealized('${item.id}', false)">Нет</button>
-             </div>`);
-    },
-
-    setRealized: async function (id, yes) {
-        const item = (this._cloudEstimates || []).find(e => String(e.id) === String(id));
-        if (!item || !item.calc_id) return;
-        let reason = '';
-        if (!yes) {
-            const why = await app.prompt('Почему не реализован? Укажите причину (обязательно):', '', 'Причина');
-            if (why === null) return;
-            if (!why.trim()) { app.alert('Причина обязательна.'); return; }
-            reason = why.trim();
-        }
-        this.closePlainModal();
-        try {
-            if (!window.KpOutcome) throw new Error('модуль итогов не загружен, обновите страницу');
-            const meta = yes ? { realized: true, manual: true } : { realized: false, reason: 'other', label: reason, manual: true };
-            await KpOutcome.write({ calcId: item.calc_id, project: item.project_name || '', kpVersion: Number(item.kp_version) || 0 }, yes ? 'won' : 'lost', meta, false);
-            this._cloudEventStatuses = this._cloudEventStatuses || {};
-            this._cloudEventStatuses[String(item.calc_id)] = { calc_id: String(item.calc_id), event: yes ? 'won' : 'lost', meta: meta, created_at: new Date().toISOString() };
-            this.renderCloudList(this._cloudEstimates, this._cloudSharedStatuses || {}, this._cloudEventStatuses);
-            if (window.KpOutcome && KpOutcome.refreshAttention) KpOutcome.refreshAttention();
-        } catch (e) {
-            console.error('[setRealized]', e);
-            app.alert('Не удалось сохранить: ' + (e.message || e));
-        }
+        if (!window.KpOutcome) { app.alert('Модуль итогов не загружен, обновите страницу.'); return; }
+        KpOutcome.markFromList(item.calc_id, { project: item.project_name || '', sum: Number(item.total_sum) || 0, kpVersion: Number(item.kp_version) || 0 });
     },
 
     cloudRowAction: async function (id, what) {
@@ -15371,6 +15347,201 @@ const app = {
         this.renderInstallerSummaryTab();
     },
 
+    // ── Блоки «Моих показателей»: порядок, видимость и вид у каждого монтажника свои ──────────
+    // Хранится в installerSettings.summaryLayout (облако, как остальные личные настройки):
+    //   order  — порядок показанных блоков;
+    //   hidden — убранные блоки: возвращаются кнопкой «+ Добавить виджет»;
+    //   views  — вид блока: подробно / компактно / таблица / график;
+    //   market — область («город / регион / страна») и период («полгода / год») блока «Вы и рынок».
+    // Новый блок, которого у человека ещё не было, сам встаёт на своё место по умолчанию.
+    INSTALLER_WIDGETS: [
+        { id: 'attention', icon: '✅', t: 'Требует внимания', desc: 'КП без итога, новые статусы, неотправленные сметы, сообщения', views: ['full', 'compact'] },
+        { id: 'realized', icon: '🏆', t: 'Реализовано', desc: 'Сколько объектов реализовано, на какую сумму (оборудование и монтаж), заработок и доля реализованных', views: ['full', 'compact', 'table', 'chart'] },
+        { id: 'reasons', icon: '🧭', t: 'Почему не реализовано', desc: 'Причины, по которым объекты не дошли до реализации', views: ['full', 'compact', 'chart'] },
+        { id: 'avg', icon: '🏠', t: 'Средний объект', desc: 'Площадь, оборудование и монтаж на среднем объекте, ₽ за м²', views: ['full', 'compact'] },
+        { id: 'counts', icon: '📊', t: 'Сметы и счета', desc: 'Сколько смет, сколько дошло до счёта, сколько ждут ответа', views: ['full', 'compact'] },
+        { id: 'money', icon: '💵', t: 'Деньги на столе', desc: 'Сколько денег ждёт решения клиента и сколько одобрено без счёта', views: ['full', 'compact'] },
+        { id: 'speed', icon: '⏱', t: 'Скорость', desc: 'Как быстро вы считаете, отправляете и как быстро отвечают клиенты', views: ['full', 'compact'] },
+        { id: 'months', icon: '📅', t: 'По месяцам', desc: 'Сметы, отправки и счета по месяцам', views: ['full', 'compact', 'chart'] },
+        { id: 'market', icon: '📍', t: 'Вы и рынок', desc: 'Ваши цифры рядом с медианой других монтажников: город, регион, страна', views: ['full'] },
+        { id: 'sales', icon: '🧾', t: 'Что вы продаёте', desc: 'Бренды, разделы смет и типичная мощность котла', views: ['full'] },
+        { id: 'stale', icon: '⏳', t: 'Ждут вашего звонка', desc: 'Сметы, по которым клиент молчит', views: ['full', 'compact'] },
+        { id: 'reprice', icon: '💰', t: 'Сколько это стоит сегодня', desc: 'На сколько подорожало оборудование в ваших сметах в работе', views: ['full'] },
+        { id: 'avail', icon: '📦', t: 'Под заказ', desc: 'Позиции в недавних сметах, которых нет в наличии', views: ['full'] },
+        { id: 'funnel', icon: '📈', t: 'Путь ваших смет', desc: 'Сколько смет дошло до каждого шага: от расчёта до оплаты', views: ['full', 'compact', 'table'] }
+    ],
+    SUM_VIEW_LABEL: { full: 'Подробно', compact: 'Компактно', table: 'Таблица', chart: 'График' },
+    SUM_ASYNC_IDS: { market: 'installer_market', sales: 'installer_sales', reprice: 'installer_reprice', avail: 'installer_avail' },
+
+    summaryLayout: function () {
+        if (this._sumLayout) return this._sumLayout;
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const saved = this.installerSettings.summaryLayout || {};
+        const defs = this.INSTALLER_WIDGETS.map(w => w.id);
+        const order = (Array.isArray(saved.order) ? saved.order : []).filter((id, i, a) => defs.includes(id) && a.indexOf(id) === i);
+        const hidden = (Array.isArray(saved.hidden) ? saved.hidden : []).filter(id => defs.includes(id) && !order.includes(id));
+        defs.forEach((id, i) => {
+            if (order.includes(id) || hidden.includes(id)) return;
+            const prev = defs.slice(0, i).reverse().find(x => order.includes(x));
+            order.splice(prev ? order.indexOf(prev) + 1 : 0, 0, id);
+        });
+        const views = {};
+        Object.keys(saved.views || {}).forEach(id => {
+            const w = this.INSTALLER_WIDGETS.find(x => x.id === id);
+            if (w && w.views.includes(saved.views[id])) views[id] = saved.views[id];
+        });
+        const m = saved.market || {};
+        return (this._sumLayout = {
+            order: order, hidden: hidden, views: views,
+            market: { scope: ['city', 'region', 'country'].includes(m.scope) ? m.scope : 'region', period: m.period === 'year' ? 'year' : 'half' }
+        });
+    },
+    summarySave: function () {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const L = this.summaryLayout();
+        this.installerSettings.summaryLayout = { order: L.order.slice(), hidden: L.hidden.slice(), views: Object.assign({}, L.views), market: Object.assign({}, L.market) };
+        this.pushInstallerSettingsToCloud();
+    },
+    summaryEdit: function (on) { this._sumEdit = !!on; this.sumAssemble(); },
+    summaryMove: function (id, dir) {
+        const L = this.summaryLayout(), i = L.order.indexOf(id), j = i + dir;
+        if (i < 0 || j < 0 || j >= L.order.length) return;
+        L.order.splice(j, 0, L.order.splice(i, 1)[0]);
+        this.summarySave(); this.sumAssemble();
+    },
+    summaryHide: function (id) {
+        const L = this.summaryLayout(), i = L.order.indexOf(id);
+        if (i < 0) return;
+        L.order.splice(i, 1); L.hidden.push(id);
+        this.summarySave(); this.sumAssemble();
+    },
+    summaryShow: function (id) {
+        const L = this.summaryLayout();
+        L.hidden = L.hidden.filter(x => x !== id);
+        if (!L.order.includes(id)) L.order.unshift(id);   // сверху, чтобы добавленное было видно сразу
+        this.summarySave();
+        this.closePlainModal();
+        this.sumAssemble();
+        this.sumLoadAsync(id);
+    },
+    summaryView: function (id, view) {
+        const L = this.summaryLayout(), w = this.INSTALLER_WIDGETS.find(x => x.id === id);
+        if (!w || !w.views.includes(view)) return;
+        if (view === 'full') delete L.views[id]; else L.views[id] = view;
+        this.summarySave(); this.sumAssemble();
+    },
+    summaryReset: async function () {
+        if (!await this.confirm('Вернуть блоки «Моих показателей» на места по умолчанию? Перестановки, скрытые блоки и выбранный вид пропадут.')) return;
+        const L = this.summaryLayout();
+        this._sumLayout = null;
+        if (this.installerSettings) delete this.installerSettings.summaryLayout;
+        const fresh = this.summaryLayout();
+        fresh.market = L.market;
+        this.summarySave(); this.sumAssemble();
+    },
+    summaryGallery: function () {
+        const L = this.summaryLayout();
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const items = L.hidden.map(id => this.INSTALLER_WIDGETS.find(w => w.id === id)).filter(Boolean);
+        this.showPlainModal('Добавить виджет', items.length
+            ? `<div style="display:flex; flex-direction:column; gap:8px; max-height:60vh; overflow-y:auto;">${items.map(w => `
+                <button type="button" class="custom-modal-btn" style="text-align:left; display:flex; flex-direction:column; gap:2px; align-items:flex-start;" onclick="app.summaryShow('${w.id}')">
+                    <span><span class="ui-emo">${w.icon} </span><b>${esc(w.t)}</b> <span style="color:var(--primary);">+ добавить</span></span>
+                    <span style="font-size:11.5px; font-weight:500; opacity:.75;">${esc(w.desc)}</span>
+                </button>`).join('')}</div>`
+            : `<div style="font-size:13px; color:var(--text-sec);">Все блоки уже на экране. Убрать лишний можно в режиме «Настроить» — крестиком у заголовка блока.</div>`);
+    },
+
+    // Перетаскивание блока за заголовок (мышью); на телефоне то же — кнопками «выше / ниже»
+    sumDragStart: function (ev, id) {
+        this._sumDragId = id;
+        try { ev.dataTransfer.setData('text/plain', id); ev.dataTransfer.effectAllowed = 'move'; } catch (e) { }
+    },
+    sumDragOver: function (ev, el) {
+        if (!this._sumDragId) return;
+        ev.preventDefault();
+        el.classList.add('sw-drop');
+    },
+    sumDragLeave: function (ev, el) { if (!el.contains(ev.relatedTarget)) el.classList.remove('sw-drop'); },
+    sumDrop: function (ev, targetId) {
+        ev.preventDefault();
+        const id = this._sumDragId; this._sumDragId = null;
+        document.querySelectorAll('.sw-drop').forEach(e => e.classList.remove('sw-drop'));
+        const L = this.summaryLayout();
+        if (!id || id === targetId || !L.order.includes(id) || !L.order.includes(targetId)) return;
+        const from = L.order.indexOf(id);
+        L.order.splice(from, 1);
+        // Тянем вниз — встаёт после целевого, вверх — перед ним
+        const to = L.order.indexOf(targetId);
+        L.order.splice(from < L.order.indexOf(targetId) + 1 && from <= to ? to + 1 : to, 0, id);
+        this.summarySave(); this.sumAssemble();
+    },
+    sumDragEnd: function () { this._sumDragId = null; document.querySelectorAll('.sw-drop').forEach(e => e.classList.remove('sw-drop')); },
+
+    // Приёмник асинхронных блоков (цены, наличие, «что продаёте», «рынок»): пишет в страницу и
+    // запоминает, чтобы блок, который переставили или вернули, не оставался пустым
+    sumHost: function (id) {
+        const self = this;
+        return {
+            set innerHTML(v) {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = v;
+                (self._sumAsync = self._sumAsync || {})[id] = v;
+            },
+            get innerHTML() { const el = document.getElementById(id); return el ? el.innerHTML : ''; }
+        };
+    },
+    // Блок вернули из скрытых, а данных для него ещё не считали — считаем сейчас
+    sumLoadAsync: function (id) {
+        const c = this._sumCtx;
+        if (!c || !this.SUM_ASYNC_IDS[id]) return;
+        if (this._sumAsync && this._sumAsync[this.SUM_ASYNC_IDS[id]] != null) return;
+        if (id === 'market') this.renderInstallerMarket(c.me, c.ests);
+        else this.loadInstallerInvoiceExtras(c.calcIds);
+    },
+
+    // Собирает страницу из готовых блоков (ctx.W) по раскладке человека: без повторного чтения базы
+    sumAssemble: function () {
+        const c = this._sumCtx, box = document.getElementById('profile_tab_summary');
+        if (!c || !box) return;
+        const L = this.summaryLayout(), edit = !!this._sumEdit;
+        const esc = s => String(s == null ? '' : s).replace(/</g, '&lt;');
+        const cache = this._sumAsync || {};
+        let h = '';
+        L.order.forEach((id, idx) => {
+            const def = this.INSTALLER_WIDGETS.find(w => w.id === id), W = c.W[id];
+            if (!def || !W) return;
+            const view = def.views.includes(L.views[id]) ? L.views[id] : 'full';
+            let body;
+            if (view === 'compact') body = `<div class="sw-compact"><b><span class="ui-emo">${def.icon} </span>${esc(def.t)}</b><span>${W.summary || ''}</span></div>`;
+            else body = (W.views && W.views[view]) || W.full;
+            if (this.SUM_ASYNC_IDS[id]) body = `<div id="${this.SUM_ASYNC_IDS[id]}">${cache[this.SUM_ASYNC_IDS[id]] || ''}</div>`;
+            if (id === 'attention') {
+                const extra = cache.installer_actions_extra;
+                body = body.replace('<div id="installer_actions_extra"></div>', `<div id="installer_actions_extra">${extra || ''}</div>`);
+                if (extra) body = body.replace(/<p class="lk-hint" id="installer_actions_empty">[\s\S]*?<\/p>/, '');
+            }
+            if (!body && !edit) return;            // у блока пока нет данных (например, нет причин отказа) — не рисуем
+            const bar = edit ? `<div class="sw-bar" draggable="true" ondragstart="app.sumDragStart(event, '${id}')" ondragend="app.sumDragEnd()">
+                    <span class="sw-grip" title="Потяните, чтобы переставить">⠿</span>
+                    <span class="sw-title"><span class="ui-emo">${def.icon} </span>${esc(def.t)}</span>
+                    ${def.views.length > 1 ? def.views.map(v => `<button type="button" class="sw-chip${view === v ? ' on' : ''}" onclick="app.summaryView('${id}', '${v}')">${this.SUM_VIEW_LABEL[v]}</button>`).join('') : ''}
+                    <button type="button" class="sw-btn" onclick="app.summaryMove('${id}', -1)" title="Выше"${idx === 0 ? ' disabled' : ''}>↑</button>
+                    <button type="button" class="sw-btn" onclick="app.summaryMove('${id}', 1)" title="Ниже"${idx === L.order.length - 1 ? ' disabled' : ''}>↓</button>
+                    <button type="button" class="sw-btn danger" onclick="app.summaryHide('${id}')" title="Убрать с экрана (вернуть можно через «Добавить виджет»)">✕</button>
+                </div>` : '';
+            h += `<div class="sw${edit ? ' sw-edit' : ''}" data-w="${id}"${edit ? ` ondragover="app.sumDragOver(event, this)" ondragleave="app.sumDragLeave(event, this)" ondrop="app.sumDrop(event, '${id}')"` : ''}>${bar}${body || '<div class="lk-hint">Пока нет данных.</div>'}</div>`;
+        });
+        const toolbar = edit ? `<div class="sw-toolbar">
+                <span class="sw-note">Блоки можно перетаскивать за заголовок, убирать крестиком и переключать вид. Всё запоминается для вас.</span>
+                <button type="button" class="sw-btn" onclick="app.summaryGallery()">+ Добавить виджет${L.hidden.length ? ' (' + L.hidden.length + ')' : ''}</button>
+                <button type="button" class="sw-btn" onclick="app.summaryReset()">Сбросить</button>
+                <button type="button" class="sw-chip on" onclick="app.summaryEdit(false)">Готово</button>
+            </div>` : '';
+        box.innerHTML = c.head.replace('<!--SW_EDIT-->', edit ? '' : '<button type="button" class="lk-btn-sm" onclick="app.summaryEdit(true)" title="Порядок блоков, скрыть и вернуть, вид: таблица, график">⚙ Настроить</button>') + toolbar + h;
+    },
+
+
     /**
      * Сметы монтажника с площадью и суммами — для «Среднего объекта» и «Денег
      * на столе». Одна строка на номер расчёта: пересохранение и копии дают
@@ -15429,6 +15600,7 @@ const app = {
                           <h4><span class="ui-emo">📊 </span>Мои показатели</h4>
                           <div class="summary-period">${periodBtns}
                               <button type="button" class="lk-btn-sm" onclick="app.renderInstallerSummaryTab()" title="Пересчитать">↻</button>
+                              <!--SW_EDIT-->
                           </div>
                       </div>`;
         container.innerHTML = head + `<div class="lk-empty">⌛ Считаем ваши сметы…</div>`;
@@ -15462,6 +15634,18 @@ const app = {
             container.innerHTML = head + `<p class="lk-hint">Показатели сейчас недоступны. Попробуйте обновить позже.</p>`;
             return;
         }
+
+        // Причины отказа и «где покупают» лежат в meta итогов; общая выборка истории её не несёт
+        let kpRows = rows;
+        try {
+            if (window.KpOutcome) {
+                const ids = [...new Set(rows.map(r => String(r.calc_id)).filter(Boolean))];
+                if (ids.length) {
+                    const ex = await KpOutcome.fetchOutcomeRows(ids);
+                    kpRows = rows.filter(r => ['won', 'lost', 'extended'].indexOf(r.event) < 0).concat(ex);
+                }
+            }
+        } catch (e) { console.warn('[показатели] итоги без причин:', e); }
 
         const DAY = 86400000, now = Date.now();
         const curFrom = now - P * DAY, prevFrom = now - 2 * P * DAY;
@@ -15573,12 +15757,16 @@ const app = {
         // ── Итог КП ─────────────────────────────────────────────────────────
         // Отметки «согласился / отказ» из окна итога (kp_outcome.js). КП с итогом
         // ни на столе, ни в ожидании звонка уже не висит.
-        const kpList = window.KpOutcome ? KpOutcome.build(rows, now) : [];
+        const kpList = window.KpOutcome ? KpOutcome.build(kpRows, now) : [];
         const kpClosed = {};
         kpList.forEach(k => { if (k.outcome) kpClosed[k.calcId] = k.outcome; });
+        // Для блоков «подорожало» и «под заказ», которые грузятся позже: по объекту с итогом
+        // (реализован, не реализован, счёт выставлен) разговор с клиентом закончен
+        this._kpClosed = kpClosed;
         const kpCur = kpList.filter(k => inCur(k.firstSentAt));
         const kpWon = kpCur.filter(k => k.outcome === 'won').length;
         const kpLost = kpCur.filter(k => k.outcome === 'lost').length;
+        const kpSilent = kpCur.filter(k => !k.outcome && k.overdue).length;
         const kpOpen = kpList.filter(k => k.overdue).length;
 
         // ── Деньги на столе ─────────────────────────────────────────────────
@@ -15740,16 +15928,122 @@ const app = {
         });
         // КП без итога дольше 30 дней — одной строкой, открывает окно отметки
         if (kpOpen) actions.push({ w: 0, color: '#F97316', icon: '🏁', name: kpOpen + ' ' + this.plural(kpOpen, 'КП', 'КП', 'КП') + ' без итога',
-            text: 'отметьте, чем закончились', sum: 0, onclick: 'KpOutcome.check(true).then(() => app.renderInstallerSummaryTab())' });
+            text: 'отметьте, реализованы ли объекты', sum: 0, onclick: 'KpOutcome.check(true).then(() => app.renderInstallerSummaryTab())' });
+        // Со старой «Главной»: новые статусы, неотправленные сметы, сообщения, подсказки по анкете
+        const newsN = (window.KpOutcome && KpOutcome._attn) ? Object.keys(KpOutcome._attn.by).filter(k => KpOutcome._attn.by[k] === 'news').length : 0;
+        if (newsN) actions.push({ w: 0.5, color: '#3B82F6', icon: '🔔', name: newsN + ' ' + this.plural(newsN, 'КП', 'КП', 'КП') + ' с новым статусом',
+            text: 'смотрите в «Объектах»', sum: 0, onclick: "app.setProfileTab('objects')" });
+        const withEvents = new Set(cards.map(c => c.id));
+        ests.filter(e => e.calc && !withEvents.has(String(e.calc)) && now - e.at > 2 * DAY && now - e.at < 30 * DAY)
+            .sort((a, b) => b.at - a.at).slice(0, 3).forEach(e => actions.push({ w: 5, color: 'var(--text-sec)', icon: '📤', estId: e.id, name: e.name || 'Без названия',
+                text: `сохранена ${dayWord(e.at)}, клиенту не отправлена`, sum: e.total || 0 }));
+        const badgeEl = document.getElementById('notification_badge');
+        const unreadN = (badgeEl && badgeEl.style.display !== 'none') ? (parseInt(badgeEl.innerText, 10) || 0) : 0;
+        if (unreadN) actions.push({ w: 6, color: '#EF4444', icon: '✉️', name: 'Новые сообщения: ' + unreadN, text: 'откройте и ответьте', sum: 0, onclick: "app.railGo('messages')" });
+        const coEl = document.getElementById('profile_company_name');
+        if (coEl && !coEl.value.trim()) actions.push({ w: 8, color: '#F97316', icon: '🏢', name: 'Название компании не заполнено',
+            text: 'оно попадает в шапку КП и счёта', sum: 0, onclick: "app.setProfileTab('company')" });
+        if (typeof this.prefsHintWanted === 'function' && this.prefsHintWanted(ests.length)) actions.push({ w: 9, color: 'var(--text-sec)', icon: '⭐', name: 'Любимые материалы',
+            text: 'отметьте, что ставите чаще — новые сметы будут считаться по ним', sum: 0, onclick: "app.setProfileTab('prefs')" });
         actions.sort((x, y) => x.w - y.w || y.sum - x.sum);
         const actionRow = (x) => `<div class="sm-row sm-link"${x.onclick ? ` onclick="${x.onclick}"` : (x.estId ? ` onclick="app.loadSingleEstimate('${x.estId}')" title="Открыть смету"` : '')}>
                     <span class="sm-row-label">${x.icon} <b>${esc(x.name)}</b> <span style="color:${x.color};">— ${x.text}</span></span>
                     <b>${x.sum ? money(x.sum) : ''}</b>
                 </div>`;
-        const actionsHtml = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">✅ </span>Что сделать сейчас</h4></div>
+        const actionsHtml = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">✅ </span>Требует внимания</h4></div>
             <div id="installer_actions">${actions.slice(0, 8).map(actionRow).join('')}</div>
             <div id="installer_actions_extra"></div>
-            ${actions.length ? '' : `<p class="lk-hint" id="installer_actions_empty">Срочного нет: одобренных без счёта, просьб о правках и «горячих» клиентов сейчас нет.</p>`}`;
+            ${actions.length ? '' : `<p class="lk-hint" id="installer_actions_empty">Срочного нет: КП без итога, одобренных без счёта, просьб о правках, новых сообщений и «горячих» клиентов сейчас нет.</p>`}`;
+
+        // ── Реализовано ─────────────────────────────────────────────────────
+        // Главный ответ монтажнику: сколько объектов реализовано, на какую сумму, сколько заработано
+        // и почему не реализовано. Считается по отметкам «Объект реализован?» и по КП, где счёт
+        // выставлен или оплачен (они реализованными считаются сами). Период — по дню отметки.
+        const outAt = (k) => { const e = k.outcomeEvent, t = e && e.created_at ? Date.parse(e.created_at) : 0; return t || k.due || 0; };
+        const realized = kpList.filter(k => k.outcome === 'won' && inCur(outAt(k))).sort((a, b) => outAt(b) - outAt(a));
+        const notReal = kpList.filter(k => k.outcome === 'lost' && inCur(outAt(k)));
+        const realSum = realized.reduce((sum, k) => sum + (sumOfCalc[k.calcId] || 0), 0);
+        let realMargin = 0, realMarginN = 0;
+        if (mSet) realized.forEach(k => { const e = estOfCalc[k.calcId]; const m = e ? this.estimateMarginOf(e, mSet) : null; if (m != null) { realMargin += m; realMarginN++; } });
+        const decidedN = kpWon + kpLost + kpSilent;
+        const convRate = decidedN ? Math.round(kpWon / decidedN * 100) : null;
+        const reasonCount = {};
+        notReal.forEach(k => {
+            const m = (k.outcomeEvent && k.outcomeEvent.meta) || {};
+            const label = m.label || (window.KpOutcome ? KpOutcome.reasonLabel(m.reason) : '') || 'Причина не указана';
+            reasonCount[label] = (reasonCount[label] || 0) + 1;
+        });
+        const reasons = Object.keys(reasonCount).sort((a, b) => reasonCount[b] - reasonCount[a]);
+        const objW = (n) => this.plural(n, 'объект', 'объекта', 'объектов');
+        const perLabel = P === 365 ? 'за год' : 'за ' + P + ' дней';
+        const realRows = realized.slice(0, 5).map(k => {
+            const e = estOfCalc[k.calcId], sum = sumOfCalc[k.calcId] || 0;
+            return `<div class="sm-row sm-link"${e ? ` onclick="app.loadSingleEstimate('${e.id}')" title="Открыть смету"` : ''}>
+                <span class="sm-row-label"><b>${esc(k.project || (e && e.name) || 'Без названия')}</b>
+                    <br><small style="color:var(--text-sec);">реализовано ${dayWord(outAt(k))}</small></span>
+                <b>${sum ? money(sum) : ''}</b></div>`;
+        }).join('');
+        const reasonRows = reasons.slice(0, 5).map(label => `<div class="sm-row">
+                <span class="sm-row-label">${esc(label)}</span>
+                <b class="sm-row-val">${num(reasonCount[label])}</b>
+                <span class="sm-row-sub">${Math.round(reasonCount[label] / notReal.length * 100)}%</span></div>`).join('');
+        // Разбивка реализованного на оборудование и монтаж: по сметам, которые нашлись в облаке
+        let realEq = 0, realWorks = 0, realSplitN = 0;
+        realized.forEach(k => { const e = estOfCalc[k.calcId]; if (e && (e.eq || e.works)) { realEq += e.eq || 0; realWorks += e.works || 0; realSplitN++; } });
+        const splitLine = realSplitN
+            ? `<br><span style="font-size:11.5px;">оборудование ${money(realEq)}${seller ? '' : ' · монтаж ' + money(realWorks)}</span>` : '';
+        const realizedHtml = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">🏆 </span>Реализовано</h4><small class="sm-head-note">${perLabel}</small></div>
+            <div class="sm-tiles">
+                ${tile('Реализовано', num(realized.length) + ' ' + objW(realized.length), (realSum ? money(realSum) + ' по сумме смет' : (realized.length ? 'сумма смет неизвестна' : 'пока ничего не отмечено')) + splitLine, '', 'Объекты, где вы отметили «реализован», и КП со счётом: выставлен, оплачен. Оборудование и монтаж — по сметам, найденным в облаке')}
+                ${mSet ? tile('Ваш заработок ≈', realMarginN ? money(realMargin) : '—', realMarginN ? 'по ' + realMarginN + ' из ' + realized.length + ' ' + objW(realized.length) : 'нужны проценты во вкладке «Деньги»', '', 'Оценка по вашим процентам из «Денег»') : ''}
+                ${tile('Реализовано из отправленных', convRate === null ? '—' : convRate + '%', decidedN ? kpWon + ' из ' + decidedN + ' КП (срок ответа вышел или итог есть)' : 'пока нечего считать', '', 'Доля реализованных среди КП, отправленных за период; КП, у которых срок ответа ещё идёт, не считаются')}
+                ${tile('Не реализовано', num(notReal.length), reasons.length ? 'чаще всего: ' + esc(reasons[0]) : '—')}
+            </div>
+            ${realized.length || notReal.length ? '' : `<p class="lk-hint">Отметьте итог у смет: в «Объекты» нажмите «⋯» → «Объект реализован?». Здесь появятся реализованные объекты, сумма и ваш заработок.</p>`}
+            ${realRows}`;
+        const reasonsHtml = reasons.length
+            ? `<div class="lk-section-head sm-head"><h4><span class="ui-emo">🧭 </span>Почему не реализовано</h4><small class="sm-head-note">${perLabel}</small></div>${reasonRows}` : '';
+
+        // Вид «таблица» у «Реализовано»: все реализованные объекты периода, оборудование и монтаж отдельно
+        const realTable = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">🏆 </span>Реализовано</h4><small class="sm-head-note">${perLabel} · ${num(realized.length)} ${objW(realized.length)}</small></div>`
+            + (realized.length ? `<div class="sm-table-wrap"><table class="sm-table">
+                <thead><tr><th>Объект</th><th>Когда</th><th>Оборудование</th>${seller ? '' : '<th>Монтаж</th>'}<th>Сумма</th>${mSet ? '<th>Заработок</th>' : ''}</tr></thead>
+                <tbody>${realized.map(k => {
+                    const e = estOfCalc[k.calcId], mg = (mSet && e) ? this.estimateMarginOf(e, mSet) : null;
+                    return `<tr${e ? ` class="sm-link" onclick="app.loadSingleEstimate('${e.id}')"` : ''}><td>${esc(k.project || (e && e.name) || 'Без названия')}</td><td>${dayWord(outAt(k))}</td>
+                        <td>${e && e.eq ? money(e.eq) : '—'}</td>${seller ? '' : `<td>${e && e.works ? money(e.works) : '—'}</td>`}<td><b>${(sumOfCalc[k.calcId] || 0) ? money(sumOfCalc[k.calcId]) : '—'}</b></td>${mSet ? `<td>${mg != null ? money(mg) : '—'}</td>` : ''}</tr>`;
+                }).join('')}</tbody>
+                <tfoot><tr><td><b>Итого</b></td><td></td><td><b>${realSplitN ? money(realEq) : '—'}</b></td>${seller ? '' : `<td><b>${realSplitN ? money(realWorks) : '—'}</b></td>`}<td><b>${realSum ? money(realSum) : '—'}</b></td>${mSet ? `<td><b>${realMarginN ? money(realMargin) : '—'}</b></td>` : ''}</tr></tfoot>
+                </table></div>` : `<p class="lk-hint">Пока ничего не отмечено: в «Объекты» нажмите «⋯» → «Объект реализован?».</p>`);
+
+        // Круговая диаграмма и столбики — без библиотек, чистым SVG и CSS
+        const donut = (segs, top, sub) => {
+            const R = 42, C = 2 * Math.PI * R, total = segs.reduce((a, s) => a + s.n, 0) || 1;
+            let off = 0;
+            const arcs = segs.filter(s => s.n).map(s => {
+                const len = s.n / total * C;
+                const el = `<circle r="${R}" cx="60" cy="60" fill="none" stroke="${s.c}" stroke-width="16" stroke-dasharray="${len.toFixed(2)} ${(C - len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 60 60)"/>`;
+                off += len;
+                return el;
+            }).join('');
+            return `<svg viewBox="0 0 120 120" width="132" height="132" role="img"><circle r="${R}" cx="60" cy="60" fill="none" stroke="rgba(127,127,127,.2)" stroke-width="16"/>${arcs}
+                <text x="60" y="59" text-anchor="middle" font-size="19" font-weight="800" fill="currentColor">${top}</text>
+                <text x="60" y="75" text-anchor="middle" font-size="8.5" fill="currentColor" opacity=".7">${sub}</text></svg>`;
+        };
+        const waitN = kpCur.filter(k => !k.outcome && !k.overdue).length;
+        const OUT = [
+            { n: kpWon, c: '#10B981', t: 'реализовано' }, { n: kpLost, c: '#EF4444', t: 'не реализовано' },
+            { n: kpSilent, c: '#F97316', t: 'без ответа' }, { n: waitN, c: '#94A3B8', t: 'ждём ответа' }
+        ];
+        const realChart = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">🏆 </span>Реализовано</h4><small class="sm-head-note">КП, отправленные ${perLabel}</small></div>`
+            + (kpCur.length ? `<div class="sw-donut">${donut(OUT, convRate === null ? '—' : convRate + '%', 'реализовано')}
+                <div class="sw-legend">${OUT.map(s => `<div><i style="background:${s.c};"></i>${s.t} <b>${num(s.n)}</b></div>`).join('')}
+                    <div class="sw-legend-sub">${realSum ? money(realSum) + ' реализовано по сумме смет' : ''}</div></div></div>`
+                : `<p class="lk-hint">За период КП не отправлялись — диаграммы пока нет.</p>`);
+        const reasonsChart = reasons.length
+            ? `<div class="lk-section-head sm-head"><h4><span class="ui-emo">🧭 </span>Почему не реализовано</h4><small class="sm-head-note">${perLabel}</small></div>`
+              + reasons.map(label => { const p = Math.round(reasonCount[label] / notReal.length * 100); return `<div class="sw-hbar"><span>${esc(label)}</span><div><i style="width:${Math.max(3, p)}%;"></i></div><b>${num(reasonCount[label])} · ${p}%</b></div>`; }).join('')
+            : '';
 
         // ── По месяцам ──────────────────────────────────────────────────────
         // Растёт ли человек: одна строка на календарный месяц. Сметы — по
@@ -15793,44 +16087,80 @@ const app = {
                </table></div>`
             : '';
 
-        container.innerHTML = head
-            + `<div class="sm-tiles">
+        // Месяцы столбиками (вид «график»): смет, отправлено, до счёта
+        const maxN = Math.max(1, ...mRows.map(m => m.n));
+        const monthsChart = mRows.some(m => m.n)
+            ? `<div class="lk-section-head sm-head"><h4><span class="ui-emo">📅 </span>По месяцам</h4></div>
+               <div class="sw-bars">${mRows.slice().reverse().map(m => `<div class="sw-bar-col" title="${m.label}: смет ${m.n}, отправлено ${m.sent}, до счёта ${m.inv}">
+                    <div class="sw-bar-stack"><i style="height:${m.n / maxN * 100}%; background:#94A3B8;"></i><i style="height:${m.sent / maxN * 100}%; background:#3B82F6;"></i><i style="height:${m.inv / maxN * 100}%; background:#10B981;"></i></div>
+                    <small>${m.label}</small><b>${m.n || ''}</b></div>`).join('')}</div>
+               <div class="sw-legend sw-legend-row"><span><i style="background:#94A3B8;"></i>смет</span><span><i style="background:#3B82F6;"></i>отправлено</span><span><i style="background:#10B981;"></i>до счёта</span></div>`
+            : '';
+        // «Путь ваших смет» таблицей
+        const funnelTable = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">📈 </span>Путь ваших смет</h4></div>
+            <div class="sm-table-wrap"><table class="sm-table"><thead><tr><th>Шаг</th><th>Смет</th><th>От предыдущего</th></tr></thead>
+            <tbody>${inv.funnel.map((f, i) => { const prevN = i ? inv.funnel[i - 1].n : 0; return `<tr><td>${f.label}${f.manual ? ' <small>· ставит менеджер</small>' : ''}</td><td><b>${num(f.n)}</b></td><td>${!i ? '—' : (prevN ? Math.round(f.n / prevN * 100) + '%' : '—')}</td></tr>`; }).join('')}</tbody></table></div>`;
+
+        // ── Блоки «Моих показателей» ────────────────────────────────────────
+        // Каждый блок — готовая разметка (full), подпись для вида «компактно» (summary) и, где
+        // есть, свои виды (table, chart). Порядок, скрытие и вид берёт sumAssemble из личной раскладки.
+        const hdr = (icon, title, note) => `<div class="lk-section-head sm-head"><h4><span class="ui-emo">${icon} </span>${title}</h4>${note ? `<small class="sm-head-note">${note}</small>` : ''}</div>`;
+        const spd0 = spanOf(CALC, SENT, inCur);
+        const lastM = mRows[0];
+        const W = {};
+        W.attention = { full: actionsHtml, summary: actions.length ? `${actions.length} ${this.plural(actions.length, 'дело', 'дела', 'дел')}: ${esc(actions[0].name)}` : 'срочного нет' };
+        W.realized = {
+            full: realizedHtml, views: { table: realTable, chart: realChart },
+            summary: `<b>${num(realized.length)} ${objW(realized.length)}</b>${realSum ? ' · ' + money(realSum) : ''}${realSplitN ? ' (оборуд. ' + money(realEq) + (seller ? '' : ', монтаж ' + money(realWorks)) + ')' : ''}${convRate === null ? '' : ' · реализовано из отправленных ' + convRate + '%'}`
+        };
+        W.reasons = { full: reasonsHtml, views: { chart: reasonsChart }, summary: reasons.length ? `${esc(reasons[0])} — ${reasonCount[reasons[0]]} из ${notReal.length}` : 'пока нет отказов' };
+        W.avg = {
+            full: hdr('🏠', seller ? 'Средний заказ' : 'Средний объект') + objHtml,
+            summary: oCur.n ? `${oCur.area ? Math.round(oCur.area) + ' м² · ' : ''}${oCur.total ? money(oCur.total) : '—'}${oCur.eqM2 ? ' · оборудование ' + Math.round(oCur.eqM2).toLocaleString('ru-RU') + ' ₽/м²' : ''}` : 'сохранённых смет за период нет'
+        };
+        W.counts = {
+            full: hdr('📊', 'Сметы и счета', perLabel) + `<div class="sm-tiles">
                 ${tile('Смет', num(inv.cohortN), 'за ' + (P === 365 ? 'год' : P + ' дней'), trend(inv.cohortN, invPrev.cohortN, 'up'), 'Считаем от первого действия со сметой')}
                 ${tile('Дошло до счёта', num(fAuto ? fAuto.n : 0), convCur != null ? Math.round(convCur) + '% ваших смет' : '', trend(convCur, convPrev, 'up'))}
                 ${tile('Ждут ответа', num(stale.length), 'молчат ' + this.INSTALLER_STALE_DAYS + '+ дней')}
-                ${kpWon + kpLost ? tile('Итоги КП', Math.round(kpWon / (kpWon + kpLost) * 100) + '%',
-                    'согласились ' + num(kpWon) + ' из ' + num(kpWon + kpLost), '', 'По КП, ушедшим клиентам за период, у которых отмечен итог: согласился или отказ') : ''}
-                ${seller
-                    ? tile('Средний чек', oCur.total ? money(oCur.total) : '—', oCur.area ? Math.round(oCur.area) + ' м²' : '', trend(oCur.total, oPrev.total, 'up'))
-                    : tile('Средний объект', oCur.area ? Math.round(oCur.area) + ' м²' : '—', oCur.total ? money(oCur.total) : '', trend(oCur.area, oPrev.area, 'up'))}
-               </div>`
-            + actionsHtml
-            + `<div class="lk-section-head sm-head"><h4><span class="ui-emo">💵 </span>Деньги на столе</h4></div>`
-            + `<div class="sm-tiles">
+               </div>`,
+            summary: `смет ${num(inv.cohortN)} · до счёта ${num(fAuto ? fAuto.n : 0)}${convCur != null ? ' (' + Math.round(convCur) + '%)' : ''} · ждут ответа ${num(stale.length)}`
+        };
+        W.money = {
+            full: hdr('💵', 'Деньги на столе') + `<div class="sm-tiles">
                 ${pot('Ждут решения клиента', pending, '#F97316', 'Отправлены, клиент ещё не одобрил и не вернул на доработку')}
                 ${pot('Одобрены, счёт не запрошен', approved, '#10B981', 'Клиент согласен — осталось запросить счёт')}
-               </div>`
-            + `<div class="lk-section-head sm-head"><h4><span class="ui-emo">⏱ </span>Скорость</h4><small class="sm-head-note">обычно (медиана) · к прошлым ${P === 365 ? 'году' : P + ' дням'}</small></div>`
-            + speedRows
-            + `<div class="lk-section-head sm-head"><h4><span class="ui-emo">🏠 </span>${seller ? 'Средний заказ' : 'Средний объект'}</h4></div>`
-            + objHtml
-            + monthsHtml
-            + `<div id="installer_market"></div>`
-            + `<div id="installer_sales"></div>`
-            + `<div class="lk-section-head sm-head"><h4><span class="ui-emo">⏳ </span>Ждут вашего звонка</h4></div>`
-            + staleHtml
-            + `<div id="installer_reprice"></div>`
-            + `<div id="installer_avail"></div>`
-            + `<div class="lk-section-head sm-head"><h4><span class="ui-emo">📈 </span>Путь ваших смет</h4></div>`
-            + funnelHtml
-            + `<p class="lk-hint" style="margin-top:8px;">
+               </div>`,
+            summary: `ждут решения ${money(tableSum(pending, 'sum'))} (${pending.length}) · одобрено без счёта ${money(tableSum(approved, 'sum'))} (${approved.length})`
+        };
+        W.speed = {
+            full: hdr('⏱', 'Скорость', `обычно (медиана) · к прошлым ${P === 365 ? 'году' : P + ' дням'}`) + speedRows,
+            summary: `расчёт → отправка клиенту: ${dur(spd0.v)}${spd0.n ? '' : ' (нет данных)'}`
+        };
+        W.months = { full: monthsHtml, views: { chart: monthsChart }, summary: lastM ? `${lastM.label}: смет ${lastM.n}, отправлено ${lastM.sent}, до счёта ${lastM.inv}` : '' };
+        W.market = { full: '<!--async-->', summary: '' };
+        W.sales = { full: '<!--async-->', summary: '' };
+        W.stale = {
+            full: hdr('⏳', 'Ждут вашего звонка') + staleHtml,
+            summary: stale.length ? `${stale.length} ${this.plural(stale.length, 'смета молчит', 'сметы молчат', 'смет молчат')} ${this.INSTALLER_STALE_DAYS}+ дней` : 'ничего не висит'
+        };
+        W.reprice = { full: '<!--async-->', summary: '' };
+        W.avail = { full: '<!--async-->', summary: '' };
+        W.funnel = {
+            full: hdr('📈', 'Путь ваших смет') + funnelHtml + `<p class="lk-hint" style="margin-top:8px;">
                 Ступень засчитана, если было её событие или любое следующее.
                 «Клиент открыл» отмечается, когда заказчик открывает вашу ссылку, — по ней видно, дошла смета до него или нет.
-               </p>`;
+               </p>`,
+            views: { table: funnelTable },
+            summary: `${num(fAuto ? fAuto.n : 0)} из ${num(f0)} дошло до счёта${convCur != null ? ' (' + Math.round(convCur) + '%)' : ''}`
+        };
 
         // Цены, наличие и «что продаёте» считаются отдельно и после: это
         // запрос за составом счетов, а числа выше должны появиться сразу.
         // Запрос один на все блоки — им нужен один и тот же состав.
+        this._sumAsync = {};
+        this._sumCtx = { head: head, W: W, me: meRow, ests: ests, calcIds: cards.map(c => c.id) };
+        this.sumAssemble();
         this.loadInstallerInvoiceExtras(cards.map(c => c.id));
         this.renderInstallerMarket(meRow, ests);
     },
@@ -15844,6 +16174,8 @@ const app = {
      */
     loadInstallerInvoiceExtras: async function (calcIds) {
         if (!calcIds || !calcIds.length) return;
+        const hid = this.summaryLayout().hidden;
+        if (['sales', 'reprice', 'avail'].every(x => hid.includes(x))) return;   // все три убраны — запрос не нужен
         let rows = [];
         try {
             const CHUNK = 80;
@@ -15873,8 +16205,12 @@ const app = {
         rows = Object.values(latest);
         if (!rows.length) return;
         this.renderInstallerSales(rows);
-        this.renderInstallerRepricing(rows);
-        this.renderInstallerAvailability(rows);
+        // «Подорожало, пересчитайте перед звонком» и «Под заказ» — про объекты, по которым
+        // разговор с клиентом ещё идёт; у реализованных и отклонённых им делать нечего
+        const closed = this._kpClosed || {};
+        const live = rows.filter(r => !closed[String(r.seq || '')]);
+        this.renderInstallerRepricing(live);
+        this.renderInstallerAvailability(live);
     },
 
     /**
@@ -15896,23 +16232,42 @@ const app = {
     MARKET_MIN_PEERS: 5,
     MARKET_DAYS: 180,
 
+    summaryMarket: function (kind, key) {
+        const L = this.summaryLayout();
+        if (kind === 'scope' && ['city', 'region', 'country'].includes(key)) L.market.scope = key;
+        else if (kind === 'period' && ['half', 'year'].includes(key)) L.market.period = key;
+        else return;
+        this.summarySave();
+        const c = this._sumCtx;
+        if (c) this.renderInstallerMarket(c.me, c.ests);
+    },
+
     renderInstallerMarket: async function (me, myEsts) {
-        const host = document.getElementById('installer_market');
-        if (!host || !me || !me.id) return;
+        const host = this.sumHost('installer_market');
+        if (this.summaryLayout().hidden.includes('market') || !me || !me.id) return;
         const num = n => Number(n || 0).toLocaleString('ru-RU');
         const seller = this.isSellerOnly();
-        const DAY = 86400000, since = Date.now() - this.MARKET_DAYS * DAY;
-        let region = '', rows = [];
+        // Область (город / регион / страна) и период (полгода / год) выбирает сам монтажник — в личной раскладке
+        const cfg = this.summaryLayout().market;
+        const days = cfg.period === 'year' ? 365 : this.MARKET_DAYS;
+        const DAY = 86400000, since = Date.now() - days * DAY;
+        let region = '', city = '', rows = [];
         try {
-            const { data: u } = await supabaseClient.from('users').select('region').eq('id', me.id).maybeSingle();
+            const { data: u } = await supabaseClient.from('users').select('region, city').eq('id', me.id).maybeSingle();
             region = (u && u.region) || '';
-            const res = await this.fetchAllRows('estimates',
-                'user_id, created_at, eq_sum, works_sum, total_sum, calc_id:calc_data->>calc_id, area:calc_data->>area, users!inner(region, account_type)',
-                { order: 'created_at', cap: 20000, build: (qy) => qy.gte('created_at', new Date(since).toISOString()).neq('user_id', me.id) });
-            rows = (res.rows || []).filter(r => {
-                const t = r.users && r.users.account_type;
-                return t !== 'admin' && t !== 'viewer' && t !== 'manager';
-            });
+            city = (u && u.city) || '';
+            const hit = (this._mktCache || {})[days];
+            if (hit && Date.now() - hit.at < 300000) rows = hit.rows;
+            else {
+                const res = await this.fetchAllRows('estimates',
+                    'user_id, created_at, eq_sum, works_sum, total_sum, calc_id:calc_data->>calc_id, area:calc_data->>area, users!inner(region, account_type, city)',
+                    { order: 'created_at', cap: 20000, build: (qy) => qy.gte('created_at', new Date(since).toISOString()).neq('user_id', me.id) });
+                rows = (res.rows || []).filter(r => {
+                    const t = r.users && r.users.account_type;
+                    return t !== 'admin' && t !== 'viewer' && t !== 'manager';
+                });
+                (this._mktCache = this._mktCache || {})[days] = { at: Date.now(), rows: rows };
+            }
         } catch (e) {
             console.warn('[показатели] рынок не прочитан:', e && e.message || e);
             return;
@@ -15933,20 +16288,47 @@ const app = {
             });
             return m;
         };
-        const sameRegion = region ? rows.filter(r => r.users && r.users.region === region) : [];
-        let peers = byUser(sameRegion), scope = region;
-        if (Object.keys(peers).length < this.MARKET_MIN_PEERS) { peers = byUser(rows); scope = ''; }
+        const lc = (v) => String(v || '').trim().toLowerCase();
+        const cityOf = (r) => lc(r.users && r.users.city);
+        const COUNTRY = { RU: 'Россия', KZ: 'Казахстан', BY: 'Беларусь', UZ: 'Узбекистан', AM: 'Армения', KG: 'Киргизия', GE: 'Грузия', AZ: 'Азербайджан', UA: 'Украина' };
+        // Страны в анкете нет: определяем по городу из справочника, неизвестный город считаем российским
+        const countryOf = (c) => { const x = (typeof CITIES_DB !== 'undefined') ? CITIES_DB.find(z => lc(z.name) === c) : null; return x ? x.country : 'RU'; };
+        const myCity = lc(city), myCountry = countryOf(myCity);
+        const esc = (v) => String(v == null ? '' : v).replace(/</g, '&lt;');
+        const SCOPES = [
+            { k: 'city', ok: !!myCity, f: (r) => cityOf(r) === myCity, label: 'монтажники города «' + esc(city) + '»' },
+            { k: 'region', ok: !!region, f: (r) => r.users && r.users.region === region, label: 'монтажники региона «' + esc(region) + '»' },
+            { k: 'country', ok: true, f: (r) => countryOf(cityOf(r)) === myCountry, label: 'монтажники: ' + (COUNTRY[myCountry] || myCountry) },
+            { k: 'all', ok: true, f: () => true, label: 'все монтажники сайта' }
+        ];
+        let peers = {}, scopeKey = '', scopeLabel = '', widened = false;
+        const startIdx = Math.max(0, SCOPES.findIndex(x => x.k === cfg.scope));
+        for (let i = startIdx; i < SCOPES.length; i++) {
+            const S = SCOPES[i];
+            if (!S.ok) { widened = true; continue; }
+            const cand = byUser(rows.filter(S.f));
+            if (Object.keys(cand).length >= this.MARKET_MIN_PEERS || i === SCOPES.length - 1) {
+                peers = cand; scopeKey = S.k; scopeLabel = S.label; widened = widened || S.k !== cfg.scope;
+                break;
+            }
+            widened = true;
+        }
         const peerList = Object.values(peers);
-        const head = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">📍 </span>Вы и рынок</h4><small class="sm-head-note">${scope
-            ? 'монтажники региона «' + scope.replace(/</g, '&lt;') + '»' : 'все монтажники сайта'} · ${this.MARKET_DAYS} дней</small></div>`;
+        const chip = (kind, key, label, on) => `<button type="button" class="sw-chip${on ? ' on' : ''}" onclick="app.summaryMarket('${kind}', '${key}')">${label}</button>`;
+        const head = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">📍 </span>Вы и рынок</h4><small class="sm-head-note">${scopeLabel} · ${days === 365 ? 'год' : 'полгода'}</small></div>
+            <div class="sw-market-bar">${chip('scope', 'city', 'Город', cfg.scope === 'city')}${chip('scope', 'region', 'Регион', cfg.scope === 'region')}${chip('scope', 'country', 'Страна', cfg.scope === 'country')}
+                <span class="sw-sep"></span>${chip('period', 'half', 'Полгода', cfg.period === 'half')}${chip('period', 'year', 'Год', cfg.period === 'year')}</div>`;
         if (peerList.length < this.MARKET_MIN_PEERS) {
             host.innerHTML = head + `<p class="lk-hint">Сравнение появится, когда наберётся ${this.MARKET_MIN_PEERS} монтажников с сохранёнными сметами — сейчас ${num(peerList.length)}. Меньше нельзя: по «средней» из двух-трёх человек легко узнать соседа.</p>`;
             return;
         }
 
+        // Свои сметы за год, если выбран год: общая выборка «Показателей» берёт полгода
+        const myAll = days > 180 ? await this.fetchInstallerEstimates(me.id, days).catch(() => myEsts || []) : (myEsts || []);
+
         // Доля смет, ушедших клиенту и дошедших до счёта, — по журналу событий
         // этих же смет. Номеров немного (только облачные сметы), запрос лёгкий.
-        const allCalcs = [...new Set(peerList.flatMap(p => p.calcs).concat((myEsts || []).map(e => e.calc).filter(Boolean)))];
+        const allCalcs = [...new Set(peerList.flatMap(p => p.calcs).concat(myAll.map(e => e.calc).filter(Boolean)))];
         const reached = {};
         try {
             for (let i = 0; i < allCalcs.length; i += 80) {
@@ -15970,7 +16352,7 @@ const app = {
             sent: U.calcs.length ? U.calcs.filter(c => reached[c] && reached[c].sent).length / U.calcs.length * 100 : null,
             inv: U.calcs.length ? U.calcs.filter(c => reached[c] && reached[c].inv).length / U.calcs.length * 100 : null
         });
-        const mine = byUser((myEsts || []).filter(e => e.at >= since).map(e => ({
+        const mine = byUser(myAll.filter(e => e.at >= since).map(e => ({
             user_id: 'me', eq_sum: e.eq, works_sum: e.works, area: e.area, calc_id: e.calc
         }))).me;
         const my = mine ? statsOf(mine) : {};
@@ -16025,8 +16407,8 @@ const app = {
                 <tbody>${rowsHtml}</tbody></table></div>`
             + `<p class="lk-hint" style="margin-top:6px;">
                 ${num(peerList.length)} ${this.plural(peerList.length, 'монтажник', 'монтажника', 'монтажников')} с сохранёнными сметами, без имён. «Обычно» — медиана по людям: у каждого свои ₽/м², потом середина.
-                ${mine ? '' : 'Ваших сохранённых смет за полгода нет — сравнивать пока не с чем.'}
-                ${scope ? '' : (region ? 'В вашем регионе меньше ' + this.MARKET_MIN_PEERS + ' монтажников — поэтому сравнение со всеми.' : 'Регион в анкете не указан — поэтому сравнение со всеми.')}
+                ${mine ? '' : 'Ваших сохранённых смет за ' + (days === 365 ? 'год' : 'полгода') + ' нет — сравнивать пока не с чем.'}
+                ${widened ? 'Выбранная область слишком мала (меньше ' + this.MARKET_MIN_PEERS + ' монтажников) или не указана в анкете — показано: ' + scopeLabel + '.' : ''}
                </p>`;
     },
 
@@ -16040,8 +16422,8 @@ const app = {
      * Опциональные позиции (isOpt) не считаем: в итог сметы они не входят.
      */
     renderInstallerSales: function (rows) {
-        const host = document.getElementById('installer_sales');
-        if (!host || !rows || !rows.length) return;
+        const host = this.sumHost('installer_sales');
+        if (this.summaryLayout().hidden.includes('sales') || !rows || !rows.length) return;
         const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
         const num = n => Number(n || 0).toLocaleString('ru-RU');
         const money = (rub) => !rub ? '—'
@@ -16140,8 +16522,8 @@ const app = {
      * запрашивает, см. loadInstallerInvoiceExtras.
      */
     renderInstallerRepricing: function (rows) {
-        const host = document.getElementById('installer_reprice');
-        if (!host || !rows || !rows.length) return;
+        const host = this.sumHost('installer_reprice');
+        if (this.summaryLayout().hidden.includes('reprice') || !rows || !rows.length) return;
         const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
         const num = n => Number(n || 0).toLocaleString('ru-RU');
         // Знак ставим только при реальном движении: «+0 ₽» читается как ошибка.
@@ -16188,10 +16570,10 @@ const app = {
 
         // Та же новость — строкой в «Что сделать сейчас»: звонить клиенту со
         // старой ценой хуже, чем не звонить.
-        const act = document.getElementById('installer_actions_extra');
+        const act = this.sumHost('installer_actions_extra');
         if (act && grew.length) {
             const sum = grew.reduce((t, x) => t + x.diff, 0);
-            act.innerHTML = `<div class="sm-row sm-link" onclick="document.getElementById('installer_reprice').scrollIntoView({ behavior: 'smooth', block: 'start' })" title="Показать, какие сметы">
+            act.innerHTML = `<div class="sm-row sm-link" onclick="(document.getElementById('installer_reprice') || document.body).scrollIntoView({ behavior: 'smooth', block: 'start' })" title="Показать, какие сметы">
                     <span class="sm-row-label">💸 <b>${num(grew.length)} ${this.plural(grew.length, 'смета', 'сметы', 'смет')}</b> <span style="color:var(--c-bad,#EF4444);">— подорожало оборудование, пересчитайте перед звонком</span></span>
                     <b>${rub(sum)}</b>
                 </div>`;
@@ -16246,8 +16628,8 @@ const app = {
      * renderInstallerRepricing) — второй запрос за тем же самым не нужен.
      */
     renderInstallerAvailability: function (rows) {
-        const host = document.getElementById('installer_avail');
-        if (!host || !rows || !rows.length) return;
+        const host = this.sumHost('installer_avail');
+        if (this.summaryLayout().hidden.includes('avail') || !rows || !rows.length) return;
         const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
         const num = n => Number(n || 0).toLocaleString('ru-RU');
         const avail = this.catalogAvailabilityIndex();
@@ -16353,7 +16735,8 @@ const app = {
     // в НОВУЮ смету из reset(). Открытые и сохранённые сметы не трогаем — иначе цены в уже
     // отправленных КП поменялись бы сами. Пустое значение = «Авто»: калькулятор решает сам.
     // Ручной выбор в самой смете (замены, swaps) главнее предпочтений.
-    // pro: 'rommer' — нужен столбец ROMMER в «Тарифах» (исходно Профи), 'terem' — столбец ТЕРЕМ.
+    // pro: 'rommer' — нужен столбец ROMMER в «Тарифах» (исходно Профи), 'terem' — столбец ТЕРЕМ,
+    // 'pro' — вариант только на тарифе ПРОФИ.
     PREF_DEFS: [
         { g: 'Бренд', items: [
             { id: 'brand', label: 'Бренд оборудования', opts: [{ v: 'stout', t: 'STOUT' }, { v: 'rommer', t: 'ROMMER', pro: 'rommer' }] }
@@ -16371,14 +16754,14 @@ const app = {
             { id: 'radKind', label: 'Радиаторы', opts: [{ v: 'section', t: 'Секционные' }, { v: 'steel', t: 'Стальные' }],
                 note: 'Серия — самая дешёвая из подходящих.' },
             { id: 'radConn', label: 'Способ подключения радиаторов', opts: [{ v: 'side', t: 'Боковое' }, { v: 'bottom', t: 'Нижнее' }] },
-            { id: 'radScheme', label: 'Схема подключения', opts: [{ v: 'tee', t: 'Тройниковая' }, { v: 'manifold', t: 'Коллекторная' }] },
+            { id: 'radScheme', label: 'Схема подключения', opts: [{ v: 'tee', t: 'Тройниковая', pro: 'pro' }, { v: 'manifold', t: 'Коллекторная' }] },
             { id: 'radPipe', label: 'Трубы для радиаторов', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'mp', t: 'Металлопластик' }] },
-            { id: 'radBeam', label: 'Лучи к приборам в комнате', opts: [{ v: 'single', t: 'Ветка на каждый прибор' }, { v: 'auto', t: 'Автоподбор трассы' }],
+            { id: 'radBeam', label: 'Лучи к приборам в комнате', opts: [{ v: 'single', t: 'Ветка на каждый прибор' }],
                 note: 'Авто — общая трасса на комнату включается сама, если смета выходит дешевле не меньше чем на 3 % и 10 000 ₽. Работает при коллекторной схеме, режиме «По комнатам» и серой трубе PEX-a.' }
         ] },
         { g: 'Тёплый пол', items: [
             { id: 'ufhPipe', label: 'Трубы тёплого пола', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'metal_plastic', t: 'Металлопластик' }] },
-            { id: 'ufhFix', label: 'Крепление труб тёплого пола', opts: [{ v: 'xps', t: 'Скобы (XPS)' }, { v: 'mat', t: 'Маты' }] }
+            { id: 'ufhFix', label: 'Крепление труб тёплого пола', opts: [{ v: 'xps', t: 'Скобы (XPS)', pro: 'pro' }, { v: 'mat', t: 'Маты' }] }
         ] },
         { g: 'Водоснабжение и канализация', items: [
             { id: 'wellPump', label: 'Управление скважинным насосом', opts: [{ v: 'relay', t: 'Релейное' }, { v: 'inverter', t: 'Частотное' }],
@@ -16387,7 +16770,7 @@ const app = {
             { id: 'sewer', label: 'Канализация', opts: [{ v: 'economy', t: 'Обычная' }, { v: 'std', t: 'Бесшумная' }] }
         ] },
         { g: 'Автоматика', items: [
-            { id: 'automation', label: 'Автоматика', opts: [{ v: 'wired', t: 'Проводная' }, { v: 'radio', t: 'Беспроводная' }] }
+            { id: 'automation', label: 'Автоматика', opts: [{ v: 'wired', t: 'Проводная' }, { v: 'radio', t: 'Беспроводная', pro: 'pro' }] }
         ] }
     ],
 
@@ -16402,7 +16785,7 @@ const app = {
         const def = this.PREF_DEFS.reduce((a, g) => a.concat(g.items), []).find(x => x.id === key);
         const opt = def && def.opts.find(o => o.v === v);
         if (!opt || !opt.pro) return null;
-        const ok = opt.pro === 'rommer' ? this.canUseBrand('ROMMER') : this.tariffAccess('terem') === 'on';
+        const ok = opt.pro === 'pro' ? this.isPro() : (opt.pro === 'rommer' ? this.canUseBrand('ROMMER') : this.tariffAccess('terem') === 'on');
         if (ok) return null;
         return this.isPro() ? 'Недоступно для вашей учётной записи' : 'Только на тарифе ПРОФИ';
     },
@@ -16527,7 +16910,7 @@ const app = {
     },
     prefsHintLater: function () {
         try { localStorage.setItem('prefs_hint_snooze', String(Date.now() + 14 * 86400000)); } catch (e) { }
-        this.renderCabinetHome();
+        if (this._activeProfileTab === 'summary') this.renderInstallerSummaryTab();
     },
 
     applyPrefsToCurrent: async function () {
@@ -16550,11 +16933,11 @@ const app = {
                 <div class="lk-setting">
                     <div class="lk-setting-text">
                         <b>Подбирать бухты по всей смете</b>
-                        <span>Одинаковые трубы в бухтах из всех разделов считаются вместе — меньше обрезков. Полипропилен и сталь не объединяются. Остаток виден на экране, в печать и КП не попадает.</span>
+                        <span>Одинаковые трубы из разных разделов считаются вместе — меньше обрезков.</span>
                         <span style="color:var(--text-main);">${(() => {
                             const st = this._poolStats;
                             if (!st) return 'Откройте смету с трубами — покажем экономию.';
-                            if (!(st.unM > 0)) return 'В текущей смете объединять нечего.';
+                            if (!(st.unM > 0)) return '';
                             const eco = st.metres > 0
                                 ? `экономия <b>${Math.round(st.metres)} м</b> трубы (${String(st.pct).replace('.', ',')} % от ${Math.round(st.unM)} м) и <b>${this.formatCurrencyAmount(st.rub)}</b>`
                                 : 'экономии нет, бухт и так минимум';
@@ -16595,6 +16978,8 @@ const app = {
     setProfileTab: function (tab) {
         const tabs = ['home', 'requisites', 'company', 'subscription', 'objects', 'summary', 'leads', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment', 'prefs', 'settings', 'theme', 'kp', 'notify', 'login'];
         if (!tabs.includes(tab)) tab = 'requisites';
+        // «Дела» убраны (23.10.2026): то же самое — вверху «Показателей», «Главная» открывает их
+        if (tab === 'home') tab = 'summary';
         tab = this.cabinetResolveTab(tab);
         // Уходим со вкладки с открытым чатом — отписываемся от реалтайма, чтобы не копить
         // висящие подписки и не обновлять невидимую панель
@@ -16747,7 +17132,7 @@ const app = {
     // за ними одиннадцать. Ключи разделов (profile_tab_<id>, data-tab, push open:"orders")
     // не менялись — меняется только то, как они сгруппированы на экране.
     CABINET_SUBTABS: {
-        home: [{ id: 'home', label: 'Дела' }, { id: 'summary', label: 'Показатели' }, { id: 'leads', label: 'Заявки' }],
+        home: [{ id: 'summary', label: 'Показатели' }, { id: 'leads', label: 'Заявки' }],
         objects: [{ id: 'objects', label: 'Сметы' }, { id: 'oprosniki', label: 'Опросные листы' }, { id: 'orders', label: 'Документы' }],
         requisites: [{ id: 'requisites', label: 'Мои данные' }, { id: 'company', label: 'Реквизиты компании' }, { id: 'manager', label: 'Мой менеджер' }],
         workprices: [{ id: 'prefs', label: 'Любимые материалы' }, { id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }],
@@ -18849,6 +19234,10 @@ const app = {
                     kpOutcomeDays: (cloud.kpOutcomeDays !== undefined)
                         ? cloud.kpOutcomeDays
                         : (this.installerSettings ? this.installerSettings.kpOutcomeDays : undefined),
+                    // Раскладка «Моих показателей» (порядок, скрытые, вид, область рынка): облако главнее
+                    summaryLayout: (cloud.summaryLayout && typeof cloud.summaryLayout === 'object')
+                        ? cloud.summaryLayout
+                        : (this.installerSettings ? this.installerSettings.summaryLayout : undefined),
                     // Объединение бухт по смете («Настройки → Тариф»): облако главнее, без ключа — местный выбор
                     poolCoils: (cloud.poolCoils !== undefined)
                         ? cloud.poolCoils
@@ -18859,6 +19248,7 @@ const app = {
                         : ((this.installerSettings && this.installerSettings.prefs) || undefined)
                 };
                 this.saveInstallerSettingsLocal();
+                this._sumLayout = null;   // раскладка могла приехать с другого устройства
                 if (!cloudCompany && localCompany) this.pushInstallerSettingsToCloud();
                 if (!cloud.railLayout && this.installerSettings.railLayout) this.pushInstallerSettingsToCloud();
                 if (!cloud.railLayoutTouch && this.installerSettings.railLayoutTouch) this.pushInstallerSettingsToCloud();
@@ -24892,6 +25282,7 @@ const app = {
         dashboard: '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
         analytics: '<path d="M22 7l-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
         aifill: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4M21 5h-4"/>',
+        channel: '<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/>',
         articles: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
         leads: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
         warranty: '<path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5z"/><path d="M9 12l2 2 4-4"/>',
@@ -28207,7 +28598,13 @@ const app = {
         def.items.forEach(w => { if (!seen[w.id]) items.push(w); });
         const style = Object.assign({}, def.style, (l && l.style) || {});
         style.cols = Math.min(4, Math.max(2, Number(style.cols) || 4));
-        this._todayLayout = { style: style, items: items };
+        // v2 (23.10.2026): плитки «Новые монтажники», «Сметы за день», «Оплаты Профи» и ярлыки Планировщика,
+        // Расчётов и Распознавания заменил дашборд за период (kpiHtml) — один раз убираем их с экрана
+        const dropV2 = { 'tab:kanban': 1, 'tab:estimates': 1, 'tab:recognition': 1 };
+        const hideV2 = { newusers: 1, ests: 1, payments: 1 };
+        const kept = (l && l.v === 2) ? items : items.filter(w => !dropV2[w.id]).map(w => hideV2[w.id] ? Object.assign(w, { hidden: true }) : w);
+        this._todayLayout = { v: 2, style: style, items: kept };
+        if (!(l && l.v === 2)) { try { localStorage.setItem(this.TODAY_LAYOUT_KEY, JSON.stringify(this._todayLayout)); } catch (e) { } }
         return this._todayLayout;
     },
     todaySave: function () {
@@ -28316,6 +28713,470 @@ const app = {
             comment: '',
             onDone: async () => { this._homeState = null; this.renderAdminHome(); }
         });
+    },
+
+    // ═══ «Сегодня»: срез показателей за выбранный период ══════════════════
+    // Верх экрана — дашборд владельца: период (день … всё время) и пять виджетов (новые пользователи,
+    // планировщик КП и счетов, расчёты, распознавание, оплаты Профи). У каждого виджета четыре вида:
+    // цифры, график по времени, диаграмма состава, таблица. Выбранный период и виды помнит localStorage.
+    // Окна скользящие: «неделя» — последние 7 суток, сравнение — с предыдущими 7 сутками.
+    // Новая метрика — строка в kpiBuild (виджет), новый источник — kpiStart.
+    KPI_PERIOD_KEY: 'heatcalc_kpi_period_v1',
+    KPI_VIEWS_KEY: 'heatcalc_kpi_views_v1',
+    KPI_PERIODS: [
+        { id: 'day', label: 'День', days: 1, n: 24, full: 'за последние сутки' },
+        { id: 'week', label: 'Неделя', days: 7, n: 7, full: 'за последние 7 дней' },
+        { id: 'month', label: '30 дней', days: 30, n: 30, full: 'за последние 30 дней' },
+        { id: 'quarter', label: 'Квартал', days: 91, n: 13, full: 'за последний квартал' },
+        { id: 'half', label: 'Полгода', days: 182, n: 26, full: 'за последние полгода' },
+        { id: 'year', label: 'Год', days: 365, n: 12, full: 'за последний год' },
+        { id: 'all', label: 'Всё время', days: null, n: 12, full: 'за всё время' }
+    ],
+    KPI_VIEWS: [
+        { id: 'num', label: 'Цифры' }, { id: 'chart', label: 'График' },
+        { id: 'pie', label: 'Диаграмма' }, { id: 'table', label: 'Таблица' }
+    ],
+    KPI_EVENTS: ['sent', 'printed', 'confirmed', 'needs_revision', 'rejected', 'invoice_requested', 'invoice_issued', 'paid', 'won', 'lost'],
+    KPI_C: { blue: '#3B82F6', green: '#10B981', amber: '#F59E0B', red: '#EF4444', violet: '#8B5CF6', gray: '#94A3B8', teal: '#0D9488' },
+
+    kpiPeriod: function () {
+        if (!this._kpiPeriodId) {
+            let v = null;
+            try { v = localStorage.getItem(this.KPI_PERIOD_KEY); } catch (e) { }
+            this._kpiPeriodId = this.KPI_PERIODS.some(p => p.id === v) ? v : 'week';
+        }
+        return this.KPI_PERIODS.filter(p => p.id === this._kpiPeriodId)[0];
+    },
+    kpiSetPeriod: function (id) {
+        if (!this.KPI_PERIODS.some(p => p.id === id)) return;
+        this._kpiPeriodId = id;
+        try { localStorage.setItem(this.KPI_PERIOD_KEY, id); } catch (e) { }
+        this.renderAdminHome();
+    },
+    kpiViewOf: function (w) {
+        if (!this._kpiViews) {
+            let v = null;
+            try { v = JSON.parse(localStorage.getItem(this.KPI_VIEWS_KEY) || 'null'); } catch (e) { }
+            this._kpiViews = (v && typeof v === 'object') ? v : {};
+        }
+        const x = this._kpiViews[w];
+        return this.KPI_VIEWS.some(k => k.id === x) ? x : 'num';
+    },
+    kpiSetView: function (w, view) {
+        this.kpiViewOf(w);
+        this._kpiViews[w] = view;
+        try { localStorage.setItem(this.KPI_VIEWS_KEY, JSON.stringify(this._kpiViews)); } catch (e) { }
+        this.renderAdminHome();
+    },
+
+    // Загрузка одного источника для периода: результат кэшируется по периоду, переключение туда-обратно мгновенное
+    kpiLoad: function (pid, key, fn) {
+        const box = this._kpiSt || (this._kpiSt = {});
+        const S = box[pid] || (box[pid] = {});
+        if (S[key] !== undefined) return;
+        S[key] = 'loading';
+        fn().then(v => { S[key] = v; })
+            .catch(e => { console.warn('[сегодня/срез] ' + key + ':', e); S[key] = { error: String((e && e.message) || e) }; })
+            .then(() => { if (this._adminTab === 'home') this.renderAdminHome(); });
+    },
+    // Запросы берут два периода сразу (текущий и предыдущий — для сравнения)
+    kpiStart: function (p) {
+        const day = 864e5, from = p.days ? Date.now() - 2 * p.days * day : 0;
+        const since = from ? new Date(from).toISOString() : null;
+        const ge = (qy, col) => since ? qy.gte(col, since) : qy;
+        const L = this.kpiLoad.bind(this, p.id);
+        L('tests', async () => {
+            try {
+                const { data, error } = await supabaseClient.from('users').select('id, email').eq('is_test', true).limit(2000);
+                if (error) throw error;
+                return { rows: data || [] };
+            } catch (e) { return { rows: [] }; }
+        });
+        L('users', async () => {
+            const r = await this.fetchAllRows('users', 'id, created_at, activity_types, account_type, is_test', { order: 'id', cap: 20000, build: qy => ge(qy, 'created_at') });
+            return { rows: r.rows, capped: r.capped };
+        });
+        L('ests', async () => {
+            const r = await this.fetchAllRows('estimates', 'id, created_at, user_id, total_sum', { order: 'id', cap: 20000, build: qy => ge(qy, 'created_at') });
+            return { rows: r.rows, capped: r.capped };
+        });
+        L('evs', async () => {
+            const r = await this.fetchAllRows('invoice_events', 'calc_id, event, created_at, user_email', {
+                order: 'created_at', cap: 20000, build: qy => ge(qy.in('event', this.KPI_EVENTS), 'created_at')
+            });
+            return { rows: r.rows, capped: r.capped };
+        });
+        L('pay', async () => {
+            const r = await this.fetchAllRows('subscription_payments', 'paid_at, paid_rub, rub, email, plan, months', {
+                order: 'paid_at', cap: 5000, build: qy => ge(qy.not('paid_at', 'is', null), 'paid_at')
+            });
+            return { rows: r.rows };
+        });
+        L('rec', async () => {
+            const headers = await this.recognitionAuthHeaders();
+            if (!headers) throw new Error('нет сессии для доступа к архиву');
+            const d = p.days ? Math.min(365, Math.ceil(p.days * 2)) : 365;
+            const r = await fetch(`${this.RECOGNIZE_ARCHIVE}?list=1&days=${d}&limit=500`, { headers });
+            if (r.status === 403) throw new Error('архив открыт владельцу, администраторам и наблюдателям');
+            const j = await r.json();
+            if (!j || !Array.isArray(j.rows)) throw new Error((j && j.error) || 'архив ответил непонятным');
+            return { rows: j.rows, capped: j.rows.length >= 500, limited: !p.days || p.days * 2 > 365 };
+        });
+    },
+
+    // Подписи столбцов графика: окно делится на n равных отрезков, считая от «сейчас» назад
+    kpiBuckets: function (p, firstTs) {
+        const day = 864e5, now = Date.now(), n = p.n;
+        const from = p.days ? now - p.days * day : Math.min(firstTs || now, now - 30 * day);
+        const w = (now - from) / n;
+        const labels = [], tips = [];
+        const f2 = x => String(x).padStart(2, '0');
+        for (let i = 0; i < n; i++) {
+            const s = new Date(from + i * w), e = new Date(from + (i + 1) * w - 1);
+            const dm = d => f2(d.getDate()) + '.' + f2(d.getMonth() + 1);
+            if (p.id === 'day') { labels.push(f2(s.getHours()) + ':00'); tips.push(dm(s) + ' ' + f2(s.getHours()) + ':00'); }
+            else if (w >= 25 * day) {
+                labels.push(s.toLocaleDateString('ru-RU', { month: 'short', year: '2-digit' }).replace('.', ''));
+                tips.push(dm(s) + ' — ' + dm(e) + '.' + e.getFullYear());
+            }
+            else if (w > 1.5 * day) { labels.push(dm(s)); tips.push(dm(s) + ' — ' + dm(e)); }
+            else { labels.push(dm(s)); tips.push(dm(s)); }
+        }
+        return { from: from, w: w, n: n, labels: labels, tips: tips, at: t => (t < from || t > now) ? -1 : Math.min(n - 1, Math.floor((t - from) / w)) };
+    },
+
+    kpiDelta: function (cur, prev, o) {
+        o = o || {};
+        if (prev == null) return '';
+        let diff, txt;
+        if (o.ratio) { diff = cur - prev; txt = (diff > 0 ? '+' : '') + Math.round(diff) + ' п.п.'; }
+        else {
+            if (!prev) return cur ? '<i class="kpi-d kpi-d-up" title="В предыдущем таком же периоде было 0">новое</i>' : '';
+            diff = (cur - prev) / prev * 100; txt = (diff > 0 ? '+' : '') + Math.round(diff) + '%';
+        }
+        const flat = Math.abs(diff) < 0.5;
+        const good = o.inv ? diff < 0 : diff > 0;
+        const cls = flat ? 'flat' : (good ? 'up' : 'down');
+        const prevTxt = o.ratio ? Math.round(prev) + '%' : (o.fmt ? o.fmt(prev) : Math.round(prev).toLocaleString('ru-RU'));
+        return `<i class="kpi-d kpi-d-${cls}" title="В предыдущем таком же периоде: ${prevTxt}">${flat ? '＝' : (diff > 0 ? '▲' : '▼')} ${txt}</i>`;
+    },
+
+    // Все цифры периода из загруженных источников. Возвращает описание виджетов; чего нет — widget.wait / widget.err
+    kpiBuild: function (p, S) {
+        const day = 864e5, now = Date.now(), C = this.KPI_C;
+        const fmt = n => Math.round(n).toLocaleString('ru-RU');
+        const rub = n => fmt(n) + ' ₽';
+        const pct = (a, b) => b > 0 ? Math.min(100, Math.round(a / b * 100)) : null;
+        const ok = k => S[k] && S[k] !== 'loading' && !S[k].error;
+        const bad = k => S[k] && S[k].error ? S[k].error : null;
+        const t0 = s => { const t = Date.parse(s); return isNaN(t) ? null : t; };
+        const cur0 = p.days ? now - p.days * day : 0;
+        const prev0 = p.days ? cur0 - p.days * day : null;
+        const cls = t => t == null ? null : (t >= cur0 ? 'cur' : (prev0 != null && t >= prev0 ? 'prev' : null));
+        const hasPrev = !!p.days;
+
+        // Начало данных — для «всего времени» (границы столбцов графика)
+        let first = now;
+        const scan = (k, f) => { if (ok(k)) S[k].rows.forEach(r => { const t = t0(r[f]); if (t != null && t < first) first = t; }); };
+        scan('users', 'created_at'); scan('ests', 'created_at'); scan('evs', 'created_at'); scan('pay', 'paid_at');
+        if (ok('rec')) S.rec.rows.forEach(r => { const t = t0(r.savedAt || r.day); if (t != null && t < first) first = t; });
+        const B = this.kpiBuckets(p, first);
+        const zeros = () => new Array(B.n).fill(0);
+
+        const testIds = {}, testMail = {};
+        if (ok('tests')) S.tests.rows.forEach(u => { if (u.id) testIds[u.id] = 1; if (u.email) testMail[String(u.email).toLowerCase()] = 1; });
+        const testsWait = !ok('tests') && !bad('tests');
+
+        const out = {};
+
+        // ── Новые пользователи ──
+        {
+            const w = { id: 'users', title: 'Новые пользователи', tab: 'stats', act: 'Пользователи' };
+            if (bad('users')) w.err = bad('users');
+            else if (!ok('users') || testsWait) w.wait = true;
+            else {
+                const kinds = [['installer', 'Монтажники', C.blue], ['seller', 'Продавцы', C.green], ['other', 'Менеджеры и прочие', C.gray]];
+                const cnt = { cur: { installer: 0, seller: 0, other: 0 }, prev: { installer: 0, seller: 0, other: 0 } };
+                const ser = { installer: zeros(), seller: zeros(), other: zeros() };
+                const newIds = {};
+                S.users.rows.forEach(u => {
+                    if (u.is_test || testIds[u.id]) return;
+                    const t = t0(u.created_at), c = cls(t);
+                    if (!c) return;
+                    const a = this.tariffAccountOfUser(u), k = a === 'seller' ? 'seller' : a === 'installer' ? 'installer' : 'other';
+                    cnt[c][k]++;
+                    if (c === 'cur') { ser[k][B.at(t)]++; newIds[u.id] = 1; }
+                });
+                const tot = k => cnt[k].installer + cnt[k].seller + cnt[k].other;
+                let did = null;
+                if (ok('ests')) {
+                    const has = {};
+                    S.ests.rows.forEach(r => { if (newIds[r.user_id]) has[r.user_id] = 1; });
+                    did = Object.keys(has).length;
+                }
+                w.nums = [
+                    { l: 'Всего новых', v: fmt(tot('cur')), d: hasPrev ? this.kpiDelta(tot('cur'), tot('prev')) : '', big: true },
+                    { l: 'Монтажники', v: fmt(cnt.cur.installer), d: hasPrev ? this.kpiDelta(cnt.cur.installer, cnt.prev.installer) : '' },
+                    { l: 'Продавцы', v: fmt(cnt.cur.seller), d: hasPrev ? this.kpiDelta(cnt.cur.seller, cnt.prev.seller) : '' },
+                    { l: 'Посчитали смету', v: did == null ? '…' : fmt(did), s: did == null ? '' : (tot('cur') ? 'это ' + pct(did, tot('cur')) + '% новых' : '') }
+                ];
+                if (cnt.cur.other) w.nums.splice(3, 0, { l: 'Менеджеры и прочие', v: fmt(cnt.cur.other) });
+                const used = kinds.filter(k => cnt.cur[k[0]] > 0 || k[0] !== 'other');
+                w.chart = { labels: B.labels, tips: B.tips, stack: true, series: used.map(k => ({ name: k[1], color: k[2], vals: ser[k[0]] })) };
+                w.groups = [{ title: 'Кто пришёл', items: kinds.map(k => ({ label: k[1], value: cnt.cur[k[0]], color: k[2] })) }];
+                if (did != null) w.groups.push({ title: 'Посчитали смету', items: [{ label: 'Посчитали', value: did, color: C.green }, { label: 'Пока нет', value: Math.max(0, tot('cur') - did), color: C.gray }] });
+                w.table = this.kpiTable(B, w.chart.series);
+                if (S.users.capped) w.note = 'Пользователей больше, чем читается за один раз: цифры занижены.';
+            }
+            out.users = w;
+        }
+
+        // ── Планировщик: КП и счета ──
+        {
+            const w = { id: 'planner', title: 'Планировщик: КП и счета', tab: 'kanban', act: 'Планировщик', wide: true };
+            if (bad('evs')) w.err = bad('evs');
+            else if (!ok('evs') || testsWait) w.wait = true;
+            else {
+                const grp = { sent: ['sent', 'printed'], ok: ['confirmed'], rev: ['needs_revision'], rej: ['rejected'], req: ['invoice_requested'], iss: ['invoice_issued'], paid: ['paid'], won: ['won'], lost: ['lost'] };
+                const of = {}; Object.keys(grp).forEach(g => grp[g].forEach(e => { of[e] = g; }));
+                const cnt = { cur: {}, prev: {} }, ser = {};
+                Object.keys(grp).forEach(g => { cnt.cur[g] = 0; cnt.prev[g] = 0; ser[g] = zeros(); });
+                const seen = {};
+                S.evs.rows.slice().sort((a, b) => String(a.created_at) < String(b.created_at) ? -1 : 1).forEach(r => {
+                    const g = of[r.event]; if (!g || !r.calc_id) return;
+                    if (r.user_email && testMail[String(r.user_email).toLowerCase()]) return;
+                    const t = t0(r.created_at), c = cls(t); if (!c) return;
+                    const key = g + '|' + r.calc_id;
+                    if (seen[key]) return; seen[key] = 1;
+                    cnt[c][g]++;
+                    if (c === 'cur') ser[g][B.at(t)]++;
+                });
+                const c = cnt.cur, q = cnt.prev;
+                const cv = pct(c.ok, c.sent), cvp = hasPrev ? pct(q.ok, q.sent) : null;
+                const cr = pct(c.req, c.sent);
+                const wait = Math.max(0, c.sent - c.ok - c.rev - c.rej);
+                const dl = (g, inv) => hasPrev ? this.kpiDelta(c[g], q[g], { inv: inv }) : '';
+                w.nums = [
+                    { l: 'КП отправлено', v: fmt(c.sent), d: dl('sent'), big: true },
+                    { l: 'Одобрено', v: fmt(c.ok), d: dl('ok'), tone: 'good' },
+                    { l: 'На доработке', v: fmt(c.rev), d: dl('rev', true) },
+                    { l: 'Отклонено', v: fmt(c.rej), d: dl('rej', true), tone: c.rej ? 'bad' : '' },
+                    { l: 'Конверсия КП → одобрено', v: cv == null ? '—' : cv + '%', d: (cv != null && cvp != null) ? this.kpiDelta(cv, cvp, { ratio: true }) : '', big: true },
+                    { l: 'Счетов запрошено', v: fmt(c.req), d: dl('req') },
+                    { l: 'Счетов выставлено', v: fmt(c.iss), d: dl('iss') },
+                    { l: 'Оплачено', v: fmt(c.paid), d: dl('paid'), tone: 'good' },
+                    { l: 'Конверсия КП → счёт', v: cr == null ? '—' : cr + '%', s: 'запрошено / отправлено' },
+                    { l: 'Реализовано', v: fmt(c.won), s: 'отметка монтажника', d: dl('won') },
+                    { l: 'Не реализовано', v: fmt(c.lost), d: dl('lost', true) }
+                ];
+                w.chart = { labels: B.labels, tips: B.tips, stack: false, series: [
+                    { name: 'КП отправлено', color: C.blue, vals: ser.sent },
+                    { name: 'Одобрено', color: C.green, vals: ser.ok },
+                    { name: 'Запрошен счёт', color: C.amber, vals: ser.req }
+                ] };
+                w.groups = [
+                    { title: 'Итог КП', items: [
+                        { label: 'Одобрено', value: c.ok, color: C.green }, { label: 'На доработке', value: c.rev, color: C.amber },
+                        { label: 'Отклонено', value: c.rej, color: C.red }, { label: 'Ждут ответа', value: wait, color: C.gray }] },
+                    { title: 'Путь к оплате', items: [
+                        { label: 'Запрошено', value: c.req, color: C.blue }, { label: 'Выставлено', value: c.iss, color: C.violet },
+                        { label: 'Оплачено', value: c.paid, color: C.green }] }
+                ];
+                w.table = this.kpiTable(B, [
+                    { name: 'Отправлено', vals: ser.sent }, { name: 'Одобрено', vals: ser.ok }, { name: 'Доработка', vals: ser.rev },
+                    { name: 'Отклонено', vals: ser.rej }, { name: 'Счёт запрошен', vals: ser.req }, { name: 'Выставлен', vals: ser.iss }, { name: 'Оплачено', vals: ser.paid }]);
+                w.note = 'Считается по событиям периода: каждая смета — один раз на этап. «Одобрено» и «отклонено» относятся и к КП, отправленным раньше.'
+                    + (S.evs.capped ? ' Событий больше, чем читается за один раз: цифры занижены.' : '');
+            }
+            out.planner = w;
+        }
+
+        // ── Расчёты ──
+        {
+            const w = { id: 'ests', title: 'Расчёты', tab: 'estimates', act: 'Расчёты' };
+            if (bad('ests')) w.err = bad('ests');
+            else if (!ok('ests') || testsWait) w.wait = true;
+            else {
+                const cnt = { cur: 0, prev: 0 }, sum = { cur: 0, prev: 0 }, au = { cur: {}, prev: {} }, ser = zeros(), serNew = zeros();
+                const newIds = {};
+                if (ok('users')) S.users.rows.forEach(u => { const t = t0(u.created_at); if (t != null && t >= cur0) newIds[u.id] = 1; });
+                let fromNew = 0;
+                S.ests.rows.forEach(r => {
+                    if (testIds[r.user_id]) return;
+                    const t = t0(r.created_at), c = cls(t); if (!c) return;
+                    cnt[c]++; sum[c] += Number(r.total_sum) || 0; if (r.user_id) au[c][r.user_id] = 1;
+                    if (c === 'cur') { const i = B.at(t); if (newIds[r.user_id]) { serNew[i]++; fromNew++; } else ser[i]++; }
+                });
+                const a = Object.keys(au.cur).length, ap = Object.keys(au.prev).length;
+                const dd = p.days || Math.max(1, Math.ceil((now - first) / day));
+                w.nums = [
+                    { l: 'Смет сохранено', v: fmt(cnt.cur), d: hasPrev ? this.kpiDelta(cnt.cur, cnt.prev) : '', big: true },
+                    { l: 'Активных авторов', v: fmt(a), d: hasPrev ? this.kpiDelta(a, ap) : '' },
+                    { l: 'В среднем в день', v: (Math.round(cnt.cur / dd * 10) / 10).toLocaleString('ru-RU') },
+                    { l: 'Сумма смет', v: rub(sum.cur), d: hasPrev ? this.kpiDelta(sum.cur, sum.prev, { fmt: rub }) : '' },
+                    { l: 'Средняя смета', v: cnt.cur ? rub(sum.cur / cnt.cur) : '—' }
+                ];
+                w.chart = { labels: B.labels, tips: B.tips, stack: true, series: [
+                    { name: 'Прежние пользователи', color: C.blue, vals: ser }, { name: 'Новые пользователи', color: C.violet, vals: serNew }] };
+                w.groups = [{ title: 'Чьи сметы', items: [
+                    { label: 'Прежних пользователей', value: cnt.cur - fromNew, color: C.blue }, { label: 'Новых', value: fromNew, color: C.violet }] }];
+                w.table = this.kpiTable(B, [{ name: 'Прежние', vals: ser }, { name: 'Новые', vals: serNew }]);
+                if (S.ests.capped) w.note = 'Смет больше, чем читается за один раз: цифры занижены.';
+            }
+            out.ests = w;
+        }
+
+        // ── Распознавание ──
+        {
+            const w = { id: 'rec', title: 'Распознавание', tab: 'recognition', act: 'Распознавание' };
+            if (bad('rec')) w.err = bad('rec');
+            else if (!ok('rec') || testsWait) w.wait = true;
+            else {
+                const cnt = { cur: { docs: 0, plans: 0, calls: 0 }, prev: { docs: 0, plans: 0, calls: 0 } }, us = { cur: {}, prev: {} };
+                const sd = zeros(), sp = zeros();
+                S.rec.rows.forEach(r => {
+                    const u = String(r.user || '').toLowerCase();
+                    if (u && testMail[u]) return;
+                    const t = t0(r.savedAt || r.day), c = cls(t); if (!c) return;
+                    const plan = r.source === 'floor_plan' || String(r.mode || '').indexOf('plan') === 0;
+                    cnt[c][plan ? 'plans' : 'docs']++; cnt[c].calls += Number(r.calls) || 0;
+                    if (u) us[c][u] = 1;
+                    if (c === 'cur') (plan ? sp : sd)[B.at(t)]++;
+                });
+                const c = cnt.cur, q = cnt.prev, all = c.docs + c.plans, allp = q.docs + q.plans;
+                const nu = Object.keys(us.cur).length, nup = Object.keys(us.prev).length;
+                w.nums = [
+                    { l: 'Распознаваний', v: fmt(all), d: hasPrev ? this.kpiDelta(all, allp) : '', big: true },
+                    { l: 'Накладные и сметы', v: fmt(c.docs), d: hasPrev ? this.kpiDelta(c.docs, q.docs) : '' },
+                    { l: 'Планы этажей', v: fmt(c.plans), d: hasPrev ? this.kpiDelta(c.plans, q.plans) : '' },
+                    { l: 'Пользователей', v: fmt(nu), d: hasPrev ? this.kpiDelta(nu, nup) : '' },
+                    { l: 'Запросов к модели', v: fmt(c.calls), d: hasPrev ? this.kpiDelta(c.calls, q.calls) : '', s: 'с них считается лимит' }
+                ];
+                w.chart = { labels: B.labels, tips: B.tips, stack: true, series: [
+                    { name: 'Накладные и сметы', color: C.teal, vals: sd }, { name: 'Планы этажей', color: C.violet, vals: sp }] };
+                w.groups = [{ title: 'Что распознавали', items: [{ label: 'Накладные и сметы', value: c.docs, color: C.teal }, { label: 'Планы этажей', value: c.plans, color: C.violet }] }];
+                w.table = this.kpiTable(B, [{ name: 'Накладные и сметы', vals: sd }, { name: 'Планы этажей', vals: sp }]);
+                if (S.rec.capped || S.rec.limited) w.note = S.rec.capped
+                    ? 'Сервер отдаёт не больше 500 последних записей архива: за длинный период цифры занижены.'
+                    : 'Архив читается не глубже года.';
+            }
+            out.rec = w;
+        }
+
+        // ── Оплаты Профи ──
+        {
+            const w = { id: 'pay', title: 'Оплаты Профи', tab: 'subscription', act: 'Оплата' };
+            if (bad('pay')) w.err = bad('pay');
+            else if (!ok('pay') || testsWait) w.wait = true;
+            else {
+                const cnt = { cur: 0, prev: 0 }, sum = { cur: 0, prev: 0 }, scount = zeros(), ssum = zeros(), plans = {};
+                S.pay.rows.forEach(r => {
+                    if (r.email && testMail[String(r.email).toLowerCase()]) return;
+                    const t = t0(r.paid_at), c = cls(t); if (!c) return;
+                    const v = Number(r.paid_rub) || Number(r.rub) || 0;
+                    cnt[c]++; sum[c] += v;
+                    if (c === 'cur') { const i = B.at(t); scount[i]++; ssum[i] += v; const k = r.plan ? String(r.plan) : 'без тарифа'; plans[k] = (plans[k] || 0) + v; }
+                });
+                w.nums = [
+                    { l: 'Оплат', v: fmt(cnt.cur), d: hasPrev ? this.kpiDelta(cnt.cur, cnt.prev) : '', big: true },
+                    { l: 'Сумма', v: rub(sum.cur), d: hasPrev ? this.kpiDelta(sum.cur, sum.prev, { fmt: rub }) : '' },
+                    { l: 'Средний чек', v: cnt.cur ? rub(sum.cur / cnt.cur) : '—' }
+                ];
+                w.chart = { labels: B.labels, tips: B.tips, stack: false, unit: ' ₽', series: [{ name: 'Сумма оплат', color: C.green, vals: ssum }] };
+                const palette = [C.green, C.blue, C.amber, C.violet, C.teal, C.gray];
+                w.groups = [{ title: 'Сумма по тарифам, ₽', items: Object.keys(plans).map((k, i) => ({ label: k, value: Math.round(plans[k]), color: palette[i % palette.length] })) }];
+                w.table = this.kpiTable(B, [{ name: 'Оплат', vals: scount }, { name: 'Сумма, ₽', vals: ssum.map(Math.round) }]);
+            }
+            out.pay = w;
+        }
+        return out;
+    },
+
+    // Таблица «столбец графика × ряд» с итогом сверху
+    kpiTable: function (B, series) {
+        const rows = [];
+        for (let i = B.n - 1; i >= 0; i--) rows.push({ l: B.tips[i], v: series.map(s => s.vals[i] || 0) });
+        return { head: series.map(s => s.name), rows: rows, total: series.map(s => s.vals.reduce((a, b) => a + b, 0)) };
+    },
+
+    // Столбцы на HTML, а не на SVG: SVG растягивается вместе с подписями, и в узкой карточке они мельчают
+    kpiChartHtml: function (ch, esc) {
+        const S = ch.series, n = ch.labels.length;
+        const tot = i => ch.stack ? S.reduce((a, s) => a + (s.vals[i] || 0), 0) : Math.max.apply(null, S.map(s => s.vals[i] || 0));
+        let max = 0; for (let i = 0; i < n; i++) max = Math.max(max, tot(i));
+        if (!max) return '<div class="ad-tile-note">За этот период данных нет.</div>';
+        // Верх оси — «круглое» чётное число, чтобы середина тоже была целой
+        const mag = Math.pow(10, Math.floor(Math.log10(max)));
+        const top = Math.max(2, [1, 2, 4, 6, 8, 10].map(k => k * mag).filter(v => v >= max)[0] || 10 * mag);
+        const f = v => Math.round(v).toLocaleString('ru-RU');
+        const step = Math.ceil(n / 8);
+        const seg = (s, v, i, h) => `<i class="kpi-ch-s" style="height:${h}%;background:${s.color}" title="${esc(ch.tips[i])} · ${esc(s.name)}: ${f(v)}${ch.unit || ''}"></i>`;
+        let cols = '';
+        for (let i = 0; i < n; i++) {
+            let bars;
+            if (ch.stack) bars = S.map(s => { const v = s.vals[i] || 0; return v ? seg(s, v, i, v / top * 100) : ''; }).join('');
+            else bars = S.map(s => { const v = s.vals[i] || 0; return v ? seg(s, v, i, v / top * 100) : '<i class="kpi-ch-s kpi-ch-0"></i>'; }).join('');
+            cols += `<div class="kpi-ch-c"><div class="kpi-ch-bars${ch.stack ? ' kpi-ch-stack' : ''}" title="${esc(ch.tips[i])}">${bars}</div>`
+                + `<span class="kpi-ch-l">${(i % step === 0 || i === n - 1) ? esc(ch.labels[i]) : ''}</span></div>`;
+        }
+        const legend = S.length > 1 ? `<div class="kpi-leg">${S.map(s => `<span><i style="background:${s.color}"></i>${esc(s.name)}</span>`).join('')}</div>` : '';
+        return `${legend}<div class="kpi-ch" role="img" aria-label="График по времени">
+            <div class="kpi-ch-y"><span>${f(top)}</span><span>${f(top / 2)}</span><span>0</span></div>
+            <div class="kpi-ch-p"><div class="kpi-ch-g"><i></i><i></i><i></i></div><div class="kpi-ch-cols">${cols}</div></div></div>`;
+    },
+
+    kpiDonutHtml: function (grp, esc) {
+        const items = grp.items, total = items.reduce((a, b) => a + b.value, 0);
+        const f = v => Math.round(v).toLocaleString('ru-RU');
+        if (!total) return `<div class="kpi-pie"><div class="kpi-pie-t">${esc(grp.title)}</div><div class="ad-tile-note">Данных нет.</div></div>`;
+        const R = 40, Cc = 2 * Math.PI * R;
+        let off = 0, arcs = '';
+        items.forEach(it => {
+            if (!it.value) return;
+            const len = it.value / total * Cc;
+            arcs += `<circle cx="60" cy="60" r="${R}" fill="none" stroke="${it.color}" stroke-width="18" stroke-dasharray="${len} ${Cc - len}" stroke-dashoffset="${-off}" transform="rotate(-90 60 60)"><title>${esc(it.label)}: ${f(it.value)} (${Math.round(it.value / total * 100)}%)</title></circle>`;
+            off += len;
+        });
+        const leg = items.map(it => `<div class="kpi-pie-r"><i style="background:${it.color}"></i><span>${esc(it.label)}</span><b>${f(it.value)}</b><em>${Math.round(it.value / total * 100)}%</em></div>`).join('');
+        return `<div class="kpi-pie"><div class="kpi-pie-t">${esc(grp.title)}</div>
+            <div class="kpi-pie-b"><svg viewBox="0 0 120 120" width="120" height="120" role="img">${arcs}
+            <text x="60" y="58" text-anchor="middle" class="kpi-pie-n">${f(total)}</text><text x="60" y="73" text-anchor="middle" class="kpi-ax">всего</text></svg>
+            <div class="kpi-pie-l">${leg}</div></div></div>`;
+    },
+
+    kpiWidgetHtml: function (w, esc) {
+        const view = this.kpiViewOf(w.id);
+        const tabs = this.KPI_VIEWS.map(v => `<button type="button" class="kpi-vb${v.id === view ? ' on' : ''}" onclick="app.kpiSetView('${w.id}','${v.id}')">${v.label}</button>`).join('');
+        let body;
+        if (w.err) body = `<div class="ad-tile-note ad-warn">Не загрузилось: ${esc(w.err)}</div>`;
+        else if (w.wait) body = '<div class="kpi-skel"><i></i><i></i><i></i></div>';
+        else if (view === 'chart') body = this.kpiChartHtml(w.chart, esc);
+        else if (view === 'pie') body = `<div class="kpi-pies">${w.groups.map(g => this.kpiDonutHtml(g, esc)).join('')}</div>`;
+        else if (view === 'table') {
+            const t = w.table;
+            body = `<div class="kpi-tw"><table class="kpi-t"><thead><tr><th>Период</th>${t.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
+                <tr class="kpi-tt"><td>Итого</td>${t.total.map(v => `<td>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>
+                ${t.rows.map(r => `<tr><td>${esc(r.l)}</td>${r.v.map(v => `<td${v ? '' : ' class="z"'}>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>`).join('')}
+                </tbody></table></div>`;
+        } else body = `<div class="kpi-nums">${w.nums.map(m => `<div class="kpi-n${m.big ? ' kpi-n-big' : ''}${m.tone ? ' kpi-n-' + m.tone : ''}">
+                <span class="kpi-nl">${esc(m.l)}</span><b>${esc(m.v)}</b>${m.d ? `<span class="kpi-nd">${m.d}</span>` : ''}${m.s ? `<span class="kpi-ns">${esc(m.s)}</span>` : ''}</div>`).join('')}</div>`;
+        const note = (!w.err && !w.wait && w.note) ? `<div class="kpi-note">${esc(w.note)}</div>` : '';
+        return `<section class="kpi-w${w.wide ? ' kpi-wide' : ''}">
+            <div class="kpi-h"><b onclick="app.switchAdminTab('${w.tab}')" title="Открыть раздел: ${esc(w.act)}">${esc(w.title)} <span aria-hidden="true">›</span></b>
+                <span class="kpi-vs">${tabs}</span></div>
+            <div class="kpi-b">${body}</div>${note}</section>`;
+    },
+
+    kpiHtml: function (esc) {
+        const p = this.kpiPeriod();
+        this.kpiStart(p);
+        const S = (this._kpiSt || {})[p.id] || {};
+        const W = this.kpiBuild(p, S);
+        const chips = this.KPI_PERIODS.map(x => `<button type="button" class="kpi-chip${x.id === p.id ? ' on' : ''}" onclick="app.kpiSetPeriod('${x.id}')">${x.label}</button>`).join('');
+        const order = ['planner', 'users', 'ests', 'rec', 'pay'];
+        return `<div class="kpi-bar"><div class="kpi-chips" role="tablist" aria-label="Период">${chips}</div>
+                <span class="kpi-cmp">Показатели ${p.full}${p.days ? ' · стрелки — сравнение с предыдущим таким же периодом' : ''}</span></div>
+            <div class="kpi-grid">${order.map(k => this.kpiWidgetHtml(W[k], esc)).join('')}</div>`;
     },
 
     renderAdminHome: function () {
@@ -28736,16 +29597,18 @@ const app = {
         const today = todayRaw.charAt(0).toUpperCase() + todayRaw.slice(1);
         box.innerHTML = `
             <div class="ad-page-h">
-                <div><h3>Сегодня</h3><div class="ad-sub">${esc(today)} · что требует действия${L.style.urgentFirst ? ', самое срочное сверху' : ''}</div></div>
+                <div><h3>Сегодня</h3><div class="ad-sub">${esc(today)} · показатели за период и дела, требующие внимания</div></div>
                 <div style="display:flex; gap:6px; flex-wrap:wrap;">
                     ${edit
                         ? `<button class="admin-btn" onclick="app.todayReset()">Сбросить</button>
                            <button class="admin-btn ad-pick-on" onclick="app.todayEdit(false)">Готово</button>`
                         : `<button class="admin-btn" title="размер, порядок и вид плиток" onclick="app.todayEdit(true)">✏️ Настроить</button>
-                           <button class="admin-btn" onclick="app._homeState=null; app._leadsData=null; app.renderAdminHome()">Обновить</button>`}
+                           <button class="admin-btn" onclick="app._homeState=null; app._leadsData=null; app._kpiSt=null; app.renderAdminHome()">Обновить</button>`}
                 </div>
             </div>
             ${panel}
+            ${this.kpiHtml(esc)}
+            <h4 class="ad-section-h">Требует внимания</h4>
             ${main}
             <details class="ad-map-fold"><summary>Все разделы</summary><div class="ad-map">${map}</div></details>`;
 
@@ -63374,6 +64237,8 @@ const app = {
 
         const _isTankItem = (lookupId || '').startsWith('SWH') || (lookupId || '').startsWith('RWH');
         let _tankFiltersHtml = _bpFilterHtml;
+        // Узел подмеса / насосная группа тёплого пола: что будет со сметой целиком при каждом варианте (mixSwapOptions)
+        let _mixSim = null;
         if (_origId0 === 'well_pump_auto') {
             const _wf = this.state.wellPumpFlowFilter || 'all';
             const _wc = this.state.wellPumpCableFilter || 'cable';
@@ -63807,7 +64672,36 @@ const app = {
             const _umHasUnit = alts.some(a => _umClassify(a.id).cat === 'unit');
             const _umKindsPresent = [...new Set(alts.filter(a => _umClassify(a.id).cat === 'group').map(a => _umClassify(a.id).kind).filter(Boolean))];
             const _umShowKind = _umKindsPresent.length > 1;
+            // Каждый вариант считаем целиком (сколько станет смета, собирается ли выбранное). Расчёт в памяти, ~40 мс на
+            // вариант; повторно — только когда сменилась сама смета, а не фильтр.
+            {
+                const _mixKey = item.originalId || item.id;
+                const _mixIds = alts.filter(a => a && _umClassify(a.id).cat === _umCat).map(a => a.id);
+                const _mixSig = JSON.stringify([_mixKey, _mixIds, this.state.swaps, this.state.ufhMixType, this.state.manualDnOverride,
+                    this.state.brandMode, this.state.area, this.state.floors, this.state.tp1, this.state.tp2, this.state.systems,
+                    this.state.fuels, this.state.boilerScheme, this.state.detailedRooms, this.state.rooms && this.state.rooms.length]);
+                if (!this._mixSimCache || this._mixSimCache.sig !== _mixSig) {
+                    this._mixSimCache = { sig: _mixSig, runs: this.mixSwapOptions(_mixKey, _mixIds) };
+                }
+                _mixSim = this._mixSimCache.runs;
+            }
+            const _umFit = this.state.ufhMixFitFilter === 'all' ? 'all' : 'fit';
+            const _umBrand = this.state.ufhMixBrandFilter || 'all';
+            const _umBrands = [...new Set(alts.map(a => String((a && a.brand) || 'STOUT').toUpperCase()))];
             _tankFiltersHtml =
+                `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
+                `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
+                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">Подходит:</span>` +
+                `<span onclick="app.setUfhMixFitFilter('fit')" ${_b(_umFit==='fit')}>Этой системе</span>` +
+                `<span onclick="app.setUfhMixFitFilter('all')" ${_b(_umFit==='all')}>Все</span>` +
+                `</div>` +
+                (_umBrands.length > 1 ?
+                    `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
+                    `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">Бренд:</span>` +
+                    _umBrands.map(br => `<span onclick="app.setUfhMixBrandFilter('${br}')" ${_b(_umBrand===br)}>${br}</span>`).join('') +
+                    `<span onclick="app.setUfhMixBrandFilter('all')" ${_b(_umBrand==='all')}>Все</span>` +
+                    `</div>` : '') +
+                `</div>` +
                 `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
                 (_umHasUnit ?
                     `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
@@ -63844,11 +64738,17 @@ const app = {
             alts = alts.filter(a => {
                 const c = _umClassify(a.id);
                 if (c.cat !== _umCat) return false;
+                // Выбранная сейчас позиция остаётся в списке при любом фильтре: от неё считается разница
+                if (a.id === item.id) return true;
                 if (c.cat === 'group') {
                     if (_umDn !== 'all' && c.dn !== _umDn) return false;
                     if (_umKind !== 'all' && c.kind !== _umKind) return false;
                 }
                 if (_umPower.length > 0 && !_umPower.includes(String(_umKwExtract(a.name)))) return false;
+                // Выбранная сейчас позиция остаётся в списке при любом фильтре: от неё считается разница
+                const _isCur = a.id === item.id;
+                if (!_isCur && _umFit === 'fit' && !(_mixSim && _mixSim[a.id] && _mixSim[a.id].fits)) return false;
+                if (!_isCur && _umBrand !== 'all' && String(a.brand || 'STOUT').toUpperCase() !== _umBrand) return false;
                 return true;
             });
         } else if ((catalog.collectors_dn20 && catalog.collectors_dn20.some(c => c.id === _origId0)) || (catalog.collectors_dn25 && catalog.collectors_dn25.some(c => c.id === _origId0)) || (catalog.collectors_dn32 && catalog.collectors_dn32.some(c => c.id === _origId0)) || _origId0 === 'SDG-0018-002502' || _origId0 === 'SDG-0018-002503' || _origId0 === 'SDG-0018-004002' || _origId0 === 'SDG-0018-004003') {
@@ -64228,7 +65128,8 @@ const app = {
             : _twoPrice
             ? `<th class="col-two" style="text-align:right;width:130px;">${_twoHead.unitHead || 'Мат / лист, за м²'}</th>` +
               `<th class="col-two" style="text-align:right;width:130px;${_sortStyle}" onclick="app.toggleSwapSort('price')">${_twoHead.sysHead || 'Система, за м²'}${_ssA('price')}</th>`
-            : `<th class="col-pct" style="text-align: right; width: 110px;">Изм. цена (%)</th>` + _priceTh;
+            : `<th class="col-pct" style="text-align: right; width: 110px;">Изм. цена (%)</th>` + _priceTh
+              + (_mixSim ? `<th style="text-align:right;width:150px;">Вся смета, ±</th>` : '');
 
         // Трубы лучей, ХВС и тёплого пола: те же переключатели «Материал / Бренд», что и у магистрали.
         // Выбранный вариант остаётся в списке при любом фильтре — иначе проценты не к чему считать.
@@ -64755,6 +65656,35 @@ const app = {
                 // Две цены — «за метр» и «узел», у каждой свой процент к выбранному варианту.
                 let _priceCells = `<td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>`;
+                // Вся смета при этой замене: разница с текущей сметой в рублях и процентах, а под названием — что при этом
+                // появится или уйдёт (коллектор, насос, группа радиаторов). Расчёт — mixSwapOptions.
+                let _mixHint = '';
+                if (_mixSim && _mixSim[displayAlt.id]) {
+                    const _ms = _mixSim[displayAlt.id], _base = _mixSim[''];
+                    const _d = isActive ? 0 : Math.round(_ms.total - _base.total);
+                    const _dp = _base.total > 0 ? (_d / _base.total * 100) : 0;
+                    const _col = _d > 0 ? 'var(--c-bad,#ef4444)' : (_d < 0 ? '#16a34a' : 'var(--text-sec)');
+                    const _fmtD = Math.abs(_d).toLocaleString('ru-RU') + ' ₽';
+                    _priceCells += `<td style="text-align:right;font-weight:700;font-size:13px;white-space:nowrap;color:${_col};">` +
+                        (_d === 0 ? '0 ₽' : (_d > 0 ? '+' : '−') + _fmtD) +
+                        `<div style="font-size:11px;font-weight:600;">${_d === 0 ? '' : (_d > 0 ? '+' : '−') + Math.abs(_dp).toFixed(1).replace('.', ',') + ' %'}</div></td>`;
+                    if (!isActive) {
+                        const _nm = n => String(n).replace(/:.*$/, '').replace(/\s+[-–]\s+.*$/, '').replace(/,\s*1 1\/4".*$/, '').slice(0, 70);
+                        const _add = [], _rem = [];
+                        Object.keys(_ms.rows).forEach(k => {
+                            const a1 = _ms.rows[k], b1 = _base.rows[k];
+                            if (!b1) _add.push(_nm(a1.name));
+                            else if (a1.q !== b1.q) (a1.q > b1.q ? _add : _rem).push(_nm(a1.name) + ' (' + b1.q + ' → ' + a1.q + ' шт)');
+                        });
+                        Object.keys(_base.rows).forEach(k => { if (!_ms.rows[k]) _rem.push(_nm(_base.rows[k].name)); });
+                        const _lst = a => a.slice(0, 3).join('; ') + (a.length > 3 ? ' и ещё ' + (a.length - 3) : '');
+                        const _parts = [];
+                        if (_add.length) _parts.push('появится: ' + _lst(_add));
+                        if (_rem.length) _parts.push('уйдёт: ' + _lst(_rem));
+                        if (!_ms.fits && _ms.why) _parts.push('<span style="color:#B45309;">не подходит этой системе: ' + _ms.why + '</span>');
+                        if (_parts.length) _mixHint = `<div style="font-size:11px;font-weight:400;color:var(--text-sec);margin-top:2px;">${_parts.join('<br>')}</div>`;
+                    }
+                }
                 if (_pipeSysOn) {
                     const _sv = _sysOf(displayAlt);
                     const _pc = (v, base) => {
@@ -64770,7 +65700,7 @@ const app = {
                     <tr class="${activeClass}${_hyCls}" style="${displayAlt.pumpBlock ? 'opacity:.55; cursor:not-allowed;' : 'cursor: pointer;'} ${activeStyle}" ${displayAlt.pumpBlock ? '' : `onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${displayAlt.id}')"`}>
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img" style="text-align: center;">${img}</td>
-                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(displayAlt.brand || 'STOUT')}${_nameDisplay}${_rowCoilStr}${badgeHtml}${_hyRowHtml}${_hintHtml}</td>
+                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(displayAlt.brand || 'STOUT')}${_nameDisplay}${_rowCoilStr}${badgeHtml}${_hyRowHtml}${_hintHtml}${_mixHint}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${displayAlt.brand || 'STOUT'}</td>
                         ${_priceCells}
                     </tr>
@@ -66414,6 +67344,91 @@ const app = {
         if (rommerSide) this.state.swaps[originalId] = chosenId;
         return true;
     },
+    /**
+     * Выбор узла подмеса / насосной группы тёплого пола в окне замены → состояние. Вызывается и при выборе,
+     * и при расчёте цены варианта целиком (mixSwapOptions), поэтому ничего, кроме state, не трогает.
+     */
+    applyMixSwapState: function (originalId, chosenId) {
+        if (!this.state.swaps) this.state.swaps = {};
+        if (chosenId === 'SDG-0120-001000' || chosenId === 'RDG-0120-008100') {
+            this.state.ufhMixType = 'std';
+            // Возврат с группы на узлы подмеса: прежние замены узла на группу снимаем, иначе смета
+            // продолжала бы показывать на месте узла выбранную ранее группу (без коллектора и стрелки).
+            ['SDG-0120-001000', 'SDG-0002-002001', 'SDG-0002-002501', 'SDG-0003-002001', 'SDG-0003-002501', 'SDG-0007-003201']
+                .forEach(id => { delete this.state.swaps[id]; });
+        }
+        else if (chosenId === 'SDG-0002-002001') { this.state.ufhMixType = 'dn20'; this.state.manualDnOverride = 'dn20'; }
+        else if (chosenId === 'SDG-0002-002501' || chosenId === 'RDG-1002-002501') { this.state.ufhMixType = 'dn25'; this.state.manualDnOverride = 'dn25'; }
+        else if (chosenId === 'SDG-0003-002001') { this.state.ufhMixType = 'dn20_servo'; this.state.manualDnOverride = 'dn20'; }
+        else if (chosenId === 'SDG-0003-002501' || chosenId === 'RDG-1003-002501') { this.state.ufhMixType = 'dn25_servo'; this.state.manualDnOverride = 'dn25'; }
+        else if (chosenId === 'SDG-0007-003201') { this.state.ufhMixType = 'dn32_servo'; this.state.manualDnOverride = 'dn25'; }
+    },
+    /**
+     * Какой тип узла тёплого пола (state.ufhMixType) даёт выбор этой строки в окне замены, null — смесителя нет
+     * (прямая группа для радиаторов тёплый пол не смешивает). Соответствие то же, что в applyMixSwapState.
+     */
+    mixTypeOfSwapId: function (id) {
+        if (id === 'SDG-0120-001000' || id === 'RDG-0120-008100') return 'std';
+        if (id === 'SDG-0002-002001') return 'dn20';
+        if (id === 'SDG-0002-002501' || id === 'RDG-1002-002501') return 'dn25';
+        if (id === 'SDG-0003-002001') return 'dn20_servo';
+        if (id === 'SDG-0003-002501' || id === 'RDG-1003-002501') return 'dn25_servo';
+        if (id === 'SDG-0007-003201') return 'dn32_servo';
+        return null;
+    },
+
+    /**
+     * Что будет со сметой при каждом варианте узла подмеса / группы: полный пересчёт в памяти под каждый
+     * (тот же приём, что stateOptionTotals), состояние возвращается. По каждому варианту:
+     *   total — вся смета (оборудование), ₽;
+     *   fits  — собралось ли то, что выбрали (расчёт не заменил тип сам, напор и расход проходят);
+     *   added / removed — позиции, которые появились или ушли вместе с заменой (коллектор, насос, группа радиаторов).
+     */
+    mixSwapOptions: function (originalId, ids) {
+        const snapshot = JSON.parse(JSON.stringify(this.state));
+        const runs = {};
+        const rowsOf = () => {
+            const rows = {};
+            (this.currentEquipmentList || []).forEach(it => {
+                const k = it.originalId || it.id;
+                const r = rows[k] || (rows[k] = { name: it.name, sum: 0, q: 0 });
+                r.sum += (it.price || 0) * (it.q || 1);
+                r.q += (it.q || 1);
+            });
+            return rows;
+        };
+        try {
+            // '' — смета как есть, без замены: от неё считается разница (повторный выбор текущей строки
+            // выставил бы ручной DN и дал бы другую смету, чем сейчас)
+            ['', ...ids].forEach(id => {
+                this.state.swaps = Object.assign({}, snapshot.swaps || {});
+                if (id) {
+                    this.applyMixSwapState(originalId, id);
+                    this.state.swaps[originalId] = id;
+                }
+                this._renderSimFull();
+                const want = this.mixTypeOfSwapId(id);
+                const rows = rowsOf();
+                const why = !want ? 'смесителя нет — группа для радиаторов, тёплый пол она не смешивает'
+                    : this.state.ufhMixType !== want ? 'расчёт собирает котельную иначе (схема со стрелкой или пол этим узлом не проходит)'
+                    : (this._ufhBal && this._ufhBal.ok === false) ? 'не хватает напора для коллектора пола'
+                    : (want !== 'std' && !this.isUfhMixTypeCompatible(want, this.tpArea || 0, this.state.brandMode, this.tpAreaPerMan || this.tpArea || 0)) ? 'не тянет расход тёплого пола' : '';
+                runs[id] = {
+                    why: why,
+                    rows: rows,
+                    total: Object.keys(rows).reduce((s, k) => s + rows[k].sum, 0),
+                    fits: !!want && this.state.ufhMixType === want && !(this._ufhBal && this._ufhBal.ok === false)
+                        && (want === 'std' || this.isUfhMixTypeCompatible(want, this.tpArea || 0, this.state.brandMode, this.tpAreaPerMan || this.tpArea || 0))
+                };
+            });
+        } finally {
+            Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
+            Object.assign(this.state, snapshot);
+            this._renderSimFull();
+        }
+        return runs;
+    },
+
     selectSwapAlternative: function (originalId, chosenId) {
         if (!this.state.swaps) this.state.swaps = {};
 
@@ -66974,18 +67989,7 @@ const app = {
             else this.state.hydroArrowType = 'standard';
         }
         else if (originalId === 'SDG-0120-001000' || originalId === 'SDG-0002-002001' || originalId === 'SDG-0002-002501' || originalId === 'SDG-0003-002001' || originalId === 'SDG-0003-002501' || originalId === 'SDG-0007-003201') {
-            if (chosenId === 'SDG-0120-001000' || chosenId === 'RDG-0120-008100') {
-                this.state.ufhMixType = 'std';
-                // Возврат с группы на узлы подмеса: прежние замены узла на группу снимаем, иначе смета
-                // продолжала бы показывать на месте узла выбранную ранее группу (без коллектора и стрелки).
-                ['SDG-0120-001000', 'SDG-0002-002001', 'SDG-0002-002501', 'SDG-0003-002001', 'SDG-0003-002501', 'SDG-0007-003201']
-                    .forEach(id => { delete this.state.swaps[id]; });
-            }
-            else if (chosenId === 'SDG-0002-002001') { this.state.ufhMixType = 'dn20'; this.state.manualDnOverride = 'dn20'; }
-            else if (chosenId === 'SDG-0002-002501' || chosenId === 'RDG-1002-002501') { this.state.ufhMixType = 'dn25'; this.state.manualDnOverride = 'dn25'; }
-            else if (chosenId === 'SDG-0003-002001') { this.state.ufhMixType = 'dn20_servo'; this.state.manualDnOverride = 'dn20'; }
-            else if (chosenId === 'SDG-0003-002501' || chosenId === 'RDG-1003-002501') { this.state.ufhMixType = 'dn25_servo'; this.state.manualDnOverride = 'dn25'; }
-            else if (chosenId === 'SDG-0007-003201') { this.state.ufhMixType = 'dn32_servo'; this.state.manualDnOverride = 'dn25'; }
+            this.applyMixSwapState(originalId, chosenId);
         }
         else if (originalId === 'SDG-0001-002001' || originalId === 'SDG-0001-002501' || originalId === 'SDG-0001-003201') {
             if (chosenId === 'SDG-0001-002001') this.state.manualDnOverride = 'dn20';
@@ -74985,6 +75989,16 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         this.state.ufhMixPowerFilter = [];
         if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
     },
+    setUfhMixFitFilter: function (val) {
+        this.state.ufhMixFitFilter = (val === 'all') ? 'all' : 'fit';
+        this.state.ufhMixPowerFilter = [];
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
+    setUfhMixBrandFilter: function (val) {
+        this.state.ufhMixBrandFilter = val;
+        this.state.ufhMixPowerFilter = [];
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
     setUfhMixPowerFilter: function (val) {
         if (val === 'all') {
             this.state.ufhMixPowerFilter = [];
@@ -79052,6 +80066,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
      *            бойлера или снеготаяния, либо насос котла не тянет радиаторы (по паспортной
      *            кривой, radDirectByBoilerPump). Кривой нет (газовые Haier/Navien, каскад) —
      *            прежние пороги: площадь больше 150 м², второй этаж, мощность выше 20 кВт.
+     *            Стрелка ставится и при двух источниках тепла (газ + резервный электро, каскад) или при двух
+     *            узлах подмеса пола (_bsAutoHydro): котёл один и не больше одного насоса у потребителей —
+     *            условие схемы без стрелки (практика проектирования).
      * 'direct' — без гидрострелки. Радиаторы питает насос котла, тёплый пол —
      *            свой узел подмеса, бойлер — трёхходовой клапан котла. Так собраны
      *            и «котёл и пять радиаторов», и котельная с лучевыми коллекторами
@@ -86862,7 +87879,18 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             this.state.ufhMixType = 'std';
         }
         const _forceDirect = (_bScheme === 'direct') && !_schemeBlockedUfh;
-        const _forceHydro = (_bScheme === 'hydro');
+        // Автоподбор ставит гидрострелку и там, где насос котла «потянул бы» радиаторы: без неё работает
+        // только котёл один и не больше одного насоса у потребителей (так же написано в подсказке к ручной
+        // схеме «Без стрелки»). Два источника тепла (газ + резервный электро, каскад) или два узла подмеса
+        // в одном кольце с котловым насосом — несколько насосов без гидравлического разделения: они гонят
+        // воду друг через друга, а неработающий котёл шунтирует контур. Практика проектирования, не пункт СП.
+        this._bsAutoHydro = [];
+        if (_bScheme === 'auto' && (hasRad || (hasTp && tpArea > 0))) {
+            if (selBoilers.length > 1) this._bsAutoHydro.push('два источника тепла');
+            const _stdPl = (hasTp && tpArea > 0) ? this.stdNodePlan(tpArea, this.state.brandMode) : null;
+            if (_stdPl && _stdPl.total > 1) this._bsAutoHydro.push('тёплый пол — два узла подмеса с насосами');
+        }
+        const _forceHydro = (_bScheme === 'hydro') || this._bsAutoHydro.length > 0;
 
         // Логика расчета насосных групп
         let rQ = 0, tQ = 0;
@@ -87101,7 +88129,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 if (this.state.floors === 2) why.push('второй этаж');
                 if (pwr > 20) why.push('мощность больше 20 кВт');
             }
-            if (tQ > 0) why.push('группа тёплого пола');
+            (this._bsAutoHydro || []).forEach(w => why.push(w));
+            if (tQ > 0 && !(this._bsAutoHydro || []).length) why.push('группа тёплого пола');
             if (tankNeedsPumpGroup) why.push('насосная группа бойлера');
             if (_snowOnCollector) why.push('снеготаяние');
             this._bsAutoWhy = why;
@@ -95442,14 +96471,15 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     // Переключение отображения цен подписки Профи между рублями и тенге (KZT).
     // Оплата фактически всегда проходит в рублях (ссылки Т-Банка), тенге — только для удобства просмотра.
     setPricingCurrency(cur) {
-        if (cur !== 'RUB' && cur !== 'KZT') return;
+        if (cur !== 'RUB') return;
         this.pricingCurrency = cur;
         try { localStorage.setItem('pricing_currency', cur); } catch (e) { }
         this.applyPricingCurrencyDisplay();
     },
 
     applyPricingCurrencyDisplay() {
-        this.pricingCurrency = this.pricingCurrency || localStorage.getItem('pricing_currency') || 'RUB';
+        // Цены в тенге отключены: всегда рубли (в т.ч. если в localStorage остался 'KZT').
+        this.pricingCurrency = 'RUB';
         const cur = this.pricingCurrency;
 
         document.querySelectorAll('.currency-toggle-btn').forEach(btn => {

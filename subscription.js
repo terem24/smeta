@@ -51,15 +51,18 @@ const Subscription = {
 
     // Как функция таблицы «Тарифы» называется в окне тарифа для монтажника
     BENEFIT_TEXT: {
-        rommer: 'ассортимент ROMMER и подбор аналогов',
-        terem: 'весь прайс-лист ТЕРЕМ в поиске и распознавании',
-        works: 'монтажные работы в смете, КП и счёте',
-        analog: 'вторая смета «Бюджетнее» с обоснованием',
-        recognize: 'распознавание смет и проектов из PDF, Excel и фото',
-        design: 'листы проекта и редактор планов этажей',
-        money: 'вкладка «Деньги» — маржа по каждому разделу сметы',
-        docs: 'договор подряда, акты и гарантийный талон',
-        disc1c: 'скидки от прайса ТЕРЕМ при просмотре КП'
+        rommer: 'ROMMER и аналоги',
+        terem: 'расширенный прайс с заменами',
+        works: 'монтаж в смете и КП',
+        analog: 'смета «Бюджетнее»',
+        recognize: 'распознавание смет и проектов',
+        design: 'проект и планы этажей',
+        ufhplan: 'раскладка тёплого пола',
+        opcost: 'расходы на эксплуатацию',
+        branding: 'свои реквизиты и логотип',
+        money: 'маржа по разделам',
+        docs: 'договор, акты, гарантия',
+        disc1c: 'скидки в КП'
     },
 
     // Где в калькуляторе открывается окно тарифа — для раздела «Как выглядит».
@@ -573,12 +576,24 @@ const Subscription = {
     benefitsText: function (account) {
         account = account || this.userAccount();
         const custom = (this.settings().benefits[account] || []).map(s => String(s || '').trim()).filter(Boolean);
-        if (custom.length) return 'Преимущества подписки: ' + custom.join(', ') + '.';
+        if (custom.length) return 'В Профи: ' + custom.join(', ') + '.';
         const items = this.benefitRows(account)
             .filter(r => r.pro !== 'off' && r.base === 'off')
             .map(r => this.BENEFIT_TEXT[r.f.id] || r.f.label.toLowerCase());
         if (!items.length) return 'Подписка Профи: все функции калькулятора без ограничений.';
-        return 'Преимущества подписки: ' + items.join(', ') + '.';
+        return 'В Профи: ' + items.join(', ') + '.';
+    },
+
+    // Короткий блок для окна тарифа: строка-заголовок и теги вместо длинного абзаца
+    benefitsHtml: function (account) {
+        account = account || this.userAccount();
+        const custom = (this.settings().benefits[account] || []).map(s => String(s || '').trim()).filter(Boolean);
+        const items = custom.length ? custom : this.benefitRows(account)
+            .filter(r => r.pro !== 'off' && r.base === 'off')
+            .map(r => this.BENEFIT_TEXT[r.f.id] || r.f.label.toLowerCase());
+        if (!items.length) return '<div class="pro-lead">В Профи все функции калькулятора без ограничений</div>';
+        return '<div class="pro-lead">В Профи входит</div><div class="pro-chips">'
+            + items.map(t => `<span>${this.esc(t)}</span>`).join('') + '</div>';
     },
 
     cardsHtml: function (ctx, preview) {
@@ -589,10 +604,10 @@ const Subscription = {
             const pct = r.promo ? r.promoPct : r.termPct;
             const badge = pct > 0 ? `<div class="badge">-${pct}%</div>` : '';
             const sub = r.days > 0
-                ? `Профи для одного объекта, ${r.days} дней на правки`
+                ? `1 объект · ${r.days} дн. на правки`
                 : r.months > 1
                     ? `в месяц (<span class="curr-amount" data-rub="${r.rub}">${Math.round(r.rub).toLocaleString('ru-RU')}</span> <span class="curr-symbol">₽</span> за ${this.esc(this.monthsWord(r.months))})`
-                    : 'в месяц, любое число объектов';
+                    : 'в месяц · без лимита объектов';
             const promoLine = r.promo
                 ? `<div style="font-size:11px; color:var(--c-warn,#D97706); font-weight:700; margin:2px 0 8px; text-align:center;">🔥 ${this.esc(r.promo.title || 'Акция')}${r.promo.to ? ' до ' + this.fmtDate(r.promo.to) : ''}<span style="color:var(--text-sec); font-weight:500;"> · было ${this.esc(this.fmtRub(r.baseRub))}</span></div>`
                 : '';
@@ -608,7 +623,7 @@ const Subscription = {
                 const op = plans.find(x => x.days > 0), or = op && this.resolve(op.id, ctx);
                 if (or && or.rub > 0 && r.rub > or.rub) {
                     const n = Math.floor(r.rub / or.rub) + 1;
-                    saveLine = `<div style="font-size:11px; color:#10B981; font-weight:700; margin:2px 0 6px; text-align:center;">Дешевле, чем по одному расчёту, с ${n}-го объекта</div>`;
+                    saveLine = `<div style="font-size:11px; color:#10B981; font-weight:700; margin:2px 0 6px; text-align:center;">Выгоднее одного расчёта с ${n}-го объекта</div>`;
                 }
             }
             return `<div class="tariff-card">
@@ -1198,15 +1213,15 @@ const Subscription = {
 
     // ═══ Вкладка ═════════════════════════════════════════════════════════
     VIEWS: [
-        { id: 'plans', icon: '💳', label: 'Тарифы и QR' },
-        { id: 'promos', icon: '🔥', label: 'Акции' },
-        { id: 'regions', icon: '🌍', label: 'Регионы' },
-        { id: 'payments', icon: '📒', label: 'Заявки и оплаты' },
-        { id: 'preview', icon: '👁', label: 'Как выглядит' },
-        { id: 'benefits', icon: '⭐', label: 'Преимущества Профи' },
-        { id: 'trial', icon: '🎁', label: 'Пробный период' },
-        { id: 'limit', icon: '🚦', label: 'Лимит КП' },
-        { id: 'nudges', icon: '💬', label: 'Подсказки оплаты' }
+        { id: 'plans', label: 'Тарифы и QR' },
+        { id: 'promos', label: 'Акции' },
+        { id: 'regions', label: 'Регионы' },
+        { id: 'payments', label: 'Заявки и оплаты' },
+        { id: 'preview', label: 'Как выглядит' },
+        { id: 'benefits', label: 'Преимущества Профи' },
+        { id: 'trial', label: 'Пробный период' },
+        { id: 'limit', label: 'Лимит КП' },
+        { id: 'nudges', label: 'Подсказки оплаты' }
     ],
 
     setView: function (v) {
@@ -1252,7 +1267,7 @@ const Subscription = {
         const tabs = this.VIEWS.map(v => {
             const act = v.id === this._view;
             const badge = (v.id === 'payments' && this._pay && this.stats().pending) ? ` <span style="background:#D97706; color:#fff; border-radius:999px; padding:0 6px; font-size:10px;">${this.stats().pending}</span>` : '';
-            return `<button type="button" class="admin-btn" onclick="Subscription.setView('${v.id}')" style="${act ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">${v.icon} ${v.label}${badge}</button>`;
+            return `<button type="button" class="admin-btn" onclick="Subscription.setView('${v.id}')" style="${act ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">${v.label}${badge}</button>`;
         }).join('');
         let body = '';
         if (this._view === 'plans') body = this.viewPlans(canEdit);
