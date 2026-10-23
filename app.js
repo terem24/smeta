@@ -70912,81 +70912,90 @@ const app = {
     },
     // ─── Компенсация температурных удлинений магистрали ─────────────────────────────────────
     // Магистраль (трасса до коллектора, стояк) — самый длинный непрерывный участок, и труба на нём
-    // удлиняется при нагреве: ΔL = α·L·Δt. Своды правил предпочитают самокомпенсацию поворотами
-    // трубы; П-образный или лировидный компенсатор ставят, когда прямой участок длиннее, чем
-    // успевает воспринять плечо у поворота. Считаем по типу трубы (три документа, у каждого свои
-    // α и коэффициент плеча):
-    //   • металлопластик и стабильная PE-Xa/Al/PE-RT — СП 41-102-98: α = 0,025 мм/(м·°C)
-    //     (п. 3.23), вылет Lк = 30·√(dн·ΔL) (п. 3.24, формула 11). Трубы с алюминиевым слоем СП 344
-    //     относит к металлополимерным (прим. к табл. 5.2);
-    //   • серая PE-Xa/EVOH (ПЭ-С) — СП 344.1325800.2017: α = 1,9·10⁻⁴ К⁻¹ (табл. 5.1),
-    //     самокомпенсация (п. 10.1), для прямых участков до 12 м лировидный компенсатор
-    //     h = 15·dн, r₁ = 5·dн (п. 10.7). В паспорте STOUT α = 0,15 — берём норму, она строже;
+    // удлиняется при нагреве: ΔL = α·L·Δt. Удлинение берёт плечо у поворота трассы: свободный участок
+    // трубы от колена до неподвижной опоры длиной Lк = C·√(d·ΔL), мм. Между опорами труба идёт на
+    // скользящих хомутах; на плече компенсатора хомуты и фиксирующий желоб не ставят (Rehau, рис. 8-1).
+    // Если прямой участок длиннее, чем хватает плеча в доме, ставят дополнительный П-образный
+    // компенсатор. Считаем по типу трубы, у каждого — свой документ, α и C:
+    //   • серая PE-Xa/EVOH — методика Rehau для труб PE-Xa (техинформация RAUTITAN, раздел 7–8,
+    //     табл. 7-1, п. 8.1): α = 0,15 мм/(м·К), C = 12; α = 0,15 — и в паспорте STOUT SPX.
+    //     СП 344.1325800.2017 (п. 10.1) — компенсация главным образом самокомпенсацией участков;
+    //   • металлопластик и стабильная PE-Xa/Al/PE-RT — СП 41-102-98: α = 0,025 мм/(м·°C) (п. 3.23),
+    //     Lк = 30·√(dн·ΔL) (п. 3.24, формула 11); пример Uponor MLC (32×3, 25 м, 40 °C → ≈ 850 мм)
+    //     сходится. У Rehau для stabil α = 0,026, C = 33 — на 10 % строже, показываем в подсказке;
     //   • полипропилен PP-R — СП 40-101-96: ΔL = 0,15·L·Δt (формула 2.1), Lк = 25·√(d·ΔL) (2.2).
     // Не из документов, а по практике: Δt = t подачи − 20 °C (температура монтажа, как в примере
-    // СП 40-101-96), свободное плечо у поворота в доме около 1 м (RAD_COMP_ARM_MM) — длиннее
-    // прямой участок ставит компенсатор, и длина лировидного компенсатора ≈ 40·dн трубы.
+    // СП 40-101-96); свободное плечо в доме около 1 м (RAD_COMP_ARM_MM) — при большем Lк ставим
+    // компенсатор; у магистрали два поворота (выход из группы и вход в шкаф, RAD_COMP_TURNS) и
+    // неподвижная опора у каждого поворота по одной на линию.
     RAD_COMP: {
-        grey:   { alpha: 0.19,  lyreMax: 12, doc: 'СП 344.1325800.2017', ref: 'табл. 5.1, п. 10.1, 10.7' },
-        stable: { alpha: 0.025, k: 30,       doc: 'СП 41-102-98',        ref: 'п. 3.22–3.24' },
-        mp:     { alpha: 0.025, k: 30,       doc: 'СП 41-102-98',        ref: 'п. 3.22–3.24' },
-        ppr:    { alpha: 0.15,  k: 25,       doc: 'СП 40-101-96',        ref: 'формулы 2.1 и 2.2' }
+        grey:   { alpha: 0.15,  k: 12, doc: 'методика Rehau (RAUTITAN, табл. 7-1) и паспорт STOUT SPX', ref: 'п. 8.1' },
+        stable: { alpha: 0.025, k: 30, doc: 'СП 41-102-98', ref: 'п. 3.22–3.24', alt: { alpha: 0.026, k: 33, doc: 'Rehau stabil' } },
+        mp:     { alpha: 0.025, k: 30, doc: 'СП 41-102-98', ref: 'п. 3.22–3.24', alt: { alpha: 0.026, k: 33, doc: 'Rehau stabil' } },
+        ppr:    { alpha: 0.15,  k: 25, doc: 'СП 40-101-96', ref: 'формулы 2.1 и 2.2' }
     },
     RAD_COMP_ARM_MM: 1000,
     RAD_COMP_T_MONTAGE: 20,
+    RAD_COMP_TURNS: 2,
     RAD_PPR_ELBOW: { 20: 'PA13008P', 25: 'PA13010P', 32: 'PA13012P', 40: 'PA13014P' },
     /**
      * Компенсация на магистрали: mat — 'grey' | 'stable' | 'mp' | 'ppr', d — наружный диаметр, мм,
-     * oneWayM — длина в одну сторону (подача и обратка одинаковые), м.
-     * Возвращает число компенсаторов на линию (n), лишний метраж трубы на обе линии (extraM),
-     * неподвижные опоры (fixed) и угольники PP-R (elbows) в сумме на обе линии.
+     * oneWayM — длина в одну сторону (подача и обратка одинаковые), м. legs — на сколько одинаковых
+     * прямых участков её разбивают повороты (у магистрали вдоль стен тройниковой схемы их несколько;
+     * oneWayM тогда — длина одного участка, а итоги умножаются на legs). turns — сколько поворотов
+     * на магистрали (у каждого — неподвижная опора на каждой линии).
+     * Возвращает: плечо у поворота (arm), число П-образных компенсаторов на линию (n), лишний метраж
+     * трубы на обе линии (extraM), неподвижные опоры на обе линии (fixed = у поворотов + у компенсаторов)
+     * и угольники PP-R (elbows).
      */
-    radTrunkComp: function (mat, d, oneWayM, legs) {
-        legs = Math.max(1, legs || 1);
+    radTrunkComp: function (mat, d, oneWayM, legs, turns) {
         const c = this.RAD_COMP[mat] || this.RAD_COMP.stable;
+        legs = Math.max(1, legs || 1);
+        turns = Math.max(0, turns == null ? this.RAD_COMP_TURNS : turns);
         const t = parseInt(this.radRegime().label, 10) || 80;
         const dT = Math.max(1, t - this.RAD_COMP_T_MONTAGE);
         const L = Math.max(0, oneWayM || 0);
         const dLtot = c.alpha * L * dT;                                // мм
-        const lmax = c.lyreMax ? c.lyreMax                              // м
-            : (Math.pow(this.RAD_COMP_ARM_MM / c.k, 2) / d) / (c.alpha * dT);
+        const lmax = (Math.pow(this.RAD_COMP_ARM_MM / c.k, 2) / d) / (c.alpha * dT);   // м
         const n = L > 0 ? Math.max(0, Math.ceil(L / lmax - 1e-9) - 1) : 0;
         const sec = L / (n + 1);
         const dSec = c.alpha * sec * dT;
-        const lk = c.k ? c.k * Math.sqrt(d * dSec) : null;              // мм, плечо компенсатора на участок
-        const lkAll = c.k ? c.k * Math.sqrt(d * dLtot) : null;          // мм, плечо у поворота без компенсаторов
-        const perLine = n === 0 ? 0 : (c.lyreMax ? 40 * d : 2 * lk) / 1000;
-        return { mat: mat, d: d, n: n, extraM: Math.ceil(2 * n * perLine), fixed: 4 * n, elbows: mat === 'ppr' ? 8 * n : 0,
-            dL: dLtot, dT: dT, t: t, alpha: c.alpha, k: c.k || null, lk: lk, lkAll: lkAll, lmax: lmax, len: L, sec: sec,
-            lyre: !!c.lyreMax, doc: c.doc, ref: c.ref };
+        const lk = c.k * Math.sqrt(d * dSec);                          // мм, плечо на участок между опорами
+        const lkAlt = c.alt ? c.alt.k * Math.sqrt(d * c.alt.alpha * sec * dT) : null;
+        const perLine = n === 0 ? 0 : 2 * lk / 1000;
+        const fixTurn = 2 * turns, fixComp = 4 * n * legs;
+        return { mat: mat, d: d, n: n, legs: legs, turns: turns, extraM: Math.ceil(2 * n * legs * perLine),
+            fixed: fixTurn + fixComp, fixTurn: fixTurn, fixComp: fixComp, elbows: mat === 'ppr' ? 8 * n * legs : 0,
+            dL: dLtot, dT: dT, t: t, alpha: c.alpha, k: c.k, arm: lk, armAlt: lkAlt, altDoc: c.alt ? c.alt.doc : null,
+            lmax: lmax, len: L, sec: sec, doc: c.doc, ref: c.ref };
     },
     /** Подсказка (i) к трубе магистрали: из чего сложилась компенсация. */
     radTrunkCompNote: function (cp) {
         if (!cp || !(cp.len > 0)) return '';
         const f = (v, n) => v.toFixed(n == null ? 0 : n).replace('.', ',');
         const st = 'font-size:11px;line-height:1.5;';
-        let s = `<span style="${st}"><b>Температурное удлинение (${cp.doc}, ${cp.ref}):</b> ΔL = α·L·Δt = ${f(cp.alpha, 3)} × ${f(cp.len, 1)} м × ${cp.dT} °C = <b>${f(cp.dL)} мм</b> на линию (подача ${cp.t} °C, монтаж ${this.RAD_COMP_T_MONTAGE} °C).<br>` +
-            (cp.legs > 1 ? `<b>Участки:</b> магистраль идёт вдоль стен с поворотами — ${cp.legs} прямых участка(ов) по ≈ ${f(cp.len, 1)} м (длина трассы делится на сторону дома √S); удлинение воспринимают повороты.<br>` : ``);
-        if (cp.n === 0) {
-            s += cp.lyre
-                ? `<b>Компенсатор не нужен:</b> прямой участок не длиннее ${cp.lmax} м — удлинение воспринимают повороты трассы.`
-                : `<b>Компенсатор не нужен:</b> прямой участок не длиннее ${f(cp.lmax, 1)} м. Свободное плечо у поворота — не меньше Lк = ${cp.k}·√(d·ΔL) = <b>${f(cp.lkAll)} мм</b>; трубу у поворота закрепляйте на этом расстоянии.`;
-        } else {
-            s += cp.lyre
-                ? `<b>Лировидные компенсаторы:</b> участок ${f(cp.len, 1)} м длиннее ${cp.lmax} м — на каждую линию ${cp.n * cp.legs} шт. (h = 15·dн, r₁ = 5·dн, п. 10.7), по ≈ 40·dн трубы на компенсатор.`
-                : `<b>П-образные компенсаторы:</b> участок ${f(cp.len, 1)} м длиннее ${f(cp.lmax, 1)} м, при которых хватает плеча ${this.RAD_COMP_ARM_MM} мм у поворота, — на каждую линию ${cp.n * cp.legs} шт.; вылет Lк = ${cp.k}·√(d·ΔL) = <b>${f(cp.lk)} мм</b> на участок ${f(cp.sec, 1)} м, лишней трубы 2·Lк на компенсатор.`;
-            s += `<br><b>В смете:</b> +${cp.extraM} м трубы, ${cp.fixed} ${this.plural(cp.fixed, 'неподвижная опора', 'неподвижные опоры', 'неподвижных опор')} (по две у каждого компенсатора на каждой линии)` + (cp.elbows ? `, ${cp.elbows} угольников 90°` : ``) + `.`;
+        let s = `<span style="${st}"><b>Температурное удлинение (${cp.doc}):</b> ΔL = α·L·Δt = ${f(cp.alpha, 3)} × ${f(cp.len, 1)} м × ${cp.dT} °C = <b>${f(cp.dL)} мм</b> на линию (подача ${cp.t} °C, монтаж ${this.RAD_COMP_T_MONTAGE} °C).<br>` +
+            (cp.legs > 1 ? `<b>Участки:</b> магистраль идёт вдоль стен с поворотами — ${cp.legs} прямых участка(ов) по ≈ ${f(cp.len, 1)} м (длина трассы делится на сторону дома √S).<br>` : ``) +
+            `<b>Плечо у поворота:</b> Lк = ${cp.k}·√(d·ΔL) = <b>${f(cp.arm)} мм</b>` + (cp.altDoc ? ` (по ${cp.altDoc} — ${f(cp.armAlt)} мм)` : ``) +
+            ` — столько свободной трубы от колена до неподвижной опоры; на плече хомуты и фиксирующий желоб не ставят.<br>`;
+        if (cp.n > 0) {
+            s += `<b>П-образные компенсаторы:</b> участок ${f(cp.len, 1)} м длиннее ${f(cp.lmax, 1)} м, при которых хватает плеча ${this.RAD_COMP_ARM_MM} мм у поворота, — на каждую линию ${cp.n * cp.legs} шт., лишней трубы 2·Lк на компенсатор.<br>`;
         }
-        s += `<br><i>Плечо ${this.RAD_COMP_ARM_MM} мм у поворота и Δt от +${this.RAD_COMP_T_MONTAGE} °C — практика проектирования, не из документа.${cp.mat === 'ppr' ? ' Для стабилизированной PP-R труба расширяется меньше — расчёт с запасом.' : ''}${cp.mat === 'grey' ? ' В паспорте STOUT α = 0,15 мм/(м·К), по СП 344 — 0,19; берём норму.' : ''}</i></span>`;
+        const nTxt = k => `${k} ${this.plural(k, 'неподвижная опора', 'неподвижные опоры', 'неподвижных опор')}`;
+        s += `<b>В смете:</b> ${nTxt(cp.fixed)}: ${cp.fixTurn} у поворотов (по одной на линию у каждого из ${cp.turns} ${this.plural(cp.turns, 'поворота', 'поворотов', 'поворотов')}, на расстоянии Lк от колена)` +
+            (cp.fixComp ? ` и ${cp.fixComp} у компенсаторов` : ``) + (cp.extraM ? `; +${cp.extraM} м трубы` : ``) + (cp.elbows ? `; ${cp.elbows} угольников 90°` : ``) +
+            `. Скользящие хомуты — по метру, они уже в смете.`;
+        s += `<br><i>Плечо ${this.RAD_COMP_ARM_MM} мм у поворота, два поворота на магистрали, Δt от +${this.RAD_COMP_T_MONTAGE} °C — практика проектирования, не из документа.${cp.mat === 'ppr' ? ' Для стабилизированной PP-R труба расширяется меньше — расчёт с запасом.' : ''}</i></span>`;
         return s;
     },
     /** Позиции компенсации в смету: неподвижные опоры (хомут трубы) и угольники PP-R. */
     radTrunkCompItems: function (cp, pick, isPpr, addToBill, grp, tag) {
-        if (!cp || cp.n === 0) return;
+        if (!cp) return;
         const clampId = this.RAD_CLAMP[pick];
         const clamp = clampId && catalog.mounting_system.find(x => x.id === clampId);
         if (clamp && cp.fixed > 0) addToBill({ ...clamp, originalId: clampId + '_' + tag + '_fix' }, cp.fixed,
-            `Неподвижные опоры у компенсаторов магистрали: по две на каждую линию у каждого компенсатора (${cp.doc}). Хомут затягивается, труба в нём не скользит.`, grp);
+            `Неподвижные опоры магистрали: по одной на каждую линию у каждого поворота (${cp.fixTurn} шт., на расстоянии не меньше плеча Lк от колена)` +
+            (cp.fixComp ? ` и у компенсаторов (${cp.fixComp} шт.)` : ``) + `. Хомут затягивается, труба в нём не скользит; между опорами труба на скользящих хомутах (${cp.doc}).`, grp);
         if (cp.elbows > 0) {
             const el = (catalog.ppr_proaqua_elbow90 || []).find(x => x.id === this.RAD_PPR_ELBOW[pick]);
             if (el) addToBill({ ...el, originalId: el.id + '_' + tag + '_comp' }, cp.elbows,
@@ -90270,8 +90279,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 const _teeLegs = Math.max(1, Math.ceil(trunkOneWay / Math.sqrt(Math.max(floorArea, 1))));
                 const _teeLeg = trunkOneWay / _teeLegs;
                 const _teeLegsNear = _teeSame ? _teeLegs : Math.max(1, Math.ceil(_teeLegs / 2));
-                const _teeCompNear = this.radTrunkComp(_teeMat, dNear, _teeLeg, _teeLegsNear);
-                const _teeCompFar = _teeSame ? null : this.radTrunkComp(_teeMat, dFar, _teeLeg, Math.max(1, _teeLegs - _teeLegsNear));
+                const _teeCompNear = this.radTrunkComp(_teeMat, dNear, _teeLeg, _teeLegsNear, _teeLegsNear + 1);
+                const _teeCompFar = _teeSame ? null : this.radTrunkComp(_teeMat, dFar, _teeLeg, Math.max(1, _teeLegs - _teeLegsNear), Math.max(1, _teeLegs - _teeLegsNear));
                 _teeCompNote[dNear] = this.radTrunkCompNote(_teeCompNear);
                 if (_teeCompFar) _teeCompNote[dFar] = this.radTrunkCompNote(_teeCompFar);
                 let pipeByDiam = {};
