@@ -10391,8 +10391,8 @@ const app = {
         kp_reminder_sent: { label: 'Напоминание: КП без счёта', color: '#F59E0B' },
         // Итог КП (kp_outcome.js): ставит монтажник в окне «Чем закончились КП?»
         // или менеджер за него. Продление — техническая отметка, карточку не двигает.
-        won: { label: 'Клиент согласился', color: '#059669' },
-        lost: { label: 'Отказ клиента', color: '#DC2626' },
+        won: { label: 'Реализовано', color: '#059669' },
+        lost: { label: 'Не реализовано', color: '#DC2626' },
         extended: { label: 'Срок ответа продлён', color: '#94A3B8' },
         kp_outcome_reminder: { label: 'Напоминание: отметить итог КП', color: '#F59E0B' },
     },
@@ -10420,9 +10420,8 @@ const app = {
         if (ev === 'sent' && ch === 'link') return Object.assign({}, base, { label: 'Отправлено: ссылка' });
         // Итог КП: где покупают или причина отказа
         // Объект реализован? Да / Нет с причиной — отметка монтажника (app.askRealized)
-        if (ev === 'won' && meta && meta.realized === true) return Object.assign({}, base, { label: 'Реализовано' });
-        if (ev === 'lost' && meta && meta.realized === false) return Object.assign({}, base, { label: 'Не реализовано' + (meta.label ? ': ' + meta.label : '') });
-        if ((ev === 'won' || ev === 'lost') && meta && meta.label) return Object.assign({}, base, { label: (ev === 'won' ? 'Согласились: ' : 'Отказ: ') + meta.label });
+        if (ev === 'won') return Object.assign({}, base, { label: 'Реализовано' });
+        if (ev === 'lost') return Object.assign({}, base, { label: 'Не реализовано' + (meta && meta.label ? ': ' + meta.label : '') });
         if (ev === 'printed') {
             const label = ch === 'pdf' ? 'Отправлено: PDF' : ch === 'excel' ? 'Отправлено: Excel' : 'Отправлено: PDF или Excel';
             return Object.assign({}, base, { label: label });
@@ -12597,6 +12596,8 @@ const app = {
                 }
             }
 
+            // Название, сумма и версия для окна «Объект реализован?» (у сметы без событий в журнале их взять неоткуда)
+            (this._kpoInfo = this._kpoInfo || {})[String(item.calc_id || '')] = { project: item.project_name || '', sum: Number(item.total_sum) || 0, kpVersion: Number(item.kp_ver) || 0 };
             // Что требует внимания (kp_outcome.js): «нужен итог» — срок ответа клиента вышел,
             // «новое» — со времени прошлого просмотра изменился статус. Строка подсвечена,
             // у «нужен итог» кнопка «Отметить итог» на виду, а не в меню «⋯».
@@ -12626,18 +12627,17 @@ const app = {
             // на две строки, и список смет читался как таблица внутри таблицы
             this._rowMenus[item.id] = [
                 { label: 'Сравнить цены с сегодняшними', js: `app.lazy('reprice').then(() => Reprice.open('${item.id}'))` },
-                item.calc_id ? { label: 'Объект реализован? Да / Нет', js: `app.askRealized('${item.id}')` } : null,
                 item.calc_id ? { label: 'История статусов', js: `app.toggleObjectHistory('${item.calc_id}', '${item.id}')` } : null,
-                // Итог КП можно отметить сразу, не дожидаясь окна через 30 дней (kp_outcome.js).
-                // Есть событие журнала — смета уже уходила клиенту.
-                (item.calc_id && lastEv && window.KpOutcome)
-                    ? { label: (lastEv.event === 'won' || lastEv.event === 'lost') ? 'Изменить итог КП' : 'Отметить итог КП',
-                        js: `KpOutcome.markFromList('${item.calc_id}')` } : null,
+                // Итог можно отметить сразу, не дожидаясь окна через 30 дней (kp_outcome.js), и у
+                // сметы, которую клиенту не отправляли: договорились на словах
+                (item.calc_id && window.KpOutcome)
+                    ? { label: (lastEv && (lastEv.event === 'won' || lastEv.event === 'lost')) ? 'Объект реализован? Изменить' : 'Объект реализован? Да / Нет',
+                        js: `KpOutcome.markFromList('${item.calc_id}', app._kpoInfo['${item.calc_id}'])` } : null,
                 canDelete ? { label: 'Удалить смету', js: `app.deleteEstimate('${item.id}', event)`, danger: true } : null
             ].filter(Boolean);
 
             h += `
-                <tr class="active-row${attn ? ' kpo-row-' + attn : ''}" style="cursor: pointer;" onclick="app.loadSingleEstimate('${item.id}')">
+                <tr class="active-row${attn ? ' kpo-row-' + attn : (lastEv && lastEv.event === 'won' ? ' kpo-row-done-won' : (lastEv && lastEv.event === 'lost' ? ' kpo-row-done-lost' : ''))}" style="cursor: pointer;" onclick="app.loadSingleEstimate('${item.id}')">
                     <td style="font-weight:600;">${item.project_name}${item.calc_id ? `<div style="font-size:11px; font-weight:600; color:var(--text-sec); font-family:monospace; margin-top:2px;" title="Номер КП. Цифра после дефиса — версия: растёт, когда смету с правками снова отправляют клиенту">КП № ${item.calc_id}${Number(item.kp_ver) ? '-' + Number(item.kp_ver) : ''}${item.cf_calc ? ` <span style="color:#7C3AED;" title="Копия чужой сметы — оригинал КП № ${item.cf_calc}">· 📎 копия ${item.cf_calc}</span>` : ''}</div>` : ''}</td>
                     <td style="color:var(--primary); font-weight:bold;">${sum}</td>
                     <td>${statusBadge}</td>
@@ -12756,47 +12756,16 @@ const app = {
     // Поэтому сначала загружаем выбранную, а потом запускаем действие.
     /**
      * «Объект реализован?» — итог по самой смете, а не по решению клиента: работает и для
-     * смет, которые никуда не отправляли (договорились на словах). Да → событие won,
-     * Нет → lost с причиной; оба несут meta.realized, по нему kanbanEventView даёт
-     * подписи «Реализовано» / «Не реализовано: причина».
+     * смет, которые никуда не отправляли (договорились на словах). Теперь это то же окно,
+     * что и «итог КП» (KpOutcome.openDialog): Да → событие won (где покупают — по желанию),
+     * Нет → lost с причиной из списка; оба несут meta.realized.
      */
     askRealized: function (id) {
         const item = (this._cloudEstimates || []).find(e => String(e.id) === String(id));
         if (!item || !item.calc_id) { app.alert('У этой сметы нет номера КП. Откройте и сохраните её заново.'); return; }
         this.closeCabinetRowMenu();
-        const cur = (this._cloudEventStatuses || {})[String(item.calc_id)];
-        const curLabel = cur ? this.kanbanEventView(cur.event, cur.meta).label : 'Сохранена';
-        this.showPlainModal('Объект реализован?',
-            `<div style="font-size:13px; color:var(--text-sec); margin-bottom:10px;">${item.project_name || ''} · КП № ${item.calc_id}<br>Сейчас: <b>${curLabel}</b></div>
-             <div style="display:flex; gap:10px;">
-                <button type="button" class="custom-modal-btn" style="flex:1;" onclick="app.setRealized('${item.id}', true)">Да</button>
-                <button type="button" class="custom-modal-btn" style="flex:1;" onclick="app.setRealized('${item.id}', false)">Нет</button>
-             </div>`);
-    },
-
-    setRealized: async function (id, yes) {
-        const item = (this._cloudEstimates || []).find(e => String(e.id) === String(id));
-        if (!item || !item.calc_id) return;
-        let reason = '';
-        if (!yes) {
-            const why = await app.prompt('Почему не реализован? Укажите причину (обязательно):', '', 'Причина');
-            if (why === null) return;
-            if (!why.trim()) { app.alert('Причина обязательна.'); return; }
-            reason = why.trim();
-        }
-        this.closePlainModal();
-        try {
-            if (!window.KpOutcome) throw new Error('модуль итогов не загружен, обновите страницу');
-            const meta = yes ? { realized: true, manual: true } : { realized: false, reason: 'other', label: reason, manual: true };
-            await KpOutcome.write({ calcId: item.calc_id, project: item.project_name || '', kpVersion: Number(item.kp_version) || 0 }, yes ? 'won' : 'lost', meta, false);
-            this._cloudEventStatuses = this._cloudEventStatuses || {};
-            this._cloudEventStatuses[String(item.calc_id)] = { calc_id: String(item.calc_id), event: yes ? 'won' : 'lost', meta: meta, created_at: new Date().toISOString() };
-            this.renderCloudList(this._cloudEstimates, this._cloudSharedStatuses || {}, this._cloudEventStatuses);
-            if (window.KpOutcome && KpOutcome.refreshAttention) KpOutcome.refreshAttention();
-        } catch (e) {
-            console.error('[setRealized]', e);
-            app.alert('Не удалось сохранить: ' + (e.message || e));
-        }
+        if (!window.KpOutcome) { app.alert('Модуль итогов не загружен, обновите страницу.'); return; }
+        KpOutcome.markFromList(item.calc_id, { project: item.project_name || '', sum: Number(item.total_sum) || 0, kpVersion: Number(item.kp_version) || 0 });
     },
 
     cloudRowAction: async function (id, what) {
@@ -15463,6 +15432,18 @@ const app = {
             return;
         }
 
+        // Причины отказа и «где покупают» лежат в meta итогов; общая выборка истории её не несёт
+        let kpRows = rows;
+        try {
+            if (window.KpOutcome) {
+                const ids = [...new Set(rows.map(r => String(r.calc_id)).filter(Boolean))];
+                if (ids.length) {
+                    const ex = await KpOutcome.fetchOutcomeRows(ids);
+                    kpRows = rows.filter(r => ['won', 'lost', 'extended'].indexOf(r.event) < 0).concat(ex);
+                }
+            }
+        } catch (e) { console.warn('[показатели] итоги без причин:', e); }
+
         const DAY = 86400000, now = Date.now();
         const curFrom = now - P * DAY, prevFrom = now - 2 * P * DAY;
         const inCur = t => t >= curFrom, inPrev = t => t >= prevFrom && t < curFrom;
@@ -15573,12 +15554,13 @@ const app = {
         // ── Итог КП ─────────────────────────────────────────────────────────
         // Отметки «согласился / отказ» из окна итога (kp_outcome.js). КП с итогом
         // ни на столе, ни в ожидании звонка уже не висит.
-        const kpList = window.KpOutcome ? KpOutcome.build(rows, now) : [];
+        const kpList = window.KpOutcome ? KpOutcome.build(kpRows, now) : [];
         const kpClosed = {};
         kpList.forEach(k => { if (k.outcome) kpClosed[k.calcId] = k.outcome; });
         const kpCur = kpList.filter(k => inCur(k.firstSentAt));
         const kpWon = kpCur.filter(k => k.outcome === 'won').length;
         const kpLost = kpCur.filter(k => k.outcome === 'lost').length;
+        const kpSilent = kpCur.filter(k => !k.outcome && k.overdue).length;
         const kpOpen = kpList.filter(k => k.overdue).length;
 
         // ── Деньги на столе ─────────────────────────────────────────────────
@@ -15740,16 +15722,75 @@ const app = {
         });
         // КП без итога дольше 30 дней — одной строкой, открывает окно отметки
         if (kpOpen) actions.push({ w: 0, color: '#F97316', icon: '🏁', name: kpOpen + ' ' + this.plural(kpOpen, 'КП', 'КП', 'КП') + ' без итога',
-            text: 'отметьте, чем закончились', sum: 0, onclick: 'KpOutcome.check(true).then(() => app.renderInstallerSummaryTab())' });
+            text: 'отметьте, реализованы ли объекты', sum: 0, onclick: 'KpOutcome.check(true).then(() => app.renderInstallerSummaryTab())' });
+        // Со старой «Главной»: новые статусы, неотправленные сметы, сообщения, подсказки по анкете
+        const newsN = (window.KpOutcome && KpOutcome._attn) ? Object.keys(KpOutcome._attn.by).filter(k => KpOutcome._attn.by[k] === 'news').length : 0;
+        if (newsN) actions.push({ w: 0.5, color: '#3B82F6', icon: '🔔', name: newsN + ' ' + this.plural(newsN, 'КП', 'КП', 'КП') + ' с новым статусом',
+            text: 'смотрите в «Объектах»', sum: 0, onclick: "app.setProfileTab('objects')" });
+        const withEvents = new Set(cards.map(c => c.id));
+        ests.filter(e => e.calc && !withEvents.has(String(e.calc)) && now - e.at > 2 * DAY && now - e.at < 30 * DAY)
+            .sort((a, b) => b.at - a.at).slice(0, 3).forEach(e => actions.push({ w: 5, color: 'var(--text-sec)', icon: '📤', estId: e.id, name: e.name || 'Без названия',
+                text: `сохранена ${dayWord(e.at)}, клиенту не отправлена`, sum: e.total || 0 }));
+        const badgeEl = document.getElementById('notification_badge');
+        const unreadN = (badgeEl && badgeEl.style.display !== 'none') ? (parseInt(badgeEl.innerText, 10) || 0) : 0;
+        if (unreadN) actions.push({ w: 6, color: '#EF4444', icon: '✉️', name: 'Новые сообщения: ' + unreadN, text: 'откройте и ответьте', sum: 0, onclick: "app.railGo('messages')" });
+        const coEl = document.getElementById('profile_company_name');
+        if (coEl && !coEl.value.trim()) actions.push({ w: 8, color: '#F97316', icon: '🏢', name: 'Название компании не заполнено',
+            text: 'оно попадает в шапку КП и счёта', sum: 0, onclick: "app.setProfileTab('company')" });
+        if (typeof this.prefsHintWanted === 'function' && this.prefsHintWanted(ests.length)) actions.push({ w: 9, color: 'var(--text-sec)', icon: '⭐', name: 'Любимые материалы',
+            text: 'отметьте, что ставите чаще — новые сметы будут считаться по ним', sum: 0, onclick: "app.setProfileTab('prefs')" });
         actions.sort((x, y) => x.w - y.w || y.sum - x.sum);
         const actionRow = (x) => `<div class="sm-row sm-link"${x.onclick ? ` onclick="${x.onclick}"` : (x.estId ? ` onclick="app.loadSingleEstimate('${x.estId}')" title="Открыть смету"` : '')}>
                     <span class="sm-row-label">${x.icon} <b>${esc(x.name)}</b> <span style="color:${x.color};">— ${x.text}</span></span>
                     <b>${x.sum ? money(x.sum) : ''}</b>
                 </div>`;
-        const actionsHtml = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">✅ </span>Что сделать сейчас</h4></div>
+        const actionsHtml = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">✅ </span>Требует внимания</h4></div>
             <div id="installer_actions">${actions.slice(0, 8).map(actionRow).join('')}</div>
             <div id="installer_actions_extra"></div>
-            ${actions.length ? '' : `<p class="lk-hint" id="installer_actions_empty">Срочного нет: одобренных без счёта, просьб о правках и «горячих» клиентов сейчас нет.</p>`}`;
+            ${actions.length ? '' : `<p class="lk-hint" id="installer_actions_empty">Срочного нет: КП без итога, одобренных без счёта, просьб о правках, новых сообщений и «горячих» клиентов сейчас нет.</p>`}`;
+
+        // ── Реализовано ─────────────────────────────────────────────────────
+        // Главный ответ монтажнику: сколько объектов реализовано, на какую сумму, сколько заработано
+        // и почему не реализовано. Считается по отметкам «Объект реализован?» и по КП, где счёт
+        // выставлен или оплачен (они реализованными считаются сами). Период — по дню отметки.
+        const outAt = (k) => { const e = k.outcomeEvent, t = e && e.created_at ? Date.parse(e.created_at) : 0; return t || k.due || 0; };
+        const realized = kpList.filter(k => k.outcome === 'won' && inCur(outAt(k))).sort((a, b) => outAt(b) - outAt(a));
+        const notReal = kpList.filter(k => k.outcome === 'lost' && inCur(outAt(k)));
+        const realSum = realized.reduce((sum, k) => sum + (sumOfCalc[k.calcId] || 0), 0);
+        let realMargin = 0, realMarginN = 0;
+        if (mSet) realized.forEach(k => { const e = estOfCalc[k.calcId]; const m = e ? this.estimateMarginOf(e, mSet) : null; if (m != null) { realMargin += m; realMarginN++; } });
+        const decidedN = kpWon + kpLost + kpSilent;
+        const convRate = decidedN ? Math.round(kpWon / decidedN * 100) : null;
+        const reasonCount = {};
+        notReal.forEach(k => {
+            const m = (k.outcomeEvent && k.outcomeEvent.meta) || {};
+            const label = m.label || (window.KpOutcome ? KpOutcome.reasonLabel(m.reason) : '') || 'Причина не указана';
+            reasonCount[label] = (reasonCount[label] || 0) + 1;
+        });
+        const reasons = Object.keys(reasonCount).sort((a, b) => reasonCount[b] - reasonCount[a]);
+        const objW = (n) => this.plural(n, 'объект', 'объекта', 'объектов');
+        const perLabel = P === 365 ? 'за год' : 'за ' + P + ' дней';
+        const realRows = realized.slice(0, 5).map(k => {
+            const e = estOfCalc[k.calcId], sum = sumOfCalc[k.calcId] || 0;
+            return `<div class="sm-row sm-link"${e ? ` onclick="app.loadSingleEstimate('${e.id}')" title="Открыть смету"` : ''}>
+                <span class="sm-row-label"><b>${esc(k.project || (e && e.name) || 'Без названия')}</b>
+                    <br><small style="color:var(--text-sec);">реализовано ${dayWord(outAt(k))}</small></span>
+                <b>${sum ? money(sum) : ''}</b></div>`;
+        }).join('');
+        const reasonRows = reasons.slice(0, 5).map(label => `<div class="sm-row">
+                <span class="sm-row-label">${esc(label)}</span>
+                <b class="sm-row-val">${num(reasonCount[label])}</b>
+                <span class="sm-row-sub">${Math.round(reasonCount[label] / notReal.length * 100)}%</span></div>`).join('');
+        const realizedHtml = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">🏆 </span>Реализовано</h4><small class="sm-head-note">${perLabel}</small></div>
+            <div class="sm-tiles">
+                ${tile('Реализовано', num(realized.length) + ' ' + objW(realized.length), realSum ? money(realSum) + ' по сумме смет' : (realized.length ? 'сумма смет неизвестна' : 'пока ничего не отмечено'), '', 'Объекты, где вы отметили «реализован», и КП со счётом: выставлен, оплачен')}
+                ${mSet ? tile('Ваш заработок ≈', realMarginN ? money(realMargin) : '—', realMarginN ? 'по ' + realMarginN + ' из ' + realized.length + ' ' + objW(realized.length) : 'нужны проценты во вкладке «Деньги»', '', 'Оценка по вашим процентам из «Денег»') : ''}
+                ${tile('Реализовано из отправленных', convRate === null ? '—' : convRate + '%', decidedN ? kpWon + ' из ' + decidedN + ' КП (срок ответа вышел или итог есть)' : 'пока нечего считать', '', 'Доля реализованных среди КП, отправленных за период; КП, у которых срок ответа ещё идёт, не считаются')}
+                ${tile('Не реализовано', num(notReal.length), reasons.length ? 'чаще всего: ' + esc(reasons[0]) : '—')}
+            </div>
+            ${realized.length || notReal.length ? '' : `<p class="lk-hint">Отметьте итог у смет: в «Объекты» нажмите «⋯» → «Объект реализован?». Здесь появятся реализованные объекты, сумма и ваш заработок.</p>`}
+            ${realRows}
+            ${reasons.length ? `<div class="lk-section-head sm-head"><h4><span class="ui-emo">🧭 </span>Почему не реализовано</h4></div>${reasonRows}` : ''}`;
 
         // ── По месяцам ──────────────────────────────────────────────────────
         // Растёт ли человек: одна строка на календарный месяц. Сметы — по
@@ -15794,17 +15835,16 @@ const app = {
             : '';
 
         container.innerHTML = head
-            + `<div class="sm-tiles">
+            + actionsHtml
+            + realizedHtml
+            + `<div class="sm-tiles" style="margin-top:14px;">
                 ${tile('Смет', num(inv.cohortN), 'за ' + (P === 365 ? 'год' : P + ' дней'), trend(inv.cohortN, invPrev.cohortN, 'up'), 'Считаем от первого действия со сметой')}
                 ${tile('Дошло до счёта', num(fAuto ? fAuto.n : 0), convCur != null ? Math.round(convCur) + '% ваших смет' : '', trend(convCur, convPrev, 'up'))}
                 ${tile('Ждут ответа', num(stale.length), 'молчат ' + this.INSTALLER_STALE_DAYS + '+ дней')}
-                ${kpWon + kpLost ? tile('Итоги КП', Math.round(kpWon / (kpWon + kpLost) * 100) + '%',
-                    'согласились ' + num(kpWon) + ' из ' + num(kpWon + kpLost), '', 'По КП, ушедшим клиентам за период, у которых отмечен итог: согласился или отказ') : ''}
                 ${seller
                     ? tile('Средний чек', oCur.total ? money(oCur.total) : '—', oCur.area ? Math.round(oCur.area) + ' м²' : '', trend(oCur.total, oPrev.total, 'up'))
                     : tile('Средний объект', oCur.area ? Math.round(oCur.area) + ' м²' : '—', oCur.total ? money(oCur.total) : '', trend(oCur.area, oPrev.area, 'up'))}
                </div>`
-            + actionsHtml
             + `<div class="lk-section-head sm-head"><h4><span class="ui-emo">💵 </span>Деньги на столе</h4></div>`
             + `<div class="sm-tiles">
                 ${pot('Ждут решения клиента', pending, '#F97316', 'Отправлены, клиент ещё не одобрил и не вернул на доработку')}
@@ -16527,7 +16567,7 @@ const app = {
     },
     prefsHintLater: function () {
         try { localStorage.setItem('prefs_hint_snooze', String(Date.now() + 14 * 86400000)); } catch (e) { }
-        this.renderCabinetHome();
+        if (this._activeProfileTab === 'summary') this.renderInstallerSummaryTab();
     },
 
     applyPrefsToCurrent: async function () {
@@ -16595,6 +16635,8 @@ const app = {
     setProfileTab: function (tab) {
         const tabs = ['home', 'requisites', 'company', 'subscription', 'objects', 'summary', 'leads', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment', 'prefs', 'settings', 'theme', 'kp', 'notify', 'login'];
         if (!tabs.includes(tab)) tab = 'requisites';
+        // «Дела» убраны (23.10.2026): то же самое — вверху «Показателей», «Главная» открывает их
+        if (tab === 'home') tab = 'summary';
         tab = this.cabinetResolveTab(tab);
         // Уходим со вкладки с открытым чатом — отписываемся от реалтайма, чтобы не копить
         // висящие подписки и не обновлять невидимую панель
@@ -16747,7 +16789,7 @@ const app = {
     // за ними одиннадцать. Ключи разделов (profile_tab_<id>, data-tab, push open:"orders")
     // не менялись — меняется только то, как они сгруппированы на экране.
     CABINET_SUBTABS: {
-        home: [{ id: 'home', label: 'Дела' }, { id: 'summary', label: 'Показатели' }, { id: 'leads', label: 'Заявки' }],
+        home: [{ id: 'summary', label: 'Показатели' }, { id: 'leads', label: 'Заявки' }],
         objects: [{ id: 'objects', label: 'Сметы' }, { id: 'oprosniki', label: 'Опросные листы' }, { id: 'orders', label: 'Документы' }],
         requisites: [{ id: 'requisites', label: 'Мои данные' }, { id: 'company', label: 'Реквизиты компании' }, { id: 'manager', label: 'Мой менеджер' }],
         workprices: [{ id: 'prefs', label: 'Любимые материалы' }, { id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }],

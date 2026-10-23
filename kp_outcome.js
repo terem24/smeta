@@ -334,8 +334,53 @@ const KpOutcome = {
     },
 
     // «Отметить итог» из списка «Объектов»: после записи пересчитать значок и список
-    markFromList: function (calcId) {
-        return this.openForCalc(calcId, () => this.refreshAttention().then(() => { if (typeof app.loadFromCloudList === 'function') app.loadFromCloudList(); }), true);
+    markFromList: function (calcId, info) {
+        return this.openForCalc(calcId, () => this.refreshAttention().then(() => { if (typeof app.loadFromCloudList === 'function') app.loadFromCloudList(); }), true, info);
+    },
+
+    // ── Результат отметки виден сразу (плашка снизу экрана) ───────────────
+    // Над окнами кабинета и панели (2000000), иначе плашка пряталась бы под ними
+    toast: function (text) {
+        const old = document.getElementById('kpo_toast');
+        if (old) old.remove();
+        const el = document.createElement('div');
+        el.id = 'kpo_toast';
+        el.className = 'no-print';
+        el.textContent = text;
+        el.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:2000002;max-width:min(560px,calc(100vw - 32px));'
+            + 'background:#065F46;color:#fff;font-size:13.5px;font-weight:600;line-height:1.4;padding:11px 16px;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.35);text-align:center;';
+        document.body.appendChild(el);
+        setTimeout(() => { el.style.transition = 'opacity .4s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 450); }, 6000);
+    },
+
+    // После отметки: «Записано. Реализовано: N на X ₽» (за всё время, по свежим данным)
+    afterMark: async function (k, event, meta) {
+        try {
+            if (event !== 'won') {
+                this.toast('Записано: не реализовано' + (meta && meta.label ? ' (' + meta.label + ')' : '') + '. Причины собираются в «Мои показатели» → «Почему не реализовано».');
+                return;
+            }
+            const list = await this.loadMine(false);
+            const won = list.filter(x => x.outcome === 'won' && !x.auto);
+            const sum = won.reduce((a, x) => a + (x.sum || 0), 0);
+            const n = won.length || 1;
+            const obj = (n % 10 === 1 && n % 100 !== 11) ? 'объект' : ((n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14)) ? 'объекта' : 'объектов');
+            this.toast('Записано. Реализовано: ' + n + ' ' + obj + (sum ? ' на ' + Math.round(sum).toLocaleString('ru-RU') + ' ₽' : '') + '. Смотрите «Главная» → «Мои показатели».');
+        } catch (e) { console.warn('[итог КП] плашка:', e); }
+    },
+
+    // События итогов (won / lost / extended) с meta — для «Моих показателей»: общая
+    // выборка истории meta не несёт, а причины и «где покупают» лежат в ней
+    fetchOutcomeRows: async function (ids) {
+        const out = [];
+        for (let i = 0; i < ids.length; i += 80) {
+            const { data, error } = await supabaseClient.from('invoice_events')
+                .select('calc_id, event, user_email, user_name, project_name, meta, created_at')
+                .in('calc_id', ids.slice(i, i + 80)).in('event', ['won', 'lost', 'extended']).limit(5000);
+            if (error) throw error;
+            out.push(...(data || []));
+        }
+        return out;
     },
 
     // Сумма сметы — для узнавания объекта в окне. Не нашлась — окно и без неё понятно.
@@ -459,12 +504,12 @@ const KpOutcome = {
             // Коротко: почему окно, что даёт, что будет без отметки
             const lead = () => {
                 if (opts.staff) return 'Монтажник увидит отметку в истории сметы.';
-                if (opts.manual) return 'Клиент уже решил? Отметьте итог — он попадёт в «Мои показатели». Если ещё думает, просто закройте окно.';
+                if (opts.manual) return 'Отметьте итог: он попадёт в «Мои показатели» (сколько объектов реализовано и на какую сумму). Не знаете — закройте окно.';
                 if (opts.gate) return `Новые КП не отправляются, пока у ${this.GATE} КП нет итога. Отметьте — и отправка откроется. Считать можно как обычно.`;
                 const gateLine = this.gateApplies()
                     ? `<br><small>Без Профи: если итога нет у ${this.GATE} КП, новые не отправятся. Считать можно всегда.</small>`
                     : '';
-                return `КП ушли клиентам больше ${(items[0] && items[0].days) || this.DAYS} дней назад. Отметьте итог — в «Моих показателях» будет видно, сколько КП стали сделками. Ошибка в смете — напишите, исправим.${gateLine}`;
+                return `КП ушли клиентам больше ${(items[0] && items[0].days) || this.DAYS} дней назад. Отметьте, реализован ли объект: в «Моих показателях» будет видно, сколько объектов реализовано и на какую сумму. Ошибка в смете — напишите, исправим.${gateLine}`;
             };
 
             const itemHtml = (k) => {
@@ -474,20 +519,20 @@ const KpOutcome = {
                 const who = opts.staff && k.userName ? `<div class="kpo-sub">${this.esc(k.userName)}</div>` : '';
                 let body = '';
                 if (st.mode === 'won') {
-                    body = `<div class="kpo-q">Где покупают?</div>
+                    body = `<div class="kpo-q">Где покупают? <span class="kpo-sub">(необязательно)</span></div>
                         <div class="kpo-chips">${this.WHERE.map(w => `<button type="button" class="kpo-chip${st.pick === w.key ? ' on' : ''}" data-act="pick" data-id="${k.calcId}" data-v="${w.key}">${this.esc(w.label)}</button>`).join('')}</div>
                         <textarea class="kpo-ta" data-id="${k.calcId}" rows="2" placeholder="Комментарий, если есть">${this.esc(st.comment || '')}</textarea>
                         <div class="kpo-row"><button type="button" class="kpo-btn" data-act="back" data-id="${k.calcId}">Назад</button><button type="button" class="kpo-btn kpo-ok" data-act="save" data-id="${k.calcId}">Сохранить</button></div>`;
                 } else if (st.mode === 'lost') {
                     const r = this.REASONS.find(x => x.key === st.pick);
-                    body = `<div class="kpo-q">Почему отказались?</div>
+                    body = `<div class="kpo-q">Почему не реализован?</div>
                         <div class="kpo-chips">${this.REASONS.filter(x => !x.sys).map(x => `<button type="button" class="kpo-chip${st.pick === x.key ? ' on' : ''}" data-act="pick" data-id="${k.calcId}" data-v="${x.key}">${this.esc(x.label)}</button>`).join('')}</div>
                         <textarea class="kpo-ta" data-id="${k.calcId}" rows="2" placeholder="${this.esc((r && r.ask) || 'Комментарий, если есть')}${r && r.need ? ' (обязательно)' : ''}">${this.esc(st.comment || '')}</textarea>
                         <div class="kpo-row"><button type="button" class="kpo-btn" data-act="back" data-id="${k.calcId}">Назад</button><button type="button" class="kpo-btn kpo-ok" data-act="save" data-id="${k.calcId}">Сохранить</button></div>`;
                 } else {
                     body = `<div class="kpo-row">
-                        <button type="button" class="kpo-btn kpo-won" data-act="won" data-id="${k.calcId}">✓ Клиент согласился</button>
-                        <button type="button" class="kpo-btn kpo-lost" data-act="lost" data-id="${k.calcId}">✕ Отказ</button>
+                        <button type="button" class="kpo-btn kpo-won" data-act="won" data-id="${k.calcId}">✓ Да, реализован</button>
+                        <button type="button" class="kpo-btn kpo-lost" data-act="lost" data-id="${k.calcId}">✕ Нет</button>
                         ${opts.manual && !k.overdue ? '' : left > 0
                             ? `<button type="button" class="kpo-btn" data-act="extend" data-id="${k.calcId}" title="Спросим снова через ${k.days || this.DAYS} дней. Продлений осталось: ${left}">⏳ Думает, +${k.days || this.DAYS} дн.</button>`
                             : `<span class="kpo-sub">Продлений больше нет</span>`}
@@ -496,7 +541,7 @@ const KpOutcome = {
                 return `<div class="kpo-item${k.blocking && !opts.staff ? ' kpo-block' : ''}" data-item="${k.calcId}">
                     <div class="kpo-name">${this.esc(k.project || 'Без названия')}</div>
                     ${who}
-                    <div class="kpo-sub">КП № ${this.esc(k.calcId)}${k.kpVersion ? '-' + k.kpVersion : ''}${sum} · отправлено ${this.fmtDate(k.lastSentAt)}${k.ext ? ' · продлено ' + k.ext + ' р.' : ''}</div>
+                    <div class="kpo-sub">КП № ${this.esc(k.calcId)}${k.kpVersion ? '-' + k.kpVersion : ''}${sum} · ${k.unsent ? 'клиенту не отправлялось' : 'отправлено ' + this.fmtDate(k.lastSentAt)}${k.ext ? ' · продлено ' + k.ext + ' р.' : ''}</div>
                     ${st.err ? `<div class="kpo-err">${this.esc(st.err)}</div>` : ''}
                     ${body}
                 </div>`;
@@ -511,7 +556,7 @@ const KpOutcome = {
                     ? `<div class="kpo-row kpo-pager"><span class="kpo-sub">Осталось ${items.length}</span><button type="button" class="kpo-btn" data-act="next">Следующее ›</button></div>`
                     : '';
                 overlay.innerHTML = `<div class="calc-dialog-card kpo-card">
-                    <h3 class="calc-dialog-title">${opts.gate || opts.manual ? 'Отметьте итог КП' : 'Чем закончились КП?'}</h3>
+                    <h3 class="calc-dialog-title">${opts.manual ? 'Объект реализован?' : (opts.gate ? 'Отметьте, реализованы ли объекты' : 'Какие объекты реализованы?')}</h3>
                     <p class="calc-dialog-message">${lead()}</p>
                     <div class="kpo-list">${shown.map(itemHtml).join('')}</div>${pager}
                     <div class="calc-dialog-buttons"><button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" data-act="close">${opts.gate || opts.staff || opts.manual ? 'Закрыть' : 'Напомнить завтра'}</button></div>
@@ -551,17 +596,21 @@ const KpOutcome = {
                         await this.extend(k, !!opts.staff);
                     } else if (act === 'save') {
                         const comment = String(st.comment || '').trim();
-                        if (!st.pick) { st.err = st.mode === 'won' ? 'Выберите, где покупают.' : 'Выберите причину.'; return render(); }
+                        if (!st.pick && st.mode === 'lost') { st.err = 'Выберите причину.'; return render(); }
                         if (st.mode === 'lost') {
                             const r = this.REASONS.find(x => x.key === st.pick);
                             if (r && r.need && comment.length < this.MIN_COMMENT) { st.err = 'Напишите коротко, что не так.'; return render(); }
                         }
                         btn.disabled = true;
-                        const meta = st.mode === 'won' ? { where: st.pick } : { reason: st.pick };
+                        const meta = st.mode === 'won' ? {} : { reason: st.pick };
+                        if (st.mode === 'won' && st.pick) meta.where = st.pick;
                         if (comment) meta.comment = comment;
+                        meta.realized = st.mode === 'won';
                         // Подпись для истории сметы и карточки на доске
-                        meta.label = st.mode === 'won' ? this.whereLabel(st.pick) : this.reasonLabel(st.pick);
+                        if (st.mode === 'lost') meta.label = this.reasonLabel(st.pick);
+                        else if (st.pick) meta.label = this.whereLabel(st.pick);
                         await this.write(k, st.mode, meta, !!opts.staff);
+                        if (!opts.staff) this.afterMark(k, st.mode, meta);
                         if (st.mode === 'won' && st.pick === 'terem' && !opts.staff) {
                             setTimeout(() => app.alert('Отмечено. Счёт: «Мои объекты» → смета → «Получить счёт».'), 300);
                         }
@@ -588,14 +637,20 @@ const KpOutcome = {
     // Отметка итога по одному КП: читаем историю этой сметы целиком. По умолчанию — за
     // монтажника из планировщика (staff); mine — монтажник отмечает своё КП из «Моих
     // объектов» («⋯» → «Отметить итог КП») и не ждёт срока в 30 дней
-    openForCalc: async function (calcId, onDone, mine) {
+    openForCalc: async function (calcId, onDone, mine, info) {
         try {
             const { data, error } = await supabaseClient.from('invoice_events')
                 .select('calc_id, event, user_id, user_name, user_email, project_name, meta, created_at')
                 .eq('calc_id', String(calcId)).in('event', this.EVENTS);
             if (error) throw error;
-            const k = this.build(data || [], undefined, mine ? this.myDays() : undefined)[0];
-            if (!k) { app.alert('Это КП ещё не уходило клиенту — итог ставить не по чему.'); return; }
+            let k = this.build(data || [], undefined, mine ? this.myDays() : undefined)[0];
+            if (!k && mine && info) {
+                // Смета, о которой в журнале ничего нет (клиенту не отправляли, договорились на словах)
+                const t = Date.now();
+                k = { calcId: String(calcId), project: info.project || '', kpVersion: info.kpVersion || 0, sum: info.sum || 0, unsent: true,
+                    firstSentAt: t, lastSentAt: t, ext: 0, outcome: null, due: t, days: this.myDays(), overdue: false, blocking: false };
+            }
+            if (!k) { app.alert('По этой смете в журнале нет событий — отметить итог не получится.'); return; }
             if (k.outcome) {
                 const ev = k.outcomeEvent || {};
                 if (!await app.confirm('У КП уже есть итог: ' + (k.outcome === 'won' ? 'клиент согласился' : 'отказ') + (ev.meta && ev.meta.label ? ' (' + ev.meta.label + ')' : '') + '. Поставить другой?')) return;
@@ -860,6 +915,10 @@ const KpOutcome = {
 /* Подсветка строк списка смет: нужен итог (оранжевая) / появилось новое (синяя) */
 tr.kpo-row-overdue > td:first-child { box-shadow: inset 4px 0 0 #F97316; }
 tr.kpo-row-news > td:first-child { box-shadow: inset 4px 0 0 #3B82F6; }
+/* Уже отмеченные: зелёная кромка — реализовано, серая — не реализовано */
+tr.kpo-row-done-won > td:first-child { box-shadow: inset 4px 0 0 #10B981; }
+tr.kpo-row-done-lost > td:first-child { box-shadow: inset 4px 0 0 #94A3B8; }
+tr.kpo-row-done-won { background: rgba(16, 185, 129, .06); }
 tr.kpo-row-overdue, tr.kpo-row-news { background: rgba(249, 115, 22, .06); }
 tr.kpo-row-news { background: rgba(59, 130, 246, .07); }
 .kpo-chip-attn { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 800; color: #fff; vertical-align: middle; white-space: nowrap; }
