@@ -44,3 +44,7 @@ $$;
 
 revoke all on function public.log_tour_event(text, text, text, text) from public;
 grant execute on function public.log_tour_event(text, text, text, text) to authenticated;
+
+-- Гостю вызывать незачем (для него функция всё равно ничего не пишет); по умолчанию Supabase
+-- выдаёт право и anon, поэтому отзываем явно.
+revoke execute on function public.log_tour_event(text, text, text, text) from anon;
