@@ -17281,7 +17281,7 @@ const app = {
                 } else if (it.kind === 'tab') {
                     h += `<button type="button" class="lk-nav-item${it.id === 'requisites' ? ' active' : ''}" data-tab="${it.id}"${hide} title="${title}" onclick="app.setProfileTab('${it.id}')">${svg(it, 18)}${label}</button>`;
                 } else {
-                    h += `<button type="button" class="lk-nav-item" data-rail="${it.id}"${it.id === 'admin' ? ' id="lk_nav_admin"' : ''}${hide} title="${title}" onclick="app.railGo('${it.id}')">${svg(it, 18)}${label}</button>`;
+                    h += `<button type="button" class="lk-nav-item" data-rail="${it.id}"${it.id === 'admin' ? ' id="lk_nav_admin"' : ''}${hide} title="${title}" onclick="app.railGo('${it.id}')">${svg(it, 18)}${label}${it.badge ? '<span class="lk-nav-badge" id="lk_nav_msg_badge" style="display: none;">0</span>' : ''}</button>`;
                 }
             });
             nav.insertAdjacentHTML('beforeend', h);
@@ -18471,6 +18471,12 @@ const app = {
         if (railBadge && mainBadge) {
             railBadge.innerText = mainBadge.innerText;
             railBadge.style.display = (mainBadge.style.display === 'none' || !mainBadge.style.display) ? 'none' : 'block';
+        }
+        // То же число — на пункте «Сообщения» меню кабинета на телефоне
+        const navBadge = document.getElementById('lk_nav_msg_badge');
+        if (navBadge && mainBadge) {
+            navBadge.innerText = mainBadge.innerText;
+            navBadge.style.display = (mainBadge.style.display === 'none' || !mainBadge.style.display) ? 'none' : 'block';
         }
         // Значок «сколько КП требуют внимания» на иконке «Объекты» (kp_outcome.js)
         if (window.KpOutcome) KpOutcome.paintBadge();
