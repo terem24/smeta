@@ -42,7 +42,8 @@ const KpOutcome = {
     // Сделка состоялась: отметка монтажника или запрос/выставление/оплата счёта
     WON_EVENTS: ['won', 'invoice_requested', 'invoice_issued', 'paid'],
     // События, по которым ясно, что КП дошло до клиента, даже если отправку не записали
-    PROOF_EVENTS: ['confirmed', 'needs_revision', 'refresh_requested', 'invoice_requested', 'invoice_issued', 'paid'],
+    // won / lost — ручная отметка «Объект реализован?»: ставится и у сметы, которую клиенту не отправляли
+    PROOF_EVENTS: ['confirmed', 'needs_revision', 'refresh_requested', 'invoice_requested', 'invoice_issued', 'paid', 'won', 'lost'],
     EVENTS: ['sent', 'printed', 'won', 'lost', 'extended', 'invoice_requested', 'invoice_issued', 'paid',
         'opened', 'confirmed', 'needs_revision', 'refresh_requested'],
 
@@ -128,8 +129,9 @@ const KpOutcome = {
             const first = sends[0], lastSend = sends[sends.length - 1];
             // Хозяин КП — автор первой отправки. Если «отправкой» стало событие клиента
             // (у него автора нет), берём автора из событий самого монтажника
-            const owner = (first.user_id || first.user_email) ? first
-                : (evs.find(e => (e.user_id || e.user_email) && ['saved', 'calculated', 'recognized', 'invoice_requested'].includes(e.event)) || first);
+            const owner = ((first.user_id || first.user_email) && this.SEND_EVENTS.includes(first.event)) ? first
+                : (evs.find(e => (e.user_id || e.user_email) && !(e.meta && e.meta.by_staff)
+                    && ['saved', 'calculated', 'recognized', 'invoice_requested', 'won', 'lost'].includes(e.event)) || first);
             const lastSentAt = new Date(lastSend.created_at).getTime();
             const ext = evs.filter(e => e.event === 'extended');
             const lastExtAt = ext.length ? new Date(ext[ext.length - 1].created_at).getTime() : 0;
@@ -195,7 +197,7 @@ const KpOutcome = {
         }
         const since = new Date(Date.now() - 365 * this.DAY).toISOString();
         const { data: mine, error } = await supabaseClient.from('invoice_events').select('calc_id')
-            .eq('user_id', me).in('event', this.SEND_EVENTS.concat(['invoice_requested'])).gte('created_at', since).limit(2000);
+            .eq('user_id', me).in('event', this.SEND_EVENTS.concat(['invoice_requested', 'won', 'lost'])).gte('created_at', since).limit(2000);
         if (error) throw error;
         const ids = [...new Set((mine || []).map(r => String(r.calc_id)).filter(Boolean))];
         if (!ids.length) return [];
