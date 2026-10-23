@@ -1680,6 +1680,7 @@ const Tour = {
             return;
         }
         card.style.bottom = '';
+        this._prevPos = [parseFloat(card.style.left), parseFloat(card.style.top)];
         card.className = 'tour-card tour-card-dock';
         const w = card.offsetWidth || 340, h = card.offsetHeight || 220;
         const left = this._dock === 'left' ? 16 : window.innerWidth - w - this.DOCK_RIGHT_GAP;
@@ -1718,6 +1719,12 @@ const Tour = {
             }
             L = Math.max(8, Math.min(L, window.innerWidth - w - 8));
             T = Math.max(8, Math.min(T, floor - h));
+            // Липкость: если карточка уже стоит рядом (в пределах 260 px от нужного места) и
+            // не закрывает цель вместе с зазором под стрелку — остаётся где есть, не дёргается.
+            const cl = (this._prevPos || [])[0], ct = (this._prevPos || [])[1];
+            if (this._nearT === t && isFinite(cl) && isFinite(ct) && Math.hypot(cl - L, ct - T) < 260 &&
+                (cl + w < b.left - 40 || cl > b.right + 40 || ct + h < b.top - 40 || ct > b.bottom + 40)) return;
+            this._nearT = t;
             card.style.left = Math.round(L) + 'px';
             card.style.top = Math.round(T) + 'px';
         } catch (e) { }
@@ -1825,6 +1832,8 @@ const Tour = {
     overflow-y: auto;
     overscroll-behavior: contain;
 }
+/* Плавный переезд вместо скачка по экрану; только для десктопных углов и места у цели */
+.tour-card-dock { transition: left .35s ease, top .35s ease; }
 body.dark-mode .tour-card { background: #1E1E1E; border-color: #333333; }
 .tour-card-bottom {
     left: 8px !important;
