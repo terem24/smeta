@@ -12453,6 +12453,15 @@ const app = {
                 }
             }
 
+            // Что требует внимания (kp_outcome.js): «нужен итог» — срок ответа клиента вышел,
+            // «новое» — со времени прошлого просмотра изменился статус. Строка подсвечена,
+            // у «нужен итог» кнопка «Отметить итог» на виду, а не в меню «⋯».
+            const attn = (window.KpOutcome && item.calc_id) ? KpOutcome.attnOf(item.calc_id) : null;
+            if (attn === 'overdue') statusBadge += `<span class="kpo-chip-attn kpo-over" title="КП ушло клиенту давно, а итога нет: отметьте, чем закончилось">Нужен итог</span>`;
+            else if (attn === 'news') statusBadge += `<span class="kpo-chip-attn kpo-new" title="Со времени прошлого просмотра по этой смете изменился статус">Новое</span>`;
+            const markBtn = attn === 'overdue'
+                ? `<button class="lk-btn-sm kpo-btn-mark" onclick="event.stopPropagation(); KpOutcome.markFromList('${item.calc_id}')" title="Клиент согласился, отказался или ещё думает">Отметить итог</button>` : '';
+
             // Кнопка "Получить счёт" если статус confirmed
             const isConfirmed = sharedInvoiceId && sharedStatuses[sharedInvoiceId] === 'confirmed';
             let getInvoiceBtn = '';
@@ -12475,19 +12484,19 @@ const app = {
                 // Есть событие журнала — смета уже уходила клиенту.
                 (item.calc_id && lastEv && window.KpOutcome)
                     ? { label: (lastEv.event === 'won' || lastEv.event === 'lost') ? 'Изменить итог КП' : 'Отметить итог КП',
-                        js: `KpOutcome.openForCalc('${item.calc_id}', () => app.loadFromCloudList(), true)` } : null,
+                        js: `KpOutcome.markFromList('${item.calc_id}')` } : null,
                 canDelete ? { label: 'Удалить смету', js: `app.deleteEstimate('${item.id}', event)`, danger: true } : null
             ].filter(Boolean);
 
             h += `
-                <tr class="active-row" style="cursor: pointer;" onclick="app.loadSingleEstimate('${item.id}')">
+                <tr class="active-row${attn ? ' kpo-row-' + attn : ''}" style="cursor: pointer;" onclick="app.loadSingleEstimate('${item.id}')">
                     <td style="font-weight:600;">${item.project_name}${item.calc_id ? `<div style="font-size:11px; font-weight:600; color:var(--text-sec); font-family:monospace; margin-top:2px;" title="Номер КП. Цифра после дефиса — версия: растёт, когда смету с правками снова отправляют клиенту">КП № ${item.calc_id}${Number(item.kp_ver) ? '-' + Number(item.kp_ver) : ''}${item.cf_calc ? ` <span style="color:#7C3AED;" title="Копия чужой сметы — оригинал КП № ${item.cf_calc}">· 📎 копия ${item.cf_calc}</span>` : ''}</div>` : ''}</td>
                     <td style="color:var(--primary); font-weight:bold;">${sum}</td>
                     <td>${statusBadge}</td>
                     <td style="color:var(--text-sec); font-size:12px;">${date}</td>
                     <td style="text-align:right; white-space: nowrap;">
                         <div class="lk-row-actions">
-                            ${getInvoiceBtn}
+                            ${getInvoiceBtn}${markBtn}
                             <button class="lk-btn-sm" onclick="event.stopPropagation(); app.cloudRowAction('${item.id}', 'open')" title="Открыть расчёт в калькуляторе">Открыть</button>
                             ${shareBtn}
                             <button class="lk-btn-sm" onclick="event.stopPropagation(); app.cloudRowAction('${item.id}', 'download')" title="Скачать смету: PDF или Excel">Скачать</button>
@@ -12506,6 +12515,8 @@ const app = {
 
         h += `</tbody></table>`;
         content.innerHTML = h;
+        // Подсчёт «что требует внимания» мог устареть; «новое» гаснет, когда список увидели
+        if (window.KpOutcome) KpOutcome.afterListRender();
     },
 
     // Меню «⋯» у строки сметы: редкие действия (цены, история, удаление). Пункты лежат
@@ -17816,6 +17827,8 @@ const app = {
             railBadge.innerText = mainBadge.innerText;
             railBadge.style.display = (mainBadge.style.display === 'none' || !mainBadge.style.display) ? 'none' : 'block';
         }
+        // Значок «сколько КП требуют внимания» на иконке «Объекты» (kp_outcome.js)
+        if (window.KpOutcome) KpOutcome.paintBadge();
 
         // Подсветка показывает, где человек сейчас находится. Порядок проверок — по
         // тому, какое окно лежит выше: кабинет перекрывает панель управления.
