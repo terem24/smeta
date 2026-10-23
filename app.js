@@ -95475,9 +95475,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     // Единый источник данных о тарифах Профи — используется и модалкой оплаты, и командой ИИ-агента.
     proPaymentLinks: {
         // Запасные значения без модуля подписки; ссылки на 900 и 3 900 ₽ вносятся во вкладке «Оплата подписки»
-        object: { url: "", tariffName: "Профи: один расчёт", rub: 900 },
-        month: { url: "", tariffName: "Профи 1 месяц", rub: 3900 },
-        year: { url: "https://tbank.ru/cf/7tE93xi7saP", tariffName: "Профи 1 год", rub: 48000 }
+        object: { url: "", tariffName: "Профи: один расчёт", rub: 990 },
+        month: { url: "", tariffName: "Профи 1 месяц", rub: 3950 },
+        year: { url: "https://t.tb.ru/pm_short/3wV0dltaezz", tariffName: "Профи 1 год", rub: 29000 }
     },
 
     // Цена и ссылка тарифа для этого человека: настройки вкладки «Оплата подписки»

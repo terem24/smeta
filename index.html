@@ -115,9 +115,16 @@
             {
               "@type": "Offer",
               "name": "Профи",
-              "price": "4000",
+              "price": "1950",
               "priceCurrency": "RUB",
-              "description": "Ассортимент ROMMER и подбор аналогов, вторая смета «Подешевле», распознавание смет и проектов, заявки заказчиков. 4 000 ₽ в месяц или 29 000 ₽ в год."
+              "description": "Ассортимент ROMMER и подбор аналогов, вторая смета «Подешевле», распознавание смет и проектов, заявки заказчиков. Подписка от 1 950 ₽ в месяц или один расчёт от 499 ₽."
+            },
+            {
+              "@type": "Offer",
+              "name": "Профи, один расчёт",
+              "price": "499",
+              "priceCurrency": "RUB",
+              "description": "Профи для одной сохранённой сметы на 30 дней правок."
             }
           ]
         }
@@ -226,7 +233,7 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.6" defer></script>
-    <script src="app.js?v=13.86" defer></script>
+    <script src="app.js?v=13.87" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -247,7 +254,7 @@
     <!-- Подписка Профи: цены и ссылки на оплату, акции, региональные цены,
          учёт заявок и оплат, вкладка «Оплата подписки» в панели. Нужен и вне
          панели: окно тарифа и окно оплаты берут цены отсюда. -->
-    <script src="subscription.js?v=1.12" defer></script>
+    <script src="subscription.js?v=1.13" defer></script>
     <!-- Итог КП: окно «Чем закончились КП?» через 30 дней после отправки, продления,
          блок отправки без Профи, сводка менеджера и причины отказов в планировщике -->
     <script src="kp_outcome.js?v=1.8" defer></script>
@@ -434,8 +441,8 @@
             <h2 style="font-size: 21px; font-weight: 700; margin: 28px 0 12px;">Сколько стоит</h2>
             <p style="margin: 0 0 24px;">
                 Тариф <strong>«Базовый»</strong> бесплатный и бессрочный: расчёт, подбор
-                оборудования и смета. Тариф <strong>«Профи»</strong> — 4 000 ₽ в месяц или
-                29 000 ₽ в год — добавляет ассортимент ROMMER и подбор аналогов, вторую смету «Подешевле»,
+                оборудования и смета. Тариф <strong>«Профи»</strong> — подписка от 1 950 ₽ в месяц
+                или один расчёт от 499 ₽ — добавляет ассортимент ROMMER и подбор аналогов, вторую смету «Подешевле»,
                 распознавание чужих смет и проектов и доступ к заявкам заказчиков.
                 Автоматических списаний нет, оплата производится вручную. Регистрация идёт по промокоду:
                 открытый код — GEO, подробности на странице
@@ -2935,14 +2942,14 @@
                     <!-- Запасная разметка до syncCards (subscription.js перерисовывает карточки по настройкам) -->
                     <div class="tariff-card">
                         <h3>ОДИН РАСЧЁТ</h3>
-                        <div class="price"><span class="curr-amount" data-rub="900">900</span> <span class="curr-symbol">₽</span></div>
+                        <div class="price"><span class="curr-amount" data-rub="499">499</span> <span class="curr-symbol">₽</span></div>
                         <div class="price-sub">Профи для одного объекта, 30 дней на правки</div>
                         <button type="button" class="btn-subscribe" onclick="app.openPaymentModal('object')">Оформить подписку</button>
                     </div>
 
                     <div class="tariff-card">
                         <h3>ПОДПИСКА НА МЕСЯЦ</h3>
-                        <div class="price"><span class="curr-amount" data-rub="3900">3 900</span> <span class="curr-symbol">₽</span></div>
+                        <div class="price"><span class="curr-amount" data-rub="1950">1 950</span> <span class="curr-symbol">₽</span></div>
                         <div class="price-sub">в месяц, любое число объектов</div>
                         <button type="button" class="btn-subscribe" onclick="app.openPaymentModal('month')">Оформить подписку</button>
                     </div>

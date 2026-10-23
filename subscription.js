@@ -45,9 +45,9 @@ const Subscription = {
     // новые ссылки на 900 и 3 900 ₽ вносятся во вкладке «Оплата подписки». Без ссылки окно
     // оплаты показывает только «Я оплатил» (см. openPaymentModal).
     BASE_PLANS: {
-        object: { title: 'Один расчёт', label: 'Профи: один расчёт', months: 1, days: 30, rub: 900, url: '', enabled: false },
-        month: { title: 'Подписка на месяц', label: 'Профи 1 месяц', months: 1, rub: 3900, url: '', enabled: true },
-        year: { title: 'Подписка на год', label: 'Профи 1 год', months: 12, rub: 48000, url: 'https://tbank.ru/cf/7tE93xi7saP', enabled: false }
+        object: { title: 'Один расчёт', label: 'Профи: один расчёт', months: 1, days: 30, rub: 990, url: '', enabled: false },
+        month: { title: 'Подписка на месяц', label: 'Профи 1 месяц', months: 1, rub: 3950, url: '', enabled: true },
+        year: { title: 'Подписка на год', label: 'Профи 1 год', months: 12, rub: 29000, url: 'https://t.tb.ru/pm_short/3wV0dltaezz', enabled: false }
     },
 
     // Как функция таблицы «Тарифы» называется в окне тарифа для монтажника
