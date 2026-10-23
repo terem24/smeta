@@ -16757,7 +16757,7 @@ const app = {
             { id: 'radScheme', label: 'Схема подключения', opts: [{ v: 'tee', t: 'Тройниковая', pro: 'pro' }, { v: 'manifold', t: 'Коллекторная' }] },
             { id: 'radPipe', label: 'Трубы для радиаторов', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'mp', t: 'Металлопластик' }] },
             { id: 'radBeam', label: 'Лучи к приборам в комнате', opts: [{ v: 'single', t: 'Ветка на каждый прибор' }],
-                note: 'Авто — общая трасса на комнату включается сама, если смета выходит дешевле не меньше чем на 3 % и 10 000 ₽. Работает при коллекторной схеме, режиме «По комнатам» и серой трубе PEX-a.' }
+                note: 'Авто — общая трасса на комнату включается сама, если смета выходит дешевле не меньше чем на 3 % и 10 000 ₽. Работает при коллекторной схеме, режиме «По комнатам» и трубе PEX-a или металлопластике.' }
         ] },
         { g: 'Тёплый пол', items: [
             { id: 'ufhPipe', label: 'Трубы тёплого пола', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'metal_plastic', t: 'Металлопластик' }] },
@@ -43456,7 +43456,7 @@ const app = {
         // Режим луча: 'auto' — общий луч на комнату; 'single' — своя ветка на каждый прибор (по умолчанию).
         // radSharedBeams — прежний флаг (включён до появления режима): считаем его автоподбором.
         const auto = this.radBeamAutoOn();
-        return auto && s.radConnectionScheme !== 'tee' && !!s.detailedRooms && s.pipeType === 'split';
+        return auto && s.radConnectionScheme !== 'tee' && !!s.detailedRooms && (s.pipeType === 'split' || s.pipeType === 'split_mp');
     },
     // Выходы коллектора по этажам с учётом общих лучей: группа — один выход, остальные приборы — по одному.
     radSharedOutPerFloor: function () {
@@ -76228,7 +76228,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         let why = '';
         if (s.radConnectionScheme === 'tee') why = 'в тройниковой схеме коллектора нет';
         else if (!s.detailedRooms) why = 'нужен режим «По комнатам»';
-        else if (s.pipeType !== 'split') why = 'пока только для серой трубы PEX-a';
+        else if (s.pipeType !== 'split' && s.pipeType !== 'split_mp') why = 'пока только для серой трубы PEX-a и металлопластика';
         return { mode: mode, why: why };
     },
     /**
@@ -76758,7 +76758,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         if (radSchemeTeeTab) radSchemeTeeTab.className = isTeeScheme ? 'tab active' : 'tab';
         // Общий луч на комнату: показываем, когда он может сработать (коллекторная схема, серая PEX-a, «По комнатам»)
         const radSharedRow = document.getElementById('rad_shared_row');
-        if (radSharedRow) radSharedRow.style.display = (radSchemeOn && !isTeeScheme && this.state.pipeType === 'split') ? 'block' : 'none';
+        if (radSharedRow) radSharedRow.style.display = (radSchemeOn && !isTeeScheme && (this.state.pipeType === 'split' || this.state.pipeType === 'split_mp')) ? 'block' : 'none';
         const _beamRaw = this.radBeamModeRaw();
         const _tbSingle = document.getElementById('rad_beam_single'), _tbAuto = document.getElementById('rad_beam_auto'), _tbSmart = document.getElementById('rad_beam_smart');
         if (_tbSingle) _tbSingle.className = _beamRaw === 'single' ? 'tab active' : 'tab';
