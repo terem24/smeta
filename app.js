@@ -90536,7 +90536,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     addToBill(anchorItem, 2, anchorDesc, pipeGrp);
                 }
 
-                addToBill(catalog.water_fittings[8], this.neededPipe, this.getDesc('double_clip', this.neededPipe, 'radiators'), pipeGrp);
+                // Двойные держатели по метру на трубах радиаторов не считаем: трубы лежат горизонтально (в стяжке, гофре
+                // или на полу), а не на держателях (убрано по решению владельца 23.10.2026).
 
                 addToWorks("Монтаж радиатора отопления", totalRadCount, workPrices.rad_point, "точка", "1.3 Монтаж радиаторного отопления");
                 if (totalConvCount > 0) addToWorks("Монтаж внутрипольного конвектора", totalConvCount, 8500, "шт", "1.3 Монтаж радиаторного отопления");
@@ -90623,7 +90624,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         let grayItem = asCoilPrice((neededPipe > 200) ? { ...catalog.rad_pipes_grey[1] } : { ...catalog.rad_pipes_grey[0] }); grayItem.originalId = grayItem.id + "_rad"; grayItem.alts = catalog.insulated_pipes; grayItem.noCheapenAlts = true; grayItem._needM = neededPipe; addToBill(grayItem, Math.ceil(neededPipe / grayItem.len), this.getDesc('rad_pipe', neededPipe), pipeGrp);
                         let insLen = Math.ceil(neededPipe / 2); if (insLen % 2 !== 0) insLen++; addToBill(catalog.insulation[0], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы подачи (красная) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp); addToBill(catalog.insulation[1], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы обратки (синяя) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp);
                     }
-                    addToBill(catalog.water_fittings[8], neededPipe, this.getDesc('double_clip', neededPipe, 'radiators'), pipeGrp);
+                    // Двойные держатели по метру на трубах радиаторов не считаем: трубы лежат горизонтально (в стяжке, гофре
+                    // или на полу), а не на держателях (убрано по решению владельца 23.10.2026).
                     // Тройники общих лучей: по одному на каждый отбор (приборов в комнате минус один), на подаче и на обратке
                     if (_sh) {
                         // Тройники: на Ø16 — равнопроходные (n−1 на комнату); на Ø20 — (n−2) «20×20×16» по ходу общего
