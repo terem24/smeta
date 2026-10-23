@@ -28549,6 +28549,7 @@ const app = {
         if (ok('rec')) S.rec.rows.forEach(r => { const t = t0(r.savedAt || r.day); if (t != null && t < first) first = t; });
         const B = this.kpiBuckets(p, first);
         const zeros = () => new Array(B.n).fill(0);
+        const addS = function () { const r = zeros(); Array.prototype.forEach.call(arguments, a => a.forEach((v, i) => { r[i] += v || 0; })); return r; };
 
         const testIds = {}, testMail = {};
         if (ok('tests')) S.tests.rows.forEach(u => { if (u.id) testIds[u.id] = 1; if (u.email) testMail[String(u.email).toLowerCase()] = 1; });
@@ -28582,12 +28583,12 @@ const app = {
                     did = Object.keys(has).length;
                 }
                 w.nums = [
-                    { l: 'Всего новых', v: fmt(tot('cur')), d: hasPrev ? this.kpiDelta(tot('cur'), tot('prev')) : '', big: true },
-                    { l: 'Монтажники', v: fmt(cnt.cur.installer), d: hasPrev ? this.kpiDelta(cnt.cur.installer, cnt.prev.installer) : '' },
-                    { l: 'Продавцы', v: fmt(cnt.cur.seller), d: hasPrev ? this.kpiDelta(cnt.cur.seller, cnt.prev.seller) : '' },
-                    { l: 'Посчитали смету', v: did == null ? '…' : fmt(did), s: did == null ? '' : (tot('cur') ? 'это ' + pct(did, tot('cur')) + '% новых' : '') }
+                    { k: 'tot', l: 'Всего новых', v: fmt(tot('cur')), d: hasPrev ? this.kpiDelta(tot('cur'), tot('prev')) : '', sp: addS(ser.installer, ser.seller, ser.other), h: 'Все, кто зарегистрировался за период (без тестовых)' },
+                    { k: 'inst', l: 'Монтажники', v: fmt(cnt.cur.installer), d: hasPrev ? this.kpiDelta(cnt.cur.installer, cnt.prev.installer) : '', sp: ser.installer, h: 'Новые пользователи со сферой «монтаж»' },
+                    { k: 'did', l: 'Посчитали смету', v: did == null ? '…' : fmt(did), s: did == null ? '' : (tot('cur') ? 'это ' + pct(did, tot('cur')) + '% новых' : ''), h: 'Сколько из новых сохранили хотя бы одну смету' },
+                    { k: 'sell', l: 'Продавцы', v: fmt(cnt.cur.seller), d: hasPrev ? this.kpiDelta(cnt.cur.seller, cnt.prev.seller) : '', sp: ser.seller, off: true, h: 'Новые пользователи-продавцы' }
                 ];
-                if (cnt.cur.other) w.nums.splice(3, 0, { l: 'Менеджеры и прочие', v: fmt(cnt.cur.other) });
+                if (cnt.cur.other) w.nums.push({ k: 'oth', l: 'Менеджеры и прочие', v: fmt(cnt.cur.other), sp: ser.other, off: true, h: 'Менеджеры и остальные типы аккаунтов' });
                 const used = kinds.filter(k => cnt.cur[k[0]] > 0 || k[0] !== 'other');
                 w.chart = { labels: B.labels, tips: B.tips, stack: true, series: used.map(k => ({ name: k[1], color: k[2], vals: ser[k[0]] })) };
                 w.groups = [{ title: 'Кто пришёл', items: kinds.map(k => ({ label: k[1], value: cnt.cur[k[0]], color: k[2] })) }];
@@ -28600,7 +28601,7 @@ const app = {
 
         // ── Планировщик: КП и счета ──
         {
-            const w = { id: 'planner', title: 'Планировщик: КП и счета', tab: 'kanban', act: 'Планировщик', wide: true };
+            const w = { id: 'planner', title: 'Планировщик: КП и счета', tab: 'kanban', act: 'Планировщик' };
             if (bad('evs')) w.err = bad('evs');
             else if (!ok('evs') || testsWait) w.wait = true;
             else {
@@ -28624,17 +28625,17 @@ const app = {
                 const wait = Math.max(0, c.sent - c.ok - c.rev - c.rej);
                 const dl = (g, inv) => hasPrev ? this.kpiDelta(c[g], q[g], { inv: inv }) : '';
                 w.nums = [
-                    { l: 'КП отправлено', v: fmt(c.sent), d: dl('sent'), big: true },
-                    { l: 'Одобрено', v: fmt(c.ok), d: dl('ok'), tone: 'good' },
-                    { l: 'На доработке', v: fmt(c.rev), d: dl('rev', true) },
-                    { l: 'Отклонено', v: fmt(c.rej), d: dl('rej', true), tone: c.rej ? 'bad' : '' },
-                    { l: 'Конверсия КП → одобрено', v: cv == null ? '—' : cv + '%', d: (cv != null && cvp != null) ? this.kpiDelta(cv, cvp, { ratio: true }) : '', big: true },
-                    { l: 'Счетов запрошено', v: fmt(c.req), d: dl('req') },
-                    { l: 'Счетов выставлено', v: fmt(c.iss), d: dl('iss') },
-                    { l: 'Оплачено', v: fmt(c.paid), d: dl('paid'), tone: 'good' },
-                    { l: 'Конверсия КП → счёт', v: cr == null ? '—' : cr + '%', s: 'запрошено / отправлено' },
-                    { l: 'Реализовано', v: fmt(c.won), s: 'отметка монтажника', d: dl('won') },
-                    { l: 'Не реализовано', v: fmt(c.lost), d: dl('lost', true) }
+                    { k: 'sent', l: 'КП отправлено', v: fmt(c.sent), d: dl('sent'), sp: ser.sent, h: 'Сколько смет отправлено клиентам (или распечатано) за период' },
+                    { k: 'ok', l: 'Одобрено', v: fmt(c.ok), d: dl('ok'), tone: 'good', sp: ser.ok, h: 'Клиент подтвердил КП' },
+                    { k: 'cv', l: 'Конверсия КП → одобрено', v: cv == null ? '—' : cv + '%', d: (cv != null && cvp != null) ? this.kpiDelta(cv, cvp, { ratio: true }) : '', h: 'Одобрено / отправлено' },
+                    { k: 'paid', l: 'Оплачено', v: fmt(c.paid), d: dl('paid'), tone: 'good', sp: ser.paid, h: 'Счета, по которым пришла оплата' },
+                    { k: 'rev', l: 'На доработке', v: fmt(c.rev), d: dl('rev', true), sp: ser.rev, off: true, h: 'Клиент попросил поправить КП' },
+                    { k: 'rej', l: 'Отклонено', v: fmt(c.rej), d: dl('rej', true), tone: c.rej ? 'bad' : '', sp: ser.rej, off: true, h: 'Клиент отклонил КП' },
+                    { k: 'req', l: 'Счетов запрошено', v: fmt(c.req), d: dl('req'), sp: ser.req, off: true, h: 'Клиент запросил счёт' },
+                    { k: 'iss', l: 'Счетов выставлено', v: fmt(c.iss), d: dl('iss'), sp: ser.iss, off: true, h: 'Счёт выставлен' },
+                    { k: 'cr', l: 'Конверсия КП → счёт', v: cr == null ? '—' : cr + '%', s: 'запрошено / отправлено', off: true, h: 'Счетов запрошено / КП отправлено' },
+                    { k: 'won', l: 'Реализовано', v: fmt(c.won), s: 'отметка монтажника', d: dl('won'), sp: ser.won, off: true, h: 'Монтажник отметил, что работа выполнена' },
+                    { k: 'lost', l: 'Не реализовано', v: fmt(c.lost), d: dl('lost', true), sp: ser.lost, off: true, h: 'Монтажник отметил, что сделка не состоялась' }
                 ];
                 w.chart = { labels: B.labels, tips: B.tips, stack: false, series: [
                     { name: 'КП отправлено', color: C.blue, vals: ser.sent },
@@ -28664,7 +28665,7 @@ const app = {
             if (bad('ests')) w.err = bad('ests');
             else if (!ok('ests') || testsWait) w.wait = true;
             else {
-                const cnt = { cur: 0, prev: 0 }, sum = { cur: 0, prev: 0 }, au = { cur: {}, prev: {} }, ser = zeros(), serNew = zeros();
+                const cnt = { cur: 0, prev: 0 }, sum = { cur: 0, prev: 0 }, au = { cur: {}, prev: {} }, ser = zeros(), serNew = zeros(), serSum = zeros();
                 const newIds = {};
                 if (ok('users')) S.users.rows.forEach(u => { const t = t0(u.created_at); if (t != null && t >= cur0) newIds[u.id] = 1; });
                 let fromNew = 0;
@@ -28672,16 +28673,16 @@ const app = {
                     if (testIds[r.user_id]) return;
                     const t = t0(r.created_at), c = cls(t); if (!c) return;
                     cnt[c]++; sum[c] += Number(r.total_sum) || 0; if (r.user_id) au[c][r.user_id] = 1;
-                    if (c === 'cur') { const i = B.at(t); if (newIds[r.user_id]) { serNew[i]++; fromNew++; } else ser[i]++; }
+                    if (c === 'cur') { const i = B.at(t); serSum[i] += Number(r.total_sum) || 0; if (newIds[r.user_id]) { serNew[i]++; fromNew++; } else ser[i]++; }
                 });
                 const a = Object.keys(au.cur).length, ap = Object.keys(au.prev).length;
                 const dd = p.days || Math.max(1, Math.ceil((now - first) / day));
                 w.nums = [
-                    { l: 'Смет сохранено', v: fmt(cnt.cur), d: hasPrev ? this.kpiDelta(cnt.cur, cnt.prev) : '', big: true },
-                    { l: 'Активных авторов', v: fmt(a), d: hasPrev ? this.kpiDelta(a, ap) : '' },
-                    { l: 'В среднем в день', v: (Math.round(cnt.cur / dd * 10) / 10).toLocaleString('ru-RU') },
-                    { l: 'Сумма смет', v: rub(sum.cur), d: hasPrev ? this.kpiDelta(sum.cur, sum.prev, { fmt: rub }) : '' },
-                    { l: 'Средняя смета', v: cnt.cur ? rub(sum.cur / cnt.cur) : '—' }
+                    { k: 'cnt', l: 'Смет сохранено', v: fmt(cnt.cur), d: hasPrev ? this.kpiDelta(cnt.cur, cnt.prev) : '', sp: addS(ser, serNew), h: 'Сколько смет сохранили пользователи за период' },
+                    { k: 'sum', l: 'Сумма смет', v: rub(sum.cur), d: hasPrev ? this.kpiDelta(sum.cur, sum.prev, { fmt: rub }) : '', sp: serSum, h: 'Общая стоимость сохранённых смет' },
+                    { k: 'avg', l: 'Средняя смета', v: cnt.cur ? rub(sum.cur / cnt.cur) : '—', h: 'Сумма смет / число смет' },
+                    { k: 'au', l: 'Активных авторов', v: fmt(a), d: hasPrev ? this.kpiDelta(a, ap) : '', off: true, h: 'Сколько разных людей сохраняли сметы' },
+                    { k: 'day', l: 'В среднем в день', v: (Math.round(cnt.cur / dd * 10) / 10).toLocaleString('ru-RU'), off: true, h: 'Смет в сутки в среднем за период' }
                 ];
                 w.chart = { labels: B.labels, tips: B.tips, stack: true, series: [
                     { name: 'Прежние пользователи', color: C.blue, vals: ser }, { name: 'Новые пользователи', color: C.violet, vals: serNew }] };
@@ -28713,11 +28714,11 @@ const app = {
                 const c = cnt.cur, q = cnt.prev, all = c.docs + c.plans, allp = q.docs + q.plans;
                 const nu = Object.keys(us.cur).length, nup = Object.keys(us.prev).length;
                 w.nums = [
-                    { l: 'Распознаваний', v: fmt(all), d: hasPrev ? this.kpiDelta(all, allp) : '', big: true },
-                    { l: 'Накладные и сметы', v: fmt(c.docs), d: hasPrev ? this.kpiDelta(c.docs, q.docs) : '' },
-                    { l: 'Планы этажей', v: fmt(c.plans), d: hasPrev ? this.kpiDelta(c.plans, q.plans) : '' },
-                    { l: 'Пользователей', v: fmt(nu), d: hasPrev ? this.kpiDelta(nu, nup) : '' },
-                    { l: 'Запросов к модели', v: fmt(c.calls), d: hasPrev ? this.kpiDelta(c.calls, q.calls) : '', s: 'с них считается лимит' }
+                    { k: 'all', l: 'Распознаваний', v: fmt(all), d: hasPrev ? this.kpiDelta(all, allp) : '', sp: addS(sd, sp), h: 'Сколько документов и планов распознали за период' },
+                    { k: 'docs', l: 'Накладные и сметы', v: fmt(c.docs), d: hasPrev ? this.kpiDelta(c.docs, q.docs) : '', sp: sd, h: 'Распознавание накладных и смет' },
+                    { k: 'plans', l: 'Планы этажей', v: fmt(c.plans), d: hasPrev ? this.kpiDelta(c.plans, q.plans) : '', sp: sp, h: 'Распознавание планов этажей' },
+                    { k: 'us', l: 'Пользователей', v: fmt(nu), d: hasPrev ? this.kpiDelta(nu, nup) : '', off: true, h: 'Сколько разных людей распознавали' },
+                    { k: 'calls', l: 'Запросов к модели', v: fmt(c.calls), d: hasPrev ? this.kpiDelta(c.calls, q.calls) : '', s: 'с них считается лимит', off: true, h: 'Сколько раз вызывалась модель; по этому числу считается лимит' }
                 ];
                 w.chart = { labels: B.labels, tips: B.tips, stack: true, series: [
                     { name: 'Накладные и сметы', color: C.teal, vals: sd }, { name: 'Планы этажей', color: C.violet, vals: sp }] };
@@ -28745,9 +28746,9 @@ const app = {
                     if (c === 'cur') { const i = B.at(t); scount[i]++; ssum[i] += v; const k = r.plan ? String(r.plan) : 'без тарифа'; plans[k] = (plans[k] || 0) + v; }
                 });
                 w.nums = [
-                    { l: 'Оплат', v: fmt(cnt.cur), d: hasPrev ? this.kpiDelta(cnt.cur, cnt.prev) : '', big: true },
-                    { l: 'Сумма', v: rub(sum.cur), d: hasPrev ? this.kpiDelta(sum.cur, sum.prev, { fmt: rub }) : '' },
-                    { l: 'Средний чек', v: cnt.cur ? rub(sum.cur / cnt.cur) : '—' }
+                    { k: 'cnt', l: 'Оплат', v: fmt(cnt.cur), d: hasPrev ? this.kpiDelta(cnt.cur, cnt.prev) : '', sp: scount, h: 'Сколько оплат подписки Профи прошло за период' },
+                    { k: 'sum', l: 'Сумма', v: rub(sum.cur), d: hasPrev ? this.kpiDelta(sum.cur, sum.prev, { fmt: rub }) : '', sp: ssum, h: 'На какую сумму пришли оплаты' },
+                    { k: 'avg', l: 'Средний чек', v: cnt.cur ? rub(sum.cur / cnt.cur) : '—', h: 'Сумма / число оплат' }
                 ];
                 w.chart = { labels: B.labels, tips: B.tips, stack: false, unit: ' ₽', series: [{ name: 'Сумма оплат', color: C.green, vals: ssum }] };
                 const palette = [C.green, C.blue, C.amber, C.violet, C.teal, C.gray];
@@ -28811,26 +28812,83 @@ const app = {
             <div class="kpi-pie-l">${leg}</div></div></div>`;
     },
 
+    // Какие плашки-цифры скрыты. Ключ «виджет.показатель»; по умолчанию скрыто то, что в kpiBuild помечено off:
+    // раскладка у каждого своя и лежит в localStorage этого компьютера. true — скрыто, false — показано явно
+    KPI_HIDE_KEY: 'heatcalc_kpi_hide_v1',
+    kpiHideMap: function () {
+        if (!this._kpiHide) {
+            let v = null;
+            try { v = JSON.parse(localStorage.getItem(this.KPI_HIDE_KEY) || 'null'); } catch (e) { }
+            this._kpiHide = (v && typeof v === 'object') ? v : {};
+        }
+        return this._kpiHide;
+    },
+    kpiIsHidden: function (wid, m) {
+        const v = this.kpiHideMap()[wid + '.' + m.k];
+        return v === undefined ? !!m.off : !!v;
+    },
+    kpiSetHidden: function (wid, k, hide) {
+        this.kpiHideMap()[wid + '.' + k] = !!hide;
+        try { localStorage.setItem(this.KPI_HIDE_KEY, JSON.stringify(this._kpiHide)); } catch (e) { }
+        this.renderAdminHome();
+    },
+    kpiEdit: function (on) { this._kpiEditOn = !!on; this.renderAdminHome(); },
+    kpiResetHidden: function () {
+        this._kpiHide = {};
+        try { localStorage.removeItem(this.KPI_HIDE_KEY); } catch (e) { }
+        this.renderAdminHome();
+    },
+
+    // Линия-«спарклайн» под числом плашки: растягивается на всю ширину, без осей и подписей
+    kpiSparkHtml: function (vals) {
+        const n = vals.length;
+        if (n < 2) return '';
+        let max = 0; vals.forEach(v => { if (v > max) max = v; });
+        const y = v => max ? 29 - (v / max) * 25 : 29;
+        const pts = vals.map((v, i) => (i / (n - 1) * 100).toFixed(2) + ' ' + y(v).toFixed(2));
+        const line = 'M' + pts.join(' L');
+        return `<svg class="kpi-sp${max ? '' : ' kpi-sp-z'}" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
+            <path class="kpi-sp-a" d="${line} L100 32 L0 32 Z"></path><path class="kpi-sp-l" d="${line}"></path></svg>`;
+    },
+
+    kpiNumsHtml: function (w, esc, edit) {
+        const tile = m => {
+            const info = m.h ? `<i class="kpi-info" title="${esc(m.h)}" aria-label="${esc(m.h)}">i</i>` : '';
+            const x = edit ? `<button type="button" class="kpi-x" title="Скрыть плашку" aria-label="Скрыть плашку «${esc(m.l)}»" onclick="app.kpiSetHidden('${w.id}','${m.k}',true)">×</button>` : '';
+            return `<div class="kpi-n${m.sp ? ' kpi-n-sp' : ''}${m.tone ? ' kpi-n-' + m.tone : ''}${edit ? ' kpi-n-edit' : ''}">${x}
+                <span class="kpi-nl">${esc(m.l)}${info}</span>
+                <div class="kpi-nv"><b${String(m.v).length > 9 ? ' class="kpi-long"' : ''}>${esc(m.v)}</b>${m.d ? `<span class="kpi-nd">${m.d}</span>` : ''}</div>
+                ${m.s ? `<span class="kpi-ns">${esc(m.s)}</span>` : ''}${m.sp ? this.kpiSparkHtml(m.sp) : ''}</div>`;
+        };
+        const shown = w.nums.filter(m => !this.kpiIsHidden(w.id, m));
+        const hidden = w.nums.filter(m => this.kpiIsHidden(w.id, m));
+        let h = shown.map(tile).join('');
+        if (edit) h += hidden.map(m => `<button type="button" class="kpi-n kpi-n-add" title="${esc(m.h || '')}" onclick="app.kpiSetHidden('${w.id}','${m.k}',false)">
+                <span class="kpi-plus" aria-hidden="true">+</span><span class="kpi-nl">${esc(m.l)}</span><span class="kpi-ns">добавить плашку</span></button>`).join('');
+        if (!h) h = '<div class="ad-tile-note">Все плашки скрыты. Нажмите «Настроить», чтобы вернуть нужные.</div>';
+        return `<div class="kpi-nums">${h}</div>`;
+    },
+
     kpiWidgetHtml: function (w, esc) {
-        const view = this.kpiViewOf(w.id);
-        const tabs = this.KPI_VIEWS.map(v => `<button type="button" class="kpi-vb${v.id === view ? ' on' : ''}" onclick="app.kpiSetView('${w.id}','${v.id}')">${v.label}</button>`).join('');
+        const edit = !!this._kpiEditOn;
+        // В режиме настройки плашек всегда показываем цифры: прятать и добавлять можно только их
+        const view = edit ? 'num' : this.kpiViewOf(w.id);
+        const tabs = edit ? '' : `<span class="kpi-vs">${this.KPI_VIEWS.map(v => `<button type="button" class="kpi-vb${v.id === view ? ' on' : ''}" onclick="app.kpiSetView('${w.id}','${v.id}')">${v.label}</button>`).join('')}</span>`;
         let body;
-        if (w.err) body = `<div class="ad-tile-note ad-warn">Не загрузилось: ${esc(w.err)}</div>`;
+        if (w.err) body = `<div class="kpi-card"><div class="ad-tile-note ad-warn">Не загрузилось: ${esc(w.err)}</div></div>`;
         else if (w.wait) body = '<div class="kpi-skel"><i></i><i></i><i></i></div>';
-        else if (view === 'chart') body = this.kpiChartHtml(w.chart, esc);
-        else if (view === 'pie') body = `<div class="kpi-pies">${w.groups.map(g => this.kpiDonutHtml(g, esc)).join('')}</div>`;
+        else if (view === 'chart') body = `<div class="kpi-card">${this.kpiChartHtml(w.chart, esc)}</div>`;
+        else if (view === 'pie') body = `<div class="kpi-card"><div class="kpi-pies">${w.groups.map(g => this.kpiDonutHtml(g, esc)).join('')}</div></div>`;
         else if (view === 'table') {
             const t = w.table;
-            body = `<div class="kpi-tw"><table class="kpi-t"><thead><tr><th>Период</th>${t.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
+            body = `<div class="kpi-card"><div class="kpi-tw"><table class="kpi-t"><thead><tr><th>Период</th>${t.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
                 <tr class="kpi-tt"><td>Итого</td>${t.total.map(v => `<td>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>
                 ${t.rows.map(r => `<tr><td>${esc(r.l)}</td>${r.v.map(v => `<td${v ? '' : ' class="z"'}>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>`).join('')}
-                </tbody></table></div>`;
-        } else body = `<div class="kpi-nums">${w.nums.map(m => `<div class="kpi-n${m.big ? ' kpi-n-big' : ''}${m.tone ? ' kpi-n-' + m.tone : ''}">
-                <span class="kpi-nl">${esc(m.l)}</span><b>${esc(m.v)}</b>${m.d ? `<span class="kpi-nd">${m.d}</span>` : ''}${m.s ? `<span class="kpi-ns">${esc(m.s)}</span>` : ''}</div>`).join('')}</div>`;
+                </tbody></table></div></div>`;
+        } else body = this.kpiNumsHtml(w, esc, edit);
         const note = (!w.err && !w.wait && w.note) ? `<div class="kpi-note">${esc(w.note)}</div>` : '';
-        return `<section class="kpi-w${w.wide ? ' kpi-wide' : ''}">
-            <div class="kpi-h"><b onclick="app.switchAdminTab('${w.tab}')" title="Открыть раздел: ${esc(w.act)}">${esc(w.title)} <span aria-hidden="true">›</span></b>
-                <span class="kpi-vs">${tabs}</span></div>
+        return `<section class="kpi-w">
+            <div class="kpi-h"><b onclick="app.switchAdminTab('${w.tab}')" title="Открыть раздел: ${esc(w.act)}">${esc(w.title)} <span aria-hidden="true">›</span></b>${tabs}</div>
             <div class="kpi-b">${body}</div>${note}</section>`;
     },
 
@@ -28839,10 +28897,17 @@ const app = {
         this.kpiStart(p);
         const S = (this._kpiSt || {})[p.id] || {};
         const W = this.kpiBuild(p, S);
+        const edit = !!this._kpiEditOn;
         const chips = this.KPI_PERIODS.map(x => `<button type="button" class="kpi-chip${x.id === p.id ? ' on' : ''}" onclick="app.kpiSetPeriod('${x.id}')">${x.label}</button>`).join('');
-        const order = ['planner', 'users', 'ests', 'rec', 'pay'];
+        const order = ['users', 'planner', 'ests', 'rec', 'pay'];
+        const ctl = edit
+            ? `<button type="button" class="kpi-ed" onclick="app.kpiResetHidden()">Сбросить</button><button type="button" class="kpi-ed on" onclick="app.kpiEdit(false)">Готово</button>`
+            : `<button type="button" class="kpi-ed" onclick="app.kpiEdit(true)">✏️ Настроить плашки</button>`;
+        const hint = edit
+            ? 'Нажмите × на плашке, чтобы скрыть её, или «+», чтобы вернуть скрытую'
+            : `Показатели ${p.full}${p.days ? ' · стрелки — сравнение с предыдущим таким же периодом' : ''}`;
         return `<div class="kpi-bar"><div class="kpi-chips" role="tablist" aria-label="Период">${chips}</div>
-                <span class="kpi-cmp">Показатели ${p.full}${p.days ? ' · стрелки — сравнение с предыдущим таким же периодом' : ''}</span></div>
+                <span class="kpi-cmp">${hint}</span><span class="kpi-ctl">${ctl}</span></div>
             <div class="kpi-grid">${order.map(k => this.kpiWidgetHtml(W[k], esc)).join('')}</div>`;
     },
 
