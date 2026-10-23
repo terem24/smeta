@@ -587,7 +587,7 @@ const Subscription = {
     // Блок для окна тарифа: одна ссылка на страницу сравнения. Список функций
     // здесь не выводим — он на tariffs.html, а окно должно вести к оплате.
     benefitsHtml: function () {
-        return '<a class="pro-compare" href="tariffs.html" target="_blank" rel="noopener">Что входит в Профи и чем он отличается от Базового</a>';
+        return '<a class="pro-compare" href="#" onclick="app.closeModal(); app.showProfileModal(false, &quot;subscription&quot;); return false;">Что входит в Профи и чем он отличается от Базового</a>';
     },
 
     cardsHtml: function (ctx, preview) {

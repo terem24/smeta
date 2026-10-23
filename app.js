@@ -14823,25 +14823,44 @@ const app = {
                    </div>
                </div>`;
 
-        // Список ровно того, что на Базовом тарифе недоступно: бренд ROMMER и аналоги
-        // (checkAccess 'pro-brand'), автосохранение в облако (runAutoSave) и распознавание.
-        // Остальное — расчёт, смета, работы, реквизиты, КП — открыто всем авторизованным.
-        const perks = [
-            ['🔍', 'Распознавание смет и накладных', 'PDF, Excel, Word или фото — позиции подбираются по каталогу и прайсу, суммы сверяются с итогом документа'],
-            ['🔄', 'Ассортимент ROMMER и аналоги', 'Переключение бренда всей сметы и подбор замены по каждой позиции'],
-            ['☁️', 'Автосохранение в облако', 'Проекты сохраняются сами и открываются с любого устройства']
-        ];
+        // Таблица «Базовый / Профи» строится по настройкам «Тарифы» этой учётки
+        // (tariffCell), поэтому совпадает с тем, что человек реально получит.
+        const TXT = {
+            rommer: ['ROMMER и аналоги', 'Замена позиций на ROMMER и другие марки'],
+            terem: ['Расширенный прайс с заменами', 'Другие марки прайса ТЕРЕМ при ручном добавлении'],
+            works: ['Монтаж в смете и КП', 'Работы и их стоимость вместе с оборудованием'],
+            analog: ['Смета «Бюджетнее»', 'Вторая смета дешевле: клиент выбирает из двух'],
+            recognize: ['Распознавание смет и проектов', 'Загрузите файл заказчика, смета соберётся сама'],
+            design: ['Проект и планы этажей', 'Листы проекта и редактор планов'],
+            ufhplan: ['Раскладка тёплого пола', 'План дома и контуры по комнатам'],
+            opcost: ['Расходы на эксплуатацию', 'Во сколько обойдётся отопление владельцу дома'],
+            branding: ['Свои реквизиты и логотип', 'В шапке сметы, КП и счёта'],
+            money: ['Маржа по разделам', 'Сколько вы зарабатываете на каждом разделе'],
+            docs: ['Договор, акты, гарантия', 'Документы для сдачи объекта'],
+            disc1c: ['Скидки в КП', 'Скидка по позициям в коммерческом предложении']
+        };
+        const acc = this.tariffAccount();
+        const mark = (on) => on ? '<span class="tc-yes">✓</span>' : '<span class="tc-no">–</span>';
+        const rows = [['Теплопотери и подбор оборудования', 'Котельная, радиаторы, тёплый пол, водоснабжение, канализация', true, true],
+            ['Смета на оборудовании STOUT', 'Артикулы, цены, количество', true, true]];
+        (this.TARIFF_FEATURES || []).forEach(f => {
+            if (f.locked || !TXT[f.id]) return;
+            const bs = this.tariffCell(acc, 'base', f.id) !== 'off', ps = this.tariffCell(acc, 'pro', f.id) !== 'off';
+            if (bs || ps) rows.push([TXT[f.id][0], TXT[f.id][1], bs, ps]);
+        });
+        rows.push(['Автосохранение в облако', 'Проекты открываются с любого устройства', false, true]);
+        rows.sort((x, y) => (y[2] ? 1 : 0) - (x[2] ? 1 : 0));
 
         container.innerHTML = `
             <div class="lk-section-head"><div><h4>Тариф</h4><div class="lk-sub">Что доступно сейчас и что даёт Профи</div></div></div>
             <div style="margin-bottom:14px;">${statusCard}</div>
-            <div class="lk-card-label" style="margin:0 0 8px;">Что даёт тариф Профи</div>
-            <div class="lk-card">
-                ${perks.map(([icon, title, text]) => `
-                    <div class="lk-setting">
-                        <div class="lk-setting-text"><b>${title}</b><span>${text}</span></div>
-                    </div>
-                `).join('')}
+            <div class="lk-card tc-table">
+                <div class="tc-row tc-head"><div></div><div>Базовый</div><div class="tc-pro">Профи</div></div>
+                ${rows.map(([t, d, b, p]) => `
+                    <div class="tc-row">
+                        <div class="tc-f"><b>${t}</b><span>${d}</span></div>
+                        <div>${mark(b)}</div><div class="tc-pro">${mark(p)}</div>
+                    </div>`).join('')}
             </div>
         `;
     },
@@ -17134,11 +17153,11 @@ const app = {
     CABINET_SUBTABS: {
         home: [{ id: 'summary', label: 'Показатели' }, { id: 'leads', label: 'Заявки' }],
         objects: [{ id: 'objects', label: 'Сметы' }, { id: 'oprosniki', label: 'Опросные листы' }, { id: 'orders', label: 'Документы' }],
-        requisites: [{ id: 'requisites', label: 'Мои данные' }, { id: 'company', label: 'Реквизиты компании' }, { id: 'manager', label: 'Мой менеджер' }],
+        requisites: [{ id: 'requisites', label: 'Мои данные' }, { id: 'subscription', label: 'Тариф' }, { id: 'company', label: 'Реквизиты компании' }, { id: 'manager', label: 'Мой менеджер' }],
         workprices: [{ id: 'prefs', label: 'Любимые материалы' }, { id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }],
         // Разметка разделов — index.html (profile_tab_theme / _kp / _notify / _login),
         // «Тариф» — прежний profile_tab_subscription (renderSubscriptionTab)
-        settings: [{ id: 'theme', label: 'Оформление' }, { id: 'kp', label: 'КП и счета' }, { id: 'notify', label: 'Уведомления' }, { id: 'subscription', label: 'Тариф' }, { id: 'login', label: 'Вход и безопасность' }]
+        settings: [{ id: 'theme', label: 'Оформление' }, { id: 'kp', label: 'КП и счета' }, { id: 'notify', label: 'Уведомления' }, { id: 'login', label: 'Вход и безопасность' }]
     },
 
     // Пункт меню, под которым живёт раздел (подсветка в меню и на панели)

@@ -20889,3 +20889,22 @@ body.empty-fit-panel #header_totals { display: none !important; }
 .sw-market-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 2px 0 8px; }
 .sw-market-bar .sw-sep { width: 1px; height: 16px; background: var(--border); }
 .sw-edit .sw-bar + .lk-section-head { display: none; }
+
+/* Таблица «Базовый / Профи» во вкладке «Тариф» */
+.tc-table { padding: 0; overflow: hidden; }
+.tc-row { display: grid; grid-template-columns: 1fr 90px 90px; align-items: center; border-top: 1px solid var(--border); text-align: center; }
+.tc-row:first-child { border-top: 0; }
+.tc-head { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-sec); padding: 10px 0; }
+.tc-row > div { padding: 10px 4px; }
+.tc-f { text-align: left; padding-left: 16px !important; }
+.tc-f b { display: block; font-size: 14px; font-weight: 600; color: var(--text-main); }
+.tc-f span { display: block; font-size: 12px; color: var(--text-sec); margin-top: 1px; }
+.tc-pro { background: rgba(59, 130, 246, .08); align-self: stretch; display: flex; align-items: center; justify-content: center; }
+.tc-head .tc-pro { color: var(--primary); }
+.tc-yes { display: inline-flex; width: 24px; height: 24px; border-radius: 50%; background: #10B981; color: #fff; font-weight: 800; font-size: 14px; align-items: center; justify-content: center; }
+.tc-no { color: var(--text-sec); opacity: .55; font-size: 20px; }
+@media (max-width: 600px) {
+    .tc-row { grid-template-columns: 1fr 64px 60px; }
+    .tc-f { padding-left: 12px !important; }
+    .tc-f b { font-size: 13px; }
+}
