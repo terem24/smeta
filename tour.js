@@ -1680,6 +1680,7 @@ const Tour = {
             return;
         }
         card.style.bottom = '';
+        this._prevPos = [parseFloat(card.style.left), parseFloat(card.style.top)];
         card.className = 'tour-card tour-card-dock';
         const w = card.offsetWidth || 340, h = card.offsetHeight || 220;
         const left = this._dock === 'left' ? 16 : window.innerWidth - w - this.DOCK_RIGHT_GAP;
@@ -1697,25 +1698,40 @@ const Tour = {
     placeNear: function (card, w, h, left, top, busy) {
         try {
             const step = this.STEPS[this._step];
-            if (!this.active() || this._view !== 'step' || !step || !this.tasksOf(step) || !this.tasksPending(step)) return;
+            const keep = () => {
+                const pl = (this._prevPos || [])[0], pt = (this._prevPos || [])[1];
+                if (this._wasNear && isFinite(pl) && isFinite(pt)) { card.style.left = pl + 'px'; card.style.top = pt + 'px'; }
+            };
+            if (!this.active() || this._view !== 'step' || !step || !this.tasksOf(step) || !this.tasksPending(step)) { keep(); return; }
             const t = this.pointEl(step);
-            if (!t) return;
+            if (!t) { keep(); return; }
             const b = t.getBoundingClientRect();
             if (b.bottom < 0 || b.top > window.innerHeight) return;
             const far = Math.hypot((b.left + b.width / 2) - (left + w / 2), (b.top + b.height / 2) - (top + h / 2));
-            if (far < 420) return;
-            const gap = 14, floor = window.innerHeight - busy - 8;
+            if (far < 420) { this._wasNear = false; return; }
+            this._wasNear = true;
+            // Зазор 64 px: в нём живёт стрелка с хвостом, иначе она уходит под карточку.
+            // Порядок: сбоку справа (там чаще пустая смета, а не параметры, которые человек
+            // трогает), под элементом, над ним, слева. Карточка не должна закрывать ни сам
+            // элемент, ни соседние поля вокруг него.
+            const gap = 64, floor = window.innerHeight - busy - 8;
+            const roomR = window.innerWidth - b.right - gap - 8, roomL = b.left - gap - 8;
             let L = b.left + b.width / 2 - w / 2, T = b.bottom + gap;
-            if (T + h > floor) {
+            if (roomR >= w) { L = b.right + gap; if (b.right < 420) L = Math.max(L, 474); else if (b.left > 430 && b.width < 80 && roomR >= w + 300) L = b.right + 360; T = b.top + b.height / 2 - h / 2; }
+            else if (T + h > floor) {
                 if (b.top - gap - h > 8) T = b.top - gap - h;
-                else {
-                    const roomR = window.innerWidth - b.right - gap - 8, roomL = b.left - gap - 8;
-                    if (roomR >= w) { L = b.right + gap; T = b.top; }
-                    else if (roomL >= w) { L = b.left - gap - w; T = b.top; }
-                }
+                else if (roomL >= w) { L = b.left - gap - w; T = b.top + b.height / 2 - h / 2; }
             }
             L = Math.max(8, Math.min(L, window.innerWidth - w - 8));
             T = Math.max(8, Math.min(T, floor - h));
+            // Липкость: если карточка уже стоит рядом (в пределах 260 px от нужного места) и
+            // не закрывает цель вместе с зазором под стрелку — остаётся где есть, не дёргается.
+            const cl = (this._prevPos || [])[0], ct = (this._prevPos || [])[1];
+            if (isFinite(cl) && isFinite(ct) && Math.hypot(cl - L, ct - T) < 200 &&
+                (cl + w < b.left - 40 || cl > b.right + 40 || ct + h < b.top - 40 || ct > b.bottom + 40)) {
+                card.style.left = cl + 'px'; card.style.top = ct + 'px';
+                return;
+            }
             card.style.left = Math.round(L) + 'px';
             card.style.top = Math.round(T) + 'px';
         } catch (e) { }
@@ -1823,6 +1839,8 @@ const Tour = {
     overflow-y: auto;
     overscroll-behavior: contain;
 }
+/* Плавный переезд вместо скачка по экрану; только для десктопных углов и места у цели */
+.tour-card-dock { transition: left .35s ease, top .35s ease; }
 body.dark-mode .tour-card { background: #1E1E1E; border-color: #333333; }
 .tour-card-bottom {
     left: 8px !important;
@@ -2006,7 +2024,7 @@ body.dark-mode .tour-blk-ic { background: #1E1E1E; border-color: #333333; }
 .tour-chips span { font-size: 11.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--primary-light, rgba(99, 102, 241, 0.1)); color: var(--primary); border: 1px solid var(--border); }
 
 /* Палец и кольцо на настоящем элементе страницы */
-#tour_pointer { position: fixed; z-index: 59999990; width: 0; height: 0; pointer-events: none; }
+#tour_pointer { position: fixed; z-index: 60000010; width: 0; height: 0; pointer-events: none; }
 #tour_pointer .tp-ring {
     position: absolute; left: -26px; top: -26px; width: 52px; height: 52px; box-sizing: border-box;
     border: 4px solid #9F1239; border-radius: 50%; opacity: 0; animation: tp-ring 2.2s ease-out infinite;
