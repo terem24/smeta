@@ -94,7 +94,7 @@ const Tour = {
             sel: '#blk_main_area',
             title: 'Площадь дома',
             text: 'Главное число расчёта: от него зависят котёл, радиаторы и трубы.',
-            tasks: [{ label: 'Поставьте 150 м²: потяните ползунок или нажмите на число и впишите', done: () => Math.round(Tour.st().area) === 150 }],
+            tasks: [{ label: 'Поставьте 150 м²: нажмите на число справа и впишите с клавиатуры (или потяните ползунок)', done: () => Math.round(Tour.st().area) === 150 }],
             point: '#val_area'
         },
         {
@@ -102,11 +102,12 @@ const Tour = {
             sel: () => document.getElementById('fuel_gas') && document.getElementById('fuel_gas').closest('.control-item'),
             title: 'Тип котла',
             text: 'Можно один котёл или оба сразу — например, газ и резервный электро.',
-            // Кнопки — переключатели, и «можно выбрать оба» из одной строки понимают не все:
-            // второе задание заставляет включить вторую кнопку, не выключая первую.
+            // Кнопки — переключатели. По умолчанию горит «Электро»: раньше задание требовало
+            // «только Газ», и приходилось включать газ, выключать электро и включать его снова.
+            // Теперь достаточно включить «Газ» — электро остаётся запасным, обе кнопки горят.
             tasks: [
-                { label: 'Дом газифицирован — оставьте включённым только «Газ»', done: () => { const f = Tour.st().fuels || []; if (f.length === 1 && f[0] === 'gas') Tour._gasOnlyAt = Date.now(); return Tour._gasOnlyAt >= Tour._enteredAt; } },
-                { label: 'Заказчик попросил ещё и электрокотёл про запас — включите «Электро»: пусть горят обе кнопки', done: () => { const f = Tour.st().fuels || []; return f.indexOf('gas') > -1 && f.indexOf('el') > -1; } }
+                { label: 'Дом газифицирован — включите «Газ»', done: () => (Tour.st().fuels || []).indexOf('gas') > -1 },
+                { label: 'Электрокотёл оставьте включённым как запасной: пусть горят обе кнопки', done: () => { const f = Tour.st().fuels || []; return f.indexOf('gas') > -1 && f.indexOf('el') > -1; } }
             ],
             point: () => document.getElementById((Tour.st().fuels || []).indexOf('gas') < 0 ? 'fuel_gas' : 'fuel_el')
         },
@@ -117,9 +118,16 @@ const Tour = {
             text: 'В учебном доме будут и радиаторы, и тёплый пол.',
             tasks: [
                 { label: 'Включите «Радиаторы»', done: () => (Tour.st().systems || []).indexOf('rad') > -1 },
-                { label: 'Включите «Тёплый пол»', done: () => (Tour.st().systems || []).indexOf('tp') > -1 }
+                { label: 'Включите «Тёплый пол»', done: () => (Tour.st().systems || []).indexOf('tp') > -1 },
+                // Включённая кнопка при площади 0 м² ничего не добавляет в смету
+                { label: 'Задайте площадь тёплого пола — например, 60 м²: нажмите на число и впишите', done: () => (Tour.st().systems || []).indexOf('tp') > -1 && Number(Tour.st().tp1) > 0 }
             ],
-            point: () => document.getElementById((Tour.st().systems || []).indexOf('rad') < 0 ? 'sys_rad' : 'sys_tp')
+            point: () => {
+                const s = Tour.st().systems || [];
+                if (s.indexOf('rad') < 0) return document.getElementById('sys_rad');
+                if (s.indexOf('tp') < 0) return document.getElementById('sys_tp');
+                return document.getElementById('val_tp1') || document.getElementById('sys_tp');
+            }
         },
         {
             block: 'basic', key: 'hw', mob: 'inputs',
@@ -147,7 +155,7 @@ const Tour = {
             text: 'Насос подберётся по глубине и расходу воды.',
             tasks: [
                 { label: 'Включите «Скважинный насос»', done: () => !!Tour.st().well },
-                { label: 'Глубина установки — 60 м', done: () => !!Tour.st().well && Number(Tour.st().wellDepth) === 60 }
+                { label: 'Глубина установки — 60 м (нажмите на число и впишите)', done: () => !!Tour.st().well && Number(Tour.st().wellDepth) === 60 }
             ],
             point: () => Tour.st().well ? document.getElementById('inp_wellDepth') : document.querySelector('#blk_well_wrap .switch')
         },
@@ -372,7 +380,8 @@ const Tour = {
     },
 
     RAD_RE: /радиатор/i,
-    RAD_NOT: /коллектор|шкаф|клапан|головк|узел|фитинг|кронштейн|набор|комплект|кран/i,
+    // «Группа насосная … радиаторы: 15 из 48 кВт» тоже содержит слово — это не радиатор
+    RAD_NOT: /коллектор|шкаф|клапан|головк|узел|фитинг|кронштейн|набор|комплект|кран|групп|насос|смесит|гидравл/i,
 
     // Сначала строка, название которой начинается с «Радиатор» (перед ним в тексте строки
     // только номер): «Монтажный набор для подключения радиатора» стоит в смете выше самих
