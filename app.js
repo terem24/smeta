@@ -70948,7 +70948,7 @@ const app = {
      * трубы на обе линии (extraM), неподвижные опоры на обе линии (fixed = у поворотов + у компенсаторов)
      * и угольники PP-R (elbows).
      */
-    radTrunkComp: function (mat, d, oneWayM, legs, turns) {
+    radTrunkComp: function (mat, d, oneWayM, legs, turns, horizontal) {
         const c = this.RAD_COMP[mat] || this.RAD_COMP.stable;
         legs = Math.max(1, legs || 1);
         turns = Math.max(0, turns == null ? this.RAD_COMP_TURNS : turns);
@@ -70963,8 +70963,10 @@ const app = {
         const lk = c.k * Math.sqrt(d * dSec);                          // мм, плечо на участок между опорами
         const lkAlt = c.alt ? c.alt.k * Math.sqrt(d * c.alt.alpha * sec * dT) : null;
         const perLine = n === 0 ? 0 : 2 * lk / 1000;
-        const fixTurn = 2 * turns, fixComp = 4 * n * legs;
-        return { mat: mat, d: d, n: n, legs: legs, turns: turns, extraM: Math.ceil(2 * n * legs * perLine),
+        // На горизонтальной трассе хомуты и опоры в смету не кладём (труба идёт в стяжке или гофре,
+        // а не на хомутах); плечо Lк остаётся — его нужно выдержать при укладке. Опоры — только на стояке.
+        const fixTurn = horizontal ? 0 : 2 * turns, fixComp = horizontal ? 0 : 4 * n * legs;
+        return { mat: mat, d: d, n: n, legs: legs, turns: turns, horizontal: !!horizontal, extraM: Math.ceil(2 * n * legs * perLine),
             fixed: fixTurn + fixComp, fixTurn: fixTurn, fixComp: fixComp, elbows: mat === 'ppr' ? 8 * n * legs : 0,
             dL: dLtot, dT: dT, t: t, alpha: c.alpha, k: c.k, arm: lk, armAlt: lkAlt, altDoc: c.alt ? c.alt.doc : null,
             lmax: lmax, len: L, sec: sec, doc: c.doc, ref: c.ref };
@@ -70982,9 +70984,14 @@ const app = {
             s += `<b>П-образные компенсаторы:</b> участок ${f(cp.len, 1)} м длиннее ${f(cp.lmax, 1)} м, при которых хватает плеча ${this.RAD_COMP_ARM_MM} мм у поворота, — на каждую линию ${cp.n * cp.legs} шт., лишней трубы 2·Lк на компенсатор.<br>`;
         }
         const nTxt = k => `${k} ${this.plural(k, 'неподвижная опора', 'неподвижные опоры', 'неподвижных опор')}`;
-        s += `<b>В смете:</b> ${nTxt(cp.fixed)}: ${cp.fixTurn} у поворотов (по одной на линию у каждого из ${cp.turns} ${this.plural(cp.turns, 'поворота', 'поворотов', 'поворотов')}, на расстоянии Lк от колена)` +
-            (cp.fixComp ? ` и ${cp.fixComp} у компенсаторов` : ``) + (cp.extraM ? `; +${cp.extraM} м трубы` : ``) + (cp.elbows ? `; ${cp.elbows} угольников 90°` : ``) +
-            `. Скользящие хомуты — по метру, они уже в смете.`;
+        if (cp.horizontal) {
+            s += `<b>В смете:</b> хомуты и опоры на горизонтальной трассе не включены (труба идёт в стяжке или гофре); плечо Lк у поворотов нужно выдержать при укладке` +
+                (cp.extraM ? `; +${cp.extraM} м трубы на компенсаторы` : ``) + (cp.elbows ? `; ${cp.elbows} угольников 90°` : ``) + `.`;
+        } else {
+            s += `<b>В смете:</b> ${nTxt(cp.fixed)}: ${cp.fixTurn} у поворотов (по одной на линию у каждого из ${cp.turns} ${this.plural(cp.turns, 'поворота', 'поворотов', 'поворотов')}, на расстоянии Lк от колена)` +
+                (cp.fixComp ? ` и ${cp.fixComp} у компенсаторов` : ``) + (cp.extraM ? `; +${cp.extraM} м трубы` : ``) + (cp.elbows ? `; ${cp.elbows} угольников 90°` : ``) +
+                `. Скользящие хомуты — по метру, они уже в смете.`;
+        }
         s += `<br><i>Плечо ${this.RAD_COMP_ARM_MM} мм у поворота, два поворота на магистрали, Δt от +${this.RAD_COMP_T_MONTAGE} °C — практика проектирования, не из документа.${cp.mat === 'ppr' ? ' Для стабилизированной PP-R труба расширяется меньше — расчёт с запасом.' : ''}</i></span>`;
         return s;
     },
@@ -70993,7 +71000,7 @@ const app = {
         if (!cp) return;
         const clampId = this.RAD_CLAMP[pick];
         const clamp = clampId && catalog.mounting_system.find(x => x.id === clampId);
-        if (clamp && cp.fixed > 0) addToBill({ ...clamp, originalId: clampId + '_' + tag + '_fix' }, cp.fixed,
+        if (clamp && cp.fixed > 0 && !cp.horizontal) addToBill({ ...clamp, originalId: clampId + '_' + tag + '_fix' }, cp.fixed,
             `Неподвижные опоры магистрали: по одной на каждую линию у каждого поворота (${cp.fixTurn} шт., на расстоянии не меньше плеча Lк от колена)` +
             (cp.fixComp ? ` и у компенсаторов (${cp.fixComp} шт.)` : ``) + `. Хомут затягивается, труба в нём не скользит; между опорами труба на скользящих хомутах (${cp.doc}).`, grp);
         if (cp.elbows > 0) {
@@ -90279,8 +90286,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 const _teeLegs = Math.max(1, Math.ceil(trunkOneWay / Math.sqrt(Math.max(floorArea, 1))));
                 const _teeLeg = trunkOneWay / _teeLegs;
                 const _teeLegsNear = _teeSame ? _teeLegs : Math.max(1, Math.ceil(_teeLegs / 2));
-                const _teeCompNear = this.radTrunkComp(_teeMat, dNear, _teeLeg, _teeLegsNear, _teeLegsNear + 1);
-                const _teeCompFar = _teeSame ? null : this.radTrunkComp(_teeMat, dFar, _teeLeg, Math.max(1, _teeLegs - _teeLegsNear), Math.max(1, _teeLegs - _teeLegsNear));
+                const _teeCompNear = this.radTrunkComp(_teeMat, dNear, _teeLeg, _teeLegsNear, _teeLegsNear + 1, true);
+                const _teeCompFar = _teeSame ? null : this.radTrunkComp(_teeMat, dFar, _teeLeg, Math.max(1, _teeLegs - _teeLegsNear), Math.max(1, _teeLegs - _teeLegsNear), true);
                 _teeCompNote[dNear] = this.radTrunkCompNote(_teeCompNear);
                 if (_teeCompFar) _teeCompNote[dFar] = this.radTrunkCompNote(_teeCompFar);
                 let pipeByDiam = {};
@@ -90743,7 +90750,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     this._radTrunk = Object.assign({ d: _trPick }, _trSpan);
                     if (_trBase) {
                         _radConnPipe = { pick: _trPick, base: _trBase };
-                        const _trComp = this.radTrunkComp(_tkMat, _trPick, _trOv && _trOv.len > 0 ? _trOv.len / 2 : _trOneWay);
+                        const _trComp = this.radTrunkComp(_tkMat, _trPick, _trOv && _trOv.len > 0 ? _trOv.len / 2 : _trOneWay, 1, null, true);
                         const _trCoils = Math.ceil((_trMeters + _trComp.extraM + _jumpM) / _trBase.len);
                         // Типоразмерный ряд того же материала — в ручную замену. noCheapenAlts:
                         // «Аналог» иначе подставил бы Ø16 вместо Ø25, потому что бухта дешевле,
@@ -90760,17 +90767,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                             `</span>`;
                         addToBill(asCoilPrice({ ..._trBase, originalId: 'rad_trunk_pipe_d' + _trD0, alts: _trAlts, noCheapenAlts: true }), _trCoils, _trDesc + this.radTrunkCompNote(_trComp) + _jumpNote, trunkGrp);
                         this.radTrunkCompItems(_trComp, _trPick, _tkPpr, addToBill, trunkGrp, 'trunk');
-                        // Крепление: полимерная труба провисает, поэтому хомут на каждый метр
-                        // каждой из двух труб. Типоразмер — по наружному диаметру трассы.
-                        const _trClampId = this.RAD_CLAMP[_trPick];
-                        const _trClamp = _trClampId && catalog.mounting_system.find(x => x.id === _trClampId);
-                        if (_trClamp) {
-                            addToBill({ ..._trClamp, originalId: _trClampId + '_rad_trunk' }, _trMeters,
-                                `Хомут крепления трассы до коллектора — по одному на метр каждой трубы: полимерная труба без частого крепежа провисает. Требуется: ${_trMeters} шт.`, trunkGrp);
-                            const _trStud = catalog.mounting_system.find(x => x.id === 'SAC-0020-400100');
-                            if (_trStud) addToBill({ ..._trStud, originalId: 'SAC-0020-400100_rad_trunk' }, _trMeters,
-                                `Шпилька-шуруп с дюбелем под хомуты трассы. Требуется: ${_trMeters} шт.`, trunkGrp);
-                        }
+                        // Хомуты и шпильки на горизонтальной трассе не считаем: трасса идёт в стяжке или гофре,
+                        // а не на хомутах по метру (убрано по решению владельца 23.10.2026). Крепление остаётся
+                        // только у вертикального стояка на второй этаж.
                         // Присоединения трассы. Раньше в подраздел уходила голая труба
                         // с хомутами, а чем она стыкуется с насосной группой и с
                         // коллектором — монтажник докупал сам.
