@@ -36,9 +36,18 @@ const Subscription = {
     SQL_FILE: 'supabase/migrations/20260927_subscription_payments.sql',
 
     // Как было до вкладки: два тарифа, ссылки Т-Банка на перевод физлицу
+    // Октябрь 2026: «Один расчёт» (900 ₽: Профи для одной сметы, days — дней на правки после
+    // открытия) и «Месяц» (3 900 ₽); год пока скрыт. Тариф object выключен: владелец ведёт
+    // свою карточку в «Оплата подписки», ему достаточно поставить в ней «Дней на правки» > 0
+    // (запасная карточка включается там же переключателем). Оплата «Одного расчёта» не продлевает
+    // Профи человеку, а начисляет кредит (таблица pro_objects), см. grantObjectCredit.
+    // Ссылка Т-Банка хранит сумму, поэтому старые ссылки на 5 000 и 48 000 ₽ сюда не подходят:
+    // новые ссылки на 900 и 3 900 ₽ вносятся во вкладке «Оплата подписки». Без ссылки окно
+    // оплаты показывает только «Я оплатил» (см. openPaymentModal).
     BASE_PLANS: {
-        month: { title: 'Подписка на месяц', label: 'Профи 1 месяц', months: 1, rub: 5000, url: 'https://www.tbank.ru/cf/59ivYDZRKQK', enabled: true },
-        year: { title: 'Подписка на год', label: 'Профи 1 год', months: 12, rub: 48000, url: 'https://tbank.ru/cf/7tE93xi7saP', enabled: true }
+        object: { title: 'Один расчёт', label: 'Профи: один расчёт', months: 1, days: 30, rub: 900, url: '', enabled: false },
+        month: { title: 'Подписка на месяц', label: 'Профи 1 месяц', months: 1, rub: 3900, url: '', enabled: true },
+        year: { title: 'Подписка на год', label: 'Профи 1 год', months: 12, rub: 48000, url: 'https://tbank.ru/cf/7tE93xi7saP', enabled: false }
     },
 
     // Как функция таблицы «Тарифы» называется в окне тарифа для монтажника
@@ -99,7 +108,13 @@ const Subscription = {
         const s = this.settings();
         return Object.keys(s.plans).map(k => s.plans[k])
             .filter(p => all || p.enabled !== false)
-            .sort((a, b) => (this.num(a.months) || 0) - (this.num(b.months) || 0));
+            .sort((a, b) => this.planSpan(a) - this.planSpan(b));
+    },
+
+    // Срок тарифа в месяцах для сортировки: «Один расчёт» (14 дней) идёт перед месяцем
+    planSpan: function (p) {
+        const d = Math.round(this.num(p && p.days));
+        return d > 0 ? d / 30 : (this.num(p && p.months) || 0);
     },
 
     num: function (v) { const n = parseFloat(String(v == null ? '' : v).replace(/\s/g, '').replace(',', '.')); return isFinite(n) ? n : 0; },
@@ -194,10 +209,11 @@ const Subscription = {
             src = 'promo';
         }
         const months = Math.max(1, Math.round(this.num(p.months)) || 1);
+        const days = Math.max(0, Math.round(this.num(p.days)));
         const monthly = s.plans.month && s.plans.month.enabled !== false ? this.num(s.plans.month.rub) : 0;
         return {
             id: planId, title: p.title || p.label || planId, label: p.label || p.title || planId,
-            months: months, rub: rub, baseRub: baseRub, url: url, urlOwn: urlOwn, src: src,
+            months: months, days: days, rub: rub, baseRub: baseRub, url: url, urlOwn: urlOwn, src: src,
             promo: promo, rule: rule, region: region,
             perMonth: Math.round(rub / months),
             promoPct: promo && baseRub ? Math.round((1 - rub / baseRub) * 100) : 0,
@@ -573,24 +589,33 @@ const Subscription = {
             if (!r) return '';
             const pct = r.promo ? r.promoPct : r.termPct;
             const badge = pct > 0 ? `<div class="badge">-${pct}%</div>` : '';
-            const sub = r.months > 1
-                ? `в месяц (<span class="curr-amount" data-rub="${r.rub}">${Math.round(r.rub).toLocaleString('ru-RU')}</span> <span class="curr-symbol">₽</span> за ${this.esc(this.monthsWord(r.months))})`
-                : 'в месяц';
+            const sub = r.days > 0
+                ? `Профи для одного объекта, ${r.days} дней на правки`
+                : r.months > 1
+                    ? `в месяц (<span class="curr-amount" data-rub="${r.rub}">${Math.round(r.rub).toLocaleString('ru-RU')}</span> <span class="curr-symbol">₽</span> за ${this.esc(this.monthsWord(r.months))})`
+                    : 'в месяц, любое число объектов';
             const promoLine = r.promo
                 ? `<div style="font-size:11px; color:var(--c-warn,#D97706); font-weight:700; margin:2px 0 8px; text-align:center;">🔥 ${this.esc(r.promo.title || 'Акция')}${r.promo.to ? ' до ' + this.fmtDate(r.promo.to) : ''}<span style="color:var(--text-sec); font-weight:500;"> · было ${this.esc(this.fmtRub(r.baseRub))}</span></div>`
                 : '';
             const click = preview ? `Subscription.previewPlan('${p.id}')` : `app.openPaymentModal('${p.id}')`;
             // Якорь: сколько сэкономит человек против помесячной оплаты
             let saveLine = '';
-            if (r.months > 1) {
-                const mp = plans.find(x => Math.round(this.num(x.months)) === 1), mr = mp && this.resolve(mp.id, ctx);
+            if (r.months > 1 && !r.days) {
+                const mp = plans.find(x => !x.days && Math.round(this.num(x.months)) === 1), mr = mp && this.resolve(mp.id, ctx);
                 const save = mr ? Math.round(mr.rub * r.months - r.rub) : 0;
                 if (save > 0) saveLine = `<div style="font-size:11px; color:#10B981; font-weight:700; margin:2px 0 6px; text-align:center;">Выгоднее помесячной оплаты на ${this.esc(this.fmtRub(save))}</div>`;
+            } else if (r.months === 1 && !r.days) {
+                // Месяц против «Одного расчёта»: с какого объекта подписка дешевле
+                const op = plans.find(x => x.days > 0), or = op && this.resolve(op.id, ctx);
+                if (or && or.rub > 0 && r.rub > or.rub) {
+                    const n = Math.floor(r.rub / or.rub) + 1;
+                    saveLine = `<div style="font-size:11px; color:#10B981; font-weight:700; margin:2px 0 6px; text-align:center;">Дешевле, чем по одному расчёту, с ${n}-го объекта</div>`;
+                }
             }
             return `<div class="tariff-card">
                         ${badge}
                         <h3>${this.esc(String(r.title).toUpperCase())}</h3>
-                        <div class="price"><span class="curr-amount" data-rub="${r.perMonth}">${r.perMonth.toLocaleString('ru-RU')}</span> <span class="curr-symbol">₽</span></div>
+                        <div class="price"><span class="curr-amount" data-rub="${r.days > 0 ? r.rub : r.perMonth}">${(r.days > 0 ? Math.round(r.rub) : r.perMonth).toLocaleString('ru-RU')}</span> <span class="curr-symbol">₽</span></div>
                         <div class="price-sub">${sub}</div>
                         ${saveLine}
                         ${promoLine}
@@ -673,14 +698,15 @@ const Subscription = {
         try {
             const plans = this.planList(false).map(p => this.resolve(p.id)).filter(Boolean);
             if (!plans.length) return '';
-            const month = plans.find(r => r.months === 1);
-            const best = plans.filter(r => r.months > 1).sort((a, b) => b.months - a.months)[0];
+            const month = plans.find(r => r.months === 1 && !r.days);
+            const best = plans.filter(r => r.months > 1 && !r.days).sort((a, b) => b.months - a.months)[0];
+            const one = plans.find(r => r.days > 0);
             const out = [];
             if (best) {
                 const save = month ? Math.round(month.rub * best.months - best.rub) : 0;
                 out.push('Профи на ' + (best.months === 12 ? 'год' : this.monthsWord(best.months)) + ' — ' + this.fmtRub(best.perMonth) + ' в месяц'
                     + (month ? ' вместо ' + this.fmtRub(month.rub) : '') + (save > 0 ? ', выгоднее на ' + this.fmtRub(save) : '') + '.');
-            } else if (month) out.push('Профи — ' + this.fmtRub(month.rub) + ' в месяц.');
+            } else if (month) out.push('Профи — ' + this.fmtRub(month.rub) + ' в месяц' + (one ? ', либо ' + this.fmtRub(one.rub) + ' за один объект (' + one.days + ' дней на правки).' : '.'));
             const promo = plans.map(r => r.promo).find(Boolean);
             if (promo) out.push('Акция «' + (promo.title || 'скидка') + '»' + (promo.to ? ' до ' + this.fmtDate(promo.to) : '') + '.');
             return out.join('\n');
@@ -834,13 +860,14 @@ const Subscription = {
 
     // ── тарифы ─────────────────────────────────────────────────────────
     setPlanField: function (id, field, value) {
-        if (['title', 'label', 'months', 'rub', 'url', 'enabled'].indexOf(field) < 0) return;
+        if (['title', 'label', 'months', 'days', 'rub', 'url', 'enabled'].indexOf(field) < 0) return;
         if (field === 'months') value = Math.max(1, Math.round(this.num(value)) || 1);
+        if (field === 'days') value = Math.min(366, Math.max(0, Math.round(this.num(value))));
         if (field === 'rub') value = Math.max(0, Math.round(this.num(value)));
         if (field === 'url') value = String(value || '').trim();
         if (field === 'enabled') value = !!value;
         this.apply(v => { v.plans = v.plans || {}; v.plans[id] = Object.assign({}, v.plans[id] || {}, { [field]: value }); return v; });
-        if (field === 'enabled' || field === 'months') this.render();
+        if (field === 'enabled' || field === 'months' || field === 'days') this.render();
         else this.refreshPlanCard(id);
     },
 
@@ -1014,6 +1041,19 @@ const Subscription = {
         return this.addMonths(from, months);
     },
 
+    // Тариф «Один расчёт» (days > 0): оплата даёт кредит на одну смету, а не срок Профи
+    isObjectPlan: function (planId) {
+        const p = planId && this.settings().plans[planId];
+        return !!p && Math.round(this.num(p.days)) > 0;
+    },
+
+    // Начислить кредит «Один расчёт» (строка в pro_objects без calc_id); тратит его человек сам
+    grantObjectCredit: async function (u, paymentId) {
+        const me = (app._currentUserRow && app._currentUserRow.email) || null;
+        const { error } = await supabaseClient.from('pro_objects').insert({ user_id: u.id, payment_id: paymentId || null, granted_by: me });
+        if (error) throw error;
+    },
+
     // Продлить Профи в карточке: как «Сохранить» в карточке пользователя с
     // источником «Оплата» (demo_ends_at — срок, pro_expires_at — признак «платный»).
     activatePro: async function (u, until) {
@@ -1049,7 +1089,8 @@ const Subscription = {
         if (extend && !u) { app.alert('Учётной записи с почтой ' + row.email + ' нет в базе — продлить Профи некому. Снимите галочку продления или найдите человека в «Пользователях».'); return; }
         try {
             let until = null;
-            if (extend) { until = this.proUntilFor(u, months); await this.activatePro(u, until); }
+            if (extend && this.isObjectPlan(row.plan)) await this.grantObjectCredit(u, id);
+            else if (extend) { until = this.proUntilFor(u, months); await this.activatePro(u, until); }
             const me = (app._currentUserRow && app._currentUserRow.email) || null;
             const upd = { status: 'paid', paid_at: paidAt.toISOString(), paid_rub: paidRub, months: months, pro_until: until ? until.toISOString() : null, note: note || null, confirmed_by: me, user_id: row.user_id || (u ? u.id : null) };
             const { error } = await supabaseClient.from(this.TABLE).update(upd).eq('id', id);
@@ -1106,7 +1147,8 @@ const Subscription = {
         if (extend && !u) { app.alert('Учётной записи с почтой ' + email + ' нет в базе. Снимите галочку продления или проверьте почту.'); return; }
         try {
             let until = null;
-            if (extend) { until = this.proUntilFor(u, months); await this.activatePro(u, until); }
+            if (extend && this.isObjectPlan(planId)) await this.grantObjectCredit(u, null);
+            else if (extend) { until = this.proUntilFor(u, months); await this.activatePro(u, until); }
             const me = (app._currentUserRow && app._currentUserRow.email) || null;
             const row = {
                 email: email, user_id: u ? u.id : null, plan: planId || null, months: months, rub: rub, promo: g('promo') || null,
@@ -1290,6 +1332,7 @@ const Subscription = {
                     ${lbl('Название тарифа (в окне оплаты и заявке)')}${inp('label', p.label || '')}
                     <div style="display:flex; gap:10px;">
                         <div style="flex:1;">${lbl('Месяцев')}${inp('months', p.months || 1, 'number', 'min="1" step="1"')}</div>
+                        <div style="flex:1;">${lbl('Дней на правки')}${inp('days', Math.round(this.num(p.days)) || 0, 'number', 'min="0" step="1" title="Больше 0 — тариф «Один расчёт»: оплата даёт кредит на один объект, столько дней можно править смету. 0 — обычная подписка на месяцы"')}</div>
                         <div style="flex:2;">${lbl('Цена, ₽')}${inp('rub', Math.round(this.num(p.rub)), 'number', 'min="0" step="10"')}</div>
                     </div>
                     ${lbl('Ссылка на перевод')}${inp('url', p.url || '', 'url', 'placeholder="https://www.tbank.ru/cf/…"')}
@@ -1313,6 +1356,8 @@ const Subscription = {
     planMetaHtml: function (p) {
         const months = Math.max(1, Math.round(this.num(p.months)) || 1);
         const rub = this.num(p.rub);
+        const days = Math.round(this.num(p.days));
+        if (days > 0) return `${this.fmtRub(rub)} за один объект, ${days} дней на правки${!p.url ? '<div style="color:var(--c-bad,#EF4444);">Без ссылки окно оплаты покажет только «Я оплатил»</div>' : ''}`;
         const per = months > 1 ? `${this.fmtRub(Math.round(rub / months))} в месяц` : '';
         const warn = !p.url ? '<div style="color:var(--c-bad,#EF4444);">Без ссылки окно оплаты покажет только «Я оплатил»</div>' : '';
         return `${this.fmtRub(rub)} за ${this.monthsWord(months)}${per ? '<br>' + per : ''}${warn}`;

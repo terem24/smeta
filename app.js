@@ -7259,7 +7259,126 @@ const app = {
         try { return localStorage.getItem('local_manager') === '1'; } catch (e) { return false; }
     },
 
+    // Профи у человека: по учётной записи (подписка, пробный период) либо оплаченный
+    // «Один расчёт» — тогда Профи открыт только в той смете, которую человек выбрал
     isPro: function () {
+        return this.isProAccount() || this.objectProActive();
+    },
+
+    // «Один расчёт» (тариф с days > 0): оплата даёт кредит, кредит тратится на одну смету
+    // (state.calc_id) и открывает в ней Профи на несколько дней правок. Кредиты и открытые
+    // сметы лежат в таблице pro_objects (supabase/migrations/20261023_pro_objects.sql);
+    // списывает кредит только функция базы unlock_pro_object.
+    _proObjects: undefined,   // undefined — ещё не грузили; { credits, open: { calc_id: { exp, sig } } }
+
+    // Отпечаток объекта на момент открытия: по нему видно, что смета осталась тем же
+    // домом, а не переделана под другой (иначе одну оплату гоняли бы как шаблон).
+    // Площадь, город и этажность — то, что у реального дома за 30 дней правок не меняется.
+    OBJECT_AREA_TOL: 0.3,
+    objectSig: function () {
+        const s = this.state || {};
+        return {
+            area: Math.round((parseFloat(s.area) || 0) * 10) / 10,
+            city: String((s.selectedCity && s.selectedCity.name) || s.region || ''),
+            floors: parseInt(s.floors, 10) || 1
+        };
+    },
+    // Совпадает ли текущая смета с отпечатком: площадь в пределах ±30 %, тот же город,
+    // этажность не дальше чем на 1. Отпечатка нет (старая запись) — считаем, что совпадает.
+    objectMatchesSig: function (sig) {
+        if (!sig || !(sig.area > 0)) return true;
+        const cur = this.objectSig();
+        if (!(cur.area > 0)) return true;   // пустую форму не наказываем: пока площадь не введена, правок нет
+        if (Math.abs(cur.area - sig.area) / sig.area > this.OBJECT_AREA_TOL) return false;
+        if (sig.city && cur.city && sig.city !== cur.city) return false;
+        if (Math.abs(cur.floors - (sig.floors || 1)) > 1) return false;
+        return true;
+    },
+    // Открыт ли Профи в этой смете: окно не вышло и смета осталась тем же объектом
+    objectProState: function () {
+        const calc = this.state && this.state.calc_id ? String(this.state.calc_id) : '';
+        const rec = calc && this._proObjects && this._proObjects.open[calc];
+        if (!rec || !(new Date(rec.exp) > new Date())) return 'none';
+        return this.objectMatchesSig(rec.sig) ? 'open' : 'changed';
+    },
+    objectProActive: function () {
+        try {
+            if (!(this.state && this.state.calc_id)) return false;
+            if (this._proObjects === undefined) { this.loadProObjects(); return false; }
+            return this.objectProState() === 'open';
+        } catch (e) { return false; }
+    },
+    objectCredits: function () { return (this._proObjects && this._proObjects.credits) || 0; },
+    loadProObjects: async function () {
+        const tg = this.state && this.state.tgUser;
+        if (!tg || (!tg.id && !tg.email) || typeof supabaseClient === 'undefined') return;
+        if (this._proObjectsBusy) return;
+        this._proObjectsBusy = true;
+        const before = JSON.stringify(this._proObjects);
+        try {
+            const { data, error } = await supabaseClient.from('pro_objects').select('calc_id, expires_at, sig');
+            if (error) throw error;
+            const st = { credits: 0, open: {} };
+            (data || []).forEach(r => {
+                if (!r.calc_id) st.credits++;
+                else if (!st.open[r.calc_id] || new Date(r.expires_at) > new Date(st.open[r.calc_id].exp)) st.open[r.calc_id] = { exp: r.expires_at, sig: r.sig || null };
+            });
+            this._proObjects = st;
+        } catch (e) {
+            // Таблицы может ещё не быть или нет входа — тогда «Одного расчёта» просто нет
+            this._proObjects = { credits: 0, open: {} };
+        }
+        this._proObjectsBusy = false;
+        if (before !== JSON.stringify(this._proObjects)) { try { this.syncUI(); this.render(); } catch (e) { } }
+    },
+    // Потратить кредит на открытую смету
+    unlockProObject: async function () {
+        const calc = this.state.calc_id ? String(this.state.calc_id) : '';
+        if (!calc) { this.alert('Сначала сохраните смету: Профи открывается для сохранённого объекта.'); return; }
+        const sig = this.objectSig();
+        if (!(sig.area > 0)) { this.alert('Сначала укажите площадь дома: по ней фиксируется объект, и Профи работает только для него.'); return; }
+        try {
+            const { error } = await supabaseClient.rpc('unlock_pro_object', { p_calc_id: calc, p_sig: sig });
+            if (error) throw error;
+            this._proObjects = undefined;
+            this._proObjectsBusy = false;
+            await this.loadProObjects();
+            this.closeModal();
+            this.alert('✅ Профи открыт для этого объекта на ' + this.objectDays() + ' дней.');
+        } catch (e) {
+            this.alert('Не удалось открыть Профи: ' + ((e && e.message) || e));
+        }
+    },
+    objectDays: function () {
+        // Тариф «Один расчёт» может называться как угодно: ищем включённый тариф с days > 0
+        try { if (typeof Subscription !== 'undefined') { const p = Subscription.planList(false).find(x => Math.round(Subscription.num(x.days)) > 0); if (p) return Math.round(Subscription.num(p.days)); } } catch (e) { }
+        return 30;
+    },
+    // Блок в окне тарифа: «Открыть Профи для этого объекта», если есть оплаченный расчёт,
+    // либо пояснение, почему Профи в этой смете закрыт (объект изменился)
+    renderObjectUnlock: function () {
+        const box = document.getElementById('pro_object_unlock');
+        if (!box) return;
+        const calc = this.state.calc_id ? String(this.state.calc_id) : '';
+        const n = this.objectCredits();
+        const st = this.objectProState();
+        const tol = Math.round(this.OBJECT_AREA_TOL * 100);
+        if (st === 'changed') {
+            box.innerHTML = '<div style="font-weight:700; margin-bottom:6px;">Профи закрыт: это уже другой объект</div>' +
+                '<div style="font-size:12px; color:var(--text-sec);">Оплаченный расчёт относится к дому, который вы открыли. Площадь изменилась больше чем на ' + tol +
+                ' %, либо сменились город или этажность. Для нового объекта нужен новый расчёт.</div>';
+            box.style.display = 'block';
+            return;
+        }
+        if (!n || !calc || st === 'open') { box.style.display = 'none'; box.innerHTML = ''; return; }
+        box.innerHTML = '<div style="font-weight:700; margin-bottom:6px;">У вас оплачено расчётов: ' + n + '</div>' +
+            '<button type="button" class="btn-subscribe" onclick="app.unlockProObject()">Открыть Профи для этого объекта (№ ' + String(calc).replace(/[<>&"]/g, '') + ')</button>' +
+            '<div style="font-size:11px; color:var(--text-sec); margin-top:6px;">Профи работает в этой смете ' + this.objectDays() + ' дней, пока объект остаётся тем же: площадь в пределах ±' + tol +
+            ' %, тот же город. На другой объект нужен новый расчёт.</div>';
+        box.style.display = 'block';
+    },
+
+    isProAccount: function () {
         // Локальная проверка идёт мимо базы: у тестового аккаунта демо-период
         // рано или поздно истекает, и тогда половину интерфейса не посмотреть.
         // На heatcalc.ru эта ветка недостижима — localTariff() там всегда null.
@@ -8307,11 +8426,17 @@ const app = {
             if (text) text.innerHTML = "В Профи входит: ROMMER и аналоги; монтажные работы в смете и КП; вторая смета «Бюджетнее».";
             // Текст и карточки тарифов — из вкладки «Оплата подписки» (цены, акции, региональные цены)
             if (typeof Subscription !== 'undefined') {
+                // Карточки и текст — раздельно: сбой одного не должен оставлять в окне зашитые цены
                 try {
-                    if (text) text.innerHTML = Subscription.benefitsHtml(Subscription.userAccount());
-                    Subscription.syncCards();
-                } catch (e) { console.warn('[подписка] окно тарифа по умолчанию:', e); }
+                    if (text) text.innerHTML = typeof Subscription.benefitsHtml === 'function'
+                        ? Subscription.benefitsHtml(Subscription.userAccount())
+                        : Subscription.benefitsText(Subscription.userAccount());
+                } catch (e) { console.warn('[подписка] текст преимуществ:', e); }
+                try { Subscription.syncCards(); } catch (e) { console.warn('[подписка] карточки тарифов:', e); }
             }
+            // Оплаченный «Один расчёт»: кнопка «Открыть Профи для этого объекта»
+            this.renderObjectUnlock();
+            this.loadProObjects().then(() => this.renderObjectUnlock());
             // Подпись «Вы хотели…» — по выключателю в «Оплата подписки» → «Подсказки оплаты»
             try {
                 if (ctx && ctx.why && text && (typeof Subscription === 'undefined' || Subscription.nudgeSettings().lock)) {
@@ -8327,10 +8452,12 @@ const app = {
                 okBtn.style.display = 'none';
             }
 
+            // Кнопка пробного периода — над карточками, в момент, когда человек упёрся в замок
             let trialBtn = document.getElementById('custom_modal_btn_trial');
-            // Пробный период на 2 дня временно скрыт (решение — скрыть саму возможность,
-            // не убирая activateTrial14 — чтобы легко вернуть обратно)
-            if (trialBtn) trialBtn.style.display = 'none';
+            if (trialBtn) {
+                trialBtn.innerText = 'Попробовать бесплатно ' + this.trialDays() + ' дней';
+                trialBtn.style.display = this.trialButtonAllowed() ? 'block' : 'none';
+            }
 
             // Промокод показываем только тем, кто ещё не привязан к дистрибьютору — вводить
             // им уже нечего. Раньше для уже привязанных вместо поля показывалась строка
@@ -8442,6 +8569,20 @@ const app = {
     // время (на этом устройстве); тем, у кого пробный или платный Профи уже был
     // (demo_ends_at), и служебным ролям не предлагаем. Включение — только по
     // нажатию, автоматически тариф не меняется.
+    // Можно ли показать кнопку «Попробовать бесплатно» в окне тарифа: те же условия,
+    // что у предложения после сохранения сметы, но без лимита показов (человек сам
+    // открыл окно, навязчивости нет). activateTrial14 всё равно перепроверяет demo_ends_at в базе.
+    trialButtonAllowed: function () {
+        try {
+            if (typeof Subscription !== 'undefined' && !Subscription.trialOfferAllowed()) return false;
+            const tg = this.state.tgUser || {};
+            if (!tg.authUserId && !tg.email && !tg.id) return false;
+            if (this.isPro() || this.state.demoUsed || tg.demo_ends_at) return false;
+            const acc = tg.account_type || this.state.accountType || 'base';
+            return acc === 'free' || acc === 'base';
+        } catch (e) { return false; }
+    },
+
     maybeOfferTrial: async function () {
         try {
             if (this._trialOfferBusy) return;
@@ -95263,7 +95404,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
 
     // Единый источник данных о тарифах Профи — используется и модалкой оплаты, и командой ИИ-агента.
     proPaymentLinks: {
-        month: { url: "https://www.tbank.ru/cf/59ivYDZRKQK", tariffName: "Профи 1 месяц", rub: 5000 },
+        // Запасные значения без модуля подписки; ссылки на 900 и 3 900 ₽ вносятся во вкладке «Оплата подписки»
+        object: { url: "", tariffName: "Профи: один расчёт", rub: 900 },
+        month: { url: "", tariffName: "Профи 1 месяц", rub: 3900 },
         year: { url: "https://tbank.ru/cf/7tE93xi7saP", tariffName: "Профи 1 год", rub: 48000 }
     },
 

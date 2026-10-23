@@ -2920,27 +2920,31 @@
                 
                 <p id="custom_modal_text">Преимущества подписки: подбор всех разделов (котельная, радиаторы, теплый пол, водоснабжение, канализация) монтажные работы, артикулы, подбор аналогов, формирование кп в pdf, excel.</p>
                 
+                <div id="pro_object_unlock" style="display:none; text-align:center; margin:10px auto; max-width:360px; padding:12px; border:1px solid var(--border); border-radius:12px; background:var(--surface-light);"></div>
+
+                <div id="pro_object_unlock" style="display:none; text-align:center; margin:10px auto; max-width:360px; padding:12px; border:1px solid var(--border); border-radius:12px; background:var(--surface-light);"></div>
+
+                <button id="custom_modal_btn_trial" class="btn-trial-14" style="display:none;" onclick="app.activateTrial14()">Попробовать бесплатно 14 дней</button>
+
                 <div class="currency-toggle" id="pricing_currency_toggle">
                     <button type="button" class="currency-toggle-btn active" data-currency="RUB" onclick="app.setPricingCurrency('RUB')">₽ RUB</button>
                     <button type="button" class="currency-toggle-btn" data-currency="KZT" onclick="app.setPricingCurrency('KZT')">₸ KZT</button>
                 </div>
 
                 <div class="tariff-cards">
-                    <!-- Monthly -->
+                    <!-- Запасная разметка до syncCards (subscription.js перерисовывает карточки по настройкам) -->
                     <div class="tariff-card">
-                        <h3>ПОДПИСКА НА МЕСЯЦ</h3>
-                        <div class="price"><span class="curr-amount" data-rub="5000">5 000</span> <span class="curr-symbol">₽</span></div>
-                        <div class="price-sub">в месяц</div>
-                        <button type="button" class="btn-subscribe" onclick="app.openPaymentModal('month')">Оформить подписку</button>
+                        <h3>ОДИН РАСЧЁТ</h3>
+                        <div class="price"><span class="curr-amount" data-rub="900">900</span> <span class="curr-symbol">₽</span></div>
+                        <div class="price-sub">Профи для одного объекта, 30 дней на правки</div>
+                        <button type="button" class="btn-subscribe" onclick="app.openPaymentModal('object')">Оформить подписку</button>
                     </div>
 
-                    <!-- Yearly -->
                     <div class="tariff-card">
-                        <div class="badge">-20%</div>
-                        <h3>ПОДПИСКА НА ГОД</h3>
-                        <div class="price"><span class="curr-amount" data-rub="4000">4 000</span> <span class="curr-symbol">₽</span></div>
-                        <div class="price-sub">в месяц (<span class="curr-amount" data-rub="48000">48 000</span> <span class="curr-symbol">₽</span> в год)</div>
-                        <button type="button" class="btn-subscribe" onclick="app.openPaymentModal('year')">Оформить подписку</button>
+                        <h3>ПОДПИСКА НА МЕСЯЦ</h3>
+                        <div class="price"><span class="curr-amount" data-rub="3900">3 900</span> <span class="curr-symbol">₽</span></div>
+                        <div class="price-sub">в месяц, любое число объектов</div>
+                        <button type="button" class="btn-subscribe" onclick="app.openPaymentModal('month')">Оформить подписку</button>
                     </div>
                 </div>
                 <div id="pricing_currency_note" style="display:none; text-align:center; font-size:11px; color:var(--text-sec); margin-top:-8px; margin-bottom:10px;">Цены в тенге указаны справочно по текущему курсу ЦБ РФ. Оплата списывается в рублях.</div>
@@ -2958,9 +2962,6 @@
                     </div>
                     <div id="promo_code_result" style="margin-top: 6px; font-size: 11px; display: none;"></div>
                 </div>
-
-                <button id="custom_modal_btn_trial" class="btn-trial-14" style="display:none;" onclick="app.activateTrial14()">Попробовать бесплатно 14 дней</button>
-
 
                 <button class="custom-modal-btn" id="custom_modal_btn_ok" style="display: none;" onclick="app.closeModal()">Понятно</button>
             </div>
