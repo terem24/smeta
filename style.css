@@ -6710,29 +6710,80 @@ body.dark-mode .header-totals-block {
     color: var(--text-main);
 }
 
+/* Окно тарифа всегда поверх всего: замок на кнопке в любом окне (замена оборудования,
+   меню, нижняя панель) должен давать видимое окно, а не прятать его под собой. */
+#custom_modal_overlay,
+#custom_modal_overlay.active {
+    z-index: 2147483000 !important;
+}
+
 @media (max-width: 600px) {
+    /* Телефон: всё окно на одном экране без прокрутки — без списка функций,
+       карточки компактные: цена слева, кнопка справа */
     #custom_modal_overlay .custom-modal {
-        padding: 18px 14px !important;
+        padding: 14px 12px 12px !important;
+        max-height: 96dvh;
     }
     .pro-modal-content h2 {
-        font-size: 21px;
+        font-size: 19px;
+        margin: 0 28px 6px;
+    }
+    #custom_modal_text {
+        margin-bottom: 8px;
+        font-size: 12.5px;
+        line-height: 1.3;
+    }
+    #custom_modal_text .pro-lead:not(:only-child),
+    #custom_modal_text .pro-chips {
+        display: none;
     }
     .tariff-cards {
         flex-direction: column;
         align-items: stretch;
-        gap: 12px;
+        gap: 10px;
+        margin-bottom: 4px;
     }
     .tariff-card {
         width: 100%;
         max-width: none;
-        padding: 16px 14px;
+        padding: 10px 12px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        column-gap: 10px;
+        align-items: center;
+        text-align: left;
+    }
+    .tariff-card:hover { transform: none; }
+    .tariff-card > * { grid-column: 1; }
+    .tariff-card h3 {
+        margin: 0 0 2px;
+        text-align: left;
     }
     .tariff-card .price {
-        font-size: 28px;
+        font-size: 24px;
+        margin: 0;
     }
     .tariff-card .price-sub {
-        margin-bottom: 12px;
+        margin: 0;
+        font-size: 11px;
+        text-align: left;
+        line-height: 1.3;
     }
+    .tariff-card .btn-subscribe {
+        grid-column: 2;
+        grid-row: 1 / span 4;
+        margin: 0;
+        width: auto;
+        padding: 10px 14px;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+    .tariff-card > div[style*="text-align:center"] {
+        text-align: left !important;
+        margin: 2px 0 0 !important;
+    }
+    .tariff-card .badge { left: auto; right: 10px; transform: none; }
+    #promo_code_input { min-width: 0; width: 100%; }
 }
 
 
