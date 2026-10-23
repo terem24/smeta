@@ -74675,8 +74675,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         const nm = this._radManifoldsCount || 1;
         if (nm > 1) {
             out.push({ kind: 'outputs', title: 'Выходов коллектора не хватает на одном шкафу',
-                text: 'Приборов столько, что на этаже ' + nm + ' ' + this.plural(nm, 'коллектор', 'коллектора', 'коллекторов') + ' по ' + (this.state.lastRadLoops || '—') + ' выходов; подводка в смете посчитана до одного.',
-                fix: toAuto + 'подводку к остальным коллекторам добавьте по месту.' });
+                text: 'Приборов столько, что на этаже ' + nm + ' ' + this.plural(nm, 'коллектор', 'коллектора', 'коллекторов') + ' по ' + (this.state.lastRadLoops || '—') + ' выходов; магистраль и гидравлика посчитаны до первого, перемычки к остальным в смете есть.',
+                fix: toAuto + 'перемычки к соседним коллекторам в смете уже посчитаны (коллекторы рядом); если они стоят далеко, добавьте длину по месту.' });
         }
         return out;
     },
@@ -89940,7 +89940,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     `<div class="tip-p">Каждому прибору нужен свой выход. ${_radMode === 'chrome'
                         ? `Из регулировочных блоков коллектор собирается не больше чем на ${_chromeMax} выходов — это самый большой шкаф в каталоге.`
                         : `Самый большой готовый коллектор в каталоге — на ${_rowMaxOf(_swapVal || (_radRommer ? 'RMS-' : 'SMS-'))} выходов.`} Поэтому приборы этажа разделены поровну между коллекторами.</div>` +
-                    `<div class="tip-p">Магистраль от котельной в смете и в гидравлике посчитана до одного коллектора — подводку к остальным добавьте по месту.</div>`);
+                    `<div class="tip-p">Магистраль от котельной и гидравлика посчитаны до первого коллектора. К остальным в смету включены перемычки: считаем, что коллекторы стоят рядом, по 2 м трубы на подачу и на обратку и тройник на каждую линию. Если коллекторы далеко друг от друга, добавьте длину по месту.</div>`);
             }
 
             // Ряд диаметров магистралей — общий для двух мест, где труба несёт мощность
@@ -90767,6 +90767,27 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 }
 
                 addToWorks("Монтаж радиатора отопления", totalRadCount, workPrices.rad_point, "точка", "1.3 Монтаж радиаторного отопления");
+                // Несколько коллекторов на одном этаже (приборы не влезли в самый большой
+                // коллектор): магистраль идёт к первому, а к остальным — перемычка. Считаем,
+                // что коллекторы стоят рядом: по 2 м на подачу и на обратку (+10 % на подрезку).
+                // Тройник врезается в магистраль на каждой линии. Тройников под металлопластик
+                // и PP-R равнопроходных в каталоге нет, там врезку подбирают по месту.
+                const _extraMf = manifoldsCount - _floorCounts.length;
+                if (_extraMf > 0 && _radConnPipe && this.state.radConnectionScheme !== 'tee') {
+                    const _jBase = _radConnPipe.base, _jPick = _radConnPipe.pick;
+                    const _jMeters = Math.ceil(_extraMf * 2 * 2 * 1.1);
+                    const _jCoils = Math.ceil(_jMeters / (_jBase.len || 1));
+                    const _jWhere = `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Перемычка от магистрали к соседнему коллектору: приборы этажа не влезли в один коллектор, магистраль приходит к первому, остальные подключаются от неё.<br>`;
+                    addToBill(asCoilPrice({ ..._jBase, originalId: 'rad_jumper_pipe_d' + _jPick, noCheapenAlts: true }), _jCoils,
+                        _jWhere + `<b>Расчёт:</b> ${_extraMf} доп. ${this.plural(_extraMf, 'коллектор', 'коллектора', 'коллекторов')} × 2 м × 2 линии (подача и обратка) × 1,1 = ${_jMeters} м → ${_jCoils} ${_jCoils === 1 ? 'бухта' : 'бухт(ы)'} по ${_jBase.len} м. Считаем, что коллекторы стоят рядом.</span>`, pipeGrp);
+                    const _jTee = (_tkMat === 'grey' || _tkMat === 'stable') ? this.findCatalogItemById('SFA-0013-0000' + _jPick) : null;
+                    if (_jTee) addToBill({ ..._jTee, originalId: _jTee.id + '_rad_jumper' }, _extraMf * 2,
+                        _jWhere + `<b>Расчёт:</b> врезка в подачу и в обратку на каждый доп. коллектор: ${_extraMf} × 2 = ${_extraMf * 2} шт.</span>`, pipeGrp);
+                    const _jSlId = !_tkMp && !_tkPpr && this.RAD_SLEEVE[_jPick];
+                    const _jSl = _jSlId && this.findCatalogItemById(_jSlId);
+                    if (_jSl) addToBill({ ..._jSl, originalId: _jSlId + '_rad_jumper' }, _extraMf * 4,
+                        `Монтажная гильза Ø${_jPick} на концы перемычки: по две на подачу и обратку каждого доп. коллектора = ${_extraMf * 4} шт.`, pipeGrp);
+                }
                 if (totalConvCount > 0) addToWorks("Монтаж внутрипольного конвектора", totalConvCount, 8500, "шт", "1.3 Монтаж радиаторного отопления");
                 if (manifoldsCount > 0) addToWorks("Монтаж коллектора радиаторов", manifoldsCount, workPrices.manifold, "шт", "1.3 Монтаж радиаторного отопления");
             }
