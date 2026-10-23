@@ -7,7 +7,7 @@
 -- в этой смете закрывается («это другой объект»). Сверка идёт в браузере (app.objectMatchesSig).
 -- Кредиты начисляет владелец при подтверждении оплаты (политика admin_all); клиент их только
 -- читает и тратит через функцию, напрямую писать в таблицу не может.
--- НЕ ПРИМЕНЕНО в Supabase: применять после проверки.
+-- Уже выполнено в Supabase 23.10.2026 (проект stout-calc); revoke от anon выполнен отдельной строкой ниже.
 create table if not exists public.pro_objects (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null,
@@ -94,4 +94,5 @@ end;
 $$;
 
 revoke all on function public.unlock_pro_object(text, jsonb) from public;
+revoke execute on function public.unlock_pro_object(text, jsonb) from anon;
 grant execute on function public.unlock_pro_object(text, jsonb) to authenticated;
