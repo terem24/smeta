@@ -1213,15 +1213,15 @@ const Subscription = {
 
     // ═══ Вкладка ═════════════════════════════════════════════════════════
     VIEWS: [
-        { id: 'plans', icon: '💳', label: 'Тарифы и QR' },
-        { id: 'promos', icon: '🔥', label: 'Акции' },
-        { id: 'regions', icon: '🌍', label: 'Регионы' },
-        { id: 'payments', icon: '📒', label: 'Заявки и оплаты' },
-        { id: 'preview', icon: '👁', label: 'Как выглядит' },
-        { id: 'benefits', icon: '⭐', label: 'Преимущества Профи' },
-        { id: 'trial', icon: '🎁', label: 'Пробный период' },
-        { id: 'limit', icon: '🚦', label: 'Лимит КП' },
-        { id: 'nudges', icon: '💬', label: 'Подсказки оплаты' }
+        { id: 'plans', label: 'Тарифы и QR' },
+        { id: 'promos', label: 'Акции' },
+        { id: 'regions', label: 'Регионы' },
+        { id: 'payments', label: 'Заявки и оплаты' },
+        { id: 'preview', label: 'Как выглядит' },
+        { id: 'benefits', label: 'Преимущества Профи' },
+        { id: 'trial', label: 'Пробный период' },
+        { id: 'limit', label: 'Лимит КП' },
+        { id: 'nudges', label: 'Подсказки оплаты' }
     ],
 
     setView: function (v) {
@@ -1267,7 +1267,7 @@ const Subscription = {
         const tabs = this.VIEWS.map(v => {
             const act = v.id === this._view;
             const badge = (v.id === 'payments' && this._pay && this.stats().pending) ? ` <span style="background:#D97706; color:#fff; border-radius:999px; padding:0 6px; font-size:10px;">${this.stats().pending}</span>` : '';
-            return `<button type="button" class="admin-btn" onclick="Subscription.setView('${v.id}')" style="${act ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">${v.icon} ${v.label}${badge}</button>`;
+            return `<button type="button" class="admin-btn" onclick="Subscription.setView('${v.id}')" style="${act ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}">${v.label}${badge}</button>`;
         }).join('');
         let body = '';
         if (this._view === 'plans') body = this.viewPlans(canEdit);
