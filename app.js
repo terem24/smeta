@@ -16372,7 +16372,9 @@ const app = {
                 note: 'Серия — самая дешёвая из подходящих.' },
             { id: 'radConn', label: 'Способ подключения радиаторов', opts: [{ v: 'side', t: 'Боковое' }, { v: 'bottom', t: 'Нижнее' }] },
             { id: 'radScheme', label: 'Схема подключения', opts: [{ v: 'tee', t: 'Тройниковая' }, { v: 'manifold', t: 'Коллекторная' }] },
-            { id: 'radPipe', label: 'Трубы для радиаторов', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'mp', t: 'Металлопластик' }] }
+            { id: 'radPipe', label: 'Трубы для радиаторов', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'mp', t: 'Металлопластик' }] },
+            { id: 'radBeam', label: 'Лучи к приборам в комнате', opts: [{ v: 'single', t: 'Ветка на каждый прибор' }, { v: 'auto', t: 'Автоподбор трассы' }],
+                note: 'Авто — общая трасса на комнату включается сама, если смета выходит дешевле не меньше чем на 3 % и 10 000 ₽. Работает при коллекторной схеме, режиме «По комнатам» и серой трубе PEX-a.' }
         ] },
         { g: 'Тёплый пол', items: [
             { id: 'ufhPipe', label: 'Трубы тёплого пола', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'metal_plastic', t: 'Металлопластик' }] },
@@ -16466,6 +16468,10 @@ const app = {
             else { const t = this.prefCheapestSectional(s.radConnPref); if (t) s.radType = t; }
         }
         if (has('radScheme')) s.radConnectionScheme = p.radScheme;
+        // Лучи к приборам в комнате: «Авто» (пусто) — режим «Авто по экономии»; ручной выбор — как выбран.
+        s.radBeamMode = has('radBeam') ? p.radBeam : 'smart';
+        s.radSharedBeams = s.radBeamMode === 'auto';
+        this._beamSmartOn = false; this._beamCmp = null;
         if (has('radPipe')) {
             const base = String(s.pipeType || 'insulated').replace(/_mp$/, '');
             s.pipeType = p.radPipe === 'mp' ? ((base === 'insulated' || base === 'split') ? base : 'insulated') + '_mp' : base;
