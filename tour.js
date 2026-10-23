@@ -218,6 +218,9 @@ const Tour = {
             },
             title: 'Итог и наценка',
             text: 'Ползунок меняет цену для клиента, рекомендованная остаётся у вас перед глазами.',
+            // Блок «Скидка/Наценка» есть не у всех (тариф) — тогда шаг без задания
+            snap: () => { try { return String(app.state[app.discountFields().val]); } catch (e) { return ''; } },
+            tasks: () => { const d = document.getElementById('discount_block'); return (d && d.offsetParent) ? [{ label: 'Поменяйте скидку или наценку — ползунком или числом справа', done: snap => { try { return String(app.state[app.discountFields().val]) !== snap; } catch (e) { return false; } } }] : null; },
             seller: { title: 'Итог и цена для клиента', text: 'Ползунок даёт скидку или наценку магазина — итог пересчитается сразу.' }
         },
         {
@@ -228,7 +231,9 @@ const Tour = {
                 return document.getElementById('btn_print_trigger');
             },
             title: 'Отдать клиенту',
-            text: 'Ссылка открывает смету у клиента на телефоне. Рядом — PDF, Excel и «Запросить счёт».'
+            text: 'Ссылка открывает смету у клиента на телефоне. Рядом — PDF, Excel и «Запросить счёт».',
+            tasks: [{ label: 'Нажмите «Поделиться» — ссылка на смету создастся и скопируется', done: () => Tour.clicked('#btn_share_trigger') }],
+            point: () => { const b = document.getElementById('btn_share_trigger'); return (b && b.offsetParent) ? b : null; }
         },
 
         // ───────────── Блок 3. Точнее и быстрее ─────────────
@@ -254,7 +259,9 @@ const Tour = {
                 return t && t.closest('.control-item');
             },
             title: 'По комнатам',
-            text: 'Точнее: у каждой комнаты своя площадь, окна и приборы. Для сметы, которая идёт в работу.'
+            text: 'Точнее: у каждой комнаты своя площадь, окна и приборы. Для сметы, которая идёт в работу.',
+            tasks: [{ label: 'Нажмите «По комнатам» — потом можно вернуться на «По площади»', done: () => !!Tour.st().detailedRooms }],
+            point: () => document.getElementById('mode_pro')
         },
 
         // ───────────── Блоки 4–5. Профи: деньги и договор; проект и сканы ─────────────
@@ -279,7 +286,9 @@ const Tour = {
             block: 'sell', key: 'cheaper', mob: 'output',
             sel: '#cheaper_wrapper',
             title: 'Бюджетнее',
-            text: 'Вторая смета на равноценных аналогах — покажите клиенту, сколько можно сэкономить.'
+            text: 'Вторая смета на равноценных аналогах — покажите клиенту, сколько можно сэкономить.',
+            tasks: [{ label: 'Включите переключатель «Бюджетнее»', done: () => Tour.clicked('#cheaper_wrapper') }],
+            point: () => document.getElementById('cheaper_wrapper')
         },
         {
             // Документы — у заказа в разделе «Объекты»; у гостя и на телефоне панели нет
@@ -448,6 +457,11 @@ const Tour = {
                 return r;
             };
         } catch (e) { }
+    },
+
+    // Нажимали ли после входа на шаг элемент, подходящий под селектор
+    clicked: function (sel) {
+        return (this._clicks || []).some(c => c.t >= this._enteredAt && c.el && c.el.closest && c.el.closest(sel));
     },
 
     onSaved: function () {
@@ -947,6 +961,11 @@ const Tour = {
             e.preventDefault();
             this.onEnter();
         });
+        // Для заданий «нажмите кнопку»: помним клики, сделанные после входа на шаг
+        document.addEventListener('click', e => {
+            this._clicks = (this._clicks || []).filter(c => Date.now() - c.t < 600000).slice(-30);
+            this._clicks.push({ t: Date.now(), el: e.target });
+        }, true);
         // Палец-подсказка ездит за элементом при прокрутке и смене размера окна
         const kick = () => {
             if (this._raf) return;
@@ -1276,6 +1295,8 @@ const Tour = {
     tasksOf: function (step) {
         if (!step || !step.tasks) return null;
         if (step.noMobTasks && window.innerWidth < 760) return null;
+        // tasks-функция — когда задание возможно не у всех (кнопки нет по тарифу): null — шаг без задания
+        if (typeof step.tasks === 'function') { try { return step.tasks.call(Tour) || null; } catch (e) { return null; } }
         return step.tasks;
     },
 
@@ -1682,7 +1703,7 @@ const Tour = {
                 '<button type="button" class="tour-act" onclick="' + a.run + '">' + a.label + '</button>').join('') + '</div>' : '') +
             (typeof v.extra === 'function' ? v.extra.call(this) : '') +
             (step.block === 'basic' && this._step > this.STEPS.findIndex(x => x.block === 'basic') ?
-                '<div class="tour-card-foot"><a href="#" class="tour-reset" onclick="Tour.resetDemo();return false;">↺ Накрутил лишнего — начать учебный дом заново</a></div>' : '') +
+                '<div class="tour-card-foot tour-reset-foot"><a href="#" class="tour-reset" onclick="Tour.resetDemo();return false;">↺ Накрутил лишнего — начать учебный дом заново</a></div>' : '') +
             '<div class="tour-note" id="tour_note" role="status"></div>' +
             '<div class="tour-card-btns" id="tour_btns">' + this.btnsHtml(step) + '</div>';
         this.chooseDock(card, el);
@@ -2057,6 +2078,7 @@ body.dark-mode .tour-note { color: #FDE68A; background: rgba(245, 158, 11, 0.16)
 
 .tour-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .tour-btn-skip { font-weight: 600; border-style: dashed; }
+@media screen and (max-width: 759px) { .tour-reset-foot { display: none; } .tour-card .tour-card-text { font-size: 12.5px; } .tour-now { margin-top: 4px; padding-top: 4px; } }
 .tour-resume { width: 100%; margin: 0 0 10px; justify-content: flex-start; text-align: left; }
 .tour-reset { color: var(--text-sec); text-decoration: underline dotted; }
 .tour-locked { margin-top: 8px; font-size: 12px; line-height: 1.4; color: var(--text-sec); }
