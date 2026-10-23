@@ -18351,7 +18351,11 @@ body.theme-yandex #admin_modal_overlay {
 .kpi-n { position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; min-height: 104px; border-radius: 18px; background: var(--kpi-tile); border: 0; min-width: 0; text-align: left; font: inherit; }
 .kpi-n-sp { min-height: 168px; padding-bottom: 62px; }
 .kpi-nv { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
-.kpi-sp { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 56px; color: var(--kpi-spark); pointer-events: none; }
+.kpi-sp-w { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; color: var(--kpi-spark); touch-action: pan-y; cursor: crosshair; }
+.kpi-sp { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.kpi-sp-d { display: none; position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: currentColor; border: 2px solid var(--kpi-tile); box-sizing: content-box; pointer-events: none; }
+.kpi-sp-tip { display: none; position: absolute; bottom: 100%; margin-bottom: 4px; padding: 3px 8px; border-radius: 7px; background: var(--text-main); color: var(--surface); font-size: 12px; font-weight: 600; white-space: nowrap; pointer-events: none; }
+.kpi-sp-w.on .kpi-sp-d, .kpi-sp-w.on .kpi-sp-tip { display: block; }
 .kpi-sp-a { fill: currentColor; opacity: .13; stroke: none; }
 .kpi-sp-l { fill: none; stroke: currentColor; stroke-width: 1.8; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; }
 .kpi-sp-z .kpi-sp-a { display: none; }

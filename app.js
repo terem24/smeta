@@ -29246,15 +29246,37 @@ const app = {
     },
 
     // Линия-«спарклайн» под числом плашки: растягивается на всю ширину, без осей и подписей
-    kpiSparkHtml: function (vals) {
+    kpiSparkHtml: function (vals, tips, unit) {
         const n = vals.length;
         if (n < 2) return '';
         let max = 0; vals.forEach(v => { if (v > max) max = v; });
         const y = v => max ? 29 - (v / max) * 25 : 29;
         const pts = vals.map((v, i) => (i / (n - 1) * 100).toFixed(2) + ' ' + y(v).toFixed(2));
         const line = 'M' + pts.join(' L');
-        return `<svg class="kpi-sp${max ? '' : ' kpi-sp-z'}" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
-            <path class="kpi-sp-a" d="${line} L100 32 L0 32 Z"></path><path class="kpi-sp-l" d="${line}"></path></svg>`;
+        const at = (tips || []).map(t => String(t).replace(/[|"<>&]/g, ' ')).join('|');
+        return `<div class="kpi-sp-w" data-v="${vals.map(v => Math.round(v * 100) / 100).join(',')}" data-t="${at}" data-u="${unit || ''}">
+            <svg class="kpi-sp${max ? '' : ' kpi-sp-z'}" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
+            <path class="kpi-sp-a" d="${line} L100 32 L0 32 Z"></path><path class="kpi-sp-l" d="${line}"></path></svg>
+            <i class="kpi-sp-d"></i><span class="kpi-sp-tip"></span></div>`;
+    },
+
+    // Наведение на линию плашки: точка на ближайшем столбце периода и подпись «день · значение»
+    kpiSparkHover: function (e, leave) {
+        const w = e.target && e.target.closest ? e.target.closest('.kpi-sp-w') : null;
+        if (!w) { document.querySelectorAll('.kpi-sp-w.on').forEach(x => x.classList.remove('on')); return; }
+        if (leave) { w.classList.remove('on'); return; }
+        const vals = w.dataset.v.split(',').map(Number), tips = (w.dataset.t || '').split('|');
+        const r = w.getBoundingClientRect(), n = vals.length;
+        if (!n || !r.width) return;
+        const i = Math.max(0, Math.min(n - 1, Math.round((e.clientX - r.left) / r.width * (n - 1))));
+        let max = 0; vals.forEach(v => { if (v > max) max = v; });
+        const px = i / (n - 1) * 100, py = (max ? 29 - (vals[i] / max) * 25 : 29) / 32 * 100;
+        const d = w.querySelector('.kpi-sp-d'), tip = w.querySelector('.kpi-sp-tip');
+        d.style.left = px + '%'; d.style.top = py + '%';
+        tip.textContent = (tips[i] ? tips[i] + ' · ' : '') + Math.round(vals[i]).toLocaleString('ru-RU') + (w.dataset.u || '');
+        w.classList.add('on');
+        const tw = tip.offsetWidth, x = px / 100 * r.width;
+        tip.style.left = Math.max(0, Math.min(r.width - tw, x - tw / 2)) + 'px';
     },
 
     kpiNumsHtml: function (w, esc, edit) {
@@ -29264,7 +29286,7 @@ const app = {
             return `<div class="kpi-n${m.sp ? ' kpi-n-sp' : ''}${m.tone ? ' kpi-n-' + m.tone : ''}${edit ? ' kpi-n-edit' : ''}">${x}
                 <span class="kpi-nl">${esc(m.l)}${info}</span>
                 <div class="kpi-nv"><b${String(m.v).length > 9 ? ' class="kpi-long"' : ''}>${esc(m.v)}</b>${m.d ? `<span class="kpi-nd">${m.d}</span>` : ''}</div>
-                ${m.s ? `<span class="kpi-ns">${esc(m.s)}</span>` : ''}${m.sp ? this.kpiSparkHtml(m.sp) : ''}</div>`;
+                ${m.s ? `<span class="kpi-ns">${esc(m.s)}</span>` : ''}${m.sp ? this.kpiSparkHtml(m.sp, w.chart && w.chart.tips, /₽\s*$/.test(String(m.v)) ? ' ₽' : '') : ''}</div>`;
         };
         const shown = w.nums.filter(m => !this.kpiIsHidden(w.id, m));
         const hidden = w.nums.filter(m => this.kpiIsHidden(w.id, m));
@@ -60549,6 +60571,8 @@ const app = {
         // Меню кабинета (панель слева и колонка в окне) строим до всего, что их читает
         this.buildCabinetMenus();
         this.installNoteFold();
+        ['pointermove','pointerdown'].forEach(ev => document.addEventListener(ev, e => app.kpiSparkHover(e)));
+        document.addEventListener('pointerout', e => { if (e.target.closest && e.target.closest('.kpi-sp-w') && !(e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest('.kpi-sp-w'))) app.kpiSparkHover(e, true); });
         this.installPanelGroups();
         // Global premium modal overrides
         window.alert = (msg) => app.alert(msg);
