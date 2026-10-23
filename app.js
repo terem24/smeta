@@ -95472,24 +95472,14 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         return value.toLocaleString('ru-RU') + ' ₸';
     },
 
-    // Единый источник данных о тарифах Профи — используется и модалкой оплаты, и командой ИИ-агента.
-    proPaymentLinks: {
-        // Запасные значения без модуля подписки; ссылки на 900 и 3 900 ₽ вносятся во вкладке «Оплата подписки»
-        object: { url: "", tariffName: "Профи: один расчёт", rub: 990 },
-        month: { url: "", tariffName: "Профи 1 месяц", rub: 3950 },
-        year: { url: "https://t.tb.ru/pm_short/3wV0dltaezz", tariffName: "Профи 1 год", rub: 29000 }
-    },
-
-    // Цена и ссылка тарифа для этого человека: настройки вкладки «Оплата подписки»
-    // (subscription.js — региональная цена, акции), а без модуля — зашитые выше.
-    // Возвращает { url, tariffName, rub, months, promo, id }.
+    // Цена и ссылка тарифа для этого человека. Единственный источник — вкладка «Оплата подписки»
+    // (app_settings.subscription: тарифы, региональные цены, акции), считает Subscription.resolve.
+    // Своих цен здесь нет: раньше они дублировались в коде и расходились с настройками.
+    // Возвращает { url, tariffName, rub, months, promo, id } или null, если такого тарифа нет.
     proPlan: function (type) {
-        if (typeof Subscription !== 'undefined') {
-            const r = Subscription.resolve(type);
-            if (r) return { id: r.id, url: r.url, tariffName: r.tariffName, rub: r.rub, months: r.months, promo: r.promo ? (r.promo.title || 'акция') : null };
-        }
-        const p = this.proPaymentLinks[type];
-        return p ? { id: type, url: p.url, tariffName: p.tariffName, rub: p.rub, months: type === 'year' ? 12 : 1, promo: null } : null;
+        if (typeof Subscription === 'undefined') return null;
+        const r = Subscription.resolve(type);
+        return r ? { id: r.id, url: r.url, tariffName: r.tariffName, rub: r.rub, months: r.months, promo: r.promo ? (r.promo.title || 'акция') : null } : null;
     },
 
     openPaymentModal(type) {
