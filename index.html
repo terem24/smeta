@@ -233,7 +233,7 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.6" defer></script>
-    <script src="app.js?v=14.07" defer></script>
+    <script src="app.js?v=14.08" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -280,7 +280,7 @@
             warranty_admin: ['warranty_admin.js?v=1.1'],
             pay_readiness: ['pay_readiness.js?v=1.5'],
             excel: ['excel_export.js?v=1.5'],
-            reprice: ['reprice.js?v=1.5'],
+            reprice: ['reprice.js?v=1.6'],
             qrcode: ['qrcode.min.js'],
             html2pdf: ['https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'],
             sheetjs: ['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js']
@@ -2751,75 +2751,11 @@
 
                 <!-- Menu List -->
                 <div class="profile-menu-list" style="background: var(--surface-light); border-radius: 16px; border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
-                    <!-- Admin Panel Item -->
-                    <div id="profile_admin_item" class="profile-menu-item" onclick="app.showAdminModal()" style="display: none; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.2s;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22" style="flex-shrink: 0;">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                            <line x1="9" y1="3" x2="9" y2="21"></line>
-                            <line x1="9" y1="9" x2="21" y2="9"></line>
-                            <line x1="9" y1="15" x2="21" y2="15"></line>
-                        </svg>
-                        <span style="flex-grow: 1; font-weight: 700; font-size: 14.5px; color: var(--c-ok, #10B981); text-align: left;">Панель управления (Админка)</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" style="opacity: 0.5;">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                    </div>
-
-                    <!-- Profile Edit Item -->
-                    <div class="profile-menu-item" onclick="app.showProfileModal()" style="display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.2s;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22" style="color: var(--text-sec); flex-shrink: 0;">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
-                        <span style="flex-grow: 1; font-weight: 600; font-size: 14.5px; color: var(--text-main); text-align: left;">Профиль (редактировать данные)</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" style="color: var(--text-sec); opacity: 0.5;">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                    </div>
-
-                    <!-- My Estimates Item -->
-                    <div class="profile-menu-item" onclick="app.showProfileModal(false, 'objects')" style="display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.2s;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22" style="color: var(--text-sec); flex-shrink: 0;">
-                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                        </svg>
-                        <span style="flex-grow: 1; font-weight: 600; font-size: 14.5px; color: var(--text-main); text-align: left;">Мои объекты (сохраненные сметы)</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" style="color: var(--text-sec); opacity: 0.5;">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                    </div>
-
-                    <!-- Supplier / Distributor Item -->
-                    <div id="profile_supplier_item" class="profile-menu-item" onclick="app.showProfileModal(false, 'manager')" style="display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.2s;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22" style="color: var(--text-sec); flex-shrink: 0;">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                        </svg>
-                        <span style="flex-grow: 1; font-weight: 600; font-size: 14.5px; color: var(--text-main); text-align: left;">Ваш менеджер</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" style="color: var(--text-sec); opacity: 0.5;">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                    </div>
-
-                    <!-- Messages Item. Раньше здесь был прямой пункт «История заказов /
-                         запросов счёта» — она никуда не делась, до неё по-прежнему можно
-                         дойти через «Профиль (редактировать данные)» → вкладка «Заказы».
-                         Заменили на «Мои сообщения»: колокольчик наверху экрана на мобильном
-                         скрыт целиком (виден только внутри открытого гамбургер-меню), и без
-                         прямого пункта в меню монтажник не находил переписку с менеджером —
-                         только всплывающую карточку, которая сама пропадает через несколько
-                         секунд. Бейдж берёт то же число, что и колокольчик в шапке (см.
-                         fetchNotifications). -->
-                    <div class="profile-menu-item" onclick="app.openMessagesCenter()" style="display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.2s;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22" style="color: var(--text-sec); flex-shrink: 0;">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                            <polyline points="22,6 12,13 2,6"></polyline>
-                        </svg>
-                        <span style="flex-grow: 1; font-weight: 600; font-size: 14.5px; color: var(--text-main); text-align: left;">Мои сообщения</span>
-                        <span id="profile_menu_messages_badge" style="display: none; background: #EF4444; color: white; border-radius: 10px; font-size: 11px; font-weight: 800; min-width: 20px; height: 20px; padding: 0 6px; align-items: center; justify-content: center; line-height: 1;">0</span>
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" style="color: var(--text-sec); opacity: 0.5;">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                    </div>
+                    <!-- Пункты строит app.buildCabinetMenus() из той же таблицы CABINET_MENU, что и
+                         левая панель и меню кабинета на компьютере: состав и порядок на телефоне
+                         и в вебе совпадают (раньше тут была ручная копия из пяти пунктов, и
+                         «Прайс», «Настройки», «Монтажники» с телефона были недоступны) -->
+                    <div id="profile_menu_items" style="display: contents;"></div>
 
                     <!-- «Условия доставки и оплаты» переехали внутрь раздела «Мой менеджер»
                          личного кабинета (app.showSupplierSection) — отдельным пунктом дублировались -->
