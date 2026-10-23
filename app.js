@@ -16407,7 +16407,8 @@ const app = {
     // в НОВУЮ смету из reset(). Открытые и сохранённые сметы не трогаем — иначе цены в уже
     // отправленных КП поменялись бы сами. Пустое значение = «Авто»: калькулятор решает сам.
     // Ручной выбор в самой смете (замены, swaps) главнее предпочтений.
-    // pro: 'rommer' — нужен столбец ROMMER в «Тарифах» (исходно Профи), 'terem' — столбец ТЕРЕМ.
+    // pro: 'rommer' — нужен столбец ROMMER в «Тарифах» (исходно Профи), 'terem' — столбец ТЕРЕМ,
+    // 'pro' — вариант только на тарифе ПРОФИ.
     PREF_DEFS: [
         { g: 'Бренд', items: [
             { id: 'brand', label: 'Бренд оборудования', opts: [{ v: 'stout', t: 'STOUT' }, { v: 'rommer', t: 'ROMMER', pro: 'rommer' }] }
@@ -16425,14 +16426,14 @@ const app = {
             { id: 'radKind', label: 'Радиаторы', opts: [{ v: 'section', t: 'Секционные' }, { v: 'steel', t: 'Стальные' }],
                 note: 'Серия — самая дешёвая из подходящих.' },
             { id: 'radConn', label: 'Способ подключения радиаторов', opts: [{ v: 'side', t: 'Боковое' }, { v: 'bottom', t: 'Нижнее' }] },
-            { id: 'radScheme', label: 'Схема подключения', opts: [{ v: 'tee', t: 'Тройниковая' }, { v: 'manifold', t: 'Коллекторная' }] },
+            { id: 'radScheme', label: 'Схема подключения', opts: [{ v: 'tee', t: 'Тройниковая', pro: 'pro' }, { v: 'manifold', t: 'Коллекторная' }] },
             { id: 'radPipe', label: 'Трубы для радиаторов', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'mp', t: 'Металлопластик' }] },
             { id: 'radBeam', label: 'Лучи к приборам в комнате', opts: [{ v: 'single', t: 'Ветка на каждый прибор' }, { v: 'auto', t: 'Автоподбор трассы' }],
                 note: 'Авто — общая трасса на комнату включается сама, если смета выходит дешевле не меньше чем на 3 % и 10 000 ₽. Работает при коллекторной схеме, режиме «По комнатам» и серой трубе PEX-a.' }
         ] },
         { g: 'Тёплый пол', items: [
             { id: 'ufhPipe', label: 'Трубы тёплого пола', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'metal_plastic', t: 'Металлопластик' }] },
-            { id: 'ufhFix', label: 'Крепление труб тёплого пола', opts: [{ v: 'xps', t: 'Скобы (XPS)' }, { v: 'mat', t: 'Маты' }] }
+            { id: 'ufhFix', label: 'Крепление труб тёплого пола', opts: [{ v: 'xps', t: 'Скобы (XPS)', pro: 'pro' }, { v: 'mat', t: 'Маты' }] }
         ] },
         { g: 'Водоснабжение и канализация', items: [
             { id: 'wellPump', label: 'Управление скважинным насосом', opts: [{ v: 'relay', t: 'Релейное' }, { v: 'inverter', t: 'Частотное' }],
@@ -16441,7 +16442,7 @@ const app = {
             { id: 'sewer', label: 'Канализация', opts: [{ v: 'economy', t: 'Обычная' }, { v: 'std', t: 'Бесшумная' }] }
         ] },
         { g: 'Автоматика', items: [
-            { id: 'automation', label: 'Автоматика', opts: [{ v: 'wired', t: 'Проводная' }, { v: 'radio', t: 'Беспроводная' }] }
+            { id: 'automation', label: 'Автоматика', opts: [{ v: 'wired', t: 'Проводная' }, { v: 'radio', t: 'Беспроводная', pro: 'pro' }] }
         ] }
     ],
 
@@ -16456,7 +16457,7 @@ const app = {
         const def = this.PREF_DEFS.reduce((a, g) => a.concat(g.items), []).find(x => x.id === key);
         const opt = def && def.opts.find(o => o.v === v);
         if (!opt || !opt.pro) return null;
-        const ok = opt.pro === 'rommer' ? this.canUseBrand('ROMMER') : this.tariffAccess('terem') === 'on';
+        const ok = opt.pro === 'pro' ? this.isPro() : (opt.pro === 'rommer' ? this.canUseBrand('ROMMER') : this.tariffAccess('terem') === 'on');
         if (ok) return null;
         return this.isPro() ? 'Недоступно для вашей учётной записи' : 'Только на тарифе ПРОФИ';
     },
