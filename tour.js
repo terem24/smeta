@@ -1698,13 +1698,18 @@ const Tour = {
     placeNear: function (card, w, h, left, top, busy) {
         try {
             const step = this.STEPS[this._step];
-            if (!this.active() || this._view !== 'step' || !step || !this.tasksOf(step) || !this.tasksPending(step)) return;
+            const keep = () => {
+                const pl = (this._prevPos || [])[0], pt = (this._prevPos || [])[1];
+                if (this._wasNear && isFinite(pl) && isFinite(pt)) { card.style.left = pl + 'px'; card.style.top = pt + 'px'; }
+            };
+            if (!this.active() || this._view !== 'step' || !step || !this.tasksOf(step) || !this.tasksPending(step)) { keep(); return; }
             const t = this.pointEl(step);
-            if (!t) return;
+            if (!t) { keep(); return; }
             const b = t.getBoundingClientRect();
             if (b.bottom < 0 || b.top > window.innerHeight) return;
             const far = Math.hypot((b.left + b.width / 2) - (left + w / 2), (b.top + b.height / 2) - (top + h / 2));
-            if (far < 420) return;
+            if (far < 420) { this._wasNear = false; return; }
+            this._wasNear = true;
             // Зазор 64 px: в нём живёт стрелка с хвостом, иначе она уходит под карточку.
             // Порядок: сбоку справа (там чаще пустая смета, а не параметры, которые человек
             // трогает), под элементом, над ним, слева. Карточка не должна закрывать ни сам
@@ -1712,7 +1717,7 @@ const Tour = {
             const gap = 64, floor = window.innerHeight - busy - 8;
             const roomR = window.innerWidth - b.right - gap - 8, roomL = b.left - gap - 8;
             let L = b.left + b.width / 2 - w / 2, T = b.bottom + gap;
-            if (roomR >= w) { L = b.right + gap; T = b.top + b.height / 2 - h / 2; }
+            if (roomR >= w) { L = b.right + gap; if (b.right < 420) L = Math.max(L, 474); else if (b.left > 430 && b.width < 80 && roomR >= w + 300) L = b.right + 360; T = b.top + b.height / 2 - h / 2; }
             else if (T + h > floor) {
                 if (b.top - gap - h > 8) T = b.top - gap - h;
                 else if (roomL >= w) { L = b.left - gap - w; T = b.top + b.height / 2 - h / 2; }
@@ -1722,9 +1727,11 @@ const Tour = {
             // Липкость: если карточка уже стоит рядом (в пределах 260 px от нужного места) и
             // не закрывает цель вместе с зазором под стрелку — остаётся где есть, не дёргается.
             const cl = (this._prevPos || [])[0], ct = (this._prevPos || [])[1];
-            if (this._nearT === t && isFinite(cl) && isFinite(ct) && Math.hypot(cl - L, ct - T) < 260 &&
-                (cl + w < b.left - 40 || cl > b.right + 40 || ct + h < b.top - 40 || ct > b.bottom + 40)) return;
-            this._nearT = t;
+            if (isFinite(cl) && isFinite(ct) && Math.hypot(cl - L, ct - T) < 200 &&
+                (cl + w < b.left - 40 || cl > b.right + 40 || ct + h < b.top - 40 || ct > b.bottom + 40)) {
+                card.style.left = cl + 'px'; card.style.top = ct + 'px';
+                return;
+            }
             card.style.left = Math.round(L) + 'px';
             card.style.top = Math.round(T) + 'px';
         } catch (e) { }
