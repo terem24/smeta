@@ -93,7 +93,7 @@ const Tour = {
             block: 'basic', key: 'area', mob: 'inputs',
             sel: '#blk_main_area',
             title: 'Площадь дома',
-            text: 'Главное число расчёта: от него зависят котёл, радиаторы и трубы.',
+            text: 'Главное число расчёта: от него зависят котёл, радиаторы и трубы. Смета справа пересчитывается сразу после каждого действия.',
             tasks: [{ label: 'Поставьте 150 м²: нажмите на число справа и впишите с клавиатуры (или потяните ползунок)', done: () => Math.round(Tour.st().area) === 150 }],
             point: '#val_area'
         },
@@ -115,7 +115,7 @@ const Tour = {
             block: 'basic', key: 'sys', mob: 'inputs',
             sel: () => document.getElementById('sys_rad') && document.getElementById('sys_rad').closest('.control-item'),
             title: 'Чем греем',
-            text: 'В учебном доме будут и радиаторы, и тёплый пол.',
+            text: 'В учебном доме будут и радиаторы, и тёплый пол. Кнопка без площади в смету ничего не добавит.',
             tasks: [
                 { label: 'Включите «Радиаторы»', done: () => (Tour.st().systems || []).indexOf('rad') > -1 },
                 { label: 'Включите «Тёплый пол»', done: () => (Tour.st().systems || []).indexOf('tp') > -1 },
@@ -1256,7 +1256,7 @@ const Tour = {
         const fl = this.taskFlags(step);
         return (this.tasksOf(step) || []).map((t, i) =>
             '<div class="tour-task' + (fl[i] ? ' is-done' : '') + '"><span class="tour-task-mark">' + (fl[i] ? '✓' : '') +
-            '</span><span class="tour-task-t">' + t.label + '</span></div>').join('');
+            '</span><span class="tour-task-t">' + t.label + (this._pre && this._pre[i] && fl[i] ? ' <i class="tour-task-pre">уже стоит</i>' : '') + '</span></div>').join('');
     },
 
     // Кнопки внизу карточки. Пока задание не сделано — тихое «Пропустить»; сделано —
@@ -1580,6 +1580,9 @@ const Tour = {
             this._lastShown = this._step;
             this._enteredAt = Date.now();
             try { this._snap = step.snap ? step.snap() : null; } catch (e) { this._snap = null; }
+            // Что уже выполнено к моменту входа (4 жильца и 60 м по умолчанию): такие задания
+            // помечаем «уже стоит», иначе галочка загорается без действия и сбивает с толку.
+            this._pre = this.taskFlags(step);
         }
 
         this.clearSpot();
@@ -1962,6 +1965,7 @@ body.dark-mode .tour-card { background: #1E1E1E; border-color: #333333; }
 .tour-tasks.is-done::after { content: '✓ Готово — переходим дальше'; display: block; margin-top: 8px; font-size: 12px; font-weight: 700; color: #059669; }
 .tour-task { display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; line-height: 1.4; color: var(--text-main); font-weight: 600; }
 .tour-task + .tour-task { margin-top: 6px; }
+.tour-task-pre { font-style: normal; font-weight: 600; font-size: 11.5px; color: var(--text-sec); white-space: nowrap; }
 .tour-task-mark {
     flex: 0 0 18px; width: 18px; height: 18px; margin-top: 1px; box-sizing: border-box; border-radius: 50%;
     border: 2px solid var(--primary); display: inline-flex; align-items: center; justify-content: center;
