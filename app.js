@@ -43562,7 +43562,9 @@ const app = {
             // onlyD16 (расчёт и смета): общий луч Ø16 и Ø20 — евроконус на коллектор есть в каталоге (SFC-0020-001622 и
             // SFC-0020-002028). Группам, которым нужен Ø25, евроконуса нет — они остаются отдельными лучами.
             // Подсказка (без флага) видит все.
-            if (onlyD16 && d > 20) return;
+            // Металлопластик: Ø20 с тройниками 20×20×16 и общим участком Ø20 в этом расчёте пока не собираем —
+            // у такой комнаты остаются отдельные лучи Ø16.
+            if (onlyD16 && (d > 20 || (d > 16 && this.state.pipeType === 'split_mp'))) return;
             out[k] = { room: g.room, items: items, n: n, totalW: totalW, run: run, flowTot: flowTot, L: L, Ls: Ls, d: d };
         });
         return out;
@@ -92057,7 +92059,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         const _teeQ = {};
                         Object.keys(_sh).forEach(k => {
                             const g = _sh[k];
-                            if (g.d === 16) _teeQ['SFA-0013-000016'] = (_teeQ['SFA-0013-000016'] || 0) + (g.n - 1) * 2;
+                            if (g.d === 16) { const _t16 = _isMpPipe ? 'SFP-0006-161616' : 'SFA-0013-000016'; _teeQ[_t16] = (_teeQ[_t16] || 0) + (g.n - 1) * 2; }
                             else {
                                 if (g.n > 2) _teeQ['SFA-0014-202016'] = (_teeQ['SFA-0014-202016'] || 0) + (g.n - 2) * 2;
                                 _teeQ['SFA-0014-201616'] = (_teeQ['SFA-0014-201616'] || 0) + 2;
