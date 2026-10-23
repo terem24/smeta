@@ -443,6 +443,59 @@ const KpOutcome = {
         }
     },
 
+    // ── Конверсия КП в сделку (дашборд владельца) ─────────────────────────
+    /**
+     * Чем кончились КП, отправленные клиентам за последние opts.days (90) дней.
+     *
+     * Четыре корзины: согласились (won), отказ (lost), без ответа (срок вышел, итога
+     * нет) и «в срок» (срок ещё идёт — их в конверсию не берём, иначе свежие КП
+     * занижали бы её). Конверсия = согласились / (согласились + отказ + без ответа).
+     * «Согласились» включает КП, по которым запросили/выставили счёт или пришла оплата:
+     * они закрываются сами.
+     *
+     * Считаются только КП, ушедшие с START: до запуска итоги не отмечали, и «без
+     * ответа» у старых КП было бы не ответом клиента, а отсутствием кнопки.
+     *
+     * rows — события invoice_events (достаточно calc_id, event, created_at, user_email,
+     * project_name). opts.userOf(email) → { dist, tariff, region } или null;
+     * opts.keep(k, u) — фильтр (регион). Срок — по умолчанию из настроек, личный срок
+     * монтажника с дашборда не виден.
+     */
+    stats: function (rows, opts) {
+        opts = opts || {};
+        const now = opts.now || Date.now();
+        const since = Math.max(now - (opts.days || 90) * this.DAY, new Date(this.START + 'T00:00:00').getTime());
+        const mk = () => ({ n: 0, won: 0, lost: 0, silent: 0, wait: 0 });
+        const add = (b, k) => {
+            b.n++;
+            if (k.outcome === 'won') b.won++;
+            else if (k.outcome === 'lost') b.lost++;
+            else if (k.overdue) b.silent++;
+            else b.wait++;
+        };
+        const out = { total: mk(), byDist: {}, byTariff: {}, since: since };
+        this.build(rows, now).forEach(k => {
+            if (k.firstSentAt < since) return;
+            const u = (opts.userOf && opts.userOf(k.userEmail)) || null;
+            if (opts.keep && !opts.keep(k, u)) return;
+            add(out.total, k);
+            const d = (u && u.dist) || '';
+            const t = (u && u.tariff) || 'unknown';
+            add(out.byDist[d] || (out.byDist[d] = mk()), k);
+            add(out.byTariff[t] || (out.byTariff[t] = mk()), k);
+        });
+        return out;
+    },
+    // Конверсия и доля КП с итогом по корзине; null — считать не из чего
+    conv: function (b) {
+        const decided = b.won + b.lost + b.silent;
+        return {
+            rate: decided ? b.won / decided : null,
+            marked: decided ? (b.won + b.lost) / decided : null,
+            decided: decided
+        };
+    },
+
     // ── Сводка менеджера ──────────────────────────────────────────────────
     // rows — история смет его монтажников (fetchInvoiceHistoryByEmails), emails —
     // их почты. Возвращает разметку блока «КП без итога» и число для плитки.
