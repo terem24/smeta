@@ -299,6 +299,7 @@ const KpOutcome = {
             // Коротко: почему окно, что даёт, что будет без отметки
             const lead = () => {
                 if (opts.staff) return 'Монтажник увидит отметку в истории сметы.';
+                if (opts.manual) return 'Клиент уже решил? Отметьте итог — он попадёт в «Мои показатели». Если ещё думает, просто закройте окно.';
                 if (opts.gate) return `Новые КП не отправляются, пока у ${this.GATE} КП нет итога. Отметьте — и отправка откроется. Считать можно как обычно.`;
                 const gateLine = this.gateApplies()
                     ? `<br><small>Без Профи: если итога нет у ${this.GATE} КП, новые не отправятся. Считать можно всегда.</small>`
@@ -327,7 +328,7 @@ const KpOutcome = {
                     body = `<div class="kpo-row">
                         <button type="button" class="kpo-btn kpo-won" data-act="won" data-id="${k.calcId}">✓ Клиент согласился</button>
                         <button type="button" class="kpo-btn kpo-lost" data-act="lost" data-id="${k.calcId}">✕ Отказ</button>
-                        ${left > 0
+                        ${opts.manual && !k.overdue ? '' : left > 0
                             ? `<button type="button" class="kpo-btn" data-act="extend" data-id="${k.calcId}" title="Спросим снова через ${k.days || this.DAYS} дней. Продлений осталось: ${left}">⏳ Думает, +${k.days || this.DAYS} дн.</button>`
                             : `<span class="kpo-sub">Продлений больше нет</span>`}
                     </div>`;
@@ -350,10 +351,10 @@ const KpOutcome = {
                     ? `<div class="kpo-row kpo-pager"><span class="kpo-sub">Осталось ${items.length}</span><button type="button" class="kpo-btn" data-act="next">Следующее ›</button></div>`
                     : '';
                 overlay.innerHTML = `<div class="calc-dialog-card kpo-card">
-                    <h3 class="calc-dialog-title">${opts.gate ? 'Отметьте итог КП' : 'Чем закончились КП?'}</h3>
+                    <h3 class="calc-dialog-title">${opts.gate || opts.manual ? 'Отметьте итог КП' : 'Чем закончились КП?'}</h3>
                     <p class="calc-dialog-message">${lead()}</p>
                     <div class="kpo-list">${shown.map(itemHtml).join('')}</div>${pager}
-                    <div class="calc-dialog-buttons"><button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" data-act="close">${opts.gate || opts.staff ? 'Закрыть' : 'Напомнить завтра'}</button></div>
+                    <div class="calc-dialog-buttons"><button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" data-act="close">${opts.gate || opts.staff || opts.manual ? 'Закрыть' : 'Напомнить завтра'}</button></div>
                 </div>`;
             };
 
@@ -422,21 +423,23 @@ const KpOutcome = {
         });
     },
 
-    // Отметка за монтажника из планировщика: читаем историю этой сметы целиком
-    openForCalc: async function (calcId, onDone) {
+    // Отметка итога по одному КП: читаем историю этой сметы целиком. По умолчанию — за
+    // монтажника из планировщика (staff); mine — монтажник отмечает своё КП из «Моих
+    // объектов» («⋯» → «Отметить итог КП») и не ждёт срока в 30 дней
+    openForCalc: async function (calcId, onDone, mine) {
         try {
             const { data, error } = await supabaseClient.from('invoice_events')
                 .select('calc_id, event, user_id, user_name, user_email, project_name, meta, created_at')
                 .eq('calc_id', String(calcId)).in('event', this.EVENTS);
             if (error) throw error;
-            const k = this.build(data || [])[0];
+            const k = this.build(data || [], undefined, mine ? this.myDays() : undefined)[0];
             if (!k) { app.alert('Это КП ещё не уходило клиенту — итог ставить не по чему.'); return; }
             if (k.outcome) {
                 const ev = k.outcomeEvent || {};
                 if (!await app.confirm('У КП уже есть итог: ' + (k.outcome === 'won' ? 'клиент согласился' : 'отказ') + (ev.meta && ev.meta.label ? ' (' + ev.meta.label + ')' : '') + '. Поставить другой?')) return;
                 k.outcome = null;
             }
-            await this.openDialog([k], { staff: true, onDone: onDone });
+            await this.openDialog([k], mine ? { manual: true, onDone: onDone } : { staff: true, onDone: onDone });
         } catch (e) {
             console.warn('[итог КП] карточка:', e);
             app.alert('Не удалось прочитать историю КП: ' + (e.message || e));
