@@ -60909,6 +60909,17 @@ const app = {
             catalog.servo_rotary_sensor.noCheapenAlts = true;
             catalog.servo_rotary_std.noCheapenAlts = true;
         }
+        // Один артикул лежит в каталоге в нескольких категориях (аксиальная линейка, обвязка
+        // радиатора, вода, коллектор), и пара ROMMER проставлена не всем копиям. Строка сметы
+        // берётся из той копии, где её нет: в режиме «Аналог» она оставалась STOUT, а в таблице
+        // замены не было строки ROMMER (так было у монтажной гильзы 16 и аксиальных угольников).
+        // Достраиваем пару от первой копии, где она есть; свои пары копий не трогаем.
+        (() => {
+            const pair = {};
+            const each = (fn) => { for (const k in catalog) { const v = catalog[k]; (Array.isArray(v) ? v : [v]).forEach(it => { if (it && it.id) fn(it); }); } };
+            each(it => { if (it.rommer && !pair[it.id]) pair[it.id] = it.rommer; });
+            each(it => { if (!it.rommer && pair[it.id]) it.rommer = pair[it.id]; });
+        })();
         if (catalog.ppr_proaqua_pipe && catalog.ppr_ekoplastik_pipe) {
             const ext1 = n => {
                 let clean = n.replace(/SDR\s*\d+/gi, '').replace(/PN\s*\d+/gi, '');
@@ -86362,7 +86373,17 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // Нержавейка котельной своего .alts не имеет: заменяется не позиция, а
                 // материал всей обвязки — список из трёх систем собирает openSwapModal.
                 let bpHasAlt = app.isBoilerPipeRow(i);
-                let hasAlts = (i.alts && i.alts.length > 0) || sewerHasAlt || cabHasAlt || bpHasAlt;
+                // Позиция с парой ROMMER (поле .rommer, ANALOG_MAP или пара у STOUT-оригинала,
+                // когда строка уже стоит на ROMMER) заменяется обычной таблицей: STOUT и ROMMER
+                // там две строки. Раньше кнопка была только у позиций со списком .alts, и
+                // у деталей вроде монтажной гильзы 16 замены на ROMMER не предлагалось вовсе.
+                let pairHasAlt = !!(i.rommer || i.comfort || ANALOG_MAP[i.id] || ANALOG_MAP[lookupId]);
+                if (!pairHasAlt && i.originalId && i.originalId !== i.id && !i.recognized) {
+                    // Ключ узла («…_rad_node», «…_rad_trunk») в каталоге не лежит — ищем и по артикулу.
+                    const _pairBase = this.findCatalogItemById(i.originalId) || this.findCatalogItemById(i.id);
+                    pairHasAlt = !!(_pairBase && (_pairBase.rommer || ANALOG_MAP[_pairBase.id]));
+                }
+                let hasAlts = (i.alts && i.alts.length > 0) || sewerHasAlt || cabHasAlt || bpHasAlt || pairHasAlt;
                 // Распознанная позиция без списка аналогов (пришла из прайса или
                 // вовсе без артикула) заменяется через свой поиск по каталогу и
                 // прайсу — см. openRecReplaceModal. Кнопка та же самая: монтажнику
