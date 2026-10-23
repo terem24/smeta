@@ -95665,14 +95665,15 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     // Переключение отображения цен подписки Профи между рублями и тенге (KZT).
     // Оплата фактически всегда проходит в рублях (ссылки Т-Банка), тенге — только для удобства просмотра.
     setPricingCurrency(cur) {
-        if (cur !== 'RUB' && cur !== 'KZT') return;
+        if (cur !== 'RUB') return;
         this.pricingCurrency = cur;
         try { localStorage.setItem('pricing_currency', cur); } catch (e) { }
         this.applyPricingCurrencyDisplay();
     },
 
     applyPricingCurrencyDisplay() {
-        this.pricingCurrency = this.pricingCurrency || localStorage.getItem('pricing_currency') || 'RUB';
+        // Цены в тенге отключены: всегда рубли (в т.ч. если в localStorage остался 'KZT').
+        this.pricingCurrency = 'RUB';
         const cur = this.pricingCurrency;
 
         document.querySelectorAll('.currency-toggle-btn').forEach(btn => {

@@ -233,7 +233,7 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.6" defer></script>
-    <script src="app.js?v=13.94" defer></script>
+    <script src="app.js?v=13.95" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -2933,10 +2933,12 @@
 
                 <button id="custom_modal_btn_trial" class="btn-trial-14" style="display:none;" onclick="app.activateTrial14()">Попробовать бесплатно 14 дней</button>
 
+                <!-- Переключатель валюты (RUB/KZT) отключён: цены в тенге не показываем.
                 <div class="currency-toggle" id="pricing_currency_toggle">
                     <button type="button" class="currency-toggle-btn active" data-currency="RUB" onclick="app.setPricingCurrency('RUB')">₽ RUB</button>
                     <button type="button" class="currency-toggle-btn" data-currency="KZT" onclick="app.setPricingCurrency('KZT')">₸ KZT</button>
                 </div>
+                -->
 
                 <!-- Карточки рисует Subscription.syncCards по настройкам «Оплата подписки» (цены, регион, акции).
                      Цен в разметке нет намеренно: любая зашитая здесь цена расходится с настройками. -->
