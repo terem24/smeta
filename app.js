@@ -15564,6 +15564,9 @@ const app = {
         const kpList = window.KpOutcome ? KpOutcome.build(kpRows, now) : [];
         const kpClosed = {};
         kpList.forEach(k => { if (k.outcome) kpClosed[k.calcId] = k.outcome; });
+        // Для блоков «подорожало» и «под заказ», которые грузятся позже: по объекту с итогом
+        // (реализован, не реализован, счёт выставлен) разговор с клиентом закончен
+        this._kpClosed = kpClosed;
         const kpCur = kpList.filter(k => inCur(k.firstSentAt));
         const kpWon = kpCur.filter(k => k.outcome === 'won').length;
         const kpLost = kpCur.filter(k => k.outcome === 'lost').length;
@@ -15920,8 +15923,12 @@ const app = {
         rows = Object.values(latest);
         if (!rows.length) return;
         this.renderInstallerSales(rows);
-        this.renderInstallerRepricing(rows);
-        this.renderInstallerAvailability(rows);
+        // «Подорожало, пересчитайте перед звонком» и «Под заказ» — про объекты, по которым
+        // разговор с клиентом ещё идёт; у реализованных и отклонённых им делать нечего
+        const closed = this._kpClosed || {};
+        const live = rows.filter(r => !closed[String(r.seq || '')]);
+        this.renderInstallerRepricing(live);
+        this.renderInstallerAvailability(live);
     },
 
     /**
