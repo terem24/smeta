@@ -154,6 +154,9 @@ const KpOutcome = {
             const overdue = !outcome && now >= due;
             let kpV = 0;
             evs.forEach(e => { const v = e.meta && Number(e.meta.kp_version); if (v > kpV) kpV = v; });
+            // Для разбора «почему нет итога»: что было с КП после последней отправки
+            const after = evs.filter(e => new Date(e.created_at).getTime() >= lastSentAt);
+            const has = (name) => after.some(e => e.event === name);
             out.push({
                 calcId: id,
                 project: (lastSend.project_name || first.project_name || evs.map(e => e.project_name).filter(Boolean).pop() || ''),
@@ -164,6 +167,10 @@ const KpOutcome = {
                 lastSentAt: lastSentAt,
                 kpVersion: kpV,
                 ext: ext.length,
+                reminded: evs.filter(e => e.event === 'kp_outcome_reminder').length,
+                opened: has('opened'),
+                confirmed: has('confirmed'),
+                revision: has('needs_revision'),
                 outcome: outcome,
                 outcomeEvent: outcome === 'won' ? won : (outcome === 'lost' ? (lost || { event: 'lost', meta: { reason: 'timeout', auto: true, label: 'Нет ответа ' + autoM + ' мес. (авто)' } }) : null),
                 auto: autoLost || !!(lost && lost.meta && lost.meta.auto),
@@ -793,8 +800,32 @@ const KpOutcome = {
             if (k.auto) return { key: 'auto', label: 'Отклонено (авто)', detail: m.label || 'нет ответа', comment: '' };
             return { key: 'lost', label: 'Отклонено', detail: m.label || this.reasonLabel(m.reason) || '', comment: m.comment || '' };
         }
-        if (k.overdue) return { key: 'silent', label: 'Без ответа', detail: k.overdueDays ? 'срок вышел ' + k.overdueDays + ' дн. назад' : 'срок вышел', comment: '' };
+        if (k.overdue) {
+            const why = this.whyOpen(k);
+            return { key: 'silent', label: 'Без ответа', why: why, comment: '',
+                detail: this.WHY[why].label + ' · ' + (k.overdueDays ? 'срок вышел ' + k.overdueDays + ' дн. назад' : 'срок вышел') };
+        }
         return { key: 'wait', label: 'Ждём ответа', detail: 'срок до ' + this.fmtDate(k.due), comment: '' };
+    },
+
+    // Почему у КП, чей срок ответа вышел, нет итога. Одна главная причина, по убыванию
+    // «насколько это вина монтажника»: клиент уже дал знак, а итог не отмечен → напоминание
+    // дошло и осталось без ответа → напоминания не было → срок продлевали → тишина с обеих сторон.
+    WHY: {
+        client_ok:  { label: 'Клиент одобрил КП, итог не отмечен', color: '#10B981' },
+        client_rev: { label: 'Клиент просил правки, итог не отмечен', color: '#F59E0B' },
+        reminded:   { label: 'Напоминание отправлено, монтажник не ответил', color: '#EF4444' },
+        extended:   { label: 'Срок продлевали, после этого итога нет', color: '#64748B' },
+        no_remind:  { label: 'Напоминание не отправлялось', color: '#B45309' },
+        dead:       { label: 'Клиент ссылку не открывал, итога нет', color: '#94A3B8' }
+    },
+    whyOpen: function (k) {
+        if (k.confirmed) return 'client_ok';
+        if (k.revision) return 'client_rev';
+        if (k.reminded) return 'reminded';
+        if (k.ext) return 'extended';
+        if (!k.opened) return 'dead';
+        return 'no_remind';
     },
 
     // ── Сводка менеджера ──────────────────────────────────────────────────

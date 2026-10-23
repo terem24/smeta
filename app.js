@@ -33032,7 +33032,21 @@ const app = {
                                 ${x.s.detail ? `<div style="color:var(--text-sec); font-size:11px; margin-top:2px;" ${x.s.comment ? `title="${esc(x.s.comment)}"` : ''}>${esc(x.s.detail)}</div>` : ''}</td>
                         </tr>`;
                     }).join('');
-                    const listHtml = `<div style="margin-top:16px;">
+                    // Не разобрано: срок ответа вышел, итог не поставлен. Причины — по событиям КП
+                    const openAll = all.filter(x => x.s.key === 'silent');
+                    const whyCnt = {}; openAll.forEach(x => { whyCnt[x.s.why] = (whyCnt[x.s.why] || 0) + 1; });
+                    const openHtml = `<div style="margin-top:16px; padding:12px 14px; border:1px solid var(--border); border-left:3px solid #F97316; border-radius:10px;">
+                        <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                            <span style="font-size:26px; font-weight:800; color:#F97316; line-height:1;">${num(openAll.length)}</span>
+                            <span style="font-size:13px; font-weight:700; color:var(--text-main);">КП не разобрано</span>
+                            <span style="font-size:12px; color:var(--text-sec);">срок ответа вышел, итог не поставлен${all.length ? ` · ${pctS(openAll.length / all.length)} от ${num(all.length)} КП периода` : ''}${count.wait ? ` · ещё в срок: ${num(count.wait)}` : ''}</span>
+                        </div>
+                        ${openAll.length ? Object.keys(KpOutcome.WHY).filter(w => whyCnt[w]).map(w => `<div style="display:flex; align-items:center; gap:8px; margin-top:6px; font-size:12px;">
+                            <i style="width:9px; height:9px; border-radius:50%; background:${KpOutcome.WHY[w].color}; flex:0 0 auto;"></i>
+                            <span style="flex:1; color:var(--text-main);">${KpOutcome.WHY[w].label}</span>
+                            <b style="color:var(--text-main);">${num(whyCnt[w])}</b></div>`).join('') : `<div style="font-size:12px; color:var(--text-sec); margin-top:6px;">Все КП, у которых вышел срок, разобраны.</div>`}
+                    </div>`;
+                    const listHtml = openHtml + `<div style="margin-top:16px;">
                         <div style="font-size:12px; font-weight:700; color:var(--text-sec); margin-bottom:8px;">Каждое КП и его конечный статус · за период строки «Ушло в реализацию»</div>
                         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
                             ${fchip('all', 'Все', all.length)}${fchip('won', 'Ушло в реализацию', count.won || 0)}${fchip('lost', 'Отклонено', count.lost || 0)}${fchip('auto', 'Отклонено (авто)', count.auto || 0)}${fchip('silent', 'Без ответа', count.silent || 0)}${fchip('wait', 'Ждём ответа', count.wait || 0)}
