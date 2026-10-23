@@ -16757,7 +16757,7 @@ const app = {
             { id: 'radScheme', label: 'Схема подключения', opts: [{ v: 'tee', t: 'Тройниковая', pro: 'pro' }, { v: 'manifold', t: 'Коллекторная' }] },
             { id: 'radPipe', label: 'Трубы для радиаторов', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'mp', t: 'Металлопластик' }] },
             { id: 'radBeam', label: 'Лучи к приборам в комнате', opts: [{ v: 'single', t: 'Ветка на каждый прибор' }],
-                note: 'Авто — общая трасса на комнату включается сама, если смета выходит дешевле не меньше чем на 3 % и 10 000 ₽. Работает при коллекторной схеме, режиме «По комнатам» и серой трубе PEX-a.' }
+                note: 'Авто — общая трасса на комнату включается сама, если смета выходит дешевле не меньше чем на 3 % и 10 000 ₽. Работает при коллекторной схеме, режиме «По комнатам» и трубе PEX-a или металлопластике.' }
         ] },
         { g: 'Тёплый пол', items: [
             { id: 'ufhPipe', label: 'Трубы тёплого пола', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'metal_plastic', t: 'Металлопластик' }] },
@@ -18526,8 +18526,8 @@ const app = {
     // (штанги по 4 м) и стальные трубы (мерные длины) обрезком на другой участок не идут.
     COIL_POOL_SERIES: [
         { prefix: 'SPM-0001-', cat: 'metal_plastic_pipes', label: 'металлопластик' },
-        { prefix: 'SPX-0002-', cat: 'pipes', label: 'PE-Xa' },
-        { prefix: 'SPX-0001-', cat: 'rad_pipes_grey', label: 'PEX-a/EVOH' },
+        { prefix: 'SPX-0002-', cat: 'pipes', label: 'PE-Xa красная' },
+        { prefix: 'SPX-0001-', cat: 'rad_pipes_grey', label: 'PEX-a/EVOH серая' },
         { prefix: 'SPS-0002-', cat: 'stable_pipes', label: 'стабильная' }
     ],
     // Бухты STOUT, сгруппированные по серии и диаметру (артикул кончается типоразмером: …-101620 → 1620), от большой к малой.
@@ -18577,7 +18577,7 @@ const app = {
         const fm = v => String(Math.round(v * 10) / 10).replace('.', ',');
         const rub = v => this.formatPriceHtml(v, true);
         let boughtM = 0, boughtR = 0, unM = 0, unR = 0; // купили вместе / купили бы по разделам
-        const lines = [];
+        const lines = [], cards = [];
         const dims = [...new Set(Object.keys(pool.metres).map(id => pool.byId[id]))];
         dims.forEach(dim => {
             const coils = pool.fam[dim];
@@ -18605,29 +18605,50 @@ const app = {
             const saveM = dimUnM - dimBM, saveR = dimUnR - dimBR;
             lines.push(`• <b>${pool.label[dim]}</b>: нужно ${fm(need)} м. По разделам пришлось бы купить ${fm(dimUnM)} м (${rub(dimUnR)}) — ${from}. Вместе: ${buy} = ${dimBM} м (${rub(dimBR)}). ` +
                 (saveM > 0 ? `Экономия <b>${fm(saveM)} м</b> и <b>${rub(saveR)}</b>.` : 'Экономии нет: бухт и так минимум.'));
-            const left = plan.metres - need;
-            if (left > 0) {
-                const leftR = Math.round(left * (coils[0].price || 0));
-                rows.push({ id: 'pool_left_' + dim, name: `Остаток от бухт (${pool.label[dim]}) — не входит в смету`, price: 0, basePrice: 0,
-                    q: Math.round(left * 10) / 10, sum: 0, sortRank: 0, unit: 'м', brand: 'STOUT', originalId: 'pool_left_' + dim,
-                    screenOnly: true,
-                    qtyTip: `Бухты продаются целиком: куплено на ${fm(left)} м больше, чем нужно по смете (нужно ${fm(need)} м, куплено ${plan.metres} м). ` +
-                        `Эти метры уже оплачены в строках выше (≈ ${this.formatPriceHtml(leftR, true)}) и останутся у монтажника — их можно пустить на следующий объект. ` +
-                        'Строка справочная: цена 0 ₽, в итог, печать и КП не входит.' });
-            }
+            // Остаток — не позиция сметы, а справка: его деньги уже внутри бухт выше. Показываем в карточке материала.
+            const left = Math.max(0, dimBM - need);
+            cards.push({ name: pool.label[dim], need: need, from: from, buy: buy,
+                unM: dimUnM, unR: dimUnR, unRolls: coils.reduce((a, c) => a + Math.round((pool.metres[c.id] || 0) / c.len), 0),
+                bM: dimBM, bR: dimBR, bRolls: plan.counts.reduce((a, n) => a + n, 0),
+                left: left, leftR: Math.round(left * (coils[0].price || 0)) });
         });
         const saveM = Math.max(0, unM - boughtM), saveR = Math.max(0, Math.round(unR - boughtR));
         const pct = unM > 0 ? Math.round(saveM / unM * 1000) / 10 : 0;
         this._poolStats = { metres: saveM, rub: saveR, boughtM: boughtM, unM: unM, pct: pct, unRub: Math.round(unR) };
         const head = saveM > 0
             ? `Объединение бухт сэкономило <b>${fm(saveM)} м</b> трубы (${fm(pct)} %) и <b>${rub(saveR)}</b>: ${fm(boughtM)} м вместо ${fm(unM)} м при покупке по разделам.`
-            : `Объединение бухт: экономии нет — по разделам и вместе выходит ${fm(boughtM)} м, бухт и так минимум.`;
+            : (cards.reduce((x, c) => x + c.unRolls, 0) > cards.reduce((x, c) => x + c.bRolls, 0)
+                ? `Объединение бухт: метры и рубли те же (${fm(boughtM)} м), но бухт меньше — меньше позиций и обрезков.`
+                : `Объединение бухт: экономии нет — по разделам и вместе выходит ${fm(boughtM)} м, бухт и так минимум.`);
         const method = '<b>Как считаем.</b><br>' +
             '• Трубы STOUT в бухтах (металлопластик, PE-Xa, PEX-a/EVOH, стабильная) из <u>всех</u> разделов сметы складываются по метрам — отдельно для каждого материала и диаметра.<br>' +
             '• Без объединения каждый раздел покупает целые бухты сам, и у каждого остаётся свой обрезок.<br>' +
             '• С объединением бухты подбираются один раз на всю смету: минимум лишних метров, при равенстве — минимум бухт. Что осталось после последней бухты — в строке «Остаток», на экране.<br>' +
             '• Экономия = «купили бы по разделам» минус «куплено вместе». Полипропилен и сталь не объединяются (штанги, мерные длины); ROMMER и трубы, заменённые вручную, считаются отдельно.<br><br>';
-        this._poolNote = this.noteBox('info', 'Бухты по всей смете.', head, method + lines.join('<br>'));
+        // Видимая сводка по каждому материалу: раздельно / вместе / экономия — в метрах, бухтах, процентах и рублях.
+        const row = (lbl, val, tip, color) => `<div${tip ? ` title="${tip.replace(/"/g, '&quot;')}"` : ''} style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;">` +
+            `<span style="color:var(--text-sec);">${lbl}</span><span style="text-align:right;${color ? 'color:' + color + ';font-weight:600;' : ''}">${val}</span></div>`;
+        const pl = n => { const m10 = n % 10, m100 = n % 100; return (m10 === 1 && m100 !== 11) ? 'бухта' : (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) ? 'бухты' : 'бухт'; };
+        const card = (c, isTotal) => {
+            const sM = Math.max(0, c.unM - c.bM), sR = Math.max(0, Math.round(c.unR - c.bR));
+            const sP = c.unM > 0 ? Math.round(sM / c.unM * 1000) / 10 : 0;
+            const green = 'var(--success, #16a34a)';
+            return `<div style="padding:7px 0;border-top:1px solid var(--border);font-size:12px;line-height:1.55;">` +
+                `<div style="display:flex;justify-content:space-between;gap:8px;"><b>${c.name}</b><span style="color:var(--text-sec);">нужно ${fm(c.need)} м</span></div>` +
+                row('По разделам', `${fm(c.unM)} м · ${c.unRolls} ${pl(c.unRolls)} · ${rub(c.unR)}`, c.from ? `Если бы каждый раздел покупал бухты сам — ${c.from}` : 'Каждый раздел покупает целые бухты сам') +
+                row('Вместе', `${fm(c.bM)} м · ${c.bRolls} ${pl(c.bRolls)} · ${rub(c.bR)}`, c.buy ? `Объединено: ${c.buy}` : '') +
+                row('Экономия', sM > 0 ? `${fm(sM)} м (${fm(sP)} %) · ${rub(sR)}` : (c.unRolls > c.bRolls ? `метры и рубли те же, бухт меньше на ${c.unRolls - c.bRolls}` : 'нет — бухт и так минимум'), 'Экономия = «по разделам» минус «вместе»', (sM > 0 || c.unRolls > c.bRolls) ? green : '') +
+                (c.left > 0 && !isTotal ? `<div style="font-size:11px;color:var(--text-sec);" title="Бухты продаются целиком. Эти метры уже оплачены в бухтах выше, в КП и печать не входят.">Остаток после раскроя: ${fm(c.left)} м (≈ ${rub(c.leftR)} уже в цене бухт, остаётся у монтажника)</div>` : '') +
+                `</div>`;
+        };
+        let cardsHtml = cards.map(c => card(c, false)).join('');
+        if (cards.length > 1) {
+            const t = cards.reduce((a, c) => ({ name: 'Всего', need: a.need + c.need, from: '', buy: '', unM: a.unM + c.unM, unR: a.unR + c.unR, unRolls: a.unRolls + c.unRolls,
+                bM: a.bM + c.bM, bR: a.bR + c.bR, bRolls: a.bRolls + c.bRolls, left: 0, leftR: 0 }), { need: 0, unM: 0, unR: 0, unRolls: 0, bM: 0, bR: 0, bRolls: 0 });
+            cardsHtml += card(t, true);
+        }
+        this._poolNote = this.noteBox('info', 'Бухты по всей смете.', head, method + lines.join('<br>')) +
+            `<div class="no-print" onclick="event.stopPropagation();" style="margin:4px 0 2px;">${cardsHtml}</div>`;
         return rows;
     },
     // Поля раздела «КП и счета»: сроки и сокращение названий. Зовётся при открытии раздела
@@ -28882,6 +28903,7 @@ const app = {
         if (ok('rec')) S.rec.rows.forEach(r => { const t = t0(r.savedAt || r.day); if (t != null && t < first) first = t; });
         const B = this.kpiBuckets(p, first);
         const zeros = () => new Array(B.n).fill(0);
+        const addS = function () { const r = zeros(); Array.prototype.forEach.call(arguments, a => a.forEach((v, i) => { r[i] += v || 0; })); return r; };
 
         const testIds = {}, testMail = {};
         if (ok('tests')) S.tests.rows.forEach(u => { if (u.id) testIds[u.id] = 1; if (u.email) testMail[String(u.email).toLowerCase()] = 1; });
@@ -28915,12 +28937,12 @@ const app = {
                     did = Object.keys(has).length;
                 }
                 w.nums = [
-                    { l: 'Всего новых', v: fmt(tot('cur')), d: hasPrev ? this.kpiDelta(tot('cur'), tot('prev')) : '', big: true },
-                    { l: 'Монтажники', v: fmt(cnt.cur.installer), d: hasPrev ? this.kpiDelta(cnt.cur.installer, cnt.prev.installer) : '' },
-                    { l: 'Продавцы', v: fmt(cnt.cur.seller), d: hasPrev ? this.kpiDelta(cnt.cur.seller, cnt.prev.seller) : '' },
-                    { l: 'Посчитали смету', v: did == null ? '…' : fmt(did), s: did == null ? '' : (tot('cur') ? 'это ' + pct(did, tot('cur')) + '% новых' : '') }
+                    { k: 'tot', l: 'Всего новых', v: fmt(tot('cur')), d: hasPrev ? this.kpiDelta(tot('cur'), tot('prev')) : '', sp: addS(ser.installer, ser.seller, ser.other), h: 'Все, кто зарегистрировался за период (без тестовых)' },
+                    { k: 'inst', l: 'Монтажники', v: fmt(cnt.cur.installer), d: hasPrev ? this.kpiDelta(cnt.cur.installer, cnt.prev.installer) : '', sp: ser.installer, h: 'Новые пользователи со сферой «монтаж»' },
+                    { k: 'did', l: 'Посчитали смету', v: did == null ? '…' : fmt(did), s: did == null ? '' : (tot('cur') ? 'это ' + pct(did, tot('cur')) + '% новых' : ''), h: 'Сколько из новых сохранили хотя бы одну смету' },
+                    { k: 'sell', l: 'Продавцы', v: fmt(cnt.cur.seller), d: hasPrev ? this.kpiDelta(cnt.cur.seller, cnt.prev.seller) : '', sp: ser.seller, off: true, h: 'Новые пользователи-продавцы' }
                 ];
-                if (cnt.cur.other) w.nums.splice(3, 0, { l: 'Менеджеры и прочие', v: fmt(cnt.cur.other) });
+                if (cnt.cur.other) w.nums.push({ k: 'oth', l: 'Менеджеры и прочие', v: fmt(cnt.cur.other), sp: ser.other, off: true, h: 'Менеджеры и остальные типы аккаунтов' });
                 const used = kinds.filter(k => cnt.cur[k[0]] > 0 || k[0] !== 'other');
                 w.chart = { labels: B.labels, tips: B.tips, stack: true, series: used.map(k => ({ name: k[1], color: k[2], vals: ser[k[0]] })) };
                 w.groups = [{ title: 'Кто пришёл', items: kinds.map(k => ({ label: k[1], value: cnt.cur[k[0]], color: k[2] })) }];
@@ -28933,7 +28955,7 @@ const app = {
 
         // ── Планировщик: КП и счета ──
         {
-            const w = { id: 'planner', title: 'Планировщик: КП и счета', tab: 'kanban', act: 'Планировщик', wide: true };
+            const w = { id: 'planner', title: 'Планировщик: КП и счета', tab: 'kanban', act: 'Планировщик' };
             if (bad('evs')) w.err = bad('evs');
             else if (!ok('evs') || testsWait) w.wait = true;
             else {
@@ -28957,17 +28979,17 @@ const app = {
                 const wait = Math.max(0, c.sent - c.ok - c.rev - c.rej);
                 const dl = (g, inv) => hasPrev ? this.kpiDelta(c[g], q[g], { inv: inv }) : '';
                 w.nums = [
-                    { l: 'КП отправлено', v: fmt(c.sent), d: dl('sent'), big: true },
-                    { l: 'Одобрено', v: fmt(c.ok), d: dl('ok'), tone: 'good' },
-                    { l: 'На доработке', v: fmt(c.rev), d: dl('rev', true) },
-                    { l: 'Отклонено', v: fmt(c.rej), d: dl('rej', true), tone: c.rej ? 'bad' : '' },
-                    { l: 'Конверсия КП → одобрено', v: cv == null ? '—' : cv + '%', d: (cv != null && cvp != null) ? this.kpiDelta(cv, cvp, { ratio: true }) : '', big: true },
-                    { l: 'Счетов запрошено', v: fmt(c.req), d: dl('req') },
-                    { l: 'Счетов выставлено', v: fmt(c.iss), d: dl('iss') },
-                    { l: 'Оплачено', v: fmt(c.paid), d: dl('paid'), tone: 'good' },
-                    { l: 'Конверсия КП → счёт', v: cr == null ? '—' : cr + '%', s: 'запрошено / отправлено' },
-                    { l: 'Реализовано', v: fmt(c.won), s: 'отметка монтажника', d: dl('won') },
-                    { l: 'Не реализовано', v: fmt(c.lost), d: dl('lost', true) }
+                    { k: 'sent', l: 'КП отправлено', v: fmt(c.sent), d: dl('sent'), sp: ser.sent, h: 'Сколько смет отправлено клиентам (или распечатано) за период' },
+                    { k: 'ok', l: 'Одобрено', v: fmt(c.ok), d: dl('ok'), tone: 'good', sp: ser.ok, h: 'Клиент подтвердил КП' },
+                    { k: 'cv', l: 'Конверсия КП → одобрено', v: cv == null ? '—' : cv + '%', d: (cv != null && cvp != null) ? this.kpiDelta(cv, cvp, { ratio: true }) : '', h: 'Одобрено / отправлено' },
+                    { k: 'paid', l: 'Оплачено', v: fmt(c.paid), d: dl('paid'), tone: 'good', sp: ser.paid, h: 'Счета, по которым пришла оплата' },
+                    { k: 'rev', l: 'На доработке', v: fmt(c.rev), d: dl('rev', true), sp: ser.rev, off: true, h: 'Клиент попросил поправить КП' },
+                    { k: 'rej', l: 'Отклонено', v: fmt(c.rej), d: dl('rej', true), tone: c.rej ? 'bad' : '', sp: ser.rej, off: true, h: 'Клиент отклонил КП' },
+                    { k: 'req', l: 'Счетов запрошено', v: fmt(c.req), d: dl('req'), sp: ser.req, off: true, h: 'Клиент запросил счёт' },
+                    { k: 'iss', l: 'Счетов выставлено', v: fmt(c.iss), d: dl('iss'), sp: ser.iss, off: true, h: 'Счёт выставлен' },
+                    { k: 'cr', l: 'Конверсия КП → счёт', v: cr == null ? '—' : cr + '%', s: 'запрошено / отправлено', off: true, h: 'Счетов запрошено / КП отправлено' },
+                    { k: 'won', l: 'Реализовано', v: fmt(c.won), s: 'отметка монтажника', d: dl('won'), sp: ser.won, off: true, h: 'Монтажник отметил, что работа выполнена' },
+                    { k: 'lost', l: 'Не реализовано', v: fmt(c.lost), d: dl('lost', true), sp: ser.lost, off: true, h: 'Монтажник отметил, что сделка не состоялась' }
                 ];
                 w.chart = { labels: B.labels, tips: B.tips, stack: false, series: [
                     { name: 'КП отправлено', color: C.blue, vals: ser.sent },
@@ -28997,7 +29019,7 @@ const app = {
             if (bad('ests')) w.err = bad('ests');
             else if (!ok('ests') || testsWait) w.wait = true;
             else {
-                const cnt = { cur: 0, prev: 0 }, sum = { cur: 0, prev: 0 }, au = { cur: {}, prev: {} }, ser = zeros(), serNew = zeros();
+                const cnt = { cur: 0, prev: 0 }, sum = { cur: 0, prev: 0 }, au = { cur: {}, prev: {} }, ser = zeros(), serNew = zeros(), serSum = zeros();
                 const newIds = {};
                 if (ok('users')) S.users.rows.forEach(u => { const t = t0(u.created_at); if (t != null && t >= cur0) newIds[u.id] = 1; });
                 let fromNew = 0;
@@ -29005,16 +29027,16 @@ const app = {
                     if (testIds[r.user_id]) return;
                     const t = t0(r.created_at), c = cls(t); if (!c) return;
                     cnt[c]++; sum[c] += Number(r.total_sum) || 0; if (r.user_id) au[c][r.user_id] = 1;
-                    if (c === 'cur') { const i = B.at(t); if (newIds[r.user_id]) { serNew[i]++; fromNew++; } else ser[i]++; }
+                    if (c === 'cur') { const i = B.at(t); serSum[i] += Number(r.total_sum) || 0; if (newIds[r.user_id]) { serNew[i]++; fromNew++; } else ser[i]++; }
                 });
                 const a = Object.keys(au.cur).length, ap = Object.keys(au.prev).length;
                 const dd = p.days || Math.max(1, Math.ceil((now - first) / day));
                 w.nums = [
-                    { l: 'Смет сохранено', v: fmt(cnt.cur), d: hasPrev ? this.kpiDelta(cnt.cur, cnt.prev) : '', big: true },
-                    { l: 'Активных авторов', v: fmt(a), d: hasPrev ? this.kpiDelta(a, ap) : '' },
-                    { l: 'В среднем в день', v: (Math.round(cnt.cur / dd * 10) / 10).toLocaleString('ru-RU') },
-                    { l: 'Сумма смет', v: rub(sum.cur), d: hasPrev ? this.kpiDelta(sum.cur, sum.prev, { fmt: rub }) : '' },
-                    { l: 'Средняя смета', v: cnt.cur ? rub(sum.cur / cnt.cur) : '—' }
+                    { k: 'cnt', l: 'Смет сохранено', v: fmt(cnt.cur), d: hasPrev ? this.kpiDelta(cnt.cur, cnt.prev) : '', sp: addS(ser, serNew), h: 'Сколько смет сохранили пользователи за период' },
+                    { k: 'sum', l: 'Сумма смет', v: rub(sum.cur), d: hasPrev ? this.kpiDelta(sum.cur, sum.prev, { fmt: rub }) : '', sp: serSum, h: 'Общая стоимость сохранённых смет' },
+                    { k: 'avg', l: 'Средняя смета', v: cnt.cur ? rub(sum.cur / cnt.cur) : '—', h: 'Сумма смет / число смет' },
+                    { k: 'au', l: 'Активных авторов', v: fmt(a), d: hasPrev ? this.kpiDelta(a, ap) : '', off: true, h: 'Сколько разных людей сохраняли сметы' },
+                    { k: 'day', l: 'В среднем в день', v: (Math.round(cnt.cur / dd * 10) / 10).toLocaleString('ru-RU'), off: true, h: 'Смет в сутки в среднем за период' }
                 ];
                 w.chart = { labels: B.labels, tips: B.tips, stack: true, series: [
                     { name: 'Прежние пользователи', color: C.blue, vals: ser }, { name: 'Новые пользователи', color: C.violet, vals: serNew }] };
@@ -29046,11 +29068,11 @@ const app = {
                 const c = cnt.cur, q = cnt.prev, all = c.docs + c.plans, allp = q.docs + q.plans;
                 const nu = Object.keys(us.cur).length, nup = Object.keys(us.prev).length;
                 w.nums = [
-                    { l: 'Распознаваний', v: fmt(all), d: hasPrev ? this.kpiDelta(all, allp) : '', big: true },
-                    { l: 'Накладные и сметы', v: fmt(c.docs), d: hasPrev ? this.kpiDelta(c.docs, q.docs) : '' },
-                    { l: 'Планы этажей', v: fmt(c.plans), d: hasPrev ? this.kpiDelta(c.plans, q.plans) : '' },
-                    { l: 'Пользователей', v: fmt(nu), d: hasPrev ? this.kpiDelta(nu, nup) : '' },
-                    { l: 'Запросов к модели', v: fmt(c.calls), d: hasPrev ? this.kpiDelta(c.calls, q.calls) : '', s: 'с них считается лимит' }
+                    { k: 'all', l: 'Распознаваний', v: fmt(all), d: hasPrev ? this.kpiDelta(all, allp) : '', sp: addS(sd, sp), h: 'Сколько документов и планов распознали за период' },
+                    { k: 'docs', l: 'Накладные и сметы', v: fmt(c.docs), d: hasPrev ? this.kpiDelta(c.docs, q.docs) : '', sp: sd, h: 'Распознавание накладных и смет' },
+                    { k: 'plans', l: 'Планы этажей', v: fmt(c.plans), d: hasPrev ? this.kpiDelta(c.plans, q.plans) : '', sp: sp, h: 'Распознавание планов этажей' },
+                    { k: 'us', l: 'Пользователей', v: fmt(nu), d: hasPrev ? this.kpiDelta(nu, nup) : '', off: true, h: 'Сколько разных людей распознавали' },
+                    { k: 'calls', l: 'Запросов к модели', v: fmt(c.calls), d: hasPrev ? this.kpiDelta(c.calls, q.calls) : '', s: 'с них считается лимит', off: true, h: 'Сколько раз вызывалась модель; по этому числу считается лимит' }
                 ];
                 w.chart = { labels: B.labels, tips: B.tips, stack: true, series: [
                     { name: 'Накладные и сметы', color: C.teal, vals: sd }, { name: 'Планы этажей', color: C.violet, vals: sp }] };
@@ -29078,9 +29100,9 @@ const app = {
                     if (c === 'cur') { const i = B.at(t); scount[i]++; ssum[i] += v; const k = r.plan ? String(r.plan) : 'без тарифа'; plans[k] = (plans[k] || 0) + v; }
                 });
                 w.nums = [
-                    { l: 'Оплат', v: fmt(cnt.cur), d: hasPrev ? this.kpiDelta(cnt.cur, cnt.prev) : '', big: true },
-                    { l: 'Сумма', v: rub(sum.cur), d: hasPrev ? this.kpiDelta(sum.cur, sum.prev, { fmt: rub }) : '' },
-                    { l: 'Средний чек', v: cnt.cur ? rub(sum.cur / cnt.cur) : '—' }
+                    { k: 'cnt', l: 'Оплат', v: fmt(cnt.cur), d: hasPrev ? this.kpiDelta(cnt.cur, cnt.prev) : '', sp: scount, h: 'Сколько оплат подписки Профи прошло за период' },
+                    { k: 'sum', l: 'Сумма', v: rub(sum.cur), d: hasPrev ? this.kpiDelta(sum.cur, sum.prev, { fmt: rub }) : '', sp: ssum, h: 'На какую сумму пришли оплаты' },
+                    { k: 'avg', l: 'Средний чек', v: cnt.cur ? rub(sum.cur / cnt.cur) : '—', h: 'Сумма / число оплат' }
                 ];
                 w.chart = { labels: B.labels, tips: B.tips, stack: false, unit: ' ₽', series: [{ name: 'Сумма оплат', color: C.green, vals: ssum }] };
                 const palette = [C.green, C.blue, C.amber, C.violet, C.teal, C.gray];
@@ -29144,26 +29166,83 @@ const app = {
             <div class="kpi-pie-l">${leg}</div></div></div>`;
     },
 
+    // Какие плашки-цифры скрыты. Ключ «виджет.показатель»; по умолчанию скрыто то, что в kpiBuild помечено off:
+    // раскладка у каждого своя и лежит в localStorage этого компьютера. true — скрыто, false — показано явно
+    KPI_HIDE_KEY: 'heatcalc_kpi_hide_v1',
+    kpiHideMap: function () {
+        if (!this._kpiHide) {
+            let v = null;
+            try { v = JSON.parse(localStorage.getItem(this.KPI_HIDE_KEY) || 'null'); } catch (e) { }
+            this._kpiHide = (v && typeof v === 'object') ? v : {};
+        }
+        return this._kpiHide;
+    },
+    kpiIsHidden: function (wid, m) {
+        const v = this.kpiHideMap()[wid + '.' + m.k];
+        return v === undefined ? !!m.off : !!v;
+    },
+    kpiSetHidden: function (wid, k, hide) {
+        this.kpiHideMap()[wid + '.' + k] = !!hide;
+        try { localStorage.setItem(this.KPI_HIDE_KEY, JSON.stringify(this._kpiHide)); } catch (e) { }
+        this.renderAdminHome();
+    },
+    kpiEdit: function (on) { this._kpiEditOn = !!on; this.renderAdminHome(); },
+    kpiResetHidden: function () {
+        this._kpiHide = {};
+        try { localStorage.removeItem(this.KPI_HIDE_KEY); } catch (e) { }
+        this.renderAdminHome();
+    },
+
+    // Линия-«спарклайн» под числом плашки: растягивается на всю ширину, без осей и подписей
+    kpiSparkHtml: function (vals) {
+        const n = vals.length;
+        if (n < 2) return '';
+        let max = 0; vals.forEach(v => { if (v > max) max = v; });
+        const y = v => max ? 29 - (v / max) * 25 : 29;
+        const pts = vals.map((v, i) => (i / (n - 1) * 100).toFixed(2) + ' ' + y(v).toFixed(2));
+        const line = 'M' + pts.join(' L');
+        return `<svg class="kpi-sp${max ? '' : ' kpi-sp-z'}" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
+            <path class="kpi-sp-a" d="${line} L100 32 L0 32 Z"></path><path class="kpi-sp-l" d="${line}"></path></svg>`;
+    },
+
+    kpiNumsHtml: function (w, esc, edit) {
+        const tile = m => {
+            const info = m.h ? `<i class="kpi-info" title="${esc(m.h)}" aria-label="${esc(m.h)}">i</i>` : '';
+            const x = edit ? `<button type="button" class="kpi-x" title="Скрыть плашку" aria-label="Скрыть плашку «${esc(m.l)}»" onclick="app.kpiSetHidden('${w.id}','${m.k}',true)">×</button>` : '';
+            return `<div class="kpi-n${m.sp ? ' kpi-n-sp' : ''}${m.tone ? ' kpi-n-' + m.tone : ''}${edit ? ' kpi-n-edit' : ''}">${x}
+                <span class="kpi-nl">${esc(m.l)}${info}</span>
+                <div class="kpi-nv"><b${String(m.v).length > 9 ? ' class="kpi-long"' : ''}>${esc(m.v)}</b>${m.d ? `<span class="kpi-nd">${m.d}</span>` : ''}</div>
+                ${m.s ? `<span class="kpi-ns">${esc(m.s)}</span>` : ''}${m.sp ? this.kpiSparkHtml(m.sp) : ''}</div>`;
+        };
+        const shown = w.nums.filter(m => !this.kpiIsHidden(w.id, m));
+        const hidden = w.nums.filter(m => this.kpiIsHidden(w.id, m));
+        let h = shown.map(tile).join('');
+        if (edit) h += hidden.map(m => `<button type="button" class="kpi-n kpi-n-add" title="${esc(m.h || '')}" onclick="app.kpiSetHidden('${w.id}','${m.k}',false)">
+                <span class="kpi-plus" aria-hidden="true">+</span><span class="kpi-nl">${esc(m.l)}</span><span class="kpi-ns">добавить плашку</span></button>`).join('');
+        if (!h) h = '<div class="ad-tile-note">Все плашки скрыты. Нажмите «Настроить», чтобы вернуть нужные.</div>';
+        return `<div class="kpi-nums">${h}</div>`;
+    },
+
     kpiWidgetHtml: function (w, esc) {
-        const view = this.kpiViewOf(w.id);
-        const tabs = this.KPI_VIEWS.map(v => `<button type="button" class="kpi-vb${v.id === view ? ' on' : ''}" onclick="app.kpiSetView('${w.id}','${v.id}')">${v.label}</button>`).join('');
+        const edit = !!this._kpiEditOn;
+        // В режиме настройки плашек всегда показываем цифры: прятать и добавлять можно только их
+        const view = edit ? 'num' : this.kpiViewOf(w.id);
+        const tabs = edit ? '' : `<span class="kpi-vs">${this.KPI_VIEWS.map(v => `<button type="button" class="kpi-vb${v.id === view ? ' on' : ''}" onclick="app.kpiSetView('${w.id}','${v.id}')">${v.label}</button>`).join('')}</span>`;
         let body;
-        if (w.err) body = `<div class="ad-tile-note ad-warn">Не загрузилось: ${esc(w.err)}</div>`;
+        if (w.err) body = `<div class="kpi-card"><div class="ad-tile-note ad-warn">Не загрузилось: ${esc(w.err)}</div></div>`;
         else if (w.wait) body = '<div class="kpi-skel"><i></i><i></i><i></i></div>';
-        else if (view === 'chart') body = this.kpiChartHtml(w.chart, esc);
-        else if (view === 'pie') body = `<div class="kpi-pies">${w.groups.map(g => this.kpiDonutHtml(g, esc)).join('')}</div>`;
+        else if (view === 'chart') body = `<div class="kpi-card">${this.kpiChartHtml(w.chart, esc)}</div>`;
+        else if (view === 'pie') body = `<div class="kpi-card"><div class="kpi-pies">${w.groups.map(g => this.kpiDonutHtml(g, esc)).join('')}</div></div>`;
         else if (view === 'table') {
             const t = w.table;
-            body = `<div class="kpi-tw"><table class="kpi-t"><thead><tr><th>Период</th>${t.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
+            body = `<div class="kpi-card"><div class="kpi-tw"><table class="kpi-t"><thead><tr><th>Период</th>${t.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
                 <tr class="kpi-tt"><td>Итого</td>${t.total.map(v => `<td>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>
                 ${t.rows.map(r => `<tr><td>${esc(r.l)}</td>${r.v.map(v => `<td${v ? '' : ' class="z"'}>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>`).join('')}
-                </tbody></table></div>`;
-        } else body = `<div class="kpi-nums">${w.nums.map(m => `<div class="kpi-n${m.big ? ' kpi-n-big' : ''}${m.tone ? ' kpi-n-' + m.tone : ''}">
-                <span class="kpi-nl">${esc(m.l)}</span><b>${esc(m.v)}</b>${m.d ? `<span class="kpi-nd">${m.d}</span>` : ''}${m.s ? `<span class="kpi-ns">${esc(m.s)}</span>` : ''}</div>`).join('')}</div>`;
+                </tbody></table></div></div>`;
+        } else body = this.kpiNumsHtml(w, esc, edit);
         const note = (!w.err && !w.wait && w.note) ? `<div class="kpi-note">${esc(w.note)}</div>` : '';
-        return `<section class="kpi-w${w.wide ? ' kpi-wide' : ''}">
-            <div class="kpi-h"><b onclick="app.switchAdminTab('${w.tab}')" title="Открыть раздел: ${esc(w.act)}">${esc(w.title)} <span aria-hidden="true">›</span></b>
-                <span class="kpi-vs">${tabs}</span></div>
+        return `<section class="kpi-w">
+            <div class="kpi-h"><b onclick="app.switchAdminTab('${w.tab}')" title="Открыть раздел: ${esc(w.act)}">${esc(w.title)} <span aria-hidden="true">›</span></b>${tabs}</div>
             <div class="kpi-b">${body}</div>${note}</section>`;
     },
 
@@ -29172,10 +29251,17 @@ const app = {
         this.kpiStart(p);
         const S = (this._kpiSt || {})[p.id] || {};
         const W = this.kpiBuild(p, S);
+        const edit = !!this._kpiEditOn;
         const chips = this.KPI_PERIODS.map(x => `<button type="button" class="kpi-chip${x.id === p.id ? ' on' : ''}" onclick="app.kpiSetPeriod('${x.id}')">${x.label}</button>`).join('');
-        const order = ['planner', 'users', 'ests', 'rec', 'pay'];
+        const order = ['users', 'planner', 'ests', 'rec', 'pay'];
+        const ctl = edit
+            ? `<button type="button" class="kpi-ed" onclick="app.kpiResetHidden()">Сбросить</button><button type="button" class="kpi-ed on" onclick="app.kpiEdit(false)">Готово</button>`
+            : `<button type="button" class="kpi-ed" onclick="app.kpiEdit(true)">✏️ Настроить плашки</button>`;
+        const hint = edit
+            ? 'Нажмите × на плашке, чтобы скрыть её, или «+», чтобы вернуть скрытую'
+            : `Показатели ${p.full}${p.days ? ' · стрелки — сравнение с предыдущим таким же периодом' : ''}`;
         return `<div class="kpi-bar"><div class="kpi-chips" role="tablist" aria-label="Период">${chips}</div>
-                <span class="kpi-cmp">Показатели ${p.full}${p.days ? ' · стрелки — сравнение с предыдущим таким же периодом' : ''}</span></div>
+                <span class="kpi-cmp">${hint}</span><span class="kpi-ctl">${ctl}</span></div>
             <div class="kpi-grid">${order.map(k => this.kpiWidgetHtml(W[k], esc)).join('')}</div>`;
     },
 
@@ -43435,7 +43521,7 @@ const app = {
         // Режим луча: 'auto' — общий луч на комнату; 'single' — своя ветка на каждый прибор (по умолчанию).
         // radSharedBeams — прежний флаг (включён до появления режима): считаем его автоподбором.
         const auto = this.radBeamAutoOn();
-        return auto && s.radConnectionScheme !== 'tee' && !!s.detailedRooms && s.pipeType === 'split';
+        return auto && s.radConnectionScheme !== 'tee' && !!s.detailedRooms && (s.pipeType === 'split' || s.pipeType === 'split_mp');
     },
     // Выходы коллектора по этажам с учётом общих лучей: группа — один выход, остальные приборы — по одному.
     radSharedOutPerFloor: function () {
@@ -55928,7 +56014,11 @@ const app = {
                     // десктоп: медиазапросы @media (max-width: 768px) внутри него не срабатывают,
                     // поэтому смета собирается обычной таблицей, а не мобильными карточками с
                     // зажатыми колонками. Тот же параметр стоит в invoice.html.
-                    html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 900 },
+                    // Ширина именно 1280, а не 900: html2pdf задаёт высоту виртуального окна по
+                    // высоте всей сметы, окно получается «портретным», и запрос
+                    // (max-width: 1024px) and (orientation: portrait) срабатывал при 900 —
+                    // смета выходила мобильными карточками. Выше 1024 он не сработает никогда.
+                    html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 1280 },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
                     pagebreak: { mode: ['css', 'legacy'] }
                 };
@@ -76207,7 +76297,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         let why = '';
         if (s.radConnectionScheme === 'tee') why = 'в тройниковой схеме коллектора нет';
         else if (!s.detailedRooms) why = 'нужен режим «По комнатам»';
-        else if (s.pipeType !== 'split') why = 'пока только для серой трубы PEX-a';
+        else if (s.pipeType !== 'split' && s.pipeType !== 'split_mp') why = 'пока только для серой трубы PEX-a и металлопластика';
         return { mode: mode, why: why };
     },
     /**
@@ -76737,7 +76827,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         if (radSchemeTeeTab) radSchemeTeeTab.className = isTeeScheme ? 'tab active' : 'tab';
         // Общий луч на комнату: показываем, когда он может сработать (коллекторная схема, серая PEX-a, «По комнатам»)
         const radSharedRow = document.getElementById('rad_shared_row');
-        if (radSharedRow) radSharedRow.style.display = (radSchemeOn && !isTeeScheme && this.state.pipeType === 'split') ? 'block' : 'none';
+        if (radSharedRow) radSharedRow.style.display = (radSchemeOn && !isTeeScheme && (this.state.pipeType === 'split' || this.state.pipeType === 'split_mp')) ? 'block' : 'none';
         const _beamRaw = this.radBeamModeRaw();
         const _tbSingle = document.getElementById('rad_beam_single'), _tbAuto = document.getElementById('rad_beam_auto'), _tbSmart = document.getElementById('rad_beam_smart');
         if (_tbSingle) _tbSingle.className = _beamRaw === 'single' ? 'tab active' : 'tab';

@@ -6645,7 +6645,7 @@
                     // (.container принудительно 800px через .html2pdf-printing) — без этого на телефоне
                     // canvas обрезается по ширине реального узкого экрана, и правая часть таблиц/сумм
                     // просто пропадает из PDF.
-                    html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 900 },
+                    html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 1280 },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
                     pagebreak: { mode: ['css', 'legacy'] }
                 };
