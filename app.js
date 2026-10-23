@@ -16933,11 +16933,11 @@ const app = {
                 <div class="lk-setting">
                     <div class="lk-setting-text">
                         <b>Подбирать бухты по всей смете</b>
-                        <span>Одинаковые трубы в бухтах из всех разделов считаются вместе — меньше обрезков. Полипропилен и сталь не объединяются. Остаток виден на экране, в печать и КП не попадает.</span>
+                        <span>Одинаковые трубы из разных разделов считаются вместе — меньше обрезков.</span>
                         <span style="color:var(--text-main);">${(() => {
                             const st = this._poolStats;
                             if (!st) return 'Откройте смету с трубами — покажем экономию.';
-                            if (!(st.unM > 0)) return 'В текущей смете объединять нечего.';
+                            if (!(st.unM > 0)) return '';
                             const eco = st.metres > 0
                                 ? `экономия <b>${Math.round(st.metres)} м</b> трубы (${String(st.pct).replace('.', ',')} % от ${Math.round(st.unM)} м) и <b>${this.formatCurrencyAmount(st.rub)}</b>`
                                 : 'экономии нет, бухт и так минимум';
