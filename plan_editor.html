@@ -1693,7 +1693,10 @@ function computeVk() {
     f.spress = [];
     fx.forEach(function (q, qi) {
       if (q.t === 'riser') return;
-      if (src && q.t !== 'pump') f.wlines.push({ i: qi, pts: wRoutes ? wRoutes[dIdx.indexOf(qi)] : routeBetween(m, src, [q.x, q.y]) });
+      if (src && q.t !== 'pump') {
+        var manPts = wwManual(f, fi, qi, src, [q.x, q.y]);
+        f.wlines.push({ i: qi, man: !!manPts, pts: manPts || (wRoutes ? wRoutes[dIdx.indexOf(qi)] : routeBetween(m, src, [q.x, q.y])) });
+      }
       if (risers.length) {
         var best = risers[0], bd = 1e18;
         // стояк своего помещения (у санузла он свой); ближайший по прямой может стоять за стеной в соседней комнате
@@ -1707,7 +1710,7 @@ function computeVk() {
         if (q.t !== 'pump') fx.forEach(function (pq, pi) { if (!pumpQ && pq.t === 'pump' && pq.z === q.z) { pumpQ = pq; pumpI = pi; } });
         var tgt = pumpQ || best, sPts = null;
         { var sr = wwRoutes(f, fi, [tgt.x, tgt.y], [[q.x, q.y]], m); sPts = sr && sr[0] ? sr[0].slice().reverse() : null; }
-        var linePts = sPts || routeBetween(m, [q.x, q.y], [tgt.x, tgt.y]);
+        var linePts = wwManual(f, fi, qi, [q.x, q.y], [tgt.x, tgt.y], q.t === 'pump' ? 'p|' : 's|') || sPts || routeBetween(m, [q.x, q.y], [tgt.x, tgt.y]);
         if (q.t === 'pump') f.spress.push({ i: qi, d: 32, pts: linePts });
         else f.slines.push({ i: qi, d: (q.t === 'toilet' ? 110 : (pumpQ ? 40 : 50)), pump: pumpI, pts: linePts });
       }
@@ -5419,6 +5422,7 @@ function closePoly() {
 var hoverZ = -1, hoverV = -1, hoverE = -1, dragZ = null, justDragged = 0;
 // Коллектор, который тянут мышью: 'tp' — тёплого пола, 'rad' — радиаторов.
 // Переносят его так же, как радиатор: захватить значок и отпустить на месте.
+var dragW = null;   // отрезок трассы воды, который тянут: { l, j, base, start, moved }
 var dragC = null, dragF = null;   // dragF — сантехприбор, который тянут (индекс в fixtures этажа)
 
 /** Где сейчас коллектор радиаторов этажа (тот же расчёт, что у сметы). */
@@ -5512,6 +5516,11 @@ cv.addEventListener('mousedown', function (e) {
     if (wwLayer()) {
       var fi0 = fixAt(evPt(e));
       if (fi0 >= 0) { dragF = { i: fi0, moved: false }; e.preventDefault(); return; }
+      // отрезок трассы воды тянется поперёк себя: так её переносят на другую стену или коридор
+      {
+        var sg = wwSegAt(evPt(e));
+        if (sg) { pushUndo('wroute'); dragW = { l: sg.l, j: sg.j, key: sg.key, kind: sg.kind, base: sg.l.pts.map(function (q) { return [q[0], q[1]]; }), start: evPt(e), moved: false }; e.preventDefault(); return; }
+      }
     }
   }
   // Править зону можно и в режиме «Зона: по клику»: разметил комнату — сразу
@@ -5525,7 +5534,16 @@ cv.addEventListener('mousedown', function (e) {
   e.preventDefault();
 });
 cv.addEventListener('mousemove', function (e) {
-  if (!dragF && !dragC && !dragZ && wwLayer()) wwHover(e); else if (wwTipEl && wwTipEl.style.display !== 'none') wwTip('', e);
+  if (!dragF && !dragC && !dragZ && !dragW && wwLayer()) wwHover(e); else if (wwTipEl && wwTipEl.style.display !== 'none') wwTip('', e);
+  if (dragW) {
+    var wp = evPt(e);
+    if (Math.hypot(wp[0] - dragW.start[0], wp[1] - dragW.start[1]) > 3 / cs()) dragW.moved = true;
+    if (dragW.moved) { dragW.l.pts = wwSegMove(dragW.base, dragW.j, wp, dragW.start); dragW.l.man = true; cv.style.cursor = 'grabbing';
+      // метраж и гидравлика — по ходу перетаскивания: длина, скорость и нужный диаметр в подсказке у курсора
+      try { if (dragW.kind === 'w') computeWaterTrunks(); else computeSewerMain(); wwTip(wwInfoHtml({ kind: dragW.kind, i: dragW.l.i }), e); } catch (e2) { console.warn('[plan_editor] трасса на лету:', e2 && e2.message); }
+      draw(); }
+    return;
+  }
   if (dragF) {
     var fq = F().fixtures[dragF.i], fp = evPt(e);
     if (fq) { fq.x = Math.round(fp[0]); fq.y = Math.round(fp[1]); dragF.moved = true; cv.style.cursor = 'grabbing'; wwLive(); draw(); }
@@ -5585,7 +5603,7 @@ cv.addEventListener('mousemove', function (e) {
   // над значком коллектора — рука: его можно взять и перенести
   var overC = (F().pxPerM && mode !== 'poly' && mode !== 'scale' && mode !== 'rect') ? collAt(evPt(e)) : null;
   if (mode !== 'select' && mode !== 'room' && mode !== 'scale' && mode !== 'poly' && mode !== 'rect') {
-    cv.style.cursor = overC ? 'grab' : '';
+    cv.style.cursor = overC ? 'grab' : (hoverLn && (hoverLn.kind === 'w' || hoverLn.kind === 's' || hoverLn.kind === 'p') ? 'move' : '');
     if (overC) return;
   }
   if (mode === 'scale') {
@@ -5621,6 +5639,15 @@ cv.addEventListener('contextmenu', function (e) {
     if (wwLayer()) {
       var fi2 = fixAt(evPt(e)), fq3 = fi2 >= 0 ? F().fixtures[fi2] : null;
       if (fq3 && fq3.t !== 'riser') { e.preventDefault(); fq3.ang = (((fq3.ang || 0) + 90) % 360); wwSavePos(fq3); wwRefresh(); return; }
+      // правый клик по ручной трассе воды или канализации — вернуть автоматическую
+      {
+        var sg2 = wwSegAt(evPt(e)), wd2 = DATA.floors[0].water;
+        if (sg2 && wd2.wroutes && wd2.wroutes[sg2.key]) {
+          e.preventDefault(); pushUndo('wroute');
+          delete wd2.wroutes[sg2.key]; wd2.touched = true;
+          hint('<span class=ok>Трасса снова автоматическая.</span>'); wwRefresh(); return;
+        }
+      }
     }
   }
   // правый клик по радиатору — развернуть подключение (в мастере, вне рисования контура);
@@ -5666,6 +5693,17 @@ cv.addEventListener('mouseleave', function () {
   if (hoverZ >= 0 && !dragZ) { hoverZ = hoverV = hoverE = -1; draw(); }
 });
 cv.addEventListener('mouseup', function (e) {
+  if (dragW) {
+    var dw = dragW; dragW = null; cv.style.cursor = '';
+    if (!dw.moved) { undoStack.pop(); return; }
+    var wd = DATA.floors[0].water, fw = F();
+    wd.wroutes = wd.wroutes || {};
+    wd.wroutes[dw.key] = wwTidy(dw.l.pts);
+    wd.touched = true; justDragged = Date.now();
+    hint('<span class=ok>Трасса перенесена.</span> Длина и труба пересчитаны. Правый клик по линии — вернуть автоматическую трассу.');
+    wwRefresh();
+    return;
+  }
   if (dragF) {
     var wf = dragF, fq2 = F().fixtures[wf.i]; dragF = null; cv.style.cursor = '';
     if (wf.moved && fq2) { wwSavePos(fq2); justDragged = Date.now(); wwRefresh(); }
@@ -5871,6 +5909,7 @@ cv.addEventListener('dblclick', function () {
 function snapFloor(fi) {
   var f = DATA.floors[fi];
   return {
+    wroutes: undefined,
     pxPerM: f.pxPerM,
     zones: JSON.parse(JSON.stringify(f.zones)),
     rads: JSON.parse(JSON.stringify(f.rads || [])),
@@ -5885,6 +5924,7 @@ function snapFloor(fi) {
 function pushUndo(t) {
   var f = F();
   var rec = { t: t, floor: cur, prev: snapFloor(cur) };
+  if (t === 'wroute') rec.prev.wroutes = wwRoutesCopy();
   if (t === 'plan') {
     rec.prev.img = f.img; rec.prev.imgFile = f.imgFile || null;
     rec.prev.w = f.w; rec.prev.h = f.h;
@@ -5911,7 +5951,11 @@ function doRedo() {
 function stepHist(from, to, empty) {
   var rec = from.pop();
   if (!rec) { hint(empty); return; }
-  if (rec.t !== 'floorAdd' && rec.t !== 'plan') to.push({ t: rec.t, floor: rec.floor, prev: snapFloor(rec.floor) });
+  if (rec.t !== 'floorAdd' && rec.t !== 'plan') {
+    var nrec = { t: rec.t, floor: rec.floor, prev: snapFloor(rec.floor) };
+    if (rec.prev.wroutes) nrec.prev.wroutes = wwRoutesCopy();
+    to.push(nrec);
+  }
   if (rec.t === 'floorAdd') {
     if (DATA.floors.length > 1) {
       DATA.floors.pop();
@@ -5934,8 +5978,14 @@ function stepHist(from, to, empty) {
     if (rec.prev.collAng) f.collAng = rec.prev.collAng; else delete f.collAng;
     if (rec.prev.radCollAng) f.radCollAng = rec.prev.radCollAng; else delete f.radCollAng;
     f.fixtures = rec.prev.fixtures || [];
+    if (rec.prev.wroutes) DATA.floors[0].water.wroutes = rec.prev.wroutes;
   }
   renderTabs(); draw(); renderZones();
+  if (rec.prev && rec.prev.wroutes) wwRefresh();   // трассы воды вернулись — длины и диаметры заново
+}
+function wwRoutesCopy() {
+  var w = DATA.floors[0].water;
+  return JSON.parse(JSON.stringify((w && w.wroutes) || {}));
 }
 
 /**
@@ -8137,6 +8187,65 @@ function wwRoutes(f, fi, src, dests, m) {
   return dests.map(function (d, i) { return (r && r[i]) || wwManhattan(m, src, d); });
 }
 
+/**
+ * Трасса воды, которую монтажник перетянул рукой: floors[0].water.wroutes['этаж|помещение|тип|номер'] = точки.
+ * Живёт, пока оба конца на месте (коллектор и прибор не двигали дальше чем на 0,15 м) — иначе возвращается автотрасса.
+ */
+function wwRKey(f, fi, qi) {
+  var fx = f.fixtures || [], q = fx[qi], n = 0, z = String(q.z || '').trim().toLowerCase();
+  for (var i = 0; i < qi; i++) if (fx[i].t === q.t && String(fx[i].z || '').trim().toLowerCase() === z) n++;
+  return fi + '|' + z + '|' + q.t + '|' + n;
+}
+function wwManual(f, fi, qi, a, b, pre) {
+  var w = DATA.floors[0].water, q = (f.fixtures || [])[qi];
+  var r = w && w.wroutes && q ? w.wroutes[(pre || '') + wwRKey(f, fi, qi)] : null;
+  if (!r || r.length < 2) return null;
+  var tol = 0.15 * (f.pxPerM || 100), e = r[r.length - 1];
+  if (Math.hypot(r[0][0] - a[0], r[0][1] - a[1]) > tol || Math.hypot(e[0] - b[0], e[1] - b[1]) > tol) return null;
+  var pts = r.map(function (p) { return [p[0], p[1]]; });
+  pts[0] = [a[0], a[1]]; pts[pts.length - 1] = [b[0], b[1]];
+  return pts;
+}
+/** Отрезок трассы воды под точкой: { l, j } — линия и номер конца отрезка (отрезок j-1 → j) */
+function wwSegAt(p) {
+  var f = F(), tol = 7 / cs(), best = null, bd = tol, layer = wwLayer(), fi = DATA.floors.indexOf(f);
+  var lists = layer === 'water' ? [['', f.wlines]] : layer === 'sewer' ? [['s|', f.slines], ['p|', f.spress]] : [];
+  lists.forEach(function (L) {
+    (L[1] || []).forEach(function (l) {
+      if (!l.pts || !(f.fixtures || [])[l.i]) return;
+      for (var j = 1; j < l.pts.length; j++) {
+        var d = segDist(p, l.pts[j - 1], l.pts[j]);
+        if (d < bd) { bd = d; best = { l: l, j: j, key: L[0] + wwRKey(f, fi, l.i), kind: L[0] === '' ? 'w' : L[0] === 's|' ? 's' : 'p' }; }
+      }
+    });
+  });
+  return best;
+}
+/** Отрезок едет поперёк себя; у конца у коллектора или прибора вставляется перемычка, чтобы сам конец остался на месте */
+function wwSegMove(base, j, p, start) {
+  var pts = base.map(function (q) { return [q[0], q[1]]; }), ai = j - 1, bi = j;
+  var a = pts[ai], b = pts[bi], horiz = Math.abs(b[0] - a[0]) >= Math.abs(b[1] - a[1]);
+  if (bi === pts.length - 1) pts.push([b[0], b[1]]);
+  if (ai === 0) { pts.unshift([a[0], a[1]]); ai++; bi++; }
+  var d = horiz ? p[1] - start[1] : p[0] - start[0], c = horiz ? 1 : 0;
+  pts[ai][c] = Math.round(pts[ai][c] + d); pts[bi][c] = Math.round(pts[bi][c] + d);
+  return pts;
+}
+/** Убрать повторные точки и точки посреди прямой — после перетаскивания трасса остаётся с минимумом изломов */
+function wwTidy(pts) {
+  var o = [];
+  pts.forEach(function (p) { var l = o[o.length - 1]; if (!l || Math.hypot(p[0] - l[0], p[1] - l[1]) > 1.5) o.push([p[0], p[1]]); });
+  var r = [];
+  o.forEach(function (p) {
+    while (r.length >= 2) {
+      var a = r[r.length - 2], b = r[r.length - 1];
+      if (Math.abs((b[0] - a[0]) * (p[1] - a[1]) - (b[1] - a[1]) * (p[0] - a[0])) < 1.5 * Math.max(1, Math.hypot(p[0] - a[0], p[1] - a[1])) * 0.2) r.pop(); else break;
+    }
+    r.push(p);
+  });
+  return r.length >= 2 ? r : pts;
+}
+
 function wwPolyM(pts, ppm) {
   var s = 0;
   for (var i = 1; i < pts.length; i++) s += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
@@ -8710,9 +8819,17 @@ function wwInfoHtml(ln) {
   var out = head + (hot ? 'В1 (ХВС) и Т3 (ГВС)' : 'В1 (ХВС)') + ' — от коллекторов к прибору, отдельной трубой<br>Длина ' + num(Lw) + ' м';
   var F0 = wh && wh.FIXTURES[q.t];
   if (F0) {
-    var ql = (F0.qMax || F0.q) * (F0.mixer ? wh.MIX_LINE : 1), v16 = wh.velocity(ql, 0.0116), hf = wh.pipeLoss(ql, 0.0116, Lw * 1.1, 1.3e-6).hf;
-    var lim = wh.V_LIMIT.branch, need = v16 > lim ? (wh.velocity(ql, 0.0144) <= lim ? '20×2,8' : '25×3,5') : null;
-    out += ' · расход ' + num(ql / 3.6) + ' л/с на линию<br>Труба PEX 16×2,2: ' + num(v16) + ' м/с, потеря ' + num(hf) + ' м — ' +
+    // труба — та, что стоит в смете с учётом ручной замены (материал, бренд); окно не из калькулятора — PEX 16×2,2
+    var hp = null;
+    try { var ha = radHostApp(); hp = ha && ha.waterBranchPipe && ha.pipeDims ? ha.pipeDims(ha.waterBranchPipe()) : null; } catch (e3) {}
+    var dIn = hp ? hp.dIn : 0.0116, pl = hp ? hp.od + '×' + String(hp.wall).replace('.', ',') : '16×2,2';
+    var ql = (F0.qMax || F0.q) * (F0.mixer ? wh.MIX_LINE : 1), v16 = wh.velocity(ql, dIn), hf = wh.pipeLoss(ql, dIn, Lw * 1.1, 1.3e-6).hf;
+    var lim = wh.V_LIMIT.branch, need = null;
+    if (v16 > lim) {
+      need = '25×3,5';
+      [[0.0144, '20×2,8'], [0.0180, '25×3,5']].some(function (s) { if (s[0] > dIn + 1e-6 && wh.velocity(ql, s[0]) <= lim) { need = s[1]; return true; } return false; });
+    }
+    out += ' · расход ' + num(ql / 3.6) + ' л/с на линию<br>Труба ' + pl + ': ' + num(v16) + ' м/с, потеря ' + num(hf) + ' м — ' +
       (need ? '<span style="color:#d97706"><b>мало, нужна ' + need + '</b></span>' : 'хватает');
   }
   return out;
@@ -8856,7 +8973,7 @@ function wwBody() {
   return { next: 'Дальше →', acts: acts, diag: diag,
     tx: 'Укажите, где в доме есть вода — по этому посчитаем трубы ХВС и ГВС.<br><span class="ww-sub">1. Кликните санузлы и кухню на плане — приборы встанут сами.<br>' +
       '2. Проверьте ввод воды и коллекторы (по умолчанию они в котельной).<br>3. Нажмите «Дальше».</span>',
-    tips: [['Клик по комнате', 'есть вода / нет'], ['Прибор', 'тянуть мышью'], ['Пробел', 'повернуть'], ['Таблица справа', 'сколько приборов']] };
+    tips: [['Клик по комнате', 'есть вода / нет'], ['Прибор', 'тянуть мышью'], ['Линия воды', 'тянуть — сместить трассу; правый клик — вернуть автомат'], ['Пробел', 'повернуть'], ['Таблица справа', 'сколько приборов']] };
 }
 
 function wsBody() {
@@ -8903,7 +9020,7 @@ function wsBody() {
   var acts = B("wwPlace('wout')", 'Выпуск') + (wetNames.length ? B('wsAskCards([])', 'Ещё выпуск') : '') + ((w.out) ? B('wwResetOut()', 'Выпуск по умолчанию') : '');
   return { next: 'Дальше →', acts: acts, diag: diag,
     tx: 'Канализация привязана к приборам: от каждого отвод идёт к стояку, стояки — лежаком к выпуску. Стояк, выпуск и приборы тяните мышью — трассы пересчитаются.',
-    tips: [['Стояк', 'тянуть мышью'], ['Выпуск', 'тянуть к септику'], ['Уклон', 'галочка выше — проверка самотёка'], ['d50 / d110', 'подписаны на трассах']] };
+    tips: [['Стояк', 'тянуть мышью'], ['Отвод', 'тянуть — сместить трассу; правый клик — вернуть автомат'], ['Выпуск', 'тянуть к септику'], ['Уклон', 'галочка выше — проверка самотёка'], ['d50 / d110', 'подписаны на трассах']] };
 }
 
 /** Первый расчёт при открытии шага: приборы, трассы, лежак (дальше — по правкам, wwRefresh) */
@@ -8954,6 +9071,15 @@ function wwDraw(f, k) {
       acc += seg[i];
     }
   };
+  // ручки у выбранной линии: середина каждого отрезка — за него тянут трассу
+  var handles = function (l) {
+    for (var hj = 1; hj < l.pts.length; hj++) {
+      var ha = l.pts[hj - 1], hb = l.pts[hj];
+      if (Math.hypot(hb[0] - ha[0], hb[1] - ha[1]) < 0.25 * f.pxPerM) continue;
+      cx.beginPath(); cx.arc((ha[0] + hb[0]) / 2 * k, (ha[1] + hb[1]) / 2 * k, 4.5 * U, 0, 6.2832);
+      cx.fillStyle = '#fff'; cx.fill(); cx.lineWidth = 2 * U; cx.strokeStyle = l.man ? '#d97706' : '#0696D7'; cx.stroke();
+    }
+  };
   var act = hoverLn || pinLn;
   var emph = function (kind, i) { return act ? ((act.kind === kind && act.i === i) ? 'on' : 'off') : null; };
   cx.save();
@@ -8977,6 +9103,7 @@ function wwDraw(f, k) {
       if (hot) { line(offsetPts(l.pts, -step / 2 / k), '#0696D7', wd); line(offsetPts(l.pts, step / 2 / k), '#c92a2a', wd); }
       else line(l.pts, '#0696D7', wd);
       cx.restore();
+      if (st === 'on') handles(l);
     });
     (f.wtr || []).forEach(function (t) {
       line(t.pts, '#0b7285', 2.2, [8, 5]);
@@ -8993,6 +9120,7 @@ function wwDraw(f, k) {
       line(l.pts, '#6b3f12', (big ? 3 : 2.2) + (st === 'on' ? 1.5 : 0), big ? null : [6, 3]);
       arrow(l.pts, '#6b3f12');
       cx.restore();
+      if (st === 'on') handles(l);
       // подпись диаметра у конца трассы (у стояка)
       var e = l.pts[l.pts.length - 1];
       cx.fillStyle = '#6b3f12'; cx.font = '' + (10 * U) + 'px system-ui'; cx.textAlign = 'center';
@@ -9005,6 +9133,7 @@ function wwDraw(f, k) {
       var st = emph('p', l.i);
       if (st === 'on') line(l.pts, 'rgba(255,255,255,.95)', 8);
       line(l.pts, '#7c3aed', (2.6 + (st === 'on' ? 1.5 : 0)), [2, 4]);
+      if (st === 'on') handles(l);
       var e = l.pts[Math.floor(l.pts.length / 2)];
       cx.fillStyle = '#7c3aed'; cx.font = 'bold ' + (10 * U) + 'px system-ui'; cx.textAlign = 'center';
       cx.fillText('напорная Ø32', e[0] * k, e[1] * k - 6 * U);
