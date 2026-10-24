@@ -3672,22 +3672,29 @@
 
   // Расход приборов — те же веса, что у гидравлики воды (water_hydro.js, м³/ч): таблица листа не должна расходиться с расчётом.
   // Запасные значения — когда скрипт гидравлики на странице не подключён.
-  var WH_Q = { toilet: 0.10, basin: 0.15, shower: 0.30, bath: 0.40, wash: 0.20, dish: 0.20, bidet: 0.15 };
+  // Расход при полностью открытом кране, м³/ч (water_hydro.js, qMax): линия до прибора считается по нему, а не по среднему расходу часа
+  var WH_Q = { toilet: 0.36, basin: 0.36, shower: 0.54, bath: 0.90, wash: 0.72, dish: 0.54, bidet: 0.36 };
   var WH_MIXER = { basin: 1, shower: 1, bath: 1, bidet: 1 };   // смеситель: на ХВС и на ГВС по 60 % расхода прибора
   var WH_MIX = 0.6;
-  var PIPE_D_IN = 0.0116;                                       // PEX 16×2,2, внутренний диаметр, м
+  var PIPE_SIZES = [{ n: '16', dIn: 0.0116 }, { n: '20', dIn: 0.0144 }, { n: '25', dIn: 0.018 }];   // PEX-a 16×2,2, 20×2,8, 25×3,5
+  var V_BRANCH_MAX = 2.0;                                       // м/с — ориентир практики, тот же, что в проверке воды
   var PLAN_ROOT = null;                                         // планы, по которым строятся листы (ставит waterSheets)
 
   function fixQ(type) {
     var wh = window.waterHydro && window.waterHydro.FIXTURES;
-    return (wh && wh[type] && wh[type].q) || WH_Q[type] || 0.15;
+    return (wh && wh[type] && (wh[type].qMax || wh[type].q)) || WH_Q[type] || 0.36;
   }
   /** Расход линий прибора, л/с: { c — холодная, h — горячая } */
   function fixLs(type) {
     var q = fixQ(type) / 3.6;
     return WH_MIXER[type] ? { c: q * WH_MIX, h: q * WH_MIX } : { c: q, h: 0 };
   }
-  function velMs(ls) { return (ls / 1000) / (Math.PI * PIPE_D_IN * PIPE_D_IN / 4); }
+  function velMs(ls, dIn) { return (ls / 1000) / (Math.PI * dIn * dIn / 4); }
+  /** Наименьшая труба, в которой скорость линии не выше предела */
+  function pickPipe(ls) {
+    for (var i = 0; i < PIPE_SIZES.length; i++) if (velMs(ls, PIPE_SIZES[i].dIn) <= V_BRANCH_MAX) return PIPE_SIZES[i];
+    return PIPE_SIZES[PIPE_SIZES.length - 1];
+  }
   function polyM(pts, ppm) {
     var s = 0;
     for (var i = 1; i < pts.length; i++) s += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
@@ -3726,7 +3733,7 @@
       if (hot) o.push('<path d="' + pathD(offsetPoly(w.pts, step / 2), t) +
         '" style="fill:none;stroke:' + COL_HW + ';stroke-width:0.45"/>');
     });
-    var sumC = 0, sumH = 0, pipeM = 0, nC = 0, nH = 0, vMax = 0, byRoom = {}, roomOrder = [];
+    var sumC = 0, sumH = 0, pipeM = 0, nC = 0, nH = 0, vMax = 0, nBig = 0, byRoom = {}, roomOrder = [];
     fx.forEach(function (q, qi) {
       if (q.t === 'riser') return;
       fixtureMark(q, t, f, o, COL_CW);
@@ -3734,11 +3741,13 @@
       sumC += ls.c; nC++;
       if (hot) { sumH += ls.h; nH++; }
       if (L != null) pipeM += L * (hot ? 2 : 1);
-      vMax = Math.max(vMax, velMs(ls.c), hot ? velMs(ls.h) : 0);
+      var pp = pickPipe(Math.max(ls.c, ls.h));
+      vMax = Math.max(vMax, velMs(Math.max(ls.c, ls.h), pp.dIn));
+      if (pp.n !== '16') nBig++;
       var rk = q.z || 'без имени';
       if (!byRoom[rk]) { byRoom[rk] = { c: 0, h: 0 }; roomOrder.push(rk); }
       byRoom[rk].c++; if (hot) byRoom[rk].h++;
-      rows.push([rows.length + 1, clip(fixTitle(q), 24), f2(ls.c), hot ? f2(ls.h) : '—', L != null ? f1(L) : '—', '16']);
+      rows.push([rows.length + 1, clip(fixTitle(q), 24), f2(ls.c), hot ? f2(ls.h) : '—', L != null ? f1(L) : '—', pp.n]);
     });
     // Этаж без котельной: вода приходит стояками с этажа, где коллекторы
     if (f.wsrc && f.wsrc.kind === 'riser' && (f.wlines || []).length) {
@@ -3778,8 +3787,8 @@
       o.push(txt(33.5, yy + 1.1, r[0], { size: 2.8 }));
     });
     var yn = ly + 4.2 + 2 * 4.6 + 2;
-    o.push(txt(22, yn, 'Лучевая схема: от коллекторов к каждой точке отдельная труба PEX 16×2,2.', { size: 2.6 }));
-    o.push(txt(22, yn + 3.6, 'Расход прибора — по гидравлике воды; смеситель: 60 % на каждую линию.', { size: 2.6 }));
+    o.push(txt(22, yn, 'Лучевая схема: от коллекторов к каждой точке отдельная труба PEX; Ø — по скорости не выше 2 м/с.', { size: 2.6 }));
+    o.push(txt(22, yn + 3.6, 'Расход — при полностью открытом кране; смеситель: 60 % на каждую линию.' + (nBig ? ' Труба 20 мм и больше: ' + nBig + ' лин.' : ''), { size: 2.6 }));
     if (nC) o.push(txt(22, yn + 7.2, 'Скорость в линиях до ' + f1(vMax) + ' м/с' + (vMax > 2 ? ' — выше 2 м/с, увеличить диаметр' : ' (не выше 2 м/с)') + '.', { size: 2.6 }));
     o.push(txt(228, 273.8, 'Трассы показаны условно: разводку уточнить по месту при монтаже.', { size: 3.0 }));
     return o.join('');
@@ -5671,13 +5680,137 @@
     }), radRows: radRows, radTee: RR ? RR.tee : null, radM: RR ? Math.round(RR.totalM * 10) / 10 : 0 };
   }
 
+  // ═══ Планы водоснабжения и канализации в смете ═══════════════════════════
+  // Те же планы, что у отопления (ufhView): подложка, комнаты, трассы, номера приборов. К каждому номеру в таблице
+  // под сметой — расход, длина, диаметр. Данные (приборы, трассы, лежак, выпуск, коллекторы) готовит мастер
+  // «План дома»: шаг «Санузлы и вода» (plan_editor.html).
+
+  /** Длины, расходы и номера приборов этажа — общая основа таблицы воды и канализации */
+  function wvFixtures(f) {
+    var fx = f.fixtures || [], ppm = f.pxPerM || 100, out = [], wl = {}, sl = {};
+    (f.wlines || []).forEach(function (l) { if (l.pts && l.pts.length > 1) wl[l.i] = polyM(l.pts, ppm) + (f.wfeed || 0); });
+    (f.slines || []).forEach(function (l) { if (l.pts && l.pts.length > 1) sl[l.i] = { m: polyM(l.pts, ppm), d: l.d }; });
+    fx.forEach(function (q, qi) {
+      if (q.t === 'riser') return;
+      var ls = fixLs(q.t), hot = !!(WET_H[q.t] || { hw: 1 }).hw && ls.h > 0;
+      out.push({ no: out.length + 1, i: qi, q: q, room: q.z || '', type: q.t, name: fixTitleOnly(q), hot: hot,
+        cLs: ls.c, hLs: hot ? ls.h : 0, wm: wl[qi] != null ? wl[qi] : null, sm: sl[qi] ? sl[qi].m : null, sd: sl[qi] ? sl[qi].d : (q.t === 'toilet' ? 110 : 50) });
+    });
+    return out;
+  }
+  function fixTitleOnly(q) {
+    var nm = (FIXT[q.t] || ['прибор'])[0];
+    if (q.t === 'basin' && /кухн/i.test(q.z || '')) nm = 'Мойка';
+    return nm;
+  }
+
+  /**
+   * План воды или канализации этажа для вставки под смету.
+   * opts: { kind: 'water' | 'sewer', fi (индекс этажа), water (floors[0].water), img (подложка) }
+   * Возвращает { svg, rows } или null — на этаже нет приборов.
+   */
+  function waterView(f, opts) {
+    opts = opts || {};
+    if (!f || !f.pxPerM || !(f.fixtures || []).length) return null;
+    var sewer = opts.kind === 'sewer', fi = opts.fi || 0, W0 = opts.water || null, ppm = f.pxPerM;
+    var rows = wvFixtures(f);
+    if (!rows.length) return null;
+    var all = [];
+    (f.zones || []).forEach(function (z) { (z.pts || []).forEach(function (p) { all.push(p); }); });
+    (f.fixtures || []).forEach(function (q) { all.push([q.x, q.y]); });
+    var b = bbox(all), pad = 0.6 * ppm;
+    var X0 = b[0] - pad, Y0 = b[1] - pad, W = b[2] - b[0] + 2 * pad, H = b[3] - b[1] + 2 * pad;
+    var m = function (v) { return Math.round(v * 10) / 10; };
+    var P = function (pts) { return pts.map(function (p) { return m(p[0]) + ',' + m(p[1]); }).join(' '); };
+    var lw = 0.035 * ppm, fs = 0.2 * ppm, o = [];
+    o.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + m(X0) + ' ' + m(Y0) + ' ' + m(W) + ' ' + m(H) +
+      '" style="display:block;background:#fff" font-family="system-ui,sans-serif">');
+    var img = opts.img || f.img;
+    if (img) o.push('<image x="0" y="0" width="' + f.w + '" height="' + f.h + '" preserveAspectRatio="none" opacity="0.42" href="' +
+      String(img).replace(/&/g, '&amp;') + '"/>');
+    (f.zones || []).forEach(function (z) {
+      if (!z.pts || z.pts.length < 3) return;
+      o.push('<polygon points="' + P(z.pts) + '" style="fill:none;stroke:' + (z.type === 'wc' ? COLT.wc : '#8a94a6') + ';stroke-width:' + m(lw * 0.6) +
+        ';stroke-dasharray:' + m(lw * 3) + ',' + m(lw * 2) + '"/>');
+    });
+    var colW = sewer ? COL_SEW : COL_CW;
+    var path = function (pts, col, wd, dash) {
+      o.push('<path d="' + pts.map(function (p, j) { return (j ? 'L' : 'M') + m(p[0]) + ',' + m(p[1]); }).join('') +
+        '" style="fill:none;stroke:' + col + ';stroke-width:' + m(wd) + (dash ? ';stroke-dasharray:' + dash : '') + ';stroke-linejoin:round"/>');
+    };
+    if (!sewer) {
+      var step = lw * 1.1;
+      (f.wlines || []).forEach(function (l) {
+        if (!l.pts || l.pts.length < 2) return;
+        var r = rows.filter(function (x) { return x.i === l.i; })[0], hot = !!(r && r.hot);
+        o.push('<g data-pl="W' + (r ? r.no : '') + '">');
+        path(offsetPoly(l.pts, hot ? -step / 2 : 0), COL_CW, lw * 0.55);
+        if (hot) path(offsetPoly(l.pts, step / 2), COL_HW, lw * 0.55);
+        o.push('</g>');
+      });
+      var cp = (f.wsrc && f.wsrc.kind === 'boiler') ? [f.wsrc.x, f.wsrc.y] : null;
+      if (cp) {
+        o.push('<circle cx="' + m(cp[0]) + '" cy="' + m(cp[1]) + '" r="' + m(0.17 * ppm) + '" style="fill:#fff;stroke:' + COL_CW + ';stroke-width:' + m(lw * 0.7) + '"/>');
+        o.push('<text x="' + m(cp[0]) + '" y="' + m(cp[1] + fs * 0.35) + '" text-anchor="middle" font-size="' + m(fs) + '" fill="' + COL_CW + '">К</text>');
+        o.push('<text x="' + m(cp[0]) + '" y="' + m(cp[1] + 0.17 * ppm + fs * 1.1) + '" text-anchor="middle" font-size="' + m(fs * 0.85) + '" fill="' + COL_CW + '">Коллекторы' +
+          (W0 && W0.recirc ? ' ХВС · ГВС · Рец.' : ' ХВС · ГВС') + '</text>');
+      }
+      if (W0 && W0.inp && W0.inp.fl === fi) {
+        o.push('<circle cx="' + m(W0.inp.x) + '" cy="' + m(W0.inp.y) + '" r="' + m(0.11 * ppm) + '" style="fill:#0696D7;stroke:#fff;stroke-width:' + m(lw * 0.5) + '"/>');
+        o.push('<text x="' + m(W0.inp.x) + '" y="' + m(W0.inp.y - 0.15 * ppm) + '" text-anchor="middle" font-size="' + m(fs * 0.85) + '" fill="#0696D7">Ввод воды</text>');
+      }
+    } else {
+      (f.slines || []).forEach(function (l) {
+        if (!l.pts || l.pts.length < 2) return;
+        var r = rows.filter(function (x) { return x.i === l.i; })[0];
+        o.push('<g data-pl="W' + (r ? r.no : '') + '">');
+        path(l.pts, COL_SEW, l.d >= 110 ? lw * 0.9 : lw * 0.55);
+        o.push('</g>');
+      });
+      if (fi === 0) (f.smain || []).forEach(function (l) {
+        if (!l.pts || l.pts.length < 2) return;
+        path(l.pts, COL_SEW, lw * 1.5);
+        var mid = l.pts[Math.floor(l.pts.length / 2)];
+        o.push('<text x="' + m(mid[0]) + '" y="' + m(mid[1] - 0.1 * ppm) + '" text-anchor="middle" font-size="' + m(fs * 0.85) + '" fill="' + COL_SEW + '">d110 · ' + String(Math.round(l.m * 10) / 10).replace('.', ',') + ' м</text>');
+      });
+      var OUT = (fi === 0 && W0 && W0.sewer && W0.sewer.out) ? W0.sewer.out : null;
+      if (OUT) {
+        var rr = 0.16 * ppm;
+        o.push('<polygon points="' + m(OUT.x) + ',' + m(OUT.y - rr) + ' ' + m(OUT.x + rr) + ',' + m(OUT.y + rr) + ' ' + m(OUT.x - rr) + ',' + m(OUT.y + rr) +
+          '" style="fill:' + COL_SEW + ';stroke:#fff;stroke-width:' + m(lw * 0.5) + '"/>');
+        o.push('<text x="' + m(OUT.x) + '" y="' + m(OUT.y - rr - 0.06 * ppm) + '" text-anchor="middle" font-size="' + m(fs * 0.85) + '" fill="' + COL_SEW + '">Выпуск К1</text>');
+      }
+    }
+    // приборы и стояки
+    (f.fixtures || []).forEach(function (q) {
+      var Wm = (q.w || (FIXT[q.t] || [])[2] || 500) / 1000 * ppm, Dm = (q.d || (FIXT[q.t] || [])[3] || 500) / 1000 * ppm;
+      if (q.t === 'riser') {
+        o.push('<circle cx="' + m(q.x) + '" cy="' + m(q.y) + '" r="' + m(Math.max(0.1 * ppm, Wm / 2)) + '" style="fill:#fff;stroke:#7a5c00;stroke-width:' + m(lw * 0.7) + '"/>');
+        return;
+      }
+      var r = rows.filter(function (x) { return x.q === q; })[0];
+      o.push('<g data-pl="W' + (r ? r.no : '') + '"><g transform="translate(' + m(q.x) + ',' + m(q.y) + ') rotate(' + (q.ang || 0) + ')">' +
+        '<rect x="' + m(-Wm / 2) + '" y="' + m(-Dm / 2) + '" width="' + m(Wm) + '" height="' + m(Dm) + '" rx="' + m(lw * 0.5) + '" style="fill:#fff;fill-opacity:0.92;stroke:' + colW + ';stroke-width:' + m(lw * 0.6) + '"/></g>' +
+        '<text x="' + m(q.x) + '" y="' + m(q.y + fs * 0.35) + '" text-anchor="middle" font-size="' + m(fs) + '" fill="' + colW + '">' + (r ? r.no : '') + '</text></g>');
+    });
+    // комнаты — подписью по центру
+    (f.zones || []).forEach(function (z) {
+      if (!z.pts || z.pts.length < 3 || !z.name || z.type === 'cold') return;
+      var c = centroid(z.pts);
+      if (!rows.some(function (x) { return String(x.room).toLowerCase() === String(z.name).toLowerCase(); }) && z.type !== 'wc') return;
+      o.push('<text x="' + m(c[0]) + '" y="' + m(c[1] - 0.45 * ppm) + '" text-anchor="middle" font-size="' + m(fs * 0.9) + '" fill="#555">' + esc(z.name) + '</text>');
+    });
+    o.push('</svg>');
+    return { svg: o.join(''), rows: rows };
+  }
+
   // floorLoops — для сметы и редактора: длина трубы и число выходов коллектора
   // берутся из той же укладки, что нарисована на листе (стенд — bench/ufh_sheet.js).
   // loopRows — для листа узла коллектора (project_ufh_manifold.js): номера,
   // длины и расходы петель там должны совпадать с листом укладки.
   window.projectPlans = { sheets: sheets, waterSheets: waterSheets, wetZoneSheets: wetZoneSheets, axonoSheets: axonoSheets, iso3dSheets: iso3dSheets,
     boilerRoom: boilerRoom,
-    floorLoops: floorLoops, loopRows: loopRows, num1: num1, ufhView: ufhView, radRoutes: radRoutes,
+    floorLoops: floorLoops, loopRows: loopRows, num1: num1, ufhView: ufhView, waterView: waterView, wvFixtures: wvFixtures, radRoutes: radRoutes,
     radCollector: radCollector, boilerZone: boilerZone, wallSpot: wallSpot,
     snapCollector: snapCollector, collAngle: collAngle, angFromNormal: angFromNormal, roomAround: roomAround,
     radConnSide: radConnSide, radSideOfModel: radSideOfModel,

@@ -43,16 +43,20 @@
   // Приборы: расход м³/ч (те же веса, что у подбора насоса, app.waterNodeFlow), минимальный
   // напор у прибора, м, и доля горячей линии в смешанном расходе.
   var FIXTURES = {
-    toilet: { title: 'Унитаз',              q: 0.10, need: 3 },
-    basin:  { title: 'Умывальник',          q: 0.15, need: 3,  mixer: true },
-    shower: { title: 'Душ',                 q: 0.30, need: 10, mixer: true },
-    bath:   { title: 'Ванна',               q: 0.40, need: 5,  mixer: true },
-    wash:   { title: 'Стиральная машина',   q: 0.20, need: 5 },
-    dish:   { title: 'Посудомоечная машина', q: 0.20, need: 5 },
-    bidet:  { title: 'Биде',                q: 0.15, need: 3,  mixer: true },
+    toilet: { title: 'Унитаз',              q: 0.10, qMax: 0.36, need: 3 },
+    basin:  { title: 'Умывальник',          q: 0.15, qMax: 0.36, need: 3,  mixer: true },
+    shower: { title: 'Душ',                 q: 0.30, qMax: 0.54, need: 10, mixer: true },
+    bath:   { title: 'Ванна',               q: 0.40, qMax: 0.90, need: 5,  mixer: true },
+    wash:   { title: 'Стиральная машина',   q: 0.20, qMax: 0.72, need: 5 },
+    dish:   { title: 'Посудомоечная машина', q: 0.20, qMax: 0.54, need: 5 },
+    bidet:  { title: 'Биде',                q: 0.15, qMax: 0.36, need: 3,  mixer: true },
     // Уличный кран (полив): в зонах санузлов его нет, в расчётном расходе есть — шланг вечером забирает заметную долю
     faucet: { title: 'Уличный кран',        q: 0.70, need: 3 }
   };
+  // qMax — расход прибора при полностью открытом кране, м³/ч: по нему считается ЛИНИЯ до прибора (она должна
+  // пропустить то, что кран может взять, а не среднее по часу, как q для общего расхода). Ориентиры практики
+  // (ванна — наполнение 0,25 л/с, душ 0,15 л/с, умывальник и унитаз 0,10 л/с, стиральная 0,20 л/с);
+  // паспорт смесителя может быть больше — ссылаться на СП здесь нельзя.
   var MIX_LINE = 0.6;           // доля полного расхода прибора на каждой из двух линий смесителя
 
   // Местные сопротивления ζ (на скорость в своём сечении) — ориентиры практики.
@@ -312,11 +316,13 @@
     }
 
     /* ---- линия до прибора от коллектора ---- */
-    var br = d.branch || { dIn: 0.0116 };
-    function branchLine(Hcoll, zone, p, line, Qtrunk, Qhot, Qline) {
+    var brBase = d.branch || { dIn: 0.0116 };
+    var br = brBase;
+    function branchLine(Hcoll, zone, p, line, Qtrunk, Qhot, Qline, pipe) {
+      var br = pipe || brBase;
       var nu = line === 'hot' ? NU_HOT : NU_COLD;
       var H = Hcoll, steps = [];
-      var len = (zone.dist || 0) * 1.1;
+      var len = (p.len != null ? p.len : (zone.dist || 0)) * 1.1;
       var bl = pipeLoss(Qline, br.dIn, len, nu);
       // Этаж зоны: 1 — на отметке ввода, 2 — выше на floorsH; не задан — считаем наверху (запас)
       var h = (zone.level === 1) ? 0 : floorsH;
@@ -344,15 +350,27 @@
           [['cold', p.cold || 0], ['hot', p.hot || 0]].forEach(function (ln) {
             if (!ln[1]) return;
             var mixed = f.mixer || (p.hot > 0 && p.cold > 0);
-            var qLine = f.q * (mixed ? MIX_LINE : 1);
+            var qLine = (f.qMax || f.q) * (mixed ? MIX_LINE : 1);
             var b = branchLine(t.Hcoll, z, p, ln[0], Q, Qhot, qLine);
             var vd = verdictOf(f.need, b.H, reserve);
+            // Труба в смете не тянет линию — ищем ближайший больший размер, при котором линия проходит
+            var rec = null, recB = null;
+            if (vd !== 'ok' || b.v > V_LIMIT.branch) {
+              (d.branchSizes || []).forEach(function (sz) {
+                if (rec || !(sz.dIn > brBase.dIn + 1e-6)) return;
+                var b2 = branchLine(t.Hcoll, z, p, ln[0], Q, Qhot, qLine, sz);
+                if (verdictOf(f.need, b2.H, reserve) === 'ok' && b2.v <= V_LIMIT.branch) { rec = sz; recB = b2; }
+              });
+            }
             var flags = [];
             if (b.v > V_LIMIT.branch) flags.push('скорость в линии ' + fmt(b.v, 2) + ' м/с выше ориентира ' + fmt(V_LIMIT.branch, 1));
             rows.push({
               zone: z.name, zoneId: z.id, type: p.type, title: f.title, line: ln[0], count: ln[1],
               q: qLine, len: b.len, v: b.v, need: f.need, have: b.H, k: f.need > 0 ? b.H / f.need : null,
-              verdict: vd, flags: flags, parts: b.parts
+              verdict: vd, flags: flags, parts: b.parts,
+              pipe: brBase.label || '', rec: rec ? rec.label : null, recId: rec ? rec.id : null, recD: rec ? rec.dIn : null,
+              recV: recB ? recB.v : null, recHave: recB ? recB.H : null,
+              recNone: !rec && (vd !== 'ok' || b.v > V_LIMIT.branch) && !!(d.branchSizes || []).length
             });
           });
         });
@@ -419,7 +437,15 @@
     if (pumpInfo.outOfRange) verdict = 'fail';
     flags.forEach(function (f) { if (f.level === 'fail') verdict = 'fail'; else if (f.level === 'tight' && verdict === 'ok') verdict = 'tight'; });
 
+    // Линии, которым труба из сметы мала: сколько и до какого размера подняться, чтобы прошли все
+    var upsize = design.rows.filter(function (r) { return r.rec; });
+    var upMax = null;
+    upsize.forEach(function (r) { if (!upMax || r.recD > upMax.recD) upMax = r; });
+    var upNone = design.rows.filter(function (r) { return r.recNone; });
+    if (upsize.length) flags.push({ id: 'branch_pipe', level: 'info', text: 'Линии воды на трубе ' + (brBase.label || '') + ' не проходят по скорости или напору у прибора: ' +
+      upsize.slice(0, 3).map(function (r) { return r.title + ' (' + r.zone + ', ' + fmt(r.len, 1) + ' м)'; }).join(', ') + (upsize.length > 3 ? ' и ещё ' + (upsize.length - 3) : '') + '. Нужна труба ' + upMax.rec + '.' });
     var res = {
+      upsize: upsize, upMax: upMax ? { id: upMax.recId, label: upMax.rec } : null, upNone: upNone,
       scenarios: { design: design, peak: peak }, fixtures: design.rows, static: stat, pump: pumpInfo,
       flags: flags, verdict: verdict, counts: counts, worst: worst, peakWorst: peakWorst, peakVerdict: peakVerdict,
       reserve: reserve, setBar: SET_BAR
@@ -462,8 +488,9 @@
     if (res.static.verdict !== 'ok' && !res.static.capped) out.push({ id: 'reducer',
       actions: (data.node && !data.node.absent ? [{ fix: 'reducer', label: 'Включить редуктор' }] : []).concat(res.pump.mains ? [] : [{ fix: 'auto', arg: 'sirio', label: 'Автоматика SIRIO' }]),
       text: 'Редуктор давления в узле ввода' + (res.pump.mains ? '' : ' (или автоматика по давлению: SIRIO, BRIO-TOP, EPC-12)') + ': сейчас при закрытых кранах ' + fmt(res.static.bar, 1) + ' бар.' });
-    var w = res.worst;
-    if (w && w.verdict !== 'ok' && w.v > V_LIMIT.branch) out.push({ id: 'branch', text: 'Линия до «' + w.title + '» (' + w.zone + ') узкая: ' + fmt(w.v, 2) + ' м/с. Труба 20 мм на этой линии или короче трасса от коллектора.' });
+    if (res.upsize && res.upsize.length) out.push({ id: 'branch', actions: [{ fix: 'branchpipe', arg: res.upMax.id, label: 'Заменить трубу линий на ' + res.upMax.label }],
+      text: 'Труба линий до приборов мала: ' + res.upsize.slice(0, 3).map(function (r) { return '«' + r.title + '» (' + r.zone + ') — ' + fmt(r.v, 2) + ' м/с, ' + fmt(r.len, 1) + ' м'; }).join('; ') + '. С трубой ' + res.upMax.label + ' проходят все линии.' });
+    if (res.upNone && res.upNone.length) out.push({ id: 'branch_none', text: 'Даже на самой большой трубе не проходят: ' + res.upNone.slice(0, 3).map(function (r) { return '«' + r.title + '» (' + r.zone + ')'; }).join(', ') + ' — причина в давлении или длине трассы: короче трасса, коллектор ближе или выше давление.' });
     return out;
   }
 

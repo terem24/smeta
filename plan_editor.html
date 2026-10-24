@@ -418,7 +418,8 @@
   </div>
 </div>
 
-<script src="project_plans.js?v=1.44"></script>
+<script src="water_hydro.js?v=1.7"></script>
+<script src="project_plans.js?v=1.45"></script>
 <script>
 'use strict';
 // Доступ к проектированию. Своей авторизации у страницы нет, поэтому отметку
@@ -7506,6 +7507,11 @@ function wwBody() {
       '<select onchange="wwZone(' + i + ',this.value)" style="font:inherit;max-width:190px">' + opts + '</select>' +
       '<span style="opacity:.8">' + (c.m != null ? 'труба воды: <b>' + num(c.m) + ' м</b> на точку' : 'длину трубы задаёт расчёт') + '</span>' +
       '<b style="cursor:pointer;margin-left:auto" title="Убрать" onclick="wwDel(' + i + ')">✕</b></div>' +
+      (function () {
+        var hy = wwHyd(c);
+        return hy ? '<div style="margin-bottom:4px;opacity:.85">Самая нагруженная линия: ' + wwEsc(hy.title) + ' ' + num(hy.m) + ' м — ' + num(Math.round(hy.v * 100) / 100) + ' м/с, потеря ' + num(Math.round(hy.hf * 10) / 10) + ' м' +
+          (hy.need ? ' <b style="color:#d97706">— 16 мм мало, нужна ' + hy.need + ' мм</b>' : ' — 16 мм хватает') + '</div>' : '';
+      })() +
       '<div style="display:flex;gap:10px;flex-wrap:wrap">';
     WW_FIX.forEach(function (fx) {
       h += '<span style="white-space:nowrap">' + (fx[0] === 'basin' && c.kind === 'kitchen' ? 'Мойка' : fx[1]) + ' ' +
@@ -7534,6 +7540,25 @@ function wwBody() {
   return { next: 'Дальше →', acts: acts, diag: diag,
     tx: 'Кухня и санузлы — те же, что в смете. Вода идёт лучом от коллекторов к каждой точке, канализация — к стояку и выпуску; длины считаются по плану. Шаг можно пропустить.',
     tips: [['Тянуть мышью', 'ввод, коллекторы, выпуск'], ['Ввод и коллекторы', 'по умолчанию в котельной'], ['Выпуск', 'у ближайшей к стояку стены']] };
+}
+
+/**
+ * Самая нагруженная линия санузла по скорости на трубе 16×2,2 (расход при открытом кране — water_hydro.js).
+ * Полная проверка давления у прибора — в смете (карточка «Проверка водоснабжения»); здесь — быстрый признак,
+ * что 16 мм не хватает: скорость выше 2 м/с (ориентир практики, тот же предел, что в проверке).
+ */
+function wwHyd(c) {
+  var wh = window.waterHydro;
+  if (!wh || !c.pts || !c.pts.length) return null;
+  var worst = null;
+  c.pts.forEach(function (q) {
+    var F = wh.FIXTURES[q.t];
+    if (!F) return;
+    var ql = (F.qMax || F.q) * (F.mixer ? wh.MIX_LINE : 1);
+    var v = wh.velocity(ql, 0.0116), hf = wh.pipeLoss(ql, 0.0116, q.m * 1.1, 1.3e-6).hf;
+    if (!worst || v > worst.v) worst = { title: F.title, m: q.m, v: v, hf: hf, need: v > wh.V_LIMIT.branch ? (wh.velocity(ql, 0.0144) <= wh.V_LIMIT.branch ? '20' : '25') : null };
+  });
+  return worst;
 }
 
 /** Первый расчёт при открытии шага: приборы, трассы, лежак (дальше — по правкам, wwRefresh) */

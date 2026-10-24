@@ -43194,6 +43194,12 @@ const app = {
             }
             if (s.floors === 2 && c.fl != null) z.level = (+c.fl === 1) ? 2 : 1;
             if (c.m != null && isFinite(c.m)) { z.dist = Math.max(1, Math.ceil(c.m)); z.distPlan = true; }
+            // длина по приборам: самая длинная линия каждого типа — по ней проверяется гидравлика
+            if (Array.isArray(c.pts) && c.pts.length) {
+                const lb = {};
+                c.pts.forEach(q => { if (q && q.t && q.m > 0) lb[q.t] = Math.max(lb[q.t] || 0, q.m); });
+                z.lenByType = lb;
+            }
         });
         if (w.touched && w.seen) {
             s.waterZones = zones.filter(z => keep.has(z.id));
@@ -44079,6 +44085,131 @@ const app = {
         if (!h) return;
         h.sc.classList.remove('pl-act');
         h.sc.querySelectorAll('.pl-hl').forEach(x => x.classList.remove('pl-hl'));
+    },
+
+    /**
+     * Планы воды и канализации под сметой: те же планы дома, что у отопления, но с водой (В1/Т3 лучом от коллекторов)
+     * или канализацией (К1: отводы, стояки, лежак, выпуск). Справа таблица потребителей — расход, длина, диаметр,
+     * скорость и напор у прибора из проверки гидравлики (waterHydroCheck), чтобы одинаковая труба «на глаз» не прошла.
+     */
+    waterPlanViews: function (kind) {
+        if (!this.state.water || !(this.state.waterZones || []).length || !this.canUseUfhPlan()) return [];
+        const PP = window.projectPlans;
+        if (!PP || !PP.waterView) return [];
+        const plans = this.currentPlans();
+        if (!plans || !Array.isArray(plans.floors)) return [];
+        const W0 = plans.floors[0] && plans.floors[0].water;
+        if (!W0 || !W0.visited) return [];       // шаг «Санузлы и вода» не проходили — планов воды нет
+        const out = [];
+        plans.floors.forEach((f0, fi) => {
+            if (!f0 || !f0.pxPerM || fi > 1) return;
+            const f = Object.assign({}, f0);
+            if (!f.img && f.imgFile && plans.key)
+                f.img = this.PLANS_ENDPOINT + '?k=' + plans.key + '&n=' + encodeURIComponent(f.imgFile);
+            let v = null;
+            try { v = PP.waterView(f, { kind: kind, fi: fi, water: W0 }); } catch (e) { console.warn('[план ' + kind + '] этаж ' + (fi + 1) + ':', e.message); }
+            if (v) out.push({ fl: fi + 1, svg: v.svg, rows: v.rows, sewer: kind === 'sewer' ? { W0: W0, fi: fi } : null });
+        });
+        return out;
+    },
+
+    _waterPlanStyle: `<style>
+.ufh-plan-row{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.ufh-tbl-col{flex:1 1 420px;min-width:0;overflow-x:auto}
+.ufh-plan-table td,.ufh-plan-table th{padding:2px 4px}
+.ufh-plan-table tr.wv-fail td{background:rgba(220,38,38,.10)}
+.ufh-plan-table tr.wv-tight td{background:rgba(217,119,6,.10)}
+</style>`,
+
+    renderWaterPlanScheme: function () {
+        const views = this.waterPlanViews('water');
+        if (!views.length) return '';
+        const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        const f1 = v => (v == null || !isFinite(v)) ? '—' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+        const f2 = v => (v == null || !isFinite(v)) ? '—' : (Math.round(v * 100) / 100).toFixed(2).replace('.', ',');
+        const res = this.waterHydroCheck();
+        const byKey = {};
+        ((res && res.fixtures) || []).forEach(r => { byKey[String(r.zone).trim().toLowerCase() + '|' + r.type + '|' + r.line] = r; });
+        const ICON = { ok: '✓', tight: '!', fail: '✕', unknown: '?' };
+        const parts = [this._waterPlanStyle];
+        let upN = 0, failN = 0, tightN = 0;
+        views.forEach(V => {
+            let sumC = 0, sumH = 0, pipeM = 0, body = '';
+            V.rows.forEach(r => {
+                const k = String(r.room).trim().toLowerCase() + '|' + r.type + '|';
+                const rc = byKey[k + 'cold'], rh = byKey[k + 'hot'];
+                const lines = [rc, rh].filter(Boolean);
+                // расход — при полностью открытом кране; труба и скорость — по проверке гидравлики
+                const pipe = lines.some(x => x.rec) ? lines.find(x => x.rec).pipe + ' → <b>' + esc(lines.filter(x => x.rec).sort((a, b) => b.recD - a.recD)[0].rec) + '</b>'
+                    : (lines.some(x => x.recNone) ? esc(lines[0].pipe) + ' <b>не хватает</b>' : esc(lines.length ? lines[0].pipe : '16×2.2'));
+                const vmax = lines.length ? Math.max.apply(null, lines.map(x => x.v)) : null;
+                const hmin = lines.length ? Math.min.apply(null, lines.map(x => x.have)) : null;
+                const worst = lines.reduce((a, x) => ({ ok: 0, unknown: 1, tight: 2, fail: 3 }[x.verdict] > ({ ok: 0, unknown: 1, tight: 2, fail: 3 }[a] || 0) ? x.verdict : a), 'ok');
+                if (lines.some(x => x.rec)) upN++;
+                if (worst === 'fail') failN++; else if (worst === 'tight') tightN++;
+                const L = r.wm;
+                sumC += r.cLs; sumH += r.hLs; pipeM += (L || 0) * (r.hot ? 2 : 1);
+                body += `<tr class="${worst === 'fail' ? 'wv-fail' : worst === 'tight' ? 'wv-tight' : ''}" data-pl="W${r.no}"><td style="text-align:center">${r.no}</td><td>${esc(r.room)} · ${esc(r.name)}</td>` +
+                    `<td style="text-align:right">${f2(r.cLs)}</td><td style="text-align:right">${r.hot ? f2(r.hLs) : '—'}</td><td style="text-align:right">${L != null ? f1(L) : '—'}</td>` +
+                    `<td style="text-align:right;white-space:nowrap">${pipe}</td><td style="text-align:right">${f2(vmax)}</td><td style="text-align:right">${f1(hmin)}</td><td style="text-align:center">${ICON[worst] || ''}</td></tr>`;
+            });
+            // водорозетки по помещениям
+            const rooms = {}, order = [];
+            V.rows.forEach(r => { const k = r.room || 'без имени'; if (!rooms[k]) { rooms[k] = { c: 0, h: 0 }; order.push(k); } rooms[k].c++; if (r.hot) rooms[k].h++; });
+            const tbl = `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px"><thead><tr style="color:var(--text-sec)"><th>№</th><th style="text-align:left">Потребитель</th>` +
+                `<th style="text-align:right">ХВС, л/с</th><th style="text-align:right">ГВС, л/с</th><th style="text-align:right">Длина, м</th><th style="text-align:right">Труба</th><th style="text-align:right">Скорость, м/с</th><th style="text-align:right">Напор, м</th><th></th></tr></thead>` +
+                `<tbody>${body}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${V.rows.length} потребителей</td><td style="text-align:right">${f2(sumC)}</td><td style="text-align:right">${f2(sumH)}</td><td style="text-align:right">${f1(pipeM)} (труба ХВС+ГВС)</td><td colspan="4"></td></tr></tfoot></table>` +
+                `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px"><thead><tr style="color:var(--text-sec)"><th style="text-align:left">Водорозетки по помещениям</th><th style="text-align:right">ХВС</th><th style="text-align:right">ГВС</th><th style="text-align:right">Всего</th></tr></thead><tbody>` +
+                order.map(k => `<tr><td>${esc(k)}</td><td style="text-align:right">${rooms[k].c}</td><td style="text-align:right">${rooms[k].h}</td><td style="text-align:right">${rooms[k].c + rooms[k].h}</td></tr>`).join('') + `</tbody></table>`;
+            parts.push(`<div class="ufh-plan-block" style="margin:6px 0 14px">` + (views.length > 1 ? `<div style="font-weight:700;margin:0 0 6px">${V.fl}-й этаж</div>` : '') +
+                `<div style="font-weight:600;margin:0 0 4px;color:var(--text-sec)">Водоснабжение: В1 — холодная, Т3 — горячая, от коллекторов лучом на каждую точку</div>` +
+                `<div class="ufh-plan-row"><div class="automation-scheme" style="flex:none" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${V.svg}` +
+                `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>` +
+                `<div class="ufh-tbl-col">${tbl}</div></div></div>`);
+        });
+        // Итог проверки — над планом: «всё проходит» или что менять
+        let head;
+        if (!res) head = '<div class="hc-det-p">Гидравлика линий не проверена: нет данных.</div>';
+        else if (res.upsize && res.upsize.length) head = `<div class="hc-advice">Труба линий до приборов мала: ${res.upsize.length} линий не проходят по скорости или напору у прибора — нужна труба ${esc(res.upMax.label)}. ` +
+            `<button type="button" class="hc-btn" onclick="app.waterHydroFix('branchpipe','${esc(res.upMax.id)}',event)">Заменить трубу линий на ${esc(res.upMax.label)}</button></div>`;
+        else if (res.upNone && res.upNone.length) head = `<div class="hc-advice">Даже на самой большой трубе не проходят линии: ${res.upNone.slice(0, 3).map(r => esc(r.title) + ' (' + esc(r.zone) + ')').join(', ')} — короче трасса, коллектор ближе или выше давление.</div>`;
+        else head = `<div class="hc-det-p">Гидравлика линий проверена: на трубе ${esc(res.data.branch.label)} проходят все линии${res.data.assumed ? ' (давление в сети принято ' + res.data.mains.H / 10 + ' бар — включите «Узел ввода» и задайте своё)' : ''}. Расход прибора — при полностью открытом кране.</div>`;
+        parts.splice(1, 0, `<div style="margin:6px 0">${head}</div>`);
+        return parts.join('');
+    },
+
+    renderSewerPlanScheme: function () {
+        const views = this.waterPlanViews('sewer');
+        if (!views.length) return '';
+        const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        const f1 = v => (v == null || !isFinite(v)) ? '—' : (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+        const parts = [this._waterPlanStyle];
+        views.forEach(V => {
+            let s50 = 0, s110 = 0, body = '', longN = 0;
+            V.rows.forEach(r => {
+                const d = r.sd || 50, L = r.sm;
+                if (L != null) { if (d >= 110) s110 += L; else s50 += L; }
+                const long = d < 110 && L != null && L > 3;
+                if (long) longN++;
+                body += `<tr class="${long ? 'wv-tight' : ''}" data-pl="W${r.no}"><td style="text-align:center">${r.no}</td><td>${esc(r.room)} · ${esc(r.name)}</td>` +
+                    `<td style="text-align:right">${d}</td><td style="text-align:right">${L != null ? f1(L) : '—'}${long ? ' !' : ''}</td><td style="text-align:right">${d >= 110 ? '0,02' : '0,03'}</td></tr>`;
+            });
+            const W0 = V.sewer && V.sewer.W0, S = W0 && W0.sewer;
+            const first = V.fl === 1;
+            const tot = [['Отводы d50', f1(s50) + ' м'], ['Отводы d110 (унитазы)', f1(s110) + ' м']];
+            if (S && first) { tot.push(['Лежак d110 до выпуска', f1(S.mainM) + ' м']); if (S.riserM) tot.push(['Стояки по этажам d110', f1(S.riserM) + ' м']); }
+            const tbl = `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px"><thead><tr style="color:var(--text-sec)"><th>№</th><th style="text-align:left">Прибор</th>` +
+                `<th style="text-align:right">Ø, мм</th><th style="text-align:right">Длина отвода, м</th><th style="text-align:right">Уклон</th></tr></thead><tbody>${body}</tbody></table>` +
+                `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px"><thead><tr style="color:var(--text-sec)"><th style="text-align:left">Длины труб К1</th><th style="text-align:right">Длина</th></tr></thead><tbody>` +
+                tot.map(t => `<tr><td>${t[0]}</td><td style="text-align:right">${t[1]}</td></tr>`).join('') + `</tbody></table>` +
+                (longN ? `<div class="hc-det-p" style="margin-top:6px">! — отвод d50 длиннее 3 м (ориентир практики): перенести прибор или поставить стояк ближе.</div>` : '');
+            parts.push(`<div class="ufh-plan-block" style="margin:6px 0 14px">` + (views.length > 1 ? `<div style="font-weight:700;margin:0 0 6px">${V.fl}-й этаж</div>` : '') +
+                `<div style="font-weight:600;margin:0 0 4px;color:var(--text-sec)">Канализация К1: отводы от приборов к стояку, лежак d110 до выпуска</div>` +
+                `<div class="ufh-plan-row"><div class="automation-scheme" style="flex:none" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${V.svg}` +
+                `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>` +
+                `<div class="ufh-tbl-col">${tbl}</div></div></div>`);
+        });
+        return parts.join('');
     },
 
     renderUfhPlanScheme: function () {
@@ -52161,12 +52292,18 @@ const app = {
         const s = this.state, sel = this._wellSel;
         const zones = s.waterZones || [];
         // Городская вода (дом без скважины): вместо насоса — давление в сети, его задаёт монтажник в блоке «Узел ввода»
+        // Проверка гидравлики обязательна: нет скважины и не задан узел ввода — считаем от сети с давлением из поля
+        // «Давление в сети» (по умолчанию 3 бар) и говорим в карточке, что давление принято, а не измерено.
         const mainsBar = parseFloat(s.mainsBar) || 0;
-        const mains = !s.well && !this.isFlat() && s.waterInput && mainsBar > 0;
+        const mains = !s.well && mainsBar > 0;
         if (!s.water || !zones.length || !(s.well ? sel : mains)) return null;
         const wp = this.pipeDims(catalog.well_parts && catalog.well_parts[0]) || { od: 32, wall: 3, dIn: 0.026 };
         const bp = this.waterBranchPipe();
         const bd = this.pipeDims(bp) || { od: 16, wall: 2.2, dIn: 0.0116 };
+        // Трубы того же семейства крупнее стоящей в смете — из них проверка подбирает размер для линии, которой мала текущая
+        const fam = bp && (catalog.water_pipes_mp || []).some(x => x.id === bp.id || (x.rommer && x.rommer.id === bp.id)) ? catalog.water_pipes_mp : catalog.water_pipes;
+        const branchSizes = (fam || []).map(x => { const dm = this.pipeDims(x); return dm ? { id: x.id, od: dm.od, wall: dm.wall, dIn: dm.dIn, label: dm.od + '×' + dm.wall } : null; })
+            .filter(x => x && x.dIn > bd.dIn + 1e-6).sort((a, b) => a.dIn - b.dIn);
         const wh = window.waterHydro;
         let peak = 0;
         zones.forEach(z => {
@@ -52196,6 +52333,8 @@ const app = {
                 }
             },
             branch: { dIn: bd.dIn, od: bd.od, wall: bd.wall, label: bd.od + '×' + bd.wall },
+            branchSizes: branchSizes,
+            assumed: !!mains && !s.waterInput,
             zones: zones.map(z => {
                 const f = (z && z.fixtures) || {};
                 const th = this.toiletHotOf(f);
@@ -52208,6 +52347,9 @@ const app = {
                     { type: 'wash', cold: f.wash || 0, hot: 0 },
                     { type: 'dish', cold: f.dish || 0, hot: 0 }
                 ].filter(p => p.cold || p.hot);
+                // Длины по приборам с плана (мастер «Санузлы и вода»), иначе — общая трасса зоны
+                const _lens = z.lenByType || {};
+                pts.forEach(p => { if (_lens[p.type] > 0) p.len = _lens[p.type]; });
                 return { id: z.id, name: z.name, dist: +z.dist || 0, level: (s.floors === 2 && (z.level === 1 || z.level === 2)) ? z.level : null, points: pts };
             })
         };
@@ -52296,7 +52438,7 @@ const app = {
                 + (man > 0 ? '. Расход для подбора задан вручную: ' + f2(man) + ' м³/ч, по потребителям было бы ' + f2(Math.max(1.5, fi.design)) + ' м³/ч' : (res.pump.Q > fi.design + 1e-9 ? '; насос не берём меньше 1,5 м³/ч (пуски, полив)' : '')) + '. Доли занятости — ориентиры практики, не таблица СП.'
                 + (fi.old != null ? ' По прежнему способу (сумма со сглаживанием) было бы ' + f2(fi.old) + ' м³/ч.' : '') + '</div>');
         }
-        if (res.pump.mains) html += row('pump', 'ok', 'Городская сеть', 'давление задано вручную', f1(res.pump.head / 10) + ' бар на ' + f2(res.pump.Q) + ' м³/ч',
+        if (res.pump.mains) html += row('pump', 'ok', 'Городская сеть', res.data.assumed ? 'давление принято ' + f1(res.pump.head / 10) + ' бар — узел ввода не включён' : 'давление задано вручную', f1(res.pump.head / 10) + ' бар на ' + f2(res.pump.Q) + ' м³/ч',
             '<div class="hc-det-p">Давление в сети — как в поле «Давление в сети» блока «Узел ввода». Меряйте его при включённом кране: в покое оно выше, чем под расходом.</div>');
         else html += row('pump', pumpFlag, 'Насос', res.pump.name.replace(/^Насос скважинный /, ''), f1(res.pump.head) + ' м на ' + f2(res.pump.Q) + ' м³/ч',
             '<div class="hc-facts"><div><span>Расход</span><b>' + f2(res.pump.Q) + ' м³/ч</b></div><div><span>Напор на расходе</span><b>' + f1(res.pump.head) + ' м</b></div>'
@@ -52308,15 +52450,15 @@ const app = {
             'потери ' + f1(sum('node')) + ' м', ladder('node'));
         const byZone = {};
         res.fixtures.forEach(r => { (byZone[r.zone] = byZone[r.zone] || []).push(r); });
-        let ftab = '<table class="whc-t"><tr><th>Прибор</th><th>Линия</th><th>Скорость, м/с</th><th>Напор у прибора, м</th><th>Нужно, м</th><th></th></tr>';
+        let ftab = '<table class="whc-t"><tr><th>Прибор</th><th>Линия</th><th>Расход, л/с</th><th>Длина, м</th><th>Труба</th><th>Скорость, м/с</th><th>Напор у прибора, м</th><th>Нужно, м</th><th></th></tr>';
         Object.keys(byZone).forEach(z => {
-            ftab += '<tr class="whc-z"><td colspan="6">' + esc(z) + '</td></tr>';
+            ftab += '<tr class="whc-z"><td colspan="9">' + esc(z) + '</td></tr>';
             byZone[z].forEach(r => { ftab += '<tr class="whc-' + r.verdict + '"><td>' + esc(r.title) + (r.count > 1 ? ' ×' + r.count : '') + '</td><td>' + (r.line === 'hot' ? 'ГВС' : 'ХВС')
-                + '</td><td>' + f2(r.v) + '</td><td>' + f1(r.have) + '</td><td>' + f1(r.need) + '</td><td>' + ICON[r.verdict] + '</td></tr>'; });
+                + '</td><td>' + f2(r.q / 3.6) + '</td><td>' + f1(r.len) + '</td><td>' + esc(r.pipe) + (r.rec ? ' → <b>' + esc(r.rec) + '</b>' : (r.recNone ? ' <b>не хватает</b>' : '')) + '</td><td>' + f2(r.v) + '</td><td>' + f1(r.have) + '</td><td>' + f1(r.need) + '</td><td>' + ICON[r.verdict] + '</td></tr>'; });
         });
         ftab += '</table>';
         html += row('fix', fixV, 'Приборы', res.fixtures.length + ' линий', w ? 'худший ' + f1(w.have) + ' м' : '—', ftab
-            + '<div class="hc-det-p">Напор у прибора — после подъёма на этаж, трубы ' + esc(res.data.branch.label) + ' от коллектора и фитингов линии. Минимум у прибора — ориентир практики, паспорт смесителя или машины может требовать больше.</div>');
+            + '<div class="hc-det-p">Линия считается на расходе прибора при полностью открытом кране (ванна 0,25 л/с, душ 0,15 л/с, остальные 0,10–0,20 л/с — ориентиры практики). Напор у прибора — после подъёма на этаж, трубы ' + esc(res.data.branch.label) + ' от коллектора и фитингов линии. Минимум у прибора — ориентир практики, паспорт смесителя или машины может требовать больше.</div>');
         const sv = res.static;
         html += row('static', sv.verdict, 'Давление при закрытых кранах', sv.capped ? 'держит ' + sv.capNote : 'ограничителя нет', f1(sv.bar) + ' бар',
             '<div class="hc-facts"><div><span>Напор без расхода</span><b>' + f1(res.pump.headMax) + ' м</b></div><div><span>Минус подъём</span><b>' + (res.pump.mains ? '—' : res.data.depth + ' м') + '</b></div><div><span>У прибора</span><b>' + f1(sv.bar) + ' бар</b></div></div>'
@@ -52423,6 +52565,7 @@ const app = {
         if (event) event.stopPropagation();
         const s = this.state;
         if (kind === 'pump' && arg) { s.swaps = s.swaps || {}; s.swaps['well_pump_auto'] = arg; }
+        else if (kind === 'branchpipe' && arg && this._waterPipeSel) { s.swaps = s.swaps || {}; s.swaps[this._waterPipeSel.originalId] = arg; }
         else if (kind === 'reducer') s.waterReducer = true;
         else if (kind === 'auto' && arg) s.wellAutoType = arg;
         else return;
@@ -96368,6 +96511,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
          // «4. Водяной тёплый пол», что есть в смете (на нём и радиаторы, и петли)
          ['ufh_plan_scheme_row', ['3. Приборы отопления', '4. Водяной тёплый пол'], () => this.renderUfhPlanScheme(), true],
          ['water_scheme_row', ['5.1.', '5. Внутреннее водоснабжение'], () => this.renderWaterScheme(), true],
+         // планы воды и канализации по плану дома — под схемой раздела, у каждого своя таблица потребителей
+         ['water_plan_scheme_row', ['5. Внутреннее водоснабжение'], () => this.renderWaterPlanScheme(), true],
+         ['sewer_plan_scheme_row', ['8. Канализация'], () => this.renderSewerPlanScheme(), true],
          ['hvs_node_scheme_row', '6. Узел ввода ХВС', () => this.renderHvsNodeScheme(), true]]
         .forEach(([rowId, marker, build, atSec]) => {
             // Только строку на экране: у печатной копии (#print_bin) те же id, а живую
