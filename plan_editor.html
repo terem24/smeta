@@ -4337,6 +4337,7 @@ function setZoom(z) {
   viewZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
   try { localStorage.setItem('plan_editor_zoom', String(viewZoom)); } catch (e) {}
   applyZoom();
+  try { draw(); } catch (e) {}   // кружки номеров комнат зависят от масштаба показа
 }
 function zoomStep(dir) { setZoom(Math.round((viewZoom + dir * 0.25) * 100) / 100); }
 
@@ -5915,6 +5916,8 @@ function addZone(pts, fitted) {
           ' м².</span> Контур можно поправить: тяните узлы, правый клик по стороне — добавить точку, по углу — убрать. Обведите ещё участок или кликните по следующей комнате.');
       } else ufhAskName(nz);
       if (type === 'tp' && (mode === 'poly' || mode === 'rect')) setMode('room');
+      // обвели комнату на шаге «Комнаты» — рамка одноразовая: назад к выбору, иначе клики по плану рисуют новые рамки
+      else if (type !== 'tp' && (mode === 'poly' || mode === 'rect')) { setMode(mode); selZ = F().zones.length - 1; draw(); }
     }
   }
 }
@@ -5992,12 +5995,15 @@ function roomBadgesDraw(f, k) {
     z.pts.forEach(function (p) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); });
     var best = z.pts[0], bd = 1e18;
     z.pts.forEach(function (p) { var d = (p[0] - x0) + (p[1] - y0); if (d < bd) { bd = d; best = p; } });
-    var bx = best[0] * k + 13, by = best[1] * k + 13, txt = String(n);
+    // размер — в экранных пикселях: холст сжат CSS-ом (масштаб плана, окно), поэтому делим на коэффициент сжатия
+    var ds = (cv.getBoundingClientRect().width / cv.width) || 1, sc = Math.min(6, Math.max(1, 1 / ds));
+    var R = 13 * sc, bx = best[0] * k + R + 2 * sc, by = best[1] * k + R + 2 * sc, txt = String(n);
     cx.save();
-    cx.beginPath(); cx.arc(bx, by, 10, 0, 6.2832);
-    cx.fillStyle = '#2563eb'; cx.fill(); cx.strokeStyle = '#fff'; cx.lineWidth = 2; cx.stroke();
-    cx.fillStyle = '#fff'; cx.font = 'bold ' + (txt.length > 1 ? 10 : 12) + 'px system-ui'; cx.textAlign = 'center';
-    cx.fillText(txt, bx, by + 4);
+    cx.beginPath(); cx.arc(bx, by, R, 0, 6.2832);
+    cx.fillStyle = '#2563eb'; cx.fill(); cx.strokeStyle = '#fff'; cx.lineWidth = 2 * sc; cx.stroke();
+    cx.fillStyle = '#fff'; cx.font = 'bold ' + Math.round((txt.length > 1 ? 14 : 17) * sc) + 'px system-ui';
+    cx.textAlign = 'center'; cx.textBaseline = 'middle';
+    cx.fillText(txt, bx, by + sc);
     cx.restore();
   });
 }
