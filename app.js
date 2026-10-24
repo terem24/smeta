@@ -16842,6 +16842,8 @@ const app = {
             { id: 'radConn', label: 'Способ подключения радиаторов', opts: [{ v: 'side', t: 'Боковое' }, { v: 'bottom', t: 'Нижнее' }] },
             { id: 'radScheme', label: 'Схема подключения', opts: [{ v: 'tee', t: 'Тройниковая', pro: 'pro' }, { v: 'manifold', t: 'Коллекторная' }] },
             { id: 'radPipe', label: 'Трубы для радиаторов', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'mp', t: 'Металлопластик' }] },
+            { id: 'trunkPipe', label: 'Трубы для магистрали', opts: [{ v: 'stable', t: 'Стабильная' }, { v: 'mp', t: 'Металлопластик' }, { v: 'ppr', t: 'ППР' }],
+                note: 'Стояк и трасса от котельной до коллектора. Авто — как материал разводки, но только с алюминиевым слоем: серый PEX-a на магистраль не ставится. ППР — Ekoplastik Stabi Plus (с алюминием).' },
             { id: 'radBeam', label: 'Лучи к приборам в комнате', opts: [{ v: 'single', t: 'Ветка на каждый прибор' }],
                 note: 'Авто — общая трасса на комнату включается сама, если смета выходит дешевле не меньше чем на 3 % и 10 000 ₽. Работает при коллекторной схеме, режиме «По комнатам» и трубе PEX-a или металлопластике.' }
         ] },
@@ -16945,6 +16947,8 @@ const app = {
             const base = String(s.pipeType || 'insulated').replace(/_mp$/, '');
             s.pipeType = p.radPipe === 'mp' ? ((base === 'insulated' || base === 'split') ? base : 'insulated') + '_mp' : base;
         }
+        // Магистраль: «Авто» (пусто) оставляет выбор калькулятору; ручная замена в смете главнее и при этом не трогается.
+        if (has('trunkPipe')) s.trunkPipeMat = p.trunkPipe;
         if (has('ufhPipe')) {
             const up = this.UFH_PIPES.find(x => x.material === p.ufhPipe);
             if (up) { s.ufhPipe = up.key; s.ufhPipeMaterial = up.material; this._ufhGeomCache = null; }
