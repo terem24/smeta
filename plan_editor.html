@@ -393,7 +393,7 @@
   }
   @media (max-height: 760px) {
     html.fs #steps .wz-st:not(.cur) { padding-top: 1px; padding-bottom: 1px; font-size: 11.5px; }
-    html.fs #steps .wz-do .ai-tip { font-size: 11.5px; }
+    html.fs #steps .wz-do .ai-tips { display: none; }
   }
   /* подсветка «На весь экран» после загрузки плана */
   .fs-corner button.nudge { animation: nudgeRing 1.5s ease-out infinite; }
@@ -759,7 +759,7 @@ if (UFH_THEME) applyUfhTheme(UFH_THEME);
 // Данные: этажи с подложкой и зонами. Точки зон — в пикселях ИЗОБРАЖЕНИЯ.
 var DATA = { floors: [{ img: null, w: 0, h: 0, pxPerM: 0, zones: [], rads: [] }] };
 var cur = 0, mode = 'select', tmp = [], scalePts = [], dragA = null, imgCache = {};
-var scaleCur = null, scaleFree = false;   // след масштабной линейки и режим угла
+var scaleCur = null, scaleFree = false, scaleHover = null;   // след масштабной линейки и режим угла
 var imgFailed = {};   // этажи, чью подложку не удалось забрать с сервера
 var polyCur = null, closeTs = 0, undoStack = [], redoStack = [];
 var TYPES = { tp: ['Тёплый пол', '#ff8000'], rad: ['Радиаторы', '#d22'],
@@ -1043,14 +1043,33 @@ var MODE_BAR = {
   wc: 'Выберите прибор в списке и кликните, где он стоит'
 };
 
-/** Окно «Длина отрезка» вместо prompt(): сообщает длину строкой (или null при отмене), не выходя из полного экрана. */
-function askScaleLen(cb) {
-  var div = document.createElement('div'); div.className = 'namepick'; div.id = 'scale_ask';
-  div.innerHTML = '<div class="box"><h3>Длина отрезка</h3>' +
-    '<div class="sub">Сколько метров между двумя отмеченными точками?</div>' +
-    '<div class="grid"><button data-v="0,9">0,9 · дверь</button><button data-v="1,0">1,0</button>' +
-    '<button data-v="2,0">2,0</button><button data-v="3,0">3,0</button></div>' +
-    '<div class="row"><input type="text" inputmode="decimal" value="1,0"><button class="go" data-ok="1">OK</button></div>' +
+/** Короткое уведомление вместо alert(): системное окно выбрасывает браузер из полного экрана. */
+(function () {
+  var tm = null;
+  window.alert = function (msg) {
+    var t = document.getElementById('toast_note');
+    if (!t) {
+      t = document.createElement('div'); t.id = 'toast_note';
+      t.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:90;max-width:min(560px,92vw);' +
+        'box-sizing:border-box;padding:12px 16px;border-radius:12px;font:14px/1.4 system-ui,sans-serif;cursor:pointer;' +
+        'color:#eceef8;background:rgba(22,25,38,.97);border:1px solid rgba(129,140,248,.5);box-shadow:0 10px 30px rgba(0,0,0,.5)';
+      t.onclick = function () { t.remove(); };
+      document.body.appendChild(t);
+    }
+    t.textContent = String(msg);
+    clearTimeout(tm); tm = setTimeout(function () { if (t.parentNode) t.remove(); }, 6500);
+  };
+})();
+
+/** Окно с одной строкой ввода вместо prompt(): cb получает строку или null при отмене. */
+function askText(o, cb) {
+  var esc = function (x) { return String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); };
+  var div = document.createElement('div'); div.className = 'namepick';
+  div.innerHTML = '<div class="box"><h3>' + esc(o.title) + '</h3>' +
+    (o.sub ? '<div class="sub">' + esc(o.sub) + '</div>' : '') +
+    ((o.chips || []).length ? '<div class="grid">' + o.chips.map(function (c) {
+      return '<button data-v="' + esc(c.v) + '">' + esc(c.t || c.v) + '</button>'; }).join('') + '</div>' : '') +
+    '<div class="row"><input type="text" inputmode="' + (o.mode || 'text') + '" value="' + esc(o.def || '') + '"><button class="go" data-ok="1">OK</button></div>' +
     '<div style="margin-top:8px;text-align:right"><button class="ghost" data-cancel="1">Отмена</button></div></div>';
   var inp = div.querySelector('input'), fin = false;
   var done = function (v) { if (fin) return; fin = true; div.remove(); cb(v); };
@@ -1068,6 +1087,26 @@ function askScaleLen(cb) {
   };
   document.body.appendChild(div);
   inp.focus(); inp.select();
+}
+
+/** Длина отрезка масштаба: самые частые значения монтажника — первыми, последнее введённое — в поле. */
+function askScaleLen(cb) {
+  var st = { last: '', cnt: {} };
+  try { var j = JSON.parse(localStorage.getItem('plan_editor_scalelens')); if (j && j.cnt) st = j; } catch (e) {}
+  var chips = Object.keys(st.cnt).sort(function (a, b) { return st.cnt[b] - st.cnt[a]; });
+  ['0,9', '1,0', '2,0', '3,0'].forEach(function (d) { if (chips.indexOf(d) < 0) chips.push(d); });
+  chips = chips.slice(0, 5).map(function (v) { return { v: v, t: v === '0,9' ? '0,9 · дверь' : v }; });
+  askText({ title: 'Длина отрезка', sub: 'Сколько метров между двумя отмеченными точками?', mode: 'decimal',
+            chips: chips, def: st.last || '1,0' }, function (v) {
+    var m = parseFloat(String(v == null ? '' : v).replace(',', '.').replace(/\s+/g, ''));
+    if (m > 0) {
+      var key = String(Math.round(m * 100) / 100).replace('.', ',');
+      if (/^\d+$/.test(key)) key += ',0';
+      st.last = key; st.cnt[key] = (st.cnt[key] || 0) + 1;
+      try { localStorage.setItem('plan_editor_scalelens', JSON.stringify(st)); } catch (e) {}
+    }
+    cb(v);
+  });
 }
 /** Включить режим, не выключая: кнопки шага («Задать масштаб») не должны гасить уже включённый режим. */
 function enterMode(m) { if (mode !== m) setMode(m); }
@@ -3809,6 +3848,11 @@ function isScanAdmin() {
   } catch (e) { return false; }
 }
 function scanWhy(msg) { (SCAN_DIAG[cur] = SCAN_DIAG[cur] || {}).scale = msg; }
+/** Отказ ИИ из-за квоты/лимита — монтажнику говорим просто, без технических деталей. */
+function scanQuota() {
+  var q = SCAN_DIAG[cur];
+  return !!(q && /quota|billing|RESOURCE_EXHAUSTED|429/i.test(String(q.read || '')));
+}
 function scanDiagHtml() {
   var q = SCAN_DIAG[cur];
   if (!q || !isScanAdmin()) return '';
@@ -4476,10 +4520,14 @@ function loadPdfPlan(file, done) {
  */
 function pickPdfPages(file, n) {
   var ask = function () {
-    var p = parseInt(prompt('В PDF «' + file.name + '» ' + n + ' стр. Какая страница с планом?', '1'), 10);
-    return [(p >= 1 && p <= n) ? p : 1];
+    return new Promise(function (res) {
+      askText({ title: 'Какая страница с планом?', sub: 'В файле «' + file.name + '» ' + n + ' стр.', mode: 'numeric', def: '1' }, function (v) {
+        var p = parseInt(v, 10);
+        res([(p >= 1 && p <= n) ? p : 1]);
+      });
+    });
   };
-  if (!UFH) return Promise.resolve(ask());
+  if (!UFH) return ask();
   return new Promise(function (res) {
     var div = document.createElement('div'); div.className = 'namepick';
     var all = [];
@@ -5187,6 +5235,30 @@ function draw() {
     scDot(scaleCur[0] * k, scaleCur[1] * k, '');
   }
   scalePts.forEach(function (p, i) { scDot(p[0] * k, p[1] * k, String(i + 1)); });
+  // лупа: на плане мелкие линии — видно, куда ляжет точка (с учётом прилипания к стене)
+  if (mode === 'scale' && scaleHover && im2 && scalePts.length < 2) {
+    var hx = scaleHover[0] * k, hy = scaleHover[1] * k, LR = 62 * vs, LZ = 3.2, half = LR / LZ;
+    var lx = hx + LR + 26 * vs, ly = hy - LR - 26 * vs;
+    if (lx + LR > cv.width) lx = hx - LR - 26 * vs;
+    if (ly - LR < 0) ly = hy + LR + 26 * vs;
+    if (lx - LR < 0) lx = LR + 4 * vs;
+    if (ly + LR > cv.height) ly = cv.height - LR - 4 * vs;
+    var rat = (im2.naturalWidth || im2.width) / cv.width;
+    cx.save();
+    cx.beginPath(); cx.arc(lx, ly, LR, 0, 7); cx.closePath();
+    cx.fillStyle = darkPlan ? '#1e1e1e' : '#fff'; cx.fill();
+    cx.clip();
+    if (darkPlan) cx.filter = 'invert(1) hue-rotate(180deg)';
+    try { cx.drawImage(im2, (hx - half) * rat, (hy - half) * rat, 2 * half * rat, 2 * half * rat, lx - LR, ly - LR, 2 * LR, 2 * LR); } catch (e) {}
+    cx.filter = 'none';
+    cx.lineWidth = 1 * vs; cx.strokeStyle = scCol;
+    cx.beginPath(); cx.moveTo(lx - LR, ly); cx.lineTo(lx + LR, ly); cx.moveTo(lx, ly - LR); cx.lineTo(lx, ly + LR); cx.stroke();
+    cx.restore();
+    cx.save();
+    cx.lineWidth = 3 * vs; cx.strokeStyle = '#fff'; cx.beginPath(); cx.arc(lx, ly, LR, 0, 7); cx.stroke();
+    cx.lineWidth = 1.5 * vs; cx.strokeStyle = scCol; cx.beginPath(); cx.arc(lx, ly, LR, 0, 7); cx.stroke();
+    cx.restore();
+  }
   drawCompass(f);
   applyZoom();
   var sn = document.getElementById('scale_note'), tot = UFH ? roomsTotalHtml() : '';
@@ -5479,11 +5551,10 @@ cv.addEventListener('mousemove', function (e) {
     if (overC) return;
   }
   if (mode === 'scale') {
-    if (!scalePts.length) { scaleCur = null; return; }
     var sp = snapWall(evPt(e));
     scaleFree = !!e.shiftKey;
-    if (!scaleFree) sp = ortho(sp, scalePts[0], true);
-    scaleCur = sp; draw(); return;
+    if (scalePts.length && !scaleFree) sp = ortho(sp, scalePts[0], true);
+    scaleHover = sp; scaleCur = scalePts.length ? sp : null; draw(); return;
   }
   if (mode === 'rect' && dragA) { tmp = [evPt(e)]; draw(); }
   else if (mode === 'poly') {
@@ -5503,6 +5574,7 @@ cv.addEventListener('mousemove', function (e) {
  * Так из простого четырёхугольника делается любая форма под нишу, эркер
  * или обход лестницы: щёлкнули по стороне, потянули новый узел куда надо.
  */
+cv.addEventListener('mouseleave', function () { if (scaleHover) { scaleHover = null; if (mode === 'scale') draw(); } });
 cv.addEventListener('contextmenu', function (e) {
   // правый клик по коллектору — повернуть на 90° (стена распознана неверно)
   if (UFH && mode !== 'poly' && F().pxPerM) {
@@ -7797,7 +7869,7 @@ function wzBody(id) {
   if (id === 'scale' && SCAN_BUSY[cur]) return { noNext: true, acts: B("enterMode('scale')", 'Задать вручную'),
     tx: '<b>Ищу масштаб…</b> Читаю размеры на плане, до минуты.', tips: [['Не хотите ждать', 'задайте вручную']] };
   if (id === 'scale') return { noNext: true, acts: B("enterMode('scale')", 'Задать масштаб', 'go') + B('autoScale()', 'Подобрать ещё раз'),
-    tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане отрезок известной длины.',
+    tx: scanQuota() ? '<b>Автопоиск масштаба сейчас недоступен.</b> Задайте вручную: отметьте на плане отрезок известной длины.' : '<b>Масштаб не нашёлся.</b> Отметьте на плане отрезок известной длины.',
     tips: [['2 клика', 'по краям отрезка'], ['Например', 'дверной проём 0,9 м']], diag: scanDiagHtml() };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B('wzRect()', 'Обвести рамкой'),
     tx: 'Проверьте найденные комнаты и впишите названия — по ним они перейдут в расчёт.',
@@ -9101,7 +9173,7 @@ function pjBody(id) {
   if (id === 'scale' && SCAN_BUSY[cur]) return { noNext: true, acts: B("enterMode('scale')", 'Задать вручную'),
     tx: '<b>Ищу масштаб…</b> Читаю размеры на плане, до минуты.', tips: [['Не хотите ждать', 'задайте вручную']] };
   if (id === 'scale') return { noNext: true, acts: B('autoScale()', 'Подобрать ещё раз') + B("enterMode('scale')", 'Задать вручную'),
-    tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане отрезок известной длины.',
+    tx: scanQuota() ? '<b>Автопоиск масштаба сейчас недоступен.</b> Задайте вручную: отметьте на плане отрезок известной длины.' : '<b>Масштаб не нашёлся.</b> Отметьте на плане отрезок известной длины.',
     tips: [['2 клика', 'по краям отрезка'], ['Например', 'дверной проём 0,9 м']], diag: scanDiagHtml() };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B("document.getElementById('ztype').value='tp';setMode('room')", 'Обвести кликом'),
     tx: 'Нажмите «Найти комнаты» — контуры найдутся по стенам и сопоставятся с расчётом.',
