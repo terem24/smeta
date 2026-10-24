@@ -19597,6 +19597,21 @@ body.theme-yandex #profile_modal_overlay {
 #profile_cloud_list_content .inv-table th:nth-child(1),
 #profile_cloud_list_content .inv-table td:nth-child(1) { max-width: none; }
 
+/* Таблица смет не помещалась в окно: статус «Клиент просит обновить счёт» + плашка «Новое» шли
+   в одну строку, а кнопки (Получить счёт, Открыть, Ссылка клиенту, Скачать, ⋯) не переносились.
+   Статус может переноситься (плашка уходит под него), кнопки — в два ряда, как и задумывалось. */
+#profile_cloud_list_content .inv-table th:nth-child(3),
+#profile_cloud_list_content .inv-table td:nth-child(3) {
+    white-space: normal;
+    width: 220px;
+    max-width: 280px;
+}
+#profile_cloud_list_content .inv-table td:nth-child(3) .kpo-chip-attn { margin-left: 0; margin-top: 4px; }
+#profile_cloud_list_content .inv-table td:nth-child(3) .status-badge-cabinet { white-space: normal; }
+#profile_cloud_list_content .inv-table th:nth-child(5),
+#profile_cloud_list_content .inv-table td:nth-child(5) { width: 340px; min-width: 0; max-width: 340px; }
+#profile_cloud_list_content .lk-row-actions { flex-wrap: wrap !important; row-gap: 6px; }
+
 /* ── Кабинет, четвёртая очередь: одна вёрстка у всех разделов (03.10.2026) ────────
    Каждый раздел открывался по-своему: у одного подсказка слева абзацем и кнопка справа отдельно,
    у другого — только кнопка, у третьего три карточки без шапки, у четвёртого таблица без рамки.
