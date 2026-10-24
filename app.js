@@ -8440,6 +8440,8 @@ const app = {
 
     // ctx.why — что человек хотел сделать, когда упёрся в замок («Вы хотели: …»)
     showModal: function (type, ctx) {
+        // Сотрудникам ТЕРЕМ тарифы и оплату не показываем: у них ограничения те же, а покупать нечего
+        if (type === 'pro' && this.isTeremStaff()) { app.alert('Эта функция недоступна для вашей учётной записи.'); return; }
         let overlay = document.getElementById('custom_modal_overlay');
         let icon = document.getElementById('custom_modal_icon');
         let title = document.getElementById('custom_modal_title');
@@ -14851,6 +14853,7 @@ const app = {
             tariffEl.innerText = 'Базовый тариф';
             tariffEl.style.color = '';
         }
+        if (this.isTeremStaff()) tariffEl.innerText = '';
     },
 
     // Раздел «Подписка»: текущий тариф, срок и кнопка продления. Раньше это была узкая
@@ -16873,7 +16876,7 @@ const app = {
         if (!opt || !opt.pro) return null;
         const ok = opt.pro === 'pro' ? this.isPro() : (opt.pro === 'rommer' ? this.canUseBrand('ROMMER') : this.canUseBrand('TEREM'));
         if (ok) return null;
-        return this.isPro() ? 'Недоступно для вашей учётной записи' : 'Только на тарифе ПРОФИ';
+        return (this.isPro() || this.isTeremStaff()) ? 'Недоступно для вашей учётной записи' : 'Только на тарифе ПРОФИ';
     },
 
     // Нажатие на закрытый тарифом вариант «Любимых материалов»: окно тарифа с причиной
@@ -17240,7 +17243,8 @@ const app = {
         const subs = this.CABINET_SUBTABS[parent] || [];
         const noWorks = !this.canUseWorks();
         const noLeads = !this.leadBoardVisible();
-        return subs.filter(s => !(noWorks && (s.id === 'workprices' || s.id === 'orders')) && !(noLeads && s.id === 'leads'));
+        const noTariff = this.isTeremStaff();
+        return subs.filter(s => !(noWorks && (s.id === 'workprices' || s.id === 'orders')) && !(noLeads && s.id === 'leads') && !(noTariff && s.id === 'subscription'));
     },
 
     // Раздел, скрытый от этого человека, заменяем первым доступным в том же пункте
@@ -17432,7 +17436,7 @@ const app = {
             + (failed ? '<div class="ad-card-note ad-warn" style="margin-bottom:12px;">Часть данных не загрузилась — список может быть неполным.</div>' : '')
             + `<div class="ad-cards">${cards.join('')}</div>`
             + `<div class="ad-card lk-home-facts">`
-            + (tariff ? `<div class="ad-kv"><span>Тариф</span><button type="button" class="lk-link" onclick="app.setProfileTab('subscription')" title="Что даёт тариф и срок действия">${esc(tariff)} ›</button></div>` : '')
+            + (tariff && !this.isTeremStaff() ? `<div class="ad-kv"><span>Тариф</span><button type="button" class="lk-link" onclick="app.setProfileTab('subscription')" title="Что даёт тариф и срок действия">${esc(tariff)} ›</button></div>` : '')
             + `<div class="ad-kv"><span>Сохранённых смет</span><b>${ests.length}${ests.length >= 50 ? '+' : ''}</b></div>`
             + `</div>`;
         // Список для общего поиска по кабинету — те же свои сметы, второй раз не читаем
@@ -20152,7 +20156,7 @@ const app = {
                         <b>Тема</b>
                         <span>${names[this.uiThemeEffective()] || 'Стандарт'} — задана по вашей сфере деятельности. ${why}</span>
                     </div>
-                    ${this.isPro() ? '' : `<button type="button" class="lk-btn-sm" onclick="app.setProfileTab('subscription')">О тарифе</button>`}
+                    ${(this.isPro() || this.isTeremStaff()) ? '' : `<button type="button" class="lk-btn-sm" onclick="app.setProfileTab('subscription')">О тарифе</button>`}
                 </div>`;
             box.style.display = '';
             return;
@@ -20413,8 +20417,8 @@ const app = {
                         по вашим скидкам поставщика, оплата бригады, накладные — и что остаётся на руках
                         по каждому разделу сметы.
                     </div>
-                    <button type="button" onclick="app.showModal('pro')"
-                        style="margin-top: 16px; font: inherit; font-size: 13px; font-weight: 700; padding: 10px 22px; border-radius: 10px; border: none; background: var(--primary); color: var(--on-primary,#fff); cursor: pointer;">Посмотреть тариф</button>
+                    ${this.isTeremStaff() ? '' : `<button type="button" onclick="app.showModal('pro')"
+                        style="margin-top: 16px; font: inherit; font-size: 13px; font-weight: 700; padding: 10px 22px; border-radius: 10px; border: none; background: var(--primary); color: var(--on-primary,#fff); cursor: pointer;">Посмотреть тариф</button>`}
                 </div>`;
             return;
         }
@@ -21994,6 +21998,7 @@ const app = {
             const isUnread = !n.isRead;
             const unreadDot = isUnread ? '<span style="width: 7px; height: 7px; background: #3B82F6; border-radius: 50%; display: inline-block; margin-left: 5px;" title="Новое сообщение"></span>' : '';
 
+            if ((n.type === 'tariff_alert' || n.type === 'tariff_info') && this.isTeremStaff()) return;
             if (n.type === 'tariff_alert' || n.type === 'tariff_info') {
                 const isCritical = n.status === 'critical';
                 const isWarning = n.status === 'warning';
@@ -22014,7 +22019,7 @@ const app = {
                         <div style="font-size: 12.5px; font-weight: 700; color: var(--text-main); line-height: 1.3;">${n.projectName}</div>
                         <div style="font-size: 11px; color: var(--text-sec); line-height: 1.4;">${n.comment}</div>
                         ${(isCritical || isWarning)
-                        ? `<button class="auth-btn-base btn-email-submit" style="margin: 6px 0 0 0; width: 100%; height: 30px; font-size: 11px; font-weight: bold; background: #D97706; border-color: #D97706;" onclick="event.stopPropagation(); document.getElementById('notifications_modal_overlay').style.display='none'; app.showModal('pro');">Продлить доступ</button>`
+                        ? (this.isTeremStaff() ? '' : `<button class="auth-btn-base btn-email-submit" style="margin: 6px 0 0 0; width: 100%; height: 30px; font-size: 11px; font-weight: bold; background: #D97706; border-color: #D97706;" onclick="event.stopPropagation(); document.getElementById('notifications_modal_overlay').style.display='none'; app.showModal('pro');">Продлить доступ</button>`)
                         : ''
                     }
                     </div>
@@ -26119,7 +26124,7 @@ const app = {
                 <div style="font-size:12.5px; color:var(--text-sec); margin-top:6px;">${esc(works(r.works))}</div>
                 <div style="margin-top:10px;">${can
                     ? `<button type="button" class="lk-btn" onclick="app.takeLead('${esc(r.lead_id)}', this)">Взять заявку</button>`
-                    : (needPro ? `<button type="button" class="lk-btn" onclick="app.showModal('pro')">Оформить Профи, чтобы взять</button>` : '')}</div>
+                    : ((needPro && !this.isTeremStaff()) ? `<button type="button" class="lk-btn" onclick="app.showModal('pro')">Оформить Профи, чтобы взять</button>` : '')}</div>
             </div>`).join('') : '<div class="lk-sub" style="padding:8px 0 16px;">Свободных заявок сейчас нет. Новые появляются по мере поступления — загляните позже.</div>';
         const markOpts = cur => this.LEAD_MARKS.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}${v === 'sent' ? ' disabled' : ''}>${l}</option>`).join('');
         const mineHtml = mine.length ? mine.map(r => `
@@ -97190,6 +97195,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     },
 
     openPaymentModal(type) {
+        if (this.isTeremStaff()) return;
         const overlay = document.getElementById('payment_modal_overlay');
         const subtitle = document.getElementById('planName');
         const qrContainer = document.getElementById('qrcode_container');
