@@ -5190,6 +5190,7 @@ cv.addEventListener('wheel', function (e) {
 }, { passive: false });
 cv.addEventListener('click', function (e) {
   var p = evPt(e);
+  if (markNext) { var hm0 = zoneHit(p); if (hm0.zi >= 0) wzMarkApply(hm0.zi); return; }   // «Отметить» котельную / санузел / кухню
   // хвост переноса коллектора, и щелчок по его значку — не радиатор и не комната
   if (Date.now() - justDragged < 300 && mode !== 'select' && mode !== 'room') return;
   if (mode !== 'coll' && mode !== 'radcoll' && mode !== 'win' && mode !== 'wcoll' && mode !== 'wout' && F().pxPerM && collAt(p)) return;
@@ -6509,7 +6510,7 @@ function uploadPending() {
 // и снимает галочку тёплого пола в карточке (app.syncRoomsFromPlan).
 
 var UFH_NAMES = ['Гостиная', 'Кухня', 'Кухня-гостиная', 'Спальня', 'Детская', 'Кабинет',
-  'Прихожая', 'Холл', 'Коридор', 'С/у', 'Ванная', 'Гардеробная', 'Кладовая', 'Котельная', 'Тамбур'];
+  'Прихожая', 'Холл', 'Коридор', 'Санузел', 'С/у', 'Ванная', 'Гардеробная', 'Кладовая', 'Котельная', 'Тамбур'];
 
 // Трассы радиаторов для холста — тот же projectPlans.radRoutes, что у сметы.
 // Схема (лучевая или тройниковая) — из расчёта. Кэш по разметке этажа.
@@ -6952,15 +6953,19 @@ function ufhAskName(z) {
     });
     h += '</div><div class="sub" style="margin-bottom:4px">Или новая:</div>';
   }
+  // не отмечены котельная, санузел, кухня — они первыми и подписаны: без них не собрать котельную, воду и канализацию
+  var need = reqRooms('all').filter(function (r) { return !r.ok && (r.key === 'boiler' || waterWanted()); }).map(function (r) { return r.label; });
+  if (need.length) h += '<div class="sub" style="color:#d97706;margin-bottom:4px">Ещё не отмечено на плане: ' + need.join(', ').toLowerCase() + '</div>';
+  var names = need.concat(UFH_NAMES.filter(function (n) { return need.indexOf(n) < 0; }));
   h += '<div class="grid">';
-  UFH_NAMES.forEach(function (nm) { h += '<button data-n="' + esc(uniq(nm)) + '">' + esc(uniq(nm)) + '</button>'; });
+  names.forEach(function (nm) { h += '<button' + (need.indexOf(nm) >= 0 ? ' class="calc"' : '') + ' data-n="' + esc(uniq(nm)) + '">' + esc(uniq(nm)) + '</button>'; });
   h += '</div><div class="row"><input type="text" placeholder="Своё название"><button class="go" data-own="1">OK</button></div>' +
     '<div style="margin-top:8px;text-align:right"><button class="ghost" data-skip="1">Пропустить</button></div></div>';
   div.innerHTML = h;
   var inp = div.querySelector('input');
   var done = function (nm) {
     div.remove();
-    if (nm) { z.name = nm; z.roomId = roomIdByName(nm); }
+    if (nm) { z.name = nm; z.roomId = roomIdByName(nm); if (/котельн/i.test(nm)) nameAsBoiler(z); }
     renderZones(); draw();
     var tpz = z.type === 'tp';
     hint(!z.name ? 'Комната без имени: в расчёт она добавится как «Помещение». Имя можно вписать в списке справа.'
@@ -7124,9 +7129,99 @@ function wzGo(id, keepHint) {
   draw();
 }
 
+/**
+ * Обязательные комнаты: котельная, санузел, кухня. От них зависят компоновка котельной, вода и канализация,
+ * поэтому мастер просит отметить их на плане всегда — списком с кнопками, в окне названия и перед «Дальше».
+ */
+var REQ_NAMES = { boiler: 'Котельная', wc: 'Санузел', kitchen: 'Кухня' };
+var markNext = null;        // что отмечаем следующим кликом по комнате: 'boiler' | 'wc' | 'kitchen'
+var wzNextWarn = false;     // предупреждение перед «Дальше» уже показано
+/** Считаем ли водоснабжение: галочка на шаге «Санузлы и вода» или включённая вода в расчёте */
+function waterWanted() {
+  var w = DATA.floors[0].water;
+  if (w && w.enable != null && w.touched) return !!w.enable;
+  try { return !!(JSON.parse(localStorage.getItem('stout_save')) || {}).water; } catch (e) { return false; }
+}
+/**
+ * Что должно быть отмечено на плане. scope: 'base' — котельная (нужна всегда); 'water' — кухня и санузел
+ * (нужны, если считаем водоснабжение, и спрашиваются на шаге «Санузлы и вода»); 'all' — всё, что нужно сейчас.
+ */
+function reqRooms(scope) {
+  scope = scope || 'all';
+  var zs = [];
+  DATA.floors.forEach(function (fl) { (fl.zones || []).forEach(function (z) { if (z.type !== 'cold') zs.push(z); }); });
+  var has = function (fn) { return zs.some(fn); };
+  var ww = DATA.floors[0].water;
+  var card = function (kind) { return !!(ww && ww.cards && ww.cards.some(function (c) { return c.kind === kind && c.zone && wwRoomZone(c.fl, c.zone); })); };
+  var L = [];
+  if (scope !== 'water') L.push({ key: 'boiler', label: 'Котельная', ok: has(function (z) { return z.type === 'boiler' || /котельн/i.test(z.name || ''); }) });
+  if (scope === 'water' || (scope === 'all' && waterWanted())) {
+    L.push({ key: 'wc', label: 'Санузел', ok: card('wc') });
+    L.push({ key: 'kitchen', label: 'Кухня', ok: card('kitchen') });
+  }
+  return L;
+}
+function reqHtml(scope, always) {
+  var L = reqRooms(scope), miss = L.filter(function (r) { return !r.ok; });
+  if (!L.length || (!miss.length && !always)) return '';
+  var h = '<div style="margin-top:8px;font-size:12.5px;line-height:1.9"><b>Отметьте на плане:</b> ';
+  L.forEach(function (r) {
+    h += r.ok ? '<span style="color:#16a34a;margin-right:12px">✓ ' + r.label + '</span>'
+      : '<span style="margin-right:12px"><span style="color:#d97706">✕ ' + r.label + '</span> <button onclick="wzMark(\'' + r.key + '\')"' + (markNext === r.key ? ' class="go"' : '') + '>' +
+        (markNext === r.key ? 'Кликните комнату…' : 'Отметить') + '</button></span>';
+  });
+  return h + '</div>';
+}
+/** Кнопка «Отметить»: следующий клик по комнате на плане называет её котельной, санузлом или кухней */
+function wzMark(key) {
+  markNext = markNext === key ? null : key;
+  wzNextWarn = false;
+  hint(markNext ? 'Кликните на плане комнату — это ' + REQ_NAMES[key].toLowerCase() + '.' : '');
+  stepsHtml = ''; renderSteps();
+}
+/** Котельная — отдельный тип зоны: у комнаты вида «room» меняем тип, у комнаты с тёплым полом — зона поверх */
+function nameAsBoiler(z) {
+  var key = JSON.stringify(z.pts);
+  if (F().zones.some(function (q) { return q !== z && q.type === 'boiler' && JSON.stringify(q.pts) === key; })) return;
+  if (z.type === 'boiler') return;
+  if (z.type === 'tp') { makeBoiler(z); return; }
+  z.type = 'boiler';
+}
+function wzMarkApply(zi) {
+  var f = F(), z = f.zones[zi], key = markNext;
+  if (!z || z.type === 'cold') return;
+  var base = REQ_NAMES[key], used = {};
+  DATA.floors.forEach(function (fl) { (fl.zones || []).forEach(function (q) { if (q !== z && q.name) used[String(q.name).trim().toLowerCase()] = 1; }); });
+  var nm = base, k = 2;
+  if (key === 'wc' && used['санузел']) { nm = 'Санузел 1'; }
+  while (used[nm.toLowerCase()]) nm = base + ' ' + (k++);
+  pushUndo('zones');
+  var pk = JSON.stringify(z.pts);
+  f.zones.forEach(function (q) { if (q === z || JSON.stringify(q.pts) === pk) { q.name = nm; q.roomId = roomIdByName(nm); } });
+  if (key === 'boiler') nameAsBoiler(z);
+  markNext = null; wzNextWarn = false;
+  // на шаге «Санузлы и вода» отмеченная комната сразу становится санузлом / кухней с приборами
+  if (key !== 'boiler' && wwLayer() === 'water') { var w0 = wwInit(); if (wwCardIdx(w0, cur, z) < 0) wwToggleRoom(zi); }
+  renderZones(); draw();
+  hint('<span class=ok>Отмечено: ' + nm + '.</span>');
+  stepsHtml = ''; renderSteps();
+}
+
 function wzNext() {
   var L = wzSteps(), c = wzCur(L), ids = L.map(function (s) { return s.id; }), i = ids.indexOf(c);
   if (c === 'done') { ufhDone(); return; }
+  // с шага «Комнаты» не уходим молча, пока на плане нет котельной, санузла и кухни: сначала спрашиваем, второе нажатие — пропустить
+  if (c === 'rooms' || c === 'water') {
+    var miss = reqRooms(c === 'rooms' ? 'base' : 'water').filter(function (r) { return !r.ok; });
+    if (miss.length && !wzNextWarn) {
+      wzNextWarn = true;
+      hint('<b style="color:#d97706">Не отмечено на плане: ' + miss.map(function (r) { return r.label.toLowerCase(); }).join(', ') +
+        '.</b> ' + (c === 'rooms' ? 'Без котельной не собрать компоновку и обвязку.' : 'Без них вода и канализация не посчитаются по плану.') + ' Отметьте кнопками выше или нажмите «Дальше» ещё раз — пропустить.');
+      stepsHtml = ''; renderSteps();
+      return;
+    }
+  }
+  wzNextWarn = false;
   if (i >= 0 && i + 1 < L.length) wzGo(ids[i + 1]);
 }
 
@@ -7256,13 +7351,13 @@ function wzBody(id) {
     tips: [['2 клика', 'по краям отрезка'], ['Например', 'дверной проём 0,9 м']], diag: scanDiagHtml() };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B('wzRect()', 'Обвести рамкой'),
     tx: 'Проверьте найденные комнаты и впишите названия — по ним они перейдут в расчёт.',
-    tips: [['✕', 'убрать лишнюю'], ['«Обвести рамкой»', 'если комната не нашлась']] };
+    tips: [['✕', 'убрать лишнюю'], ['«Обвести рамкой»', 'если комната не нашлась']], diag: reqHtml('base', true) };
   if (id === 'tp') return { acts: B("wzTpDraw('poly')", 'Обвести по точкам') + B("wzTpDraw('rect')", 'Обвести рамкой') + B('ufhCold()', 'Без обогрева') + B("setMode('coll')", 'Переставить коллектор'),
     tx: 'Отметьте комнаты с тёплым полом — петли разложатся сами.',
     tips: [['Клик по комнате', 'вкл / выкл'], ['«По точкам»', 'сложная форма'], ['Узлы контура', 'тянуть; ПКМ — точка'], ['«Без обогрева»', 'лестница, ванна'],
-      ['Мышью', 'двигать коллектор'], ['ПКМ или R', 'повернуть на 90°']] };
+      ['Мышью', 'двигать коллектор'], ['ПКМ или R', 'повернуть на 90°']], diag: reqHtml('base', false) };
   if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('radcoll')", 'Переставить коллектор радиаторов') + B('radRoutesReset()', 'Автотрассы') + radBeamBtn(),
-    tx: 'Радиаторы поставлены под окнами — проверьте расстановку.', tips: RAD_TIPS, diag: radWarnHtml() };
+    tx: 'Радиаторы поставлены под окнами — проверьте расстановку.', tips: RAD_TIPS, diag: radWarnHtml() + reqHtml('base', false) };
   if (id === 'water') return wwBody();
   if (id === 'sewer') return wsBody();
   return { next: 'Готово — в смету', tx: wzSummary().html,
@@ -7786,6 +7881,7 @@ function wwBody() {
     '</div>';
   var acts = B("wwPlace('win')", 'Ввод воды') + B("wwPlace('wcoll')", 'Коллекторы') +
     ((w.inp || w.coll) ? B('wwReset()', 'Вернуть в котельную') : '');
+  diag += reqHtml('water', false);
   return { next: 'Дальше →', acts: acts, diag: diag,
     tx: 'Кликните санузел и кухню на плане — приборы встанут сами. Любой прибор тяните мышью, пробел или ПКМ — повернуть. Сколько каких приборов — в таблице справа.',
     tips: [['Клик по комнате', 'санузел вкл / выкл'], ['Прибор', 'тянуть мышью'], ['Пробел', 'повернуть'], ['Коллекторы', 'тоже двигаются']] };
