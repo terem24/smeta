@@ -3118,7 +3118,7 @@ const app = {
     },
 
     // Закрытое тарифом показываем тусклым с плашкой «Профи» (витрина тарифа) — всем,
-    // кроме сотрудников ТЕРЕМ: им предлагать покупку нечего.
+    // кроме сотрудников ТЕРЕМ: предложений об оплате они не видят, но ограничения тарифа у них те же.
     canShowLockedBrands: function () { return !this.isTeremStaff(); },
 
     // opts.locked — вернуть наоборот только то, что закрыто тарифом (для витрины)
@@ -23856,8 +23856,6 @@ const app = {
         const b = String(brand || '').toUpperCase();
         if (b === 'ROMMER') return this.tariffAccess('rommer') === 'on';
         if (!b || b === 'STOUT') return true;
-        // Сотрудникам ТЕРЕМ прайс открыт всегда: тариф им не продаётся
-        if (this.isTeremStaff()) return true;
         return this.tariffAccess('terem') === 'on';
     },
 
