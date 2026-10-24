@@ -43160,7 +43160,8 @@ const app = {
      *  · «Трасса, м» (dist) — длина магистрали от коллекторов до санузла по плану, а не оценка на глаз;
      *    она идёт и в трубы раздела 5, и в гидравлику воды (buildWaterHydroData);
      *  · галочки «Считать водоснабжение» и «Рециркуляция ГВС».
-     * Работает, только если шаг открывали в этом сеансе окна (visited): иначе план ничего не меняет.
+     * Карточки (приборы, имена, создание и удаление) — только если шаг открывали в этом сеансе окна (seen) и правили (touched);
+     * длины труб и этаж — всегда, пока шаг был пройден (visited): план пересчитывается и без открытия шага.
      * Возвращает true, если расчёт изменился.
      */
     syncWaterFromPlan: function () {
@@ -43178,13 +43179,14 @@ const app = {
         w.cards.forEach(c => {
             let z = c.id != null ? zones.find(x => x.id === c.id) : null;
             if (!z && c.id == null) z = zones.find(x => !keep.has(x.id) && norm(x.name) === norm(c.name));
+            if (!z && !w.seen) return;      // шаг в этом сеансе не открывали: карточки в плане могли устареть
             if (!z) {
-                z = { id: Date.now() + (seq++), name: c.name, dist: s.area < 120 ? 6 : 10,
+                z = { id: Date.now() + (seq++), name: c.name, kind: c.kind || 'wc', dist: s.area < 120 ? 6 : 10,
                     fixtures: { toilet: 0, basin: 0, bath: 0, shower: 0, wash: 0, dish: 0 } };
                 zones.push(z);
             }
             keep.add(z.id);
-            if (w.touched) {
+            if (w.touched && w.seen) {
                 if (c.name) z.name = c.name;
                 if (!z.fixtures) z.fixtures = {};
                 KEYS.forEach(k => { z.fixtures[k] = Math.max(0, parseInt(c.fixtures && c.fixtures[k], 10) || 0); });
@@ -43193,7 +43195,7 @@ const app = {
             if (s.floors === 2 && c.fl != null) z.level = (+c.fl === 1) ? 2 : 1;
             if (c.m != null && isFinite(c.m)) { z.dist = Math.max(1, Math.ceil(c.m)); z.distPlan = true; }
         });
-        if (w.touched) {
+        if (w.touched && w.seen) {
             s.waterZones = zones.filter(z => keep.has(z.id));
             if (w.enable) s.water = true; else if (w.enable === false) s.water = false;
             if (w.recirc !== undefined && s.dhwSource !== 'electric') s.recirc = !!w.recirc;
@@ -59896,7 +59898,20 @@ const app = {
 
     HOUSE_BATHS_MAX: 5,
 
+    /**
+     * Сколько санузлов в новом доме, если число не задавали руками (houseBathsManual):
+     * до 120 м² — один, до 200 м² — два, больше — три; на двух этажах не меньше двух
+     * (по одному на этаж). Практика проектирования, нормы на число санузлов нет.
+     */
+    houseBathsAuto: function () {
+        const a = parseFloat(this.state.area) || 0;
+        let n = a < 120 ? 1 : a < 200 ? 2 : 3;
+        if ((this.state.floors || 1) >= 2) n = Math.max(n, 2);
+        return Math.min(n, this.HOUSE_BATHS_MAX);
+    },
+
     houseBaths: function () {
+        if (!this.state.houseBathsManual) return this.houseBathsAuto();
         const n = parseInt(this.state.houseBaths);
         if (!n || n < 1) return 1;
         return Math.min(n, this.HOUSE_BATHS_MAX);
@@ -59911,14 +59926,14 @@ const app = {
     buildHouseWaterZones: function () {
         const n = this.houseBaths();
         const zones = [{
-            id: 1, name: 'Кухня', dist: 6,
+            id: 1, name: 'Кухня', kind: 'kitchen', dist: 6,
             fixtures: { toilet: 0, basin: 1, bath: 0, shower: 0, wash: 0, dish: 1 }
         }];
         for (let i = 0; i < n; i++) {
             zones.push(i === 0
-                ? { id: 2, name: 'Санузел 1', dist: 6,
+                ? { id: 2, name: 'Санузел 1', kind: 'wc', dist: 6,
                     fixtures: { toilet: 1, basin: 1, bath: 1, shower: 0, wash: 1, dish: 0 } }
-                : { id: 2 + i, name: 'Санузел ' + (i + 1), dist: 8 + (i - 1) * 2,
+                : { id: 2 + i, name: 'Санузел ' + (i + 1), kind: 'wc', dist: 8 + (i - 1) * 2,
                     fixtures: { toilet: 1, basin: 1, bath: 0, shower: 1, wash: 0, dish: 0 } });
         }
         return zones;
@@ -59940,6 +59955,7 @@ const app = {
         if (n < 1) n = 1;
         if (n > this.HOUSE_BATHS_MAX) n = this.HOUSE_BATHS_MAX;
         this.state.houseBaths = n;
+        this.state.houseBathsManual = true;
         this.state.waterZones = this.buildHouseWaterZones();
         this.saveState(); this.syncUI(); this.render();
     },
@@ -74460,7 +74476,11 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         const area = this.state.area || 150;
         const lens = [];
         for (let i = 0; i < floors; i++) lens.push(3);
-        const horiz = Math.ceil(Math.sqrt(area) * 1.2);
+        // лежак до выпуска: с плана, если в мастере размечены санузлы и выпуск (шаг «Санузлы и вода»)
+        const _pl = this.currentPlans();
+        const _w = _pl && _pl.floors && _pl.floors[0] && _pl.floors[0].water;
+        const planned = _w && _w.visited && _w.sewer && _w.sewer.mainM > 0 ? _w.sewer.mainM : 0;
+        const horiz = planned || Math.ceil(Math.sqrt(area) * 1.2);
         if (horiz > 0) lens.push(horiz);
         return { lens: lens, total: lens.reduce((a, b) => a + b, 0), floors: floors };
     },
@@ -79638,6 +79658,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // не один пустой санузел, а типовой набор с кухней.
             if (chk && this.state.waterZones.length === 0) {
                 if (this.flatSimpleWater()) this.state.waterZones = this.buildFlatWaterZones();
+                else if (!this.isFlat()) this.state.waterZones = this.buildHouseWaterZones();   // кухня и санузлы — в любом доме есть точки разбора
                 else this.addZone();
             }
             this.syncUI();
@@ -79650,10 +79671,16 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // По умолчанию: первый санузел — унитаз + раковина + душ, второй и последующие
         // (обычно гостевые) — унитаз + раковина, без душа.
         let isFirst = this.state.waterZones.length === 0;
+        // В доме без кухни в расчёте воды её нет — первой всегда идёт кухня
+        if (isFirst && !this.isFlat() && !this.state.waterZones.some(z => z.kind === 'kitchen' || /кухн/i.test(z.name || ''))) {
+            this.state.waterZones.push({ id: id - 1, name: 'Кухня', kind: 'kitchen', dist: dist,
+                fixtures: { toilet: 0, basin: 1, bath: 0, shower: 0, wash: 0, dish: 1 } });
+        }
         let fixtures = isFirst
             ? { toilet: 1, basin: 1, bath: 0, shower: 1, wash: 0, dish: 0 }
             : { toilet: 1, basin: 1, bath: 0, shower: 0, wash: 0, dish: 0 };
-        this.state.waterZones.push({ id: id, name: "Санузел " + (this.state.waterZones.length + 1), dist: dist, fixtures: fixtures });
+        const wcN = this.state.waterZones.filter(z => z.kind !== 'kitchen' && !/кухн/i.test(z.name || '')).length + 1;
+        this.state.waterZones.push({ id: id, name: "Санузел " + wcN, kind: 'wc', dist: dist, fixtures: fixtures });
         this.syncUI(); this.render();
     },
     removeZone: function (id) { this.state.waterZones = this.state.waterZones.filter(z => z.id !== id); this.syncUI(); this.render(); },
