@@ -29006,6 +29006,19 @@ const app = {
             });
             return { rows: r.rows };
         });
+        // Путь к оплате (журнал paywall_events) и заявки на оплату. Нет таблицы — не ошибка виджета
+        L('pwl', async () => {
+            try {
+                const r = await this.fetchAllRows('paywall_events', 'user_id, kind, src, created_at', { order: 'id', cap: 20000, build: qy => ge(qy, 'created_at') });
+                return { rows: r.rows };
+            } catch (e) { return { rows: [], missing: true }; }
+        });
+        L('preq', async () => {
+            try {
+                const r = await this.fetchAllRows('subscription_payments', 'user_id, email, status, created_at', { order: 'created_at', cap: 5000, build: qy => ge(qy, 'created_at') });
+                return { rows: r.rows };
+            } catch (e) { return { rows: [] }; }
+        });
         L('rec', async () => {
             const headers = await this.recognitionAuthHeaders();
             if (!headers) throw new Error('нет сессии для доступа к архиву');
@@ -29072,7 +29085,7 @@ const app = {
         // Начало данных — для «всего времени» (границы столбцов графика)
         let first = now;
         const scan = (k, f) => { if (ok(k)) S[k].rows.forEach(r => { const t = t0(r[f]); if (t != null && t < first) first = t; }); };
-        scan('users', 'created_at'); scan('ests', 'created_at'); scan('evs', 'created_at'); scan('pay', 'paid_at');
+        scan('users', 'created_at'); scan('ests', 'created_at'); scan('pwl', 'created_at'); scan('evs', 'created_at'); scan('pay', 'paid_at');
         if (ok('rec')) S.rec.rows.forEach(r => { const t = t0(r.savedAt || r.day); if (t != null && t < first) first = t; });
         const B = this.kpiBuckets(p, first);
         const zeros = () => new Array(B.n).fill(0);
@@ -29284,6 +29297,92 @@ const app = {
             }
             out.pay = w;
         }
+
+        // ── Предложение Профи: что видят, что нажимают, где отваливаются ──
+        {
+            const w = { id: 'paywall', title: 'Предложение Профи', tab: 'payready', act: 'Готовность платить' };
+            const done = k => ok(k) || bad(k);
+            if (!(done('pwl') && done('preq') && done('pay')) || testsWait) w.wait = true;
+            else if (bad('pwl')) w.err = bad('pwl');
+            else {
+                const KINDS = ['seen', 'tariff_open', 'pay_open'];
+                const who = { cur: {}, prev: {} }, ev = {}, srcs = { seen: {}, tariff_open: {} };
+                ['cur', 'prev'].forEach(c => KINDS.forEach(k => { who[c][k] = {}; }));
+                KINDS.forEach(k => { ev[k] = zeros(); });
+                S.pwl.rows.forEach(r => {
+                    if (testIds[r.user_id] || !who.cur[r.kind]) return;
+                    const t = t0(r.created_at), c = cls(t); if (!c) return;
+                    who[c][r.kind][r.user_id] = 1;
+                    if (c === 'cur') {
+                        ev[r.kind][B.at(t)]++;
+                        if (srcs[r.kind]) { const key = r.src || 'не указано'; (srcs[r.kind][key] || (srcs[r.kind][key] = {}))[r.user_id] = 1; }
+                    }
+                });
+                const n = { cur: {}, prev: {} };
+                ['cur', 'prev'].forEach(c => KINDS.forEach(k => { n[c][k] = Object.keys(who[c][k]).length; }));
+                const reqSet = { cur: {}, prev: {} }, paidN = { cur: 0, prev: 0 };
+                let anon = 0;
+                (ok('preq') ? S.preq.rows : []).forEach(r => {
+                    if (r.email && testMail[String(r.email).toLowerCase()]) return;
+                    if (r.status !== 'requested' && r.status !== 'paid') return;
+                    const c = cls(t0(r.created_at)); if (c) reqSet[c][r.user_id || r.email || ('x' + (anon++))] = 1;
+                });
+                (ok('pay') ? S.pay.rows : []).forEach(r => {
+                    if (r.email && testMail[String(r.email).toLowerCase()]) return;
+                    const c = cls(t0(r.paid_at)); if (c) paidN[c]++;
+                });
+                const req = { cur: Object.keys(reqSet.cur).length, prev: Object.keys(reqSet.prev).length };
+                const c = n.cur, q = n.prev, dl = (a, b) => hasPrev ? this.kpiDelta(a, b) : '';
+                const top = (m, lim) => Object.keys(m).map(k => ({ label: k, value: Object.keys(m[k]).length })).sort((a, b) => b.value - a.value).slice(0, lim);
+                // Шаги пути: из какого в какой и сколько людей прошло
+                const steps = [
+                    ['Увидели → окно тарифа', c.seen, c.tariff_open],
+                    ['Окно тарифа → окно оплаты', c.tariff_open, c.pay_open],
+                    ['Окно оплаты → «Я оплатил»', c.pay_open, req.cur],
+                    ['«Я оплатил» → оплата', req.cur, paidN.cur]
+                ];
+                const weak = steps.filter(x => x[1] >= 5).map(x => ({ name: x[0], from: x[1], to: x[2], conv: Math.min(100, Math.round(x[2] / x[1] * 100)) }))
+                    .sort((a, b) => a.conv - b.conv)[0];
+                const trialSeen = (srcs.seen['Распознавание: пробный разбор'] && Object.keys(srcs.seen['Распознавание: пробный разбор']).length) || 0;
+                const trialTariff = Object.keys(srcs.tariff_open).filter(k => k.indexOf('Вы разобрали документ') === 0)
+                    .reduce((m, k) => Object.assign(m, srcs.tariff_open[k]), {});
+                const trialTariffN = Object.keys(trialTariff).length;
+                w.nums = [
+                    { k: 'seen', l: 'Увидели предложение', v: fmt(c.seen), d: dl(c.seen, q.seen), sp: ev.seen, h: 'Сколько разных людей увидели закрытое: витрину других марок в поиске или пробный разбор' },
+                    { k: 'tar', l: 'Открыли окно тарифа', v: fmt(c.tariff_open), d: dl(c.tariff_open, q.tariff_open), s: c.seen ? pct(c.tariff_open, c.seen) + '% от увидевших' : '', sp: ev.tariff_open, h: 'Нажали на замок, плашку или «Оформить Профи»' },
+                    { k: 'po', l: 'Дошли до оплаты', v: fmt(c.pay_open), d: dl(c.pay_open, q.pay_open), s: c.tariff_open ? pct(c.pay_open, c.tariff_open) + '% от открывших тариф' : '', sp: ev.pay_open, h: 'Открыли окно с QR и ссылкой на оплату' },
+                    { k: 'req', l: 'Нажали «Я оплатил»', v: fmt(req.cur), d: dl(req.cur, req.prev), s: c.pay_open ? pct(req.cur, c.pay_open) + '% от дошедших' : '', h: 'Оставили заявку на подтверждение оплаты' },
+                    { k: 'paid', l: 'Оплатили', v: fmt(paidN.cur), d: dl(paidN.cur, paidN.prev), tone: 'good', s: req.cur ? pct(paidN.cur, req.cur) + '% от заявок' : '', h: 'Оплаты, подтверждённые за период' },
+                    { k: 'weak', l: 'Где отваливаются', v: weak ? weak.name.split(' → ')[0] + ' →' : '—', s: weak ? 'дальше ' + weak.conv + '% (' + weak.to + ' из ' + weak.from + ')' : 'мало данных', tone: weak && weak.conv < 20 ? 'bad' : '', h: 'Шаг пути с самой низкой долей прошедших (учитываются шаги, где было от 5 человек)' },
+                    { k: 'trial', l: 'Пробный разбор', v: fmt(trialSeen), s: trialSeen ? 'к тарифу после него: ' + trialTariffN : '', off: true, h: 'Сколько человек использовали бесплатный разбор документа и сколько из них потом открыли окно тарифа' }
+                ];
+                w.chart = { labels: B.labels, tips: B.tips, stack: false, series: [
+                    { name: 'Увидели', color: C.gray, vals: ev.seen }, { name: 'Окно тарифа', color: C.blue, vals: ev.tariff_open }, { name: 'Окно оплаты', color: C.green, vals: ev.pay_open }] };
+                w.groups = [
+                    { title: 'Путь людей за период', items: [
+                        { label: 'Увидели', value: c.seen, color: C.gray }, { label: 'Окно тарифа', value: c.tariff_open, color: C.blue },
+                        { label: 'Окно оплаты', value: c.pay_open, color: C.violet }, { label: '«Я оплатил»', value: req.cur, color: C.amber }, { label: 'Оплатили', value: paidN.cur, color: C.green }] },
+                    { title: 'Из чего открывают окно тарифа', items: top(srcs.tariff_open, 6).map((x, i) => ({ label: x.label, value: x.value, color: [C.blue, C.green, C.amber, C.violet, C.teal, C.gray][i] })) }
+                ];
+                w.table = this.kpiTable(B, [{ name: 'Увидели', vals: ev.seen }, { name: 'Окно тарифа', vals: ev.tariff_open }, { name: 'Окно оплаты', vals: ev.pay_open }]);
+                // Выводы словами: что чинить. Правила простые, чтобы их можно было пересказать
+                const tips = [];
+                if (S.pwl.missing) tips.push('Журнала paywall_events в базе нет — выполните миграцию 20261025_paywall_events.sql, и цифры пойдут.');
+                else if (!S.pwl.rows.length) tips.push('Пока ни одного события: журнал копится с момента выпуска. Первые выводы — через несколько дней, когда наберётся хотя бы 20–30 человек.');
+                else if (c.seen < 20) tips.push('Данных мало (' + c.seen + ' чел. увидели предложение) — выводы ниже предварительные.');
+                if (c.seen >= 10 && c.tariff_open / c.seen < 0.15) tips.push('Предложение видят, но окно тарифа открывают меньше 15%: замок и плашка не цепляют. Что менять: текст («Вы хотели…»), показать выгоду в рублях, поставить предложение в момент, когда человек уже получил результат.');
+                if (c.tariff_open >= 10 && c.pay_open / c.tariff_open < 0.3) tips.push('Окно тарифа открывают, до оплаты доходят меньше 30%: цена или состав не убеждают. Что менять: цена за день или за объект, годовой тариф со скидкой, пример окупаемости.');
+                if (c.pay_open >= 5 && req.cur / c.pay_open < 0.4) tips.push('Окно оплаты открывают, но «Я оплатил» нажимают меньше 40%: способ оплаты неудобен (QR и ссылка, потом ручное подтверждение). Что менять: оплата картой на сайте с автоматическим подтверждением.');
+                if (req.cur >= 3 && paidN.cur / req.cur < 0.7) tips.push('Заявок «Я оплатил» заметно больше, чем подтверждённых оплат: проверьте, не залёживаются ли заявки и не нажимают ли «Я оплатил» без оплаты.');
+                if (trialSeen >= 5 && trialTariffN / trialSeen < 0.2) tips.push('Пробным разбором пользуются, но к тарифу после него переходят меньше 20%: перенос в смету закрыт, а выгода не очевидна. Что менять: показывать на экране проверки, сколько часов это сэкономило, и предлагать тариф рядом с кнопкой переноса.');
+                const best = top(srcs.tariff_open, 1)[0];
+                if (best && best.value >= 3) tips.push('Чаще всего окно тарифа открывают из «' + best.label + '» (' + best.value + ' чел.): туда и вкладывайтесь первым делом.');
+                if (!tips.length && S.pwl.rows.length) tips.push('Явных провалов по порогам нет. Смотрите на «Где отваливаются» и сравнивайте с прошлым периодом по стрелкам.');
+                w.tips = tips;
+                w.note = 'Считаются разные люди, не нажатия. Окно тарифа открывают и из кабинета, поэтому доля «от увидевших» может быть выше реальной. Сотрудники ТЕРЕМ и тестовые учётки не учитываются.';
+            }
+            out.paywall = w;
+        }
         return out;
     },
 
@@ -29436,9 +29535,11 @@ const app = {
                 </tbody></table></div></div>`;
         } else body = this.kpiNumsHtml(w, esc, edit);
         const note = (!w.err && !w.wait && w.note) ? `<div class="kpi-note">${esc(w.note)}</div>` : '';
+        const tips = (!w.err && !w.wait && w.tips && w.tips.length)
+            ? `<div class="kpi-tips"><b>Что улучшить</b><ul>${w.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : '';
         return `<section class="kpi-w">
             <div class="kpi-h"><b onclick="app.switchAdminTab('${w.tab}')" title="Открыть раздел: ${esc(w.act)}">${esc(w.title)} <span aria-hidden="true">›</span></b>${tabs}</div>
-            <div class="kpi-b">${body}</div>${note}</section>`;
+            <div class="kpi-b">${body}</div>${tips}${note}</section>`;
     },
 
     kpiHtml: function (esc) {
@@ -29448,7 +29549,7 @@ const app = {
         const W = this.kpiBuild(p, S);
         const edit = !!this._kpiEditOn;
         const chips = this.KPI_PERIODS.map(x => `<button type="button" class="kpi-chip${x.id === p.id ? ' on' : ''}" onclick="app.kpiSetPeriod('${x.id}')">${x.label}</button>`).join('');
-        const order = ['users', 'planner', 'ests', 'rec', 'pay'];
+        const order = ['users', 'planner', 'ests', 'rec', 'pay', 'paywall'];
         const ctl = edit
             ? `<button type="button" class="kpi-ed" onclick="app.kpiResetHidden()">Сбросить</button><button type="button" class="kpi-ed on" onclick="app.kpiEdit(false)">Готово</button>`
             : `<button type="button" class="kpi-ed" onclick="app.kpiEdit(true)">✏️ Настроить плашки</button>`;
