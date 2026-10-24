@@ -528,6 +528,13 @@
   .wz-ai .ai-ic { width: 36px; height: 36px; border-radius: 12px; font-size: 17px; background: var(--ai-grad); }
   .wz-ai .ai-h { font-size: 15px; font-weight: 600; }
   .wz-ai .ai-step { background: rgba(99,102,241,.22); color: #c7d2fe; }
+  .wz-ai .ww-sub { display: block; margin-top: 4px; font-size: 12.5px; font-weight: 400; line-height: 1.5; color: var(--text-sec); }
+  .ww-st { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; line-height: 1.4; }
+  .ww-row, .ww-opt { display: flex; align-items: flex-start; gap: 8px; }
+  .ww-mk { flex: 0 0 16px; text-align: center; color: #d97706; font-weight: 700; }
+  .ww-mk.ok { color: #16a34a; }
+  .ww-opt { cursor: pointer; }
+  .ww-opt input { flex: 0 0 auto; margin: 1px 0 0 0; width: 16px; height: 16px; cursor: pointer; }
   .wz-do .ai-tip { border-radius: 10px; background: var(--surface-light); border-color: var(--border-soft); }
   .wz-do .ai-tip i { border-radius: 7px; background: var(--surface-hi); }
   .wz-do button.go { font-size: 14px; padding: 9px 18px; border-radius: 12px; }
@@ -8802,18 +8809,24 @@ function wwBody() {
   var canRec = st.dhwSource !== 'electric';
   var B = function (fn, t, cls) { return '<button class="' + (cls || '') + '" onclick="' + fn + '">' + t + '</button>'; };
   var n = w.cards.filter(function (c) { return c.zone && wwRoomZone(c.fl, c.zone); }).length;
-  var diag = '<div style="font-size:12.5px;line-height:1.6;margin-top:4px">' +
-    'Отмечено комнат: <b>' + n + '</b> · коллекторы: ХВС ' + C.cold + ' вых., ГВС ' + C.hot + ' вых.' + (w.recirc ? ', рециркуляция ' + C.rec + ' вых.' : '') +
-    ' · ввод воды: ' + (P.inp ? (P.inp.auto ? 'в котельной' : 'на плане') : 'не задан — отметьте котельную') +
-    ' <label style="margin-left:10px"><input type="checkbox" ' + (w.enable ? 'checked ' : '') + 'onchange="wwEnable(this.checked)"> считать в смете</label>' +
-    (canRec ? ' <label style="margin-left:10px"><input type="checkbox" ' + (w.recirc ? 'checked ' : '') + 'onchange="wwRecirc(this.checked)"> рециркуляция ГВС</label>' : '') +
+  var row = function (ok, t) {
+    return '<div class="ww-row"><span class="ww-mk' + (ok ? ' ok' : '') + '">' + (ok ? '✓' : '•') + '</span><span>' + t + '</span></div>';
+  };
+  var outs = C.cold + C.hot + (w.recirc ? C.rec : 0);
+  var diag = '<div class="ww-st">' +
+    row(n > 0, n > 0 ? 'Комнат с водой: <b>' + n + '</b>' : 'Пока ни одной комнаты с водой — кликните санузел или кухню на плане') +
+    row(!!P.inp, P.inp ? 'Ввод воды: ' + (P.inp.auto ? 'в котельной (сам)' : 'поставлен на плане') : 'Ввод воды не задан — отметьте котельную или поставьте ввод кнопкой ниже') +
+    (n > 0 ? row(true, 'Коллекторы: ХВС ' + C.cold + ' и ГВС ' + C.hot + ' выходов' + (w.recirc ? ', циркуляция ' + C.rec : '') + ' (всего ' + outs + ')') : '') +
+    '<label class="ww-opt"><input type="checkbox" ' + (w.enable ? 'checked ' : '') + 'onchange="wwEnable(this.checked)"><span>Добавить трубы воды в смету</span></label>' +
+    (canRec ? '<label class="ww-opt"><input type="checkbox" ' + (w.recirc ? 'checked ' : '') + 'onchange="wwRecirc(this.checked)"><span>Циркуляция ГВС — горячая вода сразу из крана</span></label>' : '') +
     '</div>';
-  var acts = B("wwPlace('win')", 'Ввод воды') + B("wwPlace('wcoll')", 'Коллекторы') +
+  var acts = B("wwPlace('win')", 'Поставить ввод воды') + B("wwPlace('wcoll')", 'Поставить коллекторы') +
     ((w.inp || w.coll) ? B('wwReset()', 'Вернуть в котельную') : '');
   diag += reqHtml('water', false);
   return { next: 'Дальше →', acts: acts, diag: diag,
-    tx: 'Кликните санузел и кухню на плане — приборы встанут сами. Любой прибор тяните мышью, пробел или ПКМ — повернуть. Сколько каких приборов — в таблице справа.',
-    tips: [['Клик по комнате', 'санузел вкл / выкл'], ['Прибор', 'тянуть мышью'], ['Пробел', 'повернуть'], ['Коллекторы', 'тоже двигаются']] };
+    tx: 'Укажите, где в доме есть вода — по этому посчитаем трубы ХВС и ГВС.<br><span class="ww-sub">1. Кликните санузлы и кухню на плане — приборы встанут сами.<br>' +
+      '2. Проверьте ввод воды и коллекторы (по умолчанию они в котельной).<br>3. Нажмите «Дальше».</span>',
+    tips: [['Клик по комнате', 'есть вода / нет'], ['Прибор', 'тянуть мышью'], ['Пробел', 'повернуть'], ['Таблица справа', 'сколько приборов']] };
 }
 
 function wsBody() {
