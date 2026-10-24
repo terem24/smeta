@@ -9463,8 +9463,8 @@ function fsSyncTop() {
 }
 
 /** Быстрые клавиши в пустом поле под планом: те же, что в списке по «?», без дублей; панель сворачивается. */
+// по умолчанию развёрнуты при каждом заходе в полный экран; свернуть можно кнопкой — на текущий сеанс
 var fsKeysMin = false;
-try { fsKeysMin = localStorage.getItem('plan_editor_fskeys') === '0'; } catch (e) {}
 function fsKeysRender() {
   var box = document.getElementById('fs_keys');
   if (!box) return;
@@ -9481,7 +9481,6 @@ function fsKeysRender() {
 }
 function toggleFsKeys() {
   fsKeysMin = !fsKeysMin;
-  try { localStorage.setItem('plan_editor_fskeys', fsKeysMin ? '0' : '1'); } catch (e) {}
   fsKeysRender();
   fsFit();
 }
