@@ -601,9 +601,28 @@
             window.addEventListener('unhandledrejection', function (e) {
                 if (!firstErr) firstErr = String((e.reason && (e.reason.stack || e.reason.message)) || e.reason || 'ошибка').slice(0, 300);
             });
-            setTimeout(function () {
+            // Экран «загрузился с ошибкой» показываем, только когда она есть на самом деле: скрипт не доехал (медленная сеть
+            // после обновления — большие файлы скачиваются заново) или в странице случилась ошибка. Если калькулятор
+            // запущен и ошибок нет, но очередь ещё что-то ждёт (сервер, облако), он уже пригоден к работе — прелоадер
+            // просто снимаем, а не пугаем и не просим чистить кэш.
+            var waited = 0;
+            function check() {
                 var pre = document.getElementById('stout_preloader');
-                if (!pre || app_ready()) return;
+                if (!pre) return;
+                var ready = typeof app !== 'undefined' && app.isAppReady;
+                if (ready) { pre.remove(); return; }                       // готов, прелоадер задержался
+                var loaded = typeof app !== 'undefined';
+                waited += 5;
+                if (!loaded && !firstErr && waited < 50) { setTimeout(check, 5000); return; }   // скрипты ещё качаются
+                if (loaded && !firstErr) {                                  // запущен, ошибок нет — ждёт ответа сервера
+                    try { console.warn('[загрузка] калькулятор запущен, но не завершил запуск за ' + (waited + 15) + ' с — открываем как есть'); } catch (_) { }
+                    pre.remove();
+                    return;
+                }
+                fail(pre);
+            }
+            setTimeout(check, 15000);
+            function fail(pre) {
                 pre.innerHTML = '<div style="max-width:420px;padding:0 20px;color:#E5E7EB;font:14px/1.5 system-ui,sans-serif;text-align:center">' +
                     '<div style="font-weight:700;font-size:16px;margin-bottom:8px">Калькулятор загрузился с ошибкой</div>' +
                     '<div style="color:#9CA3AF;font-size:12.5px;word-break:break-word;margin-bottom:16px"></div>' +
@@ -620,7 +639,7 @@
                         Promise.all(p).then(done, done);
                     } catch (_) { done(); }
                 };
-            }, 15000);
+            }
             function app_ready() { return typeof app !== 'undefined' && app.isAppReady && !document.getElementById('stout_preloader'); }
         })();
     </script>
