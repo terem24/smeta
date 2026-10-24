@@ -52383,7 +52383,7 @@ const app = {
         const design = res.scenarios.design, stages = design.trunk.stages;
         this._whcOpen = this._whcOpen || {};
         // По умолчанию свёрнута до заголовка и плашки статуса; раскрыл человек — запоминаем
-        if (this._whcCollapsed == null) { try { this._whcCollapsed = localStorage.getItem('whc_collapsed') !== '0'; } catch (e) { this._whcCollapsed = true; } }
+        if (this._whcCollapsed == null) this._whcCollapsed = true;   // при каждом открытии свёрнута, выбор на сессию
         const collapsed = !forPrint && !!this._whcCollapsed;
         // Строка участка раскрыта сама, если на нём проблема: человек сразу видит, что чинить
         const row = (key, verdict, name, sub, result, body) => {
@@ -52558,7 +52558,6 @@ const app = {
 
     toggleWaterHydroCard: function () {
         this._whcCollapsed = !this._whcCollapsed;
-        try { localStorage.setItem('whc_collapsed', this._whcCollapsed ? '1' : '0'); } catch (e) { }
         this.syncWaterHydro();
     },
 
