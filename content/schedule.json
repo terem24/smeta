@@ -319,9 +319,9 @@
    "freq": 24600,
    "audience": "owner",
    "data_block": "сравнение",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-24",
-   "published_at": null,
+   "published_at": "2026-10-24",
    "words": 666
   },
   {
