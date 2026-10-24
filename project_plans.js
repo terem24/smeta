@@ -3639,6 +3639,72 @@
   };
   var COL_CW = '#0b7285', COL_HW = '#c92a2a', COL_SEW = '#5f3dc4';
 
+  /**
+   * Условное изображение сантехприбора в плане: контур и характерные детали (унитаз — бачок и чаша, ванна —
+   * внутренний контур и слив, душ — поддон с диагоналями, машина — люк). Примитивы в долях габарита W×D с началом
+   * в центре, спинка у стены — сверху (y = −D/2). Один набор рисует и холст редактора, и листы/планы под сметой.
+   * opts.sink — кухонная мойка (две чаши).
+   */
+  function fixGlyph(t, W, D, opts) {
+    opts = opts || {};
+    var r = Math.min(W, D);
+    var P = [];
+    var rect = function (x, y, w, h, rr) { P.push({ k: 'rect', x: x, y: y, w: w, h: h, r: rr || 0 }); };
+    var ell = function (cx, cy, rx, ry) { P.push({ k: 'ell', cx: cx, cy: cy, rx: rx, ry: ry }); };
+    var line = function (x1, y1, x2, y2) { P.push({ k: 'line', x1: x1, y1: y1, x2: x2, y2: y2 }); };
+    var circ = function (cx, cy, rr) { P.push({ k: 'circ', cx: cx, cy: cy, r: rr }); };
+    if (t === 'toilet') {
+      rect(-0.42 * W, -0.5 * D, 0.84 * W, 0.28 * D, 0.04 * r);
+      ell(0, 0.08 * D, 0.42 * W, 0.42 * D);
+      ell(0, 0.1 * D, 0.28 * W, 0.3 * D);
+    } else if (t === 'basin' && opts.sink) {
+      rect(-0.5 * W, -0.5 * D, W, D, 0.06 * r);
+      rect(-0.44 * W, -0.38 * D, 0.4 * W, 0.78 * D, 0.1 * r);
+      rect(0.04 * W, -0.38 * D, 0.4 * W, 0.78 * D, 0.1 * r);
+      circ(0, -0.44 * D, 0.04 * r);
+    } else if (t === 'basin') {
+      rect(-0.5 * W, -0.5 * D, W, D, 0.12 * r);
+      ell(0, 0.06 * D, 0.38 * W, 0.34 * D);
+      circ(0, -0.36 * D, 0.045 * r);
+    } else if (t === 'bath') {
+      rect(-0.5 * W, -0.5 * D, W, D, 0.2 * r);
+      rect(-0.45 * W, -0.42 * D, 0.9 * W, 0.84 * D, 0.3 * r);
+      circ(-0.38 * W, 0, 0.06 * r);
+      circ(0.43 * W, -0.2 * D, 0.04 * r);
+      circ(0.43 * W, 0.2 * D, 0.04 * r);
+    } else if (t === 'shower') {
+      rect(-0.5 * W, -0.5 * D, W, D, 0.04 * r);
+      line(-0.5 * W, -0.5 * D, 0.5 * W, 0.5 * D);
+      line(0.5 * W, -0.5 * D, -0.5 * W, 0.5 * D);
+      circ(0, 0, 0.07 * r);
+    } else if (t === 'wash') {
+      rect(-0.5 * W, -0.5 * D, W, D, 0.04 * r);
+      rect(-0.4 * W, -0.46 * D, 0.8 * W, 0.1 * D, 0.02 * r);
+      circ(0, 0.06 * D, 0.32 * r);
+      circ(0, 0.06 * D, 0.2 * r);
+    } else if (t === 'dish') {
+      rect(-0.5 * W, -0.5 * D, W, D, 0.04 * r);
+      rect(-0.45 * W, -0.46 * D, 0.9 * W, 0.14 * D, 0.02 * r);
+      line(-0.4 * W, 0.0, 0.4 * W, 0.0);
+      line(-0.4 * W, 0.2 * D, 0.4 * W, 0.2 * D);
+      line(-0.4 * W, 0.38 * D, 0.4 * W, 0.38 * D);
+    } else {
+      rect(-0.5 * W, -0.5 * D, W, D, 0.04 * r);
+    }
+    return P;
+  }
+  /** Примитивы значка → SVG-разметка (внутри g с translate/rotate) */
+  function glyphSvg(prims, style) {
+    var m = function (v) { return Math.round(v * 100) / 100; };
+    return prims.map(function (q) {
+      if (q.k === 'rect') return '<rect x="' + m(q.x) + '" y="' + m(q.y) + '" width="' + m(q.w) + '" height="' + m(q.h) + '" rx="' + m(q.r) + '" style="' + style + '"/>';
+      if (q.k === 'ell') return '<ellipse cx="' + m(q.cx) + '" cy="' + m(q.cy) + '" rx="' + m(q.rx) + '" ry="' + m(q.ry) + '" style="' + style + '"/>';
+      if (q.k === 'circ') return '<circle cx="' + m(q.cx) + '" cy="' + m(q.cy) + '" r="' + m(q.r) + '" style="' + style + '"/>';
+      return '<line x1="' + m(q.x1) + '" y1="' + m(q.y1) + '" x2="' + m(q.x2) + '" y2="' + m(q.y2) + '" style="' + style + '"/>';
+    }).join('');
+  }
+  var FILL_W = 'fill:#ffffff;fill-opacity:0.92;';
+
   /** Значок прибора: габарит в масштабе листа, развёрнутый вдоль стены.
    *  Стояк — кружок. Буква подписи не поворачивается, чтобы читалась. */
   function fixtureMark(q, t, f, o, col) {
@@ -3651,8 +3717,8 @@
         '" style="fill:#ffffff;stroke:' + col + ';stroke-width:0.5"/>');
     } else {
       o.push('<g transform="translate(' + n(X) + ',' + n(Y) + ') rotate(' + (q.ang || 0) + ')">' +
-        '<rect x="' + n(-W / 2) + '" y="' + n(-D / 2) + '" width="' + n(W) + '" height="' + n(D) +
-        '" rx="0.4" style="fill:#ffffff;fill-opacity:0.9;stroke:' + col + ';stroke-width:0.4"/></g>');
+        glyphSvg(fixGlyph(q.t, W, D, { sink: q.t === 'basin' && /кухн/i.test(q.z || '') }), FILL_W + 'stroke:' + col + ';stroke-width:0.3') + '</g>');
+      return;
     }
     o.push(txt(X, Y + 1.1, (FIXT[q.t] || ['', '?'])[1], { size: 2.9, anchor: 'middle', fill: col }));
   }
@@ -5790,8 +5856,8 @@
       }
       var r = rows.filter(function (x) { return x.q === q; })[0];
       o.push('<g data-pl="W' + (r ? r.no : '') + '"><g transform="translate(' + m(q.x) + ',' + m(q.y) + ') rotate(' + (q.ang || 0) + ')">' +
-        '<rect x="' + m(-Wm / 2) + '" y="' + m(-Dm / 2) + '" width="' + m(Wm) + '" height="' + m(Dm) + '" rx="' + m(lw * 0.5) + '" style="fill:#fff;fill-opacity:0.92;stroke:' + colW + ';stroke-width:' + m(lw * 0.6) + '"/></g>' +
-        '<text x="' + m(q.x) + '" y="' + m(q.y + fs * 0.35) + '" text-anchor="middle" font-size="' + m(fs) + '" fill="' + colW + '">' + (r ? r.no : '') + '</text></g>');
+        glyphSvg(fixGlyph(q.t, Wm, Dm, { sink: q.t === 'basin' && /кухн/i.test(q.z || '') }), 'fill:#fff;fill-opacity:0.92;stroke:' + colW + ';stroke-width:' + m(lw * 0.55)) + '</g>' +
+        '<text x="' + m(q.x + Wm * 0.55) + '" y="' + m(q.y - Dm * 0.5) + '" text-anchor="middle" font-size="' + m(fs * 0.9) + '" fill="' + colW + '" style="font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:' + m(lw * 1.2) + '">' + (r ? r.no : '') + '</text></g>');
     });
     // комнаты — подписью по центру
     (f.zones || []).forEach(function (z) {
@@ -5810,7 +5876,7 @@
   // длины и расходы петель там должны совпадать с листом укладки.
   window.projectPlans = { sheets: sheets, waterSheets: waterSheets, wetZoneSheets: wetZoneSheets, axonoSheets: axonoSheets, iso3dSheets: iso3dSheets,
     boilerRoom: boilerRoom,
-    floorLoops: floorLoops, loopRows: loopRows, num1: num1, ufhView: ufhView, waterView: waterView, wvFixtures: wvFixtures, radRoutes: radRoutes,
+    floorLoops: floorLoops, loopRows: loopRows, num1: num1, ufhView: ufhView, waterView: waterView, fixGlyph: fixGlyph, wvFixtures: wvFixtures, radRoutes: radRoutes,
     radCollector: radCollector, boilerZone: boilerZone, wallSpot: wallSpot,
     snapCollector: snapCollector, collAngle: collAngle, angFromNormal: angFromNormal, roomAround: roomAround,
     radConnSide: radConnSide, radSideOfModel: radSideOfModel,
