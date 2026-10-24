@@ -334,6 +334,10 @@
   /* Полный экран: план во всё окно, шапка — тонкой лентой, карточка шага со всеми
      подсказками — колонкой у левого края (те же кнопки и чипы, что и раньше, только
      вертикально), под ней — быстрые клавиши. Список комнат справа остаётся. */
+  /* кнопка в правом верхнем углу плана: липнет к углу, пока план прокручивают */
+  .fs-corner { position: sticky; top: 0; height: 0; z-index: 6; text-align: right; overflow: visible; }
+  .fs-corner button { position: relative; top: 6px; right: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.35);
+                      background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
   .fs-only { display: none; }
   html.fs .fs-only { display: inline-block; }
   html.fs body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -449,7 +453,7 @@
 </div>
 
 <div class="wrap">
-  <div class="cvbox"><canvas id="cv" width="1200" height="850"></canvas></div>
+  <div class="cvbox"><div class="fs-corner"><button type="button" id="b_fs2" onclick="toggleFs()" title="Весь экран: клавиша F, выход — Esc">⤢ На весь экран</button></div><canvas id="cv" width="1200" height="850"></canvas></div>
   <div class="side">
     <div class="pad"><div class="hint" id="hint">Загрузите фото или скан плана этажа, затем задайте масштаб:
       кнопка «Масштаб» → две точки на плане → длина отрезка в метрах.</div></div>
@@ -9126,6 +9130,8 @@ function toggleFs(force) {
   } catch (e) {}
   var b = document.getElementById('b_fs');
   if (b) { b.textContent = on ? '⤡ Свернуть (Esc)' : '⤢ На весь экран'; b.className = on ? 'on ufh-keep' : 'ghost ufh-keep'; }
+  var b2 = document.getElementById('b_fs2');
+  if (b2) b2.textContent = on ? '⤡ Свернуть (Esc)' : '⤢ На весь экран';
   if (on) {
     fsSyncTop();
     var tb = document.querySelector('.topbar');
