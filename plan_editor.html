@@ -7661,16 +7661,20 @@ var Z_DRAIN = { toilet: 0, bath: 0, shower: 0, basin: 0.4, wash: 0.4, dish: 0.4 
 //   wcIn   — есть вход Ø100 мм под унитаз (S-3 PLUS по странице — 3×40 мм, вход под унитаз не подтверждён: для санузла с унитазом не берём)
 //   in40   — входы Ø40 мм под раковину, душ, ванну, машины (с учётом опционального)
 //   flow   — предельный входной поток / производительность, л/мин (у S-3, R-4, R-4S это «входной поток», у PLUS и PRO — «производительность»)
-//   horiz  — предельная длина сброса по горизонтали, м; lift — напор по вертикали, м (не везде указан)
+//   horiz  — предельная длина сброса по горизонтали, м; lift — напор по вертикали, м.
+//   Правило перевода (задано владельцем 24.10.2026): 10 м по горизонтали = 1 м по вертикали. Там, где на странице модели указан только
+//   сброс по горизонтали (S-3, R-4, R-4S), напор по вертикали = горизонталь / 10 (liftCalc). У S-3 PLUS и R-4 PRO это правило сходится с
+//   указанным производителем напором (75 м ↔ 7,5 м, 90 м ↔ 9 м).
 //   Расхождение в источниках: S-3 PLUS — по горизонтали 75 м на странице товара и 90 м в новости; берём меньшее.
 var SEWER_PUMPS = [
-  { id: 'RPD-0010-100250', name: 'BIOLIFT S-3', price: 14961, kw: 0.25, wcIn: true, in40: 3, flow: 28, horiz: 70, lift: null, src: 'страница модели' },
-  { id: 'RPD-0010-100400', name: 'BIOLIFT R-4', price: 18958, kw: 0.4, wcIn: true, in40: 3, flow: 32, horiz: 70, lift: null, src: 'страница модели' },
-  { id: 'RPD-0010-100450', name: 'BIOLIFT R-4S', price: 21520, kw: 0.45, wcIn: true, in40: 3, flow: 32, horiz: 75, lift: null, src: 'страница модели' },
+  { id: 'RPD-0010-100250', name: 'BIOLIFT S-3', price: 14961, kw: 0.25, wcIn: true, in40: 3, flow: 28, horiz: 70, lift: 7, liftCalc: true, src: 'страница модели' },
+  { id: 'RPD-0010-100400', name: 'BIOLIFT R-4', price: 18958, kw: 0.4, wcIn: true, in40: 3, flow: 32, horiz: 70, lift: 7, liftCalc: true, src: 'страница модели' },
+  { id: 'RPD-0010-100450', name: 'BIOLIFT R-4S', price: 21520, kw: 0.45, wcIn: true, in40: 3, flow: 32, horiz: 75, lift: 7.5, liftCalc: true, src: 'страница модели' },
   { id: 'RPD-0010-100500', name: 'BIOLIFT S-3 PLUS', price: 21520, kw: 0.45, wcIn: false, in40: 3, flow: 115, horiz: 75, lift: 7.5, src: 'карточка и новость' },
   { id: 'RPD-0010-100800', name: 'BIOLIFT R-4 PRO', price: 39162, kw: 0.8, wcIn: true, in40: 3, flow: 170, horiz: 90, lift: 9, src: 'новость' }
 ];
-var PUMP_LIFT_NEED = 1;      // м: ориентир запаса по вертикали сверх нехватки перепада (практика)
+var PUMP_LIFT_NEED = 1;      // м: подъём напорной трубы от станции у пола до горизонтального участка (практика)
+var PUMP_H_PER_V = 10;       // м горизонтали на 1 м вертикали
 
 function wsPumpById(id) { var r = null; SEWER_PUMPS.forEach(function (p) { if (p.id === id) r = p; }); return r; }
 
@@ -7696,11 +7700,11 @@ function wsPumpFit(model, load, dist) {
   if (qty > 1) why.push('приборов больше, чем входов: нужно ' + qty + ' станции');
   var perFlow = load.flow / qty;
   if (perFlow > model.flow) { ok = false; why.push('поток ' + Math.round(perFlow) + ' л/мин выше предела ' + model.flow); }
-  if (dist > model.horiz) { ok = false; why.push('сброс ' + Math.round(dist) + ' м длиннее предела ' + model.horiz + ' м'); }
+  // Напор: подъём 1 м от станции к трубе + длина сброса, пересчитанная в вертикаль (10 м = 1 м); не больше напора модели по вертикали
+  var eq = PUMP_LIFT_NEED + dist / PUMP_H_PER_V;
+  if (eq > model.lift) { ok = false; why.push('нужен напор ' + (Math.round(eq * 10) / 10).toString().replace('.', ',') + ' м (подъём ' + PUMP_LIFT_NEED + ' м + сброс ' + Math.round(dist) + ' м ÷ ' + PUMP_H_PER_V + '), у модели ' + model.lift + ' м'); }
   var unk = [];
-  if (model.lift == null) unk.push('напор по вертикали — по паспорту');
-  else if (model.lift < PUMP_LIFT_NEED + 0.5) { ok = false; why.push('напор по вертикали ' + model.lift + ' м мал'); }
-  return { ok: ok, qty: qty, why: why, unknown: unk, flow: Math.round(perFlow * 10) / 10 };
+  return { ok: ok, qty: qty, why: why, unknown: unk, eq: eq, flow: Math.round(perFlow * 10) / 10 };
 }
 
 /** Автоподбор: самая дешёвая из подходящих моделей (при равной цене — с большим запасом по потоку) */
@@ -7727,7 +7731,8 @@ function wsPumpNote(row) {
   if (!m) return '';
   var fit = wsPumpFit(m, load, dist);
   return 'Помещение «' + row.room + '»: ' + (load.wc ? load.wc + ' унитаз, ' : '') + load.other + ' ' + (load.other === 1 ? 'прибор' : 'приборов') + ' на входах Ø40, пиковый поток ' + load.flow + ' л/мин (предел ' + m.flow + '), ' +
-    'сброс ' + Math.round(dist) + ' м (предел ' + m.horiz + ' м)' + (fit.why.length ? '; ' + fit.why.join('; ') : '') + (fit.unknown.length ? '; ' + fit.unknown.join('; ') : '') + '.';
+    'напор: подъём ' + PUMP_LIFT_NEED + ' м + сброс ' + Math.round(dist) + ' м ÷ ' + PUMP_H_PER_V + ' = ' + (Math.round(fit.eq * 10) / 10).toString().replace('.', ',') + ' м из ' + m.lift + ' м' + (m.liftCalc ? ' (напор пересчитан: ' + m.horiz + ' м по горизонтали ÷ ' + PUMP_H_PER_V + ')' : '') +
+    (fit.why.length ? '; ' + fit.why.join('; ') : '') + '.';
 }
 
 function wsSetPumpModel(i, id) {
@@ -8327,7 +8332,7 @@ function wsBody() {
           return '<option value="' + x.id + '"' + (x.id === pp.id ? ' selected' : '') + '>' + (ft.ok ? '✓ ' : '✕ ') + x.name + ' · ' + (x.price * ft.qty).toLocaleString('ru-RU') + ' ₽' + (ft.qty > 1 ? ' ×' + ft.qty : '') + '</option>';
         }).join('') + '</select></td><td style="max-width:360px;opacity:.9">' + (fit ? (fit.ok ? '<span style="color:#16a34a">подходит</span> · ' : '<span style="color:#ef4444">не подходит</span> · ') : '') + wwEsc(wsPumpNote(pp).replace(/^Помещение «[^»]*»: /, '')) + '</td><td><b style="cursor:pointer" onclick="wsDelPump(' + i + ')" title="Убрать станцию">✕</b></td></tr>';
     });
-    diag += '</table><div style="font-size:11.5px;opacity:.75;margin-top:3px">Характеристики — со страниц моделей rommer.ru; напор по вертикали там указан не у всех моделей — проверьте по паспорту.</div>';
+    diag += '</table><div style="font-size:11.5px;opacity:.75;margin-top:3px">Характеристики — со страниц моделей rommer.ru; у S-3, R-4 и R-4S напор по вертикали пересчитан из сброса по горизонтали (10 м = 1 м) — сверьте с паспортом.</div>';
   }
   (w.outs || []).forEach(function (o, i) {
     diag += '<div style="font-size:12.5px;margin-top:3px">Выпуск ' + (i + 2) + ': ' + wwEsc((o.cards || []).join(', ')) + ' <button onclick="wsDelOut(' + i + ')">убрать</button></div>';
