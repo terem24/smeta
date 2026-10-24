@@ -12192,6 +12192,21 @@ const app = {
         }
     },
 
+    // Строка «чем открыли» для событий клиента: устройство, откуда пришли, номер открытия.
+    // Пустая, если отметка записана до появления этих полей или событие не клиентское.
+    viewerDeviceText: function (event, meta) {
+        const dv = meta && meta.device;
+        if (!dv || !['opened', 'confirmed', 'needs_revision', 'invoice_requested', 'refresh_requested'].includes(event)) return '';
+        const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const kindTxt = { phone: '📱 телефон', tablet: '📱 планшет', desktop: '💻 компьютер' }[dv.kind] || '';
+        const parts = [kindTxt, dv.os, dv.browser, dv.from ? 'из ' + dv.from : ''].filter(Boolean);
+        const visit = Number(meta.visit);
+        if (event === 'opened' && visit > 1) parts.push(visit + '-е открытие с этого устройства');
+        if (meta.viewer === 'user') parts.push('вошёл в аккаунт — возможно, не клиент');
+        else if (meta.viewer === 'owner') parts.push('это вы (вход в аккаунт автора)');
+        return parts.map(esc).join(' · ');
+    },
+
     renderInvoiceHistoryHtml: function (events) {
         const EVENT_META = this.ADMIN_KANBAN_EVENT_META;
         return events.slice().reverse().map(e => {
@@ -12211,17 +12226,7 @@ const app = {
                 : (CLIENT_SIDE.includes(e.event) ? '👤 клиент' : '');
             // Чем открыто (пишет invoice.html): устройство, откуда пришли, номер открытия,
             // и вошёл ли в браузере автор/коллега — тогда это не клиент
-            let devLine = '';
-            const dv = e.meta && e.meta.device;
-            if (dv && CLIENT_SIDE.includes(e.event)) {
-                const kindTxt = { phone: '📱 телефон', tablet: '📱 планшет', desktop: '💻 компьютер' }[dv.kind] || '';
-                const parts = [kindTxt, dv.os, dv.browser, dv.from ? 'из ' + dv.from : ''].filter(Boolean);
-                const visit = Number(e.meta.visit);
-                if (e.event === 'opened' && visit > 1) parts.push(visit + '-е открытие с этого устройства');
-                if (e.meta.viewer === 'user') parts.push('вошёл в аккаунт — возможно, не клиент');
-                else if (e.meta.viewer === 'owner') parts.push('это вы (вход в аккаунт автора)');
-                devLine = parts.map(escW).join(' · ');
-            }
+            const devLine = this.viewerDeviceText(e.event, e.meta);
             return `
                 <div style="display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--border);">
                     <div style="width:10px; height:10px; border-radius:50%; background:${em.color}; margin-top:5px; flex-shrink:0;"></div>
@@ -12641,6 +12646,10 @@ const app = {
                     statusBadge = `<span class="status-badge-cabinet status-cabinet-sent" title="Ссылка отправлена клиенту">Отправлена</span>`;
                 }
             }
+
+            // Кто и с чего сделал последнее действие клиента — прямо под статусом, без похода в историю
+            const devHint = lastEv ? this.viewerDeviceText(lastEv.event, lastEv.meta) : '';
+            if (devHint) statusBadge += `<div style="font-size:11px; color:var(--text-sec); margin-top:4px; font-weight:500;">${devHint}</div>`;
 
             // Название, сумма и версия для окна «Объект реализован?» (у сметы без событий в журнале их взять неоткуда)
             (this._kpoInfo = this._kpoInfo || {})[String(item.calc_id || '')] = { project: item.project_name || '', sum: Number(item.total_sum) || 0, kpVersion: Number(item.kp_ver) || 0 };
