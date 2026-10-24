@@ -5141,29 +5141,52 @@ function draw() {
     cx.fillRect(ax, ay, aw, ah);
     cx.strokeRect(ax, ay, aw, ah);
   }
-  scalePts.forEach(function (p) {
-    cx.beginPath(); cx.arc(p[0] * k, p[1] * k, 5, 0, 7); cx.fillStyle = '#08c'; cx.fill();
-  });
+  // точки масштаба: крупные, с белой каёмкой и перекрестием; размер считаем в пикселях экрана,
+  // а не холста (холст на экране сжат), чтобы на любом плане и в полном экране они были одинаково видны
+  var vs = 1;
+  try { var vr = cv.getBoundingClientRect(); if (vr.width > 0) vs = cv.width / vr.width; } catch (e) {}
+  var scCol = '#ff3d00';
+  var scDot = function (x, y, n) {
+    cx.save();
+    cx.lineWidth = 1.5 * vs; cx.strokeStyle = 'rgba(255,255,255,.95)';
+    cx.beginPath(); cx.moveTo(x - 20 * vs, y); cx.lineTo(x + 20 * vs, y); cx.moveTo(x, y - 20 * vs); cx.lineTo(x, y + 20 * vs); cx.stroke();
+    cx.lineWidth = 0.6 * vs; cx.strokeStyle = scCol;
+    cx.beginPath(); cx.moveTo(x - 20 * vs, y); cx.lineTo(x + 20 * vs, y); cx.moveTo(x, y - 20 * vs); cx.lineTo(x, y + 20 * vs); cx.stroke();
+    cx.beginPath(); cx.arc(x, y, 9 * vs, 0, 7); cx.fillStyle = scCol; cx.fill();
+    cx.lineWidth = 3 * vs; cx.strokeStyle = '#fff'; cx.stroke();
+    if (n) {
+      cx.fillStyle = '#fff'; cx.font = 'bold ' + Math.round(11 * vs) + 'px system-ui'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+      cx.fillText(n, x, y + 0.5 * vs);
+    }
+    cx.restore();
+  };
   if (scalePts.length === 2) {
+    cx.save();
     cx.beginPath(); cx.moveTo(scalePts[0][0] * k, scalePts[0][1] * k);
     cx.lineTo(scalePts[1][0] * k, scalePts[1][1] * k);
-    cx.strokeStyle = '#08c'; cx.stroke();
+    cx.lineWidth = 6 * vs; cx.strokeStyle = 'rgba(255,255,255,.95)'; cx.stroke();
+    cx.lineWidth = 3 * vs; cx.strokeStyle = scCol; cx.stroke();
+    cx.restore();
   }
   // след за курсором до второго клика: сразу видно, куда ляжет отрезок
   if (mode === 'scale' && scalePts.length === 1 && scaleCur) {
+    cx.save();
     cx.beginPath(); cx.moveTo(scalePts[0][0] * k, scalePts[0][1] * k);
     cx.lineTo(scaleCur[0] * k, scaleCur[1] * k);
-    cx.setLineDash([6, 4]); cx.lineWidth = 2;
-    cx.strokeStyle = scaleFree ? '#b35900' : '#08c'; cx.stroke();
-    cx.setLineDash([]);
-    cx.font = 'bold 12px system-ui'; cx.textAlign = 'left';
+    cx.setLineDash([8 * vs, 5 * vs]);
+    cx.lineWidth = 6 * vs; cx.strokeStyle = 'rgba(255,255,255,.95)'; cx.stroke();
+    cx.lineWidth = 3 * vs; cx.strokeStyle = scaleFree ? '#b35900' : scCol; cx.stroke();
+    cx.restore();
+    cx.font = 'bold ' + Math.round(14 * vs) + 'px system-ui'; cx.textAlign = 'left'; cx.textBaseline = 'alphabetic';
     var lbl = scaleFree ? 'угол разблокирован (Shift)' : 'прямой угол · Shift — свободно';
     var lw2 = cx.measureText(lbl).width;
-    cx.fillStyle = 'rgba(255,255,255,.85)';
-    cx.fillRect(scaleCur[0] * k + 8, scaleCur[1] * k - 20, lw2 + 8, 16);
-    cx.fillStyle = scaleFree ? '#b35900' : '#08c';
-    cx.fillText(lbl, scaleCur[0] * k + 12, scaleCur[1] * k - 8);
+    cx.fillStyle = 'rgba(255,255,255,.92)';
+    cx.fillRect(scaleCur[0] * k + 14 * vs, scaleCur[1] * k - 30 * vs, lw2 + 12 * vs, 22 * vs);
+    cx.fillStyle = scaleFree ? '#b35900' : '#c2310a';
+    cx.fillText(lbl, scaleCur[0] * k + 20 * vs, scaleCur[1] * k - 14 * vs);
+    scDot(scaleCur[0] * k, scaleCur[1] * k, '');
   }
+  scalePts.forEach(function (p, i) { scDot(p[0] * k, p[1] * k, String(i + 1)); });
   drawCompass(f);
   applyZoom();
   var sn = document.getElementById('scale_note'), tot = UFH ? roomsTotalHtml() : '';
