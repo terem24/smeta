@@ -378,7 +378,7 @@
   html.fs .fs-keys { align-self: stretch; box-sizing: border-box; flex: 0 0 auto; }
   html.fs .fs-keys .fk-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 1px 14px; margin-top: 5px; }
   html.fs .fs-keys.auto-min .fk-grid { display: none; }
-  html.fs .scan-diag { max-height: 4.6em; overflow: hidden; word-break: break-word; }
+  html.fs .scan-diag { max-height: 2.8em; overflow: hidden; word-break: break-word; }
   /* низкое окно: колонка шагов плотнее, чтобы кнопка действия не уходила под край */
   @media (max-height: 940px) {
     html.fs #steps { padding: 6px; }
@@ -3789,7 +3789,9 @@ function scanDiagHtml() {
     return s.length > 50 ? s.slice(0, 49) + '…' : s;
   };
   var full = [q.read, q.ocr, q.scale].filter(Boolean).join(' · ');
-  var t = [q.read, q.ocr, q.scale].map(short).filter(Boolean).join(' · ');
+  // одна короткая причина: причина первой неудачи, остальное — в подсказке
+  var t = short(q.read || q.ocr || q.scale);
+  if (t.length > 40) t = t.slice(0, 39) + '…';
   return t ? '<div class="scan-diag" title="' + full.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;') +
     '" style="margin-top:6px;font-size:12px;color:#d8b26a;font-family:monospace">админ: ' +
     t.replace(/</g, '&lt;') + '</div>' : '';
