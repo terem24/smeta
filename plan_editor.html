@@ -360,9 +360,14 @@
   html.fs #steps .wz-do .ai-tips { flex-direction: column; flex-wrap: nowrap; gap: 4px; }
   html.fs #steps .wz-do .ai-tip { border-radius: 8px; align-items: flex-start; padding: 2px 8px 2px 3px; }
   html.fs #steps .wz-do .ai-tip i { flex: 0 0 auto; }
-  .fs-keys { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-soft); font-size: 11.5px; color: var(--text-sec); }
-  .fs-keys .fk-h { font-size: 10.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 4px; }
-  .fs-keys .fk { display: flex; align-items: baseline; gap: 7px; padding: 1px 0; }
+  /* быстрые клавиши — в пустом поле под планом, сворачиваются в одну строку */
+  .fs-keys { margin-top: 10px; padding: 8px 12px 10px; border: 1px solid var(--border-soft); border-radius: 10px;
+             font-size: 12.5px; color: var(--text-sec); background: rgba(128,128,128,.07); }
+  .fs-keys .fk-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .fs-keys .fk-h { font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }
+  .fs-keys .fk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 3px 18px; margin-top: 8px; }
+  .fs-keys.min .fk-grid { display: none; }
+  .fs-keys .fk { display: flex; align-items: baseline; gap: 8px; padding: 1px 0; }
   .fs-keys kbd { flex: 0 0 auto; min-width: 22px; text-align: center; box-sizing: border-box; padding: 0 5px; border-radius: 4px;
                  font: 600 11px/17px system-ui, sans-serif; color: var(--text-main); background: rgba(128,128,128,.22);
                  border: 1px solid rgba(128,128,128,.35); }
@@ -453,7 +458,7 @@
 </div>
 
 <div class="wrap">
-  <div class="cvbox"><div class="fs-corner"><button type="button" id="b_fs2" onclick="toggleFs()" title="Весь экран: клавиша F, выход — Esc">⤢ На весь экран</button></div><canvas id="cv" width="1200" height="850"></canvas></div>
+  <div class="cvbox"><div class="fs-corner"><button type="button" id="b_fs2" onclick="toggleFs()" title="Весь экран: клавиша F, выход — Esc">⤢ На весь экран</button></div><canvas id="cv" width="1200" height="850"></canvas><div class="fs-keys" id="fs_keys"></div></div>
   <div class="side">
     <div class="pad"><div class="hint" id="hint">Загрузите фото или скан плана этажа, затем задайте масштаб:
       кнопка «Масштаб» → две точки на плане → длина отрезка в метрах.</div></div>
@@ -7485,7 +7490,6 @@ function wzRender(box) {
   } else if (upState && upState.err) {
     h += '<div class="wz-up bad">План не ушёл на сервер: ' + upState.err + ' · <b onclick="uploadPending()">повторить</b></div>';
   }
-  if (fsOn) h += fsKeysHtml();
   if (h !== stepsHtml) { box.innerHTML = h; stepsHtml = h; }
   var mb = document.getElementById('b_more');
   if (mb) mb.textContent = allTools ? 'Ещё ▴' : 'Ещё ▾';
@@ -8806,7 +8810,6 @@ function pjRender(box) {
   } else if (upState && upState.err) {
     h += '<div class="wz-up bad">План не ушёл на сервер: ' + upState.err + ' · <b onclick="uploadPending()">повторить</b></div>';
   }
-  if (fsOn) h += fsKeysHtml();
   if (h !== stepsHtml) { box.innerHTML = h; stepsHtml = h; }
   // путь выпуска: Расчёт → Разметка плана → Листы проекта
   var path = document.getElementById('pj_path');
@@ -9101,15 +9104,27 @@ function fsSyncTop() {
   document.documentElement.style.setProperty('--fs-top', ((t ? t.offsetHeight : 46) + 6) + 'px');
 }
 
-/** Быстрые клавиши под карточкой шага: те же, что в списке по «?», без дублей. */
-function fsKeysHtml() {
+/** Быстрые клавиши в пустом поле под планом: те же, что в списке по «?», без дублей; панель сворачивается. */
+var fsKeysMin = false;
+try { fsKeysMin = localStorage.getItem('plan_editor_fskeys') === '0'; } catch (e) {}
+function fsKeysRender() {
+  var box = document.getElementById('fs_keys');
+  if (!box) return;
   var seen = {}, rows = [['Пробел', 'повернуть прибор'], ['Ctrl+Z', 'шаг назад'], ['F', 'весь экран вкл / выкл'], ['Esc', 'выйти из экрана']];
   HOTKEYS.forEach(function (h) {
     if (seen[h.name] || h.code === 'Slash' || h.code === 'KeyF') return;
     seen[h.name] = 1; rows.push([h.key, h.name]);
   });
-  return '<div class="fs-keys"><div class="fk-h">Быстрые клавиши</div>' + rows.map(function (r) {
-    return '<div class="fk"><kbd>' + r[0] + '</kbd><span>' + r[1] + '</span></div>'; }).join('') + '</div>';
+  box.className = 'fs-keys' + (fsKeysMin ? ' min' : '');
+  box.innerHTML = '<div class="fk-top"><span class="fk-h">Быстрые клавиши</span>' +
+    '<button type="button" class="ghost" onclick="toggleFsKeys()">' + (fsKeysMin ? '▸ Показать' : '▾ Свернуть') + '</button></div>' +
+    '<div class="fk-grid">' + rows.map(function (r) {
+      return '<div class="fk"><kbd>' + r[0] + '</kbd><span>' + r[1] + '</span></div>'; }).join('') + '</div>';
+}
+function toggleFsKeys() {
+  fsKeysMin = !fsKeysMin;
+  try { localStorage.setItem('plan_editor_fskeys', fsKeysMin ? '0' : '1'); } catch (e) {}
+  fsKeysRender();
 }
 
 function toggleFs(force) {
@@ -9138,6 +9153,7 @@ function toggleFs(force) {
     if (window.ResizeObserver && !fsObs && tb) { fsObs = new ResizeObserver(fsSyncTop); fsObs.observe(tb); }
   } else if (fsObs) { fsObs.disconnect(); fsObs = null; }
   stepsHtml = '';
+  if (on) fsKeysRender();
   updateGuide();
   // холст перерисовать уже по новой ширине: от неё зависят кружки номеров комнат
   setTimeout(function () { try { applyZoom(); draw(); } catch (e) {} }, 80);
