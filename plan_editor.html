@@ -1170,6 +1170,7 @@ function setMode(m) {
     : mode === 'wcoll' ? 'Кликните, где стоят коллекторы воды.'
     : mode === 'wc' ? 'Выберите прибор в списке и кликните, где он стоит. Клик по значку — убрать. Не забудьте «Стояк канализации» — к нему сводятся выпуски.'
     : '');
+  if (UFH && document.getElementById('steps')) renderSteps();
   draw();
 }
 function hint(s) {
@@ -7173,8 +7174,18 @@ function radBeamBtn() {
   var tip = info.why ? 'Сейчас недоступно: ' + info.why + '.'
     : (auto ? 'Автоподбор трассы: программа сама решает, где приборам комнаты хватает общей трассы (по нагрузке, скорости воды и потерям), а где нужна отдельная ветка. Нажмите — ветка на каждый прибор.'
       : 'Ветка на каждый прибор: ничего не объединяется, при нехватке Ø16, насоса или выходов покажем предупреждение. Нажмите — автоподбор трассы.');
-  return '<button' + (info.why ? ' disabled' : '') + ' class="' + (auto ? 'go' : '') + '" title="' + tip + '" onmouseenter="radBeamTip(this)" onclick="radBeamToggle()">' +
-    (auto ? 'Автоподбор трассы' : 'Ветка на каждый прибор') + '</button>';
+  return '<button' + (info.why ? ' disabled' : '') + ' class="' + (auto ? 'on' : '') + '" aria-pressed="' + (auto ? 'true' : 'false') + '" title="' + tip + '" onmouseenter="radBeamTip(this)" onclick="radBeamToggle()">' +
+    'Автоподбор трассы' + wzOnBadge(auto) + '</button>';
+}
+
+/** Кнопка-переключатель режима с меткой «вкл» / «выкл». */
+function wzTog(fn, t, on) {
+  return '<button class="' + (on ? 'on' : '') + '" aria-pressed="' + (on ? 'true' : 'false') + '" onclick="' + fn + '">' + t + wzOnBadge(on) + '</button>';
+}
+
+/** Метка состояния на кнопке-переключателе: «вкл» / «выкл». */
+function wzOnBadge(on) {
+  return ' <span class="wz-sw ' + (on ? 'on' : 'off') + '">' + (on ? 'вкл' : 'выкл') + '</span>';
 }
 
 /** Подсказка кнопки: сколько трубы и выходов экономит автоподбор против ветки на каждый прибор (считает калькулятор). */
@@ -7952,22 +7963,24 @@ function wzDoHtml(ci, n, b) {
 /** Что сказать и какие кнопки показать на шаге. */
 function wzBody(id) {
   var B = function (fn, t, cls) { return '<button class="' + (cls || '') + '" onclick="' + fn + '">' + t + '</button>'; };
+  // Переключатель: видно, включён ли режим («Переставить коллектор» — пока он включён, клик по плану двигает коллектор)
+  var T = wzTog;
   if (id === 'plan') return { noNext: true, acts: B("wzGo('plan')", 'Загрузить план', 'go'),
     tx: 'Загрузите план этажа — масштаб и комнаты найду сама.',
     tips: [['Фото', 'JPG, PNG'], ['Скан', 'любой'], ['PDF', 'страница с планом']] };
   if (id === 'scale' && SCAN_BUSY[cur]) return { noNext: true, acts: B("enterMode('scale')", 'Задать вручную'),
     tx: '<b>Ищу масштаб…</b> Читаю размеры на плане, до минуты.', tips: [['Не хотите ждать', 'задайте вручную']] };
-  if (id === 'scale') return { noNext: true, acts: B("enterMode('scale')", 'Задать масштаб', 'go') + B('autoScale()', 'Подобрать ещё раз'),
+  if (id === 'scale') return { noNext: true, acts: T("setMode('scale')", 'Задать масштаб', mode === 'scale') + B('autoScale()', 'Подобрать ещё раз'),
     tx: scanQuota() ? '<b>Автопоиск масштаба сейчас недоступен.</b> Задайте вручную: отметьте на плане отрезок известной длины.' : '<b>Масштаб не нашёлся.</b> Отметьте на плане отрезок известной длины.',
     tips: [['2 клика', 'по краям отрезка'], ['Например', 'дверной проём 0,9 м']], diag: scanDiagHtml() };
-  if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B('wzRect()', 'Обвести рамкой'),
+  if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + T('wzRect()', 'Обвести рамкой', mode === 'rect'),
     tx: 'Проверьте найденные комнаты и впишите названия — по ним они перейдут в расчёт.',
     tips: [['✕', 'убрать лишнюю'], ['«Обвести рамкой»', 'если комната не нашлась']], diag: reqHtml('base', true) };
-  if (id === 'tp') return { acts: B("wzTpDraw('poly')", 'Обвести по точкам') + B("wzTpDraw('rect')", 'Обвести рамкой') + B('ufhCold()', 'Без обогрева') + B("setMode('coll')", 'Переставить коллектор'),
+  if (id === 'tp') return { acts: T("wzTpDraw('poly')", 'Обвести по точкам', mode === 'poly') + T("wzTpDraw('rect')", 'Обвести рамкой', mode === 'rect') + B('ufhCold()', 'Без обогрева') + T("setMode('coll')", 'Переставить коллектор', mode === 'coll'),
     tx: 'Отметьте комнаты с тёплым полом — петли разложатся сами.',
     tips: [['Клик по комнате', 'вкл / выкл'], ['«По точкам»', 'сложная форма'], ['Узлы контура', 'тянуть; ПКМ — точка'], ['«Без обогрева»', 'лестница, ванна'],
       ['Мышью', 'двигать коллектор'], ['ПКМ или R', 'повернуть на 90°']], diag: reqHtml('base', false) };
-  if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('radcoll')", 'Переставить коллектор радиаторов') + B('radRoutesReset()', 'Автотрассы') + radBeamBtn(),
+  if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + T("setMode('radcoll')", 'Переставить коллектор радиаторов', mode === 'radcoll') + B('radRoutesReset()', 'Автотрассы') + radBeamBtn(),
     tx: 'Радиаторы поставлены под окнами — проверьте расстановку.', tips: RAD_TIPS, diag: radWarnHtml() + reqHtml('base', false) };
   if (id === 'water') return wwBody();
   if (id === 'sewer') return wsBody();
@@ -8967,7 +8980,7 @@ function wwBody() {
     '<label class="ww-opt"><input type="checkbox" ' + (w.enable ? 'checked ' : '') + 'onchange="wwEnable(this.checked)"><span>Добавить трубы воды в смету</span></label>' +
     (canRec ? '<label class="ww-opt"><input type="checkbox" ' + (w.recirc ? 'checked ' : '') + 'onchange="wwRecirc(this.checked)"><span>Циркуляция ГВС — горячая вода сразу из крана</span></label>' : '') +
     '</div>';
-  var acts = B("wwPlace('win')", 'Поставить ввод воды') + B("wwPlace('wcoll')", 'Поставить коллекторы') +
+  var acts = wzTog("wwPlace('win')", 'Поставить ввод воды', mode === 'win') + wzTog("wwPlace('wcoll')", 'Поставить коллекторы', mode === 'wcoll') +
     ((w.inp || w.coll) ? B('wwReset()', 'Вернуть в котельную') : '');
   diag += reqHtml('water', false);
   return { next: 'Дальше →', acts: acts, diag: diag,
@@ -9017,7 +9030,7 @@ function wsBody() {
   });
   var wetNames = [];
   (w.cards || []).forEach(function (c) { if (c.zone) wetNames.push(c.name); });
-  var acts = B("wwPlace('wout')", 'Выпуск') + (wetNames.length ? B('wsAskCards([])', 'Ещё выпуск') : '') + ((w.out) ? B('wwResetOut()', 'Выпуск по умолчанию') : '');
+  var acts = wzTog("wwPlace('wout')", 'Выпуск', mode === 'wout') + (wetNames.length ? B('wsAskCards([])', 'Ещё выпуск') : '') + ((w.out) ? B('wwResetOut()', 'Выпуск по умолчанию') : '');
   return { next: 'Дальше →', acts: acts, diag: diag,
     tx: 'Канализация привязана к приборам: от каждого отвод идёт к стояку, стояки — лежаком к выпуску. Стояк, выпуск и приборы тяните мышью — трассы пересчитаются.',
     tips: [['Стояк', 'тянуть мышью'], ['Отвод', 'тянуть — сместить трассу; правый клик — вернуть автомат'], ['Выпуск', 'тянуть к септику'], ['Уклон', 'галочка выше — проверка самотёка'], ['d50 / d110', 'подписаны на трассах']] };
