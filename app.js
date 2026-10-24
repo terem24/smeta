@@ -3117,7 +3117,12 @@ const app = {
         return String(s || '').replace(/[\s.\-\/]/g, '').toUpperCase();
     },
 
-    searchCatalog: function (query) {
+    // Закрытое тарифом показываем тусклым с плашкой «Профи» (витрина тарифа) — всем,
+    // кроме сотрудников ТЕРЕМ: им предлагать покупку нечего.
+    canShowLockedBrands: function () { return !this.isTeremStaff(); },
+
+    // opts.locked — вернуть наоборот только то, что закрыто тарифом (для витрины)
+    searchCatalog: function (query, opts) {
         query = (query || '').trim();
         if (query.length < 2) return [];
         const idx = this._buildCatalogSearchIndex();
@@ -3127,10 +3132,12 @@ const app = {
         // _terem — прочие марки прайса ТЕРЕМ
         const rommerOk = this.canUseBrand('ROMMER');
         const teremOk = this.canUseBrand('TEREM');
+        const lockedOnly = !!(opts && opts.locked);
+        if (lockedOnly && (!this.canShowLockedBrands() || (rommerOk && teremOk))) return [];
 
         const results = idx.filter(it => {
-            if (it._hideForBase && !rommerOk) return false;
-            if (it._terem && !teremOk) return false;
+            const locked = (it._hideForBase && !rommerOk) || (it._terem && !teremOk);
+            if (lockedOnly !== !!locked) return false;
             if (it.article && this._normArticle(it.article).includes(qArtNorm)) return true;
             if (!qWords.length && !qNumbers.length) return false;
             const wordMatch = qWords.every(qw => it._words.some(w => this._stemEq(w, qw, it._abbrev)));
@@ -6453,6 +6460,15 @@ const app = {
 
         const renderResults = (list, isLoose) => {
             lastResults = list || [];
+            const lockedHtml = app.lockedBrandsHtml(nameInput.value);
+            const bindLocked = () => app.bindLockedBrands(resultsBox, () => { try { closeModal(); } catch (e) { } });
+            if (!lastResults.length && lockedHtml) {
+                resultsBox.innerHTML = lockedHtml;
+                resultsBox.classList.add('open');
+                notFoundHint.style.display = 'none';
+                bindLocked();
+                return;
+            }
             if (!lastResults.length) {
                 resultsBox.innerHTML = '';
                 resultsBox.classList.remove('open');
@@ -6475,7 +6491,8 @@ const app = {
                         <span class="eq-search-item-meta">${it.article}${it.brand ? ' · ' + it.brand : ''} · ${Math.round(it.price).toLocaleString('ru-RU')} ₽</span>
                     </div>
                 </div>
-            `).join('') + `<div class="eq-search-item eq-search-manual">Ни один вариант не подходит — ввести своё название и цену вручную</div>`;
+            `).join('') + `<div class="eq-search-item eq-search-manual">Ни один вариант не подходит — ввести своё название и цену вручную</div>` + lockedHtml;
+            bindLocked();
             Array.from(resultsBox.querySelectorAll('.eq-search-item')).forEach((el, i) => {
                 if (i >= lastResults.length) {
                     // Последняя строка — «ввести вручную»: оставляем текст как есть, ничего не подставляем
@@ -6975,6 +6992,8 @@ const app = {
                 ? (loose ? `<div class="rec-art" style="padding:2px 0 4px;">Точного совпадения нет — возможно, подойдёт похожее</div>` : '') +
                   list.map(it => hitHtml(it, `${it.article || it.id} · ${it.brand || 'STOUT'}`)).join('')
                 : '<div class="rec-art" style="padding:10px">Ничего не найдено</div>';
+            res.innerHTML += this.lockedBrandsHtml(query);
+            this.bindLockedBrands(res, close);
             res.querySelectorAll('.rec-hit').forEach((el, n) => {
                 el.onclick = () => { this.applyRecReplace(eqId, list[n]); close(); };
             });
@@ -16852,7 +16871,7 @@ const app = {
         const def = this.PREF_DEFS.reduce((a, g) => a.concat(g.items), []).find(x => x.id === key);
         const opt = def && def.opts.find(o => o.v === v);
         if (!opt || !opt.pro) return null;
-        const ok = opt.pro === 'pro' ? this.isPro() : (opt.pro === 'rommer' ? this.canUseBrand('ROMMER') : this.tariffAccess('terem') === 'on');
+        const ok = opt.pro === 'pro' ? this.isPro() : (opt.pro === 'rommer' ? this.canUseBrand('ROMMER') : this.canUseBrand('TEREM'));
         if (ok) return null;
         return this.isPro() ? 'Недоступно для вашей учётной записи' : 'Только на тарифе ПРОФИ';
     },
@@ -23644,7 +23663,9 @@ const app = {
     // магазинов — продавцы, и вкладка про заработок бригады им не нужна.
     tariffDefaultCell: function (account, plan, feature) {
         const pro = plan === 'pro';
-        if (feature === 'stout' || feature === 'terem') return 'on';
+        if (feature === 'stout') return 'on';
+        // Прочие марки прайса ТЕРЕМ — функция «Профи» (24.10.2026); на базовом только STOUT
+        if (feature === 'terem') return pro ? 'on' : 'off';
         if (feature === 'rommer') return pro ? 'on' : 'off';
         // «Аналог» раньше шёл вместе с ROMMER — исходно так же, Профи.
         if (feature === 'analog') return pro ? 'on' : 'off';
@@ -23835,7 +23856,37 @@ const app = {
         const b = String(brand || '').toUpperCase();
         if (b === 'ROMMER') return this.tariffAccess('rommer') === 'on';
         if (!b || b === 'STOUT') return true;
+        // Сотрудникам ТЕРЕМ прайс открыт всегда: тариф им не продаётся
+        if (this.isTeremStaff()) return true;
         return this.tariffAccess('terem') === 'on';
+    },
+
+    // Витрина тарифа в поиске: чипы марок и закрытые позиции тусклым. Клик — окно тарифа.
+    // Пусто, если закрывать нечего или человек из ТЕРЕМ.
+    lockedBrandsHtml: function (query) {
+        if (!this.canShowLockedBrands()) return '';
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const chips = [];
+        if (!this.canUseBrand('ROMMER')) chips.push('ROMMER');
+        if (!this.canUseBrand('TEREM')) chips.push('Прочие марки ТЕРЕМ');
+        if (!chips.length) return '';
+        const items = this.searchCatalog(query, { locked: true }).slice(0, 3);
+        return `<div class="pro-lock-block">
+            <div class="pro-lock-chips">${chips.map(c => `<span class="pro-lock-chip" data-lock="${esc(c)}">${esc(c)} <b>Профи</b></span>`).join('')}</div>
+            ${items.map(it => `<div class="pro-lock-item" data-lock="${esc(it.brand || 'ТЕРЕМ')}">
+                <span>${esc(it.name)} <span class="pro-lock-brand">· ${esc(it.brand || 'ТЕРЕМ')}</span></span>
+                <b class="pro-lock-badge">Только в Профи</b></div>`).join('')}
+        </div>`;
+    },
+    // Навешивает клики витрины: любой — окно тарифа с причиной
+    bindLockedBrands: function (box, beforeOpen) {
+        box.querySelectorAll('[data-lock]').forEach(el => {
+            el.onclick = (e) => {
+                e.stopPropagation();
+                if (beforeOpen) beforeOpen();
+                this.showModal('pro', { why: 'Ассортимент «' + el.getAttribute('data-lock') + '» — в тарифе Профи. На базовом доступен STOUT' });
+            };
+        });
     },
     canUseMoney: function () { return !!this.state.tgUser && this.tariffAccess('money') === 'on'; },
 
@@ -64093,7 +64144,7 @@ const app = {
                 // Полипропилен — марки прайса ТЕРЕМ, поэтому только при включённом
                 // столбце ТЕРЕМ в «Тарифах». Если ППР уже стоит в смете, строку
                 // оставляем: иначе пропала бы отметка «Выбран».
-                ...((this.tariffAccess('terem') === 'on' || this.boilerPipeSystem() === 'ppr')
+                ...((this.canUseBrand('TEREM') || this.boilerPipeSystem() === 'ppr')
                     ? [{
                         id: 'bp_ppr', sys: 'ppr',
                         name: _pprIsPA ? 'Полипропилен PP-R DUO SDR 6' : 'Полипропилен PP-RCT STABI PLUS',

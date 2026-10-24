@@ -7797,6 +7797,19 @@ body.dark-mode .calc-dialog-btn-cancel:hover {
     background: var(--surface-light);
 }
 
+/* Витрина тарифа «Профи» в поиске: закрытые марки тусклые, без цвета */
+.pro-lock-block { padding: 8px 10px 6px; border-top: 1px dashed var(--border, #d0d5dd); }
+.pro-lock-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.pro-lock-chip { font-size: 12px; padding: 3px 9px; border-radius: 999px; cursor: pointer;
+    color: var(--text-sec); background: var(--surface-light); border: 1px solid var(--border, #d0d5dd);
+    filter: grayscale(1); opacity: .75; }
+.pro-lock-chip b, .pro-lock-badge { font-size: 10px; font-weight: 700; color: #fff; background: #8a94a6;
+    padding: 1px 6px; border-radius: 6px; text-transform: uppercase; letter-spacing: .02em; white-space: nowrap; }
+.pro-lock-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0;
+    font-size: 12px; color: var(--text-sec); cursor: pointer; filter: grayscale(1); opacity: .6; }
+.pro-lock-item:hover, .pro-lock-chip:hover { opacity: .9; }
+.pro-lock-brand { opacity: .8; }
+
 .eq-search-manual:hover {
     color: var(--primary);
 }
