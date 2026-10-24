@@ -2688,7 +2688,7 @@
   // будет там, где комнаты смыкаются (в проёме), а не где придётся.
   // RCOST_EDGE — надбавка за клетку у самой стены (на 0, 1, 2 клетки от неё: 3×, 2×, 1× шага):
   // контур зоны идёт по оси стены, и трасса по краю ложилась на стену и окна (15.10.2026).
-  var RCOST_WALL = 30, RCOST_WALL_DOOR = 300, RCOST_MID = 2, RCOST_EDGE = 4, RCOST_TP = 25, RCOST_COLD = 40, RCOST_OUT = 400;
+  var RCOST_WALL = 30, RCOST_WALL_DOOR = 300, RCOST_WALL_HARD = 3000, RCOST_MID = 2, RCOST_EDGE = 4, RCOST_TP = 25, RCOST_COLD = 40, RCOST_OUT = 400;
   function radRoutes(f, stepMm, tee, connMap, shareRooms) {
     var rads = (f.rads || []).filter(function (r) { return r && isFinite(r.x) && isFinite(r.y); });
     if (!rads.length || !f.pxPerM) return null;
@@ -5767,7 +5767,7 @@
    * и обходит «без обогрева». Ничего про петли тёплого пола здесь нет: водяная труба в стяжке под них не лезет.
    * Возвращает массив ломаных в координатах плана (по числу dests; null — путь не нашёлся), либо null — план без комнат.
    */
-  function routePipes(f, src, dests) {
+  function routePipes(f, src, dests, wallMask) {
     var rooms = (f.zones || []).filter(function (z) { return z && z.pts && z.pts.length > 2 && z.type !== 'cold'; });
     if (!rooms.length || !f.pxPerM || !dests.length) return null;
     var ppm = f.pxPerM;
@@ -5797,6 +5797,29 @@
       cost[k] = cold[k] ? RCOST_COLD : own[k]
         ? 1 + (wd[k] > 2 ? RCOST_MID : (3 - wd[k]) * RCOST_EDGE)
         : (near[k] > 3 ? RCOST_OUT : wallCost);
+    }
+    // Стена по самой картинке плана (маска редактора): контуры комнат часто смыкаются без зазора, и тогда «не комната»
+    // стены нет вовсе — трасса шла сквозь неё. Клетка с пикселями стены стоит как непроходимая; проёмы (двери без
+    // полотна, арки) в маске — просвет, их клетки свободны, а открытые двери ниже обнуляют цену ещё раз.
+    // Окна — тоже стена: стекло на растре бывает с просветом.
+    if (wallMask && wallMask.bar && wallMask.k > 0) {
+      var wmk = wallMask.k, wmW = wallMask.w, wmH = wallMask.h, wbar = wallMask.bar, wsub = [0.15, 0.5, 0.85];
+      for (k = 0; k < N; k++) {
+        if (cold[k]) continue;
+        var cx1 = k % g.W, cy1 = Math.floor(k / g.W), hit = 0, si, sj;
+        for (sj = 0; sj < 3 && !hit; sj++) for (si = 0; si < 3; si++) {
+          var mx = Math.round((g.ox + (cx1 + wsub[si]) * g.c) * wmk), my = Math.round((g.oy + (cy1 + wsub[sj]) * g.c) * wmk);
+          if (mx >= 0 && my >= 0 && mx < wmW && my < wmH && wbar[my * wmW + mx]) { hit = 1; break; }
+        }
+        if (hit && cost[k] < RCOST_WALL_HARD) cost[k] = RCOST_WALL_HARD;
+      }
+      // у самой точки старта и у приборов стена клетки не держит: коллектор и унитаз стоят вплотную к стене
+      var freeAt = function (p) {
+        var c0 = cellAt(g, [p[0] - 0.2 * ppm, p[1] - 0.2 * ppm]), c1 = cellAt(g, [p[0] + 0.2 * ppm, p[1] + 0.2 * ppm]);
+        for (var y = Math.floor(c0 / g.W); y <= Math.floor(c1 / g.W); y++)
+          for (var x = c0 % g.W; x <= c1 % g.W; x++) if (cost[y * g.W + x] >= RCOST_WALL_HARD) cost[y * g.W + x] = RCOST_WALL;
+      };
+      freeAt(src); dests.forEach(freeAt);
     }
     doorsG.forEach(function (d) {
       var da = (d.ang || 0) * Math.PI / 180, ux = Math.cos(da), uy = Math.sin(da);

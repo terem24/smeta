@@ -462,7 +462,7 @@
 </div>
 
 <script src="water_hydro.js?v=1.7"></script>
-<script src="project_plans.js?v=1.48"></script>
+<script src="project_plans.js?v=1.49"></script>
 <script>
 'use strict';
 // Доступ к проектированию. Своей авторизации у страницы нет, поэтому отметку
@@ -5075,7 +5075,7 @@ cv.addEventListener('mousemove', function (e) {
   if (!dragF && !dragC && !dragZ && wwLayer()) wwHover(e); else if (wwTipEl && wwTipEl.style.display !== 'none') wwTip('', e);
   if (dragF) {
     var fq = F().fixtures[dragF.i], fp = evPt(e);
-    if (fq) { fq.x = Math.round(fp[0]); fq.y = Math.round(fp[1]); dragF.moved = true; cv.style.cursor = 'grabbing'; draw(); }
+    if (fq) { fq.x = Math.round(fp[0]); fq.y = Math.round(fp[1]); dragF.moved = true; cv.style.cursor = 'grabbing'; wwLive(); draw(); }
     return;
   }
   if (dragC) {
@@ -5087,6 +5087,7 @@ cv.addEventListener('mousemove', function (e) {
     else if (dragC.kind === 'tp') { fd.coll = { x: Math.round(cq[0]), y: Math.round(cq[1]) }; fd.collAuto = false; }
     else fd.radColl = { x: Math.round(cq[0]), y: Math.round(cq[1]) };
     dragC.moved = true; cv.style.cursor = 'grabbing';
+    if (dragC.kind === 'win' || dragC.kind === 'wcoll' || dragC.kind === 'wout') wwLive();
     draw(); return;
   }
   if (dragZ) {
@@ -7644,12 +7645,16 @@ function wwManhattan(m, a, b) {
  * Трассы от src к точкам: по правилам радиаторов (двери, под 90°); если плана комнат или пути нет — прямоугольная трасса.
  * Двери берутся из геометрии этажа (f.geom): считаем её при первом обращении.
  */
+var geomDone = {};   // этаж + масштаб → геометрия посчитана в этой сессии (в данных этажа свежесть не храним)
 function wwRoutes(f, fi, src, dests, m) {
   var r = null;
   try {
     if (window.projectPlans && projectPlans.routePipes) {
-      if (!f.geom) { try { f.geom = exportGeom(fi); } catch (e) {} }
-      r = projectPlans.routePipes(f, src, dests);
+      // двери — свежие: кэш геометрии мог остаться от прошлого сохранения (до правки комнат и масштаба)
+      var gk = fi + ':' + f.pxPerM;
+      if (!f.geom || !geomDone[gk]) { try { f.geom = exportGeom(fi) || f.geom; geomDone[gk] = 1; } catch (e) {} }
+      var wm = null; try { wm = getWallMask(fi); } catch (e2) {}
+      r = projectPlans.routePipes(f, src, dests, wm);
     }
   } catch (e) { console.warn('[plan_editor] трассы по комнатам:', e && e.message); }
   return dests.map(function (d, i) { return (r && r[i]) || wwManhattan(m, src, d); });
@@ -8104,6 +8109,17 @@ function wwColls(w) {
     if (w.recirc) { if (mix > 0) { hot++; rec++; } } else hot += mix;
   });
   return { cold: cold, hot: hot, rec: rec };
+}
+
+/** Трассы воды и канализации — вслед за мышью, пока тянут прибор или коллектор (не чаще, чем успевает считаться) */
+var wwLiveAt = 0, wwLiveCost = 0;
+function wwLive() {
+  if (!wwLayer()) return;
+  var t0 = Date.now();
+  if (t0 < wwLiveAt) return;
+  try { computeVk(); computeSewerMain(); computeWaterTrunks(); } catch (e) { console.warn('[plan_editor] трассы на лету:', e && e.message); }
+  wwLiveCost = Date.now() - t0;
+  wwLiveAt = Date.now() + Math.max(60, wwLiveCost * 2);
 }
 
 function wwRefresh() {
