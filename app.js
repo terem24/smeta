@@ -18712,7 +18712,7 @@ const app = {
                 dimBM += n * c.len; dimBR += price * n;
                 rows.push({ ...base, price: price, basePrice: price, coilPriced: true, originalId: c.id + '_pool',
                     q: n, sum: Math.round(price * n), sortRank: 0, unit: 'шт', brand: 'STOUT',
-                    displaySku: c.id, qtyTip: tip });
+                    displaySku: c.id, qtyTip: tip, poolFrom: from });
             });
             boughtM += dimBM; boughtR += dimBR; unM += dimUnM; unR += dimUnR;
             const saveM = dimUnM - dimBM, saveR = dimUnR - dimBR;
@@ -64464,6 +64464,21 @@ const app = {
         let body = document.getElementById('swap_modal_body');
         let title = document.getElementById('swap_modal_title');
         if (!modal || !body) return;
+
+        // Строка «Трубы: бухты по всей смете» собрана из метров нескольких разделов, материал в ней
+        // не выбирается: у неё нет своего списка, и общая ветка показала бы только пару STOUT/ROMMER.
+        // Меняется материал в строке трубы самого раздела — объединённая строка пересчитается сама.
+        if (String(_origId0).endsWith('_pool')) {
+            if (title) title.innerHTML = `<h3 style="margin:0; font-size:18px; font-weight:700; color:var(--text-main); text-transform:none;">Материал трубы меняется в разделах</h3>`
+                + `<span style="font-size:12px; color:var(--text-sec); display:block; margin-top:2px; font-weight:500; text-transform:none;">${item.name || ''}</span>`;
+            body.innerHTML = `<div style="padding:16px 4px; font-size:14px; line-height:1.6; color:var(--text-main);">`
+                + `Эта строка сложена из метров нескольких разделов${item.poolFrom ? `: <b>${item.poolFrom}</b>` : ''}. `
+                + `Чтобы заменить стабильную трубу на металлопластик или PEX-a, нажмите «Заменить» у трубы в нужном разделе (радиаторы, тёплый пол, водоснабжение). `
+                + `Бухты по смете пересчитаются сами. Объединение отключается в личном кабинете: «Подбирать бухты по всей смете».`
+                + `</div>`;
+            modal.style.display = 'flex';
+            return;
+        }
 
         let basePrice = item.price || 0;
         // item.price трубы тройниковой схемы — это цена уже купленной бухты целиком (см. asCoilPrice
