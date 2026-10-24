@@ -6927,7 +6927,7 @@ function wzSteps() {
   L.push({ id: 'rooms', t: 'Комнаты', ok: f.zones.some(function (z) { return z.type !== 'cold'; }) });
   L.push({ id: 'tp', t: 'Тёплый пол', ok: f.zones.some(function (z) { return z.type === 'tp'; }) });
   if (wzWantRad()) L.push({ id: 'rad', t: 'Радиаторы', ok: (f.rads || []).length > 0 });
-  if (f.img && f.pxPerM) L.push({ id: 'water', t: 'Санузлы и вода', ok: !!(DATA.floors[0].water && DATA.floors[0].water.visited) });
+  if (f.img) L.push({ id: 'water', t: 'Санузлы и вода', ok: !!(DATA.floors[0].water && DATA.floors[0].water.visited) });
   L.push({ id: 'done', t: 'Готово', ok: false });
   return L;
 }
