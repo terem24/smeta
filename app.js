@@ -61582,10 +61582,12 @@ const app = {
         if (catalog.manifolds_full_kit.some(x => x.id === id || (x.rommer && x.rommer.id === id))) return { valveType: 'thermo', airVent: 'auto', drainValve: true, inletValves: true };
         if (catalog.manifolds_shutoff.some(x => x.id === id || (x.rommer && x.rommer.id === id))) return { valveType: 'none', airVent: 'manual', drainValve: true, inletValves: false };
         if (catalog.manifolds_shutoff_auto.some(x => x.id === id)) return { valveType: 'none', airVent: 'auto', drainValve: true, inletValves: false };
-        // Радиаторный коллектор «в сборе» (SMS-0912 / RMS-3210): концевые фитинги с ручным
-        // воздухоотводчиком и сливом уже в комплекте. Раньше серии здесь не было, смета считала
-        // её голой гребёнкой и докупала концевую группу второй раз (замечено 24.10.2026).
-        if ((catalog.manifolds_rad || []).some(x => x.id === id || (x.rommer && x.rommer.id === id))) return { valveType: 'none', airVent: 'manual', drainValve: true, inletValves: false };
+        // Радиаторный коллектор «в сборе» (SMS-0912 / RMS-3210): в комплекте 2 шаровых крана
+        // с американкой на входе, 2 автоматических воздухоотводчика и 2 спускных крана
+        // (паспорт STOUT SMS, ред. 2 от 30.05.2019, п. 5.2.1). Раньше серии здесь не было, смета
+        // считала её голой гребёнкой и докупала концевую группу, краны и заглушку второй раз
+        // (замечено 24.10.2026). ROMMER RMS-3210 по паспорту не сверяли — считаем равным STOUT.
+        if ((catalog.manifolds_rad || []).some(x => x.id === id || (x.rommer && x.rommer.id === id))) return { valveType: 'none', airVent: 'auto', drainValve: true, inletValves: true };
         return { valveType: 'none', airVent: 'none', drainValve: false, inletValves: false };
     },
     /**
@@ -92615,7 +92617,11 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     }
                     // Противоположный, глухой торец каждой гребёнки. Резьба та же дюймовая,
                     // поэтому и условие то же, что у концевой группы.
-                    if (catalog.plug_1 && _mConn && _mConn.inSize === '1') {
+                    // В коробке с коллектором (паспорт SMS, п. 5.2.1) торцы заняты: на входе стоит
+                    // шаровой кран, на дальнем конце — воздухоотводчик со сливным краном. Свободного
+                    // торца под заглушку нет.
+                    const _kitFull = _mAttrs.inletValves && _mAttrs.airVent !== 'none';
+                    if (catalog.plug_1 && _mConn && _mConn.inSize === '1' && !_kitFull) {
                         addToBill({ ...catalog.plug_1, originalId: 'rad_manifold_plug' }, manifoldsCount * 2, _nodeWhere +
                             `<b>Зачем:</b> Закрывает дальний торец гребёнки — тот, с которого не заходит подводка. По одной на подающий и обратный коллектор.</span>`, pipeGrp);
                     }
@@ -92631,7 +92637,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         const _sz = _nodeThread === '1' ? '1"' : '3/4"';
                         const _fit = id => (catalog[_conn.pool] || []).find(x => x.id === id);
                         const _valve = _np(_nodeThread === '1' ? 'SVB-0007-200025' : 'SVB-0007-200020');
-                        if (_valve) addToBill({ ..._valve, originalId: _valve.id + '_rad_node' }, manifoldsCount * 2, _nodeWhere +
+                        // Краны на входе обеих гребёнок уже в коробке: 2 шт. на коллектор, резьба 1".
+                        if (_valve && !_mAttrs.inletValves) addToBill({ ..._valve, originalId: _valve.id + '_rad_node' }, manifoldsCount * 2, _nodeWhere +
                             `<b>Зачем:</b> Отсечь коллектор от подводки. По одному крану на подачу и обратку; американка нужна, чтобы снять коллектор целиком, не разрезая трубу.</span>`, pipeGrp);
                         // Переход нужен, только когда торец гребёнки и резьба узла разошлись.
                         if (_nipId) {
