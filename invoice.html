@@ -6322,7 +6322,77 @@
             return o.kp_version ? `${o.sequence_id}-${o.kp_version}` : String(o.sequence_id);
         }
 
-        async function logInvoiceEventDirect(event, comment) {
+        // С какого устройства открыта страница — коротко, без отпечатков и без IP.
+        // Нужно монтажнику, чтобы отличить клиента («телефон, из Telegram») от
+        // собственной проверки ссылки («компьютер, Chrome»).
+        function viewerDeviceInfo() {
+            try {
+                const ua = navigator.userAgent || '';
+                const touch = (navigator.maxTouchPoints || 0) > 1;
+                let os = /Windows/i.test(ua) ? 'Windows'
+                    : /Android/i.test(ua) ? 'Android'
+                    : /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && touch) ? 'iOS'
+                    : /Mac OS X|Macintosh/i.test(ua) ? 'macOS'
+                    : /Linux/i.test(ua) ? 'Linux' : '';
+                let kind = /iPad|Tablet/i.test(ua) || (/Macintosh/i.test(ua) && touch) ? 'tablet'
+                    : /Mobi|iPhone|Android/i.test(ua) ? 'phone' : 'desktop';
+                const browser = /YaBrowser/i.test(ua) ? 'Яндекс Браузер'
+                    : /SamsungBrowser/i.test(ua) ? 'Samsung Internet'
+                    : /Edg\//i.test(ua) ? 'Edge'
+                    : /OPR\/|Opera/i.test(ua) ? 'Opera'
+                    : /Firefox|FxiOS/i.test(ua) ? 'Firefox'
+                    : /Chrome|CriOS/i.test(ua) ? 'Chrome'
+                    : /Safari/i.test(ua) ? 'Safari' : '';
+                // Откуда пришли: мессенджер открывает ссылку у себя во встроенном окне
+                let from = '';
+                if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData) from = 'Telegram';
+                else if (/Telegram/i.test(ua)) from = 'Telegram';
+                else if (/WhatsApp/i.test(ua)) from = 'WhatsApp';
+                else if (/VKApp|VK\//i.test(ua)) from = 'VK';
+                if (!from && document.referrer) {
+                    try {
+                        const h = new URL(document.referrer).hostname.replace(/^www\./, '');
+                        if (h && h !== location.hostname) from = /(^|\.)t\.me$|telegram/.test(h) ? 'Telegram'
+                            : /whatsapp/.test(h) ? 'WhatsApp' : /(^|\.)mail\./.test(h) ? 'почта' : h;
+                    } catch (e) { /* referrer не разобрался — не страшно */ }
+                }
+                let tz = '';
+                try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { }
+                return { kind: kind, os: os, browser: browser, from: from, lang: (navigator.language || '').slice(0, 5), tz: tz };
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // Кто открыл страницу: 'owner' — в этом браузере выполнен вход под аккаунтом автора сметы
+        // (страница сметы и калькулятор на одном домене, сессия общая); 'user' — вошёл кто-то
+        // другой (коллега, менеджер); 'guest' — без входа, то есть почти наверняка клиент.
+        let _viewerRolePromise = null;
+        function viewerRole() {
+            if (_viewerRolePromise) return _viewerRolePromise;
+            _viewerRolePromise = (async () => {
+                try {
+                    const { data } = await supabaseClient.auth.getSession();
+                    let authId = data && data.session && data.session.user && data.session.user.id;
+                    // Вход через Telegram живёт без сессии Supabase — профиль лежит в stout_save
+                    if (!authId) {
+                        try {
+                            const tg = (JSON.parse(localStorage.getItem('stout_save') || '{}') || {}).tgUser;
+                            if (tg && tg.authUserId) authId = tg.authUserId;
+                        } catch (e) { }
+                    }
+                    if (!authId) return 'guest';
+                    // user_id в shared_invoices — auth-id автора сметы (политика user_id = auth.uid())
+                    const owner = invoiceData && invoiceData.user_id ? String(invoiceData.user_id) : '';
+                    return owner && owner === String(authId) ? 'owner' : 'user';
+                } catch (e) {
+                    return 'guest';
+                }
+            })();
+            return _viewerRolePromise;
+        }
+
+        async function logInvoiceEventDirect(event, comment, extraMeta) {
             const calcId = invoiceData?.object_info?.sequence_id;
             if (!calcId || !supabaseClient) return null;
             try {
@@ -6332,7 +6402,12 @@
                     project_name: invoiceData?.object_info?.projectName || 'Без названия',
                     // Версия КП, которую клиент видел: по ней в карточке сметы видно,
                     // какой вариант одобрен и по какому запрошен счёт
-                    meta: { comment: comment || '', kp_version: invoiceData?.object_info?.kp_version || null }
+                    meta: Object.assign({
+                        comment: comment || '',
+                        kp_version: invoiceData?.object_info?.kp_version || null,
+                        device: viewerDeviceInfo(),
+                        viewer: await viewerRole()
+                    }, extraMeta || {})
                 }]).select('id');
                 if (error) {
                     console.error('[logInvoiceEventDirect] Ошибка записи:', error);
@@ -6394,11 +6469,24 @@
                 if (params.has('manager') || params.get('view') === 'manager') return;
                 const calcId = invoiceData?.object_info?.sequence_id;
                 if (!calcId) return;
-                const key = 'invoice_opened_' + calcId;
-                if (localStorage.getItem(key)) return;
-                localStorage.setItem(key, String(Date.now()));
+                // Автор сметы, проверяющий свою ссылку в том же браузере, где вошёл в калькулятор, —
+                // не клиент: отметку не пишем и монтажнику не пушим.
+                if (await viewerRole() === 'owner') return;
 
-                const rowId = await logInvoiceEventDirect('opened');
+                // Повторные заходы с этого устройства считаем: «открывали 4 раза» — признак интереса.
+                // Новую строку пишем не чаще раза в 30 минут, иначе обновление страницы забьёт историю.
+                const key = 'invoice_opened_' + calcId;
+                let last = 0, visits = 0;
+                try {
+                    const raw = localStorage.getItem(key) || '';
+                    if (raw.charAt(0) === '{') { const o = JSON.parse(raw); last = Number(o.t) || 0; visits = Number(o.n) || 0; }
+                    else if (raw) { last = Number(raw) || 0; visits = 1; }
+                } catch (e) { }
+                if (last && Date.now() - last < 30 * 60 * 1000) return;
+                visits += 1;
+                localStorage.setItem(key, JSON.stringify({ t: Date.now(), n: visits }));
+
+                const rowId = await logInvoiceEventDirect('opened', '', { visit: visits });
                 if (!rowId) return;
 
                 // Дальше — сообщить монтажнику. Ради этого отметка и вводилась: до

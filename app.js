@@ -12209,6 +12209,19 @@ const app = {
             const who = e.user_name || e.user_email
                 ? '👤 ' + escW(e.user_name || '') + (e.user_email ? ` <span style="opacity:.8;">(${escW(e.user_email)})</span>` : '')
                 : (CLIENT_SIDE.includes(e.event) ? '👤 клиент' : '');
+            // Чем открыто (пишет invoice.html): устройство, откуда пришли, номер открытия,
+            // и вошёл ли в браузере автор/коллега — тогда это не клиент
+            let devLine = '';
+            const dv = e.meta && e.meta.device;
+            if (dv && CLIENT_SIDE.includes(e.event)) {
+                const kindTxt = { phone: '📱 телефон', tablet: '📱 планшет', desktop: '💻 компьютер' }[dv.kind] || '';
+                const parts = [kindTxt, dv.os, dv.browser, dv.from ? 'из ' + dv.from : ''].filter(Boolean);
+                const visit = Number(e.meta.visit);
+                if (e.event === 'opened' && visit > 1) parts.push(visit + '-е открытие с этого устройства');
+                if (e.meta.viewer === 'user') parts.push('вошёл в аккаунт — возможно, не клиент');
+                else if (e.meta.viewer === 'owner') parts.push('это вы (вход в аккаунт автора)');
+                devLine = parts.map(escW).join(' · ');
+            }
             return `
                 <div style="display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--border);">
                     <div style="width:10px; height:10px; border-radius:50%; background:${em.color}; margin-top:5px; flex-shrink:0;"></div>
@@ -12218,6 +12231,7 @@ const app = {
                             <span style="color:var(--text-sec); font-size:11px; white-space:nowrap;">${dt}</span>
                         </div>
                         ${who ? `<div style="color:var(--text-sec); font-size:11.5px; margin-top:2px;">${who}</div>` : ''}
+                        ${devLine ? `<div style="color:var(--text-sec); font-size:11.5px; margin-top:2px;">${devLine}</div>` : ''}
                         ${comment ? `<div style="color:var(--text-main); font-size:12px; margin-top:4px; white-space:pre-wrap;">${comment.replace(/</g, '&lt;')}</div>` : ''}
                     </div>
                 </div>
