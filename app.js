@@ -61582,6 +61582,10 @@ const app = {
         if (catalog.manifolds_full_kit.some(x => x.id === id || (x.rommer && x.rommer.id === id))) return { valveType: 'thermo', airVent: 'auto', drainValve: true, inletValves: true };
         if (catalog.manifolds_shutoff.some(x => x.id === id || (x.rommer && x.rommer.id === id))) return { valveType: 'none', airVent: 'manual', drainValve: true, inletValves: false };
         if (catalog.manifolds_shutoff_auto.some(x => x.id === id)) return { valveType: 'none', airVent: 'auto', drainValve: true, inletValves: false };
+        // Радиаторный коллектор «в сборе» (SMS-0912 / RMS-3210): концевые фитинги с ручным
+        // воздухоотводчиком и сливом уже в комплекте. Раньше серии здесь не было, смета считала
+        // её голой гребёнкой и докупала концевую группу второй раз (замечено 24.10.2026).
+        if ((catalog.manifolds_rad || []).some(x => x.id === id || (x.rommer && x.rommer.id === id))) return { valveType: 'none', airVent: 'manual', drainValve: true, inletValves: false };
         return { valveType: 'none', airVent: 'none', drainValve: false, inletValves: false };
     },
     /**
