@@ -344,7 +344,8 @@ console.log('\n=== Расход подбора: авто / вручную ===');
     if (!ok) fail('рост ручного расхода уронил цену подобранного насоса');
     // Ручной расход меньше авто: в карточке есть предупреждение
     run('flow-warn', { ...o, waterFlowManualOn: true, waterFlowManual: 0.5 });
-    const html = app.waterHydroHtml(app.waterHydroCheck(), false);
+    // карточка по умолчанию свёрнута до заголовка — предупреждения лежат в развёрнутой (печатной) версии
+    const html = app.waterHydroHtml(app.waterHydroCheck(), true);
     if (!/задан вручную/.test(html)) fail('в карточке нет пометки «задан вручную»');
     if (!/меньше расчётного/.test(html)) fail('ручной расход меньше расчётного, а предупреждения нет');
     // горячая линия не больше общего расхода
@@ -381,7 +382,9 @@ console.log('\n=== Размеры узла по позициям сметы ==='
     console.log('  подмена: кран 1", ВСКМ-15, коллектор ГВС 3/4" — размеры прочитаны верно');
     // Узкий счётчик теряет больше широкого — на тех же расходах
     const data = app.buildWaterHydroData();
-    const ev = (sz) => { const d = JSON.parse(JSON.stringify(data)); d.node.sizes = Object.assign({}, d.node.sizes, sz); return wh.evaluate(d, { noAdvice: true }); };
+    const ev = (sz) => { const d = JSON.parse(JSON.stringify(data)); d.node.sizes = Object.assign({}, d.node.sizes, sz);
+        d.node.devices = Object.assign({}, d.node.devices, { meter: true });
+        return wh.evaluate(d, { noAdvice: true }); };
     const lo = (r) => r.scenarios.design.trunk.Hcoll;
     if (!(lo(ev({ meter: 0.015 })) < lo(ev({ meter: 0.02 })) && lo(ev({ meter: 0.02 })) < lo(ev({ meter: 0.025 })))) fail('счётчик уже — напор на коллекторе должен быть ниже');
     else console.log('  счётчик 1/2" → 3/4" → 1": напор на коллекторе ' + f1(lo(ev({ meter: 0.015 }))) + ' → ' + f1(lo(ev({ meter: 0.02 }))) + ' → ' + f1(lo(ev({ meter: 0.025 }))) + ' м');

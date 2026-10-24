@@ -44171,7 +44171,7 @@ const app = {
         let head;
         if (!res) head = '<div class="hc-det-p">Гидравлика линий не проверена: нет данных.</div>';
         else if (res.upsize && res.upsize.length) head = `<div class="hc-advice">Труба линий до приборов мала: ${res.upsize.length} линий не проходят по скорости или напору у прибора — нужна труба ${esc(res.upMax.label)}. ` +
-            `<button type="button" class="hc-btn" onclick="app.waterHydroFix('branchpipe','${esc(res.upMax.id)}',event)">Заменить трубу линий на ${esc(res.upMax.label)}</button></div>`;
+            `<button type="button" class="hc-btn" onclick="app.waterHydroFix('branchpipe','${esc(res.upMax.id)}',event)">Заменить трубу линий на ${esc(res.upMax.label)}</button>${res.data.fitNote ? '<br><small>' + esc(res.data.fitNote) + '</small>' : ''}</div>`;
         else if (res.upNone && res.upNone.length) head = `<div class="hc-advice">Даже на самой большой трубе не проходят линии: ${res.upNone.slice(0, 3).map(r => esc(r.title) + ' (' + esc(r.zone) + ')').join(', ')} — короче трасса, коллектор ближе или выше давление.</div>`;
         else head = `<div class="hc-det-p">Гидравлика линий проверена: на трубе ${esc(res.data.branch.label)} проходят все линии${res.data.assumed ? ' (давление в сети принято ' + res.data.mains.H / 10 + ' бар — включите «Узел ввода» и задайте своё)' : ''}. Расход прибора — при полностью открытом кране.</div>`;
         parts.splice(1, 0, `<div style="margin:6px 0">${head}</div>`);
@@ -52303,7 +52303,7 @@ const app = {
         // Трубы того же семейства крупнее стоящей в смете — из них проверка подбирает размер для линии, которой мала текущая
         const fam = bp && (catalog.water_pipes_mp || []).some(x => x.id === bp.id || (x.rommer && x.rommer.id === bp.id)) ? catalog.water_pipes_mp : catalog.water_pipes;
         const branchSizes = (fam || []).map(x => { const dm = this.pipeDims(x); return dm ? { id: x.id, od: dm.od, wall: dm.wall, dIn: dm.dIn, label: dm.od + '×' + dm.wall } : null; })
-            .filter(x => x && x.dIn > bd.dIn + 1e-6).sort((a, b) => a.dIn - b.dIn);
+            .filter(x => x && x.od <= 20 && x.dIn > bd.dIn + 1e-6).sort((a, b) => a.dIn - b.dIn);   // фитинги в каталоге есть только до 20 мм
         const wh = window.waterHydro;
         let peak = 0;
         zones.forEach(z => {
@@ -52334,6 +52334,7 @@ const app = {
             },
             branch: { dIn: bd.dIn, od: bd.od, wall: bd.wall, label: bd.od + '×' + bd.wall },
             branchSizes: branchSizes,
+            fitNote: (s.waterPipeMaterial === 'metal_plastic') ? 'Пресс-фитинги 20 мм в смету сами не подставляются — замените вручную.' : '',
             assumed: !!mains && !s.waterInput,
             zones: zones.map(z => {
                 const f = (z && z.fixtures) || {};
@@ -52427,6 +52428,7 @@ const app = {
                 + '</div>';
         });
 
+        if (res.upsize && res.upsize.length && res.data.fitNote) html += '<div class="hc-det-p">' + esc(res.data.fitNote) + '</div>';
         html += '<div class="hc-rows">';
         const fi = res.data.flowInfo;
         if (fi && fi.scenarios && fi.scenarios.length) {
@@ -94111,13 +94113,19 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 waterPipe.alts = [catalog.water_pipes_mp[0]];
             }
             this._waterPipeSel = waterPipe;
-            let waterEurocone = (this.state.waterPipeMaterial === 'metal_plastic') ? catalog.parts[3] : catalog.water_parts.find(x => x.id === "SFC-0020-001622");
+            // Труба линий крупнее 16 (заменили по проверке гидравлики): аксиальные фитинги PEX берём под 20 мм —
+            // евроконус, гильза, фиксатор, водорозетка. Для металлопластика пресс-фитинги 20 мм не подставляются
+            // сами (замена вручную, об этом сказано в проверке воды).
+            const _wOd = (() => { const dm = this.pipeDims(this.waterBranchPipe()); return dm ? dm.od : 16; })();
+            const _big = this.state.waterPipeMaterial !== 'metal_plastic' && _wOd >= 20;
+            const _sleeve = () => _big ? (catalog.axial_fittings_pex || []).find(x => x.id === 'SFA-0020-000020') : catalog.water_parts.find(x => x.id === "SFA-0020-000016");
+            let waterEurocone = (this.state.waterPipeMaterial === 'metal_plastic') ? catalog.parts[3] : catalog.water_parts.find(x => x.id === (_big ? "SFC-0020-002028" : "SFC-0020-001622"));
             // #10: металлопластик монтируется на ПРЕСС-фитинги (SFP-), а не на аксиальные (SFA-).
             // Водорозетка для пресса — угольник настенный с креплением удлиненный 1/2"×16;
             // короткий, настенный комплект и угольник-переходник — в модалке замены.
             const _isMpWater = (this.state.waterPipeMaterial === 'metal_plastic');
             const _waterSocket = () => {
-                if (!_isMpWater) return catalog.water_fittings[0];
+                if (!_isMpWater) return _big ? { ...catalog.water_fittings[2], originalId: 'water_socket_20' } : catalog.water_fittings[0];
                 const pressAll = catalog.water_fittings_press_mp || [];
                 const press = pressAll.find(x => x.id === 'SFP-0012-001216');
                 if (!press) return catalog.water_fittings[0];
@@ -94239,12 +94247,12 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             };
             const _addDirect = (line, n, grp) => {
                 if (n <= 0) return;
-                const a = this.findCatalogItemById(_isMpWater ? 'SFP-0002-001216' : 'SFA-0002-001612');
+                const a = this.findCatalogItemById(_isMpWater ? 'SFP-0002-001216' : (_big ? 'SFA-0002-002012' : 'SFA-0002-001612'));
                 if (a) addToBill({ ...a, originalId: a.id + '_riser_' + (line === 'ХВС' ? 'cw' : 'hw') }, n,
                     `Переходник с внутренней резьбой 16×1/2" — стояк ${line} с одной точкой разбора: коллектор не нужен, труба навинчивается прямо на американку крана узла ввода.`, grp);
                 // Аксиальный переходник PEX держит трубу надвижной гильзой
-                if (!_isMpWater) addToBill(catalog.water_parts.find(x => x.id === "SFA-0020-000016"), n,
-                    `Монтажная гильза 16 для переходника на ${line} — 1 шт на переходник.`, grp);
+                if (!_isMpWater) addToBill(_sleeve(), n,
+                    `Монтажная гильза ${_big ? 20 : 16} для переходника на ${line} — 1 шт на переходник.`, grp);
             };
 
             if (totalColdPoints > 0) {
@@ -94300,10 +94308,10 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     // пластиковый фиксатор поворота (это оснастка PEX-a) в смету не идут вовсе.
                     addToBill(_waterSocket(), socketsCold, this.getDesc('socket', _isMpWater ? 'водорозетка под пресс — угольник настенный с креплением (ХВС)' : 'Тупиковая (ХВС)', socketsCold), grpCold);
                     if (!_isMpWater) {
-                        addToBill(catalog.water_parts.find(x => x.id === "SFA-0020-000016"), socketsCold, this.getDesc('sleeve', '1 шт на розетку'), grpCold);
+                        addToBill(_sleeve(), socketsCold, this.getDesc('sleeve', '1 шт на розетку'), grpCold);
                     }
                     addToBill(catalog.water_fittings[4], socketsCold, "Пробка синяя (опрессовка)", grpCold);
-                    if (!_isMpWater) addToBill(catalog.water_fittings[6], socketsCold, "Фиксатор 90°", grpCold);
+                    if (!_isMpWater) addToBill(catalog.water_fittings[_big ? 7 : 6], socketsCold, "Фиксатор 90°", grpCold);
                 }
                 if (totalToilets > 0) addToBill(catalog.water_fittings[8], totalToilets, this.getDesc('double_clip', totalToilets, 'toilet'), grpCold);
             }
@@ -94366,7 +94374,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     // из пресс-тройника 16х16х16 в кольце и того же угольника с ВР, что и у тупиковой
                     // точки. Аксиальные гильзы и фиксаторы поворота (оснастка PEX-a) не нужны вовсе.
                     const _mpRecirc = recirc && _isMpWater;
-                    let socketItem = (recirc && !_isMpWater) ? catalog.water_fittings[1] : _waterSocket();
+                    let socketItem = (recirc && !_isMpWater) ? (_big ? catalog.water_fittings[2] : catalog.water_fittings[1]) : _waterSocket();
                     let sName = (recirc && !_isMpWater) ? "Угольник проточный (Бронза)" : (_isMpWater ? "водорозетка под пресс — угольник с ВР 1/2\"" : "Водорозетка тупиковая");
                     let sCount = recirc ? 2 : 1;
                     addToBill(socketItem, totalMixers, this.getDesc('socket', sName, totalMixers), grpHot);
@@ -94375,11 +94383,11 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         if (_tee) addToBill(_tee, totalMixers, "Пресс-тройник 16х16х16 в кольце рециркуляции: подача и обратка проходят насквозь, отвод — на угольник с ВР под смеситель (1 шт на точку). Проточного настенного угольника под пресс у STOUT нет.", grpHot);
                     }
                     if (!_isMpWater) {
-                        addToBill(catalog.water_parts.find(x => x.id === "SFA-0020-000016"), totalMixers * sCount, this.getDesc('sleeve', `${sCount} шт на розетку`), grpHot);
+                        addToBill(_sleeve(), totalMixers * sCount, this.getDesc('sleeve', `${sCount} шт на розетку`), grpHot);
                     }
                     addToBill(catalog.water_fittings[5], totalMixers, "Пробка красная (опрессовка)", grpHot);
                     let fixCount = recirc ? totalMixers * 2 : totalMixers;
-                    if (!_isMpWater) addToBill(catalog.water_fittings[6], fixCount, "Фиксатор 90°", grpHot);
+                    if (!_isMpWater) addToBill(catalog.water_fittings[_big ? 7 : 6], fixCount, "Фиксатор 90°", grpHot);
                 }
             }
 
