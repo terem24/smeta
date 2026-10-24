@@ -5746,6 +5746,82 @@
     }), radRows: radRows, radTee: RR ? RR.tee : null, radM: RR ? Math.round(RR.totalM * 10) / 10 : 0 };
   }
 
+  /**
+   * Трассы труб от одной точки к нескольким по плану этажа — по тем же правилам, что у радиаторов (radRoutes): сетка по
+   * комнатам, стену трасса переходит только в дверном проёме (f.geom.doors), держится от стен чуть в стороне, идёт под 90°
+   * и обходит «без обогрева». Ничего про петли тёплого пола здесь нет: водяная труба в стяжке под них не лезет.
+   * Возвращает массив ломаных в координатах плана (по числу dests; null — путь не нашёлся), либо null — план без комнат.
+   */
+  function routePipes(f, src, dests) {
+    var rooms = (f.zones || []).filter(function (z) { return z && z.pts && z.pts.length > 2 && z.type !== 'cold'; });
+    if (!rooms.length || !f.pxPerM || !dests.length) return null;
+    var ppm = f.pxPerM;
+    var g = floorGrid({ pxPerM: ppm, coll: { x: src[0], y: src[1] } },
+      rooms.concat([{ pts: dests.map(function (d) { return [d[0], d[1]]; }) }]));
+    if (!g) return null;
+    var N = g.W * g.H, own = new Int32Array(N), cold = new Uint8Array(N), k;
+    rooms.forEach(function (z, i) { polyCells(g, z.pts, function (q) { own[q] = i + 1; }); });
+    (f.zones || []).forEach(function (z) {
+      if (z && z.type === 'cold' && z.pts && z.pts.length > 2) polyCells(g, z.pts, function (q) { cold[q] = 1; });
+    });
+    // улица — дальше 0,4 м от комнат: наружу трасса не выходит
+    var near = new Uint8Array(N).fill(255), qq = new Int32Array(N), qh = 0, qt = 0;
+    for (k = 0; k < N; k++) if (own[k]) { near[k] = 0; qq[qt++] = k; }
+    while (qh < qt) {
+      var c0 = qq[qh++], cx0 = c0 % g.W;
+      if (near[c0] >= 4) continue;
+      [cx0 > 0 ? c0 - 1 : -1, cx0 < g.W - 1 ? c0 + 1 : -1, c0 - g.W, c0 + g.W].forEach(function (m2) {
+        if (m2 < 0 || m2 >= N || near[m2] !== 255) return;
+        near[m2] = near[c0] + 1; qq[qt++] = m2;
+      });
+    }
+    var wd = wallDist(g, own), cost = new Float32Array(N);
+    var doorsG = ((f.geom && f.geom.doors) || []).filter(function (d) { return d && isFinite(d.x) && isFinite(d.y) && d.w > 0; });
+    var wallCost = doorsG.length ? RCOST_WALL_DOOR : RCOST_WALL;
+    for (k = 0; k < N; k++) {
+      cost[k] = cold[k] ? RCOST_COLD : own[k]
+        ? 1 + (wd[k] > 2 ? RCOST_MID : (3 - wd[k]) * RCOST_EDGE)
+        : (near[k] > 3 ? RCOST_OUT : wallCost);
+    }
+    doorsG.forEach(function (d) {
+      var da = (d.ang || 0) * Math.PI / 180, ux = Math.cos(da), uy = Math.sin(da);
+      var hu = d.w * 0.4, hv = 0.35 * ppm, rr = Math.abs(ux) * hu + Math.abs(uy) * hv, rv = Math.abs(uy) * hu + Math.abs(ux) * hv;
+      var c0 = cellAt(g, [d.x - rr, d.y - rv]), c1 = cellAt(g, [d.x + rr, d.y + rv]);
+      for (var y = Math.floor(c0 / g.W); y <= Math.floor(c1 / g.W); y++) {
+        for (var x = c0 % g.W; x <= c1 % g.W; x++) {
+          var q = y * g.W + x, cp = cellXY(g, q), du = (cp[0] - d.x) * ux + (cp[1] - d.y) * uy, dv = -(cp[0] - d.x) * uy + (cp[1] - d.y) * ux;
+          if (Math.abs(du) <= hu && Math.abs(dv) <= hv && !cold[q] && cost[q] > 3) cost[q] = 3;
+        }
+      }
+    });
+    var srcCell = cellAt(g, src);
+    var goal = new Int32Array(N).fill(-1), cells = dests.map(function (d, i) { var c = cellAt(g, d); goal[c] = i; return c; });
+    var R = routeAll(g, cost, srcCell, goal, dests.length);
+    var clean = function (P) {
+      var out = [];
+      P.forEach(function (p) {
+        var L = out.length;
+        if (L && Math.abs(out[L - 1][0] - p[0]) < 1e-6 && Math.abs(out[L - 1][1] - p[1]) < 1e-6) return;
+        if (L >= 2) {
+          var a = out[L - 2], b = out[L - 1];
+          if ((Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(b[0] - p[0]) < 1e-6) ||
+              (Math.abs(a[1] - b[1]) < 1e-6 && Math.abs(b[1] - p[1]) < 1e-6)) { out[L - 1] = p; return; }
+        }
+        out.push(p);
+      });
+      return out;
+    };
+    return dests.map(function (d, i) {
+      var gc = cells[i], best = -1, bd = Infinity, dd;
+      for (dd = 0; dd < 4; dd++) if (R.dist[gc * 4 + dd] < bd) { bd = R.dist[gc * 4 + dd]; best = gc * 4 + dd; }
+      if (best < 0) return null;
+      var cs = [];
+      for (var q = best; q >= 0; q = R.prev[q]) cs.push(q >> 2);
+      cs.reverse();
+      return clean(orthoPath([[src[0], src[1]]].concat(cs.map(function (q) { return cellXY(g, q); }), [[d[0], d[1]]])));
+    });
+  }
+
   // ═══ Планы водоснабжения и канализации в смете ═══════════════════════════
   // Те же планы, что у отопления (ufhView): подложка, комнаты, трассы, номера приборов. К каждому номеру в таблице
   // под сметой — расход, длина, диаметр. Данные (приборы, трассы, лежак, выпуск, коллекторы) готовит мастер
@@ -5876,7 +5952,7 @@
   // длины и расходы петель там должны совпадать с листом укладки.
   window.projectPlans = { sheets: sheets, waterSheets: waterSheets, wetZoneSheets: wetZoneSheets, axonoSheets: axonoSheets, iso3dSheets: iso3dSheets,
     boilerRoom: boilerRoom,
-    floorLoops: floorLoops, loopRows: loopRows, num1: num1, ufhView: ufhView, waterView: waterView, fixGlyph: fixGlyph, wvFixtures: wvFixtures, radRoutes: radRoutes,
+    floorLoops: floorLoops, loopRows: loopRows, num1: num1, ufhView: ufhView, waterView: waterView, fixGlyph: fixGlyph, routePipes: routePipes, wvFixtures: wvFixtures, radRoutes: radRoutes,
     radCollector: radCollector, boilerZone: boilerZone, wallSpot: wallSpot,
     snapCollector: snapCollector, collAngle: collAngle, angFromNormal: angFromNormal, roomAround: roomAround,
     radConnSide: radConnSide, radSideOfModel: radSideOfModel,

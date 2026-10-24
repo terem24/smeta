@@ -428,7 +428,7 @@
 </div>
 
 <script src="water_hydro.js?v=1.7"></script>
-<script src="project_plans.js?v=1.46"></script>
+<script src="project_plans.js?v=1.47"></script>
 <script>
 'use strict';
 // Доступ к проектированию. Своей авторизации у страницы нет, поэтому отметку
@@ -1308,9 +1308,14 @@ function computeVk() {
     var wP = (DATA.floors[0].water && DATA.floors[0].water.visited) ? wwPoints(DATA.floors[0].water) : null;
     if (wP && wP.coll && wP.coll.fl === fi) { src = [wP.coll.x, wP.coll.y]; srcKind = 'boiler'; }
     if (src) f.wsrc = { x: Math.round(src[0]), y: Math.round(src[1]), kind: srcKind };
+    // Мастер: вода идёт как трассы радиаторов — по комнатам, стены только через двери, под 90° (projectPlans.routePipes),
+    // лучом от коллекторов к каждому прибору; санузел-стояк канализации — тем же способом внутри комнаты.
+    var dIdx = [], dPts = [];
+    fx.forEach(function (q, qi) { if (q.t !== 'riser') { dIdx.push(qi); dPts.push([q.x, q.y]); } });
+    var wRoutes = (src && wP && wP.coll) ? wwRoutes(f, fi, src, dPts, m) : null;
     fx.forEach(function (q, qi) {
       if (q.t === 'riser') return;
-      if (src) f.wlines.push({ i: qi, pts: (wP && wP.coll) ? wwManhattan(m, src, [q.x, q.y]) : routeBetween(m, src, [q.x, q.y]) });
+      if (src) f.wlines.push({ i: qi, pts: wRoutes ? wRoutes[dIdx.indexOf(qi)] : routeBetween(m, src, [q.x, q.y]) });
       if (risers.length) {
         var best = risers[0], bd = 1e18;
         // стояк своего помещения (у санузла он свой); ближайший по прямой может стоять за стеной в соседней комнате
@@ -1319,8 +1324,10 @@ function computeVk() {
           var d = Math.hypot(r.x - q.x, r.y - q.y);
           if (d < bd) { bd = d; best = r; }
         });
+        var sPts = null;
+        if (wP && wP.coll) { var sr = wwRoutes(f, fi, [best.x, best.y], [[q.x, q.y]], m); sPts = sr && sr[0] ? sr[0].slice().reverse() : null; }
         f.slines.push({ i: qi, d: (q.t === 'toilet' ? 110 : 50),
-          pts: routeBetween(m, [q.x, q.y], [best.x, best.y]) });
+          pts: sPts || routeBetween(m, [q.x, q.y], [best.x, best.y]) });
       }
     });
   });
@@ -7557,6 +7564,21 @@ function wwManhattan(m, a, b) {
   return walls(p1) <= walls(p2) ? p1 : p2;
 }
 
+/**
+ * Трассы от src к точкам: по правилам радиаторов (двери, под 90°); если плана комнат или пути нет — прямоугольная трасса.
+ * Двери берутся из геометрии этажа (f.geom): считаем её при первом обращении.
+ */
+function wwRoutes(f, fi, src, dests, m) {
+  var r = null;
+  try {
+    if (window.projectPlans && projectPlans.routePipes) {
+      if (!f.geom) { try { f.geom = exportGeom(fi); } catch (e) {} }
+      r = projectPlans.routePipes(f, src, dests);
+    }
+  } catch (e) { console.warn('[plan_editor] трассы по комнатам:', e && e.message); }
+  return dests.map(function (d, i) { return (r && r[i]) || wwManhattan(m, src, d); });
+}
+
 function wwPolyM(pts, ppm) {
   var s = 0;
   for (var i = 1; i < pts.length; i++) s += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
@@ -7659,7 +7681,7 @@ function computeWaterTrunks() {
   var m = getMask(P.coll.fl);
   w.inM = null;
   if (P.inp && P.inp.fl === P.coll.fl && !P.inp.auto) {
-    w.inM = Math.round(wwPolyM(wwManhattan(m, [P.inp.x, P.inp.y], [P.coll.x, P.coll.y]), cf.pxPerM) * 10) / 10;
+    w.inM = Math.round(wwPolyM(wwRoutes(cf, P.coll.fl, [P.inp.x, P.inp.y], [[P.coll.x, P.coll.y]], m)[0], cf.pxPerM) * 10) / 10;
   }
   var feed = {};
   DATA.floors.forEach(function (f, fi) {
@@ -7672,7 +7694,7 @@ function computeWaterTrunks() {
       var dd = Math.hypot(q.x - f.wsrc.x, q.y - f.wsrc.y);
       if (dd < sd) { sd = dd; shaft = [q.x, q.y]; }
     });
-    feed[fi] = wwPolyM(wwManhattan(m, [P.coll.x, P.coll.y], shaft), cf.pxPerM) +
+    feed[fi] = wwPolyM(wwRoutes(cf, P.coll.fl, [P.coll.x, P.coll.y], [shaft], m)[0], cf.pxPerM) +
       (sd < 1e17 ? sd / cf.pxPerM : 0) + WW_RISE * Math.abs(fi - P.coll.fl);
     f.wfeed = Math.round(feed[fi] * 10) / 10;
   });
@@ -7694,7 +7716,7 @@ function computeWaterTrunks() {
       // приборов на плане нет — до центра комнаты, как оценка
       var z = c.zone ? wwRoomZone(c.fl, c.zone) : null;
       if (!z) return;
-      var t = centroid(z.pts), pts = wwManhattan(m, [P.coll.x, P.coll.y], t);
+      var t = centroid(z.pts), pts = wwRoutes(cf, P.coll.fl, [P.coll.x, P.coll.y], [t], m)[0];
       c.m = Math.round((wwPolyM(pts, cf.pxPerM) + WW_RISE * Math.abs(c.fl - P.coll.fl)) * 10) / 10;
       cf.wtr.push({ i: i, name: c.name, pts: pts, m: c.m, fl: c.fl });
     }
