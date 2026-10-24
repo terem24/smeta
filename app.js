@@ -52599,6 +52599,20 @@ const app = {
         if (!box) return;
         const area = document.getElementById('print-area');
         if (!area) return;
+        // Карточка принадлежит разделу воды: выключили раздел «5.» — уходит вместе с ним,
+        // а не висит над таблицей или под схемой чужого раздела
+        const waterSecs = Array.from(area.querySelectorAll('tr.row-sec')).filter(tr => {
+            const t = ((tr.querySelector('.row-sec-title') || {}).dataset || {}).title || '';
+            return /^5\./.test(t) && !t.startsWith('5.5.');
+        });
+        const waterOn = waterSecs.some(tr => !tr.classList.contains('disabled-section'));
+        if (waterSecs.length && !waterOn) {
+            box.dataset.off = '1';
+            box.style.display = 'none';
+            const r0 = box.closest('#water_hydro_row'); if (r0) r0.style.display = 'none';
+            return;
+        }
+        delete box.dataset.off;
         const row = ['water_scheme_row', 'hvs_node_scheme_row'].map(id => area.querySelector('#' + id)).find(Boolean);
         if (!row) {
             const sec = Array.from(area.querySelectorAll('tr.row-sec')).find(tr => {
@@ -52625,7 +52639,7 @@ const app = {
         try {
             const html = this.waterHydroHtml(this.waterHydroCheck(), false);
             box.innerHTML = html;
-            box.style.display = html ? '' : 'none';
+            box.style.display = (html && !box.dataset.off) ? '' : 'none';
             if (tr) tr.style.display = html ? '' : 'none';
         } catch (e) { box.innerHTML = ''; box.style.display = 'none'; if (tr) tr.style.display = 'none'; }
     },
