@@ -161,8 +161,39 @@ const PayReadiness = {
             medianEst: this.median(estSums),
             medianWorks: this.median(workSums),
             estCount: estSums.length,
-            payments: raw.payments || null
+            payments: raw.payments || null,
+            path: this.pathOf(raw.events, people)
         };
+    },
+
+    /**
+     * Путь к оплате по журналу paywall_events: сколько РАЗНЫХ людей на каждом шаге и из каких
+     * мест они пришли. null — журнала нет (миграция 20261025_paywall_events.sql не выполнена).
+     * «Я оплатил» и «Оплатили» берём из тех же оплат, что и воронка выше, — но только среди тех,
+     * кто вообще попал в журнал, иначе проценты шага к шагу не сойдутся.
+     */
+    pathOf: function (events, people) {
+        if (!events) return null;
+        const byId = {};
+        people.forEach(p => { byId[p.id] = p; });
+        const STEPS = [['seen', 'Увидели закрытое (замок, проба)'], ['tariff_open', 'Открыли окно тарифа'], ['pay_open', 'Открыли окно оплаты']];
+        const who = {}, bySrc = {};
+        STEPS.forEach(s => { who[s[0]] = new Set(); });
+        events.forEach(e => {
+            if (!who[e.kind]) return;
+            who[e.kind].add(e.user_id);
+            const key = e.kind + '|' + (e.src || '—');
+            (bySrc[key] || (bySrc[key] = { kind: e.kind, src: e.src || '—', users: new Set() })).users.add(e.user_id);
+        });
+        const inLog = new Set(); STEPS.forEach(s => who[s[0]].forEach(u => inLog.add(u)));
+        const ppl = Array.from(inLog).map(id => byId[id]).filter(Boolean);
+        const steps = STEPS.map(s => ({ id: s[0], label: s[1], n: who[s[0]].size }));
+        steps.push({ id: 'req', label: 'Нажали «Я оплатил»', n: ppl.filter(p => p.payReq > 0 || p.paid > 0).length });
+        steps.push({ id: 'paid', label: 'Оплатили', n: ppl.filter(p => p.paid > 0).length });
+        const srcs = Object.keys(bySrc).map(k => ({ kind: bySrc[k].kind, src: bySrc[k].src, n: bySrc[k].users.size }))
+            .sort((a, b) => b.n - a.n).slice(0, 25);
+        const first = events.reduce((m, e) => { const t = new Date(e.created_at).getTime(); return t && (m === null || t < m) ? t : m; }, null);
+        return { steps, srcs, first, total: events.length };
     },
 
     /**
@@ -195,12 +226,13 @@ const PayReadiness = {
                     if (order) r = r.order(order, { ascending: false });
                     return r;
                 };
-                const [u, e, i, p, d] = await Promise.all([
+                const [u, e, i, p, d, ev] = await Promise.all([
                     q('users', 'id, auth_user_id, account_type, is_blocked, created_at, registered_at, last_visited, activity_types, region, city, distributor_id, sess_days, first_name, last_name, username, email'),
                     q('estimates', 'user_id, total_sum, works_sum, created_at'),
                     q('shared_invoices', 'user_id, created_at'),
                     q('subscription_payments', 'user_id, status, paid_rub, created_at'),
-                    q('distributors', 'id, company_name')
+                    q('distributors', 'id, company_name'),
+                    q('paywall_events', 'user_id, kind, src, created_at')
                 ]);
                 if (u.error) throw u.error;
                 if (e.error) throw e.error;
@@ -209,7 +241,8 @@ const PayReadiness = {
                 // Таблицы оплат может не быть (миграция subscription_payments) — это не ошибка вкладки
                 this._data = this.analyze({
                     users: u.data, estimates: e.data, invoices: i.data,
-                    payments: p.error ? null : p.data, distributors: d.data
+                    payments: p.error ? null : p.data, distributors: d.data,
+                    events: ev.error ? null : ev.data
                 });
             } catch (err) {
                 this._error = (err && err.message) || String(err);
@@ -303,6 +336,7 @@ const PayReadiness = {
                 ${tile('Оплатили', paid, 'подписок оплачено')}
             </div>
             ${this.card('Воронка', 'Где люди отваливаются на пути к оплате. Процент — от зарегистрировавшихся.', this.funnelHtml(a))}
+            ${this.pathCard(a)}
             ${this.card('Выручка при ваших ценах', 'Ориентир, а не прогноз: сколько вышло бы, если бы часть горячих и тёплых оплатила. Цены и процент хранятся только в этом браузере.', '<div id="pr_forecast"></div>')}
             ${this.card('Кто готов платить', 'Срезы по роли в анкете, региону и дистрибьютору. Строки отсортированы по числу горячих.', '<div id="pr_groups"></div>')}
             ${this.card('Люди', 'Балл: смета за 30 дней 2–3, отправленный КП или счёт 3, заходы в 3+ разных дня 2, визит за неделю 1, смета от 500 тыс. ₽ 1. Горячий — ' + this.HOT_FROM + '+, тёплый — ' + this.WARM_FROM + '–' + (this.HOT_FROM - 1) + '.', '<div id="pr_people"></div>')}`;
@@ -311,8 +345,22 @@ const PayReadiness = {
         this.renderPeople();
     },
 
-    funnelHtml: function (a) {
-        const top = a.funnel[0].n || 1;
+    pathCard: function (a) {
+        const note = 'Что люди видят и нажимают на пути к оплате. Считаются разные люди, не нажатия. Шаги отсюда не обязаны идти по порядку: окно тарифа открывают и из кабинета.';
+        if (!a.path) {
+            return this.card('Путь к окну оплаты', note, '<div class="ad-card-note ad-warn" style="padding:0;">Журнала paywall_events в базе нет — выполните supabase/migrations/20261025_paywall_events.sql в SQL Editor, и данные начнут копиться.</div>');
+        }
+        const p = a.path, top = Math.max(1, ...p.steps.map(s => s.n));
+        const since = p.first ? 'Журнал ведётся с ' + new Date(p.first).toLocaleDateString('ru-RU') + '. ' : 'Пока в журнале пусто. ';
+        const KIND = { seen: 'увидели', tariff_open: 'окно тарифа', pay_open: 'окно оплаты' };
+        const rows = p.srcs.map(s => `<tr><td>${this.esc(s.src)}</td><td>${KIND[s.kind] || s.kind}</td><td class="n">${s.n}</td></tr>`).join('');
+        return this.card('Путь к окну оплаты', since + note,
+            this.funnelHtml({ funnel: p.steps }, top) +
+            (rows ? `<div class="pr-wrap" style="margin-top:12px;"><table class="pr-table"><thead><tr><th>Откуда</th><th>Шаг</th><th class="n">Людей</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''));
+    },
+
+    funnelHtml: function (a, topOverride) {
+        const top = topOverride || a.funnel[0].n || 1;
         return '<div class="pr-funnel">' + a.funnel.map(s => {
             const w = s.n ? Math.max(2, Math.round(s.n * 100 / top)) : 0;
             return `<div class="pr-fun-row"><div class="pr-fun-label">${this.esc(s.label)}</div>

@@ -12932,6 +12932,8 @@ body.dark-mode .rec-nohave { color: #FBBF24; }
     border-top: 1px solid var(--border, #e2e8f0);
 }
 .rec-total { margin-right: auto; font-size: 14px; }
+.rec-trial { margin-top: 14px; padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45;
+    background: var(--surface-light, #f1f5f9); border: 1px dashed var(--border, #cbd5e1); color: var(--text-main); }
 .rec-total b { font-size: 18px; color: var(--primary, #0284c7); }
 
 .rec-search-card { max-height: 82dvh; display: flex; flex-direction: column; gap: 10px; text-align: left; }

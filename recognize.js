@@ -69,7 +69,7 @@ const RecognizeUI = {
             ? app.tariffAccess('recognize')
             : ((typeof app.isPro === 'function' && !app.isPro()) ? 'off' : 'list');
         if (cell === 'on') return true;
-        if (cell === 'off') return false;
+        if (cell === 'off') return this.trialAvailable();
 
         if (typeof app.hasFeatureRoleAccess === 'function' && app.hasFeatureRoleAccess()) return true;
 
@@ -2448,6 +2448,15 @@ const RecognizeUI = {
         // уходил бы на чтение плана по правилам сметы.
         const guess = !this._project && await this.looksLikePlan();
         const asPlan = !!this._project || guess;
+        // Планы этажей и комплекты проекта переносят данные мимо «Добавить в смету», поэтому
+        // в пробный разбор не входят
+        if (asPlan && this.trialMode()) {
+            this._busy = false;
+            if (go) go.disabled = false;
+            this.setStatus('');
+            app.showModal('pro', { why: 'Разбор планов этажей и комплектов проекта — в тарифе Профи' });
+            return;
+        }
         this.progressStart(asPlan ? 'plan' : !!this._text);
 
         try {
@@ -2704,6 +2713,7 @@ const RecognizeUI = {
      * Эскиз — один лист: рамки лежат поверх одного снимка.
      */
     async runSketch() {
+        if (this.trialMode()) { this.progressStop(); this.trialOffer(); return; }
         if (typeof RecognizeSketch === 'undefined') {
             throw new Error('Разбор эскизов котельной не загрузился. Обновите страницу.');
         }
@@ -3885,6 +3895,7 @@ const RecognizeUI = {
     },
 
     startReview(res) {
+        this.markTrial();
         // Лист прочитан и оказался сметой — шапка мастера говорит об этом
         // прямо. До разбора она нейтральна: что именно принесли, там ещё
         // неизвестно (см. setHead).
@@ -5629,10 +5640,10 @@ const RecognizeUI = {
           </div>
           ${this.renderMissAnalysis()}
           ${this.renderSuggestions()}
-          <div class="rec-foot">
+          ${RecognizeUI.trialNote()}<div class="rec-foot">
             <div class="rec-total">Итого: <b>${Math.round(sum).toLocaleString('ru-RU')} ₽</b></div>
-            <button class="calc-dialog-btn calc-dialog-btn-cancel" onclick="RecognizeUI.apply('new')">Создать новую смету</button>
-            <button class="calc-dialog-btn calc-dialog-btn-confirm" onclick="RecognizeUI.apply('add')">Добавить в текущую смету</button>
+            <button class="calc-dialog-btn calc-dialog-btn-cancel" onclick="RecognizeUI.apply('new')">${RecognizeUI.trialLock()}Создать новую смету</button>
+            <button class="calc-dialog-btn calc-dialog-btn-confirm" onclick="RecognizeUI.apply('add')">${RecognizeUI.trialLock()}Добавить в текущую смету</button>
           </div>`;
     },
 
@@ -6340,12 +6351,12 @@ const RecognizeUI = {
               <tbody>${rows}</tbody>
             </table>
           </div>`}
-          <div class="rec-foot">
+          ${RecognizeUI.trialNote()}<div class="rec-foot">
             <div class="rec-total">Работы: <b>${money(
                 (this.ourWorkPricesOn() ? ourAll : theirAll) + missSum)}</b>
               <span class="rec-art">оборудование: ${money(eqSum)}</span></div>
-            <button class="calc-dialog-btn calc-dialog-btn-cancel" onclick="RecognizeUI.apply('new')">Создать новую смету</button>
-            <button class="calc-dialog-btn calc-dialog-btn-confirm" onclick="RecognizeUI.apply('add')">Добавить в текущую смету</button>
+            <button class="calc-dialog-btn calc-dialog-btn-cancel" onclick="RecognizeUI.apply('new')">${RecognizeUI.trialLock()}Создать новую смету</button>
+            <button class="calc-dialog-btn calc-dialog-btn-confirm" onclick="RecognizeUI.apply('add')">${RecognizeUI.trialLock()}Добавить в текущую смету</button>
           </div>`;
     },
 
@@ -6912,10 +6923,10 @@ const RecognizeUI = {
               <tbody>${rows}</tbody>
             </table>
           </div>
-          <div class="rec-foot">
+          ${RecognizeUI.trialNote()}<div class="rec-foot">
             <div class="rec-total">Разница: <b>${cmpN ? (delta < 0 ? '−' : delta > 0 ? '+' : '') + money(Math.abs(delta)) : '—'}</b></div>
-            <button class="calc-dialog-btn calc-dialog-btn-cancel" onclick="RecognizeUI.apply('new')">Создать новую смету</button>
-            <button class="calc-dialog-btn calc-dialog-btn-confirm" onclick="RecognizeUI.apply('add')">Добавить в текущую смету</button>
+            <button class="calc-dialog-btn calc-dialog-btn-cancel" onclick="RecognizeUI.apply('new')">${RecognizeUI.trialLock()}Создать новую смету</button>
+            <button class="calc-dialog-btn calc-dialog-btn-confirm" onclick="RecognizeUI.apply('add')">${RecognizeUI.trialLock()}Добавить в текущую смету</button>
           </div>`;
     },
 
@@ -7887,7 +7898,54 @@ const RecognizeUI = {
     // Шаг 3 — перенос в смету
     // ------------------------------------------------------------------
 
+    // ------------------------------------------------------------------
+    // Пробный разбор для базового тарифа
+    //
+    // Распознавание — функция Профи, а на базовом вкладки не видно вовсе, поэтому ценность
+    // не с чем сравнить. Пробуем так: один разбор документа на учётку бесплатно, до экрана
+    // проверки со всеми строками и ценами, а перенос в смету закрыт окном тарифа.
+    // Счётчик живёт в браузере (на сервере ничего нового не заводим); обойти его можно,
+    // но разбор стоит один запрос к модели, а лимит месяца общий (checkQuota).
+    // Сотрудникам ТЕРЕМ пробу не предлагаем: тарифов и оплаты они не видят.
+    // ------------------------------------------------------------------
+    _trialKey() {
+        const u = (app.state && app.state.tgUser) || {};
+        const who = (app._currentUserRow && app._currentUserRow.id) || u.id || u.email || '';
+        return who ? 'rec_trial_used_' + who : '';
+    },
+    trialUsed() {
+        try { const k = this._trialKey(); return !k || localStorage.getItem(k) === '1'; } catch (e) { return true; }
+    },
+    // Вкладка открыта по пробе: таблица «Тарифы» распознавание не дала, личной отметки нет
+    trialMode() {
+        if (typeof app === 'undefined' || typeof app.tariffAccess !== 'function') return false;
+        try { if (new URLSearchParams(location.search).get('recognize') === '1') return false; } catch (e) { }
+        return app.tariffAccess('recognize') === 'off' && !(typeof app.isTeremStaff === 'function' && app.isTeremStaff());
+    },
+    trialAvailable() {
+        if (!this.trialMode() || !(app.state && app.state.tgUser)) return false;
+        // Пока разбор лежит на экране, вкладка остаётся, даже когда проба уже потрачена
+        return !!this._trialRun || !this.trialUsed();
+    },
+    markTrial() {
+        if (!this.trialMode()) return;
+        this._trialRun = true;
+        try { const k = this._trialKey(); if (k) localStorage.setItem(k, '1'); } catch (e) { }
+        if (typeof app.logPaywall === 'function') app.logPaywall('seen', 'Распознавание: пробный разбор');
+    },
+    trialLock() { return this.trialMode() && this._trialRun ? '🔒 ' : ''; },
+    trialNote() {
+        if (!(this.trialMode() && this._trialRun)) return '';
+        return '<div class="rec-trial">Пробный разбор: проверять и править строки можно, а перенос в смету входит в тариф «Профи».' +
+            ' <button type="button" class="rec-btn-g" onclick="RecognizeUI.trialOffer()">Что даёт Профи</button></div>';
+    },
+    trialOffer() {
+        app.showModal('pro', { why: 'Вы разобрали документ — перенос распознанного в смету входит в Профи' });
+    },
+
     async apply(mode) {
+        if (this.trialMode()) { this.trialOffer(); return; }
+
         // Предупреждаем о замене только если есть что заменять: на пустой смете
         // (0 ₽, ничего не добавлено) вопрос бессмыслен.
         const hasExisting = (app.state.userAddedEq && app.state.userAddedEq.length) ||

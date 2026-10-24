@@ -2266,6 +2266,25 @@ const app = {
         } catch (e) { console.warn('[журнал действий]', action, e.message || e); }
     },
 
+    /**
+     * Путь к оплате: что человек увидел закрытого, открыл ли окно тарифа и оплаты.
+     * Пишет в paywall_events (supabase/migrations/20261025_paywall_events.sql) только вошедший
+     * и не сотрудник ТЕРЕМ. Одно и то же место за сеанс пишем один раз: нужно число людей,
+     * а не число нажатий. Без миграции запрос тихо падает.
+     */
+    logPaywall: function (kind, src) {
+        try {
+            if (typeof supabaseClient === 'undefined' || !supabaseClient || !this.state.tgUser || this.isTeremStaff()) return;
+            const key = kind + '|' + String(src || '');
+            this._paywallSent = this._paywallSent || {};
+            if (this._paywallSent[key]) return;
+            this._paywallSent[key] = 1;
+            Promise.resolve(supabaseClient.rpc('log_paywall_event', {
+                p_kind: kind, p_src: src ? String(src) : null, p_plan: this.isPro() ? 'pro' : 'base'
+            })).catch(() => { });
+        } catch (e) { }
+    },
+
     shareInvite: async function (distId) {
         const d = this.findDist(distId);
         if (!d) return;
@@ -8442,6 +8461,7 @@ const app = {
     showModal: function (type, ctx) {
         // Сотрудникам ТЕРЕМ тарифы и оплату не показываем: у них ограничения те же, а покупать нечего
         if (type === 'pro' && this.isTeremStaff()) { app.alert('Эта функция недоступна для вашей учётной записи.'); return; }
+        if (type === 'pro') this.logPaywall('tariff_open', ctx && ctx.why);
         let overlay = document.getElementById('custom_modal_overlay');
         let icon = document.getElementById('custom_modal_icon');
         let title = document.getElementById('custom_modal_title');
@@ -23878,6 +23898,7 @@ const app = {
         if (!this.canUseBrand('TEREM')) chips.push('Прочие марки ТЕРЕМ');
         if (!chips.length) return '';
         const items = this.searchCatalog(query, { locked: true }).slice(0, 3);
+        this.logPaywall('seen', 'Поиск: другие марки');
         return `<div class="pro-lock-block">
             <div class="pro-lock-chips">${chips.map(c => `<span class="pro-lock-chip" data-lock="${esc(c)}">${esc(c)} <b>Профи</b></span>`).join('')}</div>
             ${items.map(it => `<div class="pro-lock-item" data-lock="${esc(it.brand || 'ТЕРЕМ')}">
@@ -97200,6 +97221,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
 
     openPaymentModal(type) {
         if (this.isTeremStaff()) return;
+        this.logPaywall('pay_open', type);
         const overlay = document.getElementById('payment_modal_overlay');
         const subtitle = document.getElementById('planName');
         const qrContainer = document.getElementById('qrcode_container');
