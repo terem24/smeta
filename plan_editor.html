@@ -331,6 +331,38 @@
   .namepick .row { display: flex; gap: 6px; }
   .namepick input { flex: 1; font: inherit; padding: 6px 8px; border-radius: 7px;
                     border: 1px solid var(--border-soft); background: #2a2a2a; color: inherit; }
+  /* Полный экран: план во всё окно, шапка — тонкой лентой, карточка шага со всеми
+     подсказками — колонкой у левого края (те же кнопки и чипы, что и раньше, только
+     вертикально), под ней — быстрые клавиши. Список комнат справа остаётся. */
+  .fs-only { display: none; }
+  html.fs .fs-only { display: inline-block; }
+  html.fs body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  html.fs .topbar { position: static; flex: none; }
+  html.fs .pj-head { display: none !important; }
+  html.fs .wrap { flex: 1 1 auto; min-height: 0; align-items: stretch; padding: 6px; }
+  html.fs .side { overflow-y: auto; }
+  html.fs:not(.fs-dock-off) .wrap { padding-left: 298px; }
+  html.fs #steps { position: fixed; left: 6px; top: var(--fs-top, 52px); bottom: 6px; width: 280px; z-index: 40;
+                   box-sizing: border-box; overflow-y: auto; padding: 8px; border: 1px solid var(--border-soft);
+                   border-radius: 10px; box-shadow: 0 6px 22px rgba(0,0,0,.35); }
+  html.fs.fs-dock-off #steps { display: none; }
+  html.fs #steps .wz-row { flex-direction: column; align-items: stretch; gap: 3px; }
+  html.fs #steps .wz-ar { display: none; }
+  html.fs #steps .wz-st { font-size: 12.5px; }
+  html.fs #steps .wz-do { flex-direction: column; align-items: stretch; }
+  html.fs #steps .wz-ai { flex: 0 0 auto; }
+  html.fs #steps .wz-do .tx { flex: 0 0 auto; }
+  html.fs #steps .wz-do > button { width: 100%; white-space: normal; }
+  html.fs #steps .wz-do .ai-tips { flex-direction: column; flex-wrap: nowrap; gap: 4px; }
+  html.fs #steps .wz-do .ai-tip { border-radius: 8px; align-items: flex-start; padding: 2px 8px 2px 3px; }
+  html.fs #steps .wz-do .ai-tip i { flex: 0 0 auto; }
+  .fs-keys { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-soft); font-size: 11.5px; color: var(--text-sec); }
+  .fs-keys .fk-h { font-size: 10.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 4px; }
+  .fs-keys .fk { display: flex; align-items: baseline; gap: 7px; padding: 1px 0; }
+  .fs-keys kbd { flex: 0 0 auto; min-width: 22px; text-align: center; box-sizing: border-box; padding: 0 5px; border-radius: 4px;
+                 font: 600 11px/17px system-ui, sans-serif; color: var(--text-main); background: rgba(128,128,128,.22);
+                 border: 1px solid rgba(128,128,128,.35); }
+  html:not(.fs) .fs-keys { display: none; }
 </style>
 </head>
 <body>
@@ -399,6 +431,8 @@
     <button onclick="zoomStep(1)">+</button>
   </span>
   <button id="b_darkplan" class="on" onclick="toggleDarkPlan()" title="Тёмный вид подложки: чертёж светлыми линиями по тёмному, как в САПР. Для фотографии плана удобнее выключить и смотреть оригинал.">◐ Тёмный план</button>
+  <button class="ghost ufh-keep" id="b_fs" onclick="toggleFs()" title="Работать на весь экран: план крупнее, а подсказки шага и быстрые клавиши — слева у края. Клавиша F, выход — Esc">⤢ На весь экран</button>
+  <button class="ghost ufh-keep fs-only" id="b_fsdock" onclick="toggleFsDock()" title="Спрятать или вернуть панель шага слева">☰ Панель шага</button>
   <button class="ghost ufh-keep" onclick="doUndo()" title="Ctrl+Z">↶ Шаг назад</button>
   <button onclick="saveAll()" id="b_save" style="background:var(--ok);color:#fff;border-color:var(--ok)">Сохранить</button>
   <button class="ghost" id="b_sheets" onclick="openSheets()" title="Комплект собирается по смете калькулятора вместе с планами">Проект →</button>
@@ -5445,6 +5479,7 @@ var HOTKEYS = [
   { code: 'KeyT', key: 'T', name: 'Санузел', run: function () { setMode('wc'); }, btn: 'b_wc' },
   { code: 'KeyN', key: 'N', name: 'Распознать комнаты', run: function () { autoRooms(); }, btn: 'b_autorooms' },
   { code: 'KeyH', key: 'H', name: 'Подсказки вкл / выкл', run: function () { toggleHints(); }, btn: 'b_hints' },
+  { code: 'KeyF', key: 'F', name: 'На весь экран', run: function () { toggleFs(); }, btn: 'b_fs' },
   { code: 'Equal', key: '+', name: 'Приблизить', run: function () { zoomStep(1); } },
   { code: 'NumpadAdd', key: '+', name: 'Приблизить', run: function () { zoomStep(1); } },
   { code: 'Minus', key: '−', name: 'Отдалить', run: function () { zoomStep(-1); } },
@@ -5556,6 +5591,8 @@ document.addEventListener('keydown', function (e) {
       return;
     }
   }
+  // Esc: сначала бросает начатое (контур, отрезок масштаба), следующий — выходит из полного экрана
+  if (e.key === 'Escape' && fsOn && !tmp.length && !scalePts.length && !polyCur) { toggleFs(false); return; }
   if (e.key === 'Escape') { tmp = []; scalePts = []; polyCur = null; draw(); }
 });
 
@@ -7423,6 +7460,7 @@ function wzRender(box) {
   } else if (upState && upState.err) {
     h += '<div class="wz-up bad">План не ушёл на сервер: ' + upState.err + ' · <b onclick="uploadPending()">повторить</b></div>';
   }
+  if (fsOn) h += fsKeysHtml();
   if (h !== stepsHtml) { box.innerHTML = h; stepsHtml = h; }
   var mb = document.getElementById('b_more');
   if (mb) mb.textContent = allTools ? 'Ещё ▴' : 'Ещё ▾';
@@ -8728,6 +8766,7 @@ function pjRender(box) {
   } else if (upState && upState.err) {
     h += '<div class="wz-up bad">План не ушёл на сервер: ' + upState.err + ' · <b onclick="uploadPending()">повторить</b></div>';
   }
+  if (fsOn) h += fsKeysHtml();
   if (h !== stepsHtml) { box.innerHTML = h; stepsHtml = h; }
   // путь выпуска: Расчёт → Разметка плана → Листы проекта
   var path = document.getElementById('pj_path');
@@ -9005,6 +9044,76 @@ function toggleAllTools() {
   else try { localStorage.setItem('plan_editor_alltools', allTools ? '1' : '0'); } catch (e) {}
   updateGuide();
 }
+
+// ─── Полный экран ─────────────────────────────────────────────────────
+// План во всё окно: в калькуляторе редактор лежит в iframe под шапкой сайта и полосой
+// «← К смете», поэтому растягиваем сам iframe и просим у браузера настоящий полный экран
+// (не дали — остаётся растянутое окно). Карточка шага с подсказками и быстрые клавиши —
+// колонкой у левого края (CSS html.fs #steps): работать и отмечать можно, не выходя из режима.
+var fsOn = false, fsFrameCss = '', fsObs = null;
+
+function fsHost() {
+  try { if (window.frameElement) return window.parent.document; } catch (e) {}
+  return document;
+}
+function fsSyncTop() {
+  var t = document.querySelector('.topbar');
+  document.documentElement.style.setProperty('--fs-top', ((t ? t.offsetHeight : 46) + 6) + 'px');
+}
+
+/** Быстрые клавиши под карточкой шага: те же, что в списке по «?», без дублей. */
+function fsKeysHtml() {
+  var seen = {}, rows = [['Пробел', 'повернуть прибор'], ['Ctrl+Z', 'шаг назад'], ['F', 'весь экран вкл / выкл'], ['Esc', 'выйти из экрана']];
+  HOTKEYS.forEach(function (h) {
+    if (seen[h.name] || h.code === 'Slash' || h.code === 'KeyF') return;
+    seen[h.name] = 1; rows.push([h.key, h.name]);
+  });
+  return '<div class="fs-keys"><div class="fk-h">Быстрые клавиши</div>' + rows.map(function (r) {
+    return '<div class="fk"><kbd>' + r[0] + '</kbd><span>' + r[1] + '</span></div>'; }).join('') + '</div>';
+}
+
+function toggleFs(force) {
+  var on = typeof force === 'boolean' ? force : !fsOn;
+  if (on === fsOn) return;
+  fsOn = on;
+  var fr = null;
+  try { fr = window.frameElement; } catch (e) {}
+  document.documentElement.classList.toggle('fs', on);
+  if (fr) {
+    if (on) { fsFrameCss = fr.style.cssText; fr.style.cssText = fsFrameCss + ';position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:10060;'; }
+    else fr.style.cssText = fsFrameCss;
+  }
+  var host = fsHost();
+  try {
+    if (on && !host.fullscreenElement) { var p = host.documentElement.requestFullscreen(); if (p && p.catch) p.catch(function () {}); }
+    else if (!on && host.fullscreenElement) { var q = host.exitFullscreen(); if (q && q.catch) q.catch(function () {}); }
+  } catch (e) {}
+  var b = document.getElementById('b_fs');
+  if (b) { b.textContent = on ? '⤡ Свернуть (Esc)' : '⤢ На весь экран'; b.className = on ? 'on ufh-keep' : 'ghost ufh-keep'; }
+  if (on) {
+    fsSyncTop();
+    var tb = document.querySelector('.topbar');
+    if (window.ResizeObserver && !fsObs && tb) { fsObs = new ResizeObserver(fsSyncTop); fsObs.observe(tb); }
+  } else if (fsObs) { fsObs.disconnect(); fsObs = null; }
+  stepsHtml = '';
+  updateGuide();
+  // холст перерисовать уже по новой ширине: от неё зависят кружки номеров комнат
+  setTimeout(function () { try { applyZoom(); draw(); } catch (e) {} }, 80);
+}
+function toggleFsDock() {
+  document.documentElement.classList.toggle('fs-dock-off');
+  setTimeout(function () { try { draw(); } catch (e) {} }, 50);
+}
+// Esc браузера закрывает его полный экран — вместе с ним выходим и из нашего режима
+(function () {
+  var h = function () { if (fsOn && !fsHost().fullscreenElement) toggleFs(false); };
+  document.addEventListener('fullscreenchange', h);
+  try { if (fsHost() !== document) fsHost().addEventListener('fullscreenchange', h); } catch (e) {}
+  // окно плана закрыли («← К смете») — вернуть браузер из полного экрана
+  window.addEventListener('pagehide', function () {
+    try { var d = fsHost(); if (fsOn && d.fullscreenElement) d.exitFullscreen(); } catch (e) {}
+  });
+})();
 
 /** Список шагов текущего этажа: что сделано, чем делается, что подсказать. */
 function stepDefs() {
