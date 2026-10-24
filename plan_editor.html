@@ -118,6 +118,10 @@
           align-items: center; flex-wrap: nowrap; }
   .zone:nth-child(even) { background: rgba(255,255,255,.025); }
   .zone:hover { background: rgba(6,150,215,.10); }
+  .zone.zsel { background: rgba(37,99,235,.28) !important; box-shadow: inset 3px 0 0 #2563eb; }
+  .zone .rn { flex: 0 0 auto; min-width: 20px; height: 20px; border-radius: 10px; background: #2563eb; color: #fff;
+              font: 700 11px/20px system-ui; text-align: center; padding: 0 3px; box-sizing: border-box; }
+  .zone .rn.none { background: transparent; color: var(--text-sec); }
   .zone .sw { width: 9px; height: 9px; border-radius: 1px; flex: 0 0 auto; }
   .zone .zt { color: var(--text-sec); font-size: 11px; flex: 0 0 auto; white-space: nowrap; }
   .zone input[type=text] { flex: 1 1 60px; min-width: 0; padding: 2px 5px; font-size: 12px; }
@@ -4543,7 +4547,9 @@ function draw() {
     cx.strokeStyle = TYPES[sz.type][1];
     cx.beginPath();
     sz.pts.forEach(function (p, j) { j ? cx.lineTo(p[0] * k, p[1] * k) : cx.moveTo(p[0] * k, p[1] * k); });
-    cx.closePath(); cx.stroke(); cx.restore();
+    cx.closePath();
+    if (UFH) { cx.fillStyle = 'rgba(37,99,235,.18)'; cx.fill(); }   // в мастере выбранная комната заливается: видно, какую строку искать
+    cx.stroke(); cx.restore();
   }
   // зона под курсором (или выбранная): узлы контура и крестик удаления
   var actZ = hoverZ >= 0 ? hoverZ : selZ;
@@ -4654,6 +4660,7 @@ function draw() {
     cx.fillText('Коллектор радиаторов', rx, ry + (rAng2 % 180 === 90 ? rw : rh) / 2 + 13);
   }
   wwDraw(f, k);
+  if (UFH) { roomBadgesDraw(f, k); ufhHilite(); }
   // сантехприборы: настоящий габарит и разворот вдоль стены
   (f.fixtures || []).forEach(function (q) {
     var col = q.t === 'riser' ? '#7a5c00' : '#0b7285';
@@ -5931,13 +5938,94 @@ function ufhSetTp(z, on) {
 }
 
 /** Список комнат мастера: галочка «тёплый пол», имя с подсказками, площадь, ✕. */
+var RN_MAP = {};
+/**
+ * Номера комнат этажа: в порядке чтения — сверху вниз, в одном ряду слева направо. Ряд — комнаты, чьи верхние
+ * края отличаются не больше чем на 1,2 м. Копия контура тёплого пола несёт номер своей комнаты. Ключ — контур зоны.
+ */
+function roomNums(f) {
+  var tol = 1.2 * (f.pxPerM || 100), list = [], map = {};
+  f.zones.forEach(function (z) {
+    if (z.type === 'cold' || !z.pts || z.pts.length < 3 || isTpCopy(f, z)) return;
+    var x0 = 1e9, y0 = 1e9;
+    z.pts.forEach(function (p) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); });
+    list.push({ z: z, x: x0, y: y0 });
+  });
+  list.sort(function (a, b) { return a.y - b.y; });
+  var rows = [];
+  list.forEach(function (it) {
+    var row = rows.length ? rows[rows.length - 1] : null;
+    if (row && Math.abs(it.y - row.y) <= tol) row.items.push(it); else rows.push({ y: it.y, items: [it] });
+  });
+  var n = 0;
+  rows.forEach(function (row) {
+    row.items.sort(function (a, b) { return a.x - b.x; });
+    row.items.forEach(function (it) { n++; map[JSON.stringify(it.z.pts)] = n; });
+  });
+  return map;
+}
+
+/** Строка таблицы комнат, выбранной на плане: подсветить и показать (прокрутить), если выбор сменился */
+var hiliteLast = -2;
+function ufhHilite() {
+  var rows = document.querySelectorAll('#zones .zone[data-zi]');
+  if (!rows.length) rows = document.querySelectorAll('.zone[data-zi]');
+  var hit = null;
+  Array.prototype.forEach.call(rows, function (r) {
+    var on = selZ >= 0 && (',' + r.getAttribute('data-zi') + ',').indexOf(',' + selZ + ',') >= 0;
+    r.classList.toggle('zsel', on);
+    if (on) hit = r;
+  });
+  if (hiliteLast !== selZ) {
+    hiliteLast = selZ;
+    if (hit && hit.scrollIntoView) { try { hit.scrollIntoView({ block: 'nearest' }); } catch (e) {} }
+  }
+}
+
+/** Кружок с номером в левом верхнем углу каждой комнаты (тот же номер — в таблице справа) */
+function roomBadgesDraw(f, k) {
+  var map = roomNums(f);
+  f.zones.forEach(function (z) {
+    var n = map[JSON.stringify(z.pts)];
+    if (!n || z.type === 'cold' || isTpCopy(f, z)) return;
+    var x0 = 1e9, y0 = 1e9;
+    z.pts.forEach(function (p) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); });
+    var best = z.pts[0], bd = 1e18;
+    z.pts.forEach(function (p) { var d = (p[0] - x0) + (p[1] - y0); if (d < bd) { bd = d; best = p; } });
+    var bx = best[0] * k + 13, by = best[1] * k + 13, txt = String(n);
+    cx.save();
+    cx.beginPath(); cx.arc(bx, by, 10, 0, 6.2832);
+    cx.fillStyle = '#2563eb'; cx.fill(); cx.strokeStyle = '#fff'; cx.lineWidth = 2; cx.stroke();
+    cx.fillStyle = '#fff'; cx.font = 'bold ' + (txt.length > 1 ? 10 : 12) + 'px system-ui'; cx.textAlign = 'center';
+    cx.fillText(txt, bx, by + 4);
+    cx.restore();
+  });
+}
+
 function renderZonesUfh(box) {
   var f = F();
-  f.zones.forEach(function (z, i) {
+  RN_MAP = roomNums(f);
+  // строки — в порядке номеров (как кружки на плане); без номера («без обогрева») — в конце
+  f.zones.map(function (z, i) { return { z: z, i: i, n: RN_MAP[JSON.stringify(z.pts)] || 1e9 }; })
+    .sort(function (a, b) { return a.n - b.n || a.i - b.i; })
+    .forEach(function (it) {
+    var z = it.z, i = it.i;
     if (isTpCopy(f, z)) return;                       // вторая зона той же комнаты — одной строкой
     var d = document.createElement('div'); d.className = 'zone';
     var cold = z.type === 'cold';
     var key = JSON.stringify(z.pts);
+    // номер комнаты — тот же, что кружком на плане; клик по строке выделяет комнату на плане, и наоборот
+    var idxs = [];
+    f.zones.forEach(function (q, qi) { if (q === z || (!cold && q.type !== 'cold' && JSON.stringify(q.pts) === key)) idxs.push(qi); });
+    d.setAttribute('data-zi', idxs.join(','));
+    var rnum = RN_MAP[key];
+    var rn = document.createElement('span'); rn.className = 'rn' + (rnum ? '' : ' none'); rn.textContent = rnum || '–';
+    d.appendChild(rn);
+    d.onclick = function (e) {
+      var tg = e.target && e.target.tagName;
+      if (tg === 'INPUT' || tg === 'BUTTON' || tg === 'LABEL' || (e.target.className === 'del')) return;
+      selZ = i; draw();
+    };
     var tpOn = z.type === 'tp' || f.zones.some(function (q) { return q !== z && q.type === 'tp' && JSON.stringify(q.pts) === key; });
     var sw = document.createElement('span'); sw.className = 'sw';
     sw.style.background = cold ? TYPES.cold[1] : tpOn ? TYPES.tp[1] : TYPES.room[1];
@@ -6043,6 +6131,7 @@ function renderZonesUfh(box) {
   }
   var sum = document.getElementById('zsummary');
   if (sum) sum.innerHTML = '';
+  ufhHilite();
 }
 
 /** Зона с именем «Котельная…», обведённая не тем типом — найти (на любом этаже котельной ещё нет). */
