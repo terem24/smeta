@@ -538,7 +538,36 @@
   .wz-do .ai-tip { border-radius: 10px; background: var(--surface-light); border-color: var(--border-soft); }
   .wz-do .ai-tip i { border-radius: 7px; background: var(--surface-hi); }
   .wz-do button.go { font-size: 14px; padding: 9px 18px; border-radius: 12px; }
+  .wz-sw { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 8px; font-size: 11.5px; font-weight: 700; vertical-align: 1px; }
+  .wz-sw.on { background: rgba(255,255,255,.28); color: #fff; }
+  .wz-sw.off { background: rgba(148,163,184,.22); color: var(--text-sec); }
   .wz-todo { border-radius: 12px; background: rgba(99,102,241,.14); border-color: rgba(129,140,248,.5); }
+  /* автоадаптация карточки шага под высоту окна (обычный режим; на весь экран — свои правила выше):
+     чем ниже окно, тем плотнее карточка, чтобы чертёж не уезжал под край */
+  @media (max-height: 1000px) {
+    html:not(.fs) .steps.wz { padding: 7px 12px 8px; }
+    html:not(.fs) .wz-st { padding: 3px 12px 3px 5px; }
+    html:not(.fs) .wz-do { margin-top: 6px; padding: 9px 14px; gap: 6px 10px; }
+    html:not(.fs) .wz-ai { gap: 9px; }
+    html:not(.fs) .wz-ai .ai-ic { width: 28px; height: 28px; font-size: 14px; border-radius: 9px; }
+    html:not(.fs) .wz-ai .ai-h { font-size: 14px; line-height: 1.35; }
+    html:not(.fs) .wz-ai .ww-sub { margin-top: 2px; font-size: 12px; line-height: 1.4; }
+    html:not(.fs) .wz-ai .ww-sub br { display: none; }
+    html:not(.fs) .ww-st { margin-top: 5px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2px 22px; font-size: 12px; line-height: 1.35; }
+    html:not(.fs) .wz-do button.go { padding: 7px 16px; font-size: 13.5px; }
+    html:not(.fs) .wz-do .ai-tips { gap: 3px 5px; }
+    html:not(.fs) .wz-do .ai-tip { font-size: 11px; line-height: 1.35; }
+  }
+  @media (max-height: 880px) {
+    html:not(.fs) .wz-do .ai-tips { display: none; }
+    html:not(.fs) .wz-ai .ww-sub { display: none; }
+  }
+  @media (max-height: 700px) {
+    html:not(.fs) .wz-st:not(.cur) { font-size: 12px; padding-top: 1px; padding-bottom: 1px; }
+    html:not(.fs) .wz-do { padding: 7px 12px; }
+    html:not(.fs) .wz-ai .ai-ic { display: none; }
+    html:not(.fs) .ww-st { grid-template-columns: 1fr 1fr; }
+  }
   /* ===== окно «ИИ читает план»: стеклянная карточка, этапы и луч по чертежу ===== */
   #scanbox { width: min(440px, calc(100vw - 32px)); padding: 22px 24px 18px; border-radius: 20px;
              background: rgba(18,20,32,.97); border: 1px solid rgba(129,140,248,.35);
