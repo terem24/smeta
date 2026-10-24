@@ -44218,6 +44218,7 @@ const app = {
                     `<td style="text-align:right">${d}</td><td style="text-align:right">${L != null ? f1(L) : '—'}${long ? ' !' : ''}</td><td style="text-align:right">${d >= 110 ? '0,02' : '0,03'}</td></tr>`;
             });
             const W0 = V.sewer && V.sewer.W0, S = W0 && W0.sewer;
+            const SL = W0 && W0.slope && W0.slopeOn ? W0.slope : null;
             const first = V.fl === 1;
             const tot = [['Отводы d50', f1(s50) + ' м'], ['Отводы d110 (унитазы)', f1(s110) + ' м']];
             if (S && first) { tot.push(['Лежак d110 до выпуска', f1(S.mainM) + ' м']); if (S.riserM) tot.push(['Стояки по этажам d110', f1(S.riserM) + ' м']); }
@@ -44225,7 +44226,14 @@ const app = {
                 `<th style="text-align:right">Ø, мм</th><th style="text-align:right">Длина отвода, м</th><th style="text-align:right">Уклон</th></tr></thead><tbody>${body}</tbody></table>` +
                 `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px"><thead><tr style="color:var(--text-sec)"><th style="text-align:left">Длины труб К1</th><th style="text-align:right">Длина</th></tr></thead><tbody>` +
                 tot.map(t => `<tr><td>${t[0]}</td><td style="text-align:right">${t[1]}</td></tr>`).join('') + `</tbody></table>` +
-                (longN ? `<div class="hc-det-p" style="margin-top:6px">! — отвод d50 длиннее 3 м (ориентир практики): перенести прибор или поставить стояк ближе.</div>` : '');
+                (longN ? `<div class="hc-det-p" style="margin-top:6px">! — отвод d50 длиннее 3 м (ориентир практики): перенести прибор или поставить стояк ближе.</div>` : '') +
+                (SL && first ? (() => {
+                    const mn = SL.rows.filter(r => !r.pumped).reduce((a2, r) => a2 == null ? r.margin : Math.min(a2, r.margin), null);
+                    const cm = v => Math.round(v * 100);
+                    const pm = SL.pumpId ? (catalog.sewer_pumps || []).find(x => x.id === SL.pumpId) : null;
+                    if (SL.fail) return `<div class="hc-advice" style="margin-top:6px">Самотёк не проходит: не хватает перепада у ${SL.fail} приборов (выпуск на глубине ${String(SL.depth).replace('.', ',')} м).</div>`;
+                    return `<div class="hc-det-p" style="margin-top:6px">Уклон учтён: выпуск на глубине ${String(SL.depth).replace('.', ',')} м, ` + (mn == null ? 'все приборы на насосной станции' : (SL.tight ? 'самотёк впритык, запас ' + cm(mn) + ' см' : 'самотёк проходит, запас ' + cm(mn) + ' см')) + (pm ? '; насосная станция ' + pm.name.replace('Канализационная насосная станция ', '') + ' в смете' : '') + '.</div>';
+                })() : '');
             parts.push(`<div class="ufh-plan-block" style="margin:6px 0 14px">` + (views.length > 1 ? `<div style="font-weight:700;margin:0 0 6px">${V.fl}-й этаж</div>` : '') +
                 `<div style="font-weight:600;margin:0 0 4px;color:var(--text-sec)">Канализация К1: отводы от приборов к стояку, лежак d110 до выпуска</div>` +
                 `<div class="ufh-plan-row"><div class="automation-scheme" style="flex:none" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${V.svg}` +
@@ -95444,6 +95452,18 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
 
                     let coupling110 = catalog.sewer_silent.find(x => x.id === "SKB-0006-000110");
                     addToBill(coupling110, floors, this.getDesc('sewer_coupling_110'), grpSewerMain);
+
+                    // Самотёк не идёт — станция BIOLIFT, выбранная в плане дома (шаг «Канализация», «Учитывать уклон»)
+                    const _pl8 = this.currentPlans(), _w8 = _pl8 && _pl8.floors && _pl8.floors[0] && _pl8.floors[0].water;
+                    if (_w8 && _w8.visited && _w8.slopeOn && _w8.pump && _w8.pump.id) {
+                        const _pump = (catalog.sewer_pumps || []).find(x => x.id === _w8.pump.id);
+                        if (_pump) {
+                            const _rooms = (_w8.pump.cards || []).join(', ');
+                            addToBill({ ..._pump, originalId: 'sewer_pump_biolift', alts: catalog.sewer_pumps },
+                                1, `<span style="font-size:11px; line-height:1.4;"><b>Зачем:</b> самотёком канализация ${_rooms ? 'от «' + _rooms + '» ' : ''}не проходит: перепада высоты до выпуска не хватает (проверка уклона в плане дома). Станция подаёт стоки под давлением. Модель подбирайте по паспорту — напор и число подключаемых приборов.</span>`,
+                                `8.${subSecIdx++}. Канализация: [Насосная станция]`);
+                        }
+                    }
 
                     // Ревизия и аэратор стояка: лист «К» их требует, в смете их не было
                     const _revQty = floors >= 2 ? 2 : 1;

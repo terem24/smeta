@@ -5274,6 +5274,15 @@ const catalog = {
         { id: "19102851001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь, брашированное циркониевое золото мат", price: 14195, brand: "REHAU", availability: "on_order", price_date: "2026-10-20", series: "PUBLIC", color: "gold", panelMat: "steel" },
         { id: "19102861001", name: "Панель смыва NOVA PUBLIC антивандальная, нержавеющая сталь, брашированное титановое золото мат", price: 14195, brand: "REHAU", availability: "on_order", price_date: "2026-10-20", series: "PUBLIC", color: "gold", panelMat: "steel" }
     ],
+    // Канализационные насосные станции ROMMER BIOLIFT (артикулы и цены — из прайса ТЕРЕМ). Ставятся, когда самотёком канализация не идёт
+    // (проверка «Учитывать уклон» в плане дома). Модель подбирают по паспорту: напор, число подключаемых приборов.
+    sewer_pumps: [
+        { id: "RPD-0010-100250", name: "Канализационная насосная станция ROMMER BIOLIFT S-3", price: 14961, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-24" },
+        { id: "RPD-0010-100400", name: "Канализационная насосная станция ROMMER BIOLIFT R-4", price: 18958, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-24" },
+        { id: "RPD-0010-100450", name: "Канализационная насосная станция ROMMER BIOLIFT R-4S", price: 21520, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-24" },
+        { id: "RPD-0010-100500", name: "Канализационная насосная станция ROMMER BIOLIFT S-3 PLUS", price: 21520, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-24" },
+        { id: "RPD-0010-100800", name: "Канализационная насосная станция ROMMER BIOLIFT R-4 PRO", price: 39162, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-24" }
+    ],
     sewer_silent: [
         { id: "SKB-0002-110100", name: "Труба канализационная бесшумная D 110 L 1000", price: 2044, brand: "STOUT", availability: "in_stock", rommer: { id: "500089", article: "500089", name: "Труба кан. ПП D 110 L 1000", price: 588, brand: "Sinikon",
   availability: 'in_stock',

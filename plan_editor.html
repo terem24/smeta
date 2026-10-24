@@ -778,7 +778,7 @@ var MODE_BAR = {
 
 function setMode(m) {
   if (m === 'scale' && !F().img) { alert('Сначала загрузите план.'); return; }
-  if ((m === 'rect' || m === 'poly' || m === 'room' || m === 'rad' || m === 'coll' || m === 'radcoll' || m === 'wc' || m === 'win' || m === 'wcoll' || m === 'wout' || m === 'wet') && !F().pxPerM) { alert('Сначала задайте масштаб.'); return; }
+  if ((m === 'rect' || m === 'poly' || m === 'room' || m === 'rad' || m === 'coll' || m === 'radcoll' || m === 'wc' || m === 'win' || m === 'wcoll' || m === 'wout' || m === 'wout2' || m === 'wet') && !F().pxPerM) { alert('Сначала задайте масштаб.'); return; }
   mode = mode === m ? 'select' : m; tmp = []; scalePts = [];
   ['scale', 'room', 'rect', 'poly', 'rad', 'coll', 'radcoll', 'wc'].forEach(function (k) {
     document.getElementById('b_' + k).className = (mode === k) ? 'on' : '';
@@ -791,6 +791,7 @@ function setMode(m) {
     : mode === 'poly' ? 'Кликайте углы контура; двойной клик — замкнуть.'
     : mode === 'rad' ? 'Кликайте под окнами — радиатор встанет вдоль ближайшей стены. Клик по значку — убрать. Кнопка «Под окна» расставит автоматически.'
     : mode === 'coll' ? 'Кликните, где стоит коллектор ТП (обычно в котельной). Клик по значку — убрать, клик в другом месте — передвинуть.'
+    : mode === 'wout2' ? 'Кликните, где второй выпуск выходит из дома.'
     : mode === 'wet' ? 'Кликните комнату — она станет санузлом или кухней.'
     : mode === 'wout' ? 'Кликните, где канализация выходит из дома.'
     : mode === 'win' ? 'Кликните, где вода заходит в дом.'
@@ -4707,7 +4708,8 @@ function draw() {
       cx.translate(q.x * k, q.y * k);
       cx.rotate((q.ang || 0) * Math.PI / 180);
       var prims = projectPlans.fixGlyph(q.t, W, D, { sink: q.t === 'basin' && /кухн/i.test(q.z || '') });
-      cx.lineWidth = (drag ? 2.6 : 1.7) * Math.sqrt(U2); cx.strokeStyle = drag ? '#e8590c' : fcol; cx.fillStyle = 'rgba(255,255,255,0.93)';
+      var srow = sewL ? wsSlopeRow(qi) : null, scol = srow && !srow.pumped ? (srow.verdict === 'fail' ? '#dc2626' : srow.verdict === 'tight' ? '#d97706' : null) : null;
+      cx.lineWidth = (drag ? 2.6 : (scol ? 2.4 : 1.7)) * Math.sqrt(U2); cx.strokeStyle = drag ? '#e8590c' : (scol || fcol); cx.fillStyle = 'rgba(255,255,255,0.93)';
       prims.forEach(function (g) {
         cx.beginPath();
         if (g.k === 'rect') { if (cx.roundRect) cx.roundRect(g.x, g.y, g.w, g.h, g.r); else cx.rect(g.x, g.y, g.w, g.h); cx.fill(); }
@@ -5213,7 +5215,7 @@ cv.addEventListener('click', function (e) {
   }
   // хвост переноса коллектора, и щелчок по его значку — не радиатор и не комната
   if (Date.now() - justDragged < 300 && mode !== 'select' && mode !== 'room') return;
-  if (mode !== 'coll' && mode !== 'radcoll' && mode !== 'win' && mode !== 'wcoll' && mode !== 'wout' && F().pxPerM && collAt(p)) return;
+  if (mode !== 'coll' && mode !== 'radcoll' && mode !== 'win' && mode !== 'wcoll' && mode !== 'wout' && mode !== 'wout2' && F().pxPerM && collAt(p)) return;
   if (mode === 'radcoll') {
     // коллектор радиаторов: клик в стороне — сюда; по значку, поставленному
     // рукой, — вернуть его на место по умолчанию (котельная)
@@ -5326,6 +5328,8 @@ cv.addEventListener('click', function (e) {
     if (fc.coll && Math.hypot(p[0] - fc.coll.x, p[1] - fc.coll.y) < 0.45 * (fc.pxPerM || 100)) { fc.coll = null; if (UFH) fc.collAuto = true; }
     else { fc.coll = { x: p[0], y: p[1] }; fc.collAuto = false; }
     renderZones(); draw();
+  } else if (mode === 'wout2') {
+    wsAddOut(p);
   } else if (mode === 'wet') {
     if (fixAt(p) >= 0) return;          // щелчок по прибору — не по комнате
     var hw = zoneHit(p);
@@ -7145,7 +7149,7 @@ function wzGo(id, keepHint) {
   var m = WZ_MODE[id] || 'select';
   if (F().pxPerM && m !== mode) setMode(m === 'select' ? mode : m);   // setMode(тот же) — выключить в «select»
   if (id === 'rooms' && F().pxPerM && !F().zones.some(function (z) { return z.type !== 'cold'; })) autoRooms();
-  if (id === 'water' || id === 'sewer') { var wz0 = wwInit(); wz0.visited = true; wz0.seen = true; if (id === 'sewer') wz0.sewerSeen = true; wwRefresh(); }
+  if (id === 'water' || id === 'sewer') { var wz0 = wwInit(); wz0.visited = true; wz0.seen = true; if (id === 'sewer') { wz0.sewerSeen = true; slopeAsked = ''; } wwRefresh(); }
   if (id === 'done') hint('');      // итог — в строке шага, прошлые пояснения справа уже ни к чему
   draw();
 }
@@ -7643,34 +7647,69 @@ function wwOutlet(w) {
   return { fl: 0, x: Math.round(sn[0]), y: Math.round(sn[1]), auto: true };
 }
 
-/** Лежак DN110 от стояков до выпуска: дерево — каждый следующий стояк врезается в ближайшую точку уже проложенного */
+// ═══ Самотёк канализации ════════════════════════════════════════════════
+// Проверка по одному этажу (без подвала и второго этажа): от прибора до выпуска труба идёт под уклоном, перепад высоты =
+// длина × уклон по пути «отвод → стояк → лежак → выпуск». Он должен уместиться между высотой выпуска прибора над полом
+// и глубиной, на которой выпуск уходит из дома. Не уместился — самотёк не пойдёт: нужна канализационная насосная станция
+// (в прайсе ROMMER — BIOLIFT) или ещё один выпуск, ближе к дальним приборам. Выключатель «Учитывать уклон» — на шаге.
+// Цифры (уклон 0,03 у d50 и 0,02 у d110 и лежака, глубина выпуска 0,7 м, высота выпуска раковины и машин 0,4 м) — практика
+// проектирования и монтажа, как и в смете; в СП 30.13330 их сверять отдельно.
+var SLOPE_B = 0.03, SLOPE_M = 0.02, SLOPE_TIGHT = 0.05, OUT_DEPTH_DEF = 0.7;
+var Z_DRAIN = { toilet: 0, bath: 0, shower: 0, basin: 0.4, wash: 0.4, dish: 0.4 };   // м над чистым полом
+var SEWER_PUMPS = [
+  { id: 'RPD-0010-100250', name: 'BIOLIFT S-3', price: 14961 },
+  { id: 'RPD-0010-100400', name: 'BIOLIFT R-4', price: 18958 },
+  { id: 'RPD-0010-100450', name: 'BIOLIFT R-4S', price: 21520 },
+  { id: 'RPD-0010-100500', name: 'BIOLIFT S-3 PLUS', price: 21520 },
+  { id: 'RPD-0010-100800', name: 'BIOLIFT R-4 PRO', price: 39162 }
+];
+
+/** Лежак DN110 от стояков до выпусков: у каждого выпуска своё дерево, каждый следующий стояк врезается в ближайшую точку проложенного */
 function computeSewerMain() {
   var f0 = DATA.floors[0], w = f0.water;
   f0.smain = [];
   if (!w) return;
-  w.sewer = null;
-  var out = wwOutlet(w);
-  if (!out || !f0.pxPerM) return;
+  w.sewer = null; w.slope = null;
+  var out0 = wwOutlet(w);
+  if (!out0 || !f0.pxPerM) return;
+  // выпуски: основной (свой или у ближайшей стороны) и дополнительные, поставленные на плане; к дополнительному подключены перечисленные помещения
+  var outs = [{ fl: 0, x: out0.x, y: out0.y, auto: !!out0.auto, cards: null }];
+  (w.outs || []).forEach(function (o) { outs.push({ fl: 0, x: o.x, y: o.y, auto: false, cards: (o.cards || []).map(function (c) { return String(c).trim().toLowerCase(); }) }); });
   var m = getMask(0), raw = [];
   DATA.floors.forEach(function (f, fi) {
-    (f.fixtures || []).forEach(function (q) { if (q.t === 'riser') raw.push({ x: q.x, y: q.y, fl: fi }); });
+    (f.fixtures || []).forEach(function (q) { if (q.t === 'riser') raw.push({ x: q.x, y: q.y, fl: fi, z: q.z }); });
   });
   var uniq = [], riserM = 0;
   raw.forEach(function (r) {
     if (r.fl) riserM += WW_RISE * r.fl;
     if (!uniq.some(function (u) { return Math.hypot(u.x - r.x, u.y - r.y) < 0.6 * f0.pxPerM; })) uniq.push(r);
   });
-  uniq.sort(function (a, b) { return Math.hypot(a.x - out.x, a.y - out.y) - Math.hypot(b.x - out.x, b.y - out.y); });
-  var nodes = [[out.x, out.y]], total = 0;
-  uniq.forEach(function (r) {
-    var tgt = nodes[0], bd = 1e18;
-    nodes.forEach(function (n) { var d = Math.hypot(n[0] - r.x, n[1] - r.y); if (d < bd) { bd = d; tgt = n; } });
-    // Лежак идёт под полом самотёком и стены пересекает напрямую: прямоугольная трасса (под 90°), а не обход через двери
-    var pts = wwManhattan(m, [r.x, r.y], tgt);
-    var L = wwPolyM(pts, f0.pxPerM);
-    f0.smain.push({ pts: pts, d: 110, m: Math.round(L * 10) / 10 });
-    total += L;
-    pts.forEach(function (p) { nodes.push(p); });
+  var outOf = function (r) {
+    var z = String(r.z || '').trim().toLowerCase();
+    for (var i = 1; i < outs.length; i++) if (outs[i].cards.indexOf(z) >= 0) return i;
+    return 0;
+  };
+  uniq.forEach(function (r) { r.out = outOf(r); });
+  var total = 0;
+  outs.forEach(function (out, oi) {
+    var group = uniq.filter(function (r) { return r.out === oi; });
+    group.sort(function (a, b) { return Math.hypot(a.x - out.x, a.y - out.y) - Math.hypot(b.x - out.x, b.y - out.y); });
+    var nodes = [[out.x, out.y, 0]];                               // третье число — путь от точки до выпуска по дереву, м
+    group.forEach(function (r) {
+      var tgt = nodes[0], bd = 1e18;
+      nodes.forEach(function (n) { var d = Math.hypot(n[0] - r.x, n[1] - r.y); if (d < bd) { bd = d; tgt = n; } });
+      // Лежак идёт под полом самотёком и стены пересекает напрямую: прямоугольная трасса (под 90°), а не обход через двери
+      var pts = wwManhattan(m, [r.x, r.y], tgt);
+      var L = wwPolyM(pts, f0.pxPerM);
+      f0.smain.push({ pts: pts, d: 110, m: Math.round(L * 10) / 10, out: oi });
+      total += L;
+      var acc = tgt[2];
+      for (var j = pts.length - 1; j >= 0; j--) {
+        if (j < pts.length - 1) acc += Math.hypot(pts[j][0] - pts[j + 1][0], pts[j][1] - pts[j + 1][1]) / f0.pxPerM;
+        nodes.push([pts[j][0], pts[j][1], acc]);
+      }
+      r.Lm = acc;                                                  // путь от стояка до выпуска, м
+    });
   });
   // Отвод DN50 длиннее ориентира — стояк стоит далеко от прибора (практика проектирования; цифру по СП 30.13330 сверить)
   var longs = [];
@@ -7680,7 +7719,159 @@ function computeSewerMain() {
       if (q && l.d < 110 && L > WW_BRANCH_MAX) longs.push({ name: (q.z ? q.z + ': ' : '') + (FIXT[q.t] || ['прибор'])[0], m: Math.round(L * 10) / 10 });
     });
   });
-  w.sewer = { mainM: Math.round(total * 10) / 10, riserM: riserM, longs: longs, out: { fl: 0, x: out.x, y: out.y, auto: !!out.auto } };
+  w.sewer = { mainM: Math.round(total * 10) / 10, riserM: riserM, longs: longs, out: { fl: 0, x: out0.x, y: out0.y, auto: !!out0.auto },
+    outs: outs.slice(1).map(function (o) { return { x: o.x, y: o.y }; }),
+    risers: uniq.map(function (r) { return { x: r.x, y: r.y, z: r.z, Lm: r.Lm, out: r.out }; }) };
+  computeSlope(w, f0);
+}
+
+/** Перепад по каждому прибору этажа: нужно (уклон × длина пути) и есть (высота выпуска прибора + глубина выпуска из дома) */
+function computeSlope(w, f0) {
+  var S = w.sewer, depth = +w.outDepth > 0 ? +w.outDepth : OUT_DEPTH_DEF;
+  var res = { on: !!w.slopeOn, depth: depth, rows: [], fail: 0, tight: 0, worst: null, pumpId: (w.pump && w.pump.id) || null };
+  w.slope = res;
+  if (!res.on || !S) return;
+  var ppm = f0.pxPerM || 100;
+  var piped = {};
+  if (w.pump && w.pump.cards) w.pump.cards.forEach(function (c) { piped[String(c).trim().toLowerCase()] = 1; });
+  (f0.fixtures || []).forEach(function (q, qi) {
+    if (q.t === 'riser') return;
+    var sl = null;
+    (f0.slines || []).forEach(function (l) { if (l.i === qi) sl = l; });
+    if (!sl || !sl.pts || sl.pts.length < 2) return;
+    var end = sl.pts[sl.pts.length - 1], rs = null, bd = 0.7 * ppm;
+    S.risers.forEach(function (r) { var d = Math.hypot(r.x - end[0], r.y - end[1]); if (d < bd) { bd = d; rs = r; } });
+    var Lb = wwPolyM(sl.pts, ppm), Lm = rs && rs.Lm != null ? rs.Lm : 0;
+    var needB = (sl.d >= 110 ? SLOPE_M : SLOPE_B) * Lb, needM = SLOPE_M * Lm;
+    var zf = Z_DRAIN[q.t] || 0, have = zf + depth, need = needB + needM, margin = have - need;
+    var pumped = !!piped[String(q.z || '').trim().toLowerCase()];
+    var verdict = pumped ? 'ok' : margin < 0 ? 'fail' : margin < SLOPE_TIGHT ? 'tight' : 'ok';
+    var row = { i: qi, t: q.t, room: q.z || '', Lb: Lb, Lm: Lm, needB: needB, needM: needM, need: need, have: have, zf: zf, margin: margin, verdict: verdict, pumped: pumped,
+      reqH: need - depth, out: rs ? rs.out : 0 };
+    res.rows.push(row);
+    if (verdict === 'fail') res.fail++; else if (verdict === 'tight') res.tight++;
+    if (!pumped && (!res.worst || margin < res.worst.margin)) res.worst = row;
+  });
+}
+
+function wsSlopeRow(i) {
+  var w = DATA.floors[0].water, r = null;
+  if (w && w.slope) w.slope.rows.forEach(function (x) { if (x.i === i) r = x; });
+  return r;
+}
+
+/** Строка про самотёк для подсказки по отводу */
+function wsSlopeHtml(i) {
+  var r = wsSlopeRow(i), cm = function (v) { return Math.round(v * 100); };
+  if (!r) return '';
+  if (r.pumped) return '<br>Отводится насосной станцией — самотёк не нужен';
+  var txt = 'Перепад: нужно ' + cm(r.need) + ' см (отвод ' + String(Math.round(r.Lb * 10) / 10).replace('.', ',') + ' м + лежак ' + String(Math.round(r.Lm * 10) / 10).replace('.', ',') +
+    ' м), есть ' + cm(r.have) + ' см';
+  if (r.verdict === 'fail') return '<br><span style="color:#ef4444"><b>' + txt + ' — не хватает ' + cm(-r.margin) + ' см: трубу пришлось бы поднять до +' + String(Math.round(r.reqH * 100) / 100).replace('.', ',') + ' м над полом</b></span>';
+  if (r.verdict === 'tight') return '<br><span style="color:#d97706">' + txt + ' — запас всего ' + cm(r.margin) + ' см</span>';
+  return '<br><span style="color:#16a34a">' + txt + ' — запас ' + cm(r.margin) + ' см</span>';
+}
+
+function wsSetSlope(v) { var w = wwInit(); w.slopeOn = !!v; w.touched = true; slopeAsked = ''; wwRefresh(); }
+function wsSetDepth(v) {
+  var w = wwInit(), n = parseFloat(String(v).replace(',', '.'));
+  w.outDepth = n > 0 ? Math.min(3, n) : OUT_DEPTH_DEF; w.touched = true; slopeAsked = ''; wwRefresh();
+}
+function wsDelOut(i) { var w = wwInit(); w.outs.splice(i, 1); w.touched = true; slopeAsked = ''; wwRefresh(); }
+function wsDelPump() { var w = wwInit(); w.pump = null; w.touched = true; slopeAsked = ''; wwRefresh(); }
+
+var slopeAsked = '';        // подпись последнего провала, о котором уже спрашивали (не мучаем окном при каждом движении)
+var pendingOut = null;      // комнаты, которые подключаются к выпуску, который сейчас ставят на плане
+function wsAskCheck() {
+  var w = DATA.floors[0].water, sl = w && w.slope;
+  if (!sl || !sl.on || !sl.fail || wwLayer() !== 'sewer' || mode === 'wout2') return;
+  var sig = sl.rows.filter(function (r) { return r.verdict === 'fail'; }).map(function (r) { return r.i + ':' + Math.round(r.margin * 100); }).join(',');
+  if (sig === slopeAsked) return;
+  slopeAsked = sig;
+  wsAsk();
+}
+
+/** Окно «самотёком не пройдёт»: насосная станция BioLift или ещё один выпуск */
+function wsAsk() {
+  var w = DATA.floors[0].water, sl = w && w.slope;
+  if (!sl) return;
+  var bad = {}, cm = function (v) { return Math.round(v * 100); }, num = function (v) { return String(Math.round(v * 10) / 10).replace('.', ','); };
+  sl.rows.forEach(function (r) {
+    if (r.verdict !== 'fail') return;
+    var k = String(r.room).trim() || 'без имени';
+    if (!bad[k] || r.margin < bad[k].margin) bad[k] = r;
+  });
+  var rooms = Object.keys(bad);
+  if (!rooms.length) return;
+  var old = document.getElementById('ws_ask'); if (old) old.remove();
+  var div = document.createElement('div'); div.className = 'namepick'; div.id = 'ws_ask';
+  var h = '<div class="box"><h3>Самотёком канализация не пройдёт</h3><div class="sub">Выпуск из дома на глубине ' + num(sl.depth).replace('.', ',') + ' м. Не хватает перепада высоты:</div>';
+  rooms.forEach(function (k) {
+    var r = bad[k];
+    h += '<div class="sub" style="color:#ef4444;margin:2px 0"><b>' + wwEsc(k) + '</b> — не хватает ' + cm(-r.margin) + ' см (лежак ' + num(r.Lm) + ' м, отвод ' + num(r.Lb) + ' м; трубу пришлось бы поднять до +' + String(Math.round(r.reqH * 100) / 100).replace('.', ',') + ' м над полом)</div>';
+  });
+  h += '<div class="sub" style="margin-top:10px">Что сделать:</div>' +
+    '<div class="row" style="margin-bottom:6px"><select id="ws_pump" style="flex:1 1 auto;font:inherit;padding:6px">' +
+    SEWER_PUMPS.map(function (p) { return '<option value="' + p.id + '">ROMMER ' + p.name + ' — ' + p.price.toLocaleString('ru-RU') + ' ₽</option>'; }).join('') +
+    '</select><button class="go" data-act="pump">Поставить насосную станцию</button></div>' +
+    '<div class="sub" style="margin:0 0 6px">Станцию подбирают по паспорту (напор, число подключаемых приборов) — проверьте модель.</div>' +
+    '<div class="row" style="margin-bottom:6px"><button class="go" data-act="out2" style="flex:1 1 auto">Добавить ещё один выпуск на плане</button></div>' +
+    '<div style="margin-top:8px;display:flex;gap:8px;justify-content:space-between"><button class="ghost" data-act="off">Не учитывать уклон</button><button class="ghost" data-act="close">Закрыть</button></div></div>';
+  div.innerHTML = h;
+  div.onclick = function (e) {
+    var b = e.target.closest ? e.target.closest('button') : null;
+    if (!b) { if (e.target === div) div.remove(); return; }
+    var act = b.getAttribute('data-act');
+    if (act === 'close') { div.remove(); return; }
+    if (act === 'off') { div.remove(); wsSetSlope(false); return; }
+    if (act === 'pump') {
+      var id = div.querySelector('#ws_pump').value;
+      div.remove();
+      w.pump = { id: id, cards: rooms.slice() };
+      w.touched = true; slopeAsked = ''; wwRefresh();
+      hint('<span class=ok>Поставлена насосная станция ' + SEWER_PUMPS.filter(function (p) { return p.id === id; })[0].name + ' для: ' + rooms.join(', ') + '.</span> Она попадёт в смету.');
+      return;
+    }
+    if (act === 'out2') { div.remove(); wsAskCards(rooms); }
+  };
+  document.body.appendChild(div);
+}
+
+/** Второй шаг: какие санузлы и кухни подключить к новому выпуску */
+function wsAskCards(pre) {
+  var w = DATA.floors[0].water;
+  var names = [];
+  (w.cards || []).forEach(function (c) { if (c.zone && names.indexOf(c.name) < 0) names.push(c.name); });
+  var div = document.createElement('div'); div.className = 'namepick'; div.id = 'ws_ask2';
+  var h = '<div class="box"><h3>Какие помещения идут на новый выпуск?</h3><div class="sub">Отметьте санузлы и кухню, которые будут сливаться в отдельный выпуск. Потом кликните на плане, где он выходит из дома.</div>';
+  names.forEach(function (n, i) {
+    var on = pre.some(function (p) { return String(p).trim().toLowerCase() === String(n).trim().toLowerCase(); });
+    h += '<label style="display:block;margin:3px 0;font-size:14px"><input type="checkbox" data-n="' + wwEsc(n) + '"' + (on ? ' checked' : '') + '> ' + wwEsc(n) + '</label>';
+  });
+  h += '<div style="margin-top:10px;display:flex;gap:8px;justify-content:space-between"><button class="ghost" data-act="cancel">Отмена</button><button class="go" data-act="ok">Дальше — выбрать место на плане</button></div></div>';
+  div.innerHTML = h;
+  div.onclick = function (e) {
+    var b = e.target.closest ? e.target.closest('button') : null;
+    if (!b) { if (e.target === div) div.remove(); return; }
+    if (b.getAttribute('data-act') === 'cancel') { div.remove(); return; }
+    var sel = [];
+    div.querySelectorAll('input[type=checkbox]').forEach(function (cb) { if (cb.checked) sel.push(cb.getAttribute('data-n')); });
+    if (!sel.length) { hint('Отметьте хотя бы одно помещение.'); return; }
+    div.remove();
+    pendingOut = sel;
+    setMode('wout2');
+    hint('Кликните на плане, где второй выпуск выходит из дома: к нему пойдут ' + sel.join(', ') + '.');
+  };
+  document.body.appendChild(div);
+}
+
+function wsAddOut(p) {
+  var w = wwInit();
+  w.outs = w.outs || [];
+  w.outs.push({ x: Math.round(p[0]), y: Math.round(p[1]), cards: pendingOut || [] });
+  pendingOut = null; w.touched = true; slopeAsked = '';
+  mode = 'select';
+  wwRefresh();
 }
 
 /**
@@ -7764,6 +7955,7 @@ function wwRefresh() {
   stepsHtml = '';
   renderSteps();
   draw();
+  wsAskCheck();
 }
 function wwFix(i, k, d) {
   var w = wwInit(), c = w.cards[i];
@@ -7854,7 +8046,7 @@ function wwInfoHtml(ln) {
     var sl = (f.slines || []).filter(function (l) { return l.i === ln.i; })[0];
     var L = sl ? wwPolyM(sl.pts, f.pxPerM) : 0;
     return head + 'Отвод К1 Ø' + (sl ? sl.d : 50) + ' к стояку своего помещения<br>Длина ' + num(L) + ' м · уклон ' + (sl && sl.d >= 110 ? '0,02' : '0,03') +
-      (sl && sl.d < 110 && L > WW_BRANCH_MAX ? '<br><span style="color:#d97706">длиннее ' + WW_BRANCH_MAX + ' м — подвиньте прибор или стояк</span>' : '');
+      (sl && sl.d < 110 && L > WW_BRANCH_MAX ? '<br><span style="color:#d97706">длиннее ' + WW_BRANCH_MAX + ' м — подвиньте прибор или стояк</span>' : '') + wsSlopeHtml(ln.i);
   }
   var wl = (f.wlines || []).filter(function (l) { return l.i === ln.i; })[0];
   var Lw = wl ? wwPolyM(wl.pts, f.pxPerM) + (f.wfeed || 0) : 0, hot = !!(WET_H_ED[q.t] || {}).hw;
@@ -8008,8 +8200,9 @@ function wsBody() {
   var w = wwInit();
   w.visited = true; w.seen = true; w.sewerSeen = true;
   if (!w.fresh) { w.fresh = 1; wwRefresh0(); }
-  var OUT = wwOutlet(w), S = w.sewer;
-  var num = function (v) { return String(v).replace('.', ','); };
+  var OUT = wwOutlet(w), S = w.sewer, sl = w.slope;
+  var num = function (v) { return String(Math.round(v * 10) / 10).replace('.', ','); };
+  var cm = function (v) { return Math.round(v * 100); };
   var B = function (fn, t, cls) { return '<button class="' + (cls || '') + '" onclick="' + fn + '">' + t + '</button>'; };
   var diag = '<div style="font-size:12.5px;line-height:1.6;margin-top:4px">' +
     (OUT ? 'Выпуск ' + (OUT.auto ? 'у ближайшей к стояку наружной стены' : 'на плане') : 'Стояк появится, когда в комнате будет унитаз') +
@@ -8017,10 +8210,29 @@ function wsBody() {
     (S && S.longs && S.longs.length ? '<div style="color:#d97706;font-size:12.5px;margin-top:2px">Отвод длиннее ' + WW_BRANCH_MAX + ' м: ' +
       S.longs.slice(0, 3).map(function (q) { return wwEsc(q.name) + ' ' + num(q.m) + ' м'; }).join(', ') + (S.longs.length > 3 ? ' и ещё ' + (S.longs.length - 3) : '') +
       ' — подвиньте прибор или стояк.</div>' : '');
-  var acts = B("wwPlace('wout')", 'Выпуск') + ((w.out) ? B('wwResetOut()', 'Выпуск по умолчанию') : '');
+  diag += '<div style="margin-top:6px;font-size:12.5px"><label><input type="checkbox" ' + (w.slopeOn ? 'checked ' : '') + 'onchange="wsSetSlope(this.checked)"> <b>Учитывать уклон</b> (проверять, что канализация идёт самотёком)</label>' +
+    (w.slopeOn ? ' · глубина выпуска под полом, м: <input type="number" step="0.1" min="0.3" max="3" value="' + (w.outDepth || OUT_DEPTH_DEF) + '" style="width:64px;font:inherit" onchange="wsSetDepth(this.value)">' : '') + '</div>';
+  if (w.slopeOn && sl && sl.rows.length) {
+    var minM = null;
+    sl.rows.forEach(function (r) { if (!r.pumped && (minM == null || r.margin < minM)) minM = r.margin; });
+    if (sl.fail) diag += '<div style="color:#ef4444;font-size:12.5px;margin-top:3px"><b>Самотёком не проходит:</b> приборов — ' + sl.fail + ', хуже всего «' + wwEsc(sl.worst.room) + '»: не хватает ' + cm(-sl.worst.margin) + ' см перепада. ' +
+      '<button onclick="wsAsk()">Что делать</button></div>';
+    else if (sl.tight) diag += '<div style="color:#d97706;font-size:12.5px;margin-top:3px">Самотёк проходит впритык: запас ' + cm(minM) + ' см.</div>';
+    else diag += '<div style="color:#16a34a;font-size:12.5px;margin-top:3px">✓ Самотёк проходит: минимальный запас перепада ' + (minM == null ? '—' : cm(minM) + ' см') + '.</div>';
+  }
+  if (w.slopeOn && w.pump) {
+    var pm = SEWER_PUMPS.filter(function (p) { return p.id === w.pump.id; })[0];
+    diag += '<div style="font-size:12.5px;margin-top:3px">Насосная станция ROMMER ' + (pm ? pm.name : '') + ' для: ' + wwEsc((w.pump.cards || []).join(', ')) + ' <button onclick="wsDelPump()">убрать</button></div>';
+  }
+  (w.outs || []).forEach(function (o, i) {
+    diag += '<div style="font-size:12.5px;margin-top:3px">Выпуск ' + (i + 2) + ': ' + wwEsc((o.cards || []).join(', ')) + ' <button onclick="wsDelOut(' + i + ')">убрать</button></div>';
+  });
+  var wetNames = [];
+  (w.cards || []).forEach(function (c) { if (c.zone) wetNames.push(c.name); });
+  var acts = B("wwPlace('wout')", 'Выпуск') + (wetNames.length ? B('wsAskCards([])', 'Ещё выпуск') : '') + ((w.out) ? B('wwResetOut()', 'Выпуск по умолчанию') : '');
   return { next: 'Дальше →', acts: acts, diag: diag,
     tx: 'Канализация привязана к приборам: от каждого отвод идёт к стояку, стояки — лежаком к выпуску. Стояк, выпуск и приборы тяните мышью — трассы пересчитаются.',
-    tips: [['Стояк', 'тянуть мышью'], ['Выпуск', 'тянуть к септику'], ['d50 / d110', 'подписаны на трассах']] };
+    tips: [['Стояк', 'тянуть мышью'], ['Выпуск', 'тянуть к септику'], ['Уклон', 'галочка выше — проверка самотёка'], ['d50 / d110', 'подписаны на трассах']] };
 }
 
 /** Первый расчёт при открытии шага: приборы, трассы, лежак (дальше — по правкам, wwRefresh) */
@@ -8127,13 +8339,25 @@ function wwDraw(f, k) {
       cx.fillStyle = '#6b3f12'; cx.font = 'bold ' + (11 * U) + 'px system-ui'; cx.textAlign = 'center';
       cx.fillText('К1 Ø110 · ' + String(l.m).replace('.', ',') + ' м · i=0,02', mid[0] * k, mid[1] * k - 8);
     });
-    var O = wwOutlet(w);
-    if (O && O.fl === fi) {
-      var ox = O.x * k, oy = O.y * k, rr = Math.max(7, 0.2 * ppm) * Math.sqrt(U);
+    var O = wwOutlet(w), allO = [O].concat((w.outs || []).map(function (o) { return { fl: 0, x: o.x, y: o.y }; }));
+    allO.forEach(function (O1, oi) {
+      if (!O1 || O1.fl !== fi) return;
+      var ox = O1.x * k, oy = O1.y * k, rr = Math.max(7, 0.2 * ppm) * Math.sqrt(U);
       cx.beginPath(); cx.moveTo(ox, oy - rr); cx.lineTo(ox + rr, oy + rr); cx.lineTo(ox - rr, oy + rr); cx.closePath();
       cx.fillStyle = '#6b3f12'; cx.fill(); cx.strokeStyle = '#fff'; cx.lineWidth = 2; cx.stroke();
       cx.fillStyle = '#6b3f12'; cx.font = 'bold ' + (12 * U) + 'px system-ui'; cx.textAlign = 'center';
-      cx.fillText('Выпуск К1', ox, oy - rr - 5);
+      cx.fillText('Выпуск К1' + (allO.length > 1 ? '-' + (oi + 1) : '') + (w.slopeOn ? ' (−' + String(w.outDepth || OUT_DEPTH_DEF).replace('.', ',') + ' м)' : ''), ox, oy - rr - 5);
+    });
+    // насосная станция — у стояка первого из обслуживаемых помещений
+    if (w.slopeOn && w.pump && w.sewer) {
+      var pr = null;
+      w.sewer.risers.forEach(function (r) { if (!pr && (w.pump.cards || []).some(function (c) { return String(c).trim().toLowerCase() === String(r.z || '').trim().toLowerCase(); })) pr = r; });
+      if (pr) {
+        var px = pr.x * k + 16 * U, py = pr.y * k + 16 * U;
+        cx.fillStyle = '#7c3aed'; cx.fillRect(px - 9 * U, py - 7 * U, 18 * U, 14 * U);
+        cx.fillStyle = '#fff'; cx.font = 'bold ' + (9 * U) + 'px system-ui'; cx.textAlign = 'center'; cx.fillText('БН', px, py + 3 * U);
+        cx.fillStyle = '#7c3aed'; cx.font = 'bold ' + (10 * U) + 'px system-ui'; cx.fillText('BioLift', px, py + 19 * U);
+      }
     }
   }
   if (showW) {
