@@ -376,7 +376,10 @@
   html.fs .cvbox { overflow: auto; display: flex; flex-direction: column; align-items: flex-start; }
   html.fs .cvbox canvas { max-height: var(--fs-ch, none); flex: 0 0 auto; margin: 0 auto; }
   html.fs .fs-keys { align-self: stretch; box-sizing: border-box; flex: 0 0 auto; }
-  html.fs .fs-keys .fk-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 1px 14px; margin-top: 5px; }
+  html.fs .fs-keys { margin-top: 6px; padding: 6px 12px 7px; font-size: 12px; }
+  html.fs .fs-keys .fk-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 0 14px; margin-top: 4px; }
+  html.fs .fs-keys .fk { padding: 0; }
+  html.fs .fs-keys .fk-top button { padding: 3px 10px; font-size: 12px; }
   html.fs .fs-keys.auto-min .fk-grid { display: none; }
   html.fs .scan-diag { max-height: 2.8em; overflow: hidden; word-break: break-word; }
   /* низкое окно: колонка шагов плотнее, чтобы кнопка действия не уходила под край */
@@ -9448,9 +9451,8 @@ function fsFit() {
     return box.clientHeight - padV - kh - 2;
   };
   if (keys) keys.classList.remove('auto-min');
-  var h = avail();
-  if (keys && !fsKeysMin && h < box.clientHeight * 0.7) { keys.classList.add('auto-min'); h = avail(); }
-  root.style.setProperty('--fs-ch', Math.max(160, Math.floor(h)) + 'px');
+  // быстрые клавиши всегда на виду (свернуть может только сам пользователь): чертёж подстраивается под них
+  root.style.setProperty('--fs-ch', Math.max(160, Math.floor(avail())) + 'px');
 }
 var fsFitTm = null;
 function fsFitSoon() { clearTimeout(fsFitTm); fsFitTm = setTimeout(function () { try { fsFit(); draw(); } catch (e) {} }, 60); }
