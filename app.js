@@ -95464,8 +95464,17 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                             if (!_pump) return;
                             const rows = _byId[id], qty = rows.reduce((a, r) => a + (+r.qty || 1), 0);
                             const _why = rows.map(r => '«' + r.room + '»' + (r.note ? ': ' + r.note : '')).join('<br>');
+                            // напорная труба Ø32 от станции к стояку — длина по плану (в смету отдельной строкой пока не входит)
+                            const _f0 = _pl8.floors[0], _ppm = _f0.pxPerM || 100, _roomsOf = new Set(rows.map(r => String(r.room).trim().toLowerCase()));
+                            let _pressM = 0;
+                            (_f0.spress || []).forEach(l => {
+                                const q = (_f0.fixtures || [])[l.i];
+                                if (!q || !_roomsOf.has(String(q.z || '').trim().toLowerCase()) || !l.pts) return;
+                                for (let k = 1; k < l.pts.length; k++) _pressM += Math.hypot(l.pts[k][0] - l.pts[k - 1][0], l.pts[k][1] - l.pts[k - 1][1]) / _ppm;
+                            });
+                            const _pressTxt = _pressM > 0 ? `<br><b>Напорная труба Ø32</b> от станции к стояку: около ${(Math.round(_pressM * 10) / 10).toString().replace('.', ',')} м — в смету отдельной строкой не входит, добавьте трубу и фитинги по паспорту.` : '';
                             addToBill({ ..._pump, originalId: 'sewer_pump_biolift_' + id, alts: catalog.sewer_pumps }, qty,
-                                `<span style="font-size:11px; line-height:1.4;"><b>Зачем:</b> самотёком канализация от ${rows.map(r => '«' + r.room + '»').join(', ')} не проходит: перепада высоты до выпуска не хватает (проверка уклона в плане дома). Станция подаёт стоки под давлением.<br><b>Подбор по паспорту:</b><br>${_why}<br>Модель можно заменить; перед монтажом сверьте с паспортом на изделие.</span>`,
+                                `<span style="font-size:11px; line-height:1.4;"><b>Зачем:</b> самотёком канализация от ${rows.map(r => '«' + r.room + '»').join(', ')} не проходит: перепада высоты до выпуска не хватает (проверка уклона в плане дома). Станция подаёт стоки под давлением.<br><b>Подбор по паспорту:</b><br>${_why}<br>Модель можно заменить; перед монтажом сверьте с паспортом на изделие.${_pressTxt}</span>`,
                                 `8.${subSecIdx++}. Канализация: [Насосная станция]`);
                         });
                     }

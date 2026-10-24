@@ -3635,7 +3635,8 @@
     bath: ['Ванна', 'В', 1700, 700], shower: ['Душ', 'Д', 900, 900],
     wash: ['Стиральная машина', 'СМ', 600, 600],
     dish: ['Посудомоечная машина', 'ПМ', 600, 600],
-    riser: ['Стояк канализации', 'Ст', 110, 110]
+    riser: ['Стояк канализации', 'Ст', 110, 110],
+    pump: ['Насосная станция', 'БН', 400, 300]
   };
   var COL_CW = '#0b7285', COL_HW = '#c92a2a', COL_SEW = '#5f3dc4';
 
@@ -3682,6 +3683,12 @@
       rect(-0.4 * W, -0.46 * D, 0.8 * W, 0.1 * D, 0.02 * r);
       circ(0, 0.06 * D, 0.32 * r);
       circ(0, 0.06 * D, 0.2 * r);
+    } else if (t === 'pump') {
+      // канализационная насосная станция: корпус, крышка с люком, патрубок напорной трубы
+      rect(-0.5 * W, -0.5 * D, W, D, 0.06 * r);
+      rect(-0.4 * W, -0.38 * D, 0.8 * W, 0.76 * D, 0.05 * r);
+      circ(0, 0, 0.22 * r);
+      circ(0.28 * W, -0.26 * D, 0.06 * r);
     } else if (t === 'dish') {
       rect(-0.5 * W, -0.5 * D, W, D, 0.04 * r);
       rect(-0.45 * W, -0.46 * D, 0.9 * W, 0.14 * D, 0.02 * r);
@@ -3708,6 +3715,7 @@
   /** Значок прибора: габарит в масштабе листа, развёрнутый вдоль стены.
    *  Стояк — кружок. Буква подписи не поворачивается, чтобы читалась. */
   function fixtureMark(q, t, f, o, col) {
+    if (q.t === 'pump') col = '#7c3aed';
     var ppm = (f.pxPerM || 100) * t.s;
     var W = (q.w || (FIXT[q.t] || [])[2] || 500) / 1000 * ppm;
     var D = (q.d || (FIXT[q.t] || [])[3] || 500) / 1000 * ppm;
@@ -3801,7 +3809,7 @@
     });
     var sumC = 0, sumH = 0, pipeM = 0, nC = 0, nH = 0, vMax = 0, nBig = 0, byRoom = {}, roomOrder = [];
     fx.forEach(function (q, qi) {
-      if (q.t === 'riser') return;
+      if (q.t === 'riser' || q.t === 'pump') return;
       fixtureMark(q, t, f, o, COL_CW);
       var ls = fixLs(q.t), hot = hasHw(q) && ls.h > 0, L = lenOf[qi];
       sumC += ls.c; nC++;
@@ -3866,7 +3874,7 @@
     o.push(imageTag(f, t, 0.32));
     wcOutlines(f, t, o);
     var fx = f.fixtures || [], W0 = planWater(), fi = num - 1;
-    var dl = [], sum50 = 0, sum110 = 0;
+    var dl = [], sum50 = 0, sum110 = 0, sumPress = 0;
     (f.slines || []).forEach(function (s) {
       if (!s.pts || s.pts.length < 2) return;
       o.push('<path d="' + pathD(s.pts, t) + '" style="fill:none;stroke:' + COL_SEW +
@@ -3876,6 +3884,12 @@
       dl.push(s);
       if (s.d >= 110) sum110 += L; else sum50 += L;
       if (q) rows.push([rows.length + 1, clip(fixTitle(q), 24), 'd' + s.d, f1(L) + (s.d < 110 && L > 3 ? ' !' : ''), s.d >= 110 ? '0,02' : '0,03']);
+    });
+    // напорные трубы насосных станций (Ø32)
+    (f.spress || []).forEach(function (s2) {
+      if (!s2.pts || s2.pts.length < 2) return;
+      o.push('<path d="' + pathD(s2.pts, t) + '" style="fill:none;stroke:#7c3aed;stroke-width:0.7;stroke-dasharray:1.2,1.2"/>');
+      sumPress += polyM(s2.pts, f.pxPerM);
     });
     // лежак DN110 до выпуска — по плану нулевого этажа
     var main = (fi === 0 && f.smain) ? f.smain : [];
@@ -3932,6 +3946,7 @@
     var tot = [['Отводы d50', f1(sum50) + ' м'], ['Отводы d110 (унитазы)', f1(sum110) + ' м']];
     if (W0 && W0.sewer && fi === 0) {
       tot.push(['Лежак d110 до выпуска', f1(W0.sewer.mainM) + ' м']);
+      if (sumPress > 0) tot.push(['Напорные Ø32 от станций', f1(sumPress) + ' м']);
       if (W0.sewer.riserM) tot.push(['Стояки по этажам d110', f1(W0.sewer.riserM) + ' м']);
     }
     yb = vkTable(o, 'Длины труб К1', ['Участок', 'Длина'], tot, [46, 26], { rh: 5.0, size: 2.6, y0: yb + 10 });
@@ -5828,12 +5843,13 @@
   // «План дома»: шаг «Санузлы и вода» (plan_editor.html).
 
   /** Длины, расходы и номера приборов этажа — общая основа таблицы воды и канализации */
+  var PUMP_NAMES = { 'RPD-0010-100250': 'S-3', 'RPD-0010-100400': 'R-4', 'RPD-0010-100450': 'R-4S', 'RPD-0010-100500': 'S-3 PLUS', 'RPD-0010-100800': 'R-4 PRO' };
   function wvFixtures(f) {
     var fx = f.fixtures || [], ppm = f.pxPerM || 100, out = [], wl = {}, sl = {};
     (f.wlines || []).forEach(function (l) { if (l.pts && l.pts.length > 1) wl[l.i] = polyM(l.pts, ppm) + (f.wfeed || 0); });
     (f.slines || []).forEach(function (l) { if (l.pts && l.pts.length > 1) sl[l.i] = { m: polyM(l.pts, ppm), d: l.d }; });
     fx.forEach(function (q, qi) {
-      if (q.t === 'riser') return;
+      if (q.t === 'riser' || q.t === 'pump') return;
       var ls = fixLs(q.t), hot = !!(WET_H[q.t] || { hw: 1 }).hw && ls.h > 0;
       out.push({ no: out.length + 1, i: qi, q: q, room: q.z || '', type: q.t, name: fixTitleOnly(q), hot: hot,
         cLs: ls.c, hLs: hot ? ls.h : 0, wm: wl[qi] != null ? wl[qi] : null, sm: sl[qi] ? sl[qi].m : null, sd: sl[qi] ? sl[qi].d : (q.t === 'toilet' ? 110 : 50) });
@@ -5909,6 +5925,12 @@
         path(l.pts, COL_SEW, l.d >= 110 ? lw * 0.9 : lw * 0.55);
         o.push('</g>');
       });
+      (f.spress || []).forEach(function (l) {
+        if (!l.pts || l.pts.length < 2) return;
+        path(l.pts, '#7c3aed', lw * 0.8, m(lw * 3) + ',' + m(lw * 2));
+        var mid = l.pts[Math.floor(l.pts.length / 2)];
+        o.push('<text x="' + m(mid[0]) + '" y="' + m(mid[1] - 0.1 * ppm) + '" text-anchor="middle" font-size="' + m(fs * 0.85) + '" fill="#7c3aed">напорная Ø32 / ' + String(Math.round(polyM(l.pts, ppm) * 10) / 10).replace('.', ',') + ' м</text>');
+      });
       if (fi === 0) (f.smain || []).forEach(function (l) {
         if (!l.pts || l.pts.length < 2) return;
         path(l.pts, COL_SEW, lw * 1.5);
@@ -5928,6 +5950,15 @@
       var Wm = (q.w || (FIXT[q.t] || [])[2] || 500) / 1000 * ppm, Dm = (q.d || (FIXT[q.t] || [])[3] || 500) / 1000 * ppm;
       if (q.t === 'riser') {
         o.push('<circle cx="' + m(q.x) + '" cy="' + m(q.y) + '" r="' + m(Math.max(0.1 * ppm, Wm / 2)) + '" style="fill:#fff;stroke:#7a5c00;stroke-width:' + m(lw * 0.7) + '"/>');
+        return;
+      }
+      if (q.t === 'pump') {
+        if (!sewer) return;                              // на плане воды станции нет
+        var pm = ((W0 && W0.pumps) || []).filter(function (pp) { return String(pp.room).trim().toLowerCase() === String(q.z || '').trim().toLowerCase(); })[0];
+        o.push('<g transform="translate(' + m(q.x) + ',' + m(q.y) + ') rotate(' + (q.ang || 0) + ')">' +
+          glyphSvg(fixGlyph('pump', Wm, Dm), 'fill:#fff;fill-opacity:0.92;stroke:#7c3aed;stroke-width:' + m(lw * 0.7)) + '</g>' +
+          '<text x="' + m(q.x) + '" y="' + m(q.y + Dm * 0.95) + '" text-anchor="middle" font-size="' + m(fs * 0.9) + '" fill="#7c3aed" style="font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:' + m(lw * 1.2) + '">' +
+          (pm && PUMP_NAMES[pm.id] ? 'BIOLIFT ' + PUMP_NAMES[pm.id] : 'BIOLIFT') + '</text>');
         return;
       }
       var r = rows.filter(function (x) { return x.q === q; })[0];

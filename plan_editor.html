@@ -462,7 +462,7 @@
 </div>
 
 <script src="water_hydro.js?v=1.7"></script>
-<script src="project_plans.js?v=1.47"></script>
+<script src="project_plans.js?v=1.48"></script>
 <script>
 'use strict';
 // Доступ к проектированию. Своей авторизации у страницы нет, поэтому отметку
@@ -547,7 +547,9 @@ var FIXT = {
   shower: ['Душ', 'Д', 900, 900],
   wash: ['Стиральная машина', 'СМ', 600, 600],
   dish: ['Посудомоечная машина', 'ПМ', 600, 600],
-  riser: ['Стояк канализации', 'Ст', 110, 110]
+  riser: ['Стояк канализации', 'Ст', 110, 110],
+  // Канализационная насосная станция (BIOLIFT): условный корпус 400×300 мм, точные габариты — по паспорту модели
+  pump: ['Насосная станция', 'БН', 400, 300]
 };
 
 try {
@@ -1157,7 +1159,7 @@ function fixturesOfWcZone(f, z, cardArg, label) {
   var card = cardArg || wcCardOf(z.name);
   if (!card) return [];
   var zLabel = label || z.name || '';
-  var order = ['toilet', 'basin', 'bath', 'shower', 'wash', 'dish'], list = [];
+  var order = ['toilet', 'pump', 'basin', 'bath', 'shower', 'wash', 'dish'], list = [];
   order.forEach(function (k) {
     var v = +(card.fixtures || {})[k] || 0;
     for (var i = 0; i < v; i++) list.push(k);
@@ -1276,7 +1278,11 @@ function refreshAutoFixtures() {
       if (c.fl !== DATA.floors.indexOf(f) || !c.zone) return;
       var rz = wwRoomZone(c.fl, c.zone);
       if (!rz || rz.type === 'wc') return;
-      var gen = fixturesOfWcZone(f, rz, c, c.name), cnt = {};
+      // станция, поставленная этому помещению шагом «Канализация», — ещё один «прибор» рядом с унитазом
+      var pn = 0;
+      (ww.pumps || []).forEach(function (pp) { if (ww.slopeOn && String(pp.room).trim().toLowerCase() === String(c.name).trim().toLowerCase()) pn += (+pp.qty || 1); });
+      var cardX = pn ? { name: c.name, fixtures: Object.assign({}, c.fixtures, { pump: pn }) } : c;
+      var gen = fixturesOfWcZone(f, rz, cardX, c.name), cnt = {};
       gen.forEach(function (q) {
         cnt[q.t] = (cnt[q.t] || 0) + 1;
         q.k = q.t + '#' + (cnt[q.t] - 1);                 // ключ для положения, которое поставил монтажник
@@ -1346,11 +1352,12 @@ function computeVk() {
     // Мастер: вода идёт как трассы радиаторов — по комнатам, стены только через двери, под 90° (projectPlans.routePipes),
     // лучом от коллекторов к каждому прибору; санузел-стояк канализации — тем же способом внутри комнаты.
     var dIdx = [], dPts = [];
-    fx.forEach(function (q, qi) { if (q.t !== 'riser') { dIdx.push(qi); dPts.push([q.x, q.y]); } });
+    fx.forEach(function (q, qi) { if (q.t !== 'riser' && q.t !== 'pump') { dIdx.push(qi); dPts.push([q.x, q.y]); } });
     var wRoutes = src ? wwRoutes(f, fi, src, dPts, m) : null;
+    f.spress = [];
     fx.forEach(function (q, qi) {
       if (q.t === 'riser') return;
-      if (src) f.wlines.push({ i: qi, pts: wRoutes ? wRoutes[dIdx.indexOf(qi)] : routeBetween(m, src, [q.x, q.y]) });
+      if (src && q.t !== 'pump') f.wlines.push({ i: qi, pts: wRoutes ? wRoutes[dIdx.indexOf(qi)] : routeBetween(m, src, [q.x, q.y]) });
       if (risers.length) {
         var best = risers[0], bd = 1e18;
         // стояк своего помещения (у санузла он свой); ближайший по прямой может стоять за стеной в соседней комнате
@@ -1359,10 +1366,14 @@ function computeVk() {
           var d = Math.hypot(r.x - q.x, r.y - q.y);
           if (d < bd) { bd = d; best = r; }
         });
-        var sPts = null;
-        { var sr = wwRoutes(f, fi, [best.x, best.y], [[q.x, q.y]], m); sPts = sr && sr[0] ? sr[0].slice().reverse() : null; }
-        f.slines.push({ i: qi, d: (q.t === 'toilet' ? 110 : 50),
-          pts: sPts || routeBetween(m, [q.x, q.y], [best.x, best.y]) });
+        // Помещение со станцией: приборы сливаются в неё, от станции к стояку идёт напорная труба Ø32
+        var pumpQ = null, pumpI = -1;
+        if (q.t !== 'pump') fx.forEach(function (pq, pi) { if (!pumpQ && pq.t === 'pump' && pq.z === q.z) { pumpQ = pq; pumpI = pi; } });
+        var tgt = pumpQ || best, sPts = null;
+        { var sr = wwRoutes(f, fi, [tgt.x, tgt.y], [[q.x, q.y]], m); sPts = sr && sr[0] ? sr[0].slice().reverse() : null; }
+        var linePts = sPts || routeBetween(m, [q.x, q.y], [tgt.x, tgt.y]);
+        if (q.t === 'pump') f.spress.push({ i: qi, d: 32, pts: linePts });
+        else f.slines.push({ i: qi, d: (q.t === 'toilet' ? 110 : (pumpQ ? 40 : 50)), pump: pumpI, pts: linePts });
       }
     });
   });
@@ -4751,8 +4762,8 @@ function draw() {
       cx.translate(q.x * k, q.y * k);
       cx.rotate((q.ang || 0) * Math.PI / 180);
       var prims = projectPlans.fixGlyph(q.t, W, D, { sink: q.t === 'basin' && /кухн/i.test(q.z || '') });
-      var srow = sewL ? wsSlopeRow(qi) : null, scol = srow && !srow.pumped ? (srow.verdict === 'fail' ? '#dc2626' : srow.verdict === 'tight' ? '#d97706' : null) : null;
-      cx.lineWidth = (drag ? 2.6 : (scol ? 2.4 : 1.7)) * Math.sqrt(U2); cx.strokeStyle = drag ? '#e8590c' : (scol || fcol); cx.fillStyle = 'rgba(255,255,255,0.93)';
+      var srow = sewL && q.t !== 'pump' ? wsSlopeRow(qi) : null, scol = srow && !srow.pumped ? (srow.verdict === 'fail' ? '#dc2626' : srow.verdict === 'tight' ? '#d97706' : null) : null;
+      cx.lineWidth = (drag ? 2.6 : (scol ? 2.4 : 1.7)) * Math.sqrt(U2); cx.strokeStyle = drag ? '#e8590c' : (q.t === 'pump' ? '#7c3aed' : (scol || fcol)); cx.fillStyle = 'rgba(255,255,255,0.93)';
       prims.forEach(function (g) {
         cx.beginPath();
         if (g.k === 'rect') { if (cx.roundRect) cx.roundRect(g.x, g.y, g.w, g.h, g.r); else cx.rect(g.x, g.y, g.w, g.h); cx.fill(); }
@@ -7874,7 +7885,7 @@ function computeSlope(w, f0) {
   var piped = {};
   (w.pumps || []).forEach(function (p) { piped[String(p.room).trim().toLowerCase()] = 1; });
   (f0.fixtures || []).forEach(function (q, qi) {
-    if (q.t === 'riser') return;
+    if (q.t === 'riser' || q.t === 'pump') return;
     var sl = null;
     (f0.slines || []).forEach(function (l) { if (l.i === qi) sl = l; });
     if (!sl || !sl.pts || sl.pts.length < 2) return;
@@ -8173,7 +8184,7 @@ function lineAt(p) {
     });
   };
   if (layer === 'water') scan('w', f.wlines, function (l) { return l.i; });
-  else { scan('s', f.slines, function (l) { return l.i; }); if (cur === 0) scan('m', f.smain, function (l, li) { return li; }); }
+  else { scan('s', f.slines, function (l) { return l.i; }); scan('p', f.spress, function (l) { return l.i; }); if (cur === 0) scan('m', f.smain, function (l, li) { return li; }); }
   return best;
 }
 
@@ -8188,6 +8199,10 @@ function wwInfoHtml(ln) {
   }
   var q = (f.fixtures || [])[ln.i];
   if (!q) return '';
+  if (ln.kind === 'p') {
+    var pl = (f.spress || []).filter(function (l) { return l.i === ln.i; })[0];
+    return '<b>Напорная труба Ø32</b> — от насосной станции «' + wwEsc(q.z || '') + '» к стояку<br>Длина ' + num(pl ? wwPolyM(pl.pts, f.pxPerM) : 0) + ' м · уклона не требует, держится вверх 1 м от станции';
+  }
   var nm = (FIXT[q.t] || ['прибор'])[0];
   if (q.t === 'basin' && /кухн/i.test(q.z || '')) nm = 'Мойка';
   var head = '<b>' + wwEsc(nm) + '</b> · ' + wwEsc(q.z || 'без имени') + '<br>';
@@ -8487,6 +8502,14 @@ function wwDraw(f, k) {
         cx.fillText('Ø' + l.d, m0[0] * k + 8, m0[1] * k - 5);
       }
     });
+    (f.spress || []).forEach(function (l) {
+      var st = emph('p', l.i);
+      if (st === 'on') line(l.pts, 'rgba(255,255,255,.95)', 8);
+      line(l.pts, '#7c3aed', (2.6 + (st === 'on' ? 1.5 : 0)), [2, 4]);
+      var e = l.pts[Math.floor(l.pts.length / 2)];
+      cx.fillStyle = '#7c3aed'; cx.font = 'bold ' + (10 * U) + 'px system-ui'; cx.textAlign = 'center';
+      cx.fillText('напорная Ø32', e[0] * k, e[1] * k - 6 * U);
+    });
     (f.smain || []).forEach(function (l, li) {
       var st = emph('m', li);
       if (st === 'on') line(l.pts, 'rgba(255,255,255,.95)', 9);
@@ -8505,18 +8528,6 @@ function wwDraw(f, k) {
       cx.fillStyle = '#6b3f12'; cx.font = 'bold ' + (12 * U) + 'px system-ui'; cx.textAlign = 'center';
       cx.fillText('Выпуск К1' + (allO.length > 1 ? '-' + (oi + 1) : '') + (w.slopeOn ? ' (−' + String(w.outDepth || OUT_DEPTH_DEF).replace('.', ',') + ' м)' : ''), ox, oy - rr - 5);
     });
-    // насосные станции — у стояка своего помещения
-    if (w.slopeOn && (w.pumps || []).length && w.sewer) {
-      w.pumps.forEach(function (pp) {
-        var pr = null;
-        w.sewer.risers.forEach(function (r) { if (!pr && String(r.z || '').trim().toLowerCase() === String(pp.room).trim().toLowerCase()) pr = r; });
-        if (!pr) return;
-        var m = wsPumpById(pp.id), px = pr.x * k + 16 * U, py = pr.y * k + 16 * U;
-        cx.fillStyle = '#7c3aed'; cx.fillRect(px - 9 * U, py - 7 * U, 18 * U, 14 * U);
-        cx.fillStyle = '#fff'; cx.font = 'bold ' + (9 * U) + 'px system-ui'; cx.textAlign = 'center'; cx.fillText('БН', px, py + 3 * U);
-        cx.fillStyle = '#7c3aed'; cx.font = 'bold ' + (10 * U) + 'px system-ui'; cx.fillText(m ? m.name : 'BioLift', px, py + 19 * U);
-      });
-    }
   }
   if (showW) {
     if (P.inp && P.inp.fl === fi) {
