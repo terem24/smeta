@@ -6225,6 +6225,9 @@
             document.body.classList.toggle('invoice-expired', state === 'expired' || state === 'asked');
             if (refreshBox) refreshBox.style.display = showRefresh ? 'block' : 'none';
             if (fabRefresh) fabRefresh.style.display = showRefresh ? '' : 'none';
+            // Просроченный счёт не печатаем и не сохраняем в PDF — цен в нём всё равно нет
+            const fabPrint = document.querySelector('.fab-print');
+            if (fabPrint) fabPrint.style.display = (state === 'expired' || state === 'asked') ? 'none' : '';
 
             // «Позвонить» — рядом с «Обновить счёт», пока номер монтажника известен
             if (callBtn) {
