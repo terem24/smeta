@@ -372,6 +372,21 @@
                  font: 600 11px/17px system-ui, sans-serif; color: var(--text-main); background: rgba(128,128,128,.22);
                  border: 1px solid rgba(128,128,128,.35); }
   html:not(.fs) .fs-keys { display: none; }
+  /* подсветка «На весь экран» после загрузки плана */
+  .fs-corner button.nudge { animation: nudgeRing 1.5s ease-out infinite; }
+  @keyframes nudgeRing { 0% { box-shadow: 0 0 0 0 rgba(129,140,248,.85), 0 6px 20px rgba(99,102,241,.45); }
+                         80%, 100% { box-shadow: 0 0 0 16px rgba(129,140,248,0), 0 6px 20px rgba(99,102,241,.45); } }
+  #fs_nudge { position: absolute; top: 52px; right: 6px; width: 230px; box-sizing: border-box; padding: 10px 12px; text-align: left;
+              border-radius: 12px; cursor: pointer; background: rgba(18,20,32,.97); color: var(--text-main);
+              border: 1px solid rgba(129,140,248,.5); box-shadow: 0 10px 30px rgba(0,0,0,.45); animation: nudgeIn .35s ease-out; }
+  #fs_nudge::before { content: ''; position: absolute; top: -6px; right: 40px; width: 10px; height: 10px; transform: rotate(45deg);
+                      background: rgba(18,20,32,.97); border-left: 1px solid rgba(129,140,248,.5); border-top: 1px solid rgba(129,140,248,.5); }
+  #fs_nudge b { display: block; font-size: 13px; margin-bottom: 2px; }
+  #fs_nudge span { font-size: 12px; color: var(--text-sec); }
+  #fs_nudge kbd { padding: 0 5px; border-radius: 4px; background: var(--surface-hi); border: 1px solid var(--border); font: 600 11px system-ui; }
+  html.light #fs_nudge, html.light #fs_nudge::before { background: rgba(255,255,255,.98); }
+  @keyframes nudgeIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .fs-corner button.nudge, #fs_nudge { animation: none; } }
 </style>
 <style id="skin">
   /* ===== Единая современная тема редактора =====
@@ -3852,6 +3867,34 @@ function parseAreaReply(resp, W, H) {
  * по ходу не приходит), поэтому замедляется к концу и до последнего не доходит до края.
  */
 var scanTimer = null;
+/**
+ * Луч сканирования лежит поверх чертежа и каждый кадр заново встаёт на его место: при входе в
+ * полный экран раскладка перестраивается уже после запуска чтения, при прокрутке и смене
+ * масштаба чертёж тоже уезжает — прежняя разовая привязка оставляла луч в стороне от плана.
+ * Показывается только та часть холста, что видна в рабочем поле.
+ */
+function scanBeamFit() {
+  var bm = document.getElementById('scanbeam');
+  if (!bm) return;
+  var c = document.getElementById('cv'), box = c && c.closest('.cvbox');
+  if (c) {
+    var r = c.getBoundingClientRect(), v = box ? box.getBoundingClientRect() : r;
+    var l = Math.max(r.left, v.left), t = Math.max(r.top, v.top);
+    var rr = Math.min(r.right, v.right), b = Math.min(r.bottom, v.bottom);
+    var ok = rr > l && b > t;
+    bm.style.display = ok ? '' : 'none';
+    if (ok) bm.style.cssText = 'left:' + l + 'px;top:' + t + 'px;width:' + (rr - l) + 'px;height:' + (b - t) + 'px';
+    // карточка — по центру видимого плана; если план узкий, остаётся по центру экрана
+    var sb = document.getElementById('scanbox');
+    if (sb && ok && rr - l > 300) {
+      sb.style.left = Math.round((l + rr) / 2) + 'px';
+      sb.style.top = Math.round(Math.min((t + b) / 2, window.innerHeight - 170)) + 'px';
+    }
+  }
+  cancelAnimationFrame(scanBeamRaf);
+  scanBeamRaf = requestAnimationFrame(scanBeamFit);
+}
+var scanBeamRaf = 0;
 function scanBox(on, label) {
   var el = document.getElementById('scanbox');
   if (!on) {
@@ -3866,10 +3909,10 @@ function scanBox(on, label) {
   var cvEl = document.getElementById('cv'), oldBm = document.getElementById('scanbeam');
   if (oldBm) oldBm.remove();
   if (cvEl) {
-    var r = cvEl.getBoundingClientRect(), bm2 = document.createElement('div');
+    var bm2 = document.createElement('div');
     bm2.id = 'scanbeam';
-    bm2.style.cssText = 'left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px';
     document.body.appendChild(bm2);
+    scanBeamFit();
   }
   el = document.createElement('div');
   el.id = 'scanbox';
@@ -4528,6 +4571,7 @@ function loadImage(inp) {
     });
   });
   // мастер раскладки: после загрузки — масштаб, комнаты и радиаторы сами
+  chain.then(fsNudge, function () {});
   if (UFH) { chain.then(wzAfterLoad); return; }
   if (files.length > 1) chain.then(function () {
     // Масштаб на каждом этаже подбирается сам; напоминаем только про те,
@@ -5733,19 +5777,40 @@ function duplicateSelected() {
   renderZones(); draw();
 }
 
+/**
+ * Код физической клавиши с поправкой на раскладку. Обычно хватает e.code, но он бывает пустым
+ * или не тот (удалённый рабочий стол, виртуальная клавиатура, Mac), и тогда русская «ы» вместо S
+ * молча не работала. Поэтому кириллица сопоставляется по ЙЦУКЕН-расположению, а «?» с русской
+ * раскладки (Shift+7) и знаки +/− — по самому символу.
+ */
+var HK_RU = { 'й': 'Q', 'ц': 'W', 'у': 'E', 'к': 'R', 'е': 'T', 'н': 'Y', 'ф': 'A', 'ы': 'S', 'в': 'D',
+              'а': 'F', 'р': 'H', 'с': 'C', 'м': 'V', 'т': 'N', 'я': 'Z' };
+function hkCode(e) {
+  var k = String(e.key || '');
+  var low = k.toLowerCase();
+  if (k.length === 1 && HK_RU[low]) return 'Key' + HK_RU[low];
+  if (/^Key[A-Z]$/.test(e.code || '')) return e.code;
+  if (k === '?' ) return 'Slash';
+  if (k === '+' || k === '=') return 'Equal';
+  if (k === '-' || k === '−' || k === '_') return 'Minus';
+  if (/^[a-z]$/.test(low)) return 'Key' + low.toUpperCase();
+  return e.code || '';
+}
+
 /** Клавиша из HOTKEYS → true, если сработала. Ctrl+S — сохранить, как в редакторах. */
 function runHotkey(e) {
   if (e.ctrlKey || e.metaKey) {
-    if (!e.altKey && (e.code === 'KeyS' || String(e.key).toLowerCase() === 's')) {
+    if (!e.altKey && hkCode(e) === 'KeyS') {
       var sb = document.getElementById('b_save');
       if (sb) { e.preventDefault(); sb.click(); return true; }
     }
     return false;
   }
   if (e.altKey) return false;
+  var kc = hkCode(e);
   for (var i = 0; i < HOTKEYS.length; i++) {
     var h = HOTKEYS[i];
-    if (h.code !== e.code) continue;
+    if (h.code !== kc) continue;
     if (h.shift && !e.shiftKey) continue;                // «?» — только с Shift
     if (!h.shift && e.shiftKey && /^Key/.test(h.code)) continue;   // буквы — без Shift
     if (!F().img && h.code !== 'KeyV') return false;     // без плана инструменты не нужны
@@ -5797,11 +5862,12 @@ document.addEventListener('keydown', function (e) {
   var tag = (document.activeElement && document.activeElement.tagName) || '';
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
   if (e.key === 'Escape' && document.getElementById('hk_help')) { document.getElementById('hk_help').remove(); return; }
-  var zk = (e.ctrlKey || e.metaKey) && (e.code === 'KeyZ' || String(e.key).toLowerCase() === 'z');
+  var kc0 = hkCode(e);
+  var zk = (e.ctrlKey || e.metaKey) && kc0 === 'KeyZ';
   if (zk && e.shiftKey) { e.preventDefault(); doRedo(); return; }
   if (zk) { e.preventDefault(); doUndo(); return; }
-  if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyY' || String(e.key).toLowerCase() === 'y')) { e.preventDefault(); doRedo(); return; }
-  if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyD' || String(e.key).toLowerCase() === 'd')) {
+  if ((e.ctrlKey || e.metaKey) && kc0 === 'KeyY') { e.preventDefault(); doRedo(); return; }
+  if ((e.ctrlKey || e.metaKey) && kc0 === 'KeyD') {
     e.preventDefault(); duplicateSelected(); return;
   }
   if (!e.ctrlKey && !e.metaKey && !e.altKey && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
@@ -5810,7 +5876,7 @@ document.addEventListener('keydown', function (e) {
   if (runHotkey(e)) return;
   if (e.key === 'Enter' && mode === 'poly' && tmp.length >= 3) { closePoly(); return; }
   // Пробел — как в Revit: поворот прибора под курсором. R оставлена для привычки.
-  if ((e.code === 'Space' || e.code === 'KeyR' || /^[rк]$/i.test(String(e.key))) && !e.ctrlKey && !e.metaKey && !e.altKey && mode !== 'poly') {
+  if ((e.code === 'Space' || kc0 === 'KeyR' || /^[rк]$/i.test(String(e.key))) &&!e.ctrlKey && !e.metaKey && !e.altKey && mode !== 'poly') {
     if (rotateUnderCursor()) { e.preventDefault(); return; }
   }
   // Delete — убрать зону, на которую наведён курсор: то же, что крестик,
@@ -9329,10 +9395,34 @@ function toggleFsKeys() {
   fsKeysRender();
 }
 
+/**
+ * После загрузки плана подсвечиваем «На весь экран»: про кнопку не знали, а на весь экран
+ * работать куда удобнее. Мигает, пока её не нажмут (или ~15 с), с подписью про клавишу F.
+ */
+var fsNudgeTm = null;
+function fsNudgeOff() {
+  clearTimeout(fsNudgeTm); fsNudgeTm = null;
+  var n = document.getElementById('fs_nudge'); if (n) n.remove();
+  var b = document.getElementById('b_fs2'); if (b) b.classList.remove('nudge');
+}
+function fsNudge() {
+  if (fsOn) return;
+  var b = document.getElementById('b_fs2'), corner = b && b.parentNode;
+  if (!corner) return;
+  fsNudgeOff();
+  b.classList.add('nudge');
+  var n = document.createElement('div');
+  n.id = 'fs_nudge';
+  n.innerHTML = '<b>Удобнее на весь экран</b><span>План крупнее, шаги — слева. Клавиша <kbd>F</kbd></span>';
+  n.onclick = function () { toggleFs(true); };
+  corner.appendChild(n);
+  fsNudgeTm = setTimeout(fsNudgeOff, 15000);
+}
 function toggleFs(force) {
   var on = typeof force === 'boolean' ? force : !fsOn;
   if (on === fsOn) return;
   fsOn = on;
+  fsNudgeOff();
   var fr = null;
   try { fr = window.frameElement; } catch (e) {}
   document.documentElement.classList.toggle('fs', on);
