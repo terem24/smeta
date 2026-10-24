@@ -1043,6 +1043,34 @@ var MODE_BAR = {
   wc: 'Выберите прибор в списке и кликните, где он стоит'
 };
 
+/** Окно «Длина отрезка» вместо prompt(): сообщает длину строкой (или null при отмене), не выходя из полного экрана. */
+function askScaleLen(cb) {
+  var div = document.createElement('div'); div.className = 'namepick'; div.id = 'scale_ask';
+  div.innerHTML = '<div class="box"><h3>Длина отрезка</h3>' +
+    '<div class="sub">Сколько метров между двумя отмеченными точками?</div>' +
+    '<div class="grid"><button data-v="0,9">0,9 · дверь</button><button data-v="1,0">1,0</button>' +
+    '<button data-v="2,0">2,0</button><button data-v="3,0">3,0</button></div>' +
+    '<div class="row"><input type="text" inputmode="decimal" value="1,0"><button class="go" data-ok="1">OK</button></div>' +
+    '<div style="margin-top:8px;text-align:right"><button class="ghost" data-cancel="1">Отмена</button></div></div>';
+  var inp = div.querySelector('input'), fin = false;
+  var done = function (v) { if (fin) return; fin = true; div.remove(); cb(v); };
+  div.onclick = function (e) {
+    var b = e.target.closest ? e.target.closest('button') : null;
+    if (!b) { if (e.target === div) done(null); return; }
+    if (b.getAttribute('data-cancel')) done(null);
+    else if (b.getAttribute('data-ok')) done(inp.value);
+    else done(b.getAttribute('data-v'));
+  };
+  inp.onkeydown = function (e) {
+    e.stopPropagation();
+    if (e.key === 'Enter') done(inp.value);
+    else if (e.key === 'Escape') done(null);
+  };
+  document.body.appendChild(div);
+  inp.focus(); inp.select();
+}
+/** Включить режим, не выключая: кнопки шага («Задать масштаб») не должны гасить уже включённый режим. */
+function enterMode(m) { if (mode !== m) setMode(m); }
 function setMode(m) {
   if (m === 'scale' && !F().img) { alert('Сначала загрузите план.'); return; }
   if ((m === 'rect' || m === 'poly' || m === 'room' || m === 'rad' || m === 'coll' || m === 'radcoll' || m === 'wc' || m === 'win' || m === 'wcoll' || m === 'wout' || m === 'wout2' || m === 'wet') && !F().pxPerM) { alert('Сначала задайте масштаб.'); return; }
@@ -5600,17 +5628,19 @@ cv.addEventListener('click', function (e) {
     scalePts.push(p); draw();
     if (scalePts.length === 2) {
       var d = Math.hypot(scalePts[1][0] - scalePts[0][0], scalePts[1][1] - scalePts[0][1]);
-      var ans = prompt('Длина этого отрезка в метрах:', '1,0');
-      // «1,5» и «1.5» — одно и то же: на телефоне и в русской раскладке
-      // запятая под рукой, а точка нет.
-      var m = parseFloat(String(ans == null ? '' : ans).replace(',', '.').replace(/\s+/g, ''));
-      if (m > 0) {
-        pushUndo('scale');
-        F().pxPerM = d / m; F().scaleSrc = 'manual';
-        resetScaleCaches();
-        hint('<span class=ok>Масштаб задан.</span> Теперь обведите зоны.');
-      }
-      scalePts = []; scaleCur = null; setMode('select');
+      // своё окно, а не prompt(): системный диалог выбрасывает браузер из полного экрана
+      askScaleLen(function (ans) {
+        // «1,5» и «1.5» — одно и то же: на телефоне и в русской раскладке
+        // запятая под рукой, а точка нет.
+        var m = parseFloat(String(ans == null ? '' : ans).replace(',', '.').replace(/\s+/g, ''));
+        if (m > 0) {
+          pushUndo('scale');
+          F().pxPerM = d / m; F().scaleSrc = 'manual';
+          resetScaleCaches();
+          hint('<span class=ok>Масштаб задан.</span> Теперь обведите зоны.');
+        }
+        scalePts = []; scaleCur = null; setMode('select');
+      });
     }
   } else if (mode === 'poly') {
     if (Date.now() - closeTs < 500) return;   // хвост двойного клика после замыкания
@@ -7741,9 +7771,9 @@ function wzBody(id) {
   if (id === 'plan') return { noNext: true, acts: B("wzGo('plan')", 'Загрузить план', 'go'),
     tx: 'Загрузите план этажа — масштаб и комнаты найду сама.',
     tips: [['Фото', 'JPG, PNG'], ['Скан', 'любой'], ['PDF', 'страница с планом']] };
-  if (id === 'scale' && SCAN_BUSY[cur]) return { noNext: true, acts: B("setMode('scale')", 'Задать вручную'),
+  if (id === 'scale' && SCAN_BUSY[cur]) return { noNext: true, acts: B("enterMode('scale')", 'Задать вручную'),
     tx: '<b>Ищу масштаб…</b> Читаю размеры на плане, до минуты.', tips: [['Не хотите ждать', 'задайте вручную']] };
-  if (id === 'scale') return { noNext: true, acts: B("setMode('scale')", 'Задать масштаб', 'go') + B('autoScale()', 'Подобрать ещё раз'),
+  if (id === 'scale') return { noNext: true, acts: B("enterMode('scale')", 'Задать масштаб', 'go') + B('autoScale()', 'Подобрать ещё раз'),
     tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане отрезок известной длины.',
     tips: [['2 клика', 'по краям отрезка'], ['Например', 'дверной проём 0,9 м']], diag: scanDiagHtml() };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B('wzRect()', 'Обвести рамкой'),
@@ -9045,9 +9075,9 @@ function pjBody(id) {
       ? 'Этот этаж пока пуст. Нет отопления — пропустите: для выпуска хватит одного размеченного этажа.'
       : 'Загрузите план этажа — масштаб и комнаты найду сама.'),
     tips: [['Фото', 'JPG, PNG'], ['Скан', 'любой'], ['PDF', 'страница с планом']] };
-  if (id === 'scale' && SCAN_BUSY[cur]) return { noNext: true, acts: B("setMode('scale')", 'Задать вручную'),
+  if (id === 'scale' && SCAN_BUSY[cur]) return { noNext: true, acts: B("enterMode('scale')", 'Задать вручную'),
     tx: '<b>Ищу масштаб…</b> Читаю размеры на плане, до минуты.', tips: [['Не хотите ждать', 'задайте вручную']] };
-  if (id === 'scale') return { noNext: true, acts: B('autoScale()', 'Подобрать ещё раз') + B("setMode('scale')", 'Задать вручную'),
+  if (id === 'scale') return { noNext: true, acts: B('autoScale()', 'Подобрать ещё раз') + B("enterMode('scale')", 'Задать вручную'),
     tx: '<b>Масштаб не нашёлся.</b> Отметьте на плане отрезок известной длины.',
     tips: [['2 клика', 'по краям отрезка'], ['Например', 'дверной проём 0,9 м']], diag: scanDiagHtml() };
   if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B("document.getElementById('ztype').value='tp';setMode('room')", 'Обвести кликом'),
