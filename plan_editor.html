@@ -2818,7 +2818,12 @@ function autoScale(silent) {
     // Причину монтажнику не расписываем — она ему ничего не даёт; в консоль, на случай разбора
     console.info('[plan_editor] масштаб: размеров ' + ((PDF_DIMS[cur] || []).length + (SCAN_DIMS[cur] || []).length) +
       ', комнат расчёта на этаже ' + tg.length);
-    if (!silent) hint('Масштаб сам не подобрался — задайте его по двери или размеру на плане.');
+    if (!silent) {
+      var rd = (SCAN_DIAG[cur] || {}).read || '';
+      hint(/сервис недоступен|нет ответа/.test(rd)
+        ? 'Нет связи с сервисом распознавания — масштаб не подобран. Проверьте интернет и нажмите «Подобрать ещё раз» или задайте масштаб по двери.'
+        : 'Масштаб сам не подобрался — задайте его по двери или размеру на плане.');
+    }
     return false;
   }
   // Проверяем не тем, чем подбирали: площади можно свести к чему угодно, если
@@ -3698,7 +3703,7 @@ function readAreaLabelsFromCanvas(c, label, quiet) {
       var g = t.getContext('2d');
       g.fillStyle = '#fff'; g.fillRect(0, 0, t.width, t.height); g.drawImage(c, 0, 0, t.width, t.height);
       var b64 = t.toDataURL('image/jpeg', 0.85).split(',')[1];
-      var models = ['gemini-3.5-flash', 'gemini-flash-latest'], mi = 0;
+      var models = ['gemini-3.5-flash', 'gemini-flash-latest'], mi = 0, netTry = 0;
       var tryNext = function () {
         fetch(AREA_READ_URL, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -3714,7 +3719,11 @@ function readAreaLabelsFromCanvas(c, label, quiet) {
         })['catch'](function (e) {
           console.warn('[plan_editor] подписи площадей:', e && e.message);
           why = 'сервис недоступен: ' + String(e && e.message).slice(0, 80);
-          if (++mi < models.length) tryNext(); else finish([]);
+          if (++mi < models.length) { tryNext(); return; }
+          // Обрыв связи обычно разовый: оба запроса идут через один прокси и падают вместе —
+          // повторяем круг с паузой, пока не вышли 70 с общего ожидания
+          if (++netTry <= 2 && !finished) { mi = 0; setTimeout(tryNext, 1500 * netTry); return; }
+          finish([]);
         });
       };
       tryNext();
