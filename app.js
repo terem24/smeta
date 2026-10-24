@@ -60066,33 +60066,57 @@ const app = {
         return !this.isFlat() && !this.state.detailedRooms;
     },
 
-    // Быстрый режим дома: кухня + N санузлов типовым набором (как в квартире).
+    HOUSE_KITCHENS_MAX: 3,
+
+    // Кухонь в быстром режиме дома: по умолчанию одна, стрелками 1–3.
+    houseKitchens: function () {
+        const n = parseInt(this.state.houseKitchens);
+        if (!n || n < 1) return 1;
+        return Math.min(n, this.HOUSE_KITCHENS_MAX);
+    },
+
+    // Быстрый режим дома: K кухонь + N санузлов типовым набором (как в квартире).
     // Приборы поштучно правятся только в подробном режиме.
     buildHouseWaterZones: function () {
         const n = this.houseBaths();
-        const zones = [{
-            id: 1, name: 'Кухня', kind: 'kitchen', dist: 6,
-            fixtures: { toilet: 0, basin: 1, bath: 0, shower: 0, wash: 0, dish: 1 }
-        }];
+        const k = this.houseKitchens();
+        const zones = [];
+        for (let i = 0; i < k; i++) {
+            zones.push({
+                id: 1 + i, name: i === 0 ? 'Кухня' : 'Кухня ' + (i + 1), kind: 'kitchen', dist: 6 + i * 2,
+                fixtures: { toilet: 0, basin: 1, bath: 0, shower: 0, wash: 0, dish: 1 }
+            });
+        }
         for (let i = 0; i < n; i++) {
+            const id = k + 1 + i;
             zones.push(i === 0
-                ? { id: 2, name: 'Санузел 1', kind: 'wc', dist: 6,
+                ? { id: id, name: 'Санузел 1', kind: 'wc', dist: 6,
                     fixtures: { toilet: 1, basin: 1, bath: 1, shower: 0, wash: 1, dish: 0 } }
-                : { id: 2 + i, name: 'Санузел ' + (i + 1), kind: 'wc', dist: 8 + (i - 1) * 2,
+                : { id: id, name: 'Санузел ' + (i + 1), kind: 'wc', dist: 8 + (i - 1) * 2,
                     fixtures: { toilet: 1, basin: 1, bath: 0, shower: 1, wash: 0, dish: 0 } });
         }
+        this.state.houseWaterSig = n + '/' + k;
         return zones;
     },
 
-    // Зоны могли прийти из подробного режима или старого сохранения: счётчик
-    // подстраивается под них, пересборка — только по нажатию стрелки.
+    // Зоны могли прийти из подробного режима или старого сохранения: счётчики
+    // подстраиваются под них, пересборка — по нажатию стрелки и, пока число
+    // санузлов не задавали руками, при смене площади/этажности.
     syncHouseWaterMode: function () {
         if (!this.houseSimpleWater()) return;
         const zones = this.state.waterZones || [];
         if (!zones.length) { this.state.waterZones = this.buildHouseWaterZones(); return; }
+        if (!this.state.houseBathsManual &&
+            this.state.houseWaterSig !== this.houseBaths() + '/' + this.houseKitchens()) {
+            this.state.waterZones = this.buildHouseWaterZones();
+            return;
+        }
+        const isK = z => z.kind === 'kitchen' || /кухн/i.test(z.name || '');
         const baths = zones.filter(z => ((z.fixtures || {}).toilet || 0) > 0).length;
         const n = Math.min(Math.max(baths, 1), this.HOUSE_BATHS_MAX);
         if (this.state.houseBaths !== n) this.state.houseBaths = n;
+        const k = Math.min(Math.max(zones.filter(isK).length, 1), this.HOUSE_KITCHENS_MAX);
+        if (this.state.houseKitchens !== k) this.state.houseKitchens = k;
     },
 
     updHouseBaths: function (d) {
@@ -60101,6 +60125,15 @@ const app = {
         if (n > this.HOUSE_BATHS_MAX) n = this.HOUSE_BATHS_MAX;
         this.state.houseBaths = n;
         this.state.houseBathsManual = true;
+        this.state.waterZones = this.buildHouseWaterZones();
+        this.saveState(); this.syncUI(); this.render();
+    },
+
+    updHouseKitchens: function (d) {
+        let n = this.houseKitchens() + d;
+        if (n < 1) n = 1;
+        if (n > this.HOUSE_KITCHENS_MAX) n = this.HOUSE_KITCHENS_MAX;
+        this.state.houseKitchens = n;
         this.state.waterZones = this.buildHouseWaterZones();
         this.saveState(); this.syncUI(); this.render();
     },
@@ -60337,6 +60370,8 @@ const app = {
             if (this.state.water) this.syncHouseWaterMode();
             const bathsEl = document.getElementById('val_house_baths');
             if (bathsEl) bathsEl.innerText = this.houseBaths();
+            const kitEl = document.getElementById('val_house_kitchens');
+            if (kitEl) kitEl.innerText = this.houseKitchens();
         }
         const pos = this.state.flatPosition || 'middle';
         document.querySelectorAll('.flat-pos-tab').forEach(t => {

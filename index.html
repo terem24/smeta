@@ -233,7 +233,7 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.7" defer></script>
-    <script src="app.js?v=14.19" defer></script>
+    <script src="app.js?v=14.20" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1765,7 +1765,16 @@
                     <div id="blk_house_water_simple" style="display:none; flex-direction:column; gap:10px;">
                         <div class="control-card"
                             style="position:relative; width:100%; display:flex; flex-direction:row; justify-content:space-between; padding:12px 15px; align-items:center;">
-                            <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Кол-во санузлов<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Тип и количество приборов (ванна, душ, унитаз) можно выбрать в подробном режиме.</div></span></span>
+                            <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Кол-во кухонь<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">В доме всегда есть кухня: мойка и посудомоечная машина. Вторая нужна, например, для летней кухни или гостевого этажа.</div></span></span>
+                            <div class="stepper" style="width:100px;">
+                                <button class="step-btn" onclick="app.updHouseKitchens(-1)">−</button>
+                                <div class="step-val" id="val_house_kitchens">1</div>
+                                <button class="step-btn" onclick="app.updHouseKitchens(1)">+</button>
+                            </div>
+                        </div>
+                        <div class="control-card"
+                            style="position:relative; width:100%; display:flex; flex-direction:row; justify-content:space-between; padding:12px 15px; align-items:center;">
+                            <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Кол-во санузлов<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Считается по площади и этажности: до 120 м² — один, до 200 м² — два, больше — три; на двух этажах не меньше двух. Стрелками можно поменять. Тип приборов (ванна, душ, унитаз) — в подробном режиме.</div></span></span>
                             <div class="stepper" style="width:100px;">
                                 <button class="step-btn" onclick="app.updHouseBaths(-1)">−</button>
                                 <div class="step-val" id="val_house_baths">1</div>
