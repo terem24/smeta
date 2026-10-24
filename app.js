@@ -94867,7 +94867,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
 
             addToBill(pump, 1, pumpDesc, grpWell);
             if (shrink) {
-                addToBill(shrink, 1, `<span style="font-size:11px; line-height:1.4;"><b>Зачем:</b> Штатного кабеля насоса (${cableHave} м, ${pump.cable_mm2} мм²) не хватает до автоматики — нужно около ${cableNeed} м. Муфта герметично соединяет кабель насоса с кабелем-удлинителем того же сечения.</span>`, grpWell);
+                addToBill(shrink, 1, `<span style="font-size:11px; line-height:1.4;"><b>Зачем:</b> Штатного кабеля насоса (${cableHave} м, ${pump.cable_mm2} мм²) не хватает до автоматики — нужно около ${cableNeed} м. Муфта герметично соединяет кабель насоса с кабелем-удлинителем того же сечения.</span>`, "7.1. Обвязка скважинного насоса");
             }
             let grpWellTie = "7.1. Обвязка скважинного насоса";
 
