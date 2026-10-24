@@ -1313,7 +1313,7 @@ function computeVk() {
     // лучом от коллекторов к каждому прибору; санузел-стояк канализации — тем же способом внутри комнаты.
     var dIdx = [], dPts = [];
     fx.forEach(function (q, qi) { if (q.t !== 'riser') { dIdx.push(qi); dPts.push([q.x, q.y]); } });
-    var wRoutes = (src && wP && wP.coll) ? wwRoutes(f, fi, src, dPts, m) : null;
+    var wRoutes = src ? wwRoutes(f, fi, src, dPts, m) : null;
     fx.forEach(function (q, qi) {
       if (q.t === 'riser') return;
       if (src) f.wlines.push({ i: qi, pts: wRoutes ? wRoutes[dIdx.indexOf(qi)] : routeBetween(m, src, [q.x, q.y]) });
@@ -1326,7 +1326,7 @@ function computeVk() {
           if (d < bd) { bd = d; best = r; }
         });
         var sPts = null;
-        if (wP && wP.coll) { var sr = wwRoutes(f, fi, [best.x, best.y], [[q.x, q.y]], m); sPts = sr && sr[0] ? sr[0].slice().reverse() : null; }
+        { var sr = wwRoutes(f, fi, [best.x, best.y], [[q.x, q.y]], m); sPts = sr && sr[0] ? sr[0].slice().reverse() : null; }
         f.slines.push({ i: qi, d: (q.t === 'toilet' ? 110 : 50),
           pts: sPts || routeBetween(m, [q.x, q.y], [best.x, best.y]) });
       }
