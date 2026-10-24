@@ -576,7 +576,8 @@
               background: linear-gradient(rgba(129,140,248,.07) 1px, transparent 1px) 0 0 / 100% 28px,
                           linear-gradient(90deg, rgba(129,140,248,.07) 1px, transparent 1px) 0 0 / 28px 100%;
               animation: gridfade 2.8s ease-in-out infinite; }
-  @keyframes beam { 0% { transform: translateY(0); } 100% { transform: translateY(calc(100% + 240px)); } }
+  /* проценты в transform считаются от самого луча (120 px), поэтому ход идёт через top — от высоты плана */
+  @keyframes beam { 0% { top: -120px; } 100% { top: 100%; } }
   @keyframes gridfade { 0%,100% { opacity: .25; } 50% { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { #scanbeam::before, #scanbeam::after, .wz-do, .wz-st.cur, #scanbox .sb-spin, #scanbox .sb-spin::after { animation: none; } }
   /* подсказки, окна выбора, быстрые клавиши */
