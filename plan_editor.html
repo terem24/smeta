@@ -683,7 +683,7 @@ try {
   var stw = JSON.parse(localStorage.getItem('stout_save'));
   ((stw && stw.waterZones) || []).forEach(function (z) {
     if (!z || !z.name) return;
-    calcWc.push({ name: z.name, fixtures: z.fixtures || {} });
+    calcWc.push({ id: (z.id != null ? z.id : null), name: z.name, fixtures: z.fixtures || {} });
     if (roomNames.indexOf(z.name) < 0) roomNames.push(z.name);
   });
 } catch (e) {}
@@ -768,7 +768,7 @@ var MODE_BAR = {
 
 function setMode(m) {
   if (m === 'scale' && !F().img) { alert('Сначала загрузите план.'); return; }
-  if ((m === 'rect' || m === 'poly' || m === 'room' || m === 'rad' || m === 'coll' || m === 'radcoll' || m === 'wc') && !F().pxPerM) { alert('Сначала задайте масштаб.'); return; }
+  if ((m === 'rect' || m === 'poly' || m === 'room' || m === 'rad' || m === 'coll' || m === 'radcoll' || m === 'wc' || m === 'win' || m === 'wcoll') && !F().pxPerM) { alert('Сначала задайте масштаб.'); return; }
   mode = mode === m ? 'select' : m; tmp = []; scalePts = [];
   ['scale', 'room', 'rect', 'poly', 'rad', 'coll', 'radcoll', 'wc'].forEach(function (k) {
     document.getElementById('b_' + k).className = (mode === k) ? 'on' : '';
@@ -781,6 +781,8 @@ function setMode(m) {
     : mode === 'poly' ? 'Кликайте углы контура; двойной клик — замкнуть.'
     : mode === 'rad' ? 'Кликайте под окнами — радиатор встанет вдоль ближайшей стены. Клик по значку — убрать. Кнопка «Под окна» расставит автоматически.'
     : mode === 'coll' ? 'Кликните, где стоит коллектор ТП (обычно в котельной). Клик по значку — убрать, клик в другом месте — передвинуть.'
+    : mode === 'win' ? 'Кликните, где вода заходит в дом.'
+    : mode === 'wcoll' ? 'Кликните, где стоят коллекторы воды.'
     : mode === 'wc' ? 'Выберите прибор в списке и кликните, где он стоит. Клик по значку — убрать. Не забудьте «Стояк канализации» — к нему сводятся выпуски.'
     : '');
   draw();
@@ -4635,6 +4637,7 @@ function draw() {
     cx.fillStyle = '#d22222'; cx.font = 'bold 12px system-ui'; cx.textAlign = 'center';
     cx.fillText('Коллектор радиаторов', rx, ry + (rAng2 % 180 === 90 ? rw : rh) / 2 + 13);
   }
+  wwDraw(f, k);
   // сантехприборы: настоящий габарит и разворот вдоль стены
   (f.fixtures || []).forEach(function (q) {
     var col = q.t === 'riser' ? '#7a5c00' : '#0b7285';
@@ -5103,7 +5106,7 @@ cv.addEventListener('click', function (e) {
   var p = evPt(e);
   // хвост переноса коллектора, и щелчок по его значку — не радиатор и не комната
   if (Date.now() - justDragged < 300 && mode !== 'select' && mode !== 'room') return;
-  if (mode !== 'coll' && mode !== 'radcoll' && F().pxPerM && collAt(p)) return;
+  if (mode !== 'coll' && mode !== 'radcoll' && mode !== 'win' && mode !== 'wcoll' && F().pxPerM && collAt(p)) return;
   if (mode === 'radcoll') {
     // коллектор радиаторов: клик в стороне — сюда; по значку, поставленному
     // рукой, — вернуть его на место по умолчанию (котельная)
@@ -5216,6 +5219,12 @@ cv.addEventListener('click', function (e) {
     if (fc.coll && Math.hypot(p[0] - fc.coll.x, p[1] - fc.coll.y) < 0.45 * (fc.pxPerM || 100)) { fc.coll = null; if (UFH) fc.collAuto = true; }
     else { fc.coll = { x: p[0], y: p[1] }; fc.collAuto = false; }
     renderZones(); draw();
+  } else if (mode === 'win' || mode === 'wcoll') {
+    var ww0 = wwInit();
+    ww0[mode === 'win' ? 'inp' : 'coll'] = { fl: cur, x: Math.round(p[0]), y: Math.round(p[1]), auto: false };
+    ww0.touched = true;
+    mode = 'select';
+    wwRefresh();
   } else if (mode === 'wc') {
     pushUndo('zones');
     var fw = F();
@@ -6244,6 +6253,7 @@ function saveAll() {
   refreshAutoFixtures();   // приборы санузлов из расчёта — на случай правок зон
   computeLeads();   // маршруты подводок к коллектору — свежие на момент сохранения
   computeVk();      // и трассы водоснабжения с канализацией
+  computeWaterTrunks();   // и магистрали воды от коллекторов до санузлов (шаг мастера «Санузлы и вода»)
   computeGeom();    // и контуры стен с окнами — по ним рисуются листы планов
 
   // Сначала кладём работу в браузер — вместе с подложками, чтобы ничего не
@@ -6884,6 +6894,7 @@ function wzSteps() {
   L.push({ id: 'rooms', t: 'Комнаты', ok: f.zones.some(function (z) { return z.type !== 'cold'; }) });
   L.push({ id: 'tp', t: 'Тёплый пол', ok: f.zones.some(function (z) { return z.type === 'tp'; }) });
   if (wzWantRad()) L.push({ id: 'rad', t: 'Радиаторы', ok: (f.rads || []).length > 0 });
+  if (f.img && f.pxPerM) L.push({ id: 'water', t: 'Санузлы и вода', ok: !!(DATA.floors[0].water && DATA.floors[0].water.visited) });
   L.push({ id: 'done', t: 'Готово', ok: false });
   return L;
 }
@@ -6899,7 +6910,7 @@ function wzCur(L) {
   return 'done';
 }
 
-var WZ_MODE = { rooms: 'select', tp: 'room', rad: 'rad', done: 'select' };
+var WZ_MODE = { rooms: 'select', tp: 'room', rad: 'rad', water: 'select', done: 'select' };
 
 /**
  * Перейти на шаг: включить его режим на плане. Переход рукой (кнопка
@@ -6920,6 +6931,7 @@ function wzGo(id, keepHint) {
   var m = WZ_MODE[id] || 'select';
   if (F().pxPerM && m !== mode) setMode(m === 'select' ? mode : m);   // setMode(тот же) — выключить в «select»
   if (id === 'rooms' && F().pxPerM && !F().zones.some(function (z) { return z.type !== 'cold'; })) autoRooms();
+  if (id === 'water') { wwInit().visited = true; wwRefresh(); }
   if (id === 'done') hint('');      // итог — в строке шага, прошлые пояснения справа уже ни к чему
   draw();
 }
@@ -7008,6 +7020,8 @@ function wzSummary() {
   parts.push(tpRooms ? 'тёплый пол: ' + tpRooms + ' ' + pl(tpRooms, 'комната', 'комнаты', 'комнат') +
     (loops ? ', ' + loops + ' ' + pl(loops, 'петля', 'петли', 'петель') + ', ' + Math.round(m) + ' м' : '') : 'без тёплого пола');
   if (rads) parts.push('радиаторов: ' + rads);
+  var ww = DATA.floors[0].water;
+  if (ww && ww.visited && ww.cards && ww.cards.length) parts.push('санузлов: ' + ww.cards.length);
   var plain = parts.join(' · ');
   // Нехватка тепла по последнему расчёту — только пока план не менялся с
   // открытия окна: после правок цифры устарели, там честнее промолчать (свежие
@@ -7061,6 +7075,7 @@ function wzBody(id) {
       ['Мышью', 'двигать коллектор'], ['ПКМ или R', 'повернуть на 90°']] };
   if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('radcoll')", 'Переставить коллектор радиаторов') + B('radRoutesReset()', 'Автотрассы') + radBeamBtn(),
     tx: 'Радиаторы поставлены под окнами — проверьте расстановку.', tips: RAD_TIPS, diag: radWarnHtml() };
+  if (id === 'water') return wwBody();
   return { next: 'Готово — в смету', tx: wzSummary().html,
     tips: [['Комнаты', 'уйдут в расчёт'], ['Раскладка', 'попадёт в смету и КП']] };
 }
@@ -7103,6 +7118,297 @@ function wzRender(box) {
   var mb = document.getElementById('b_more');
   if (mb) mb.textContent = allTools ? 'Ещё ▴' : 'Ещё ▾';
 }
+
+// ═══ Шаг мастера «Санузлы и вода» ═══════════════════════════════════════
+// Необязательный шаг перед «Готово» (24.10.2026, по просьбе монтажников): санузлы
+// с приборами, точка ввода воды и коллекторы ХВС / ГВС / рециркуляции. Магистраль от
+// коллекторов до каждого санузла считается по плану — и уходит в смету как «Трасса, м»
+// вместо оценки на глаз, а значит, в трубы и в гидравлику воды.
+//
+// Данные лежат в floors[0].water — нулевой этаж и так переезжает в смету вместе с планом,
+// отдельной передачи не нужно. Санузлы — те же карточки, что в расчёте (state.waterZones):
+// при открытии окна берутся оттуда, при «Готово» калькулятор забирает правки обратно
+// (app.syncWaterFromPlan).
+//   cards: [{ id (= id зоны расчёта, null у нового), name, fixtures, fl, zone (имя комнаты плана), nz, m }]
+//   inp / coll: { fl, x, y, auto } — ввод воды и коллекторы; auto — по умолчанию в котельной.
+
+var WW_FIX = [['toilet', 'Унитаз'], ['basin', 'Раковина'], ['bath', 'Ванна'], ['shower', 'Душ'], ['wash', 'Стиральная'], ['dish', 'Посудомойка']];
+var WW_RISE = 3;          // вертикальный участок на этаж, м (так же считает смета: стояк этажа 3 м)
+var wwSynced = false;
+function wwEsc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+/** Комнаты плана, к которым можно привязать санузел (без «без обогрева» и копий контура тёплого пола) */
+function wwRooms() {
+  var out = [], seen = {};
+  DATA.floors.forEach(function (f, fi) {
+    (f.zones || []).forEach(function (z) {
+      var nm = String(z.name || '').trim();
+      if (!nm || z.type === 'cold' || !z.pts || z.pts.length < 3 || isTpCopy(f, z)) return;
+      var k = fi + '|' + nm.toLowerCase();
+      if (seen[k]) return;
+      seen[k] = 1;
+      out.push({ fl: fi, name: nm });
+    });
+  });
+  return out;
+}
+function wwRoomZone(fl, name) {
+  var f = DATA.floors[fl], k = String(name || '').trim().toLowerCase(), r = null;
+  if (!f) return null;
+  (f.zones || []).forEach(function (z) {
+    if (!r && z.pts && z.pts.length > 2 && String(z.name || '').trim().toLowerCase() === k && z.type !== 'tp') r = z;
+  });
+  if (!r) (f.zones || []).forEach(function (z) {
+    if (!r && z.pts && z.pts.length > 2 && String(z.name || '').trim().toLowerCase() === k) r = z;
+  });
+  return r;
+}
+
+/** Привязка карточек к комнатам плана: по имени, затем по смыслу («С/у», «Ванная») по порядку */
+function wwBind(w) {
+  var rooms = wwRooms(), used = {}, key = function (r) { return r.fl + '|' + r.name.toLowerCase(); };
+  w.cards.forEach(function (c) {
+    if (c.zone && !wwRoomZone(c.fl, c.zone)) { c.zone = null; c.fl = null; }
+    if (c.zone) used[c.fl + '|' + c.zone.toLowerCase()] = 1;
+  });
+  w.cards.forEach(function (c) {
+    if (c.zone || c.nz) return;
+    var k = String(c.name || '').trim().toLowerCase();
+    rooms.forEach(function (r) {
+      if (!c.zone && !used[key(r)] && r.name.toLowerCase() === k) { c.zone = r.name; c.fl = r.fl; used[key(r)] = 1; }
+    });
+  });
+  w.cards.forEach(function (c) {
+    if (c.zone || c.nz) return;
+    rooms.forEach(function (r) {
+      if (!c.zone && !used[key(r)] && WC_NAME_RE.test(r.name)) { c.zone = r.name; c.fl = r.fl; used[key(r)] = 1; }
+    });
+  });
+}
+
+function wwDefaultFixtures(first) {
+  return first ? { toilet: 1, basin: 1, bath: 0, shower: 1, wash: 0, dish: 0 } : { toilet: 1, basin: 1, bath: 0, shower: 0, wash: 0, dish: 0 };
+}
+
+/** Данные шага; при первом обращении за открытие окна — свежие карточки из расчёта */
+function wwInit() {
+  var f0 = DATA.floors[0], w = f0.water, st = {};
+  if (w && w.cards && wwSynced) return w;
+  try { st = JSON.parse(localStorage.getItem('stout_save')) || {}; } catch (e) {}
+  var old = w && w.cards ? w.cards : [];
+  w = w && w.cards ? w : { visited: false, inp: null, coll: null, trunks: [] };
+  w.enable = !!st.water;
+  w.recirc = !!st.recirc;
+  w.cards = calcWc.map(function (c) {
+    var prev = null;
+    old.forEach(function (o) { if (c.id != null && o.id === c.id) prev = o; });
+    var fx = {};
+    for (var k in (c.fixtures || {})) fx[k] = +c.fixtures[k] || 0;
+    return { id: c.id, name: c.name, fixtures: fx, fl: prev ? prev.fl : null, zone: prev ? prev.zone : null, nz: prev ? !!prev.nz : false };
+  });
+  f0.water = w;
+  wwSynced = true;
+  // расчёт без санузлов, а на плане они есть — по одному на комнату
+  if (!w.cards.length) {
+    wwRooms().forEach(function (r) {
+      if (!WC_NAME_RE.test(r.name)) return;
+      w.cards.push({ id: null, name: r.name, fixtures: wwDefaultFixtures(!w.cards.length), fl: r.fl, zone: r.name, nz: false });
+    });
+  }
+  wwBind(w);
+  return w;
+}
+
+/** Ввод воды и коллекторы: свои или по умолчанию — в котельной */
+function wwPoints(w) {
+  var bf = -1, bz = null;
+  DATA.floors.forEach(function (f, i) {
+    (f.zones || []).forEach(function (z) {
+      if (bf < 0 && z.type === 'boiler' && z.pts && z.pts.length > 2) { bf = i; bz = z; }
+    });
+  });
+  var inp = w.inp || null, coll = w.coll || null;
+  if (!inp && bz) { var c = centroid(bz.pts); inp = { fl: bf, x: Math.round(c[0]), y: Math.round(c[1]), auto: true }; }
+  if (!coll && inp) {
+    coll = { fl: inp.fl, x: inp.x, y: inp.y, auto: true };
+    var fb = DATA.floors[inp.fl], dx = 0.5 * (fb.pxPerM || 100);
+    if (bz && pip([inp.x + dx, inp.y], bz.pts)) coll.x = Math.round(inp.x + dx);
+  }
+  return { inp: inp, coll: coll };
+}
+
+function wwPolyM(pts, ppm) {
+  var s = 0;
+  for (var i = 1; i < pts.length; i++) s += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  return s / ppm;
+}
+
+/** Магистраль от коллекторов до каждого санузла: по свободному месту плана, плюс стояк на каждый этаж разницы */
+function computeWaterTrunks() {
+  DATA.floors.forEach(function (f) { f.wtr = []; });
+  var w = DATA.floors[0].water;
+  if (!w || !w.cards) return;
+  w.trunks = [];
+  var P = wwPoints(w);
+  if (!P.coll) return;
+  var cf = DATA.floors[P.coll.fl];
+  if (!cf || !cf.pxPerM) return;
+  var m = getMask(P.coll.fl);
+  w.inM = null;
+  if (P.inp && P.inp.fl === P.coll.fl && !P.inp.auto) {
+    w.inM = Math.round(wwPolyM(routeBetween(m, [P.inp.x, P.inp.y], [P.coll.x, P.coll.y]), cf.pxPerM) * 10) / 10;
+  }
+  w.cards.forEach(function (c, i) {
+    c.m = null;
+    var z = c.zone ? wwRoomZone(c.fl, c.zone) : null;
+    if (!z) return;
+    var t = centroid(z.pts), pts = routeBetween(m, [P.coll.x, P.coll.y], t);
+    var len = wwPolyM(pts, cf.pxPerM) + WW_RISE * Math.abs(c.fl - P.coll.fl);
+    c.m = Math.round(len * 10) / 10;
+    cf.wtr.push({ i: i, name: c.name, pts: pts, m: c.m, fl: c.fl });
+    w.trunks.push({ i: i, id: c.id, name: c.name, m: c.m });
+  });
+}
+
+/** Сколько выходов нужно коллекторам — по тем же правилам, что у сметы (раздел «Внутреннее водоснабжение») */
+function wwColls(w) {
+  var cold = 0, hot = 0, rec = 0;
+  w.cards.forEach(function (c) {
+    var f = c.fixtures || {}, th = Math.min(+f.toiletHot || 0, +f.toilet || 0);
+    var mix = (f.basin || 0) + (f.shower || 0) + (f.bath || 0) + (f.bidet || 0) + th;
+    cold += (f.toilet || 0) - th + (f.wash || 0) + (f.dish || 0) + mix;
+    if (w.recirc) { if (mix > 0) { hot++; rec++; } } else hot += mix;
+  });
+  return { cold: cold, hot: hot, rec: rec };
+}
+
+function wwRefresh() {
+  computeWaterTrunks();
+  stepsHtml = '';
+  renderSteps();
+  draw();
+}
+function wwFix(i, k, d) {
+  var w = wwInit(), c = w.cards[i];
+  if (!c) return;
+  c.fixtures[k] = Math.max(0, (+c.fixtures[k] || 0) + d);
+  if (k === 'toilet' && (c.fixtures.toiletHot || 0) > c.fixtures.toilet) c.fixtures.toiletHot = c.fixtures.toilet;
+  w.touched = true; wwRefresh();
+}
+function wwName(i, v) {
+  var w = wwInit(), c = w.cards[i];
+  v = String(v || '').trim();
+  if (!c || !v) return;
+  c.name = v; w.touched = true; wwBind(w); wwRefresh();
+}
+function wwZone(i, v) {
+  var w = wwInit(), c = w.cards[i];
+  if (!c) return;
+  if (!v) { c.zone = null; c.fl = null; c.nz = true; }
+  else { var p = v.split('|'); c.fl = +p[0]; c.zone = p.slice(1).join('|'); c.nz = false; }
+  w.touched = true; wwRefresh();
+}
+function wwAdd() {
+  var w = wwInit();
+  var c = { id: null, name: 'Санузел ' + (w.cards.length + 1), fixtures: wwDefaultFixtures(!w.cards.length), fl: null, zone: null, nz: false };
+  w.cards.push(c);
+  wwBind(w);
+  if (c.zone) c.name = c.zone;
+  w.enable = true;
+  w.touched = true; wwRefresh();
+}
+function wwDel(i) {
+  var w = wwInit();
+  w.cards.splice(i, 1);
+  w.touched = true; wwRefresh();
+}
+function wwRecirc(v) { var w = wwInit(); w.recirc = !!v; w.touched = true; wwRefresh(); }
+function wwEnable(v) { var w = wwInit(); w.enable = !!v; w.touched = true; wwRefresh(); }
+function wwPlace(kind) { wwInit(); setMode(kind); }
+function wwReset() { var w = wwInit(); w.inp = null; w.coll = null; w.touched = true; wwRefresh(); }
+
+function wwBody() {
+  var w = wwInit();
+  w.visited = true;
+  if (!w.fresh) { w.fresh = 1; computeWaterTrunks(); }   // дальше — только по правкам (wwRefresh): полоска перерисовывается на каждый draw
+  var P = wwPoints(w), C = wwColls(w), rooms = wwRooms();
+  var st = {}; try { st = JSON.parse(localStorage.getItem('stout_save')) || {}; } catch (e) {}
+  var canRec = st.dhwSource !== 'electric';
+  var B = function (fn, t, cls) { return '<button class="' + (cls || '') + '" onclick="' + fn + '">' + t + '</button>'; };
+  var num = function (v) { return String(v).replace('.', ','); };
+  var h = '<div style="margin-top:8px;font-size:12.5px;line-height:1.5">';
+  h += '<label style="display:block;margin-bottom:6px"><input type="checkbox" ' + (w.enable ? 'checked ' : '') + 'onchange="wwEnable(this.checked)"> Считать внутреннее водоснабжение в смете</label>';
+  w.cards.forEach(function (c, i) {
+    var opts = '<option value="">— не на плане —</option>';
+    rooms.forEach(function (r) {
+      var v = r.fl + '|' + r.name;
+      opts += '<option value="' + wwEsc(v) + '"' + (c.zone && c.fl === r.fl && c.zone === r.name ? ' selected' : '') + '>' +
+        (DATA.floors.length > 1 ? (r.fl + 1) + ' эт. · ' : '') + wwEsc(r.name) + '</option>';
+    });
+    h += '<div style="border:1px solid rgba(128,128,128,.35);border-radius:8px;padding:6px 8px;margin-bottom:6px">' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px">' +
+      '<input value="' + wwEsc(c.name) + '" onchange="wwName(' + i + ',this.value)" style="width:130px;font:inherit">' +
+      '<select onchange="wwZone(' + i + ',this.value)" style="font:inherit;max-width:190px">' + opts + '</select>' +
+      '<span style="opacity:.8">' + (c.m != null ? 'труба от коллектора: <b>' + num(c.m) + ' м</b>' : 'длину трубы задаёт расчёт') + '</span>' +
+      '<b style="cursor:pointer;margin-left:auto" title="Убрать санузел" onclick="wwDel(' + i + ')">✕</b></div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap">';
+    WW_FIX.forEach(function (fx) {
+      h += '<span style="white-space:nowrap">' + fx[1] + ' ' +
+        '<b style="cursor:pointer;padding:0 4px" onclick="wwFix(' + i + ',\'' + fx[0] + '\',-1)">−</b>' +
+        (+c.fixtures[fx[0]] || 0) +
+        '<b style="cursor:pointer;padding:0 4px" onclick="wwFix(' + i + ',\'' + fx[0] + '\',1)">+</b></span>';
+    });
+    h += '</div></div>';
+  });
+  h += B('wwAdd()', '+ Санузел') + '</div>';
+  var where = function (p) { return p ? (p.auto ? 'в котельной' : 'на плане, ' + (p.fl + 1) + ' этаж') : 'не задан — отметьте котельную или кликните'; };
+  var diag = h + '<div style="margin-top:8px;font-size:12.5px;line-height:1.6">' +
+    '<b>Ввод воды:</b> ' + where(P.inp) + (w.inM ? ' · до коллекторов ' + num(w.inM) + ' м' : '') + '<br>' +
+    '<b>Коллекторы:</b> ' + where(P.coll) + ' — ХВС: ' + C.cold + ' вых., ГВС: ' + C.hot + ' вых.' +
+    (w.recirc ? ', рециркуляция: ' + C.rec + ' вых.' : '') +
+    (canRec ? '<br><label><input type="checkbox" ' + (w.recirc ? 'checked ' : '') + 'onchange="wwRecirc(this.checked)"> Рециркуляция ГВС</label>' : '') +
+    '</div>';
+  var acts = B("wwPlace('win')", 'Ввод воды — на плане') + B("wwPlace('wcoll')", 'Коллекторы — на плане') +
+    ((w.inp || w.coll) ? B('wwReset()', 'Вернуть в котельную') : '');
+  return { next: 'Дальше →', acts: acts, diag: diag,
+    tx: 'Укажите санузлы и приборы — те же, что в смете. Магистраль воды считается от коллекторов до каждого санузла по плану. Шаг можно пропустить.',
+    tips: [['Ввод', 'по умолчанию в котельной'], ['Правка здесь', 'сразу в смете'], ['Привязка', 'санузел → комната плана']] };
+}
+
+/** Ввод воды, коллекторы и магистрали — на плане этажа */
+function wwDraw(f, k) {
+  var w = DATA.floors[0].water;
+  if (!w || !w.visited || !f.pxPerM) return;
+  var fi = DATA.floors.indexOf(f), P = wwPoints(w), ppm = f.pxPerM * k;
+  cx.save();
+  (f.wtr || []).forEach(function (t) {
+    if (!t.pts || t.pts.length < 2) return;
+    cx.beginPath();
+    t.pts.forEach(function (p, j) { if (j) cx.lineTo(p[0] * k, p[1] * k); else cx.moveTo(p[0] * k, p[1] * k); });
+    cx.setLineDash([8, 5]); cx.strokeStyle = '#0b7285'; cx.lineWidth = 2.5; cx.stroke(); cx.setLineDash([]);
+    var e = t.pts[t.pts.length - 1];
+    cx.fillStyle = '#0b7285'; cx.font = 'bold 11px system-ui'; cx.textAlign = 'center';
+    cx.fillText(String(t.m).replace('.', ',') + ' м', e[0] * k, e[1] * k - 8);
+  });
+  if (P.inp && P.inp.fl === fi) {
+    cx.beginPath(); cx.arc(P.inp.x * k, P.inp.y * k, Math.max(6, 0.18 * ppm), 0, 6.2832);
+    cx.fillStyle = '#0696D7'; cx.fill(); cx.strokeStyle = '#fff'; cx.lineWidth = 2; cx.stroke();
+    cx.fillStyle = '#0696D7'; cx.font = 'bold 12px system-ui'; cx.textAlign = 'center';
+    cx.fillText('Ввод воды', P.inp.x * k, P.inp.y * k - Math.max(6, 0.18 * ppm) - 5);
+  }
+  if (P.coll && P.coll.fl === fi) {
+    var x = P.coll.x * k, y = P.coll.y * k, cw = Math.max(18, 0.6 * ppm), ch = Math.max(7, cw * 0.36);
+    cx.fillStyle = '#fff'; cx.strokeStyle = '#0696D7'; cx.lineWidth = 2;
+    cx.fillRect(x - cw / 2, y - ch / 2, cw, ch); cx.strokeRect(x - cw / 2, y - ch / 2, cw, ch);
+    cx.fillStyle = '#0696D7'; cx.font = 'bold 12px system-ui'; cx.textAlign = 'center';
+    cx.fillText('Коллекторы ХВС · ГВС' + (w.recirc ? ' · Рец.' : ''), x, y + ch / 2 + 14);
+  }
+  cx.restore();
+}
+
+// Метка «был на шаге» живёт только до закрытия окна: в следующий раз смета берёт трассы с плана,
+// только если шаг снова открыли
+(function () { var w = DATA.floors[0].water; if (w) { w.visited = false; w.touched = false; w.fresh = 0; } })();
 
 // ═══ Выпуск проекта: шаги по номерам (полный редактор) ══════════════════
 // Раньше шапка была полосой из двух десятков кнопок и чипов «Шаги», и было непонятно, что

@@ -43142,6 +43142,7 @@ const app = {
     applyPlansFromEditor: function () {
         this.pullPlansFromEditor();
         const changed = this.syncRoomsFromPlan();
+        if (this.syncWaterFromPlan()) { this.syncUI(); this.saveState(); }
         this.loadPlanCheckData();            // и номер ревизии планов: петли пересчитаются
         this._ufhGeomCache = null;
         // комнаты пришли с плана — список комнат раскрываем, чтобы их было видно
@@ -43150,6 +43151,54 @@ const app = {
         this.syncDesignUI();
         this.renderPlanChecks(); this.renderWaterPlanChecks(); this.renderPlanAreaNote();
         this.render();
+    },
+
+    /**
+     * Шаг мастера плана «Санузлы и вода» → расчёт (plans.floors[0].water, пишет plan_editor.html).
+     *  · приборы и имена санузлов — в карточки водоснабжения (state.waterZones); карточка, которой
+     *    в шаге нет, удаляется, новая создаётся — правка взаимная: то же видно в разделе «Водоснабжение»;
+     *  · «Трасса, м» (dist) — длина магистрали от коллекторов до санузла по плану, а не оценка на глаз;
+     *    она идёт и в трубы раздела 5, и в гидравлику воды (buildWaterHydroData);
+     *  · галочки «Считать водоснабжение» и «Рециркуляция ГВС».
+     * Работает, только если шаг открывали в этом сеансе окна (visited): иначе план ничего не меняет.
+     * Возвращает true, если расчёт изменился.
+     */
+    syncWaterFromPlan: function () {
+        const plans = this.state.plans;
+        const w = plans && Array.isArray(plans.floors) && plans.floors[0] && plans.floors[0].water;
+        if (!w || !w.visited || !Array.isArray(w.cards)) return false;
+        const s = this.state;
+        if (!Array.isArray(s.waterZones)) s.waterZones = [];
+        const zones = s.waterZones;
+        const norm = x => String(x || '').trim().toLowerCase();
+        const KEYS = ['toilet', 'basin', 'bath', 'shower', 'wash', 'dish'];
+        const before = JSON.stringify([zones, s.water, s.recirc]);
+        const keep = new Set();
+        let seq = 0;
+        w.cards.forEach(c => {
+            let z = c.id != null ? zones.find(x => x.id === c.id) : null;
+            if (!z && c.id == null) z = zones.find(x => !keep.has(x.id) && norm(x.name) === norm(c.name));
+            if (!z) {
+                z = { id: Date.now() + (seq++), name: c.name, dist: s.area < 120 ? 6 : 10,
+                    fixtures: { toilet: 0, basin: 0, bath: 0, shower: 0, wash: 0, dish: 0 } };
+                zones.push(z);
+            }
+            keep.add(z.id);
+            if (w.touched) {
+                if (c.name) z.name = c.name;
+                if (!z.fixtures) z.fixtures = {};
+                KEYS.forEach(k => { z.fixtures[k] = Math.max(0, parseInt(c.fixtures && c.fixtures[k], 10) || 0); });
+                if (z.fixtures.toiletHot > z.fixtures.toilet) z.fixtures.toiletHot = z.fixtures.toilet;
+            }
+            if (s.floors === 2 && c.fl != null) z.level = (+c.fl === 1) ? 2 : 1;
+            if (c.m != null && isFinite(c.m)) { z.dist = Math.max(1, Math.ceil(c.m)); z.distPlan = true; }
+        });
+        if (w.touched) {
+            s.waterZones = zones.filter(z => keep.has(z.id));
+            if (w.enable) s.water = true; else if (w.enable === false) s.water = false;
+            if (w.recirc !== undefined && s.dhwSource !== 'electric') s.recirc = !!w.recirc;
+        }
+        return JSON.stringify([s.waterZones, s.water, s.recirc]) !== before;
     },
 
     /**
