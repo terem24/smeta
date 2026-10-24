@@ -44230,9 +44230,9 @@ const app = {
                 (SL && first ? (() => {
                     const mn = SL.rows.filter(r => !r.pumped).reduce((a2, r) => a2 == null ? r.margin : Math.min(a2, r.margin), null);
                     const cm = v => Math.round(v * 100);
-                    const pm = SL.pumpId ? (catalog.sewer_pumps || []).find(x => x.id === SL.pumpId) : null;
+                    const pm = (SL.pumpIds || []).length ? (SL.pumpIds || []).map(id => ((catalog.sewer_pumps || []).find(x => x.id === id) || {}).name || '').filter(Boolean).map(n => n.replace('Канализационная насосная станция ', '')).join(', ') : null;
                     if (SL.fail) return `<div class="hc-advice" style="margin-top:6px">Самотёк не проходит: не хватает перепада у ${SL.fail} приборов (выпуск на глубине ${String(SL.depth).replace('.', ',')} м).</div>`;
-                    return `<div class="hc-det-p" style="margin-top:6px">Уклон учтён: выпуск на глубине ${String(SL.depth).replace('.', ',')} м, ` + (mn == null ? 'все приборы на насосной станции' : (SL.tight ? 'самотёк впритык, запас ' + cm(mn) + ' см' : 'самотёк проходит, запас ' + cm(mn) + ' см')) + (pm ? '; насосная станция ' + pm.name.replace('Канализационная насосная станция ', '') + ' в смете' : '') + '.</div>';
+                    return `<div class="hc-det-p" style="margin-top:6px">Уклон учтён: выпуск на глубине ${String(SL.depth).replace('.', ',')} м, ` + (mn == null ? 'все приборы на насосной станции' : (SL.tight ? 'самотёк впритык, запас ' + cm(mn) + ' см' : 'самотёк проходит, запас ' + cm(mn) + ' см')) + (pm ? '; насосные станции в смете: ' + pm : '') + '.</div>';
                 })() : '');
             parts.push(`<div class="ufh-plan-block" style="margin:6px 0 14px">` + (views.length > 1 ? `<div style="font-weight:700;margin:0 0 6px">${V.fl}-й этаж</div>` : '') +
                 `<div style="font-weight:600;margin:0 0 4px;color:var(--text-sec)">Канализация К1: отводы от приборов к стояку, лежак d110 до выпуска</div>` +
@@ -95453,16 +95453,21 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     let coupling110 = catalog.sewer_silent.find(x => x.id === "SKB-0006-000110");
                     addToBill(coupling110, floors, this.getDesc('sewer_coupling_110'), grpSewerMain);
 
-                    // Самотёк не идёт — станция BIOLIFT, выбранная в плане дома (шаг «Канализация», «Учитывать уклон»)
+                    // Самотёк не идёт — станции BIOLIFT по помещениям: модель подобрана в плане дома по паспорту (входы, поток, длина сброса)
+                    // и заменяется там же в таблице станций (шаг «Канализация», «Учитывать уклон»)
                     const _pl8 = this.currentPlans(), _w8 = _pl8 && _pl8.floors && _pl8.floors[0] && _pl8.floors[0].water;
-                    if (_w8 && _w8.visited && _w8.slopeOn && _w8.pump && _w8.pump.id) {
-                        const _pump = (catalog.sewer_pumps || []).find(x => x.id === _w8.pump.id);
-                        if (_pump) {
-                            const _rooms = (_w8.pump.cards || []).join(', ');
-                            addToBill({ ..._pump, originalId: 'sewer_pump_biolift', alts: catalog.sewer_pumps },
-                                1, `<span style="font-size:11px; line-height:1.4;"><b>Зачем:</b> самотёком канализация ${_rooms ? 'от «' + _rooms + '» ' : ''}не проходит: перепада высоты до выпуска не хватает (проверка уклона в плане дома). Станция подаёт стоки под давлением. Модель подбирайте по паспорту — напор и число подключаемых приборов.</span>`,
+                    if (_w8 && _w8.visited && _w8.slopeOn && (_w8.pumps || []).length) {
+                        const _byId = {};
+                        _w8.pumps.forEach(pp => { (_byId[pp.id] = _byId[pp.id] || []).push(pp); });
+                        Object.keys(_byId).forEach(id => {
+                            const _pump = (catalog.sewer_pumps || []).find(x => x.id === id);
+                            if (!_pump) return;
+                            const rows = _byId[id], qty = rows.reduce((a, r) => a + (+r.qty || 1), 0);
+                            const _why = rows.map(r => '«' + r.room + '»' + (r.note ? ': ' + r.note : '')).join('<br>');
+                            addToBill({ ..._pump, originalId: 'sewer_pump_biolift_' + id, alts: catalog.sewer_pumps }, qty,
+                                `<span style="font-size:11px; line-height:1.4;"><b>Зачем:</b> самотёком канализация от ${rows.map(r => '«' + r.room + '»').join(', ')} не проходит: перепада высоты до выпуска не хватает (проверка уклона в плане дома). Станция подаёт стоки под давлением.<br><b>Подбор по паспорту:</b><br>${_why}<br>Модель можно заменить; перед монтажом сверьте с паспортом на изделие.</span>`,
                                 `8.${subSecIdx++}. Канализация: [Насосная станция]`);
-                        }
+                        });
                     }
 
                     // Ревизия и аэратор стояка: лист «К» их требует, в смете их не было
