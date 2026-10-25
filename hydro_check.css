@@ -11,11 +11,24 @@
     height: auto; aspect-ratio: 420 / 297;
 }
 #dynamic_scheme.scheme-vector.hc-split .scheme-svg-wrap > svg { height: 100%; }
+/* Справа от схемы — «реальный вид» (scheme_real.js), карточка проверки — отдельной строкой под ними.
+   Без реального вида (нет конфигурации схемы) карточка по-прежнему стоит справа от схемы */
 .hc-side { flex: 1 1 calc(50% - 7px); min-width: 0; }
+#dynamic_scheme.hc-split:has(#scheme_real_side) .hc-side { flex-basis: 100%; }
+#scheme_real_side { flex: 1 1 calc(50% - 7px); min-width: 0; }
+.sr-wrap { position: relative; cursor: zoom-in; aspect-ratio: 420 / 297; }
+.sr-svg { display: block; width: 100%; height: 100%; background: #fff; border: 1px solid var(--border, #E5E7EB); border-radius: 8px; }
+body.dark-mode .sr-svg { border-color: #334155; filter: brightness(0.86) contrast(1.04); }
 @media (max-width: 900px) {
     #dynamic_scheme.scheme-vector.hc-split .scheme-svg-wrap { flex-basis: 100%; width: 100%; }
-    .hc-side { flex-basis: 100%; }
+    .hc-side, #scheme_real_side { flex-basis: 100%; }
 }
+/* Полный экран реального вида */
+#scheme_real_zoom { position: fixed; inset: 0; z-index: 10050; background: rgba(15, 23, 42, .86); display: flex;
+    align-items: center; justify-content: center; padding: 3vh 3vw; cursor: zoom-out; }
+#scheme_real_zoom .sr-zoom-svg { width: min(94vw, calc(94vh * 1.414)); height: auto; background: #fff; border-radius: 8px; }
+#scheme_real_zoom .sr-zoom-x { position: absolute; top: 14px; right: 18px; border: none; border-radius: 50%; width: 38px; height: 38px;
+    font-size: 18px; background: rgba(255, 255, 255, .92); color: #111; cursor: pointer; }
 .hc-solo { flex: none; max-width: 760px; margin-bottom: 20px; }
 
 .hc-card { background: var(--surface, #fff); color: var(--text-main, #111827); border: 1px solid var(--border, #E5E7EB);
@@ -117,7 +130,7 @@
 /* Печать: живая карточка скрыта, проверка гидравлики идёт своим листом (#hydro_check_print,
    app.prepareForPrint, шаг 3б) с раскрытыми строками и без кнопок */
 @media print {
-    .hc-side, #water_hydro_side { display: none !important; }
+    .hc-side, #water_hydro_side, #scheme_real_side { display: none !important; }
     #water_hydro_print { padding: 6mm 8mm; color: #111; }
     #water_hydro_print .hc-print-title { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
     #water_hydro_print .hc-card { border: none; padding: 0; font-size: 12px; }

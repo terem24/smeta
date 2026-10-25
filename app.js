@@ -54476,6 +54476,18 @@ const app = {
         // Сама проверка и автоподбор считаются всегда, от переключателя схемы не зависят.
         const scheme = document.getElementById('dynamic_scheme');
         if (!scheme) return;
+        // Справа от схемы — «реальный вид»: те же узлы по фото оборудования с подачей и обраткой
+        // (scheme_real.js). Карточка проверки уходит отдельной строкой под схему и реальный вид.
+        const _cfg = this._schemeCfgCache;
+        const _real = (_cfg && window.SchemeReal) ? window.SchemeReal.render(_cfg) : '';
+        if (_real) {
+            const real = document.createElement('div');
+            real.id = 'scheme_real_side';
+            real.className = 'sr-side';
+            real.innerHTML = _real;
+            scheme.appendChild(real);
+            scheme.classList.add('hc-split');
+        }
         const box = document.createElement('div');
         box.id = 'hydro_check_side';
         box.className = 'hc-side';
@@ -54627,9 +54639,10 @@ const app = {
             const html = this.hydroCardHtml(false);
             box.innerHTML = html;
             box.style.display = html ? '' : 'none';
-            // схема и карточка делят строку пополам, пока карточка показана
+            // схема и реальный вид делят строку пополам, карточка — отдельной строкой под ними;
+            // без реального вида (нет конфигурации) схему и карточку делит строка, как раньше
             const _sch = box.closest('#dynamic_scheme');
-            if (_sch) _sch.classList.toggle('hc-split', !!html);
+            if (_sch) _sch.classList.toggle('hc-split', !!html || !!_sch.querySelector('#scheme_real_side'));
         } catch (e) {
             box.innerHTML = '';
             box.style.display = 'none';
