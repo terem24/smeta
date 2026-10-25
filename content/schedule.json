@@ -333,9 +333,9 @@
    "freq": 0,
    "audience": "pro",
    "data_block": "эксперимент: диаметр ветки 6 кВт",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-25",
-   "published_at": null,
+   "published_at": "2026-10-25",
    "words": 654
   },
   {
