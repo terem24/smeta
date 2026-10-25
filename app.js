@@ -96613,8 +96613,6 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         <button type="button" id="plan_first_btn" class="quick-start-cta plan-first-cta" onclick="app.pickPlanThenOpen()">Загрузить план</button>
                         <div class="plan-first-links">
                             <a href="#" onclick="app.goProjectStep('rooms'); return false;">или ввести комнаты вручную</a>
-                            <span>·</span>
-                            <a href="#" id="quick_start_row" onclick="app.showQuickStart(); return false;">пропустить: типовой объект</a>
                         </div>
                     </div>` : (_onboardOk && this.isCalcEmpty()) ? `
                     <button type="button" id="quick_start_row" class="no-print quick-start-cta" onclick="app.showQuickStart()">
