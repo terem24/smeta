@@ -141,14 +141,14 @@
     .share-row .tg { background: #229ED9; border-color: #229ED9; color: #fff; }
     .ok-copied { color: var(--ok-text); font-size: 13px; font-weight: 600; display: none; margin-top: 8px; }
 
-    /* Схема котельной: две картинки, показывается та, что под текущую тему */
-    .boiler-fig { margin: 0 0 18px; }
-    .boiler-fig img { display: block; width: 100%; height: auto; border-radius: 12px; }
-    body.theme-dark .boiler-fig .fig-light { display: none; }
-    body:not(.theme-dark) .boiler-fig .fig-dark { display: none; }
-    .fig-keys { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; font-size: 13.5px; line-height: 1.4; }
-    .fig-keys b { display: inline-block; min-width: 20px; color: var(--primary); font-weight: 700; }
-    @media (max-width: 420px) { .fig-keys { grid-template-columns: 1fr; } }
+    /* Оборудование котельной: плитки с реальными рендерами узлов */
+    .kit { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 0 0 6px; padding: 0; list-style: none; }
+    @media (max-width: 420px) { .kit { grid-template-columns: 1fr 1fr; } }
+    .kit li { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--surface); }
+    .kit img { display: block; width: 100%; height: auto; background: #fff; }
+    .kit .cap { padding: 8px 10px 10px; font-size: 13px; line-height: 1.35; border-top: 1px solid var(--border); }
+    .kit .cap b { color: var(--primary); margin-right: 4px; }
+    .kit .cap small { display: block; margin-top: 2px; color: var(--text-sec); font-size: 12px; }
 </style>
 </head>
 <body>
@@ -228,22 +228,15 @@
 
     <section class="card">
         <div class="sec-head"><span class="num">3</span><h2>Отопление</h2></div>
-        <figure class="boiler-fig">
-            <img class="fig-light" src="img/boiler-room-light.svg" alt="Схема котельной: котёл, бойлер, расширительный бак, насос, коллектор тёплого пола, радиаторы, счётчик воды, автоматика и вентиляция" loading="lazy">
-            <img class="fig-dark" src="img/boiler-room-dark.svg" alt="" aria-hidden="true" loading="lazy">
-            <ol class="fig-keys">
-                <li><b>1</b> Котёл — газовый или электрический</li>
-                <li><b>2</b> Бойлер — горячая вода</li>
-                <li><b>3</b> Расширительные баки</li>
-                <li><b>4</b> Циркуляционные насосы</li>
-                <li><b>5</b> Гидрострелка</li>
-                <li><b>6</b> Коллектор: тёплый пол и радиаторы</li>
-                <li><b>7</b> Счётчик и ввод воды</li>
-                <li><b>8</b> Автоматика</li>
-                <li><b>9</b> Вентиляция с подогревом</li>
-            </ol>
-            <p class="note" style="margin:10px 0 0;">Общая схема, чтобы было понятно, о чём спрашиваем. Расположение и трубы условные: расчёт монтажник делает под ваш дом.</p>
-        </figure>
+        <ul class="kit">
+            <li><img src="img/opros/1-boiler.jpg" alt="Настенный котёл" width="480" height="480" loading="lazy"><div class="cap"><b>1</b>Котёл<small>газовый или электрический</small></div></li>
+            <li><img src="img/opros/2-dhw.jpg" alt="Бойлер косвенного нагрева" width="480" height="480" loading="lazy"><div class="cap"><b>2</b>Бойлер<small>горячая вода в доме</small></div></li>
+            <li><img src="img/opros/3-exp.jpg" alt="Расширительные баки" width="480" height="480" loading="lazy"><div class="cap"><b>3</b>Расширительные баки<small>для отопления и воды</small></div></li>
+            <li><img src="img/opros/4-pump.jpg" alt="Насос с кранами" width="480" height="480" loading="lazy"><div class="cap"><b>4</b>Насос<small>гоняет воду по контуру</small></div></li>
+            <li><img src="img/opros/5-ufh.jpg" alt="Коллектор тёплого пола" width="480" height="480" loading="lazy"><div class="cap"><b>5</b>Коллектор тёплого пола<small>раздаёт воду по петлям</small></div></li>
+            <li><img src="img/opros/6-rad.jpg" alt="Коллектор радиаторов" width="480" height="480" loading="lazy"><div class="cap"><b>6</b>Коллектор радиаторов<small>раздаёт воду по батареям</small></div></li>
+        </ul>
+        <p class="note" style="margin:0 0 16px;">Так выглядит оборудование, о котором мы спрашиваем ниже. Состав именно вашего дома монтажник определит по ответам.</p>
         <div class="fields">
             <div class="field">
                 <label class="f">Чем хотите отапливать</label>
