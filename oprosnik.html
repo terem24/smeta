@@ -301,9 +301,12 @@
                 </div>
             </div>
             <div class="sub-q" id="q_tprooms" hidden>
-                <label class="f" for="f_tpArea">Площадь тёплого пола <span class="req">*</span></label>
-                <div class="unit" data-unit="м²"><input type="number" id="f_tpArea" min="1" max="2000" placeholder="60" inputmode="numeric" required></div>
-                <span class="hint">Примерно: сложите площади комнат, где будет тёплый пол</span>
+                <span class="hint" id="tpWholeNote" hidden></span>
+                <div id="tpAreaBlock" style="display:flex; flex-direction:column; gap:8px;">
+                    <label class="f" for="f_tpArea">Площадь тёплого пола <span class="req">*</span></label>
+                    <div class="unit" data-unit="м²"><input type="number" id="f_tpArea" min="1" max="2000" placeholder="60" inputmode="numeric" required></div>
+                    <span class="hint">Примерно: сложите площади комнат, где будет тёплый пол</span>
+                </div>
                 <label class="f" for="f_tprooms" style="margin-top:6px;">В каких комнатах <span class="opt">· по желанию</span></label>
                 <div class="chips" id="tpChips">
                     <button type="button" data-v="Во всём доме">Во всём доме</button>
@@ -746,6 +749,7 @@
 
     // ── Зависимые вопросы: показываем только то, что сейчас нужно ─────────
     var lastRoofType = null;
+    function isWholeHouseTp() { return val('f_tprooms') === 'Во всём доме'; }
     function refresh() {
         var hasProject = radio('f_hasProject') === 'yes';
         $('s_build').classList.toggle('skip', hasProject);
@@ -757,6 +761,11 @@
 
         var heat = radio('f_heat');
         $('q_tprooms').hidden = !(heat === 'tp' || heat === 'both');
+        // «Во всём доме» — площадь тёплого пола и есть площадь дома, второй раз её не спрашиваем
+        var wholeHouse = isWholeHouseTp();
+        $('tpAreaBlock').hidden = wholeHouse;
+        $('tpWholeNote').hidden = !wholeHouse;
+        $('tpWholeNote').textContent = 'Тёплый пол на всю площадь дома: ' + (val('f_area') || '—') + ' м² (из поля «Площадь дома»)';
         $('q_people').hidden = radio('f_hw') === 'no';
         // Котёл: газ → откуда газ и дымоход; электричество → сеть и мощность;
         // «не решили» → и то и другое, чтобы монтажник выбрал сам, без звонка
@@ -798,7 +807,7 @@
         });
     });
     Array.prototype.forEach.call(document.querySelectorAll('#tpChips button'), function (b) {
-        b.addEventListener('click', function () { $('f_tprooms').value = b.getAttribute('data-v'); });
+        b.addEventListener('click', function () { $('f_tprooms').value = b.getAttribute('data-v'); refresh(); });
     });
 
     // Итоговые id для сервера: те же, что понимает калькулятор
@@ -985,6 +994,11 @@
         return lb ? lb.textContent.replace(/[*·].*$/, '').trim() : el.id;
     }
     function fieldProblem(el) {
+        // Тёплый пол не может быть больше дома: сравниваем с полем «Площадь дома»
+        if (el.id === 'f_tpArea') {
+            var houseArea = parseFloat(val('f_area')) || 0;
+            if (houseArea && (parseFloat(el.value) || 0) > houseArea) return 'Больше площади дома (' + houseArea + ' м²)';
+        }
         var v = el.validity;
         if (v.valid) return '';
         if (v.customError) return el.validationMessage;
@@ -1122,7 +1136,7 @@
             if (kw && kw !== 'unknown') d.elKw = parseFloat(kw);
             else if (kw === 'unknown') d.elKwUnknown = true;
         }
-        if (tp) d.tpArea = parseFloat(val('f_tpArea')) || 0;
+        if (tp) d.tpArea = isWholeHouseTp() ? d.area : (parseFloat(val('f_tpArea')) || 0);
         if (ws === 'well') { d.wellDepth = parseFloat(val('f_wellDepth')) || 0; d.wellDist = parseFloat(val('f_wellDist')) || 0; }
         // «Есть проект» — детали конструкции не спрашивали, отправлять нечего
         if (!hasProject) {
