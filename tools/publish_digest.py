@@ -88,7 +88,7 @@ HEAD = '''<!DOCTYPE html>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/seo.css?v=7">
+    <link rel="stylesheet" href="/seo.css?v=9">
     <script>
         (function () {
             var dark;
@@ -133,18 +133,7 @@ FOOT = '''
             <small>Бесплатно, прямо в браузере или на телефоне</small>
         </a>
     </main>
-    <footer>
-        <div class="wrap">
-            <p>
-                <a href="/">Калькулятор</a>
-                <a href="/novosti/">Новости калькулятора</a>
-                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
-                <a href="/goroda/">Города</a>
-                <a href="/oferta.html">Оферта</a>
-            </p>
-            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
-        </div>
-    </footer>
+''' + SITE_FOOTER + '''
 </body>
 
 </html>

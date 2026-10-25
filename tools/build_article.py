@@ -433,6 +433,7 @@ def build(slug, publish=False):
         # навсегда — восстановить её задним числом нечем. Параметр вычищается
         # из индекса через Clean-param в robots.txt, чтобы не плодить дубли.
         lead_page=LEAD_PAGE + '?src=' + slug,
+        site_footer=SITE_FOOTER,
         cta_calc=esc(art.get('cta_calc', 'Посчитать свой дом в калькуляторе')),
         cta_calc_note=esc(art.get('cta_calc_note', 'Бесплатно, результат сразу на экране')),
     )
@@ -472,7 +473,7 @@ TEMPLATE = '''<!DOCTYPE html>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/seo.css?v=8">
+    <link rel="stylesheet" href="/seo.css?v=9">
 
     <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
          Флаг общий с калькулятором — stout_save.darkMode. -->
@@ -566,20 +567,7 @@ TEMPLATE = '''<!DOCTYPE html>
 
     </main>
 
-    <footer class="bottom">
-        <div class="wrap">
-            <p>
-                <a href="/">Калькулятор</a>
-                <a href="/smeta/">Смета на отопление</a>
-                <a href="/raschet-teplopoter/">Теплопотери</a>
-                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
-                <a href="{lead_page}">Монтаж в СПб</a>
-                <a href="/goroda/">Города</a>
-                <a href="/oferta.html">Оферта</a>
-            </p>
-            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
-        </div>
-    </footer>
+    {site_footer}
 
 </body>
 
