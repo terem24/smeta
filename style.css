@@ -21046,3 +21046,15 @@ body.empty-fit-panel #header_totals { display: none !important; }
         text-align: center;
     }
 }
+
+/* «Сегодня»: перетаскивание разделов и плашек в режиме настройки */
+.kpi-grab { cursor: grab; user-select: none; }
+.kpi-grab:active { cursor: grabbing; }
+.kpi-h > b.kpi-grab:hover { color: var(--text-main); }
+.kpi-dragging { opacity: .4; }
+.kpi-drop-b, .kpi-drop-a { position: relative; }
+.kpi-drop-b::before, .kpi-drop-a::after { content: ""; position: absolute; z-index: 5; background: var(--primary); border-radius: 3px; pointer-events: none; }
+.kpi-n.kpi-drop-b::before { left: 0; top: 0; bottom: 0; width: 5px; }
+.kpi-n.kpi-drop-a::after { right: 0; top: 0; bottom: 0; width: 5px; }
+.kpi-w.kpi-drop-b::before { left: 0; right: 0; top: -14px; height: 4px; }
+.kpi-w.kpi-drop-a::after { left: 0; right: 0; bottom: -14px; height: 4px; }

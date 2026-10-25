@@ -29461,7 +29461,80 @@ const app = {
     kpiEdit: function (on) { this._kpiEditOn = !!on; this.renderAdminHome(); },
     kpiResetHidden: function () {
         this._kpiHide = {};
-        try { localStorage.removeItem(this.KPI_HIDE_KEY); } catch (e) { }
+        this._kpiOrder = null;
+        try { localStorage.removeItem(this.KPI_HIDE_KEY); localStorage.removeItem(this.KPI_ORDER_KEY); } catch (e) { }
+        this.renderAdminHome();
+    },
+
+    // Порядок разделов и плашек внутри раздела: {sec: [id…], tiles: {виджет: [ключ…]}}. Тоже у каждого свой, в localStorage.
+    // Чего в сохранённом списке нет (новая плашка после обновления), встаёт в конец в обычном порядке
+    KPI_ORDER_KEY: 'heatcalc_kpi_order_v1',
+    kpiOrderMap: function () {
+        if (!this._kpiOrder) {
+            let v = null;
+            try { v = JSON.parse(localStorage.getItem(this.KPI_ORDER_KEY) || 'null'); } catch (e) { }
+            this._kpiOrder = (v && typeof v === 'object') ? v : {};
+            if (!Array.isArray(this._kpiOrder.sec)) this._kpiOrder.sec = [];
+            if (!this._kpiOrder.tiles || typeof this._kpiOrder.tiles !== 'object') this._kpiOrder.tiles = {};
+        }
+        return this._kpiOrder;
+    },
+    kpiSortBy: function (saved, items, keyOf) {
+        if (!saved || !saved.length) return items;
+        const pos = k => { const i = saved.indexOf(k); return i < 0 ? 1e6 : i; };
+        return items.map((x, i) => [x, i]).sort((a, b) => (pos(keyOf(a[0])) - pos(keyOf(b[0]))) || (a[1] - b[1])).map(x => x[0]);
+    },
+    kpiDragStart: function (ev, kind, wid, k) {
+        this._kpiDrag = { kind: kind, wid: wid, k: k };
+        const host = ev.target && ev.target.closest ? ev.target.closest(kind === 'sec' ? '.kpi-w' : '.kpi-n') : null;
+        try {
+            ev.dataTransfer.effectAllowed = 'move';
+            ev.dataTransfer.setData('text/plain', kind + ':' + wid + (k ? '.' + k : ''));
+            if (host) ev.dataTransfer.setDragImage(host, 24, 20);
+        } catch (e) { }
+        if (host) setTimeout(() => host.classList.add('kpi-dragging'), 0);
+    },
+    kpiDragEnd: function () {
+        this._kpiDrag = null;
+        document.querySelectorAll('.kpi-dragging, .kpi-drop-b, .kpi-drop-a').forEach(e => e.classList.remove('kpi-dragging', 'kpi-drop-b', 'kpi-drop-a'));
+    },
+    // Куда упадёт: плашки — левее/правее середины цели, разделы — выше/ниже середины
+    kpiDragTarget: function (ev, el, kind) {
+        const d = this._kpiDrag;
+        if (!d || d.kind !== kind) return null;
+        if (kind === 'tile' && el.dataset.wid !== d.wid) return null;
+        const r = el.getBoundingClientRect();
+        const after = kind === 'sec' ? ev.clientY > r.top + r.height / 2 : ev.clientX > r.left + r.width / 2;
+        return { d: d, after: after };
+    },
+    kpiDragOver: function (ev, el, kind) {
+        const t = this.kpiDragTarget(ev, el, kind);
+        if (!t) return;
+        ev.preventDefault();
+        try { ev.dataTransfer.dropEffect = 'move'; } catch (e) { }
+        document.querySelectorAll('.kpi-drop-b, .kpi-drop-a').forEach(e => { if (e !== el) e.classList.remove('kpi-drop-b', 'kpi-drop-a'); });
+        el.classList.toggle('kpi-drop-a', t.after);
+        el.classList.toggle('kpi-drop-b', !t.after);
+    },
+    kpiDragLeave: function (ev, el) {
+        if (!ev.relatedTarget || !el.contains(ev.relatedTarget)) el.classList.remove('kpi-drop-b', 'kpi-drop-a');
+    },
+    kpiDrop: function (ev, el, kind) {
+        const t = this.kpiDragTarget(ev, el, kind);
+        if (!t) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        const dragged = kind === 'sec' ? t.d.wid : t.d.k, target = kind === 'sec' ? el.dataset.sec : el.dataset.k;
+        const list = kind === 'sec' ? (this._kpiShownSec || []).slice() : (this._kpiShownTiles || {})[t.d.wid];
+        this.kpiDragEnd();
+        if (!list || dragged === target) return;
+        const from = list.indexOf(dragged);
+        if (from < 0 || list.indexOf(target) < 0) return;
+        list.splice(from, 1);
+        list.splice(list.indexOf(target) + (t.after ? 1 : 0), 0, dragged);
+        const O = this.kpiOrderMap();
+        if (kind === 'sec') O.sec = list; else O.tiles[t.d.wid] = list;
+        try { localStorage.setItem(this.KPI_ORDER_KEY, JSON.stringify(O)); } catch (e) { }
         this.renderAdminHome();
     },
 
@@ -29503,13 +29576,17 @@ const app = {
         const tile = m => {
             const info = m.h ? `<i class="kpi-info" title="${esc(m.h)}" aria-label="${esc(m.h)}">i</i>` : '';
             const x = edit ? `<button type="button" class="kpi-x" title="Скрыть плашку" aria-label="Скрыть плашку «${esc(m.l)}»" onclick="app.kpiSetHidden('${w.id}','${m.k}',true)">×</button>` : '';
-            return `<div class="kpi-n${m.sp ? ' kpi-n-sp' : ''}${m.tone ? ' kpi-n-' + m.tone : ''}${edit ? ' kpi-n-edit' : ''}">${x}
-                <span class="kpi-nl">${esc(m.l)}${info}</span>
+            const dnd = edit ? ` data-wid="${w.id}" data-k="${m.k}" ondragover="app.kpiDragOver(event,this,'tile')" ondragleave="app.kpiDragLeave(event,this)" ondrop="app.kpiDrop(event,this,'tile')"` : '';
+            const grab = edit ? ` kpi-grab" draggable="true" ondragstart="app.kpiDragStart(event,'tile','${w.id}','${m.k}')" ondragend="app.kpiDragEnd()` : '';
+            return `<div class="kpi-n${m.sp ? ' kpi-n-sp' : ''}${m.tone ? ' kpi-n-' + m.tone : ''}${edit ? ' kpi-n-edit' : ''}"${dnd}>${x}
+                <span class="kpi-nl${grab}">${edit ? '⠿ ' : ''}${esc(m.l)}${info}</span>
                 <div class="kpi-nv"><b${String(m.v).length > 9 ? ' class="kpi-long"' : ''}>${esc(m.v)}</b>${m.d ? `<span class="kpi-nd">${m.d}</span>` : ''}</div>
                 ${m.s ? `<span class="kpi-ns">${esc(m.s)}</span>` : ''}${m.sp ? this.kpiSparkHtml(m.sp, w.chart && w.chart.tips, /₽\s*$/.test(String(m.v)) ? ' ₽' : '') : ''}</div>`;
         };
-        const shown = w.nums.filter(m => !this.kpiIsHidden(w.id, m));
-        const hidden = w.nums.filter(m => this.kpiIsHidden(w.id, m));
+        const nums = this.kpiSortBy(this.kpiOrderMap().tiles[w.id], w.nums, m => m.k);
+        (this._kpiShownTiles || (this._kpiShownTiles = {}))[w.id] = nums.map(m => m.k);
+        const shown = nums.filter(m => !this.kpiIsHidden(w.id, m));
+        const hidden = nums.filter(m => this.kpiIsHidden(w.id, m));
         let h = shown.map(tile).join('');
         if (edit) h += hidden.map(m => `<button type="button" class="kpi-n kpi-n-add" title="${esc(m.h || '')}" onclick="app.kpiSetHidden('${w.id}','${m.k}',false)">
                 <span class="kpi-plus" aria-hidden="true">+</span><span class="kpi-nl">${esc(m.l)}</span><span class="kpi-ns">добавить плашку</span></button>`).join('');
@@ -29518,7 +29595,7 @@ const app = {
     },
 
     kpiWidgetHtml: function (w, esc) {
-        const edit = !!this._kpiEditOn;
+        const edit = !!this._todayEdit;
         // В режиме настройки плашек всегда показываем цифры: прятать и добавлять можно только их
         const view = edit ? 'num' : this.kpiViewOf(w.id);
         const tabs = edit ? '' : `<span class="kpi-vs">${this.KPI_VIEWS.map(v => `<button type="button" class="kpi-vb${v.id === view ? ' on' : ''}" onclick="app.kpiSetView('${w.id}','${v.id}')">${v.label}</button>`).join('')}</span>`;
@@ -29537,8 +29614,12 @@ const app = {
         const note = (!w.err && !w.wait && w.note) ? `<div class="kpi-note">${esc(w.note)}</div>` : '';
         const tips = (!w.err && !w.wait && w.tips && w.tips.length)
             ? `<div class="kpi-tips"><b>Что улучшить</b><ul>${w.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : '';
-        return `<section class="kpi-w">
-            <div class="kpi-h"><b onclick="app.switchAdminTab('${w.tab}')" title="Открыть раздел: ${esc(w.act)}">${esc(w.title)} <span aria-hidden="true">›</span></b>${tabs}</div>
+        const secAttr = edit ? ` data-sec="${w.id}" ondragover="app.kpiDragOver(event,this,'sec')" ondragleave="app.kpiDragLeave(event,this)" ondrop="app.kpiDrop(event,this,'sec')"` : '';
+        const head = edit
+            ? `<b class="kpi-grab" draggable="true" ondragstart="app.kpiDragStart(event,'sec','${w.id}')" ondragend="app.kpiDragEnd()" title="Потяните, чтобы поменять раздел местами">⠿ ${esc(w.title)}</b>`
+            : `<b onclick="app.switchAdminTab('${w.tab}')" title="Открыть раздел: ${esc(w.act)}">${esc(w.title)} <span aria-hidden="true">›</span></b>`;
+        return `<section class="kpi-w"${secAttr}>
+            <div class="kpi-h">${head}${tabs}</div>
             <div class="kpi-b">${body}</div>${tips}${note}</section>`;
     },
 
@@ -29547,17 +29628,15 @@ const app = {
         this.kpiStart(p);
         const S = (this._kpiSt || {})[p.id] || {};
         const W = this.kpiBuild(p, S);
-        const edit = !!this._kpiEditOn;
+        const edit = !!this._todayEdit;
         const chips = this.KPI_PERIODS.map(x => `<button type="button" class="kpi-chip${x.id === p.id ? ' on' : ''}" onclick="app.kpiSetPeriod('${x.id}')">${x.label}</button>`).join('');
-        const order = ['users', 'planner', 'ests', 'rec', 'pay', 'paywall'];
-        const ctl = edit
-            ? `<button type="button" class="kpi-ed" onclick="app.kpiResetHidden()">Сбросить</button><button type="button" class="kpi-ed on" onclick="app.kpiEdit(false)">Готово</button>`
-            : `<button type="button" class="kpi-ed" onclick="app.kpiEdit(true)">✏️ Настроить плашки</button>`;
+        const order = this.kpiSortBy(this.kpiOrderMap().sec, ['users', 'planner', 'ests', 'rec', 'pay', 'paywall'], x => x);
+        this._kpiShownSec = order.slice();
         const hint = edit
-            ? 'Нажмите × на плашке, чтобы скрыть её, или «+», чтобы вернуть скрытую'
+            ? 'Нажмите × на плашке, чтобы скрыть её, или «+», чтобы вернуть. Тащите за заголовок плашки или раздела, чтобы поменять порядок'
             : `Показатели ${p.full}${p.days ? ' · стрелки — сравнение с предыдущим таким же периодом' : ''}`;
         return `<div class="kpi-bar"><div class="kpi-chips" role="tablist" aria-label="Период">${chips}</div>
-                <span class="kpi-cmp">${hint}</span><span class="kpi-ctl">${ctl}</span></div>
+                <span class="kpi-cmp">${hint}</span></div>
             <div class="kpi-grid">${order.map(k => this.kpiWidgetHtml(W[k], esc)).join('')}</div>`;
     },
 
@@ -29982,7 +30061,7 @@ const app = {
                 <div><h3>Сегодня</h3><div class="ad-sub">${esc(today)} · показатели за период и дела, требующие внимания</div></div>
                 <div style="display:flex; gap:6px; flex-wrap:wrap;">
                     ${edit
-                        ? `<button class="admin-btn" onclick="app.todayReset()">Сбросить</button>
+                        ? `<button class="admin-btn" onclick="app.kpiResetHidden(); app.todayReset()">Сбросить</button>
                            <button class="admin-btn ad-pick-on" onclick="app.todayEdit(false)">Готово</button>`
                         : `<button class="admin-btn" title="размер, порядок и вид плиток" onclick="app.todayEdit(true)">✏️ Настроить</button>
                            <button class="admin-btn" onclick="app._homeState=null; app._leadsData=null; app._kpiSt=null; app.renderAdminHome()">Обновить</button>`}
