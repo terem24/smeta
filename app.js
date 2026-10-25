@@ -4798,8 +4798,15 @@ const app = {
         // начисто, сняв свои стили: иначе замер зависел бы от масштаба, который мы по
         // нему же и считаем. Краски между снятием и возвратом стилей не происходит —
         // всё в одной задаче.
-        if (emptyFast && !this._paramsPanelMeasured) {
+        // В первые секунды после загрузки панель ещё достраивается (вход в кабинет,
+        // блоки воды и режима), поэтому ранний замер может оказаться короче настоящего:
+        // пока набор элементов меняется, мерим заново и принимаем свежий замер сразу.
+        // Иначе колонка стояла без сжатия по устаревшему эталону и показывала прокрутку.
+        const _fitEarly = performance.now() < 20000;
+        const _fitSig = panel.getElementsByTagName('*').length;
+        if (emptyFast && (!this._paramsPanelMeasured || (_fitEarly && _fitSig !== this._paramsPanelMeasuredSig))) {
             this._paramsPanelMeasured = true;
+            this._paramsPanelMeasuredSig = _fitSig;
             const hadZoom = panel.style.zoom, hadFlex = panel.style.flex, hadMax = panel.style.maxHeight;
             panel.style.zoom = ''; panel.style.flex = ''; panel.style.maxHeight = '';
             const natural = panel.scrollHeight;
@@ -4811,7 +4818,10 @@ const app = {
                 // эталон этого сеанса: он сделан ровно в том состоянии, для которого
                 // нужен, и прыгать ещё не от чего. Если запись была, текущий масштаб
                 // не трогаем — свежий замер достанется следующему запуску.
-                if (!this._paramsPanelRef) this._paramsPanelRef = fresh;
+                if (!this._paramsPanelRef || _fitEarly) {
+                    this._paramsPanelRef = fresh;
+                    this._paramsPanelScale = null;
+                }
             }
         }
         const ref = this._paramsPanelRef;
