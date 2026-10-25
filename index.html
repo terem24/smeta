@@ -2593,8 +2593,6 @@
                          открывает окно тарифов — считает только ПРОФИ. -->
                     <div id="tab_money" class="tab" style="font-size: 14px; font-weight: 700; display: none;"
                         onclick="app.setViewMode('money')">4. Деньги</div>
-                    <div id="tab_3d" class="tab" style="font-size: 14px; font-weight: 700; display: none;"
-                        onclick="app.setViewMode('3d')">5. 3D Котельная</div>
                     <!-- Обоснование варианта «Подешевле»: что и почему заменено.
                          Видна только при включённом режиме (app.syncCheaperTab). -->
                     <div id="tab_cheaper" class="tab tab-cheaper" style="font-size: 14px; font-weight: 700; display: none;"
@@ -2607,7 +2605,6 @@
             <div class="doc-header-rule"></div>
             <!-- Панель распознавания: заполняется из RecognizeUI.mountInline() -->
             <div id="panel_recognize" style="display:none; margin-top: 15px;" class="no-print"></div>
-            <div id="panel_3d" style="display:none; height: 600px; background: #0f172a; border-radius: 12px; margin-top: 15px; position: relative; overflow: hidden; border: 1px solid #334155; box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);" class="no-print"></div>
             <!-- Деньги по объекту: заполняется из app.renderMoneyPanel().
                  no-print обязателен — закупочные цены не должны попасть ни на
                  бумагу, ни в PDF, ни в то, что монтажник показывает заказчику. -->

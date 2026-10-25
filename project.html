@@ -389,7 +389,7 @@ if (payload && payload.items && payload.items.length) {
   var tmLayout = (payload.scheme && window.projectLayout)
     ? projectLayout.sheets(payload.scheme, payload.items,
         { code: MARK.tm.code, sheetStart: tmLayoutStart, room: room,
-          photo: payload.boiler3d || null, num: numOf('tm'),
+          photo: null, num: numOf('tm'),
           equip: payload.equip || null,
           front: (payload.node3d || {}).boiler_front || null,
           frontDhw: (payload.node3d || {}).boiler_dhw || null })
