@@ -54476,17 +54476,17 @@ const app = {
         // Сама проверка и автоподбор считаются всегда, от переключателя схемы не зависят.
         const scheme = document.getElementById('dynamic_scheme');
         if (!scheme) return;
-        // Справа от схемы — «реальный вид»: те же узлы по фото оборудования с подачей и обраткой
+        // Справа от схемы — «реальный вид»: вид котельной спереди из BIM-кадров, как в проекте
         // (scheme_real.js). Карточка проверки уходит отдельной строкой под схему и реальный вид.
         const _cfg = this._schemeCfgCache;
-        const _real = (_cfg && window.SchemeReal) ? window.SchemeReal.render(_cfg) : '';
-        if (_real) {
+        if (_cfg && window.SchemeReal) {
             const real = document.createElement('div');
             real.id = 'scheme_real_side';
             real.className = 'sr-side';
-            real.innerHTML = _real;
             scheme.appendChild(real);
             scheme.classList.add('hc-split');
+            // Кадры и модуль листа подгружаются сами; не пришли — панель прячется (scheme_real.js)
+            window.SchemeReal.mount(real, _cfg, (this.currentEquipmentList || []).filter(i => !i.isOpt));
         }
         const box = document.createElement('div');
         box.id = 'hydro_check_side';

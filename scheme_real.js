@@ -1,29 +1,24 @@
 /* «Реальный вид» котельной — лист справа от принципиальной схемы.
  *
- * Те же узлы, что на схеме, но как они выглядят в жизни: рендеры оборудования из
- * img/nodes (без марок и логотипов), расставленные по составу системы и
- * соединённые подающей (красной) и обратной (синей) магистралями.
- * Состав берётся из той же конфигурации, что и схема (app.buildSchemeConfig):
- * газовый/электрический котёл, бойлер, баки, гидрострелка, насосные группы,
- * коллекторы. Чего в смете нет — того на листе нет.
+ * Это тот же вид спереди, что выпускает проект (лист «Вид котельной спереди»,
+ * project_layout.js): кадр из BIM-моделей — котёл, шины, стояки контуров с
+ * настоящей арматурой, бак, насос, — с номерами контуров, размерной цепочкой и
+ * выносками. Кадры без марок и логотипов лежат в img/scheme_real (только то,
+ * что нужно этому листу; полный набор img/nodes3d в git намеренно не выкладывается).
  *
- * Модели и количества лист не называет — они в смете; здесь только узлы и связи.
- * Подключение: app.placeHydroCheckBox() кладёт результат render() в
- * #scheme_real_side рядом со схемой; полноэкранный просмотр — open().
+ * Нужные модули подгружаются при первом показе: project_layout.js и кадры.
+ * Состав берётся из той же конфигурации схемы, что и принципиальная схема, и
+ * из позиций сметы. Пока кадры не пришли — в панели «Загружаю…»; не пришли
+ * вовсе — панель прячется, схема и проверка подбора остаются как были.
+ *
+ * Подключение: app.placeHydroCheckBox() кладёт панель в #scheme_real_side
+ * рядом со схемой и зовёт SchemeReal.mount(); полный экран — open().
  */
 (function () {
     'use strict';
 
-    var IMG = 'img/scheme_real/';
-    // Размеры кадров (px): по ним считаются пропорции на листе
-    var DIM = {
-        boiler_gas: [280, 700], boiler_el: [229, 700], dhw: [288, 700],
-        exp_heat: [280, 700], exp_dhw: [431, 464], sep: [280, 620],
-        pump: [189, 700], ufh: [554, 700], rad: [554, 700]
-    };
-    var SHEET = { w: 420, h: 297 };    // как у принципиальной схемы (лист А3)
-    var MARGIN = 14;
-    var RED = '#e11d1d', BLUE = '#1d3fe1';
+    var DIR = 'img/scheme_real/';
+    var cache = { frames: null, layout: null };
 
     function esc(t) {
         return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
@@ -31,142 +26,103 @@
         });
     }
 
-    // Подпись в одну-две строки под ширину кадра (в мм листа)
-    function wrap(text, wmm) {
-        var max = Math.max(10, Math.floor(wmm / 2.3));
-        var words = String(text).split(' '), lines = [], cur = '';
-        words.forEach(function (w) {
-            if ((cur + ' ' + w).trim().length > max && cur) { lines.push(cur); cur = w; }
-            else cur = (cur + ' ' + w).trim();
-        });
-        if (cur) lines.push(cur);
-        return lines.slice(0, 3);
-    }
-
-    // Состав листа по конфигурации схемы: два ряда. Верхний — источники и баки,
-    // нижний — потребители (насосные группы и коллекторы).
-    function parts(cfg) {
-        var top = [], low = [];
-        if (cfg.gas) top.push({ img: 'boiler_gas', h: 92, hot: true,
-            cap: 'Котёл газовый' + (cfg.gas.count > 1 ? ' ×' + cfg.gas.count : '') });
-        if (cfg.el) top.push({ img: 'boiler_el', h: 92, hot: true,
-            cap: 'Котёл электрический' + (cfg.el.count > 1 ? ' ×' + cfg.el.count : '') });
-        if (cfg.indirect) top.push({ img: 'dhw', h: 100, hot: true,
-            cap: 'Бойлер косвенного нагрева' + (cfg.indirect.vol ? ', ' + cfg.indirect.vol + ' л' : '') });
-        if (cfg.tankHeating) top.push({ img: 'exp_heat', h: 70, hot: true,
-            cap: 'Расширительный бак отопления, ' + cfg.tankHeating + ' л' });
-        if (cfg.hydro && !cfg.hydro.buffer) top.push({ img: 'sep', h: 66, hot: true, cap: 'Гидрострелка' });
-        if (cfg.tankDhw) top.push({ img: 'exp_dhw', h: 44, hot: false,
-            cap: 'Расширительный бак ГВС, ' + cfg.tankDhw + ' л' });
-
-        if (cfg.rad && cfg.radGroups > 0) {
-            low.push({ img: 'pump', h: 72, hot: true, n: Math.min(2, cfg.radGroups),
-                cap: 'Насосная группа радиаторов' + (cfg.radGroups > 1 ? ' ×' + cfg.radGroups : '') });
-            low.push({ img: 'rad', h: 64, hot: false, cap: 'Коллектор радиаторов' });
-        }
-        if (cfg.tp && (cfg.tpGroups > 0 || cfg.tpUnit)) {
-            if (cfg.tpGroups > 0) low.push({ img: 'pump', h: 72, hot: true, n: Math.min(2, cfg.tpGroups),
-                cap: 'Насосная группа тёплого пола' + (cfg.tpGroups > 1 ? ' ×' + cfg.tpGroups : '') });
-            low.push({ img: 'ufh', h: 64, hot: !(cfg.tpGroups > 0), cap: 'Коллектор тёплого пола' });
-        }
-        return { top: top, low: low };
-    }
-
-    // Раскладка ряда: кадры слева направо, при нехватке места — пропорциональное сжатие
-    function layout(row, baseline, scaleCap) {
-        var gap = 14, avail = SHEET.w - 2 * MARGIN;
-        var items = [];
-        row.forEach(function (p) {
-            var copies = p.n || 1;
-            for (var k = 0; k < copies; k++) items.push({ p: p, k: k });
-        });
-        var widths = items.map(function (it) { var d = DIM[it.p.img]; return it.p.h * d[0] / d[1]; });
-        var total = widths.reduce(function (a, b) { return a + b; }, 0) + gap * (items.length - 1);
-        var s = Math.min(scaleCap || 1, total > avail ? (avail - gap * (items.length - 1)) / (total - gap * (items.length - 1)) : 1);
-        if (s < 1) widths = widths.map(function (w) { return w * s; });
-        var sum = widths.reduce(function (a, b) { return a + b; }, 0);
-        var g = items.length > 1 ? Math.max(6, Math.min(26, (avail - sum) / (items.length - 1))) : 0;
-        var x = MARGIN + Math.max(0, (avail - sum - g * (items.length - 1)) / 2);
-        return items.map(function (it, i) {
-            var w = widths[i], h = w * DIM[it.p.img][1] / DIM[it.p.img][0];
-            var o = { p: it.p, k: it.k, x: x, y: baseline - h, w: w, h: h };
-            x += w + g;
-            return o;
+    function loadScript(src) {
+        return new Promise(function (resolve, reject) {
+            var s = document.createElement('script');
+            s.src = src; s.onload = resolve; s.onerror = function () { reject(new Error(src)); };
+            document.head.appendChild(s);
         });
     }
 
-    function render(cfg) {
-        if (!cfg) return '';
-        var P = parts(cfg);
-        if (!P.top.length) return '';
-        var hasLow = P.low.length > 0;
-        var yTop = hasLow ? 128 : 190;
-        var trunkR = 150, trunkB = 155, yLow = 248;
-        var top = layout(P.top, yTop);
-        var low = hasLow ? layout(P.low, yLow) : [];
-        var out = [];
-
-        // Магистрали — под кадрами: у кадров белый фон, линии за ними не видны
-        var lines = [];
-        var minX = 1e9, maxX = -1e9;
-        function vline(x, y1, y2, color) {
-            lines.push('<line x1="' + x.toFixed(1) + '" y1="' + y1 + '" x2="' + x.toFixed(1) + '" y2="' + y2 + '" stroke="' + color + '" stroke-width="1.5"/>');
-            minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+    // Модуль листов проекта: нужен только этой панели, поэтому грузим по требованию
+    function layoutModule() {
+        if (window.projectLayout && window.projectLayout.frontPanel) return Promise.resolve(window.projectLayout);
+        if (!cache.layout) {
+            cache.layout = loadScript('./project_layout.js?v=4.20')
+                .then(function () { return window.projectLayout; })
+                .catch(function (e) { cache.layout = null; throw e; });
         }
-        if (hasLow) {
-            top.forEach(function (b) {
-                if (!b.p.hot) return;
-                vline(b.x + b.w * 0.32, yTop, trunkR, RED);
-                vline(b.x + b.w * 0.68, yTop, trunkB, BLUE);
-            });
-            low.forEach(function (b) {
-                if (!b.p.hot) return;
-                vline(b.x + b.w * 0.30, trunkR, yLow - b.h, RED);
-                vline(b.x + b.w * 0.70, trunkB, yLow - b.h, BLUE);
-            });
-            if (maxX > minX) {
-                lines.push('<line x1="' + (minX - 2).toFixed(1) + '" y1="' + trunkR + '" x2="' + (maxX + 2).toFixed(1) + '" y2="' + trunkR + '" stroke="' + RED + '" stroke-width="1.8"/>');
-                lines.push('<line x1="' + (minX - 2).toFixed(1) + '" y1="' + trunkB + '" x2="' + (maxX + 2).toFixed(1) + '" y2="' + trunkB + '" stroke="' + BLUE + '" stroke-width="1.8"/>');
-            }
-        }
-        out.push(lines.join(''));
-
-        function image(b) {
-            return '<image href="' + IMG + b.p.img + '.jpg" x="' + b.x.toFixed(1) + '" y="' + b.y.toFixed(1) +
-                '" width="' + b.w.toFixed(1) + '" height="' + b.h.toFixed(1) + '" preserveAspectRatio="xMidYMid meet"/>';
-        }
-        function caption(b, below) {
-            var L = wrap(b.p.cap, Math.max(b.w, 38)), fs = 5.0;
-            var cx = b.x + b.w / 2;
-            var y0 = below ? b.y + b.h + 5.5 : b.y - 2 - (L.length - 1) * fs * 1.15;
-            return L.map(function (t, i) {
-                return '<text x="' + cx.toFixed(1) + '" y="' + (y0 + i * fs * 1.15).toFixed(1) + '" text-anchor="middle" font-size="' + fs + '">' + esc(t) + '</text>';
-            }).join('');
-        }
-        var seen = {};
-        top.forEach(function (b) { out.push(image(b)); if (!b.k) out.push(caption(b, false)); });
-        low.forEach(function (b) {
-            out.push(image(b));
-            // подпись группы из двух кадров — одна, под первым
-            var key = b.p.cap;
-            if (!seen[key]) { seen[key] = 1; out.push(caption(b, true)); }
-        });
-
-        // Легенда магистралей и пометка о наглядности
-        var ly = 281;
-        out.push('<line x1="' + MARGIN + '" y1="' + ly + '" x2="' + (MARGIN + 12) + '" y2="' + ly + '" stroke="' + RED + '" stroke-width="1.8"/>' +
-            '<text x="' + (MARGIN + 15) + '" y="' + (ly + 1.5) + '" font-size="4.8">подача</text>' +
-            '<line x1="' + (MARGIN + 38) + '" y1="' + ly + '" x2="' + (MARGIN + 50) + '" y2="' + ly + '" stroke="' + BLUE + '" stroke-width="1.8"/>' +
-            '<text x="' + (MARGIN + 53) + '" y="' + (ly + 1.5) + '" font-size="4.8">обратка</text>' +
-            '<text x="' + (SHEET.w - MARGIN) + '" y="' + (ly + 1.5) + '" font-size="4.2" text-anchor="end" fill="#555">Фото оборудования для наглядности: модели и количество — в смете</text>');
-
-        return '<div class="sr-wrap" onclick="SchemeReal.open()" title="Открыть на весь экран">' +
-            '<svg xmlns="http://www.w3.org/2000/svg" class="sr-svg" viewBox="0 0 ' + SHEET.w + ' ' + SHEET.h + '" font-family="Arial Narrow, Arial, sans-serif" fill="#111">' +
-            '<rect x="0" y="0" width="' + SHEET.w + '" height="' + SHEET.h + '" fill="#fff"/>' +
-            '<text x="' + MARGIN + '" y="12" font-size="5.2" font-weight="700">Как это выглядит в котельной</text>' +
-            out.join('') + '</svg>' +
-            '<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>';
+        return cache.layout;
     }
+
+    // Описание кадров (размеры и точки выносок) — тот же формат, что в img/nodes3d/nodes3d.json
+    function framesIndex() {
+        if (!cache.frames) {
+            cache.frames = fetch(DIR + 'nodes3d.json')
+                .then(function (r) { return r.ok ? r.json() : {}; })
+                .catch(function () { return {}; });
+        }
+        return cache.frames;
+    }
+
+    function frame(index, key) {
+        var it = index && index[key];
+        if (!it || !it.front || !it.front.w) return null;
+        var f = it.front;
+        var out = {
+            url: DIR + key + '_front.jpg',
+            ratio: f.w / f.h,
+            marks: (f.marks || []).map(function (m) { return { t: m.t, x: m.x, y: m.y }; })
+        };
+        if (it.anchors) out.anchors = it.anchors;
+        return out;
+    }
+
+    // Кадры фасада на разное число стояков: какой взять, решает лист по составу контуров
+    function frontFrames(index) {
+        var front = {};
+        ['SR', 'CSR', 'DC', 'SRCSR', 'SRDC', 'SRSR', 'SRSRCSR', 'SRSRDC'].forEach(function (k) {
+            var d = frame(index, 'boiler_front_' + k);
+            if (d) front[k] = d;
+        });
+        return { front: Object.keys(front).length ? front : null, dhw: frame(index, 'boiler_dhw') };
+    }
+
+    function build(host, cfg, items, view) {
+        return Promise.all([layoutModule(), framesIndex()]).then(function (r) {
+            var F = frontFrames(r[1]);
+            if (!F.front) return null;
+            var svg = r[0].frontPanel(cfg, items, { front: F.front, frontDhw: F.dhw, view: view });
+            return svg ? { svg: svg, hasDhw: !!(F.dhw && cfg.indirect) } : null;
+        });
+    }
+
+    function tabs(view, hasDhw) {
+        if (!hasDhw) return '';
+        function b(v, t) {
+            return '<button type="button" class="sr-tab' + (view === v ? ' on' : '') + '" onclick="event.stopPropagation();SchemeReal.show(\'' + v + '\')">' + t + '</button>';
+        }
+        return '<div class="sr-tabs">' + b('boilers', 'Котлы') + b('dhw', 'Бойлер') + '</div>';
+    }
+
+    var state = { host: null, cfg: null, items: null, view: 'boilers' };
+
+    function paint() {
+        var host = state.host;
+        if (!host || !host.isConnected) return;
+        build(host, state.cfg, state.items, state.view).then(function (res) {
+            if (!host.isConnected) return;
+            if (!res) { host.style.display = 'none'; var sch = host.closest('#dynamic_scheme'); if (sch) sch.classList.remove('hc-split'); return; }
+            host.innerHTML =
+                '<div class="sr-head"><span class="sr-title">Реальный вид: котельная спереди</span>' + tabs(state.view, res.hasDhw) + '</div>' +
+                '<div class="sr-wrap" onclick="SchemeReal.open()" title="Открыть на весь экран">' + res.svg +
+                '<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>' +
+                '<div class="sr-note">Кадры из BIM-моделей; крепёж и привязки условные — как в проекте.</div>';
+        }).catch(function () {
+            host.style.display = 'none';
+            var sch = host.closest('#dynamic_scheme'); if (sch) sch.classList.remove('hc-split');
+        });
+    }
+
+    // Показать панель в контейнере host по конфигурации схемы и позициям сметы
+    function mount(host, cfg, items) {
+        state.host = host; state.cfg = cfg; state.items = items || [];
+        if (state.view === 'dhw' && !cfg.indirect) state.view = 'boilers';
+        host.innerHTML = '<div class="sr-head"><span class="sr-title">Реальный вид: котельная спереди</span></div>' +
+            '<div class="sr-wrap sr-wait">Загружаю…</div>';
+        paint();
+    }
+    function show(view) { state.view = view; paint(); }
 
     // Полноэкранный просмотр: копия листа поверх страницы, закрывается щелчком или Esc
     function open() {
@@ -178,7 +134,6 @@
         ov.setAttribute('role', 'dialog');
         ov.innerHTML = '<button type="button" class="sr-zoom-x" aria-label="Закрыть">✕</button>';
         var c = svg.cloneNode(true);
-        c.removeAttribute('class');
         c.setAttribute('class', 'sr-zoom-svg');
         ov.appendChild(c);
         ov.addEventListener('click', close);
@@ -192,5 +147,5 @@
         document.removeEventListener('keydown', onKey);
     }
 
-    window.SchemeReal = { render: render, open: open, close: close };
+    window.SchemeReal = { mount: mount, show: show, open: open, close: close };
 })();

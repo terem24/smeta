@@ -1091,5 +1091,34 @@
     return out;
   }
 
-  window.projectLayout = { sheets: sheets, buildCtx: buildCtx };
+  /**
+   * Фасад котельной для экрана калькулятора: тот же вид спереди, что в
+   * проекте, но без рамки и штампа — рядом с принципиальной схемой.
+   * view: 'boilers' — вид на котлы, 'dhw' — вид на бойлер (нужен кадр
+   * boiler_dhw). Возвращает готовый <svg>, пустую строку, если показывать
+   * нечего. Состав и подписи берутся из конфигурации схемы и сметы.
+   */
+  function frontPanel(scheme, items, opts) {
+    opts = opts || {};
+    if (!scheme) return '';
+    var ctx = buildCtx(scheme, items || []);
+    ctx.equip = opts.equip || null;
+    ctx.front = opts.front || null;
+    ctx.frontDhw = opts.frontDhw || null;
+    var body;
+    if (opts.view === 'dhw') {
+      if (!(ctx.frontDhw && ctx.frontDhw.url)) return '';
+      body = frontPhotoBody(Object.assign({}, ctx, { front: ctx.frontDhw, loops: dhwLoops(ctx) }));
+    } else {
+      body = frontBody(ctx);
+    }
+    if (!body) return '';
+    var FONT = (window.projectSheets && window.projectSheets.FONT) || "'ISOCPEUR','Arial Narrow',sans-serif";
+    return '<svg xmlns="http://www.w3.org/2000/svg" class="sheet-a3 sr-svg" viewBox="0 0 420 297">' +
+      '<style>.sheet-a3 text{fill:#000;stroke:none}.sheet-a3 line,.sheet-a3 rect{stroke:#000;fill:none}</style>' +
+      '<rect x="0" y="0" width="420" height="297" style="fill:#fff;stroke:none"/>' +
+      '<g stroke-linecap="square" font-family="' + FONT + '" font-size="3.67">' + body + '</g></svg>';
+  }
+
+  window.projectLayout = { sheets: sheets, buildCtx: buildCtx, frontPanel: frontPanel };
 })();
