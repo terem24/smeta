@@ -282,7 +282,7 @@
 
     <url>
         <loc>https://heatcalc.ru/novosti/</loc>
-        <lastmod>2026-10-05</lastmod>
+        <lastmod>2026-10-19</lastmod>
         <changefreq>weekly</changefreq>
         <priority>0.6</priority>
     </url>
@@ -425,6 +425,69 @@
         <lastmod>2026-10-25</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://heatcalc.ru/novosti/2026-08-03/</loc>
+        <lastmod>2026-08-03</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <url>
+        <loc>https://heatcalc.ru/novosti/2026-08-10/</loc>
+        <lastmod>2026-08-10</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <url>
+        <loc>https://heatcalc.ru/novosti/2026-08-17/</loc>
+        <lastmod>2026-08-17</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <url>
+        <loc>https://heatcalc.ru/novosti/2026-08-24/</loc>
+        <lastmod>2026-08-24</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <url>
+        <loc>https://heatcalc.ru/novosti/2026-09-14/</loc>
+        <lastmod>2026-09-14</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <url>
+        <loc>https://heatcalc.ru/novosti/2026-09-21/</loc>
+        <lastmod>2026-09-21</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <url>
+        <loc>https://heatcalc.ru/novosti/2026-09-28/</loc>
+        <lastmod>2026-09-28</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <url>
+        <loc>https://heatcalc.ru/novosti/2026-10-12/</loc>
+        <lastmod>2026-10-12</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+    <url>
+        <loc>https://heatcalc.ru/novosti/2026-10-19/</loc>
+        <lastmod>2026-10-19</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
     </url>
 
 </urlset>
