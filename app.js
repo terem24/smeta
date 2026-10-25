@@ -28408,7 +28408,7 @@ const app = {
             const tourDoneChip = u.tour_done_at
                 ? `<span title="Прошёл обучение до конца ${new Date(u.tour_done_at).toLocaleDateString('ru-RU')}${u.tour_done_steps ? ' (шагов: ' + u.tour_done_steps + ')' : ''}${u.tour_done_plan ? ', тариф: ' + u.tour_done_plan : ''}" style="cursor:help; background:#10B98122; color:#059669; font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-right:3px;">✓ Обучение</span>`
                 : (u.tour_known
-                    ? `<span title="Обучение до конца не проходил. Включить принудительно: «Тарифы → Обучение» или поле «Принудительно» в карточке человека" style="cursor:help; background:var(--text-sec, #6B7280)22; color:var(--text-sec, #6B7280); font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-right:3px;">🎓 обучение: нет</span>`
+                    ? `<span title="Обучение до конца не проходил. Включить автозапуск: «Тарифы → Обучение» или поле «Автозапуск обучения» в карточке человека" style="cursor:help; background:var(--text-sec, #6B7280)22; color:var(--text-sec, #6B7280); font-size:9px; font-weight:700; padding:1px 6px; border-radius:8px; margin-right:3px;">🎓 обучение: нет</span>`
                     : '');
             // Сигналы (не ввёл промокод, анкета не заполнена) видны в строке всегда, а дата
             // рождения, обучение и бейджи сферы уходят под «▾» — см. .ad-more / .ad-sig в style.css
@@ -42086,7 +42086,7 @@ const app = {
                 ${rowKV('Смет сохранено', String(ests.length))}${rowKV('Оборудование', ests.length ? money(eqSum) : '')}${rowKV('Монтаж', wkSum ? money(wkSum) : '')}
                 ${rowKV('Визитов', u.sess_visits ? String(u.sess_visits) : '')}${rowKV('Время на сайте', mins ? mins + ' мин' : '')}
                 ${rowKV('Обучение', u.tour_done_at ? '<span style="color:#059669;">✓ пройдено ' + fmtD(u.tour_done_at) + '</span>' : '')}
-                ${this.canEditTariffs() && (u.email || u.username) ? `<div class="ad-kv"><span title="Включить обучение этому человеку при следующем заходе, либо не навязывать, даже если включено его группе">Принудительно</span>
+                ${this.canEditTariffs() && (u.email || u.username) ? `<div class="ad-kv"><span title="Запускать обучение этому человеку при следующем заходе, либо не запускать, даже если включено его группе">Автозапуск обучения</span>
                     <select id="ad_peek_tour" data-login="${esc(String(u.email || u.username).toLowerCase())}" onchange="app.setTourForce('users', this.dataset.login, this.value === 'on' ? true : (this.value === 'off' ? false : null))" style="font-size:11.5px; padding:2px 4px; max-width:150px;">
                         <option value="" ${this.tourForceOwnValue(u.email || u.username) === '' ? 'selected' : ''}>как у группы</option>
                         <option value="on" ${this.tourForceOwnValue(u.email || u.username) === 'on' ? 'selected' : ''}>включить</option>
