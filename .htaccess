@@ -34,7 +34,7 @@ DirectoryIndex index.html
     Header set X-Robots-Tag "noindex, nofollow, noarchive" env=HC_TEST_COPY
 
     # Кэш как на Pages: 10 минут. У Beget по умолчанию неделя — тогда правка
-    # скриптов без ?v= (boiler-3d.js и другие ленивые), главной страницы и
+    # скриптов без ?v= (ленивые модули), главной страницы и
     # price_index.json доезжала бы до людей неделю. Картинки — как у Beget.
     <FilesMatch "\.(html|js|css|json|xml|txt|webmanifest)$">
         Header unset Expires

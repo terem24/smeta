@@ -426,18 +426,84 @@ details .answer p:last-child { margin-bottom: 0; }
 
 /* ── Подвал ──────────────────────────────────────────────────────── */
 
-footer.bottom {
+/* ---------- Подвал сайта ----------
+   Сетка из бренда и четырёх колонок ссылок. Цвета только из переменных темы,
+   поэтому тёмная тема подхватывается сама. Липкость к низу окна — правило
+   На страницах-статьях подвал обычный, без липкости. Разметка — tools/site_footer.py. */
+.site-footer {
+    margin-top: 40px;
     background: var(--surface);
     border-top: 1px solid var(--border);
-    margin-top: 48px;
-    padding: 22px 0 40px;
-    font-size: 13px;
     color: var(--text-sec);
+    font-size: 13px;
 }
-footer.bottom a { color: var(--text-sec); margin-right: 16px; display: inline-block; }
-footer.bottom a:hover { color: var(--primary); }
-footer.bottom p { margin: 0 0 10px; }
-footer.bottom p:last-child { margin-bottom: 0; }
+.site-footer a { color: inherit; text-decoration: none; }
+.sf-wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 36px 24px 28px;
+    display: grid;
+    grid-template-columns: minmax(240px, 1.5fr) repeat(4, minmax(0, 1fr));
+    gap: 32px;
+}
+.sf-logo {
+    display: inline-block;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text-main);
+}
+.sf-logo span { color: var(--primary); }
+.sf-about { margin: 10px 0 16px; line-height: 1.55; max-width: 340px; }
+.sf-social { display: flex; flex-wrap: wrap; gap: 8px; }
+.sf-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface-light);
+    color: var(--text-main) !important;
+    font-weight: 600;
+    transition: border-color .15s, color .15s, background .15s;
+}
+.sf-pill .sf-ic { color: var(--primary); }
+.sf-pill:hover { border-color: var(--primary); background: var(--primary-light); }
+.sf-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    color: var(--text-main);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+.sf-ic { width: 16px; height: 16px; flex-shrink: 0; }
+.sf-title .sf-ic { color: var(--primary); }
+.sf-col ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.sf-col a { display: inline-block; line-height: 1.35; transition: color .15s, transform .15s; }
+.sf-col a:hover, .sf-legal a:hover { color: var(--primary); }
+.sf-col a:hover { transform: translateX(2px); }
+.site-footer a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+.sf-bottom { border-top: 1px solid var(--border); }
+.sf-bottom-in {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 14px 24px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px 24px;
+    font-size: 12px;
+}
+.sf-legal { display: flex; flex-wrap: wrap; gap: 6px 20px; }
+@media (max-width: 1180px) {
+    .sf-wrap { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .sf-brand { grid-column: 1 / -1; }
+}
 
 /* ── Доступность ─────────────────────────────────────────────────── */
 
@@ -584,9 +650,9 @@ html.dark-mode .lead-form .lf-status.is-error { color: #F87171; }
 
 @media print {
     body { background: #fff; color: #000; }
-    .cta, .theme-toggle, .head-link { display: none; }
+    .cta, .theme-toggle, .head-link, .sf-social { display: none; }
     a { color: #000; }
-    header.top, footer.bottom { background: none; }
+    header.top, .site-footer { background: none; }
 }
 
 /* Графики в статьях (блок figure в build_article.py): встроенный SVG, цвета берутся

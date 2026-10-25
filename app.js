@@ -24146,7 +24146,6 @@ const app = {
         'tab:equipment': 'смета',
         'tab:works': 'работы',
         'tab:money': 'деньги',
-        'tab:3d': '3D',
         'tab:recognize': 'распознавание',
         'catalog': 'подбор замены',
         'sheets': 'листы проекта',
@@ -49641,12 +49640,13 @@ const app = {
             if (!this.isPro() && this.tariffCell(this.tariffAccount(), 'pro', 'money') === 'on') { this.showModal('pro', { why: 'Вы хотели открыть вкладку «Деньги» — маржа по разделам входит в Профи' }); return; }
             mode = 'equipment';
         }
+        // Вкладки «3D Котельная» больше нет: сохранённый вид и старые ссылки открывают смету
+        if (mode === '3d') mode = 'equipment';
         this.state.viewMode = mode;
         // Куда человек ходит в калькуляторе — для разбора «заходит, но не считает»
         if (window.SessionTrack) SessionTrack.screen('tab:' + mode);
         let tEq = document.getElementById('tab_equipment');
         let tWk = document.getElementById('tab_works');
-        let t3d = document.getElementById('tab_3d');
         let tRec = document.getElementById('tab_recognize');
         let tMoney = document.getElementById('tab_money');
         if (tEq && tWk) {
@@ -49655,9 +49655,6 @@ const app = {
         }
         if (tMoney) {
             tMoney.classList.toggle('active', mode === 'money');
-        }
-        if (t3d) {
-            t3d.classList.toggle('active', mode === '3d');
         }
         if (tRec) {
             tRec.classList.toggle('active', mode === 'recognize');
@@ -49668,7 +49665,6 @@ const app = {
         let docFooter = document.querySelector('.doc-footer');
         let discountBlock = document.getElementById('discount_block');
         let footerBtns = document.querySelector('.footer-btns');
-        let panel3d = document.getElementById('panel_3d');
         let panelRec = document.getElementById('panel_recognize');
         let panelMoney = document.getElementById('panel_money');
         if (panelMoney && mode !== 'money') panelMoney.style.display = 'none';
@@ -49677,17 +49673,15 @@ const app = {
         // распознавания сметы ей делать нечего, а место она занимает.
         this.syncAiFabVisibility();
 
-        // Распознавание — такой же вид, как 3D-котельная: таблица сметы
+        // Распознавание — такой же вид, как «Деньги»: таблица сметы
         // прячется, вместо неё показывается своя панель.
         if (mode === 'recognize') {
             if (tableResponsive) tableResponsive.style.display = 'none';
             if (docFooter) docFooter.style.display = 'none';
             if (discountBlock) discountBlock.style.display = 'none';
             if (footerBtns) footerBtns.style.display = 'none';
-            if (panel3d) panel3d.style.display = 'none';
             // Принципиальная схема лежит не внутри таблицы, а перед ней, поэтому
-            // от display:none таблицы не исчезает. Полного render() тут нет
-            // (он ниже, для 3D, и там схему снимает сам) — убираем явно.
+            // от display:none таблицы не исчезает. Полного render() тут нет — убираем явно.
             const scheme = document.getElementById('dynamic_scheme');
             if (scheme) scheme.remove();
             if (panelRec) {
@@ -49707,7 +49701,7 @@ const app = {
         }
         if (panelRec) panelRec.style.display = 'none';
 
-        // «Деньги» — такой же отдельный вид, как 3D и распознавание: таблица
+        // «Деньги» — такой же отдельный вид, как распознавание: таблица
         // сметы прячется, вместо неё своя панель. Но render() тут нужен полный:
         // маржа считается из currentEquipmentList и currentWorksList, а их
         // наполняет именно он.
@@ -49716,10 +49710,6 @@ const app = {
             if (docFooter) docFooter.style.display = 'none';
             if (discountBlock) discountBlock.style.display = 'none';
             if (footerBtns) footerBtns.style.display = 'none';
-            if (panel3d) {
-                panel3d.style.display = 'none';
-                if (window.Boiler3D) window.Boiler3D.dispose();
-            }
             const _scheme = document.getElementById('dynamic_scheme');
             if (_scheme) _scheme.remove();
             // Как и у распознавания: display отдаём стилям, панель там flex-колонка.
@@ -49738,10 +49728,6 @@ const app = {
             if (docFooter) docFooter.style.display = 'none';
             if (discountBlock) discountBlock.style.display = 'none';
             if (footerBtns) footerBtns.style.display = 'none';
-            if (panel3d) {
-                panel3d.style.display = 'none';
-                if (window.Boiler3D) window.Boiler3D.dispose();
-            }
             const _sch = document.getElementById('dynamic_scheme');
             if (_sch) _sch.remove();
             if (panelCheaper) panelCheaper.style.display = 'block';
@@ -49749,66 +49735,15 @@ const app = {
             return;
         }
 
-        if (mode === '3d') {
-            if (tableResponsive) tableResponsive.style.display = 'none';
-            if (docFooter) docFooter.style.display = 'none';
-            if (discountBlock) discountBlock.style.display = 'none';
-            if (footerBtns) footerBtns.style.display = 'none';
-            if (panel3d) {
-                panel3d.style.display = 'block';
-            }
-
-            // First run render to ensure app.currentEquipmentList is updated
-            this.render();
-
-            if (panel3d) {
-                if (window.Boiler3D) {
-                    window.Boiler3D.initAndRender(panel3d, this.state, this.currentEquipmentList);
-                } else {
-                    this.loadBoiler3D(panel3d);
-                }
-            }
-        } else {
-            // Инлайн-стиль только снимаем, значение отдаём стилям: на пустом
-            // расчёте обёртка таблицы — flex-колонка (body.empty-fit в style.css),
-            // и жёсткий display:block ронял заглушку «параметры не заданы» к
-            // верху листа до перезагрузки; у ряда кнопок в стилях grid, а не flex.
-            if (tableResponsive) tableResponsive.style.display = '';
-            if (docFooter) docFooter.style.display = '';
-            if (footerBtns) footerBtns.style.display = '';
-            if (panel3d) {
-                panel3d.style.display = 'none';
-                if (window.Boiler3D) {
-                    window.Boiler3D.dispose();
-                }
-            }
-            this.render();
-        }
+        // Инлайн-стиль только снимаем, значение отдаём стилям: на пустом
+        // расчёте обёртка таблицы — flex-колонка (body.empty-fit в style.css),
+        // и жёсткий display:block ронял заглушку «параметры не заданы» к
+        // верху листа до перезагрузки; у ряда кнопок в стилях grid, а не flex.
+        if (tableResponsive) tableResponsive.style.display = '';
+        if (docFooter) docFooter.style.display = '';
+        if (footerBtns) footerBtns.style.display = '';
+        this.render();
     },
-    /**
-     * Библиотеки 3D по требованию: three.js и его аддоны грузятся с CDN и
-     * только когда 3D действительно нужен — при открытии вкладки «3D» или
-     * при сборке листа «Общий вид котельной». Повторные вызовы возвращают
-     * тот же промис.
-     */
-    ensure3DLibs: function () {
-        if (window.Boiler3D && typeof THREE !== 'undefined') return Promise.resolve(true);
-        if (this._libs3dPromise) return this._libs3dPromise;
-        const loadScript = src => new Promise((resolve, reject) => {
-            const s = document.createElement('script');
-            s.src = src; s.onload = resolve;
-            s.onerror = () => reject(new Error('не загрузился ' + src));
-            document.head.appendChild(s);
-        });
-        this._libs3dPromise = loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js')
-            .then(() => loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js'))
-            .then(() => loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js'))
-            .then(() => window.Boiler3D ? true : loadScript('./boiler-3d.js'))
-            .then(() => true)
-            .catch(err => { this._libs3dPromise = null; throw err; });
-        return this._libs3dPromise;
-    },
-
     /**
      * 3D-визуализации узлов для листов: коллектор тёплого пола, коллектор
      * водоснабжения и панельный радиатор — в проектах-образцах эти узлы
@@ -49925,76 +49860,6 @@ const app = {
         return out;
     },
 
-    /**
-     * Снимок 3D-котельной для листа «Общий вид котельной».
-     *
-     * Рисуется офф-скрин, поэтому открытую вкладку 3D приходится собрать
-     * заново — движок у неё один на страницу. Не получилось (нет сети,
-     * нет WebGL) — возвращаем null, лист просто не попадёт в комплект.
-     */
-    capture3D: async function () {
-        try { await this.ensure3DLibs(); }
-        catch (e) { console.warn('[3D] библиотеки не загрузились:', e.message); return null; }
-        if (!window.Boiler3D || !window.Boiler3D.snapshot) return null;
-        const panel = document.getElementById('panel_3d');
-        const live = !!(panel && panel.style.display !== 'none' && panel.innerHTML.trim());
-        let url = null;
-        try { url = window.Boiler3D.snapshot(this.state, this.currentEquipmentList || []); }
-        catch (e) { console.warn('[3D] снимок не получился:', e.message); }
-        if (live) {
-            try { window.Boiler3D.initAndRender(panel, this.state, this.currentEquipmentList); }
-            catch (e) { }
-        }
-        return url;
-    },
-
-    loadBoiler3D: function (panel3d) {
-        if (this.is3DLoading) return;
-        this.is3DLoading = true;
-
-        panel3d.innerHTML = `
-            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; background: #0f172a; font-family: 'Inter', sans-serif;">
-                <div style="width: 48px; height: 48px; border: 4px solid rgba(59, 130, 246, 0.2); border-top-color: #3b82f6; border-radius: 50%; animation: stout-spin 1s linear infinite;"></div>
-                <div style="margin-top: 16px; font-weight: 600; font-size: 15px; color: #94a3b8; letter-spacing: 0.5px;">Загрузка 3D компонентов...</div>
-            </div>
-            <style>
-                @keyframes stout-spin { to { transform: rotate(360deg); } }
-            </style>
-        `;
-
-        const loadScript = (src) => {
-            return new Promise((resolve, reject) => {
-                const s = document.createElement('script');
-                s.src = src;
-                s.onload = resolve;
-                s.onerror = reject;
-                document.head.appendChild(s);
-            });
-        };
-
-        loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js')
-            .then(() => loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js'))
-            .then(() => loadScript('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js'))
-            .then(() => loadScript('./boiler-3d.js'))
-            .then(() => {
-                this.is3DLoading = false;
-                if (window.Boiler3D) {
-                    window.Boiler3D.initAndRender(panel3d, this.state, this.currentEquipmentList);
-                }
-            })
-            .catch(err => {
-                this.is3DLoading = false;
-                panel3d.innerHTML = `
-                    <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #f87171; padding: 24px; text-align: center; font-family: 'Inter', sans-serif;">
-                        <span style="font-size: 32px; margin-bottom: 12px;">⚠️</span>
-                        <div style="font-weight: 700; font-size: 16px; color: #f1f5f9;">Ошибка загрузки 3D модулей</div>
-                        <div style="font-size: 13px; margin-top: 6px; color: #94a3b8; max-width: 300px; line-height: 1.5;">Не удалось загрузить библиотеки Three.js. Проверьте интернет-соединение.</div>
-                        <button onclick="app.setViewMode('3d')" style="margin-top: 20px; padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);">Повторить попытку</button>
-                    </div>
-                `;
-                console.error('Failed to load 3D scripts:', err);
-            });
-    },
     /**
      * Вычёркивание/возврат позиции сметы.
      *
@@ -55841,15 +55706,6 @@ const app = {
                 sectionTitle: i.sectionTitle, group: i.group, isOpt: i.isOpt
             }))
         };
-        // Снимок 3D-котельной для листа «Общий вид котельной». Дело не быстрое
-        // (грузятся three.js и рисуется кадр), поэтому берём его последним:
-        // если не вышло — комплект собирается без этого листа.
-        // Лист «Общий вид котельной» пока не выпускаем: сцена калькулятора
-        // собрана из примитивов (баки-капсулы, белые корпуса на белом фоне) и
-        // на проектном листе выглядит игрушечной. Включим, когда появятся
-        // модели оборудования (models/<бренд>/<ключ>.glb) — снимок уже умеет
-        // их подхватывать, лист собирается автоматически.
-        payload.boiler3d = null;
         // Число выходов у визуализации коллектора ТП — то же, что в смете
         const _ufhGeo = this.ufhGeom();
         const _loops = (_ufhGeo && _ufhGeo.floors[0] && _ufhGeo.floors[0].loops) ||
@@ -55863,7 +55719,6 @@ const app = {
         // готовый SVG, снимки узлов — картинки строкой; расчёт и позиции
         // остаются в любом случае.
         const _drop = [
-            () => { payload.boiler3d = null; },
             () => { payload.artSheets = []; },
             () => { payload.node3d = null; }
         ];
@@ -61241,7 +61096,8 @@ const app = {
         // setViewMode (там же проверяется тариф), а сохранённый viewMode ничего не
         // открывает — получилась бы смета без подвала и без панели. Тариф к тому же
         // мог кончиться между сеансами.
-        if (this.state.viewMode === 'money' || this.state.viewMode === 'cheaper') this.state.viewMode = 'equipment';
+        // Вкладки «3D Котельная» больше нет — у кого она была сохранена, открывается смета.
+        if (this.state.viewMode === 'money' || this.state.viewMode === 'cheaper' || this.state.viewMode === '3d') this.state.viewMode = 'equipment';
         this.migrateXpsKitIds();
         this.migrateSnowPipeSwap();
         this.migrateElCostDefaultOff();
@@ -88196,7 +88052,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                             alts: _polisKitAlts,
                             // В режиме «Аналог» имя берётся у ROMMER-позиции — там снова
                             // «для радиаторов». Переписываем и его: по названию узел ищут и
-                            // лист принципиальной схемы, и 3D-котельная.
+                            // лист принципиальной схемы.
                             rommer: gbm.rommer
                                 ? { ...gbm.rommer, name: gbm.rommer.name.replace(/^Группа насосная/, 'Группа быстрого монтажа').replace(/\s*-\s*для радиаторов.*$/i, ' - обвязка котла') }
                                 : undefined
@@ -97026,13 +96882,6 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // ширины, а схемы уже в документе и подхватят переменные сразу.
         this.syncSchemeBox();
         this.saveState();
-
-        if (this.state.viewMode === '3d') {
-            let panel3d = document.getElementById('panel_3d');
-            if (panel3d && window.Boiler3D) {
-                window.Boiler3D.initAndRender(panel3d, this.state, this.currentEquipmentList);
-            }
-        }
 
         if (this.isAppReady) {
             // Сравниваем текущие инженерные настройки с последними сохраненными

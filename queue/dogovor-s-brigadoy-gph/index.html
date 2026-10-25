@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/seo.css?v=7">
+    <link rel="stylesheet" href="/seo.css?v=9">
 
     <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
          Флаг общий с калькулятором — stout_save.darkMode. -->
@@ -326,18 +326,43 @@
 
     </main>
 
-    <footer class="bottom">
-        <div class="wrap">
-            <p>
-                <a href="/">Калькулятор</a>
-                <a href="/smeta/">Смета на отопление</a>
-                <a href="/raschet-teplopoter/">Теплопотери</a>
-                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
-                <a href="/montazh-otopleniya-spb/?src=dogovor-s-brigadoy-gph">Монтаж в СПб</a>
-                <a href="/goroda/">Города</a>
-                <a href="/oferta.html">Оферта</a>
-            </p>
-            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+    <footer class="site-footer" role="contentinfo">
+        <div class="sf-wrap">
+            <div class="sf-brand">
+                <a class="sf-logo" href="/" aria-label="HeatCalc.ru — калькулятор отопления">HeatCalc<span>.ru</span></a>
+                <p class="sf-about">Инженерный калькулятор отопления, водоснабжения и канализации для монтажников: теплопотери, подбор оборудования STOUT и ROMMER, смета и коммерческое предложение.</p>
+                <div class="sf-social no-print">
+                    <a class="sf-pill" href="https://t.me/heatcalc_ru" target="_blank" rel="noopener" onclick="if(window.ym)ym(109490947,'reachGoal','footer_tg_click');"><svg class="sf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 4 3 11l5.5 2L10 19l3.2-3.8L18 19z"/><path d="m8.5 13 9-6.5"/></svg><span>Telegram-канал</span></a>
+                    <a class="sf-pill" href="https://www.rustore.ru/catalog/app/ru.heatcalc.app" target="_blank" rel="noopener" onclick="if(window.ym)ym(109490947,'reachGoal','app_install_click');"><svg class="sf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg><span>Android в RuStore</span></a>
+                    <a class="sf-pill" href="/novosti/"><svg class="sf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M18 8h2v10a2 2 0 0 1-2 2M8 8h6M8 12h6M8 16h4"/></svg><span>Новости</span></a>
+                </div>
+            </div>
+            <nav class="sf-col" aria-label="Расчёты">
+                <div class="sf-title"><svg class="sf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/></svg><span>Расчёты</span></div>
+                <ul><li><a href="/raschet-teplopoter/">Теплопотери дома</a></li><li><a href="/smeta/">Смета на отопление</a></li><li><a href="/diametr-trub-otopleniya/">Диаметр труб</a></li><li><a href="/podbor-tsirkulyatsionnogo-nasosa/">Циркуляционный насос</a></li><li><a href="/kollektor-teplogo-pola/">Тёплый пол</a></li><li><a href="/boyler-kosvennogo-nagreva/">Бойлер косвенного нагрева</a></li><li><a href="/stoimost-otopleniya-gazom/">Стоимость отопления</a></li></ul>
+            </nav>
+            <nav class="sf-col" aria-label="Монтажникам">
+                <div class="sf-title"><svg class="sf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg><span>Монтажникам</span></div>
+                <ul><li><a href="/rascenki-na-montazh-otopleniya/">Расценки на монтаж</a></li><li><a href="/kommercheskoe-predlozhenie/">Коммерческое предложение</a></li><li><a href="/dogovor-na-montazh-otopleniya/">Договор и акты</a></li><li><a href="/akt-skrytyh-rabot-otopleniya/">Акт скрытых работ</a></li><li><a href="/nacenka-montazhnika/">Наценка монтажника</a></li><li><a href="/kalkulyator-dlya-montazhnikov/">Калькулятор для монтажников</a></li></ul>
+            </nav>
+            <nav class="sf-col" aria-label="Города">
+                <div class="sf-title"><svg class="sf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Города</span></div>
+                <ul><li><a href="/moskva/">Москва</a></li><li><a href="/spb/">Санкт-Петербург</a></li><li><a href="/novosibirsk/">Новосибирск</a></li><li><a href="/ekaterinburg/">Екатеринбург</a></li><li><a href="/montazh-otopleniya-spb/">Монтаж отопления в СПб</a></li><li><a href="/montazh-teplogo-pola-spb/">Тёплый пол в СПб</a></li><li><a href="/goroda/">Все города →</a></li></ul>
+            </nav>
+            <nav class="sf-col" aria-label="О проекте">
+                <div class="sf-title"><svg class="sf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>О проекте</span></div>
+                <ul><li><a href="/prilozhenie/">Приложение для Android</a></li><li><a href="/novosti/">Новости</a></li><li><a href="/teplopoteri-doma-dannye-102-proektov/">Исследование: 102 проекта</a></li><li><a href="https://t.me/heatcalc_ru">Telegram-канал</a></li><li><a href="/oferta.html#rightsholders">Правообладателям</a></li></ul>
+            </nav>
+        </div>
+        <div class="sf-bottom">
+            <div class="sf-bottom-in">
+                <span>&copy; 2026 HeatCalc.ru — профессиональный калькулятор систем отопления</span>
+                <span class="sf-legal">
+                    <a href="/oferta.html">Публичная оферта</a>
+                    <a href="/privacy-policy.html">Политика конфиденциальности</a>
+                    <a href="/sitemap.xml">Карта сайта</a>
+                </span>
+            </div>
         </div>
     </footer>
 

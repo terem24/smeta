@@ -78,7 +78,6 @@ $files = @(
     # котлового контура. Без файла app.js тихо переходит на грубую прикидку,
     # и метраж в приложении расходится с сайтом.
     'boiler_wall.js',
-    'boiler-3d.js',
     'project_layout.js',
     'project_nodes.js',
     'project_nodes3d.js',

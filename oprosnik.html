@@ -146,6 +146,11 @@
     .tile:hover { border-color: var(--primary); }
     .tile input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
     .tile .ico { font-size: 22px; line-height: 1.1; }
+    /* Реальные рендеры оборудования из проекта: на белой подложке и в тёмной теме, марок на них нет */
+    .tile .pic { display: block; width: 100%; height: 78px; object-fit: contain; background: #fff; border-radius: 9px; margin-bottom: 6px; }
+    .seg label .pic { height: 44px; width: auto; background: #fff; border-radius: 6px; flex: none; }
+    .pic-note { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--field); font-size: 12.5px; color: var(--text-sec); line-height: 1.4; }
+    .pic-note img { height: 84px; width: auto; flex: none; background: #fff; border-radius: 8px; }
     .tile .t { font-weight: 600; font-size: 14px; line-height: 1.25; }
     .tile .d { font-size: 12px; color: var(--text-sec); line-height: 1.35; }
     .tile.wide { grid-column: 1 / -1; min-height: 0; }
@@ -294,9 +299,9 @@
             <div class="field">
                 <span class="f">Чем греть дом</span>
                 <div class="tiles">
-                    <label class="tile"><input type="radio" name="f_heat" value="tp"><span class="ico">♨️</span><span class="t">Тёплый пол</span><span class="d">Греет пол по всему дому</span></label>
-                    <label class="tile"><input type="radio" name="f_heat" value="rad"><span class="ico">🌡️</span><span class="t">Радиаторы</span><span class="d">Обычные батареи на стенах</span></label>
-                    <label class="tile"><input type="radio" name="f_heat" value="both"><span class="ico">🏠</span><span class="t">Пол и батареи</span><span class="d">Например, пол в ванных, батареи в комнатах</span></label>
+                    <label class="tile"><input type="radio" name="f_heat" value="tp"><img class="pic" src="img/opros/heat_tp.jpg" alt="" width="320" height="240" loading="lazy"><span class="t">Тёплый пол</span><span class="d">Греет пол по всему дому</span></label>
+                    <label class="tile"><input type="radio" name="f_heat" value="rad"><img class="pic" src="img/opros/heat_rad.jpg" alt="" width="320" height="240" loading="lazy"><span class="t">Радиаторы</span><span class="d">Обычные батареи на стенах</span></label>
+                    <label class="tile"><input type="radio" name="f_heat" value="both"><img class="pic" src="img/opros/heat_both.jpg" alt="" width="640" height="240" loading="lazy"><span class="t">Пол и батареи</span><span class="d">Например, пол в ванных, батареи в комнатах</span></label>
                     <label class="tile"><input type="radio" name="f_heat" value="unknown"><span class="ico">🤔</span><span class="t">Пока не знаю</span><span class="d">Подскажет монтажник</span></label>
                 </div>
             </div>
@@ -319,8 +324,8 @@
             <div class="field" id="fld_fuel" data-req-radio="f_fuel" data-title="Чем будет работать котёл">
                 <span class="f">Чем будет работать котёл <span class="req">*</span></span>
                 <div class="seg">
-                    <label><input type="radio" name="f_fuel" id="f_fuel_gas" value="gas">Газ</label>
-                    <label><input type="radio" name="f_fuel" value="el">Электричество</label>
+                    <label><input type="radio" name="f_fuel" id="f_fuel_gas" value="gas"><img class="pic" src="img/opros/boiler_gas.jpg" alt="" width="200" height="260" loading="lazy">Газ</label>
+                    <label><input type="radio" name="f_fuel" value="el"><img class="pic" src="img/opros/boiler_el.jpg" alt="" width="200" height="260" loading="lazy">Электричество</label>
                     <label><input type="radio" name="f_fuel" value="unknown">Ещё не решили</label>
                 </div>
                 <span class="hint">Газ дешевле в работе, но нужна труба на участке. Не решили — ответьте на вопросы ниже, монтажник подберёт сам</span>
@@ -417,6 +422,7 @@
                 <label class="f" for="f_people">Сколько человек будет жить в доме</label>
                 <div class="unit" data-unit="чел."><input type="number" id="f_people" min="1" max="20" placeholder="4" inputmode="numeric"></div>
                 <span class="hint">От этого зависит объём бака с горячей водой</span>
+                <div class="pic-note"><img src="img/opros/dhw.jpg" alt="" width="200" height="320" loading="lazy"><span>Так выглядит бойлер: бак, в котором нагревается вода для кранов и душа.</span></div>
             </div>
             <div class="field" id="fld_baths" data-req-radio="f_baths" data-title="Санузлов">
                 <span class="f">Сколько санузлов <span class="req">*</span></span>

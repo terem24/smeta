@@ -237,7 +237,7 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.7" defer></script>
-    <script src="app.js?v=14.41" defer></script>
+    <script src="app.js?v=14.42" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -2593,8 +2593,6 @@
                          открывает окно тарифов — считает только ПРОФИ. -->
                     <div id="tab_money" class="tab" style="font-size: 14px; font-weight: 700; display: none;"
                         onclick="app.setViewMode('money')">4. Деньги</div>
-                    <div id="tab_3d" class="tab" style="font-size: 14px; font-weight: 700; display: none;"
-                        onclick="app.setViewMode('3d')">5. 3D Котельная</div>
                     <!-- Обоснование варианта «Подешевле»: что и почему заменено.
                          Видна только при включённом режиме (app.syncCheaperTab). -->
                     <div id="tab_cheaper" class="tab tab-cheaper" style="font-size: 14px; font-weight: 700; display: none;"
@@ -2607,7 +2605,6 @@
             <div class="doc-header-rule"></div>
             <!-- Панель распознавания: заполняется из RecognizeUI.mountInline() -->
             <div id="panel_recognize" style="display:none; margin-top: 15px;" class="no-print"></div>
-            <div id="panel_3d" style="display:none; height: 600px; background: #0f172a; border-radius: 12px; margin-top: 15px; position: relative; overflow: hidden; border: 1px solid #334155; box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);" class="no-print"></div>
             <!-- Деньги по объекту: заполняется из app.renderMoneyPanel().
                  no-print обязателен — закупочные цены не должны попасть ни на
                  бумагу, ни в PDF, ни в то, что монтажник показывает заказчику. -->
@@ -2840,7 +2837,7 @@
             </nav>
             <nav class="sf-col" aria-label="Города">
                 <div class="sf-title"><svg class="sf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 0 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Города</span></div>
-                <ul><li><a href="/moskva/">Москва</a></li><li><a href="/spb/">Санкт-Петербург</a></li><li><a href="/novosibirsk/">Новосибирск</a></li><li><a href="/ekaterinburg/">Екатеринбург</a></li><li><a href="/kazan/">Казань</a></li><li><a href="/krasnodar/">Краснодар</a></li><li><a href="/goroda/">Все города →</a></li></ul>
+                <ul><li><a href="/moskva/">Москва</a></li><li><a href="/spb/">Санкт-Петербург</a></li><li><a href="/novosibirsk/">Новосибирск</a></li><li><a href="/ekaterinburg/">Екатеринбург</a></li><li><a href="/montazh-otopleniya-spb/">Монтаж отопления в СПб</a></li><li><a href="/montazh-teplogo-pola-spb/">Тёплый пол в СПб</a></li><li><a href="/goroda/">Все города →</a></li></ul>
             </nav>
             <nav class="sf-col" aria-label="О проекте">
                 <div class="sf-title"><svg class="sf-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>О проекте</span></div>
