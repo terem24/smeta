@@ -96610,11 +96610,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 this.canUseUfhPlan() && !this.planRowSummary() && !(this.state.rooms || []).length;
             const qsBtn = _planFirst ? `
                     <div class="plan-first-step no-print" id="plan_first_step">
-                        <div class="plan-first-step-tag">Шаг 1 из 2 · План дома</div>
-                        <button type="button" id="plan_first_btn" class="quick-start-cta plan-first-cta" onclick="app.pickPlanThenOpen()">
-                            <span class="ui-emo">📐</span>Загрузить план
-                        </button>
-                        <div class="plan-first-note">Комнаты, окна и площади возьмём с плана — расчёт по комнатам заработает сам.</div>
+                        <button type="button" id="plan_first_btn" class="quick-start-cta plan-first-cta" onclick="app.pickPlanThenOpen()">Загрузить план</button>
                         <div class="plan-first-links">
                             <a href="#" onclick="app.goProjectStep('rooms'); return false;">или ввести комнаты вручную</a>
                             <span>·</span>
@@ -96626,9 +96622,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     </button>` : '';
             h = `<tr class="empty-state-row"><td colspan="9">
                 <div class="empty-state-hint">
-                    <span class="empty-state-icon">${_emptyIcon}</span>
+                    <span class="empty-state-icon">${_planFirst ? '📐' : _emptyIcon}</span>
                     <div class="empty-state-title">Параметры ${_emptyWhat} не заданы</div>
-                    ${(_onboardOk && !_planFirst) ? `<div class="empty-state-text">Задайте параметры слева: ${_emptyWhich}.</div>` : ''}${qsBtn}
+                    ${_onboardOk ? `<div class="empty-state-text">${_planFirst ? 'Загрузите план дома — комнаты посчитаются сами.' : 'Задайте слева: ' + _emptyWhich + '.'}</div>` : ''}${qsBtn}
                 </div>
             </td></tr>`;
             sum = 0;
