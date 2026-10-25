@@ -200,7 +200,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=5.73">
+    <link rel="stylesheet" href="style.css?v=5.74">
     <link rel="stylesheet" href="hydro_check.css?v=1.13">
 
     <script src="supabase-js.js" defer></script>
@@ -233,7 +233,7 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.7" defer></script>
-    <script src="app.js?v=14.36" defer></script>
+    <script src="app.js?v=14.37" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -894,6 +894,12 @@
                 <button type="button" id="btn_ufhplan" onclick="app.pickPlanThenOpen()"
                     title="Загрузите план дома: комнаты перейдут в расчёт, тёплый пол отмечается кликом, радиаторы встают под окнами — раскладка и трассы появятся в смете и в КП"
                     style="font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--primary); background: transparent; color: var(--primary); cursor: pointer; flex-shrink: 0; display: none;">Загрузить план</button>
+            </div>
+            <!-- Второй шаг после плана: подсказка, пока человек не нажмёт или не закроет
+                 (app.syncDesignUI, флаг app._planNextHint ставит окно плана по «Готово») -->
+            <div id="plan_next_hint" class="plan-next-hint no-print" style="display: none;" onclick="app.planNextHintGo()" role="button" tabindex="0">
+                <span class="plan-next-hint-text"><b>Шаг 2 из 2.</b> План принят — теперь настройте систему: тип котла, отопление, воду. Заполняйте как обычно.</span>
+                <span class="plan-next-hint-x" onclick="event.stopPropagation(); app.planNextHintClose()" title="Скрыть" aria-label="Скрыть">✕</span>
             </div>
 
             <div class="control-item" id="blk_main_area" style="margin-bottom: 15px;">

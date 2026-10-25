@@ -23597,6 +23597,8 @@ const app = {
             sumEl.textContent = done ? 'Готово: ' + this._planDoneMsg : (sum || '');
             sumEl.style.color = done ? 'var(--success, #16a34a)' : '';
         }
+        const nextHint = document.getElementById('plan_next_hint');
+        if (nextHint) nextHint.style.display = (this._planNextHint && sum && this.state.detailedRooms) ? 'flex' : 'none';
         // Комнат нет — пустой переключатель «Расчёт по комнатам» прячется (см. syncUI),
         // ручной ввод — ссылкой здесь же
         const man = document.getElementById('plan_row_manual');
@@ -43272,6 +43274,18 @@ const app = {
      * Раньше окно открывалось пустым и просило загрузить то же самое второй раз.
      * Если план уже есть («Открыть») — просто открываем окно.
      */
+    /** Подсказка «Шаг 2»: клик ведёт к настройкам котла и отопления, крестик — скрывает */
+    planNextHintGo: function () {
+        this.planNextHintClose();
+        const el = document.getElementById('pg_t2') || document.getElementById('blk_fuel_type');
+        if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+    planNextHintClose: function () {
+        this._planNextHint = false;
+        const el = document.getElementById('plan_next_hint');
+        if (el) el.style.display = 'none';
+    },
+
     pickPlanThenOpen: function () {
         if (!this.canUseUfhPlan() || this.planRowSummary()) { this.openUfhPlan(); return; }
         const inp = document.createElement('input');
@@ -43393,6 +43407,7 @@ const app = {
                 if (!e.data.done) return;
                 // итог мастера — зелёной строкой в «Плане дома»: видно, что изменилось
                 this._planDoneMsg = typeof e.data.sum === 'string' ? e.data.sum.slice(0, 200) : '';
+                this._planNextHint = true;
                 this.closeUfhPlan(false);
             });
         }
@@ -96588,7 +96603,24 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // заполненной анкеты (см. onboardingAllowed): гостю и недозаполненному
             // остаются значок и заголовок.
             const _onboardOk = this.onboardingAllowed();
-            const qsBtn = (_onboardOk && this.isCalcEmpty()) ? `
+            // «По комнатам» без плана и комнат: первый шаг — план дома (или комнаты
+            // руками), а не типовой объект. «Быстрый старт» остаётся мелкой ссылкой —
+            // пропустить шаг можно.
+            const _planFirst = _onboardOk && this.isCalcEmpty() && !_flatEmpty && this.state.detailedRooms &&
+                this.canUseUfhPlan() && !this.planRowSummary() && !(this.state.rooms || []).length;
+            const qsBtn = _planFirst ? `
+                    <div class="plan-first-step no-print" id="plan_first_step">
+                        <div class="plan-first-step-tag">Шаг 1 из 2 · План дома</div>
+                        <button type="button" id="plan_first_btn" class="quick-start-cta plan-first-cta" onclick="app.pickPlanThenOpen()">
+                            <span class="ui-emo">📐</span>Загрузить план
+                        </button>
+                        <div class="plan-first-note">Комнаты, окна и площади возьмём с плана — расчёт по комнатам заработает сам.</div>
+                        <div class="plan-first-links">
+                            <a href="#" onclick="app.goProjectStep('rooms'); return false;">или ввести комнаты вручную</a>
+                            <span>·</span>
+                            <a href="#" id="quick_start_row" onclick="app.showQuickStart(); return false;">пропустить: типовой объект</a>
+                        </div>
+                    </div>` : (_onboardOk && this.isCalcEmpty()) ? `
                     <button type="button" id="quick_start_row" class="no-print quick-start-cta" onclick="app.showQuickStart()">
                         <span class="ui-emo">${_emptyIcon}</span>Быстрый старт: типовой объект
                     </button>` : '';
@@ -96596,7 +96628,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 <div class="empty-state-hint">
                     <span class="empty-state-icon">${_emptyIcon}</span>
                     <div class="empty-state-title">Параметры ${_emptyWhat} не заданы</div>
-                    ${_onboardOk ? `<div class="empty-state-text">Задайте параметры слева: ${_emptyWhich}.</div>` : ''}${qsBtn}
+                    ${(_onboardOk && !_planFirst) ? `<div class="empty-state-text">Задайте параметры слева: ${_emptyWhich}.</div>` : ''}${qsBtn}
                 </div>
             </td></tr>`;
             sum = 0;
