@@ -1717,6 +1717,28 @@ const app = {
             if (d.hw !== undefined) s.hotWater = !!d.hw;
             if (d.auto === true) { s.boilerAuto = true; s.autoOn = true; }
             if (d.watersource === 'well') s.well = true;
+            // Что нужно для подбора обвязки и котла без звонка заказчику (опросник, шаги
+            // «Отопление» и «Вода»): электрика, газ, потолки, санузлы, скважина, тёплый пол.
+            // Площадь тёплого пола на двух этажах делим пополам — как ufhEverywhere выше
+            if (d.elPhase === '220' || d.elPhase === '380') s.elPhase = d.elPhase;
+            const _kw = parseFloat(d.elKw);
+            if (_kw > 0) { s.elPowerLimit = _kw; s.elPowerLimitOff = false; }
+            if (d.gasSrc === 'lpg') s.gasTariffMode = 'lpg';
+            else if (d.gasSrc === 'main') s.gasTariffMode = 'main';
+            const _ch = parseFloat(d.ceilingH);
+            if (_ch >= 2.2 && _ch <= 6) { s.h1 = _ch; s.h2 = _ch; }
+            const _bt = parseInt(d.baths, 10);
+            if (_bt >= 1) { s.houseBaths = Math.min(_bt, this.HOUSE_BATHS_MAX || 4); s.houseBathsManual = true; }
+            if (d.watersource === 'well') {
+                const _wd = parseFloat(d.wellDepth), _wl = parseFloat(d.wellDist);
+                if (_wd > 0) s.wellDepth = _wd;
+                if (_wl > 0) s.wellDist = _wl;
+            }
+            const _tpA = parseFloat(d.tpArea);
+            if (d.tp && _tpA > 0) {
+                if (s.floors === 2) { s.tp1 = Math.round(_tpA / 2); s.tp2 = Math.round(_tpA / 2); }
+                else { s.tp1 = Math.round(_tpA); s.tp2 = 0; }
+            }
             // Город — та же формула коэффициента, что в selectCity
             if (d.city && typeof CITIES_DB !== 'undefined') {
                 const key = String(d.city).trim().toLowerCase();
@@ -1801,6 +1823,15 @@ const app = {
         put('Автоматика отопления', d.auto === true ? 'нужна' : '');
         put('Горячая вода', d.hw === true ? 'нужна' : (d.hw === false ? 'не нужна' : ''));
         put('Источник воды', { well: 'скважина / колодец', central: 'центральный водопровод' }[d.watersource]);
+        // Поля подбора системы: что не указано — монтажнику видно, чего не хватает
+        put('Газ на участке', { ready: 'магистраль, труба на участке', planned: 'магистраль, обещают подвести', lpg: 'газгольдер / баллоны', none: 'нет газа' }[d.gasState]);
+        put('Электричество', [d.elPhase ? d.elPhase + ' В' : '', d.elKw ? 'выделено ' + d.elKw + ' кВт' : (d.elKwUnknown ? 'мощность не знает' : '')].filter(Boolean).join(', '));
+        put('Где котёл', { room: 'отдельная котельная', kitchen: 'кухня или подсобка', garage: 'гараж или хозблок', undecided: 'пока не решено' }[d.boilerRoom]);
+        put('Дымоход', { have: 'уже есть', need: 'нужно сделать', unknown: 'не знает' }[d.chimney]);
+        put('Высота потолков', d.ceilingH ? d.ceilingH + ' м' : '');
+        put('Санузлов', d.baths);
+        put('Площадь тёплого пола', d.tpArea ? d.tpArea + ' м²' : '');
+        put('Скважина', [d.wellDepth ? 'глубина ' + d.wellDepth + ' м' : '', d.wellDist ? 'до дома ' + d.wellDist + ' м' : ''].filter(Boolean).join(', '));
         if (d.hasProject) {
             L.push('Есть готовый проект/план дома — заказчик пришлёт файлом отдельно.');
         } else {

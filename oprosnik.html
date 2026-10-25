@@ -7,16 +7,24 @@
 <title>Опросник для расчёта отопления — HeatCalc</title>
 <!--
   Опросник для заказчика. Монтажник отправляет клиенту ссылку на эту страницу,
-  клиент заполняет анкету и жмёт «Сформировать ссылку» — страница пакует ответы
+  клиент отвечает на вопросы и жмёт «Отправить монтажнику» — страница пакует ответы
   в base64url JSON и даёт ссылку вида heatcalc.ru/?opros=..., которую клиент
   возвращает монтажнику (кнопки WhatsApp/Telegram). Калькулятор разбирает её в
   app.applyOprosFromUrl(): числа встают в расчёт, тексты — окном.
   Сервера нет: всё считается в браузере, никуда не отправляется само.
+  Формат ответов (ключи d.*) не менялся — его читают applyOprosData, oprosSummaryText
+  и режим просмотра ?view= ниже.
+
+  Устройство: четыре шага по одной теме на экране (дом → отопление и вода → из чего
+  построен дом → контакты). Шаг про конструкцию пропускается, если у заказчика есть
+  проект. Вопрос, который сейчас не нужен, не показывается вовсе (толщина стены — только
+  когда известен материал, комнаты тёплого пола — только если пол выбран, и т. п.).
+  Контакты стоят в конце: человек сначала втягивается в лёгкие вопросы про дом.
+  Ответ «не знаю» везде законный — пустое значение монтажник уточнит сам.
 
   Оформление — упрощённая копия палитры/типографики калькулятора (style.css):
   тот же primary #2563EB, шрифт Inter, радиусы и тени карточек. Сам style.css
-  сюда не подключаем — он весь заточен под разметку app.js и потащил бы за
-  собой лишнее; здесь только то, что нужно этой странице.
+  сюда не подключаем — он весь заточен под разметку app.js.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -28,12 +36,9 @@
         --border: #E5E7EB; --surface: #fff; --surface-light: #F9FAFB; --bg: #F3F4F6;
         --req: #DC2626;
     }
-    /* Автопереключение по часам — как «авто» в самом калькуляторе без гео/заката
-       (страница разовая, открывается по ссылке от монтажника, тянуть на неё
-       ipapi.co ни к чему): с 20:00 до 7:00 тёмная, иначе светлая. Класс на body
-       ставит applyTheme() — не медиазапрос, чтобы кнопкой можно было переключить
-       вручную поверх времени. Индиго вместо синего в тёмном — тот же акцент,
-       что в body.dark-mode style.css. */
+    /* Автопереключение по часам — как «авто» в самом калькуляторе без гео/заката:
+       с 20:00 до 7:00 тёмная, иначе светлая. Класс на body ставит applyTheme(), чтобы
+       кнопкой можно было переключить вручную поверх времени. */
     body.theme-dark {
         --primary: #6366F1; --primary-dark: #818CF8; --primary-light: rgba(99, 102, 241, 0.15);
         --text: #F3F4F6; --text-sec: #9CA3AF;
@@ -48,6 +53,7 @@
             --warn-bg: rgba(245,158,11,.1); --warn-border: rgba(245,158,11,.3); --warn-text: #FBBF24; }
 
     * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
     body { margin: 0; font-family: 'Inter', system-ui, -apple-system, Arial, sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
     .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px; }
 
@@ -60,7 +66,7 @@
     .brand .tagline { font-size: 11px; color: var(--text-sec); font-weight: 500; }
     .theme-toggle { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-    /* Вводная карточка */
+    /* Вводная карточка — только на первом шаге */
     .hero { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 22px 22px 20px; box-shadow: var(--shadow); margin-bottom: 14px; }
     .eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--primary); background: var(--primary-light); padding: 4px 10px; border-radius: 999px; }
     h1 { font-size: 24px; line-height: 1.2; font-weight: 800; letter-spacing: -0.025em; margin: 12px 0 8px; }
@@ -76,15 +82,28 @@
     .installer .call svg { width: 16px; height: 16px; }
     @media (max-width: 420px) { .installer .call { width: 42px; padding: 0; } .installer .call .num { display: none; } }
 
-    /* Секции */
+    /* Прогресс */
+    .progress { margin: 2px 0 12px; }
+    .progress .lbl { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; color: var(--text-sec); margin-bottom: 8px; }
+    .progress .lbl b { color: var(--text); font-weight: 700; }
+    .bars { display: flex; gap: 6px; }
+    .bars i { flex: 1; height: 5px; border-radius: 3px; background: var(--border); transition: background .25s; }
+    .bars i.done, .bars i.now { background: var(--primary); }
+    .bars i.now { opacity: .55; }
+
+    /* Шаги */
+    .step { display: none; }
+    .step.on { display: block; }
+    body.view .step { display: block; }
+    .step.skip, body.view .step.skip { display: none; }
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px 22px 22px; margin-bottom: 14px; box-shadow: var(--shadow); }
-    .sec-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-    .sec-head .num { width: 26px; height: 26px; border-radius: 8px; background: var(--primary-light); color: var(--primary); font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-    .sec-head h2 { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
-    .fields { display: flex; flex-direction: column; gap: 16px; }
-    .field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
-    label.f { font-size: 13.5px; font-weight: 600; color: var(--text); }
-    label.f .opt { font-weight: 400; color: var(--text-sec); }
+    .sec-head { margin-bottom: 18px; }
+    .sec-head h2 { font-size: 19px; font-weight: 800; letter-spacing: -0.015em; margin: 0 0 4px; }
+    .sec-head p { margin: 0; font-size: 13.5px; color: var(--text-sec); line-height: 1.45; }
+    .fields { display: flex; flex-direction: column; gap: 20px; }
+    .field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+    label.f, .f { font-size: 14px; font-weight: 600; color: var(--text); }
+    .f .opt { font-weight: 400; color: var(--text-sec); }
     .hint { font-size: 12.5px; color: var(--text-sec); line-height: 1.45; }
     .req { color: var(--req); }
     .err-msg { color: #DC2626; font-size: 13px; font-weight: 600; line-height: 1.35; }
@@ -95,8 +114,8 @@
     @media (prefers-color-scheme: dark) { .err-bar { background: #3B1212; border-color: #7F1D1D; color: #FECACA; } .err-msg { color: #F87171; } }
 
     input[type=text], input[type=number], input[type=tel], textarea, select {
-        width: 100%; min-height: 46px; padding: 11px 14px; border: 1px solid var(--border); border-radius: 12px;
-        font-family: inherit; font-size: 15px; color: var(--text); background: var(--field); outline: none;
+        width: 100%; min-height: 48px; padding: 11px 14px; border: 1px solid var(--border); border-radius: 12px;
+        font-family: inherit; font-size: 16px; color: var(--text); background: var(--field); outline: none;
         transition: border-color .15s, box-shadow .15s, background .15s;
     }
     input::placeholder, textarea::placeholder { color: var(--text-sec); opacity: .7; }
@@ -107,30 +126,66 @@
         background-repeat: no-repeat; background-position: right 15px center; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width: 420px) { .row2 { grid-template-columns: 1fr; } }
+    .unit { position: relative; }
+    .unit input { padding-right: 44px; }
+    .unit::after { content: attr(data-unit); position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text-sec); font-size: 14px; pointer-events: none; }
 
     /* Варианты-«чипы»: сам радиокружок спрятан, выбранный чип подсвечен */
-    .seg { display: flex; flex-wrap: wrap; gap: 8px; }
-    .seg label { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 9px 15px; border: 1px solid var(--border); border-radius: 999px; font-size: 14px; cursor: pointer; background: var(--field); transition: border-color .15s, background .15s, color .15s; user-select: none; }
-    .seg label:hover { border-color: var(--primary); }
+    .seg, .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .seg label, .chips button { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 9px 16px; border: 1px solid var(--border); border-radius: 999px; font-family: inherit; font-size: 14px; color: var(--text); cursor: pointer; background: var(--field); transition: border-color .15s, background .15s, color .15s; user-select: none; }
+    .seg label:hover, .chips button:hover { border-color: var(--primary); }
     .seg input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
     .seg label:has(input:checked) { border-color: var(--primary); background: var(--primary-light); color: var(--primary-dark); font-weight: 600; }
     .seg label:has(input:checked)::before { content: '✓'; font-weight: 700; }
     .seg label:has(input:focus-visible) { box-shadow: 0 0 0 3px var(--primary-light); }
+    .chips button { min-height: 36px; padding: 6px 13px; font-size: 13px; }
+
+    /* Плитки с крупным значком — там, где выбор лучше увидеть, чем прочитать */
+    .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .tile { position: relative; display: flex; flex-direction: column; gap: 3px; padding: 13px 14px; min-height: 84px; border: 1.5px solid var(--border); border-radius: 14px; background: var(--field); cursor: pointer; user-select: none; transition: border-color .15s, background .15s; }
+    .tile:hover { border-color: var(--primary); }
+    .tile input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+    .tile .ico { font-size: 22px; line-height: 1.1; }
+    .tile .t { font-weight: 600; font-size: 14px; line-height: 1.25; }
+    .tile .d { font-size: 12px; color: var(--text-sec); line-height: 1.35; }
+    .tile.wide { grid-column: 1 / -1; min-height: 0; }
+    .tile:has(input:checked) { border-color: var(--primary); background: var(--primary-light); }
+    .tile:has(input:checked) .t { color: var(--primary-dark); }
+    .tile:has(input:checked)::after { content: '✓'; position: absolute; top: 9px; right: 13px; color: var(--primary); font-weight: 700; font-size: 14px; }
+    .tile:has(input:focus-visible) { box-shadow: 0 0 0 3px var(--primary-light); }
+    @media (max-width: 340px) { .tiles { grid-template-columns: 1fr; } }
+
+    /* Вопрос, который появился после ответа на предыдущий */
+    .sub-q { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 14px; background: var(--surface-light); border: 1px dashed var(--border); animation: appear .2s ease-out; }
+    @keyframes appear { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .sub-q { animation: none; } }
+
+    details.more { border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+    details.more > summary { list-style: none; cursor: pointer; padding: 14px 16px; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 48px; }
+    details.more > summary::-webkit-details-marker { display: none; }
+    details.more > summary::after { content: '＋'; color: var(--primary); font-weight: 700; }
+    details.more[open] > summary::after { content: '−'; }
+    details.more > summary small { display: block; font-weight: 400; color: var(--text-sec); font-size: 12.5px; margin-top: 2px; }
+    details.more .inner { padding: 4px 16px 18px; display: flex; flex-direction: column; gap: 18px; }
 
     .note { font-size: 13px; color: var(--text-sec); line-height: 1.5; }
     .callout { font-size: 13.5px; line-height: 1.5; color: var(--text); background: var(--primary-light); border-radius: 12px; padding: 12px 14px; }
 
-    /* Кнопка отправки прилипает к низу экрана, пока листаешь анкету */
-    .submit-bar { position: sticky; bottom: 0; padding: 14px 0 18px; background: linear-gradient(to bottom, transparent, var(--bg) 35%); z-index: 5; }
-    .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 54px; padding: 14px; border: none; border-radius: 14px; background: var(--primary); color: #fff; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px -8px rgba(37,99,235,.55); transition: background .15s, transform .1s; }
+    /* Нижняя панель прилипает к низу экрана */
+    .nav-bar { position: sticky; bottom: 0; padding: 14px 0 18px; background: linear-gradient(to bottom, transparent, var(--bg) 35%); z-index: 5; }
+    .nav { display: flex; gap: 10px; }
+    .btn { display: flex; align-items: center; justify-content: center; gap: 8px; flex: 1; min-height: 54px; padding: 14px; border: none; border-radius: 14px; background: var(--primary); color: #fff; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px -8px rgba(37,99,235,.55); transition: background .15s, transform .1s; }
     .btn:hover { background: var(--primary-dark); }
     .btn:active { transform: scale(.99); }
+    .btn.ghost { flex: 0 0 auto; padding: 14px 22px; background: var(--surface); color: var(--text); border: 1px solid var(--border); box-shadow: none; }
+    .btn.ghost:hover { border-color: var(--primary); }
+    .btn.link { background: none; box-shadow: none; color: var(--primary); min-height: 44px; font-size: 14px; }
     .footnote { text-align: center; font-size: 12px; color: var(--text-sec); padding: 4px 0 32px; }
 
     /* Результат */
     #result { display: none; }
     #result.on { display: block; }
-    #result h2 { font-size: 17px; font-weight: 700; margin: 0 0 4px; }
+    #result h2 { font-size: 19px; font-weight: 800; margin: 0 0 6px; }
     .banner { padding: 12px 14px; border-radius: 12px; font-size: 14px; font-weight: 600; line-height: 1.45; margin-bottom: 14px; }
     .banner.ok { background: var(--ok-bg); border: 1px solid var(--ok-border); color: var(--ok-text); }
     .banner.warn { background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text); }
@@ -155,184 +210,353 @@
         <button type="button" class="theme-toggle" id="themeToggle" onclick="toggleTheme()"></button>
     </header>
 
-    <section class="hero">
-        <span class="eyebrow">⏱ 3–5 минут</span>
-        <h1>Опросник для расчёта отопления</h1>
-        <p class="sub">Чем точнее ответы, тем точнее смета и меньше созвонов потом.
-            Поля со звёздочкой <span class="req">*</span> обязательны.</p>
+    <div id="formArea">
+
+    <section class="hero" id="hero">
+        <span class="eyebrow">⏱ 3 минуты</span>
+        <h1>Расскажите про ваш дом</h1>
+        <p class="sub" id="heroSub">Ответы нужны монтажнику, чтобы посчитать отопление и прислать смету.
+            Не знаете, как ответить, — выбирайте «Не знаю»: это нормально, он уточнит сам.</p>
         <div class="installer" id="installerNote" style="display:none;"></div>
     </section>
 
-    <form id="oprosForm" onsubmit="return false;">
+    <div class="progress" id="progress">
+        <div class="lbl"><span id="pgText"></span><b id="pgTitle"></b></div>
+        <div class="bars" id="pgBars"></div>
+    </div>
 
-    <section class="card">
-        <div class="sec-head"><span class="num">1</span><h2>Контакты</h2></div>
-        <div class="fields">
-            <div class="row2">
-                <div class="field"><label class="f" for="f_name">Ваше имя <span class="req">*</span></label><input type="text" id="f_name" placeholder="Иван" autocomplete="name" required></div>
-                <div class="field"><label class="f" for="f_phone">Телефон <span class="req">*</span></label><input type="tel" id="f_phone" placeholder="+7 (___) ___-__-__" inputmode="tel" autocomplete="tel" maxlength="18" required>
-                    <span class="hint">По нему монтажник позвонит с расчётом</span></div>
-            </div>
-        </div>
-    </section>
+    <form id="oprosForm" onsubmit="return false;" novalidate>
 
-    <section class="card">
-        <div class="sec-head"><span class="num">2</span><h2>Дом</h2></div>
+    <!-- ── Шаг 1. Дом ─────────────────────────────────────────────── -->
+    <section class="card step" id="s_house">
+        <div class="sec-head"><h2>Ваш дом</h2><p>Общие сведения — по ним считается мощность отопления.</p></div>
         <div class="fields">
             <div class="field">
-                <label class="f" for="f_city">Город строительства <span class="req">*</span></label>
-                <input type="text" id="f_city" placeholder="Екатеринбург" required>
-            </div>
-            <div class="field">
-                <label class="f" for="f_address">Адрес <span class="opt">· необязательно</span></label>
-                <input type="text" id="f_address" placeholder="ул. Садовая, 14">
-                <span class="hint">Улица и дом — для доставки оборудования</span>
+                <label class="f" for="f_city">Где строится дом <span class="req">*</span></label>
+                <input type="text" id="f_city" placeholder="Город, например Екатеринбург" autocomplete="address-level2" required>
+                <span class="hint">От города зависит, насколько зимой холодно, а значит и мощность котла</span>
             </div>
             <div class="row2">
-                <div class="field"><label class="f" for="f_area">Площадь дома, м² <span class="req">*</span></label><input type="number" id="f_area" min="20" max="2000" placeholder="120" inputmode="numeric" required>
-                    <span class="hint" id="f_area_hint" style="display:none; color: var(--req);">Дом больше 360 м² — монтажник посчитает его отдельно, анкету всё равно отправляйте</span></div>
-                <div class="field"><label class="f" for="f_floors">Этажей <span class="req">*</span></label>
-                    <select id="f_floors" required><option value="1">1</option><option value="2" selected>2</option></select>
+                <div class="field">
+                    <label class="f" for="f_area">Площадь дома <span class="req">*</span></label>
+                    <div class="unit" data-unit="м²"><input type="number" id="f_area" min="20" max="2000" placeholder="120" inputmode="numeric" required></div>
+                    <span class="hint">Общая, всех этажей</span>
+                    <span class="hint" id="f_area_hint" style="display:none; color: var(--req);">Дом больше 360 м² — монтажник посчитает его отдельно, анкету всё равно отправляйте</span>
+                </div>
+                <div class="field" id="fld_floors" data-req-radio="f_floors" data-title="Этажей">
+                    <span class="f">Этажей <span class="req">*</span></span>
+                    <div class="seg">
+                        <label><input type="radio" name="f_floors" id="f_floors_1" value="1">1</label>
+                        <label><input type="radio" name="f_floors" id="f_floors_2" value="2">2</label>
+                    </div>
+                    <span class="hint">Мансарда — тоже этаж</span>
                 </div>
             </div>
-            <div class="field">
-                <label class="f" for="f_people">Сколько человек будет жить</label>
-                <input type="number" id="f_people" min="1" max="20" placeholder="4">
-            </div>
-            <div class="field">
-                <label class="f">Стадия строительства</label>
+            <div class="field" id="fld_ceilingH" data-req-radio="f_ceilingH" data-title="Высота потолков">
+                <span class="f">Высота потолков <span class="req">*</span></span>
                 <div class="seg">
-                    <label><input type="radio" name="f_stage" value="none">Ещё не начали</label>
-                    <label><input type="radio" name="f_stage" value="box" checked>Возводится коробка</label>
-                    <label><input type="radio" name="f_stage" value="closed">Закрыт тепловой контур</label>
+                    <label><input type="radio" name="f_ceilingH" id="f_ceilingH_27" value="2.7">Обычная, до 2,7 м</label>
+                    <label><input type="radio" name="f_ceilingH" value="3">Около 3 м</label>
+                    <label><input type="radio" name="f_ceilingH" value="3.5">3,5 м и выше</label>
+                </div>
+                <span class="hint">От объёма дома зависит мощность котла</span>
+            </div>
+            <div class="field">
+                <span class="f">Как идёт стройка</span>
+                <div class="seg">
+                    <label><input type="radio" name="f_stage" value="none">Только планируем</label>
+                    <label><input type="radio" name="f_stage" value="box">Строим стены и крышу</label>
+                    <label><input type="radio" name="f_stage" value="closed">Дом под крышей, окна стоят</label>
                 </div>
             </div>
             <div class="field">
-                <label class="f">Режим проживания</label>
+                <span class="f">Как будете жить</span>
                 <div class="seg">
-                    <label><input type="radio" name="f_live" value="all" checked>Круглый год</label>
-                    <label><input type="radio" name="f_live" value="season">Наездами</label>
+                    <label><input type="radio" name="f_live" value="all" checked>Постоянно, круглый год</label>
+                    <label><input type="radio" name="f_live" value="season">Приезжать наездами</label>
                 </div>
+            </div>
+            <div class="field">
+                <span class="f">Есть проект или чертежи дома?</span>
+                <div class="seg">
+                    <label><input type="radio" name="f_hasProject" value="no" checked>Нет</label>
+                    <label><input type="radio" name="f_hasProject" value="yes">Да, пришлю монтажнику</label>
+                </div>
+                <div class="callout" id="f_projectNote" hidden></div>
             </div>
         </div>
     </section>
 
-    <section class="card">
-        <div class="sec-head"><span class="num">3</span><h2>Отопление</h2></div>
+    <!-- ── Шаг 2. Отопление и вода ────────────────────────────────── -->
+    <section class="card step" id="s_heat">
+        <div class="sec-head"><h2>Отопление</h2><p>Что вы хотите получить и какие коммуникации есть на участке. Если не решили — так и ответьте, монтажник подскажет.</p></div>
         <div class="fields">
             <div class="field">
-                <label class="f">Чем хотите отапливать</label>
-                <div class="seg">
-                    <label><input type="checkbox" id="f_tp" checked>Водяной тёплый пол</label>
-                    <label><input type="checkbox" id="f_rad" checked>Радиаторы</label>
+                <span class="f">Чем греть дом</span>
+                <div class="tiles">
+                    <label class="tile"><input type="radio" name="f_heat" value="tp"><span class="ico">♨️</span><span class="t">Тёплый пол</span><span class="d">Греет пол по всему дому</span></label>
+                    <label class="tile"><input type="radio" name="f_heat" value="rad"><span class="ico">🌡️</span><span class="t">Радиаторы</span><span class="d">Обычные батареи на стенах</span></label>
+                    <label class="tile"><input type="radio" name="f_heat" value="both"><span class="ico">🏠</span><span class="t">Пол и батареи</span><span class="d">Например, пол в ванных, батареи в комнатах</span></label>
+                    <label class="tile"><input type="radio" name="f_heat" value="unknown"><span class="ico">🤔</span><span class="t">Пока не знаю</span><span class="d">Подскажет монтажник</span></label>
                 </div>
             </div>
-            <div class="field">
-                <label class="f">Котёл</label>
+            <div class="sub-q" id="q_tprooms" hidden>
+                <label class="f" for="f_tpArea">Площадь тёплого пола <span class="req">*</span></label>
+                <div class="unit" data-unit="м²"><input type="number" id="f_tpArea" min="1" max="2000" placeholder="60" inputmode="numeric" required></div>
+                <span class="hint">Примерно: сложите площади комнат, где будет тёплый пол</span>
+                <label class="f" for="f_tprooms" style="margin-top:6px;">В каких комнатах <span class="opt">· по желанию</span></label>
+                <div class="chips" id="tpChips">
+                    <button type="button" data-v="Во всём доме">Во всём доме</button>
+                    <button type="button" data-v="Весь первый этаж">Весь первый этаж</button>
+                    <button type="button" data-v="Только санузлы и кухня">Санузлы и кухня</button>
+                </div>
+                <textarea id="f_tprooms" placeholder="Или напишите своими словами"></textarea>
+            </div>
+
+            <div class="field" id="fld_fuel" data-req-radio="f_fuel" data-title="Чем будет работать котёл">
+                <span class="f">Чем будет работать котёл <span class="req">*</span></span>
                 <div class="seg">
-                    <label><input type="radio" name="f_fuel" value="gas" checked>Газовый</label>
-                    <label><input type="radio" name="f_fuel" value="el">Электрический</label>
+                    <label><input type="radio" name="f_fuel" id="f_fuel_gas" value="gas">Газ</label>
+                    <label><input type="radio" name="f_fuel" value="el">Электричество</label>
+                    <label><input type="radio" name="f_fuel" value="unknown">Ещё не решили</label>
+                </div>
+                <span class="hint">Газ дешевле в работе, но нужна труба на участке. Не решили — ответьте на вопросы ниже, монтажник подберёт сам</span>
+            </div>
+
+            <div class="sub-q" id="q_gas" hidden data-req-radio="f_gasState" data-title="Газ на участке">
+                <span class="f">Газ на участке <span class="req">*</span></span>
+                <div class="seg">
+                    <label><input type="radio" name="f_gasState" value="ready">Магистральный, труба уже есть</label>
+                    <label><input type="radio" name="f_gasState" value="planned">Магистральный, обещают подвести</label>
+                    <label><input type="radio" name="f_gasState" value="lpg">Газгольдер или баллоны</label>
+                    <label id="gasNoneOpt"><input type="radio" name="f_gasState" value="none">Газа нет и не будет</label>
                 </div>
             </div>
-            <div class="field">
-                <label class="f">Приточная вентиляция с подогревом воздуха</label>
-                <div class="seg">
-                    <label><input type="radio" name="f_vent" value="no" checked>Нет, проветриваем окнами</label>
-                    <label><input type="radio" name="f_vent" value="yes">Да, будет</label>
+
+            <div class="sub-q" id="q_el" hidden>
+                <div class="field" id="fld_elPhase" data-req-radio="f_elPhase" data-title="Напряжение сети">
+                    <span class="f">Электросеть на участке <span class="req">*</span></span>
+                    <div class="seg">
+                        <label><input type="radio" name="f_elPhase" value="220">Одна фаза, 220 В</label>
+                        <label><input type="radio" name="f_elPhase" value="380">Три фазы, 380 В</label>
+                        <label><input type="radio" name="f_elPhase" value="unknown">Не знаю</label>
+                    </div>
+                    <span class="hint">Посмотрите в договоре с энергосбытом: там указано 220 или 380 В</span>
+                </div>
+                <div class="field" id="fld_elKw" data-req-radio="f_elKw" data-title="Выделенная мощность" style="margin-top:6px;">
+                    <span class="f">Сколько киловатт выделено <span class="req">*</span></span>
+                    <div class="seg">
+                        <label><input type="radio" name="f_elKw" value="5">До 5 кВт</label>
+                        <label><input type="radio" name="f_elKw" value="10">10 кВт</label>
+                        <label><input type="radio" name="f_elKw" value="15">15 кВт</label>
+                        <label><input type="radio" name="f_elKw" value="25">25 кВт и больше</label>
+                        <label><input type="radio" name="f_elKw" value="unknown">Не знаю</label>
+                    </div>
+                    <span class="hint">Указано в договоре на подключение. От этого зависит, какой электрокотёл можно поставить</span>
                 </div>
             </div>
-            <div class="field">
-                <label class="f">Автоматика — управление с телефона, датчики</label>
+
+            <div class="field" id="fld_boilerRoom" data-req-radio="f_boilerRoom" data-title="Где будет котёл">
+                <span class="f">Где будет стоять котёл <span class="req">*</span></span>
                 <div class="seg">
-                    <label><input type="radio" name="f_auto" value="no" checked>Не нужна</label>
-                    <label><input type="radio" name="f_auto" value="yes">Нужна</label>
-                    <label><input type="radio" name="f_auto" value="unknown">Не знаю</label>
+                    <label><input type="radio" name="f_boilerRoom" value="room">Отдельная котельная</label>
+                    <label><input type="radio" name="f_boilerRoom" value="kitchen">Кухня или подсобка</label>
+                    <label><input type="radio" name="f_boilerRoom" value="garage">Гараж или хозблок</label>
+                    <label><input type="radio" name="f_boilerRoom" value="undecided">Ещё не решили</label>
                 </div>
             </div>
-            <div class="field">
-                <label class="f" for="f_tprooms">Где нужен тёплый пол <span class="opt">· необязательно</span></label>
-                <textarea id="f_tprooms" placeholder="Например: весь первый этаж, на втором — только санузлы"></textarea>
+            <div class="sub-q" id="q_chimney" hidden data-req-radio="f_chimney" data-title="Дымоход">
+                <span class="f">Дымоход для газового котла <span class="req">*</span></span>
+                <div class="seg">
+                    <label><input type="radio" name="f_chimney" value="have">Уже есть</label>
+                    <label><input type="radio" name="f_chimney" value="need">Нужно сделать</label>
+                    <label><input type="radio" name="f_chimney" value="unknown">Не знаю</label>
+                </div>
             </div>
+
+            <details class="more">
+                <summary><span>Дополнительные опции<small>Автоматика и вентиляция — только если уже решили</small></span></summary>
+                <div class="inner">
+                    <div class="field">
+                        <span class="f">Управление отоплением с телефона</span>
+                        <div class="seg">
+                            <label><input type="radio" name="f_auto" value="no">Не нужно</label>
+                            <label><input type="radio" name="f_auto" value="yes">Нужно</label>
+                            <label><input type="radio" name="f_auto" value="unknown">Не знаю</label>
+                        </div>
+                        <span class="hint">Датчики температуры в комнатах, регулировка из приложения</span>
+                    </div>
+                    <div class="field">
+                        <span class="f">Вентиляция с подогревом свежего воздуха</span>
+                        <div class="seg">
+                            <label><input type="radio" name="f_vent" value="no" checked>Нет, проветриваем окнами</label>
+                            <label><input type="radio" name="f_vent" value="yes">Да, будет</label>
+                        </div>
+                        <span class="hint">Отдельное устройство, которое подаёт в дом свежий воздух и подогревает его</span>
+                    </div>
+                </div>
+            </details>
         </div>
     </section>
 
-    <section class="card">
-        <div class="sec-head"><span class="num">4</span><h2>Горячая вода и водоснабжение</h2></div>
+    <!-- ── Шаг 3. Вода ────────────────────────────────────────────── -->
+    <section class="card step" id="s_water">
+        <div class="sec-head"><h2>Вода в доме</h2><p>Нужна, чтобы подобрать бойлер, насос и разводку.</p></div>
         <div class="fields">
             <div class="field">
-                <label class="f">Нужна горячая вода (бойлер)?</label>
+                <span class="f">Нужна горячая вода в кранах и душе?</span>
                 <div class="seg">
                     <label><input type="radio" name="f_hw" value="yes" checked>Да</label>
                     <label><input type="radio" name="f_hw" value="no">Нет</label>
                 </div>
             </div>
-            <div class="field">
-                <label class="f">Откуда вода</label>
+            <div class="sub-q" id="q_people">
+                <label class="f" for="f_people">Сколько человек будет жить в доме</label>
+                <div class="unit" data-unit="чел."><input type="number" id="f_people" min="1" max="20" placeholder="4" inputmode="numeric"></div>
+                <span class="hint">От этого зависит объём бака с горячей водой</span>
+            </div>
+            <div class="field" id="fld_baths" data-req-radio="f_baths" data-title="Санузлов">
+                <span class="f">Сколько санузлов <span class="req">*</span></span>
+                <div class="seg">
+                    <label><input type="radio" name="f_baths" id="f_baths_1" value="1">1</label>
+                    <label><input type="radio" name="f_baths" value="2">2</label>
+                    <label><input type="radio" name="f_baths" value="3">3</label>
+                    <label><input type="radio" name="f_baths" value="4">4 и больше</label>
+                </div>
+                <span class="hint">Считайте всё, где есть душ, ванна, унитаз или раковина</span>
+            </div>
+            <div class="field" id="fld_water" data-req-radio="f_watersource" data-title="Откуда вода">
+                <span class="f">Откуда будет вода в доме <span class="req">*</span></span>
                 <div class="seg">
                     <label><input type="radio" name="f_watersource" value="well">Скважина или колодец</label>
-                    <label><input type="radio" name="f_watersource" value="central">Центральный водопровод</label>
-                    <label><input type="radio" name="f_watersource" value="unknown" checked>Не знаю</label>
+                    <label><input type="radio" name="f_watersource" value="central">Городской водопровод</label>
+                    <label><input type="radio" name="f_watersource" value="unknown">Ещё нет</label>
                 </div>
             </div>
-        </div>
-    </section>
-
-    <section class="card">
-        <div class="sec-head"><span class="num">5</span><h2>Из чего построен дом</h2></div>
-        <div class="fields">
-            <div class="field">
-                <label class="f">Есть проект или план дома?</label>
-                <div class="seg">
-                    <label><input type="radio" name="f_hasProject" value="no" checked onchange="toggleProjectMode()">Нет, опишу сам</label>
-                    <label><input type="radio" name="f_hasProject" value="yes" onchange="toggleProjectMode()">Да, пришлю монтажнику</label>
-                </div>
-            </div>
-
-            <div class="callout" id="f_projectNote" style="display:none;"></div>
-
-            <div class="fields" id="f_envelopeFields">
-                <div class="hint">Не обязательно знать точно — выберите ближайшее по смыслу или оставьте «Не знаю».</div>
-                <div class="field">
-                    <label class="f" for="f_wallMat">Материал наружных стен <span class="req">*</span></label>
-                    <select id="f_wallMat" required></select>
-                </div>
+            <div class="sub-q" id="q_well" hidden>
                 <div class="row2">
-                    <div class="field"><label class="f" for="f_wallThick">Толщина стены, мм</label><input type="number" id="f_wallThick" min="50" max="800" placeholder="300"></div>
-                    <div class="field"><label class="f" for="f_wallInsMat">Утепление снаружи</label><select id="f_wallInsMat"></select></div>
+                    <div class="field"><label class="f" for="f_wellDepth">Глубина воды <span class="opt">· если знаете</span></label>
+                        <div class="unit" data-unit="м"><input type="number" id="f_wellDepth" min="1" max="300" placeholder="30" inputmode="numeric"></div></div>
+                    <div class="field"><label class="f" for="f_wellDist">От скважины до дома <span class="opt">· примерно</span></label>
+                        <div class="unit" data-unit="м"><input type="number" id="f_wellDist" min="1" max="500" placeholder="15" inputmode="numeric"></div></div>
                 </div>
-                <div class="row2" id="f_wallInsThickWrap" style="display:none;">
-                    <div class="field"><label class="f" for="f_wallInsThick">Толщина утеплителя, мм</label><input type="number" id="f_wallInsThick" min="20" max="400" placeholder="100"></div>
-                    <div></div>
-                </div>
-                <div class="field">
-                    <label class="f" for="f_floorMat">Пол первого этажа</label>
-                    <select id="f_floorMat"></select>
-                </div>
-                <div class="field">
-                    <label class="f" for="f_roofMat">Кровля или чердак</label>
-                    <select id="f_roofMat"></select>
-                </div>
-                <div class="field">
-                    <label class="f" for="f_glazing">Окна</label>
-                    <select id="f_glazing"></select>
-                </div>
-                <div class="field">
-                    <label class="f" for="f_wall">Уточнения по дому <span class="opt">· необязательно</span></label>
-                    <textarea id="f_wall" placeholder="Марка окон, особенности стен, пола, кровли"></textarea>
-                </div>
+                <span class="hint">По ним подбирается насос</span>
             </div>
         </div>
     </section>
 
-    <section class="card">
-        <div class="sec-head"><span class="num">6</span><h2>Прочее</h2></div>
+    <!-- ── Шаг 4. Из чего построен дом (пропускается, если есть проект) ── -->
+    <section class="card step" id="s_build">
+        <div class="sec-head"><h2>Из чего построен дом</h2><p>От стен и окон зависит, сколько тепла уходит. Точные цифры не нужны — выбирайте похожее.</p></div>
         <div class="fields">
             <div class="field">
-                <label class="f" for="f_bought">Что уже куплено <span class="opt">· необязательно</span></label>
+                <span class="f">Из чего сделаны наружные стены</span>
+                <div class="tiles" id="wallTiles">
+                    <label class="tile"><input type="radio" name="f_wallFam" value="brick_clay"><span class="ico">🧱</span><span class="t">Кирпич сплошной</span><span class="d">Обычный красный, без пустот</span></label>
+                    <label class="tile"><input type="radio" name="f_wallFam" value="brick_hollow"><span class="ico">🧱</span><span class="t">Кирпич с пустотами</span><span class="d">С отверстиями или щелями</span></label>
+                    <label class="tile"><input type="radio" name="f_wallFam" value="gas"><span class="ico">⬜</span><span class="t">Газобетон</span><span class="d">Лёгкие светлые блоки (пеноблок)</span></label>
+                    <label class="tile"><input type="radio" name="f_wallFam" value="ceramic_block"><span class="ico">🟧</span><span class="t">Керамический блок</span><span class="d">Крупные пористые блоки, «тёплая керамика»</span></label>
+                    <label class="tile"><input type="radio" name="f_wallFam" value="wood_pine"><span class="ico">🪵</span><span class="t">Брус или бревно</span><span class="d">Деревянный дом</span></label>
+                    <label class="tile"><input type="radio" name="f_wallFam" value="concrete"><span class="ico">⬛</span><span class="t">Бетон</span><span class="d">Монолитные или железобетонные стены</span></label>
+                    <label class="tile wide"><input type="radio" name="f_wallFam" value="other"><span class="t">❔ Другое или не знаю</span></label>
+                </div>
+            </div>
+
+            <div class="sub-q" id="q_gasD" hidden>
+                <span class="f">Плотность газобетона</span>
+                <div class="seg">
+                    <label><input type="radio" name="f_gasD" value="gas_d400">D400</label>
+                    <label><input type="radio" name="f_gasD" value="gas_d500">D500</label>
+                    <label><input type="radio" name="f_gasD" value="gas_d600">D600</label>
+                    <label><input type="radio" name="f_gasD" value="unknown" checked>Не знаю</label>
+                </div>
+                <span class="hint">Написано на упаковке или в накладной на блоки. Не знаете — примем D500, самую частую</span>
+            </div>
+
+            <div class="sub-q" id="q_wallThick" hidden>
+                <label class="f" for="f_wallThick">Толщина стены <span class="opt">· если знаете</span></label>
+                <div class="unit" data-unit="мм"><input type="number" id="f_wallThick" min="50" max="800" placeholder="300" inputmode="numeric"></div>
+                <div class="chips" data-fill="f_wallThick">
+                    <button type="button" data-v="200">200</button>
+                    <button type="button" data-v="300">300</button>
+                    <button type="button" data-v="400">400</button>
+                    <button type="button" data-v="500">500</button>
+                </div>
+                <span class="hint">Замерить легко: рулеткой в проёме двери или окна</span>
+            </div>
+
+            <div class="field" id="q_ins" hidden>
+                <span class="f">Есть ли утеплитель снаружи стен?</span>
+                <div class="seg">
+                    <label><input type="radio" name="f_ins" value="no" checked>Нет</label>
+                    <label><input type="radio" name="f_ins" value="yes">Да</label>
+                    <label><input type="radio" name="f_ins" value="unknown">Не знаю</label>
+                </div>
+            </div>
+            <div class="sub-q" id="q_insType" hidden>
+                <label class="f" for="f_wallInsMat">Чем утеплено</label>
+                <select id="f_wallInsMat"></select>
+                <span class="hint">Вата — волокнистая, жёлтая или серая. Пенопласт — белый, из шариков, крошится. Пеноплекс — плотный, жёлтый или оранжевый</span>
+                <label class="f" for="f_wallInsThick" style="margin-top:6px;">Толщина утеплителя <span class="opt">· если знаете</span></label>
+                <div class="unit" data-unit="мм"><input type="number" id="f_wallInsThick" min="20" max="400" placeholder="100" inputmode="numeric"></div>
+                <div class="chips" data-fill="f_wallInsThick">
+                    <button type="button" data-v="50">50</button>
+                    <button type="button" data-v="100">100</button>
+                    <button type="button" data-v="150">150</button>
+                    <button type="button" data-v="200">200</button>
+                </div>
+            </div>
+
+            <div class="field">
+                <label class="f" for="f_glazing">Какие окна</label>
+                <select id="f_glazing"></select>
+                <span class="hint">Посмотрите на торец стеклопакета или в договор на окна: сколько в нём воздушных камер</span>
+            </div>
+
+            <details class="more">
+                <summary><span>Пол и крыша<small>Можно пропустить — монтажник уточнит</small></span></summary>
+                <div class="inner">
+                    <div class="field">
+                        <label class="f" for="f_floorMat">Пол первого этажа</label>
+                        <select id="f_floorMat"></select>
+                    </div>
+                    <div class="field">
+                        <label class="f" for="f_roofType">Чем утеплена крыша или потолок верхнего этажа</label>
+                        <select id="f_roofType"></select>
+                    </div>
+                    <div class="sub-q" id="q_roofThick" hidden>
+                        <label class="f" for="f_roofThick">Толщина утеплителя</label>
+                        <select id="f_roofThick"></select>
+                    </div>
+                </div>
+            </details>
+
+            <div class="field">
+                <label class="f" for="f_wall">Что ещё важно про дом <span class="opt">· по желанию</span></label>
+                <textarea id="f_wall" placeholder="Например: большие панорамные окна, второй свет в гостиной, каркасный дом"></textarea>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Шаг 5. Контакты ────────────────────────────────────────── -->
+    <section class="card step" id="s_contact">
+        <div class="sec-head"><h2>Как с вами связаться</h2><p>Последний шаг: куда монтажнику позвонить с расчётом.</p></div>
+        <div class="fields">
+            <div class="row2">
+                <div class="field"><label class="f" for="f_name">Ваше имя <span class="req">*</span></label><input type="text" id="f_name" placeholder="Иван" autocomplete="name" required></div>
+                <div class="field"><label class="f" for="f_phone">Телефон <span class="req">*</span></label><input type="tel" id="f_phone" placeholder="+7 (___) ___-__-__" inputmode="tel" autocomplete="tel" maxlength="18" required></div>
+            </div>
+            <div class="field">
+                <label class="f" for="f_address">Адрес участка <span class="opt">· по желанию</span></label>
+                <input type="text" id="f_address" placeholder="Улица, дом" autocomplete="street-address">
+                <span class="hint">Нужен для доставки оборудования</span>
+            </div>
+            <div class="field">
+                <label class="f" for="f_bought">Что уже куплено <span class="opt">· по желанию</span></label>
                 <textarea id="f_bought" placeholder="Например: котёл 24 кВт, труба для тёплого пола"></textarea>
             </div>
             <div class="field">
-                <label class="f" for="f_comment">Комментарий <span class="opt">· необязательно</span></label>
+                <label class="f" for="f_comment">Пожелания и вопросы <span class="opt">· по желанию</span></label>
                 <textarea id="f_comment" placeholder="Всё, что считаете важным"></textarea>
             </div>
         </div>
@@ -340,10 +564,15 @@
 
     </form>
 
-    <div class="submit-bar">
+    <div class="nav-bar" id="navBar">
         <div id="errBar" class="err-bar" role="alert" style="display:none;"></div>
-        <button class="btn" onclick="buildLink()">Отправить монтажнику</button>
+        <div class="nav">
+            <button type="button" class="btn ghost" id="btnBack" onclick="prevStep()" hidden>← Назад</button>
+            <button type="button" class="btn" id="btnNext" onclick="nextStep()">Далее →</button>
+        </div>
     </div>
+
+    </div><!-- /formArea -->
 
     <div id="confetti" style="position:fixed; inset:0; pointer-events:none; z-index:9999; overflow:hidden;"></div>
 
@@ -359,13 +588,14 @@
         <h2 id="r_title">Готово — отправьте эту ссылку монтажнику</h2>
         <div class="linkbox" id="r_link"></div>
         <div class="share-row">
-            <button onclick="copyLink()">📋 Копировать</button>
+            <button type="button" onclick="copyLink()">📋 Копировать</button>
             <a class="wa" id="r_wa" target="_blank" rel="noopener">WhatsApp</a>
             <a class="tg" id="r_tg" target="_blank" rel="noopener">Telegram</a>
         </div>
         <div class="ok-copied" id="r_copied">Ссылка скопирована</div>
         <p class="note" style="margin:12px 0 0;">Монтажник откроет ссылку — параметры дома сами встанут
             в калькулятор HeatCalc, а текстовые ответы он увидит отдельным окном.</p>
+        <button type="button" class="btn link" style="margin-top:6px;" onclick="editAnswers()">← Изменить ответы</button>
     </section>
 
     <div class="footnote">HeatCalc.ru · данные уходят только вашему монтажнику</div>
@@ -402,99 +632,189 @@
     }
     applyTheme();
 
-    // Те же id и названия, что в WALL_MATERIALS_DB / ROOF_MATERIALS_DB / FLOOR_MATERIALS_DB /
+    // Те же id, что в WALL_MATERIALS_DB / ROOF_MATERIALS_DB / FLOOR_MATERIALS_DB /
     // GLAZING_DB (catalog.js) — калькулятор ищет пришедшие значения именно по id. Полный
     // catalog.js (~750 КБ, весь товарный каталог) сюда не тащим, страница для заказчика
-    // должна оставаться лёгкой; эти списки нормативные и меняются раз в несколько лет.
-    // Эмодзи вместо фото: реальных карточек материалов в проекте нет (ни в
-    // catalog.js, ни в подборе пирога стены самого калькулятора — там тоже
-    // только текст), а тянуть на лёгкую страницу заказчика внешние картинки
-    // ради этого не стали. Эмодзи хотя бы визуально отличают варианты друг от
-    // друга и не весят ничего.
-    var WALL_OPTS = [
-        { id: '', name: '❔ Не знаю' },
-        { id: 'brick_clay', name: '🧱 Кирпич полнотелый' },
-        { id: 'brick_hollow', name: '🧱 Кирпич пустотелый' },
-        { id: 'gas_d400', name: '⬜ Газобетон D400' },
-        { id: 'gas_d500', name: '⬜ Газобетон D500' },
-        { id: 'gas_d600', name: '⬜ Газобетон D600' },
-        { id: 'ceramic_block', name: '🟧 Керамич. блок' },
-        { id: 'wood_pine', name: '🪵 Брус деревянный' },
-        { id: 'concrete', name: '⬛ Ж/б / монолит' }
-    ];
+    // должна оставаться лёгкой. Названия здесь — человеческие, а не из справочника:
+    // «пенополистирол XPS» новичку ничего не говорит, «пеноплекс» — говорит.
     var WALL_INS_OPTS = [
-        { id: '', name: 'Нет' },
-        { id: 'minwool', name: '🧶 Мин. вата (базальт)' },
-        { id: 'polystyrene', name: '⬜ Пенопласт' },
-        { id: 'xps', name: '🟧 XPS (пеноплекс)' }
-    ];
-    // Короткие подписи — как shortName в ROOF/FLOOR/GLAZING_MATERIALS_DB (catalog.js),
-    // только с эмодзи: длинное описание не влезает в select на узком экране (см.
-    // мобильную проверку 25.09.2026 — «Не знаю / другое» и подобное обрезалось).
-    var ROOF_OPTS = [
-        { id: '', name: '❔ Не знаю' },
-        { id: 'roof_mw400', name: '🧶 Мин.вата 400мм' },
-        { id: 'roof_mw350', name: '🧶 Мин.вата 350мм' },
-        { id: 'roof_mw300', name: '🧶 Мин.вата 300мм' },
-        { id: 'roof_mw250', name: '🧶 Мин.вата 250мм' },
-        { id: 'roof_mw200', name: '🧶 Мин.вата 200мм' },
-        { id: 'roof_mw150', name: '🧶 Мин.вата 150мм' },
-        { id: 'roof_mw100', name: '🧶 Мин.вата 100мм' },
-        { id: 'roof_wood_ins', name: '🪵 Дерев. утепл.' },
-        { id: 'roof_concrete', name: '⬛ Ж/б плита' }
+        { id: '', name: 'Не знаю' },
+        { id: 'minwool', name: 'Минеральная вата' },
+        { id: 'polystyrene', name: 'Пенопласт' },
+        { id: 'xps', name: 'Пеноплекс (XPS)' }
     ];
     var FLOOR_OPTS = [
-        { id: '', name: '❔ Не знаю' },
-        { id: 'floor_ground_ins', name: '🟫 Грунт, XPS 100мм' },
-        { id: 'floor_ground_ins50', name: '🟫 Грунт, XPS 50мм' },
-        { id: 'floor_lags_ins', name: '🪵 Лаги, МВ 150мм' },
-        { id: 'floor_basement_ins', name: '🕳️ Подвал, утепл.' },
-        { id: 'floor_basement_bare', name: '🕳️ Подвал, не утепл.' },
-        { id: 'floor_heated', name: '🔥 Над тёплым' }
+        { id: '', name: 'Не знаю' },
+        { id: 'floor_ground_ins', name: 'По грунту, утеплён пеноплексом 100 мм' },
+        { id: 'floor_ground_ins50', name: 'По грунту, утеплён пеноплексом 50 мм' },
+        { id: 'floor_ground_bare', name: 'По грунту, без утепления' },
+        { id: 'floor_lags_ins', name: 'На лагах, утеплён ватой' },
+        { id: 'floor_basement_ins', name: 'Над подвалом, утеплён' },
+        { id: 'floor_basement_bare', name: 'Над подвалом, без утепления' },
+        { id: 'floor_heated', name: 'Над отапливаемым помещением' }
     ];
+    // Кровля: тип + толщина вместо девяти строк «Мин.вата 100…400мм» в одном списке.
+    // Итоговый id собирается в roofId() — те же roof_mw{N} / roof_xps{N} из catalog.js.
+    var ROOF_TYPES = [
+        { id: '', name: 'Не знаю' },
+        { id: 'mw', name: 'Минеральная вата' },
+        { id: 'xps', name: 'Пеноплекс (XPS)' },
+        { id: 'wood', name: 'Деревянное перекрытие с утеплителем' },
+        { id: 'concrete', name: 'Бетонная плита, без утепления' }
+    ];
+    var ROOF_THICK = {
+        mw: [100, 150, 200, 250, 300, 350, 400],
+        xps: [100, 150, 200, 250, 300]
+    };
     var GLAZING_OPTS = [
-        { id: '', name: '❔ Не знаю' },
-        { id: 'glz_2cam', name: '🪟 2-камерный' },
-        { id: 'glz_3cam', name: '🪟 3-кам. (энергосбер.)' },
-        { id: 'glz_1cam', name: '🪟 1-камерный' },
-        { id: 'glz_single', name: '🪟 Одинарное стекло' }
+        { id: '', name: 'Не знаю' },
+        { id: 'glz_1cam', name: 'Однокамерный стеклопакет (2 стекла)' },
+        { id: 'glz_2cam', name: 'Двухкамерный стеклопакет (3 стекла) — самые частые' },
+        { id: 'glz_3cam', name: 'Трёхкамерный, энергосберегающий' },
+        { id: 'glz_single', name: 'Одинарное стекло, старые рамы' }
     ];
     function fillSelect(id, opts) {
         document.getElementById(id).innerHTML = opts.map(function (o) {
             return '<option value="' + o.id + '">' + o.name + '</option>';
         }).join('');
     }
-    fillSelect('f_wallMat', WALL_OPTS);
     fillSelect('f_wallInsMat', WALL_INS_OPTS);
-    fillSelect('f_roofMat', ROOF_OPTS);
     fillSelect('f_floorMat', FLOOR_OPTS);
+    fillSelect('f_roofType', ROOF_TYPES);
     fillSelect('f_glazing', GLAZING_OPTS);
-    document.getElementById('f_wallInsMat').addEventListener('change', function () {
-        document.getElementById('f_wallInsThickWrap').style.display = this.value ? 'grid' : 'none';
-    });
-
-    // «Есть проект» — прячем весь блок подробностей о доме (не нужны, если и так
-    // придёт файл) и снимаем required со стены, иначе форма не даст её отправить.
-    // Текст подсказки разный: у персональной ссылки (?m=) анкета и так уходит сама
-    // (submitToInstaller), пересылать ничего не нужно — только файл отдельным
-    // сообщением; у обычной ссылки в конце экрана будет ссылка, которую заказчик
-    // должен переслать сам, вот к этому сообщению и предлагаем приложить файл.
-    function toggleProjectMode() {
-        var hasProject = radio('f_hasProject') === 'yes';
-        document.getElementById('f_envelopeFields').style.display = hasProject ? 'none' : '';
-        var note = document.getElementById('f_projectNote');
-        note.style.display = hasProject ? 'block' : 'none';
-        note.textContent = installerCode
-            ? 'Отлично, тогда ничего ниже заполнять не нужно. Анкета и так уйдёт монтажнику сама — файл проекта пришлите ему отдельным сообщением в WhatsApp или Telegram.'
-            : 'Отлично, тогда ничего ниже заполнять не нужно. Прикрепите файл проекта в том же сообщении WhatsApp или Telegram, куда отправите ссылку в конце анкеты.';
-        document.getElementById('f_wallMat').required = !hasProject;
-    }
 
     function radio(name) {
         var el = document.querySelector('input[name="' + name + '"]:checked');
         return el ? el.value : '';
     }
     function val(id) { return (document.getElementById(id).value || '').trim(); }
+    function $(id) { return document.getElementById(id); }
+
+    // ── Шаги ─────────────────────────────────────────────────────────────
+    var STEPS = [
+        { id: 's_house', title: 'Ваш дом' },
+        { id: 's_heat', title: 'Отопление' },
+        { id: 's_water', title: 'Вода' },
+        { id: 's_build', title: 'Из чего дом' },
+        { id: 's_contact', title: 'Контакты' }
+    ];
+    var curStep = 's_house';
+    // Если проект есть — про стены и окна спрашивать нечего, он придёт файлом
+    function activeSteps() {
+        var proj = radio('f_hasProject') === 'yes';
+        return STEPS.filter(function (s) { return !(proj && s.id === 's_build'); });
+    }
+    function showStep(id, noScroll) {
+        curStep = id;
+        var act = activeSteps();
+        var idx = 0;
+        STEPS.forEach(function (s) { $(s.id).classList.toggle('on', s.id === id); });
+        act.forEach(function (s, i) { if (s.id === id) idx = i; });
+        $('hero').hidden = idx !== 0;
+        $('pgText').textContent = 'Шаг ' + (idx + 1) + ' из ' + act.length;
+        $('pgTitle').textContent = act[idx].title;
+        $('pgBars').innerHTML = act.map(function (s, i) {
+            return '<i class="' + (i < idx ? 'done' : (i === idx ? 'now' : '')) + '"></i>';
+        }).join('');
+        $('btnBack').hidden = idx === 0;
+        $('btnNext').textContent = idx === act.length - 1 ? 'Отправить монтажнику' : 'Далее →';
+        $('errBar').style.display = 'none';
+        if (!noScroll) window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function refreshNav() { showStep(curStep, true); }
+    function nextStep() {
+        var act = activeSteps();
+        var idx = 0;
+        act.forEach(function (s, i) { if (s.id === curStep) idx = i; });
+        if (!validateStep(curStep)) return;
+        if (idx === act.length - 1) buildLink();
+        else showStep(act[idx + 1].id);
+    }
+    function prevStep() {
+        var act = activeSteps();
+        var idx = 0;
+        act.forEach(function (s, i) { if (s.id === curStep) idx = i; });
+        if (idx > 0) showStep(act[idx - 1].id);
+    }
+    // Enter в строке ввода — «Далее», а не отправка формы
+    $('oprosForm').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && e.target && e.target.tagName === 'INPUT') {
+            e.preventDefault();
+            nextStep();
+        }
+    });
+
+    // ── Зависимые вопросы: показываем только то, что сейчас нужно ─────────
+    var lastRoofType = null;
+    function refresh() {
+        var hasProject = radio('f_hasProject') === 'yes';
+        $('s_build').classList.toggle('skip', hasProject);
+        var note = $('f_projectNote');
+        note.hidden = !hasProject;
+        note.textContent = installerCode
+            ? 'Отлично! Вопросы про стены и окна пропустим. Анкета уйдёт монтажнику сама — файл проекта пришлите ему отдельным сообщением в WhatsApp или Telegram.'
+            : 'Отлично! Вопросы про стены и окна пропустим. Прикрепите файл проекта в том же сообщении WhatsApp или Telegram, куда отправите ссылку в конце анкеты.';
+
+        var heat = radio('f_heat');
+        $('q_tprooms').hidden = !(heat === 'tp' || heat === 'both');
+        $('q_people').hidden = radio('f_hw') === 'no';
+        // Котёл: газ → откуда газ и дымоход; электричество → сеть и мощность;
+        // «не решили» → и то и другое, чтобы монтажник выбрал сам, без звонка
+        var fuel = radio('f_fuel');
+        $('q_gas').hidden = !(fuel === 'gas' || fuel === 'unknown');
+        $('gasNoneOpt').hidden = fuel !== 'unknown';
+        if (fuel === 'gas' && radio('f_gasState') === 'none') document.querySelector('input[name=f_gasState][value=none]').checked = false;
+        $('q_el').hidden = !(fuel === 'el' || fuel === 'unknown');
+        $('q_chimney').hidden = fuel !== 'gas';
+        $('q_well').hidden = radio('f_watersource') !== 'well';
+
+        var fam = radio('f_wallFam');
+        var known = fam && fam !== 'other';
+        $('q_gasD').hidden = fam !== 'gas';
+        $('q_wallThick').hidden = !known;
+        $('q_ins').hidden = !known;
+        $('q_insType').hidden = !(known && radio('f_ins') === 'yes');
+
+        var rt = $('f_roofType').value;
+        if (rt !== lastRoofType) {
+            lastRoofType = rt;
+            var th = ROOF_THICK[rt];
+            $('q_roofThick').hidden = !th;
+            if (th) {
+                $('f_roofThick').innerHTML = '<option value="">Не знаю</option>' + th.map(function (n) {
+                    return '<option value="' + n + '">' + n + ' мм</option>';
+                }).join('');
+            }
+        }
+        refreshNav();
+    }
+    $('oprosForm').addEventListener('change', refresh);
+    // Быстрые варианты: нажал — подставилось в поле
+    Array.prototype.forEach.call(document.querySelectorAll('.chips[data-fill] button'), function (b) {
+        b.addEventListener('click', function () {
+            var el = $(b.parentNode.getAttribute('data-fill'));
+            el.value = b.getAttribute('data-v');
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('#tpChips button'), function (b) {
+        b.addEventListener('click', function () { $('f_tprooms').value = b.getAttribute('data-v'); });
+    });
+
+    // Итоговые id для сервера: те же, что понимает калькулятор
+    function wallId() {
+        var fam = radio('f_wallFam');
+        if (!fam || fam === 'other') return '';
+        if (fam === 'gas') { var g = radio('f_gasD'); return g && g !== 'unknown' ? g : 'gas_d500'; }
+        return fam;
+    }
+    function roofId() {
+        var t = $('f_roofType').value;
+        if (t === 'wood') return 'roof_wood_ins';
+        if (t === 'concrete') return 'roof_concrete';
+        var n = $('f_roofThick').value;
+        return (t && n) ? 'roof_' + t + n : '';
+    }
 
     // ── Имя, телефон, площадь ────────────────────────────────────────────
     // Заявка без рабочего телефона монтажнику не нужна, поэтому оба контактных
@@ -502,9 +822,9 @@
     // «8» в начале и вставка из буфера со скобками приводятся к тому же виду.
     // Номера других стран (+375, +380) маска не трогает — им хватает проверки
     // длины, иначе белорусский номер превратился бы в российский.
-    var nameEl = document.getElementById('f_name');
-    var phoneEl = document.getElementById('f_phone');
-    var areaEl = document.getElementById('f_area');
+    var nameEl = $('f_name');
+    var phoneEl = $('f_phone');
+    var areaEl = $('f_area');
 
     // Предел калькулятора (app.MAX_AREA): дома больше считаются отдельно
     var CALC_MAX_AREA = 360;
@@ -566,8 +886,7 @@
     // Площадь больше предела не запрещаем: такой дом монтажнику тем более интересен,
     // просто честно предупреждаем заказчика, а монтажник увидит пометку в сводке
     areaEl.addEventListener('input', function () {
-        document.getElementById('f_area_hint').style.display =
-            (parseFloat(this.value) > CALC_MAX_AREA) ? 'block' : 'none';
+        $('f_area_hint').style.display = (parseFloat(this.value) > CALC_MAX_AREA) ? 'block' : 'none';
     });
 
     var lastLink = '';
@@ -616,7 +935,7 @@
                         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.1 9.9a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>' +
                         '<span class="num">' + esc(row.phone) + '</span></a>';
                 }
-                var el = document.getElementById('installerNote');
+                var el = $('installerNote');
                 el.innerHTML = html;
                 el.style.display = 'flex';
             })
@@ -655,10 +974,12 @@
             });
     }
 
-    // Проверка обязательных полей. Системный «пузырь» reportValidity на телефоне то не
-    // показывается, то гаснет за липкой кнопкой — человек жмёт «Отправить», ничего не
-    // происходит, и непонятно почему. Поэтому ошибки рисуем сами: красная подпись под
-    // полем, сводка над кнопкой и прокрутка к первому незаполненному.
+    // ── Проверка полей ───────────────────────────────────────────────────
+    // Системный «пузырь» reportValidity на телефоне то не показывается, то гаснет за
+    // липкой кнопкой — человек жмёт «Далее», ничего не происходит, и непонятно почему.
+    // Поэтому ошибки рисуем сами: красная подпись под полем, сводка над кнопкой и
+    // прокрутка к первому незаполненному. Проверяется только текущий шаг, скрытые
+    // зависимые поля пропускаются.
     function fieldTitle(el) {
         var lb = document.querySelector('label[for="' + el.id + '"]');
         return lb ? lb.textContent.replace(/[*·].*$/, '').trim() : el.id;
@@ -674,6 +995,7 @@
     function clearFieldError(el) {
         el.removeAttribute('aria-invalid');
         var m = el.parentNode.querySelector('.err-msg[data-for="' + el.id + '"]');
+        if (!m && el.parentNode.parentNode) m = el.parentNode.parentNode.querySelector('.err-msg[data-for="' + el.id + '"]');
         if (m) m.remove();
     }
     function showFieldError(el, text) {
@@ -683,70 +1005,137 @@
         m.className = 'err-msg';
         m.setAttribute('data-for', el.id);
         m.textContent = text;
-        el.insertAdjacentElement('afterend', m);
+        // поле с единицей («м²») обёрнуто в .unit — подпись кладём после обёртки
+        var anchor = el.parentNode.classList.contains('unit') ? el.parentNode : el;
+        anchor.insertAdjacentElement('afterend', m);
         var off = function () { clearFieldError(el); el.removeEventListener('input', off); el.removeEventListener('change', off); refreshErrBar(); };
         el.addEventListener('input', off);
         el.addEventListener('change', off);
     }
     function refreshErrBar() {
-        var bar = document.getElementById('errBar');
+        var bar = $('errBar');
         if (!bar) return;
-        var left = document.querySelectorAll('#oprosForm [aria-invalid="true"]');
+        var left = document.querySelectorAll('#oprosForm [aria-invalid="true"], #oprosForm .err-msg[data-group]');
         if (!left.length) bar.style.display = 'none';
     }
-    function validateForm() {
-        var form = document.getElementById('oprosForm');
+    function showGroupError(field, text) {
+        var old = field.querySelector('.err-msg[data-group]');
+        if (old) old.remove();
+        var m = document.createElement('div');
+        m.className = 'err-msg';
+        m.setAttribute('data-group', field.id);
+        m.textContent = text;
+        field.appendChild(m);
+        var name = field.getAttribute('data-req-radio');
+        var inputs = field.querySelectorAll('input[name="' + name + '"]');
+        var off = function () {
+            m.remove();
+            Array.prototype.forEach.call(inputs, function (i) { i.removeEventListener('change', off); });
+            refreshErrBar();
+        };
+        Array.prototype.forEach.call(inputs, function (i) { i.addEventListener('change', off); });
+    }
+    // Возвращает true, если шаг заполнен; иначе показывает ошибки и прокручивает к первой
+    function validateStep(stepId) {
+        var step = $(stepId);
         checkName(); checkPhone();
         var bad = [];
-        Array.prototype.forEach.call(form.querySelectorAll('input, select, textarea'), function (el) {
+        Array.prototype.forEach.call(step.querySelectorAll('input, select, textarea'), function (el) {
             clearFieldError(el);
             if (el.type === 'radio' || el.type === 'checkbox' || el.disabled || !el.id) return;
+            if (el.closest('[hidden]')) return;
             var p = fieldProblem(el);
-            if (p) { showFieldError(el, p); bad.push(el); }
+            if (p) { showFieldError(el, p); bad.push({ el: el, go: el.id, title: fieldTitle(el) }); }
         });
-        var bar = document.getElementById('errBar');
+        Array.prototype.forEach.call(step.querySelectorAll('[data-req-radio]'), function (f) {
+            if (f.closest('[hidden]')) return;
+            var old = f.querySelector('.err-msg[data-group]');
+            if (old) old.remove();
+            if (!radio(f.getAttribute('data-req-radio'))) {
+                showGroupError(f, 'Выберите вариант');
+                bad.push({ el: f, go: f.id, title: f.getAttribute('data-title') });
+            }
+        });
+        var bar = $('errBar');
         if (!bad.length) { bar.style.display = 'none'; return true; }
-        bar.innerHTML = '<b>Не заполнено, без этого анкету не отправить:</b><ul>' +
-            bad.map(function (el) { return '<li><a href="#' + el.id + '" data-go="' + el.id + '">' + fieldTitle(el) + '</a></li>'; }).join('') + '</ul>';
+        bar.innerHTML = '<b>Не заполнено, без этого дальше не пройти:</b><ul>' +
+            bad.map(function (b) { return '<li><a href="#' + b.go + '" data-go="' + b.go + '">' + b.title + '</a></li>'; }).join('') + '</ul>';
         bar.style.display = 'block';
-        bad[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-        try { bad[0].focus({ preventScroll: true }); } catch (e) { }
+        bad[0].el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        try { if (bad[0].el.focus) bad[0].el.focus({ preventScroll: true }); } catch (e) { }
         return false;
     }
-    document.getElementById('errBar').addEventListener('click', function (e) {
+    $('errBar').addEventListener('click', function (e) {
         var a = e.target.closest ? e.target.closest('a[data-go]') : null;
         if (!a) return;
         e.preventDefault();
-        var el = document.getElementById(a.getAttribute('data-go'));
+        var el = $(a.getAttribute('data-go'));
         if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { el.focus({ preventScroll: true }); } catch (x) { } }
     });
 
     function buildLink() {
-        if (!validateForm()) return;
+        // Перед отправкой — все шаги, на случай если что-то поменяли и вернулись
+        var act = activeSteps();
+        for (var i = 0; i < act.length; i++) {
+            if (act[i].id !== curStep && !validateStep(act[i].id)) { showStep(act[i].id); validateStep(act[i].id); return; }
+        }
+        if (!validateStep(curStep)) return;
+
+        var heat = radio('f_heat');
+        var tp = heat === 'tp' || heat === 'both';
+        var rad = heat === 'rad' || heat === 'both';
+        var hasProject = radio('f_hasProject') === 'yes';
+        var hw = radio('f_hw') !== 'no';
+        var ws = radio('f_watersource');
+        var fuel = radio('f_fuel');
+        var ins = radio('f_ins') === 'yes' && wallId();
         var d = {
             name: val('f_name'), phone: val('f_phone'), city: val('f_city'), address: val('f_address'),
             area: parseFloat(val('f_area')) || 0,
-            floors: parseInt(val('f_floors'), 10) || 1,
-            people: parseInt(val('f_people'), 10) || 0,
-            tp: document.getElementById('f_tp').checked,
-            rad: document.getElementById('f_rad').checked,
-            fuel: radio('f_fuel'), live: radio('f_live'), stage: radio('f_stage'),
+            floors: parseInt(radio('f_floors'), 10) || 1,
+            people: hw ? (parseInt(val('f_people'), 10) || 0) : 0,
+            tp: tp, rad: rad,
+            fuel: fuel === 'unknown' ? '' : fuel,
+            live: radio('f_live'), stage: radio('f_stage'),
             vent: radio('f_vent') === 'yes',
-            tpRooms: val('f_tprooms'),
+            tpRooms: tp ? val('f_tprooms') : '',
             auto: radio('f_auto') === 'yes',
-            hw: radio('f_hw') === 'yes',
-            watersource: radio('f_watersource') === 'unknown' ? '' : radio('f_watersource'),
-            hasProject: radio('f_hasProject') === 'yes',
-            wall: val('f_wall'),
-            wallMat: val('f_wallMat'), wallThick: parseInt(val('f_wallThick'), 10) || 0,
-            wallInsMat: val('f_wallInsMat'), wallInsThick: parseInt(val('f_wallInsThick'), 10) || 0,
-            floorMat: val('f_floorMat'), roofMat: val('f_roofMat'), glazing: val('f_glazing'),
-            bought: val('f_bought'), comment: val('f_comment')
+            hw: hw,
+            watersource: ws === 'unknown' ? '' : ws,
+            hasProject: hasProject,
+            bought: val('f_bought'), comment: val('f_comment'),
+            ceilingH: parseFloat(radio('f_ceilingH')) || 0,
+            baths: parseInt(radio('f_baths'), 10) || 0,
+            boilerRoom: radio('f_boilerRoom')
         };
+        // Подбор котла: газ / электричество — только то, что относится к выбранному
+        if (fuel === 'gas' || fuel === 'unknown') {
+            var gs = radio('f_gasState');
+            d.gasState = gs;
+            if (gs === 'ready' || gs === 'planned') d.gasSrc = 'main';
+            else if (gs === 'lpg') d.gasSrc = 'lpg';
+        }
+        if (fuel === 'gas') d.chimney = radio('f_chimney');
+        if (fuel === 'el' || fuel === 'unknown') {
+            var ph = radio('f_elPhase'), kw = radio('f_elKw');
+            if (ph && ph !== 'unknown') d.elPhase = ph;
+            if (kw && kw !== 'unknown') d.elKw = parseFloat(kw);
+            else if (kw === 'unknown') d.elKwUnknown = true;
+        }
+        if (tp) d.tpArea = parseFloat(val('f_tpArea')) || 0;
+        if (ws === 'well') { d.wellDepth = parseFloat(val('f_wellDepth')) || 0; d.wellDist = parseFloat(val('f_wellDist')) || 0; }
         // «Есть проект» — детали конструкции не спрашивали, отправлять нечего
-        if (d.hasProject) {
-            delete d.wallMat; delete d.wallThick; delete d.wallInsMat; delete d.wallInsThick;
-            delete d.floorMat; delete d.roofMat; delete d.glazing; delete d.wall;
+        if (!hasProject) {
+            d.wall = val('f_wall');
+            d.wallMat = wallId();
+            if (d.wallMat) {
+                d.wallThick = parseInt(val('f_wallThick'), 10) || 0;
+                if (ins) {
+                    d.wallInsMat = val('f_wallInsMat');
+                    d.wallInsThick = d.wallInsMat ? (parseInt(val('f_wallInsThick'), 10) || 0) : 0;
+                }
+            }
+            d.floorMat = val('f_floorMat'); d.roofMat = roofId(); d.glazing = val('f_glazing');
         }
         // пустые строки не тащим в ссылку — она короче
         Object.keys(d).forEach(function (k) { if (d[k] === '' || d[k] === 0) delete d[k]; });
@@ -756,39 +1145,49 @@
             ? location.origin : 'https://heatcalc.ru';
         lastLink = origin + '/?opros=' + b64;
 
-        document.getElementById('r_link').textContent = lastLink;
+        $('r_link').textContent = lastLink;
         var msg = 'Заполнил опросник по отоплению, вот ссылка с данными: ' + lastLink;
-        document.getElementById('r_wa').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
-        document.getElementById('r_tg').href = 'https://t.me/share/url?url=' +
+        $('r_wa').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
+        $('r_tg').href = 'https://t.me/share/url?url=' +
             encodeURIComponent(lastLink) + '&text=' + encodeURIComponent('Опросник по отоплению — данные для расчёта');
-        document.getElementById('result').classList.add('on');
-        document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+        $('formArea').hidden = true;
+        $('result').classList.add('on');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
 
         // Ссылка персональная — заявка уходит монтажнику сама
         if (installerCode) {
-            document.getElementById('r_title').textContent = 'Отправляем анкету монтажнику…';
+            $('r_title').textContent = 'Отправляем анкету монтажнику…';
             submitToInstaller(d).then(function () {
-                document.getElementById('r_sent').style.display = 'block';
-                document.getElementById('r_senderr').style.display = 'none';
-                document.getElementById('r_title').textContent = 'Ссылка с данными (дублировать не обязательно)';
+                $('r_sent').style.display = 'block';
+                $('r_senderr').style.display = 'none';
+                $('r_title').textContent = 'Спасибо! Монтажник скоро свяжется';
                 fireConfetti();
             }).catch(function () {
-                document.getElementById('r_sent').style.display = 'none';
-                document.getElementById('r_senderr').style.display = 'block';
-                document.getElementById('r_title').textContent = 'Отправьте эту ссылку монтажнику';
+                $('r_sent').style.display = 'none';
+                $('r_senderr').style.display = 'block';
+                $('r_title').textContent = 'Отправьте эту ссылку монтажнику';
             });
         } else {
+            $('r_title').textContent = 'Осталось отправить ссылку монтажнику';
             fireConfetti();
         }
+    }
+
+    // Вернуться к ответам после отправки: всё введённое на месте
+    function editAnswers() {
+        $('result').classList.remove('on');
+        $('formArea').hidden = false;
+        showStep('s_contact');
     }
 
     // Ненавязчивый залп: чуть частиц, недолго и не на весь экран — анкета длинная,
     // и в конце хочется короткого «готово», а не отвлекающего шоу
     function fireConfetti() {
         try {
-            var host = document.getElementById('confetti');
-            var origin = document.getElementById('result').getBoundingClientRect();
-            var cx = origin.left + origin.width / 2, cy = origin.top + 16;
+            if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            var host = $('confetti');
+            var origin = $('result').getBoundingClientRect();
+            var cx = origin.left + origin.width / 2, cy = Math.max(origin.top, 0) + 16;
             var colors = ['#2563EB', '#60A5FA', '#FBBF24', '#34D399', '#F87171'];
             for (var i = 0; i < 22; i++) {
                 var p = document.createElement('div');
@@ -812,77 +1211,97 @@
     // Персональная ссылка — говорим сразу, что пересылать ничего не придётся,
     // и подгружаем имя/телефон монтажника для шапки (loadInstallerContact)
     if (installerCode) {
-        document.querySelector('.sub').innerHTML =
+        $('heroSub').innerHTML =
             'Анкета уйдёт монтажнику сама — пересылать ничего не нужно. ' +
-            'Поля со звёздочкой <span class="req">*</span> обязательны.';
+            'Не знаете, как ответить, — выбирайте «Не знаю»: он уточнит сам.';
         loadInstallerContact();
     }
 
     // ── Режим просмотра: oprosnik.html?view=<base64url JSON> ─────────────
     // Монтажник открывает анкету такой, какой её видел заказчик, — с его ответами
     // в тех же полях. Только читать: поля заблокированы, кнопки отправки нет, чтобы
-    // чужая заявка не ушла второй раз. Ссылку собирает app.oprosViewLink.
-    (function applyViewMode() {
+    // чужая заявка не ушла второй раз. Все шаги показаны подряд, зависимые вопросы
+    // раскрыты по ответам. Ссылку собирает app.oprosViewLink.
+    var viewMode = (function applyViewMode() {
         var raw = '';
-        try { raw = new URLSearchParams(location.search).get('view') || ''; } catch (e) { return; }
-        if (!raw) return;
+        try { raw = new URLSearchParams(location.search).get('view') || ''; } catch (e) { return false; }
+        if (!raw) return false;
         var d = null;
         try {
             var b64 = raw.replace(/-/g, '+').replace(/_/g, '/');
             d = JSON.parse(decodeURIComponent(escape(atob(b64))));
-        } catch (e) { return; }
-        if (!d || typeof d !== 'object') return;
+        } catch (e) { return false; }
+        if (!d || typeof d !== 'object') return false;
 
         var setVal = function (id, v) {
-            var el = document.getElementById(id);
+            var el = $(id);
             if (el && v !== undefined && v !== null && v !== '') el.value = v;
         };
-        var setCheck = function (id, v) { var el = document.getElementById(id); if (el) el.checked = !!v; };
         var setRadio = function (name, v) {
             var el = document.querySelector('input[name="' + name + '"][value="' + v + '"]');
             if (el) el.checked = true;
         };
 
         setVal('f_name', d.name); setVal('f_phone', d.phone); setVal('f_city', d.city);
-        setVal('f_address', d.address); setVal('f_area', d.area); setVal('f_floors', d.floors);
+        setVal('f_address', d.address); setVal('f_area', d.area);
         setVal('f_people', d.people); setVal('f_tprooms', d.tpRooms); setVal('f_wall', d.wall);
         setVal('f_bought', d.bought); setVal('f_comment', d.comment);
-        setVal('f_wallMat', d.wallMat); setVal('f_wallThick', d.wallThick);
-        setVal('f_wallInsMat', d.wallInsMat); setVal('f_wallInsThick', d.wallInsThick);
-        setVal('f_floorMat', d.floorMat); setVal('f_roofMat', d.roofMat); setVal('f_glazing', d.glazing);
-        setCheck('f_tp', d.tp); setCheck('f_rad', d.rad);
-        setRadio('f_fuel', d.fuel); setRadio('f_live', d.live); setRadio('f_stage', d.stage);
+        setVal('f_wallThick', d.wallThick);
+        setVal('f_floorMat', d.floorMat); setVal('f_glazing', d.glazing);
+        setRadio('f_floors', d.floors || 1);
+        setRadio('f_ceilingH', d.ceilingH); setRadio('f_baths', d.baths);
+        setRadio('f_boilerRoom', d.boilerRoom); setRadio('f_gasState', d.gasState);
+        setRadio('f_chimney', d.chimney);
+        setRadio('f_elPhase', d.elPhase || (d.fuel === 'el' ? 'unknown' : '')); setRadio('f_elKw', d.elKw || (d.elKwUnknown ? 'unknown' : ''));
+        setVal('f_tpArea', d.tpArea); setVal('f_wellDepth', d.wellDepth); setVal('f_wellDist', d.wellDist);
+        setRadio('f_heat', d.tp && d.rad ? 'both' : (d.tp ? 'tp' : (d.rad ? 'rad' : 'unknown')));
+        setRadio('f_fuel', d.fuel || 'unknown');
+        setRadio('f_live', d.live); setRadio('f_stage', d.stage);
         setRadio('f_vent', d.vent ? 'yes' : 'no');
         setRadio('f_auto', d.auto === true ? 'yes' : (d.auto === false ? 'no' : 'unknown'));
         setRadio('f_hw', d.hw === false ? 'no' : 'yes');
         setRadio('f_watersource', d.watersource || 'unknown');
         setRadio('f_hasProject', d.hasProject ? 'yes' : 'no');
-        toggleProjectMode();
-        if (document.getElementById('f_wallInsMat').value) {
-            document.getElementById('f_wallInsThickWrap').style.display = 'grid';
+        // Стена: газобетон — плитка + плотность, остальное — плитка как есть
+        if (d.wallMat) {
+            if (/^gas_d/.test(d.wallMat)) { setRadio('f_wallFam', 'gas'); setRadio('f_gasD', d.wallMat); }
+            else setRadio('f_wallFam', d.wallMat);
         }
+        if (d.wallInsMat) {
+            setRadio('f_ins', 'yes'); setVal('f_wallInsMat', d.wallInsMat); setVal('f_wallInsThick', d.wallInsThick);
+        }
+        // Кровля: roof_mw250 → тип «вата» + 250
+        var rm = /^roof_(mw|xps)(\d+)$/.exec(d.roofMat || '');
+        refresh();
+        if (rm) {
+            setVal('f_roofType', rm[1]); lastRoofType = null; refresh(); setVal('f_roofThick', rm[2]);
+        } else if (d.roofMat === 'roof_wood_ins') setVal('f_roofType', 'wood');
+        else if (d.roofMat === 'roof_concrete') setVal('f_roofType', 'concrete');
+        refresh();
 
-        var form = document.getElementById('oprosForm');
-        Array.prototype.forEach.call(form.querySelectorAll('input, select, textarea'), function (el) {
+        document.body.classList.add('view');
+        Array.prototype.forEach.call($('oprosForm').querySelectorAll('input, select, textarea, button'), function (el) {
             el.disabled = true;
         });
-        var bar = document.querySelector('.submit-bar');
-        if (bar) bar.style.display = 'none';
+        Array.prototype.forEach.call(document.querySelectorAll('details.more'), function (x) { x.open = true; });
+        $('navBar').hidden = true;
+        $('progress').hidden = true;
+        $('hero').hidden = true;
 
         var head = document.createElement('div');
         head.className = 'banner ok';
-        head.style.cssText = 'margin: 0 0 14px;';
         head.textContent = 'Так анкету заполнил заказчик' + (d.name ? ' (' + d.name + ')' : '') +
             '. Это копия для чтения — изменить или отправить её нельзя.';
-        form.parentNode.insertBefore(head, form);
-        var sub = document.querySelector('.sub');
-        if (sub) sub.textContent = 'Копия заполненной анкеты.';
+        $('oprosForm').parentNode.insertBefore(head, $('oprosForm'));
+        return true;
     })();
+
+    if (!viewMode) { refresh(); showStep('s_house', true); }
 
     function copyLink() {
         if (!lastLink) return;
         var done = function () {
-            var el = document.getElementById('r_copied');
+            var el = $('r_copied');
             el.style.display = 'block';
             setTimeout(function () { el.style.display = 'none'; }, 2000);
         };
