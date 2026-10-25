@@ -43233,7 +43233,7 @@ const app = {
         // пока проект не выпущен или полосу не закрыли. Окно именованное — повторное нажатие
         // возвращает в уже открытую вкладку разметки, а не плодит новые.
         try { localStorage.setItem('hc_project_flow', String(Date.now())); } catch (e) { }
-        window.open('plan_editor.html?v=1', 'hc_plan_editor');
+        window.open('plan_editor.html?v=2', 'hc_plan_editor');
         this.renderProjectBanner();
     },
 
@@ -43281,7 +43281,7 @@ const app = {
     openProjectMarkup: function () {
         if (!this.canUseDesign()) return;
         this.pushPlansToEditor();
-        window.open('plan_editor.html?v=1', 'hc_plan_editor');
+        window.open('plan_editor.html?v=2', 'hc_plan_editor');
     },
 
     closeProjectFlow: function () {
@@ -43412,7 +43412,7 @@ const app = {
                 '<span style="flex:1;min-width:0;color:var(--text-sec);">комнаты, тёплый пол и радиаторы' +
                 (modeNote ? ' · <span style="color:var(--primary)">' + modeNote + '</span>' : '') + '</span>') +
             '</div>' +
-            '<iframe id="ufhplan_frame" src="plan_editor.html?m=ufh&v=1" style="flex:1;border:0;width:100%;background:var(--bg);"></iframe>';
+            '<iframe id="ufhplan_frame" src="plan_editor.html?m=ufh&v=2" style="flex:1;border:0;width:100%;background:var(--bg);"></iframe>';
         document.body.appendChild(ov);
         const hdr = document.querySelector('.site-header');
         const place = () => {

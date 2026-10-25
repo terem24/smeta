@@ -615,6 +615,15 @@
   .guide .step { color: #a5b4fc; }
   .namepick { backdrop-filter: blur(4px); background: rgba(6,8,16,.55); }
   .namepick .box { border-radius: 18px; background: rgba(22,25,38,.95); border-color: rgba(129,140,248,.3); padding: 20px 22px; }
+  /* светлая тема: тёмный цвет текста лежал на тёмной подложке окна — не читалось */
+  html.light .namepick { background: rgba(20,30,60,.35); }
+  html.light .namepick .box { background: #fff; border-color: var(--border); color: var(--text-main); }
+  html.light .namepick h3 { color: var(--text-main); }
+  html.light .namepick .grid button { color: var(--text-main); border-color: var(--border); background: var(--surface-light); }
+  html.light .namepick .grid button:hover { background: var(--surface-hi); }
+  html.light .namepick .grid button.calc { border-color: var(--ok); }
+  html.light .namepick input { background: #fff; color: var(--text-main); border: 1px solid var(--border); }
+  html.light .namepick button.ghost { color: var(--text-main); border-color: var(--border); }
   .namepick .grid button { border-radius: 10px; padding: 7px 12px; }
   .namepick input { background: var(--k-field); border-radius: 10px; }
   .fs-keys { border-radius: 14px; background: var(--k-panel); border-color: var(--k-line); }
