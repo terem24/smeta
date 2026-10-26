@@ -10555,6 +10555,30 @@ const app = {
         this.renderAdminKanban(true);
     },
 
+    /**
+     * Свёрнутые колонки доски. Ключ — этап, значение true/false; нет ключа —
+     * решает умолчание: на телефоне колонки свёрнуты (аккордеон, иначе до нужной
+     * колонки приходится долго листать), на компьютере развёрнуты.
+     * Запоминается в браузере: это удобство одного человека, не данные.
+     */
+    _kanbanCollapsed: null,
+    kanbanIsCollapsed: function (key) {
+        if (!this._kanbanCollapsed) {
+            try { this._kanbanCollapsed = JSON.parse(localStorage.getItem('kanban_collapsed') || '{}') || {}; }
+            catch (e) { this._kanbanCollapsed = {}; }
+        }
+        if (key in this._kanbanCollapsed) return !!this._kanbanCollapsed[key];
+        return !!(window.matchMedia && window.matchMedia('(max-width: 899.98px)').matches);
+    },
+    toggleKanbanCol: function (key) {
+        const now = !this.kanbanIsCollapsed(key);
+        this._kanbanCollapsed[key] = now;
+        try { localStorage.setItem('kanban_collapsed', JSON.stringify(this._kanbanCollapsed)); } catch (e) { }
+        // Только DOM: данные не перечитываем и доску не перерисовываем
+        const col = document.querySelector('.kb-col[data-stage="' + key + '"]');
+        if (col) col.classList.toggle('kb-collapsed', now);
+    },
+
     ADMIN_KANBAN_STAGES: [
         // Первая ступень воронки: документ разобран, но в смету ещё не уехал.
         // Карточка появляется на экране проверки — до того такой разбор не
@@ -11045,10 +11069,10 @@ const app = {
             const cards = filtered.filter(p => stageOf(p.current) === s).sort((a, b) => new Date(b.lastAt) - new Date(a.lastAt));
             const totalSum = cards.reduce((acc, c) => acc + (c.totalSum || 0), 0);
             return `
-                        <div ondragover="app.kanbanDragOver(event, this)" ondragleave="app.kanbanDragLeave(event, this)" ondrop="app.kanbanDrop(event, this, '${s.key}')" style="border-radius:12px; overflow:hidden; border:1px solid var(--border); display:flex; flex-direction:column; max-height:600px; min-width:260px; flex:1 1 0%;">
-                            <div style="background:var(--surface-light); border-top:3px solid ${s.color}; color:var(--text-main); padding:10px 12px; display:flex; flex-direction:column; gap:4px;">
+                        <div class="kb-col${this.kanbanIsCollapsed(s.key) ? ' kb-collapsed' : ''}" data-stage="${s.key}" ondragover="app.kanbanDragOver(event, this)" ondragleave="app.kanbanDragLeave(event, this)" ondrop="app.kanbanDrop(event, this, '${s.key}')" style="border-radius:12px; overflow:hidden; border:1px solid var(--border); display:flex; flex-direction:column; max-height:600px; min-width:260px; flex:1 1 0%;">
+                            <div class="kb-head" role="button" tabindex="0" title="Свернуть / развернуть" onclick="app.toggleKanbanCol('${s.key}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();app.toggleKanbanCol('${s.key}')}" style="background:var(--surface-light); border-top:3px solid ${s.color}; color:var(--text-main); padding:10px 12px; display:flex; flex-direction:column; gap:4px; cursor:pointer; user-select:none;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">
-                                    <span>${s.label}</span>
+                                    <span><span class="kb-chev" aria-hidden="true">▾</span> ${s.label}</span>
                                     <span style="background:var(--surface); border:1px solid var(--border); color:var(--text-sec); padding:1px 8px; border-radius:12px; font-size:11px; font-weight:600;">${cards.length} шт.</span>
                                 </div>
                                 <div style="font-size:13px; font-weight:700; color:var(--text-main); display:flex; align-items:center; justify-content:space-between; margin-top:2px;">
@@ -11056,7 +11080,7 @@ const app = {
                                     <span>${totalSum.toLocaleString('ru-RU')} ₽</span>
                                 </div>
                             </div>
-                            <div style="background:var(--surface-light); padding:10px 12px 12px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1;">
+                            <div class="kb-body" style="background:var(--surface-light); padding:10px 12px 12px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1;">
                                 ${cards.length ? cards.map(c => {
                 const initial = (c.user_name || '?').trim().charAt(0).toUpperCase();
                 const em = this.kanbanEventView(c.current, c.currentMeta);
