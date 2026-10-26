@@ -29571,7 +29571,11 @@ const app = {
     kpiBuild: function (p, S) {
         const day = 864e5, now = Date.now(), C = this.KPI_C;
         const fmt = n => Math.round(n).toLocaleString('ru-RU');
-        const rub = n => fmt(n) + ' ₽';
+        // Крупные суммы — «118,7 млн ₽», «450 тыс ₽»: полная запись в плитку не влезает
+        const rub = n => {
+            const a = Math.abs(n), short = (x, u) => (Math.round(x * 10) / 10).toLocaleString('ru-RU') + ' ' + u + ' ₽';
+            return a >= 1e6 ? short(n / 1e6, 'млн') : a >= 1e4 ? short(n / 1e3, 'тыс') : fmt(n) + ' ₽';
+        };
         const pct = (a, b) => b > 0 ? Math.min(100, Math.round(a / b * 100)) : null;
         const ok = k => S[k] && S[k] !== 'loading' && !S[k].error;
         const bad = k => S[k] && S[k].error ? S[k].error : null;
