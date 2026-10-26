@@ -29375,6 +29375,7 @@ const app = {
         { id: 'pie', label: 'Диаграмма' }, { id: 'table', label: 'Таблица' }
     ],
     KPI_EVENTS: ['sent', 'printed', 'confirmed', 'needs_revision', 'rejected', 'invoice_requested', 'invoice_issued', 'paid', 'won', 'lost'],
+    KPE_EVENTS: ['sent', 'printed', 'opened', 'confirmed', 'needs_revision', 'refresh_requested', 'rejected', 'invoice_requested', 'invoice_issued', 'paid', 'won', 'lost', 'extended', 'kp_outcome_reminder'],
     KPI_C: { blue: '#3B82F6', green: '#10B981', amber: '#F59E0B', red: '#EF4444', violet: '#8B5CF6', gray: '#94A3B8', teal: '#0D9488' },
 
     kpiPeriod: function () {
@@ -29441,6 +29442,20 @@ const app = {
         L('evs', async () => {
             const r = await this.fetchAllRows('invoice_events', 'calc_id, event, created_at, user_email', {
                 order: 'created_at', cap: 20000, build: qy => ge(qy.in('event', this.KPI_EVENTS), 'created_at')
+            });
+            return { rows: r.rows, capped: r.capped };
+        });
+        // Виджет «КП: статусы и конверсия»: события жизни КП с meta (причины отказа, сумма покупки)
+        // и отдельно лёгкие события создания расчёта — без meta, их много
+        L('kpe', async () => {
+            const r = await this.fetchAllRows('invoice_events', 'calc_id, event, created_at, user_id, user_email, user_name, project_name, meta', {
+                order: 'created_at', cap: 20000, build: qy => ge(qy.in('event', this.KPE_EVENTS), 'created_at')
+            });
+            return { rows: r.rows, capped: r.capped };
+        });
+        L('kpc', async () => {
+            const r = await this.fetchAllRows('invoice_events', 'calc_id, event, created_at, user_email', {
+                order: 'created_at', cap: 20000, build: qy => ge(qy.in('event', ['calculated', 'saved', 'recognized']), 'created_at')
             });
             return { rows: r.rows, capped: r.capped };
         });
@@ -29529,7 +29544,7 @@ const app = {
         // Начало данных — для «всего времени» (границы столбцов графика)
         let first = now;
         const scan = (k, f) => { if (ok(k)) S[k].rows.forEach(r => { const t = t0(r[f]); if (t != null && t < first) first = t; }); };
-        scan('users', 'created_at'); scan('ests', 'created_at'); scan('pwl', 'created_at'); scan('evs', 'created_at'); scan('pay', 'paid_at');
+        scan('users', 'created_at'); scan('ests', 'created_at'); scan('pwl', 'created_at'); scan('evs', 'created_at'); scan('kpe', 'created_at'); scan('kpc', 'created_at'); scan('pay', 'paid_at');
         if (ok('rec')) S.rec.rows.forEach(r => { const t = t0(r.savedAt || r.day); if (t != null && t < first) first = t; });
         const B = this.kpiBuckets(p, first);
         const zeros = () => new Array(B.n).fill(0);
@@ -29581,6 +29596,92 @@ const app = {
                 if (S.users.capped) w.note = 'Пользователей больше, чем читается за один раз: цифры занижены.';
             }
             out.users = w;
+        }
+
+        // ── КП: статусы и конверсия ──
+        // Когорта: КП, впервые ушедшие клиенту в период. Статус каждого — на сегодня
+        // (kp_outcome.js, те же правила, что в планировщике и срезе сделок)
+        {
+            const w = { id: 'kps', title: 'КП: статусы и конверсия', tab: 'kanban', act: 'Планировщик' };
+            if (bad('kpe') || bad('kpc')) w.err = bad('kpe') || bad('kpc');
+            else if (!ok('kpe') || !ok('kpc') || testsWait || !window.KpOutcome) w.wait = true;
+            else {
+                const isTest = r => r.user_email && testMail[String(r.user_email).toLowerCase()];
+                const evRows = S.kpe.rows.filter(r => !isTest(r));
+                const ks = KpOutcome.build(evRows, now);
+                const stOf = k => k.outcome === 'won' ? 'won' : k.outcome === 'lost' ? (k.auto ? 'auto' : 'lost') : (k.overdue ? 'over' : 'wait');
+                const blank = () => ({ produced: 0, sent: 0, won: 0, lost: 0, auto: 0, over: 0, wait: 0, approved: 0, rev: 0, wonSum: 0 });
+                const cnt = { cur: blank(), prev: blank() };
+                const ser = { won: zeros(), wait: zeros(), over: zeros(), lost: zeros(), produced: zeros() };
+                const why = {};
+                ks.forEach(k => {
+                    const c = cls(k.firstSentAt); if (!c) return;
+                    const st = stOf(k), x = cnt[c];
+                    x.sent++; x[st]++;
+                    if (k.confirmed || st === 'won') x.approved++;
+                    if (k.revision) x.rev++;
+                    x.wonSum += k.amount || 0;
+                    if (c === 'cur') {
+                        const i = B.at(k.firstSentAt);
+                        ser[st === 'auto' ? 'lost' : st][i]++;
+                        if (st === 'lost' || st === 'auto') {
+                            const m = (k.outcomeEvent && k.outcomeEvent.meta) || {};
+                            const lab = st === 'auto' ? 'Нет ответа (авто)' : (KpOutcome.reasonLabel(m.reason) || 'Причина не указана');
+                            why[lab] = (why[lab] || 0) + 1;
+                        }
+                    }
+                });
+                // Произведено: расчёты, у которых первое событие (создание или первая отправка) в период
+                const firstAt = {};
+                S.kpc.rows.concat(evRows.filter(r => r.event === 'sent' || r.event === 'printed')).forEach(r => {
+                    if (isTest(r)) return;
+                    const t = t0(r.created_at); if (t == null) return;
+                    if (firstAt[r.calc_id] == null || t < firstAt[r.calc_id]) firstAt[r.calc_id] = t;
+                });
+                Object.keys(firstAt).forEach(id => {
+                    const t = firstAt[id], c = cls(t); if (!c) return;
+                    cnt[c].produced++;
+                    if (c === 'cur') ser.produced[B.at(t)]++;
+                });
+                const c = cnt.cur, q = cnt.prev;
+                const decided = x => x.won + x.lost + x.auto + x.over;
+                const cvReal = pct(c.won, decided(c)), cvRealP = hasPrev ? pct(q.won, decided(q)) : null;
+                const cvAppr = pct(c.approved, c.sent), cvApprP = hasPrev ? pct(q.approved, q.sent) : null;
+                const cr = pct(c.sent, c.produced);
+                const dl = (g, inv) => hasPrev ? this.kpiDelta(c[g], q[g], { inv: inv }) : '';
+                const lostAll = c.lost + c.auto;
+                w.nums = [
+                    { k: 'produced', l: 'Расчётов произведено', v: fmt(c.produced), d: dl('produced'), sp: ser.produced, h: 'Сколько расчётов создано за период, отправленных клиенту и нет' },
+                    { k: 'sent', l: 'КП отправлено', v: fmt(c.sent), d: dl('sent'), sp: addS(ser.won, ser.wait, ser.over, ser.lost), h: 'КП, впервые ушедшие клиенту за период' },
+                    { k: 'wait', l: 'На рассмотрении', v: fmt(c.wait), d: dl('wait'), sp: ser.wait, tone: '', h: 'Отправлено в период, срок ответа клиента ещё идёт, итога нет' },
+                    { k: 'approved', l: 'Одобрено', v: fmt(c.approved), d: dl('approved'), tone: 'good', h: 'Клиент одобрил КП в ссылке, либо по нему запрошен счёт или отмечена реализация' },
+                    { k: 'won', l: 'Реализовано', v: fmt(c.won), d: dl('won'), tone: 'good', sp: ser.won, h: 'Итог «согласился», либо счёт запрошен, выставлен или оплачен' },
+                    { k: 'lost', l: 'Отклонено', v: fmt(lostAll), s: c.auto ? 'из них ' + c.auto + ' само, нет ответа' : '', d: hasPrev ? this.kpiDelta(lostAll, q.lost + q.auto, { inv: true }) : '', tone: lostAll ? 'bad' : '', sp: ser.lost, h: 'Отказ с причиной, либо без ответа дольше срока автоотклонения' },
+                    { k: 'over', l: 'Ждём итог', v: fmt(c.over), d: dl('over', true), tone: c.over ? 'bad' : '', sp: ser.over, h: 'Срок ответа вышел, монтажник итог не отметил' },
+                    { k: 'cvreal', l: 'Конверсия КП → реализовано', v: cvReal == null ? '—' : cvReal + '%', s: decided(c) ? 'из ' + fmt(decided(c)) + ' разобранных' : 'срок ответа ещё не вышел', d: (cvReal != null && cvRealP != null) ? this.kpiDelta(cvReal, cvRealP, { ratio: true }) : '', tone: 'good', h: 'Реализовано / (реализовано + отклонено + ждём итог). КП в срок не входят: свежие занижали бы цифру' },
+                    { k: 'cr', l: 'Расчёт → КП клиенту', v: cr == null ? '—' : cr + '%', s: 'отправлено / произведено', off: true, h: 'Какая часть расчётов дошла до клиента' },
+                    { k: 'cvappr', l: 'Конверсия КП → одобрено', v: cvAppr == null ? '—' : cvAppr + '%', d: (cvAppr != null && cvApprP != null) ? this.kpiDelta(cvAppr, cvApprP, { ratio: true }) : '', off: true, h: 'Одобрено / отправлено' },
+                    { k: 'rev', l: 'На доработке', v: fmt(c.rev), d: dl('rev', true), off: true, h: 'Клиент попросил поправить КП' },
+                    { k: 'wsum', l: 'Сумма покупки (указанная)', v: c.wonSum ? rub(c.wonSum) : '—', off: true, h: 'Только там, где монтажник указал сумму при отметке «реализован»' }
+                ];
+                w.chart = { labels: B.labels, tips: B.tips, stack: true, series: [
+                    { name: 'Реализовано', color: C.green, vals: ser.won },
+                    { name: 'На рассмотрении', color: C.blue, vals: ser.wait },
+                    { name: 'Ждём итог', color: C.amber, vals: ser.over },
+                    { name: 'Отклонено', color: C.red, vals: ser.lost }] };
+                w.groups = [{ title: 'Что с КП периода', items: [
+                    { label: 'Реализовано', value: c.won, color: C.green }, { label: 'На рассмотрении', value: c.wait, color: C.blue },
+                    { label: 'Ждём итог', value: c.over, color: C.amber }, { label: 'Отклонено', value: c.lost, color: C.red },
+                    { label: 'Нет ответа (авто)', value: c.auto, color: C.gray }] }];
+                const wl = Object.keys(why).sort((a, b) => why[b] - why[a]);
+                if (wl.length) w.groups.push({ title: 'Почему отклонили', items: wl.map((l, i) => ({ label: l, value: why[l], color: [C.red, C.amber, C.violet, C.blue, C.teal, C.gray][i % 6] })) });
+                w.table = this.kpiTable(B, [
+                    { name: 'Расчётов', vals: ser.produced }, { name: 'Реализовано', vals: ser.won }, { name: 'На рассмотрении', vals: ser.wait },
+                    { name: 'Ждём итог', vals: ser.over }, { name: 'Отклонено', vals: ser.lost }]);
+                w.note = 'КП считаются по дате первой отправки клиенту, статус — на сегодня: отправленные недавно ещё «на рассмотрении», поэтому конверсия свежего периода растёт задним числом. Подробнее по месяцам и монтажникам: «Планировщик» → «Срез сделок».'
+                    + ((S.kpe.capped || S.kpc.capped) ? ' Событий больше, чем читается за один раз: цифры занижены.' : '');
+            }
+            out.kps = w;
         }
 
         // ── Планировщик: КП и счета ──
@@ -30074,7 +30175,7 @@ const app = {
         const W = this.kpiBuild(p, S);
         const edit = !!this._todayEdit;
         const chips = this.KPI_PERIODS.map(x => `<button type="button" class="kpi-chip${x.id === p.id ? ' on' : ''}" onclick="app.kpiSetPeriod('${x.id}')">${x.label}</button>`).join('');
-        const order = this.kpiSortBy(this.kpiOrderMap().sec, ['users', 'planner', 'ests', 'rec', 'pay', 'paywall'], x => x);
+        const order = this.kpiSortBy(this.kpiOrderMap().sec, ['users', 'kps', 'planner', 'ests', 'rec', 'pay', 'paywall'], x => x);
         this._kpiShownSec = order.slice();
         const hint = edit
             ? 'Нажмите × на плашке, чтобы скрыть её, или «+», чтобы вернуть. Тащите за заголовок плашки или раздела, чтобы поменять порядок'
