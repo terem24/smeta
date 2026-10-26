@@ -10535,7 +10535,10 @@ const app = {
         // Итог КП: где покупают или причина отказа
         // Объект реализован? Да / Нет с причиной — отметка монтажника (app.askRealized)
         if (ev === 'won') return Object.assign({}, base, { label: 'Реализовано' });
-        if (ev === 'lost') return Object.assign({}, base, { label: 'Не реализовано' + (meta && meta.label ? ': ' + meta.label : '') });
+        if (ev === 'lost') {
+            const why = meta && (meta.label || (window.KpOutcome ? KpOutcome.reasonLabel(meta.reason) : ''));
+            return Object.assign({}, base, { label: 'Не реализовано' + (why ? ': ' + why : '') });
+        }
         if (ev === 'printed') {
             const label = ch === 'pdf' ? 'Отправлено: PDF' : ch === 'excel' ? 'Отправлено: Excel' : 'Отправлено: PDF или Excel';
             return Object.assign({}, base, { label: label });
@@ -10603,11 +10606,15 @@ const app = {
         { key: 'recognized', label: 'Распознано', color: '#0D9488', events: ['recognized'] },
         { key: 'draft', label: 'Расчёты', color: '#60A5FA', events: ['calculated', 'saved'] },
         { key: 'review', label: 'На согласовании', color: '#818CF8', events: ['sent', 'printed', 'confirmed', 'needs_revision', 'refresh_requested', 'invoice_reminder_sent', 'invoice_reminder_declined'] },
-        { key: 'payment', label: 'В оплату', color: '#F59E0B', events: ['invoice_requested', 'invoice_issued', 'rejected', 'paid'] },
+        { key: 'payment', label: 'В оплату', color: '#F59E0B', events: ['invoice_requested', 'invoice_issued', 'paid'] },
         // Чем кончилось КП, ушедшее мимо счёта: согласились (купили у другого
         // продавца, клиент сам) или отказ с причиной. Запрос счёта после «согласился»
         // уводит карточку в «В оплату» — последнее событие главнее.
-        { key: 'outcome', label: 'Итог', color: '#059669', events: ['won', 'lost'] },
+        { key: 'outcome', label: 'Реализовано', color: '#059669', events: ['won'] },
+        // Отказ: клиент отказался (lost, причина обязательна в окне итога КП) или
+        // сотрудник отклонил запрос счёта (rejected, комментарий обязателен). Без причины
+        // карточка получает красную пометку — по ней видно, что разбор неполный.
+        { key: 'lost', label: 'Отклонено', color: '#DC2626', events: ['lost', 'rejected'] },
     ],
 
     /**
@@ -11028,9 +11035,25 @@ const app = {
         const stApproval = stageStat(STAGES.find(s => s.key === 'review')), stPay = stageStat(STAGES.find(s => s.key === 'payment'));
         const rub = (v) => Math.round(v).toLocaleString('ru-RU') + ' ₽';
         const kTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+        // Конверсия по КП, ушедшим клиентам (kp_outcome.js): согласились / (согласились + отказ +
+        // без ответа). КП «в срок» не входят — иначе свежие занижали бы цифру. Те же правила, что
+        // в виджете «КП → сделка» на главной, чтобы цифры совпадали.
+        const kpoB = { won: 0, lost: 0, silent: 0, wait: 0 };
+        filtered.forEach(p => {
+            const k = p.kpo; if (!k) return;
+            if (k.outcome === 'won') kpoB.won++; else if (k.outcome === 'lost') kpoB.lost++;
+            else if (k.overdue) kpoB.silent++; else kpoB.wait++;
+        });
+        const kpoSent = kpoB.won + kpoB.lost + kpoB.silent + kpoB.wait;
+        const kpoDecided = kpoB.won + kpoB.lost + kpoB.silent;
+        const convPct = kpoDecided ? Math.round(kpoB.won / kpoDecided * 100) + '%' : '—';
+        const allCalcs = filtered.length + (this._kanbanShowAbandoned ? 0 : abandonedCount);
         const kanbanStats = `
             <div class="ad-page-h"><div><h3>Планировщик</h3><div class="ad-sub">Сметы по этапам сделки: от разбора документа до запроса счёта</div></div></div>
             <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${kTile('Конверсия', convPct, kpoDecided ? `реализовано ${kpoB.won} из ${kpoDecided} разобранных КП` : 'срок ответа ещё не вышел ни у одного КП')}
+                ${kTile('Отклонено', kpoB.lost, `${kpoB.silent} без ответа после срока · ${kpoB.wait} ждём в срок`)}
+                ${kTile('Воронка', `${allCalcs} → ${kpoSent} → ${kpoB.won}`, 'расчётов → ушло клиенту → реализовано')}
                 ${kTile('Проектов', filtered.length, 'с учётом фильтров')}
                 ${kTile('В работе', rub(stApproval.sum + stPay.sum - inWorkOverSum), `${stApproval.n + stPay.n - inWork.length} проектов в срок: согласование и оплата`)}
                 ${kTile('Ждём итог', rub(overSum), `${overList.length} КП без ответа после срока${silentN ? `, из них ${silentN} молчат ${KpOutcome.SILENT_DAYS}+ дн.` : ''}`)}
@@ -11140,6 +11163,7 @@ const app = {
                                         <div style="font-weight:700; color:var(--primary); margin-bottom:8px; font-size:13px;">${(c.totalSum || 0).toLocaleString('ru-RU')} ₽</div>
                                         <div style="display:inline-block; background:${em.color}; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; margin-bottom:8px;">${em.label}</div>
                                         ${isOver(c) ? `<div style="display:inline-block; background:${c.kpo.silent ? '#DC2626' : '#F59E0B'}; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; margin:0 0 8px 4px;" title="Срок ответа клиента вышел ${new Date(c.kpo.due).toLocaleDateString('ru-RU')}, итога нет">${c.kpo.silent ? 'Без ответа' : 'Ждём итог'} · ${c.kpo.overdueDays} дн.</div>` : ''}
+                                        ${s.key === 'lost' && !comment && !(c.currentMeta && (c.currentMeta.label || c.currentMeta.reason)) ? `<div style="color:#DC2626; font-size:11px; font-weight:700; margin-bottom:8px;">⚠ Причина отказа не указана</div>` : ''}
                                         ${comment ? `<div style="color:var(--text-main); font-size:11px; background:var(--surface-light); border-radius:6px; padding:6px 8px; margin-bottom:8px; white-space:pre-wrap;">${comment.replace(/</g, '&lt;')}</div>` : ''}
                                         <div style="color:var(--text-sec); font-size:10px; border-top:1px solid var(--border); padding-top:6px;">
                                             Дата изменения<br>${new Date(c.lastAt).toLocaleString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -11967,7 +11991,7 @@ const app = {
     KANBAN_MANUAL_STATUSES: {
         draft: ['saved'],
         review: ['sent', 'confirmed', 'needs_revision'],
-        payment: ['invoice_requested', 'invoice_issued', 'paid', 'rejected']
+        payment: ['invoice_requested', 'invoice_issued', 'paid']
     },
     // Уведомление монтажнику шлём только о решениях менеджера. У остальных
     // статусов в пуше стоял бы текст от лица клиента («Клиент согласовал смету»),
@@ -12093,7 +12117,7 @@ const app = {
         }
         const cur = this.kanbanCurrentEvent(calcId);
         // В «Итог» — через окно итога КП: где покупают или причина отказа
-        if (stageKey === 'outcome') {
+        if (stageKey === 'outcome' || stageKey === 'lost') {
             if (window.KpOutcome) await KpOutcome.openForCalc(calcId, () => this.kanbanReloadBoard());
             return;
         }
@@ -33711,7 +33735,28 @@ const app = {
                             <span style="flex:1; color:var(--text-main);">${KpOutcome.WHY[w].label}</span>
                             <b style="color:var(--text-main);">${num(whyCnt[w])}</b></div>`).join('') : `<div style="font-size:12px; color:var(--text-sec); margin-top:6px;">Все КП, у которых вышел срок, разобраны.</div>`}
                     </div>`;
-                    const listHtml = openHtml + `<div style="margin-top:16px;">
+                    // Почему отказали: причины по КП периода (отказ клиента и авто-закрытие)
+                    const lostAll = all.filter(x => x.s.key === 'lost' || x.s.key === 'auto');
+                    const lostCnt = {};
+                    lostAll.forEach(x => {
+                        const m = (x.k.outcomeEvent && x.k.outcomeEvent.meta) || {};
+                        const key = x.s.key === 'auto' ? 'timeout' : (m.reason || '');
+                        lostCnt[key] = (lostCnt[key] || 0) + 1;
+                    });
+                    const lostHtml = `<div style="margin-top:16px; padding:12px 14px; border:1px solid var(--border); border-left:3px solid #EF4444; border-radius:10px;">
+                        <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+                            <span style="font-size:26px; font-weight:800; color:#EF4444; line-height:1;">${num(lostAll.length)}</span>
+                            <span style="font-size:13px; font-weight:700; color:var(--text-main);">отклонено — причины</span>
+                        </div>
+                        ${lostAll.length ? Object.keys(lostCnt).sort((a, b) => lostCnt[b] - lostCnt[a]).map(r => {
+                            const pc = Math.round(lostCnt[r] / lostAll.length * 100);
+                            return `<div style="display:flex; align-items:center; gap:8px; margin-top:6px; font-size:12px;">
+                                <span style="flex:0 0 min(230px, 45%); color:${r ? 'var(--text-main)' : '#DC2626'};">${esc(r ? KpOutcome.reasonLabel(r) : 'Причина не указана')}</span>
+                                <span style="flex:1; height:8px; background:var(--surface); border-radius:4px; overflow:hidden;"><span style="display:block; height:100%; width:${pc}%; background:#EF4444;"></span></span>
+                                <b style="flex:0 0 58px; text-align:right; color:var(--text-main);">${num(lostCnt[r])} · ${pc}%</b></div>`;
+                        }).join('') : `<div style="font-size:12px; color:var(--text-sec); margin-top:6px;">Отказов в периоде нет.</div>`}
+                    </div>`;
+                    const listHtml = lostHtml + openHtml + `<div style="margin-top:16px;">
                         <div style="font-size:12px; font-weight:700; color:var(--text-sec); margin-bottom:8px;">Каждое КП и его конечный статус · за период строки «Ушло в реализацию»</div>
                         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
                             ${fchip('all', 'Все', all.length)}${fchip('won', 'Ушло в реализацию', count.won || 0)}${fchip('lost', 'Отклонено', count.lost || 0)}${fchip('auto', 'Отклонено (авто)', count.auto || 0)}${fchip('silent', 'Без ответа', count.silent || 0)}${fchip('wait', 'Ждём ответа', count.wait || 0)}
