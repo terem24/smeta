@@ -419,7 +419,9 @@ const Subscription = {
         outcomeOn: true, outcomeAudBase: true, outcomeAudPro: true, outcomeAudMgr: true,
         outcomeDays: 30, outcomeDaysMin: 14, outcomeDaysMax: 60, outcomeExt: 2, outcomeGateN: 2, outcomeGrace: 3,
         // Через сколько месяцев без ответа КП само становится «отклонено» (0 — выключено)
-        outcomeAutoMonths: 12 },
+        outcomeAutoMonths: 6,
+        // С какого дня просрочки окно итога нельзя закрыть без отметки (0 — не требовать)
+        outcomeHardDays: 14 },
 
     limitSettings: function () {
         const t = Object.assign({}, this.LIMIT_DEFAULTS, this.raw().limit || {});
@@ -433,7 +435,8 @@ const Subscription = {
         t.outcomeExt = cl(t.outcomeExt, 0, 5, 2, 2);
         t.outcomeGateN = cl(t.outcomeGateN, 1, 10, 2);
         t.outcomeGrace = cl(t.outcomeGrace, 0, 30, 3);
-        t.outcomeAutoMonths = cl(t.outcomeAutoMonths, 0, 60, 12, 2);
+        t.outcomeAutoMonths = cl(t.outcomeAutoMonths, 0, 60, 6, 2);
+        t.outcomeHardDays = cl(t.outcomeHardDays, 0, 60, 14, 2);
         return t;
     },
 
@@ -446,7 +449,7 @@ const Subscription = {
 
     setLimitField: function (field, value) {
         const BOOL = ['enabled', 'excludeTerem', 'outcomeGate', 'outcomeOn', 'outcomeAudBase', 'outcomeAudPro', 'outcomeAudMgr'];
-        const NUM = { outcomeDays: [7, 180, 30], outcomeDaysMin: [7, 90, 14], outcomeDaysMax: [7, 180, 60], outcomeExt: [0, 5, 2], outcomeGateN: [1, 10, 2], outcomeGrace: [0, 30, 3], outcomeAutoMonths: [0, 60, 12] };
+        const NUM = { outcomeDays: [7, 180, 30], outcomeDaysMin: [7, 90, 14], outcomeDaysMax: [7, 180, 60], outcomeExt: [0, 5, 2], outcomeGateN: [1, 10, 2], outcomeGrace: [0, 30, 3], outcomeAutoMonths: [0, 60, 6], outcomeHardDays: [0, 60, 14] };
         if (['from', 'perMonth'].indexOf(field) < 0 && BOOL.indexOf(field) < 0 && !NUM[field]) return;
         if (BOOL.indexOf(field) >= 0) value = !!value;
         else if (NUM[field]) { const n = Math.round(this.num(value)); value = isFinite(n) ? Math.min(NUM[field][1], Math.max(NUM[field][0], n)) : NUM[field][2]; }
@@ -552,7 +555,8 @@ const Subscription = {
                 ${row('Блок отправки без Профи', 'Если выключить, окно остаётся, а отправка КП не блокируется. Не зависит от «Лимита КП» выше.', this.toggleHtml(t.outcomeGate !== false, `Subscription.setLimitField('outcomeGate', ${t.outcomeGate === false})`, dis))}
                 ${row('Блок: сколько КП без итога', 'Когда столько КП без итога просрочены дольше льготы, новое КП не уходит, пока монтажник не отметит итог.', `<input type="number" min="1" max="10" value="${t.outcomeGateN}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('outcomeGateN', this.value)" style="${u.input} width:80px;">`)}
                 ${row('Блок: льгота после срока, дней', 'Сколько дней после срока КП ещё не блокирует отправку.', `<input type="number" min="0" max="30" value="${t.outcomeGrace}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('outcomeGrace', this.value)" style="${u.input} width:80px;">`)}
-                ${row('Автоотклонение без ответа, месяцев', 'КП без итога и без движения столько месяцев само становится «Отклонено» (причина «Нет ответа (авто)»): в базе это делает ежедневная проверка. 0 — не отклонять. По умолчанию 12.', `<input type="number" min="0" max="60" value="${t.outcomeAutoMonths}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('outcomeAutoMonths', this.value)" style="${u.input} width:80px;">`)}
+                ${row('Жёсткое окно после просрочки, дней', 'КП без итога дольше стольких дней после срока: окно при входе показывается каждый раз, без кнопки «Напомнить завтра», и закрывается, только когда по таким КП отмечен итог (или «ещё думает», пока есть продления). Действует на всех, включая Профи, менеджеров, админов и сотрудников ТЕРЕМ. 0 — не требовать. По умолчанию 14.', `<input type="number" min="0" max="60" value="${t.outcomeHardDays}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('outcomeHardDays', this.value)" style="${u.input} width:80px;">`)}
+                ${row('Автоотклонение без ответа, месяцев', 'КП без итога и без движения столько месяцев само становится «Отклонено» (причина «Нет ответа (авто)»): в базе это делает ежедневная проверка. 0 — не отклонять. По умолчанию 6.', `<input type="number" min="0" max="60" value="${t.outcomeAutoMonths}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('outcomeAutoMonths', this.value)" style="${u.input} width:80px;">`)}
             </div>
             <div style="${u.card} max-width:760px; margin-top:14px;">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;"><b style="font-size:14px; color:var(--text-main);">Сколько КП отправляют бесплатные мастера</b>

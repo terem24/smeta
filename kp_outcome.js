@@ -25,7 +25,7 @@ const KpOutcome = {
     // без них (страница ещё не прочитала настройки) — эти значения
     FALLBACK: { outcomeOn: true, outcomeAudBase: true, outcomeAudPro: true, outcomeAudMgr: true, outcomeGate: true,
         outcomeDays: 30, outcomeDaysMin: 14, outcomeDaysMax: 60, outcomeExt: 2, outcomeGateN: 2, outcomeGrace: 3,
-        outcomeAutoMonths: 12, excludeTerem: true },
+        outcomeAutoMonths: 6, outcomeHardDays: 14, excludeTerem: true },
     cfg: function () {
         try { if (typeof Subscription !== 'undefined' && Subscription.limitSettings) return Subscription.limitSettings(); } catch (e) { }
         return this.FALLBACK;
@@ -34,6 +34,11 @@ const KpOutcome = {
     get MAX_EXT() { return this.cfg().outcomeExt; },
     get GATE() { return this.cfg().outcomeGateN; },
     get GRACE_DAYS() { return this.cfg().outcomeGrace; },
+    // Сколько дней просрочки окно итога нельзя закрыть без отметки (0 — не требовать)
+    get HARD_DAYS() { const v = Number(this.cfg().outcomeHardDays); return isFinite(v) && v >= 0 ? v : 14; },
+    // Просрочка, после которой КП считается «без ответа»: срок вышел, напоминание ушло
+    // в тот же день, и ещё столько дней тишины. Статус показывается, в базу не пишется
+    SILENT_DAYS: 30,
     // Старые КП, ушедшие задолго до появления окна, получают срок не раньше этого
     // дня: иначе в первый же вход у всех разом сработал бы блок
     START: '2026-10-23',
@@ -138,7 +143,7 @@ const KpOutcome = {
             const won = evs.slice().reverse().find(e => this.WON_EVENTS.includes(e.event));
             // Отказ закрывает КП, пока клиенту не ушла новая версия: вернулся — снова в работе
             const lost = evs.slice().reverse().find(e => e.event === 'lost' && new Date(e.created_at).getTime() >= lastSentAt);
-            // Без ответа слишком долго (по умолчанию 12 месяцев с последней отправки или
+            // Без ответа слишком долго (по умолчанию 6 месяцев с последней отправки или
             // продления) — КП само становится «отклонено». В базе то же делает ежедневная
             // close_stale_kp_outcomes (пишет событие lost, reason timeout); здесь — чтобы
             // статус был верным и до её запуска. 0 месяцев — выключено.
@@ -178,6 +183,8 @@ const KpOutcome = {
                 days: D,
                 overdue: overdue,
                 overdueDays: overdue ? Math.floor((now - due) / this.DAY) : 0,
+                silent: overdue && now >= due + this.SILENT_DAYS * this.DAY,
+                hard: overdue && this.HARD_DAYS > 0 && now >= due + this.HARD_DAYS * this.DAY,
                 blocking: overdue && now >= due + this.GRACE_DAYS * this.DAY
             });
         });
@@ -454,13 +461,15 @@ const KpOutcome = {
             const day = new Date().toISOString().slice(0, 10);
             let shown = '';
             try { shown = localStorage.getItem('kp_outcome_day') || ''; } catch (e) { }
-            if (!force && shown === day) return;
             const list = (await this.loadMine(false, true)).filter(k => k.overdue);
             if (!list.length) return;
+            // Есть КП, просроченные жёстко, — окно показывается при каждом входе, а не раз в сутки
+            const hard = list.some(k => k.hard);
+            if (!force && shown === day && !hard) return;
             // Не поверх другого окна и не посреди обучения: попробуем при следующем входе
             if (!force && (document.querySelector('.calc-dialog-overlay.active, #custom_modal_overlay.active') || document.body.classList.contains('tour-active'))) return;
             try { localStorage.setItem('kp_outcome_day', day); } catch (e) { }
-            await this.openDialog(list, {});
+            await this.openDialog(list, { hard: hard });
         } catch (e) {
             console.warn('[итог КП] проверка не прошла:', e);
         }
@@ -507,10 +516,15 @@ const KpOutcome = {
             const overlay = document.createElement('div');
             overlay.className = 'calc-dialog-overlay kpo-overlay';
             const state = {}; // calcId → { mode: 'won'|'lost', pick, comment }
+            // Жёсткий режим: пока есть КП с просрочкой 14+ дней, окно не закрывается.
+            // Сбой записи (нет связи) тоже выпускает: нельзя запирать человека в окне
+            let writeFailed = false;
+            const mustAnswer = () => !!opts.hard && !writeFailed && items.some(x => x.hard);
 
             // Коротко: почему окно, что даёт, что будет без отметки
             const lead = () => {
                 if (opts.staff) return 'Монтажник увидит отметку в истории сметы.';
+                if (mustAnswer()) return `У ${items.filter(x => x.hard).length} КП срок ответа вышел больше ${this.HARD_DAYS} дней назад. Отметьте по ним итог: «реализован», «нет» или «ещё думает», и окно закроется. Так мы видим, сколько расчётов превращается в сделки, а ошибки в смете можно исправить.`;
                 if (opts.manual) return 'Отметьте итог: он попадёт в «Мои показатели» (сколько объектов реализовано и на какую сумму). Не знаете — закройте окно.';
                 if (opts.gate) return `Новые КП не отправляются, пока у ${this.GATE} КП нет итога. Отметьте — и отправка откроется. Считать можно как обычно.`;
                 const gateLine = this.gateApplies()
@@ -566,7 +580,7 @@ const KpOutcome = {
                     <h3 class="calc-dialog-title">${opts.manual ? 'Объект реализован?' : (opts.gate ? 'Отметьте, реализованы ли объекты' : 'Какие объекты реализованы?')}</h3>
                     <p class="calc-dialog-message">${lead()}</p>
                     <div class="kpo-list">${shown.map(itemHtml).join('')}</div>${pager}
-                    <div class="calc-dialog-buttons"><button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" data-act="close">${opts.gate || opts.staff || opts.manual ? 'Закрыть' : 'Напомнить завтра'}</button></div>
+                    <div class="calc-dialog-buttons">${mustAnswer() ? '' : `<button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" data-act="close">${opts.gate || opts.staff || opts.manual ? 'Закрыть' : 'Напомнить завтра'}</button>`}</div>
                 </div>`;
             };
 
@@ -583,11 +597,11 @@ const KpOutcome = {
                 if (id && e.target.classList.contains('kpo-ta')) (state[id] = state[id] || {}).comment = e.target.value;
             });
             overlay.addEventListener('click', async (e) => {
-                if (e.target === overlay) return close(false);
+                if (e.target === overlay) return mustAnswer() ? undefined : close(false);
                 const btn = e.target.closest && e.target.closest('[data-act]');
                 if (!btn || btn.disabled) return;
                 const act = btn.getAttribute('data-act'), id = btn.getAttribute('data-id');
-                if (act === 'close') return close(false);
+                if (act === 'close') return mustAnswer() ? undefined : close(false);
                 // «Следующее» — текущее КП уходит в конец очереди, без отметки
                 if (act === 'next') { items.push(items.shift()); return render(); }
                 const k = items.find(x => x.calcId === id);
@@ -630,6 +644,7 @@ const KpOutcome = {
                     render();
                 } catch (err) {
                     console.warn('[итог КП] запись не прошла:', err);
+                    writeFailed = true;
                     st.err = 'Не сохранилось, проверьте связь и нажмите ещё раз.';
                     render();
                 }
