@@ -43574,7 +43574,7 @@ const app = {
         // пока проект не выпущен или полосу не закрыли. Окно именованное — повторное нажатие
         // возвращает в уже открытую вкладку разметки, а не плодит новые.
         try { localStorage.setItem('hc_project_flow', String(Date.now())); } catch (e) { }
-        window.open('plan_editor.html?v=2', 'hc_plan_editor');
+        window.open('plan_editor.html?v=3', 'hc_plan_editor');
         this.renderProjectBanner();
     },
 
@@ -43622,7 +43622,7 @@ const app = {
     openProjectMarkup: function () {
         if (!this.canUseDesign()) return;
         this.pushPlansToEditor();
-        window.open('plan_editor.html?v=2', 'hc_plan_editor');
+        window.open('plan_editor.html?v=3', 'hc_plan_editor');
     },
 
     closeProjectFlow: function () {
@@ -80470,14 +80470,15 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             return;
         }
         container.innerHTML = "";
-        const labels = { basin: "🚰 Раковина", shower: "🚿 Душ", bath: "🛁 Ванна", toilet: "🚽 Унитаз", toiletHot: "🚽 из них с биде (ГВС)", bidet: "🚻 Биде", wash: "🧺 Стиралка", dish: "🍽️ ПММ", drain: "🕳️ Трап в полу" };
+        const labels = { basin: "Раковина", shower: "Душ", bath: "Ванна", toilet: "Унитаз", toiletHot: "…с биде", bidet: "Биде", wash: "Стиралка", dish: "ПММ", drain: "Трап" };
+        const labelTips = { toiletHot: "Из унитазов зоны — сколько с функцией биде (к ним подводится ГВС)", drain: "Трап в полу (душевая без поддона)", dish: "Посудомоечная машина" };
         this.state.waterZones.forEach((z, idx) => {
             let itemsHtml = "";
             for (let [key, name] of Object.entries(labels)) {
                 let val = z.fixtures[key] || 0; // Защита для старых сохранений
-                itemsHtml += `<div class="zone-row"><span style="font-size:11px;">${name}</span><div class="stepper"><button class="step-btn" onclick="app.updZoneFixture(${z.id}, '${key}', -1)">−</button><div class="step-val">${val}</div><button class="step-btn" onclick="app.updZoneFixture(${z.id}, '${key}', 1)">+</button></div></div>`;
-
+                itemsHtml += `<span class="zone-chip${val ? ' on' : ''}"${labelTips[key] ? ` title="${labelTips[key]}"` : ''}>${name}<b onclick="app.updZoneFixture(${z.id}, '${key}', -1)">−</b><i>${val}</i><b onclick="app.updZoneFixture(${z.id}, '${key}', 1)">+</b></span>`;
             }
+            itemsHtml = `<div class="zone-chips">${itemsHtml}</div>`;
             let html = `<div class="zone-card"><div class="zone-header"><span class="zone-title" contenteditable="true" onblur="app.state.waterZones[${idx}].name=this.innerText">${z.name}</span><div class="zone-remove" onclick="app.removeZone(${z.id})">×</div></div><div style="margin-bottom:10px; font-size:11px; display:flex; align-items:center; gap:5px;"><span>Трасса (м):</span><input type="number" class="zone-input" value="${z.dist}" onchange="app.updZoneDist(${z.id}, this.value)">${this.state.floors === 2 ? `<span style="margin-left:8px;">Этаж:</span><select class="zone-input" style="width:auto;" onchange="app.updZoneLevel(${z.id}, this.value)"><option value=""${z.level ? '' : ' selected'}>наверху</option><option value="1"${z.level === 1 ? ' selected' : ''}>1</option><option value="2"${z.level === 2 ? ' selected' : ''}>2</option></select>` : ''}</div>${itemsHtml}</div>`;
             container.insertAdjacentHTML('beforeend', html);
         });

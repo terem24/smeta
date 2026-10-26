@@ -338,6 +338,8 @@
   .fs-corner { position: sticky; top: 0; height: 0; z-index: 6; text-align: right; overflow: visible; }
   .fs-corner button { position: relative; top: 6px; right: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.35);
                       background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+  /* на весь экран «Свернуть» уже есть в верхней панели — вторую в углу плана не рисуем */
+  html.fs .fs-corner { display: none; }
   .fs-only { display: none; }
   html.fs .fs-only { display: inline-block; }
   html.fs body { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -640,6 +642,45 @@
   ::-webkit-scrollbar-thumb:hover { background: rgba(160,170,210,.5); background-clip: padding-box; }
   ::-webkit-scrollbar-track { background: transparent; }
   @media (max-width: 720px) { .wrap { gap: 10px; padding: 8px; } .cvbox, .side { border-radius: 14px; } }
+
+  /* ===== лёгкий вид (поверх блока выше): без градиентов, свечения и бегущих рамок, как в остальном
+     калькуляторе. Один акцентный цвет, панели плоские, шаги — обычный список, а не цветные пилюли. ===== */
+  :root { --acc: #6d7bff; --acc-soft: rgba(109,123,255,.14); --ai-grad: var(--acc); --k-shadow: none; --rad: 8px; }
+  html.light, html.ufh.light { --acc: #2563eb; --acc-soft: rgba(37,99,235,.08); --k-shadow: none; --bg: #f4f5f8; }
+  html:not(.light) body { background: var(--bg); }
+  button, select, input[type=text] { padding: 6px 12px; }
+  button:hover, select:hover { border-color: var(--border); }
+  button:active { transform: none; }
+  button:focus-visible, select:focus-visible { outline-color: var(--acc); }
+  button.on, button.on:hover, .tab.on, .fs-corner button, .pj-path .p.cur { background: var(--acc); box-shadow: none; filter: none; }
+  button.go, button.go:hover { background: #16a34a; box-shadow: none; filter: none; }
+  button.go:hover { background: #15803d; }
+  input[type=text]:focus { border-color: var(--acc); box-shadow: none; }
+  .cvbox, .side, html.ufh.light .cvbox, html.ufh.light .side { border-radius: 12px; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .phead, html.ufh.light .phead { letter-spacing: .05em; font-weight: 600; }
+  .zone:hover, .croom:hover { background: var(--k-row); }
+  .zone.zsel { background: var(--acc-soft) !important; box-shadow: inset 2px 0 0 var(--acc); }
+  .hint, html.ufh.light .hint { background: var(--k-row); border: 0; border-radius: 8px; }
+  .wetfx { background: transparent; }
+  /* шаги слева: список без заливки; выполненный — только галочка, текущий — лёгкая подсветка */
+  .wz-st, .wz-st.done { border-color: transparent; background: transparent; color: var(--text-sec); box-shadow: none; }
+  .wz-st:not(.cur):not(.off):hover { background: var(--k-row); border-color: transparent; transform: none; }
+  .wz-st.done .n, html.ufh.light .wz-st.done .n { background: transparent; color: #16a34a; border: 1.5px solid #16a34a; width: 20px; height: 20px; line-height: 17px; }
+  .wz-st.done .n::before { font-size: 11px; }
+  .wz-st.cur { background: var(--acc-soft); color: var(--text-main); font-weight: 600; box-shadow: none; animation: none; }
+  .wz-st.cur .n { background: var(--acc); color: #fff; }
+  /* карточка «что сейчас делаем»: обычная рамка вместо бегущей подсветки */
+  .wz-do, html.ufh.light .wz-do { background: var(--k-panel); border: 1px solid var(--k-line); border-radius: 12px;
+                                  box-shadow: none; animation: none; }
+  .wz-ai .ai-ic { background: var(--acc-soft); color: var(--acc); border-radius: 8px; }
+  .wz-ai .ai-step { background: transparent; color: var(--text-sec); padding: 0; }
+  .wz-do .ai-tip, .wz-do .ai-tip i { background: transparent; border-color: var(--k-line); }
+  .wz-todo { background: var(--k-row); border-color: var(--k-line); }
+  .wz-sw.on { background: var(--acc-soft); color: var(--acc); }
+  .fs-keys { background: transparent; border-color: var(--k-line); border-radius: 10px; }
+  html.fs #steps { box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 12px; }
+  .guide { backdrop-filter: none; box-shadow: 0 6px 20px rgba(0,0,0,.18); border-color: var(--border); }
+  .guide .step { color: var(--acc); }
 </style>
 </head>
 <body>
@@ -9743,7 +9784,7 @@ function fsKeysRender() {
   });
   box.className = 'fs-keys' + (fsKeysMin ? ' min' : '');
   box.innerHTML = '<div class="fk-top"><span class="fk-h">Быстрые клавиши</span>' +
-    '<button type="button" class="ghost" onclick="toggleFsKeys()">' + (fsKeysMin ? '▸ Показать' : '▾ Свернуть') + '</button></div>' +
+    '<button type="button" class="ghost" onclick="toggleFsKeys()">' + (fsKeysMin ? '▸ Показать' : '▾ Скрыть') + '</button></div>' +
     '<div class="fk-grid">' + rows.map(function (r) {
       return '<div class="fk"><kbd>' + r[0] + '</kbd><span>' + r[1] + '</span></div>'; }).join('') + '</div>';
 }

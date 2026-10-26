@@ -3164,6 +3164,24 @@ body.html2pdf-printing .note-box .note-tip .tooltip-content b { color: inherit !
     min-width: 15px;
 }
 
+/* Приборы зоны — чипсами в ряд, как в карточке комнаты на плане */
+.zone-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.zone-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 4px 2px 9px; border: 1px solid #E5E7EB; border-radius: 999px;
+    font-size: 11px; color: #6B7280; background: #fff; white-space: nowrap;
+}
+.zone-chip.on { border-color: #93C5FD; background: #EFF6FF; color: #1E3A8A; }
+.zone-chip i { font-style: normal; font-weight: 700; min-width: 10px; text-align: center; color: #111827; }
+.zone-chip b {
+    width: 20px; height: 20px; line-height: 19px; text-align: center; border-radius: 50%;
+    font-size: 14px; font-weight: 600; cursor: pointer; user-select: none; color: #4B5563;
+}
+.zone-chip b:hover { background: #DBEAFE; color: #1D4ED8; }
+body.dark-mode .zone-chip { background: transparent; border-color: #374151; color: #9CA3AF; }
+body.dark-mode .zone-chip.on { background: rgba(59,130,246,.15); border-color: #3B82F6; color: #BFDBFE; }
+body.dark-mode .zone-chip i { color: #F3F4F6; }
+
 .zone-input {
     width: 50px;
     padding: 4px;
