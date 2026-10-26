@@ -1846,7 +1846,18 @@ const Tour = {
         // переключают на ходу. Разошлась с тем, что нарисовано, — собираем заново.
         if (shown.dataset.seller !== (this.isSeller() ? '1' : '0')) { this.buildPlan(); this.show(); return; }
         if (this.skipped(step)) { this.show(); return; }
-        if (step.key === 'replace' && this.radWinOpen()) this._radWin = true;
+        if (step.key === 'replace') {
+            const open = this.radWinOpen();
+            if (open) this._radWin = true;
+            // Окно закрыли, не выбрав модель, — палец уже вернулся на фото радиатора, поясняем словами
+            else if (this._radWasOpen && this.tasksPending(step)) this.note('Окно замены закрылось. Нажмите на фото радиатора снова — палец покажет где.');
+            this._radWasOpen = open;
+        }
+        // Застрял на задании: через 30 секунд напоминаем, что шаг можно пропустить (один раз на шаг)
+        if (this.tasksOf(step) && this.tasksPending(step) && this._stuckKey !== this._step + ':' + this._enteredAt && Date.now() - this._enteredAt > 30000) {
+            this._stuckKey = this._step + ':' + this._enteredAt;
+            this.note('Не получается? Нажмите «Пропустить шаг» — вернуться можно кнопкой ←.');
+        }
         // Человек выполнил (или отменил) задание — обновляем галочки и кнопки
         if (this.tasksOf(step) && shown.dataset.t !== this.taskFlags(step).join('')) this.refreshTasks();
         // Всё выполнено и секунда прошла — дальше сами (см. refreshTasks)
