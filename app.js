@@ -25510,6 +25510,7 @@ const app = {
         { id: 'analytics', icon: '📈', label: 'Рынок', hint: 'Спрос, наши места по группам, конкуренты, цены' },
         { id: 'aifill', icon: '✨', label: 'Умное заполнение', hint: 'Что говорили и писали в окно ✨' },
         { id: 'articles', icon: '📰', label: 'Статьи', hint: 'Очередь публикаций на год: даты, тексты, что уже вышло' },
+        { id: 'news', icon: '🗞', label: 'Новости', hint: 'Лента «Что нового» на сайте: выпуски по неделям, график, правка и отклонение' },
         { id: 'channel', icon: '📣', label: 'Канал', hint: 'Посты Telegram-канала @heatcalc_ru: план, тексты, утверждение' },
         { id: 'leads', icon: '📨', label: 'Заявки', hint: 'Заявки на монтаж: откуда пришли и что просят' },
         { id: 'warranty', icon: '🛡', label: 'Гарантия STOUT', hint: 'Объекты с долей STOUT: порог для бланка, порог по объекту, реестр' },
@@ -25542,6 +25543,7 @@ const app = {
         dashboard: '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
         analytics: '<path d="M22 7l-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
         aifill: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4M21 5h-4"/>',
+        news: '<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/>',
         channel: '<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/>',
         articles: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
         leads: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
@@ -25562,7 +25564,7 @@ const app = {
         { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'distprices', 'equipment', 'successors'] },
         { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription', 'payready', 'mailbudget'] },
         { id: 'ai', label: 'ИИ и файлы', icon: 'recognition', tabs: ['recognition', 'plans', 'aifill'] },
-        { id: 'content', label: 'Контент', icon: 'articles', tabs: ['articles', 'channel'] }
+        { id: 'content', label: 'Контент', icon: 'articles', tabs: ['articles', 'channel', 'news'] }
     ],
 
     adminGroupOf: function (tabId) {
@@ -25770,7 +25772,7 @@ const app = {
     // «Заявки» — только владельцу: там имя и телефон заказчика, и видеть их
     // всем администраторам ни к чему. Ту же проверку делает lead_list.php,
     // клиентская здесь только чтобы не показывать пустую вкладку.
-    OWNER_ONLY_TABS: ['home', 'dashboard', 'analytics', 'aifill', 'articles', 'channel','leads', 'subscription', 'payready'],
+    OWNER_ONLY_TABS: ['home', 'dashboard', 'analytics', 'aifill', 'articles', 'channel', 'news', 'leads', 'subscription', 'payready'],
 
     // Разделы, закрытые для наблюдателя и менеджера. «Дистрибьюторы» — карточки
     // компаний целиком: промокоды, свои цены, контакты директоров. Это хозяйство
@@ -26914,6 +26916,275 @@ const app = {
         this.renderAdminChannel();
     },
 
+    // ═══ Вкладка «Новости» ═══════════════════════════════════════════════
+    //
+    // Лента heatcalc.ru/novosti/: выпуск раз в неделю (понедельник). Таблица news_issues
+    // правится только админом. Выходит «утверждён», в свой день, в 09:00 по Москве — робот
+    // .github/workflows/weekly-digest.yml (читает очередь через Edge Function news-queue).
+    // Отклонённый и черновик не выходят никогда.
+    NEWS_STATUS: {
+        draft: { label: 'Черновик', color: '#9CA3AF' },
+        approved: { label: 'Утверждён', color: '#3B82F6' },
+        published: { label: 'Опубликован', color: '#10B981' },
+        rejected: { label: 'Отклонён', color: '#DC2626' }
+    },
+
+    NEWS_TAGS: ['Смета', 'Расчёты', 'Оборудование', 'Тёплый пол', 'Радиаторы', 'Схемы', 'Для клиента', 'Документы', 'План дома', 'Распознавание', 'Профи', 'Удобство', 'Аккаунт', 'Цены', 'Вода', 'Канализация', 'Каталог', 'Приложение'],
+
+    _newsMondayAfter: function (iso) {
+        const d = new Date(iso + 'T12:00:00');
+        do { d.setDate(d.getDate() + 1); } while (d.getDay() !== 1);
+        return d.toISOString().slice(0, 10);
+    },
+
+    renderAdminNews: async function () {
+        const box = document.getElementById('admin_news_box');
+        if (!box) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        if (!this._newsIssues) {
+            box.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-sec); font-size:13px;">Загружаем выпуски…</div>';
+            const { data, error } = await supabaseClient.from('news_issues').select('*').order('issue_date', { ascending: true });
+            if (error) {
+                box.innerHTML = `<div style="padding:24px; color:var(--c-bad,#DC2626); font-size:13px;">Не удалось загрузить выпуски: ${esc(error.message)}
+                    <br><button class="auth-btn-base" style="margin-top:12px; width:auto; padding:0 14px; height:32px; font-size:12px;" onclick="app._newsIssues=null; app.renderAdminNews()">Попробовать ещё раз</button></div>`;
+                return;
+            }
+            this._newsIssues = data || [];
+        }
+
+        const list = this._newsIssues;
+        const f = this._newsFilter || (this._newsFilter = { status: '', showPub: false });
+        const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+        const fmt = d => d ? d.split('-').reverse().join('.') : '—';
+        const counts = { draft: 0, approved: 0, published: 0, rejected: 0 };
+        list.forEach(p => { counts[p.status] = (counts[p.status] || 0) + 1; });
+        const paused = !!((this.appSettings || {}).news || {}).paused;
+
+        // Запас: сколько понедельников подряд вперёд закрыто утверждёнными выпусками.
+        const approvedDates = new Set(list.filter(p => p.status === 'approved').map(p => p.issue_date));
+        const lastPub = list.filter(p => p.status === 'published').map(p => p.issue_date).sort().pop() || today;
+        let cur = this._newsMondayAfter(lastPub > today ? lastPub : today);
+        if (cur <= today) cur = this._newsMondayAfter(today);
+        let weeks = 0, coverUntil = null;
+        while (approvedDates.has(cur)) { weeks++; coverUntil = cur; cur = this._newsMondayAfter(cur); }
+        const gapDate = cur;
+        const runwayColor = weeks >= 4 ? '#10B981' : (weeks >= 2 ? '#D97706' : '#DC2626');
+
+        // График: колонки-понедельники от первого выпуска до последнего (минимум 12 недель вокруг сегодня).
+        const byDate = {};
+        list.forEach(p => { byDate[p.issue_date] = p; });
+        const dates = list.map(p => p.issue_date).sort();
+        let first = dates[0] || today;
+        const lastD = dates[dates.length - 1] || today;
+        let mon = new Date(first + 'T12:00:00'); while (mon.getDay() !== 1) mon.setDate(mon.getDate() + 1);
+        const cols = [];
+        for (let guard = 0; guard < 80; guard++) {
+            const iso = mon.toISOString().slice(0, 10);
+            if (iso > lastD && cols.length >= 12) break;
+            if (iso > lastD) break;
+            cols.push(iso);
+            mon.setDate(mon.getDate() + 7);
+        }
+        const chart = cols.map(iso => {
+            const p = byDate[iso];
+            const st = p ? (this.NEWS_STATUS[p.status] || this.NEWS_STATUS.draft) : null;
+            const h = p ? (p.status === 'rejected' ? 26 : 50 + Math.min(((p.items || []).length || 0) * 8, 40)) : 14;
+            const isToday = iso <= today && today < this._newsMondayAfter(iso);
+            const tip = p ? `${fmt(iso)} · ${st.label} · ${(p.items || []).length} пунктов · ${p.title || ''}` : `${fmt(iso)} · выпуска нет`;
+            const click = p ? `onclick="app._newsOpen=${p.id}; app._newsFilter.showPub=true; app.renderAdminNews()"` : `onclick="app.newsNew('${iso}')"`;
+            return `<div title="${esc(tip)}" ${click} style="flex:1 1 0; min-width:26px; max-width:64px; cursor:pointer; text-align:center;">
+                <div style="height:96px; display:flex; align-items:flex-end;">
+                    <div style="width:100%; height:${h}px; border-radius:6px 6px 2px 2px; ${p ? 'background:' + st.color + ';' : 'border:1px dashed var(--border); background:transparent;'} ${isToday ? 'outline:2px solid var(--primary); outline-offset:1px;' : ''}"></div>
+                </div>
+                <div style="font-size:10px; color:var(--text-sec); margin-top:4px; white-space:nowrap;">${iso.slice(8)}.${iso.slice(5, 7)}</div>
+            </div>`;
+        }).join('');
+        const legend = Object.keys(this.NEWS_STATUS).map(k => `<span style="display:inline-flex; align-items:center; gap:5px; margin-right:12px;"><i style="width:10px; height:10px; border-radius:3px; background:${this.NEWS_STATUS[k].color}; display:inline-block;"></i>${this.NEWS_STATUS[k].label}</span>`).join('')
+            + '<span style="display:inline-flex; align-items:center; gap:5px;"><i style="width:10px; height:10px; border-radius:3px; border:1px dashed var(--border); display:inline-block;"></i>выпуска нет (клик — создать)</span>';
+
+        const card = (n, label, color) => `
+            <div style="flex:1 1 120px; background:var(--surface-light); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">
+                <div style="font-size:22px; font-weight:800; color:${color}; line-height:1.2;">${n}</div>
+                <div style="font-size:11px; color:var(--text-sec); margin-top:2px;">${label}</div>
+            </div>`;
+        const pill = meta => `<span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; color:#fff; background:${meta.color}; white-space:nowrap;">${meta.label}</span>`;
+
+        const shown = list.filter(p => (!f.status || p.status === f.status) && (f.showPub || f.status === 'published' || p.status !== 'published'));
+        const rows = shown.map(p => {
+            const st = this.NEWS_STATUS[p.status] || this.NEWS_STATUS.draft;
+            const open = this._newsOpen === p.id;
+            const late = p.status === 'approved' && p.issue_date < today;
+            const its = p.items || [];
+            return `
+            <div style="border:1px solid ${open ? 'var(--primary)' : 'var(--border)'}; border-radius:10px; margin-bottom:8px; background:var(--surface);">
+                <div style="display:flex; gap:12px; align-items:flex-start; padding:10px 12px; cursor:pointer;" onclick="app._newsOpen=${open ? 'null' : p.id}; app._newsItems=null; app.renderAdminNews()">
+                    <div style="width:78px; flex:none; font-size:12px; ${late ? 'color:var(--c-warn,#D97706); font-weight:700;' : 'color:var(--text-main);'}">${fmt(p.issue_date)}<div style="color:var(--text-sec); font-size:11px;">${p.recap ? 'подборка' : 'за неделю'}${late ? ' ⏳' : ''}</div></div>
+                    <div style="flex:1; min-width:0;">
+                        <b style="font-size:13px; color:var(--text-main);">${esc(p.title || 'Без названия')}</b>
+                        <div style="font-size:12px; color:var(--text-sec); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(its.map(i => i.h).join(' · '))}</div>
+                    </div>
+                    <div style="flex:none;">${pill(st)}</div>
+                </div>
+                ${open ? this.newsEditorHtml(p) : ''}
+            </div>`;
+        }).join('');
+
+        box.innerHTML = `
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+                ${card(counts.draft || 0, 'черновики', '#9CA3AF')}
+                ${card(counts.approved || 0, 'утверждены, ждут понедельника', '#3B82F6')}
+                ${card(counts.published || 0, 'опубликовано', '#10B981')}
+                ${card(counts.rejected || 0, 'отклонено', '#DC2626')}
+                ${card(weeks + ' нед.', coverUntil ? 'запас до ' + fmt(coverUntil) : 'запаса нет', runwayColor)}
+            </div>
+            <div style="background:var(--surface-light); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px;">
+                <div style="font-size:12px; font-weight:700; color:var(--text-main); margin-bottom:8px;">График выпусков по неделям</div>
+                <div style="display:flex; gap:4px; align-items:flex-end; overflow-x:auto; padding-bottom:2px;">${chart}</div>
+                <div style="font-size:11px; color:var(--text-sec); margin-top:8px;">${legend}</div>
+            </div>
+            <div style="background:var(--surface-light); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:12px; line-height:1.6; color:var(--text-sec);">
+                <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
+                    <b style="font-size:13px; color:${paused ? 'var(--c-warn,#D97706)' : 'var(--c-ok,#10B981)'};">${paused ? '⏸ Публикация на паузе' : '▶ Публикация включена'}</b>
+                    <button class="auth-btn-base" style="margin:0; width:auto; padding:0 12px; height:28px; font-size:12px;" onclick="app.newsSetPaused(${!paused})">${paused ? 'Включить' : 'Поставить на паузу'}</button>
+                </div>
+                ${weeks < 2 ? `<b style="color:${runwayColor};">Запас кончается: на ${fmt(gapDate)} утверждённого выпуска нет.</b> Лента остановится, если не утвердить или не написать выпуск.<br>` : ''}
+                Выпуск выходит в свой понедельник в 09:00 по Москве: страница на <a href="/novosti/" target="_blank" rel="noopener" style="color:var(--primary);">heatcalc.ru/novosti/</a>, RSS и уведомление в калькуляторе. Выходят только «Утверждён». Остановить — «Отклонить» или «В черновик»; изменения в уже вышедшем выпуске появятся на сайте при ближайшем запуске робота.
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; align-items:center;">
+                <select style="padding:7px 10px; font-size:12px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main);"
+                    onchange="app._newsFilter.status = this.value; app.renderAdminNews()">
+                    <option value="">Все, кроме опубликованных</option>
+                    ${Object.keys(this.NEWS_STATUS).map(k => `<option value="${k}"${f.status === k ? ' selected' : ''}>${this.NEWS_STATUS[k].label}</option>`).join('')}
+                </select>
+                <label style="font-size:12px; color:var(--text-sec); display:inline-flex; gap:5px; align-items:center;"><input type="checkbox" ${f.showPub ? 'checked' : ''} onchange="app._newsFilter.showPub = this.checked; app.renderAdminNews()"> и опубликованные</label>
+                <span style="flex:1;"></span>
+                <button class="auth-btn-base" style="margin:0; width:auto; padding:0 12px; height:32px; font-size:12px;" onclick="app.newsNew()">+ Новый выпуск</button>
+                <button class="auth-btn-base" style="margin:0; width:auto; padding:0 12px; height:32px; font-size:12px;" onclick="app._newsIssues=null; app.renderAdminNews()">Обновить</button>
+            </div>
+            ${rows || '<div style="padding:20px; text-align:center; color:var(--text-sec); font-size:13px;">Выпусков нет.</div>'}`;
+    },
+
+    newsEditorHtml: function (p) {
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const inp = 'width:100%; box-sizing:border-box; padding:7px 10px; font-size:13px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main);';
+        const lbl = 'display:block; font-size:11px; color:var(--text-sec); margin:8px 0 3px;';
+        const btn = 'margin:0; width:auto; padding:0 12px; height:32px; font-size:12px;';
+        if (!this._newsItems || this._newsItems.id !== p.id) this._newsItems = { id: p.id, items: JSON.parse(JSON.stringify(p.items || [])) };
+        const items = this._newsItems.items;
+        const tagOpts = cur => {
+            const all = this.NEWS_TAGS.indexOf(cur) >= 0 || !cur ? this.NEWS_TAGS : this.NEWS_TAGS.concat([cur]);
+            return all.map(t => `<option value="${esc(t)}"${t === cur ? ' selected' : ''}>${esc(t)}</option>`).join('');
+        };
+        const itemsHtml = items.map((it, i) => `
+            <div style="border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin-bottom:8px; background:var(--surface-light);">
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <select id="nw_tag_${i}" style="${inp} width:150px; flex:none;">${tagOpts(it.tag)}</select>
+                    <input id="nw_h_${i}" value="${esc(it.h)}" placeholder="Что появилось" style="${inp}">
+                    <button class="auth-btn-base" style="${btn} color:var(--c-bad,#DC2626);" title="Убрать пункт" onclick="app.newsItemDel(${i})">✕</button>
+                </div>
+                <label style="${lbl}">Что это простыми словами</label>
+                <textarea id="nw_t_${i}" rows="2" style="${inp} font-family:inherit; resize:vertical;">${esc(it.t)}</textarea>
+                <label style="${lbl}">Что это даёт монтажнику</label>
+                <textarea id="nw_b_${i}" rows="2" style="${inp} font-family:inherit; resize:vertical;">${esc(it.b)}</textarea>
+            </div>`).join('');
+        const pub = p.status === 'published';
+        return `
+        <div style="border-top:1px solid var(--border); padding:12px;" onclick="event.stopPropagation()">
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+                <div style="flex:0 0 160px;"><label style="${lbl}">Дата выхода (понедельник)</label><input type="date" id="nw_date" value="${esc(p.issue_date)}" style="${inp}"></div>
+                <div style="flex:1 1 280px;"><label style="${lbl}">Заголовок выпуска</label><input id="nw_title" value="${esc(p.title)}" style="${inp}"></div>
+                <label style="font-size:12px; color:var(--text-sec); display:inline-flex; gap:5px; align-items:center; margin-bottom:8px;"><input type="checkbox" id="nw_recap" ${p.recap ? 'checked' : ''}> подборка (не «за неделю»)</label>
+            </div>
+            <div style="font-size:12px; font-weight:700; margin:12px 0 6px; color:var(--text-main);">Пункты выпуска (${items.length})</div>
+            ${itemsHtml || '<div style="font-size:12px; color:var(--text-sec); margin-bottom:8px;">Пунктов нет.</div>'}
+            <button class="auth-btn-base" style="${btn}" onclick="app.newsItemAdd()">+ Пункт</button>
+            ${pub ? `<div style="margin-top:10px; font-size:12px; color:var(--c-ok,#10B981);">Опубликован ${esc(p.published_at || '')} · <a href="/novosti/${esc(p.issue_date)}/" target="_blank" rel="noopener" style="color:var(--primary);">открыть страницу</a></div>` : ''}
+            <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:12px;">
+                <button class="auth-btn-base" style="${btn}" onclick="app.newsSave(${p.id})">Сохранить</button>
+                ${!pub && p.status !== 'approved' ? `<button class="auth-btn-base" style="${btn} background:#3B82F6; color:#fff;" onclick="app.newsSave(${p.id}, 'approved')">Утвердить</button>` : ''}
+                ${!pub && p.status === 'approved' ? `<button class="auth-btn-base" style="${btn}" onclick="app.newsSave(${p.id}, 'draft')">Вернуть в черновик</button>` : ''}
+                ${!pub && p.status !== 'rejected' ? `<button class="auth-btn-base" style="${btn} color:var(--c-bad,#DC2626);" onclick="app.newsSave(${p.id}, 'rejected')">Отклонить</button>` : ''}
+                <span style="flex:1;"></span>
+                ${!pub ? `<button class="auth-btn-base" style="${btn} color:var(--c-bad,#DC2626);" onclick="app.newsDelete(${p.id})">Удалить</button>` : ''}
+            </div>
+        </div>`;
+    },
+
+    _newsCollect: function () {
+        const v = k => (document.getElementById(k) || {}).value;
+        const items = (this._newsItems ? this._newsItems.items : []).map((_, i) => ({
+            tag: v('nw_tag_' + i) || '', h: (v('nw_h_' + i) || '').trim(), t: (v('nw_t_' + i) || '').trim(), b: (v('nw_b_' + i) || '').trim()
+        }));
+        if (this._newsItems) this._newsItems.items = items;
+        return items;
+    },
+
+    newsItemAdd: function () {
+        this._newsCollect();
+        this._newsItems.items.push({ tag: 'Смета', h: '', t: '', b: '' });
+        this.renderAdminNews();
+    },
+
+    newsItemDel: function (i) {
+        this._newsCollect();
+        this._newsItems.items.splice(i, 1);
+        this.renderAdminNews();
+    },
+
+    // Общий выключатель публикации: app_settings.news.paused (читает Edge Function news-queue)
+    newsSetPaused: async function (paused) {
+        const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+        const value = Object.assign({}, (this.appSettings || {}).news, { paused: !!paused });
+        const { error } = await supabaseClient.from('app_settings')
+            .upsert({ key: 'news', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+        if (error) { alert('Не сохранилось: ' + error.message); return; }
+        this.appSettings = Object.assign({}, this.appSettings, { news: value });
+        this.renderAdminNews();
+    },
+
+    newsSave: async function (id, status) {
+        const v = k => (document.getElementById(k) || {}).value;
+        const items = this._newsCollect().filter(i => i.h || i.t || i.b);
+        const row = { issue_date: v('nw_date'), title: (v('nw_title') || '').trim(), recap: !!(document.getElementById('nw_recap') || {}).checked, items: items };
+        if (!row.issue_date) { alert('Укажите дату выхода.'); return; }
+        if (new Date(row.issue_date + 'T12:00:00').getDay() !== 1 && !confirm('Эта дата — не понедельник. Выпуск всё равно выйдет в ближайший запуск робота после неё. Оставить?')) return;
+        if (status) row.status = status;
+        if (status === 'approved') {
+            if (!row.title) { alert('Заполните заголовок выпуска.'); return; }
+            if (!items.length || items.some(i => !i.h || !i.t)) { alert('В каждом пункте нужны «что появилось» и «простыми словами».'); return; }
+        }
+        const { data, error } = await supabaseClient.from('news_issues').update(row).eq('id', id).select().single();
+        if (error) { alert(error.code === '23505' ? 'На эту дату уже есть другой выпуск.' : 'Не сохранилось: ' + error.message); return; }
+        const i = this._newsIssues.findIndex(p => p.id === id);
+        if (i >= 0) this._newsIssues[i] = data;
+        this._newsIssues.sort((a, b) => a.issue_date < b.issue_date ? -1 : 1);
+        if (status) { this._newsOpen = null; this._newsItems = null; }
+        this.renderAdminNews();
+    },
+
+    newsNew: async function (date) {
+        const last = (this._newsIssues || []).map(p => p.issue_date).sort().pop();
+        const d = date || this._newsMondayAfter(last || new Date().toISOString().slice(0, 10));
+        const { data, error } = await supabaseClient.from('news_issues')
+            .insert({ issue_date: d, title: 'Новый выпуск', items: [{ tag: 'Смета', h: '', t: '', b: '' }], status: 'draft' }).select().single();
+        if (error) { alert(error.code === '23505' ? 'На эту дату уже есть выпуск.' : 'Не создалось: ' + error.message); return; }
+        this._newsIssues.push(data);
+        this._newsIssues.sort((a, b) => a.issue_date < b.issue_date ? -1 : 1);
+        this._newsOpen = data.id;
+        this._newsItems = null;
+        this.renderAdminNews();
+    },
+
+    newsDelete: async function (id) {
+        if (!confirm('Удалить выпуск? Вернуть будет нельзя. Чтобы просто не публиковать — нажмите «Отклонить».')) return;
+        const { error } = await supabaseClient.from('news_issues').delete().eq('id', id);
+        if (error) { alert('Не удалилось: ' + error.message); return; }
+        this._newsIssues = this._newsIssues.filter(p => p.id !== id);
+        this._newsOpen = null;
+        this.renderAdminNews();
+    },
+
     ARTICLES_URL: '/content/schedule.json',
 
     articleStatusMeta: {
@@ -27891,6 +28162,12 @@ const app = {
         if (this._adminTab === 'articles') {
             content.innerHTML = navHtml + '<div id="admin_articles_box"></div>';
             this.renderAdminArticles();
+            return;
+        }
+
+        if (this._adminTab === 'news') {
+            content.innerHTML = navHtml + '<div id="admin_news_box"></div>';
+            this.renderAdminNews();
             return;
         }
 

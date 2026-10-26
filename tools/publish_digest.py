@@ -388,8 +388,65 @@ def send_push(n, issue):
     return False
 
 
+NEWS_FN = 'https://ahanbwugsmcyvrwbmtlx.supabase.co/functions/v1/news-queue'
+NEWS_AUDIENCE = 'heatcalc-news'
+
+
+def remote(action, **kw):
+    """Вызов Edge Function news-queue (пропуск — OIDC-токен GitHub Actions, секретов нет).
+    None — очереди в админке нет (запуск не из Actions или функция ещё не выложена):
+    работаем по файлу content/digest.json. Любая другая ошибка останавливает прогон,
+    чтобы по устаревшему файлу не вышло то, что в админке отклонили."""
+    url, tok = os.environ.get('ACTIONS_ID_TOKEN_REQUEST_URL'), os.environ.get('ACTIONS_ID_TOKEN_REQUEST_TOKEN')
+    if not (url and tok):
+        return None
+    try:
+        req = urllib.request.Request(url + '&audience=' + NEWS_AUDIENCE, headers={'Authorization': 'bearer ' + tok})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            jwt = json.loads(r.read().decode('utf-8'))['value']
+        kw['action'] = action
+        req = urllib.request.Request(NEWS_FN, json.dumps(kw).encode('utf-8'),
+                                     {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + jwt})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return json.loads(r.read().decode('utf-8'))
+    except urllib.error.HTTPError as ex:
+        if ex.code == 404:
+            print('  news-queue не выложена — работаем по файлу очереди')
+            return None
+        sys.exit('news-queue %s: %s %s' % (action, ex.code, ex.read().decode('utf-8', 'replace')[:300]))
+    except Exception as ex:
+        sys.exit('news-queue %s: %s' % (action, ex))
+
+
+def from_remote(res):
+    """Выпуски из админки -> тот же вид, что в digest.json. Отклонённые и черновики до нас не доходят."""
+    items = []
+    for r in res['issues']:
+        i = {'date': r['issue_date'], 'title': r['title'], 'items': r['items'],
+             'published_at': r.get('published_at') if r['status'] == 'published' else None,
+             'pushed_at': r.get('push_status'), '_id': r['id']}
+        if r.get('recap'):
+            i['recap'] = True
+        items.append(i)
+    items.sort(key=lambda i: i['date'])
+    return items
+
+
+def seed():
+    """Разовая заливка очереди из файла в админку (workflow_dispatch, seed = true)."""
+    data = json.loads(read(QUEUE))
+    issues = [{'issue_date': i['date'], 'title': i['title'], 'recap': bool(i.get('recap')), 'items': i['items'],
+               'status': 'published' if i.get('published_at') else 'approved',
+               'published_at': i.get('published_at'), 'push_status': i.get('pushed_at')} for i in data['items']]
+    res = remote('seed', issues=issues)
+    print('Залито выпусков: %s' % (res or {}).get('count', 'нет очереди в админке'))
+
+
 def main():
     dry = '--dry-run' in sys.argv
+    if '--seed' in sys.argv:
+        seed()
+        return
     if '--rebuild' in sys.argv:
         build_pages(json.loads(read(QUEUE))['items'])
         print('Страницы, лента и RSS пересобраны.')
@@ -397,6 +454,14 @@ def main():
     no_push = '--no-push' in sys.argv
     today = os.environ.get('DIGEST_TODAY') or datetime.date.today().isoformat()
     data = json.loads(read(QUEUE))
+    res = remote('list')
+    if res is not None:
+        data['items'] = from_remote(res)
+        if res.get('paused'):
+            print('Публикация на паузе в админке — страницы пересобраны, рассылки нет.')
+            build_pages(data['items'])
+            write(QUEUE, json.dumps(data, ensure_ascii=False, indent=1) + '\n')
+            return
     items = data['items']
 
     due = None
@@ -406,6 +471,9 @@ def main():
             break
     if not due:
         print('Выпусков к отправке нет (сегодня %s).' % today)
+        if res is not None:
+            build_pages(items)     # правка уже вышедшего выпуска в админке доезжает на сайт
+            write(QUEUE, json.dumps(data, ensure_ascii=False, indent=1) + '\n')
         return
     n = issue_number(items, due)
     print('Выпуск № %d от %s: %s' % (n, due['date'], due['title']))
@@ -419,12 +487,16 @@ def main():
         print('  страницы собраны')
 
     if not due.get('pushed_at') and not no_push:
-        res = send_push(n, due)
-        if res == 'skipped':
+        res_push = send_push(n, due)
+        if res_push == 'skipped':
             due['pushed_at'] = 'skipped'    # нет секретов: очередь не должна вставать
-        elif res:
+        elif res_push:
             due['pushed_at'] = today
 
+    if res is not None and due.get('_id'):
+        remote('published', id=due['_id'], push=due.get('pushed_at') or '')
+    for i in items:
+        i.pop('_id', None)
     write(QUEUE, json.dumps(data, ensure_ascii=False, indent=1) + '\n')
 
 

@@ -5,6 +5,9 @@
 # дописывает sitemap.xml и вызывает Edge Function send-push (reason = digest):
 # она кладёт объявление в колокольчик и будит телефоны.
 #
+# Очередь выпусков живёт в админке («Контент → Новости», таблица news_issues): скрипт читает её
+# через Edge Function news-queue по OIDC-токену. Файл content/digest.json — зеркало и запасной путь.
+#
 # Нужны два секрета репозитория (Settings → Secrets and variables → Actions):
 #   DIGEST_PUSH_URL — адрес функции: https://<проект>.supabase.co/functions/v1/send-push
 #   DIGEST_SECRET   — тот же секрет, что в Edge Function Secrets Supabase
@@ -23,9 +26,14 @@ on:
         description: 'Только показать, что было бы отправлено'
         type: boolean
         default: false
+      seed:
+        description: 'Разово залить очередь из content/digest.json в админку («Контент → Новости»)'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
+  id-token: write      # пропуск к Edge Function news-queue (очередь из админки), секретов не нужно
 
 concurrency:
   group: weekly-digest
@@ -41,11 +49,15 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Залить очередь в админку (разово)
+        if: ${{ github.event.inputs.seed == 'true' }}
+        run: python tools/publish_digest.py --seed
+
       - name: Что к отправке
         run: python tools/publish_digest.py --dry-run
 
       - name: Публикация и рассылка
-        if: ${{ github.event.inputs.dry_run != 'true' }}
+        if: ${{ github.event.inputs.dry_run != 'true' && github.event.inputs.seed != 'true' }}
         env:
           DIGEST_PUSH_URL: ${{ secrets.DIGEST_PUSH_URL }}
           DIGEST_SECRET: ${{ secrets.DIGEST_SECRET }}
