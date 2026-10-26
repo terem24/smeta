@@ -21150,3 +21150,17 @@ body.empty-fit-panel #header_totals { display: none !important; }
     .sf-wrap { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .sf-brand { grid-column: 1 / -1; }
 }
+
+
+/* ── Планировщик: колонки сворачиваются по заголовку ── */
+.kb-col .kb-chev { display: inline-block; width: 1em; transition: transform .15s; }
+.kb-col.kb-collapsed .kb-chev { transform: rotate(-90deg); }
+.kb-col.kb-collapsed .kb-body { display: none !important; }
+.kb-col .kb-head:hover { filter: brightness(0.97); }
+/* Компьютер: свёрнутая колонка остаётся узкой полоской с заголовком */
+.kb-col.kb-collapsed { flex: 0 0 auto !important; min-width: 200px !important; }
+@media screen and (max-width: 899.98px) {
+    .kb-col.kb-collapsed { min-width: 0 !important; width: 100% !important; }
+    /* Открытая колонка на телефоне листается внутри, а не тянет всю страницу */
+    .kb-col:not(.kb-collapsed) { max-height: 70vh !important; }
+}
