@@ -10549,6 +10549,23 @@ const app = {
      * и следующее открытие панели должно снова показать её чистой.
      */
     _kanbanShowAbandoned: false,
+    // Пакетная отметка итогов: все КП без итога после срока, одним окном. Отметку ставит
+    // сотрудник за монтажника (он увидит её в истории сметы).
+    _kanbanOnlyOver: false,
+    kanbanMarkOverdue: async function () {
+        if (!window.KpOutcome) { this.alert('Модуль итогов не загружен, обновите страницу.'); return; }
+        const sumOf = {};
+        (this._kanbanEvents || []).forEach(e => { sumOf[e.calc_id] = (this._kanbanCalcSumMap || {})[String(e.calc_id)] || 0; });
+        const ev = (this._kanbanEvents || []);
+        const items = KpOutcome.build(ev).filter(k => k.overdue && !k.outcome);
+        // Менеджеру и наблюдателю — только сметы их компаний: берём те, что есть на доске
+        const ok = new Set(((this._kanbanCardsOver) || []).map(String));
+        const list = items.filter(k => ok.has(String(k.calcId)));
+        list.forEach(k => { k.sum = sumOf[k.calcId] || 0; });
+        list.sort((a, b) => b.overdueDays - a.overdueDays);
+        if (!list.length) { this.alert('КП без итога после срока нет.'); return; }
+        await KpOutcome.openDialog(list, { staff: true, onDone: () => { this.renderAdminKanban(false, true); } });
+    },
     toggleKanbanAbandoned: function (on) {
         this._kanbanShowAbandoned = !!on;
         // Перерисовка без повторного чтения: события уже в памяти.
@@ -10944,6 +10961,8 @@ const app = {
         // ради чего заводилась, и прятать её по умолчанию бессмысленно.
         list.forEach(p => {
             p.abandoned = !!liveIds && !liveIds.has(String(p.calc_id)) && p.current === 'calculated';
+            // Срок ответа клиента по КП (kp_outcome.js): вышел ли, сколько дней молчат
+            p.kpo = window.KpOutcome ? (KpOutcome.build(p.history)[0] || null) : null;
         });
 
         const installers = [...new Set(list.map(p => p.user_name).filter(Boolean))].sort();
@@ -10987,6 +11006,18 @@ const app = {
         const EVENT_META = this.ADMIN_KANBAN_EVENT_META;
         const stageOf = (event) => STAGES.find(s => s.events.includes(event));
 
+        // КП, у которых срок ответа вышел, а итога нет: карточка висит в «На согласовании»,
+        // но живой её считать нельзя. Показываем отдельно и даём отметить итог за монтажника.
+        const isOver = (p) => !!(p.kpo && p.kpo.overdue && !p.kpo.outcome);
+        const overList = filtered.filter(isOver);
+        // «В работе» считает только колонки согласования и оплаты: просроченные вычитаем из них
+        const inWork = overList.filter(p => { const st = stageOf(p.current); return st && (st.key === 'review' || st.key === 'payment'); });
+        const overSum = overList.reduce((a, c) => a + (c.totalSum || 0), 0);
+        const inWorkOverSum = inWork.reduce((a, c) => a + (c.totalSum || 0), 0);
+        const silentN = overList.filter(p => p.kpo.silent).length;
+        const shown = this._kanbanOnlyOver ? overList : filtered;
+        this._kanbanCardsOver = overList.map(p => String(p.calc_id));
+
         // Сводка над колонками: сколько проектов и денег в работе. «В работе» — всё, что дошло
         // до согласования или оплаты (две последние колонки); «Расчёты» и «Распознано» — ещё
         // не сделка. Считается по уже отфильтрованным карточкам.
@@ -11001,7 +11032,8 @@ const app = {
             <div class="ad-page-h"><div><h3>Планировщик</h3><div class="ad-sub">Сметы по этапам сделки: от разбора документа до запроса счёта</div></div></div>
             <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
                 ${kTile('Проектов', filtered.length, 'с учётом фильтров')}
-                ${kTile('В работе', rub(stApproval.sum + stPay.sum), `${stApproval.n + stPay.n} проектов: согласование и оплата`)}
+                ${kTile('В работе', rub(stApproval.sum + stPay.sum - inWorkOverSum), `${stApproval.n + stPay.n - inWork.length} проектов в срок: согласование и оплата`)}
+                ${kTile('Ждём итог', rub(overSum), `${overList.length} КП без ответа после срока${silentN ? `, из них ${silentN} молчат ${KpOutcome.SILENT_DAYS}+ дн.` : ''}`)}
                 ${kTile('Запрошен счёт', rub(stPay.sum), `${stPay.n} проектов в оплату`)}
                 ${kTile('Брошенные расчёты', abandonedCount, this._kanbanShowAbandoned ? 'показаны в колонке «Расчёты»' : 'скрыты, включаются галочкой')}
             </div>`;
@@ -11035,6 +11067,13 @@ const app = {
                                onchange="app.toggleKanbanAbandoned(this.checked)" style="cursor:pointer;">
                         Брошенные расчёты (${abandonedCount})
                     </label>
+                    <label title="Только КП, у которых срок ответа клиента вышел, а итога нет"
+                           style="display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--text-sec); cursor:pointer; white-space:nowrap;">
+                        <input type="checkbox" ${this._kanbanOnlyOver ? 'checked' : ''}
+                               onchange="app._kanbanOnlyOver = this.checked; app.renderAdminKanban(true)" style="cursor:pointer;">
+                        Нужен итог (${overList.length})
+                    </label>
+                    ${overList.length ? `<button class="admin-btn" onclick="app.kanbanMarkOverdue()" title="Список КП без итога: отметьте за монтажника, реализован ли объект">Отметить итоги (${overList.length})</button>` : ''}
                     <button class="admin-btn" onclick="app.renderAdminKanban(false, true)" title="Перечитать всю историю заново">Обновить</button>
                 </div>
             </div>
@@ -11066,7 +11105,7 @@ const app = {
         const columnsHtml = `
             <div class="admin-kanban-cols" style="display:flex; gap:14px; align-items:start; overflow-x:auto; padding-bottom:12px; width:100%;">
                 ${STAGES.map(s => {
-            const cards = filtered.filter(p => stageOf(p.current) === s).sort((a, b) => new Date(b.lastAt) - new Date(a.lastAt));
+            const cards = shown.filter(p => stageOf(p.current) === s).sort((a, b) => new Date(b.lastAt) - new Date(a.lastAt));
             const totalSum = cards.reduce((acc, c) => acc + (c.totalSum || 0), 0);
             return `
                         <div class="kb-col${this.kanbanIsCollapsed(s.key) ? ' kb-collapsed' : ''}" data-stage="${s.key}" ondragover="app.kanbanDragOver(event, this)" ondragleave="app.kanbanDragLeave(event, this)" ondrop="app.kanbanDrop(event, this, '${s.key}')" style="border-radius:12px; overflow:hidden; border:1px solid var(--border); display:flex; flex-direction:column; max-height:600px; min-width:260px; flex:1 1 0%;">
@@ -11100,6 +11139,7 @@ const app = {
                                         </div>
                                         <div style="font-weight:700; color:var(--primary); margin-bottom:8px; font-size:13px;">${(c.totalSum || 0).toLocaleString('ru-RU')} ₽</div>
                                         <div style="display:inline-block; background:${em.color}; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; margin-bottom:8px;">${em.label}</div>
+                                        ${isOver(c) ? `<div style="display:inline-block; background:${c.kpo.silent ? '#DC2626' : '#F59E0B'}; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; margin:0 0 8px 4px;" title="Срок ответа клиента вышел ${new Date(c.kpo.due).toLocaleDateString('ru-RU')}, итога нет">${c.kpo.silent ? 'Без ответа' : 'Ждём итог'} · ${c.kpo.overdueDays} дн.</div>` : ''}
                                         ${comment ? `<div style="color:var(--text-main); font-size:11px; background:var(--surface-light); border-radius:6px; padding:6px 8px; margin-bottom:8px; white-space:pre-wrap;">${comment.replace(/</g, '&lt;')}</div>` : ''}
                                         <div style="color:var(--text-sec); font-size:10px; border-top:1px solid var(--border); padding-top:6px;">
                                             Дата изменения<br>${new Date(c.lastAt).toLocaleString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -33685,7 +33725,7 @@ const app = {
                     B.results = card(hd + `<div style="margin-top:6px;">${lines}</div>` + listHtml
                         + `<div style="font-size:11.5px; color:var(--text-sec); margin-top:12px; line-height:1.55;">
                             Зелёная цифра — доля успешных. «Ушло в реализацию» — КП, по которому клиент согласился (в том числе запрошен, выставлен или оплачен счёт); доля — от всех КП периода.
-                            КП без ответа больше ${KpOutcome.cfg().outcomeAutoMonths || 12} мес. становится «Отклонено (авто)». До 23.10.2026 итоги не отмечали, поэтому у старых КП «без ответа» значит «итога нет».
+                            КП без ответа больше ${KpOutcome.cfg().outcomeAutoMonths} мес. становится «Отклонено (авто)». До 23.10.2026 итоги не отмечали, поэтому у старых КП «без ответа» значит «итога нет».
                             События читаются за последние ${this.DASH_EV_DAYS} дней.
                            </div>`
                         + (res.capped ? `<div style="font-size:11.5px; color:#F97316; margin-top:8px;">История событий обрезана по потолку строк — числа неполные.</div>` : ''));
