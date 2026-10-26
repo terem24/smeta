@@ -15096,9 +15096,22 @@ const app = {
             disc1c: ['Скидки в КП', 'Скидка по позициям в коммерческом предложении']
         };
         const acc = this.tariffAccount();
-        const mark = (on) => on ? '<span class="tc-yes">✓</span>' : '<span class="tc-no">–</span>';
+        // Ячейка: true — галочка, false — прочерк, строка — короткое значение («3 в мес.»)
+        const mark = (on) => typeof on === 'string' ? `<span class="tc-val">${on}</span>` : (on ? '<span class="tc-yes">✓</span>' : '<span class="tc-no">–</span>');
         const rows = [['Теплопотери и подбор оборудования', 'Котельная, радиаторы, тёплый пол, водоснабжение, канализация', true, true],
             ['Смета на оборудовании STOUT', 'Артикулы, цены, количество', true, true]];
+        // Лимиты без Профи — из тех же настроек, что применяет отправка КП (Subscription.limitSettings),
+        // чтобы таблица не расходилась с тем, что человек реально увидит. Считать можно без ограничений.
+        let lim = null;
+        try { if (typeof Subscription !== 'undefined') lim = { s: Subscription.limitSettings(), st: Subscription.limitStatus() }; } catch (e) { }
+        // Лимит включён настройкой, но может ещё не начаться — тогда в описании дата старта
+        if (lim && lim.s.enabled) rows.push(['КП клиентам в месяц', 'Сколько разных КП можно отправить: PDF, Excel или ссылкой' + (lim.st.on ? '' : ' (' + lim.st.label + ')'), lim.s.perMonth + ' в мес.', 'без лимита']);
+        if (lim && lim.s.outcomeOn !== false && lim.s.outcomeGate !== false) {
+            const ext = lim.s.outcomeExt;
+            rows.push(['Отправка КП без остановок',
+                `Без Профи при ${lim.s.outcomeGateN} КП без итога новые не уходят, пока их не отметите. Срок ответа ${lim.s.outcomeDays} дн.` + (ext > 0 ? `, продлить можно до ${ext} раз` : ''),
+                false, true]);
+        }
         (this.TARIFF_FEATURES || []).forEach(f => {
             if (f.locked || !TXT[f.id]) return;
             const bs = this.tariffCell(acc, 'base', f.id) !== 'off', ps = this.tariffCell(acc, 'pro', f.id) !== 'off';
@@ -15107,17 +15120,34 @@ const app = {
         rows.push(['Автосохранение в облако', 'Проекты открываются с любого устройства', false, true]);
         rows.sort((x, y) => (y[2] ? 1 : 0) - (x[2] ? 1 : 0));
 
+        // Общее для обоих тарифов — чипами, в таблице остаются только различия
+        const same = rows.filter(r => r[2] === true && r[3] === true), diff = rows.filter(r => !(r[2] === true && r[3] === true));
+        // Итог для Профи: сколько строк открывает именно он и по какой цене
+        const gain = rows.filter(r => r[3] && !r[2]).length + rows.filter(r => typeof r[2] === 'string').length;
+        let price = '';
+        try { if (typeof Subscription !== 'undefined') price = Subscription.priceLine().split('\n')[0]; } catch (e) { }
+        const pitch = (isPro || !gain) ? '' : `<div class="lk-card tc-pitch">
+                <b>Профи открывает ещё ${gain} ${gain % 10 === 1 && gain !== 11 ? 'возможность' : (gain % 10 >= 2 && gain % 10 <= 4 && (gain < 12 || gain > 14) ? 'возможности' : 'возможностей')}</b>
+                ${price ? `<span class="tc-price">${price}</span>` : ''}
+                <button type="button" class="lk-btn-sm" onclick="app.closeProfileModal(); app.showModal('pro');">Оформить Профи</button>
+            </div>`;
+
         container.innerHTML = `
             <div class="lk-section-head"><div><h4>Тариф</h4><div class="lk-sub">Что доступно сейчас и что даёт Профи</div></div></div>
             <div style="margin-bottom:14px;">${statusCard}</div>
+            <div class="lk-card tc-common">
+                <b>В обоих тарифах</b>
+                <div class="tc-chips">${same.map(r => `<span title="${r[1]}">✓ ${r[0]}</span>`).join('')}</div>
+            </div>
             <div class="lk-card tc-table">
-                <div class="tc-row tc-head"><div></div><div>Базовый</div><div class="tc-pro">Профи</div></div>
-                ${rows.map(([t, d, b, p]) => `
-                    <div class="tc-row">
+                <div class="tc-row tc-head"><div>Отличия</div><div>Базовый</div><div class="tc-pro">Профи</div></div>
+                ${diff.map(([t, d, b, p]) => `
+                    <div class="tc-row${/^(КП клиентам|Отправка КП)/.test(t) ? ' tc-lim' : ''}">
                         <div class="tc-f"><b>${t}</b><span>${d}</span></div>
                         <div>${mark(b)}</div><div class="tc-pro">${mark(p)}</div>
                     </div>`).join('')}
             </div>
+            ${pitch}
         `;
     },
 

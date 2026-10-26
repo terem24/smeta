@@ -21006,10 +21006,28 @@ body.empty-fit-panel #header_totals { display: none !important; }
 .tc-head .tc-pro { color: var(--primary); }
 .tc-yes { display: inline-flex; width: 24px; height: 24px; border-radius: 50%; background: #10B981; color: #fff; font-weight: 800; font-size: 14px; align-items: center; justify-content: center; }
 .tc-no { color: var(--text-sec); opacity: .55; font-size: 20px; }
+.tc-common { margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
+.tc-common > b { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-sec); }
+.tc-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.tc-chips span { font-size: 12.5px; padding: 4px 10px; border-radius: 14px; background: rgba(16, 185, 129, .12); color: var(--text-main); }
+.tc-head > div:first-child { text-align: left; padding-left: 16px; text-transform: none; letter-spacing: 0; }
+.tc-val { font-size: 12px; font-weight: 700; color: var(--text-main); line-height: 1.2; }
+.tc-pro .tc-val { color: #059669; }
+.tc-pitch { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.tc-pitch b { font-size: 14px; color: var(--text-main); }
+.tc-pitch li b { font-size: inherit; font-weight: 600; }
+.tc-pitch ul { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-sec); line-height: 1.45; }
+.tc-price { font-size: 13px; font-weight: 600; color: var(--text-main); }
 @media (max-width: 600px) {
-    .tc-row { grid-template-columns: 1fr 64px 60px; }
+    .tc-row { grid-template-columns: 1fr 66px 66px; }
     .tc-f { padding-left: 12px !important; }
     .tc-f b { font-size: 13px; }
+    .tc-f span { font-size: 11.5px; }
+    /* Заголовок говорит сам за себя; пояснения остаются только у строк про лимиты */
+    .tc-row:not(.tc-lim) .tc-f span { display: none; }
+    .tc-head > div { font-size: 11px; }
+    .tc-val { font-size: 11px; }
+    .tc-pitch .lk-btn-sm { width: 100%; }
 }
 
 /* Меню кабинета на телефоне и планшете стоймя — в одном виде с левой панелью .lk-rail:
