@@ -141,7 +141,11 @@ const Tour = {
                 { label: 'Поставьте 4 жильца', done: () => !!Tour.st().hotWater && Number(Tour.st().res) === 4 }
             ],
             now: () => Tour.st().hotWater ? 'горячая вода включена, жильцов: ' + Number(Tour.st().res) : 'горячая вода выключена',
-            point: () => Tour.st().hotWater ? document.querySelector('#blk_res .step-btn:last-child') : document.querySelector('#blk_hw_row .switch')
+            point: () => {
+                if (!Tour.st().hotWater) return document.querySelector('#blk_hw_row .switch');
+                // Жильцов больше четырёх — показываем на «−», меньше — на «+»
+                return document.querySelector(Number(Tour.st().res) > 4 ? '#blk_res .step-btn:first-child' : '#blk_res .step-btn:last-child');
+            }
         },
         {
             block: 'basic', key: 'water', mob: 'inputs',
@@ -161,11 +165,13 @@ const Tour = {
                 { label: 'Глубина установки — 60 м (нажмите на число, впишите, Enter)', done: () => !!Tour.st().well && Number(Tour.st().wellDepth) === 60 }
             ],
             now: () => Tour.st().well ? 'насос включён, глубина ' + Number(Tour.st().wellDepth) + ' м' : 'насос выключен',
-            point: () => Tour.st().well ? document.getElementById('inp_wellDepth') : document.querySelector('#blk_well_wrap .switch')
+            point: () => Tour.st().well ? document.getElementById('val_wellDepth') : document.querySelector('#blk_well_wrap .switch')
         },
         {
-            // Строка с радиатором: ищем по названию. В окне замены радиатора есть фильтры
-            // «Тип прибора», «Подключение» (боковое или нижнее) и «Высота».
+            // Строка с радиатором: ищем по названию (колонка «Наименование»). В окне замены
+            // радиатора есть фильтры «Тип прибора», «Подключение» (боковое или нижнее) и «Высота».
+            // Окно закрывается, как только модель выбрана, поэтому задания идут в порядке
+            // действий человека: открыть окно → сменить подключение → выбрать модель.
             block: 'basic', key: 'replace', mob: 'output',
             // Радиаторы могут лежать в свёрнутом подразделе сметы (группировка у Профи) — тогда
             // их строк на экране нет, и подсветка уезжала на вкладку «Оборудование». Разворачиваем.
@@ -173,11 +179,17 @@ const Tour = {
             sel: () => { const r = Tour.radRow() || Tour.anySwapRow(); return r ? r.tr : document.getElementById('tab_equipment'); },
             title: 'Замена радиатора',
             text: 'Любую позицию сметы можно заменить. Окно замены открывается по клику на фото позиции; фильтры «Тип прибора» и «Подключение» — внутри этого окна.',
-            snap: () => JSON.stringify({ sw: Tour.st().swaps || {}, c: Tour.radConn() }),
-            tasks: [
-                { label: 'Нажмите на фото радиатора и выберите другой', done: snap => JSON.stringify(Tour.st().swaps || {}) !== JSON.stringify(JSON.parse(snap).sw) },
-                { label: 'Смените подключение: в открытом окне замены нажмите фильтр «Подключение»', done: snap => { const c = Tour.radConn(); return !!c && c !== JSON.parse(snap).c; } }
-            ],
+            snap: () => { Tour._radWin = false; return JSON.stringify({ sw: Tour.st().swaps || {} }); },
+            // Радиатора в смете нет (редкий случай: свёрнуто или убран) — одно задание про любую позицию
+            tasks: () => {
+                const picked = snap => JSON.stringify(Tour.st().swaps || {}) !== JSON.stringify(JSON.parse(snap).sw);
+                if (!Tour.radRow()) return [{ label: 'Нажмите на фото любой позиции сметы и выберите другую', done: picked }];
+                return [
+                    { label: 'Нажмите на фото радиатора — откроется окно замены', done: () => !!Tour._radWin || Tour.radWinOpen() },
+                    { label: 'В окне замены нажмите фильтр «Подключение» и смените его', done: () => Tour.clicked('[onclick*="switchSwapRadConnection"]') },
+                    { label: 'Выберите в списке другой радиатор', done: picked }
+                ];
+            },
             point: () => { const r = Tour.radRow() || Tour.anySwapRow(); return r ? r.btn : null; }
         },
         {
@@ -386,7 +398,10 @@ const Tour = {
             for (const b of btns) {
                 if (!b.offsetParent) continue;
                 const tr = b.closest('tr');
-                if (tr && test(tr.textContent || '')) return { tr: tr, btn: b };
+                // Только название позиции: в строке есть ещё подсказка «i» с длинным текстом
+                // («клапан», «насос» и т. п.), и поиск по всей строке принимал радиатор за не-радиатор
+                const nm = tr && tr.querySelector('.col-name');
+                if (tr && test((nm || tr).textContent || '')) return { tr: tr, btn: b };
             }
         } catch (e) { }
         return null;
@@ -400,7 +415,7 @@ const Tour = {
     // только номер): «Монтажный набор для подключения радиатора» стоит в смете выше самих
     // радиаторов, и стрелка уводила в его окно замены. Нет такой — любая строка со словом.
     radRow: function () {
-        return this.swapRow(t => /^\s*\d*\s*радиатор/i.test(t)) ||
+        return this.swapRow(t => /^\s*радиатор/i.test(t)) ||
             this.swapRow(t => this.RAD_RE.test(t) && !this.RAD_NOT.test(t));
     },
 
@@ -421,21 +436,10 @@ const Tour = {
         } catch (e) { }
     },
 
-    // Как подключён радиатор в первой строке сметы: 'low' — нижнее, 'side' — боковое
-    radConn: function () {
-        const r = this.radRow();
-        if (!r) return '';
-        const t = r.tr.textContent || '';
-        // У каталога «(боковое подключение)», у моделей из прайса сокращённо — «(500мм, бок.)»
-        if (/боков|бок\./i.test(t)) return 'side';
-        if (/нижн|ниж\./i.test(t)) return 'low';
-        // В названии не сказано («Радиатор TITAN 11 секций») — по серии, как решает окно замены
-        try {
-            const sku = (t.match(/[A-Z]{3}-\d{4}-\d{6}/) || [])[0];
-            const s = sku && app._getSecRadSeries().find(x => x.arr && x.arr.some(y => y.id === sku));
-            if (s && !s.universal) return s.bottom ? 'low' : 'side';
-        } catch (e) { }
-        return '';
+    // Открыто ли окно замены радиатора (у него свои фильтры «Подключение» и «Тип прибора»)
+    radWinOpen: function () {
+        const body = document.getElementById('swap_modal_body');
+        return !!(this.swapOpen() && body && body.querySelector('[onclick*="switchSwapRadConnection"]'));
     },
 
     // Настоящее сохранение из карточки: на телефоне дискета спрятана в меню ☰, и
@@ -896,14 +900,6 @@ const Tour = {
         this.show();
     },
 
-    // 6. Учебный дом можно собрать заново: app.reset() сам спрашивает подтверждение, а
-    // начинать блок сначала имеет смысл, только если состояние и правда сбросили.
-    resetDemo: async function () {
-        const before = JSON.stringify(this.st());
-        try { await app.reset(); } catch (e) { return; }
-        if (JSON.stringify(this.st()) !== before) this.startBlock('basic');
-    },
-
     openMenu: function () {
         this._view = 'menu'; this._lastShown = -1;
         this.save();
@@ -1230,38 +1226,28 @@ const Tour = {
         return !!(sw && getComputedStyle(sw).display !== 'none' && sw.getClientRects().length);
     },
 
-    // Куда показывать пальцем в окне замены: пока модель не выбрана — на первую строку
-    // списка, пока не сменили подключение — на нужную кнопку фильтра «Подключение».
-    // У радиатора своё окно (строки selectSwapRadiator, фильтры .rsw-chip с
-    // switchSwapRadConnection), у прочих позиций — общее (selectSwapAlternative, .swap-chip).
+    // Куда показывать пальцем в окне замены. У радиатора свои задания (открыть окно → сменить
+    // подключение → выбрать модель): пока подключение не сменили — на кнопку фильтра
+    // «Подключение», потом — на первую модель списка. У прочих позиций окно общее
+    // (selectSwapAlternative) и задание одно — выбрать, туда и показываем.
     swapPointTarget: function (step) {
         const body = document.getElementById('swap_modal_body');
         if (!body) return null;
         const fl = this.taskFlags(step);
         const rows = Array.prototype.slice.call(body.querySelectorAll('tr[onclick*="selectSwapAlternative"], tr[onclick*="selectSwapRadiator"]'))
             .filter(r => r.offsetParent && !/selected|active/.test(r.className));
-        if (fl[0] && !fl[1]) {
-            // Нужное подключение — противоположное тому, что было при входе на шаг
-            let was = '';
-            try { was = JSON.parse(this._snap).c; } catch (e) { }
-            const want = was === 'side' ? 'bottom' : 'side';
-            const rc = Array.prototype.slice.call(body.querySelectorAll('[onclick*="switchSwapRadConnection"]')).filter(c => c.offsetParent);
-            if (rc.length) {
-                const chip = rc.find(c => c.getAttribute('onclick').indexOf("'" + want + "'") > -1);
-                // Фильтр уже переключён — показываем на модель с новым подключением
-                if (chip && !chip.classList.contains('active')) return chip;
-                // С новым подключением в этом материале нет прибора нужной мощности — список
-                // пуст. Показываем на «Тип прибора → Все»: там модели находятся.
-                if (!rows.length) {
-                    const all = Array.prototype.slice.call(body.querySelectorAll('[onclick*="switchSwapRadMaterial"]'))
-                        .find(c => c.offsetParent && c.getAttribute('onclick').indexOf("'all'") > -1 && !c.classList.contains('active'));
-                    if (all) return all;
-                }
-            } else {
-                const chip = Array.prototype.slice.call(body.querySelectorAll('.swap-chip'))
-                    .find(c => c.offsetParent && !c.classList.contains('on') && /боков|нижн/i.test(c.textContent || ''));
-                if (chip) return chip;
-            }
+        const rc = Array.prototype.slice.call(body.querySelectorAll('[onclick*="switchSwapRadConnection"]')).filter(c => c.offsetParent);
+        if (fl.length === 3 && !fl[1] && rc.length) {
+            // Любое подключение, кроме нынешнего («Все» не считаем — оно не «смена»)
+            const chip = rc.find(c => !c.classList.contains('active') && /'(side|bottom)'/.test(c.getAttribute('onclick')));
+            if (chip) return chip;
+        }
+        if (fl.length === 3 && fl[1] && !rows.length) {
+            // С новым подключением в этом материале нет прибора нужной мощности — список
+            // пуст. Показываем на «Тип прибора → Все»: там модели находятся.
+            const all = Array.prototype.slice.call(body.querySelectorAll('[onclick*="switchSwapRadMaterial"]'))
+                .find(c => c.offsetParent && c.getAttribute('onclick').indexOf("'all'") > -1 && !c.classList.contains('active'));
+            if (all) return all;
         }
         return rows[0] || null;
     },
@@ -1702,8 +1688,6 @@ const Tour = {
             (step.actions ? '<div class="tour-actions">' + step.actions.map(a =>
                 '<button type="button" class="tour-act" onclick="' + a.run + '">' + a.label + '</button>').join('') + '</div>' : '') +
             (typeof v.extra === 'function' ? v.extra.call(this) : '') +
-            (step.block === 'basic' && this._step > this.STEPS.findIndex(x => x.block === 'basic') ?
-                '<div class="tour-card-foot tour-reset-foot"><a href="#" class="tour-reset" onclick="Tour.resetDemo();return false;">↺ Накрутил лишнего — начать учебный дом заново</a></div>' : '') +
             '<div class="tour-note" id="tour_note" role="status"></div>' +
             '<div class="tour-card-btns" id="tour_btns">' + this.btnsHtml(step) + '</div>';
         this.chooseDock(card, el);
@@ -1862,6 +1846,7 @@ const Tour = {
         // переключают на ходу. Разошлась с тем, что нарисовано, — собираем заново.
         if (shown.dataset.seller !== (this.isSeller() ? '1' : '0')) { this.buildPlan(); this.show(); return; }
         if (this.skipped(step)) { this.show(); return; }
+        if (step.key === 'replace' && this.radWinOpen()) this._radWin = true;
         // Человек выполнил (или отменил) задание — обновляем галочки и кнопки
         if (this.tasksOf(step) && shown.dataset.t !== this.taskFlags(step).join('')) this.refreshTasks();
         // Всё выполнено и секунда прошла — дальше сами (см. refreshTasks)
@@ -2078,9 +2063,8 @@ body.dark-mode .tour-note { color: #FDE68A; background: rgba(245, 158, 11, 0.16)
 
 .tour-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .tour-btn-skip { font-weight: 600; border-style: dashed; }
-@media screen and (max-width: 759px) { .tour-reset-foot { display: none; } .tour-card .tour-card-text { font-size: 12.5px; } .tour-now { margin-top: 4px; padding-top: 4px; } }
+@media screen and (max-width: 759px) { .tour-card .tour-card-text { font-size: 12.5px; } .tour-now { margin-top: 4px; padding-top: 4px; } }
 .tour-resume { width: 100%; margin: 0 0 10px; justify-content: flex-start; text-align: left; }
-.tour-reset { color: var(--text-sec); text-decoration: underline dotted; }
 .tour-locked { margin-top: 8px; font-size: 12px; line-height: 1.4; color: var(--text-sec); }
 .tour-now { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--border); font-size: 12px; font-weight: 600; color: var(--text-sec); }
 .tour-card-btns .tour-btn-back { margin-right: auto; min-width: 40px; padding: 8px 12px; font-size: 16px; }
