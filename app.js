@@ -11110,6 +11110,20 @@ const app = {
             // Причины отказов — по тем же карточкам, что на доске (свой филиал у менеджера)
             + (window.KpOutcome ? KpOutcome.reasonsHtml((ids => this._kanbanEvents.filter(e => ids.has(e.calc_id)))(new Set(list.map(p => p.calc_id)))) : '');
 
+        // Срез сделок (kp_outcome.js): все расчёты, отправленные и нет, одним объектом на монтажника
+        // и название. Брошенные и свёрнутые тоже здесь, фильтры доски (кроме периода и поиска) действуют
+        const sliceCards = list.filter(p => (installerFilter === 'all' || p.user_name === installerFilter)
+            && (regionFilter === 'all' || p.region === regionFilter)
+            && (distributorFilter === 'all' || String(p.distributor_id || '') === String(distributorFilter)))
+            .map(p => ({ id: String(p.calc_id), history: p.history, email: p.user_email, name: p.user_name, region: p.region,
+                dist: p.distributor_id, project: p.project_name, sum: p.totalSum, copied: !!p.copiedFrom }));
+        const sliceDistName = (id) => { const d = ((this.adminData && this.adminData.distributors) || []).find(x => String(x.id) === String(id)); return d ? d.company_name : ''; };
+        let sliceHtml = '';
+        if (window.KpOutcome) {
+            try { sliceHtml = KpOutcome.sliceHtml(KpOutcome.sliceBuild(sliceCards), sliceDistName); }
+            catch (e) { console.warn('[планировщик] срез сделок не построен:', e); }
+        }
+
         // Данные упёрлись в потолок строк — говорим об этом прямо. Молчаливая
         // обрезка читается как «столько всего и есть», а это не так; заодно на
         // таких данных отключена чистка осиротевших событий.
@@ -11179,7 +11193,7 @@ const app = {
         `;
 
         const root = document.getElementById('kanban_root');
-        if (root) root.outerHTML = `<div id="kanban_root">${filterHtml}${cappedHtml}${offlineHtml}${columnsHtml}</div>`;
+        if (root) root.outerHTML = `<div id="kanban_root">${filterHtml}${cappedHtml}${sliceHtml}${offlineHtml}${columnsHtml}</div>`;
     },
 
     /**
@@ -16200,7 +16214,7 @@ const app = {
         const outAt = (k) => { const e = k.outcomeEvent, t = e && e.created_at ? Date.parse(e.created_at) : 0; return t || k.due || 0; };
         const realized = kpList.filter(k => k.outcome === 'won' && inCur(outAt(k))).sort((a, b) => outAt(b) - outAt(a));
         const notReal = kpList.filter(k => k.outcome === 'lost' && inCur(outAt(k)));
-        const realSum = realized.reduce((sum, k) => sum + (sumOfCalc[k.calcId] || 0), 0);
+        const realSum = realized.reduce((sum, k) => sum + (k.amount || sumOfCalc[k.calcId] || 0), 0);
         let realMargin = 0, realMarginN = 0;
         if (mSet) realized.forEach(k => { const e = estOfCalc[k.calcId]; const m = e ? this.estimateMarginOf(e, mSet) : null; if (m != null) { realMargin += m; realMarginN++; } });
         const decidedN = kpWon + kpLost + kpSilent;
@@ -16232,7 +16246,7 @@ const app = {
             ? `<br><span style="font-size:11.5px;">оборудование ${money(realEq)}${seller ? '' : ' · монтаж ' + money(realWorks)}</span>` : '';
         const realizedHtml = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">🏆 </span>Реализовано</h4><small class="sm-head-note">${perLabel}</small></div>
             <div class="sm-tiles">
-                ${tile('Реализовано', num(realized.length) + ' ' + objW(realized.length), (realSum ? money(realSum) + ' по сумме смет' : (realized.length ? 'сумма смет неизвестна' : 'пока ничего не отмечено')) + splitLine, '', 'Объекты, где вы отметили «реализован», и КП со счётом: выставлен, оплачен. Оборудование и монтаж — по сметам, найденным в облаке')}
+                ${tile('Реализовано', num(realized.length) + ' ' + objW(realized.length), (realSum ? money(realSum) + ' (сумма покупки или смета)' : (realized.length ? 'сумма смет неизвестна' : 'пока ничего не отмечено')) + splitLine, '', 'Объекты, где вы отметили «реализован», и КП со счётом: выставлен, оплачен. Оборудование и монтаж — по сметам, найденным в облаке')}
                 ${mSet ? tile('Ваш заработок ≈', realMarginN ? money(realMargin) : '—', realMarginN ? 'по ' + realMarginN + ' из ' + realized.length + ' ' + objW(realized.length) : 'нужны проценты во вкладке «Деньги»', '', 'Оценка по вашим процентам из «Денег»') : ''}
                 ${tile('Реализовано из отправленных', convRate === null ? '—' : convRate + '%', decidedN ? kpWon + ' из ' + decidedN + ' КП (срок ответа вышел или итог есть)' : 'пока нечего считать', '', 'Доля реализованных среди КП, отправленных за период; КП, у которых срок ответа ещё идёт, не считаются')}
                 ${tile('Не реализовано', num(notReal.length), reasons.length ? 'чаще всего: ' + esc(reasons[0]) : '—')}

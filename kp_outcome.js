@@ -25,17 +25,36 @@ const KpOutcome = {
     // без них (страница ещё не прочитала настройки) — эти значения
     FALLBACK: { outcomeOn: true, outcomeAudBase: true, outcomeAudPro: true, outcomeAudMgr: true, outcomeGate: true,
         outcomeDays: 30, outcomeDaysMin: 14, outcomeDaysMax: 60, outcomeExt: 2, outcomeGateN: 2, outcomeGrace: 3,
-        outcomeAutoMonths: 6, outcomeHardDays: 14, excludeTerem: true },
+        outcomeAutoMonths: 6, outcomeHardDays: 14, excludeTerem: true,
+        outcomeProExt: 4, outcomeProExtDays: 45, outcomeProGateN: 5, outcomeProGrace: 7, outcomeProHardDays: 30, outcomeUnsentDays: 30 },
     cfg: function () {
         try { if (typeof Subscription !== 'undefined' && Subscription.limitSettings) return Subscription.limitSettings(); } catch (e) { }
         return this.FALLBACK;
     },
     get DAYS() { return this.cfg().outcomeDays; },
-    get MAX_EXT() { return this.cfg().outcomeExt; },
-    get GATE() { return this.cfg().outcomeGateN; },
-    get GRACE_DAYS() { return this.cfg().outcomeGrace; },
+    // Исключений нет: сотрудники ТЕРЕМ, менеджеры, админы и Профи отмечают итоги так же, как
+    // все. Тариф меняет только запас времени: у Профи (и сотрудников) больше продлений, они
+    // длиннее, больше КП без итога до блока отправки, льгота и жёсткий порог длиннее
+    tier: function () {
+        try {
+            if (typeof app === 'undefined') return 'base';
+            if (app.getAdminRole() !== 'base' || app.isPro() || app.isTeremStaff()) return 'pro';
+        } catch (e) { }
+        return 'base';
+    },
+    byTier: function (base, pro, d) {
+        const c = this.cfg(), v = Number(this.tier() === 'pro' ? c[pro] : c[base]);
+        return isFinite(v) && v >= 0 ? v : d;
+    },
+    get MAX_EXT() { return this.byTier('outcomeExt', 'outcomeProExt', 2); },
+    get GATE() { return this.byTier('outcomeGateN', 'outcomeProGateN', 2); },
+    get GRACE_DAYS() { return this.byTier('outcomeGrace', 'outcomeProGrace', 3); },
     // Сколько дней просрочки окно итога нельзя закрыть без отметки (0 — не требовать)
-    get HARD_DAYS() { const v = Number(this.cfg().outcomeHardDays); return isFinite(v) && v >= 0 ? v : 14; },
+    get HARD_DAYS() { return this.byTier('outcomeHardDays', 'outcomeProHardDays', 14); },
+    // Сколько дней продление «ещё думает» у Профи (у остальных — личный срок ответа)
+    get EXT_DAYS() { return this.tier() === 'pro' ? this.byTier('outcomeDays', 'outcomeProExtDays', 45) : 0; },
+    // Через сколько дней без движения неотправленный расчёт закрывается сам (0 — не закрывать)
+    get UNSENT_DAYS() { const v = Number(this.cfg().outcomeUnsentDays); return isFinite(v) && v >= 0 ? v : 30; },
     // Просрочка, после которой КП считается «без ответа»: срок вышел, напоминание ушло
     // в тот же день, и ещё столько дней тишины. Статус показывается, в базу не пишется
     SILENT_DAYS: 30,
@@ -155,7 +174,10 @@ const KpOutcome = {
                 autoLost = now >= dd.getTime();
             }
             const outcome = won ? 'won' : ((lost || autoLost) ? 'lost' : null);
-            const due = Math.max(lastSentAt, lastExtAt, start - D * this.DAY) + D * this.DAY;
+            // Продление несёт свою длину (у Профи длиннее); у старых отметок её нет — берём срок ответа
+            const lastExt = ext.length ? ext[ext.length - 1] : null;
+            const extDays = Number(lastExt && lastExt.meta && lastExt.meta.days) || D;
+            const due = Math.max(Math.max(lastSentAt, start - D * this.DAY) + D * this.DAY, lastExtAt ? lastExtAt + extDays * this.DAY : 0);
             const overdue = !outcome && now >= due;
             let kpV = 0;
             evs.forEach(e => { const v = e.meta && Number(e.meta.kp_version); if (v > kpV) kpV = v; });
@@ -177,6 +199,7 @@ const KpOutcome = {
                 confirmed: has('confirmed'),
                 revision: has('needs_revision'),
                 outcome: outcome,
+                amount: (won && won.event === 'won' && won.meta && Number(won.meta.amount)) || 0,
                 outcomeEvent: outcome === 'won' ? won : (outcome === 'lost' ? (lost || { event: 'lost', meta: { reason: 'timeout', auto: true, label: 'Нет ответа ' + autoM + ' мес. (авто)' } }) : null),
                 auto: autoLost || !!(lost && lost.meta && lost.meta.auto),
                 due: due,
@@ -411,17 +434,11 @@ const KpOutcome = {
         } catch (e) { /* без сумм */ }
     },
 
-    // Касается ли блок этого человека. Как лимит КП: только без Профи, не сотрудники
+    // Блок отправки касается всех, без исключений: любой тариф, менеджеры, админы, сотрудники
+    // ТЕРЕМ. Сколько КП без итога допустимо — зависит от тарифа (GATE, GRACE_DAYS)
     gateApplies: function () {
         if (typeof app === 'undefined') return false;
-        if (this.cfg().outcomeGate === false || !this.enabledForMe()) return false;
-        if (app.getAdminRole() !== 'base') return false;
-        if (app.isPro()) return false;
-        const tg = app.state.tgUser || {};
-        const acc = tg.account_type || app.state.accountType || 'base';
-        if (acc !== 'free' && acc !== 'base') return false;
-        if (typeof Subscription !== 'undefined' && Subscription.limitSettings().excludeTerem && app.isTeremStaff()) return false;
-        return true;
+        return this.cfg().outcomeGate !== false && this.enabledForMe();
     },
 
     /**
@@ -497,9 +514,9 @@ const KpOutcome = {
     },
 
     extend: async function (k, staff) {
-        const d = k.days || this.DAYS;
+        const d = this.EXT_DAYS || k.days || this.DAYS;
         const until = Date.now() + d * this.DAY;
-        await this.write(k, 'extended', { n: k.ext + 1, until: new Date(until).toISOString(), comment: 'Продлено на ' + d + ' дн., до ' + this.fmtDate(until) }, staff);
+        await this.write(k, 'extended', { n: k.ext + 1, days: d, until: new Date(until).toISOString(), comment: 'Продлено на ' + d + ' дн., до ' + this.fmtDate(until) }, staff);
     },
 
     // ── Окно ───────────────────────────────────────────────────────────────
@@ -528,7 +545,7 @@ const KpOutcome = {
                 if (opts.manual) return 'Отметьте итог: он попадёт в «Мои показатели» (сколько объектов реализовано и на какую сумму). Не знаете — закройте окно.';
                 if (opts.gate) return `Новые КП не отправляются, пока у ${this.GATE} КП нет итога. Отметьте — и отправка откроется. Считать можно как обычно.`;
                 const gateLine = this.gateApplies()
-                    ? `<br><small>Без Профи: если итога нет у ${this.GATE} КП, новые не отправятся. Считать можно всегда.</small>`
+                    ? `<br><small>Если итога нет у ${this.GATE} КП, новые не отправятся. Считать можно всегда.</small>`
                     : '';
                 return `КП ушли клиентам больше ${(items[0] && items[0].days) || this.DAYS} дней назад. Отметьте, реализован ли объект: в «Моих показателях» будет видно, сколько объектов реализовано и на какую сумму. Ошибка в смете — напишите, исправим.${gateLine}`;
             };
@@ -542,6 +559,8 @@ const KpOutcome = {
                 if (st.mode === 'won') {
                     body = `<div class="kpo-q">Где покупают? <span class="kpo-sub">(необязательно)</span></div>
                         <div class="kpo-chips">${this.WHERE.map(w => `<button type="button" class="kpo-chip${st.pick === w.key ? ' on' : ''}" data-act="pick" data-id="${k.calcId}" data-v="${w.key}">${this.esc(w.label)}</button>`).join('')}</div>
+                        <div class="kpo-q">На какую сумму купили? <span class="kpo-sub">(необязательно, ₽)</span></div>
+                        <input type="text" inputmode="numeric" class="kpo-am" data-id="${k.calcId}" value="${this.esc(st.amount || '')}" placeholder="например, 450000">
                         <textarea class="kpo-ta" data-id="${k.calcId}" rows="2" placeholder="Комментарий, если есть">${this.esc(st.comment || '')}</textarea>
                         <div class="kpo-row"><button type="button" class="kpo-btn" data-act="back" data-id="${k.calcId}">Назад</button><button type="button" class="kpo-btn kpo-ok" data-act="save" data-id="${k.calcId}">Сохранить</button></div>`;
                 } else if (st.mode === 'lost') {
@@ -555,7 +574,7 @@ const KpOutcome = {
                         <button type="button" class="kpo-btn kpo-won" data-act="won" data-id="${k.calcId}">✓ Да, реализован</button>
                         <button type="button" class="kpo-btn kpo-lost" data-act="lost" data-id="${k.calcId}">✕ Нет</button>
                         ${opts.manual && !k.overdue ? '' : left > 0
-                            ? `<button type="button" class="kpo-btn" data-act="extend" data-id="${k.calcId}" title="Спросим снова через ${k.days || this.DAYS} дней. Продлений осталось: ${left}">⏳ Думает, +${k.days || this.DAYS} дн.</button>`
+                            ? `<button type="button" class="kpo-btn" data-act="extend" data-id="${k.calcId}" title="Спросим снова через ${this.EXT_DAYS || k.days || this.DAYS} дней. Продлений осталось: ${left}">⏳ Думает, +${this.EXT_DAYS || k.days || this.DAYS} дн.</button>`
                             : `<span class="kpo-sub">Продлений больше нет</span>`}
                     </div>`;
                 }
@@ -595,6 +614,7 @@ const KpOutcome = {
             overlay.addEventListener('input', (e) => {
                 const id = e.target && e.target.getAttribute('data-id');
                 if (id && e.target.classList.contains('kpo-ta')) (state[id] = state[id] || {}).comment = e.target.value;
+                if (id && e.target.classList.contains('kpo-am')) (state[id] = state[id] || {}).amount = e.target.value;
             });
             overlay.addEventListener('click', async (e) => {
                 if (e.target === overlay) return mustAnswer() ? undefined : close(false);
@@ -625,6 +645,8 @@ const KpOutcome = {
                         btn.disabled = true;
                         const meta = st.mode === 'won' ? {} : { reason: st.pick };
                         if (st.mode === 'won' && st.pick) meta.where = st.pick;
+                        const amount = Math.round(Number(String(st.amount || '').replace(/[^\d]/g, '')));
+                        if (st.mode === 'won' && amount > 0) meta.amount = amount;
                         if (comment) meta.comment = comment;
                         meta.realized = st.mode === 'won';
                         // Подпись для истории сметы и карточки на доске
@@ -843,6 +865,191 @@ const KpOutcome = {
         return 'no_remind';
     },
 
+    // ── Срез сделок (админка) ─────────────────────────────────────────────
+    // Все расчёты, а не только ушедшие клиентам: от нажатия «посчитать» до итога.
+    // Расчёты одного монтажника с одним названием — один объект (пересчёты, версии,
+    // «сохранить как»), копии чужих смет в срез не входят. Статус объекта — самый
+    // «живой» из его расчётов: реализовано > в срок > ждём итог > без ответа > черновик
+    // > отказ > закрыто само.
+    // Неотправленный расчёт, к которому не прикасались UNSENT_DAYS дней, закрывается сам:
+    // статус «Не отправлено клиенту (авто)». В базу он не пишется, считается тут.
+    TECH_EVENTS: ['offline_link', 'opened', 'kp_reminder_sent', 'extended', 'kp_outcome_reminder', 'invoice_reminder_sent', 'invoice_reminder_declined'],
+    CATS: ['won', 'inwork', 'wait_over', 'silent', 'draft', 'lost', 'lost_auto', 'unsent_closed'],
+    CAT_INFO: {
+        won: { label: 'Реализовано', color: '#059669' },
+        inwork: { label: 'Ждём ответа клиента (в срок)', color: '#6366F1' },
+        wait_over: { label: 'Ждём итог (срок вышел)', color: '#F59E0B' },
+        silent: { label: 'Без ответа 30+ дн.', color: '#DC2626' },
+        draft: { label: 'Черновик (свежий)', color: '#60A5FA' },
+        lost: { label: 'Отклонено', color: '#EF4444' },
+        lost_auto: { label: 'Отклонено (авто, нет ответа)', color: '#B91C1C' },
+        unsent_closed: { label: 'Не отправлено клиенту (авто)', color: '#94A3B8' }
+    },
+
+    // Жизненный цикл одного расчёта по его истории
+    life: function (history, now) {
+        now = now || Date.now();
+        const ms = (e) => new Date(e.created_at).getTime();
+        const evs = (history || []).filter(e => e && e.created_at).slice().sort((a, b) => ms(a) - ms(b));
+        if (!evs.length) return null;
+        const has = (n) => evs.some(e => e.event === n);
+        const act = evs.filter(e => this.TECH_EVENTS.indexOf(e.event) < 0);
+        const lastAct = ms(act.length ? act[act.length - 1] : evs[evs.length - 1]);
+        const kpo = this.build(evs, now)[0] || null;
+        let cat;
+        if (kpo) cat = kpo.outcome === 'won' ? 'won' : kpo.outcome === 'lost' ? (kpo.auto ? 'lost_auto' : 'lost')
+            : kpo.overdue ? (kpo.silent ? 'silent' : 'wait_over') : 'inwork';
+        else cat = (this.UNSENT_DAYS > 0 && now - lastAct >= this.UNSENT_DAYS * this.DAY) ? 'unsent_closed' : 'draft';
+        return {
+            firstAt: ms(evs[0]), lastAct: lastAct, kpo: kpo, cat: cat,
+            saved: has('saved') || !!kpo, sent: !!kpo, opened: has('opened'),
+            confirmed: has('confirmed'), revision: has('needs_revision'),
+            invoice: ['invoice_requested', 'invoice_issued', 'paid'].some(has)
+        };
+    },
+
+    /**
+     * Срез: cards — [{ id, history, email, name, region, dist, project, sum, copied }].
+     * Возвращает объекты, когорты по месяцу создания, медианы сроков и «кто молчит».
+     */
+    sliceBuild: function (cards, now) {
+        now = now || Date.now();
+        const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+        const groups = {};
+        let copies = 0;
+        (cards || []).forEach(c => {
+            if (c.copied) { copies++; return; }
+            const L = this.life(c.history, now);
+            if (!L) return;
+            const nm = norm(c.project), em = String(c.email || '').toLowerCase();
+            const key = (em && nm && nm !== 'без названия') ? em + '|' + nm : 'id:' + c.id;
+            (groups[key] = groups[key] || []).push({ c: c, L: L });
+        });
+        const rank = (m) => this.CATS.indexOf(m.L.cat);
+        const objs = Object.keys(groups).map(key => {
+            const ms = groups[key].slice().sort((a, b) => rank(a) - rank(b) || b.L.lastAct - a.L.lastAct);
+            const top = ms[0], any = (f) => ms.some(m => m.L[f]);
+            const sentAt = Math.min.apply(null, ms.filter(m => m.L.kpo).map(m => m.L.kpo.firstSentAt).concat([Infinity]));
+            const oe = top.L.kpo && top.L.kpo.outcomeEvent;
+            const meta = (oe && oe.meta) || {};
+            return {
+                key: key, cat: top.L.cat, calcId: top.c.id, calcs: ms.length,
+                project: top.c.project || '', email: top.c.email || '', name: top.c.name || '', region: top.c.region || '', dist: top.c.dist || '',
+                firstAt: Math.min.apply(null, ms.map(m => m.L.firstAt)), lastAct: Math.max.apply(null, ms.map(m => m.L.lastAct)),
+                sentAt: isFinite(sentAt) ? sentAt : 0,
+                saved: any('saved'), sent: any('sent'), opened: any('opened'), confirmed: any('confirmed'), invoice: any('invoice'),
+                sum: top.c.sum || 0, amount: top.L.cat === 'won' ? (top.L.kpo.amount || 0) : 0,
+                outAt: oe && oe.created_at ? Date.parse(oe.created_at) : 0,
+                outBy: top.L.cat === 'lost_auto' ? 'auto' : (oe ? (this.WON_EVENTS.indexOf(oe.event) >= 0 && oe.event !== 'won' ? 'invoice' : (meta.by_staff ? 'staff' : 'installer')) : ''),
+                reason: top.L.cat === 'lost' ? (meta.label || this.reasonLabel(meta.reason) || '') : '',
+                comment: meta.comment || '',
+                overdueDays: top.L.kpo ? top.L.kpo.overdueDays : 0
+            };
+        });
+        const blank = () => ({ n: 0, saved: 0, sent: 0, opened: 0, confirmed: 0, invoice: 0, won: 0, lost: 0, over: 0, inwork: 0, draft: 0, closedAuto: 0, wonSum: 0 });
+        const add = (r, o) => {
+            r.n++; if (o.saved) r.saved++; if (o.sent) r.sent++; if (o.opened) r.opened++; if (o.confirmed) r.confirmed++; if (o.invoice) r.invoice++;
+            if (o.cat === 'won') { r.won++; r.wonSum += (o.amount || o.sum || 0); }
+            else if (o.cat === 'lost' || o.cat === 'lost_auto') r.lost++;
+            else if (o.cat === 'wait_over' || o.cat === 'silent') r.over++;
+            else if (o.cat === 'inwork') r.inwork++;
+            else if (o.cat === 'draft') r.draft++;
+            else if (o.cat === 'unsent_closed') r.closedAuto++;
+        };
+        const total = blank(), months = {};
+        objs.forEach(o => {
+            const d = new Date(o.firstAt), mk = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+            add(total, o); add(months[mk] = months[mk] || blank(), o);
+        });
+        const med = (a) => { a = a.filter(x => isFinite(x) && x >= 0).sort((x, y) => x - y); return a.length ? a[Math.floor(a.length / 2)] : null; };
+        const toSend = med(objs.filter(o => o.sentAt).map(o => (o.sentAt - o.firstAt) / this.DAY));
+        const toOutcome = med(objs.filter(o => (o.cat === 'won' || o.cat === 'lost') && o.outAt && o.sentAt && o.outBy !== 'invoice').map(o => (o.outAt - o.sentAt) / this.DAY));
+        const by = { installer: 0, staff: 0, invoice: 0, auto: 0 };
+        objs.forEach(o => { if (o.outBy && by[o.outBy] !== undefined) by[o.outBy]++; });
+        const quiet = {};
+        objs.filter(o => o.cat === 'wait_over' || o.cat === 'silent').forEach(o => {
+            const q = quiet[o.email || o.name] = quiet[o.email || o.name] || { name: o.name || o.email || '—', email: o.email, region: o.region, n: 0, sum: 0, max: 0 };
+            q.n++; q.sum += o.sum || 0; q.max = Math.max(q.max, o.overdueDays || 0);
+        });
+        return { now: now, objs: objs, total: total, months: months, copies: copies, toSend: toSend, toOutcome: toOutcome, by: by,
+            quiet: Object.keys(quiet).map(k => quiet[k]).sort((a, b) => b.n - a.n || b.max - a.max) };
+    },
+
+    conv2: function (r) {
+        const d = r.won + r.lost + r.over;
+        return d ? Math.round(r.won / d * 100) + '%' : '—';
+    },
+
+    // Разметка блока. distName(id) → название дистрибьютора для CSV
+    sliceHtml: function (S, distName) {
+        this._slice = S; this._distName = distName || (() => '');
+        this.injectCss();
+        const n = (v) => Number(v || 0).toLocaleString('ru-RU');
+        const rub = (v) => Math.round(v || 0).toLocaleString('ru-RU') + ' ₽';
+        const T = S.total;
+        const monthName = (mk) => { const p = mk.split('-'); return ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'][+p[1] - 1] + ' ' + p[0]; };
+        const cell = (v, style) => `<td style="padding:6px 8px; text-align:right; white-space:nowrap; ${style || ''}">${v}</td>`;
+        const rowHtml = (label, r, bold) => `<tr style="border-top:1px solid var(--border); ${bold ? 'font-weight:800; background:var(--surface);' : ''}">
+            <td style="padding:6px 8px; white-space:nowrap;">${label}</td>${cell(n(r.n))}${cell(n(r.saved))}${cell(n(r.sent))}${cell(n(r.opened))}${cell(n(r.confirmed))}${cell(n(r.invoice))}
+            ${cell(n(r.won), 'color:#059669; font-weight:700;')}${cell(n(r.lost), 'color:#EF4444;')}${cell(n(r.over), 'color:#D97706;')}${cell(n(r.inwork))}${cell(n(r.draft))}${cell(n(r.closedAuto), 'color:var(--text-sec);')}${cell(this.conv2(r), 'font-weight:700;')}${cell(r.wonSum ? rub(r.wonSum) : '—')}</tr>`;
+        const mks = Object.keys(S.months).sort().reverse().slice(0, 12);
+        const th = (t, tip) => `<th style="padding:6px 8px; text-align:right; font-weight:700; font-size:11px; color:var(--text-sec); white-space:nowrap;" title="${this.esc(tip || '')}">${t}</th>`;
+        const table = `<div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px; color:var(--text-main);">
+            <thead><tr><th style="padding:6px 8px; text-align:left; font-size:11px; color:var(--text-sec);">Создан в месяце</th>
+                ${th('Объектов', 'Расчёты одного монтажника с одним названием считаются одним объектом')}${th('Сохранено', 'Дошли до сохранённой сметы')}${th('Отправлено', 'КП ушло клиенту')}${th('Открыл клиент', 'Клиент открыл ссылку')}${th('Ответил', 'Клиент одобрил смету')}${th('Счёт', 'Запрошен, выставлен или оплачен счёт')}
+                ${th('Реализовано', 'Итог «согласился», либо счёт запрошен, выставлен или оплачен')}${th('Отказ', 'Отклонено монтажником, менеджером или само после автоотклонения')}${th('Нужен итог', 'Срок ответа вышел, итога нет')}${th('В срок', 'КП ушло клиенту, срок ответа ещё идёт')}${th('Черновик', 'Не отправлялось, свежее')}${th('Закрыто само', 'Не отправлялось и не трогалось дольше ' + this.UNSENT_DAYS + ' дн.')}${th('Конверсия', 'Реализовано / (реализовано + отказ + нужен итог)')}${th('Сумма реал.', 'Сумма покупки, если указана, иначе сумма сметы')}</tr></thead>
+            <tbody>${rowHtml('Всего', T, true)}${mks.map(mk => rowHtml(monthName(mk), S.months[mk])).join('')}</tbody></table></div>`;
+        const fmtD = (v) => v === null ? '—' : (v < 1 ? 'меньше суток' : Math.round(v) + ' дн.');
+        const decided = T.won + T.lost + T.over;
+        const lines = `<div style="display:flex; gap:18px; flex-wrap:wrap; margin:12px 0; font-size:12.5px; color:var(--text-main);">
+            <div><span style="color:var(--text-sec);">От расчёта до отправки клиенту (медиана):</span> <b>${fmtD(S.toSend)}</b></div>
+            <div><span style="color:var(--text-sec);">От отправки до отметки итога (медиана):</span> <b>${fmtD(S.toOutcome)}</b></div>
+            <div><span style="color:var(--text-sec);">Кто поставил итог:</span> <b>монтажник ${S.by.installer}</b> · менеджер ${S.by.staff} · счёт через ТЕРЕМ ${S.by.invoice} · само ${S.by.auto}</div>
+            ${S.copies ? `<div><span style="color:var(--text-sec);">Копий чужих смет не считаем:</span> <b>${S.copies}</b></div>` : ''}</div>`;
+        const quietHtml = S.quiet.length ? `<div style="font-weight:700; font-size:12.5px; margin:14px 0 6px; color:var(--text-main);">Кто молчит: КП без итога после срока</div>
+            <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px; color:var(--text-main);"><tbody>${S.quiet.slice(0, 15).map((q, i) => `<tr style="border-top:1px solid var(--border); cursor:pointer;" onclick="KpOutcome.sliceShowInstaller(${i})" title="Показать на доске его карточки">
+                <td style="padding:6px 8px;">${this.esc(q.name)}${q.region ? ` <span style="color:var(--text-sec);">· ${this.esc(q.region)}</span>` : ''}</td>
+                <td style="padding:6px 8px; text-align:right; white-space:nowrap;"><b>${q.n}</b> КП</td>
+                <td style="padding:6px 8px; text-align:right; white-space:nowrap;">${q.sum ? rub(q.sum) : ''}</td>
+                <td style="padding:6px 8px; text-align:right; white-space:nowrap; color:${q.max >= 30 ? '#DC2626' : '#D97706'};">самое старое: ${q.max} дн.</td></tr>`).join('')}</tbody></table></div>`
+            : `<div style="font-size:12.5px; color:var(--text-sec); margin-top:10px;">Все КП, у которых вышел срок ответа, разобраны.</div>`;
+        return `<details open style="background:var(--surface-light); border:1px solid var(--border); border-left:3px solid #6366F1; border-radius:10px; margin-bottom:16px;">
+            <summary style="padding:10px 14px; cursor:pointer; font-size:13px; color:var(--text-main);">📊 <b>Срез сделок:</b> ${n(T.n)} объектов · реализовано ${n(T.won)} · отказ ${n(T.lost)} · нужен итог ${n(T.over)} · конверсия ${this.conv2(T)}${decided ? ` (из ${n(decided)})` : ''}</summary>
+            <div style="padding:2px 14px 14px;">
+                <div style="font-size:11.5px; color:var(--text-sec); margin-bottom:8px; line-height:1.5;">Все расчёты, отправленные и нет. Неотправленный расчёт без движения ${this.UNSENT_DAYS} дн. закрывается сам, КП без ответа ${this.cfg().outcomeAutoMonths} мес. становится «Отклонено (авто)». Фильтры доски (монтажник, регион, дистрибьютор) действуют на срез.</div>
+                ${table}${lines}${quietHtml}
+                <div style="margin-top:12px;"><button class="admin-btn" onclick="KpOutcome.sliceCsv()" title="Каждый объект одной строкой, для Excel">Скачать CSV</button></div>
+            </div></details>`;
+    },
+
+    // Клик по строке «кто молчит»: на доске остаются его карточки
+    sliceShowInstaller: function (i) {
+        const q = this._slice && this._slice.quiet[i];
+        if (!q || typeof app === 'undefined') return;
+        const sel = document.getElementById('kanban_installer_filter');
+        if (sel) { sel.value = q.name; if (sel.value !== q.name) return; }
+        app._kanbanOnlyOver = true;
+        app.renderAdminKanban(true);
+    },
+
+    sliceCsv: function () {
+        const S = this._slice;
+        if (!S) return;
+        const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""').replace(/\r?\n/g, ' ') + '"';
+        const d = (t) => t ? new Date(t).toLocaleDateString('ru-RU') : '';
+        const head = ['Монтажник', 'Почта', 'Регион', 'Дистрибьютор', 'Объект', 'КП №', 'Расчётов в объекте', 'Создан', 'Статус', 'Сохранено', 'Отправлено клиенту', 'Клиент открыл', 'Одобрил', 'Счёт', 'Итог отмечен', 'Кто отметил', 'Причина отказа', 'Комментарий', 'Дней без ответа', 'Сумма сметы', 'Сумма реализации'];
+        const by = { installer: 'монтажник', staff: 'менеджер', invoice: 'счёт через ТЕРЕМ', auto: 'само' };
+        const rows = S.objs.map(o => [o.name, o.email, o.region, this._distName(o.dist), o.project, o.calcId, o.calcs, d(o.firstAt),
+            (this.CAT_INFO[o.cat] || {}).label, o.saved ? 'да' : 'нет', o.sentAt ? d(o.sentAt) : 'нет', o.opened ? 'да' : '', o.confirmed ? 'да' : '', o.invoice ? 'да' : '',
+            d(o.outAt), by[o.outBy] || '', o.reason, o.comment, o.overdueDays || '', Math.round(o.sum || 0), Math.round(o.amount || 0)]);
+        const csv = '﻿' + [head].concat(rows).map(r => r.map(q).join(';')).join('\r\n');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        a.download = 'srez_sdelok_' + new Date().toISOString().slice(0, 10) + '.csv';
+        document.body.appendChild(a); a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    },
+
     // ── Сводка менеджера ──────────────────────────────────────────────────
     // rows — история смет его монтажников (fetchInvoiceHistoryByEmails), emails —
     // их почты. Возвращает разметку блока «КП без итога» и число для плитки.
@@ -948,6 +1155,7 @@ const KpOutcome = {
 .kpo-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .kpo-chip { font: inherit; font-size: 12.5px; padding: 6px 10px; border-radius: 16px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); cursor: pointer; }
 .kpo-chip.on { background: var(--primary); border-color: var(--primary); color: var(--on-primary, #fff); }
+.kpo-am { width: 100%; box-sizing: border-box; margin-top: 6px; font: inherit; font-size: 16px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg, var(--surface)); color: var(--text-main); }
 .kpo-ta { width: 100%; box-sizing: border-box; margin-top: 8px; font: inherit; font-size: 16px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg, var(--surface)); color: var(--text-main); resize: vertical; }
 .kpo-err { font-size: 12px; color: #EF4444; margin-top: 6px; }
 /* Значок «сколько КП требуют внимания» на иконке «Объекты» — как непрочитанные на телефоне */
