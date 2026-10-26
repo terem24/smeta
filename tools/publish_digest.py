@@ -210,6 +210,14 @@ def week_range(date_str):
     return '%d %s – %d %s' % (a.day, MONTHS[a.month - 1], b.day, MONTHS[b.month - 1])
 
 
+def week_label(issue):
+    return 'подборка возможностей' if issue.get('recap') else 'за неделю ' + week_range(issue['date'])
+
+
+def week_label(issue):
+    return 'подборка возможностей' if issue.get('recap') else 'за неделю ' + week_range(issue['date'])
+
+
 def item_html(it, indent):
     pad = ' ' * indent
     out = '%s<div class="nitem">\n%s    <h3>' % (pad, pad)
@@ -225,13 +233,13 @@ def render_issue(items, issue):
     n = issue_number(items, issue)
     url = '%s/novosti/%s/' % (SITE, issue['date'])
     title = 'Новое в калькуляторе № %d: %s' % (n, issue['title'])
-    desc = 'Что нового для монтажника в калькуляторе отопления HeatCalc.ru за неделю %s: ' % week_range(issue['date']) + issue_desc(issue) + '.'
+    desc = 'Что нового для монтажника в калькуляторе отопления HeatCalc.ru %s: ' % ('— подборка возможностей' if issue.get('recap') else 'за неделю ' + week_range(issue['date'])) + issue_desc(issue) + '.'
     out = HEAD % dict(title=e(title), desc=e(desc), url=url, og_type='article', css=NEWS_CSS,
                       ld=ld_article(url, title, desc, issue['date']))
     out += '        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → <a href="/novosti/">Что нового</a> → Выпуск № %d</nav>\n' % n
     out += '        <h1>%s</h1>\n' % e(title)
-    out += '        <p class="art-meta"><time datetime="%s">%s</time> · за неделю %s</p>\n' % (issue['date'], human(issue['date']), week_range(issue['date']))
-    out += '        <p class="lead">Что появилось за неделю, простыми словами и с ответом на вопрос «а мне-то что с этого».</p>\n'
+    out += '        <p class="art-meta"><time datetime="%s">%s</time> · %s</p>\n' % (issue['date'], human(issue['date']), week_label(issue))
+    out += '        <p class="lead">%s, простыми словами и с ответом на вопрос «а мне-то что с этого».</p>\n' % ('Что в калькуляторе стоит попробовать, если вы ещё не пользовались' if issue.get('recap') else 'Что появилось за неделю')
     for it in issue['items']:
         out += item_html(it, 8)
     pub = published(items)
@@ -290,7 +298,7 @@ def render_index(items):
         n = issue_number(items, i)
         out += '        <section class="issue">\n'
         out += '            <h2><a href="/novosti/%s/">№ %d · %s</a></h2>\n' % (i['date'], n, e(i['title']))
-        out += '            <p class="art-meta"><time datetime="%s">%s</time> · за неделю %s</p>\n' % (i['date'], human(i['date']), week_range(i['date']))
+        out += '            <p class="art-meta"><time datetime="%s">%s</time> · %s</p>\n' % (i['date'], human(i['date']), week_label(i))
         out += ''.join(item_html(x, 12) for x in i['items'])
         out += '        </section>\n'
     out += pro_block_html()
@@ -359,7 +367,7 @@ def send_push(n, issue):
     secret = os.environ.get('DIGEST_SECRET', '').strip()
     if not url or not secret:
         print('  нет DIGEST_PUSH_URL/DIGEST_SECRET — рассылка пропущена')
-        return False
+        return 'skipped'
     body = {
         'reason': 'digest',
         'secret': secret,
@@ -411,7 +419,10 @@ def main():
         print('  страницы собраны')
 
     if not due.get('pushed_at') and not no_push:
-        if send_push(n, due):
+        res = send_push(n, due)
+        if res == 'skipped':
+            due['pushed_at'] = 'skipped'    # нет секретов: очередь не должна вставать
+        elif res:
             due['pushed_at'] = today
 
     write(QUEUE, json.dumps(data, ensure_ascii=False, indent=1) + '\n')
