@@ -2303,6 +2303,29 @@ const app = {
      * и не сотрудник ТЕРЕМ. Одно и то же место за сеанс пишем один раз: нужно число людей,
      * а не число нажатий. Без миграции запрос тихо падает.
      */
+    // Журнал шагов входа и регистрации (reg_events, миграция 20261026_reg_events.sql).
+    // Пишет и гость: сеанс — анонимный id в sessionStorage. Почту не передаём, только домен.
+    // Без миграции запись тихо падает и ничего не ломает.
+    logRegEvent: function (step, detail) {
+        try {
+            if (typeof supabaseClient === 'undefined' || !supabaseClient) return;
+            if (this.isTeremStaff && this.isTeremStaff()) return;
+            let sid = this._regSid;
+            if (!sid) {
+                try { sid = sessionStorage.getItem('hc_reg_sid'); } catch (e) { }
+                if (!sid) {
+                    sid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2));
+                    try { sessionStorage.setItem('hc_reg_sid', sid); } catch (e) { }
+                }
+                this._regSid = sid;
+            }
+            const mode = this.currentAuthTab === 'register' ? 'register' : 'login';
+            Promise.resolve(supabaseClient.rpc('log_reg_event', {
+                p_session: sid, p_mode: mode, p_step: step, p_detail: detail ? String(detail).slice(0, 120) : null
+            })).catch(() => { });
+        } catch (e) { }
+    },
+
     logPaywall: function (kind, src) {
         try {
             if (typeof supabaseClient === 'undefined' || !supabaseClient || !this.state.tgUser || this.isTeremStaff()) return;
@@ -47937,6 +47960,7 @@ const app = {
     },
 
     showAuthEmailForm: function () {
+        this.logRegEvent('form_open');
         this._authView = 'form';
         this.syncAuthChrome();
     },
@@ -48004,6 +48028,7 @@ const app = {
 
         btn.disabled = true;
         btn.innerText = 'Вход...';
+        this.logRegEvent('login_sent');
 
         try {
             const { data, error } = await supabaseClient.auth.signInWithPassword({
@@ -48012,11 +48037,13 @@ const app = {
             });
 
             if (error) throw error;
+            this.logRegEvent('login_ok');
             this.closeAuthModal();
             app.alert('✅ Вход выполнен успешно!' + (window.__HC_NATIVE__ ? '' : ' Страница будет перезагружена через 5 секунд.'));
             this.softReload(5000);
         } catch (err) {
             console.error("Детали ошибки входа (Supabase):", err);
+            this.logRegEvent('login_error', err && err.message);
             const userFriendlyMsg = getFriendlyErrorMessage(err, 'Неверный логин или пароль');
             if (authErrEl) {
                 authErrEl.innerText = 'Ошибка входа: ' + userFriendlyMsg;
@@ -48124,6 +48151,7 @@ const app = {
         const city = '';
         const activityTypes = [];
 
+        this.logRegEvent('email_entered', email.split('@')[1]);
         if (btn) {
             btn.innerText = 'Проверка...';
         }
@@ -48142,6 +48170,7 @@ const app = {
 
             // Логика блокировки: Если emailExists === true
             if (emailExists === true) {
+                this.logRegEvent('email_taken');
                 if (authErrEl) this.showEmailExistsHint(authErrEl, email);
                 if (btn) {
                     btn.disabled = false;
@@ -48158,6 +48187,7 @@ const app = {
                 const { data: blockRows } = await supabaseClient.rpc('reg_block_info', { p_email: email });
                 const blockInfo = Array.isArray(blockRows) ? blockRows[0] : blockRows;
                 if (blockInfo && blockInfo.till) {
+                    this.logRegEvent('blocked');
                     const msg = this.regBlockedText(blockInfo.till, blockInfo.kind);
                     if (authErrEl) { authErrEl.innerText = msg; authErrEl.style.display = 'block'; }
                     else app.alert(msg);
@@ -48179,6 +48209,7 @@ const app = {
                 catch (checkErr) { console.warn('[регистрация] промокод не проверен:', checkErr.message || checkErr); }
                 inviteOk = !!(inviteRes && inviteRes.ok === true);
                 if (inviteRes && !inviteRes.ok) {
+                    this.logRegEvent('promo_refused');
                     if (authErrEl) {
                         authErrEl.innerText = this.inviteRefusalText(inviteRes);
                         authErrEl.style.display = 'block';
@@ -48224,7 +48255,9 @@ const app = {
 
                 try {
                     await emailjs.send(serviceId, templateId, templateParams, publicKey);
+                    this.logRegEvent('code_sent');
                 } catch (sendErr) {
+                    this.logRegEvent('code_send_failed', sendErr && sendErr.message);
                     // Письмо не ушло (лимит почты, сеть): человека с рабочим промокодом
                     // не задерживаем — создаём учётку без кода, адрес проверит профиль.
                     if (!inviteOk) throw sendErr;
@@ -48280,6 +48313,7 @@ const app = {
         }
 
         if (!inputCode || String(inputCode) !== String(this.pendingRegistration.code)) {
+            this.logRegEvent('code_wrong');
             if (errEl) {
                 errEl.innerText = 'Неверный код подтверждения';
                 errEl.style.display = 'block';
@@ -48289,6 +48323,7 @@ const app = {
             return;
         }
 
+        this.logRegEvent('code_ok');
         await this.createAccountFromPending(false, btn);
     },
 
@@ -48333,11 +48368,13 @@ const app = {
             if (error) throw error;
 
 
+            this.logRegEvent('account_created');
             app.alert('✅ Регистрация успешна!' + (window.__HC_NATIVE__ ? '' : ' Страница будет перезагружена через 5 секунд.'));
             this.closeAuthModal();
             this.softReload(5000);
         } catch (err) {
             console.error("Детали ошибки создания аккаунта (Supabase):", err);
+            this.logRegEvent('signup_error', err && err.message);
 
             const friendlyErr = getFriendlyErrorMessage(err);
             if (authErrEl) {
