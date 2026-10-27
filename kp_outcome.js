@@ -873,7 +873,7 @@ const KpOutcome = {
     // > отказ > закрыто само.
     // Неотправленный расчёт, к которому не прикасались UNSENT_DAYS дней, закрывается сам:
     // статус «Не отправлено клиенту (авто)». В базу он не пишется, считается тут.
-    TECH_EVENTS: ['offline_link', 'opened', 'kp_reminder_sent', 'extended', 'kp_outcome_reminder', 'invoice_reminder_sent', 'invoice_reminder_declined'],
+    TECH_EVENTS: ['offline_link', 'opened', 'kp_reminder_sent', 'extended', 'kp_outcome_reminder', 'kp_autoclose_warning', 'invoice_reminder_sent', 'invoice_reminder_declined'],
     CATS: ['won', 'inwork', 'wait_over', 'silent', 'draft', 'lost', 'lost_auto', 'unsent_closed'],
     CAT_INFO: {
         won: { label: 'Реализовано', color: '#059669' },

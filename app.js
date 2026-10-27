@@ -493,7 +493,7 @@ function installEmailjsProxy() {
         if (/^Код подтверждения/i.test(s)) return 'code';
         if (/Запрос счёта/i.test(s)) return 'invoice';
         if (/^\[Feedback/i.test(s)) return 'feedback';
-        if (/^Вы давно не заходили/i.test(s) || /^Доступ к HeatCalc\.ru приостановлен/i.test(s)) return 'inactivity';
+        if (/^Вы давно не заходили/i.test(s) || /^Доступ к HeatCalc\.ru приостановлен/i.test(s) || /^Скоро доступ к HeatCalc\.ru/i.test(s) || /^Учётная запись HeatCalc\.ru будет удалена/i.test(s)) return 'inactivity';
         if (/^Первая смета в HeatCalc/i.test(s) || /^Что не получилось в HeatCalc/i.test(s) || /^Давно не видели смет/i.test(s)) return 'nudge';
         if (/^Новое личное сообщение/i.test(s)) return 'message';
         if (/^Вопрос без ответа/i.test(s)) return 'stale';
@@ -10532,6 +10532,7 @@ const app = {
         lost: { label: 'Не реализовано', color: '#DC2626' },
         extended: { label: 'Срок ответа продлён', color: '#94A3B8' },
         kp_outcome_reminder: { label: 'Напоминание: отметить итог КП', color: '#F59E0B' },
+        kp_autoclose_warning: { label: 'Предупреждение: КП закроется само', color: '#F59E0B' },
     },
     // Технические отметки: пишутся в ту же таблицу invoice_events, но воронкой не являются.
     // Карточка канбана живёт в колонке своего ПОСЛЕДНЕГО события, а событие, не входящее ни в
@@ -10544,7 +10545,7 @@ const app = {
     // прыгала бы из «В оплату» обратно «На согласование» при каждом открытии.
     // В воронке дашборда шаг всё равно учитывается: она считает по INVOICE_FLOW,
     // а не по колонкам канбана.
-    ADMIN_KANBAN_TECH_EVENTS: ['offline_link', 'opened', 'kp_reminder_sent', 'extended', 'kp_outcome_reminder'],
+    ADMIN_KANBAN_TECH_EVENTS: ['offline_link', 'opened', 'kp_reminder_sent', 'extended', 'kp_outcome_reminder', 'kp_autoclose_warning'],
     /**
      * Подпись и цвет события с учётом способа отправки. «Отправлено клиенту» —
      * одна колонка канбана, но в истории и в текущем статусе видно, чем ушло:
@@ -11062,20 +11063,25 @@ const app = {
         // Конверсия по КП, ушедшим клиентам (kp_outcome.js): согласились / (согласились + отказ +
         // без ответа). КП «в срок» не входят — иначе свежие занижали бы цифру. Те же правила, что
         // в виджете «КП → сделка» на главной, чтобы цифры совпадали.
-        const kpoB = { won: 0, lost: 0, silent: 0, wait: 0 };
+        const kpoB = { won: 0, lost: 0, silent: 0, wait: 0, auto: 0 };
         filtered.forEach(p => {
             const k = p.kpo; if (!k) return;
-            if (k.outcome === 'won') kpoB.won++; else if (k.outcome === 'lost') kpoB.lost++;
+            if (k.outcome === 'won') kpoB.won++; else if (k.outcome === 'lost') { kpoB.lost++; if (k.auto) kpoB.auto++; }
             else if (k.overdue) kpoB.silent++; else kpoB.wait++;
         });
         const kpoSent = kpoB.won + kpoB.lost + kpoB.silent + kpoB.wait;
         const kpoDecided = kpoB.won + kpoB.lost + kpoB.silent;
         const convPct = kpoDecided ? Math.round(kpoB.won / kpoDecided * 100) + '%' : '—';
+        // Вторая цифра: только по КП, где итог отметил человек. Автоотклонение («нет ответа»)
+        // не значит «клиент отказался»: сделку могли закрыть вне системы.
+        const kpoMarkedLost = kpoB.lost - kpoB.auto;
+        const kpoMarked = kpoB.won + kpoMarkedLost;
+        const convMarked = kpoMarked ? Math.round(kpoB.won / kpoMarked * 100) + '%' : '—';
         const allCalcs = filtered.length + (this._kanbanShowAbandoned ? 0 : abandonedCount);
         const kanbanStats = `
             <div class="ad-page-h"><div><h3>Планировщик</h3><div class="ad-sub">Сметы по этапам сделки: от разбора документа до запроса счёта</div></div></div>
             <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
-                ${kTile('Конверсия', convPct, kpoDecided ? `реализовано ${kpoB.won} из ${kpoDecided} разобранных КП` : 'срок ответа ещё не вышел ни у одного КП')}
+                ${kTile('Конверсия', convPct, kpoDecided ? `реализовано ${kpoB.won} из ${kpoDecided} разобранных КП${kpoMarked ? ` · по отмеченным итогам ${convMarked} (${kpoB.won} из ${kpoMarked})` : ''}` : 'срок ответа ещё не вышел ни у одного КП')}
                 ${kTile('Отклонено', kpoB.lost, `${kpoB.silent} без ответа после срока · ${kpoB.wait} ждём в срок`)}
                 ${kTile('Воронка', `${allCalcs} → ${kpoSent} → ${kpoB.won}`, 'расчётов → ушло клиенту → реализовано')}
                 ${kTile('Проектов', filtered.length, 'с учётом фильтров')}
@@ -29443,7 +29449,7 @@ const app = {
         { id: 'pie', label: 'Диаграмма' }, { id: 'table', label: 'Таблица' }
     ],
     KPI_EVENTS: ['sent', 'printed', 'confirmed', 'needs_revision', 'rejected', 'invoice_requested', 'invoice_issued', 'paid', 'won', 'lost'],
-    KPE_EVENTS: ['sent', 'printed', 'opened', 'confirmed', 'needs_revision', 'refresh_requested', 'rejected', 'invoice_requested', 'invoice_issued', 'paid', 'won', 'lost', 'extended', 'kp_outcome_reminder'],
+    KPE_EVENTS: ['sent', 'printed', 'opened', 'confirmed', 'needs_revision', 'refresh_requested', 'rejected', 'invoice_requested', 'invoice_issued', 'paid', 'won', 'lost', 'extended', 'kp_outcome_reminder', 'kp_autoclose_warning'],
     KPI_C: { blue: '#3B82F6', green: '#10B981', amber: '#F59E0B', red: '#EF4444', violet: '#8B5CF6', gray: '#94A3B8', teal: '#0D9488' },
 
     kpiPeriod: function () {
@@ -29719,6 +29725,8 @@ const app = {
                 const decided = x => x.won + x.lost + x.auto + x.over;
                 const cvReal = pct(c.won, decided(c)), cvRealP = hasPrev ? pct(q.won, decided(q)) : null;
                 const cvAppr = pct(c.approved, c.sent), cvApprP = hasPrev ? pct(q.approved, q.sent) : null;
+                // Только по КП с итогом, который отметил человек: без автоотклонённых и без «ждём итог»
+                const cvMark = pct(c.won, c.won + c.lost), cvMarkP = hasPrev ? pct(q.won, q.won + q.lost) : null;
                 const cr = pct(c.sent, c.produced);
                 const dl = (g, inv) => hasPrev ? this.kpiDelta(c[g], q[g], { inv: inv }) : '';
                 const lostAll = c.lost + c.auto;
@@ -29731,6 +29739,7 @@ const app = {
                     { k: 'lost', l: 'Отклонено', v: fmt(lostAll), s: c.auto ? 'из них ' + c.auto + ' само, нет ответа' : '', d: hasPrev ? this.kpiDelta(lostAll, q.lost + q.auto, { inv: true }) : '', tone: lostAll ? 'bad' : '', sp: ser.lost, h: 'Отказ с причиной, либо без ответа дольше срока автоотклонения' },
                     { k: 'over', l: 'Ждём итог', v: fmt(c.over), d: dl('over', true), tone: c.over ? 'bad' : '', sp: ser.over, h: 'Срок ответа вышел, монтажник итог не отметил' },
                     { k: 'cvreal', l: 'Конверсия КП → реализовано', v: cvReal == null ? '—' : cvReal + '%', s: decided(c) ? 'из ' + fmt(decided(c)) + ' разобранных' : 'срок ответа ещё не вышел', d: (cvReal != null && cvRealP != null) ? this.kpiDelta(cvReal, cvRealP, { ratio: true }) : '', tone: 'good', h: 'Реализовано / (реализовано + отклонено + ждём итог). КП в срок не входят: свежие занижали бы цифру' },
+                    { k: 'cvmark', l: 'Конверсия по отмеченным итогам', v: cvMark == null ? '—' : cvMark + '%', s: (c.won + c.lost) ? 'из ' + fmt(c.won + c.lost) + ' с итогом от человека' : 'итогов пока не отмечено', d: (cvMark != null && cvMarkP != null) ? this.kpiDelta(cvMark, cvMarkP, { ratio: true }) : '', tone: 'good', h: 'Реализовано / (реализовано + отказ, который отметил человек). Автоотклонённые и «ждём итог» не входят: они не значат, что клиент отказался' },
                     { k: 'cr', l: 'Расчёт → КП клиенту', v: cr == null ? '—' : cr + '%', s: 'отправлено / произведено', off: true, h: 'Какая часть расчётов дошла до клиента' },
                     { k: 'cvappr', l: 'Конверсия КП → одобрено', v: cvAppr == null ? '—' : cvAppr + '%', d: (cvAppr != null && cvApprP != null) ? this.kpiDelta(cvAppr, cvApprP, { ratio: true }) : '', off: true, h: 'Одобрено / отправлено' },
                     { k: 'rev', l: 'На доработке', v: fmt(c.rev), d: dl('rev', true), off: true, h: 'Клиент попросил поправить КП' },
@@ -45409,27 +45418,27 @@ const app = {
             const { data: ed } = await supabaseClient.from('app_settings')
                 .select('value').eq('key', 'empty_accounts').maybeSingle();
             const ev = (ed && ed.value) || {};
-            this._emptyCfg = { enabled: ev.enabled === true, freeze_days: n(ev.freeze_days, 30), stale_days: n(ev.stale_days, 60), delete_days: n(ev.delete_days, 30), warn_days: n(ev.warn_days, 7) };
+            this._emptyCfg = { enabled: ev.enabled === true, freeze_days: n(ev.freeze_days, 30), stale_days: n(ev.stale_days, 60), delete_days: n(ev.delete_days, 30), warn_days: n(ev.warn_days, 7), max_delete: n(ev.max_delete, 10) };
         } catch (e) { /* остаются значения по умолчанию */ }
     },
 
     // Анкеты без сохранённых смет: заморозка и удаление по срокам (20261027_empty_accounts_cleanup.sql).
     // По умолчанию выключено: включает администратор.
     emptyCfg: function () {
-        return this._emptyCfg || { enabled: false, freeze_days: 30, stale_days: 60, delete_days: 30, warn_days: 7 };
+        return this._emptyCfg || { enabled: false, freeze_days: 30, stale_days: 60, delete_days: 30, warn_days: 7, max_delete: 10 };
     },
 
     saveEmptyAccounts: async function () {
         if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять правило запрещено.'); return; }
         const get = id => parseInt((document.getElementById(id) || {}).value, 10);
-        const freeze_days = get('empty_freeze'), stale_days = get('empty_stale'), delete_days = get('empty_delete'), warn_days = get('empty_warn');
+        const freeze_days = get('empty_freeze'), stale_days = get('empty_stale'), delete_days = get('empty_delete'), warn_days = get('empty_warn'), max_delete = get('empty_maxdel');
         const enabled = !!(document.getElementById('empty_enabled') || {}).checked;
         const ok = x => x >= 1 && x <= 365;
-        if (!ok(freeze_days) || !ok(stale_days) || !ok(delete_days) || !ok(warn_days)) { app.alert('Сроки — целые числа от 1 до 365 дней.'); return; }
+        if (!ok(freeze_days) || !ok(stale_days) || !ok(delete_days) || !ok(warn_days) || !ok(max_delete)) { app.alert('Сроки — целые числа от 1 до 365 дней.'); return; }
         if (enabled && !await app.confirm(`Включить правило? За ${warn_days} дн. до заморозки человеку уйдёт предупреждение («сохраните смету или перейдите на Профи»). Анкеты без смет будут замораживаться через ${freeze_days} дн. после регистрации, а у базового тарифа со сметами — через ${stale_days} дн. без новых расчётов; замороженные удаляются ещё через ${delete_days} дн., их сметы уходят в архив со статусом «удалена». Сначала лучше нажать «Сколько подпадёт сейчас».`)) return;
         try {
             const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
-            const value = { enabled, freeze_days, stale_days, delete_days, warn_days };
+            const value = { enabled, freeze_days, stale_days, delete_days, warn_days, max_delete };
             const { error } = await supabaseClient.from('app_settings')
                 .upsert({ key: 'empty_accounts', value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
             if (error) throw error;
@@ -45481,6 +45490,73 @@ const app = {
         }
     },
 
+    // Журнал правила: кого предупредили, заморозили, удалили, кто просил вернуть доступ.
+    // Читает empty_accounts_report (20261029_empty_accounts_hardening.sql).
+    loadEmptyReport: async function () {
+        const box = document.getElementById('empty_report_body');
+        if (!box) return;
+        box.innerHTML = '<div style="padding:10px 16px; color:var(--text-sec);">Загружаю…</div>';
+        try {
+            const { data, error } = await supabaseClient.rpc('empty_accounts_report', { p_limit: 300 });
+            if (error) throw error;
+            this._emptyReport = Array.isArray(data) ? data : [];
+            this.renderEmptyReport();
+        } catch (e) {
+            box.innerHTML = '<div style="padding:10px 16px; color:var(--c-bad,#EF4444);">Не удалось получить: ' + String(e.message || e).replace(/[<>&]/g, '') + '. Выполнена ли миграция 20261029_empty_accounts_hardening.sql?</div>';
+        }
+    },
+
+    renderEmptyReport: function () {
+        const box = document.getElementById('empty_report_body');
+        if (!box) return;
+        const rows = this._emptyReport || [];
+        const isViewer = this.isReadOnlyAdmin();
+        const esc = x => String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const dt = x => x ? new Date(x).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
+        const ACT = { warned: ['Предупреждён', '#D97706'], frozen: ['Заморожен', '#0EA5E9'], reminded: ['Напоминание об удалении', '#6366F1'], deleted: ['Удалён', '#EF4444'], requested: ['Просит вернуть доступ', '#10B981'] };
+        const WHY = { no_estimates: 'нет смет', stale: 'нет новых смет', inactive: 'неактивность', manual: 'удалён админом', system: 'системой' };
+        const f = this._emptyReportFilter || 'all';
+        const shown = f === 'all' ? rows : rows.filter(r => r.action === f);
+        const cnt = a => rows.filter(r => r.action === a).length;
+        const chip = (k, label, n) => `<button class="ad-chip${f === k ? ' active' : ''}" onclick="app._emptyReportFilter='${k}'; app.renderEmptyReport()">${label}${n != null ? ' · ' + n : ''}</button>`;
+        const body = shown.length ? shown.map(r => {
+            const a = ACT[r.action] || [r.action, 'var(--text-sec)'];
+            let act = '';
+            if (!isViewer && r.action === 'deleted' && r.archived > 0) {
+                act = `<button class="admin-btn" onclick="app.restoreEmptyArchive('${r.user_id}', ${r.archived})">Вернуть сметы (${r.archived})</button>`;
+            } else if (!isViewer && r.alive && r.frozen && (r.action === 'frozen' || r.action === 'requested' || r.action === 'reminded')) {
+                act = `<button class="admin-btn" onclick="app.unfreezeUser('${r.user_id}')">Вернуть доступ</button>`;
+            }
+            return `<tr style="border-top:1px solid var(--border);">
+                <td style="padding:6px 8px; white-space:nowrap;">${dt(r.at)}</td>
+                <td style="padding:6px 8px;"><b style="color:${a[1]};">${a[0]}</b></td>
+                <td style="padding:6px 8px;">${esc(r.name)}<div style="color:var(--text-sec); font-size:11px;">${esc(r.email || '')}${r.region ? ' · ' + esc(r.region) : ''}</div></td>
+                <td style="padding:6px 8px;">${esc(WHY[r.reason] || r.reason || '')}</td>
+                <td style="padding:6px 8px; text-align:center;" title="Смет на момент записи">${r.est_count == null ? '—' : r.est_count}</td>
+                <td style="padding:6px 8px;">${act}</td></tr>`;
+        }).join('') : `<tr><td colspan="6" style="padding:14px 8px; color:var(--text-sec);">Записей пока нет.</td></tr>`;
+        box.innerHTML = `<div style="padding:0 8px 8px;">
+            <div class="ad-chips" style="margin:6px 0 10px;">${chip('all', 'Все', rows.length)}${chip('warned', 'Предупреждены', cnt('warned'))}${chip('frozen', 'Заморожены', cnt('frozen'))}${chip('reminded', 'Напоминание', cnt('reminded'))}${chip('deleted', 'Удалены', cnt('deleted'))}${chip('requested', 'Просят доступ', cnt('requested'))}</div>
+            <div style="overflow-x:auto;"><table style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead><tr style="text-align:left; color:var(--text-sec);"><th style="padding:6px 8px;">Дата</th><th style="padding:6px 8px;">Что</th><th style="padding:6px 8px;">Кто</th><th style="padding:6px 8px;">Причина</th><th style="padding:6px 8px;">Смет</th><th style="padding:6px 8px;"></th></tr></thead>
+                <tbody>${body}</tbody></table></div>
+            <div class="ad-sub" style="margin-top:6px;">Последние 300 записей. «Вернуть сметы» переносит архивные сметы удалённого человека на его новую учётку (он должен заново зарегистрироваться).</div></div>`;
+    },
+
+    restoreEmptyArchive: async function (oldUserId, n) {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра.'); return; }
+        const email = window.prompt('Почта новой учётной записи этого человека (он уже должен был зарегистрироваться заново):');
+        if (!email || !email.trim()) return;
+        try {
+            const { data, error } = await supabaseClient.rpc('restore_archived_estimates', { p_old_user: oldUserId, p_target_email: email.trim() });
+            if (error) throw error;
+            app.alert(`Возвращено смет: ${data.restored || 0}${data.failed ? ', не удалось: ' + data.failed : ''}.`);
+            this.loadEmptyReport();
+        } catch (e) {
+            app.alert('Не удалось вернуть сметы: ' + (e.message || e));
+        }
+    },
+
     // Пробный прогон на сервере: ничего не меняет, только считает по сохранённым срокам.
     previewEmptyAccounts: async function () {
         try {
@@ -45490,7 +45566,7 @@ const app = {
             const cfg = this.emptyCfg();
             const stale = d.frozen_stale || 0;
             app.alert(`По сохранённым срокам (без смет — ${cfg.freeze_days} дн., со сметами — ${cfg.stale_days} дн., удаление через ${cfg.delete_days} дн.):\n• предупредить сейчас: ${d.warned || 0}
-• заморозить сейчас (предупреждены ${cfg.warn_days} дн. назад): ${d.frozen || 0} (без смет: ${(d.frozen || 0) - stale}, со сметами: ${stale})\n• удалить сейчас: ${d.deleted || 0}${d.kept_completed ? '\n• не удаляются из-за завершённой сметы: ' + d.kept_completed : ''}\n\nЭто пробный счёт, ничего не изменено. Если вы только что поменяли сроки — сначала сохраните их.`);
+• заморозить сейчас (предупреждены ${cfg.warn_days} дн. назад): ${d.frozen || 0} (без смет: ${(d.frozen || 0) - stale}, со сметами: ${stale})\n• удалить сейчас: ${d.deleted || 0}${d.delete_capped ? ' (ещё ' + d.delete_capped + ' отложено предохранителем на следующие ночи)' : ''}${d.kept_completed ? '\n• не удаляются из-за завершённой сметы: ' + d.kept_completed : ''}\n\nЭто пробный счёт, ничего не изменено. Если вы только что поменяли сроки — сначала сохраните их.`);
         } catch (e) {
             app.alert('Не удалось посчитать: ' + (e.message || e) + '. Выполнена ли миграция 20261027_empty_accounts_cleanup.sql?');
         }
@@ -45987,9 +46063,14 @@ const app = {
                     ${field('Без смет: заморозка, дней после регистрации', 'empty_freeze', empty.freeze_days)}
                     ${field('Со сметами (базовый): заморозка, дней без новых', 'empty_stale', empty.stale_days)}
                     ${field('Удаление, дней после заморозки', 'empty_delete', empty.delete_days)}
+                    ${field('Предохранитель: удалений за ночь не больше', 'empty_maxdel', empty.max_delete)}
                     <div class="ad-form-act">${saveBtn('Сохранить правило', 'app.saveEmptyAccounts()')}
                         <button class="admin-btn" onclick="app.previewEmptyAccounts()">Сколько подпадёт сейчас</button></div>
                 </div>
+            </details>
+            <details class="ad-collapse" ontoggle="if (this.open) app.loadEmptyReport()">
+                <summary>Журнал правила: предупреждены, заморожены, удалены</summary>
+                <div id="empty_report_body"></div>
             </details>
             <details class="ad-collapse" ontoggle="if (this.open) app.loadRegFunnel()">
                 <summary>Воронка регистраций по месяцам</summary>
@@ -49207,13 +49288,22 @@ const app = {
                             : `Доступ к аккаунту приостановлен: давно нет новых расчётов. Сохранённые расчёты (${fi.est_count}) пока на месте. ${contact} Если ответа не будет, аккаунт будет удалён ${fi.delete_on}; сами расчёты останутся в архиве и их можно восстановить.`;
                     }
                 } catch (e) { /* общий текст */ }
+                const frozenText = frozenMsg || 'Доступ к аккаунту приостановлен: вы давно не заходили или не сохранили ни одного расчёта. Всё, что у вас было, сохранено — напишите на kovdor24@yandex.ru или в MAX: +7 982 610-95-48, и мы вернём доступ в тот же день.';
+                // Заявку отправляем, пока сессия жива: после выхода база не узнает, кто просит.
+                let asked = false;
+                try {
+                    if (await app.confirm(frozenText + '\n\nОтправить заявку на возврат доступа прямо сейчас?', 'Доступ приостановлен', 'Отправить заявку', 'Закрыть')) {
+                        const { data: rq, error: rqErr } = await supabaseClient.rpc('request_unfreeze');
+                        asked = !rqErr && !!(rq && rq.ok);
+                    }
+                } catch (e) { /* заявка необязательна */ }
                 await supabaseClient.auth.signOut();
                 delete this.state.tgUser;
                 this.state.accountType = 'base';
                 this.saveState();
                 this.syncUI();
                 this.render();
-                app.alert(frozenMsg || 'Доступ к аккаунту приостановлен: вы давно не заходили или не сохранили ни одного расчёта. Всё, что у вас было, сохранено — напишите на kovdor24@yandex.ru или в MAX: +7 982 610-95-48, и мы вернём доступ в тот же день.');
+                if (asked) app.alert('Заявка отправлена. Мы вернём доступ в тот же рабочий день и напишем вам на почту.');
                 return;
             }
             if (uRow) {
