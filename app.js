@@ -45353,27 +45353,27 @@ const app = {
             const { data: ed } = await supabaseClient.from('app_settings')
                 .select('value').eq('key', 'empty_accounts').maybeSingle();
             const ev = (ed && ed.value) || {};
-            this._emptyCfg = { enabled: ev.enabled === true, freeze_days: n(ev.freeze_days, 30), stale_days: n(ev.stale_days, 60), delete_days: n(ev.delete_days, 30) };
+            this._emptyCfg = { enabled: ev.enabled === true, freeze_days: n(ev.freeze_days, 30), stale_days: n(ev.stale_days, 60), delete_days: n(ev.delete_days, 30), warn_days: n(ev.warn_days, 7) };
         } catch (e) { /* остаются значения по умолчанию */ }
     },
 
     // Анкеты без сохранённых смет: заморозка и удаление по срокам (20261027_empty_accounts_cleanup.sql).
     // По умолчанию выключено: включает администратор.
     emptyCfg: function () {
-        return this._emptyCfg || { enabled: false, freeze_days: 30, stale_days: 60, delete_days: 30 };
+        return this._emptyCfg || { enabled: false, freeze_days: 30, stale_days: 60, delete_days: 30, warn_days: 7 };
     },
 
     saveEmptyAccounts: async function () {
         if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять правило запрещено.'); return; }
         const get = id => parseInt((document.getElementById(id) || {}).value, 10);
-        const freeze_days = get('empty_freeze'), stale_days = get('empty_stale'), delete_days = get('empty_delete');
+        const freeze_days = get('empty_freeze'), stale_days = get('empty_stale'), delete_days = get('empty_delete'), warn_days = get('empty_warn');
         const enabled = !!(document.getElementById('empty_enabled') || {}).checked;
         const ok = x => x >= 1 && x <= 365;
-        if (!ok(freeze_days) || !ok(stale_days) || !ok(delete_days)) { app.alert('Сроки — целые числа от 1 до 365 дней.'); return; }
-        if (enabled && !await app.confirm(`Включить правило? Анкеты без смет будут замораживаться через ${freeze_days} дн. после регистрации, а у базового тарифа со сметами — через ${stale_days} дн. без новых расчётов; замороженные удаляются ещё через ${delete_days} дн., их сметы уходят в архив со статусом «удалена». Сначала лучше нажать «Сколько подпадёт сейчас».`)) return;
+        if (!ok(freeze_days) || !ok(stale_days) || !ok(delete_days) || !ok(warn_days)) { app.alert('Сроки — целые числа от 1 до 365 дней.'); return; }
+        if (enabled && !await app.confirm(`Включить правило? За ${warn_days} дн. до заморозки человеку уйдёт предупреждение («сохраните смету или перейдите на Профи»). Анкеты без смет будут замораживаться через ${freeze_days} дн. после регистрации, а у базового тарифа со сметами — через ${stale_days} дн. без новых расчётов; замороженные удаляются ещё через ${delete_days} дн., их сметы уходят в архив со статусом «удалена». Сначала лучше нажать «Сколько подпадёт сейчас».`)) return;
         try {
             const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
-            const value = { enabled, freeze_days, stale_days, delete_days };
+            const value = { enabled, freeze_days, stale_days, delete_days, warn_days };
             const { error } = await supabaseClient.from('app_settings')
                 .upsert({ key: 'empty_accounts', value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
             if (error) throw error;
@@ -45433,7 +45433,8 @@ const app = {
             const d = data || {};
             const cfg = this.emptyCfg();
             const stale = d.frozen_stale || 0;
-            app.alert(`По сохранённым срокам (без смет — ${cfg.freeze_days} дн., со сметами — ${cfg.stale_days} дн., удаление через ${cfg.delete_days} дн.):\n• заморозить сейчас: ${d.frozen || 0} (без смет: ${(d.frozen || 0) - stale}, со сметами: ${stale})\n• удалить сейчас: ${d.deleted || 0}${d.kept_completed ? '\n• не удаляются из-за завершённой сметы: ' + d.kept_completed : ''}\n\nЭто пробный счёт, ничего не изменено. Если вы только что поменяли сроки — сначала сохраните их.`);
+            app.alert(`По сохранённым срокам (без смет — ${cfg.freeze_days} дн., со сметами — ${cfg.stale_days} дн., удаление через ${cfg.delete_days} дн.):\n• предупредить сейчас: ${d.warned || 0}
+• заморозить сейчас (предупреждены ${cfg.warn_days} дн. назад): ${d.frozen || 0} (без смет: ${(d.frozen || 0) - stale}, со сметами: ${stale})\n• удалить сейчас: ${d.deleted || 0}${d.kept_completed ? '\n• не удаляются из-за завершённой сметы: ' + d.kept_completed : ''}\n\nЭто пробный счёт, ничего не изменено. Если вы только что поменяли сроки — сначала сохраните их.`);
         } catch (e) {
             app.alert('Не удалось посчитать: ' + (e.message || e) + '. Выполнена ли миграция 20261027_empty_accounts_cleanup.sql?');
         }
@@ -45916,6 +45917,7 @@ const app = {
             <details class="ad-collapse">
                 <summary>Анкеты без смет: заморозка и удаление${empty.enabled ? '' : ' — выключено'}</summary>
                 <div class="ad-sub" style="margin:0 16px 4px; max-width:760px;">
+                    За ${empty.warn_days} дн. до заморозки уходит предупреждение: сохраните смету или перейдите на Профи — и ничего не произойдёт.
                     Без смет: заморозка через ${empty.freeze_days} дн. после регистрации, даже если человек заходит.
                     Базовый тариф со сметами, но без новых за ${empty.stale_days} дн.: тоже заморозка (письмо уходит).
                     Ещё через ${empty.delete_days} дн. учётка удаляется, её сметы переходят в архив со статусом «удалена», ссылки на КП перестают открываться;
@@ -45925,6 +45927,7 @@ const app = {
                 </div>
                 <div class="ad-form-grid">
                     <label class="ad-field ad-check"><input type="checkbox" id="empty_enabled" ${empty.enabled ? 'checked' : ''} ${dis}><span>Правило включено</span></label>
+                    ${field('Предупреждение за, дней до заморозки', 'empty_warn', empty.warn_days)}
                     ${field('Без смет: заморозка, дней после регистрации', 'empty_freeze', empty.freeze_days)}
                     ${field('Со сметами (базовый): заморозка, дней без новых', 'empty_stale', empty.stale_days)}
                     ${field('Удаление, дней после заморозки', 'empty_delete', empty.delete_days)}
