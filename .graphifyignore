@@ -31,3 +31,5 @@ core-simd*
 worker.min.js
 *ZENBOOK*
 dist_prices.js
+# База знаний Obsidian (заметки, не код)
+kb/
