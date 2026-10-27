@@ -45370,7 +45370,7 @@ const app = {
         const enabled = !!(document.getElementById('empty_enabled') || {}).checked;
         const ok = x => x >= 1 && x <= 365;
         if (!ok(freeze_days) || !ok(stale_days) || !ok(delete_days)) { app.alert('Сроки — целые числа от 1 до 365 дней.'); return; }
-        if (enabled && !await app.confirm(`Включить правило? Анкеты без смет будут замораживаться через ${freeze_days} дн. после регистрации, а у базового тарифа со сметами — через ${stale_days} дн. без новых расчётов; замороженные удаляются ещё через ${delete_days} дн. вместе со своими сметами. Сначала лучше нажать «Сколько подпадёт сейчас».`)) return;
+        if (enabled && !await app.confirm(`Включить правило? Анкеты без смет будут замораживаться через ${freeze_days} дн. после регистрации, а у базового тарифа со сметами — через ${stale_days} дн. без новых расчётов; замороженные удаляются ещё через ${delete_days} дн., их сметы уходят в архив со статусом «удалена». Сначала лучше нажать «Сколько подпадёт сейчас».`)) return;
         try {
             const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
             const value = { enabled, freeze_days, stale_days, delete_days };
@@ -45384,6 +45384,44 @@ const app = {
                 : 'Правило выключено. Настройки сохранены, ничего замораживаться и удаляться не будет.');
         } catch (e) {
             app.alert('Не удалось сохранить правило: ' + (e.message || e) + '. Если миграция 20261027_empty_accounts_cleanup.sql ещё не выполнена — выполните её.');
+        }
+    },
+
+    // Воронка по месяцам регистрации: сколько зарегистрировалось, не считали вовсе,
+    // считали и не сохранили, сохранили смету. Живые и удалённые правилом считаются вместе
+    // (registration_funnel, 20261028_empty_accounts_archive_funnel.sql).
+    loadRegFunnel: async function () {
+        const box = document.getElementById('reg_funnel_body');
+        if (!box) return;
+        box.innerHTML = '<div style="padding:10px 16px; color:var(--text-sec);">Считаю…</div>';
+        try {
+            const { data, error } = await supabaseClient.rpc('registration_funnel');
+            if (error) throw error;
+            const rows = Array.isArray(data) ? data : [];
+            if (!rows.length) { box.innerHTML = '<div style="padding:10px 16px; color:var(--text-sec);">Данных пока нет.</div>'; return; }
+            const MON = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+            const lbl = m => { const p = String(m).split('-'); return (MON[parseInt(p[1], 10) - 1] || p[1]) + ' ' + p[0]; };
+            const pct = (a, b) => b ? Math.round(a * 100 / b) + '%' : '—';
+            const tot = rows.reduce((t, r) => { Object.keys(r).forEach(k => { if (k !== 'month') t[k] = (t[k] || 0) + (r[k] || 0); }); return t; }, {});
+            const tr = (name, r, bold) => `<tr style="${bold ? 'font-weight:800; border-top:1px solid var(--border);' : ''}">
+                <td style="padding:6px 8px;">${name}</td>
+                <td style="padding:6px 8px; text-align:right;">${r.registered}</td>
+                <td style="padding:6px 8px; text-align:right;">${r.none}</td>
+                <td style="padding:6px 8px; text-align:right;">${r.calc_only}</td>
+                <td style="padding:6px 8px; text-align:right;">${r.saved} <span style="color:var(--text-sec); font-weight:400;">${pct(r.saved, r.registered)}</span></td>
+                <td style="padding:6px 8px; text-align:right;">${r.frozen}</td>
+                <td style="padding:6px 8px; text-align:right;">${r.deleted}</td></tr>`;
+            box.innerHTML = `<div style="overflow-x:auto; padding:0 8px 8px;"><table style="width:100%; border-collapse:collapse; font-size:12px;">
+                <thead><tr style="text-align:right; color:var(--text-sec);">
+                    <th style="padding:6px 8px; text-align:left;">Месяц регистрации</th><th style="padding:6px 8px;">Зарегистрир.</th>
+                    <th style="padding:6px 8px;" title="Ни одного расчёта, ни одной сметы">Не считали</th>
+                    <th style="padding:6px 8px;" title="Расчёты начинали, но смету не сохранили">Считали, не сохранили</th>
+                    <th style="padding:6px 8px;" title="Есть хотя бы одна сохранённая смета">Сохранили смету</th>
+                    <th style="padding:6px 8px;">Заморожены сейчас</th><th style="padding:6px 8px;" title="Удалены правилом; их сметы лежат в архиве со статусом «удалена»">Удалены</th>
+                </tr></thead><tbody>${rows.map(r => tr(lbl(r.month), r)).join('')}${tr('Всего', tot, true)}</tbody></table>
+                <div class="ad-sub" style="margin-top:6px;">Живые и удалённые правилом считаются вместе, поэтому после чисток цифры за сезон не проваливаются. Сметы удалённых лежат в архиве со статусом «удалена» и восстанавливаются по запросу.</div></div>`;
+        } catch (e) {
+            box.innerHTML = '<div style="padding:10px 16px; color:var(--c-bad,#EF4444);">Не удалось получить: ' + String(e.message || e).replace(/[<>&]/g, '') + '. Выполнена ли миграция 20261028_empty_accounts_archive_funnel.sql?</div>';
         }
     },
 
@@ -45880,7 +45918,7 @@ const app = {
                 <div class="ad-sub" style="margin:0 16px 4px; max-width:760px;">
                     Без смет: заморозка через ${empty.freeze_days} дн. после регистрации, даже если человек заходит.
                     Базовый тариф со сметами, но без новых за ${empty.stale_days} дн.: тоже заморозка (письмо уходит).
-                    Ещё через ${empty.delete_days} дн. учётка удаляется вместе со своими сметами, ссылки на КП перестают открываться;
+                    Ещё через ${empty.delete_days} дн. учётка удаляется, её сметы переходят в архив со статусом «удалена», ссылки на КП перестают открываться;
                     если среди смет есть завершённая — такую учётку не удаляем, она остаётся замороженной. Профи, администраторов, менеджеров и заблокированных не трогаем.
                     Удалённые могут зарегистрироваться заново сразу. Если вернуть доступ вручную, повторно человека правило не заморозит.
                     Проверка — раз в сутки. Список таких анкет — в «Пользователи» → «Без смет».
@@ -45893,6 +45931,10 @@ const app = {
                     <div class="ad-form-act">${saveBtn('Сохранить правило', 'app.saveEmptyAccounts()')}
                         <button class="admin-btn" onclick="app.previewEmptyAccounts()">Сколько подпадёт сейчас</button></div>
                 </div>
+            </details>
+            <details class="ad-collapse" ontoggle="if (this.open) app.loadRegFunnel()">
+                <summary>Воронка регистраций по месяцам</summary>
+                <div id="reg_funnel_body"></div>
             </details>`;
 
         if (!rows.length) {
