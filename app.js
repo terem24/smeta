@@ -29922,7 +29922,7 @@ const app = {
             else if (bad('pwl')) w.err = bad('pwl');
             else {
                 const KINDS = ['seen', 'tariff_open', 'pay_open'];
-                const who = { cur: {}, prev: {} }, ev = {}, srcs = { seen: {}, tariff_open: {} };
+                const who = { cur: {}, prev: {} }, ev = {}, srcs = { seen: {}, tariff_open: {} }, det = { seen: {}, tariff_open: {}, pay_open: {} };
                 ['cur', 'prev'].forEach(c => KINDS.forEach(k => { who[c][k] = {}; }));
                 KINDS.forEach(k => { ev[k] = zeros(); });
                 S.pwl.rows.forEach(r => {
@@ -29931,6 +29931,10 @@ const app = {
                     who[c][r.kind][r.user_id] = 1;
                     if (c === 'cur') {
                         ev[r.kind][B.at(t)]++;
+                        // Кто именно и откуда: список под плашкой по щелчку
+                        const d = det[r.kind][r.user_id] || (det[r.kind][r.user_id] = { uid: r.user_id, n: 0, last: 0, src: {} });
+                        d.n++; if (t > d.last) d.last = t;
+                        const sk = r.src || 'не указано'; d.src[sk] = (d.src[sk] || 0) + 1;
                         if (srcs[r.kind]) { const key = r.src || 'не указано'; (srcs[r.kind][key] || (srcs[r.kind][key] = {}))[r.user_id] = 1; }
                     }
                 });
@@ -29963,10 +29967,12 @@ const app = {
                 const trialTariff = Object.keys(srcs.tariff_open).filter(k => k.indexOf('Вы разобрали документ') === 0)
                     .reduce((m, k) => Object.assign(m, srcs.tariff_open[k]), {});
                 const trialTariffN = Object.keys(trialTariff).length;
+                const lst = k => Object.keys(det[k]).map(u => det[k][u]).sort((a, b) => b.last - a.last);
+                w.lists = { seen: lst('seen'), tar: lst('tariff_open'), po: lst('pay_open') };
                 w.nums = [
-                    { k: 'seen', l: 'Увидели предложение', v: fmt(c.seen), d: dl(c.seen, q.seen), sp: ev.seen, h: 'Сколько разных людей увидели закрытое: витрину других марок в поиске или пробный разбор' },
-                    { k: 'tar', l: 'Открыли окно тарифа', v: fmt(c.tariff_open), d: dl(c.tariff_open, q.tariff_open), s: c.seen ? pct(c.tariff_open, c.seen) + '% от увидевших' : '', sp: ev.tariff_open, h: 'Нажали на замок, плашку или «Оформить Профи»' },
-                    { k: 'po', l: 'Дошли до оплаты', v: fmt(c.pay_open), d: dl(c.pay_open, q.pay_open), s: c.tariff_open ? pct(c.pay_open, c.tariff_open) + '% от открывших тариф' : '', sp: ev.pay_open, h: 'Открыли окно с QR и ссылкой на оплату' },
+                    { k: 'seen', l: 'Увидели предложение', v: fmt(c.seen), d: dl(c.seen, q.seen), sp: ev.seen, list: 1, h: 'Сколько разных людей увидели закрытое: витрину других марок в поиске или пробный разбор. На графике — число записей, а не людей: один человек в разных местах или сеансах даёт несколько. Щёлкните, чтобы увидеть, кто это' },
+                    { k: 'tar', l: 'Открыли окно тарифа', v: fmt(c.tariff_open), d: dl(c.tariff_open, q.tariff_open), s: c.seen ? pct(c.tariff_open, c.seen) + '% от увидевших' : '', sp: ev.tariff_open, list: 1, h: 'Нажали на замок, плашку или «Оформить Профи». На графике — число записей, а не людей. Щёлкните, чтобы увидеть, кто это' },
+                    { k: 'po', l: 'Дошли до оплаты', v: fmt(c.pay_open), d: dl(c.pay_open, q.pay_open), s: c.tariff_open ? pct(c.pay_open, c.tariff_open) + '% от открывших тариф' : '', sp: ev.pay_open, list: 1, h: 'Открыли окно с QR и ссылкой на оплату. На графике — число записей, а не людей. Щёлкните, чтобы увидеть, кто это' },
                     { k: 'req', l: 'Нажали «Я оплатил»', v: fmt(req.cur), d: dl(req.cur, req.prev), s: c.pay_open ? pct(req.cur, c.pay_open) + '% от дошедших' : '', h: 'Оставили заявку на подтверждение оплаты' },
                     { k: 'paid', l: 'Оплатили', v: fmt(paidN.cur), d: dl(paidN.cur, paidN.prev), tone: 'good', s: req.cur ? pct(paidN.cur, req.cur) + '% от заявок' : '', h: 'Оплаты, подтверждённые за период' },
                     { k: 'weak', l: 'Где отваливаются', v: weak ? weak.name.split(' → ')[0] + ' →' : '—', s: weak ? 'дальше ' + weak.conv + '% (' + weak.to + ' из ' + weak.from + ')' : 'мало данных', tone: weak && weak.conv < 20 ? 'bad' : '', h: 'Шаг пути с самой низкой долей прошедших (учитываются шаги, где было от 5 человек)' },
@@ -30194,11 +30200,14 @@ const app = {
             const x = edit ? `<button type="button" class="kpi-x" title="Скрыть плашку" aria-label="Скрыть плашку «${esc(m.l)}»" onclick="app.kpiSetHidden('${w.id}','${m.k}',true)">×</button>` : '';
             const dnd = edit ? ` data-wid="${w.id}" data-k="${m.k}" ondragover="app.kpiDragOver(event,this,'tile')" ondragleave="app.kpiDragLeave(event,this)" ondrop="app.kpiDrop(event,this,'tile')"` : '';
             const grab = edit ? ` kpi-grab" draggable="true" ondragstart="app.kpiDragStart(event,'tile','${w.id}','${m.k}')" ondragend="app.kpiDragEnd()` : '';
-            return `<div class="kpi-n${m.sp ? ' kpi-n-sp' : ''}${m.tone ? ' kpi-n-' + m.tone : ''}${edit ? ' kpi-n-edit' : ''}"${dnd}>${x}
+            const open = this._kpiListOpen === w.id + '.' + m.k;
+            const clk = (m.list && !edit && w.lists) ? ` style="cursor:pointer${open ? ';box-shadow:0 0 0 2px #3B82F6' : ''}" onclick="app.kpiToggleList('${w.id}','${m.k}')" title="Щёлкните, чтобы увидеть, кто это"` : '';
+            return `<div class="kpi-n${m.sp ? ' kpi-n-sp' : ''}${m.tone ? ' kpi-n-' + m.tone : ''}${edit ? ' kpi-n-edit' : ''}"${dnd}${clk}>${x}
                 <span class="kpi-nl${grab}">${edit ? '⠿ ' : ''}${esc(m.l)}${info}</span>
                 <div class="kpi-nv"><b${String(m.v).length > 9 ? ' class="kpi-long"' : ''}>${esc(m.v)}</b>${m.d ? `<span class="kpi-nd">${m.d}</span>` : ''}</div>
                 ${m.s ? `<span class="kpi-ns">${esc(m.s)}</span>` : ''}${m.sp ? this.kpiSparkHtml(m.sp, w.chart && w.chart.tips, /₽\s*$/.test(String(m.v)) ? ' ₽' : '') : ''}</div>`;
         };
+        if (w.lists) (this._kpiLists || (this._kpiLists = {}))[w.id] = w.lists;
         const nums = this.kpiSortBy(this.kpiOrderMap().tiles[w.id], w.nums, m => m.k);
         (this._kpiShownTiles || (this._kpiShownTiles = {}))[w.id] = nums.map(m => m.k);
         const shown = nums.filter(m => !this.kpiIsHidden(w.id, m));
@@ -30207,7 +30216,53 @@ const app = {
         if (edit) h += hidden.map(m => `<button type="button" class="kpi-n kpi-n-add" title="${esc(m.h || '')}" onclick="app.kpiSetHidden('${w.id}','${m.k}',false)">
                 <span class="kpi-plus" aria-hidden="true">+</span><span class="kpi-nl">${esc(m.l)}</span><span class="kpi-ns">добавить плашку</span></button>`).join('');
         if (!h) h = '<div class="ad-tile-note">Все плашки скрыты. Нажмите «Настроить», чтобы вернуть нужные.</div>';
-        return `<div class="kpi-nums">${h}</div>`;
+        return `<div class="kpi-nums">${h}</div>${edit ? '' : this.kpiListHtml(w, esc)}`;
+    },
+
+    // Список людей под плашкой: щелчок по плашке с list открывает, повторный закрывает
+    kpiToggleList: function (wid, k) {
+        const key = wid + '.' + k;
+        this._kpiListOpen = this._kpiListOpen === key ? null : key;
+        if (this._kpiListOpen) this.kpiLoadNames(((this._kpiLists || {})[wid] || {})[k] || []);
+        this.renderAdminHome();
+    },
+    // Имена по user_id для списка; кэш на сеанс, чужих запросов не плодим
+    kpiLoadNames: function (rows) {
+        const names = this._kpiNames || (this._kpiNames = {});
+        const ids = rows.map(r => r.uid).filter(u => u != null && names[u] === undefined);
+        if (!ids.length) return;
+        ids.forEach(u => { names[u] = 'loading'; });
+        supabaseClient.from('users').select('id, email, first_name, last_name, username, account_type').in('id', ids).limit(500)
+            .then(({ data, error }) => {
+                if (error) throw error;
+                const got = {}; (data || []).forEach(u => { got[u.id] = u; });
+                ids.forEach(u => { names[u] = got[u] || { missing: true }; });
+            })
+            .catch(e => { console.warn('[предложение Профи/имена]', e); ids.forEach(u => { names[u] = { missing: true }; }); })
+            .then(() => { if (this._adminTab === 'home') this.renderAdminHome(); });
+    },
+    kpiListHtml: function (w, esc) {
+        const open = this._kpiListOpen;
+        if (!open || open.indexOf(w.id + '.') !== 0 || !w.lists) return '';
+        const k = open.slice(w.id.length + 1), rows = w.lists[k] || [];
+        const m = (w.nums || []).filter(x => x.k === k)[0];
+        const names = this._kpiNames || {};
+        const f2 = x => String(x).padStart(2, '0');
+        const when = t => { const d = new Date(t); return f2(d.getDate()) + '.' + f2(d.getMonth() + 1) + ' ' + f2(d.getHours()) + ':' + f2(d.getMinutes()); };
+        const who = r => {
+            const u = names[r.uid];
+            if (!u || u === 'loading') return '<span class="z">загрузка…</span>';
+            if (u.missing) return '<span class="z">учётка ' + esc(r.uid) + ' не найдена</span>';
+            const nm = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || '';
+            return (nm ? '<b>' + esc(nm) + '</b> · ' : '') + esc(u.email || ('id ' + r.uid)) + (u.account_type === 'pro' ? ' <i class="kpi-d kpi-d-up">Профи</i>' : '');
+        };
+        const where = r => Object.keys(r.src).sort((a, b) => r.src[b] - r.src[a])
+            .map(s => esc(k === 'po' ? 'окно оплаты, тариф «' + s + '»' : s) + (r.src[s] > 1 ? ' ×' + r.src[s] : '')).join('<br>');
+        const body = rows.length ? rows.map(r => `<tr><td>${who(r)}</td><td>${where(r)}</td><td>${r.n}</td><td>${when(r.last)}</td></tr>`).join('')
+            : '<tr><td colspan="4" class="z">За период никого.</td></tr>';
+        return `<div class="kpi-card" style="margin-top:10px"><b>${esc(m ? m.l : '')}: ${rows.length} чел.</b>
+            <div class="kpi-tw"><table class="kpi-t"><thead><tr><th>Кто</th><th>${k === 'seen' ? 'Что увидел' : k === 'tar' ? 'Откуда открыл окно тарифа' : 'Откуда открыл окно оплаты'}</th><th title="Записей в журнале: одно и то же место за сеанс пишется один раз">Записей</th><th>Последний раз</th></tr></thead><tbody>${body}</tbody></table></div>
+            <div class="kpi-note">«Откуда» — место приложения, где сработало: для окна тарифа это текст «Вы хотели…» (замок или плашка), для «увидели» — витрина в поиске или пробный разбор. Записей больше людей, если один человек делал это в разных местах или сеансах.</div></div>`;
     },
 
     kpiWidgetHtml: function (w, esc) {
