@@ -1,0 +1,33 @@
+# graphify: что не входит в карту проекта
+scratch/
+training/
+mobile-android/
+bench/projects/
+models/
+fonts/
+img/
+vendor/
+_wt_ufhfix2/
+__pycache__/
+.claude/
+.agents/
+graphify-out/
+# SEO-страницы городов и статей (чистая разметка)
+goroda/
+content/
+novosti/
+*.pdf
+*.csv
+*.txt
+*.xlsx
+price_index*.json
+queue/
+*/index.html
+# вендорные библиотеки и копии
+supabase-js.js
+*.min.js
+tesseract*
+core-simd*
+worker.min.js
+*ZENBOOK*
+dist_prices.js
