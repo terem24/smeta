@@ -18992,7 +18992,8 @@ const app = {
             cardsHtml += card(t, true);
         }
         this._poolNote = this.noteBox('info', 'Бухты по всей смете.', head, method + lines.join('<br>')) +
-            `<div class="no-print" onclick="event.stopPropagation();" style="margin:4px 0 2px;">${cardsHtml}</div>`;
+            `<details class="no-print pool-cards" onclick="event.stopPropagation();" style="margin:4px 0 2px;">` +
+            `<summary style="cursor:pointer;font-size:12px;font-weight:600;color:var(--text-sec);padding:4px 0;">Подробно по материалам</summary>${cardsHtml}</details>`;
         return rows;
     },
     // Поля раздела «КП и счета»: сроки и сокращение названий. Зовётся при открытии раздела
