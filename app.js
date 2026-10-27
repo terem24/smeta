@@ -24464,6 +24464,21 @@ const app = {
         return withDocs.filter(u => !kept.has(String(u.id)));
     },
 
+    // «Без смет»: ни одной сохранённой сметы в облаке. Расчёт, начатый и не сохранённый,
+    // не считается — это те самые анкеты, что копятся пустыми.
+    filterNoEstimates: async function (users) {
+        if (!users.length) return users;
+        const ids = users.map(u => String(u.id));
+        const has = new Set();
+        const jobs = [];
+        for (let i = 0; i < ids.length; i += 100) {
+            jobs.push(supabaseClient.from('estimates').select('user_id').in('user_id', ids.slice(i, i + 100))
+                .then(r => { if (r.error) throw r.error; (r.data || []).forEach(row => has.add(String(row.user_id))); }));
+        }
+        await Promise.all(jobs);
+        return users.filter(u => !has.has(String(u.id)));
+    },
+
     filterIdleVisitors: async function (users) {
         if (!users.length) return users;
         const ids = users.map(u => String(u.id));
@@ -25132,7 +25147,8 @@ const app = {
             tour: document.getElementById('admin_filter_tour')?.value || 'all',
             device: document.getElementById('admin_filter_device')?.value || 'all',
             inactive: document.getElementById('admin_filter_inactive')?.value || 'all',
-            reclost: document.getElementById('admin_filter_reclost')?.value || 'all'
+            reclost: document.getElementById('admin_filter_reclost')?.value || 'all',
+            noest: document.getElementById('admin_filter_noest')?.value || 'all'
         };
 
         const estSearchInputBefore = document.getElementById('admin_est_search_input');
@@ -25180,6 +25196,8 @@ const app = {
             // «Распознал, но не сохранил»: архив распознаваний лежит на Beget, сметы — в базе,
             // поэтому отбор клиентский и список нужен целиком.
             const isRecLostFilter = ((this._pendingAdminFilters && this._pendingAdminFilters.reclost) || 'all') === 'yes';
+            // «Без смет»: сметы лежат в другой таблице, отбор клиентский, список нужен целиком.
+            const isNoEstFilter = ((this._pendingAdminFilters && this._pendingAdminFilters.noest) || 'all') === 'yes';
 
             if (sortType === 'login_desc') {
                 query = query
@@ -25218,7 +25236,7 @@ const app = {
             // Запрос шлём до двух раз: на нестабильной сети (другие ноутбуки, VPN, расширения)
             // первый ответ бывает пустым или обрывается, а со второго раза приходит список.
             const runUsersQuery = async () => {
-                const wholeList = isClientSort || isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter || isRecLostFilter;
+                const wholeList = isClientSort || isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter || isRecLostFilter || isNoEstFilter;
                 const r = wholeList ? await query : await query.range(offset, offset + this._adminPageSize - 1);
                 if (r.error) throw r.error;
                 return r;
@@ -25261,6 +25279,9 @@ const app = {
             if (isRecLostFilter) {
                 users = await this.filterRecLost(users);
             }
+            if (isNoEstFilter) {
+                users = await this.filterNoEstimates(users);
+            }
             // Сколько среди отобранных продавцов и сколько монтажников — для карточки
             // «Пользователей». Один человек может отметить обе сферы, поэтому числа
             // не обязаны складываться в общее. Когда отбор шёл на клиенте, список
@@ -25268,7 +25289,7 @@ const app = {
             // лёгких запроса-счётчика с теми же фильтрами, что и у таблицы.
             let sellersCount = 0, installersCount = 0;
             const hasActivity = (u, word) => (u.activity_types || []).some(a => String(a).toLowerCase().indexOf(word) !== -1);
-            if (isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter || isRecLostFilter) {
+            if (isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter || isRecLostFilter || isNoEstFilter) {
                 totalUsers = users.length;
                 sellersCount = users.filter(u => hasActivity(u, 'продав')).length;
                 installersCount = users.filter(u => hasActivity(u, 'монтаж')).length;
@@ -28460,6 +28481,7 @@ const app = {
             device: 'all',
             inactive: 'all',
             reclost: 'all',
+            noest: 'all',
             search: ''
         };
         const tariffFilter = filters.tariff;
@@ -28474,6 +28496,7 @@ const app = {
         const deviceFilter = filters.device || 'all';
         const inactiveFilter = filters.inactive || 'all';
         const recLostFilter = filters.reclost || 'all';
+        const noEstFilter = filters.noest || 'all';
         const sortArrow = (key) => sortType === key + '_asc' ? ' ▲' : (sortType === key + '_desc' ? ' ▼' : '');
         // Проектирование: переключатели работают, только если на сервере лежит
         // обновлённый recognize_archive.php (см. designAccessSupported).
@@ -28488,7 +28511,7 @@ const app = {
         // Быстрые срезы и сохранённые виды списка: девять фильтров в одну строку превращали
         // экран в панель самолёта, а нужные сочетания приходилось выставлять заново.
         const escH = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        const curF = { tariff: tariffFilter, expiry: expiryFilter, region: regionFilter, dist: distFilter, activity: activityFilter, recog: recogFilter, suspect: suspectFilter, idle: idleFilter, tour: tourFilter, device: deviceFilter, inactive: inactiveFilter, reclost: recLostFilter };
+        const curF = { tariff: tariffFilter, expiry: expiryFilter, region: regionFilter, dist: distFilter, activity: activityFilter, recog: recogFilter, suspect: suspectFilter, idle: idleFilter, tour: tourFilter, device: deviceFilter, inactive: inactiveFilter, reclost: recLostFilter, noest: noEstFilter };
         const nonDefault = {};
         Object.keys(curF).forEach(k => { if (curF[k] !== this.USERS_FILTER_DEFAULTS[k]) nonDefault[k] = curF[k]; });
         const activeCount = Object.keys(nonDefault).length;
@@ -28601,6 +28624,10 @@ const app = {
                             <select id="admin_filter_reclost" onchange="app.loadAdminData(0)" title="Разбирал накладные распознаванием, но ни одной сметы из распознанного не сохранил" style="background: var(--surface); color: var(--text-main); border: 1px solid ${recLostFilter === 'yes' ? '#D97706' : 'var(--border)'}; border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="all" ${recLostFilter === 'all' ? 'selected' : ''}>🔍 Распознавание: любое</option>
                                 <option value="yes" ${recLostFilter === 'yes' ? 'selected' : ''}>🔍 Распознал, не сохранил</option>
+                            </select>
+                            <select id="admin_filter_noest" onchange="app.loadAdminData(0)" title="Анкеты, у которых нет ни одной сохранённой сметы" style="background: var(--surface); color: var(--text-main); border: 1px solid ${noEstFilter === 'yes' ? '#D97706' : 'var(--border)'}; border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
+                                <option value="all" ${noEstFilter === 'all' ? 'selected' : ''}>🗂 Сметы: любые</option>
+                                <option value="yes" ${noEstFilter === 'yes' ? 'selected' : ''}>🗂 Без смет (0 сохранено)</option>
                             </select>
                             <select id="admin_filter_activity" onchange="app.loadAdminData(0)" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="all" ${activityFilter === 'all' ? 'selected' : ''}>Вся сфера деят-ти</option>
@@ -42497,10 +42524,11 @@ const app = {
         document.body.removeChild(link);
     },
     // ═══ Список пользователей: срезы, сохранённые виды, плотность, быстрый просмотр ═══
-    USERS_FILTER_DEFAULTS: { tariff: 'all', expiry: 'all', region: '', dist: 'all', activity: 'all', recog: 'all', suspect: 'all', idle: 'all', tour: 'all', device: 'all', inactive: 'all', reclost: 'all' },
-    USERS_FILTER_IDS: { tariff: 'admin_filter_tariff', expiry: 'admin_filter_expiry', region: 'admin_filter_region', dist: 'admin_filter_dist', activity: 'admin_filter_activity', recog: 'admin_filter_recog', suspect: 'admin_filter_suspect', idle: 'admin_filter_idle', tour: 'admin_filter_tour', device: 'admin_filter_device', inactive: 'admin_filter_inactive', reclost: 'admin_filter_reclost' },
+    USERS_FILTER_DEFAULTS: { tariff: 'all', expiry: 'all', region: '', dist: 'all', activity: 'all', recog: 'all', suspect: 'all', idle: 'all', tour: 'all', device: 'all', inactive: 'all', reclost: 'all', noest: 'all' },
+    USERS_FILTER_IDS: { tariff: 'admin_filter_tariff', expiry: 'admin_filter_expiry', region: 'admin_filter_region', dist: 'admin_filter_dist', activity: 'admin_filter_activity', recog: 'admin_filter_recog', suspect: 'admin_filter_suspect', idle: 'admin_filter_idle', tour: 'admin_filter_tour', device: 'admin_filter_device', inactive: 'admin_filter_inactive', reclost: 'admin_filter_reclost', noest: 'admin_filter_noest' },
     USERS_SEGMENTS: [
         { id: 'all', label: 'Все', f: {} },
+        { id: 'noest', label: 'Без смет', f: { noest: 'yes' } },
         { id: 'pro', label: 'Профи', f: { tariff: 'pro' } },
         { id: 'base', label: 'Базовые', f: { tariff: 'base' } },
         { id: 'expired', label: 'Срок истёк', f: { expiry: 'expired' } },
@@ -43027,8 +43055,8 @@ const app = {
                         <div style="padding-top:20px; border-top:1px dashed var(--border); margin-bottom:20px;">
                             <h4 style="margin:0 0 12px 0; font-size:14px; color:var(--text-main);">👤 Личные данные</h4>
                             ${user.frozen_at ? `<div style="background:rgba(14,165,233,0.12); border:1px solid #0EA5E9; color:#0EA5E9; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12px; line-height:1.45;">
-                                <b>🧊 Доступ приостановлен ${new Date(user.frozen_at).toLocaleDateString('ru-RU')}</b> — человек не заходил больше ${app.inactivityDays().freeze} дней.
-                                Расчёты сохранены. Если он не вернётся, учётка будет удалена ${new Date(new Date(user.frozen_at).getTime() + app.inactivityDays().delete * 864e5).toLocaleDateString('ru-RU')}.
+                                <b>🧊 Доступ приостановлен ${new Date(user.frozen_at).toLocaleDateString('ru-RU')}</b> — за долгое отсутствие или потому, что не сохранено ни одной сметы.
+                                Расчёты сохранены. Если он не вернётся, учётка будет удалена примерно ${new Date(new Date(user.frozen_at).getTime() + app.inactivityDays().delete * 864e5).toLocaleDateString('ru-RU')} (у анкет без смет срок свой, см. «Напоминания»).
                                 <button class="auth-btn-base" style="margin:8px 0 0; width:auto; height:30px; padding:0 14px; font-size:12px; background:#0EA5E9; color:#fff; border:none; ${isViewer ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.unfreezeUser('${user.id}')">Вернуть доступ</button>
                             </div>` : ''}
                             ${(() => {
@@ -45322,7 +45350,55 @@ const app = {
             const o = (nd && nd.value) || {};
             const d3 = n(o.day3, 3);
             this._nudgeCfg = { enabled: o.enabled === true, day3: d3, day14: Math.max(n(o.day14, 14), d3 + 1), day45: n(o.day45, 45) };
+            const { data: ed } = await supabaseClient.from('app_settings')
+                .select('value').eq('key', 'empty_accounts').maybeSingle();
+            const ev = (ed && ed.value) || {};
+            this._emptyCfg = { enabled: ev.enabled === true, freeze_days: n(ev.freeze_days, 30), delete_days: n(ev.delete_days, 30), skip_active: ev.skip_active !== false };
         } catch (e) { /* остаются значения по умолчанию */ }
+    },
+
+    // Анкеты без сохранённых смет: заморозка и удаление по срокам (20261027_empty_accounts_cleanup.sql).
+    // По умолчанию выключено: включает администратор.
+    emptyCfg: function () {
+        return this._emptyCfg || { enabled: false, freeze_days: 30, delete_days: 30, skip_active: true };
+    },
+
+    saveEmptyAccounts: async function () {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять правило запрещено.'); return; }
+        const get = id => parseInt((document.getElementById(id) || {}).value, 10);
+        const freeze_days = get('empty_freeze'), delete_days = get('empty_delete');
+        const enabled = !!(document.getElementById('empty_enabled') || {}).checked;
+        const skip_active = !!(document.getElementById('empty_skip_active') || {}).checked;
+        const ok = x => x >= 1 && x <= 365;
+        if (!ok(freeze_days) || !ok(delete_days)) { app.alert('Сроки — целые числа от 1 до 365 дней.'); return; }
+        if (enabled && !await app.confirm(`Включить правило? Анкеты без сохранённых смет будут замораживаться через ${freeze_days} дн. после регистрации, а замороженные — удаляться ещё через ${delete_days} дн. Сначала лучше нажать «Сколько подпадёт сейчас».`)) return;
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const value = { enabled, freeze_days, delete_days, skip_active };
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'empty_accounts', value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            this._emptyCfg = value;
+            this.renderAdminInactiveBody();
+            app.alert(enabled
+                ? 'Правило включено. Первая проверка — этой ночью (около 06:40 по Москве).'
+                : 'Правило выключено. Настройки сохранены, ничего замораживаться и удаляться не будет.');
+        } catch (e) {
+            app.alert('Не удалось сохранить правило: ' + (e.message || e) + '. Если миграция 20261027_empty_accounts_cleanup.sql ещё не выполнена — выполните её.');
+        }
+    },
+
+    // Пробный прогон на сервере: ничего не меняет, только считает по сохранённым срокам.
+    previewEmptyAccounts: async function () {
+        try {
+            const { data, error } = await supabaseClient.rpc('empty_accounts_preview');
+            if (error) throw error;
+            const d = data || {};
+            const cfg = this.emptyCfg();
+            app.alert(`По сохранённым срокам (заморозка через ${cfg.freeze_days} дн., удаление через ${cfg.delete_days} дн.):\n• заморозить сейчас: ${d.frozen || 0}\n• удалить сейчас: ${d.deleted || 0}\n\nЭто пробный счёт, ничего не изменено. Если вы только что поменяли сроки — сначала сохраните их.`);
+        } catch (e) {
+            app.alert('Не удалось посчитать: ' + (e.message || e) + '. Выполнена ли миграция 20261027_empty_accounts_cleanup.sql?');
+        }
     },
 
     // Рассылка тем, кто заходит, но не считает (20261002_onboarding_nudges.sql).
@@ -45745,6 +45821,7 @@ const app = {
         const days = s => s ? Math.floor((Date.now() - new Date(s).getTime()) / 864e5) : null;
         const cfg = this.inactivityDays();
         const nudge = this.nudgeCfg();
+        const empty = this.emptyCfg();
 
         const returned = rows.filter(r => r.returned_at).length;
         const frozen = rows.filter(r => r.stage === 'frozen').length;
@@ -45796,6 +45873,23 @@ const app = {
                     ${field('Вопрос «что не получилось», дней', 'nudge_day14', nudge.day14)}
                     ${field('Давняя смета, дней назад', 'nudge_day45', nudge.day45)}
                     <div class="ad-form-act">${saveBtn('Сохранить рассылку', 'app.saveOnboardingNudges()')}</div>
+                </div>
+            </details>
+            <details class="ad-collapse">
+                <summary>Анкеты без смет: заморозка и удаление${empty.enabled ? '' : ' — выключено'}</summary>
+                <div class="ad-sub" style="margin:0 16px 4px; max-width:760px;">
+                    Тем, кто зарегистрировался и не сохранил ни одной сметы: через ${empty.freeze_days} дн. после регистрации доступ приостанавливается (письмо уходит),
+                    ещё через ${empty.delete_days} дн. учётка удаляется. Профи, администраторов, менеджеров и заблокированных не трогаем.
+                    Удалённые могут зарегистрироваться заново сразу. Если вернуть доступ вручную, повторно человека правило не заморозит.
+                    Проверка — раз в сутки. Список таких анкет — в «Пользователи» → «Без смет».
+                </div>
+                <div class="ad-form-grid">
+                    <label class="ad-field ad-check"><input type="checkbox" id="empty_enabled" ${empty.enabled ? 'checked' : ''} ${dis}><span>Правило включено</span></label>
+                    ${field('Заморозка, дней после регистрации', 'empty_freeze', empty.freeze_days)}
+                    ${field('Удаление, дней после заморозки', 'empty_delete', empty.delete_days)}
+                    <label class="ad-field ad-check"><input type="checkbox" id="empty_skip_active" ${empty.skip_active ? 'checked' : ''} ${dis}><span>Не трогать тех, кто заходил за последние ${empty.freeze_days} дн.</span></label>
+                    <div class="ad-form-act">${saveBtn('Сохранить правило', 'app.saveEmptyAccounts()')}
+                        <button class="admin-btn" onclick="app.previewEmptyAccounts()">Сколько подпадёт сейчас</button></div>
                 </div>
             </details>`;
 
@@ -49004,7 +49098,7 @@ const app = {
                 this.saveState();
                 this.syncUI();
                 this.render();
-                app.alert('Доступ к аккаунту приостановлен: вы давно не заходили. Все ваши расчёты сохранены — напишите на kovdor24@yandex.ru или в MAX: +7 982 610-95-48, и мы вернём доступ в тот же день.');
+                app.alert('Доступ к аккаунту приостановлен: вы давно не заходили или не сохранили ни одного расчёта. Всё, что у вас было, сохранено — напишите на kovdor24@yandex.ru или в MAX: +7 982 610-95-48, и мы вернём доступ в тот же день.');
                 return;
             }
             if (uRow) {
