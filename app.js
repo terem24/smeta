@@ -10611,7 +10611,8 @@ const app = {
             catch (e) { this._kanbanCollapsed = {}; }
         }
         if (key in this._kanbanCollapsed) return !!this._kanbanCollapsed[key];
-        return !!(window.matchMedia && window.matchMedia('(max-width: 899.98px)').matches);
+        // По умолчанию всё свёрнуто (и на компьютере, и на телефоне): нужную колонку раскрывают сами
+        return true;
     },
     toggleKanbanCol: function (key) {
         const now = !this.kanbanIsCollapsed(key);
