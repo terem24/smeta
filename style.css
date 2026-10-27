@@ -21195,6 +21195,12 @@ body.empty-fit-panel #header_totals { display: none !important; }
 .kb-col .kb-head:hover { filter: brightness(0.97); }
 /* Компьютер: свёрнутая колонка остаётся узкой полоской с заголовком */
 .kb-col.kb-collapsed { flex: 0 0 auto !important; min-width: 200px !important; }
+/* Шесть колонок должны помещаться в ширину панели: уже 260 px не нужно, а если экран всё же узкий —
+   полоса прокрутки доски не должна уезжать под нижний край, поэтому колонки ниже экрана не растут */
+@media screen and (min-width: 900px) {
+    .admin-kanban-cols { scrollbar-width: thin; }
+    .admin-kanban-cols .kb-col:not(.kb-collapsed) { min-width: 200px !important; max-height: max(360px, calc(100vh - 420px)) !important; }
+}
 @media screen and (max-width: 899.98px) {
     .kb-col.kb-collapsed { min-width: 0 !important; width: 100% !important; }
     /* Открытая колонка на телефоне листается внутри, а не тянет всю страницу */
