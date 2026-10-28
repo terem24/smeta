@@ -1279,8 +1279,8 @@ function syncNorth() {
 }
 
 // pdf.js — лениво и с того же CDN, что использует распознавание накладных
-var PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-var PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+var PDFJS_URL = '/vendor/pdf.min.js';
+var PDFJS_WORKER = '/vendor/pdf.worker.min.js';
 function loadPdfJs() {
   return new Promise(function (ok, err) {
     if (window.pdfjsLib) { ok(window.pdfjsLib); return; }

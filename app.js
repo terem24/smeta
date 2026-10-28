@@ -62,7 +62,16 @@ function supabaseProxyFetchRaw(input, init) {
     // Его тоже пускаем через прокси — как сам сайт. Локальную разработку
     // (http://localhost:8080) это не задевает: у неё протокол http.
     const inApp = !!window.__HC_NATIVE__ || (host === 'localhost' && window.location.protocol === 'https:');
-    const canProxy = inApp || (host === 'heatcalc.ru' || host === 'www.heatcalc.ru' || host === 'new.heatcalc.ru');
+    // Проверка скорости: адрес heatcalc.ru/?direct=1 включает прямое обращение к базе
+    // в обход прокси (запоминается в этом браузере), ?direct=0 возвращает прокси. Нужно, чтобы
+    // сравнить, что быстрее у конкретного человека: лишний прыжок через PHP-прокси или прямой путь.
+    let direct = false;
+    try {
+        const m = /[?&]direct=([01])(&|$)/.exec(window.location.search || '');
+        if (m) localStorage.setItem('hc_direct_db', m[1]);
+        direct = localStorage.getItem('hc_direct_db') === '1';
+    } catch (e) { }
+    const canProxy = !direct && (inApp || (host === 'heatcalc.ru' || host === 'www.heatcalc.ru' || host === 'new.heatcalc.ru'));
     const url = typeof input === 'string' ? input : input.url;
     if (canProxy && url.startsWith(supabaseUrl)) {
         return fetch('https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(supabaseUrl.length)), init);
@@ -1219,7 +1228,7 @@ const app = {
     },
 
     getGeoLocation: async function () {
-        try { let res = await fetch('https://ipapi.co/json/'); let data = await res.json(); if (data && data.city && data.country_name) return data.city + ', ' + data.country_name; } catch (e) { }
+        try { let res = await fetch('https://proxy.heatcalc.ru/geo.php'); let data = await res.json(); if (data && data.city && data.country_name) return data.city + ', ' + data.country_name; } catch (e) { }
         return '';
     },
     initMobileMenu: function () {
@@ -14239,22 +14248,13 @@ const app = {
 
         let code = '';
         try {
-            const res = await fetch('https://ipapi.co/json/');
+            const res = await fetch('https://proxy.heatcalc.ru/geo.php');
             if (res.ok) {
                 const geo = await res.json();
                 code = (geo && geo.country_code) ? String(geo.country_code).toUpperCase() : '';
             }
         } catch (e) { }
-        if (!code) {
-            try {
-                const res = await fetch('https://ipinfo.io/json');
-                if (res.ok) {
-                    const geo = await res.json();
-                    code = (geo && geo.country) ? String(geo.country).toUpperCase() : '';
-                }
-            } catch (e) { }
-        }
-        // Оба сервиса недоступны (блокировки, оффлайн) — ориентируемся на браузер
+        // Сервис недоступен (блокировки, оффлайн) — ориентируемся на браузер
         if (!code) {
             code = this.looksRussianByLocale() ? 'RU' : '';
         }
@@ -48963,7 +48963,7 @@ const app = {
             }
         };
         let geo = null;
-        for (const url of ['https://ipapi.co/json/', 'https://ipinfo.io/json']) {
+        for (const url of ['https://proxy.heatcalc.ru/geo.php']) {
             try { geo = await ask(url); break; } catch (e) { }
         }
         if (!geo || (!geo.city && !geo.ip)) return;
@@ -50305,7 +50305,7 @@ const app = {
         return '';
     },
 
-    // Транслитерация для сверки города по IP: ipapi.co отдаёт его латиницей
+    // Транслитерация для сверки города по IP: geo.php (proxy.heatcalc.ru) отдаёт его латиницей
     translitCity: function (name) {
         const map = { 'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e', 'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya' };
         return String(name || '').toLowerCase().split('').map(ch => (map[ch] !== undefined ? map[ch] : ch)).join('');
@@ -50928,7 +50928,7 @@ const app = {
 
     // ═══════════════ Тема оформления ═══════════════
     // Три режима: 'light', 'dark' и 'auto'. Авто переключает тему по закату и восходу
-    // там, где человек находится. Координаты берём из ipapi.co — того же сервиса, который
+    // там, где человек находится. Координаты берём из geo.php — того же сервиса, который
     // приложение и так опрашивает при регистрации: города в CITIES_DB координат не имеют,
     // а просить разрешение на геолокацию ради оформления — перебор. Координат нет
     // (сервис недоступен, режет блокировщик) — авто-режим работает по расписанию.
@@ -50990,7 +50990,7 @@ const app = {
         if (this._themeGeoFetching) return;
         this._themeGeoFetching = true;
         try {
-            const res = await fetch('https://ipapi.co/json/');
+            const res = await fetch('https://proxy.heatcalc.ru/geo.php');
             const d = await res.json();
             if (d && typeof d.latitude === 'number' && typeof d.longitude === 'number') {
                 localStorage.setItem(this.THEME_GEO_KEY, JSON.stringify({
@@ -98433,7 +98433,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 clientIp = '127.0.0.1';
                 clientCity = 'Локальный хост';
             } else {
-                for (const geoUrl of ['https://ipapi.co/json/', 'https://ipinfo.io/json']) {
+                for (const geoUrl of ['https://proxy.heatcalc.ru/geo.php']) {
                     try {
                         const res = await fetch(geoUrl);
                         if (!res.ok) continue;
