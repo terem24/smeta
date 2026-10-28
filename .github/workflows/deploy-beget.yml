@@ -88,6 +88,31 @@ jobs:
           grep -ohE 'src="[^"]*(catalog|el_tariffs|gas_tariffs|dist_prices)\.js[^"]*"' \
             index.html invoice.html oprosnik.html start24.html | sort | uniq -c
 
+      # Сжатие кода. app.js весит 7,7 МБ, из них четверть — комментарии и отступы,
+      # а сервер Beget (nginx отдаёт .js мимо .htaccess) может не сжимать файлы
+      # вовсе. Убираем комментарии и пробелы в заливаемой копии (в репозитории
+      # остаётся читаемый исходник). Переименования переменных нет — только
+      # пробелы и комментарии, поэтому поведение кода не меняется. Если после
+      # сжатия файл не стал меньше (данные вроде catalog.js) или не разобрался —
+      # остаётся как был.
+      - name: Убрать комментарии и пробелы в больших скриптах
+        if: steps.check.outputs.mode != 'off'
+        continue-on-error: true
+        run: |
+          npm i --no-save --silent esbuild@0.25.0
+          for f in app.js project_scheme.js project_plans.js recognize.js recognize_match.js recognize_project.js recognize_files.js recognize_plan.js subscription.js tour.js docs.js; do
+            [ -f "$f" ] || continue
+            if ./node_modules/.bin/esbuild "$f" --minify-whitespace --legal-comments=none --target=es2020 --outfile="/tmp/min_$f" --log-level=error; then
+              if [ "$(wc -c < "/tmp/min_$f")" -lt "$(wc -c < "$f")" ]; then
+                echo "$f: $(wc -c < "$f") → $(wc -c < "/tmp/min_$f")"
+                cp "/tmp/min_$f" "$f"
+              fi
+            else
+              echo "::warning::$f не разобрался — залит как есть"
+            fi
+          done
+          rm -rf node_modules package-lock.json
+
       # Список исключений один на оба способа. Ничего лишнего на боевом
       # сервере — особенно php: на Beget он, в отличие от GitHub Pages,
       # по-настоящему исполняется, и копии прокси на сайте создали бы вторую
