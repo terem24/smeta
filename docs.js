@@ -1003,7 +1003,7 @@ const Docs = {
             <button type="button" class="sec" onclick="docWord()">Скачать Word</button>
             <span>${this.esc(name)}</span>
         </div>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"><\/script>
+        <script src="${location.origin}/vendor/html2pdf.bundle.min.js"><\/script>
         <script>${js}<\/script>`;
     },
 

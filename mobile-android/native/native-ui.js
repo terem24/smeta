@@ -81,11 +81,11 @@
     // попытку сохранить смету), и не раньше.
 
     // -------------------------------------------------- следы сайта в печати
-    // В печатной сноске стоит QR-код на heatcalc.ru, который рисует чужой
-    // сервис api.qrserver.com: внутри приложения это и лишний поход в сеть,
+    // В печатной сноске стоит QR-код на heatcalc.ru, который лежит картинкой
+    // img/qr_heatcalc.png (раньше рисовал чужой сервис api.qrserver.com): внутри приложения это и лишний поход в сеть,
     // и прямая отсылка «идите на сайт». Убираем вместе с подписью.
     function dropSiteMarks() {
-        var qr = d.querySelector('.print-disclaimer img[src*="qrserver"]');
+        var qr = d.querySelector('.print-disclaimer img[src*="qr_heatcalc"], .print-disclaimer img[src*="qrserver"]');
         if (qr) {
             var cell = qr.parentNode;
             if (cell && cell.parentNode) cell.parentNode.removeChild(cell);

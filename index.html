@@ -188,8 +188,6 @@
         }
     </script>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <!-- Шрифт подключён так, чтобы не задерживать первую отрисовку. Файл сам по
          себе крошечный (около килобайта), но лежит на чужом домене, и браузер
          честно ждал ответа: на телефоне это стоило больше секунды белого экрана.
@@ -197,11 +195,11 @@
          стиль на место, когда он приехал. Пока его нет, текст рисуется запасным
          системным шрифтом — ровно то же самое делает display=swap. -->
     <link rel="preload" as="style"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        href="/fonts/inter.css?v=1">
+    <link href="/fonts/inter.css?v=1"
         rel="stylesheet" media="print" onload="this.media='all'; this.onload=null;">
     <noscript>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+        <link href="/fonts/inter.css?v=1"
             rel="stylesheet">
     </noscript>
     <link rel="stylesheet" href="style.css?v=5.79">
@@ -237,7 +235,7 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.7" defer></script>
-    <script src="app.js?v=14.63" defer></script>
+    <script src="app.js?v=14.64" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -286,8 +284,8 @@
             excel: ['excel_export.js?v=1.5'],
             reprice: ['reprice.js?v=1.7'],
             qrcode: ['qrcode.min.js'],
-            html2pdf: ['https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'],
-            sheetjs: ['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js']
+            html2pdf: ['vendor/html2pdf.bundle.min.js'],
+            sheetjs: ['vendor/xlsx.full.min.js']
         };
         (function () {
             var started = {};
@@ -2724,7 +2722,7 @@
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 15px;">
                     <div style="text-align: center;">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://heatcalc.ru/"
+                        <img src="img/qr_heatcalc.png"
                             alt="QR" style="width: 80px; height: 80px;">
                         <div style="font-size: 10px; margin-top: 5px; font-weight: bold; color: #000;">
                             heatcalc.ru</div>
