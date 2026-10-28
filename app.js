@@ -62,7 +62,16 @@ function supabaseProxyFetchRaw(input, init) {
     // Его тоже пускаем через прокси — как сам сайт. Локальную разработку
     // (http://localhost:8080) это не задевает: у неё протокол http.
     const inApp = !!window.__HC_NATIVE__ || (host === 'localhost' && window.location.protocol === 'https:');
-    const canProxy = inApp || (host === 'heatcalc.ru' || host === 'www.heatcalc.ru' || host === 'new.heatcalc.ru');
+    // Проверка скорости: адрес heatcalc.ru/?direct=1 включает прямое обращение к базе
+    // в обход прокси (запоминается в этом браузере), ?direct=0 возвращает прокси. Нужно, чтобы
+    // сравнить, что быстрее у конкретного человека: лишний прыжок через PHP-прокси или прямой путь.
+    let direct = false;
+    try {
+        const m = /[?&]direct=([01])(&|$)/.exec(window.location.search || '');
+        if (m) localStorage.setItem('hc_direct_db', m[1]);
+        direct = localStorage.getItem('hc_direct_db') === '1';
+    } catch (e) { }
+    const canProxy = !direct && (inApp || (host === 'heatcalc.ru' || host === 'www.heatcalc.ru' || host === 'new.heatcalc.ru'));
     const url = typeof input === 'string' ? input : input.url;
     if (canProxy && url.startsWith(supabaseUrl)) {
         return fetch('https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(supabaseUrl.length)), init);
