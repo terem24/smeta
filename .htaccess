@@ -25,6 +25,10 @@ DirectoryIndex index.html
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME}.html -f
     RewriteRule ^(.+)$ $1.html [L]
+
+    # Метка для кэша: js/css с «?v=» (см. ниже, блок mod_headers).
+    RewriteCond %{QUERY_STRING} ^v=
+    RewriteRule \.(js|css)$ - [E=HC_VERSIONED:1,L]
 </IfModule>
 
 <IfModule mod_headers.c>
@@ -40,4 +44,28 @@ DirectoryIndex index.html
         Header unset Expires
         Header set Cache-Control "max-age=600"
     </FilesMatch>
+
+    # Файлы с «?v=» (app.js?v=14.62, catalog.js?v=3.48 …) меняют адрес при каждой
+    # правке, поэтому держать их можно долго: повторный заход не качает заново
+    # ~10 МБ скриптов, а берёт их из кэша браузера. Без этого раз в 10 минут
+    # браузер перепроверял каждый файл, а после перепроверки (особенно на слабой
+    # связи) часть скриптов не доезжала — «Загрузка калькулятора» зависала и
+    # страница падала в «загрузился с ошибкой».
+    Header set Cache-Control "public, max-age=2592000, immutable" env=HC_VERSIONED
+</IfModule>
+
+# Сжатие. На Pages его делал сам хостинг. app.js весит 7.7 МБ, а сжатый —
+# 1.9 МБ: без сжатия при заходе уходило около 13 МБ вместо ~3 МБ, и на мобильной
+# связи калькулятор грузился минутами.
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/plain text/xml
+    AddOutputFilterByType DEFLATE application/javascript text/javascript application/x-javascript
+    AddOutputFilterByType DEFLATE application/json application/ld+json application/manifest+json
+    AddOutputFilterByType DEFLATE image/svg+xml application/xml application/rss+xml
+</IfModule>
+<IfModule mod_brotli.c>
+    AddOutputFilterByType BROTLI_COMPRESS text/html text/css text/plain text/xml
+    AddOutputFilterByType BROTLI_COMPRESS application/javascript text/javascript application/x-javascript
+    AddOutputFilterByType BROTLI_COMPRESS application/json application/ld+json application/manifest+json
+    AddOutputFilterByType BROTLI_COMPRESS image/svg+xml application/xml application/rss+xml
 </IfModule>
