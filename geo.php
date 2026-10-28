@@ -56,13 +56,20 @@ if (is_file($cacheFile) && (time() - filemtime($cacheFile)) < 86400) {
     }
 }
 
-$ch = curl_init('https://api.sypexgeo.net/json/' . rawurlencode($ip));
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_TIMEOUT, 4);
-curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
-$raw = curl_exec($ch);
-$code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
+// Сначала https, потом http: на некоторых хостингах нет актуальных сертификатов для curl.
+// ?debug=1 показывает, чем закончился запрос (код ответа и ошибку curl).
+$raw = null; $code = 0; $err = '';
+foreach (['https', 'http'] as $scheme) {
+    $ch = curl_init($scheme . '://api.sypexgeo.net/json/' . rawurlencode($ip));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
+    $raw = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err .= $scheme . ': ' . $code . ' ' . curl_error($ch) . '; ';
+    curl_close($ch);
+    if ($code === 200 && $raw) break;
+}
 
 $j = ($code === 200 && $raw) ? json_decode($raw, true) : null;
 if (is_array($j)) {
@@ -80,4 +87,5 @@ if (is_array($j)) {
     @file_put_contents($cacheFile, json_encode($out, JSON_UNESCAPED_UNICODE));
 }
 
+if (isset($_GET['debug'])) { $out['debug'] = $err . substr((string)$raw, 0, 200); }
 echo json_encode($out, JSON_UNESCAPED_UNICODE);
