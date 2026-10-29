@@ -647,6 +647,7 @@
     var unknown = [];  // позиции, про концы которых ничего не знаем
     var ext = [];      // концы, уходящие из котельной
     var pipe = {};     // пресс-размер → метров трубы (для справки)
+    var colOut = {}, colItem = {}, grpIn = {}; // выходы коллектора / входы насосных групп по размеру
     (list || []).filter(filter).forEach(function (it) {
       var q = Number(it.q) || 1;
       var r = portsOf(it);
@@ -654,6 +655,9 @@
       r.ports.forEach(function (p) {
         if (p.pipe) { pipe[p.size] = (pipe[p.size] || 0) + q; return; }
         var n = (p.qty || 1) * q;
+        // Выходы коллектора на насосные группы и входы самих групп — для подсчёта неиспользуемых контуров (см. ниже)
+        if (p.role === 'к насосным группам') { colOut[p.size] = (colOut[p.size] || 0) + n; colItem[p.size] = it; }
+        if (p.role === 'к коллектору' && p.kind === 'M') grpIn[p.size] = (grpIn[p.size] || 0) + n;
         // usedIf — патрубок уходит наружу, только пока к нему ничего не подключено
         // (рециркуляция: без насоса патрубок глушат, с насосом он в балансе).
         var used = p.usedIf && (list || []).some(function (x) { return p.usedIf.test(String(x.originalId || '')); });
@@ -671,6 +675,18 @@
         b[x.kind] -= k;
         ext.push({ it: it, p: { kind: x.kind, size: x.size, role: x.role }, n: k });
       });
+    });
+
+    // Контуров у коллектора больше, чем насосных групп в смете (двухконтурный стоит при одной группе: DN25 бывает
+    // только на 2 и 3 контура): гнёзда с накидными гайками на лишнем контуре остаются без пары — их глушат.
+    // Это не ошибка стыковки, а отдельное требование: показываем отдельной строкой «заглушить».
+    Object.keys(colOut).forEach(function (size) {
+      var spare = colOut[size] - (grpIn[size] || 0);
+      var b = bal[size + '"'];
+      if (spare > 0 && b && b.N >= spare) {
+        b.N -= spare;
+        ext.push({ it: colItem[size], p: { kind: 'N', size: size, role: 'неиспользуемые выходы коллектора (заглушить)' }, n: spare });
+      }
     });
 
     var problems = [];
