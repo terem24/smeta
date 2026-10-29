@@ -51576,6 +51576,11 @@ const app = {
         this.saveState();
         this.render();
     },
+    // Строка POLIS — всегда один котёл: каскада из POLIS в смете не бывает.
+    _isPolisRow: function (id) {
+        const base = String(id).split('@')[0];
+        return (catalog.boilers_polis || []).some(b => b.id === base);
+    },
     setQty: function (id, value) {
         this._splitRowKey(id);
         if (value === '' || value === null || value === undefined) {
@@ -51589,6 +51594,8 @@ const app = {
         }
         let n = Math.round(parseFloat(value));
         if (isNaN(n) || n < 0) n = 0;
+        // POLIS физически ставится только одним котлом: больше одного в смете не даём
+        if (n > 1 && this._isPolisRow(id)) n = 1;
         if (!this.state.qtyOverrides) this.state.qtyOverrides = {};
         if (n <= 0) {
             delete this.state.qtyOverrides[id];
@@ -88347,7 +88354,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             if (this.state.qtyOverrides) {
                 bill.forEach(entry => {
                     const ovKey = entry.originalId || entry.id;
-                    const _ov = this.rowOv(this.state.qtyOverrides, ovKey, entry.group || title);
+                    let _ov = this.rowOv(this.state.qtyOverrides, ovKey, entry.group || title);
+                    // Старая правка «2 POLIS» из сохранённой сметы тоже не проходит: POLIS — один котёл
+                    if (_ov > 1 && this._isPolisRow(ovKey)) _ov = 1;
                     if (_ov !== undefined && _ov !== entry.q) {
                         this.calcFinalTotal -= entry.price * (entry.q - _ov);
                         entry.q = _ov;
@@ -89223,7 +89232,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     // Каскад одинаковых котлов, заданный руками (эскиз котельной:
                     // «два по 12») — столько же строк в обвязке и котлов на схеме,
                     // что и у автоматического каскада: selBoilers держит каждый.
-                    const _n = Math.min(4, Math.max(1, parseInt(this.state.elBoilerCount, 10) || 1));
+                    // POLIS (без насоса) — только одним котлом, каскад из него не собираем
+                    const _n = t.noPump ? 1 : Math.min(4, Math.max(1, parseInt(this.state.elBoilerCount, 10) || 1));
                     addToBill(t, _n, this.getDesc('boiler_el', needed, t.power, _n, elSeries));
                     markRigAnchor('el', t.id);
                     for (let k = 0; k < _n; k++) selBoilers.push(t);

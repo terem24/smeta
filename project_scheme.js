@@ -415,9 +415,9 @@
 
   /** Котёл (газовый/электрический). (x,y) — левый верхний угол корпуса.
    *  w — ширина корпуса: 33 как в эталоне, 27 — компактный блок каскада. */
-  function boilerUnit(x, y, kind, w) {
+  function boilerUnit(x, y, kind, w, hh) {
     w = w || 33;
-    var h = 58, o = [];
+    var h = hh || 58, o = [];
     if (kind === 'gas') o.push(rrect(x + w / 2 - 5, y - 5, 10, 6, 1.5, { f: GREY.body, c: GREY.edge, w: 0.6 }));
     else o.push(rrect(x + w / 2 - 3.5, y - 2.5, 7, 3.5, 1, { f: GREY.body, c: GREY.edge, w: 0.6 }));
     o.push(rrect(x, y, w, h, 2, { f: GREY.body, c: GREY.edge, w: 0.6 }));
@@ -430,7 +430,9 @@
     var capOpt = { size: SZ.txt, anchor: 'middle' };
     if (textW(cap, SZ.txt) > w - 4) capOpt.fit = w - 4;
     o.push(txt(x + w / 2, y + 7.9, cap, capOpt));
-    var cx = x + w / 2, cy = y + 27;
+    // Значок — на 27 от верха у полного корпуса (58); у высокого POLIS сдвигаем
+    // на половину разницы высот, чтобы не лечь на клемник внизу.
+    var cx = x + w / 2, cy = y + 27 + (h - 58) / 2;
     o.push(circle(cx, cy, 7.2, { f: GREY.icon }));
     if (kind === 'gas') {
       // язык пламени: острый хвост вверху, круглое основание, внутренний язычок
@@ -1611,6 +1613,13 @@
       b.wide = b.carrier || b.load;
       b.step = (blocks.length >= 3 && b.wide) ? 8 : 9;
       b.w = blocks.length >= 3 ? (b.wide ? 29 : 27) : 33;
+      // POLIS — «голый» котёл без насоса и бака: высокий и узкий корпус.
+      // Пропорции по магазинам (6 кВт): 247×750 мм, патрубки 1" НР / 3/4" ВР
+      // на межосевом 125 мм (enginer-pro.ru, teplograd.ru, c-o-k.ru). Здесь
+      // масштаб листа: высота 68 ≈ 750 мм (ужата, чтобы влезла гребёнка ГБМ), межосевое 12,5 ≈ 125 мм.
+      b.h = 58;
+      b.gap = 9;
+      if (b.kind === 'el' && polis) { b.w = 23; b.h = 68; b.gap = 12.5; }
     });
 
     o.push(legendTable(cfg));
@@ -1699,7 +1708,9 @@
 
     blocks.forEach(function (b, bi) {
       var kind = b.kind, bx = bXs[bi], st = b.step;
-      o.push(boilerUnit(bx, bTop, kind, b.w));
+      // Низ корпуса у каждого блока свой (POLIS ниже): патрубки и стояки садятся от него.
+      var bBot = bTop + b.h;
+      o.push(boilerUnit(bx, bTop, kind, b.w, b.h));
       // Каскад больше трёх блоков усечён — дописываем реальное количество
       if (kind === 'gas' && gasCount > drawnGas && bi === carrierIdx)
         o.push(txt(bx + b.w / 2, bTop + 12.3, '× ' + gasCount + ' шт.', { size: SZ.txt, anchor: 'middle' }));
@@ -1718,7 +1729,7 @@
       if (b.carrier) { xs = bx + 3.03; xg = xs + st; xc = xs + 2 * st; xRet = xs + 3 * st; }
       else if (retToBoiler) { xs = bx + 3.03; xls = xs + st; xlr = xs + 2 * st; xRet = xs + 3 * st; if (loadRBoilerX === null || xlr < loadRBoilerX) loadRBoilerX = xlr; }
       else if (b.load) { xs = bx + (b.w - 2 * st) / 2; xls = xs + st; xRet = xs + 2 * st; }
-      else { xs = bx + (b.w - 9) / 2; xRet = xs + 9; }
+      else { xs = bx + (b.w - b.gap) / 2; xRet = xs + b.gap; }
       if (xls !== null && (loadSx === null || xls < loadSx)) loadSx = xls;
       [xs, xRet, xg, xc].forEach(function (v) { if (v !== null && v > maxStemX) maxStemX = v; });
 
@@ -2436,7 +2447,7 @@
       // теплообменника и общие числа кольца.
       bXs.forEach(function (bx, bi) {
         if (bx == null || !blocks[bi]) return;
-        o.push(zone('boiler', bx, bTop, bx + blocks[bi].w, bBot, ' data-hyd-b="' + bi + '"'));
+        o.push(zone('boiler', bx, bTop, bx + blocks[bi].w, bTop + blocks[bi].h, ' data-hyd-b="' + bi + '"'));
       });
       // Бойлер: зона по корпусу бака. Рисуется он далеко не всегда (только
       // при косвенном нагреве), поэтому координаты берём с самого рисунка —
