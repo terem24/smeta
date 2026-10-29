@@ -65475,14 +65475,11 @@ const app = {
             let _sm = this.state.tankSwapMount;
             let _sh = this.state.tankSwapHeat;
             let _sv = this.state.tankSwapVol;
-            // ROMMER в таблице замены — только на тарифе «Профи»; у остальных фильтр сводится к «Все»
-            const _sb = (this.state.accountType === 'pro' && this.state.tankSwapBrand) || 'all';
             _allVolsAlts = _allTankGroups
                 .filter(g => g.arr)
                 .filter(g => _sm === 'all' || g.mount === _sm)
                 .filter(g => _sh === 'all' || g.heat === _sh)
-                .flatMap(g => g.arr)
-                .filter(x => _sb === 'all' || (x.brand || '').toUpperCase() === _sb);
+                .flatMap(g => g.arr);
             alts = _sv === null ? _allVolsAlts : _allVolsAlts.filter(x => x.vol === _sv);
         }
 
@@ -68031,6 +68028,15 @@ const app = {
                 // При фильтре "ТЭН" исключаем GT-серию (без ТЭНа, RWH-2110-0xxx) из результатов
                 if (_isTankItem && this.state.tankSwapHeat === 'comb') {
                     candidates = candidates.filter(d => !(d.id && d.id.startsWith('RWH-2110-0')));
+                }
+                // Бренд в таблице замены бойлера: STOUT и ROMMER — два кандидата одной позиции.
+                // ROMMER — только на тарифе «Профи»; у остальных фильтр сводится к «Все»
+                const _tankBrandF = (_isTankItem && this.state.accountType === 'pro' && this.state.tankSwapBrand) || 'all';
+                if (_isTankItem && _tankBrandF !== 'all') {
+                    candidates = candidates.filter(d => {
+                        const isRommerRow = !!(displayItemRommer && d.id === displayItemRommer.id);
+                        return _tankBrandF === 'ROMMER' ? isRommerRow : !isRommerRow;
+                    });
                 }
                 // Фильтр "Типоразмер" в модалке узла подмеса/насосных групп: скрываем строки,
                 // у которых в собственном названии не тот DN (например, ROMMER-аналог физически DN25,
