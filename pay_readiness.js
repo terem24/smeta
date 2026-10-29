@@ -528,7 +528,7 @@ const PayReadiness = {
         el.innerHTML = `<div class="pr-offer">
             <div class="pr-offer-h"><b>Предложение: ${this.esc(p.name)}</b><button type="button" class="admin-btn" onclick="PayReadiness.closeOffer()">✕</button></div>
             <div class="ad-card-note" style="padding:0;">Текст собран автоматически: преимущества для роли «${this.ROLE_LABEL[p.role]}», цены и ссылки с учётом региона${p.rawRegion ? ' (' + this.esc(p.rawRegion) + ')' : ''}. Можно поправить перед отправкой.</div>
-            <textarea id="pr_offer_text" class="pr-offer-text" rows="14">${this.esc(o.text)}</textarea>
+            <textarea id="pr_offer_text" class="pr-offer-text" rows="14" oninput="this.dataset.edited='1'">${this.esc(o.text)}</textarea>
             ${warn}
             <div class="pr-offer-btns">
                 <button type="button" class="admin-btn" onclick="PayReadiness.copyOffer()">Скопировать</button>
@@ -536,6 +536,76 @@ const PayReadiness = {
                 <span id="pr_offer_status" class="ad-card-note" style="padding:0;"></span>
             </div></div>`;
         document.body.appendChild(el);
+        // Экономия считается сейчас, по последней смете этого пользователя. Текст обновляется, если
+        // владелец ещё не правил его руками.
+        this.offerStatus('Считаю экономию по смете…');
+        this.probeSaving(p).then(r => {
+            if (this._offerFor !== p) return;
+            const ta = document.getElementById('pr_offer_text');
+            if (ta && !ta.dataset.edited) ta.value = this.offerText(p).text;
+            if (!r) this.offerStatus('У пользователя нет сметы — строки про экономию не будет.');
+            else if (r.error) this.offerStatus('Экономию не посчитали: ' + r.error);
+            else if (!(r.save_rub > 0)) this.offerStatus('В «Бюджетнее» смета не дешевле — строки про экономию не будет.');
+            else this.offerStatus('Экономия посчитана: ' + Math.round(r.save_rub).toLocaleString('ru-RU') + ' ₽ (' + r.save_pct + ' %).');
+        });
+    },
+
+    // Последняя смета пользователя → скрытый расчёт в песочнице (probe.js) → таблица offer_savings.
+    // Возвращает строку экономии, null — если сметы нет, { error } — если не получилось.
+    probeSaving: async function (p) {
+        try {
+            const { data: est, error } = await supabaseClient.from('estimates')
+                .select('id, calc_data').eq('user_id', p.id)
+                .order('created_at', { ascending: false }).limit(1).maybeSingle();
+            if (error) throw error;
+            if (!est || !est.calc_data) return null;
+            const res = await this.runProbe(est.calc_data);
+            if (res.error) return { error: res.error };
+            const save = res.base - res.cheap;
+            const row = {
+                user_id: p.id, estimate_id: est.id, base_sum: res.base, cheap_sum: res.cheap,
+                save_rub: save, save_pct: Math.round(save / res.base * 1000) / 10,
+                computed_at: new Date().toISOString()
+            };
+            const { error: wErr } = await supabaseClient.from('offer_savings').upsert(row, { onConflict: 'user_id' });
+            if (wErr) throw wErr;
+            this._savings = this._savings || {};
+            this._savings[p.id] = row;
+            return row;
+        } catch (e) {
+            return { error: (e && e.message) || String(e) };
+        }
+    },
+
+    // Скрытый iframe с index.html?probe=1: отдаёт ему смету, получает base и cheap. Сохранённую смету
+    // калькулятора он не трогает (см. probe.js и скрипт в <head> index.html).
+    runProbe: function (state) {
+        return new Promise((resolve) => {
+            const id = Math.random().toString(36).slice(2);
+            const frame = document.createElement('iframe');
+            frame.setAttribute('aria-hidden', 'true');
+            frame.style.cssText = 'position:fixed; width:1px; height:1px; left:-9999px; top:0; opacity:0; border:0; pointer-events:none;';
+            frame.src = new URL('index.html?probe=1', location.href).href;
+            let sent = false;
+            const finish = (r) => {
+                window.removeEventListener('message', onMsg);
+                clearTimeout(timer);
+                frame.remove();
+                resolve(r);
+            };
+            const onMsg = (e) => {
+                if (e.source !== frame.contentWindow || e.origin !== location.origin || !e.data) return;
+                if (e.data.type === 'probe-ready' && !sent) {
+                    sent = true;
+                    frame.contentWindow.postMessage({ type: 'probe', id: id, state: state }, location.origin);
+                } else if (e.data.type === 'probe-result' && (e.data.id === id || (!e.data.id && e.data.error))) {
+                    finish(e.data);
+                }
+            };
+            const timer = setTimeout(() => finish({ error: 'расчёт не ответил за 90 секунд' }), 90000);
+            window.addEventListener('message', onMsg);
+            document.body.appendChild(frame);
+        });
     },
 
     closeOffer: function () {

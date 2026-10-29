@@ -10,6 +10,24 @@
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
     <meta name="format-detection" content="telephone=no">
     <script>
+    /* Скрытый расчёт «могла бы стоить дешевле» (probe.js): в этом режиме localStorage заменяется
+       памятью, чтобы смета из админки не записалась в состояние калькулятора владельца. */
+    (function () {
+        if (!/[?&]probe=1(&|$)/.test(location.search)) return;
+        var mem = {};
+        var store = {
+            getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+            setItem: function (k, v) { mem[k] = String(v); },
+            removeItem: function (k) { delete mem[k]; },
+            clear: function () { mem = {}; },
+            key: function (i) { return Object.keys(mem)[i] || null; },
+            get length() { return Object.keys(mem).length; }
+        };
+        try { Object.defineProperty(window, 'localStorage', { value: store, configurable: true }); } catch (e) { }
+        try { Object.defineProperty(window, 'sessionStorage', { value: store, configurable: true }); } catch (e) { }
+    })();
+    </script>
+    <script>
     /* Видимая высота экрана для окна кабинета/анкеты (--vv-h, --vv-top в style.css).
        На iPhone 100vh и height:100% включают область под нижней панелью Safari, и кнопка
        «Сохранить» оказывалась под ней; visualViewport даёт реальную видимую часть и
@@ -243,6 +261,7 @@
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.7" defer></script>
     <script src="assembly_check.js?v=1.0" defer></script>
+    <script src="probe.js?v=1.0" defer></script>
     <script src="app.min.js?v=14.84" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
@@ -283,7 +302,7 @@
             docs: ['warranty.js?v=1.0', 'docs.js?v=3.6'],
             kpshare: ['kp_share.js?v=1.3'],
             warranty_admin: ['warranty_admin.js?v=1.1'],
-            pay_readiness: ['pay_readiness.js?v=1.11'],
+            pay_readiness: ['pay_readiness.js?v=1.12'],
             excel: ['excel_export.js?v=1.5'],
             reprice: ['reprice.js?v=1.7'],
             qrcode: ['qrcode.min.js'],
