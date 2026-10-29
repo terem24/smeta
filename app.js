@@ -56148,6 +56148,8 @@ const app = {
         const old = document.getElementById('assembly_warn');
         if (old) old.remove();
         try {
+            // Блоки прошлой отрисовки снимаем: иначе каждый render() добавляет свою копию подсказки
+            document.querySelectorAll('#assembly_warn, #assembly_hint').forEach(el => el.remove());
             const ac = (typeof window !== 'undefined') ? window.assemblyCheck : null;
             const s = this.state;
             if (!ac || s.viewMode !== 'equipment' || !Object.keys(s.swaps || {}).length) return;
@@ -56168,15 +56170,24 @@ const app = {
                 wrap.parentNode.insertBefore(box, wrap);
             }
             if (hints.length) {
+                // Одна строка на все подсказки: текст обрезается по ширине, полный — во всплывающей подсказке
+                const keys = hints.map(p => p.hintKey);
+                const text = hints.map(p => p.text).join(' · ');
                 const hint = document.createElement('div');
                 hint.id = 'assembly_hint';
-                hint.style.cssText = 'margin:8px 0; padding:10px 14px; border:1px solid #2563EB; border-radius:10px; font-size:13px; background:rgba(37,99,235,.06); display:flex; gap:12px; align-items:flex-start;';
-                hint.innerHTML = '<div style="flex:1"><b>Подсказка по обвязке.</b> Это не ошибка стыковки:<ul style="margin:6px 0 0 18px;">' +
-                    hints.map(p => '<li>' + esc(p.text) + '</li>').join('') + '</ul></div>' +
-                    '<button type="button" onclick="app.closeAssemblyHint(&quot;' + esc(hints[0].hintKey) + '&quot;)" style="flex:none; padding:4px 10px; border:1px solid #2563EB; border-radius:8px; background:none; color:#2563EB; cursor:pointer; font-size:13px;">Закрыть</button>';
+                hint.style.cssText = 'margin:8px 0; padding:6px 10px; border:1px solid #2563EB; border-radius:10px; font-size:13px; background:rgba(37,99,235,.06); display:flex; gap:8px; align-items:center;';
+                hint.innerHTML = '<div title="' + esc(text) + '" style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><b>Подсказка по обвязке.</b> ' + esc(text) + '</div>' +
+                    '<button type="button" aria-label="Закрыть" title="Закрыть" data-keys="' + esc(JSON.stringify(keys)) + '" onclick="app.closeAssemblyHints(JSON.parse(this.dataset.keys))" style="flex:none; width:24px; height:24px; padding:0; border:none; background:none; color:#2563EB; cursor:pointer; font-size:18px; line-height:1;">&times;</button>';
                 wrap.parentNode.insertBefore(hint, wrap);
             }
         } catch (e) { console.warn('[syncAssemblyCheck]', e.message || e); }
+    },
+
+    closeAssemblyHints: function (keys) {
+        if (!this.state.assemblyHintsOff) this.state.assemblyHintsOff = {};
+        keys.forEach(k => { this.state.assemblyHintsOff[k] = true; });
+        this.saveState();
+        this.render();
     },
 
     closeAssemblyHint: function (key) {
