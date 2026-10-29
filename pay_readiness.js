@@ -436,16 +436,19 @@ const PayReadiness = {
 
     // Что даёт каждая функция — для человека, а не для таблицы тарифов. Ключи — id функций.
     OFFER_PERKS: {
-        rommer: 'Товары ROMMER и подбор аналогов — смета подороже или подешевле в один клик',
-        terem: 'Поиск по всему прайсу — любую позицию можно найти и добавить в смету',
-        works: 'Монтажные работы прямо в смете, КП и счёте — клиент видит полную стоимость',
-        analog: 'Вторая смета «Бюджетнее» с пояснением, на чём сэкономили, — удобно показать клиенту',
-        recognize: 'Смета из проекта: загрузите PDF, Excel или фото — калькулятор разберёт сам',
-        design: 'Листы проекта и план этажей — готовые чертежи к смете',
-        money: 'Ваша маржа по каждому разделу сметы — видно, сколько вы зарабатываете',
-        docs: 'Договор подряда, акты и гарантийный талон — одним нажатием',
-        disc1c: 'Скидки клиенту прямо в КП — без ручных пересчётов'
+        rommer: 'ROMMER и аналоги — смета дешевле или дороже в один клик',
+        terem: 'Поиск по всему прайсу',
+        works: 'Работы в смете и КП — клиент видит полную сумму',
+        analog: 'Вторая смета «Бюджетнее» — показать клиенту, на чём сэкономили',
+        recognize: 'Смета из проекта: PDF, Excel или фото',
+        design: 'Листы проекта и план этажей',
+        money: 'Ваша маржа по разделам сметы',
+        docs: 'Договор, акты и гарантийный талон в один клик',
+        disc1c: 'Скидки клиенту прямо в КП'
     },
+
+    // Сколько пунктов «Что вы получите» писать: длинный список в переписке никто не дочитывает
+    OFFER_PERKS_MAX: 4,
 
     plural: function (n, one, few, many) {
         const a = Math.abs(n) % 100, b = a % 10;
@@ -465,38 +468,38 @@ const PayReadiness = {
         if (p.est30 > 0) facts.push(p.est30 + ' ' + this.plural(p.est30, 'смета', 'сметы', 'смет') + ' за месяц');
         if (p.invoices > 0) facts.push(p.invoices + ' ' + this.plural(p.invoices, 'КП или счёт', 'КП и счёта', 'КП и счетов') + ' клиентам');
         lines.push(facts.length
-            ? 'Вы уже собрали в HeatCalc ' + facts.join(' и ') + ' — отлично! Подключите «Профи», чтобы это шло ещё быстрее.'
-            : 'Это команда HeatCalc. Подключите «Профи» — сметы будут собираться ещё быстрее.');
+            ? 'Вы уже собрали ' + facts.join(' и ') + '. Профи сделает это быстрее.'
+            : 'Профи сделает сметы быстрее.');
         // Функции, которые Профи добавляет сверх Базового (по таблице «Тарифы»), — простыми словами
         const perks = S ? S.benefitRows(account)
             .filter(r => r.pro !== 'off' && r.base === 'off' && this.OFFER_PERKS[r.f.id])
             .map(r => this.OFFER_PERKS[r.f.id]) : [];
         if (perks.length) {
             lines.push('');
-            lines.push('Что вы получите:');
-            perks.forEach(t => lines.push('✔ ' + t));
+            lines.push('В Профи:');
+            perks.slice(0, this.OFFER_PERKS_MAX).forEach(t => lines.push('— ' + t));
         }
         const missing = [];
         if (S) {
             const plans = S.planList(false).map(pl => S.resolve(pl.id, { region: p.rawRegion })).filter(Boolean);
             if (plans.length) {
                 lines.push('');
-                lines.push('Оплата — в два нажатия: откройте ссылку, окно оплаты появится прямо в калькуляторе.');
+                lines.push('Оплатить (ссылка откроет окно оплаты прямо в калькуляторе):');
                 plans.forEach(r => {
-                    let row = '• ' + r.label + ' — ' + S.fmtRub(r.rub);
+                    let row = '— ' + r.label + ': ' + S.fmtRub(r.rub);
                     const pct = r.promo ? r.promoPct : r.termPct;
                     if (r.months > 1) row += ' (' + S.fmtRub(r.perMonth) + ' в месяц' + (pct > 0 ? ', скидка ' + pct + ' %' : '') + ')';
                     else if (pct > 0) row += ' (скидка ' + pct + ' %)';
                     if (r.promo && r.promo.title) row += ', акция «' + r.promo.title + '»';
                     lines.push(row);
-                    lines.push('  ' + this.PAY_LINK + encodeURIComponent(r.id));
+                    lines.push(this.PAY_LINK + encodeURIComponent(r.id));
                     if (!r.url) missing.push(r.label);
                 });
                 lines.push('');
-                lines.push('После оплаты нажмите в окне «Я оплатил» — подключим доступ.');
+                lines.push('После оплаты нажмите «Я оплатил» — подключим доступ.');
             }
         }
-        lines.push('Вопросы — просто ответьте на это сообщение.');
+        lines.push('Вопросы — ответьте на это сообщение.');
         return { text: lines.join('\n'), missing: missing };
     },
 

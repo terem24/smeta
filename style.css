@@ -13994,6 +13994,8 @@ body.dark-mode .rq-cap, body.dark-mode .rq-rl span:first-child, body.dark-mode .
 .admin-chat-serie-gap { margin-top: 9px; }
 .admin-chat-sender { font-size: 12.5px; font-weight: 600; margin-bottom: 2px; opacity: .95; }
 .admin-chat-text { font-size: 13.5px; line-height: 1.35; white-space: pre-wrap; word-break: break-word; }
+/* Ссылки в своём пузыре (navy): без этого синий текст ссылки на синем фоне не виден как ссылка */
+.admin-chat-bubble.from-admin .admin-chat-text a { color: #fff; font-weight: 600; text-decoration: underline; }
 /* Время «подныривает» под последнюю строку текста — как в оригинале. Оно лежит
    внутри текста плавающим блоком, поэтому короткая строка и время встают рядом,
    а длинная переносит время на строку ниже. ::after закрывает float, иначе пузырь
