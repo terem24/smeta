@@ -12950,6 +12950,9 @@ const app = {
         });
 
         h += `</tbody></table>`;
+        // Итог над таблицей: сумма смет в списке (список обрезан до 50 последних)
+        const totalSum = data.reduce((s, it) => s + (Number(it.total_sum) || 0), 0);
+        h = `<div style="display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:8px 4px; font-size:13px; color:var(--text-sec);"><span>Смет: ${data.length}${data.length >= 50 ? ' (последние 50)' : ''}</span><b style="color:var(--text); font-size:15px;">Итого: ${totalSum.toLocaleString()} ₽</b></div>` + h;
         content.innerHTML = h;
         // Подсчёт «что требует внимания» мог устареть; «новое» гаснет, когда список увидели
         if (window.KpOutcome) KpOutcome.afterListRender();
