@@ -21952,15 +21952,16 @@ const app = {
     // Возвращает { title, brief, rest } или null, если это обычное письмо.
     kpReminderInfo: function (text) {
         const t = String(text || '');
-        // «Чем закончились КП?» (kp_outcome) — тоже автоматическое, место ему в «Уведомлениях»
-        const outHead = t.match(/^🏁 (Чем закончились КП\?|КП без итога)\s*/);
+        // «Чем закончились КП?» (kp_outcome) и предупреждение об автозакрытии — тоже автоматические,
+        // место им в «Уведомлениях»
+        const outHead = t.match(/^(?:🏁 (Чем закончились КП\?|КП без итога)|⏳ (КП скоро закроются сами|КП монтажника закроются сами))\s*/);
         if (outHead) {
             const rest = t.slice(outHead[0].length).trim();
             const items = rest.split('\n').filter(l => l.charAt(0) === '•').map(l => l.slice(1).trim());
             const brief = items.length
                 ? items[0] + (items.length > 1 ? ' и ещё ' + (items.length - 1) : '')
                 : 'Итог по КП не отмечен';
-            return { title: outHead[1].replace(/\?$/, ''), brief: brief, rest: rest };
+            return { title: (outHead[1] || outHead[2]).replace(/\?$/, ''), brief: brief, rest: rest };
         }
         const head = t.match(/^📄 (Напоминание: выставить счёт|Счёт по КП не выставлен)\s*/);
         if (!head) return null;
@@ -39819,6 +39820,7 @@ const app = {
             const people = (this.adminData && this.adminData.allUsersDropdown) || [];
             const nameOf = id => { const u = people.find(x => x.id === id); return u ? (u.username || u.email || u.phone || 'Без имени') : 'Пользователь'; };
             const topic = t => /^🏁 /.test(t) ? 'Итог КП не отмечен'
+                : /^⏳ КП/.test(t) ? 'КП закроется само'
                 : this.kpReminderInfo(t) ? 'Напоминание про счёт'
                 : (t.indexOf('🎂') === 0 ? 'День рождения'
                     : (/приостановлен|будет удалена|удалим/.test(t) ? 'Доступ приостановлен'
