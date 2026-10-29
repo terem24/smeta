@@ -20,6 +20,7 @@ declare
     v_row   public.users%rowtype;
     v_until timestamptz := null;
     v_on    boolean;
+    v_terem boolean;
 begin
     v_user := public.grm_current_user_id();
     if v_user is null then
@@ -43,7 +44,19 @@ begin
      where s.key = 'subscription';
     v_on := coalesce(v_on, true);
 
+    -- Сотрудники ТЕРЕМ бонус не получают: та же проверка, что и в пробном периоде (почта на
+    -- teremopt.ru или компания «ТЕРЕМ» дистрибьютора, к которому привязан человек)
+    v_terem := lower(coalesce(v_row.email, '')) ~ '@([a-z0-9-]+\.)*teremopt\.ru$'
+            or lower(coalesce(v_row.work_email, '')) ~ '@([a-z0-9-]+\.)*teremopt\.ru$'
+            or exists (select 1 from public.distributors d
+                        where d.company_name ilike '%терем%'
+                          and (d.id = v_row.distributor_id
+                               or (btrim(coalesce(d.manager_email, '')) <> ''
+                                   and lower(btrim(d.manager_email)) in (lower(btrim(coalesce(v_row.email, ''))),
+                                                                        lower(btrim(coalesce(v_row.work_email, '')))))));
+
     if v_on
+       and not v_terem
        and coalesce(v_row.account_type, 'free') in ('free', 'base')
        and v_row.demo_ends_at is null
        and (v_row.pro_expires_at is null or v_row.pro_expires_at <= now()) then
