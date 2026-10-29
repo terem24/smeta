@@ -66,9 +66,10 @@ OBJECTS.forEach(({ title, o }) => {
         });
         return;
     }
-    if (!r.problems.length) console.log('  резьба сходится'); else failed.push(title);
+    const hardP = r.problems.filter(p => !p.info);
+    if (!hardP.length) console.log('  резьба сходится'); else failed.push(title);
     r.problems.forEach(p => {
-        console.log('  ✗ ' + p.text);
+        console.log((p.info ? '  i ' : '  ✗ ') + p.text);
         if (mode === 'detail' && r.balance[p.size]) r.balance[p.size].who.forEach(w =>
             console.log('      ' + String(w.n).padStart(2) + ' ' + KIND[w.kind].padEnd(15) + w.name));
     });

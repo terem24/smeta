@@ -39167,7 +39167,7 @@ const app = {
             // всю обвязку текущей сметы по концам, а не только саму позицию.
             try {
                 const chk = window.assemblyCheck.check(this.currentEquipmentList || []);
-                if (chk.problems.length) this.alert('Замена сохранена, но обвязка текущей сметы не сходится по резьбе:\n' + chk.problems.map(p => '• ' + p.text).join('\n'));
+                if (chk.problems.some(p => !p.info)) this.alert('Замена сохранена, но обвязка текущей сметы не сходится по резьбе:\n' + chk.problems.filter(p => !p.info).map(p => '• ' + p.text).join('\n'));
             } catch (e) { console.warn('[orderSaveReplace] сверка обвязки:', e.message || e); }
             this.renderAdminMain();
         }
@@ -56154,15 +56154,36 @@ const app = {
             const wrap = document.querySelector('.table-responsive');
             if (!wrap || !wrap.parentNode) return;
             const rep = ac.check(this.currentEquipmentList || []);
-            if (!rep.problems.length) return;
+            // Подсказки (p.info) — не ошибка: их можно закрыть, и закрытие помнится в state.
+            const hard = rep.problems.filter(p => !p.info);
+            const hints = rep.problems.filter(p => p.info && !(s.assemblyHintsOff || {})[p.hintKey]);
+            if (!hard.length && !hints.length) return;
             const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-            const box = document.createElement('div');
-            box.id = 'assembly_warn';
-            box.style.cssText = 'margin:8px 0; padding:10px 14px; border:1px solid #D97706; border-radius:10px; font-size:13px; background:rgba(217,119,6,.08);';
-            box.innerHTML = '<b>Обвязка не сходится по резьбе (в смете есть замены).</b> Проверьте переходники и ниппели:<ul style="margin:6px 0 0 18px;">' +
-                rep.problems.map(p => '<li>' + esc(p.text) + '</li>').join('') + '</ul>';
-            wrap.parentNode.insertBefore(box, wrap);
+            if (hard.length) {
+                const box = document.createElement('div');
+                box.id = 'assembly_warn';
+                box.style.cssText = 'margin:8px 0; padding:10px 14px; border:1px solid #D97706; border-radius:10px; font-size:13px; background:rgba(217,119,6,.08);';
+                box.innerHTML = '<b>Обвязка не сходится по резьбе (в смете есть замены).</b> Проверьте переходники и ниппели:<ul style="margin:6px 0 0 18px;">' +
+                    hard.map(p => '<li>' + esc(p.text) + '</li>').join('') + '</ul>';
+                wrap.parentNode.insertBefore(box, wrap);
+            }
+            if (hints.length) {
+                const hint = document.createElement('div');
+                hint.id = 'assembly_hint';
+                hint.style.cssText = 'margin:8px 0; padding:10px 14px; border:1px solid #2563EB; border-radius:10px; font-size:13px; background:rgba(37,99,235,.06); display:flex; gap:12px; align-items:flex-start;';
+                hint.innerHTML = '<div style="flex:1"><b>Подсказка по обвязке.</b> Это не ошибка стыковки:<ul style="margin:6px 0 0 18px;">' +
+                    hints.map(p => '<li>' + esc(p.text) + '</li>').join('') + '</ul></div>' +
+                    '<button type="button" onclick="app.closeAssemblyHint(&quot;' + esc(hints[0].hintKey) + '&quot;)" style="flex:none; padding:4px 10px; border:1px solid #2563EB; border-radius:8px; background:none; color:#2563EB; cursor:pointer; font-size:13px;">Закрыть</button>';
+                wrap.parentNode.insertBefore(hint, wrap);
+            }
         } catch (e) { console.warn('[syncAssemblyCheck]', e.message || e); }
+    },
+
+    closeAssemblyHint: function (key) {
+        if (!this.state.assemblyHintsOff) this.state.assemblyHintsOff = {};
+        this.state.assemblyHintsOff[key] = true;
+        this.saveState();
+        this.render();
     },
 
     syncHydroCheck: function () {

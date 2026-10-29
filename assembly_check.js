@@ -697,6 +697,11 @@
       }
     });
 
+    // POLIS с ГБМ: выходы группы 1" ВР заняты американками, и два НР из блока котла
+    // (ВПр-НР 22х1) пары не находят. Как ГБМ садится на котёл, решает монтаж, поэтому
+    // такой разрыв — подсказка к проверке, а не ошибка стыковки.
+    var hasPolis = (list || []).some(function (it) { return /POLIS/i.test(String(it.name || '')); });
+    var hasGbm = (list || []).some(function (it) { return /быстрого +монтажа/i.test(String(it.name || '')); });
     var problems = [];
     Object.keys(bal).forEach(function (key) {
       var b = bal[key];
@@ -706,7 +711,10 @@
       var male = b.M, female = b.F + b.N, d = male - female;
       if (Math.abs(d) > b.U || (b.U - Math.abs(d)) % 2) problems.push({
         size: key, male: male, female: female, unsure: b.U,
-        text: (d > 0
+        info: !!(hasPolis && hasGbm && key === '1"' && d > 0), hintKey: 'polis_gbm_1in',
+        text: (hasPolis && hasGbm && key === '1"' && d > 0)
+          ? d + ' НР 1" без пары у котла POLIS с группой быстрого монтажа: выходы ГБМ заняты американками. Как ГБМ садится на котёл, решает монтаж; если эти переходники не нужны, уберите их из сметы.'
+          : (d > 0
           ? key + ': наружных резьб ' + male + ', ответных (ВР и гаек) ' + female + ' — ' + d + ' НР без пары'
           : key + ': ответных (ВР и гаек) ' + female + ', наружных резьб ' + male + ' — ' + (-d) + ' ВР без пары') +
           (b.U ? ' (концов с неизвестным исполнением ' + b.U + ')' : '')
