@@ -234,6 +234,8 @@ const Tour = {
             // Блок «Скидка/Наценка» есть не у всех (тариф) — тогда шаг без задания
             snap: () => { try { return String(app.state[app.discountFields().val]); } catch (e) { return ''; } },
             tasks: () => { const d = document.getElementById('discount_block'); return (d && d.offsetParent) ? [{ label: 'Поменяйте скидку или наценку — ползунком или числом справа', done: snap => { try { return String(app.state[app.discountFields().val]) !== snap; } catch (e) { return false; } } }] : null; },
+            // Палец на число скидки справа (его можно и вписать, и тянуть ползунок рядом), а не на подпись слева
+            point: () => { const v = document.getElementById('eq_discount_val'); return (v && v.offsetParent) ? v : document.getElementById('eq_discount_slider'); },
             seller: { title: 'Итог и цена для клиента', text: 'Ползунок даёт скидку или наценку магазина — итог пересчитается сразу.' }
         },
         {
@@ -393,12 +395,20 @@ const Tour = {
 
     // Первая видимая строка сметы с радиатором и её значок замены. Ищем по названию:
     // отдельного признака «это радиатор» у строки в разметке нет.
-    swapRow: function (test) {
+    swapRow: function (test, itemTest) {
         try {
             const btns = document.querySelectorAll('.img-wrap[onclick*="openSwapModal"], .swap-inline-btn[onclick*="openSwapModal"]');
             for (const b of btns) {
                 if (!b.offsetParent) continue;
                 const tr = b.closest('tr');
+                // Поиск по позиции каталога, а не по тексту: стальные панели называются
+                // «Стальной панельный Ventil…», слова «радиатор» в названии нет
+                if (itemTest) {
+                    const m = /openSwapModal\('([^']+)'\)/.exec(b.getAttribute('onclick') || '');
+                    const it = m && (app.currentEquipmentList || []).find(x => x && (x.originalId === m[1] || x.id === m[1] || (x.instanceKeys && x.instanceKeys.indexOf(m[1]) > -1)));
+                    if (tr && it && itemTest(it)) return { tr: tr, btn: b };
+                    continue;
+                }
                 // Только название позиции: в строке есть ещё подсказка «i» с длинным текстом
                 // («клапан», «насос» и т. п.), и поиск по всей строке принимал радиатор за не-радиатор
                 const nm = tr && tr.querySelector('.col-name');
@@ -415,8 +425,12 @@ const Tour = {
     // Сначала строка, название которой начинается с «Радиатор» (перед ним в тексте строки
     // только номер): «Монтажный набор для подключения радиатора» стоит в смете выше самих
     // радиаторов, и стрелка уводила в его окно замены. Нет такой — любая строка со словом.
+    // Раздел сметы «3. Приборы отопления» (без «3.1 Обвязка…»): сами радиаторы любой серии
+    RAD_GROUP: /^\s*3\.\s*Приборы отопления\s*$/i,
+
     radRow: function () {
-        return this.swapRow(t => /^\s*радиатор/i.test(t)) ||
+        return this.swapRow(null, i => this.RAD_GROUP.test(i.group || '')) ||
+            this.swapRow(t => /^\s*радиатор/i.test(t)) ||
             this.swapRow(t => this.RAD_RE.test(t) && !this.RAD_NOT.test(t));
     },
 
@@ -438,7 +452,7 @@ const Tour = {
             if (this.radRow() || !app.state.groupItems) return;
             const cg = app.state.collapsedGroups || [];
             const it = (app.currentEquipmentList || []).find(i => i && i.group && cg.indexOf(i.group) > -1 &&
-                this.RAD_RE.test(i.name || '') && !this.RAD_NOT.test(i.name || ''));
+                (this.RAD_GROUP.test(i.group) || (this.RAD_RE.test(i.name || '') && !this.RAD_NOT.test(i.name || ''))));
             if (it) app.toggleGroup(it.group);
         } catch (e) { }
     },
@@ -1443,6 +1457,21 @@ const Tour = {
             if (!card || card.style.display === 'none') { this.hidePointer(); return; }
             const t = this.pointEl(step);
             if (!t) { this.hidePointer(); return; }
+            // Цель внутри прокручиваемой панели (левая колонка настроек), но ниже её видимой части:
+            // поле появляется после включения тумблера, и палец показывал в пустоту под панелью.
+            // Один раз на элемент подкручиваем панель, дальше человек листает сам.
+            if (!this.swapOpen() && this._ptrScrolled !== t) {
+                this._ptrScrolled = t;
+                try {
+                    const tr = t.getBoundingClientRect();
+                    for (let p = t.parentElement; p && p !== document.body; p = p.parentElement) {
+                        if (/(auto|scroll)/.test(getComputedStyle(p).overflowY) && p.scrollHeight > p.clientHeight) {
+                            const pr = p.getBoundingClientRect();
+                            if (tr.top < pr.top || tr.bottom > pr.bottom) { t.scrollIntoView({ behavior: 'auto', block: 'center' }); break; }
+                        }
+                    }
+                } catch (e) { }
+            }
             // В окне замены нужная строка или фильтр часто ниже края окна (на телефоне список
             // моделей начинается на втором экране). Подкручиваем к каждой новой цели и ещё
             // 2,5 с после этого, если она уехала под карточку (окно дорисовывает картинки и
@@ -1861,7 +1890,10 @@ const Tour = {
             const b = t.getBoundingClientRect();
             if (b.bottom < 0 || b.top > window.innerHeight) return;
             const far = Math.hypot((b.left + b.width / 2) - (left + w / 2), (b.top + b.height / 2) - (top + h / 2));
-            if (far < 420) { this._wasNear = false; return; }
+            // Цель рядом с углом, но карточка стоит прямо на ней (количество в первой строке
+            // сметы лежит под правым нижним углом) — тоже переставляем, иначе нажимать не на что
+            const covered = !(b.right < left - 8 || b.left > left + w + 8 || b.bottom < top - 8 || b.top > top + h + 8);
+            if (far < 420 && !covered) { this._wasNear = false; return; }
             this._wasNear = true;
             // Зазор 64 px: в нём живёт стрелка с хвостом, иначе она уходит под карточку.
             // Порядок: сбоку справа (там чаще пустая смета, а не параметры, которые человек
