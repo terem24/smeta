@@ -38850,15 +38850,13 @@ const app = {
         };
         let h = `<div style="margin-bottom:26px;">
             <div class="ad-page-h"><div><h3>Под заказ в подборе по умолчанию</h3>
-            <div class="ad-sub" style="max-width:900px; line-height:1.55;">Позиции, которые калькулятор ставит в смету сам, а в каталоге они «под заказ» или с ценой старше месяца.
-            По умолчанию такая позиция стоять не должна. Решите по каждой на ${esc(month)}: заменить на позицию из ассортимента ТЕРЕМ (или ввести руками с источником цены и фото), убрать из подбора или оставить. Решение «оставить» действует до конца месяца, потом спросим снова.
-            Список пересобирается каждый день (apply-successors.yml).${this._orderBuilt ? ` Без изменений с ${esc(this._orderBuilt.split('-').reverse().join('.'))}.` : ''}</div></div>
+            <div class="ad-sub" style="line-height:1.5;">Решите по каждой на ${esc(month)}: заменить, снять или оставить.${this._orderBuilt ? ` Список без изменений с ${esc(this._orderBuilt.split('-').reverse().join('.'))}.` : ''}</div></div>
             <button class="admin-btn" onclick="app._orderDefaults = null; app._orderUsage = undefined; app.renderAdminMain()">Обновить</button></div>
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:14px 0 6px;">
                 <span style="font-size:13px; color:var(--text-main); font-weight:600;">Найдено: ${shown} из ${list.length}</span>
                 ${chip('all', 'Все')} ${chip('often', 'Часто (от 3 смет)')} ${chip('pricey', 'Дорогие (от 10 000 ₽)')}
             </div>
-            <div style="font-size:12px; color:var(--text-sec);">Порядок: цена × число смет, где встречается. Так дорогой котёл без смет и часто встречающийся кран поднимаются выше дешёвой редкой детали.</div>
+            <div style="font-size:12px; color:var(--text-sec);">Порядок: цена × число смет.</div>
             ${usageNote}
         </div>`;
         if (!list.length) h += `<div style="padding:20px; text-align:center; color:var(--text-sec); background:var(--surface-light); border-radius:10px;">В подборе по умолчанию нет позиций «под заказ».</div>`;
