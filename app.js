@@ -74,7 +74,17 @@ function supabaseProxyFetchRaw(input, init) {
     const canProxy = !direct && (inApp || (host === 'heatcalc.ru' || host === 'www.heatcalc.ru' || host === 'new.heatcalc.ru'));
     const url = typeof input === 'string' ? input : input.url;
     if (canProxy && url.startsWith(supabaseUrl)) {
-        return fetch('https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(supabaseUrl.length)), init);
+        // Если до прокси не достучались (на айфоне Safari отвечает «Load failed» — вход через
+        // Яндекс и разделы админки при этом падали), пробуем тот же запрос напрямую в базу:
+        // у кого supabase.co закрыт, он не пройдёт и ошибка останется прежней, а у кого
+        // закрыт или глючит прокси — заработает. Обрыв по таймеру (AbortError) не повторяем.
+        return fetch('https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(supabaseUrl.length)), init)
+            .catch(err => {
+                if (err && err.name === 'AbortError') throw err;
+                if (init && init.signal && init.signal.aborted) throw err;
+                console.warn('[прокси] не отвечает, пробую напрямую:', err && err.message);
+                return fetch(input, init);
+            });
     }
     return fetch(input, init);
 }
@@ -13974,7 +13984,21 @@ const app = {
             else if (!savedState && list.length && state) savedState = list[list.length - 1].s;
             localStorage.removeItem('yandex_oauth_states');
         } catch (e) { }
-        if (!savedState) return;
+        if (!savedState) {
+            // Вернулись с Яндекса (в адресе code и state), а выданного нами state в этом
+            // окне нет: на айфоне ссылка возврата открывается в другом окне (Safari вместо
+            // сайта с экрана «Домой»), и у него своё хранилище. Раньше тут молча выходили —
+            // человек видел обычный калькулятор и не понимал, что вход не прошёл.
+            if (code && state) {
+                params.delete('code');
+                params.delete('state');
+                const q = params.toString();
+                history.replaceState(null, document.title, window.location.pathname + (q ? '?' + q : ''));
+                app.alert("Вход через Яндекс не завершился: это окно не помнит, что вход начинали отсюда. " +
+                    "Откройте heatcalc.ru в браузере (Safari) и нажмите «Яндекс ID» ещё раз.");
+            }
+            return;
+        }
         try {
             sessionStorage.removeItem('yandex_oauth_state');
         } catch (e) { }

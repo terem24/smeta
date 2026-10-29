@@ -15,7 +15,11 @@ ini_set('display_errors', 0);
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: *");
+// «*» не покрывает Authorization (правило CORS), Safari на айфоне за этим следит строго —
+// поэтому перечисляем явно, плюс отдаём то, что браузер попросил в предзапросе
+$reqHdrs = isset($_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']) ? preg_replace('/[^A-Za-z0-9,\-\s]/', '', $_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']) : '';
+header("Access-Control-Allow-Headers: authorization, apikey, content-type, x-client-info, prefer, range, accept-profile, content-profile, x-upsert" . ($reqHdrs !== '' ? ', ' . $reqHdrs : ''));
+header("Access-Control-Max-Age: 86400");
 header("Access-Control-Expose-Headers: Content-Range, X-Total-Count");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
