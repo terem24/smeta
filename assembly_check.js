@@ -118,6 +118,25 @@
     src: 'STOUT STATUS, паспорт (stout_bf87195c29c2)',
     ports: [P('M', '3/4', 2, { role: 'подача и обратка' }), P('U', '1/2', 1, EXT('сброс предохранительного клапана'))]
   };
+  // Электрокотлы других брендов (catalog.boilers_el_analogs). Только то, что читалось в паспорте;
+  // НР это или ВР, там не сказано — конец U. У MK-X Plus, ЭВАН, Vaillant, Thermex и РЭКО записи нет:
+  // размера патрубков в найденных документах нет, а выдуманный размер хуже пропуска.
+  var ZOTA_MKX = {
+    // Паспорт ZOTA MK-X от 02.08.2023, табл. 1 и разд. 5: патрубки входа и выхода 3/4" (4,5–24 кВт),
+    // сброс предохранительного клапана 1/2".
+    src: 'ZOTA MK-X, паспорт от 02.08.2023, табл. 1, разд. 5',
+    ports: [P('U', '3/4', 2, { role: 'подача и обратка' }), P('U', '1/2', 1, EXT('сброс предохранительного клапана'))]
+  };
+  var ZOTA_BALANCE = {
+    // Паспорт ZOTA Balance V2 от 05.02.2025, табл. 1: диаметр патрубков подачи и обратки 1".
+    src: 'ZOTA Balance V2, паспорт от 05.02.2025, табл. 1',
+    ports: [P('U', '1', 2, { role: 'подача и обратка' })]
+  };
+  var PROTHERM_RAY = {
+    // Ray Protherm KE /14, руководство по монтажу 0020266028_01, приложение: патрубки подающей и обратной линий G 3/4.
+    src: 'Protherm Ray KE /14, руководство по монтажу 0020266028_01, приложение',
+    ports: [P('U', '3/4', 2, { role: 'подача и обратка' })]
+  };
   var SS_DUPLEX = {
     // STOUT SWH-4110 (паспорт stout_40ddc5574cba): как у ROMMER GT.
     src: 'STOUT SWH-4110, паспорт (stout_40ddc5574cba)',
@@ -157,6 +176,9 @@
   };
   var DEVICES = {
     'SEB-3101-000005': STOUT_STATUS, 'SEB-3101-000007': STOUT_STATUS, 'SEB-3101-000009': STOUT_STATUS, 'SEB-3101-000012': STOUT_STATUS, 'SEB-3101-000014': STOUT_STATUS, 'SEB-3101-000018': STOUT_STATUS, 'SEB-3101-000021': STOUT_STATUS, 'SEB-3101-000024': STOUT_STATUS, 'SEB-3101-000027': STOUT_STATUS,
+    'ZM3468426004': ZOTA_MKX, 'ZM3468426006': ZOTA_MKX, 'ZM3468426007': ZOTA_MKX, 'ZM3468426009': ZOTA_MKX, 'ZM3468426012': ZOTA_MKX, 'ZM3468426014': ZOTA_MKX, 'ZM3468426015': ZOTA_MKX, 'ZM3468426018': ZOTA_MKX, 'ZM3468426021': ZOTA_MKX, 'ZM3468426024': ZOTA_MKX,
+    'ZB3468421003': ZOTA_BALANCE, 'ZB3468421004': ZOTA_BALANCE, 'ZB3468421006': ZOTA_BALANCE, 'ZB3468421007': ZOTA_BALANCE,
+    '0010023646': PROTHERM_RAY, '0010023647': PROTHERM_RAY, '0010023648': PROTHERM_RAY, '0010023649': PROTHERM_RAY, '0010023650': PROTHERM_RAY, '0010023651': PROTHERM_RAY, '0010023652': PROTHERM_RAY, '0010023653': PROTHERM_RAY,
     'PNGB3500024L006': NAVIEN_ONE, 'PNGB3500030L010': NAVIEN_ONE,
     'PNGB3500035L010': NAVIEN_ONE, 'PNGB3500040L006': NAVIEN_ONE,
     'PNGB2100020L002': NAVIEN_SYS, 'PNGB2100024L002': NAVIEN_SYS, 'PNGB2100032L001': NAVIEN_SYS,

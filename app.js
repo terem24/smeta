@@ -53010,6 +53010,11 @@ const app = {
                     : (onePhase
                         ? `<br><b>Одна фаза — втрое больший ток.</b> ${amp1.toFixed(0)} А против ${amp3.toFixed(1)} А на трёх фазах: сечение и номинал автомата считаются именно по нему.`
                         : '')) +
+                // Котёл другого бренда без прочитанной таблицы сечений: расчёт идёт по таблице STOUT,
+                // и пока паспорт не сверен, это оценка, а не паспортное значение.
+                ((b.unv || []).includes('cable')
+                    ? `<br>⚠️ <b>Сечение — по таблице STOUT, не по паспорту этого котла.</b> Сверьте с паспортом ${b.brand || ''}: у разных заводов таблицы разные.`
+                    : '') +
                 `<br><b>Автомат:</b> ставится обязательно, номинал подбирает проектная организация по максимальному току котла.`,
                 groups.auto);
         });
@@ -63623,6 +63628,7 @@ const app = {
             wifi === 'built' ? 'Wi-Fi встроен' : (wifi === 'opt' ? 'Wi-Fi опция' : null),
             bus || null,
             heater,
+            x.port ? `патрубки ${x.port}"` : null,
             x.volt ? `${x.volt} В` : null
         ];
         return parts.filter(Boolean).join(' · ');
@@ -67490,7 +67496,7 @@ const app = {
                     const _unv = displayAlt.unv || [];
                     _hintHtml += `<div style="font-size:11px;font-weight:400;color:var(--text-sec);margin-top:2px;">${this.elBoilerFacts(displayAlt)}</div>` +
                         (displayAlt.synthId ? `<div style="font-size:11px;font-weight:400;color:#B45309;margin-top:2px;">Артикул условный — заменить артикулом из прайса ТЕРЕМ</div>` : '') +
-                        (_unv.length ? `<div style="font-size:11px;font-weight:400;color:#B45309;margin-top:2px;">Сверить с паспортом: ${_unv.map(u => ({ exp: 'бак', volt: 'напряжение', wifi: 'Wi-Fi', weather: 'погодозависимость', noPump: 'насос' }[u] || u)).join(', ')}</div>` : '');
+                        (_unv.length ? `<div style="font-size:11px;font-weight:400;color:#B45309;margin-top:2px;">Сверить с паспортом: ${_unv.map(u => ({ exp: 'бак', volt: 'напряжение', wifi: 'Wi-Fi', weather: 'погодозависимость', noPump: 'насос', ports: 'патрубки (размер и резьба)', cable: 'сечение кабеля' }[u] || u)).join(', ')}</div>` : '');
                 }
                 if (_origId0 === 'gas_boiler_auto' && alt.power != null && alt.brand !== 'Haier') {
                     const _cirStr = alt.circuits === 1 ? 'одноконтурный' : alt.circuits === 2 ? 'двухконтурный' : '';
