@@ -1419,14 +1419,27 @@ const Subscription = {
         </div>`;
     },
 
+    // Цена, которую этот тариф показывает самому открывшему вкладку: в карточке стоит базовая цена («остальные регионы»),
+    // а в окне тарифов, обучении и оплате человек видит региональную цену или акцию — иначе владелец из Московской области
+    // видел 1 950 в карточке и 3 950 в окне и принимал это за расхождение.
+    ownPriceHtml: function (p) {
+        try {
+            const r = this.resolve(p.id);
+            if (!r || r.src === 'plan') return '';
+            const why = r.src === 'promo' ? 'акция «' + this.esc(r.promo && r.promo.title || '') + '»' : 'региональная цена, регион «' + this.esc(r.region) + '»';
+            return `<div style="color:var(--c-warn,#D97706); margin-top:4px;">Вам показывается ${this.fmtRub(r.rub)}: ${why}</div>`;
+        } catch (e) { return ''; }
+    },
+
     planMetaHtml: function (p) {
         const months = Math.max(1, Math.round(this.num(p.months)) || 1);
         const rub = this.num(p.rub);
         const days = Math.round(this.num(p.days));
-        if (days > 0) return `${this.fmtRub(rub)} за один объект, ${days} дней на правки${!p.url ? '<div style="color:var(--c-bad,#EF4444);">Без ссылки окно оплаты покажет только «Я оплатил»</div>' : ''}`;
+        const own = this.ownPriceHtml(p);
+        if (days > 0) return `${this.fmtRub(rub)} за один объект, ${days} дней на правки${own}${!p.url ? '<div style="color:var(--c-bad,#EF4444);">Без ссылки окно оплаты покажет только «Я оплатил»</div>' : ''}`;
         const per = months > 1 ? `${this.fmtRub(Math.round(rub / months))} в месяц` : '';
         const warn = !p.url ? '<div style="color:var(--c-bad,#EF4444);">Без ссылки окно оплаты покажет только «Я оплатил»</div>' : '';
-        return `${this.fmtRub(rub)} за ${this.monthsWord(months)}${per ? '<br>' + per : ''}${warn}`;
+        return `${this.fmtRub(rub)} за ${this.monthsWord(months)}${per ? '<br>' + per : ''}${own}${warn}`;
     },
 
     // После правки поля — обновить QR и подпись без перерисовки (не терять фокус)
