@@ -137,7 +137,14 @@
     </script>
 
     <link rel="icon" type="image/png" href="img/logo_HC.png">
-    <link rel="manifest" href="manifest.json?v=2">
+    <!-- Значок на экране «Домой» iPhone/iPad. Без apple-touch-icon iOS берёт снимок страницы
+         (мелкий и обрезанный) или ставит пустую иконку. Файл непрозрачный: прозрачный фон
+         iOS закрашивает чёрным. 180×180 — родной размер для iPhone. -->
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="HeatCalc">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="manifest.json?v=3">
     <meta name="theme-color" content="#2563EB">
     <script>
         // Размер интерфейса выбирается кнопкой «Aa» (app.toggleUiScaleMenu) и лежит на устройстве.
@@ -237,7 +244,8 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.7" defer></script>
-    <script src="app.js?v=14.63" defer></script>
+    <script src="assembly_check.js?v=1.0" defer></script>
+    <script src="app.js?v=14.64" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -599,11 +607,32 @@
     <script>
         (function () {
             var firstErr = '';
+            // Файл, который не скачался, до window без захвата не доходит — ловим его на фазе захвата.
+            // Картинки и прочие ресурсы не трогаем: страница от них не ломается.
+            // Отложенный модуль из HC_LAZY (распознавание, PDF, Excel) калькулятор не блокирует: без него он работает,
+            // а его кнопка сама покажет ошибку через hcLoad.
+            function isLazySrc(src) {
+                var lazy = window.HC_LAZY || {};
+                return Object.keys(lazy).some(function (k) {
+                    return lazy[k].some(function (s) { return src.slice(-s.length) === s; });
+                });
+            }
             window.addEventListener('error', function (e) {
-                if (!firstErr) firstErr = (e.message || 'ошибка') + (e.filename ? ' — ' + e.filename.split('/').pop() + ':' + e.lineno : '');
-            });
+                var t = e.target;
+                if (t && t !== window) {
+                    if (t.tagName !== 'SCRIPT' || firstErr) return;
+                    if (isLazySrc(String(t.src))) { try { console.warn('[загрузка] отложенный модуль не скачался: ' + String(t.src).split('/').pop()); } catch (_) { } return; }
+                    firstErr = 'не скачался файл ' + String(t.src).split('/').pop();
+                    return;
+                }
+                if (firstErr) return;
+                firstErr = (e.message || 'ошибка') + (e.filename ? ' — ' + e.filename.split('/').pop() + ':' + e.lineno : '');
+            }, true);
             window.addEventListener('unhandledrejection', function (e) {
-                if (!firstErr) firstErr = String((e.reason && (e.reason.stack || e.reason.message)) || e.reason || 'ошибка').slice(0, 300);
+                var r = e.reason;
+                // Оборванная сеть и запрос, отменённый по таймауту, — не поломка страницы: сеть вернётся, библиотека повторит
+                if (firstErr || (r && r.name === 'AbortError') || /Failed to fetch|NetworkError|Load failed|network/i.test(String((r && r.message) || ''))) return;
+                firstErr = String((r && (r.stack || r.message)) || r || 'ошибка').slice(0, 300);
             });
             // Экран «загрузился с ошибкой» показываем, только когда она есть на самом деле: скрипт не доехал (медленная сеть
             // после обновления — большие файлы скачиваются заново) или в странице случилась ошибка. Если калькулятор
@@ -617,12 +646,15 @@
                 if (ready) { pre.remove(); return; }                       // готов, прелоадер задержался
                 var loaded = typeof app !== 'undefined';
                 waited += 5;
-                if (!loaded && !firstErr && waited < 50) { setTimeout(check, 5000); return; }   // скрипты ещё качаются
+                // Скрипты ещё качаются (медленная сеть, большой app.js после обновления): ждём, но не вечно.
+                // Упавший app.js ждать незачем — сразу показываем причину.
+                if (!loaded && waited < 120 && firstErr.indexOf('app.js') < 0) { setTimeout(check, 5000); return; }
                 if (loaded && !firstErr) {                                  // запущен, ошибок нет — ждёт ответа сервера
                     try { console.warn('[загрузка] калькулятор запущен, но не завершил запуск за ' + (waited + 15) + ' с — открываем как есть'); } catch (_) { }
                     pre.remove();
                     return;
                 }
+                if (!firstErr) firstErr = 'скрипты не успели загрузиться — проверьте интернет и обновите страницу';
                 fail(pre);
             }
             setTimeout(check, 15000);

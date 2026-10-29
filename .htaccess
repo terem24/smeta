@@ -27,6 +27,13 @@ DirectoryIndex index.html
     RewriteRule ^(.+)$ $1.html [L]
 </IfModule>
 
+# Сжатие текста. app.js (~7,8 МБ) и catalog.js (~1,5 МБ) уходят на телефон
+# в несжатом виде, если сервер сам не сжимает: на мобильной сети это главная
+# задержка запуска. Если сжатие у Beget уже включено, директивы ничего не меняют.
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml application/javascript application/x-javascript application/json application/manifest+json image/svg+xml
+</IfModule>
+
 <IfModule mod_headers.c>
     # Проверочную копию поисковикам не показываем, основной сайт — показываем.
     # Раньше запрет стоял без условия и при переезде уехал бы на heatcalc.ru.

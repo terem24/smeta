@@ -532,7 +532,36 @@
     return { balance: bal, problems: problems, unknown: unknown, ext: ext, pipe: pipe, slots: slots };
   }
 
-  var api = { portsOf: portsOf, portsFromName: portsFromName, check: check, DEVICES: DEVICES, KIND_RU: KIND_RU, MATE: MATE };
+  /* Замена позиции: концы новой против концов прежней. Оба берутся тем же путём, что
+   * и в балансе (паспорт по артикулу, иначе название). Результат:
+   *  - status 'same' — концы совпали по типу, размеру и числу;
+   *  - status 'diff' — разошлись; diff = [{ label, was, now }];
+   *  - status 'unknown' — концов нет хотя бы у одной позиции (unknownOld / unknownNew),
+   *    сравнивать нечего. Неизвестное исполнение (U) тоже считаем неизвестным. */
+  function endCounts(r) {
+    var cnt = {};
+    r.ports.forEach(function (p) {
+      if (p.pipe) return;
+      cnt[p.kind + p.size] = (cnt[p.kind + p.size] || 0) + (p.qty || 1);
+    });
+    return cnt;
+  }
+  function compareEnds(oldIt, newIt) {
+    var a = portsOf(oldIt), b = portsOf(newIt);
+    var unknownOld = !a, unknownNew = !b;
+    if (!unknownOld && !unknownNew) {
+      var ca = endCounts(a), cb = endCounts(b);
+      if (Object.keys(ca).concat(Object.keys(cb)).some(function (k) { return k.charAt(0) === 'U'; })) unknownOld = unknownNew = true;
+    }
+    if (unknownOld || unknownNew) return { status: 'unknown', unknownOld: unknownOld, unknownNew: unknownNew };
+    var keys = Object.keys(Object.assign({}, ca, cb));
+    var diff = keys.filter(function (k) { return (ca[k] || 0) !== (cb[k] || 0); }).map(function (k) {
+      return { label: (KIND_RU[k.charAt(0)] || k.charAt(0)) + ' ' + k.slice(1) + '"', was: ca[k] || 0, now: cb[k] || 0 };
+    });
+    return { status: diff.length ? 'diff' : 'same', diff: diff };
+  }
+
+  var api = { portsOf: portsOf, portsFromName: portsFromName, check: check, compareEnds: compareEnds, DEVICES: DEVICES, KIND_RU: KIND_RU, MATE: MATE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.assemblyCheck = api;
 })(typeof window !== 'undefined' ? window : this);

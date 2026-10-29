@@ -13291,16 +13291,17 @@ const app = {
             const skuOf = (item) => item.article ? String(item.article) : realSku(item.id || item.code);
             let equipmentText = '';
             if (eqItems.length) {
-                equipmentText = 'Название - Артикул - Количество\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
-                let copyRows = '', noSku = 0;
+                // Артикул и количество — один раз, для импорта. Названия выводим только
+                // у позиций без артикула: их по таблице не загрузить, и менеджеру нужно имя.
+                let copyRows = '', noSkuRows = '', noSku = 0;
                 eqItems.forEach((item, idx) => {
                     const sku = skuOf(item);
-                    equipmentText += `${idx + 1}. ${item.name} - ${sku || 'нет'} - ${item.q} шт.\n`;
-                    if (sku) copyRows += `${sku}\t${item.q}\n`; else noSku++;
+                    if (sku) copyRows += `${sku}\t${item.q}\n`;
+                    else { noSku++; noSkuRows += `${idx + 1}. ${item.name} — ${item.q} шт.\n`; }
                 });
-                equipmentText += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 ТАБЛИЦА ДЛЯ ИМПОРТА (выделите и скопируйте):\n'
-                    + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' + copyRows + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
-                if (noSku > 0) equipmentText += `\nПозиций без артикула: ${noSku} — в таблицу импорта они не вошли, их надо подобрать по названию из списка выше.`;
+                equipmentText = '📋 ТАБЛИЦА ДЛЯ ИМПОРТА (артикул и количество, выделите и скопируйте):\n'
+                    + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' + copyRows + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+                if (noSku > 0) equipmentText += `\n\nБез артикула — подберите по названию (${noSku} поз.):\n` + noSkuRows.trimEnd();
             } else {
                 equipmentText = 'Список оборудования в письмо не попал — откройте КП по кнопке ниже.';
             }
@@ -13381,7 +13382,7 @@ const app = {
                     // EmailJS (template_lg1zol9) поле Bcc было настроено на {{bcc_email}}
                     bcc_email: directorEmail,
                     email_subject: `[Дистрибьютор] Запрос счёта от ${tgUser.first_name || 'Монтажника'} — ${est.project_name || 'Проект'} (КП №${kpNum})`,
-                    equipment_list: `[Копия для дистрибьютора ${distCompany}]\nКП №${kpNum}\nМонтажник: ${tgUser.first_name || ''} ${tgUser.phone || ''} (${tgUser.email || ''})\nОборудование: ${eqSum.toLocaleString('ru-RU')} ₽\n\n${equipmentText}`
+                    equipment_list: `[Копия для дистрибьютора ${distCompany}]\nКП №${kpNum}\nМонтажник:${tgUser.first_name || ''} ${tgUser.phone || ''} (${tgUser.email || ''})\nОборудование: ${eqSum.toLocaleString('ru-RU')} ₽\n\n${equipmentText}`
                 };
 
                 const distJob = {
@@ -17112,8 +17113,8 @@ const app = {
         const name = opt ? opt.t : '';
         // Окно тарифа лежит ниже кабинета (как у «Оформить Профи» в профиле), поэтому кабинет закрываем
         try { this.closeProfileModal(); } catch (e) { }
-        this.showModal('pro', { why: '«' + name + '»' + (def ? ' (' + def.label.toLowerCase() + ')' : '') + ' — вариант из Профи' });
         this.logPaywall('seen', 'Группы сметы: вариант из Профи');
+        this.showModal('pro', { why: '«' + name + '»' + (def ? ' (' + def.label.toLowerCase() + ')' : '') + ' — вариант из Профи' });
     },
 
     setPref: function (key, v) {
@@ -38813,18 +38814,44 @@ const app = {
             </div>
             <div id="ord_res_${i}" style="margin:8px 0;"></div>
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:8px;">
-                <input id="ord_name_${i}" type="text" placeholder="Название в калькуляторе *" style="${inp}">
+                <input id="ord_name_${i}" type="text" placeholder="Название в калькуляторе *" oninput="app.orderEndsCheck(${i})" style="${inp}">
                 <input id="ord_price_${i}" type="number" min="1" step="any" placeholder="Цена, ₽ *" style="${inp}">
-                <input id="ord_art_${i}" type="text" placeholder="Артикул (если есть)" style="${inp}">
+                <input id="ord_art_${i}" type="text" placeholder="Артикул (если есть)" oninput="app.orderEndsCheck(${i})" style="${inp}">
                 <input id="ord_src_${i}" type="text" placeholder="Источник цены: ссылка или документ *" style="${inp}">
                 <input id="ord_photo_${i}" type="url" placeholder="Фото: ссылка на изображение (https://…)" style="${inp}">
             </div>
-            <label style="display:flex; gap:8px; align-items:flex-start; margin:10px 0; font-size:12.5px; color:var(--text-main);">
-                <input id="ord_ends_${i}" type="checkbox" style="margin-top:2px;">
-                <span>Проверил: концы (резьба, размер) те же, что у прежней позиции. Смета проверяет стыки по артикулу старой позиции — если концы другие, замена соберёт стык «не туда».</span></label>
+            <div id="ord_ends_${i}" style="margin:10px 0; font-size:12.5px; color:var(--text-main);"></div>
             <button class="admin-btn ad-primary" onclick="app.orderSaveReplace(${i})">Сохранить замену</button>
         </div>`;
         this.orderSearch(i);
+        this.orderEndsCheck(i);
+    },
+
+    /* Концы новой позиции против прежней — автоматически, по паспортам (assembly_check.js).
+     * Разошлись или неизвестны — сохранить замену нельзя: иначе смета соберёт стык «не туда». */
+    orderEndsCheck: function (i) {
+        const o = (this._orderDefaults || [])[i];
+        const box = document.getElementById('ord_ends_' + i);
+        if (!o || !box || !window.assemblyCheck) return null;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const v = id => ((document.getElementById(id + '_' + i) || {}).value || '').trim();
+        const name = v('ord_name'), art = v('ord_art');
+        if (!name) {
+            box.innerHTML = '<span style="color:var(--text-sec);">Концы проверятся автоматически, как только введена новая позиция.</span>';
+            return null;
+        }
+        const res = window.assemblyCheck.compareEnds({ id: o.id, name: o.name }, { id: art, name: name });
+        if (res.status === 'same') {
+            box.innerHTML = '<span style="color:#10B981; font-weight:700;">✓ Концы совпадают с прежней позицией</span>';
+        } else if (res.status === 'diff') {
+            box.innerHTML = '<span style="color:#EF4444; font-weight:700;">✗ Концы не совпадают — замена соберёт стык «не туда». Сохранить нельзя.</span>' +
+                '<div style="margin-top:4px; color:var(--text-sec);">' +
+                res.diff.map(d => esc(d.label) + ': было ' + d.was + ', стало ' + d.now).join(' · ') + '</div>';
+        } else {
+            const miss = [res.unknownOld ? 'прежняя «' + o.name + '»' : null, res.unknownNew ? 'новая «' + name + '»' : null].filter(Boolean).join(' и ');
+            box.innerHTML = '<span style="color:#D97706; font-weight:700;">? Нет данных о концах: ' + esc(miss) + '. Сохранить нельзя, пока не будет паспорта (assembly_check.js, DEVICES).</span>';
+        }
+        return res;
     },
 
     orderSearch: function (i) {
@@ -38858,6 +38885,7 @@ const app = {
         set('ord_price', Math.round(Number(x.price) || 0));
         set('ord_art', x.article || x.id);
         set('ord_src', 'Ассортимент ТЕРЕМ (price_index), арт. ' + (x.article || x.id));
+        this.orderEndsCheck(i);
     },
 
     orderSaveReplace: async function (i) {
@@ -38869,8 +38897,8 @@ const app = {
         if (!(manual.price > 0)) { this.alert('Укажите цену.'); return; }
         if (!manual.source) { this.alert('Укажите источник цены: ссылку или документ.'); return; }
         if (manual.photo && !/^https:\/\/[^\s"'<>]+$/.test(manual.photo)) { this.alert('Фото: нужна ссылка вида https://…'); return; }
-        const ends = document.getElementById('ord_ends_' + i);
-        if (!ends || !ends.checked) { this.alert('Подтвердите, что концы (резьба, размер) совпадают с прежней позицией.'); return; }
+        const ends = this.orderEndsCheck(i);
+        if (!ends || ends.status !== 'same') { this.alert('Концы новой позиции не совпадают с прежней или неизвестны — см. проверку над кнопкой. Замену не сохранить.'); return; }
         if (await this.saveOrderSwap(o.id, { status: 'swap', manual: manual })) this.renderAdminMain();
     },
 
@@ -45473,23 +45501,45 @@ const app = {
             const lbl = m => { const p = String(m).split('-'); return (MON[parseInt(p[1], 10) - 1] || p[1]) + ' ' + p[0]; };
             const pct = (a, b) => b ? Math.round(a * 100 / b) + '%' : '—';
             const tot = rows.reduce((t, r) => { Object.keys(r).forEach(k => { if (k !== 'month') t[k] = (t[k] || 0) + (r[k] || 0); }); return t; }, {});
-            const tr = (name, r, bold) => `<tr style="${bold ? 'font-weight:800; border-top:1px solid var(--border);' : ''}">
-                <td style="padding:6px 8px;">${name}</td>
-                <td style="padding:6px 8px; text-align:right;">${r.registered}</td>
-                <td style="padding:6px 8px; text-align:right;">${r.none}</td>
-                <td style="padding:6px 8px; text-align:right;">${r.calc_only}</td>
-                <td style="padding:6px 8px; text-align:right;">${r.saved} <span style="color:var(--text-sec); font-weight:400;">${pct(r.saved, r.registered)}</span></td>
-                <td style="padding:6px 8px; text-align:right;">${r.frozen}</td>
-                <td style="padding:6px 8px; text-align:right;">${r.deleted}</td></tr>`;
-            box.innerHTML = `<div style="overflow-x:auto; padding:0 8px 8px;"><table style="width:100%; border-collapse:collapse; font-size:12px;">
-                <thead><tr style="text-align:right; color:var(--text-sec);">
-                    <th style="padding:6px 8px; text-align:left;">Месяц регистрации</th><th style="padding:6px 8px;">Зарегистрир.</th>
-                    <th style="padding:6px 8px;" title="Ни одного расчёта, ни одной сметы">Не считали</th>
-                    <th style="padding:6px 8px;" title="Расчёты начинали, но смету не сохранили">Считали, не сохранили</th>
-                    <th style="padding:6px 8px;" title="Есть хотя бы одна сохранённая смета">Сохранили смету</th>
-                    <th style="padding:6px 8px;">Заморожены сейчас</th><th style="padding:6px 8px;" title="Удалены правилом; их сметы лежат в архиве со статусом «удалена»">Удалены</th>
-                </tr></thead><tbody>${rows.map(r => tr(lbl(r.month), r)).join('')}${tr('Всего', tot, true)}</tbody></table>
-                <div class="ad-sub" style="margin-top:6px;">Живые и удалённые правилом считаются вместе, поэтому после чисток цифры за сезон не проваливаются. Сметы удалённых лежат в архиве со статусом «удалена» и восстанавливаются по запросу.</div></div>`;
+            const cell = (v, extra) => '<td class="rf-n' + (extra || '') + '">' + v + '</td>';
+            const tr = (name, r, bold) => '<tr' + (bold ? ' class="rf-total"' : '') + '>'
+                + '<td class="rf-m">' + name + '</td>'
+                + cell(r.registered)
+                + cell(r.none || '<span class="rf-zero">0</span>', ' rf-c-none')
+                + cell(r.calc_only || '<span class="rf-zero">0</span>', ' rf-c-calc')
+                + cell((r.saved || '<span class="rf-zero">0</span>') + (r.saved ? ' <span class="rf-pct">' + pct(r.saved, r.registered) + '</span>' : ''), ' rf-c-saved')
+                + cell(r.frozen || '<span class="rf-zero">0</span>')
+                + cell(r.deleted || '<span class="rf-zero">0</span>') + '</tr>';
+            const T = tot.registered || 0;
+            const legend = (cls, title, text) => '<div class="rf-leg ' + cls + '"><b>' + title + '</b><span>' + text + '</span></div>';
+            box.innerHTML = '<style>'
+                + '.rf-wrap{padding:0 8px 8px;overflow-x:auto}'
+                + '.rf-sum{margin:4px 0 10px;padding:10px 12px;border-radius:10px;background:var(--bg-sec,rgba(100,116,139,.08));font-size:13px;line-height:1.5}'
+                + '.rf-legs{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-bottom:12px}'
+                + '.rf-leg{padding:8px 10px;border-radius:8px;border-left:4px solid #94a3b8;background:rgba(100,116,139,.07);font-size:12px;line-height:1.4}'
+                + '.rf-leg b{display:block;margin-bottom:2px;font-size:12.5px}.rf-leg span{color:var(--text-sec)}'
+                + '.rf-leg.none{border-color:#94a3b8}.rf-leg.calc{border-color:#f59e0b}.rf-leg.saved{border-color:#10b981}.rf-leg.frz{border-color:#0ea5e9}'
+                + '.rf-t{width:100%;min-width:640px;border-collapse:separate;border-spacing:0;font-size:13px;table-layout:fixed}'
+                + '.rf-t th{padding:8px 10px;text-align:right;font-weight:700;font-size:12px;color:var(--text-sec);border-bottom:2px solid var(--border);vertical-align:bottom;line-height:1.25}'
+                + '.rf-t th:first-child,.rf-t td:first-child{text-align:left;width:14%}'
+                + '.rf-t td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}'
+                + '.rf-t tbody tr:nth-child(even){background:rgba(100,116,139,.045)}'
+                + '.rf-t tbody tr:hover{background:rgba(59,130,246,.12)}'
+                + '.rf-m{font-weight:700;text-align:left}'
+                + '.rf-c-none{background:rgba(148,163,184,.10)}.rf-c-calc{background:rgba(245,158,11,.10)}.rf-c-saved{background:rgba(16,185,129,.10);font-weight:700}'
+                + '.rf-zero{color:var(--text-sec);opacity:.5}.rf-pct{display:inline-block;min-width:38px;font-weight:400;font-size:11px;color:var(--text-sec)}'
+                + '.rf-total td{font-weight:800;border-top:2px solid var(--border);border-bottom:none}'
+                + '</style><div class="rf-wrap">'
+                + '<div class="rf-sum">Всего зарегистрировалось <b>' + T + '</b>: не считали вовсе <b>' + tot.none + '</b> (' + pct(tot.none, T) + '), считали и бросили <b>' + tot.calc_only + '</b> (' + pct(tot.calc_only, T) + '), сохранили смету <b>' + tot.saved + '</b> (' + pct(tot.saved, T) + '). Три колонки «Не считали + Считали + Сохранили» в сумме дают «Зарегистрир.».</div>'
+                + '<div class="rf-legs">'
+                + legend('none', 'Не считали', 'Зарегистрировался и ушёл: ни одного расчёта, ни одной сметы.')
+                + legend('calc', 'Считали, не сохранили', 'Расчёт был (есть событие в журнале КП/счетов), но ни одной сметы в «Объектах» нет.')
+                + legend('saved', 'Сохранили смету', 'Есть хотя бы одна сохранённая смета. В скобках — доля от зарегистрированных.')
+                + legend('frz', 'Заморожены / Удалены', 'Доступ приостановлен правилом / учётка удалена правилом. Это срез состояния, он пересекается с колонками выше.')
+                + '</div><table class="rf-t"><thead><tr>'
+                + '<th>Месяц регистрации</th><th>Зарегистрир.</th><th>Не считали</th><th>Считали, не сохранили</th><th>Сохранили смету</th><th>Заморожены сейчас</th><th>Удалены</th>'
+                + '</tr></thead><tbody>' + rows.map(r => tr(lbl(r.month), r)).join('') + tr('Всего', tot, true) + '</tbody></table>'
+                + '<div class="ad-sub" style="margin-top:8px;">Живые и удалённые правилом считаются вместе, поэтому после чисток цифры за сезон не проваливаются. Сметы удалённых лежат в архиве со статусом «удалена» и восстанавливаются по запросу. «Считали» определяется по журналу событий КП: кто считал и ни разу не открывал КП, попадает в «Не считали».</div></div>';
         } catch (e) {
             box.innerHTML = '<div style="padding:10px 16px; color:var(--c-bad,#EF4444);">Не удалось получить: ' + String(e.message || e).replace(/[<>&]/g, '') + '. Выполнена ли миграция 20261028_empty_accounts_archive_funnel.sql?</div>';
         }
@@ -45718,7 +45768,7 @@ const app = {
             const names = this.MAIL_TIER_KINDS[id].map(kname).join(', ');
             const off = this.MAIL_TIER_KINDS[id].every(k => byKind[k] && byKind[k].auto_off);
             return `<div class="mb-tier ${id} ${off ? 'off' : ''}"><b><em>${n}</em>${title} · <span id="mb_tv_${id}" style="display:inline; color:inherit;">${T[id]}</span>%
-                ${off ? '<span class="ad-pill bad" style="margin-left:auto;">отключена</span>' : '<span class="ad-pill ok" style="margin-left:auto;">работает</span>'}</b>
+                ${off ? '<span class="ad-pill bad" style="margin-left:auto;">письма выключены</span>' : '<span class="ad-pill ok" style="margin-left:auto;">письма идут</span>'}</b>
                 <span>${esc(names)}</span></div>`;
         };
 
@@ -46019,7 +46069,8 @@ const app = {
             <div class="ad-page-h">
                 <div><h3>Напоминания неактивным</h3>
                     <div class="ad-sub">Письмо после ${cfg.warn} дней молчания · доступ приостанавливается на ${cfg.freeze}-й день · учётка удаляется через ${cfg.delete} дней заморозки.
-                    Пока действует Профи, счётчик стоит. Проверка идёт каждую ночь.</div></div>
+                    Пока действует Профи, счётчик стоит. Проверка идёт каждую ночь.
+                    Предупреждение и заморозка уходят только при разрешённой почте (вкладка «Деньги → Почта»): если письмо не может уйти, человека пропускаем и проверяем снова ночью. Заморозки без доставленного предупреждения не бывает.</div></div>
             </div>
             <div class="admin-stat-grid stat-5" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
                 ${statTile('Отправлено', rows.length, '&nbsp;')}
@@ -50524,6 +50575,7 @@ const app = {
             if (!this.state.tgUser) { this.showAuthModal(); return; }
             // Окно тарифа — только если Профи этой же учётке вкладку открывает,
             // иначе оно обещало бы то, чего оплата не даст
+            if (!this.isPro()) this.logPaywall('seen', 'Деньги: вкладка');
             if (!this.isPro() && this.tariffCell(this.tariffAccount(), 'pro', 'money') === 'on') { this.showModal('pro', { why: 'Вы хотели открыть вкладку «Деньги» — маржа по разделам входит в Профи' }); return; }
             mode = 'equipment';
         }
@@ -50548,7 +50600,6 @@ const app = {
         }
         document.body.classList.toggle('work-mode', mode === 'works');
 
-            if (!this.isPro()) this.logPaywall('seen', 'Деньги: вкладка');
         let tableResponsive = document.querySelector('.table-responsive');
         let docFooter = document.querySelector('.doc-footer');
         let discountBlock = document.getElementById('discount_block');
@@ -54030,6 +54081,7 @@ const app = {
         // не PRO) тариф получил остальной функционал целиком, но не доступ к ассортименту ROMMER.
         // Группировку/артикулы/схему Базовому тарифу открываем.
         if (featureName === 'cheaper' && !isPro) {
+            this.logPaywall('seen', 'Смета: вторая «Бюджетнее»');
             this.showModal('pro', { why: 'Вы хотели включить вторую смету «Бюджетнее» — она входит в Профи' });
             return;
         }
@@ -54054,7 +54106,6 @@ const app = {
                 this.toggleSku(event);
             }
         } else if (featureName === 'merge') {
-            this.logPaywall('seen', 'Смета: вторая «Бюджетнее»');
             const chk = document.getElementById('chk_merge');
             if (chk) {
                 chk.checked = !chk.checked;
@@ -58145,13 +58196,9 @@ const app = {
                 return realSku(item.id || item.code);
             };
 
-            let equipmentText = "Название - Артикул - Количество\n";
-            equipmentText += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-            (this.currentSpec || []).forEach((item, idx) => {
-                const sku = skuOf(item) || "нет";
-                equipmentText += `${idx + 1}. ${item.name} - ${sku} - ${item.q} шт.\n`;
-            });
-            equipmentText += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+            // Список «название — артикул — количество» дублировал таблицу импорта ниже,
+            // поэтому в письме только таблица; названия — лишь у позиций без артикула.
+            let equipmentText = "";
 
             // 2. Таблица для вставки в Excel/1С: артикул и количество через табуляцию —
             // при вставке в Excel сами расходятся по двум столбцам (как кнопка
@@ -58168,15 +58215,20 @@ const app = {
             });
 
             // Добавляем таблицу копирования прямо в конец списка оборудования для максимального удобства
-            equipmentText += "📋 ТАБЛИЦА ДЛЯ ИМПОРТА (выделите и скопируйте):\n";
+            equipmentText += "📋 ТАБЛИЦА ДЛЯ ИМПОРТА (артикул и количество, выделите и скопируйте):\n";
             equipmentText += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
             equipmentText += copyTableText;
             equipmentText += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
             // Молча выкинутая позиция хуже строки без артикула: по таблице
             // импорта счёт выглядит полным, а часть оборудования в нём просто
-            // отсутствует. Поэтому пишем, сколько строк не попало.
+            // отсутствует. Поэтому выводим такие позиции по названию.
             if (noSkuCount > 0) {
-                equipmentText += `\nПозиций без артикула: ${noSkuCount} — в таблицу импорта они не вошли, их надо подобрать по названию из списка выше.`;
+                const noSkuRows = (this.currentSpec || [])
+                    .map((item, idx) => ({ item, idx }))
+                    .filter(({ item }) => !skuOf(item))
+                    .map(({ item, idx }) => `${idx + 1}. ${item.name} — ${item.q} шт.`)
+                    .join("\n");
+                equipmentText += `\n\nБез артикула — подберите по названию (${noSkuCount} поз.):\n${noSkuRows}`;
             }
 
             let regionName = "";
@@ -78906,6 +78958,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 modePro.classList.add('locked');
                 modePro.onclick = function (event) {
                     event.stopPropagation();
+                    app.logPaywall('seen', 'Режим сметы: Профи');
                     app.showModal('pro');
                 };
             } else {
@@ -78931,7 +78984,6 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             }
         }
         if (document.getElementById('chk_detailed_rooms_toggle')) {
-                    app.logPaywall('seen', 'Режим сметы: Профи');
             document.getElementById('chk_detailed_rooms_toggle').checked = !!this.state.showDetailedRoomsPanel;
         }
 
@@ -79234,6 +79286,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         } else if (this.classList.contains('locked-pro')) {
                             e.preventDefault();
                             e.stopPropagation();
+                            app.logPaywall('seen', 'Режим сметы: закрытый');
                             app.showModal('pro');
                         }
                     }, true);
@@ -79259,7 +79312,6 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         applyLock('sys_rad', 'pro');
         applyLock('chk_water_input', 'pro');
         applyLock('chk_well', 'pro');
-                            app.logPaywall('seen', 'Режим сметы: закрытый');
         applyLock('chk_hw', 'pro');
         applyLock('chk_recirc', 'pro');
         applyLock('chk_tank_pump', 'pro');
