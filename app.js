@@ -90,13 +90,37 @@ function supabaseProxyFetchRaw(input, init) {
         // Яндекс и разделы админки при этом падали), пробуем тот же запрос напрямую в базу:
         // у кого supabase.co закрыт, он не пройдёт и ошибка останется прежней, а у кого
         // закрыт или глючит прокси — заработает. Обрыв по таймеру (AbortError) не повторяем.
-        return fetch('https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(supabaseUrl.length)), init)
-            .catch(err => {
+        const proxyUrl = 'https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(supabaseUrl.length));
+        const method = String((init && init.method) || (typeof input !== 'string' && input.method) || 'GET').toUpperCase();
+        if (method !== 'GET' && method !== 'HEAD') {
+            return fetch(proxyUrl, init).catch(err => {
                 if (err && err.name === 'AbortError') throw err;
                 if (init && init.signal && init.signal.aborted) throw err;
                 console.warn('[прокси] не отвечает, пробую напрямую:', err && err.message);
                 return fetch(input, init);
             });
+        }
+        // Чтение: прокси мог не оборваться, а просто зависнуть (у части телефонов ответ с
+        // Beget не доходит вовсе — админка оставалась нулевой). Через 8 с запускаем тот же
+        // запрос напрямую и берём тот ответ, что придёт первым. Запись так не дублируем.
+        return new Promise((resolve, reject) => {
+            let settled = false, pending = 1, directStarted = false, timer = null;
+            const ok = r => { if (settled) return; settled = true; clearTimeout(timer); resolve(r); };
+            const bad = e => { pending--; if (!settled && pending <= 0) { settled = true; clearTimeout(timer); reject(e); } };
+            const startDirect = () => {
+                if (directStarted || settled) return;
+                directStarted = true; pending++;
+                fetch(input, init).then(ok, bad);
+            };
+            timer = setTimeout(startDirect, 8000);
+            fetch(proxyUrl, init).then(ok, err => {
+                if (!(err && err.name === 'AbortError') && !(init && init.signal && init.signal.aborted)) {
+                    console.warn('[прокси] не отвечает, пробую напрямую:', err && err.message);
+                    startDirect();
+                }
+                bad(err);
+            });
+        });
     }
     return fetch(input, init);
 }
