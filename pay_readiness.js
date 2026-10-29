@@ -436,19 +436,19 @@ const PayReadiness = {
 
     // Что даёт каждая функция — для человека, а не для таблицы тарифов. Ключи — id функций.
     OFFER_PERKS: {
-        rommer: 'ROMMER и аналоги — смета дешевле или дороже в один клик',
-        terem: 'Поиск по всему прайсу',
-        works: 'Работы в смете и КП — клиент видит полную сумму',
-        analog: 'Вторая смета «Бюджетнее» — показать клиенту, на чём сэкономили',
-        recognize: 'Смета из проекта: PDF, Excel или фото',
-        design: 'Листы проекта и план этажей',
-        money: 'Ваша маржа по разделам сметы',
-        docs: 'Договор, акты и гарантийный талон в один клик',
-        disc1c: 'Скидки клиенту прямо в КП'
+        rommer: 'ROMMER и аналоги',
+        terem: 'поиск по всему прайсу',
+        works: 'работы в смете и КП',
+        analog: 'смета «Бюджетнее»',
+        recognize: 'смета из PDF и фото',
+        design: 'листы проекта',
+        money: 'маржа по разделам',
+        docs: 'договор и акты',
+        disc1c: 'скидки в КП'
     },
 
-    // Сколько пунктов «Что вы получите» писать: длинный список в переписке никто не дочитывает
-    OFFER_PERKS_MAX: 4,
+    // В переписке — не больше трёх функций, одной строкой: длинный список никто не дочитывает
+    OFFER_PERKS_MAX: 3,
 
     plural: function (n, one, few, many) {
         const a = Math.abs(n) % 100, b = a % 10;
@@ -467,36 +467,33 @@ const PayReadiness = {
         const facts = [];
         if (p.est30 > 0) facts.push(p.est30 + ' ' + this.plural(p.est30, 'смета', 'сметы', 'смет') + ' за месяц');
         if (p.invoices > 0) facts.push(p.invoices + ' ' + this.plural(p.invoices, 'КП или счёт', 'КП и счёта', 'КП и счетов') + ' клиентам');
+        // Боль → выгода → цена → одно действие (AIDA/PAS): сначала его цифры, потом что даёт Профи
         lines.push(facts.length
-            ? 'Вы уже собрали ' + facts.join(' и ') + '. Профи сделает это быстрее.'
-            : 'Профи сделает сметы быстрее.');
-        // Функции, которые Профи добавляет сверх Базового (по таблице «Тарифы»), — простыми словами
+            ? 'Вы уже делаете ' + facts.join(' и ') + '. В «Профи» это быстрее.'
+            : 'В «Профи» сметы собираются быстрее.');
+        // Функции, которые Профи добавляет сверх Базового (по таблице «Тарифы»)
         const perks = S ? S.benefitRows(account)
             .filter(r => r.pro !== 'off' && r.base === 'off' && this.OFFER_PERKS[r.f.id])
             .map(r => this.OFFER_PERKS[r.f.id]) : [];
         if (perks.length) {
-            lines.push('');
-            lines.push('В Профи:');
-            perks.slice(0, this.OFFER_PERKS_MAX).forEach(t => lines.push('— ' + t));
+            lines.push('Главное: ' + perks.slice(0, this.OFFER_PERKS_MAX).join(', ') + '.');
         }
         const missing = [];
         if (S) {
             const plans = S.planList(false).map(pl => S.resolve(pl.id, { region: p.rawRegion })).filter(Boolean);
             if (plans.length) {
                 lines.push('');
-                lines.push('Оплатить (ссылка откроет окно оплаты прямо в калькуляторе):');
                 plans.forEach(r => {
-                    let row = '— ' + r.label + ': ' + S.fmtRub(r.rub);
+                    let row = r.label + ' — ' + S.fmtRub(r.rub);
                     const pct = r.promo ? r.promoPct : r.termPct;
                     if (r.months > 1) row += ' (' + S.fmtRub(r.perMonth) + ' в месяц' + (pct > 0 ? ', скидка ' + pct + ' %' : '') + ')';
                     else if (pct > 0) row += ' (скидка ' + pct + ' %)';
                     if (r.promo && r.promo.title) row += ', акция «' + r.promo.title + '»';
-                    lines.push(row);
-                    lines.push(this.PAY_LINK + encodeURIComponent(r.id));
+                    lines.push(row + ': ' + this.PAY_LINK + encodeURIComponent(r.id));
                     if (!r.url) missing.push(r.label);
                 });
                 lines.push('');
-                lines.push('После оплаты нажмите «Я оплатил» — подключим доступ.');
+                lines.push('Оплатили — нажмите «Я оплатил», подключим доступ.');
             }
         }
         lines.push('Вопросы — ответьте на это сообщение.');
