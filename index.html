@@ -137,7 +137,14 @@
     </script>
 
     <link rel="icon" type="image/png" href="img/logo_HC.png">
-    <link rel="manifest" href="manifest.json?v=2">
+    <!-- Значок на экране «Домой» iPhone/iPad. Без apple-touch-icon iOS берёт снимок страницы
+         (мелкий и обрезанный) или ставит пустую иконку. Файл непрозрачный: прозрачный фон
+         iOS закрашивает чёрным. 180×180 — родной размер для iPhone. -->
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="HeatCalc">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="manifest.json?v=3">
     <meta name="theme-color" content="#2563EB">
     <script>
         // Размер интерфейса выбирается кнопкой «Aa» (app.toggleUiScaleMenu) и лежит на устройстве.
