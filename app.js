@@ -89807,7 +89807,13 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     }
                     let polisPump = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
                     addToBill(polisPump, 1, this.getDesc('polis_pump', b.power), grp);
-                    addToBill(catalog.pump_union_1, 2, "Переходные муфты (проставки) между патрубками котла 1\" и обвязкой — паспорт STOUT POLIS, п. 6.2.", grp);
+                    // Паспорт POLIS (18.06.2026): патрубки котла 1" наружная резьба (табл. 2, п. 4), к группе быстрого
+                    // монтажа — американка 1" ВР/НР SFT-0041-000001 или комплект SPC-0010-000025 (п. 6.2, Рис. 5).
+                    // Комплект G 1 1/2" × Rp 1" нижним концом (G 1 1/2") в ВР 1" группы не встаёт, поэтому берём американку:
+                    // ВР — на патрубок котла, НР — в верх группы (ВР 1"). По одной на патрубок, два патрубка.
+                    const _polisUnion = (catalog.water_input_node || []).concat(catalog.american_1 || []).find(x => x && x.id === 'SFT-0041-000001') || this.findCatalogItemById('SFT-0041-000001');
+                    if (_polisUnion) addToBill({ ..._polisUnion, originalId: _polisUnion.id + '_polis' }, 2,
+                        "Американка 1\" ВР/НР на патрубках котла POLIS: ВР — на наружную резьбу 1\" патрубка, НР — в верх группы быстрого монтажа (по паспорту POLIS, п. 6.2, Рис. 5). По одной на подачу и обратку.", grp);
                 } else {
                     addToBill(catalog.american_34, 2, "Разъемное соед.", grp);
                     addToBill(withRommerAlt(catalog.ball_valve_34), 2, "Запорная арматура.", grp);
