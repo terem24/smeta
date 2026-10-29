@@ -45849,7 +45849,7 @@ const app = {
             const names = this.MAIL_TIER_KINDS[id].map(kname).join(', ');
             const off = this.MAIL_TIER_KINDS[id].every(k => byKind[k] && byKind[k].auto_off);
             return `<div class="mb-tier ${id} ${off ? 'off' : ''}"><b><em>${n}</em>${title} · <span id="mb_tv_${id}" style="display:inline; color:inherit;">${T[id]}</span>%
-                ${off ? '<span class="ad-pill bad" style="margin-left:auto;">отключена</span>' : '<span class="ad-pill ok" style="margin-left:auto;">работает</span>'}</b>
+                ${off ? '<span class="ad-pill bad" style="margin-left:auto;">письма выключены</span>' : '<span class="ad-pill ok" style="margin-left:auto;">письма идут</span>'}</b>
                 <span>${esc(names)}</span></div>`;
         };
 
@@ -46091,6 +46091,11 @@ const app = {
         content.innerHTML += `<div id="admin_inactive_root" style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка напоминаний…</div>`;
         const root = () => document.getElementById('admin_inactive_root');
         await this.loadInactivityDays();
+        // Состояние почты нужно пилюлям: правило работает, а его письма могут быть выключены
+        try {
+            const { data: ms } = await supabaseClient.rpc('mail_budget_state');
+            if (ms) this._mailState = ms;
+        } catch (e) { /* без состояния почты покажем только правило */ }
         try {
             const { data, error } = await supabaseClient.rpc('inactivity_report');
             if (error) throw error;
@@ -46164,11 +46169,13 @@ const app = {
         const tile = (id, label, value, sub, cls) => `<div class="inact-tile ${cls || ''}${flt === id ? ' on' : ''}" role="button" tabindex="0" onclick="app.setInactFilter('${id}')" onkeydown="if(event.key==='Enter')app.setInactFilter('${id}')"><span class="lbl">${label}</span><b>${value}</b><span class="sub">${sub}</span></div>`;
 
         // Что включено — одной строкой, чтобы не открывать настройки ради этого вопроса
-        const pill = (on, label, hint) => `<span class="inact-pill${on ? ' on' : ''}" title="${hint}"><i></i>${label}<em>${on ? 'работает' : 'выключено'}</em></span>`;
+        // Правило может работать, а его письма — быть выключены лимитом почты (вкладка «Деньги → Почта»)
+        const mailOff = kind => !!(this._mailState && (this._mailState.kinds || []).find(k => k.kind === kind && k.off));
+        const pill = (on, label, hint, off) => `<span class="inact-pill${on ? ' on' : ''}" title="${hint}"><i></i>${label}<em>${!on ? 'выключено' : off ? 'правило работает, письма выключены' : 'работает'}</em></span>`;
         const auto = `<div class="inact-auto">
-            ${pill(true, 'Неактивные', `Письмо на ${cfg.warn}-й день молчания, заморозка на ${cfg.freeze}-й, удаление через ${cfg.delete} дн.`)}
-            ${pill(empty.enabled, 'Анкеты без смет', 'Заморозка и удаление тех, кто зарегистрировался и не считает')}
-            ${pill(nudge.enabled, 'Письма новичкам', 'Мягкие письма тем, кто заходит, но не считает')}
+            ${pill(true, 'Неактивные', `Письмо на ${cfg.warn}-й день молчания, заморозка на ${cfg.freeze}-й, удаление через ${cfg.delete} дн.`, mailOff('inactivity'))}
+            ${pill(empty.enabled, 'Анкеты без смет', 'Заморозка и удаление тех, кто зарегистрировался и не считает', mailOff('inactivity'))}
+            ${pill(nudge.enabled, 'Письма новичкам', 'Мягкие письма тем, кто заходит, но не считает', mailOff('nudge'))}
         </div>`;
 
         // Правила: сначала путь человека по дням, потом три карточки с полями
@@ -46189,7 +46196,7 @@ const app = {
         const rules = `<div class="inact-rules">
             <h4>Правила автоматики</h4>${line}
             <div class="inact-cards">
-            ${card('Неактивные', 'Письмо, заморозка и удаление тех, кто перестал заходить. Работает всегда.',
+            ${card('Неактивные', 'Письмо, заморозка и удаление тех, кто перестал заходить. Правило работает всегда; письма — по лимиту почты («Деньги → Почта»).',
                 field('Письмо, дней молчания', 'inact_warn', cfg.warn)
                 + field('Заморозка, день', 'inact_freeze', cfg.freeze)
                 + field('Удаление, дней после заморозки', 'inact_delete', cfg.delete),
