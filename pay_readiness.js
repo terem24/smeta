@@ -234,6 +234,11 @@ const PayReadiness = {
                     q('distributors', 'id, company_name'),
                     q('paywall_events', 'user_id, kind, src, created_at')
                 ]);
+                // Экономия «Бюджетнее» по последней смете (таблица offer_savings, пишет bench/cheaper_offer.js).
+                // Нет таблицы или цифр — предложение уходит без строки про экономию.
+                const sv = await q('offer_savings', 'user_id, base_sum, cheap_sum, save_rub, save_pct');
+                this._savings = {};
+                if (!sv.error) (sv.data || []).forEach(x => { this._savings[x.user_id] = x; });
                 if (u.error) throw u.error;
                 if (e.error) throw e.error;
                 if (i.error) throw i.error;
@@ -470,6 +475,13 @@ const PayReadiness = {
         lines.push(used
             ? 'Вы уже считаете в HeatCalc — значит, инструмент вам подходит. «Профи» добавляет то, что экономит время на каждом объекте:'
             : 'HeatCalc уже считает теплопотери и подбирает оборудование. «Профи» добавляет то, что экономит время на каждом объекте:');
+        // Личная цифра: сколько стоила бы последняя смета в «Бюджетнее». Только если она посчитана и больше нуля
+        const sv = this._savings && this._savings[p.id];
+        if (sv && +sv.save_rub > 0) {
+            const rub = Math.round(+sv.save_rub).toLocaleString('ru-RU');
+            lines.push('');
+            lines.push('Ваша последняя смета могла бы стоить дешевле на ' + rub + ' ₽ (' + (+sv.save_pct).toLocaleString('ru-RU') + ' %) в режиме «Бюджетнее». Это в «Профи».');
+        }
         lines.push('');
         const perks = S ? S.benefitRows(account)
             .filter(r => r.pro !== 'off' && r.base === 'off' && this.OFFER_PERKS[r.f.id])
