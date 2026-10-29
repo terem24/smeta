@@ -126,6 +126,11 @@
     src: 'ZOTA MK-X, паспорт от 02.08.2023, табл. 1, разд. 5',
     ports: [P('U', '3/4', 2, { role: 'подача и обратка' }), P('U', '1/2', 1, EXT('сброс предохранительного клапана'))]
   };
+  var ZOTA_BALANCE = {
+    // Паспорт ZOTA Balance V2 от 05.02.2025, табл. 1: диаметр патрубков подачи и обратки 1".
+    src: 'ZOTA Balance V2, паспорт от 05.02.2025, табл. 1',
+    ports: [P('U', '1', 2, { role: 'подача и обратка' })]
+  };
   var ZOTA_BPV = {
     // Паспорт ZOTA BPV от 29.09.2020, табл. 1: вход в трёхходовой клапан G3/4 внутр., выход в систему
     // отопления G3/4 наруж., выход в змеевик бойлера G3/4 наруж.
@@ -172,6 +177,7 @@
   var DEVICES = {
     'SEB-3101-000005': STOUT_STATUS, 'SEB-3101-000007': STOUT_STATUS, 'SEB-3101-000009': STOUT_STATUS, 'SEB-3101-000012': STOUT_STATUS, 'SEB-3101-000014': STOUT_STATUS, 'SEB-3101-000018': STOUT_STATUS, 'SEB-3101-000021': STOUT_STATUS, 'SEB-3101-000024': STOUT_STATUS, 'SEB-3101-000027': STOUT_STATUS,
     'PV4932000001': ZOTA_BPV,
+    'ZB3468421003': ZOTA_BALANCE, 'ZB3468421004': ZOTA_BALANCE, 'ZB3468421006': ZOTA_BALANCE, 'ZB3468421007': ZOTA_BALANCE,
     'ZM3468426004': ZOTA_MKX, 'ZM3468426006': ZOTA_MKX, 'ZM3468426007': ZOTA_MKX, 'ZM3468426009': ZOTA_MKX, 'ZM3468426012': ZOTA_MKX, 'ZM3468426015': ZOTA_MKX, 'ZM3468426018': ZOTA_MKX, 'ZM3468426021': ZOTA_MKX, 'ZM3468426024': ZOTA_MKX,
     'PNGB3500024L006': NAVIEN_ONE, 'PNGB3500030L010': NAVIEN_ONE,
     'PNGB3500035L010': NAVIEN_ONE, 'PNGB3500040L006': NAVIEN_ONE,

@@ -52987,7 +52987,7 @@ const app = {
             // случае нечем. Таблицы у линеек разные: STATUS — Таб.1 п. 17,
             // POLIS — Таб.2, и на одинаковых 9 кВт они не совпадают.
             const isPolis = !!b.noPump;
-            const sec = onePhase
+            const sec = b.cable ? (onePhase ? b.cable.one : b.cable.three) : onePhase
                 // Однофазная строка есть только у POLIS; для STATUS 5–9 кВт берём
                 // её же — линейки родственные, а ток на одной фазе тот же.
                 ? (kw <= 6 ? 10 : 16)
@@ -64648,14 +64648,14 @@ const app = {
             catalog.boilers_status.forEach(_addLine);
             catalog.boilers_polis.forEach(_addLine);
             // Бойлер включён — котёл без проверенного клапана ГВС в список не попадает.
-            (catalog.boilers_el_analogs || []).filter(x => !this.dhwTankOn() || x.dhwKit).forEach(_addLine);
+            (catalog.boilers_el_analogs || []).filter(x => x.noPump || !this.dhwTankOn() || x.dhwKit).forEach(_addLine);
             alts = [];
             Object.keys(_lines).forEach(k => {
                 const ln = _lines[k];
                 const lst = ln.list.filter(x => this.elMatchesFilter(x, _elF)).sort((a, b) => a.power - b.power);
                 if (!lst.length) return;
                 const pick = lst.find(x => x.power >= selectedPower)
-                    || (ln.tier === 'polis' ? lst[lst.length - 1] : null);
+                    || ((ln.tier === 'polis' && !ln.list[0].brand) ? lst[lst.length - 1] : null); // запасной «старший» — только у POLIS STOUT, аналог слабее выбранного не предлагаем
                 if (pick) alts.push(pick);
             });
             alts.sort((a, b) => ((a.tier || (String(a.id).includes('5101') ? 'polis' : 'status')) === 'polis' ? 1 : 0)
@@ -88530,7 +88530,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // а серию переключили) — остаёмся на STOUT, а не оставляем смету без котла.
                 if (ft === 'el' && this.state.elBoilerBrand && this.state.elBoilerBrand !== 'STOUT') {
                     const _ap = this.elAnalogPool(elSeries === 'polis' ? 'polis' : 'status', this.state.elBoilerBrand, this.state.elBoilerLine)
-                        .filter(x => !this.dhwTankOn() || x.dhwKit);
+                        .filter(x => x.noPump || !this.dhwTankOn() || x.dhwKit);
                     if (_ap.length) db = _ap;
                 }
                 // POLIS встал по режиму «Бюджетнее» (а не по ручному выбору серии) —
