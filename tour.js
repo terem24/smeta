@@ -1511,7 +1511,7 @@ const Tour = {
         try {
             if (typeof Subscription === 'undefined' || !Subscription.tourBonusSettings().enabled) return '';
             if (!this.allowed() || this.doneMap().basic || this.planInfo().isPro) return '';
-            return '<div class="tour-card-text" style="color:#059669;font-weight:600;">🎁 Пройдите главный блок «Первый объект» — и Профи откроется на 10 дней бесплатно.</div>';
+            return '<div class="tour-card-text" style="color:#059669;font-weight:600;">Пройти обучение — получи Профи на 10 дней. Бесплатно.</div>';
         } catch (e) { return ''; }
     },
 
