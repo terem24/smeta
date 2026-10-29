@@ -46077,43 +46077,31 @@ const app = {
         ];
         const secCur = this._inactSection || null;
         const secTabs = SEC.map(s => `<button type="button" class="ad-sec-tab${secCur === s.id ? ' active' : ''}" aria-pressed="${secCur === s.id}" onclick="app.setInactSection('${s.id}')">${s.label}${s.off ? ' <span class="ad-sec-off">выкл.</span>' : ''}</button>`).join('');
+        // Все разделы одинаковы: поля в одной сетке, ряд кнопок, без текстовых описаний
+        const sec = (fields, actions) => `<div class="ad-sec-fields">${fields}</div>`
+            + (actions ? `<div class="ad-sec-actions">${actions}</div>` : '');
+        const check = (label, id, on) => `<label class="ad-field ad-check"><input type="checkbox" id="${id}" ${on ? 'checked' : ''} ${dis}><span>${label}</span></label>`;
         const panels = {
-            timing: `<div class="ad-form-grid">
-                    ${field('Письмо, дней молчания', 'inact_warn', cfg.warn)}
-                    ${field('Заморозка, на день', 'inact_freeze', cfg.freeze)}
-                    ${field('Удаление, дней после заморозки', 'inact_delete', cfg.delete)}
-                    <div class="ad-form-act">${saveBtn('Сохранить сроки', 'app.saveInactivityDays()')}</div>
-                </div>`,
-            nudge: `<div class="ad-sub" style="margin:0 0 12px; max-width:760px;">
-                    Письмо и сообщение в кабинет: новичкам без смет, давним без смет и тем, у кого последняя смета давно.
-                    Раз в сутки в 10:00 по Москве, не чаще одного письма в неделю на человека; Профи и замороженным не пишем.
-                </div>
-                <div class="ad-form-grid">
-                    <label class="ad-field ad-check"><input type="checkbox" id="nudge_enabled" ${nudge.enabled ? 'checked' : ''} ${dis}><span>Рассылка включена</span></label>
-                    ${field('Новичку без смет, через дней', 'nudge_day3', nudge.day3)}
-                    ${field('Вопрос «что не получилось», дней', 'nudge_day14', nudge.day14)}
-                    ${field('Давняя смета, дней назад', 'nudge_day45', nudge.day45)}
-                    <div class="ad-form-act">${saveBtn('Сохранить рассылку', 'app.saveOnboardingNudges()')}</div>
-                </div>`,
-            empty: `<div class="ad-sub" style="margin:0 0 12px; max-width:760px;">
-                    За ${empty.warn_days} дн. до заморозки уходит предупреждение: сохраните смету или перейдите на Профи — и ничего не произойдёт.
-                    Без смет: заморозка через ${empty.freeze_days} дн. после регистрации, даже если человек заходит.
-                    Базовый тариф со сметами, но без новых за ${empty.stale_days} дн.: тоже заморозка (письмо уходит).
-                    Ещё через ${empty.delete_days} дн. учётка удаляется, её сметы переходят в архив со статусом «удалена», ссылки на КП перестают открываться;
-                    если среди смет есть завершённая — такую учётку не удаляем, она остаётся замороженной. Профи, администраторов, менеджеров и заблокированных не трогаем.
-                    Удалённые могут зарегистрироваться заново сразу. Если вернуть доступ вручную, повторно человека правило не заморозит.
-                    Проверка — раз в сутки. Список таких анкет — в «Пользователи» → «Без смет».
-                </div>
-                <div class="ad-form-grid">
-                    <label class="ad-field ad-check"><input type="checkbox" id="empty_enabled" ${empty.enabled ? 'checked' : ''} ${dis}><span>Правило включено</span></label>
-                    ${field('Предупреждение за, дней до заморозки', 'empty_warn', empty.warn_days)}
-                    ${field('Без смет: заморозка, дней после регистрации', 'empty_freeze', empty.freeze_days)}
-                    ${field('Со сметами (базовый): заморозка, дней без новых', 'empty_stale', empty.stale_days)}
-                    ${field('Удаление, дней после заморозки', 'empty_delete', empty.delete_days)}
-                    ${field('Предохранитель: удалений за ночь не больше', 'empty_maxdel', empty.max_delete)}
-                    <div class="ad-form-act">${saveBtn('Сохранить правило', 'app.saveEmptyAccounts()')}
-                        <button class="admin-btn" onclick="app.previewEmptyAccounts()">Сколько подпадёт сейчас</button></div>
-                </div>`,
+            timing: sec(
+                field('Письмо, дней молчания', 'inact_warn', cfg.warn)
+                + field('Заморозка, день', 'inact_freeze', cfg.freeze)
+                + field('Удаление, дней после заморозки', 'inact_delete', cfg.delete),
+                saveBtn('Сохранить', 'app.saveInactivityDays()')),
+            nudge: sec(
+                check('Рассылка включена', 'nudge_enabled', nudge.enabled)
+                + field('Новичку без смет, дней', 'nudge_day3', nudge.day3)
+                + field('Вопрос «что не получилось», дней', 'nudge_day14', nudge.day14)
+                + field('Давняя смета, дней назад', 'nudge_day45', nudge.day45),
+                saveBtn('Сохранить', 'app.saveOnboardingNudges()')),
+            empty: sec(
+                check('Правило включено', 'empty_enabled', empty.enabled)
+                + field('Предупреждение за, дней', 'empty_warn', empty.warn_days)
+                + field('Без смет: заморозка, дней', 'empty_freeze', empty.freeze_days)
+                + field('Со сметами: заморозка, дней без новых', 'empty_stale', empty.stale_days)
+                + field('Удаление, дней после заморозки', 'empty_delete', empty.delete_days)
+                + field('Удалений за ночь, не больше', 'empty_maxdel', empty.max_delete),
+                saveBtn('Сохранить', 'app.saveEmptyAccounts()')
+                + `<button class="admin-btn" onclick="app.previewEmptyAccounts()">Сколько подпадёт</button>`),
             journal: '<div id="empty_report_body"></div>',
             funnel: '<div id="reg_funnel_body"></div>',
         };
