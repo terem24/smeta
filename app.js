@@ -46061,31 +46061,25 @@ const app = {
         const saveBtn = (label, fn) => `<button class="admin-btn ad-primary" ${dis} onclick="${fn}">${label}</button>`;
         const statTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
 
-        let h = `
-            <div class="ad-page-h">
-                <div><h3>Напоминания неактивным</h3>
-                    <div class="ad-sub">Письмо после ${cfg.warn} дней молчания · доступ приостанавливается на ${cfg.freeze}-й день · учётка удаляется через ${cfg.delete} дней заморозки.
-                    Пока действует Профи, счётчик стоит. Проверка идёт каждую ночь.</div></div>
-            </div>
-            <div class="admin-stat-grid stat-5" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
-                ${statTile('Отправлено', rows.length, '&nbsp;')}
-                ${statTile('Вернулись', returned, `${share}% от всех`)}
-                ${statTile('Молчат', silent, 'письмо ушло, ответа нет')}
-                ${statTile('Заморожены', frozen, 'доступ приостановлен')}
-                ${statTile('Удалены', deleted, 'учётки удалены')}
-            </div>
-            <details class="ad-collapse">
-                <summary>Сроки неактивности</summary>
-                <div class="ad-form-grid">
+        // Разделы настроек — рядом вкладок, как в шапке раздела, и одна панель под ними.
+        // Открытый раздел запоминается на сессию; журнал и воронка грузятся при открытии.
+        const SEC = [
+            { id: 'timing', label: 'Сроки неактивности' },
+            { id: 'nudge', label: 'Рассылка: заходят, но не считают', off: !nudge.enabled },
+            { id: 'empty', label: 'Анкеты без смет', off: !empty.enabled },
+            { id: 'journal', label: 'Журнал правила' },
+            { id: 'funnel', label: 'Воронка регистраций' },
+        ];
+        const secCur = this._inactSection || null;
+        const secTabs = SEC.map(s => `<button type="button" class="ad-sec-tab${secCur === s.id ? ' active' : ''}" aria-pressed="${secCur === s.id}" onclick="app.setInactSection('${s.id}')">${s.label}${s.off ? ' <span class="ad-sec-off">выкл.</span>' : ''}</button>`).join('');
+        const panels = {
+            timing: `<div class="ad-form-grid">
                     ${field('Письмо, дней молчания', 'inact_warn', cfg.warn)}
                     ${field('Заморозка, на день', 'inact_freeze', cfg.freeze)}
                     ${field('Удаление, дней после заморозки', 'inact_delete', cfg.delete)}
                     <div class="ad-form-act">${saveBtn('Сохранить сроки', 'app.saveInactivityDays()')}</div>
-                </div>
-            </details>
-            <details class="ad-collapse">
-                <summary>Рассылка тем, кто заходит, но не считает${nudge.enabled ? '' : ' — выключена'}</summary>
-                <div class="ad-sub" style="margin:0 16px 4px; max-width:760px;">
+                </div>`,
+            nudge: `<div class="ad-sub" style="margin:0 0 12px; max-width:760px;">
                     Письмо и сообщение в кабинет: новичкам без смет, давним без смет и тем, у кого последняя смета давно.
                     Раз в сутки в 10:00 по Москве, не чаще одного письма в неделю на человека; Профи и замороженным не пишем.
                 </div>
@@ -46095,11 +46089,8 @@ const app = {
                     ${field('Вопрос «что не получилось», дней', 'nudge_day14', nudge.day14)}
                     ${field('Давняя смета, дней назад', 'nudge_day45', nudge.day45)}
                     <div class="ad-form-act">${saveBtn('Сохранить рассылку', 'app.saveOnboardingNudges()')}</div>
-                </div>
-            </details>
-            <details class="ad-collapse">
-                <summary>Анкеты без смет: заморозка и удаление${empty.enabled ? '' : ' — выключено'}</summary>
-                <div class="ad-sub" style="margin:0 16px 4px; max-width:760px;">
+                </div>`,
+            empty: `<div class="ad-sub" style="margin:0 0 12px; max-width:760px;">
                     За ${empty.warn_days} дн. до заморозки уходит предупреждение: сохраните смету или перейдите на Профи — и ничего не произойдёт.
                     Без смет: заморозка через ${empty.freeze_days} дн. после регистрации, даже если человек заходит.
                     Базовый тариф со сметами, но без новых за ${empty.stale_days} дн.: тоже заморозка (письмо уходит).
@@ -46117,22 +46108,34 @@ const app = {
                     ${field('Предохранитель: удалений за ночь не больше', 'empty_maxdel', empty.max_delete)}
                     <div class="ad-form-act">${saveBtn('Сохранить правило', 'app.saveEmptyAccounts()')}
                         <button class="admin-btn" onclick="app.previewEmptyAccounts()">Сколько подпадёт сейчас</button></div>
-                </div>
-            </details>
-            <details class="ad-collapse" ontoggle="if (this.open) app.loadEmptyReport()">
-                <summary>Журнал правила: предупреждены, заморожены, удалены</summary>
-                <div id="empty_report_body"></div>
-            </details>
-            <details class="ad-collapse" ontoggle="if (this.open) app.loadRegFunnel()">
-                <summary>Воронка регистраций по месяцам</summary>
-                <div id="reg_funnel_body"></div>
-            </details>`;
+                </div>`,
+            journal: '<div id="empty_report_body"></div>',
+            funnel: '<div id="reg_funnel_body"></div>',
+        };
+        const secBody = secCur ? `<div class="ad-sec-panel">${panels[secCur]}</div>` : '';
+
+        let h = `
+            <div class="ad-page-h">
+                <div><h3>Напоминания неактивным</h3>
+                    <div class="ad-sub">Письмо после ${cfg.warn} дней молчания · доступ приостанавливается на ${cfg.freeze}-й день · учётка удаляется через ${cfg.delete} дней заморозки.
+                    Пока действует Профи, счётчик стоит. Проверка идёт каждую ночь.</div></div>
+            </div>
+            <div class="admin-stat-grid stat-5" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${statTile('Отправлено', rows.length, '&nbsp;')}
+                ${statTile('Вернулись', returned, `${share}% от всех`)}
+                ${statTile('Молчат', silent, 'письмо ушло, ответа нет')}
+                ${statTile('Заморожены', frozen, 'доступ приостановлен')}
+                ${statTile('Удалены', deleted, 'учётки удалены')}
+            </div>
+            <div class="ad-sec-tabs" role="group">${secTabs}</div>
+            ${secBody}`;
 
         if (!rows.length) {
             h += `<div style="padding:30px; text-align:center; color:var(--text-sec);">
                 Пока никому не отправляли. Первые письма уйдут ближайшей ночью — тем, кто не заходил больше 20 дней.
             </div>`;
             root.innerHTML = h;
+            this.loadInactSectionData();
             return;
         }
 
@@ -46197,6 +46200,19 @@ const app = {
 
         h += `</tbody></table></div>`;
         root.innerHTML = h;
+        this.loadInactSectionData();
+    },
+
+    // Переключение раздела вкладками: нажатие на открытый — свернуть
+    setInactSection: function (id) {
+        this._inactSection = this._inactSection === id ? null : id;
+        this.renderAdminInactiveBody();
+    },
+
+    // Журнал и воронка читают базу — грузим, когда их вкладка открыта
+    loadInactSectionData: function () {
+        if (this._inactSection === 'journal') this.loadEmptyReport();
+        else if (this._inactSection === 'funnel') this.loadRegFunnel();
     },
 
     renderAdminPlans: async function () {
