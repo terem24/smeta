@@ -1,4 +1,4 @@
-const CACHE_NAME = 'heatcalc-v36.54';
+const CACHE_NAME = 'heatcalc-v36.55';
 // Подложки планов этажей — отдельным кэшем, который переживает смену версии
 // приложения. В общем кэше они терялись бы при каждом выпуске, а это как раз
 // то, что монтажник открывает на объекте, где связи может не быть.
@@ -8,7 +8,7 @@ const ASSETS = [
   '/index.html',
   '/start.html',
   '/style.css',
-  '/app.js',
+  '/app.min.js',
   '/catalog.js',
   '/dist_prices.js',
   '/img/logo_HC.png'

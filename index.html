@@ -235,7 +235,7 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.7" defer></script>
-    <script src="app.js?v=14.67" defer></script>
+    <script src="app.min.js?v=14.68" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -244,11 +244,6 @@
     <!-- Подсказка «Смета за минуту» тем, кто заходит не первый раз и ничего не
          посчитал. После tour.js: берёт у обучения место баннера cookie. -->
     <script src="idle_hint.js?v=1.6" defer></script>
-    <!-- Принципиальная схема котельной под переключателем «Схема». Тот же
-         векторный композитор, что рисует лист схемы в проекте, поэтому нужен
-         и движок листов (рамка/штамп из него не берутся, только текст). -->
-    <script src="project_sheets.js?v=4.28" defer></script>
-    <script src="project_scheme.js?v=4.80" defer></script>
     <!-- Укладка тёплого пола по планам этажей. В калькуляторе нужна не ради
          листов, а ради сметы: длину трубы и число выходов коллектора берём
          из нарисованных петель (projectPlans.floorLoops). -->
@@ -285,7 +280,10 @@
             reprice: ['reprice.js?v=1.7'],
             qrcode: ['qrcode.min.js'],
             html2pdf: ['vendor/html2pdf.bundle.min.js'],
-            sheetjs: ['vendor/xlsx.full.min.js']
+            sheetjs: ['vendor/xlsx.full.min.js'],
+            // Движок листов проекта и схемы котельной (≈0,5 МБ): нужен кнопке «Выпустить проект»
+            // и переключателю «Схема»; до этого схема не рисуется, а app.renderScheme перерисует сам
+            project: ['project_sheets.js?v=4.28', 'project_scheme.js?v=4.80']
         };
         (function () {
             var started = {};
@@ -597,11 +595,19 @@
     <script>
         (function () {
             var firstErr = '';
+            // Файл, который не скачался, до window без захвата не доходит — ловим его на фазе захвата.
+            // Картинки и прочие ресурсы не трогаем: страница от них не ломается.
             window.addEventListener('error', function (e) {
-                if (!firstErr) firstErr = (e.message || 'ошибка') + (e.filename ? ' — ' + e.filename.split('/').pop() + ':' + e.lineno : '');
-            });
+                if (firstErr) return;
+                var t = e.target;
+                if (t && t !== window) { if (t.tagName === 'SCRIPT') firstErr = 'не скачался файл ' + String(t.src).split('/').pop(); return; }
+                firstErr = (e.message || 'ошибка') + (e.filename ? ' — ' + e.filename.split('/').pop() + ':' + e.lineno : '');
+            }, true);
             window.addEventListener('unhandledrejection', function (e) {
-                if (!firstErr) firstErr = String((e.reason && (e.reason.stack || e.reason.message)) || e.reason || 'ошибка').slice(0, 300);
+                var r = e.reason;
+                // Оборванная сеть и запрос, отменённый по таймауту, — не поломка страницы: сеть вернётся, библиотека повторит
+                if (firstErr || (r && r.name === 'AbortError') || /Failed to fetch|NetworkError|Load failed|network/i.test(String((r && r.message) || ''))) return;
+                firstErr = String((r && (r.stack || r.message)) || r || 'ошибка').slice(0, 300);
             });
             // Экран «загрузился с ошибкой» показываем, только когда она есть на самом деле: скрипт не доехал (медленная сеть
             // после обновления — большие файлы скачиваются заново) или в странице случилась ошибка. Если калькулятор
@@ -615,12 +621,15 @@
                 if (ready) { pre.remove(); return; }                       // готов, прелоадер задержался
                 var loaded = typeof app !== 'undefined';
                 waited += 5;
-                if (!loaded && !firstErr && waited < 50) { setTimeout(check, 5000); return; }   // скрипты ещё качаются
+                // Скрипты ещё качаются (медленная сеть, большой app.js после обновления): ждём, но недолго.
+                // Упавший app.js ждать незачем — сразу показываем причину.
+                if (!loaded && waited < 45 && firstErr.indexOf('app.js') < 0) { setTimeout(check, 5000); return; }
                 if (loaded && !firstErr) {                                  // запущен, ошибок нет — ждёт ответа сервера
                     try { console.warn('[загрузка] калькулятор запущен, но не завершил запуск за ' + (waited + 15) + ' с — открываем как есть'); } catch (_) { }
                     pre.remove();
                     return;
                 }
+                if (!firstErr) firstErr = 'скрипты не успели загрузиться — проверьте интернет и обновите страницу';
                 fail(pre);
             }
             setTimeout(check, 15000);
