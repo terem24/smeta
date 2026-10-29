@@ -38798,15 +38798,20 @@ const app = {
 
     // Сколько сохранённых смет содержат позицию (функция order_default_usage, только админу).
     // Без неё список остаётся, просто сортируется по цене.
+    // Список смет с владельцами: this._orderEstimates[id] = [{ project_name, created_at, owner_username, owner_email, ... }]
     loadOrderUsage: function () {
         if (this._orderUsage !== undefined) return Promise.resolve(this._orderUsage);
         const ids = (this._orderDefaults || []).map(o => o.id);
         if (!ids.length) return Promise.resolve((this._orderUsage = {}));
-        return Promise.resolve(supabaseClient.rpc('order_default_usage', { p_ids: ids }))
+        return Promise.resolve(supabaseClient.rpc('order_default_estimates', { p_ids: ids }))
             .then(({ data, error }) => {
                 if (error) throw error;
-                const map = {};
-                (data || []).forEach(r => { map[r.item_id] = Number(r.estimates) || 0; });
+                const map = {}, est = {};
+                (data || []).forEach(r => {
+                    map[r.item_id] = (map[r.item_id] || 0) + 1;
+                    (est[r.item_id] = est[r.item_id] || []).push(r);
+                });
+                this._orderEstimates = est;
                 this._orderUsageError = null;
                 return (this._orderUsage = map);
             })
@@ -38846,12 +38851,26 @@ const app = {
         this.sortOrderDefaults();
         const list = this._orderDefaults;
         const filter = this._orderFilter || 'all';
+        // Сколько дней позиция стоит «под заказ» (с даты since из order_defaults.json)
+        const ageDays = o => o.since ? Math.floor((Date.now() - new Date(o.since).getTime()) / 86400000) : null;
+        const AGE_LIMIT = { month: 30, quarter: 90, year: 365 };
+        // Цвет по сроку: больше года — красный, больше квартала — жёлтый, больше месяца — серый
+        const ageTier = d => d == null ? null
+            : d >= 365 ? { c: '#EF4444', t: 'больше года' }
+            : d >= 90 ? { c: '#D97706', t: 'больше квартала' }
+            : d >= 30 ? { c: 'var(--text-sec)', t: 'больше месяца' } : null;
         const keep = o => filter === 'all' ? true
             : filter === 'often' ? (o.uses || 0) >= 3
-            : (Number(o.price) || 0) >= 10000;
+            : filter === 'pricey' ? (Number(o.price) || 0) >= 10000
+            : (ageDays(o) || 0) >= AGE_LIMIT[filter];
         const shown = list.filter(keep).length;
+        const registry = `<div style="display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 2px; font-size:12.5px;">
+                <span style="color:#EF4444; font-weight:700;">больше года: ${list.filter(o => (ageDays(o) || 0) >= 365).length}</span>
+                <span style="color:#D97706; font-weight:700;">больше квартала: ${list.filter(o => (ageDays(o) || 0) >= 90).length}</span>
+                <span style="color:var(--text-sec);">больше месяца: ${list.filter(o => (ageDays(o) || 0) >= 30).length}</span>
+            </div>`;
         const usageNote = this._orderUsageError
-            ? `<div style="font-size:12px; color:#D97706; margin-top:6px;">Частоту посчитать не вышло, сортировка только по цене. Нужна миграция order_default_usage и права админа.</div>` : '';
+            ? `<div style="font-size:12px; color:#D97706; margin-top:6px;">Частоту посчитать не вышло, сортировка только по цене. Нужна миграция order_default_estimates и права админа.</div>` : '';
         const chip = (id, label) => `<button class="ad-chip${filter === id ? ' active' : ''}" onclick="app._orderFilter='${id}'; app.renderAdminMain()">${label}</button>`;
         const month = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
         const badge = {
@@ -38860,6 +38879,21 @@ const app = {
             gone: '<span style="color:#EF4444; font-weight:700;">снято, из подбора убрано</span>',
             keep: '<span style="color:var(--text-sec); font-weight:700;">оставлено на этот месяц</span>'
         };
+        // Сметы позиции: дата, название сметы, владелец. Свёрнуто, чтобы не растягивать список на 54 строки.
+        const estBlock = id => {
+            const rows = (this._orderEstimates || {})[id] || [];
+            if (!rows.length) return '';
+            const day = s => s ? new Date(s).toLocaleDateString('ru-RU') : '';
+            const li = rows.slice(0, 200).map(r => {
+                const who = [r.owner_username, r.owner_email].filter(Boolean).map(esc).join(' · ') || 'владелец неизвестен';
+                return `<li style="margin:2px 0;">${esc(day(r.created_at))} · ${esc(r.project_name || 'Без названия')} · <span style="color:var(--text-main);">${who}</span></li>`;
+            }).join('');
+            const more = rows.length > 200 ? `<li>…и ещё ${rows.length - 200}</li>` : '';
+            return `<details style="font-size:12px; color:var(--text-sec); margin:0 0 8px;">
+                <summary style="cursor:pointer;">Сметы: ${rows.length}, показать</summary>
+                <ul style="margin:6px 0 0 16px; padding:0;">${li}${more}</ul>
+            </details>`;
+        };
         let h = `<div style="margin-bottom:26px;">
             <div class="ad-page-h"><div><h3>Под заказ в подборе по умолчанию</h3>
             <div class="ad-sub" style="line-height:1.5;">Решите по каждой на ${esc(month)}: заменить, снять или оставить.${this._orderBuilt ? ` Список без изменений с ${esc(this._orderBuilt.split('-').reverse().join('.'))}.` : ''}</div></div>
@@ -38867,7 +38901,9 @@ const app = {
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:14px 0 6px;">
                 <span style="font-size:13px; color:var(--text-main); font-weight:600;">Найдено: ${shown} из ${list.length}</span>
                 ${chip('all', 'Все')} ${chip('often', 'Часто (от 3 смет)')} ${chip('pricey', 'Дорогие (от 10 000 ₽)')}
+                ${chip('month', 'Под заказ больше месяца')} ${chip('quarter', 'Больше квартала')} ${chip('year', 'Больше года')}
             </div>
+            ${registry}
             <div style="font-size:12px; color:var(--text-sec);">Порядок: цена × число смет.</div>
             ${usageNote}
         </div>`;
@@ -38888,9 +38924,11 @@ const app = {
                     <b style="color:var(--text-main);">${esc(o.id)}</b>
                     <span style="font-size:13px; color:var(--text-main);">${esc(o.name)}</span>
                     <span style="font-size:12px; color:var(--text-sec);">${fmt(o.price)} ₽${o.stale ? ' · цена старше месяца' : ' · под заказ'} · ${uses}</span>
+                    ${(() => { const d = ageDays(o), t = ageTier(d); return d == null ? '' : `<span style="font-size:12px; font-weight:700; color:#fff; background:${t ? t.c : 'var(--text-sec)'}; border-radius:6px; padding:1px 8px;">${d} дн. под заказ${t ? ' · ' + t.t : ''}</span>`; })()}
                     <span style="margin-left:auto; font-size:12.5px;">${badge[st]}</span>
                 </div>
-                <div style="font-size:11.5px; color:var(--text-sec); margin:4px 0 8px;">в подборе: ${where}</div>
+                <div style="font-size:11.5px; color:var(--text-sec); margin:4px 0 8px;">где подбирается: ${where}</div>
+                ${estBlock(o.id)}
                 ${body}
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
                     <button class="admin-btn ad-primary" onclick="app.orderOpenReplace(${i})">Заменить…</button>
