@@ -4284,7 +4284,7 @@ const app = {
         if (!this.state.tgUser) { this.showAuthModal(); return; }
         // Окно ИИ-ассистента открывается только на тарифе «Профи» (кнопка на Базовом
         // скрыта, но модалку могут вызвать и из других мест).
-        if (!this.isPro()) { this.showModal('pro'); return; }
+        if (!this.isPro()) { this.logPaywall('seen', 'ИИ-ассистент'); this.showModal('pro'); return; }
         if (document.body.classList.contains('menu-open')) {
             try { this.toggleMenu(); } catch (e) { }
         }
@@ -5947,7 +5947,7 @@ const app = {
         if (!this.state.tgUser) { this.showAuthModal(); return; }
         // Окно ИИ-ассистента открывается только на тарифе «Профи» (кнопка на Базовом
         // скрыта, но модалку могут вызвать и из других мест).
-        if (!this.isPro()) { this.showModal('pro'); return; }
+        if (!this.isPro()) { this.logPaywall('seen', 'ИИ-ассистент'); this.showModal('pro'); return; }
         if (document.body.classList.contains('menu-open')) {
             try { this.toggleMenu(); } catch (e) { }
         }
@@ -8495,6 +8495,7 @@ const app = {
         if (featureLvl === 'pro-brand' && !this.canUseBrand('ROMMER')) {
             if (event) event.preventDefault();
             // Окно тарифа — только когда Профи этой учётке ROMMER открывает
+            if (!isPro) this.logPaywall('seen', 'Смета: ROMMER');
             if (!isPro && this.tariffCell(this.tariffAccount(), 'pro', 'rommer') === 'on') this.showModal('pro', { why: 'Вы хотели переключиться на ROMMER — ассортимент входит в Профи' });
             else app.alert('Ассортимент ROMMER для вашей учётной записи не подключён.');
             return false;
@@ -17155,6 +17156,7 @@ const app = {
         // Окно тарифа лежит ниже кабинета (как у «Оформить Профи» в профиле), поэтому кабинет закрываем
         try { this.closeProfileModal(); } catch (e) { }
         this.showModal('pro', { why: '«' + name + '»' + (def ? ' (' + def.label.toLowerCase() + ')' : '') + ' — вариант из Профи' });
+        this.logPaywall('seen', 'Группы сметы: вариант из Профи');
     },
 
     setPref: function (key, v) {
@@ -19868,7 +19870,7 @@ const app = {
     // Подтверждение формы первого запуска: забираем то, что стоит в полях, и с
     // этого момента вкладка считает.
     applyMarginSetup: function () {
-        if (!this.isPro()) { this.showModal('pro'); return; }
+        if (!this.isPro()) { this.logPaywall('seen', 'Деньги: настройка маржи'); this.showModal('pro'); return; }
         if (!this.installerSettings) this.loadInstallerSettingsLocal();
         const read = (id, def) => {
             const el = document.getElementById(id);
@@ -19895,7 +19897,7 @@ const app = {
 
     // Правка одного поля уже после настройки — прямо в подвале вкладки.
     setMarginField: function (field, val) {
-        if (!this.isPro()) { this.showModal('pro'); return; }
+        if (!this.isPro()) { this.logPaywall('seen', 'Деньги: поле маржи'); this.showModal('pro'); return; }
         const m = this.marginSettings();
         if (!m) return;
         if (field === 'overheadFix') {
@@ -19918,7 +19920,7 @@ const app = {
      * сделанное не разошлись: там же учтён предел ползунка.
      */
     applyWhatIfDiscount: async function (extra) {
-        if (!this.canUseMoney()) { this.showModal('pro'); return; }
+        if (!this.canUseMoney()) { this.logPaywall('seen', 'Деньги: что-если'); this.showModal('pro'); return; }
         extra = parseFloat(extra) || 0;
         if (extra <= 0) return;
         const rep = this.marginReport();
@@ -20688,7 +20690,7 @@ const app = {
                         по вашим скидкам поставщика, оплата бригады, накладные — и что остаётся на руках
                         по каждому разделу сметы.
                     </div>
-                    ${this.isTeremStaff() ? '' : `<button type="button" onclick="app.showModal('pro')"
+                    ${this.isTeremStaff() ? '' : `<button type="button" onclick="app.logPaywall('seen', 'Деньги: о расчёте'); app.showModal('pro')"
                         style="margin-top: 16px; font: inherit; font-size: 13px; font-weight: 700; padding: 10px 22px; border-radius: 10px; border: none; background: var(--primary); color: var(--on-primary,#fff); cursor: pointer;">Посмотреть тариф</button>`}
                 </div>`;
             return;
@@ -26430,7 +26432,7 @@ const app = {
                 <div style="font-size:12.5px; color:var(--text-sec); margin-top:6px;">${esc(works(r.works))}</div>
                 <div style="margin-top:10px;">${can
                     ? `<button type="button" class="lk-btn" onclick="app.takeLead('${esc(r.lead_id)}', this)">Взять заявку</button>`
-                    : ((needPro && !this.isTeremStaff()) ? `<button type="button" class="lk-btn" onclick="app.showModal('pro')">Оформить Профи, чтобы взять</button>` : '')}</div>
+                    : ((needPro && !this.isTeremStaff()) ? `<button type="button" class="lk-btn" onclick="app.logPaywall('seen', 'Заявки: взять'); app.showModal('pro')">Оформить Профи, чтобы взять</button>` : '')}</div>
             </div>`).join('') : '<div class="lk-sub" style="padding:8px 0 16px;">Свободных заявок сейчас нет. Новые появляются по мере поступления — загляните позже.</div>';
         const markOpts = cur => this.LEAD_MARKS.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}${v === 'sent' ? ' disabled' : ''}>${l}</option>`).join('');
         const mineHtml = mine.length ? mine.map(r => `
@@ -42330,7 +42332,7 @@ const app = {
     sgPickVariant: function (key) {
         const v = this.SG_VARIANTS.find(x => x.key === key);
         if (!v || key === this.sgCurrentVariant()) return;
-        if (!v.ready && !this.isPro()) { this.showModal('pro'); return; }
+        if (!v.ready && !this.isPro()) { this.logPaywall('seen', 'Группы сметы: вариант'); this.showModal('pro'); return; }
         this.state.groupsBuild = v.ready ? 'ready' : 'self';
         this.state.boilerPipeSystem = v.sys;
         this.state.sectionAnalog = Object.assign({}, this.state.sectionAnalog || {}, { '2. Обвязка котельной': v.rom });
@@ -50685,6 +50687,7 @@ const app = {
         }
         document.body.classList.toggle('work-mode', mode === 'works');
 
+            if (!this.isPro()) this.logPaywall('seen', 'Деньги: вкладка');
         let tableResponsive = document.querySelector('.table-responsive');
         let docFooter = document.querySelector('.doc-footer');
         let discountBlock = document.getElementById('discount_block');
@@ -54190,6 +54193,7 @@ const app = {
                 this.toggleSku(event);
             }
         } else if (featureName === 'merge') {
+            this.logPaywall('seen', 'Смета: вторая «Бюджетнее»');
             const chk = document.getElementById('chk_merge');
             if (chk) {
                 chk.checked = !chk.checked;
@@ -56923,7 +56927,7 @@ const app = {
             const go = await this.confirmChoice(
                 'На бесплатном тарифе можно отправить клиентам ' + max + ' разных КП в месяц, в этом месяце вы уже отправили ' + used.size + '. Ранее отправленные КП можно отправлять снова. Счётчик обнулится 1 числа. Профи — без ограничения.' + (Subscription.priceLine() ? '\n\n' + Subscription.priceLine() : ''),
                 'Лимит бесплатных КП', 'Оформить Профи', 'Закрыть');
-            if (go) this.showModal('pro');
+            if (go) { this.logPaywall('seen', 'КП: лимит бесплатных'); this.showModal('pro'); }
             return false;
         } catch (e) {
             console.warn('[лимит КП] не проверен, пропускаем:', e);
@@ -69285,7 +69289,7 @@ const app = {
         const _ctrlFrom = _ctrlOf(originalId), _ctrlTo = _ctrlOf(chosenId);
         if (_ctrlFrom && _ctrlTo) {
             // Автоматика ZONT — ассортимент тарифа «Профи».
-            if ((_ctrlTo.brand === 'zont' || _ctrlTo.brand === 'myheat' || _ctrlTo.brand === 'ecto') && !this.isPro()) { this.showModal('pro', { why: 'Вы хотели подобрать автоматику ZONT / MyHeat — она входит в Профи' }); return; }
+            if ((_ctrlTo.brand === 'zont' || _ctrlTo.brand === 'myheat' || _ctrlTo.brand === 'ecto') && !this.isPro()) { this.logPaywall('seen', 'Автоматика ZONT / MyHeat'); this.showModal('pro',{ why: 'Вы хотели подобрать автоматику ZONT / MyHeat — она входит в Профи' }); return; }
             const _byBill = this.boilerAutoModel({ tQ: this.tQ_val, snow: this.snowCalc }, true);
             delete this.state.swaps[originalId];
             this.state.boilerAutoBrand = _ctrlTo.brand;
@@ -79068,6 +79072,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             }
         }
         if (document.getElementById('chk_detailed_rooms_toggle')) {
+                    app.logPaywall('seen', 'Режим сметы: Профи');
             document.getElementById('chk_detailed_rooms_toggle').checked = !!this.state.showDetailedRoomsPanel;
         }
 
@@ -79395,6 +79400,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         applyLock('sys_rad', 'pro');
         applyLock('chk_water_input', 'pro');
         applyLock('chk_well', 'pro');
+                            app.logPaywall('seen', 'Режим сметы: закрытый');
         applyLock('chk_hw', 'pro');
         applyLock('chk_recirc', 'pro');
         applyLock('chk_tank_pump', 'pro');
@@ -82150,7 +82156,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     },
     setGroupsBuild: function (mode, event) {
         if (!this.checkAccess('pro', event)) { this.syncUI(); return; }
-        if (!this.isPro()) { this.showModal('pro', { why: 'Вы хотели собрать смету по своим группам — это функция Профи' }); this.syncUI(); return; }
+        if (!this.isPro()) { this.logPaywall('seen', 'Смета: свои группы'); this.showModal('pro', { why: 'Вы хотели собрать смету по своим группам — это функция Профи' }); this.syncUI(); return; }
         this.state.groupsBuild = (mode === 'self') ? 'self' : 'ready';
         this.syncUI();
         this.render();

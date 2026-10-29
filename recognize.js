@@ -2454,6 +2454,7 @@ const RecognizeUI = {
             this._busy = false;
             if (go) go.disabled = false;
             this.setStatus('');
+            app.logPaywall('seen', 'Распознавание: планы этажей');
             app.showModal('pro', { why: 'Разбор планов этажей и комплектов проекта — в тарифе Профи' });
             return;
         }
