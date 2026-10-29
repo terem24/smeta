@@ -64643,7 +64643,8 @@ const app = {
             };
             catalog.boilers_status.forEach(_addLine);
             catalog.boilers_polis.forEach(_addLine);
-            (catalog.boilers_el_analogs || []).forEach(_addLine);
+            // Бойлер включён — котёл без проверенного клапана ГВС в список не попадает.
+            (catalog.boilers_el_analogs || []).filter(x => !this.dhwTankOn() || x.dhwKit).forEach(_addLine);
             alts = [];
             Object.keys(_lines).forEach(k => {
                 const ln = _lines[k];
@@ -88524,7 +88525,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // серии (STATUS-класс или POLIS-класс). Нет линейки (у бренда нет эконом-версии,
                 // а серию переключили) — остаёмся на STOUT, а не оставляем смету без котла.
                 if (ft === 'el' && this.state.elBoilerBrand && this.state.elBoilerBrand !== 'STOUT') {
-                    const _ap = this.elAnalogPool(elSeries === 'polis' ? 'polis' : 'status', this.state.elBoilerBrand, this.state.elBoilerLine);
+                    const _ap = this.elAnalogPool(elSeries === 'polis' ? 'polis' : 'status', this.state.elBoilerBrand, this.state.elBoilerLine)
+                        .filter(x => !this.dhwTankOn() || x.dhwKit);
                     if (_ap.length) db = _ap;
                 }
                 // POLIS встал по режиму «Бюджетнее» (а не по ручному выбору серии) —
@@ -89057,6 +89059,16 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // Узел загрузки переключает поток котла на змеевик бойлера — без бойлера
             // в смете он ни к чему не подключается.
             if (rigDropped('dhw')) return;
+            // Электрокотёл другого бренда: свой клапан приоритета бойлера (dhwKit — артикул в
+            // dhw_valves_el), датчик бойлера лежит в коробке котла. Общий Fugas ему не годится:
+            // у каждого котла свой привод и своё сопротивление датчика.
+            const _elKit = boiler && boiler.dhwKit && (catalog.dhw_valves_el || []).find(x => x.id === boiler.dhwKit);
+            if (_elKit) {
+                addToBill({ ..._elKit, originalId: _elKit.id }, 1,
+                    'Клапан приоритета бойлера: вход G3/4 ВР — от котла, выходы G3/4 НР — в отопление и в змеевик бойлера, ' +
+                    'привод 220 В, Kvs ' + _elKit.kvs + ' м³/ч (паспорт ZOTA BPV от 29.09.2020). Датчик бойлера входит в комплект котла.', grp);
+                return;
+            }
             if (boiler && boiler.dhwValve) {
                 const _sens = boiler.dhwSensor && (catalog.vaillant_acc || []).find(x => x.id === boiler.dhwSensor);
                 if (_sens) addToBill(_sens, 1, this.getDesc('vaillant_dhw_sensor', boiler), grp);
@@ -89292,7 +89304,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         let tankNeedsPumpGroup = this.dhwTankOn() && !rigDropped('dhw') && this.tankLoadSchemeEff() === 'pump';
         if (!tankNeedsPumpGroup) {
             if (hasGasSel) addTankLoadingKit(gasBoilerGrp(0), selBoilers.find(b => b && b.type === 'gas'));
-            if (hasElSel) addTankLoadingKit(elBoilerGrp(0));
+            if (hasElSel) addTankLoadingKit(elBoilerGrp(0), selBoilers.find(b => b && b.type === 'el'));
         }
         if (this.dhwElectric() && !rigDropped('dhw')) {
             const _hp = this.houseWhPlan();
