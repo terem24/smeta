@@ -124,6 +124,13 @@
     src: 'STOUT STATUS, паспорт (stout_bf87195c29c2)',
     ports: [P('M', '3/4', 2, { role: 'подача и обратка' }), P('U', '1/2', 1, EXT('сброс предохранительного клапана'))]
   };
+  var STOUT_POLIS = {
+    // Паспорт STOUT POLIS (18.06.2026, stout.ru), табл. 2, п. 4: патрубки подачи и обратки «1" наружная резьба, 3/4" внутренняя»,
+    // патрубок универсальный (можно и на наружную, и на внутреннюю). К группе быстрого монтажа — американка 1" (Рис. 5), поэтому
+    // считаем основной вариант — наружная 1". Насоса и бака в котле нет.
+    src: 'STOUT POLIS, паспорт (stout.ru, 18.06.2026), табл. 2 п. 4: патрубки 1" наружная резьба',
+    ports: [P('M', '1', 2, { role: 'подача и обратка' })]
+  };
   // Электрокотлы других брендов (catalog.boilers_el_analogs) — только сверенные с паспортом.
   // НР это или ВР, паспорт котла не говорит — конец U.
   var ZOTA_MKX = {
@@ -209,6 +216,7 @@
   };
   var DEVICES = {
     'SEB-3101-000005': STOUT_STATUS, 'SEB-3101-000007': STOUT_STATUS, 'SEB-3101-000009': STOUT_STATUS, 'SEB-3101-000012': STOUT_STATUS, 'SEB-3101-000014': STOUT_STATUS, 'SEB-3101-000018': STOUT_STATUS, 'SEB-3101-000021': STOUT_STATUS, 'SEB-3101-000024': STOUT_STATUS, 'SEB-3101-000027': STOUT_STATUS,
+    'SEB-5101-000006': STOUT_POLIS, 'SEB-5101-000009': STOUT_POLIS, 'SEB-5101-000012': STOUT_POLIS, 'SEB-5101-000015': STOUT_POLIS,
     'PV4932000001': ZOTA_BPV, '116002': EVAN_AQUA,
     '14563': EVAN_FORWARD, '14564': EVAN_FORWARD, '14565': EVAN_FORWARD, '14566': EVAN_FORWARD, '14567': EVAN_FORWARD, '14569': EVAN_FORWARD, '14572': EVAN_FORWARD, '14574': EVAN_FORWARD, '14578': EVAN_FORWARD, '14581': EVAN_FORWARD, '14584': EVAN_FORWARD, '14588': EVAN_FORWARD, 'ЭдЭБ05052': THERMEX_BOSS,
     '0010023646': PROTHERM_RAY, '0010023647': PROTHERM_RAY, '0010023648': PROTHERM_RAY, '0010023649': PROTHERM_RAY, '0010023650': PROTHERM_RAY, '0010023651': PROTHERM_RAY, '0010023652': PROTHERM_RAY, '0010023653': PROTHERM_RAY, '0010023654': VAILLANT_ELO, '0010023655': VAILLANT_ELO, '0010023656': VAILLANT_ELO, '0010023657': VAILLANT_ELO, '0010023658': VAILLANT_ELO, '0010023659': VAILLANT_ELO, '0010023660': VAILLANT_ELO, '0010023661': VAILLANT_ELO,
