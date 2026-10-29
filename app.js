@@ -64617,6 +64617,10 @@ const app = {
             const _itemPower = item.power || (_elCat && _elCat.power) || 12;
             if (isFirstOpen) {
                 this.state.swapBoilerPower = _itemPower;
+                // Окно открывается на классе текущего котла: замена STATUS показывает варианты STATUS,
+                // замена POLIS — варианты POLIS. Другой класс — кнопкой «Класс» в фильтрах.
+                const _curTier = (_elCat && _elCat.tier) || (String(_origId0).includes('5101') ? 'polis' : 'status');
+                this.state.elSwapFilter = Object.assign({}, this.EL_SWAP_FILTER_DEFAULT, { tier: _curTier });
             }
             let selectedPower = this.state.swapBoilerPower || _itemPower;
             // Ряды мощностей у серий разные (STATUS/PLUS 5/7/9/12/14/18/21/24/27, POLIS
