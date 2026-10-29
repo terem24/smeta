@@ -175,14 +175,15 @@ const Tour = {
             block: 'basic', key: 'replace', mob: 'output',
             // Радиаторы могут лежать в свёрнутом подразделе сметы (группировка у Профи) — тогда
             // их строк на экране нет, и подсветка уезжала на вкладку «Оборудование». Разворачиваем.
-            before: () => Tour.openRadGroup(),
+            before: () => { Tour.ensureRadiators(); Tour.openRadGroup(); },
             sel: () => { const r = Tour.radRow() || Tour.anySwapRow(); return r ? r.tr : document.getElementById('tab_equipment'); },
             title: 'Замена радиатора',
             text: 'Любую позицию сметы можно заменить. Окно замены открывается по клику на фото позиции; фильтры «Тип прибора» и «Подключение» — внутри этого окна.',
-            snap: () => { Tour._radWin = false; return JSON.stringify({ sw: Tour.st().swaps || {} }); },
+            snap: () => { Tour._radWin = false; return JSON.stringify({ sw: Tour.st().swaps || {}, eq: Tour.eqSig() }); },
             // Радиатора в смете нет (редкий случай: свёрнуто или убран) — одно задание про любую позицию
             tasks: () => {
-                const picked = snap => JSON.stringify(Tour.st().swaps || {}) !== JSON.stringify(JSON.parse(snap).sw);
+                // Котёл меняет не state.swaps, а свои поля (серия STATUS/POLIS), поэтому смотрим и состав сметы
+                const picked = snap => { const s = JSON.parse(snap); return JSON.stringify(Tour.st().swaps || {}) !== JSON.stringify(s.sw) || Tour.eqSig() !== s.eq; };
                 if (!Tour.radRow()) return [{ label: 'Нажмите на фото любой позиции сметы и выберите другую', done: picked }];
                 return [
                     { label: 'Нажмите на фото радиатора — откроется окно замены', done: () => !!Tour._radWin || Tour.radWinOpen() },
@@ -419,6 +420,12 @@ const Tour = {
             this.swapRow(t => this.RAD_RE.test(t) && !this.RAD_NOT.test(t));
     },
 
+    // Состав сметы по артикулам: меняется при любой замене, в том числе котла (его выбор
+    // пишется в поля state, а не в state.swaps)
+    eqSig: function () {
+        try { return JSON.stringify((app.currentEquipmentList || []).map(i => i && i.id)); } catch (e) { return ''; }
+    },
+
     // Радиатора в смете не видно — любая строка, которую можно заменить: подсветка на строке
     // сметы честнее, чем на вкладке, где нажимать нечего.
     anySwapRow: function () {
@@ -504,6 +511,23 @@ const Tour = {
             if (gate && typeof app !== 'undefined' && typeof app[gate] === 'function' && !app[gate]()) return true;
         } catch (e) { }
         return !!(s && s.seller && s.seller.skip && this.isSeller());
+    },
+
+    // Учебный дом должен иметь радиаторы (шаг «Чем греем» их включает). Если шаг пропустили,
+    // включаем сами: без радиаторов шаг замены не на что показать.
+    ensureRadiators: function () {
+        try {
+            if ((app.state.systems || []).indexOf('rad') > -1) return;
+            app.toggleSys('rad');
+            // toggleSys меняет смету с задержкой: переснимаем исходное состояние уже после неё,
+            // иначе задание «выберите другой радиатор» засчиталось бы без действия человека
+            setTimeout(() => {
+                const st = this.STEPS[this._step];
+                if (!st || st.key !== 'replace') return;
+                this._snap = st.snap();
+                this._pre = this.taskFlags(st);
+            }, 400);
+        } catch (e) { }
     },
 
     // Шаг → метод app, который отвечает «открыта ли функция этому человеку».
