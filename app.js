@@ -65540,10 +65540,24 @@ const app = {
             // в обоих вариантах — переключается только «корпус» узла.
             const _gbmP = (catalog.groups_dn25[0] || {}).price || 0;
             const _bvP = (catalog.ball_valves.find(x => x.id === 'SVB-0007-200025') || {}).price || 0;
+            // Четыре варианта: ГБМ или россыпь × STOUT или ROMMER. Цена строки — котёл + обвязка,
+            // обвязка — отдельной строкой под названием. Разница — в рублях к выбранному варианту.
+            const _pkBoiler = item.polisBoilerPrice || 0;
+            const _pkCurId = (this.state.polisKit === 'parts' ? 'parts' : 'gbm') + (this.state.polisKitBrand === 'rommer' ? '_r' : '');
             customAlts = [
-                { id: 'gbm', name: 'Группа быстрого монтажа DN25 (прямая, в теплоизоляции)', brand: 'STOUT', price: _gbmP, imgId: 'SDG-0001-002501' },
-                { id: 'parts', name: 'Сборная обвязка: 2 крана шаровых с американкой 1"', brand: 'STOUT', price: _bvP * 2, imgId: 'SVB-0007-200025' }
-            ];
+                { id: 'gbm', kind: 'gbm', brand: 'STOUT', name: 'Группа быстрого монтажа DN25 + насос Std', imgId: 'SDG-0001-002501' },
+                { id: 'gbm_r', kind: 'gbm', brand: 'ROMMER', name: 'Группа быстрого монтажа DN25 + насос PROFI', imgId: 'SDG-0001-002501' },
+                { id: 'parts', kind: 'parts', brand: 'STOUT', name: 'Россыпь: 2 крана 1" + насос Std', imgId: 'SVB-0007-200025' },
+                { id: 'parts_r', kind: 'parts', brand: 'ROMMER', name: 'Россыпь: 2 крана 1" + насос PROFI', imgId: 'SVB-0007-200025' }
+            ].map(o => {
+                const kit = this.polisKitCost(o.kind, o.brand === 'ROMMER' ? 'rommer' : 'stout');
+                const fmt = v => v.toLocaleString('ru-RU') + ' ₽';
+                return {
+                    id: o.id, name: o.name, brand: o.brand, imgId: o.imgId, kitPrice: kit,
+                    price: _pkBoiler + kit, isActive: o.id === _pkCurId,
+                    note: `<div style="font-size:12px; color:var(--text-sec); font-weight:500; margin-top:2px;">${_pkBoiler ? 'Котёл ' + fmt(_pkBoiler) + ' + обвязка ' + fmt(kit) : 'Обвязка ' + fmt(kit)}</div>`
+                };
+            });
         }
         else if (_origId0 === 'SFB-0001-000001_tankload' || _origId0.endsWith('_dhw')) {
             // Схема загрузки бойлера от одноконтурного котла — тот же переключатель, что
@@ -67696,7 +67710,7 @@ const app = {
                     isActive = (alt.id === 'SAC-0020-411040' && this.state.boilerFrameFastenerType === 'anchor') || (alt.id === 'SAC-0020-400100' && this.state.boilerFrameFastenerType === 'stud');
                 }
                 else if (item.originalId === 'SDG-0001-002501_polis') {
-                    isActive = (alt.id === ((this.state.polisKit === 'parts') ? 'parts' : 'gbm'));
+                    isActive = !!alt.isActive;
                 }
                 else if (item.originalId === 'SFA-0025-001650_bottom') {
                     isActive = (alt.id === (this.state.radBottomKit || 'gtube'));
@@ -67780,6 +67794,14 @@ const app = {
                     + (alt.hy.why.length ? `<div class="why">${alt.hy.why.join('; ')}</div>` : (alt.hy.sub ? `<div class="sub">${alt.hy.sub}</div>` : '')) + `</div>` : '';
                 let imgHtml = getImg(alt.imgId ? { ...alt, id: alt.imgId } : alt);
                 let diffHtml = getPriceDiffHtml(alt.price, isActive);
+                if (alt.kitPrice !== undefined) {
+                    // Котёл POLIS: разница к выбранному варианту в рублях, а не процент к узлу
+                    const _pkCur = customAlts.find(a => a.isActive);
+                    const _pkD = _pkCur ? alt.price - _pkCur.price : 0;
+                    diffHtml = (isActive || !_pkCur)
+                        ? `<span style="color: var(--text-sec); font-weight: 600;">0 ₽</span>`
+                        : `<span style="color: ${_pkD > 0 ? 'var(--c-bad,#ef4444)' : 'var(--c-good,#16a34a)'}; font-weight: bold;">${_pkD > 0 ? '+' : '−'}${Math.abs(_pkD).toLocaleString('ru-RU')} ₽</span>`;
+                }
                 let priceText = alt.price > 0 ? this.formatPriceHtml(alt.price, true) : "-";
                 if (_twoPrice) {
                     // Обе цены устроены одинаково: подпись (видна только на телефоне, где
@@ -69228,6 +69250,22 @@ const app = {
         const rswActive = rswWrap && rswWrap.querySelector('tr.rsw-active');
         if (rswActive) rswWrap.scrollTop = Math.max(0, rswActive.offsetTop - rswActive.offsetHeight);
     },
+    // Цена обвязки котла POLIS по варианту: kind — gbm|parts, brand — stout|rommer.
+    // Состав тот же, что собирает render(): группа или 2 крана, насос, 2 муфты, магнитный фильтр.
+    // Насос: STOUT — SPC-0010 Std (трёхскоростной, самый дешёвый), ROMMER — PROFI 25/60-180.
+    // PROFI 25/60-180 и PROFI 25/60-130 трёхскоростные (подтверждено владельцем 29.10.2026;
+    // в каталоге скорости не указаны, поэтому проверять по паспорту ROMMER при правке каталога).
+    polisKitCost: function (kind, brand) {
+        const r = brand === 'rommer';
+        const grp = catalog.groups_dn25[0] || {};
+        const bv = catalog.ball_valves.find(x => x.id === 'SVB-0007-200025') || {};
+        const pumpStd = catalog.pumps_dn25.find(p => p.id === 'SPC-0010-2560180') || catalog.pumps_dn25[0];
+        const pump = (r && pumpStd.rommer) ? pumpStd.rommer : pumpStd;
+        const body = kind === 'parts'
+            ? 2 * ((r && bv.rommer) ? bv.rommer.price : (bv.price || 0))
+            : ((r && grp.rommer) ? grp.rommer.price : (grp.price || 0));
+        return body + (pump.price || 0) + 2 * ((catalog.pump_union_1 || {}).price || 0) + ((catalog.filter_mag || {}).price || 0);
+    },
     changeSwapHeightRange: function (originalId, newMinVal, newMaxVal) {
         const item = this.currentEquipmentList.find(x => (x.originalId || x.id) === originalId || x.id === originalId);
         if (!item) return;
@@ -70379,7 +70417,8 @@ const app = {
             });
         }
         else if (originalId === 'SDG-0001-002501_polis') {
-            this.state.polisKit = (chosenId === 'parts') ? 'parts' : 'gbm';
+            this.state.polisKit = String(chosenId).startsWith('parts') ? 'parts' : 'gbm';
+            this.state.polisKitBrand = String(chosenId).endsWith('_r') ? 'rommer' : 'stout';
         }
         else if (originalId === 'SFA-0025-001650_bottom') {
             this.state.radBottomKit = (chosenId === 'shoe' || chosenId === 'shoe_np') ? chosenId : 'gtube';
@@ -89878,8 +89917,10 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // с price <= 0 — иначе в режиме «Аналог» он подменил бы узел этим списком.
         // Непустой .alts при этом обязателен: именно он зажигает кнопку замены.
         const _polisKitAlts = [
-            { id: 'gbm', name: 'Группа быстрого монтажа DN25 (прямая, в теплоизоляции)', brand: 'STOUT', price: 0 },
-            { id: 'parts', name: 'Сборная обвязка: 2 крана шаровых с американкой 1"', brand: 'STOUT', price: 0 }
+            { id: 'gbm', name: 'Группа быстрого монтажа DN25 + насос Std', brand: 'STOUT', price: 0 },
+            { id: 'gbm_r', name: 'Группа быстрого монтажа DN25 + насос PROFI', brand: 'ROMMER', price: 0 },
+            { id: 'parts', name: 'Россыпь: 2 крана 1" + насос Std', brand: 'STOUT', price: 0 },
+            { id: 'parts_r', name: 'Россыпь: 2 крана 1" + насос PROFI', brand: 'ROMMER', price: 0 }
         ];
         let _elIdx = 0;
         selBoilers.forEach(b => {
@@ -89905,17 +89946,22 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     // Оба варианта висят на одном originalId: строка-«якорь» остаётся в смете
                     // всегда, и с любого варианта есть куда кликнуть, чтобы вернуться.
                     const _polisAnchorId = 'SDG-0001-002501_polis';
+                    // Бренд обвязки — по polisKitBrand: ROMMER берёт .rommer-позицию группы и кранов.
+                    const _pkR = this.state.polisKitBrand === 'rommer';
                     if ((this.state.polisKit || 'gbm') === 'parts') {
                         let bv = catalog.ball_valves.find(x => x.id === 'SVB-0007-200025');
                         if (bv) {
-                            addToBill({ ...bv, name: bv.name + ' — обвязка котла', originalId: _polisAnchorId, alts: _polisKitAlts },
+                            const _bvI = (_pkR && bv.rommer) ? { ...bv, ...bv.rommer, rommer: undefined } : bv;
+                            addToBill({ ..._bvI, name: _bvI.name + ' — обвязка котла', originalId: _polisAnchorId, alts: _polisKitAlts, polisBoilerPrice: b.price },
                                 2, this.getDesc('polis_kit_parts', b.power), grp);
                         }
                     } else {
                         let gbm = catalog.groups_dn25[0];
+                        const _gbmI = (_pkR && gbm.rommer) ? { ...gbm, ...gbm.rommer, rommer: undefined } : gbm;
                         addToBill({
-                            ...gbm,
-                            name: gbm.name.replace(/^Группа насосная/, 'Группа быстрого монтажа').replace(/\s*-\s*для радиаторов.*$/i, ' - обвязка котла до 24 кВт'),
+                            ..._gbmI,
+                            polisBoilerPrice: b.price,
+                            name: _gbmI.name.replace(/^Группа насосная/, 'Группа быстрого монтажа').replace(/\s*-\s*для радиаторов.*$/i, ' - обвязка котла до 24 кВт'),
                             // Свой originalId — иначе узел слился бы в смете с радиаторной насосной
                             // группой 2.4 (тот же артикул) и делил бы с ней ручную замену.
                             // alts перебиваем: у групп DN25 в init() подставлен общий список узлов
@@ -89926,12 +89972,14 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                             // В режиме «Аналог» имя берётся у ROMMER-позиции — там снова
                             // «для радиаторов». Переписываем и его: по названию узел ищут и
                             // лист принципиальной схемы.
-                            rommer: gbm.rommer
+                            rommer: (gbm.rommer && !_pkR)
                                 ? { ...gbm.rommer, name: gbm.rommer.name.replace(/^Группа насосная/, 'Группа быстрого монтажа').replace(/\s*-\s*для радиаторов.*$/i, ' - обвязка котла') }
                                 : undefined
                         }, 1, this.getDesc('polis_gbm', b.power), grp);
                     }
-                    let polisPump = catalog.pumps_dn25.find(p => p.type === this.state.pumpType) || catalog.pumps_dn25[0];
+                    // Насос POLIS: STOUT — трёхскоростной Std (SPC-0010), ROMMER — трёхскоростной PROFI 25/60-180 (см. polisKitCost).
+                    const _pumpStd = catalog.pumps_dn25.find(p => p.id === 'SPC-0010-2560180') || catalog.pumps_dn25[0];
+                    const polisPump = (this.state.polisKitBrand === 'rommer' && _pumpStd.rommer) ? { ..._pumpStd.rommer } : _pumpStd;
                     addToBill(polisPump, 1, this.getDesc('polis_pump', b.power), grp);
                     // Паспорт POLIS (18.06.2026): патрубки котла 1" наружная резьба (табл. 2, п. 4), к группе быстрого
                     // монтажа — американка 1" ВР/НР SFT-0041-000001 или комплект SPC-0010-000025 (п. 6.2, Рис. 5).
