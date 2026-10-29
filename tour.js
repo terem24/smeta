@@ -247,7 +247,9 @@ const Tour = {
             },
             title: 'Отдать клиенту',
             text: 'Ссылка открывает смету у клиента на телефоне. Рядом — PDF, Excel и «Запросить счёт».',
-            tasks: [{ label: 'Нажмите «Поделиться» — ссылка на смету создастся и скопируется', done: () => Tour.clicked('#btn_share_trigger') }],
+            // Засчитываем, когда окно ссылки закрыто (ссылка создана или окно закрыли): иначе итоговая
+            // карточка блока ложилась поверх открытого окна «Создание ссылки для клиента»
+            tasks: [{ label: 'Нажмите «Поделиться» — ссылка на смету создастся и скопируется', done: () => Tour.clicked('#btn_share_trigger') && !Tour.shareOpen() }],
             point: () => { const b = document.getElementById('btn_share_trigger'); return (b && b.offsetParent) ? b : null; }
         },
 
@@ -301,7 +303,7 @@ const Tour = {
             block: 'sell', key: 'cheaper', mob: 'output',
             sel: '#cheaper_wrapper',
             title: 'Бюджетнее',
-            text: 'Вторая смета на равноценных аналогах — покажите клиенту, сколько можно сэкономить.',
+            text: 'Вторая смета на равноценных аналогах — покажите клиенту, сколько можно сэкономить. Она сохранится отдельным КП, оригинал не изменится; вернуться — тем же переключателем.',
             tasks: [{ label: 'Включите переключатель «Бюджетнее»', done: () => Tour.clicked('#cheaper_wrapper') }],
             point: () => document.getElementById('cheaper_wrapper')
         },
@@ -631,6 +633,9 @@ const Tour = {
 
     // Без аргумента — окно с тарифами, с 'month' | 'year' — сразу окно оплаты
     pay: function (type) {
+        // Кнопка оплаты встаёт на то место, где только что была «Дальше»: быстрый второй щелчок
+        // открывал окно оплаты, которого человек не просил
+        if (Date.now() - (this._enteredAt || 0) < 900) return;
         this.finish('pay');
         try {
             if (type) app.openPaymentModal(type);
@@ -888,10 +893,14 @@ const Tour = {
     // Продолжаем с того места, где остановились; нет сохранённого места (первый раз,
     // старая версия обучения, всё пройдено) — показываем список блоков.
     restore: function () {
-        const b = this.ls(this.LS_BLOCK), v = this.ls(this.LS_VIEW), n = this._savedStep(), s = this.STEPS[n];
+        const b = this.ls(this.LS_BLOCK), v = this.ls(this.LS_VIEW);
+        let n = this._savedStep(), s = this.STEPS[n];
         if (v === 'step' && this.blockById(b) && s && s.block === b) {
-            this._block = b; this._step = n; this._view = 'step';
             const first = this.STEPS.findIndex(x => x.block === b);
+            // Учебный дом сброшен («Начать заново», другой браузер): шаги середины блока показывать не на
+            // чем — радиатор, сохранение. Начинаем блок с первого шага.
+            try { if (b === 'basic' && n > first && !(Number(app.state.area) > 0)) { n = first; s = this.STEPS[n]; } } catch (e) { }
+            this._block = b; this._step = n; this._view = 'step';
             if (n > first) this._resumeNote = 'Продолжаем с места, где остановились: «' + s.title + '»';
         } else if (v === 'done' && this.blockById(b)) {
             this._block = b; this._view = 'done';
@@ -1085,7 +1094,7 @@ const Tour = {
         const wrap = document.createElement('div');
         wrap.id = 'tour_win';
         wrap.style.cssText = 'position:fixed;inset:0;z-index:60000100;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.55);padding:16px;';
-        wrap.innerHTML = '<div style="position:relative;max-width:420px;width:100%;background:var(--bg-card,#fff);color:var(--text-main,#0f172a);border-radius:18px;padding:28px 22px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);">'
+        wrap.innerHTML = '<div style="position:relative;max-width:420px;width:100%;background:var(--surface,#fff);color:var(--text-main,#0f172a);border-radius:18px;padding:28px 22px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);">'
             + '<div style="font-size:56px;line-height:1;">🏆</div>'
             + '<h3 style="margin:10px 0 8px;font-size:22px;">Поздравляем!</h3>'
             + '<p style="margin:0 0 6px;font-size:15px;font-weight:600;">Обучение пройдено</p>'
@@ -1280,8 +1289,15 @@ const Tour = {
     // сметы, перекрывают друг друга и вместе читаются как одна каша — а выбрать
     // типовой объект человек в этот момент всё равно не может, карточка обучения
     // закрывает половину списка. Окно закроют — tick вернёт карточку сам.
+    // Окно «Создание ссылки для клиента» (его слой выше смёты, но ниже карточки обучения)
+    shareOpen: function () {
+        const sh = document.getElementById('share_options_modal_overlay');
+        return !!(sh && getComputedStyle(sh).display !== 'none' && sh.getClientRects().length);
+    },
+
     blocked: function () {
         if (document.getElementById('quick_start_overlay')) return true;
+        if (this.shareOpen()) return true;
         // Окно замены позиции лежит поверх сметы и само объясняет, что выбирать; карточка
         // поверх него закрывала бы список аналогов. Закроют окно — tick вернёт карточку.
         // Исключение — шаг про замену: задание выполняется как раз в этом окне, и карточка,
