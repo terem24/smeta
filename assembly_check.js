@@ -69,6 +69,12 @@
       P('M', '3/4', 1, { role: 'выход ГВС' })
     ]
   };
+  var OPTIBASE_400_500_SINGLE = [
+    P('M', '1', 1, { role: 'вход бака (ХВС)' }),
+    P('M', '1', 2, { role: 'вход-выход теплообменника' }),
+    P('M', '1', 1, { role: 'выход ГВС, развоздушник' }),
+    P('M', '1', 1, { ext: true, role: 'рециркуляция (в дом или заглушка)', usedIf: /_recirc/ })
+  ];
   var ROMMER_GT = {
     // Паспорт ROMMER GT (rommer_e750a8c2fb98): ХВС G3/4" НР, предохранительный
     // G1/2" НР, ГВС / змеевик / рециркуляция — G3/4" ВР.
@@ -197,6 +203,26 @@
     'STT-0004-000300': STT_4, 'STT-0004-000500': STT_4, 'STT-0004-000750': STT_4, 'STT-0004-001000': STT_4,
     'STT-0004-001200': STT_4, 'STT-0004-001500': STT_4, 'STT-0004-002000': STT_4, 'STT-0004-003500': STT_4,
     'GE0Q6RE0CRU': HAIER_1X,
+    // STOUT SWH-1110, одиночный теплообменник (паспорт stout_c6bfa213731c, стр. 4 — таблица и рисунок).
+    // Змеевик: два патрубка G1 с наружной резьбой (стр. 8, «патрубки теплообменника оборудованы наружной
+    // резьбой»). Холодная вода (внизу, G1) и горячая вода (вверху, G2) на рисунке — торчащие из стенки
+    // патрубки, обозначены «G»; НР/ВР словами паспорт не пишет. ВЫВОД ПО АНАЛОГИИ (изготовитель HAJDU):
+    //  1) в паспортах HAJDU внутренняя резьба записана как «Rp» (ТЭН Rp6/4, теплообменник Rp3/4 в руководстве
+    //     STA, ТЭН Rp6/4 в паспорте SWH-1110 100–200 л), все патрубки воды — «G» без Rp, то есть наружные;
+    //  2) змеевик того же рисунка и тоже «G» — наружный (подтверждено текстом);
+    //  3) бойлер OptiBase 500 той же геометрии (вход бака, выход ГВС, змеевик) — все G1" НР (паспорт OptiBase).
+    // Рециркуляции на рисунке нет, G3 «—». Заглушка G1½ — под ТЭН, в контур не входит.
+    'SWH-1110-000400': { src: 'паспорт SWH-1110 (stout_c6bfa213731c), стр. 4 и 8; резьба воды — по аналогии (см. выше)',
+      ports: [P('M', '1', 2, { role: 'змеевик' }), P('M', '1', 1, { role: 'холодная вода' }), P('M', '3/4', 1, { role: 'горячая вода' })] },
+    'SWH-1110-000500': { src: 'паспорт SWH-1110 (stout_c6bfa213731c), стр. 4 и 8; резьба воды — по аналогии (см. выше)',
+      ports: [P('M', '1', 2, { role: 'змеевик' }), P('M', '1', 1, { role: 'холодная вода' }), P('M', '1', 1, { role: 'горячая вода' })] },
+    // STOUT OptiBase SWH-2110, одиночный теплообменник 400–500 л (паспорт OptiBase, редакция от 25.03.2025,
+    // таблица 3 и рис. 2 «Бак 400-500 литров»). Все патрубки бака — наружная резьба G1", кроме гильз.
+    // Поз. 1 — вход бака (ХВС), поз. 2,4 — вход-выход теплообменника, поз. 6 — выход ГВС с развоздушником,
+    // поз. 3 — рециркуляция (уходит в дом, если к ней подключён насос, иначе заглушка). ТЭН G1½ ВР и анод
+    // G1½ ВР в контур не входят — в таблицу концов не записаны.
+    'SWH-2110-000400': { src: 'паспорт OptiBase SWH-2110, ред. 25.03.2025, табл. 3, рис. 2', ports: OPTIBASE_400_500_SINGLE },
+    'SWH-2110-000500': { src: 'паспорт OptiBase SWH-2110, ред. 25.03.2025, табл. 3, рис. 2', ports: OPTIBASE_400_500_SINGLE },
     'SWH-2110-000150': OPTIBASE_150_200,
     'SWH-2110-000200': OPTIBASE_150_200,
     // Баки: размер и НР — по каталогу и косвенно по SVS-0008 (его гайка 3/4
@@ -478,7 +504,9 @@
   ];
 
   /* Концы позиции: сперва таблица приборов (по артикулу), затем название. */
-  function portsOf(it) {
+  function portsOf(it, loose) {
+    // loose — режим сверки замен: добавляет концы по категории и аналогии. Баланс котельной (check),
+    // цепочки и стенды зовут без него, чтобы выдуманные по аналогии концы не искажали баланс.
     // Сначала настоящий артикул строки: в режиме ROMMER строка ходит под ключом
     // STOUT-позиции (originalId), а стоит в ней бойлер GT со своими патрубками.
     var ids = [String(it.id || ''), baseId(it)];
@@ -487,7 +515,94 @@
       if (d) return { ports: d.ports, src: d.src, from: 'passport', dhwValve: !!d.dhwValve, slots: d.slots };
     }
     var p = portsFromName(it.name);
-    return p ? { ports: p, from: 'name' } : null;
+    if (p) return { ports: p, from: 'name' };
+    var c = portsFromCatalog(it);
+    if (c) return { ports: c, from: 'catalog' };
+    if (!loose) return null;
+    var cat = catOf(it);
+    if (cat && isNoPortsCat(cat)) return { ports: [], from: 'category' };
+    var s = portsFromCategory(cat, it.name) || portsFromSizes(it.name);
+    return s ? { ports: s, from: 'analogy' } : null;
+  }
+
+  /* Категория каталога по артикулу: нужна, чтобы позиции без водяных присоединений (электрика, дымоход,
+   * датчики, маты, шкафы) считались «без концов», а не «нет данных». Каталог — глобал страницы или то,
+   * что передали в setCatalog (стенд). */
+  var catIndex = null, catSource = null;
+  function setCatalog(c) { catSource = c; catIndex = null; }
+  function catOf(it) {
+    if (!catIndex) {
+      var c = catSource || (typeof catalog !== 'undefined' ? catalog : (root.catalog || null));
+      if (!c) return null;
+      catIndex = {};
+      Object.keys(c).forEach(function (k) {
+        if (Array.isArray(c[k])) c[k].forEach(function (x) { if (x && x.id && !catIndex[x.id]) catIndex[x.id] = k; });
+      });
+    }
+    return catIndex[String(it.id || '')] || catIndex[baseId(it)] || null;
+  }
+  var NO_PORT_CATS = /^(chimney_|flush_panels|installations|boiler_automation|air_sensors|ufh_mats|mats$|auto_cables|ufh_cables|thermostats|ufh_mech|ufh_electro|ufh_el_|sealants|cabinets_|snow_auto|leak_sensors|label_kits|protective_sleeves|sewer_silent|sewer_pumps|actuators|heads$|coolants|xps_kit|damper_tape|ss_oring|rad_shoe_set|rad_tube_set|conv_parts|vaillant_acc|well_auto|well_relays|well_parts|axial_fittings_pex|well_pumps|mounting_system|parts$|water_fittings_press_mp|water_parts|water_input_frame|ufh_mat$|radio_modules|leak_actuators|water_heater_power|extra_items|water_leak_protection|water_input_node|snow_axial_20)/;
+  function isNoPortsCat(cat) { return NO_PORT_CATS.test(cat); }
+
+  /* Приборы и узлы без паспорта в базе: концы по аналогии с изготовителями (стандартные присоединения
+   * класса оборудования). Пол резьбы здесь не известен (U), поэтому проверяется размер и число концов,
+   * а замена, где они совпали, проходит с отметкой «пол резьбы не подтверждён». */
+  function portsFromCategory(cat, name) {
+    var n = String(name || '');
+    var dn = /DN\s*(20|25|32)/i.exec(n);
+    var DN = { '20': '3/4', '25': '1', '32': '1 1/4' };
+    if (!cat) return null;
+    if (/^boilers_(baxi|vaillant|navien|gas)$/.test(cat))
+      return [P('M', '3/4', 2, { role: 'подача/обратка отопления' }), P('M', '1/2', 2, { role: 'ХВС/ГВС' }), P('U', '3/4', 1, { role: 'газ' })];
+    if (/^boilers_(plus|polis)$/.test(cat)) return [P('U', '1', 2, { role: 'подача/обратка отопления' })];
+    if (/^(rads|rad_)/.test(cat)) return [P('U', '1/2', 4, { role: 'патрубки радиатора' })];
+    if (/^convectors_/.test(cat)) return [P('U', '1/2', 2, { role: 'подача/обратка конвектора' })];
+    if (/^exp_/.test(cat)) return [P('U', '3/4', 1, { role: 'патрубок бака' })];
+    if (/^manifolds/.test(cat)) return [P('U', '1', 2, { role: 'главная труба коллектора' })];
+    if (cat === 'outdoor_faucets') return [P('U', '3/4', 1, { role: 'вход' })];
+    if (cat === 'h_valves') return [P('U', '1/2', 2, { role: 'подключение радиатора' })];
+    if (cat === 'water_heaters_el') return [P('U', '1/2', 2, { role: 'ХВС/ГВС' })];
+    if (/^filter_big_blue/.test(cat)) return [P('U', '1', 2, { role: 'вход/выход фильтра' })];
+    if (cat === 'water_fittings') return [P('U', '1/2', 1, { role: 'резьбовой конец' })];
+    if (cat === 'flat_water_inlet') return [P('U', '1/2', 2, { role: 'вход/выход' })];
+    if (/^(groups_dn|collectors_dn|hydro_|collectorAltsAll|heat_exchanger_groups|mixing_units)/.test(cat)) {
+      var sz = dn ? DN[dn[1]] : '1';
+      return [P('U', sz, 2, { role: 'присоединение к котлу/контуру' })];
+    }
+    if (/pumps/.test(cat)) {
+      var pm = /(?:^|\s)(15|25|32)\/\d{2}/.exec(n);
+      return pm ? [P('U', { '15': '1', '25': '1 1/2', '32': '2' }[pm[1]], 2, { role: 'патрубки насоса' })] : null;
+    }
+    return null;
+  }
+
+  /* Резьбы в названии без указания НР/ВР: размеры берём как «U». Коллектор «3/4"х1/2"х2 вых.» — два конца
+   * главной трубы и N выходов; одиночный размер — проходная позиция с двумя концами. */
+  function portsFromSizes(name) {
+    var n = String(name || '');
+    var col = /(\d\s\d\/\d|\d\/\d|\d)\s*(?:"|″|'')\s*[хx]\s*(\d\s\d\/\d|\d\/\d|\d)\s*(?:"|″|'')\s*[хx]\s*(\d+)\s*вых/i.exec(n);
+    if (col) return [P('U', col[1], 2, { role: 'главная труба' }), P('U', col[2], Number(col[3]), { role: 'выходы' })];
+    var th = threads(n);
+    if (!th.length) return null;
+    return th.length === 1 ? [P('U', th[0], 2)] : [P('U', th[0], 1), P('U', th[1], 1)];
+  }
+
+  /* Бойлер, которого нет в DEVICES и чьё название резьбу не называет: концы по полю `ports` каталога
+   * (правило 4: там размер патрубка, `fem` — какие из них ВР; остальные наружные, как у всех бойлеров
+   * STOUT/ROMMER по паспортам). Змеевик — два патрубка, рециркуляция — условный. */
+  function portsFromCatalog(it) {
+    var cp = it.ports;
+    if (!cp && root.app && root.app.findCatalogItemById) cp = (root.app.findCatalogItemById(it.id) || {}).ports;
+    if (!cp || !cp.cold) return null;
+    var fem = cp.fem || [];
+    var kind = function (k) { return fem.indexOf(k) >= 0 ? 'F' : 'M'; };
+    var size = function (s) { return String(s).replace(/["″']/g, '').trim(); };
+    var out = [];
+    if (cp.cold) out.push(P(kind('cold'), size(cp.cold), 1, { role: 'вход ХВС' }));
+    if (cp.dhw) out.push(P(kind('dhw'), size(cp.dhw), 1, { role: 'выход ГВС' }));
+    if (cp.coil) out.push(P(kind('coil'), size(cp.coil), 2, { role: 'змеевик' }));
+    if (cp.recirc) out.push(P(kind('recirc'), size(cp.recirc), 1, { ext: true, role: 'рециркуляция (в дом или заглушка)', usedIf: /_recirc/ }));
+    return out;
   }
 
   /* Баланс по котельной. list — currentEquipmentList, filter — какие строки
@@ -554,7 +669,51 @@
     return { balance: bal, problems: problems, unknown: unknown, ext: ext, pipe: pipe, slots: slots };
   }
 
-  var api = { portsOf: portsOf, portsFromName: portsFromName, check: check, DEVICES: DEVICES, KIND_RU: KIND_RU, MATE: MATE };
+  /* Замена позиции: концы новой против концов прежней. Оба берутся тем же путём, что
+   * и в балансе (паспорт по артикулу, иначе название). Результат:
+   *  - status 'same' — концы совпали по типу, размеру и числу;
+   *  - status 'diff' — разошлись; diff = [{ label, was, now }];
+   *  - status 'unknown' — концов нет хотя бы у одной позиции (unknownOld / unknownNew),
+   *    сравнивать нечего. Неизвестное исполнение (U) тоже считаем неизвестным. */
+  function endCounts(r) {
+    var cnt = {};
+    r.ports.forEach(function (p) {
+      // usedIf — условный патрубок (рециркуляция: в дом или заглушка), в замене не сравниваем
+      if (p.pipe || p.usedIf) return;
+      cnt[p.kind + p.size] = (cnt[p.kind + p.size] || 0) + (p.qty || 1);
+    });
+    return cnt;
+  }
+  function compareEnds(oldIt, newIt) {
+    var a = portsOf(oldIt, true), b = portsOf(newIt, true);
+    var unknownOld = !a, unknownNew = !b;
+    var uncertain = false; // концы есть, но пол резьбы (НР/ВР) в паспорте не указан
+    if (!unknownOld && !unknownNew) {
+      var ca = endCounts(a), cb = endCounts(b);
+      uncertain = Object.keys(ca).concat(Object.keys(cb)).some(function (k) { return k.charAt(0) === 'U'; });
+    }
+    if (unknownOld || unknownNew) return { status: 'unknown', unknownOld: unknownOld, unknownNew: unknownNew };
+    if (uncertain) {
+      // Пол резьбы неизвестен — сверяем размер и число концов; разошлись — это уже расхождение
+      var bySize = function (c) {
+        var s = {};
+        Object.keys(c).forEach(function (k) { var z = k.slice(1); s[z] = (s[z] || 0) + c[k]; });
+        return s;
+      };
+      var sa = bySize(ca), sb = bySize(cb);
+      var sdiff = Object.keys(Object.assign({}, sa, sb)).filter(function (z) { return (sa[z] || 0) !== (sb[z] || 0); })
+        .map(function (z) { return { label: z + '"', was: sa[z] || 0, now: sb[z] || 0 }; });
+      if (sdiff.length) return { status: 'diff', diff: sdiff, bySizeOnly: true };
+      return { status: 'unknown', uncertain: true, unknownOld: false, unknownNew: false };
+    }
+    var keys = Object.keys(Object.assign({}, ca, cb));
+    var diff = keys.filter(function (k) { return (ca[k] || 0) !== (cb[k] || 0); }).map(function (k) {
+      return { label: (KIND_RU[k.charAt(0)] || k.charAt(0)) + ' ' + k.slice(1) + '"', was: ca[k] || 0, now: cb[k] || 0 };
+    });
+    return { status: diff.length ? 'diff' : 'same', diff: diff };
+  }
+
+  var api = { portsOf: portsOf, portsFromName: portsFromName, check: check, compareEnds: compareEnds, setCatalog: setCatalog, DEVICES: DEVICES, KIND_RU: KIND_RU, MATE: MATE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.assemblyCheck = api;
 })(typeof window !== 'undefined' ? window : this);

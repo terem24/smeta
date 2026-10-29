@@ -10,6 +10,24 @@
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
     <meta name="format-detection" content="telephone=no">
     <script>
+    /* Скрытый расчёт «могла бы стоить дешевле» (probe.js): в этом режиме localStorage заменяется
+       памятью, чтобы смета из админки не записалась в состояние калькулятора владельца. */
+    (function () {
+        if (!/[?&]probe=1(&|$)/.test(location.search)) return;
+        var mem = {};
+        var store = {
+            getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+            setItem: function (k, v) { mem[k] = String(v); },
+            removeItem: function (k) { delete mem[k]; },
+            clear: function () { mem = {}; },
+            key: function (i) { return Object.keys(mem)[i] || null; },
+            get length() { return Object.keys(mem).length; }
+        };
+        try { Object.defineProperty(window, 'localStorage', { value: store, configurable: true }); } catch (e) { }
+        try { Object.defineProperty(window, 'sessionStorage', { value: store, configurable: true }); } catch (e) { }
+    })();
+    </script>
+    <script>
     /* Видимая высота экрана для окна кабинета/анкеты (--vv-h, --vv-top в style.css).
        На iPhone 100vh и height:100% включают область под нижней панелью Safari, и кнопка
        «Сохранить» оказывалась под ней; visualViewport даёт реальную видимую часть и
@@ -209,11 +227,11 @@
         <link href="/fonts/inter.css?v=1"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=5.86">
+    <link rel="stylesheet" href="style.css?v=5.87">
     <link rel="stylesheet" href="hydro_check.css?v=1.13">
 
     <script src="supabase-js.js" defer></script>
-    <script src="catalog.js?v=3.48" defer></script>
+    <script src="catalog.js?v=3.49" defer></script>
     <!-- Координаты и регионы населённых пунктов: карта проектов в админке и
          адрес объекта. Данные вшиты в файл, наружу никаких запросов. -->
     <script src="cities_geo.js?v=1.0" defer></script>
@@ -242,7 +260,9 @@
     <script src="avatars.js?v=1.0" defer></script>
     <script src="hydro_check.js?v=1.2" defer></script>
     <script src="water_hydro.js?v=1.7" defer></script>
-    <script src="app.min.js?v=14.78" defer></script>
+    <script src="assembly_check.js?v=1.0" defer></script>
+    <script src="probe.js?v=1.0" defer></script>
+    <script src="app.min.js?v=14.86" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -278,11 +298,11 @@
     <script>
         window.HC_LAZY = {
             recognize: ['equivalents.js?v=1.2', 'recognize_match.js?v=7.14', 'recognize_geo.js?v=1.2', 'recognize_files.js?v=2.10',
-                'recognize.js?v=9.42', 'recognize_plan.js?v=2.7', 'recognize_project.js?v=2.7', 'recognize_sketch.js?v=1.4'],
+                'recognize.js?v=9.43', 'recognize_plan.js?v=2.7', 'recognize_project.js?v=2.7', 'recognize_sketch.js?v=1.4'],
             docs: ['warranty.js?v=1.0', 'docs.js?v=3.6'],
             kpshare: ['kp_share.js?v=1.3'],
             warranty_admin: ['warranty_admin.js?v=1.1'],
-            pay_readiness: ['pay_readiness.js?v=1.6'],
+            pay_readiness: ['pay_readiness.js?v=1.12'],
             excel: ['excel_export.js?v=1.5'],
             reprice: ['reprice.js?v=1.7'],
             qrcode: ['qrcode.min.js'],
@@ -604,10 +624,23 @@
             var firstErr = '';
             // Файл, который не скачался, до window без захвата не доходит — ловим его на фазе захвата.
             // Картинки и прочие ресурсы не трогаем: страница от них не ломается.
+            // Отложенный модуль из HC_LAZY (распознавание, PDF, Excel) калькулятор не блокирует: без него он работает,
+            // а его кнопка сама покажет ошибку через hcLoad.
+            function isLazySrc(src) {
+                var lazy = window.HC_LAZY || {};
+                return Object.keys(lazy).some(function (k) {
+                    return lazy[k].some(function (s) { return src.slice(-s.length) === s; });
+                });
+            }
             window.addEventListener('error', function (e) {
-                if (firstErr) return;
                 var t = e.target;
-                if (t && t !== window) { if (t.tagName === 'SCRIPT') firstErr = 'не скачался файл ' + String(t.src).split('/').pop(); return; }
+                if (t && t !== window) {
+                    if (t.tagName !== 'SCRIPT' || firstErr) return;
+                    if (isLazySrc(String(t.src))) { try { console.warn('[загрузка] отложенный модуль не скачался: ' + String(t.src).split('/').pop()); } catch (_) { } return; }
+                    firstErr = 'не скачался файл ' + String(t.src).split('/').pop();
+                    return;
+                }
+                if (firstErr) return;
                 firstErr = (e.message || 'ошибка') + (e.filename ? ' — ' + e.filename.split('/').pop() + ':' + e.lineno : '');
             }, true);
             window.addEventListener('unhandledrejection', function (e) {

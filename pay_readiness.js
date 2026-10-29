@@ -234,6 +234,11 @@ const PayReadiness = {
                     q('distributors', 'id, company_name'),
                     q('paywall_events', 'user_id, kind, src, created_at')
                 ]);
+                // Экономия «Бюджетнее» по последней смете (таблица offer_savings, пишет bench/cheaper_offer.js).
+                // Нет таблицы или цифр — предложение уходит без строки про экономию.
+                const sv = await q('offer_savings', 'user_id, base_sum, cheap_sum, save_rub, save_pct');
+                this._savings = {};
+                if (!sv.error) (sv.data || []).forEach(x => { this._savings[x.user_id] = x; });
                 if (u.error) throw u.error;
                 if (e.error) throw e.error;
                 if (i.error) throw i.error;
@@ -436,16 +441,19 @@ const PayReadiness = {
 
     // Что даёт каждая функция — для человека, а не для таблицы тарифов. Ключи — id функций.
     OFFER_PERKS: {
-        rommer: 'Товары ROMMER и подбор аналогов — смета подороже или подешевле в один клик',
-        terem: 'Поиск по всему прайсу — любую позицию можно найти и добавить в смету',
-        works: 'Монтажные работы прямо в смете, КП и счёте — клиент видит полную стоимость',
-        analog: 'Вторая смета «Бюджетнее» с пояснением, на чём сэкономили, — удобно показать клиенту',
-        recognize: 'Смета из проекта: загрузите PDF, Excel или фото — калькулятор разберёт сам',
-        design: 'Листы проекта и план этажей — готовые чертежи к смете',
-        money: 'Ваша маржа по каждому разделу сметы — видно, сколько вы зарабатываете',
-        docs: 'Договор подряда, акты и гарантийный талон — одним нажатием',
-        disc1c: 'Скидки клиенту прямо в КП — без ручных пересчётов'
+        rommer: 'ROMMER и аналоги: смету можно сделать дешевле или дороже в один клик',
+        terem: 'Поиск по всему прайсу: нашли позицию и сразу добавили в смету',
+        works: 'КП с работами: клиент сразу видит полную сумму, без доплат потом',
+        analog: 'Смета «Бюджетнее»: покажите клиенту, на чём сэкономили',
+        recognize: 'Смета из проекта: кидаете PDF, Excel или фото, калькулятор разбирает сам',
+        design: 'Листы проекта и план этажей: чертежи прямо к смете',
+        money: 'Маржа по каждому разделу: видно, сколько вы зарабатываете',
+        docs: 'Договор, акты и гарантийный талон: одним нажатием',
+        disc1c: 'Скидка клиенту прямо в КП: без ручных пересчётов'
     },
+
+    // В сообщении — не больше трёх выгод, каждая отдельной строкой
+    OFFER_PERKS_MAX: 3,
 
     plural: function (n, one, few, many) {
         const a = Math.abs(n) % 100, b = a % 10;
@@ -459,44 +467,47 @@ const PayReadiness = {
         const S = (typeof Subscription !== 'undefined') ? Subscription : null;
         const account = (p.role === 'seller' || p.role === 'both') ? 'seller' : 'installer';
         const lines = [];
+        // Структура: зачем это человеку → что меняется для его работы → цена со ссылкой → одно действие.
+        // Цифры из его истории (сметы, КП) не пишем: клиенту это не интересно, он хочет выгоду.
         lines.push(p.first ? 'Здравствуйте, ' + p.first + '!' : 'Здравствуйте!');
         lines.push('');
-        const facts = [];
-        if (p.est30 > 0) facts.push(p.est30 + ' ' + this.plural(p.est30, 'смета', 'сметы', 'смет') + ' за месяц');
-        if (p.invoices > 0) facts.push(p.invoices + ' ' + this.plural(p.invoices, 'КП или счёт', 'КП и счёта', 'КП и счетов') + ' клиентам');
-        lines.push(facts.length
-            ? 'Вы уже собрали в HeatCalc ' + facts.join(' и ') + ' — отлично! Подключите «Профи», чтобы это шло ещё быстрее.'
-            : 'Это команда HeatCalc. Подключите «Профи» — сметы будут собираться ещё быстрее.');
-        // Функции, которые Профи добавляет сверх Базового (по таблице «Тарифы»), — простыми словами
+        const used = p.est30 > 0 || p.invoices > 0;
+        lines.push(used
+            ? 'Вы уже считаете в HeatCalc — значит, инструмент вам подходит. «Профи» добавляет то, что экономит время на каждом объекте:'
+            : 'HeatCalc уже считает теплопотери и подбирает оборудование. «Профи» добавляет то, что экономит время на каждом объекте:');
+        // Личная цифра: сколько стоила бы последняя смета в «Бюджетнее». Только если она посчитана и больше нуля
+        const sv = this._savings && this._savings[p.id];
+        if (sv && +sv.save_rub > 0) {
+            const rub = Math.round(+sv.save_rub).toLocaleString('ru-RU');
+            lines.push('');
+            lines.push('Ваша последняя смета могла бы стоить дешевле на ' + rub + ' ₽ (' + (+sv.save_pct).toLocaleString('ru-RU') + ' %) в режиме «Бюджетнее». Это в «Профи».');
+        }
+        lines.push('');
         const perks = S ? S.benefitRows(account)
             .filter(r => r.pro !== 'off' && r.base === 'off' && this.OFFER_PERKS[r.f.id])
             .map(r => this.OFFER_PERKS[r.f.id]) : [];
-        if (perks.length) {
-            lines.push('');
-            lines.push('Что вы получите:');
-            perks.forEach(t => lines.push('✔ ' + t));
-        }
+        (perks.length ? perks : ['смета быстрее и без ручных пересчётов'])
+            .slice(0, this.OFFER_PERKS_MAX).forEach(t => lines.push('✔ ' + t));
         const missing = [];
         if (S) {
             const plans = S.planList(false).map(pl => S.resolve(pl.id, { region: p.rawRegion })).filter(Boolean);
             if (plans.length) {
                 lines.push('');
-                lines.push('Оплата — в два нажатия: откройте ссылку, окно оплаты появится прямо в калькуляторе.');
+                lines.push('Цена:');
                 plans.forEach(r => {
-                    let row = '• ' + r.label + ' — ' + S.fmtRub(r.rub);
+                    let row = r.label + ' — ' + S.fmtRub(r.rub);
                     const pct = r.promo ? r.promoPct : r.termPct;
-                    if (r.months > 1) row += ' (' + S.fmtRub(r.perMonth) + ' в месяц' + (pct > 0 ? ', скидка ' + pct + ' %' : '') + ')';
-                    else if (pct > 0) row += ' (скидка ' + pct + ' %)';
-                    if (r.promo && r.promo.title) row += ', акция «' + r.promo.title + '»';
-                    lines.push(row);
-                    lines.push('  ' + this.PAY_LINK + encodeURIComponent(r.id));
+                    if (r.months > 1) row += ' (' + S.fmtRub(r.perMonth) + ' в месяц)';
+                    if (pct > 0) row += ', скидка ' + pct + ' %';
+                    if (r.promo && r.promo.title) row += ' · акция «' + r.promo.title + '»';
+                    lines.push(row + ': ' + this.PAY_LINK + encodeURIComponent(r.id));
                     if (!r.url) missing.push(r.label);
                 });
                 lines.push('');
-                lines.push('После оплаты нажмите в окне «Я оплатил» — подключим доступ.');
+                lines.push('После оплаты нажмите «Я оплатил» — подключим доступ.');
             }
         }
-        lines.push('Вопросы — просто ответьте на это сообщение.');
+        lines.push('Вопросы? Просто ответьте на это сообщение.');
         return { text: lines.join('\n'), missing: missing };
     },
 
@@ -517,7 +528,7 @@ const PayReadiness = {
         el.innerHTML = `<div class="pr-offer">
             <div class="pr-offer-h"><b>Предложение: ${this.esc(p.name)}</b><button type="button" class="admin-btn" onclick="PayReadiness.closeOffer()">✕</button></div>
             <div class="ad-card-note" style="padding:0;">Текст собран автоматически: преимущества для роли «${this.ROLE_LABEL[p.role]}», цены и ссылки с учётом региона${p.rawRegion ? ' (' + this.esc(p.rawRegion) + ')' : ''}. Можно поправить перед отправкой.</div>
-            <textarea id="pr_offer_text" class="pr-offer-text" rows="14">${this.esc(o.text)}</textarea>
+            <textarea id="pr_offer_text" class="pr-offer-text" rows="14" oninput="this.dataset.edited='1'">${this.esc(o.text)}</textarea>
             ${warn}
             <div class="pr-offer-btns">
                 <button type="button" class="admin-btn" onclick="PayReadiness.copyOffer()">Скопировать</button>
@@ -525,6 +536,76 @@ const PayReadiness = {
                 <span id="pr_offer_status" class="ad-card-note" style="padding:0;"></span>
             </div></div>`;
         document.body.appendChild(el);
+        // Экономия считается сейчас, по последней смете этого пользователя. Текст обновляется, если
+        // владелец ещё не правил его руками.
+        this.offerStatus('Считаю экономию по смете…');
+        this.probeSaving(p).then(r => {
+            if (this._offerFor !== p) return;
+            const ta = document.getElementById('pr_offer_text');
+            if (ta && !ta.dataset.edited) ta.value = this.offerText(p).text;
+            if (!r) this.offerStatus('У пользователя нет сметы — строки про экономию не будет.');
+            else if (r.error) this.offerStatus('Экономию не посчитали: ' + r.error);
+            else if (!(r.save_rub > 0)) this.offerStatus('В «Бюджетнее» смета не дешевле — строки про экономию не будет.');
+            else this.offerStatus('Экономия посчитана: ' + Math.round(r.save_rub).toLocaleString('ru-RU') + ' ₽ (' + r.save_pct + ' %).');
+        });
+    },
+
+    // Последняя смета пользователя → скрытый расчёт в песочнице (probe.js) → таблица offer_savings.
+    // Возвращает строку экономии, null — если сметы нет, { error } — если не получилось.
+    probeSaving: async function (p) {
+        try {
+            const { data: est, error } = await supabaseClient.from('estimates')
+                .select('id, calc_data').eq('user_id', p.id)
+                .order('created_at', { ascending: false }).limit(1).maybeSingle();
+            if (error) throw error;
+            if (!est || !est.calc_data) return null;
+            const res = await this.runProbe(est.calc_data);
+            if (res.error) return { error: res.error };
+            const save = res.base - res.cheap;
+            const row = {
+                user_id: p.id, estimate_id: est.id, base_sum: res.base, cheap_sum: res.cheap,
+                save_rub: save, save_pct: Math.round(save / res.base * 1000) / 10,
+                computed_at: new Date().toISOString()
+            };
+            const { error: wErr } = await supabaseClient.from('offer_savings').upsert(row, { onConflict: 'user_id' });
+            if (wErr) throw wErr;
+            this._savings = this._savings || {};
+            this._savings[p.id] = row;
+            return row;
+        } catch (e) {
+            return { error: (e && e.message) || String(e) };
+        }
+    },
+
+    // Скрытый iframe с index.html?probe=1: отдаёт ему смету, получает base и cheap. Сохранённую смету
+    // калькулятора он не трогает (см. probe.js и скрипт в <head> index.html).
+    runProbe: function (state) {
+        return new Promise((resolve) => {
+            const id = Math.random().toString(36).slice(2);
+            const frame = document.createElement('iframe');
+            frame.setAttribute('aria-hidden', 'true');
+            frame.style.cssText = 'position:fixed; width:1px; height:1px; left:-9999px; top:0; opacity:0; border:0; pointer-events:none;';
+            frame.src = new URL('index.html?probe=1', location.href).href;
+            let sent = false;
+            const finish = (r) => {
+                window.removeEventListener('message', onMsg);
+                clearTimeout(timer);
+                frame.remove();
+                resolve(r);
+            };
+            const onMsg = (e) => {
+                if (e.source !== frame.contentWindow || e.origin !== location.origin || !e.data) return;
+                if (e.data.type === 'probe-ready' && !sent) {
+                    sent = true;
+                    frame.contentWindow.postMessage({ type: 'probe', id: id, state: state }, location.origin);
+                } else if (e.data.type === 'probe-result' && (e.data.id === id || (!e.data.id && e.data.error))) {
+                    finish(e.data);
+                }
+            };
+            const timer = setTimeout(() => finish({ error: 'расчёт не ответил за 90 секунд' }), 90000);
+            window.addEventListener('message', onMsg);
+            document.body.appendChild(frame);
+        });
     },
 
     closeOffer: function () {

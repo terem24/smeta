@@ -4284,7 +4284,7 @@ const app = {
         if (!this.state.tgUser) { this.showAuthModal(); return; }
         // Окно ИИ-ассистента открывается только на тарифе «Профи» (кнопка на Базовом
         // скрыта, но модалку могут вызвать и из других мест).
-        if (!this.isPro()) { this.showModal('pro'); return; }
+        if (!this.isPro()) { this.logPaywall('seen', 'ИИ-ассистент'); this.showModal('pro'); return; }
         if (document.body.classList.contains('menu-open')) {
             try { this.toggleMenu(); } catch (e) { }
         }
@@ -5947,7 +5947,7 @@ const app = {
         if (!this.state.tgUser) { this.showAuthModal(); return; }
         // Окно ИИ-ассистента открывается только на тарифе «Профи» (кнопка на Базовом
         // скрыта, но модалку могут вызвать и из других мест).
-        if (!this.isPro()) { this.showModal('pro'); return; }
+        if (!this.isPro()) { this.logPaywall('seen', 'ИИ-ассистент'); this.showModal('pro'); return; }
         if (document.body.classList.contains('menu-open')) {
             try { this.toggleMenu(); } catch (e) { }
         }
@@ -8495,6 +8495,7 @@ const app = {
         if (featureLvl === 'pro-brand' && !this.canUseBrand('ROMMER')) {
             if (event) event.preventDefault();
             // Окно тарифа — только когда Профи этой учётке ROMMER открывает
+            if (!isPro) this.logPaywall('seen', 'Смета: ROMMER');
             if (!isPro && this.tariffCell(this.tariffAccount(), 'pro', 'rommer') === 'on') this.showModal('pro', { why: 'Вы хотели переключиться на ROMMER — ассортимент входит в Профи' });
             else app.alert('Ассортимент ROMMER для вашей учётной записи не подключён.');
             return false;
@@ -13302,16 +13303,17 @@ const app = {
             const skuOf = (item) => item.article ? String(item.article) : realSku(item.id || item.code);
             let equipmentText = '';
             if (eqItems.length) {
-                equipmentText = 'Название - Артикул - Количество\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
-                let copyRows = '', noSku = 0;
+                // Артикул и количество — один раз, для импорта. Названия выводим только
+                // у позиций без артикула: их по таблице не загрузить, и менеджеру нужно имя.
+                let copyRows = '', noSkuRows = '', noSku = 0;
                 eqItems.forEach((item, idx) => {
                     const sku = skuOf(item);
-                    equipmentText += `${idx + 1}. ${item.name} - ${sku || 'нет'} - ${item.q} шт.\n`;
-                    if (sku) copyRows += `${sku}\t${item.q}\n`; else noSku++;
+                    if (sku) copyRows += `${sku}\t${item.q}\n`;
+                    else { noSku++; noSkuRows += `${idx + 1}. ${item.name} — ${item.q} шт.\n`; }
                 });
-                equipmentText += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📋 ТАБЛИЦА ДЛЯ ИМПОРТА (выделите и скопируйте):\n'
-                    + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' + copyRows + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
-                if (noSku > 0) equipmentText += `\nПозиций без артикула: ${noSku} — в таблицу импорта они не вошли, их надо подобрать по названию из списка выше.`;
+                equipmentText = '📋 ТАБЛИЦА ДЛЯ ИМПОРТА (артикул и количество, выделите и скопируйте):\n'
+                    + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' + copyRows + '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
+                if (noSku > 0) equipmentText += `\n\nБез артикула — подберите по названию (${noSku} поз.):\n` + noSkuRows.trimEnd();
             } else {
                 equipmentText = 'Список оборудования в письмо не попал — откройте КП по кнопке ниже.';
             }
@@ -13392,7 +13394,7 @@ const app = {
                     // EmailJS (template_lg1zol9) поле Bcc было настроено на {{bcc_email}}
                     bcc_email: directorEmail,
                     email_subject: `[Дистрибьютор] Запрос счёта от ${tgUser.first_name || 'Монтажника'} — ${est.project_name || 'Проект'} (КП №${kpNum})`,
-                    equipment_list: `[Копия для дистрибьютора ${distCompany}]\nКП №${kpNum}\nМонтажник: ${tgUser.first_name || ''} ${tgUser.phone || ''} (${tgUser.email || ''})\nОборудование: ${eqSum.toLocaleString('ru-RU')} ₽\n\n${equipmentText}`
+                    equipment_list: `[Копия для дистрибьютора ${distCompany}]\nКП №${kpNum}\nМонтажник:${tgUser.first_name || ''} ${tgUser.phone || ''} (${tgUser.email || ''})\nОборудование: ${eqSum.toLocaleString('ru-RU')} ₽\n\n${equipmentText}`
                 };
 
                 const distJob = {
@@ -17154,7 +17156,9 @@ const app = {
         const name = opt ? opt.t : '';
         // Окно тарифа лежит ниже кабинета (как у «Оформить Профи» в профиле), поэтому кабинет закрываем
         try { this.closeProfileModal(); } catch (e) { }
+        this.logPaywall('seen', 'Группы сметы: вариант из Профи');
         this.showModal('pro', { why: '«' + name + '»' + (def ? ' (' + def.label.toLowerCase() + ')' : '') + ' — вариант из Профи' });
+        this.logPaywall('seen', 'Группы сметы: вариант из Профи');
     },
 
     setPref: function (key, v) {
@@ -19868,7 +19872,7 @@ const app = {
     // Подтверждение формы первого запуска: забираем то, что стоит в полях, и с
     // этого момента вкладка считает.
     applyMarginSetup: function () {
-        if (!this.isPro()) { this.showModal('pro'); return; }
+        if (!this.isPro()) { this.logPaywall('seen', 'Деньги: настройка маржи'); this.showModal('pro'); return; }
         if (!this.installerSettings) this.loadInstallerSettingsLocal();
         const read = (id, def) => {
             const el = document.getElementById(id);
@@ -19895,7 +19899,7 @@ const app = {
 
     // Правка одного поля уже после настройки — прямо в подвале вкладки.
     setMarginField: function (field, val) {
-        if (!this.isPro()) { this.showModal('pro'); return; }
+        if (!this.isPro()) { this.logPaywall('seen', 'Деньги: поле маржи'); this.showModal('pro'); return; }
         const m = this.marginSettings();
         if (!m) return;
         if (field === 'overheadFix') {
@@ -19918,7 +19922,7 @@ const app = {
      * сделанное не разошлись: там же учтён предел ползунка.
      */
     applyWhatIfDiscount: async function (extra) {
-        if (!this.canUseMoney()) { this.showModal('pro'); return; }
+        if (!this.canUseMoney()) { this.logPaywall('seen', 'Деньги: что-если'); this.showModal('pro'); return; }
         extra = parseFloat(extra) || 0;
         if (extra <= 0) return;
         const rep = this.marginReport();
@@ -20688,7 +20692,7 @@ const app = {
                         по вашим скидкам поставщика, оплата бригады, накладные — и что остаётся на руках
                         по каждому разделу сметы.
                     </div>
-                    ${this.isTeremStaff() ? '' : `<button type="button" onclick="app.showModal('pro')"
+                    ${this.isTeremStaff() ? '' : `<button type="button" onclick="app.logPaywall('seen', 'Деньги: о расчёте'); app.showModal('pro')"
                         style="margin-top: 16px; font: inherit; font-size: 13px; font-weight: 700; padding: 10px 22px; border-radius: 10px; border: none; background: var(--primary); color: var(--on-primary,#fff); cursor: pointer;">Посмотреть тариф</button>`}
                 </div>`;
             return;
@@ -21995,15 +21999,16 @@ const app = {
     // Возвращает { title, brief, rest } или null, если это обычное письмо.
     kpReminderInfo: function (text) {
         const t = String(text || '');
-        // «Чем закончились КП?» (kp_outcome) — тоже автоматическое, место ему в «Уведомлениях»
-        const outHead = t.match(/^🏁 (Чем закончились КП\?|КП без итога)\s*/);
+        // «Чем закончились КП?» (kp_outcome) и предупреждение об автозакрытии — тоже автоматические,
+        // место им в «Уведомлениях»
+        const outHead = t.match(/^(?:🏁 (Чем закончились КП\?|КП без итога)|⏳ (КП скоро закроются сами|КП монтажника закроются сами))\s*/);
         if (outHead) {
             const rest = t.slice(outHead[0].length).trim();
             const items = rest.split('\n').filter(l => l.charAt(0) === '•').map(l => l.slice(1).trim());
             const brief = items.length
                 ? items[0] + (items.length > 1 ? ' и ещё ' + (items.length - 1) : '')
                 : 'Итог по КП не отмечен';
-            return { title: outHead[1].replace(/\?$/, ''), brief: brief, rest: rest };
+            return { title: (outHead[1] || outHead[2]).replace(/\?$/, ''), brief: brief, rest: rest };
         }
         const head = t.match(/^📄 (Напоминание: выставить счёт|Счёт по КП не выставлен)\s*/);
         if (!head) return null;
@@ -25772,7 +25777,7 @@ const app = {
     ADMIN_GROUPS: [
         { id: 'overview', label: 'Обзор', icon: 'dashboard', tabs: ['home', 'dashboard', 'analytics'] },
         { id: 'people', label: 'Клиенты', icon: 'stats', tabs: ['stats', 'distributors', 'branches', 'inactive'] },
-        { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['leads', 'estimates', 'kanban', 'projects', 'warranty'] },
+        { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['estimates', 'kanban', 'leads', 'projects', 'warranty'] },
         { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages', 'notifications'] },
         { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'distprices', 'equipment', 'successors'] },
         { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription', 'payready', 'mailbudget'] },
@@ -26430,7 +26435,7 @@ const app = {
                 <div style="font-size:12.5px; color:var(--text-sec); margin-top:6px;">${esc(works(r.works))}</div>
                 <div style="margin-top:10px;">${can
                     ? `<button type="button" class="lk-btn" onclick="app.takeLead('${esc(r.lead_id)}', this)">Взять заявку</button>`
-                    : ((needPro && !this.isTeremStaff()) ? `<button type="button" class="lk-btn" onclick="app.showModal('pro')">Оформить Профи, чтобы взять</button>` : '')}</div>
+                    : ((needPro && !this.isTeremStaff()) ? `<button type="button" class="lk-btn" onclick="app.logPaywall('seen', 'Заявки: взять'); app.showModal('pro')">Оформить Профи, чтобы взять</button>` : '')}</div>
             </div>`).join('') : '<div class="lk-sub" style="padding:8px 0 16px;">Свободных заявок сейчас нет. Новые появляются по мере поступления — загляните позже.</div>';
         const markOpts = cur => this.LEAD_MARKS.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}${v === 'sent' ? ' disabled' : ''}>${l}</option>`).join('');
         const mineHtml = mine.length ? mine.map(r => `
@@ -38582,7 +38587,14 @@ const app = {
     succUseAlt: async function (oldId, altId, rowId) {
         const old = this.findCatalogItemById(oldId), alt = this.findCatalogItemById(altId);
         if (!old || !alt) return;
-        if (!(await this.confirm('Заменить «' + old.name + '» на «' + alt.name + '»? Проверьте, что концы (резьба, размер) те же: смета стыкует трубы по артикулу старой позиции.'))) return;
+        // Сверка концов автоматическая (assembly_check.js): разошлись — замену не делаем
+        const cmp = window.assemblyCheck ? window.assemblyCheck.compareEnds(old, alt) : null;
+        if (cmp && cmp.status === 'diff') {
+            this.alert('Концы «' + alt.name + '» не совпадают с «' + old.name + '»: ' + cmp.diff.map(d => d.label + ' было ' + d.was + ', стало ' + d.now).join('; ') + '. Замену не делаю.');
+            return;
+        }
+        const note = !cmp || cmp.status === 'same' ? '' : ' Концы по паспортам не подтверждены (нет данных о резьбе).';
+        if (!(await this.confirm('Заменить «' + old.name + '» на «' + alt.name + '»?' + note))) return;
         const manual = { name: String(alt.name).slice(0, 300), price: Number(alt.price), article: String(alt.article || alt.id).slice(0, 60),
             source: 'Каталог калькулятора, арт. ' + (alt.article || alt.id), photo: '' };
         if (!(await this.saveOrderSwap(old.id, { status: 'swap', manual: manual }))) return;
@@ -38786,15 +38798,20 @@ const app = {
 
     // Сколько сохранённых смет содержат позицию (функция order_default_usage, только админу).
     // Без неё список остаётся, просто сортируется по цене.
+    // Список смет с владельцами: this._orderEstimates[id] = [{ project_name, created_at, owner_username, owner_email, ... }]
     loadOrderUsage: function () {
         if (this._orderUsage !== undefined) return Promise.resolve(this._orderUsage);
         const ids = (this._orderDefaults || []).map(o => o.id);
         if (!ids.length) return Promise.resolve((this._orderUsage = {}));
-        return Promise.resolve(supabaseClient.rpc('order_default_usage', { p_ids: ids }))
+        return Promise.resolve(supabaseClient.rpc('order_default_estimates', { p_ids: ids }))
             .then(({ data, error }) => {
                 if (error) throw error;
-                const map = {};
-                (data || []).forEach(r => { map[r.item_id] = Number(r.estimates) || 0; });
+                const map = {}, est = {};
+                (data || []).forEach(r => {
+                    map[r.item_id] = (map[r.item_id] || 0) + 1;
+                    (est[r.item_id] = est[r.item_id] || []).push(r);
+                });
+                this._orderEstimates = est;
                 this._orderUsageError = null;
                 return (this._orderUsage = map);
             })
@@ -38834,12 +38851,26 @@ const app = {
         this.sortOrderDefaults();
         const list = this._orderDefaults;
         const filter = this._orderFilter || 'all';
+        // Сколько дней позиция стоит «под заказ» (с даты since из order_defaults.json)
+        const ageDays = o => o.since ? Math.floor((Date.now() - new Date(o.since).getTime()) / 86400000) : null;
+        const AGE_LIMIT = { month: 30, quarter: 90, year: 365 };
+        // Цвет по сроку: больше года — красный, больше квартала — жёлтый, больше месяца — серый
+        const ageTier = d => d == null ? null
+            : d >= 365 ? { c: '#EF4444', t: 'больше года' }
+            : d >= 90 ? { c: '#D97706', t: 'больше квартала' }
+            : d >= 30 ? { c: 'var(--text-sec)', t: 'больше месяца' } : null;
         const keep = o => filter === 'all' ? true
             : filter === 'often' ? (o.uses || 0) >= 3
-            : (Number(o.price) || 0) >= 10000;
+            : filter === 'pricey' ? (Number(o.price) || 0) >= 10000
+            : (ageDays(o) || 0) >= AGE_LIMIT[filter];
         const shown = list.filter(keep).length;
+        const registry = `<div style="display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 2px; font-size:12.5px;">
+                <span style="color:#EF4444; font-weight:700;">больше года: ${list.filter(o => (ageDays(o) || 0) >= 365).length}</span>
+                <span style="color:#D97706; font-weight:700;">больше квартала: ${list.filter(o => (ageDays(o) || 0) >= 90).length}</span>
+                <span style="color:var(--text-sec);">больше месяца: ${list.filter(o => (ageDays(o) || 0) >= 30).length}</span>
+            </div>`;
         const usageNote = this._orderUsageError
-            ? `<div style="font-size:12px; color:#D97706; margin-top:6px;">Частоту посчитать не вышло, сортировка только по цене. Нужна миграция order_default_usage и права админа.</div>` : '';
+            ? `<div style="font-size:12px; color:#D97706; margin-top:6px;">Частоту посчитать не вышло, сортировка только по цене. Нужна миграция order_default_estimates и права админа.</div>` : '';
         const chip = (id, label) => `<button class="ad-chip${filter === id ? ' active' : ''}" onclick="app._orderFilter='${id}'; app.renderAdminMain()">${label}</button>`;
         const month = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
         const badge = {
@@ -38848,17 +38879,32 @@ const app = {
             gone: '<span style="color:#EF4444; font-weight:700;">снято, из подбора убрано</span>',
             keep: '<span style="color:var(--text-sec); font-weight:700;">оставлено на этот месяц</span>'
         };
+        // Сметы позиции: дата, название сметы, владелец. Свёрнуто, чтобы не растягивать список на 54 строки.
+        const estBlock = id => {
+            const rows = (this._orderEstimates || {})[id] || [];
+            if (!rows.length) return '';
+            const day = s => s ? new Date(s).toLocaleDateString('ru-RU') : '';
+            const li = rows.slice(0, 200).map(r => {
+                const who = [r.owner_username, r.owner_email].filter(Boolean).map(esc).join(' · ') || 'владелец неизвестен';
+                return `<li style="margin:2px 0;">${esc(day(r.created_at))} · ${esc(r.project_name || 'Без названия')} · <span style="color:var(--text-main);">${who}</span></li>`;
+            }).join('');
+            const more = rows.length > 200 ? `<li>…и ещё ${rows.length - 200}</li>` : '';
+            return `<details style="font-size:12px; color:var(--text-sec); margin:0 0 8px;">
+                <summary style="cursor:pointer;">Сметы: ${rows.length}, показать</summary>
+                <ul style="margin:6px 0 0 16px; padding:0;">${li}${more}</ul>
+            </details>`;
+        };
         let h = `<div style="margin-bottom:26px;">
             <div class="ad-page-h"><div><h3>Под заказ в подборе по умолчанию</h3>
-            <div class="ad-sub" style="max-width:900px; line-height:1.55;">Позиции, которые калькулятор ставит в смету сам, а в каталоге они «под заказ» или с ценой старше месяца.
-            По умолчанию такая позиция стоять не должна. Решите по каждой на ${esc(month)}: заменить на позицию из ассортимента ТЕРЕМ (или ввести руками с источником цены и фото), убрать из подбора или оставить. Решение «оставить» действует до конца месяца, потом спросим снова.
-            Список пересобирается каждый день (apply-successors.yml).${this._orderBuilt ? ` Без изменений с ${esc(this._orderBuilt.split('-').reverse().join('.'))}.` : ''}</div></div>
+            <div class="ad-sub" style="line-height:1.5;">Решите по каждой на ${esc(month)}: заменить, снять или оставить.${this._orderBuilt ? ` Список без изменений с ${esc(this._orderBuilt.split('-').reverse().join('.'))}.` : ''}</div></div>
             <button class="admin-btn" onclick="app._orderDefaults = null; app._orderUsage = undefined; app.renderAdminMain()">Обновить</button></div>
             <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:14px 0 6px;">
                 <span style="font-size:13px; color:var(--text-main); font-weight:600;">Найдено: ${shown} из ${list.length}</span>
                 ${chip('all', 'Все')} ${chip('often', 'Часто (от 3 смет)')} ${chip('pricey', 'Дорогие (от 10 000 ₽)')}
+                ${chip('month', 'Под заказ больше месяца')} ${chip('quarter', 'Больше квартала')} ${chip('year', 'Больше года')}
             </div>
-            <div style="font-size:12px; color:var(--text-sec);">Порядок: цена × число смет, где встречается. Так дорогой котёл без смет и часто встречающийся кран поднимаются выше дешёвой редкой детали.</div>
+            ${registry}
+            <div style="font-size:12px; color:var(--text-sec);">Порядок: цена × число смет.</div>
             ${usageNote}
         </div>`;
         if (!list.length) h += `<div style="padding:20px; text-align:center; color:var(--text-sec); background:var(--surface-light); border-radius:10px;">В подборе по умолчанию нет позиций «под заказ».</div>`;
@@ -38878,9 +38924,11 @@ const app = {
                     <b style="color:var(--text-main);">${esc(o.id)}</b>
                     <span style="font-size:13px; color:var(--text-main);">${esc(o.name)}</span>
                     <span style="font-size:12px; color:var(--text-sec);">${fmt(o.price)} ₽${o.stale ? ' · цена старше месяца' : ' · под заказ'} · ${uses}</span>
+                    ${(() => { const d = ageDays(o), t = ageTier(d); return d == null ? '' : `<span style="font-size:12px; font-weight:700; color:#fff; background:${t ? t.c : 'var(--text-sec)'}; border-radius:6px; padding:1px 8px;">${d} дн. под заказ${t ? ' · ' + t.t : ''}</span>`; })()}
                     <span style="margin-left:auto; font-size:12.5px;">${badge[st]}</span>
                 </div>
-                <div style="font-size:11.5px; color:var(--text-sec); margin:4px 0 8px;">в подборе: ${where}</div>
+                <div style="font-size:11.5px; color:var(--text-sec); margin:4px 0 8px;">где подбирается: ${where}</div>
+                ${estBlock(o.id)}
                 ${body}
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
                     <button class="admin-btn ad-primary" onclick="app.orderOpenReplace(${i})">Заменить…</button>
@@ -38914,18 +38962,49 @@ const app = {
             </div>
             <div id="ord_res_${i}" style="margin:8px 0;"></div>
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:8px;">
-                <input id="ord_name_${i}" type="text" placeholder="Название в калькуляторе *" style="${inp}">
+                <input id="ord_name_${i}" type="text" placeholder="Название в калькуляторе *" oninput="app.orderEndsCheck(${i})" style="${inp}">
                 <input id="ord_price_${i}" type="number" min="1" step="any" placeholder="Цена, ₽ *" style="${inp}">
-                <input id="ord_art_${i}" type="text" placeholder="Артикул (если есть)" style="${inp}">
+                <input id="ord_art_${i}" type="text" placeholder="Артикул (если есть)" oninput="app.orderEndsCheck(${i})" style="${inp}">
                 <input id="ord_src_${i}" type="text" placeholder="Источник цены: ссылка или документ *" style="${inp}">
                 <input id="ord_photo_${i}" type="url" placeholder="Фото: ссылка на изображение (https://…)" style="${inp}">
             </div>
-            <label style="display:flex; gap:8px; align-items:flex-start; margin:10px 0; font-size:12.5px; color:var(--text-main);">
-                <input id="ord_ends_${i}" type="checkbox" style="margin-top:2px;">
-                <span>Проверил: концы (резьба, размер) те же, что у прежней позиции. Смета проверяет стыки по артикулу старой позиции — если концы другие, замена соберёт стык «не туда».</span></label>
+            <div id="ord_ends_${i}" style="margin:10px 0; font-size:12.5px; color:var(--text-main);"></div>
             <button class="admin-btn ad-primary" onclick="app.orderSaveReplace(${i})">Сохранить замену</button>
         </div>`;
         this.orderSearch(i);
+        this.orderEndsCheck(i);
+    },
+
+    /* Концы новой позиции против прежней — автоматически, по паспортам (assembly_check.js).
+     * Разошлись или неизвестны — сохранить замену нельзя: иначе смета соберёт стык «не туда». */
+    orderEndsCheck: function (i) {
+        const o = (this._orderDefaults || [])[i];
+        const box = document.getElementById('ord_ends_' + i);
+        if (!o || !box || !window.assemblyCheck) return null;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const v = id => ((document.getElementById(id + '_' + i) || {}).value || '').trim();
+        const name = v('ord_name'), art = v('ord_art');
+        if (!name) {
+            box.innerHTML = '<span style="color:var(--text-sec);">Концы проверятся автоматически, как только введена новая позиция.</span>';
+            return null;
+        }
+        // Прежняя позиция — вместе с `ports` из каталога, новая — тоже, если артикул уже есть в каталоге:
+        // так сверка работает для любого артикула, а не только для описанных в DEVICES.
+        const withCat = (id, nm) => Object.assign({}, this.findCatalogItemById(id) || {}, { id: id, name: nm });
+        const res = window.assemblyCheck.compareEnds(withCat(o.id, o.name), withCat(art, name));
+        if (res.status === 'same') {
+            box.innerHTML = '<span style="color:#10B981; font-weight:700;">✓ Концы совпадают с прежней позицией</span>';
+        } else if (res.status === 'diff') {
+            box.innerHTML = '<span style="color:#EF4444; font-weight:700;">✗ Концы не совпадают — замена соберёт стык «не туда». Сохранить нельзя.</span>' +
+                '<div style="margin-top:4px; color:var(--text-sec);">' +
+                res.diff.map(d => esc(d.label) + ': было ' + d.was + ', стало ' + d.now).join(' · ') + '</div>';
+        } else if (res.uncertain) {
+            box.innerHTML = '<span style="color:#D97706; font-weight:700;">? Концы совпадают по размеру и числу, но пол резьбы (НР/ВР) не подтверждён паспортом. Замена сохранится с отметкой «концы не подтверждены».</span>';
+        } else {
+            const miss = [res.unknownOld ? 'прежняя «' + o.name + '»' : null, res.unknownNew ? 'новая «' + name + '»' : null].filter(Boolean).join(' и ');
+            box.innerHTML = '<span style="color:#D97706; font-weight:700;">? Нет данных о концах: ' + esc(miss) + '. Замена сохранится с отметкой «концы не подтверждены».</span>';
+        }
+        return res;
     },
 
     orderSearch: function (i) {
@@ -38959,6 +39038,7 @@ const app = {
         set('ord_price', Math.round(Number(x.price) || 0));
         set('ord_art', x.article || x.id);
         set('ord_src', 'Ассортимент ТЕРЕМ (price_index), арт. ' + (x.article || x.id));
+        this.orderEndsCheck(i);
     },
 
     orderSaveReplace: async function (i) {
@@ -38970,9 +39050,20 @@ const app = {
         if (!(manual.price > 0)) { this.alert('Укажите цену.'); return; }
         if (!manual.source) { this.alert('Укажите источник цены: ссылку или документ.'); return; }
         if (manual.photo && !/^https:\/\/[^\s"'<>]+$/.test(manual.photo)) { this.alert('Фото: нужна ссылка вида https://…'); return; }
-        const ends = document.getElementById('ord_ends_' + i);
-        if (!ends || !ends.checked) { this.alert('Подтвердите, что концы (резьба, размер) совпадают с прежней позицией.'); return; }
-        if (await this.saveOrderSwap(o.id, { status: 'swap', manual: manual })) this.renderAdminMain();
+        const ends = this.orderEndsCheck(i);
+        // Блокируем только реальное расхождение концов. Нет данных о концах (электрокотёл, дымоход, датчики и т.п.) —
+        // замена проходит с отметкой, иначе она встала бы для всех позиций, которых нет в паспортах.
+        if (!ends || ends.status === 'diff') { this.alert('Концы новой позиции не совпадают с прежней — см. проверку над кнопкой. Замену не сохранить.'); return; }
+        if (ends.status !== 'same') manual.endsUnconfirmed = true;
+        if (await this.saveOrderSwap(o.id, { status: 'swap', manual: manual })) {
+            // Замена применена, смета пересчитана (saveOrderSwap → applyDefaultSwaps → render): сверяем
+            // всю обвязку текущей сметы по концам, а не только саму позицию.
+            try {
+                const chk = window.assemblyCheck.check(this.currentEquipmentList || []);
+                if (chk.problems.length) this.alert('Замена сохранена, но обвязка текущей сметы не сходится по резьбе:\n' + chk.problems.map(p => '• ' + p.text).join('\n'));
+            } catch (e) { console.warn('[orderSaveReplace] сверка обвязки:', e.message || e); }
+            this.renderAdminMain();
+        }
     },
 
     /**
@@ -39923,6 +40014,7 @@ const app = {
             const people = (this.adminData && this.adminData.allUsersDropdown) || [];
             const nameOf = id => { const u = people.find(x => x.id === id); return u ? (u.username || u.email || u.phone || 'Без имени') : 'Пользователь'; };
             const topic = t => /^🏁 /.test(t) ? 'Итог КП не отмечен'
+                : /^⏳ КП/.test(t) ? 'КП закроется само'
                 : this.kpReminderInfo(t) ? 'Напоминание про счёт'
                 : (t.indexOf('🎂') === 0 ? 'День рождения'
                     : (/приостановлен|будет удалена|удалим/.test(t) ? 'Доступ приостановлен'
@@ -42332,7 +42424,7 @@ const app = {
     sgPickVariant: function (key) {
         const v = this.SG_VARIANTS.find(x => x.key === key);
         if (!v || key === this.sgCurrentVariant()) return;
-        if (!v.ready && !this.isPro()) { this.showModal('pro'); return; }
+        if (!v.ready && !this.isPro()) { this.logPaywall('seen', 'Группы сметы: вариант'); this.showModal('pro'); return; }
         this.state.groupsBuild = v.ready ? 'ready' : 'self';
         this.state.boilerPipeSystem = v.sys;
         this.state.sectionAnalog = Object.assign({}, this.state.sectionAnalog || {}, { '2. Обвязка котельной': v.rom });
@@ -45851,7 +45943,7 @@ const app = {
             const names = this.MAIL_TIER_KINDS[id].map(kname).join(', ');
             const off = this.MAIL_TIER_KINDS[id].every(k => byKind[k] && byKind[k].auto_off);
             return `<div class="mb-tier ${id} ${off ? 'off' : ''}"><b><em>${n}</em>${title} · <span id="mb_tv_${id}" style="display:inline; color:inherit;">${T[id]}</span>%
-                ${off ? '<span class="ad-pill bad" style="margin-left:auto;">отключена</span>' : '<span class="ad-pill ok" style="margin-left:auto;">работает</span>'}</b>
+                ${off ? '<span class="ad-pill bad" style="margin-left:auto;">письма выключены</span>' : '<span class="ad-pill ok" style="margin-left:auto;">письма идут</span>'}</b>
                 <span>${esc(names)}</span></div>`;
         };
 
@@ -46093,6 +46185,11 @@ const app = {
         content.innerHTML += `<div id="admin_inactive_root" style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка напоминаний…</div>`;
         const root = () => document.getElementById('admin_inactive_root');
         await this.loadInactivityDays();
+        // Состояние почты нужно пилюлям: правило работает, а его письма могут быть выключены
+        try {
+            const { data: ms } = await supabaseClient.rpc('mail_budget_state');
+            if (ms) this._mailState = ms;
+        } catch (e) { /* без состояния почты покажем только правило */ }
         try {
             const { data, error } = await supabaseClient.rpc('inactivity_report');
             if (error) throw error;
@@ -46166,11 +46263,13 @@ const app = {
         const tile = (id, label, value, sub, cls) => `<div class="inact-tile ${cls || ''}${flt === id ? ' on' : ''}" role="button" tabindex="0" onclick="app.setInactFilter('${id}')" onkeydown="if(event.key==='Enter')app.setInactFilter('${id}')"><span class="lbl">${label}</span><b>${value}</b><span class="sub">${sub}</span></div>`;
 
         // Что включено — одной строкой, чтобы не открывать настройки ради этого вопроса
-        const pill = (on, label, hint) => `<span class="inact-pill${on ? ' on' : ''}" title="${hint}"><i></i>${label}<em>${on ? 'работает' : 'выключено'}</em></span>`;
+        // Правило может работать, а его письма — быть выключены лимитом почты (вкладка «Деньги → Почта»)
+        const mailOff = kind => !!(this._mailState && (this._mailState.kinds || []).find(k => k.kind === kind && k.off));
+        const pill = (on, label, hint, off) => `<span class="inact-pill${on ? ' on' : ''}" title="${hint}"><i></i>${label}<em>${!on ? 'выключено' : off ? 'правило работает, письма выключены' : 'работает'}</em></span>`;
         const auto = `<div class="inact-auto">
-            ${pill(true, 'Неактивные', `Письмо на ${cfg.warn}-й день молчания, заморозка на ${cfg.freeze}-й, удаление через ${cfg.delete} дн.`)}
-            ${pill(empty.enabled, 'Анкеты без смет', 'Заморозка и удаление тех, кто зарегистрировался и не считает')}
-            ${pill(nudge.enabled, 'Письма новичкам', 'Мягкие письма тем, кто заходит, но не считает')}
+            ${pill(true, 'Неактивные', `Письмо на ${cfg.warn}-й день молчания, заморозка на ${cfg.freeze}-й, удаление через ${cfg.delete} дн.`, mailOff('inactivity'))}
+            ${pill(empty.enabled, 'Анкеты без смет', 'Заморозка и удаление тех, кто зарегистрировался и не считает', mailOff('inactivity'))}
+            ${pill(nudge.enabled, 'Письма новичкам', 'Мягкие письма тем, кто заходит, но не считает', mailOff('nudge'))}
         </div>`;
 
         // Правила: сначала путь человека по дням, потом три карточки с полями
@@ -46191,7 +46290,7 @@ const app = {
         const rules = `<div class="inact-rules">
             <h4>Правила автоматики</h4>${line}
             <div class="inact-cards">
-            ${card('Неактивные', 'Письмо, заморозка и удаление тех, кто перестал заходить. Работает всегда.',
+            ${card('Неактивные', 'Письмо, заморозка и удаление тех, кто перестал заходить. Правило работает всегда; письма — по лимиту почты («Деньги → Почта»).',
                 field('Письмо, дней молчания', 'inact_warn', cfg.warn)
                 + field('Заморозка, день', 'inact_freeze', cfg.freeze)
                 + field('Удаление, дней после заморозки', 'inact_delete', cfg.delete),
@@ -50656,6 +50755,7 @@ const app = {
             if (!this.state.tgUser) { this.showAuthModal(); return; }
             // Окно тарифа — только если Профи этой же учётке вкладку открывает,
             // иначе оно обещало бы то, чего оплата не даст
+            if (!this.isPro()) this.logPaywall('seen', 'Деньги: вкладка');
             if (!this.isPro() && this.tariffCell(this.tariffAccount(), 'pro', 'money') === 'on') { this.showModal('pro', { why: 'Вы хотели открыть вкладку «Деньги» — маржа по разделам входит в Профи' }); return; }
             mode = 'equipment';
         }
@@ -50680,6 +50780,7 @@ const app = {
         }
         document.body.classList.toggle('work-mode', mode === 'works');
 
+            if (!this.isPro()) this.logPaywall('seen', 'Деньги: вкладка');
         let tableResponsive = document.querySelector('.table-responsive');
         let docFooter = document.querySelector('.doc-footer');
         let discountBlock = document.getElementById('discount_block');
@@ -54166,6 +54267,7 @@ const app = {
         // не PRO) тариф получил остальной функционал целиком, но не доступ к ассортименту ROMMER.
         // Группировку/артикулы/схему Базовому тарифу открываем.
         if (featureName === 'cheaper' && !isPro) {
+            this.logPaywall('seen', 'Смета: вторая «Бюджетнее»');
             this.showModal('pro', { why: 'Вы хотели включить вторую смету «Бюджетнее» — она входит в Профи' });
             return;
         }
@@ -54190,6 +54292,7 @@ const app = {
                 this.toggleSku(event);
             }
         } else if (featureName === 'merge') {
+            this.logPaywall('seen', 'Смета: вторая «Бюджетнее»');
             const chk = document.getElementById('chk_merge');
             if (chk) {
                 chk.checked = !chk.checked;
@@ -55537,6 +55640,32 @@ const app = {
         this._hcCollapsed = !this._hcCollapsed;
         try { localStorage.setItem('hc_collapsed', this._hcCollapsed ? '1' : '0'); } catch (e) { }
         this.syncHydroCheck();
+    },
+
+    /**
+     * Сверка резьбы обвязки после любой замены. Зовётся из render(), поэтому ловит все пути замены сразу:
+     * ручной выбор в смете (state.swaps), смена бренда, замены из админки (order swaps). Показывает
+     * плашку над таблицей только когда в смете есть замены и стык разошёлся.
+     */
+    syncAssemblyCheck: function () {
+        const old = document.getElementById('assembly_warn');
+        if (old) old.remove();
+        try {
+            const ac = (typeof window !== 'undefined') ? window.assemblyCheck : null;
+            const s = this.state;
+            if (!ac || s.viewMode !== 'equipment' || !Object.keys(s.swaps || {}).length) return;
+            const wrap = document.querySelector('.table-responsive');
+            if (!wrap || !wrap.parentNode) return;
+            const rep = ac.check(this.currentEquipmentList || []);
+            if (!rep.problems.length) return;
+            const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+            const box = document.createElement('div');
+            box.id = 'assembly_warn';
+            box.style.cssText = 'margin:8px 0; padding:10px 14px; border:1px solid #D97706; border-radius:10px; font-size:13px; background:rgba(217,119,6,.08);';
+            box.innerHTML = '<b>Обвязка не сходится по резьбе (в смете есть замены).</b> Проверьте переходники и ниппели:<ul style="margin:6px 0 0 18px;">' +
+                rep.problems.map(p => '<li>' + esc(p.text) + '</li>').join('') + '</ul>';
+            wrap.parentNode.insertBefore(box, wrap);
+        } catch (e) { console.warn('[syncAssemblyCheck]', e.message || e); }
     },
 
     syncHydroCheck: function () {
@@ -56923,7 +57052,7 @@ const app = {
             const go = await this.confirmChoice(
                 'На бесплатном тарифе можно отправить клиентам ' + max + ' разных КП в месяц, в этом месяце вы уже отправили ' + used.size + '. Ранее отправленные КП можно отправлять снова. Счётчик обнулится 1 числа. Профи — без ограничения.' + (Subscription.priceLine() ? '\n\n' + Subscription.priceLine() : ''),
                 'Лимит бесплатных КП', 'Оформить Профи', 'Закрыть');
-            if (go) this.showModal('pro');
+            if (go) { this.logPaywall('seen', 'КП: лимит бесплатных'); this.showModal('pro'); }
             return false;
         } catch (e) {
             console.warn('[лимит КП] не проверен, пропускаем:', e);
@@ -58282,13 +58411,9 @@ const app = {
                 return realSku(item.id || item.code);
             };
 
-            let equipmentText = "Название - Артикул - Количество\n";
-            equipmentText += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
-            (this.currentSpec || []).forEach((item, idx) => {
-                const sku = skuOf(item) || "нет";
-                equipmentText += `${idx + 1}. ${item.name} - ${sku} - ${item.q} шт.\n`;
-            });
-            equipmentText += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+            // Список «название — артикул — количество» дублировал таблицу импорта ниже,
+            // поэтому в письме только таблица; названия — лишь у позиций без артикула.
+            let equipmentText = "";
 
             // 2. Таблица для вставки в Excel/1С: артикул и количество через табуляцию —
             // при вставке в Excel сами расходятся по двум столбцам (как кнопка
@@ -58305,15 +58430,20 @@ const app = {
             });
 
             // Добавляем таблицу копирования прямо в конец списка оборудования для максимального удобства
-            equipmentText += "📋 ТАБЛИЦА ДЛЯ ИМПОРТА (выделите и скопируйте):\n";
+            equipmentText += "📋 ТАБЛИЦА ДЛЯ ИМПОРТА (артикул и количество, выделите и скопируйте):\n";
             equipmentText += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n";
             equipmentText += copyTableText;
             equipmentText += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
             // Молча выкинутая позиция хуже строки без артикула: по таблице
             // импорта счёт выглядит полным, а часть оборудования в нём просто
-            // отсутствует. Поэтому пишем, сколько строк не попало.
+            // отсутствует. Поэтому выводим такие позиции по названию.
             if (noSkuCount > 0) {
-                equipmentText += `\nПозиций без артикула: ${noSkuCount} — в таблицу импорта они не вошли, их надо подобрать по названию из списка выше.`;
+                const noSkuRows = (this.currentSpec || [])
+                    .map((item, idx) => ({ item, idx }))
+                    .filter(({ item }) => !skuOf(item))
+                    .map(({ item, idx }) => `${idx + 1}. ${item.name} — ${item.q} шт.`)
+                    .join("\n");
+                equipmentText += `\n\nБез артикула — подберите по названию (${noSkuCount} поз.):\n${noSkuRows}`;
             }
 
             let regionName = "";
@@ -69423,7 +69553,7 @@ const app = {
         const _ctrlFrom = _ctrlOf(originalId), _ctrlTo = _ctrlOf(chosenId);
         if (_ctrlFrom && _ctrlTo) {
             // Автоматика ZONT — ассортимент тарифа «Профи».
-            if ((_ctrlTo.brand === 'zont' || _ctrlTo.brand === 'myheat' || _ctrlTo.brand === 'ecto') && !this.isPro()) { this.showModal('pro', { why: 'Вы хотели подобрать автоматику ZONT / MyHeat — она входит в Профи' }); return; }
+            if ((_ctrlTo.brand === 'zont' || _ctrlTo.brand === 'myheat' || _ctrlTo.brand === 'ecto') && !this.isPro()) { this.logPaywall('seen', 'Автоматика ZONT / MyHeat'); this.showModal('pro',{ why: 'Вы хотели подобрать автоматику ZONT / MyHeat — она входит в Профи' }); return; }
             const _byBill = this.boilerAutoModel({ tQ: this.tQ_val, snow: this.snowCalc }, true);
             delete this.state.swaps[originalId];
             this.state.boilerAutoBrand = _ctrlTo.brand;
@@ -79187,6 +79317,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 modePro.classList.add('locked');
                 modePro.onclick = function (event) {
                     event.stopPropagation();
+                    app.logPaywall('seen', 'Режим сметы: Профи');
                     app.showModal('pro');
                 };
             } else {
@@ -79212,6 +79343,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             }
         }
         if (document.getElementById('chk_detailed_rooms_toggle')) {
+                    app.logPaywall('seen', 'Режим сметы: Профи');
             document.getElementById('chk_detailed_rooms_toggle').checked = !!this.state.showDetailedRoomsPanel;
         }
 
@@ -79514,6 +79646,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         } else if (this.classList.contains('locked-pro')) {
                             e.preventDefault();
                             e.stopPropagation();
+                            app.logPaywall('seen', 'Режим сметы: закрытый');
                             app.showModal('pro');
                         }
                     }, true);
@@ -79539,6 +79672,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         applyLock('sys_rad', 'pro');
         applyLock('chk_water_input', 'pro');
         applyLock('chk_well', 'pro');
+                            app.logPaywall('seen', 'Режим сметы: закрытый');
         applyLock('chk_hw', 'pro');
         applyLock('chk_recirc', 'pro');
         applyLock('chk_tank_pump', 'pro');
@@ -82294,7 +82428,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     },
     setGroupsBuild: function (mode, event) {
         if (!this.checkAccess('pro', event)) { this.syncUI(); return; }
-        if (!this.isPro()) { this.showModal('pro', { why: 'Вы хотели собрать смету по своим группам — это функция Профи' }); this.syncUI(); return; }
+        if (!this.isPro()) { this.logPaywall('seen', 'Смета: свои группы'); this.showModal('pro', { why: 'Вы хотели собрать смету по своим группам — это функция Профи' }); this.syncUI(); return; }
         this.state.groupsBuild = (mode === 'self') ? 'self' : 'ready';
         this.syncUI();
         this.render();
@@ -86770,6 +86904,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             this._inputAnchorAfter(_ia);
             // Сводка гидравлики читает то, что render посчитал, поэтому — после него
             this.syncHydroCheck();
+            this.syncAssemblyCheck();
         }
     },
     // Тихий прогон с теми же исправлениями гидравлики, что у render(): без них смета на низком

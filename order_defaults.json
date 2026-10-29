@@ -8,8 +8,9 @@
    "brand": "STOUT",
    "price_date": "2026-10-10",
    "stale": false,
+   "since": "2026-10-29",
    "where": [
-    "app.js:96283"
+    "смета"
    ]
   },
   {
@@ -19,8 +20,9 @@
    "brand": "STOUT",
    "price_date": "2026-10-10",
    "stale": false,
+   "since": "2026-10-29",
    "where": [
-    "app.js:96283"
+    "смета"
    ]
   },
   {
@@ -30,8 +32,9 @@
    "brand": "STOUT",
    "price_date": "2026-10-10",
    "stale": false,
+   "since": "2026-10-29",
    "where": [
-    "app.js:83072"
+    "смета"
    ]
   },
   {
@@ -41,11 +44,9 @@
    "brand": "STOUT",
    "price_date": "2026-10-10",
    "stale": false,
+   "since": "2026-10-29",
    "where": [
-    "app.js:62291",
-    "app.js:65804",
-    "app.js:66295",
-    "app.js:66298"
+    "смета"
    ]
   },
   {
@@ -55,11 +56,9 @@
    "brand": "STOUT",
    "price_date": "2026-10-10",
    "stale": false,
+   "since": "2026-10-29",
    "where": [
-    "app.js:62292",
-    "app.js:62950",
-    "app.js:65804",
-    "app.js:66295"
+    "смета"
    ]
   },
   {
@@ -69,8 +68,9 @@
    "brand": "STOUT",
    "price_date": "2026-10-10",
    "stale": false,
+   "since": "2026-10-29",
    "where": [
-    "app.js:66417"
+    "смета"
    ]
   },
   {
@@ -80,8 +80,9 @@
    "brand": "STOUT",
    "price_date": "2026-10-10",
    "stale": false,
+   "since": "2026-10-29",
    "where": [
-    "app.js:75781"
+    "смета: Трубы канализации: длины по планам и нарезка на отрезки"
    ]
   },
   {
@@ -91,8 +92,9 @@
    "brand": "STOUT",
    "price_date": "2026-10-10",
    "stale": false,
+   "since": "2026-10-29",
    "where": [
-    "app.js:92067"
+    "смета"
    ]
   },
   {
@@ -102,11 +104,10 @@
    "brand": "STOUT",
    "price_date": "2026-10-10",
    "stale": false,
+   "since": "2026-10-29",
    "where": [
-    "app.js:60731",
-    "app.js:89243",
-    "app.js:89243",
-    "assembly_chains.js:293"
+    "смета",
+    "обвязка котельной: описание узлов"
    ]
   },
   {
@@ -116,11 +117,10 @@
    "brand": "STOUT",
    "price_date": "2026-10-10",
    "stale": false,
+   "since": "2026-10-29",
    "where": [
-    "app.js:60731",
-    "app.js:89257",
-    "assembly_chains.js:296",
-    "assembly_chains.js:297"
+    "смета",
+    "обвязка котельной"
    ]
   },
   {
@@ -130,8 +130,9 @@
    "brand": "",
    "price_date": "2026-10-10",
    "stale": false,
+   "since": "2026-10-29",
    "where": [
-    "app.js:81465"
+    "смета"
    ]
   }
  ]
