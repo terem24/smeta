@@ -72,57 +72,87 @@ function supabaseProxyFetchRaw(input, init) {
         direct = localStorage.getItem('hc_direct_db') === '1';
     } catch (e) { }
     const proxyHost = inApp || (host === 'heatcalc.ru' || host === 'www.heatcalc.ru' || host === 'new.heatcalc.ru');
-    const canProxy = !direct && proxyHost;
     const url = typeof input === 'string' ? input : input.url;
-    // Режим «напрямую» остаётся в браузере навсегда: на телефоне, где supabase.co закрыт,
-    // из-за него падали вход через Яндекс и разделы админки («Load failed»). Не дошло —
-    // повторяем через прокси, а не показываем ошибку.
-    if (direct && proxyHost && url.startsWith(supabaseUrl)) {
-        return fetch(input, init).catch(err => {
-            if (err && err.name === 'AbortError') throw err;
-            if (init && init.signal && init.signal.aborted) throw err;
+    if (!proxyHost || !url.startsWith(supabaseUrl)) return fetch(input, init);
+
+    const proxyUrl = 'https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(supabaseUrl.length));
+    const method = String((init && init.method) || (typeof input !== 'string' && input.method) || 'GET').toUpperCase();
+    const isRead = method === 'GET' || method === 'HEAD';
+    const viaProxy = () => fetch(proxyUrl, init);
+    const viaDirect = () => fetch(input, init);
+    // Прервал сам вызывающий (или вышел его предел ожидания) — повторять нечего
+    const outerAborted = () => !!(init && init.signal && init.signal.aborted);
+
+    // У части телефонов (iPhone на домашнем Wi-Fi и на мобильном) ответ с прокси на Beget не
+    // доходит вовсе: вход через Яндекс висел на «Загрузка калькулятора», админка оставалась
+    // нулевой, а до Supabase напрямую этот же телефон достаёт без проблем. Поэтому, как только
+    // прокси подвёл, на полчаса запоминаем это и ходим напрямую, прокси оставляем запасным.
+    const PROXY_BAD_MS = 30 * 60 * 1000;
+    let proxyBad = false;
+    try { proxyBad = Date.now() - (parseInt(localStorage.getItem('hc_proxy_bad'), 10) || 0) < PROXY_BAD_MS; } catch (e) { }
+    const markProxyBad = () => { try { localStorage.setItem('hc_proxy_bad', String(Date.now())); } catch (e) { } };
+
+    // Первый способ, а если не вышло — второй. Для чтения второй запускается ещё и тогда,
+    // когда первый просто молчит дольше delayMs (берём тот ответ, что придёт раньше).
+    // Запись и одноразовые запросы параллельно не дублируем: только после явного отказа.
+    const race = (first, second, delayMs, onSecondWins) => new Promise((resolve, reject) => {
+        let settled = false, pending = 1, started = false, timer = null;
+        const ok = (r, isSecond) => {
+            if (settled) return;
+            settled = true; clearTimeout(timer);
+            if (isSecond && onSecondWins) onSecondWins();
+            resolve(r);
+        };
+        const bad = e => { pending--; if (!settled && pending <= 0) { settled = true; clearTimeout(timer); reject(e); } };
+        const startSecond = () => {
+            if (started || settled || outerAborted()) return;
+            started = true; pending++;
+            second().then(r => ok(r, true), bad);
+        };
+        if (delayMs) timer = setTimeout(startSecond, delayMs);
+        first().then(r => ok(r, false), err => {
+            if (!(err && err.name === 'AbortError') && !outerAborted()) startSecond();
+            bad(err);
+        });
+    });
+
+    // Вход через Яндекс и подтверждение ссылки входа: код и токен одноразовые, и если первый
+    // запрос дошёл, а ответ потерялся, повтор уже не пройдёт. Поэтому идём напрямую (до
+    // Supabase телефон достаёт), ждём недолго, и только потом — через прокси.
+    if (/\/functions\/v1\/yandex-auth|\/auth\/v1\/verify/.test(url)) {
+        const direct8 = () => {
+            if (typeof AbortController === 'undefined') return viaDirect();
+            const c = new AbortController();
+            const outer = init && init.signal;
+            if (outer) { if (outer.aborted) c.abort(); else outer.addEventListener('abort', () => c.abort(), { once: true }); }
+            const t = setTimeout(() => c.abort(), 8000);
+            return fetch(input, Object.assign({}, init, { signal: c.signal })).finally(() => clearTimeout(t));
+        };
+        return direct8().catch(err => {
+            if (outerAborted()) throw err;
+            console.warn('[вход] напрямую не вышло, иду через прокси:', err && err.message);
+            return viaProxy();
+        });
+    }
+
+    // Режим ?direct=1 и «прокси недавно подводил»: напрямую, прокси запасной
+    if (direct || proxyBad) {
+        if (isRead) return race(viaDirect, viaProxy, 8000, null);
+        return viaDirect().catch(err => {
+            if ((err && err.name === 'AbortError') || outerAborted()) throw err;
             console.warn('[база] напрямую не дошло, иду через прокси:', err && err.message);
-            return fetch('https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(supabaseUrl.length)), init);
+            return viaProxy();
         });
     }
-    if (canProxy && url.startsWith(supabaseUrl)) {
-        // Если до прокси не достучались (на айфоне Safari отвечает «Load failed» — вход через
-        // Яндекс и разделы админки при этом падали), пробуем тот же запрос напрямую в базу:
-        // у кого supabase.co закрыт, он не пройдёт и ошибка останется прежней, а у кого
-        // закрыт или глючит прокси — заработает. Обрыв по таймеру (AbortError) не повторяем.
-        const proxyUrl = 'https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(supabaseUrl.length));
-        const method = String((init && init.method) || (typeof input !== 'string' && input.method) || 'GET').toUpperCase();
-        if (method !== 'GET' && method !== 'HEAD') {
-            return fetch(proxyUrl, init).catch(err => {
-                if (err && err.name === 'AbortError') throw err;
-                if (init && init.signal && init.signal.aborted) throw err;
-                console.warn('[прокси] не отвечает, пробую напрямую:', err && err.message);
-                return fetch(input, init);
-            });
-        }
-        // Чтение: прокси мог не оборваться, а просто зависнуть (у части телефонов ответ с
-        // Beget не доходит вовсе — админка оставалась нулевой). Через 8 с запускаем тот же
-        // запрос напрямую и берём тот ответ, что придёт первым. Запись так не дублируем.
-        return new Promise((resolve, reject) => {
-            let settled = false, pending = 1, directStarted = false, timer = null;
-            const ok = r => { if (settled) return; settled = true; clearTimeout(timer); resolve(r); };
-            const bad = e => { pending--; if (!settled && pending <= 0) { settled = true; clearTimeout(timer); reject(e); } };
-            const startDirect = () => {
-                if (directStarted || settled) return;
-                directStarted = true; pending++;
-                fetch(input, init).then(ok, bad);
-            };
-            timer = setTimeout(startDirect, 8000);
-            fetch(proxyUrl, init).then(ok, err => {
-                if (!(err && err.name === 'AbortError') && !(init && init.signal && init.signal.aborted)) {
-                    console.warn('[прокси] не отвечает, пробую напрямую:', err && err.message);
-                    startDirect();
-                }
-                bad(err);
-            });
-        });
-    }
-    return fetch(input, init);
+
+    // Обычный путь: через прокси, напрямую — если прокси не отвечает
+    if (isRead) return race(viaProxy, viaDirect, 8000, markProxyBad);
+    return viaProxy().catch(err => {
+        if ((err && err.name === 'AbortError') || outerAborted()) throw err;
+        console.warn('[прокси] не отвечает, пробую напрямую:', err && err.message);
+        markProxyBad();
+        return viaDirect();
+    });
 }
 
 // Ссылка из письма «Сброс пароля» открывает сайт с #…&type=recovery в адресе.
