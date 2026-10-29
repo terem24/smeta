@@ -1504,6 +1504,18 @@ const Tour = {
     },
 
     // Список блоков: что освоить. Первый экран обучения вместо длинной «экскурсии».
+    // Подсказка про бонус Профи: только вошедшему, кто ещё не прошёл главный блок и не на Профи.
+    // Выключатель — Subscription.tourBonusSettings (app_settings.subscription.tourBonus), тот же,
+    // что читает база при выдаче. Любой сбой — тишина.
+    bonusHtml: function () {
+        try {
+            if (typeof Subscription === 'undefined' || !Subscription.tourBonusSettings().enabled) return '';
+            if (!this.allowed() || this.doneMap().basic || this.planInfo().isPro) return '';
+            if (app.isTeremStaff()) return '';
+            return '<div class="tour-card-text" style="color:#059669;font-weight:600;">Пройти обучение — получи Профи на 10 дней. Бесплатно.</div>';
+        } catch (e) { return ''; }
+    },
+
     renderMenu: function () {
         const card = this.ensureCard();
         this.clearSpot();
@@ -1538,6 +1550,7 @@ const Tour = {
         card.innerHTML = this.headHtml('Обучение · пройдено ' + doneN + ' из ' + vis.length) +
             '<div class="tour-card-title">Что хотите освоить?</div>' +
             '<div class="tour-card-text">Короткие блоки. Начните с первого — соберёте и сохраните учебный дом.</div>' +
+            this.bonusHtml() +
             resumeBtn +
             '<div class="tour-blks">' + rows + '</div>' +
             '<div class="tour-card-foot">Кнопка 🎓 в шапке включает и выключает обучение (на телефоне — в меню ☰).' +
