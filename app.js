@@ -46062,7 +46062,7 @@ const app = {
         // Две настройки — в свёрнутых блоках с подписанными полями: раньше десяток полей
         // и кнопок стояли строками над самими цифрами, и результат уезжал за экран
         const dis = isViewer ? 'disabled' : '';
-        const field = (label, id, val) => `<label class="ad-field"><span>${label}</span><input type="number" id="${id}" min="1" max="365" value="${val}" ${dis}></label>`;
+        const field = (label, id, val) => row(label, `<input type="number" id="${id}" min="1" max="365" value="${val}" ${dis}>`, id);
         const saveBtn = (label, fn) => `<button class="admin-btn ad-primary" ${dis} onclick="${fn}">${label}</button>`;
         const statTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
 
@@ -46078,9 +46078,11 @@ const app = {
         const secCur = this._inactSection || null;
         const secTabs = SEC.map(s => `<button type="button" class="ad-sec-tab${secCur === s.id ? ' active' : ''}" aria-pressed="${secCur === s.id}" onclick="app.setInactSection('${s.id}')">${s.label}${s.off ? ' <span class="ad-sec-off">выкл.</span>' : ''}</button>`).join('');
         // Все разделы одинаковы: поля в одной сетке, ряд кнопок, без текстовых описаний
-        const sec = (fields, actions) => `<div class="ad-sec-fields">${fields}</div>`
-            + (actions ? `<div class="ad-sec-actions">${actions}</div>` : '');
-        const check = (label, id, on) => `<label class="ad-field ad-check"><input type="checkbox" id="${id}" ${on ? 'checked' : ''} ${dis}><span>${label}</span></label>`;
+        // Строка настройки: подпись слева, значение справа; выключатель — тот же label.switch, что в остальной админке
+        const row = (label, ctl, forId) => `<${forId ? 'label for="' + forId + '"' : 'div'} class="ad-set-row"><span class="ad-set-l">${label}</span>${ctl}</${forId ? 'label' : 'div'}>`;
+        const sec = (fields, actions) => `<div class="ad-set-card">${fields}`
+            + (actions ? `<div class="ad-set-act">${actions}</div>` : '') + `</div>`;
+        const check = (label, id, on) => row(label, `<label class="switch"><input type="checkbox" id="${id}" ${on ? 'checked' : ''} ${dis}><span class="slider"></span></label>`);
         const panels = {
             timing: sec(
                 field('Письмо, дней молчания', 'inact_warn', cfg.warn)
