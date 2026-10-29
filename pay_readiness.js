@@ -448,7 +448,7 @@ const PayReadiness = {
     },
 
     // В переписке — не больше трёх функций, одной строкой: длинный список никто не дочитывает
-    OFFER_PERKS_MAX: 3,
+    OFFER_PERKS_MAX: 2,
 
     plural: function (n, one, few, many) {
         const a = Math.abs(n) % 100, b = a % 10;
@@ -462,41 +462,30 @@ const PayReadiness = {
         const S = (typeof Subscription !== 'undefined') ? Subscription : null;
         const account = (p.role === 'seller' || p.role === 'both') ? 'seller' : 'installer';
         const lines = [];
+        // Три строки: их цифры → что даёт Профи → цена со ссылкой. Без пересказа всего тарифа
         lines.push(p.first ? 'Здравствуйте, ' + p.first + '!' : 'Здравствуйте!');
-        lines.push('');
         const facts = [];
-        if (p.est30 > 0) facts.push(p.est30 + ' ' + this.plural(p.est30, 'смета', 'сметы', 'смет') + ' за месяц');
-        if (p.invoices > 0) facts.push(p.invoices + ' ' + this.plural(p.invoices, 'КП или счёт', 'КП и счёта', 'КП и счетов') + ' клиентам');
-        // Боль → выгода → цена → одно действие (AIDA/PAS): сначала его цифры, потом что даёт Профи
-        lines.push(facts.length
-            ? 'Вы уже делаете ' + facts.join(' и ') + '. В «Профи» это быстрее.'
-            : 'В «Профи» сметы собираются быстрее.');
-        // Функции, которые Профи добавляет сверх Базового (по таблице «Тарифы»)
+        if (p.est30 > 0) facts.push(p.est30 + ' ' + this.plural(p.est30, 'смету', 'сметы', 'смет'));
+        if (p.invoices > 0) facts.push(p.invoices + ' ' + this.plural(p.invoices, 'КП', 'КП', 'КП'));
         const perks = S ? S.benefitRows(account)
             .filter(r => r.pro !== 'off' && r.base === 'off' && this.OFFER_PERKS[r.f.id])
             .map(r => this.OFFER_PERKS[r.f.id]) : [];
-        if (perks.length) {
-            lines.push('Главное: ' + perks.slice(0, this.OFFER_PERKS_MAX).join(', ') + '.');
-        }
+        lines.push(
+            (facts.length ? 'Вы уже сделали ' + facts.join(' и ') + '. ' : '') +
+            'В «Профи» ' + (perks.length ? perks.slice(0, this.OFFER_PERKS_MAX).join(', ') : 'сметы идут быстрее') + '.');
         const missing = [];
         if (S) {
             const plans = S.planList(false).map(pl => S.resolve(pl.id, { region: p.rawRegion })).filter(Boolean);
             if (plans.length) {
                 lines.push('');
                 plans.forEach(r => {
-                    let row = r.label + ' — ' + S.fmtRub(r.rub);
-                    const pct = r.promo ? r.promoPct : r.termPct;
-                    if (r.months > 1) row += ' (' + S.fmtRub(r.perMonth) + ' в месяц' + (pct > 0 ? ', скидка ' + pct + ' %' : '') + ')';
-                    else if (pct > 0) row += ' (скидка ' + pct + ' %)';
-                    if (r.promo && r.promo.title) row += ', акция «' + r.promo.title + '»';
-                    lines.push(row + ': ' + this.PAY_LINK + encodeURIComponent(r.id));
+                    lines.push(r.label + ' — ' + S.fmtRub(r.rub) + ': ' + this.PAY_LINK + encodeURIComponent(r.id));
                     if (!r.url) missing.push(r.label);
                 });
                 lines.push('');
-                lines.push('Оплатили — нажмите «Я оплатил», подключим доступ.');
+                lines.push('Оплатили — нажмите «Я оплатил». Вопросы — ответьте сюда.');
             }
         }
-        lines.push('Вопросы — ответьте на это сообщение.');
         return { text: lines.join('\n'), missing: missing };
     },
 
