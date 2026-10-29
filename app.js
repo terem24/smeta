@@ -65451,6 +65451,7 @@ const app = {
                 this.state.tankSwapMount = mount;
                 this.state.tankSwapHeat = heat;
                 this.state.tankSwapVol = vol;
+                this.state.tankSwapBrand = 'all';
             }
             const _allTankGroups = [
                 { mount: 'floor', heat: 'cos',  arr: catalog.tanks_standard },
@@ -65463,11 +65464,14 @@ const app = {
             let _sm = this.state.tankSwapMount;
             let _sh = this.state.tankSwapHeat;
             let _sv = this.state.tankSwapVol;
+            // ROMMER в таблице замены — только на тарифе «Профи»; у остальных фильтр сводится к «Все»
+            const _sb = (this.state.accountType === 'pro' && this.state.tankSwapBrand) || 'all';
             _allVolsAlts = _allTankGroups
                 .filter(g => g.arr)
                 .filter(g => _sm === 'all' || g.mount === _sm)
                 .filter(g => _sh === 'all' || g.heat === _sh)
-                .flatMap(g => g.arr);
+                .flatMap(g => g.arr)
+                .filter(x => _sb === 'all' || (x.brand || '').toUpperCase() === _sb);
             alts = _sv === null ? _allVolsAlts : _allVolsAlts.filter(x => x.vol === _sv);
         }
 
@@ -66771,8 +66775,15 @@ const app = {
             let _vols = [...new Set(_allVolsAlts.map(x => x.vol))].sort((a,b) => a-b);
             let _volHtml = _vols.map(v => `<span onclick="app.setTankSwapVol(${v})" ${_b(_sv===v)}>${v} л</span>`).join('') +
                            `<span onclick="app.setTankSwapVol(null)" ${_b(_sv===null)}>ВСЕ</span>`;
+            const _isPro = this.state.accountType === 'pro';
+            const _sbr = (_isPro && this.state.tankSwapBrand) || 'all';
             _tankFiltersHtml =
                 `<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
+                `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
+                `<span onclick="app.setTankSwapBrand('all')" ${_b(_sbr==='all')}>Все бренды</span>` +
+                `<span onclick="app.setTankSwapBrand('STOUT')" ${_b(_sbr==='STOUT')}>STOUT</span>` +
+                (_isPro ? `<span onclick="app.setTankSwapBrand('ROMMER')" ${_b(_sbr==='ROMMER')}>ROMMER</span>` : '') +
+                `</div>` +
                 `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
                 `<span onclick="app.setTankSwapMount('floor')" ${_b(_sm==='floor')}>Напольный</span>` +
                 `<span onclick="app.setTankSwapMount('wall')" ${_b(_sm==='wall')}>Настенный</span>` +
@@ -78244,6 +78255,10 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     },
     setTankSwapVol: function (val) {
         this.state.tankSwapVol = val;
+        if (this._tankSwapId) this.openSwapModal(this._tankSwapId);
+    },
+    setTankSwapBrand: function (val) {
+        this.state.tankSwapBrand = val;
         if (this._tankSwapId) this.openSwapModal(this._tankSwapId);
     },
     setBoilerSwapPower: function (val) {
