@@ -65175,13 +65175,14 @@ const app = {
                 const ln = _lines[k];
                 const lst = ln.list.filter(x => this.elMatchesFilter(x, _elF)).sort((a, b) => a.power - b.power);
                 if (!lst.length) return;
+                if (selectedPower === 'all') { lst.forEach(x => alts.push(x)); return; }
                 const pick = lst.find(x => x.power >= selectedPower)
                     || ((ln.tier === 'polis' && !ln.list[0].brand) ? lst[lst.length - 1] : null); // запасной «старший» — только у POLIS STOUT, аналог слабее выбранного не предлагаем
                 if (pick) alts.push(pick);
             });
             alts.sort((a, b) => ((a.tier || (String(a.id).includes('5101') ? 'polis' : 'status')) === 'polis' ? 1 : 0)
                 - ((b.tier || (String(b.id).includes('5101') ? 'polis' : 'status')) === 'polis' ? 1 : 0)
-                || (a.price || 0) - (b.price || 0));
+                || (selectedPower === 'all' ? (a.power - b.power) : 0) || (a.price || 0) - (b.price || 0));
         }
         // Циркуляционные насосы: в таблице замены — весь ряд (DN15/DN25, 6 и 8 м напора), а не
         // только типоразмер выбранного: иначе фильтры «Расход / Напор / Подключение» было бы нечем
@@ -66678,9 +66679,9 @@ const app = {
             const _tgl = (key, label) => `<span onclick="app.setElSwapFilter('${key}')" ${_b(!!_ef[key])}>${label}</span>`;
             _tankFiltersHtml =
                 `<div style="display:flex;flex-direction:column;gap:6px;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
-                _row('Класс:', _chip('tier', 'status', 'STATUS · всё внутри') + _chip('tier', 'polis', 'POLIS · эконом')) +
-                _row('Мощность:', _powerHtml) +
-                _row('Бренд:', _chip('brand', 'all', 'Все') + _brands.map(br => _chip('brand', br, br)).join('')) +
+                _row('Класс:', _chip('tier', 'status', 'STATUS · всё внутри') + _chip('tier', 'polis', 'POLIS · эконом') + _chip('tier', 'all', 'Все')) +
+                _row('Мощность:', _powerHtml + `<span onclick="app.setBoilerSwapPower('all')" ${_b(_sp === 'all')}>Все</span>`) +
+                _row('Бренд:', _brands.map(br => _chip('brand', br, br)).join('') + _chip('brand', 'all', 'Все')) +
                 `</div>`;
         } else if (_origId0 === 'RFW-0080-256620') {
             const _sz = this.state.filterMagSize || 'all';
