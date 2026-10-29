@@ -68202,9 +68202,25 @@ const app = {
                     _rowCoilStr = '';
                 }
 
+                // Котёл без насоса (POLIS и аналоги): цена строки — котёл + обвязка по варианту, выбранному
+                // в смете (ГБМ или россыпь, STOUT или ROMMER). Разница — в рублях к текущему котлу; если он
+                // тоже без насоса, его обвязка уже учтена в базе. Обвязка от мощности не зависит.
+                if (_isElBoiler && displayAlt.type === 'el' && displayAlt.noPump) {
+                    const _pkKit = this.polisKitCost(this.state.polisKit === 'parts' ? 'parts' : 'gbm', this.state.polisKitBrand === 'rommer' ? 'rommer' : 'stout');
+                    const _pkTot = (displayAlt.price || 0) + _pkKit;
+                    const _pkCurNoPump = [].concat(catalog.boilers_polis || [], catalog.boilers_el_analogs || []).some(x => x.id === item.id && x.noPump);
+                    const _pkBase = (item.price || 0) + (_pkCurNoPump ? _pkKit : 0);
+                    const _pkD = _pkTot - _pkBase;
+                    const _pkFmt = v => v.toLocaleString('ru-RU') + ' ₽';
+                    diffHtml = isActive
+                        ? `<span style="color: var(--text-sec); font-weight: 600;">0 ₽</span>`
+                        : `<span style="color: ${_pkD > 0 ? 'var(--c-bad,#ef4444)' : 'var(--c-good,#16a34a)'}; font-weight: bold;">${_pkD > 0 ? '+' : '−'}${_pkFmt(Math.abs(_pkD))}</span>`;
+                    priceText = this.formatPriceHtml(_pkTot, true);
+                    _hintHtml += `<div style="font-size:12px;font-weight:500;color:var(--text-sec);margin-top:2px;">Котёл ${_pkFmt(displayAlt.price || 0)} + обвязка ${_pkFmt(_pkKit)}</div>`;
+                }
                 // Узел магистрали целиком: труба нужной длины бухтами + переходники, гильзы, хомуты.
                 // Две цены — «за метр» и «узел», у каждой свой процент к выбранному варианту.
-                let _priceCells = `<td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
+                let _priceCells =`<td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>`;
                 // Вся смета при этой замене: разница с текущей сметой в рублях и процентах, а под названием — что при этом
                 // появится или уйдёт (коллектор, насос, группа радиаторов). Расчёт — mixSwapOptions.
