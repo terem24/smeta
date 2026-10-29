@@ -38543,7 +38543,14 @@ const app = {
     succUseAlt: async function (oldId, altId, rowId) {
         const old = this.findCatalogItemById(oldId), alt = this.findCatalogItemById(altId);
         if (!old || !alt) return;
-        if (!(await this.confirm('Заменить «' + old.name + '» на «' + alt.name + '»? Проверьте, что концы (резьба, размер) те же: смета стыкует трубы по артикулу старой позиции.'))) return;
+        // Сверка концов автоматическая (assembly_check.js): разошлись — замену не делаем
+        const cmp = window.assemblyCheck ? window.assemblyCheck.compareEnds(old, alt) : null;
+        if (cmp && cmp.status === 'diff') {
+            this.alert('Концы «' + alt.name + '» не совпадают с «' + old.name + '»: ' + cmp.diff.map(d => d.label + ' было ' + d.was + ', стало ' + d.now).join('; ') + '. Замену не делаю.');
+            return;
+        }
+        const note = !cmp || cmp.status === 'same' ? '' : ' Концы по паспортам не подтверждены (нет данных о резьбе).';
+        if (!(await this.confirm('Заменить «' + old.name + '» на «' + alt.name + '»?' + note))) return;
         const manual = { name: String(alt.name).slice(0, 300), price: Number(alt.price), article: String(alt.article || alt.id).slice(0, 60),
             source: 'Каталог калькулятора, арт. ' + (alt.article || alt.id), photo: '' };
         if (!(await this.saveOrderSwap(old.id, { status: 'swap', manual: manual }))) return;
@@ -38840,16 +38847,21 @@ const app = {
             box.innerHTML = '<span style="color:var(--text-sec);">Концы проверятся автоматически, как только введена новая позиция.</span>';
             return null;
         }
-        const res = window.assemblyCheck.compareEnds({ id: o.id, name: o.name }, { id: art, name: name });
+        // Прежняя позиция — вместе с `ports` из каталога, новая — тоже, если артикул уже есть в каталоге:
+        // так сверка работает для любого артикула, а не только для описанных в DEVICES.
+        const withCat = (id, nm) => Object.assign({}, this.findCatalogItemById(id) || {}, { id: id, name: nm });
+        const res = window.assemblyCheck.compareEnds(withCat(o.id, o.name), withCat(art, name));
         if (res.status === 'same') {
             box.innerHTML = '<span style="color:#10B981; font-weight:700;">✓ Концы совпадают с прежней позицией</span>';
         } else if (res.status === 'diff') {
             box.innerHTML = '<span style="color:#EF4444; font-weight:700;">✗ Концы не совпадают — замена соберёт стык «не туда». Сохранить нельзя.</span>' +
                 '<div style="margin-top:4px; color:var(--text-sec);">' +
                 res.diff.map(d => esc(d.label) + ': было ' + d.was + ', стало ' + d.now).join(' · ') + '</div>';
+        } else if (res.uncertain) {
+            box.innerHTML = '<span style="color:#D97706; font-weight:700;">? Концы совпадают по размеру и числу, но пол резьбы (НР/ВР) не подтверждён паспортом. Замена сохранится с отметкой «концы не подтверждены».</span>';
         } else {
             const miss = [res.unknownOld ? 'прежняя «' + o.name + '»' : null, res.unknownNew ? 'новая «' + name + '»' : null].filter(Boolean).join(' и ');
-            box.innerHTML = '<span style="color:#D97706; font-weight:700;">? Нет данных о концах: ' + esc(miss) + '. Сохранить нельзя, пока не будет паспорта (assembly_check.js, DEVICES).</span>';
+            box.innerHTML = '<span style="color:#D97706; font-weight:700;">? Нет данных о концах: ' + esc(miss) + '. Замена сохранится с отметкой «концы не подтверждены».</span>';
         }
         return res;
     },
@@ -38898,8 +38910,19 @@ const app = {
         if (!manual.source) { this.alert('Укажите источник цены: ссылку или документ.'); return; }
         if (manual.photo && !/^https:\/\/[^\s"'<>]+$/.test(manual.photo)) { this.alert('Фото: нужна ссылка вида https://…'); return; }
         const ends = this.orderEndsCheck(i);
-        if (!ends || ends.status !== 'same') { this.alert('Концы новой позиции не совпадают с прежней или неизвестны — см. проверку над кнопкой. Замену не сохранить.'); return; }
-        if (await this.saveOrderSwap(o.id, { status: 'swap', manual: manual })) this.renderAdminMain();
+        // Блокируем только реальное расхождение концов. Нет данных о концах (электрокотёл, дымоход, датчики и т.п.) —
+        // замена проходит с отметкой, иначе она встала бы для всех позиций, которых нет в паспортах.
+        if (!ends || ends.status === 'diff') { this.alert('Концы новой позиции не совпадают с прежней — см. проверку над кнопкой. Замену не сохранить.'); return; }
+        if (ends.status !== 'same') manual.endsUnconfirmed = true;
+        if (await this.saveOrderSwap(o.id, { status: 'swap', manual: manual })) {
+            // Замена применена, смета пересчитана (saveOrderSwap → applyDefaultSwaps → render): сверяем
+            // всю обвязку текущей сметы по концам, а не только саму позицию.
+            try {
+                const chk = window.assemblyCheck.check(this.currentEquipmentList || []);
+                if (chk.problems.length) this.alert('Замена сохранена, но обвязка текущей сметы не сходится по резьбе:\n' + chk.problems.map(p => '• ' + p.text).join('\n'));
+            } catch (e) { console.warn('[orderSaveReplace] сверка обвязки:', e.message || e); }
+            this.renderAdminMain();
+        }
     },
 
     /**
@@ -55453,6 +55476,32 @@ const app = {
         this._hcCollapsed = !this._hcCollapsed;
         try { localStorage.setItem('hc_collapsed', this._hcCollapsed ? '1' : '0'); } catch (e) { }
         this.syncHydroCheck();
+    },
+
+    /**
+     * Сверка резьбы обвязки после любой замены. Зовётся из render(), поэтому ловит все пути замены сразу:
+     * ручной выбор в смете (state.swaps), смена бренда, замены из админки (order swaps). Показывает
+     * плашку над таблицей только когда в смете есть замены и стык разошёлся.
+     */
+    syncAssemblyCheck: function () {
+        const old = document.getElementById('assembly_warn');
+        if (old) old.remove();
+        try {
+            const ac = (typeof window !== 'undefined') ? window.assemblyCheck : null;
+            const s = this.state;
+            if (!ac || s.viewMode !== 'equipment' || !Object.keys(s.swaps || {}).length) return;
+            const wrap = document.querySelector('.table-responsive');
+            if (!wrap || !wrap.parentNode) return;
+            const rep = ac.check(this.currentEquipmentList || []);
+            if (!rep.problems.length) return;
+            const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+            const box = document.createElement('div');
+            box.id = 'assembly_warn';
+            box.style.cssText = 'margin:8px 0; padding:10px 14px; border:1px solid #D97706; border-radius:10px; font-size:13px; background:rgba(217,119,6,.08);';
+            box.innerHTML = '<b>Обвязка не сходится по резьбе (в смете есть замены).</b> Проверьте переходники и ниппели:<ul style="margin:6px 0 0 18px;">' +
+                rep.problems.map(p => '<li>' + esc(p.text) + '</li>').join('') + '</ul>';
+            wrap.parentNode.insertBefore(box, wrap);
+        } catch (e) { console.warn('[syncAssemblyCheck]', e.message || e); }
     },
 
     syncHydroCheck: function () {
@@ -86543,6 +86592,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             this._inputAnchorAfter(_ia);
             // Сводка гидравлики читает то, что render посчитал, поэтому — после него
             this.syncHydroCheck();
+            this.syncAssemblyCheck();
         }
     },
     // Тихий прогон с теми же исправлениями гидравлики, что у render(): без них смета на низком
