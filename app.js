@@ -11368,11 +11368,17 @@ const app = {
         const data = { key: distIds.slice().sort().join(','), dists, people: [], staff: [], heads: [], estimates: [], events: [], activity: [], activityMissing: false };
         if (!distIds.length) return data;
 
+        // Ошибка чтения называет таблицу: на телефоне консоли нет, а «не удалось загрузить» ничего не говорит
+        const fetchRows = async (table, ...args) => {
+            try { return await this.fetchAllRows(table, ...args); }
+            catch (e) { throw new Error(table + ': ' + ((e && (e.message || e.details || e.code)) || e)); }
+        };
+
         const userCols = 'id, username, first_name, last_name, middle_name, email, work_email, account_type, distributor_id, distributor_assigned_at, last_visited, activity_types';
 
         // 1. Все, кто привязан к филиалам: монтажники и менеджеры с ролью
         for (const part of chunk(distIds, 60)) {
-            const { rows } = await this.fetchAllRows('users', userCols, { build: q => q.in('distributor_id', part), order: 'id' });
+            const { rows } = await fetchRows('users', userCols, { build: q => q.in('distributor_id', part), order: 'id' });
             data.people.push(...rows);
         }
 
@@ -11413,14 +11419,14 @@ const app = {
         // 4. Сметы монтажников филиалов
         const installerIds = data.people.filter(u => !STAFF.includes(u.account_type || '')).map(u => String(u.id));
         for (const part of chunk(installerIds, 100)) {
-            const { rows } = await this.fetchAllRows('estimates',
+            const { rows } = await fetchRows('estimates',
                 'id, user_id, created_at, total_sum, eq_sum, works_sum, share_id, project_name, calc_id:calc_data->>calc_id',
                 { build: q => q.in('user_id', part), order: 'created_at' });
             data.estimates.push(...rows);
         }
 
         // 5. События смет для воронки (только нужные виды — без черновиков)
-        const evRes = await this.fetchAllRows('invoice_events', 'calc_id, event, user_id, user_email, project_name, created_at',
+        const evRes = await fetchRows('invoice_events', 'calc_id, event, user_id, user_email, project_name, created_at',
             { build: q => q.in('event', this.BRANCH_EVENTS), order: 'created_at' });
         data.events = evRes.rows;
 
@@ -11463,7 +11469,7 @@ const app = {
                 this._brData = await this.loadBranchData();
             } catch (e) {
                 console.error('[филиалы]', e);
-                root.innerHTML = `<div style="padding:20px; color:var(--c-bad,#EF4444);">Не удалось загрузить данные филиалов. Попробуйте обновить раздел.</div>`;
+                root.innerHTML = `<div style="padding:20px; color:var(--c-bad,#EF4444);">Не удалось загрузить данные филиалов. Попробуйте обновить раздел.<div style="margin-top:8px; font-size:12px; word-break:break-word; opacity:.85;">Причина: ${esc((e && e.message) || e)}</div></div>`;
                 return;
             }
             // Пока грузили, могли уйти в другой раздел
