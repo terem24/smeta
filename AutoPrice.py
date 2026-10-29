@@ -635,9 +635,13 @@ def propose_successor(item, res, succ):
 # артикул, цену и наличие — обычным GET, без Selenium: три страницы за секунды.
 BRAND_LISTINGS = [
     ('РЕХАУ NOVAFLOW', SEARCH_URL + '/catalog/kanalizatsiya/installyatsii-1/filter/brand-is-rehau/apply/'),
-    # Электрокотлы ZOTA MK-X (catalog.boilers_el_analogs): у раздела есть фильтр по бренду, а листинг
+    # Электрокотлы других брендов (catalog.boilers_el_analogs): у раздела есть фильтр по бренду, а листинг
     # отдаёт артикул, цену и наличие — обычным GET, без поиска по каждой позиции.
     ('Электрокотлы ZOTA', SEARCH_URL + '/catalog/otoplenie/kotly/elektricheskie/filter/brand-is-zota/apply/'),
+    ('Электрокотлы ЭВАН', SEARCH_URL + '/catalog/otoplenie/kotly/elektricheskie/filter/brand-is-evan/apply/'),
+    ('Электрокотлы Protherm', SEARCH_URL + '/catalog/otoplenie/kotly/elektricheskie/filter/brand-is-protherm/apply/'),
+    ('Электрокотлы Vaillant', SEARCH_URL + '/catalog/otoplenie/kotly/elektricheskie/filter/brand-is-vaillant/apply/'),
+    ('Электрокотлы Thermex', SEARCH_URL + '/catalog/otoplenie/kotly/elektricheskie/filter/brand-is-thermex/apply/'),
 ]
 
 def fetch_brand_listing(url):

@@ -64087,7 +64087,7 @@ const app = {
     // и без неё типоразмеры разных линеек смешались бы в одну очередь. Нет такой линейки в классе
     // (выбрали MK-X, а серию переключили на POLIS) — берём любую линейку бренда в этом классе.
     elAnalogPool: function (tier, brand, series) {
-        const all = (catalog.boilers_el_analogs || []).filter(x => x.tier === tier && x.brand === brand);
+        const all = (catalog.boilers_el_analogs || []).filter(x => x.tier === tier && x.brand === brand && this.canUseBrand(x.brand));
         const own = series ? all.filter(x => x.series === series) : [];
         return (own.length ? own : all)
             .sort((a, b) => a.power - b.power || a.price - b.price);
@@ -65169,7 +65169,7 @@ const app = {
             catalog.boilers_status.forEach(_addLine);
             catalog.boilers_polis.forEach(_addLine);
             // Бойлер включён — котёл без проверенного клапана ГВС в список не попадает.
-            (catalog.boilers_el_analogs || []).filter(x => x.noPump || !this.dhwTankOn() || x.dhwKit).forEach(_addLine);
+            (catalog.boilers_el_analogs || []).filter(x => this.canUseBrand(x.brand) && (x.noPump || !this.dhwTankOn() || x.dhwKit)).forEach(_addLine);
             alts = [];
             Object.keys(_lines).forEach(k => {
                 const ln = _lines[k];
@@ -66667,7 +66667,7 @@ const app = {
             // и видны в строке котла, отдельными фильтрами они только мешали выбору.
             const _ef = this.elSwapFilter();
             const _tierOf = x => x.tier || (String(x.id).includes('5101') ? 'polis' : 'status');
-            const _allEl = [].concat(catalog.boilers_status, catalog.boilers_polis, catalog.boilers_el_analogs || []);
+            const _allEl = [].concat(catalog.boilers_status, catalog.boilers_polis, (catalog.boilers_el_analogs || []).filter(x => this.canUseBrand(x.brand)));
             const _inClass = _allEl.filter(x => _ef.tier === 'all' || _tierOf(x) === _ef.tier);
             const _powers = [...new Set(_inClass.filter(x => _ef.brand === 'all' || (x.brand || 'STOUT') === _ef.brand).map(x => x.power))].sort((x, y) => x - y);
             const _powerHtml = _powers.map(p => `<span onclick="app.setBoilerSwapPower(${p})" ${_b(_sp===p)}>${String(p).replace('.', ',')} кВт</span>`).join('');
@@ -89590,13 +89590,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 ? [].concat(boiler.dhwKit).map(id => (catalog.dhw_valves_el || []).find(x => x.id === id)).filter(Boolean) : [];
             if (_elKits.length) {
                 _elKits.forEach(k => {
-                    const isBpv = k.id === 'PV4932000001';
-                    const isSensor = /датчик/i.test(k.name);
-                    addToBill({ ...k, originalId: k.id }, 1,
-                        isBpv ? 'Клапан приоритета бойлера: вход G3/4 ВР — от котла, выходы G3/4 НР — в отопление и в змеевик бойлера, ' +
-                            'привод 220 В, Kvs ' + k.kvs + ' м³/ч (паспорт ZOTA BPV от 29.09.2020). Датчик бойлера входит в комплект котла.'
-                        : (isSensor ? 'Датчик температуры бойлера NTC: подключается к плате котла (клемма «Tank Sensor»); у каждой модели котла свой датчик, это штатный для Ray и eloBLOCK.'
-                            : 'Комплект трёхходового клапана с приводом и кабелем для подключения бойлера к котлу Ray или eloBLOCK. Замена оригинального 0010027587.'), grp);
+                    addToBill({ ...k, originalId: k.id }, 1, k.tip || '', grp);
                 });
                 return;
             }
