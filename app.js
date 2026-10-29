@@ -46070,36 +46070,29 @@ const app = {
         const saveBtn = (label, fn) => `<button class="admin-btn ad-primary" ${dis} onclick="${fn}">${label}</button>`;
         const statTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
 
-        // Разделы настроек — рядом вкладок, как в шапке раздела, и одна панель под ними.
-        // Открытый раздел запоминается на сессию; журнал и воронка грузятся при открытии.
+        // Порядок — от главного к второстепенному: кому писали и чем кончилось → правила →
+        // журнал и воронка (разбор постфактум). Один раздел открыт всегда; журнал и воронка
+        // грузятся при открытии.
         const SEC = [
-            { id: 'timing', label: 'Сроки неактивности' },
-            { id: 'nudge', label: 'Рассылка: заходят, но не считают', off: !nudge.enabled },
-            { id: 'empty', label: 'Анкеты без смет', off: !empty.enabled },
-            { id: 'journal', label: 'Журнал правила' },
+            { id: 'people', label: 'Кому писали' },
+            { id: 'rules', label: 'Правила', off: !nudge.enabled || !empty.enabled },
+            { id: 'journal', label: 'Журнал' },
             { id: 'funnel', label: 'Воронка регистраций' },
         ];
-        const secCur = this._inactSection || null;
-        const secTabs = SEC.map(s => `<button type="button" class="ad-sec-tab${secCur === s.id ? ' active' : ''}" aria-pressed="${secCur === s.id}" onclick="app.setInactSection('${s.id}')">${s.label}${s.off ? ' <span class="ad-sec-off">выкл.</span>' : ''}</button>`).join('');
-        // Все разделы одинаковы: поля в одной сетке, ряд кнопок, без текстовых описаний
+        const secCur = SEC.some(s => s.id === this._inactSection) ? this._inactSection : 'people';
+        const secTabs = SEC.map(s => `<button type="button" class="ad-sec-tab${secCur === s.id ? ' active' : ''}" aria-pressed="${secCur === s.id}" onclick="app.setInactSection('${s.id}')">${s.label}${s.off ? ' <span class="ad-sec-off">часть выкл.</span>' : ''}</button>`).join('');
         // Строка настройки: подпись слева, значение справа; выключатель — тот же label.switch, что в остальной админке
         const row = (label, ctl, forId) => `<${forId ? 'label for="' + forId + '"' : 'div'} class="ad-set-row"><span class="ad-set-l">${label}</span>${ctl}</${forId ? 'label' : 'div'}>`;
-        const sec = (fields, actions) => `<div class="ad-set-card">${fields}`
-            + (actions ? `<div class="ad-set-act">${actions}</div>` : '') + `</div>`;
         const check = (label, id, on) => row(label, `<label class="switch"><input type="checkbox" id="${id}" ${on ? 'checked' : ''} ${dis}><span class="slider"></span></label>`);
-        const panels = {
-            timing: sec(
+        const rule = (title, hint, fields, actions) => `<div class="ad-set-card"><div class="ad-set-h">${title}<span>${hint}</span></div>${fields}`
+            + (actions ? `<div class="ad-set-act">${actions}</div>` : '') + `</div>`;
+        const rules = `<div class="ad-set-stack">`
+            + rule('Неактивные пользователи', 'Письмо, заморозка и удаление тех, кто перестал заходить',
                 field('Письмо, дней молчания', 'inact_warn', cfg.warn)
                 + field('Заморозка, день', 'inact_freeze', cfg.freeze)
                 + field('Удаление, дней после заморозки', 'inact_delete', cfg.delete),
-                saveBtn('Сохранить', 'app.saveInactivityDays()')),
-            nudge: sec(
-                check('Рассылка включена', 'nudge_enabled', nudge.enabled)
-                + field('Новичку без смет, дней', 'nudge_day3', nudge.day3)
-                + field('Вопрос «что не получилось», дней', 'nudge_day14', nudge.day14)
-                + field('Давняя смета, дней назад', 'nudge_day45', nudge.day45),
-                saveBtn('Сохранить', 'app.saveOnboardingNudges()')),
-            empty: sec(
+                saveBtn('Сохранить', 'app.saveInactivityDays()'))
+            + rule('Анкеты без смет', 'Заморозка и удаление тех, кто зарегистрировался и не считает',
                 check('Правило включено', 'empty_enabled', empty.enabled)
                 + field('Предупреждение за, дней', 'empty_warn', empty.warn_days)
                 + field('Без смет: заморозка, дней', 'empty_freeze', empty.freeze_days)
@@ -46107,27 +46100,41 @@ const app = {
                 + field('Удаление, дней после заморозки', 'empty_delete', empty.delete_days)
                 + field('Удалений за ночь, не больше', 'empty_maxdel', empty.max_delete),
                 saveBtn('Сохранить', 'app.saveEmptyAccounts()')
-                + `<button class="admin-btn" onclick="app.previewEmptyAccounts()">Сколько подпадёт</button>`),
-            journal: '<div id="empty_report_body"></div>',
-            funnel: '<div id="reg_funnel_body"></div>',
-        };
-        const secBody = secCur ? `<div class="ad-sec-panel">${panels[secCur]}</div>` : '';
+                + `<button class="admin-btn" onclick="app.previewEmptyAccounts()">Сколько подпадёт</button>`)
+            + rule('Рассылка тем, кто заходит, но не считает', 'Письмо и сообщение в кабинет, не чаще раза в неделю',
+                check('Рассылка включена', 'nudge_enabled', nudge.enabled)
+                + field('Новичку без смет, дней', 'nudge_day3', nudge.day3)
+                + field('Вопрос «что не получилось», дней', 'nudge_day14', nudge.day14)
+                + field('Давняя смета, дней назад', 'nudge_day45', nudge.day45),
+                saveBtn('Сохранить', 'app.saveOnboardingNudges()'))
+            + `</div>`;
+
+        // Группа строки — она же фильтр по плиткам со счётчиками
+        const groupOf = r => r.stage === 'deleted' ? 'deleted' : r.returned_at ? 'returned' : r.stage === 'frozen' ? 'frozen' : 'silent';
+        const flt = ['silent', 'returned', 'frozen', 'deleted'].includes(this._inactFilter) ? this._inactFilter : 'all';
+        const tile = (id, label, value, sub) => `<div class="control-card ad-tile${flt === id ? ' on' : ''}" role="button" tabindex="0" onclick="app.setInactFilter('${id}')" onkeydown="if(event.key==='Enter')app.setInactFilter('${id}')"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
 
         let h = `
             <div class="ad-page-h">
                 <div><h3>Напоминания неактивным</h3>
-                    <div class="ad-sub">Письмо после ${cfg.warn} дней молчания · доступ приостанавливается на ${cfg.freeze}-й день · учётка удаляется через ${cfg.delete} дней заморозки.
-                    Пока действует Профи, счётчик стоит. Проверка идёт каждую ночь.</div></div>
+                    <div class="ad-sub">Письмо — после ${cfg.warn} дней молчания, заморозка — на ${cfg.freeze}-й день, удаление — через ${cfg.delete} дней заморозки. Профи счётчик не трогает. Проверка каждую ночь.</div></div>
             </div>
-            <div class="admin-stat-grid stat-5" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
-                ${statTile('Отправлено', rows.length, '&nbsp;')}
-                ${statTile('Вернулись', returned, `${share}% от всех`)}
-                ${statTile('Молчат', silent, 'письмо ушло, ответа нет')}
-                ${statTile('Заморожены', frozen, 'доступ приостановлен')}
-                ${statTile('Удалены', deleted, 'учётки удалены')}
-            </div>
-            <div class="ad-sec-tabs" role="group">${secTabs}</div>
-            ${secBody}`;
+            <div class="ad-sec-tabs" role="group">${secTabs}</div>`;
+
+        if (secCur !== 'people') {
+            h += `<div class="ad-sec-panel">${secCur === 'rules' ? rules : secCur === 'journal' ? '<div id="empty_report_body"></div>' : '<div id="reg_funnel_body"></div>'}</div>`;
+            root.innerHTML = h;
+            this.loadInactSectionData();
+            return;
+        }
+
+        h += `<div class="admin-stat-grid stat-5" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${tile('all', 'Отправлено', rows.length, 'всего писем')}
+                ${tile('returned', 'Вернулись', returned, `${share}% от всех`)}
+                ${tile('silent', 'Молчат', silent, 'письмо ушло, ответа нет')}
+                ${tile('frozen', 'Заморожены', frozen, 'доступ приостановлен')}
+                ${tile('deleted', 'Удалены', deleted, 'учётки удалены')}
+            </div>`;
 
         if (!rows.length) {
             h += `<div style="padding:30px; text-align:center; color:var(--text-sec);">
@@ -46138,7 +46145,9 @@ const app = {
             return;
         }
 
-        h += `<div style="overflow-x:auto;"><table class="inv-table ad-sticky" style="width:100%; border-collapse:collapse; font-size:12px;">
+        const shown = flt === 'all' ? rows : rows.filter(r => groupOf(r) === flt);
+        if (!shown.length) h += `<div style="padding:24px; text-align:center; color:var(--text-sec);">В этой группе никого нет.</div>`;
+        else h += `<div style="overflow-x:auto;"><table class="inv-table ad-sticky" style="width:100%; border-collapse:collapse; font-size:12px;">
             <thead><tr style="text-align:left; color:var(--text-sec);">
                 <th style="padding:8px;">Кто</th>
                 <th style="padding:8px;">Регион</th>
@@ -46148,7 +46157,7 @@ const app = {
                 <th style="padding:8px;"></th>
             </tr></thead><tbody>`;
 
-        rows.forEach(r => {
+        shown.forEach(r => {
             // Итог по-русски, а не кодом этапа: ради этой колонки отчёт и нужен.
             let outcome, color;
             if (r.stage === 'deleted') {
@@ -46197,14 +46206,19 @@ const app = {
             </tr>`;
         });
 
-        h += `</tbody></table></div>`;
+        if (shown.length) h += `</tbody></table></div>`;
         root.innerHTML = h;
-        this.loadInactSectionData();
     },
 
-    // Переключение раздела вкладками: нажатие на открытый — свернуть
+    // Переключение раздела вкладками
     setInactSection: function (id) {
-        this._inactSection = this._inactSection === id ? null : id;
+        this._inactSection = id;
+        this.renderAdminInactiveBody();
+    },
+
+    // Плитка со счётчиком — он же фильтр списка; повторный клик снимает
+    setInactFilter: function (id) {
+        this._inactFilter = this._inactFilter === id ? 'all' : id;
         this.renderAdminInactiveBody();
     },
 

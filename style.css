@@ -21253,3 +21253,11 @@ body.empty-fit-panel #header_totals { display: none !important; }
     /* Открытая колонка на телефоне листается внутри, а не тянет всю страницу */
     .kb-col:not(.kb-collapsed) { max-height: 70vh !important; }
 }
+
+/* Напоминания: правила стопкой карточек, плитки со счётчиками — фильтры списка */
+.ad-set-stack { display: flex; flex-direction: column; gap: 14px; }
+.ad-set-h { display: flex; flex-direction: column; gap: 2px; padding: 12px 0 8px; border-bottom: 1px solid var(--ad-line); font-size: 14px; font-weight: 700; color: var(--text-main); }
+.ad-set-h span { font-size: 12px; font-weight: 400; color: var(--text-sec); }
+.ad-tile { cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.ad-tile:hover:not(.on) { border-color: var(--text-sec); }
+.ad-tile.on { border-color: var(--primary); background: var(--primary-light); }
