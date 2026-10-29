@@ -399,7 +399,29 @@ const Subscription = {
                     `<input type="number" min="1" max="60" value="${t.days}" ${dis ? 'disabled' : ''} onchange="Subscription.setTrialField('days', this.value)" style="${u.input} width:80px;">`)}
                 ${row('Не показывать сотрудникам ТЕРЕМ', 'Почта на @teremopt.ru (основная или рабочая) либо привязка к компании «ТЕРЕМ» или её обособленному подразделению.',
                     this.toggleHtml(!!t.excludeTerem, `Subscription.setTrialField('excludeTerem', ${!t.excludeTerem})`, dis))}
+            </div>
+            <div style="${u.card} max-width:760px; margin-top:12px;">
+                ${row('Бонус за обучение: Профи на 10 дней', 'Кто засчитал главный блок «Первый объект» в обучении, получает Профи на 10 дней сразу, без кнопки. Один раз на аккаунт: только без оплаты и без прошлого пробного периода. Выключено — бонус не выдаётся, обучение продолжает работать как прежде.',
+                    this.toggleHtml(this.tourBonusSettings().enabled, `Subscription.setTourBonusEnabled(${!this.tourBonusSettings().enabled})`, dis))}
             </div>`;
+    },
+
+    // ═══ Бонус за обучение: Профи на 10 дней ═════════════════════════════
+    // Выключатель — app_settings.subscription.tourBonus.enabled. Выдаёт бонус функция
+    // mark_tour_done в базе и читает тот же флаг (миграция 20261031_tour_bonus_toggle.sql);
+    // подсказка в обучении показывается только когда флаг включён. По умолчанию включён.
+    TOUR_BONUS_DEFAULTS: { enabled: true },
+
+    tourBonusSettings: function () {
+        const t = Object.assign({}, this.TOUR_BONUS_DEFAULTS, this.raw().tourBonus || {});
+        t.enabled = t.enabled !== false;
+        return t;
+    },
+
+    setTourBonusEnabled: function (value) {
+        const v2 = !!value;
+        this.apply(v => { v.tourBonus = Object.assign({}, v.tourBonus || {}, { enabled: v2 }); return v; });
+        this.render();
     },
 
     // ═══ Лимит КП на бесплатном тарифе ═══════════════════════════════════
