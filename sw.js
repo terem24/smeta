@@ -1,4 +1,4 @@
-const CACHE_NAME = 'heatcalc-v36.96';
+const CACHE_NAME = 'heatcalc-v36.97';
 // Подложки планов этажей — отдельным кэшем, который переживает смену версии
 // приложения. В общем кэше они терялись бы при каждом выпуске, а это как раз
 // то, что монтажник открывает на объекте, где связи может не быть.
@@ -148,7 +148,11 @@ self.addEventListener('fetch', (e) => {
   // копию из кэша, а ответ сети, если он всё же придёт, обновит кэш к следующему запуску.
   if (e.request.mode === 'navigate') {
     e.respondWith((async () => {
-      const fromNet = fetch(e.request)
+      // Сервер отдаёт страницу с cache-control: max-age=600, и fetch(e.request) брал её из HTTP-кэша браузера
+      // до десяти минут: после выкладки открывалась старая версия, нужна была вторая загрузка. no-cache — это
+      // не «в обход кэша», а проверка по ETag (ответ 304 почти ничего не весит). Не вышло (редкий браузер,
+      // сбой параметра) — обычный запрос, как было.
+      const fromNet = fetch(e.request, { cache: 'no-cache' }).catch(() => fetch(e.request))
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             netOk();
