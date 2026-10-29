@@ -89584,6 +89584,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // DN25). Сбрасываем на каждом рендере: без коллектора этот блок не выполняется,
         // и прошлое значение осталось бы висеть от другой конфигурации.
         this._tankLoadKitInfo = null;
+        this._tankKitCount = 0;   // сколько внешних клапанов загрузки бойлера легло в смету (см. addTankLoadingKit)
         // Котёл, у которого переключающий клапан бойлера встроен (dhwValve — Vaillant VU,
         // Navien Deluxe One / NGB210 SYS, Haier NeoSlim 1.18/1.24): внешний комплект ему не нужен. Датчик бойлера
         // ставим только если он не в коробке (dhwSensor — артикул докупаемого датчика,
@@ -89625,6 +89626,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // Клапан BAXI BX4991100069: вход AB — ВР, выходы A и B — НР (паспорт, табл. 1). Ниппели НН «для фугаса»,
             // которые шли в комплекте со старым клапаном STOUT, ни к одному из портов не стыкуются — убраны 23.10.2026.
             addToBill({ ...catalog.valves[0], originalId: 'SFB-0001-000001_tankload', alts: _tankLoadAlts }, 1, this.getDesc('fugas'), grp);
+            this._tankKitCount = (this._tankKitCount || 0) + 1;
         };
         // Дымоход под конкретный котёл. Конденсационному нужен свой комплект (сбор
         // конденсата, пластик): у Vaillant — родной PP-комплект (гарантия требует
@@ -92147,6 +92149,29 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 (_cpNip(thKey) || []).forEach(n => addToBill({ ...n.item, originalId: n.item.id + '_coilport' }, _cpN, n.text, grp));
             };
 
+            // Внешний трёхходовой клапан загрузки бойлера (BAXI BX4991100069, паспорт, табл. 1 и рис. 2): вход AB — ВР, выходы
+            // A (в отопление) и B (в змеевик) — наружная G3/4. Подача котла с американкой и краном уже ложится на выход A; выходу B,
+            // с которого труба идёт в змеевик, нужен переход на ВР 3/4" — один на клапан. Без него стенд давал «НР без пары»
+            // у всех объектов с электрокотлом.
+            const _kitN = this._tankKitCount || 0;
+            if (_kitN) {
+                const _abTxt = `на выход B (в змеевик бойлера) трёхходового клапана: у выходов A и B наружная резьба G3/4 (паспорт BAXI), выход A занят подачей котла (американка и кран). Требуется: 1 шт. на клапан.`;
+                if (isAnalog) {
+                    addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_fi, 'SZI03225RCT'), _kitN,
+                        `Муфта комбинированная с ВР PP-RCT 32х3/4" — ${_abTxt}`, grp);
+                } else if (isPress) {
+                    const _abD = mpD(_boilerSize);
+                    const _abTh = bpThreadFor('fi', _abD, '3/4');
+                    bpPress(_abTh.item, _kitN,
+                        `Переходник с трубы ${_abD} на внутреннюю резьбу ${bpThLabel(_abTh.key)} — ${_abTxt}` +
+                        (_abTh.key !== '3/4' ? ` <b>Внимание:</b> ВР 3/4" на этой трубе в линейке нет, нужен резьбовой переход (в смету не входит).` : ``), grp, 1, _abD);
+                } else {
+                    const _abTh = this.ssThreadFor('ss_adapter_fi', _boilerSize, '3/4');
+                    addToBill(_abTh && this.ssFit('ss_adapter_fi', _boilerSize, _abTh), _kitN,
+                        `Переходник ВПр-ВР ${_boilerSize}х${this.ssThreadLabel(_abTh)} — ${_abTxt}` +
+                        (_abTh !== '3/4' ? ` <b>Внимание:</b> ВР 3/4" на этой трубе в линейке нет, нужен резьбовой переход (в смету не входит).` : ``), grp);
+                }
+            }
             if (isAnalog) {
                 // На трубе 32 муфты с ВР 1/2" нет — ВР 3/4" и ниппель переходной.
                 if (_coilFromPort) {
