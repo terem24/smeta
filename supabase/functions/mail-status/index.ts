@@ -106,8 +106,42 @@ Deno.serve(async (req) => {
     // дополнительно требует Private Key — хранится в секретах Supabase, не в коде
     const privateKey = Deno.env.get("EMAILJS_PRIVATE_KEY");
 
-    const sendVia = (templateId: string, params: Record<string, unknown>) =>
-      fetch("https://api.emailjs.com/api/v1.0/email/send", {
+    // Журнал писем (mail_log, 20261005_mail_budget.sql). Каждый запрос к EmailJS пишем
+    // сюда, иначе счётчик бюджета не видит письма о статусах и расходится с кабинетом
+    // EmailJS (29.10.2026: 108 в журнале против 123 в кабинете; статусов в журнале не было).
+    // Пишем через сервисный ключ: таблица закрыта RLS без политик, сервисный ключ её обходит.
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const logMail = async (templateId: string, subject: string, ok: boolean) => {
+      if (!supabaseUrl || !serviceKey) {
+        console.error("mail-status: нет SUPABASE_URL или SUPABASE_SERVICE_ROLE_KEY, письмо не записано в журнал");
+        return;
+      }
+      try {
+        await fetch(`${supabaseUrl}/rest/v1/mail_log`, {
+          method: "POST",
+          headers: {
+            apikey: serviceKey,
+            Authorization: `Bearer ${serviceKey}`,
+            "Content-Type": "application/json",
+            Prefer: "return=minimal",
+          },
+          body: JSON.stringify({
+            kind: "status",
+            template: templateId.slice(0, 40),
+            subject: subject.replace(/[\r\n\t]+/g, " ").slice(0, 120),
+            ok,
+            skipped: false,
+            source: "edge",
+          }),
+        });
+      } catch (e) {
+        console.error("mail-status: журнал не записан", e);
+      }
+    };
+
+    const sendVia = async (templateId: string, params: Record<string, unknown>) => {
+      const resp = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -118,6 +152,9 @@ Deno.serve(async (req) => {
           template_params: params,
         }),
       });
+      await logMail(templateId, String(params.email_subject ?? ""), resp.ok);
+      return resp;
+    };
 
     let templateId = EMAILJS_TEMPLATE_STATUS;
     let params: Record<string, unknown> = statusParams;
@@ -137,8 +174,10 @@ Deno.serve(async (req) => {
     }
 
     // Копия админу — всегда, независимо от того, привязан ли монтажник к менеджеру
+    // Ждём и копию: её запрос тоже считается в EmailJS, а запись в журнал должна успеть
+    // до ответа функции (фоновая работа после ответа может не выполниться).
     if (to.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-      sendVia(templateId, { ...params, to_email: ADMIN_EMAIL, email_subject: `[Админ] ${params.email_subject}` })
+      await sendVia(templateId, { ...params, to_email: ADMIN_EMAIL, email_subject: `[Админ] ${params.email_subject}` })
         .catch((e) => console.error("Admin cc failed:", e));
     }
 
