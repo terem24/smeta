@@ -43631,6 +43631,10 @@ const app = {
         // оказывались посередине строки вместо левого края.
         root.style.textAlign = 'left';
         root.style.padding = '';
+        // Заглушка успела стать .ad-loader (flex по центру) — без сброса тело таблицы
+        // ужималось до ширины содержимого и уезжало в середину панели.
+        root.classList.remove('ad-loader');
+        delete root.dataset.ldr;
         const focusSnap = this._snapshotAdminFilterFocus(root);
 
         const rows = this._adminPricelistRows || [];
