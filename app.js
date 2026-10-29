@@ -71,8 +71,20 @@ function supabaseProxyFetchRaw(input, init) {
         if (m) localStorage.setItem('hc_direct_db', m[1]);
         direct = localStorage.getItem('hc_direct_db') === '1';
     } catch (e) { }
-    const canProxy = !direct && (inApp || (host === 'heatcalc.ru' || host === 'www.heatcalc.ru' || host === 'new.heatcalc.ru'));
+    const proxyHost = inApp || (host === 'heatcalc.ru' || host === 'www.heatcalc.ru' || host === 'new.heatcalc.ru');
+    const canProxy = !direct && proxyHost;
     const url = typeof input === 'string' ? input : input.url;
+    // Режим «напрямую» остаётся в браузере навсегда: на телефоне, где supabase.co закрыт,
+    // из-за него падали вход через Яндекс и разделы админки («Load failed»). Не дошло —
+    // повторяем через прокси, а не показываем ошибку.
+    if (direct && proxyHost && url.startsWith(supabaseUrl)) {
+        return fetch(input, init).catch(err => {
+            if (err && err.name === 'AbortError') throw err;
+            if (init && init.signal && init.signal.aborted) throw err;
+            console.warn('[база] напрямую не дошло, иду через прокси:', err && err.message);
+            return fetch('https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(supabaseUrl.length)), init);
+        });
+    }
     if (canProxy && url.startsWith(supabaseUrl)) {
         // Если до прокси не достучались (на айфоне Safari отвечает «Load failed» — вход через
         // Яндекс и разделы админки при этом падали), пробуем тот же запрос напрямую в базу:
