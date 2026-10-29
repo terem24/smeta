@@ -25712,6 +25712,7 @@ const app = {
         { id: 'notifications', icon: '🔔', label: 'Уведомления', hint: 'Статусы смет, счета, тариф и что включить, чтобы они доходили' },
         { id: 'inactive', icon: '📨', label: 'Напоминания', hint: 'Кто давно не заходил и вернулся ли' },
         { id: 'distributors', icon: '🏢', label: 'Дистрибьюторы', hint: 'Промокоды, менеджеры, свои цены' },
+        { id: 'regiongaps', icon: '', label: 'Регионы без дистрибьютора', sub: 'Регионы без дистрибьютора', hint: 'Где монтажники регистрируются, а дистрибьютора нет: кому предложить подключиться' },
         { id: 'tariffs', icon: '🎚', label: 'Тарифы', hint: 'Что открыто учётке на её тарифе' },
         { id: 'subscription', icon: '💳', label: 'Оплата подписки', hint: 'Цены и ссылки на оплату, QR, акции, регионы, кто запрашивал и кто оплатил' },
         { id: 'payready', icon: '🎯', label: 'Готовность платить', hint: 'Воронка до оплаты, горячие клиенты, выручка при ваших ценах' },
@@ -25746,6 +25747,7 @@ const app = {
         notifications: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
         inactive: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
         distributors: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/>',
+        regiongaps: '<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
         tariffs: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
         subscription: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
         payready: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
@@ -25776,7 +25778,7 @@ const app = {
     // («Тарифы» → разделы роли), порядок перетаскиванием и старые ссылки работают как раньше.
     ADMIN_GROUPS: [
         { id: 'overview', label: 'Обзор', icon: 'dashboard', tabs: ['home', 'dashboard', 'analytics'] },
-        { id: 'people', label: 'Клиенты', icon: 'stats', tabs: ['stats', 'distributors', 'branches', 'inactive'] },
+        { id: 'people', label: 'Клиенты', icon: 'stats', tabs: ['stats', 'distributors', 'regiongaps', 'branches', 'inactive'] },
         { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['estimates', 'kanban', 'leads', 'projects', 'warranty'] },
         { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages', 'notifications'] },
         { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'distprices', 'equipment', 'successors'] },
@@ -25999,7 +26001,7 @@ const app = {
     // пользователей сразу, решать это наблюдателю или менеджеру нельзя.
     // «Тарифы» — что открыто каждой учётной записи на всей платформе.
     // «Почта» — лимит писем EmailJS на всю платформу и выключатели рассылок.
-    ADMIN_ONLY_TABS: ['distributors', 'successors', 'tariffs', 'mailbudget'],
+    ADMIN_ONLY_TABS: ['distributors', 'regiongaps', 'successors', 'tariffs', 'mailbudget'],
 
     // Вкладка «Аналитика» — только для владельца: там конкурентная разведка,
     // которой незачем светиться даже перед наблюдателями с доступом в админку.
@@ -28301,6 +28303,12 @@ const app = {
         if (this._adminTab === 'distributors') {
             content.innerHTML = navHtml;
             this.renderAdminDistributors();
+            return;
+        }
+
+        if (this._adminTab === 'regiongaps') {
+            content.innerHTML = navHtml + '<div id="regiongaps_root"></div>';
+            this.renderAdminRegionGaps();
             return;
         }
 
@@ -45869,6 +45877,394 @@ const app = {
         inactivity: ['Неактивные учётки', 'Предупреждение и заморозка'],
         nudge: ['Напоминания новичкам', 'Рассылка «первая смета», «что не получилось»'],
         other: ['Прочее', 'Всё, что не распознано по теме письма']
+    },
+
+    // ── Регионы без дистрибьютора ───────────────────────────────────────────
+    // Монтажники, которые зарегистрировались из региона, где ни один активный
+    // дистрибьютор не подключён. Пользователей читаем отдельно и постранично:
+    // в adminData лежит только первая страница таблицы. Список «Где купить»
+    // (stout_dealers) и журнал обращений (region_outreach) — миграция
+    // 20261029_region_gaps_dealers.sql. Без неё вкладка работает, но без них.
+    REGION_GAP_PAGE: 1000,
+    REGION_GAP_CAP: 40000,
+    REGION_GAP_MIN_DEFAULT: 3,
+    REGION_GAP_STAFF: ['admin', 'viewer', 'manager'],
+    REGION_GAP_CHANNEL: { email: 'письмо', messenger: 'мессенджер', call: 'звонок', other: 'другое' },
+
+    rgEsc: function (s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    },
+
+    regionGapDate: function (s) {
+        const d = s ? new Date(s) : null;
+        return d && !isNaN(d) ? d.toLocaleDateString('ru-RU') : '—';
+    },
+
+    regionGapName: function (region) {
+        let r = String(region || '').trim();
+        try { r = this.normalizeUserRegionAndCity(r, '').region || r; } catch (e) { /* незнакомый регион показываем как введён */ }
+        return r;
+    },
+
+    regionGapNameKey: function (s) {
+        return String(s || '').toLowerCase().replace(/[«»"'`]/g, '').replace(/\s+/g, ' ').replace(/^(ооо|ип|зао|пао|ао)\s+/, '').trim();
+    },
+
+    regionGapList: function (v) {
+        return (Array.isArray(v) ? v : String(v || '').split(',')).map(s => String(s).trim()).filter(Boolean);
+    },
+
+    regionGapWord: function (n) {
+        const d = n % 10, dd = n % 100;
+        if (d === 1 && dd !== 11) return 'монтажник';
+        if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return 'монтажника';
+        return 'монтажников';
+    },
+
+    loadRegionGapData: async function () {
+        const page = async (table, columns, order) => {
+            const out = [];
+            for (let from = 0; from < this.REGION_GAP_CAP; from += this.REGION_GAP_PAGE) {
+                const { data, error } = await supabaseClient.from(table)
+                    .select(columns).order(order, { ascending: true })
+                    .range(from, from + this.REGION_GAP_PAGE - 1);
+                if (error) throw error;
+                out.push(...(data || []));
+                if (!data || data.length < this.REGION_GAP_PAGE) break;
+            }
+            return out;
+        };
+        const users = await page('users',
+            'id, email, username, region, account_type, distributor_id, created_at, last_visited', 'id');
+        // Таблиц может не быть (миграция выполняется вручную): тогда список и журнал
+        // пустые, а вкладка пишет, почему, вместо того чтобы падать целиком.
+        let dealers = [], outreach = [], tablesError = null;
+        try {
+            dealers = await page('stout_dealers', 'id, company_name, regions, city, phone, email, site', 'id');
+            outreach = await page('region_outreach', 'id, region_key, region, dealer_id, dealer_name, channel, created_by, created_at', 'id');
+        } catch (e) { tablesError = e.message || String(e); }
+        return { users, dealers, outreach, tablesError };
+    },
+
+    ensureRegionGapData: function (force) {
+        if (this._regionGapData && !force) return Promise.resolve(this._regionGapData);
+        if (!this._regionGapLoading) {
+            this._regionGapLoading = this.loadRegionGapData()
+                .then(d => { this._regionGapData = d; return d; })
+                .finally(() => { this._regionGapLoading = null; });
+        }
+        return this._regionGapLoading;
+    },
+
+    // Строки по регионам: сколько монтажников, сколько из них без дистрибьютора,
+    // есть ли активный дистрибьютор в регионе и что предложить.
+    regionGapModel: function () {
+        const data = this._regionGapData;
+        const min = this._regionGapMin || this.REGION_GAP_MIN_DEFAULT;
+        const dists = (this.adminData && this.adminData.distributors) || [];
+        const active = dists.filter(d => d.is_active);
+        const covered = new Set();
+        active.forEach(d => this.regionGapList(d.regions).forEach(r => covered.add(this.regionAccessKey(r))));
+        const connected = new Set(active.map(d => this.regionGapNameKey(d.company_name)));
+
+        const byKey = {};
+        data.users.forEach(u => {
+            if (this.REGION_GAP_STAFF.includes(u.account_type || '')) return;
+            const key = this.regionAccessKey(u.region);
+            if (!key) return;
+            const g = byKey[key] || (byKey[key] = { key, name: this.regionGapName(u.region), total: 0, free: 0, users: [], lastReg: null });
+            g.total++;
+            if (!u.distributor_id) { g.free++; g.users.push(u); }
+            if (!g.lastReg || String(u.created_at) > String(g.lastReg)) g.lastReg = u.created_at;
+        });
+
+        const dealers = data.dealers || [];
+        const outreach = data.outreach || [];
+        return Object.values(byKey).map(g => {
+            const isCovered = covered.has(g.key);
+            let status = 'ok';
+            if (!isCovered && g.free >= min) status = 'gap';
+            else if (!isCovered && g.free > 0) status = 'wait';
+            else if (isCovered && g.free > 0) status = 'unlinked';
+            const forRegion = dealers.filter(d => this.regionGapList(d.regions).some(r => this.regionAccessKey(r) === g.key));
+            const log = outreach.filter(o => o.region_key === g.key)
+                .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+            return Object.assign(g, {
+                covered: isCovered,
+                status,
+                offers: forRegion.filter(d => !connected.has(this.regionGapNameKey(d.company_name))),
+                log,
+                lastLog: log[0] || null
+            });
+        });
+    },
+
+    regionGapTexts: function (dealer, r) {
+        const n = r.free;
+        const word = this.regionGapWord(n);
+        const co = dealer.company_name;
+        const subject = `Подключение к калькулятору HeatCalc.ru: регион ${r.name}`;
+        const body = [
+            'Здравствуйте!',
+            '',
+            'Пишем от HeatCalc.ru: онлайн-калькулятор систем отопления, водоснабжения и канализации для монтажников (бренды STOUT и ROMMER).',
+            '',
+            `В регионе ${r.name} зарегистрировано ${n} ${word}, и ни один из них не привязан к дистрибьютору. Ни одна компания из региона пока не подключена к калькулятору.`,
+            '',
+            `Предлагаем ${co} подключиться как дистрибьютору: монтажники региона смогут выбрать вашу компанию как поставщика по своему региону.`,
+            '',
+            'Если тема интересна, подскажите, кто у вас отвечает за подключение, и мы расскажем об условиях. Персональные данные монтажников не передаём, только число регистраций по региону.',
+            '',
+            'С уважением,',
+            '[имя]',
+            'HeatCalc.ru'
+        ].join('\n');
+        const messenger = `Здравствуйте! Пишем от HeatCalc.ru, калькулятора для монтажников. В регионе ${r.name} зарегистрировано ${n} ${word}, и ни один не привязан к дистрибьютору. Не хотите подключить ${co} как дистрибьютора? Можем прислать подробности.`;
+        const call = [
+            '1. Представиться: «Здравствуйте, меня зовут [имя], я из HeatCalc.ru, калькулятора для монтажников систем отопления».',
+            `2. Причина: «В вашем регионе, ${r.name}, зарегистрировано ${n} ${word}, и ни один из них не привязан к дистрибьютору».`,
+            '3. Вопрос: «Интересно ли вам подключиться как дистрибьютор в этом регионе?»',
+            '4. Если да: спросить, кто отвечает за подключение, и куда прислать условия.',
+            '5. Если нет: спросить причину и поблагодарить. Результат записать кнопкой «Звонок».'
+        ].join('\n');
+        return { subject, body, messenger, call };
+    },
+
+    regionGapMailto: function (dealer, r) {
+        const t = this.regionGapTexts(dealer, r);
+        return `mailto:${dealer.email}?subject=${encodeURIComponent(t.subject)}&body=${encodeURIComponent(t.body)}`;
+    },
+
+    renderAdminRegionGaps: async function () {
+        const root = document.getElementById('regiongaps_root');
+        if (!root) return;
+        if (!this._regionGapData) root.innerHTML = '<div style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка…</div>';
+        try {
+            await this.ensureRegionGapData();
+        } catch (e) {
+            const r2 = document.getElementById('regiongaps_root');
+            if (r2) r2.innerHTML = `<div class="ad-card" style="color:var(--c-bad,#EF4444);">Не удалось прочитать монтажников: ${this.rgEsc(e.message || e)}</div>`;
+            return;
+        }
+        // Пока шла загрузка, админ мог уйти на другой раздел
+        if (this._adminTab !== 'regiongaps') return;
+        this.drawRegionGaps();
+    },
+
+    setRegionGapFilter: function (f) { this._rgFilter = f; this._rgOpen = null; this.drawRegionGaps(); },
+    setRegionGapMin: function (v) { this._regionGapMin = Number(v) || this.REGION_GAP_MIN_DEFAULT; this.drawRegionGaps(); },
+    setRegionGapQuery: function (v) { this._rgQ = String(v || ''); this.drawRegionGaps(); },
+    toggleRegionGap: function (i) {
+        const r = (this._rgRowsView || [])[i];
+        if (!r) return;
+        this._rgOpen = this._rgOpen === r.key ? null : r.key;
+        this.drawRegionGaps();
+    },
+
+    drawRegionGaps: function () {
+        const root = document.getElementById('regiongaps_root');
+        const data = this._regionGapData;
+        if (!root || !data) return;
+        const esc = this.rgEsc.bind(this);
+        const isViewer = this.isReadOnlyAdmin();
+        const min = this._regionGapMin || this.REGION_GAP_MIN_DEFAULT;
+        const filter = this._rgFilter || 'gap';
+        const q = String(this._rgQ || '').trim().toLowerCase();
+
+        const all = this.regionGapModel();
+        const gaps = all.filter(r => r.status === 'gap');
+        const dists = (this.adminData && this.adminData.distributors) || [];
+        const active = dists.filter(d => d.is_active);
+        const connected = new Set(active.map(d => this.regionGapNameKey(d.company_name)));
+        const rows = all.filter(r => {
+            if (filter === 'gap' && r.status !== 'gap') return false;
+            if (filter === 'open' && !(r.free > 0)) return false;
+            if (q && r.name.toLowerCase().indexOf(q) < 0) return false;
+            return true;
+        }).sort((a, b) => (b.free - a.free) || (b.total - a.total) || a.name.localeCompare(b.name, 'ru'));
+        this._rgRowsView = rows;
+
+        const tile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+        const tiles = `<div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; margin-bottom:14px;">
+            ${tile('Регионов без дистрибьютора', gaps.length, `от ${min} монтажников`)}
+            ${tile('Монтажников в них', gaps.reduce((s, r) => s + r.free, 0), 'пока ни к кому не привязаны')}
+            ${tile('Без дистрибьютора всего', all.reduce((s, r) => s + r.free, 0), 'по всем регионам')}
+            ${tile('Активных дистрибьюторов', active.length, 'подключены к калькулятору')}
+        </div>`;
+
+        const chip = (id, label, n) => `<button class="ad-chip${filter === id ? ' active' : ''}" onclick="app.setRegionGapFilter('${id}')">${label} <span class="ad-chip-n">${n}</span></button>`;
+        const controls = `<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px;">
+            ${chip('gap', 'Дыры: дистрибьютора нет', gaps.length)}
+            ${chip('open', 'Есть непривязанные', all.filter(r => r.free > 0).length)}
+            ${chip('all', 'Все регионы', all.length)}
+            <select onchange="app.setRegionGapMin(this.value)" style="padding:6px 8px; font-size:12px;">
+                ${[1, 2, 3, 5, 10].map(v => `<option value="${v}" ${min === v ? 'selected' : ''}>порог: от ${v}</option>`).join('')}
+            </select>
+            <input type="search" placeholder="Регион" value="${esc(this._rgQ || '')}" onchange="app.setRegionGapQuery(this.value)" style="padding:6px 10px; font-size:12px; min-width:180px;">
+        </div>`;
+
+        const STATUS = {
+            gap: '<b style="color:#B91C1C;">Дыра: дистрибьютора нет</b>',
+            wait: '<span style="color:#B45309;">Нет дистрибьютора, ниже порога</span>',
+            unlinked: '<span style="color:#B45309;">Дистрибьютор есть, монтажники не привязаны</span>',
+            ok: '<span style="color:var(--text-sec);">Все привязаны</span>'
+        };
+
+        const bodyRows = rows.map((r, i) => {
+            const open = this._rgOpen === r.key;
+            const last = r.lastLog
+                ? `${esc(this.REGION_GAP_CHANNEL[r.lastLog.channel] || r.lastLog.channel)} · ${esc(this.regionGapDate(r.lastLog.created_at))} · ${esc(r.lastLog.dealer_name)}`
+                : '—';
+            const main = `<tr onclick="app.toggleRegionGap(${i})" style="cursor:pointer;${open ? 'background:rgba(0,0,0,0.03);' : ''}">
+                <td><b>${esc(r.name)}</b></td>
+                <td>${r.total}</td>
+                <td><b>${r.free}</b></td>
+                <td>${STATUS[r.status]}</td>
+                <td>${r.offers.length || '<span style="color:var(--text-sec);">нет в списке</span>'}</td>
+                <td style="font-size:12px;">${last}</td>
+            </tr>`;
+            return main + (open ? this.regionGapDetailRow(r, i) : '');
+        }).join('');
+
+        const table = rows.length
+            ? `<div style="overflow-x:auto;"><table class="inv-table ad-sticky" style="margin:0;">
+                <thead><tr><th>Регион</th><th>Монтажников</th><th>Без дистрибьютора</th><th>Статус</th><th>Кому предложить</th><th>Последний контакт</th></tr></thead>
+                <tbody>${bodyRows}</tbody></table></div>`
+            : `<div style="padding:24px; text-align:center; color:var(--text-sec);">Регионов с таким условием нет. Порог: от ${min} монтажников.</div>`;
+
+        const dealers = data.dealers || [];
+        const dealerRows = dealers.slice().sort((a, b) => String(a.company_name).localeCompare(String(b.company_name), 'ru')).map(d => {
+            const isConn = connected.has(this.regionGapNameKey(d.company_name));
+            return `<tr>
+                <td><b>${esc(d.company_name)}</b>${isConn ? ' <span class="ad-chip-n">уже подключён</span>' : ''}</td>
+                <td>${esc(this.regionGapList(d.regions).join(', '))}</td>
+                <td style="font-size:12px;">${esc([d.city, d.phone, d.email, d.site].filter(Boolean).join(' · '))}</td>
+                <td><button class="admin-btn danger" ${isViewer ? 'disabled' : ''} onclick="app.regionGapDelete(${d.id})">Удалить</button></td>
+            </tr>`;
+        }).join('');
+        const tablesNote = data.tablesError
+            ? `<div class="ad-card-note" style="color:#B45309; margin-bottom:10px;">Список «Где купить» и журнал пока не работают: выполните миграцию supabase/migrations/20261029_region_gaps_dealers.sql. Ошибка: ${esc(data.tablesError)}</div>`
+            : '';
+        const importBox = `<div class="ad-card" style="margin-top:18px;">
+            <div class="ad-card-h"><span class="ad-card-title">Список «Где купить» (stout)</span><span class="ad-count">${dealers.length}</span></div>
+            <div class="ad-card-b">
+                ${tablesNote}
+                <p style="font-size:12px; color:var(--text-sec); margin:0 0 8px;">Вставьте строки со страницы «Где купить»: компания; регионы через запятую; город; телефон; email; сайт. Разделитель — точка с запятой, табуляция или «|». Одна компания — одна строка.</p>
+                <textarea id="rg_import_text" rows="5" ${isViewer ? 'disabled' : ''} oninput="app._rgImportText=this.value" style="width:100%; box-sizing:border-box; font-size:12px;">${esc(this._rgImportText || '')}</textarea>
+                <div style="margin:8px 0 12px;"><button class="admin-btn" ${isViewer ? 'disabled' : ''} onclick="app.regionGapImport()">Добавить в список</button></div>
+                ${dealers.length ? `<div style="overflow-x:auto;"><table class="inv-table" style="margin:0;"><thead><tr><th>Компания</th><th>Регионы</th><th>Контакты</th><th></th></tr></thead><tbody>${dealerRows}</tbody></table></div>` : '<div style="font-size:12px; color:var(--text-sec);">Список пуст.</div>'}
+            </div>
+        </div>`;
+
+        root.innerHTML = `${tiles}${controls}${table}${importBox}`;
+    },
+
+    regionGapDetailRow: function (r, idx) {
+        const esc = this.rgEsc.bind(this);
+        const isViewer = this.isReadOnlyAdmin();
+        const users = r.users.slice().sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+        const usersHtml = users.slice(0, 30).map(u => `<div style="font-size:12px; padding:3px 0; border-bottom:1px solid var(--border);">${esc(u.username || u.email || '—')} · регистрация ${esc(this.regionGapDate(u.created_at))}${u.last_visited ? ' · был ' + esc(this.regionGapDate(u.last_visited)) : ''}</div>`).join('')
+            + (users.length > 30 ? `<div style="font-size:11px; color:var(--text-sec); padding-top:4px;">и ещё ${users.length - 30}</div>` : '');
+        const logHtml = r.log.slice(0, 5).map(o => `<div style="font-size:12px; padding:3px 0;">${esc(this.REGION_GAP_CHANNEL[o.channel] || o.channel)} · ${esc(this.regionGapDate(o.created_at))} · ${esc(o.dealer_name)}</div>`).join('');
+        const pre = 'white-space:pre-wrap; font-size:12px; background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:8px; margin:6px 0;';
+        const offersHtml = r.offers.length
+            ? r.offers.map(d => {
+                const t = this.regionGapTexts(d, r);
+                const contacts = [d.city, d.phone, d.email, d.site].filter(Boolean).map(esc).join(' · ') || 'контакты не указаны';
+                return `<div style="border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px;">
+                    <div style="font-weight:700; font-size:13px;">${esc(d.company_name)}</div>
+                    <div style="font-size:12px; color:var(--text-sec); margin:2px 0 8px;">${contacts}</div>
+                    <div style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+                        ${d.email ? `<a class="admin-btn" href="${esc(this.regionGapMailto(d, r))}" style="text-decoration:none;">Открыть письмо</a>` : ''}
+                        ${Object.keys(this.REGION_GAP_CHANNEL).filter(c => c !== 'other').map(c => `<button class="admin-btn" ${isViewer ? 'disabled' : ''} onclick="app.regionGapLog(${idx}, ${d.id}, '${c}')">Записать: ${this.REGION_GAP_CHANNEL[c]}</button>`).join('')}
+                    </div>
+                    <details style="margin-top:8px;"><summary style="font-size:12px; cursor:pointer;">Текст письма</summary><pre style="${pre}">${esc(t.subject + '\n\n' + t.body)}</pre><button class="admin-btn" onclick="app.regionGapCopyPre(this)">Копировать</button></details>
+                    <details style="margin-top:6px;"><summary style="font-size:12px; cursor:pointer;">Текст для мессенджера</summary><pre style="${pre}">${esc(t.messenger)}</pre><button class="admin-btn" onclick="app.regionGapCopyPre(this)">Копировать</button></details>
+                    <details style="margin-top:6px;"><summary style="font-size:12px; cursor:pointer;">Скрипт звонка</summary><pre style="${pre}">${esc(t.call)}</pre><button class="admin-btn" onclick="app.regionGapCopyPre(this)">Копировать</button></details>
+                </div>`;
+            }).join('')
+            : '<div style="font-size:12px; color:var(--text-sec);">В списке «Где купить» нет компаний для этого региона. Добавьте их внизу страницы.</div>';
+
+        return `<tr><td colspan="6" style="padding:14px; background:rgba(0,0,0,0.02);">
+            <div style="display:flex; flex-wrap:wrap; gap:18px;">
+                <div style="flex:1 1 260px; min-width:0;">
+                    <div style="font-weight:700; font-size:12px; margin-bottom:6px;">Монтажники без дистрибьютора (${r.free})</div>
+                    ${usersHtml || '<div style="font-size:12px; color:var(--text-sec);">—</div>'}
+                    ${r.log.length ? `<div style="font-weight:700; font-size:12px; margin:12px 0 6px;">Журнал обращений</div>${logHtml}` : ''}
+                </div>
+                <div style="flex:2 1 360px; min-width:0;">
+                    <div style="font-weight:700; font-size:12px; margin-bottom:6px;">Кому предложить подключиться</div>
+                    ${offersHtml}
+                </div>
+            </div>
+        </td></tr>`;
+    },
+
+    regionGapCopyPre: function (btn) {
+        const pre = btn.closest('details').querySelector('pre');
+        const text = pre ? pre.textContent : '';
+        Promise.resolve(this.copyToClipboard(text))
+            .then(() => notify('Скопировано', '#10B981'))
+            .catch(() => notify('Не удалось скопировать: выделите текст вручную', '#EF4444'));
+    },
+
+    // Записывает обращение в журнал. rowIdx — строка из последней отрисовки (_rgRowsView).
+    regionGapLog: async function (rowIdx, dealerId, channel) {
+        if (this.isReadOnlyAdmin()) return;
+        const r = (this._rgRowsView || [])[rowIdx];
+        const dealer = ((this._regionGapData && this._regionGapData.dealers) || []).find(d => d.id === dealerId);
+        if (!r || !dealer) return;
+        const row = { region_key: r.key, region: r.name, dealer_id: dealer.id, dealer_name: dealer.company_name, channel };
+        const { error } = await supabaseClient.from('region_outreach').insert(row);
+        if (error) { notify('Не записалось: ' + error.message, '#EF4444'); return; }
+        this._regionGapData.outreach.push(Object.assign({ created_at: new Date().toISOString() }, row));
+        notify('Обращение записано', '#10B981');
+        this.drawRegionGaps();
+    },
+
+    regionGapParseDealers: function (text) {
+        const rows = [];
+        let skipped = 0;
+        String(text || '').split(/\r?\n/).forEach(line => {
+            const raw = line.trim();
+            if (!raw) return;
+            const sep = raw.indexOf('\t') >= 0 ? '\t' : (raw.indexOf(';') >= 0 ? ';' : '|');
+            const [company, regionsText, city, phone, email, site] = raw.split(sep).map(s => s.trim());
+            const regions = this.regionGapList(regionsText);
+            if (!company || !regions.length) { skipped++; return; }
+            rows.push({ company_name: company, regions, city: city || null, phone: phone || null, email: email || null, site: site || null });
+        });
+        return { rows, skipped };
+    },
+
+    regionGapImport: async function () {
+        if (this.isReadOnlyAdmin()) return;
+        const { rows, skipped } = this.regionGapParseDealers(this._rgImportText);
+        if (!rows.length) {
+            notify('Не нашёл строк. Формат: компания ; регионы через запятую ; город ; телефон ; email ; сайт', '#EF4444');
+            return;
+        }
+        const keyOf = d => this.regionGapNameKey(d.company_name) + '|' + this.regionGapList(d.regions).map(r => this.regionAccessKey(r)).sort().join(',');
+        const have = new Set(((this._regionGapData && this._regionGapData.dealers) || []).map(keyOf));
+        const fresh = rows.filter(d => { const k = keyOf(d); if (have.has(k)) return false; have.add(k); return true; });
+        const dup = rows.length - fresh.length;
+        if (!fresh.length) { notify(`Все ${rows.length} строк уже в списке`, '#D97706'); return; }
+        const { data, error } = await supabaseClient.from('stout_dealers')
+            .insert(fresh).select('id, company_name, regions, city, phone, email, site');
+        if (error) { notify('Не добавилось: ' + error.message, '#EF4444'); return; }
+        this._regionGapData.dealers = this._regionGapData.dealers.concat(data || []);
+        this._rgImportText = '';
+        notify(`Добавлено:${fresh.length}${dup ? `, пропущено дублей: ${dup}` : ''}${skipped ? `, не разобрано строк: ${skipped}` : ''}`, '#10B981');
+        this.drawRegionGaps();
+    },
+
+    regionGapDelete: async function (dealerId) {
+        if (this.isReadOnlyAdmin()) return;
+        if (!confirm('Убрать компанию из списка «Где купить»? Журнал обращений останется.')) return;
+        const { error } = await supabaseClient.from('stout_dealers').delete().eq('id', dealerId);
+        if (error) { notify('Не удалилось: ' + error.message, '#EF4444'); return; }
+        this._regionGapData.dealers = this._regionGapData.dealers.filter(d => d.id !== dealerId);
+        this.drawRegionGaps();
     },
 
     loadMailBudget: async function () {
