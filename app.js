@@ -38515,7 +38515,7 @@ const app = {
             </div>
             ${st.extra_dates.length ? `<div style="font-size:12.5px; margin-top:8px;">Назначены: ${st.extra_dates.map(d => `<span class="ad-chip" style="cursor:default;">${esc(d)} <a href="#" onclick="app.succScheduleDropDate('${esc(d)}'); return false;" title="Убрать">✕</a></span>`).join(' ')}</div>` : ''}
             <div style="font-size:12.5px; color:var(--text-sec); margin-top:8px; line-height:1.55;">Ближайшие проверки: ${next}.${seen ? ` Парсер в последний раз видел замену ${esc(new Date(seen).toLocaleDateString('ru-RU'))}.` : ''}
-                Проверка — это прогон парсера цен на GitHub (он же читает «Похожие» у позиций «под заказ»), занимает несколько часов. Сразу запустить можно вручную: GitHub → Actions → Weekly Price Parser → Run workflow.</div>
+                Проверка — это прогон парсера цен на GitHub (он же читает «Похожие» у позиций «под заказ»), занимает несколько часов. Сразу запустить можно вручную: GitHub → Actions → Price Parser (STOUT, ROMMER) → Run workflow.</div>
         </div>`;
     },
     succScheduleSave: async function (patch) {
@@ -38683,12 +38683,14 @@ const app = {
     // смету, которую нельзя собрать (так было с краном SVB-0009-000020 — его сняли
     // с поставок). Часть позиций подбор берёт жёстко, по артикулу, и в каталоге это
     // не видно. Такие ссылки собирает стенд bench/order_defaults.js в
-    // order_defaults.json; раз в месяц админка спрашивает по каждой, что делать:
+    // order_defaults.json; админка спрашивает по каждой, что делать:
     //   • «Заменить» — другая позиция из ассортимента ТЕРЕМ (поиск) или введённая
     //     руками с источником цены и фото. Внутренний id остаётся прежним (как у
     //     вкладки «Замены»): на нём держатся подбор и старые сметы;
     //   • «Снято, замены нет» — позиция выпадает из подбора (item.discontinued);
     //   • «Оставить под заказ» — решение на текущий месяц, со следующего спросим снова.
+    // Список пересобирает apply-successors.yml каждый день; файл меняется, только
+    // когда меняется сам список (поле built — дата последнего изменения).
     // Решения лежат в app_settings.default_swaps = { items: { <id>: {...} } } —
     // читать может любой, писать только админ (политика app_settings_admin_write).
     ORDER_SWAPS_KEY: 'default_swaps',
@@ -38752,7 +38754,10 @@ const app = {
         if (this._orderDefaults) return Promise.resolve(this._orderDefaults);
         return fetch('order_defaults.json?t=' + Date.now())
             .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
-            .then(d => (this._orderDefaults = (d && d.items) || []))
+            .then(d => {
+                this._orderBuilt = (d && d.built) || null;
+                return (this._orderDefaults = (d && d.items) || []);
+            })
             .catch(() => (this._orderDefaults = []));
     },
     orderPendingCount: function () {
@@ -38800,9 +38805,9 @@ const app = {
             <div class="ad-page-h"><div><h3>Под заказ в подборе по умолчанию</h3>
             <div class="ad-sub" style="max-width:900px; line-height:1.55;">Позиции, которые калькулятор ставит в смету сам, а в каталоге они «под заказ» или с ценой старше месяца.
             По умолчанию такая позиция стоять не должна. Решите по каждой на ${esc(month)}: заменить на позицию из ассортимента ТЕРЕМ (или ввести руками с источником цены и фото), убрать из подбора или оставить. Решение «оставить» действует до конца месяца, потом спросим снова.
-            Список собирает <code>node bench/order_defaults.js --json</code> (после обновления цен).</div></div>
+            Список пересобирается каждый день (apply-successors.yml).${this._orderBuilt ? ` Без изменений с ${esc(this._orderBuilt.split('-').reverse().join('.'))}.` : ''}</div></div>
             <button class="admin-btn" onclick="app._orderDefaults = null; app.renderAdminMain()">Обновить</button></div>`;
-        if (!list.length) h += `<div style="padding:20px; text-align:center; color:var(--text-sec); background:var(--surface-light); border-radius:10px;">Список пуст: файл order_defaults.json не найден или в подборе нет позиций «под заказ».</div>`;
+        if (!list.length) h += `<div style="padding:20px; text-align:center; color:var(--text-sec); background:var(--surface-light); border-radius:10px;">В подборе по умолчанию нет позиций «под заказ».</div>`;
         list.forEach((o, i) => {
             const st = this.orderState(o.id), s = this.orderSwaps()[o.id] || {};
             const m = s.manual || {};
