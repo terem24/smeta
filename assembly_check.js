@@ -137,6 +137,16 @@
     src: 'ZOTA Balance V2, паспорт от 05.02.2025, табл. 1',
     ports: [P('U', '1', 2, { role: 'подача и обратка' })]
   };
+  var PROTHERM_RAY = {
+    // Ray Protherm KE /14, руководство по монтажу 0020266028_01, прил.: патрубки подающей и обратной линий G 3/4.
+    src: 'Protherm Ray KE /14, руководство по монтажу 0020266028_01, прил.',
+    ports: [P('U', '3/4', 2, { role: 'подача и обратка' })]
+  };
+  var VAILLANT_ELO = {
+    // eloBLOCK VE, руководство 0020094388_03, п. 4.4 и табл. 13.1: присоединительный патрубок подающей и обратной линий G 3/4".
+    src: 'Vaillant eloBLOCK VE, руководство 0020094388_03, п. 4.4, табл. 13.1',
+    ports: [P('U', '3/4', 2, { role: 'подача и обратка' })]
+  };
   var ZOTA_BPV = {
     // Паспорт ZOTA BPV от 29.09.2020, табл. 1: вход в трёхходовой клапан G3/4 внутр., выход в систему
     // отопления G3/4 наруж., выход в змеевик бойлера G3/4 наруж.
@@ -183,6 +193,7 @@
   var DEVICES = {
     'SEB-3101-000005': STOUT_STATUS, 'SEB-3101-000007': STOUT_STATUS, 'SEB-3101-000009': STOUT_STATUS, 'SEB-3101-000012': STOUT_STATUS, 'SEB-3101-000014': STOUT_STATUS, 'SEB-3101-000018': STOUT_STATUS, 'SEB-3101-000021': STOUT_STATUS, 'SEB-3101-000024': STOUT_STATUS, 'SEB-3101-000027': STOUT_STATUS,
     'PV4932000001': ZOTA_BPV,
+    '0010023646': PROTHERM_RAY, '0010023647': PROTHERM_RAY, '0010023648': PROTHERM_RAY, '0010023649': PROTHERM_RAY, '0010023650': PROTHERM_RAY, '0010023651': PROTHERM_RAY, '0010023652': PROTHERM_RAY, '0010023653': PROTHERM_RAY, '0010023654': VAILLANT_ELO, '0010023655': VAILLANT_ELO, '0010023656': VAILLANT_ELO, '0010023657': VAILLANT_ELO, '0010023658': VAILLANT_ELO, '0010023659': VAILLANT_ELO, '0010023660': VAILLANT_ELO, '0010023661': VAILLANT_ELO,
     'ZB3468421003': ZOTA_BALANCE, 'ZB3468421004': ZOTA_BALANCE, 'ZB3468421006': ZOTA_BALANCE, 'ZB3468421007': ZOTA_BALANCE,
     'ZM3468426004': ZOTA_MKX, 'ZM3468426006': ZOTA_MKX, 'ZM3468426007': ZOTA_MKX, 'ZM3468426009': ZOTA_MKX, 'ZM3468426012': ZOTA_MKX, 'ZM3468426015': ZOTA_MKX, 'ZM3468426018': ZOTA_MKX, 'ZM3468426021': ZOTA_MKX, 'ZM3468426024': ZOTA_MKX,
     'PNGB3500024L006': NAVIEN_ONE, 'PNGB3500030L010': NAVIEN_ONE,

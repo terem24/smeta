@@ -53507,11 +53507,6 @@ const app = {
                     : (onePhase
                         ? `<br><b>Одна фаза — втрое больший ток.</b> ${amp1.toFixed(0)} А против ${amp3.toFixed(1)} А на трёх фазах: сечение и номинал автомата считаются именно по нему.`
                         : '')) +
-                // Котёл другого бренда без прочитанной таблицы сечений: расчёт идёт по таблице STOUT,
-                // и пока паспорт не сверен, это оценка, а не паспортное значение.
-                ((b.unv || []).includes('cable')
-                    ? `<br>⚠️ <b>Сечение — по таблице STOUT, не по паспорту этого котла.</b> Сверьте с паспортом ${b.brand || ''}: у разных заводов таблицы разные.`
-                    : '') +
                 `<br><b>Автомат:</b> ставится обязательно, номинал подбирает проектная организация по максимальному току котла.`,
                 groups.auto);
         });
@@ -64134,7 +64129,7 @@ const app = {
     },
     setElSwapFilter: function (key, val) {
         const f = this.elSwapFilter();
-        f[key] = (typeof f[key] === 'boolean') ? !f[key] : val;
+        f[key] = (typeof f[key] === 'boolean') ? !f[key] : ((key === 'wifi' && f[key] === val) ? 'all' : val);
         this.state.elSwapFilter = f;
         if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
     },
@@ -66667,31 +66662,25 @@ const app = {
         } else if (_isElBoiler) {
             let _sp = this.state.swapBoilerPower || item.power || 12;
             const _b = (active) => `class="swap-chip${active ? ' on' : ''}"`;
-            // 6 и 15 кВт — типоразмеры линейки POLIS; без них при выбранном POLIS
-            // ни одна кнопка мощности не была бы подсвечена.
-            let _powers = [3, 4.5, 5, 6, 7, 7.5, 9, 12, 14, 15, 18, 21, 24, 27, 28, 30, 36, 45];
-            let _powerHtml = _powers.map(p => `<span onclick="app.setBoilerSwapPower(${p})" ${_b(_sp===p)}>${String(p).replace('.', ',')} кВт</span>`).join('');
-            // Фильтры по свойствам: класс, бренд, напряжение, насос/бак/Wi-Fi/шина, нагрев, наличие.
-            // Wi-Fi и шина берутся у STOUT по правилу elWifiOf/elBusOf, остальное — из каталога.
+            // Окно не перегружаем, как у газовых котлов: класс, мощность, бренд. Мощности — только те, что есть у котлов
+            // выбранного класса и бренда. Сеть, насос, бак, шина, нагрев, Wi-Fi и наличие внутри класса почти не различаются
+            // и видны в строке котла, отдельными фильтрами они только мешали выбору.
             const _ef = this.elSwapFilter();
-            const _brands = ['STOUT'].concat([...new Set((catalog.boilers_el_analogs || []).map(x => x.brand))]);
+            const _tierOf = x => x.tier || (String(x.id).includes('5101') ? 'polis' : 'status');
+            const _allEl = [].concat(catalog.boilers_status, catalog.boilers_polis, catalog.boilers_el_analogs || []);
+            const _inClass = _allEl.filter(x => _ef.tier === 'all' || _tierOf(x) === _ef.tier);
+            const _powers = [...new Set(_inClass.filter(x => _ef.brand === 'all' || (x.brand || 'STOUT') === _ef.brand).map(x => x.power))].sort((x, y) => x - y);
+            const _powerHtml = _powers.map(p => `<span onclick="app.setBoilerSwapPower(${p})" ${_b(_sp===p)}>${String(p).replace('.', ',')} кВт</span>`).join('');
+            const _brands = ['STOUT'].concat([...new Set(_inClass.map(x => x.brand).filter(Boolean))]);
             const _row = (lbl, chips) => `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;">` +
                 `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">${lbl}</span>${chips}</div>`;
             const _chip = (key, val, label) => `<span onclick="app.setElSwapFilter('${key}','${val}')" ${_b(_ef[key] === val)}>${label}</span>`;
             const _tgl = (key, label) => `<span onclick="app.setElSwapFilter('${key}')" ${_b(!!_ef[key])}>${label}</span>`;
             _tankFiltersHtml =
                 `<div style="display:flex;flex-direction:column;gap:6px;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
+                _row('Класс:', _chip('tier', 'status', 'STATUS · всё внутри') + _chip('tier', 'polis', 'POLIS · эконом')) +
                 _row('Мощность:', _powerHtml) +
-                _row('Класс:', _chip('tier', 'all', 'Все') + _chip('tier', 'status', 'STATUS · всё внутри') + _chip('tier', 'polis', 'POLIS · эконом')) +
                 _row('Бренд:', _chip('brand', 'all', 'Все') + _brands.map(br => _chip('brand', br, br)).join('')) +
-                _row('Сеть:', _chip('volt', 'all', 'Любая') + _chip('volt', '220', '220 В') + _chip('volt', '380', '380 В')) +
-                _row('В комплекте:', _tgl('pump', 'Насос') + _tgl('tank', 'Расширительный бак')) +
-                _row('Wi-Fi:', _chip('wifi', 'all', 'Не важно') + _chip('wifi', 'built', 'Встроенный') + _chip('wifi', 'any', 'Встроенный или модуль')) +
-                _row('Шина:', _chip('bus', 'all', 'Не важно') + _chip('bus', 'ot', 'OpenTherm')) +
-                _row('Нагрев:', _chip('heater', 'all', 'Любой') + _chip('heater', 'ten_ss', 'ТЭН нерж.') + _chip('heater', 'ten', 'ТЭН') + _chip('heater', 'ten_block', 'Блочный ТЭН')) +
-                _row('Наличие:', _tgl('stock', 'Только в наличии')) +
-                `<div style="font-size:11px;color:var(--text-sec);padding:2px 2px 0;">Трёхходовой клапан и датчик бойлера в котёл не встроены ни у одной модели — их добавляет смета вместе с бойлером. ` +
-                `<span onclick="app.resetElSwapFilter()" style="cursor:pointer;color:var(--primary);font-weight:700;">Сбросить фильтры</span></div>` +
                 `</div>`;
         } else if (_origId0 === 'RFW-0080-256620') {
             const _sz = this.state.filterMagSize || 'all';
@@ -89597,11 +89586,18 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // Электрокотёл другого бренда: свой клапан приоритета бойлера (dhwKit — артикул в
             // dhw_valves_el), датчик бойлера лежит в коробке котла. Общий Fugas ему не годится:
             // у каждого котла свой привод и своё сопротивление датчика.
-            const _elKit = boiler && boiler.dhwKit && (catalog.dhw_valves_el || []).find(x => x.id === boiler.dhwKit);
-            if (_elKit) {
-                addToBill({ ..._elKit, originalId: _elKit.id }, 1,
-                    'Клапан приоритета бойлера: вход G3/4 ВР — от котла, выходы G3/4 НР — в отопление и в змеевик бойлера, ' +
-                    'привод 220 В, Kvs ' + _elKit.kvs + ' м³/ч (паспорт ZOTA BPV от 29.09.2020). Датчик бойлера входит в комплект котла.', grp);
+            const _elKits = boiler && boiler.dhwKit
+                ? [].concat(boiler.dhwKit).map(id => (catalog.dhw_valves_el || []).find(x => x.id === id)).filter(Boolean) : [];
+            if (_elKits.length) {
+                _elKits.forEach(k => {
+                    const isBpv = k.id === 'PV4932000001';
+                    const isSensor = /датчик/i.test(k.name);
+                    addToBill({ ...k, originalId: k.id }, 1,
+                        isBpv ? 'Клапан приоритета бойлера: вход G3/4 ВР — от котла, выходы G3/4 НР — в отопление и в змеевик бойлера, ' +
+                            'привод 220 В, Kvs ' + k.kvs + ' м³/ч (паспорт ZOTA BPV от 29.09.2020). Датчик бойлера входит в комплект котла.'
+                        : (isSensor ? 'Датчик температуры бойлера NTC: подключается к плате котла (клемма «Tank Sensor»); у каждой модели котла свой датчик, это штатный для Ray и eloBLOCK.'
+                            : 'Комплект трёхходового клапана с приводом и кабелем для подключения бойлера к котлу Ray или eloBLOCK. Замена оригинального 0010027587.'), grp);
+                });
                 return;
             }
             if (boiler && boiler.dhwValve) {
