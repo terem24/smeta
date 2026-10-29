@@ -87502,10 +87502,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
 
         // «Бюджетнее»: честная разница — та же смета без режима считается
         // отдельным тихим прогоном (см. computeCheapBaseline), а не по позициям.
-        if (!computeOnly && !this._cheapComparing) {
-            if (this.cheapModeOn()) this.computeCheapBaseline();
-            else this._cheapBase = null;
-        }
+        if (!computeOnly && !this._cheapComparing) this.computeCheapBaseline();
 
         // Замена электрического водонагревателя на бойлер: сравнение считается тихим прогоном
         if (!computeOnly && !this._cheapComparing && !this._dhwSimming) this.computeDhwSwitch();
@@ -98786,7 +98783,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // Процент — против той же сметы без «Бюджетнее» (computeCheapBaseline),
         // а не по позициям: так в него входит и другая обвязка котельной.
         // Пока базовая смета не посчитана (или режим выключен) — по позициям.
-        const _cb = this.cheapModeOn() ? this._cheapBase : null;
+        const _cb = this._cheapBase;
         // Количество, правленное руками у позиции, которой в базовой смете нет под
         // тем же артикулом (радиаторы: в двух режимах разный исходный подбор),
         // базовый прогон не видит — деньги этой правки (итог с ней минус итог без
@@ -98802,7 +98799,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 let diff = _bBase - this.calcFinalTotal;
                 let percent = Math.round((diff / _bBase) * 100);
                 if (percent > 0) {
-                    dBadge.textContent = (_cb ? 'Дешевле на ' : 'Экономия ') + percent + '%';
+                    dBadge.textContent = 'Экономия ' + percent + '%';
                     dBadge.style.display = 'block';
                 } else {
                     dBadge.style.display = 'none';
@@ -98873,7 +98870,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         const log = (this._savingsLog || []).slice();
         // Итог — разница двух полных смет (computeCheapBaseline); по позициям
         // только пока базовая ещё не посчитана
-        const _cb = this.cheapModeOn() ? this._cheapBase : null;
+        const _cb = this._cheapBase;
         const base = _cb ? _cb.eq : (this.calcBaseTotal || 0), fin = this.calcFinalTotal || 0;
         const diff = base - fin;
         const pct = base > 0 ? Math.round(diff / base * 100) : 0;
@@ -98917,8 +98914,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
 
         const empty = !rows && !sysNote;
         return `
-            <div class="sp-head">${diff >= 0 ? 'Дешевле на' : 'Дороже на'} ${fmt(diff)}${pct ? ` · ${Math.abs(pct)} %` : ''}</div>
-            <div class="sp-sub">${_cb ? `Та же смета без «Бюджетнее»: ${fmt(base)} → ${fmt(fin)}` : 'Против исходного подбора по тем же позициям'}</div>
+            <div class="sp-head">${diff >= 0 ? 'Экономия' : 'Дороже на'} ${fmt(diff)}${pct ? ` · ${Math.abs(pct)} %` : ''}</div>
+            <div class="sp-sub">${_cb ? `Та же смета в исходном подборе STOUT: ${fmt(base)} → ${fmt(fin)}` : 'Против исходного подбора по тем же позициям'}</div>
             ${rows}
             ${top ? `<div class="sp-title">Самые заметные замены</div>${top}` : ''}
             ${sysNote}
