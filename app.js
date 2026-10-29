@@ -66828,7 +66828,10 @@ const app = {
             // и видны в строке котла, отдельными фильтрами они только мешали выбору.
             const _ef = this.elSwapFilter();
             const _tierOf = x => x.tier || (String(x.id).includes('5101') ? 'polis' : 'status');
-            const _allEl = [].concat(catalog.boilers_status, catalog.boilers_polis, (catalog.boilers_el_analogs || []).filter(x => this.canUseBrand(x.brand)));
+            const _allEl = [].concat(catalog.boilers_status, catalog.boilers_polis, (catalog.boilers_el_analogs || []).filter(x => this.canUseBrand(x.brand) && (x.noPump || !this.dhwTankOn() || x.dhwKit)));
+            // Скрытые из-за бойлера: у них нет подключения клапана ГВС, а в смете бойлер есть — объясняем, чтобы не искали зря.
+            const _hiddenDhw = [...new Set((catalog.boilers_el_analogs || []).filter(x => this.canUseBrand(x.brand) && !(x.noPump || !this.dhwTankOn() || x.dhwKit))
+                .map(x => x.brand + ' ' + String(x.series).replace(/ Wi-Fi$/, '')))];
             const _inClass = _allEl.filter(x => _ef.tier === 'all' || _tierOf(x) === _ef.tier);
             const _powers = [...new Set(_inClass.filter(x => _ef.brand === 'all' || (x.brand || 'STOUT') === _ef.brand).map(x => x.power))].sort((x, y) => x - y);
             const _powerHtml = _powers.map(p => `<span onclick="app.setBoilerSwapPower(${p})" ${_b(_sp===p)}>${String(p).replace('.', ',')} кВт</span>`).join('');
@@ -66842,6 +66845,7 @@ const app = {
                 _row('Класс:', _chip('tier', 'status', 'STATUS · всё внутри') + _chip('tier', 'polis', 'POLIS · эконом') + _chip('tier', 'all', 'Все')) +
                 _row('Мощность:', _powerHtml + `<span onclick="app.setBoilerSwapPower('all')" ${_b(_sp === 'all')}>Все</span>`) +
                 _row('Бренд:', _brands.map(br => _chip('brand', br, br)).join('') + _chip('brand', 'all', 'Все')) +
+                (_hiddenDhw.length ? `<div style="font-size:12px;color:var(--text-sec);padding:2px 2px 0;">Не показаны, пока в смете есть бойлер: ${_hiddenDhw.join(', ')} — котёл не греет бойлер косвенного нагрева.</div>` : '') +
                 `</div>`;
         } else if (_origId0 === 'RFW-0080-256620') {
             const _sz = this.state.filterMagSize || 'all';
