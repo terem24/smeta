@@ -58,7 +58,9 @@ const mkEl = () => new Proxy({
     style: { setProperty: noop, removeProperty: noop, getPropertyValue: () => '' },
     dataset: {}, value: '', innerHTML: '', textContent: '', checked: false, classList: mkClassList(),
     // syncUI ходит по вкладкам через .children[i] — список должен быть непустым.
-    get children() { return Array.from({ length: 8 }, () => mkEl()); }
+    get children() { return Array.from({ length: 8 }, () => mkEl()); },
+    // syncUI красит рамку аватара у родителя картинки: без родителя init() падает
+    get parentElement() { return mkEl(); }
 }, {
     get: (t, k) => {
         if (k in t) return t[k];
