@@ -38784,6 +38784,39 @@ const app = {
         }
     },
 
+    // Сколько сохранённых смет содержат позицию (функция order_default_usage, только админу).
+    // Без неё список остаётся, просто сортируется по цене.
+    loadOrderUsage: function () {
+        if (this._orderUsage !== undefined) return Promise.resolve(this._orderUsage);
+        const ids = (this._orderDefaults || []).map(o => o.id);
+        if (!ids.length) return Promise.resolve((this._orderUsage = {}));
+        return Promise.resolve(supabaseClient.rpc('order_default_usage', { p_ids: ids }))
+            .then(({ data, error }) => {
+                if (error) throw error;
+                const map = {};
+                (data || []).forEach(r => { map[r.item_id] = Number(r.estimates) || 0; });
+                this._orderUsageError = null;
+                return (this._orderUsage = map);
+            })
+            .catch(e => {
+                console.warn('[loadOrderUsage]', e.message || e);
+                this._orderUsageError = e.message || String(e);
+                return (this._orderUsage = {});
+            });
+    },
+
+    // Порядок: сколько стоит позиция в смете × насколько часто она встречается.
+    // Дорогой котёл без смет (237 980 ₽ × 1) оказывается выше дешёвой муфты,
+    // которую берут часто (803 ₽ × 6), но часто встречающийся дешёвый кран
+    // (1 443 ₽ × 54) выше редкого дорогого и то и другое учитывает.
+    sortOrderDefaults: function () {
+        const usage = this._orderUsage || {};
+        const list = this._orderDefaults || [];
+        list.forEach(o => { o.uses = usage[o.id] == null ? null : usage[o.id]; });
+        const score = o => (Number(o.price) || 0) * Math.max(1, o.uses || 0);
+        list.sort((a, b) => score(b) - score(a) || String(a.id).localeCompare(String(b.id)));
+    },
+
     renderOrderDefaults: function (host) {
         if (!host) return;
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -38793,7 +38826,21 @@ const app = {
             this.loadOrderDefaults().then(() => { if (document.body.contains(host)) this.renderOrderDefaults(host); });
             return;
         }
+        if (this._orderUsage === undefined) {
+            host.innerHTML = '<div style="padding:12px 0; color:var(--text-sec);">Считаем, в скольких сметах встречается каждая позиция…</div>';
+            this.loadOrderUsage().then(() => { if (document.body.contains(host)) this.renderOrderDefaults(host); });
+            return;
+        }
+        this.sortOrderDefaults();
         const list = this._orderDefaults;
+        const filter = this._orderFilter || 'all';
+        const keep = o => filter === 'all' ? true
+            : filter === 'often' ? (o.uses || 0) >= 3
+            : (Number(o.price) || 0) >= 10000;
+        const shown = list.filter(keep).length;
+        const usageNote = this._orderUsageError
+            ? `<div style="font-size:12px; color:#D97706; margin-top:6px;">Частоту посчитать не вышло, сортировка только по цене. Нужна миграция order_default_usage и права админа.</div>` : '';
+        const chip = (id, label) => `<button class="ad-chip${filter === id ? ' active' : ''}" onclick="app._orderFilter='${id}'; app.renderAdminMain()">${label}</button>`;
         const month = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
         const badge = {
             ask: '<span style="color:#D97706; font-weight:700;">ждёт решения</span>',
@@ -38806,12 +38853,22 @@ const app = {
             <div class="ad-sub" style="max-width:900px; line-height:1.55;">Позиции, которые калькулятор ставит в смету сам, а в каталоге они «под заказ» или с ценой старше месяца.
             По умолчанию такая позиция стоять не должна. Решите по каждой на ${esc(month)}: заменить на позицию из ассортимента ТЕРЕМ (или ввести руками с источником цены и фото), убрать из подбора или оставить. Решение «оставить» действует до конца месяца, потом спросим снова.
             Список пересобирается каждый день (apply-successors.yml).${this._orderBuilt ? ` Без изменений с ${esc(this._orderBuilt.split('-').reverse().join('.'))}.` : ''}</div></div>
-            <button class="admin-btn" onclick="app._orderDefaults = null; app.renderAdminMain()">Обновить</button></div>`;
+            <button class="admin-btn" onclick="app._orderDefaults = null; app._orderUsage = undefined; app.renderAdminMain()">Обновить</button></div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:14px 0 6px;">
+                <span style="font-size:13px; color:var(--text-main); font-weight:600;">Найдено: ${shown} из ${list.length}</span>
+                ${chip('all', 'Все')} ${chip('often', 'Часто (от 3 смет)')} ${chip('pricey', 'Дорогие (от 10 000 ₽)')}
+            </div>
+            <div style="font-size:12px; color:var(--text-sec);">Порядок: цена × число смет, где встречается. Так дорогой котёл без смет и часто встречающийся кран поднимаются выше дешёвой редкой детали.</div>
+            ${usageNote}
+        </div>`;
         if (!list.length) h += `<div style="padding:20px; text-align:center; color:var(--text-sec); background:var(--surface-light); border-radius:10px;">В подборе по умолчанию нет позиций «под заказ».</div>`;
+        else if (!shown) h += `<div style="padding:20px; text-align:center; color:var(--text-sec); background:var(--surface-light); border-radius:10px;">Под этот фильтр позиций нет.</div>`;
         list.forEach((o, i) => {
+            if (!keep(o)) return;
             const st = this.orderState(o.id), s = this.orderSwaps()[o.id] || {};
             const m = s.manual || {};
             const where = (o.where || []).map(esc).join(', ');
+            const uses = o.uses == null ? 'частота неизвестна' : (o.uses ? `в ${o.uses} ${o.uses === 1 ? 'смете' : 'сметах'}` : 'ни в одной смете');
             let body = '';
             if (st === 'swap') {
                 body = `<div style="font-size:13px;">Теперь: <b>${esc(m.name)}</b> · ${fmt(m.price)} ₽ · источник: ${esc(m.source)}</div>`;
@@ -38820,7 +38877,7 @@ const app = {
                 <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:baseline;">
                     <b style="color:var(--text-main);">${esc(o.id)}</b>
                     <span style="font-size:13px; color:var(--text-main);">${esc(o.name)}</span>
-                    <span style="font-size:12px; color:var(--text-sec);">${fmt(o.price)} ₽${o.stale ? ' · цена старше месяца' : ' · под заказ'}</span>
+                    <span style="font-size:12px; color:var(--text-sec);">${fmt(o.price)} ₽${o.stale ? ' · цена старше месяца' : ' · под заказ'} · ${uses}</span>
                     <span style="margin-left:auto; font-size:12.5px;">${badge[st]}</span>
                 </div>
                 <div style="font-size:11.5px; color:var(--text-sec); margin:4px 0 8px;">в подборе: ${where}</div>
@@ -38833,7 +38890,6 @@ const app = {
                 <div id="ord_form_${i}"></div>
             </div>`;
         });
-        h += '</div>';
         host.innerHTML = h;
     },
 
