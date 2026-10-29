@@ -14319,6 +14319,34 @@ const app = {
         );
     },
 
+    // Запрос к базе при входе с повторами. Повторяем только сетевой сбой: у ошибки
+    // самой базы (PostgREST) есть code, у обрыва сети его нет — повтор ответа не изменит.
+    // Upsert по auth_user_id и чтение безопасны к повтору, двойников не создадут.
+    loginNetRetry: async function (run, tries = 3) {
+        let res = null;
+        for (let i = 0; i < tries; i++) {
+            try { res = await run(); } catch (e) { res = { data: null, error: e }; }
+            const err = res && res.error;
+            if (!err || err.code) return res;
+            if (i < tries - 1) await new Promise(r => setTimeout(r, 700 * (i + 1)));
+        }
+        return res;
+    },
+
+    // Сессия есть, а связи с базой нет — строку не получили. Это не «аккаунта нет»:
+    // тариф и смету не сбрасываем, просто предупреждаем. Раз за сеанс.
+    warnNoServerLink: function () {
+        try {
+            if (sessionStorage.getItem('server_link_warned') === '1') return;
+            sessionStorage.setItem('server_link_warned', '1');
+        } catch (e) { }
+        app.alert(
+            'Нет связи с сервером: данные учётной записи не загрузились. Расчёт работает, ' +
+            'но сметы в облако сейчас не сохраняются. Проверьте интернет (или VPN) и обновите страницу.',
+            'Нет связи с сервером'
+        );
+    },
+
     // Сессия есть, а записи о человеке в users не появилось (запись не прошла).
     // Раньше это было видно только в консоли: интерфейс продолжал показывать вход,
     // сметы не уходили в облако, а в списках админки такого человека не было вовсе —
@@ -49188,10 +49216,12 @@ const app = {
             // sess_visits — для подсказки «Смета за минуту» (idle_hint.js)
             const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at, registered_at, sess_visits';
 
-            let { data: upsertResult, error: upsertError } = await supabaseClient
+            let { data: upsertResult, error: upsertError } = await this.loginNetRetry(() => supabaseClient
                 .from('users')
                 .upsert(upsertObj, { onConflict: 'auth_user_id', ignoreDuplicates: false })
-                .select(adminSelectCols);
+                .select(adminSelectCols));
+            // Связь оборвалась и после повторов: строку не получили, учётку не считаем потерянной
+            let linkDown = !!(upsertError && !upsertError.code);
 
             // Новая учётка с почтой или телефоном удалённого за неактивность — база её
             // не создаёт (users_block_deleted_reregistration). Запасная вставка ниже
@@ -49259,13 +49289,14 @@ const app = {
             // Вставку здесь не делаем намеренно: строка, скорее всего, есть, и
             // повторная вставка плодила бы двойников.
             if (!upsertError && (!upsertResult || !upsertResult.length)) {
-                const { data: reread, error: rereadError } = await supabaseClient
+                const { data: reread, error: rereadError } = await this.loginNetRetry(() => supabaseClient
                     .from('users')
                     .select(adminSelectCols)
                     .eq('auth_user_id', authUserId)
-                    .limit(1);
+                    .limit(1));
                 if (rereadError) {
                     console.warn('[handleAuthSession] Перечитать учётную запись не удалось:', rereadError.message);
+                    if (!rereadError.code) linkDown = true;
                 } else if (reread && reread.length) {
                     upsertResult = reread;
                 }
@@ -49470,10 +49501,16 @@ const app = {
                 console.error('[handleAuthSession] Учётной записи нет в базе:', {
                     authUserId: authUserId,
                     email: email,
-                    upsertError: upsertError ? upsertError.message : ''
+                    upsertError: upsertError ? upsertError.message : '',
+                    linkDown: linkDown
                 });
-                this.state.accountType = 'base';
-                this.warnAccountNotSaved();
+                if (linkDown) {
+                    // Сети не было ответа — а не «человека нет». Тариф и смету не сбрасываем
+                    this.warnNoServerLink();
+                } else {
+                    this.state.accountType = 'base';
+                    this.warnAccountNotSaved();
+                }
             }
 
             // Анкета доехала из базы — теперь есть чем заполнить город в подробном расчёте
