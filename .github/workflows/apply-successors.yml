@@ -44,6 +44,11 @@ jobs:
           pip install selenium beautifulsoup4
       - name: Apply approved successors
         run: python AutoSuccessors.py
+      # Список «под заказ» для вкладки админки. Читает уже переписанный catalog.js,
+      # поэтому идёт после переноса замен. Если что-то сломалось, перенос замен
+      # не останавливаем: список просто остаётся прежним до следующего дня.
+      - name: Rebuild order_defaults.json
+        run: node bench/order_defaults.js --json || echo "::warning::order_defaults.json не пересобран"
       # Каталог грузится сайтом одним файлом: синтаксическая ошибка в нём кладёт
       # калькулятор целиком. Не прошёл проверку — не коммитим.
       - name: Check catalog.js syntax
@@ -52,11 +57,11 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action Bot"
-          git add catalog.js
+          git add catalog.js order_defaults.json
           if git diff --staged --quiet; then
             echo "Новых подтверждённых замен нет."
           else
-            git commit -m "Замены снятых позиций из админки"
+            git commit -m "Замены снятых позиций из админки и список «под заказ»"
             for i in {1..5}; do
               git pull --rebase origin main && git push origin main && exit 0
               git rebase --abort || true

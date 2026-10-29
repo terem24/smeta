@@ -62,7 +62,16 @@ function supabaseProxyFetchRaw(input, init) {
     // Его тоже пускаем через прокси — как сам сайт. Локальную разработку
     // (http://localhost:8080) это не задевает: у неё протокол http.
     const inApp = !!window.__HC_NATIVE__ || (host === 'localhost' && window.location.protocol === 'https:');
-    const canProxy = inApp || (host === 'heatcalc.ru' || host === 'www.heatcalc.ru' || host === 'new.heatcalc.ru');
+    // Проверка скорости: адрес heatcalc.ru/?direct=1 включает прямое обращение к базе
+    // в обход прокси (запоминается в этом браузере), ?direct=0 возвращает прокси. Нужно, чтобы
+    // сравнить, что быстрее у конкретного человека: лишний прыжок через PHP-прокси или прямой путь.
+    let direct = false;
+    try {
+        const m = /[?&]direct=([01])(&|$)/.exec(window.location.search || '');
+        if (m) localStorage.setItem('hc_direct_db', m[1]);
+        direct = localStorage.getItem('hc_direct_db') === '1';
+    } catch (e) { }
+    const canProxy = !direct && (inApp || (host === 'heatcalc.ru' || host === 'www.heatcalc.ru' || host === 'new.heatcalc.ru'));
     const url = typeof input === 'string' ? input : input.url;
     if (canProxy && url.startsWith(supabaseUrl)) {
         return fetch('https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(supabaseUrl.length)), init);
@@ -1218,6 +1227,9 @@ const app = {
         }
     },
 
+    // Город и страна по IP идут в ipapi.co/ipinfo.io напрямую из браузера. При переносе Supabase в РФ
+    // заменить на свой proxy.heatcalc.ru/geo.php (файл лежит в репозитории и на сервере; бесплатный
+    // Sypex Geo, к которому он ходит, исчерпал лимит — понадобится локальная база SxGeoCity).
     getGeoLocation: async function () {
         try { let res = await fetch('https://ipapi.co/json/'); let data = await res.json(); if (data && data.city && data.country_name) return data.city + ', ' + data.country_name; } catch (e) { }
         return '';
@@ -14309,6 +14321,34 @@ const app = {
         );
     },
 
+    // Запрос к базе при входе с повторами. Повторяем только сетевой сбой: у ошибки
+    // самой базы (PostgREST) есть code, у обрыва сети его нет — повтор ответа не изменит.
+    // Upsert по auth_user_id и чтение безопасны к повтору, двойников не создадут.
+    loginNetRetry: async function (run, tries = 3) {
+        let res = null;
+        for (let i = 0; i < tries; i++) {
+            try { res = await run(); } catch (e) { res = { data: null, error: e }; }
+            const err = res && res.error;
+            if (!err || err.code) return res;
+            if (i < tries - 1) await new Promise(r => setTimeout(r, 700 * (i + 1)));
+        }
+        return res;
+    },
+
+    // Сессия есть, а связи с базой нет — строку не получили. Это не «аккаунта нет»:
+    // тариф и смету не сбрасываем, просто предупреждаем. Раз за сеанс.
+    warnNoServerLink: function () {
+        try {
+            if (sessionStorage.getItem('server_link_warned') === '1') return;
+            sessionStorage.setItem('server_link_warned', '1');
+        } catch (e) { }
+        app.alert(
+            'Нет связи с сервером: данные учётной записи не загрузились. Расчёт работает, ' +
+            'но сметы в облако сейчас не сохраняются. Проверьте интернет (или VPN) и обновите страницу.',
+            'Нет связи с сервером'
+        );
+    },
+
     // Сессия есть, а записи о человеке в users не появилось (запись не прошла).
     // Раньше это было видно только в консоли: интерфейс продолжал показывать вход,
     // сметы не уходили в облако, а в списках админки такого человека не было вовсе —
@@ -14524,7 +14564,10 @@ const app = {
         // разрешено только по действующей сессии. Иначе следующий, кто войдёт на
         // этом телефоне, получал бы уведомления предыдущего.
         if (typeof appPush !== 'undefined') await appPush.forgetToken();
-        await supabaseClient.auth.signOut();
+        // Только это устройство. signOut() без параметров — глобальный: он отзывает
+        // сессии на всех устройствах сразу. Монтажник, купивший новый ноутбук и
+        // вышедший на старом, вылетал и на новом — «выкидывает всё равно».
+        try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch (e) { }
         delete this.state.tgUser; this.state.accountType = 'base';
         // Поля формы профиля хранят ФИО/телефон вышедшего аккаунта — если их не сбросить,
         // мобильная панель профиля примет их за "вручную введённые данные гостя" и продолжит
@@ -17115,6 +17158,7 @@ const app = {
         try { this.closeProfileModal(); } catch (e) { }
         this.logPaywall('seen', 'Группы сметы: вариант из Профи');
         this.showModal('pro', { why: '«' + name + '»' + (def ? ' (' + def.label.toLowerCase() + ')' : '') + ' — вариант из Профи' });
+        this.logPaywall('seen', 'Группы сметы: вариант из Профи');
     },
 
     setPref: function (key, v) {
@@ -38476,7 +38520,7 @@ const app = {
             </div>
             ${st.extra_dates.length ? `<div style="font-size:12.5px; margin-top:8px;">Назначены: ${st.extra_dates.map(d => `<span class="ad-chip" style="cursor:default;">${esc(d)} <a href="#" onclick="app.succScheduleDropDate('${esc(d)}'); return false;" title="Убрать">✕</a></span>`).join(' ')}</div>` : ''}
             <div style="font-size:12.5px; color:var(--text-sec); margin-top:8px; line-height:1.55;">Ближайшие проверки: ${next}.${seen ? ` Парсер в последний раз видел замену ${esc(new Date(seen).toLocaleDateString('ru-RU'))}.` : ''}
-                Проверка — это прогон парсера цен на GitHub (он же читает «Похожие» у позиций «под заказ»), занимает несколько часов. Сразу запустить можно вручную: GitHub → Actions → Weekly Price Parser → Run workflow.</div>
+                Проверка — это прогон парсера цен на GitHub (он же читает «Похожие» у позиций «под заказ»), занимает несколько часов. Сразу запустить можно вручную: GitHub → Actions → Price Parser (STOUT, ROMMER) → Run workflow.</div>
         </div>`;
     },
     succScheduleSave: async function (patch) {
@@ -38651,12 +38695,14 @@ const app = {
     // смету, которую нельзя собрать (так было с краном SVB-0009-000020 — его сняли
     // с поставок). Часть позиций подбор берёт жёстко, по артикулу, и в каталоге это
     // не видно. Такие ссылки собирает стенд bench/order_defaults.js в
-    // order_defaults.json; раз в месяц админка спрашивает по каждой, что делать:
+    // order_defaults.json; админка спрашивает по каждой, что делать:
     //   • «Заменить» — другая позиция из ассортимента ТЕРЕМ (поиск) или введённая
     //     руками с источником цены и фото. Внутренний id остаётся прежним (как у
     //     вкладки «Замены»): на нём держатся подбор и старые сметы;
     //   • «Снято, замены нет» — позиция выпадает из подбора (item.discontinued);
     //   • «Оставить под заказ» — решение на текущий месяц, со следующего спросим снова.
+    // Список пересобирает apply-successors.yml каждый день; файл меняется, только
+    // когда меняется сам список (поле built — дата последнего изменения).
     // Решения лежат в app_settings.default_swaps = { items: { <id>: {...} } } —
     // читать может любой, писать только админ (политика app_settings_admin_write).
     ORDER_SWAPS_KEY: 'default_swaps',
@@ -38720,7 +38766,10 @@ const app = {
         if (this._orderDefaults) return Promise.resolve(this._orderDefaults);
         return fetch('order_defaults.json?t=' + Date.now())
             .then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
-            .then(d => (this._orderDefaults = (d && d.items) || []))
+            .then(d => {
+                this._orderBuilt = (d && d.built) || null;
+                return (this._orderDefaults = (d && d.items) || []);
+            })
             .catch(() => (this._orderDefaults = []));
     },
     orderPendingCount: function () {
@@ -38747,6 +38796,39 @@ const app = {
         }
     },
 
+    // Сколько сохранённых смет содержат позицию (функция order_default_usage, только админу).
+    // Без неё список остаётся, просто сортируется по цене.
+    loadOrderUsage: function () {
+        if (this._orderUsage !== undefined) return Promise.resolve(this._orderUsage);
+        const ids = (this._orderDefaults || []).map(o => o.id);
+        if (!ids.length) return Promise.resolve((this._orderUsage = {}));
+        return Promise.resolve(supabaseClient.rpc('order_default_usage', { p_ids: ids }))
+            .then(({ data, error }) => {
+                if (error) throw error;
+                const map = {};
+                (data || []).forEach(r => { map[r.item_id] = Number(r.estimates) || 0; });
+                this._orderUsageError = null;
+                return (this._orderUsage = map);
+            })
+            .catch(e => {
+                console.warn('[loadOrderUsage]', e.message || e);
+                this._orderUsageError = e.message || String(e);
+                return (this._orderUsage = {});
+            });
+    },
+
+    // Порядок: сколько стоит позиция в смете × насколько часто она встречается.
+    // Дорогой котёл без смет (237 980 ₽ × 1) оказывается выше дешёвой муфты,
+    // которую берут часто (803 ₽ × 6), но часто встречающийся дешёвый кран
+    // (1 443 ₽ × 54) выше редкого дорогого и то и другое учитывает.
+    sortOrderDefaults: function () {
+        const usage = this._orderUsage || {};
+        const list = this._orderDefaults || [];
+        list.forEach(o => { o.uses = usage[o.id] == null ? null : usage[o.id]; });
+        const score = o => (Number(o.price) || 0) * Math.max(1, o.uses || 0);
+        list.sort((a, b) => score(b) - score(a) || String(a.id).localeCompare(String(b.id)));
+    },
+
     renderOrderDefaults: function (host) {
         if (!host) return;
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -38756,7 +38838,21 @@ const app = {
             this.loadOrderDefaults().then(() => { if (document.body.contains(host)) this.renderOrderDefaults(host); });
             return;
         }
+        if (this._orderUsage === undefined) {
+            host.innerHTML = '<div style="padding:12px 0; color:var(--text-sec);">Считаем, в скольких сметах встречается каждая позиция…</div>';
+            this.loadOrderUsage().then(() => { if (document.body.contains(host)) this.renderOrderDefaults(host); });
+            return;
+        }
+        this.sortOrderDefaults();
         const list = this._orderDefaults;
+        const filter = this._orderFilter || 'all';
+        const keep = o => filter === 'all' ? true
+            : filter === 'often' ? (o.uses || 0) >= 3
+            : (Number(o.price) || 0) >= 10000;
+        const shown = list.filter(keep).length;
+        const usageNote = this._orderUsageError
+            ? `<div style="font-size:12px; color:#D97706; margin-top:6px;">Частоту посчитать не вышло, сортировка только по цене. Нужна миграция order_default_usage и права админа.</div>` : '';
+        const chip = (id, label) => `<button class="ad-chip${filter === id ? ' active' : ''}" onclick="app._orderFilter='${id}'; app.renderAdminMain()">${label}</button>`;
         const month = new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
         const badge = {
             ask: '<span style="color:#D97706; font-weight:700;">ждёт решения</span>',
@@ -38766,15 +38862,23 @@ const app = {
         };
         let h = `<div style="margin-bottom:26px;">
             <div class="ad-page-h"><div><h3>Под заказ в подборе по умолчанию</h3>
-            <div class="ad-sub" style="max-width:900px; line-height:1.55;">Позиции, которые калькулятор ставит в смету сам, а в каталоге они «под заказ» или с ценой старше месяца.
-            По умолчанию такая позиция стоять не должна. Решите по каждой на ${esc(month)}: заменить на позицию из ассортимента ТЕРЕМ (или ввести руками с источником цены и фото), убрать из подбора или оставить. Решение «оставить» действует до конца месяца, потом спросим снова.
-            Список собирает <code>node bench/order_defaults.js --json</code> (после обновления цен).</div></div>
-            <button class="admin-btn" onclick="app._orderDefaults = null; app.renderAdminMain()">Обновить</button></div>`;
-        if (!list.length) h += `<div style="padding:20px; text-align:center; color:var(--text-sec); background:var(--surface-light); border-radius:10px;">Список пуст: файл order_defaults.json не найден или в подборе нет позиций «под заказ».</div>`;
+            <div class="ad-sub" style="line-height:1.5;">Решите по каждой на ${esc(month)}: заменить, снять или оставить.${this._orderBuilt ? ` Список без изменений с ${esc(this._orderBuilt.split('-').reverse().join('.'))}.` : ''}</div></div>
+            <button class="admin-btn" onclick="app._orderDefaults = null; app._orderUsage = undefined; app.renderAdminMain()">Обновить</button></div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:14px 0 6px;">
+                <span style="font-size:13px; color:var(--text-main); font-weight:600;">Найдено: ${shown} из ${list.length}</span>
+                ${chip('all', 'Все')} ${chip('often', 'Часто (от 3 смет)')} ${chip('pricey', 'Дорогие (от 10 000 ₽)')}
+            </div>
+            <div style="font-size:12px; color:var(--text-sec);">Порядок: цена × число смет.</div>
+            ${usageNote}
+        </div>`;
+        if (!list.length) h += `<div style="padding:20px; text-align:center; color:var(--text-sec); background:var(--surface-light); border-radius:10px;">В подборе по умолчанию нет позиций «под заказ».</div>`;
+        else if (!shown) h += `<div style="padding:20px; text-align:center; color:var(--text-sec); background:var(--surface-light); border-radius:10px;">Под этот фильтр позиций нет.</div>`;
         list.forEach((o, i) => {
+            if (!keep(o)) return;
             const st = this.orderState(o.id), s = this.orderSwaps()[o.id] || {};
             const m = s.manual || {};
             const where = (o.where || []).map(esc).join(', ');
+            const uses = o.uses == null ? 'частота неизвестна' : (o.uses ? `в ${o.uses} ${o.uses === 1 ? 'смете' : 'сметах'}` : 'ни в одной смете');
             let body = '';
             if (st === 'swap') {
                 body = `<div style="font-size:13px;">Теперь: <b>${esc(m.name)}</b> · ${fmt(m.price)} ₽ · источник: ${esc(m.source)}</div>`;
@@ -38783,7 +38887,7 @@ const app = {
                 <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:baseline;">
                     <b style="color:var(--text-main);">${esc(o.id)}</b>
                     <span style="font-size:13px; color:var(--text-main);">${esc(o.name)}</span>
-                    <span style="font-size:12px; color:var(--text-sec);">${fmt(o.price)} ₽${o.stale ? ' · цена старше месяца' : ' · под заказ'}</span>
+                    <span style="font-size:12px; color:var(--text-sec);">${fmt(o.price)} ₽${o.stale ? ' · цена старше месяца' : ' · под заказ'} · ${uses}</span>
                     <span style="margin-left:auto; font-size:12.5px;">${badge[st]}</span>
                 </div>
                 <div style="font-size:11.5px; color:var(--text-sec); margin:4px 0 8px;">в подборе: ${where}</div>
@@ -38796,7 +38900,6 @@ const app = {
                 <div id="ord_form_${i}"></div>
             </div>`;
         });
-        h += '</div>';
         host.innerHTML = h;
     },
 
@@ -40458,6 +40561,13 @@ const app = {
         // Своя схема квартиры (стояк — узел ввода — приборы) ещё не сделана;
         // пока лучше не показывать никакой, чем чужую.
         if (this.isFlat()) return '';
+        // Движок схемы грузится отложенно (группа project в index.html). Пока его нет,
+        // рисовать нечем: пусто сейчас, а когда модуль подъедет — перерисовываем.
+        if (!window.projectScheme || !window.projectSheets) {
+            // Перерисовываем только если движок действительно появился: иначе пустой глобал дал бы цикл перерисовок
+            this.lazy('project').then(() => { if (window.projectScheme) this.render(); }).catch(() => { });
+            return '';
+        }
         // Вычеркнутые кнопкой ✖ позиции в currentSpec остаются (признака isOpt у
         // них нет — он считается при отрисовке строк), поэтому отсеиваем их здесь
         // тем же правилом, что и строки сметы: пустая после отсева смета — это
@@ -43631,6 +43741,10 @@ const app = {
         // оказывались посередине строки вместо левого края.
         root.style.textAlign = 'left';
         root.style.padding = '';
+        // Заглушка успела стать .ad-loader (flex по центру) — без сброса тело таблицы
+        // ужималось до ширины содержимого и уезжало в середину панели.
+        root.classList.remove('ad-loader');
+        delete root.dataset.ldr;
         const focusSnap = this._snapshotAdminFilterFocus(root);
 
         const rows = this._adminPricelistRows || [];
@@ -45556,13 +45670,13 @@ const app = {
                 + '<div class="rf-sum">Всего зарегистрировалось <b>' + T + '</b>: не считали вовсе <b>' + tot.none + '</b> (' + pct(tot.none, T) + '), считали и бросили <b>' + tot.calc_only + '</b> (' + pct(tot.calc_only, T) + '), сохранили смету <b>' + tot.saved + '</b> (' + pct(tot.saved, T) + '). Три колонки «Не считали + Считали + Сохранили» в сумме дают «Зарегистрир.».</div>'
                 + '<div class="rf-legs">'
                 + legend('none', 'Не считали', 'Зарегистрировался и ушёл: ни одного расчёта, ни одной сметы.')
-                + legend('calc', 'Считали, не сохранили', 'Расчёт был (есть событие в журнале КП/счетов), но ни одной сметы в «Объектах» нет.')
+                + legend('calc', 'Считали, не сохранили', 'Ввёл площадь, комнаты или свои позиции (расчёту присвоен номер), но ни одной сметы в «Объектах» нет.')
                 + legend('saved', 'Сохранили смету', 'Есть хотя бы одна сохранённая смета. В скобках — доля от зарегистрированных.')
                 + legend('frz', 'Заморожены / Удалены', 'Доступ приостановлен правилом / учётка удалена правилом. Это срез состояния, он пересекается с колонками выше.')
                 + '</div><table class="rf-t"><thead><tr>'
                 + '<th>Месяц регистрации</th><th>Зарегистрир.</th><th>Не считали</th><th>Считали, не сохранили</th><th>Сохранили смету</th><th>Заморожены сейчас</th><th>Удалены</th>'
                 + '</tr></thead><tbody>' + rows.map(r => tr(lbl(r.month), r)).join('') + tr('Всего', tot, true) + '</tbody></table>'
-                + '<div class="ad-sub" style="margin-top:8px;">Живые и удалённые правилом считаются вместе, поэтому после чисток цифры за сезон не проваливаются. Сметы удалённых лежат в архиве со статусом «удалена» и восстанавливаются по запросу. «Считали» определяется по журналу событий КП: кто считал и ни разу не открывал КП, попадает в «Не считали».</div></div>';
+                + '<div class="ad-sub" style="margin-top:8px;">Живые и удалённые правилом считаются вместе, поэтому после чисток цифры за сезон не проваливаются. Сметы удалённых лежат в архиве со статусом «удалена» и восстанавливаются по запросу. «Считали» — по журналу расчётов: он ведётся с момента появления в нём событий, а пользователь может стереть свою историю, поэтому у старых регистраций цифра могла занизиться.</div></div>';
         } catch (e) {
             box.innerHTML = '<div style="padding:10px 16px; color:var(--c-bad,#EF4444);">Не удалось получить: ' + String(e.message || e).replace(/[<>&]/g, '') + '. Выполнена ли миграция 20261028_empty_accounts_archive_funnel.sql?</div>';
         }
@@ -46033,6 +46147,11 @@ const app = {
         content.innerHTML += `<div id="admin_inactive_root" style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка напоминаний…</div>`;
         const root = () => document.getElementById('admin_inactive_root');
         await this.loadInactivityDays();
+        // Состояние почты нужно пилюлям: правило работает, а его письма могут быть выключены
+        try {
+            const { data: ms } = await supabaseClient.rpc('mail_budget_state');
+            if (ms) this._mailState = ms;
+        } catch (e) { /* без состояния почты покажем только правило */ }
         try {
             const { data, error } = await supabaseClient.rpc('inactivity_report');
             if (error) throw error;
@@ -46056,6 +46175,8 @@ const app = {
         this.renderAdminInactiveBody();
     },
 
+    // Одна страница сверху вниз: что делает автоматика → сколько людей на каком этапе →
+    // список, где первыми стоят те, кому нужно решение → правила (по кнопке) → отчёты.
     renderAdminInactiveBody: function () {
         const root = document.getElementById('admin_inactive_root');
         if (!root) return;
@@ -46066,165 +46187,154 @@ const app = {
         const isViewer = this.isReadOnlyAdmin();
         const esc = s => String(s ?? '').replace(/[&<>"]/g,
             c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const DAY = 864e5;
         const dt = s => s ? new Date(s).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
-        const days = s => s ? Math.floor((Date.now() - new Date(s).getTime()) / 864e5) : null;
+        const dShort = ms => new Date(ms).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+        const daysTo = ms => Math.ceil((ms - Date.now()) / DAY);
         const cfg = this.inactivityDays();
         const nudge = this.nudgeCfg();
         const empty = this.emptyCfg();
+        const dis = isViewer ? 'disabled' : '';
+        const open = this._inactOpen = this._inactOpen || {};
 
-        const returned = rows.filter(r => r.returned_at).length;
-        const frozen = rows.filter(r => r.stage === 'frozen').length;
-        const deleted = rows.filter(r => r.stage === 'deleted').length;
-        const silent = rows.filter(r => !r.returned_at && r.stage === 'warned').length;
-
-        // Доля вернувшихся — единственная цифра, ради которой всё это затевалось:
-        // она говорит, работает напоминание или люди ушли насовсем.
+        // Группа и «что дальше» для каждой строки: из них же строится сортировка
+        const regTillOf = r => r.reg_until ? new Date(r.reg_until).getTime() : (r.deleted_at ? new Date(r.deleted_at).getTime() + 365 * DAY : 0);
+        const info = r => {
+            if (r.stage === 'deleted') {
+                let next = '—';
+                if (r.reg_allowed_at) next = 'регистрация разрешена ' + dt(r.reg_allowed_at);
+                else if (regTillOf(r) > Date.now()) next = 'регистрация закрыта до ' + new Date(regTillOf(r)).toLocaleDateString('ru-RU');
+                const what = r.kind === 'manual' ? 'Удалён администратором' : 'Удалён';
+                return { g: 'deleted', pr: 3, key: -new Date(r.deleted_at || 0).getTime(), what: what + (r.deleted_at ? ' ' + dt(r.deleted_at) : ''), next, color: '#EF4444' };
+            }
+            if (r.returned_at) return { g: 'returned', pr: 2, key: -new Date(r.returned_at).getTime(), what: 'Вернулся ' + dt(r.returned_at), next: '—', color: '#10B981' };
+            if (r.stage === 'frozen') {
+                const delOn = new Date(r.frozen_at).getTime() + cfg.delete * DAY, n = daysTo(delOn);
+                return { g: 'frozen', pr: 0, key: delOn, what: 'Заморожен ' + dt(r.frozen_at), next: 'удаление ' + dShort(delOn) + (n > 0 ? ' · через ' + n + ' ' + this.plural(n, 'день', 'дня', 'дней') : ' · при ближайшей проверке'), color: '#0EA5E9' };
+            }
+            const frOn = new Date(r.warned_at).getTime() + Math.max(cfg.freeze - cfg.warn, 0) * DAY, n = daysTo(frOn);
+            return { g: 'silent', pr: 1, key: frOn, what: 'Письмо ' + dt(r.warned_at) + ', молчит', next: 'заморозка ' + dShort(frOn) + (n > 0 ? ' · через ' + n + ' ' + this.plural(n, 'день', 'дня', 'дней') : ' · при ближайшей проверке'), color: '#D97706' };
+        };
+        const list = rows.map(r => Object.assign({ r }, info(r))).sort((a, b) => a.pr - b.pr || a.key - b.key);
+        const cnt = g => list.filter(x => x.g === g).length;
+        const returned = cnt('returned'), frozen = cnt('frozen'), deleted = cnt('deleted'), silent = cnt('silent');
+        // Доля вернувшихся — главная цифра: она говорит, работают ли письма
         const share = rows.length ? Math.round(returned * 100 / rows.length) : 0;
 
-        // Две настройки — в свёрнутых блоках с подписанными полями: раньше десяток полей
-        // и кнопок стояли строками над самими цифрами, и результат уезжал за экран
-        const dis = isViewer ? 'disabled' : '';
-        const field = (label, id, val) => `<label class="ad-field"><span>${label}</span><input type="number" id="${id}" min="1" max="365" value="${val}" ${dis}></label>`;
+        const flt = ['silent', 'frozen', 'returned', 'deleted'].includes(this._inactFilter) ? this._inactFilter : 'all';
+        const tile = (id, label, value, sub, cls) => `<div class="inact-tile ${cls || ''}${flt === id ? ' on' : ''}" role="button" tabindex="0" onclick="app.setInactFilter('${id}')" onkeydown="if(event.key==='Enter')app.setInactFilter('${id}')"><span class="lbl">${label}</span><b>${value}</b><span class="sub">${sub}</span></div>`;
+
+        // Что включено — одной строкой, чтобы не открывать настройки ради этого вопроса
+        // Правило может работать, а его письма — быть выключены лимитом почты (вкладка «Деньги → Почта»)
+        const mailOff = kind => !!(this._mailState && (this._mailState.kinds || []).find(k => k.kind === kind && k.off));
+        const pill = (on, label, hint, off) => `<span class="inact-pill${on ? ' on' : ''}" title="${hint}"><i></i>${label}<em>${!on ? 'выключено' : off ? 'правило работает, письма выключены' : 'работает'}</em></span>`;
+        const auto = `<div class="inact-auto">
+            ${pill(true, 'Неактивные', `Письмо на ${cfg.warn}-й день молчания, заморозка на ${cfg.freeze}-й, удаление через ${cfg.delete} дн.`, mailOff('inactivity'))}
+            ${pill(empty.enabled, 'Анкеты без смет', 'Заморозка и удаление тех, кто зарегистрировался и не считает', mailOff('inactivity'))}
+            ${pill(nudge.enabled, 'Письма новичкам', 'Мягкие письма тем, кто заходит, но не считает', mailOff('nudge'))}
+        </div>`;
+
+        // Правила: сначала путь человека по дням, потом три карточки с полями
+        const field = (label, id, val) => row(label, `<input type="number" id="${id}" min="1" max="365" value="${val}" ${dis}>`, id);
+        const row = (label, ctl, forId) => `<${forId ? 'label for="' + forId + '"' : 'div'} class="ad-set-row"><span class="ad-set-l">${label}</span>${ctl}</${forId ? 'label' : 'div'}>`;
+        const check = (label, id, on) => row(label, `<label class="switch"><input type="checkbox" id="${id}" ${on ? 'checked' : ''} ${dis}><span class="slider"></span></label>`);
         const saveBtn = (label, fn) => `<button class="admin-btn ad-primary" ${dis} onclick="${fn}">${label}</button>`;
-        const statTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+        const card = (title, hint, fields, actions) => `<div class="ad-set-card"><div class="ad-set-h">${title}<span>${hint}</span></div>${fields}<div class="ad-set-act">${actions}</div></div>`;
+        const steps = [
+            { d: nudge.day3, t: 'Письмо новичку без смет', off: !nudge.enabled },
+            { d: nudge.day14, t: '«Что не получилось?»', off: !nudge.enabled },
+            { d: cfg.warn, t: 'Письмо: давно не заходили' },
+            { d: cfg.freeze, t: 'Заморозка доступа' },
+            { d: cfg.freeze + cfg.delete, t: 'Удаление учётки' },
+        ].sort((a, b) => a.d - b.d);
+        const line = `<div class="inact-line">${steps.map(s => `<div class="inact-step${s.off ? ' off' : ''}"><b>${s.d}</b><span>${s.t}${s.off ? ' <em>выкл.</em>' : ''}</span></div>`).join('')}</div>
+            <div class="ad-sub" style="margin:6px 0 14px;">Так выглядит путь человека, который перестал заходить, по дням. Профи на нём не считается.</div>`;
+        const rules = `<div class="inact-rules">
+            <h4>Правила автоматики</h4>${line}
+            <div class="inact-cards">
+            ${card('Неактивные', 'Письмо, заморозка и удаление тех, кто перестал заходить. Правило работает всегда; письма — по лимиту почты («Деньги → Почта»).',
+                field('Письмо, дней молчания', 'inact_warn', cfg.warn)
+                + field('Заморозка, день', 'inact_freeze', cfg.freeze)
+                + field('Удаление, дней после заморозки', 'inact_delete', cfg.delete),
+                saveBtn('Сохранить', 'app.saveInactivityDays()'))}
+            ${card('Анкеты без смет', 'Зарегистрировались и не считают. Предупреждение, заморозка, удаление.',
+                check('Включено', 'empty_enabled', empty.enabled)
+                + field('Предупреждение за, дней', 'empty_warn', empty.warn_days)
+                + field('Без смет: заморозка, дней', 'empty_freeze', empty.freeze_days)
+                + field('Со сметами: заморозка, дней без новых', 'empty_stale', empty.stale_days)
+                + field('Удаление, дней после заморозки', 'empty_delete', empty.delete_days)
+                + field('Удалений за ночь, не больше', 'empty_maxdel', empty.max_delete),
+                saveBtn('Сохранить', 'app.saveEmptyAccounts()') + `<button class="admin-btn" onclick="app.previewEmptyAccounts()">Сколько подпадёт</button>`)}
+            ${card('Письма новичкам', 'Заходят, но не считают. Не чаще раза в неделю, ничего не блокируют.',
+                check('Включено', 'nudge_enabled', nudge.enabled)
+                + field('Новичку без смет, дней', 'nudge_day3', nudge.day3)
+                + field('«Что не получилось», дней', 'nudge_day14', nudge.day14)
+                + field('Давняя смета, дней назад', 'nudge_day45', nudge.day45),
+                saveBtn('Сохранить', 'app.saveOnboardingNudges()'))}
+            </div></div>`;
 
-        let h = `
-            <div class="ad-page-h">
-                <div><h3>Напоминания неактивным</h3>
-                    <div class="ad-sub">Письмо после ${cfg.warn} дней молчания · доступ приостанавливается на ${cfg.freeze}-й день · учётка удаляется через ${cfg.delete} дней заморозки.
-                    Пока действует Профи, счётчик стоит. Проверка идёт каждую ночь.
-                    Предупреждение и заморозка уходят только при разрешённой почте (вкладка «Деньги → Почта»): если письмо не может уйти, человека пропускаем и проверяем снова ночью. Заморозки без доставленного предупреждения не бывает.</div></div>
-            </div>
-            <div class="admin-stat-grid stat-5" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
-                ${statTile('Отправлено', rows.length, '&nbsp;')}
-                ${statTile('Вернулись', returned, `${share}% от всех`)}
-                ${statTile('Молчат', silent, 'письмо ушло, ответа нет')}
-                ${statTile('Заморожены', frozen, 'доступ приостановлен')}
-                ${statTile('Удалены', deleted, 'учётки удалены')}
-            </div>
-            <details class="ad-collapse">
-                <summary>Сроки неактивности</summary>
-                <div class="ad-form-grid">
-                    ${field('Письмо, дней молчания', 'inact_warn', cfg.warn)}
-                    ${field('Заморозка, на день', 'inact_freeze', cfg.freeze)}
-                    ${field('Удаление, дней после заморозки', 'inact_delete', cfg.delete)}
-                    <div class="ad-form-act">${saveBtn('Сохранить сроки', 'app.saveInactivityDays()')}</div>
-                </div>
-            </details>
-            <details class="ad-collapse">
-                <summary>Рассылка тем, кто заходит, но не считает${nudge.enabled ? '' : ' — выключена'}</summary>
-                <div class="ad-sub" style="margin:0 16px 4px; max-width:760px;">
-                    Письмо и сообщение в кабинет: новичкам без смет, давним без смет и тем, у кого последняя смета давно.
-                    Раз в сутки в 10:00 по Москве, не чаще одного письма в неделю на человека; Профи и замороженным не пишем.
-                </div>
-                <div class="ad-form-grid">
-                    <label class="ad-field ad-check"><input type="checkbox" id="nudge_enabled" ${nudge.enabled ? 'checked' : ''} ${dis}><span>Рассылка включена</span></label>
-                    ${field('Новичку без смет, через дней', 'nudge_day3', nudge.day3)}
-                    ${field('Вопрос «что не получилось», дней', 'nudge_day14', nudge.day14)}
-                    ${field('Давняя смета, дней назад', 'nudge_day45', nudge.day45)}
-                    <div class="ad-form-act">${saveBtn('Сохранить рассылку', 'app.saveOnboardingNudges()')}</div>
-                </div>
-            </details>
-            <details class="ad-collapse">
-                <summary>Анкеты без смет: заморозка и удаление${empty.enabled ? '' : ' — выключено'}</summary>
-                <div class="ad-sub" style="margin:0 16px 4px; max-width:760px;">
-                    За ${empty.warn_days} дн. до заморозки уходит предупреждение: сохраните смету или перейдите на Профи — и ничего не произойдёт.
-                    Без смет: заморозка через ${empty.freeze_days} дн. после регистрации, даже если человек заходит.
-                    Базовый тариф со сметами, но без новых за ${empty.stale_days} дн.: тоже заморозка (письмо уходит).
-                    Ещё через ${empty.delete_days} дн. учётка удаляется, её сметы переходят в архив со статусом «удалена», ссылки на КП перестают открываться;
-                    если среди смет есть завершённая — такую учётку не удаляем, она остаётся замороженной. Профи, администраторов, менеджеров и заблокированных не трогаем.
-                    Удалённые могут зарегистрироваться заново сразу. Если вернуть доступ вручную, повторно человека правило не заморозит.
-                    Проверка — раз в сутки. Список таких анкет — в «Пользователи» → «Без смет».
-                </div>
-                <div class="ad-form-grid">
-                    <label class="ad-field ad-check"><input type="checkbox" id="empty_enabled" ${empty.enabled ? 'checked' : ''} ${dis}><span>Правило включено</span></label>
-                    ${field('Предупреждение за, дней до заморозки', 'empty_warn', empty.warn_days)}
-                    ${field('Без смет: заморозка, дней после регистрации', 'empty_freeze', empty.freeze_days)}
-                    ${field('Со сметами (базовый): заморозка, дней без новых', 'empty_stale', empty.stale_days)}
-                    ${field('Удаление, дней после заморозки', 'empty_delete', empty.delete_days)}
-                    ${field('Предохранитель: удалений за ночь не больше', 'empty_maxdel', empty.max_delete)}
-                    <div class="ad-form-act">${saveBtn('Сохранить правило', 'app.saveEmptyAccounts()')}
-                        <button class="admin-btn" onclick="app.previewEmptyAccounts()">Сколько подпадёт сейчас</button></div>
-                </div>
-            </details>
-            <details class="ad-collapse" ontoggle="if (this.open) app.loadEmptyReport()">
-                <summary>Журнал правила: предупреждены, заморожены, удалены</summary>
-                <div id="empty_report_body"></div>
-            </details>
-            <details class="ad-collapse" ontoggle="if (this.open) app.loadRegFunnel()">
-                <summary>Воронка регистраций по месяцам</summary>
-                <div id="reg_funnel_body"></div>
-            </details>`;
-
+        // Список: у каждого — что случилось и что произойдёт дальше
+        const shown = flt === 'all' ? list : list.filter(x => x.g === flt);
+        const FLT = { all: 'Все', silent: 'Молчат', frozen: 'Заморожены', returned: 'Вернулись', deleted: 'Удалены' };
+        let body;
         if (!rows.length) {
-            h += `<div style="padding:30px; text-align:center; color:var(--text-sec);">
-                Пока никому не отправляли. Первые письма уйдут ближайшей ночью — тем, кто не заходил больше 20 дней.
-            </div>`;
-            root.innerHTML = h;
-            return;
+            body = `<div class="inact-empty">Пока никому не писали. Первые письма уйдут ближайшей ночью — тем, кто не заходил больше ${cfg.warn} дней.</div>`;
+        } else if (!shown.length) {
+            body = `<div class="inact-empty">В группе «${FLT[flt]}» никого нет.</div>`;
+        } else {
+            body = `<div style="overflow-x:auto;"><table class="inv-table ad-sticky inact-table">
+                <thead><tr><th>Кто</th><th>Что случилось</th><th>Что дальше</th><th title="Сохранённых смет">Смет</th><th></th></tr></thead><tbody>
+                ${shown.map(x => {
+                    const r = x.r;
+                    const btns = (r.stage === 'frozen' && !isViewer ? `<button class="admin-action-btn btn-obj" onclick="app.unfreezeUser('${r.user_id}')">Вернуть доступ</button>` : '')
+                        + (r.stage !== 'deleted' ? `<button class="admin-action-btn btn-msg" onclick="app.viewAdminUser('${r.user_id}')">Карточка</button>` : '')
+                        + (r.stage === 'deleted' && r.deleted_id && !r.reg_allowed_at && !isViewer && regTillOf(r) > Date.now()
+                            ? `<button class="admin-action-btn btn-obj" onclick="app.allowReregistration('${r.deleted_id}')">Разрешить регистрацию</button>` : '');
+                    return `<tr>
+                        <td><b>${esc(r.name)}</b><div class="inact-sub">${esc(r.phone || '')}${r.email ? ' · ' + esc(r.email) : ''}${(r.city || r.region) ? ' · ' + esc([r.city, r.region].filter(Boolean).join(', ')) : ''}</div></td>
+                        <td style="color:${x.color}; font-weight:600;">${x.what}</td>
+                        <td class="inact-next">${x.next}</td>
+                        <td style="text-align:center;">${r.estimates ?? 0}</td>
+                        <td style="text-align:right; white-space:nowrap;">${btns}</td></tr>`;
+                }).join('')}</tbody></table></div>`;
         }
 
-        h += `<div style="overflow-x:auto;"><table class="inv-table ad-sticky" style="width:100%; border-collapse:collapse; font-size:12px;">
-            <thead><tr style="text-align:left; color:var(--text-sec);">
-                <th style="padding:8px;">Кто</th>
-                <th style="padding:8px;">Регион</th>
-                <th style="padding:8px; white-space:nowrap;">Письмо</th>
-                <th style="padding:8px;">Чем кончилось</th>
-                <th style="padding:8px; text-align:center;">Смет</th>
-                <th style="padding:8px;"></th>
-            </tr></thead><tbody>`;
+        const rep = (id, title, bodyId) => `<details class="ad-collapse" ${open[id] ? 'open' : ''} ontoggle="app._inactOpen.${id}=this.open; if (this.open) app.${id === 'journal' ? 'loadEmptyReport' : 'loadRegFunnel'}()"><summary>${title}</summary><div id="${bodyId}"></div></details>`;
 
-        rows.forEach(r => {
-            // Итог по-русски, а не кодом этапа: ради этой колонки отчёт и нужен.
-            let outcome, color;
-            if (r.stage === 'deleted') {
-                outcome = 'Удалён' + (r.deleted_at ? ' ' + dt(r.deleted_at) : '') + (r.frozen_at ? ' (был заморожен ' + dt(r.frozen_at) + ')' : '');
-                // Год после удаления заново зарегистрироваться нельзя, пока не разрешат
-                // (20260922_deleted_users_reg_block.sql).
-                const regTill = r.reg_until ? new Date(r.reg_until) : (r.deleted_at ? new Date(new Date(r.deleted_at).getTime() + 365 * 864e5) : null);
-                if (r.kind === 'manual') outcome = 'Удалён администратором' + (r.deleted_at ? ' ' + dt(r.deleted_at) : '');
-                if (r.reg_allowed_at) outcome += ' · регистрация разрешена ' + dt(r.reg_allowed_at);
-                else if (regTill && regTill > new Date()) outcome += ' · регистрация закрыта до ' + regTill.toLocaleDateString('ru-RU');
-                color = '#EF4444';
-            } else if (r.returned_at) {
-                outcome = 'Вернулся ' + dt(r.returned_at);
-                color = '#10B981';
-            } else if (r.stage === 'frozen') {
-                const delOn = new Date(new Date(r.frozen_at).getTime() + app.inactivityDays().delete * 864e5);
-                outcome = 'Заморожен ' + dt(r.frozen_at) + ' · удаление ' + delOn.toLocaleDateString('ru-RU');
-                color = '#0EA5E9';
-            } else {
-                const d = days(r.warned_at);
-                outcome = 'Не отреагировал' + (d !== null ? ' · ' + d + ' ' + this.plural(d, 'день', 'дня', 'дней') + ' после письма' : '');
-                color = '#D97706';
-            }
+        root.innerHTML = `
+            <div class="ad-page-h">
+                <div><h3>Напоминания неактивным</h3>
+                    <div class="ad-sub">Каждую ночь система сама пишет тем, кто перестал считать, замораживает и удаляет. Здесь видно, что она сделала, и можно вмешаться.</div></div>
+                <button class="admin-btn${this._inactRules ? ' ad-primary' : ''}" onclick="app.toggleInactRules()">${this._inactRules ? 'Скрыть правила' : 'Настроить правила'}</button>
+            </div>
+            ${auto}
+            ${this._inactRules ? rules : ''}
+            <div class="inact-tiles">
+                ${tile('all', 'Всего писем', rows.length, 'за всё время')}
+                ${tile('silent', 'Молчат', silent, 'письмо ушло, ответа нет')}
+                ${tile('frozen', 'Заморожены', frozen, 'ждут удаления или возврата', frozen ? 'warn' : '')}
+                ${tile('returned', 'Вернулись', returned, `${share}% от всех`, 'good')}
+                ${tile('deleted', 'Удалены', deleted, 'учётки удалены')}
+            </div>
+            <div class="inact-h">${flt === 'all' ? 'Сначала те, кому нужно решение: заморозка и удаление ближе всего' : FLT[flt]}${flt === 'all' ? '' : ' <a href="#" onclick="event.preventDefault(); app.setInactFilter(\'' + flt + '\')">показать всех</a>'}</div>
+            ${body}
+            <div class="inact-reports">
+                ${rep('journal', 'Журнал автоматики: кого предупредили, заморозили, удалили', 'empty_report_body')}
+                ${rep('funnel', 'Воронка регистраций по месяцам', 'reg_funnel_body')}
+            </div>`;
+        if (open.journal) this.loadEmptyReport();
+        if (open.funnel) this.loadRegFunnel();
+    },
 
-            h += `<tr style="border-top:1px solid var(--border);">
-                <td style="padding:8px;">
-                    <b style="color:var(--text-main);">${esc(r.name)}</b>
-                    <div style="font-size:10px; color:var(--text-sec);">${esc(r.phone || '')}${r.email ? ' · ' + esc(r.email) : ''}</div>
-                </td>
-                <td style="padding:8px; color:var(--text-sec);">${esc([r.city, r.region].filter(Boolean).join(', ') || '—')}</td>
-                <td style="padding:8px; white-space:nowrap; color:var(--text-main);">${dt(r.warned_at)}</td>
-                <td style="padding:8px; color:${color}; font-weight:600;">${outcome}</td>
-                <td style="padding:8px; text-align:center; color:var(--text-main);">${r.estimates ?? 0}</td>
-                <td style="padding:8px; text-align:right; white-space:nowrap;">
-                    ${r.stage === 'frozen' && !isViewer
-                        ? `<button class="admin-action-btn btn-obj" onclick="app.unfreezeUser('${r.user_id}')">Вернуть доступ</button>`
-                        : ''}
-                    ${r.stage !== 'deleted'
-                        ? `<button class="admin-action-btn btn-msg" onclick="app.viewAdminUser('${r.user_id}')">Карточка</button>`
-                        : ''}
-                    ${r.stage === 'deleted' && r.deleted_id && !r.reg_allowed_at && !isViewer
-                        && (r.reg_until ? new Date(r.reg_until).getTime() : new Date(r.deleted_at).getTime() + 365 * 864e5) > Date.now()
-                        ? `<button class="admin-action-btn btn-obj" onclick="app.allowReregistration('${r.deleted_id}')">Разрешить регистрацию</button>`
-                        : ''}
-                </td>
-            </tr>`;
-        });
+    // Плитка со счётчиком — она же фильтр списка; повторный клик снимает
+    setInactFilter: function (id) {
+        this._inactFilter = this._inactFilter === id ? 'all' : id;
+        this.renderAdminInactiveBody();
+    },
 
-        h += `</tbody></table></div>`;
-        root.innerHTML = h;
+    toggleInactRules: function () {
+        this._inactRules = !this._inactRules;
+        this.renderAdminInactiveBody();
     },
 
     renderAdminPlans: async function () {
@@ -49251,10 +49361,12 @@ const app = {
             // sess_visits — для подсказки «Смета за минуту» (idle_hint.js)
             const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at, registered_at, sess_visits';
 
-            let { data: upsertResult, error: upsertError } = await supabaseClient
+            let { data: upsertResult, error: upsertError } = await this.loginNetRetry(() => supabaseClient
                 .from('users')
                 .upsert(upsertObj, { onConflict: 'auth_user_id', ignoreDuplicates: false })
-                .select(adminSelectCols);
+                .select(adminSelectCols));
+            // Связь оборвалась и после повторов: строку не получили, учётку не считаем потерянной
+            let linkDown = !!(upsertError && !upsertError.code);
 
             // Новая учётка с почтой или телефоном удалённого за неактивность — база её
             // не создаёт (users_block_deleted_reregistration). Запасная вставка ниже
@@ -49322,13 +49434,14 @@ const app = {
             // Вставку здесь не делаем намеренно: строка, скорее всего, есть, и
             // повторная вставка плодила бы двойников.
             if (!upsertError && (!upsertResult || !upsertResult.length)) {
-                const { data: reread, error: rereadError } = await supabaseClient
+                const { data: reread, error: rereadError } = await this.loginNetRetry(() => supabaseClient
                     .from('users')
                     .select(adminSelectCols)
                     .eq('auth_user_id', authUserId)
-                    .limit(1);
+                    .limit(1));
                 if (rereadError) {
                     console.warn('[handleAuthSession] Перечитать учётную запись не удалось:', rereadError.message);
+                    if (!rereadError.code) linkDown = true;
                 } else if (reread && reread.length) {
                     upsertResult = reread;
                 }
@@ -49533,10 +49646,16 @@ const app = {
                 console.error('[handleAuthSession] Учётной записи нет в базе:', {
                     authUserId: authUserId,
                     email: email,
-                    upsertError: upsertError ? upsertError.message : ''
+                    upsertError: upsertError ? upsertError.message : '',
+                    linkDown: linkDown
                 });
-                this.state.accountType = 'base';
-                this.warnAccountNotSaved();
+                if (linkDown) {
+                    // Сети не было ответа — а не «человека нет». Тариф и смету не сбрасываем
+                    this.warnNoServerLink();
+                } else {
+                    this.state.accountType = 'base';
+                    this.warnAccountNotSaved();
+                }
             }
 
             // Анкета доехала из базы — теперь есть чем заполнить город в подробном расчёте
@@ -50623,6 +50742,7 @@ const app = {
         }
         document.body.classList.toggle('work-mode', mode === 'works');
 
+            if (!this.isPro()) this.logPaywall('seen', 'Деньги: вкладка');
         let tableResponsive = document.querySelector('.table-responsive');
         let docFooter = document.querySelector('.doc-footer');
         let discountBlock = document.getElementById('discount_block');
@@ -54129,6 +54249,7 @@ const app = {
                 this.toggleSku(event);
             }
         } else if (featureName === 'merge') {
+            this.logPaywall('seen', 'Смета: вторая «Бюджетнее»');
             const chk = document.getElementById('chk_merge');
             if (chk) {
                 chk.checked = !chk.checked;
@@ -56574,6 +56695,8 @@ const app = {
     openProjectSheets: async function () {
         if (window.SessionTrack) SessionTrack.screen('sheets');
         if (!this.canUseDesign()) { app.alert('Раздел проектирования вам пока не открыт. Его включает администратор.'); return; }
+        // Движок листов и схем грузится отложенно (группа project): без него комплект не выпустить
+        await this.lazy('project');
         const list = this.currentEquipmentList || [];
         // Условия выпуска — одним списком (projectChecks): смета, комнаты
         // подробного расчёта, размеченный план, котельная, зоны тёплого пола.
@@ -79033,6 +79156,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             }
         }
         if (document.getElementById('chk_detailed_rooms_toggle')) {
+                    app.logPaywall('seen', 'Режим сметы: Профи');
             document.getElementById('chk_detailed_rooms_toggle').checked = !!this.state.showDetailedRoomsPanel;
         }
 
@@ -79361,6 +79485,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         applyLock('sys_rad', 'pro');
         applyLock('chk_water_input', 'pro');
         applyLock('chk_well', 'pro');
+                            app.logPaywall('seen', 'Режим сметы: закрытый');
         applyLock('chk_hw', 'pro');
         applyLock('chk_recirc', 'pro');
         applyLock('chk_tank_pump', 'pro');

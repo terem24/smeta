@@ -1,4 +1,4 @@
-name: Weekly Price Parser
+name: Price Parser (STOUT, ROMMER)
 
 on:
   schedule:

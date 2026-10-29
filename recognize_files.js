@@ -15,8 +15,8 @@
 
 const RecognizeFiles = {
 
-    PDFJS_URL: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-    PDFJS_WORKER: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
+    PDFJS_URL: '/vendor/pdf.min.js',
+    PDFJS_WORKER: '/vendor/pdf.worker.min.js',
 
     /** Что показывать в диалоге выбора файла. */
     ACCEPT: '.jpg,.jpeg,.png,.webp,.gif,.pdf,.xlsx,.xls,.docx,.html,.htm,.txt,image/*',
