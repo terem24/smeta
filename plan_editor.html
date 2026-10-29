@@ -681,6 +681,23 @@
   html.fs #steps { box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 12px; }
   .guide { backdrop-filter: none; box-shadow: 0 6px 20px rgba(0,0,0,.18); border-color: var(--border); }
   .guide .step { color: var(--acc); }
+  /* ===== телефон (до 720 px) ===== полный экран здесь не нужен: он ставил колонку шагов
+     слева (280 px, фиксированно) и выталкивал чертёж за край экрана. Всё идёт столбиком:
+     шапка не залипает (иначе мастер закрывает план и список комнат), шаги — обычным блоком,
+     строка комнаты переносится, кнопки полного экрана скрыты. */
+  @media (max-width: 720px) {
+    .topbar, html.fs .topbar { position: static; }
+    #b_fs, #b_fs2, #fs_nudge, .fs-corner, .fs-keys { display: none !important; }
+    html.fs body { display: block; height: auto; overflow: visible; }
+    html.fs .wrap, html.fs:not(.fs-dock-off) .wrap { flex: none; min-height: 0; padding: 8px; align-items: stretch; }
+    html.fs #steps, html.fs.fs-dock-off #steps { display: block; position: static; width: auto; max-height: none; overflow: visible;
+                                                 box-shadow: none; border: 0; padding: 6px 8px; border-radius: 12px; }
+    html.fs .cvbox { display: block; overflow: visible; }
+    html.fs .cvbox canvas { max-height: none; margin: 0; }
+    html.fs .side { overflow: visible; }
+    .zone { flex-wrap: wrap; row-gap: 5px; }
+    .zone input[type=text] { flex: 1 1 150px; }
+  }
 </style>
 </head>
 <body>
