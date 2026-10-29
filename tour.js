@@ -818,6 +818,14 @@ const Tour = {
 
     blockById: function (id) { return this.BLOCKS.find(b => b.id === id) || null; },
 
+    // Обучение пройдено полностью: отмечены все блоки, которые доступны этому человеку по тарифу
+    // и роли. Блоки, закрытые тарифом, в условие не входят: их всё равно нельзя пройти.
+    fullyDone: function () {
+        const dm = this.doneMap();
+        const need = this.visibleBlocks().filter(b => this.blockSteps(b.id).length > 0);
+        return need.length > 0 && need.every(b => dm[b.id]);
+    },
+
     // Блоки, которые видит этот человек. Продавцу блок про маржу и договоры подряда не
     // нужен вовсе — не «заперт тарифом», а просто не его; блок без единого доступного шага
     // и без запасного пути не показываем.
@@ -931,11 +939,12 @@ const Tour = {
         const first = !m[id];
         m[id] = 1;
         this.lsSet(this.LS_BLOCKS, JSON.stringify(m));
-        const b = this.blockById(id);
-        if (first && b && b.must) {
+        // Обучение засчитывается, когда пройдены все блоки, доступные этому человеку
+        if (first && this.fullyDone()) {
+            const steps = this.visibleBlocks().reduce((s, x) => s + this.blockSteps(x.id).length, 0);
             // Окно поздравления ждёт ответ базы (там может быть выдан пробный Профи), но не дольше 1,5 с
             const wait = new Promise(res => setTimeout(() => res(null), 1500));
-            Promise.race([this.reportDone(this.blockSteps(id).length), wait])
+            Promise.race([this.reportDone(steps), wait])
                 .then(until => { try { this.celebrate(until); } catch (e) { } });
         }
     },
@@ -1504,13 +1513,13 @@ const Tour = {
     },
 
     // Список блоков: что освоить. Первый экран обучения вместо длинной «экскурсии».
-    // Подсказка про бонус Профи: только вошедшему, кто ещё не прошёл главный блок и не на Профи.
+    // Подсказка про бонус Профи: только вошедшему, кто ещё не прошёл обучение целиком и не на Профи.
     // Выключатель — Subscription.tourBonusSettings (app_settings.subscription.tourBonus), тот же,
     // что читает база при выдаче. Любой сбой — тишина.
     bonusHtml: function () {
         try {
             if (typeof Subscription === 'undefined' || !Subscription.tourBonusSettings().enabled) return '';
-            if (!this.allowed() || this.doneMap().basic || this.planInfo().isPro) return '';
+            if (!this.allowed() || this.fullyDone() || this.planInfo().isPro) return '';
             if (app.isTeremStaff()) return '';
             return '<div class="tour-card-text" style="color:#059669;font-weight:600;">Пройти обучение — получи Профи на 10 дней. Бесплатно.</div>';
         } catch (e) { return ''; }
