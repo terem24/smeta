@@ -620,13 +620,21 @@ const Tour = {
     // цена и акции модуля подписки), а не зашитые числа. Нажатие считается «дошёл до
     // конца»: обучение закрывается, поверх открывается окно тарифа или оплаты.
     planExtra: function () {
-        let m = null, y = null;
-        try { m = app.proPlan('month'); y = app.proPlan('year'); } catch (e) { }
         const money = n => { try { return app.formatCurrencyAmount(n); } catch (e) { return String(n) + ' ₽'; } };
         const isPro = this.planInfo().isPro;
+        // Те же тарифы и те же цены, что в окне тарифов (Subscription.cardsHtml): только включённые во вкладке
+        // «Оплата подписки», с региональной ценой и акцией. Раньше здесь были зашиты «месяц» и «год» — выключенный
+        // годовой тариф показывался с ценой из значений по умолчанию, и цены расходились с окном тарифов.
+        let plans = [];
+        try { plans = Subscription.planList(false).map(p => Subscription.resolve(p.id)).filter(Boolean); } catch (e) { }
+        const esc = s => { try { return Subscription.esc(s); } catch (e) { return String(s); } };
         let h = '<div class="tour-pay">';
-        if (y) h += '<button type="button" class="tour-pay-btn tour-pay-year" onclick="Tour.pay(\'year\')"><span class="tour-pay-tag">Выгоднее</span><b>' + (isPro ? 'Продлить на год' : 'Год') + '</b><span>' + money(Math.round(y.rub / 12)) + '/мес</span></button>';
-        if (m) h += '<button type="button" class="tour-pay-btn tour-pay-month" onclick="Tour.pay(\'month\')"><b>' + (isPro ? 'Продлить на месяц' : 'Месяц') + '</b><span>' + money(m.rub) + '</span></button>';
+        plans.slice().reverse().forEach((r, i) => {
+            const pct = r.promo ? r.promoPct : r.termPct;
+            const price = r.days > 0 ? money(r.rub) : (r.months > 1 ? money(r.perMonth) + '/мес' : money(r.rub));
+            const tag = pct > 0 ? '<span class="tour-pay-tag">−' + pct + '%</span>' : '';
+            h += '<button type="button" class="tour-pay-btn ' + (i === 0 ? 'tour-pay-year' : 'tour-pay-month') + '" onclick="Tour.pay(\'' + esc(r.id) + '\')">' + tag + '<b>' + esc(r.title) + '</b><span>' + price + '</span></button>';
+        });
         h += '<a href="#" class="tour-pay-all" onclick="Tour.pay(); return false;">Сравнить тарифы и ввести промокод</a></div>';
         return h;
     },
