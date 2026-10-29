@@ -933,8 +933,10 @@ const Tour = {
         this.lsSet(this.LS_BLOCKS, JSON.stringify(m));
         const b = this.blockById(id);
         if (first && b && b.must) {
-            this.reportDone(this.blockSteps(id).length);
-            setTimeout(() => { try { this.celebrate(); } catch (e) { } }, 400);
+            // Окно поздравления ждёт ответ базы (там может быть выдан пробный Профи), но не дольше 1,5 с
+            const wait = new Promise(res => setTimeout(() => res(null), 1500));
+            Promise.race([this.reportDone(this.blockSteps(id).length), wait])
+                .then(until => { try { this.celebrate(until); } catch (e) { } });
         }
     },
 
@@ -1027,7 +1029,7 @@ const Tour = {
     // Поздравление, когда засчитан блок «Первый объект» (первый раз). Всё свое, без CSS-файла: канва с конфетти из
     // двух нижних углов, фанфары на WebAudio (звук стартует из клика «Готово», поэтому
     // браузер его разрешает; если нет — тихо без звука) и карточка с кнопкой в «Любимые материалы».
-    celebrate: function () {
+    celebrate: function (proUntil) {
         if (document.getElementById('tour_win')) return;
         let canPrefs = false;
         try { canPrefs = !!(typeof app !== 'undefined' && app.state && app.state.tgUser && !app.isSellerOnly()); } catch (e) { }
@@ -1040,6 +1042,7 @@ const Tour = {
             + '<div style="font-size:56px;line-height:1;">🏆</div>'
             + '<h3 style="margin:10px 0 8px;font-size:22px;">Поздравляем!</h3>'
             + '<p style="margin:0 0 6px;font-size:15px;font-weight:600;">Обучение пройдено</p>'
+            + (proUntil ? '<p style="margin:0 0 12px;font-size:15px;font-weight:700;color:#059669;">Вам открыт Профи на 10 дней — до ' + new Date(proUntil).toLocaleDateString('ru-RU') + '</p>' : '')
             + '<p style="margin:0 0 18px;font-size:14px;line-height:1.5;opacity:.85;">'
             + (canPrefs ? 'Остался последний шаг: выберите любимые материалы, схемы и бренд — новые сметы будут считаться по ним сразу. Менять и сбрасывать можно в любой момент.'
                 : 'Теперь вы знаете весь путь от расчёта до счёта клиенту. Удачных смет!')
@@ -1133,14 +1136,37 @@ const Tour = {
         } catch (e) { }
     },
 
+    // Возвращает промис срока пробного Профи (строка ISO) или null — если не выдан, не записан
+    // или миграция ещё не выполнена. Промис не отклоняется.
     reportDone: function (steps) {
         try { localStorage.setItem(this.LS_DONE, '1'); } catch (e) { }
         try {
             const n = steps || (this._plan || []).filter(Boolean).length;
-            if (typeof supabaseClient === 'undefined' || !this.allowed()) return;
-            Promise.resolve(supabaseClient.rpc('mark_tour_done', { p_steps: n, p_plan: this.planKey() }))
-                .then(r => { if (r && r.error) console.warn('[Tour] отметка не записана:', r.error.message); })
-                .catch(() => { });
+            if (typeof supabaseClient === 'undefined' || !this.allowed()) return Promise.resolve(null);
+            return Promise.resolve(supabaseClient.rpc('mark_tour_done', { p_steps: n, p_plan: this.planKey() }))
+                .then(r => {
+                    if (r && r.error) { console.warn('[Tour] отметка не записана:', r.error.message); return null; }
+                    const until = r && r.data && r.data.pro_until ? r.data.pro_until : null;
+                    if (until) this.applyTrialPro(until);
+                    return until;
+                })
+                .catch(() => null);
+        } catch (e) { }
+        return Promise.resolve(null);
+    },
+
+    // Пробный Профи выдан в базе: переносим это в открытый калькулятор, без перезагрузки.
+    // Тот же ключ pro_trial_until, что у обычного пробного периода, — значит, и подпись «пробный»
+    // и срок в профиле выглядят так же.
+    applyTrialPro: function (until) {
+        try { localStorage.setItem('pro_trial_until', String(new Date(until).getTime())); } catch (e) { }
+        try {
+            if (typeof app === 'undefined' || !app.state) return;
+            app.state.accountType = 'pro';
+            app.state.demoUsed = true;
+            if (app.state.tgUser) { app.state.tgUser.account_type = 'pro'; app.state.tgUser.demo_ends_at = until; }
+            app.saveState();
+            app.syncUI();
         } catch (e) { }
     },
 
