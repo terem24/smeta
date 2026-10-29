@@ -45528,23 +45528,45 @@ const app = {
             const lbl = m => { const p = String(m).split('-'); return (MON[parseInt(p[1], 10) - 1] || p[1]) + ' ' + p[0]; };
             const pct = (a, b) => b ? Math.round(a * 100 / b) + '%' : '—';
             const tot = rows.reduce((t, r) => { Object.keys(r).forEach(k => { if (k !== 'month') t[k] = (t[k] || 0) + (r[k] || 0); }); return t; }, {});
-            const tr = (name, r, bold) => `<tr style="${bold ? 'font-weight:800; border-top:1px solid var(--border);' : ''}">
-                <td style="padding:6px 8px;">${name}</td>
-                <td style="padding:6px 8px; text-align:right;">${r.registered}</td>
-                <td style="padding:6px 8px; text-align:right;">${r.none}</td>
-                <td style="padding:6px 8px; text-align:right;">${r.calc_only}</td>
-                <td style="padding:6px 8px; text-align:right;">${r.saved} <span style="color:var(--text-sec); font-weight:400;">${pct(r.saved, r.registered)}</span></td>
-                <td style="padding:6px 8px; text-align:right;">${r.frozen}</td>
-                <td style="padding:6px 8px; text-align:right;">${r.deleted}</td></tr>`;
-            box.innerHTML = `<div style="overflow-x:auto; padding:0 8px 8px;"><table style="width:100%; border-collapse:collapse; font-size:12px;">
-                <thead><tr style="text-align:right; color:var(--text-sec);">
-                    <th style="padding:6px 8px; text-align:left;">Месяц регистрации</th><th style="padding:6px 8px;">Зарегистрир.</th>
-                    <th style="padding:6px 8px;" title="Ни одного расчёта, ни одной сметы">Не считали</th>
-                    <th style="padding:6px 8px;" title="Расчёты начинали, но смету не сохранили">Считали, не сохранили</th>
-                    <th style="padding:6px 8px;" title="Есть хотя бы одна сохранённая смета">Сохранили смету</th>
-                    <th style="padding:6px 8px;">Заморожены сейчас</th><th style="padding:6px 8px;" title="Удалены правилом; их сметы лежат в архиве со статусом «удалена»">Удалены</th>
-                </tr></thead><tbody>${rows.map(r => tr(lbl(r.month), r)).join('')}${tr('Всего', tot, true)}</tbody></table>
-                <div class="ad-sub" style="margin-top:6px;">Живые и удалённые правилом считаются вместе, поэтому после чисток цифры за сезон не проваливаются. Сметы удалённых лежат в архиве со статусом «удалена» и восстанавливаются по запросу.</div></div>`;
+            const cell = (v, extra) => '<td class="rf-n' + (extra || '') + '">' + v + '</td>';
+            const tr = (name, r, bold) => '<tr' + (bold ? ' class="rf-total"' : '') + '>'
+                + '<td class="rf-m">' + name + '</td>'
+                + cell(r.registered)
+                + cell(r.none || '<span class="rf-zero">0</span>', ' rf-c-none')
+                + cell(r.calc_only || '<span class="rf-zero">0</span>', ' rf-c-calc')
+                + cell((r.saved || '<span class="rf-zero">0</span>') + (r.saved ? ' <span class="rf-pct">' + pct(r.saved, r.registered) + '</span>' : ''), ' rf-c-saved')
+                + cell(r.frozen || '<span class="rf-zero">0</span>')
+                + cell(r.deleted || '<span class="rf-zero">0</span>') + '</tr>';
+            const T = tot.registered || 0;
+            const legend = (cls, title, text) => '<div class="rf-leg ' + cls + '"><b>' + title + '</b><span>' + text + '</span></div>';
+            box.innerHTML = '<style>'
+                + '.rf-wrap{padding:0 8px 8px;overflow-x:auto}'
+                + '.rf-sum{margin:4px 0 10px;padding:10px 12px;border-radius:10px;background:var(--bg-sec,rgba(100,116,139,.08));font-size:13px;line-height:1.5}'
+                + '.rf-legs{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-bottom:12px}'
+                + '.rf-leg{padding:8px 10px;border-radius:8px;border-left:4px solid #94a3b8;background:rgba(100,116,139,.07);font-size:12px;line-height:1.4}'
+                + '.rf-leg b{display:block;margin-bottom:2px;font-size:12.5px}.rf-leg span{color:var(--text-sec)}'
+                + '.rf-leg.none{border-color:#94a3b8}.rf-leg.calc{border-color:#f59e0b}.rf-leg.saved{border-color:#10b981}.rf-leg.frz{border-color:#0ea5e9}'
+                + '.rf-t{width:100%;min-width:640px;border-collapse:separate;border-spacing:0;font-size:13px;table-layout:fixed}'
+                + '.rf-t th{padding:8px 10px;text-align:right;font-weight:700;font-size:12px;color:var(--text-sec);border-bottom:2px solid var(--border);vertical-align:bottom;line-height:1.25}'
+                + '.rf-t th:first-child,.rf-t td:first-child{text-align:left;width:14%}'
+                + '.rf-t td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}'
+                + '.rf-t tbody tr:nth-child(even){background:rgba(100,116,139,.045)}'
+                + '.rf-t tbody tr:hover{background:rgba(59,130,246,.12)}'
+                + '.rf-m{font-weight:700;text-align:left}'
+                + '.rf-c-none{background:rgba(148,163,184,.10)}.rf-c-calc{background:rgba(245,158,11,.10)}.rf-c-saved{background:rgba(16,185,129,.10);font-weight:700}'
+                + '.rf-zero{color:var(--text-sec);opacity:.5}.rf-pct{display:inline-block;min-width:38px;font-weight:400;font-size:11px;color:var(--text-sec)}'
+                + '.rf-total td{font-weight:800;border-top:2px solid var(--border);border-bottom:none}'
+                + '</style><div class="rf-wrap">'
+                + '<div class="rf-sum">Всего зарегистрировалось <b>' + T + '</b>: не считали вовсе <b>' + tot.none + '</b> (' + pct(tot.none, T) + '), считали и бросили <b>' + tot.calc_only + '</b> (' + pct(tot.calc_only, T) + '), сохранили смету <b>' + tot.saved + '</b> (' + pct(tot.saved, T) + '). Три колонки «Не считали + Считали + Сохранили» в сумме дают «Зарегистрир.».</div>'
+                + '<div class="rf-legs">'
+                + legend('none', 'Не считали', 'Зарегистрировался и ушёл: ни одного расчёта, ни одной сметы.')
+                + legend('calc', 'Считали, не сохранили', 'Расчёт был (есть событие в журнале КП/счетов), но ни одной сметы в «Объектах» нет.')
+                + legend('saved', 'Сохранили смету', 'Есть хотя бы одна сохранённая смета. В скобках — доля от зарегистрированных.')
+                + legend('frz', 'Заморожены / Удалены', 'Доступ приостановлен правилом / учётка удалена правилом. Это срез состояния, он пересекается с колонками выше.')
+                + '</div><table class="rf-t"><thead><tr>'
+                + '<th>Месяц регистрации</th><th>Зарегистрир.</th><th>Не считали</th><th>Считали, не сохранили</th><th>Сохранили смету</th><th>Заморожены сейчас</th><th>Удалены</th>'
+                + '</tr></thead><tbody>' + rows.map(r => tr(lbl(r.month), r)).join('') + tr('Всего', tot, true) + '</tbody></table>'
+                + '<div class="ad-sub" style="margin-top:8px;">Живые и удалённые правилом считаются вместе, поэтому после чисток цифры за сезон не проваливаются. Сметы удалённых лежат в архиве со статусом «удалена» и восстанавливаются по запросу. «Считали» определяется по журналу событий КП: кто считал и ни разу не открывал КП, попадает в «Не считали».</div></div>';
         } catch (e) {
             box.innerHTML = '<div style="padding:10px 16px; color:var(--c-bad,#EF4444);">Не удалось получить: ' + String(e.message || e).replace(/[<>&]/g, '') + '. Выполнена ли миграция 20261028_empty_accounts_archive_funnel.sql?</div>';
         }
