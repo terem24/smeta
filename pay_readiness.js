@@ -436,19 +436,19 @@ const PayReadiness = {
 
     // Что даёт каждая функция — для человека, а не для таблицы тарифов. Ключи — id функций.
     OFFER_PERKS: {
-        rommer: 'ROMMER и аналоги',
-        terem: 'поиск по всему прайсу',
-        works: 'работы в смете и КП',
-        analog: 'смета «Бюджетнее»',
-        recognize: 'смета из PDF и фото',
-        design: 'листы проекта',
-        money: 'маржа по разделам',
-        docs: 'договор и акты',
-        disc1c: 'скидки в КП'
+        rommer: 'ROMMER и аналоги: смету можно сделать дешевле или дороже в один клик',
+        terem: 'Поиск по всему прайсу: нашли позицию и сразу добавили в смету',
+        works: 'КП с работами: клиент сразу видит полную сумму, без доплат потом',
+        analog: 'Смета «Бюджетнее»: покажите клиенту, на чём сэкономили',
+        recognize: 'Смета из проекта: кидаете PDF, Excel или фото, калькулятор разбирает сам',
+        design: 'Листы проекта и план этажей: чертежи прямо к смете',
+        money: 'Маржа по каждому разделу: видно, сколько вы зарабатываете',
+        docs: 'Договор, акты и гарантийный талон: одним нажатием',
+        disc1c: 'Скидка клиенту прямо в КП: без ручных пересчётов'
     },
 
-    // В переписке — не больше трёх функций, одной строкой: длинный список никто не дочитывает
-    OFFER_PERKS_MAX: 2,
+    // В сообщении — не больше трёх выгод, каждая отдельной строкой
+    OFFER_PERKS_MAX: 3,
 
     plural: function (n, one, few, many) {
         const a = Math.abs(n) % 100, b = a % 10;
@@ -462,30 +462,40 @@ const PayReadiness = {
         const S = (typeof Subscription !== 'undefined') ? Subscription : null;
         const account = (p.role === 'seller' || p.role === 'both') ? 'seller' : 'installer';
         const lines = [];
-        // Три строки: их цифры → что даёт Профи → цена со ссылкой. Без пересказа всего тарифа
+        // Структура: зачем это человеку → что меняется для его работы → цена со ссылкой → одно действие.
+        // Цифры из его истории (сметы, КП) не пишем: клиенту это не интересно, он хочет выгоду.
         lines.push(p.first ? 'Здравствуйте, ' + p.first + '!' : 'Здравствуйте!');
-        const facts = [];
-        if (p.est30 > 0) facts.push(p.est30 + ' ' + this.plural(p.est30, 'смету', 'сметы', 'смет'));
-        if (p.invoices > 0) facts.push(p.invoices + ' ' + this.plural(p.invoices, 'КП', 'КП', 'КП'));
+        lines.push('');
+        const used = p.est30 > 0 || p.invoices > 0;
+        lines.push(used
+            ? 'Вы уже считаете в HeatCalc — значит, инструмент вам подходит. «Профи» добавляет то, что экономит время на каждом объекте:'
+            : 'HeatCalc уже считает теплопотери и подбирает оборудование. «Профи» добавляет то, что экономит время на каждом объекте:');
+        lines.push('');
         const perks = S ? S.benefitRows(account)
             .filter(r => r.pro !== 'off' && r.base === 'off' && this.OFFER_PERKS[r.f.id])
             .map(r => this.OFFER_PERKS[r.f.id]) : [];
-        lines.push(
-            (facts.length ? 'Вы уже сделали ' + facts.join(' и ') + '. ' : '') +
-            'В «Профи» ' + (perks.length ? perks.slice(0, this.OFFER_PERKS_MAX).join(', ') : 'сметы идут быстрее') + '.');
+        (perks.length ? perks : ['смета быстрее и без ручных пересчётов'])
+            .slice(0, this.OFFER_PERKS_MAX).forEach(t => lines.push('✔ ' + t));
         const missing = [];
         if (S) {
             const plans = S.planList(false).map(pl => S.resolve(pl.id, { region: p.rawRegion })).filter(Boolean);
             if (plans.length) {
                 lines.push('');
+                lines.push('Цена:');
                 plans.forEach(r => {
-                    lines.push(r.label + ' — ' + S.fmtRub(r.rub) + ': ' + this.PAY_LINK + encodeURIComponent(r.id));
+                    let row = r.label + ' — ' + S.fmtRub(r.rub);
+                    const pct = r.promo ? r.promoPct : r.termPct;
+                    if (r.months > 1) row += ' (' + S.fmtRub(r.perMonth) + ' в месяц)';
+                    if (pct > 0) row += ', скидка ' + pct + ' %';
+                    if (r.promo && r.promo.title) row += ' · акция «' + r.promo.title + '»';
+                    lines.push(row + ': ' + this.PAY_LINK + encodeURIComponent(r.id));
                     if (!r.url) missing.push(r.label);
                 });
                 lines.push('');
-                lines.push('Оплатили — нажмите «Я оплатил». Вопросы — ответьте сюда.');
+                lines.push('После оплаты нажмите «Я оплатил» — подключим доступ.');
             }
         }
+        lines.push('Вопросы? Просто ответьте на это сообщение.');
         return { text: lines.join('\n'), missing: missing };
     },
 
