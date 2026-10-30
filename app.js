@@ -7719,7 +7719,7 @@ const app = {
     isProfileIncomplete: function () {
         const u = this.state.tgUser;
         if (!u) return false;
-        return !(u.lastName && u.givenName && u.middleName && u.phone && u.birthDate && u.region && u.city && u.activityTypes && u.activityTypes.length);
+        return !(u.lastName && u.givenName && u.phone && u.birthDate && u.region && u.city && u.activityTypes && u.activityTypes.length);
     },
 
     // Новичковые подсказки — кнопка «Быстрый старт» и описание в пустой смете,
@@ -14715,6 +14715,9 @@ const app = {
     showProfileModal: function (forced, initialTab) {
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
         if (!tgUser) return;
+        // Первый вход: анкета обязательна (шаг 1), два следующих шага необязательны — см. onbGo
+        if (forced) this._onbStep = 1;
+        const onb = this._onbStep > 0;
 
         // Принудительное дозаполнение анкеты (Google/Telegram-вход или старый аккаунт без
         // обязательных полей) — прячем крестик закрытия, пока форма не будет сохранена целиком
@@ -14735,13 +14738,12 @@ const app = {
         // целиком, пока анкета не сохранена; showAdminModal/railGo его не открывают
         // заново, так что после сохранения оно возвращается само при следующем showProfileModal.
         const profileNav = document.getElementById('profile_nav');
-        if (profileNav) profileNav.style.display = forced ? 'none' : '';
+        if (profileNav) profileNav.style.display = (forced || onb) ? 'none' : '';
         document.getElementById('profile_last_name_input').value = tgUser.lastName || '';
         // Пока пользователь не разделит старое комбинированное имя на части сам — подставляем
         // его целиком в поле "Имя", чтобы не оставлять форму пустой для уже существующих аккаунтов
         const oldFullName = tgUser.first_name || tgUser.username || '';
         document.getElementById('profile_first_name_input').value = tgUser.givenName || (this.isNamePlaceholder(oldFullName, tgUser.email) ? '' : oldFullName);
-        document.getElementById('profile_middle_name_input').value = tgUser.middleName || '';
         const profilePhoneEl = document.getElementById('profile_phone_input');
         profilePhoneEl.value = tgUser.phone || '';
         // Номер от Яндекс ID / Google / Telegram приходит без маски («+79530044333»).
@@ -14775,6 +14777,7 @@ const app = {
             const chk = document.getElementById(id);
             if (chk) chk.checked = (pickedActivity === val);
         });
+        this.syncActivityLock();
 
         // Тариф и срок подписки показывает раздел «Подписка» (renderSubscriptionTab)
 
@@ -14799,7 +14802,9 @@ const app = {
         // нет — у тех, кто указал город раньше, регион так и оставался пустым. Досчитываем
         // его при открытии формы, но только если поле пустое: уже введённый регион не трогаем.
         if (regionEl && !regionEl.value.trim()) this.autofillRegionByCity('profile_city_input', 'profile_region_input');
+        this.syncRegionField();
         this.renderProfilePromoField();
+        this.syncPromoToggle();
         this.renderProfileLoginMethod();
         this.renderProfileNavHeader(tgUser);
         this.renderProfilePhotoField();
@@ -14821,6 +14826,8 @@ const app = {
         const aiFabBtn = document.getElementById('ai_parse_fab_btn');
         if (aiFabBtn) aiFabBtn.style.display = 'none';
         // Баннер cookie перекрывает ту же нижнюю часть формы, что и кнопка выше
+        this.onbRender();
+        if (forced) this.maybeCelebrateRegistration();
         this.syncModalOverlayClass();
     },
     closeProfileModal: function () {
@@ -14829,6 +14836,7 @@ const app = {
             return;
         }
         this._profileForceComplete = false;
+        this._onbStep = 0;
         this.closeCabinetSearch();
         document.getElementById('profile_modal_overlay').style.display = 'none';
         this.syncCabinetDock();
@@ -14842,6 +14850,237 @@ const app = {
         // Подсветка в левой панели возвращается на «Расчёт»
         this.syncRailUI();
     },
+    // ── Первый вход: три шага ──
+    // 1 — анкета: обязательна, окно не закрывается. 2 — любимые материалы, 3 — стоимость
+    // монтажных работ (только монтажнику). Шаги 2 и 3 можно пропустить: они остаются в кабинете
+    // и в сводке. _onbStep = 0 — визарда нет, окно обычное.
+    _onbStep: 0,
+
+    onbGo: function (step) {
+        if (step === 3 && this.isSellerOnly()) step = 0;
+        if (!step) { this.onbFinish(); return; }
+        this._onbStep = step;
+        this._profileForceComplete = false;
+        this.showProfileModal(step === 1, step === 2 ? 'prefs' : (step === 3 ? 'workprices' : 'requisites'));
+    },
+    // «Дальше» после шага — поздравление, потом следующий шаг (или выход на последнем).
+    // «Пропустить» — без поздравления.
+    onbLast: function () {
+        return this._onbStep >= 3 || (this._onbStep === 2 && this.isSellerOnly());
+    },
+    onbNext: function () {
+        const step = this._onbStep;
+        this.onbCelebrate(step, () => (this.onbLast() ? this.onbFinish() : this.onbGo(step + 1)));
+    },
+    onbSkip: function () {
+        if (this.onbLast()) { this.onbFinish(); return; }
+        this.onbGo(this._onbStep + 1);
+    },
+
+    ONB_CELEBRATE: {
+        1: { title: 'Анкета заполнена', text: 'Теперь ваши данные подставляются в сметы и КП.', mode: 'corners', colors: ['#f43f5e', '#f59e0b', '#facc15'] },
+        2: { title: 'Материалы выбраны', text: 'Новые сметы будут считаться по вашему выбору.', mode: 'rain', colors: ['#10b981', '#06b6d4', '#a3e635'] },
+        3: { title: 'Монтаж настроен', text: 'Работы в смете считаются по вашим расценкам.', mode: 'center', colors: ['#8b5cf6', '#ec4899', '#3b82f6'] }
+    },
+
+    // Поздравление после шага: карточка, свой набор конфетти и фанфары. Закрывается кнопкой
+    // или сама через 3,2 с, потом вызывает next.
+    onbCelebrate: function (step, next) {
+        const old = document.getElementById('hc_welcome');
+        if (old) old.remove();
+        const meta = this.ONB_CELEBRATE[step] || this.ONB_CELEBRATE[1];
+        const wrap = document.createElement('div');
+        wrap.id = 'hc_welcome';
+        wrap.className = 'hc-welcome';
+        wrap.innerHTML = `
+            <div class="hc-welcome-card" role="dialog" aria-modal="true">
+                <div class="hc-welcome-badge"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M13 25 L21 33 L36 16"/></svg></div>
+                <div class="hc-welcome-kicker">Шаг ${step} из 3</div>
+                <h2 class="hc-welcome-title">${meta.title}</h2>
+                <p class="hc-welcome-text">${meta.text}</p>
+                <button type="button" class="hc-welcome-btn">${step >= 3 ? 'Готово' : 'Дальше'}</button>
+            </div>`;
+        const cv = document.createElement('canvas');
+        cv.className = 'hc-welcome-fx';
+        document.body.appendChild(wrap);
+        document.body.appendChild(cv);
+        let stopFx = () => { };
+        try { stopFx = this._onbConfetti(cv, meta.mode, meta.colors); Tour._fanfare(); } catch (e) { }
+        let timer = 0;
+        let closed = false;
+        const close = () => {
+            if (closed) return;
+            closed = true;
+            clearTimeout(timer);
+            stopFx();
+            cv.remove();
+            wrap.remove();
+            if (next) next();
+        };
+        timer = setTimeout(close, 3200);
+        wrap.querySelector('.hc-welcome-btn').onclick = close;
+    },
+
+    // Конфетти трёх видов: 'corners' — из нижних углов, 'rain' — сверху вниз, 'center' — разлёт из центра
+    _onbConfetti: function (cv, mode, colors) {
+        const ctx = cv.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        cv.width = innerWidth * dpr;
+        cv.height = innerHeight * dpr;
+        const W = cv.width, H = cv.height;
+        const parts = [];
+        const add = (x, y, vx, vy) => parts.push({
+            x: x, y: y, vx: vx * dpr, vy: vy * dpr,
+            w: (6 + Math.random() * 6) * dpr, h: (4 + Math.random() * 5) * dpr,
+            r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4,
+            c: colors[(Math.random() * colors.length) | 0]
+        });
+        const burst = () => {
+            if (mode === 'corners') {
+                for (let i = 0; i < 70; i++) {
+                    add(0, H * 0.85, 6 + Math.random() * 9, -(8 + Math.random() * 10));
+                    add(W, H * 0.85, -(6 + Math.random() * 9), -(8 + Math.random() * 10));
+                }
+            } else if (mode === 'center') {
+                for (let i = 0; i < 120; i++) {
+                    const a = Math.random() * Math.PI * 2, sp = 6 + Math.random() * 12;
+                    add(W / 2, H * 0.45, Math.cos(a) * sp, Math.sin(a) * sp);
+                }
+            }
+        };
+        const t0 = performance.now();
+        let again = false, raf = 0, stopped = false;
+        const tick = (now) => {
+            if (stopped) return;
+            const el = now - t0;
+            if (mode === 'rain' && el < 2200) {
+                for (let i = 0; i < 5; i++) add(Math.random() * W, -20 * dpr, (Math.random() - 0.5) * 2, 2 + Math.random() * 4);
+            } else if (mode !== 'rain' && !again && el > 1200) { again = true; burst(); }
+            ctx.clearRect(0, 0, W, H);
+            for (let i = parts.length - 1; i >= 0; i--) {
+                const p = parts[i];
+                p.vy += 0.3 * dpr; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+                if (p.y > H + 40) { parts.splice(i, 1); continue; }
+                ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r);
+                ctx.fillStyle = p.c; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
+            }
+            if (parts.length || (mode === 'rain' && el < 2200)) raf = requestAnimationFrame(tick);
+        };
+        burst();
+        raf = requestAnimationFrame(tick);
+        return () => { stopped = true; cancelAnimationFrame(raf); };
+    },
+    onbBack: function () {
+        if (this._onbStep > 1) this.onbGo(this._onbStep - 1);
+    },
+    onbFinish: function () {
+        this._onbStep = 0;
+        this._profileForceComplete = false;
+        this.closeProfileModal();
+    },
+    // Полоса шагов, кнопки и режим окна (onb-mode — всплывающее окно, без меню кабинета)
+    onbRender: function () {
+        const on = this._onbStep > 0;
+        const overlay = document.getElementById('profile_modal_overlay');
+        if (overlay) overlay.classList.toggle('onb-mode', on);
+        const steps = document.getElementById('onb_steps');
+        if (steps) steps.style.display = on ? '' : 'none';
+        const foot = document.getElementById('onb_footer');
+        if (foot) foot.style.display = (on && this._onbStep > 1) ? 'flex' : 'none';
+        if (!on || !steps) return;
+        const last = this.isSellerOnly() ? 2 : 3;
+        steps.querySelectorAll('.onb-step').forEach(el => {
+            const n = Number(el.dataset.step);
+            el.style.display = n > last ? 'none' : '';
+            el.classList.toggle('done', n < this._onbStep);
+            el.classList.toggle('current', n === this._onbStep);
+            const dot = el.querySelector('.onb-dot');
+            if (dot) dot.textContent = n < this._onbStep ? '✓' : String(n);
+        });
+        const fill = document.getElementById('onb_fill');
+        if (fill) fill.style.width = ((this._onbStep - 1) / (last - 1) * 100) + '%';
+        const next = document.getElementById('onb_next_btn');
+        if (next) next.textContent = this._onbStep >= last ? 'Готово' : 'Дальше';
+    },
+
+    // Поздравление после подтверждения почты: флаг ставит createAccountFromPending перед
+    // перезагрузкой, а показываем при первом открытии анкеты после входа
+    maybeCelebrateRegistration: function () {
+        let fresh = false;
+        try { fresh = localStorage.getItem('hc_reg_celebrate') === '1'; localStorage.removeItem('hc_reg_celebrate'); } catch (e) { }
+        if (fresh) this.showRegistrationCelebration();
+    },
+    showRegistrationCelebration: function () {
+        if (document.getElementById('hc_welcome')) return;
+        const wrap = document.createElement('div');
+        wrap.id = 'hc_welcome';
+        wrap.className = 'hc-welcome';
+        wrap.innerHTML = `
+            <div class="hc-welcome-card" role="dialog" aria-modal="true">
+                <div class="hc-welcome-badge"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M13 25 L21 33 L36 16"/></svg></div>
+                <div class="hc-welcome-kicker">Почта подтверждена</div>
+                <h2 class="hc-welcome-title">Добро пожаловать в HeatCalc</h2>
+                <p class="hc-welcome-text">Осталось три шага, и калькулятор готов к работе. Первый обязателен, два других можно сделать позже.</p>
+                <ol class="hc-welcome-steps">
+                    <li><span>1</span><b>Анкета</b><em>обязательно</em></li>
+                    <li><span>2</span><b>Любимые материалы</b><em>можно позже</em></li>
+                    <li><span>3</span><b>Стоимость монтажа</b><em>для монтажников</em></li>
+                </ol>
+                <button type="button" class="hc-welcome-btn">Заполнить анкету</button>
+            </div>`;
+        const cv = document.createElement('canvas');
+        cv.className = 'hc-welcome-fx';
+        document.body.appendChild(wrap);
+        document.body.appendChild(cv);
+        let stopFx = () => { };
+        try { stopFx = Tour._confetti(cv); Tour._fanfare(); } catch (e) { }
+        wrap.querySelector('.hc-welcome-btn').onclick = () => { stopFx(); cv.remove(); wrap.remove(); };
+    },
+
+    // Сфера меняется не чаще раза в 7 дней: сразу после смены радиокнопки блокируются
+    // (сервер проверяет то же самое, см. supabase/migrations/20261030_users_activity_lock.sql)
+    activityLockUntil: function () {
+        const at = this.state.tgUser && this.state.tgUser.activityChangedAt;
+        if (!at) return 0;
+        const until = Date.parse(at) + 7 * 86400000;
+        return until > Date.now() ? until : 0;
+    },
+    syncActivityLock: function () {
+        const lockUntil = this.activityLockUntil();
+        const ids = ['profile_act_installer', 'profile_act_seller'];
+        const picked = ids.some(id => { const c = document.getElementById(id); return c && c.checked; });
+        const locked = !!(lockUntil && picked);
+        ids.forEach(id => { const c = document.getElementById(id); if (c) c.disabled = locked; });
+        const note = document.getElementById('profile_act_note');
+        if (note) note.textContent = locked ? 'Сферу можно сменить после ' + new Date(lockUntil).toLocaleDateString('ru-RU') + ' (не чаще раза в 7 дней).' : '';
+    },
+
+    // Регион берётся из города. Поле показываем, только если город не нашёлся в справочнике
+    syncRegionField: function () {
+        const field = document.getElementById('profile_region_field');
+        if (!field) return;
+        const city = ((document.getElementById('profile_city_input') || {}).value || '').trim();
+        const known = !!this.regionByCityName(city);
+        field.style.display = (city && !known) ? '' : 'none';
+    },
+
+    // Промокод спрятан за ссылкой; если поставщик уже привязан — название компании видно сразу
+    toggleProfilePromo: function () {
+        const wrap = document.getElementById('profile_promo_wrap');
+        const link = document.getElementById('profile_promo_toggle');
+        if (wrap) wrap.style.display = '';
+        if (link) link.style.display = 'none';
+        const inp = document.getElementById('profile_promo_input');
+        if (inp) inp.focus();
+    },
+    syncPromoToggle: function () {
+        const bound = !!this.state.distributorId;
+        const wrap = document.getElementById('profile_promo_wrap');
+        const link = document.getElementById('profile_promo_toggle');
+        if (wrap) wrap.style.display = bound ? '' : 'none';
+        if (link) link.style.display = bound ? 'none' : '';
+    },
+
     // ── Город → регион в анкете ──
     // Регион подставляется по справочнику CITY_REGION_MAP (catalog.js). Как только
     // пользователь правит регион руками, автоподстановка для него выключается до
@@ -49516,6 +49755,8 @@ const app = {
 
             this.logRegEvent('account_created');
             app.alert('✅ Регистрация успешна!' + (window.__HC_NATIVE__ ? '' : ' Страница будет перезагружена через 5 секунд.'));
+            // Поздравление покажем после перезагрузки, при первом открытии анкеты (maybeCelebrateRegistration)
+            try { localStorage.setItem('hc_reg_celebrate', '1'); } catch (e) { }
             this.closeAuthModal();
             this.softReload(5000);
         } catch (err) {
@@ -49908,7 +50149,7 @@ const app = {
             Object.keys(upsertObj).forEach(k => { if (upsertObj[k] === undefined) delete upsertObj[k]; });
 
             // sess_visits — для подсказки «Смета за минуту» (idle_hint.js)
-            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at, registered_at, sess_visits';
+            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, activity_changed_at, is_blocked, frozen_at, registered_at, sess_visits';
 
             let { data: upsertResult, error: upsertError } = await this.loginNetRetry(() => supabaseClient
                 .from('users')
@@ -50100,6 +50341,7 @@ const app = {
                 if (uRow.birth_date) this.state.tgUser.birthDate = uRow.birth_date;
                 if (uRow.region) this.state.tgUser.region = uRow.region;
                 if (uRow.activity_types && uRow.activity_types.length) this.state.tgUser.activityTypes = uRow.activity_types;
+                if (uRow.activity_changed_at) this.state.tgUser.activityChangedAt = uRow.activity_changed_at;
                 // Анкета в state теперь та же, что в базе — с этого момента её незаполненность
                 // означает, что человек и правда её не заполнял, а не что ответ базы в пути
                 // (см. profileLocked в syncUI).
@@ -50592,7 +50834,8 @@ const app = {
     saveProfile: async function () {
         let lastName = document.getElementById('profile_last_name_input').value.trim();
         let firstName = document.getElementById('profile_first_name_input').value.trim();
-        let middleName = document.getElementById('profile_middle_name_input').value.trim();
+        // Отчество в анкете больше не спрашиваем: сохраняем то, что уже записано
+        let middleName = ((this.state.tgUser && this.state.tgUser.middleName) || '').trim();
         let phone = document.getElementById('profile_phone_input').value.trim();
         let birthDate = document.getElementById('profile_birth_date_input').value;
         let region = document.getElementById('profile_region_input').value.trim();
@@ -50628,12 +50871,11 @@ const app = {
         middleName = this.tidyNamePart(middleName);
         document.getElementById('profile_last_name_input').value = lastName;
         document.getElementById('profile_first_name_input').value = firstName;
-        document.getElementById('profile_middle_name_input').value = middleName;
         // Каждая ошибка подсвечивает свое поле и подводит к нему экран (profileFieldError):
         // на телефоне форма длинная, и по одному тексту в окошке не понять, где искать
         const nameErr = this.checkNamePart(lastName, 'Фамилия')
             || this.checkNamePart(firstName, 'Имя')
-            || this.checkNamePart(middleName, 'Отчество');
+            || (middleName && this.checkNamePart(middleName, 'Отчество'));
         if (nameErr) {
             const nameField = this.checkNamePart(lastName, 'Фамилия') ? 'profile_last_name_input'
                 : this.checkNamePart(firstName, 'Имя') ? 'profile_first_name_input' : 'profile_middle_name_input';
@@ -50674,6 +50916,13 @@ const app = {
             try { supabaseClient.auth.updateUser({ data: { email_unverified: null } }).catch(() => {}); } catch (e) { /* не критично */ }
         }
         if (activityTypes.length === 0) { this.profileFieldError('profile_act_installer', 'Выберите сферу деятельности: монтажник или продавец.'); return; }
+        // Сферу меняем не чаще раза в 7 дней (сервер проверяет то же самое, см. миграцию users_activity_lock)
+        const prevActivity = ((this.state.tgUser && this.state.tgUser.activityTypes) || []).join();
+        const activityChanged = prevActivity !== activityTypes.join();
+        const activityLockUntil = this.activityLockUntil();
+        if (activityChanged && prevActivity && activityLockUntil) {
+            this.profileFieldError('profile_act_installer', 'Сферу деятельности можно сменить не раньше ' + new Date(activityLockUntil).toLocaleDateString('ru-RU') + ' (не чаще раза в 7 дней).'); return;
+        }
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
         if (!tgUser || (!tgUser.authUserId && !tgUser.email && !tgUser.id)) return;
@@ -50692,6 +50941,7 @@ const app = {
         this.state.tgUser.city = city;
         this.state.tgUser.email = email;
         this.state.tgUser.activityTypes = activityTypes;
+        if (activityChanged) this.state.tgUser.activityChangedAt = new Date().toISOString();
 
         // Реквизиты компании и логотип — функция «Реквизиты» (исходно Профи). Это настройка
         // учётной записи, а не сметы: сохраняем в installerSettings, откуда их не
@@ -50726,7 +50976,8 @@ const app = {
 
         this.syncUI();
         if (cityApplied) this.render(); // сменился регион — пересчитываем смету
-        this.closeProfileModal();
+        const onbNext = this._onbStep === 1;
+        if (!onbNext) this.closeProfileModal();
 
         // Промокод из анкеты применяем тем же сохранением: своей кнопки у поля нет.
         // applyPromoCode сама сообщит результат и перезагрузит страницу при успехе,
@@ -50735,6 +50986,9 @@ const app = {
         const promoCode = promoInput ? promoInput.value.trim().toUpperCase() : '';
         if (promoCode && !this.state.distributorId) {
             this.applyPromoCode(promoCode);
+        } else if (onbNext) {
+            // Анкета — шаг 1: поздравляем и предлагаем любимые материалы, окно не закрываем
+            this.onbCelebrate(1, () => this.onbGo(2));
         } else {
             app.alert('✅ Профиль успешно сохранен!');
         }
