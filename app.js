@@ -80961,12 +80961,13 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         let text = (proUntilDate === 'навсегда') ? 'бессрочно' : `до ${proUntilDate}`;
                         dateHtml = `<span style="font-size: 9px; color: var(--text-sec); font-weight: 400; margin-top: 1px; white-space: nowrap; line-height: 1.2;">${text}</span>`;
                     }
-                    infoHtml = `<div style="display: flex; flex-direction: column; align-items: flex-start; margin-left: 8px;">
-                        <div style="display: flex; align-items: center; gap: 6px;">
+                    // Плашка стоит по вертикали посередине всего блока (имя + срок), а не на строке имени
+                    infoHtml = `<div style="display: flex; flex-direction: row; align-items: center; gap: 6px; margin-left: 8px;">
+                        <div style="display: flex; flex-direction: column; align-items: flex-start; min-width: 0;">
                             <span title="${uName}" style="border-bottom: 1px dashed var(--text-sec); max-width: min(200px, 38vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;">${uName}</span>
-                            <span style="background: linear-gradient(135deg, #F59E0B, #D97706); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; letter-spacing: 0.05em; box-shadow: 0 2px 4px rgba(217, 119, 6, 0.3); line-height: 1.2;">ПРОФИ</span>
+                            ${dateHtml}
                         </div>
-                        ${dateHtml}
+                        <span style="background: linear-gradient(135deg, #F59E0B, #D97706); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800; letter-spacing: 0.05em; box-shadow: 0 2px 4px rgba(217, 119, 6, 0.3); line-height: 1.2;">ПРОФИ</span>
                     </div>`;
                 } else {
                     // Базовый тариф — не показываем "Базовый" (это дефолт, а не статус),
