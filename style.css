@@ -21808,3 +21808,10 @@ body.empty-fit-panel #header_totals { display: none !important; }
     #profile_modal_overlay:not(.onb-mode) #profile_tab_requisites .lk-field-note:empty { display: none; }
     #profile_modal_overlay:not(.onb-mode) #profile_tab_requisites .lk-card { padding-top: 14px; padding-bottom: 14px; }
 }
+
+/* Шапка: профиль и кнопки всегда у логотипа. Раньше их держал слева блок итогов
+   (margin-left: auto), а при прокрутке итоги скрываются, и весь ряд уезжал к правому
+   краю по justify-content: flex-end. Итоги сами уходят вправо своим auto-отступом. */
+@media screen and (min-width: 1025px) {
+    .site-header-right { justify-content: flex-start; }
+}
