@@ -464,6 +464,9 @@ function getFriendlyErrorMessage(err, defaultMsg = 'Неизвестная ош�
     if (msg.includes('invalid login credentials') || msg.includes('invalid email or password')) {
         return 'Неверный логин или пароль.';
     }
+    if (msg.includes('user is banned') || msg.includes('user_banned')) {
+        return 'Ваш аккаунт заблокирован администратором. Для уточнения причин свяжитесь с поддержкой.';
+    }
     if (msg.includes('email not confirmed')) {
         return 'Email не подтвержден. Пожалуйста, проверьте почту и подтвердите ваш аккаунт.';
     }
@@ -50660,15 +50663,10 @@ const app = {
             if (uRow && uRow.is_blocked) {
                 // Заблокированный админом аккаунт: данные не трогаем, но не даём пользоваться
                 // калькулятором — выходим из сессии и возвращаем в неавторизованное состояние.
-                await supabaseClient.auth.signOut();
-                delete this.state.tgUser;
-                this.state.accountType = 'base';
-                this.saveState();
-                this.syncUI();
-                this.render();
-                app.alert('Ваш аккаунт заблокирован администратором. Для уточнения причин свяжитесь с поддержкой.');
+                await this.enforceBlocked();
                 return;
             }
+            this.startBlockWatch(authUserId);
             // Доступ приостановлен ночным проходом за долгое отсутствие (frozen_at,
             // см. миграцию 20260909_inactivity_lifecycle.sql). Это не блокировка за
             // нарушение, поэтому и текст другой: человек ничего плохого не сделал,
@@ -51078,6 +51076,45 @@ const app = {
     // Блокировка не трогает данные — только закрывает доступ к калькулятору (см. проверку
     // is_blocked в handleAuthSession, которая принудительно выходит из сессии). Снимается тем
     // же переключателем в любой момент.
+    // Выход заблокированного: сессия гасится, состояние сбрасывается до гостя. На сервере
+    // блокировка держится отдельно (бан во входе + запрет в RLS, миграция
+    // 20261030_block_server_enforcement.sql), здесь — немедленная реакция открытой вкладки.
+    enforceBlocked: async function () {
+        if (this._blockedHandled) return;
+        this._blockedHandled = true;
+        this.stopBlockWatch();
+        try { await supabaseClient.auth.signOut(); } catch (e) { /* сессии на сервере уже нет */ }
+        delete this.state.tgUser;
+        this.state.accountType = 'base';
+        this.saveState();
+        this.syncUI();
+        this.render();
+        app.alert('Ваш аккаунт заблокирован администратором. Для уточнения причин свяжитесь с поддержкой.');
+        setTimeout(() => { this._blockedHandled = false; }, 5000);
+    },
+    // Открытая вкладка узнаёт о блокировке сама: раз в 2 минуты и при возврате на вкладку
+    // читает свою строку users (её RLS не закрывает). Ошибки сети молча пропускаем.
+    startBlockWatch: function (authUserId) {
+        if (this._blockWatchFor === authUserId) return;
+        this.stopBlockWatch();
+        this._blockWatchFor = authUserId;
+        const check = async () => {
+            try {
+                const { data, error } = await supabaseClient.from('users').select('is_blocked').eq('auth_user_id', authUserId).limit(1);
+                if (!error && data && data[0] && data[0].is_blocked) this.enforceBlocked();
+            } catch (e) { /* нет связи — проверим в следующий раз */ }
+        };
+        this._blockWatchTimer = setInterval(check, 120000);
+        this._blockWatchVis = () => { if (!document.hidden) check(); };
+        document.addEventListener('visibilitychange', this._blockWatchVis);
+    },
+    stopBlockWatch: function () {
+        if (this._blockWatchTimer) clearInterval(this._blockWatchTimer);
+        if (this._blockWatchVis) document.removeEventListener('visibilitychange', this._blockWatchVis);
+        this._blockWatchTimer = null;
+        this._blockWatchVis = null;
+        this._blockWatchFor = null;
+    },
     toggleUserBlocked: async function (userId, block) {
         if (this.isReadOnlyAdmin()) {
             app.alert('Режим просмотра. Изменение статуса блокировки запрещено.');
@@ -64087,6 +64124,7 @@ const app = {
                 this.state.accountType = 'base';
                 this._authHandling = false;
                 this._profileDbLoaded = false;
+                this.stopBlockWatch();
                 this.clearInstallerSettingsOnLogout();
                 this.saveState();
                 this.syncUI();
