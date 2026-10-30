@@ -90666,6 +90666,13 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             if (_elKits.length) {
                 _elKits.forEach(k => {
                     addToBill({ ...k, originalId: k.id }, 1, k.tip || '', grp);
+                    // Выход клапана в змеевик бойлера — наружная резьба G3/4 (паспорта ZOTA BPV и ЭВАН AQUA): на трубу греющего контура
+                    // бойлера он садится через переходник на внутреннюю резьбу 3/4 под трубу системы обвязки (нержавейка 22 мм или PP-RCT).
+                    if (k.coilOut) {
+                        const _coilFit = this.selfFit('adF', '34');
+                        if (_coilFit) addToBill({ ..._coilFit, originalId: _coilFit.id + '_dhwcoil' }, 1,
+                            'Переходник на внутреннюю резьбу 3/4 под трубу системы обвязки: выход клапана ГВС в змеевик бойлера (наружная резьба G3/4).', grp);
+                    }
                 });
                 return;
             }
