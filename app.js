@@ -66178,7 +66178,7 @@ const app = {
             catalog.boilers_status.forEach(_addLine);
             catalog.boilers_polis.forEach(_addLine);
             // Бойлер включён — котёл без проверенного клапана ГВС в список не попадает.
-            (catalog.boilers_el_analogs || []).filter(x => this.canUseBrand(x.brand) && (x.noPump || !this.dhwTankOn() || x.dhwKit)).forEach(_addLine);
+            (catalog.boilers_el_analogs || []).filter(x => this.canUseBrand(x.brand) && (x.noPump || x.tier === 'polis' || !this.dhwTankOn() || x.dhwKit)).forEach(_addLine);
             alts = [];
             Object.keys(_lines).forEach(k => {
                 const ln = _lines[k];
@@ -90123,7 +90123,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // а серию переключили) — остаёмся на STOUT, а не оставляем смету без котла.
                 if (ft === 'el' && this.state.elBoilerBrand && this.state.elBoilerBrand !== 'STOUT') {
                     const _ap = this.elAnalogPool(elSeries === 'polis' ? 'polis' : 'status', this.state.elBoilerBrand, this.state.elBoilerLine)
-                        .filter(x => x.noPump || !this.dhwTankOn() || x.dhwKit);
+                        .filter(x => x.noPump || x.tier === 'polis' || !this.dhwTankOn() || x.dhwKit);
                     if (_ap.length) db = _ap;
                 }
                 // POLIS встал по режиму «Бюджетнее» (а не по ручному выбору серии) —
@@ -90865,6 +90865,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         "Американка 1\" ВР/НР на патрубках котла POLIS: ВР — на наружную резьбу 1\" патрубка, НР — в верх группы быстрого монтажа (по паспорту POLIS, п. 6.2, Рис. 5). По одной на подачу и обратку.", grp);
                 } else {
                     addToBill(catalog.american_34, 2, "Разъемное соед.", grp);
+                    // Патрубок обратки с внутренней резьбой (Baxi AMPERA Lite, паспорт, табл. 5): американка садится на него через ниппель.
+                    if (b.retFemale) addToBill(catalog.nipple_34, 1, "Ниппель НН 3/4\" на патрубок обратки котла: у этого котла обратка — внутренняя резьба G3/4 (паспорт).", grp);
                     addToBill(withRommerAlt(catalog.ball_valve_34), 2, "Запорная арматура.", grp);
                 }
                 addToBill(withRommerAlt(catalog.filter_mag), 1, this.getDesc('filter_mag'), grp);
@@ -90915,7 +90917,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // и змеевиком по команде автоматики, а у POLIS её нет — ни выхода на сервопривод,
         // ни датчика бойлера. ГВС остаётся на основном газовом котле, POLIS держит только
         // отопление. Поэтому узел загрузки ему не ставим.
-        let hasElSel = selBoilers.some(b => b.type !== 'gas' && !b.noPump) && !rigDropped('el');
+        let hasElSel = selBoilers.some(b => b.type !== 'gas' && !b.noPump && b.tier !== 'polis') && !rigDropped('el'); // POLIS-класс (в том числе с насосом, как Baxi Lite) — резерв, бойлер греет другой источник
         // tankLoadSchemeEff, а не state: при схеме котельной «Без гидрострелки»
         // коллектора, на котором висела бы насосная группа бойлера, нет.
         let tankNeedsPumpGroup = this.dhwTankOn() && !rigDropped('dhw') && this.tankLoadSchemeEff() === 'pump';

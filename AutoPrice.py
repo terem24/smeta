@@ -642,6 +642,7 @@ BRAND_LISTINGS = [
     ('Электрокотлы Protherm', SEARCH_URL + '/catalog/otoplenie/kotly/elektricheskie/filter/brand-is-protherm/apply/'),
     ('Электрокотлы Vaillant', SEARCH_URL + '/catalog/otoplenie/kotly/elektricheskie/filter/brand-is-vaillant/apply/'),
     ('Электрокотлы Thermex', SEARCH_URL + '/catalog/otoplenie/kotly/elektricheskie/filter/brand-is-thermex/apply/'),
+    ('Электрокотлы Baxi', SEARCH_URL + '/catalog/otoplenie/kotly/elektricheskie/filter/brand-is-baxi/apply/'),
 ]
 
 def fetch_brand_listing(url):
