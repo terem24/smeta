@@ -15012,7 +15012,7 @@ const app = {
         if (!val('profile_last_name_input')) out.push(document.getElementById('profile_last_name_input'));
         if (!val('profile_first_name_input')) out.push(document.getElementById('profile_first_name_input'));
         if (!this.isPhoneFilled(val('profile_phone_input'))) out.push(document.getElementById('profile_phone_input'));
-        if (!val('profile_birth_date_input')) out.push(document.getElementById('profile_birth_text'));
+        if (!val('profile_birth_date_input') || this.birthAgeError(val('profile_birth_date_input'))) out.push(document.getElementById('profile_birth_text'));
         if (!val('profile_city_input')) out.push(document.getElementById('profile_city_input'));
         const picked = ['profile_act_installer', 'profile_act_seller'].some(id => document.getElementById(id) && document.getElementById(id).checked);
         if (!picked) out.push(document.getElementById('profile_act_installer'));
@@ -15043,14 +15043,28 @@ const app = {
     },
     // ── Дата рождения: цифрами (дд.мм.гггг) или календарём ──
     // Скрытое поле profile_birth_date_input хранит ISO (гггг-мм-дд), оно же читает saveProfile.
+    // Проверка возраста сразу при вводе: не младше 18 и не старше PROFILE_MAX_AGE (80) лет
+    birthAgeError: function (iso) {
+        if (!iso) return '';
+        const age = this.calcAge(iso);
+        if (age < 18) return 'Возраст должен быть не меньше 18 лет';
+        if (age > this.PROFILE_MAX_AGE) return 'Возраст должен быть не больше ' + this.PROFILE_MAX_AGE + ' лет';
+        return '';
+    },
     birthSetIso: function (iso, keepText) {
         const hid = document.getElementById('profile_birth_date_input');
         if (hid) { hid.value = iso || ''; hid.dispatchEvent(new Event('change')); }
         const txt = document.getElementById('profile_birth_text');
         if (txt && !keepText) txt.value = iso ? iso.split('-').reverse().join('.') : '';
+        const err = this.birthAgeError(iso);
+        const note = document.getElementById('profile_birth_note');
+        if (note) note.textContent = err;
+        const field = txt && txt.closest('.lk-field');
+        if (field) field.classList.toggle('onb-missing', !!err);
     },
     // Маска дд.мм.гггг: точки ставятся сами, дата принимается, когда она существует
     birthTextInput: function (el) {
+        this.birthPickerClose();
         const d = el.value.replace(/\D/g, '').slice(0, 8);
         let out = d.slice(0, 2);
         if (d.length > 2) out += '.' + d.slice(2, 4);
@@ -15078,7 +15092,7 @@ const app = {
         if (!wrap) {
             wrap = document.createElement('div');
             wrap.id = 'birth_picker';
-            wrap.className = 'birth-picker-wrap';
+            wrap.className = 'birth-picker-wrap' + (window.innerWidth > 600 ? ' bp-pop' : '');
             wrap.addEventListener('click', e => { if (e.target === wrap) this.birthPickerClose(); });
             document.body.appendChild(wrap);
         }
@@ -15094,7 +15108,9 @@ const app = {
         for (let d = 1; d <= days; d++) {
             const iso = v.y + '-' + String(v.m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
             const dt = new Date(v.y, v.m, d);
-            const off = dt > today || v.y < minY || v.y > maxY || (v.y === maxY && dt > new Date(maxY, today.getMonth(), today.getDate()));
+            const off = dt > today || v.y < minY || v.y > maxY
+                || (v.y === maxY && dt > new Date(maxY, today.getMonth(), today.getDate()))
+                || dt < new Date(minY, today.getMonth(), today.getDate());
             cells += '<button type="button" class="bp-day' + (iso === sel ? ' bp-sel' : '') + '"' + (off ? ' disabled' : ' onclick="app.birthPickPick(\'' + iso + '\')"') + '>' + d + '</button>';
         }
         let mOpts = months.map((n, i) => '<option value="' + i + '"' + (i === v.m ? ' selected' : '') + '>' + n + '</option>').join('');
@@ -15106,6 +15122,20 @@ const app = {
             '<div class="bp-wd"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>' +
             '<div class="bp-grid">' + cells + '</div>' +
             '<div class="bp-foot"><button type="button" class="bp-cancel" onclick="app.birthPickerClose()">Отмена</button></div></div>';
+        // На компьютере календарь открывается под полем (или над ним, если снизу нет места)
+        const field = document.getElementById('profile_birth_text');
+        if (wrap.classList.contains('bp-pop') && field) {
+            const card = wrap.querySelector('.bp-card');
+            const r = field.getBoundingClientRect();
+            const w = Math.min(340, window.innerWidth - 24);
+            card.style.position = 'absolute';
+            card.style.width = w + 'px';
+            card.style.left = Math.max(12, Math.min(r.left, window.innerWidth - w - 12)) + 'px';
+            const h = card.offsetHeight;
+            let top = r.bottom + 6;
+            if (top + h > window.innerHeight - 12) top = Math.max(12, r.top - h - 6);
+            card.style.top = top + 'px';
+        }
     },
     birthPickSet: function (m, y) {
         if (m !== null) this._birthView.m = +m;
@@ -51384,7 +51414,7 @@ const app = {
 
     // Возраст выше этого в анкете почти всегда означает выдуманную дату: раньше
     // граница стояла на 90 годах, и «1936 год рождения» проходил насквозь.
-    PROFILE_MAX_AGE: 75,
+    PROFILE_MAX_AGE: 80,
 
     // Куски клавиатурных рядов. Список намеренно короткий: «кен», «про», «уке»
     // встречаются в настоящих фамилиях (Кенжаев, Прохоров, Букеева), и попади они

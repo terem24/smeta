@@ -227,7 +227,7 @@
         <link href="/fonts/inter.css?v=1"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=5.94">
+    <link rel="stylesheet" href="style.css?v=5.96">
     <link rel="stylesheet" href="hydro_check.css?v=1.13">
 
     <script src="supabase-js.js" defer></script>
@@ -262,7 +262,7 @@
     <script src="water_hydro.js?v=1.7" defer></script>
     <script src="assembly_check.js?v=1.8" defer></script>
     <script src="probe.js?v=1.0" defer></script>
-    <script src="app.min.js?v=15.15" defer></script>
+    <script src="app.min.js?v=15.16" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -3425,11 +3425,9 @@
                              в скрытом поле profile_birth_date_input — ISO (гггг-мм-дд): по нему считаются
                              возраст и запись в базу. См. app.birthSetIso / app.birthPickerOpen -->
                         <div class="onb-date-row">
-                            <input type="text" id="profile_birth_text" class="auth-input" inputmode="numeric" autocomplete="off" placeholder="дд.мм.гггг" maxlength="10" oninput="app.birthTextInput(this)">
-                            <button type="button" class="onb-date-btn" aria-label="Выбрать дату в календаре" onclick="app.birthPickerOpen()">
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-                            </button>
+                            <input type="text" id="profile_birth_text" class="auth-input onb-date-input" inputmode="numeric" autocomplete="off" placeholder="дд.мм.гггг" maxlength="10" oninput="app.birthTextInput(this)" onclick="app.birthPickerOpen()">
                         </div>
+                        <div id="profile_birth_note" class="lk-field-note"></div>
                         <input type="hidden" id="profile_birth_date_input">
                     </div>
 
