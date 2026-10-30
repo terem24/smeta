@@ -66,11 +66,11 @@ const Tour = {
     // fallback — куда вести, если ни один шаг блока человеку недоступен (тариф).
     BLOCKS: [
         { id: 'basic', icon: '🏠', title: 'Первый объект', sub: 'Соберёте дом 150 м² — от площади до скважинного насоса — и сохраните', min: 8, must: true },
-        { id: 'estimate', icon: '📄', title: 'Смета и клиент', sub: 'Замена позиций, итог и наценка, ссылка клиенту, счёт', min: 3 },
-        { id: 'speed', icon: '⚡', title: 'Точнее и быстрее', sub: 'Параметры объекта, ИИ-заполнение, расчёт по комнатам', min: 3 },
-        { id: 'sell', icon: '💰', title: 'Деньги и договор', sub: 'Монтажные работы, ваша маржа, «Бюджетнее», договор и акты', min: 3, pro: true, noSeller: true, fallback: { block: 'cabinet', key: 'plan' } },
-        { id: 'project', icon: '📐', title: 'Проект и сканы', sub: 'План дома, листы проекта, распознавание чужих смет', min: 3, pro: true, fallback: { block: 'cabinet', key: 'plan' } },
-        { id: 'cabinet', icon: '🧭', title: 'Кабинет и тариф', sub: 'Кнопки в шапке, меню разделов, что входит в ваш тариф', min: 2 }
+        { id: 'estimate', icon: '📄', title: 'Смета и клиент', sub: 'Замена позиций, ссылка клиенту, PDF и счёт', min: 2 },
+        { id: 'cabinet', icon: '🧭', title: 'Меню и кнопки', sub: 'Шапка, боковое меню, что входит в ваш тариф', min: 2 },
+        // Только в Профи: в списке лежат под сворачиваемым заголовком, на базовом тарифе заперты
+        { id: 'sell', icon: '💰', title: 'Деньги и договор', sub: 'Монтаж, ваша маржа, «Бюджетнее», договор и акты', min: 3, pro: true, noSeller: true, fallback: { block: 'cabinet', key: 'plan' } },
+        { id: 'project', icon: '📐', title: 'Комнаты и проект', sub: 'Расчёт по комнатам, план дома, листы проекта, сканы', min: 3, pro: true, fallback: { block: 'cabinet', key: 'plan' } }
     ],
 
     // Шаги. Текст — одно предложение «зачем»; что делать — в заданиях (tasks), а где —
@@ -175,15 +175,14 @@ const Tour = {
             block: 'basic', key: 'replace', mob: 'output',
             // Радиаторы могут лежать в свёрнутом подразделе сметы (группировка у Профи) — тогда
             // их строк на экране нет, и подсветка уезжала на вкладку «Оборудование». Разворачиваем.
-            before: () => { Tour.ensureRadiators(); Tour.openRadGroup(); },
+            before: () => Tour.openRadGroup(),
             sel: () => { const r = Tour.radRow() || Tour.anySwapRow(); return r ? r.tr : document.getElementById('tab_equipment'); },
             title: 'Замена радиатора',
             text: 'Любую позицию сметы можно заменить. Окно замены открывается по клику на фото позиции; фильтры «Тип прибора» и «Подключение» — внутри этого окна.',
-            snap: () => { Tour._radWin = false; return JSON.stringify({ sw: Tour.st().swaps || {}, eq: Tour.eqSig() }); },
+            snap: () => { Tour._radWin = false; return JSON.stringify({ sw: Tour.st().swaps || {} }); },
             // Радиатора в смете нет (редкий случай: свёрнуто или убран) — одно задание про любую позицию
             tasks: () => {
-                // Котёл меняет не state.swaps, а свои поля (серия STATUS/POLIS), поэтому смотрим и состав сметы
-                const picked = snap => { const s = JSON.parse(snap); return JSON.stringify(Tour.st().swaps || {}) !== JSON.stringify(s.sw) || Tour.eqSig() !== s.eq; };
+                const picked = snap => JSON.stringify(Tour.st().swaps || {}) !== JSON.stringify(JSON.parse(snap).sw);
                 if (!Tour.radRow()) return [{ label: 'Нажмите на фото любой позиции сметы и выберите другую', done: picked }];
                 return [
                     { label: 'Нажмите на фото радиатора — откроется окно замены', done: () => !!Tour._radWin || Tour.radWinOpen() },
@@ -221,24 +220,6 @@ const Tour = {
             seller: { title: 'Спецификация' }
         },
         {
-            block: 'estimate', key: 'total', mob: 'output',
-            // Строка итога, а не вся панель: подсветка в пол-экрана закрывала карточку
-            sel: () => {
-                const disc = document.getElementById('discount_block');
-                if (disc && disc.offsetParent) return disc.parentElement;
-                const t = document.getElementById('total_sum');
-                return t && t.parentElement;
-            },
-            title: 'Итог и наценка',
-            text: 'Ползунок меняет цену для клиента, рекомендованная остаётся у вас перед глазами.',
-            // Блок «Скидка/Наценка» есть не у всех (тариф) — тогда шаг без задания
-            snap: () => { try { return String(app.state[app.discountFields().val]); } catch (e) { return ''; } },
-            tasks: () => { const d = document.getElementById('discount_block'); return (d && d.offsetParent) ? [{ label: 'Поменяйте скидку или наценку — ползунком или числом справа', done: snap => { try { return String(app.state[app.discountFields().val]) !== snap; } catch (e) { return false; } } }] : null; },
-            // Палец на число скидки справа (его можно и вписать, и тянуть ползунок рядом), а не на подпись слева
-            point: () => { const v = document.getElementById('eq_discount_val'); return (v && v.offsetParent) ? v : document.getElementById('eq_discount_slider'); },
-            seller: { title: 'Итог и цена для клиента', text: 'Ползунок даёт скидку или наценку магазина — итог пересчитается сразу.' }
-        },
-        {
             block: 'estimate', key: 'send', mob: 'output',
             sel: () => {
                 const share = document.getElementById('btn_share_trigger');
@@ -247,38 +228,8 @@ const Tour = {
             },
             title: 'Отдать клиенту',
             text: 'Ссылка открывает смету у клиента на телефоне. Рядом — PDF, Excel и «Запросить счёт».',
-            // Засчитываем, когда окно ссылки закрыто (ссылка создана или окно закрыли): иначе итоговая
-            // карточка блока ложилась поверх открытого окна «Создание ссылки для клиента»
-            tasks: [{ label: 'Нажмите «Поделиться» — ссылка на смету создастся и скопируется', done: () => Tour.clicked('#btn_share_trigger') && !Tour.shareOpen() }],
+            tasks: [{ label: 'Нажмите «Поделиться» — ссылка на смету создастся и скопируется', done: () => Tour.clicked('#btn_share_trigger') }],
             point: () => { const b = document.getElementById('btn_share_trigger'); return (b && b.offsetParent) ? b : null; }
-        },
-
-        // ───────────── Блок 3. Точнее и быстрее ─────────────
-        {
-            block: 'speed', key: 'objparams', mob: 'inputs',
-            sel: '#blk_fast_obj_params_toggle_wrap',
-            title: 'Город и стены',
-            text: 'По умолчанию — средние значения. Свой город и стены сделают котёл и радиаторы точнее.',
-            tasks: [{ label: 'Откройте «Параметры объекта»', done: () => { const c = document.getElementById('chk_fast_obj_params'); return !!(c && c.checked); } }]
-        },
-        {
-            // Плавающая кнопка: гостю и не на «Оборудовании» её нет — шаг пропустится сам
-            block: 'speed', key: 'aifill', mob: 'inputs',
-            sel: '#ai_parse_fab_btn',
-            title: 'Заполнить фразой',
-            text: 'Опишите объект словами — «200 м², газ, тёплый пол, бойлер на четверых», — параметры расставятся сами.'
-        },
-        {
-            // Подсвечиваем .control-item вокруг вкладок: у самих вкладок своя рамка
-            block: 'speed', key: 'mode', mob: 'inputs',
-            sel: () => {
-                const t = document.querySelector('.mode-selector-tabs');
-                return t && t.closest('.control-item');
-            },
-            title: 'По комнатам',
-            text: 'Точнее: у каждой комнаты своя площадь, окна и приборы. Для сметы, которая идёт в работу.',
-            tasks: [{ label: 'Нажмите «По комнатам» — потом можно вернуться на «По площади»', done: () => !!Tour.st().detailedRooms }],
-            point: () => document.getElementById('mode_pro')
         },
 
         // ───────────── Блоки 4–5. Профи: деньги и договор; проект и сканы ─────────────
@@ -303,7 +254,7 @@ const Tour = {
             block: 'sell', key: 'cheaper', mob: 'output',
             sel: '#cheaper_wrapper',
             title: 'Бюджетнее',
-            text: 'Вторая смета на равноценных аналогах — покажите клиенту, сколько можно сэкономить. Она сохранится отдельным КП, оригинал не изменится; вернуться — тем же переключателем.',
+            text: 'Вторая смета на равноценных аналогах — покажите клиенту, сколько можно сэкономить.',
             tasks: [{ label: 'Включите переключатель «Бюджетнее»', done: () => Tour.clicked('#cheaper_wrapper') }],
             point: () => document.getElementById('cheaper_wrapper')
         },
@@ -397,20 +348,12 @@ const Tour = {
 
     // Первая видимая строка сметы с радиатором и её значок замены. Ищем по названию:
     // отдельного признака «это радиатор» у строки в разметке нет.
-    swapRow: function (test, itemTest) {
+    swapRow: function (test) {
         try {
             const btns = document.querySelectorAll('.img-wrap[onclick*="openSwapModal"], .swap-inline-btn[onclick*="openSwapModal"]');
             for (const b of btns) {
                 if (!b.offsetParent) continue;
                 const tr = b.closest('tr');
-                // Поиск по позиции каталога, а не по тексту: стальные панели называются
-                // «Стальной панельный Ventil…», слова «радиатор» в названии нет
-                if (itemTest) {
-                    const m = /openSwapModal\('([^']+)'\)/.exec(b.getAttribute('onclick') || '');
-                    const it = m && (app.currentEquipmentList || []).find(x => x && (x.originalId === m[1] || x.id === m[1] || (x.instanceKeys && x.instanceKeys.indexOf(m[1]) > -1)));
-                    if (tr && it && itemTest(it)) return { tr: tr, btn: b };
-                    continue;
-                }
                 // Только название позиции: в строке есть ещё подсказка «i» с длинным текстом
                 // («клапан», «насос» и т. п.), и поиск по всей строке принимал радиатор за не-радиатор
                 const nm = tr && tr.querySelector('.col-name');
@@ -427,19 +370,9 @@ const Tour = {
     // Сначала строка, название которой начинается с «Радиатор» (перед ним в тексте строки
     // только номер): «Монтажный набор для подключения радиатора» стоит в смете выше самих
     // радиаторов, и стрелка уводила в его окно замены. Нет такой — любая строка со словом.
-    // Раздел сметы «3. Приборы отопления» (без «3.1 Обвязка…»): сами радиаторы любой серии
-    RAD_GROUP: /^\s*3\.\s*Приборы отопления\s*$/i,
-
     radRow: function () {
-        return this.swapRow(null, i => this.RAD_GROUP.test(i.group || '')) ||
-            this.swapRow(t => /^\s*радиатор/i.test(t)) ||
+        return this.swapRow(t => /^\s*радиатор/i.test(t)) ||
             this.swapRow(t => this.RAD_RE.test(t) && !this.RAD_NOT.test(t));
-    },
-
-    // Состав сметы по артикулам: меняется при любой замене, в том числе котла (его выбор
-    // пишется в поля state, а не в state.swaps)
-    eqSig: function () {
-        try { return JSON.stringify((app.currentEquipmentList || []).map(i => i && i.id)); } catch (e) { return ''; }
     },
 
     // Радиатора в смете не видно — любая строка, которую можно заменить: подсветка на строке
@@ -454,7 +387,7 @@ const Tour = {
             if (this.radRow() || !app.state.groupItems) return;
             const cg = app.state.collapsedGroups || [];
             const it = (app.currentEquipmentList || []).find(i => i && i.group && cg.indexOf(i.group) > -1 &&
-                (this.RAD_GROUP.test(i.group) || (this.RAD_RE.test(i.name || '') && !this.RAD_NOT.test(i.name || ''))));
+                this.RAD_RE.test(i.name || '') && !this.RAD_NOT.test(i.name || ''));
             if (it) app.toggleGroup(it.group);
         } catch (e) { }
     },
@@ -527,23 +460,6 @@ const Tour = {
             if (gate && typeof app !== 'undefined' && typeof app[gate] === 'function' && !app[gate]()) return true;
         } catch (e) { }
         return !!(s && s.seller && s.seller.skip && this.isSeller());
-    },
-
-    // Учебный дом должен иметь радиаторы (шаг «Чем греем» их включает). Если шаг пропустили,
-    // включаем сами: без радиаторов шаг замены не на что показать.
-    ensureRadiators: function () {
-        try {
-            if ((app.state.systems || []).indexOf('rad') > -1) return;
-            app.toggleSys('rad');
-            // toggleSys меняет смету с задержкой: переснимаем исходное состояние уже после неё,
-            // иначе задание «выберите другой радиатор» засчиталось бы без действия человека
-            setTimeout(() => {
-                const st = this.STEPS[this._step];
-                if (!st || st.key !== 'replace') return;
-                this._snap = st.snap();
-                this._pre = this.taskFlags(st);
-            }, 400);
-        } catch (e) { }
     },
 
     // Шаг → метод app, который отвечает «открыта ли функция этому человеку».
@@ -620,30 +536,19 @@ const Tour = {
     // цена и акции модуля подписки), а не зашитые числа. Нажатие считается «дошёл до
     // конца»: обучение закрывается, поверх открывается окно тарифа или оплаты.
     planExtra: function () {
+        let m = null, y = null;
+        try { m = app.proPlan('month'); y = app.proPlan('year'); } catch (e) { }
         const money = n => { try { return app.formatCurrencyAmount(n); } catch (e) { return String(n) + ' ₽'; } };
         const isPro = this.planInfo().isPro;
-        // Те же тарифы и те же цены, что в окне тарифов (Subscription.cardsHtml): только включённые во вкладке
-        // «Оплата подписки», с региональной ценой и акцией. Раньше здесь были зашиты «месяц» и «год» — выключенный
-        // годовой тариф показывался с ценой из значений по умолчанию, и цены расходились с окном тарифов.
-        let plans = [];
-        try { plans = Subscription.planList(false).map(p => Subscription.resolve(p.id)).filter(Boolean); } catch (e) { }
-        const esc = s => { try { return Subscription.esc(s); } catch (e) { return String(s); } };
         let h = '<div class="tour-pay">';
-        plans.slice().reverse().forEach((r, i) => {
-            const pct = r.promo ? r.promoPct : r.termPct;
-            const price = r.days > 0 ? money(r.rub) : (r.months > 1 ? money(r.perMonth) + '/мес' : money(r.rub));
-            const tag = pct > 0 ? '<span class="tour-pay-tag">−' + pct + '%</span>' : '';
-            h += '<button type="button" class="tour-pay-btn ' + (i === 0 ? 'tour-pay-year' : 'tour-pay-month') + '" onclick="Tour.pay(\'' + esc(r.id) + '\')">' + tag + '<b>' + esc(r.title) + '</b><span>' + price + '</span></button>';
-        });
+        if (y) h += '<button type="button" class="tour-pay-btn tour-pay-year" onclick="Tour.pay(\'year\')"><span class="tour-pay-tag">Выгоднее</span><b>' + (isPro ? 'Продлить на год' : 'Год') + '</b><span>' + money(Math.round(y.rub / 12)) + '/мес</span></button>';
+        if (m) h += '<button type="button" class="tour-pay-btn tour-pay-month" onclick="Tour.pay(\'month\')"><b>' + (isPro ? 'Продлить на месяц' : 'Месяц') + '</b><span>' + money(m.rub) + '</span></button>';
         h += '<a href="#" class="tour-pay-all" onclick="Tour.pay(); return false;">Сравнить тарифы и ввести промокод</a></div>';
         return h;
     },
 
     // Без аргумента — окно с тарифами, с 'month' | 'year' — сразу окно оплаты
     pay: function (type) {
-        // Кнопка оплаты встаёт на то место, где только что была «Дальше»: быстрый второй щелчок
-        // открывал окно оплаты, которого человек не просил
-        if (Date.now() - (this._enteredAt || 0) < 900) return;
         this.finish('pay');
         try {
             if (type) app.openPaymentModal(type);
@@ -869,14 +774,6 @@ const Tour = {
 
     blockById: function (id) { return this.BLOCKS.find(b => b.id === id) || null; },
 
-    // Обучение пройдено полностью: отмечены все блоки, которые доступны этому человеку по тарифу
-    // и роли. Блоки, закрытые тарифом, в условие не входят: их всё равно нельзя пройти.
-    fullyDone: function () {
-        const dm = this.doneMap();
-        const need = this.visibleBlocks().filter(b => this.blockSteps(b.id).length > 0);
-        return need.length > 0 && need.every(b => dm[b.id]);
-    },
-
     // Блоки, которые видит этот человек. Продавцу блок про маржу и договоры подряда не
     // нужен вовсе — не «заперт тарифом», а просто не его; блок без единого доступного шага
     // и без запасного пути не показываем.
@@ -901,14 +798,10 @@ const Tour = {
     // Продолжаем с того места, где остановились; нет сохранённого места (первый раз,
     // старая версия обучения, всё пройдено) — показываем список блоков.
     restore: function () {
-        const b = this.ls(this.LS_BLOCK), v = this.ls(this.LS_VIEW);
-        let n = this._savedStep(), s = this.STEPS[n];
+        const b = this.ls(this.LS_BLOCK), v = this.ls(this.LS_VIEW), n = this._savedStep(), s = this.STEPS[n];
         if (v === 'step' && this.blockById(b) && s && s.block === b) {
-            const first = this.STEPS.findIndex(x => x.block === b);
-            // Учебный дом сброшен («Начать заново», другой браузер): шаги середины блока показывать не на
-            // чем — радиатор, сохранение. Начинаем блок с первого шага.
-            try { if (b === 'basic' && n > first && !(Number(app.state.area) > 0)) { n = first; s = this.STEPS[n]; } } catch (e) { }
             this._block = b; this._step = n; this._view = 'step';
+            const first = this.STEPS.findIndex(x => x.block === b);
             if (n > first) this._resumeNote = 'Продолжаем с места, где остановились: «' + s.title + '»';
         } else if (v === 'done' && this.blockById(b)) {
             this._block = b; this._view = 'done';
@@ -994,12 +887,11 @@ const Tour = {
         const first = !m[id];
         m[id] = 1;
         this.lsSet(this.LS_BLOCKS, JSON.stringify(m));
-        // Обучение засчитывается, когда пройдены все блоки, доступные этому человеку
-        if (first && this.fullyDone()) {
-            const steps = this.visibleBlocks().reduce((s, x) => s + this.blockSteps(x.id).length, 0);
+        const b = this.blockById(id);
+        if (first && b && b.must) {
             // Окно поздравления ждёт ответ базы (там может быть выдан пробный Профи), но не дольше 1,5 с
             const wait = new Promise(res => setTimeout(() => res(null), 1500));
-            Promise.race([this.reportDone(steps), wait])
+            Promise.race([this.reportDone(this.blockSteps(id).length), wait])
                 .then(until => { try { this.celebrate(until); } catch (e) { } });
         }
     },
@@ -1102,7 +994,7 @@ const Tour = {
         const wrap = document.createElement('div');
         wrap.id = 'tour_win';
         wrap.style.cssText = 'position:fixed;inset:0;z-index:60000100;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.55);padding:16px;';
-        wrap.innerHTML = '<div style="position:relative;max-width:420px;width:100%;background:var(--surface,#fff);color:var(--text-main,#0f172a);border-radius:18px;padding:28px 22px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);">'
+        wrap.innerHTML = '<div style="position:relative;max-width:420px;width:100%;background:var(--bg-card,#fff);color:var(--text-main,#0f172a);border-radius:18px;padding:28px 22px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);">'
             + '<div style="font-size:56px;line-height:1;">🏆</div>'
             + '<h3 style="margin:10px 0 8px;font-size:22px;">Поздравляем!</h3>'
             + '<p style="margin:0 0 6px;font-size:15px;font-weight:600;">Обучение пройдено</p>'
@@ -1297,15 +1189,8 @@ const Tour = {
     // сметы, перекрывают друг друга и вместе читаются как одна каша — а выбрать
     // типовой объект человек в этот момент всё равно не может, карточка обучения
     // закрывает половину списка. Окно закроют — tick вернёт карточку сам.
-    // Окно «Создание ссылки для клиента» (его слой выше смёты, но ниже карточки обучения)
-    shareOpen: function () {
-        const sh = document.getElementById('share_options_modal_overlay');
-        return !!(sh && getComputedStyle(sh).display !== 'none' && sh.getClientRects().length);
-    },
-
     blocked: function () {
         if (document.getElementById('quick_start_overlay')) return true;
-        if (this.shareOpen()) return true;
         // Окно замены позиции лежит поверх сметы и само объясняет, что выбирать; карточка
         // поверх него закрывала бы список аналогов. Закроют окно — tick вернёт карточку.
         // Исключение — шаг про замену: задание выполняется как раз в этом окне, и карточка,
@@ -1481,21 +1366,6 @@ const Tour = {
             if (!card || card.style.display === 'none') { this.hidePointer(); return; }
             const t = this.pointEl(step);
             if (!t) { this.hidePointer(); return; }
-            // Цель внутри прокручиваемой панели (левая колонка настроек), но ниже её видимой части:
-            // поле появляется после включения тумблера, и палец показывал в пустоту под панелью.
-            // Один раз на элемент подкручиваем панель, дальше человек листает сам.
-            if (!this.swapOpen() && this._ptrScrolled !== t) {
-                this._ptrScrolled = t;
-                try {
-                    const tr = t.getBoundingClientRect();
-                    for (let p = t.parentElement; p && p !== document.body; p = p.parentElement) {
-                        if (/(auto|scroll)/.test(getComputedStyle(p).overflowY) && p.scrollHeight > p.clientHeight) {
-                            const pr = p.getBoundingClientRect();
-                            if (tr.top < pr.top || tr.bottom > pr.bottom) { t.scrollIntoView({ behavior: 'auto', block: 'center' }); break; }
-                        }
-                    }
-                } catch (e) { }
-            }
             // В окне замены нужная строка или фильтр часто ниже края окна (на телефоне список
             // моделей начинается на втором экране). Подкручиваем к каждой новой цели и ещё
             // 2,5 с после этого, если она уехала под карточку (окно дорисовывает картинки и
@@ -1590,13 +1460,13 @@ const Tour = {
     },
 
     // Список блоков: что освоить. Первый экран обучения вместо длинной «экскурсии».
-    // Подсказка про бонус Профи: только вошедшему, кто ещё не прошёл обучение целиком и не на Профи.
+    // Подсказка про бонус Профи: только вошедшему, кто ещё не прошёл главный блок и не на Профи.
     // Выключатель — Subscription.tourBonusSettings (app_settings.subscription.tourBonus), тот же,
     // что читает база при выдаче. Любой сбой — тишина.
     bonusHtml: function () {
         try {
             if (typeof Subscription === 'undefined' || !Subscription.tourBonusSettings().enabled) return '';
-            if (!this.allowed() || this.fullyDone() || this.planInfo().isPro) return '';
+            if (!this.allowed() || this.doneMap().basic || this.planInfo().isPro) return '';
             if (app.isTeremStaff()) return '';
             return '<div class="tour-card-text" style="color:#059669;font-weight:600;">Пройти обучение — получи Профи на 10 дней. Бесплатно.</div>';
         } catch (e) { return ''; }
@@ -1610,7 +1480,7 @@ const Tour = {
         const rec = this.recommended();
         const vis = this.visibleBlocks();
         const doneN = vis.filter(b => dm[b.id]).length;
-        const rows = vis.map(b => {
+        const rowOf = b => {
             const n = this.blockSteps(b.id).length;
             const locked = n === 0;
             const done = !!dm[b.id];
@@ -1626,7 +1496,17 @@ const Tour = {
                 '<span class="tour-blk-ic">' + b.icon + '</span>' +
                 '<span class="tour-blk-body"><b>' + b.title + (b.must && !done ? ' <i class="tour-blk-must">главный</i>' : '') + '</b>' +
                 '<small>' + b.sub + '</small><small class="tour-blk-meta">' + meta + '</small></span>' + st + '</button>';
-        }).join('');
+        };
+        // Обычные блоки — списком, «Профи» — сворачиваемой секцией: карточка влезает в один экран
+        const baseBlocks = vis.filter(b => !b.pro), proBlocks = vis.filter(b => b.pro);
+        let rows = baseBlocks.map(rowOf).join('');
+        if (proBlocks.length) {
+            const isPro = this.planInfo().isPro;
+            const openPro = !!(rec && rec.pro);
+            rows += '<details class="tour-pro"' + (openPro ? ' open' : '') + '><summary><span>' +
+                (isPro ? 'Новое в Профи' : 'Только в Профи') + '</span><i class="tour-pro-new">NEW</i></summary>' +
+                '<div class="tour-blks">' + proBlocks.map(rowOf).join('') + '</div></details>';
+        }
         let resumeBtn = '';
         const rs = this.STEPS[this._step], rb = this.blockById(this._block);
         if (rb && rs && rs.block === rb.id && !dm[rb.id] && this._step > this.STEPS.findIndex(x => x.block === rb.id)) {
@@ -1635,7 +1515,7 @@ const Tour = {
         }
         card.innerHTML = this.headHtml('Обучение · пройдено ' + doneN + ' из ' + vis.length) +
             '<div class="tour-card-title">Что хотите освоить?</div>' +
-            '<div class="tour-card-text">Короткие блоки. Начните с первого — соберёте и сохраните учебный дом.</div>' +
+            '<div class="tour-card-text">Начните с первого — соберёте и сохраните учебный дом.</div>' +
             this.bonusHtml() +
             resumeBtn +
             '<div class="tour-blks">' + rows + '</div>' +
@@ -1914,10 +1794,7 @@ const Tour = {
             const b = t.getBoundingClientRect();
             if (b.bottom < 0 || b.top > window.innerHeight) return;
             const far = Math.hypot((b.left + b.width / 2) - (left + w / 2), (b.top + b.height / 2) - (top + h / 2));
-            // Цель рядом с углом, но карточка стоит прямо на ней (количество в первой строке
-            // сметы лежит под правым нижним углом) — тоже переставляем, иначе нажимать не на что
-            const covered = !(b.right < left - 8 || b.left > left + w + 8 || b.bottom < top - 8 || b.top > top + h + 8);
-            if (far < 420 && !covered) { this._wasNear = false; return; }
+            if (far < 420) { this._wasNear = false; return; }
             this._wasNear = true;
             // Зазор 64 px: в нём живёт стрелка с хвостом, иначе она уходит под карточку.
             // Порядок: сбоку справа (там чаще пустая смета, а не параметры, которые человек
@@ -2218,7 +2095,17 @@ body.dark-mode .tour-note { color: #FDE68A; background: rgba(245, 158, 11, 0.16)
 @media (hover: none), (max-width: 760px) { .tour-kbd, .tour-kbd-line { display: none; } }
 
 /* Список блоков */
-.tour-blks { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.tour-blks { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.tour-blk { padding: 8px 10px; }
+.tour-blk-body small:not(.tour-blk-meta) { display: none; }
+.tour-blk.is-rec .tour-blk-body small:not(.tour-blk-meta) { display: block; }
+.tour-pro { margin-top: 6px; }
+.tour-pro > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; color: var(--text-sec); padding: 6px 2px; user-select: none; }
+.tour-pro > summary::-webkit-details-marker { display: none; }
+.tour-pro > summary::before { content: '▸'; font-size: 11px; transition: transform .15s; }
+.tour-pro[open] > summary::before { transform: rotate(90deg); }
+.tour-pro-new { font-style: normal; font-size: 9.5px; font-weight: 800; color: #fff; background: #F59E0B; border-radius: 999px; padding: 2px 7px; }
+.tour-pro > .tour-blks { margin-top: 2px; }
 .tour-blk {
     font: inherit; width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; cursor: pointer;
     padding: 10px 12px; min-height: 56px; border-radius: 12px; color: var(--text-main);
