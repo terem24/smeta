@@ -227,7 +227,7 @@
         <link href="/fonts/inter.css?v=1"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=5.113">
+    <link rel="stylesheet" href="style.css?v=5.115">
     <link rel="stylesheet" href="hydro_check.css?v=1.13">
 
     <script src="supabase-js.js" defer></script>
@@ -262,7 +262,7 @@
     <script src="water_hydro.js?v=1.7" defer></script>
     <script src="assembly_check.js?v=1.8" defer></script>
     <script src="probe.js?v=1.0" defer></script>
-    <script src="app.min.js?v=15.21" defer></script>
+    <script src="app.min.js?v=15.23" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -3414,8 +3414,10 @@
                              а не проверка: номер переносят и с ним переезжают. -->
                         <div id="profile_phone_region" class="lk-field-note"></div>
                     </div>
-                    <div class="lk-field lk-span-6">
-                        <label for="profile_email_input">Email</label>
+                    <!-- Почта в окне первого входа показывается только если её можно править: она не подтверждена
+                         кодом (регистрация по промокоду) или её нет. Подтверждённую прячет app.showProfileModal -->
+                    <div class="lk-field lk-span-6" id="profile_email_field">
+                        <label for="profile_email_input">Email <span class="onb-req">*</span></label>
                         <input type="email" id="profile_email_input" class="auth-input" placeholder="example@mail.ru">
                         <div id="profile_email_unverified_hint" style="display:none; margin-top:6px; font-size:12px; color:#B45309; line-height:1.4;">Вы зарегистрировались по промокоду, и мы не отправляли на этот адрес код. Проверьте, что почта написана без ошибок: на неё придут сметы и ссылка для сброса пароля.</div>
                     </div>
@@ -3431,7 +3433,7 @@
                         <input type="hidden" id="profile_birth_date_input">
                     </div>
 
-                    <div class="lk-field lk-span-6">
+                    <div class="lk-field lk-span-6" id="profile_city_field">
                         <label for="profile_city_input">Город <span class="onb-req">*</span></label>
                         <input type="text" id="profile_city_input" class="auth-input" placeholder="Выберите или введите город" list="profile_city_list" oninput="app.autofillRegionByCity('profile_city_input', 'profile_region_input'); app.syncRegionField(); app.showPhoneRegionHint()">
                     </div>
