@@ -20018,6 +20018,22 @@ body.theme-yandex #profile_modal_overlay {
     background-position: right 12px center !important;
     background-size: 18px 18px !important;
 }
+/* Поле даты лежит в обёртке, а не прямым ребёнком .lk-field, поэтому правила полей формы
+   (ширина, высота, нулевые поля) его не касались: общий .auth-input держал 280 px по
+   центру, и дата «убегала» вправо. Тянем на всю ширину колонки, как соседей.
+   В окне первого входа (.onb-mode) свои, более точные правила. */
+#profile_modal_overlay .onb-date-row { display: block; width: 100%; }
+#profile_modal_overlay .onb-date-row > .auth-input {
+    display: block;
+    width: 100%;
+    max-width: none;
+    margin: 0 !important;
+    height: 36px !important;
+    padding-left: 12px;
+    font-size: 13px;
+    text-align: left;
+    box-sizing: border-box;
+}
 #profile_birth_note { min-height: 0; color: #ef4444; font-size: 11.5px; }
 #profile_birth_note:empty { display: none; }
 
@@ -21782,3 +21798,13 @@ body.empty-fit-panel #header_totals { display: none !important; }
 .inact-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; align-items: start; }
 .inact-cards .ad-set-card { max-width: none; }
 @media (max-width: 800px) { .inact-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* «Мои данные» в кабинете: на широком экране шесть полей в два ряда по три колонки, чтобы
+   форма помещалась без вертикальной прокрутки. В окне первого входа (.onb-mode) и на
+   планшете/телефоне раскладка прежняя (по две и по одной колонке). */
+@media screen and (min-width: 1100px) {
+    #profile_modal_overlay:not(.onb-mode) #profile_tab_requisites .lk-form > .lk-field.lk-span-6 { grid-column: span 4; }
+    #profile_modal_overlay:not(.onb-mode) #profile_tab_requisites .lk-form { gap: 10px 16px; }
+    #profile_modal_overlay:not(.onb-mode) #profile_tab_requisites .lk-field-note:empty { display: none; }
+    #profile_modal_overlay:not(.onb-mode) #profile_tab_requisites .lk-card { padding-top: 14px; padding-bottom: 14px; }
+}
