@@ -15111,6 +15111,40 @@ const app = {
         if (wrap) wrap.remove();
     },
 
+    // Страховка обязательной анкеты. Раньше анкету требовали только после того, как разбор входа
+    // (handleAuthSession) дошёл до конца и вернул строку пользователя; при сбое на любом шаге
+    // до этого флаг _profileDbLoaded не ставился, и после перезагрузки анкету не предлагали вовсе.
+    // Теперь строку читаем отдельным лёгким запросом и сразу проверяем анкету. Без экранов и
+    // сообщений об ошибках; при неудаче тихо повторяем несколько раз.
+    ensureProfileGate: async function (session, attempt) {
+        attempt = attempt || 0;
+        if (!session || !session.user || this._profileDbLoaded) return;
+        try {
+            const { data, error } = await supabaseClient.from('users')
+                .select('last_name, first_name, middle_name, birth_date, region, city, phone, activity_types')
+                .eq('auth_user_id', session.user.id).limit(1);
+            if (error) throw error;
+            const row = data && data[0];
+            const u = this.state.tgUser;
+            // Анкета в памяти должна принадлежать тому же человеку: чужую не трогаем,
+            // handleAuthSession пересоберёт её сам
+            if (row && u && u.authUserId === session.user.id && !this._profileDbLoaded) {
+                if (row.last_name) u.lastName = row.last_name;
+                if (row.first_name) u.givenName = row.first_name;
+                if (row.middle_name) u.middleName = row.middle_name;
+                if (row.birth_date) u.birthDate = row.birth_date;
+                if (row.region) u.region = row.region;
+                if (row.city) u.city = row.city;
+                if (row.phone) u.phone = row.phone;
+                if (row.activity_types && row.activity_types.length) u.activityTypes = row.activity_types;
+                this._profileDbLoaded = true;
+                this.syncUI();
+                return;
+            }
+        } catch (e) { }
+        if (attempt < 4 && !this._profileDbLoaded) setTimeout(() => this.ensureProfileGate(session, attempt + 1), 3000);
+    },
+
     onbFinish: function () {
         this._onbStep = 0;
         this._profileForceComplete = false;
@@ -63876,6 +63910,7 @@ const app = {
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 this.handleAuthSession(session);
+                this.ensureProfileGate(session);
                 if (HC_PASSWORD_RECOVERY) this.showSetPasswordModal('recovery');
             } else if (this.state.tgUser) {
                 // Вход помнит localStorage, а сессии нет: либо её пора обновить,
