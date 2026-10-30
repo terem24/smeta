@@ -19908,6 +19908,40 @@ body.theme-yandex #profile_modal_overlay {
     .hc-welcome-badge svg { animation: none; stroke-dashoffset: 0; }
 }
 
+/* Первый вход на компьютере: окно по центру экрана целиком, без прокрутки. Кабинет
+   прижимает окно к панели слева (body.lk-docked), поэтому здесь правило с тем же
+   префиксом и выше по специфичности. На телефоне остаётся прежняя шторка снизу. */
+@media screen and (min-width: 769px) {
+    body.lk-docked #profile_modal_overlay.onb-mode,
+    #profile_modal_overlay.onb-mode {
+        background: rgba(15, 23, 42, 0.55) !important;
+        -webkit-backdrop-filter: blur(4px);
+        backdrop-filter: blur(4px);
+        pointer-events: auto !important;
+    }
+    body.lk-docked #profile_modal_overlay.onb-mode .auth-modal-content,
+    #profile_modal_overlay.onb-mode .auth-modal-content {
+        position: fixed !important;
+        top: 50% !important;
+        left: 50% !important;
+        right: auto !important;
+        bottom: auto !important;
+        transform: translate(-50%, -50%) !important;
+        width: min(560px, calc(100vw - 32px)) !important;
+        max-width: 560px !important;
+        height: auto !important;
+        max-height: calc(100dvh - 32px) !important;
+        padding: 18px 22px 20px !important;
+        border: 1px solid var(--border) !important;
+        border-radius: 22px !important;
+    }
+}
+#profile_modal_overlay.onb-mode .lk-field-photo { display: none; }
+#profile_modal_overlay.onb-mode #profile_tab_requisites .lk-section-head { display: none; }
+#profile_modal_overlay.onb-mode #profile_incomplete_banner { padding: 8px 12px; margin-bottom: 10px; font-size: 12px; }
+#profile_modal_overlay.onb-mode .onb-steps { padding-bottom: 10px; }
+#profile_modal_overlay.onb-mode .lk-form { gap: 8px 12px; }
+
 /* Форма: сетка из 12 колонок, поле = подпись + ввод. На планшете треть ряда становится
    половиной, на телефоне всё в один столбец. */
 .lk-form {
