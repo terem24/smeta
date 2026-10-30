@@ -22814,44 +22814,42 @@ const app = {
                 playNote(1174.66, now + 0.10, 0.12); // D6
                 playNote(1567.98, now + 0.20, 0.35); // G6
             } else if (soundName === 'icq') {
-                // ICQ Uh-Oh! (vocal chirp)
-                const filter = ctx.createBiquadFilter();
-                filter.type = 'lowpass';
-                filter.frequency.setValueAtTime(1400, now);
-                filter.connect(ctx.destination);
-
-                // "Uh" Note
-                const osc1 = ctx.createOscillator();
-                const gain1 = ctx.createGain();
-                osc1.type = 'sawtooth';
-                osc1.frequency.setValueAtTime(320, now);
-                osc1.frequency.exponentialRampToValueAtTime(200, now + 0.08);
-
-                gain1.gain.setValueAtTime(0, now);
-                gain1.gain.linearRampToValueAtTime(0.2, now + 0.01);
-                gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
-
-                osc1.connect(gain1);
-                gain1.connect(filter);
-                osc1.start(now);
-                osc1.stop(now + 0.08);
-
-                // "Oh" Note
-                const osc2 = ctx.createOscillator();
-                const gain2 = ctx.createGain();
-                osc2.type = 'sawtooth';
-                const startOh = now + 0.09;
-                osc2.frequency.setValueAtTime(510, startOh);
-                osc2.frequency.exponentialRampToValueAtTime(340, startOh + 0.16);
-
-                gain2.gain.setValueAtTime(0, startOh);
-                gain2.gain.linearRampToValueAtTime(0.2, startOh + 0.015);
-                gain2.gain.exponentialRampToValueAtTime(0.0001, startOh + 0.16);
-
-                osc2.connect(gain2);
-                gain2.connect(filter);
-                osc2.start(startOh);
-                osc2.stop(startOh + 0.16);
+                // ICQ «Uh-oh!»: голос из пилообразного источника через формантные фильтры гласных.
+                // «а-а» (низкий, короткий) и «о-оу» (выше, с падением тона и скруглением гласной).
+                const master = ctx.createGain();
+                master.gain.value = 0.9;
+                master.connect(ctx.destination);
+                const syllable = (t0, dur, f0a, f0b, f0c, forms) => {
+                    const src = ctx.createOscillator();
+                    src.type = 'sawtooth';
+                    src.frequency.setValueAtTime(f0a, t0);
+                    src.frequency.linearRampToValueAtTime(f0b, t0 + dur * 0.35);
+                    src.frequency.exponentialRampToValueAtTime(f0c, t0 + dur);
+                    const amp = ctx.createGain();
+                    amp.gain.setValueAtTime(0.0001, t0);
+                    amp.gain.linearRampToValueAtTime(1, t0 + 0.02);
+                    amp.gain.setValueAtTime(1, t0 + dur * 0.6);
+                    amp.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+                    forms.forEach(([f1, f2, q, g]) => {
+                        const bp = ctx.createBiquadFilter();
+                        bp.type = 'bandpass';
+                        bp.Q.value = q;
+                        bp.frequency.setValueAtTime(f1, t0);
+                        bp.frequency.linearRampToValueAtTime(f2, t0 + dur);
+                        const fg = ctx.createGain();
+                        fg.gain.value = g;
+                        src.connect(bp);
+                        bp.connect(fg);
+                        fg.connect(amp);
+                    });
+                    amp.connect(master);
+                    src.start(t0);
+                    src.stop(t0 + dur + 0.02);
+                };
+                // «а»: форманты ~650 / 1200 / 2500 Гц
+                syllable(now, 0.13, 330, 345, 300, [[650, 600, 6, 1.4], [1200, 1150, 8, 1.0], [2500, 2450, 10, 0.4]]);
+                // «о-оу»: форманты уходят от ~500 / 950 к ~380 / 700 (губы округляются)
+                syllable(now + 0.17, 0.30, 470, 440, 300, [[520, 380, 6, 1.5], [950, 700, 8, 0.9], [2400, 2300, 10, 0.25]]);
             } else if (soundName === 'mario') {
                 // Монетка из Super Mario Bros: импульсный канал NES, B5 → E6 без паузы.
                 // Громкость у NES падает ступеньками, а не плавно — это и даёт узнаваемый «дзынь».
