@@ -465,10 +465,10 @@ function getFriendlyErrorMessage(err, defaultMsg = 'Неизвестная ош�
         return 'Неверный логин или пароль.';
     }
     if (msg.includes('signup_blocked_deleted')) {
-        return 'С этими данными зарегистрироваться нельзя: аккаунт удалён. Если это ошибка, напишите нам через «Сообщить о проблеме».';
+        return 'С этими данными зарегистрироваться нельзя: аккаунт удалён.';
     }
     if (msg.includes('user is banned') || msg.includes('user_banned')) {
-        return 'Аккаунт заблокирован. Если это ошибка, напишите нам через «Сообщить о проблеме».';
+        return 'Аккаунт заблокирован.';
     }
     if (msg.includes('email not confirmed')) {
         return 'Email не подтвержден. Пожалуйста, проверьте почту и подтвердите ваш аккаунт.';
@@ -51204,7 +51204,7 @@ const app = {
         this.saveState();
         this.syncUI();
         this.render();
-        const write = await app.confirm(msg + ' Если это ошибка, напишите нам.', title, 'Написать нам', 'Закрыть');
+        const write = await app.confirm(msg, title, 'Написать нам', 'Закрыть');
         if (write) {
             this.openFeedbackModal();
             const subj = document.getElementById('feedback_subject');
@@ -51308,7 +51308,7 @@ const app = {
     // человека той же ночью.
     // Текст для удалённого за неактивность, который пробует зарегистрироваться снова.
     regBlockedText: function (till, kind) {
-        const tail = ' Если это ошибка, напишите нам через «Сообщить о проблеме».';
+        const tail = '';
         if (kind === 'manual') return 'С этими данными зарегистрироваться нельзя: аккаунт удалён.' + tail;
         return 'С этими данными пока нельзя зарегистрироваться: аккаунт удалён за долгое отсутствие.' + tail;
     },
