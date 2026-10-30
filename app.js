@@ -49636,6 +49636,18 @@ const app = {
         }
     },
 
+    // true / false: есть ли аккаунт с таким email (функция auth_email_exists в Supabase).
+    // null: проверить не удалось, тогда письмо отправляем как раньше.
+    authEmailExists: async function (email) {
+        try {
+            const { data, error } = await supabaseClient.rpc('auth_email_exists', { p_email: email });
+            if (error || typeof data !== 'boolean') return null;
+            return data;
+        } catch (e) {
+            return null;
+        }
+    },
+
     handleForgotPassword: async function () {
         const email = document.getElementById('forgot_email_input').value.trim();
         const btn = document.querySelector('[onclick="app.handleForgotPassword()"]');
@@ -49649,6 +49661,10 @@ const app = {
         btn.innerText = 'Отправка...';
 
         try {
+            if (await this.authEmailExists(email) === false) {
+                app.alert('Такая почта не зарегистрирована. Проверьте адрес или пройдите регистрацию.');
+                return;
+            }
             const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
                 redirectTo: window.location.origin
             });
