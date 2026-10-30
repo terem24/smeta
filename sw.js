@@ -10,12 +10,12 @@ const ASSETS = [
   '/style.css',
   '/app.min.js',
   '/img/apple-touch-icon.png',
-  '/manifest.json?v=3',
+  '/manifest.json?v=5',
   '/catalog.js',
   '/dist_prices.js',
   '/img/logo_HC.png',
   '/img/apple-touch-icon.png',
-  '/manifest.json?v=3'
+  '/manifest.json?v=5'
 ];
 
 // Сколько ждём сеть при открытии приложения, прежде чем показать страницу из
