@@ -14687,7 +14687,7 @@ const app = {
         // Поля формы профиля хранят ФИО/телефон вышедшего аккаунта — если их не сбросить,
         // мобильная панель профиля примет их за "вручную введённые данные гостя" и продолжит
         // показывать имя прежнего пользователя рядом с "Не авторизован".
-        ['profile_last_name_input', 'profile_first_name_input', 'profile_middle_name_input',
+        ['profile_last_name_input', 'profile_first_name_input',
             'profile_phone_input', 'profile_birth_date_input', 'profile_region_input',
             'profile_city_input', 'profile_email_input'].forEach(id => {
                 const el = document.getElementById(id);
@@ -15185,7 +15185,6 @@ const app = {
             if (row && u && u.authUserId === session.user.id && !this._profileDbLoaded) {
                 if (row.last_name) u.lastName = row.last_name;
                 if (row.first_name) u.givenName = row.first_name;
-                if (row.middle_name) u.middleName = row.middle_name;
                 if (row.birth_date) u.birthDate = row.birth_date;
                 if (row.region) u.region = row.region;
                 if (row.city) u.city = row.city;
@@ -25349,7 +25348,7 @@ const app = {
     // Единое ФИО-представление пользователя в админке — используется и при сортировке по имени,
     // и при отрисовке строки таблицы, чтобы не разъезжались друг с другом
     getAdminUserDisplayName: function (u) {
-        return [u.last_name, u.first_name, u.middle_name].filter(Boolean).join(' ') || u.username || u.email || 'Без имени';
+        return [u.last_name, u.first_name].filter(Boolean).join(' ') || u.username || u.email || 'Без имени';
     },
 
     // Вес тарифа для сортировки: чем больше, тем «старше» тариф.
@@ -43659,7 +43658,7 @@ const app = {
             || (this.adminData.allUsersDropdown || []).find(x => String(x.id) === String(userId));
         if (!u) { this.viewAdminUser(userId); return; }
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        const name = [u.last_name, u.first_name, u.middle_name].filter(Boolean).join(' ') || u.username || u.email || 'Без имени';
+        const name = [u.last_name, u.first_name].filter(Boolean).join(' ') || u.username || u.email || 'Без имени';
         const ests = (this.adminData.userEstimates || []).filter(e => String(e.user_id) === String(userId));
         const fmtD = d => d ? new Date(d).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
         const money = v => Number(v || 0).toLocaleString('ru-RU') + ' ₽';
@@ -44006,7 +44005,7 @@ const app = {
                             ${(user.avatar_url || window.Avatars) ? `<img src="${window.Avatars ? Avatars.forUser(Object.assign({}, user, { inTerem: this.isUserInTerem(user) })) : user.avatar_url}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--primary); ${this.proRing(this.isUserProActive(user))}">` : `<div style="width:80px; height:80px; border-radius:50%; background:var(--primary-light); display:flex; align-items:center; justify-content:center; font-size:40px; color:var(--primary);">👤</div>`}
                             <div class="ad-uhead-body" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; width: 100%; flex-wrap: wrap;">
                                 <div class="user-main-contacts" style="min-width:0;">
-                                    <h2 style="margin: 0; color: var(--text-main); font-size: 20px; overflow-wrap: anywhere;">${[user.last_name, user.first_name, user.middle_name].filter(Boolean).join(' ') || user.username || user.email || 'Без имени'}</h2>
+                                    <h2 style="margin: 0; color: var(--text-main); font-size: 20px; overflow-wrap: anywhere;">${[user.last_name, user.first_name].filter(Boolean).join(' ') || user.username || user.email || 'Без имени'}</h2>
                                     <div style="display: flex; gap: 15px; margin-top: 5px; font-size: 13px; color: var(--text-sec); flex-wrap: wrap;">
                                         <span>📱 ${user.phone || '—'}</span>
                                         ${(user.account_type === 'pro' && user.demo_ends_at && new Date(user.demo_ends_at) < new Date()) ? '<b style="color:var(--c-bad,#EF4444);">⚠️ Тариф истёк</b>' : ''}
@@ -44074,7 +44073,7 @@ const app = {
                                 </div>`;
                             })()}
                             <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:8px 20px; font-size:12px;">
-                                <div><span style="color:var(--text-sec);">ФИО:</span> <b style="color:var(--text-main);">${[user.last_name, user.first_name, user.middle_name].filter(Boolean).join(' ') || '—'}</b></div>
+                                <div><span style="color:var(--text-sec);">ФИО:</span> <b style="color:var(--text-main);">${[user.last_name, user.first_name].filter(Boolean).join(' ') || '—'}</b></div>
                                 <div id="admin_name_history" style="grid-column:1 / -1;"></div>
                                 <div><span style="color:var(--text-sec);">Дата рождения:</span> <b style="color:var(--text-main);">${user.birth_date ? new Date(user.birth_date).toLocaleDateString('ru-RU') : '—'}</b></div>
                                 <div><span style="color:var(--text-sec);">Регион:</span> <b style="color:var(--text-main);">${user.region || '—'}</b></div>
@@ -50021,7 +50020,6 @@ const app = {
         // (см. isProfileIncomplete и вызов showProfileModal(true) в render).
         const lastName = '';
         const firstName = '';
-        const middleName = '';
         const phone = '';
         const birthDate = '';
         const region = '';
@@ -50106,7 +50104,7 @@ const app = {
                 const code = Math.floor(1000 + Math.random() * 9000).toString();
                 this.pendingRegistration = {
                     email, password, code, promoCode,
-                    lastName, firstName, middleName, phone, birthDate, region, city, activityTypes
+                    lastName, firstName, phone, birthDate, region, city, activityTypes
                 };
 
                 // Регистрация по подтверждённому промокоду магазина — без письма с кодом, когда
@@ -50214,7 +50212,7 @@ const app = {
 
         try {
             const pr = this.pendingRegistration;
-            const fullName = [pr.lastName, pr.firstName, pr.middleName].filter(Boolean).join(' ');
+            const fullName = [pr.lastName, pr.firstName].filter(Boolean).join(' ');
             const { data, error } = await supabaseClient.auth.signUp({
                 email: pr.email,
                 password: pr.password,
@@ -50223,7 +50221,6 @@ const app = {
                         full_name: fullName,
                         last_name: pr.lastName,
                         first_name: pr.firstName,
-                        middle_name: pr.middleName,
                         phone: pr.phone,
                         // Анкету заполняют уже в кабинете, поэтому здесь поля пустые:
                         // в дату и массив пишем null, а не '' — иначе колонки типа date
@@ -50488,7 +50485,6 @@ const app = {
             this._emailUnverified = !!meta.email_unverified;
             let regLastName = meta.last_name || '';
             let regFirstName = meta.first_name || '';
-            let regMiddleName = meta.middle_name || '';
             let regBirthDate = meta.birth_date || '';
             let regRegion = meta.region || '';
             let regCity = meta.city || '';
@@ -50594,7 +50590,6 @@ const app = {
                 city: existingCity,
                 lastName: this.state.tgUser.lastName || regLastName,
                 givenName: this.state.tgUser.givenName || regFirstName,
-                middleName: this.state.tgUser.middleName || regMiddleName,
                 birthDate: this.state.tgUser.birthDate || regBirthDate,
                 region: this.state.tgUser.region || regRegion,
                 activityTypes: (this.state.tgUser.activityTypes && this.state.tgUser.activityTypes.length) ? this.state.tgUser.activityTypes : regActivityTypes,
@@ -50622,16 +50617,15 @@ const app = {
 
             // Название компании вместо ФИО в базу не отправляем: анкету попросят
             // заполнить заново (то же правило держит триггер users_guard_name)
-            ['lastName', 'givenName', 'middleName'].forEach(k => {
+            ['lastName', 'givenName'].forEach(k => {
                 if (/\d/.test(this.state.tgUser[k] || '')) this.state.tgUser[k] = this.stripDigitWords(this.state.tgUser[k]);
             });
-            if (this.looksLikeCompany([this.state.tgUser.lastName, this.state.tgUser.givenName, this.state.tgUser.middleName].filter(Boolean).join(' '))) {
-                this.state.tgUser.lastName = ''; this.state.tgUser.givenName = ''; this.state.tgUser.middleName = '';
+            if (this.looksLikeCompany([this.state.tgUser.lastName, this.state.tgUser.givenName].filter(Boolean).join(' '))) {
+                this.state.tgUser.lastName = ''; this.state.tgUser.givenName = '';
             }
             const regFieldsObj = {
                 last_name: this.state.tgUser.lastName || undefined,
                 first_name: this.state.tgUser.givenName || undefined,
-                middle_name: this.state.tgUser.middleName || undefined,
                 birth_date: this.state.tgUser.birthDate || undefined,
                 region: this.state.tgUser.region || undefined,
                 activity_types: (this.state.tgUser.activityTypes && this.state.tgUser.activityTypes.length) ? this.state.tgUser.activityTypes : undefined
@@ -50836,7 +50830,6 @@ const app = {
                 if (uRow.city) this.state.tgUser.city = uRow.city;
                 if (uRow.last_name) this.state.tgUser.lastName = uRow.last_name;
                 if (uRow.first_name) this.state.tgUser.givenName = uRow.first_name;
-                if (uRow.middle_name) this.state.tgUser.middleName = uRow.middle_name;
                 if (uRow.birth_date) this.state.tgUser.birthDate = uRow.birth_date;
                 if (uRow.region) this.state.tgUser.region = uRow.region;
                 if (uRow.activity_types && uRow.activity_types.length) this.state.tgUser.activityTypes = uRow.activity_types;
@@ -51397,8 +51390,6 @@ const app = {
     saveProfile: async function () {
         let lastName = document.getElementById('profile_last_name_input').value.trim();
         let firstName = document.getElementById('profile_first_name_input').value.trim();
-        // Отчество в анкете больше не спрашиваем: сохраняем то, что уже записано
-        let middleName = ((this.state.tgUser && this.state.tgUser.middleName) || '').trim();
         let phone = document.getElementById('profile_phone_input').value.trim();
         let birthDate = document.getElementById('profile_birth_date_input').value;
         let region = document.getElementById('profile_region_input').value.trim();
@@ -51431,22 +51422,20 @@ const app = {
         // («маркеев Антон Fghh») дальше не пускаем — см. checkNamePart
         lastName = this.tidyNamePart(lastName);
         firstName = this.tidyNamePart(firstName);
-        middleName = this.tidyNamePart(middleName);
         document.getElementById('profile_last_name_input').value = lastName;
         document.getElementById('profile_first_name_input').value = firstName;
         // Каждая ошибка подсвечивает свое поле и подводит к нему экран (profileFieldError):
         // на телефоне форма длинная, и по одному тексту в окошке не понять, где искать
         const nameErr = this.checkNamePart(lastName, 'Фамилия')
-            || this.checkNamePart(firstName, 'Имя')
-            || (middleName && this.checkNamePart(middleName, 'Отчество'));
+            || this.checkNamePart(firstName, 'Имя');
         if (nameErr) {
             const nameField = this.checkNamePart(lastName, 'Фамилия') ? 'profile_last_name_input'
-                : this.checkNamePart(firstName, 'Имя') ? 'profile_first_name_input' : 'profile_middle_name_input';
+                : 'profile_first_name_input';
             this.profileFieldError(nameField, nameErr); return;
         }
         // Каждое слово по отдельности могло пройти (по одному нарушению звуковых правил
         // бывает у редкой настоящей фамилии), а вместе ФИО — набор букв: «Уфр Сфоарис Уупкф»
-        const junkParts = [['profile_last_name_input', lastName], ['profile_first_name_input', firstName], ['profile_middle_name_input', middleName]]
+        const junkParts = [['profile_last_name_input', lastName], ['profile_first_name_input', firstName]]
             .map(([id, v]) => [id, this.nameJunkCount(v)]);
         if (junkParts.reduce((n, p) => n + p[1], 0) >= 2) {
             const worst = junkParts.slice().sort((a, b) => b[1] - a[1])[0][0];
@@ -51490,14 +51479,14 @@ const app = {
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
         if (!tgUser || (!tgUser.authUserId && !tgUser.email && !tgUser.id)) return;
 
-        const name = [lastName, firstName, middleName].filter(Boolean).join(' ');
+        const name = [lastName, firstName].filter(Boolean).join(' ');
 
         // 1. Мгновенно сохраняем в локальное состояние для моментального отклика
         this.state.tgUser = this.state.tgUser || {};
         this.state.tgUser.first_name = name;
         this.state.tgUser.lastName = lastName;
         this.state.tgUser.givenName = firstName;
-        this.state.tgUser.middleName = middleName;
+        delete this.state.tgUser.middleName;
         this.state.tgUser.phone = phone;
         this.state.tgUser.birthDate = birthDate;
         this.state.tgUser.region = region;
@@ -51560,7 +51549,7 @@ const app = {
         (async () => {
             const fields = {
                 username: name, phone: phone, city: city, email: email,
-                last_name: lastName, first_name: firstName, middle_name: middleName,
+                last_name: lastName, first_name: firstName, middle_name: null,
                 birth_date: birthDate || null, region: region, activity_types: activityTypes
             };
             // Раньше ответ базы не смотрели: update по auth_user_id, не нашедший ни одной
@@ -51613,18 +51602,16 @@ const app = {
         if (core.length >= 8) res += '-' + core.substring(8, 10);
         input.value = res;
     },
-    // "Фамилия И.О." из раздельных полей анкеты (lastName/givenName/middleName) — используется
+    // "Фамилия И.О." из раздельных полей анкеты (lastName/givenName) — используется
     // в шапке, при печати и в ссылках для клиента вместо полного ФИО. Если фамилия не заполнена
     // (например, вход через Google/Telegram до заполнения анкеты), возвращает то, что есть.
     formatShortName: function (tgUser) {
         if (!tgUser) return '';
         const last = (tgUser.lastName || '').trim();
         const first = (tgUser.givenName || '').trim();
-        const middle = (tgUser.middleName || '').trim();
         if (!last) return tgUser.first_name || tgUser.username || '';
         let initials = '';
         if (first) initials += first.charAt(0).toUpperCase() + '.';
-        if (middle) initials += middle.charAt(0).toUpperCase() + '.';
         return initials ? `${last} ${initials}` : last;
     },
     // Возраст на сегодня по дате рождения (ISO-строка вида "YYYY-MM-DD") — используется
@@ -51906,7 +51893,7 @@ const app = {
     suspiciousProfileFlags: function (u) {
         if (!u) return [];
         const hard = [], soft = [];
-        const parts = [u.last_name, u.first_name, u.middle_name].filter(Boolean);
+        const parts = [u.last_name, u.first_name].filter(Boolean);
         // Пустая анкета — не подделка: человек просто ещё не дошёл до кабинета
         if (parts.length) {
             const all = parts.join(' ');
@@ -51926,7 +51913,6 @@ const app = {
         // Регистрация на временную почту (temp-mail, guerrillamail и др.) — жёсткий признак:
         // письма удаляются через час, клиент не получит смету и счёт
         if (u.email && this.isTempmailDomain(u.email)) hard.push('временная почта (' + u.email.split('@')[1] + ')');
-        if (u.middle_name && !this.PATRONYMIC_END.test(String(u.middle_name).trim())) soft.push('отчество не похоже на отчество');
         // Регион, где выдан номер. Мягкий признак, и только он: номер переносят
         // между операторами и регионами, а люди переезжают — у половины монтажников
         // Подмосковья номер московский, и ничего подозрительного в этом нет.
@@ -57300,11 +57286,9 @@ const app = {
         const u = this._currentUserRow || this.state.tgUser || {};
         const last = String(u.lastName || '').trim();
         const gi = String(u.givenName || u.first_name || '').trim();
-        const mi = String(u.middleName || '').trim();
         if (last) {
             let s = last;
             if (gi) s += ' ' + gi[0].toUpperCase() + '.';
-            if (mi) s += mi[0].toUpperCase() + '.';
             return s;
         }
         return String(u.first_name || u.username || '').trim();
@@ -64108,7 +64092,6 @@ const app = {
                 username: "dima_ibatullin",
                 lastName: "Ibatullin",
                 givenName: "Dima",
-                middleName: "Dev",
                 phone: "+7 (999) 999-99-99",
                 birthDate: "1990-01-01",
                 region: "Московская область",
