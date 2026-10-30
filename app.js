@@ -464,6 +464,9 @@ function getFriendlyErrorMessage(err, defaultMsg = 'Неизвестная ош�
     if (msg.includes('invalid login credentials') || msg.includes('invalid email or password')) {
         return 'Неверный логин или пароль.';
     }
+    if (msg.includes('signup_blocked_deleted')) {
+        return 'Учётная запись с этими данными была удалена, повторная регистрация закрыта. Чтобы открыть её, напишите на kovdor24@yandex.ru.';
+    }
     if (msg.includes('user is banned') || msg.includes('user_banned')) {
         return 'Ваш аккаунт заблокирован администратором. Для уточнения причин свяжитесь с поддержкой.';
     }
@@ -51155,18 +51158,48 @@ const app = {
     // Выход заблокированного: сессия гасится, состояние сбрасывается до гостя. На сервере
     // блокировка держится отдельно (бан во входе + запрет в RLS, миграция
     // 20261030_block_server_enforcement.sql), здесь — немедленная реакция открытой вкладки.
-    enforceBlocked: async function () {
+    enforceBlocked: async function (reason) {
         if (this._blockedHandled) return;
         this._blockedHandled = true;
         this.stopBlockWatch();
+        // Почта или телефон совпали с удалённой учёткой (миграция
+        // 20261030_deleted_reregistration_hardening.sql ставит блокировку сама): объясняем это,
+        // а не «заблокирован администратором». Спрашиваем до выхода — потом сессии уже нет.
+        let msg = 'Ваш аккаунт заблокирован администратором. Для уточнения причин свяжитесь с поддержкой.';
+        if (reason === 'deleted') {
+            msg = 'Ваша учётная запись удалена администратором. Чтобы разобраться, напишите на kovdor24@yandex.ru.';
+        } else {
+            try {
+                const u = this.state.tgUser || {};
+                const { data: rows } = await supabaseClient.rpc('reg_block_info', { p_email: u.email || null, p_phone: u.phone || null });
+                const info = Array.isArray(rows) ? rows[0] : rows;
+                if (info && info.till) msg = this.regBlockedText(info.till, info.kind);
+            } catch (e) { /* остаётся общий текст */ }
+        }
         try { await supabaseClient.auth.signOut(); } catch (e) { /* сессии на сервере уже нет */ }
         delete this.state.tgUser;
         this.state.accountType = 'base';
         this.saveState();
         this.syncUI();
         this.render();
-        app.alert('Ваш аккаунт заблокирован администратором. Для уточнения причин свяжитесь с поддержкой.');
+        app.alert(msg);
         setTimeout(() => { this._blockedHandled = false; }, 5000);
+    },
+    // Одна проверка состояния своей учётки: заблокирована или удалена. Зовётся таймером
+    // startBlockWatch и сразу после сохранения анкеты (там срабатывает проверка телефона).
+    checkAccountState: async function (authUserId) {
+        try {
+            const { data, error } = await supabaseClient.from('users').select('is_blocked').eq('auth_user_id', authUserId).limit(1);
+            if (error) return;
+            if (data && data[0]) {
+                if (data[0].is_blocked) this.enforceBlocked();
+                return;
+            }
+            // Строки нет: удалили или ещё не создали. Отличаем по логину — у удалённого
+            // сервер отвечает, что пользователя нет.
+            const { error: uErr } = await supabaseClient.auth.getUser();
+            if (uErr && (uErr.status === 403 || /does not exist|not found/i.test(uErr.message || ''))) this.enforceBlocked('deleted');
+        } catch (e) { /* нет связи — проверим в следующий раз */ }
     },
     // Открытая вкладка узнаёт о блокировке сама: раз в 2 минуты и при возврате на вкладку
     // читает свою строку users (её RLS не закрывает). Ошибки сети молча пропускаем.
@@ -51174,12 +51207,7 @@ const app = {
         if (this._blockWatchFor === authUserId) return;
         this.stopBlockWatch();
         this._blockWatchFor = authUserId;
-        const check = async () => {
-            try {
-                const { data, error } = await supabaseClient.from('users').select('is_blocked').eq('auth_user_id', authUserId).limit(1);
-                if (!error && data && data[0] && data[0].is_blocked) this.enforceBlocked();
-            } catch (e) { /* нет связи — проверим в следующий раз */ }
-        };
+        const check = () => this.checkAccountState(authUserId);
         this._blockWatchTimer = setInterval(check, 120000);
         this._blockWatchVis = () => { if (!document.hidden) check(); };
         document.addEventListener('visibilitychange', this._blockWatchVis);
@@ -51555,6 +51583,9 @@ const app = {
                 }
                 if (tgUser.email) await supabaseClient.auth.updateUser({ data: { full_name: name, phone: phone } });
                 this.saveHeardFrom(tgUser.authUserId, tgUser.email || email, heardFrom);
+                // Новый телефон/почта могли совпасть с удалённой учёткой — база тогда сама
+                // ставит блокировку; узнаём об этом сразу, а не через 2 минуты.
+                if (tgUser.authUserId) this.checkAccountState(tgUser.authUserId);
                 console.log("[saveProfile] Профиль успешно синхронизирован с облаком Supabase.");
             } catch (error) {
                 console.error('[saveProfile] Фоновая ошибка синхронизации профиля с Supabase:', error);
