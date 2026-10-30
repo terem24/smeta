@@ -22852,6 +22852,24 @@ const app = {
                 gain2.connect(filter);
                 osc2.start(startOh);
                 osc2.stop(startOh + 0.16);
+            } else if (soundName === 'mario') {
+                // Монетка из Super Mario: два прямоугольных тона B5 → E6, второй тянется и затухает
+                const playCoin = (freq, startTime, duration, hold) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(freq, startTime);
+                    gain.gain.setValueAtTime(0.0001, startTime);
+                    gain.gain.linearRampToValueAtTime(0.12, startTime + 0.004);
+                    gain.gain.setValueAtTime(0.12, startTime + hold);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(startTime);
+                    osc.stop(startTime + duration + 0.02);
+                };
+                playCoin(987.77, now, 0.08, 0.07);          // B5
+                playCoin(1318.51, now + 0.08, 0.45, 0.12);  // E6
             }
         } catch (e) {
             console.warn("Failed to play notification sound:", e);
@@ -40688,6 +40706,7 @@ const app = {
             body: `<select class="auth-input" onchange="app.changeNotificationSound(this.value); app.renderAdminNotifications()">
                 <option value="iphone"${sound === 'iphone' ? ' selected' : ''}>iPhone (Тритон)</option>
                 <option value="icq"${sound === 'icq' ? ' selected' : ''}>ICQ (О-оу!)</option>
+                <option value="mario"${sound === 'mario' ? ' selected' : ''}>Марио (монетка)</option>
                 <option value="none"${sound === 'none' ? ' selected' : ''}>Без звука</option>
             </select>`
         });
