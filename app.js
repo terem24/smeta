@@ -15111,23 +15111,6 @@ const app = {
         if (wrap) wrap.remove();
     },
 
-    // Повторная загрузка сессии, пока строка пользователя не пришла из базы (без сообщений об ошибках)
-    retryProfileLoad: function () {
-        if (this._profileRetryTimer) return;
-        this._profileRetryTimer = setTimeout(async () => {
-            this._profileRetryTimer = null;
-            if (this._profileDbLoaded) return;
-            try {
-                const { data } = await supabaseClient.auth.getSession();
-                if (data && data.session) {
-                    this._authHandling = false;
-                    await this.handleAuthSession(data.session);
-                }
-            } catch (e) { }
-            if (!this._profileDbLoaded) this.syncUI();
-        }, 4000);
-    },
-
     onbFinish: function () {
         this._onbStep = 0;
         this._profileForceComplete = false;
@@ -80659,11 +80642,6 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         if (profileLocked && !this._profileForceComplete) {
             this.showProfileModal(true);
         }
-        // Вошедший, но анкета из базы ещё не пришла: калькулятор закрыт нейтральным экраном
-        // (без текста ошибок), пока ответ не придёт. Ответ сам не пришёл — запрашиваем повторно.
-        const awaitingProfile = !!(lockTgUser && (lockTgUser.authUserId || lockTgUser.email) && !this._profileDbLoaded);
-        document.body.classList.toggle('profile-awaiting', awaitingProfile);
-        if (awaitingProfile) this.retryProfileLoad();
 
         const cloudBtns = document.querySelector('.header-cloud-btns');
         if (cloudBtns) cloudBtns.style.display = isGuest ? 'none' : 'flex';

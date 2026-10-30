@@ -19973,30 +19973,6 @@ body.theme-yandex #profile_modal_overlay {
     .hc-welcome-badge svg { animation: none; stroke-dashoffset: 0; }
 }
 
-/* Калькулятор закрыт, пока анкета вошедшего не пришла из базы: нейтральный экран без текста */
-body.profile-awaiting::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    z-index: 1999000;
-    background: var(--bg, #f5f7fb);
-}
-body.profile-awaiting::after {
-    content: '';
-    position: fixed;
-    left: 50%;
-    top: 50%;
-    z-index: 1999001;
-    width: 36px;
-    height: 36px;
-    margin: -18px 0 0 -18px;
-    border-radius: 50%;
-    border: 3px solid var(--border, #e2e8f0);
-    border-top-color: var(--primary, #2563eb);
-    animation: profile-awaiting-spin 0.8s linear infinite;
-}
-@keyframes profile-awaiting-spin { to { transform: rotate(360deg); } }
-
 /* Первый вход на компьютере: окно по центру экрана целиком, без прокрутки. Кабинет
    прижимает окно к панели слева (body.lk-docked), поэтому здесь правило с тем же
    префиксом и выше по специфичности. Для телефона и планшета окно тоже по центру,
