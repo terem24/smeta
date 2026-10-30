@@ -1519,7 +1519,7 @@ const Tour = {
             this.bonusHtml() +
             resumeBtn +
             '<div class="tour-blks">' + rows + '</div>' +
-            '<div class="tour-card-foot">Кнопка 🎓 в шапке включает и выключает обучение (на телефоне — в меню ☰).' +
+            '<div class="tour-card-foot">' +
             (rec ? '<span class="tour-kbd-line"> Клавиша <kbd class="tour-kbd tour-kbd-plain">Enter ↵</kbd> — начать «' + rec.title + '».</span>' : '') + '</div>';
         this.placeFree(card);
     },
