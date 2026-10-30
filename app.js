@@ -29077,7 +29077,7 @@ const app = {
 
         let h = `
                     <div class="admin-stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-                        <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${totalUsers}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажников: <b>${installersCount || 0}</b> · продавцов: <b>${sellersCount || 0}</b></span></div>
+                        <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${totalUsers}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажников: <b>${installersCount || 0}</b> · продавцов: <b>${sellersCount || 0}</b></span><span style="font-size: 11px; color: var(--text-sec); margin-top: 2px;">тестовые учётки здесь есть, в «Новых» дашборда не считаются</span></div>
                         <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: var(--c-ok,#10B981);">${totalEstimates}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажниками: <b>${estInstallers || 0}</b> · продавцами: <b>${estSellers || 0}</b></span></div>
                         <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #6366F1; white-space: nowrap;" title="${totalEq.toLocaleString('ru-RU')} ₽">${this.moneyCompact(totalEq)}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">средний чек: <b>${estWithEq ? Math.round(totalEq / estWithEq).toLocaleString('ru-RU') : 0} ₽</b></span></div>
                         <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316; white-space: nowrap;" title="${totalWorks.toLocaleString('ru-RU')} ₽">${this.moneyCompact(totalWorks)}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">смет с монтажом: <b>${estWithWorks || 0}</b> из ${totalEstimates} | средний чек: <b>${estWithWorks ? Math.round(totalWorks / estWithWorks).toLocaleString('ru-RU') : 0} ₽</b></span></div>
@@ -30043,7 +30043,7 @@ const app = {
             } catch (e) { return { rows: [] }; }
         });
         L('users', async () => {
-            const r = await this.fetchAllRows('users', 'id, created_at, activity_types, account_type, is_test', { order: 'id', cap: 20000, build: qy => ge(qy, 'created_at') });
+            const r = await this.fetchAllRows('users', 'id, created_at, activity_types, account_type, is_test, utm_source', { order: 'id', cap: 20000, build: qy => ge(qy, 'created_at') });
             return { rows: r.rows, capped: r.capped };
         });
         L('ests', async () => {
@@ -30211,6 +30211,54 @@ const app = {
                 if (S.users.capped) w.note = 'Пользователей больше, чем читается за один раз: цифры занижены.';
             }
             out.users = w;
+        }
+
+        // ── Откуда пришли: источник первого касания (users.utm_source), без тестовых ──
+        // Пусто — прямой заход или мессенджер без реферера; «ask: …» — ответ из анкеты
+        {
+            const w = { id: 'src', title: 'Откуда пришли', tab: 'stats', act: 'Пользователи' };
+            if (bad('users')) w.err = bad('users');
+            else if (!ok('users') || testsWait) w.wait = true;
+            else {
+                const NONE = 'Не записано', ASK = 'Только из анкеты';
+                const srcOf = s => {
+                    const parts = String(s || '').split(' | ').filter(x => x && x.indexOf('ask:') !== 0);
+                    const get = p => { const f = parts.find(x => x.indexOf(p) === 0); return f ? f.slice(p.length).trim() : ''; };
+                    const tag = get('src:'), ref = get('ref:');
+                    if (tag) return 'Метка: ' + tag;
+                    if (ref) {
+                        if (/(^|\.)(oauth|passport)\.yandex\.|accounts\.google\.com/.test(ref)) return NONE;
+                        if (/yandex|ya\.ru|google|bing|duckduckgo|mail\.ru/.test(ref)) return 'Поиск';
+                        if (/^heatcalc\.ru/.test(ref)) return 'Сайт heatcalc.ru';
+                        return 'Другие сайты';
+                    }
+                    return parts.length || !/ask:/.test(String(s || '')) ? NONE : ASK;
+                };
+                const cnt = {}, ser = { tagged: zeros(), none: zeros() };
+                let total = 0, withSrc = 0;
+                S.users.rows.forEach(u => {
+                    if (u.is_test || testIds[u.id]) return;
+                    const t = t0(u.created_at);
+                    if (cls(t) !== 'cur') return;
+                    const k = srcOf(u.utm_source), has = k !== NONE && k !== ASK;
+                    cnt[k] = (cnt[k] || 0) + 1;
+                    total++;
+                    if (has) withSrc++;
+                    ser[has ? 'tagged' : 'none'][B.at(t)]++;
+                });
+                const colors = [C.blue, C.green, C.violet, C.gray];
+                const keys = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]);
+                w.nums = [
+                    { k: 'tot', l: 'Всего новых', v: fmt(total), sp: addS(ser.tagged, ser.none), h: 'Новые за период без тестовых: то же число, что в «Новые пользователи»' },
+                    { k: 'with', l: 'Знаем, откуда', v: fmt(withSrc), s: total ? 'это ' + pct(withSrc, total) + '% новых' : '', h: 'Есть метка кампании, переход с поиска или с нашего сайта' },
+                    { k: 'none', l: NONE, v: fmt(total - withSrc), s: 'прямой заход или мессенджер', h: 'Источник не записан: прямой заход, мессенджер без реферера или регистрация до учёта источника' }
+                ];
+                w.groups = [{ title: 'Откуда пришли', items: keys.length ? keys.map((k, i) => ({ label: k, value: cnt[k], color: colors[i % colors.length] })) : [{ label: 'Нет данных', value: 0, color: C.gray }] }];
+                w.chart = { labels: B.labels, tips: B.tips, stack: true, series: [{ name: 'Знаем, откуда', color: C.green, vals: ser.tagged }, { name: NONE, color: C.gray, vals: ser.none }] };
+                w.table = this.kpiTable(B, w.chart.series);
+                if (S.users.capped) w.note = 'Пользователей больше, чем читается за один раз: цифры занижены.';
+            }
+            out.src = w;
         }
 
         // ── КП: статусы и конверсия ──
@@ -30848,7 +30896,7 @@ const app = {
         const W = this.kpiBuild(p, S);
         const edit = !!this._todayEdit;
         const chips = this.KPI_PERIODS.map(x => `<button type="button" class="kpi-chip${x.id === p.id ? ' on' : ''}" onclick="app.kpiSetPeriod('${x.id}')">${x.label}</button>`).join('');
-        const order = this.kpiSortBy(this.kpiOrderMap().sec, ['users', 'kps', 'planner', 'ests', 'rec', 'pay', 'paywall'], x => x);
+        const order = this.kpiSortBy(this.kpiOrderMap().sec, ['users', 'src', 'kps', 'planner', 'ests', 'rec', 'pay', 'paywall'], x => x);
         this._kpiShownSec = order.slice();
         const hint = edit
             ? 'Нажмите × на плашке, чтобы скрыть её, или «+», чтобы вернуть. Тащите за заголовок плашки или раздела, чтобы поменять порядок'
