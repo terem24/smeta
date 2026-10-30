@@ -465,10 +465,10 @@ function getFriendlyErrorMessage(err, defaultMsg = 'Неизвестная ош�
         return 'Неверный логин или пароль.';
     }
     if (msg.includes('signup_blocked_deleted')) {
-        return 'С этими данными зарегистрироваться нельзя: аккаунт был удалён. Если это ошибка, напишите нам: kovdor24@yandex.ru';
+        return 'С этими данными зарегистрироваться нельзя: аккаунт удалён. Если это ошибка, напишите нам через «Сообщить о проблеме».';
     }
     if (msg.includes('user is banned') || msg.includes('user_banned')) {
-        return 'Доступ к аккаунту закрыт. Если это ошибка, напишите нам: kovdor24@yandex.ru';
+        return 'Аккаунт заблокирован. Если это ошибка, напишите нам через «Сообщить о проблеме».';
     }
     if (msg.includes('email not confirmed')) {
         return 'Email не подтвержден. Пожалуйста, проверьте почту и подтвердите ваш аккаунт.';
@@ -51178,24 +51178,39 @@ const app = {
         // Почта или телефон совпали с удалённой учёткой (миграция
         // 20261030_deleted_reregistration_hardening.sql ставит блокировку сама): объясняем это,
         // а не «заблокирован администратором». Спрашиваем до выхода — потом сессии уже нет.
-        let msg = 'Доступ к аккаунту закрыт. Если это ошибка, напишите нам: kovdor24@yandex.ru';
+        let msg = 'Аккаунт заблокирован.';
+        let title = 'Доступ закрыт';
         if (reason === 'deleted') {
-            msg = 'Аккаунт удалён. Если это ошибка, напишите нам: kovdor24@yandex.ru';
+            msg = 'Аккаунт удалён.';
+            title = 'Аккаунт удалён';
         } else {
             try {
                 const u = this.state.tgUser || {};
                 const { data: rows } = await supabaseClient.rpc('reg_block_info', { p_email: u.email || null, p_phone: u.phone || null });
                 const info = Array.isArray(rows) ? rows[0] : rows;
-                if (info && info.till) msg = this.regBlockedText(info.till, info.kind);
+                if (info && info.till) { msg = 'Аккаунт удалён.'; title = 'Аккаунт удалён'; }
             } catch (e) { /* остаётся общий текст */ }
         }
+        // Контакты запоминаем до выхода: в форму обратной связи гостем они иначе не попадут,
+        // и ответить человеку будет некуда (см. submitFeedback).
+        const u0 = this.state.tgUser || {};
+        this._closedAccount = {
+            status: reason === 'deleted' || title === 'Аккаунт удалён' ? 'удалён' : 'заблокирован',
+            email: u0.email || '', phone: u0.phone || '', name: u0.first_name || u0.username || ''
+        };
         try { await supabaseClient.auth.signOut(); } catch (e) { /* сессии на сервере уже нет */ }
         delete this.state.tgUser;
         this.state.accountType = 'base';
         this.saveState();
         this.syncUI();
         this.render();
-        app.alert(msg);
+        const write = await app.confirm(msg + ' Если это ошибка, напишите нам.', title, 'Написать нам', 'Закрыть');
+        if (write) {
+            this.openFeedbackModal();
+            const subj = document.getElementById('feedback_subject');
+            if (subj) subj.value = 'Аккаунт ' + this._closedAccount.status;
+            this.selectFeedbackCategory('question');
+        }
         setTimeout(() => { this._blockedHandled = false; }, 5000);
     },
     // Одна проверка состояния своей учётки: заблокирована или удалена. Зовётся таймером
@@ -51293,8 +51308,9 @@ const app = {
     // человека той же ночью.
     // Текст для удалённого за неактивность, который пробует зарегистрироваться снова.
     regBlockedText: function (till, kind) {
-        if (kind === 'manual') return 'С этими данными зарегистрироваться нельзя: аккаунт был удалён. Если это ошибка, напишите нам: kovdor24@yandex.ru';
-        return 'С этими данными пока нельзя зарегистрироваться: аккаунт был удалён за долгое отсутствие. Откроем доступ по запросу: kovdor24@yandex.ru';
+        const tail = ' Если это ошибка, напишите нам через «Сообщить о проблеме».';
+        if (kind === 'manual') return 'С этими данными зарегистрироваться нельзя: аккаунт удалён.' + tail;
+        return 'С этими данными пока нельзя зарегистрироваться: аккаунт удалён за долгое отсутствие.' + tail;
     },
     // Снимает годовой запрет на повторную регистрацию удалённого за неактивность.
     allowReregistration: async function (recordId) {
@@ -100300,8 +100316,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         const descEl = document.getElementById('feedback_description');
         const sendBtn = document.getElementById('btn_send_feedback');
 
-        const subject = subjectEl ? subjectEl.value.trim() : '';
+        let subject = subjectEl ? subjectEl.value.trim() : '';
         const description = descEl ? descEl.value.trim() : '';
+        if (subject && this._closedAccount && !this.state.tgUser) subject = '[Аккаунт ' + this._closedAccount.status + '] ' + subject;
 
         if (!subject || !description) {
             app.alert("Пожалуйста, заполните Тему и Описание.");
@@ -100361,9 +100378,12 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             const connectionSpeed = navigator.connection ? navigator.connection.effectiveType : 'unknown';
 
             // Gather contact info
-            const userEmail = this.state.tgUser?.email || 'Не указан';
-            const userName = this.state.tgUser?.first_name || this.state.tgUser?.username || 'Гость';
-            const userPhone = this.state.tgUser?.phone || 'Не указан';
+            // Вышедшему из заблокированной/удалённой учётки подставляем её контакты, иначе
+            // письмо придёт от «Гостя» без адреса и ответить будет некому.
+            const closed = this._closedAccount || null;
+            const userEmail = this.state.tgUser?.email || (closed && closed.email) || 'Не указан';
+            const userName = this.state.tgUser?.first_name || this.state.tgUser?.username || (closed && closed.name) || 'Гость';
+            const userPhone = this.state.tgUser?.phone || (closed && closed.phone) || 'Не указан';
             const userCity = this.state.tgUser?.city || 'Не указан';
 
             // Gather calculation details
