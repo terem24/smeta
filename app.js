@@ -14749,7 +14749,7 @@ const app = {
         // печатной смете телефон выглядел бы иначе, чем у введённых вручную. Приводим
         // к общему виду сразу при открытии анкеты (только российские 11-значные номера).
         if (/^[78]\d{10}$/.test(profilePhoneEl.value.replace(/\D/g, ''))) this.maskPhone(profilePhoneEl);
-        document.getElementById('profile_birth_date_input').value = tgUser.birthDate || '';
+        this.birthSetIso(tgUser.birthDate || '');
         this.setBirthDateRange(document.getElementById('profile_birth_date_input'));
         document.getElementById('profile_region_input').value = tgUser.region || '';
         document.getElementById('profile_city_input').value = tgUser.city || '';
@@ -14854,8 +14854,20 @@ const app = {
     // и в сводке. _onbStep = 0 — визарда нет, окно обычное.
     _onbStep: 0,
 
+    // Монтажник или нет — по переключателю в анкете (а до выбора по сохранённой сфере).
+    // От этого зависит число шагов: третий шаг («Монтаж») есть только у монтажника.
+    onbInstaller: function () {
+        const inst = document.getElementById('profile_act_installer');
+        const sell = document.getElementById('profile_act_seller');
+        if (inst && inst.checked) return true;
+        if (sell && sell.checked) return false;
+        return !!(this.state.tgUser && (this.state.tgUser.activityTypes || []).includes('Монтажник'));
+    },
+    onbTotal: function () {
+        return this.onbInstaller() ? 3 : 2;
+    },
     onbGo: function (step) {
-        if (step === 3 && this.isSellerOnly()) step = 0;
+        if (step === 3 && !this.onbInstaller()) step = 0;
         if (!step) { this.onbFinish(); return; }
         this._onbStep = step;
         this._profileForceComplete = false;
@@ -14864,7 +14876,7 @@ const app = {
     // «Дальше» после шага — поздравление, потом следующий шаг (или выход на последнем).
     // «Пропустить» — без поздравления.
     onbLast: function () {
-        return this._onbStep >= 3 || (this._onbStep === 2 && this.isSellerOnly());
+        return this._onbStep >= this.onbTotal();
     },
     onbNext: function () {
         const step = this._onbStep;
@@ -14990,7 +15002,7 @@ const app = {
         if (!val('profile_last_name_input')) out.push(document.getElementById('profile_last_name_input'));
         if (!val('profile_first_name_input')) out.push(document.getElementById('profile_first_name_input'));
         if (!this.isPhoneFilled(val('profile_phone_input'))) out.push(document.getElementById('profile_phone_input'));
-        if (!val('profile_birth_date_input')) out.push(document.getElementById('profile_birth_date_input'));
+        if (!val('profile_birth_date_input')) out.push(document.getElementById('profile_birth_text'));
         if (!val('profile_city_input')) out.push(document.getElementById('profile_city_input'));
         const picked = ['profile_act_installer', 'profile_act_seller'].some(id => document.getElementById(id) && document.getElementById(id).checked);
         if (!picked) out.push(document.getElementById('profile_act_installer'));
@@ -15013,7 +15025,92 @@ const app = {
             el.addEventListener('input', again);
             el.addEventListener('change', again);
         });
+        // Выбор сферы меняет число шагов сразу, без сохранения
+        ['profile_act_installer', 'profile_act_seller'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('change', () => this.onbRender());
+        });
     },
+    // ── Дата рождения: цифрами (дд.мм.гггг) или календарём ──
+    // Скрытое поле profile_birth_date_input хранит ISO (гггг-мм-дд), оно же читает saveProfile.
+    birthSetIso: function (iso, keepText) {
+        const hid = document.getElementById('profile_birth_date_input');
+        if (hid) { hid.value = iso || ''; hid.dispatchEvent(new Event('change')); }
+        const txt = document.getElementById('profile_birth_text');
+        if (txt && !keepText) txt.value = iso ? iso.split('-').reverse().join('.') : '';
+    },
+    // Маска дд.мм.гггг: точки ставятся сами, дата принимается, когда она существует
+    birthTextInput: function (el) {
+        const d = el.value.replace(/\D/g, '').slice(0, 8);
+        let out = d.slice(0, 2);
+        if (d.length > 2) out += '.' + d.slice(2, 4);
+        if (d.length > 4) out += '.' + d.slice(4);
+        el.value = out;
+        let iso = '';
+        if (d.length === 8) {
+            const dd = +d.slice(0, 2), mm = +d.slice(2, 4), yy = +d.slice(4);
+            const dt = new Date(yy, mm - 1, dd);
+            if (dt.getFullYear() === yy && dt.getMonth() === mm - 1 && dt.getDate() === dd) {
+                iso = yy + '-' + String(mm).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
+            }
+        }
+        this.birthSetIso(iso, true);
+    },
+    birthPickerOpen: function () {
+        const hid = document.getElementById('profile_birth_date_input');
+        const iso = hid && hid.value;
+        const base = iso ? new Date(iso + 'T00:00:00') : new Date(new Date().getFullYear() - 25, 0, 1);
+        this._birthView = { y: base.getFullYear(), m: base.getMonth() };
+        this.birthPickerRender();
+    },
+    birthPickerRender: function () {
+        let wrap = document.getElementById('birth_picker');
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'birth_picker';
+            wrap.className = 'birth-picker-wrap';
+            wrap.addEventListener('click', e => { if (e.target === wrap) this.birthPickerClose(); });
+            document.body.appendChild(wrap);
+        }
+        const today = new Date();
+        const minY = today.getFullYear() - this.PROFILE_MAX_AGE, maxY = today.getFullYear() - 18;
+        const v = this._birthView;
+        const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+        const sel = document.getElementById('profile_birth_date_input').value;
+        const offset = (new Date(v.y, v.m, 1).getDay() + 6) % 7;
+        const days = new Date(v.y, v.m + 1, 0).getDate();
+        let cells = '';
+        for (let i = 0; i < offset; i++) cells += '<span></span>';
+        for (let d = 1; d <= days; d++) {
+            const iso = v.y + '-' + String(v.m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+            const dt = new Date(v.y, v.m, d);
+            const off = dt > today || v.y < minY || v.y > maxY || (v.y === maxY && dt > new Date(maxY, today.getMonth(), today.getDate()));
+            cells += '<button type="button" class="bp-day' + (iso === sel ? ' bp-sel' : '') + '"' + (off ? ' disabled' : ' onclick="app.birthPickPick(\'' + iso + '\')"') + '>' + d + '</button>';
+        }
+        let mOpts = months.map((n, i) => '<option value="' + i + '"' + (i === v.m ? ' selected' : '') + '>' + n + '</option>').join('');
+        let yOpts = '';
+        for (let y = maxY; y >= minY; y--) yOpts += '<option value="' + y + '"' + (y === v.y ? ' selected' : '') + '>' + y + '</option>';
+        wrap.innerHTML = '<div class="bp-card" role="dialog" aria-label="Дата рождения">' +
+            '<div class="bp-head"><select class="bp-sel-m" onchange="app.birthPickSet(this.value, null)">' + mOpts + '</select>' +
+            '<select class="bp-sel-y" onchange="app.birthPickSet(null, this.value)">' + yOpts + '</select></div>' +
+            '<div class="bp-wd"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>' +
+            '<div class="bp-grid">' + cells + '</div>' +
+            '<div class="bp-foot"><button type="button" class="bp-cancel" onclick="app.birthPickerClose()">Отмена</button></div></div>';
+    },
+    birthPickSet: function (m, y) {
+        if (m !== null) this._birthView.m = +m;
+        if (y !== null) this._birthView.y = +y;
+        this.birthPickerRender();
+    },
+    birthPickPick: function (iso) {
+        this.birthSetIso(iso);
+        this.birthPickerClose();
+    },
+    birthPickerClose: function () {
+        const wrap = document.getElementById('birth_picker');
+        if (wrap) wrap.remove();
+    },
+
     onbFinish: function () {
         this._onbStep = 0;
         this._profileForceComplete = false;
@@ -15032,7 +15129,8 @@ const app = {
         const foot = document.getElementById('onb_footer');
         if (foot) foot.style.display = (on && this._onbStep > 1) ? 'flex' : 'none';
         if (!on || !steps) return;
-        const last = this.isSellerOnly() ? 2 : 3;
+        this.onbWatch();
+        const last = this.onbTotal();
         steps.querySelectorAll('.onb-step').forEach(el => {
             const n = Number(el.dataset.step);
             el.style.display = n > last ? 'none' : '';
@@ -50102,7 +50200,9 @@ const app = {
                 this._profileDbLoaded = false;
                 this.clearInstallerSettingsOnLogout();
             }
-            const existingCity = this.state.tgUser.city || regCity || localStorage.getItem('user_city') || '';
+            // Город берём только из самой учётной записи и из регистрации. Из localStorage не берём:
+            // там город с этого браузера, и он попадал бы в новый аккаунт без ввода пользователя.
+            const existingCity = this.state.tgUser.city || regCity || '';
             const existingPhone = this.state.tgUser.phone || phone || '';
 
             // Фото, загруженное в кабинете, лежит в том же avatar_url, но data:-строкой
@@ -50948,9 +51048,9 @@ const app = {
                 return;
             }
         } catch (dupErr) { console.warn('[saveProfile] Проверка телефона не удалась:', dupErr); }
-        if (!birthDate) { this.profileFieldError('profile_birth_date_input', 'Пожалуйста, укажите дату рождения.'); return; }
+        if (!birthDate) { this.profileFieldError('profile_birth_text', 'Пожалуйста, укажите дату рождения.'); return; }
         const profileAge = this.calcAge(birthDate);
-        if (profileAge < 18 || profileAge > this.PROFILE_MAX_AGE) { this.profileFieldError('profile_birth_date_input', 'Возраст должен быть от 18 до ' + this.PROFILE_MAX_AGE + ' лет.'); return; }
+        if (profileAge < 18 || profileAge > this.PROFILE_MAX_AGE) { this.profileFieldError('profile_birth_text','Возраст должен быть от 18 до ' + this.PROFILE_MAX_AGE + ' лет.'); return; }
         if (!region) { this.profileFieldError('profile_region_input', 'Пожалуйста, укажите регион.'); return; }
         if (!city) { this.profileFieldError('profile_city_input', 'Пожалуйста, укажите ваш город. Это необходимо для формирования смет.'); return; }
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { this.profileFieldError('profile_email_input', 'Пожалуйста, введите корректный email.'); return; }

@@ -19846,8 +19846,11 @@ body.theme-yandex #profile_modal_overlay {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0;
+    width: 100%;
+    max-width: none;
+    box-sizing: border-box;
     padding: 3px;
-    border-radius: 12px;
+    border-radius: 10px;
     background: var(--surface-light, #f1f5f9);
     border: 1px solid var(--border);
 }
@@ -19881,9 +19884,13 @@ body.theme-yandex #profile_modal_overlay {
     transition: background 0.2s, color 0.2s, box-shadow 0.2s;
 }
 #profile_modal_overlay .profile-activity .reg-activity-chip input:checked + span {
-    background: var(--bg-card, #fff);
+    background: var(--primary, #2563eb);
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
+}
+#profile_modal_overlay .profile-activity .reg-activity-chip:hover input:not(:checked):not(:disabled) + span {
     color: var(--text-main, #0f172a);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
 }
 #profile_modal_overlay .profile-activity .reg-activity-chip input:disabled + span {
     opacity: 0.5;
@@ -20000,6 +20007,54 @@ body.theme-yandex #profile_modal_overlay {
 #profile_modal_overlay.onb-mode #profile_incomplete_banner { padding: 8px 12px; margin-bottom: 10px; font-size: 12px; }
 #profile_modal_overlay.onb-mode .onb-steps { padding-bottom: 10px; }
 #profile_modal_overlay.onb-mode .lk-form { gap: 8px 12px; }
+
+/* Дата рождения: поле для цифр и кнопка календаря в одну строку */
+#profile_modal_overlay .onb-date-row { display: flex; gap: 6px; align-items: stretch; }
+#profile_modal_overlay .onb-date-row > .auth-input { flex: 1 1 auto; min-width: 0; }
+#profile_modal_overlay .onb-date-btn {
+    flex: 0 0 40px; width: 40px; height: 36px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg-card, #fff); color: var(--primary, #2563eb); cursor: pointer;
+}
+#profile_modal_overlay .onb-date-btn svg {
+    width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2;
+    stroke-linecap: round; stroke-linejoin: round;
+}
+
+/* Календарь даты рождения: год и месяц списками, дни сеткой */
+.birth-picker-wrap {
+    position: fixed; inset: 0; z-index: 60000150;
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+    background: rgba(15, 23, 42, 0.45);
+}
+.bp-card {
+    width: min(340px, 100%); box-sizing: border-box; padding: 16px;
+    border-radius: 18px; background: var(--bg-card, #fff); color: var(--text-main, #0f172a);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+}
+.bp-head { display: flex; gap: 8px; margin-bottom: 12px; }
+.bp-head select {
+    flex: 1 1 0; min-width: 0; height: 38px; padding: 0 10px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg-card, #fff); color: var(--text-main, #0f172a);
+    font: inherit; font-size: 14px; font-weight: 600;
+}
+.bp-wd, .bp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.bp-wd span { text-align: center; font-size: 11px; font-weight: 600; color: var(--text-sec, #64748b); padding-bottom: 4px; }
+.bp-grid span { display: block; }
+.bp-day {
+    height: 36px; border: 0; border-radius: 10px; background: none; color: inherit;
+    font: inherit; font-size: 14px; cursor: pointer;
+}
+.bp-day:hover:not(:disabled) { background: var(--surface-light, #f1f5f9); }
+.bp-day:disabled { opacity: 0.3; cursor: default; }
+.bp-day.bp-sel { background: var(--primary, #2563eb); color: #fff; font-weight: 700; }
+.bp-foot { display: flex; justify-content: flex-end; margin-top: 12px; }
+.bp-cancel {
+    height: 38px; padding: 0 16px; border-radius: 10px; border: 0;
+    background: var(--surface-light, #f1f5f9); color: var(--text-main, #0f172a);
+    font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
 
 /* Форма: сетка из 12 колонок, поле = подпись + ввод. На планшете треть ряда становится
    половиной, на телефоне всё в один столбец. */
