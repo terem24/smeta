@@ -20143,6 +20143,111 @@ body.theme-yandex #profile_modal_overlay {
     #profile_modal_overlay.onb-mode #profile_save_btn { height: 48px; }
 }
 
+/* ═══ Шаги 2 и 3 в окне первого входа: тот же вид, что у шага 1 ═══════════════════
+   Только внутри окна первого входа (.onb-mode). Когда те же разделы открывают из меню
+   кабинета, они выглядят по-прежнему. */
+#profile_modal_overlay.onb-mode #profile_tab_prefs .lk-section-head h4,
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-section-head h4 {
+    font-size: 20px; font-weight: 700; margin: 0 0 4px; color: var(--text-main);
+}
+#profile_modal_overlay.onb-mode #profile_tab_prefs .lk-sub,
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-sub {
+    font-size: 13px; line-height: 1.45; color: var(--text-sec);
+}
+#profile_modal_overlay.onb-mode #profile_tab_prefs .lk-section-head,
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-section-head { margin-bottom: 14px; }
+/* «Сбросить всё» и пояснение про долю бригады при первом знакомстве не нужны */
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-section-head > button,
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-head-hint { display: none; }
+
+/* Шаг 2: подписи разделов, строки выбора и пилюли */
+#profile_modal_overlay.onb-mode #profile_tab_prefs .lk-subhead {
+    margin: 18px 0 8px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--text-sec);
+}
+#profile_modal_overlay.onb-mode #profile_tab_prefs .lk-card,
+#profile_modal_overlay.onb-mode #profile_tab_prefs .lk-list .lk-row {
+    border: 1px solid var(--border); border-radius: 14px; background: var(--surface-light, #fff);
+    padding: 12px 14px; margin-bottom: 8px; box-shadow: none;
+}
+#profile_modal_overlay.onb-mode #profile_tab_prefs .lk-list { border: 0; background: none; padding: 0; }
+#profile_modal_overlay.onb-mode #profile_tab_prefs .lk-row-main b,
+#profile_modal_overlay.onb-mode #profile_tab_prefs .lk-setting-text b { font-size: 14.5px; font-weight: 600; }
+#profile_modal_overlay.onb-mode #profile_tab_prefs .pref-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+#profile_modal_overlay.onb-mode #profile_tab_prefs .pref-chips .ad-chip {
+    height: 36px; padding: 0 16px; border-radius: 999px; font-size: 13.5px; font-weight: 600;
+    border: 1px solid var(--border); background: transparent; color: var(--text-sec);
+}
+#profile_modal_overlay.onb-mode #profile_tab_prefs .pref-chips .ad-chip.active {
+    background: var(--primary, #2563eb); border-color: var(--primary, #2563eb); color: #fff;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+/* Шаг 3: группы работ раскрывающимися карточками, строка = название и цена в одну линию */
+#profile_modal_overlay.onb-mode #profile_tab_workprices details.lk-group {
+    border: 1px solid var(--border); border-radius: 14px; background: var(--surface-light, #fff);
+    margin-bottom: 10px; overflow: hidden;
+}
+#profile_modal_overlay.onb-mode #profile_tab_workprices summary.lk-subhead {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 13px 14px; margin: 0; font-size: 14px; font-weight: 600; cursor: pointer;
+    text-transform: none; letter-spacing: 0; color: var(--text-main);
+}
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-price-cols { display: none; }
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-list { padding: 0 14px 6px; }
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-price-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 9px 0; border-top: 1px solid var(--border); margin: 0;
+}
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-price-row { flex-wrap: nowrap !important; }
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-price-name {
+    flex: 1 1 0 !important; width: auto !important; min-width: 0; font-size: 13.5px; line-height: 1.35;
+}
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-price-ctl { flex: 0 0 auto !important; width: auto !important; margin: 0; }
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-money em {
+    position: static !important; font-style: normal; font-weight: 600; color: var(--text-sec);
+}
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-price-ctl .lk-money:nth-child(n+2),
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-price-cap { display: none !important; }
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-money {
+    display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; width: auto !important; align-items: center; gap: 6px; margin: 0;
+}
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-money input {
+    width: 104px !important; height: 40px !important; box-sizing: border-box; padding: 0 12px !important; text-align: right;
+    border: 1px solid var(--border) !important; border-radius: 10px !important; background-color: var(--surface-light, #fff) !important;
+    color: var(--text-main); font-size: 15px !important; font-weight: 600;
+}
+#profile_modal_overlay.onb-mode #profile_tab_workprices .lk-money input:focus {
+    outline: 0; border-color: var(--primary, #2563eb); box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16);
+}
+
+/* Кнопки шагов 2 и 3 закреплены внизу так же, как «Дальше» на шаге 1 */
+#profile_modal_overlay.onb-mode .onb-footer {
+    position: sticky; bottom: 0; z-index: 2; padding-top: 12px;
+    background: linear-gradient(to top, var(--surface) 78%, transparent);
+}
+@media (max-width: 600px) {
+    #profile_modal_overlay.onb-mode #profile_tab_prefs .pref-chips .ad-chip { height: 38px; font-size: 14px; }
+    #profile_modal_overlay.onb-mode #profile_tab_workprices .lk-money input { width: 96px !important; font-size: 16px !important; }
+    #profile_modal_overlay.onb-mode .onb-footer { gap: 6px; }
+    #profile_modal_overlay.onb-mode .onb-btn-skip { padding: 0 12px; }
+    #profile_modal_overlay.onb-mode .onb-btn-primary { min-width: 108px; }
+}
+
+/* Окно одной высоты на всех шагах (не «прыгает»), кнопки прижаты к низу карточки */
+body.lk-docked #profile_modal_overlay.onb-mode .auth-modal-content,
+#profile_modal_overlay.onb-mode .auth-modal-content {
+    height: min(700px, calc(100dvh - 24px)) !important;
+    max-height: calc(100dvh - 24px) !important;
+}
+#profile_modal_overlay.onb-mode .lk-layout { flex: 1 1 auto; min-height: 0; }
+/* Шаг 1 (обязательная анкета): контейнер — столбец, панель растёт вниз.
+   Шаги 2 и 3: контейнер — строка, панель занимает всю ширину карточки и не вылезает за неё. */
+#profile_modal_overlay.onb-mode .lk-layout.lk-forced .lk-pane { flex: 1 0 auto; }
+#profile_modal_overlay.onb-mode .lk-layout:not(.lk-forced) .lk-pane { flex: 1 1 0; min-width: 0; }
+#profile_modal_overlay.onb-mode #profile_modal_footer_requisites,
+#profile_modal_overlay.onb-mode .onb-footer { margin-top: auto !important; }
+
 /* Форма: сетка из 12 колонок, поле = подпись + ввод. На планшете треть ряда становится
    половиной, на телефоне всё в один столбец. */
 .lk-form {

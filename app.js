@@ -15185,6 +15185,46 @@ const app = {
         if (attempt < 4 && !this._profileDbLoaded) setTimeout(() => this.ensureProfileGate(session, attempt + 1), 3000);
     },
 
+    // Тексты шагов 2 и 3 в окне первого входа: короткое описание вместо длинного, в шаге 3 из названий
+    // работ убрано повторяющееся «Монтаж», из названий групп — номера. Разделы из меню кабинета
+    // остаются прежними: правка действует только пока открыто окно первого входа.
+    ONB_STEP_TEXT: {
+        2: 'Отметьте, что вы ставите чаще: новые сметы будут считаться по вашему выбору. Можно пропустить и вернуться позже.',
+        3: 'По умолчанию калькулятор берёт средние расценки. Впишите свои, и смета сразу пойдёт по ним. Можно пропустить.'
+    },
+    onbTidy: function () {
+        const step = this._onbStep;
+        if (step !== 2 && step !== 3) return;
+        const root = document.getElementById(step === 2 ? 'profile_tab_prefs' : 'profile_tab_workprices');
+        if (!root) return;
+        const sub = root.querySelector('.lk-section-head .lk-sub');
+        if (sub && sub.textContent !== this.ONB_STEP_TEXT[step]) sub.textContent = this.ONB_STEP_TEXT[step];
+        if (step !== 3) return;
+        const firstText = el => [...el.childNodes].find(n => n.nodeType === 3 && n.textContent.trim());
+        root.querySelectorAll('.lk-price-name').forEach(el => {
+            const n = firstText(el);
+            if (!n) return;
+            // в справочнике встречается «Mонтаж» с латинской M, поэтому [MМ]
+            const t = n.textContent.replace(/^(\s*)[MМ]онтаж\s+/i, '$1');
+            const cap = t.replace(/^(\s*)(\S)/, (m, sp, ch) => sp + ch.toUpperCase());
+            if (cap !== n.textContent) n.textContent = cap;
+        });
+        root.querySelectorAll('summary.lk-subhead').forEach(el => {
+            const n = firstText(el);
+            if (!n) return;
+            const t = n.textContent.replace(/^(\s*)\d+(?:\.\d+)*\s+/, '$1');
+            if (t !== n.textContent) n.textContent = t;
+        });
+    },
+    // Разделы рисуются заново при правках, поэтому за ними следим, пока открыто окно первого входа
+    onbObserve: function () {
+        if (this._onbObs || typeof MutationObserver === 'undefined') return;
+        const pane = document.querySelector('#profile_modal_overlay .lk-pane');
+        if (!pane) return;
+        this._onbObs = new MutationObserver(() => this.onbTidy());
+        this._onbObs.observe(pane, { childList: true, subtree: true, characterData: true });
+    },
+
     onbFinish: function () {
         this._onbStep = 0;
         this._profileForceComplete = false;
@@ -15202,8 +15242,11 @@ const app = {
         if (steps) steps.style.display = on ? '' : 'none';
         const foot = document.getElementById('onb_footer');
         if (foot) foot.style.display = (on && this._onbStep > 1) ? 'flex' : 'none';
+        if (!on && this._onbObs) { this._onbObs.disconnect(); this._onbObs = null; }
         if (!on || !steps) return;
         this.onbWatch();
+        this.onbTidy();
+        this.onbObserve();
         const last = this.onbTotal();
         steps.querySelectorAll('.onb-step').forEach(el => {
             const n = Number(el.dataset.step);
@@ -19154,7 +19197,9 @@ const app = {
     syncCabinetDock: function () {
         // Принудительное дозаполнение анкеты остаётся окном во весь экран: иначе от
         // обязательной формы можно уйти щелчком по панели
-        const anyOpen = !this._profileForceComplete
+        // Окно первого входа (шаги 1-3) тоже не стыкуем с панелью: оно по центру, а в «доке» форма
+        // шага 1 после возврата с шагов 2 и 3 вылезала за карточку.
+        const anyOpen = !this._profileForceComplete && !(this._onbStep > 0)
             && this.DOCKABLE_OVERLAY_IDS.some(id => this.isOverlayOpen(id));
         this.setCabinetDocked(anyOpen && this.isRailVisible());
     },
