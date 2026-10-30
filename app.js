@@ -25481,6 +25481,13 @@ const app = {
             });
         }
 
+        // Заблокированные по умолчанию не показываем: они не работают в калькуляторе и только
+        // засоряют список. Видны в срезе «Заблокированные» и в поиске (когда ищут конкретного
+        // человека, он должен найтись). Удалённых в этой таблице нет — они на вкладке «Неактивные».
+        const statusFilter = filters.status || 'active';
+        if (statusFilter === 'blocked') query = query.eq('is_blocked', true);
+        else if (statusFilter === 'active' && !searchFilter) query = query.eq('is_blocked', false);
+
         if (tariffFilter === 'base') {
             // Базовый тариф лежит в колонке двумя разными словами: старым записям
             // проставлялся 'base', новым база сама пишет 'free' (значение по умолчанию
@@ -25881,7 +25888,8 @@ const app = {
             device: document.getElementById('admin_filter_device')?.value || 'all',
             inactive: document.getElementById('admin_filter_inactive')?.value || 'all',
             reclost: document.getElementById('admin_filter_reclost')?.value || 'all',
-            noest: document.getElementById('admin_filter_noest')?.value || 'all'
+            noest: document.getElementById('admin_filter_noest')?.value || 'all',
+            status: document.getElementById('admin_filter_status')?.value || 'active'
         };
 
         const estSearchInputBefore = document.getElementById('admin_est_search_input');
@@ -29243,6 +29251,7 @@ const app = {
         const inactiveFilter = filters.inactive || 'all';
         const recLostFilter = filters.reclost || 'all';
         const noEstFilter = filters.noest || 'all';
+        const statusFilter = filters.status || 'active';
         const sortArrow = (key) => sortType === key + '_asc' ? ' ▲' : (sortType === key + '_desc' ? ' ▼' : '');
         // Проектирование: переключатели работают, только если на сервере лежит
         // обновлённый recognize_archive.php (см. designAccessSupported).
@@ -29257,7 +29266,7 @@ const app = {
         // Быстрые срезы и сохранённые виды списка: девять фильтров в одну строку превращали
         // экран в панель самолёта, а нужные сочетания приходилось выставлять заново.
         const escH = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        const curF = { tariff: tariffFilter, expiry: expiryFilter, region: regionFilter, dist: distFilter, activity: activityFilter, recog: recogFilter, suspect: suspectFilter, idle: idleFilter, tour: tourFilter, device: deviceFilter, inactive: inactiveFilter, reclost: recLostFilter, noest: noEstFilter };
+        const curF = { tariff: tariffFilter, expiry: expiryFilter, region: regionFilter, dist: distFilter, activity: activityFilter, recog: recogFilter, suspect: suspectFilter, idle: idleFilter, tour: tourFilter, device: deviceFilter, inactive: inactiveFilter, reclost: recLostFilter, noest: noEstFilter, status: statusFilter };
         const nonDefault = {};
         Object.keys(curF).forEach(k => { if (curF[k] !== this.USERS_FILTER_DEFAULTS[k]) nonDefault[k] = curF[k]; });
         const activeCount = Object.keys(nonDefault).length;
@@ -29360,6 +29369,11 @@ const app = {
                                 <option value="desktop" ${deviceFilter === 'desktop' ? 'selected' : ''}>💻 Компьютер</option>
                                 <option value="mobile" ${deviceFilter === 'mobile' ? 'selected' : ''}>📱 Мобильный (сайт)</option>
                                 <option value="app" ${deviceFilter === 'app' ? 'selected' : ''}>📲 Приложение</option>
+                            </select>
+                            <select id="admin_filter_status" onchange="app.loadAdminData(0)" title="Заблокированные по умолчанию скрыты; при поиске по имени, почте или телефону они находятся. Удалённые — на вкладке «Неактивные»" style="background: var(--surface); color: var(--text-main); border: 1px solid ${statusFilter !== 'active' ? '#D97706' : 'var(--border)'}; border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
+                                <option value="active" ${statusFilter === 'active' ? 'selected' : ''}>Доступ: открыт</option>
+                                <option value="blocked" ${statusFilter === 'blocked' ? 'selected' : ''}>Только заблокированные</option>
+                                <option value="all" ${statusFilter === 'all' ? 'selected' : ''}>Все, с заблокированными</option>
                             </select>
                             <select id="admin_filter_inactive" onchange="app.loadAdminData(0)" title="Последний вход давнее выбранного срока или входа не было вовсе" style="background: var(--surface); color: var(--text-main); border: 1px solid ${inactiveFilter !== 'all' ? '#D97706' : 'var(--border)'}; border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="all" ${inactiveFilter === 'all' ? 'selected' : ''}>🕓 Вход: любой</option>
@@ -43531,8 +43545,8 @@ const app = {
         document.body.removeChild(link);
     },
     // ═══ Список пользователей: срезы, сохранённые виды, плотность, быстрый просмотр ═══
-    USERS_FILTER_DEFAULTS: { tariff: 'all', expiry: 'all', region: '', dist: 'all', activity: 'all', recog: 'all', suspect: 'all', idle: 'all', tour: 'all', device: 'all', inactive: 'all', reclost: 'all', noest: 'all' },
-    USERS_FILTER_IDS: { tariff: 'admin_filter_tariff', expiry: 'admin_filter_expiry', region: 'admin_filter_region', dist: 'admin_filter_dist', activity: 'admin_filter_activity', recog: 'admin_filter_recog', suspect: 'admin_filter_suspect', idle: 'admin_filter_idle', tour: 'admin_filter_tour', device: 'admin_filter_device', inactive: 'admin_filter_inactive', reclost: 'admin_filter_reclost', noest: 'admin_filter_noest' },
+    USERS_FILTER_DEFAULTS: { tariff: 'all', expiry: 'all', region: '', dist: 'all', activity: 'all', recog: 'all', suspect: 'all', idle: 'all', tour: 'all', device: 'all', inactive: 'all', reclost: 'all', noest: 'all', status: 'active' },
+    USERS_FILTER_IDS: { tariff: 'admin_filter_tariff', expiry: 'admin_filter_expiry', region: 'admin_filter_region', dist: 'admin_filter_dist', activity: 'admin_filter_activity', recog: 'admin_filter_recog', suspect: 'admin_filter_suspect', idle: 'admin_filter_idle', tour: 'admin_filter_tour', device: 'admin_filter_device', inactive: 'admin_filter_inactive', reclost: 'admin_filter_reclost', noest: 'admin_filter_noest', status: 'admin_filter_status' },
     USERS_SEGMENTS: [
         { id: 'all', label: 'Все', f: {} },
         { id: 'noest', label: 'Без смет', f: { noest: 'yes' } },
