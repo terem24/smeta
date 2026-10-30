@@ -3435,7 +3435,7 @@
 
                     <div class="lk-field lk-span-6">
                         <label for="profile_city_input">Город <span class="onb-req">*</span></label>
-                        <input type="text" id="profile_city_input" class="auth-input" placeholder="Например: Москва" list="profile_city_list" oninput="app.autofillRegionByCity('profile_city_input', 'profile_region_input'); app.syncRegionField(); app.showPhoneRegionHint()">
+                        <input type="text" id="profile_city_input" class="auth-input" placeholder="Выберите город, введите или выберите из списка" list="profile_city_list" oninput="app.autofillRegionByCity('profile_city_input', 'profile_region_input'); app.syncRegionField(); app.showPhoneRegionHint()">
                     </div>
                     <!-- Регион берётся из города (app.syncRegionField): поле видно, только если город
                          не нашёлся в справочнике. Как только пользователь правит его сам, автоподстановка
