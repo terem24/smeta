@@ -22580,7 +22580,7 @@ const app = {
 
             // Проигрываем звук, если количество непрочитанных увеличилось
             if (this._lastUnreadCount !== undefined && unreadCount > this._lastUnreadCount) {
-                const savedSound = localStorage.getItem('stout_notification_sound') || 'iphone';
+                const savedSound = localStorage.getItem('stout_notification_sound') || 'mario';
                 this.playNotificationSound(savedSound);
             }
             this._lastUnreadCount = unreadCount;
@@ -22775,7 +22775,7 @@ const app = {
 
     playNotificationSound: function (soundName) {
         if (!soundName) {
-            soundName = localStorage.getItem('stout_notification_sound') || 'iphone';
+            soundName = localStorage.getItem('stout_notification_sound') || 'mario';
         }
         if (soundName === 'none') return;
 
@@ -22853,23 +22853,27 @@ const app = {
                 osc2.start(startOh);
                 osc2.stop(startOh + 0.16);
             } else if (soundName === 'mario') {
-                // Монетка из Super Mario: два прямоугольных тона B5 → E6, второй тянется и затухает
-                const playCoin = (freq, startTime, duration, hold) => {
+                // Монетка из Super Mario Bros: импульсный канал NES, B5 → E6 без паузы.
+                // Громкость у NES падает ступеньками, а не плавно — это и даёт узнаваемый «дзынь».
+                const playCoin = (freq, startTime, steps) => {
                     const osc = ctx.createOscillator();
                     const gain = ctx.createGain();
                     osc.type = 'square';
                     osc.frequency.setValueAtTime(freq, startTime);
-                    gain.gain.setValueAtTime(0.0001, startTime);
-                    gain.gain.linearRampToValueAtTime(0.12, startTime + 0.004);
-                    gain.gain.setValueAtTime(0.12, startTime + hold);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+                    let t = startTime;
+                    steps.forEach(([vol, len]) => {
+                        gain.gain.setValueAtTime(vol, t);
+                        t += len;
+                    });
+                    gain.gain.setValueAtTime(0.0001, t);
                     osc.connect(gain);
                     gain.connect(ctx.destination);
                     osc.start(startTime);
-                    osc.stop(startTime + duration + 0.02);
+                    osc.stop(t + 0.01);
                 };
-                playCoin(987.77, now, 0.08, 0.07);          // B5
-                playCoin(1318.51, now + 0.08, 0.45, 0.12);  // E6
+                playCoin(987.77, now, [[0.14, 0.085]]);                                   // B5
+                playCoin(1318.51, now + 0.085, [[0.14, 0.18], [0.11, 0.07], [0.08, 0.07],
+                    [0.055, 0.07], [0.035, 0.07], [0.02, 0.06]]);                         // E6, ступенчатое затухание
             }
         } catch (e) {
             console.warn("Failed to play notification sound:", e);
@@ -23214,7 +23218,7 @@ const app = {
         this.renderNotifTabs();
 
         // Синхронизируем значение селектора звука
-        const savedSound = localStorage.getItem('stout_notification_sound') || 'iphone';
+        const savedSound = localStorage.getItem('stout_notification_sound') || 'mario';
         const soundSelect = document.getElementById('notification_sound_select');
         if (soundSelect) {
             soundSelect.value = savedSound;
@@ -40698,8 +40702,8 @@ const app = {
             : (ok === false ? `<span class="ad-count ad-count-bad">${offTxt}</span>` : `<span class="ad-count">${onTxt}</span>`);
 
         // Звук: «Без звука» — самая частая причина «мне ничего не приходит»
-        let sound = 'iphone';
-        try { sound = localStorage.getItem('stout_notification_sound') || 'iphone'; } catch (e) { /* без хранилища — звук по умолчанию */ }
+        let sound = 'mario';
+        try { sound = localStorage.getItem('stout_notification_sound') || 'mario'; } catch (e) { /* без хранилища — звук по умолчанию */ }
         chan.push({
             ok: sound !== 'none', title: 'Звук', chip: chip(sound !== 'none', 'Включён', 'Выключен'),
             note: sound === 'none' ? 'Новое уведомление придёт молча. Выберите мелодию:' : 'Сигнал, пока калькулятор открыт в браузере.',
