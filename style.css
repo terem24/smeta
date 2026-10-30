@@ -20057,6 +20057,92 @@ body.theme-yandex #profile_modal_overlay {
     font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
 }
 
+/* ═══ Анкета первого входа: единый вид ═══════════════════════════════════════
+   Все поля шага 1 одной высоты, одного шрифта и скругления, подписи и отступы по одной
+   мерке; кнопка «Дальше» на всю ширину. Селекторы с двумя идентификаторами нужны, чтобы
+   перебить общие правила кабинета (у них !important на высоте, шрифте и фоне). */
+#profile_modal_overlay.onb-mode .auth-modal-content { padding: 28px 32px 26px !important; }
+/* Поиск по кабинету в окне первого входа не нужен: он ложился поверх полосы шагов */
+#profile_modal_overlay.onb-mode #lk_search_btn { display: none !important; }
+/* Пустые строки-подсказки под полями не занимают места */
+#profile_modal_overlay.onb-mode #profile_tab_requisites .lk-field-note:empty { display: none; }
+#profile_modal_overlay.onb-mode #profile_tab_requisites .lk-card {
+    background: transparent; border: 0; box-shadow: none; padding: 0;
+}
+#profile_modal_overlay.onb-mode #profile_tab_requisites .lk-form { gap: 16px 14px; }
+#profile_modal_overlay.onb-mode #profile_tab_requisites .lk-field { gap: 6px; }
+#profile_modal_overlay.onb-mode #profile_tab_requisites .lk-field > label {
+    font-size: 12.5px; font-weight: 600; color: var(--text-sec); letter-spacing: 0.01em;
+}
+#profile_modal_overlay.onb-mode #profile_tab_requisites input.auth-input {
+    width: 100%; max-width: none; height: 46px !important; box-sizing: border-box;
+    margin: 0 !important; padding: 0 14px !important;
+    border: 1px solid var(--border) !important; border-radius: 12px !important;
+    background-color: var(--surface-light, #fff) !important;
+    color: var(--text-main, #0f172a) !important;
+    font-size: 15px !important; font-weight: 500 !important;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+#profile_modal_overlay.onb-mode #profile_tab_requisites input.auth-input::placeholder {
+    color: var(--text-sec); opacity: 0.55; font-weight: 400;
+}
+#profile_modal_overlay.onb-mode #profile_tab_requisites input.auth-input:focus {
+    outline: 0; border-color: var(--primary, #2563eb) !important;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16);
+}
+#profile_modal_overlay.onb-mode #profile_tab_requisites input.auth-input[readonly] {
+    background-color: color-mix(in srgb, var(--text-main, #0f172a) 6%, var(--surface-light, #fff)) !important; color: var(--text-sec) !important;
+}
+#profile_modal_overlay.onb-mode #profile_tab_requisites input#profile_birth_text { padding-right: 44px !important; }
+#profile_modal_overlay.onb-mode .profile-activity .lk-choice { padding: 4px; border-radius: 14px; }
+#profile_modal_overlay.onb-mode .profile-activity .reg-activity-chip span {
+    height: 38px; border-radius: 10px; font-size: 14.5px;
+}
+#profile_modal_overlay.onb-mode .onb-promo-toggle { font-size: 13.5px; font-weight: 600; color: var(--primary, #2563eb); }
+#profile_modal_overlay.onb-mode #profile_modal_footer_requisites {
+    display: flex; border-top: 0; margin-top: 6px; padding-top: 0;
+}
+/* Кнопка «Дальше» закреплена внизу: если поля не помещаются, прокручиваются они, а не кнопка */
+#profile_modal_overlay.onb-mode #profile_modal_footer_requisites {
+    position: sticky; bottom: 0; z-index: 2; padding-top: 12px; margin-top: 0;
+    background: linear-gradient(to top, var(--surface) 78%, transparent);
+}
+#profile_modal_overlay.onb-mode #profile_save_btn {
+    flex: 1 1 auto; width: 100%; height: 50px; border-radius: 14px;
+    font-size: 16px; font-weight: 700;
+}
+#profile_modal_overlay.onb-mode .onb-footer { border-top: 0; margin-top: 8px; padding-top: 0; }
+#profile_modal_overlay.onb-mode .onb-btn { height: 46px; border-radius: 12px; font-size: 15px; }
+#profile_modal_overlay.onb-mode .onb-btn-primary { height: 48px; min-width: 140px; font-weight: 700; }
+
+/* Полоса шагов: текущий шаг залит цветом, пройденные с галочкой */
+.onb-steps { padding: 0 4px 22px; }
+.onb-track { top: 20px; height: 3px; }
+.onb-dot { width: 34px; height: 34px; font-size: 14px; }
+.onb-step.current .onb-dot {
+    background: var(--primary, #2563eb); border-color: var(--primary, #2563eb); color: #fff;
+    box-shadow: 0 0 0 5px rgba(37, 99, 235, 0.18);
+}
+.onb-lbl { font-size: 13px; }
+
+@media (max-width: 600px) {
+    #profile_modal_overlay.onb-mode .auth-modal-content { padding: 18px 16px 16px !important; }
+    #profile_modal_overlay.onb-mode #profile_tab_requisites .lk-form { gap: 12px 10px; }
+    #profile_modal_overlay.onb-mode #profile_tab_requisites .lk-field { gap: 5px; }
+    #profile_modal_overlay.onb-mode #profile_tab_requisites .lk-field > label { font-size: 12px; }
+    /* 16 px у полей: на iPhone меньший шрифт заставляет Safari приближать страницу при вводе */
+    #profile_modal_overlay.onb-mode #profile_tab_requisites input.auth-input {
+        height: 46px !important; font-size: 16px !important;
+    }
+    /* Имя и фамилия рядом, остальное по одному в строку: так форма помещается в экран телефона */
+    #profile_modal_overlay.onb-mode #profile_tab_requisites .lk-field:has(#profile_last_name_input),
+    #profile_modal_overlay.onb-mode #profile_tab_requisites .lk-field:has(#profile_first_name_input) { grid-column: span 6; }
+    .onb-steps { padding-bottom: 12px; }
+    .onb-dot { width: 30px; height: 30px; font-size: 13px; }
+    .onb-track { top: 18px; }
+    #profile_modal_overlay.onb-mode #profile_save_btn { height: 48px; }
+}
+
 /* Форма: сетка из 12 колонок, поле = подпись + ввод. На планшете треть ряда становится
    половиной, на телефоне всё в один столбец. */
 .lk-form {
