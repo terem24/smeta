@@ -20248,6 +20248,29 @@ body.lk-docked #profile_modal_overlay.onb-mode .auth-modal-content,
 #profile_modal_overlay.onb-mode #profile_modal_footer_requisites,
 #profile_modal_overlay.onb-mode .onb-footer { margin-top: auto !important; }
 
+/* Напоминание о недозаполненных шагах первого входа: плашка внизу калькулятора */
+.onb-reminder {
+    position: fixed; left: 0; right: 0; margin: 0 auto; width: max-content; bottom: 22px; z-index: 1200;
+    display: none; align-items: center; gap: 2px; max-width: calc(100vw - 24px); box-sizing: border-box;
+    padding: 5px 6px 5px 6px; border-radius: 999px;
+    background: var(--surface, #fff); color: var(--text-main, #0f172a);
+    border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+}
+.onb-rem-main {
+    border: 0; background: none; font: inherit; color: inherit; cursor: pointer;
+    padding: 9px 8px 9px 14px; border-radius: 999px; text-align: left; line-height: 1.25;
+}
+.onb-rem-main b { color: var(--primary, #2563eb); font-weight: 700; }
+.onb-rem-main:hover { background: var(--surface-light, #f1f5f9); }
+.onb-rem-x {
+    flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; border: 0; cursor: pointer;
+    background: var(--surface-light, #f1f5f9); color: var(--text-sec, #64748b); font-size: 18px; line-height: 1;
+}
+@media (max-width: 768px) {
+    .onb-reminder { bottom: calc(78px + env(safe-area-inset-bottom, 0px)); }
+}
+
 /* Форма: сетка из 12 колонок, поле = подпись + ввод. На планшете треть ряда становится
    половиной, на телефоне всё в один столбец. */
 .lk-form {
