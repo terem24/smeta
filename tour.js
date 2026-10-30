@@ -1515,7 +1515,7 @@ const Tour = {
         }
         card.innerHTML = this.headHtml('Обучение · пройдено ' + doneN + ' из ' + vis.length) +
             '<div class="tour-card-title">Что хотите освоить?</div>' +
-            '<div class="tour-card-text">Начните с первого — соберёте и сохраните учебный дом.</div>' +
+            '<div class="tour-card-text">Начните с первого: соберите учебный дом.</div>' +
             this.bonusHtml() +
             resumeBtn +
             '<div class="tour-blks">' + rows + '</div>' +
