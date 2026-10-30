@@ -14971,6 +14971,49 @@ const app = {
     onbBack: function () {
         if (this._onbStep > 1) this.onbGo(this._onbStep - 1);
     },
+    // Шаг 1: «Дальше» и Enter. Пустые обязательные поля подсвечиваются, первое — в фокусе.
+    // Пока есть подсветка, она пересчитывается при вводе. Когда всё заполнено — сохраняем.
+    ONB_REQUIRED: ['profile_last_name_input', 'profile_first_name_input', 'profile_phone_input',
+        'profile_birth_date_input', 'profile_city_input', 'profile_act_installer', 'profile_act_seller'],
+    onbSubmit: function () {
+        if (this._onbStep !== 1) { this.saveProfile(); return; }
+        this._onbTried = true;
+        this.onbWatch();
+        const missing = this.onbMissing();
+        this.onbMarkMissing(missing);
+        if (missing.length) { missing[0].focus(); return; }
+        this.saveProfile();
+    },
+    onbMissing: function () {
+        const val = id => ((document.getElementById(id) || {}).value || '').trim();
+        const out = [];
+        if (!val('profile_last_name_input')) out.push(document.getElementById('profile_last_name_input'));
+        if (!val('profile_first_name_input')) out.push(document.getElementById('profile_first_name_input'));
+        if (!this.isPhoneFilled(val('profile_phone_input'))) out.push(document.getElementById('profile_phone_input'));
+        if (!val('profile_birth_date_input')) out.push(document.getElementById('profile_birth_date_input'));
+        if (!val('profile_city_input')) out.push(document.getElementById('profile_city_input'));
+        const picked = ['profile_act_installer', 'profile_act_seller'].some(id => document.getElementById(id) && document.getElementById(id).checked);
+        if (!picked) out.push(document.getElementById('profile_act_installer'));
+        return out.filter(Boolean);
+    },
+    onbMarkMissing: function (els) {
+        document.querySelectorAll('#profile_modal_overlay .lk-field.onb-missing').forEach(f => f.classList.remove('onb-missing'));
+        els.forEach(el => {
+            const field = el.closest('.lk-field');
+            if (field) field.classList.add('onb-missing');
+        });
+    },
+    onbWatch: function () {
+        if (this._onbWatched) return;
+        this._onbWatched = true;
+        const again = () => { if (this._onbTried) this.onbMarkMissing(this.onbMissing()); };
+        this.ONB_REQUIRED.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('input', again);
+            el.addEventListener('change', again);
+        });
+    },
     onbFinish: function () {
         this._onbStep = 0;
         this._profileForceComplete = false;
@@ -14979,6 +15022,9 @@ const app = {
     // Полоса шагов, кнопки и режим окна (onb-mode — всплывающее окно, без меню кабинета)
     onbRender: function () {
         const on = this._onbStep > 0;
+        // На первом шаге кнопка внизу — «Дальше»: она проверяет поля и только потом сохраняет
+        const save = document.getElementById('profile_save_btn');
+        if (save) save.textContent = (on && this._onbStep === 1) ? 'Дальше' : 'Сохранить';
         const overlay = document.getElementById('profile_modal_overlay');
         if (overlay) overlay.classList.toggle('onb-mode', on);
         const steps = document.getElementById('onb_steps');

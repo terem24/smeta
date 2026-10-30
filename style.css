@@ -19841,7 +19841,65 @@ body.theme-yandex #profile_modal_overlay {
 .onb-btn-primary { background: var(--primary); color: #fff; min-width: 120px; }
 .onb-btn-primary:hover { filter: brightness(0.95); }
 .onb-promo-toggle { background: none; border: 0; padding: 0; cursor: pointer; text-align: left; font-size: 12.5px; }
-.profile-activity .reg-activity-chip input:disabled + span { opacity: 0.5; cursor: not-allowed; }
+/* Сфера: один переключатель из двух одинаковых сегментов, как сегментный контрол в iOS */
+#profile_modal_overlay .profile-activity .lk-choice {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    padding: 3px;
+    border-radius: 12px;
+    background: var(--surface-light, #f1f5f9);
+    border: 1px solid var(--border);
+}
+#profile_modal_overlay .profile-activity .reg-activity-chip {
+    position: relative;
+    display: block;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    min-width: 0;
+    cursor: pointer;
+}
+#profile_modal_overlay .profile-activity .reg-activity-chip input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    pointer-events: none;
+}
+#profile_modal_overlay .profile-activity .reg-activity-chip span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 34px;
+    border-radius: 9px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-sec);
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+#profile_modal_overlay .profile-activity .reg-activity-chip input:checked + span {
+    background: var(--bg-card, #fff);
+    color: var(--text-main, #0f172a);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+#profile_modal_overlay .profile-activity .reg-activity-chip input:disabled + span {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Обязательные поля: звёздочка у подписи и красная рамка, пока поле пустое после «Дальше» */
+#profile_modal_overlay .onb-req { color: #ef4444; font-weight: 700; }
+#profile_modal_overlay .lk-field.onb-missing > label { color: #ef4444; }
+#profile_modal_overlay .lk-field.onb-missing > .auth-input {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+}
+#profile_modal_overlay .lk-field.onb-missing .lk-choice {
+    box-shadow: 0 0 0 2px #ef4444;
+}
 
 .hc-welcome {
     position: fixed; inset: 0; z-index: 60000100;
