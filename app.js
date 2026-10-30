@@ -13108,6 +13108,16 @@ const app = {
         return (a >= 1e9 ? fmt(n / 1e9) + '\u00A0млрд' : fmt(n / 1e6) + '\u00A0млн') + '\u00A0₽';
     },
 
+    // Суммы в плашках «Пользователи» и «Клиенты»: коротко на любом экране («196,9 млн ₽», «510 тыс ₽»)
+    moneyShort: function (v) {
+        const n = Math.round(Number(v) || 0), a = Math.abs(n);
+        const fmt = x => (Math.abs(x) >= 100 ? String(Math.round(x)) : String(Math.round(x * 10) / 10).replace('.', ','));
+        if (a >= 1e9) return fmt(n / 1e9) + ' млрд ₽';
+        if (a >= 1e6) return fmt(n / 1e6) + ' млн ₽';
+        if (a >= 1e4) return Math.round(n / 1e3).toLocaleString('ru-RU') + ' тыс ₽';
+        return n.toLocaleString('ru-RU') + ' ₽';
+    },
+
     // Бренд в названии варианта замены: колонка «Бренд» на телефоне скрыта общим правилом таблиц
     // сметы, и два варианта одной позиции (ROMMER и STOUT) читались одинаково. Плашка видна
     // только на телефоне и планшете стоймя (.alt-brand-mob в style.css), на десктопе есть колонка.
@@ -25828,6 +25838,11 @@ const app = {
             if (loadSeq !== this._adminLoadSeq) return;
             users = usersRes.data || [];
             totalUsers = usersRes.count || users.length;
+            // Тестовые учётки во всей базе: отдельным счётом, чтобы карточка показывала число, а не объяснение
+            try {
+                const tc = await supabaseClient.from('users').select('id', { count: 'exact', head: true }).eq('is_test', true);
+                this._testUsersCount = tc.count != null ? tc.count : null;
+            } catch (e) { this._testUsersCount = null; }
 
             // Отбор по доступу к распознаванию и по сомнительным анкетам — раньше всего
             // остального: и тариф, и LTV должны сортировать уже отобранных, а счётчик
@@ -29111,10 +29126,10 @@ const app = {
 
         let h = `
                     <div class="admin-stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-                        <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${totalUsers}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажников: <b>${installersCount || 0}</b> · продавцов: <b>${sellersCount || 0}</b></span><span style="font-size: 11px; color: var(--text-sec); margin-top: 2px;">тестовые учётки здесь есть, в «Новых» дашборда не считаются</span></div>
+                        <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${totalUsers}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажников: <b>${installersCount || 0}</b> · продавцов: <b>${sellersCount || 0}</b></span><span style="font-size: 12px; color: var(--text-sec); margin-top: 2px; white-space: nowrap;" title="Тестовые учётки есть в списке, но в «Новых» дашборда не считаются">тестовых в базе: <b>${this._testUsersCount == null ? '…' : this._testUsersCount}</b></span></div>
                         <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: var(--c-ok,#10B981);">${totalEstimates}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажниками: <b>${estInstallers || 0}</b> · продавцами: <b>${estSellers || 0}</b></span></div>
-                        <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #6366F1; white-space: nowrap;" title="${totalEq.toLocaleString('ru-RU')} ₽">${this.moneyCompact(totalEq)}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">средний чек: <b>${estWithEq ? Math.round(totalEq / estWithEq).toLocaleString('ru-RU') : 0} ₽</b></span></div>
-                        <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316; white-space: nowrap;" title="${totalWorks.toLocaleString('ru-RU')} ₽">${this.moneyCompact(totalWorks)}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">смет с монтажом: <b>${estWithWorks || 0}</b> из ${totalEstimates} | средний чек: <b>${estWithWorks ? Math.round(totalWorks / estWithWorks).toLocaleString('ru-RU') : 0} ₽</b></span></div>
+                        <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование (Сумма)</span><span style="font-size: 22px; font-weight: 800; color: #6366F1; white-space: nowrap;" title="${totalEq.toLocaleString('ru-RU')} ₽">${this.moneyShort(totalEq)}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px; white-space: nowrap;">средний чек: <b>${this.moneyShort(estWithEq ? totalEq / estWithEq : 0)}</b></span></div>
+                        <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 22px; font-weight: 800; color: #F97316; white-space: nowrap;" title="${totalWorks.toLocaleString('ru-RU')} ₽">${this.moneyShort(totalWorks)}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px; white-space: nowrap;">смет с монтажом: <b>${estWithWorks || 0}</b> из ${totalEstimates}</span><span style="font-size: 12px; color: var(--text-sec); white-space: nowrap;">средний чек: <b>${this.moneyShort(estWithWorks ? totalWorks / estWithWorks : 0)}</b></span></div>
                     </div>
                     
                     <h3>Пользователи</h3>
