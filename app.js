@@ -14857,6 +14857,7 @@ const app = {
         this.syncModalOverlayClass();
         // Подсветка в левой панели возвращается на «Расчёт»
         this.syncRailUI();
+        try { this.syncOnbReminder(); } catch (e) { }
     },
     // ── Первый вход: три шага ──
     // 1 — анкета: обязательна, окно не закрывается. 2 — любимые материалы, 3 — стоимость
@@ -14890,6 +14891,7 @@ const app = {
     },
     onbNext: function () {
         const step = this._onbStep;
+        this.onbMarkDone(step);
         this.onbCelebrate(step, () => (this.onbLast() ? this.onbFinish() : this.onbGo(step + 1)));
     },
     onbSkip: function () {
@@ -15225,6 +15227,66 @@ const app = {
         this._onbObs.observe(pane, { childList: true, subtree: true, characterData: true });
     },
 
+    // ── Напоминание «Осталось N шагов» ──
+    // Если окно первого входа закрыли на шаге 2 или 3 (или пропустили их), в калькуляторе остаётся
+    // ненавязчивая плашка. Шаг считается сделанным, когда по нему нажали «Дальше»/«Готово» или когда
+    // данные уже есть (выбраны любимые материалы, вписаны свои цены). Плашка показывается только тем,
+    // кто проходил окно первого входа в этом браузере, и прячется на сутки по крестику.
+    ONB_DONE_KEY: 'hc_onb_done',
+    onbDone: function () {
+        try { return JSON.parse(localStorage.getItem(this.ONB_DONE_KEY) || '{}') || {}; } catch (e) { return {}; }
+    },
+    onbMarkDone: function (step) {
+        const d = this.onbDone();
+        if (step === 2) d.prefs = 1;
+        if (step === 3) d.work = 1;
+        try { localStorage.setItem(this.ONB_DONE_KEY, JSON.stringify(d)); } catch (e) { }
+    },
+    // Номера шагов, которые ещё не сделаны: 2 — материалы, 3 — монтаж (только монтажнику)
+    onbRemaining: function () {
+        const d = this.onbDone();
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const left = [];
+        if (!d.prefs && !Object.keys(this.getPrefs()).length) left.push(2);
+        const wp = (this.installerSettings && this.installerSettings.workPrices) || {};
+        if (!this.isSellerOnly() && !d.work && !Object.keys(wp).length) left.push(3);
+        return left;
+    },
+    syncOnbReminder: function () {
+        let el = document.getElementById('onb_reminder');
+        let left = [];
+        let show = false;
+        try {
+            if (localStorage.getItem('hc_onb_started') === '1' && this.state.tgUser && this._profileDbLoaded
+                && !this.isProfileIncomplete() && !(this._onbStep > 0) && !document.body.classList.contains('tour-running')) {
+                left = this.onbRemaining();
+                show = left.length > 0 && Date.now() > Number(localStorage.getItem('hc_onb_remind_snooze') || 0);
+            }
+        } catch (e) { }
+        if (!show) { if (el) el.style.display = 'none'; return; }
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'onb_reminder';
+            el.className = 'onb-reminder';
+            document.body.appendChild(el);
+        }
+        const text = left.length === 2
+            ? '<b>Осталось 2 шага</b> · материалы и монтаж'
+            : '<b>Остался 1 шаг</b> · ' + (left[0] === 2 ? 'материалы' : 'стоимость монтажа');
+        const html = '<button type="button" class="onb-rem-main" onclick="app.onbResume()">' + text + '</button>'
+            + '<button type="button" class="onb-rem-x" aria-label="Скрыть на сутки" onclick="app.onbRemindLater()">&times;</button>';
+        if (el.innerHTML !== html) el.innerHTML = html;
+        el.style.display = 'flex';
+    },
+    onbResume: function () {
+        const left = this.onbRemaining();
+        if (left.length) this.onbGo(left[0]);
+    },
+    onbRemindLater: function () {
+        try { localStorage.setItem('hc_onb_remind_snooze', String(Date.now() + 24 * 3600 * 1000)); } catch (e) { }
+        this.syncOnbReminder();
+    },
+
     onbFinish: function () {
         this._onbStep = 0;
         this._profileForceComplete = false;
@@ -15245,6 +15307,7 @@ const app = {
         if (!on && this._onbObs) { this._onbObs.disconnect(); this._onbObs = null; }
         if (!on || !steps) return;
         this.onbWatch();
+        try { localStorage.setItem('hc_onb_started', '1'); } catch (e) { }
         this.onbTidy();
         this.onbObserve();
         const last = this.onbTotal();
@@ -15269,7 +15332,7 @@ const app = {
         try { fresh = localStorage.getItem('hc_reg_celebrate') === '1'; localStorage.removeItem('hc_reg_celebrate'); } catch (e) { }
         if (fresh) this.showRegistrationCelebration();
     },
-    showRegistrationCelebration: function () {
+    showRegistrationCelebration: function (onDone) {
         if (document.getElementById('hc_welcome')) return;
         const wrap = document.createElement('div');
         wrap.id = 'hc_welcome';
@@ -15293,7 +15356,10 @@ const app = {
         document.body.appendChild(cv);
         let stopFx = () => { };
         try { stopFx = Tour._confetti(cv); Tour._fanfare(); } catch (e) { }
-        wrap.querySelector('.hc-welcome-btn').onclick = () => { stopFx(); cv.remove(); wrap.remove(); };
+        wrap.querySelector('.hc-welcome-btn').onclick = () => {
+            stopFx(); cv.remove(); wrap.remove();
+            if (typeof onDone === 'function') onDone();
+        };
     },
 
     // Сфера меняется не чаще раза в 7 дней: сразу после смены радиокнопки блокируются
@@ -50168,11 +50234,21 @@ const app = {
 
 
             this.logRegEvent('account_created');
-            app.alert('✅ Регистрация успешна!' + (window.__HC_NATIVE__ ? '' : ' Страница будет перезагружена через 5 секунд.'));
-            // Поздравление покажем после перезагрузки, при первом открытии анкеты (maybeCelebrateRegistration)
-            try { localStorage.setItem('hc_reg_celebrate', '1'); } catch (e) { }
             this.closeAuthModal();
-            this.softReload(5000);
+            if (data && data.session) {
+                // Вход уже есть: поздравляем сразу, без общего сообщения и ожидания. Анкету открывает сам
+                // разбор входа (handleAuthSession); если окно анкеты к нажатию кнопки не открылось,
+                // обновляем страницу, как раньше.
+                this.showRegistrationCelebration(() => {
+                    const ov = document.getElementById('profile_modal_overlay');
+                    if (!ov || ov.style.display !== 'flex') this.softReload(0);
+                });
+            } else {
+                app.alert('✅ Регистрация успешна!' + (window.__HC_NATIVE__ ? '' : ' Страница будет перезагружена через 5 секунд.'));
+                // Входа ещё нет: поздравление покажем после перезагрузки, при первом открытии анкеты (maybeCelebrateRegistration)
+                try { localStorage.setItem('hc_reg_celebrate', '1'); } catch (e) { }
+                this.softReload(5000);
+            }
         } catch (err) {
             console.error("Детали ошибки создания аккаунта (Supabase):", err);
             this.logRegEvent('signup_error', err && err.message);
@@ -79655,6 +79731,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         this.initPanelFocusTracking();
         const _ia = this._inputAnchorBefore();
         try { this._syncUIInner(); this.syncFineTune(); } finally { this._inputAnchorAfter(_ia); }
+        try { this.syncOnbReminder(); } catch (e) { }
         // Карточка «Войти в аккаунт» на вкладке «Профиль» рисуется отдельно и в
         // общий пересчёт интерфейса не входила: после входа она так и оставалась
         // с надписью «Не авторизован», пока человек не переключит вкладку.
