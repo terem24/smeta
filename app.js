@@ -14728,8 +14728,6 @@ const app = {
         // проверку внутри closeProfileModal, а выглядит как способ пропустить анкету
         const cancelBtn = document.getElementById('profile_cancel_btn');
         if (cancelBtn) cancelBtn.style.display = forced ? 'none' : '';
-        const incompleteBanner = document.getElementById('profile_incomplete_banner');
-        if (incompleteBanner) incompleteBanner.style.display = forced ? 'block' : 'none';
         // На телефоне #profile_nav — единственное меню кабинета (рейки слева там нет),
         // и рисуется оно сеткой разделов НАД самой формой. В принудительном режиме
         // переходить всё равно некуда — все разделы, кроме этой формы, заблокированы

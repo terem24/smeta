@@ -19910,8 +19910,9 @@ body.theme-yandex #profile_modal_overlay {
 
 /* Первый вход на компьютере: окно по центру экрана целиком, без прокрутки. Кабинет
    прижимает окно к панели слева (body.lk-docked), поэтому здесь правило с тем же
-   префиксом и выше по специфичности. На телефоне остаётся прежняя шторка снизу. */
-@media screen and (min-width: 769px) {
+   префиксом и выше по специфичности. Для телефона и планшета окно тоже по центру,
+   только шире отступы. */
+@media screen {
     body.lk-docked #profile_modal_overlay.onb-mode,
     #profile_modal_overlay.onb-mode {
         background: rgba(15, 23, 42, 0.55) !important;
@@ -19927,10 +19928,10 @@ body.theme-yandex #profile_modal_overlay {
         right: auto !important;
         bottom: auto !important;
         transform: translate(-50%, -50%) !important;
-        width: min(560px, calc(100vw - 32px)) !important;
+        width: min(560px, calc(100vw - 24px)) !important;
         max-width: 560px !important;
         height: auto !important;
-        max-height: calc(100dvh - 32px) !important;
+        max-height: calc(100dvh - 24px) !important;
         padding: 18px 22px 20px !important;
         border: 1px solid var(--border) !important;
         border-radius: 22px !important;
