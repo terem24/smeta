@@ -14779,6 +14779,9 @@ const app = {
             emailInp.readOnly = !!(tgUser.email && !this._emailUnverified);
             const unvHint = document.getElementById('profile_email_unverified_hint');
             if (unvHint) unvHint.style.display = this._emailUnverified ? 'block' : 'none';
+            // Подтверждённую почту в окне первого входа не показываем (править её нельзя), сетка перестраивается
+            const emailForm = emailInp.closest('.lk-form');
+            if (emailForm) emailForm.classList.toggle('onb-no-email', !!emailInp.readOnly);
         }
         // Сфера теперь одна. У старых анкет в базе их может быть две — показываем
         // первую и просим выбрать при следующем сохранении, а не молчим.
@@ -15001,7 +15004,7 @@ const app = {
     // Шаг 1: «Дальше» и Enter. Пустые обязательные поля подсвечиваются, первое — в фокусе.
     // Пока есть подсветка, она пересчитывается при вводе. Когда всё заполнено — сохраняем.
     ONB_REQUIRED: ['profile_last_name_input', 'profile_first_name_input', 'profile_phone_input',
-        'profile_birth_date_input', 'profile_city_input', 'profile_act_installer', 'profile_act_seller'],
+        'profile_birth_date_input', 'profile_city_input', 'profile_email_input', 'profile_act_installer', 'profile_act_seller'],
     onbSubmit: function () {
         if (this._onbStep !== 1) { this.saveProfile(); return; }
         this._onbTried = true;
@@ -15019,6 +15022,9 @@ const app = {
         if (!this.isPhoneFilled(val('profile_phone_input'))) out.push(document.getElementById('profile_phone_input'));
         if (!val('profile_birth_date_input') || this.birthAgeError(val('profile_birth_date_input'))) out.push(document.getElementById('profile_birth_text'));
         if (!val('profile_city_input')) out.push(document.getElementById('profile_city_input'));
+        // Почта обязательна только когда её можно править (не подтверждена кодом или её нет)
+        const emailEl = document.getElementById('profile_email_input');
+        if (emailEl && !emailEl.readOnly && !val('profile_email_input')) out.push(emailEl);
         const picked = ['profile_act_installer', 'profile_act_seller'].some(id => document.getElementById(id) && document.getElementById(id).checked);
         if (!picked) out.push(document.getElementById('profile_act_installer'));
         return out.filter(Boolean);

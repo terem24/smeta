@@ -20243,7 +20243,8 @@ body.lk-docked #profile_modal_overlay.onb-mode .auth-modal-content,
 #profile_modal_overlay.onb-mode .lk-layout { flex: 1 1 auto; min-height: 0; }
 /* Шаг 1 (обязательная анкета): контейнер — столбец, панель растёт вниз.
    Шаги 2 и 3: контейнер — строка, панель занимает всю ширину карточки и не вылезает за неё. */
-#profile_modal_overlay.onb-mode .lk-layout.lk-forced .lk-pane { flex: 1 0 auto; }
+#profile_modal_overlay.onb-mode .lk-layout.lk-forced .lk-pane { flex: 1 0 auto; width: 100%; min-width: 0; max-width: 100%; }
+#profile_modal_overlay.onb-mode #profile_email_unverified_hint { overflow-wrap: anywhere; }
 #profile_modal_overlay.onb-mode .lk-layout:not(.lk-forced) .lk-pane { flex: 1 1 0; min-width: 0; }
 #profile_modal_overlay.onb-mode #profile_modal_footer_requisites,
 #profile_modal_overlay.onb-mode .onb-footer { margin-top: auto !important; }
@@ -20270,6 +20271,12 @@ body.lk-docked #profile_modal_overlay.onb-mode .auth-modal-content,
 @media (max-width: 768px) {
     .onb-reminder { bottom: calc(78px + env(safe-area-inset-bottom, 0px)); }
 }
+
+/* Подтверждённая почта в окне первого входа не нужна: поле скрыто, телефон и дата рождения встают
+   рядом, город на всю ширину. Звёздочка у почты показывается только когда её надо вписать. */
+#profile_modal_overlay.onb-mode .lk-form.onb-no-email #profile_email_field { display: none; }
+#profile_modal_overlay.onb-mode .lk-form.onb-no-email #profile_city_field { grid-column: span 12; }
+#profile_modal_overlay:not(.onb-mode) #profile_email_field .onb-req { display: none; }
 
 /* Форма: сетка из 12 колонок, поле = подпись + ввод. На планшете треть ряда становится
    половиной, на телефоне всё в один столбец. */
