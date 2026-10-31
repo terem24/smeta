@@ -37,6 +37,10 @@ PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
                     255, 255, 255] + [0, 0, 0] * 248)
 
+# ручка крана подводки — отдельный слой на вариант (бабочка/рычаг, красная/чёрная): смета
+# кладёт поверх кадра тот, что соответствует артикулу крана
+HANDLES = ('bf_r', 'bf_k', 'lv_r', 'lv_k')
+
 FRAMES = [(line, n, end)
           for line, ends in (('cw', ('hammer', 'plug')), ('hw', ('hammer', 'plug')), ('rc', ('plug',)))
           for end in ends for n in range(1, 13)]
@@ -60,7 +64,15 @@ def build(typ, f, tmp):
     b = Image.open(os.path.join(tmp, t + '_sheath.png')).convert('RGBA')
     im = Image.alpha_composite(a, b).convert('RGB')
     W0, H0 = im.size
-    bb = ImageChops.difference(im, Image.new('RGB', im.size, 'white')).getbbox()
+    hs = {k: Image.open(os.path.join(tmp, '%s_h_%s.png' % (t, k))).convert('RGBA') for k in HANDLES
+          if os.path.isfile(os.path.join(tmp, '%s_h_%s.png' % (t, k)))}
+    boxes = [ImageChops.difference(im, Image.new('RGB', im.size, 'white')).getbbox()]
+    # у слоя ручки вырез оставляет почти нулевую альфу по всему кадру — рамку берём по заметной
+    def solid_box(h):
+        return h.getchannel('A').point(lambda v: 255 if v > 8 else 0).getbbox()
+    boxes += [solid_box(h) for h in hs.values()]
+    boxes = [x for x in boxes if x]
+    bb = (min(x[0] for x in boxes), min(x[1] for x in boxes), max(x[2] for x in boxes), max(x[3] for x in boxes))
     pad = 14
     bb = (max(0, bb[0] - pad), max(0, bb[1] - pad), min(W0, bb[2] + pad), min(H0, bb[3] + pad))
     im = im.crop(bb)
@@ -73,6 +85,18 @@ def build(typ, f, tmp):
     idm = Image.open(os.path.join(tmp, t + '_id.png')).convert('RGB').crop(bb).resize(size, Image.NEAREST)
     idm.quantize(palette=PALETTE, dither=Image.Dither.NONE).save(os.path.join(OUT, t + '_id.png'), optimize=True)
 
+    # слои ручек: та же обрезка и размер, затем по своей рамке; положение — в долях кадра
+    hv = {}
+    for k, h in hs.items():
+        h = h.crop(bb).resize(size, Image.LANCZOS)
+        h.putalpha(h.getchannel('A').point(lambda v: 0 if v <= 8 else v))
+        hb = solid_box(h)
+        if not hb:
+            continue
+        h.crop(hb).save(os.path.join(OUT, '%s_h_%s.png' % (t, k)), optimize=True)
+        hv[k] = [round(hb[0] / size[0], 4), round(hb[1] / size[1], 4),
+                 round((hb[2] - hb[0]) / size[0], 4), round((hb[3] - hb[1]) / size[1], 4)]
+
     def fx(x):
         return round((x * W0 - bb[0]) / cw, 4)
 
@@ -81,7 +105,7 @@ def build(typ, f, tmp):
 
     return {'w': size[0], 'h': size[1],
             'zones': {k: [fx(z[0]), fy(z[1]), fx(z[2]), fy(z[3])] for k, z in meta['zones'].items()},
-            'marks': {k: [fx(p[0]), fy(p[1])] for k, p in meta['marks'].items()}}
+            'marks': {k: [fx(p[0]), fy(p[1])] for k, p in meta['marks'].items()}, 'hv': hv}
 
 
 def main():

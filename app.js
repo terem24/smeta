@@ -42808,6 +42808,17 @@ const app = {
         if (/^RMB-000[78]|^SMB-620[01]/i.test(sku) || /шаров/i.test(nm)) return 'bl';
         return /^RMB-00(0[1-6]|1[1-6])/i.test(sku) ? 'rm' : 'st';
     },
+    // Ручка крана подводки (слой поверх кадра) — по артикулу крана в 6.4: рычаг у серий STOUT
+    // SVB-0001/0003/0005 и ROMMER RBV-0001/0002 (или «рычаг» в названии), иначе бабочка; STOUT
+    // SVB-0xxx — чёрная, SVB-1xxx и ROMMER — красная (фото каталога, паспорт SVB)
+    wmValve: function () {
+        const tr = this.wmRows('ball', 'cw')[0];
+        if (!tr) return 'bf_r';
+        const sku = ((tr.querySelector('.col-sku') || {}).innerText || '').trim();
+        const nm = (tr.querySelector('.col-name') || {}).innerText || '';
+        const lever = /рычаг/i.test(nm) || /^SVB-[01]00[135]-|^RBV-000[12]-/i.test(sku);
+        return (lever ? 'lv' : 'bf') + (/^SVB-0/i.test(sku) ? '_k' : '_r');
+    },
     // Линии, у которых в смете есть гребёнка, в порядке показа
     wmLinesNow: function () {
         const L = this._wmLines || {};
@@ -42916,7 +42927,7 @@ const app = {
                 const spec = pipe.replace(/^Труба\s*/i, '').replace(/\s*\(.*\)\s*$/, '').trim();
                 return ['Отводы к потребителям', spec ? `${spec} в изоляции` : 'в изоляции 18/6'];
             }
-            if (g === 'feed') return ['Подводка от узла ввода', 'кран, сгон, ниппель'];
+            if (g === 'feed') return ['Подводка от узла ввода', 'тройник, кран, сгон, ниппель'];
             return [nm];
         };
         const items = Object.keys(this.WM_GROUPS).map(g => {
@@ -43029,9 +43040,13 @@ const app = {
         // Кадр и слой подсветки: силуэты деталей строит wmAttachGlows по карте деталей кадра
         // (третий проход Blender). Деталь, которой нет в смете, светится красным постоянно.
         const missG = items.filter(it => !it.ok && !it.off).map(it => it.pk);
-        const photo = `<image class="wm-photo" data-tag="${tag}" x="${ox}" y="${oy}" width="${iw}" height="${ih}" href="${this.WM_DIR}${tag}.jpg?v=3"/>` +
+        // Ручка крана подводки — слоем поверх кадра; ключ масок кадра включает её вариант
+        const hk = this.wmValve(), hb = fr.hv && fr.hv[hk];
+        const mk = hb ? `${tag}|${hk}|${hb.join(',')}` : tag;
+        const photo = `<image class="wm-photo" data-tag="${mk}" x="${ox}" y="${oy}" width="${iw}" height="${ih}" href="${this.WM_DIR}${tag}.jpg?v=3"/>` +
+            (hb ? `<image class="wm-handle" x="${ox + hb[0] * iw}" y="${oy + hb[1] * ih}" width="${hb[2] * iw}" height="${hb[3] * ih}" href="${this.WM_DIR}${tag}_h_${hk}.png?v=3"/>` : '') +
             `<rect class="wm-dim" x="${ox}" y="${oy}" width="${iw}" height="${ih}"/>` +
-            `<g class="wm-glows" data-tag="${tag}" data-miss="${missG.join(',')}" data-box="${ox},${oy},${iw},${ih}"></g>`;
+            `<g class="wm-glows" data-tag="${mk}" data-miss="${missG.join(',')}" data-box="${ox},${oy},${iw},${ih}"></g>`;
         setTimeout(() => this.wmAttachGlows(), 0);
         const tabs = this.wmLinesNow().length > 1
             ? `<div class="wm-tabs no-print">${this.wmLinesNow().map(k =>
@@ -43080,18 +43095,35 @@ const app = {
     WM_GCOL: { mf: [1, 0, 0], ek: [0, 1, 0], tube: [0, 0, 1], mount: [1, 1, 0], end: [1, 0, 1], feed: [0, 1, 1] },
     // Маски деталей кадра: по карте деталей вырезаются пиксели самого кадра — деталь потом
     // «поднимается» над приглушённым узлом со свечением по силуэту. Считается раз на кадр.
-    wmMasks: function (tag) {
+    // Ключ «кадр|ручка|рамка»: слой ручки крана дорисовывается в кадр и в карту как подводка.
+    wmMasks: function (key) {
         const cache = this._wmMaskCache || (this._wmMaskCache = {});
-        if (cache[tag]) return cache[tag];
+        if (cache[key]) return cache[key];
+        const [tag, hk, hbox] = key.split('|');
         const load = u => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = this.WM_DIR + u; });
-        cache[tag] = Promise.all([load(tag + '.jpg?v=3'), load(tag + '_id.png?v=3')]).then(([ph, id]) => {
+        cache[key] = Promise.all([load(tag + '.jpg?v=3'), load(tag + '_id.png?v=3'),
+            hk ? load(`${tag}_h_${hk}.png?v=3`) : null]).then(([ph, id, hi]) => {
             const w = id.naturalWidth, h = id.naturalHeight;
             const cv = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
             const a = cv().getContext('2d');
             a.drawImage(id, 0, 0);
-            const idd = a.getImageData(0, 0, w, h).data;
             const b = cv().getContext('2d');
             b.drawImage(ph, 0, 0, w, h);
+            if (hi) {
+                const q = hbox.split(',').map(Number), r = [q[0] * w, q[1] * h, q[2] * w, q[3] * h];
+                b.drawImage(hi, r[0], r[1], r[2], r[3]);
+                // в карте деталей ручка — подводка: непрозрачные пиксели слоя красятся её цветом
+                const c = cv().getContext('2d');
+                c.drawImage(hi, r[0], r[1], r[2], r[3]);
+                const hd = c.getImageData(0, 0, w, h), fc = this.WM_GCOL.feed.map(v => v * 255);
+                for (let i = 0; i < hd.data.length; i += 4) {
+                    const on = hd.data[i + 3] > 127;
+                    hd.data[i] = fc[0]; hd.data[i + 1] = fc[1]; hd.data[i + 2] = fc[2]; hd.data[i + 3] = on ? 255 : 0;
+                }
+                c.putImageData(hd, 0, 0);
+                a.drawImage(c.canvas, 0, 0);
+            }
+            const idd = a.getImageData(0, 0, w, h).data;
             const phd = b.getImageData(0, 0, w, h).data;
             const groups = Object.keys(this.WM_GCOL);
             const code = {};
@@ -43111,11 +43143,11 @@ const app = {
                 urls[groups[k - 1]] = c.toDataURL('image/png');
             });
             const res = { w, h, map, groups, urls };
-            (this._wmMaskData || (this._wmMaskData = {}))[tag] = res;
+            (this._wmMaskData || (this._wmMaskData = {}))[key] = res;
             return res;
         });
-        cache[tag].catch(() => { delete cache[tag]; });
-        return cache[tag];
+        cache[key].catch(() => { delete cache[key]; });
+        return cache[key];
     },
     wmAttachGlows: function () {
         document.querySelectorAll('svg.wm-svg g.wm-glows:not([data-done])').forEach(g => {
