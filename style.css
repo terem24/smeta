@@ -136,6 +136,12 @@ body.dark-mode .title-edit {
     color: var(--primary);
 }
 
+/* В светлой теме фокус подсвечивает поле голубым фоном; в тёмной текст на нём белый и не читается */
+body.dark-mode .title-edit:focus {
+    background: #1E293B;
+    color: #F3F4F6;
+}
+
 body.dark-mode .slider {
     background-color: #333333;
 }

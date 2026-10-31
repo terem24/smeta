@@ -21317,8 +21317,21 @@ const app = {
      * продавца, где «Монтажных работ» нет, цифру распознавания переписываем
      * на 2 — иначе список читался бы как «1, 3».
      */
+    // Плашка «Вы хозяин дома» — только для гостя, который сферу ещё не указал.
+    // Инлайн-проверка в index.html читает stout_save, а там вход и сфера не всегда
+    // лежат, поэтому скрываем и отсюда — по живому state.tgUser.
+    hideHomeownerHint: function () {
+        const box = document.getElementById('homeowner_hint');
+        if (!box) return;
+        const u = this.state.tgUser;
+        const loggedIn = !!(u && (u.id || u.authUserId || u.email));
+        const hasActivity = !!(u && Array.isArray(u.activityTypes) && u.activityTypes.length);
+        if (loggedIn || hasActivity) box.style.display = 'none';
+    },
+
     syncRoleTabs: function () {
         this.syncShopTheme();
+        this.hideHomeownerHint();
         // «Монтажные работы» — по столбцу «Монтаж» таблицы «Тарифы» (исходно: только монтажнику)
         const seller = !this.canUseWorks();
         const tWk = document.getElementById('tab_works');
