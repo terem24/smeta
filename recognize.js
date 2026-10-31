@@ -7924,6 +7924,8 @@ const RecognizeUI = {
         return app.tariffAccess('recognize') === 'off' && !(typeof app.isTeremStaff === 'function' && app.isTeremStaff());
     },
     trialAvailable() {
+        // Пробного разбора для Базового больше нет: вкладку «Сканы» видит только «Профи» или тот, кому админ включил отметку.
+        return false;
         if (!this.trialMode() || !(app.state && app.state.tgUser)) return false;
         // Пока разбор лежит на экране, вкладка остаётся, даже когда проба уже потрачена
         return !!this._trialRun || !this.trialUsed();
