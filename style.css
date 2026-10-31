@@ -21858,3 +21858,27 @@ body.empty-fit-panel #header_totals { display: none !important; }
 @media screen and (min-width: 1025px) {
     .site-header-right { justify-content: flex-start; }
 }
+
+/* Тёмная тема: белый текст на ярко-зелёном (#10B981) давал контраст ~2,5:1 — кнопки и плашки
+   переводим на тёмно-зелёный (#047857 — ~5,5:1 с белым) */
+body.dark-mode .btn-trial-14 {
+    background: #047857;
+}
+body.dark-mode .btn-trial-14:hover {
+    background: #059669;
+    filter: none;
+}
+body.dark-mode .btn-share {
+    background-color: #047857;
+}
+body.dark-mode .btn-share:hover {
+    background-color: #065F46;
+}
+body.dark-mode .btn-get-invoice {
+    background: linear-gradient(135deg, #065F46, #047857);
+}
+body.dark-mode .badge,
+body.dark-mode .admin-chat-badge,
+body.dark-mode .chat-badge {
+    background: #047857;
+}
