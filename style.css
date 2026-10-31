@@ -4934,6 +4934,15 @@ body.modal-over-banner .hc-cookie-banner {
     text-decoration: none;
 }
 
+/* Календарь (нативный попап input[type=date]) следует теме сайта, а не системной: иначе в тёмной теме
+   белый попап с почти невидимым текстом */
+input[type="date"] {
+    color-scheme: light;
+}
+body.dark-mode input[type="date"] {
+    color-scheme: dark;
+}
+
 /* Email Input */
 .auth-input {
     padding: 0 15px;
