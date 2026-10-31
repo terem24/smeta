@@ -14738,7 +14738,7 @@ const app = {
         wrap.innerHTML = '<div style="position:relative;max-width:380px;width:100%;background:var(--surface,#fff);color:var(--text-main,#0f172a);border-radius:18px;padding:28px 22px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);">'
             + '<h3 style="margin:0 0 8px;font-size:22px;">Вы успешно авторизованы!</h3>'
             + '<p style="margin:0 0 18px;font-size:14px;line-height:1.5;opacity:.85;">Добро пожаловать в HeatCalc. Сметы и настройки теперь сохраняются в вашем аккаунте.</p>'
-            + '<button type="button" id="login_welcome_ok" style="width:100%;padding:13px;border:0;border-radius:12px;background:var(--primary,#2563eb);color:#fff;font-size:15px;font-weight:700;cursor:pointer;">Продолжить</button>'
+            + '<button type="button" id="login_welcome_ok" style="width:100%;padding:13px;border:0;border-radius:12px;background:#2563eb;color:#fff;font-size:15px;font-weight:700;cursor:pointer;">Продолжить</button>'
             + '</div>';
         document.body.appendChild(wrap);
         const cv = document.createElement('canvas');
