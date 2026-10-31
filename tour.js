@@ -862,11 +862,17 @@ const Tour = {
         this.show();
     },
 
+    // Блок только для Профи, а у человека Базовый: шагов в обучении не показываем, сразу окно тарифа
+    proOnlyLocked: function (b) {
+        return !!(b && b.pro) && !this.planInfo().isPro;
+    },
+
     // Блок можно открыть, только если в нём есть шаги; иначе (чаще всего — «Профи» на
     // базовом тарифе) ведём туда, где объясняют, что даёт тариф.
     openBlock: function (id) {
         const b = this.blockById(id);
         if (!b) return;
+        if (this.proOnlyLocked(b)) { this.pay(); return; }
         if (!this.blockSteps(id).length && b.fallback) { this.startBlock(b.fallback.block, b.fallback.key); return; }
         this.startBlock(id);
     },
@@ -1482,7 +1488,7 @@ const Tour = {
         const doneN = vis.filter(b => dm[b.id]).length;
         const rowOf = b => {
             const n = this.blockSteps(b.id).length;
-            const locked = n === 0;
+            const locked = n === 0 || this.proOnlyLocked(b);
             const done = !!dm[b.id];
             const isRec = !!(rec && rec.id === b.id);
             const st = done ? '<span class="tour-blk-st is-ok">✓ Пройден</span>'

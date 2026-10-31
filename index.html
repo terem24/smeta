@@ -162,7 +162,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="HeatCalc">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <link rel="manifest" href="manifest.json?v=5">
+    <link rel="manifest" href="manifest.json?v=6">
     <meta name="theme-color" content="#2563EB">
     <script>
         // Размер интерфейса выбирается кнопкой «Aa» (app.toggleUiScaleMenu) и лежит на устройстве.
@@ -227,7 +227,7 @@
         <link href="/fonts/inter.css?v=1"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=5.119">
+    <link rel="stylesheet" href="style.css?v=5.122">
     <link rel="stylesheet" href="hydro_check.css?v=1.13">
 
     <script src="supabase-js.js" defer></script>
@@ -262,12 +262,12 @@
     <script src="water_hydro.js?v=1.7" defer></script>
     <script src="assembly_check.js?v=1.9" defer></script>
     <script src="probe.js?v=1.0" defer></script>
-    <script src="app.min.js?v=15.36" defer></script>
+    <script src="app.min.js?v=15.41" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
     <script src="session_track.js?v=1.2" defer></script>
-    <script src="tour.js?v=6.3" defer></script>
+    <script src="tour.js?v=6.4" defer></script>
     <!-- Подсказка «Смета за минуту» тем, кто заходит не первый раз и ничего не
          посчитал. После tour.js: берёт у обучения место баннера cookie. -->
     <script src="idle_hint.js?v=1.6" defer></script>
@@ -298,7 +298,7 @@
     <script>
         window.HC_LAZY = {
             recognize: ['equivalents.js?v=1.2', 'recognize_match.js?v=7.14', 'recognize_geo.js?v=1.2', 'recognize_files.js?v=2.10',
-                'recognize.js?v=9.43', 'recognize_plan.js?v=2.7', 'recognize_project.js?v=2.7', 'recognize_sketch.js?v=1.4'],
+                'recognize.js?v=9.44', 'recognize_plan.js?v=2.7', 'recognize_project.js?v=2.7', 'recognize_sketch.js?v=1.4'],
             docs: ['warranty.js?v=1.0', 'docs.js?v=3.6'],
             kpshare: ['kp_share.js?v=1.3'],
             warranty_admin: ['warranty_admin.js?v=1.1'],
@@ -839,7 +839,7 @@
     <div id="homeowner_hint" class="no-print" style="display: none; margin: 0 20px 10px;">
         <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px 14px; background:var(--primary-light); border:1px solid var(--border); border-radius:12px; padding:10px 14px;">
             <span style="font-size:13px; color:var(--text-main); text-align:center;">Вы хозяин дома, а не монтажник? Узнайте цену отопления под ключ за минуту, без регистрации.</span>
-            <a href="/dom/?src=home" style="font-size:12.5px; font-weight:700; padding:7px 14px; border-radius:8px; background:var(--primary); color:#fff; text-decoration:none;">Узнать цену</a>
+            <a href="/dom/?src=home" style="font-size:12.5px; font-weight:700; padding:7px 14px; border-radius:8px; background:#2563EB; color:#fff; text-decoration:none;">Узнать цену</a>
             <button type="button" id="homeowner_hint_close" title="Скрыть" style="font:inherit; font-size:18px; line-height:1; padding:2px 6px; border:none; background:transparent; color:var(--text-sec); cursor:pointer;">×</button>
         </div>
     </div>
@@ -854,6 +854,8 @@
                 if (localStorage.getItem('hc_dom_hint') === 'off') return;
                 var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
                 if (saved && saved.tgUser && (saved.tgUser.id || saved.tgUser.authUserId || saved.tgUser.email)) return;
+                // уже указал сферу (монтажник или продавец) — он не хозяин дома, подсказка не нужна
+                if (saved && saved.tgUser && Array.isArray(saved.tgUser.activityTypes) && saved.tgUser.activityTypes.length) return;
                 box.style.display = 'block';
                 document.getElementById('homeowner_hint_close').onclick = function () {
                     box.style.display = 'none';

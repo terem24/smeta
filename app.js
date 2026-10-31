@@ -14728,6 +14728,28 @@ const app = {
     },
     closeAuthModal: function () { document.getElementById('auth_modal_overlay').style.display = 'none'; document.body.classList.remove('auth-modal-open'); },
 
+    // Окно после входа по почте: поздравление и конфетти, как после регистрации.
+    // Страницу не перезагружаем: сессия уже получена, слушатель авторизации её разбирает.
+    showWelcomeAfterLogin: function () {
+        if (document.getElementById('login_welcome')) return;
+        const wrap = document.createElement('div');
+        wrap.id = 'login_welcome';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:60000100;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.55);padding:16px;';
+        wrap.innerHTML = '<div style="position:relative;max-width:380px;width:100%;background:var(--surface,#fff);color:var(--text-main,#0f172a);border-radius:18px;padding:28px 22px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.35);">'
+            + '<h3 style="margin:0 0 8px;font-size:22px;">Вы успешно авторизованы!</h3>'
+            + '<p style="margin:0 0 18px;font-size:14px;line-height:1.5;opacity:.85;">Добро пожаловать в HeatCalc. Сметы и настройки теперь сохраняются в вашем аккаунте.</p>'
+            + '<button type="button" id="login_welcome_ok" style="width:100%;padding:13px;border:0;border-radius:12px;background:#2563eb;color:#fff;font-size:15px;font-weight:700;cursor:pointer;">Продолжить</button>'
+            + '</div>';
+        document.body.appendChild(wrap);
+        const cv = document.createElement('canvas');
+        cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:60000200;pointer-events:none;';
+        document.body.appendChild(cv);
+        const stopFx = (typeof Tour !== 'undefined') ? Tour._confetti(cv) : () => { };
+        try { if (typeof Tour !== 'undefined') Tour._fanfare(); } catch (e) { }
+        const close = () => { stopFx(); cv.remove(); wrap.remove(); };
+        wrap.querySelector('#login_welcome_ok').onclick = close;
+    },
+
     showProfileModal: function (forced, initialTab) {
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
         if (!tgUser) return;
@@ -21295,8 +21317,21 @@ const app = {
      * продавца, где «Монтажных работ» нет, цифру распознавания переписываем
      * на 2 — иначе список читался бы как «1, 3».
      */
+    // Плашка «Вы хозяин дома» — только для гостя, который сферу ещё не указал.
+    // Инлайн-проверка в index.html читает stout_save, а там вход и сфера не всегда
+    // лежат, поэтому скрываем и отсюда — по живому state.tgUser.
+    hideHomeownerHint: function () {
+        const box = document.getElementById('homeowner_hint');
+        if (!box) return;
+        const u = this.state.tgUser;
+        const loggedIn = !!(u && (u.id || u.authUserId || u.email));
+        const hasActivity = !!(u && Array.isArray(u.activityTypes) && u.activityTypes.length);
+        if (loggedIn || hasActivity) box.style.display = 'none';
+    },
+
     syncRoleTabs: function () {
         this.syncShopTheme();
+        this.hideHomeownerHint();
         // «Монтажные работы» — по столбцу «Монтаж» таблицы «Тарифы» (исходно: только монтажнику)
         const seller = !this.canUseWorks();
         const tWk = document.getElementById('tab_works');
@@ -42790,7 +42825,7 @@ const app = {
         const all = this._wmIdx || (this._wmIdx = {});
         if (all[typ] !== undefined) return all[typ];
         all[typ] = null;
-        fetch(this.WM_DIR + 'manifold3d_' + typ + '.json?v=3')
+        fetch(this.WM_DIR + 'manifold3d_' + typ + '.json?v=4')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { all[typ] = j || {}; if (Object.keys(all[typ]).length) this.render(); });
@@ -43043,8 +43078,8 @@ const app = {
         // Ручка крана подводки — слоем поверх кадра; ключ масок кадра включает её вариант
         const hk = this.wmValve(), hb = fr.hv && fr.hv[hk];
         const mk = hb ? `${tag}|${hk}|${hb.join(',')}` : tag;
-        const photo = `<image class="wm-photo" data-tag="${mk}" x="${ox}" y="${oy}" width="${iw}" height="${ih}" href="${this.WM_DIR}${tag}.jpg?v=3"/>` +
-            (hb ? `<image class="wm-handle" x="${ox + hb[0] * iw}" y="${oy + hb[1] * ih}" width="${hb[2] * iw}" height="${hb[3] * ih}" href="${this.WM_DIR}${tag}_h_${hk}.png?v=3"/>` : '') +
+        const photo = `<image class="wm-photo" data-tag="${mk}" x="${ox}" y="${oy}" width="${iw}" height="${ih}" href="${this.WM_DIR}${tag}.jpg?v=4"/>` +
+            (hb ? `<image class="wm-handle" x="${ox + hb[0] * iw}" y="${oy + hb[1] * ih}" width="${hb[2] * iw}" height="${hb[3] * ih}" href="${this.WM_DIR}${tag}_h_${hk}.png?v=4"/>` : '') +
             `<rect class="wm-dim" x="${ox}" y="${oy}" width="${iw}" height="${ih}"/>` +
             `<g class="wm-glows" data-tag="${mk}" data-miss="${missG.join(',')}" data-box="${ox},${oy},${iw},${ih}"></g>`;
         setTimeout(() => this.wmAttachGlows(), 0);
@@ -43101,8 +43136,8 @@ const app = {
         if (cache[key]) return cache[key];
         const [tag, hk, hbox] = key.split('|');
         const load = u => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = this.WM_DIR + u; });
-        cache[key] = Promise.all([load(tag + '.jpg?v=3'), load(tag + '_id.png?v=3'),
-            hk ? load(`${tag}_h_${hk}.png?v=3`) : null]).then(([ph, id, hi]) => {
+        cache[key] = Promise.all([load(tag + '.jpg?v=4'), load(tag + '_id.png?v=4'),
+            hk ? load(`${tag}_h_${hk}.png?v=4`) : null]).then(([ph, id, hi]) => {
             const w = id.naturalWidth, h = id.naturalHeight;
             const cv = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
             const a = cv().getContext('2d');
@@ -50438,8 +50473,8 @@ const app = {
             if (error) throw error;
             this.logRegEvent('login_ok');
             this.closeAuthModal();
-            app.alert('✅ Вход выполнен успешно!' + (window.__HC_NATIVE__ ? '' : ' Страница будет перезагружена через 5 секунд.'));
-            this.softReload(5000);
+            this.showWelcomeAfterLogin();
+            if (window.__HC_NATIVE__) this.softReload();
         } catch (err) {
             console.error("Детали ошибки входа (Supabase):", err);
             this.logRegEvent('login_error', err && err.message);
@@ -51016,7 +51051,6 @@ const app = {
             fullName = this.stripDigitWords(fullName) || '';
             regLastName = this.stripDigitWords(regLastName);
             regFirstName = this.stripDigitWords(regFirstName);
-            regMiddleName = this.stripDigitWords(regMiddleName);
 
             // Ограничение авторизации через Google для пользователей из РФ.
             // Кнопки Google в окне входа в РФ нет (кнопка Google убрана 08.10.2026) — то есть
