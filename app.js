@@ -42761,7 +42761,7 @@ const app = {
     // Детали кадра: подпись по умолчанию, строки сметы (по названию) и где их искать.
     // node — подводка ХВС, её позиции лежат в «6.4. ХВС в коллектор водоснабжения».
     WM_PARTS: {
-        mf: { t: 'Коллектор водоснабжения', re: /Коллектор/i },
+        mf: { t: 'Коллектор водоснабжения', re: /^Коллектор/i },
         ek: { t: 'Евроконус', re: /Евроконус/i },
         // труба — общая на все линии, лежит в «5.4. Общие материалы»: её берём по всему разделу
         tube: { t: 'Труба в теплоизоляции', re: /Труба|Теплоизоляц/i, any: /^Труба/i },
@@ -42786,14 +42786,24 @@ const app = {
         tube: ['tube'],
         end: ['end_hammer', 'end_plug', 'fut']
     },
-    wmIndex: function () {
-        if (this._wmIdx !== undefined) return this._wmIdx;
-        this._wmIdx = null;
-        fetch(this.WM_DIR + 'manifold3d.json?v=2')
+    wmIndex: function (typ) {
+        const all = this._wmIdx || (this._wmIdx = {});
+        if (all[typ] !== undefined) return all[typ];
+        all[typ] = null;
+        fetch(this.WM_DIR + 'manifold3d_' + typ + '.json?v=3')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
-            .then(j => { this._wmIdx = j || {}; if (Object.keys(this._wmIdx).length) this.render(); });
+            .then(j => { all[typ] = j || {}; if (Object.keys(all[typ]).length) this.render(); });
         return null;
+    },
+    // Вид коллектора — по подобранному артикулу строки сметы (колонка «Артикул»: ключ строки
+    // хранит исходную позицию STOUT, а аналог ROMMER виден только там): ROMMER RMB-0001…0006 —
+    // головки сверху, отводы вниз под 90°; остальное пока рисуется как STOUT SMB 6850.
+    // Заменили коллектор в смете — меняется и кадр.
+    wmType: function (line) {
+        const tr = this.wmRows('mf', line)[0];
+        const sku = tr ? ((tr.querySelector('.col-sku') || {}).innerText || '').trim() : '';
+        return /^RMB-000[1-6]/i.test(sku) ? 'rm' : 'st';
     },
     // Линии, у которых в смете есть гребёнка, в порядке показа
     wmLinesNow: function () {
@@ -42848,15 +42858,17 @@ const app = {
         return own.length ? own : all;
     },
     renderWaterScheme: function () {
-        const idx = this.wmIndex();
         const line = this.wmCur();
+        if (!line) return '';
+        const typ = this.wmType(line);
+        const idx = this.wmIndex(typ);
         if (idx && !Object.keys(idx).length) return this._renderSheetImage(this.projectNodeSheetUrls().water);
-        if (!idx || !line) return '';
+        if (!idx) return '';
         const L = this._wmLines[line];
         const big = Math.max.apply(null, L.pts);
         const n = Math.min(12, big);
-        const tag = `${line}_${n}_${L.end}`;
-        const fr = idx[tag];
+        const tag = `${typ}_${line}_${n}_${L.end}`;
+        const fr = idx[`${line}_${n}_${L.end}`];
         if (!fr) return this._renderSheetImage(this.projectNodeSheetUrls().water);
         this.wmInit();
         const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
@@ -43011,14 +43023,13 @@ const app = {
                 `<circle cx="${it.ax}" cy="${it.ay}" r="${fs * 0.2}" class="wm-dot"/>` + txt +
                 `<rect class="wm-hit" data-wm="${it.pk}" x="${x0 - fs * 0.3}" y="${first - fs}" width="${it.tw + fs * 0.3}" height="${it.ly - first + fs * 1.3}"/></g>`;
         };
-        // Зоны деталей — под своими сносками: наведение на деталь подсвечивает всю сноску
-        const okOf = {};
-        items.forEach(it => { okOf[it.pk] = it.ok || it.off; });
-        const zoneSvg = Object.keys(fr.zones).map(z => ({ g: groupOf[this.wmPartKey(z, L.end)], r: fr.zones[z] }))
-            .filter(z => z.g && okOf[z.g] !== undefined)
-            .sort((a, b) => (b.r[2] - b.r[0]) * (b.r[3] - b.r[1]) - (a.r[2] - a.r[0]) * (a.r[3] - a.r[1]))
-            .map(z => `<rect class="wm-zone wm-hit${okOf[z.g] ? '' : ' wm-miss'}" data-wm="${z.g}" ` +
-                `x="${ox + z.r[0] * iw}" y="${oy + z.r[1] * ih}" width="${(z.r[2] - z.r[0]) * iw}" height="${(z.r[3] - z.r[1]) * ih}"/>`).join('');
+        // Кадр и слой подсветки: силуэты деталей строит wmAttachGlows по карте деталей кадра
+        // (третий проход Blender). Деталь, которой нет в смете, светится красным постоянно.
+        const missG = items.filter(it => !it.ok && !it.off).map(it => it.pk);
+        const photo = `<image class="wm-photo" data-tag="${tag}" x="${ox}" y="${oy}" width="${iw}" height="${ih}" href="${this.WM_DIR}${tag}.jpg?v=3"/>` +
+            `<rect class="wm-dim" x="${ox}" y="${oy}" width="${iw}" height="${ih}"/>` +
+            `<g class="wm-glows" data-tag="${tag}" data-miss="${missG.join(',')}" data-box="${ox},${oy},${iw},${ih}"></g>`;
+        setTimeout(() => this.wmAttachGlows(), 0);
         const tabs = this.wmLinesNow().length > 1
             ? `<div class="wm-tabs no-print">${this.wmLinesNow().map(k =>
                 `<button type="button" class="wm-tab${k === line ? ' on' : ''}" onclick="event.stopPropagation();app.setWmLine('${k}')">${this.WM_LINES[k]}</button>`).join('')}</div>`
@@ -43053,8 +43064,7 @@ const app = {
             `<svg xmlns="http://www.w3.org/2000/svg" class="wm-svg" data-wm-line="${line}" viewBox="0 0 ${W} ${H + hh}" font-family="${esc(fnt)}">` +
             `<rect x="0" y="0" width="${W}" height="${H + hh}" fill="#fff" stroke="none"/>` + head +
             `<g transform="translate(0 ${hh})">` +
-            `<image x="${ox}" y="${oy}" width="${iw}" height="${ih}" href="${this.WM_DIR}${tag}.jpg?v=2"/>` +
-            zoneSvg + left.map(it => label(it, 'L')).join('') + right.map(it => label(it, 'R')).join('') + `</g></svg>` +
+            photo + left.map(it => label(it, 'L')).join('') + right.map(it => label(it, 'R')).join('') + `</g></svg>` +
             `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>`;
         // На переходный период рядом с новой схемой остаётся прежний лист проекта-образца —
         // чтобы сравнить их на живых сметах. Убрать вместе с подписями, когда новую примут.
@@ -43062,6 +43072,68 @@ const app = {
         return tabs + `<div class="sg-flex wm-pair">` +
             (old ? `<div class="wm-col"><div class="wm-cap no-print">Лист проекта-образца</div>${old}</div>` : '') +
             `<div class="wm-col"><div class="wm-cap no-print">Новая схема узла — по составу сметы</div>${fresh}</div></div>` + sum;
+    },
+    // Цвета сносок на карте деталей (tools/render_water_manifold.py, проход 3)
+    WM_GCOL: { mf: [1, 0, 0], ek: [0, 1, 0], tube: [0, 0, 1], mount: [1, 1, 0], end: [1, 0, 1], feed: [0, 1, 1] },
+    // Маски деталей кадра: по карте деталей вырезаются пиксели самого кадра — деталь потом
+    // «поднимается» над приглушённым узлом со свечением по силуэту. Считается раз на кадр.
+    wmMasks: function (tag) {
+        const cache = this._wmMaskCache || (this._wmMaskCache = {});
+        if (cache[tag]) return cache[tag];
+        const load = u => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = this.WM_DIR + u; });
+        cache[tag] = Promise.all([load(tag + '.jpg?v=3'), load(tag + '_id.png?v=3')]).then(([ph, id]) => {
+            const w = id.naturalWidth, h = id.naturalHeight;
+            const cv = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+            const a = cv().getContext('2d');
+            a.drawImage(id, 0, 0);
+            const idd = a.getImageData(0, 0, w, h).data;
+            const b = cv().getContext('2d');
+            b.drawImage(ph, 0, 0, w, h);
+            const phd = b.getImageData(0, 0, w, h).data;
+            const groups = Object.keys(this.WM_GCOL);
+            const code = {};
+            groups.forEach((g, k) => { const c = this.WM_GCOL[g]; code[c[0] * 4 + c[1] * 2 + c[2]] = k + 1; });
+            const map = new Uint8Array(w * h), bufs = {};
+            for (let p = 0, i = 0; p < w * h; p++, i += 4) {
+                const k = code[(idd[i] > 127 ? 4 : 0) + (idd[i + 1] > 127 ? 2 : 0) + (idd[i + 2] > 127 ? 1 : 0)];
+                if (!k) continue;
+                map[p] = k;
+                const buf = bufs[k] || (bufs[k] = new Uint8ClampedArray(w * h * 4));
+                buf[i] = phd[i]; buf[i + 1] = phd[i + 1]; buf[i + 2] = phd[i + 2]; buf[i + 3] = 255;
+            }
+            const urls = {};
+            Object.keys(bufs).forEach(k => {
+                const c = cv();
+                c.getContext('2d').putImageData(new ImageData(bufs[k], w, h), 0, 0);
+                urls[groups[k - 1]] = c.toDataURL('image/png');
+            });
+            const res = { w, h, map, groups, urls };
+            (this._wmMaskData || (this._wmMaskData = {}))[tag] = res;
+            return res;
+        });
+        cache[tag].catch(() => { delete cache[tag]; });
+        return cache[tag];
+    },
+    wmAttachGlows: function () {
+        document.querySelectorAll('svg.wm-svg g.wm-glows:not([data-done])').forEach(g => {
+            g.setAttribute('data-done', '1');
+            const [x, y, w, h] = g.dataset.box.split(',');
+            const miss = (g.dataset.miss || '').split(',').filter(Boolean);
+            this.wmMasks(g.dataset.tag).then(m => {
+                g.innerHTML = Object.keys(m.urls).map(k =>
+                    `<image class="wm-glow${miss.indexOf(k) >= 0 ? ' wm-miss' : ''}" data-wm="${k}" x="${x}" y="${y}" width="${w}" height="${h}" href="${m.urls[k]}"/>`).join('');
+            }).catch(() => {});
+        });
+    },
+    // Сноска под курсором на кадре — по карте деталей
+    wmGroupAt: function (img, e) {
+        const m = (this._wmMaskData || {})[img.getAttribute('data-tag')];
+        if (!m) return null;
+        const r = img.getBoundingClientRect();
+        const px = Math.floor((e.clientX - r.left) / r.width * m.w), py = Math.floor((e.clientY - r.top) / r.height * m.h);
+        if (px < 0 || py < 0 || px >= m.w || py >= m.h) return null;
+        const k = m.map[py * m.w + px];
+        return k ? m.groups[k - 1] : null;
     },
     // Связь схемы узла со сметой: наведение на деталь или подпись — строки сметы, наведение
     // на строку — деталь на схеме, щелчок по детали — прокрутка к строке (как у sgInit).
@@ -43072,16 +43144,30 @@ const app = {
         const svgOf = el => el && el.closest ? el.closest('svg.wm-svg') : null;
         const clear = () => {
             document.querySelectorAll('.wm-hl').forEach(e => e.classList.remove('wm-hl'));
+            document.querySelectorAll('svg.wm-focus').forEach(e => e.classList.remove('wm-focus'));
             document.querySelectorAll('tr.sg-row-hl').forEach(e => e.classList.remove('sg-row-hl'));
         };
         const hitOf = el => el && el.closest && svgOf(el) ? el.closest('[data-wm]') : null;
+        // Подсветка сноски: узел приглушается, деталь поднимается силуэтом со свечением
+        const focus = (svg, pk) => {
+            clear();
+            svg.classList.add('wm-focus');
+            svg.querySelectorAll('[data-wm="' + pk + '"]').forEach(x => x.classList.add('wm-hl'));
+            this.wmRows(pk, svg.dataset.wmLine).forEach(tr => tr.classList.add('sg-row-hl'));
+        };
+        let cur = null;
+        document.addEventListener('mousemove', (e) => {
+            const img = e.target.closest ? e.target.closest('svg.wm-svg image.wm-photo') : null;
+            if (!img) { if (cur) { cur = null; clear(); } return; }
+            const pk = this.wmGroupAt(img, e);
+            if (pk === cur) return;
+            cur = pk;
+            if (pk) focus(svgOf(img), pk); else clear();
+        });
         document.addEventListener('mouseover', (e) => {
             const hit = hitOf(e.target);
             if (hit) {
-                clear();
-                const pk = hit.getAttribute('data-wm'), svg = svgOf(hit);
-                svg.querySelectorAll('[data-wm="' + pk + '"]').forEach(x => x.classList.add('wm-hl'));
-                this.wmRows(pk, svg.dataset.wmLine).forEach(tr => tr.classList.add('sg-row-hl'));
+                focus(svgOf(hit), hit.getAttribute('data-wm'));
                 return;
             }
             const tr = e.target.closest ? e.target.closest('#print-area tr[data-rk]') : null;
@@ -43091,16 +43177,18 @@ const app = {
             svg.querySelectorAll('[data-wm]').forEach(x => {
                 const pk = x.getAttribute('data-wm');
                 if (seen[pk] === undefined) seen[pk] = this.wmRows(pk, svg.dataset.wmLine).indexOf(tr) >= 0;
-                if (seen[pk]) { x.classList.add('wm-hl'); tr.classList.add('sg-row-hl'); }
+                if (seen[pk]) { x.classList.add('wm-hl'); tr.classList.add('sg-row-hl'); svg.classList.add('wm-focus'); }
             });
         });
         document.addEventListener('mouseout', (e) => {
             if (hitOf(e.target) || (e.target.closest && e.target.closest('#print-area tr[data-rk]'))) clear();
         });
         document.addEventListener('click', (e) => {
+            const img = e.target.closest ? e.target.closest('svg.wm-svg image.wm-photo') : null;
             const hit = hitOf(e.target);
-            if (!hit) return;
-            const rows = this.wmRows(hit.getAttribute('data-wm'), svgOf(hit).dataset.wmLine);
+            const pk = img ? this.wmGroupAt(img, e) : hit && hit.getAttribute('data-wm');
+            if (!pk) return;
+            const rows = this.wmRows(pk, svgOf(img || hit).dataset.wmLine);
             if (!rows.length) return;
             e.stopPropagation();
             const fs = document.getElementById('scheme_zoom_overlay');

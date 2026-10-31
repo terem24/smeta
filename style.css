@@ -21145,6 +21145,16 @@ body.dark-mode .save-remind-field input { background: #121212; border-color: #4B
 .wm-lab.wm-hl text { fill: #1d4ed8; font-weight: 600; }
 .wm-lab.wm-hl .wm-lead { stroke: #2563eb; stroke-width: 2px; }
 .wm-lab.wm-hl .wm-dot { fill: #2563eb; }
+/* Подсветка детали по силуэту (app.wmAttachGlows): узел приглушается, деталь поднимается
+   над ним с мягким свечением; деталь, которой нет в смете, светится красным постоянно. */
+.wm-photo { cursor: pointer; }
+.wm-dim { fill: #fff; opacity: 0; pointer-events: none; transition: opacity .22s ease; }
+.wm-svg.wm-focus .wm-dim { opacity: .62; }
+.wm-glow { opacity: 0; pointer-events: none; transition: opacity .22s ease;
+    filter: drop-shadow(0 0 2px rgba(10, 132, 255, 1)) drop-shadow(0 0 6px rgba(10, 132, 255, .85)) drop-shadow(0 0 16px rgba(10, 132, 255, .45)); }
+.wm-glow.wm-hl { opacity: 1; }
+.wm-glow.wm-miss { opacity: 1; filter: drop-shadow(0 0 2px rgba(255, 59, 48, .95)) drop-shadow(0 0 8px rgba(255, 59, 48, .5)); }
+@media (prefers-reduced-motion: reduce) { .wm-dim, .wm-glow { transition: none; } }
 /* Вёрстка листа схемы — как у листов «Обвязка коллекторов»: заголовок, планка раздела, поля */
 .wm-title { fill: #121a32; font-weight: 700; font-stretch: semi-condensed; }
 .wm-subtitle { fill: #6e7480; font-weight: 300; font-stretch: semi-condensed; }
