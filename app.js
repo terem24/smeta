@@ -50915,7 +50915,6 @@ const app = {
             fullName = this.stripDigitWords(fullName) || '';
             regLastName = this.stripDigitWords(regLastName);
             regFirstName = this.stripDigitWords(regFirstName);
-            regMiddleName = this.stripDigitWords(regMiddleName);
 
             // Ограничение авторизации через Google для пользователей из РФ.
             // Кнопки Google в окне входа в РФ нет (кнопка Google убрана 08.10.2026) — то есть
