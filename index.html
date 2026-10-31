@@ -854,6 +854,8 @@
                 if (localStorage.getItem('hc_dom_hint') === 'off') return;
                 var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
                 if (saved && saved.tgUser && (saved.tgUser.id || saved.tgUser.authUserId || saved.tgUser.email)) return;
+                // уже указал сферу (монтажник или продавец) — он не хозяин дома, подсказка не нужна
+                if (saved && saved.tgUser && Array.isArray(saved.tgUser.activityTypes) && saved.tgUser.activityTypes.length) return;
                 box.style.display = 'block';
                 document.getElementById('homeowner_hint_close').onclick = function () {
                     box.style.display = 'none';
