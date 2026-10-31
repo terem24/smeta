@@ -21122,6 +21122,34 @@ body.dark-mode .save-remind-field input { background: #121212; border-color: #4B
 #sg-tip .sg-tip-row span { color: var(--text-sec, #6b7280); white-space: nowrap; }
 #sg-tip .sg-tip-miss { color: #ef4444; font-weight: 600; }
 
+/* Узел коллектора водоснабжения (app.renderWaterScheme): кадр из Blender, поверх — зоны деталей и подписи из сметы. */
+.wm-zone { fill: transparent; stroke: none; }
+.wm-hit { pointer-events: all; cursor: pointer; fill: transparent; }
+.wm-zone.wm-miss { stroke: #ef4444; stroke-width: 2px; stroke-dasharray: 6 4; vector-effect: non-scaling-stroke; fill: rgba(239, 68, 68, 0.10); }
+.wm-zone.wm-hl { fill: rgba(37, 99, 235, 0.22); stroke: #2563eb; stroke-width: 2px; stroke-dasharray: none; vector-effect: non-scaling-stroke; }
+.wm-lab text { fill: #3a3f48; font-weight: 350; font-stretch: semi-condensed; }
+.wm-lab .wm-miss-txt { fill: #ef4444; font-weight: 600; }
+.wm-miss-lab text { fill: #b91c1c; }
+.wm-off-lab text, .wm-off-lab .wm-miss-txt { fill: #9ca3af; font-weight: 400; }
+.wm-lead { stroke: #4a4f57; stroke-width: 1.1px; vector-effect: non-scaling-stroke; fill: none; }
+.wm-dot { fill: #2f333a; }
+.wm-lab.wm-hl text { fill: #1d4ed8; font-weight: 600; }
+.wm-lab.wm-hl .wm-lead { stroke: #2563eb; stroke-width: 2px; }
+.wm-lab.wm-hl .wm-dot { fill: #2563eb; }
+/* Вёрстка листа схемы — как у листов «Обвязка коллекторов»: заголовок, планка раздела, поля */
+.wm-title { fill: #121a32; font-weight: 700; font-stretch: semi-condensed; }
+.wm-subtitle { fill: #6e7480; font-weight: 300; font-stretch: semi-condensed; }
+.wm-sec { fill: #121a32; font-weight: 700; font-stretch: semi-condensed; }
+.wm-bar { fill: #1e6ee6; }
+.wm-margin { stroke: #d3dbe7; stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.wm-cross { stroke: #96b9eb; stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.wm-pair > .wm-col { flex: 0 0 auto; }
+.wm-cap { font-size: 12px; font-weight: 600; color: var(--text-sec, #6b7280); margin: 0 0 4px; }
+.wm-tabs { display: flex; gap: 6px; margin: 4px 0 6px; flex-wrap: wrap; }
+.wm-tab { font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--border, #d1d5db); background: transparent; color: var(--text-main, #111827); }
+.wm-tab.on { background: var(--primary, #2563eb); border-color: var(--primary, #2563eb); color: #fff; }
+
 /* Строка с плашкой под заголовком подраздела (group-warn-row) на телефоне: мобильная карточка товара раскладывала её в сетку
    «картинка | название | количество», и плашка сжималась в колонку шириной ~60 px. Как у строки со схемой — одним блоком на всю ширину. */
 @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {

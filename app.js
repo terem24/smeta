@@ -42741,8 +42741,373 @@ const app = {
                 : null
         };
     },
+    /**
+     * Узел коллектора водоснабжения над разделом «5.» — кадр из Blender
+     * (tools/build_water_manifold.py) в стиле листов «Обвязка коллекторов».
+     *
+     * Кадр выбирается по составу сметы: линия (ХВС, ГВС, рециркуляция), число
+     * точек на гребёнке (по нему же смета делит её на блоки 4/3/2) и торец —
+     * компенсатор гидроудара или заглушка (_wmLines собирает render). Поверх
+     * кадра — зоны деталей: наведение подсвечивает строки сметы, щелчок ведёт к
+     * ним, деталь без строки в смете обведена красным. Подписи берут названия
+     * из самих строк сметы.
+     *
+     * Нет кадров (файл индекса не загрузился) — прежний лист проекта-образца.
+     */
+    WM_DIR: 'img/manifold3d/',
+    WM_LINES: { cw: 'ХВС', hw: 'ГВС', rc: 'Рециркуляция ГВС' },
+    // Подраздел сметы каждой линии: в нём ищутся строки её деталей
+    WM_SUB: { cw: /5\.1\.|Внутреннее водоснабжение/i, hw: /5\.2\.|Внутреннее ГВС/i, rc: /5\.3\.|Рециркуляц/i },
+    // Детали кадра: подпись по умолчанию, строки сметы (по названию) и где их искать.
+    // node — подводка ХВС, её позиции лежат в «6.4. ХВС в коллектор водоснабжения».
+    WM_PARTS: {
+        mf: { t: 'Коллектор водоснабжения', re: /Коллектор/i },
+        ek: { t: 'Евроконус', re: /Евроконус/i },
+        // труба — общая на все линии, лежит в «5.4. Общие материалы»: её берём по всему разделу
+        tube: { t: 'Труба в теплоизоляции', re: /Труба|Теплоизоляц/i, any: /^Труба/i },
+        clamp: { t: 'Хомут 1" для крепления коллектора', re: /Хомут.*1"/i },
+        stud: { t: 'Шпилька M8x100 с дюбелем', re: /Шпилька сантехническая/i },
+        end_hammer: { t: 'Компенсатор гидроудара', re: /Компенсатор гидроудара/i },
+        end_plug: { t: 'Заглушка коллектора', re: /Заглушка коллектора/i },
+        fut: { t: 'Футорка 3/4" x 1/2"', re: /Футорка 3\/4"\s*x\s*1\/2"/i },
+        ext: { t: 'Удлинитель 30 мм', re: /Удлинитель/i, node: true },
+        nip: { t: 'Ниппель', re: /Ниппель/i, node: true },
+        union: { t: 'Сгон прямой', re: /Сгон|американк/i, node: true },
+        ball: { t: 'Кран шаровой', re: /Кран шаров/i, node: true },
+        tee: { t: 'Тройник', re: /Тройник/i, node: true }
+    },
+    // Сноски схемы: деталь подписывается узлом смыслом, как на листах-образцах; наведение
+    // на сноску подсвечивает строки всех её деталей
+    WM_GROUPS: {
+        mount: ['clamp', 'stud'],
+        mf: ['mf'],
+        feed: ['tee', 'ball', 'union', 'nip', 'ext'],
+        ek: ['ek'],
+        tube: ['tube'],
+        end: ['end_hammer', 'end_plug', 'fut']
+    },
+    wmIndex: function () {
+        if (this._wmIdx !== undefined) return this._wmIdx;
+        this._wmIdx = null;
+        fetch(this.WM_DIR + 'manifold3d.json?v=2')
+            .then(r => r.ok ? r.json() : {})
+            .catch(() => ({}))
+            .then(j => { this._wmIdx = j || {}; if (Object.keys(this._wmIdx).length) this.render(); });
+        return null;
+    },
+    // Линии, у которых в смете есть гребёнка, в порядке показа
+    wmLinesNow: function () {
+        const L = this._wmLines || {};
+        return ['cw', 'hw', 'rc'].filter(k => L[k] && L[k].pts.length);
+    },
+    wmCur: function () {
+        const lines = this.wmLinesNow();
+        return lines.indexOf(this._wmSel) >= 0 ? this._wmSel : lines[0];
+    },
+    setWmLine: function (k) {
+        this._wmSel = k;
+        this.render();
+    },
+    wmPartKey: function (zoneKey, end) {
+        const p = String(zoneKey).split(':')[0];
+        return p === 'end' ? 'end_' + end : p;
+    },
+    // Строки сметы детали: по названию, в подразделе своей линии (подводка — в 6.4);
+    // в слитой смете подразделов нет — тогда в своём разделе.
+    wmRows: function (pk, line) {
+        const grp = this.WM_GROUPS[pk];
+        if (grp && !(grp.length === 1 && grp[0] === pk)) {
+            const out = [];
+            grp.forEach(p => this.wmRows(p, line).forEach(tr => { if (out.indexOf(tr) < 0) out.push(tr); }));
+            return out;
+        }
+        const def = this.WM_PARTS[pk];
+        if (!def) return [];
+        const secRe = def.node ? /Узел ввода/ : /водоснабжени|ГВС|Рециркул/i;
+        const subRe = def.node ? /6\.4\.|ХВС в коллектор/ : this.WM_SUB[line];
+        const all = Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr => {
+            const sec = String(tr.dataset.rk || '').split('|')[1] || '';
+            const nm = ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0];
+            // изоляция чужой линии: у ХВС синяя, у ГВС и рециркуляции красная
+            if (pk === 'tube' && (line === 'cw' ? /Красн/i : /Синя/i).test(nm)) return false;
+            return secRe.test(sec) && def.re.test(nm);
+        });
+        // Первый подраздел («5.1.») — это заголовок самого раздела, отдельной строки-группы у
+        // него нет: строки до первой группы относим к нему.
+        const subOf = tr => {
+            const g = this.sgSubTitleOf(tr);
+            if (g) return g;
+            for (let e = tr.previousElementSibling; e; e = e.previousElementSibling) {
+                const t = e.classList.contains('row-sec') && e.querySelector('.row-sec-title');
+                if (t) return t.dataset.title || '';
+            }
+            return '';
+        };
+        const own = all.filter(tr => subRe.test(subOf(tr)) || (def.any && def.any.test(
+            ((tr.querySelector('.col-name') || {}).innerText || '').trim())));
+        return own.length ? own : all;
+    },
     renderWaterScheme: function () {
-        return this._renderSheetImage(this.projectNodeSheetUrls().water);
+        const idx = this.wmIndex();
+        const line = this.wmCur();
+        if (idx && !Object.keys(idx).length) return this._renderSheetImage(this.projectNodeSheetUrls().water);
+        if (!idx || !line) return '';
+        const L = this._wmLines[line];
+        const big = Math.max.apply(null, L.pts);
+        const n = Math.min(12, big);
+        const tag = `${line}_${n}_${L.end}`;
+        const fr = idx[tag];
+        if (!fr) return this._renderSheetImage(this.projectNodeSheetUrls().water);
+        this.wmInit();
+        const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+        const iw = fr.w, ih = fr.h;
+        // Подписи — как на листах «Обвязка коллекторов»: шесть сносок на узел (подписан узел
+        // смыслом, а не каждый фитинг), по три с каждой стороны на уровне своей детали; текст
+        // в две строки — что это и какое; под текстом полка, от неё короткий скос к точке.
+        // Пропорции листа-образца: подписи ~2 % ширины листа, узел ~55 % ширины
+        const col = Math.round(iw * 0.46), W = iw + col * 2, ox = col;
+        const fs = Math.round(W * 0.021), lh = fs * 1.25;
+        const nameOf = rows => rows.length ? ((rows[0].querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim() : '';
+        const nodeOff = !this.state.waterInput;
+        // Зоны кадра по деталям и по сноскам
+        const partZones = {};
+        Object.keys(fr.zones).forEach(z => {
+            const pk = this.wmPartKey(z, L.end);
+            (partZones[pk] = partZones[pk] || []).push(fr.zones[z]);
+        });
+        const groupOf = {};
+        Object.keys(this.WM_GROUPS).forEach(g => this.WM_GROUPS[g].forEach(pk => { groupOf[pk] = g; }));
+        // Вторая строка сноски — из самих строк сметы: размер, число выходов, труба
+        const blocks = (() => {
+            const q4 = Math.floor(big / 4), r = big % 4;
+            let a = q4, b3 = 0, b2 = 0;
+            if (r === 3) b3 = 1; else if (r === 2) b2 = 1; else if (r === 1) { if (a > 0) { a--; b3 = 1; b2 = 1; } else b2 = 1; }
+            return Array(a).fill(4).concat(Array(b3).fill(3), Array(b2).fill(2));
+        })();
+        const vyh = k => k % 10 === 1 && k % 100 !== 11 ? 'выход' : (k % 10 >= 2 && k % 10 <= 4 && (k % 100 < 12 || k % 100 > 14) ? 'выхода' : 'выходов');
+        const text = (g, rows) => {
+            const nm = nameOf(rows);
+            if (g === 'mf') {
+                const sz = (/(\d[\d\/ ]*"\s*[хx]\s*[\d\/]+")/.exec(nm) || [])[1];
+                const sum = blocks.reduce((s, k) => s + k, 0);
+                return [sz ? `Коллектор ${sz.replace(/\s*[хx]\s*/, ' x ')} ЕК` : 'Коллектор',
+                    blocks.length > 1 ? `${sum} ${vyh(sum)}: ${blocks.join(' + ')}` : `${sum} ${vyh(sum)}`];
+            }
+            if (g === 'mount') return ['Крепление', 'хомут 1" + шпилька M8'];
+            if (g === 'end') return L.end === 'plug' ? ['Заглушка коллектора', '3/4" НР'] : ['Компенсатор гидроудара', '1/2" на футорке 3/4" x 1/2"'];
+            if (g === 'ek') return ['Евроконус', (/(\d+\s*x\s*[\d.,]+)/i.exec(nm) || ['', '16x2.2'])[1]];
+            if (g === 'tube') {
+                const pipe = rows.map(tr => nameOf([tr])).find(t => /^Труба/i.test(t)) || '';
+                const spec = pipe.replace(/^Труба\s*/i, '').replace(/\s*\(.*\)\s*$/, '').trim();
+                return ['Отводы к потребителям', spec ? `${spec} в изоляции` : 'в изоляции 18/6'];
+            }
+            if (g === 'feed') return ['Подводка от узла ввода', 'кран, сгон, ниппель'];
+            return [nm];
+        };
+        const items = Object.keys(this.WM_GROUPS).map(g => {
+            const parts = this.WM_GROUPS[g].filter(pk => partZones[pk]);
+            if (!parts.length) return null;
+            const rows = [], miss = [];
+            let off = false;
+            parts.forEach(pk => {
+                const r = this.wmRows(pk, line);
+                if (r.length) r.forEach(tr => { if (rows.indexOf(tr) < 0) rows.push(tr); });
+                else if (nodeOff && this.WM_PARTS[pk].node) off = true;
+                else miss.push(this.WM_PARTS[pk].t.toLowerCase());
+            });
+            // Точки сноски: по одной на каждый экземпляр детали (у хомутов, евроконусов, труб их
+            // несколько) — выноска пойдёт к ближайшему к своей колонке
+            const cands = [];
+            parts.forEach(pk => partZones[pk].forEach(z => {
+                const h = z[3] - z[1];
+                cands.push([ox + (z[0] + z[2]) / 2 * iw, (z[1] + h * (pk === 'tube' ? 0.62 : 0.5)) * ih]);
+            }));
+            const lines = text(g, rows);
+            const tail = off && !rows.length ? 'раздел 6 выключен' : miss.length ? 'нет в смете: ' + miss.join(', ') : '';
+            return { pk: g, parts, rows, miss, off: off && !rows.length, ok: !miss.length, lines, tail, cands,
+                mx: cands.reduce((s, c) => s + c[0], 0) / cands.length };
+        }).filter(Boolean);
+        items.forEach(it => {
+            it.tw = Math.max.apply(null, it.lines.map(s => s.length)) * fs * 0.52 + fs * 0.6;
+            it.h = (it.lines.length + (it.tail ? 1 : 0)) * lh + fs * 1.3;
+        });
+        // Стороны поровну: левее по кадру — влево; точка — ближайший к колонке экземпляр
+        const byX = items.slice().sort((a, b) => a.mx - b.mx);
+        const half = Math.ceil(byX.length / 2);
+        const left = byX.slice(0, half), right = byX.slice(half);
+        const need = list => list.reduce((s, it) => s + it.h, 0) + fs * 2;
+        let H = Math.max(ih + fs * 2, need(left), need(right));
+        const oy = (H - ih) / 2;
+        items.forEach(it => { it.cands = it.cands.map(c => [c[0], c[1] + oy]); });
+        // Геометрия сноски: полка под текстом и скос под 45° к точке на детали
+        const geom = (it, side, ax, ay, ly) => {
+            const x0 = side === 'L' ? fs : ox + iw + fs;
+            const dy = Math.abs(ay - ly);
+            const knee = side === 'L' ? Math.max(x0 + it.tw, ax - dy) : Math.min(x0 - fs * 0.6, ax + dy);
+            const s0 = side === 'L' ? x0 : knee, s1 = side === 'L' ? knee : x0 + it.tw;
+            return { x0, knee, s0, s1, segs: [[s0, ly, s1, ly], [knee, ly, ax, ay]] };
+        };
+        const cross = (p, q) => {
+            const d = (a, b, c) => (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+            const A = [p[0], p[1]], B = [p[2], p[3]], C = [q[0], q[1]], D = [q[2], q[3]];
+            const d1 = d(C, D, A), d2 = d(C, D, B), d3 = d(A, B, C), d4 = d(A, B, D);
+            return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+        };
+        // Колонка раскладывается перебором: порядок подписей сверху вниз и экземпляр детали,
+        // к которому идёт выноска (у евроконусов, труб, хомутов их несколько). Берётся вариант
+        // без пересечений линий — между собой и с соседней колонкой; из равных — с короткими
+        // выносками. Подписей в колонке три-четыре, перебор мгновенный.
+        const perms = list => list.length <= 1 ? [list.slice()] :
+            [].concat.apply([], list.map((x, i) => perms(list.slice(0, i).concat(list.slice(i + 1))).map(r => [x].concat(r))));
+        const layout = (list, side, other) => {
+            const cx = side === 'L' ? ox : ox + iw;
+            const opts = list.map(it => it.cands.slice().sort((a, b) => Math.abs(a[0] - cx) - Math.abs(b[0] - cx)).slice(0, 4));
+            let best = null;
+            perms(list.map((it, k) => k)).forEach(order => {
+                const pick = order.map(() => 0);
+                for (;;) {
+                    let y = 0;
+                    const pl = order.map((k, j) => {
+                        const c = opts[k][pick[j]], it = list[k];
+                        const ly = Math.max(c[1], y + it.h);
+                        y = ly;
+                        return { k, ax: c[0], ay: c[1], ly };
+                    });
+                    const over = y - (H - fs);
+                    if (over > 0) { y = 0; pl.forEach(q => { q.ly = Math.max(q.ly - over, y + list[q.k].h); y = q.ly; }); }
+                    const segs = pl.map(q => geom(list[q.k], side, q.ax, q.ay, q.ly).segs);
+                    let n = 0;
+                    segs.forEach((sa, i) => {
+                        segs.slice(i + 1).forEach(sb => sa.forEach(p => sb.forEach(q => { if (cross(p, q)) n++; })));
+                        other.forEach(sb => sa.forEach(p => sb.forEach(q => { if (cross(p, q)) n++; })));
+                    });
+                    const len = pl.reduce((s, q) => s + Math.abs(q.ly - q.ay) + Math.abs(q.ax - cx), 0);
+                    const score = n * 1e7 + len + Math.max(0, y - H) * 10;
+                    if (!best || score < best.score) best = { score, pl, y };
+                    // следующий набор экземпляров
+                    let j = 0;
+                    while (j < pick.length && ++pick[j] >= opts[order[j]].length) { pick[j] = 0; j++; }
+                    if (j === pick.length) break;
+                }
+            });
+            best.pl.forEach(q => { const it = list[q.k]; it.ax = q.ax; it.ay = q.ay; it.ly = q.ly; });
+            H = Math.max(H, best.y + fs * 1.2);
+            return best.pl.map(q => geom(list[q.k], side, q.ax, q.ay, q.ly).segs);
+        };
+        const segsL = layout(left, 'L', []);
+        const segsR = layout(right, 'R', segsL);
+        layout(left, 'L', segsR);
+        const label = (it, side) => {
+            const g = geom(it, side, it.ax, it.ay, it.ly);
+            const x0 = g.x0, knee = g.knee, s0 = g.s0, s1 = g.s1;
+            const cls = it.off ? ' wm-off-lab' : it.ok ? '' : ' wm-miss-lab';
+            const rows = it.lines.concat(it.tail ? [it.tail] : []);
+            const first = it.ly - fs * 0.38 - (rows.length - 1) * lh;
+            const txt = rows.map((s, k) => `<text x="${x0}" y="${first + k * lh}" font-size="${k ? fs * 0.94 : fs}"` +
+                (it.tail && k === rows.length - 1 ? ' class="wm-miss-txt"' : '') + `>${esc(s)}</text>`).join('');
+            return `<g class="wm-lab${cls}" data-wm="${it.pk}">` +
+                `<polyline points="${s0},${it.ly} ${s1},${it.ly}" class="wm-lead"/>` +
+                `<polyline points="${knee},${it.ly} ${it.ax},${it.ay}" class="wm-lead"/>` +
+                `<circle cx="${it.ax}" cy="${it.ay}" r="${fs * 0.2}" class="wm-dot"/>` + txt +
+                `<rect class="wm-hit" data-wm="${it.pk}" x="${x0 - fs * 0.3}" y="${first - fs}" width="${it.tw + fs * 0.3}" height="${it.ly - first + fs * 1.3}"/></g>`;
+        };
+        // Зоны деталей — под своими сносками: наведение на деталь подсвечивает всю сноску
+        const okOf = {};
+        items.forEach(it => { okOf[it.pk] = it.ok || it.off; });
+        const zoneSvg = Object.keys(fr.zones).map(z => ({ g: groupOf[this.wmPartKey(z, L.end)], r: fr.zones[z] }))
+            .filter(z => z.g && okOf[z.g] !== undefined)
+            .sort((a, b) => (b.r[2] - b.r[0]) * (b.r[3] - b.r[1]) - (a.r[2] - a.r[0]) * (a.r[3] - a.r[1]))
+            .map(z => `<rect class="wm-zone wm-hit${okOf[z.g] ? '' : ' wm-miss'}" data-wm="${z.g}" ` +
+                `x="${ox + z.r[0] * iw}" y="${oy + z.r[1] * ih}" width="${(z.r[2] - z.r[0]) * iw}" height="${(z.r[3] - z.r[1]) * ih}"/>`).join('');
+        const tabs = this.wmLinesNow().length > 1
+            ? `<div class="wm-tabs no-print">${this.wmLinesNow().map(k =>
+                `<button type="button" class="wm-tab${k === line ? ' on' : ''}" onclick="event.stopPropagation();app.setWmLine('${k}')">${this.WM_LINES[k]}</button>`).join('')}</div>`
+            : '';
+        const miss = [].concat.apply([], items.map(it => it.miss));
+        const more = L.pts.length > 1 ? ` На линии ${L.pts.length} гребёнки (${L.pts.join(', ')} выходов), показана большая.` : '';
+        const over = big > 12 ? ` Точек ${big}, на схеме — 12.` : '';
+        const sum = `<div class="sg-summary no-print">Узел ${this.WM_LINES[line]}.` +
+            (items.some(it => it.off) ? ' Подводка от узла ввода — в разделе 6, он выключен.' : '') +
+            (miss.length ? ` <span class="sg-miss-txt">Нет в смете: ${miss.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
+            more + over + ` <span class="sg-hint">Наведите на деталь или на строку сметы — соответствие подсветится.</span></div>`;
+        // Шрифт листов «Обвязка коллекторов» — узкий гротеск, а не чертёжный ГОСТ
+        const fnt = "'Bahnschrift','DIN Alternate','Roboto Condensed','Arial Narrow',sans-serif";
+        // Вёрстка листа «Обвязка коллекторов»: жирный заголовок, серый подзаголовок, синяя
+        // планка с названием узла и числом отводов, тонкие поля и метка-прицел в углу.
+        const nOut = blocks.reduce((s, k) => s + k, 0);
+        const T = W * 0.075, ST = W * 0.042, SEC = W * 0.033, SSUB = W * 0.024;
+        const hh = T * 1.15 + ST * 1.5 + SEC * 1.2 + SSUB * 2.6;
+        const secName = { cw: 'Коллектор ХВС', hw: 'Коллектор ГВС', rc: 'Коллектор рециркуляции ГВС' }[line];
+        const y1 = T * 1.0, y2 = y1 + ST * 1.35, y3 = y2 + SEC * 2.1, y4 = y3 + SSUB * 1.35;
+        const head = `<g class="wm-sheet">` +
+            `<line x1="${W * 0.006}" y1="0" x2="${W * 0.006}" y2="${H + hh}" class="wm-margin"/>` +
+            `<line x1="${W * 0.994}" y1="0" x2="${W * 0.994}" y2="${H + hh}" class="wm-margin"/>` +
+            `<line x1="${W * 0.86}" y1="${T * 0.75}" x2="${W * 0.994}" y2="${T * 0.75}" class="wm-cross"/>` +
+            `<line x1="${W * 0.93}" y1="0" x2="${W * 0.93}" y2="${T * 1.9}" class="wm-cross"/>` +
+            `<text x="${fs}" y="${y1}" font-size="${T}" class="wm-title">Обвязка коллектора</text>` +
+            `<text x="${fs * 1.05}" y="${y2}" font-size="${ST}" class="wm-subtitle">Водоснабжение</text>` +
+            `<rect x="${fs}" y="${y3 - SEC * 0.95}" width="${SEC * 0.22}" height="${SEC * 1.15}" class="wm-bar"/>` +
+            `<text x="${fs + SEC * 0.7}" y="${y3}" font-size="${SEC}" class="wm-sec">${esc(secName)}</text>` +
+            `<text x="${fs + SEC * 0.7}" y="${y4}" font-size="${SSUB}" class="wm-subtitle">${nOut} ${vyh(nOut)}</text></g>`;
+        const fresh = `<div class="automation-scheme wm-scheme" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">` +
+            `<svg xmlns="http://www.w3.org/2000/svg" class="wm-svg" data-wm-line="${line}" viewBox="0 0 ${W} ${H + hh}" font-family="${esc(fnt)}">` +
+            `<rect x="0" y="0" width="${W}" height="${H + hh}" fill="#fff" stroke="none"/>` + head +
+            `<g transform="translate(0 ${hh})">` +
+            `<image x="${ox}" y="${oy}" width="${iw}" height="${ih}" href="${this.WM_DIR}${tag}.jpg?v=2"/>` +
+            zoneSvg + left.map(it => label(it, 'L')).join('') + right.map(it => label(it, 'R')).join('') + `</g></svg>` +
+            `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>`;
+        // На переходный период рядом с новой схемой остаётся прежний лист проекта-образца —
+        // чтобы сравнить их на живых сметах. Убрать вместе с подписями, когда новую примут.
+        const old = this._renderSheetImage(this.projectNodeSheetUrls().water);
+        return tabs + `<div class="sg-flex wm-pair">` +
+            (old ? `<div class="wm-col"><div class="wm-cap no-print">Лист проекта-образца</div>${old}</div>` : '') +
+            `<div class="wm-col"><div class="wm-cap no-print">Новая схема узла — по составу сметы</div>${fresh}</div></div>` + sum;
+    },
+    // Связь схемы узла со сметой: наведение на деталь или подпись — строки сметы, наведение
+    // на строку — деталь на схеме, щелчок по детали — прокрутка к строке (как у sgInit).
+    wmInit: function () {
+        if (this._wmBound) return;
+        this._wmBound = true;
+        // Схема бывает и в смете, и копией в полноэкранном просмотре — линия записана на самом svg
+        const svgOf = el => el && el.closest ? el.closest('svg.wm-svg') : null;
+        const clear = () => {
+            document.querySelectorAll('.wm-hl').forEach(e => e.classList.remove('wm-hl'));
+            document.querySelectorAll('tr.sg-row-hl').forEach(e => e.classList.remove('sg-row-hl'));
+        };
+        const hitOf = el => el && el.closest && svgOf(el) ? el.closest('[data-wm]') : null;
+        document.addEventListener('mouseover', (e) => {
+            const hit = hitOf(e.target);
+            if (hit) {
+                clear();
+                const pk = hit.getAttribute('data-wm'), svg = svgOf(hit);
+                svg.querySelectorAll('[data-wm="' + pk + '"]').forEach(x => x.classList.add('wm-hl'));
+                this.wmRows(pk, svg.dataset.wmLine).forEach(tr => tr.classList.add('sg-row-hl'));
+                return;
+            }
+            const tr = e.target.closest ? e.target.closest('#print-area tr[data-rk]') : null;
+            const svg = document.querySelector('.wm-scheme svg.wm-svg');
+            if (!tr || !svg) return;
+            const seen = {};
+            svg.querySelectorAll('[data-wm]').forEach(x => {
+                const pk = x.getAttribute('data-wm');
+                if (seen[pk] === undefined) seen[pk] = this.wmRows(pk, svg.dataset.wmLine).indexOf(tr) >= 0;
+                if (seen[pk]) { x.classList.add('wm-hl'); tr.classList.add('sg-row-hl'); }
+            });
+        });
+        document.addEventListener('mouseout', (e) => {
+            if (hitOf(e.target) || (e.target.closest && e.target.closest('#print-area tr[data-rk]'))) clear();
+        });
+        document.addEventListener('click', (e) => {
+            const hit = hitOf(e.target);
+            if (!hit) return;
+            const rows = this.wmRows(hit.getAttribute('data-wm'), svgOf(hit).dataset.wmLine);
+            if (!rows.length) return;
+            e.stopPropagation();
+            const fs = document.getElementById('scheme_zoom_overlay');
+            if (fs) fs.remove();
+            rows[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+            rows.forEach(r => { r.classList.add('sg-row-flash'); setTimeout(() => r.classList.remove('sg-row-flash'), 1800); });
+        }, true);
     },
     /**
      * Обвязка распределительного узла ХВС — под заголовком раздела
@@ -97165,6 +97530,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // ХВС, ГВС и рециркуляцию) и сколько смесителей с горячей водой.
         this._waterCollGroups = 0;
         this._waterHotFixtures = 0;
+        // Состав гребёнок по линиям — для схемы узла над разделом (renderWaterScheme):
+        // точки каждой гребёнки и что стоит в торце.
+        this._wmLines = {};
         // Выбор, на котором собрана смета: из него проверка гидравлики воды (water_hydro.js)
         // берёт насос и трубу, а не пересчитывает их заново и разойтись со сметой не может.
         this._wellSel = null;
@@ -97315,9 +97683,13 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // Гребёнки линии по стоякам; возвращает число точек, подключённых без гребёнки
             const _addLineManifolds = (line, suffix, pts, list, descKind, grp, rank) => {
                 let direct = 0;
+                const wm = this._wmLines[suffix] = {
+                    pts: [], end: (this.state.swaps || {})[`${_hammer.id}_${suffix}`] === _manifoldPlug.id ? 'plug' : 'hammer'
+                };
                 pts.forEach(p => {
                     if (p <= 0) return;
                     if (pts.length > 1 && p === 1) { direct++; return; }
+                    wm.pts.push(p);
                     const q = _qSplit(p);
                     const descColl = this.getDesc('manifold', p, descKind);
                     const mk = it => rank ? { ...getWaterManifold(it), sortRank: -1 } : getWaterManifold(it);
@@ -97480,6 +97852,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             }
 
             if (recirc && totalHotPoints > 0) {
+                this._wmLines.rc = { pts: [totalHotPoints], end: 'plug' };
                 let needed = totalHotPoints, q4 = Math.floor(needed / 4), rem = needed % 4, q3 = 0, q2 = 0;
                 if (rem === 3) q3 = 1; else if (rem === 2) q2 = 1; else if (rem === 1) { if (q4 > 0) { q4--; q3 = 1; q2 = 1 } else { q2 = 1 } }
                 let descColl = this.getDesc('manifold', totalHotPoints, 'recirc');
