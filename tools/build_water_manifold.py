@@ -15,6 +15,8 @@ tools/render_water_manifold.py в Blender; здесь два прохода (д�
     python tools/build_water_manifold.py st            # недостающие кадры типа
     python tools/build_water_manifold.py rm --force    # все кадры типа заново
     python tools/build_water_manifold.py st cw_5_hammer
+    python tools/build_water_manifold.py bl --force --line=cw   (и hw, rc параллельно)
+    python tools/build_water_manifold.py bl --merge
 """
 import json
 import os
@@ -29,7 +31,7 @@ OUT = os.path.join(HERE, 'img', 'manifold3d')
 BLENDER = r'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe'
 SCRIPT = os.path.join(HERE, 'tools', 'render_water_manifold.py')
 WIDTH = 1100
-TYPES = ('st', 'rm')
+TYPES = ('st', 'rm', 'bl')
 # цвета карты деталей — как в проходе 3 render_water_manifold.py (чёрный — фон и прочее)
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
@@ -87,12 +89,27 @@ def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     typ = args.pop(0) if args and args[0] in TYPES else 'st'
     force = '--force' in sys.argv
-    idx_path = os.path.join(OUT, 'manifold3d_%s.json' % typ)
+    # --line cw|hw|rc — только одна линия, со своим индексом: так три процесса рендерят
+    # тип параллельно, не перетирая общий индекс; --merge сводит их в manifold3d_<тип>.json
+    line = next((a.split('=')[1] for a in sys.argv if a.startswith('--line=')), None)
+    if '--merge' in sys.argv:
+        index = {}
+        for ln in ('cw', 'hw', 'rc'):
+            part = os.path.join(OUT, 'manifold3d_%s_%s.json' % (typ, ln))
+            if os.path.isfile(part):
+                with open(part, encoding='utf-8') as fh:
+                    index.update(json.load(fh))
+                os.remove(part)
+        with open(os.path.join(OUT, 'manifold3d_%s.json' % typ), 'w', encoding='utf-8') as fh:
+            json.dump(index, fh, ensure_ascii=False, separators=(',', ':'), sort_keys=True)
+        print('кадров в индексе:', len(index))
+        return
+    idx_path = os.path.join(OUT, 'manifold3d_%s%s.json' % (typ, '_' + line if line else ''))
     index = {}
     if os.path.isfile(idx_path):
         with open(idx_path, encoding='utf-8') as fh:
             index = json.load(fh)
-    todo = [f for f in FRAMES if (not args or tag(f) in args)
+    todo = [f for f in FRAMES if (not args or tag(f) in args) and (not line or f[0] == line)
             and (force or args or tag(f) not in index or not os.path.isfile(os.path.join(OUT, '%s_%s.jpg' % (typ, tag(f)))))]
     tmp = tempfile.mkdtemp(prefix='wm_%s_' % typ)
     for k, f in enumerate(todo, 1):

@@ -42797,13 +42797,16 @@ const app = {
         return null;
     },
     // Вид коллектора — по подобранному артикулу строки сметы (колонка «Артикул»: ключ строки
-    // хранит исходную позицию STOUT, а аналог ROMMER виден только там): ROMMER RMB-0001…0006 —
-    // головки сверху, отводы вниз под 90°; остальное пока рисуется как STOUT SMB 6850.
+    // хранит исходную позицию STOUT, а аналог ROMMER виден только там): ROMMER RMB-0001…0006
+    // и RMB-0011…0016 — головки сверху, отводы вниз (90° и 135° на виде не различить); с шаровыми кранами (ROMMER RMB-0007/0008, STOUT
+    // SMB 6200/6201) — кран с флажком на каждом отводе; остальное — как STOUT SMB 6850.
     // Заменили коллектор в смете — меняется и кадр.
     wmType: function (line) {
         const tr = this.wmRows('mf', line)[0];
         const sku = tr ? ((tr.querySelector('.col-sku') || {}).innerText || '').trim() : '';
-        return /^RMB-000[1-6]/i.test(sku) ? 'rm' : 'st';
+        const nm = tr ? ((tr.querySelector('.col-name') || {}).innerText || '') : '';
+        if (/^RMB-000[78]|^SMB-620[01]/i.test(sku) || /шаров/i.test(nm)) return 'bl';
+        return /^RMB-00(0[1-6]|1[1-6])/i.test(sku) ? 'rm' : 'st';
     },
     // Линии, у которых в смете есть гребёнка, в порядке показа
     wmLinesNow: function () {
