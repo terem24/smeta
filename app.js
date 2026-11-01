@@ -9020,14 +9020,16 @@ const app = {
                 icon.style.display = 'none';
                 icon.innerHTML = "";
             }
-            if (title) title.innerHTML = "Подписка Профи";
+            if (title) title.innerHTML = "Профи";
             if (text) text.innerHTML = "В Профи входит: ROMMER и аналоги; монтажные работы в смете и КП; вторая смета «Бюджетнее».";
             // Текст и карточки тарифов — из вкладки «Оплата подписки» (цены, акции, региональные цены)
             if (typeof Subscription !== 'undefined') {
                 // Карточки и текст — раздельно: сбой одного не должен оставлять в окне зашитые цены
                 try {
+                    // Окно открыто замком — строку «Вы хотели…» пишем ниже, отличия не дублируем
+                    const whyLine = !!(ctx && ctx.why && Subscription.nudgeSettings().lock);
                     if (text) text.innerHTML = typeof Subscription.benefitsHtml === 'function'
-                        ? Subscription.benefitsHtml(Subscription.userAccount())
+                        ? Subscription.benefitsHtml(Subscription.userAccount(), whyLine)
                         : Subscription.benefitsText(Subscription.userAccount());
                 } catch (e) { console.warn('[подписка] текст преимуществ:', e); }
                 try { Subscription.syncCards(); } catch (e) { console.warn('[подписка] карточки тарифов:', e); }
@@ -9039,7 +9041,7 @@ const app = {
             try {
                 if (ctx && ctx.why && text && (typeof Subscription === 'undefined' || Subscription.nudgeSettings().lock)) {
                     const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-                    text.innerHTML = '<div style="font-weight:700; color:var(--text-main); margin-bottom:8px;">' + esc(ctx.why) + '</div>' + text.innerHTML;
+                    text.innerHTML = '<div class="pro-line">' + esc(ctx.why) + '</div>' + text.innerHTML;
                 }
             } catch (e) { }
 
@@ -9061,10 +9063,10 @@ const app = {
             // им уже нечего. Раньше для уже привязанных вместо поля показывалась строка
             // "Счета выставляет компания: ...", но в окне тарифов это лишний, отвлекающий
             // от оформления подписки текст — эта информация и так есть во вкладке "Менеджер".
+            // Поле кода магазина в окне Профи не показываем (02.11.2026): промокодов на Профи
+            // нет, а код магазина вводят при регистрации и в «Профиле» — здесь он путал
             let promoSection = document.getElementById('promo_code_section');
-            if (promoSection) {
-                promoSection.style.display = (this.state.tgUser && !this.state.distributorId) ? 'block' : 'none';
-            }
+            if (promoSection) promoSection.style.display = 'none';
         }
         if (overlay) overlay.classList.add('active');
         this.syncModalOverlayClass();
@@ -102944,7 +102946,11 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // Что именно предложили — для заявки «Я оплатил» и уведомления владельцу
         this._currentPaymentPlan = Object.assign({}, plan, { type: type });
 
-        subtitle.innerText = `Тариф: ${tariffName} (${price})`;
+        // Окно тарифа под окном оплаты больше не нужно: человек уже выбрал тариф
+        try { const pro = document.getElementById('custom_modal_overlay'); if (pro && pro.classList.contains('active')) this.closeModal(); } catch (e) { }
+        subtitle.innerText = tariffName;
+        const step1 = document.getElementById('pay_step1');
+        if (step1) step1.innerText = '1. Оплатите ' + price;
         // Ссылки может не быть (тариф без ссылки в настройках) — тогда остаётся QR-подпись и «Я оплатил»
         if (linkBtn) { linkBtn.href = url || '#'; linkBtn.style.display = url ? 'flex' : 'none'; }
         const noteEl = document.getElementById('pay_modal_note');
@@ -103316,8 +103322,9 @@ async function notifyPayment() {
         tariffNameText = planNameEl.innerText.replace(/^Тариф:\s*/i, '').trim();
     }
 
-    if (!emailInput) {
-        app.alert('Пожалуйста, укажите ваш email, чтобы мы могли активировать статус Профи.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput)) {
+        app.alert('Введите вашу почту, например ivan@mail.ru — по ней мы найдём оплату и пришлём подтверждение.');
+        if (emailEl) emailEl.focus();
         return;
     }
 
@@ -103401,8 +103408,18 @@ async function notifyPayment() {
 
     // Отображаем всплывающее уведомление пользователю
     if (graceUntilText) {
-        app.alert('✅ Спасибо! Профи уже включён — до ' + graceUntilText + '. За это время мы проверим поступление и продлим Профи на оплаченный срок, ничего делать не нужно.' + (window.__HC_NATIVE__ ? '' : ' Страница обновится через 6 секунд.'));
-        if (typeof app.softReload === 'function') app.softReload(6000);
+        // Праздник вместо окна «Внимание»: конфетти, фанфары, что открылось. Страница
+        // перезагружается по кнопке — функции Профи включаются везде, как после пробного.
+        try { app.syncUI(); app.render(); } catch (e) { }
+        if (typeof Subscription !== 'undefined' && Subscription.celebratePro) {
+            Subscription.celebratePro({
+                emoji: '🎉', title: 'Профи включён!', chips: true, reload: true, cta: 'Начать работать',
+                sub: 'Уже сейчас и до ' + graceUntilText + '. Как только оплата подтвердится — продлим на весь срок.'
+            });
+        } else {
+            app.alert('Профи включён до ' + graceUntilText + '.');
+            if (typeof app.softReload === 'function') app.softReload(6000);
+        }
         return;
     }
     app.alert('Спасибо! Мы проверяем поступление средств. Статус Профи будет активирован на email: ' + emailInput + ' в ближайшее время.');
