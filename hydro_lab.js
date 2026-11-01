@@ -1,20 +1,22 @@
-/* hydro_lab.js — «Гидролаборатория»: проба новых подписей на принципиальной схеме.
+/* hydro_lab.js — «Гидролаборатория»: расход и напор контуров на принципиальной схеме и график насоса.
  *
  * Зачем. Расход и напор каждого контура уже посчитаны (app.buildHydroCheckData — те же
  * числа, что в карточке «Проверка подбора»), но на самом листе их нет: в печать и PDF
- * схема уходит без них. Здесь две пробы:
+ * схема уходит без них. Здесь три вещи:
  *   1. таблица «Характеристики контуров» на свободном поле листа — попадает в печать,
  *      PDF и полноэкранный режим, потому что они берут схему из DOM;
- *   2. выноска с полкой у контура, на который навели при включённой подсветке.
+ *   2. выноска с полкой у контура, на который навели при включённой подсветке;
+ *   3. график рабочей точки насоса в раскрытой строке «Проверки подбора» (только экран).
  *
  * Чего здесь НЕТ: своего гидравлического расчёта. Все числа приходят готовыми из
  * app.buildHydroCheckData() и cfg.hyd схемы, поэтому разойтись со сметой не могут.
  * Смету и схему этот файл не меняет — только добавляет поверх листа свои группы.
  *
- * Включение. Проба выключена по умолчанию: ?lab=1 в адресе включает её до конца
- * сессии вкладки, ?lab=0 выключает. Без флага экран такой же, как без этого файла.
+ * Включение. Включено у всех (с 02.11.2026; до этого было пробой под ?lab=1).
+ * ?lab=0 в адресе выключает до конца сессии вкладки — аварийный выключатель на случай,
+ * если на каком-то листе вставка мешает; ?lab=1 включает обратно.
  *
- * Глобал: window.hydroLab = { on, afterScheme, onHover, offHover }.
+ * Глобал: window.hydroLab = { on, afterScheme, onHover, offHover, pumpChartHtml }.
  */
 (function (root) {
   'use strict';
@@ -29,11 +31,11 @@
   function on() {
     try {
       var p = new URLSearchParams(root.location.search).get('lab');
-      if (p === '1') root.sessionStorage.setItem(KEY, '1');
-      if (p === '0') root.sessionStorage.removeItem(KEY);
-      return root.sessionStorage.getItem(KEY) === '1';
+      if (p === '0') root.sessionStorage.setItem(KEY, '0');
+      if (p === '1') root.sessionStorage.removeItem(KEY);
+      return root.sessionStorage.getItem(KEY) !== '0';
     } catch (e) {
-      return /[?&]lab=1(&|$)/.test(root.location.search);
+      return !/[?&]lab=0(&|$)/.test(root.location.search);
     }
   }
 
@@ -382,7 +384,7 @@
         txt += '.';
       }
     }
-    return '<div class="hc-lab-chart" style="margin:8px 0 4px;padding:8px 10px;border:1px dashed rgba(124,58,237,.45);border-radius:10px">' +
+    return '<div class="hc-lab-chart" style="margin:8px 0 4px;padding-top:8px;border-top:1px solid var(--border,rgba(127,127,127,.25))">' +
       '<div style="font-weight:700;font-size:12px">Рабочая точка насоса</div>' + s + legend +
       '<div style="font-size:11.5px;line-height:1.45;opacity:.85">' + txt + '</div></div>';
   }
