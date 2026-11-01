@@ -30417,6 +30417,13 @@ const app = {
             const r = await this.fetchAllRows('users', 'id, created_at, activity_types, account_type, is_test, utm_source', { order: 'id', cap: 20000, build: qy => ge(qy, 'created_at') });
             return { rows: r.rows, capped: r.capped };
         });
+        // Первые заходы новых браузеров (first_visits, миграция 20261101). Нет таблицы — не ошибка
+        L('fv', async () => {
+            try {
+                const r = await this.fetchAllRows('first_visits', 'visitor_id, created_at, landing, referrer, utm_source, utm_medium, utm_campaign, user_id', { order: 'created_at', cap: 20000, build: qy => ge(qy, 'created_at') });
+                return { rows: r.rows, capped: r.capped };
+            } catch (e) { return { rows: [], missing: true }; }
+        });
         L('ests', async () => {
             const r = await this.fetchAllRows('estimates', 'id, created_at, user_id, total_sum', { order: 'id', cap: 20000, build: qy => ge(qy, 'created_at') });
             return { rows: r.rows, capped: r.capped };
@@ -30651,6 +30658,65 @@ const app = {
                 if (S.users.capped) w.note = 'Пользователей больше, чем читается за один раз: цифры занижены.';
             }
             out.src = w;
+        }
+
+        // ── Посетители и источники: первые заходы новых браузеров (first_visits) ──
+        // Аналог отчёта «Источники» в Метрике, но только своё: кто пришёл, откуда, на какую
+        // страницу и дошёл ли до регистрации. Просмотров и времени на сайте здесь нет.
+        {
+            const w = { id: 'vis', title: 'Посетители и источники', tab: 'stats', act: 'Пользователи' };
+            if (bad('fv')) w.err = bad('fv');
+            else if (!ok('fv') || testsWait) w.wait = true;
+            else {
+                const G = this.visGroupOf.bind(this);
+                const cnt = { cur: 0, prev: 0 }, reg = { cur: 0, prev: 0 };
+                const byG = {}, serG = {}, lst = { tot: [], reg: [], tag: [], dir: [] };
+                const serAll = zeros(), serReg = zeros();
+                let earliest = null;
+                S.fv.rows.forEach(v => {
+                    const t = t0(v.created_at);
+                    if (t != null && (earliest == null || t < earliest)) earliest = t;
+                    const c = cls(t);
+                    if (!c) return;
+                    const isReg = !!v.user_id;
+                    cnt[c]++; if (isReg) reg[c]++;
+                    if (c !== 'cur') return;
+                    const g = G(v);
+                    const x = byG[g.g] || (byG[g.g] = { n: 0, reg: 0 });
+                    x.n++; if (isReg) x.reg++;
+                    (serG[g.g] || (serG[g.g] = zeros()))[B.at(t)]++;
+                    serAll[B.at(t)]++; if (isReg) serReg[B.at(t)]++;
+                    const row = { uid: v.user_id || null, vid: v.visitor_id, grp: g.g, det: g.det, page: v.landing || '/', last: t, reg: isReg };
+                    lst.tot.push(row); if (isReg) lst.reg.push(row);
+                    (g.direct ? lst.dir : lst.tag).push(row);
+                });
+                Object.keys(lst).forEach(k => lst[k].sort((a, b) => b.last - a.last));
+                w.lists = lst;
+                const keys = Object.keys(byG).sort((a, b) => (a === 'Прямые заходы') - (b === 'Прямые заходы') || byG[b].n - byG[a].n);
+                const pal = [C.blue, C.green, C.violet, C.teal, C.amber, C.red];
+                const colOf = {}; let ci = 0;
+                keys.forEach(k => { colOf[k] = k === 'Прямые заходы' ? C.gray : pal[ci++ % pal.length]; });
+                const dirN = byG['Прямые заходы'] ? byG['Прямые заходы'].n : 0, tagN = cnt.cur - dirN;
+                w.nums = [
+                    { k: 'tot', l: 'Новые посетители', v: fmt(cnt.cur), d: hasPrev ? this.kpiDelta(cnt.cur, cnt.prev) : '', sp: serAll, list: 1, h: 'Сколько новых браузеров впервые открыли калькулятор за период. Один человек с телефона и компьютера считается дважды. Щёлкните, чтобы увидеть, кто это и откуда' },
+                    { k: 'reg', l: 'Дошли до регистрации', v: fmt(reg.cur), d: hasPrev ? this.kpiDelta(reg.cur, reg.prev) : '', s: cnt.cur ? pct(reg.cur, cnt.cur) + '% посетителей' : '', sp: serReg, list: 1, h: 'Сколько из новых посетителей потом зарегистрировались. Щёлкните, чтобы увидеть, кто это' },
+                    { k: 'tag', l: 'Знаем источник', v: fmt(tagN), s: cnt.cur ? pct(tagN, cnt.cur) + '% посетителей' : '', list: 1, h: 'Пришли по метке (канал, статья, магазин) или с поиска или другого сайта. Щёлкните, чтобы увидеть, кто это' },
+                    { k: 'dir', l: 'Прямые заходы', v: fmt(dirN), s: cnt.cur ? pct(dirN, cnt.cur) + '% посетителей' : '', list: 1, h: 'Без метки и без сайта-источника: вбили адрес, закладка, мессенджер или приложение без реферера. Щёлкните, чтобы увидеть, кто это' }
+                ];
+                w.groups = [
+                    { title: 'Откуда пришли', items: keys.length ? keys.map(k => ({ label: k, value: byG[k].n, color: colOf[k] })) : [{ label: 'Нет данных', value: 0, color: C.gray }] },
+                    { title: 'Дошли до регистрации', items: [{ label: 'Зарегистрировались', value: reg.cur, color: C.green }, { label: 'Пока нет', value: Math.max(0, cnt.cur - reg.cur), color: C.gray }] }
+                ];
+                w.chart = { labels: B.labels, tips: B.tips, stack: true, series: keys.map(k => ({ name: k, color: colOf[k], vals: serG[k] })) };
+                w.table = this.kpiTable(B, w.chart.series);
+                // Сводка по источникам: сколько пришло и сколько из них зарегистрировалось
+                w.srcRows = keys.map(k => ({ g: k, color: colOf[k], n: byG[k].n, reg: byG[k].reg, pct: pct(byG[k].reg, byG[k].n) }));
+                const since = earliest ? new Date(earliest).toLocaleDateString('ru-RU') : null;
+                w.note = S.fv.missing ? 'Таблица first_visits ещё не создана: выполните миграцию 20261101_add_first_visits.sql.'
+                    : 'Считаются первые заходы новых браузеров' + (since ? ' (учёт идёт с ' + since + ', раньше заходы не записывались)' : ' (учёт только начался: данные появятся по мере заходов)') + '.';
+                if (S.fv.capped) w.note += ' Заходов больше, чем читается за один раз: цифры занижены.';
+            }
+            out.vis = w;
         }
 
         // ── КП: статусы и конверсия ──
@@ -30996,6 +31062,33 @@ const app = {
     },
 
     // Таблица «столбец графика × ряд» с итогом сверху
+    // Группа источника для первого захода (строка first_visits) и человеческая расшифровка
+    visGroupOf: function (v) {
+        const pages = { tg: 'Telegram-канал', shop: 'Магазины', article: 'Статьи на сайте', digest: 'Новости на сайте', push: 'Уведомления' };
+        const src = String(v.utm_source || '').trim(), med = String(v.utm_medium || '').trim(), cmp = String(v.utm_campaign || '').trim();
+        const bits = [];
+        if (src) {
+            if (med) bits.push('канал: ' + med);
+            if (cmp) bits.push((src === 'shop' ? 'магазин: ' : 'кампания: ') + cmp);
+            return { g: pages[src] || ('Метка: ' + src), det: bits.join('; ') || 'метка без уточнений', direct: false };
+        }
+        const ref = String(v.referrer || '').replace(/^www\./, '').toLowerCase();
+        if (ref) {
+            const host = ref.split('/')[0];
+            if (/(^|\.)(yandex|ya)\.|google\.|bing\.|duckduckgo|mail\.ru|(^|\.)search\./.test(host)) return { g: 'Поиск', det: 'с ' + host, direct: false };
+            if (/(^|\.)heatcalc\.ru$/.test(host)) return { g: 'Наш сайт', det: 'с ' + ref, direct: false };
+            if (/(^|\.)(t\.me|telegram\.|vk\.com|vk\.ru|ok\.ru|wa\.me|whatsapp\.)/.test(host)) return { g: 'Соцсети и чаты', det: 'с ' + host, direct: false };
+            return { g: 'Другие сайты', det: 'с ' + host, direct: false };
+        }
+        return { g: 'Прямые заходы', det: 'адрес, закладка или мессенджер без реферера', direct: true };
+    },
+    // Сводка «источник — посетителей — зарегистрировались» под таблицей виджета
+    kpiSrcTableHtml: function (w, esc) {
+        if (!w.srcRows || !w.srcRows.length) return '';
+        const tr = w.srcRows.map(r => `<tr><td><i style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${r.color}"></i> ${esc(r.g)}</td><td>${r.n}</td><td${r.reg ? '' : ' class="z"'}>${r.reg}</td><td${r.pct ? '' : ' class="z"'}>${r.pct == null ? '—' : r.pct + '%'}</td></tr>`).join('');
+        return `<div class="kpi-tw" style="margin-top:10px"><table class="kpi-t"><thead><tr><th>Источник</th><th>Посетителей</th><th>Зарегистрировались</th><th>Конверсия</th></tr></thead><tbody>${tr}</tbody></table></div>`;
+    },
+
     kpiTable: function (B, series) {
         const rows = [];
         for (let i = B.n - 1; i >= 0; i--) rows.push({ l: B.tips[i], v: series.map(s => s.vals[i] || 0) });
@@ -31243,6 +31336,21 @@ const app = {
             const nm = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || '';
             return (nm ? '<b>' + esc(nm) + '</b> · ' : '') + esc(u.email || ('id ' + r.uid)) + (u.account_type === 'pro' ? ' <i class="kpi-d kpi-d-up">Профи</i>' : '');
         };
+        if (w.id === 'vis') {
+            const who2 = r => {
+                if (!r.uid) return '<span class="z">Гость ' + esc(String(r.vid).slice(0, 6)) + '</span>';
+                const u = names[r.uid];
+                if (!u || u === 'loading') return '<span class="z">загрузка…</span>';
+                if (u.missing) return '<span class="z">учётка не найдена</span>';
+                const nm = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || '';
+                return (nm ? '<b>' + esc(nm) + '</b> · ' : '') + esc(u.email || ('id ' + r.uid));
+            };
+            const body3 = rows.length ? rows.map(r => `<tr><td>${who2(r)}</td><td>${esc(r.grp)}</td><td>${esc(r.det)}</td><td>${esc(r.page)}</td><td>${when(r.last)}</td></tr>`).join('')
+                : '<tr><td colspan="5" class="z">За период никого.</td></tr>';
+            return `<div class="kpi-card" style="margin-top:10px"><b>${esc(m ? m.l : '')}: ${rows.length}</b>
+                <div class="kpi-tw"><table class="kpi-t"><thead><tr><th>Посетитель</th><th>Источник</th><th>Расшифровка</th><th>Первая страница</th><th>Первый заход</th></tr></thead><tbody>${body3}</tbody></table></div>
+                <div class="kpi-note">«Гость» — браузер, который ещё не зарегистрировался; после регистрации здесь появятся имя и почта. Источник и метки записаны при первом заходе, повторные заходы не учитываются.</div></div>`;
+        }
         if (w.id === 'src') {
             const body2 = rows.length ? rows.map(r => `<tr><td>${who(r)}</td><td>${esc(r.grp)}</td><td>${esc(r.det)}</td><td>${when(r.last)}</td></tr>`).join('')
                 : '<tr><td colspan="4" class="z">За период никого.</td></tr>';
@@ -31274,7 +31382,7 @@ const app = {
             body = `<div class="kpi-card"><div class="kpi-tw"><table class="kpi-t"><thead><tr><th>Период</th>${t.head.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>
                 <tr class="kpi-tt"><td>Итого</td>${t.total.map(v => `<td>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>
                 ${t.rows.map(r => `<tr><td>${esc(r.l)}</td>${r.v.map(v => `<td${v ? '' : ' class="z"'}>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>`).join('')}
-                </tbody></table></div></div>`;
+                </tbody></table></div>${this.kpiSrcTableHtml(w, esc)}</div>`;
         } else body = this.kpiNumsHtml(w, esc, edit);
         const note = (!w.err && !w.wait && w.note) ? `<div class="kpi-note">${esc(w.note)}</div>` : '';
         const tips = (!w.err && !w.wait && w.tips && w.tips.length)
@@ -31295,7 +31403,7 @@ const app = {
         const W = this.kpiBuild(p, S);
         const edit = !!this._todayEdit;
         const chips = this.KPI_PERIODS.map(x => `<button type="button" class="kpi-chip${x.id === p.id ? ' on' : ''}" onclick="app.kpiSetPeriod('${x.id}')">${x.label}</button>`).join('');
-        const order = this.kpiSortBy(this.kpiOrderMap().sec, ['users', 'src', 'kps', 'planner', 'ests', 'rec', 'pay', 'paywall'], x => x);
+        const order = this.kpiSortBy(this.kpiOrderMap().sec, ['users', 'src', 'vis', 'kps', 'planner', 'ests', 'rec', 'pay', 'paywall'], x => x);
         this._kpiShownSec = order.slice();
         const hint = edit
             ? 'Нажмите × на плашке, чтобы скрыть её, или «+», чтобы вернуть. Тащите за заголовок плашки или раздела, чтобы поменять порядок'
