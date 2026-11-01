@@ -736,6 +736,7 @@ const Tour = {
         btn.title = on
             ? 'Режим обучения включён: подсказки на каждом шаге. Нажмите, чтобы выключить'
             : 'Режим обучения: подсказки на каждом шаге';
+        this.syncBonusBanner();
     },
 
     // Умолчание для тех, кто ещё не решал сам: новичку подсказки включаем, а тому,
@@ -1465,17 +1466,108 @@ const Tour = {
         return d === 1 ? a : c;
     },
 
-    // Список блоков: что освоить. Первый экран обучения вместо длинной «экскурсии».
-    // Подсказка про бонус Профи: только вошедшему, кто ещё не прошёл главный блок и не на Профи.
-    // Выключатель — Subscription.tourBonusSettings (app_settings.subscription.tourBonus), тот же,
-    // что читает база при выдаче. Любой сбой — тишина.
-    bonusHtml: function () {
+    // Бонус за обучение (Профи на 10 дней) — баннер под шапкой, а не строка в карточке.
+    // Показываем вошедшему, кто ещё не прошёл главный блок и не на Профи, пока бонус включён
+    // в админке: Subscription.tourBonusSettings (app_settings.subscription.tourBonus) — тот же
+    // флаг, что читает база при выдаче. Крестик прячет баннер на 2 дня. Любой сбой — тишина.
+    LS_BONUS_HIDE: 'tour_bonus_banner_hidden_until',
+    BONUS_HIDE_MS: 2 * 24 * 60 * 60 * 1000,
+
+    bonusEligible: function () {
         try {
-            if (typeof Subscription === 'undefined' || !Subscription.tourBonusSettings().enabled) return '';
-            if (!this.allowed() || this.doneMap().basic || this.planInfo().isPro) return '';
-            if (app.isTeremStaff()) return '';
-            return '<div class="tour-card-text" style="color:#059669;font-weight:600;">Пройти обучение — получи Профи на 10 дней. Бесплатно.</div>';
-        } catch (e) { return ''; }
+            if (typeof Subscription === 'undefined' || !Subscription.tourBonusSettings().enabled) return false;
+            if (!this.allowed() || this.doneMap().basic || this.planInfo().isPro) return false;
+            if (app.isTeremStaff()) return false;
+            return true;
+        } catch (e) { return false; }
+    },
+
+    bonusBannerHidden: function () {
+        const until = parseInt(this.ls(this.LS_BONUS_HIDE) || '0', 10);
+        return !isNaN(until) && until > Date.now();
+    },
+
+    syncBonusBanner: function () {
+        try {
+            const host = document.getElementById('tour_bonus_banner');
+            if (!host) return;
+            const show = this.bonusEligible() && !this.bonusBannerHidden() && !this.active();
+            if (!show) { if (host.style.display !== 'none') { host.style.display = 'none'; host.innerHTML = ''; } return; }
+            if (host.firstChild) { host.style.display = ''; return; }
+            this.injectBonusStyles();
+            host.innerHTML =
+                '<div class="tbb" role="button" tabindex="0" onclick="Tour.bonusGo()" ' +
+                'onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();Tour.bonusGo();}" ' +
+                'aria-label="Пройти обучение и получить Профи на 10 дней бесплатно">' +
+                '<span class="tbb-glow" aria-hidden="true"></span>' +
+                '<span class="tbb-ic" aria-hidden="true">🎁</span>' +
+                '<span class="tbb-body">' +
+                '<span class="tbb-title">Пройдите обучение — получите <b>Профи на 10 дней</b> бесплатно</span>' +
+                '<span class="tbb-sub">Соберите учебный дом и сохраните его · ≈ 8 минут</span>' +
+                '</span>' +
+                '<span class="tbb-cta">Начать <span aria-hidden="true">→</span></span>' +
+                '<button type="button" class="tbb-x" onclick="event.stopPropagation();Tour.bonusHide()" ' +
+                'title="Скрыть на 2 дня" aria-label="Скрыть на 2 дня">&times;</button>' +
+                '</div>';
+            host.style.display = '';
+        } catch (e) { }
+    },
+
+    bonusGo: function () {
+        this.rememberChoice();
+        if (!this.active()) this.toggle(true);
+        this.startBlock('basic');
+        this.syncBonusBanner();
+    },
+
+    bonusHide: function () {
+        this.lsSet(this.LS_BONUS_HIDE, String(Date.now() + this.BONUS_HIDE_MS));
+        this.syncBonusBanner();
+    },
+
+    injectBonusStyles: function () {
+        if (document.getElementById('tour_bonus_styles')) return;
+        const st = document.createElement('style');
+        st.id = 'tour_bonus_styles';
+        st.textContent = `
+#tour_bonus_banner { margin: 0 20px 12px; }
+.tbb { position: relative; overflow: hidden; display: flex; align-items: center; gap: 14px;
+  padding: 12px 52px 12px 16px; border-radius: 14px; cursor: pointer; color: #fff;
+  background: linear-gradient(110deg, #4338ca 0%, #2563eb 45%, #059669 100%);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, .25); transition: transform .18s ease, box-shadow .18s ease;
+  animation: tbbIn .4s ease both; outline: none; }
+.tbb:hover { transform: translateY(-1px); box-shadow: 0 10px 28px rgba(37, 99, 235, .35); }
+.tbb:focus-visible { box-shadow: 0 0 0 3px rgba(255,255,255,.9), 0 0 0 6px #2563eb; }
+.tbb-glow { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.22) 50%, transparent 70%);
+  transform: translateX(-100%); animation: tbbShine 4.5s ease-in-out 1s infinite; }
+.tbb-ic { flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  font-size: 22px; background: rgba(255,255,255,.18); backdrop-filter: blur(4px); }
+.tbb-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tbb-title { font-size: 15px; font-weight: 600; line-height: 1.3; }
+.tbb-title b { font-weight: 800; color: #fef08a; }
+.tbb-sub { font-size: 12.5px; opacity: .85; }
+.tbb-cta { flex: none; padding: 8px 16px; border-radius: 999px; background: #fff; color: #1e3a8a;
+  font-weight: 700; font-size: 14px; white-space: nowrap; transition: background .15s ease; }
+.tbb:hover .tbb-cta { background: #fef9c3; }
+.tbb-x { position: absolute; top: 50%; right: 10px; transform: translateY(-50%); width: 30px; height: 30px;
+  border: 0; border-radius: 50%; background: rgba(255,255,255,.14); color: #fff; font-size: 20px; line-height: 1;
+  cursor: pointer; display: grid; place-items: center; transition: background .15s ease; }
+.tbb-x:hover { background: rgba(255,255,255,.3); }
+@keyframes tbbIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes tbbShine { 0% { transform: translateX(-100%); } 40%, 100% { transform: translateX(100%); } }
+@media (max-width: 640px) {
+  #tour_bonus_banner { margin: 0 10px 10px; }
+  .tbb { flex-wrap: wrap; gap: 10px 12px; padding: 12px 44px 12px 12px; }
+  .tbb-ic { width: 34px; height: 34px; font-size: 18px; }
+  .tbb-title { font-size: 14px; }
+  .tbb-cta { width: 100%; text-align: center; }
+  .tbb-x { top: 10px; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .tbb, .tbb-glow { animation: none; } .tbb:hover { transform: none; } }
+@media print { #tour_bonus_banner { display: none !important; } }
+`;
+        document.head.appendChild(st);
     },
 
     renderMenu: function () {
@@ -1522,7 +1614,6 @@ const Tour = {
         card.innerHTML = this.headHtml('Обучение · пройдено ' + doneN + ' из ' + vis.length) +
             '<div class="tour-card-title">Что хотите освоить?</div>' +
             '<div class="tour-card-text">Начните с первого: соберите учебный дом.</div>' +
-            this.bonusHtml() +
             resumeBtn +
             '<div class="tour-blks">' + rows + '</div>' +
             '<div class="tour-card-foot">' +
@@ -2235,4 +2326,7 @@ body.dark-mode .tour-btn-ready { animation-name: tour-ready-dark; }
 // инициализации им нечего показывать.
 window.addEventListener('load', () => {
     setTimeout(() => { try { Tour.init(); } catch (e) { console.warn('[Tour]', e); } }, 1200);
+    // Баннер бонуса зависит от входа, тарифа и настроек из базы — всё приходит позже
+    // загрузки страницы и меняется без перезагрузки. Проверка дешёвая: раз в 3 секунды.
+    setInterval(() => { try { Tour.syncBonusBanner(); } catch (e) { } }, 3000);
 });
