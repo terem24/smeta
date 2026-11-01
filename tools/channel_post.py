@@ -14,6 +14,7 @@ Supabase channel_posts — их пишут, правят и утверждают
 
 Ключ --dry-run — показать, что ушло бы, ничего не отправляя.
 """
+import re
 import io, json, os, sys, datetime, urllib.request, urllib.error, urllib.parse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -49,9 +50,25 @@ def queue(action, **kw):
 
 
 def utm(url, campaign):
+    """Метка канала на ссылку на heatcalc.ru. Чужие сайты и ссылки, где метка уже есть
+    (поставлена вручную в тексте поста), не трогаем."""
     p = urllib.parse.urlparse(url)
-    q = urllib.parse.parse_qsl(p.query) + [('utm_source', 'tg'), ('utm_medium', 'channel'), ('utm_campaign', campaign)]
+    if not re.search(r'(^|\.)heatcalc\.ru$', p.hostname or ''):
+        return url
+    q = urllib.parse.parse_qsl(p.query)
+    if any(k == 'utm_source' for k, _ in q):
+        return url
+    q += [('utm_source', 'tg'), ('utm_medium', 'channel'), ('utm_campaign', campaign)]
     return urllib.parse.urlunparse(p._replace(query=urllib.parse.urlencode(q)))
+
+
+def tag_body(text, campaign):
+    """Ссылки на heatcalc.ru в тексте поста (<a href="...">) получают ту же метку, что и
+    кнопка: иначе переходы по ссылкам из текста падали в «не записано». Голые адреса в
+    тексте не меняем, чтобы подпись поста не обрастала хвостами параметров."""
+    def fix(m):
+        return m.group(1) + utm(m.group(2).replace('&amp;', '&'), campaign).replace('&', '&amp;') + m.group(3)
+    return re.sub(r'(<a\s[^>]*href=")(https?://[^"]+)(")', fix, text or '')
 
 
 def send_photo(url, chat, path, caption, markup):
@@ -90,7 +107,7 @@ def send_tg(post):
         link = utm(post['button_url'], post.get('rubric') or 'post')
         markup = {'inline_keyboard': [[{'text': post.get('button_text') or 'Открыть', 'url': link}]]}
     api = 'https://api.telegram.org/bot%s/' % token
-    text = post.get('body') or ''
+    text = tag_body(post.get('body') or '', post.get('rubric') or 'post')
     img = os.path.join(ROOT, post['image']) if post.get('image') else None
     if img and os.path.exists(img) and len(text) <= 1024:
         code, body = send_photo(api + 'sendPhoto', chat, img, text, markup)
