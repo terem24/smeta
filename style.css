@@ -18503,6 +18503,23 @@ body.theme-yandex #admin_modal_overlay {
 .vx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-top: 12px; }
 .vx-card { min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 14px; border-radius: 18px; background: var(--kpi-tile); }
 .vx-wide { grid-column: span 2; }
+.vx-full { grid-column: 1 / -1; }
+/* география: карта слева, списки справа */
+.vx-geo-w { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.vx-map { position: relative; border-radius: 12px; background: color-mix(in srgb, var(--text-main) 3%, transparent); padding: 6px; }
+.vx-map svg { display: block; width: 100%; height: auto; }
+.vx-map-bg circle { fill: var(--text-sec); opacity: .32; }
+.vx-pt { cursor: pointer; }
+.vx-pt-h { fill: var(--primary); opacity: 0; transition: opacity .15s; }
+.vx-pt-c { fill: var(--primary); fill-opacity: .7; stroke: var(--kpi-tile); stroke-width: 1.5; }
+.vx-pt:hover .vx-pt-h { opacity: .18; }
+.vx-pt:hover .vx-pt-c { fill-opacity: 1; }
+.vx-pt.on .vx-pt-c { fill: #F59E0B; fill-opacity: 1; }
+.vx-pt-t { font-size: 14px; font-weight: 600; fill: var(--text-main); paint-order: stroke; stroke: var(--kpi-tile); stroke-width: 3px; pointer-events: none; }
+.vx-geo-l { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.vx-geo-l .vx-sub:first-child { margin-top: 0; }
+.vx-bar-s { margin-left: 6px; font-size: 11.5px; color: var(--text-sec); }
+.vx-geo { white-space: nowrap; }
 .vx-ch { display: flex; align-items: center; gap: 2px; min-height: 26px; }
 .vx-ch > b { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-sec); }
 .vx-ch .vx-btn { margin-left: auto; }
@@ -18620,6 +18637,7 @@ body.theme-yandex #admin_modal_overlay {
 @media screen and (max-width: 899.98px) {
     .vx-grid { grid-template-columns: minmax(0, 1fr); }
     .vx-wide { grid-column: auto; }
+    .vx-geo-w { grid-template-columns: minmax(0, 1fr); }
     .vx-st-h, .vx-st-r { grid-template-columns: minmax(110px, 1fr) repeat(3, 44px); }
     .vx-st-h span:nth-child(5), .vx-st-h span:nth-child(6), .vx-st-r > span:nth-child(5), .vx-st-r > span:nth-child(6) { display: none; }
     .vx-ex { padding: 12px; }

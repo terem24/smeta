@@ -1630,6 +1630,7 @@ const app = {
                     this._visit = { id: r.data, vid: vid, at: Date.now(), sec: 0 };
                     try { localStorage.setItem(this.VISIT_KEY, JSON.stringify(this._visit)); } catch (e) { }
                     this.trackVisitTime();
+                    this.stampVisitGeo(this._visit);
                 }
             }, () => { });
         } catch (e) { }
@@ -1673,6 +1674,65 @@ const app = {
         });
         window.addEventListener('pagehide', () => flush(true));
         setInterval(() => { if (document.visibilityState === 'visible') flush(true); }, 5 * 60 * 1000);
+    },
+    // Город визита по IP (миграция 20261103). Сам IP никуда не пишется: геосервис
+    // отдаёт примерные координаты, по ним ищем ближайший город справочника
+    // cities_geo.js — так город и регион по-русски. Ответ держим сутки, чтобы не
+    // спрашивать сервис на каждый визит.
+    GEO_KEY: 'hc_geo',
+    GEO_COUNTRIES: { RU: 'Россия', KZ: 'Казахстан', BY: 'Беларусь', UA: 'Украина', UZ: 'Узбекистан', KG: 'Киргизия', AM: 'Армения', GE: 'Грузия', AZ: 'Азербайджан', MD: 'Молдова', TJ: 'Таджикистан', TM: 'Туркмения', DE: 'Германия', FI: 'Финляндия', NL: 'Нидерланды', US: 'США', TR: 'Турция', AE: 'ОАЭ', IL: 'Израиль', PL: 'Польша', LV: 'Латвия', LT: 'Литва', EE: 'Эстония', RS: 'Сербия', CY: 'Кипр', TH: 'Таиланд', CN: 'Китай', GB: 'Великобритания', FR: 'Франция' },
+    visitGeo: async function () {
+        try {
+            const c = JSON.parse(localStorage.getItem(this.GEO_KEY) || 'null');
+            if (c && Date.now() - c.t < 864e5) return c;
+        } catch (e) { }
+        const ask = async (url) => {
+            const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const timer = ctrl ? setTimeout(() => ctrl.abort(), 6000) : null;
+            try {
+                const res = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return await res.json();
+            } finally { if (timer) clearTimeout(timer); }
+        };
+        let g = null;
+        try {
+            const j = await ask('https://ipapi.co/json/');
+            if (j && !j.error) g = { lat: +j.latitude, lon: +j.longitude, city: j.city || '', region: j.region || '', cc: j.country_code || '', country: j.country_name || '' };
+        } catch (e) { }
+        if (!g) {
+            try {
+                const j = await ask('https://ipinfo.io/json');
+                const ll = String((j && j.loc) || '').split(',');
+                if (j) g = { lat: +ll[0], lon: +ll[1], city: j.city || '', region: j.region || '', cc: j.country || '', country: '' };
+            } catch (e) { }
+        }
+        if (!g) return null;
+        if (!isFinite(g.lat) || !isFinite(g.lon)) { g.lat = null; g.lon = null; }
+        g.country = this.GEO_COUNTRIES[g.cc] || g.country || g.cc;
+        // Ближайший город справочника в радиусе 60 км — его русское название и регион
+        if (g.lat != null && typeof CITY_GEO !== 'undefined') {
+            let best = null, bd = Infinity;
+            const k = Math.cos(g.lat * Math.PI / 180);
+            Object.keys(CITY_GEO).forEach(name => {
+                const c = CITY_GEO[name];
+                const d = Math.pow(c.lat - g.lat, 2) + Math.pow((c.lon - g.lon) * k, 2);
+                if (d < bd) { bd = d; best = name; }
+            });
+            if (best && Math.sqrt(bd) * 111 < 60) { g.city = best; g.region = CITY_GEO[best].region; g.country = 'Россия'; }
+        }
+        g.t = Date.now();
+        try { localStorage.setItem(this.GEO_KEY, JSON.stringify(g)); } catch (e) { }
+        return g;
+    },
+    stampVisitGeo: function (v) {
+        this.visitGeo().then(g => {
+            if (!g || (!g.city && g.lat == null)) return;
+            supabaseClient.rpc('set_visit_geo', {
+                p_id: v.id, p_visitor: v.vid, p_city: g.city || null, p_region: g.region || null,
+                p_country: g.country || null, p_lat: g.lat, p_lon: g.lon
+            }).then(() => { }, () => { });
+        }).catch(() => { });
     },
     // keepalive — чтобы запрос ушёл, даже когда вкладку уже закрывают
     sendVisitTime: function (v) {
@@ -30521,7 +30581,7 @@ const app = {
         // Визиты (миграция 20261102). Нет таблицы — виджет считает по первым заходам
         L('vs', async () => {
             try {
-                const r = await this.fetchAllRows('visits', 'id, visitor_id, created_at, ended_at, seconds, is_new, landing, referrer, utm_source, utm_medium, utm_campaign, device, os, browser', { order: 'id', cap: 30000, build: qy => ge(qy, 'created_at') });
+                const r = await this.fetchAllRows('visits', 'id, visitor_id, created_at, ended_at, seconds, is_new, landing, referrer, utm_source, utm_medium, utm_campaign, device, os, browser, city, region, country, lat, lon', { order: 'id', cap: 30000, build: qy => ge(qy, 'created_at') });
                 return { rows: r.rows, capped: r.capped };
             } catch (e) { return { rows: [], missing: true }; }
         });
@@ -31217,7 +31277,7 @@ const app = {
         const blank = () => ({ visits: 0, ppl: {}, newV: 0, reg: 0, secSum: 0, timedN: 0, bounce: 0 });
         const per = { cur: blank(), prev: blank() };
         const ser = { visits: zeros(), people: zeros(), newV: zeros(), reg: zeros() }, pplAt = [];
-        const src = {}, pages = {}, refs = {}, camps = {}, dev = {}, os = {}, br = {};
+        const src = {}, pages = {}, refs = {}, camps = {}, dev = {}, os = {}, br = {}, cities = {}, regions = {}, countries = {};
         const hours = new Array(24).fill(0), wd = new Array(7).fill(0);
         const visitRows = [], people = {};
         const bump = (m, key, extra) => { const r = m[key] || (m[key] = Object.assign({ key: key, n: 0, newV: 0 }, extra || {})); r.n++; return r; };
@@ -31244,18 +31304,30 @@ const app = {
             if (g.camp) bump(camps, g.camp, { href: g.href, grp: g.g });
             const dv = v.device || f.device || '';
             bump(dev, dv); bump(os, v.os || f.os || 'Не известно'); bump(br, v.browser || f.browser || 'Не известно');
+            // География: у визита своя (человек мог зайти из другого города), иначе — первого захода
+            const geoSrc = v.city || v.country ? v : f;
+            const city = geoSrc.city || '', region = geoSrc.region || '', country = geoSrc.country || '';
+            if (city) {
+                const cr = bump(cities, city, { region: region, country: country, lat: geoSrc.lat == null ? null : +geoSrc.lat, lon: geoSrc.lon == null ? null : +geoSrc.lon, ppl: {} });
+                cr.ppl[v.visitor_id] = 1;
+            }
+            if (region) bump(regions, region, { country: country });
+            bump(countries, country || 'Не известно');
             hours[dt.getHours()]++; wd[(dt.getDay() + 6) % 7]++;
             const uid = f.user_id || null;
             const row = {
                 id: v.id, vid: v.visitor_id, uid: uid, t: t, grp: g.g, det: g.det, href: g.href, host: g.host || '', camp: g.camp || '',
                 page: page, dev: dv, os: v.os || f.os || '', br: v.browser || f.browser || '', sec: sec, isNew: !!v.is_new, reg: !!uid,
+                city: city, region: region, country: country,
                 hour: dt.getHours(), wd: (dt.getDay() + 6) % 7
             };
             visitRows.push(row);
             const pp = people[v.visitor_id] || (people[v.visitor_id] = {
                 vid: v.visitor_id, uid: uid, reg: !!uid, visits: 0, sec: 0, last: 0, isNew: false,
-                first: t0(f.created_at) || t, page: f.landing || page, dev: dv, os: row.os, br: row.br, hours: {}, wds: {}, pages: {}, hosts: {}, camps: {}, grps: {}
+                first: t0(f.created_at) || t, page: f.landing || page, dev: dv, os: row.os, br: row.br, hours: {}, wds: {}, pages: {}, hosts: {}, camps: {}, grps: {},
+                city: f.city || city, region: f.region || region, country: f.country || country, cities: {}, regions: {}, countries: {}
             });
+            if (city) pp.cities[city] = 1; if (region) pp.regions[region] = 1; if (country) pp.countries[country] = 1;
             pp.visits++; if (sec) pp.sec += sec; if (t > pp.last) pp.last = t;
             pp.hours[row.hour] = 1; pp.wds[row.wd] = 1; pp.pages[page] = 1; pp.grps[g.g] = 1;
             if (g.host) pp.hosts[g.host] = 1; if (g.camp) pp.camps[g.camp] = 1;
@@ -31277,8 +31349,10 @@ const app = {
             newIds[f.visitor_id] = 1;
             const pp = people[f.visitor_id] || (people[f.visitor_id] = {
                 vid: f.visitor_id, uid: f.user_id || null, reg: !!f.user_id, visits: 0, sec: 0, last: t, first: t,
-                page: f.landing || '/', dev: f.device || '', os: f.os || '', br: f.browser || '', hours: {}, wds: {}, pages: {}, hosts: {}, camps: {}, grps: {}
+                page: f.landing || '/', dev: f.device || '', os: f.os || '', br: f.browser || '', hours: {}, wds: {}, pages: {}, hosts: {}, camps: {}, grps: {},
+                city: f.city || '', region: f.region || '', country: f.country || '', cities: {}, regions: {}, countries: {}
             });
+            if (f.city) pp.cities[f.city] = 1; if (f.region) pp.regions[f.region] = 1; if (f.country) pp.countries[f.country] = 1;
             pp.isNew = true;
             // для посетителя важен источник первого захода — им и подписываем строку
             pp.grp = g.g; pp.det = g.det; pp.href = g.href; pp.grps[g.g] = 1;
@@ -31313,6 +31387,7 @@ const app = {
             src: srcList, pages: list(pages), refs: list(refs), camps: list(camps),
             dev: list(dev).map(r => ({ key: r.key, n: r.n, label: (this.VIS_DEV[r.key] || [r.key])[0], color: (this.VIS_DEV[r.key] || [0, '#94A3B8'])[1] })),
             os: list(os, 8), br: list(br, 8), hours: hours, wd: wd,
+            cities: list(cities, 200).map(r => Object.assign(r, { people: Object.keys(r.ppl).length })), regions: list(regions, 100), countries: list(countries, 50),
             funnel: [
                 { k: 'new', label: 'Новые посетители', n: Object.keys(newIds).length },
                 { k: 'reg', label: 'Зарегистрировались', n: Object.keys(regU).length },
@@ -31337,7 +31412,7 @@ const app = {
         ['visits', 'Визиты'], ['people', 'Посетители'], ['new', 'Новые'], ['reg', 'Регистрации'],
         ['time', 'Долгие визиты'], ['bounce', 'Отказы'], ['f_est', 'Сохранили смету'], ['f_paid', 'Оплатили']
     ],
-    VIS_FILTERS: { src: 'Источник', page: 'Страница входа', host: 'Сайт', camp: 'Кампания', dev: 'Устройство', os: 'ОС', br: 'Браузер', hour: 'Час', wd: 'День недели' },
+    VIS_FILTERS: { src: 'Источник', page: 'Страница входа', host: 'Сайт', camp: 'Кампания', dev: 'Устройство', os: 'ОС', br: 'Браузер', hour: 'Час', wd: 'День недели', city: 'Город', region: 'Регион', country: 'Страна' },
     VIS_WD: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
 
     // Фильтр из карточки: значения лежат в реестре по номеру, чтобы не тащить
@@ -31380,6 +31455,9 @@ const app = {
             case 'br': return (r.br || 'Не известно') === v;
             case 'hour': return r.hour === v || !!(r.hours && r.hours[v]);
             case 'wd': return r.wd === v || !!(r.wds && r.wds[v]);
+            case 'city': return r.city === v || !!(r.cities && r.cities[v]);
+            case 'region': return r.region === v || !!(r.regions && r.regions[v]);
+            case 'country': return (r.country || 'Не известно') === v || !!(r.countries && r.countries[v]);
         }
         return true;
     },
@@ -31444,26 +31522,27 @@ const app = {
         };
         const chip = g => `<span class="vx-src"><i style="background:${this.visColor(g)}"></i>${esc(g)}</span>`;
         const devTxt = r => [(this.VIS_DEV[r.dev || ''] || [r.dev])[0], r.os, r.br].filter(x => x && x !== 'Не известно').join(' · ') || '—';
-        const hay = r => [this.visName(r).text, this.visName(r).mail, r.grp, r.det, r.page, r.dev, r.os, r.br, r.vid].join(' ').toLowerCase();
+        const hay = r => [this.visName(r).text, this.visName(r).mail, r.grp, r.det, r.page, r.dev, r.os, r.br, r.city, r.region, r.country, r.vid].join(' ').toLowerCase();
+        const geo = r => r.city ? `${esc(r.city)}${r.region && r.region !== r.city ? `<span class="vx-mail">${esc(r.region)}</span>` : ''}` : (r.country ? esc(r.country) : '<span class="vx-z">—</span>');
         const hide = r => q && hay(r).indexOf(q) === -1 ? ' style="display:none"' : '';
         let head, body;
         if (visitMode) {
-            head = '<th>Когда</th><th>Посетитель</th><th>Источник</th><th>Подробнее</th><th>Страница входа</th><th>Устройство</th><th>На сайте</th>';
+            head = '<th>Когда</th><th>Посетитель</th><th>Источник</th><th>Подробнее</th><th>Страница входа</th><th>Город</th><th>Устройство</th><th>На сайте</th>';
             body = rows.map(r => `<tr data-q="${esc(hay(r))}"${hide(r)}>
                 <td class="vx-nw">${this.visWhen(r.t)}${r.isNew ? ' <em class="vx-new">новый</em>' : ''}</td>
                 <td>${who(r)}</td><td>${chip(r.grp)}</td><td class="vx-det">${ext(r.href, r.det)}</td>
-                <td>${ext(r.page, r.page, 'vx-path')}</td><td class="vx-dev">${esc(devTxt(r))}</td>
+                <td>${ext(r.page, r.page, 'vx-path')}</td><td class="vx-geo">${geo(r)}</td><td class="vx-dev">${esc(devTxt(r))}</td>
                 <td class="vx-num${r.sec != null && r.sec < 15 ? ' vx-bad' : ''}">${this.visFmtSec(r.sec)}</td></tr>`).join('');
         } else {
-            head = '<th>Посетитель</th><th>Первый заход</th><th>Пришёл из</th><th>Подробнее</th><th>Страница входа</th><th>Устройство</th><th>Визитов</th><th>На сайте</th><th>Последний визит</th>';
+            head = '<th>Посетитель</th><th>Первый заход</th><th>Пришёл из</th><th>Подробнее</th><th>Страница входа</th><th>Город</th><th>Устройство</th><th>Визитов</th><th>На сайте</th><th>Последний визит</th>';
             body = rows.map(r => `<tr data-q="${esc(hay(r))}"${hide(r)}>
                 <td>${who(r)}${r.paid ? ' <em class="vx-new vx-paid">оплатил</em>' : r.est ? ' <em class="vx-new">смета</em>' : ''}</td>
                 <td class="vx-nw">${this.visWhen(r.first)}</td><td>${chip(r.grp)}</td><td class="vx-det">${ext(r.href, r.det || '')}</td>
-                <td>${ext(r.page, r.page, 'vx-path')}</td><td class="vx-dev">${esc(devTxt(r))}</td>
+                <td>${ext(r.page, r.page, 'vx-path')}</td><td class="vx-geo">${geo(r)}</td><td class="vx-dev">${esc(devTxt(r))}</td>
                 <td class="vx-num">${r.visits || '—'}</td><td class="vx-num">${r.sec ? this.visFmtSec(r.sec) : '—'}</td>
                 <td class="vx-nw">${r.last ? this.visWhen(r.last) : '—'}</td></tr>`).join('');
         }
-        const cols = visitMode ? 7 : 9;
+        const cols = visitMode ? 8 : 10;
         if (!all.length) body = `<tr><td colspan="${cols}" class="vx-empty">${f ? 'С этим фильтром никого.' : 'За период никого.'}</td></tr>`;
         const fchip = f ? `<button type="button" class="vx-fchip" onclick="app.visClearFilter()" title="Снять фильтр">${esc(this.VIS_FILTERS[f.type] || '')}: <b>${esc(f.label)}</b> <span aria-hidden="true">×</span></button>` : '';
         return `<div class="vx-ex" id="vx_explorer">
@@ -31493,7 +31572,7 @@ const app = {
         const on = (type, value) => f && f.type === type && f.value === value ? ' on' : '';
         const pctOf = (n, tot) => tot ? Math.round(n / tot * 100) : 0;
         const ext = href => `<a class="vx-go" href="${esc(this.visUrl(href))}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Открыть в новой вкладке">↗</a>`;
-        const card = (title, hint, body, extra, wide) => `<section class="vx-card${wide ? ' vx-wide' : ''}">
+        const card = (title, hint, body, extra, wide) => `<section class="vx-card${wide === 'full' ? ' vx-full' : wide ? ' vx-wide' : ''}">
             <div class="vx-ch"><b>${title}</b>${hint ? `<i class="kpi-info" title="${esc(hint)}">i</i>` : ''}${extra || ''}</div>${body}</section>`;
         const empty = '<div class="vx-none">Пока нет данных за период</div>';
         const tot = V.cur.visits || 1;
@@ -31555,16 +31634,65 @@ const app = {
                 <span class="vx-fun-l">${esc(s.label)}</span><span class="vx-fun-n">${s.n}${i ? `<em>${prev ? Math.round(s.n / prev * 100) : 0}% от шага выше</em>` : ''}</span></button>`;
         }).join('') + '</div>' : empty;
 
+        // 5. География: карта из точек справочника городов + списки городов, регионов, стран
+        const geoBody = (V.cities.length || V.countries.some(r => r.key !== 'Не известно')) ? `<div class="vx-geo-w">
+            <div class="vx-geo-l"><div class="vx-map">${this.visMapSvg(V.cities, esc)}</div>
+                ${V.regions.length > 1 ? `<div class="vx-sub">Регионы</div>${barList(V.regions, 'region', r => esc(r.key), { lim: 4 })}` : ''}</div>
+            <div class="vx-geo-l">
+                <div class="vx-sub">Города</div>${barList(V.cities, 'city', r => `${esc(r.key)}${r.region && r.region !== r.key ? `<span class="vx-bar-s">${esc(r.region)}</span>` : ''}`, { lim: 8 })}
+                ${V.countries.length > 1 ? `<div class="vx-sub">Страны</div>${barList(V.countries, 'country', r => esc(r.key), { lim: 4 })}` : ''}
+            </div></div>` : '<div class="vx-none">Город появится у визитов после выкладки этой версии: он определяется по IP при заходе</div>';
+
         const pageHint = 'Первая страница визита. Щёлкните строку — визиты с этой страницы, ↗ — открыть страницу';
         return `<div class="vx-grid">
             ${card('Источники трафика', 'Откуда пришли визиты за период и сколько новых посетителей из каждого источника зарегистрировались. Конверсия — регистрации от новых. Щёлкните строку — журнал визитов из этого источника', srcBody, srcCsv, true)}
             ${card('Воронка новых', 'Новые посетители периода → зарегистрировались → сохранили смету → оплатили «Профи». Щёлкните шаг — кто это', funBody)}
+            ${card('География', 'Город и регион визита по IP-адресу (сам адрес не хранится). Точки на карте — города посетителей, размер — число визитов; серые точки — справочник городов для ориентира. Щёлкните город — его визиты', geoBody, '', true)}
             ${card('Устройства', 'Тип устройства, система и браузер — по визитам. Щёлкните, чтобы отфильтровать журнал', devBody)}
             ${card('Страницы входа', pageHint, barList(V.pages, 'page', r => `<span class="vx-path">${esc(r.key)}</span>`, { href: r => r.key }))}
             ${card('Сайты-источники', 'С каких сайтов перешли: поиск, соцсети, другие сайты. ↗ — открыть сайт', barList(V.refs, 'host', r => esc(r.key), { href: r => r.href }))}
             ${card('Кампании и метки', 'Метки utm в ссылках: посты канала, статьи, магазины, рассылки. ↗ — открыть статью или канал', barList(V.camps, 'camp', r => esc(r.key), { href: r => r.href, color: r => this.visColor(r.grp) }))}
-            ${card('Когда приходят', 'Визиты по часам (по вашему времени) и дням недели. Щёлкните столбец — эти визиты', timeBody, '', true)}
+            ${card('Когда приходят', 'Визиты по часам (по вашему времени) и дням недели. Щёлкните столбец — эти визиты', timeBody, '', 'full')}
         </div>`;
+    },
+
+    // Карта посетителей без внешних картографических сервисов: проекция по
+    // координатам, фон — точки всех городов справочника cities_geo.js (из них
+    // складывается силуэт обжитой России), поверх — города посетителей
+    visMapSvg: function (cities, esc) {
+        // Окно — от Калининграда до Приморья: восточнее почти нет городов, а
+        // пустая Чукотка сжимала бы всю обжитую часть в полоску
+        const W = 640, lon0 = 19, lon1 = 145, lat0 = 40, lat1 = 70;
+        const k = Math.cos(56 * Math.PI / 180);
+        const s = W / ((lon1 - lon0) * k), H = Math.round((lat1 - lat0) * s);
+        const cx = lon => Math.min(W - 4, Math.max(4, (lon - lon0) * k * s)), py = lat => Math.min(H - 4, Math.max(4, H - (lat - lat0) * s));
+        const px = cx;
+        const inBox = (lat, lon) => lat >= lat0 - 3 && lat <= lat1 + 8 && lon >= lon0 - 2 && lon <= 180;
+        let bg = '';
+        if (typeof CITY_GEO !== 'undefined') {
+            Object.keys(CITY_GEO).forEach(n => { const c = CITY_GEO[n]; if (inBox(c.lat, c.lon) && c.lon <= lon1) bg += `<circle cx="${px(c.lon).toFixed(1)}" cy="${py(c.lat).toFixed(1)}" r="2.2"/>`; });
+        }
+        const pts = cities.filter(c => c.lat != null && inBox(c.lat, c.lon)).sort((a, b) => b.n - a.n);
+        const max = pts.length ? pts[0].n : 1;
+        const dots = pts.slice().reverse().map(c => {
+            const r = 3.5 + Math.sqrt(c.n / max) * 11, key = this.visKey('city', c.key);
+            const on = this._visF && this._visF.type === 'city' && this._visF.value === c.key;
+            return `<g class="vx-pt${on ? ' on' : ''}" onclick="app.visFilter(${key})"><title>${esc(c.key)}${c.region && c.region !== c.key ? ', ' + esc(c.region) : ''} — ${c.n} визит., ${c.people} посетит.</title>
+                <circle class="vx-pt-h" cx="${px(c.lon).toFixed(1)}" cy="${py(c.lat).toFixed(1)}" r="${(r + 5).toFixed(1)}"/>
+                <circle class="vx-pt-c" cx="${px(c.lon).toFixed(1)}" cy="${py(c.lat).toFixed(1)}" r="${r.toFixed(1)}"/></g>`;
+        }).join('');
+        // Подписи — крупным городам, и только если рядом нет уже подписанного
+        const placed = [];
+        const labels = pts.slice(0, 8).filter(c => {
+            const x = px(c.lon), y = py(c.lat);
+            if (placed.some(p => Math.abs(p[0] - x) < 70 && Math.abs(p[1] - y) < 18)) return false;
+            placed.push([x, y]); return true;
+        }).map(c => {
+            const x = px(c.lon), right = x > W - 90;
+            return `<text class="vx-pt-t" x="${(right ? x - 9 : x + 9).toFixed(1)}" y="${(py(c.lat) + 4).toFixed(1)}"${right ? ' text-anchor="end"' : ''}>${esc(c.key)}</text>`;
+        }).join('');
+        return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Карта городов посетителей"><g class="vx-map-bg">${bg}</g>${dots}${labels}</svg>`
+            + (cities.length && !pts.length ? '<div class="vx-none">Города посетителей вне карты России — смотрите список справа</div>' : '');
     },
 
     // Выгрузка для Excel: точка с запятой и BOM, чтобы русские буквы открылись без мастера импорта
@@ -31585,11 +31713,11 @@ const app = {
         const who = r => { const n = this.visName(r); return [n.text, n.mail]; };
         const f = this._visF, tag = f ? '_' + f.type : '';
         if (v.visitMode) {
-            this.visCsvDownload('heatcalc_visits' + tag, [['Когда', 'Посетитель', 'Почта', 'Новый', 'Источник', 'Подробнее', 'Ссылка', 'Страница входа', 'Устройство', 'ОС', 'Браузер', 'На сайте, сек', 'ID браузера']]
-                .concat(v.rows.map(r => [dt(r.t)].concat(who(r), [r.isNew ? 'да' : '', r.grp, r.det, r.href ? this.visUrl(r.href) : '', this.visUrl(r.page), dev(r), r.os, r.br, r.sec == null ? '' : r.sec, r.vid]))));
+            this.visCsvDownload('heatcalc_visits' + tag, [['Когда', 'Посетитель', 'Почта', 'Новый', 'Источник', 'Подробнее', 'Ссылка', 'Страница входа', 'Город', 'Регион', 'Страна', 'Устройство', 'ОС', 'Браузер', 'На сайте, сек', 'ID браузера']]
+                .concat(v.rows.map(r => [dt(r.t)].concat(who(r), [r.isNew ? 'да' : '', r.grp, r.det, r.href ? this.visUrl(r.href) : '', this.visUrl(r.page), r.city, r.region, r.country, dev(r), r.os, r.br, r.sec == null ? '' : r.sec, r.vid]))));
         } else {
-            this.visCsvDownload('heatcalc_visitors' + tag, [['Посетитель', 'Почта', 'Первый заход', 'Пришёл из', 'Подробнее', 'Ссылка', 'Страница входа', 'Устройство', 'ОС', 'Браузер', 'Визитов', 'На сайте, сек', 'Последний визит', 'Зарегистрирован', 'Смета', 'Оплатил', 'ID браузера']]
-                .concat(v.rows.map(r => who(r).concat([dt(r.first), r.grp, r.det || '', r.href ? this.visUrl(r.href) : '', this.visUrl(r.page), dev(r), r.os, r.br, r.visits || 0, r.sec || 0, dt(r.last), r.uid ? 'да' : '', r.est ? 'да' : '', r.paid ? 'да' : '', r.vid]))));
+            this.visCsvDownload('heatcalc_visitors' + tag, [['Посетитель', 'Почта', 'Первый заход', 'Пришёл из', 'Подробнее', 'Ссылка', 'Страница входа', 'Город', 'Регион', 'Страна', 'Устройство', 'ОС', 'Браузер', 'Визитов', 'На сайте, сек', 'Последний визит', 'Зарегистрирован', 'Смета', 'Оплатил', 'ID браузера']]
+                .concat(v.rows.map(r => who(r).concat([dt(r.first), r.grp, r.det || '', r.href ? this.visUrl(r.href) : '', this.visUrl(r.page), r.city || '', r.region || '', r.country || '', dev(r), r.os, r.br, r.visits || 0, r.sec || 0, dt(r.last), r.uid ? 'да' : '', r.est ? 'да' : '', r.paid ? 'да' : '', r.vid]))));
         }
     },
     visExportSummary: function () {
@@ -31600,6 +31728,9 @@ const app = {
         V.pages.forEach(r => rows.push(['Страница входа', r.key, r.n, r.newV, '', '', '', this.visUrl(r.key)]));
         V.refs.forEach(r => rows.push(['Сайт-источник', r.key, r.n, '', '', '', '', r.href || '']));
         V.camps.forEach(r => rows.push(['Кампания', r.key, r.n, '', '', '', '', r.href ? this.visUrl(r.href) : '']));
+        V.cities.forEach(r => rows.push(['Город', r.key + (r.region && r.region !== r.key ? ' (' + r.region + ')' : ''), r.n, '', '', '', '', '']));
+        V.regions.forEach(r => rows.push(['Регион', r.key, r.n, '', '', '', '', '']));
+        V.countries.forEach(r => rows.push(['Страна', r.key, r.n, '', '', '', '', '']));
         V.dev.forEach(r => rows.push(['Устройство', r.label, r.n, '', '', '', '', '']));
         V.os.forEach(r => rows.push(['ОС', r.key, r.n, '', '', '', '', '']));
         V.br.forEach(r => rows.push(['Браузер', r.key, r.n, '', '', '', '', '']));
