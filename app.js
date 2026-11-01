@@ -1509,21 +1509,118 @@ const app = {
             btn.setAttribute('title', 'Сохранить текущую смету в облако');
         }
     },
+    // Источник первого касания хранится в двух местах: localStorage и cookie hc_ft.
+    // Cookie переживает то, что не переживает localStorage: другое окно того же
+    // браузера (вход через Яндекс ID открывается именно так) и субдомен www.
+    // Без персональных данных: только метка кампании и сайт-источник.
+    FT_KEY: 'stout_utm',
+    FT_COOKIE: 'hc_ft',
+    VISITOR_KEY: 'hc_vid',
+    cookieGet: function (name) {
+        try {
+            const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+            return m ? decodeURIComponent(m[1]) : '';
+        } catch (e) { return ''; }
+    },
+    cookieSet: function (name, value, days) {
+        try {
+            const dom = /(^|\.)heatcalc\.ru$/.test(location.hostname) ? '; domain=.heatcalc.ru' : '';
+            document.cookie = name + '=' + encodeURIComponent(value) + '; max-age=' + Math.round(days * 86400)
+                + '; path=/; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '') + dom;
+        } catch (e) { }
+    },
+    firstTouchGet: function () {
+        let v = '';
+        try { v = localStorage.getItem(this.FT_KEY) || ''; } catch (e) { }
+        return v || this.cookieGet(this.FT_COOKIE);
+    },
+    firstTouchSet: function (label) {
+        if (!label) return;
+        try { localStorage.setItem(this.FT_KEY, label); } catch (e) { }
+        this.cookieSet(this.FT_COOKIE, label.slice(0, 300), 365);
+    },
+    // Страница входа в калькулятор: только путь, без параметров. Главная («/») не
+    // интересна — пишем лишь город, мастер /dom/ и им подобные.
+    landingLabel: function () {
+        const p = (location.pathname || '/').replace(/index\.html$/, '');
+        return p.length > 1 && /^\/[\w\-./]{1,80}$/.test(p) ? 'lp: ' + p : '';
+    },
     captureUTM: function () {
         try {
             let params = new URLSearchParams(window.location.search);
             let s = params.get('utm_source'), m = params.get('utm_medium'), c = params.get('utm_campaign');
+            const lp = this.landingLabel();
+            // Старые ссылки магазинов (?ref=КОД без меток) тоже считаем: источник — магазин
+            if (!s && !m && !c) {
+                const shop = String(params.get('ref') || params.get('promo') || '').trim();
+                if (/^[\w-]{2,30}$/.test(shop) && shop !== 'SITE') { s = 'shop'; m = 'invite'; c = shop.toLowerCase(); }
+            }
             if (s || m || c) {
                 let arr = [];
                 if (s) arr.push(`src: ${s}`); if (m) arr.push(`med: ${m}`); if (c) arr.push(`cmp: ${c}`);
-                localStorage.setItem('stout_utm', arr.join(' | '));
-            } else if (!localStorage.getItem('stout_utm')) {
+                if (lp) arr.push(lp);
+                this.firstTouchSet(arr.join(' | '));
+            } else if (!this.firstTouchGet()) {
                 // Меток нет — берём хотя бы откуда пришли. Первое касание: уже
                 // записанный источник не затираем, иначе «пришёл из статьи» стерлось
                 // бы следующим заходом напрямую.
                 const ref = this.referrerLabel();
-                if (ref) localStorage.setItem('stout_utm', ref);
+                const lbl = [ref, lp].filter(Boolean).join(' | ');
+                if (lbl) this.firstTouchSet(lbl);
             }
+            this.logFirstVisit({ s: s, m: m, c: c });
+        } catch (e) { }
+    },
+    // Первый заход браузера — в таблицу first_visits (миграция 20261101): анонимный
+    // идентификатор из localStorage, страница и сайт-источник. При регистрации
+    // attach_first_touch привяжет эту строку к пользователю, и окно в 30 минут
+    // (stampFirstTouchSource) перестаёт быть ограничением. Ошибки молча глотаем.
+    logFirstVisit: function (q) {
+        try {
+            if (window.__HC_NATIVE__ || HC_LOCAL_DEV) return;
+            let vid = '';
+            try { vid = localStorage.getItem(this.VISITOR_KEY) || ''; } catch (e) { }
+            if (vid) return;
+            vid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
+            try { localStorage.setItem(this.VISITOR_KEY, vid); } catch (e) { return; }
+            const label = this.firstTouchGet();
+            let ref = this.referrerLabel();
+            ref = ref ? ref.replace(/^ref:\s*/, '') : '';
+            supabaseClient.rpc('log_first_visit', {
+                p_visitor: vid, p_landing: location.pathname || '/', p_referrer: ref,
+                p_source: q.s || null, p_medium: q.m || null, p_campaign: q.c || null, p_label: label || null
+            }).then(r => { if (r && r.error) console.warn('[visit]', r.error.message); }, () => { });
+        } catch (e) { }
+    },
+    // После регистрации: сервер сам решает, привязывать ли заход (только свежая
+    // регистрация и только если источник ещё пуст)
+    attachFirstTouch: function () {
+        try {
+            let vid = '';
+            try { vid = localStorage.getItem(this.VISITOR_KEY) || ''; } catch (e) { }
+            if (!vid) return;
+            supabaseClient.rpc('attach_first_touch', { p_visitor: vid })
+                .then(r => { if (r && r.error) console.warn('[visit] не привязан:', r.error.message); }, () => { });
+        } catch (e) { }
+    },
+    // Источник едет через OAuth в параметре state: «uuid.метка» (base64url). Возврат
+    // с Яндекса может открыться в другом окне с пустым хранилищем — метку
+    // достаём из state и сохраняем, если своей там нет.
+    stateWithSource: function (state) {
+        try {
+            const l = this.firstTouchGet();
+            if (!l) return state;
+            return state + '.' + btoa(unescape(encodeURIComponent(l.slice(0, 200)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        } catch (e) { return state; }
+    },
+    restoreSourceFromState: function (state) {
+        try {
+            const i = String(state || '').indexOf('.');
+            if (i < 0 || this.firstTouchGet()) return;
+            let b = state.slice(i + 1).replace(/-/g, '+').replace(/_/g, '/');
+            while (b.length % 4) b += '=';
+            const label = decodeURIComponent(escape(atob(b)));
+            if (/^(src|med|cmp|ref|lp):/.test(label)) this.firstTouchSet(label);
         } catch (e) { }
     },
     // Откуда человек попал в калькулятор, без адресов и параметров: только сайт
@@ -2302,7 +2399,10 @@ const app = {
     INVITE_SITE_URL: 'https://heatcalc.ru/',
 
     inviteLinkFor: function (code) {
-        return this.INVITE_SITE_URL + '?ref=' + encodeURIComponent(String(code || '').trim().toUpperCase());
+        // Метки нужны, чтобы в «Откуда пришли» видно было, какой магазин привёл человека
+        const c = String(code || '').trim().toUpperCase();
+        return this.INVITE_SITE_URL + '?ref=' + encodeURIComponent(c)
+            + '&utm_source=shop&utm_medium=invite&utm_campaign=' + encodeURIComponent(c.toLowerCase());
     },
 
     // Готовый текст сообщения монтажнику — чтобы продавцу ничего не сочинять
@@ -13941,9 +14041,9 @@ const app = {
             // state защищает от подмены: код авторизации примем только если вернулись
             // из той же вкладки, из которой уходили. SessionStorage может быть недоступен
             // в приватном режиме или очищен — fallback на localStorage.
-            const state = (window.crypto && crypto.randomUUID)
+            const state = this.stateWithSource((window.crypto && crypto.randomUUID)
                 ? crypto.randomUUID()
-                : String(Date.now()) + String(Math.random()).slice(2);
+                : String(Date.now()) + String(Math.random()).slice(2));
             try {
                 sessionStorage.setItem('yandex_oauth_state', state);
             } catch (e) {
@@ -14048,6 +14148,7 @@ const app = {
         const yaError = params.get('error');
         const state = params.get('state');
         if (!code && !yaError) return;
+        this.restoreSourceFromState(state);
 
         // Свой флоу опознаём по state в sessionStorage — чтобы не перехватить
         // ?code=, принадлежащий чему-то другому (например, PKCE-редиректу Supabase).
@@ -30514,6 +30615,7 @@ const app = {
                         else if (key === 'med') out.push('канал: ' + val + (val === 'seo' ? ' (органика)' : ''));
                         else if (key === 'cmp') out.push('кампания/статья: ' + val);
                         else if (key === 'ref') out.push('пришёл с: ' + val);
+                        else if (key === 'lp') out.push('зашёл на страницу: ' + val);
                         else if (key === 'ask') out.push('в анкете ответил: «' + val + '»');
                         else out.push(x);
                     });
@@ -51405,7 +51507,7 @@ const app = {
             let city = HC_LOCAL_DEV ? 'Локальный хост' : 'Не определен';
             let clientIp = HC_LOCAL_DEV ? '127.0.0.1' : '0.0.0.0';
 
-            let utm = localStorage.getItem('stout_utm') || '';
+            let utm = this.firstTouchGet();
 
             this.state.tgUser = this.state.tgUser || {};
             // Анкета в памяти браузера принадлежит тому, кто входил здесь последним.
@@ -51607,6 +51709,9 @@ const app = {
             if (uRow && !HC_LOCAL_DEV) this.stampLoginGeo(authUserId);
             if (uRow) this.flushPendingMailConsent(email);
             if (uRow && utm) this.stampFirstTouchSource(uRow, authUserId, utm);
+            // Источник из базы первых заходов: сработает, даже если метки в этом браузере
+            // нет или вход случился позже 30 минут (сервер сам проверяет свежесть регистрации)
+            if (uRow && !HC_LOCAL_DEV) this.attachFirstTouch();
             if (uRow && uRow.is_blocked) {
                 // Заблокированный админом аккаунт: данные не трогаем, но не даём пользоваться
                 // калькулятором — выходим из сессии и возвращаем в неавторизованное состояние.
