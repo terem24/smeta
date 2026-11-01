@@ -57828,7 +57828,7 @@ const app = {
             document.querySelectorAll('#assembly_warn, #assembly_hint').forEach(el => el.remove());
             const ac = (typeof window !== 'undefined') ? window.assemblyCheck : null;
             const s = this.state;
-            if (!ac || s.viewMode !== 'equipment' || !Object.keys(s.swaps || {}).length) return;
+            if (!ac || s.viewMode !== 'equipment') return;
             const wrap = document.querySelector('.table-responsive');
             if (!wrap || !wrap.parentNode) return;
             const rep = ac.check(this.currentEquipmentList || []);
@@ -57841,7 +57841,7 @@ const app = {
                 const box = document.createElement('div');
                 box.id = 'assembly_warn';
                 box.style.cssText = 'margin:8px 0; padding:10px 14px; border:1px solid #D97706; border-radius:10px; font-size:13px; background:rgba(217,119,6,.08);';
-                box.innerHTML = '<b>Обвязка не сходится по резьбе (в смете есть замены).</b> Проверьте переходники и ниппели:<ul style="margin:6px 0 0 18px;">' +
+                box.innerHTML = '<b>Обвязка не сходится по резьбе.</b> Проверьте переходники и ниппели:<ul style="margin:6px 0 0 18px;">' +
                     hard.map(p => '<li>' + esc(p.text) + '</li>').join('') + '</ul>';
                 wrap.parentNode.insertBefore(box, wrap);
             }
@@ -82061,6 +82061,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // У квартиры потолок свой: больше двухсот метров их практически не бывает
         if (this.isFlat() && v > this.FLAT_AREA_MAX) v = this.FLAT_AREA_MAX;
         this.state.area = v;
+        // Ручные исправления гидравлики (группа, ветки) привязаны к площади, при которой их нажали:
+        // иначе группа остаётся и на меньшем объекте. Пересчёт подберёт их заново.
+        this.state.hydroUserFix = null;
         // Комнаты и окна идут за площадью, пока комнаты не задали руками
         this.syncFlatWindows();
         if (this.state.tp1 > v) this.state.tp1 = v;
