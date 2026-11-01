@@ -57838,11 +57838,17 @@ const app = {
             if (!hard.length && !hints.length) return;
             const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
             if (hard.length) {
-                const box = document.createElement('div');
+                // Свёрнуто в одну строку: раскрывается по клику. В печать и PDF не идёт (no-print).
+                const box = document.createElement('details');
                 box.id = 'assembly_warn';
-                box.style.cssText = 'margin:8px 0; padding:10px 14px; border:1px solid #D97706; border-radius:10px; font-size:13px; background:rgba(217,119,6,.08);';
-                box.innerHTML = '<b>Обвязка не сходится по резьбе.</b> Проверьте переходники и ниппели:<ul style="margin:6px 0 0 18px;">' +
-                    hard.map(p => '<li>' + esc(p.text) + '</li>').join('') + '</ul>';
+                box.className = 'no-print';
+                box.style.cssText = 'margin:8px 0; padding:6px 10px; border:1px solid #D97706; border-radius:10px; font-size:13px; background:rgba(217,119,6,.08);';
+                const head = hard.length === 1
+                    ? esc(hard[0].text)
+                    : 'не сходится в ' + hard.length + ' местах';
+                box.innerHTML = '<summary style="cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><b>⚠ Обвязка по резьбе:</b> ' + head + '</summary>' +
+                    '<div style="margin-top:6px;">Проверьте переходники и ниппели перед заказом:<ul style="margin:4px 0 0 18px;">' +
+                    hard.map(p => '<li>' + esc(p.text) + '</li>').join('') + '</ul></div>';
                 wrap.parentNode.insertBefore(box, wrap);
             }
             if (hints.length) {
@@ -57851,6 +57857,7 @@ const app = {
                 const text = hints.map(p => p.text).join(' · ');
                 const hint = document.createElement('div');
                 hint.id = 'assembly_hint';
+                hint.className = 'no-print';
                 hint.style.cssText = 'margin:8px 0; padding:6px 10px; border:1px solid #2563EB; border-radius:10px; font-size:13px; background:rgba(37,99,235,.06); display:flex; gap:8px; align-items:center;';
                 hint.innerHTML = '<div title="' + esc(text) + '" style="flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><b>Подсказка по обвязке.</b> ' + esc(text) + '</div>' +
                     '<button type="button" aria-label="Закрыть" title="Закрыть" data-keys="' + esc(JSON.stringify(keys)) + '" onclick="app.closeAssemblyHints(JSON.parse(this.dataset.keys))" style="flex:none; width:24px; height:24px; padding:0; border:none; background:none; color:#2563EB; cursor:pointer; font-size:18px; line-height:1;">&times;</button>';
