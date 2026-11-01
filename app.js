@@ -43406,7 +43406,7 @@ const app = {
         this._hydKey = key;
         this._hydHoverEl = d.el;
         this._hydShowHint(d);
-        // Проба «Гидролаборатория» (?lab=1): выноска с расходом и напором контура.
+        // «Гидролаборатория» (hydro_lab.js): выноска с расходом и напором контура.
         // Вне слоя .hyd-ov — его правило fill:none погасило бы текст.
         if (window.hydroLab) {
             try { window.hydroLab.onHover(this, d); } catch (e) { console.warn('[hydroLab]', e); }
@@ -59272,12 +59272,18 @@ const app = {
         // Шапка в духе листа «Гарантия STOUT»: заголовок, схема, статус-плашка
         // Карточку можно свернуть до заголовка (запоминается); на печати всегда развёрнута
         if (this._hcCollapsed == null) { try { this._hcCollapsed = localStorage.getItem('hc_collapsed') === '1'; } catch (e) { this._hcCollapsed = false; } }
-        const collapsed = !forPrint && !!this._hcCollapsed;
+        // В полноэкранном окне карточка всегда развёрнута: свернуть её там некуда
+        const fs = !forPrint && !!this._hcFsRender;
+        const collapsed = !forPrint && !fs && !!this._hcCollapsed;
         let html = '<div class="hc-card' + (collapsed ? ' hc-collapsed' : '') + '"><div class="hc-head"'
-            + (forPrint ? '' : ' role="button" tabindex="0" aria-expanded="' + !collapsed + '" title="' + (collapsed ? 'Развернуть' : 'Свернуть') + '" onclick="app.toggleHydroCard()" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();app.toggleHydroCard();}"') + '>'
+            + ((forPrint || fs) ? '' : ' role="button" tabindex="0" aria-expanded="' + !collapsed + '" title="' + (collapsed ? 'Развернуть' : 'Свернуть') + '" onclick="app.toggleHydroCard()" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();app.toggleHydroCard();}"') + '>'
             + '<div class="hc-head-t"><div class="hc-title">Проверка подбора</div></div>'
+            // «На весь экран»: длинную проверку (графики насосов, участки, советы) удобнее
+            // читать в отдельном окне, чем листать узкую колонку рядом со схемой
+            + ((forPrint || fs) ? '' : '<button type="button" class="hc-fs-btn" title="Открыть на весь экран" aria-label="Открыть проверку подбора на весь экран"'
+                + ' onclick="event.stopPropagation();app.openHydroFull()" onkeydown="event.stopPropagation()"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>')
             + '<span class="hc-pill hc-' + state + '">' + pill + '</span>'
-            + (forPrint ? '' : '<span class="hc-fold"></span>') + '</div>';
+            + ((forPrint || fs) ? '' : '<span class="hc-fold"></span>') + '</div>';
         if (collapsed) return html + '</div>';
         html += '<div class="hc-body">';
 
@@ -59338,7 +59344,7 @@ const app = {
                 } else if (r.advice) html += '<div class="hc-advice">' + esc(r.advice)
                     + ((r.id === 'rad' && !forPrint && r.verdict !== 'ok') ? ' <button type="button" class="hc-btn" onclick="app.hydroFixPreview(event)">Что добавить</button>' : '') + '</div>';
                 if (r.id === 'rad') html += this.hydroPartsHtml(r, !!forPrint);
-                // Проба «Гидролаборатория» (?lab=1): график рабочей точки насоса
+                // «Гидролаборатория» (hydro_lab.js): график рабочей точки насоса
                 if (!forPrint && window.hydroLab && window.hydroLab.on()) {
                     try { html += window.hydroLab.pumpChartHtml(this, r); } catch (e) { console.warn('[hydroLab]', e); }
                 }
@@ -59354,6 +59360,73 @@ const app = {
         if (c.tight || c.fail) html += '<div class="hc-note">Напор в метрах водяного столба. «Впритык» — запаса почти нет.</div>';
         if (s.detailedRooms) html += this.hydroExtras(res, !!forPrint);
         return html + '</div></div>';
+    },
+
+    // Пункты проверки раскрываются по одному: открыли следующий — прежний свернулся,
+    // и не нужно листать вниз мимо уже прочитанного. Вложенные пункты (например,
+    // «Своя подводка к котельной» внутри «Радиаторов») родителя не закрывают.
+    // Событие toggle не всплывает, поэтому слушаем его на фазе перехвата.
+    hcAccordion: function (rootEl) {
+        if (!rootEl || rootEl.__hcAcc) return;
+        rootEl.__hcAcc = true;
+        rootEl.addEventListener('toggle', e => {
+            const d = e.target;
+            if (!d || d.tagName !== 'DETAILS' || !d.open) return;
+            rootEl.querySelectorAll('details[open]').forEach(o => {
+                if (o !== d && !o.contains(d) && !d.contains(o)) o.open = false;
+            });
+            // Соседи свернулись, и раскрытый пункт мог уехать вверх за край — подтягиваем его
+            requestAnimationFrame(() => {
+                const r = d.getBoundingClientRect();
+                const top = rootEl.closest('#hc_fs') ? rootEl.closest('#hc_fs').getBoundingClientRect().top : 0;
+                if (r.top < top + 8) d.scrollIntoView({ block: 'start', behavior: 'smooth' });
+            });
+        }, true);
+    },
+
+    openHydroFull: function () {
+        let ov = document.getElementById('hc_fs');
+        if (!ov) {
+            ov = document.createElement('div');
+            ov.id = 'hc_fs';
+            ov.setAttribute('role', 'dialog');
+            ov.setAttribute('aria-modal', 'true');
+            ov.setAttribute('aria-label', 'Проверка подбора');
+            ov.innerHTML = '<div class="hc-fs-bar"><div class="hc-fs-t">Проверка подбора</div>'
+                + '<button type="button" class="hc-fs-close" aria-label="Закрыть" title="Закрыть (Esc)" onclick="app.closeHydroFull()">✕</button></div>'
+                + '<div class="hc-fs-body"></div>';
+            ov.addEventListener('click', e => { if (e.target === ov) this.closeHydroFull(); });
+            document.body.appendChild(ov);
+            this._hcFsKey = e => { if (e.key === 'Escape') this.closeHydroFull(); };
+            document.addEventListener('keydown', this._hcFsKey);
+            this._hcFsOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+        }
+        this._hcFsRefresh();
+        const btn = ov.querySelector('.hc-fs-close');
+        if (btn) btn.focus();
+    },
+
+    closeHydroFull: function () {
+        const ov = document.getElementById('hc_fs');
+        if (ov) ov.remove();
+        if (this._hcFsKey) document.removeEventListener('keydown', this._hcFsKey);
+        this._hcFsKey = null;
+        document.body.style.overflow = this._hcFsOverflow || '';
+        // Что раскрыли в окне, то и раскрыто в карточке рядом со схемой
+        this.syncHydroCheck();
+    },
+
+    _hcFsRefresh: function () {
+        const body = document.querySelector('#hc_fs .hc-fs-body');
+        if (!body) return;
+        const scroll = body.scrollTop;
+        this._hcFsRender = true;
+        let html = '';
+        try { html = this.hydroCardHtml(false); } finally { this._hcFsRender = false; }
+        body.innerHTML = html || '<div class="hc-fs-empty">Проверять пока нечего: в смете нет контуров с насосом.</div>';
+        body.scrollTop = scroll;
+        this.hcAccordion(body);
     },
 
     toggleHydroCard: function () {
@@ -59424,6 +59497,9 @@ const app = {
             const html = this.hydroCardHtml(false);
             box.innerHTML = html;
             box.style.display = html ? '' : 'none';
+            this.hcAccordion(box);
+            // Окно «на весь экран» открыто — показываем в нём то же, что после пересчёта
+            this._hcFsRefresh();
             // схема и карточка делят строку пополам, пока карточка показана
             const _sch = box.closest('#dynamic_scheme');
             if (_sch) _sch.classList.toggle('hc-split', !!html);
@@ -101996,8 +102072,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             let schemeHtml = tableWrapper ? this.renderScheme() : '';
             if (tableWrapper && schemeHtml) {
                 tableWrapper.insertAdjacentHTML('beforebegin', schemeHtml);
-                // Проба «Гидролаборатория» (hydro_lab.js, флаг ?lab=1): таблица
-                // контуров на свободном поле листа. Без флага ничего не делает.
+                // «Гидролаборатория» (hydro_lab.js): таблица контуров на свободном
+                // поле листа. ?lab=0 в адресе выключает.
                 if (window.hydroLab) {
                     try { window.hydroLab.afterScheme(this); } catch (e) { console.warn('[hydroLab]', e); }
                 }
