@@ -227,7 +227,7 @@
         <link href="/fonts/inter.css?v=1"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=5.124">
+    <link rel="stylesheet" href="style.css?v=5.126">
     <link rel="stylesheet" href="hydro_check.css?v=1.13">
 
     <script src="supabase-js.js" defer></script>
@@ -264,12 +264,12 @@
     <script src="water_hydro.js?v=1.7" defer></script>
     <script src="assembly_check.js?v=1.9" defer></script>
     <script src="probe.js?v=1.0" defer></script>
-    <script src="app.min.js?v=15.51" defer></script>
+    <script src="app.min.js?v=15.56" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
     <script src="session_track.js?v=1.2" defer></script>
-    <script src="tour.js?v=6.4" defer></script>
+    <script src="tour.js?v=6.6" defer></script>
     <!-- Подсказка «Смета за минуту» тем, кто заходит не первый раз и ничего не
          посчитал. После tour.js: берёт у обучения место баннера cookie. -->
     <script src="idle_hint.js?v=1.6" defer></script>
@@ -835,6 +835,9 @@
     <!-- Плашка «Вас пригласил магазин …» — появляется, когда сайт открыт по ссылке
          менеджера (?ref=КОД). Наполняет app.showInviteBanner. -->
     <div id="invite_banner" class="no-print" style="display: none;"></div>
+    <!-- Баннер «Пройдите обучение — Профи на 10 дней»: наполняет Tour.syncBonusBanner (tour.js),
+         пока бонус включён в админке. Крестик прячет на 2 дня. -->
+    <div id="tour_bonus_banner" class="no-print" style="display: none;"></div>
     <!-- Плашка хозяину дома: люди приходят с поисковых запросов про стоимость отопления, а на главной калькулятор
          для монтажника. Показывается гостю без кода магазина; закрытие помнится. Ссылка с ?src=home: заявка
          с /dom/ покажет, что человек пришёл отсюда. -->

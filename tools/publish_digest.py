@@ -60,7 +60,7 @@ def e(s):
 # Что даёт «Профи» монтажнику. Только то, что в таблице «Тарифы» открыто Профи у
 # всех монтажников: функции с доступом «по списку» (распознавание, проект) сюда не
 # входят — они не продаются. Менять — вместе с таблицей «Тарифы» в админке.
-PRO_URL = SITE + '/?tarif=pro&utm_source=digest&utm_medium=news'
+PRO_URL = SITE + '/?tarif=pro&utm_source=digest&utm_medium=news'   # в push тот же адрес; источник у всех «digest» — это одна рассылка
 PRO_BENEFITS = [
     ('Ассортимент ROMMER и подбор аналогов', 'Заменяйте позиции сметы на равноценные ROMMER и сравнивайте бренды в одной смете.'),
     ('Вторая смета «Бюджетнее»', 'Клиент просит дешевле — калькулятор собирает вторую смету и объясняет, из чего сложилась экономия.'),
@@ -145,7 +145,7 @@ HEAD = '''<!DOCTYPE html>
         <div class="wrap">
             <a class="logo" href="/">HeatCalc<span>.ru</span></a>
             <div class="head-actions">
-                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <a class="head-link" href="/?utm_source=digest&amp;utm_medium=news">Открыть калькулятор →</a>
             </div>
         </div>
     </header>
@@ -153,7 +153,7 @@ HEAD = '''<!DOCTYPE html>
 '''
 
 FOOT = '''
-        <a class="cta" href="/">
+        <a class="cta" href="/?utm_source=digest&amp;utm_medium=news">
             Открыть калькулятор
             <small>Бесплатно, прямо в браузере или на телефоне</small>
         </a>
@@ -353,7 +353,7 @@ def push_text(n, issue):
     lines = ['Новое в калькуляторе — выпуск № %d:' % n]
     for i, it in enumerate(issue['items'], 1):
         lines.append('%d. %s — %s' % (i, it['h'], it['t']))
-    lines.append('Подробнее: %s/novosti/%s/' % (SITE, issue['date']))
+    lines.append('Подробнее: %s/novosti/%s/?utm_source=push&utm_medium=news' % (SITE, issue['date']))
     lines.append('')
     lines.append('Тариф «Профи»: ' + '; '.join(h for h, _ in PRO_BENEFITS) + '.')
     lines.append('Оплатить: ' + PRO_URL)
