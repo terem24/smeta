@@ -6712,9 +6712,60 @@ body.dark-mode .header-totals-block {
 }
 
 .btn-subscribe:hover {
-    background: var(--primary-hover, #1d4ed8);
+    /* Цвет заливки и текста не меняем: в тёмной теме заливка светлая, а текст тёмный,
+       и синий фон наведения (раньше #1d4ed8) делал надпись нечитаемой */
+    background: var(--primary);
+    color: var(--on-primary, #fff);
+    filter: brightness(1.1);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.22);
+}
+
+.btn-subscribe:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Второстепенный тариф в окне Профи («Один расчёт» рядом с подпиской) — контур */
+.btn-subscribe.is-secondary {
+    background: transparent;
+    color: var(--text-main);
+    /* Полупрозрачный серый, а не var(--border): в тёмной теме --border совпадает с фоном окна */
+    border: 1.5px solid rgba(127, 127, 127, 0.5);
+}
+
+.btn-subscribe.is-secondary:hover {
+    background: rgba(127, 127, 127, 0.12);
+    color: var(--text-main);
+    border-color: var(--text-sec);
+    filter: none;
+    box-shadow: none;
+}
+
+/* Рекомендуемый тариф: рамка цвета темы и метка «Выгоднее» */
+.tariff-card.is-best {
+    border: 1.5px solid var(--primary);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.18);
+}
+
+/* Карточка при наведении больше не перекрашивается в другой фон — только приподнимается.
+   Рамка — полупрозрачный серый: var(--border) в тёмной теме сливается с фоном окна */
+.tariff-card {
+    border-color: rgba(127, 127, 127, 0.3);
+}
+
+.tariff-card:hover {
+    background: var(--surface-light);
+}
+
+/* Шапка окна тарифа: одна серая строка (отличия через точку или «Вы хотели…») */
+#custom_modal_text .pro-line {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text-sec);
+    line-height: 1.4;
+    margin: 0 auto 4px;
+    max-width: 520px;
 }
 
 /* Subscription Form inside Modal */
@@ -6893,6 +6944,50 @@ body.dark-mode .header-totals-block {
 /* QR Code & Payment Modal Adaptive Styles */
 #payment_modal_overlay {
     overflow: hidden !important;
+    /* Выше окна тарифа (#custom_modal_overlay, 2147483000): оплату открывают из него,
+       и раньше окно оплаты оказывалось под ним — «нажал, ничего не происходит» */
+    z-index: 2147483100 !important;
+}
+
+/* Шаги окна оплаты: «1. Оплатите …», «2. После оплаты нажмите «Я оплатил»» */
+#payment_modal_overlay .pay-step-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-main);
+    text-align: left;
+    margin: 4px 0 2px;
+}
+
+#payment_modal_overlay .pay-step-hint {
+    font-size: 12px;
+    color: var(--text-sec);
+    text-align: left;
+    line-height: 1.35;
+    margin-bottom: 8px;
+}
+
+#payment_modal_overlay .pay-step-box {
+    text-align: left;
+    background: rgba(127, 127, 127, 0.08);
+    border: 1px solid rgba(127, 127, 127, 0.3);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-top: 14px;
+}
+
+#payment_modal_overlay .pay-email-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 8px 0 4px;
+}
+
+#payment_modal_overlay .pay-foot {
+    font-size: 11.5px;
+    color: var(--text-sec);
+    margin: 10px 0 0;
+    line-height: 1.4;
 }
 
 #payment_modal_overlay .auth-modal-content {
@@ -17743,7 +17838,7 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
     body.theme-yandex.dark-mode .admin-chat-send,
     body.theme-yandex.dark-mode .notif-tab.active,
     body.theme-yandex.dark-mode .currency-toggle-btn.active,
-    body.theme-yandex.dark-mode .btn-subscribe,
+    body.theme-yandex.dark-mode .btn-subscribe:not(.is-secondary),
     body.theme-yandex.dark-mode .cookie-banner-btn,
     body.theme-yandex.dark-mode .grm-lb-tab.active,
     body.theme-yandex.dark-mode .grm-guest-btn,

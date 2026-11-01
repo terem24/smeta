@@ -677,12 +677,34 @@ const Subscription = {
 
     // Блок для окна тарифа: одна ссылка на страницу сравнения. Список функций
     // здесь не выводим — он на tariffs.html, а окно должно вести к оплате.
-    benefitsHtml: function () {
-        return '<a class="pro-compare" href="#" onclick="app.closeModal(); app.showProfileModal(false, &quot;subscription&quot;); return false;">Что входит в Профи и чем он отличается от Базового</a>';
+    // Шапка окна тарифа — минимально: одна серая строка и ссылка «Что входит →».
+    // Строка — три главных отличия коротко через точку (монтаж первым, если лимит
+    // действует); если окно открыто замком («Вы хотели…»), строку пишет showModal.
+    BENEFIT_SHORT: { rommer: 'ROMMER', terem: 'все марки прайса', analog: '«Бюджетнее»', recognize: 'распознавание смет', design: 'проект', ufhplan: 'раскладка ТП', opcost: 'эксплуатация', branding: 'свой логотип', money: 'маржа объекта', docs: 'договор и акты', disc1c: 'скидки в КП' },
+    benefitsHtml: function (account, noLine) {
+        const link = '<a class="pro-compare" href="#" onclick="app.closeModal(); app.showProfileModal(false, &quot;subscription&quot;); return false;">Что входит</a>';
+        if (noLine) return link;
+        let items = [];
+        try {
+            account = account || this.userAccount();
+            if (this.limitStatus().on && app.canUseWorks()) items.push('монтаж во всех КП');
+            const custom = (this.settings().benefits[account] || []).map(x => String(x || '').trim()).filter(Boolean);
+            const rows = custom.length ? custom : this.benefitRows(account)
+                .filter(r => r.pro !== 'off' && r.base === 'off' && r.f.id !== 'works')
+                .map(r => this.BENEFIT_SHORT[r.f.id] || this.BENEFIT_TEXT[r.f.id] || r.f.label.toLowerCase());
+            items = items.concat(rows).slice(0, 3);
+        } catch (e) { items = []; }
+        if (items.length) items[0] = items[0].charAt(0).toUpperCase() + items[0].slice(1);
+        return (items.length ? '<div class="pro-line">' + items.map(x => this.esc(x)).join(' · ') + '</div>' : '') + link;
     },
 
     cardsHtml: function (ctx, preview) {
         const plans = this.planList(false);
+        // Рекомендуемый тариф — самый длинный из подписок (год, иначе месяц): у него
+        // заливка и метка «Выгоднее», у остальных — кнопка-контур. Две одинаковые синие
+        // кнопки рядом не подсказывали, что выбрать.
+        const subs = plans.filter(x => !(Math.round(this.num(x.days)) > 0));
+        const bestId = plans.length > 1 && subs.length ? subs[subs.length - 1].id : null;
         return plans.map(p => {
             const r = this.resolve(p.id, ctx);
             if (!r) return '';
@@ -711,14 +733,17 @@ const Subscription = {
                     saveLine = `<div style="font-size:11px; color:#10B981; font-weight:700; margin:2px 0 6px; text-align:center;">Выгоднее одного расчёта с ${n}-го объекта</div>`;
                 }
             }
-            return `<div class="tariff-card">
-                        ${badge}
+            const best = p.id === bestId;
+            const label = r.days > 0 ? 'Купить 1 расчёт' : (r.months >= 12 ? 'Подписаться на год' : (r.months > 1 ? 'Подписаться на ' + this.monthsWord(r.months) : 'Подписаться на месяц'));
+            const badgeHtml = badge || (best ? '<div class="badge">Выгоднее</div>' : '');
+            return `<div class="tariff-card${best ? ' is-best' : ''}">
+                        ${badgeHtml}
                         <h3>${this.esc(String(r.title).toUpperCase())}</h3>
                         <div class="price"><span class="curr-amount" data-rub="${r.days > 0 ? r.rub : r.perMonth}">${(r.days > 0 ? Math.round(r.rub) : r.perMonth).toLocaleString('ru-RU')}</span> <span class="curr-symbol">₽</span></div>
                         <div class="price-sub">${sub}</div>
                         ${saveLine}
                         ${promoLine}
-                        <button type="button" class="btn-subscribe" onclick="${click}">Оформить подписку</button>
+                        <button type="button" class="btn-subscribe${best || !bestId ? '' : ' is-secondary'}" onclick="${click}">${label}</button>
                     </div>`;
         }).join('');
     },
@@ -846,7 +871,7 @@ const Subscription = {
                 const gr = this.graceInfo();
                 if (gr && !gr.active) {
                     try { localStorage.removeItem(this.GRACE_LS); } catch (e) { }
-                    app.alert('Профи на 24 часа закончился, а оплату мы пока не нашли. Если вы уже перевели деньги — напишите на kovdor24@yandex.ru или в MAX: +7 982 610-95-48, включим Профи в тот же день.');
+                    this.alarmPro();
                     return;
                 }
                 await app.loadAppSettings();
@@ -918,6 +943,7 @@ const Subscription = {
             if (!host) return;
             const gr = this.graceInfo();
             if (gr && gr.active) {
+                this.graceWatch();
                 const t = gr.until.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
                 host.className = 'no-print trial-end-banner';
                 host.innerHTML = '<div class="teb" style="cursor:default; background:rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.5);">' +
@@ -1052,16 +1078,18 @@ const Subscription = {
     nudge: async function (reason, ctx) {
         ctx = ctx || {};
         if (document.querySelector('#custom_modal_overlay.active')) return;
-        const benefits = this.benefitsText(this.userAccount());
-        const price = this.priceLine();
+        // Коротко: три главных отличия вместо полного списка — длинный абзац не читали
+        const loss = this.trialEndLosses().slice(0, 3);
+        const benefits = loss.length ? 'Без Профи: ' + loss.join(', ') + '.' : '';
+        const price = this.priceLine().split('\n')[0];
         let title, lead, why;
         if (reason === 'kp') {
             title = 'КП ушло клиенту';
-            lead = 'Вы отправили клиентам КП: ' + (ctx.n || 1) + '. ';
+            lead = 'Отправлено КП: ' + (ctx.n || 1) + '. ';
             why = 'Вы отправили КП клиентам — на Профи они уходят с работами и скидками';
         } else {
             title = 'Профи закончился';
-            lead = 'Доступ к функциям Профи закончился, ваши сметы сохранились. ';
+            lead = 'Сметы сохранились. ';
             why = 'Продлите Профи, чтобы вернуть его функции';
         }
         this._nudgeBusy = true;
@@ -1151,7 +1179,7 @@ const Subscription = {
                 } catch (e) { data.tgSent = false; }
             }
             if (data.granted && data.until) {
-                try { localStorage.setItem(this.GRACE_LS, JSON.stringify({ until: data.until })); } catch (e) { }
+                try { localStorage.setItem(this.GRACE_LS, JSON.stringify({ until: data.until, plan: info.plan || '', at: new Date(Date.now() - 60000).toISOString() })); } catch (e) { }
                 const st = app.state;
                 st.demoUsed = true;
                 if (st.tgUser) {
@@ -1160,6 +1188,7 @@ const Subscription = {
                 }
                 try { app.saveState(); app.syncUI(); } catch (e) { }
                 this.syncTrialEndBanner();
+                this.graceWatch();
             }
             return data;
         } catch (e) {
@@ -1169,6 +1198,158 @@ const Subscription = {
         }
     },
 
+    // ── Праздник после оплаты: конфетти и фанфары, как после обучения ──────
+    // opts: { emoji, title, sub, chips: bool, cta, reload } — reload: перезагрузить
+    // страницу по кнопке, чтобы функции Профи включились везде (как после пробного).
+    celebratePro: function (opts) {
+        opts = opts || {};
+        const old = document.getElementById('pro_win'); if (old) old.remove();
+        let chips = [];
+        if (opts.chips) {
+            try {
+                if (this.limitStatus().on && app.canUseWorks()) chips.push('монтаж во всех КП');
+                chips = chips.concat(this.benefitRows(this.userAccount())
+                    .filter(r => r.pro !== 'off' && r.base === 'off' && r.f.id !== 'works')
+                    .map(r => this.BENEFIT_TEXT[r.f.id] || r.f.label.toLowerCase())).slice(0, 4);
+            } catch (e) { chips = []; }
+        }
+        const wrap = document.createElement('div');
+        wrap.id = 'pro_win';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2147483300;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.6);padding:16px;';
+        wrap.innerHTML = '<div style="position:relative;max-width:400px;width:100%;background:var(--surface,#fff);color:var(--text-main,#0f172a);border:1px solid var(--border);border-radius:20px;padding:28px 22px 20px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.45);">'
+            + '<div style="font-size:60px;line-height:1;">' + (opts.emoji || '🎉') + '</div>'
+            + '<h3 style="margin:12px 0 6px;font-size:24px;font-weight:800;">' + this.esc(opts.title || 'Профи включён!') + '</h3>'
+            + (opts.sub ? '<p style="margin:0 0 14px;font-size:14.5px;line-height:1.45;color:var(--text-sec);">' + this.esc(opts.sub) + '</p>' : '')
+            + (chips.length ? '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:0 0 18px;">' + chips.map(c => '<span style="font-size:12.5px;font-weight:600;padding:5px 10px;border-radius:999px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.4);">✓ ' + this.esc(c) + '</span>').join('') + '</div>' : '')
+            + '<button type="button" id="pro_win_ok" style="width:100%;padding:13px;border:0;border-radius:12px;background:#10B981;color:#fff;font-size:15.5px;font-weight:800;cursor:pointer;">' + this.esc(opts.cta || 'Начать работать') + '</button>'
+            + '</div>';
+        document.body.appendChild(wrap);
+        const cv = document.createElement('canvas');
+        cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:2147483400;pointer-events:none;';
+        document.body.appendChild(cv);
+        let stopFx = () => { };
+        try { if (typeof Tour !== 'undefined') { stopFx = Tour._confetti(cv); Tour._fanfare(); } } catch (e) { }
+        const close = () => { try { stopFx(); } catch (e) { } cv.remove(); wrap.remove(); if (opts.reload && typeof app.softReload === 'function') app.softReload(200); };
+        wrap.querySelector('#pro_win_ok').onclick = close;
+    },
+
+    // Оплату не нашли: короткое тревожное окно — значок покачивается, короткий «сигнал
+    // ошибки» на WebAudio (тихо, если браузер звук не разрешил). Кнопки: оплатить снова
+    // или написать нам.
+    alarmPro: function () {
+        const old = document.getElementById('pro_alarm'); if (old) old.remove();
+        if (!document.getElementById('pro_alarm_css')) {
+            const st = document.createElement('style'); st.id = 'pro_alarm_css';
+            st.textContent = '@keyframes proAlarmShake{0%,100%{transform:translateX(0)}15%,45%,75%{transform:translateX(-8px)}30%,60%,90%{transform:translateX(8px)}}'
+                + '@keyframes proAlarmPulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}100%{box-shadow:0 0 0 22px rgba(239,68,68,0)}}'
+                + '#pro_alarm .pa-card{animation:proAlarmShake .6s ease 1}'
+                + '#pro_alarm .pa-ic{animation:proAlarmPulse 1.2s ease-out 3}'
+                // Красные края экрана, как «попадание» в игре: три вспышки и затухание
+                + '@keyframes proAlarmEdge{0%{opacity:0}10%{opacity:1}30%{opacity:.35}45%{opacity:.95}65%{opacity:.3}80%{opacity:.85}100%{opacity:0}}'
+                + '#pro_alarm_edge{position:fixed;inset:0;z-index:2147483350;pointer-events:none;opacity:0;'
+                + 'background:radial-gradient(ellipse at center,rgba(220,38,38,0) 55%,rgba(220,38,38,.35) 78%,rgba(185,28,28,.85) 100%);'
+                + 'box-shadow:inset 0 0 120px 30px rgba(220,38,38,.75);animation:proAlarmEdge 1.6s ease-out 1 forwards}';
+            document.head.appendChild(st);
+        }
+        const wrap = document.createElement('div');
+        wrap.id = 'pro_alarm';
+        wrap.style.cssText = 'position:fixed;inset:0;z-index:2147483300;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.6);padding:16px;';
+        wrap.innerHTML = '<div class="pa-card" style="max-width:380px;width:100%;background:var(--surface,#fff);color:var(--text-main,#0f172a);border:1.5px solid rgba(239,68,68,.6);border-radius:20px;padding:26px 22px 20px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.45);">'
+            + '<div class="pa-ic" style="width:64px;height:64px;margin:0 auto;border-radius:50%;background:rgba(239,68,68,.15);display:flex;align-items:center;justify-content:center;font-size:34px;">⚠️</div>'
+            + '<h3 style="margin:14px 0 6px;font-size:22px;font-weight:800;">Оплату не нашли</h3>'
+            + '<p style="margin:0 0 18px;font-size:14.5px;line-height:1.45;color:var(--text-sec);">Профи выключен. Уже заплатили? Напишите нам — включим в тот же день.<br><b style="color:var(--text-main);">MAX: +7 982 610-95-48</b></p>'
+            + '<button type="button" id="pro_alarm_pay" style="width:100%;padding:13px;border:0;border-radius:12px;background:var(--primary,#2563eb);color:var(--on-primary,#fff);font-size:15px;font-weight:800;cursor:pointer;margin-bottom:8px;">Оплатить снова</button>'
+            + '<a href="mailto:kovdor24@yandex.ru?subject=' + encodeURIComponent('Оплата Профи') + '" style="display:block;padding:11px;border-radius:12px;border:1.5px solid var(--border);color:var(--text-main);font-size:14px;font-weight:700;text-decoration:none;margin-bottom:6px;">Написать на почту</a>'
+            + '<button type="button" id="pro_alarm_close" style="width:100%;padding:9px;border:0;background:transparent;color:var(--text-sec);font-size:13px;cursor:pointer;">Закрыть</button>'
+            + '</div>';
+        document.body.appendChild(wrap);
+        const edge = document.createElement('div');
+        edge.id = 'pro_alarm_edge';
+        const oldEdge = document.getElementById('pro_alarm_edge'); if (oldEdge) oldEdge.remove();
+        document.body.appendChild(edge);
+        setTimeout(() => edge.remove(), 1800);
+        try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch (e) { }
+        try {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (AC) {
+                const ctx = new AC(), t = ctx.currentTime;
+                [[440, 0], [330, 0.22]].forEach(([f, d]) => {
+                    const o = ctx.createOscillator(), g = ctx.createGain();
+                    o.type = 'square'; o.frequency.value = f;
+                    g.gain.setValueAtTime(0.0001, t + d); g.gain.exponentialRampToValueAtTime(0.08, t + d + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.2);
+                    o.connect(g); g.connect(ctx.destination); o.start(t + d); o.stop(t + d + 0.22);
+                });
+                setTimeout(() => { try { ctx.close(); } catch (e) { } }, 800);
+            }
+        } catch (e) { }
+        try { app.logPaywall('seen', 'Оплата: не нашли'); } catch (e) { }
+        const close = () => wrap.remove();
+        wrap.querySelector('#pro_alarm_close').onclick = close;
+        wrap.querySelector('#pro_alarm_pay').onclick = () => { close(); app.showModal('pro', { why: 'Оплата не найдена — можно оплатить ещё раз' }); };
+    },
+
+    // ── Пока идут 24 часа: сверка с базой ─────────────────────────────────
+    // Решение владельца (кнопки в Telegram или вкладка «Оплата подписки») открытая
+    // страница сама не видит. Сверяемся при возврате на вкладку и раз в 2 минуты:
+    // отклонили — Профи выключаем сразу; подтвердили — праздник «Профи продлён».
+    graceWatch: function () {
+        if (this._graceTimer) return;
+        const gr = this.graceInfo();
+        if (!gr || !gr.active) return;
+        const onVis = () => { if (document.visibilityState === 'visible') this.graceCheck(); };
+        this._graceVis = onVis;
+        document.addEventListener('visibilitychange', onVis);
+        this._graceTimer = setInterval(() => this.graceCheck(), 2 * 60 * 1000);
+    },
+    graceStop: function () {
+        if (this._graceTimer) clearInterval(this._graceTimer);
+        this._graceTimer = null;
+        if (this._graceVis) document.removeEventListener('visibilitychange', this._graceVis);
+        this._graceVis = null;
+    },
+    graceCheck: async function () {
+        try {
+            const gr = this.graceInfo();
+            if (!gr) { this.graceStop(); return; }
+            const tg = (app.state && app.state.tgUser) || {};
+            const uid = (app._currentUserRow && app._currentUserRow.id) || tg.id;
+            if (!uid) return;
+            const { data: u, error } = await supabaseClient.from('users').select('account_type, demo_ends_at, pro_expires_at').eq('id', uid).maybeSingle();
+            if (error || !u) return;
+            const end = u.demo_ends_at ? new Date(u.demo_ends_at) : null;
+            let g0 = {};
+            try { g0 = JSON.parse(localStorage.getItem(this.GRACE_LS) || '{}') || {}; } catch (e) { g0 = {}; }
+            // «Один расчёт» подтвердили: срок не меняется, появляется кредит в pro_objects
+            if (g0.plan === 'object' && g0.at) {
+                const { data: po } = await supabaseClient.from('pro_objects').select('id').eq('user_id', uid).gte('granted_at', g0.at).limit(1);
+                if (Array.isArray(po) && po.length) {
+                    localStorage.removeItem(this.GRACE_LS); this.graceStop(); this.syncTrialEndBanner();
+                    try { app.loadProObjects(); } catch (e) { }
+                    this.celebratePro({ emoji: '🏆', title: 'Оплата подтверждена!', sub: 'Профи для одного объекта начислен. Откройте смету и в окне Профи нажмите «Открыть Профи для этого объекта». Спасибо!', cta: 'Отлично' });
+                    return;
+                }
+            }
+            if (!end || end.getTime() <= Date.now()) {
+                // Отклонили (или вышли сутки): Профи выключаем сразу, а не при следующем входе
+                localStorage.removeItem(this.GRACE_LS); this.graceStop();
+                if (tg) { tg.demo_ends_at = u.demo_ends_at; tg.account_type = ['admin', 'viewer', 'manager'].indexOf(u.account_type) >= 0 ? u.account_type : 'base'; }
+                if (['admin', 'viewer', 'manager'].indexOf(u.account_type) < 0) app.state.accountType = 'base';
+                try { app.saveState(); app.syncUI(); app.render(); } catch (e) { }
+                this.syncTrialEndBanner();
+                this.alarmPro();
+                return;
+            }
+            if (u.pro_expires_at && Math.abs(end - gr.until) > 5 * 60000) {
+                // Подтвердили оплату — срок продлён
+                localStorage.removeItem(this.GRACE_LS); this.graceStop();
+                tg.demo_ends_at = u.demo_ends_at; tg.pro_expires_at = u.pro_expires_at;
+                try { app.saveState(); app.syncUI(); } catch (e) { }
+                this.syncTrialEndBanner();
+                this.celebratePro({ emoji: '🏆', title: 'Оплата подтверждена!', sub: 'Профи продлён до ' + end.toLocaleDateString('ru-RU') + '. Спасибо, что с нами!', cta: 'Отлично' });
+            }
+        } catch (e) { console.warn('[подписка] сверка 24 часов:', e); }
+    },
+
     // Профи сейчас держится на 24 часах после «Я оплатил» (на этом устройстве)
     graceInfo: function () {
         try {
@@ -1176,9 +1357,13 @@ const Subscription = {
             if (!g || !g.until) return null;
             const tg = (app.state && app.state.tgUser) || {};
             const until = new Date(g.until);
-            // Срок в карточке уже другой (оплату подтвердили и продлили) — отметка больше не нужна
-            if (tg.demo_ends_at && Math.abs(new Date(tg.demo_ends_at) - until) > 5 * 60000) { localStorage.removeItem(this.GRACE_LS); return null; }
-            return { until: until, active: until.getTime() > Date.now() };
+            const demo = tg.demo_ends_at ? new Date(tg.demo_ends_at) : null;
+            // Срок продлён дальше 24 часов (оплату подтвердили) — отметка больше не нужна
+            if (demo && demo - until > 5 * 60000) { localStorage.removeItem(this.GRACE_LS); return null; }
+            // Срок короче 24 часов — заявку отклонили: 24 часа больше не идут, но помним, что
+            // это была оплата — afterProExpired покажет «Оплату не нашли», а не общее окно
+            const rejected = !!(demo && until - demo > 5 * 60000);
+            return { until: until, active: !rejected && until.getTime() > Date.now(), rejected: rejected };
         } catch (e) { return null; }
     },
 
