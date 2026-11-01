@@ -57569,7 +57569,7 @@ const app = {
             const l = this._kpWorksLock || {};
             let price = '';
             try { if (typeof Subscription !== 'undefined') price = Subscription.priceLine().split('\n')[0]; } catch (e) { }
-            lockNote.innerHTML = '<b>Монтаж в КП — с Профи.</b> Бесплатно монтаж идёт в ' + (l.max || 2) + ' КП в месяц, в этом месяце они уже отправлены. Это КП уйдёт клиенту только с оборудованием. Монтажные работы в смете остаются у вас на экране.' +
+            lockNote.innerHTML = '<b>Монтаж в КП — с Профи.</b> Бесплатно монтаж идёт ' + this.kpWorksFreeText(l.max) + ' в этом месяце. Это КП уйдёт клиенту только с оборудованием. Монтажные работы в смете остаются у вас на экране.' +
                 (price ? '<div style="margin-top:4px; color:var(--text-sec);">' + price + '</div>' : '') +
                 '<button type="button" style="margin-top:8px; padding:7px 12px; border:none; border-radius:8px; background:var(--primary); color:#fff; font-weight:700; font-size:12.5px; cursor:pointer;" onclick="app.kpWorksLockedInfo()">Добавить монтаж — оформить Профи</button>';
             lockNote.style.display = 'block';
@@ -60199,7 +60199,13 @@ const app = {
     // Нажали на замок «Монтажные работы» в окне выбора разделов
     kpWorksLockedInfo: function () {
         const l = this._kpWorksLock || {};
-        this.showModal('pro', { why: 'Монтаж в КП на бесплатном тарифе — в ' + (l.max || 2) + ' КП в месяц, они уже отправлены. Это КП уйдёт с оборудованием, а с Профи — вместе с монтажом, без ограничений' });
+        this.showModal('pro', { why: 'Монтаж в КП на бесплатном тарифе — ' + this.kpWorksFreeText(l.max) + '. Это КП уйдёт с оборудованием, а с Профи — вместе с монтажом, без ограничений' });
+    },
+
+    // «в 1 КП в месяц, оно уже отправлено» / «в 3 КП в месяц, они уже отправлены»
+    kpWorksFreeText: function (max) {
+        const n = Math.max(1, Math.round(Number(max)) || 1);
+        return 'в ' + n + ' КП в месяц, ' + (n === 1 ? 'оно уже отправлено' : 'они уже отправлены');
     },
 
     shareInvoice: async function () {

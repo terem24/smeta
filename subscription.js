@@ -436,7 +436,7 @@ const Subscription = {
     // пропускаем: лимит не должен мешать работать.
     // outcomeGate — блок отправки, пока у двух КП нет итога (kp_outcome.js). Включён по
     // умолчанию и от «Включить лимит» не зависит; excludeTerem действует на оба.
-    LIMIT_DEFAULTS: { enabled: false, from: '', perMonth: 3, excludeTerem: true, outcomeGate: true,
+    LIMIT_DEFAULTS: { enabled: false, from: '', perMonth: 1, excludeTerem: true, outcomeGate: true,
         // Окно «Чем закончились КП?» (kp_outcome.js): включено ли, кому показывать,
         // срок ответа и границы, в которых монтажник сам меняет срок («КП и счета»),
         // число продлений, порог блока отправки и льгота после срока
@@ -453,7 +453,7 @@ const Subscription = {
 
     limitSettings: function () {
         const t = Object.assign({}, this.LIMIT_DEFAULTS, this.raw().limit || {});
-        t.perMonth = Math.min(100, Math.max(1, Math.round(this.num(t.perMonth)) || 3));
+        t.perMonth = Math.min(100, Math.max(1, Math.round(this.num(t.perMonth)) || 1));
         // Целое из цифр, иначе значение по умолчанию — как разбирает те же поля база
         // (send_kp_outcome_reminders: ширина w цифр), чтобы окно и рассылка не расходились
         const cl = (v, lo, hi, d, w) => { const x = String(v == null ? '' : v).trim(); return new RegExp('^\\d{1,' + (w || 3) + '}$').test(x) ? Math.min(hi, Math.max(lo, parseInt(x, 10))) : d; };
@@ -487,7 +487,7 @@ const Subscription = {
         if (['from', 'perMonth'].indexOf(field) < 0 && BOOL.indexOf(field) < 0 && !NUM[field]) return;
         if (BOOL.indexOf(field) >= 0) value = !!value;
         else if (NUM[field]) { const n = Math.round(this.num(value)); value = isFinite(n) ? Math.min(NUM[field][1], Math.max(NUM[field][0], n)) : NUM[field][2]; }
-        else if (field === 'perMonth') value = Math.min(100, Math.max(1, Math.round(this.num(value)) || 3));
+        else if (field === 'perMonth') value = Math.min(100, Math.max(1, Math.round(this.num(value)) || 1));
         else value = /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? String(value) : '';
         this.apply(v => { v.limit = Object.assign({}, v.limit || {}, { [field]: value }); return v; });
         this.render();
