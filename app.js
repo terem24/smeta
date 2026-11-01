@@ -92190,6 +92190,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 }
 
                 this.state.ufhMixType = chosen;
+                // Выбор по площади тоже не закрепляется: при уменьшении площади сбрасывается (см. выше)
+                this._ufhMixFromColl = chosen;
             }
             this.lastTpArea = tpArea;
         } else {
