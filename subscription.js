@@ -797,6 +797,13 @@ const Subscription = {
         setTimeout(async () => {
             try {
                 if (this._nudgeBusy) return;
+                // Кончились 24 часа после «Я оплатил», а оплату ещё не подтвердили
+                const gr = this.graceInfo();
+                if (gr && !gr.active) {
+                    try { localStorage.removeItem(this.GRACE_LS); } catch (e) { }
+                    app.alert('Профи на 24 часа закончился, а оплату мы пока не нашли. Если вы уже перевели деньги — напишите на kovdor24@yandex.ru или в MAX: +7 982 610-95-48, включим Профи в тот же день.');
+                    return;
+                }
                 await app.loadAppSettings();
                 if (!this.nudgeSettings().expiry || !this.nudgeEligible() || !this.nudgeGapOk('expired', 2)) return;
                 await this.nudge('expired', {});
@@ -819,6 +826,8 @@ const Subscription = {
             const tg = (app.state && app.state.tgUser) || {};
             if (tg.account_type !== 'pro' || !tg.demo_ends_at) return null;
             if (app.isTeremStaff()) return null;
+            const gr = this.graceInfo();
+            if (gr && gr.active) return null;   // 24 часа после «Я оплатил» — свою плашку показывает syncTrialEndBanner
             const end = new Date(tg.demo_ends_at), ms = end.getTime() - Date.now();
             if (isNaN(ms) || ms <= 0) return null;
             const d0 = new Date(); d0.setHours(0, 0, 0, 0);
@@ -862,6 +871,17 @@ const Subscription = {
         try {
             const host = document.getElementById('trial_end_banner');
             if (!host) return;
+            const gr = this.graceInfo();
+            if (gr && gr.active) {
+                const t = gr.until.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                host.className = 'no-print trial-end-banner';
+                host.innerHTML = '<div class="teb" style="cursor:default; background:rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.5);">' +
+                    '<span class="teb-ic" aria-hidden="true">✅</span>' +
+                    '<span class="teb-body"><span class="teb-title">Профи включён до ' + this.esc(t) + ' — проверяем оплату</span>' +
+                    '<span class="teb-sub">Как только поступление подтвердится, Профи продлится на оплаченный срок. Ничего делать не нужно.</span></span></div>';
+                host.style.display = '';
+                return;
+            }
             const info = this.trialEndInfo();
             let hidden = '';
             try { hidden = localStorage.getItem(this.TE_HIDE_LS) || ''; } catch (e) { }
@@ -1053,6 +1073,54 @@ const Subscription = {
         } catch (e) {
             console.warn('[подписка] заявка не записана:', e.message || e);
         }
+    },
+
+    // ═══ «Я оплатил» → Профи на 24 часа ════════════════════════════════
+    // pay_request_grace (миграция 20261105) пишет заявку и, если можно, включает Профи
+    // на 24 часа. Гостю и при сбое функции — обычная заявка (logRequest). Возвращает
+    // { granted, until, reason } или null.
+    GRACE_LS: 'hc_pay_grace',
+    requestWithGrace: async function (info) {
+        try {
+            const { data: sess } = await supabaseClient.auth.getSession();
+            if (!sess || !sess.session) { await this.logRequest(info); return null; }
+            const { data, error } = await supabaseClient.rpc('pay_request_grace', {
+                p_email: String(info.email || ''), p_plan: info.plan || null,
+                p_months: info.months ? Math.round(info.months) : null, p_rub: info.rub || null,
+                p_promo: info.promo || null, p_region: this.userRegion() || null
+            });
+            if (error) throw error;
+            if (!data || !data.ok) { await this.logRequest(info); return data || null; }
+            if (data.granted && data.until) {
+                try { localStorage.setItem(this.GRACE_LS, JSON.stringify({ until: data.until })); } catch (e) { }
+                const st = app.state;
+                st.demoUsed = true;
+                if (st.tgUser) {
+                    if (['admin', 'viewer', 'manager'].indexOf(st.tgUser.account_type) < 0) { st.tgUser.account_type = 'pro'; st.accountType = 'pro'; }
+                    st.tgUser.demo_ends_at = data.until;
+                }
+                try { app.saveState(); app.syncUI(); } catch (e) { }
+                this.syncTrialEndBanner();
+            }
+            return data;
+        } catch (e) {
+            console.warn('[подписка] Профи на 24 часа не включён, пишем обычную заявку:', e.message || e);
+            await this.logRequest(info);
+            return null;
+        }
+    },
+
+    // Профи сейчас держится на 24 часах после «Я оплатил» (на этом устройстве)
+    graceInfo: function () {
+        try {
+            const g = JSON.parse(localStorage.getItem(this.GRACE_LS) || 'null');
+            if (!g || !g.until) return null;
+            const tg = (app.state && app.state.tgUser) || {};
+            const until = new Date(g.until);
+            // Срок в карточке уже другой (оплату подтвердили и продлили) — отметка больше не нужна
+            if (tg.demo_ends_at && Math.abs(new Date(tg.demo_ends_at) - until) > 5 * 60000) { localStorage.removeItem(this.GRACE_LS); return null; }
+            return { until: until, active: until.getTime() > Date.now() };
+        } catch (e) { return null; }
     },
 
     // ═══ Запись настроек ═════════════════════════════════════════════════
@@ -1269,11 +1337,14 @@ const Subscription = {
 
     // До какой даты продлить: от текущего срока, если он ещё идёт, иначе от сегодня.
     // 2099 год — «навсегда» (промокод дистрибьютора): оплата тогда ничего не продлевает.
-    proUntilFor: function (u, months) {
+    proUntilFor: function (u, months, row) {
         const now = new Date();
         let from = now;
-        if (u && u.demo_ends_at) {
-            const cur = new Date(u.demo_ends_at);
+        // Заявка включала Профи на 24 часа: продлеваем от срока, который был до них,
+        // иначе к оплаченному сроку прибавились бы лишние сутки
+        const curRaw = row && row.grace_until ? row.grace_prev_ends : (u && u.demo_ends_at);
+        if (curRaw) {
+            const cur = new Date(curRaw);
             if (cur > now && cur.getFullYear() < 2090) from = cur;
         }
         return this.addMonths(from, months);
@@ -1328,7 +1399,7 @@ const Subscription = {
         try {
             let until = null;
             if (extend && this.isObjectPlan(row.plan)) await this.grantObjectCredit(u, id);
-            else if (extend) { until = this.proUntilFor(u, months); await this.activatePro(u, until); }
+            else if (extend) { until = this.proUntilFor(u, months, row); await this.activatePro(u, until); }
             const me = (app._currentUserRow && app._currentUserRow.email) || null;
             const upd = { status: 'paid', paid_at: paidAt.toISOString(), paid_rub: paidRub, months: months, pro_until: until ? until.toISOString() : null, note: note || null, confirmed_by: me, user_id: row.user_id || (u ? u.id : null) };
             const { error } = await supabaseClient.from(this.TABLE).update(upd).eq('id', id);
@@ -1342,8 +1413,21 @@ const Subscription = {
 
     rejectRequest: async function (id) {
         if (!this.canEdit()) return;
-        if (!await app.confirm('Отметить заявку как неоплаченную (отклонить)?')) return;
+        const row = ((this._pay && this._pay.rows) || []).find(r => r.id === id);
+        const graceOn = row && row.grace_until && new Date(row.grace_until) > new Date();
+        if (!await app.confirm('Отметить заявку как неоплаченную (отклонить)?' + (graceOn ? ' Профи на 24 часа, включённый по этой заявке, будет снят сразу.' : ''))) return;
         try {
+            // Снять 24 часа: вернуть прежний срок, если он ещё идёт, иначе закончить сейчас
+            if (graceOn) {
+                const u = (row.user_id && (this._pay.users || []).find(x => String(x.id) === String(row.user_id))) || this.userByEmail(row.email);
+                if (u) {
+                    const prev = row.grace_prev_ends ? new Date(row.grace_prev_ends) : null;
+                    const end = prev && prev > new Date() ? prev : new Date();
+                    const { error: uErr } = await supabaseClient.from('users').update({ demo_ends_at: end.toISOString() }).eq('id', u.id);
+                    if (uErr) throw uErr;
+                    u.demo_ends_at = end.toISOString();
+                }
+            }
             const { error } = await supabaseClient.from(this.TABLE).update({ status: 'rejected', confirmed_by: (app._currentUserRow && app._currentUserRow.email) || null }).eq('id', id);
             if (error) throw error;
             await this.loadPayments(true);
@@ -1839,7 +1923,8 @@ const Subscription = {
 
         const plans = this.settings().plans;
         const rows = this._pay.rows;
-        const statusChip = r => r.status === 'paid' ? this.chip('оплачено', '#10B981') : (r.status === 'rejected' ? this.chip('отклонено', '#64748B') : this.chip('ждёт', '#D97706'));
+        const graceChip = r => (r.status === 'requested' && r.grace_until) ? `<div style="font-size:11px; color:#059669; margin-top:3px;">${new Date(r.grace_until) > new Date() ? 'Профи на 24 ч до ' + this.fmtDateTime(r.grace_until) : 'Профи на 24 ч закончился ' + this.fmtDateTime(r.grace_until)}</div>` : '';
+        const statusChip = r => (r.status === 'paid' ? this.chip('оплачено', '#10B981') : (r.status === 'rejected' ? this.chip('отклонено', '#64748B') : this.chip('ждёт', '#D97706'))) + graceChip(r);
         const trs = rows.length ? rows.map(r => {
             const u = this.userByEmail(r.email);
             const planLabel = (plans[r.plan] && (plans[r.plan].label || plans[r.plan].title)) || r.plan || '—';

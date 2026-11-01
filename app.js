@@ -102434,24 +102434,30 @@ async function notifyPayment() {
         return;
     }
 
-    // === 1. ОТПРАВКА В TELEGRAM ===
     const offered = app._currentPaymentPlan || null;
+    const reqInfo = {
+        email: emailInput,
+        plan: offered ? (offered.id || offered.type) : null,
+        months: offered ? offered.months : null,
+        rub: offered ? offered.rub : null,
+        promo: offered ? offered.promo : null
+    };
+
+    // === 1. СТРОКА В УЧЁТЕ + ПРОФИ НА 24 ЧАСА ===
+    // Вошедшему — сразу Профи на 24 часа, пока владелец проверяет поступление
+    // (Subscription.requestWithGrace → pay_request_grace в базе). Гостю и при сбое —
+    // просто заявка, как раньше.
+    let grace = null;
+    if (typeof Subscription !== 'undefined') grace = await Subscription.requestWithGrace(reqInfo);
+
+    // === 1а. ОТПРАВКА В TELEGRAM ===
+    const graceUntilText = grace && grace.granted && grace.until ? new Date(grace.until).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
     const messageText = `Пользователь: ${emailInput}\nТариф: ${tariffNameText}`
         + (offered && offered.rub ? `\nК оплате: ${Math.round(offered.rub).toLocaleString('ru-RU')} ₽` : '')
         + (offered && offered.promo ? `\nАкция: ${offered.promo}` : '')
+        + (graceUntilText ? `\nПрофи включён на 24 часа — до ${graceUntilText}.` : (grace && grace.reason === 'recent' ? `\nПрофи на 24 часа не включён: уже давали по неподтверждённой заявке.` : ''))
         + `\nПроверьте поступление в Т-Банке. Подтвердить: панель → «Оплата подписки».`;
     sendOwnerTelegram('pro_request', messageText);
-
-    // === 1а. СТРОКА В УЧЁТЕ (вкладка «Оплата подписки») ===
-    if (typeof Subscription !== 'undefined') {
-        Subscription.logRequest({
-            email: emailInput,
-            plan: offered ? (offered.id || offered.type) : null,
-            months: offered ? offered.months : null,
-            rub: offered ? offered.rub : null,
-            promo: offered ? offered.promo : null
-        });
-    }
 
     // === 2. ОТПРАВКА НА EMAIL (через EmailJS с обновленным шаблоном) ===
     const emailjsServiceID = 'service_o11b4ej';
@@ -102506,6 +102512,11 @@ async function notifyPayment() {
     });
 
     // Отображаем всплывающее уведомление пользователю
+    if (graceUntilText) {
+        app.alert('✅ Спасибо! Профи уже включён — до ' + graceUntilText + '. За это время мы проверим поступление и продлим Профи на оплаченный срок, ничего делать не нужно.' + (window.__HC_NATIVE__ ? '' : ' Страница обновится через 6 секунд.'));
+        if (typeof app.softReload === 'function') app.softReload(6000);
+        return;
+    }
     app.alert('Спасибо! Мы проверяем поступление средств. Статус Профи будет активирован на email: ' + emailInput + ' в ближайшее время.');
 }
 window.notifyPayment = notifyPayment;
