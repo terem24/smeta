@@ -40,6 +40,8 @@ const Tour = {
     // обязательно, человек будет пробовать кнопки.
     LS_ON: 'tour_on',
     LS_STEP: 'tour_step',
+    LS_STEP_KEY: 'tour_step_key',
+    LS_STEP_VER: 'tour_step_ver',
     // Отметка «человек решил сам». Без неё нельзя отличить выключенное обучение от
     // ещё не заданного: новичку мы включаем подсказки сами, и без этой отметки они
     // возвращались бы после каждой перезагрузки тому, кто их выключил.
@@ -65,7 +67,7 @@ const Tour = {
     // must — блок, который ждём от каждого новичка (его и пишем в админку как «прошёл»);
     // fallback — куда вести, если ни один шаг блока человеку недоступен (тариф).
     BLOCKS: [
-        { id: 'basic', icon: '🏠', title: 'Первый объект', sub: 'Соберёте дом 150 м² — от площади до скважинного насоса — и сохраните', min: 8, must: true },
+        { id: 'basic', icon: '🏠', title: 'Первый объект', sub: 'Учебный дом 150 м²: смета, откуда мощность котла, замена, схема — и сохранение', min: 9, must: true },
         { id: 'estimate', icon: '📄', title: 'Смета и клиент', sub: 'Замена позиций, ссылка клиенту, PDF и счёт', min: 2 },
         { id: 'cabinet', icon: '🧭', title: 'Меню и кнопки', sub: 'Шапка, боковое меню, что входит в ваш тариф', min: 2 },
         // Только в Профи: в списке лежат под сворачиваемым заголовком, на базовом тарифе заперты
@@ -90,11 +92,25 @@ const Tour = {
     STEPS: [
         // ───────────── Блок 1. Первый объект (практика) ─────────────
         {
+            // Начинаем не с пустой формы (на «Площадь: 0 м²» уходило больше всего людей), а с
+            // готового результата: подставляем учебный дом и показываем смету с итогом.
+            // Площадь трогаем, только если её нет — свой объект человека не переписываем.
+            block: 'basic', key: 'result', mob: 'output',
+            before: () => Tour.seedHouse(),
+            sel: () => { const t = document.getElementById('total_sum'); return (t && t.offsetParent) ? t.parentElement : document.getElementById('header_totals'); },
+            title: 'Готовая смета за секунду',
+            text: 'Мы подставили учебный дом 150 м². В смете уже котёл, приборы, трубы и фитинги с ценами. Дальше вы меняете параметры — и смотрите, как пересчитывается итог.',
+            extra: function () { return this.totalHtml(); },
+            point: () => document.getElementById('total_sum')
+        },
+        {
             block: 'basic', key: 'area', mob: 'inputs',
             sel: '#blk_main_area',
             title: 'Площадь дома',
-            text: 'Главное число расчёта: от него зависят котёл, радиаторы и трубы. Смета справа пересчитывается сразу после каждого действия.',
-            tasks: [{ label: 'Поставьте 150 м²: нажмите на число справа, впишите и нажмите Enter (или потяните ползунок)', done: () => Math.round(Tour.st().area) === 150 }],
+            text: 'Главное число расчёта: от него зависят котёл, радиаторы и трубы. Смета пересчитывается сразу после каждого действия.',
+            snap: () => JSON.stringify({ a: Math.round(Tour.st().area || 0) }),
+            tasks: [{ label: 'Поменяйте площадь — например, на 180 м²: нажмите на число, впишите и Enter (или потяните ползунок)', done: snap => Math.round(Tour.st().area || 0) !== JSON.parse(snap).a }],
+            now: () => Math.round(Tour.st().area || 0) + ' м², оборудование ' + Tour.money(Tour.eqSum()),
             point: '#val_area'
         },
         {
@@ -168,6 +184,16 @@ const Tour = {
             point: () => Tour.st().well ? document.getElementById('val_wellDepth') : document.querySelector('#blk_well_wrap .switch')
         },
         {
+            // Точность: откуда взялась мощность котла. Без заданий — это объяснение, но на
+            // настоящих числах этого дома, а не общими словами.
+            block: 'basic', key: 'why', mob: 'output',
+            sel: () => { const r = Tour.boilerRow(); if (r) return r.tr; const t = document.getElementById('total_sum'); return (t && t.offsetParent) ? t.parentElement : null; },
+            title: 'Почему такой котёл',
+            text: function () { return this.whyText(); },
+            extra: function () { return this.whyFormula(); },
+            point: () => { const r = Tour.boilerRow(); return r ? (r.tr.querySelector('.col-name') || r.tr) : null; }
+        },
+        {
             // Строка с радиатором: ищем по названию (колонка «Наименование»). В окне замены
             // радиатора есть фильтры «Тип прибора», «Подключение» (боковое или нижнее) и «Высота».
             // Окно закрывается, как только модель выбрана, поэтому задания идут в порядке
@@ -191,6 +217,23 @@ const Tour = {
                 ];
             },
             point: () => { const r = Tour.radRow() || Tour.anySwapRow(); return r ? r.btn : null; }
+        },
+        {
+            // Визуализация. Переключатель скрыт без привязки к магазину — тогда шаг пропустится сам.
+            // Схема — функция Профи: на базовом тарифе задания нет, только объяснение (клик по
+            // переключателю открыл бы окно оплаты посреди обучения).
+            block: 'basic', key: 'scheme', mob: 'output',
+            sel: () => { const w = document.getElementById('scheme_wrapper'); return (w && w.offsetParent) ? w : null; },
+            title: 'Схема по смете',
+            text: function () {
+                if (this.planInfo().isPro) return 'Оборудование из сметы встаёт на схему подключения котельной. Схему можно приложить к PDF — клиенту и бригаде.';
+                let bonus = false;
+                try { bonus = typeof Subscription !== 'undefined' && Subscription.tourBonusSettings().enabled; } catch (e) { }
+                return 'Схема подключения рисуется по смете автоматически — это функция Профи.' +
+                    (bonus ? ' Закончите этот блок — Профи откроется на 10 дней, и схема включится этим переключателем.' : '');
+            },
+            tasks: () => Tour.planInfo().isPro ? [{ label: 'Включите переключатель «Схема»', done: () => !!Tour.st().showScheme }] : null,
+            point: () => document.querySelector('#scheme_wrapper .switch')
         },
         {
             // На телефоне дискета спрятана в меню шапки — сохранить можно и кнопкой в карточке.
@@ -379,6 +422,76 @@ const Tour = {
     // сметы честнее, чем на вкладке, где нажимать нечего.
     anySwapRow: function () {
         return this.swapRow(() => true);
+    },
+
+    // Строка котла в смете (для шага «Почему такой котёл»)
+    BOILER_NOT: /дымоход|кронштейн|рама|набор|комплект|кран|группа|насос|бак|бойлер|датчик|термостат|коаксиал|труб/i,
+    boilerRow: function () {
+        return this.swapRow(t => /^\s*(электро)?котел|^\s*(электро)?котёл/i.test(t)) ||
+            this.swapRow(t => /котел|котёл/i.test(t) && !this.BOILER_NOT.test(t));
+    },
+
+    // Учебный дом: площадь 150 м², если своей ещё нет
+    seedHouse: function () {
+        try {
+            if ((parseFloat(app.state.area) || 0) > 0 || this._seeded) return;
+            this._seeded = true;
+            app.setArea(150);
+            if (typeof app.syncUI === 'function') app.syncUI();
+            if (typeof app.render === 'function') app.render();
+        } catch (e) { }
+    },
+
+    eqSum: function () {
+        try { return Math.round(app.lastEqSum || 0); } catch (e) { return 0; }
+    },
+
+    money: function (n) {
+        return (Math.round(n) || 0).toLocaleString('ru-RU') + ' ₽';
+    },
+
+    totalHtml: function () {
+        const n = this.eqSum();
+        if (!n) return '';
+        return '<div class="tour-stat"><span>Оборудование по смете</span><b>' + this.money(n) + '</b></div>';
+    },
+
+    // Откуда мощность: теплопотери этого дома и то, из чего они сложились
+    heatInfo: function () {
+        try {
+            const s = app.state;
+            const kw = parseFloat(app.getHouseHeatLoss()) || 0;
+            const area = parseFloat(s.area) || 0;
+            const h = s.floors === 2 ? ((s.h1 || 2.7) + (s.h2 || 2.7)) / 2 : (s.h1 || 2.7);
+            const t = typeof app.boilerTargetPower === 'function' ? app.boilerTargetPower(kw) : null;
+            const city = s.selectedCity && s.selectedCity.name ? String(s.selectedCity.name) : '';
+            return { kw: kw, area: area, h: h, city: city, rooms: !!(s.detailedRooms && (s.rooms || []).length),
+                need: t ? t.kw : kw, byDhw: !!(t && t.byDhw) };
+        } catch (e) { return null; }
+    },
+
+    whyText: function () {
+        const i = this.heatInfo();
+        if (!i || !i.kw) return 'Котёл подбирается по теплопотерям дома: их калькулятор считает сам по площади, высоте, климату города и материалу стен.';
+        const perM2 = i.area ? Math.round(i.kw * 1000 / i.area) : 0;
+        return 'Теплопотери этого дома — <b>' + this.fmt1(i.kw) + ' кВт</b>' + (perM2 ? ' (≈ ' + perM2 + ' Вт на м²)' : '') + '. ' +
+            'Котёл берём не слабее' + (i.byDhw ? ', а с бойлером — с запасом на нагрев воды: <b>' + this.fmt1(i.need) + ' кВт</b>' : '') + '. ' +
+            'Город и стены меняются в «Параметрах объекта» — мощность и смета пересчитаются.';
+    },
+
+    fmt1: function (n) { return (Math.round((n || 0) * 10) / 10).toLocaleString('ru-RU'); },
+
+    whyFormula: function () {
+        const i = this.heatInfo();
+        if (!i || !i.kw || i.rooms || !i.area) return '';
+        const k = i.kw * 1000 / (i.area * i.h * 37);
+        return '<div class="tour-formula">' +
+            '<span><b>' + Math.round(i.area) + ' м²</b><small>площадь</small></span><i>×</i>' +
+            '<span><b>' + this.fmt1(i.h) + ' м</b><small>потолки</small></span><i>×</i>' +
+            '<span><b>37 Вт/м³</b><small>норма</small></span><i>×</i>' +
+            '<span><b>' + k.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '</b><small>' + (i.city ? this.esc(i.city) + ', стены' : 'климат, стены') + '</small></span><i>=</i>' +
+            '<span class="is-res"><b>' + this.fmt1(i.kw) + ' кВт</b><small>теплопотери</small></span>' +
+            '</div>';
     },
 
     // Подраздел с радиаторами свёрнут (app.toggleGroup) — разворачиваем
@@ -791,7 +904,15 @@ const Tour = {
         try { return JSON.parse(this.ls(this.LS_BLOCKS) || '{}') || {}; } catch (e) { return {}; }
     },
 
+    // Шаг запоминаем ещё и по ключу: номер сдвигается, когда в блок добавляют шаги, и
+    // человек продолжил бы не с того места. Старые записи (только номер) читаются как раньше.
     _savedStep: function () {
+        const key = this.ls(this.LS_STEP_KEY);
+        if (key) {
+            const j = this.STEPS.findIndex(x => (x.block + ':' + x.key) === key);
+            if (j > -1) return j;
+        }
+        if (key === null && this.ls(this.LS_STEP_VER) !== '2') return 0;
         const n = parseInt(this.ls(this.LS_STEP) || '0', 10);
         return (isNaN(n) || n < 0 || n >= this.STEPS.length) ? 0 : n;
     },
@@ -819,6 +940,9 @@ const Tour = {
 
     save: function () {
         this.lsSet(this.LS_STEP, String(this._step));
+        const cur = this.STEPS[this._step];
+        this.lsSet(this.LS_STEP_KEY, cur ? cur.block + ':' + cur.key : '');
+        this.lsSet(this.LS_STEP_VER, '2');
         this.lsSet(this.LS_BLOCK, this._block || '');
         this.lsSet(this.LS_VIEW, this._view);
     },
@@ -845,7 +969,8 @@ const Tour = {
         let i = this.STEPS.findIndex(s => s.block === id && (!key || s.key === key));
         if (i < 0) i = 0;
         this._step = i; this._lastShown = -1;
-        if (id === 'basic') this._basicSaved = false;
+        if (id === 'basic') { this._basicSaved = false; this._seeded = false; }
+        this.logEv('start');
         this.save();
         this.buildPlan();
         this.show();
@@ -883,7 +1008,7 @@ const Tour = {
     endBlock: function () {
         const id = this._block;
         const ok = id !== 'basic' || !!this._basicSaved;
-        if (ok) this.markBlock(id);
+        if (ok) { this.logEv('done'); this.markBlock(id); }
         this._view = 'done'; this._lastShown = -1;
         this.save();
         this.show();
@@ -1260,6 +1385,18 @@ const Tour = {
         return card;
     },
 
+    // Новая карточка (шаг, список блоков, итог): содержимое въезжает лесенкой — по
+    // элементу с задержкой. Только при смене экрана: задания и кнопки внутри шага
+    // перерисовываются без анимации (refreshTasks меняет лишь их содержимое).
+    animIn: function (card) {
+        try {
+            Array.prototype.forEach.call(card.children, (c, i) => {
+                c.classList.add('tour-enter');
+                c.style.animationDelay = Math.min(i, 8) * 35 + 'ms';
+            });
+        } catch (e) { }
+    },
+
     esc: function (s) {
         return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     },
@@ -1321,9 +1458,14 @@ const Tour = {
         const wasDone = card.dataset.t && card.dataset.t.indexOf('false') < 0;
         const box = document.getElementById('tour_tasks');
         const btns = document.getElementById('tour_btns');
+        const before = (card.dataset.t || '').match(/true|false/g) || [];
         if (box) box.innerHTML = this.tasksHtml(step);
         if (btns) btns.innerHTML = this.btnsHtml(step);
         card.dataset.t = this.taskFlags(step).join('');
+        // Только что выполненное задание — галочка «выпрыгивает»
+        if (box) this.taskFlags(step).forEach((f, i) => {
+            if (f && before[i] === 'false') { const t = box.querySelectorAll('.tour-task')[i]; if (t) t.classList.add('is-new'); }
+        });
         const done = !this.tasksPending(step);
         if (box) box.classList.toggle('is-done', done);
         this._autoAt = (done && !wasDone) ? Date.now() + 1100 : (done ? this._autoAt : 0);
@@ -1624,6 +1766,7 @@ const Tour = {
             '<div class="tour-blks">' + rows + '</div>' +
             '<div class="tour-card-foot">' +
             (rec ? '<span class="tour-kbd-line"> Клавиша <kbd class="tour-kbd tour-kbd-plain">Enter ↵</kbd> — начать «' + rec.title + '».</span>' : '') + '</div>';
+        this.animIn(card);
         this.placeFree(card);
     },
 
@@ -1665,6 +1808,7 @@ const Tour = {
             '<div class="tour-card-title tour-done-title">' + (ok ? '<span class="tour-done-mark">✓</span> ' : '') + b.title + '</div>' +
             '<div class="tour-card-text">' + body + '</div>' +
             '<div class="tour-card-btns"><button type="button" class="tour-btn tour-btn-ghost" onclick="Tour.openMenu()">Все блоки</button>' + btns + '</div>';
+        this.animIn(card);
         this.placeFree(card);
     },
 
@@ -1752,9 +1896,11 @@ const Tour = {
         this.revealGroup(el);
 
         // Вошли на новый шаг: запоминаем состояние для заданий «поменяйте что-нибудь»
-        if (this._lastShown !== this._step) {
+        const fresh = this._lastShown !== this._step;
+        if (fresh) {
             this._lastShown = this._step;
             this._enteredAt = Date.now();
+            this.logEv('step');
             try { this._snap = step.snap ? step.snap() : null; } catch (e) { this._snap = null; }
             // Что уже выполнено к моменту входа (4 жильца и 60 м по умолчанию): такие задания
             // помечаем «уже стоит», иначе галочка загорается без действия и сбивает с толку.
@@ -1798,6 +1944,7 @@ const Tour = {
             (typeof v.extra === 'function' ? v.extra.call(this) : '') +
             '<div class="tour-note" id="tour_note" role="status"></div>' +
             '<div class="tour-card-btns" id="tour_btns">' + this.btnsHtml(step) + '</div>';
+        if (fresh) this.animIn(card);
         this.chooseDock(card, el);
         this.updatePointer();
         if (this._resumeNote) { this.note(this._resumeNote); this._resumeNote = ''; }
@@ -2321,6 +2468,133 @@ body.dark-mode .tour-btn-ready { animation-name: tour-ready-dark; }
 /* Человек попросил систему не двигать картинки — без пульсаций и тряски */
 @media (prefers-reduced-motion: reduce) {
     .tour-spot, .tour-btn-ready, #tour_pointer *, .tour-shake { animation: none !important; }
+}
+
+/* ═════════ Оформление 2026: стекло, мягкие тени, пружинные анимации ═════════
+   Слой поверх базовых правил выше: раскладку и поведение не меняет, только вид.
+   Цвета — системные синий/зелёный (как в iOS), чтобы обучение читалось отдельно
+   от интерфейса калькулятора и одинаково в светлой и тёмной теме. */
+.tour-card {
+    --t-accent: #0A84FF; --t-accent2: #5E5CE6; --t-ok: #34C759;
+    --t-bg: rgba(255, 255, 255, 0.84); --t-line: rgba(15, 23, 42, 0.08); --t-fill: rgba(120, 120, 128, 0.12);
+    --t-text: #0B0B0F; --t-sec: #6E6E73;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, sans-serif;
+    background: var(--t-bg); color: var(--t-text);
+    -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px);
+    border: 1px solid var(--t-line); border-radius: 22px;
+    box-shadow: 0 30px 60px -18px rgba(15, 23, 42, 0.35), 0 2px 8px rgba(15, 23, 42, 0.06);
+    padding: 16px 18px 14px;
+    animation: tour-card-in .55s cubic-bezier(.16, 1, .3, 1) both;
+}
+body.dark-mode .tour-card {
+    --t-bg: rgba(28, 28, 30, 0.82); --t-line: rgba(255, 255, 255, 0.09); --t-fill: rgba(118, 118, 128, 0.24);
+    --t-text: #F5F5F7; --t-sec: #A1A1A6;
+    background: var(--t-bg); border-color: var(--t-line);
+    box-shadow: 0 30px 70px -18px rgba(0, 0, 0, 0.7), 0 0 0 0.5px rgba(255, 255, 255, 0.06) inset;
+}
+@keyframes tour-card-in { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+.tour-enter { animation: tour-rise .5s cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes tour-rise { from { opacity: 0; transform: translateY(8px); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+
+.tour-card .tour-card-num { color: var(--t-sec) !important; font-size: 11.5px; font-weight: 600; letter-spacing: .02em; }
+.tour-card .tour-card-title { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; margin: 2px 0 6px; color: var(--t-text); }
+.tour-card .tour-card-text { font-size: 14px; line-height: 1.5; color: var(--t-sec); }
+.tour-card .tour-card-text b { color: var(--t-text); font-weight: 650; }
+.tour-card .tour-card-x {
+    width: 30px; height: 30px; min-width: 30px; min-height: 30px; margin: -4px -6px 0 0; padding: 0; border-radius: 50%;
+    background: var(--t-fill); color: var(--t-sec) !important; font-size: 18px; transition: background .2s, transform .2s;
+}
+.tour-card .tour-card-x:hover { background: rgba(120, 120, 128, 0.22); transform: scale(1.06); }
+.tour-card .tour-card-blocks { border: none; background: var(--t-fill); color: var(--t-text) !important; font-weight: 600; transition: background .2s; }
+.tour-card .tour-card-blocks:hover { background: rgba(120, 120, 128, 0.22); }
+
+/* Прогресс — тонкая полоса с переливом */
+.tour-card .tour-prog { height: 5px; border-radius: 999px; background: var(--t-fill); margin: 2px 0 12px; }
+.tour-card .tour-prog i { border-radius: 999px; background: linear-gradient(90deg, var(--t-accent), var(--t-accent2)); transition: width .6s cubic-bezier(.16, 1, .3, 1); position: relative; overflow: hidden; }
+.tour-card .tour-prog i::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); transform: translateX(-100%); animation: tour-sheen 2.4s ease-in-out .6s infinite; }
+@keyframes tour-sheen { 0% { transform: translateX(-100%); } 60%, 100% { transform: translateX(100%); } }
+
+/* Кнопки — «пилюли» */
+.tour-card .tour-btn { border-radius: 999px; padding: 9px 18px; min-height: 38px; font-weight: 650; letter-spacing: -0.01em;
+    transition: transform .2s cubic-bezier(.16, 1, .3, 1), box-shadow .2s, background .2s; }
+.tour-card .tour-btn:not(.tour-btn-ghost), body.dark-mode .tour-card .tour-btn:not(.tour-btn-ghost) {
+    background: linear-gradient(180deg, #2E95FF, var(--t-accent)); color: #fff; box-shadow: 0 6px 16px -4px rgba(10, 132, 255, 0.55); }
+.tour-card .tour-btn:hover { transform: translateY(-1px); }
+.tour-card .tour-btn:active { transform: scale(.97); }
+.tour-card .tour-btn-ghost, body.dark-mode .tour-card .tour-btn-ghost { background: var(--t-fill); border: none; color: var(--t-text); }
+.tour-card .tour-btn-skip { border-style: none; color: var(--t-sec); }
+.tour-card .tour-kbd, body.dark-mode .tour-card .tour-btn:not(.tour-btn-ghost) .tour-kbd { background: rgba(255,255,255,.2); border-color: rgba(255,255,255,.35); color: #fff; }
+.tour-card .tour-btn-ready { animation: tour-ready-blue 2s ease-in-out infinite; }
+@keyframes tour-ready-blue { 0%, 100% { box-shadow: 0 6px 16px -4px rgba(10,132,255,.55), 0 0 0 0 rgba(10,132,255,.4); } 50% { box-shadow: 0 6px 16px -4px rgba(10,132,255,.55), 0 0 0 7px rgba(10,132,255,0); } }
+.tour-card .tour-card-btns { margin-top: 14px; }
+@media (max-width: 760px), screen and (max-height: 520px) {
+    .tour-card .tour-card-btns, body.dark-mode .tour-card .tour-card-btns { background: transparent;
+        -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+}
+.tour-card .tour-act { border-radius: 14px; background: linear-gradient(180deg, #2E95FF, var(--t-accent)); box-shadow: 0 8px 20px -6px rgba(10,132,255,.6); transition: transform .2s; }
+
+/* Задания */
+.tour-card .tour-tasks { border: none; border-radius: 16px; padding: 12px 14px; background: rgba(10, 132, 255, 0.08); transition: background .4s; }
+body.dark-mode .tour-card .tour-tasks { background: rgba(10, 132, 255, 0.16); }
+.tour-card .tour-tasks.is-done { background: rgba(52, 199, 89, 0.12); }
+.tour-card .tour-tasks.is-done::after { content: 'Готово — переходим дальше'; color: #248A3D; font-weight: 650; animation: tour-rise .4s cubic-bezier(.16,1,.3,1) both; }
+body.dark-mode .tour-card .tour-tasks.is-done::after { color: #30D158; }
+.tour-card .tour-task { font-size: 14px; font-weight: 550; color: var(--t-text); }
+.tour-card .tour-task + .tour-task { margin-top: 8px; }
+.tour-card .tour-task-mark, body.dark-mode .tour-card .tour-task-mark { flex-basis: 20px; width: 20px; height: 20px; border: 2px solid var(--t-accent); transition: background .25s, border-color .25s; }
+.tour-card .tour-task.is-done .tour-task-mark { background: var(--t-ok); border-color: var(--t-ok); }
+.tour-card .tour-task.is-done .tour-task-t { color: var(--t-sec); text-decoration-color: rgba(52, 199, 89, .7); }
+.tour-card .tour-task.is-new .tour-task-mark { animation: tour-check .5s cubic-bezier(.34, 1.56, .64, 1) both; }
+@keyframes tour-check { 0% { transform: scale(.4); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.tour-card .tour-now { border-top: 1px solid var(--t-line); color: var(--t-sec); font-weight: 500; }
+.tour-card .tour-note { border-radius: 12px; border: none; }
+
+/* Итог в рублях и формула мощности */
+.tour-stat { margin-top: 12px; padding: 12px 14px; border-radius: 16px; display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+    background: linear-gradient(135deg, rgba(10,132,255,.1), rgba(94,92,230,.1)); }
+.tour-stat span { font-size: 12.5px; color: var(--t-sec); }
+.tour-stat b { font-size: 22px; font-weight: 750; letter-spacing: -0.02em; color: var(--t-text); font-variant-numeric: tabular-nums; }
+.tour-formula { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.tour-formula span { display: inline-flex; flex-direction: column; align-items: center; padding: 6px 9px; border-radius: 12px; background: var(--t-fill); min-width: 44px; }
+.tour-formula span b { font-size: 13px; font-weight: 700; color: var(--t-text); white-space: nowrap; }
+.tour-formula span small { font-size: 10px; color: var(--t-sec); white-space: nowrap; }
+.tour-formula span.is-res { background: linear-gradient(135deg, var(--t-accent), var(--t-accent2)); }
+.tour-formula span.is-res b, .tour-formula span.is-res small { color: #fff; }
+.tour-formula i { font-style: normal; font-weight: 600; color: var(--t-sec); }
+.tour-formula > * { animation: tour-rise .45s cubic-bezier(.16,1,.3,1) both; }
+.tour-formula > *:nth-child(3) { animation-delay: .08s; } .tour-formula > *:nth-child(5) { animation-delay: .16s; }
+.tour-formula > *:nth-child(7) { animation-delay: .24s; } .tour-formula > *:nth-child(9) { animation-delay: .34s; }
+
+/* Список блоков */
+.tour-card .tour-blk, body.dark-mode .tour-card .tour-blk { border: 1px solid transparent; border-radius: 16px; background: var(--t-fill); min-height: 60px;
+    transition: transform .25s cubic-bezier(.16,1,.3,1), background .2s, box-shadow .25s; }
+.tour-card .tour-blk:hover { transform: translateY(-2px) scale(1.005); box-shadow: 0 10px 24px -12px rgba(15,23,42,.35); border-color: transparent; }
+.tour-card .tour-blk.is-rec, body.dark-mode .tour-card .tour-blk.is-rec { background: linear-gradient(var(--t-bg), var(--t-bg)) padding-box,
+    linear-gradient(135deg, var(--t-accent), var(--t-accent2)) border-box; border: 1.5px solid transparent; }
+.tour-card .tour-blk-ic, body.dark-mode .tour-card .tour-blk-ic { border: none; border-radius: 12px; background: var(--t-bg); box-shadow: 0 2px 6px rgba(15,23,42,.08); }
+.tour-card .tour-blk-body b { font-size: 14px; font-weight: 650; color: var(--t-text); }
+.tour-card .tour-blk-must, body.dark-mode .tour-card .tour-blk-must { background: linear-gradient(135deg, var(--t-accent), var(--t-accent2)); color: #fff; }
+.tour-card .tour-blk-st.is-rec, body.dark-mode .tour-card .tour-blk-st.is-rec { background: var(--t-accent); color: #fff; }
+.tour-card .tour-blk-st.is-ok { color: #248A3D; }
+.tour-card .tour-blks > .tour-blk { animation: tour-rise .5s cubic-bezier(.16,1,.3,1) both; }
+.tour-card .tour-blks > .tour-blk:nth-child(2) { animation-delay: .05s; } .tour-card .tour-blks > .tour-blk:nth-child(3) { animation-delay: .1s; }
+.tour-card .tour-blks > .tour-blk:nth-child(4) { animation-delay: .15s; } .tour-card .tour-blks > .tour-blk:nth-child(5) { animation-delay: .2s; }
+.tour-card .tour-done-mark { background: var(--t-ok); animation: tour-check .6s cubic-bezier(.34,1.56,.64,1) both; box-shadow: 0 6px 14px -4px rgba(52,199,89,.6); }
+.tour-card .tour-chips span { border: none; background: rgba(10,132,255,.1); color: var(--t-accent); }
+
+/* Подсветка элемента: мягкое свечение вместо жёсткой рамки */
+.tour-spot { outline: 2px solid rgba(10, 132, 255, 0.95); outline-offset: 4px; border-radius: 12px; animation: tour-glow 2s ease-in-out infinite; }
+@keyframes tour-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(10,132,255,.32), 0 0 24px 2px rgba(10,132,255,.18); } 50% { box-shadow: 0 0 0 9px rgba(10,132,255,0), 0 0 30px 6px rgba(10,132,255,.26); } }
+/* Палец — в цвет обучения */
+#tour_pointer .tp-arrow path { fill: #0A84FF; }
+#tour_pointer .tp-arrow { filter: drop-shadow(0 3px 6px rgba(10, 132, 255, 0.5)); }
+#tour_pointer .tp-ring { border-color: #0A84FF; }
+#tour_pointer .tp-tail { background: linear-gradient(90deg, rgba(10, 132, 255, 0.85), rgba(94, 92, 230, 0)); }
+.tour-card.tour-card-swap { border: 1.5px solid rgba(10, 132, 255, 0.9); box-shadow: 0 20px 44px -12px rgba(10, 132, 255, 0.45); }
+
+@media (prefers-reduced-motion: reduce) {
+    .tour-card, .tour-enter, .tour-formula > *, .tour-blks > .tour-blk, .tour-task.is-new .tour-task-mark,
+    .tour-done-mark, .tour-prog i::after, .tour-tasks.is-done::after { animation: none !important; }
 }
 @media print { .tour-card, .tour-spot { display: none !important; outline: none !important; } }
 `;
