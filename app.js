@@ -30477,6 +30477,9 @@ const app = {
         const def = this.todayDefaultLayout();
         let l = null;
         try { l = JSON.parse(localStorage.getItem(this.TODAY_LAYOUT_KEY) || 'null'); } catch (e) { l = null; }
+        // Своей раскладки нет — берём общий вид по умолчанию (вид владельца, см. homeDef*)
+        const local = !!l;
+        if (!l) l = this.homeDefPart('today');
         const seen = {};
         const items = ((l && Array.isArray(l.items)) ? l.items : [])
             .filter(w => w && this.todayMeta(w.id) && !seen[w.id] && (seen[w.id] = 1))
@@ -30490,7 +30493,9 @@ const app = {
         const hideV2 = { newusers: 1, ests: 1, payments: 1 };
         const kept = (l && l.v === 2) ? items : items.filter(w => !dropV2[w.id]).map(w => hideV2[w.id] ? Object.assign(w, { hidden: true }) : w);
         this._todayLayout = { v: 2, style: style, items: kept };
-        if (!(l && l.v === 2)) { try { localStorage.setItem(this.TODAY_LAYOUT_KEY, JSON.stringify(this._todayLayout)); } catch (e) { } }
+        // Перевод старой раскладки на v2 — только для своей сохранённой: общий вид на диск не пишем,
+        // иначе он «застыл» бы у человека и перестал следовать за общим
+        if (local && l.v !== 2) { try { localStorage.setItem(this.TODAY_LAYOUT_KEY, JSON.stringify(this._todayLayout)); } catch (e) { } }
         return this._todayLayout;
     },
     todaySave: function () {
@@ -30561,6 +30566,7 @@ const app = {
         const items = this.todayLayout().items;
         const w = items.find(x => x.id === id);
         if (!w) return;
+        if (hidden) { const m = this.todayMeta(id); this.homeLog({ t: 'today', tile: id, pos: items.indexOf(w), span: w.span, label: 'плитка «' + (m ? m.t : id) + '»' }); }
         // Ярлык раздела убираем совсем (вернуть можно из окна «+ Добавить плитку»), плитку с данными — прячем
         if (String(id).indexOf('tab:') === 0) items.splice(items.indexOf(w), 1);
         else w.hidden = !!hidden;
@@ -30644,6 +30650,7 @@ const app = {
         if (!this._kpiViews) {
             let v = null;
             try { v = JSON.parse(localStorage.getItem(this.KPI_VIEWS_KEY) || 'null'); } catch (e) { }
+            if (!(v && typeof v === 'object')) v = this.homeDefPart('kpiViews');
             this._kpiViews = (v && typeof v === 'object') ? v : {};
         }
         const x = this._kpiViews[w];
@@ -32229,6 +32236,7 @@ const app = {
         if (!this._kpiHide) {
             let v = null;
             try { v = JSON.parse(localStorage.getItem(this.KPI_HIDE_KEY) || 'null'); } catch (e) { }
+            if (!(v && typeof v === 'object')) v = this.homeDefPart('kpiHide');
             this._kpiHide = (v && typeof v === 'object') ? v : {};
         }
         return this._kpiHide;
@@ -32238,10 +32246,211 @@ const app = {
         return v === undefined ? !!m.off : !!v;
     },
     kpiSetHidden: function (wid, k, hide) {
-        this.kpiHideMap()[wid + '.' + k] = !!hide;
+        const map = this.kpiHideMap(), key = wid + '.' + k, prev = map[key];
+        if (hide) {
+            const W = (this._kpiLastW || {})[wid] || {};
+            const m = (W.nums || []).filter(x => x.k === k)[0];
+            this.homeLog({ t: 'tile', key: key, prev: prev === undefined ? null : prev, label: 'плашка «' + (m ? m.l : k) + '»' + (W.title ? ' · ' + W.title : '') });
+        }
+        map[key] = !!hide;
         try { localStorage.setItem(this.KPI_HIDE_KEY, JSON.stringify(this._kpiHide)); } catch (e) { }
         this.renderAdminHome();
     },
+    // ═══ Вид главной: свёрнутые разделы, история изменений, общий вид по умолчанию ═══
+    // Свёрнутый раздел показывает только плашки с цифрами (без графиков, карточек, журналов)
+    KPI_FOLD_KEY: 'heatcalc_kpi_fold_v1',
+    kpiFoldMap: function () {
+        if (!this._kpiFold) {
+            let v = null;
+            try { v = JSON.parse(localStorage.getItem(this.KPI_FOLD_KEY) || 'null'); } catch (e) { }
+            if (!(v && typeof v === 'object')) v = this.homeDefPart('kpiFold');
+            this._kpiFold = (v && typeof v === 'object') ? v : {};
+        }
+        return this._kpiFold;
+    },
+    kpiFoldSave: function () { try { localStorage.setItem(this.KPI_FOLD_KEY, JSON.stringify(this._kpiFold)); } catch (e) { } },
+    kpiFold: function (wid, open) {
+        const F = this.kpiFoldMap();
+        const fold = open === undefined ? !F[wid] : !open;
+        if (fold) { F[wid] = true; if (this._kpiListOpen && this._kpiListOpen.indexOf(wid + '.') === 0) this._kpiListOpen = null; }
+        else delete F[wid];
+        this.kpiFoldSave();
+        this.renderAdminHome();
+    },
+    kpiFoldAll: function (fold) {
+        const F = this.kpiFoldMap();
+        (this._kpiShownSec || []).forEach(k => { if (fold) F[k] = true; else delete F[k]; });
+        if (fold) this._kpiListOpen = null;
+        this.kpiFoldSave();
+        this.renderAdminHome();
+    },
+    kpiSecHide: function (wid, hide) {
+        const map = this.kpiHideMap(), key = 'sec.' + wid;
+        if (hide) {
+            const W = (this._kpiLastW || {})[wid] || {};
+            this.homeLog({ t: 'tile', key: key, prev: map[key] === undefined ? null : map[key], label: 'раздел «' + (W.title || wid) + '»' });
+            map[key] = true;
+        } else delete map[key];
+        try { localStorage.setItem(this.KPI_HIDE_KEY, JSON.stringify(map)); } catch (e) { }
+        this.renderAdminHome();
+    },
+
+    // История: каждое скрытие и сброс можно вернуть по отдельности, в любом порядке.
+    // Последние 30 записей лежат в localStorage — переживают перезагрузку
+    HOME_HIST_KEY: 'heatcalc_home_hist_v1',
+    homeHist: function () {
+        if (!this._homeHist) {
+            let v = null;
+            try { v = JSON.parse(localStorage.getItem(this.HOME_HIST_KEY) || 'null'); } catch (e) { }
+            this._homeHist = Array.isArray(v) ? v : [];
+        }
+        return this._homeHist;
+    },
+    homeHistSave: function () { try { localStorage.setItem(this.HOME_HIST_KEY, JSON.stringify(this._homeHist.slice(0, 30))); } catch (e) { } },
+    homeLog: function (e) {
+        const h = this.homeHist();
+        e.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        e.at = Date.now();
+        h.unshift(e);
+        this._homeHist = h.slice(0, 30);
+        this.homeHistSave();
+        this.homeToast(e);
+    },
+    homeToast: function (e) {
+        let t = document.getElementById('home_toast');
+        if (t) t.remove();
+        t = document.createElement('div');
+        t.id = 'home_toast';
+        t.className = 'home-toast';
+        const what = e.t === 'reset' ? 'Настройки главной сброшены' : 'Скрыто: ' + e.label;
+        t.innerHTML = `<span></span><button type="button" onclick="app.homeUndo('${e.id}')">↶ Вернуть</button><button type="button" class="home-toast-x" onclick="this.parentNode.remove()" aria-label="Закрыть">×</button>`;
+        t.firstChild.textContent = what;
+        document.body.appendChild(t);
+        clearTimeout(this._homeToastT);
+        this._homeToastT = setTimeout(() => { const x = document.getElementById('home_toast'); if (x) x.remove(); }, 9000);
+    },
+    homeUndo: function (id) {
+        const h = this.homeHist(), i = h.findIndex(x => x.id === id);
+        if (i < 0) return;
+        const e = h[i];
+        if (e.t === 'tile') {
+            const map = this.kpiHideMap();
+            if (e.prev === null) delete map[e.key]; else map[e.key] = e.prev;
+            try { localStorage.setItem(this.KPI_HIDE_KEY, JSON.stringify(map)); } catch (x) { }
+        } else if (e.t === 'today') {
+            const items = this.todayLayout().items, w = items.find(x => x.id === e.tile);
+            if (w) w.hidden = false;
+            else if (this.todayMeta(e.tile)) items.splice(Math.min(e.pos || 0, items.length), 0, { id: e.tile, span: e.span || 1, hidden: false });
+            try { localStorage.setItem(this.TODAY_LAYOUT_KEY, JSON.stringify(this.todayLayout())); } catch (x) { }
+        } else if (e.t === 'reset') {
+            Object.keys(e.snap || {}).forEach(k => {
+                try { if (e.snap[k] == null) localStorage.removeItem(k); else localStorage.setItem(k, e.snap[k]); } catch (x) { }
+            });
+            this.homeCachesClear();
+        }
+        h.splice(i, 1);
+        this.homeHistSave();
+        const t = document.getElementById('home_toast');
+        if (t) t.remove();
+        this.renderAdminHome();
+    },
+    homeHistClear: function () { this._homeHist = []; this.homeHistSave(); this.renderAdminHome(); },
+    homeHistHtml: function (esc) {
+        const h = this.homeHist();
+        const when = t => { const d = new Date(t), f = n => String(n).padStart(2, '0'); return f(d.getDate()) + '.' + f(d.getMonth() + 1) + ' ' + f(d.getHours()) + ':' + f(d.getMinutes()); };
+        const rows = h.length ? h.map(e => `<div class="home-hist-r"><span>${e.t === 'reset' ? '⟲ Сброс настроек главной' : '✕ Скрыта ' + esc(e.label)}</span><em>${when(e.at)}</em>
+            <button type="button" class="admin-btn" onclick="app.homeUndo('${e.id}')">↶ Вернуть</button></div>`).join('')
+            : '<div class="ad-tile-note">Пока ничего не скрывали и не сбрасывали.</div>';
+        return `<details class="home-hist"${h.length ? ' open' : ''}><summary>Последние изменения${h.length ? ' (' + h.length + ')' : ''} — вернуть можно каждое по отдельности</summary>
+            <div class="home-hist-l">${rows}</div>${h.length ? '<button type="button" class="home-hist-clr" onclick="app.homeHistClear()">Очистить историю</button>' : ''}</details>`;
+    },
+
+    // Ключи localStorage, из которых складывается вид главной
+    homeKeys: function () { return [this.TODAY_LAYOUT_KEY, this.KPI_HIDE_KEY, this.KPI_ORDER_KEY, this.KPI_VIEWS_KEY, this.KPI_FOLD_KEY]; },
+    homeCachesClear: function () { this._todayLayout = null; this._kpiHide = null; this._kpiOrder = null; this._kpiViews = null; this._kpiFold = null; },
+    // Сброс: прежнее состояние уходит в историю целиком — его можно вернуть.
+    // У владельца сброс ведёт к исходному виду из кода (и он же станет общим),
+    // у остальных — к общему виду по умолчанию
+    homeReset: function () {
+        const snap = {};
+        this.homeKeys().forEach(k => { try { snap[k] = localStorage.getItem(k); } catch (e) { snap[k] = null; } });
+        this.homeKeys().forEach(k => { try { localStorage.removeItem(k); } catch (e) { } });
+        if (this.homeIsOwner()) {
+            try {
+                localStorage.setItem(this.TODAY_LAYOUT_KEY, JSON.stringify(Object.assign({ v: 2 }, this.todayDefaultLayout())));
+                localStorage.setItem(this.KPI_HIDE_KEY, '{}'); localStorage.setItem(this.KPI_ORDER_KEY, '{"sec":[],"tiles":{}}');
+                localStorage.setItem(this.KPI_VIEWS_KEY, '{}'); localStorage.setItem(this.KPI_FOLD_KEY, '{}');
+            } catch (e) { }
+        }
+        this.homeCachesClear();
+        this.homeLog({ t: 'reset', snap: snap, label: 'сброс' });
+        this.renderAdminHome();
+    },
+
+    // Общий вид по умолчанию — app_settings.admin_home_layout. Это вид владельца: он
+    // записывается сам, как только владелец что-то меняет на главной. Остальные видят его,
+    // пока не настроят свою главную (то, что человек настроил сам, лежит у него в
+    // localStorage и важнее общего). Читать общий вид может любой, писать — администратор
+    HOME_DEF_KEY: 'admin_home_layout',
+    HOME_DEF_CACHE: 'heatcalc_home_def_cache_v1',
+    homeIsOwner: function () { try { return this.getAdminRole() === 'super_admin'; } catch (e) { return false; } },
+    homeDefPart: function (name) {
+        if (this._homeDef === undefined) {
+            try { this._homeDef = JSON.parse(localStorage.getItem(this.HOME_DEF_CACHE) || 'null'); } catch (e) { this._homeDef = null; }
+        }
+        const L = this._homeDef && this._homeDef.layout;
+        return L && L[name] && typeof L[name] === 'object' ? JSON.parse(JSON.stringify(L[name])) : null;
+    },
+    homeDefLoad: function () {
+        if (this._homeDefState) return;
+        this._homeDefState = 'loading';
+        supabaseClient.from('app_settings').select('value').eq('key', this.HOME_DEF_KEY).maybeSingle()
+            .then(({ data, error }) => {
+                if (error) throw error;
+                const v = data && data.value && data.value.layout ? data.value : null;
+                const changed = JSON.stringify(v) !== JSON.stringify(this._homeDef || null);
+                this._homeDef = v;
+                try { if (v) localStorage.setItem(this.HOME_DEF_CACHE, JSON.stringify(v)); else localStorage.removeItem(this.HOME_DEF_CACHE); } catch (e) { }
+                this._homeDefState = 'ok';
+                if (changed) this.homeCachesClear();
+                if (this._adminTab === 'home') this.renderAdminHome();
+            })
+            .catch(e => { console.warn('[главная] общий вид не загрузился:', e); this._homeDefState = 'error'; });
+    },
+    homeEffective: function () {
+        this.kpiViewOf('users');
+        return { today: this.todayLayout(), kpiHide: this.kpiHideMap(), kpiOrder: this.kpiOrderMap(), kpiViews: this._kpiViews || {}, kpiFold: this.kpiFoldMap() };
+    },
+    // Вызывается после каждой отрисовки главной: у владельца сверяет его вид с общим и,
+    // если отличается, через пару секунд записывает (одна запись на серию изменений)
+    homeDefSync: function () {
+        if (this._homeDefState !== 'ok' || !this.homeIsOwner() || this.isReadOnlyAdmin()) return;
+        const layout = this.homeEffective();
+        const js = JSON.stringify(layout);
+        if (js === JSON.stringify((this._homeDef && this._homeDef.layout) || null) || js === this._homeDefPending) return;
+        this._homeDefPending = js;
+        clearTimeout(this._homeDefT);
+        this._homeDefT = setTimeout(async () => {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const value = { layout: JSON.parse(js), by: me, at: new Date().toISOString() };
+            try {
+                const { error } = await supabaseClient.from('app_settings')
+                    .upsert({ key: this.HOME_DEF_KEY, value: value, updated_at: value.at, updated_by: me }, { onConflict: 'key' });
+                if (error) throw error;
+                this._homeDef = value;
+                try { localStorage.setItem(this.HOME_DEF_CACHE, JSON.stringify(value)); } catch (e) { }
+            } catch (e) { console.warn('[главная] общий вид не записан:', e); }
+            this._homeDefPending = null;
+        }, 2000);
+    },
+    homeDefNote: function () {
+        if (this.homeIsOwner()) return 'Ваш вид главной — общий по умолчанию: его видят остальные администраторы, пока не настроят свою. Сохраняется сам.';
+        const d = this._homeDef;
+        let mine = false;
+        try { mine = this.homeKeys().some(k => localStorage.getItem(k) != null); } catch (e) { }
+        return mine ? 'У вас своя настройка главной. «Сбросить» вернёт общий вид владельца.' : (d ? 'Сейчас у вас общий вид главной от владельца. Измените что-нибудь — и настройка станет вашей.' : '');
+    },
+
     kpiEdit: function (on) { this._kpiEditOn = !!on; this.renderAdminHome(); },
     kpiResetHidden: function () {
         this._kpiHide = {};
@@ -32257,6 +32466,7 @@ const app = {
         if (!this._kpiOrder) {
             let v = null;
             try { v = JSON.parse(localStorage.getItem(this.KPI_ORDER_KEY) || 'null'); } catch (e) { }
+            if (!(v && typeof v === 'object')) v = this.homeDefPart('kpiOrder');
             this._kpiOrder = (v && typeof v === 'object') ? v : {};
             if (!Array.isArray(this._kpiOrder.sec)) this._kpiOrder.sec = [];
             if (!this._kpiOrder.tiles || typeof this._kpiOrder.tiles !== 'object') this._kpiOrder.tiles = {};
@@ -32356,7 +32566,7 @@ const app = {
         tip.style.left = Math.max(0, Math.min(r.width - tw, x - tw / 2)) + 'px';
     },
 
-    kpiNumsHtml: function (w, esc, edit) {
+    kpiNumsHtml: function (w, esc, edit, noList) {
         const tile = m => {
             const info = m.h ? `<i class="kpi-info" title="${esc(m.h)}" aria-label="${esc(m.h)}">i</i>` : '';
             const x = edit ? `<button type="button" class="kpi-x" title="Скрыть плашку" aria-label="Скрыть плашку «${esc(m.l)}»" onclick="app.kpiSetHidden('${w.id}','${m.k}',true)">×</button>` : '';
@@ -32378,11 +32588,12 @@ const app = {
         if (edit) h += hidden.map(m => `<button type="button" class="kpi-n kpi-n-add" title="${esc(m.h || '')}" onclick="app.kpiSetHidden('${w.id}','${m.k}',false)">
                 <span class="kpi-plus" aria-hidden="true">+</span><span class="kpi-nl">${esc(m.l)}</span><span class="kpi-ns">добавить плашку</span></button>`).join('');
         if (!h) h = '<div class="ad-tile-note">Все плашки скрыты. Нажмите «Настроить», чтобы вернуть нужные.</div>';
-        return `<div class="kpi-nums${w.id === 'vis' ? ' kpi-nums-6' : ''}">${h}</div>${edit ? '' : this.kpiListHtml(w, esc)}`;
+        return `<div class="kpi-nums${w.id === 'vis' ? ' kpi-nums-6' : ''}">${h}</div>${edit || noList ? '' : this.kpiListHtml(w, esc)}`;
     },
 
     // Список людей под плашкой: щелчок по плашке с list открывает, повторный закрывает
     kpiToggleList: function (wid, k) {
+        if (this.kpiFoldMap()[wid]) { delete this._kpiFold[wid]; this.kpiFoldSave(); }
         const key = wid + '.' + k;
         this._kpiListOpen = this._kpiListOpen === key ? null : key;
         if (this._kpiListOpen) this.kpiLoadNames(((this._kpiLists || {})[wid] || {})[k] || []);
@@ -32439,8 +32650,11 @@ const app = {
     kpiWidgetHtml: function (w, esc) {
         const edit = !!this._todayEdit;
         // В режиме настройки плашек всегда показываем цифры: прятать и добавлять можно только их
-        const view = edit ? 'num' : this.kpiViewOf(w.id);
-        const tabs = edit ? '' : `<span class="kpi-vs">${this.KPI_VIEWS.map(v => `<button type="button" class="kpi-vb${v.id === view ? ' on' : ''}" onclick="app.kpiSetView('${w.id}','${v.id}')">${v.label}</button>`).join('')}</span>`;
+        const folded = !edit && !!this.kpiFoldMap()[w.id];
+        const view = edit || folded ? 'num' : this.kpiViewOf(w.id);
+        const foldBtn = edit ? `<button type="button" class="kpi-secx" onclick="app.kpiSecHide('${w.id}', true)" title="Скрыть раздел целиком (вернуть — «+» вверху или в «Последних изменениях»)">× скрыть раздел</button>`
+            : `<button type="button" class="kpi-fold${folded ? ' on' : ''}" onclick="app.kpiFold('${w.id}')" title="${folded ? 'Развернуть: графики, карточки, таблицы' : 'Свернуть до плашек с цифрами'}" aria-expanded="${!folded}">${folded ? '▾ Развернуть' : '▴ Свернуть'}</button>`;
+        const tabs = edit ? foldBtn : `<span class="kpi-hr">${folded ? '' : `<span class="kpi-vs">${this.KPI_VIEWS.map(v => `<button type="button" class="kpi-vb${v.id === view ? ' on' : ''}" onclick="app.kpiSetView('${w.id}','${v.id}')">${v.label}</button>`).join('')}</span>`}${foldBtn}</span>`;
         let body;
         if (w.err) body = `<div class="kpi-card"><div class="ad-tile-note ad-warn">Не загрузилось: ${esc(w.err)}</div></div>`;
         else if (w.wait) body = '<div class="kpi-skel"><i></i><i></i><i></i></div>';
@@ -32452,7 +32666,8 @@ const app = {
                 <tr class="kpi-tt"><td>Итого</td>${t.total.map(v => `<td>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>
                 ${t.rows.map(r => `<tr><td>${esc(r.l)}</td>${r.v.map(v => `<td${v ? '' : ' class="z"'}>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>`).join('')}
                 </tbody></table></div>${this.kpiSrcTableHtml(w, esc)}</div>`;
-        } else body = this.kpiNumsHtml(w, esc, edit) + (w.id === 'vis' && !edit && w.vis ? this.visInsightsHtml(w, esc) : '') + (w.id === 'clk' && !edit && w.clk ? this.clkInsightsHtml(w, esc) : '');
+        } else if (folded) body = this.kpiNumsHtml(w, esc, false, true);
+        else body = this.kpiNumsHtml(w, esc, edit) + (w.id === 'vis' && !edit && w.vis ? this.visInsightsHtml(w, esc) : '') + (w.id === 'clk' && !edit && w.clk ? this.clkInsightsHtml(w, esc) : '');
         const note = (!w.err && !w.wait && w.note) ? `<div class="kpi-note">${esc(w.note)}</div>` : '';
         const tips = (!w.err && !w.wait && w.tips && w.tips.length)
             ? `<div class="kpi-tips"><b>Что улучшить</b><ul>${w.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : '';
@@ -32472,13 +32687,20 @@ const app = {
         const W = this.kpiBuild(p, S);
         const edit = !!this._todayEdit;
         const chips = this.KPI_PERIODS.map(x => `<button type="button" class="kpi-chip${x.id === p.id ? ' on' : ''}" onclick="app.kpiSetPeriod('${x.id}')">${x.label}</button>`).join('');
-        const order = this.kpiSortBy(this.kpiOrderMap().sec, ['users', 'src', 'vis', 'clk', 'kps', 'planner', 'ests', 'rec', 'pay', 'paywall'], x => x);
+        const all = this.kpiSortBy(this.kpiOrderMap().sec, ['users', 'src', 'vis', 'clk', 'kps', 'planner', 'ests', 'rec', 'pay', 'paywall'], x => x).filter(k => W[k]);
+        this._kpiLastW = W;
+        const hidSec = k => !!this.kpiHideMap()['sec.' + k];
+        const order = all.filter(k => !hidSec(k)), hiddenSecs = all.filter(hidSec);
         this._kpiShownSec = order.slice();
         const hint = edit
-            ? 'Нажмите × на плашке, чтобы скрыть её, или «+», чтобы вернуть. Тащите за заголовок плашки или раздела, чтобы поменять порядок'
+            ? 'Нажмите × на плашке или разделе, чтобы скрыть, «+» — вернуть. Тащите за заголовок, чтобы поменять порядок. Всё скрытое можно вернуть по одному в «Последних изменениях»'
             : `Показатели ${p.full}${p.days ? ' · стрелки — сравнение с предыдущим таким же периодом' : ''}`;
+        const F = this.kpiFoldMap(), anyOpen = order.some(k => !F[k]);
+        const foldAll = edit ? '' : `<button type="button" class="kpi-chip kpi-fold-all" onclick="app.kpiFoldAll(${anyOpen})" title="${anyOpen ? 'Оставить в каждом разделе только плашки с цифрами' : 'Показать графики, карточки и таблицы во всех разделах'}">${anyOpen ? '▴ Свернуть всё' : '▾ Развернуть всё'}</button>`;
+        const addSecs = edit && hiddenSecs.length ? `<div class="kpi-sec-add"><span>Скрытые разделы:</span>${hiddenSecs.map(k => `<button type="button" class="kpi-chip" onclick="app.kpiSecHide('${k}', false)">+ ${esc(W[k].title)}</button>`).join('')}</div>` : '';
         return `<div class="kpi-bar"><div class="kpi-chips" role="tablist" aria-label="Период">${chips}</div>
-                <span class="kpi-cmp">${hint}</span></div>
+                <span class="kpi-cmp">${hint}</span>${foldAll}</div>
+            ${addSecs}
             <div class="kpi-grid">${order.map(k => this.kpiWidgetHtml(W[k], esc)).join('')}</div>`;
     },
 
@@ -32898,23 +33120,26 @@ const app = {
 
         const todayRaw = new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
         const today = todayRaw.charAt(0).toUpperCase() + todayRaw.slice(1);
+        this.homeDefLoad();
         box.innerHTML = `
             <div class="ad-page-h">
                 <div><h3>Сегодня</h3><div class="ad-sub">${esc(today)} · показатели за период и дела, требующие внимания</div></div>
                 <div style="display:flex; gap:6px; flex-wrap:wrap;">
                     ${edit
-                        ? `<button class="admin-btn" onclick="app.kpiResetHidden(); app.todayReset()">Сбросить</button>
+                        ? `<button class="admin-btn" title="${this.homeIsOwner() ? 'Вернуть исходный вид. Его же увидят остальные, кто не настраивал главную под себя' : 'Вернуть общий вид по умолчанию'}" onclick="app.homeReset()">Сбросить</button>
                            <button class="admin-btn ad-pick-on" onclick="app.todayEdit(false)">Готово</button>`
                         : `<button class="admin-btn" title="размер, порядок и вид плиток" onclick="app.todayEdit(true)">✏️ Настроить</button>
                            <button class="admin-btn" onclick="app._homeState=null; app._leadsData=null; app._kpiSt=null; app.renderAdminHome()">Обновить</button>`}
                 </div>
             </div>
             ${panel}
+            ${edit ? `<div class="home-def-note">${esc(this.homeDefNote())}</div>${this.homeHistHtml(esc)}` : ''}
             ${this.kpiHtml(esc)}
             <h4 class="ad-section-h">Требует внимания</h4>
             ${main}
             <details class="ad-map-fold"><summary>Все разделы</summary><div class="ad-map">${map}</div></details>`;
 
+        this.homeDefSync();
         // Окно «+ Добавить» живёт в <body>, а не в панели: у панели своя прокрутка и преобразования,
         // и position:fixed внутри неё прижимается к её краям, а не к экрану
         const oldGal = document.getElementById('today_gallery_root');
