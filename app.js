@@ -58225,11 +58225,11 @@ const app = {
                 cardWorksOpt.parentNode.parentNode.insertBefore(lockNote, cardWorksOpt.parentNode.nextSibling);
             }
             const l = this._kpWorksLock || {};
-            let price = '';
-            try { if (typeof Subscription !== 'undefined') price = Subscription.priceLine().split('\n')[0]; } catch (e) { }
             lockNote.innerHTML = '<b>Монтаж в КП — с Профи.</b> Бесплатно монтаж идёт ' + this.kpWorksFreeText(l.max) + ' в этом месяце. Это КП уйдёт клиенту только с оборудованием' + (l.plainLeft >= 0 ? ' (КП без монтажа после этого останется: ' + l.plainLeft + ')' : '') + '. Монтажные работы в смете остаются у вас на экране.' +
-                (price ? '<div style="margin-top:4px; color:var(--text-sec);">' + price + '</div>' : '') +
-                '<button type="button" style="margin-top:8px; padding:7px 12px; border:none; border-radius:8px; background:var(--primary); color:#fff; font-weight:700; font-size:12.5px; cursor:pointer;" onclick="app.kpWorksLockedInfo()">Добавить монтаж — оформить Профи</button>';
+                (this.kpWorksOffer().alt ? '<div style="margin-top:4px; color:var(--text-sec);">' + this.kpWorksOffer().alt + '</div>' : '') +
+                '<div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-top:8px;">' +
+                '<button type="button" style="padding:7px 12px; border:none; border-radius:8px; background:var(--primary); color:#fff; font-weight:700; font-size:12.5px; cursor:pointer;" onclick="app.kpWorksBuy()">' + this.kpWorksOffer().label + '</button>' +
+                '<a href="#" style="font-size:12px; color:var(--text-sec);" onclick="app.kpWorksLockedInfo(); return false;">все тарифы</a></div>';
             lockNote.style.display = 'block';
         } else if (lockNote) lockNote.style.display = 'none';
 
@@ -60841,6 +60841,21 @@ const app = {
                 if ((cur && plain.indexOf(cur) >= 0) || plain.length < maxPlain) {
                     this._kpWorksLock = { calc: cur, locked: true, max: max, plainMax: maxPlain, plainLeft: maxPlain - plain.length - (plain.indexOf(cur) >= 0 ? 0 : 1) };
                     this.logPaywall('seen', 'КП: монтаж после лимита');
+                    // Новое КП без монтажа — сначала явный выбор: докупить монтаж для этого
+                    // объекта или отправить с одним оборудованием. Повторную отправку того же
+                    // КП (уже ушло без монтажа) не останавливаем.
+                    if (!(cur && plain.indexOf(cur) >= 0)) {
+                        const offer = this.kpWorksOffer();
+                        const left = this._kpWorksLock.plainLeft;
+                        const go = await this.confirmChoice(
+                            'Бесплатно монтаж идёт ' + this.kpWorksFreeText(max) + ' в этом месяце. Это КП можно отправить только с оборудованием' +
+                            (left >= 0 ? ' (после него бесплатных КП без монтажа останется: ' + left + ')' : '') + '.\n\n' +
+                            'Клиент чаще подписывает КП, где монтаж уже посчитан: сразу видна итоговая цена под ключ.' +
+                            (offer.alt ? '\n\n' + offer.alt : ''),
+                            'Добавить монтаж в это КП?', offer.label, 'Отправить без монтажа');
+                        if (go) { this.kpWorksBuy(); return false; }
+                        this.logPaywall('seen', 'КП: отправил без монтажа');
+                    }
                     return true;
                 }
                 return block('На бесплатном тарифе в месяц уходит ' + max + ' КП с монтажом и ' + maxPlain + ' без монтажа — в этом месяце все уже отправлены.');
@@ -60868,6 +60883,33 @@ const app = {
     kpWorksLockedInfo: function () {
         const l = this._kpWorksLock || {};
         this.showModal('pro', { why: 'Монтаж в КП на бесплатном тарифе — ' + this.kpWorksFreeText(l.max) + '. Это КП уйдёт с оборудованием, а с Профи — вместе с монтажом, без ограничений' });
+    },
+
+    // Что предложить вместо КП без монтажа: «Один расчёт» (цена по региону и акциям),
+    // если тариф включён, иначе месяц Профи. alt — строка про второй вариант.
+    kpWorksOffer: function () {
+        const fmt = n => Math.round(n).toLocaleString('ru-RU') + ' ₽';
+        let obj = null, month = null;
+        try {
+            if (typeof Subscription !== 'undefined') {
+                const pl = Subscription.settings().plans;
+                if (pl.object && pl.object.enabled !== false) obj = Subscription.resolve('object');
+                if (pl.month && pl.month.enabled !== false) month = Subscription.resolve('month');
+            }
+        } catch (e) { }
+        if (obj && obj.rub > 0) return { plan: 'object', label: 'Добавить монтаж — ' + fmt(obj.rub), alt: month && month.rub > 0 ? 'Или Профи на месяц за ' + fmt(month.rub) + ' — монтаж во всех КП без ограничений.' : '' };
+        if (month && month.rub > 0) return { plan: 'month', label: 'Профи — ' + fmt(month.rub) + ' в месяц', alt: '' };
+        return { plan: null, label: 'Оформить Профи', alt: '' };
+    },
+
+    // Купить монтаж для этого КП: сразу окно оплаты «Один расчёт» (после «Я оплатил» Профи
+    // включается на 24 часа — КП можно отправить с монтажом сразу), без тарифа — окно тарифа
+    kpWorksBuy: function () {
+        const offer = this.kpWorksOffer();
+        this.closeShareOptionsModal();
+        this.logPaywall('tariff_open', 'КП: докупить монтаж');
+        if (offer.plan) this.openPaymentModal(offer.plan);
+        else this.showModal('pro', { why: 'Монтаж в КП — с Профи' });
     },
 
     // «в 1 КП в месяц, оно уже отправлено» / «в 3 КП в месяц, они уже отправлены»
