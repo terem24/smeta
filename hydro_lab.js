@@ -163,6 +163,38 @@
     var t = tableGroup(app, data);
     if (!t) return;
     var obs = obstacles(svg);
+    if (!obs) {
+      // Лист ещё не на экране (страница скрыта, пока идёт вход или заставка): мерить
+      // нечего. Ждём, когда у него появится размер, и ставим таблицу тогда — иначе
+      // она не появлялась до следующей перерисовки сметы.
+      waitVisible(svg, function () { place(svg, t); });
+      return;
+    }
+    place(svg, t, obs);
+  }
+
+  function waitVisible(svg, done) {
+    if (svg.__hydLabWait) return;
+    svg.__hydLabWait = true;
+    var fire = function () {
+      if (!svg.isConnected) return true;            // схему уже перерисовали — эта не нужна
+      var r = svg.getBoundingClientRect();
+      if (!r.width || !r.height) return false;
+      done();
+      return true;
+    };
+    if (root.ResizeObserver) {
+      var ro = new root.ResizeObserver(function () { if (fire()) ro.disconnect(); });
+      ro.observe(svg);
+    } else {
+      var n = 0, tick = function () { if (!fire() && ++n < 600) root.setTimeout(tick, 500); };
+      root.setTimeout(tick, 500);
+    }
+  }
+
+  function place(svg, t, obs) {
+    if (svg.querySelector('.hyd-lab-table')) return;
+    obs = obs || obstacles(svg);
     if (!obs) return;
     var at = placeTable(obs, t.w, t.h);
     if (!at) { console.info('[hydroLab] на листе нет места под таблицу контуров'); return; }
