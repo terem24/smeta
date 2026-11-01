@@ -58702,6 +58702,7 @@ const app = {
             rows.push({ id: 'rad',
                 title: 'Радиаторы: кольцо до самого дальнего прибора' + (h.branches > 1 ? ' (одна из ' + h.branches + ' веток)' : ''),
                 flow: h.flowBranch, need: h.head, have: best ? best.avail : null, pump: best ? best.label : null,
+                headAt: best ? best.headAt : null,
                 hasGroup: !!h.hasGroup, branches: h.branches, noisy: !!h.noisy,
                 // Участки, которые считает кольцо: трасса (подводка или стояк) и луч. Видны в карточке
                 // и в подсказке, чтобы монтажник видел, какую трубу проверяет
@@ -58717,6 +58718,7 @@ const app = {
             b.mans.forEach(m => rows.push({ id: 'ufh', title: 'Тёплый пол: ' + m.label,
                 flow: m.nodeFlow || m.flow, need: m.need,
                 have: this.ufhPumpHead((m.nodeFlow || m.flow) * kf, b.pump), pump: b.pump.label,
+                headAt: q => this.ufhPumpHead(q * kf, b.pump),
                 // запас 15 % уже внутри «нужно» (ufhBalance), второй раз его не требуем
                 reserve: 1 }));
         }
@@ -58724,6 +58726,7 @@ const app = {
         const d = this.dhwLoadHydraulics();
         if (d) rows.push({ id: 'dhw', title: 'Загрузка бойлера ГВС: змеевик',
             flow: d.flow, need: d.head, have: d.pump ? d.pump.avail : null, pump: d.pump ? d.pump.label : null,
+            headAt: d.pump ? d.pump.headAt : null,
             noisy: !!d.noisy, confirmed: d.pump ? !d.pump.unknown : undefined });
 
         const why = this._bsAutoWhy || [];
@@ -59366,6 +59369,10 @@ const app = {
                 } else if (r.advice) html += '<div class="hc-advice">' + esc(r.advice)
                     + ((r.id === 'rad' && !forPrint && r.verdict !== 'ok') ? ' <button type="button" class="hc-btn" onclick="app.hydroFixPreview(event)">Что добавить</button>' : '') + '</div>';
                 if (r.id === 'rad') html += this.hydroPartsHtml(r, !!forPrint);
+                // Проба «Гидролаборатория» (?lab=1): график рабочей точки насоса
+                if (!forPrint && window.hydroLab && window.hydroLab.on()) {
+                    try { html += window.hydroLab.pumpChartHtml(this, r); } catch (e) { console.warn('[hydroLab]', e); }
+                }
                 r.flags.forEach(fl => { html += '<div class="hc-flag">' + esc(fl) + '</div>'; });
             });
             html += '</div></details>';
@@ -78060,11 +78067,12 @@ const app = {
                 || this.RAD_PUMPS[this.RAD_PUMPS.length - 1];
             const avail = this.pumpHeadAt(pick, _qP);
             pump = { label: pick.label, avail: Math.max(0, avail), builtin: false,
-                ok: avail >= head };
+                ok: avail >= head, headAt: q => Math.max(0, this.pumpHeadAt(pick, q * _kpL.flow)) };
         } else if (L.pumpCurve) {
             const avail = this.boilerPumpHead(L.pumpCurve, flow * _kpL.flow);
             if (avail != null) pump = { label: L.pumpCurve.label, avail: avail, builtin: true,
-                ok: avail >= head, unknown: L.pumpCurve.kind === 'unknown' };
+                ok: avail >= head, unknown: L.pumpCurve.kind === 'unknown',
+                headAt: q => this.boilerPumpHead(L.pumpCurve, q * _kpL.flow) || 0 };
         }
 
         const vMax = parts.reduce((a, p) => Math.max(a, p.v || 0), 0);
@@ -79114,7 +79122,10 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             label: hasGroup ? pm.label : (pm.curve
                 ? (_bpProxy ? 'встроенный насос котла (паспортной кривой нет, взята типовая настенного котла: ' + pm.label + ')' : 'встроенный насос котла: ' + pm.label)
                 : 'встроенный насос котла (принят по кривой ' + pm.label + ')'),
-            avail: pm.curve ? (this.boilerPumpHead(pm.curve, flowBranch * _kp.flow) || 0) : this.pumpHeadAt(pm, flowBranch * _kp.flow)
+            avail: pm.curve ? (this.boilerPumpHead(pm.curve, flowBranch * _kp.flow) || 0) : this.pumpHeadAt(pm, flowBranch * _kp.flow),
+            // Напор этого насоса при любом расходе ветки — та же кривая и та же поправка на
+            // антифриз, что у avail. Нужен графику рабочей точки (hydro_lab.js).
+            headAt: q => pm.curve ? (this.boilerPumpHead(pm.curve, q * _kp.flow) || 0) : this.pumpHeadAt(pm, q * _kp.flow)
         }));
         const fit = pump.find(pm => pm.avail >= head) || null;
 
