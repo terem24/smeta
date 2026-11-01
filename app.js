@@ -1571,25 +1571,117 @@ const app = {
             this.logFirstVisit({ s: s, m: m, c: c });
         } catch (e) { }
     },
-    // Первый заход браузера — в таблицу first_visits (миграция 20261101): анонимный
-    // идентификатор из localStorage, страница и сайт-источник. При регистрации
-    // attach_first_touch привяжет эту строку к пользователю, и окно в 30 минут
-    // (stampFirstTouchSource) перестаёт быть ограничением. Ошибки молча глотаем.
+    // Визиты (миграция 20261102): своя замена основных отчётов Метрики. Браузер получает
+    // анонимный UUID (localStorage hc_vid). Визит — сеанс работы: новый, если с прошлой
+    // активности прошло больше 30 минут или человек пришёл по новой метке / с другого
+    // сайта (так же считает Метрика). Первый визит заодно пишет first_visits. Время на
+    // экране дописывается при сворачивании и закрытии вкладки (end_visit). Если функции
+    // log_visit в базе ещё нет — пишем только первый заход, как раньше. Ошибки глотаем.
+    VISIT_KEY: 'hc_visit',
+    VISIT_GAP_MS: 30 * 60 * 1000,
+    deviceInfo: function () {
+        const ua = navigator.userAgent || '';
+        const iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+        const tablet = iPadOS || /iPad|Tablet/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua));
+        const mobile = !tablet && /Mobi|iPhone|iPod|Android/i.test(ua);
+        const os = /Windows/i.test(ua) ? 'Windows' : /Android/i.test(ua) ? 'Android'
+            : (/iPhone|iPad|iPod/i.test(ua) || iPadOS) ? 'iOS' : /Mac OS X|Macintosh/i.test(ua) ? 'macOS'
+            : /CrOS/.test(ua) ? 'ChromeOS' : /Linux/i.test(ua) ? 'Linux' : 'Другая';
+        const browser = window.TelegramWebviewProxy || /Telegram/i.test(ua) ? 'Telegram'
+            : /VKClient|vkclient|VKAndroidApp/i.test(ua) ? 'ВКонтакте'
+            : /YaBrowser|YaApp|YaSearchBrowser|YandexSearch/i.test(ua) ? 'Яндекс Браузер'
+            : /Edg\//.test(ua) ? 'Edge' : /OPR\/|Opera/.test(ua) ? 'Opera' : /SamsungBrowser/.test(ua) ? 'Samsung Internet'
+            : /Firefox|FxiOS/.test(ua) ? 'Firefox' : /Chrome|CriOS/.test(ua) ? 'Chrome' : /Safari/.test(ua) ? 'Safari' : 'Другой';
+        return { device: tablet ? 'tablet' : mobile ? 'mobile' : 'desktop', os: os, browser: browser };
+    },
     logFirstVisit: function (q) {
         try {
             if (window.__HC_NATIVE__ || HC_LOCAL_DEV) return;
             let vid = '';
             try { vid = localStorage.getItem(this.VISITOR_KEY) || ''; } catch (e) { }
-            if (vid) return;
-            vid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
-            try { localStorage.setItem(this.VISITOR_KEY, vid); } catch (e) { return; }
-            const label = this.firstTouchGet();
+            const isNew = !vid;
+            if (isNew) {
+                vid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
+                try { localStorage.setItem(this.VISITOR_KEY, vid); } catch (e) { return; }
+            }
             let ref = this.referrerLabel();
             ref = ref ? ref.replace(/^ref:\s*/, '') : '';
-            supabaseClient.rpc('log_first_visit', {
+            // Продолжение прежнего визита: тот же браузер, меньше 30 минут тишины,
+            // без новой метки и без перехода с чужого сайта
+            let cur = null;
+            try { cur = JSON.parse(localStorage.getItem(this.VISIT_KEY) || 'null'); } catch (e) { }
+            const fresh = q.s || q.m || q.c || (ref && !/^heatcalc\.ru/.test(ref));
+            if (cur && cur.id && cur.vid === vid && !fresh && Date.now() - (cur.at || 0) < this.VISIT_GAP_MS) {
+                this._visit = cur;
+                this.trackVisitTime();
+                return;
+            }
+            const label = this.firstTouchGet(), d = this.deviceInfo();
+            const base = {
                 p_visitor: vid, p_landing: location.pathname || '/', p_referrer: ref,
                 p_source: q.s || null, p_medium: q.m || null, p_campaign: q.c || null, p_label: label || null
-            }).then(r => { if (r && r.error) console.warn('[visit]', r.error.message); }, () => { });
+            };
+            supabaseClient.rpc('log_visit', Object.assign({ p_device: d.device, p_os: d.os, p_browser: d.browser }, base)).then(r => {
+                if (r && r.error) {
+                    if (isNew) supabaseClient.rpc('log_first_visit', base).then(() => { }, () => { });
+                    return;
+                }
+                if (r && r.data) {
+                    this._visit = { id: r.data, vid: vid, at: Date.now(), sec: 0 };
+                    try { localStorage.setItem(this.VISIT_KEY, JSON.stringify(this._visit)); } catch (e) { }
+                    this.trackVisitTime();
+                }
+            }, () => { });
+        } catch (e) { }
+    },
+    // Секунды, пока вкладка на экране. Отправляем при сворачивании, закрытии и раз в
+    // 5 минут: закрытую вкладку браузер может не дать дописать, промежуточные
+    // отметки сохраняют хотя бы часть времени.
+    trackVisitTime: function () {
+        if (this._visitTracking) return;
+        this._visitTracking = true;
+        let shownAt = document.visibilityState === 'visible' ? Date.now() : 0, sentSec = -1;
+        const flush = (send) => {
+            const v = this._visit;
+            if (!v) return;
+            if (shownAt) {
+                v.sec = (v.sec || 0) + Math.round((Date.now() - shownAt) / 1000);
+                shownAt = document.visibilityState === 'visible' ? Date.now() : 0;
+            }
+            v.at = Date.now();
+            try {
+                const st = JSON.parse(localStorage.getItem(this.VISIT_KEY) || 'null');
+                if (st && st.id === v.id && (st.sec || 0) > v.sec) v.sec = st.sec;
+                localStorage.setItem(this.VISIT_KEY, JSON.stringify(v));
+            } catch (e) { }
+            if (send && v.sec !== sentSec) { sentSec = v.sec; this.sendVisitTime(v); }
+        };
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                // Вернулись после долгой паузы — это уже новый визит
+                if (this._visit && Date.now() - (this._visit.at || 0) > this.VISIT_GAP_MS) {
+                    // слушатели остаются прежние: новый визит подхватит их через this._visit
+                    this._visit = null;
+                    try { localStorage.removeItem(this.VISIT_KEY); } catch (e) { }
+                    shownAt = Date.now(); sentSec = -1;
+                    this.logFirstVisit({});
+                    return;
+                }
+                shownAt = Date.now();
+                if (this._visit) { this._visit.at = Date.now(); }
+            } else flush(true);
+        });
+        window.addEventListener('pagehide', () => flush(true));
+        setInterval(() => { if (document.visibilityState === 'visible') flush(true); }, 5 * 60 * 1000);
+    },
+    // keepalive — чтобы запрос ушёл, даже когда вкладку уже закрывают
+    sendVisitTime: function (v) {
+        try {
+            supabaseProxyFetch(supabaseUrl + '/rest/v1/rpc/end_visit', {
+                method: 'POST', keepalive: true,
+                headers: { 'apikey': supabaseKey, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ p_id: v.id, p_visitor: v.vid, p_seconds: v.sec })
+            }).catch(() => { });
         } catch (e) { }
     },
     // После регистрации: сервер сам решает, привязывать ли заход (только свежая
@@ -30418,9 +30510,18 @@ const app = {
             return { rows: r.rows, capped: r.capped };
         });
         // Первые заходы новых браузеров (first_visits, миграция 20261101). Нет таблицы — не ошибка
+        // Все строки целиком, без окна: по ним узнаём, кто из посетителей визитов уже
+        // зарегистрирован и где был его первый заход. Таблица растёт на тысячи в год
         L('fv', async () => {
             try {
-                const r = await this.fetchAllRows('first_visits', 'visitor_id, created_at, landing, referrer, utm_source, utm_medium, utm_campaign, user_id', { order: 'created_at', cap: 20000, build: qy => ge(qy, 'created_at') });
+                const r = await this.fetchAllRows('first_visits', '*', { order: 'created_at', cap: 20000 });
+                return { rows: r.rows, capped: r.capped };
+            } catch (e) { return { rows: [], missing: true }; }
+        });
+        // Визиты (миграция 20261102). Нет таблицы — виджет считает по первым заходам
+        L('vs', async () => {
+            try {
+                const r = await this.fetchAllRows('visits', 'id, visitor_id, created_at, ended_at, seconds, is_new, landing, referrer, utm_source, utm_medium, utm_campaign, device, os, browser', { order: 'id', cap: 30000, build: qy => ge(qy, 'created_at') });
                 return { rows: r.rows, capped: r.capped };
             } catch (e) { return { rows: [], missing: true }; }
         });
@@ -30660,61 +30761,41 @@ const app = {
             out.src = w;
         }
 
-        // ── Посетители и источники: первые заходы новых браузеров (first_visits) ──
-        // Аналог отчёта «Источники» в Метрике, но только своё: кто пришёл, откуда, на какую
-        // страницу и дошёл ли до регистрации. Просмотров и времени на сайте здесь нет.
+        // ── Посетители и источники: своя «Метрика» по visits и first_visits ──
+        // Визит — сеанс работы браузера, посетитель — браузер (анонимный UUID), новый —
+        // первый заход в периоде. Источник визита — по его меткам и сайту-источнику
+        // (как «Источники трафика» в Метрике); конверсия — по источнику первого захода.
         {
             const w = { id: 'vis', title: 'Посетители и источники', tab: 'stats', act: 'Пользователи' };
             if (bad('fv')) w.err = bad('fv');
-            else if (!ok('fv') || testsWait) w.wait = true;
+            else if (!ok('fv') || !(ok('vs') || bad('vs')) || testsWait) w.wait = true;
             else {
-                const G = this.visGroupOf.bind(this);
-                const cnt = { cur: 0, prev: 0 }, reg = { cur: 0, prev: 0 };
-                const byG = {}, serG = {}, lst = { tot: [], reg: [], tag: [], dir: [] };
-                const serAll = zeros(), serReg = zeros();
-                let earliest = null;
-                S.fv.rows.forEach(v => {
-                    const t = t0(v.created_at);
-                    if (t != null && (earliest == null || t < earliest)) earliest = t;
-                    const c = cls(t);
-                    if (!c) return;
-                    const isReg = !!v.user_id;
-                    cnt[c]++; if (isReg) reg[c]++;
-                    if (c !== 'cur') return;
-                    const g = G(v);
-                    const x = byG[g.g] || (byG[g.g] = { n: 0, reg: 0 });
-                    x.n++; if (isReg) x.reg++;
-                    (serG[g.g] || (serG[g.g] = zeros()))[B.at(t)]++;
-                    serAll[B.at(t)]++; if (isReg) serReg[B.at(t)]++;
-                    const row = { uid: v.user_id || null, vid: v.visitor_id, grp: g.g, det: g.det, page: v.landing || '/', last: t, reg: isReg };
-                    lst.tot.push(row); if (isReg) lst.reg.push(row);
-                    (g.direct ? lst.dir : lst.tag).push(row);
-                });
-                Object.keys(lst).forEach(k => lst[k].sort((a, b) => b.last - a.last));
-                w.lists = lst;
-                const keys = Object.keys(byG).sort((a, b) => (a === 'Прямые заходы') - (b === 'Прямые заходы') || byG[b].n - byG[a].n);
-                const pal = [C.blue, C.green, C.violet, C.teal, C.amber, C.red];
-                const colOf = {}; let ci = 0;
-                keys.forEach(k => { colOf[k] = k === 'Прямые заходы' ? C.gray : pal[ci++ % pal.length]; });
-                const dirN = byG['Прямые заходы'] ? byG['Прямые заходы'].n : 0, tagN = cnt.cur - dirN;
+                const V = this.visBuild(S, { cls: cls, t0: t0, B: B, zeros: zeros, testIds: testIds, ok: ok });
+                const d = V.cur, q = V.prev, dl = (a, b, o) => hasPrev ? this.kpiDelta(a, b, o) : '';
+                const mmss = x => x == null ? '—' : (x >= 60 ? Math.floor(x / 60) + ' м ' : '') + Math.round(x % 60) + ' с';
+                w.vis = V;
+                w.lists = V.lists;
                 w.nums = [
-                    { k: 'tot', l: 'Новые посетители', v: fmt(cnt.cur), d: hasPrev ? this.kpiDelta(cnt.cur, cnt.prev) : '', sp: serAll, list: 1, h: 'Сколько новых браузеров впервые открыли калькулятор за период. Один человек с телефона и компьютера считается дважды. Щёлкните, чтобы увидеть, кто это и откуда' },
-                    { k: 'reg', l: 'Дошли до регистрации', v: fmt(reg.cur), d: hasPrev ? this.kpiDelta(reg.cur, reg.prev) : '', s: cnt.cur ? pct(reg.cur, cnt.cur) + '% посетителей' : '', sp: serReg, list: 1, h: 'Сколько из новых посетителей потом зарегистрировались. Щёлкните, чтобы увидеть, кто это' },
-                    { k: 'tag', l: 'Знаем источник', v: fmt(tagN), s: cnt.cur ? pct(tagN, cnt.cur) + '% посетителей' : '', list: 1, h: 'Пришли по метке (канал, статья, магазин) или с поиска или другого сайта. Щёлкните, чтобы увидеть, кто это' },
-                    { k: 'dir', l: 'Прямые заходы', v: fmt(dirN), s: cnt.cur ? pct(dirN, cnt.cur) + '% посетителей' : '', list: 1, h: 'Без метки и без сайта-источника: вбили адрес, закладка, мессенджер или приложение без реферера. Щёлкните, чтобы увидеть, кто это' }
+                    { k: 'visits', l: 'Визиты', v: fmt(d.visits), d: dl(d.visits, q.visits), sp: V.ser.visits, list: 1, h: 'Сеансы работы с калькулятором. Новый визит — после 30 минут тишины или при переходе по новой метке и с другого сайта. Щёлкните — журнал визитов' },
+                    { k: 'people', l: 'Посетители', v: fmt(d.people), d: dl(d.people, q.people), sp: V.ser.people, list: 1, h: 'Разные браузеры за период. Один человек с телефона и компьютера — два посетителя. Щёлкните — список' },
+                    { k: 'new', l: 'Новые', v: fmt(d.newV), d: dl(d.newV, q.newV), s: d.people ? pct(d.newV, d.people) + '% посетителей' : '', sp: V.ser.newV, list: 1, h: 'Впервые открыли калькулятор в этом периоде. Щёлкните — кто это и откуда пришёл' },
+                    { k: 'reg', l: 'Регистрации', v: fmt(d.reg), d: dl(d.reg, q.reg), s: d.newV ? 'конверсия ' + pct(d.reg, d.newV) + '% новых' : '', sp: V.ser.reg, tone: d.reg ? 'good' : '', list: 1, h: 'Новые посетители периода, которые зарегистрировались. Щёлкните — кто это' },
+                    { k: 'time', l: 'Время на сайте', v: mmss(d.avgSec), d: d.avgSec != null && q.avgSec != null ? dl(d.avgSec, q.avgSec, { fmt: mmss }) : '', s: d.timedN ? 'в среднем за визит' : 'появится после миграции визитов', list: 1, h: 'Сколько вкладка с калькулятором была на экране за визит, в среднем. Щёлкните — самые долгие визиты' },
+                    { k: 'bounce', l: 'Отказы', v: d.bounceP == null ? '—' : d.bounceP + '%', d: d.bounceP != null && q.bounceP != null ? dl(d.bounceP, q.bounceP, { ratio: true, inv: true }) : '', s: d.timedN ? d.bounce + ' визитов короче 15 с' : '', tone: d.bounceP >= 50 ? 'bad' : '', list: 1, h: 'Доля визитов короче 15 секунд: открыли и сразу ушли. Щёлкните — эти визиты' }
                 ];
+                const top = V.src.slice();
                 w.groups = [
-                    { title: 'Откуда пришли', items: keys.length ? keys.map(k => ({ label: k, value: byG[k].n, color: colOf[k] })) : [{ label: 'Нет данных', value: 0, color: C.gray }] },
-                    { title: 'Дошли до регистрации', items: [{ label: 'Зарегистрировались', value: reg.cur, color: C.green }, { label: 'Пока нет', value: Math.max(0, cnt.cur - reg.cur), color: C.gray }] }
+                    { title: 'Источники визитов', items: top.length ? top.map(r => ({ label: r.g, value: r.visits, color: r.color })) : [{ label: 'Нет данных', value: 0, color: C.gray }] },
+                    { title: 'Устройства', items: V.dev.length ? V.dev.map(r => ({ label: r.label, value: r.n, color: r.color })) : [{ label: 'Нет данных', value: 0, color: C.gray }] }
                 ];
-                w.chart = { labels: B.labels, tips: B.tips, stack: true, series: keys.map(k => ({ name: k, color: colOf[k], vals: serG[k] })) };
+                w.chart = { labels: B.labels, tips: B.tips, stack: true, series: top.map(r => ({ name: r.g, color: r.color, vals: r.ser })) };
                 w.table = this.kpiTable(B, w.chart.series);
-                // Сводка по источникам: сколько пришло и сколько из них зарегистрировалось
-                w.srcRows = keys.map(k => ({ g: k, color: colOf[k], n: byG[k].n, reg: byG[k].reg, pct: pct(byG[k].reg, byG[k].n) }));
-                const since = earliest ? new Date(earliest).toLocaleDateString('ru-RU') : null;
+                w.srcRows = top.map(r => ({ g: r.g, color: r.color, n: r.visits, reg: r.reg, pct: pct(r.reg, r.newV) }));
+                const since = V.since ? new Date(V.since).toLocaleDateString('ru-RU') : null;
                 w.note = S.fv.missing ? 'Таблица first_visits ещё не создана: выполните миграцию 20261101_add_first_visits.sql.'
-                    : 'Считаются первые заходы новых браузеров' + (since ? ' (учёт идёт с ' + since + ', раньше заходы не записывались)' : ' (учёт только начался: данные появятся по мере заходов)') + '.';
-                if (S.fv.capped) w.note += ' Заходов больше, чем читается за один раз: цифры занижены.';
+                    : (!V.haveVisits ? 'Визиты, время на сайте и отказы появятся после миграции 20261102_add_visits.sql; пока считаются только первые заходы. ' : '')
+                    + (since ? 'Учёт идёт с ' + since + ', раньше заходы не записывались.' : 'Учёт только начался: данные появятся по мере заходов.');
+                if (S.fv.capped || (S.vs && S.vs.capped)) w.note += ' Записей больше, чем читается за один раз: цифры занижены.';
             }
             out.vis = w;
         }
@@ -31062,31 +31143,470 @@ const app = {
     },
 
     // Таблица «столбец графика × ряд» с итогом сверху
-    // Группа источника для первого захода (строка first_visits) и человеческая расшифровка
+    // Группа источника для визита или первого захода и человеческая расшифровка.
+    // href — куда ведёт «подробнее» (статья, канал, сайт-источник), host — сайт-источник,
+    // camp — подпись кампании для карточки «Кампании и метки»
     visGroupOf: function (v) {
-        const pages = { tg: 'Telegram-канал', shop: 'Магазины', article: 'Статьи на сайте', digest: 'Новости на сайте', push: 'Уведомления' };
+        v = v || {};
+        const names = { tg: 'Telegram-канал', shop: 'Магазины', article: 'Статьи на сайте', digest: 'Новости на сайте', push: 'Уведомления' };
         const src = String(v.utm_source || '').trim(), med = String(v.utm_medium || '').trim(), cmp = String(v.utm_campaign || '').trim();
-        const bits = [];
+        const ref = String(v.referrer || '').replace(/^www\./, '').toLowerCase();
+        const host = ref ? ref.split('/')[0] : '';
+        const site = ref ? { host: /(^|\.)heatcalc\.ru$/.test(host) ? ref : host, hostHref: 'https://' + ref } : { host: '', hostHref: '' };
         if (src) {
+            const g = names[src] || ('Метка: ' + src);
+            const bits = [];
             if (med) bits.push('канал: ' + med);
             if (cmp) bits.push((src === 'shop' ? 'магазин: ' : 'кампания: ') + cmp);
-            return { g: pages[src] || ('Метка: ' + src), det: bits.join('; ') || 'метка без уточнений', direct: false };
+            const href = src === 'article' && /^[\w-]{2,80}$/.test(cmp) ? '/' + cmp + '/'
+                : src === 'tg' ? 'https://t.me/heatcalc_ru' : (src === 'digest' || src === 'push') ? '/novosti/' : '';
+            return Object.assign({ g: g, det: bits.join('; ') || 'метка без уточнений', href: href, camp: cmp ? g + ' · ' + cmp : g, direct: false }, site);
         }
-        const ref = String(v.referrer || '').replace(/^www\./, '').toLowerCase();
         if (ref) {
-            const host = ref.split('/')[0];
-            if (/(^|\.)(yandex|ya)\.|google\.|bing\.|duckduckgo|mail\.ru|(^|\.)search\./.test(host)) return { g: 'Поиск', det: 'с ' + host, direct: false };
-            if (/(^|\.)heatcalc\.ru$/.test(host)) return { g: 'Наш сайт', det: 'с ' + ref, direct: false };
-            if (/(^|\.)(t\.me|telegram\.|vk\.com|vk\.ru|ok\.ru|wa\.me|whatsapp\.)/.test(host)) return { g: 'Соцсети и чаты', det: 'с ' + host, direct: false };
-            return { g: 'Другие сайты', det: 'с ' + host, direct: false };
+            const g = /(^|\.)(yandex|ya)\.|google\.|bing\.|duckduckgo|mail\.ru|(^|\.)search\./.test(host) ? 'Поиск'
+                : /(^|\.)heatcalc\.ru$/.test(host) ? 'Наш сайт'
+                : /(^|\.)(t\.me|telegram\.|vk\.com|vk\.ru|ok\.ru|wa\.me|whatsapp\.)/.test(host) ? 'Соцсети и чаты' : 'Другие сайты';
+            return Object.assign({ g: g, det: 'с ' + site.host, href: site.hostHref, camp: '', direct: false }, site);
         }
-        return { g: 'Прямые заходы', det: 'адрес, закладка или мессенджер без реферера', direct: true };
+        return { g: 'Прямые заходы', det: 'адрес, закладка или мессенджер без реферера', href: '', camp: '', direct: true, host: '', hostHref: '' };
     },
     // Сводка «источник — посетителей — зарегистрировались» под таблицей виджета
     kpiSrcTableHtml: function (w, esc) {
         if (!w.srcRows || !w.srcRows.length) return '';
         const tr = w.srcRows.map(r => `<tr><td><i style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${r.color}"></i> ${esc(r.g)}</td><td>${r.n}</td><td${r.reg ? '' : ' class="z"'}>${r.reg}</td><td${r.pct ? '' : ' class="z"'}>${r.pct == null ? '—' : r.pct + '%'}</td></tr>`).join('');
         return `<div class="kpi-tw" style="margin-top:10px"><table class="kpi-t"><thead><tr><th>Источник</th><th>Посетителей</th><th>Зарегистрировались</th><th>Конверсия</th></tr></thead><tbody>${tr}</tbody></table></div>`;
+    },
+
+    // ═══ Посетители и источники: своя «Метрика» (visits + first_visits) ═══════════
+    // Цвета групп источников постоянные: одна и та же группа одного цвета во всех
+    // карточках, на графике и в диаграмме
+    VIS_COLORS: {
+        'Прямые заходы': '#94A3B8', 'Поиск': '#3B82F6', 'Telegram-канал': '#8B5CF6', 'Магазины': '#F59E0B',
+        'Статьи на сайте': '#10B981', 'Новости на сайте': '#0D9488', 'Уведомления': '#EC4899', 'Наш сайт': '#14B8A6',
+        'Соцсети и чаты': '#6366F1', 'Другие сайты': '#EF4444'
+    },
+    VIS_DEV: { mobile: ['Смартфоны', '#3B82F6'], desktop: ['Компьютеры', '#8B5CF6'], tablet: ['Планшеты', '#10B981'], '': ['Не известно', '#94A3B8'] },
+    VIS_SITE: 'https://heatcalc.ru',
+    visColor: function (g) {
+        if (this.VIS_COLORS[g]) return this.VIS_COLORS[g];
+        const pal = ['#F97316', '#06B6D4', '#84CC16', '#A855F7', '#E11D48', '#0EA5E9'];
+        let h = 0; for (let i = 0; i < g.length; i++) h = (h * 31 + g.charCodeAt(i)) >>> 0;
+        return pal[h % pal.length];
+    },
+
+    // Все цифры виджета из строк visits и first_visits. Визиты до появления таблицы
+    // visits заменяются первыми заходами из first_visits — так история не обрывается.
+    visBuild: function (S, x) {
+        const cls = x.cls, t0 = x.t0, B = x.B, zeros = x.zeros;
+        const fv = (S.fv && S.fv.rows) || [];
+        const fvBy = {};
+        fv.forEach(r => { fvBy[r.visitor_id] = r; });
+        const isTest = vid => { const f = fvBy[vid]; return !!(f && f.user_id && x.testIds[f.user_id]); };
+        const haveVisits = !!(x.ok('vs') && !S.vs.missing);
+        const vs = haveVisits ? S.vs.rows.slice() : [];
+        let vsStart = Infinity, since = null;
+        vs.forEach(r => { const t = t0(r.created_at); if (t != null && t < vsStart) vsStart = t; });
+        fv.forEach(r => {
+            const t = t0(r.created_at);
+            if (t == null) return;
+            if (since == null || t < since) since = t;
+            if (t < vsStart) vs.push(Object.assign({}, r, { synthetic: true, is_new: true, seconds: null, ended_at: null }));
+        });
+        if (vsStart !== Infinity && (since == null || vsStart < since)) since = vsStart;
+
+        const blank = () => ({ visits: 0, ppl: {}, newV: 0, reg: 0, secSum: 0, timedN: 0, bounce: 0 });
+        const per = { cur: blank(), prev: blank() };
+        const ser = { visits: zeros(), people: zeros(), newV: zeros(), reg: zeros() }, pplAt = [];
+        const src = {}, pages = {}, refs = {}, camps = {}, dev = {}, os = {}, br = {};
+        const hours = new Array(24).fill(0), wd = new Array(7).fill(0);
+        const visitRows = [], people = {};
+        const bump = (m, key, extra) => { const r = m[key] || (m[key] = Object.assign({ key: key, n: 0, newV: 0 }, extra || {})); r.n++; return r; };
+        const srcRow = g => src[g] || (src[g] = { g: g, color: this.visColor(g), visits: 0, ppl: {}, newV: 0, reg: 0, secSum: 0, timedN: 0, ser: zeros() });
+
+        vs.forEach(v => {
+            if (isTest(v.visitor_id)) return;
+            const t = t0(v.created_at), c = cls(t);
+            if (!c) return;
+            const P = per[c];
+            P.visits++; P.ppl[v.visitor_id] = 1;
+            const timed = !v.synthetic && !!v.ended_at, sec = timed ? (v.seconds || 0) : null;
+            if (timed) { P.timedN++; P.secSum += sec; if (sec < 15) P.bounce++; }
+            if (c !== 'cur') return;
+            const i = B.at(t), dt = new Date(t);
+            const g = this.visGroupOf(v), f = fvBy[v.visitor_id] || {};
+            const S1 = srcRow(g.g);
+            S1.visits++; S1.ppl[v.visitor_id] = 1; if (i >= 0) S1.ser[i]++;
+            if (timed) { S1.timedN++; S1.secSum += sec; }
+            if (i >= 0) { ser.visits[i]++; (pplAt[i] || (pplAt[i] = {}))[v.visitor_id] = 1; }
+            const page = v.landing || '/';
+            const pr = bump(pages, page); if (v.is_new) pr.newV++;
+            if (g.host) bump(refs, g.host, { href: g.hostHref });
+            if (g.camp) bump(camps, g.camp, { href: g.href, grp: g.g });
+            const dv = v.device || f.device || '';
+            bump(dev, dv); bump(os, v.os || f.os || 'Не известно'); bump(br, v.browser || f.browser || 'Не известно');
+            hours[dt.getHours()]++; wd[(dt.getDay() + 6) % 7]++;
+            const uid = f.user_id || null;
+            const row = {
+                id: v.id, vid: v.visitor_id, uid: uid, t: t, grp: g.g, det: g.det, href: g.href, host: g.host || '', camp: g.camp || '',
+                page: page, dev: dv, os: v.os || f.os || '', br: v.browser || f.browser || '', sec: sec, isNew: !!v.is_new, reg: !!uid,
+                hour: dt.getHours(), wd: (dt.getDay() + 6) % 7
+            };
+            visitRows.push(row);
+            const pp = people[v.visitor_id] || (people[v.visitor_id] = {
+                vid: v.visitor_id, uid: uid, reg: !!uid, visits: 0, sec: 0, last: 0, isNew: false,
+                first: t0(f.created_at) || t, page: f.landing || page, dev: dv, os: row.os, br: row.br, hours: {}, wds: {}, pages: {}, hosts: {}, camps: {}, grps: {}
+            });
+            pp.visits++; if (sec) pp.sec += sec; if (t > pp.last) pp.last = t;
+            pp.hours[row.hour] = 1; pp.wds[row.wd] = 1; pp.pages[page] = 1; pp.grps[g.g] = 1;
+            if (g.host) pp.hosts[g.host] = 1; if (g.camp) pp.camps[g.camp] = 1;
+        });
+        pplAt.forEach((m, i) => { if (m) ser.people[i] = Object.keys(m).length; });
+
+        // Новые посетители и регистрации — по первому заходу (first_visits)
+        const newIds = {};
+        fv.forEach(f => {
+            if (f.user_id && x.testIds[f.user_id]) return;
+            const t = t0(f.created_at), c = cls(t);
+            if (!c) return;
+            per[c].newV++; if (f.user_id) per[c].reg++;
+            if (c !== 'cur') return;
+            const i = B.at(t);
+            if (i >= 0) { ser.newV[i]++; if (f.user_id) ser.reg[i]++; }
+            const g = this.visGroupOf(f), S1 = srcRow(g.g);
+            S1.newV++; if (f.user_id) S1.reg++;
+            newIds[f.visitor_id] = 1;
+            const pp = people[f.visitor_id] || (people[f.visitor_id] = {
+                vid: f.visitor_id, uid: f.user_id || null, reg: !!f.user_id, visits: 0, sec: 0, last: t, first: t,
+                page: f.landing || '/', dev: f.device || '', os: f.os || '', br: f.browser || '', hours: {}, wds: {}, pages: {}, hosts: {}, camps: {}, grps: {}
+            });
+            pp.isNew = true;
+            // для посетителя важен источник первого захода — им и подписываем строку
+            pp.grp = g.g; pp.det = g.det; pp.href = g.href; pp.grps[g.g] = 1;
+        });
+        const plist = Object.keys(people).map(k => {
+            const p = people[k];
+            if (!p.grp) { const f = fvBy[p.vid]; const g = this.visGroupOf(f || {}); p.grp = f ? g.g : 'Не известно'; p.det = f ? g.det : ''; p.href = f ? g.href : ''; }
+            return p;
+        });
+
+        // Воронка новых: посетитель → регистрация → сохранил смету → оплатил
+        const regU = {};
+        plist.forEach(p => { if (p.isNew && p.uid) regU[p.uid] = p; });
+        const estU = {}, paidU = {};
+        if (x.ok('ests')) S.ests.rows.forEach(r => { if (regU[r.user_id]) estU[r.user_id] = 1; });
+        if (x.ok('preq')) S.preq.rows.forEach(r => { if (r.status === 'paid' && regU[r.user_id]) paidU[r.user_id] = 1; });
+        plist.forEach(p => { p.est = !!(p.uid && estU[p.uid]); p.paid = !!(p.uid && paidU[p.uid]); });
+
+        const fin = P => ({
+            visits: P.visits, people: Object.keys(P.ppl).length, newV: P.newV, reg: P.reg, timedN: P.timedN, bounce: P.bounce,
+            avgSec: P.timedN ? P.secSum / P.timedN : null, bounceP: P.timedN ? Math.round(P.bounce / P.timedN * 100) : null
+        });
+        const list = (m, lim) => Object.keys(m).map(k => m[k]).sort((a, b) => b.n - a.n).slice(0, lim || 50);
+        const byT = (a, b) => b.t - a.t, byLast = (a, b) => b.last - a.last;
+        const srcList = Object.keys(src).map(k => {
+            const r = src[k];
+            r.people = Object.keys(r.ppl).length; r.avgSec = r.timedN ? r.secSum / r.timedN : null;
+            return r;
+        }).filter(r => r.visits || r.newV).sort((a, b) => b.visits - a.visits || b.newV - a.newV);
+        return {
+            haveVisits: haveVisits, since: since, cur: fin(per.cur), prev: fin(per.prev), ser: ser,
+            src: srcList, pages: list(pages), refs: list(refs), camps: list(camps),
+            dev: list(dev).map(r => ({ key: r.key, n: r.n, label: (this.VIS_DEV[r.key] || [r.key])[0], color: (this.VIS_DEV[r.key] || [0, '#94A3B8'])[1] })),
+            os: list(os, 8), br: list(br, 8), hours: hours, wd: wd,
+            funnel: [
+                { k: 'new', label: 'Новые посетители', n: Object.keys(newIds).length },
+                { k: 'reg', label: 'Зарегистрировались', n: Object.keys(regU).length },
+                { k: 'f_est', label: 'Сохранили смету', n: x.ok('ests') ? Object.keys(estU).length : null },
+                { k: 'f_paid', label: 'Оплатили «Профи»', n: x.ok('preq') ? Object.keys(paidU).length : null }
+            ],
+            lists: {
+                visits: visitRows.sort(byT),
+                time: visitRows.filter(r => r.sec != null).sort((a, b) => b.sec - a.sec),
+                bounce: visitRows.filter(r => r.sec != null && r.sec < 15).sort(byT),
+                people: plist.slice().sort(byLast),
+                new: plist.filter(p => p.isNew).sort((a, b) => b.first - a.first),
+                reg: plist.filter(p => p.isNew && p.uid).sort((a, b) => b.first - a.first),
+                f_est: plist.filter(p => p.est).sort((a, b) => b.first - a.first),
+                f_paid: plist.filter(p => p.paid).sort((a, b) => b.first - a.first)
+            }
+        };
+    },
+
+    // Подписи вкладок обозревателя. Визиты — строка на сеанс, остальные — строка на посетителя
+    VIS_TABS: [
+        ['visits', 'Визиты'], ['people', 'Посетители'], ['new', 'Новые'], ['reg', 'Регистрации'],
+        ['time', 'Долгие визиты'], ['bounce', 'Отказы'], ['f_est', 'Сохранили смету'], ['f_paid', 'Оплатили']
+    ],
+    VIS_FILTERS: { src: 'Источник', page: 'Страница входа', host: 'Сайт', camp: 'Кампания', dev: 'Устройство', os: 'ОС', br: 'Браузер', hour: 'Час', wd: 'День недели' },
+    VIS_WD: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
+
+    // Фильтр из карточки: значения лежат в реестре по номеру, чтобы не тащить
+    // произвольные строки (адреса, метки) в атрибут onclick
+    visKey: function (type, value, label) {
+        const reg = this._visKeys || (this._visKeys = []);
+        reg.push({ type: type, value: value, label: label == null ? String(value) : label });
+        return reg.length - 1;
+    },
+    visFilter: function (i) {
+        const f = (this._visKeys || [])[i];
+        if (!f) return;
+        const same = this._visF && this._visF.type === f.type && this._visF.value === f.value;
+        this._visF = same ? null : f;
+        const open = this._kpiListOpen;
+        if (!open || open.indexOf('vis.') !== 0) this.visOpen('visits', true);
+        else { this.renderAdminHome(); this.visScroll(); }
+    },
+    visClearFilter: function () { this._visF = null; this.renderAdminHome(); },
+    visOpen: function (k, scroll) {
+        this._kpiListOpen = 'vis.' + k;
+        this.kpiLoadNames(((this._kpiLists || {}).vis || {})[k] || []);
+        this.renderAdminHome();
+        if (scroll) this.visScroll();
+    },
+    visClose: function () { this._kpiListOpen = null; this.renderAdminHome(); },
+    visScroll: function () {
+        setTimeout(() => { const el = document.getElementById('vx_explorer'); if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 30);
+    },
+    visMatch: function (r, f) {
+        if (!f) return true;
+        const v = f.value;
+        switch (f.type) {
+            case 'src': return r.grp === v || !!(r.grps && r.grps[v]);
+            case 'page': return r.page === v || !!(r.pages && r.pages[v]);
+            case 'host': return r.host === v || !!(r.hosts && r.hosts[v]);
+            case 'camp': return r.camp === v || !!(r.camps && r.camps[v]);
+            case 'dev': return (r.dev || '') === v;
+            case 'os': return (r.os || 'Не известно') === v;
+            case 'br': return (r.br || 'Не известно') === v;
+            case 'hour': return r.hour === v || !!(r.hours && r.hours[v]);
+            case 'wd': return r.wd === v || !!(r.wds && r.wds[v]);
+        }
+        return true;
+    },
+    // Поиск по журналу без перерисовки: прячем строки, где нет искомого
+    visSearch: function (q) {
+        this._visQ = q;
+        const s = String(q || '').trim().toLowerCase();
+        const box = document.getElementById('vx_explorer');
+        if (!box) return;
+        let shown = 0;
+        box.querySelectorAll('tbody tr[data-q]').forEach(tr => {
+            const on = !s || tr.getAttribute('data-q').indexOf(s) !== -1;
+            tr.style.display = on ? '' : 'none';
+            if (on) shown++;
+        });
+        const c = document.getElementById('vx_count');
+        if (c) c.textContent = shown;
+    },
+
+    visFmtSec: function (x) {
+        if (x == null) return '—';
+        x = Math.round(x);
+        return x >= 3600 ? Math.floor(x / 3600) + ' ч ' + Math.floor(x % 3600 / 60) + ' м' : x >= 60 ? Math.floor(x / 60) + ' м ' + (x % 60) + ' с' : x + ' с';
+    },
+    visWhen: function (t) {
+        if (!t) return '';
+        const d = new Date(t), f2 = n => String(n).padStart(2, '0');
+        return f2(d.getDate()) + '.' + f2(d.getMonth() + 1) + ' ' + f2(d.getHours()) + ':' + f2(d.getMinutes());
+    },
+    visName: function (r) {
+        const u = r.uid ? (this._kpiNames || {})[r.uid] : null;
+        if (!r.uid) return { text: 'Гость ' + String(r.vid || '').slice(0, 6), mail: '', guest: true };
+        if (!u || u === 'loading') return { text: 'загрузка…', mail: '', guest: false };
+        if (u.missing) return { text: 'учётка не найдена', mail: '', guest: false };
+        const nm = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || '';
+        return { text: nm || u.email || ('id ' + r.uid), mail: nm ? (u.email || '') : '', guest: false };
+    },
+    visUrl: function (path) { return /^https?:\/\//.test(path) ? path : this.VIS_SITE + (path || '/'); },
+
+    // Журнал визитов / список посетителей под плашками
+    visExplorerHtml: function (w, k, esc) {
+        const V = w.vis;
+        if (!V) return '';
+        const visitMode = k === 'visits' || k === 'time' || k === 'bounce';
+        const f = this._visF;
+        const all = (V.lists[k] || []).filter(r => this.visMatch(r, f));
+        this._visView = { k: k, rows: all, visitMode: visitMode };
+        const LIM = 300, rows = all.slice(0, LIM);
+        const q = String(this._visQ || '').trim().toLowerCase();
+        const tab = (id, label) => {
+            const n = (V.lists[id] || []).filter(r => this.visMatch(r, f)).length;
+            if (!n && id !== k && (id === 'f_est' || id === 'f_paid' || id === 'time' || id === 'bounce')) return '';
+            return `<button type="button" class="vx-tab${id === k ? ' on' : ''}" onclick="app.visOpen('${id}')">${label}<i>${n}</i></button>`;
+        };
+        const ext = (href, text, cls) => href
+            ? `<a class="vx-a${cls ? ' ' + cls : ''}" href="${esc(this.visUrl(href))}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${esc(text)}<span class="vx-ext" aria-hidden="true">↗</span></a>`
+            : esc(text);
+        const who = r => {
+            const n = this.visName(r);
+            if (n.guest) return `<span class="vx-guest" title="Анонимный браузер ${esc(r.vid)}">${esc(n.text)}</span>`;
+            return `<a class="vx-a vx-user" href="#" onclick="app.viewAdminUser('${esc(r.uid)}'); return false;" title="Открыть карточку пользователя">${esc(n.text)}</a>${n.mail ? `<span class="vx-mail">${esc(n.mail)}</span>` : ''}`;
+        };
+        const chip = g => `<span class="vx-src"><i style="background:${this.visColor(g)}"></i>${esc(g)}</span>`;
+        const devTxt = r => [(this.VIS_DEV[r.dev || ''] || [r.dev])[0], r.os, r.br].filter(x => x && x !== 'Не известно').join(' · ') || '—';
+        const hay = r => [this.visName(r).text, this.visName(r).mail, r.grp, r.det, r.page, r.dev, r.os, r.br, r.vid].join(' ').toLowerCase();
+        const hide = r => q && hay(r).indexOf(q) === -1 ? ' style="display:none"' : '';
+        let head, body;
+        if (visitMode) {
+            head = '<th>Когда</th><th>Посетитель</th><th>Источник</th><th>Подробнее</th><th>Страница входа</th><th>Устройство</th><th>На сайте</th>';
+            body = rows.map(r => `<tr data-q="${esc(hay(r))}"${hide(r)}>
+                <td class="vx-nw">${this.visWhen(r.t)}${r.isNew ? ' <em class="vx-new">новый</em>' : ''}</td>
+                <td>${who(r)}</td><td>${chip(r.grp)}</td><td class="vx-det">${ext(r.href, r.det)}</td>
+                <td>${ext(r.page, r.page, 'vx-path')}</td><td class="vx-dev">${esc(devTxt(r))}</td>
+                <td class="vx-num${r.sec != null && r.sec < 15 ? ' vx-bad' : ''}">${this.visFmtSec(r.sec)}</td></tr>`).join('');
+        } else {
+            head = '<th>Посетитель</th><th>Первый заход</th><th>Пришёл из</th><th>Подробнее</th><th>Страница входа</th><th>Устройство</th><th>Визитов</th><th>На сайте</th><th>Последний визит</th>';
+            body = rows.map(r => `<tr data-q="${esc(hay(r))}"${hide(r)}>
+                <td>${who(r)}${r.paid ? ' <em class="vx-new vx-paid">оплатил</em>' : r.est ? ' <em class="vx-new">смета</em>' : ''}</td>
+                <td class="vx-nw">${this.visWhen(r.first)}</td><td>${chip(r.grp)}</td><td class="vx-det">${ext(r.href, r.det || '')}</td>
+                <td>${ext(r.page, r.page, 'vx-path')}</td><td class="vx-dev">${esc(devTxt(r))}</td>
+                <td class="vx-num">${r.visits || '—'}</td><td class="vx-num">${r.sec ? this.visFmtSec(r.sec) : '—'}</td>
+                <td class="vx-nw">${r.last ? this.visWhen(r.last) : '—'}</td></tr>`).join('');
+        }
+        const cols = visitMode ? 7 : 9;
+        if (!all.length) body = `<tr><td colspan="${cols}" class="vx-empty">${f ? 'С этим фильтром никого.' : 'За период никого.'}</td></tr>`;
+        const fchip = f ? `<button type="button" class="vx-fchip" onclick="app.visClearFilter()" title="Снять фильтр">${esc(this.VIS_FILTERS[f.type] || '')}: <b>${esc(f.label)}</b> <span aria-hidden="true">×</span></button>` : '';
+        return `<div class="vx-ex" id="vx_explorer">
+            <div class="vx-ex-h">
+                <div class="vx-tabs" role="tablist">${this.VIS_TABS.map(t => tab(t[0], t[1])).join('')}</div>
+                <button type="button" class="vx-x" onclick="app.visClose()" title="Свернуть" aria-label="Свернуть">×</button>
+            </div>
+            <div class="vx-ex-bar">
+                ${fchip}
+                <input class="vx-q" type="search" placeholder="Поиск: имя, почта, страница, сайт…" value="${esc(this._visQ || '')}" oninput="app.visSearch(this.value)">
+                <span class="vx-cnt">Найдено: <b id="vx_count">${q ? rows.filter(r => hay(r).indexOf(q) !== -1).length : all.length}</b></span>
+                <button type="button" class="vx-btn" onclick="app.visExport()" title="Скачать таблицу для Excel">⤓ Выгрузить CSV</button>
+            </div>
+            <div class="vx-tw"><table class="vx-t"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+            ${all.length > LIM ? `<div class="kpi-note">Показаны последние ${LIM} из ${all.length}. Выгрузка CSV содержит все строки.</div>` : ''}
+            <div class="kpi-note">Имя открывает карточку пользователя, ссылки ↗ — страницу или сайт в новой вкладке. «Гость» ещё не зарегистрировался. Карточки ниже фильтруют этот список.</div>
+        </div>`;
+    },
+
+    // Карточки под плашками: источники, страницы, сайты, кампании, устройства, время, воронка
+    visInsightsHtml: function (w, esc) {
+        const V = w.vis;
+        if (!V) return '';
+        this._visKeys = [];
+        this._visSummary = V;
+        const f = this._visF;
+        const on = (type, value) => f && f.type === type && f.value === value ? ' on' : '';
+        const pctOf = (n, tot) => tot ? Math.round(n / tot * 100) : 0;
+        const ext = href => `<a class="vx-go" href="${esc(this.visUrl(href))}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Открыть в новой вкладке">↗</a>`;
+        const card = (title, hint, body, extra, wide) => `<section class="vx-card${wide ? ' vx-wide' : ''}">
+            <div class="vx-ch"><b>${title}</b>${hint ? `<i class="kpi-info" title="${esc(hint)}">i</i>` : ''}${extra || ''}</div>${body}</section>`;
+        const empty = '<div class="vx-none">Пока нет данных за период</div>';
+        const tot = V.cur.visits || 1;
+        const barList = (items, type, labelOf, opts) => {
+            opts = opts || {};
+            if (!items.length) return empty;
+            const max = Math.max.apply(null, items.map(r => r.n)) || 1;
+            return '<div class="vx-bars">' + items.slice(0, opts.lim || 8).map(r => {
+                const key = this.visKey(type, r.key, opts.label ? opts.label(r) : r.key);
+                return `<button type="button" class="vx-bar${on(type, r.key)}" onclick="app.visFilter(${key})" title="Показать эти визиты">
+                    <span class="vx-bar-f" style="width:${Math.max(3, r.n / max * 100)}%;${opts.color ? 'background:color-mix(in srgb, ' + opts.color(r) + ' 26%, transparent)' : ''}"></span>
+                    <span class="vx-bar-l">${labelOf(r)}</span>
+                    <span class="vx-bar-n">${r.n}<em>${pctOf(r.n, tot)}%</em></span>${opts.href && opts.href(r) ? ext(opts.href(r)) : ''}</button>`;
+            }).join('') + '</div>';
+        };
+
+        // 1. Источники: визиты, новые, регистрации, конверсия, время
+        const srcBody = V.src.length ? `<div class="vx-st"><div class="vx-st-h"><span>Источник</span><span>Визиты</span><span>Новые</span><span>Регистр.</span><span>Конв.</span><span>Время</span></div>`
+            + V.src.map(r => {
+                const key = this.visKey('src', r.g);
+                const cv = r.newV ? Math.round(r.reg / r.newV * 100) : null;
+                return `<button type="button" class="vx-st-r${on('src', r.g)}" onclick="app.visFilter(${key})" title="Показать визиты из источника «${esc(r.g)}»">
+                    <span class="vx-st-g"><i style="background:${r.color}"></i><span>${esc(r.g)}</span><span class="vx-st-bar"><span style="width:${Math.max(2, r.visits / tot * 100)}%;background:${r.color}"></span></span></span>
+                    <span>${r.visits}</span><span>${r.newV}</span><span class="${r.reg ? 'vx-good' : 'vx-z'}">${r.reg}</span>
+                    <span class="${cv ? 'vx-good' : 'vx-z'}">${cv == null ? '—' : cv + '%'}</span><span class="vx-z2">${this.visFmtSec(r.avgSec)}</span></button>`;
+            }).join('') + '</div>' : empty;
+        const srcCsv = `<button type="button" class="vx-btn vx-btn-s" onclick="app.visExportSummary()" title="Сводка по источникам, страницам, сайтам и устройствам для Excel">⤓ CSV</button>`;
+
+        // 2. Устройства: полоса долей + ОС и браузеры
+        const devTot = V.dev.reduce((a, r) => a + r.n, 0) || 1;
+        const devBody = V.dev.length ? `<div class="vx-seg">${V.dev.map(r => {
+            const key = this.visKey('dev', r.key, r.label);
+            return `<button type="button" class="vx-seg-p${on('dev', r.key)}" style="flex:${r.n};background:${r.color}" onclick="app.visFilter(${key})" title="${esc(r.label)}: ${r.n}"></button>`;
+        }).join('')}</div><div class="vx-leg">${V.dev.map(r => {
+            const key = this.visKey('dev', r.key, r.label);
+            return `<button type="button" class="vx-leg-i${on('dev', r.key)}" onclick="app.visFilter(${key})"><i style="background:${r.color}"></i>${esc(r.label)} <b>${pctOf(r.n, devTot)}%</b></button>`;
+        }).join('')}</div>
+            <div class="vx-sub">Системы</div>${barList(V.os, 'os', r => esc(r.key), { lim: 5 })}
+            <div class="vx-sub">Браузеры</div>${barList(V.br, 'br', r => esc(r.key), { lim: 5 })}` : empty;
+
+        // 3. Когда приходят: часы и дни недели
+        const hMax = Math.max.apply(null, V.hours) || 1, dMax = Math.max.apply(null, V.wd) || 1;
+        const timeBody = V.cur.visits ? `<div class="vx-hrs">${V.hours.map((n, h) => {
+            const key = this.visKey('hour', h, h + ':00–' + (h + 1) + ':00');
+            return `<button type="button" class="vx-hr${on('hour', h)}" onclick="app.visFilter(${key})" title="${h}:00–${h + 1}:00 — ${n} визит.">
+                <span style="height:${n ? Math.max(6, n / hMax * 100) : 0}%"></span><em>${h % 3 === 0 ? h : ''}</em></button>`;
+        }).join('')}</div><div class="vx-sub">По дням недели</div><div class="vx-wds">${V.wd.map((n, i) => {
+            const key = this.visKey('wd', i, this.VIS_WD[i]);
+            return `<button type="button" class="vx-wd${on('wd', i)}" onclick="app.visFilter(${key})" title="${this.VIS_WD[i]} — ${n} визит.">
+                <span class="vx-wd-b"><span style="height:${n ? Math.max(6, n / dMax * 100) : 0}%"></span></span><em>${this.VIS_WD[i]}</em><b>${n}</b></button>`;
+        }).join('')}</div>` : empty;
+
+        // 4. Воронка новых посетителей
+        const F = V.funnel.filter(s => s.n != null), f0 = (F[0] && F[0].n) || 0;
+        const funBody = f0 ? '<div class="vx-fun">' + F.map((s, i) => {
+            const prev = i ? F[i - 1].n : null;
+            return `<button type="button" class="vx-fun-s" onclick="app.visOpen('${s.k}', true)" title="Показать, кто это">
+                <span class="vx-fun-b" style="width:${Math.max(4, s.n / f0 * 100)}%"></span>
+                <span class="vx-fun-l">${esc(s.label)}</span><span class="vx-fun-n">${s.n}${i ? `<em>${prev ? Math.round(s.n / prev * 100) : 0}% от шага выше</em>` : ''}</span></button>`;
+        }).join('') + '</div>' : empty;
+
+        const pageHint = 'Первая страница визита. Щёлкните строку — визиты с этой страницы, ↗ — открыть страницу';
+        return `<div class="vx-grid">
+            ${card('Источники трафика', 'Откуда пришли визиты за период и сколько новых посетителей из каждого источника зарегистрировались. Конверсия — регистрации от новых. Щёлкните строку — журнал визитов из этого источника', srcBody, srcCsv, true)}
+            ${card('Воронка новых', 'Новые посетители периода → зарегистрировались → сохранили смету → оплатили «Профи». Щёлкните шаг — кто это', funBody)}
+            ${card('Устройства', 'Тип устройства, система и браузер — по визитам. Щёлкните, чтобы отфильтровать журнал', devBody)}
+            ${card('Страницы входа', pageHint, barList(V.pages, 'page', r => `<span class="vx-path">${esc(r.key)}</span>`, { href: r => r.key }))}
+            ${card('Сайты-источники', 'С каких сайтов перешли: поиск, соцсети, другие сайты. ↗ — открыть сайт', barList(V.refs, 'host', r => esc(r.key), { href: r => r.href }))}
+            ${card('Кампании и метки', 'Метки utm в ссылках: посты канала, статьи, магазины, рассылки. ↗ — открыть статью или канал', barList(V.camps, 'camp', r => esc(r.key), { href: r => r.href, color: r => this.visColor(r.grp) }))}
+            ${card('Когда приходят', 'Визиты по часам (по вашему времени) и дням недели. Щёлкните столбец — эти визиты', timeBody, '', true)}
+        </div>`;
+    },
+
+    // Выгрузка для Excel: точка с запятой и BOM, чтобы русские буквы открылись без мастера импорта
+    visCsvDownload: function (name, rows) {
+        const cell = v => { const s = v == null ? '' : String(v); return /[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+        const csv = '﻿' + rows.map(r => r.map(cell).join(';')).join('\r\n');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+        a.download = name + '_' + new Date().toISOString().slice(0, 10) + '.csv';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    },
+    visExport: function () {
+        const v = this._visView;
+        if (!v || !v.rows.length) { app.alert('Выгружать нечего: список пуст.'); return; }
+        const dt = t => t ? new Date(t).toLocaleString('ru-RU') : '';
+        const dev = r => (this.VIS_DEV[r.dev || ''] || [r.dev])[0];
+        const who = r => { const n = this.visName(r); return [n.text, n.mail]; };
+        const f = this._visF, tag = f ? '_' + f.type : '';
+        if (v.visitMode) {
+            this.visCsvDownload('heatcalc_visits' + tag, [['Когда', 'Посетитель', 'Почта', 'Новый', 'Источник', 'Подробнее', 'Ссылка', 'Страница входа', 'Устройство', 'ОС', 'Браузер', 'На сайте, сек', 'ID браузера']]
+                .concat(v.rows.map(r => [dt(r.t)].concat(who(r), [r.isNew ? 'да' : '', r.grp, r.det, r.href ? this.visUrl(r.href) : '', this.visUrl(r.page), dev(r), r.os, r.br, r.sec == null ? '' : r.sec, r.vid]))));
+        } else {
+            this.visCsvDownload('heatcalc_visitors' + tag, [['Посетитель', 'Почта', 'Первый заход', 'Пришёл из', 'Подробнее', 'Ссылка', 'Страница входа', 'Устройство', 'ОС', 'Браузер', 'Визитов', 'На сайте, сек', 'Последний визит', 'Зарегистрирован', 'Смета', 'Оплатил', 'ID браузера']]
+                .concat(v.rows.map(r => who(r).concat([dt(r.first), r.grp, r.det || '', r.href ? this.visUrl(r.href) : '', this.visUrl(r.page), dev(r), r.os, r.br, r.visits || 0, r.sec || 0, dt(r.last), r.uid ? 'да' : '', r.est ? 'да' : '', r.paid ? 'да' : '', r.vid]))));
+        }
+    },
+    visExportSummary: function () {
+        const V = this._visSummary;
+        if (!V) return;
+        const rows = [['Раздел', 'Значение', 'Визиты', 'Новые', 'Регистрации', 'Конверсия, %', 'Среднее время, сек', 'Ссылка']];
+        V.src.forEach(r => rows.push(['Источник', r.g, r.visits, r.newV, r.reg, r.newV ? Math.round(r.reg / r.newV * 100) : '', r.avgSec == null ? '' : Math.round(r.avgSec), '']));
+        V.pages.forEach(r => rows.push(['Страница входа', r.key, r.n, r.newV, '', '', '', this.visUrl(r.key)]));
+        V.refs.forEach(r => rows.push(['Сайт-источник', r.key, r.n, '', '', '', '', r.href || '']));
+        V.camps.forEach(r => rows.push(['Кампания', r.key, r.n, '', '', '', '', r.href ? this.visUrl(r.href) : '']));
+        V.dev.forEach(r => rows.push(['Устройство', r.label, r.n, '', '', '', '', '']));
+        V.os.forEach(r => rows.push(['ОС', r.key, r.n, '', '', '', '', '']));
+        V.br.forEach(r => rows.push(['Браузер', r.key, r.n, '', '', '', '', '']));
+        V.hours.forEach((n, h) => rows.push(['Час', h + ':00', n, '', '', '', '', '']));
+        V.wd.forEach((n, i) => rows.push(['День недели', this.VIS_WD[i], n, '', '', '', '', '']));
+        V.funnel.forEach(s => { if (s.n != null) rows.push(['Воронка', s.label, s.n, '', '', '', '', '']); });
+        this.visCsvDownload('heatcalc_sources', rows);
     },
 
     kpiTable: function (B, series) {
@@ -31296,7 +31816,7 @@ const app = {
         if (edit) h += hidden.map(m => `<button type="button" class="kpi-n kpi-n-add" title="${esc(m.h || '')}" onclick="app.kpiSetHidden('${w.id}','${m.k}',false)">
                 <span class="kpi-plus" aria-hidden="true">+</span><span class="kpi-nl">${esc(m.l)}</span><span class="kpi-ns">добавить плашку</span></button>`).join('');
         if (!h) h = '<div class="ad-tile-note">Все плашки скрыты. Нажмите «Настроить», чтобы вернуть нужные.</div>';
-        return `<div class="kpi-nums">${h}</div>${edit ? '' : this.kpiListHtml(w, esc)}`;
+        return `<div class="kpi-nums${w.id === 'vis' ? ' kpi-nums-6' : ''}">${h}</div>${edit ? '' : this.kpiListHtml(w, esc)}`;
     },
 
     // Список людей под плашкой: щелчок по плашке с list открывает, повторный закрывает
@@ -31336,21 +31856,7 @@ const app = {
             const nm = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || '';
             return (nm ? '<b>' + esc(nm) + '</b> · ' : '') + esc(u.email || ('id ' + r.uid)) + (u.account_type === 'pro' ? ' <i class="kpi-d kpi-d-up">Профи</i>' : '');
         };
-        if (w.id === 'vis') {
-            const who2 = r => {
-                if (!r.uid) return '<span class="z">Гость ' + esc(String(r.vid).slice(0, 6)) + '</span>';
-                const u = names[r.uid];
-                if (!u || u === 'loading') return '<span class="z">загрузка…</span>';
-                if (u.missing) return '<span class="z">учётка не найдена</span>';
-                const nm = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || '';
-                return (nm ? '<b>' + esc(nm) + '</b> · ' : '') + esc(u.email || ('id ' + r.uid));
-            };
-            const body3 = rows.length ? rows.map(r => `<tr><td>${who2(r)}</td><td>${esc(r.grp)}</td><td>${esc(r.det)}</td><td>${esc(r.page)}</td><td>${when(r.last)}</td></tr>`).join('')
-                : '<tr><td colspan="5" class="z">За период никого.</td></tr>';
-            return `<div class="kpi-card" style="margin-top:10px"><b>${esc(m ? m.l : '')}: ${rows.length}</b>
-                <div class="kpi-tw"><table class="kpi-t"><thead><tr><th>Посетитель</th><th>Источник</th><th>Расшифровка</th><th>Первая страница</th><th>Первый заход</th></tr></thead><tbody>${body3}</tbody></table></div>
-                <div class="kpi-note">«Гость» — браузер, который ещё не зарегистрировался; после регистрации здесь появятся имя и почта. Источник и метки записаны при первом заходе, повторные заходы не учитываются.</div></div>`;
-        }
+        if (w.id === 'vis') return this.visExplorerHtml(w, k, esc);
         if (w.id === 'src') {
             const body2 = rows.length ? rows.map(r => `<tr><td>${who(r)}</td><td>${esc(r.grp)}</td><td>${esc(r.det)}</td><td>${when(r.last)}</td></tr>`).join('')
                 : '<tr><td colspan="4" class="z">За период никого.</td></tr>';
@@ -31383,7 +31889,7 @@ const app = {
                 <tr class="kpi-tt"><td>Итого</td>${t.total.map(v => `<td>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>
                 ${t.rows.map(r => `<tr><td>${esc(r.l)}</td>${r.v.map(v => `<td${v ? '' : ' class="z"'}>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>`).join('')}
                 </tbody></table></div>${this.kpiSrcTableHtml(w, esc)}</div>`;
-        } else body = this.kpiNumsHtml(w, esc, edit);
+        } else body = this.kpiNumsHtml(w, esc, edit) + (w.id === 'vis' && !edit && w.vis ? this.visInsightsHtml(w, esc) : '');
         const note = (!w.err && !w.wait && w.note) ? `<div class="kpi-note">${esc(w.note)}</div>` : '';
         const tips = (!w.err && !w.wait && w.tips && w.tips.length)
             ? `<div class="kpi-tips"><b>Что улучшить</b><ul>${w.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : '';
