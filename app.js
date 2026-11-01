@@ -7739,6 +7739,14 @@ const app = {
         return this.isProAccount() || this.objectProActive();
     },
 
+    // Пробный срок из памяти браузера (pro_trial_until) — только для гостя. У вошедшего тариф и
+    // срок лежат в базе (users.account_type, demo_ends_at) и приходят в tgUser; ключ в localStorage
+    // любой может вписать сам через инструменты разработчика — продлил бы себе Профи без оплаты.
+    localTrialUntil: function () {
+        if (this.state && this.state.tgUser) return 0;
+        return parseInt(localStorage.getItem('pro_trial_until')) || 0;
+    },
+
     // «Один расчёт» (тариф с days > 0): оплата даёт кредит, кредит тратится на одну смету
     // (state.calc_id) и открывает в ней Профи на несколько дней правок. Кредиты и открытые
     // сметы лежат в таблице pro_objects (supabase/migrations/20261023_pro_objects.sql);
@@ -7859,7 +7867,7 @@ const app = {
         const forced = this.localTariff();
         if (forced) return forced === 'pro';
 
-        let trialUntil = parseInt(localStorage.getItem('pro_trial_until')) || 0;
+        let trialUntil = this.localTrialUntil();
         let isTrialActive = trialUntil > Date.now();
         const u = this.state.tgUser || this.state.user;
         if (!u) {
@@ -8788,7 +8796,7 @@ const app = {
     },
 
     getProUntilDate: function () {
-        let trialUntil = parseInt(localStorage.getItem('pro_trial_until')) || 0;
+        let trialUntil = this.localTrialUntil();
         let isTrialActive = trialUntil > Date.now();
         if (this.state.accountType === 'pro') {
             const demoEndsRaw = this.state.tgUser && this.state.tgUser.demo_ends_at;
@@ -16059,7 +16067,7 @@ const app = {
             const now = Date.now();
             const demoEnds = (this.state.tgUser && this.state.tgUser.demo_ends_at)
                 ? new Date(this.state.tgUser.demo_ends_at).getTime() : 0;
-            const trialUntil = parseInt(localStorage.getItem('pro_trial_until')) || 0;
+            const trialUntil = this.localTrialUntil();
             const endsAt = Math.max(demoEnds > now ? demoEnds : 0, trialUntil > now ? trialUntil : 0);
             if (endsAt) daysLeft = Math.max(0, Math.ceil((endsAt - now) / 86400000));
         }
@@ -90178,7 +90186,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         this.currentSpec = []; // Список оборудования для генерации схемы
         this.swapWindowWidthMap = {}; // originalId → min ширина окна (м) для фильтра замен
         this.swapWindowSillMap = {}; // originalId → свободная высота под подоконником (мм) для фильтра замен
-        let trialUntil = parseInt(localStorage.getItem('pro_trial_until')) || 0;
+        let trialUntil = this.localTrialUntil();
         let isTrialActive = trialUntil > Date.now();
         let isPro = (this.state.accountType === 'pro' || isTrialActive);
         let isGuestUser = !this.state.tgUser;
