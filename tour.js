@@ -1478,6 +1478,12 @@ const Tour = {
             if (typeof Subscription === 'undefined' || !Subscription.tourBonusSettings().enabled) return false;
             if (!this.allowed() || this.doneMap().basic || this.planInfo().isPro) return false;
             if (app.isTeremStaff()) return false;
+            // Те же условия, что у базы (mark_tour_done): бонус только тому, у кого ещё не было ни
+            // пробного, ни платного Профи, и только бесплатному или базовому аккаунту. Иначе баннер
+            // обещал бы то, что база не выдаст (например, на новом устройстве, где doneMap пуст).
+            const tg = app.state.tgUser || {};
+            if (tg.demo_ends_at || tg.pro_expires_at || app.state.demoUsed) return false;
+            if (['free', 'base'].indexOf(tg.account_type || app.state.accountType || 'base') < 0) return false;
             return true;
         } catch (e) { return false; }
     },
