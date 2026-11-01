@@ -428,15 +428,15 @@ const Subscription = {
     // Настройки — app_settings.subscription.limit. По умолчанию ВЫКЛЮЧЕН. Считается
     // число разных КП (по номеру расчёта), которые мастер за календарный месяц отправил
     // клиенту: PDF, Excel или ссылка (события printed и sent в invoice_events).
-    // Монтажнику лимит закрывает только монтаж в КП: первые perMonth КП месяца идут с
-    // работами, остальные — с оборудованием (app.sendLimitOk / app.kpWorksLocked).
-    // Продавцу без монтажа — саму отправку. Повторная отправка того же КП лимит не тратит. Блокирует только на тарифе без
+    // Монтажнику: первые perMonth КП месяца идут с работами, следующие perMonthPlain —
+    // только с оборудованием, дальше отправка закрыта (app.sendLimitOk / app.kpWorksLocked).
+    // Продавцу без монтажа — perMonthPlain КП в месяц. Повторная отправка лимит не тратит. Блокирует только на тарифе без
     // Профи (free и base); пробный и платный Профи, менеджеры, наблюдатели, админы
     // и (по умолчанию) сотрудники ТЕРЕМ лимит не видят. Любой сбой при подсчёте —
     // пропускаем: лимит не должен мешать работать.
     // outcomeGate — блок отправки, пока у двух КП нет итога (kp_outcome.js). Включён по
     // умолчанию и от «Включить лимит» не зависит; excludeTerem действует на оба.
-    LIMIT_DEFAULTS: { enabled: false, from: '', perMonth: 1, excludeTerem: true, outcomeGate: true,
+    LIMIT_DEFAULTS: { enabled: false, from: '', perMonth: 1, perMonthPlain: 1, excludeTerem: true, outcomeGate: true,
         // Окно «Чем закончились КП?» (kp_outcome.js): включено ли, кому показывать,
         // срок ответа и границы, в которых монтажник сам меняет срок («КП и счета»),
         // число продлений, порог блока отправки и льгота после срока
@@ -457,6 +457,7 @@ const Subscription = {
         // Целое из цифр, иначе значение по умолчанию — как разбирает те же поля база
         // (send_kp_outcome_reminders: ширина w цифр), чтобы окно и рассылка не расходились
         const cl = (v, lo, hi, d, w) => { const x = String(v == null ? '' : v).trim(); return new RegExp('^\\d{1,' + (w || 3) + '}$').test(x) ? Math.min(hi, Math.max(lo, parseInt(x, 10))) : d; };
+        t.perMonthPlain = cl(t.perMonthPlain, 0, 100, 1);
         t.outcomeDaysMin = cl(t.outcomeDaysMin, 7, 90, 14);
         t.outcomeDaysMax = Math.max(t.outcomeDaysMin, cl(t.outcomeDaysMax, 7, 180, 60));
         t.outcomeDays = Math.min(t.outcomeDaysMax, Math.max(t.outcomeDaysMin, cl(t.outcomeDays, 7, 180, 30)));
@@ -483,7 +484,7 @@ const Subscription = {
 
     setLimitField: function (field, value) {
         const BOOL = ['enabled', 'excludeTerem', 'outcomeGate', 'outcomeOn', 'outcomeAudBase', 'outcomeAudPro', 'outcomeAudMgr'];
-        const NUM = { outcomeDays: [7, 180, 30], outcomeDaysMin: [7, 90, 14], outcomeDaysMax: [7, 180, 60], outcomeExt: [0, 5, 2], outcomeGateN: [1, 10, 2], outcomeGrace: [0, 30, 3], outcomeAutoMonths: [0, 60, 6], outcomeHardDays: [0, 60, 14], outcomeProExt: [0, 10, 4], outcomeProExtDays: [7, 180, 45], outcomeProGateN: [1, 20, 5], outcomeProGrace: [0, 60, 7], outcomeProHardDays: [0, 120, 30], outcomeUnsentDays: [0, 180, 30] };
+        const NUM = { perMonthPlain: [0, 100, 1], outcomeDays: [7, 180, 30], outcomeDaysMin: [7, 90, 14], outcomeDaysMax: [7, 180, 60], outcomeExt: [0, 5, 2], outcomeGateN: [1, 10, 2], outcomeGrace: [0, 30, 3], outcomeAutoMonths: [0, 60, 6], outcomeHardDays: [0, 60, 14], outcomeProExt: [0, 10, 4], outcomeProExtDays: [7, 180, 45], outcomeProGateN: [1, 20, 5], outcomeProGrace: [0, 60, 7], outcomeProHardDays: [0, 120, 30], outcomeUnsentDays: [0, 180, 30] };
         if (['from', 'perMonth'].indexOf(field) < 0 && BOOL.indexOf(field) < 0 && !NUM[field]) return;
         if (BOOL.indexOf(field) >= 0) value = !!value;
         else if (NUM[field]) { const n = Math.round(this.num(value)); value = isFinite(n) ? Math.min(NUM[field][1], Math.max(NUM[field][0], n)) : NUM[field][2]; }
@@ -560,18 +561,19 @@ const Subscription = {
             demand = keys.map(k => {
                 const arr = D.months[k];
                 const bucket = (a, b) => arr.filter(n => n >= a && n <= b).length;
-                const hit = arr.filter(n => n > t.perMonth).length;
+                const hit = arr.filter(n => n > t.perMonth).length, hitAll = arr.filter(n => n > t.perMonth + t.perMonthPlain).length;
                 const cell = (l, n) => `<td style="${u.td} text-align:center;"><div style="font-size:11px; color:var(--text-sec);">${l}</div><b>${n}</b></td>`;
                 return `<div style="margin-bottom:12px;"><div style="font-size:13px; font-weight:600; color:var(--text-main); margin-bottom:6px;">${names[k.slice(5)]} ${k.slice(0, 4)}: отправили КП ${arr.length} из ${D.total} бесплатных мастеров</div>
                     <table style="border-collapse:collapse;"><tr>${cell('1', bucket(1, 1))}${cell('2', bucket(2, 2))}${cell('3', bucket(3, 3))}${cell('4–5', bucket(4, 5))}${cell('6+', bucket(6, 999))}</tr></table>
-                    <div style="font-size:12px; color:var(--text-sec); margin-top:4px;">Лимит «${t.perMonth} в месяц» затронул бы: ${hit} ${hit === 1 ? 'человека' : 'человек'} (отправили больше ${t.perMonth}).</div></div>`;
+                    <div style="font-size:12px; color:var(--text-sec); margin-top:4px;">Монтаж закрылся бы у ${hit} ${hit === 1 ? 'человека' : 'человек'} (больше ${t.perMonth} КП), отправка — у ${hitAll} (больше ${t.perMonth + t.perMonthPlain}).</div></div>`;
             }).join('');
         }
-        return `<p style="${u.hint}">Бесплатный тариф: в скольких разных КП за месяц монтажник может отправить клиенту монтажные работы (PDF, Excel или ссылкой). Сверх лимита КП уходит, но только с оборудованием, а в окне выбора разделов монтаж стоит с замком «с Профи». Монтаж в смете на экране виден всегда. Продавцу (монтажа нет) лимит, как раньше, закрывает саму отправку. Повторная отправка КП из первых по счёту лимит не тратит и монтаж сохраняет. Пробный и платный Профи, менеджеры, наблюдатели и админы лимита не видят. Сбой подсчёта лимит не включает: человека пропускаем.</p>
+        return `<p style="${u.hint}">Бесплатный тариф, календарный месяц. Монтажник: первые КП (поле «с монтажом») уходят клиенту с монтажными работами, следующие (поле «без монтажа») — только с оборудованием, в окне выбора разделов монтаж стоит с замком «с Профи»; дальше отправка закрыта до Профи. Монтаж в смете на экране виден всегда. Продавцу (монтажа нет) действует только поле «без монтажа». Повторная отправка уже отправленного КП лимит не тратит и монтаж не добавляет и не убирает. Пробный и платный Профи, менеджеры, наблюдатели и админы лимита не видят. Сбой подсчёта лимит не включает: человека пропускаем.</p>
             <div style="${u.card} max-width:760px;">
                 <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;"><b style="font-size:14px; color:var(--text-main);">Сейчас:</b> ${this.chip(st.label, st.color)}</div>
                 ${row('Включить лимит', 'Выключено — отправлять КП можно без ограничений, как и раньше.', this.toggleHtml(!!t.enabled, `Subscription.setLimitField('enabled', ${!t.enabled})`, dis))}
                 ${row('Бесплатных КП с монтажом в месяц', 'Календарный месяц, считаются разные КП по порядку отправки. От 1 до 100.', `<input type="number" min="1" max="100" value="${t.perMonth}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('perMonth', this.value)" style="${u.input} width:80px;">`)}
+                ${row('Бесплатных КП без монтажа в месяц', 'Монтажнику — сколько КП сверх КП с монтажом можно отправить только с оборудованием; продавцу — сколько КП в месяц всего. Дальше отправка закрыта до Профи. От 0 до 100.', `<input type="number" min="0" max="100" value="${t.perMonthPlain}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('perMonthPlain', this.value)" style="${u.input} width:80px;">`)}
                 ${row('Действует с даты', 'Нажмите и выберите день в календаре (включительно). Без даты — сразу, как только лимит включён.', `<button type="button" ${dis ? 'disabled' : ''} onclick="Subscription.openLimitFrom()" style="${u.input} min-width:230px; text-align:left; cursor:${dis ? 'default' : 'pointer'};">${t.from ? 'с ' + this.fmtDate(t.from) : 'Сразу, как только включён'}</button>`)}
                 ${row('Не применять к сотрудникам ТЕРЕМ', 'Почта @teremopt.ru или привязка к компании «ТЕРЕМ».', this.toggleHtml(!!t.excludeTerem, `Subscription.setLimitField('excludeTerem', ${!t.excludeTerem})`, dis))}
             </div>

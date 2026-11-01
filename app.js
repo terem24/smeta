@@ -16120,8 +16120,11 @@ const app = {
         // Лимит включён настройкой, но может ещё не начаться — тогда в описании дата старта
         // Монтажнику лимит закрывает не КП, а монтаж в нём (sendLimitOk): КП сверх лимита уходит с оборудованием
         if (lim && lim.s.enabled) {
-            if (this.canUseWorks()) rows.push(['КП клиентам с монтажом', 'Монтажные работы в PDF, Excel и ссылке клиенту. Сверх лимита КП уходит только с оборудованием' + (lim.st.on ? '' : ' (' + lim.st.label + ')'), lim.s.perMonth + ' в мес.', 'без лимита']);
-            else rows.push(['КП клиентам в месяц', 'Сколько разных КП можно отправить: PDF, Excel или ссылкой' + (lim.st.on ? '' : ' (' + lim.st.label + ')'), lim.s.perMonth + ' в мес.', 'без лимита']);
+            const when = lim.st.on ? '' : ' (' + lim.st.label + ')';
+            if (this.canUseWorks()) {
+                rows.push(['КП клиентам с монтажом', 'Монтажные работы в PDF, Excel и ссылке клиенту' + when, lim.s.perMonth + ' в мес.', 'без лимита']);
+                rows.push(['КП без монтажа', 'Сверх КП с монтажом — только оборудование; дальше отправка закрыта' + when, lim.s.perMonthPlain + ' в мес.', 'без лимита']);
+            } else rows.push(['КП клиентам в месяц', 'Сколько разных КП можно отправить: PDF, Excel или ссылкой' + when, lim.s.perMonthPlain + ' в мес.', 'без лимита']);
         }
         if (lim && lim.s.outcomeOn !== false && lim.s.outcomeGate !== false) {
             const ext = lim.s.outcomeExt;
@@ -57569,7 +57572,7 @@ const app = {
             const l = this._kpWorksLock || {};
             let price = '';
             try { if (typeof Subscription !== 'undefined') price = Subscription.priceLine().split('\n')[0]; } catch (e) { }
-            lockNote.innerHTML = '<b>Монтаж в КП — с Профи.</b> Бесплатно монтаж идёт ' + this.kpWorksFreeText(l.max) + ' в этом месяце. Это КП уйдёт клиенту только с оборудованием. Монтажные работы в смете остаются у вас на экране.' +
+            lockNote.innerHTML = '<b>Монтаж в КП — с Профи.</b> Бесплатно монтаж идёт ' + this.kpWorksFreeText(l.max) + ' в этом месяце. Это КП уйдёт клиенту только с оборудованием' + (l.plainLeft >= 0 ? ' (КП без монтажа после этого останется: ' + l.plainLeft + ')' : '') + '. Монтажные работы в смете остаются у вас на экране.' +
                 (price ? '<div style="margin-top:4px; color:var(--text-sec);">' + price + '</div>' : '') +
                 '<button type="button" style="margin-top:8px; padding:7px 12px; border:none; border-radius:8px; background:var(--primary); color:#fff; font-weight:700; font-size:12.5px; cursor:pointer;" onclick="app.kpWorksLockedInfo()">Добавить монтаж — оформить Профи</button>';
             lockNote.style.display = 'block';
@@ -60158,29 +60161,39 @@ const app = {
                 .eq('user_id', String(tg.id)).in('event', ['printed', 'sent']).gte('created_at', start)
                 .order('created_at', { ascending: true }).limit(500);
             if (error) throw error;
-            const max = Subscription.limitSettings().perMonth;
+            const lim = Subscription.limitSettings();
+            const max = lim.perMonth, maxPlain = lim.perMonthPlain;
             const cur = String(this.state.calc_id || '');
-            // У монтажника лимит касается только монтажа: КП уходит всегда, а работы в нём —
-            // в первых max разных КП месяца (по порядку отправки). Остальные КП месяца —
-            // только оборудование. Считаем именно первые max, а не «уже отправленные»:
-            // иначе КП, ушедшее без монтажа, при повторной отправке получило бы монтаж.
+            const price = Subscription.priceLine();
+            const block = async (text) => {
+                const go = await this.confirmChoice(text + ' Ранее отправленные КП можно отправлять снова. Счётчик обнулится 1 числа. Профи — без ограничений.' + (price ? '\n\n' + price : ''),
+                    'Лимит бесплатных КП', 'Оформить Профи', 'Закрыть');
+                this.logPaywall('seen', 'КП: лимит бесплатных');
+                if (go) this.showModal('pro', { why: 'Бесплатные КП в этом месяце закончились — с Профи КП уходят без ограничений' });
+                return false;
+            };
+            // Порядок разных КП месяца по первой отправке
+            const order = [];
+            (data || []).forEach(r => { const c = String(r.calc_id); if (order.indexOf(c) < 0) order.push(c); });
+            // Монтажник: первые max разных КП месяца — с монтажом, следующие maxPlain — только
+            // с оборудованием, дальше отправка закрыта. Считаем по порядку, а не «уже
+            // отправленные»: иначе КП, ушедшее без монтажа, при повторной отправке получило
+            // бы монтаж. Повторная отправка КП из любой группы лимит не тратит.
             if (this.canUseWorks()) {
-                const free = [];
-                (data || []).forEach(r => { const c = String(r.calc_id); if (free.length < max && free.indexOf(c) < 0) free.push(c); });
-                const locked = !(cur && free.indexOf(cur) >= 0) && free.length >= max;
-                this._kpWorksLock = { calc: cur, locked: locked, max: max, used: free.length };
-                if (locked) this.logPaywall('seen', 'КП: монтаж после лимита');
-                return true;
+                const withWorks = order.slice(0, max), plain = order.slice(max, max + maxPlain);
+                if (cur && withWorks.indexOf(cur) >= 0) return true;
+                if (withWorks.length < max) return true;
+                if ((cur && plain.indexOf(cur) >= 0) || plain.length < maxPlain) {
+                    this._kpWorksLock = { calc: cur, locked: true, max: max, plainMax: maxPlain, plainLeft: maxPlain - plain.length - (plain.indexOf(cur) >= 0 ? 0 : 1) };
+                    this.logPaywall('seen', 'КП: монтаж после лимита');
+                    return true;
+                }
+                return block('На бесплатном тарифе в месяц уходит ' + max + ' КП с монтажом и ' + maxPlain + ' без монтажа — в этом месяце все уже отправлены.');
             }
-            // Продавцу (монтажа нет) — прежний лимит: после max разных КП отправка закрыта
-            const used = new Set((data || []).map(r => String(r.calc_id)));
-            if (cur && used.has(cur)) return true;            // это КП уже отправляли в этом месяце
-            if (used.size < max) return true;
-            const go = await this.confirmChoice(
-                'На бесплатном тарифе можно отправить клиентам ' + max + ' разных КП в месяц, в этом месяце вы уже отправили ' + used.size + '. Ранее отправленные КП можно отправлять снова. Счётчик обнулится 1 числа. Профи — без ограничения.' + (Subscription.priceLine() ? '\n\n' + Subscription.priceLine() : ''),
-                'Лимит бесплатных КП', 'Оформить Профи', 'Закрыть');
-            if (go) { this.logPaywall('seen', 'КП: лимит бесплатных'); this.showModal('pro'); }
-            return false;
+            // Продавец (монтажа нет): maxPlain разных КП в месяц
+            if (cur && order.slice(0, maxPlain).indexOf(cur) >= 0) return true;
+            if (order.length < maxPlain) return true;
+            return block('На бесплатном тарифе в месяц можно отправить клиентам КП: ' + maxPlain + '. В этом месяце лимит уже использован.');
         } catch (e) {
             console.warn('[лимит КП] не проверен, пропускаем:', e);
             return true;
