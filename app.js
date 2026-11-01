@@ -9075,32 +9075,36 @@ const app = {
         } catch (e) { return false; }
     },
 
-    maybeOfferTrial: async function () {
+    maybeOfferTrial: async function (sv) {
         try {
-            if (this._trialOfferBusy) return;
+            if (this._trialOfferBusy) return false;
             await this.loadAppSettings();
-            if (typeof Subscription !== 'undefined' && !Subscription.trialOfferAllowed()) return;
+            if (typeof Subscription !== 'undefined' && !Subscription.trialOfferAllowed()) return false;
             const tg = this.state.tgUser || {};
-            if (!tg.authUserId && !tg.email && !tg.id) return;
-            if (this.isPro() || this.state.demoUsed || tg.demo_ends_at) return;
+            if (!tg.authUserId && !tg.email && !tg.id) return false;
+            if (this.isPro() || this.state.demoUsed || tg.demo_ends_at) return false;
             const acc = tg.account_type || this.state.accountType || 'base';
-            if (acc !== 'free' && acc !== 'base') return;
+            if (acc !== 'free' && acc !== 'base') return false;
             let st = {};
             try { st = JSON.parse(localStorage.getItem('hc_trial_offer') || '{}') || {}; } catch (e) { st = {}; }
-            if ((st.n || 0) >= 2 || (st.t && Date.now() - st.t < 3 * 24 * 60 * 60 * 1000)) return;
+            if ((st.n || 0) >= 2 || (st.t && Date.now() - st.t < 3 * 24 * 60 * 60 * 1000)) return false;
             this._trialOfferBusy = true;
             try { localStorage.setItem('hc_trial_offer', JSON.stringify({ n: (st.n || 0) + 1, t: Date.now() })); } catch (e) { }
             let benefits = '';
             try { if (typeof Subscription !== 'undefined') benefits = Subscription.benefitsText(Subscription.userAccount()); } catch (e) { }
+            const saveLine = this.saveLine(sv);
             const yes = await this.confirmChoice(
-                (benefits ? benefits + '\n\n' : '') + 'Карта не нужна. Через ' + this.trialDays() + ' дней доступ вернётся к базовому — ничего не спишется.',
+                (saveLine ? saveLine + '\n\n' : '') + (benefits ? benefits + '\n\n' : '') + 'Карта не нужна. Через ' + this.trialDays() + ' дней доступ вернётся к базовому — ничего не спишется.',
                 'Попробуйте Профи ' + this.trialDays() + ' дней бесплатно',
                 'Включить', 'Не сейчас');
             this._trialOfferBusy = false;
+            try { this.logPaywall('seen', 'После сохранения: пробный' + (saveLine ? ' + экономия' : '')); } catch (e) { }
             if (yes) this.activateTrial14();
+            return true;
         } catch (e) {
             this._trialOfferBusy = false;
             console.warn('[пробный период] предложение не показано:', e);
+            return false;
         }
     },
 
@@ -9354,7 +9358,7 @@ const app = {
             console.log("[saveToCloud] Сохранение успешно завершено.");
             // Предложение пробного Профи — только после того, как человек закрыл
             // «Смета сохранена»: два окна друг на друге не показываем
-            if (!silent) app.alert("✅ Смета успешно сохранена!").then(() => this.maybeOfferTrial());
+            if (!silent) app.alert("✅ Смета успешно сохранена!").then(() => this.afterSaveOffer());
             return true;
         } catch (error) {
             console.error("[saveToCloud] Критическая ошибка в блоке catch:", error);
@@ -16114,7 +16118,11 @@ const app = {
         let lim = null;
         try { if (typeof Subscription !== 'undefined') lim = { s: Subscription.limitSettings(), st: Subscription.limitStatus() }; } catch (e) { }
         // Лимит включён настройкой, но может ещё не начаться — тогда в описании дата старта
-        if (lim && lim.s.enabled) rows.push(['КП клиентам в месяц', 'Сколько разных КП можно отправить: PDF, Excel или ссылкой' + (lim.st.on ? '' : ' (' + lim.st.label + ')'), lim.s.perMonth + ' в мес.', 'без лимита']);
+        // Монтажнику лимит закрывает не КП, а монтаж в нём (sendLimitOk): КП сверх лимита уходит с оборудованием
+        if (lim && lim.s.enabled) {
+            if (this.canUseWorks()) rows.push(['КП клиентам с монтажом', 'Монтажные работы в PDF, Excel и ссылке клиенту. Сверх лимита КП уходит только с оборудованием' + (lim.st.on ? '' : ' (' + lim.st.label + ')'), lim.s.perMonth + ' в мес.', 'без лимита']);
+            else rows.push(['КП клиентам в месяц', 'Сколько разных КП можно отправить: PDF, Excel или ссылкой' + (lim.st.on ? '' : ' (' + lim.st.label + ')'), lim.s.perMonth + ' в мес.', 'без лимита']);
+        }
         if (lim && lim.s.outcomeOn !== false && lim.s.outcomeGate !== false) {
             const ext = lim.s.outcomeExt;
             rows.push(['Отправка КП без остановок',
@@ -25138,6 +25146,9 @@ const app = {
     // Позиции ROMMER — по столбцу ROMMER, прочие марки прайса ТЕРЕМ — по
     // столбцу ТЕРЕМ, STOUT открыт всегда.
     canUseBrand: function (brand) {
+        // Тихий расчёт экономии для предложения Профи (cheaperSavingForOffer): считаем
+        // так, как посчитал бы Профи, со всеми марками — на экране ничего не меняется
+        if (this._allBrandsProbe) return true;
         const b = String(brand || '').toUpperCase();
         if (b === 'ROMMER') return this.tariffAccess('rommer') === 'on';
         if (!b || b === 'STOUT') return true;
@@ -52370,7 +52381,7 @@ const app = {
             Object.keys(upsertObj).forEach(k => { if (upsertObj[k] === undefined) delete upsertObj[k]; });
 
             // sess_visits — для подсказки «Смета за минуту» (idle_hint.js)
-            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, activity_changed_at, is_blocked, frozen_at, registered_at, sess_visits';
+            const adminSelectCols = 'id, account_type, demo_ends_at, pro_expires_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, activity_changed_at, is_blocked, frozen_at, registered_at, sess_visits';
 
             let { data: upsertResult, error: upsertError } = await this.loginNetRetry(() => supabaseClient
                 .from('users')
@@ -52521,26 +52532,10 @@ const app = {
                             .eq('auth_user_id', authUserId)
                             .lt('demo_ends_at', new Date().toISOString());
                     } else if (accType === 'pro' && new Date(demoEnds) > new Date()) {
-                        let msLeft = new Date(demoEnds).getTime() - Date.now();
-                        // Предупреждаем за 3 дня, не чаще раза в сутки: за сутки до конца
-                        // человек уже не успевает ни попробовать то, что не пробовал, ни решить
-                        const dayKey = new Date().toISOString().slice(0, 10);
-                        let shownDay = '';
-                        try { shownDay = localStorage.getItem('trial_reminder_day') || ''; } catch (e) { }
-                        if (msLeft <= 3 * 24 * 60 * 60 * 1000 && shownDay !== dayKey && !sessionStorage.getItem('trial_reminder_shown')) {
-                            sessionStorage.setItem('trial_reminder_shown', '1');
-                            try { localStorage.setItem('trial_reminder_day', dayKey); } catch (e) { }
-                            const daysLeft = Math.max(1, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
-                            const endText = new Date(demoEnds).toLocaleDateString('ru-RU');
-                            setTimeout(async () => {
-                                let priceTail = '';
-                                try { if (typeof Subscription !== 'undefined') { await this.loadAppSettings(); priceTail = Subscription.priceLine(); Subscription.nudgeTouch('trialEnd'); } } catch (e) { }
-                                const go = await app.confirmChoice(
-                                    'Доступ к функциям Профи заканчивается ' + endText + ' (осталось ' + daysLeft + ' дн.). Ваши сметы сохранятся, но функции Профи станут недоступны.' + (priceTail ? '\n\n' + priceTail : ''),
-                                    'Профи скоро закончится', 'Оформить подписку', 'Позже');
-                                if (go) app.showModal('pro');
-                            }, 1500);
-                        }
+                        // Напоминание о конце Профи — за 2 дня и в последний день: плашка под
+                        // шапкой и окно один раз на стадию (Subscription.trialEndCheck). Ждём,
+                        // пока ниже обновится tgUser (тариф, срок, признак оплаты).
+                        if (typeof Subscription !== 'undefined') setTimeout(() => Subscription.trialEndCheck(), 2500);
                     }
                 }
                 this.state.accountType = accType;
@@ -52551,6 +52546,8 @@ const app = {
                 this.state.tgUser.id = uRow.id;
                 this.state.tgUser.account_type = uRow.account_type || 'base';
                 this.state.tgUser.demo_ends_at = uRow.demo_ends_at;
+                // Оплаченный Профи (а не пробный/промокод): напоминание о конце пишет «продлить»
+                this.state.tgUser.pro_expires_at = uRow.pro_expires_at || null;
                 if (uRow.phone && uRow.phone !== phone) this.state.tgUser.phone = uRow.phone;
                 if (uRow.username && uRow.username !== fullName && !this.isNamePlaceholder(uRow.username, email)) this.state.tgUser.first_name = uRow.username;
                 if (uRow.city) this.state.tgUser.city = uRow.city;
@@ -57547,6 +57544,36 @@ const app = {
         const cardWorksOpt = document.getElementById('card_opt_works');
         if (cardWorksOpt) cardWorksOpt.style.display = sellerNoWorks ? 'none' : '';
         if (sellerNoWorks && chkWorks) chkWorks.checked = false;
+        // Лимит бесплатного тарифа исчерпан: КП уходит, но монтаж в нём — с Профи.
+        // Карточка остаётся на месте с замком — нажатие открывает окно тарифа.
+        const worksLocked = !sellerNoWorks && this.kpWorksLocked();
+        if (chkWorks) {
+            if (worksLocked) chkWorks.checked = false;
+            chkWorks.disabled = worksLocked;
+            chkWorks.style.pointerEvents = worksLocked ? 'none' : '';
+        }
+        if (cardWorksOpt) {
+            cardWorksOpt.classList.toggle('share-opt-locked', worksLocked);
+            cardWorksOpt.title = worksLocked ? 'Монтаж в КП — с Профи: бесплатные КП с монтажом в этом месяце закончились' : 'Смета на монтаж и пусконаладочные работы';
+            const sub = cardWorksOpt.querySelector('.share-opt-sub');
+            if (sub) sub.textContent = worksLocked ? '🔒 с Профи' : 'работы';
+        }
+        let lockNote = document.getElementById('share_works_lock_note');
+        if (worksLocked && cardWorksOpt && cardWorksOpt.parentNode) {
+            if (!lockNote) {
+                lockNote = document.createElement('div');
+                lockNote.id = 'share_works_lock_note';
+                lockNote.style.cssText = 'margin:8px 0 4px; padding:10px 12px; border-radius:10px; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.45); font-size:12.5px; line-height:1.4; color:var(--text-main); text-align:left;';
+                cardWorksOpt.parentNode.parentNode.insertBefore(lockNote, cardWorksOpt.parentNode.nextSibling);
+            }
+            const l = this._kpWorksLock || {};
+            let price = '';
+            try { if (typeof Subscription !== 'undefined') price = Subscription.priceLine().split('\n')[0]; } catch (e) { }
+            lockNote.innerHTML = '<b>Монтаж в КП — с Профи.</b> Бесплатно монтаж идёт в ' + (l.max || 2) + ' КП в месяц, в этом месяце они уже отправлены. Это КП уйдёт клиенту только с оборудованием. Монтажные работы в смете остаются у вас на экране.' +
+                (price ? '<div style="margin-top:4px; color:var(--text-sec);">' + price + '</div>' : '') +
+                '<button type="button" style="margin-top:8px; padding:7px 12px; border:none; border-radius:8px; background:var(--primary); color:#fff; font-weight:700; font-size:12.5px; cursor:pointer;" onclick="app.kpWorksLockedInfo()">Добавить монтаж — оформить Профи</button>';
+            lockNote.style.display = 'block';
+        } else if (lockNote) lockNote.style.display = 'none';
 
         // "Расчёт теплопотерь" и "Схема" имеет смысл предлагать только при печати/PDF,
         // и только если для них реально есть готовые данные (иначе печатать нечего).
@@ -57675,6 +57702,7 @@ const app = {
     },
 
     toggleShareOption: function (option) {
+        if (option === 'works' && this.kpWorksLocked()) { this.kpWorksLockedInfo(); return; }
         const chk = document.getElementById('share_opt_' + option);
         if (chk) {
             chk.checked = !chk.checked;
@@ -57767,7 +57795,7 @@ const app = {
         const cardScheme = document.getElementById('card_opt_scheme');
         const showEq = chkEq ? chkEq.checked : false;
         // У продавца работ нет (см. openShareOptionsModal)
-        const showWorks = (chkWorks && this.canUseWorks()) ? chkWorks.checked : false;
+        const showWorks = (chkWorks && this.canUseWorks() && !this.kpWorksLocked()) ? chkWorks.checked : false;
         const heatLossVisible = !!(cardHeatLoss && cardHeatLoss.style.display !== 'none');
         const schemeVisible = !!(cardScheme && cardScheme.style.display !== 'none');
         const showHeatLoss = heatLossVisible && chkHeatLoss ? chkHeatLoss.checked : false;
@@ -60120,18 +60148,33 @@ const app = {
             // Сначала итог старых КП (kp_outcome.js): без Профи два КП без итога
             // останавливают отправку новых, окно отметки открывается тут же
             if (window.KpOutcome && !(await KpOutcome.gateOk())) return false;
+            this._kpWorksLock = null;
             if (typeof Subscription === 'undefined' || !Subscription.limitApplies()) return true;
             const tg = this.state.tgUser || {};
             if (!tg.id) return true;
             const d = new Date();
             const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
-            const { data, error } = await supabaseClient.from('invoice_events').select('calc_id')
-                .eq('user_id', String(tg.id)).in('event', ['printed', 'sent']).gte('created_at', start).limit(500);
+            const { data, error } = await supabaseClient.from('invoice_events').select('calc_id, created_at')
+                .eq('user_id', String(tg.id)).in('event', ['printed', 'sent']).gte('created_at', start)
+                .order('created_at', { ascending: true }).limit(500);
             if (error) throw error;
-            const used = new Set((data || []).map(r => String(r.calc_id)));
-            const cur = String(this.state.calc_id || '');
-            if (cur && used.has(cur)) return true;            // это КП уже отправляли в этом месяце
             const max = Subscription.limitSettings().perMonth;
+            const cur = String(this.state.calc_id || '');
+            // У монтажника лимит касается только монтажа: КП уходит всегда, а работы в нём —
+            // в первых max разных КП месяца (по порядку отправки). Остальные КП месяца —
+            // только оборудование. Считаем именно первые max, а не «уже отправленные»:
+            // иначе КП, ушедшее без монтажа, при повторной отправке получило бы монтаж.
+            if (this.canUseWorks()) {
+                const free = [];
+                (data || []).forEach(r => { const c = String(r.calc_id); if (free.length < max && free.indexOf(c) < 0) free.push(c); });
+                const locked = !(cur && free.indexOf(cur) >= 0) && free.length >= max;
+                this._kpWorksLock = { calc: cur, locked: locked, max: max, used: free.length };
+                if (locked) this.logPaywall('seen', 'КП: монтаж после лимита');
+                return true;
+            }
+            // Продавцу (монтажа нет) — прежний лимит: после max разных КП отправка закрыта
+            const used = new Set((data || []).map(r => String(r.calc_id)));
+            if (cur && used.has(cur)) return true;            // это КП уже отправляли в этом месяце
             if (used.size < max) return true;
             const go = await this.confirmChoice(
                 'На бесплатном тарифе можно отправить клиентам ' + max + ' разных КП в месяц, в этом месяце вы уже отправили ' + used.size + '. Ранее отправленные КП можно отправлять снова. Счётчик обнулится 1 числа. Профи — без ограничения.' + (Subscription.priceLine() ? '\n\n' + Subscription.priceLine() : ''),
@@ -60142,6 +60185,21 @@ const app = {
             console.warn('[лимит КП] не проверен, пропускаем:', e);
             return true;
         }
+    },
+
+    // Монтаж в этом КП закрыт лимитом бесплатного тарифа (решает sendLimitOk перед
+    // отправкой). Профи и пробный Профи — никогда; флаг от другого расчёта не действует.
+    kpWorksLocked: function () {
+        const l = this._kpWorksLock;
+        if (!l || !l.locked) return false;
+        if (this.isPro()) return false;
+        return l.calc === String(this.state.calc_id || '');
+    },
+
+    // Нажали на замок «Монтажные работы» в окне выбора разделов
+    kpWorksLockedInfo: function () {
+        const l = this._kpWorksLock || {};
+        this.showModal('pro', { why: 'Монтаж в КП на бесплатном тарифе — в ' + (l.max || 2) + ' КП в месяц, они уже отправлены. Это КП уйдёт с оборудованием, а с Профи — вместе с монтажом, без ограничений' });
     },
 
     shareInvoice: async function () {
@@ -60185,6 +60243,8 @@ const app = {
         // Продавцу работы в ссылку не идут ни при каком вызове (в том числе из
         // режима обучения, который зовёт эту функцию напрямую)
         if (!this.canUseWorks()) showWorks = false;
+        // Лимит бесплатного тарифа: монтаж в этом КП закрыт (см. sendLimitOk)
+        if (this.kpWorksLocked()) showWorks = false;
         // Гарантия на объект включена, а адреса и заказчика нет — спрашиваем, как при печати;
         // отказались или «Без адреса» — ссылка уйдёт без листа гарантии
         if (this.kpWarrantyOn && !this.objectDetailsComplete()) await this.ensureObjectDetails();
@@ -60637,6 +60697,7 @@ const app = {
     },
     executeDownload: async function (showEq, showWorks, showHeatLoss, showScheme, shortNames) {
         if (!this.canUseWorks()) showWorks = false; // монтаж закрыт (у продавца исходно)
+        if (this.kpWorksLocked()) showWorks = false; // лимит бесплатного тарифа (sendLimitOk)
         // Адрес объекта и заказчик — для бланка гарантии STOUT (см. askObjectDetails)
         if (!(await this.ensureObjectDetails())) return;
         this.printOptions = {
@@ -60859,6 +60920,7 @@ const app = {
     // копии логики сметы. В Excel не переносятся только фотографии и схема.
     executeExcelDownload: async function (showEq, showWorks, showHeatLoss, flat, shortNames) {
         if (!this.canUseWorks()) showWorks = false; // монтаж закрыт (у продавца исходно)
+        if (this.kpWorksLocked()) showWorks = false; // лимит бесплатного тарифа (sendLimitOk)
         if (!window.ExcelExport) await this.lazy('excel').catch(() => { });
         if (!window.ExcelExport) {
             app.alert('Выгрузка в Excel сейчас недоступна. Обновите страницу и попробуйте снова.');
@@ -101599,6 +101661,92 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     // Та же смета без режима — тихим прогоном, как считает обвязку по системам
     // boilerSystemTotals. Разница двух полных смет и есть честная экономия:
     // в неё входит и другая обвязка, которой построчное сравнение не видит.
+    // Экономия «Бюджетнее» по текущей смете для предложения Профи после сохранения:
+    // два тихих прогона — смета в STOUT и та же смета в режиме «Бюджетнее» со всеми
+    // марками, как её посчитал бы Профи (то же, что probe.js для админки). Состояние
+    // сметы возвращается как было, экран перерисовывается. Результат заодно пишется
+    // в offer_savings (своя строка; админ видит её в «Готовности к оплате»).
+    // Возвращает { base, cheap, save, pct } или null.
+    cheaperSavingForOffer: function () {
+        if (!this.currentEquipmentList || !this.currentEquipmentList.length) return null;
+        const snapshot = JSON.parse(JSON.stringify(this.state));
+        let base = 0, cheap = 0;
+        this._cheapComparing = true;
+        this._allBrandsProbe = true;
+        try {
+            this.state.brandMode = 'stout';
+            this.state.sectionAnalog = {};
+            this._boilerRangeCache = null;
+            this.render(true);
+            base = Math.round(this.calcFinalTotal || 0);
+            this.state.brandMode = 'rommer';
+            this.state.sectionAnalog = {};
+            this._boilerRangeCache = null;
+            this.render(true);
+            cheap = Math.round(this.calcFinalTotal || 0);
+        } catch (e) {
+            console.warn('[предложение Профи] экономия не посчиталась:', e);
+            base = cheap = 0;
+        } finally {
+            this._allBrandsProbe = false;
+            Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
+            Object.assign(this.state, snapshot);
+            this._boilerRangeCache = null;
+            this._cheapComparing = false;
+            try { this.render(); } catch (e) { console.warn('[предложение Профи] перерисовка:', e); }
+        }
+        if (!(base > 0) || !(cheap > 0)) return null;
+        const save = base - cheap;
+        const res = { base: base, cheap: cheap, save: save, pct: Math.round(save / base * 1000) / 10 };
+        try {
+            const uid = (this._currentUserRow && this._currentUserRow.id) || (this.state.tgUser && this.state.tgUser.id);
+            if (uid && typeof supabaseClient !== 'undefined' && /^[0-9a-f-]{36}$/i.test(String(uid))) {
+                supabaseClient.from('offer_savings').upsert({
+                    user_id: uid, estimate_id: null, base_sum: base, cheap_sum: cheap,
+                    save_rub: save, save_pct: res.pct, computed_at: new Date().toISOString()
+                }, { onConflict: 'user_id' }).then(({ error }) => { if (error) console.warn('[предложение Профи] offer_savings:', error.message || error); }, () => { });
+            }
+        } catch (e) { }
+        return res;
+    },
+
+    // Кому после сохранения сметы есть что показать в рублях: вошёл, без Профи,
+    // не сотрудник ТЕРЕМ, и «Бюджетнее» у его учётки закрыт сейчас, но открыт на Профи
+    saveOfferEligible: function () {
+        try {
+            const tg = this.state.tgUser || {};
+            if (!tg.authUserId && !tg.email && !tg.id) return false;
+            if (this.isPro() || this.isTeremStaff()) return false;
+            const acc = tg.account_type || this.state.accountType || 'base';
+            if (acc !== 'free' && acc !== 'base' && acc !== 'pro') return false;
+            const ta = this.tariffAccount();
+            return this.tariffCell(ta, 'pro', 'analog') === 'on' && this.tariffAccess('analog') !== 'on';
+        } catch (e) { return false; }
+    },
+
+    // После «Смета сохранена»: сначала пробный Профи (с цифрой экономии, если она есть),
+    // если его предлагать нельзя — подсказка «сколько дешевле и сколько вы заработаете»
+    afterSaveOffer: async function () {
+        let sv = null;
+        try {
+            if (this.saveOfferEligible() && (this.trialButtonAllowed() || (typeof Subscription !== 'undefined' && Subscription.saveValueAllowed()))) {
+                await this.loadAppSettings();
+                sv = this.cheaperSavingForOffer();
+            }
+        } catch (e) { sv = null; }
+        let shown = false;
+        try { shown = await this.maybeOfferTrial(sv); } catch (e) { }
+        if (!shown && typeof Subscription !== 'undefined') {
+            try { await Subscription.afterSaveValue(sv); } catch (e) { console.warn('[предложение Профи] после сохранения:', e); }
+        }
+    },
+
+    // Строка про экономию для окон предложения: только заметная разница
+    saveLine: function (sv) {
+        if (!sv || !(sv.save >= 3000) || !(sv.pct >= 2)) return '';
+        return 'Вариант «Бюджетнее» по этому объекту на ' + Math.round(sv.save).toLocaleString('ru-RU') + ' ₽ дешевле (−' + String(sv.pct).replace('.', ',') + ' %) — то же отопление, но клиент скорее подпишет.';
+    },
+
     computeCheapBaseline: function () {
         const snapshot = JSON.parse(JSON.stringify(this.state));
         this._cheapComparing = true;

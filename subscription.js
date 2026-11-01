@@ -428,7 +428,9 @@ const Subscription = {
     // Настройки — app_settings.subscription.limit. По умолчанию ВЫКЛЮЧЕН. Считается
     // число разных КП (по номеру расчёта), которые мастер за календарный месяц отправил
     // клиенту: PDF, Excel или ссылка (события printed и sent в invoice_events).
-    // Повторная отправка того же КП лимит не тратит. Блокирует только на тарифе без
+    // Монтажнику лимит закрывает только монтаж в КП: первые perMonth КП месяца идут с
+    // работами, остальные — с оборудованием (app.sendLimitOk / app.kpWorksLocked).
+    // Продавцу без монтажа — саму отправку. Повторная отправка того же КП лимит не тратит. Блокирует только на тарифе без
     // Профи (free и base); пробный и платный Профи, менеджеры, наблюдатели, админы
     // и (по умолчанию) сотрудники ТЕРЕМ лимит не видят. Любой сбой при подсчёте —
     // пропускаем: лимит не должен мешать работать.
@@ -565,11 +567,11 @@ const Subscription = {
                     <div style="font-size:12px; color:var(--text-sec); margin-top:4px;">Лимит «${t.perMonth} в месяц» затронул бы: ${hit} ${hit === 1 ? 'человека' : 'человек'} (отправили больше ${t.perMonth}).</div></div>`;
             }).join('');
         }
-        return `<p style="${u.hint}">Бесплатный тариф: сколько разных КП в месяц мастер может отправить клиентам (PDF, Excel или ссылкой). Дальше предлагается Профи. Повторная отправка того же КП лимит не тратит. Пробный и платный Профи, менеджеры, наблюдатели и админы лимита не видят. Сбой подсчёта лимит не включает: человека пропускаем.</p>
+        return `<p style="${u.hint}">Бесплатный тариф: в скольких разных КП за месяц монтажник может отправить клиенту монтажные работы (PDF, Excel или ссылкой). Сверх лимита КП уходит, но только с оборудованием, а в окне выбора разделов монтаж стоит с замком «с Профи». Монтаж в смете на экране виден всегда. Продавцу (монтажа нет) лимит, как раньше, закрывает саму отправку. Повторная отправка КП из первых по счёту лимит не тратит и монтаж сохраняет. Пробный и платный Профи, менеджеры, наблюдатели и админы лимита не видят. Сбой подсчёта лимит не включает: человека пропускаем.</p>
             <div style="${u.card} max-width:760px;">
                 <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;"><b style="font-size:14px; color:var(--text-main);">Сейчас:</b> ${this.chip(st.label, st.color)}</div>
                 ${row('Включить лимит', 'Выключено — отправлять КП можно без ограничений, как и раньше.', this.toggleHtml(!!t.enabled, `Subscription.setLimitField('enabled', ${!t.enabled})`, dis))}
-                ${row('Бесплатных КП в месяц', 'Календарный месяц, считаются разные КП. От 1 до 100.', `<input type="number" min="1" max="100" value="${t.perMonth}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('perMonth', this.value)" style="${u.input} width:80px;">`)}
+                ${row('Бесплатных КП с монтажом в месяц', 'Календарный месяц, считаются разные КП по порядку отправки. От 1 до 100.', `<input type="number" min="1" max="100" value="${t.perMonth}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('perMonth', this.value)" style="${u.input} width:80px;">`)}
                 ${row('Действует с даты', 'Нажмите и выберите день в календаре (включительно). Без даты — сразу, как только лимит включён.', `<button type="button" ${dis ? 'disabled' : ''} onclick="Subscription.openLimitFrom()" style="${u.input} min-width:230px; text-align:left; cursor:${dis ? 'default' : 'pointer'};">${t.from ? 'с ' + this.fmtDate(t.from) : 'Сразу, как только включён'}</button>`)}
                 ${row('Не применять к сотрудникам ТЕРЕМ', 'Почта @teremopt.ru или привязка к компании «ТЕРЕМ».', this.toggleHtml(!!t.excludeTerem, `Subscription.setLimitField('excludeTerem', ${!t.excludeTerem})`, dis))}
             </div>
@@ -684,11 +686,11 @@ const Subscription = {
 
     // ═══ Подсказки оплаты ════════════════════════════════════════════════
     // Мягкие предложения Профи в момент пользы: после отправки КП и когда Профи
-    // закончился (за 3 дня до конца напоминает отдельный код при входе, он берёт
+    // закончился (за 2 дня и в последний день напоминает trialEndCheck ниже, он берёт
     // отсюда текст цены). Настройки — app_settings.subscription.nudges. Показывается
     // только человеку без Профи, не чаще gapDays и не больше трёх раз на причину; любой
     // сбой — тишина. Окно с «Не сейчас» — тариф сам не включается и ничего не списывается.
-    NUDGE_DEFAULTS: { enabled: true, gapDays: 7, kp: true, kpFrom: 2, expiry: true, lock: true },
+    NUDGE_DEFAULTS: { enabled: true, gapDays: 7, kp: true, kpFrom: 2, expiry: true, lock: true, save: true, trialEnd: true },
     NUDGE_LS: 'hc_pay_nudge',
 
     nudgeSettings: function () {
@@ -699,7 +701,7 @@ const Subscription = {
     },
 
     setNudgeField: function (field, value) {
-        if (['enabled', 'gapDays', 'kp', 'kpFrom', 'expiry', 'lock'].indexOf(field) < 0) return;
+        if (['enabled', 'gapDays', 'kp', 'kpFrom', 'expiry', 'lock', 'save', 'trialEnd'].indexOf(field) < 0) return;
         if (field === 'gapDays') value = Math.min(60, Math.max(1, Math.round(this.num(value)) || 7));
         else if (field === 'kpFrom') value = Math.min(20, Math.max(1, Math.round(this.num(value)) || 2));
         else value = !!value;
@@ -800,6 +802,186 @@ const Subscription = {
         }, 2500);
     },
 
+    // ── Конец Профи: за 2 дня и в последний день ─────────────────────────
+    // Плашка под шапкой калькулятора (#trial_end_banner), пока до конца Профи 2 дня
+    // и меньше, и окно один раз на стадию: «за 2 дня» (послезавтра/завтра) и «последний
+    // день» (сегодня или осталось меньше суток). Проверяется при входе и раз в 20 минут,
+    // чтобы открытая вкладка тоже узнала о последнем дне. Пробному/промокоду — «оставить
+    // Профи», оплаченному (pro_expires_at) — «продлить». После конца — afterProExpired.
+    TE_HIDE_LS: 'hc_trial_end_hide',
+    TE_SHOWN_LS: 'hc_trial_end_shown',
+
+    trialEndInfo: function () {
+        try {
+            if (typeof app === 'undefined' || !this.nudgeSettings().trialEnd) return null;
+            const tg = (app.state && app.state.tgUser) || {};
+            if (tg.account_type !== 'pro' || !tg.demo_ends_at) return null;
+            if (app.isTeremStaff()) return null;
+            const end = new Date(tg.demo_ends_at), ms = end.getTime() - Date.now();
+            if (isNaN(ms) || ms <= 0) return null;
+            const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+            const d1 = new Date(end); d1.setHours(0, 0, 0, 0);
+            const days = Math.round((d1 - d0) / 86400000);   // 0 — сегодня, 1 — завтра, 2 — послезавтра
+            if (days > 2) return null;
+            const time = end.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+            const date = end.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+            const when = days <= 0 ? 'сегодня в ' + time : (days === 1 ? (ms < 86400000 ? 'завтра в ' + time : 'завтра, ' + date) : 'послезавтра, ' + date);
+            return {
+                end: end, endKey: end.toISOString().slice(0, 16), days: days, when: when,
+                stage: (days <= 0 || ms < 86400000) ? 'last' : '2d',
+                paid: !!tg.pro_expires_at
+            };
+        } catch (e) { return null; }
+    },
+
+    // Что пропадёт без Профи — по таблице «Тарифы» для этой учётки, плюс лимит монтажа в КП
+    trialEndLosses: function () {
+        const acc = this.userAccount();
+        const out = [];
+        try {
+            if (this.limitStatus().on && app.canUseWorks()) out.push('монтаж в КП — только в ' + this.limitSettings().perMonth + ' КП в месяц');
+        } catch (e) { }
+        this.benefitRows(acc).filter(r => r.pro !== 'off' && r.base === 'off').forEach(r => {
+            if (r.f.id === 'works') return;
+            out.push(this.BENEFIT_TEXT[r.f.id] || r.f.label.toLowerCase());
+        });
+        return out;
+    },
+
+    trialEndPrice: function () {
+        try {
+            const r = this.resolve('month');
+            if (r && r.rub > 0 && this.settings().plans.month.enabled !== false) return this.fmtRub(r.rub) + ' в месяц';
+        } catch (e) { }
+        return '';
+    },
+
+    syncTrialEndBanner: function () {
+        try {
+            const host = document.getElementById('trial_end_banner');
+            if (!host) return;
+            const info = this.trialEndInfo();
+            let hidden = '';
+            try { hidden = localStorage.getItem(this.TE_HIDE_LS) || ''; } catch (e) { }
+            if (!info || hidden === info.endKey + ':' + info.stage) { host.style.display = 'none'; host.innerHTML = ''; return; }
+            const loss = this.trialEndLosses();
+            const price = this.trialEndPrice();
+            const title = (info.paid ? 'Профи заканчивается ' : 'Пробный Профи заканчивается ') + info.when;
+            const sub = loss.length ? 'Без Профи: ' + loss.slice(0, 4).join(', ') + (loss.length > 4 ? ' и ещё ' + (loss.length - 4) : '') + '. Сметы останутся.' : 'Сметы останутся, функции Профи станут недоступны.';
+            const cta = (info.paid ? 'Продлить' : 'Оставить Профи') + (price ? ' — ' + price : '');
+            host.className = 'no-print trial-end-banner' + (info.stage === 'last' ? ' te-last' : '');
+            host.innerHTML = '<div class="teb" role="button" tabindex="0" onclick="Subscription.trialEndGo()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();Subscription.trialEndGo();}">' +
+                '<span class="teb-ic" aria-hidden="true">⏳</span>' +
+                '<span class="teb-body"><span class="teb-title">' + this.esc(title) + '</span><span class="teb-sub">' + this.esc(sub) + '</span></span>' +
+                '<span class="teb-cta">' + this.esc(cta) + '</span>' +
+                '<button type="button" class="teb-x" onclick="event.stopPropagation();Subscription.trialEndHide()" title="Скрыть" aria-label="Скрыть">&times;</button></div>';
+            host.style.display = '';
+        } catch (e) { }
+    },
+
+    trialEndGo: function () {
+        const info = this.trialEndInfo();
+        try { app.logPaywall('tariff_open', 'Конец Профи: плашка ' + (info ? info.stage : '')); } catch (e) { }
+        app.showModal('pro', { why: info ? ((info.paid ? 'Профи заканчивается ' : 'Пробный Профи заканчивается ') + info.when) : '' });
+    },
+
+    trialEndHide: function () {
+        const info = this.trialEndInfo();
+        if (info) try { localStorage.setItem(this.TE_HIDE_LS, info.endKey + ':' + info.stage); } catch (e) { }
+        this.syncTrialEndBanner();
+    },
+
+    // Сколько разных КП ушло клиентам за время Профи — для окна «за 2 дня / последний день»
+    kpCountSince: async function (since) {
+        const tg = (app.state && app.state.tgUser) || {};
+        if (!tg.id) return 0;
+        const { data, error } = await supabaseClient.from('invoice_events').select('calc_id')
+            .eq('user_id', String(tg.id)).in('event', ['printed', 'sent']).gte('created_at', since.toISOString()).limit(1000);
+        if (error) throw error;
+        return new Set((data || []).map(r => String(r.calc_id))).size;
+    },
+
+    trialEndCheck: async function () {
+        try {
+            if (typeof app !== 'undefined' && app.loadAppSettings) await app.loadAppSettings();
+            this.syncTrialEndBanner();
+            if (!this._teTimer) this._teTimer = setInterval(() => { this.trialEndCheck(); }, 20 * 60 * 1000);
+            const info = this.trialEndInfo();
+            if (!info || this._nudgeBusy) return;
+            let shown = {};
+            try { shown = JSON.parse(localStorage.getItem(this.TE_SHOWN_LS) || '{}') || {}; } catch (e) { shown = {}; }
+            if (shown.end !== info.endKey) shown = { end: info.endKey };
+            // Каждая стадия — одно окно; зашёл впервые уже в последний день — «за 2 дня» не догоняем
+            if (shown[info.stage]) return;
+            if (document.querySelector('#custom_modal_overlay.active')) return;
+            shown[info.stage] = Date.now();
+            try { localStorage.setItem(this.TE_SHOWN_LS, JSON.stringify(shown)); } catch (e) { }
+            let kp = 0;
+            try {
+                const span = info.paid ? 30 : (app.trialDays ? app.trialDays() : 14);
+                // Не держим окно дольше 4 секунд из-за счётчика: без него текст тоже полный
+                kp = await Promise.race([this.kpCountSince(new Date(info.end.getTime() - span * 86400000)), new Promise(r => setTimeout(() => r(0), 4000))]);
+            } catch (e) { kp = 0; }
+            const loss = this.trialEndLosses();
+            const price = this.priceLine();
+            const head = (info.paid ? 'Ваш Профи заканчивается ' : 'Пробный Профи заканчивается ') + info.when + '.';
+            const did = kp > 0 ? ' За это время вы отправили клиентам КП: ' + kp + '.' : '';
+            const text = head + did +
+                (loss.length ? '\n\nБез Профи пропадёт: ' + loss.join(', ') + '.' : '') +
+                '\n\nСметы и КП сохранятся в любом случае.' + (price ? '\n\n' + price : '');
+            const title = info.stage === 'last' ? (info.paid ? 'Последний день Профи' : 'Последний день пробного Профи')
+                : ((info.paid ? 'Профи заканчивается ' : 'Пробный Профи заканчивается ') + (info.days === 1 ? 'завтра' : 'через 2 дня'));
+            this._nudgeBusy = true;
+            try { app.logPaywall('seen', 'Конец Профи: окно ' + info.stage); } catch (e) { }
+            try {
+                const go = await app.confirmChoice(text, title, info.paid ? 'Продлить Профи' : 'Оставить Профи', 'Позже');
+                if (go) app.showModal('pro', { why: head });
+            } finally { this._nudgeBusy = false; }
+        } catch (e) { console.warn('[конец Профи] напоминание:', e); }
+    },
+
+    // ── После сохранения сметы: выгода в рублях ──────────────────────────
+    // Экономию «Бюджетнее» считает app.cheaperSavingForOffer тем же движком, что смету.
+    // Своя пауза (раз в 2 дня, не больше 6 раз на устройстве) — общую паузу подсказок
+    // не трогаем, чтобы не глушить подсказку после отправки КП.
+    SAVE_LS: 'hc_save_value',
+    saveValueAllowed: function () {
+        try {
+            if (!this.nudgeSettings().save || !this.nudgeEligible()) return false;
+            const st = JSON.parse(localStorage.getItem(this.SAVE_LS) || '{}') || {};
+            if ((st.n || 0) >= 6) return false;
+            if (st.t && Date.now() - st.t < 2 * 86400000) return false;
+            return true;
+        } catch (e) { return false; }
+    },
+
+    afterSaveValue: async function (sv) {
+        if (this._nudgeBusy || !this.saveValueAllowed()) return;
+        if (document.querySelector('#custom_modal_overlay.active')) return;
+        const acc = app.tariffAccount();
+        const lines = [];
+        const saveLine = app.saveLine(sv);
+        if (saveLine) lines.push(saveLine);
+        if (app.tariffCell(acc, 'pro', 'money') === 'on' && app.tariffAccess('money') !== 'on')
+            lines.push('Ваша маржа на объекте: закупка по вашим скидкам поставщика, оплата бригады, накладные и что остаётся вам по каждому разделу — во вкладке «Деньги» в Профи.');
+        if (!lines.length) return;
+        try {
+            const lim = this.limitSettings();
+            if (this.limitApplies() && app.canUseWorks()) lines.push('Монтаж в КП клиенту: бесплатно — в ' + lim.perMonth + ' КП в месяц, с Профи — без ограничений.');
+        } catch (e) { }
+        try {
+            const st = JSON.parse(localStorage.getItem(this.SAVE_LS) || '{}') || {};
+            localStorage.setItem(this.SAVE_LS, JSON.stringify({ n: (st.n || 0) + 1, t: Date.now() }));
+        } catch (e) { }
+        const price = this.priceLine();
+        this._nudgeBusy = true;
+        try { app.logPaywall('seen', 'После сохранения: ' + (saveLine ? 'экономия' : 'маржа')); } catch (e) { }
+        try {
+            const yes = await app.confirmChoice(lines.join('\n\n') + (price ? '\n\n' + price : ''), 'Смета сохранена. Что даст Профи на этом объекте', 'Оформить Профи', 'Не сейчас');
+            if (yes) app.showModal('pro', { why: saveLine ? 'Вы хотели показать клиенту вариант «Бюджетнее» — он входит в Профи' : 'Вы хотели посмотреть маржу по объекту — вкладка «Деньги» входит в Профи' });
+        } finally { this._nudgeBusy = false; }
+    },
+
     nudge: async function (reason, ctx) {
         ctx = ctx || {};
         if (document.querySelector('#custom_modal_overlay.active')) return;
@@ -830,7 +1012,7 @@ const Subscription = {
                 <div style="flex:0 0 auto;">${control}</div></div>`;
         return `<p style="${u.hint}">Мягкие предложения Профи в момент пользы. Их видит только вошедший человек без Профи (не сотрудник ТЕРЕМ): окно с кнопками «Оформить Профи» и «Не сейчас», тариф сам не включается. В тексте — преимущества из вкладки «Преимущества Профи», цена года в пересчёте на месяц и действующая акция с датой окончания.</p>
             <div style="${u.card} max-width:760px;">
-                ${row('Подсказки оплаты', 'Общий выключатель. Выключено — подсказки не показываются никому. Напоминание за 3 дня до конца Профи и окно лимита КП это не затрагивает.',
+                ${row('Подсказки оплаты', 'Общий выключатель. Выключено — подсказки не показываются никому. Напоминание о конце Профи (у него свой выключатель ниже) и окно лимита КП это не затрагивает.',
                     this.toggleHtml(!!t.enabled, `Subscription.setNudgeField('enabled', ${!t.enabled})`, dis))}
                 ${row('Не чаще, чем раз в … дней', 'Пауза между любыми двумя подсказками на одном устройстве. От 1 до 60.',
                     `<input type="number" min="1" max="60" value="${t.gapDays}" ${dis ? 'disabled' : ''} onchange="Subscription.setNudgeField('gapDays', this.value)" style="${u.input} width:80px;">`)}
@@ -840,6 +1022,10 @@ const Subscription = {
                     `<input type="number" min="1" max="20" value="${t.kpFrom}" ${dis ? 'disabled' : ''} onchange="Subscription.setNudgeField('kpFrom', this.value)" style="${u.input} width:80px;">`)}
                 ${row('Когда Профи закончился', 'При входе после окончания платного или пробного Профи. Не больше двух раз на человека.',
                     this.toggleHtml(!!t.expiry, `Subscription.setNudgeField('expiry', ${!t.expiry})`, dis))}
+                ${row('После сохранения сметы: выгода в рублях', 'Когда человек без Профи сохранил смету: на сколько вариант «Бюджетнее» по этому объекту дешевле (считает сам калькулятор, ROMMER и аналоги) и что маржа объекта — во вкладке «Деньги». Если ещё можно предложить пробный Профи, цифра идёт в окно пробного периода. Не чаще раза в 2 дня, не больше 6 раз. Экономия пишется в «Готовность к оплате».',
+                    this.toggleHtml(t.save !== false, `Subscription.setNudgeField('save', ${t.save === false})`, dis))}
+                ${row('Конец Профи: за 2 дня и в последний день', 'Плашка под шапкой калькулятора с датой окончания и что пропадёт без Профи, плюс окно один раз за 2 дня и один раз в последний день. Пробному периоду — «оставить Профи», оплаченному — «продлить».',
+                    this.toggleHtml(t.trialEnd !== false, `Subscription.setNudgeField('trialEnd', ${t.trialEnd === false})`, dis))}
                 ${row('Подпись «Вы хотели…» в окне тарифа', 'Когда человек нажал на закрытую функцию (ROMMER, «Бюджетнее», деньги, ZONT), вверху окна — что именно он хотел сделать.',
                     this.toggleHtml(!!t.lock, `Subscription.setNudgeField('lock', ${!t.lock})`, dis))}
             </div>`;
