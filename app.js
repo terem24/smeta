@@ -14140,6 +14140,12 @@ const app = {
     // капсом, одна главная кнопка, две второстепенные под ней.
     showClientShareMessage: function (title, intro, msg, url) {
         this._shareMsg = { msg: msg, url: url };
+        // Ссылка ушла клиенту — лучший момент предложить Telegram: открытие КП придёт туда
+        const tgOffer = this.tgOfferAllowed();
+        if (tgOffer) {
+            try { const st = JSON.parse(localStorage.getItem(this.TG_OFFER_LS) || '{}') || {}; st.n = (st.n || 0) + 1; st.t = Date.now(); localStorage.setItem(this.TG_OFFER_LS, JSON.stringify(st)); } catch (e) { }
+            this.logPaywall('seen', 'Telegram: предложение после КП');
+        }
         const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const old = document.getElementById('plain_modal_overlay');
         if (old) old.remove();
@@ -14166,6 +14172,7 @@ const app = {
                     <button type="button" class="share-option-card" style="margin:0; justify-content:center; padding:9px 12px; font-weight:700; font-size:13px; color:var(--text-main);" onclick="app.copyShareMsg('url')">Только ссылку</button>
                     <button type="button" class="share-option-card" style="margin:0; justify-content:center; padding:9px 12px; font-weight:700; font-size:13px; color:var(--text-main);" onclick="window.open(app._shareMsg.url, '_blank')">Открыть</button>
                 </div>
+                ${tgOffer ? this.tgOfferHtml() : ''}
             </div>`;
         document.body.appendChild(wrap);
         wrap.style.display = 'flex';
@@ -20216,18 +20223,109 @@ const app = {
     // users.id для этого не годится: тот же id уже публичный — стоит в ссылке на
     // опросник (oprosnik.html?m=<id>), которую монтажник рассылает клиентам.
     connectTelegram: async function () {
+        // Вкладку открываем сразу, в том же нажатии: после похода в базу браузер на
+        // телефоне считает window.open всплывающим окном и молча его блокирует.
+        let w = null;
+        if (!window.__HC_NATIVE__) { try { w = window.open('about:blank', '_blank'); } catch (e) { w = null; } }
+        const closeW = () => { try { if (w && !w.closed) w.close(); } catch (e) { } };
         if (!this._installerCloudUserId) this._installerCloudUserId = await this._resolveInstallerCloudUserId();
-        if (!this._installerCloudUserId) { this.alert('Сначала войдите в аккаунт.'); return; }
+        if (!this._installerCloudUserId) { closeW(); this.alert('Сначала войдите в аккаунт.'); return; }
         try {
             const token = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('');
             const { error } = await supabaseClient.from('users')
                 .update({ tg_connect_token: token, tg_connect_token_at: new Date().toISOString() })
                 .eq('id', this._installerCloudUserId);
             if (error) throw error;
-            window.open(`https://t.me/${this.TG_INSTALLER_BOT_USERNAME}?start=${token}`, '_blank');
+            const url = `https://t.me/${this.TG_INSTALLER_BOT_USERNAME}?start=${token}`;
+            if (w && !w.closed) w.location.href = url; else window.open(url, '_blank');
+            this.watchTelegramConnect();
         } catch (e) {
+            closeW();
             this.alert('Не удалось начать подключение Telegram: ' + (e.message || e));
         }
+    },
+
+    // Подключился ли бот: человек нажал «Запустить» в Telegram и вернулся. Проверяем
+    // при возврате на вкладку и раз в 5 секунд, не дольше 10 минут (столько живёт код).
+    checkTelegramConnected: async function () {
+        try {
+            if (!this._installerCloudUserId) return false;
+            const { data, error } = await supabaseClient.from('users').select('tg_chat_id, tg_username').eq('id', this._installerCloudUserId).maybeSingle();
+            if (error) throw error;
+            this.state.tgConnect = { chatId: (data && data.tg_chat_id) || null, username: (data && data.tg_username) || null };
+            try { this.refreshTelegramConnectUI(); } catch (e) { }
+            return !!this.state.tgConnect.chatId;
+        } catch (e) { return false; }
+    },
+    watchTelegramConnect: function () {
+        if (this._tgWatch) return;
+        const started = Date.now();
+        const done = () => {
+            clearInterval(this._tgWatch); this._tgWatch = null;
+            document.removeEventListener('visibilitychange', onVis);
+        };
+        const tick = async () => {
+            if (Date.now() - started > 10 * 60 * 1000) { done(); return; }
+            if (await this.checkTelegramConnected()) {
+                done();
+                this.syncTgOfferBlock();
+                this.showInAppNotification('Telegram подключён', 'Сообщим, когда клиент откроет КП', '🔔');
+            }
+        };
+        const onVis = () => { if (document.visibilityState === 'visible') tick(); };
+        document.addEventListener('visibilitychange', onVis);
+        this._tgWatch = setInterval(tick, 5000);
+    },
+
+    // ── «Узнайте, когда клиент откроет КП» — в окне «Ссылка создана» ─────────
+    // Только вошедшему, у кого бот не подключён. «Не показывать» убирает навсегда
+    // (на устройстве), иначе — не больше 6 показов. Открытие КП приходит в Telegram
+    // первым (send-push, категория kp), повторные — нет.
+    TG_OFFER_LS: 'hc_tg_offer',
+    tgOfferAllowed: function () {
+        try {
+            const tg = this.state.tgUser || {};
+            if (!tg.id && !tg.email) return false;
+            const c = this.state.tgConnect;
+            if (!c || c.chatId) return false;         // ещё не знаем или уже подключён
+            const st = JSON.parse(localStorage.getItem(this.TG_OFFER_LS) || '{}') || {};
+            if (st.off || (st.n || 0) >= 6) return false;
+            return true;
+        } catch (e) { return false; }
+    },
+    tgOfferHtml: function () {
+        return `<div id="tg_offer_block" style="margin-top:12px; padding:12px 14px; border-radius:12px; background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.35);">
+                <div style="display:flex; gap:10px; align-items:flex-start;">
+                    <span style="font-size:20px; line-height:1;">🔔</span>
+                    <div style="flex:1; min-width:0;">
+                        <div style="font-size:13.5px; font-weight:800; color:var(--text-main);">Узнайте, когда клиент откроет КП</div>
+                        <div id="tg_offer_sub" style="font-size:12px; color:var(--text-sec); line-height:1.4; margin-top:3px;">Telegram пришлёт сообщение в ту же минуту — с объектом и номером КП. Позвоните, пока клиент смотрит смету. Ответ клиента («согласен», «доработать») тоже придёт туда.</div>
+                    </div>
+                </div>
+                <div id="tg_offer_btns" style="display:flex; align-items:center; gap:12px; margin-top:10px; flex-wrap:wrap;">
+                    <button type="button" style="padding:8px 14px; border:none; border-radius:9px; background:#229ED9; color:#fff; font-weight:700; font-size:13px; cursor:pointer;" onclick="app.tgOfferGo()">Подключить Telegram</button>
+                    <a href="#" style="font-size:12px; color:var(--text-sec);" onclick="app.tgOfferOff(); return false;">Не показывать</a>
+                </div>
+            </div>`;
+    },
+    tgOfferGo: function () {
+        this.logPaywall('tariff_open', 'Telegram: подключить после КП');
+        this.connectTelegram();
+        const sub = document.getElementById('tg_offer_sub');
+        if (sub) sub.textContent = 'В Telegram нажмите «Запустить» (Start) и вернитесь сюда — проверим подключение сами. Код действует 10 минут.';
+    },
+    tgOfferOff: function () {
+        try { const st = JSON.parse(localStorage.getItem(this.TG_OFFER_LS) || '{}') || {}; st.off = Date.now(); localStorage.setItem(this.TG_OFFER_LS, JSON.stringify(st)); } catch (e) { }
+        this.logPaywall('seen', 'Telegram: не показывать');
+        const b = document.getElementById('tg_offer_block');
+        if (b) b.remove();
+    },
+    // Бот подключился, пока окно открыто — вместо предложения строка-подтверждение
+    syncTgOfferBlock: function () {
+        const b = document.getElementById('tg_offer_block');
+        if (!b || !(this.state.tgConnect && this.state.tgConnect.chatId)) return;
+        b.style.background = 'rgba(16,185,129,0.10)'; b.style.borderColor = 'rgba(16,185,129,0.5)';
+        b.innerHTML = '<div style="font-size:13px; font-weight:700; color:var(--text-main);">✅ Telegram подключён — напишем, как только клиент откроет КП.</div>';
     },
     // Включена ли категория уведомлений (kp / oprosnik / chat). Ключа нет — считаем
     // включённым: по умолчанию монтажнику должно приходить всё, что он подключил.
@@ -42304,7 +42402,7 @@ const app = {
                 body: '<button type="button" class="lk-btn-sm ad-card-act" onclick="app.connectTelegram()">Подключить Telegram</button>'
             });
         } else {
-            const cats = [['kp', 'Одобрение или отклонение КП'], ['oprosnik', 'Заполненный опросник'], ['chat', 'Сообщения из калькулятора']]
+            const cats = [['kp', 'КП: клиент открыл, одобрил или отклонил'], ['oprosnik', 'Заполненный опросник'], ['chat', 'Сообщения из калькулятора']]
                 .map(c => ({ k: c[0], t: c[1], on: this.tgNotifyEnabled(c[0]) }));
             const off = cats.filter(c => !c.on).length;
             chan.push({
