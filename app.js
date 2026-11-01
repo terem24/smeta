@@ -59406,8 +59406,10 @@ const app = {
             rootEl.querySelectorAll('details[open]').forEach(o => {
                 if (o !== d && !o.contains(d) && !d.contains(o)) o.open = false;
             });
-            // Соседи свернулись, и раскрытый пункт мог уехать вверх за край — подтягиваем его
+            // Соседи свернулись, и раскрытый пункт мог уехать вверх за край — подтягиваем его.
+            // В окне «на весь экран» график раскрытого пункта подгоняем под свободное место.
             requestAnimationFrame(() => {
+                if (rootEl.classList.contains('hc-fs-body')) this._hcFsFit();
                 const r = d.getBoundingClientRect();
                 const top = rootEl.closest('#hc_fs') ? rootEl.closest('#hc_fs').getBoundingClientRect().top : 0;
                 if (r.top < top + 8) d.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -59430,6 +59432,12 @@ const app = {
             document.body.appendChild(ov);
             this._hcFsKey = e => { if (e.key === 'Escape') this.closeHydroFull(); };
             document.addEventListener('keydown', this._hcFsKey);
+            // Окно меняет размер (поворот планшета, разворот браузера) — график следом
+            this._hcFsResize = () => {
+                clearTimeout(this._hcFsResizeT);
+                this._hcFsResizeT = setTimeout(() => this._hcFsFit(), 120);
+            };
+            window.addEventListener('resize', this._hcFsResize);
             this._hcFsOverflow = document.body.style.overflow;
             document.body.style.overflow = 'hidden';
         }
@@ -59442,7 +59450,9 @@ const app = {
         const ov = document.getElementById('hc_fs');
         if (ov) ov.remove();
         if (this._hcFsKey) document.removeEventListener('keydown', this._hcFsKey);
+        if (this._hcFsResize) window.removeEventListener('resize', this._hcFsResize);
         this._hcFsKey = null;
+        this._hcFsResize = null;
         document.body.style.overflow = this._hcFsOverflow || '';
         // Что раскрыли в окне, то и раскрыто в карточке рядом со схемой
         this.syncHydroCheck();
@@ -59456,8 +59466,17 @@ const app = {
         let html = '';
         try { html = this.hydroCardHtml(false); } finally { this._hcFsRender = false; }
         body.innerHTML = html || '<div class="hc-fs-empty">Проверять пока нечего: в смете нет контуров с насосом.</div>';
-        body.scrollTop = scroll;
         this.hcAccordion(body);
+        this._hcFsFit();
+        body.scrollTop = scroll;
+    },
+
+    // График раскрытого пункта — по размеру окна (hydro_lab.js, fitCharts)
+    _hcFsFit: function () {
+        const body = document.querySelector('#hc_fs .hc-fs-body');
+        if (body && window.hydroLab && window.hydroLab.fitCharts) {
+            try { window.hydroLab.fitCharts(body); } catch (e) { console.warn('[hydroLab]', e); }
+        }
     },
 
     toggleHydroCard: function () {
