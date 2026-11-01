@@ -18500,7 +18500,8 @@ body.theme-yandex #admin_modal_overlay {
 @media screen and (min-width: 900px) { .kpi-nums-6 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media screen and (min-width: 1180px) { .kpi-nums-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 @media screen and (min-width: 900px) { .kpi-nums-6 .kpi-n b { font-size: 30px; white-space: nowrap; overflow-wrap: normal; } .kpi-nums-6 .kpi-nl { padding-right: 0; } }
-.vx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; margin-top: 12px; }
+.vx-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+@media screen and (min-width: 900px) and (max-width: 1179.98px) { .vx-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .vx-card { min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 16px 16px 14px; border-radius: 18px; background: var(--kpi-tile); }
 .vx-wide { grid-column: span 2; }
 .vx-full { grid-column: 1 / -1; }
@@ -18644,6 +18645,34 @@ body.theme-yandex #admin_modal_overlay {
     .vx-hrs { height: 80px; }
 }
 @media (prefers-reduced-motion: reduce) { .vx-bar-f, .vx-seg-p { transition: none; } }
+/* «Карта кликов»: список элементов и тепловая карта поверх калькулятора (clk* в app.js) */
+.clk-hd { margin-left: auto; display: inline-flex; gap: 6px; }
+.clk-els { display: flex; flex-direction: column; gap: 4px; }
+.clk-el { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; }
+.clk-el:hover { background: color-mix(in srgb, var(--text-main) 5%, transparent); }
+.clk-el-m { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 8px; }
+.clk-el-l { font-size: 13px; font-weight: 600; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.clk-el-s { flex-basis: 100%; font-size: 11.5px; color: var(--text-sec); }
+.clk-el-bar { flex-basis: 100%; height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--text-main) 8%, transparent); overflow: hidden; }
+.clk-el-bar span { display: block; height: 100%; border-radius: 2px; background: var(--primary); }
+.clk-el-n { font-size: 15px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.clk-el-n em { display: block; font-style: normal; font-size: 11px; font-weight: 500; color: var(--text-sec); }
+.clk-tag { font-style: normal; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 6px; }
+.clk-dead { color: #DC2626; background: color-mix(in srgb, #EF4444 14%, transparent); }
+.clk-rage { color: #B45309; background: color-mix(in srgb, #F59E0B 18%, transparent); }
+.clk-ex-t { flex: 1; align-self: center; font-size: 14px; color: var(--text-main); }
+#clk_map { position: fixed; inset: 0; z-index: 2147483000; pointer-events: none; }
+#clk_map .clk-cv { position: absolute; inset: 0; }
+#clk_map .clk-ring { display: none; position: fixed; border: 2.5px solid #F59E0B; border-radius: 10px; box-shadow: 0 0 0 4px rgba(245, 158, 11, .25); animation: clk-pulse 1.4s ease-in-out infinite; }
+@keyframes clk-pulse { 50% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); } }
+#clk_map .clk-bar { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); max-width: calc(100vw - 32px); display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 10px 14px; border-radius: 16px; background: rgba(17, 24, 39, .92); color: #fff; font: 13px/1.3 inherit; font-family: inherit; box-shadow: 0 10px 30px rgba(0, 0, 0, .35); pointer-events: auto; backdrop-filter: blur(8px); }
+#clk_map .clk-bar b { font-size: 13.5px; }
+#clk_map .clk-grp { display: inline-flex; gap: 2px; padding: 2px; border-radius: 9px; background: rgba(255, 255, 255, .1); }
+#clk_map .clk-chip { height: 26px; padding: 0 10px; border: 0; border-radius: 7px; background: transparent; color: rgba(255, 255, 255, .75); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+#clk_map .clk-chip.on { background: #fff; color: #111827; }
+#clk_map .clk-stat { font-size: 12px; color: rgba(255, 255, 255, .7); }
+#clk_map .clk-close { height: 30px; padding: 0 12px; border: 0; border-radius: 9px; background: #EF4444; color: #fff; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { #clk_map .clk-ring { animation: none; } }
 .ad-map-fold { margin-top: 24px; }
 .ad-map-fold > summary { cursor: pointer; color: var(--text-sec); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; }
 @media screen and (max-width: 899.98px) {
