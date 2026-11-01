@@ -1,7 +1,7 @@
 // Приём вебхука от Telegram-бота для монтажников (личные уведомления по КП,
 // опроснику и чатам — см. tgNotify в installer_settings и логику в send-push).
 //
-// Бот принимает два вида сообщений:
+// Бот принимает два вида сообщений (и кнопки под заявками на Профи — см. ниже, callback_query):
 //  1. /start <токен> от кнопки «Подключить Telegram» в личном кабинете
 //     (app.js: connectTelegram). Токен одноразовый и живёт 10 минут: users.id
 //     для этого не годится, потому что тот же id уже публичный — используется
@@ -138,6 +138,52 @@ Deno.serve(async (req) => {
     }
 
     const update = await req.json().catch(() => null);
+
+    // --- Кнопки «✅ Оплачено» / «✗ Отклонить» под заявкой на Профи (pay-notify) ---
+    // Нажать может только администратор (его chat_id в users и почта в ADMIN_EMAILS);
+    // решение принимает pay_confirm_tg в базе — те же правила, что у вкладки
+    // «Оплата подписки». Сообщение в чате дополняется итогом, кнопки снимаются.
+    const cb = update && update.callback_query;
+    if (cb) {
+      const rest0 = { apikey: serviceKey, Authorization: "Bearer " + serviceKey, "Content-Type": "application/json" };
+      const tg = (method: string, payload: unknown) =>
+        fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload),
+        }).catch(() => null);
+      const answer = (t: string) => tg("answerCallbackQuery", { callback_query_id: cb.id, text: t, show_alert: false });
+      const m = /^pay:(ok|no):([0-9a-f-]{36})$/i.exec(String(cb.data || ""));
+      const cbChat = cb.message && cb.message.chat && cb.message.chat.id;
+      if (!m || !cbChat) { await answer(""); return new Response("ok"); }
+      const adm = await fetch(`${supabaseUrl}/rest/v1/users?tg_chat_id=eq.${encodeURIComponent(String(cbChat))}&select=email&limit=1`, { headers: rest0 })
+        .then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const admEmail = Array.isArray(adm) && adm[0] ? String(adm[0].email || "").toLowerCase() : "";
+      if (!ADMIN_EMAILS.includes(admEmail)) { await answer("Нет прав"); return new Response("ok"); }
+
+      const ok = m[1].toLowerCase() === "ok";
+      const res = await fetch(`${supabaseUrl}/rest/v1/rpc/pay_confirm_tg`, {
+        method: "POST", headers: rest0, body: JSON.stringify({ p_id: m[2], p_ok: ok }),
+      }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
+      let line: string;
+      if (!res) line = "⚠️ Не получилось — отметьте во вкладке «Оплата подписки» на сайте.";
+      else if (!res.ok && res.reason === "done") line = "Заявка уже обработана (" + (res.status === "paid" ? "оплачено" : "отклонено") + ").";
+      else if (!res.ok && res.reason === "nouser") line = "⚠️ Учётной записи с этой почтой нет — отметьте вручную в «Оплата подписки».";
+      else if (!res.ok) line = "⚠️ Заявка не найдена.";
+      else if (res.paid && res.object) line = "✅ Оплачено: начислен «Один расчёт».";
+      else if (res.paid) line = "✅ Оплачено: Профи до " + new Date(res.until).toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" }) + ".";
+      else line = "✗ Отклонено. Если были 24 часа Профи — сняты; человеку ушло сообщение.";
+
+      await answer(line.slice(0, 190));
+      const oldText = String((cb.message && cb.message.text) || "");
+      await tg("editMessageText", {
+        chat_id: cbChat, message_id: cb.message.message_id,
+        text: (oldText + "\n\n" + line).slice(0, 4000),
+        // Сбой — кнопки оставляем, можно нажать ещё раз
+        reply_markup: res && (res.ok || res.reason === "done") ? { inline_keyboard: [] } : cb.message.reply_markup,
+      });
+      return new Response("ok");
+    }
+
     const msg = update && update.message;
     const chatId = msg && msg.chat && msg.chat.id;
     const text = String((msg && msg.text) || "");
