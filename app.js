@@ -42757,6 +42757,11 @@ const app = {
         this._hydKey = key;
         this._hydHoverEl = d.el;
         this._hydShowHint(d);
+        // Проба «Гидролаборатория» (?lab=1): выноска с расходом и напором контура.
+        // Вне слоя .hyd-ov — его правило fill:none погасило бы текст.
+        if (window.hydroLab) {
+            try { window.hydroLab.onHover(this, d); } catch (e) { console.warn('[hydroLab]', e); }
+        }
     },
 
     // Из чего складывается маршрут (_hydRoute): пока эти приметы те же —
@@ -42781,6 +42786,7 @@ const app = {
     // Слои подсветки снимаются не сразу: сначала гаснут, потом уходят из
     // разметки. Приглушение чертежа остаётся — его снимает hydHoverOff.
     _hydFadeOut: function () {
+        if (window.hydroLab) window.hydroLab.offHover();
         document.querySelectorAll('.hyd-ov').forEach(el => {
             if (el.__hydGone) return;
             el.__hydGone = true;
@@ -101330,6 +101336,11 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             let schemeHtml = tableWrapper ? this.renderScheme() : '';
             if (tableWrapper && schemeHtml) {
                 tableWrapper.insertAdjacentHTML('beforebegin', schemeHtml);
+                // Проба «Гидролаборатория» (hydro_lab.js, флаг ?lab=1): таблица
+                // контуров на свободном поле листа. Без флага ничего не делает.
+                if (window.hydroLab) {
+                    try { window.hydroLab.afterScheme(this); } catch (e) { console.warn('[hydroLab]', e); }
+                }
             }
         }
         // Карточка проверки гидравлики: справа от схемы, а когда схема выключена — отдельным блоком над
