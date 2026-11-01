@@ -330,19 +330,26 @@
     // сжималась у левого края. Кривая насоса за краем просто обрезается.
     var xMax = Math.max(Math.min(qEnd, Math.max(qF, Q) * 2.5), qF * 1.2, Q * 1.3), xs = niceStep(xMax, 6); xMax = Math.ceil(xMax / xs) * xs;
     var yMax = Math.max(h0, Hn, have) * 1.12, ys = niceStep(yMax, 6); yMax = Math.ceil(yMax / ys) * ys;
-    var W = 340, Ht = 176, L = 30, R = 10, T = 20, B = 26;
+    // Рисунок — функцией от размера: в карточке он маленький (340×176, растягивается до
+    // 420 px), а в окне «на весь экран» перерисовывается под фактическую область (fitCharts),
+    // чтобы подписи оставались своего кегля, а не раздувались вместе с картинкой.
+    var draw = function (W, Ht, f) {
+    var big = !!f; f = f || 10;
+    var L = Math.round(f * 3), R = 10, T = Math.round(f * 2), B = Math.round(f * 2.6), pr = f * 0.45;
     var X = function (v) { return L + v / xMax * (W - L - R); };
     var Y = function (v) { return Ht - B - v / yMax * (Ht - B - T); };
-    var s = '<svg viewBox="0 0 ' + W + ' ' + Ht + '" role="img" aria-label="Кривая насоса, кривая сети и рабочая точка" style="width:100%;max-width:420px;display:block;margin:6px 0 2px;font:10px system-ui,sans-serif">';
+    var s = '<svg viewBox="0 0 ' + W + ' ' + Ht + '" role="img" aria-label="Кривая насоса, кривая сети и рабочая точка" style="' +
+      (big ? 'width:' + W + 'px;height:' + Ht + 'px;max-width:100%' : 'width:100%;max-width:420px') +
+      ';display:block;margin:6px 0 2px;font:' + f + 'px system-ui,sans-serif">';
     for (var y = 0; y <= yMax + 1e-9; y += ys) {
       s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(y) + '" y2="' + Y(y) + '" stroke="currentColor" opacity=".12"/>' +
-        '<text x="' + (L - 5) + '" y="' + (Y(y) + 3) + '" text-anchor="end" fill="currentColor" opacity=".6">' + num(y, ys < 1 ? 1 : 0) + '</text>';
+        '<text x="' + (L - 5) + '" y="' + (Y(y) + f * 0.3) + '" text-anchor="end" fill="currentColor" opacity=".6">' + num(y, ys < 1 ? 1 : 0) + '</text>';
     }
     for (var x = 0; x <= xMax + 1e-9; x += xs) {
-      s += '<text x="' + X(x) + '" y="' + (Ht - B + 13) + '" text-anchor="middle" fill="currentColor" opacity=".6">' + num(x, xs < 0.1 ? 2 : xs < 1 ? 1 : 0) + '</text>';
+      s += '<text x="' + X(x) + '" y="' + (Ht - B + f * 1.3) + '" text-anchor="middle" fill="currentColor" opacity=".6">' + num(x, xs < 0.1 ? 2 : xs < 1 ? 1 : 0) + '</text>';
     }
     s += '<text x="' + (W - R) + '" y="' + (Ht - 2) + '" text-anchor="end" fill="currentColor" opacity=".6">м³/ч</text>' +
-      '<text x="' + (L - 5) + '" y="' + (T - 9) + '" text-anchor="end" fill="currentColor" opacity=".6">м</text>';
+      '<text x="' + (L - 5) + '" y="' + (T - f * 0.9) + '" text-anchor="end" fill="currentColor" opacity=".6">м</text>';
     var pp = [];
     for (var k = 0; k <= 120; k++) { var qq = Math.min(qEnd, xMax) * k / 120, hh = H(qq); if (hh > 0) pp.push(X(qq).toFixed(1) + ',' + Y(hh).toFixed(1)); }
     s += '<polyline points="' + pp.join(' ') + '" fill="none" stroke="#3b82f6" stroke-width="2"/>';
@@ -350,9 +357,14 @@
     for (var j = 0; j <= 120; j++) { var q2 = xMax * j / 120, h2 = sys(q2); if (h2 <= yMax) sp.push(X(q2).toFixed(1) + ',' + Y(h2).toFixed(1)); }
     s += '<polyline points="' + sp.join(' ') + '" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="5 4"/>';
     if (have > Hn) s += '<line x1="' + X(Q) + '" x2="' + X(Q) + '" y1="' + Y(have) + '" y2="' + Y(Hn) + '" stroke="currentColor" opacity=".45" stroke-dasharray="2 2"/>';
-    s += '<circle cx="' + X(Q) + '" cy="' + Y(Hn) + '" r="4.5" fill="#10b981"/>';
-    s += '<circle cx="' + X(qF) + '" cy="' + Y(hF) + '" r="4.5" fill="none" stroke="#f59e0b" stroke-width="2"/>';
-    s += '<text x="' + (X(0) + 6) + '" y="' + (Y(h0) - 5) + '" fill="#3b82f6" font-weight="600">насос</text></svg>';
+    s += '<circle cx="' + X(Q) + '" cy="' + Y(Hn) + '" r="' + pr + '" fill="#10b981"/>';
+    s += '<circle cx="' + X(qF) + '" cy="' + Y(hF) + '" r="' + pr + '" fill="none" stroke="#f59e0b" stroke-width="2"/>';
+    s += '<text x="' + (X(0) + 6) + '" y="' + (Y(h0) - f * 0.5) + '" fill="#3b82f6" font-weight="600">насос</text></svg>';
+    return s;
+    };
+    var s = draw(340, 176);
+    var id = ++chartSeq;
+    charts[id] = draw;
 
     var dhw = r.id === 'dhw';
     var openTxt = dhw ? 'фактически' : (r.id === 'ufh' ? 'расходомеры открыты' : 'клапаны открыты');
@@ -384,10 +396,38 @@
         txt += '.';
       }
     }
-    return '<div class="hc-lab-chart" style="margin:8px 0 4px;padding-top:8px;border-top:1px solid var(--border,rgba(127,127,127,.25))">' +
+    return '<div class="hc-lab-chart" data-hl="' + id + '" style="margin:8px 0 4px;padding-top:8px;border-top:1px solid var(--border,rgba(127,127,127,.25))">' +
       '<div style="font-weight:700;font-size:12px">Рабочая точка насоса</div>' + s + legend +
       '<div style="font-size:11.5px;line-height:1.45;opacity:.85">' + txt + '</div></div>';
   }
 
-  root.hydroLab = { on: on, afterScheme: afterScheme, onHover: onHover, offHover: offHover, pumpChartHtml: pumpChartHtml };
+  // Рисунки графиков по номеру: fitCharts перерисовывает их под размер окна. Карточка
+  // пересобирается при каждом пересчёте, поэтому старые номера просто вытесняются.
+  var charts = {}, chartSeq = 0;
+
+  // Окно «на весь экран»: график раскрытого пункта занимает всё свободное по высоте место
+  // и всю ширину пункта. Сначала сжимаем рисунок до нуля и смотрим, сколько места остаётся
+  // под остальным содержимым, — столько ему и отдаём (не меньше 180 px).
+  function fitCharts(scroller) {
+    if (!scroller) return;
+    var list = scroller.querySelectorAll('details[open] .hc-lab-chart[data-hl]');
+    for (var i = 0; i < list.length; i++) {
+      var box = list[i], draw = charts[box.getAttribute('data-hl')], svg = box.querySelector('svg');
+      if (!draw || !svg) continue;
+      svg.style.height = '0px'; svg.style.width = '0px';
+      var w = Math.floor(box.clientWidth);
+      // Свободное место — высота окна минус высота содержимого со сжатым рисунком.
+      // scrollHeight для этого не годится: он не бывает меньше видимой высоты.
+      var cs = root.getComputedStyle(scroller), inner = 0;
+      for (var c = scroller.firstElementChild; c; c = c.nextElementSibling) inner += c.getBoundingClientRect().height;
+      var free = scroller.clientHeight - inner - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      var h = Math.max(180, Math.floor(free / list.length) - 4);
+      // Слишком вытянутый в ширину график читается хуже: не шире трёх высот
+      w = Math.max(280, Math.min(w, h * 3));
+      var f = w < 520 ? 11 : 13;
+      svg.outerHTML = draw(w, h, f);
+    }
+  }
+
+  root.hydroLab = { on: on, afterScheme: afterScheme, onHover: onHover, offHover: offHover, pumpChartHtml: pumpChartHtml, fitCharts: fitCharts };
 })(typeof window !== 'undefined' ? window : this);
