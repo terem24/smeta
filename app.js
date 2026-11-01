@@ -103246,7 +103246,8 @@ async function notifyPayment() {
         + (offered && offered.promo ? `\nАкция: ${offered.promo}` : '')
         + (graceUntilText ? `\nПрофи включён на 24 часа — до ${graceUntilText}.` : (grace && grace.reason === 'recent' ? `\nПрофи на 24 часа не включён: уже давали по неподтверждённой заявке.` : ''))
         + `\nПроверьте поступление в Т-Банке. Подтвердить: панель → «Оплата подписки».`;
-    sendOwnerTelegram('pro_request', messageText);
+    // Заявка с кнопками уже ушла в бот (pay-notify) — второе, без кнопок, не шлём
+    if (!(grace && grace.tgSent)) sendOwnerTelegram('pro_request', messageText);
 
     // === 2. ОТПРАВКА НА EMAIL (через EmailJS с обновленным шаблоном) ===
     const emailjsServiceID = 'service_o11b4ej';

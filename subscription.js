@@ -1136,6 +1136,20 @@ const Subscription = {
             });
             if (error) throw error;
             if (!data || !data.ok) { await this.logRequest(info); return data || null; }
+            // Владельцу в бот — заявка с кнопками «Оплачено / Отклонить» (pay-notify → tg-webhook).
+            // Не ушло — notifyPayment пошлёт обычное уведомление, как раньше.
+            if (data.id) {
+                try {
+                    // Через тот же прокси, что и остальная база (supabaseProxyFetch в app.js)
+                    const resp = await supabaseProxyFetch(supabaseUrl + '/functions/v1/pay-notify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', apikey: supabaseKey, Authorization: 'Bearer ' + sess.session.access_token },
+                        body: JSON.stringify({ id: data.id })
+                    });
+                    const nt = resp.ok ? await resp.json().catch(() => null) : null;
+                    data.tgSent = !!(nt && nt.ok);
+                } catch (e) { data.tgSent = false; }
+            }
             if (data.granted && data.until) {
                 try { localStorage.setItem(this.GRACE_LS, JSON.stringify({ until: data.until })); } catch (e) { }
                 const st = app.state;
