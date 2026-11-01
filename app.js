@@ -57837,20 +57837,9 @@ const app = {
             const hints = rep.problems.filter(p => p.info && !(s.assemblyHintsOff || {})[p.hintKey]);
             if (!hard.length && !hints.length) return;
             const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-            if (hard.length) {
-                // Свёрнуто в одну строку: раскрывается по клику. В печать и PDF не идёт (no-print).
-                const box = document.createElement('details');
-                box.id = 'assembly_warn';
-                box.className = 'no-print';
-                box.style.cssText = 'margin:8px 0; padding:6px 10px; border:1px solid #D97706; border-radius:10px; font-size:13px; background:rgba(217,119,6,.08);';
-                const head = hard.length === 1
-                    ? esc(hard[0].text)
-                    : 'не сходится в ' + hard.length + ' местах';
-                box.innerHTML = '<summary style="cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><b>⚠ Обвязка по резьбе:</b> ' + head + '</summary>' +
-                    '<div style="margin-top:6px;">Проверьте переходники и ниппели перед заказом:<ul style="margin:4px 0 0 18px;">' +
-                    hard.map(p => '<li>' + esc(p.text) + '</li>').join('') + '</ul></div>';
-                wrap.parentNode.insertBefore(box, wrap);
-            }
+            // Расхождения резьбы не выводятся на экран (решения, которое можно принять по ним, пока нет).
+            // Для разработчика — в консоль.
+            if (hard.length) console.info('[assemblyCheck] не сходится по резьбе:', hard.map(p => p.text));
             if (hints.length) {
                 // Одна строка на все подсказки: текст обрезается по ширине, полный — во всплывающей подсказке
                 const keys = hints.map(p => p.hintKey);
