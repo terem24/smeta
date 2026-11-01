@@ -1602,6 +1602,7 @@ const app = {
             let vid = '';
             try { vid = localStorage.getItem(this.VISITOR_KEY) || ''; } catch (e) { }
             const isNew = !vid;
+            this.clickTrackStart();
             if (isNew) {
                 vid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
                 try { localStorage.setItem(this.VISITOR_KEY, vid); } catch (e) { return; }
@@ -1735,6 +1736,109 @@ const app = {
                 p_country: g.country || null, p_lat: g.lat, p_lon: g.lon
             }).then(() => { }, () => { });
         }).catch(() => { });
+    },
+    // ═══ Карта кликов (миграция 20261104) ═══════════════════════════════════════
+    // Пишем: экран (режим калькулятора или окно, внутри которого щёлкнули), путь к
+    // элементу в разметке, точку внутри элемента (доли 0..1) и на странице. Текст,
+    // введённые значения и имена не пишем. Щелчки копятся здесь и уходят пачкой при
+    // сворачивании вкладки, закрытии и раз в минуту — 1–2 запроса на визит.
+    CLK_MAX: 400,
+    CLK_INTERACTIVE: 'a, button, input, select, textarea, label, summary, option, [onclick], [role="button"], [role="tab"], [role="link"], [role="checkbox"], [role="switch"], [contenteditable="true"], .switch, .slider, .tab, .mode-tab, .lk-rail-item, [data-rail]',
+    CLK_STATE: /^(active|on|off|open|opened|closed|selected|show|shown|hover|focus|focused|disabled|hidden|visible|is-|has-|js-|ng-)/,
+    clickTrackStart: function () {
+        if (this._clkOn || window.__HC_NATIVE__ || HC_LOCAL_DEV) return;
+        this._clkOn = true; this._clkQ = []; this._clkN = 0; this._clkLast = [];
+        document.addEventListener('click', e => this.clickRecord(e), true);
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState !== 'visible') this.clickFlush(); });
+        window.addEventListener('pagehide', () => this.clickFlush());
+        setInterval(() => this.clickFlush(), 60000);
+    },
+    // Экран щелчка: окно, внутри которого он был, иначе режим калькулятора.
+    // Панель управления не считаем — это щелчки администраторов, не посетителей.
+    clickScreen: function (t) {
+        const ov = t.closest ? t.closest('[id$="_overlay"]') : null;
+        if (ov) {
+            if (ov.id === 'admin_modal_overlay') return null;
+            const sub = ov.id === 'profile_modal_overlay' && this._activeProfileTab ? ':' + this._activeProfileTab : '';
+            return (ov.id.replace(/_overlay$/, '') + sub).slice(0, 60);
+        }
+        if (t.closest && t.closest('#clk_map')) return null;
+        return 'calc:' + ((this.state && this.state.viewMode) || 'equipment');
+    },
+    // Путь к элементу, по которому его можно найти снова: id, если он не похож на
+    // сгенерированный, иначе тег, постоянные классы и номер среди соседей того же тега
+    clickSelector: function (el) {
+        const esc = s => (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/([^\w-])/g, '\\$1');
+        const parts = [];
+        let n = el, depth = 0;
+        while (n && n.nodeType === 1 && n !== document.body && n !== document.documentElement && depth < 6) {
+            if (n.id && !/\d{4,}|^[a-f0-9-]{16,}$/i.test(n.id)) { parts.unshift('#' + esc(n.id)); break; }
+            let p = n.tagName.toLowerCase();
+            const cls = Array.from(n.classList || []).filter(c => !this.CLK_STATE.test(c) && !/\d{4,}/.test(c)).slice(0, 2);
+            if (cls.length) p += '.' + cls.map(esc).join('.');
+            const par = n.parentElement;
+            if (par) {
+                const sameTag = Array.from(par.children).filter(c => c.tagName === n.tagName);
+                const same = sameTag.filter(c => cls.every(k => c.classList.contains(k)));
+                if (same.length > 1) p += ':nth-of-type(' + (sameTag.indexOf(n) + 1) + ')';
+            }
+            parts.unshift(p);
+            n = par; depth++;
+        }
+        return parts.join(' > ').slice(0, 240);
+    },
+    clickRecord: function (e) {
+        try {
+            if (!e.isTrusted || this._clkN >= this.CLK_MAX) return;
+            const t = e.target && e.target.nodeType === 1 ? e.target : (e.target && e.target.parentElement);
+            if (!t || t === document.body || t === document.documentElement) return;
+            const screen = this.clickScreen(t);
+            if (!screen) return;
+            // У body и корневых обёрток бывает свой onclick — это не «кнопка»
+            let hit = t.closest(this.CLK_INTERACTIVE);
+            if (hit && (hit === document.body || hit === document.documentElement || /_overlay$/.test(hit.id || '') && hit !== t)) hit = null;
+            const el = hit || t;
+            const r = el.getBoundingClientRect();
+            const now = Date.now(), x = e.clientX, y = e.clientY;
+            // «Яростный»: третий и следующие щелчки за секунду в одно место
+            this._clkLast = this._clkLast.filter(c => now - c.t < 1000 && Math.abs(c.x - x) < 30 && Math.abs(c.y - y) < 30);
+            this._clkLast.push({ t: now, x: x, y: y });
+            const rage = this._clkLast.length >= 3;
+            // «Мёртвый»: щёлкнули по мелкому элементу (текст, значок, ячейка), который не
+            // нажимается — ни ссылки, ни кнопки, ни обработчика, курсор не «рука»
+            let dead = false;
+            if (!hit && (t.childElementCount === 0 || t instanceof SVGElement)) {
+                try { dead = getComputedStyle(t).cursor !== 'pointer'; } catch (e2) { }
+            }
+            this._clkQ.push({
+                s: screen, e: this.clickSelector(el), t: el.tagName.toLowerCase(),
+                rx: r.width ? +Math.min(1, Math.max(0, (x - r.left) / r.width)).toFixed(3) : 0.5,
+                ry: r.height ? +Math.min(1, Math.max(0, (y - r.top) / r.height)).toFixed(3) : 0.5,
+                px: +(x / (window.innerWidth || 1) * 100).toFixed(2), py: Math.round(y + (window.scrollY || 0)),
+                d: dead, r: rage, at: now
+            });
+            this._clkN++;
+            if (this._clkQ.length >= 50) this.clickFlush();
+        } catch (err) { }
+    },
+    clickFlush: function () {
+        const q = this._clkQ;
+        if (!q || !q.length) return;
+        const v = this._visit;
+        let vid = v && v.vid;
+        if (!vid) { try { vid = localStorage.getItem(this.VISITOR_KEY) || ''; } catch (e) { } }
+        if (!vid) return;
+        const d = this.deviceInfo();
+        while (q.length) {
+            const items = q.splice(0, 60);
+            try {
+                supabaseProxyFetch(supabaseUrl + '/rest/v1/rpc/log_clicks', {
+                    method: 'POST', keepalive: true,
+                    headers: { 'apikey': supabaseKey, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ p_visitor: vid, p_visit: v ? v.id : null, p_device: d.device, p_vw: window.innerWidth, p_vh: window.innerHeight, p_items: items })
+                }).catch(() => { });
+            } catch (e) { }
+        }
     },
     // keepalive — чтобы запрос ушёл, даже когда вкладку уже закрывают
     sendVisitTime: function (v) {
@@ -30588,6 +30692,13 @@ const app = {
                 return { rows: r.rows, capped: r.capped };
             } catch (e) { return { rows: [], missing: true }; }
         });
+        // Щелчки для «Карты кликов» (миграция 20261104). Нет таблицы — пустой виджет
+        L('clk', async () => {
+            try {
+                const r = await this.fetchAllRows('clicks', 'created_at, visitor_id, visit_id, screen, device, sel, tag, rx, ry, dead, rage', { order: 'id', cap: 60000, build: qy => ge(qy, 'created_at') });
+                return { rows: r.rows, capped: r.capped };
+            } catch (e) { return { rows: [], missing: true }; }
+        });
         // Визиты (миграция 20261102). Нет таблицы — виджет считает по первым заходам
         L('vs', async () => {
             try {
@@ -30868,6 +30979,35 @@ const app = {
                 if (S.fv.capped || (S.vs && S.vs.capped)) w.note += ' Записей больше, чем читается за один раз: цифры занижены.';
             }
             out.vis = w;
+        }
+
+        // ── Карта кликов: где щёлкают на экранах калькулятора ──
+        {
+            const w = { id: 'clk', title: 'Карта кликов', tab: 'stats', act: 'Пользователи' };
+            if (bad('clk')) w.err = bad('clk');
+            else if (!ok('clk')) w.wait = true;
+            else {
+                const K = this.clkBuild(S.clk.rows, { cls: cls, t0: t0, B: B, zeros: zeros });
+                const d = K.cur, q = K.prev, dl = (a, b, o) => hasPrev ? this.kpiDelta(a, b, o) : '';
+                const per = x => x.visits ? Math.round(x.n / x.visits * 10) / 10 : null;
+                w.clk = K;
+                w.lists = { all: [], dead: [], rage: [] };
+                w.nums = [
+                    { k: 'all', l: 'Щелчки', v: fmt(d.n), d: dl(d.n, q.n), sp: K.ser, list: 1, h: 'Сколько раз щёлкнули посетители калькулятора (без панели управления). Щёлкните — все элементы' },
+                    { k: 'per', l: 'На визит', v: per(d) == null ? '—' : String(per(d)).replace('.', ','), d: per(d) != null && per(q) != null ? dl(per(d), per(q)) : '', s: d.visits ? d.visits + ' визитов со щелчками' : '', h: 'Сколько щелчков в среднем делают за визит' },
+                    { k: 'dead', l: 'Мёртвые щелчки', v: d.deadP == null ? '—' : d.deadP + '%', d: d.deadP != null && q.deadP != null ? dl(d.deadP, q.deadP, { ratio: true, inv: true }) : '', s: d.dead ? d.dead + ' по тому, что не нажимается' : '', sp: K.serDead, tone: d.deadP >= 15 ? 'bad' : '', list: 1, h: 'Доля щелчков по тексту, значкам и ячейкам, которые ничего не делают: человек ожидал, что нажмётся. Щёлкните — где это' },
+                    { k: 'rage', l: 'Яростные щелчки', v: fmt(d.rage), d: dl(d.rage, q.rage, { inv: true }), s: 'три и больше подряд в одно место', tone: d.rage ? 'bad' : '', list: 1, h: 'Серии быстрых щелчков в одно место: не сработало или долго отвечает. Щёлкните — где это' }
+                ];
+                const pal = [C.blue, C.green, C.violet, C.amber, C.teal, C.red];
+                const top = K.screens.slice(0, 6);
+                w.groups = [{ title: 'Щелчки по экранам', items: top.length ? top.map((s, i) => ({ label: this.clkScreenLabel(s.key), value: s.n, color: pal[i % pal.length] })) : [{ label: 'Нет данных', value: 0, color: C.gray }] }];
+                w.chart = { labels: B.labels, tips: B.tips, stack: true, series: [{ name: 'Щелчки', color: C.blue, vals: K.ser.map((v, i) => v - K.serDead[i]) }, { name: 'Мёртвые', color: C.red, vals: K.serDead }] };
+                w.table = this.kpiTable(B, [{ name: 'Щелчки', vals: K.ser }, { name: 'Мёртвые', vals: K.serDead }]);
+                w.note = S.clk.missing ? 'Таблица clicks ещё не создана: выполните миграцию 20261104_add_clicks.sql.'
+                    : 'Щелчки хранятся 90 дней. Подписи элементов берутся с текущей версии страницы: если кнопку убрали, вместо подписи будет путь в разметке.';
+                if (S.clk.capped) w.note += ' Щелчков больше, чем читается за один раз: цифры занижены.';
+            }
+            out.clk = w;
         }
 
         // ── КП: статусы и конверсия ──
@@ -31705,6 +31845,287 @@ const app = {
             + (cities.length && !pts.length ? '<div class="vx-none">Города посетителей вне карты России — смотрите список справа</div>' : '');
     },
 
+    // ═══ Карта кликов в админке ════════════════════════════════════════════════
+    CLK_SCREENS: {
+        'calc:equipment': 'Расчёт · Оборудование', 'calc:works': 'Расчёт · Работы', 'calc:money': 'Расчёт · Деньги',
+        'calc:cheaper': 'Расчёт · Бюджетнее', 'calc:recognize': 'Распознавание', 'calc:design': 'Проект',
+        profile_modal: 'Кабинет', auth_modal: 'Вход и регистрация', payment_modal: 'Оплата', notifications_modal: 'Сообщения',
+        cloud_list_modal: 'Мои сметы', share_options_modal: 'Поделиться', swap_modal: 'Замена позиции', feedback_modal: 'Обратная связь',
+        custom_modal: 'Диалог', invite_gate_overlay: 'Приглашение', email_success_modal: 'Письмо отправлено'
+    },
+    CLK_TABS: {
+        requisites: 'Реквизиты', company: 'Компания', subscription: 'Тариф', objects: 'Объекты', summary: 'Показатели', leads: 'Заявки',
+        orders: 'Заказы', oprosniki: 'Опросники', manager: 'Менеджер', installers: 'Монтажники', workprices: 'Расценки', equipment: 'Своё оборудование',
+        prefs: 'Любимые материалы', settings: 'Настройки', theme: 'Оформление', kp: 'КП', notify: 'Уведомления', login: 'Вход'
+    },
+    clkScreenLabel: function (s) {
+        if (this.CLK_SCREENS[s]) return this.CLK_SCREENS[s];
+        const m = /^profile_modal:(.+)$/.exec(s || '');
+        if (m) return 'Кабинет · ' + (this.CLK_TABS[m[1]] || m[1]);
+        if (/^calc:/.test(s)) return 'Расчёт · ' + s.slice(5);
+        return String(s || '').replace(/_modal$/, '').replace(/_/g, ' ');
+    },
+    // Подпись элемента берём из живой страницы по сохранённому пути: в базе текста нет
+    clkLabel: function (sel, tag) {
+        const cache = this._clkLabels || (this._clkLabels = {});
+        if (cache[sel] !== undefined) return cache[sel];
+        let txt = '';
+        try {
+            const el = sel ? document.querySelector(sel) : null;
+            if (el) {
+                txt = el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('placeholder') || el.getAttribute('alt') || '';
+                if (!txt) txt = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+                if (!txt && el.tagName === 'INPUT') txt = 'поле ' + (el.type || 'ввода');
+                if (!txt && (el.tagName === 'SELECT')) txt = 'список';
+                // «+», «−», значок без текста — добавляем подпись блока рядом: «Окна · +»
+                if (txt.length <= 2) {
+                    let p = el.parentElement, ctx = '';
+                    for (let i = 0; i < 3 && p && !ctx; i++, p = p.parentElement) {
+                        const c = Array.from(p.querySelectorAll('label, .label, h3, h4, b, strong, span, div')).find(x => x !== el && !x.contains(el) && x.childElementCount === 0 && (x.textContent || '').trim().length >= 3 && (x.textContent || '').trim().length <= 40);
+                        if (c) ctx = c.textContent.replace(/\s+/g, ' ').trim();
+                    }
+                    if (ctx) txt = ctx + ' · ' + (txt || 'значок');
+                }
+            }
+        } catch (e) { }
+        if (txt.length > 60) txt = txt.slice(0, 57) + '…';
+        if (!txt) {
+            const last = String(sel || '').split(' > ').pop() || tag || 'элемент';
+            txt = last.replace(/:nth-of-type\(\d+\)/, '').replace(/^#/, '').replace(/\./g, ' · ');
+        }
+        cache[sel] = txt;
+        return txt;
+    },
+    clkBuild: function (rows, x) {
+        const cls = x.cls, t0 = x.t0, B = x.B, zeros = x.zeros;
+        const P = { cur: { n: 0, dead: 0, rage: 0, visits: {} }, prev: { n: 0, dead: 0, rage: 0, visits: {} } };
+        const ser = zeros(), serDead = zeros(), screens = {}, els = {}, cur = [];
+        rows.forEach(r => {
+            const t = t0(r.created_at), c = cls(t);
+            if (!c) return;
+            const p = P[c];
+            p.n++; if (r.dead) p.dead++; if (r.rage) p.rage++;
+            p.visits[r.visit_id || r.visitor_id] = 1;
+            if (c !== 'cur') return;
+            cur.push(r);
+            const i = B.at(t);
+            if (i >= 0) { ser[i]++; if (r.dead) serDead[i]++; }
+            const sc = screens[r.screen] || (screens[r.screen] = { key: r.screen, n: 0, dead: 0, rage: 0, ppl: {} });
+            sc.n++; if (r.dead) sc.dead++; if (r.rage) sc.rage++; sc.ppl[r.visitor_id] = 1;
+            const k = r.screen + '\u0001' + (r.sel || '');
+            const el = els[k] || (els[k] = { key: k, screen: r.screen, sel: r.sel || '', tag: r.tag || '', n: 0, dead: 0, rage: 0, dev: {}, ppl: {} });
+            el.n++; if (r.dead) el.dead++; if (r.rage) el.rage++;
+            el.dev[r.device || ''] = (el.dev[r.device || ''] || 0) + 1; el.ppl[r.visitor_id] = 1;
+        });
+        const fin = p => ({ n: p.n, dead: p.dead, rage: p.rage, visits: Object.keys(p.visits).length, deadP: p.n ? Math.round(p.dead / p.n * 100) : null });
+        const scList = Object.keys(screens).map(k => Object.assign(screens[k], { people: Object.keys(screens[k].ppl).length })).sort((a, b) => b.n - a.n);
+        const elList = Object.keys(els).map(k => Object.assign(els[k], { people: Object.keys(els[k].ppl).length })).sort((a, b) => b.n - a.n);
+        return { cur: fin(P.cur), prev: fin(P.prev), ser: ser, serDead: serDead, screens: scList, els: elList, rows: cur };
+    },
+
+    // Свой реестр значений для onclick: у «Посетителей» он сбрасывается при их отрисовке
+    clkKey: function (type, value) { const r = this._clkKeys || (this._clkKeys = []); r.push({ type: type, value: value }); return r.length - 1; },
+    clkSelectScreen: function (i) {
+        const f = (this._clkKeys || [])[i];
+        this._clkScreen = f && this._clkScreen !== f.value ? f.value : null;
+        this.renderAdminHome();
+    },
+    clkInsightsHtml: function (w, esc) {
+        const K = w.clk;
+        if (!K) return '';
+        this._clkLabels = {};
+        this._clkKeys = [];
+        this._clkData = K;
+        const sel = this._clkScreen && K.screens.some(s => s.key === this._clkScreen) ? this._clkScreen : null;
+        const tot = K.cur.n || 1;
+        const card = (title, hint, body, extra, wide) => `<section class="vx-card${wide === 'full' ? ' vx-full' : wide ? ' vx-wide' : ''}">
+            <div class="vx-ch"><b>${title}</b>${hint ? `<i class="kpi-info" title="${esc(hint)}">i</i>` : ''}${extra || ''}</div>${body}</section>`;
+        const empty = '<div class="vx-none">Щелчков за период пока нет: они начнут копиться с выкладки этой версии</div>';
+        if (!K.cur.n) return `<div class="vx-grid">${card('Карта кликов', '', empty, '', 'full')}</div>`;
+        const maxS = K.screens[0].n || 1;
+        const scBody = '<div class="vx-bars">' + K.screens.slice(0, 12).map(s => {
+            const key = this.clkKey('clkscreen', s.key);
+            return `<button type="button" class="vx-bar${sel === s.key ? ' on' : ''}" onclick="app.clkSelectScreen(${key})" title="Показать элементы этого экрана">
+                <span class="vx-bar-f" style="width:${Math.max(3, s.n / maxS * 100)}%"></span>
+                <span class="vx-bar-l">${esc(this.clkScreenLabel(s.key))}${s.dead ? `<span class="vx-bar-s">${s.dead} мёртв.</span>` : ''}</span>
+                <span class="vx-bar-n">${s.n}<em>${Math.round(s.n / tot * 100)}%</em></span></button>`;
+        }).join('') + '</div>';
+        const els = K.els.filter(e => !sel || e.screen === sel);
+        const elTot = els.reduce((a, e) => a + e.n, 0) || 1, maxE = els.length ? els[0].n : 1;
+        const devTxt = e => [['desktop', 'комп.'], ['mobile', 'смартф.'], ['tablet', 'планш.']].filter(d => e.dev[d[0]]).map(d => d[1] + ' ' + e.dev[d[0]]).join(' · ');
+        const canMap = s => /^calc:/.test(s);
+        const elBody = els.length ? '<div class="clk-els">' + els.slice(0, 10).map(e => {
+            const key = this.clkKey('clkel', e.key);
+            return `<div class="clk-el">
+                <div class="clk-el-m"><span class="clk-el-l">${esc(this.clkLabel(e.sel, e.tag))}</span>
+                    ${e.dead ? `<em class="clk-tag clk-dead" title="Щелчки по тому, что не нажимается">мёртвых ${e.dead}</em>` : ''}${e.rage ? `<em class="clk-tag clk-rage" title="Три и больше щелчков подряд в одно место">яростных ${e.rage}</em>` : ''}
+                    <span class="clk-el-s">${sel ? '' : esc(this.clkScreenLabel(e.screen)) + ' · '}${esc(devTxt(e))} · ${e.people} чел.</span>
+                    <span class="clk-el-bar"><span style="width:${Math.max(2, e.n / maxE * 100)}%"></span></span></div>
+                <div class="clk-el-n">${e.n}<em>${Math.round(e.n / elTot * 100)}%</em></div>
+                ${canMap(e.screen) ? `<button type="button" class="vx-btn vx-btn-s" onclick="app.clkShowMap(${key})" title="Открыть экран и показать элемент на тепловой карте">На экране</button>` : ''}
+            </div>`;
+        }).join('') + '</div>' : '<div class="vx-none">На этом экране щелчков нет</div>';
+        const prob = K.els.filter(e => e.dead || e.rage).sort((a, b) => (b.dead + b.rage * 2) - (a.dead + a.rage * 2)).slice(0, 8);
+        const probBody = prob.length ? '<div class="vx-bars">' + prob.map(e => {
+            const key = this.clkKey('clkel', e.key);
+            return `<button type="button" class="vx-bar" onclick="${canMap(e.screen) ? `app.clkShowMap(${key})` : `app.clkSelectScreen(${this.clkKey('clkscreen', e.screen)})`}" title="${esc(this.clkScreenLabel(e.screen))}">
+                <span class="vx-bar-f" style="width:100%;background:color-mix(in srgb, #EF4444 ${Math.min(30, 8 + (e.dead + e.rage) * 3)}%, transparent)"></span>
+                <span class="vx-bar-l">${esc(this.clkLabel(e.sel, e.tag))}<span class="vx-bar-s">${esc(this.clkScreenLabel(e.screen))}</span></span>
+                <span class="vx-bar-n">${e.dead ? e.dead + ' мёртв.' : ''}${e.dead && e.rage ? ' · ' : ''}${e.rage ? e.rage + ' ярост.' : ''}</span></button>`;
+        }).join('') + '</div>' : '<div class="vx-none">Проблемных мест не видно: щёлкают по кнопкам и ссылкам</div>';
+        const mapBtn = sel && canMap(sel) ? `<button type="button" class="vx-btn vx-btn-s" onclick="app.clkShowMap(${this.clkKey('clkscreen', sel)})">🔥 Тепловая карта</button>`
+            : (!sel ? `<button type="button" class="vx-btn vx-btn-s" onclick="app.clkShowMap(${this.clkKey('clkscreen', 'calc:equipment')})">🔥 Тепловая карта расчёта</button>` : '');
+        const csv = `<button type="button" class="vx-btn vx-btn-s" onclick="app.clkExport()" title="Все элементы и щелчки по ним для Excel">⤓ CSV</button>`;
+        return `<div class="vx-grid">
+            ${card('Экраны', 'Где щёлкают: режим калькулятора или открытое окно. Щёлкните экран — его элементы', scBody)}
+            ${card(sel ? 'Элементы · ' + esc(this.clkScreenLabel(sel)) : 'Элементы · все экраны', 'По чему щёлкают чаще всего. «На экране» открывает калькулятор и показывает элемент на тепловой карте. Подписи берутся с текущей страницы', elBody, `<span class="clk-hd">${mapBtn}${csv}</span>`, true)}
+            ${card('Проблемные места', 'Мёртвые щелчки — по тексту, значку или ячейке, которые ничего не делают: человек ждал, что нажмётся. Яростные — три и больше щелчков подряд в одно место: не сработало или долго отвечает', probBody, '', 'full')}
+        </div>`;
+    },
+    clkListHtml: function (w, k, esc) {
+        const K = w.clk;
+        if (!K) return '';
+        const rows = K.els.filter(e => k === 'dead' ? e.dead : k === 'rage' ? e.rage : true)
+            .sort((a, b) => k === 'dead' ? b.dead - a.dead : k === 'rage' ? b.rage - a.rage : b.n - a.n).slice(0, 200);
+        const body = rows.length ? rows.map(e => `<tr><td>${esc(this.clkLabel(e.sel, e.tag))}<span class="vx-mail vx-path">${esc(e.sel)}</span></td>
+            <td>${esc(this.clkScreenLabel(e.screen))}</td><td class="vx-num">${e.n}</td><td class="vx-num${e.dead ? ' vx-bad' : ''}">${e.dead || '—'}</td>
+            <td class="vx-num${e.rage ? ' vx-bad' : ''}">${e.rage || '—'}</td><td class="vx-num">${e.people}</td></tr>`).join('')
+            : '<tr><td colspan="6" class="vx-empty">За период ничего.</td></tr>';
+        const title = k === 'dead' ? 'Мёртвые щелчки' : k === 'rage' ? 'Яростные щелчки' : 'Все элементы';
+        return `<div class="vx-ex" id="clk_explorer"><div class="vx-ex-h"><b class="clk-ex-t">${title}: ${rows.length}</b>
+                <button type="button" class="vx-btn" onclick="app.clkExport()">⤓ Выгрузить CSV</button>
+                <button type="button" class="vx-x" onclick="app.visClose()" title="Свернуть">×</button></div>
+            <div class="vx-tw" style="margin-top:10px"><table class="vx-t"><thead><tr><th>Элемент</th><th>Экран</th><th>Щелчков</th><th>Мёртвых</th><th>Яростных</th><th>Людей</th></tr></thead><tbody>${body}</tbody></table></div></div>`;
+    },
+    clkExport: function () {
+        const K = this._clkData;
+        if (!K || !K.els.length) { app.alert('Выгружать нечего.'); return; }
+        this.visCsvDownload('heatcalc_clicks', [['Экран', 'Элемент', 'Путь в разметке', 'Щелчков', 'Мёртвых', 'Яростных', 'Людей', 'Компьютеры', 'Смартфоны', 'Планшеты']]
+            .concat(K.els.map(e => [this.clkScreenLabel(e.screen), this.clkLabel(e.sel, e.tag), e.sel, e.n, e.dead, e.rage, e.people, e.dev.desktop || 0, e.dev.mobile || 0, e.dev.tablet || 0])));
+    },
+
+    // Тепловая карта поверх настоящего калькулятора: закрываем панель, включаем нужный
+    // режим и рисуем щелчки по текущему положению элементов (точка внутри элемента
+    // хранится долями, поэтому карта сходится и при другой ширине экрана)
+    clkShowMap: function (i) {
+        const f = (this._clkKeys || [])[i];
+        const K = this._clkData;
+        if (!f || !K) return;
+        let screen = f.value, focus = null;
+        if (f.type === 'clkel') { const parts = String(f.value).split('\u0001'); screen = parts[0]; focus = parts[1] || null; }
+        if (!/^calc:/.test(screen)) { app.alert('Тепловая карта открывается для экранов калькулятора. Для окон смотрите список элементов.'); return; }
+        this._clkMap = { screen: screen, focus: focus, dev: '', mode: 'heat', rows: K.rows.filter(r => r.screen === screen) };
+        try { this.closeAdminModal(); } catch (e) { }
+        try { this.setViewMode(screen.slice(5)); } catch (e) { }
+        setTimeout(() => this.clkMapOpen(), 350);
+    },
+    clkMapOpen: function () {
+        const M = this._clkMap;
+        if (!M) return;
+        let root = document.getElementById('clk_map');
+        if (!root) {
+            root = document.createElement('div');
+            root.id = 'clk_map';
+            root.innerHTML = '<canvas class="clk-cv"></canvas><div class="clk-ring"></div><div class="clk-bar"></div>';
+            document.body.appendChild(root);
+            this._clkRedraw = () => { if (this._clkRaf) return; this._clkRaf = requestAnimationFrame(() => { this._clkRaf = 0; this.clkMapDraw(); }); };
+            window.addEventListener('scroll', this._clkRedraw, true);
+            window.addEventListener('resize', this._clkRedraw);
+            this._clkKey = e => { if (e.key === 'Escape') this.clkMapClose(); };
+            document.addEventListener('keydown', this._clkKey);
+        }
+        if (M.focus) {
+            try { const el = document.querySelector(M.focus); if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) { }
+        }
+        this.clkMapBar();
+        this.clkMapDraw();
+        setTimeout(() => this.clkMapDraw(), 600);
+    },
+    clkMapSet: function (k, v) { if (this._clkMap) { this._clkMap[k] = v; this.clkMapBar(); this.clkMapDraw(); } },
+    clkMapBar: function () {
+        const M = this._clkMap, root = document.getElementById('clk_map');
+        if (!M || !root) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const chip = (k, v, label) => `<button type="button" class="clk-chip${M[k] === v ? ' on' : ''}" onclick="app.clkMapSet('${k}','${v}')">${label}</button>`;
+        root.querySelector('.clk-bar').innerHTML = `<b>🔥 ${esc(this.clkScreenLabel(M.screen))}</b>
+            <span class="clk-grp">${chip('dev', '', 'Все')}${chip('dev', 'desktop', 'Компьютеры')}${chip('dev', 'mobile', 'Смартфоны')}</span>
+            <span class="clk-grp">${chip('mode', 'heat', 'Тепло')}${chip('mode', 'dots', 'Точки')}</span>
+            <span class="clk-stat" id="clk_stat"></span>
+            <button type="button" class="clk-close" onclick="app.clkMapClose(true)" title="Закрыть и вернуться в панель (Esc)">Вернуться в панель ×</button>`;
+    },
+    clkMapDraw: function () {
+        const M = this._clkMap, root = document.getElementById('clk_map');
+        if (!M || !root) return;
+        const cv = root.querySelector('.clk-cv'), dpr = window.devicePixelRatio || 1;
+        const W = window.innerWidth, H = window.innerHeight;
+        cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px';
+        const ctx = cv.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, W, H);
+        const cache = {};
+        const find = sel => {
+            if (cache[sel] !== undefined) return cache[sel];
+            let el = null;
+            try { el = sel ? document.querySelector(sel) : null; } catch (e) { }
+            const r = el ? el.getBoundingClientRect() : null;
+            return (cache[sel] = r && r.width && r.height ? r : null);
+        };
+        const rows = M.rows.filter(r => !M.dev || r.device === M.dev);
+        let shown = 0, off = 0, lost = 0;
+        const pts = [];
+        rows.forEach(r => {
+            const rc = find(r.sel);
+            if (!rc) { lost++; return; }
+            const x = rc.left + (r.rx == null ? 0.5 : r.rx) * rc.width, y = rc.top + (r.ry == null ? 0.5 : r.ry) * rc.height;
+            if (x < 0 || y < 0 || x > W || y > H) { off++; return; }
+            shown++; pts.push([x, y, r.dead, r.rage]);
+        });
+        if (M.mode === 'dots') {
+            pts.forEach(p => {
+                ctx.beginPath(); ctx.arc(p[0], p[1], 5, 0, Math.PI * 2);
+                ctx.fillStyle = p[3] ? 'rgba(245,158,11,.85)' : p[2] ? 'rgba(239,68,68,.85)' : 'rgba(59,130,246,.75)';
+                ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.stroke();
+            });
+        } else if (pts.length) {
+            // Плотность в альфа-канал, затем раскраска по шкале синий → зелёный → жёлтый → красный
+            const sh = document.createElement('canvas'); sh.width = W; sh.height = H;
+            const sx = sh.getContext('2d'), rad = Math.max(22, Math.min(40, W / 40));
+            const a = Math.max(0.04, Math.min(0.22, 2.2 / Math.sqrt(pts.length)));
+            pts.forEach(p => {
+                const g = sx.createRadialGradient(p[0], p[1], 0, p[0], p[1], rad);
+                g.addColorStop(0, 'rgba(0,0,0,' + a + ')'); g.addColorStop(1, 'rgba(0,0,0,0)');
+                sx.fillStyle = g; sx.fillRect(p[0] - rad, p[1] - rad, rad * 2, rad * 2);
+            });
+            const img = sx.getImageData(0, 0, W, H), d = img.data;
+            const lut = document.createElement('canvas'); lut.width = 256; lut.height = 1;
+            const lx = lut.getContext('2d'), lg = lx.createLinearGradient(0, 0, 256, 0);
+            lg.addColorStop(0, 'rgba(59,130,246,0)'); lg.addColorStop(0.25, '#3B82F6'); lg.addColorStop(0.5, '#10B981'); lg.addColorStop(0.75, '#F59E0B'); lg.addColorStop(1, '#EF4444');
+            lx.fillStyle = lg; lx.fillRect(0, 0, 256, 1);
+            const pal = lx.getImageData(0, 0, 256, 1).data;
+            for (let i = 0; i < d.length; i += 4) {
+                const v = d[i + 3];
+                if (!v) continue;
+                d[i] = pal[v * 4]; d[i + 1] = pal[v * 4 + 1]; d[i + 2] = pal[v * 4 + 2]; d[i + 3] = Math.min(220, 60 + v);
+            }
+            sx.putImageData(img, 0, 0);
+            ctx.drawImage(sh, 0, 0, W, H);
+        }
+        const ring = root.querySelector('.clk-ring');
+        const fr = M.focus ? find(M.focus) : null;
+        if (fr) Object.assign(ring.style, { display: 'block', left: (fr.left - 6) + 'px', top: (fr.top - 6) + 'px', width: (fr.width + 12) + 'px', height: (fr.height + 12) + 'px' });
+        else ring.style.display = 'none';
+        const st = document.getElementById('clk_stat');
+        if (st) st.textContent = `на экране ${shown} из ${rows.length}` + (off ? ` · ${off} выше/ниже — прокрутите` : '') + (lost ? ` · ${lost} по элементам, которых сейчас нет` : '');
+    },
+    clkMapClose: function (back) {
+        const root = document.getElementById('clk_map');
+        if (root) root.remove();
+        if (this._clkRedraw) { window.removeEventListener('scroll', this._clkRedraw, true); window.removeEventListener('resize', this._clkRedraw); }
+        if (this._clkKey) document.removeEventListener('keydown', this._clkKey);
+        this._clkMap = null;
+        if (back) { try { this.showAdminModal(); } catch (e) { } }
+    },
+
     // Выгрузка для Excel: точка с запятой и BOM, чтобы русские буквы открылись без мастера импорта
     visCsvDownload: function (name, rows) {
         const cell = v => { const s = v == null ? '' : String(v); return /[;"\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
@@ -31998,6 +32419,7 @@ const app = {
             return (nm ? '<b>' + esc(nm) + '</b> · ' : '') + esc(u.email || ('id ' + r.uid)) + (u.account_type === 'pro' ? ' <i class="kpi-d kpi-d-up">Профи</i>' : '');
         };
         if (w.id === 'vis') return this.visExplorerHtml(w, k, esc);
+        if (w.id === 'clk') return this.clkListHtml(w, k, esc);
         if (w.id === 'src') {
             const body2 = rows.length ? rows.map(r => `<tr><td>${who(r)}</td><td>${esc(r.grp)}</td><td>${esc(r.det)}</td><td>${when(r.last)}</td></tr>`).join('')
                 : '<tr><td colspan="4" class="z">За период никого.</td></tr>';
@@ -32030,7 +32452,7 @@ const app = {
                 <tr class="kpi-tt"><td>Итого</td>${t.total.map(v => `<td>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>
                 ${t.rows.map(r => `<tr><td>${esc(r.l)}</td>${r.v.map(v => `<td${v ? '' : ' class="z"'}>${Math.round(v).toLocaleString('ru-RU')}</td>`).join('')}</tr>`).join('')}
                 </tbody></table></div>${this.kpiSrcTableHtml(w, esc)}</div>`;
-        } else body = this.kpiNumsHtml(w, esc, edit) + (w.id === 'vis' && !edit && w.vis ? this.visInsightsHtml(w, esc) : '');
+        } else body = this.kpiNumsHtml(w, esc, edit) + (w.id === 'vis' && !edit && w.vis ? this.visInsightsHtml(w, esc) : '') + (w.id === 'clk' && !edit && w.clk ? this.clkInsightsHtml(w, esc) : '');
         const note = (!w.err && !w.wait && w.note) ? `<div class="kpi-note">${esc(w.note)}</div>` : '';
         const tips = (!w.err && !w.wait && w.tips && w.tips.length)
             ? `<div class="kpi-tips"><b>Что улучшить</b><ul>${w.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : '';
@@ -32050,7 +32472,7 @@ const app = {
         const W = this.kpiBuild(p, S);
         const edit = !!this._todayEdit;
         const chips = this.KPI_PERIODS.map(x => `<button type="button" class="kpi-chip${x.id === p.id ? ' on' : ''}" onclick="app.kpiSetPeriod('${x.id}')">${x.label}</button>`).join('');
-        const order = this.kpiSortBy(this.kpiOrderMap().sec, ['users', 'src', 'vis', 'kps', 'planner', 'ests', 'rec', 'pay', 'paywall'], x => x);
+        const order = this.kpiSortBy(this.kpiOrderMap().sec, ['users', 'src', 'vis', 'clk', 'kps', 'planner', 'ests', 'rec', 'pay', 'paywall'], x => x);
         this._kpiShownSec = order.slice();
         const hint = edit
             ? 'Нажмите × на плашке, чтобы скрыть её, или «+», чтобы вернуть. Тащите за заголовок плашки или раздела, чтобы поменять порядок'
