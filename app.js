@@ -30504,7 +30504,23 @@ const app = {
                     }
                     return parts.length || !/ask:/.test(String(s || '')) ? NONE : ASK;
                 };
+                // Расшифровка сырой строки users.utm_source для списка людей:
+                // «src: article | med: seo | cmp: slug | ref: host | ask: ответ анкеты»
+                const decode = s => {
+                    const out = [];
+                    String(s || '').split(' | ').filter(Boolean).forEach(x => {
+                        const i = x.indexOf(':'), key = x.slice(0, i), val = x.slice(i + 1).trim();
+                        if (key === 'src') out.push('метка источника: ' + val + (val === 'article' ? ' (статья на сайте)' : ''));
+                        else if (key === 'med') out.push('канал: ' + val + (val === 'seo' ? ' (органика)' : ''));
+                        else if (key === 'cmp') out.push('кампания/статья: ' + val);
+                        else if (key === 'ref') out.push('пришёл с: ' + val);
+                        else if (key === 'ask') out.push('в анкете ответил: «' + val + '»');
+                        else out.push(x);
+                    });
+                    return out.join('; ') || 'не записано';
+                };
                 const cnt = {}, ser = { tagged: zeros(), none: zeros() };
+                const lst = { tot: [], with: [], none: [] };
                 let total = 0, withSrc = 0;
                 S.users.rows.forEach(u => {
                     if (u.is_test || testIds[u.id]) return;
@@ -30515,13 +30531,17 @@ const app = {
                     total++;
                     if (has) withSrc++;
                     ser[has ? 'tagged' : 'none'][B.at(t)]++;
+                    const row = { uid: u.id, grp: k, det: decode(u.utm_source), last: t };
+                    lst.tot.push(row); lst[has ? 'with' : 'none'].push(row);
                 });
+                Object.keys(lst).forEach(x => lst[x].sort((a, b) => b.last - a.last));
+                w.lists = lst;
                 const colors = [C.blue, C.green, C.violet, C.gray];
                 const keys = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]);
                 w.nums = [
-                    { k: 'tot', l: 'Всего новых', v: fmt(total), sp: addS(ser.tagged, ser.none), h: 'Новые за период без тестовых: то же число, что в «Новые пользователи»' },
-                    { k: 'with', l: 'Знаем, откуда', v: fmt(withSrc), s: total ? 'это ' + pct(withSrc, total) + '% новых' : '', h: 'Есть метка кампании, переход с поиска или с нашего сайта' },
-                    { k: 'none', l: NONE, v: fmt(total - withSrc), s: 'прямой заход или мессенджер', h: 'Источник не записан: прямой заход, мессенджер без реферера или регистрация до учёта источника' }
+                    { k: 'tot', l: 'Всего новых', v: fmt(total), sp: addS(ser.tagged, ser.none), list: 1, h: 'Новые за период без тестовых: то же число, что в «Новые пользователи». Щёлкните, чтобы увидеть, кто это и откуда' },
+                    { k: 'with', l: 'Знаем, откуда', v: fmt(withSrc), s: total ? 'это ' + pct(withSrc, total) + '% новых' : '', list: 1, h: 'Есть метка кампании, переход с поиска или с нашего сайта. Щёлкните, чтобы увидеть, кто это и откуда' },
+                    { k: 'none', l: NONE, v: fmt(total - withSrc), s: 'прямой заход или мессенджер', list: 1, h: 'Источник не записан: прямой заход, мессенджер без реферера или регистрация до учёта источника. Щёлкните, чтобы увидеть, кто это' }
                 ];
                 w.groups = [{ title: 'Откуда пришли', items: keys.length ? keys.map((k, i) => ({ label: k, value: cnt[k], color: colors[i % colors.length] })) : [{ label: 'Нет данных', value: 0, color: C.gray }] }];
                 w.chart = { labels: B.labels, tips: B.tips, stack: true, series: [{ name: 'Знаем, откуда', color: C.green, vals: ser.tagged }, { name: NONE, color: C.gray, vals: ser.none }] };
@@ -31121,6 +31141,13 @@ const app = {
             const nm = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || '';
             return (nm ? '<b>' + esc(nm) + '</b> · ' : '') + esc(u.email || ('id ' + r.uid)) + (u.account_type === 'pro' ? ' <i class="kpi-d kpi-d-up">Профи</i>' : '');
         };
+        if (w.id === 'src') {
+            const body2 = rows.length ? rows.map(r => `<tr><td>${who(r)}</td><td>${esc(r.grp)}</td><td>${esc(r.det)}</td><td>${when(r.last)}</td></tr>`).join('')
+                : '<tr><td colspan="4" class="z">За период никого.</td></tr>';
+            return `<div class="kpi-card" style="margin-top:10px"><b>${esc(m ? m.l : '')}: ${rows.length} чел.</b>
+                <div class="kpi-tw"><table class="kpi-t"><thead><tr><th>Кто</th><th>Группа</th><th>Расшифровка метки</th><th>Зарегистрировался</th></tr></thead><tbody>${body2}</tbody></table></div>
+                <div class="kpi-note">«Метка источника» — utm_source из ссылки (article — переход из статьи на сайте, кампания — какая именно статья). «Пришёл с» — сайт, откуда открыли калькулятор. «В анкете ответил» — ответ на «Откуда узнали» (мессенджер и прямой заход реферер не передают).</div></div>`;
+        }
         const where = r => Object.keys(r.src).sort((a, b) => r.src[b] - r.src[a])
             .map(s => esc(k === 'po' ? 'окно оплаты, тариф «' + s + '»' : s) + (r.src[s] > 1 ? ' ×' + r.src[s] : '')).join('<br>');
         const body = rows.length ? rows.map(r => `<tr><td>${who(r)}</td><td>${where(r)}</td><td>${r.n}</td><td>${when(r.last)}</td></tr>`).join('')
