@@ -22125,3 +22125,27 @@ body.dark-mode .chat-badge {
 .scheme-glow-btn.on { background: var(--primary, #2563eb); border-color: var(--primary, #2563eb); color: #fff; }
 .scheme-noglow .wm-glow, .scheme-noglow .wm-glow.wm-miss { display: none; }
 .scheme-noglow .wm-svg.wm-focus .wm-dim { opacity: 0; }
+
+/* Окно выбора разделов КП: «Монтажные работы» закрыты лимитом бесплатного тарифа
+   (app.kpWorksLocked) — карточка с замком, нажатие ведёт к окну Профи */
+.share-option-card.share-opt-locked { opacity: 0.75; border-style: dashed; }
+.share-option-card.share-opt-locked .share-opt-sub { color: #D97706 !important; font-weight: 700 !important; }
+
+/* Плашка «Профи заканчивается …» (Subscription.syncTrialEndBanner): за 2 дня — янтарная,
+   в последний день — красная. Нажатие открывает окно тарифа, крестик прячет до следующей стадии. */
+#trial_end_banner { margin: 0 20px 12px; }
+.trial-end-banner .teb { position: relative; display: flex; align-items: center; gap: 12px; padding: 11px 44px 11px 14px; border-radius: 12px; cursor: pointer;
+    background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.55); color: var(--text-main); }
+.trial-end-banner.te-last .teb { background: rgba(239, 68, 68, 0.10); border-color: rgba(239, 68, 68, 0.55); }
+.trial-end-banner .teb-ic { font-size: 22px; line-height: 1; flex: 0 0 auto; }
+.trial-end-banner .teb-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.trial-end-banner .teb-title { font-size: 14px; font-weight: 800; line-height: 1.3; }
+.trial-end-banner .teb-sub { font-size: 12px; color: var(--text-sec); line-height: 1.4; }
+.trial-end-banner .teb-cta { flex: 0 0 auto; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 9px; background: var(--primary); color: var(--on-primary, #fff); white-space: nowrap; }
+.trial-end-banner .teb-x { position: absolute; top: 6px; right: 8px; font: inherit; font-size: 20px; line-height: 1; padding: 2px 6px; border: none; background: transparent; color: var(--text-sec); cursor: pointer; }
+@media (max-width: 600px) {
+    #trial_end_banner { margin: 0 10px 10px; }
+    .trial-end-banner .teb { flex-wrap: wrap; padding-right: 36px; }
+    .trial-end-banner .teb-cta { width: 100%; text-align: center; }
+}
+@media print { #trial_end_banner { display: none !important; } }
