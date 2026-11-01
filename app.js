@@ -47034,7 +47034,7 @@ const app = {
                 (v.roomArea || []).forEach(r => { calc[String(r.name || '').trim().toLowerCase()] = +r.area || 0; });
                 const calcArea = name => calc[String(name || '').trim().toLowerCase()] || 0;
                 const warnOf = (name, a) => { const ra = calcArea(name); return ra > 0 && Math.abs(a - ra) > 0.1 * ra ? ra : 0; };
-                const warnIc = (name, a) => { const ra = warnOf(name, a); return ra ? ` <span class="ufh-warn-ic" role="button" tabindex="0" data-fl="${fi + 1}" data-name="${esc(name).replace(/"/g, '&quot;')}" data-loop="${a}" data-calc="${ra}" onclick="app.ufhFixArea(event,this)" title="Площадь петель ${n1(a)} м², в расчёте помещения ${n1(ra)} м² — нажмите, чтобы исправить площадь">⚠</span>` : ''; };
+                const warnIc = (name, a) => { const ra = warnOf(name, a); return ra ? ` <span class="ufh-warn-ic no-print" role="button" tabindex="0" data-fl="${fi + 1}" data-name="${esc(name).replace(/"/g, '&quot;')}" data-loop="${a}" data-calc="${ra}" onclick="app.ufhFixArea(event,this)" title="Площадь петель ${n1(a)} м², в расчёте помещения ${n1(ra)} м² — нажмите, чтобы исправить площадь">⚠</span>` : ''; };
                 let mismatch = 0;
                 let body = '';
                 groups.forEach(g => {
@@ -47054,7 +47054,7 @@ const app = {
                 tpHtml = `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">` +
                     `<thead><tr style="color:var(--text-sec)"><th>Контур ТП</th><th style="text-align:left">Помещение</th><th style="text-align:right">Площадь</th>` +
                     `<th style="text-align:right">Длина петли</th><th style="text-align:right">Шаг, мм</th><th style="text-align:right">Расход, л/мин</th></tr></thead>` +
-                    `<tbody>${body}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.rows.length} ${this.loopsWord(v.rows.length)}, ${groups.length} пом.${mismatch ? ` · ⚠ не сходится: ${mismatch}` : ''}</td>` +
+                    `<tbody>${body}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.rows.length} ${this.loopsWord(v.rows.length)}, ${groups.length} пом.${mismatch ? ` <span class="no-print">· ⚠ не сходится: ${mismatch}</span>` : ''}</td>` +
                     `<td style="text-align:right">${n1(sumA)} м²</td><td style="text-align:right">${n1(sumM)} м</td><td></td><td style="text-align:right">${n1(sumF)}</td></tr></tfoot></table>`;
             }
             if ((v.radRows || []).length) {
@@ -53953,7 +53953,7 @@ const app = {
         const sum = document.getElementById('snow_summary');
         if (sum) {
             const warn = html =>
-                `<div style="margin-top:8px; padding-left:8px; border-left:3px solid #F59E0B; color:var(--text-main);">⚠️ ${html}</div>`;
+                `<div class="no-print" style="margin-top:8px; padding-left:8px; border-left:3px solid #F59E0B; color:var(--text-main);">⚠️ ${html}</div>`;
             let html = '';
             if (!calc) {
                 // Участков ещё нет или все с нулевой площадью — показывать нечего.
@@ -54101,7 +54101,7 @@ const app = {
             tip.style.display = tip.textContent ? '' : 'none';
         }
         (cfg.warnings || []).forEach(w => {
-            html += `<div style="margin-top:8px; padding-left:8px; border-left:3px solid #F59E0B; color:var(--text-main);">⚠️ ${w}</div>`;
+            html += `<div class="no-print" style="margin-top:8px; padding-left:8px; border-left:3px solid #F59E0B; color:var(--text-main);">⚠️ ${w}</div>`;
         });
         box.innerHTML = html;
         box.style.display = html ? 'block' : 'none';
@@ -55060,7 +55060,7 @@ const app = {
         }
         let html = '';
         zk.warns.forEach(w => {
-            html += `<div style="margin-top:8px; padding-left:8px; border-left:3px solid #F59E0B; color:var(--text-main);">⚠️ ${w}</div>`;
+            html += `<div class="no-print" style="margin-top:8px; padding-left:8px; border-left:3px solid #F59E0B; color:var(--text-main);">⚠️ ${w}</div>`;
         });
         box.innerHTML = html;
         box.style.display = html ? 'block' : 'none';
@@ -77154,7 +77154,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 "<b style=\"color:var(--text);\">" + r.count + "</b></div>" +
                 "<div style=\"font-size:10px; line-height:1.4; color:var(--text-sec);\">" + r.rule + "</div>";
         });
-        if (!p.consistent) html += "<div style=\"color:#EF4444; margin-top:4px;\">Сумма строк не сходится с коллектором — сообщите разработчику.</div>";
+        if (!p.consistent) html += "<div class=\"no-print\" style=\"color:#EF4444; margin-top:4px;\">Сумма строк не сходится с коллектором — сообщите разработчику.</div>";
         el.innerHTML = html;
         el.style.display = "block";
         this.syncFineTune();
