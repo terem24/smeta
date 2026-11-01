@@ -8415,6 +8415,24 @@ body.html2pdf-printing .inv-table tr {
     break-inside: avoid !important;
 }
 
+/* Мобильное правило «карточка товара» (display: grid !important на .inv-table tr с
+   цепочкой :not(...)) весомее селектора выше, поэтому в PDF с телефона строки
+   оставались сеткой в две колонки, а шапка — кривой стопкой («# / ФОТО / БРЕНД …»).
+   Повторяем ту же цепочку :not, чтобы выгрузка гарантированно давала десктопную
+   таблицу независимо от того, сработал ли виртуальный windowWidth у html2canvas. */
+body.html2pdf-printing .inv-table tr:not(.row-sec):not(.group-header):not(.row-subtotal):not(.empty-state-row):not(.hide-custom-work-btn):not(.hide-custom-eq-btn):not(.scheme-row):not(.row-opt-out):not([style*="display:none" i]):not([style*="display: none" i]),
+body.html2pdf-printing.work-mode .inv-table tr:not(.row-sec):not(.group-header):not(.row-subtotal):not(.empty-state-row):not(.hide-custom-work-btn):not(.hide-custom-eq-btn):not(.scheme-row):not(.row-opt-out):not([style*="display:none" i]):not([style*="display: none" i]),
+body.html2pdf-printing.hide-images-mode .inv-table tr:not(.row-sec):not(.group-header):not(.row-subtotal):not(.empty-state-row):not(.hide-custom-work-btn):not(.hide-custom-eq-btn):not(.scheme-row):not(.row-opt-out):not([style*="display:none" i]):not([style*="display: none" i]) {
+    display: table-row !important;
+    grid-template-columns: none !important;
+    grid-template-rows: none !important;
+    grid-template-areas: none !important;
+    gap: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    box-shadow: none !important;
+}
+
 body.html2pdf-printing .inv-table tr[style*="display:none" i],
 body.html2pdf-printing .inv-table tr[style*="display: none" i] {
     display: none !important;
