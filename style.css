@@ -21893,3 +21893,12 @@ body.dark-mode .admin-chat-badge,
 body.dark-mode .chat-badge {
     background: #047857;
 }
+
+/* Кнопка «Подсветка» над интерактивными схемами (app.schemeGlowBtn); выключена — никаких
+   силуэтов, приглушения и подсветки строк, в том числе постоянной красной «нет в смете» */
+.scheme-tools { display: flex; justify-content: flex-end; margin: 0 0 6px; }
+.scheme-glow-btn { font: inherit; font-size: 12px; padding: 3px 12px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--border, #d0d5dd); background: transparent; color: inherit; }
+.scheme-glow-btn.on { background: var(--primary, #2563eb); border-color: var(--primary, #2563eb); color: #fff; }
+.scheme-noglow .wm-glow, .scheme-noglow .wm-glow.wm-miss { display: none; }
+.scheme-noglow .wm-svg.wm-focus .wm-dim { opacity: 0; }

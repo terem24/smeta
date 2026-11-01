@@ -691,9 +691,9 @@ def end_part(xe, sg=1):
 def feed_side(xr):
     """Подводка с торца коллектора — строго по разделу 6.4 сметы, по резьбам: удлинитель
     ВН/ВР 30 мм (НР в коллектор) -> сгон прямой ВР-НР (хвостовик НР в удлинитель) -> кран
-    шаровой ВН-НР (американка НР в корпус сгона) -> ниппель НР -> тройник ВР. В отвод тройника
-    снизу приходит подающая труба, другой конец тройника — дальше по линии. Всё по оси
-    коллектора, ручка крана сверху — как на фото каталога. У ГВС и рециркуляции подача не из
+    шаровой ВН-НР (американка НР в корпус сгона) -> ниппель НР -> пресс-фитинг и короткий
+    отрезок подающей трубы по оси (подвод сбоку). Тройник 6.4 стоит в узле ввода (отвод на коллектор), здесь его нет. Всё по
+    оси коллектора, ручка крана сверху — как на фото каталога. У ГВС и рециркуляции подача не из
     раздела 6.4, ключей деталей не получает."""
     keyed = LINE == 'cw'
     part('ext' if keyed else '')
@@ -759,33 +759,14 @@ def feed_side(xr):
     lathe('ниппель резьба 2', thread(0.0128, 0.006), M_NICKEL(), (x + 0.016, 0, 0), 'X', segs=40)
     marks['nip'] = (x + 0.011, 0, 0.016)
     x += 0.022
-    # тройник ВР (фото SFT-0020-000034): гладкое литое тело, на концах утолщённые буртики
-    part('tee' if keyed else '')
-    L, RB_, RT = 0.054, 0.0152, 0.0176
-    lathe('тройник', [(RT, 0), (RT, 0.007), (RB_, 0.009), (RB_, L - 0.009), (RT, L - 0.007), (RT, L)],
-          M_NICKEL(), (x, 0, 0), 'X', segs=56, sharp=40)
-    xt = x + L / 2
-    lathe('тройник отвод', [(RB_, 0), (RB_, 0.018), (RT, 0.020), (RT, 0.028)], M_NICKEL(),
-          (xt, 0, -0.010), '-Z', segs=56, sharp=40)
-    marks['tee'] = (xt, -0.010, 0.014)
+    # подающая труба: пресс-фитинг с ВР на ниппеле и короткий условный отрезок трубы по оси
+    # магистрали — подвод сбоку, сама магистраль на схеме не рисуется
     part('')
-    # дальше по линии: пресс-фитинг с НР и труба вправо
-    hexnut('пресс-фитинг', 0.030, 0.010, M_BRASS(), (x + L, 0, 0), 'X')
+    hexnut('пресс-фитинг', 0.030, 0.010, M_BRASS(), (x, 0, 0), 'X')
     lathe('гильза', [(0.0145, 0), (0.0145, 0.026), (0.0132, 0.030), (0.0118, 0.031)],
-          M_BRASS(), (x + L + 0.010, 0, 0), 'X')
-    tube('труба дальше', [(x + L + 0.040, 0, 0), (x + L + 0.090, 0, 0)], 0.0125, M_PLAST(LINE))
-    # подача снизу в отвод тройника: пресс-фитинг с НР, труба вниз и угольник у пола
-    z3 = -0.038
-    hexnut('пресс-фитинг', 0.030, 0.010, M_BRASS(), (xt, 0, z3), '-Z')
-    lathe('гильза', [(0.0145, 0), (0.0145, 0.026), (0.0132, 0.030), (0.0118, 0.031)],
-          M_BRASS(), (xt, 0, z3 - 0.010), '-Z')
-    zb = -0.34
-    R2 = 0.030
-    pts = [(xt, 0, z3 - 0.040), (xt, 0, zb + R2)]
-    pts += [(xt + R2 - R2 * math.cos(t), 0, zb + R2 - R2 * math.sin(t))
-            for t in [k * math.pi / 2 / 12 for k in range(1, 13)]]
-    pts += [(xt + R2 + 0.07, 0, zb)]
-    tube('подающая труба', pts, 0.0125, M_PLAST(LINE))
+          M_BRASS(), (x + 0.010, 0, 0), 'X')
+    x += 0.041
+    tube('подающая труба', [(x - 0.004, 0, 0), (x + 0.070, 0, 0)], 0.0125, M_PLAST(LINE))
 
 
 # варианты ручки крана подводки: бабочка/рычаг, красная/чёрная (STOUT SVB-1xxx и ROMMER —
@@ -916,16 +897,28 @@ def main():
     for k, p in marks.items():
         v = world_to_camera_view(sc, cam, Vector(p))
         pts[k] = [round(v.x, 4), round(1 - v.y, 4)]
+    # Привязка кадра к миру: начало координат (ось коллектора у первого выхода) и проекции
+    # единичных осей X, Y, Z — в долях кадра. Камера ортогональная и одна на все кадры, так
+    # что по ним смета ставит коллекторы линий в одном масштабе и сдвигает их в пространстве
+    def pr(p):
+        v = world_to_camera_view(sc, cam, Vector(p))
+        return [v.x, 1 - v.y]
+    o0 = pr((0, 0, 0))
+    proj = {'o': [round(c, 6) for c in o0]}
+    for k, p in (('x', (1, 0, 0)), ('y', (0, 1, 0)), ('z', (0, 0, 1))):
+        q = pr(p)
+        proj[k] = [round(q[0] - o0[0], 6), round(q[1] - o0[1], 6)]
 
     line = (0.28, 0.30, 0.34)
     hcols = [coll('h_' + k) for k, _, _ in HANDLES]
     for c in hcols:
         for o in c.objects:
             o.hide_render = True
-    # проход 1: всё твёрдое, изоляция спрятана, линии по твёрдому
+    # проход 1: всё твёрдое, изоляция спрятана, линии по твёрдому. Фон прозрачный (белый —
+    # только в отражениях): смета ставит коллекторы линий друг перед другом
     for o in coll('sheath').objects:
         o.hide_render = True
-    sc.render.film_transparent = False
+    sc.render.film_transparent = True
     freestyle(sc, 'solid', line, 1.8)
     render(sc, os.path.join(OUT, TAG + '_solid.png'))
     # проход 2: только изоляция; твёрдое — вырез, чтобы чехол прятался за деталями,
@@ -940,13 +933,24 @@ def main():
     # проходы ручек: по слою на вариант, всё остальное — вырез (ручку закрывают детали перед ней)
     for o in coll('sheath').objects:
         o.is_holdout = True
+    # ручка — малая часть кадра: рендерится только рамка вокруг неё (кадр того же размера,
+    # вне рамки прозрачно), иначе четыре полных прохода на кадр
+    sc.render.use_crop_to_border = False
     for (k, _, _), c in zip(HANDLES, hcols):
+        vs = [world_to_camera_view(sc, cam, p) for o in c.objects for p in mesh_points(o, dg)]
+        pad = 0.02
+        sc.render.border_min_x = max(0.0, min(v.x for v in vs) - pad)
+        sc.render.border_max_x = min(1.0, max(v.x for v in vs) + pad)
+        sc.render.border_min_y = max(0.0, min(v.y for v in vs) - pad)
+        sc.render.border_max_y = min(1.0, max(v.y for v in vs) + pad)
+        sc.render.use_border = True
         for o in c.objects:
             o.hide_render = False
         freestyle(sc, 'h_' + k, line, 1.8)
         render(sc, os.path.join(OUT, TAG + '_h_' + k + '.png'))
         for o in c.objects:
             o.hide_render = True
+    sc.render.use_border = False
 
     # проход 3: карта деталей — каждая сноска своим плоским цветом, без сглаживания и линий
     ID = {'mf': (1, 0, 0), 'ek': (0, 1, 0), 'tube': (0, 0, 1), 'clamp': (1, 1, 0), 'stud': (1, 1, 0),
@@ -994,7 +998,7 @@ def main():
     with open(os.path.join(OUT, TAG + '.json'), 'w', encoding='utf-8') as f:
         json.dump({'w': sc.render.resolution_x, 'h': sc.render.resolution_y,
                    'zones': {k: [round(v, 4) for v in z] for k, z in zones.items()},
-                   'marks': pts}, f, ensure_ascii=False)
+                   'marks': pts, 'proj': proj}, f, ensure_ascii=False)
 
 
 main()

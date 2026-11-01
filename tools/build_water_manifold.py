@@ -30,7 +30,9 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(HERE, 'img', 'manifold3d')
 BLENDER = r'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe'
 SCRIPT = os.path.join(HERE, 'tools', 'render_water_manifold.py')
-WIDTH = 1100
+# Масштаб единый для всех кадров: столько пикселей на метр по оси коллектора (проекция X).
+# Смета ставит коллекторы ХВС, ГВС и рециркуляции на одну картинку — размеры должны совпадать
+PX_PER_M = 1500
 TYPES = ('st', 'rm', 'bl')
 # цвета карты деталей — как в проходе 3 render_water_manifold.py (чёрный — фон и прочее)
 PALETTE = Image.new('P', (1, 1))
@@ -62,24 +64,26 @@ def build(typ, f, tmp):
         meta = json.load(fh)
     a = Image.open(os.path.join(tmp, t + '_solid.png')).convert('RGBA')
     b = Image.open(os.path.join(tmp, t + '_sheath.png')).convert('RGBA')
-    im = Image.alpha_composite(a, b).convert('RGB')
+    im = Image.alpha_composite(a, b)
     W0, H0 = im.size
     hs = {k: Image.open(os.path.join(tmp, '%s_h_%s.png' % (t, k))).convert('RGBA') for k in HANDLES
           if os.path.isfile(os.path.join(tmp, '%s_h_%s.png' % (t, k)))}
-    boxes = [ImageChops.difference(im, Image.new('RGB', im.size, 'white')).getbbox()]
-    # у слоя ручки вырез оставляет почти нулевую альфу по всему кадру — рамку берём по заметной
+    # у прозрачного кадра и слоя ручки вырез оставляет почти нулевую альфу — рамку берём по заметной
     def solid_box(h):
         return h.getchannel('A').point(lambda v: 255 if v > 8 else 0).getbbox()
-    boxes += [solid_box(h) for h in hs.values()]
+    boxes = [solid_box(im)] + [solid_box(h) for h in hs.values()]
     boxes = [x for x in boxes if x]
     bb = (min(x[0] for x in boxes), min(x[1] for x in boxes), max(x[2] for x in boxes), max(x[3] for x in boxes))
     pad = 14
     bb = (max(0, bb[0] - pad), max(0, bb[1] - pad), min(W0, bb[2] + pad), min(H0, bb[3] + pad))
     im = im.crop(bb)
     cw, ch = im.size
-    sc = WIDTH / cw
-    size = (WIDTH, int(round(ch * sc)))
-    im.resize(size, Image.LANCZOS).save(os.path.join(OUT, t + '.jpg'), quality=84, optimize=True, progressive=True)
+    pj = meta['proj']
+    sc = PX_PER_M / ((pj['x'][0] * W0) ** 2 + (pj['x'][1] * H0) ** 2) ** 0.5
+    size = (int(round(cw * sc)), int(round(ch * sc)))
+    im = im.resize(size, Image.LANCZOS)
+    im.putalpha(im.getchannel('A').point(lambda v: 0 if v <= 8 else v))
+    im.save(os.path.join(OUT, t + '.webp'), quality=86, method=6)
     # карта деталей: те же обрезка и размер, без сглаживания, точной палитрой из восьми
     # цветов сносок — подбор палитры «по картинке» склеивал соседние цвета и терял детали
     idm = Image.open(os.path.join(tmp, t + '_id.png')).convert('RGB').crop(bb).resize(size, Image.NEAREST)
@@ -105,7 +109,10 @@ def build(typ, f, tmp):
 
     return {'w': size[0], 'h': size[1],
             'zones': {k: [fx(z[0]), fy(z[1]), fx(z[2]), fy(z[3])] for k, z in meta['zones'].items()},
-            'marks': {k: [fx(p[0]), fy(p[1])] for k, p in meta['marks'].items()}, 'hv': hv}
+            'marks': {k: [fx(p[0]), fy(p[1])] for k, p in meta['marks'].items()}, 'hv': hv,
+            # привязка: начало координат мира в пикселях кадра и пиксели на метр по осям X, Y, Z
+            'o': [round((pj['o'][0] * W0 - bb[0]) * sc, 1), round((pj['o'][1] * H0 - bb[1]) * sc, 1)],
+            'ax': {k: [round(pj[k][0] * W0 * sc, 2), round(pj[k][1] * H0 * sc, 2)] for k in ('x', 'y', 'z')}}
 
 
 def main():
@@ -134,7 +141,7 @@ def main():
         with open(idx_path, encoding='utf-8') as fh:
             index = json.load(fh)
     todo = [f for f in FRAMES if (not args or tag(f) in args) and (not line or f[0] == line)
-            and (force or args or tag(f) not in index or not os.path.isfile(os.path.join(OUT, '%s_%s.jpg' % (typ, tag(f)))))]
+            and (force or args or tag(f) not in index or not os.path.isfile(os.path.join(OUT, '%s_%s.webp' % (typ, tag(f)))))]
     tmp = tempfile.mkdtemp(prefix='wm_%s_' % typ)
     for k, f in enumerate(todo, 1):
         print('[%d/%d] %s_%s' % (k, len(todo), typ, tag(f)), flush=True)
