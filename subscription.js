@@ -403,7 +403,52 @@ const Subscription = {
             <div style="${u.card} max-width:760px; margin-top:12px;">
                 ${row('Бонус за обучение: Профи на 10 дней', 'Кто пройдёт обучение полностью (все блоки, доступные его тарифу), получает Профи на 10 дней сразу, без кнопки. Один раз на аккаунт: только без оплаты и без прошлого пробного периода. Сотрудникам ТЕРЕМ бонус не выдаётся и подсказка не показывается. Выключено — бонус не выдаётся всем, обучение работает как прежде.',
                     this.toggleHtml(this.tourBonusSettings().enabled, `Subscription.setTourBonusEnabled(${!this.tourBonusSettings().enabled})`, dis))}
+            </div>
+            <div style="${u.card} max-width:760px; margin-top:12px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px;">
+                    <b style="font-size:14px; color:var(--text-main);">Воронка обучения «Первый объект»</b>
+                    <select onchange="Subscription.loadTourFunnel(this.value)" style="${u.input}">
+                        <option value="7">7 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option>
+                    </select>
+                </div>
+                <div id="tour_funnel_box" style="font-size:12.5px; color:var(--text-sec);">Загрузка…</div>
+                ${(setTimeout(() => this.loadTourFunnel(30), 0), '')}
             </div>`;
+    },
+
+    // Сколько человек начали блок «Первый объект», дошли до каждого шага, пропустили его или
+    // закрыли обучение на нём, и медиана секунд на шаге. Данные — tour_funnel (только админу),
+    // порядок и названия шагов — из Tour.STEPS. Журнал шагов пишется с 02.11.2026.
+    loadTourFunnel: async function (days) {
+        const box = document.getElementById('tour_funnel_box');
+        if (!box) return;
+        try {
+            const { data, error } = await supabaseClient.rpc('tour_funnel', { p_days: parseInt(days, 10) || 30 });
+            if (error) throw error;
+            const rows = (data || []).filter(r => r.block === 'basic');
+            const by = {}; rows.forEach(r => { by[r.step] = r; });
+            const started = (by['·start'] && Number(by['·start'].reached)) || 0;
+            const done = (by['·done'] && Number(by['·done'].reached)) || 0;
+            if (!started && !rows.length) { box.innerHTML = 'За этот период событий нет. Журнал шагов пишется с 02.11.2026.'; return; }
+            const steps = (typeof Tour !== 'undefined' ? Tour.STEPS : []).filter(x => x.block === 'basic');
+            const pct = n => started ? Math.round(n / started * 100) + '%' : '—';
+            const bar = n => `<div style="height:6px; border-radius:999px; background:var(--border); overflow:hidden; min-width:80px;"><i style="display:block; height:100%; width:${started ? Math.min(100, n / started * 100) : 0}%; background:linear-gradient(90deg,#0A84FF,#5E5CE6);"></i></div>`;
+            const u = this.ui;
+            let html = `<table style="width:100%; border-collapse:collapse;"><thead><tr>
+                <th style="${u.th}">Шаг</th><th style="${u.th}">Дошли</th><th style="${u.th}"></th><th style="${u.th}">Пропустили</th><th style="${u.th}">Закрыли</th><th style="${u.th}">Медиана</th></tr></thead><tbody>`;
+            html += `<tr><td style="${u.td}"><b>Начали</b></td><td style="${u.td}"><b>${started}</b></td><td style="${u.td}">${bar(started)}</td><td style="${u.td}"></td><td style="${u.td}"></td><td style="${u.td}"></td></tr>`;
+            steps.forEach(st => {
+                const r = by[st.key] || {};
+                const n = Number(r.reached) || 0;
+                html += `<tr><td style="${u.td}">${this.esc(st.title)}</td><td style="${u.td}">${n} <span style="color:var(--text-sec);">${pct(n)}</span></td><td style="${u.td}">${bar(n)}</td>
+                    <td style="${u.td}">${Number(r.skipped) || ''}</td><td style="${u.td}; color:${Number(r.closed) ? '#EF4444' : 'inherit'}">${Number(r.closed) || ''}</td>
+                    <td style="${u.td}">${r.median_sec != null ? r.median_sec + ' с' : ''}</td></tr>`;
+            });
+            html += `<tr><td style="${u.td}"><b>Сохранили — блок засчитан</b></td><td style="${u.td}"><b>${done}</b> <span style="color:var(--text-sec);">${pct(done)}</span></td><td style="${u.td}">${bar(done)}</td><td style="${u.td}"></td><td style="${u.td}"></td><td style="${u.td}"></td></tr>`;
+            box.innerHTML = html + '</tbody></table>';
+        } catch (e) {
+            box.textContent = 'Не удалось загрузить воронку: ' + ((e && e.message) || e);
+        }
     },
 
     // ═══ Бонус за обучение: Профи на 10 дней ═════════════════════════════
