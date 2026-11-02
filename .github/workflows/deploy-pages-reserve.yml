@@ -1,0 +1,71 @@
+# Запасная выкладка на GitHub Pages — на время, пока Beget лежит.
+#
+# Зачем. 02.11.2026 Beget перестал отвечать целиком (и сайт, и панель
+# cp.beget.com), а домен heatcalc.ru смотрит на Beget, и переставить его
+# оттуда нельзя. Эта задача поднимает копию калькулятора по адресу
+# https://terem24.github.io/smeta/ — ссылку можно раздать людям, пока
+# основной сайт не вернётся. Домен она не трогает.
+#
+# Что нужно один раз:
+#   1. Репозиторий открыт (Settings → General → Change visibility → Public)
+#      или у владельца тариф GitHub Pro — иначе Pages из закрытого не работает.
+#   2. Settings → Pages → Source: «GitHub Actions».
+#   3. Actions → «Запасная выкладка на GitHub Pages» → Run workflow.
+#   Чтобы копия обновлялась сама при каждом пуше в main, завести переменную
+#   PAGES_RESERVE = on (Settings → Secrets and variables → Actions → Variables).
+#
+# Почему без CNAME. С ним Pages привязал бы копию к heatcalc.ru и стал
+# перенаправлять terem24.github.io туда — то есть на лежащий Beget.
+# PHP не нужен: Pages его не исполняет; вход и база сами уходят в Supabase
+# напрямую (прокси proxy.heatcalc.ru тоже на Beget и сейчас не отвечает).
+#
+# Когда Beget вернётся: Settings → Pages → отключить, переменную убрать.
+
+name: Запасная выкладка на GitHub Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-reserve
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || vars.PAGES_RESERVE == 'on'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Собрать копию сайта без служебного
+        run: |
+          mkdir -p /tmp/site
+          rsync -a \
+            --exclude='.git*' --exclude='.claude/' --exclude='.agents/' \
+            --exclude='.github/' --exclude='mobile-android/' --exclude='supabase/' \
+            --exclude='bench/' --exclude='scratch/' --exclude='__pycache__/' \
+            --exclude='models/' --exclude='*.py' --exclude='*.php' --exclude='*.md' \
+            --exclude='*.sql' --exclude='*.ps1' --exclude='CNAME' --exclude='.htaccess' \
+            --exclude='revit_catalog.json' --exclude='price_index.new.json' \
+            ./ /tmp/site/
+          touch /tmp/site/.nojekyll
+          du -sh /tmp/site
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: /tmp/site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
