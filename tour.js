@@ -1620,6 +1620,13 @@ const Tour = {
             if (typeof Subscription === 'undefined' || !Subscription.tourBonusSettings().enabled) return false;
             if (!this.allowed() || this.doneMap().basic || this.planInfo().isPro) return false;
             if (app.isTeremStaff()) return false;
+            try { if (localStorage.getItem(this.LS_DONE) === '1') return false; } catch (e) { }
+            if (typeof app.hasAdminAccess === 'function' && app.hasAdminAccess()) return false;
+            // Сведения из базы (тестовая учётка, обучение пройдено на другом устройстве,
+            // человек стоит менеджером/наблюдателем). Пока не прочитались — не показываем:
+            // лучше на пару секунд позже, чем мигнуть баннером тому, кому он не положен.
+            const bp = this.bonusProfile();
+            if (!bp || bp.hide) return false;
             // Те же условия, что у базы (mark_tour_done): бонус только тому, у кого ещё не было ни
             // пробного, ни платного Профи, и только бесплатному или базовому аккаунту. Иначе баннер
             // обещал бы то, что база не выдаст (например, на новом устройстве, где doneMap пуст).
@@ -1628,6 +1635,63 @@ const Tour = {
             if (['free', 'base'].indexOf(tg.account_type || app.state.accountType || 'base') < 0) return false;
             return true;
         } catch (e) { return false; }
+    },
+
+    // Кому баннер не положен по данным базы — читается один раз на вход (кэш по id учётки):
+    //  · тестовая учётка (users.is_test);
+    //  · обучение уже пройдено (users.tour_done_at) — в том числе на другом устройстве;
+    //  · служебная роль (admin / viewer / manager) или назначенные наблюдателю компании;
+    //  · сотрудник ТЕРЕМ: почта (основная или рабочая) на teremopt.ru;
+    //  · почта стоит менеджером или директором в карточке дистрибьютора.
+    // Сбой чтения — баннер не показываем (тишина безопаснее навязчивости).
+    _bonusProfile: null,
+    _bonusProfileKey: null,
+    _bonusProfileLoading: false,
+
+    bonusProfile: function () {
+        const tg = (app && app.state && app.state.tgUser) || {};
+        const key = String(tg.id || tg.email || tg.authUserId || '');
+        if (!key) return null;
+        if (this._bonusProfileKey === key && this._bonusProfile) return this._bonusProfile;
+        if (this._bonusProfileKey !== key) { this._bonusProfile = null; this._bonusProfileKey = key; this._bonusProfileLoading = false; }
+        if (!this._bonusProfileLoading) {
+            this._bonusProfileLoading = true;
+            this.loadBonusProfile().then(p => {
+                if (this._bonusProfileKey !== key) return;
+                this._bonusProfile = p;
+                this._bonusProfileLoading = false;
+                this.syncBonusBanner();
+            });
+        }
+        return null;
+    },
+
+    loadBonusProfile: async function () {
+        try {
+            if (typeof supabaseClient === 'undefined' || !supabaseClient) return { hide: true };
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            const authId = (session && session.user && session.user.id) || (app.state.tgUser && app.state.tgUser.authUserId);
+            if (!authId) return { hide: true };
+            const { data: u, error } = await supabaseClient.from('users').select('*').eq('auth_user_id', authId).maybeSingle();
+            if (error || !u) return { hide: true };
+            if (u.is_test) return { hide: true, why: 'test' };
+            if (u.tour_done_at) {
+                try { localStorage.setItem(this.LS_DONE, '1'); } catch (e) { }
+                return { hide: true, why: 'done' };
+            }
+            if (['admin', 'viewer', 'manager'].indexOf(u.account_type || '') > -1) return { hide: true, why: 'role' };
+            if (Array.isArray(u.viewer_distributor_ids) && u.viewer_distributor_ids.length) return { hide: true, why: 'viewer' };
+            const mails = (typeof app.userEmails === 'function') ? app.userEmails(u)
+                : [u.email, u.work_email].filter(Boolean).map(x => String(x).trim().toLowerCase());
+            if (mails.some(m => /@([a-z0-9-]+\.)*teremopt\.ru$/.test(m))) return { hide: true, why: 'terem' };
+            if (mails.length && typeof app.emailsOrFilter === 'function') {
+                const f = app.emailsOrFilter('manager_email', mails) + ',' + app.emailsOrFilter('director_email', mails);
+                const { data: d, error: de } = await supabaseClient.from('distributors').select('id').or(f).limit(1);
+                if (de) return { hide: true };
+                if (d && d.length) return { hide: true, why: 'manager' };
+            }
+            return { hide: false };
+        } catch (e) { return { hide: true }; }
     },
 
     bonusBannerHidden: function () {
