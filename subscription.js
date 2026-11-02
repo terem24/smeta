@@ -10,7 +10,8 @@
  *   {
  *     v: 1,
  *     plans:   { month: { title, label, months, rub, url, enabled }, year: {…}, <свой id>: {…} },
- *     promos:  [ { id, title, kind: 'percent'|'rub'|'price', value, plans: [id…], regions: [строки], from, to, url, enabled } ],
+ *     promos:  [ { id, title, kind: 'percent'|'rub'|'price', value, plans: [id…], regions: [строки], from, to, url, enabled,
+ *                  audience: 'all' | 'after_trial' } ],   // after_trial — был пробный Профи и ни одной оплаты
  *     regions: [ { id, title, match: [строки], prices: { <plan>: { rub, url } }, enabled } ],
  *     note:    'текст под QR-кодом в окне оплаты',
  *     benefits: { installer: [строки], seller: [строки] }   // свой текст в окне тарифа, пусто = собирается из таблицы «Тарифы»
@@ -136,6 +137,17 @@ const Subscription = {
         return String(row.region || tg.region || '').trim();
     },
 
+    // Был ли у человека пробный Профи без единой оплаты — для акций «после пробного»
+    userAfterTrial: function () {
+        try {
+            const tg = (app.state && app.state.tgUser) || {};
+            const row = app._currentUserRow || {};
+            const demo = tg.demo_ends_at || row.demo_ends_at;
+            const paid = tg.pro_expires_at || row.pro_expires_at;
+            return !!demo && !paid;
+        } catch (e) { return false; }
+    },
+
     // Учётная запись для текста преимуществ: продавец / монтажник
     userAccount: function () {
         try { const a = app.tariffAccount(); return a === 'seller' ? 'seller' : 'installer'; } catch (e) { return 'installer'; }
@@ -198,8 +210,13 @@ const Subscription = {
         }
         const baseRub = rub;
         let promo = null, best = rub;
+        // «После пробного»: был пробный Профи (demo_ends_at) и ни одной оплаты (pro_expires_at
+        // пуст). После первой оплаты акция сама перестаёт действовать — отсюда «первый месяц».
+        // В предпросмотре панели (ctx передан без afterTrial) считаем, что условие выполнено.
+        const afterTrial = ctx.afterTrial !== undefined ? !!ctx.afterTrial : (Object.keys(ctx).length ? true : this.userAfterTrial());
         s.promos.forEach(pr => {
             if (!this.promoActive(pr, ctx.at)) return;
+            if (pr.audience === 'after_trial' && !afterTrial) return;
             if (Array.isArray(pr.plans) && pr.plans.length && pr.plans.indexOf(planId) < 0) return;
             if (Array.isArray(pr.regions) && pr.regions.length && !this.matchRegion(pr.regions, region)) return;
             const r = this.applyPromo(baseRub, pr);
@@ -1091,6 +1108,15 @@ const Subscription = {
             title = 'Профи закончился';
             lead = 'Сметы сохранились. ';
             why = 'Продлите Профи, чтобы вернуть его функции';
+            // Действует акция на месяц (например «после пробного») — она главная мысль окна
+            try {
+                const m = this.resolve('month');
+                if (m && m.promo && m.rub < m.baseRub) {
+                    title = 'Первый месяц Профи — ' + this.fmtRub(m.rub);
+                    lead = 'Вместо ' + this.fmtRub(m.baseRub) + (m.promo.to ? ', только до ' + this.fmtDate(m.promo.to) : '') + '. Сметы сохранились. ';
+                    why = 'Акция «' + (m.promo.title || '') + '»: месяц Профи за ' + this.fmtRub(m.rub);
+                }
+            } catch (e) { }
         }
         this._nudgeBusy = true;
         this.nudgeTouch(reason);
@@ -1458,7 +1484,8 @@ const Subscription = {
     },
 
     setPromoField: function (id, field, value) {
-        if (['title', 'kind', 'value', 'regions', 'from', 'to', 'url', 'enabled'].indexOf(field) < 0) return;
+        if (['title', 'kind', 'value', 'regions', 'from', 'to', 'url', 'enabled', 'audience'].indexOf(field) < 0) return;
+        if (field === 'audience' && ['all', 'after_trial'].indexOf(value) < 0) return;
         if (field === 'value') value = Math.max(0, this.num(value));
         if (field === 'regions') value = String(value || '').split(',').map(s => s.trim()).filter(Boolean);
         if (field === 'enabled') value = !!value;
@@ -2018,6 +2045,9 @@ const Subscription = {
                 <div>${lbl('С даты')}${inp('from', p.from || '', 'date')}</div>
                 <div>${lbl('По дату (включительно)')}${inp('to', p.to || '', 'date')}</div>
                 <div style="grid-column:1 / -1;">${lbl('Ссылка на перевод суммы по акции')}${inp('url', p.url || '', 'url', 'placeholder="https://www.tbank.ru/cf/…"')}</div>
+                <div style="grid-column:1 / -1;">${lbl('Кому')}<select ${dis} onchange="Subscription.setPromoField('${p.id}','audience',this.value)" style="${this.ui.input} width:100%;">
+                    <option value="all" ${p.audience !== 'after_trial' ? 'selected' : ''}>Всем</option>
+                    <option value="after_trial" ${p.audience === 'after_trial' ? 'selected' : ''}>Только после пробного: был пробный Профи и ещё ни одной оплаты (после первой оплаты акция для человека пропадает)</option></select></div>
                 <div style="grid-column:1 / -1;">${lbl('Регионы (через запятую; пусто — везде). Сравнивается с полем «регион» анкеты')}${inp('regions', (p.regions || []).join(', '), 'text', 'placeholder="Казахстан, Беларусь"')}</div>
                 <div style="grid-column:1 / -1;">${lbl('Какие тарифы')}<div>${planChips}</div></div>
             </div>
