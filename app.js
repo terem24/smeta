@@ -43845,6 +43845,20 @@ const app = {
             el.style.top = Math.min(Math.max(0, p.top), window.innerHeight - el.offsetHeight) + 'px';
             return;
         }
+        // Тап пальцем: подсказка во всю ширину экрана и в той его половине, где пальца нет,
+        // — иначе она ложится под палец и закрывает то, на что нажали.
+        if (this._hydTouchAt && Date.now() - this._hydTouchAt < 2000 && this._hydTapY != null) {
+            el.style.maxWidth = (window.innerWidth - 16) + 'px';
+            el.style.left = '8px';
+            const h = el.offsetHeight;
+            // Сверху — под панелью кнопок раскрытой схемы, чтобы не закрыть «✕» и масштаб
+            const bar = svg.closest('#scheme_zoom_overlay') && document.querySelector('#scheme_zoom_overlay .scheme-zoom-bar');
+            const top = bar ? Math.max(8, bar.getBoundingClientRect().bottom + 8) : 8;
+            el.style.top = (this._hydTapY > window.innerHeight / 2
+                ? top : Math.max(top, window.innerHeight - h - 8)) + 'px';
+            return;
+        }
+        el.style.maxWidth = '';
         const r = svg.getBoundingClientRect();
         const left = Math.max(8, r.left + 12);
         // Два прохода: первый ставит блок на место и даёт ему настоящую
@@ -43899,6 +43913,10 @@ const app = {
             const t = e.target;
             if (!t || !t.closest) return;
             if (!this.hydEnabled()) return;
+            // После касания браузер сам разыгрывает мышиные события — над подсказкой,
+            // всплывшей под пальцем, и мимо листа. Они гасили подсветку сразу же;
+            // касание обслуживает свой обработчик ниже.
+            if (this._hydTouchAt && Date.now() - this._hydTouchAt < 1500) return;
             // Над самой подсказкой или карточкой, и пока их тащат, — ничего
             // не трогаем: иначе до плашки нельзя было бы доехать мышью.
             if (this._hydDragging || t.closest('#hyd_hint') || t.closest('#hyd_card')) return;
@@ -43913,6 +43931,41 @@ const app = {
         window.addEventListener('keydown', e => {
             if (e.key === 'Escape') this.closeHydCard();
         });
+        // Касание (телефон, планшет). Наведения у пальца нет, поэтому в раскрытой схеме
+        // короткий тап по контуру делает то же, что наведение мышью: подсветка, выноска,
+        // подсказка — и всё остаётся, пока не тапнут в другое место. Повторный тап по тому
+        // же контуру — полная карточка, как щелчок мышью. Тап по пустому листу гасит.
+        // Перетаскивание и масштаб пальцами не трогаем: только тап без сдвига.
+        // В нераскрытой схеме тап, как и прежде, открывает её на весь экран.
+        let tap = null;
+        document.addEventListener('touchstart', e => {
+            this._hydTouchAt = Date.now();
+            const t = e.touches[0];
+            tap = (e.touches.length === 1 && t) ? { x: t.clientX, y: t.clientY, at: Date.now() } : null;
+        }, { capture: true, passive: true });
+        document.addEventListener('touchend', e => {
+            this._hydTouchAt = Date.now();
+            const s = tap; tap = null;
+            if (!s || e.touches.length) return;
+            const t = e.changedTouches[0];
+            if (!t || Math.hypot(t.clientX - s.x, t.clientY - s.y) > 10 || Date.now() - s.at > 600) return;
+            const el = document.elementFromPoint(t.clientX, t.clientY);
+            if (!el || !el.closest || el.closest('#hyd_hint') || el.closest('#hyd_card')) return;
+            const svg = el.closest('svg.scheme-svg');
+            if (!svg || !this.hydEnabled() || !this._hydExpanded(svg)) return;
+            this._hydPrepare(svg);
+            const d = this._hydDescr(el);
+            // Без этого браузер следом разыграет мышиные события и щелчок
+            e.preventDefault();
+            this._hydTapY = t.clientY;
+            if (!d) { this.closeHydCard(); this.hydHoverOff(); return; }
+            if (this._hydOv && this._hydOv.isConnected && this._hydKey === this._hydRouteKey(d)) {
+                this.showHydCard(d, t.clientX, t.clientY);
+                return;
+            }
+            this.closeHydCard();
+            this.hydHoverOn(d);
+        }, { capture: true, passive: false });
     },
 
     // ── переключатель «Подсказки» ──────────────────────────────────────────
