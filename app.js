@@ -69208,7 +69208,9 @@ const app = {
             // По строке на тип трубы и на бренд: STOUT и ROMMER рядом. Выбор бренда здесь — то же,
             // что кнопка «Аналог», но для одной трубы (см. pipeBrandOverride), а цена «Система»
             // считается полным пересчётом сметы под каждый вариант. У ROMMER нет трубы с готовой
-            // изоляцией: его вариант — труба и трубка изоляции отдельными позициями (см. addToBill).
+            // изоляцией из PEX-a: его вариант — труба и трубка изоляции отдельными позициями (см. addToBill).
+            // Металлопластик в изоляции у ROMMER заводской (RPI, PE-RT II/Al/PE-RT II, изоляция 6 мм) —
+            // пара .rommer у SPI-0001/0002, строка «insulated_mp_r».
             const _rr = (it) => (it && it.rommer && !Array.isArray(it.rommer)) ? it.rommer : null;
             const _insI = catalog.insulated_pipes && catalog.insulated_pipes[0];
             const _insR = (_insI && Array.isArray(_insI.rommer)) ? _insI.rommer : null;
@@ -69222,6 +69224,7 @@ const app = {
                 { id: 'split', name: 'Труба PEX-a без изоляции', brand: 'STOUT', price: _splitI ? (_splitI.price || 0) : 0, imgId: _splitI?.id },
                 ...(_rr(_splitI) ? [{ id: 'split_r', name: 'Труба PEX-a без изоляции', brand: 'ROMMER', price: _rr(_splitI).price || 0, imgId: _rr(_splitI).id }] : []),
                 { id: 'insulated_mp', name: 'Труба металлопластиковая в теплоизоляции', brand: 'STOUT', price: _insMpI ? (_insMpI.price || 0) : 0, imgId: _insMpI?.id },
+                ...(_rr(_insMpI) ? [{ id: 'insulated_mp_r', name: 'Труба металлопластиковая в теплоизоляции', brand: 'ROMMER', price: _rr(_insMpI).price || 0, imgId: _rr(_insMpI).id }] : []),
                 { id: 'split_mp', name: 'Труба металлопластиковая без изоляции', brand: 'STOUT', price: _splitMpI ? (_splitMpI.price || 0) : 0, imgId: _splitMpI?.id },
                 ...(_rr(_splitMpI) ? [{ id: 'split_mp_r', name: 'Труба металлопластиковая без изоляции', brand: 'ROMMER', price: _rr(_splitMpI).price || 0, imgId: _rr(_splitMpI).id }] : []),
                 ...(_stbI ? [{ id: 'stable_16', name: _stbI.name, brand: 'STOUT', price: _stbI.price, imgId: _stbI.id }] : []),
@@ -91379,7 +91382,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             let forceAnalog = false;
             let forceStout = false;
 
-            let isCustomToggle = ['standard', 'basic', 'pro', 'std', 'comfort', 'economy', 'insulated', 'split', 'insulated_mp', 'split_mp', 'pex', 'metal_plastic', 'mat', 'xps', 'sirio', 'top', 'base', 'epc12auto', 'epc2', 'epc4', 'epc5', 'relay_krs5', 'scq', 'scn', 'straight', 'angled', 'proaqua', 'wavin', 'double', 'single', 'hidden', 'sensor', 'gbm', 'parts', 'gtube', 'shoe', 'shoe_np', 'insulated_r', 'split_r', 'split_mp_r', 'stable_16', 'stable_16_r', 'pex_r', 'metal_plastic_r', 'stable', 'stable_r'].includes(manualSwapId);
+            let isCustomToggle = ['standard', 'basic', 'pro', 'std', 'comfort', 'economy', 'insulated', 'split', 'insulated_mp', 'split_mp', 'pex', 'metal_plastic', 'mat', 'xps', 'sirio', 'top', 'base', 'epc12auto', 'epc2', 'epc4', 'epc5', 'relay_krs5', 'scq', 'scn', 'straight', 'angled', 'proaqua', 'wavin', 'double', 'single', 'hidden', 'sensor', 'gbm', 'parts', 'gtube', 'shoe', 'shoe_np', 'insulated_r', 'split_r', 'insulated_mp_r', 'split_mp_r', 'stable_16', 'stable_16_r', 'pex_r', 'metal_plastic_r', 'stable', 'stable_r'].includes(manualSwapId);
             // Бренд труб, выбранный в таблице замены (см. pipeBrandOverride): тип трубы
             // в state уже стоит, а бренд — это ровно «Аналог» для неё одной.
             const _pipeBrandOv = (item.noMerge || (manualSwapId && !isCustomToggle)) ? null : this.pipeBrandOverride(lookupKey);
