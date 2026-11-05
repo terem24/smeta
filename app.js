@@ -102523,6 +102523,13 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         }
 
         // Подсчет и монтаж стабилизаторов (Монтаж котла и бойлера)
+        // Работы, которые считаются «по подгруппе» (2.3 — бойлер, 3. — приборы, 4. — тёплый пол…),
+        // не должны зависеть от переключателя «Группировать». При выключенной группировке
+        // одинаковые позиции из разных подгрупп склеиваются в одну строку под первой подгруппой
+        // (американка ГВС из 2.3 уходила в 2.2) — и работы занижались: при включении группировки
+        // «Монтаж запорной арматуры и американок бойлера» вырастал на 1 900 ₽ за каждые 2 шт.
+        // Поэтому тут берём список без склейки (currentSpec) с исходными подгруппами.
+        const _grpSrc = forceMerge ? (this.currentSpec || []) : this.currentEquipmentList;
         // ВАЖНО: работы считаем по currentEquipmentList, а НЕ по bill.
         // bill — накопитель текущего раздела сметы, его очищает flushBill()
         // после каждого раздела, и к моменту расчёта работ он пуст. Пока эти
@@ -102602,7 +102609,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 addToWorks("Обвязка водонагревателя (краны и подводки)", _wp.qty, 3500, "компл", boilerGroup);
                 if (_wp.item.plug) addToWorks("Установка автомата и УЗО в щит", _wp.qty, 1500, "линия", boilerGroup);
                 if (this.whExpMode() === 'tank') addToWorks("Установка расширительного бака водоснабжения", 1, 4500, "шт", boilerGroup);
-                let dhwTapCountEl = this.currentEquipmentList.filter(x => String(x.group || '').startsWith("2.3") && ((x.name || '').toLowerCase().includes("американка") || (x.name || '').toLowerCase().includes("кран"))).reduce((sum, x) => sum + x.q, 0);
+                let dhwTapCountEl = _grpSrc.filter(x => String(x.group || '').startsWith("2.3") && ((x.name || '').toLowerCase().includes("американка") || (x.name || '').toLowerCase().includes("кран"))).reduce((sum, x) => sum + x.q, 0);
                 if (dhwTapCountEl > 0) addToWorks("Монтаж запорной арматуры и американок бойлера", dhwTapCountEl, 950, "шт", boilerGroup);
             }
         }
@@ -102618,7 +102625,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // Подсчет кранов и американок обвязки бойлера ГВС (Монтаж котла и бойлера)
             // Раздел сверяем по номеру, а не по полному названию: заголовки разделов
         // в проекте уже переименовывались, и жёсткая строка тихо обнуляла счёт.
-        let dhwTapCount = this.currentEquipmentList.filter(x => String(x.group || '').startsWith("2.3") && ((x.name || '').toLowerCase().includes("американка") || (x.name || '').toLowerCase().includes("кран"))).reduce((sum, x) => sum + x.q, 0);
+        let dhwTapCount = _grpSrc.filter(x => String(x.group || '').startsWith("2.3") && ((x.name || '').toLowerCase().includes("американка") || (x.name || '').toLowerCase().includes("кран"))).reduce((sum, x) => sum + x.q, 0);
             if (dhwTapCount > 0) {
                 addToWorks("Монтаж запорной арматуры и американок бойлера", dhwTapCount, 950, "шт", boilerGroup);
             }
@@ -102655,7 +102662,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 addToWorks("Монтаж нагревательного мата", Math.round(aEl), 900, "м²", gU);
                 addToWorks("Установка терморегулятора тёплого пола", zn, 2500, "шт", gU);
                 addToWorks("Штробление под терморегулятор и датчик пола", zn, 1500, "шт", gU);
-                const _w = this.currentEquipmentList
+                const _w = _grpSrc
                     .filter(x => String(x.group || '') === "4.1. Нагревательные маты")
                     .reduce((s, x) => s + (x.watt || 0) * (x.q || 0), 0);
                 const _lines = Math.max(1, Math.ceil((_w / 230) / 13));
@@ -102758,7 +102765,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // «радиатор» не начинаются — без них блок гас, и в смете со стальными
         // панелями (серия «стальной» или режим «Бюджетнее») пропадали работы по
         // термоголовкам и узлам подключения (24.09.2026)
-        const _radQty = this.currentEquipmentList
+        const _radQty = _grpSrc
             .filter(x => String(x.group || '').startsWith("3.") && (x.isPanel || /^радиатор|^конвектор|^стальной панельн/i.test(x.name || '')))
             .reduce((sum, x) => sum + x.q, 0);
         if (this.state.systems.includes('rad') && _radQty > 0) {
@@ -102771,19 +102778,19 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // Монтаж механических термоголовок
             // Раздел был указан как «Приборы отопления», а обвязка радиаторов давно
         // лежит в «3.1. Обвязка радиаторов» — сверяем по номеру раздела.
-        let mechHeads = this.currentEquipmentList.filter(x => String(x.group || '').startsWith("3.") && (x.name || '').toLowerCase().includes("головка термостатическая") && !(x.name || '').toLowerCase().includes("zigbee")).reduce((sum, x) => sum + x.q, 0);
+        let mechHeads = _grpSrc.filter(x => String(x.group || '').startsWith("3.") && (x.name || '').toLowerCase().includes("головка термостатическая") && !(x.name || '').toLowerCase().includes("zigbee")).reduce((sum, x) => sum + x.q, 0);
             if (mechHeads > 0) {
                 addToWorks("Монтаж механической термоголовки", mechHeads, 350, "шт", radGroup);
             }
 
             // Монтаж H-клапанов нижнего подключения
-            let hValves = this.currentEquipmentList.filter(x => String(x.group || '').startsWith("3.") && (x.name || '').toLowerCase().includes("узел нижн. подкл.")).reduce((sum, x) => sum + x.q, 0);
+            let hValves = _grpSrc.filter(x => String(x.group || '').startsWith("3.") && (x.name || '').toLowerCase().includes("узел нижн. подкл.")).reduce((sum, x) => sum + x.q, 0);
             if (hValves > 0) {
                 addToWorks("Монтаж узла нижнего подключения радиатора", hValves, 800, "шт", radGroup);
             }
 
             // Монтаж Г-образных трубок подключения радиаторов
-            let gTubes = this.currentEquipmentList.filter(x => String(x.group || '').startsWith("3.") && (x.name || '').toLowerCase().includes("трубка г-образная")).reduce((sum, x) => sum + x.q, 0);
+            let gTubes = _grpSrc.filter(x => String(x.group || '').startsWith("3.") && (x.name || '').toLowerCase().includes("трубка г-образная")).reduce((sum, x) => sum + x.q, 0);
             if (gTubes > 0) {
                 addToWorks("Монтаж Г-образной трубки подключения радиатора", gTubes, 900, "шт", radGroup);
             }
@@ -102791,7 +102798,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // Монтаж фиксаторов поворота типа «башмак» — второй вариант того же
             // подключения. Считаем по комплектам (комплект = 2 фиксатора на радиатор),
             // поэтому расценка тут за радиатор, а не за одну подводку.
-            let shoeKits = this.currentEquipmentList.filter(x => String(x.group || '').startsWith("3.") && (x.name || '').toLowerCase().includes("фиксаторов поворота")).reduce((sum, x) => sum + x.q, 0);
+            let shoeKits = _grpSrc.filter(x => String(x.group || '').startsWith("3.") && (x.name || '').toLowerCase().includes("фиксаторов поворота")).reduce((sum, x) => sum + x.q, 0);
             if (shoeKits > 0) {
                 addToWorks("Монтаж комплекта фиксаторов поворота \"башмак\"", shoeKits, 600, "шт", radGroup);
             }
@@ -102809,7 +102816,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // Коллекторных шкафов в каталоге сейчас нет ни одного, поэтому счёт
         // всё равно даст ноль. Механику чиним, чтобы расценка заработала сама,
         // как только шкафы в каталоге появятся.
-        let radCabs = this.currentEquipmentList.filter(x => String(x.group || '').startsWith("3.") && (x.name || '').toLowerCase().includes("шкаф")).reduce((sum, x) => sum + x.q, 0);
+        let radCabs = _grpSrc.filter(x => String(x.group || '').startsWith("3.") && (x.name || '').toLowerCase().includes("шкаф")).reduce((sum, x) => sum + x.q, 0);
                 if (radCabs > 0) addToWorks("Монтаж и обвязка распределительных шкафов", radCabs, 4000, "шт", radGroup);
             }
         }
@@ -102844,7 +102851,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
 
                 // Шкафы берем из фактического наличия в спецификации
                 // То же, что и с радиаторными шкафами: позиций в каталоге пока нет.
-        let tpCabs = this.currentEquipmentList.filter(x => String(x.group || '').startsWith("4.") && (x.name || '').toLowerCase().includes("шкаф")).reduce((sum, x) => sum + x.q, 0);
+        let tpCabs = _grpSrc.filter(x => String(x.group || '').startsWith("4.") && (x.name || '').toLowerCase().includes("шкаф")).reduce((sum, x) => sum + x.q, 0);
                 if (tpCabs > 0) addToWorks("Монтаж и обвязка распределительных шкафов", tpCabs, 6000, "шт", tpGroup);
             }
 
@@ -102866,7 +102873,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             const zk = this.zoneAutoOn() ? this._zoneKit : null;
             // Кабель не считаем: «линии сервоприводов» на 14 м раньше шли в работы
             // как четырнадцать приводов.
-            const _outside = (test) => this.currentEquipmentList
+            const _outside = (test) => _grpSrc
                 .filter(x => test((x.name || '').toLowerCase()) && x.unit !== 'м'
                     && !String(x.group || '').startsWith("2.9.") && !String(x.group || '').startsWith("4.5"))
                 .reduce((sum, x) => sum + x.q, 0);
@@ -103005,7 +103012,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // БЛОК: 2.1 Внешнее и внутреннее ГВС (Насосы)
         // ==========================================
         if (this.state.hotWater && this.state.recirc) {
-            let recircPumps = this.currentEquipmentList.filter(x => String(x.group || '').startsWith("2.3") && (x.name || '').toLowerCase().includes("насос гвс")).reduce((sum, x) => sum + x.q, 0);
+            let recircPumps = _grpSrc.filter(x => String(x.group || '').startsWith("2.3") && (x.name || '').toLowerCase().includes("насос гвс")).reduce((sum, x) => sum + x.q, 0);
             if (recircPumps > 0) {
                 let dhwGrp = this.state.water ? "2.3 Внутреннее водоснабжение" : "1.1 Монтаж котла и бойлера";
                 addToWorks("Монтаж циркуляционного насоса рециркуляции ГВС", recircPumps, 4500, "шт", dhwGrp);
