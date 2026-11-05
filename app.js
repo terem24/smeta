@@ -19,60 +19,114 @@
 })();
 // ===================================
 
-// === ПРОКСИ НА BEGET ВРЕМЕННО НЕДОСТУПЕН ===
-// 02.11.2026 хостинг Beget пострадал от кибератаки, proxy.heatcalc.ru не отвечает. Пока так,
-// обращения к нему не уходят в сеть, а сразу получают отказ 503 (иначе кнопки висят до обрыва
-// по времени), вход и база идут напрямую (см. supabaseProxyFetchRaw), сверху висит плашка.
-// Вернуть прокси: поставить `var down = false` ниже. Проверить, что он ожил, не меняя код:
-// открыть сайт с ?proxy=1 (запоминается в этом браузере), ?proxy=0 снимает.
+// === ПРОКСИ НА BEGET: ВКЛЮЧЁН / ОТКЛЮЧЁН ===
+// 02.11.2026 хостинг Beget пострадал от кибератаки, proxy.heatcalc.ru не отвечал. Пока прокси
+// отключён, обращения к нему не уходят в сеть, а сразу получают отказ 503 (иначе кнопки висят
+// до обрыва по времени), вход и база идут напрямую (см. supabaseProxyFetchRaw), внизу страницы
+// висит плашка.
+// Включает и выключает администратор во вкладке «Сервер»: значение лежит в app_settings
+// (ключ proxy, {"down": true|false}) и читается при загрузке страницы. Пока строки в базе нет,
+// действует PROXY_DEFAULT_DOWN. Если прочитать настройки не удалось (у человека закрыт Supabase),
+// работает последнее известное значение из этого браузера, а без него прокси считается
+// включённым: так было всегда, и этим людям прокси как раз нужен.
+// Проверить, что прокси ожил, не трогая базу: открыть сайт с ?proxy=1 (запоминается в этом
+// браузере, на настройки сайта не влияет), ?proxy=0 снимает.
+const PROXY_DEFAULT_DOWN = true;
 (function () {
-    var down = true;
+    var CACHE_KEY = 'hc_proxy_down';
+    var origFetch = window.fetch.bind(window);
+    window.__origFetch = origFetch;
+
+    var forceUp = false;
     try {
         var m = /[?&]proxy=([01])(&|$)/.exec(window.location.search || '');
         if (m) localStorage.setItem('hc_proxy_force', m[1]);
-        if (localStorage.getItem('hc_proxy_force') === '1') down = false;
+        forceUp = localStorage.getItem('hc_proxy_force') === '1';
     } catch (e) { }
-    window.PROXY_DOWN = down;
-    if (!down) return;
 
-    var origFetch = window.fetch.bind(window);
+    var down = false;
+    try {
+        var c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+        if (c && typeof c.down === 'boolean' && Date.now() - (c.t || 0) < 7 * 24 * 3600 * 1000) down = c.down;
+    } catch (e) { }
+    window.PROXY_DOWN = down && !forceUp;
+
+    // Вызывается после чтения настроек сайта и после переключения в админке
+    window.__setProxyDown = function (value) {
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify({ down: !!value, t: Date.now() })); } catch (e) { }
+        window.PROXY_DOWN = !!value && !forceUp;
+        updateBanner();
+    };
+
     window.fetch = function (input, init) {
-        var url = typeof input === 'string' ? input : ((input && input.url) || '');
-        if (url.indexOf('https://proxy.heatcalc.ru/') === 0) {
-            return Promise.resolve(new Response(
-                JSON.stringify({ ok: false, error: 'proxy_down', message: 'Сервис временно недоступен: идёт восстановление хостинга' }),
-                { status: 503, headers: { 'Content-Type': 'application/json' } }
-            ));
+        if (window.PROXY_DOWN) {
+            var url = typeof input === 'string' ? input : ((input && input.url) || '');
+            if (url.indexOf('https://proxy.heatcalc.ru/') === 0) {
+                return Promise.resolve(new Response(
+                    JSON.stringify({ ok: false, error: 'proxy_down', message: 'Сервис временно недоступен: идёт восстановление хостинга' }),
+                    { status: 503, headers: { 'Content-Type': 'application/json' } }
+                ));
+            }
         }
         return origFetch(input, init);
     };
 
-    function showBanner() {
-        try { if (sessionStorage.getItem('hc_proxy_banner_closed') === '1') return; } catch (e) { }
-        var bar = document.createElement('div');
-        bar.id = 'proxyDownBanner';
-        bar.setAttribute('role', 'status');
-        bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#fef3c7;color:#78350f;' +
-            'border-top:1px solid #f59e0b;padding:10px 44px 10px 16px;font:14px/1.4 Arial,sans-serif;text-align:center;';
-        bar.textContent = 'Идёт восстановление хостинга после сбоя у провайдера. Пока не работают: ИИ-распознавание смет и проектов, ' +
-            'заявки на монтаж, подложки планов, загрузка прайсов. Расчёт и сохранение работают.';
-        var close = document.createElement('button');
-        close.type = 'button';
-        close.setAttribute('aria-label', 'Закрыть');
-        close.textContent = '×';
-        close.style.cssText = 'position:absolute;right:8px;top:4px;border:0;background:none;color:inherit;font-size:24px;cursor:pointer;line-height:1;';
-        close.onclick = function () {
-            try { sessionStorage.setItem('hc_proxy_banner_closed', '1'); } catch (e) { }
-            bar.remove();
-        };
-        bar.appendChild(close);
-        document.body.appendChild(bar);
+    // Плашка: короткая, в цветах калькулятора. Сама уходит через 15 секунд, а после ухода или
+    // закрытия сутки не возвращается, чтобы не пугать и не мешать работать.
+    var NOTE_KEY = 'hc_proxy_note_t';
+    var NOTE_EVERY_MS = 24 * 3600 * 1000;
+    var NOTE_SHOW_MS = 15000;
+    var noteTimer = null;
+    function hideNote(el) {
+        if (noteTimer) { clearTimeout(noteTimer); noteTimer = null; }
+        if (!el) return;
+        el.style.opacity = '0';
+        el.style.transform = 'translate(-50%, 12px)';
+        setTimeout(function () { el.remove(); }, 300);
     }
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showBanner);
-    else showBanner();
+    function updateBanner() {
+        var old = document.getElementById('proxyDownBanner');
+        if (!window.PROXY_DOWN) { hideNote(old); return; }
+        if (old || !document.body) return;
+        try {
+            if (Date.now() - (parseInt(localStorage.getItem(NOTE_KEY), 10) || 0) < NOTE_EVERY_MS) return;
+        } catch (e) { }
+        setTimeout(function () {
+            if (!window.PROXY_DOWN || document.getElementById('proxyDownBanner')) return;
+            try { localStorage.setItem(NOTE_KEY, String(Date.now())); } catch (e) { }
+            var note = document.createElement('div');
+            note.id = 'proxyDownBanner';
+            note.setAttribute('role', 'status');
+            note.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translate(-50%,12px);opacity:0;z-index:99999;' +
+                'box-sizing:border-box;width:calc(100% - 32px);max-width:440px;padding:12px 40px 12px 14px;' +
+                'background:var(--surface,#fff);color:var(--text-main,#111827);border:1px solid var(--border,#E5E7EB);' +
+                'border-left:4px solid var(--primary,#2563EB);border-radius:var(--radius,12px);' +
+                'box-shadow:0 8px 24px rgba(0,0,0,.14);font-size:14px;line-height:1.45;' +
+                'transition:opacity .25s ease,transform .25s ease;';
+            note.innerHTML = '<b style="display:block;margin-bottom:2px;">Часть функций скоро вернётся</b>' +
+                '<span style="color:var(--text-sec,#6B7280);">ИИ-распознавание, заявки и подложки планов временно на паузе: ' +
+                'восстанавливаем сервер. Сам расчёт работает как обычно.</span>';
+            var close = document.createElement('button');
+            close.type = 'button';
+            close.setAttribute('aria-label', 'Закрыть');
+            close.textContent = '×';
+            close.style.cssText = 'position:absolute;right:8px;top:6px;border:0;background:none;color:var(--text-sec,#6B7280);' +
+                'font-size:22px;line-height:1;cursor:pointer;padding:2px 6px;';
+            close.onclick = function () { hideNote(note); };
+            note.appendChild(close);
+            document.body.appendChild(note);
+            requestAnimationFrame(function () {
+                note.style.opacity = '1';
+                note.style.transform = 'translate(-50%, 0)';
+            });
+            noteTimer = setTimeout(function () { hideNote(note); }, NOTE_SHOW_MS);
+        }, 2500);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', updateBanner);
+    else updateBanner();
 })();
 
-const supabaseUrl ='https://ahanbwugsmcyvrwbmtlx.supabase.co';
+const supabaseUrl = 'https://ahanbwugsmcyvrwbmtlx.supabase.co';
 const supabaseKey = 'sb_publishable_gcMJ-PvJmKavObbnePFGZQ_O-pu5O2p';
 
 // У части пользователей в РФ провайдер блокирует/дросселирует Cloudflare (за которым стоит
@@ -2022,7 +2076,8 @@ const app = {
     // чтения (нет связи, таблица ещё не создана) означает «как было»: открытая
     // регистрация, а не запертая дверь для всех.
     // warranty.threshold — порог доли STOUT для бланка гарантии (см. stoutShare)
-    appSettings: { registration: { mode: 'open' }, warranty: { threshold: 90 } },
+    // proxy.down — прокси на Beget отключён (см. начало файла, переключатель во вкладке «Сервер»)
+    appSettings: { registration: { mode: 'open' }, warranty: { threshold: 90 }, proxy: { down: PROXY_DEFAULT_DOWN } },
     _appSettingsPromise: null,
     loadAppSettings: function (force) {
         if (this._appSettingsPromise && !force) return this._appSettingsPromise;
@@ -2036,6 +2091,12 @@ const app = {
                 const merged = Object.assign({}, this.appSettings);
                 (data || []).forEach(row => { if (row && row.key) merged[row.key] = row.value || {}; });
                 this.appSettings = merged;
+                // Настройки прочитаны — значит, и про прокси известно точно. При ошибке чтения
+                // (catch ниже) переключатель не трогаем: остаётся последнее известное значение
+                const px = merged.proxy;
+                if (typeof window.__setProxyDown === 'function') {
+                    window.__setProxyDown(px && typeof px.down === 'boolean' ? px.down : PROXY_DEFAULT_DOWN);
+                }
             } catch (e) {
                 console.warn('[настройки сайта] не прочитаны, работаем по умолчанию:', e.message || e);
             }
@@ -27013,7 +27074,8 @@ const app = {
         { id: 'channel', icon: '📣', label: 'Канал', hint: 'Посты Telegram-канала @heatcalc_ru: план, тексты, утверждение' },
         { id: 'leads', icon: '📨', label: 'Заявки', hint: 'Заявки на монтаж: откуда пришли и что просят' },
         { id: 'warranty', icon: '🛡', label: 'Гарантия STOUT', hint: 'Объекты с долей STOUT: порог для бланка, порог по объекту, реестр' },
-        { id: 'mailbudget', icon: '✉️', label: 'Почта', hint: 'Лимит писем, на что ушёл, отключение рассылок' }
+        { id: 'mailbudget', icon: '✉️', label: 'Почта', hint: 'Лимит писем, на что ушёл, отключение рассылок' },
+        { id: 'server', icon: '🖥', label: 'Сервер', hint: 'Прокси на Beget: включить и выключить, проверить, отвечает ли' }
     ],
 
     // Значки разделов — одноцветные линейные, берут цвет текста (currentColor).
@@ -27048,7 +27110,8 @@ const app = {
         articles: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
         leads: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
         warranty: '<path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5z"/><path d="M9 12l2 2 4-4"/>',
-        mailbudget: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/>'
+        mailbudget: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-10 6L2 7"/>',
+        server: '<rect x="2" y="3" width="20" height="7" rx="2"/><rect x="2" y="14" width="20" height="7" rx="2"/><path d="M6 6.5h.01M6 17.5h.01"/>'
     },
 
     // Разделы панели в группах. Двадцать вкладок в два ряда без порядка — это «конструктор»,
@@ -27057,7 +27120,7 @@ const app = {
     // остаются подразделами — идентификаторы и отрисовщики вкладок те же, поэтому права
     // («Тарифы» → разделы роли), порядок перетаскиванием и старые ссылки работают как раньше.
     ADMIN_GROUPS: [
-        { id: 'overview', label: 'Обзор', icon: 'dashboard', tabs: ['home', 'dashboard', 'analytics'] },
+        { id: 'overview', label: 'Обзор', icon: 'dashboard', tabs: ['home', 'dashboard', 'analytics', 'server'] },
         { id: 'people', label: 'Клиенты', icon: 'stats', tabs: ['stats', 'distributors', 'regiongaps', 'branches', 'inactive'] },
         { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['estimates', 'kanban', 'leads', 'projects', 'warranty'] },
         { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages', 'notifications'] },
@@ -27281,7 +27344,7 @@ const app = {
     // пользователей сразу, решать это наблюдателю или менеджеру нельзя.
     // «Тарифы» — что открыто каждой учётной записи на всей платформе.
     // «Почта» — лимит писем EmailJS на всю платформу и выключатели рассылок.
-    ADMIN_ONLY_TABS: ['distributors', 'regiongaps', 'successors', 'tariffs', 'mailbudget'],
+    ADMIN_ONLY_TABS: ['distributors', 'regiongaps', 'successors', 'tariffs', 'mailbudget', 'server'],
 
     // Вкладка «Аналитика» — только для владельца: там конкурентная разведка,
     // которой незачем светиться даже перед наблюдателями с доступом в админку.
@@ -29650,6 +29713,12 @@ const app = {
         if (this._adminTab === 'mailbudget') {
             content.innerHTML = navHtml;
             this.renderAdminMail();
+            return;
+        }
+
+        if (this._adminTab === 'server') {
+            content.innerHTML = navHtml;
+            this.renderAdminServer();
             return;
         }
 
@@ -49695,6 +49764,138 @@ const app = {
         if (error) { notify('Не удалилось: ' + error.message, '#EF4444'); return; }
         this._regionGapData.dealers = this._regionGapData.dealers.filter(d => !g.ids.includes(d.id));
         this.drawRegionGaps();
+    },
+
+    // ── Вкладка «Сервер»: прокси на Beget (proxy.heatcalc.ru) ──
+    // Тумблер пишет app_settings.proxy = {down: bool}; все читают его при загрузке страницы
+    // (loadAppSettings → window.__setProxyDown). Кнопка проверки стучится в живые файлы прокси
+    // в обход заглушки (window.__origFetch), поэтому работает и при выключенном прокси.
+    SERVER_CHECKS: [
+        { name: 'Прайс-индекс', url: 'price_index.php', json: true },
+        { name: 'Архив и доступы', url: 'recognize_archive.php?access=1', json: true },
+        { name: 'ИИ-прокси', url: 'gemini_proxy.php' },
+        { name: 'Вход и база', url: 'supabase_proxy.php?path=' + encodeURIComponent('/rest/v1/') },
+        { name: 'Геолокация', url: 'geo.php' }
+    ],
+    _serverCheck: null,
+
+    proxyDownSetting: function () {
+        const px = (this.appSettings || {}).proxy;
+        return px && typeof px.down === 'boolean' ? px.down : PROXY_DEFAULT_DOWN;
+    },
+
+    renderAdminServer: function () {
+        const content = document.getElementById('admin_content');
+        if (!content) return;
+        content.innerHTML += '<div id="admin_server_root" style="padding:4px 0 20px;"></div>';
+        this.renderAdminServerBody();
+        // Свежее значение из базы: другой администратор мог переключить, пока вкладка была закрыта
+        this.loadAppSettings(true).then(() => this.renderAdminServerBody()).catch(() => { });
+    },
+
+    renderAdminServerBody: function () {
+        const root = document.getElementById('admin_server_root');
+        if (!root) return;
+        const esc = x => String(x ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const ro = this.isReadOnlyAdmin();
+        const dis = ro ? 'disabled' : '';
+        const down = this.proxyDownSetting();
+        const btn = 'padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text-main);';
+        const btnMain = 'padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--primary); background:var(--primary); color:#fff;';
+        const pill = down
+            ? '<span class="ad-pill bad">отключён: функции на паузе</span>'
+            : '<span class="ad-pill ok">включён: всё работает через Beget</span>';
+        const forced = (!down && window.PROXY_DOWN) || (down && !window.PROXY_DOWN)
+            ? '<div style="margin-top:8px; font-size:12px; color:var(--text-sec);">В этом браузере прокси включён вручную (адрес с ?proxy=1), настройка сайта на него не влияет. Снять: ?proxy=0.</div>' : '';
+
+        const chk = this._serverCheck;
+        let result = '<div style="color:var(--text-sec); font-size:13px;">Проверка ещё не запускалась.</div>';
+        if (chk) {
+            const okAll = chk.rows.every(r => r.ok);
+            result = `<div style="margin-bottom:8px; font-size:13px; font-weight:600; color:${okAll ? 'var(--c-ok)' : 'var(--c-bad)'};">${okAll ? 'Все файлы прокси отвечают, можно включать.' : 'Часть файлов прокси не отвечает: включать рано.'}</div>
+                <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                    ${chk.rows.map(r => `<tr style="border-top:1px solid var(--border);">
+                        <td style="padding:8px 4px;">${esc(r.name)}</td>
+                        <td style="padding:8px 4px;"><span class="ad-pill ${r.ok ? 'ok' : 'bad'}">${r.ok ? 'отвечает' : 'не отвечает'}</span></td>
+                        <td style="padding:8px 4px; color:var(--text-sec);">${esc(r.note)}${r.ms != null ? ' · ' + r.ms + ' мс' : ''}</td></tr>`).join('')}
+                </table>
+                <div style="margin-top:6px; font-size:12px; color:var(--text-sec);">Проверено в ${new Date(chk.t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</div>`;
+        }
+
+        root.innerHTML = `
+            <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:16px 18px; margin-bottom:14px;">
+                <div style="font-weight:700; font-size:15px; margin-bottom:6px;">Прокси на Beget ${pill}</div>
+                <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:12px;">
+                    Через proxy.heatcalc.ru идут ИИ-распознавание, заявки на монтаж, подложки планов, прайсы дистрибьюторов,
+                    уведомления в Telegram и вход у тех, у кого закрыт Supabase. Пока прокси отключён, эти запросы сразу получают
+                    отказ, а у пользователей показывается короткая плашка. Переключатель действует для всех при следующей загрузке страницы.
+                </div>
+                ${down
+                ? `<button type="button" style="${btnMain}" ${dis} onclick="app.setProxyDown(false)">Включить прокси</button>`
+                : `<button type="button" style="${btn}" ${dis} onclick="app.setProxyDown(true)">Отключить прокси</button>`}
+                ${forced}
+            </div>
+            <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:16px 18px; margin-bottom:14px;">
+                <div style="font-weight:700; font-size:15px; margin-bottom:10px;">Отвечает ли Beget</div>
+                <div style="margin-bottom:12px;"><button type="button" id="srv_check_btn" style="${btn}" onclick="app.runServerCheck()">Проверить серверы</button></div>
+                ${result}
+            </div>
+            <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:16px 18px;">
+                <div style="font-weight:700; font-size:15px; margin-bottom:8px;">Когда Beget восстановится</div>
+                <ol style="margin:0; padding-left:20px; font-size:13px; line-height:1.7; color:var(--text-main);">
+                    <li>Перевыпустить ключи: Gemini API key, RELAY_TOKEN (и в Supabase), EmailJS Private Key, токен Telegram-бота (@BotFather → /revoke), lead_ingest_secret, report_key.txt.</li>
+                    <li>Сменить пароль панели Beget и SSH-ключ, убрать чужие ключи из authorized_keys.</li>
+                    <li>Нажать «Проверить серверы»: все пять строк должны отвечать.</li>
+                    <li>Нажать «Включить прокси».</li>
+                </ol>
+            </div>`;
+    },
+
+    setProxyDown: async function (down) {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять настройки сайта запрещено.'); return; }
+        down = !!down;
+        if (!down && this._serverCheck && this._serverCheck.rows.some(r => !r.ok)
+            && !confirm('Проверка показала, что часть файлов прокси не отвечает. Всё равно включить прокси для всех?')) return;
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const value = { down: down };
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'proxy', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            this.appSettings = Object.assign({}, this.appSettings, { proxy: value });
+            if (typeof window.__setProxyDown === 'function') window.__setProxyDown(down);
+            app.alert(down
+                ? 'Прокси отключён: функции через Beget на паузе, у пользователей появится короткая плашка.'
+                : 'Прокси включён: у пользователей всё вернётся при следующей загрузке страницы.');
+        } catch (e) {
+            console.error('[прокси] запись не прошла:', e);
+            app.alert('Не удалось сохранить: ' + (e.message || e));
+        }
+        if (this._adminTab === 'server') this.renderAdminMain();
+    },
+
+    runServerCheck: async function () {
+        const b = document.getElementById('srv_check_btn');
+        if (b) { b.disabled = true; b.textContent = 'Проверяю…'; }
+        const f = window.__origFetch || fetch.bind(window);
+        const rows = await Promise.all(this.SERVER_CHECKS.map(async c => {
+            const t0 = performance.now();
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), 8000);
+            try {
+                const r = await f('https://proxy.heatcalc.ru/' + c.url, { signal: ctrl.signal, cache: 'no-store' });
+                const ms = Math.round(performance.now() - t0);
+                let ok = r.status < 500, note = 'HTTP ' + r.status;
+                if (ok && c.json && r.ok) {
+                    try { await r.clone().json(); } catch (e) { ok = false; note = 'ответ не JSON'; }
+                }
+                return { name: c.name, ok: ok, ms: ms, note: note };
+            } catch (e) {
+                return { name: c.name, ok: false, ms: null, note: e && e.name === 'AbortError' ? 'нет ответа за 8 с' : 'не отвечает' };
+            } finally { clearTimeout(timer); }
+        }));
+        this._serverCheck = { t: Date.now(), rows: rows };
+        this.renderAdminServerBody();
     },
 
     loadMailBudget: async function () {
