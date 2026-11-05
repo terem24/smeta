@@ -129,6 +129,10 @@ self.addEventListener('fetch', (e) => {
     }
   }
 
+  // Статус прокси Beget (его пишет автопроверка): всегда свежий, мимо кэша — иначе
+  // автоотключение функций опаздывало бы на загрузку страницы
+  if (e.request.url.indexOf('/proxy_status.json') !== -1) return;
+
   // Пропускаем не-GET запросы и сторонние API (например, Supabase)
   if (e.request.method !== 'GET' || !e.request.url.startsWith(self.location.origin)) {
     return;

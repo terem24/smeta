@@ -13,6 +13,11 @@ name: Proxy Watch
 # в шаг из админки (app_settings.proxy_watch.interval: 15/30/60/180/360 минут, по умолчанию 60).
 # Ручной запуск (workflow_dispatch) проверяет всегда.
 #
+# Статус для сайта: после каждой проверки пишется proxy_status.json в корень репозитория (его раздаёт GitHub Pages,
+# не Beget). Сайт читает его при загрузке и отключает функции, чьи файлы не отвечают, у всех сразу (переключатель
+# «Отключать автоматически» во вкладке «Сервер»). Файл обновляется при смене результата и раз в сутки, чтобы не
+# плодить коммиты. Если у workflow нет права записи в репозиторий, шаг сообщит об этом и проверка пойдёт дальше.
+#
 # Включается и выключается тумблером в админке: app_settings.proxy_watch = {"enabled": bool,
 # "digest": bool}. Читается публичным ключом, как и остальные настройки сайта. Пока строки в базе
 # нет, проверка и дневная сводка включены. Совсем остановить можно в Actions → Proxy Watch → Disable.
@@ -22,7 +27,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # только proxy_status.json (см. шаг «Опубликовать статус для сайта»)
   issues: write
 
 concurrency:
@@ -65,22 +70,25 @@ jobs:
         id: check
         run: |
           check_once() {
-            local ok=1 report=""
+            local ok=1 report="" fj="" fok key
             for p in "price_index.php|json|Прайс-индекс" "recognize_archive.php?access=1|json|Архив и доступы" \
                      "gemini_proxy.php||ИИ-прокси" "supabase_proxy.php?path=%2Frest%2Fv1%2F||Вход и база" "geo.php||Геолокация"; do
               IFS='|' read -r path kind name <<< "$p"
               code=$(curl -s -m 15 -o /tmp/body -w '%{http_code}' "https://proxy.heatcalc.ru/$path" || true)
               code=${code:-000}
+              fok=true; key=${path%%\?*}
               if [ "$code" = "000" ] || [ "$code" -ge 500 ]; then
-                ok=0; report+="- ❌ $name: не отвечает (HTTP $code)"$'\n'
+                ok=0; fok=false; report+="- ❌ $name: не отвечает (HTTP $code)"$'\n'
               elif [ "$kind" = "json" ] && [ "$code" = "200" ] && ! jq -e . /tmp/body >/dev/null 2>&1; then
-                ok=0; report+="- ❌ $name: ответ не JSON"$'\n'
+                ok=0; fok=false; report+="- ❌ $name: ответ не JSON"$'\n'
               else
                 report+="- ✅ $name: HTTP $code"$'\n'
               fi
+              fj+="\"$key\":$fok,"
             done
             echo "$ok"
             printf '%s' "$report" > /tmp/report
+            printf '{%s}' "${fj%,}" > /tmp/filesj
           }
           # Две проверки с паузой: одиночный сбой сети не считается переменой состояния
           a=$(check_once); cp /tmp/report /tmp/report1
@@ -90,8 +98,36 @@ jobs:
           elif [ "$a" = "0" ] && [ "$b" = "0" ]; then state=down
           else state=unclear; fi
           echo "state=$state" >> "$GITHUB_OUTPUT"
+          echo "files=$(cat /tmp/filesj)" >> "$GITHUB_OUTPUT"
           { echo 'report<<EOF'; cat /tmp/report; echo; echo EOF; } >> "$GITHUB_OUTPUT"
           echo "Состояние: $state (проверки: $a, $b)"; cat /tmp/report
+
+      - name: Опубликовать статус для сайта
+        if: steps.cfg.outputs.run == 'true' && steps.check.outputs.state != 'unclear'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          STATE: ${{ steps.check.outputs.state }}
+          FILES: ${{ steps.check.outputs.files }}
+          INTERVAL: ${{ steps.cfg.outputs.interval }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+        run: |
+          [ -z "$FILES" ] && { echo "нет данных по файлам"; exit 0; }
+          smtp=false; if [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASS" ]; then smtp=true; fi
+          now=$(( $(date -u +%s) * 1000 ))
+          new=$(jq -cn --argjson t "$now" --arg state "$STATE" --argjson interval "$INTERVAL" --argjson smtp "$smtp" --argjson files "$FILES"             '{t:$t,state:$state,interval:$interval,smtp:$smtp,files:$files}')
+          cur=$(gh api "repos/$GH_REPO/contents/proxy_status.json?ref=main" 2>/dev/null || true)
+          sha=$(echo "$cur" | jq -r '.sha // empty' 2>/dev/null || true)
+          old=$(echo "$cur" | jq -r '.content // empty' 2>/dev/null | base64 -d 2>/dev/null || true)
+          [ -z "$old" ] && old=null
+          same=$(jq -n --argjson a "$old" --argjson b "$new" '($a != null) and (($a|del(.t)) == ($b|del(.t)))' 2>/dev/null || echo false)
+          oldt=$(echo "$old" | jq -r '.t // 0' 2>/dev/null || echo 0)
+          # Пишем при смене результата и раз в сутки: иначе сайт счёл бы файл устаревшим (он верит 36 часов)
+          if [ "$same" = "true" ] && [ $(( now - oldt )) -lt 72000000 ]; then echo "статус без перемен"; exit 0; fi
+          args=(-X PUT "repos/$GH_REPO/contents/proxy_status.json" -f message="Статус прокси Beget: $STATE" -f branch=main -f content="$(printf '%s\n' "$new" | base64 -w0)")
+          if [ -n "$sha" ]; then args+=(-f sha="$sha"); fi
+          if gh api "${args[@]}" >/dev/null; then echo "статус записан: $new"; else echo "не удалось записать статус: нужны права записи у workflow (Settings → Actions → Workflow permissions)"; fi
 
       - name: Записать и сообщить
         if: steps.cfg.outputs.run == 'true' && steps.check.outputs.state != 'unclear'

@@ -58,35 +58,112 @@ const PROXY_DEFAULT_DOWN = true;
         updateBanner();
     };
 
-    // Отдельные функции, выключенные вручную во вкладке «Сервер» (app_settings.beget_features.off).
-    // Кэш в localStorage читают и другие страницы сайта (plan_editor.html — отдельный документ,
-    // заглушка fetch до него не доходит), поэтому ключ и формат менять нельзя без правки там.
-    // Функция «потеряна», если выключена вручную или прокси отключён целиком (кроме ?proxy=1).
-    var FEAT_KEY = 'hc_feat_off';
-    var featOff = {};
+    // ── Функции, которым нужен Beget: когда они считаются потерянными ──
+    // Функция потеряна (window.__featLost(id) возвращает причину, пустая строка — работает), если:
+    //   'proxy'  — прокси отключён целиком (главный выключатель во вкладке «Сервер»);
+    //   'manual' — выключена переключателем в админке (app_settings.beget_features.off);
+    //   'auto:…' — включено автоотключение (app_settings.beget_features.auto, по умолчанию да) и
+    //              нужный файл прокси не отвечает. Об этом знают два источника:
+    //                • сбой реального запроса у этого пользователя (hc_beget_fail, живёт 10 минут:
+    //                  дальше пробуем снова, это и есть проверка «ожил ли сервер»);
+    //                • proxy_status.json — файл, который раз в выбранный интервал пишет автопроверка
+    //                  на GitHub (hc_proxy_status). Он общий для всех, поэтому первый же пользователь
+    //                  после падения Beget не ждёт таймаута. Старше 36 часов — не верим (fail-open).
+    // Кэш лежит в localStorage: его читает plan_editor.html (отдельный документ, заглушка fetch до
+    // него не доходит) — ключи и формат без правки там менять нельзя.
+    var FEAT_KEY = 'hc_feat_off', FAIL_KEY = 'hc_beget_fail', STATUS_KEY = 'hc_proxy_status';
+    var FAIL_TTL = 10 * 60 * 1000, STATUS_TTL = 36 * 3600 * 1000;
+    var FEAT_FILES = {
+        ai_plan: ['gemini_proxy.php'],
+        ai_chat: ['gemini_proxy.php'],
+        ai_recognize: ['gemini_proxy.php', 'recognize_archive.php']
+    };
+    var featOff = {}, featAuto = true;
     try {
         var fc = JSON.parse(localStorage.getItem(FEAT_KEY) || 'null');
-        if (fc && fc.off && typeof fc.off === 'object' && Date.now() - (fc.t || 0) < 7 * 24 * 3600 * 1000) featOff = fc.off;
+        if (fc && fc.off && typeof fc.off === 'object' && Date.now() - (fc.t || 0) < 7 * 24 * 3600 * 1000) {
+            featOff = fc.off; featAuto = fc.auto !== false;
+        }
     } catch (e) { }
-    window.__setFeatOff = function (off) {
+    window.__setFeatOff = function (off, auto) {
         featOff = (off && typeof off === 'object') ? off : {};
-        try { localStorage.setItem(FEAT_KEY, JSON.stringify({ off: featOff, t: Date.now() })); } catch (e) { }
+        featAuto = auto !== false;
+        try { localStorage.setItem(FEAT_KEY, JSON.stringify({ off: featOff, auto: featAuto, t: Date.now() })); } catch (e) { }
     };
-    window.__featOff = function (id) { return !!window.PROXY_DOWN || featOff[id] === true; };
+    window.__featAuto = function () { return featAuto; };
+
+    function readJson(key) { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; } }
+    function markFail(file, bad) {
+        try {
+            var m = readJson(FAIL_KEY) || {};
+            if (bad) m[file] = Date.now(); else if (m[file]) delete m[file]; else return;
+            localStorage.setItem(FAIL_KEY, JSON.stringify(m));
+        } catch (e) { }
+    }
+    window.__markBegetFail = markFail;
+    // Почему файл считается недоступным: '' — доступен, иначе 'сбой' или 'автопроверка'
+    function fileDown(file) {
+        var now = Date.now(), m = readJson(FAIL_KEY), st = readJson(STATUS_KEY);
+        if (m && m[file] && now - m[file] < FAIL_TTL) return 'сбой';
+        if (st && st.s && st.s.files && st.s.files[file] === false && now - (st.s.t || 0) < STATUS_TTL) return 'автопроверка';
+        return '';
+    }
+    window.__featLost = function (id) {
+        if (window.PROXY_DOWN) return 'proxy';
+        if (featOff[id] === true) return 'manual';
+        if (featAuto) {
+            var fl = FEAT_FILES[id] || [];
+            for (var i = 0; i < fl.length; i++) { var w = fileDown(fl[i]); if (w) return 'auto:' + w + ':' + fl[i]; }
+        }
+        return '';
+    };
+    window.__featOff = function (id) { return !!window.__featLost(id); };
     window.__featOffManual = function (id) { return featOff[id] === true; };
 
+    // Статус от автопроверки GitHub. Берётся с самого сайта, а не с Beget, и мимо кэша Service Worker
+    window.__proxyStatus = function () { var st = readJson(STATUS_KEY); return st && st.s ? { got: st.got, s: st.s } : null; };
+    function loadStatus() {
+        try {
+            origFetch('proxy_status.json?_=' + Math.floor(Date.now() / 300000), { cache: 'no-store' })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (j) {
+                    if (j && j.files && typeof j.files === 'object') {
+                        try { localStorage.setItem(STATUS_KEY, JSON.stringify({ got: Date.now(), s: j })); } catch (e) { }
+                    }
+                })['catch'](function () { });
+        } catch (e) { }
+    }
+    window.__loadProxyStatus = loadStatus;
+    loadStatus();
+    setInterval(loadStatus, 10 * 60 * 1000);
+
+    function proxyFile(input) {
+        var url = typeof input === 'string' ? input : ((input && input.url) || '');
+        if (url.indexOf('https://proxy.heatcalc.ru/') !== 0) return '';
+        return url.slice('https://proxy.heatcalc.ru/'.length).split('?')[0];
+    }
+
     window.fetch = function (input, init) {
-        if (window.PROXY_DOWN) {
-            var url = typeof input === 'string' ? input : ((input && input.url) || '');
-            if (url.indexOf('https://proxy.heatcalc.ru/') === 0) {
-                return Promise.resolve(new Response(
-                    JSON.stringify({ ok: false, error: 'proxy_down', message: 'Сервис временно недоступен: идёт восстановление хостинга' }),
-                    { status: 503, headers: { 'Content-Type': 'application/json' } }
-                ));
-            }
+        var file = proxyFile(input);
+        if (file && window.PROXY_DOWN) {
+            return Promise.resolve(new Response(
+                JSON.stringify({ ok: false, error: 'proxy_down', message: 'Сервис временно недоступен: идёт восстановление хостинга' }),
+                { status: 503, headers: { 'Content-Type': 'application/json' } }
+            ));
         }
-        return origFetch(input, init);
+        var p = origFetch(input, init);
+        if (file && FEAT_WATCH[file]) {
+            var t0 = Date.now();
+            p.then(function (r) { markFail(file, r.status >= 500); }, function (e) {
+                // Короткий AbortError — человек сам отменил запрос; сбой — таймаут (обычно от 70 с)
+                if (e && e.name === 'AbortError' && Date.now() - t0 < 20000) return;
+                markFail(file, true);
+            });
+        }
+        return p;
     };
+    var FEAT_WATCH = {};
+    Object.keys(FEAT_FILES).forEach(function (k) { FEAT_FILES[k].forEach(function (f) { FEAT_WATCH[f] = true; }); });
 
     // Плашка: короткая, в цветах калькулятора. Висит, пока её не закроют («Понятно»), в том числе
     // после перезагрузки страницы; закрыли — сутки не возвращается, чтобы не пугать и не мешать.
@@ -2115,7 +2192,7 @@ const app = {
     // регистрация, а не запертая дверь для всех.
     // warranty.threshold — порог доли STOUT для бланка гарантии (см. stoutShare)
     // proxy.down — прокси на Beget отключён (см. начало файла, переключатель во вкладке «Сервер»)
-    appSettings: { registration: { mode: 'open' }, warranty: { threshold: 90 }, proxy: { down: PROXY_DEFAULT_DOWN }, proxy_watch: { enabled: true, digest: true }, proxy_note: { enabled: true, text: '' }, beget_features: { off: {} } },
+    appSettings: { registration: { mode: 'open' }, warranty: { threshold: 90 }, proxy: { down: PROXY_DEFAULT_DOWN }, proxy_watch: { enabled: true, digest: true }, proxy_note: { enabled: true, text: '' }, beget_features: { off: {}, auto: true } },
     _appSettingsPromise: null,
     loadAppSettings: function (force) {
         if (this._appSettingsPromise && !force) return this._appSettingsPromise;
@@ -2133,7 +2210,7 @@ const app = {
                 // (catch ниже) переключатель не трогаем: остаётся последнее известное значение
                 const px = merged.proxy;
                 if (typeof window.__setProxyNote === 'function') window.__setProxyNote(merged.proxy_note);
-                if (typeof window.__setFeatOff === 'function') window.__setFeatOff((merged.beget_features || {}).off);
+                if (typeof window.__setFeatOff === 'function') window.__setFeatOff((merged.beget_features || {}).off, (merged.beget_features || {}).auto);
                 if (typeof window.__setProxyDown === 'function') {
                     window.__setProxyDown(px && typeof px.down === 'boolean' ? px.down : PROXY_DEFAULT_DOWN);
                 }
@@ -49830,32 +49907,33 @@ const app = {
         return px && typeof px.down === 'boolean' ? px.down : PROXY_DEFAULT_DOWN;
     },
 
-    // Функции, которым нужен Beget, и что с ними делает выключение. checks — имена строк
-    // SERVER_CHECKS: не ответил файл — функция считается потерянной.
-    // Новая функция: добавить строку сюда и проверку featureOff('<id>') в её входе — тогда
-    // она появится в таблице вкладки «Сервер» с переключателем.
+    // Функции, которым нужен Beget. Какие файлы прокси нужны каждой, знает заглушка в начале файла
+    // (FEAT_FILES) — там же логика автоотключения. Новая функция: строка здесь + строка в FEAT_FILES
+    // + проверка featureOff('<id>') в её входе — и она появится в таблице вкладки «Сервер».
     BEGET_FEATURES: [
-        { id: 'ai_plan', name: 'ИИ читает план этажа', off: 'Масштаб и комнаты — вручную, без ожидания ответа', checks: ['ИИ-прокси'] },
-        { id: 'ai_chat', name: 'ИИ-помощник (заполнение расчёта текстом)', off: 'В окне помощника показывается, что он недоступен', checks: ['ИИ-прокси'] },
-        { id: 'ai_recognize', name: 'Распознавание сметы, проекта и эскиза', off: 'Загрузка файла на распознавание не запускается', checks: ['ИИ-прокси', 'Архив и доступы'] }
+        { id: 'ai_plan', name: 'ИИ читает план этажа', desc: 'Сам находит масштаб и подписи комнат. Выключена — масштаб задаётся вручную, без ожидания.', checks: ['ИИ-прокси'] },
+        { id: 'ai_chat', name: 'ИИ-помощник', desc: 'Заполняет расчёт по описанию текстом. Выключен — в окне помощника написано, что он недоступен.', checks: ['ИИ-прокси'] },
+        { id: 'ai_recognize', name: 'Распознавание сметы, проекта и эскиза', desc: 'Разбирает загруженные файлы и фото. Выключено — загрузка на распознавание не запускается.', checks: ['ИИ-прокси', 'Архив и доступы'] }
     ],
 
-    // Функция потеряна: выключена вручную или прокси отключён целиком
-    featureOff: function (id) {
-        return typeof window.__featOff === 'function' ? window.__featOff(id) : !!window.PROXY_DOWN;
+    // Функция не работает: причина ('proxy' | 'manual' | 'auto:<источник>:<файл>') или '' (работает)
+    featureLost: function (id) {
+        return typeof window.__featLost === 'function' ? window.__featLost(id) : (window.PROXY_DOWN ? 'proxy' : '');
     },
+    featureOff: function (id) { return !!this.featureLost(id); },
 
-    // Записать набор выключенных функций (общий для всех при следующей загрузке страницы)
-    _saveFeatureOff: async function (off) {
+    // Записать настройки функций: off — выключенные вручную, auto — автоотключение при недоступности.
+    // Общие для всех, доходят при следующей загрузке страницы.
+    _saveFeatureOff: async function (off, auto) {
         if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять настройки сайта запрещено.'); return false; }
         try {
             const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
-            const value = { off: off };
+            const value = { off: off, auto: auto !== false };
             const { error } = await supabaseClient.from('app_settings')
                 .upsert({ key: 'beget_features', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
             if (error) throw error;
             this.appSettings = Object.assign({}, this.appSettings, { beget_features: value });
-            if (typeof window.__setFeatOff === 'function') window.__setFeatOff(off);
+            if (typeof window.__setFeatOff === 'function') window.__setFeatOff(off, value.auto);
             return true;
         } catch (e) {
             console.error('[функции Beget] запись не прошла:', e);
@@ -49863,43 +49941,44 @@ const app = {
             return false;
         }
     },
-
-    setFeatureOff: async function (id, off) {
-        const cur = Object.assign({}, ((this.appSettings || {}).beget_features || {}).off || {});
-        if (off) cur[id] = true; else delete cur[id];
-        await this._saveFeatureOff(cur);
-        this.renderAdminServerBody();
+    _featCfg: function () {
+        const bf = (this.appSettings || {}).beget_features || {};
+        return { off: Object.assign({}, bf.off || {}), auto: bf.auto !== false };
     },
-
-    // По итогам «Проверить серверы»: выключить всё, чего не хватает; none — вернуть всё
-    disableLostFeatures: async function (none) {
-        let off = {};
-        if (!none) {
-            const bad = new Set(((this._serverCheck || {}).rows || []).filter(r => !r.ok).map(r => r.name));
-            off = Object.assign({}, ((this.appSettings || {}).beget_features || {}).off || {});
-            this.BEGET_FEATURES.forEach(f => { if (f.checks.some(n => bad.has(n))) off[f.id] = true; });
-        }
-        await this._saveFeatureOff(off);
-        this.renderAdminServerBody();
+    // Переключатель функции: enabled — функция включена
+    setFeatureEnabled: async function (id, enabled) {
+        const c = this._featCfg();
+        if (enabled) delete c.off[id]; else c.off[id] = true;
+        await this._saveFeatureOff(c.off, c.auto);
+        this.renderAdminServerLive();
+    },
+    setFeatureAuto: async function (on) {
+        const c = this._featCfg();
+        await this._saveFeatureOff(c.off, !!on);
+        this.renderAdminServerLive();
     },
 
     // ── Вкладка «Сервер»: порядок сверху вниз ──
-    // 1. Живой статус Beget (проверка при открытии и раз в минуту, пока вкладка открыта)
-    // 2. Какие функции у пользователей из-за этого не работают, переключатель на каждую
+    // 1. Статус Beget: проверка при открытии и раз в минуту, плитки по сервисам, последний статус автопроверки
+    // 2. Функции для пользователей: что работает, что отключено и почему, переключатель на каждую,
+    //    общий переключатель автоотключения
     // 3. Главный выключатель прокси
-    // 4. Раскрывающиеся настройки: автопроверка и письма, плашка, что делать при восстановлении
-    // Живая часть (#srv_live) перерисовывается результатами проверки отдельно от настроек (#srv_set),
-    // чтобы автообновление не стирало текст, который администратор набирает в поле плашки.
+    // 4. Уведомления: автопроверка GitHub, частота, куда приходят письма
+    // 5. Свёрнуто: плашка для пользователей, что сделать при восстановлении
+    // Живая часть (#srv_live) перерисовывается результатами проверки отдельно от настроек, чтобы
+    // автообновление не стирало текст, который администратор набирает в поле плашки.
     _srvOpen: {},
     _srvChecking: false,
     _srvTimer: null,
 
+    _srvAgo: function (t) {
+        if (!t) return 'ещё не проверяли';
+        const s = Math.max(0, Math.round((Date.now() - t) / 1000));
+        return s < 5 ? 'только что' : s < 60 ? s + ' с назад' : s < 3600 ? Math.round(s / 60) + ' мин назад' : s < 86400 ? Math.round(s / 3600) + ' ч назад' : Math.round(s / 86400) + ' дн назад';
+    },
     _srvAgoText: function () {
-        const c = this._serverCheck;
         if (this._srvChecking) return 'проверяю…';
-        if (!c) return 'ещё не проверяли';
-        const s = Math.max(0, Math.round((Date.now() - c.t) / 1000));
-        return s < 5 ? 'только что' : s < 60 ? s + ' с назад' : Math.round(s / 60) + ' мин назад';
+        return this._srvAgo((this._serverCheck || {}).t);
     },
 
     renderAdminServer: function () {
@@ -49909,6 +49988,7 @@ const app = {
         this.renderAdminServerBody();
         // Свежее значение из базы: другой администратор мог переключить, пока вкладка была закрыта
         this.loadAppSettings(true).then(() => this.renderAdminServerBody()).catch(() => { });
+        if (typeof window.__loadProxyStatus === 'function') window.__loadProxyStatus();
         // Проверка сразу при открытии, дальше раз в минуту, пока вкладка на экране
         if (!this._serverCheck || Date.now() - this._serverCheck.t > 30000) this.runServerCheck();
         if (this._srvTimer) clearInterval(this._srvTimer);
@@ -49923,110 +50003,142 @@ const app = {
         }, 1000);
     },
 
+    _srvStyle: `<style>
+        .srv-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius,12px);padding:16px 18px;margin-bottom:12px}
+        .srv-h{font-weight:700;font-size:15px;margin:0 0 3px}
+        .srv-sub{font-size:13px;color:var(--text-sec);line-height:1.5;margin:0 0 6px}
+        .srv-rows>.srv-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 16px;align-items:center;padding:12px 0;border-top:1px solid var(--border)}
+        .srv-rows>.srv-row:first-child{border-top:0}
+        .srv-name{font-size:14px;font-weight:600}
+        .srv-desc{font-size:12.5px;color:var(--text-sec);line-height:1.45;margin-top:2px}
+        .srv-chip{font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;white-space:nowrap}
+        .srv-chip.ok{color:var(--c-ok);background:rgba(16,185,129,.13)}
+        .srv-chip.bad{color:var(--c-bad);background:rgba(239,68,68,.13)}
+        .srv-chip.warn{color:#D97706;background:rgba(217,119,6,.15)}
+        .srv-chip.idle{color:var(--text-sec);background:rgba(128,128,128,.15)}
+        .srv-sw{position:relative;display:inline-block;width:44px;height:25px;flex:none}
+        .srv-sw input{opacity:0;width:0;height:0;position:absolute}
+        .srv-sw i{position:absolute;inset:0;background:var(--border);border-radius:25px;transition:background .2s;cursor:pointer}
+        .srv-sw i:before{content:'';position:absolute;left:3px;top:3px;width:19px;height:19px;background:#fff;border-radius:50%;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.35)}
+        .srv-sw input:checked+i{background:var(--c-ok,#10B981)}
+        .srv-sw input:checked+i:before{transform:translateX(19px)}
+        .srv-sw input:disabled+i{opacity:.45;cursor:not-allowed}
+        .srv-sel{padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text-main);font:inherit;font-size:13px}
+        .srv-sec{font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-sec);margin:14px 0 0;padding-top:12px;border-top:1px solid var(--border)}
+        .srv-det>summary{cursor:pointer;font-weight:700;font-size:14px;list-style:none}
+        .srv-det>summary::-webkit-details-marker{display:none}
+        .srv-det>summary:before{content:'▸';display:inline-block;width:16px;color:var(--text-sec);transition:transform .15s}
+        .srv-det[open]>summary:before{transform:rotate(90deg)}
+        @media(max-width:680px){.srv-rows>.srv-row{grid-template-columns:minmax(0,1fr) auto}.srv-rows>.srv-row .srv-chip{grid-column:1/2;grid-row:2;justify-self:start}}
+    </style>`,
+
+    _srvSw: function (on, handler, disabled) {
+        return `<label class="srv-sw"><input type="checkbox" ${on ? 'checked' : ''} ${disabled ? 'disabled' : ''} onchange="${handler}"><i></i></label>`;
+    },
+
+    // Настройки и уведомления: рисуются при открытии и после смены настройки
     renderAdminServerBody: function () {
         const root = document.getElementById('admin_server_root');
         if (!root) return;
         const esc = x => String(x ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-        const dis = this.isReadOnlyAdmin() ? 'disabled' : '';
+        const ro = this.isReadOnlyAdmin();
         const pw = (this.appSettings || {}).proxy_watch || {};
         const watchOn = pw.enabled !== false, digestOn = pw.digest !== false;
         const watchIv = [15, 30, 60, 180, 360].includes(Number(pw.interval)) ? Number(pw.interval) : 60;
-        const ivLabel = { 15: 'каждые 15 минут', 30: 'каждые 30 минут', 60: 'раз в час', 180: 'раз в 3 часа', 360: 'раз в 6 часов' };
+        const ivLabel = { 15: 'Каждые 15 минут', 30: 'Каждые 30 минут', 60: 'Раз в час', 180: 'Раз в 3 часа', 360: 'Раз в 6 часов' };
         const pn = (this.appSettings || {}).proxy_note || {};
         const noteOn = pn.enabled !== false;
         const noteDefault = window.PROXY_NOTE_DEFAULT_TEXT || '';
         const btn = 'padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text-main);';
         const btnMain = 'padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--primary); background:var(--primary); color:#fff;';
-        const box = 'background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:14px 18px; margin-bottom:12px;';
-        const sum = 'cursor:pointer; font-weight:700; font-size:14px; list-style:none;';
-        const det = (key, title, hint, inner) => `
-            <details style="${box}" ${this._srvOpen[key] ? 'open' : ''} ontoggle="app._srvOpen['${key}'] = this.open">
-                <summary style="${sum}">${title} <span style="font-weight:400; font-size:12.5px; color:var(--text-sec);">· ${hint}</span></summary>
-                <div style="margin-top:12px;">${inner}</div>
-            </details>`;
+        const dim = on => on ? '' : 'opacity:.5;';
+        const ps = typeof window.__proxyStatus === 'function' ? window.__proxyStatus() : null;
+        const smtp = ps && typeof ps.s.smtp === 'boolean' ? ps.s.smtp : null;
+        const smtpChip = smtp === true ? '<span class="srv-chip ok">настроено</span>' : smtp === false ? '<span class="srv-chip idle">не настроено</span>' : '<span class="srv-chip idle">неизвестно</span>';
 
-        const watchHtml = `
-            <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:10px;">
-                GitHub сам проверяет те же пять файлов и сообщает в обе стороны: когда прокси <b>перестал отвечать</b> и когда <b>снова заработал</b>.
-                Каждое событие — комментарий в задаче «Статус прокси Beget» (<a href="https://github.com/terem24/smeta/issues?q=label%3Aproxy-watch" target="_blank" rel="noopener">открыть</a>);
-                GitHub присылает его письмом на адрес из аккаунта GitHub владельца и пушем в приложение GitHub.
-                Чтобы письмо шло ещё и прямо на ваш ящик, мимо Beget, в репозитории заводятся секреты SMTP_USER и SMTP_PASS (пароль приложения Яндекса),
-                по желанию ALERT_TO. Сам выключатель прокси автопроверка не трогает.
-            </div>
-            <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px; cursor:pointer;">
-                <input type="checkbox" ${watchOn ? 'checked' : ''} ${dis} onchange="app.setProxyWatch('enabled', this.checked)">
-                Автопроверка и уведомления о смене состояния
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px; ${watchOn ? '' : 'opacity:.5;'}">
-                Как часто проверять:
-                <select ${dis || !watchOn ? 'disabled' : ''} onchange="app.setProxyWatch('interval', this.value)"
-                    style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text-main); font:inherit; font-size:13px;">
-                    ${[15, 30, 60, 180, 360].map(m => `<option value="${m}" ${m === watchIv ? 'selected' : ''}>${ivLabel[m]}</option>`).join('')}
-                </select>
-            </label>
-            <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; ${watchOn ? '' : 'opacity:.5;'}">
-                <input type="checkbox" ${digestOn ? 'checked' : ''} ${dis || !watchOn ? 'disabled' : ''} onchange="app.setProxyWatch('digest', this.checked)">
-                Ежедневная сводка в 9:00 по Москве, пока состояние не меняется
-            </label>`;
-
-        const noteHtml = `
-            <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:10px;">
-                Показывается внизу страницы, пока прокси отключён: висит, пока человек не нажмёт «Понятно», и возвращается через сутки.
-                Пустой текст = стандартный. Изменения доходят до пользователей при следующей загрузке страницы.
-            </div>
-            <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px; cursor:pointer;">
-                <input type="checkbox" ${noteOn ? 'checked' : ''} ${dis} onchange="app.saveProxyNote(this.checked)">
-                Показывать плашку
-            </label>
-            <textarea id="srv_note_text" rows="3" maxlength="400" placeholder="${esc(noteDefault)}" ${dis}
-                style="width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text-main); font:inherit; font-size:13px; line-height:1.45; resize:vertical;">${esc(pn.text || '')}</textarea>
-            <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-                <button type="button" style="${btnMain}" ${dis} onclick="app.saveProxyNote()">Сохранить текст</button>
-                <button type="button" style="${btn}" ${dis} onclick="app.resetProxyNoteText()">Вернуть стандартный</button>
+        const notify = `
+            <div class="srv-card">
+                <div class="srv-h">Уведомления</div>
+                <div class="srv-sub">GitHub сам проверяет файлы прокси и сообщает в обе стороны: когда Beget <b>перестал отвечать</b> и когда <b>снова заработал</b>.
+                    Каждое событие — комментарий в задаче «Статус прокси Beget» (<a href="https://github.com/terem24/smeta/issues?q=label%3Aproxy-watch" target="_blank" rel="noopener">открыть историю</a>).</div>
+                <div class="srv-rows">
+                    <div class="srv-row">
+                        <div><div class="srv-name">Следить за Beget и сообщать о смене состояния</div>
+                            <div class="srv-desc">Выключите, чтобы остановить и проверки, и письма. Без проверок функции отключаются сами только по сбоям запросов у самих пользователей, а не у всех сразу.</div></div>
+                        <span></span>${this._srvSw(watchOn, "app.setProxyWatch('enabled', this.checked)", ro)}
+                    </div>
+                    <div class="srv-row" style="${dim(watchOn)}">
+                        <div><div class="srv-name">Как часто проверять</div>
+                            <div class="srv-desc">Чем чаще, тем быстрее придёт письмо и отключатся функции у всех пользователей сразу.</div></div>
+                        <span></span>
+                        <select class="srv-sel" ${ro || !watchOn ? 'disabled' : ''} onchange="app.setProxyWatch('interval', this.value)">
+                            ${[15, 30, 60, 180, 360].map(m => `<option value="${m}" ${m === watchIv ? 'selected' : ''}>${ivLabel[m]}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="srv-row" style="${dim(watchOn)}">
+                        <div><div class="srv-name">Ежедневная сводка в 9:00 по Москве</div>
+                            <div class="srv-desc">Одна строка раз в день, пока состояние не меняется: убедиться, что проверка жива.</div></div>
+                        <span></span>${this._srvSw(digestOn, "app.setProxyWatch('digest', this.checked)", ro || !watchOn)}
+                    </div>
+                </div>
+                <div class="srv-sec">Куда приходят письма</div>
+                <div class="srv-rows">
+                    <div class="srv-row">
+                        <div><div class="srv-name">Письмо от GitHub и пуш в приложение GitHub</div>
+                            <div class="srv-desc">Адрес берётся из аккаунта GitHub владельца: github.com/settings/notifications. Настраивать ничего не нужно.</div></div>
+                        <span class="srv-chip ok">всегда</span><span></span>
+                    </div>
+                    <div class="srv-row">
+                        <div><div class="srv-name">Прямое письмо на почту</div>
+                            <div class="srv-desc">Уходит по SMTP Яндекса, мимо Beget. Включается секретами репозитория SMTP_USER и SMTP_PASS (пароль приложения Яндекса); ALERT_TO — куда слать, по умолчанию на SMTP_USER.</div></div>
+                        ${smtpChip}<span></span>
+                    </div>
+                </div>
             </div>`;
 
+        const det = (key, title, hint, inner) => `
+            <details class="srv-card srv-det" ${this._srvOpen[key] ? 'open' : ''} ontoggle="app._srvOpen['${key}'] = this.open">
+                <summary>${title} <span style="font-weight:400; font-size:12.5px; color:var(--text-sec);">· ${hint}</span></summary>
+                <div style="margin-top:12px;">${inner}</div>
+            </details>`;
+        const noteHtml = `
+            <div class="srv-sub">Показывается внизу страницы, пока прокси отключён: висит, пока человек не нажмёт «Понятно», и возвращается через сутки.
+                Пустой текст — стандартный. Изменения доходят до пользователей при следующей загрузке страницы.</div>
+            <div class="srv-rows"><div class="srv-row" style="padding-top:4px;">
+                <div class="srv-name">Показывать плашку</div><span></span>${this._srvSw(noteOn, 'app.saveProxyNote(this.checked)', ro)}
+            </div></div>
+            <textarea id="srv_note_text" rows="3" maxlength="400" placeholder="${esc(noteDefault)}" ${ro ? 'disabled' : ''}
+                style="width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text-main); font:inherit; font-size:13px; line-height:1.45; resize:vertical;">${esc(pn.text || '')}</textarea>
+            <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+                <button type="button" style="${btnMain}" ${ro ? 'disabled' : ''} onclick="app.saveProxyNote()">Сохранить текст</button>
+                <button type="button" style="${btn}" ${ro ? 'disabled' : ''} onclick="app.resetProxyNoteText()">Вернуть стандартный</button>
+            </div>`;
         const recoverHtml = `
             <ol style="margin:0; padding-left:20px; font-size:13px; line-height:1.7; color:var(--text-main);">
                 <li>Перевыпустить ключи: Gemini API key, RELAY_TOKEN (и в Supabase), EmailJS Private Key, токен Telegram-бота (@BotFather → /revoke), lead_ingest_secret, report_key.txt.</li>
                 <li>Сменить пароль панели Beget и SSH-ключ, убрать чужие ключи из authorized_keys.</li>
-                <li>Дождаться зелёного статуса вверху страницы (все сервисы отвечают).</li>
-                <li>Нажать «Включить прокси» в блоке «Главный выключатель».</li>
+                <li>Дождаться зелёного статуса вверху страницы: все сервисы отвечают.</li>
+                <li>Включить переключатель «Прокси на Beget». Функции, отключённые автоматически, вернутся сами; выключенные вручную включите переключателями.</li>
             </ol>`;
 
-        const backupsHtml = `
-            <div style="font-size:13px; color:var(--text-sec); line-height:1.6; margin-bottom:12px;">
-                Каждую ночь в 4:30 по Москве GitHub делает копию базы (пользователи, сметы, счета, настройки сайта) и хранит последние 30.
-                Ссылки откроются, если вы вошли в GitHub под своим аккаунтом: репозиторий приватный.
-            </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <a href="https://github.com/terem24/heatcalc-backups/releases" target="_blank" rel="noopener" style="text-decoration:none; ${btn}">Список копий</a>
-                <a href="https://github.com/terem24/heatcalc-backups/actions/workflows/restore.yml" target="_blank" rel="noopener" style="text-decoration:none; ${btn}">Восстановить из копии</a>
-            </div>
-            <div style="margin-top:10px; font-size:12px; color:var(--text-sec); line-height:1.5;">
-                «Восстановить из копии»: Run workflow, режим dry-run только проверяет копию. Для настоящего восстановления выберите restore и впишите слово ВОССТАНОВИТЬ.
-            </div>`;
-
-        root.innerHTML = `<div id="srv_live"></div>`
-            + det('watch', 'Автопроверка и письма', 'как часто и куда приходят уведомления', watchHtml)
+        root.innerHTML = this._srvStyle + `<div id="srv_live"></div>` + notify
             + det('note', 'Плашка для пользователей', 'что видят люди, пока прокси отключён', noteHtml)
-            + det('backups', 'Копии базы', 'ночные копии и восстановление', backupsHtml)
             + det('recover', 'Когда Beget восстановится', 'что сделать перед включением', recoverHtml);
         this.renderAdminServerLive();
     },
 
-    // Живая часть вкладки: статус, функции, главный выключатель. Зовётся после каждой проверки.
+    // Живая часть вкладки: статус, функции, главный выключатель. Зовётся после каждой проверки и переключения.
     renderAdminServerLive: function () {
         const live = document.getElementById('srv_live');
         if (!live) return;
         const esc = x => String(x ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-        const dis = this.isReadOnlyAdmin() ? 'disabled' : '';
+        const ro = this.isReadOnlyAdmin();
         const down = this.proxyDownSetting();
         const chk = this._serverCheck, busy = this._srvChecking;
         const rows = chk ? chk.rows : [];
         const bad = rows.filter(r => !r.ok);
+        const cfg = this._featCfg();
         const btn = 'padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text-main);';
-        const btnMain = 'padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--primary); background:var(--primary); color:#fff;';
-        const box = 'background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:16px 18px; margin-bottom:12px;';
         const spin = '<span style="display:inline-block; width:12px; height:12px; border:2px solid currentColor; border-top-color:transparent; border-radius:50%; animation:stout-spin .8s linear infinite; vertical-align:middle;"></span>';
 
         // 1. Статус Beget
@@ -50049,77 +50161,81 @@ const app = {
                 <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600;"><span style="width:10px; height:10px; border-radius:50%; background:${dot}; flex:none;"></span>${esc(c.name)}</div>
                 <div style="margin-top:3px; font-size:12px; color:var(--text-sec);">${note}</div></div>`;
         }).join('');
+        const ps = typeof window.__proxyStatus === 'function' ? window.__proxyStatus() : null;
+        let gh = 'Автопроверка GitHub: данных пока нет (файл proxy_status.json появится после первой проверки).';
+        if (ps && ps.s) {
+            const bd = Object.keys(ps.s.files || {}).filter(k => ps.s.files[k] === false);
+            gh = 'Автопроверка GitHub (' + this._srvAgo(ps.s.t) + '): ' + (bd.length ? 'не отвечает ' + bd.join(', ') : 'всё отвечало') + '.';
+        }
         const hero = `
-            <div style="${box} border-left:4px solid ${color};">
-                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <div class="srv-card" style="border-left:4px solid ${color};">
+                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                     <div style="flex:1 1 260px;">
                         <div style="font-size:18px; font-weight:700; color:${color};">${busy && !chk ? spin + ' ' : ''}${esc(title)}</div>
                         <div style="font-size:13px; color:var(--text-sec); margin-top:2px;">${esc(sub)}</div>
                     </div>
                     <div style="text-align:right;">
                         <button type="button" id="srv_check_btn" style="${btn}" ${busy ? 'disabled' : ''} onclick="app.runServerCheck()">${busy ? 'Проверяю…' : 'Проверить сейчас'}</button>
-                        <div style="font-size:12px; color:var(--text-sec); margin-top:4px;">Проверено: <span id="srv_ago">${this._srvAgoText()}</span> · автообновление раз в минуту</div>
+                        <div style="font-size:12px; color:var(--text-sec); margin-top:4px;">Проверено: <span id="srv_ago">${this._srvAgoText()}</span> · обновляется раз в минуту</div>
                     </div>
                 </div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">${tiles}</div>
+                <div style="font-size:12px; color:var(--text-sec); margin-top:10px;">${esc(gh)}</div>
             </div>`;
 
         // 2. Функции у пользователей
-        const offMap = ((this.appSettings || {}).beget_features || {}).off || {};
         const badNames = new Set(bad.map(r => r.name));
         const featRows = this.BEGET_FEATURES.map(f => {
-            const manual = offMap[f.id] === true;
-            const failed = f.checks.filter(n => badNames.has(n));
-            let state, cls = 'ok';
-            if (down) { state = 'не работает: прокси отключён'; cls = 'bad'; }
-            else if (manual) { state = 'выключена вручную'; cls = 'bad'; }
-            else if (failed.length) { state = 'ждёт ответа сервера: ' + failed.join(', '); cls = 'bad'; }
-            else if (!chk) { state = 'не проверено'; cls = ''; }
-            else { state = 'работает'; }
-            return `<tr style="border-top:1px solid var(--border);">
-                <td style="padding:9px 4px;">${esc(f.name)}<div style="font-size:12px; color:var(--text-sec);">Если выключить: ${esc(f.off)}</div></td>
-                <td style="padding:9px 4px;"><span class="ad-pill ${cls}">${esc(state)}</span></td>
-                <td style="padding:9px 4px; text-align:right; white-space:nowrap;">
-                    <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
-                        <input type="checkbox" ${manual ? 'checked' : ''} ${dis} onchange="app.setFeatureOff('${f.id}', this.checked)"> выключить
-                    </label></td></tr>`;
+            const lost = this.featureLost(f.id);
+            const manual = cfg.off[f.id] === true;
+            let chip, tip = '';
+            if (lost === 'proxy') chip = '<span class="srv-chip bad">Не работает: прокси отключён</span>';
+            else if (lost === 'manual') chip = '<span class="srv-chip bad">Выключена вручную</span>';
+            else if (lost.indexOf('auto') === 0) {
+                const src = lost.split(':')[1];
+                chip = '<span class="srv-chip warn">Отключена автоматически</span>';
+                tip = src === 'автопроверка' ? 'Автопроверка GitHub: файл не отвечал' : 'Недавний запрос к серверу не прошёл (повтор через 10 минут)';
+            }
+            else if (f.checks.some(n => badNames.has(n))) chip = '<span class="srv-chip warn">Сервер не отвечает' + (cfg.auto ? ' — отключится сама' : ', функция ещё включена') + '</span>';
+            else if (!chk) chip = '<span class="srv-chip idle">Не проверено</span>';
+            else chip = '<span class="srv-chip ok">Работает</span>';
+            return `<div class="srv-row" title="${esc(tip)}">
+                <div><div class="srv-name">${esc(f.name)}</div><div class="srv-desc">${esc(f.desc)}</div></div>
+                ${chip}${this._srvSw(!manual, `app.setFeatureEnabled('${f.id}', this.checked)`, ro)}
+            </div>`;
         }).join('');
         const feats = `
-            <div style="${box}">
-                <div style="font-weight:700; font-size:15px; margin-bottom:4px;">Что из-за этого не работает у пользователей</div>
-                <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:8px;">
-                    Выключенная функция не обращается к серверу и не заставляет ждать: человек сразу видит ручной вариант. Действует для всех при следующей загрузке страницы.
-                </div>
-                <table style="width:100%; border-collapse:collapse; font-size:13px;">${featRows}</table>
-                <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
-                    <button type="button" style="${btn}" ${dis} ${bad.length ? '' : 'disabled'} onclick="app.disableLostFeatures()">Выключить всё, что не ответило</button>
-                    <button type="button" style="${btn}" ${dis} onclick="app.disableLostFeatures(true)">Включить все функции</button>
+            <div class="srv-card">
+                <div class="srv-h">Функции для пользователей</div>
+                <div class="srv-sub">Переключатель включает или выключает функцию для всех. Выключенная функция не обращается к серверу и не заставляет ждать:
+                    человек сразу видит ручной вариант. Действует при следующей загрузке страницы.</div>
+                <div class="srv-rows">${featRows}
+                    <div class="srv-row">
+                        <div><div class="srv-name">Отключать автоматически, когда сервер не отвечает</div>
+                            <div class="srv-desc">Функция отключается сама, как только нужный файл Beget перестаёт отвечать, и возвращается сама, когда он оживёт:
+                                у пользователя после сбойного запроса (на 10 минут, потом пробуем снова) и у всех сразу — по автопроверке GitHub.</div></div>
+                        <span></span>${this._srvSw(cfg.auto, 'app.setFeatureAuto(this.checked)', ro)}
+                    </div>
                 </div>
             </div>`;
 
         // 3. Главный выключатель
         const forced = (!down && window.PROXY_DOWN) || (down && !window.PROXY_DOWN)
-            ? '<div style="margin-top:8px; font-size:12px; color:var(--text-sec);">В этом браузере прокси переключён вручную (адрес с ?proxy=1), настройка сайта на него не влияет. Снять: ?proxy=0.</div>' : '';
-        let advice = '', canOn = true;
+            ? '<div class="srv-desc" style="margin-top:6px;">В этом браузере прокси переключён вручную (адрес с ?proxy=1), настройка сайта на него не влияет. Снять: ?proxy=0.</div>' : '';
+        let advice = '';
         if (down && chk && !bad.length) advice = '✅ Beget ответил на проверке: можно включать.';
-        else if (down && bad.length) { advice = '⚠️ Включать рано: часть сервисов не отвечает.'; canOn = false; }
-        else if (!down && bad.length) advice = '⚠️ Прокси включён, но часть сервисов не отвечает: пользователи ждут ответа. Отключите прокси или выключите отдельные функции выше.';
+        else if (down && bad.length) advice = '⚠️ Включать рано: часть сервисов не отвечает.';
+        else if (!down && bad.length) advice = '⚠️ Часть сервисов не отвечает' + (cfg.auto ? ': затронутые функции отключатся сами.' : ': включите автоотключение или выключите функции выше.');
         const master = `
-            <div style="${box}">
-                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px;">
-                    <div style="font-weight:700; font-size:15px;">Главный выключатель прокси</div>
-                    ${down ? '<span class="ad-pill bad">отключён: все функции на паузе</span>' : '<span class="ad-pill ok">включён</span>'}
-                </div>
-                <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:12px;">
-                    Через proxy.heatcalc.ru идут ИИ-распознавание, заявки на монтаж, подложки планов, прайсы дистрибьюторов, уведомления в Telegram
-                    и вход у тех, у кого закрыт Supabase. Пока прокси отключён, эти запросы сразу получают отказ, а у пользователей внизу страницы
-                    показывается короткая плашка. Действует для всех при следующей загрузке страницы.
-                </div>
-                ${advice ? `<div style="font-size:13px; font-weight:600; margin-bottom:10px;">${advice}</div>` : ''}
-                ${down
-                ? `<button type="button" style="${canOn ? btnMain : btn}" ${dis} onclick="app.setProxyDown(false)">Включить прокси</button>`
-                : `<button type="button" style="${btn}" ${dis} onclick="app.setProxyDown(true)">Отключить прокси</button>`}
-                ${forced}
+            <div class="srv-card">
+                <div class="srv-rows"><div class="srv-row">
+                    <div><div class="srv-name" style="font-size:15px;">Прокси на Beget</div>
+                        <div class="srv-desc">Через proxy.heatcalc.ru идут ИИ, заявки на монтаж, подложки планов, прайсы дистрибьюторов, уведомления в Telegram и вход у тех,
+                            у кого закрыт Supabase. Выключен — все эти запросы сразу получают отказ, внизу страницы показывается плашка. Это общий рубильник: он главнее переключателей функций.</div>
+                        ${advice ? `<div style="font-size:13px; font-weight:600; margin-top:8px;">${advice}</div>` : ''}${forced}</div>
+                    ${down ? '<span class="srv-chip bad">Отключён</span>' : '<span class="srv-chip ok">Включён</span>'}
+                    ${this._srvSw(!down, 'app.setProxyDown(!this.checked)', ro)}
+                </div></div>
             </div>`;
 
         live.innerHTML = hero + feats + master;
@@ -50180,7 +50296,7 @@ const app = {
         if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять настройки сайта запрещено.'); return; }
         down = !!down;
         if (!down && this._serverCheck && this._serverCheck.rows.some(r => !r.ok)
-            && !confirm('Проверка показала, что часть файлов прокси не отвечает. Всё равно включить прокси для всех?')) return;
+            && !confirm('Проверка показала, что часть файлов прокси не отвечает. Всё равно включить прокси для всех?')) { this.renderAdminServerLive(); return; }
         try {
             const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
             const value = { down: down };
@@ -50223,6 +50339,12 @@ const app = {
                 } finally { clearTimeout(timer); }
             }));
             this._serverCheck = { t: Date.now(), rows: rows };
+            if (typeof window.__markBegetFail === 'function') {
+                this.SERVER_CHECKS.forEach(c => {
+                    const r = rows.find(x => x.name === c.name);
+                    if (r) window.__markBegetFail(c.url.split('?')[0], !r.ok);
+                });
+            }
         } finally {
             this._srvChecking = false;
         }

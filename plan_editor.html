@@ -3889,23 +3889,41 @@ var PDF_AREAS = {};
  */
 var AREA_READ_URL = 'https://proxy.heatcalc.ru/gemini_proxy.php';
 /** Читать ли план ИИ. Это отдельная страница, заглушка fetch из app.js до неё не доходит, поэтому
- *  смотрим тот же кэш в localStorage, что пишет app.js: hc_proxy_down (прокси на Beget отключён
- *  целиком) и hc_feat_off (функция выключена вручную во вкладке «Сервер» админки). Нет данных —
- *  читаем как раньше. Для проверки руками: localStorage.heatcalc_ai_scan = '1' (включить) / '0'. */
+ *  смотрим тот же кэш в localStorage, что пишет app.js (логика — в начале app.js, блок «Функции, которым
+ *  нужен Beget»): hc_proxy_down — прокси отключён целиком; hc_feat_off — функция выключена вручную и
+ *  включено ли автоотключение; hc_beget_fail — недавний сбой запроса (10 минут); hc_proxy_status —
+ *  статус от автопроверки GitHub. Нет данных — читаем как раньше.
+ *  Для проверки руками: localStorage.heatcalc_ai_scan = '1' (включить) / '0' (выключить). */
 function aiScanOn() {
   try {
     var v = localStorage.getItem('heatcalc_ai_scan');
     if (v === '1') return true;
     if (v === '0') return false;
-    var wk = 7 * 24 * 3600 * 1000, now = Date.now();
+    var wk = 7 * 24 * 3600 * 1000, now = Date.now(), J = function (k) { return JSON.parse(localStorage.getItem(k) || 'null'); };
     if (localStorage.getItem('hc_proxy_force') !== '1') {
-      var pd = JSON.parse(localStorage.getItem('hc_proxy_down') || 'null');
+      var pd = J('hc_proxy_down');
       if (pd && pd.down === true && now - (pd.t || 0) < wk) return false;
     }
-    var fo = JSON.parse(localStorage.getItem('hc_feat_off') || 'null');
-    if (fo && fo.off && fo.off.ai_plan === true && now - (fo.t || 0) < wk) return false;
+    var fo = J('hc_feat_off');
+    if (fo && now - (fo.t || 0) < wk) {
+      if (fo.off && fo.off.ai_plan === true) return false;
+      if (fo.auto !== false) {
+        var fl = J('hc_beget_fail');
+        if (fl && fl['gemini_proxy.php'] && now - fl['gemini_proxy.php'] < 10 * 60 * 1000) return false;
+        var st = J('hc_proxy_status');
+        if (st && st.s && st.s.files && st.s.files['gemini_proxy.php'] === false && now - (st.s.t || 0) < 36 * 3600 * 1000) return false;
+      }
+    }
   } catch (e) { }
   return true;
+}
+/** Запомнить сбой (или успех) запроса к ИИ: этот же ключ читает app.js, так функция отключается и там */
+function aiMarkFail(bad) {
+  try {
+    var m = JSON.parse(localStorage.getItem('hc_beget_fail') || 'null') || {};
+    if (bad) m['gemini_proxy.php'] = Date.now(); else if (m['gemini_proxy.php']) delete m['gemini_proxy.php']; else return;
+    localStorage.setItem('hc_beget_fail', JSON.stringify(m));
+  } catch (e) { }
 }
 var AREA_READ_PROMPT = 'Ты читаешь чертёж этажа частного дома. Найди на плане подписи площадей помещений: ' +
   'число с запятой или точкой и единицей м² (м2, кв.м), например «19,16 м²», стоящее внутри контура комнаты. ' +
@@ -4199,7 +4217,7 @@ function readAreaLabelsFromCanvas(c, label, quiet) {
       if (!v.why && why && v.rawDims === undefined) v.why = why;   // ответ разобран — прежняя ошибка первой модели не в счёт
       resolve(v);
     };
-    var tm = setTimeout(function () { why = 'нет ответа за 70 с'; console.warn('[plan_editor] подписи площадей: не дождались ответа'); finish([]); }, 70000);
+    var tm = setTimeout(function () { aiMarkFail(true); why = 'нет ответа за 70 с'; console.warn('[plan_editor] подписи площадей: не дождались ответа'); finish([]); }, 70000);
     try {
       if (!quiet) scanBox(true, label);
       var k = Math.min(1, 1600 / Math.max(c.width, c.height));
@@ -4220,6 +4238,7 @@ function readAreaLabelsFromCanvas(c, label, quiet) {
         }).then(function (r) { return r.json(); }).then(function (resp) {
           if (resp && resp.error) why = 'сервис вернул ошибку: ' + String(resp.error.message || resp.error).slice(0, 100);
           if (resp && resp.error && ++mi < models.length) { tryNext(); return; }
+          if (resp && !resp.error) aiMarkFail(false);
           finish(resp && !resp.error ? parseAreaReply(resp, c.width, c.height) : []);
         })['catch'](function (e) {
           console.warn('[plan_editor] подписи площадей:', e && e.message);
@@ -4228,6 +4247,7 @@ function readAreaLabelsFromCanvas(c, label, quiet) {
           // Обрыв связи обычно разовый: оба запроса идут через один прокси и падают вместе —
           // повторяем круг с паузой, пока не вышли 70 с общего ожидания
           if (++netTry <= 2 && !finished) { mi = 0; setTimeout(tryNext, 1500 * netTry); return; }
+          aiMarkFail(true);
           finish([]);
         });
       };
