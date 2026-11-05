@@ -12116,8 +12116,10 @@ const app = {
     // Подпись филиала внутри явной компании: название карточки без названия компании
     // и без скобок — «КИТ-Сервис (Сергей)» в компании «КИТ-Сервис» → «Сергей».
     branchTitleInCompany: function (d, companyTitle) {
-        const full = String(d.company_name || '').replace(/\s+/g, ' ').trim();
-        const base = String(companyTitle || '').trim();
+        // Кавычки убираем с обеих сторон: в карточке «"КИТ-Сервис" (Евгений)», а компания — «КИТ-Сервис»
+        const unq = s => String(s || '').replace(/[«»“”„"']/g, '').replace(/\s+/g, ' ').trim();
+        const full = unq(d.company_name);
+        const base = unq(companyTitle);
         let rest = full;
         if (base && full.toLowerCase().indexOf(base.toLowerCase()) === 0) rest = full.slice(base.length);
         rest = rest.replace(/^[\s,–—\-:()«»"]+|[\s,–—\-:()«»"]+$/g, '');
@@ -12212,6 +12214,81 @@ const app = {
             }
             await this.loadViewerScopes();
         } catch (e) { console.warn('[компании] наблюдатели не обновлены:', e.message || e); }
+    },
+
+    // ── Объединение отмеченных галочками филиалов одним нажатием ──
+    // Отметки живут в this._brPick (массив id) и переживают перерисовку раздела.
+    toggleBranchPick: function (id, on) {
+        const set = new Set((this._brPick || []).map(String));
+        if (on) set.add(String(id)); else set.delete(String(id));
+        this._brPick = [...set];
+        this.updateBranchPickBar();
+    },
+
+    clearBranchPick: function () {
+        this._brPick = [];
+        document.querySelectorAll('input.brx-pick').forEach(i => { i.checked = false; });
+        this.updateBranchPickBar();
+    },
+
+    updateBranchPickBar: function () {
+        const bar = document.getElementById('brx_pickbar');
+        if (!bar) return;
+        const n = (this._brPick || []).length;
+        const msg = bar.querySelector('.brx-pickmsg');
+        const btn = bar.querySelector('.brx-pickgo');
+        const clr = bar.querySelector('.brx-pickclr');
+        if (msg) msg.textContent = n
+            ? 'Отмечено филиалов: ' + n + (n < 2 ? ' — отметьте ещё хотя бы один' : '')
+            : 'Отметьте галочками филиалы, которые нужно объединить в одну компанию';
+        if (btn) { btn.disabled = n < 2; btn.style.opacity = n < 2 ? '.5' : '1'; }
+        if (clr) clr.style.display = n ? '' : 'none';
+        bar.classList.toggle('on', n > 0);
+    },
+
+    // Подсказка названия: компания, в которой уже состоит кто-то из отмеченных, иначе общее
+    // начало названий карточек («"КИТ-Сервис" (Сергей)» и «…(Евгений)» → «КИТ-Сервис»)
+    guessCompanyName: function (list) {
+        for (const d of list) {
+            const co = d.company_id ? this.companyById(d.company_id) : null;
+            if (co) return co.name;
+        }
+        const names = list.map(d => String(d.company_name || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+        if (!names.length) return '';
+        let p = names[0];
+        names.forEach(n => { let i = 0; while (i < p.length && i < n.length && p[i].toLowerCase() === n[i].toLowerCase()) i++; p = p.slice(0, i); });
+        p = p.replace(/[«»“”„"']/g, '').replace(/[\s,–—\-:(]+$/g, '').replace(/^[\s,–—\-:()]+/g, '').trim();
+        // «ООО ТЕРЕМ ОП» — слово подразделения на конце лишнее
+        p = p.replace(/[\s,–—-]+(?:ОП|ОСП|филиал|отделение|магазин)$/i, '').trim();
+        return p.length >= 3 ? p : '';
+    },
+
+    mergePickedBranches: async function () {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Объединять филиалы нельзя.'); return; }
+        const ids = (this._brPick || []).map(String);
+        if (ids.length < 2) { app.alert('Отметьте галочками минимум два филиала.'); return; }
+        if (!this._companiesReady) {
+            app.alert('Компании ещё не подключены в базе: нужна миграция 20261105_companies.sql.');
+            return;
+        }
+        const list = (this.adminData.distributors || []).filter(d => ids.includes(String(d.id)));
+        let newCompanyId = null;
+        const name = String(await app.prompt('Как назвать компанию? Под ней объединятся отмеченные филиалы (' + list.length + ').',
+            this.guessCompanyName(list), 'Объединить филиалы') || '').trim();
+        if (!name) return;
+        try {
+            newCompanyId = await this.ensureCompany(name);
+            await this.assignDistsToCompany(list.map(d => d.id), newCompanyId);
+        } catch (e) {
+            app.alert('Не удалось объединить филиалы: ' + (e.message || e));
+            return;
+        }
+        this._brPick = [];
+        this._brSelCompanyId = newCompanyId;
+        await this.loadAdminData();
+        this._adminTab = 'branches';
+        this.renderAdminBranches(true);
+        app.alert('✅ Филиалов объединено: ' + list.length + '. Компания «' + name + '».');
     },
 
     // Ключ кэша данных раздела: состав филиалов и их привязка к компаниям
@@ -12353,6 +12430,8 @@ const app = {
             if (!document.getElementById('branches_root')) return;
         }
         const D = this._brData;
+        // Отметки для объединения: исчезнувшие филиалы выкидываем
+        this._brPick = (this._brPick || []).filter(id => dists.some(d => String(d.id) === String(id)));
         const STAFF = ['admin', 'viewer', 'manager'];
         const lc = v => String(v || '').trim().toLowerCase();
         const nameOf = u => u ? this.getAdminUserDisplayName(u) : '—';
@@ -12521,6 +12600,12 @@ const app = {
         };
 
         // ── Выбор узла по умолчанию: первая компания ──
+        // После объединения открываем новую компанию: на ней сразу видна общая статистика
+        if (this._brSelCompanyId) {
+            const ng = groups.find(x => x.companyId === String(this._brSelCompanyId));
+            this._brSelCompanyId = null;
+            if (ng) this._brSel = { type: 'company', id: ng.id };
+        }
         let sel = this._brSel;
         const nodeExists = (s) => {
             if (!s) return false;
@@ -12564,6 +12649,8 @@ const app = {
             g.dists.forEach(d => { bStats[d.id] = statsFor([d.id]); });
             const maxOf = k => Math.max(0, ...g.dists.map(d => bStats[d.id][k]));
             const branchCard = d => {
+                const canPick = !this.isReadOnlyAdmin();
+                const picked = new Set((this._brPick || []).map(String));
                 const s = bStats[d.id];
                 const mgrs = managersOf(d);
                 const mgrHtml = mgrs.length
@@ -12572,7 +12659,7 @@ const app = {
                     : `<span class="brx-muted">${d.manager_name ? esc(d.manager_name) + ' — не зарегистрирован' : 'Менеджер не назначен'}</span>`;
                 return `<div class="brx-bwrap">
                     <div class="brx-node brx-branch${isSel('branch', d.id) ? ' sel' : ''}${d.is_active === false ? ' off' : ''}" onclick="app.selectBranchNode('branch','${d.id}')">
-                        <div class="brx-title">🏬 ${esc(branchLabel(d, g))}</div>
+                        <div class="brx-title">${canPick ? `<input type="checkbox" class="brx-pick" title="Отметить для объединения" ${picked.has(String(d.id)) ? 'checked' : ''} onclick="event.stopPropagation(); app.toggleBranchPick('${d.id}', this.checked)" style="width:16px; height:16px; vertical-align:-2px; margin-right:6px; accent-color:var(--primary); cursor:pointer;">` : ''}🏬 ${esc(branchLabel(d, g))}</div>
                         <div class="brx-muted" style="margin-bottom:8px;">Промокод <b>${esc(String(d.promo_code || '—').toUpperCase())}</b> · монтажников ${fmtN(s.installers)} · продавцов ${fmtN(s.sellers)}${d.is_active === false ? ' · выключен' : ''}</div>
                         ${METRICS.map(m => `<div class="brx-metric"><span>${m.label}</span>${bar(s[m.k], maxOf(m.k), m.color)}<b>${fmtN(s[m.k])}</b></div>`).join('')}
                         <div class="brx-mgrs">${mgrHtml}</div>
@@ -12817,6 +12904,9 @@ const app = {
 
         root.innerHTML = `
             <style>
+                .brx-pickbar { display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; background:var(--surface-light); border:1px dashed var(--border); border-radius:10px; padding:8px 12px; margin:-4px 0 14px; font-size:12px; color:var(--text-sec); }
+                .brx-pickbar.on { border-style:solid; border-color:var(--primary); color:var(--text-main); }
+                .brx-pickmsg { flex:1 1 220px; }
                 .brx-top { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin-bottom:14px; }
                 .brx-pills { display:flex; gap:4px; background:var(--surface-light); border:1px solid var(--border); border-radius:10px; padding:3px; }
                 .brx-pill { font:inherit; font-size:12px; font-weight:700; border:0; border-radius:8px; padding:6px 12px; cursor:pointer; background:transparent; color:var(--text-sec); }
@@ -12882,10 +12972,16 @@ const app = {
                 <div class="brx-pills">${this.BRANCH_PERIODS.map(p => `<button type="button" class="brx-pill${p.key === period.key ? ' on' : ''}" onclick="app.setBranchPeriod('${p.key}')">${p.label}</button>`).join('')}</div>
                 <span class="brx-muted">Нажмите на компанию, филиал или менеджера</span>
             </div>
+            ${this.isReadOnlyAdmin() ? '' : `<div id="brx_pickbar" class="brx-pickbar">
+                <span class="brx-pickmsg"></span>
+                <button type="button" class="admin-btn brx-pickgo" style="font-size:12px; padding:6px 12px; height:auto; margin:0;" onclick="app.mergePickedBranches()">🔗 Объединить выбранные филиалы</button>
+                <button type="button" class="admin-btn brx-pickclr" style="font-size:12px; padding:6px 12px; height:auto; margin:0;" onclick="app.clearBranchPick()">Сбросить</button>
+            </div>`}
             <div class="brx-layout">
                 <div>${treeHtml}</div>
                 <div class="brx-detail" id="brx_detail">${detailHtml}</div>
             </div>`;
+        this.updateBranchPickBar();
     },
 
     // Карточка расчёта из канбана "Статусы смет" — номер расчёта и полная история
