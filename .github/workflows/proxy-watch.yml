@@ -81,6 +81,7 @@ jobs:
         if: steps.cfg.outputs.enabled == 'true' && steps.check.outputs.state != 'unclear'
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           STATE: ${{ steps.check.outputs.state }}
           REPORT: ${{ steps.check.outputs.report }}
           DIGEST: ${{ steps.cfg.outputs.digest }}
