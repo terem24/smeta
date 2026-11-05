@@ -187,7 +187,25 @@ const PROXY_DEFAULT_DOWN = true;
         try { localStorage.setItem('hc_proxy_note_cfg', JSON.stringify(noteCfg)); } catch (e) { }
         updateBanner();
     };
-    function noteText() { return noteCfg.text.trim() || NOTE_DEFAULT_TEXT; }
+    // На телефоне стандартный текст короче; свой текст из админки показываем как есть.
+    var NOTE_SHORT_TEXT = 'Сервер на обслуживании: часть функций AI отключена. Расчёты работают.';
+    function noteText() {
+        var custom = noteCfg.text.trim();
+        if (custom) return custom;
+        return window.innerWidth <= 768 ? NOTE_SHORT_TEXT : NOTE_DEFAULT_TEXT;
+    }
+    // Каждое предложение — с новой строки, по центру.
+    function fillNote(el, text) {
+        el.textContent = '';
+        (text.match(/[^.!?]+[.!?]*/g) || [text]).forEach(function (sent) {
+            sent = sent.trim();
+            if (!sent) return;
+            var line = document.createElement('span');
+            line.style.display = 'block';
+            line.textContent = sent;
+            el.appendChild(line);
+        });
+    }
     function hideNote(el) {
         if (!el) return;
         el.style.opacity = '0';
@@ -197,7 +215,7 @@ const PROXY_DEFAULT_DOWN = true;
     function updateBanner() {
         var old = document.getElementById('proxyDownBanner');
         if (!window.PROXY_DOWN || !noteCfg.enabled) { hideNote(old); return; }
-        if (old) { if (old.firstChild) old.firstChild.textContent = noteText(); return; }
+        if (old) { if (old.firstChild) fillNote(old.firstChild, noteText()); return; }
         if (!document.body) return;
         try {
             if (Date.now() - (parseInt(localStorage.getItem(NOTE_KEY), 10) || 0) < NOTE_EVERY_MS) return;
@@ -210,15 +228,15 @@ const PROXY_DEFAULT_DOWN = true;
             // Компактная тёмная «таблетка» внизу слева, как плашка про куки: текст и кнопка в строку,
             // интерфейс не перекрывает. На телефоне — над нижней панелью, на всю ширину без полей.
             var narrow = window.innerWidth <= 768;
-            note.style.cssText = 'position:fixed;left:' + (narrow ? '12px;right:12px;' : '16px;right:16px;max-width:720px;') +
+            note.style.cssText = 'position:fixed;' + (narrow ? 'left:12px;right:12px;' : 'left:0;right:0;margin:0 auto;width:max-content;max-width:min(720px,calc(100% - 32px));') +
                 'bottom:' + (narrow ? 'calc(76px + env(safe-area-inset-bottom,0px))' : '16px') + ';' +
                 'transform:translateY(12px);opacity:0;z-index:1500000;box-sizing:border-box;' +
                 'display:flex;align-items:center;gap:12px;padding:10px 10px 10px 18px;' +
                 'background:#3a3b41;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:28px;box-shadow:0 6px 20px rgba(0,0,0,.28);' +
                 'font-size:13px;line-height:1.35;transition:opacity .25s ease,transform .25s ease;';
             var txt = document.createElement('span');
-            txt.style.cssText = 'flex:1;';
-            txt.textContent = noteText();
+            txt.style.cssText = 'flex:1;text-align:' + (narrow ? 'left' : 'center') + ';';
+            fillNote(txt, noteText());
             var ok = document.createElement('button');
             ok.type = 'button';
             ok.textContent = 'Понятно';
