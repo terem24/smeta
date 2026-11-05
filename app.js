@@ -31100,7 +31100,7 @@ const app = {
 
         // ── Новые пользователи ──
         {
-            const w = { id: 'users', title: 'Новые пользователи', tab: 'stats', act: 'Пользователи' };
+            const w = { id: 'users', title: 'Новые регистрации', tab: 'stats', act: 'Пользователи' };
             if (bad('users')) w.err = bad('users');
             else if (!ok('users') || testsWait) w.wait = true;
             else {
@@ -31197,7 +31197,7 @@ const app = {
                 const colors = [C.blue, C.green, C.violet, C.gray];
                 const keys = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]);
                 w.nums = [
-                    { k: 'tot', l: 'Всего новых', v: fmt(total), sp: addS(ser.tagged, ser.none), list: 1, h: 'Новые за период без тестовых: то же число, что в «Новые пользователи». Щёлкните, чтобы увидеть, кто это и откуда' },
+                    { k: 'tot', l: 'Всего новых', v: fmt(total), sp: addS(ser.tagged, ser.none), list: 1, h: 'Новые за период без тестовых: то же число, что в «Новые регистрации». Щёлкните, чтобы увидеть, кто это и откуда' },
                     { k: 'with', l: 'Знаем, откуда', v: fmt(withSrc), s: total ? 'это ' + pct(withSrc, total) + '% новых' : '', list: 1, h: 'Есть метка кампании, переход с поиска или с нашего сайта. Щёлкните, чтобы увидеть, кто это и откуда' },
                     { k: 'none', l: NONE, v: fmt(total - withSrc), s: 'прямой заход или мессенджер', list: 1, h: 'Источник не записан: прямой заход, мессенджер без реферера или регистрация до учёта источника. Щёлкните, чтобы увидеть, кто это' }
                 ];
@@ -31226,7 +31226,7 @@ const app = {
                 w.nums = [
                     { k: 'visits', l: 'Визиты', v: fmt(d.visits), d: dl(d.visits, q.visits), sp: V.ser.visits, list: 1, h: 'Сеансы работы с калькулятором. Новый визит — после 30 минут тишины или при переходе по новой метке и с другого сайта. Щёлкните — журнал визитов' },
                     { k: 'people', l: 'Посетители', v: fmt(d.people), d: dl(d.people, q.people), sp: V.ser.people, list: 1, h: 'Разные браузеры за период. Один человек с телефона и компьютера — два посетителя. Щёлкните — список' },
-                    { k: 'new', l: 'Новые', v: fmt(d.newV), d: dl(d.newV, q.newV), s: d.people ? pct(d.newV, d.people) + '% посетителей' : '', sp: V.ser.newV, list: 1, h: 'Впервые открыли калькулятор в этом периоде. Щёлкните — кто это и откуда пришёл' },
+                    { k: 'new', l: 'Новые посетители', v: fmt(d.newV), d: dl(d.newV, q.newV), s: d.people ? pct(d.newV, d.people) + '% посетителей' : '', sp: V.ser.newV, list: 1, h: 'Впервые открыли калькулятор в этом периоде. Щёлкните — кто это и откуда пришёл' },
                     { k: 'reg', l: 'Регистрации', v: fmt(d.reg), d: dl(d.reg, q.reg), s: d.newV ? 'конверсия ' + pct(d.reg, d.newV) + '% новых' : '', sp: V.ser.reg, tone: d.reg ? 'good' : '', list: 1, h: 'Новые посетители периода, которые зарегистрировались. Щёлкните — кто это' },
                     { k: 'time', l: 'Время на сайте', v: mmss(d.avgSec), d: d.avgSec != null && q.avgSec != null ? dl(d.avgSec, q.avgSec, { fmt: mmss }) : '', s: d.timedN ? 'в среднем за визит' : 'появится после миграции визитов', list: 1, h: 'Сколько вкладка с калькулятором была на экране за визит, в среднем. Щёлкните — самые долгие визиты' },
                     { k: 'bounce', l: 'Отказы', v: d.bounceP == null ? '—' : d.bounceP + '%', d: d.bounceP != null && q.bounceP != null ? dl(d.bounceP, q.bounceP, { ratio: true, inv: true }) : '', s: d.timedN ? d.bounce + ' визитов короче 15 с' : '', tone: d.bounceP >= 50 ? 'bad' : '', list: 1, h: 'Доля визитов короче 15 секунд: открыли и сразу ушли. Щёлкните — эти визиты' }
@@ -31826,7 +31826,7 @@ const app = {
 
     // Подписи вкладок обозревателя. Визиты — строка на сеанс, остальные — строка на посетителя
     VIS_TABS: [
-        ['visits', 'Визиты'], ['people', 'Посетители'], ['new', 'Новые'], ['reg', 'Регистрации'],
+        ['visits', 'Визиты'], ['people', 'Посетители'], ['new', 'Новые посетители'], ['reg', 'Регистрации'],
         ['time', 'Долгие визиты'], ['bounce', 'Отказы'], ['f_est', 'Сохранили смету'], ['f_paid', 'Оплатили']
     ],
     VIS_FILTERS: { src: 'Источник', page: 'Страница входа', host: 'Сайт', camp: 'Кампания', dev: 'Устройство', os: 'ОС', br: 'Браузер', hour: 'Час', wd: 'День недели', city: 'Город', region: 'Регион', country: 'Страна' },
