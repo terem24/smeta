@@ -49883,6 +49883,25 @@ const app = {
         this.renderAdminServerBody();
     },
 
+    // ── Вкладка «Сервер»: порядок сверху вниз ──
+    // 1. Живой статус Beget (проверка при открытии и раз в минуту, пока вкладка открыта)
+    // 2. Какие функции у пользователей из-за этого не работают, переключатель на каждую
+    // 3. Главный выключатель прокси
+    // 4. Раскрывающиеся настройки: автопроверка и письма, плашка, что делать при восстановлении
+    // Живая часть (#srv_live) перерисовывается результатами проверки отдельно от настроек (#srv_set),
+    // чтобы автообновление не стирало текст, который администратор набирает в поле плашки.
+    _srvOpen: {},
+    _srvChecking: false,
+    _srvTimer: null,
+
+    _srvAgoText: function () {
+        const c = this._serverCheck;
+        if (this._srvChecking) return 'проверяю…';
+        if (!c) return 'ещё не проверяли';
+        const s = Math.max(0, Math.round((Date.now() - c.t) / 1000));
+        return s < 5 ? 'только что' : s < 60 ? s + ' с назад' : Math.round(s / 60) + ' мин назад';
+    },
+
     renderAdminServer: function () {
         const content = document.getElementById('admin_content');
         if (!content) return;
@@ -49890,15 +49909,25 @@ const app = {
         this.renderAdminServerBody();
         // Свежее значение из базы: другой администратор мог переключить, пока вкладка была закрыта
         this.loadAppSettings(true).then(() => this.renderAdminServerBody()).catch(() => { });
+        // Проверка сразу при открытии, дальше раз в минуту, пока вкладка на экране
+        if (!this._serverCheck || Date.now() - this._serverCheck.t > 30000) this.runServerCheck();
+        if (this._srvTimer) clearInterval(this._srvTimer);
+        let tick = 0;
+        this._srvTimer = setInterval(() => {
+            if (this._adminTab !== 'server' || !document.getElementById('admin_server_root')) {
+                clearInterval(this._srvTimer); this._srvTimer = null; return;
+            }
+            const ago = document.getElementById('srv_ago');
+            if (ago) ago.textContent = this._srvAgoText();
+            if (++tick % 60 === 0 && !this._srvChecking) this.runServerCheck();
+        }, 1000);
     },
 
     renderAdminServerBody: function () {
         const root = document.getElementById('admin_server_root');
         if (!root) return;
         const esc = x => String(x ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-        const ro = this.isReadOnlyAdmin();
-        const dis = ro ? 'disabled' : '';
-        const down = this.proxyDownSetting();
+        const dis = this.isReadOnlyAdmin() ? 'disabled' : '';
         const pw = (this.appSettings || {}).proxy_watch || {};
         const watchOn = pw.enabled !== false, digestOn = pw.digest !== false;
         const watchIv = [15, 30, 60, 180, 360].includes(Number(pw.interval)) ? Number(pw.interval) : 60;
@@ -49906,135 +49935,180 @@ const app = {
         const pn = (this.appSettings || {}).proxy_note || {};
         const noteOn = pn.enabled !== false;
         const noteDefault = window.PROXY_NOTE_DEFAULT_TEXT || '';
-        const btn ='padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text-main);';
+        const btn = 'padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text-main);';
         const btnMain = 'padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--primary); background:var(--primary); color:#fff;';
-        const pill = down
-            ? '<span class="ad-pill bad">отключён: функции на паузе</span>'
-            : '<span class="ad-pill ok">включён: всё работает через Beget</span>';
-        const forced = (!down && window.PROXY_DOWN) || (down && !window.PROXY_DOWN)
-            ? '<div style="margin-top:8px; font-size:12px; color:var(--text-sec);">В этом браузере прокси включён вручную (адрес с ?proxy=1), настройка сайта на него не влияет. Снять: ?proxy=0.</div>' : '';
+        const box = 'background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:14px 18px; margin-bottom:12px;';
+        const sum = 'cursor:pointer; font-weight:700; font-size:14px; list-style:none;';
+        const det = (key, title, hint, inner) => `
+            <details style="${box}" ${this._srvOpen[key] ? 'open' : ''} ontoggle="app._srvOpen['${key}'] = this.open">
+                <summary style="${sum}">${title} <span style="font-weight:400; font-size:12.5px; color:var(--text-sec);">· ${hint}</span></summary>
+                <div style="margin-top:12px;">${inner}</div>
+            </details>`;
 
-        const chk = this._serverCheck;
-        let result = '<div style="color:var(--text-sec); font-size:13px;">Проверка ещё не запускалась.</div>';
-        if (chk) {
-            const okAll = chk.rows.every(r => r.ok);
-            result = `<div style="margin-bottom:8px; font-size:13px; font-weight:600; color:${okAll ? 'var(--c-ok)' : 'var(--c-bad)'};">${okAll ? 'Все файлы прокси отвечают, можно включать.' : 'Часть файлов прокси не отвечает: включать рано.'}</div>
-                <table style="width:100%; border-collapse:collapse; font-size:13px;">
-                    ${chk.rows.map(r => `<tr style="border-top:1px solid var(--border);">
-                        <td style="padding:8px 4px;">${esc(r.name)}</td>
-                        <td style="padding:8px 4px;"><span class="ad-pill ${r.ok ? 'ok' : 'bad'}">${r.ok ? 'отвечает' : 'не отвечает'}</span></td>
-                        <td style="padding:8px 4px; color:var(--text-sec);">${esc(r.note)}${r.ms != null ? ' · ' + r.ms + ' мс' : ''}</td></tr>`).join('')}
-                </table>
-                <div style="margin-top:6px; font-size:12px; color:var(--text-sec);">Проверено в ${new Date(chk.t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</div>`;
+        const watchHtml = `
+            <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:10px;">
+                GitHub сам проверяет те же пять файлов и сообщает в обе стороны: когда прокси <b>перестал отвечать</b> и когда <b>снова заработал</b>.
+                Каждое событие — комментарий в задаче «Статус прокси Beget» (<a href="https://github.com/terem24/smeta/issues?q=label%3Aproxy-watch" target="_blank" rel="noopener">открыть</a>);
+                GitHub присылает его письмом на адрес из аккаунта GitHub владельца и пушем в приложение GitHub.
+                Чтобы письмо шло ещё и прямо на ваш ящик, мимо Beget, в репозитории заводятся секреты SMTP_USER и SMTP_PASS (пароль приложения Яндекса),
+                по желанию ALERT_TO. Сам выключатель прокси автопроверка не трогает.
+            </div>
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px; cursor:pointer;">
+                <input type="checkbox" ${watchOn ? 'checked' : ''} ${dis} onchange="app.setProxyWatch('enabled', this.checked)">
+                Автопроверка и уведомления о смене состояния
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px; ${watchOn ? '' : 'opacity:.5;'}">
+                Как часто проверять:
+                <select ${dis || !watchOn ? 'disabled' : ''} onchange="app.setProxyWatch('interval', this.value)"
+                    style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text-main); font:inherit; font-size:13px;">
+                    ${[15, 30, 60, 180, 360].map(m => `<option value="${m}" ${m === watchIv ? 'selected' : ''}>${ivLabel[m]}</option>`).join('')}
+                </select>
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; ${watchOn ? '' : 'opacity:.5;'}">
+                <input type="checkbox" ${digestOn ? 'checked' : ''} ${dis || !watchOn ? 'disabled' : ''} onchange="app.setProxyWatch('digest', this.checked)">
+                Ежедневная сводка в 9:00 по Москве, пока состояние не меняется
+            </label>`;
+
+        const noteHtml = `
+            <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:10px;">
+                Показывается внизу страницы, пока прокси отключён: висит, пока человек не нажмёт «Понятно», и возвращается через сутки.
+                Пустой текст = стандартный. Изменения доходят до пользователей при следующей загрузке страницы.
+            </div>
+            <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px; cursor:pointer;">
+                <input type="checkbox" ${noteOn ? 'checked' : ''} ${dis} onchange="app.saveProxyNote(this.checked)">
+                Показывать плашку
+            </label>
+            <textarea id="srv_note_text" rows="3" maxlength="400" placeholder="${esc(noteDefault)}" ${dis}
+                style="width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text-main); font:inherit; font-size:13px; line-height:1.45; resize:vertical;">${esc(pn.text || '')}</textarea>
+            <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+                <button type="button" style="${btnMain}" ${dis} onclick="app.saveProxyNote()">Сохранить текст</button>
+                <button type="button" style="${btn}" ${dis} onclick="app.resetProxyNoteText()">Вернуть стандартный</button>
+            </div>`;
+
+        const recoverHtml = `
+            <ol style="margin:0; padding-left:20px; font-size:13px; line-height:1.7; color:var(--text-main);">
+                <li>Перевыпустить ключи: Gemini API key, RELAY_TOKEN (и в Supabase), EmailJS Private Key, токен Telegram-бота (@BotFather → /revoke), lead_ingest_secret, report_key.txt.</li>
+                <li>Сменить пароль панели Beget и SSH-ключ, убрать чужие ключи из authorized_keys.</li>
+                <li>Дождаться зелёного статуса вверху страницы (все сервисы отвечают).</li>
+                <li>Нажать «Включить прокси» в блоке «Главный выключатель».</li>
+            </ol>`;
+
+        root.innerHTML = `<div id="srv_live"></div>`
+            + det('watch', 'Автопроверка и письма', 'как часто и куда приходят уведомления', watchHtml)
+            + det('note', 'Плашка для пользователей', 'что видят люди, пока прокси отключён', noteHtml)
+            + det('recover', 'Когда Beget восстановится', 'что сделать перед включением', recoverHtml);
+        this.renderAdminServerLive();
+    },
+
+    // Живая часть вкладки: статус, функции, главный выключатель. Зовётся после каждой проверки.
+    renderAdminServerLive: function () {
+        const live = document.getElementById('srv_live');
+        if (!live) return;
+        const esc = x => String(x ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const dis = this.isReadOnlyAdmin() ? 'disabled' : '';
+        const down = this.proxyDownSetting();
+        const chk = this._serverCheck, busy = this._srvChecking;
+        const rows = chk ? chk.rows : [];
+        const bad = rows.filter(r => !r.ok);
+        const btn = 'padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text-main);';
+        const btnMain = 'padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--primary); background:var(--primary); color:#fff;';
+        const box = 'background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:16px 18px; margin-bottom:12px;';
+        const spin = '<span style="display:inline-block; width:12px; height:12px; border:2px solid currentColor; border-top-color:transparent; border-radius:50%; animation:stout-spin .8s linear infinite; vertical-align:middle;"></span>';
+
+        // 1. Статус Beget
+        let color = 'var(--text-sec)', title, sub;
+        if (!chk) {
+            title = busy ? 'Проверяю Beget…' : 'Состояние Beget неизвестно';
+            sub = busy ? 'Обращаюсь к пяти файлам прокси, до 8 секунд' : 'Нажмите «Проверить сейчас»';
+        } else if (!bad.length) {
+            color = 'var(--c-ok)'; title = 'Beget отвечает'; sub = 'Все ' + rows.length + ' сервисов прокси работают';
+        } else if (bad.length === rows.length) {
+            color = 'var(--c-bad)'; title = 'Beget не отвечает'; sub = 'Ни один сервис прокси не ответил';
+        } else {
+            color = 'var(--c-bad)'; title = 'Beget отвечает частично'; sub = 'Не работает ' + bad.length + ' из ' + rows.length + ': ' + bad.map(r => r.name).join(', ');
         }
+        const tiles = this.SERVER_CHECKS.map(c => {
+            const r = rows.find(x => x.name === c.name);
+            const dot = r ? (r.ok ? 'var(--c-ok)' : 'var(--c-bad)') : 'var(--text-sec)';
+            const note = r ? (r.ok ? (r.ms != null ? r.ms + ' мс' : 'отвечает') : esc(r.note)) : '—';
+            return `<div style="flex:1 1 150px; min-width:140px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:var(--bg); ${busy ? 'opacity:.6;' : ''}">
+                <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600;"><span style="width:10px; height:10px; border-radius:50%; background:${dot}; flex:none;"></span>${esc(c.name)}</div>
+                <div style="margin-top:3px; font-size:12px; color:var(--text-sec);">${note}</div></div>`;
+        }).join('');
+        const hero = `
+            <div style="${box} border-left:4px solid ${color};">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <div style="flex:1 1 260px;">
+                        <div style="font-size:18px; font-weight:700; color:${color};">${busy && !chk ? spin + ' ' : ''}${esc(title)}</div>
+                        <div style="font-size:13px; color:var(--text-sec); margin-top:2px;">${esc(sub)}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <button type="button" id="srv_check_btn" style="${btn}" ${busy ? 'disabled' : ''} onclick="app.runServerCheck()">${busy ? 'Проверяю…' : 'Проверить сейчас'}</button>
+                        <div style="font-size:12px; color:var(--text-sec); margin-top:4px;">Проверено: <span id="srv_ago">${this._srvAgoText()}</span> · автообновление раз в минуту</div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">${tiles}</div>
+            </div>`;
 
-        // Таблица функций: что потеряно сейчас и почему, переключатель на каждую
+        // 2. Функции у пользователей
         const offMap = ((this.appSettings || {}).beget_features || {}).off || {};
-        const badNames = new Set(((chk && chk.rows) || []).filter(r => !r.ok).map(r => r.name));
-        let anyLost = false;
+        const badNames = new Set(bad.map(r => r.name));
         const featRows = this.BEGET_FEATURES.map(f => {
             const manual = offMap[f.id] === true;
             const failed = f.checks.filter(n => badNames.has(n));
-            let state, cls;
-            if (down) { state = 'потеряна: прокси отключён целиком'; cls = 'bad'; }
-            else if (manual) { state = 'отключена вручную'; cls = 'bad'; }
-            else if (failed.length) { state = 'не отвечает: ' + failed.join(', ') + ' — пока работает, можно отключить'; cls = 'warn'; }
-            else { state = 'работает'; cls = 'ok'; }
-            if (cls !== 'ok') anyLost = true;
+            let state, cls = 'ok';
+            if (down) { state = 'не работает: прокси отключён'; cls = 'bad'; }
+            else if (manual) { state = 'выключена вручную'; cls = 'bad'; }
+            else if (failed.length) { state = 'ждёт ответа сервера: ' + failed.join(', '); cls = 'bad'; }
+            else if (!chk) { state = 'не проверено'; cls = ''; }
+            else { state = 'работает'; }
             return `<tr style="border-top:1px solid var(--border);">
-                <td style="padding:8px 4px;">${esc(f.name)}<div style="font-size:12px; color:var(--text-sec);">Если выключить: ${esc(f.off)}</div></td>
-                <td style="padding:8px 4px;"><span class="ad-pill ${cls === 'warn' ? 'bad' : cls}">${esc(state)}</span></td>
-                <td style="padding:8px 4px; text-align:right; white-space:nowrap;">
+                <td style="padding:9px 4px;">${esc(f.name)}<div style="font-size:12px; color:var(--text-sec);">Если выключить: ${esc(f.off)}</div></td>
+                <td style="padding:9px 4px;"><span class="ad-pill ${cls}">${esc(state)}</span></td>
+                <td style="padding:9px 4px; text-align:right; white-space:nowrap;">
                     <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
                         <input type="checkbox" ${manual ? 'checked' : ''} ${dis} onchange="app.setFeatureOff('${f.id}', this.checked)"> выключить
                     </label></td></tr>`;
         }).join('');
-        const featCard = `
-            <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:16px 18px; margin-bottom:14px;">
-                <div style="font-weight:700; font-size:15px; margin-bottom:6px;">Какие функции потеряны из-за Beget</div>
-                <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:10px;">
-                    Выключенная функция не обращается к серверу и не ждёт ответа: пользователь сразу видит ручной вариант.
-                    ${down ? 'Прокси сейчас отключён целиком, поэтому все функции ниже на паузе независимо от галочек.' : 'Пока прокси включён, функции работают, если вы их не выключили.'}
-                    Действует для всех при следующей загрузке страницы.
+        const feats = `
+            <div style="${box}">
+                <div style="font-weight:700; font-size:15px; margin-bottom:4px;">Что из-за этого не работает у пользователей</div>
+                <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:8px;">
+                    Выключенная функция не обращается к серверу и не заставляет ждать: человек сразу видит ручной вариант. Действует для всех при следующей загрузке страницы.
                 </div>
                 <table style="width:100%; border-collapse:collapse; font-size:13px;">${featRows}</table>
                 <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
-                    <button type="button" style="${btn}" ${dis} ${chk ? '' : 'disabled title="Сначала нажмите «Проверить серверы»"'} onclick="app.disableLostFeatures()">Выключить то, что не ответило на проверке</button>
+                    <button type="button" style="${btn}" ${dis} ${bad.length ? '' : 'disabled'} onclick="app.disableLostFeatures()">Выключить всё, что не ответило</button>
                     <button type="button" style="${btn}" ${dis} onclick="app.disableLostFeatures(true)">Включить все функции</button>
                 </div>
             </div>`;
 
-        root.innerHTML = `
-            <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:16px 18px; margin-bottom:14px;">
-                <div style="font-weight:700; font-size:15px; margin-bottom:6px;">Прокси на Beget ${pill}</div>
-                <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:12px;">
-                    Через proxy.heatcalc.ru идут ИИ-распознавание, заявки на монтаж, подложки планов, прайсы дистрибьюторов,
-                    уведомления в Telegram и вход у тех, у кого закрыт Supabase. Пока прокси отключён, эти запросы сразу получают
-                    отказ, а у пользователей показывается короткая плашка. Переключатель действует для всех при следующей загрузке страницы.
+        // 3. Главный выключатель
+        const forced = (!down && window.PROXY_DOWN) || (down && !window.PROXY_DOWN)
+            ? '<div style="margin-top:8px; font-size:12px; color:var(--text-sec);">В этом браузере прокси переключён вручную (адрес с ?proxy=1), настройка сайта на него не влияет. Снять: ?proxy=0.</div>' : '';
+        let advice = '', canOn = true;
+        if (down && chk && !bad.length) advice = '✅ Beget ответил на проверке: можно включать.';
+        else if (down && bad.length) { advice = '⚠️ Включать рано: часть сервисов не отвечает.'; canOn = false; }
+        else if (!down && bad.length) advice = '⚠️ Прокси включён, но часть сервисов не отвечает: пользователи ждут ответа. Отключите прокси или выключите отдельные функции выше.';
+        const master = `
+            <div style="${box}">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px;">
+                    <div style="font-weight:700; font-size:15px;">Главный выключатель прокси</div>
+                    ${down ? '<span class="ad-pill bad">отключён: все функции на паузе</span>' : '<span class="ad-pill ok">включён</span>'}
                 </div>
+                <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:12px;">
+                    Через proxy.heatcalc.ru идут ИИ-распознавание, заявки на монтаж, подложки планов, прайсы дистрибьюторов, уведомления в Telegram
+                    и вход у тех, у кого закрыт Supabase. Пока прокси отключён, эти запросы сразу получают отказ, а у пользователей внизу страницы
+                    показывается короткая плашка. Действует для всех при следующей загрузке страницы.
+                </div>
+                ${advice ? `<div style="font-size:13px; font-weight:600; margin-bottom:10px;">${advice}</div>` : ''}
                 ${down
-                ? `<button type="button" style="${btnMain}" ${dis} onclick="app.setProxyDown(false)">Включить прокси</button>`
+                ? `<button type="button" style="${canOn ? btnMain : btn}" ${dis} onclick="app.setProxyDown(false)">Включить прокси</button>`
                 : `<button type="button" style="${btn}" ${dis} onclick="app.setProxyDown(true)">Отключить прокси</button>`}
                 ${forced}
-                <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
-                    <div style="font-weight:700; font-size:14px; margin-bottom:4px;">Автопроверка и уведомления</div>
-                    <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:10px;">
-                        GitHub сам проверяет те же пять файлов и пишет в обе стороны: когда прокси <b>перестал отвечать</b>
-                        и когда <b>снова заработал</b>. Каждое событие — комментарий в задаче «Статус прокси Beget»; GitHub шлёт его
-                        письмом на адрес, указанный в аккаунте GitHub владельца (github.com/settings/notifications), и пушем в приложение GitHub.
-                        <a href="https://github.com/terem24/smeta/issues?q=label%3Aproxy-watch" target="_blank" rel="noopener">Открыть задачу</a>.
-                        Если в репозитории заведены секреты почты (SMTP_USER, SMTP_PASS, при желании ALERT_TO), то то же письмо уйдёт
-                        и на этот ящик напрямую, не через Beget. Сам тумблер «Прокси» автопроверка не переключает: после «снова отвечает» включите его здесь.
-                    </div>
-                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px; ${watchOn ? '' : 'opacity:.5;'}">
-                        Как часто проверять:
-                        <select ${dis || !watchOn ? 'disabled' : ''} onchange="app.setProxyWatch('interval', this.value)"
-                            style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text-main); font:inherit; font-size:13px;">
-                            ${[15, 30, 60, 180, 360].map(m => `<option value="${m}" ${m === watchIv ? 'selected' : ''}>${ivLabel[m]}</option>`).join('')}
-                        </select>
-                    </label>
-                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:6px; cursor:pointer;">
-                        <input type="checkbox" ${watchOn ? 'checked' : ''} ${dis} onchange="app.setProxyWatch('enabled', this.checked)">
-                        Автопроверка и уведомления о смене состояния
-                    </label>
-                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; ${watchOn ? '' : 'opacity:.5;'}">
-                        <input type="checkbox" ${digestOn ? 'checked' : ''} ${dis || !watchOn ? 'disabled' : ''} onchange="app.setProxyWatch('digest', this.checked)">
-                        Ежедневная сводка в 9:00 по Москве, пока состояние не меняется
-                    </label>
-                </div>
-                <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
-                    <div style="font-weight:700; font-size:14px; margin-bottom:4px;">Плашка для пользователей</div>
-                    <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:10px;">
-                        Показывается внизу страницы, пока прокси отключён: висит, пока человек не нажмёт «Понятно», и возвращается через сутки.
-                        Пустой текст = стандартный. Изменения доходят до пользователей при следующей загрузке страницы.
-                    </div>
-                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px; cursor:pointer;">
-                        <input type="checkbox" ${noteOn ? 'checked' : ''} ${dis} onchange="app.saveProxyNote(this.checked)">
-                        Показывать плашку
-                    </label>
-                    <textarea id="srv_note_text" rows="3" maxlength="400" placeholder="${esc(noteDefault)}" ${dis}
-                        style="width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text-main); font:inherit; font-size:13px; line-height:1.45; resize:vertical;">${esc(pn.text || '')}</textarea>
-                    <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
-                        <button type="button" style="${btnMain}" ${dis} onclick="app.saveProxyNote()">Сохранить текст</button>
-                        <button type="button" style="${btn}" ${dis} onclick="app.resetProxyNoteText()">Вернуть стандартный</button>
-                    </div>
-                </div>
-            </div>
-            <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:16px 18px; margin-bottom:14px;">
-                <div style="font-weight:700; font-size:15px; margin-bottom:10px;">Отвечает ли Beget</div>
-                <div style="margin-bottom:12px;"><button type="button" id="srv_check_btn" style="${btn}" onclick="app.runServerCheck()">Проверить серверы</button></div>
-                ${result}
-            </div>
-            ${featCard}
-            <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:16px 18px;">
-                <div style="font-weight:700; font-size:15px; margin-bottom:8px;">Когда Beget восстановится</div>
-                <ol style="margin:0; padding-left:20px; font-size:13px; line-height:1.7; color:var(--text-main);">
-                    <li>Перевыпустить ключи: Gemini API key, RELAY_TOKEN (и в Supabase), EmailJS Private Key, токен Telegram-бота (@BotFather → /revoke), lead_ingest_secret, report_key.txt.</li>
-                    <li>Сменить пароль панели Beget и SSH-ключ, убрать чужие ключи из authorized_keys.</li>
-                    <li>Нажать «Проверить серверы»: все пять строк должны отвечать.</li>
-                    <li>Нажать «Включить прокси».</li>
-                </ol>
             </div>`;
+
+        live.innerHTML = hero + feats + master;
     },
 
     // Плашка про прокси: app_settings.proxy_note = {enabled, text}. enabled передаётся, когда
@@ -50112,27 +50186,33 @@ const app = {
     },
 
     runServerCheck: async function () {
-        const b = document.getElementById('srv_check_btn');
-        if (b) { b.disabled = true; b.textContent = 'Проверяю…'; }
+        if (this._srvChecking) return;
+        this._srvChecking = true;
+        this.renderAdminServerLive();
         const f = window.__origFetch || fetch.bind(window);
-        const rows = await Promise.all(this.SERVER_CHECKS.map(async c => {
-            const t0 = performance.now();
-            const ctrl = new AbortController();
-            const timer = setTimeout(() => ctrl.abort(), 8000);
-            try {
-                const r = await f('https://proxy.heatcalc.ru/' + c.url, { signal: ctrl.signal, cache: 'no-store' });
-                const ms = Math.round(performance.now() - t0);
-                let ok = r.status < 500, note = 'HTTP ' + r.status;
-                if (ok && c.json && r.ok) {
-                    try { await r.clone().json(); } catch (e) { ok = false; note = 'ответ не JSON'; }
-                }
-                return { name: c.name, ok: ok, ms: ms, note: note };
-            } catch (e) {
-                return { name: c.name, ok: false, ms: null, note: e && e.name === 'AbortError' ? 'нет ответа за 8 с' : 'не отвечает' };
-            } finally { clearTimeout(timer); }
-        }));
-        this._serverCheck = { t: Date.now(), rows: rows };
-        this.renderAdminServerBody();
+        let rows = [];
+        try {
+            rows = await Promise.all(this.SERVER_CHECKS.map(async c => {
+                const t0 = performance.now();
+                const ctrl = new AbortController();
+                const timer = setTimeout(() => ctrl.abort(), 8000);
+                try {
+                    const r = await f('https://proxy.heatcalc.ru/' + c.url, { signal: ctrl.signal, cache: 'no-store' });
+                    const ms = Math.round(performance.now() - t0);
+                    let ok = r.status < 500, note = 'HTTP ' + r.status;
+                    if (ok && c.json && r.ok) {
+                        try { await r.clone().json(); } catch (e) { ok = false; note = 'ответ не JSON'; }
+                    }
+                    return { name: c.name, ok: ok, ms: ms, note: note };
+                } catch (e) {
+                    return { name: c.name, ok: false, ms: null, note: e && e.name === 'AbortError' ? 'нет ответа за 8 с' : 'не отвечает' };
+                } finally { clearTimeout(timer); }
+            }));
+            this._serverCheck = { t: Date.now(), rows: rows };
+        } finally {
+            this._srvChecking = false;
+        }
+        this.renderAdminServerLive();
     },
 
     loadMailBudget: async function () {
