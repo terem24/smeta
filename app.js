@@ -71,11 +71,11 @@ const PROXY_DEFAULT_DOWN = true;
         return origFetch(input, init);
     };
 
-    // Плашка: короткая, в цветах калькулятора. Сама уходит через 15 секунд, а после ухода или
+    // Плашка: короткая, в цветах калькулятора. Сама уходит через 5 минут, а после ухода или
     // закрытия сутки не возвращается, чтобы не пугать и не мешать работать.
     var NOTE_KEY = 'hc_proxy_note_t';
     var NOTE_EVERY_MS = 24 * 3600 * 1000;
-    var NOTE_SHOW_MS = 15000;
+    var NOTE_SHOW_MS = 5 * 60 * 1000;
     var noteTimer = null;
     function hideNote(el) {
         if (noteTimer) { clearTimeout(noteTimer); noteTimer = null; }
