@@ -1,0 +1,134 @@
+name: Proxy Watch
+
+# Автопроверка прокси на Beget (proxy.heatcalc.ru): раз в 15 минут стучимся в те же пять файлов,
+# что и кнопка «Проверить серверы» в админке (вкладка «Сервер»), и пишем, когда состояние
+# меняется: «перестал отвечать» или «снова отвечает». Уведомления идут через GitHub: состояние
+# хранится в одной Issue с меткой proxy-watch, на каждое изменение в неё пишется комментарий
+# с упоминанием владельца, и GitHub присылает письмо (и пуш в мобильное приложение GitHub).
+# Секретов не нужно.
+#
+# Включается и выключается тумблером в админке: app_settings.proxy_watch = {"enabled": bool,
+# "digest": bool}. Читается публичным ключом, как и остальные настройки сайта. Пока строки в базе
+# нет, проверка и дневная сводка включены. Совсем остановить можно в Actions → Proxy Watch → Disable.
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: proxy-watch
+  cancel-in-progress: false
+
+env:
+  OWNER_LOGIN: terem24
+  SUPABASE_URL: https://ahanbwugsmcyvrwbmtlx.supabase.co
+  # Публичный (publishable) ключ из app.js: он и так открыт в браузере каждому посетителю
+  SUPABASE_KEY: sb_publishable_gcMJ-PvJmKavObbnePFGZQ_O-pu5O2p
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Настройки из админки
+        id: cfg
+        run: |
+          v=$(curl -s -m 20 "$SUPABASE_URL/rest/v1/app_settings?key=eq.proxy_watch&select=value" -H "apikey: $SUPABASE_KEY" || true)
+          enabled=$(echo "$v" | jq -r 'if type=="array" and length>0 and .[0].value.enabled==false then "false" else "true" end' 2>/dev/null || echo true)
+          digest=$(echo "$v" | jq -r 'if type=="array" and length>0 and .[0].value.digest==false then "false" else "true" end' 2>/dev/null || echo true)
+          echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "Автопроверка: $enabled, дневная сводка: $digest"
+
+      - name: Проверить прокси
+        if: steps.cfg.outputs.enabled == 'true'
+        id: check
+        run: |
+          check_once() {
+            local ok=1 report=""
+            for p in "price_index.php|json|Прайс-индекс" "recognize_archive.php?access=1|json|Архив и доступы" \
+                     "gemini_proxy.php||ИИ-прокси" "supabase_proxy.php?path=%2Frest%2Fv1%2F||Вход и база" "geo.php||Геолокация"; do
+              IFS='|' read -r path kind name <<< "$p"
+              code=$(curl -s -m 15 -o /tmp/body -w '%{http_code}' "https://proxy.heatcalc.ru/$path" || true)
+              code=${code:-000}
+              if [ "$code" = "000" ] || [ "$code" -ge 500 ]; then
+                ok=0; report+="- ❌ $name: не отвечает (HTTP $code)"$'\n'
+              elif [ "$kind" = "json" ] && [ "$code" = "200" ] && ! jq -e . /tmp/body >/dev/null 2>&1; then
+                ok=0; report+="- ❌ $name: ответ не JSON"$'\n'
+              else
+                report+="- ✅ $name: HTTP $code"$'\n'
+              fi
+            done
+            echo "$ok"
+            printf '%s' "$report" > /tmp/report
+          }
+          # Две проверки с паузой: одиночный сбой сети не считается переменой состояния
+          a=$(check_once); cp /tmp/report /tmp/report1
+          sleep 60
+          b=$(check_once)
+          if [ "$a" = "1" ] && [ "$b" = "1" ]; then state=up
+          elif [ "$a" = "0" ] && [ "$b" = "0" ]; then state=down
+          else state=unclear; fi
+          echo "state=$state" >> "$GITHUB_OUTPUT"
+          { echo 'report<<EOF'; cat /tmp/report; echo; echo EOF; } >> "$GITHUB_OUTPUT"
+          echo "Состояние: $state (проверки: $a, $b)"; cat /tmp/report
+
+      - name: Записать и сообщить
+        if: steps.cfg.outputs.enabled == 'true' && steps.check.outputs.state != 'unclear'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATE: ${{ steps.check.outputs.state }}
+          REPORT: ${{ steps.check.outputs.report }}
+          DIGEST: ${{ steps.cfg.outputs.digest }}
+        run: |
+          gh label create proxy-watch --color 5319e7 --description "Автопроверка прокси Beget" 2>/dev/null || true
+          gh label create proxy-up --color 0e8a16 --description "Прокси отвечает" 2>/dev/null || true
+          gh label create proxy-down --color d93f0b --description "Прокси не отвечает" 2>/dev/null || true
+
+          admin="Админка: Обзор → Сервер."
+          num=$(gh issue list --label proxy-watch --state all --limit 1 --json number --jq '.[0].number // empty')
+
+          if [ -z "$num" ]; then
+            if [ "$STATE" = "up" ]; then now="отвечает"; else now="не отвечает"; fi
+            gh issue create --title "Статус прокси Beget (автопроверка)" --label proxy-watch --label "proxy-$STATE" \
+              --assignee "$OWNER_LOGIN" \
+              --body "Автопроверка прокси proxy.heatcalc.ru включена, проверка раз в 15 минут. Сейчас: **$now**.
+
+          В эту задачу будут приходить комментарии, когда прокси перестанет отвечать или снова заработает, и раз в день краткая сводка. Выключить: тумблер в админке (Обзор → Сервер).
+
+          $REPORT"
+            exit 0
+          fi
+
+          labels=$(gh issue view "$num" --json labels --jq '[.labels[].name] | join(" ")')
+          if echo "$labels" | grep -qw proxy-up; then last=up; elif echo "$labels" | grep -qw proxy-down; then last=down; else last=none; fi
+          [ "$(gh issue view "$num" --json state --jq .state)" = "CLOSED" ] && gh issue reopen "$num"
+
+          if [ "$last" != "$STATE" ]; then
+            gh issue edit "$num" --add-label "proxy-$STATE" ${last:+--remove-label "proxy-$last"} >/dev/null 2>&1 || gh issue edit "$num" --add-label "proxy-$STATE"
+            if [ "$STATE" = "up" ]; then
+              body="@$OWNER_LOGIN **Beget снова отвечает: все пять файлов прокси работают.**
+
+          Можно включать: $admin Нажмите «Проверить серверы», а потом «Включить прокси». Если ещё не сделали, сначала перевыпустите ключи (список там же).
+
+          $REPORT"
+            else
+              body="@$OWNER_LOGIN **Прокси Beget перестал отвечать.**
+
+          Функции через прокси (ИИ, заявки, подложки планов) могут не работать. Если тумблер «Прокси» включён, лучше отключить: $admin
+
+          $REPORT"
+            fi
+            gh issue comment "$num" --body "$body"
+          elif [ "$DIGEST" = "true" ] && [ "$(date -u +%H)" = "06" ] && [ "$(date -u +%M)" -lt 15 ]; then
+            if [ "$STATE" = "up" ]; then now="отвечает"; else now="по-прежнему не отвечает"; fi
+            gh issue comment "$num" --body "Дневная сводка: прокси Beget $now.
+
+          $REPORT"
+          else
+            echo "Без перемен: $STATE"
+          fi

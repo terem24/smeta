@@ -71,14 +71,13 @@ const PROXY_DEFAULT_DOWN = true;
         return origFetch(input, init);
     };
 
-    // Плашка: короткая, в цветах калькулятора. Сама уходит через 5 минут, а после ухода или
-    // закрытия сутки не возвращается, чтобы не пугать и не мешать работать.
-    var NOTE_KEY = 'hc_proxy_note_t';
+    // Плашка: короткая, в цветах калькулятора. Висит, пока её не закроют («Понятно»), в том числе
+    // после перезагрузки страницы; закрыли — сутки не возвращается, чтобы не пугать и не мешать.
+    // Время считается от закрытия, а не от показа: иначе после первой же перезагрузки она бы пропала,
+    // хотя человек её не видел.
+    var NOTE_KEY = 'hc_proxy_note_closed';
     var NOTE_EVERY_MS = 24 * 3600 * 1000;
-    var NOTE_SHOW_MS = 5 * 60 * 1000;
-    var noteTimer = null;
     function hideNote(el) {
-        if (noteTimer) { clearTimeout(noteTimer); noteTimer = null; }
         if (!el) return;
         el.style.opacity = '0';
         el.style.transform = 'translateY(12px)';
@@ -93,7 +92,6 @@ const PROXY_DEFAULT_DOWN = true;
         } catch (e) { }
         setTimeout(function () {
             if (!window.PROXY_DOWN || document.getElementById('proxyDownBanner')) return;
-            try { localStorage.setItem(NOTE_KEY, String(Date.now())); } catch (e) { }
             var note = document.createElement('div');
             note.id = 'proxyDownBanner';
             note.setAttribute('role', 'status');
@@ -114,7 +112,10 @@ const PROXY_DEFAULT_DOWN = true;
             ok.textContent = 'Понятно';
             ok.style.cssText = 'flex:none;border:0;border-radius:20px;background:#f4f4f6;color:#111827;font-size:13px;' +
                 'font-weight:600;padding:9px 16px;cursor:pointer;font-family:inherit;';
-            ok.onclick = function () { hideNote(note); };
+            ok.onclick = function () {
+                try { localStorage.setItem(NOTE_KEY, String(Date.now())); } catch (e) { }
+                hideNote(note);
+            };
             note.appendChild(txt);
             note.appendChild(ok);
             document.body.appendChild(note);
@@ -122,7 +123,6 @@ const PROXY_DEFAULT_DOWN = true;
                 note.style.opacity = '1';
                 note.style.transform = 'translateY(0)';
             });
-            noteTimer = setTimeout(function () { hideNote(note); }, NOTE_SHOW_MS);
         }, 2500);
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', updateBanner);
@@ -2080,7 +2080,7 @@ const app = {
     // регистрация, а не запертая дверь для всех.
     // warranty.threshold — порог доли STOUT для бланка гарантии (см. stoutShare)
     // proxy.down — прокси на Beget отключён (см. начало файла, переключатель во вкладке «Сервер»)
-    appSettings: { registration: { mode: 'open' }, warranty: { threshold: 90 }, proxy: { down: PROXY_DEFAULT_DOWN } },
+    appSettings: { registration: { mode: 'open' }, warranty: { threshold: 90 }, proxy: { down: PROXY_DEFAULT_DOWN }, proxy_watch: { enabled: true, digest: true } },
     _appSettingsPromise: null,
     loadAppSettings: function (force) {
         if (this._appSettingsPromise && !force) return this._appSettingsPromise;
@@ -49803,7 +49803,9 @@ const app = {
         const ro = this.isReadOnlyAdmin();
         const dis = ro ? 'disabled' : '';
         const down = this.proxyDownSetting();
-        const btn = 'padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text-main);';
+        const pw = (this.appSettings || {}).proxy_watch || {};
+        const watchOn = pw.enabled !== false, digestOn = pw.digest !== false;
+        const btn ='padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text-main);';
         const btnMain = 'padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--primary); background:var(--primary); color:#fff;';
         const pill = down
             ? '<span class="ad-pill bad">отключён: функции на паузе</span>'
@@ -49837,6 +49839,23 @@ const app = {
                 ? `<button type="button" style="${btnMain}" ${dis} onclick="app.setProxyDown(false)">Включить прокси</button>`
                 : `<button type="button" style="${btn}" ${dis} onclick="app.setProxyDown(true)">Отключить прокси</button>`}
                 ${forced}
+                <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
+                    <div style="font-weight:700; font-size:14px; margin-bottom:4px;">Автопроверка и уведомления</div>
+                    <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:10px;">
+                        Раз в 15 минут GitHub сам проверяет те же пять файлов. Когда прокси перестаёт отвечать или снова заработает,
+                        вам приходит письмо (и пуш в приложении GitHub): комментарий в задаче «Статус прокси Beget».
+                        <a href="https://github.com/terem24/smeta/issues?q=label%3Aproxy-watch" target="_blank" rel="noopener">Открыть задачу</a>.
+                        Сам тумблер «Прокси» автопроверка не переключает: когда придёт «снова отвечает», включите его здесь.
+                    </div>
+                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:6px; cursor:pointer;">
+                        <input type="checkbox" ${watchOn ? 'checked' : ''} ${dis} onchange="app.setProxyWatch('enabled', this.checked)">
+                        Автопроверка и уведомления о смене состояния
+                    </label>
+                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; ${watchOn ? '' : 'opacity:.5;'}">
+                        <input type="checkbox" ${digestOn ? 'checked' : ''} ${dis || !watchOn ? 'disabled' : ''} onchange="app.setProxyWatch('digest', this.checked)">
+                        Ежедневная сводка в 9:00 по Москве, пока состояние не меняется
+                    </label>
+                </div>
             </div>
             <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:16px 18px; margin-bottom:14px;">
                 <div style="font-weight:700; font-size:15px; margin-bottom:10px;">Отвечает ли Beget</div>
@@ -49852,6 +49871,25 @@ const app = {
                     <li>Нажать «Включить прокси».</li>
                 </ol>
             </div>`;
+    },
+
+    // Автопроверка прокси (workflow proxy-watch.yml читает app_settings.proxy_watch этим же ключом)
+    setProxyWatch: async function (key, val) {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять настройки сайта запрещено.'); this.renderAdminServerBody(); return; }
+        const cur = (this.appSettings || {}).proxy_watch || {};
+        const value = { enabled: cur.enabled !== false, digest: cur.digest !== false };
+        value[key] = !!val;
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'proxy_watch', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            this.appSettings = Object.assign({}, this.appSettings, { proxy_watch: value });
+        } catch (e) {
+            console.error('[автопроверка] запись не прошла:', e);
+            app.alert('Не удалось сохранить: ' + (e.message || e));
+        }
+        this.renderAdminServerBody();
     },
 
     setProxyDown: async function (down) {
