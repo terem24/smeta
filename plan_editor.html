@@ -3238,7 +3238,9 @@ function autoScale(silent) {
       ', комнат расчёта на этаже ' + tg.length);
     if (!silent) {
       var rd = (SCAN_DIAG[cur] || {}).read || '';
-      hint(/quota|billing|RESOURCE_EXHAUSTED|429/i.test(rd)
+      hint(!aiScanOn()
+        ? 'Масштаб не подобрался автоматически — задайте его по двери или известному размеру на плане: кнопка «Задать масштаб», два клика по краям отрезка.'
+        : /quota|billing|RESOURCE_EXHAUSTED|429/i.test(rd)
         ? 'Сервис распознавания сейчас перегружен — масштаб не подобрался. Задайте масштаб вручную: кнопка «Задать масштаб», два клика по краям двери или известного размера.'
         : /сервис недоступен|нет ответа/.test(rd)
         ? 'Нет связи с сервисом распознавания — масштаб не подобран. Проверьте интернет и нажмите «Подобрать ещё раз» или задайте масштаб по двери.'
@@ -3886,6 +3888,25 @@ var PDF_AREAS = {};
  * Не ответил за 50 с или ошибся — молча [], план грузится как раньше.
  */
 var AREA_READ_URL = 'https://proxy.heatcalc.ru/gemini_proxy.php';
+/** Читать ли план ИИ. Это отдельная страница, заглушка fetch из app.js до неё не доходит, поэтому
+ *  смотрим тот же кэш в localStorage, что пишет app.js: hc_proxy_down (прокси на Beget отключён
+ *  целиком) и hc_feat_off (функция выключена вручную во вкладке «Сервер» админки). Нет данных —
+ *  читаем как раньше. Для проверки руками: localStorage.heatcalc_ai_scan = '1' (включить) / '0'. */
+function aiScanOn() {
+  try {
+    var v = localStorage.getItem('heatcalc_ai_scan');
+    if (v === '1') return true;
+    if (v === '0') return false;
+    var wk = 7 * 24 * 3600 * 1000, now = Date.now();
+    if (localStorage.getItem('hc_proxy_force') !== '1') {
+      var pd = JSON.parse(localStorage.getItem('hc_proxy_down') || 'null');
+      if (pd && pd.down === true && now - (pd.t || 0) < wk) return false;
+    }
+    var fo = JSON.parse(localStorage.getItem('hc_feat_off') || 'null');
+    if (fo && fo.off && fo.off.ai_plan === true && now - (fo.t || 0) < wk) return false;
+  } catch (e) { }
+  return true;
+}
 var AREA_READ_PROMPT = 'Ты читаешь чертёж этажа частного дома. Найди на плане подписи площадей помещений: ' +
   'число с запятой или точкой и единицей м² (м2, кв.м), например «19,16 м²», стоящее внутри контура комнаты. ' +
   'Не бери размеры в миллиметрах, отметки высот, номера помещений, периметры, общую площадь этажа и числа из ' +
@@ -4164,6 +4185,8 @@ function scanBox(on, label) {
 }
 
 function readAreaLabelsFromCanvas(c, label, quiet) {
+  // ИИ выключен — не обращаемся к серверу и не показываем «ИИ читает…», сразу пустой результат
+  if (!aiScanOn()) { var off = []; off.sec = 0; off.off = true; return Promise.resolve(off); }
   return new Promise(function (resolve) {
     var finished = false;
     // why — что пошло не так с сервисом; видно только админу (scanDiagText)
@@ -4732,7 +4755,7 @@ function loadOne(file) {
           // за время ожидания этаж могли сменить на другую подложку — тогда не трогаем
           if (imgCache[fi0] !== c) { done(); return; }
           PDF_AREAS[fi0] = labs; SCAN_DIMS[fi0] = snapScanDims(c, labs.dims || []);
-          (SCAN_DIAG[fi0] = SCAN_DIAG[fi0] || {}).read = (labs.why ? 'ИИ: ' + labs.why : 'ИИ ответил за ' + (labs.sec || 0) + ' с: размерных линий ' +
+          if (!labs.off) (SCAN_DIAG[fi0] = SCAN_DIAG[fi0] || {}).read = (labs.why ? 'ИИ: ' + labs.why : 'ИИ ответил за ' + (labs.sec || 0) + ' с: размерных линий ' +
             (labs.rawDims || 0) + ', принято ' + (labs.dims || []).length + '; подписей площадей ' + (labs.rawLabels || 0) +
             (turned ? '; лист развёрнут на ' + turned + '°' : ''));
           // масштаб, заданный руками, пока читалась картинка, не перебиваем

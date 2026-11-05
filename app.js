@@ -58,6 +58,23 @@ const PROXY_DEFAULT_DOWN = true;
         updateBanner();
     };
 
+    // Отдельные функции, выключенные вручную во вкладке «Сервер» (app_settings.beget_features.off).
+    // Кэш в localStorage читают и другие страницы сайта (plan_editor.html — отдельный документ,
+    // заглушка fetch до него не доходит), поэтому ключ и формат менять нельзя без правки там.
+    // Функция «потеряна», если выключена вручную или прокси отключён целиком (кроме ?proxy=1).
+    var FEAT_KEY = 'hc_feat_off';
+    var featOff = {};
+    try {
+        var fc = JSON.parse(localStorage.getItem(FEAT_KEY) || 'null');
+        if (fc && fc.off && typeof fc.off === 'object' && Date.now() - (fc.t || 0) < 7 * 24 * 3600 * 1000) featOff = fc.off;
+    } catch (e) { }
+    window.__setFeatOff = function (off) {
+        featOff = (off && typeof off === 'object') ? off : {};
+        try { localStorage.setItem(FEAT_KEY, JSON.stringify({ off: featOff, t: Date.now() })); } catch (e) { }
+    };
+    window.__featOff = function (id) { return !!window.PROXY_DOWN || featOff[id] === true; };
+    window.__featOffManual = function (id) { return featOff[id] === true; };
+
     window.fetch = function (input, init) {
         if (window.PROXY_DOWN) {
             var url = typeof input === 'string' ? input : ((input && input.url) || '');
@@ -2098,7 +2115,7 @@ const app = {
     // регистрация, а не запертая дверь для всех.
     // warranty.threshold — порог доли STOUT для бланка гарантии (см. stoutShare)
     // proxy.down — прокси на Beget отключён (см. начало файла, переключатель во вкладке «Сервер»)
-    appSettings: { registration: { mode: 'open' }, warranty: { threshold: 90 }, proxy: { down: PROXY_DEFAULT_DOWN }, proxy_watch: { enabled: true, digest: true }, proxy_note: { enabled: true, text: '' } },
+    appSettings: { registration: { mode: 'open' }, warranty: { threshold: 90 }, proxy: { down: PROXY_DEFAULT_DOWN }, proxy_watch: { enabled: true, digest: true }, proxy_note: { enabled: true, text: '' }, beget_features: { off: {} } },
     _appSettingsPromise: null,
     loadAppSettings: function (force) {
         if (this._appSettingsPromise && !force) return this._appSettingsPromise;
@@ -2116,6 +2133,7 @@ const app = {
                 // (catch ниже) переключатель не трогаем: остаётся последнее известное значение
                 const px = merged.proxy;
                 if (typeof window.__setProxyNote === 'function') window.__setProxyNote(merged.proxy_note);
+                if (typeof window.__setFeatOff === 'function') window.__setFeatOff((merged.beget_features || {}).off);
                 if (typeof window.__setProxyDown === 'function') {
                     window.__setProxyDown(px && typeof px.down === 'boolean' ? px.down : PROXY_DEFAULT_DOWN);
                 }
@@ -4982,6 +5000,12 @@ const app = {
         const sendMessage = async () => {
             const text = textInput.value.trim();
             if (!text) { textInput.focus(); return; }
+
+            // Функция выключена (Beget недоступен): не делаем вид, что ИИ «думает»
+            if (this.featureOff('ai_chat')) {
+                addBubble('assistant', '⚠️ ИИ-помощник сейчас недоступен: сервер на обслуживании. Параметры можно задать вручную в калькуляторе.');
+                return;
+            }
 
             addBubble('user', escapeHtml(text));
             textInput.value = '';
@@ -49806,6 +49830,59 @@ const app = {
         return px && typeof px.down === 'boolean' ? px.down : PROXY_DEFAULT_DOWN;
     },
 
+    // Функции, которым нужен Beget, и что с ними делает выключение. checks — имена строк
+    // SERVER_CHECKS: не ответил файл — функция считается потерянной.
+    // Новая функция: добавить строку сюда и проверку featureOff('<id>') в её входе — тогда
+    // она появится в таблице вкладки «Сервер» с переключателем.
+    BEGET_FEATURES: [
+        { id: 'ai_plan', name: 'ИИ читает план этажа', off: 'Масштаб и комнаты — вручную, без ожидания ответа', checks: ['ИИ-прокси'] },
+        { id: 'ai_chat', name: 'ИИ-помощник (заполнение расчёта текстом)', off: 'В окне помощника показывается, что он недоступен', checks: ['ИИ-прокси'] },
+        { id: 'ai_recognize', name: 'Распознавание сметы, проекта и эскиза', off: 'Загрузка файла на распознавание не запускается', checks: ['ИИ-прокси', 'Архив и доступы'] }
+    ],
+
+    // Функция потеряна: выключена вручную или прокси отключён целиком
+    featureOff: function (id) {
+        return typeof window.__featOff === 'function' ? window.__featOff(id) : !!window.PROXY_DOWN;
+    },
+
+    // Записать набор выключенных функций (общий для всех при следующей загрузке страницы)
+    _saveFeatureOff: async function (off) {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять настройки сайта запрещено.'); return false; }
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const value = { off: off };
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'beget_features', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            this.appSettings = Object.assign({}, this.appSettings, { beget_features: value });
+            if (typeof window.__setFeatOff === 'function') window.__setFeatOff(off);
+            return true;
+        } catch (e) {
+            console.error('[функции Beget] запись не прошла:', e);
+            app.alert('Не удалось сохранить: ' + (e.message || e));
+            return false;
+        }
+    },
+
+    setFeatureOff: async function (id, off) {
+        const cur = Object.assign({}, ((this.appSettings || {}).beget_features || {}).off || {});
+        if (off) cur[id] = true; else delete cur[id];
+        await this._saveFeatureOff(cur);
+        this.renderAdminServerBody();
+    },
+
+    // По итогам «Проверить серверы»: выключить всё, чего не хватает; none — вернуть всё
+    disableLostFeatures: async function (none) {
+        let off = {};
+        if (!none) {
+            const bad = new Set(((this._serverCheck || {}).rows || []).filter(r => !r.ok).map(r => r.name));
+            off = Object.assign({}, ((this.appSettings || {}).beget_features || {}).off || {});
+            this.BEGET_FEATURES.forEach(f => { if (f.checks.some(n => bad.has(n))) off[f.id] = true; });
+        }
+        await this._saveFeatureOff(off);
+        this.renderAdminServerBody();
+    },
+
     renderAdminServer: function () {
         const content = document.getElementById('admin_content');
         if (!content) return;
@@ -49824,6 +49901,8 @@ const app = {
         const down = this.proxyDownSetting();
         const pw = (this.appSettings || {}).proxy_watch || {};
         const watchOn = pw.enabled !== false, digestOn = pw.digest !== false;
+        const watchIv = [15, 30, 60, 180, 360].includes(Number(pw.interval)) ? Number(pw.interval) : 60;
+        const ivLabel = { 15: 'каждые 15 минут', 30: 'каждые 30 минут', 60: 'раз в час', 180: 'раз в 3 часа', 360: 'раз в 6 часов' };
         const pn = (this.appSettings || {}).proxy_note || {};
         const noteOn = pn.enabled !== false;
         const noteDefault = window.PROXY_NOTE_DEFAULT_TEXT || '';
@@ -49849,6 +49928,42 @@ const app = {
                 <div style="margin-top:6px; font-size:12px; color:var(--text-sec);">Проверено в ${new Date(chk.t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</div>`;
         }
 
+        // Таблица функций: что потеряно сейчас и почему, переключатель на каждую
+        const offMap = ((this.appSettings || {}).beget_features || {}).off || {};
+        const badNames = new Set(((chk && chk.rows) || []).filter(r => !r.ok).map(r => r.name));
+        let anyLost = false;
+        const featRows = this.BEGET_FEATURES.map(f => {
+            const manual = offMap[f.id] === true;
+            const failed = f.checks.filter(n => badNames.has(n));
+            let state, cls;
+            if (down) { state = 'потеряна: прокси отключён целиком'; cls = 'bad'; }
+            else if (manual) { state = 'отключена вручную'; cls = 'bad'; }
+            else if (failed.length) { state = 'не отвечает: ' + failed.join(', ') + ' — пока работает, можно отключить'; cls = 'warn'; }
+            else { state = 'работает'; cls = 'ok'; }
+            if (cls !== 'ok') anyLost = true;
+            return `<tr style="border-top:1px solid var(--border);">
+                <td style="padding:8px 4px;">${esc(f.name)}<div style="font-size:12px; color:var(--text-sec);">Если выключить: ${esc(f.off)}</div></td>
+                <td style="padding:8px 4px;"><span class="ad-pill ${cls === 'warn' ? 'bad' : cls}">${esc(state)}</span></td>
+                <td style="padding:8px 4px; text-align:right; white-space:nowrap;">
+                    <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:13px;">
+                        <input type="checkbox" ${manual ? 'checked' : ''} ${dis} onchange="app.setFeatureOff('${f.id}', this.checked)"> выключить
+                    </label></td></tr>`;
+        }).join('');
+        const featCard = `
+            <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:16px 18px; margin-bottom:14px;">
+                <div style="font-weight:700; font-size:15px; margin-bottom:6px;">Какие функции потеряны из-за Beget</div>
+                <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:10px;">
+                    Выключенная функция не обращается к серверу и не ждёт ответа: пользователь сразу видит ручной вариант.
+                    ${down ? 'Прокси сейчас отключён целиком, поэтому все функции ниже на паузе независимо от галочек.' : 'Пока прокси включён, функции работают, если вы их не выключили.'}
+                    Действует для всех при следующей загрузке страницы.
+                </div>
+                <table style="width:100%; border-collapse:collapse; font-size:13px;">${featRows}</table>
+                <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" style="${btn}" ${dis} ${chk ? '' : 'disabled title="Сначала нажмите «Проверить серверы»"'} onclick="app.disableLostFeatures()">Выключить то, что не ответило на проверке</button>
+                    <button type="button" style="${btn}" ${dis} onclick="app.disableLostFeatures(true)">Включить все функции</button>
+                </div>
+            </div>`;
+
         root.innerHTML = `
             <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:16px 18px; margin-bottom:14px;">
                 <div style="font-weight:700; font-size:15px; margin-bottom:6px;">Прокси на Beget ${pill}</div>
@@ -49864,11 +49979,20 @@ const app = {
                 <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
                     <div style="font-weight:700; font-size:14px; margin-bottom:4px;">Автопроверка и уведомления</div>
                     <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:10px;">
-                        Раз в 15 минут GitHub сам проверяет те же пять файлов. Когда прокси перестаёт отвечать или снова заработает,
-                        вам приходит письмо (и пуш в приложении GitHub): комментарий в задаче «Статус прокси Beget».
+                        GitHub сам проверяет те же пять файлов и пишет в обе стороны: когда прокси <b>перестал отвечать</b>
+                        и когда <b>снова заработал</b>. Каждое событие — комментарий в задаче «Статус прокси Beget»; GitHub шлёт его
+                        письмом на адрес, указанный в аккаунте GitHub владельца (github.com/settings/notifications), и пушем в приложение GitHub.
                         <a href="https://github.com/terem24/smeta/issues?q=label%3Aproxy-watch" target="_blank" rel="noopener">Открыть задачу</a>.
-                        Сам тумблер «Прокси» автопроверка не переключает: когда придёт «снова отвечает», включите его здесь.
+                        Если в репозитории заведены секреты почты (SMTP_USER, SMTP_PASS, при желании ALERT_TO), то то же письмо уйдёт
+                        и на этот ящик напрямую, не через Beget. Сам тумблер «Прокси» автопроверка не переключает: после «снова отвечает» включите его здесь.
                     </div>
+                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px; ${watchOn ? '' : 'opacity:.5;'}">
+                        Как часто проверять:
+                        <select ${dis || !watchOn ? 'disabled' : ''} onchange="app.setProxyWatch('interval', this.value)"
+                            style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text-main); font:inherit; font-size:13px;">
+                            ${[15, 30, 60, 180, 360].map(m => `<option value="${m}" ${m === watchIv ? 'selected' : ''}>${ivLabel[m]}</option>`).join('')}
+                        </select>
+                    </label>
                     <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:6px; cursor:pointer;">
                         <input type="checkbox" ${watchOn ? 'checked' : ''} ${dis} onchange="app.setProxyWatch('enabled', this.checked)">
                         Автопроверка и уведомления о смене состояния
@@ -49901,6 +50025,7 @@ const app = {
                 <div style="margin-bottom:12px;"><button type="button" id="srv_check_btn" style="${btn}" onclick="app.runServerCheck()">Проверить серверы</button></div>
                 ${result}
             </div>
+            ${featCard}
             <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:16px 18px;">
                 <div style="font-weight:700; font-size:15px; margin-bottom:8px;">Когда Beget восстановится</div>
                 <ol style="margin:0; padding-left:20px; font-size:13px; line-height:1.7; color:var(--text-main);">
@@ -49946,8 +50071,10 @@ const app = {
     setProxyWatch: async function (key, val) {
         if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять настройки сайта запрещено.'); this.renderAdminServerBody(); return; }
         const cur = (this.appSettings || {}).proxy_watch || {};
-        const value = { enabled: cur.enabled !== false, digest: cur.digest !== false };
-        value[key] = !!val;
+        const iv = [15, 30, 60, 180, 360].includes(Number(cur.interval)) ? Number(cur.interval) : 60;
+        const value = { enabled: cur.enabled !== false, digest: cur.digest !== false, interval: iv };
+        if (key === 'interval') value.interval = [15, 30, 60, 180, 360].includes(Number(val)) ? Number(val) : 60;
+        else value[key] = !!val;
         try {
             const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
             const { error } = await supabaseClient.from('app_settings')

@@ -3626,6 +3626,10 @@ const RecognizeUI = {
      * подробностей берётся ровно отсюда.
      */
     async fetchRetry(payload, attempts = 3) {
+        // Выключено в админке (вкладка «Сервер») или прокси отключён: сразу понятный отказ, без ожидания
+        if (window.app && typeof app.featureOff === 'function' && app.featureOff('ai_recognize')) {
+            throw new Error('Распознавание сейчас недоступно: сервер на обслуживании. Добавьте позиции в смету вручную.');
+        }
         let last;
         for (let i = 1; i <= attempts; i++) {
             const ctrl = new AbortController();

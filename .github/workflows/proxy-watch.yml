@@ -1,11 +1,17 @@
 name: Proxy Watch
 
-# Автопроверка прокси на Beget (proxy.heatcalc.ru): раз в 15 минут стучимся в те же пять файлов,
+# Автопроверка прокси на Beget (proxy.heatcalc.ru): по расписанию стучимся в те же пять файлов,
 # что и кнопка «Проверить серверы» в админке (вкладка «Сервер»), и пишем, когда состояние
 # меняется: «перестал отвечать» или «снова отвечает». Уведомления идут через GitHub: состояние
 # хранится в одной Issue с меткой proxy-watch, на каждое изменение в неё пишется комментарий
 # с упоминанием владельца, и GitHub присылает письмо (и пуш в мобильное приложение GitHub).
-# Секретов не нужно.
+# Секретов для основной работы не нужно. Необязательно: секреты SMTP_USER и SMTP_PASS (пароль приложения
+# Яндекса; ALERT_TO — куда слать, по умолчанию на SMTP_USER) включают прямое письмо по SMTP при смене
+# состояния, в обе стороны, мимо Beget (про падение Beget нельзя сообщать через Beget).
+#
+# Частота: GitHub запускает файл каждые 15 минут, а реальную проверку делает только тот запуск, что попал
+# в шаг из админки (app_settings.proxy_watch.interval: 15/30/60/180/360 минут, по умолчанию 60).
+# Ручной запуск (workflow_dispatch) проверяет всегда.
 #
 # Включается и выключается тумблером в админке: app_settings.proxy_watch = {"enabled": bool,
 # "digest": bool}. Читается публичным ключом, как и остальные настройки сайта. Пока строки в базе
@@ -40,12 +46,22 @@ jobs:
           v=$(curl -s -m 20 "$SUPABASE_URL/rest/v1/app_settings?key=eq.proxy_watch&select=value" -H "apikey: $SUPABASE_KEY" || true)
           enabled=$(echo "$v" | jq -r 'if type=="array" and length>0 and .[0].value.enabled==false then "false" else "true" end' 2>/dev/null || echo true)
           digest=$(echo "$v" | jq -r 'if type=="array" and length>0 and .[0].value.digest==false then "false" else "true" end' 2>/dev/null || echo true)
+          interval=$(echo "$v" | jq -r 'if type=="array" and length>0 and (.[0].value.interval|type)=="number" then .[0].value.interval else 60 end' 2>/dev/null || echo 60)
+          case "$interval" in 15|30|60|180|360) ;; *) interval=60 ;; esac
+          slot=$(( (10#$(date -u +%H) * 60 + 10#$(date -u +%M)) / 15 ))
+          step=$(( interval / 15 ))
+          due=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ $(( slot % step )) -eq 0 ]; then due=true; fi
+          run=false
+          if [ "$enabled" = "true" ] && [ "$due" = "true" ]; then run=true; fi
+          echo "interval=$interval" >> "$GITHUB_OUTPUT"
+          echo "run=$run" >> "$GITHUB_OUTPUT"
           echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
-          echo "Автопроверка: $enabled, дневная сводка: $digest"
+          echo "Автопроверка: $enabled, шаг: $interval мин, в расписании сейчас: $due, дневная сводка: $digest"
 
       - name: Проверить прокси
-        if: steps.cfg.outputs.enabled == 'true'
+        if: steps.cfg.outputs.run == 'true'
         id: check
         run: |
           check_once() {
@@ -78,13 +94,17 @@ jobs:
           echo "Состояние: $state (проверки: $a, $b)"; cat /tmp/report
 
       - name: Записать и сообщить
-        if: steps.cfg.outputs.enabled == 'true' && steps.check.outputs.state != 'unclear'
+        if: steps.cfg.outputs.run == 'true' && steps.check.outputs.state != 'unclear'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           STATE: ${{ steps.check.outputs.state }}
           REPORT: ${{ steps.check.outputs.report }}
           DIGEST: ${{ steps.cfg.outputs.digest }}
+          INTERVAL: ${{ steps.cfg.outputs.interval }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          ALERT_TO: ${{ secrets.ALERT_TO }}
         run: |
           gh label create proxy-watch --color 5319e7 --description "Автопроверка прокси Beget" 2>/dev/null || true
           gh label create proxy-up --color 0e8a16 --description "Прокси отвечает" 2>/dev/null || true
@@ -97,7 +117,7 @@ jobs:
             if [ "$STATE" = "up" ]; then now="отвечает"; else now="не отвечает"; fi
             gh issue create --title "Статус прокси Beget (автопроверка)" --label proxy-watch --label "proxy-$STATE" \
               --assignee "$OWNER_LOGIN" \
-              --body "Автопроверка прокси proxy.heatcalc.ru включена, проверка раз в 15 минут. Сейчас: **$now**.
+              --body "Автопроверка прокси proxy.heatcalc.ru включена, проверка каждые $INTERVAL мин (меняется в админке). Сейчас: **$now**.
 
           В эту задачу будут приходить комментарии, когда прокси перестанет отвечать или снова заработает, и раз в день краткая сводка. Выключить: тумблер в админке (Обзор → Сервер).
 
@@ -125,6 +145,20 @@ jobs:
           $REPORT"
             fi
             gh issue comment "$num" --body "$body"
+            # Прямое письмо по SMTP Яндекса: только при смене состояния и только если заведены секреты.
+            # Нет секретов — остаётся письмо GitHub. Сбой письма не валит проверку.
+            if [ -n "$SMTP_USER" ] && [ -n "$SMTP_PASS" ]; then
+              to="${ALERT_TO:-$SMTP_USER}"
+              if [ "$STATE" = "up" ]; then subj="Beget снова отвечает"; else subj="Beget перестал отвечать"; fi
+              {
+                printf 'From: HeatCalc <%s>\nTo: %s\nSubject: =?UTF-8?B?%s?=\nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\n\n' \
+                  "$SMTP_USER" "$to" "$(printf '%s' "$subj" | base64 -w0)"
+                printf '%s: proxy.heatcalc.ru\n\n%s\n\nАдминка: Обзор → Сервер.\n' "$subj" "$REPORT"
+              } > /tmp/mail.txt
+              curl -sS --ssl-reqd --url smtps://smtp.yandex.ru:465 --user "$SMTP_USER:$SMTP_PASS" \
+                --mail-from "$SMTP_USER" --mail-rcpt "$to" -T /tmp/mail.txt \
+                && echo "письмо отправлено" || echo "письмо не ушло: проверьте SMTP_USER и SMTP_PASS"
+            fi
           elif [ "$DIGEST" = "true" ] && [ "$(date -u +%H)" = "06" ] && [ "$(date -u +%M)" -lt 15 ]; then
             if [ "$STATE" = "up" ]; then now="отвечает"; else now="по-прежнему не отвечает"; fi
             gh issue comment "$num" --body "Дневная сводка: прокси Beget $now.
