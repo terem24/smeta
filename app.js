@@ -54108,6 +54108,8 @@ const app = {
                 this.state.tgUser.demo_ends_at = uRow.demo_ends_at;
                 // Оплаченный Профи (а не пробный/промокод): напоминание о конце пишет «продлить»
                 this.state.tgUser.pro_expires_at = uRow.pro_expires_at || null;
+                // Пробный закончился, а акция «после пробного» действует — плашка под шапкой
+                if (typeof Subscription !== 'undefined') setTimeout(() => { try { Subscription.syncTrialEndBanner(); } catch (e) { } }, 600);
                 if (uRow.phone && uRow.phone !== phone) this.state.tgUser.phone = uRow.phone;
                 if (uRow.username && uRow.username !== fullName && !this.isNamePlaceholder(uRow.username, email)) this.state.tgUser.first_name = uRow.username;
                 if (uRow.city) this.state.tgUser.city = uRow.city;

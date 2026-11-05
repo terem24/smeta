@@ -971,6 +971,8 @@ const Subscription = {
                 return;
             }
             const info = this.trialEndInfo();
+            // Пробный уже закончился, а акция «после пробного» действует — плашка с ценой
+            if (!info) { const pr = this.afterTrialPromoInfo(); if (pr) { this.renderPromoBanner(host, pr); return; } }
             let hidden = '';
             try { hidden = localStorage.getItem(this.TE_HIDE_LS) || ''; } catch (e) { }
             if (!info || hidden === info.endKey + ':' + info.stage) { host.style.display = 'none'; host.innerHTML = ''; return; }
@@ -987,6 +989,57 @@ const Subscription = {
                 '<button type="button" class="teb-x" onclick="event.stopPropagation();Subscription.trialEndHide()" title="Скрыть" aria-label="Скрыть">&times;</button></div>';
             host.style.display = '';
         } catch (e) { }
+    },
+
+    // ── Плашка «Первый месяц Профи — 990 ₽» тем, у кого кончился пробный ─────
+    // Показывается под шапкой, пока: человек вошёл, Профи у него нет, пробный период был
+    // и закончился, оплат не было, а акция на месяц с условием «после пробного» действует
+    // (resolve сам проверяет и даты, и условие). Крестик прячет на сутки. Нажатие — сразу
+    // окно оплаты месяца по цене акции. После первой оплаты плашка пропадает сама.
+    PROMO_HIDE_LS: 'hc_promo_banner_hide',
+    afterTrialPromoInfo: function () {
+        try {
+            if (typeof app === 'undefined') return null;
+            const tg = (app.state && app.state.tgUser) || {};
+            if (!tg.id && !tg.email) return null;
+            if (['admin', 'viewer', 'manager'].indexOf(tg.account_type) >= 0) return null;
+            if (app.isPro() || app.isTeremStaff()) return null;
+            const ends = tg.demo_ends_at ? new Date(tg.demo_ends_at) : null;
+            if (!ends || isNaN(ends) || ends.getTime() > Date.now() || tg.pro_expires_at) return null;
+            const plan = this.settings().plans.month;
+            if (!plan || plan.enabled === false) return null;
+            const r = this.resolve('month');
+            if (!r || !r.promo || r.promo.audience !== 'after_trial' || !(r.rub > 0) || !(r.rub < r.baseRub)) return null;
+            let hid = null;
+            try { hid = JSON.parse(localStorage.getItem(this.PROMO_HIDE_LS) || 'null'); } catch (e) { }
+            if (hid && hid.id === r.promo.id && Date.now() - hid.t < 86400000) return null;
+            return r;
+        } catch (e) { return null; }
+    },
+
+    renderPromoBanner: function (host, r) {
+        const left = r.promo.to ? Math.ceil((new Date(r.promo.to + 'T23:59:59') - Date.now()) / 86400000) : 0;
+        const until = r.promo.to ? (left > 0 && left <= 3 ? 'осталось ' + left + ' ' + (left === 1 ? 'день' : 'дня') : 'до ' + this.fmtDate(r.promo.to)) : '';
+        host.className = 'no-print trial-end-banner te-promo';
+        host.innerHTML = '<div class="teb" role="button" tabindex="0" onclick="Subscription.promoBannerGo()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();Subscription.promoBannerGo();}">' +
+            '<span class="teb-ic" aria-hidden="true">🎁</span>' +
+            '<span class="teb-body"><span class="teb-title">Первый месяц Профи — ' + this.esc(this.fmtRub(r.rub)) + '</span>' +
+            '<span class="teb-sub">Вместо ' + this.esc(this.fmtRub(r.baseRub)) + (until ? ' · ' + this.esc(until) : '') + '</span></span>' +
+            '<span class="teb-cta">Взять за ' + this.esc(this.fmtRub(r.rub)) + '</span>' +
+            '<button type="button" class="teb-x" onclick="event.stopPropagation();Subscription.promoBannerHide()" title="Скрыть на сутки" aria-label="Скрыть на сутки">&times;</button></div>';
+        host.style.display = '';
+        if (!this._promoBannerSeen) { this._promoBannerSeen = true; try { app.logPaywall('seen', 'Акция: плашка на главной'); } catch (e) { } }
+    },
+
+    promoBannerGo: function () {
+        try { app.logPaywall('tariff_open', 'Акция: плашка на главной'); } catch (e) { }
+        app.openPaymentModal('month');
+    },
+
+    promoBannerHide: function () {
+        const r = this.afterTrialPromoInfo();
+        if (r) try { localStorage.setItem(this.PROMO_HIDE_LS, JSON.stringify({ id: r.promo.id, t: Date.now() })); } catch (e) { }
+        this.syncTrialEndBanner();
     },
 
     trialEndGo: function () {

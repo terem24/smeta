@@ -22255,3 +22255,7 @@ body.dark-mode .chat-badge {
     .trial-end-banner .teb-cta { width: 100%; text-align: center; }
 }
 @media print { #trial_end_banner { display: none !important; } }
+
+/* Плашка «Первый месяц Профи — 990 ₽» тем, у кого кончился пробный (Subscription.renderPromoBanner) */
+.trial-end-banner.te-promo .teb { background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.55); }
+.trial-end-banner.te-promo .teb-cta { background: #10B981; color: #fff; }
