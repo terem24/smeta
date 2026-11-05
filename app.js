@@ -11182,6 +11182,16 @@ const app = {
                             <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; display: block; margin-bottom: 4px;">Email директора (необяз.) — руководитель филиалов: получит скрытую копию писем менеджеру, видит сметы и работу менеджеров всех филиалов с этим адресом и сам меняет статусы счетов. Филиал — это отдельная карточка со своим промокодом и тем же email директора</label>
                             <input type="email" id="dist_director_email" placeholder="director@teplokom.ru" ${isViewer ? 'disabled' : ''} style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-main); font-size: 13px; box-sizing: border-box;">
                         </div>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; display: block; margin-bottom: 4px;">Компания — чтобы объединить филиалы под одной компанией (общая статистика, общий наблюдатель, выгрузка). Пусто — компания определяется по названию («…ОП Королев»)</label>
+                            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                                <select id="dist_company_id" ${isViewer ? 'disabled' : ''} style="flex:1 1 220px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-main); font-size: 13px; box-sizing: border-box;">
+                                    <option value="">— по названию (авто) —</option>
+                                    ${(this._companies || []).map(c => `<option value="${String(c.id).replace(/"/g, '&quot;')}">${String(c.name).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]))}</option>`).join('')}
+                                </select>
+                                <input type="text" id="dist_company_new" placeholder="или новая компания: название" ${isViewer ? 'disabled' : ''} style="flex:1 1 220px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-main); font-size: 13px; box-sizing: border-box;">
+                            </div>
+                        </div>
                         <div>
                             <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; display: block; margin-bottom: 4px;">Свои цены — монтажники этого дистрибьютора видят его прайс вместо Терем-онлайн</label>
                             <select id="dist_own_prices" ${isViewer ? 'disabled' : ''} style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-main); font-size: 13px; box-sizing: border-box;">
@@ -12061,6 +12071,162 @@ const app = {
         this.renderAdminBranches(true);
     },
 
+    // ═══ Компании: явное объединение филиалов ═══════════════════════════
+    // Таблица companies и distributors.company_id (миграция 20261105_companies.sql).
+    // Карточка с company_id входит в эту компанию, без него — прежняя группировка по
+    // названию (см. splitBranchName). Поэтому всё здесь переживает отсутствие миграции.
+    loadCompanies: async function () {
+        try {
+            const { data, error } = await supabaseClient.from('companies').select('id, name').order('name');
+            if (error) throw error;
+            this._companies = data || [];
+            this._companiesReady = true;
+        } catch (e) {
+            console.warn('[компании] таблица не прочитана (выполнена ли миграция 20261105_companies.sql?):', e.message || e);
+            this._companies = this._companies || [];
+            this._companiesReady = false;
+        }
+        return this._companies;
+    },
+
+    companyById: function (id) {
+        return (this._companies || []).find(c => String(c.id) === String(id)) || null;
+    },
+
+    // Карточки «ООО "ТЕРЕМ" ОП Королев»: компания — то, что до обозначения
+    // подразделения, филиал — то, что после. \b не видит границ кириллических слов,
+    // отсюда (?=\s|$).
+    splitBranchName: function (name) {
+        const n = String(name || '').replace(/\s+/g, ' ').trim();
+        const m = n.match(/^(.*?)[\s,–—-]+(?:ОП|ОСП|обособленное подразделение|филиал|отделение|магазин)(?=[\s."«]|$)[\s.]*(.*)$/i);
+        return (m && m[1].trim()) ? { base: m[1].trim(), rest: m[2].trim() } : { base: n, rest: '' };
+    },
+
+    // Ключ и название компании карточки: явная компания, иначе по названию.
+    // Один и тот же разбор нужен схеме «Филиалы» и списку галочек у наблюдателя.
+    branchCompanyOf: function (d) {
+        const lc = v => String(v || '').trim().toLowerCase();
+        const co = d && d.company_id ? this.companyById(d.company_id) : null;
+        if (co) return { key: 'co:' + co.id, title: co.name, companyId: String(co.id) };
+        const base = this.splitBranchName(d && d.company_name).base;
+        const norm = s => lc(s).replace(/[«»“”„"']/g, '"').replace(/\s+/g, ' ');
+        return { key: base ? 'name:' + norm(base) : 'dir:' + lc(d && d.director_email), title: base || '', companyId: null };
+    },
+
+    // Подпись филиала внутри явной компании: название карточки без названия компании
+    // и без скобок — «КИТ-Сервис (Сергей)» в компании «КИТ-Сервис» → «Сергей».
+    branchTitleInCompany: function (d, companyTitle) {
+        const full = String(d.company_name || '').replace(/\s+/g, ' ').trim();
+        const base = String(companyTitle || '').trim();
+        let rest = full;
+        if (base && full.toLowerCase().indexOf(base.toLowerCase()) === 0) rest = full.slice(base.length);
+        rest = rest.replace(/^[\s,–—\-:()«»"]+|[\s,–—\-:()«»"]+$/g, '');
+        rest = this.splitBranchName(base + ' ' + rest).rest || rest;
+        return rest;
+    },
+
+    // Перенести филиал в компанию. target: id компании (uuid) | '__new__' | ''.
+    // '' — убрать из явной компании (вернуться к группировке по названию).
+    moveBranchToCompany: async function (distId, target) {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять компании нельзя.'); return; }
+        if (!this._companiesReady) {
+            app.alert('Сначала выполните миграцию 20261105_companies.sql в Supabase SQL Editor — без неё компании сохранить негде.');
+            return;
+        }
+        const d = (this.adminData.distributors || []).find(x => String(x.id) === String(distId));
+        if (!d) return;
+        if (!target) return;
+        let companyId = target === '__none__' ? null : target;
+        try {
+            if (target === '__new__') {
+                const name = String(await app.prompt('Название новой компании (под ней объединятся филиалы):', '', 'Новая компания') || '').trim();
+                if (!name) return;
+                companyId = await this.ensureCompany(name);
+            }
+            await this.assignDistsToCompany([distId], companyId);
+        } catch (e) {
+            app.alert('Не удалось перенести филиал: ' + (e.message || e));
+            return;
+        }
+        await this.loadAdminData();
+        this._adminTab = 'branches';
+        this.renderAdminBranches(true);
+    },
+
+    // Объединить все филиалы группы, собранной по названию, в явную компанию
+    // и (по желанию) переименовать её.
+    makeCompanyFromGroup: async function (groupId) {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять компании нельзя.'); return; }
+        if (!this._companiesReady) {
+            app.alert('Сначала выполните миграцию 20261105_companies.sql в Supabase SQL Editor — без неё компании сохранить негде.');
+            return;
+        }
+        const g = this._brGroups && this._brGroups[groupId];
+        if (!g) return;
+        const name = String(await app.prompt('Название компании (филиалов: ' + g.dists.length + '):', g.title, 'Закрепить компанию') || '').trim();
+        if (!name) return;
+        try {
+            const companyId = await this.ensureCompany(name);
+            await this.assignDistsToCompany(g.dists.map(d => d.id), companyId);
+        } catch (e) {
+            app.alert('Не удалось закрепить компанию: ' + (e.message || e));
+            return;
+        }
+        await this.loadAdminData();
+        this._adminTab = 'branches';
+        this.renderAdminBranches(true);
+    },
+
+    // Найти компанию по названию (без учёта регистра) или создать
+    ensureCompany: async function (name) {
+        const want = String(name || '').replace(/\s+/g, ' ').trim();
+        const hit = (this._companies || []).find(c => String(c.name || '').trim().toLowerCase() === want.toLowerCase());
+        if (hit) return String(hit.id);
+        const { data, error } = await supabaseClient.from('companies').insert([{ name: want }]).select('id, name').single();
+        if (error) throw error;
+        this._companies = (this._companies || []).concat([data]);
+        return String(data.id);
+    },
+
+    // Записать company_id и подхватить новые филиалы наблюдателями компании
+    assignDistsToCompany: async function (distIds, companyId) {
+        const ids = distIds.map(String);
+        const { error } = await supabaseClient.from('distributors').update({ company_id: companyId }).in('id', ids);
+        if (error) throw error;
+        if (!companyId) return;
+        // Наблюдатель, у которого отмечены ВСЕ прежние филиалы компании, получает и новые:
+        // «общий наблюдатель» не должен терять новые филиалы
+        try {
+            const { data: all } = await supabaseClient.from('distributors').select('id').eq('company_id', companyId);
+            const members = (all || []).map(r => String(r.id));
+            const before = members.filter(id => !ids.includes(id));
+            if (!before.length) return;
+            const { data: viewers } = await supabaseClient.from('users')
+                .select('id, viewer_distributor_ids').eq('account_type', 'viewer');
+            for (const v of (viewers || [])) {
+                const mine = Array.isArray(v.viewer_distributor_ids) ? v.viewer_distributor_ids.map(String) : [];
+                if (!before.every(id => mine.includes(id))) continue;
+                const next = [...new Set(mine.concat(ids))];
+                if (next.length === mine.length) continue;
+                await supabaseClient.from('users').update({ viewer_distributor_ids: next }).eq('id', v.id);
+            }
+            await this.loadViewerScopes();
+        } catch (e) { console.warn('[компании] наблюдатели не обновлены:', e.message || e); }
+    },
+
+    // Ключ кэша данных раздела: состав филиалов и их привязка к компаниям
+    branchDataKey: function (dists) {
+        return dists.map(d => String(d.id) + ':' + String(d.company_id || '')).sort().join(',');
+    },
+
+    // Выгрузка статистики узла схемы: строки собирает renderAdminBranches
+    exportBranchNode: function (type, id) {
+        const fn = this._brExportFn;
+        const out = fn ? fn(type, String(id)) : null;
+        if (!out || !out.rows.length) { app.alert('Выгружать нечего.'); return; }
+        this.visCsvDownload(out.name, out.rows);
+    },
+
     selectBranchNode: function (type, id) {
         this._brSel = { type: type, id: String(id) };
         this.renderAdminBranches(true);
@@ -12076,7 +12242,7 @@ const app = {
         const distIds = dists.map(d => String(d.id));
         const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
         const STAFF = ['admin', 'viewer', 'manager'];
-        const data = { key: distIds.slice().sort().join(','), dists, people: [], staff: [], heads: [], estimates: [], events: [], activity: [], activityMissing: false };
+        const data = { key: this.branchDataKey(dists), dists, people: [], staff: [], heads: [], estimates: [], events: [], activity: [], activityMissing: false };
         if (!distIds.length) return data;
 
         // Ошибка чтения называет таблицу: на телефоне консоли нет, а «не удалось загрузить» ничего не говорит
@@ -12166,7 +12332,7 @@ const app = {
         if (!root) return;
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const dists = (this.adminData && this.adminData.distributors) || [];
-        const curKey = dists.map(d => String(d.id)).sort().join(',');
+        const curKey = this.branchDataKey(dists);
 
         if (!dists.length) {
             root.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-sec); font-size:13px;">
@@ -12282,18 +12448,16 @@ const app = {
         // email директора не годилась: у головной карточки его может не быть или
         // стоять другой, и одна компания разваливалась на несколько. \b здесь не
         // годится — он не видит границ кириллических слов, отсюда (?=\s|$).
-        const splitName = (name) => {
-            const n = String(name || '').replace(/\s+/g, ' ').trim();
-            const m = n.match(/^(.*?)[\s,–—-]+(?:ОП|ОСП|обособленное подразделение|филиал|отделение|магазин)(?=[\s."«]|$)[\s.]*(.*)$/i);
-            return (m && m[1].trim()) ? { base: m[1].trim(), rest: m[2].trim() } : { base: n, rest: '' };
-        };
+        const splitName = (name) => this.splitBranchName(name);
         const normBase = s => lc(s).replace(/[«»“”„"']/g, '"').replace(/\s+/g, ' ');
         const groups = [];
         const groupByKey = {};
+        // Явная компания (company_id) главнее названия: так объединяют карточки,
+        // в названии которых нет «ОП» («КИТ-Сервис (Сергей)» + «КИТ-Сервис (Евгений)»)
         dists.forEach(d => {
-            const base = splitName(d.company_name).base;
-            const key = base ? 'name:' + normBase(base) : 'dir:' + lc(d.director_email);
-            if (!groupByKey[key]) { groupByKey[key] = { key, dists: [] }; groups.push(groupByKey[key]); }
+            const co = this.branchCompanyOf(d);
+            const key = co.key;
+            if (!groupByKey[key]) { groupByKey[key] = { key, dists: [], companyId: co.companyId, companyTitle: co.title }; groups.push(groupByKey[key]); }
             groupByKey[key].dists.push(d);
         });
         // В разметку уходит порядковый номер, а не ключ: в ключе почта или
@@ -12302,10 +12466,11 @@ const app = {
         const headById = {};
         const subByDist = {};
         groups.forEach((g, i) => { g.id = 'c' + i; groupById[g.id] = g; });
+        this._brGroups = groupById;
         groups.forEach(g => {
             const names = {};
             g.dists.forEach(d => { const n = splitName(d.company_name).base; if (n) names[n] = (names[n] || 0) + 1; });
-            g.title = Object.keys(names).sort((a, b) => names[b] - names[a])[0] || 'Без названия';
+            g.title = g.companyId ? g.companyTitle : (Object.keys(names).sort((a, b) => names[b] - names[a])[0] || 'Без названия');
             const ids = new Set(g.dists.map(d => String(d.id)));
             const heads = [];
             // Директоров может быть несколько: у головной карточки свой, у филиалов свой
@@ -12316,8 +12481,9 @@ const app = {
             g.directorEmail = dirMails.filter(m => !userByEmail[m]).join(', ');
             g.stats = statsFor([...ids]);
             // Сначала подразделения по алфавиту, карточки без «ОП» (головные) — в конце
+            const restOf = d => g.companyId ? this.branchTitleInCompany(d, g.title) : splitName(d.company_name).rest;
             g.dists.sort((a, b) => {
-                const ra = splitName(a.company_name).rest, rb = splitName(b.company_name).rest;
+                const ra = restOf(a), rb = restOf(b);
                 if (!ra !== !rb) return ra ? -1 : 1;
                 return ra.localeCompare(rb, 'ru');
             });
@@ -12339,7 +12505,7 @@ const app = {
         });
 
         const branchLabel = (d, g) => {
-            const rest = splitName(d.company_name).rest;
+            const rest = g && g.companyId ? this.branchTitleInCompany(d, g.title) : splitName(d.company_name).rest;
             if (rest) return rest;
             if (g && g.dists.length === 1) return String(d.company_name || '').trim() || 'Филиал';
             // Карточка без подразделения в названии: различаем по менеджеру или промокоду
@@ -12532,6 +12698,63 @@ const app = {
             note = 'Ссылки, статусы и сообщения — лично этого менеджера. Подключившиеся монтажники и сметы — по его филиалу: промокод выдаётся на филиал, а не на человека.';
         }
 
+        // ── Выгрузка статистики (CSV с BOM — Excel открывает без мастера импорта) ──
+        // Тот же период и те же цифры, что на экране: строки собирает statsFor.
+        const EXP_HEAD = ['Ссылок разослано', 'Подключилось монтажников', 'Подключилось продавцов', 'Монтажников всего', 'Продавцов всего',
+            'Активны за 30 дн. (монт.)', 'Активны за 30 дн. (прод.)', 'Смет', 'Отправлено клиентам', 'Запрошено счетов', 'Счетов выставлено',
+            'Оплачено (смет)', 'Оплачено, ₽'];
+        const expMetrics = s => [s.invites, s.joined, s.joinedSellers, s.installers, s.sellers, s.active30, s.active30Sellers,
+            s.estimates, s.sent, s.requested, s.issued, s.paid, Math.round(s.paidSum || 0)];
+        const expTable = (list, g, total, totalLabel) => [
+            ['Филиал', 'Промокод', 'Менеджеры', ...EXP_HEAD],
+            ...list.map(d => [branchLabel(d, g), String(d.promo_code || '').toUpperCase(),
+                managersOf(d).map(nameOf).join(', ') || d.manager_name || '', ...expMetrics(statsFor([d.id]))]),
+            [totalLabel, '', '', ...expMetrics(total)]
+        ];
+        const expSlug = s => String(s || '').replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '') || 'export';
+        this._brExportFn = (type, id) => {
+            const meta = [['Период', period.label], ['Выгружено', new Date().toLocaleString('ru-RU')], []];
+            if (type === 'company') {
+                const g = groupById[id]; if (!g) return null;
+                return { name: 'kompaniya_' + expSlug(g.title), rows: [['Компания', g.title], ...meta, ...expTable(g.dists, g, g.stats, 'ИТОГО по компании')] };
+            }
+            if (type === 'head') {
+                const s = headById[id]; if (!s) return null;
+                return { name: 'rukovoditel_' + expSlug(s.label), rows: [['Руководитель', s.label], ['Компания', s.group.title], ...meta, ...expTable(s.dists, s.group, s.stats, 'ИТОГО')] };
+            }
+            if (type === 'branch') {
+                const d = dists.find(x => String(x.id) === id); if (!d) return null;
+                const g = groups.find(x => x.dists.includes(d));
+                return { name: 'filial_' + expSlug(branchLabel(d, g)), rows: [
+                    ['Филиал', branchLabel(d, g)], ['Компания', g.title], ...meta,
+                    ...expTable([d], g, statsFor([d.id]), 'ИТОГО'),
+                    [], ['Менеджер', 'Email', 'Ссылок', 'Смен статусов', 'Сообщений', 'Заходил'],
+                    ...managersOf(d).map(u => { const ms = statsFor([d.id], u.id);
+                        return [nameOf(u), u.email || '', ms.invites, ms.statuses, ms.messages, u.last_visited ? new Date(u.last_visited).toLocaleDateString('ru-RU') : 'не заходил']; })
+                ] };
+            }
+            return null;
+        };
+
+        // ── Кнопки узла: выгрузка и работа с компанией ──
+        const canEditCo = !this.isReadOnlyAdmin();
+        const actBtn = 'font-size:12px; padding:6px 12px; height:auto; margin:0;';
+        let actionsHtml = '';
+        if (sel.type === 'company' || sel.type === 'head' || sel.type === 'branch') {
+            const parts = [`<button type="button" class="admin-btn" style="${actBtn}" onclick="app.exportBranchNode('${sel.type}','${sel.id}')">⬇ Выгрузить в Excel</button>`];
+            if (sel.type === 'company' && canEditCo && !groupById[sel.id].companyId) {
+                parts.push(`<button type="button" class="admin-btn" style="${actBtn}" title="Сделать компанию явной: филиалы перестанут зависеть от слов «ОП», «филиал» в названии" onclick="app.makeCompanyFromGroup('${sel.id}')">🔗 Закрепить как компанию</button>`);
+            }
+            if (sel.type === 'branch' && canEditCo) {
+                const dd = dists.find(x => String(x.id) === sel.id);
+                const opts = (this._companies || []).map(c => `<option value="${esc(c.id)}"${String(dd.company_id || '') === String(c.id) ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
+                parts.push(`<select style="font-size:12px; padding:5px 8px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text-main);" title="Перенести этот филиал в компанию" onchange="if(this.value){app.moveBranchToCompany('${esc(dd.id)}', this.value);}">
+                    <option value="">Компания: ${dd.company_id ? '' : 'по названию · '}перенести…</option>${opts}
+                    <option value="__new__">＋ Новая компания…</option>${dd.company_id ? '<option value="__none__">— убрать из компании</option>' : ''}</select>`);
+            }
+            actionsHtml = `<div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 12px;">${parts.join('')}</div>`;
+        }
+
         // Больше 100 % бывает, когда монтажники пришли до начала журнала или по
         // промокоду, набранному руками, — такая доля ничего не говорит
         const conv = (a, b) => (b > 0 && a <= b) ? Math.round(a / b * 100) + '%' : '—';
@@ -12583,6 +12806,7 @@ const app = {
         const detailHtml = `
             <div class="brx-title" style="font-size:16px;">${esc(title)}</div>
             <div class="brx-muted" style="margin-bottom:12px;">${esc(subtitle)}</div>
+            ${actionsHtml}
             <div class="brx-tiles">${tiles.map(t => `<div class="brx-tile"><div class="brx-muted">${t.label}</div><div class="brx-tval">${t.val}</div><div class="brx-muted" style="font-size:10.5px;">${t.sub}</div></div>`).join('')}</div>
             ${note ? `<div class="brx-note">${note}</div>` : ''}
             <div class="brx-h">Воронка: от ссылки до оплаты</div>
@@ -13239,6 +13463,8 @@ const app = {
         const directorEmail = (document.getElementById('dist_director_email')?.value || '').trim();
         const useOwnPrices = document.getElementById('dist_own_prices')?.value === '1';
         const priceListKey = document.getElementById('dist_price_list')?.value || '';
+        let companyId = document.getElementById('dist_company_id')?.value || '';
+        const companyNew = (document.getElementById('dist_company_new')?.value || '').trim();
 
         if (!company || !code || !email) {
             app.alert('Обязательные поля: Название компании, Промокод, Email менеджера.');
@@ -13283,13 +13509,29 @@ const app = {
         };
 
         try {
+            // Компания: выбранная, либо новая по названию. company_id пишем, только когда он
+            // задан или снимается у карточки, где был, — до миграции колонки нет, и
+            // сохранение обычных карточек не должно от этого ломаться.
+            const prevDist = id ? (this.adminData.distributors || []).find(d => String(d.id) === String(id)) : null;
+            if (companyNew) {
+                if (!this._companiesReady) throw new Error('Компании ещё не подключены: выполните миграцию 20261105_companies.sql в Supabase SQL Editor.');
+                companyId = await this.ensureCompany(companyNew);
+            }
+            if (companyId || (prevDist && prevDist.company_id)) {
+                if (!this._companiesReady) throw new Error('Компании ещё не подключены: выполните миграцию 20261105_companies.sql в Supabase SQL Editor.');
+                payload.company_id = companyId || null;
+            }
             if (id) {
                 const { error } = await supabaseClient.from('distributors').update(payload).eq('id', id);
                 if (error) throw error;
+                if (payload.company_id && (!prevDist || String(prevDist.company_id || '') !== String(payload.company_id))) {
+                    await this.assignDistsToCompany([id], payload.company_id);
+                }
                 app.alert('✅ Промокод обновлен.');
             } else {
-                const { error } = await supabaseClient.from('distributors').insert([payload]);
+                const { data: ins, error } = await supabaseClient.from('distributors').insert([payload]).select('id').maybeSingle();
                 if (error) throw error;
+                if (payload.company_id && ins && ins.id) await this.assignDistsToCompany([ins.id], payload.company_id);
                 app.alert('✅ Промокод добавлен.');
             }
             this.loadAdminData();
@@ -13335,6 +13577,8 @@ const app = {
         if (document.getElementById('dist_regions')) document.getElementById('dist_regions').value = (dist.regions || []).join(', ');
         if (document.getElementById('dist_own_prices')) document.getElementById('dist_own_prices').value = dist.use_own_prices ? '1' : '0';
         if (document.getElementById('dist_price_list')) document.getElementById('dist_price_list').value = dist.price_list_key || '';
+        if (document.getElementById('dist_company_id')) document.getElementById('dist_company_id').value = dist.company_id || '';
+        if (document.getElementById('dist_company_new')) document.getElementById('dist_company_new').value = '';
         const titleEl = document.getElementById('dist_form_title');
         if (titleEl) titleEl.textContent = 'Редактировать промокод';
         // Форма свёрнута по умолчанию — раскрываем и прокручиваем к ней
@@ -13359,6 +13603,8 @@ const app = {
         if (document.getElementById('dist_regions')) document.getElementById('dist_regions').value = '';
         if (document.getElementById('dist_own_prices')) document.getElementById('dist_own_prices').value = '0';
         if (document.getElementById('dist_price_list')) document.getElementById('dist_price_list').value = '';
+        if (document.getElementById('dist_company_id')) document.getElementById('dist_company_id').value = '';
+        if (document.getElementById('dist_company_new')) document.getElementById('dist_company_new').value = '';
         const titleEl = document.getElementById('dist_form_title');
         if (titleEl) titleEl.textContent = 'Добавить промокод';
     },
@@ -25098,9 +25344,23 @@ const app = {
      * поэтому под ним всегда стоит фраза с перечислением отмеченных компаний,
      * а при пустом выборе — предупреждение, что человек не увидит ничего.
      */
+    // Галочка «вся компания»: отметить или снять все её филиалы
+    toggleViewerCompany: function (el) {
+        const box = document.getElementById('admin_edit_viewer_dists');
+        if (!box || !el) return;
+        box.querySelectorAll('input.admin-viewer-dist[data-co="' + el.getAttribute('data-co') + '"]').forEach(i => { i.checked = el.checked; });
+        this.updateViewerDistsHint();
+    },
+
     updateViewerDistsHint: function () {
         const hint = document.getElementById('admin_edit_viewer_dists_hint');
         if (!hint) return;
+        // Галочки компаний следуют за галочками филиалов
+        const boxEl = document.getElementById('admin_edit_viewer_dists');
+        if (boxEl) boxEl.querySelectorAll('input.admin-viewer-company').forEach(h => {
+            const kids = [...boxEl.querySelectorAll('input.admin-viewer-dist[data-co="' + h.getAttribute('data-co') + '"]')];
+            h.checked = kids.length > 0 && kids.every(i => i.checked);
+        });
         const picked = this.pickedViewerDistIds() || [];
         const names = picked.map(id => {
             const d = (this.adminData.distributors || []).find(x => String(x.id) === String(id));
@@ -27144,6 +27404,11 @@ const app = {
                     distributors = distributors.filter(d => mine.includes(String(d.id)));
                 }
             } catch (e) { console.warn("Could not load distributors:", e); }
+
+            // 8·. Компании, под которые объединены филиалы. Таблицы нет, пока не
+            // выполнена миграция 20261105_companies.sql, — тогда работает прежняя
+            // группировка по названию, и раздел «Филиалы» ничего не замечает.
+            await this.loadCompanies();
 
             // 8а. Кому из наблюдателей какие компании назначены — для их карточек.
             // Отдельным запросом, а не колонкой в общей выборке пользователей:
@@ -46962,11 +47227,31 @@ const app = {
                                                 const picked = this.viewerScopeFor(user.id);
                                                 const list = this.adminData.distributors || [];
                                                 if (!list.length) return `<div style="padding:10px 12px; font-size:12px; color:var(--text-sec);">Компаний в справочнике пока нет.</div>`;
-                                                return list.map((d, i) => `
-                                                    <label style="display:flex; align-items:center; gap:9px; padding:7px 12px; font-size:12.5px; color:var(--text-main); cursor:${isViewer ? 'not-allowed' : 'pointer'}; ${i ? 'border-top:1px solid var(--border);' : ''}">
-                                                        <input type="checkbox" class="admin-viewer-dist" value="${d.id}" ${picked.includes(String(d.id)) ? 'checked' : ''} ${isViewer ? 'disabled' : ''} onchange="app.updateViewerDistsHint()" style="width:16px; height:16px; flex-shrink:0; accent-color:var(--primary); cursor:inherit;">
+                                                // Филиалы одной компании идут подряд, над ними — галочка «вся компания»:
+                                                // отмечает все её филиалы разом (общий наблюдатель на компанию)
+                                                const grp = {};
+                                                const order = [];
+                                                list.forEach(d => {
+                                                    const c = this.branchCompanyOf(d);
+                                                    if (!grp[c.key]) { grp[c.key] = { title: c.title, items: [] }; order.push(c.key); }
+                                                    grp[c.key].items.push(d);
+                                                });
+                                                const cur = isViewer ? 'not-allowed' : 'pointer';
+                                                let n = 0;
+                                                return order.map((k, gi) => {
+                                                    const g = grp[k];
+                                                    const multi = g.items.length > 1;
+                                                    const head = multi ? `
+                                                    <label style="display:flex; align-items:center; gap:9px; padding:7px 12px; font-size:12.5px; font-weight:700; background:var(--surface-light); color:var(--text-main); cursor:${cur}; ${n++ ? 'border-top:1px solid var(--border);' : ''}">
+                                                        <input type="checkbox" class="admin-viewer-company" data-co="g${gi}" ${g.items.every(d => picked.includes(String(d.id))) ? 'checked' : ''} ${isViewer ? 'disabled' : ''} onchange="app.toggleViewerCompany(this)" style="width:16px; height:16px; flex-shrink:0; accent-color:var(--primary); cursor:inherit;">
+                                                        <span>🏢 ${g.title || 'Без названия'} — вся компания <span style="color:var(--text-sec); font-weight:500;">(${g.items.length} фил.)</span></span>
+                                                    </label>` : '';
+                                                    return head + g.items.map(d => `
+                                                    <label style="display:flex; align-items:center; gap:9px; padding:7px 12px${multi ? ' 7px 30px' : ''}; font-size:12.5px; color:var(--text-main); cursor:${cur}; ${n++ ? 'border-top:1px solid var(--border);' : ''}">
+                                                        <input type="checkbox" class="admin-viewer-dist" data-co="g${gi}" value="${d.id}" ${picked.includes(String(d.id)) ? 'checked' : ''} ${isViewer ? 'disabled' : ''} onchange="app.updateViewerDistsHint()" style="width:16px; height:16px; flex-shrink:0; accent-color:var(--primary); cursor:inherit;">
                                                         <span>${d.company_name} <span style="color:var(--text-sec);">(${d.promo_code})</span></span>
                                                     </label>`).join('');
+                                                }).join('');
                                             })()}
                                         </div>
                                         <div id="admin_edit_viewer_dists_hint" style="margin-top:6px; font-size:11.5px; line-height:1.5;"></div>
