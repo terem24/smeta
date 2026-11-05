@@ -18888,9 +18888,14 @@ const app = {
                 <div class="lk-setting">
                     <div class="lk-setting-text">
                         <b>Подбирать бухты по всей смете</b>
-                        <span>Одинаковые трубы из разных разделов считаются вместе — меньше обрезков.</span>
+                        <span>Одинаковые трубы из разных разделов считаются вместе — меньше обрезков. Экономия есть, если трубы одного диаметра нужны в нескольких разделах и в каждом остаётся «хвост» меньше бухты (60 м + 30 м при бухте 100 м: по разделам 2 бухты, вместе 1).</span>
                         <span style="color:var(--text-main);">${(() => {
                             const st = this._poolStats;
+                            if (!this.isPro()) {
+                                const eco = this.poolSavingText();
+                                if (eco) return `<span style="color:var(--success, #16a34a);font-weight:600;">С Профи в этой смете: экономия ${eco}.</span> Это бухты, которые вы бы купили зря. <a href="#" onclick="event.preventDefault(); app.showPoolLock()">Подключить Профи</a>`;
+                                return '🔒 Только в Профи. ' + (st && st.unM > 0 ? 'В этой смете экономии нет. ' : 'Откройте смету с трубами — покажем, сколько сэкономите. ') + this.poolMechanicsText();
+                            }
                             if (!st) return 'Откройте смету с трубами — покажем экономию.';
                             if (!(st.unM > 0)) return '';
                             const eco = st.metres > 0
@@ -18899,7 +18904,9 @@ const app = {
                             return (this.poolCoilsOn() ? 'В текущей смете: ' : 'Включение даст: ') + `${eco}.`;
                         })()}</span>
                     </div>
-                    <label class="switch"><input type="checkbox" ${this.poolCoilsOn() ? 'checked' : ''} onchange="app.setPoolCoils(this.checked)"><span class="slider"></span></label>
+                    ${this.isPro()
+                        ? `<label class="switch"><input type="checkbox" ${this.poolCoilsOn() ? 'checked' : ''} onchange="app.setPoolCoils(this.checked)"><span class="slider"></span></label>`
+                        : `<label class="switch" style="opacity:.6;cursor:pointer" title="${(this.poolSavingText() ? 'С Профи в этой смете: экономия ' + this.poolSavingText() + '. ' : '') + 'Нажмите, чтобы узнать про Профи'}" onclick="event.preventDefault(); app.showPoolLock()"><input type="checkbox" disabled><span class="slider"></span></label>`}
                 </div>
             </div>
         `;
@@ -20497,10 +20504,50 @@ const app = {
     // ПРОФИ включено, Базовый выключено.
     poolCoilsOn: function () {
         if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        // Объединение бухт — функция Профи: без тарифа флаг игнорируется, даже если остался в настройках
+        if (!this.isPro()) return false;
         const v = this.installerSettings.poolCoils;
-        return v === undefined ? !!this.isPro() : !!v;
+        return v === undefined ? true : !!v;
+    },
+    // Что дало бы объединение в текущей смете — для замка у тех, у кого нет Профи
+    poolSavingText: function () {
+        const st = this._poolStats;
+        if (!st || !(st.unM > 0)) return '';
+        if (!(st.metres > 0 || st.rub > 0)) return '';
+        const pct = String(st.pct).replace('.', ',');
+        return `${Math.round(st.metres)} м трубы (${pct} %) и ${this.formatCurrencyAmount(st.rub)}`;
+    },
+    // Когда объединение бухт работает. Замер расчётом (bench/pool_sweep2.js, 504 дома 100–300 м²):
+    // труба идёт в общий подбор только из разделов «Приборы отопления» и «Водяной тёплый пол», а выигрыш
+    // даёт одно: хвосты двух разделов в ОДНОЙ трубе складываются, и лишняя бухта не покупается.
+    // Радиаторы в металлопластике без изоляции + тёплый пол из металлопластика: экономия в 77 % смет,
+    // в среднем 17 900 ₽, максимум 31 400 ₽ (одна-две бухты Ø16 по 100 м, 15 700 ₽ каждая).
+    // Радиаторы в изолированной трубе (в т. ч. PEX) с тёплым полом в общий подбор не попадают — там 0.
+    poolMechanicsText: function () {
+        return 'Объединение режет бухты один раз на всю смету, а не на каждый раздел отдельно, поэтому лишняя бухта не покупается. ' +
+            'Работает, когда радиаторы и тёплый пол собраны одной трубой: радиаторы — металлопластик без изоляции, тёплый пол — металлопластик. ' +
+            'В таких сметах оно экономит в 77 % случаев — в среднем 17 900 ₽, до 31 400 ₽ (это одна-две бухты Ø16 по 15 700 ₽), по расчёту на домах 100–300 м².';
+    },
+    // Плашка для Базового в смете: что дало бы объединение бухт. Пусто, если Профи или экономии нет.
+    poolTeaserHtml: function () {
+        if (this.isPro() || this.state.viewMode !== 'equipment') return '';
+        const st = this._poolStats;
+        if (!st || !(st.rub > 0)) return '';
+        const eco = this.poolSavingText();
+        return `<div class="no-print" onclick="event.stopPropagation();">` +
+            this.noteBox('info', 'С Профи эта смета дешевле на ' + this.formatCurrencyAmount(st.rub) + '.',
+                `Объединение бухт: лишняя бухта не покупается (${eco}). <a href="#" onclick="event.preventDefault(); event.stopPropagation(); app.showPoolLock()">Как это получить</a>`, '') +
+            `</div>`;
+    },
+    // Нажатие на тумблер без Профи: окно тарифа с цифрами экономии по этой смете
+    showPoolLock: function () {
+        const eco = this.poolSavingText();
+        try { this.closeProfileModal(); } catch (e) { }
+        this.logPaywall('seen', 'Бухты по всей смете');
+        this.showModal('pro', { why: 'Вы хотели объединить бухты по всей смете — ' + (eco ? 'в этой смете это экономия ' + eco : 'в этой смете экономии нет. ' + this.poolMechanicsText()) + ' Функция входит в Профи' });
     },
     setPoolCoils: function (on) {
+        if (!this.isPro()) { this.showPoolLock(); return; }
         if (!this.installerSettings) this.loadInstallerSettingsLocal();
         this.installerSettings.poolCoils = !!on;
         this.pushInstallerSettingsToCloud();
@@ -20596,7 +20643,7 @@ const app = {
                 (saveM > 0 ? `Экономия <b>${fm(saveM)} м</b> и <b>${rub(saveR)}</b>.` : 'Экономии нет: бухт и так минимум.'));
             // Остаток — не позиция сметы, а справка: его деньги уже внутри бухт выше. Показываем в карточке материала.
             const left = Math.max(0, dimBM - need);
-            cards.push({ name: pool.label[dim], need: need, from: from, buy: buy,
+            cards.push({ name: pool.label[dim], need: need, from: from, buy: buy, secCount: Object.keys(secs).length,
                 unM: dimUnM, unR: dimUnR, unRolls: coils.reduce((a, c) => a + Math.round((pool.metres[c.id] || 0) / c.len), 0),
                 bM: dimBM, bR: dimBR, bRolls: plan.counts.reduce((a, n) => a + n, 0),
                 left: left, leftR: Math.round(left * (coils[0].price || 0)) });
@@ -20608,7 +20655,11 @@ const app = {
             ? `Объединение бухт сэкономило <b>${fm(saveM)} м</b> трубы (${fm(pct)} %) и <b>${rub(saveR)}</b>: ${fm(boughtM)} м вместо ${fm(unM)} м при покупке по разделам.`
             : (cards.reduce((x, c) => x + c.unRolls, 0) > cards.reduce((x, c) => x + c.bRolls, 0)
                 ? `Объединение бухт: метры и рубли те же (${fm(boughtM)} м), но бухт меньше — меньше позиций и обрезков.`
-                : `Объединение бухт: экономии нет — по разделам и вместе выходит ${fm(boughtM)} м, бухт и так минимум.`);
+                : `Объединение бухт: экономии нет — по разделам и вместе выходит ${fm(boughtM)} м, бухт и так минимум. ` +
+                  (cards.every(c => c.secCount < 2)
+                      ? 'Каждая труба здесь нужна только в одном разделе — объединять нечего.'
+                      : 'Метры из разных разделов уже ложатся в целые бухты без лишнего обрезка.') +
+                  ' Экономия появляется, когда в нескольких разделах нужна труба одного диаметра и у каждого раздела получается «хвост» меньше бухты (например, 60 м + 30 м при бухте 100 м: по разделам 2 бухты, вместе — 1).');
         const method = '<b>Как считаем.</b><br>' +
             '• Трубы STOUT в бухтах (металлопластик, PE-Xa, PEX-a/EVOH, стабильная) из <u>всех</u> разделов сметы складываются по метрам — отдельно для каждого материала и диаметра.<br>' +
             '• Без объединения каждый раздел покупает целые бухты сам, и у каждого остаётся свой обрезок.<br>' +
@@ -20626,7 +20677,7 @@ const app = {
                 `<div style="display:flex;justify-content:space-between;gap:8px;"><b>${c.name}</b><span style="color:var(--text-sec);">нужно ${fm(c.need)} м</span></div>` +
                 row('По разделам', `${fm(c.unM)} м · ${c.unRolls} ${pl(c.unRolls)} · ${rub(c.unR)}`, c.from ? `Если бы каждый раздел покупал бухты сам — ${c.from}` : 'Каждый раздел покупает целые бухты сам') +
                 row('Вместе', `${fm(c.bM)} м · ${c.bRolls} ${pl(c.bRolls)} · ${rub(c.bR)}`, c.buy ? `Объединено: ${c.buy}` : '') +
-                row('Экономия', sM > 0 ? `${fm(sM)} м (${fm(sP)} %) · ${rub(sR)}` : (c.unRolls > c.bRolls ? `метры и рубли те же, бухт меньше на ${c.unRolls - c.bRolls}` : 'нет — бухт и так минимум'), 'Экономия = «по разделам» минус «вместе»', (sM > 0 || c.unRolls > c.bRolls) ? green : '') +
+                row('Экономия', sM > 0 ? `${fm(sM)} м (${fm(sP)} %) · ${rub(sR)}` : (c.unRolls > c.bRolls ? `метры и рубли те же, бухт меньше на ${c.unRolls - c.bRolls}` : (isTotal ? 'нет — бухт и так минимум' : (c.secCount < 2 ? 'нет — труба нужна только в одном разделе' : 'нет — обрезков в разделах нет, бухт и так минимум'))), 'Экономия = «по разделам» минус «вместе». Появляется, когда у нескольких разделов остаются «хвосты» меньше бухты, которые вместе заполняют лишнюю бухту.', (sM > 0 || c.unRolls > c.bRolls) ? green : '') +
                 (c.left > 0 && !isTotal ? `<div style="font-size:11px;color:var(--text-sec);" title="Бухты продаются целиком. Эти метры уже оплачены в бухтах выше, в КП и печать не входят.">Остаток после раскроя: ${fm(c.left)} м (≈ ${rub(c.leftR)} уже в цене бухт, остаётся у монтажника)</div>` : '') +
                 `</div>`;
         };
@@ -100822,7 +100873,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         `<div class="tip-p">Норма — ГОСТ Р 70834-2023, п. 9.1.5, табл. 2 (${_short.map(f => f.req.why).join('; ')}). Без нужного слоя тепло уходит вниз мимо помещения. Проверьте, что имеющегося утеплителя хватает, либо снимите отметку в блоке «Материал пола» — недостающие плиты добавятся в смету.</div>`);
                 }
             }
-            flushBill("4. Водяной тёплый пол", warn);
+            flushBill("4. Водяной тёплый пол", (warn || "") + "<!--POOL_TEASER-->");
         }
 
         // === 4.4 СНЕГОТАЯНИЕ ===
@@ -102793,6 +102844,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // Объединение включено — блок уже выведен после раздела 5 (см. _runCoilPool). Выключено —
         // строки всё равно считаем: из них берётся экономия для «Настройки → Тариф».
         _runCoilPool();
+        // Без Профи объединение выключено, но по тем же покупкам известно, сколько оно сэкономило бы:
+        // плашка в разделе тёплого пола (на экране, в КП не идёт) ведёт в окно тарифа.
+        h = h.replace('<!--POOL_TEASER-->', this.poolTeaserHtml());
         flushBill("9. Дополнительные материалы");
         // ==========================================
         // БЛОК: 1.1 Монтаж котла и бойлера, 1.2 Монтаж обвязки котельной, 2.2 Монтаж узла ввода ХВС
