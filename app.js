@@ -50121,8 +50121,20 @@ const app = {
                 <li>Включить переключатель «Прокси на Beget». Функции, отключённые автоматически, вернутся сами; выключенные вручную включите переключателями.</li>
             </ol>`;
 
+        const backupsHtml = `
+            <div class="srv-sub">Каждую ночь в 4:30 по Москве GitHub делает копию базы (пользователи, сметы, счета, настройки сайта) и хранит последние 30.
+                Ссылки откроются, если вы вошли в GitHub под своим аккаунтом: репозиторий приватный.</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+                <a href="https://github.com/terem24/heatcalc-backups/releases" target="_blank" rel="noopener" style="text-decoration:none; ${btn}">Список копий</a>
+                <a href="https://github.com/terem24/heatcalc-backups/actions/workflows/restore.yml" target="_blank" rel="noopener" style="text-decoration:none; ${btn}">Восстановить из копии</a>
+            </div>
+            <div style="margin-top:10px; font-size:12px; color:var(--text-sec); line-height:1.5;">
+                «Восстановить из копии»: Run workflow, режим dry-run только проверяет копию. Для настоящего восстановления выберите restore и впишите слово ВОССТАНОВИТЬ.
+            </div>`;
+
         root.innerHTML = this._srvStyle + `<div id="srv_live"></div>` + notify
             + det('note', 'Плашка для пользователей', 'что видят люди, пока прокси отключён', noteHtml)
+            + det('backups', 'Копии базы', 'ночные копии и восстановление', backupsHtml)
             + det('recover', 'Когда Beget восстановится', 'что сделать перед включением', recoverHtml);
         this.renderAdminServerLive();
     },
