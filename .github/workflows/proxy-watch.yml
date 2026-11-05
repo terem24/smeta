@@ -60,17 +60,10 @@ jobs:
           if [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASS" ]; then echo "Секретов SMTP_USER и SMTP_PASS нет"; exit 1; fi
           to="${ALERT_TO:-$SMTP_USER}"
           {
-            printf 'From: HeatCalc <%s>
-To: %s
-Subject: =?UTF-8?B?%s?=
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-
-'               "$SMTP_USER" "$to" "$(printf '%s' 'Проверка почты: HeatCalc' | base64 -w0)"
-            printf 'Тестовое письмо автопроверки Beget. Если вы его читаете, прямые уведомления настроены верно.
-'
+            printf 'From: HeatCalc <%s>\nTo: %s\nSubject: =?UTF-8?B?%s?=\nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\n\n' "$SMTP_USER" "$to" "$(printf '%s' 'Проверка почты: HeatCalc' | base64 -w0)"
+            printf 'Тестовое письмо автопроверки Beget. Если вы его читаете, прямые уведомления настроены верно.\n'
           } > /tmp/mail.txt
-          curl -sS --ssl-reqd --url smtps://smtp.yandex.ru:465 --user "$SMTP_USER:$SMTP_PASS"             --mail-from "$SMTP_USER" --mail-rcpt "$to" -T /tmp/mail.txt
+          curl -sS --ssl-reqd --url smtps://smtp.yandex.ru:465 --user "$SMTP_USER:$SMTP_PASS" --mail-from "$SMTP_USER" --mail-rcpt "$to" -T /tmp/mail.txt
           echo "Тестовое письмо отправлено"
 
       - name: Настройки из админки
