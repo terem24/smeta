@@ -36,6 +36,10 @@ TAG = '%s_%s_%d_%s' % (TYPE, LINE, N, END)
 
 KNOB = 'blue' if LINE == 'cw' else 'red'
 INS = 'ins_cw' if LINE == 'cw' else 'ins_hw'
+# Отвод в изоляции: в иллюстрации (листы-образцы владельца) — труба цвета линии в прозрачном
+# чехле, контур чехла виден; в прежнем виде — серая PEX под плотной изоляцией
+SHEATH_A = 0.38 if illus() else 0.90
+PIPE = INS if illus() else 'pex'
 
 P = 0.037 if TYPE == 'bl' else 0.050   # шаг выходов: SMB 62xx — 37 мм по паспорту, SMB 6850 — 50
 RB = 0.0165        # радиус корпуса 1"
@@ -138,9 +142,9 @@ def outlet(i, x, used):
         pts = [(x, 0, z0 - ln), (x, 0, -0.30)]
     # труба 16 и теплоизоляция 18/6: изоляция полупрозрачная, сквозь неё видна серая труба
     part('tube:%d' % i)
-    tube('труба16', pts, 0.008, M_PLAST('pex'))
+    tube('труба16', pts, 0.008, M_PLAST(PIPE))
     sp = [pts[0]] + pts[1:-1] + [(pts[-1][0], pts[-1][1], pts[-1][2] - 0.012)]
-    tube('изоляция', sp, 0.0118, mat(INS, rough=0.30, alpha=0.90), group='sheath')
+    tube('изоляция', sp, 0.0118, mat(INS, rough=0.30, alpha=SHEATH_A), group='sheath')
 
 
 def turn_down(before, i):
@@ -197,9 +201,9 @@ def ball_outlet(i, x, used):
     y1 = y0 - ln
     pts = [(x, 0, y1), (x, 0, -0.30)]
     part('tube:%d' % i)
-    tube('труба16', pts, 0.008, M_PLAST('pex'))
+    tube('труба16', pts, 0.008, M_PLAST(PIPE))
     sp = [pts[0]] + pts[1:-1] + [(pts[-1][0], pts[-1][1], pts[-1][2] - 0.012)]
-    tube('изоляция', sp, 0.0118, mat(INS, rough=0.30, alpha=0.90), group='sheath')
+    tube('изоляция', sp, 0.0118, mat(INS, rough=0.30, alpha=SHEATH_A), group='sheath')
 
 
 def end_part_left(xe):
