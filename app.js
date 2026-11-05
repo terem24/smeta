@@ -19,7 +19,60 @@
 })();
 // ===================================
 
-const supabaseUrl = 'https://ahanbwugsmcyvrwbmtlx.supabase.co';
+// === ПРОКСИ НА BEGET ВРЕМЕННО НЕДОСТУПЕН ===
+// 02.11.2026 хостинг Beget пострадал от кибератаки, proxy.heatcalc.ru не отвечает. Пока так,
+// обращения к нему не уходят в сеть, а сразу получают отказ 503 (иначе кнопки висят до обрыва
+// по времени), вход и база идут напрямую (см. supabaseProxyFetchRaw), сверху висит плашка.
+// Вернуть прокси: поставить `var down = false` ниже. Проверить, что он ожил, не меняя код:
+// открыть сайт с ?proxy=1 (запоминается в этом браузере), ?proxy=0 снимает.
+(function () {
+    var down = true;
+    try {
+        var m = /[?&]proxy=([01])(&|$)/.exec(window.location.search || '');
+        if (m) localStorage.setItem('hc_proxy_force', m[1]);
+        if (localStorage.getItem('hc_proxy_force') === '1') down = false;
+    } catch (e) { }
+    window.PROXY_DOWN = down;
+    if (!down) return;
+
+    var origFetch = window.fetch.bind(window);
+    window.fetch = function (input, init) {
+        var url = typeof input === 'string' ? input : ((input && input.url) || '');
+        if (url.indexOf('https://proxy.heatcalc.ru/') === 0) {
+            return Promise.resolve(new Response(
+                JSON.stringify({ ok: false, error: 'proxy_down', message: 'Сервис временно недоступен: идёт восстановление хостинга' }),
+                { status: 503, headers: { 'Content-Type': 'application/json' } }
+            ));
+        }
+        return origFetch(input, init);
+    };
+
+    function showBanner() {
+        try { if (sessionStorage.getItem('hc_proxy_banner_closed') === '1') return; } catch (e) { }
+        var bar = document.createElement('div');
+        bar.id = 'proxyDownBanner';
+        bar.setAttribute('role', 'status');
+        bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#fef3c7;color:#78350f;' +
+            'border-top:1px solid #f59e0b;padding:10px 44px 10px 16px;font:14px/1.4 Arial,sans-serif;text-align:center;';
+        bar.textContent = 'Идёт восстановление хостинга после сбоя у провайдера. Пока не работают: ИИ-распознавание смет и проектов, ' +
+            'заявки на монтаж, подложки планов, загрузка прайсов. Расчёт и сохранение работают.';
+        var close = document.createElement('button');
+        close.type = 'button';
+        close.setAttribute('aria-label', 'Закрыть');
+        close.textContent = '×';
+        close.style.cssText = 'position:absolute;right:8px;top:4px;border:0;background:none;color:inherit;font-size:24px;cursor:pointer;line-height:1;';
+        close.onclick = function () {
+            try { sessionStorage.setItem('hc_proxy_banner_closed', '1'); } catch (e) { }
+            bar.remove();
+        };
+        bar.appendChild(close);
+        document.body.appendChild(bar);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showBanner);
+    else showBanner();
+})();
+
+const supabaseUrl ='https://ahanbwugsmcyvrwbmtlx.supabase.co';
 const supabaseKey = 'sb_publishable_gcMJ-PvJmKavObbnePFGZQ_O-pu5O2p';
 
 // У части пользователей в РФ провайдер блокирует/дросселирует Cloudflare (за которым стоит
@@ -74,6 +127,8 @@ function supabaseProxyFetchRaw(input, init) {
     const proxyHost = inApp || (host === 'heatcalc.ru' || host === 'www.heatcalc.ru' || host === 'new.heatcalc.ru');
     const url = typeof input === 'string' ? input : input.url;
     if (!proxyHost || !url.startsWith(supabaseUrl)) return fetch(input, init);
+    // Прокси недоступен (см. начало файла) — сразу напрямую, без ожидания отказа
+    if (window.PROXY_DOWN) return fetch(input, init);
 
     const proxyUrl = 'https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(supabaseUrl.length));
     const method = String((init && init.method) || (typeof input !== 'string' && input.method) || 'GET').toUpperCase();
