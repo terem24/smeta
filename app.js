@@ -77,6 +77,23 @@ const PROXY_DEFAULT_DOWN = true;
     // хотя человек её не видел.
     var NOTE_KEY = 'hc_proxy_note_closed';
     var NOTE_EVERY_MS = 24 * 3600 * 1000;
+    // Текст и выключатель плашки меняются в админке (вкладка «Сервер», app_settings.proxy_note).
+    // Пустой текст = стандартный. Последнее известное значение держим в браузере, чтобы плашка
+    // с первой отрисовки была с правильным текстом.
+    var NOTE_DEFAULT_TEXT = 'На сервере ведутся работы: часть дополнительных функций AI может быть отключена. ' +
+        'Сами расчёты работают в штатном режиме.';
+    var noteCfg = { enabled: true, text: '' };
+    try {
+        var nc = JSON.parse(localStorage.getItem('hc_proxy_note_cfg') || 'null');
+        if (nc && typeof nc === 'object') noteCfg = { enabled: nc.enabled !== false, text: String(nc.text || '') };
+    } catch (e) { }
+    window.PROXY_NOTE_DEFAULT_TEXT = NOTE_DEFAULT_TEXT;
+    window.__setProxyNote = function (cfg) {
+        noteCfg = { enabled: !cfg || cfg.enabled !== false, text: cfg && cfg.text ? String(cfg.text) : '' };
+        try { localStorage.setItem('hc_proxy_note_cfg', JSON.stringify(noteCfg)); } catch (e) { }
+        updateBanner();
+    };
+    function noteText() { return noteCfg.text.trim() || NOTE_DEFAULT_TEXT; }
     function hideNote(el) {
         if (!el) return;
         el.style.opacity = '0';
@@ -85,20 +102,21 @@ const PROXY_DEFAULT_DOWN = true;
     }
     function updateBanner() {
         var old = document.getElementById('proxyDownBanner');
-        if (!window.PROXY_DOWN) { hideNote(old); return; }
-        if (old || !document.body) return;
+        if (!window.PROXY_DOWN || !noteCfg.enabled) { hideNote(old); return; }
+        if (old) { if (old.firstChild) old.firstChild.textContent = noteText(); return; }
+        if (!document.body) return;
         try {
             if (Date.now() - (parseInt(localStorage.getItem(NOTE_KEY), 10) || 0) < NOTE_EVERY_MS) return;
         } catch (e) { }
         setTimeout(function () {
-            if (!window.PROXY_DOWN || document.getElementById('proxyDownBanner')) return;
+            if (!window.PROXY_DOWN || !noteCfg.enabled || document.getElementById('proxyDownBanner')) return;
             var note = document.createElement('div');
             note.id = 'proxyDownBanner';
             note.setAttribute('role', 'status');
             // Компактная тёмная «таблетка» внизу слева, как плашка про куки: текст и кнопка в строку,
             // интерфейс не перекрывает. На телефоне — над нижней панелью, на всю ширину без полей.
             var narrow = window.innerWidth <= 768;
-            note.style.cssText = 'position:fixed;left:' + (narrow ? '12px;right:12px;' : '16px;max-width:460px;') +
+            note.style.cssText = 'position:fixed;left:' + (narrow ? '12px;right:12px;' : '16px;right:16px;max-width:720px;') +
                 'bottom:' + (narrow ? 'calc(76px + env(safe-area-inset-bottom,0px))' : '16px') + ';' +
                 'transform:translateY(12px);opacity:0;z-index:1500000;box-sizing:border-box;' +
                 'display:flex;align-items:center;gap:12px;padding:10px 10px 10px 18px;' +
@@ -106,7 +124,7 @@ const PROXY_DEFAULT_DOWN = true;
                 'font-size:13px;line-height:1.35;transition:opacity .25s ease,transform .25s ease;';
             var txt = document.createElement('span');
             txt.style.cssText = 'flex:1;';
-            txt.textContent = 'ИИ и заявки пока на паузе: восстанавливаем сервер. Расчёт работает как обычно.';
+            txt.textContent = noteText();
             var ok = document.createElement('button');
             ok.type = 'button';
             ok.textContent = 'Понятно';
@@ -2080,7 +2098,7 @@ const app = {
     // регистрация, а не запертая дверь для всех.
     // warranty.threshold — порог доли STOUT для бланка гарантии (см. stoutShare)
     // proxy.down — прокси на Beget отключён (см. начало файла, переключатель во вкладке «Сервер»)
-    appSettings: { registration: { mode: 'open' }, warranty: { threshold: 90 }, proxy: { down: PROXY_DEFAULT_DOWN }, proxy_watch: { enabled: true, digest: true } },
+    appSettings: { registration: { mode: 'open' }, warranty: { threshold: 90 }, proxy: { down: PROXY_DEFAULT_DOWN }, proxy_watch: { enabled: true, digest: true }, proxy_note: { enabled: true, text: '' } },
     _appSettingsPromise: null,
     loadAppSettings: function (force) {
         if (this._appSettingsPromise && !force) return this._appSettingsPromise;
@@ -2097,6 +2115,7 @@ const app = {
                 // Настройки прочитаны — значит, и про прокси известно точно. При ошибке чтения
                 // (catch ниже) переключатель не трогаем: остаётся последнее известное значение
                 const px = merged.proxy;
+                if (typeof window.__setProxyNote === 'function') window.__setProxyNote(merged.proxy_note);
                 if (typeof window.__setProxyDown === 'function') {
                     window.__setProxyDown(px && typeof px.down === 'boolean' ? px.down : PROXY_DEFAULT_DOWN);
                 }
@@ -49805,6 +49824,9 @@ const app = {
         const down = this.proxyDownSetting();
         const pw = (this.appSettings || {}).proxy_watch || {};
         const watchOn = pw.enabled !== false, digestOn = pw.digest !== false;
+        const pn = (this.appSettings || {}).proxy_note || {};
+        const noteOn = pn.enabled !== false;
+        const noteDefault = window.PROXY_NOTE_DEFAULT_TEXT || '';
         const btn ='padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:var(--surface); color:var(--text-main);';
         const btnMain = 'padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid var(--primary); background:var(--primary); color:#fff;';
         const pill = down
@@ -49856,6 +49878,23 @@ const app = {
                         Ежедневная сводка в 9:00 по Москве, пока состояние не меняется
                     </label>
                 </div>
+                <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
+                    <div style="font-weight:700; font-size:14px; margin-bottom:4px;">Плашка для пользователей</div>
+                    <div style="font-size:13px; color:var(--text-sec); line-height:1.5; margin-bottom:10px;">
+                        Показывается внизу страницы, пока прокси отключён: висит, пока человек не нажмёт «Понятно», и возвращается через сутки.
+                        Пустой текст = стандартный. Изменения доходят до пользователей при следующей загрузке страницы.
+                    </div>
+                    <label style="display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px; cursor:pointer;">
+                        <input type="checkbox" ${noteOn ? 'checked' : ''} ${dis} onchange="app.saveProxyNote(this.checked)">
+                        Показывать плашку
+                    </label>
+                    <textarea id="srv_note_text" rows="3" maxlength="400" placeholder="${esc(noteDefault)}" ${dis}
+                        style="width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text-main); font:inherit; font-size:13px; line-height:1.45; resize:vertical;">${esc(pn.text || '')}</textarea>
+                    <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+                        <button type="button" style="${btnMain}" ${dis} onclick="app.saveProxyNote()">Сохранить текст</button>
+                        <button type="button" style="${btn}" ${dis} onclick="app.resetProxyNoteText()">Вернуть стандартный</button>
+                    </div>
+                </div>
             </div>
             <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius,12px); padding:16px 18px; margin-bottom:14px;">
                 <div style="font-weight:700; font-size:15px; margin-bottom:10px;">Отвечает ли Beget</div>
@@ -49871,6 +49910,36 @@ const app = {
                     <li>Нажать «Включить прокси».</li>
                 </ol>
             </div>`;
+    },
+
+    // Плашка про прокси: app_settings.proxy_note = {enabled, text}. enabled передаётся, когда
+    // щёлкнули выключатель; без него берётся значение из галочки и текст из поля.
+    saveProxyNote: async function (enabled) {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять настройки сайта запрещено.'); this.renderAdminServerBody(); return; }
+        const cur = (this.appSettings || {}).proxy_note || {};
+        const ta = document.getElementById('srv_note_text');
+        const value = {
+            enabled: typeof enabled === 'boolean' ? enabled : cur.enabled !== false,
+            text: ta ? ta.value.trim().slice(0, 400) : String(cur.text || '')
+        };
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'proxy_note', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            this.appSettings = Object.assign({}, this.appSettings, { proxy_note: value });
+            if (typeof window.__setProxyNote === 'function') window.__setProxyNote(value);
+            if (typeof enabled !== 'boolean') app.alert('Текст плашки сохранён.');
+        } catch (e) {
+            console.error('[плашка] запись не прошла:', e);
+            app.alert('Не удалось сохранить: ' + (e.message || e));
+        }
+        this.renderAdminServerBody();
+    },
+    resetProxyNoteText: function () {
+        const ta = document.getElementById('srv_note_text');
+        if (ta) ta.value = '';
+        this.saveProxyNote();
     },
 
     // Автопроверка прокси (workflow proxy-watch.yml читает app_settings.proxy_watch этим же ключом)
