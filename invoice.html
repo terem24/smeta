@@ -492,6 +492,17 @@
             border-top: 1px solid var(--border);
         }
 
+        /* Подгруппа внутри раздела: класс group-row оставляем, чтобы строка не попадала
+           в карточные правила обычных позиций на телефоне, но вид делаем легче раздела */
+        #equipment_tbody tr.group-row.subgroup-row td {
+            background-color: transparent !important;
+            color: var(--text-sec) !important;
+            font-size: 10px !important;
+            padding: 8px 12px 4px !important;
+            border-top: 1px solid var(--border) !important;
+            letter-spacing: .02em;
+        }
+
         .subtotal-row td {
             text-align: right;
             font-style: italic;
@@ -5812,8 +5823,34 @@
                     tbody.appendChild(secHeaderTr);
 
                     let secSum = 0;
+                    // Подгруппы раздела («2.1. Обвязка газового котла»): в калькуляторе при
+                    // включённой группировке смета разбита на них, а клиент видел плоский
+                    // список. Поле group лежит в снимке у каждой позиции; равное названию
+                    // самого раздела или пустое — не подгруппа. Позиции без подгруппы среди
+                    // подгрупп уходят под заголовок «Прочее», чтобы не прилипнуть к соседней.
+                    const secKey = String(sectionTitle).trim().toLowerCase();
+                    const subOf = it => {
+                        const g = String(it.group || '').trim();
+                        return (g && g.toLowerCase() !== secKey) ? g : '';
+                    };
+                    const secHasSub = grouped[sectionTitle].some(it => !it.isOpt && subOf(it));
+                    let curSub = null;
                     grouped[sectionTitle].forEach(i => {
                         if (i.isOpt) return; // Skip optional untoggled items
+
+                        if (secHasSub) {
+                            const sg = subOf(i);
+                            if (sg !== curSub) {
+                                curSub = sg;
+                                const subTr = document.createElement('tr');
+                                subTr.className = 'group-row subgroup-row';
+                                const subTd = document.createElement('td');
+                                subTd.colSpan = colspanVal;
+                                subTd.textContent = sg || 'Прочее';
+                                subTr.appendChild(subTd);
+                                tbody.appendChild(subTr);
+                            }
+                        }
 
                         const tr = document.createElement('tr');
                         // «× цена» под количеством на телефоне при 1 шт повторяет сумму — прячем (CSS .qty-one)
