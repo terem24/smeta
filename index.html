@@ -1519,6 +1519,19 @@
                     <div class="tab" id="boiler_dt_10" onclick="app.setBoilerDT(10)">10 K</div>
                 </div>
             </div>
+
+            <div class="control-item" id="blk_boiler_annex" style="display:none; margin-top: 0; margin-bottom: 16px;">
+                <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom: 6px;">Где котельная<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>В доме.</b> Магистраль от насосной группы до коллекторов — по площади дома.<div class="tip-p"><b>В пристройке или гараже.</b> К магистрали радиаторов и к транзиту тёплого пола добавляется участок до стены дома (в одну сторону, подача и обратка считаются сами) — и в смете, и в гидравлике. Этот участок изолируется всегда.</div><div class="tip-p" style="color:#93C5FD;">Изоляция 6 мм — для пристройки с плюсом зимой. Промерзающая — изоляция толще или незамерзающий теплоноситель; под землёй — только предызолированная труба.</div></div></span></span>
+                <div class="tabs" id="annex_tabs">
+                    <div class="tab active" id="annex_off" onclick="app.toggleAnnex(false)">В доме</div>
+                    <div class="tab" id="annex_on" onclick="app.toggleAnnex(true)">В пристройке, гараже</div>
+                </div>
+                <div id="annex_len_row" style="display:none; align-items:center; justify-content:space-between; margin-top:8px; font-size:12px;">
+                    <span class="lbl-sub" style="margin:0;">Трасса до дома</span>
+                    <span class="val"><span id="val_annex_m" class="editable-val" contenteditable="true" onblur="app.setAnnexM(this.innerText)"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">6</span> м</span>
+                </div>
+            </div>
                 
             <h4 id="lbl_rad_regime" style="position:relative; display:none; margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Режим системы<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>80/60.</b> Перепад 20 K, классика с котлом: расход вдвое меньше, трубы и насос скромнее.<div class="tip-p"><b>75/65.</b> Перепад 10 K, в нём заявлена паспортная мощность радиаторов; расход вдвое выше, расчёт с запасом.</div><div class="tip-p"><b>70/55.</b> Приборы отдают около 80 % паспорта и подбираются крупнее. Для конденсационного котла.</div><div class="tip-p"><b>55/45.</b> Приборы отдают около половины паспорта. Конденсационный котёл с полной конденсацией, тепловой насос.</div><div class="tip-p" style="color:#93C5FD;"><span id="lbl_rad_regime_note">Перепад 20 K. Расход и напор считаются по нему.</span></div></div></span></h4>
             <div class="control-item" id="blk_rad_regime" style="display:none; margin-top: 0; margin-bottom: 16px;">

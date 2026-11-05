@@ -18437,6 +18437,8 @@ const app = {
             { id: 'radPipe', label: 'Трубы для радиаторов', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'mp', t: 'Металлопластик' }] },
             { id: 'trunkPipe', label: 'Трубы для магистрали', opts: [{ v: 'stable', t: 'Стабильная' }, { v: 'mp', t: 'Металлопластик' }, { v: 'ppr', t: 'ППР' }],
                 note: 'Стояк и трасса от котельной до коллектора. Авто — как материал разводки, но только с алюминиевым слоем: серый PEX-a на магистраль не ставится. ППР — Ekoplastik Stabi Plus (с алюминием).' },
+            { id: 'trunkInsul', label: 'Изоляция магистрали из металлопластика', opts: [{ v: 'factory', t: 'Труба в изоляции' }, { v: 'tube', t: 'Труба + трубка' }, { v: 'none', t: 'Без изоляции' }],
+                note: 'Стояк, трасса до коллектора радиаторов и транзит тёплого пола. Авто — труба в заводской изоляции 6 мм (STOUT SPI / ROMMER RPI), красная на подачу, синяя на обратку.' },
             { id: 'radBeam', label: 'Лучи к приборам в комнате', opts: [{ v: 'single', t: 'Ветка на каждый прибор' }],
                 note: 'Авто — общая трасса на комнату включается сама, если смета выходит дешевле не меньше чем на 3 % и 10 000 ₽. Работает при коллекторной схеме, режиме «По комнатам» и трубе PEX-a или металлопластике.' }
         ] },
@@ -18448,6 +18450,8 @@ const app = {
             { id: 'wellPump', label: 'Управление скважинным насосом', opts: [{ v: 'relay', t: 'Релейное' }, { v: 'inverter', t: 'Частотное' }],
                 note: 'Релейное — реле давления и сухого хода. Частотное — преобразователь STOUT SIRIO.' },
             { id: 'waterPipe', label: 'Трубы для водоснабжения', opts: [{ v: 'pex', t: 'Сшитый полиэтилен' }, { v: 'metal_plastic', t: 'Металлопластик' }] },
+            { id: 'waterInsul', label: 'Изоляция металлопластика воды', opts: [{ v: 'tube', t: 'Труба + трубка' }, { v: 'factory', t: 'Труба в изоляции' }],
+                note: 'Авто — трубка Energoflex на голую трубу. «Труба в изоляции» — красная на ГВС и рециркуляцию, синяя на ХВС, бухтой каждого цвета.' },
             { id: 'sewer', label: 'Канализация', opts: [{ v: 'economy', t: 'Обычная' }, { v: 'std', t: 'Бесшумная' }] }
         ] },
         { g: 'Автоматика', items: [
@@ -18544,12 +18548,14 @@ const app = {
         }
         // Магистраль: «Авто» (пусто) оставляет выбор калькулятору; ручная замена в смете главнее и при этом не трогается.
         if (has('trunkPipe')) s.trunkPipeMat = p.trunkPipe;
+        if (has('trunkInsul')) { s.trunkInsul = p.trunkInsul; s.ufhTransitInsul = p.trunkInsul; }
         if (has('ufhPipe')) {
             const up = this.UFH_PIPES.find(x => x.material === p.ufhPipe);
             if (up) { s.ufhPipe = up.key; s.ufhPipeMaterial = up.material; this._ufhGeomCache = null; }
         }
         if (has('ufhFix')) s.ufhBaseType = p.ufhFix;
         if (has('waterPipe')) s.waterPipeMaterial = p.waterPipe;
+        if (has('waterInsul')) s.waterInsul = p.waterInsul;
         if (has('sewer')) s.sewerType = p.sewer;
         if (has('wellPump')) s.wellAutoType = p.wellPump === 'inverter' ? 'sirio' : (this.canUseBrand('ROMMER') ? 'relay_krs5' : 'base');
         if (has('automation')) {
@@ -20243,7 +20249,11 @@ const app = {
         { prefix: 'SPM-0001-', cat: 'metal_plastic_pipes', label: 'металлопластик' },
         { prefix: 'SPX-0002-', cat: 'pipes', label: 'PE-Xa красная' },
         { prefix: 'SPX-0001-', cat: 'rad_pipes_grey', label: 'PEX-a/EVOH серая' },
-        { prefix: 'SPS-0002-', cat: 'stable_pipes', label: 'стабильная' }
+        { prefix: 'SPS-0002-', cat: 'stable_pipes', label: 'стабильная' },
+        // Металлопластик в заводской изоляции: разводка радиаторов, стояк и трасса магистрали, ГВС —
+        // одна бухта на всех. Красная и синяя — разные серии (разные артикулы, обрезок не перекрасить).
+        { prefix: 'SPI-0001-', cat: 'insulated_pipes_mp_red', label: 'металлопластик в изоляции, красная' },
+        { prefix: 'SPI-0002-', cat: 'insulated_pipes_mp_blue', label: 'металлопластик в изоляции, синяя' }
     ],
     // Бухты STOUT, сгруппированные по серии и диаметру (артикул кончается типоразмером: …-101620 → 1620), от большой к малой.
     coilPoolNew: function () {
@@ -69734,7 +69744,7 @@ const app = {
                     const _ids = [];
                     alts.forEach(a => { _ids.push(a.id); if (a.rommer && !Array.isArray(a.rommer)) _ids.push(a.rommer.id); });
                     if (!_ids.includes(item.id)) _ids.push(item.id);
-                    const _sig = JSON.stringify([_pKey, this.state.swaps, this.state.radTrunkOv, this.state.trunkPipeMat, this.state.pipeType, this.state.brandMode, this.state.area, this.state.floors, this.state.rooms && this.state.rooms.length]);
+                    const _sig = JSON.stringify([_pKey, this.state.swaps, this.state.radTrunkOv, this.state.trunkPipeMat, this.state.trunkInsul, this.state.pipeType, this.state.brandMode, this.state.area, this.state.floors, this.state.rooms && this.state.rooms.length]);
                     if (!this._pipeSysCache || this._pipeSysCache.sig !== _sig) {
                         this._pipeSysCache = { sig: _sig, totals: this.stateOptionTotals(_ids, id => this.applyTrunkChoice(_pKey, id)) };
                     }
@@ -69754,7 +69764,9 @@ const app = {
                     keep: a => a.id === item.id || (a.rommer && !Array.isArray(a.rommer) && a.rommer.id === item.id)
                 });
                 alts = _pf.items;
-                _bpFilterHtml = _pf.html + _hyHtml;
+                // Металлопластик магистрали: изоляция — заводская, трубкой отдельно или никакой (см. setTrunkInsul)
+                const _tkInsHtml = (_pipeSysCtx && _pipeFamOf(item) === 'mp') ? this.trunkInsulChips() : '';
+                _bpFilterHtml = _pf.html + _tkInsHtml + _hyHtml;
             }
         }
 
@@ -69929,7 +69941,9 @@ const app = {
             // По строке на тип трубы и на бренд: STOUT и ROMMER рядом. Выбор бренда здесь — то же,
             // что кнопка «Аналог», но для одной трубы (см. pipeBrandOverride), а цена «Система»
             // считается полным пересчётом сметы под каждый вариант. У ROMMER нет трубы с готовой
-            // изоляцией: его вариант — труба и трубка изоляции отдельными позициями (см. addToBill).
+            // изоляцией из PEX-a: его вариант — труба и трубка изоляции отдельными позициями (см. addToBill).
+            // Металлопластик в изоляции у ROMMER заводской (RPI, PE-RT II/Al/PE-RT II, изоляция 6 мм) —
+            // пара .rommer у SPI-0001/0002, строка «insulated_mp_r».
             const _rr = (it) => (it && it.rommer && !Array.isArray(it.rommer)) ? it.rommer : null;
             const _insI = catalog.insulated_pipes && catalog.insulated_pipes[0];
             const _insR = (_insI && Array.isArray(_insI.rommer)) ? _insI.rommer : null;
@@ -69943,6 +69957,7 @@ const app = {
                 { id: 'split', name: 'Труба PEX-a без изоляции', brand: 'STOUT', price: _splitI ? (_splitI.price || 0) : 0, imgId: _splitI?.id },
                 ...(_rr(_splitI) ? [{ id: 'split_r', name: 'Труба PEX-a без изоляции', brand: 'ROMMER', price: _rr(_splitI).price || 0, imgId: _rr(_splitI).id }] : []),
                 { id: 'insulated_mp', name: 'Труба металлопластиковая в теплоизоляции', brand: 'STOUT', price: _insMpI ? (_insMpI.price || 0) : 0, imgId: _insMpI?.id },
+                ...(_rr(_insMpI) ? [{ id: 'insulated_mp_r', name: 'Труба металлопластиковая в теплоизоляции', brand: 'ROMMER', price: _rr(_insMpI).price || 0, imgId: _rr(_insMpI).id }] : []),
                 { id: 'split_mp', name: 'Труба металлопластиковая без изоляции', brand: 'STOUT', price: _splitMpI ? (_splitMpI.price || 0) : 0, imgId: _splitMpI?.id },
                 ...(_rr(_splitMpI) ? [{ id: 'split_mp_r', name: 'Труба металлопластиковая без изоляции', brand: 'ROMMER', price: _rr(_splitMpI).price || 0, imgId: _rr(_splitMpI).id }] : []),
                 ...(_stbI ? [{ id: 'stable_16', name: _stbI.name, brand: 'STOUT', price: _stbI.price, imgId: _stbI.id }] : []),
@@ -69975,9 +69990,13 @@ const app = {
         // означает два десятка метров, оплаченных и оставленных на объекте, поэтому оба
         // варианта стоят в таблице рядом — с настоящими деньгами за тот и другой.
         else if (item.originalId && item.originalId.startsWith('ufh_transit_f')) {
-            const _tiCut = (this._ufhTransitCuts || {})[item.originalId] || {};
+            // Строки трассы в заводской изоляции — «…_sup» (красная) и «…_ret» (синяя): выбор живёт на ключе трассы.
+            const _oidK = String(item.originalId).replace(/_(sup|ret)$/, '');
+            const _tiCut = (this._ufhTransitCuts || {})[_oidK] || {};
             const _cutM = _tiCut.cutM || 0;
-            const _cutOn = !!((this.state.ufhTransitCut || {})[item.originalId]);
+            const _cutOn = !!((this.state.ufhTransitCut || {})[_oidK]);
+            const _curBaseId = (this._ufhTransitBase || {})[_oidK] || item.id;
+            _bpFilterHtml = this.ufhTransitInsulChips();
             const _mp = (this.state.ufhPipeMaterial === 'metal_plastic');
             const _trPool = _mp ? (catalog.metal_plastic_pipes || []) : (catalog.rad_pipes_grey || []);
             customAlts = [];
@@ -69990,16 +70009,16 @@ const app = {
                 customAlts.push({ id: p.id, imgId: p.id, brand: p.brand || 'STOUT',
                     name: `${_bare} — бухта ${_L} м${_coils > 1 ? ` × ${_coils}` : ''}`,
                     price: Math.round((p.price || 0) * _L * _coils),
-                    isActive: !_cutOn && p.id === item.id });
+                    isActive: !_cutOn && p.id === _curBaseId });
                 if (_cutM > 0) customAlts.push({ id: 'cut10:' + p.id, imgId: p.id, brand: p.brand || 'STOUT',
                     name: `${_bare} — отрезок ${_cutM} м (кратно 10)`,
                     price: Math.round((p.price || 0) * _cutM),
-                    isActive: _cutOn && p.id === item.id });
+                    isActive: _cutOn && p.id === _curBaseId });
             });
             // Две цены, как у трубы петель: труба за метр и система — то, что в смете
             // меняется вместе с выбором: сама трасса (бухтой или отрезком) и фитинги
             // присоединения к коллектору, которые идут за её типоразмером.
-            const _oid = item.originalId;
+            const _oid = _oidK;
             const _tt = this.stateOptionTotals(customAlts.map(a => a.id), id => {
                 const _c = String(id).startsWith('cut10:');
                 if (!this.state.swaps) this.state.swaps = {};
@@ -70108,15 +70127,19 @@ const app = {
             const _rr = (it) => (it && it.rommer && !Array.isArray(it.rommer)) ? it.rommer : null;
             const pexItem = catalog.water_pipes ? catalog.water_pipes[0] : null;
             const mpItem = catalog.water_pipes_mp ? catalog.water_pipes_mp[0] : null;
+            // Металлопластик в заводской изоляции: красная на ГВС и рециркуляцию, синяя на ХВС (см. waterInsulNow)
+            const _mpInsI = this.insPipeMp(16, 'red');
             customAlts = [
                 { id: 'pex', name: 'Труба PEX-a (полиэтилен)', brand: 'STOUT', price: pexItem?.price || 0, imgId: pexItem?.id },
                 ...(_rr(pexItem) ? [{ id: 'pex_r', name: 'Труба PEX-a (полиэтилен)', brand: 'ROMMER', price: _rr(pexItem).price || 0, imgId: _rr(pexItem).id }] : []),
-                { id: 'metal_plastic', name: 'Труба металлопластиковая', brand: 'STOUT', price: mpItem?.price || 0, imgId: mpItem?.id },
-                ...(_rr(mpItem) ? [{ id: 'metal_plastic_r', name: 'Труба металлопластиковая', brand: 'ROMMER', price: _rr(mpItem).price || 0, imgId: _rr(mpItem).id }] : [])
+                { id: 'metal_plastic', name: 'Труба металлопластиковая + трубка изоляции', brand: 'STOUT', price: mpItem?.price || 0, imgId: mpItem?.id },
+                ...(_rr(mpItem) ? [{ id: 'metal_plastic_r', name: 'Труба металлопластиковая + трубка изоляции', brand: 'ROMMER', price: _rr(mpItem).price || 0, imgId: _rr(mpItem).id }] : []),
+                ...(_mpInsI ? [{ id: 'mp_ins', name: 'Труба металлопластиковая в заводской изоляции', brand: 'STOUT', price: _mpInsI.price || 0, imgId: _mpInsI.id }] : []),
+                ...(_rr(_mpInsI) ? [{ id: 'mp_ins_r', name: 'Труба металлопластиковая в заводской изоляции', brand: 'ROMMER', price: _rr(_mpInsI).price || 0, imgId: _rr(_mpInsI).id }] : [])
             ];
             const _wIds = customAlts.map(a => a.id);
             const _wt = this.stateOptionTotals(_wIds, id => this.applyPipeChoice('water', id));
-            const _wBase = (this.state.waterPipeMaterial === 'metal_plastic') ? 'metal_plastic' : 'pex';
+            const _wBase = (this.state.waterPipeMaterial === 'metal_plastic') ? (this.waterInsulNow() === 'factory' ? 'mp_ins' : 'metal_plastic') : 'pex';
             const _wCurId = (_wIds.includes(_wBase + '_r') && this.pipeBrandNow('water') === 'rommer') ? _wBase + '_r' : _wBase;
             const _wCur = _wt[_wCurId] || 0;
             // Скорость воды в подводке к одному прибору (типовой смеситель 0,2 л/с — по практике
@@ -70126,7 +70149,7 @@ const app = {
                 return m ? (parseFloat(m[1].replace(',', '.')) - 2 * parseFloat(m[2].replace(',', '.'))) / 1000 : 0;
             };
             const _wHy = (a) => {
-                const it = a.id.replace(/_r$/, '') === 'metal_plastic' ? mpItem : pexItem;
+                const it = ['metal_plastic', 'mp_ins'].includes(a.id.replace(/_r$/, '')) ? mpItem : pexItem;
                 const bore = _wBore(it);
                 if (!(bore > 0)) return null;
                 const q = 0.0002;   // м³/с
@@ -74206,7 +74229,10 @@ const app = {
      */
     applyTrunkChoice: function (originalId, chosenId) {
         if (!this.state.swaps) this.state.swaps = {};
-        const pools = [['grey', catalog.rad_pipes_grey], ['mp', catalog.metal_plastic_pipes], ['stable', catalog.stable_pipes], ['ppr', this.radPprTrunkPool()]];
+        // Строки трубы в изоляции (красная «_sup», синяя «_ret») — та же магистраль: выбор живёт на ключе голой трубы.
+        originalId = String(originalId).replace(/_(sup|ret)$/, '');
+        const pools = [['grey', catalog.rad_pipes_grey], ['mp', catalog.metal_plastic_pipes], ['stable', catalog.stable_pipes], ['ppr', this.radPprTrunkPool()],
+            ['mp', catalog.insulated_pipes_mp_red || []], ['mp', catalog.insulated_pipes_mp_blue || []]];
         let item = null, mat = null, rommerSide = false;
         for (const [m, pool] of pools) {
             for (const x of pool) {
@@ -74218,6 +74244,17 @@ const app = {
         }
         const dm = item && /(\d+)(?:[.,]\d+)?\s*[xх×]\s*\d/i.exec(item.name || '');
         if (!item || !dm) return false;
+        // Труба в заводской изоляции: выбор её строки включает и саму изоляцию. ROMMER-исполнение (RPI)
+        // записываем ROMMER-парой голой трубы того же Ø: по ней строится и труба в изоляции (бренд),
+        // и голая труба, если потом изоляцию переключат на трубку или уберут.
+        if (/^(SPI|RPI)-000[12]-/.test(String(chosenId))) {
+            this.state.trunkInsul = 'factory';
+            if (rommerSide) {
+                const bare = (catalog.metal_plastic_pipes || []).find(x => x.rommer && !Array.isArray(x.rommer)
+                    && new RegExp('(^|\\D)' + dm[1] + '\\s*[xх]').test(x.name || ''));
+                if (bare) chosenId = bare.rommer.id;
+            }
+        }
         const ov = this.state.radTrunkOv || null;
         this.state.trunkPipeMat = mat;
         this.state.radTrunkOv = { d: parseInt(dm[1], 10), len: ov && ov.len ? ov.len : null };
@@ -74319,6 +74356,7 @@ const app = {
         // выбранный типоразмер трассы, и одно затирало бы другое. Сам артикул после
         // снятия приставки уходит дальше обычным путём.
         if (String(originalId).startsWith('ufh_transit_f')) {
+            originalId = String(originalId).replace(/_(sup|ret)$/, '');
             if (!this.state.ufhTransitCut) this.state.ufhTransitCut = {};
             const _isCut = String(chosenId).startsWith('cut10:');
             if (_isCut) {
@@ -74831,7 +74869,7 @@ const app = {
             } }
         }
         else if (originalId.endsWith('_water') || (originalId.startsWith('SPX-0001-') && !originalId.endsWith('_rad'))) {
-            if (/^(pex|metal_plastic)(_r)?$/.test(chosenId)) this.applyPipeChoice('water', chosenId);
+            if (/^(pex|metal_plastic|mp_ins)(_r)?$/.test(chosenId)) this.applyPipeChoice('water', chosenId);
             else if (chosenId.includes("SPX") || chosenId === 'pex') this.state.waterPipeMaterial = 'pex';
             else this.state.waterPipeMaterial = 'metal_plastic';
         }
@@ -79336,6 +79374,125 @@ const app = {
         })());
     },
     RAD_CLAMP: { 16: 'SAC-0020-000012', 20: 'SAC-0020-000012', 25: 'SAC-0020-000034', 26: 'SAC-0020-000034', 32: 'SAC-0020-000001', 40: 'SAC-0020-000114' },
+    // Хомут на трубу в изоляции 6 мм — по наружному диаметру изоляции (паспорт ROMMER RPI, табл. 2):
+    // 16 → 28 мм, 20 → 32, 26 → 38 (вспененный ПЭ поджимается до 37), 32 → 44.
+    RAD_CLAMP_INS: { 16: 'SAC-0020-000034', 20: 'SAC-0020-000001', 25: 'SAC-0020-000001', 26: 'SAC-0020-000001', 32: 'SAC-0020-000114', 40: 'SAC-0020-000112' },
+    /**
+     * Изоляция магистрали радиаторов из металлопластика: 'factory' (труба в заводской изоляции,
+     * по умолчанию), 'tube' (голая труба + трубка отдельно), 'none'. См. render, _tkPipeRows.
+     */
+    trunkInsulNow: function () {
+        const v = this.state.trunkInsul;
+        return (v === 'tube' || v === 'none') ? v : 'factory';
+    },
+    /**
+     * Изоляция труб водоснабжения из металлопластика: 'factory' — труба в заводской изоляции 6 мм
+     * (красная SPI-0001/RPI-0001 на ГВС и рециркуляцию, синяя SPI-0002/RPI-0002 на ХВС — от конденсата);
+     * 'tube' — голая труба + трубки Energoflex 18/6 (по умолчанию: линии короткие, а труба в изоляции
+     * продаётся бухтой каждого цвета — на типовом доме это +20 тыс. ₽ за 20 м ГВС). У PEX-a — всегда трубкой.
+     */
+    waterInsulNow: function () {
+        return this.state.waterInsul === 'factory' ? 'factory' : 'tube';
+    },
+    /** Труба в заводской изоляции по наружному диаметру: col — 'red' | 'blue'. */
+    insPipeMp: function (d, col) {
+        return ((col === 'red' ? catalog.insulated_pipes_mp_red : catalog.insulated_pipes_mp_blue) || [])
+            .find(x => new RegExp('(^|\\D)' + d + '\\s*[xх]').test(x.name || '')) || null;
+    },
+    /**
+     * Изоляция транзита тёплого пола (трасса от котельной до коллектора ТП): у металлопластика по умолчанию —
+     * труба в заводской изоляции (красная подача, синяя обратка), как у магистрали радиаторов; 'tube' — голая
+     * труба + трубка; 'none' — без изоляции. У PEX-a заводской изоляции этих диаметров нет: 'tube' или 'none' (умолч.).
+     */
+    ufhTransitInsulNow: function () {
+        const v = this.state.ufhTransitInsul;
+        if (this.state.ufhPipeMaterial === 'metal_plastic') return (v === 'tube' || v === 'none') ? v : 'factory';
+        return v === 'tube' ? 'tube' : 'none';
+    },
+    setUfhTransitInsul: function (v) {
+        this.state.ufhTransitInsul = (v === 'tube' || v === 'none') ? v : 'factory';
+        this.render();
+        this.saveState();
+        const row = (this.currentEquipmentList || []).find(x => /^ufh_transit_f\d+(_sup)?$/.test(x.originalId || ''));
+        if (row) this.openSwapModal(row.originalId);
+    },
+    ufhTransitInsulChips: function () {
+        const cur = this.ufhTransitInsulNow();
+        const mp = this.state.ufhPipeMaterial === 'metal_plastic';
+        const chip = (v, t) => `<span class="swap-chip${cur === v ? ' on' : ''}" onclick="app.setUfhTransitInsul('${v}')">${t}</span>`;
+        return `<div class="swap-filters"><div class="swap-frow"><span class="swap-flbl">Изоляция:</span>` +
+            (mp ? chip('factory', 'Труба в заводской изоляции') : '') + chip('tube', 'Труба + трубка отдельно') + chip('none', 'Без изоляции') +
+            `</div></div>`;
+    },
+    /**
+     * Котельная в пристройке или гараже: длина трассы от котельной до стены дома, м (в одну сторону),
+     * 0 — котельная в доме. Метры добавляются к магистрали радиаторов (стояк/трасса) и к транзиту
+     * тёплого пола — и в смету, и в гидравлику. Участок через пристройку изолируется всегда: при «Без
+     * изоляции» на него идёт трубка. 6 мм — для пристройки с плюсом зимой; промерзающая — изоляция
+     * толще или незамерзающий теплоноситель, под землёй — только предызолированная труба.
+     */
+    ANNEX_MAX_M: 50,
+    annexM: function () {
+        const v = parseFloat(this.state.annexM);
+        return (v > 0) ? Math.min(this.ANNEX_MAX_M, Math.round(v * 2) / 2) : 0;
+    },
+    setAnnexM: function (v) {
+        const n = parseFloat(String(v).replace(',', '.'));
+        this.state.annexM = (n > 0) ? Math.min(this.ANNEX_MAX_M, Math.round(n * 2) / 2) : 0;
+        if (this.state.annexM > 0) this._annexLast = this.state.annexM;
+        this.saveState(); this.syncUI(); this.render();
+    },
+    toggleAnnex: function (on) {
+        this.setAnnexM(on ? (this._annexLast || this.state.annexM || 6) : 0);
+    },
+    annexNote: function () {
+        const a = this.annexM();
+        return a > 0 ? `<span style="font-size:11px;line-height:1.5;"><br><b>Котельная в пристройке:</b> +${a} м в одну сторону (×2 подача и обратка) через пристройку или гараж — этот участок изолирован в любом случае. Изоляция 6 мм рассчитана на помещение с плюсовой температурой: если пристройка зимой промерзает — нужна изоляция толще (13–20 мм) или незамерзающий теплоноситель; под землёй — только предызолированная труба.</span>` : '';
+    },
+    setTrunkInsul: function (v) {
+        this.state.trunkInsul = (v === 'tube' || v === 'none') ? v : 'factory';
+        this._pipeSysCache = null;
+        this.render();
+        this.saveState();
+        // Строка трубы магистрали после пересчёта могла смениться (голая ↔ красная в изоляции) — окно открываем по новой.
+        const row = (this.currentEquipmentList || []).find(x => /^(rad_trunk_pipe_d|riser_pipe_d)\d+(_sup)?$/.test(x.originalId || ''));
+        if (row) this.openSwapModal(row.originalId);
+    },
+    /** Блок «Изоляция» в таблице замены трубы магистрали (только металлопластик). */
+    trunkInsulChips: function () {
+        const cur = this.trunkInsulNow();
+        const chip = (v, t) => `<span class="swap-chip${cur === v ? ' on' : ''}" onclick="app.setTrunkInsul('${v}')">${t}</span>`;
+        return `<div class="swap-filters"><div class="swap-frow"><span class="swap-flbl">Изоляция:</span>` +
+            chip('factory', 'Труба в заводской изоляции') + chip('tube', 'Труба + трубка отдельно') + chip('none', 'Без изоляции') +
+            `</div></div>`;
+    },
+    /**
+     * Трубки изоляции на голую трубу: ПРОТЕКТ ПРО 6 мм — красная на подачу, синяя на обратку, по половине
+     * метража, кратно палке 2 м. Под Ø32 своего размера у ПРОТЕКТ ПРО нет — K-FLEX ST 35/9 штуками
+     * (как в котельной, catalog.boiler_insulation). red/blue — 'both' (пара), 'red' или 'blue' (одна линия).
+     */
+    PIPE_INS_TUBE_DN: { 16: 18, 20: 22, 25: 28, 26: 28, 32: 35, 40: 42 },
+    addPipeInsTubes: function (addToBill, d, meters, label, grp, key, lines) {
+        const set = (catalog.boiler_insulation || {})[this.PIPE_INS_TUBE_DN[d]];
+        if (!set || !(meters > 0)) return;
+        lines = lines || 'both';
+        const k = key ? '_' + key : '';
+        const why = (col) => `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы (${label})${col ? ' — ' + col : ''}: теплопотери и конденсат. Трубку надевают на монтаже, идёт палками по ${set.red.len} м.<br>`;
+        if (set.blue) {
+            if (lines === 'both') {
+                const half = this.insLen(meters / 2, set.red);
+                addToBill({ ...set.red, originalId: set.red.id + k }, half, why('подача, красная') + `<b>Расчёт:</b> ${Math.ceil(meters)} м ÷ 2 = ${half} м (кратно ${set.red.len} м).</span>`, grp);
+                addToBill({ ...set.blue, originalId: set.blue.id + k }, half, why('обратка, синяя') + `<b>Расчёт:</b> ${Math.ceil(meters)} м ÷ 2 = ${half} м (кратно ${set.red.len} м).</span>`, grp);
+            } else {
+                const it = lines === 'red' ? set.red : set.blue;
+                const m = this.insLen(meters, it);
+                addToBill({ ...it, originalId: it.id + k }, m, why(lines === 'red' ? 'красная' : 'синяя') + `<b>Расчёт:</b> ${Math.ceil(meters)} м → ${m} м (кратно ${it.len} м).</span>`, grp);
+            }
+        } else {
+            const pcs = Math.ceil(meters / set.red.len);
+            addToBill({ ...set.red, originalId: set.red.id + k }, pcs, why(null) + `<b>Расчёт:</b> ${Math.ceil(meters)} м ÷ ${set.red.len} м = ${pcs} шт.</span>`, grp);
+        }
+    },
 
     /**
      * Стоимость всего, что смета кладёт вместе с трубой магистрали (стояка или трассы), кроме самой
@@ -80708,7 +80865,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // считался стоящим вплотную к насосной группе, и его подводка не
                 // попадала ни в напор, ни в смету.
                 const trM = Math.ceil(((f.fl === 2 ? (parseFloat(this.state.h1) || 2.7) : 0) + 1
-                    + Math.sqrt(Math.max(1, f.area))) * 2 * 1.1);
+                    + Math.sqrt(Math.max(1, f.area)) + this.annexM()) * 2 * 1.1);
                 mans.push({ label: f.fl + ' этаж' + (n > 1 ? ', коллектор ' + (i + 1) + ' из ' + n : ''),
                     floor: f.fl, outlets: sz, rows: rows, trM: trM });
             }
@@ -83304,7 +83461,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     FINE_TUNE_KEY: 'heatcalc_fine_tune',
     FINE_TUNE_ROWS: {
         // Одна «Тонкая настройка» на весь раздел котельной: котловой перепад, режим радиаторов, шаг тёплого пола.
-        eng: ['blk_boiler_dt', 'lbl_rad_regime', 'blk_rad_regime', 'blk_step_floor1', 'blk_step_floor2', 'blk_ufh_dt'],
+        eng: ['blk_boiler_dt', 'blk_boiler_annex', 'lbl_rad_regime', 'blk_rad_regime', 'blk_step_floor1', 'blk_step_floor2', 'blk_ufh_dt'],
         hw: ['blk_tank_pump_wrap'],
         snow: ['blk_snow_pipe_row'],
         pump: ['rooms_pump_plan'],
@@ -83335,7 +83492,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             if (sys.includes('tp')) parts.push(this.fineTuneSummary('ufh'));
             return parts.filter(Boolean).join(' · ');
         }
-        if (key === 'boiler') return `${this.boilerDT()} K`;
+        if (key === 'boiler') return `${this.boilerDT()} K` + (this.annexM() > 0 ? `, котельная в пристройке ${String(this.annexM()).replace('.', ',')} м` : '');
         if (key === 'pump') return this._pumpPlan ? `${this._pumpPlan.total} шт` : '';
         if (key === 'rad') return (this.RAD_REGIMES[s.radRegime] || this.RAD_REGIMES.r8060).label;
         if (key === 'ufh') {
@@ -83671,6 +83828,18 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         {
             const _bdtBlock = document.getElementById('blk_boiler_dt');
             if (_bdtBlock) _bdtBlock.style.display = this.state.detailedRooms ? 'block' : 'none';
+            // Котельная в пристройке — в обоих режимах, если есть радиаторы или тёплый пол
+            const _anBlk = document.getElementById('blk_boiler_annex');
+            const _anSys = this.state.systems || [];
+            if (_anBlk) _anBlk.style.display = (_anSys.includes('rad') || _anSys.includes('tp')) ? 'block' : 'none';
+            const _an = this.annexM();
+            const _anTab = (id, on) => { const e = document.getElementById(id); if (e) e.className = on ? 'tab active' : 'tab'; };
+            _anTab('annex_off', !(_an > 0));
+            _anTab('annex_on', _an > 0);
+            const _anRow = document.getElementById('annex_len_row');
+            if (_anRow) _anRow.style.display = _an > 0 ? 'flex' : 'none';
+            const _anVal = document.getElementById('val_annex_m');
+            if (_anVal && document.activeElement !== _anVal) _anVal.textContent = String(_an || 6).replace('.', ',');
             const _bdt = this.boilerDT();
             const _bdtTab = (id, on) => { const e = document.getElementById(id); if (e) e.className = on ? 'tab active' : 'tab'; };
             _bdtTab('boiler_dt_20', _bdt === 20);
@@ -88029,7 +88198,10 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 this._ufhGeomCache = null;
             }
         } else if (kind === 'water') {
-            this.state.waterPipeMaterial = base;
+            // «mp_ins» — тот же металлопластик, но в заводской изоляции (см. waterInsulNow)
+            this.state.waterPipeMaterial = (base === 'mp_ins') ? 'metal_plastic' : base;
+            if (base === 'mp_ins') this.state.waterInsul = 'factory';
+            else if (base === 'metal_plastic') this.state.waterInsul = 'tube';
         }
         // Прежние замены по артикулу на этих строках противоречили бы выбору.
         Object.keys(this.state.swaps || {}).forEach(k => { if (this.pipeBrandKind(k) === kind) delete this.state.swaps[k]; });
@@ -92099,8 +92271,11 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             let activeItem = item;
             let forceAnalog = false;
             let forceStout = false;
+            // Бренд строки задан снаружи (труба магистрали в изоляции: бренд выбран в таблице замены
+            // по ключу голой трубы) — то же, что ручная замена на ROMMER-пару.
+            if (!manualSwapId && item.brandPick === 'rommer' && item.rommer) forceAnalog = true;
 
-            let isCustomToggle = ['standard', 'basic', 'pro', 'std', 'comfort', 'economy', 'insulated', 'split', 'insulated_mp', 'split_mp', 'pex', 'metal_plastic', 'mat', 'xps', 'sirio', 'top', 'base', 'epc12auto', 'epc2', 'epc4', 'epc5', 'relay_krs5', 'scq', 'scn', 'straight', 'angled', 'proaqua', 'wavin', 'double', 'single', 'hidden', 'sensor', 'gbm', 'parts', 'gtube', 'shoe', 'shoe_np', 'insulated_r', 'split_r', 'split_mp_r', 'stable_16', 'stable_16_r', 'pex_r', 'metal_plastic_r', 'stable', 'stable_r'].includes(manualSwapId);
+            let isCustomToggle = ['standard', 'basic', 'pro', 'std', 'comfort', 'economy', 'insulated', 'split', 'insulated_mp', 'split_mp', 'pex', 'metal_plastic', 'mat', 'xps', 'sirio', 'top', 'base', 'epc12auto', 'epc2', 'epc4', 'epc5', 'relay_krs5', 'scq', 'scn', 'straight', 'angled', 'proaqua', 'wavin', 'double', 'single', 'hidden', 'sensor', 'gbm', 'parts', 'gtube', 'shoe', 'shoe_np', 'insulated_r', 'split_r', 'insulated_mp_r', 'split_mp_r', 'stable_16', 'stable_16_r', 'pex_r', 'metal_plastic_r', 'mp_ins', 'mp_ins_r', 'stable', 'stable_r'].includes(manualSwapId);
             // Бренд труб, выбранный в таблице замены (см. pipeBrandOverride): тип трубы
             // в state уже стоит, а бренд — это ровно «Аналог» для неё одной.
             const _pipeBrandOv = (item.noMerge || (manualSwapId && !isCustomToggle)) ? null : this.pipeBrandOverride(lookupKey);
@@ -99024,8 +99199,49 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 const _tkPool = { grey: catalog.rad_pipes_grey, mp: catalog.metal_plastic_pipes, stable: catalog.stable_pipes, ppr: _pprPool }[_tkMat];
                 const _tkIds = { grey: GREY_PIPE_IDS, mp: MP_PIPE_IDS, stable: STABLE_PIPE_IDS, ppr: _PPR_IDS }[_tkMat];
                 // Ряд для ручной замены — все четыре материала, по одному представителю на типоразмер.
+                // Изоляция магистрали из металлопластика (state.trunkInsul, см. trunkInsulNow):
+                //   'factory' — труба в заводской изоляции 6 мм, красная на подачу и синяя на обратку
+                //               (STOUT SPI-0001/0002, у ROMMER — RPI-0001/0002). По умолчанию: трасса идёт
+                //               в стяжке, по подполу, через холодные зоны — СП 60.13330 требует изолировать
+                //               магистрали вне отапливаемого объёма, а в стяжке голая подача греет пол там,
+                //               где не надо, и остывает до коллектора;
+                //   'tube'    — голая труба того же бренда + трубки ПРОТЕКТ ПРО (Ø32 — K-FLEX 35/9) отдельно;
+                //   'none'    — без изоляции, как было до 02.11.2026.
+                const _annexM = this.annexM();
+                const _tkIns = _tkMp ? this.trunkInsulNow() : 'none';
+                const _tkInsPipe = (d, col) => ((col === 'red' ? catalog.insulated_pipes_mp_red : catalog.insulated_pipes_mp_blue) || [])
+                    .find(x => new RegExp('(^|\\D)' + d + '\\s*[xх]').test(x.name || '')) || null;
+                // Ряд для ручной замены — все четыре материала, по одному представителю на типоразмер.
+                // Металлопластик при заводской изоляции — красной трубой в изоляции: её строка и стоит в смете.
                 const _tkAllAlts = [[catalog.rad_pipes_grey, GREY_PIPE_IDS], [catalog.metal_plastic_pipes, MP_PIPE_IDS], [catalog.stable_pipes, STABLE_PIPE_IDS], [_pprPool, _PPR_IDS]]
-                    .reduce((acc, [pool, ids]) => acc.concat(Object.values(ids).map(id => pool.find(x => x.id === id))), []).filter(Boolean);
+                    .reduce((acc, [pool, ids]) => acc.concat(Object.entries(ids).map(([d, id]) => {
+                        const x = pool.find(y => y.id === id);
+                        return (x && pool === catalog.metal_plastic_pipes && _tkIns === 'factory') ? (_tkInsPipe(d, 'red') || x) : x;
+                    })), []).filter(Boolean);
+                // Труба магистрали в смету: голая одной строкой (подача и обратка из одной бухты) или в заводской
+                // изоляции двумя — красная и синяя, у каждой своя бухта на половину метража. Бренд строк в изоляции
+                // берётся из выбора в таблице замены (state.swaps[ключ] — ROMMER-исполнение): сами строки получают
+                // ключ с «_sup»/«_ret», и подмену по артикулу голой трубы addToBill к ним не применяет.
+                const _tkPipeRows = (base, d, key, meters, desc, grp) => {
+                    const isMpBase = _tkMp && (catalog.metal_plastic_pipes || []).some(x => x.id === base.id);
+                    const red = (isMpBase && _tkIns === 'factory') ? _tkInsPipe(d, 'red') : null;
+                    const blue = red ? _tkInsPipe(d, 'blue') : null;
+                    if (red && blue) {
+                        const sw = (this.state.swaps || {})[key];
+                        const pick = sw ? (this.brandOfSwapId(sw) === 'ROMMER' ? 'rommer' : 'stout') : null;
+                        const alts = _tkAllAlts.filter(x => x.id !== red.id);
+                        const half = Math.ceil(meters / 2);
+                        const coils = Math.ceil(half / red.len);
+                        const note = `<span style="font-size:11px;line-height:1.5;"><br><b>Изоляция:</b> труба в заводской теплоизоляции 6 мм — красная на подачу, синяя на обратку, по ${half} м (${coils} ${this.plural(coils, 'бухта', 'бухты', 'бухт')} по ${red.len} м каждого цвета). Голая труба с трубкой ПРОТЕКТ ПРО отдельно или без изоляции — в таблице замены, блок «Изоляция».</span>`;
+                        addToBill(asCoilPrice({ ...red, originalId: key + '_sup', alts: alts, noCheapenAlts: true, brandPick: pick }), coils, desc + note, grp);
+                        addToBill(asCoilPrice({ ...blue, originalId: key + '_ret', alts: alts, noCheapenAlts: true, brandPick: pick }), coils, desc + note, grp);
+                        return;
+                    }
+                    addToBill(asCoilPrice({ ...base, originalId: key, alts: _tkAllAlts.filter(x => x.id !== base.id), noCheapenAlts: true }), Math.ceil(meters / base.len), desc, grp);
+                    if (isMpBase && _tkIns === 'tube') this.addPipeInsTubes(addToBill, d, meters, `магистраль металлопластик Ø${d}`, grp, key);
+                    // Без изоляции (или материал без заводской изоляции), но котельная в пристройке — трубка на участок через неё.
+                    else if (_annexM > 0) this.addPipeInsTubes(addToBill, d, Math.ceil(_annexM * 2 * 1.1), `магистраль Ø${d}, участок через пристройку ${_annexM} м`, grp, key + '_annex');
+                };
 
                 // Стояк на второй этаж. Раньше при двух этажах в смету шли два
                 // радиаторных коллектора, а трубы между ними — ноль: neededPipe выше
@@ -99050,7 +99266,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     // середины плана к стене. Пара подача+обратка, +10% на запас.
                     // Оценка грубая, как и вся трассировка: плана дома с координатами
                     // шкафа у расчёта нет.
-                    const _riserOneWay = 3.2 + 0.4 * Math.sqrt(floorArea);
+                    const _riserOneWay = 3.2 + 0.4 * Math.sqrt(floorArea) + _annexM;
                     // Ручная правка трассы (state.radTrunkOv, кнопка в проверке гидравлики): длина и
                     // диаметр — как ввёл монтажник, и смета, и кольцо берут одно и то же.
                     const _radOv = this.state.radTrunkOv || null;
@@ -99149,15 +99365,15 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         // Типоразмерный ряд того же материала — в ручную замену. noCheapenAlts:
                         // режим «Аналог» иначе подставил бы Ø16 вместо Ø25, потому что бухта
                         // дешевле, и стояк перестал бы проходить по расходу.
-                        const _riserAlts = _tkAllAlts.filter(x => x.id !== _riserBase.id);
-                        addToBill(asCoilPrice({ ..._riserBase, originalId: 'riser_pipe_d' + _riserD0, alts: _riserAlts, noCheapenAlts: true }), _riserCoils,
+                        _tkPipeRows(_riserBase, _riserPick, 'riser_pipe_d' + _riserD0, _riserMeters + _riserComp.extraM + _jumpM,
                             this.getDesc('riser_pipe', _riserPick, _riserMeters, _riserKw, _riserOneWay, floorArea,
-                                { coil: _riserBase.len * _riserCoils, swapped: _riserSwapped, bore: _riserPick === 40 ? 26.6 : _riserBore(_riserBase.name), tableD: _riserD }) + this.radTrunkCompNote(_riserComp) + _jumpNote, riserGrp);
+                                { coil: _riserBase.len * _riserCoils, swapped: _riserSwapped, bore: _riserPick === 40 ? 26.6 : _riserBore(_riserBase.name), tableD: _riserD }) + this.radTrunkCompNote(_riserComp) + _jumpNote + this.annexNote(), riserGrp);
                         this.radTrunkCompItems(_riserComp, _riserPick, _tkPpr, addToBill, riserGrp, 'riser');
                         // Крепление вертикального участка: полимерная труба провисает,
                         // поэтому хомут на каждый метр каждой из двух труб. Типоразмер —
                         // по наружному диаметру стояка.
-                        const _clampId = this.RAD_CLAMP[_riserPick];
+                        // Труба в изоляции (заводской или трубкой) толще на 2×6 мм: хомут — по наружному диаметру изоляции.
+                        const _clampId = (_tkMp && _tkIns !== 'none') ? this.RAD_CLAMP_INS[_riserPick] : this.RAD_CLAMP[_riserPick];
                         const _riserClamp = _clampId && catalog.mounting_system.find(x => x.id === _clampId);
                         if (_riserClamp) {
                             addToBill({ ..._riserClamp, originalId: _clampId + '_riser' }, _riserMeters,
@@ -99200,7 +99416,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     // шкаф ближе к середине плана) плюс 1 м на обвязку у самого коллектора.
                     // Пара подача+обратка, +10% на подрезку и обходы. Оценка грубая, как и
                     // вся трассировка: плана дома с координатами котельной и шкафа нет.
-                    const _trOneWay = 1 + 0.5 * Math.sqrt(floorArea);
+                    const _trOneWay = 1 + 0.5 * Math.sqrt(floorArea) + _annexM;
                     // Ручная правка трассы — см. стояк выше: длина и диаметр из state.radTrunkOv.
                     const _trOv = this.state.radTrunkOv || null;
                     const _trMeters = _trOv && _trOv.len > 0 ? Math.ceil(_trOv.len) : Math.ceil(_trOneWay * 2 * 1.1);
@@ -99269,7 +99485,6 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         // Типоразмерный ряд того же материала — в ручную замену. noCheapenAlts:
                         // «Аналог» иначе подставил бы Ø16 вместо Ø25, потому что бухта дешевле,
                         // и трасса перестала бы проходить по расходу.
-                        const _trAlts = _tkAllAlts.filter(x => x.id !== _trBase.id);
                         const _trDesc = `<span style="font-size:11px;line-height:1.5;">` +
                             `<b>Зачем:</b> Трасса от насосной группы котельной до радиаторного коллектора: лучи Ø16 считаются только от коллектора к приборам, а сама подводка к шкафу — это отдельный участок, который несёт расход всех приборов дома сразу.<br>` +
                             `<b>Формула метража:</b> (1 м на обвязку у коллектора + 0,5·√площади этажа) × 2 (подача и обратка) × 1,1 (запас на подрезку и обходы).<br>` +
@@ -99279,7 +99494,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                             (_trSwapped && _trPick !== 40 ? `<br><b>Материал:</b> вместо серой PE-Xa подставлена стабильная PE-Xa/Al/PE-RT: у серой линейное расширение примерно в семь раз выше, и на длинной магистрали её выгибает между креплениями.` : ``) +
                             (_trPick === 40 ? `<br><b>Материал:</b> Ø40 — PP-R ProAqua DUO SDR 6 (PN20, внутренний диаметр 26,6 мм), в каталоге других труб этого размера нет. По паспорту рабочее давление при 80 °C на 25 лет — 6,5 бар, при 95 °C — только 10 лет; режим выше 80 °C не использовать. Хомуты — на 40 мм (1 1/4″, 40–45 мм).` : ``) +
                             `</span>`;
-                        addToBill(asCoilPrice({ ..._trBase, originalId: 'rad_trunk_pipe_d' + _trD0, alts: _trAlts, noCheapenAlts: true }), _trCoils, _trDesc + this.radTrunkCompNote(_trComp) + _jumpNote, trunkGrp);
+                        _tkPipeRows(_trBase, _trPick, 'rad_trunk_pipe_d' + _trD0, _trMeters + _trComp.extraM + _jumpM, _trDesc + this.radTrunkCompNote(_trComp) + _jumpNote + this.annexNote(), trunkGrp);
                         this.radTrunkCompItems(_trComp, _trPick, _tkPpr, addToBill, trunkGrp, 'trunk');
                         // Хомуты и шпильки на горизонтальной трассе не считаем: трасса идёт в стяжке или гофре,
                         // а не на хомутах по метру (убрано по решению владельца 23.10.2026). Крепление остаётся
@@ -99855,7 +100070,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 const _horiz = Math.sqrt(Math.max(1, _area));                      // средний ход по этажу до коллектора
                 const _man = (this._ufhBal && this._ufhBal.mans.find(m => m.floor === fl && m.tr)) || null;
                 // Расход выше предела самой большой трубы — две параллельные магистрали (см. ufhTransitPlan)
-                const _meters = Math.ceil((_h1 + 1 + _horiz) * 2 * 1.1) * ((_man && _man.trN) || 1);   // подача+обратка, +10 % запас
+                // + участок через пристройку, если котельная не в доме (annexM)
+                const _meters = Math.ceil((_h1 + 1 + _horiz + this.annexM()) * 2 * 1.1) * ((_man && _man.trN) || 1);   // подача+обратка, +10 % запас
                 const _pool = _isMpUfh ? (catalog.metal_plastic_pipes || []) : (catalog.rad_pipes_grey || []);
                 const _base = (_man && _pool.find(x => x.id === _man.tr.id))
                     || _pool.find(x => x.id === (_isMpUfh ? 'SPM-0001-052630' : 'SPX-0001-002535'));
@@ -99891,7 +100107,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // Требуемый метраж — таблице замены: она показывает цену отрезка рядом с
             // ценой целой бухты, а метры считаются только здесь.
             this._ufhTransitCuts = {};
-            _trGroups.forEach(g => { this._ufhTransitCuts[g.origId] = { meters: g.meters, cutM: g.cutM }; });
+            this._ufhTransitBase = {};
+            _trGroups.forEach(g => { this._ufhTransitCuts[g.origId] = { meters: g.meters, cutM: g.cutM }; this._ufhTransitBase[g.origId] = g.base.id; });
             // Коллектор ТП всегда первой позицией раздела, трубы и транзит — после него.
             // Поэтому трубы собраны в функцию и вызываются ниже, после проходов proc().
             const addUfhPipes = () => {
@@ -99958,6 +100175,31 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 ].filter(Boolean);
                 // См. петлю выше: .alts здесь — типоразмеры и материал трассы, не бренд.
                 _trItem.noCheapenAlts = true;
+                // Изоляция трассы (ufhTransitInsulNow). Заводская — та же труба двумя цветами: красная на подачу,
+                // синяя на обратку, по половине метража; бухтой или отрезком — как выбрано для трассы.
+                const _trIns = this.ufhTransitInsulNow();
+                const _trD = (this.pipeDims(g.base) || {}).od || 0;
+                const _insR = (_trIns === 'factory' && _isMpUfh) ? this.insPipeMp(_trD, 'red') : null;
+                const _insB = _insR ? this.insPipeMp(_trD, 'blue') : null;
+                if (_insR && _insB) {
+                    const _half = Math.ceil(g.meters / 2);
+                    const _hCut = Math.ceil(_half / 10) * 10;
+                    const _hCoils = Math.ceil(_half / (_insR.len || 50));
+                    [[_insR, '_sup', 'подача, красная'], [_insB, '_ret', 'обратка, синяя']].forEach(([it, suf, what]) => {
+                        const row = _cut
+                            ? { ...it, originalId: g.origId + suf, unit: 'м', name: it.name.replace(/\s*\(\s*\d+\s*м\)\s*$/i, '') + ', отрезок' }
+                            : asCoilPrice({ ...it, originalId: g.origId + suf });
+                        row.alts = _trItem.alts;
+                        row.noCheapenAlts = true;
+                        addToBill(row, _cut ? _hCut : _hCoils,
+                            `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Транзитная трасса от котельной до коллектора тёплого пола ${g.parts.map(t => t.fl + '-го').join(' и ')} этажа — ${what}, в заводской теплоизоляции 6 мм: трасса идёт в стяжке и по неотапливаемым местам, голая подача грела бы пол не там и остывала до коллектора.<br>` +
+                            `<b>Метраж:</b> ${g.meters} м трассы ÷ 2 = ${_half} м на линию → ${_cut ? `отрезок ${_hCut} м (кратно 10)` : `${_hCoils} ${this.plural(_hCoils, 'бухта', 'бухты', 'бухт')} по ${_insR.len || 50} м`}.<br>` +
+                            `Голая труба с трубкой отдельно или без изоляции — в таблице замены, блок «Изоляция».</span>` + this.annexNote(), grpPipe);
+                    });
+                    return;
+                }
+                if (_trIns === 'tube' && _trD) this.addPipeInsTubes(addToBill, _trD, g.meters, `транзит тёплого пола Ø${_trD}`, grpPipe, g.origId);
+                else if (this.annexM() > 0 && _trD) this.addPipeInsTubes(addToBill, _trD, Math.ceil(this.annexM() * 2 * 1.1) * g.parts.length, `транзит тёплого пола Ø${_trD}, участок через пристройку ${this.annexM()} м`, grpPipe, g.origId + '_annex');
                 addToBill(_trItem, _cut ? g.cutM : _trCoils,
                     `<span style="font-size:11px;line-height:1.5;">` +
                     `<b>Зачем:</b> Транзитная трасса от котельной (насосной группы) до коллектора тёплого пола ${g.parts.map(t => t.fl + '-го').join(' и ')} этажа. Петли ТП считаются отдельно (по площади обогрева либо по укладке с планов) и подводку к самому коллектору в себя не включают.<br>` +
@@ -100685,6 +100927,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // Водорозетка для пресса — угольник настенный с креплением удлиненный 1/2"×16;
             // короткий, настенный комплект и угольник-переходник — в модалке замены.
             const _isMpWater = (this.state.waterPipeMaterial === 'metal_plastic');
+            // Металлопластик в заводской изоляции: трубки Energoflex на ХВС/ГВС/рециркуляцию не нужны,
+            // труба идёт двумя цветами (см. ниже, «Общие материалы»).
+            const _wFactory = _isMpWater && this.waterInsulNow() === 'factory';
             const _waterSocket = () => {
                 if (!_isMpWater) return _big ? { ...catalog.water_fittings[2], originalId: 'water_socket_20' } : catalog.water_fittings[0];
                 const pressAll = catalog.water_fittings_press_mp || [];
@@ -100832,7 +101077,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // и считать по ней дюбели значило бы набивать крепёж на пустом месте.
                 let pLen = Math.ceil(totalPipeCold);
                 const _insCold = this.insLen(totalPipeCold, catalog.water_insulation[1]);
-                addToBill(catalog.water_insulation[1], _insCold, this.getDesc('ins_blue', _insCold), grpCold);
+                if (!_wFactory) addToBill(catalog.water_insulation[1], _insCold, this.getDesc('ins_blue', _insCold), grpCold);
 
                 // Крепление трубопровода ХВС
                 if (this.state.pipeMountType === 'hidden') {
@@ -100897,7 +101142,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // и считать по ней дюбели значило бы набивать крепёж на пустом месте.
                 let pLen = Math.ceil(recirc ? (totalPipeHot / 2) : totalPipeHot);
                 const _insHot = this.insLen(recirc ? (totalPipeHot / 2) : totalPipeHot, catalog.water_insulation[0]);
-                addToBill(catalog.water_insulation[0], _insHot, this.getDesc('ins_red', _insHot), grpHot);
+                if (!_wFactory) addToBill(catalog.water_insulation[0], _insHot, this.getDesc('ins_red', _insHot), grpHot);
 
                 // Крепление трубопровода ГВС
                 if (this.state.pipeMountType === 'hidden') {
@@ -100984,7 +101229,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // и считать по ней дюбели значило бы набивать крепёж на пустом месте.
                 let pLen = Math.ceil(totalPipeHot / 2);
                 const _insRec = this.insLen(totalPipeHot / 2, catalog.water_insulation[0]);
-                addToBill(catalog.water_insulation[0], _insRec, this.getDesc('ins_red', _insRec), grpRecirc);
+                if (!_wFactory) addToBill(catalog.water_insulation[0], _insRec, this.getDesc('ins_red', _insRec), grpRecirc);
 
                 // Крепление трубопровода рециркуляции ГВС
                 if (this.state.pipeMountType === 'hidden') {
@@ -101028,7 +101273,27 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             let pLenHot = totalPipeHot > 0 ? Math.ceil(recirc ? (totalPipeHot / 2) : totalPipeHot) : 0;
             let pLenRecirc = (recirc && totalHotPoints > 0) ? Math.ceil(totalPipeHot / 2) : 0;
             let totalWaterPipe = pLenCold + pLenHot + pLenRecirc;
-            if (totalWaterPipe > 0) {
+            // Труба в заводской изоляции — двумя цветами: красная на ГВС и рециркуляцию, синяя на ХВС.
+            // Диаметр — тот, что стоит в линиях (замена по проверке гидравлики), бренд — выбор в таблице
+            // трубы воды (pipeBrand.water — его применит addToBill по ключу «…_water») или ROMMER-исполнение
+            // из замены диаметра.
+            const _wBr = this.waterBranchPipe();
+            const _wD = (() => { const dm = this.pipeDims(_wBr); return dm ? Math.round(dm.od) : 16; })();
+            const _wRed = _wFactory ? this.insPipeMp(_wD, 'red') : null;
+            const _wBlue = _wFactory ? this.insPipeMp(_wD, 'blue') : null;
+            if (totalWaterPipe > 0 && _wRed && _wBlue) {
+                const _pick = (_wBr && /^R/.test(String(_wBr.id || ''))) ? 'rommer' : null;
+                const _addIns = (it, m, what) => {
+                    if (m <= 0) return;
+                    const L = it.len || 100, coils = Math.ceil(m / L);
+                    addToBill({ ...it, originalId: it.id + '_water', brandPick: _pick }, coils * L,
+                        `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Металлопластик в заводской теплоизоляции 6 мм — ${what}. Трубки изоляции отдельно не нужны: монтаж быстрее, изоляция не сползает и не рвётся на поворотах.<br>` +
+                        `<b>Расчётный метраж:</b> ${m} м → ${coils} ${this.plural(coils, 'бухта', 'бухты', 'бухт')} по ${L} м (${coils * L} м).<br>` +
+                        `Голая труба с трубкой Energoflex — в таблице замены трубы.</span>`, grpGen);
+                };
+                _addIns(_wRed, pLenHot + pLenRecirc, `красная, ГВС${pLenRecirc > 0 ? ' и рециркуляция' : ''} (${pLenHot} м${pLenRecirc > 0 ? ' + ' + pLenRecirc + ' м' : ''}): теплопотери горячей воды`);
+                _addIns(_wBlue, pLenCold, `синяя, ХВС (${pLenCold} м): защита от конденсата на холодной трубе`);
+            } else if (totalWaterPipe > 0) {
                 let totalWaterCoils = Math.ceil(totalWaterPipe / 100);
                 let qtyWaterPipe = totalWaterCoils * 100;
                 let pipeTip = `Труба перемещена в общие материалы.<br>` +
