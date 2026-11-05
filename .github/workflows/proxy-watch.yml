@@ -25,6 +25,11 @@ on:
   schedule:
     - cron: '*/15 * * * *'
   workflow_dispatch:
+    inputs:
+      test_mail:
+        description: 'Только отправить тестовое письмо по SMTP (проверка секретов), проверку Beget не запускать'
+        type: boolean
+        default: false
 
 permissions:
   contents: write   # только proxy_status.json (см. шаг «Опубликовать статус для сайта»)
@@ -45,8 +50,33 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
+      - name: Тестовое письмо
+        if: inputs.test_mail == true
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          ALERT_TO: ${{ secrets.ALERT_TO }}
+        run: |
+          if [ -z "$SMTP_USER" ] || [ -z "$SMTP_PASS" ]; then echo "Секретов SMTP_USER и SMTP_PASS нет"; exit 1; fi
+          to="${ALERT_TO:-$SMTP_USER}"
+          {
+            printf 'From: HeatCalc <%s>
+To: %s
+Subject: =?UTF-8?B?%s?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+
+'               "$SMTP_USER" "$to" "$(printf '%s' 'Проверка почты: HeatCalc' | base64 -w0)"
+            printf 'Тестовое письмо автопроверки Beget. Если вы его читаете, прямые уведомления настроены верно.
+'
+          } > /tmp/mail.txt
+          curl -sS --ssl-reqd --url smtps://smtp.yandex.ru:465 --user "$SMTP_USER:$SMTP_PASS"             --mail-from "$SMTP_USER" --mail-rcpt "$to" -T /tmp/mail.txt
+          echo "Тестовое письмо отправлено"
+
       - name: Настройки из админки
         id: cfg
+        env:
+          TEST_MAIL: ${{ inputs.test_mail }}
         run: |
           v=$(curl -s -m 20 "$SUPABASE_URL/rest/v1/app_settings?key=eq.proxy_watch&select=value" -H "apikey: $SUPABASE_KEY" || true)
           enabled=$(echo "$v" | jq -r 'if type=="array" and length>0 and .[0].value.enabled==false then "false" else "true" end' 2>/dev/null || echo true)
@@ -58,7 +88,7 @@ jobs:
           due=false
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ $(( slot % step )) -eq 0 ]; then due=true; fi
           run=false
-          if [ "$enabled" = "true" ] && [ "$due" = "true" ]; then run=true; fi
+          if [ "$enabled" = "true" ] && [ "$due" = "true" ] && [ "$TEST_MAIL" != "true" ]; then run=true; fi
           echo "interval=$interval" >> "$GITHUB_OUTPUT"
           echo "run=$run" >> "$GITHUB_OUTPUT"
           echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
