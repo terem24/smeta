@@ -227,8 +227,8 @@
         <link href="/fonts/inter.css?v=1"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=5.130">
-    <link rel="stylesheet" href="hydro_check.css?v=1.15">
+    <link rel="stylesheet" href="style.css?v=5.131">
+    <link rel="stylesheet" href="hydro_check.css?v=1.16">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.56" defer></script>
@@ -264,7 +264,7 @@
     <script src="water_hydro.js?v=1.7" defer></script>
     <script src="assembly_check.js?v=1.9" defer></script>
     <script src="probe.js?v=1.0" defer></script>
-    <script src="app.min.js?v=15.82" defer></script>
+    <script src="app.min.js?v=15.83" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -3273,15 +3273,6 @@
                     <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
                         <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Ваш дом</span>
                         <span class="share-opt-sub" style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">комнаты и отопление</span>
-                    </div>
-                </div>
-                <!-- Проверка гидравлики: лист с контурами, напором насосов и запасом (app.hydroCardHtml,
-                     hydro_check.js). Только печать/PDF; считается всегда, схема для неё не нужна. -->
-                <div class="share-option-card" id="card_opt_hydro" style="display: none;" onclick="app.toggleShareOption('hydro')" title="Лист проверки гидравлики: расход, требуемый напор, насос и запас по контурам котельной">
-                    <input type="checkbox" id="share_opt_hydro" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
-                    <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
-                        <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Гидравлика</span>
-                        <span class="share-opt-sub" style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">проверка напора</span>
                     </div>
                 </div>
                 <!-- Гарантия на объект: лист гарантии STOUT в КП и в PDF (app.warrantyLinkData).

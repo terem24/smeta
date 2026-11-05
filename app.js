@@ -104704,6 +104704,9 @@ function prepareForPrint() {
             let currentScheme = document.getElementById('dynamic_scheme');
             if (currentScheme) {
                 let schemeClone = currentScheme.cloneNode(true);
+                // Карточка гидравлики рядом со схемой — только экран; без неё схема занимает весь лист
+                schemeClone.querySelectorAll('#hydro_check_side, #water_hydro_side').forEach(n => n.remove());
+                schemeClone.classList.remove('hc-split');
                 // Разрыв страницы нужен, только если перед схемой уже что-то напечатано
                 // (иначе, если схема — первый выбранный раздел, получаем пустую первую страницу).
                 if (printBin.children.length > 0) {
@@ -104713,37 +104716,7 @@ function prepareForPrint() {
             }
         }
 
-        // --- ШАГ 3б: ПРОВЕРКА ГИДРАВЛИКИ — отдельным листом после схемы, независимо от того, включена ли
-        // схема: проверка считается всегда. Карточка та же, что на экране, но разделы раскрыты и без кнопок.
-        // Выбор в окне печати — app.kpHydroOn (карточка «Гидравлика»); при печати без окна — печатаем. ---
-        if (app.kpHydroOn !== false && app.schemeOn() && (showEq || showSchemeOpt)) {
-            try {
-                app.state.viewMode = 'equipment';
-                app.render();
-                const hydroHtml = app.hydroCardHtml(true);
-                if (hydroHtml) {
-                    const hydroPage = document.createElement('div');
-                    hydroPage.id = 'hydro_check_print';
-                    hydroPage.innerHTML = '<h2 class="hc-print-title">Проверка гидравлики котельной</h2>' + hydroHtml;
-                    if (printBin.children.length > 0) hydroPage.classList.add('print-page-break');
-                    printBin.appendChild(hydroPage);
-                }
-            } catch (e) { console.error('[печать] лист проверки гидравлики не собрался:', e); }
-        }
-
-        // --- ШАГ 3в: ПРОВЕРКА ВОДОСНАБЖЕНИЯ — отдельным листом после проверки котельной; от схемы не зависит ---
-        if (app.kpHydroOn !== false && (showEq || showSchemeOpt)) {
-            try {
-                const whHtml = app.waterHydroHtml(app.waterHydroCheck(), true);
-                if (whHtml) {
-                    const whPage = document.createElement('div');
-                    whPage.id = 'water_hydro_print';
-                    whPage.innerHTML = '<h2 class="hc-print-title">Проверка гидравлики водоснабжения</h2>' + whHtml;
-                    if (printBin.children.length > 0) whPage.classList.add('print-page-break');
-                    printBin.appendChild(whPage);
-                }
-            } catch (e) { console.error('[печать] лист проверки водоснабжения не собрался:', e); }
-        }
+        // Проверка гидравлики (котельной и водоснабжения) — только экран: ни в печать/PDF, ни в ссылку не идёт.
 
         // --- ШАГ 4: ТАБЛИЦА ТЕПЛОПОТЕРЬ (Подробный режим + готовый расчёт по комнатам,
         // управляется отдельным чекбоксом в окне печати) ---

@@ -118,6 +118,10 @@
    app.prepareForPrint, шаг 3б) с раскрытыми строками и без кнопок */
 @media print {
     .hc-side, #water_hydro_side { display: none !important; }
+    /* Без карточки схема в печати — одна во весь лист: раскладка «пополам» (aspect-ratio при
+       ширине 100 %) делала её выше альбомного листа, и хвост уходил на пустую страницу */
+    #dynamic_scheme.scheme-vector.hc-split { display: block !important; }
+    #dynamic_scheme.scheme-vector.hc-split .scheme-svg-wrap { flex: none !important; aspect-ratio: auto !important; }
     #water_hydro_print { padding: 6mm 8mm; color: #111; }
     #water_hydro_print .hc-print-title { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
     #water_hydro_print .hc-card { border: none; padding: 0; font-size: 12px; }
