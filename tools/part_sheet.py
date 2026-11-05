@@ -4,7 +4,7 @@
 варианты рендера (вид и движок). Перед массовым рендером каждую деталь сверять так (правило
 владельца: деталь — по фото каталога и паспорту, цвет и блеск — с фото).
 
-    python tools/part_sheet.py                         # все детали, столбец cycles
+    python tools/part_sheet.py                         # все детали, столбец illus (вид смет)
     python tools/part_sheet.py valve endgroup          # только эти
     python tools/part_sheet.py valve --cols=legacy,eevee,cycles
     python tools/part_sheet.py --out=scratch/sheet.png --samples=64
@@ -36,7 +36,8 @@ PARTS = {
     'ext': ('Удлинитель 30 мм, хром — STOUT SFT-0002', ['SFT-0002-003430']),
     'nipple': ('Ниппель НР-НР — STOUT SFT-0004', ['SFT-0004-003434']),
 }
-COLS = {'legacy': ('прежний вид', 'legacy', 'eevee'), 'eevee': ('EEVEE + HDRI', 'pbr', 'eevee'),
+COLS = {'illus': ('иллюстрация (Cycles)', 'illus', 'cycles'), 'illus_eevee': ('иллюстрация (EEVEE)', 'illus', 'eevee'),
+        'legacy': ('прежний вид', 'legacy', 'eevee'), 'eevee': ('EEVEE + HDRI', 'pbr', 'eevee'),
         'cycles': ('Cycles + HDRI', 'pbr', 'cycles')}
 CELL = 420
 
@@ -84,7 +85,7 @@ def main():
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     opt = dict(a[2:].split('=', 1) for a in sys.argv[1:] if a.startswith('--') and '=' in a)
     names = args or list(PARTS)
-    cols = opt.get('cols', 'cycles').split(',')
+    cols = opt.get('cols', 'illus').split(',')
     out = opt.get('out') or os.path.join(ROOT, 'tools', 'blender_assets', 'sheets', 'part_sheet.png')
     samples = int(opt.get('samples', '128'))
     tmp = tempfile.mkdtemp(prefix='part_sheet_')

@@ -12,8 +12,13 @@
     from blender_parts import *
 
 Вид материалов — переменная окружения HC_LOOK (или set_look()):
-    pbr    — по умолчанию: студийная HDRI в отражениях, металлы физические (metallic = 1),
-             цвет и блеск сняты с фото каталога (таблица LIB, поле src);
+    illus  — по умолчанию: светлая чистая иллюстрация, как листы-образцы владельца («Обвязка
+             коллекторов», «Узел ХВС»): металл почти белый с мягкой светотенью, латунь жёлтая,
+             пластики сочные, ровный свет без отражений студии, тонкий контур. Решение
+             владельца 05.11.2026 — фотореализм с зеркальным металлом отвергнут;
+    pbr    — фотореализм: студийная HDRI в отражениях, металлы физические (metallic = 1),
+             цвет и блеск сняты с фото каталога (таблица LIB, поле src). Не использовать для
+             смет — оставлен для сверки формы с фото;
     legacy — прежний вид (градиентный мир, «полуметалл»), кадр в кадр как до выноса
              деталей в модуль. Нужен для сверки и как откат.
 Движок — HC_ENGINE: cycles (по умолчанию) или eevee; HC_SAMPLES — число проходов Cycles (128).
@@ -39,7 +44,7 @@ HDRI_URL = 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/2k/studio_small_09
 HDRI_STRENGTH = 1.25
 HDRI_ROT = math.radians(30)      # поворот окружения вокруг Z: главный софтбокс слева сверху
 
-LOOK = [os.environ.get('HC_LOOK', 'pbr')]
+LOOK = [os.environ.get('HC_LOOK', 'illus')]
 # Движок по умолчанию — Cycles (решение владельца 05.11.2026: качество важнее скорости).
 # HC_ENGINE=eevee — быстрый черновик
 ENGINE = [os.environ.get('HC_ENGINE', 'cycles')]
@@ -54,6 +59,10 @@ def set_look(look=None, engine=None):
 
 def legacy():
     return LOOK[0] == 'legacy'
+
+
+def illus():
+    return LOOK[0] == 'illus'
 
 
 # ── цвета ────────────────────────────────────────────────────────────────
@@ -110,6 +119,14 @@ add_colors(_raw)
 # 75–92-й процентиль яркости металла без фона — tools/photo_probe.py), rough — по размаху
 # «тень → свет» на том же фото (зеркальные детали дают широкий размах и резкий блик, сатин —
 # узкий). aniso — шлифовка вдоль оси (сатин компенсатора).
+# illus — цвет детали в иллюстрации (sRGB): светлый, как на листах-образцах; оттенок — с фото
+# (тёплый никель кранов чуть желтее холодного концевой группы, хром — голубоватый)
+ILLUS = {
+    'nickel_warm': (0.84, 0.82, 0.78), 'nickel_cold': (0.83, 0.83, 0.82), 'chrome': (0.86, 0.88, 0.90),
+    'steel_lever': (0.76, 0.77, 0.79), 'stainless_bar': (0.84, 0.85, 0.86), 'satin': (0.78, 0.78, 0.80),
+    'brass': (0.93, 0.68, 0.22), 'zinc': (0.78, 0.79, 0.81), 'zinc_bracket': (0.80, 0.81, 0.83),
+}
+
 LIB = {
     'nickel_warm': dict(legacy=('nickel', 0.28, 0.55), base=(0.89, 0.84, 0.80), rough=0.30,
                         src='SVB-1007-000020: свет 228,213,203; SFT-0004-003434: 207,200,188 — тёплый никель кранов и фитингов'),
@@ -161,6 +178,25 @@ def mat(key, rough=0.4, metal=0.0, alpha=1.0, coat=0.0):
 def metal(name):
     """Металл из библиотеки LIB — в текущем виде (legacy или pbr)."""
     d = LIB[name]
+    if illus():
+        # «полуметалл» без зеркала: в нём отражается только мягкий градиент мира (светлый
+        # верх, серый низ) — широкий светлый отблеск и тень, как на листах-образцах
+        sh = 0.70 if name == 'chrome' else 0.62
+        k = ('illus', name)
+        if k in MATS:
+            return MATS[k]
+        m = bpy.data.materials.new('il_' + name)
+        m.use_nodes = True
+        b = m.node_tree.nodes['Principled BSDF']
+        b.inputs['Base Color'].default_value = tuple(_lin(x) for x in ILLUS[name]) + (1,)
+        b.inputs['Metallic'].default_value = 0.45
+        b.inputs['Roughness'].default_value = 1.0 - sh
+        try:
+            b.inputs['Specular IOR Level'].default_value = 0.35
+        except Exception:
+            pass
+        MATS[k] = m
+        return m
     if legacy():
         key, rough, mt = d['legacy']
         return mat(key, rough=rough, metal=mt)
@@ -200,7 +236,9 @@ def M_BRASS():
 
 def M_PLAST(c):
     # пластик: в pbr чуть матовее и с тонким лаком — глянцевый колпак на фото даёт мягкий блик
-    return mat(c, rough=0.30, coat=0.6) if legacy() else mat(c, rough=0.34, coat=0.35)
+    if legacy():
+        return mat(c, rough=0.30, coat=0.6)
+    return mat(c, rough=0.45, coat=0.15) if illus() else mat(c, rough=0.34, coat=0.35)
 
 
 # ── сцена ────────────────────────────────────────────────────────────────
@@ -281,8 +319,27 @@ def reset():
     lp = nt.nodes.new('ShaderNodeLightPath')
     mix = nt.nodes.new('ShaderNodeMix')
     mix.data_type = 'RGBA'
-    hp = None if legacy() else hdri_path()
-    if hp:
+    hp = None if (legacy() or illus()) else hdri_path()
+    if illus():
+        # иллюстрация: мягкий рассеянный свет со всех сторон — светлый верх, чуть серее низ;
+        # даёт объём и затенение в стыках без бликов и отражений
+        tc = nt.nodes.new('ShaderNodeTexCoord')
+        sep = nt.nodes.new('ShaderNodeSeparateXYZ')
+        mr = nt.nodes.new('ShaderNodeMapRange')
+        ramp = nt.nodes.new('ShaderNodeValToRGB')
+        nt.links.new(tc.outputs['Generated'], sep.inputs[0])
+        nt.links.new(sep.outputs['Z'], mr.inputs['Value'])
+        mr.inputs['From Min'].default_value = -1
+        mr.inputs['From Max'].default_value = 1
+        nt.links.new(mr.outputs['Result'], ramp.inputs['Fac'])
+        els = ramp.color_ramp.elements
+        els[0].position = 0.35
+        els[0].color = (0.36, 0.37, 0.39, 1)
+        els[1].position = 0.65
+        els[1].color = (1, 1, 1, 1)
+        nt.links.new(ramp.outputs['Color'], mix.inputs[6])
+        bg.inputs['Strength'].default_value = 0.8
+    elif hp:
         env = nt.nodes.new('ShaderNodeTexEnvironment')
         env.image = bpy.data.images.load(hp, check_existing=True)
         tc = nt.nodes.new('ShaderNodeTexCoord')
@@ -301,11 +358,13 @@ def reset():
     # Солнца: в legacy — основной свет; при HDRI свет даёт окружение, солнца слабее —
     # только рисуют форму (светлая грань слева сверху, как на фото каталога)
     k = 1.0 if (legacy() or not hp) else 0.6
+    if illus():
+        k = 1.0
     for name, energy, rot in (('key', 1.3, (math.radians(50), 0, math.radians(-35))),
                               ('rim', 0.5, (math.radians(-60), 0, math.radians(150)))):
         d = bpy.data.lights.new(name, 'SUN')
         d.energy = energy * k
-        d.angle = math.radians(20)
+        d.angle = math.radians(40 if illus() else 20)
         d.use_shadow = False
         ob = bpy.data.objects.new(name, d)
         ob.rotation_euler = rot
