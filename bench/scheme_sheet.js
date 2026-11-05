@@ -226,7 +226,10 @@ for (const [title, patch] of Object.entries(OBJ)) {
     });
     // тёплый пол: каждая подпись листа — по UFH_LAB_RE в разделе 4, коллектор — по этажу
     // _ufhMans живёт от прошлого расчёта, если раздела 4 в смете нет — смотрим только при ТП
-    const mans = (app.state.systems || []).indexOf('tp') >= 0 ? app._ufhMans || [] : [];
+    // лист ТП есть только у STOUT SMS-0907 (renderUfhManifoldSheet): с ROMMER — прежний лист, подписей нет
+    const mans = (app.state.systems || []).indexOf('tp') >= 0 &&
+        (app._ufhMans || []).every(m => { const it = eq.find(x => x.originalId === m.oid && /^4\./.test(x.group || ''));
+            return !it || /^SMS-0907/i.test(String(it.displaySku || it.id)); }) ? app._ufhMans || [] : [];
     if (mans.length) {
         const sec4 = eq.filter(it => /тёплый пол|теплый пол|^4\./i.test(secOf(it)));
         mans.forEach(m => { if (!sec4.some(it => /^Коллектор ТП/i.test(nm(it)) && nm(it).indexOf('(' + m.lbl + ')') >= 0)) miss.push(`ТП: коллектор (${m.lbl})`); });

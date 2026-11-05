@@ -357,7 +357,12 @@ def main():
         o.is_holdout = True
     sc.render.film_transparent = True
     freestyle(sc, 'sheath', (0.35, 0.37, 0.42), 1.2)
+    # изоляция — полупрозрачный матовый пластик: в Cycles проход сквозь вырезы трассирует всю
+    # сцену (половина времени кадра), а разницы с EEVEE на нём не видно
+    eng = sc.render.engine
+    set_engine(sc, 'eevee')
     render(sc, os.path.join(OUT, TAG + '_sheath.png'))
+    sc.render.engine = eng
     # проходы ручек: по слою на вариант, всё остальное — вырез (ручку закрывают детали перед ней)
     for o in coll('sheath').objects:
         o.is_holdout = True

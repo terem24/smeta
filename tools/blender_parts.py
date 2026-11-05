@@ -16,7 +16,7 @@
              цвет и блеск сняты с фото каталога (таблица LIB, поле src);
     legacy — прежний вид (градиентный мир, «полуметалл»), кадр в кадр как до выноса
              деталей в модуль. Нужен для сверки и как откат.
-Движок — HC_ENGINE: eevee (по умолчанию) или cycles; HC_SAMPLES — число проходов Cycles.
+Движок — HC_ENGINE: cycles (по умолчанию) или eevee; HC_SAMPLES — число проходов Cycles (128).
 
 HDRI в git не лежит (тяжёлая): tools/blender_assets/ в .gitignore. Нет файла — модуль
 скачивает его сам (HDRI_URL, Poly Haven, CC0), без сети — падает обратно на прежний
@@ -40,7 +40,9 @@ HDRI_STRENGTH = 1.25
 HDRI_ROT = math.radians(30)      # поворот окружения вокруг Z: главный софтбокс слева сверху
 
 LOOK = [os.environ.get('HC_LOOK', 'pbr')]
-ENGINE = [os.environ.get('HC_ENGINE', 'eevee')]
+# Движок по умолчанию — Cycles (решение владельца 05.11.2026: качество важнее скорости).
+# HC_ENGINE=eevee — быстрый черновик
+ENGINE = [os.environ.get('HC_ENGINE', 'cycles')]
 
 
 def set_look(look=None, engine=None):
@@ -242,14 +244,13 @@ def _gradient_world(nt, bg, mix):
     nt.links.new(ramp.outputs['Color'], mix.inputs[6])
 
 
-def reset():
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    MATS.clear()
-    COLL.clear()
-    sc = bpy.context.scene
-    if ENGINE[0] == 'cycles':
+def set_engine(sc, name):
+    """Движок сцены: cycles (адаптивная выборка, шумодав) или eevee."""
+    if name == 'cycles':
         sc.render.engine = 'CYCLES'
         sc.cycles.samples = int(os.environ.get('HC_SAMPLES', '128'))
+        sc.cycles.use_adaptive_sampling = True
+        sc.cycles.adaptive_threshold = 0.02
         sc.cycles.use_denoising = True
         try:
             sc.cycles.device = 'CPU'
@@ -261,6 +262,14 @@ def reset():
             sc.eevee.taa_render_samples = 48 if legacy() else 64
         except Exception:
             pass
+
+
+def reset():
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    MATS.clear()
+    COLL.clear()
+    sc = bpy.context.scene
+    set_engine(sc, 'cycles' if (ENGINE[0] == 'cycles' and not legacy()) else 'eevee')
     sc.view_settings.view_transform = 'Standard'
     sc.view_settings.look = 'None'
     # Мир: в кадре чисто белый фон (камера видит белое), а в отражениях металла — окружение:

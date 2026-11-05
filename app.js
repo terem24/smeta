@@ -45490,7 +45490,8 @@ const app = {
         });
         // Колонки по самой длинной подписи — текст не вылезает за лист
         const colw = Math.max.apply(null, items.map(it => it.tw).concat([fs * 6])) + fs * 3;
-        const ox = colw, W = ox + iw + colw;
+        // padL / padR — добавка к колонкам, когда скос иначе не встаёт под 45° (см. ниже)
+        let padL = 0, padR = 0, ox = colw, W = ox + iw + colw;
         const half = Math.ceil(items.length / 2);
         const need = list => list.reduce((s, it) => s + it.h, 0) + fs * 2;
         let H = Math.max(ih + fs * 2, need(items.slice().sort((a, b) => b.h - a.h).slice(0, half)));
@@ -45511,7 +45512,7 @@ const app = {
         // Сноска: полка под текстом и один скос строго под 45° к точке. Скос круче — штраф
         // перебора, а не норма
         const geom = (it, side, ax_, ay, ly) => {
-            const x0 = side === 'L' ? fs : ox + iw + fs * 2;
+            const x0 = side === 'L' ? fs : ox + iw + fs * 2 + padR;
             const dy = Math.abs(ay - ly);
             const k45 = side === 'L' ? ax_ - dy : ax_ + dy;
             const knee = side === 'L' ? Math.max(x0 + it.tw, k45) : Math.min(x0 - fs * 0.6, k45);
@@ -45577,6 +45578,7 @@ const app = {
             right = c.r.map(pk => items.find(it => it.pk === pk));
             items.forEach(it => { [it.ax, it.ay, it.ly] = c.pos[it.pk]; });
             H = c.H;
+            padL = c.padL || 0; padR = c.padR || 0;
         } else {
             const byX = items.slice().sort((a, b) => a.mx - b.mx);
             let L0 = byX.slice(0, half), R0 = byX.slice(half);
@@ -45598,10 +45600,20 @@ const app = {
             const segsL = layout(left, 'L', [], true).segs;
             const segsR = layout(right, 'R', segsL, true).segs;
             layout(left, 'L', segsR, true);
+            // Скос строго 45°: если точка далеко по высоте от полки, излом упирается в конец текста
+            // и скос выходит круче. Тогда колонка раздвигается ровно на недостающую ширину: слева —
+            // картинка сдвигается вправо (вместе с точками), справа — колонка отодвигается. Взаимное
+            // положение линий не меняется, новых пересечений не появляется
+            const bendOf = (list, side) => Math.max.apply(null, list.map(it => geom(it, side, it.ax, it.ay, it.ly).bend).concat([0]));
+            const bl = bendOf(left, 'L'), br = bendOf(right, 'R');
+            if (bl > 0.5) { padL = bl + fs * 0.3; items.forEach(it => { it.ax += padL; }); }
+            if (br > 0.5) padR = br + fs * 0.3;
             const pos = {};
             items.forEach(it => { pos[it.pk] = [it.ax, it.ay, it.ly]; });
-            lc[lkey] = { l: left.map(it => it.pk), r: right.map(it => it.pk), pos, H };
+            lc[lkey] = { l: left.map(it => it.pk), r: right.map(it => it.pk), pos, H, padL, padR };
         }
+        ox += padL;
+        W = ox + iw + colw + padR;
         const label = (it, side) => {
             const g = geom(it, side, it.ax, it.ay, it.ly);
             const x0 = g.x0, knee = g.knee, s0 = g.s0, s1 = g.s1;
@@ -45984,6 +45996,10 @@ const app = {
     renderUfhManifoldSheet: function () {
         const mans = (this._ufhMans || []).filter(m => /^SMS-0907/i.test(m.id));
         if (!mans.length || mans.length !== (this._ufhMans || []).length) return null;
+        // В смете может стоять не SMS-0907: ROMMER (RMS-1201) подставляется аналогом или ручной
+        // заменой. Кадры есть только у STOUT — чужой коллектор не рисуем, остаётся прежний лист
+        const shown = m => (this.currentEquipmentList || []).find(it => it.originalId === m.oid && /^4\./.test(it.group || ''));
+        if (mans.some(m => { const it = shown(m); return it && !/^SMS-0907/i.test(String(it.displaySku || it.id)); })) return null;
         const idx = this.ufhIndex();
         if (!idx) return null;
         // Перехода на транзит в смете нет (гребёнка с узлом подмеса) — кадр без него («_bare»)
@@ -100895,7 +100911,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         addToBill({ ...mSel, originalId: stdM.id, sortRank: -1, name: `Коллектор ТП ${dispLoops} вых (${lbl})` }, 1,
                             this.getDesc('manifold', sz === 1 ? 1 : dispLoops, 'ufh') + (_same ? this.ufhFlowTableHtml(_same) : ''), grpPipe);
                         mans++;
-                        this._ufhMans.push({ fl, lbl, loops: dispLoops, used: sz, id: mSel.id });
+                        this._ufhMans.push({ fl, lbl, loops: dispLoops, used: sz, id: mSel.id, oid: stdM.id });
 
                         _ufhCabIdx++;
                         const _cabKey = 'cabinet_ufh_' + _ufhCabIdx;
