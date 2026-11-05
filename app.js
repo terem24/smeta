@@ -81,7 +81,7 @@ const PROXY_DEFAULT_DOWN = true;
         if (noteTimer) { clearTimeout(noteTimer); noteTimer = null; }
         if (!el) return;
         el.style.opacity = '0';
-        el.style.transform = 'translate(-50%, 12px)';
+        el.style.transform = 'translateY(12px)';
         setTimeout(function () { el.remove(); }, 300);
     }
     function updateBanner() {
@@ -97,27 +97,30 @@ const PROXY_DEFAULT_DOWN = true;
             var note = document.createElement('div');
             note.id = 'proxyDownBanner';
             note.setAttribute('role', 'status');
-            note.style.cssText = 'position:fixed;left:50%;bottom:16px;transform:translate(-50%,12px);opacity:0;z-index:99999;' +
-                'box-sizing:border-box;width:calc(100% - 32px);max-width:440px;padding:12px 40px 12px 14px;' +
-                'background:var(--surface,#fff);color:var(--text-main,#111827);border:1px solid var(--border,#E5E7EB);' +
-                'border-left:4px solid var(--primary,#2563EB);border-radius:var(--radius,12px);' +
-                'box-shadow:0 8px 24px rgba(0,0,0,.14);font-size:14px;line-height:1.45;' +
-                'transition:opacity .25s ease,transform .25s ease;';
-            note.innerHTML = '<b style="display:block;margin-bottom:2px;">Часть функций скоро вернётся</b>' +
-                '<span style="color:var(--text-sec,#6B7280);">ИИ-распознавание, заявки и подложки планов временно на паузе: ' +
-                'восстанавливаем сервер. Сам расчёт работает как обычно.</span>';
-            var close = document.createElement('button');
-            close.type = 'button';
-            close.setAttribute('aria-label', 'Закрыть');
-            close.textContent = '×';
-            close.style.cssText = 'position:absolute;right:8px;top:6px;border:0;background:none;color:var(--text-sec,#6B7280);' +
-                'font-size:22px;line-height:1;cursor:pointer;padding:2px 6px;';
-            close.onclick = function () { hideNote(note); };
-            note.appendChild(close);
+            // Компактная тёмная «таблетка» внизу слева, как плашка про куки: текст и кнопка в строку,
+            // интерфейс не перекрывает. На телефоне — над нижней панелью, на всю ширину без полей.
+            var narrow = window.innerWidth <= 768;
+            note.style.cssText = 'position:fixed;left:' + (narrow ? '12px;right:12px;' : '16px;max-width:460px;') +
+                'bottom:' + (narrow ? 'calc(76px + env(safe-area-inset-bottom,0px))' : '16px') + ';' +
+                'transform:translateY(12px);opacity:0;z-index:1500000;box-sizing:border-box;' +
+                'display:flex;align-items:center;gap:12px;padding:10px 10px 10px 18px;' +
+                'background:#3a3b41;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:28px;box-shadow:0 6px 20px rgba(0,0,0,.28);' +
+                'font-size:13px;line-height:1.35;transition:opacity .25s ease,transform .25s ease;';
+            var txt = document.createElement('span');
+            txt.style.cssText = 'flex:1;';
+            txt.textContent = 'ИИ и заявки пока на паузе: восстанавливаем сервер. Расчёт работает как обычно.';
+            var ok = document.createElement('button');
+            ok.type = 'button';
+            ok.textContent = 'Понятно';
+            ok.style.cssText = 'flex:none;border:0;border-radius:20px;background:#f4f4f6;color:#111827;font-size:13px;' +
+                'font-weight:600;padding:9px 16px;cursor:pointer;font-family:inherit;';
+            ok.onclick = function () { hideNote(note); };
+            note.appendChild(txt);
+            note.appendChild(ok);
             document.body.appendChild(note);
             requestAnimationFrame(function () {
                 note.style.opacity = '1';
-                note.style.transform = 'translate(-50%, 0)';
+                note.style.transform = 'translateY(0)';
             });
             noteTimer = setTimeout(function () { hideNote(note); }, NOTE_SHOW_MS);
         }, 2500);
