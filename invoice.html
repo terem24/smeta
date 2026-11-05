@@ -4401,7 +4401,24 @@
             const url = typeof input === 'string' ? input : input.url;
             const base = 'https://ahanbwugsmcyvrwbmtlx.supabase.co';
             if (canProxy && url.startsWith(base)) {
-                return fetch('https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(base.length)), init);
+                // Если прокси не отвечает (лежит хостинг, обрыв, 5xx) — через 10 с пробуем тот же
+                // запрос напрямую в базу, иначе клиент видит вечную загрузку и «Счет не найден».
+                const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+                const timer = ctrl ? setTimeout(() => ctrl.abort(), 10000) : null;
+                const proxyInit = Object.assign({}, init, ctrl ? { signal: ctrl.signal } : {});
+                const direct = () => fetch(input, init);
+                return fetch('https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(base.length)), proxyInit)
+                    .then(r => {
+                        if (timer) clearTimeout(timer);
+                        if (r.status >= 500) { console.warn('[прокси] ответ ' + r.status + ', пробую напрямую'); return direct(); }
+                        return r;
+                    })
+                    .catch(err => {
+                        if (timer) clearTimeout(timer);
+                        if (init && init.signal && init.signal.aborted) throw err;
+                        console.warn('[прокси] не отвечает, пробую напрямую:', err && err.message);
+                        return direct();
+                    });
             }
             return fetch(input, init);
         }
