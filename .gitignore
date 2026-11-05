@@ -55,3 +55,7 @@ bench/windows_data/
 training/.env
 training/tools/osrm_cache.json
 training/trainer_links.txt
+
+# Blender: студийная HDRI (Poly Haven, CC0, ~6 МБ — tools/blender_parts.py скачает её сама),
+# листы сверки и отчёты ночной очереди рендера
+tools/blender_assets/

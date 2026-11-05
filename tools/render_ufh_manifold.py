@@ -6,7 +6,7 @@
 
     blender --background --python tools/render_ufh_manifold.py -- <папка> <N>
 
-Общие детали, материалы, камера и линии — из render_water_manifold.py (тот же стиль,
+Общие детали, материалы, камера и линии — из blender_parts.py (тот же стиль,
 масштаб и ракурс). Размеры — паспорт STOUT SMS (табл. 5.9): шаг выходов l = 50 мм, между
 осями гребёнок H1 = 211 мм, воздухоотводчик H2 = 90 мм над осью, длина гребёнки
 L1 = 50·(N−1) + 93 мм, кран с термометром L2 = 119 мм. Устройство — паспорт, п. 3.1 и фото
@@ -14,34 +14,31 @@ L1 = 50·(N−1) + 93 мм, кран с термометром L2 = 119 мм. У
 клапанами под сервопривод (белые колпачки, синяя метка), слева краны с американкой и
 термометрами, справа концевые группы — воздухоотводчик и спускной кран, кронштейны.
 """
-import io
-import json
 import math
 import os
 import sys
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-_src = io.open(os.path.join(HERE, 'render_water_manifold.py'), encoding='utf-8').read()
-# argv водоснабжения: <папка> <линия> <N> <торец> <тип> — линию и торец подставляем свои
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from blender_parts import *  # noqa: F401,F403 — общие детали, материалы, камера, проходы
+from mathutils import Vector, Matrix
+import bpy
+
 _argv = sys.argv[sys.argv.index('--') + 1:]
-sys.argv = sys.argv[:sys.argv.index('--') + 1] + [_argv[0], 'hw', _argv[1], 'ufh', 'st']
-exec(_src[:_src.index('# ── детали')] +
-     _src[_src.index('# ── камера, линии, проходы'):_src.index('def main():')], globals())
+OUT, N = _argv[0], int(_argv[1])
 # вариант без перехода на транзит: у гребёнки с узлом подмеса его нет в смете (узел садится
 # на гребёнку своими гайками) — третий аргумент «bare»
 BARE = len(_argv) > 2 and _argv[2] == 'bare'
 TAG = 'ufh_%d%s' % (N, '_bare' if BARE else '')
 
-C.update({k: tuple(_lin(x) for x in v) for k, v in {
+add_colors({
     'capwhite': (0.94, 0.94, 0.92),     # колпачок клапана обратки (фото паспорта, поз. 5)
     'meterred': (0.86, 0.10, 0.12),     # корпус расходомера (фото SSP-0001-000001)
     'glass': (0.92, 0.95, 0.97),
-    'ni_silver': (0.78, 0.79, 0.80),   # никель концевой группы (фото SMS-1000-010001)
     'label_b': (0.14, 0.40, 0.85),
     'label_r': (0.88, 0.14, 0.14),
     'sleeve_r': (0.90, 0.20, 0.18),     # втулка защитная красная (подача)
     'sleeve_b': (0.16, 0.45, 0.90),     # втулка защитная синяя (обратка)
-}.items()})
+})
 
 P = 0.050           # шаг выходов (паспорт, l)
 ANCH = {}           # деталь -> точка мира, вокруг которой берётся её зона (вместо рамки)
@@ -55,7 +52,7 @@ def bar(name, z, y, x0, x1, label):
     """Гребёнка (паспорт, поз. 4 и 6; разрезы п. 3.1): профиль из нержавейки — квадрат со
     скруглёнными углами и круглым каналом внутри, на лицевой грани цветная наклейка со стрелкой
     (синяя — обратка, красная — подача) и надпись STOUT."""
-    steel = mat('chrome', rough=0.24, metal=0.70)
+    steel = metal('stainless_bar')
     sq = rounded([(-RB, -RB), (RB, -RB), (RB, RB), (-RB, RB)], 0.0075, seg=5)
     # локальные X -> мировая Y, Y -> Z, Z (длина) -> X
     m = Matrix.Translation(Vector(((x0 + x1) / 2, y, z))) @ Matrix(((0, 0, 1, 0), (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
@@ -194,83 +191,6 @@ def valve_left(x0, y, z, col, key):
     return x - 0.080
 
 
-def end_group(x1, y, z, key):
-    """Концевая группа (фото STOUT SMS-1000-010001 и ROMMER RMS-1001, паспорт SMS, поз. 7, 9,
-    13; высота над осью ~90 мм — H2): в торец гребёнки — штуцер 1" с чёрным уплотнительным
-    кольцом и шестигранником, тело-тройник; вверх — автоматический воздухоотводчик (шейка,
-    гладкий стакан ~33 мм, крышка ~43 мм с рифлёным пояском и куполом, чёрный колпачок
-    клапана); вниз — спускной штуцер с резьбой; к зрителю — белая ручка сливного крана."""
-    part('mf')
-    # никель концевой группы — холодный серебристый с бликами (фото SMS-1000), не тёплый никель кранов
-    NI = mat('ni_silver', rough=0.20, metal=0.90)
-    lathe('кольцо уплотнительное', [(0.0150, 0), (0.0168, 0.0006), (0.0168, 0.0026), (0.0150, 0.0032)],
-          mat('rubber', rough=0.7), (x1, y, z), 'X', segs=48)
-    hexnut('шестигранник штуцера', 0.036, 0.009, NI, (x1 + 0.0032, y, z), 'X', ch=0.15)
-    x = x1 + 0.0122
-    lathe('шейка тройника', [(0.0110, 0), (0.0110, 0.010)], NI, (x, y, z), 'X', segs=40)
-    xe = x + 0.010 + 0.010
-    lathe('тело тройника', [(0.0, 0), (0.0110, 0), (0.0115, 0.002), (0.0115, 0.040), (0.0110, 0.042), (0.0, 0.042)],
-          NI, (xe, y, z - 0.027), 'Z', segs=40, sharp=40)
-    # воздухоотводчик
-    av = NI
-    lathe('шейка воздухоотводчика', [(0.0085, 0), (0.0085, 0.006)], av, (xe, y, z + 0.015), 'Z', segs=32)
-    lathe('стакан воздухоотводчика', [(0.0150, 0), (0.0165, 0.0015), (0.0165, 0.028), (0.0170, 0.029)], av,
-          (xe, y, z + 0.021), 'Z', segs=56, sharp=40)
-    lathe('крышка воздухоотводчика', [(0.0170, 0), (0.0212, 0.0015), (0.0215, 0.003), (0.0215, 0.011), (0.0200, 0.012)],
-          av, (xe, y, z + 0.050), 'Z', segs=64, knurl=0.0212, sharp=40)
-    lathe('купол крышки', [(0.0200, 0), (0.0185, 0.004), (0.0140, 0.007), (0.0060, 0.0085), (0.0, 0.0088)], av,
-          (xe, y, z + 0.062), 'Z', segs=48)
-    lathe('колпачок клапана', [(0.0, 0), (0.0042, 0), (0.0044, 0.002), (0.0044, 0.012), (0.0030, 0.0145), (0.0, 0.015)],
-          mat('black', rough=0.5), (xe, y, z + 0.0705), 'Z', segs=24, knurl=0.0043, sharp=50)
-    # спускной штуцер вниз и ручка сливного крана к зрителю
-    hexnut('шестигранник спуска', 0.022, 0.006, NI, (xe, y, z - 0.027), '-Z')
-    lathe('резьба спуска', thread(0.0105, 0.010), NI, (xe, y, z - 0.033), '-Z', segs=40)
-    lathe('ручка сливного крана', [(0.0, 0), (0.0100, 0), (0.0106, 0.002), (0.0106, 0.012), (0.0095, 0.0145),
-                                   (0.0, 0.0150)], mat('capwhite', rough=0.45), (xe, y - 0.0105, z - 0.010), '-Y',
-          segs=8, rot=math.pi / 8, sharp=30)
-    marks['mf_end_%s' % key] = (xe, y, z + 0.07)
-
-
-def bracket(xb):
-    """Кронштейн (паспорт, поз. 3; фото комплекта): оцинкованная штампованная полоса за
-    гребёнками — сверху ушко с отверстием под дюбель, по длине прорези, между гребёнками изгиб:
-    обратная гребёнка ближе к стене, подающая на выносе. На каждой гребёнке — хомут по профилю."""
-    part('mf')
-    zinc = mat('zinc', rough=0.34, metal=0.60)
-    dark = mat('black', rough=0.6)
-    W_, T_ = 0.026, 0.0022
-    yu = YU + RB + 0.003 + T_ / 2          # полоса за обратной гребёнкой
-    yl = RB + 0.003 + T_ / 2               # и за подающей
-    zj = 0.050                             # высота изгиба
-    zt, zb = H1 + 0.060, -0.032
-    box('полоса верх', (W_, T_, zt - zj), zinc, (xb, yu, (zt + zj) / 2))
-    box('изгиб', (W_, yu - yl + T_, T_), zinc, (xb, (yu + yl) / 2, zj))
-    box('полоса низ', (W_, T_, zj - zb), zinc, (xb, yl, (zj + zb) / 2))
-    # ушко с отверстием под шуруп и прорези по длине
-    lathe('ушко', [(0.0, 0), (W_ / 2, 0), (W_ / 2, T_), (0.0, T_)], zinc, (xb, yu + T_ / 2, zt), '-Y', segs=32)
-    lathe('отверстие', [(0.0, 0), (0.0042, 0), (0.0042, 0.0004), (0.0, 0.0004)], dark, (xb, yu - T_ / 2 - 0.0001, zt), '-Y', segs=20)
-    for zc_ in (H1 * 0.55, H1 * 0.30):
-        box('прорезь', (0.0060, 0.0004, 0.022), dark, (xb, yu - T_ / 2 - 0.0002, zc_))
-    # штамповка: ряд круглых отверстий по полосе (как на листах проекта и фото комплекта)
-    zz = zj + 0.022
-    while zz < zt - 0.030:
-        if abs(zz - H1) > 0.030 and all(abs(zz - q) > 0.018 for q in (H1 * 0.55, H1 * 0.30)):
-            lathe('отверстие полосы', [(0.0, 0), (0.0030, 0), (0.0030, 0.0004), (0.0, 0.0004)], dark,
-                  (xb, yu - T_ / 2 - 0.0001, zz), '-Y', segs=16)
-        zz += 0.024
-    for zz in (zj - 0.020, zb + 0.012):
-        lathe('отверстие полосы', [(0.0, 0), (0.0030, 0), (0.0030, 0.0004), (0.0, 0.0004)], dark,
-              (xb, yl - T_ / 2 - 0.0001, zz), '-Y', segs=16)
-    # хомуты по профилю гребёнки
-    for z, y in ((0.0, 0.0), (H1, YU)):
-        sq = rounded([(-RB - 0.0022, -RB - 0.0022), (RB + 0.0022, -RB - 0.0022), (RB + 0.0022, RB + 0.0022),
-                      (-RB - 0.0022, RB + 0.0022)], 0.0085, seg=5)
-        m = Matrix.Translation(Vector((xb, y, z))) @ Matrix(((0, 0, 1, 0), (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
-        prism('хомут гребёнки', sq, 0.016, zinc, m, bevel=0.0006)
-        lathe('винт хомута', [(0.0, 0), (0.0032, 0), (0.0032, 0.0015), (0.0, 0.0022)], zinc, (xb, y, z + RB + 0.0022), 'Z', segs=20)
-        hexnut('гайка хомута', 0.0065, 0.0028, zinc, (xb, y, z - RB - 0.0022), '-Z')
-
-
 def build():
     sc = reset()
     xs = [i * P for i in range(N)]
@@ -285,11 +205,15 @@ def build():
         thermo_valve_cap(x, YU, H1)
         outlet_down(x, 0.0, 0.0, True)
         outlet_down(x, YU, H1, True)
-    bracket(x0 + 0.016)
-    bracket(x1 - 0.016)
+    part('mf')
+    bracket(x0 + 0.016, RB, H1, YU)
+    part('mf')
+    bracket(x1 - 0.016, RB, H1, YU)
     valve_left(x0, 0.0, 0.0, 'flagred', 'sup')
     valve_left(x0, YU, H1, 'flagblue', 'ret')
+    part('mf')
     end_group(x1, 0.0, 0.0, 'sup')
+    part('mf')
     end_group(x1, YU, H1, 'ret')
     marks['mf'] = ((x0 + x1) / 2, YU, H1 + RB)
     marks['tube'] = (xs[0], YU, ZF + 0.12)
@@ -300,80 +224,14 @@ def build():
 def main():
     sc = build()
     cam = camera(sc)
-    from bpy_extras.object_utils import world_to_camera_view
-    dg = bpy.context.evaluated_depsgraph_get()
-    zones = {}
-    for o in sc.objects:
-        k = o.get('part', '') if o.type in ('MESH', 'CURVE') else ''
-        if not k or o.hide_render:
-            continue
-        for p in mesh_points(o, dg):
-            v = world_to_camera_view(sc, cam, p)
-            x, y = v.x, 1 - v.y
-            z = zones.setdefault(k, [x, y, x, y])
-            z[0], z[1], z[2], z[3] = min(z[0], x), min(z[1], y), max(z[2], x), max(z[3], y)
-    for k, p in ANCH.items():
-        v = world_to_camera_view(sc, cam, Vector(p))
-        zones[k] = [v.x - 0.002, 1 - v.y - 0.002, v.x + 0.002, 1 - v.y + 0.002]
-    pts = {}
-    for k, p in marks.items():
-        v = world_to_camera_view(sc, cam, Vector(p))
-        pts[k] = [round(v.x, 4), round(1 - v.y, 4)]
-
-    def pr(p):
-        v = world_to_camera_view(sc, cam, Vector(p))
-        return [v.x, 1 - v.y]
-    o0 = pr((0, 0, 0))
-    proj = {'o': [round(c, 6) for c in o0]}
-    for k, p in (('x', (1, 0, 0)), ('y', (0, 1, 0)), ('z', (0, 0, 1))):
-        q = pr(p)
-        proj[k] = [round(q[0] - o0[0], 6), round(q[1] - o0[1], 6)]
-
-    line = (0.28, 0.30, 0.34)
+    zones, pts, proj = frame_meta(sc, cam, ANCH)
     sc.render.film_transparent = True
-    freestyle(sc, 'solid', line, 1.8)
+    freestyle(sc, 'solid', LINE_COLOR, 1.8)
     render(sc, os.path.join(OUT, TAG + '_solid.png'))
-
     # карта деталей: плоские цвета по сноскам, без сглаживания и линий
     ID = {'mf': (1, 0, 0), 'ek': (0, 1, 0), 'tube': (0, 0, 1), 'sleeve': (1, 1, 0), 'node': (0, 1, 1), 'fix': (1, 0, 1), 'tubeb': (0, 0, 1)}
-    em = {}
-    for o in list(coll('solid').objects):
-        k = o.get('part', '').split(':')[0]
-        c = ID.get(k, (0, 0, 0))
-        if c not in em:
-            m = bpy.data.materials.new('id_%d%d%d' % c)
-            m.use_nodes = True
-            nt = m.node_tree
-            for n in list(nt.nodes):
-                if n.type != 'OUTPUT_MATERIAL':
-                    nt.nodes.remove(n)
-            e = nt.nodes.new('ShaderNodeEmission')
-            e.inputs['Color'].default_value = c + (1,)
-            nt.links.new(e.outputs[0], nt.nodes['Material Output'].inputs[0])
-            em[c] = m
-        if o.type in ('MESH', 'CURVE'):
-            o.data.materials.clear()
-            o.data.materials.append(em[c])
-    sc.world.node_tree.nodes['Background'].inputs['Color'].default_value = (0, 0, 0, 1)
-    for n in list(sc.world.node_tree.links):
-        sc.world.node_tree.links.remove(n)
-    sc.world.node_tree.links.new(sc.world.node_tree.nodes['Background'].outputs[0],
-                                 sc.world.node_tree.nodes['World Output'].inputs[0])
-    for ob in sc.objects:
-        if ob.type == 'LIGHT':
-            ob.hide_render = True
-    sc.render.use_freestyle = False
-    sc.render.film_transparent = False
-    sc.render.filter_size = 0.0
-    try:
-        sc.eevee.taa_render_samples = 1
-    except Exception:
-        pass
-    render(sc, os.path.join(OUT, TAG + '_id.png'))
-    with open(os.path.join(OUT, TAG + '.json'), 'w', encoding='utf-8') as f:
-        json.dump({'w': sc.render.resolution_x, 'h': sc.render.resolution_y,
-                   'zones': {k: [round(v, 4) for v in z] for k, z in zones.items()},
-                   'marks': pts, 'proj': proj}, f, ensure_ascii=False)
+    id_pass(sc, list(coll('solid').objects), ID, os.path.join(OUT, TAG + '_id.png'))
+    write_meta(sc, os.path.join(OUT, TAG + '.json'), zones, pts, proj)
 
 
 main()

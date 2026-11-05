@@ -22,7 +22,7 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(HERE, 'img', 'manifold_ufh')
 BLENDER = r'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe'
 SCRIPT = os.path.join(HERE, 'tools', 'render_ufh_manifold.py')
-PX_PER_M = 1500
+PX_PER_M = 2550     # = узел водоснабжения (1500 × 1,7 с 05.11.2026)
 NS = range(2, 14)
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
@@ -32,7 +32,8 @@ PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 
 def build(n, tmp, bare=False):
     t = 'ufh_%d%s' % (n, '_bare' if bare else '')
     subprocess.run([BLENDER, '--background', '--python', SCRIPT, '--', tmp, str(n)] + (['bare'] if bare else []),
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                   env=dict(os.environ, HC_PX_PER_M=str(PX_PER_M)))
     meta_path = os.path.join(tmp, t + '.json')
     if not os.path.isfile(meta_path):
         print('  нет кадра', t)

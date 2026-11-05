@@ -31,8 +31,12 @@ OUT = os.path.join(HERE, 'img', 'manifold3d')
 BLENDER = r'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe'
 SCRIPT = os.path.join(HERE, 'tools', 'render_water_manifold.py')
 # Масштаб единый для всех кадров: столько пикселей на метр по оси коллектора (проекция X).
-# Смета ставит коллекторы ХВС, ГВС и рециркуляции на одну картинку — размеры должны совпадать
-PX_PER_M = 1500
+# Смета ставит коллекторы ХВС, ГВС и рециркуляции на одну картинку — размеры должны совпадать.
+# 2550 = 1500 × 1,7 (этап 0 перерисовки, 05.11.2026): на чётких экранах и на весь экран кадр
+# не мылится. Смета масштаб не хранит — берёт его из привязки кадра (ax), так что кадры
+# прежнего масштаба и нового читаются одинаково, но на одном листе их не смешивать:
+# перерендеривать тип целиком (--force)
+PX_PER_M = 2550
 TYPES = ('st', 'rm', 'bl')
 # цвета карты деталей — как в проходе 3 render_water_manifold.py (чёрный — фон и прочее)
 PALETTE = Image.new('P', (1, 1))
@@ -55,7 +59,8 @@ def tag(f):
 def build(typ, f, tmp):
     t = '%s_%s' % (typ, tag(f))
     subprocess.run([BLENDER, '--background', '--python', SCRIPT, '--', tmp, f[0], str(f[1]), f[2], typ],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                   env=dict(os.environ, HC_PX_PER_M=str(PX_PER_M)))
     meta_path = os.path.join(tmp, t + '.json')
     if not os.path.isfile(meta_path):
         print('  нет кадра', t)

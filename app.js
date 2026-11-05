@@ -44867,6 +44867,8 @@ const app = {
     openSchemeFullscreen: function (srcEl) {
         const src = srcEl || document.querySelector('#dynamic_scheme .scheme-svg');
         if (!src) return;
+        // ленивые кадры схем узлов — сразу все: копия берётся с разметки, а листать можно любую
+        this.wmLoadAll();
         // Все схемы, что сейчас показаны в расчёте, — для листания ‹ › и стрелками
         const list = Array.from(document.querySelectorAll('.scheme-svg-wrap > svg, .automation-scheme > svg'))
             .filter(el => !el.closest('#scheme_zoom_overlay') && el.getClientRects().length);
@@ -45451,7 +45453,9 @@ const app = {
             fs_.forEach((f, i) => { f.x = i * step[0] - f.fr.o[0]; f.y = i * step[1] - f.fr.o[1]; });
             const x0 = Math.min.apply(null, fs_.map(f => f.x)), x1 = Math.max.apply(null, fs_.map(f => f.x + f.fr.w));
             fs_.forEach(f => { f.x += gx - x0; });
-            gx += x1 - x0 + 160;
+            // промежуток между местами — 160 px при 1500 px/м: в метрах, а не в пикселях, чтобы
+            // лист не менялся с разрешением кадров (PX_PER_M сборщиков)
+            gx += x1 - x0 + 160 * Math.hypot(ax.x[0], ax.x[1]) / 1500;
         });
         const mnx = Math.min.apply(null, frames.map(f => f.x)), mny = Math.min.apply(null, frames.map(f => f.y));
         frames.forEach(f => { f.x -= mnx; f.y -= mny; });
@@ -45621,8 +45625,10 @@ const app = {
             const mk = hb ? `${f.path}|${o.hk}|${hb.join(',')}` : f.path;
             const X = ox + f.x, Y = oy + f.y, w = f.fr.w, h = f.fr.h;
             const at = `data-tag="${mk}" data-line="${f.id}" data-end="${f.end || ''}" data-kind="${o.kind}"`;
-            photos += `<image class="wm-photo" ${at} x="${X}" y="${Y}" width="${w}" height="${h}" href="${f.path}.webp?v=8"/>` +
-                (hb ? `<image class="wm-handle" x="${X + hb[0] * w}" y="${Y + hb[1] * h}" width="${hb[2] * w}" height="${hb[3] * h}" href="${f.path}_h_${o.hk}.png?v=8"/>` : '');
+            // Кадры грузятся лениво (data-href -> href в wmReveal): схема собирается при каждом
+            // пересчёте сметы, а видна, только когда до неё прокрутили
+            photos += `<image class="wm-photo" ${at} x="${X}" y="${Y}" width="${w}" height="${h}" data-href="${f.path}.webp?v=8"/>` +
+                (hb ? `<image class="wm-handle" x="${X + hb[0] * w}" y="${Y + hb[1] * h}" width="${hb[2] * w}" height="${hb[3] * h}" data-href="${f.path}_h_${o.hk}.png?v=8"/>` : '');
             glows += `<g class="wm-glows" ${at} data-miss="${missK.join(',')}" data-box="${X},${Y},${w},${h}"></g>`;
         });
         setTimeout(() => this.wmAttachGlows(), 0);
@@ -45725,8 +45731,38 @@ const app = {
         cache[key].catch(() => { delete cache[key]; });
         return cache[key];
     },
+    // Ленивая загрузка схем узлов: кадры (и маски подсветки по ним) грузятся, когда схема
+    // подходит к экрану, — первая загрузка сметы их не ждёт. Печать и полноэкранный просмотр
+    // зовут wmLoadAll: им нужны все кадры сразу.
     wmAttachGlows: function () {
-        document.querySelectorAll('svg.wm-svg g.wm-glows:not([data-done])').forEach(g => {
+        document.querySelectorAll('svg.wm-svg:not([data-lazy])').forEach(svg => {
+            svg.setAttribute('data-lazy', '1');
+            if (typeof IntersectionObserver === 'undefined') return this.wmReveal(svg);
+            const io = this._wmIO || (this._wmIO = new IntersectionObserver(es => es.forEach(e => {
+                if (!e.isIntersecting) return;
+                this._wmIO.unobserve(e.target);
+                this.wmReveal(e.target);
+            }), { rootMargin: '400px 0px' }));
+            io.observe(svg);
+        });
+    },
+    wmLoadAll: function () {
+        document.querySelectorAll('svg.wm-svg').forEach(svg => {
+            if (this._wmIO) this._wmIO.unobserve(svg);
+            this.wmReveal(svg);
+        });
+    },
+    wmReveal: function (svg) {
+        svg.querySelectorAll('image[data-href]').forEach(im => {
+            im.setAttribute('href', im.getAttribute('data-href'));
+            im.removeAttribute('data-href');
+        });
+        // маски подсветки — после кадров, когда браузер свободен (кадр уже в кэше)
+        const idle = window.requestIdleCallback || (f => setTimeout(f, 300));
+        idle(() => this.wmGlowsOf(svg));
+    },
+    wmGlowsOf: function (svg) {
+        svg.querySelectorAll('g.wm-glows:not([data-done])').forEach(g => {
             g.setAttribute('data-done', '1');
             const [x, y, w, h] = g.dataset.box.split(',');
             const miss = (g.dataset.miss || '').split(',').filter(Boolean);
@@ -63059,6 +63095,12 @@ const app = {
                 img.addEventListener('load', resolve, { once: true });
                 img.addEventListener('error', resolve, { once: true });   // нет файла — не ждём
             }));
+        });
+        // кадры схем узлов — <image> внутри svg (грузятся лениво, см. wmReveal): ждём их файлы
+        host.querySelectorAll('svg image[href]').forEach(im => {
+            const u = im.getAttribute('href');
+            if (!u || /^data:/.test(u)) return;
+            pending.push(new Promise(resolve => { const p = new Image(); p.onload = p.onerror = resolve; p.src = u; }));
         });
         if (!pending.length) return;
         await Promise.race([
@@ -104989,6 +105031,9 @@ function prepareForPrint() {
         document.body.appendChild(printBin);
     }
     printBin.innerHTML = '';
+    // Кадры схем узлов грузятся лениво (app.wmReveal): печатная копия клонирует смету —
+    // без этого в неё ушли бы схемы без картинок, до которых не прокрутили
+    if (app.wmLoadAll) app.wmLoadAll();
 
     // Retrieve selected options from app.printOptions (default to true if undefined)
     const showEq = app.printOptions ? app.printOptions.eq : true;
