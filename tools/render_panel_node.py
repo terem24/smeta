@@ -152,7 +152,7 @@ def thermo_head(c, ax):
 
 
 def union_tail(x, z, sg):
-    """Хвостовик с накидной гайкой SW 30 (паспорт: l 13,2) — вкручен в патрубок радиатора; гайка
+    """Хвостовик с накидной гайкой SW 30 (паспорт: l 13,2; фото — гайка заметно шире корпуса) — вкручен в патрубок радиатора; гайка
     у торца радиатора. Возвращает X начала корпуса клапана."""
     ni = M_NICKEL()
     ax = 'X' if sg > 0 else '-X'
@@ -178,8 +178,8 @@ def valve(x_end, z, sg, thermo):
     if ANGLED:
         L = 0.054 if thermo else 0.050
         xv = x_end + sg * (L - 0.012)                      # ось корпуса (L — от торца до оси выхода)
-        lathe('корпус к оси', [(0.0115, 0), (0.0115, abs(xv - xb))], ni, (xb, 0, z), 'X' if sg > 0 else '-X', segs=40)
-        lathe('корпус', [(0.0, -0.016), (0.0135, -0.016), (0.0140, -0.012), (0.0140, 0.012), (0.0135, 0.016),
+        lathe('корпус к оси', [(0.0100, 0), (0.0100, abs(xv - xb))], ni, (xb, 0, z), 'X' if sg > 0 else '-X', segs=40)
+        lathe('корпус', [(0.0, -0.016), (0.0115, -0.016), (0.0122, -0.012), (0.0122, 0.012), (0.0115, 0.016),
                          (0.0, 0.016)], ni, (xv, 0, z), 'Y', segs=40)
         out = euro_thread((xv, 0.016, z), 'Y')
         stem_ax, stem_c = '-Y', (xv, -0.016, z)
@@ -187,9 +187,9 @@ def valve(x_end, z, sg, thermo):
         L = 0.054 if thermo else 0.067
         xv = xb + sg * (L - 0.021) * 0.5
         xe = x_end + sg * L
-        lathe('корпус', [(0.0120, 0), (0.0135, 0.004), (0.0135, abs(xe - xb) - 0.004), (0.0120, abs(xe - xb))],
+        lathe('корпус', [(0.0100, 0), (0.0112, 0.004), (0.0112, abs(xe - xb) - 0.004), (0.0100, abs(xe - xb))],
               ni, (xb, 0, z), 'X' if sg > 0 else '-X', segs=40)
-        lathe('прилив штока', [(0.0130, 0), (0.0130, 0.012)], ni, (xv, 0, z), 'Z', segs=40)
+        lathe('прилив штока', [(0.0110, 0), (0.0110, 0.012)], ni, (xv, 0, z), 'Z', segs=40)
         out = euro_thread((xe, 0, z), 'X' if sg > 0 else '-X')
         stem_ax, stem_c = 'Z', (xv, 0, z + 0.012)
     d = {'Z': Vector((0, 0, 1)), '-Y': Vector((0, -1, 0))}[stem_ax]
@@ -231,8 +231,16 @@ def pipe_run(p0, sup, sg):
         yc = YW - 0.004
         pts = [(x, y0 - 0.004, z0), (x, yc, z0)]
         arc = [(x, yc + R * math.sin(t), z0 - R + R * math.cos(t)) for t in [k * math.pi / 2 / 14 for k in range(1, 15)]]
+        tail = [(x, yc + R, -0.06)]
+        if sup:
+            # подача спускается в штробе мимо клапана обратки: та же вертикаль занята, поэтому выше
+            # нижнего клапана — S-отвод наружу на 45 мм на высоте 160 мм (радиус ~115 мм, больше 5D) до
+            # того, как обратка уходит в стену вниз; дальше вниз параллельно ей
+            zs, dx, h = Z_BOT + 0.100, sg * 0.045, 0.160
+            s_bend = [(x + dx * (1 - math.cos(math.pi * k / 12)) / 2, yc + R, zs - h * k / 12) for k in range(13)]
+            tail = s_bend + [(x + dx, yc + R, -0.06)]
         part('tube:' + key)
-        tube('труба 16', pts + arc + [(x, yc + R, -0.06)], 0.008, pm)
+        tube('труба 16', pts + arc + tail, 0.008, pm)
         part('fix:' + key)
         pipe_fixator90((x, yc, z0 - R), (0, 0, 1), (0, 1, 0), R)
         ANCH['fix:' + key] = (x, yc + R * math.sin(math.pi / 4), z0 - R + R * math.cos(math.pi / 4))

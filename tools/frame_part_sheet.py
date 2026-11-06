@@ -38,6 +38,13 @@ PHOTOS = {
               'nip': ('Ниппель', ['SFT-0004-003434']),
               'union': ('Сгон прямой', ['SFT-0045-000034']),
               'ball': ('Кран шаровой с американкой', ['SVB-1007-000020'])},
+    'panel': {'rad': ('Радиатор ROMMER Compact (стальной панельный)', ['RRS-2020-115080']),
+              'head': ('Термоголовка SHT-0001-003015', ['SHT-0001-003015']),
+              'node': ('Клапан термостатический под евроконус', ['SVT-0001-100015', 'SVT-0002-100015']),
+              'lock': ('Клапан запорно-балансировочный под евроконус', ['SVL-1196-000015', 'SVL-1166-000015']),
+              'ek': ('Евроконус 16x2.2', ['SFC-0020-001622']),
+              'fix': ('Фиксатор 90° SFA-0029', ['SFA-0029-000016']),
+              'sleeve': ('Защитные втулки', ['SFA-0035-200016', 'SFA-0035-100016'])},
     'radnode': {'rad': ('Радиатор STOUT Space 500, нижнее подключение', ['SRB-0320-050011']),
                 'head': ('Термоголовка SHT-0001-003015', ['SHT-0001-003015']),
                 'node': ('Узел нижнего подключения SVH', ['SVH-0004-000020', 'SVH-0002-000020']),
@@ -79,7 +86,7 @@ def main():
     kind = os.path.splitext(os.path.basename(idx_path))[0]
     with open(os.path.join(ROOT, idx_path), encoding='utf-8') as fh:
         fr = json.load(fh)[key]
-    prefix = {'rad': 'rad_', 'ufh': 'ufh_', 'radnode': 'radnode_'}.get(kind, '')
+    prefix = {'rad': 'rad_', 'ufh': 'ufh_', 'radnode': 'radnode_', 'panel': 'panel_'}.get(kind, '')
     if kind.startswith('manifold3d_'):               # водоснабжение: кадры <тип>_<ключ>
         prefix, kind = kind[-2:] + '_', 'water'
     frame = Image.open(os.path.join(ROOT, os.path.dirname(idx_path), prefix + key + '.webp')).convert('RGBA')
