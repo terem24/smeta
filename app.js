@@ -45972,7 +45972,8 @@ const app = {
             const coils = new Set([].concat(...this.UFH_PIPES.map(p => p.coils)));
             return Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr =>
                 /_ufh(#\d+)?$|^ufh_transit/.test(key(tr)) || (all.indexOf(tr) >= 0 && /труба/i.test(nm(tr)) && !/втулк/i.test(nm(tr))) ||
-                coils.has(key(tr).replace(/#\d+$/, '')));
+                // Бухты из «Трубы: бухты по всей смете» стоят под ключом <артикул>_pool (с #N при склейке)
+                coils.has(key(tr).replace(/#\d+$/, '').replace(/_pool$/, '')));
         }
         const re = this.UFH_LAB_RE[pk];
         return re ? all.filter(tr => re.test(nm(tr)) && !/^Коллектор/i.test(nm(tr))) : [];
