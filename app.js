@@ -16801,7 +16801,7 @@ const app = {
                    <div class="lk-setting">
                        <div class="lk-setting-text">
                            <b>${isPro ? 'Тариф Профи активен' : 'Базовый тариф'}</b>
-                           <span>${isPro ? statusSub : 'Расчёт, смета, работы и выгрузка КП доступны полностью'}</span>
+                           <span>${isPro ? statusSub : 'Расчёт, смета, работы и выгрузка КП доступны полностью. Если не заходить ' + this.inactivityDays().warn + ' дн. и не сохранять смет, придёт предупреждение, на ' + this.inactivityDays().freeze + '-й день доступ приостановится, а ещё через ' + this.inactivityDays().delete + ' дн. аккаунт удалится. Профи этот отсчёт останавливает.'}</span>
                        </div>
                        <button type="button" class="lk-btn-sm" onclick="app.closeProfileModal(); app.showModal('pro');">${isPro ? 'Продлить подписку' : 'Оформить Профи'}</button>
                    </div>
