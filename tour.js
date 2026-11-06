@@ -404,7 +404,7 @@ const Tour = {
                 // Только название позиции: в строке есть ещё подсказка «i» с длинным текстом
                 // («клапан», «насос» и т. п.), и поиск по всей строке принимал радиатор за не-радиатор
                 const nm = tr && tr.querySelector('.col-name');
-                if (tr && test((nm || tr).textContent || '')) return { tr: tr, btn: b };
+                if (tr && test((nm || tr).textContent || '', tr)) return { tr: tr, btn: b };
             }
         } catch (e) { }
         return null;
@@ -419,7 +419,31 @@ const Tour = {
     // радиаторов, и стрелка уводила в его окно замены. Нет такой — любая строка со словом.
     radRow: function () {
         return this.swapRow(t => /^\s*радиатор/i.test(t)) ||
-            this.swapRow(t => this.RAD_RE.test(t) && !this.RAD_NOT.test(t));
+            this.swapRow(t => this.RAD_RE.test(t) && !this.RAD_NOT.test(t)) ||
+            // В названии нет слова «радиатор»: «Стальной панельный Ventil (Тип 22), 1100 мм (нижнее
+            // подключение)», «Space 11 секций». Тогда по артикулу из каталога приборов, а если
+            // и его не нашли — по типу прибора в названии.
+            this.swapRow((t, tr) => {
+                const sku = ((tr && tr.textContent) || '').match(/[A-Z]{3}-\d{4}-\d{6}/);
+                return !!sku && this.isRadSku(sku[0]);
+            }) ||
+            this.swapRow(t => this.RAD_KIND.test(t) && !this.RAD_NOT.test(t));
+    },
+
+    RAD_KIND: /панельн|секционн|биметалл|ventil|compact|space|profil/i,
+
+    // Артикул из каталога приборов отопления (и серий замены, и ROMMER-аналогов)
+    isRadSku: function (sku) {
+        try {
+            const ids = this._radSkus || (this._radSkus = (() => {
+                const out = new Set();
+                const add = it => { if (it && it.id) out.add(it.id); if (it && it.rommer && it.rommer.id) out.add(it.rommer.id); };
+                (catalog.rads || []).forEach(add);
+                try { app._getSecRadSeries().forEach(x => (x.arr || []).forEach(add)); } catch (e) { }
+                return out;
+            })());
+            return ids.has(sku);
+        } catch (e) { return false; }
     },
 
     // Радиатора в смете не видно — любая строка, которую можно заменить: подсветка на строке
