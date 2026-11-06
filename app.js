@@ -46680,6 +46680,13 @@ const app = {
         if (pk.indexOf('mf:') === 0) return all.filter(tr => /^Коллектор радиаторный/i.test(nm(tr)));
         if (pk === 'node') return all.filter(tr => /_rad_node(#\d+)?$/.test(String(tr.dataset.rk || '').split('|')[2] || ''));
         const re = this.RAD_LAB_RE[pk];
+        if (pk === 'tube') {
+            // Трубу лучей смета склеивает в «5.5. Трубы: бухты по всей смете» (ключ <артикул>_pool): там она не в
+            // разделе 3 и имя у строки другое. Берём по ключу: строки «…_rad» и бухты изолированной трубы SPI-…_pool.
+            const key = tr => String(tr.dataset.rk || '').split('|')[2] || '';
+            return Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr =>
+                (all.indexOf(tr) >= 0 && re.test(nm(tr))) || /_rad(#\d+)?$/.test(key(tr)) || /^SPI-\d+-\d+_pool(#\d+)?$/.test(key(tr)));
+        }
         return re ? all.filter(tr => re.test(nm(tr))) : [];
     },
     renderRadManifoldSheet: function () {
