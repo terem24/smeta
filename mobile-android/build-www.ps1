@@ -28,14 +28,12 @@ $files = @(
     'oferta.html',
     'privacy-policy.html',
 
-    'app.js',
     'catalog.js',
     'cities_geo.js',
     'cookie-consent.js',
     'dist_prices.js',
     'el_tariffs.js',
     'gas_tariffs.js',
-    'gamification.js',
     'idle_hint.js',
     'session_track.js',
     'install_app.js',
@@ -85,7 +83,6 @@ $files = @(
     'project_plans.js',
     'project_scheme.js',
     'project_sheets.js',
-    'project_ufh_manifold.js',
 
     'style.css',
     'manifest.json'
@@ -111,6 +108,66 @@ if ($missing.Count -gt 0) {
 foreach ($d in @('fonts', 'vendor')) {
     $p = Join-Path $src $d
     if (Test-Path $p) { Copy-Item $p -Destination $dst -Recurse }
+}
+
+# --- Файлы, которые страницы подключают сами ----------------------------------
+# Список выше ручной и отстаёт от сайта: с 06.11.2026 index.html грузит app.min.js и
+# ещё восемь модулей (hydro_*, water_hydro, kp_outcome, avatars, probe, assembly_check),
+# которых в списке не было, и собранное приложение открывалось бы без калькулятора.
+# Поэтому всё локальное .js/.css, на что страницы ссылаются через src/href, добавляем
+# само, если его ещё нет. Новый модуль на сайте больше не требует правки этого скрипта.
+
+$autoCopied = @()
+foreach ($page in @('index.html', 'invoice.html', 'plan_editor.html', 'oferta.html', 'privacy-policy.html')) {
+    $pagePath = Join-Path $src $page
+    if (-not (Test-Path $pagePath)) { continue }
+    $pageText = Get-Content $pagePath -Raw -Encoding UTF8
+    foreach ($m in [regex]::Matches($pageText, '(?:src|href)="/?([A-Za-z0-9_./-]+\.(?:js|css))(?:\?[^"]*)?"')) {
+        $rel = $m.Groups[1].Value
+        if ($rel.StartsWith('/')) { continue }
+        $from = Join-Path $src $rel
+        $to = Join-Path $dst $rel
+        if ((Test-Path $from) -and -not (Test-Path $to)) {
+            $toDir = Split-Path -Parent $to
+            if (-not (Test-Path $toDir)) { New-Item -ItemType Directory -Path $toDir | Out-Null }
+            Copy-Item $from -Destination $to
+            $autoCopied += $rel
+        }
+    }
+}
+# Второй проход: часть модулей и стилей подгружается из кода по имени (список
+# распознавания, стиль КП и т.п.), а не тегом в разметке. Ищем такие имена в уже
+# скопированных .js и .html и добавляем файлы из корня сайта; повторяем, пока
+# находятся новые (подгруженный модуль сам может подгружать следующий).
+# app.js внутрь не кладём: он нужен только как исходник для app.min.js (8 МБ).
+# sw.js тоже не нужен: в приложении свои файлы лежат внутри APK, Service Worker только мешал бы обновлениям.
+$skipNames = @('app.js', 'sw.js')
+$q = [string][char]39
+$nameRx = '["' + $q + ']([A-Za-z0-9_-]+\.(?:js|css))(?:\?[^"' + $q + ']*)?["' + $q + ']'
+for ($pass = 1; $pass -le 4; $pass++) {
+    $addedNow = 0
+    $textFiles = Get-ChildItem -Path $dst -Recurse -File |
+                 Where-Object { $_.Extension -in '.js', '.html' -and $_.FullName -notmatch '[\/](vendor|fonts)[\/]' }
+    foreach ($tf in $textFiles) {
+        $body = [System.IO.File]::ReadAllText($tf.FullName, [System.Text.UTF8Encoding]::new($false))
+        foreach ($m in [regex]::Matches($body, $nameRx)) {
+            $rel = $m.Groups[1].Value
+            if ($skipNames -contains $rel) { continue }
+            $from = Join-Path $src $rel
+            $to = Join-Path $dst $rel
+            if ((Test-Path $from) -and -not (Test-Path $to)) {
+                Copy-Item $from -Destination $to
+                $autoCopied += $rel
+                $addedNow++
+            }
+        }
+    }
+    if ($addedNow -eq 0) { break }
+}
+
+if ($autoCopied.Count -gt 0) {
+    Write-Host "Добавлено автоматически (страницы подключают, в списке не было): $($autoCopied.Count)" -ForegroundColor Green
+    $autoCopied | Sort-Object -Unique | ForEach-Object { Write-Host "  $_" -ForegroundColor Green }
 }
 
 # --- Мелкая графика интерфейса --------------------------------------------

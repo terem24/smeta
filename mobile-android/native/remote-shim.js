@@ -10,6 +10,7 @@
     var remotePatterns = [
         /^\/?price_index\.json/,
         /^\/?price_extra\.json/,
+        /^\/?proxy_status\.json/,
         /^\/?img\//,
         /^\/?models\//,
         /\.php(\?|$)/
