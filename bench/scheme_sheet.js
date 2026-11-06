@@ -36,7 +36,9 @@ const fails = {};
 const fail = (sheet, what) => { bad++; (fails[what] = fails[what] || []).push(sheet); if (VERB) console.log('  ✗ ' + sheet + ': ' + what); };
 
 const rd = f => JSON.parse(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'));
-const IDX = { st: rd('img/manifold3d/manifold3d_st.json'), rm: rd('img/manifold3d/manifold3d_rm.json'),
+// индексы новых узлов (коллектор радиаторов, подключение радиатора) — пока кадров нет, их листы пропускаются
+const rdOpt = f => fs.existsSync(path.join(__dirname, '..', f)) ? rd(f) : null;
+const IDX = { rad: rdOpt('img/manifold_rad/rad.json'), radnode: rdOpt('img/rad_node/radnode.json'), st: rd('img/manifold3d/manifold3d_st.json'), rm: rd('img/manifold3d/manifold3d_rm.json'),
     bl: rd('img/manifold3d/manifold3d_bl.json'), ufh: rd('img/manifold_ufh/ufh.json') };
 
 // ── разбор листа ─────────────────────────────────────────────────────────
@@ -168,7 +170,48 @@ function ufhSheet(list) {
         places: frames.map(f => ({ name: f.m.lbl, rows: [`Коллектор — ${f.m.loops} выходов`, 'STOUT SMS-0907, полностью укомплектован'] })) };
     return { o, orphan };
 }
+// Листы на гребёнках из двух коллекторов (тёплый пол — ufhSheet; радиаторы — то же устройство)
+function radSheet(list) {
+    if (!IDX.rad) return undefined;
+    const frames = list.map((k, i) => ({ id: 'm' + i, at: i, loops: parseInt(k), fr: IDX.rad[k], path: 'img/manifold_rad/rad_' + k }));
+    if (frames.some(f => !f.fr)) return null;
+    const { iw, ih } = app.wmPlaceFrames(frames, frames.map(f => f.at), [0, 0, 0]);
+    const zonesOf = app.wmZonesOf(frames, iw, ih, z => String(z).split(':')[0]);
+    frames.forEach(f => (zonesOf.mf || []).forEach(q => { if (q.line === f.id) (zonesOf['mf:' + f.id] = zonesOf['mf:' + f.id] || []).push(q); }));
+    const T = { ek: ['Евроконус', '16x2.2'], tube: ['Лучи к радиаторам', '16x2.2 в теплоизоляции'], node: ['Подвод к коллектору', 'ниппель, угольник, переходник'] };
+    const items = frames.map(f => 'mf:' + f.id).concat(Object.keys(T)).map(key => {
+        const zs = zonesOf[key] || [];
+        if (!zs.length) return null;
+        const f = frames.find(x => 'mf:' + x.id === key);
+        const lines = f ? [`Коллектор радиаторов — ${f.loops} выходов (№ ${f.at + 1})`, 'балансировочные и термоклапаны, краны'] : T[key];
+        return { pk: key, rows: [], miss: [], ok: true, off: false, lines, tail: '', zs, mx: zs.reduce((a, q) => a + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
+    }).filter(Boolean);
+    const orphan = Object.keys(zonesOf).filter(pk => !/^mf/.test(pk) && !T[pk]);
+    return { o: { kind: 'rad', frames, items, iw, ih, spec: frames.map(f => f.id).join(','), hk: null, title: 'Коллекторы', subtitle: 'Радиаторы',
+        places: frames.map(f => ({ name: 'Коллектор № ' + (f.at + 1), rows: ['Коллектор — ' + f.loops + ' выходов', 'STOUT SMS-0912, в сборе'] })) }, orphan };
+}
+function radNodeSheet(v) {
+    if (!IDX.radnode) return undefined;
+    const fr = IDX.radnode[v];
+    if (!fr) return null;
+    const frames = [{ id: 'r0', at: 0, fr, path: 'img/rad_node/radnode_' + v }];
+    const { iw, ih } = app.wmPlaceFrames(frames, [0], [0, 0, 0]);
+    const zonesOf = app.wmZonesOf(frames, iw, ih, z => { const k = String(z).split(':')[0]; return { rad: 'mf', sleeve: 'fix' }[k] || k; });
+    (zonesOf.mf || []).forEach(q => (zonesOf['mf:r0'] = zonesOf['mf:r0'] || []).push(q));
+    const T = { 'mf:r0': ['Радиатор STOUT Space 500', 'нижнее подключение справа'], head: ['Термостатическая головка', 'на встроенный клапан, M30x1,5'],
+        node: ['Узел нижнего подключения', 'угловой, трубы из стены'], ek: ['Евроконус', '16x2.2'], tube: ['Подводка к радиатору', 'подача и обратка'],
+        fix: ['Выход трубы из стены', 'фиксатор 90°, защитные втулки'], bracket: ['Кронштейны', 'настенные, регулируемые'] };
+    const items = Object.keys(T).map(key => {
+        const zs = zonesOf[key] || [];
+        if (!zs.length) return null;
+        return { pk: key, rows: [], miss: [], ok: true, off: false, lines: T[key], tail: '', zs, mx: zs.reduce((a, q) => a + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
+    }).filter(Boolean);
+    const orphan = Object.keys(zonesOf).filter(pk => pk !== 'mf' && !T[pk]);
+    return { o: { kind: 'radnode', frames, items, iw, ih, spec: 'r0', hk: null, title: 'Подключение радиатора', subtitle: 'Обвязка прибора',
+        places: [{ name: 'Нижнее подключение', rows: ['Узел SVH', 'термоголовка SHT-0001'] }] }, orphan };
+}
 function run(name, r) {
+    if (r === undefined) return;                 // кадров этого узла ещё нет — лист не проверяем
     if (!r) { fail(name, 'нет кадра в индексе'); return; }
     r.orphan.forEach(p => fail(name, `деталь кадра без подписи (${p})`));
     const svg = app.wmSheet(r.o);
@@ -192,6 +235,13 @@ for (let n = 2; n <= 13; n++) {
     run(`ТП ${n} + ${Math.max(2, 15 - n)}`, ufhSheet([String(n), String(Math.max(2, 15 - n))]));
 }
 
+for (let n = 2; n <= 13; n++) {
+    run(`радиаторы ${n}`, radSheet([String(n)]));
+    run(`радиаторы ${n} без подвода`, radSheet([n + '_bare']));
+    run(`радиаторы ${n} + ${Math.max(2, 15 - n)}`, radSheet([String(n), String(Math.max(2, 15 - n))]));
+}
+['space_angled', 'space_straight', 'space_angled_l', 'space_straight_l'].forEach(v => run('подключение ' + v, radNodeSheet(v)));
+
 // ── 7: подписи находят строки сметы ──────────────────────────────────────
 console.log('Подписи и строки сметы на типовых объектах');
 const zone = (name, fx) => ({ id: name, name, dist: 8, fixtures: Object.assign({ toilet: 0, basin: 0, shower: 0, bath: 0, wash: 0, dish: 0, bidet: 0 }, fx) });
@@ -200,7 +250,9 @@ const OBJ = {
     'STOUT, ХВС+ГВС+рециркуляция, узел ввода, ТП 2 этажа': { area: 180, floors: 2, systems: ['rad', 'tp'], tp1: 40, tp2: 30, water: true, recirc: true, waterInput: true, waterZones: Z3 },
     'ROMMER, без узла ввода, ТП 1 этаж': { area: 140, floors: 1, systems: ['rad', 'tp'], tp1: 60, water: true, brandMode: 'rommer', waterZones: Z3.slice(0, 2) },
     'Только ХВС+ГВС, 1 санузел': { area: 100, floors: 1, systems: ['rad'], water: true, waterInput: true, waterZones: [zone('С/у', { toilet: 1, basin: 1, shower: 1 })] },
-    'ТП, узел подмеса на гребёнке': { area: 160, floors: 2, systems: ['rad', 'tp'], tp1: 8, tp2: 30, ufhMixType: 'std' }
+    'ТП, узел подмеса на гребёнке': { area: 160, floors: 2, systems: ['rad', 'tp'], tp1: 8, tp2: 30, ufhMixType: 'std' },
+    'Радиаторы Space на коллекторе, 120 м²': { area: 120, floors: 1, systems: ['rad'] },
+    'Радиаторы Space, узел прямой (из пола)': { area: 120, floors: 1, systems: ['rad'], connectionType: 'straight' }
 };
 const nm = it => String(it.name || '').split('\n')[0].trim();
 for (const [title, patch] of Object.entries(OBJ)) {
@@ -241,6 +293,16 @@ for (const [title, patch] of Object.entries(OBJ)) {
         });
         if (!eq.some(it => /_ufh(#\d+)?$|^ufh_transit/.test(String(it.originalId || it.id || '')) || (/тёплый пол|теплый пол|^4\./i.test(secOf(it)) && /труба/i.test(nm(it)))))
             miss.push('ТП: труба петель');
+    }
+    // коллектор радиаторов SMS-0912: подписи листа — RAD_LAB_RE в разделе 3, подвод — строки «…_rad_node»
+    const sec3 = eq.filter(it => /^3\./.test(secOf(it)));
+    if (sec3.some(it => /^SMS-0912/i.test(String(it.originalId || '')) && /^SMS-0912/i.test(String(it.displaySku || it.id)))) {
+        Object.keys(app.RAD_LAB_RE).forEach(pk => { if (!sec3.some(it => app.RAD_LAB_RE[pk].test(nm(it)))) miss.push('коллектор радиаторов: ' + pk); });
+        if (!sec3.some(it => /^Коллектор радиаторный/i.test(nm(it)))) miss.push('коллектор радиаторов: сам коллектор');
+    }
+    // подключение радиатора Space (нижнее) с узлом SVH-0002/0004 — подписи RADNODE_LAB_RE
+    if (sec3.some(it => /^SRB-032[01]/i.test(String(it.displaySku || it.id))) && sec3.some(it => /^SVH-000[24]/i.test(String(it.displaySku || it.id)))) {
+        Object.keys(app.RADNODE_LAB_RE).forEach(pk => { if (!sec3.some(it => app.RADNODE_LAB_RE[pk].test(nm(it)))) miss.push('подключение радиатора: ' + pk); });
     }
     if (miss.length) miss.forEach(m => fail(title, 'нет строки сметы: ' + m));
     else console.log('  ✓ ' + title);
