@@ -45653,7 +45653,7 @@ const app = {
             const at = `data-tag="${mk}" data-line="${f.id}" data-end="${f.end || ''}" data-kind="${o.kind}"`;
             // Кадры грузятся лениво (data-href -> href в wmReveal): схема собирается при каждом
             // пересчёте сметы, а видна, только когда до неё прокрутили
-            photos += `<image class="wm-photo" ${at} x="${X}" y="${Y}" width="${w}" height="${h}" data-href="${f.path}.webp?v=9"/>` +
+            photos += `<image class="wm-photo" ${at} x="${X}" y="${Y}" width="${w}" height="${h}" data-href="${f.path}.webp?v=10"/>` +
                 (hb ? `<image class="wm-handle" x="${X + hb[0] * w}" y="${Y + hb[1] * h}" width="${hb[2] * w}" height="${hb[3] * h}" data-href="${f.path}_h_${o.hk}.png?v=9"/>` : '');
             glows += `<g class="wm-glows" ${at} data-miss="${missK.join(',')}" data-box="${X},${Y},${w},${h}"></g>`;
         });
@@ -45715,7 +45715,7 @@ const app = {
         if (cache[key]) return cache[key];
         const [tag, hk, hbox] = key.split('|');
         const load = u => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = u; });
-        cache[key] = Promise.all([load(tag + '.webp?v=9'), load(tag + '_id.png?v=9'),
+        cache[key] = Promise.all([load(tag + '.webp?v=10'), load(tag + '_id.png?v=10'),
             hk ? load(`${tag}_h_${hk}.png?v=9`) : null]).then(([ph, id, hi]) => {
             const w = id.naturalWidth, h = id.naturalHeight;
             const cv = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
@@ -46209,7 +46209,7 @@ const app = {
     radNodeIndex: function () {
         if (this._rnIdx !== undefined) return this._rnIdx;
         this._rnIdx = null;
-        fetch(this.RADNODE_DIR + 'radnode.json?v=1')
+        fetch(this.RADNODE_DIR + 'radnode.json?v=2')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._rnIdx = j || {}; if (Object.keys(this._rnIdx).length) this.render(); });
@@ -46771,7 +46771,7 @@ const app = {
     radIndex: function () {
         if (this._radIdx !== undefined) return this._radIdx;
         this._radIdx = null;
-        fetch(this.RAD_DIR + 'rad.json?v=1')
+        fetch(this.RAD_DIR + 'rad.json?v=2')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._radIdx = j || {}; if (Object.keys(this._radIdx).length) this.render(); });
