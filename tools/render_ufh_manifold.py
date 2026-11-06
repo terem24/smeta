@@ -123,7 +123,7 @@ def outlet_down(x, y, z, used):
             t = k / 12
             c = (1 - math.cos(math.pi * t)) / 2
             pts.append((x + (xx - x) * c, y * (1 - c), za + (zb_ - za) * t))
-    R_ = 0.036
+    R_ = 0.078      # радиус поворота по оси трубы: 5D трубы 16 (паспорт SFA-0029: R 70 по желобу)
     zc = ZF + R_
     pts.append((xx, 0.0, zc))
     arc = [(xx, -R_ + R_ * math.cos(t), zc - R_ * math.sin(t)) for t in [k * math.pi / 2 / 14 for k in range(1, 15)]]
@@ -138,14 +138,11 @@ def outlet_down(x, y, z, used):
     part('tubeb:' + sfx)
     tube('труба петли, отвод', pts[nv - 1:], 0.008, M_PLAST('pex'))
     part('fix:' + sfx)
-    farc = [(xx, -R_ + R_ * math.cos(t), zc - R_ * math.sin(t)) for t in [k * math.pi / 2 / 14 for k in range(-2, 17)]]
-    tube('фиксатор 90', farc, 0.0102, mat('black', rough=0.55))
+    # фиксатор 90° SFA-0029 — оцинкованный жёлоб по внутренней стороне поворота (паспорт,
+    # фото каталога); центр поворота — (xx, -R_, zc), дуга от вертикали (вверх) к горизонтали (к зрителю)
+    pipe_fixator90((xx, -R_, zc), (0, 1, 0), (0, 0, -1), R_)
     # точка выноски — середина дуги: рамка поворота велика, её углы пустые
     ANCH['fix:' + sfx] = (xx, -R_ + R_ * math.cos(math.pi / 4), zc - R_ * math.sin(math.pi / 4))
-    for t in (0.0, math.pi / 2):
-        lathe('обойма фиксатора', [(0.0108, 0), (0.0108, 0.006)], mat('black', rough=0.55),
-              (xx, -R_ + R_ * math.cos(t), zc - R_ * math.sin(t) + (0.003 if t == 0 else 0)),
-              'Z' if t == 0 else 'Y', segs=24)
     part('sleeve:' + sfx)
     col = 'sleeve_b' if ret else 'sleeve_r'
     lathe('втулка', [(0.0098, 0), (0.0108, 0.002), (0.0108, 0.058), (0.0098, 0.060)], mat(col, rough=0.45),

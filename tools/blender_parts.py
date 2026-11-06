@@ -716,6 +716,40 @@ def plug34(xe, sg=1, axis='X'):
           M_BRASS(), (xe + sg * 0.012, 0, 0), axis)
 
 
+def pipe_fixator90(C, u, v, R, r=0.0086, name='фиксатор 90', t0=-0.10, t1=math.pi / 2 + 0.10):
+    """Фиксатор поворота трубы 90° STOUT SFA-0029 (металл, оцинкованный; паспорт SFA-0029/0036,
+    табл. 4: для трубы 16 — L 112, H 80, h 16,5, R 70 мм; радиус изгиба 5D): гнутая
+    оцинкованная пластина-жёлоб по ВНУТРЕННЕЙ стороне поворота — труба лежит в желобе и огибает
+    его. Поворот задаётся центром C, единичными векторами u (от центра к началу дуги) и v (к
+    концу дуги), радиусом R по оси трубы; r — радиус желоба (труба 16 + зазор). Жёлоб —
+    полуцилиндр, обращённый к центру поворота, толщина пластины 0,8 мм (модификатор)."""
+    C, u, v = Vector(C), Vector(u), Vector(v)
+    b = u.cross(v).normalized()
+    bm = bmesh.new()
+    rows = []
+    nt, nf = 24, 12
+    for i in range(nt + 1):
+        t = t0 + (t1 - t0) * i / nt
+        n = u * math.cos(t) + v * math.sin(t)          # от центра поворота наружу
+        c = C + n * R
+        # профиль: полка — жёлоб (полуокружность к центру поворота) — полка; полки по 4 мм
+        prof = [(0.0, -(r + 0.004))] + [(math.cos(-math.pi / 2 + math.pi * j / nf) * r,
+                                          math.sin(-math.pi / 2 + math.pi * j / nf) * r) for j in range(nf + 1)] + [(0.0, r + 0.004)]
+        rows.append([bm.verts.new(c - n * q + b * w) for q, w in prof])
+    for a_, b_ in zip(rows, rows[1:]):
+        for j in range(len(a_) - 1):
+            bm.faces.new((a_[j], a_[j + 1], b_[j + 1], b_[j]))
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    me.materials.append(metal('zinc'))
+    me.shade_smooth()
+    ob = bpy.data.objects.new(name, me)
+    sol = ob.modifiers.new('sol', 'SOLIDIFY')
+    sol.thickness = 0.0008
+    return link(ob)
+
+
 def clamp(k, xc):
     """Хомут одновинтовой 1" с гайкой M8 (фото SAC-0020-300001): стальная оцинкованная лента
     ~20 мм на чёрной резиновой вставке (резина выступает по краям), сверху стяжка — два ушка
