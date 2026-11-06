@@ -45681,10 +45681,12 @@ const app = {
     wmLabKey: function (g, line, end, kind) {
         if (g === 'mf') return 'mf:' + line;
         if (kind === 'ufh') return { mount: 'sleeve', feed: 'node', end: 'fix' }[g] || g;
+        if (kind === 'rad') return { feed: 'node' }[g] || g;
         return g === 'end' ? 'end_' + end : g;
     },
     // Строки сметы подписи — по виду схемы
     wmKindRows: function (kind, pk, spec) {
+        if (kind === 'rad') return this.radLabRows(pk);
         return kind === 'ufh' ? this.ufhLabRows(pk, spec) : this.wmLabRows(pk, spec);
     },
     // Маски деталей кадра: по карте деталей вырезаются пиксели самого кадра — деталь потом
@@ -46555,7 +46557,98 @@ const app = {
         // Коллектор радиаторов лежит в подразделе труб («3.3. Трубы отопления»),
         // а в слитой смете — прямо в разделе «3.»; обоими исполнениями занят
         // projectNodeSheetUrls.
-        return this._renderSheetImage(this.projectNodeSheetUrls().radManifold);
+        const sheet = () => this._renderSheetImage(this.projectNodeSheetUrls().radManifold);
+        if (!this.wmPreviewOn()) return sheet();
+        const fresh = this.renderRadManifoldSheet();
+        if (!fresh) return sheet();
+        // На переходный период рядом с новой схемой остаётся прежний лист проекта-образца
+        const old = sheet();
+        return `<div class="sg-flex wm-pair">` +
+            (old ? `<div class="wm-col"><div class="wm-cap no-print">Лист проекта-образца</div>${old}</div>` : '') +
+            `<div class="wm-col"><div class="wm-cap no-print">Новая схема узла — по составу сметы</div>${fresh.html}</div></div>` + fresh.sum;
+    },
+    // Лист «Коллекторы. Радиаторы» (лучевая разводка): гребёнки STOUT SMS-0912 из сметы — кадры
+    // tools/render_ufh_manifold.py с аргументом «rad» (img/manifold_rad/, индекс rad.json). Кадр —
+    // по числу выходов артикула, с узлом подвода из «_rad_node» или без него («_bare»). Другой
+    // коллектор (ROMMER RMS-3210, регулировочные блоки) — кадров нет, остаётся прежний лист.
+    RAD_DIR: 'img/manifold_rad/',
+    radIndex: function () {
+        if (this._radIdx !== undefined) return this._radIdx;
+        this._radIdx = null;
+        fetch(this.RAD_DIR + 'rad.json?v=1')
+            .then(r => r.ok ? r.json() : {})
+            .catch(() => ({}))
+            .then(j => { this._radIdx = j || {}; if (Object.keys(this._radIdx).length) this.render(); });
+        return null;
+    },
+    // Строки сметы подписей листа радиаторного коллектора: всё в разделе 3 по названию,
+    // подвод — по ключу строки узла обвязки («…_rad_node»)
+    RAD_LAB_RE: { ek: /^Евроконус/i, tube: /^Труба.*(теплоизоляц|изоляц)/i },
+    radLabRows: function (pk) {
+        const all = Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr =>
+            /Приборы отопления|^3\./i.test(String(tr.dataset.rk || '').split('|')[1] || ''));
+        const nm = tr => ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
+        if (pk.indexOf('mf:') === 0) return all.filter(tr => /^Коллектор радиаторный/i.test(nm(tr)));
+        if (pk === 'node') return all.filter(tr => /_rad_node(#\d+)?$/.test(String(tr.dataset.rk || '').split('|')[2] || ''));
+        const re = this.RAD_LAB_RE[pk];
+        return re ? all.filter(tr => re.test(nm(tr))) : [];
+    },
+    renderRadManifoldSheet: function () {
+        // гребёнки — строки сметы с исходной позицией SMS-0912; артикул на экране — STOUT SMS-0912
+        const rows = (this.currentEquipmentList || []).filter(it => /^SMS-0912/i.test(String(it.originalId || '')));
+        if (!rows.length) return null;
+        if (rows.some(it => !/^SMS-0912/i.test(String(it.displaySku || it.id)))) return null;
+        const idx = this.radIndex();
+        if (!idx) return null;
+        const bare = !this.radLabRows('node').length;
+        const frames = [];
+        rows.forEach(it => {
+            const loops = ((catalog.manifolds_rad || []).find(m => m.id === String(it.displaySku || it.id)) || {}).loops;
+            for (let k = 0; k < Math.max(1, Math.round(it.q || 1)); k++) {
+                const n = Math.min(13, Math.max(2, loops || 2)), key = n + (bare ? '_bare' : ''), fr = idx[key];
+                if (!fr || !fr.o) { frames.push(null); return; }
+                const i = frames.length;
+                frames.push({ id: 'm' + i, at: i, loops: n, fr, path: this.RAD_DIR + 'rad_' + key });
+            }
+        });
+        if (!frames.length || frames.some(f => !f)) return null;
+        const places = frames.map(f => f.at);
+        const { iw, ih } = this.wmPlaceFrames(frames, places, [0, 0, 0]);
+        const spec = frames.map(f => f.id).join(',');
+        const vyh = this.wmVyh;
+        const nameOf = rs => rs.length ? ((rs[0].querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim() : '';
+        const zonesOf = this.wmZonesOf(frames, iw, ih, z => String(z).split(':')[0]);
+        frames.forEach(f => (zonesOf['mf'] || []).forEach(q => { if (q.line === f.id) (zonesOf['mf:' + f.id] = zonesOf['mf:' + f.id] || []).push(q); }));
+        const keys = frames.map(f => 'mf:' + f.id).concat(['ek', 'tube', 'node']);
+        const many = frames.length > 1;
+        const items = keys.map(key => {
+            const zs = (zonesOf[key] || []);
+            if (!zs.length) return null;
+            const rs = this.radLabRows(key);
+            let text;
+            if (key.indexOf('mf:') === 0) {
+                const f = frames.find(x => 'mf:' + x.id === key);
+                text = [`Коллектор радиаторов — ${f.loops} ${vyh(f.loops)}` + (many ? ` (№ ${f.at + 1})` : ''),
+                    'балансировочные и термоклапаны, краны'];
+            } else if (key === 'ek') text = ['Евроконус', (/(\d+\s*x\s*[\d.,]+)/i.exec(nameOf(rs)) || ['', '16x2.2'])[1]];
+            else if (key === 'tube') {
+                const sp = nameOf(rs).replace(/^Труба\s*/i, '').replace(/\s*\(.*\)\s*$/, '').trim();
+                text = ['Лучи к радиаторам', sp || 'в теплоизоляции'];
+            } else text = ['Подвод к коллектору', 'ниппель, угольник, переходник'];
+            const miss = rs.length ? [] : [text[0].toLowerCase()];
+            return { pk: key, rows: rs, miss, off: false, ok: !miss.length, lines: text, tail: miss.length ? 'нет в смете' : '', zs,
+                mx: zs.reduce((sum, q) => sum + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
+        }).filter(Boolean);
+        const miss = items.filter(it => !it.ok).map(it => it.lines[0].toLowerCase());
+        const sum = `<div class="sg-summary no-print">Коллекторы радиаторов: ${frames.map(f => `${f.loops} ${vyh(f.loops)}`).join('; ')}.` +
+            (miss.length ? ` <span class="sg-miss-txt">Нет в смете: ${miss.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
+            ` <span class="sg-hint">Наведите на деталь или на строку сметы — соответствие подсветится.</span></div>`;
+        const html = this.wmSheet({
+            kind: 'rad', frames, items, iw, ih, spec, hk: null, title: 'Коллекторы', subtitle: 'Радиаторы',
+            places: frames.map(f => ({ name: many ? `Коллектор № ${f.at + 1}` : 'Лучевая разводка',
+                rows: [`Коллектор — ${f.loops} ${vyh(f.loops)}`, 'STOUT SMS-0912, в сборе'] }))
+        });
+        return { html, sum };
     },
     /**
      * Обёртка листа-картинки для сметы. Лист завёрнут в <svg>, а не вставлен

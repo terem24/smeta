@@ -9,6 +9,8 @@ STOUT SMS-0907). Каждый кадр рендерит tools/render_ufh_manifol
     python tools/build_ufh_manifold.py            # недостающие кадры
     python tools/build_ufh_manifold.py --force    # все заново
     python tools/build_ufh_manifold.py 4 7        # только эти
+    python tools/build_ufh_manifold.py --rad      # коллектор радиаторов SMS-0912: img/manifold_rad/rad_<N>.webp,
+                                                  # индекс rad.json (тот же рендер с аргументом «rad»)
 """
 import json
 import os
@@ -19,7 +21,9 @@ import tempfile
 from PIL import Image
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(HERE, 'img', 'manifold_ufh')
+RAD = '--rad' in sys.argv
+KIND = 'rad' if RAD else 'ufh'
+OUT = os.path.join(HERE, 'img', 'manifold_rad' if RAD else 'manifold_ufh')
 BLENDER = r'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe'
 SCRIPT = os.path.join(HERE, 'tools', 'render_ufh_manifold.py')
 PX_PER_M = 2550     # = узел водоснабжения (1500 × 1,7 с 05.11.2026)
@@ -30,8 +34,9 @@ PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 
 
 
 def build(n, tmp, bare=False):
-    t = 'ufh_%d%s' % (n, '_bare' if bare else '')
-    subprocess.run([BLENDER, '--background', '--python', SCRIPT, '--', tmp, str(n)] + (['bare'] if bare else []),
+    t = '%s_%d%s' % (KIND, n, '_bare' if bare else '')
+    subprocess.run([BLENDER, '--background', '--python', SCRIPT, '--', tmp, str(n)] + (['bare'] if bare else [])
+                   + (['rad'] if RAD else []),
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                    env=dict(os.environ, HC_PX_PER_M=str(PX_PER_M)))
     meta_path = os.path.join(tmp, t + '.json')
@@ -41,6 +46,10 @@ def build(n, tmp, bare=False):
     with open(meta_path, encoding='utf-8') as fh:
         meta = json.load(fh)
     im = Image.open(os.path.join(tmp, t + '_solid.png')).convert('RGBA')
+    # изоляция отводов (у коллектора радиаторов) — своим проходом поверх деталей
+    sh = os.path.join(tmp, t + '_sheath.png')
+    if os.path.isfile(sh):
+        im = Image.alpha_composite(im, Image.open(sh).convert('RGBA'))
     W0, H0 = im.size
     bb = im.getchannel('A').point(lambda v: 255 if v > 8 else 0).getbbox()
     pad = 14
@@ -73,7 +82,7 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     args = [int(a) for a in sys.argv[1:] if not a.startswith('--')]
     force = '--force' in sys.argv
-    idx_path = os.path.join(OUT, 'ufh.json')
+    idx_path = os.path.join(OUT, KIND + '.json')
     index = {}
     if os.path.isfile(idx_path):
         with open(idx_path, encoding='utf-8') as fh:
@@ -82,10 +91,10 @@ def main():
     key = lambda n, b: str(n) + ('_bare' if b else '')
     todo = [(n, b) for n in NS for b in (False, True) if (not args or n in args)
             and (force or args or key(n, b) not in index
-                 or not os.path.isfile(os.path.join(OUT, 'ufh_%s.webp' % key(n, b))))]
-    tmp = tempfile.mkdtemp(prefix='ufh_')
+                 or not os.path.isfile(os.path.join(OUT, '%s_%s.webp' % (KIND, key(n, b)))))]
+    tmp = tempfile.mkdtemp(prefix=KIND + '_')
     for k, (n, b) in enumerate(todo, 1):
-        print('[%d/%d] ufh_%s' % (k, len(todo), key(n, b)), flush=True)
+        print('[%d/%d] %s_%s' % (k, len(todo), KIND, key(n, b)), flush=True)
         r = build(n, tmp, b)
         if r:
             index[key(n, b)] = r
