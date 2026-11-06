@@ -408,8 +408,9 @@ AXIS = {
 
 
 def lathe(name, prof, m, loc=(0, 0, 0), axis='Z', segs=48, sharp=35, group='solid', rot=0.0,
-          knurl=None, caps=True):
-    """Тело вращения по профилю [(r, h), ...] снизу вверх вдоль оси."""
+          knurl=None, caps=True, ribs=None):
+    """Тело вращения по профилю [(r, h), ...] снизу вверх вдоль оси. ribs = (n, глубина, h0, h1) —
+    n продольных рёбер на участке h0..h1 (пазы глубиной в долях радиуса; segs кратно 4n)."""
     bm = bmesh.new()
     rings = []
     for r, h in prof:
@@ -417,6 +418,8 @@ def lathe(name, prof, m, loc=(0, 0, 0), axis='Z', segs=48, sharp=35, group='soli
         for i in range(segs):
             a = 2 * math.pi * i / segs + rot
             rr = r * (1.025 if knurl and r >= knurl and i % 2 else 1.0)
+            if ribs and ribs[2] <= h <= ribs[3] and (i % (segs // ribs[0])) >= segs // ribs[0] // 2:
+                rr = r * (1 - ribs[1])
             ring.append(bm.verts.new((rr * math.cos(a), rr * math.sin(a), h)))
         rings.append(ring)
     for a, b in zip(rings, rings[1:]):

@@ -111,7 +111,7 @@ def main():
     md = ['# Очередь рендера %s' % stamp.replace('_', ' '), '',
           'Итог: **%s**, всего %s. Вид: %s, движок: %s.' % (
               'всё прошло' if ok else 'есть ошибки', fmt(time.time() - t_all),
-              env.get('HC_LOOK', 'pbr'), env.get('HC_ENGINE', 'cycles')), '',
+              env.get('HC_LOOK', 'illus'), env.get('HC_ENGINE', 'cycles')), '',
           '| задание | итог | время | кадров | МБ (изменение) |', '|---|---|---|---|---|']
     for r in rows:
         md.append('| %s | %s | %s | %s | %s |' % (
