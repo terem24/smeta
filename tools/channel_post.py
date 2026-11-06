@@ -72,7 +72,9 @@ def tag_body(text, campaign):
 
 
 def send_photo(url, chat, path, caption, markup):
-    """sendPhoto: картинка уходит файлом из репозитория (multipart), подпись — HTML."""
+    """sendPhoto/sendVideo: картинка или видео (.mp4) уходит файлом из репозитория
+    (multipart), подпись — HTML. Метод выбирается по расширению файла."""
+    is_video = path.lower().endswith('.mp4')
     b = '----heatcalc%d' % int(datetime.datetime.now().timestamp())
     nl = b'\r\n'
     fields = [('chat_id', chat), ('caption', caption), ('parse_mode', 'HTML')]
@@ -82,14 +84,20 @@ def send_photo(url, chat, path, caption, markup):
     for k, v in fields:
         body += ('--%s' % b).encode() + nl + ('Content-Disposition: form-data; name="%s"' % k).encode() + nl + nl
         body += v.encode('utf-8') + nl
-    ctype = 'image/png' if path.lower().endswith('.png') else 'image/jpeg'
+    if is_video:
+        fields_extra = [('supports_streaming', 'true')]
+        for k, v in fields_extra:
+            body += ('--%s' % b).encode() + nl + ('Content-Disposition: form-data; name="%s"' % k).encode() + nl + nl + v.encode('utf-8') + nl
+        ctype = 'video/mp4'
+    else:
+        ctype = 'image/png' if path.lower().endswith('.png') else 'image/jpeg'
     body += ('--%s' % b).encode() + nl
-    body += ('Content-Disposition: form-data; name="photo"; filename="%s"' % os.path.basename(path)).encode() + nl
+    body += ('Content-Disposition: form-data; name="%s"; filename="%s"' % ('video' if is_video else 'photo', os.path.basename(path))).encode() + nl
     body += ('Content-Type: %s' % ctype).encode() + nl + nl + io.open(path, 'rb').read() + nl
     body += ('--%s--' % b).encode() + nl
     req = urllib.request.Request(url, body, {'Content-Type': 'multipart/form-data; boundary=' + b})
     try:
-        with urllib.request.urlopen(req, timeout=60) as r:
+        with urllib.request.urlopen(req, timeout=300) as r:
             return r.status, r.read().decode('utf-8', 'replace')
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode('utf-8', 'replace')
@@ -110,7 +118,7 @@ def send_tg(post):
     text = tag_body(post.get('body') or '', post.get('rubric') or 'post')
     img = os.path.join(ROOT, post['image']) if post.get('image') else None
     if img and os.path.exists(img) and len(text) <= 1024:
-        code, body = send_photo(api + 'sendPhoto', chat, img, text, markup)
+        code, body = send_photo(api + ('sendVideo' if img.lower().endswith('.mp4') else 'sendPhoto'), chat, img, text, markup)
     else:
         # превью ссылки выключено: карточка сайта с описанием делает пост «ботским»
         payload = {'chat_id': chat, 'text': text, 'parse_mode': 'HTML', 'link_preview_options': {'is_disabled': True}}
