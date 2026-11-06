@@ -1371,7 +1371,7 @@ const Subscription = {
                 this.graceWatch();
                 this.celebratePro({
                     emoji: '🏠', title: 'Профи на объект — ваш!',
-                    sub: 'Откройте смету и нажмите «Открыть Профи для этого объекта». ' + app.objectDays() + ' дней на правки. Оплату проверим сами — делать ничего не нужно.',
+                    sub: 'Откройте смету и нажмите «Открыть Профи для этой сметы». ' + app.objectDays() + ' дней на правки. Оплату проверим сами.',
                     cta: 'К смете'
                 });
             } else if (data.granted && data.until) {
@@ -1536,7 +1536,7 @@ const Subscription = {
                 if (Array.isArray(po) && po.length) {
                     localStorage.removeItem(this.GRACE_LS); this.graceStop(); this.syncTrialEndBanner();
                     try { app.loadProObjects(); } catch (e) { }
-                    this.celebratePro({ emoji: '🏆', title: 'Оплата подтверждена!', sub: 'Профи для одного объекта начислен. Откройте смету и в окне Профи нажмите «Открыть Профи для этого объекта». Спасибо!', cta: 'Готово' });
+                    this.celebratePro({ emoji: '🏆', title: 'Оплата подтверждена!', sub: 'Откройте смету и нажмите «Открыть Профи для этой сметы». Спасибо!', cta: 'Готово' });
                     return;
                 }
             }

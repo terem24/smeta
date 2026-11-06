@@ -8201,7 +8201,7 @@ const app = {
         try { if (typeof Subscription !== 'undefined') { const p = Subscription.planList(false).find(x => Math.round(Subscription.num(x.days)) > 0); if (p) return Math.round(Subscription.num(p.days)); } } catch (e) { }
         return 30;
     },
-    // Блок в окне тарифа: «Открыть Профи для этого объекта», если есть оплаченный расчёт,
+    // Блок в окне тарифа: «Открыть Профи для этой сметы», если есть оплаченный расчёт,
     // либо пояснение, почему Профи в этой смете закрыт (объект изменился)
     renderObjectUnlock: function () {
         const box = document.getElementById('pro_object_unlock');
@@ -8209,19 +8209,16 @@ const app = {
         const calc = this.state.calc_id ? String(this.state.calc_id) : '';
         const n = this.objectCredits();
         const st = this.objectProState();
-        const tol = Math.round(this.OBJECT_AREA_TOL * 100);
         if (st === 'changed') {
-            box.innerHTML = '<div style="font-weight:700; margin-bottom:6px;">Профи закрыт: это уже другой объект</div>' +
-                '<div style="font-size:12px; color:var(--text-sec);">Оплаченный расчёт относится к дому, который вы открыли. Площадь изменилась больше чем на ' + tol +
-                ' %, либо сменились город или этажность. Для нового объекта нужен новый расчёт.</div>';
+            box.innerHTML = '<div style="font-weight:700; margin-bottom:6px;">Это уже другой дом</div>' +
+                '<div style="font-size:12px; color:var(--text-sec);">Расчёт был оплачен для прежнего дома. Для нового нужен новый расчёт.</div>';
             box.style.display = 'block';
             return;
         }
         if (!n || !calc || st === 'open') { box.style.display = 'none'; box.innerHTML = ''; return; }
-        box.innerHTML = '<div style="font-weight:700; margin-bottom:6px;">У вас оплачено расчётов: ' + n + '</div>' +
-            '<button type="button" class="btn-subscribe" onclick="app.unlockProObject()">Открыть Профи для этого объекта (№ ' + String(calc).replace(/[<>&"]/g, '') + ')</button>' +
-            '<div style="font-size:11px; color:var(--text-sec); margin-top:6px;">Профи работает в этой смете ' + this.objectDays() + ' дней, пока объект остаётся тем же: площадь в пределах ±' + tol +
-            ' %, тот же город. На другой объект нужен новый расчёт.</div>';
+        box.innerHTML = '<div style="font-weight:700; margin-bottom:6px;">Оплачено расчётов: ' + n + '</div>' +
+            '<button type="button" class="btn-subscribe" onclick="app.unlockProObject()">Открыть Профи для этой сметы</button>' +
+            '<div style="font-size:12px; color:var(--text-sec); margin-top:6px;">' + this.objectDays() + ' дней на правки. Только для этого дома.</div>';
         box.style.display = 'block';
     },
 
@@ -9293,7 +9290,7 @@ const app = {
                 } catch (e) { console.warn('[подписка] текст преимуществ:', e); }
                 try { Subscription.syncCards(); } catch (e) { console.warn('[подписка] карточки тарифов:', e); }
             }
-            // Оплаченный «Один расчёт»: кнопка «Открыть Профи для этого объекта»
+            // Оплаченный «Один расчёт»: кнопка «Открыть Профи для этой сметы»
             this.renderObjectUnlock();
             this.loadProObjects().then(() => this.renderObjectUnlock());
             // Подпись «Вы хотели…» — по выключателю в «Оплата подписки» → «Подсказки оплаты»
