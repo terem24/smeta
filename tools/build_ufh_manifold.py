@@ -89,7 +89,7 @@ def main():
             index = json.load(fh)
     # каждый размер — в двух видах: с переходом на транзит и без него («_bare»)
     key = lambda n, b: str(n) + ('_bare' if b else '')
-    todo = [(n, b) for n in NS for b in (False, True) if (not args or n in args)
+    todo = [(n, b) for n in NS for b in ((False,) if '--nobare' in sys.argv else (False, True)) if (not args or n in args)
             and (force or args or key(n, b) not in index
                  or not os.path.isfile(os.path.join(OUT, '%s_%s.webp' % (KIND, key(n, b)))))]
     tmp = tempfile.mkdtemp(prefix=KIND + '_')

@@ -28,6 +28,16 @@ PHOTOS = {
             'fix': ('Фиксатор 90° SFA-0029', ['SFA-0029-000016']),
             'sleeve': ('Защитная втулка', ['SFA-0035-200016']),
             'node': ('Переход на транзит', [])},
+    'water': {'mf': ('Коллектор STOUT SMB 6850 / ROMMER RMB-0004 / с кранами SMB 6200', ['SMB-6850-011202', 'RMB-0004-013402', 'SMB-6200-011202']),
+              'ek': ('Евроконус 16x2.0', ['SFC-0020-001620']),
+              'clamp': ('Хомут 1"', ['SAC-0020-300001']),
+              'stud': ('Шпилька M8x100 с дюбелем', ['SAC-0020-400100']),
+              'end': ('Компенсатор гидроудара / заглушка', ['SVS-1014-000015', 'SFT-0026-000001']),
+              'fut': ('Футорка 3/4" x 1/2"', ['SFT-0029-003412']),
+              'ext': ('Удлинитель 30 мм', ['SFT-0002-003430']),
+              'nip': ('Ниппель', ['SFT-0004-003434']),
+              'union': ('Сгон прямой', ['SFT-0045-000034']),
+              'ball': ('Кран шаровой с американкой', ['SVB-1007-000020'])},
     'radnode': {'rad': ('Радиатор STOUT Space 500, нижнее подключение', ['SRB-0320-050011']),
                 'head': ('Термоголовка SHT-0001-003015', ['SHT-0001-003015']),
                 'node': ('Узел нижнего подключения SVH', ['SVH-0004-000020', 'SVH-0002-000020']),
@@ -70,6 +80,8 @@ def main():
     with open(os.path.join(ROOT, idx_path), encoding='utf-8') as fh:
         fr = json.load(fh)[key]
     prefix = {'rad': 'rad_', 'ufh': 'ufh_', 'radnode': 'radnode_'}.get(kind, '')
+    if kind.startswith('manifold3d_'):               # водоснабжение: кадры <тип>_<ключ>
+        prefix, kind = kind[-2:] + '_', 'water'
     frame = Image.open(os.path.join(ROOT, os.path.dirname(idx_path), prefix + key + '.webp')).convert('RGBA')
     W, H = frame.size
     groups = {}
