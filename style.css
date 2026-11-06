@@ -9151,6 +9151,19 @@ body.dark-mode .ai-parse-preview-check {
     background: rgba(245, 158, 11, .12); border: 1px solid rgba(245, 158, 11, .5);
     border-radius: 10px; padding: 9px 12px; font-size: 12.5px; line-height: 1.45; color: var(--text-main, #111);
 }
+body.dark-mode .bughunt-bug { background: #1E1E1E; border-color: rgba(255, 255, 255, .18); }
+body.dark-mode .bughunt-pop { background: #1E1E1E; border-color: rgba(255, 255, 255, .14); color: #F3F4F6; }
+.bughunt .bughunt-go, body.dark-mode .bughunt .bughunt-go { background: #4F46E5; color: #fff; }
+.bughunt .bughunt-go:hover { background: #4338CA; }
+.bughunt .bughunt-later { opacity: 1; color: var(--text-sec, #6b7280); }
+body.dark-mode .bughunt .bughunt-later { color: #D1D5DB; }
+.bughunt .bughunt-x { opacity: .8; }
+/* Мобильная версия: над нижней навигацией (она z-index 10000002 и закрыла бы жучка), поменьше и у самого края */
+@media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    .bughunt { left: 10px; bottom: calc(78px + env(safe-area-inset-bottom, 0px)); }
+    .bughunt-bug { width: 38px; height: 38px; font-size: 20px; opacity: .92; }
+    .bughunt-pop { bottom: 48px; width: min(300px, calc(100vw - 20px)); }
+}
 @media print { .bughunt { display: none !important; } }
 
 .feedback-modal {
