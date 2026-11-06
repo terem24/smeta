@@ -958,6 +958,7 @@ const Subscription = {
         try {
             const host = document.getElementById('trial_end_banner');
             if (!host) return;
+            if (this.objectGraceInfo()) this.graceWatch();
             const gr = this.graceInfo();
             if (gr && gr.active) {
                 this.graceWatch();
@@ -1064,6 +1065,38 @@ const Subscription = {
         return new Set((data || []).map(r => String(r.calc_id))).size;
     },
 
+    // Что Профи дал человеку за период — по его же сметам, для окна «Профи заканчивается».
+    //   objects — сколько разных объектов посчитано (сметы, разные calc_id);
+    //   hours   — сэкономленное время: ≈ MIN_SAVED_PER_OBJECT минут на объект против ручного
+    //             расчёта (подбор, спецификация, КП в Excel — около 2,5 ч, в калькуляторе ~20 мин);
+    //   works   — монтаж, заложенный в КП (works_sum последней версии каждого объекта) —
+    //             деньги монтажника, которые Профи помог посчитать и показать клиенту;
+    //   cheaper — экономия «Бюджетнее» по последней смете (offer_savings), если считалась в период;
+    //   kp      — сколько разных КП ушло клиентам.
+    MIN_SAVED_PER_OBJECT: 130,
+    proResults: async function (since) {
+        const tg = (app.state && app.state.tgUser) || {};
+        const res = { objects: 0, hours: 0, works: 0, cheaper: 0, kp: 0 };
+        if (!tg.id) return res;
+        const iso = since.toISOString();
+        const [est, kp, sav] = await Promise.all([
+            supabaseClient.from('estimates').select('created_at, works_sum, calc_id:calc_data->>calc_id')
+                .eq('user_id', tg.id).gte('created_at', iso).order('created_at', { ascending: true }).limit(1000)
+                .then(r => r.data || [], () => []),
+            this.kpCountSince(since).catch(() => 0),
+            supabaseClient.from('offer_savings').select('save_rub, computed_at').eq('user_id', tg.id).maybeSingle()
+                .then(r => r.data || null, () => null)
+        ]);
+        const byObj = {};
+        est.forEach((e, i) => { byObj[e.calc_id || ('_' + i)] = Number(e.works_sum) || 0; });   // по возрастанию — остаётся последняя версия
+        res.objects = Object.keys(byObj).length;
+        res.works = Math.round(Object.values(byObj).reduce((a, b) => a + b, 0));
+        res.hours = Math.round(res.objects * this.MIN_SAVED_PER_OBJECT / 60);
+        res.kp = kp || 0;
+        if (sav && sav.save_rub > 0 && sav.computed_at && new Date(sav.computed_at) >= since) res.cheaper = Math.round(sav.save_rub);
+        return res;
+    },
+
     trialEndCheck: async function () {
         try {
             if (typeof app !== 'undefined' && app.loadAppSettings) await app.loadAppSettings();
@@ -1079,28 +1112,104 @@ const Subscription = {
             if (document.querySelector('#custom_modal_overlay.active')) return;
             shown[info.stage] = Date.now();
             try { localStorage.setItem(this.TE_SHOWN_LS, JSON.stringify(shown)); } catch (e) { }
-            let kp = 0;
+            let stats = null;
             try {
                 const span = info.paid ? 30 : (app.trialDays ? app.trialDays() : 14);
-                // Не держим окно дольше 4 секунд из-за счётчика: без него текст тоже полный
-                kp = await Promise.race([this.kpCountSince(new Date(info.end.getTime() - span * 86400000)), new Promise(r => setTimeout(() => r(0), 4000))]);
-            } catch (e) { kp = 0; }
-            const loss = this.trialEndLosses();
-            const price = this.priceLine();
+                // Не держим окно дольше 4 секунд из-за подсчёта: без него окно тоже полное
+                stats = await Promise.race([this.proResults(new Date(info.end.getTime() - span * 86400000)), new Promise(r => setTimeout(() => r(null), 4000))]);
+            } catch (e) { stats = null; }
             const head = (info.paid ? 'Ваш Профи заканчивается ' : 'Пробный Профи заканчивается ') + info.when + '.';
-            const did = kp > 0 ? ' За это время вы отправили клиентам КП: ' + kp + '.' : '';
-            const text = head + did +
-                (loss.length ? '\n\nБез Профи пропадёт: ' + loss.join(', ') + '.' : '') +
-                '\n\nСметы и КП сохранятся в любом случае.' + (price ? '\n\n' + price : '');
-            const title = info.stage === 'last' ? (info.paid ? 'Последний день Профи' : 'Последний день пробного Профи')
-                : ((info.paid ? 'Профи заканчивается ' : 'Пробный Профи заканчивается ') + (info.days === 1 ? 'завтра' : 'через 2 дня'));
             this._nudgeBusy = true;
             try { app.logPaywall('seen', 'Конец Профи: окно ' + info.stage); } catch (e) { }
             try {
-                const go = await app.confirmChoice(text, title, info.paid ? 'Продлить Профи' : 'Оставить Профи', 'Позже');
-                if (go) app.showModal('pro', { why: head });
+                const pick = await this.endOfferModal(info, stats);
+                if (pick === 'month' || pick === 'object') {
+                    try { app.logPaywall('tariff_open', 'Конец Профи: окно ' + info.stage + ' → ' + pick); } catch (e) { }
+                    if (this._eoIds && this._eoIds[pick]) app.openPaymentModal(this._eoIds[pick]);
+                    else app.showModal('pro', { why: head });
+                } else if (pick === 'all') app.showModal('pro', { why: head });
             } finally { this._nudgeBusy = false; }
         } catch (e) { console.warn('[конец Профи] напоминание:', e); }
+    },
+
+    // Что даёт Профи — коротко, для карточек «Профи включён» и «Профи заканчивается»
+    proGains: function (max) {
+        let out = [];
+        try {
+            if (this.limitStatus().on && app.canUseWorks()) out.push('монтаж во всех КП');
+            out = out.concat(this.benefitRows(this.userAccount())
+                .filter(r => r.pro !== 'off' && r.base === 'off' && r.f.id !== 'works')
+                .map(r => this.BENEFIT_TEXT[r.f.id] || r.f.label.toLowerCase()));
+        } catch (e) { }
+        return out.slice(0, max || 4);
+    },
+
+    // ── Окно «Профи заканчивается»: коротко, с выгодой и кнопкой оплаты ──
+    // В стиле окна «Профи включён» (celebratePro): иконка, заголовок, галочки, большая кнопка.
+    // Возвращает Promise: 'month' | 'object' | 'all' | null (позже).
+    endOfferModal: function (info, stats) {
+        return new Promise(resolve => {
+            const old = document.getElementById('pro_end_win'); if (old) old.remove();
+            let month = null, one = null;
+            try {
+                const plans = this.planList(false).map(p => this.resolve(p.id)).filter(Boolean);
+                month = plans.find(r => r.months === 1 && !r.days) || null;
+                one = plans.find(r => r.days > 0) || null;
+            } catch (e) { }
+            this._eoIds = { month: month && month.id, object: one && one.id };
+            const st = stats || {};
+            // Цифры «что Профи уже дал»: только ненулевые, максимум три
+            const nums = [];
+            if (st.hours > 0) nums.push([st.hours + ' ч', 'сэкономлено']);
+            if (st.works > 0) nums.push([this.fmtRub(st.works), 'монтажа в КП']);
+            if (st.cheaper > 0) nums.push([this.fmtRub(st.cheaper), 'выгода клиенту']);
+            else if (st.kp > 0) nums.push([String(st.kp), 'КП отправлено']);
+            const gains = this.proGains(3);
+            const last = info.stage === 'last';
+            const label = last ? 'Последний день' : (info.days === 1 ? 'Остался 1 день' : 'Осталось 2 дня');
+            const title = info.paid ? 'Продлите Профи' : 'Оставьте Профи';
+            const sub = 'Действует до ' + info.when + '. Сметы и КП сохранятся в любом случае.';
+            const perDay = month && month.rub > 0 ? Math.round(month.rub / 30) : 0;
+            const priceLine = month && month.rub > 0
+                ? (month.promo && month.baseRub > month.rub ? '<s style="opacity:.55;">' + this.esc(this.fmtRub(month.baseRub)) + '</s> ' : '')
+                    + this.esc(this.fmtRub(month.rub)) + ' в месяц' + (perDay ? ' · около ' + this.esc(this.fmtRub(perDay)) + ' в день' : '')
+                : '';
+            const accent = 'var(--primary,#0A84FF)';
+            const font = '-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,sans-serif';
+            const check = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style="flex:none;"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            const hair = 'border-top:1px solid var(--border,rgba(127,127,127,.2));';
+
+            const wrap = document.createElement('div');
+            wrap.id = 'pro_end_win';
+            wrap.style.cssText = 'position:fixed;inset:0;z-index:2147483300;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);padding:16px;';
+            wrap.innerHTML = '<div role="dialog" aria-modal="true" aria-labelledby="pew_t" style="position:relative;max-width:360px;width:100%;background:var(--surface,#fff);color:var(--text-main,#1d1d1f);border-radius:22px;padding:28px 24px 14px;text-align:center;font-family:' + font + ';box-shadow:0 30px 80px rgba(0,0,0,.35);">'
+                + '<div style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:' + (last ? '#FF9F0A' : 'var(--text-sec)') + ';">' + this.esc(label) + '</div>'
+                + '<h3 id="pew_t" style="margin:6px 0 6px;font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1.15;">' + this.esc(title) + '</h3>'
+                + '<p style="margin:0 auto;max-width:280px;font-size:14px;line-height:1.4;color:var(--text-sec);">' + this.esc(sub) + '</p>'
+                + (nums.length ? '<div style="display:flex;margin:22px 0 0;padding:16px 0;' + hair + '">'
+                    + nums.map((n, i) => '<div style="flex:1;min-width:0;' + (i ? 'border-left:1px solid var(--border,rgba(127,127,127,.2));' : '') + '">'
+                        + '<div style="font-size:19px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;">' + this.esc(n[0]) + '</div>'
+                        + '<div style="font-size:11.5px;color:var(--text-sec);margin-top:2px;">' + this.esc(n[1]) + '</div></div>').join('')
+                    + '</div>' : '')
+                + (gains.length ? '<div style="text-align:left;padding:14px 4px 0;' + hair + (nums.length ? '' : 'margin-top:20px;') + '">'
+                    + gains.map(g => '<div style="display:flex;gap:10px;align-items:center;font-size:14.5px;line-height:1.3;padding:5px 0;"><span style="color:' + accent + ';display:flex;">' + check + '</span>' + this.esc(g.charAt(0).toUpperCase() + g.slice(1)) + '</div>').join('')
+                    + '</div>' : '')
+                + '<button type="button" data-a="' + (month ? 'month' : 'all') + '" style="width:100%;margin-top:20px;padding:14px;border:0;border-radius:14px;background:' + accent + ';color:#fff;font:600 16px ' + font + ';cursor:pointer;">'
+                + this.esc(info.paid ? 'Продлить Профи' : 'Оставить Профи') + '</button>'
+                + (priceLine ? '<div style="font-size:12.5px;color:var(--text-sec);margin-top:8px;">' + priceLine + '</div>' : '')
+                + (one && one.rub > 0 ? '<button type="button" data-a="object" style="display:block;width:100%;margin-top:10px;padding:8px;border:0;background:transparent;color:' + accent + ';font:500 14px ' + font + ';cursor:pointer;">Только один объект — ' + this.esc(this.fmtRub(one.rub)) + '</button>' : '')
+                + '<button type="button" data-a="later" style="display:block;width:100%;padding:8px;border:0;background:transparent;color:var(--text-sec);font:400 14px ' + font + ';cursor:pointer;">Не сейчас</button>'
+                + '</div>';
+            document.body.appendChild(wrap);
+            const done = v => { document.removeEventListener('keydown', onKey); wrap.remove(); resolve(v); };
+            const onKey = e => { if (e.key === 'Escape') done(null); };
+            document.addEventListener('keydown', onKey);
+            wrap.addEventListener('click', e => {
+                if (e.target === wrap) return done(null);
+                const b = e.target.closest('[data-a]');
+                if (b) done(b.getAttribute('data-a') === 'later' ? null : b.getAttribute('data-a'));
+            });
+        });
     },
 
     // ── После сохранения сметы: выгода в рублях ──────────────────────────
@@ -1257,7 +1366,18 @@ const Subscription = {
                     data.tgSent = !!(nt && nt.ok);
                 } catch (e) { data.tgSent = false; }
             }
-            if (data.granted && data.until) {
+            if (data.granted && data.object) {
+                // «Один расчёт»: кредит на объект уже лежит в pro_objects, срок аккаунта не трогали —
+                // никаких «Профи заканчивается». Сверка с базой ловит только отказ.
+                try { localStorage.setItem(this.GRACE_LS, JSON.stringify({ object: true, id: data.id, plan: info.plan || '', at: new Date(Date.now() - 60000).toISOString() })); } catch (e) { }
+                try { app._proObjects = undefined; app._proObjectsBusy = false; await app.loadProObjects(); } catch (e) { }
+                this.graceWatch();
+                this.celebratePro({
+                    emoji: '🏠', title: 'Профи на объект — ваш!',
+                    sub: 'Откройте смету и нажмите «Открыть Профи для этого объекта». ' + app.objectDays() + ' дней на правки. Оплату проверим сами — делать ничего не нужно.',
+                    cta: 'К смете'
+                });
+            } else if (data.granted && data.until) {
                 try { localStorage.setItem(this.GRACE_LS, JSON.stringify({ until: data.until, plan: info.plan || '', at: new Date(Date.now() - 60000).toISOString() })); } catch (e) { }
                 const st = app.state;
                 st.demoUsed = true;
@@ -1283,15 +1403,7 @@ const Subscription = {
     celebratePro: function (opts) {
         opts = opts || {};
         const old = document.getElementById('pro_win'); if (old) old.remove();
-        let chips = [];
-        if (opts.chips) {
-            try {
-                if (this.limitStatus().on && app.canUseWorks()) chips.push('монтаж во всех КП');
-                chips = chips.concat(this.benefitRows(this.userAccount())
-                    .filter(r => r.pro !== 'off' && r.base === 'off' && r.f.id !== 'works')
-                    .map(r => this.BENEFIT_TEXT[r.f.id] || r.f.label.toLowerCase())).slice(0, 4);
-            } catch (e) { chips = []; }
-        }
+        const chips = opts.chips ? this.proGains(4) : [];
         const wrap = document.createElement('div');
         wrap.id = 'pro_win';
         wrap.style.cssText = 'position:fixed;inset:0;z-index:2147483300;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.6);padding:16px;';
@@ -1374,7 +1486,7 @@ const Subscription = {
     graceWatch: function () {
         if (this._graceTimer) return;
         const gr = this.graceInfo();
-        if (!gr || !gr.active) return;
+        if ((!gr || !gr.active) && !this.objectGraceInfo()) return;
         const onVis = () => { if (document.visibilityState === 'visible') this.graceCheck(); };
         this._graceVis = onVis;
         document.addEventListener('visibilitychange', onVis);
@@ -1388,6 +1500,24 @@ const Subscription = {
     },
     graceCheck: async function () {
         try {
+            // «Один расчёт» с кредитом авансом: смотрим на сам кредит (заявки человеку не видны).
+            // Пропал или закрыт — оплату отклонили; granted_by сменился — подтвердили.
+            const og = this.objectGraceInfo();
+            if (og) {
+                const { data: po, error: poErr } = await supabaseClient.from('pro_objects').select('granted_by, calc_id, expires_at').eq('payment_id', og.id).limit(1);
+                if (poErr || !Array.isArray(po)) return;
+                const rec = po[0];
+                const rejected = !rec || (rec.calc_id && rec.expires_at && new Date(rec.expires_at) <= new Date());
+                if (rejected) {
+                    localStorage.removeItem(this.GRACE_LS); this.graceStop();
+                    try { app._proObjects = undefined; app._proObjectsBusy = false; await app.loadProObjects(); } catch (e) { }
+                    this.alarmPro();
+                } else if (rec.granted_by !== 'grace') {
+                    localStorage.removeItem(this.GRACE_LS); this.graceStop();
+                    try { app.showInfoToast('🏆', 'Оплата подтверждена', 'Профи на объект — ваш. Спасибо!'); } catch (e) { }
+                }
+                return;
+            }
             const gr = this.graceInfo();
             if (!gr) { this.graceStop(); return; }
             const tg = (app.state && app.state.tgUser) || {};
@@ -1427,6 +1557,14 @@ const Subscription = {
                 this.celebratePro({ emoji: '🏆', title: 'Оплата подтверждена!', sub: 'Профи продлён до ' + end.toLocaleDateString('ru-RU') + '. Спасибо, что с нами!', cta: 'Отлично' });
             }
         } catch (e) { console.warn('[подписка] сверка 24 часов:', e); }
+    },
+
+    // «Один расчёт» оплачен через «Я оплатил», кредит выдан авансом, оплату ещё проверяем
+    objectGraceInfo: function () {
+        try {
+            const g = JSON.parse(localStorage.getItem(this.GRACE_LS) || 'null');
+            return g && g.object && g.id ? { id: g.id, at: g.at } : null;
+        } catch (e) { return null; }
     },
 
     // Профи сейчас держится на 24 часах после «Я оплатил» (на этом устройстве)
@@ -1722,7 +1860,15 @@ const Subscription = {
         if (extend && !u) { app.alert('Учётной записи с почтой ' + row.email + ' нет в базе — продлить Профи некому. Снимите галочку продления или найдите человека в «Пользователях».'); return; }
         try {
             let until = null;
-            if (extend && this.isObjectPlan(row.plan)) await this.grantObjectCredit(u, id);
+            if (extend && this.isObjectPlan(row.plan)) {
+                // Кредит мог быть выдан авансом при «Я оплатил» — второй не начисляем
+                const { data: had } = await supabaseClient.from('pro_objects').select('id').eq('payment_id', id).limit(1);
+                if (Array.isArray(had) && had.length) {
+                    const me0 = (app._currentUserRow && app._currentUserRow.email) || 'admin';
+                    const { error: gErr } = await supabaseClient.from('pro_objects').update({ granted_by: me0 }).eq('payment_id', id);
+                    if (gErr) throw gErr;
+                } else await this.grantObjectCredit(u, id);
+            }
             else if (extend) { until = this.proUntilFor(u, months, row); await this.activatePro(u, until); }
             const me = (app._currentUserRow && app._currentUserRow.email) || null;
             const upd = { status: 'paid', paid_at: paidAt.toISOString(), paid_rub: paidRub, months: months, pro_until: until ? until.toISOString() : null, note: note || null, confirmed_by: me, user_id: row.user_id || (u ? u.id : null) };
@@ -1739,7 +1885,7 @@ const Subscription = {
         if (!this.canEdit()) return;
         const row = ((this._pay && this._pay.rows) || []).find(r => r.id === id);
         const graceOn = row && row.grace_until && new Date(row.grace_until) > new Date();
-        if (!await app.confirm('Отметить заявку как неоплаченную (отклонить)?' + (graceOn ? ' Профи на 24 часа, включённый по этой заявке, будет снят сразу.' : ''))) return;
+        if (!await app.confirm('Отметить заявку как неоплаченную (отклонить)?' + (graceOn ? ' Профи на 24 часа, включённый по этой заявке, будет снят сразу.' : '') + (row && row.grace_object ? ' Кредит «Один расчёт», выданный авансом, будет снят.' : ''))) return;
         try {
             // Снять 24 часа: вернуть прежний срок, если он ещё идёт, иначе закончить сейчас
             if (graceOn) {
@@ -1751,6 +1897,13 @@ const Subscription = {
                     if (uErr) throw uErr;
                     u.demo_ends_at = end.toISOString();
                 }
+            }
+            // «Один расчёт» авансом: свободный кредит убрать, уже открытую смету закрыть
+            if (row && row.grace_object) {
+                const { error: dErr } = await supabaseClient.from('pro_objects').delete().eq('payment_id', id).is('calc_id', null);
+                if (dErr) throw dErr;
+                const { error: xErr } = await supabaseClient.from('pro_objects').update({ expires_at: new Date().toISOString() }).eq('payment_id', id).not('calc_id', 'is', null);
+                if (xErr) throw xErr;
             }
             const { error } = await supabaseClient.from(this.TABLE).update({ status: 'rejected', confirmed_by: (app._currentUserRow && app._currentUserRow.email) || null }).eq('id', id);
             if (error) throw error;

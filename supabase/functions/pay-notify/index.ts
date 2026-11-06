@@ -70,7 +70,9 @@ Deno.serve(async (req) => {
       me.phone ? "Телефон: " + me.phone : null,
       pay.region ? "Регион: " + pay.region : null,
       "Тариф: " + planName + (pay.rub ? " — " + fmtRub(pay.rub) : "") + (pay.promo ? " (акция «" + pay.promo + "»)" : ""),
-      pay.grace_until ? "Профи на 24 часа включён — до " + fmtMsk(pay.grace_until) + " (МСК)." : "Профи на 24 часа не включён (уже давали по неподтверждённой заявке).",
+      pay.grace_object ? "Кредит «Один расчёт» выдан авансом. Отклоните — кредит снимется."
+        : pay.grace_until ? "Профи на 24 часа включён — до " + fmtMsk(pay.grace_until) + " (МСК)."
+        : "Аванс не выдан (уже давали по неподтверждённой заявке).",
       "",
       "Проверьте поступление в Т-Банке и нажмите кнопку.",
     ].filter((x) => x !== null);

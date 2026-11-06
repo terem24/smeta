@@ -23270,23 +23270,31 @@ const app = {
             }
 
             // 1. ДИНАМИЧЕСКИЕ УВЕДОМЛЕНИЯ О ТАРИФЕ PRO
-            if (uRow.account_type === 'pro' && uRow.demo_ends_at) {
+            // 24 часа после «Я оплатил» — это не конец Профи, а проверка оплаты: про неё своя
+            // зелёная плашка, напоминание «заканчивается» тут только пугает
+            let payGraceOn = false;
+            try { const gr = (typeof Subscription !== 'undefined') && Subscription.graceInfo(); payGraceOn = !!(gr && gr.active); } catch (e) { }
+            if (uRow.account_type === 'pro' && uRow.demo_ends_at && !payGraceOn) {
                 const endsAt = new Date(uRow.demo_ends_at);
                 const now = new Date();
                 const diffTime = endsAt - now;
                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                const endsStr = endsAt.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
                 if (diffTime > 0) {
                     if (diffDays <= 1) {
-                        // Осталось менее 24 часов
+                        // Осталось менее 24 часов. id и время привязаны к сроку, а не к «сейчас»:
+                        // раньше time = now, ключ «уже показан» (id|time) менялся при каждом
+                        // опросе, и одна и та же карточка всплывала снова и снова.
+                        const wid = 'tariff_warning_24h_' + endsAt.toISOString().slice(0, 16);
                         notifications.push({
-                            id: 'tariff_warning_24h',
+                            id: wid,
                             type: 'tariff_alert',
-                            projectName: '🚨 Срочно: Тариф Профи истекает!',
-                            status: 'critical',
-                            comment: 'Срок действия вашего тарифа Профи истекает менее чем через 24 часа! Продлите его сейчас, чтобы сохранить доступ ко всем профессиональным возможностям.',
-                            time: now.toISOString(),
-                            isRead: readIds.includes('tariff_warning_24h')
+                            projectName: 'Профи действует до ' + endsStr,
+                            status: 'warning',
+                            comment: 'Продлите заранее — сметы, КП и настройки останутся, работа не прервётся.',
+                            time: new Date(endsAt.getTime() - 24 * 3600 * 1000).toISOString(),
+                            isRead: readIds.includes(wid)
                         });
 
                         // Дублирование на Email с учетом приоритета (Email для уведомлений или регистрационный)
@@ -23297,22 +23305,23 @@ const app = {
                             if (recipientEmail) {
                                 this.sendNotificationEmail(
                                     recipientEmail,
-                                    'Срочно: Тариф Профи истекает на HeatCalc.ru',
-                                    'Срок действия вашего тарифа Профи истекает менее чем через 24 часа! Рекомендуем продлить его прямо сейчас в личном кабинете калькулятора, чтобы сохранить доступ ко всем возможностям.'
+                                    'Профи на HeatCalc.ru действует до ' + endsStr,
+                                    'Ваш Профи действует до ' + endsStr + '. Продлите заранее в калькуляторе — сметы, КП и настройки останутся, работа не прервётся.'
                                 );
                                 localStorage.setItem(sentKey, 'true');
                             }
                         }
                     } else if (diffDays <= 5) {
                         // Осталось менее 5 дней
+                        const w5id = 'tariff_warning_5d_' + endsAt.toISOString().slice(0, 16);
                         notifications.push({
-                            id: 'tariff_warning_5d',
+                            id: w5id,
                             type: 'tariff_alert',
-                            projectName: '⚠️ Предупреждение: Тариф Профи заканчивается',
+                            projectName: 'Профи действует до ' + endsAt.toLocaleDateString('ru-RU'),
                             status: 'warning',
-                            comment: `Срок действия вашего тарифа Профи истекает через ${diffDays} дн. Рекомендуем продлить его заранее, чтобы работа не прерывалась.`,
-                            time: now.toISOString(),
-                            isRead: readIds.includes('tariff_warning_5d')
+                            comment: 'Продлите заранее, чтобы работа не прерывалась.',
+                            time: new Date(endsAt.getTime() - 5 * 24 * 3600 * 1000).toISOString(),
+                            isRead: readIds.includes(w5id)
                         });
 
                         // Дублирование на Email с учетом приоритета (Email для уведомлений или регистрационный)
@@ -24946,8 +24955,11 @@ const app = {
         }
 
         const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        const tid = 'msg_toast_' + Math.random().toString(36).slice(2, 9);
+        // Карточка этого уведомления уже на экране — вторую рядом не кладём
         this._toastNotifs = this._toastNotifs || {};
+        const toastKey = this.notificationToastKey(n);
+        if (Object.keys(this._toastNotifs).some(k => document.getElementById(k) && this.notificationToastKey(this._toastNotifs[k]) === toastKey)) return;
+        const tid = 'msg_toast_' + Math.random().toString(36).slice(2, 9);
         this._toastNotifs[tid] = n;
 
         const isChat = n.type === 'manager_chat' && !!n.chat;
