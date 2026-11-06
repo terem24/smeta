@@ -34,6 +34,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from blender_parts import *  # noqa: F401,F403
 from mathutils import Vector, Matrix
 import bpy
+import rad_bottom as rb
 
 _argv = sys.argv[sys.argv.index('--') + 1:]
 OUT, VAR = _argv[0], _argv[1]
@@ -281,9 +282,15 @@ def build():
     zt = bottom_nipples([x_sup, x_ret])
     outs = svh([x_sup, x_ret], zt)
     for (loc, ax), sup in zip(outs, (True, False)):
-        part('ek:' + ('s' if sup else 'r'))
-        p0 = ek(loc, ax)
-        pipe_run(loc[0], p0, sup)
+        if ANGLED:
+            part('ek:' + ('s' if sup else 'r'))
+            p0 = ek(loc, ax)
+            pipe_run(loc[0], p0, sup)
+        else:
+            # прямой из пола — набор сметы: фитинг 15x3/4", трубка Г-образная 16/500, скоба на полу
+            rb.gtube_kit(loc[0], loc[2], sup, ANCH)
+    if not ANGLED:
+        rb.floor_bracket([x_sup, x_ret], ANCH)
     part('bracket')
     bracket(x_far + sg * 1.5 * SW_)
     bracket(x_end - sg * 1.5 * SW_)

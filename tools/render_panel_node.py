@@ -35,12 +35,16 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from blender_parts import *  # noqa: F401,F403
 from mathutils import Vector, Matrix
 import bpy
+import rad_bottom as rb
 
 _argv = sys.argv[sys.argv.index('--') + 1:]
 OUT, VAR = _argv[0], _argv[1]
-TAG = 'panel_' + VAR.replace('panel', '')
+# panelNN_… — Compact, боковое подключение (кадры img/rad_panel/panel_*);
+# ventilNN_… — Ventil, нижнее подключение через узел SVH (кадры в индексе узла радиатора radnode)
+VENTIL = VAR.startswith('ventil')
+TAG = ('radnode_' + VAR) if VENTIL else ('panel_' + VAR.replace('panel', ''))
 ANGLED = '_angled' in VAR
-TYPE = VAR[5:7]                                   # 11 | 21 | 22 | 33
+TYPE = VAR[6:8] if VENTIL else VAR[5:7]           # 11 | 21 | 22 | 33
 
 add_colors({
     'radwhite': (0.95, 0.95, 0.94),    # RAL 9016
@@ -279,7 +283,47 @@ def room():
         coll('sheath').objects.link(ob)
 
 
+def build_ventil():
+    """Ventil (паспорт ROMMER/Лемакс: 4 боковых и 2 нижних патрубка G 1/2" ВР; нижние — межосевое
+    50 мм, ось крайнего в 32 мм от торца бокового патрубка; в верхний боковой со стороны подключения
+    встроена вентильная вставка RTI под термоголовку): подключение справа снизу. Смета: ниппели
+    SFT-0049 (1/2" НР x 3/4" НР) в нижние патрубки, узел SVH-0004 (угловой: евроконусы, трубы в стену,
+    фиксаторы 90°, втулки) или SVH-0002 (прямой: фитинги 15x3/4", трубки Г-образные 16/500, скоба),
+    термоголовка RHT-0001 (ROMMER). Кронштейны, заглушки и воздухоотводчик — в комплекте радиатора."""
+    sc = reset()
+    room()
+    x_end = LR / 2 + 0.003
+    part('rad')
+    radiator()
+    port_end(-x_end, Z_TOP, -1)
+    air_vent(-x_end, Z_TOP, -1)
+    plug(-x_end, Z_BOT, -1)
+    plug(x_end, Z_BOT, 1)
+    marks['rad'] = (0.0, YF, ZB + HR * 0.55)
+    # вентильная вставка в верхнем правом патрубке и термоголовка горизонтально
+    lathe('вставка RTI', [(0.0120, 0), (0.0120, 0.010)], M_NICKEL(), (x_end, 0, Z_TOP), 'X', segs=40)
+    rb.rht_head((x_end + 0.010, 0, Z_TOP), 'X')
+    part('node')
+    x_sup = LR / 2 - 0.032 + 0.003
+    x_ret = x_sup - 0.050
+    zt = ZB
+    zn = min(rb.nipple_sft0049(x, zt) for x in (x_sup, x_ret))
+    outs = rb.svh([x_sup, x_ret], zn, ANGLED)
+    for (loc, ax), sup in zip(outs, (True, False)):
+        if ANGLED:
+            part('ek:' + ('s' if sup else 'r'))
+            p0 = rb.ek(loc, ax)
+            rb.wall_run(loc[0], p0, sup, YW, ANCH)
+        else:
+            rb.gtube_kit(loc[0], loc[2], sup, ANCH)
+    if not ANGLED:
+        rb.floor_bracket([x_sup, x_ret], ANCH)
+    return sc
+
+
 def build():
+    if VENTIL:
+        return build_ventil()
     sc = reset()
     room()
     # подключение слева: камера смотрит слева-спереди, у правого торца клапаны и выход трубы в стену
@@ -325,7 +369,7 @@ def main():
         o.hide_render = True
     # карта деталей: радиатор R, евроконус G, труба B, запорный клапан Y, термоклапан C,
     # фиксатор и втулка M (выход трубы), термоголовка W
-    ID = {'rad': (1, 0, 0), 'ek': (0, 1, 0), 'tube': (0, 0, 1), 'lock': (1, 1, 0), 'node': (0, 1, 1),
+    ID = {'rad': (1, 0, 0), 'ek': (0, 1, 0), 'tube': (0, 0, 1), 'lock': (1, 1, 0), 'node': (0, 1, 1), 'bracket': (1, 1, 0),
           'fix': (1, 0, 1), 'sleeve': (1, 0, 1), 'head': (1, 1, 1)}
     id_pass(sc, list(coll('solid').objects), ID, os.path.join(OUT, TAG + '_id.png'))
     write_meta(sc, os.path.join(OUT, TAG + '.json'), zones, pts, proj)
