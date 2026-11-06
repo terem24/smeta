@@ -38,7 +38,7 @@ const fail = (sheet, what) => { bad++; (fails[what] = fails[what] || []).push(sh
 const rd = f => JSON.parse(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'));
 // индексы новых узлов (коллектор радиаторов, подключение радиатора) — пока кадров нет, их листы пропускаются
 const rdOpt = f => fs.existsSync(path.join(__dirname, '..', f)) ? rd(f) : null;
-const IDX = { rad: rdOpt('img/manifold_rad/rad.json'), radnode: rdOpt('img/rad_node/radnode.json'), st: rd('img/manifold3d/manifold3d_st.json'), rm: rd('img/manifold3d/manifold3d_rm.json'),
+const IDX = { rad: rdOpt('img/manifold_rad/rad.json'), radnode: rdOpt('img/rad_node/radnode.json'), panel: rdOpt('img/rad_panel/panel.json'), st: rd('img/manifold3d/manifold3d_st.json'), rm: rd('img/manifold3d/manifold3d_rm.json'),
     bl: rd('img/manifold3d/manifold3d_bl.json'), ufh: rd('img/manifold_ufh/ufh.json') };
 
 // ── разбор листа ─────────────────────────────────────────────────────────
@@ -210,6 +210,26 @@ function radNodeSheet(v) {
     return { o: { kind: 'radnode', frames, items, iw, ih, spec: 'r0', hk: null, title: 'Подключение радиатора', subtitle: 'Обвязка прибора',
         places: [{ name: 'Нижнее подключение', rows: ['Узел SVH', 'термоголовка SHT-0001'] }] }, orphan };
 }
+function panelSheet(v) {
+    if (!IDX.panel) return undefined;
+    const fr = IDX.panel[v];
+    if (!fr) return null;
+    const frames = [{ id: 'p0', at: 0, fr, path: 'img/rad_panel/panel_' + v }];
+    const { iw, ih } = app.wmPlaceFrames(frames, [0], [0, 0, 0]);
+    const zonesOf = app.wmZonesOf(frames, iw, ih, z => { const k = String(z).split(':')[0]; return { rad: 'mf', sleeve: 'fix' }[k] || k; });
+    (zonesOf.mf || []).forEach(q => (zonesOf['mf:p0'] = zonesOf['mf:p0'] || []).push(q));
+    const T = { 'mf:p0': ['Радиатор стальной панельный', 'тип 21, боковое подключение'], head: ['Термостатическая головка', 'на термоклапан, M30x1,5'],
+        node: ['Клапан термостатический', 'угловой под евроконус, подача'], lock: ['Клапан запорно-балансировочный', 'угловой под евроконус, обратка'],
+        ek: ['Евроконус', '16x2.2'], tube: ['Подводка к радиатору', 'подача и обратка'], fix: ['Выход трубы из стены', 'фиксатор 90°, защитные втулки'] };
+    const items = Object.keys(T).map(key => {
+        const zs = zonesOf[key] || [];
+        if (!zs.length) return null;
+        return { pk: key, rows: [], miss: [], ok: true, off: false, lines: T[key], tail: '', zs, mx: zs.reduce((a, q) => a + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
+    }).filter(Boolean);
+    const orphan = Object.keys(zonesOf).filter(pk => pk !== 'mf' && !T[pk]);
+    return { o: { kind: 'panel', frames, items, iw, ih, spec: 'p0', hk: null, title: 'Подключение радиатора', subtitle: 'Обвязка прибора',
+        places: [{ name: 'Стальной панельный, тип 21', rows: ['Боковое одностороннее подключение', 'Клапаны угловые под евроконус'] }] }, orphan };
+}
 function run(name, r) {
     if (r === undefined) return;                 // кадров этого узла ещё нет — лист не проверяем
     if (!r) { fail(name, 'нет кадра в индексе'); return; }
@@ -241,6 +261,7 @@ for (let n = 2; n <= 13; n++) {
     run(`радиаторы ${n} + ${Math.max(2, 15 - n)}`, radSheet([String(n), String(Math.max(2, 15 - n))]));
 }
 ['space_angled', 'space_straight', 'space_angled_l', 'space_straight_l'].forEach(v => run('подключение ' + v, radNodeSheet(v)));
+Object.keys(IDX.panel || {}).forEach(v => run('панельный ' + v, panelSheet(v)));
 
 // ── 7: подписи находят строки сметы ──────────────────────────────────────
 console.log('Подписи и строки сметы на типовых объектах');
@@ -252,7 +273,9 @@ const OBJ = {
     'Только ХВС+ГВС, 1 санузел': { area: 100, floors: 1, systems: ['rad'], water: true, waterInput: true, waterZones: [zone('С/у', { toilet: 1, basin: 1, shower: 1 })] },
     'ТП, узел подмеса на гребёнке': { area: 160, floors: 2, systems: ['rad', 'tp'], tp1: 8, tp2: 30, ufhMixType: 'std' },
     'Радиаторы Space на коллекторе, 120 м²': { area: 120, floors: 1, systems: ['rad'] },
-    'Радиаторы Space, узел прямой (из пола)': { area: 120, floors: 1, systems: ['rad'], connectionType: 'straight' }
+    'Радиаторы Space, узел прямой (из пола)': { area: 120, floors: 1, systems: ['rad'], connectionType: 'straight' },
+    'Стальные панельные, клапаны угловые (из стены)': { area: 120, floors: 1, systems: ['rad'], radType: 'steel', connectionType: 'angled' },
+    'Стальные панельные, клапаны прямые (из пола)': { area: 120, floors: 1, systems: ['rad'], radType: 'steel', connectionType: 'straight' }
 };
 const nm = it => String(it.name || '').split('\n')[0].trim();
 for (const [title, patch] of Object.entries(OBJ)) {
@@ -303,6 +326,11 @@ for (const [title, patch] of Object.entries(OBJ)) {
     // подключение радиатора Space (нижнее) с узлом SVH-0002/0004 — подписи RADNODE_LAB_RE
     if (sec3.some(it => /^SRB-032[01]/i.test(String(it.displaySku || it.id))) && sec3.some(it => /^SVH-000[24]/i.test(String(it.displaySku || it.id)))) {
         Object.keys(app.RADNODE_LAB_RE).forEach(pk => { if (!sec3.some(it => app.RADNODE_LAB_RE[pk].test(nm(it)))) miss.push('подключение радиатора: ' + pk); });
+    }
+    // подключение стального панельного (боковое) — клапаны под евроконус и подписи PANEL_LAB_RE
+    if (sec3.some(it => /^RRS-2010/i.test(String(it.displaySku || it.id)))) {
+        if (!sec3.some(it => /^SVT-000[12]-100015/i.test(String(it.displaySku || it.id)))) miss.push('панельный: термоклапан не под евроконус');
+        Object.keys(app.PANEL_LAB_RE).forEach(pk => { if (!sec3.some(it => app.PANEL_LAB_RE[pk].test(nm(it)))) miss.push('панельный: ' + pk); });
     }
     if (miss.length) miss.forEach(m => fail(title, 'нет строки сметы: ' + m));
     else console.log('  ✓ ' + title);

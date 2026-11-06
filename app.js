@@ -45696,12 +45696,14 @@ const app = {
         if (kind === 'ufh') return { mount: 'sleeve', feed: 'node', end: 'fix' }[g] || g;
         if (kind === 'rad') return { feed: 'node' }[g] || g;
         if (kind === 'radnode') return { mount: 'bracket', end: 'fix', feed: 'node' }[g] || g;
+        if (kind === 'panel') return { mount: 'lock', end: 'fix', feed: 'node' }[g] || g;
         return g === 'end' ? 'end_' + end : g;
     },
     // Строки сметы подписи — по виду схемы
     wmKindRows: function (kind, pk, spec) {
         if (kind === 'rad') return this.radLabRows(pk);
         if (kind === 'radnode') return this.radNodeLabRows(pk);
+        if (kind === 'panel') return this.panelLabRows(pk);
         return kind === 'ufh' ? this.ufhLabRows(pk, spec) : this.wmLabRows(pk, spec);
     },
     // Маски деталей кадра: по карте деталей вырезаются пиксели самого кадра — деталь потом
@@ -46104,8 +46106,100 @@ const app = {
             .filter(Boolean).map(url => this._renderSheetImage(url)).join('');
         // Новая схема узла подключения прибора (пока — секционный Space с нижним подключением)
         // видна владельцу; у остальных приборов — прежние листы
-        const fresh = this.wmPreviewOn() ? this.renderRadNodeSheet() : null;
-        return fresh ? fresh.html + fresh.sum + old : old;
+        const fresh = this.wmPreviewOn() ? [this.renderRadNodeSheet(), this.renderPanelNodeSheet()].filter(Boolean) : [];
+        return fresh.map(f => f.html + f.sum).join('') + old;
+    },
+    // Лист «Подключение стального панельного радиатора» (боковое): кадры tools/render_panel_node.py
+    // (img/rad_panel/, индекс panel.json, ключ «<тип>_<angled|straight>»). Вариант — по строкам сметы:
+    // ROMMER Compact (RRS-2010, «Тип NN» в названии) и клапаны под евроконус SVT-0002-100015 +
+    // SVL-1166 (угловые, трубы из стены) или SVT-0001-100015 + SVL-1196 (прямые, из пола). Другие
+    // клапаны (Design, без евроконуса) — кадра нет, листа нет. Кадр — на каждый тип панели в смете.
+    PANEL_DIR: 'img/rad_panel/',
+    panelIndex: function () {
+        if (this._pnIdx !== undefined) return this._pnIdx;
+        this._pnIdx = null;
+        fetch(this.PANEL_DIR + 'panel.json?v=1')
+            .then(r => r.ok ? r.json() : {})
+            .catch(() => ({}))
+            .then(j => { this._pnIdx = j || {}; if (Object.keys(this._pnIdx).length) this.render(); });
+        return null;
+    },
+    PANEL_LAB_RE: {
+        head: /^Головка термостат/i, node: /^Клапан термостатическ/i, lock: /^Клапан запорно-балансир/i,
+        ek: /^Евроконус/i, tube: /^Труба/i, fix: /^Фиксатор|^Защитная втулка/i
+    },
+    // Строки сметы подписи; у радиатора — по типу панели своего кадра (this._pnTypes: id кадра -> тип)
+    panelLabRows: function (pk) {
+        const all = Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr =>
+            /Приборы отопления|^3\./i.test(String(tr.dataset.rk || '').split('|')[1] || ''));
+        const nm = tr => ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
+        const sku = tr => ((tr.querySelector('.col-sku') || {}).innerText || '').trim();
+        if (pk.indexOf('mf:') === 0) {
+            const t = (this._pnTypes || {})[pk.slice(3)];
+            return all.filter(tr => (/^RRS-2010/i.test(sku(tr)) || /^Стальной панельный Compact/i.test(nm(tr))) &&
+                (!t || nm(tr).indexOf('Тип ' + t) >= 0));
+        }
+        const re = this.PANEL_LAB_RE[pk];
+        return re ? all.filter(tr => re.test(nm(tr))) : [];
+    },
+    renderPanelNodeSheet: function () {
+        const eq = this.currentEquipmentList || [];
+        const inRad = it => /^3\./.test(String(it.group || it.sectionTitle || ''));
+        const skuOf = it => String(it.displaySku || it.id || '');
+        const rads = eq.filter(it => inRad(it) && /^RRS-2010/i.test(skuOf(it)));
+        if (!rads.length) return null;
+        const thermo = eq.filter(it => inRad(it) && /^SVT-000[12]-100015/i.test(skuOf(it)));
+        const lock = eq.filter(it => inRad(it) && /^SVL-11[69]6-000015/i.test(skuOf(it)));
+        if (thermo.length !== 1 || lock.length !== 1) return null;
+        const angled = /^SVT-0002/i.test(skuOf(thermo[0]));
+        if (angled !== /^SVL-1166/i.test(skuOf(lock[0]))) return null;      // клапаны разного исполнения — кадра нет
+        const idx = this.panelIndex();
+        if (!idx) return null;
+        const typeOf = it => (/Тип\s*(\d\d)/i.exec(String(it.name || '')) || [])[1];
+        const types = Array.from(new Set(rads.map(typeOf).filter(Boolean))).sort();
+        const kind = angled ? 'angled' : 'straight';
+        const frames = [];
+        for (const t of types) {
+            const fr = idx[t + '_' + kind];
+            if (!fr || !fr.o) return null;
+            frames.push({ id: 'p' + frames.length, at: frames.length, fr, type: t, path: this.PANEL_DIR + 'panel_' + t + '_' + kind });
+        }
+        if (!frames.length) return null;
+        this._pnTypes = {};
+        frames.forEach(f => { this._pnTypes[f.id] = f.type; });
+        const { iw, ih } = this.wmPlaceFrames(frames, frames.map(f => f.at), [0, 0, 0]);
+        const spec = frames.map(f => f.id).join(',');
+        const zonesOf = this.wmZonesOf(frames, iw, ih, z => { const k = String(z).split(':')[0]; return { rad: 'mf', sleeve: 'fix' }[k] || k; });
+        frames.forEach(f => (zonesOf['mf'] || []).forEach(q => { if (q.line === f.id) (zonesOf['mf:' + f.id] = zonesOf['mf:' + f.id] || []).push(q); }));
+        const keys = frames.map(f => 'mf:' + f.id).concat(['head', 'node', 'lock', 'ek', 'tube', 'fix']);
+        const items = keys.map(key => {
+            const zs = zonesOf[key] || [];
+            if (!zs.length) return null;
+            const f = frames.find(x => 'mf:' + x.id === key);
+            const rs = this.panelLabRows(key);
+            let text;
+            if (f) text = ['Радиатор стальной панельный', 'тип ' + f.type + ', боковое подключение'];
+            else if (key === 'head') text = ['Термостатическая головка', 'на термоклапан, M30x1,5'];
+            else if (key === 'node') text = ['Клапан термостатический', (angled ? 'угловой' : 'прямой') + ' под евроконус, подача'];
+            else if (key === 'lock') text = ['Клапан запорно-балансировочный', (angled ? 'угловой' : 'прямой') + ' под евроконус, обратка'];
+            else if (key === 'ek') text = ['Евроконус', '16x2.2'];
+            else if (key === 'tube') text = ['Подводка к радиатору', 'подача и обратка'];
+            else text = ['Выход трубы ' + (angled ? 'из стены' : 'из пола'), 'фиксатор 90°, защитные втулки'];
+            const miss = rs.length ? [] : [text[0].toLowerCase()];
+            return { pk: key, rows: rs, miss, off: false, ok: !miss.length, lines: text, tail: miss.length ? 'нет в смете' : '', zs,
+                mx: zs.reduce((sum, q) => sum + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
+        }).filter(Boolean);
+        const miss = items.filter(it => !it.ok).map(it => it.lines[0].toLowerCase());
+        const n = rads.reduce((sum, it) => sum + (it.q || 1), 0);
+        const sum = `<div class="sg-summary no-print">Подключение стальных панельных радиаторов: ${n} шт., клапаны ${angled ? 'угловые (трубы из стены)' : 'прямые (трубы из пола)'}.` +
+            (miss.length ? ` <span class="sg-miss-txt">Нет в смете: ${miss.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
+            ` <span class="sg-hint">На схеме радиатор высотой 500 и длиной 600 мм, размеры каждого прибора — в смете. Кронштейны, заглушка и воздухоотводчик — в комплекте радиатора.</span></div>`;
+        const html = this.wmSheet({
+            kind: 'panel', frames, items, iw, ih, spec, hk: null, title: 'Подключение радиатора', subtitle: 'Обвязка прибора',
+            places: frames.map(f => ({ name: 'Стальной панельный, тип ' + f.type,
+                rows: ['Боковое одностороннее подключение', `Клапаны ${angled ? 'угловые' : 'прямые'} под евроконус`] }))
+        });
+        return { html, sum };
     },
     // Лист «Подключение радиатора»: кадры tools/render_rad_node.py (img/rad_node/, индекс
     // radnode.json). Вариант — по строкам сметы: радиатор STOUT Space с нижним подключением
