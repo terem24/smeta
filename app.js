@@ -79899,8 +79899,9 @@ const app = {
     // на рабочем Xp сопротивление будет выше расчётного, и запас по напору,
     // который даёт подбор насоса, частично уходит на это.
     RAD_VALVE_SVT: {
-        straight: { art: 'SVT-0001-000015', presets: [0.196, 0.427, 0.664, 0.854, 0.974, 1.044], kvs: 1.25 },
-        angled:   { art: 'SVT-0002-000015', presets: [0.196, 0.443, 0.702, 0.936, 1.148, 1.279], kvs: 1.45 },
+        // смета ставит исполнение под евроконус (-100015): паспорт ред. № 4 даёт ту же таблицу Kv
+        straight: { art: 'SVT-0001-100015', presets: [0.196, 0.427, 0.664, 0.854, 0.974, 1.044], kvs: 1.25 },
+        angled:   { art: 'SVT-0002-100015', presets: [0.196, 0.443, 0.702, 0.936, 1.148, 1.279], kvs: 1.45 },
         axial:    { art: 'SVT-0005-000015', presets: [0.196, 0.443, 0.703, 0.937, 1.130, 1.279], kvs: 1.75 }
     },
     // Позиция преднастройки, на которой считается кольцо: третья из шести —
@@ -80749,8 +80750,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     // Полностью открытый идёт отдельным полем: в таблице это девятая строка
     // «Полностью открыт», а не пятый оборот.
     RAD_BAL_SVL: {
-        straight: { art: 'SVL-1176-000015', turns: [[1, 0.22], [1.5, 0.32], [2, 0.53], [2.5, 0.68], [3, 0.84], [3.5, 0.97], [4, 1.14], [4.5, 1.25]], kvs: 1.34 },
-        angled:   { art: 'SVL-1156-000015', turns: [[1, 0.19], [1.5, 0.30], [2, 0.37], [2.5, 0.50], [3, 0.69], [3.5, 0.92], [4, 1.14], [4.5, 1.39]], kvs: 1.65 }
+        // под евроконус SVL-1196/1166 — в паспорте в одной таблице с SVL-1176/1156
+        straight: { art: 'SVL-1196-000015', turns: [[1, 0.22], [1.5, 0.32], [2, 0.53], [2.5, 0.68], [3, 0.84], [3.5, 0.97], [4, 1.14], [4.5, 1.25]], kvs: 1.34 },
+        angled:   { art: 'SVL-1166-000015', turns: [[1, 0.19], [1.5, 0.30], [2, 0.37], [2.5, 0.50], [3, 0.69], [3.5, 0.92], [4, 1.14], [4.5, 1.39]], kvs: 1.65 }
     },
 
     /**
@@ -99418,8 +99420,16 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         thermoValve = radValvesDesign.find(v => v.kind === 'valve' && v.color === radValveColor && v.type === connType) || radValvesDesign.find(v => v.kind === 'valve' && v.color === radValveColor);
                         lockshieldValve = radValvesDesign.find(v => v.kind === 'lockshield' && v.color === radValveColor && v.type === connType) || radValvesDesign.find(v => v.kind === 'lockshield' && v.color === radValveColor);
                     } else {
-                        thermoValve = radValves.find(v => v.id.startsWith('SVT-') && v.type === connType);
-                        lockshieldValve = radValves.find(v => v.id.startsWith('SVL-') && v.type === connType);
+                        // Труба к прибору — через евроконус 16 (G3/4" НР, ниже addEurocone), поэтому
+                        // клапаны — с хвостовиком под евроконус 1/2"х3/4"ЕК: SVT-0001/0002-100015 и
+                        // SVL-1196/1166. У SVT-0001/0002-000015 и SVL-1176/1156 со стороны трубы ВР 1/2"
+                        // (фото, паспорт SVT/SVL, табл. «Номенклатура») — евроконус на них не сядет.
+                        // Kv у пар одинаковый: паспорт даёт одну таблицу на оба артикула.
+                        const _mv = (typeof radManualValves !== 'undefined') ? radManualValves : [];
+                        thermoValve = _mv.find(v => v.id === (connType === 'angled' ? 'SVT-0002-100015' : 'SVT-0001-100015'))
+                            || radValves.find(v => v.id.startsWith('SVT-') && v.type === connType);
+                        lockshieldValve = _mv.find(v => v.id === (connType === 'angled' ? 'SVL-1166-000015' : 'SVL-1196-000015'))
+                            || radValves.find(v => v.id.startsWith('SVL-') && v.type === connType);
                     }
                     if (!thermoValve) thermoValve = radValves.find(v => v.id.startsWith('SVT-') && v.type === 'straight');
                     if (!lockshieldValve) lockshieldValve = radValves.find(v => v.id.startsWith('SVL-') && v.type === 'straight');
