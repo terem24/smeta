@@ -45219,7 +45219,7 @@ const app = {
         const all = this._wmIdx || (this._wmIdx = {});
         if (all[typ] !== undefined) return all[typ];
         all[typ] = null;
-        fetch(this.WM_DIR + 'manifold3d_' + typ + '.json?v=6')
+        fetch(this.WM_DIR + 'manifold3d_' + typ + '.json?v=7')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { all[typ] = j || {}; if (Object.keys(all[typ]).length) this.render(); });
@@ -45640,7 +45640,7 @@ const app = {
             const at = `data-tag="${mk}" data-line="${f.id}" data-end="${f.end || ''}" data-kind="${o.kind}"`;
             // Кадры грузятся лениво (data-href -> href в wmReveal): схема собирается при каждом
             // пересчёте сметы, а видна, только когда до неё прокрутили
-            photos += `<image class="wm-photo" ${at} x="${X}" y="${Y}" width="${w}" height="${h}" data-href="${f.path}.webp?v=8"/>` +
+            photos += `<image class="wm-photo" ${at} x="${X}" y="${Y}" width="${w}" height="${h}" data-href="${f.path}.webp?v=9"/>` +
                 (hb ? `<image class="wm-handle" x="${X + hb[0] * w}" y="${Y + hb[1] * h}" width="${hb[2] * w}" height="${hb[3] * h}" data-href="${f.path}_h_${o.hk}.png?v=8"/>` : '');
             glows += `<g class="wm-glows" ${at} data-miss="${missK.join(',')}" data-box="${X},${Y},${w},${h}"></g>`;
         });
@@ -45700,7 +45700,7 @@ const app = {
         if (cache[key]) return cache[key];
         const [tag, hk, hbox] = key.split('|');
         const load = u => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = u; });
-        cache[key] = Promise.all([load(tag + '.webp?v=8'), load(tag + '_id.png?v=8'),
+        cache[key] = Promise.all([load(tag + '.webp?v=9'), load(tag + '_id.png?v=9'),
             hk ? load(`${tag}_h_${hk}.png?v=8`) : null]).then(([ph, id, hi]) => {
             const w = id.naturalWidth, h = id.naturalHeight;
             const cv = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
@@ -45960,7 +45960,7 @@ const app = {
     ufhIndex: function () {
         if (this._ufhIdx !== undefined) return this._ufhIdx;
         this._ufhIdx = null;
-        fetch(this.UFH_DIR + 'ufh.json?v=5')
+        fetch(this.UFH_DIR + 'ufh.json?v=6')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._ufhIdx = j || {}; if (Object.keys(this._ufhIdx).length) this.render(); });
