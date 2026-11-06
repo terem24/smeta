@@ -45675,18 +45675,20 @@ const app = {
             `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>`;
     },
     // Цвета сносок на карте деталей (tools/render_water_manifold.py, проход 3)
-    WM_GCOL: { mf: [1, 0, 0], ek: [0, 1, 0], tube: [0, 0, 1], mount: [1, 1, 0], end: [1, 0, 1], feed: [0, 1, 1] },
+    WM_GCOL: { mf: [1, 0, 0], ek: [0, 1, 0], tube: [0, 0, 1], mount: [1, 1, 0], end: [1, 0, 1], feed: [0, 1, 1], head: [1, 1, 1] },
     // Ключ подписи по цвету карты деталей: коллектор — свой у каждого кадра; у водоснабжения
     // торец — по виду, у тёплого пола жёлтый — защитные втулки, голубой — переход на транзит
     wmLabKey: function (g, line, end, kind) {
         if (g === 'mf') return 'mf:' + line;
         if (kind === 'ufh') return { mount: 'sleeve', feed: 'node', end: 'fix' }[g] || g;
         if (kind === 'rad') return { feed: 'node' }[g] || g;
+        if (kind === 'radnode') return { mount: 'bracket', end: 'fix', feed: 'node' }[g] || g;
         return g === 'end' ? 'end_' + end : g;
     },
     // Строки сметы подписи — по виду схемы
     wmKindRows: function (kind, pk, spec) {
         if (kind === 'rad') return this.radLabRows(pk);
+        if (kind === 'radnode') return this.radNodeLabRows(pk);
         return kind === 'ufh' ? this.ufhLabRows(pk, spec) : this.wmLabRows(pk, spec);
     },
     // Маски деталей кадра: по карте деталей вырезаются пиксели самого кадра — деталь потом
@@ -46085,8 +46087,95 @@ const app = {
     },
     renderRadPanelScheme: function () {
         const u = this.projectNodeSheetUrls();
-        return u.radPanels.map(p => p.url).concat([u.radTubular, u.convFloor])
+        const old = u.radPanels.map(p => p.url).concat([u.radTubular, u.convFloor])
             .filter(Boolean).map(url => this._renderSheetImage(url)).join('');
+        // Новая схема узла подключения прибора (пока — секционный Space с нижним подключением)
+        // видна владельцу; у остальных приборов — прежние листы
+        const fresh = this.wmPreviewOn() ? this.renderRadNodeSheet() : null;
+        return fresh ? fresh.html + fresh.sum + old : old;
+    },
+    // Лист «Подключение радиатора»: кадры tools/render_rad_node.py (img/rad_node/, индекс
+    // radnode.json). Вариант — по строкам сметы: радиатор STOUT Space с нижним подключением
+    // (SRB-0320 — справа, SRB-0321 — слева) и узел SVH-0004 (угловой, трубы из стены) или
+    // SVH-0002 (прямой, из пола). Другой прибор или узел — кадра нет, листа нет.
+    RADNODE_DIR: 'img/rad_node/',
+    radNodeIndex: function () {
+        if (this._rnIdx !== undefined) return this._rnIdx;
+        this._rnIdx = null;
+        fetch(this.RADNODE_DIR + 'radnode.json?v=1')
+            .then(r => r.ok ? r.json() : {})
+            .catch(() => ({}))
+            .then(j => { this._rnIdx = j || {}; if (Object.keys(this._rnIdx).length) this.render(); });
+        return null;
+    },
+    RADNODE_LAB_RE: {
+        head: /^Головка термостат/i, node: /^Узел нижн/i, ek: /^Евроконус/i, tube: /^Труба/i,
+        fix: /^Фиксатор|^Защитная втулка/i, bracket: /^Комплект настенных.*кронштейн|^Кронштейн.*радиатор/i
+    },
+    radNodeLabRows: function (pk) {
+        const all = Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr =>
+            /Приборы отопления|^3\./i.test(String(tr.dataset.rk || '').split('|')[1] || ''));
+        const nm = tr => ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
+        const sku = tr => ((tr.querySelector('.col-sku') || {}).innerText || '').trim();
+        if (pk.indexOf('mf:') === 0) return all.filter(tr => /^SRB-032[01]/i.test(sku(tr)) || /^Радиатор.*Space/i.test(nm(tr)));
+        const re = this.RADNODE_LAB_RE[pk];
+        return re ? all.filter(tr => re.test(nm(tr))) : [];
+    },
+    renderRadNodeSheet: function () {
+        const eq = this.currentEquipmentList || [];
+        const inRad = it => /^3\./.test(String(it.group || it.sectionTitle || ''));
+        const skuOf = it => String(it.displaySku || it.id || '');
+        const rads = eq.filter(it => inRad(it) && /^SRB-032[01]/i.test(skuOf(it)));
+        if (!rads.length) return null;
+        const nodes = eq.filter(it => inRad(it) && /^SVH-000[24]/i.test(skuOf(it)));
+        if (nodes.length !== 1) return null;
+        const angled = /^SVH-0004/i.test(skuOf(nodes[0]));
+        const idx = this.radNodeIndex();
+        if (!idx) return null;
+        const sides = ['0320', '0321'].filter(k => rads.some(it => skuOf(it).indexOf('SRB-' + k) === 0));
+        const frames = [];
+        for (const sd of sides) {
+            const key = 'space_' + (angled ? 'angled' : 'straight') + (sd === '0321' ? '_l' : '');
+            const fr = idx[key];
+            if (!fr || !fr.o) return null;
+            frames.push({ id: 'r' + frames.length, at: frames.length, fr, side: sd, path: this.RADNODE_DIR + 'radnode_' + key });
+        }
+        const places = frames.map(f => f.at);
+        const { iw, ih } = this.wmPlaceFrames(frames, places, [0, 0, 0]);
+        const spec = frames.map(f => f.id).join(',');
+        const nameOf = rs => rs.length ? ((rs[0].querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim() : '';
+        const zonesOf = this.wmZonesOf(frames, iw, ih, z => { const k = String(z).split(':')[0]; return { rad: 'mf', sleeve: 'fix' }[k] || k; });
+        frames.forEach(f => (zonesOf['mf'] || []).forEach(q => { if (q.line === f.id) (zonesOf['mf:' + f.id] = zonesOf['mf:' + f.id] || []).push(q); }));
+        const keys = frames.map(f => 'mf:' + f.id).concat(['head', 'node', 'ek', 'tube', 'fix', 'bracket']);
+        const items = keys.map(key => {
+            const zs = zonesOf[key] || [];
+            if (!zs.length) return null;
+            const rs = this.radNodeLabRows(key);
+            let text;
+            if (key.indexOf('mf:') === 0) {
+                const f = frames.find(x => 'mf:' + x.id === key);
+                text = ['Радиатор STOUT Space 500', 'нижнее подключение ' + (f.side === '0321' ? 'слева' : 'справа')];
+            } else if (key === 'head') text = ['Термостатическая головка', 'на встроенный клапан, M30x1,5'];
+            else if (key === 'node') text = ['Узел нижнего подключения', angled ? 'угловой, трубы из стены' : 'прямой, трубы из пола'];
+            else if (key === 'ek') text = ['Евроконус', (/(\d+\s*x\s*[\d.,]+)/i.exec(nameOf(rs)) || ['', '16x2.2'])[1]];
+            else if (key === 'tube') text = ['Подводка к радиатору', 'подача и обратка'];
+            else if (key === 'fix') text = ['Выход трубы ' + (angled ? 'из стены' : 'из пола'), 'фиксатор 90°, защитные втулки'];
+            else text = ['Кронштейны', 'настенные, регулируемые'];
+            const miss = rs.length ? [] : [text[0].toLowerCase()];
+            return { pk: key, rows: rs, miss, off: false, ok: !miss.length, lines: text, tail: miss.length ? 'нет в смете' : '', zs,
+                mx: zs.reduce((sum, q) => sum + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
+        }).filter(Boolean);
+        const miss = items.filter(it => !it.ok).map(it => it.lines[0].toLowerCase());
+        const n = rads.reduce((sum, it) => sum + (it.q || 1), 0);
+        const sum = `<div class="sg-summary no-print">Подключение радиаторов: STOUT Space 500, ${n} шт., узел ${angled ? 'угловой' : 'прямой'}.` +
+            (miss.length ? ` <span class="sg-miss-txt">Нет в смете: ${miss.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
+            ` <span class="sg-hint">На схеме радиатор на 5 секций; число секций у каждого прибора — в смете.</span></div>`;
+        const html = this.wmSheet({
+            kind: 'radnode', frames, items, iw, ih, spec, hk: null, title: 'Подключение радиатора', subtitle: 'Обвязка прибора',
+            places: frames.map(f => ({ name: 'Нижнее подключение ' + (f.side === '0321' ? 'слева' : 'справа'),
+                rows: [`Узел ${angled ? 'угловой SVH-0004' : 'прямой SVH-0002'}`, 'термоголовка SHT-0001'] }))
+        });
+        return { html, sum };
     },
     /**
      * Узел обвязки коллектора радиаторного отопления — над подразделом
