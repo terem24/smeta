@@ -2210,7 +2210,7 @@ const app = {
     // регистрация, а не запертая дверь для всех.
     // warranty.threshold — порог доли STOUT для бланка гарантии (см. stoutShare)
     // proxy.down — прокси на Beget отключён (см. начало файла, переключатель во вкладке «Сервер»)
-    appSettings: { registration: { mode: 'open' }, warranty: { threshold: 90 }, proxy: { down: PROXY_DEFAULT_DOWN }, proxy_watch: { enabled: true, digest: true }, proxy_note: { enabled: true, text: '' }, beget_features: { off: {}, auto: true } },
+    appSettings: { registration: { mode: 'open' }, warranty: { threshold: 90 }, proxy: { down: PROXY_DEFAULT_DOWN }, proxy_watch: { enabled: true, digest: true }, proxy_note: { enabled: true, text: '' }, bug_hunt: { enabled: false, text: '', months: 2, until: '' }, beget_features: { off: {}, auto: true } },
     _appSettingsPromise: null,
     loadAppSettings: function (force) {
         if (this._appSettingsPromise && !force) return this._appSettingsPromise;
@@ -2228,6 +2228,7 @@ const app = {
                 // (catch ниже) переключатель не трогаем: остаётся последнее известное значение
                 const px = merged.proxy;
                 if (typeof window.__setProxyNote === 'function') window.__setProxyNote(merged.proxy_note);
+                try { this.syncBugHunt(); } catch (e) { console.warn('[охота на баги]', e); }
                 if (typeof window.__setFeatOff === 'function') window.__setFeatOff((merged.beget_features || {}).off, (merged.beget_features || {}).auto);
                 if (typeof window.__setProxyDown === 'function') {
                     window.__setProxyDown(px && typeof px.down === 'boolean' ? px.down : PROXY_DEFAULT_DOWN);
@@ -50610,6 +50611,26 @@ const app = {
                 <button type="button" style="${btnMain}" ${ro ? 'disabled' : ''} onclick="app.saveProxyNote()">Сохранить текст</button>
                 <button type="button" style="${btn}" ${ro ? 'disabled' : ''} onclick="app.resetProxyNoteText()">Вернуть стандартный</button>
             </div>`;
+        const bh = this.bugHuntCfg();
+        const bhRaw = (this.appSettings || {}).bug_hunt || {};
+        const inp = 'padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text-main); font:inherit; font-size:13px;';
+        const bughuntHtml = `
+            <div class="srv-sub">Жучок 🐞 в левом нижнем углу калькулятора и плашка в форме «Обратная связь» для категории «Баг».
+                Человек присылает скриншот или номер расчёта, сообщения приходят как обычная обратная связь с пометкой «[Охота на баги…]».
+                Награду (Профи на ${bh.months} мес.) вы начисляете вручную, как обычно. Изменения доходят до пользователей при следующей загрузке страницы.</div>
+            <div class="srv-rows"><div class="srv-row" style="padding-top:4px;">
+                <div class="srv-name">Показывать жучка ${bh.enabled && !bh.active ? '<span class="srv-chip idle">срок вышел</span>' : bh.active ? '<span class="srv-chip ok">идёт</span>' : ''}</div><span></span>${this._srvSw(bh.enabled, 'app.saveBugHunt(this.checked)', ro)}
+            </div></div>
+            <textarea id="bh_text" rows="3" maxlength="300" placeholder="${esc(bh.defText)}" ${ro ? 'disabled' : ''}
+                style="width:100%; box-sizing:border-box; ${inp} line-height:1.45; resize:vertical;">${esc(bhRaw.text || '')}</textarea>
+            <div style="margin-top:8px; display:flex; gap:14px; flex-wrap:wrap; align-items:center; font-size:13px;">
+                <label>Награда, мес. Профи&nbsp;<input id="bh_months" type="number" min="1" max="12" value="${bh.months}" ${ro ? 'disabled' : ''} style="width:64px; ${inp}"></label>
+                <label>Акция до&nbsp;<input id="bh_until" type="date" value="${esc(bh.until)}" ${ro ? 'disabled' : ''} style="${inp}"></label>
+                <span style="color:var(--text-sec); font-size:12px;">Пустая дата — без срока. Пустой текст — стандартный (виден в подсказке).</span>
+            </div>
+            <div style="margin-top:10px;">
+                <button type="button" style="${btnMain}" ${ro ? 'disabled' : ''} onclick="app.saveBugHunt()">Сохранить</button>
+            </div>`;
         const recoverHtml = `
             <ol style="margin:0; padding-left:20px; font-size:13px; line-height:1.7; color:var(--text-main);">
                 <li>Перевыпустить ключи: Gemini API key, RELAY_TOKEN (и в Supabase), EmailJS Private Key, токен Telegram-бота (@BotFather → /revoke), lead_ingest_secret, report_key.txt.</li>
@@ -50630,6 +50651,7 @@ const app = {
             </div>`;
 
         root.innerHTML = this._srvStyle + `<div id="srv_live"></div>` + notify
+            + det('bughunt', '🐞 Охота на баги', 'жучок, текст, награда и срок акции', bughuntHtml)
             + det('note', 'Плашка для пользователей', 'что видят люди, пока прокси отключён', noteHtml)
             + det('backups', 'Копии базы', 'ночные копии и восстановление', backupsHtml)
             + det('recover', 'Когда Beget восстановится', 'что сделать перед включением', recoverHtml);
@@ -50770,6 +50792,35 @@ const app = {
             if (typeof enabled !== 'boolean') app.alert('Текст плашки сохранён.');
         } catch (e) {
             console.error('[плашка] запись не прошла:', e);
+            app.alert('Не удалось сохранить: ' + (e.message || e));
+        }
+        this.renderAdminServerBody();
+    },
+    // Охота на баги: app_settings.bug_hunt = {enabled, text, months, until}. enabled передаётся при щелчке
+    // выключателя; без него сохраняются поля карточки.
+    saveBugHunt: async function (enabled) {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять настройки сайта запрещено.'); this.renderAdminServerBody(); return; }
+        const cur = (this.appSettings || {}).bug_hunt || {};
+        const val = id => { const el = document.getElementById(id); return el ? el.value : null; };
+        const months = Math.min(12, Math.max(1, parseInt(val('bh_months'), 10) || parseInt(cur.months, 10) || 2));
+        const untilRaw = val('bh_until');
+        const until = untilRaw === null ? String(cur.until || '') : (/^\d{4}-\d{2}-\d{2}$/.test(untilRaw) ? untilRaw : '');
+        const textRaw = val('bh_text');
+        const value = {
+            enabled: typeof enabled === 'boolean' ? enabled : cur.enabled === true,
+            text: textRaw === null ? String(cur.text || '') : textRaw.trim().slice(0, 300),
+            months, until
+        };
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'bug_hunt', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            this.appSettings = Object.assign({}, this.appSettings, { bug_hunt: value });
+            this.syncBugHunt();
+            if (typeof enabled !== 'boolean') app.alert('Настройки «Охоты на баги» сохранены.');
+        } catch (e) {
+            console.error('[охота на баги] запись не прошла:', e);
             app.alert('Не удалось сохранить: ' + (e.message || e));
         }
         this.renderAdminServerBody();
@@ -104580,6 +104631,83 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     selectedFeedbackCategory: 'bug',
     feedbackImageBase64: null,
 
+    // ===== Охота на баги =====
+    // Настройка app_settings.bug_hunt = { enabled, text, months, until } — правится в админке
+    // («Сервер» → «Охота на баги»). Награду (Профи на months мес.) выдаёт администратор вручную
+    // обычным способом, здесь только жучок, плашка в форме и пометка письма.
+    BUGHUNT_HIDE_KEY: 'hc_bughunt_off',
+    bugHuntCfg: function () {
+        const s = (this.appSettings || {}).bug_hunt || {};
+        const months = Math.min(12, Math.max(1, parseInt(s.months, 10) || 2));
+        const until = /^\d{4}-\d{2}-\d{2}$/.test(String(s.until || '')) ? String(s.until) : '';
+        const text = String(s.text || '').trim().slice(0, 300);
+        const d = new Date();
+        const today = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        const defText = 'Нашли ошибку? Пришлите скриншот или номер расчёта и коротко опишите, что не так. Если баг подтвердится, подарим '
+            + months + ' ' + this.plural(months, 'месяц', 'месяца', 'месяцев') + ' тарифа «Профи».';
+        return {
+            enabled: s.enabled === true, months, until, text, defText,
+            active: s.enabled === true && (!until || today <= until),
+            shown: text || defText,
+            untilLabel: until ? until.split('-').reverse().join('.') : ''
+        };
+    },
+    _bugHuntEsc: function (x) { return String(x == null ? '' : x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); },
+    // Жучок в углу экрана: ставится или снимается по настройке. Скрытый крестиком возвращается через 7 дней
+    syncBugHunt: function () {
+        const old = document.getElementById('bughunt_widget');
+        if (old) old.remove();
+        const cfg = this.bugHuntCfg();
+        if (!cfg.active) return;
+        try {
+            const t = parseInt(localStorage.getItem(this.BUGHUNT_HIDE_KEY) || '0', 10);
+            if (t && Date.now() - t < 7 * 864e5) return;
+        } catch (e) { }
+        const esc = this._bugHuntEsc;
+        const wrap = document.createElement('div');
+        wrap.id = 'bughunt_widget';
+        wrap.className = 'bughunt no-print';
+        wrap.innerHTML = `<button type="button" class="bughunt-bug" title="Нашли баг? Получите Профи" aria-label="Нашли баг? Получите Профи" onclick="app.toggleBugHunt()"><span>🐞</span></button>
+            <div class="bughunt-pop" id="bughunt_pop" role="dialog" aria-label="Охота на баги" hidden>
+                <button type="button" class="bughunt-x" aria-label="Закрыть" onclick="app.toggleBugHunt(false)">&times;</button>
+                <b>🐞 Охота на баги</b>
+                <p>${esc(cfg.shown)}</p>
+                ${cfg.untilLabel ? `<small>Акция до ${cfg.untilLabel}</small>` : ''}
+                <button type="button" class="bughunt-go" onclick="app.openBugHunt()">Нашёл баг</button>
+                <button type="button" class="bughunt-later" onclick="app.dismissBugHunt()">Убрать жучка на неделю</button>
+            </div>`;
+        document.body.appendChild(wrap);
+    },
+    toggleBugHunt: function (force) {
+        const pop = document.getElementById('bughunt_pop');
+        if (!pop) return;
+        pop.hidden = typeof force === 'boolean' ? !force : !pop.hidden;
+    },
+    openBugHunt: function () {
+        this.toggleBugHunt(false);
+        this.openFeedbackModal();
+        const s = document.getElementById('feedback_subject');
+        if (s) { try { s.focus(); } catch (e) { } }
+    },
+    dismissBugHunt: function () {
+        try { localStorage.setItem(this.BUGHUNT_HIDE_KEY, String(Date.now())); } catch (e) { }
+        const w = document.getElementById('bughunt_widget');
+        if (w) w.remove();
+    },
+    // Плашка с условиями над полями формы: только для категории «Баг» и пока акция действует
+    refreshFeedbackBugNote: function () {
+        const el = document.getElementById('feedback_bughunt_note');
+        if (!el) return;
+        const cfg = this.bugHuntCfg();
+        if (!cfg.active || this.selectedFeedbackCategory !== 'bug') { el.style.display = 'none'; el.innerHTML = ''; return; }
+        const calc = this.state && this.state.calc_id;
+        el.innerHTML = '<b>🐞 Охота на баги.</b> ' + this._bugHuntEsc(cfg.shown)
+            + (cfg.untilLabel ? ' <i>Акция до ' + cfg.untilLabel + '.</i>' : '')
+            + '<br><span style="opacity:.75;">' + (calc ? 'Номер текущего расчёта (' + this._bugHuntEsc(calc) + ') и данные устройства уйдут вместе с сообщением.' : 'Номер расчёта и данные устройства уйдут вместе с сообщением.')
+            + (this.state && this.state.tgUser ? '' : ' Войдите в аккаунт, иначе нам некому будет начислить Профи.') + '</span>';
+        el.style.display = 'block';
+    },
+
     openFeedbackModal: function () {
         // Reset fields
         const subjectEl = document.getElementById('feedback_subject');
@@ -104631,6 +104759,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         if (activeCard) {
             activeCard.classList.add('active');
         }
+        this.refreshFeedbackBugNote();
     },
 
     handleFeedbackFile: function (event) {
@@ -104758,6 +104887,11 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             };
 
             const categoryLabel = categoryLabels[this.selectedFeedbackCategory] || this.selectedFeedbackCategory;
+            // Баг во время акции «Охота на баги»: помечаем письмо и сообщение в Телеграм, чтобы не потерять претендента
+            const hunt = this.bugHuntCfg();
+            if (hunt.active && this.selectedFeedbackCategory === 'bug') {
+                subject = '[Охота на баги: ' + hunt.months + ' мес. Профи] ' + subject;
+            }
             const userAgent = navigator.userAgent;
             const windowSize = `${window.innerWidth}x${window.innerHeight}`;
             const screenSize = `${screen.width}x${screen.height}`;
