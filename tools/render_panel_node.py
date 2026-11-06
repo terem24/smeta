@@ -269,7 +269,7 @@ def pipe_run(p0, sup, sg):
 def room():
     part('')
     g = mat('radwhite', rough=0.6, alpha=0.18)
-    x0, x1 = -LR / 2 - 0.10, LR / 2 + 0.26
+    x0, x1 = -LR / 2 - 0.26, LR / 2 + 0.10
     for name, size, loc in (('стена', (x1 - x0, 0.004, 0.80), ((x0 + x1) / 2, YW + 0.002, 0.33)),
                             ('пол', (x1 - x0, 0.40, 0.004), ((x0 + x1) / 2, YW - 0.20, -0.002))):
         ob = box(name, size, g, loc)
@@ -282,14 +282,16 @@ def room():
 def build():
     sc = reset()
     room()
-    sg = 1                                    # подключение справа
-    x_end = LR / 2 + 0.003
+    # подключение слева: камера смотрит слева-спереди, у правого торца клапаны и выход трубы в стену
+    # закрыл бы сам радиатор (боковое подключение допустимо с любой стороны)
+    sg = -1
+    x_end = sg * (LR / 2 + 0.003)
     part('rad')
     radiator()
     for z in (Z_TOP, Z_BOT):
         port_end(x_end, z, sg)
     # дальний торец: воздухоотводчик сверху, заглушка снизу (монтажный комплект)
-    air_vent(-x_end, Z_TOP, -sg)
+    air_vent(-x_end, Z_TOP, -sg)   # дальний торец
     plug(-x_end, Z_BOT, -sg)
     marks['rad'] = (0.0, YF, ZB + HR * 0.55)
     for z, sup in ((Z_TOP, True), (Z_BOT, False)):
