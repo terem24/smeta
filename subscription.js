@@ -963,9 +963,8 @@ const Subscription = {
             if (gr && gr.active) {
                 this.graceWatch();
                 const t = gr.until.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-                host.className = 'no-print trial-end-banner';
-                host.innerHTML = '<div class="teb" style="cursor:default; background:rgba(16,185,129,0.10); border-color:rgba(16,185,129,0.5);">' +
-                    '<span class="teb-ic" aria-hidden="true">✅</span>' +
+                host.className = 'no-print trial-end-banner te-ok';
+                host.innerHTML = '<div class="teb" style="cursor:default;">' +
                     '<span class="teb-body"><span class="teb-title">Профи включён до ' + this.esc(t) + ' — проверяем оплату</span>' +
                     '<span class="teb-sub">Как только поступление подтвердится, Профи продлится на оплаченный срок. Ничего делать не нужно.</span></span></div>';
                 host.style.display = '';
@@ -984,7 +983,6 @@ const Subscription = {
             const cta = (info.paid ? 'Продлить' : 'Оставить Профи') + (price ? ' — ' + price : '');
             host.className = 'no-print trial-end-banner' + (info.stage === 'last' ? ' te-last' : '');
             host.innerHTML = '<div class="teb" role="button" tabindex="0" onclick="Subscription.trialEndGo()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();Subscription.trialEndGo();}">' +
-                '<span class="teb-ic" aria-hidden="true">⏳</span>' +
                 '<span class="teb-body"><span class="teb-title">' + this.esc(title) + '</span><span class="teb-sub">' + this.esc(sub) + '</span></span>' +
                 '<span class="teb-cta">' + this.esc(cta) + '</span>' +
                 '<button type="button" class="teb-x" onclick="event.stopPropagation();Subscription.trialEndHide()" title="Скрыть" aria-label="Скрыть">&times;</button></div>';
@@ -1023,7 +1021,6 @@ const Subscription = {
         const until = r.promo.to ? (left > 0 && left <= 3 ? 'осталось ' + left + ' ' + (left === 1 ? 'день' : 'дня') : 'до ' + this.fmtDate(r.promo.to)) : '';
         host.className = 'no-print trial-end-banner te-promo';
         host.innerHTML = '<div class="teb" role="button" tabindex="0" onclick="Subscription.promoBannerGo()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();Subscription.promoBannerGo();}">' +
-            '<span class="teb-ic" aria-hidden="true">🎁</span>' +
             '<span class="teb-body"><span class="teb-title">Первый месяц Профи — ' + this.esc(this.fmtRub(r.rub)) + '</span>' +
             '<span class="teb-sub">Вместо ' + this.esc(this.fmtRub(r.baseRub)) + (until ? ' · ' + this.esc(until) : '') + '</span></span>' +
             '<span class="teb-cta">Взять за ' + this.esc(this.fmtRub(r.rub)) + '</span>' +
@@ -1175,7 +1172,7 @@ const Subscription = {
                     + this.esc(this.fmtRub(month.rub)) + ' в месяц' + (perDay ? ' · около ' + this.esc(this.fmtRub(perDay)) + ' в день' : '')
                 : '';
             const accent = 'var(--primary,#0A84FF)';
-            const font = '-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter","Segoe UI",Roboto,sans-serif';
+            const font = '-apple-system,BlinkMacSystemFont,SF Pro Text,Inter,Segoe UI,Roboto,sans-serif';
             const check = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style="flex:none;"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
             const hair = 'border-top:1px solid var(--border,rgba(127,127,127,.2));';
 
@@ -1397,86 +1394,91 @@ const Subscription = {
         }
     },
 
-    // ── Праздник после оплаты: конфетти и фанфары, как после обучения ──────
-    // opts: { emoji, title, sub, chips: bool, cta, reload } — reload: перезагрузить
-    // страницу по кнопке, чтобы функции Профи включились везде (как после пробного).
-    celebratePro: function (opts) {
-        opts = opts || {};
-        const old = document.getElementById('pro_win'); if (old) old.remove();
-        const chips = opts.chips ? this.proGains(4) : [];
-        const wrap = document.createElement('div');
-        wrap.id = 'pro_win';
-        wrap.style.cssText = 'position:fixed;inset:0;z-index:2147483300;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.6);padding:16px;';
-        wrap.innerHTML = '<div style="position:relative;max-width:400px;width:100%;background:var(--surface,#fff);color:var(--text-main,#0f172a);border:1px solid var(--border);border-radius:20px;padding:28px 22px 20px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.45);">'
-            + '<div style="font-size:60px;line-height:1;">' + (opts.emoji || '🎉') + '</div>'
-            + '<h3 style="margin:12px 0 6px;font-size:24px;font-weight:800;">' + this.esc(opts.title || 'Профи включён!') + '</h3>'
-            + (opts.sub ? '<p style="margin:0 0 14px;font-size:14.5px;line-height:1.45;color:var(--text-sec);">' + this.esc(opts.sub) + '</p>' : '')
-            + (chips.length ? '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:0 0 18px;">' + chips.map(c => '<span style="font-size:12.5px;font-weight:600;padding:5px 10px;border-radius:999px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.4);">✓ ' + this.esc(c) + '</span>').join('') + '</div>' : '')
-            + '<button type="button" id="pro_win_ok" style="width:100%;padding:13px;border:0;border-radius:12px;background:#10B981;color:#fff;font-size:15.5px;font-weight:800;cursor:pointer;">' + this.esc(opts.cta || 'Начать работать') + '</button>'
-            + '</div>';
-        document.body.appendChild(wrap);
-        const cv = document.createElement('canvas');
-        cv.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:2147483400;pointer-events:none;';
-        document.body.appendChild(cv);
-        let stopFx = () => { };
-        try { if (typeof Tour !== 'undefined') { stopFx = Tour._confetti(cv); Tour._fanfare(); } } catch (e) { }
-        const close = () => { try { stopFx(); } catch (e) { } cv.remove(); wrap.remove(); if (opts.reload && typeof app.softReload === 'function') app.softReload(200); };
-        wrap.querySelector('#pro_win_ok').onclick = close;
+    // ── Окно тарифа в одном стиле ─────────────────────────────────────────
+    // Общий каркас окон «Профи включён», «Оплата подтверждена», «Оплату не нашли»: без эмодзи,
+    // системный шрифт, тонкий значок в круге, одна главная кнопка (как endOfferModal).
+    // o: { id, glyph: 'check' | 'alert', title, sub, items: [строки с галочкой], note: html,
+    //      primary, secondary, secondaryHref, dismiss } → Promise: 'primary' | 'secondary' | null
+    SHEET_FONT: '-apple-system,BlinkMacSystemFont,SF Pro Text,Inter,Segoe UI,Roboto,sans-serif',
+    sheet: function (o) {
+        return new Promise(resolve => {
+            const old = document.getElementById(o.id); if (old) old.remove();
+            const font = this.SHEET_FONT;
+            const accent = 'var(--primary,#0A84FF)';
+            const tint = o.glyph === 'alert' ? '#FF9F0A' : '#30D158';
+            const glyph = o.glyph === 'alert'
+                ? '<path d="M12 7v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16.6" r="1.2" fill="currentColor"/>'
+                : '<path class="sh-ck" d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+            const check = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style="flex:none;"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            if (!document.getElementById('pro_sheet_css')) {
+                const st = document.createElement('style'); st.id = 'pro_sheet_css';
+                st.textContent = '@keyframes proSheetIn{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}'
+                    + '@keyframes proSheetCk{from{stroke-dashoffset:20}to{stroke-dashoffset:0}}'
+                    + '.pro-sheet-card{animation:proSheetIn .28s cubic-bezier(.2,.8,.2,1) both}'
+                    + '.pro-sheet-card .sh-ck{stroke-dasharray:20;animation:proSheetCk .45s .15s ease-out both}'
+                    + '@media (prefers-reduced-motion: reduce){.pro-sheet-card,.pro-sheet-card .sh-ck{animation:none}}';
+                document.head.appendChild(st);
+            }
+            const wrap = document.createElement('div');
+            wrap.id = o.id;
+            wrap.style.cssText = 'position:fixed;inset:0;z-index:2147483300;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);padding:16px;';
+            wrap.innerHTML = '<div class="pro-sheet-card" role="dialog" aria-modal="true" aria-labelledby="' + o.id + '_t" style="position:relative;max-width:360px;width:100%;background:var(--surface,#fff);color:var(--text-main,#1d1d1f);border-radius:22px;padding:28px 24px 14px;text-align:center;font-family:' + font + ';box-shadow:0 30px 80px rgba(0,0,0,.35);">'
+                + '<div style="width:52px;height:52px;margin:0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;color:' + tint + ';border:1.5px solid ' + tint + ';">'
+                + '<svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">' + glyph + '</svg></div>'
+                + '<h3 id="' + o.id + '_t" style="margin:14px 0 6px;font-size:24px;font-weight:700;letter-spacing:-.02em;line-height:1.2;">' + this.esc(o.title) + '</h3>'
+                + (o.sub ? '<p style="margin:0 auto;max-width:290px;font-size:14px;line-height:1.45;color:var(--text-sec);">' + this.esc(o.sub) + '</p>' : '')
+                + (o.items && o.items.length ? '<div style="text-align:left;margin-top:18px;padding:12px 4px 0;border-top:1px solid var(--border,rgba(127,127,127,.2));">'
+                    + o.items.map(g => '<div style="display:flex;gap:10px;align-items:center;font-size:14.5px;line-height:1.3;padding:5px 0;"><span style="color:' + accent + ';display:flex;">' + check + '</span>' + this.esc(g.charAt(0).toUpperCase() + g.slice(1)) + '</div>').join('')
+                    + '</div>' : '')
+                + (o.note ? '<div style="margin-top:14px;font-size:13px;line-height:1.45;color:var(--text-sec);">' + o.note + '</div>' : '')
+                + '<button type="button" data-a="primary" style="width:100%;margin-top:20px;padding:14px;border:0;border-radius:14px;background:' + accent + ';color:#fff;font:600 16px ' + font + ';cursor:pointer;">' + this.esc(o.primary || 'Готово') + '</button>'
+                + (o.secondary ? (o.secondaryHref
+                    ? '<a data-a="secondary" href="' + o.secondaryHref + '" style="display:block;margin-top:10px;padding:8px;color:' + accent + ';font:500 14px ' + font + ';text-decoration:none;">' + this.esc(o.secondary) + '</a>'
+                    : '<button type="button" data-a="secondary" style="display:block;width:100%;margin-top:10px;padding:8px;border:0;background:transparent;color:' + accent + ';font:500 14px ' + font + ';cursor:pointer;">' + this.esc(o.secondary) + '</button>') : '')
+                + (o.dismiss ? '<button type="button" data-a="dismiss" style="display:block;width:100%;padding:8px;border:0;background:transparent;color:var(--text-sec);font:400 14px ' + font + ';cursor:pointer;">' + this.esc(o.dismiss) + '</button>' : '<div style="height:6px;"></div>')
+                + '</div>';
+            document.body.appendChild(wrap);
+            const done = v => { document.removeEventListener('keydown', onKey); wrap.remove(); resolve(v); };
+            const onKey = e => { if (e.key === 'Escape') done(null); };
+            document.addEventListener('keydown', onKey);
+            wrap.addEventListener('click', e => {
+                if (e.target === wrap) return done(null);
+                const b = e.target.closest('[data-a]');
+                if (!b) return;
+                const a = b.getAttribute('data-a');
+                if (a === 'secondary' && o.secondaryHref) { setTimeout(() => done('secondary'), 0); return; }   // ссылке дать открыться
+                done(a === 'dismiss' ? null : a);
+            });
+        });
     },
 
-    // Оплату не нашли: короткое тревожное окно — значок покачивается, короткий «сигнал
-    // ошибки» на WebAudio (тихо, если браузер звук не разрешил). Кнопки: оплатить снова
-    // или написать нам.
+    // ── Профи включён / оплата подтверждена ──────────────────────────────
+    // opts: { title, sub, chips: bool, cta, reload } — reload: перезагрузить страницу по кнопке,
+    // чтобы функции Профи включились везде (как после пробного). opts.emoji больше не рисуется.
+    celebratePro: function (opts) {
+        opts = opts || {};
+        return this.sheet({
+            id: 'pro_win', glyph: 'check',
+            title: String(opts.title || 'Профи включён').replace(/!+$/, ''),
+            sub: opts.sub || '',
+            items: opts.chips ? this.proGains(4) : [],
+            primary: opts.cta || 'Начать работать'
+        }).then(() => { if (opts.reload && typeof app.softReload === 'function') app.softReload(200); });
+    },
+
+    // Оплату не нашли: спокойное окно без вспышек и звука. Кнопки: оплатить снова или написать нам.
     alarmPro: function () {
-        const old = document.getElementById('pro_alarm'); if (old) old.remove();
-        if (!document.getElementById('pro_alarm_css')) {
-            const st = document.createElement('style'); st.id = 'pro_alarm_css';
-            st.textContent = '@keyframes proAlarmShake{0%,100%{transform:translateX(0)}15%,45%,75%{transform:translateX(-8px)}30%,60%,90%{transform:translateX(8px)}}'
-                + '@keyframes proAlarmPulse{0%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}100%{box-shadow:0 0 0 22px rgba(239,68,68,0)}}'
-                + '#pro_alarm .pa-card{animation:proAlarmShake .6s ease 1}'
-                + '#pro_alarm .pa-ic{animation:proAlarmPulse 1.2s ease-out 3}'
-                // Красные края экрана, как «попадание» в игре: три вспышки и затухание
-                + '@keyframes proAlarmEdge{0%{opacity:0}10%{opacity:1}30%{opacity:.35}45%{opacity:.95}65%{opacity:.3}80%{opacity:.85}100%{opacity:0}}'
-                + '#pro_alarm_edge{position:fixed;inset:0;z-index:2147483350;pointer-events:none;opacity:0;'
-                + 'background:radial-gradient(ellipse at center,rgba(220,38,38,0) 55%,rgba(220,38,38,.35) 78%,rgba(185,28,28,.85) 100%);'
-                + 'box-shadow:inset 0 0 120px 30px rgba(220,38,38,.75);animation:proAlarmEdge 1.6s ease-out 1 forwards}';
-            document.head.appendChild(st);
-        }
-        const wrap = document.createElement('div');
-        wrap.id = 'pro_alarm';
-        wrap.style.cssText = 'position:fixed;inset:0;z-index:2147483300;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.6);padding:16px;';
-        wrap.innerHTML = '<div class="pa-card" style="max-width:380px;width:100%;background:var(--surface,#fff);color:var(--text-main,#0f172a);border:1.5px solid rgba(239,68,68,.6);border-radius:20px;padding:26px 22px 20px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.45);">'
-            + '<div class="pa-ic" style="width:64px;height:64px;margin:0 auto;border-radius:50%;background:rgba(239,68,68,.15);display:flex;align-items:center;justify-content:center;font-size:34px;">⚠️</div>'
-            + '<h3 style="margin:14px 0 6px;font-size:22px;font-weight:800;">Оплату не нашли</h3>'
-            + '<p style="margin:0 0 18px;font-size:14.5px;line-height:1.45;color:var(--text-sec);">Профи выключен. Уже заплатили? Напишите нам — включим в тот же день.<br><b style="color:var(--text-main);">MAX: +7 982 610-95-48</b></p>'
-            + '<button type="button" id="pro_alarm_pay" style="width:100%;padding:13px;border:0;border-radius:12px;background:var(--primary,#2563eb);color:var(--on-primary,#fff);font-size:15px;font-weight:800;cursor:pointer;margin-bottom:8px;">Оплатить снова</button>'
-            + '<a href="mailto:kovdor24@yandex.ru?subject=' + encodeURIComponent('Оплата Профи') + '" style="display:block;padding:11px;border-radius:12px;border:1.5px solid var(--border);color:var(--text-main);font-size:14px;font-weight:700;text-decoration:none;margin-bottom:6px;">Написать на почту</a>'
-            + '<button type="button" id="pro_alarm_close" style="width:100%;padding:9px;border:0;background:transparent;color:var(--text-sec);font-size:13px;cursor:pointer;">Закрыть</button>'
-            + '</div>';
-        document.body.appendChild(wrap);
-        const edge = document.createElement('div');
-        edge.id = 'pro_alarm_edge';
-        const oldEdge = document.getElementById('pro_alarm_edge'); if (oldEdge) oldEdge.remove();
-        document.body.appendChild(edge);
-        setTimeout(() => edge.remove(), 1800);
-        try { if (navigator.vibrate) navigator.vibrate([120, 80, 120]); } catch (e) { }
-        try {
-            const AC = window.AudioContext || window.webkitAudioContext;
-            if (AC) {
-                const ctx = new AC(), t = ctx.currentTime;
-                [[440, 0], [330, 0.22]].forEach(([f, d]) => {
-                    const o = ctx.createOscillator(), g = ctx.createGain();
-                    o.type = 'square'; o.frequency.value = f;
-                    g.gain.setValueAtTime(0.0001, t + d); g.gain.exponentialRampToValueAtTime(0.08, t + d + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.2);
-                    o.connect(g); g.connect(ctx.destination); o.start(t + d); o.stop(t + d + 0.22);
-                });
-                setTimeout(() => { try { ctx.close(); } catch (e) { } }, 800);
-            }
-        } catch (e) { }
         try { app.logPaywall('seen', 'Оплата: не нашли'); } catch (e) { }
-        const close = () => wrap.remove();
-        wrap.querySelector('#pro_alarm_close').onclick = close;
-        wrap.querySelector('#pro_alarm_pay').onclick = () => { close(); app.showModal('pro', { why: 'Оплата не найдена — можно оплатить ещё раз' }); };
+        this.sheet({
+            id: 'pro_alarm', glyph: 'alert',
+            title: 'Оплата не найдена',
+            sub: 'Профи пока выключен. Если вы уже заплатили — напишите нам, включим в тот же день.',
+            note: 'MAX: <span style="color:var(--text-main);font-weight:600;">+7 982 610-95-48</span>',
+            primary: 'Оплатить снова',
+            secondary: 'Написать на почту',
+            secondaryHref: 'mailto:kovdor24@yandex.ru?subject=' + encodeURIComponent('Оплата Профи'),
+            dismiss: 'Закрыть'
+        }).then(v => { if (v === 'primary') app.showModal('pro', { why: 'Оплата не найдена — можно оплатить ещё раз' }); });
     },
 
     // ── Пока идут 24 часа: сверка с базой ─────────────────────────────────
@@ -1514,7 +1516,7 @@ const Subscription = {
                     this.alarmPro();
                 } else if (rec.granted_by !== 'grace') {
                     localStorage.removeItem(this.GRACE_LS); this.graceStop();
-                    try { app.showInfoToast('🏆', 'Оплата подтверждена', 'Профи на объект — ваш. Спасибо!'); } catch (e) { }
+                    try { app.showInfoToast('✓', 'Оплата подтверждена', 'Профи на объект — ваш. Спасибо!'); } catch (e) { }
                 }
                 return;
             }
@@ -1534,7 +1536,7 @@ const Subscription = {
                 if (Array.isArray(po) && po.length) {
                     localStorage.removeItem(this.GRACE_LS); this.graceStop(); this.syncTrialEndBanner();
                     try { app.loadProObjects(); } catch (e) { }
-                    this.celebratePro({ emoji: '🏆', title: 'Оплата подтверждена!', sub: 'Профи для одного объекта начислен. Откройте смету и в окне Профи нажмите «Открыть Профи для этого объекта». Спасибо!', cta: 'Отлично' });
+                    this.celebratePro({ emoji: '🏆', title: 'Оплата подтверждена!', sub: 'Профи для одного объекта начислен. Откройте смету и в окне Профи нажмите «Открыть Профи для этого объекта». Спасибо!', cta: 'Готово' });
                     return;
                 }
             }
@@ -1554,7 +1556,7 @@ const Subscription = {
                 tg.demo_ends_at = u.demo_ends_at; tg.pro_expires_at = u.pro_expires_at;
                 try { app.saveState(); app.syncUI(); } catch (e) { }
                 this.syncTrialEndBanner();
-                this.celebratePro({ emoji: '🏆', title: 'Оплата подтверждена!', sub: 'Профи продлён до ' + end.toLocaleDateString('ru-RU') + '. Спасибо, что с нами!', cta: 'Отлично' });
+                this.celebratePro({ emoji: '🏆', title: 'Оплата подтверждена!', sub: 'Профи продлён до ' + end.toLocaleDateString('ru-RU') + '. Спасибо, что с нами!', cta: 'Готово' });
             }
         } catch (e) { console.warn('[подписка] сверка 24 часов:', e); }
     },
