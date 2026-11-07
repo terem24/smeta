@@ -302,7 +302,8 @@ def build_ventil():
     marks['rad'] = (0.0, YF, ZB + HR * 0.55)
     # вентильная вставка в верхнем правом патрубке и термоголовка горизонтально
     lathe('вставка RTI', [(0.0120, 0), (0.0120, 0.010)], M_NICKEL(), (x_end, 0, Z_TOP), 'X', segs=40)
-    rb.rht_head((x_end + 0.010, 0, Z_TOP), 'X')
+    # головка — как в смете: ROMMER RHT-0001 (режим ROMMER) или STOUT SHT-0001 (вариант «_sht»)
+    (rb.sht_head if VAR.endswith('_sht') else rb.rht_head)((x_end + 0.010, 0, Z_TOP), 'X')
     part('node')
     x_sup = LR / 2 - 0.032 + 0.003
     x_ret = x_sup - 0.050

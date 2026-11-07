@@ -24,7 +24,8 @@ SCRIPT = os.path.join(HERE, 'tools', 'render_rad_node.py')
 PX_PER_M = 2550
 # радиатор Space 500 с нижним подключением: узел угловой (трубы из стены) или прямой (из пола),
 # подключение справа (SRB-0320) или слева (SRB-0321, «_l»)
-VARIANTS = ['space_angled', 'space_straight', 'space_angled_l', 'space_straight_l']
+VARIANTS = ['space_angled', 'space_straight', 'space_angled_l', 'space_straight_l'] +     ['ventil%s_%s_%s' % (t, k, h) for t in ('22', '21', '11', '33') for k in ('angled', 'straight') for h in ('rht', 'sht')]
+PANEL_SCRIPT = os.path.join(HERE, 'tools', 'render_panel_node.py')     # Ventil — панельный радиатор
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
                     255, 255, 255] + [0, 0, 0] * 248)
@@ -32,7 +33,7 @@ PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 
 
 def build(v, tmp):
     t = 'radnode_' + v
-    subprocess.run([BLENDER, '--background', '--python', SCRIPT, '--', tmp, v],
+    subprocess.run([BLENDER, '--background', '--python', PANEL_SCRIPT if v.startswith('ventil') else SCRIPT, '--', tmp, v],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                    env=dict(os.environ, HC_PX_PER_M=str(PX_PER_M)))
     meta_path = os.path.join(tmp, t + '.json')

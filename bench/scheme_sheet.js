@@ -260,7 +260,7 @@ for (let n = 2; n <= 13; n++) {
     run(`радиаторы ${n} без подвода`, radSheet([n + '_bare']));
     run(`радиаторы ${n} + ${Math.max(2, 15 - n)}`, radSheet([String(n), String(Math.max(2, 15 - n))]));
 }
-['space_angled', 'space_straight', 'space_angled_l', 'space_straight_l'].forEach(v => run('подключение ' + v, radNodeSheet(v)));
+Object.keys(IDX.radnode || {}).forEach(v => run('подключение ' + v, radNodeSheet(v)));
 Object.keys(IDX.panel || {}).forEach(v => run('панельный ' + v, panelSheet(v)));
 
 // ── 7: подписи находят строки сметы ──────────────────────────────────────
@@ -274,6 +274,8 @@ const OBJ = {
     'ТП, узел подмеса на гребёнке': { area: 160, floors: 2, systems: ['rad', 'tp'], tp1: 8, tp2: 30, ufhMixType: 'std' },
     'Радиаторы Space на коллекторе, 120 м²': { area: 120, floors: 1, systems: ['rad'] },
     'Радиаторы Space, узел прямой (из пола)': { area: 120, floors: 1, systems: ['rad'], connectionType: 'straight' },
+    'Ventil (ROMMER), узел угловой': { area: 200, floors: 2, systems: ['rad'], brandMode: 'rommer', connectionType: 'angled' },
+    'Ventil (ROMMER), узел прямой': { area: 200, floors: 2, systems: ['rad'], brandMode: 'rommer', connectionType: 'straight' },
     'Стальные панельные, клапаны угловые (из стены)': { area: 120, floors: 1, systems: ['rad'], radType: 'steel', connectionType: 'angled' },
     'Стальные панельные, клапаны прямые (из пола)': { area: 120, floors: 1, systems: ['rad'], radType: 'steel', connectionType: 'straight' }
 };
@@ -323,9 +325,18 @@ for (const [title, patch] of Object.entries(OBJ)) {
         Object.keys(app.RAD_LAB_RE).forEach(pk => { if (!sec3.some(it => app.RAD_LAB_RE[pk].test(nm(it)))) miss.push('коллектор радиаторов: ' + pk); });
         if (!sec3.some(it => /^Коллектор радиаторный/i.test(nm(it)))) miss.push('коллектор радиаторов: сам коллектор');
     }
-    // подключение радиатора Space (нижнее) с узлом SVH-0002/0004 — подписи RADNODE_LAB_RE
-    if (sec3.some(it => /^SRB-032[01]/i.test(String(it.displaySku || it.id))) && sec3.some(it => /^SVH-000[24]/i.test(String(it.displaySku || it.id)))) {
-        Object.keys(app.RADNODE_LAB_RE).forEach(pk => { if (!sec3.some(it => app.RADNODE_LAB_RE[pk].test(nm(it)))) miss.push('подключение радиатора: ' + pk); });
+    // нижнее подключение (Space, Ventil) с узлом SVH-0002/0004 — подписи RADNODE_LAB_RE; у прямого
+    // узла фитинг, трубка и скоба набора (RADNODE_LAB_RE_STRAIGHT); кронштейны — только у Space
+    const svh = sec3.find(it => /^SVH-000[24]/i.test(String(it.displaySku || it.id)));
+    const hasSpace = sec3.some(it => /^SRB-032[01]/i.test(String(it.displaySku || it.id)));
+    const hasVentil = sec3.some(it => /^RRS-2020/i.test(String(it.displaySku || it.id)));
+    if (svh && (hasSpace || hasVentil)) {
+        const straight = /^SVH-0002/i.test(String(svh.displaySku || svh.id));
+        Object.keys(app.RADNODE_LAB_RE).forEach(pk => {
+            if (pk === 'bracket' && !hasSpace) return;
+            const re = (straight && app.RADNODE_LAB_RE_STRAIGHT[pk]) || app.RADNODE_LAB_RE[pk];
+            if (!sec3.some(it => re.test(nm(it)))) miss.push('подключение радиатора: ' + pk);
+        });
     }
     // подключение стального панельного (боковое) — клапаны под евроконус и подписи PANEL_LAB_RE
     if (sec3.some(it => /^RRS-2010/i.test(String(it.displaySku || it.id)))) {

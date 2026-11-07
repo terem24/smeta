@@ -46198,52 +46198,74 @@ const app = {
         });
         return { html, sum };
     },
-    // Лист «Подключение радиатора»: кадры tools/render_rad_node.py (img/rad_node/, индекс
-    // radnode.json). Вариант — по строкам сметы: радиатор STOUT Space с нижним подключением
-    // (SRB-0320 — справа, SRB-0321 — слева) и узел SVH-0004 (угловой, трубы из стены) или
-    // SVH-0002 (прямой, из пола). Другой прибор или узел — кадра нет, листа нет.
+    // Лист «Подключение радиатора» с нижним подключением: кадры img/rad_node/ (индекс radnode.json).
+    // Приборы — по строкам сметы: STOUT Space (SRB-0320 справа, SRB-0321 слева; render_rad_node.py) и
+    // стальные панельные Ventil (RRS-2020, тип по «Тип NN»; render_panel_node.py, ключ ventilNN_…,
+    // головка — rht/sht по строке головки). Узел — SVH-0004 (угловой: евроконусы, трубы в стену,
+    // фиксаторы, втулки) или SVH-0002 (прямой: фитинги 15x3/4", трубки Г-образные, скоба). Другой
+    // прибор или узел — кадра нет, листа нет.
     RADNODE_DIR: 'img/rad_node/',
     radNodeIndex: function () {
         if (this._rnIdx !== undefined) return this._rnIdx;
         this._rnIdx = null;
-        fetch(this.RADNODE_DIR + 'radnode.json?v=2')
+        fetch(this.RADNODE_DIR + 'radnode.json?v=3')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._rnIdx = j || {}; if (Object.keys(this._rnIdx).length) this.render(); });
         return null;
     },
+    // подписи — по узлу: у прямого вместо евроконуса и фиксатора — фитинг, трубка и скоба набора
     RADNODE_LAB_RE: {
-        head: /^Головка термостат/i, node: /^Узел нижн/i, ek: /^Евроконус/i, tube: /^Труба/i,
+        head: /^Головка термостат/i, node: /^Узел нижн|^Ниппель\s*$/i, ek: /^Евроконус/i, tube: /^Труба/i,
         fix: /^Фиксатор|^Защитная втулка/i, bracket: /^Комплект настенных.*кронштейн|^Кронштейн.*радиатор/i
     },
+    RADNODE_LAB_RE_STRAIGHT: { ek: /^Фитинг компрессионный/i, tube: /^Трубка Г-образная/i, fix: /^Фиксирующая скоба/i },
     radNodeLabRows: function (pk) {
         const all = Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr =>
             /Приборы отопления|^3\./i.test(String(tr.dataset.rk || '').split('|')[1] || ''));
         const nm = tr => ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
         const sku = tr => ((tr.querySelector('.col-sku') || {}).innerText || '').trim();
-        if (pk.indexOf('mf:') === 0) return all.filter(tr => /^SRB-032[01]/i.test(sku(tr)) || /^Радиатор.*Space/i.test(nm(tr)));
-        const re = this.RADNODE_LAB_RE[pk];
+        if (pk.indexOf('mf:') === 0) {
+            const f = (this._rnFrames || {})[pk.slice(3)] || {};
+            if (f.ventil) return all.filter(tr => (/^RRS-2020/i.test(sku(tr)) || /Ventil/i.test(nm(tr))) && nm(tr).indexOf('Тип ' + f.type) >= 0);
+            return all.filter(tr => /^SRB-032[01]/i.test(sku(tr)) || /^Радиатор.*Space/i.test(nm(tr)));
+        }
+        const re = (this._rnStraight && this.RADNODE_LAB_RE_STRAIGHT[pk]) || this.RADNODE_LAB_RE[pk];
         return re ? all.filter(tr => re.test(nm(tr))) : [];
     },
     renderRadNodeSheet: function () {
         const eq = this.currentEquipmentList || [];
         const inRad = it => /^3\./.test(String(it.group || it.sectionTitle || ''));
         const skuOf = it => String(it.displaySku || it.id || '');
-        const rads = eq.filter(it => inRad(it) && /^SRB-032[01]/i.test(skuOf(it)));
-        if (!rads.length) return null;
+        const space = eq.filter(it => inRad(it) && /^SRB-032[01]/i.test(skuOf(it)));
+        const ventil = eq.filter(it => inRad(it) && (/^RRS-2020/i.test(skuOf(it)) || /Ventil/i.test(String(it.name || ''))));
+        if (!space.length && !ventil.length) return null;
         const nodes = eq.filter(it => inRad(it) && /^SVH-000[24]/i.test(skuOf(it)));
         if (nodes.length !== 1) return null;
         const angled = /^SVH-0004/i.test(skuOf(nodes[0]));
+        const kind = angled ? 'angled' : 'straight';
+        const headIt = eq.find(it => inRad(it) && /^Головка термостат/i.test(String(it.name || '')));
+        const head = headIt && /^RHT/i.test(skuOf(headIt)) ? 'rht' : 'sht';
         const idx = this.radNodeIndex();
         if (!idx) return null;
-        const sides = ['0320', '0321'].filter(k => rads.some(it => skuOf(it).indexOf('SRB-' + k) === 0));
         const frames = [];
-        for (const sd of sides) {
-            const key = 'space_' + (angled ? 'angled' : 'straight') + (sd === '0321' ? '_l' : '');
+        const add = (key, info) => {
             const fr = idx[key];
-            if (!fr || !fr.o) return null;
-            frames.push({ id: 'r' + frames.length, at: frames.length, fr, side: sd, path: this.RADNODE_DIR + 'radnode_' + key });
+            if (!fr || !fr.o) return false;
+            frames.push(Object.assign({ id: 'r' + frames.length, at: frames.length, fr, path: this.RADNODE_DIR + 'radnode_' + key }, info));
+            return true;
+        };
+        for (const sd of ['0320', '0321'].filter(k => space.some(it => skuOf(it).indexOf('SRB-' + k) === 0))) {
+            if (!add('space_' + kind + (sd === '0321' ? '_l' : ''), { side: sd })) return null;
         }
+        const typeOf = it => (/Тип\s*(\d\d)/i.exec(String(it.name || '')) || [])[1];
+        for (const t of Array.from(new Set(ventil.map(typeOf).filter(Boolean))).sort()) {
+            if (!add('ventil' + t + '_' + kind + '_' + head, { ventil: true, type: t })) return null;
+        }
+        if (!frames.length) return null;
+        this._rnStraight = !angled;
+        this._rnFrames = {};
+        frames.forEach(f => { this._rnFrames[f.id] = f; });
         const places = frames.map(f => f.at);
         const { iw, ih } = this.wmPlaceFrames(frames, places, [0, 0, 0]);
         const spec = frames.map(f => f.id).join(',');
@@ -46258,26 +46280,30 @@ const app = {
             let text;
             if (key.indexOf('mf:') === 0) {
                 const f = frames.find(x => 'mf:' + x.id === key);
-                text = ['Радиатор STOUT Space 500', 'нижнее подключение ' + (f.side === '0321' ? 'слева' : 'справа')];
+                text = f.ventil ? ['Радиатор стальной панельный Ventil', 'тип ' + f.type + ', нижнее подключение']
+                    : ['Радиатор STOUT Space 500', 'нижнее подключение ' + (f.side === '0321' ? 'слева' : 'справа')];
             } else if (key === 'head') text = ['Термостатическая головка', 'на встроенный клапан, M30x1,5'];
-            else if (key === 'node') text = ['Узел нижнего подключения', angled ? 'угловой, трубы из стены' : 'прямой, трубы из пола'];
-            else if (key === 'ek') text = ['Евроконус', (/(\d+\s*x\s*[\d.,]+)/i.exec(nameOf(rs)) || ['', '16x2.2'])[1]];
-            else if (key === 'tube') text = ['Подводка к радиатору', 'подача и обратка'];
-            else if (key === 'fix') text = ['Выход трубы ' + (angled ? 'из стены' : 'из пола'), 'фиксатор 90°, защитные втулки'];
+            else if (key === 'node') text = ['Узел нижнего подключения', (angled ? 'угловой, трубы из стены' : 'прямой, трубы из пола') +
+                (frames.some(f => f.ventil) ? '; ниппели 1/2" x 3/4"' : '')];
+            else if (key === 'ek') text = angled ? ['Евроконус', (/(\d+\s*x\s*[\d.,]+)/i.exec(nameOf(rs)) || ['', '16x2.2'])[1]]
+                : ['Фитинг компрессионный', '15x3/4" на трубку'];
+            else if (key === 'tube') text = angled ? ['Подводка к радиатору', 'подача и обратка'] : ['Трубка Г-образная', '16/500, из пола'];
+            else if (key === 'fix') text = angled ? ['Выход трубы из стены', 'фиксатор 90°, защитные втулки'] : ['Фиксирующая скоба', 'для трубок, на полу'];
             else text = ['Кронштейны', 'настенные, регулируемые'];
             const miss = rs.length ? [] : [text[0].toLowerCase()];
             return { pk: key, rows: rs, miss, off: false, ok: !miss.length, lines: text, tail: miss.length ? 'нет в смете' : '', zs,
                 mx: zs.reduce((sum, q) => sum + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
         }).filter(Boolean);
         const miss = items.filter(it => !it.ok).map(it => it.lines[0].toLowerCase());
-        const n = rads.reduce((sum, it) => sum + (it.q || 1), 0);
-        const sum = `<div class="sg-summary no-print">Подключение радиаторов: STOUT Space 500, ${n} шт., узел ${angled ? 'угловой' : 'прямой'}.` +
+        const n = space.concat(ventil).reduce((sum, it) => sum + (it.q || 1), 0);
+        const what = [space.length ? 'STOUT Space 500' : '', ventil.length ? 'стальные панельные Ventil' : ''].filter(Boolean).join(', ');
+        const sum = `<div class="sg-summary no-print">Подключение радиаторов снизу: ${what}, ${n} шт., узел ${angled ? 'угловой' : 'прямой'}.` +
             (miss.length ? ` <span class="sg-miss-txt">Нет в смете: ${miss.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
-            ` <span class="sg-hint">На схеме радиатор на 5 секций; число секций у каждого прибора — в смете.</span></div>`;
+            ` <span class="sg-hint">Размер прибора на схеме условный; число секций и длина каждого — в смете.</span></div>`;
         const html = this.wmSheet({
             kind: 'radnode', frames, items, iw, ih, spec, hk: null, title: 'Подключение радиатора', subtitle: 'Обвязка прибора',
-            places: frames.map(f => ({ name: 'Нижнее подключение ' + (f.side === '0321' ? 'слева' : 'справа'),
-                rows: [`Узел ${angled ? 'угловой SVH-0004' : 'прямой SVH-0002'}`, 'термоголовка SHT-0001'] }))
+            places: frames.map(f => ({ name: f.ventil ? 'Ventil, тип ' + f.type : 'Space, подключение ' + (f.side === '0321' ? 'слева' : 'справа'),
+                rows: [`Узел ${angled ? 'угловой SVH-0004' : 'прямой SVH-0002'}`, 'термоголовка ' + (head === 'rht' ? 'RHT-0001' : 'SHT-0001')] }))
         });
         return { html, sum };
     },
