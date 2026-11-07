@@ -23,7 +23,7 @@ name: Proxy Watch
 # нет, проверка и дневная сводка включены. Совсем остановить можно в Actions → Proxy Watch → Disable.
 on:
   schedule:
-    - cron: '0 * * * *'     # раз в час, в начале часа
+    - cron: '0 6 * * *'     # раз в сутки, в 09:00 по Москве
   workflow_dispatch:
     inputs:
       test_mail:
