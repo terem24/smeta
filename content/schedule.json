@@ -361,9 +361,9 @@
    "freq": 0,
    "audience": "pro",
    "data_block": "список вопросов заказчику",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-28",
-   "published_at": null,
+   "published_at": "2026-11-07",
    "words": 696
   },
   {

@@ -149,6 +149,7 @@
 - [Септик или станция очистки](https://heatcalc.ru/septik-ili-vygrebnaya-yama/) — септик для частного дома
 - [Нейросеть в работе монтажника: что поручить, а что считать самому](https://heatcalc.ru/neyroset-v-rabote-montazhnika/) — нейросеть для монтажника отопления
 - [Сколько стоит отопление частного дома под ключ](https://heatcalc.ru/skolko-stoit-otoplenie-doma/) — отопление под ключ цена
+- [Первый звонок и выезд на замер: что спросить у заказчика](https://heatcalc.ru/pervyy-zvonok-i-vyezd-na-zamer/) — выезд на замер отопления
 
 ## Примечания для моделей
 
