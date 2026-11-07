@@ -45685,7 +45685,9 @@ const app = {
             `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>`;
     },
     // Цвета сносок на карте деталей (tools/render_water_manifold.py, проход 3)
-    WM_GCOL: { mf: [1, 0, 0], ek: [0, 1, 0], tube: [0, 0, 1], mount: [1, 1, 0], end: [1, 0, 1], feed: [0, 1, 1], head: [1, 1, 1] },
+    // Цвета карты деталей (*_id.png). Каждый канал — три уровня (0, 128, 255): 26 цветов вместо 7;
+    // kit — монтажный набор радиатора (оранжевый 255,128,0).
+    WM_GCOL: { mf: [1, 0, 0], ek: [0, 1, 0], tube: [0, 0, 1], mount: [1, 1, 0], end: [1, 0, 1], feed: [0, 1, 1], head: [1, 1, 1], kit: [1, 0.5, 0] },
     // Ключ подписи по цвету карты деталей: коллектор — свой у каждого кадра; у водоснабжения
     // торец — по виду, у тёплого пола жёлтый — защитные втулки, голубой — переход на транзит
     wmLabKey: function (g, line, end, kind) {
@@ -45694,6 +45696,7 @@ const app = {
         if (kind === 'rad') return { feed: 'node' }[g] || g;
         if (kind === 'radnode') return { mount: 'bracket', end: 'fix', feed: 'node' }[g] || g;
         if (kind === 'panel') return { mount: 'lock', end: 'fix', feed: 'node' }[g] || g;
+        if (kind === 'side') return { mount: 'lock', end: 'fix', feed: 'node' }[g] || g;
         return g === 'end' ? 'end_' + end : g;
     },
     // Строки сметы подписи — по виду схемы
@@ -45701,6 +45704,7 @@ const app = {
         if (kind === 'rad') return this.radLabRows(pk);
         if (kind === 'radnode') return this.radNodeLabRows(pk);
         if (kind === 'panel') return this.panelLabRows(pk);
+        if (kind === 'side') return this.sideLabRows(pk);
         return kind === 'ufh' ? this.ufhLabRows(pk, spec) : this.wmLabRows(pk, spec);
     },
     // Маски деталей кадра: по карте деталей вырезаются пиксели самого кадра — деталь потом
@@ -45738,10 +45742,11 @@ const app = {
             const phd = b.getImageData(0, 0, w, h).data;
             const groups = Object.keys(this.WM_GCOL);
             const code = {};
-            groups.forEach((g, k) => { const c = this.WM_GCOL[g]; code[c[0] * 4 + c[1] * 2 + c[2]] = k + 1; });
+            const lv = v => v > 191 ? 2 : v > 63 ? 1 : 0;           // уровень канала: 0 / 128 / 255
+            groups.forEach((g, k) => { const c = this.WM_GCOL[g]; code[Math.round(c[0] * 2) * 9 + Math.round(c[1] * 2) * 3 + Math.round(c[2] * 2)] = k + 1; });
             const map = new Uint8Array(w * h), bufs = {};
             for (let p = 0, i = 0; p < w * h; p++, i += 4) {
-                const k = code[(idd[i] > 127 ? 4 : 0) + (idd[i + 1] > 127 ? 2 : 0) + (idd[i + 2] > 127 ? 1 : 0)];
+                const k = code[lv(idd[i]) * 9 + lv(idd[i + 1]) * 3 + lv(idd[i + 2])];
                 if (!k) { if (phd[i + 3] > 60) map[p] = 255; continue; }
                 map[p] = k;
                 const buf = bufs[k] || (bufs[k] = new Uint8ClampedArray(w * h * 4));
@@ -46103,8 +46108,90 @@ const app = {
             .filter(Boolean).map(url => this._renderSheetImage(url)).join('');
         // Новая схема узла подключения прибора (пока — секционный Space с нижним подключением)
         // видна владельцу; у остальных приборов — прежние листы
-        const fresh = this.wmPreviewOn() ? [this.renderRadNodeSheet(), this.renderPanelNodeSheet()].filter(Boolean) : [];
+        const fresh = this.wmPreviewOn() ? [this.renderRadNodeSheet(), this.renderPanelNodeSheet(), this.renderSideNodeSheet()].filter(Boolean) : [];
         return fresh.map(f => f.html + f.sum).join('') + old;
+    },
+    // Лист «Подключение радиатора» с БОКОВЫМ подключением (секционные): кадры tools/render_side_node.py
+    // (img/rad_side/, индекс side.json, ключ <семейство>-<узел>-<арматура>-<цвет>-<цвет набора>). Всё — по
+    // строкам сметы: узел — по клапану (угловой/прямой), арматура — SVT/SVL под евроконус или STOUT
+    // Design (цвет — по суффиксу артикула C/W/B, головка SHTD того же цвета, переходник с гильзой вместо
+    // евроконуса), цвет монтажного набора — по артикулу SKU-0211 (белый) / 0221 (графит) / 0231 (чёрный).
+    SIDE_DIR: 'img/rad_side/',
+    SIDE_SECT_RE: /^(SRB-0310|SRB-3310|SRA-2310|RBM-0210|RAL-1210|RBM-1210|RBM-3210|RAL-3210|SRB-1310|SRB-2310|SRA-1310)/i,
+    sideIndex: function () {
+        if (this._sdIdx !== undefined) return this._sdIdx;
+        this._sdIdx = null;
+        fetch(this.SIDE_DIR + 'side.json?v=1')
+            .then(r => r.ok ? r.json() : {})
+            .catch(() => ({}))
+            .then(j => { this._sdIdx = j || {}; if (Object.keys(this._sdIdx).length) this.render(); });
+        return null;
+    },
+    SIDE_LAB_RE: {
+        head: /^Головка термостат/i, node: /^Клапан термостатическ/i, lock: /^Клапан запорно-балансир/i,
+        ek: /^Евроконус|^Переходник с наружной резьбой 16|^Монтажная гильза 16|^Гильза монтажная 16/i, tube: /^Труба/i,
+        fix: /^Фиксатор|^Защитная втулка/i, kit: /^Монтажный набор для подключения радиатора/i
+    },
+    sideLabRows: function (pk) {
+        const all = Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr =>
+            /Приборы отопления|^3\./i.test(String(tr.dataset.rk || '').split('|')[1] || ''));
+        const nm = tr => ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
+        const sku = tr => ((tr.querySelector('.col-sku') || {}).innerText || '').trim();
+        if (pk.indexOf('mf:') === 0) return all.filter(tr => this.SIDE_SECT_RE.test(sku(tr)));
+        const re = this.SIDE_LAB_RE[pk];
+        return re ? all.filter(tr => re.test(nm(tr))) : [];
+    },
+    renderSideNodeSheet: function () {
+        const eq = this.currentEquipmentList || [];
+        const inRad = it => /^3\./.test(String(it.group || it.sectionTitle || ''));
+        const skuOf = it => String(it.displaySku || it.id || '');
+        const rads = eq.filter(it => inRad(it) && this.SIDE_SECT_RE.test(skuOf(it)));
+        if (!rads.length) return null;
+        const thermo = eq.find(it => inRad(it) && /^SVTD?-000[12]/i.test(skuOf(it)));
+        if (!thermo) return null;
+        const design = /^SVTD/i.test(skuOf(thermo));
+        const angled = /^SVTD?-0002/i.test(skuOf(thermo));
+        const vcol = design ? ({ C: 'chrome', W: 'white', B: 'black' }[skuOf(thermo).slice(-1).toUpperCase()] || 'chrome') : 'x';
+        const kitIt = eq.find(it => inRad(it) && /^SKU-02[123]1/i.test(skuOf(it)));
+        const kit = kitIt ? ({ '1': 'white', '2': 'graphite', '3': 'black' }[skuOf(kitIt).charAt(5)] || 'white') : 'white';
+        const key = ['sect', angled ? 'angled' : 'straight', design ? 'design' : 'std', vcol, kit].join('-');
+        const idx = this.sideIndex();
+        if (!idx) return null;
+        const fr = idx[key];
+        if (!fr || !fr.o) return null;
+        const frames = [{ id: 's0', at: 0, fr, path: this.SIDE_DIR + 'side_' + key }];
+        const { iw, ih } = this.wmPlaceFrames(frames, [0], [0, 0, 0]);
+        const zonesOf = this.wmZonesOf(frames, iw, ih, z => { const k = String(z).split(':')[0]; return { rad: 'mf', sleeve: 'fix' }[k] || k; });
+        (zonesOf['mf'] || []).forEach(q => (zonesOf['mf:s0'] = zonesOf['mf:s0'] || []).push(q));
+        const colRu = { chrome: 'хром', white: 'белые', black: 'чёрные' }[vcol];
+        const T = {
+            'mf:s0': ['Радиатор секционный', 'боковое подключение'],
+            head: design ? ['Термоголовка STOUT Design', { chrome: 'хром', white: 'белая', black: 'чёрная' }[vcol] + ', SHTD-0002'] : ['Термостатическая головка', 'SHT-0001, M30x1,5'],
+            node: ['Клапан термостатический', (angled ? 'угловой' : 'прямой') + (design ? ', STOUT Design ' + colRu : ' под евроконус') + ', подача'],
+            lock: ['Клапан запорно-балансировочный', (angled ? 'угловой' : 'прямой') + ', обратка'],
+            ek: design ? ['Переходник 16 x НР 1/2"', 'с монтажной гильзой'] : ['Евроконус', '16x2.2'],
+            tube: ['Подводка к радиатору', 'подача и обратка'],
+            fix: ['Выход трубы ' + (angled ? 'из стены' : 'из пола'), 'фиксатор 90°, защитные втулки'],
+            kit: ['Монтажный набор', 'переходники 1" x 1/2", заглушка, кран Маевского']
+        };
+        const items = Object.keys(T).map(key2 => {
+            const zs = zonesOf[key2] || [];
+            if (!zs.length) return null;
+            const rs = this.sideLabRows(key2);
+            const miss = rs.length ? [] : [T[key2][0].toLowerCase()];
+            return { pk: key2, rows: rs, miss, off: false, ok: !miss.length, lines: T[key2], tail: miss.length ? 'нет в смете' : '', zs,
+                mx: zs.reduce((sum, q) => sum + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
+        }).filter(Boolean);
+        const miss = items.filter(it => !it.ok).map(it => it.lines[0].toLowerCase());
+        const n = rads.reduce((sum, it) => sum + (it.q || 1), 0);
+        const sum = `<div class="sg-summary no-print">Подключение секционных радиаторов сбоку: ${n} шт., клапаны ${angled ? 'угловые (трубы из стены)' : 'прямые (трубы из пола)'}${design ? ', STOUT Design ' + colRu : ''}.` +
+            (miss.length ? ` <span class="sg-miss-txt">Нет в смете: ${miss.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
+            ` <span class="sg-hint">На схеме 6 секций, число секций каждого прибора — в смете; кронштейны — за прибором.</span></div>`;
+        const html = this.wmSheet({
+            kind: 'side', frames, items, iw, ih, spec: 's0', hk: null, title: 'Подключение радиатора', subtitle: 'Обвязка прибора',
+            places: [{ name: 'Боковое подключение', rows: [design ? 'Арматура STOUT Design, ' + colRu : 'Клапаны под евроконус', 'Монтажный набор'] }]
+        });
+        return { html, sum };
     },
     // Лист «Подключение стального панельного радиатора» (боковое): кадры tools/render_panel_node.py
     // (img/rad_panel/, индекс panel.json, ключ «<тип>_<angled|straight>»). Вариант — по строкам сметы:
