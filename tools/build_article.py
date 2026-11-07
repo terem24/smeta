@@ -20,6 +20,7 @@
 workflow publish-queue.yml в день публикации.
 """
 import io, json, os, re, sys, html
+from site_footer import SITE_FOOTER
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SITE = 'https://heatcalc.ru'
