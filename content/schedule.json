@@ -347,9 +347,9 @@
    "freq": 6400,
    "audience": "owner",
    "data_block": "две сметы из калькулятора",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-27",
-   "published_at": null,
+   "published_at": "2026-11-07",
    "words": 578
   },
   {
