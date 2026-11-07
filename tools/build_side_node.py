@@ -24,11 +24,14 @@ PX_PER_M = 2550
 # радиатор Space 500 с нижним подключением: узел угловой (трубы из стены) или прямой (из пола),
 # подключение справа (SRB-0320) или слева (SRB-0321, «_l»)
 # секционные (белый набор): обычная арматура и STOUT Design всех цветов (выбор цвета арматуры в смете)
+# секционные (белый набор): обычная арматура и STOUT Design всех цветов (выбор цвета арматуры в смете);
+# дизайнерские и трубчатые — по цветам прибора, арматура STOUT Design в цвет (белый->белая, чёрный->чёрная,
+# серый/натуральный->хром — так подбирает смета)
+_AUTO = {'white': 'white', 'black': 'black', 'gray': 'chrome', 'natural': 'chrome'}
+_COLS = {'oscar': ('white', 'black', 'gray'), 'sebino': ('white', 'black', 'gray'), 'tonale': ('white', 'black', 'gray'),
+         'anteprima': ('white', 'black', 'gray'), 'quadro': ('white', 'black'), 'round': ('natural', 'black')}
 VARIANTS = ['sect-%s-%s' % (k, st) for k in ('angled', 'straight')
-            for st in ('std-x-white', 'design-chrome-white', 'design-white-white', 'design-black-white')]
-PALETTE = Image.new('P', (1, 1))
-PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
-                    255, 255, 255, 255, 128, 0] + [0, 0, 0] * 247)       # + оранжевый — монтажный набор
+            for st in ('std-x-white', 'design-chrome-white', 'design-white-white', 'design-black-white')] +     ['%s-%s-design-%s-%s' % (f, k, _AUTO[c], c) for f, cs in _COLS.items() for c in cs for k in ('angled', 'straight')]
 
 
 def build(v, tmp):

@@ -46118,6 +46118,23 @@ const app = {
     // евроконуса), цвет монтажного набора — по артикулу SKU-0211 (белый) / 0221 (графит) / 0231 (чёрный).
     SIDE_DIR: 'img/rad_side/',
     SIDE_SECT_RE: /^(SRB-0310|SRB-3310|SRA-2310|RBM-0210|RAL-1210|RBM-1210|RBM-3210|RAL-3210|SRB-1310|SRB-2310|SRA-1310)/i,
+    // Семейство и цвет прибора с боковым подключением — по артикулу (каталог STOUT/GLOBAL/«ТУБЕ»):
+    // OSCAR SRA-0110, SEBINO SRA-1120, TONALE SRA-2120, ANTEPRIMA SRA-3120 (суффикс …07xx чёрный,
+    // …08xx серый, без — белый); TUBE QUADRO QV40-… (боковые — без «-R»/«-L»/«-CU»), TUBE ROUND R40-…
+    // (боковые — без «-RT»/«-LT»; NAT — натуральный).
+    sideFamily: function (sku) {
+        sku = String(sku || '');
+        if (this.SIDE_SECT_RE.test(sku)) return { fam: 'sect', col: 'white', ru: 'секционный' };
+        const m = /^SRA-(0110|1120|2120|3120)-\d{4}(\d{2})?/i.exec(sku);
+        if (m) {
+            const fam = { '0110': 'oscar', '1120': 'sebino', '2120': 'tonale', '3120': 'anteprima' }[m[1]];
+            const col = /^SRA-\d{4}-\d{4}07/i.test(sku) ? 'black' : /^SRA-\d{4}-\d{4}08/i.test(sku) ? 'gray' : 'white';
+            return { fam, col, ru: fam.toUpperCase() };
+        }
+        if (/^QV40-/i.test(sku) && !/-(R|L|CU)-/i.test(sku)) return { fam: 'quadro', col: /BLACK/i.test(sku) ? 'black' : 'white', ru: 'TUBE QUADRO' };
+        if (/^R40-/i.test(sku) && !/-(RT|LT)-/i.test(sku)) return { fam: 'round', col: /BLACK/i.test(sku) ? 'black' : 'natural', ru: 'TUBE ROUND' };
+        return null;
+    },
     sideIndex: function () {
         if (this._sdIdx !== undefined) return this._sdIdx;
         this._sdIdx = null;
@@ -46137,7 +46154,10 @@ const app = {
             /Приборы отопления|^3\./i.test(String(tr.dataset.rk || '').split('|')[1] || ''));
         const nm = tr => ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
         const sku = tr => ((tr.querySelector('.col-sku') || {}).innerText || '').trim();
-        if (pk.indexOf('mf:') === 0) return all.filter(tr => this.SIDE_SECT_RE.test(sku(tr)));
+        if (pk.indexOf('mf:') === 0) {
+            const f = (this._sdFrames || {})[pk.slice(3)] || {};
+            return all.filter(tr => { const d = this.sideFamily(sku(tr)); return d && d.fam === f.fam && d.col === f.col; });
+        }
         const re = this.SIDE_LAB_RE[pk];
         return re ? all.filter(tr => re.test(nm(tr))) : [];
     },
@@ -46145,7 +46165,7 @@ const app = {
         const eq = this.currentEquipmentList || [];
         const inRad = it => /^3\./.test(String(it.group || it.sectionTitle || ''));
         const skuOf = it => String(it.displaySku || it.id || '');
-        const rads = eq.filter(it => inRad(it) && this.SIDE_SECT_RE.test(skuOf(it)));
+        const rads = eq.filter(it => inRad(it) && this.sideFamily(skuOf(it)));
         if (!rads.length) return null;
         const thermo = eq.find(it => inRad(it) && /^SVTD?-000[12]/i.test(skuOf(it)));
         if (!thermo) return null;
@@ -46154,18 +46174,28 @@ const app = {
         const vcol = design ? ({ C: 'chrome', W: 'white', B: 'black' }[skuOf(thermo).slice(-1).toUpperCase()] || 'chrome') : 'x';
         const kitIt = eq.find(it => inRad(it) && /^SKU-02[123]1/i.test(skuOf(it)));
         const kit = kitIt ? ({ '1': 'white', '2': 'graphite', '3': 'black' }[skuOf(kitIt).charAt(5)] || 'white') : 'white';
-        const key = ['sect', angled ? 'angled' : 'straight', design ? 'design' : 'std', vcol, kit].join('-');
         const idx = this.sideIndex();
         if (!idx) return null;
-        const fr = idx[key];
-        if (!fr || !fr.o) return null;
-        const frames = [{ id: 's0', at: 0, fr, path: this.SIDE_DIR + 'side_' + key }];
-        const { iw, ih } = this.wmPlaceFrames(frames, [0], [0, 0, 0]);
+        const seen = {}, frames = [];
+        for (const it of rads) {
+            const d = this.sideFamily(skuOf(it));
+            const k = d.fam + '/' + d.col;
+            if (seen[k]) continue;
+            seen[k] = 1;
+            const key = [d.fam, angled ? 'angled' : 'straight', design ? 'design' : 'std', vcol, d.fam === 'sect' ? kit : d.col].join('-');
+            const fr = idx[key];
+            if (!fr || !fr.o) return null;
+            frames.push({ id: 's' + frames.length, at: frames.length, fr, fam: d.fam, col: d.col, ru: d.ru, path: this.SIDE_DIR + 'side_' + key });
+        }
+        this._sdFrames = {};
+        frames.forEach(f => { this._sdFrames[f.id] = f; });
+        const { iw, ih } = this.wmPlaceFrames(frames, frames.map(f => f.at), [0, 0, 0]);
+        const spec = frames.map(f => f.id).join(',');
         const zonesOf = this.wmZonesOf(frames, iw, ih, z => { const k = String(z).split(':')[0]; return { rad: 'mf', sleeve: 'fix' }[k] || k; });
-        (zonesOf['mf'] || []).forEach(q => (zonesOf['mf:s0'] = zonesOf['mf:s0'] || []).push(q));
+        frames.forEach(f => (zonesOf['mf'] || []).forEach(q => { if (q.line === f.id) (zonesOf['mf:' + f.id] = zonesOf['mf:' + f.id] || []).push(q); }));
         const colRu = { chrome: 'хром', white: 'белые', black: 'чёрные' }[vcol];
+        const radColRu = { white: 'белый', black: 'чёрный', gray: 'серый', natural: 'натуральный' };
         const T = {
-            'mf:s0': ['Радиатор секционный', 'боковое подключение'],
             head: design ? ['Термоголовка STOUT Design', { chrome: 'хром', white: 'белая', black: 'чёрная' }[vcol] + ', SHTD-0002'] : ['Термостатическая головка', 'SHT-0001, M30x1,5'],
             node: ['Клапан термостатический', (angled ? 'угловой' : 'прямой') + (design ? ', STOUT Design ' + colRu : ' под евроконус') + ', подача'],
             lock: ['Клапан запорно-балансировочный', (angled ? 'угловой' : 'прямой') + ', обратка'],
@@ -46174,9 +46204,11 @@ const app = {
             fix: ['Выход трубы ' + (angled ? 'из стены' : 'из пола'), 'фиксатор 90°, защитные втулки'],
             kit: ['Монтажный набор', 'переходники 1" x 1/2", заглушка, кран Маевского']
         };
-        const items = Object.keys(T).map(key2 => {
+        frames.forEach(f => { T['mf:' + f.id] = [f.fam === 'sect' ? 'Радиатор секционный' : 'Радиатор ' + f.ru, (f.fam === 'sect' ? '' : radColRu[f.col] + ', ') + 'боковое подключение']; });
+        const keys = frames.map(f => 'mf:' + f.id).concat(['head', 'node', 'lock', 'ek', 'tube', 'fix', 'kit']);
+        const items = keys.map(key2 => {
             const zs = zonesOf[key2] || [];
-            if (!zs.length) return null;
+            if (!zs.length || !T[key2]) return null;
             const rs = this.sideLabRows(key2);
             const miss = rs.length ? [] : [T[key2][0].toLowerCase()];
             return { pk: key2, rows: rs, miss, off: false, ok: !miss.length, lines: T[key2], tail: miss.length ? 'нет в смете' : '', zs,
@@ -46184,12 +46216,13 @@ const app = {
         }).filter(Boolean);
         const miss = items.filter(it => !it.ok).map(it => it.lines[0].toLowerCase());
         const n = rads.reduce((sum, it) => sum + (it.q || 1), 0);
-        const sum = `<div class="sg-summary no-print">Подключение секционных радиаторов сбоку: ${n} шт., клапаны ${angled ? 'угловые (трубы из стены)' : 'прямые (трубы из пола)'}${design ? ', STOUT Design ' + colRu : ''}.` +
+        const sum = `<div class="sg-summary no-print">Подключение радиаторов сбоку: ${n} шт., клапаны ${angled ? 'угловые (трубы из стены)' : 'прямые (трубы из пола)'}${design ? ', арматура STOUT Design ' + colRu : ''}.` +
             (miss.length ? ` <span class="sg-miss-txt">Нет в смете: ${miss.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
-            ` <span class="sg-hint">На схеме 6 секций, число секций каждого прибора — в смете; кронштейны — за прибором.</span></div>`;
+            ` <span class="sg-hint">Число секций и высота каждого прибора — в смете; кронштейны — за прибором.</span></div>`;
         const html = this.wmSheet({
-            kind: 'side', frames, items, iw, ih, spec: 's0', hk: null, title: 'Подключение радиатора', subtitle: 'Обвязка прибора',
-            places: [{ name: 'Боковое подключение', rows: [design ? 'Арматура STOUT Design, ' + colRu : 'Клапаны под евроконус', 'Монтажный набор'] }]
+            kind: 'side', frames, items, iw, ih, spec, hk: null, title: 'Подключение радиатора', subtitle: 'Обвязка прибора',
+            places: frames.map(f => ({ name: f.fam === 'sect' ? 'Секционный' : f.ru + ', ' + radColRu[f.col],
+                rows: [design ? 'Арматура STOUT Design, ' + colRu : 'Клапаны под евроконус', f.fam === 'sect' ? 'Монтажный набор' : 'Пробка и кран Маевского — в комплекте'] }))
         });
         return { html, sum };
     },

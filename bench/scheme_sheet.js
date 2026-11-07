@@ -38,7 +38,7 @@ const fail = (sheet, what) => { bad++; (fails[what] = fails[what] || []).push(sh
 const rd = f => JSON.parse(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'));
 // индексы новых узлов (коллектор радиаторов, подключение радиатора) — пока кадров нет, их листы пропускаются
 const rdOpt = f => fs.existsSync(path.join(__dirname, '..', f)) ? rd(f) : null;
-const IDX = { rad: rdOpt('img/manifold_rad/rad.json'), radnode: rdOpt('img/rad_node/radnode.json'), panel: rdOpt('img/rad_panel/panel.json'), st: rd('img/manifold3d/manifold3d_st.json'), rm: rd('img/manifold3d/manifold3d_rm.json'),
+const IDX = { rad: rdOpt('img/manifold_rad/rad.json'), radnode: rdOpt('img/rad_node/radnode.json'), panel: rdOpt('img/rad_panel/panel.json'), side: rdOpt('img/rad_side/side.json'), st: rd('img/manifold3d/manifold3d_st.json'), rm: rd('img/manifold3d/manifold3d_rm.json'),
     bl: rd('img/manifold3d/manifold3d_bl.json'), ufh: rd('img/manifold_ufh/ufh.json') };
 
 // ── разбор листа ─────────────────────────────────────────────────────────
@@ -230,6 +230,27 @@ function panelSheet(v) {
     return { o: { kind: 'panel', frames, items, iw, ih, spec: 'p0', hk: null, title: 'Подключение радиатора', subtitle: 'Обвязка прибора',
         places: [{ name: 'Стальной панельный, тип 21', rows: ['Боковое одностороннее подключение', 'Клапаны угловые под евроконус'] }] }, orphan };
 }
+function sideSheet(v) {
+    if (!IDX.side) return undefined;
+    const fr = IDX.side[v];
+    if (!fr) return null;
+    const frames = [{ id: 's0', at: 0, fr, path: 'img/rad_side/side_' + v }];
+    const { iw, ih } = app.wmPlaceFrames(frames, [0], [0, 0, 0]);
+    const zonesOf = app.wmZonesOf(frames, iw, ih, z => { const k = String(z).split(':')[0]; return { rad: 'mf', sleeve: 'fix' }[k] || k; });
+    (zonesOf.mf || []).forEach(q => (zonesOf['mf:s0'] = zonesOf['mf:s0'] || []).push(q));
+    const T = { 'mf:s0': ['Радиатор TONALE', 'белый, боковое подключение'], head: ['Термоголовка STOUT Design', 'белая, SHTD-0002'],
+        node: ['Клапан термостатический', 'угловой, STOUT Design белые, подача'], lock: ['Клапан запорно-балансировочный', 'угловой, обратка'],
+        ek: ['Переходник 16 x НР 1/2"', 'с монтажной гильзой'], tube: ['Подводка к радиатору', 'подача и обратка'],
+        fix: ['Выход трубы из стены', 'фиксатор 90°, защитные втулки'], kit: ['Монтажный набор', 'переходники 1" x 1/2", заглушка, кран Маевского'] };
+    const items = Object.keys(T).map(key => {
+        const zs = zonesOf[key] || [];
+        if (!zs.length) return null;
+        return { pk: key, rows: [], miss: [], ok: true, off: false, lines: T[key], tail: '', zs, mx: zs.reduce((a, q) => a + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
+    }).filter(Boolean);
+    const orphan = Object.keys(zonesOf).filter(pk => pk !== 'mf' && !T[pk]);
+    return { o: { kind: 'side', frames, items, iw, ih, spec: 's0', hk: null, title: 'Подключение радиатора', subtitle: 'Обвязка прибора',
+        places: [{ name: 'Боковое подключение', rows: ['Арматура STOUT Design, белые', 'Пробка и кран Маевского — в комплекте'] }] }, orphan };
+}
 function run(name, r) {
     if (r === undefined) return;                 // кадров этого узла ещё нет — лист не проверяем
     if (!r) { fail(name, 'нет кадра в индексе'); return; }
@@ -261,6 +282,7 @@ for (let n = 2; n <= 13; n++) {
     run(`радиаторы ${n} + ${Math.max(2, 15 - n)}`, radSheet([String(n), String(Math.max(2, 15 - n))]));
 }
 Object.keys(IDX.radnode || {}).forEach(v => run('подключение ' + v, radNodeSheet(v)));
+Object.keys(IDX.side || {}).forEach(v => run('боковое ' + v, sideSheet(v)));
 Object.keys(IDX.panel || {}).forEach(v => run('панельный ' + v, panelSheet(v)));
 
 // ── 7: подписи находят строки сметы ──────────────────────────────────────
@@ -274,6 +296,9 @@ const OBJ = {
     'ТП, узел подмеса на гребёнке': { area: 160, floors: 2, systems: ['rad', 'tp'], tp1: 8, tp2: 30, ufhMixType: 'std' },
     'Радиаторы Space на коллекторе, 120 м²': { area: 120, floors: 1, systems: ['rad'] },
     'Радиаторы Space, узел прямой (из пола)': { area: 120, floors: 1, systems: ['rad'], connectionType: 'straight' },
+    'Секционные боковые (Space Россия), угловые': { area: 120, floors: 1, systems: ['rad'], radType: 'space_ru', connectionType: 'angled' },
+    'OSCAR чёрный, Design чёрная': { area: 120, floors: 1, systems: ['rad'], radType: 'oscar_1800_black_s', connectionType: 'angled' },
+    'TUBE ROUND натуральный, прямые': { area: 120, floors: 1, systems: ['rad'], radType: 'tube_round_1800_natural_s', connectionType: 'straight' },
     'Ventil (ROMMER), узел угловой': { area: 200, floors: 2, systems: ['rad'], brandMode: 'rommer', connectionType: 'angled' },
     'Ventil (ROMMER), узел прямой': { area: 200, floors: 2, systems: ['rad'], brandMode: 'rommer', connectionType: 'straight' },
     'Стальные панельные, клапаны угловые (из стены)': { area: 120, floors: 1, systems: ['rad'], radType: 'steel', connectionType: 'angled' },
@@ -342,6 +367,14 @@ for (const [title, patch] of Object.entries(OBJ)) {
     if (sec3.some(it => /^RRS-2010/i.test(String(it.displaySku || it.id)))) {
         if (!sec3.some(it => /^SVT-000[12]-100015/i.test(String(it.displaySku || it.id)))) miss.push('панельный: термоклапан не под евроконус');
         Object.keys(app.PANEL_LAB_RE).forEach(pk => { if (!sec3.some(it => app.PANEL_LAB_RE[pk].test(nm(it)))) miss.push('панельный: ' + pk); });
+    }
+    // боковое подключение (секционные, дизайнерские, трубчатые) — подписи SIDE_LAB_RE; набор — если есть строка
+    const sideRad = sec3.find(it => app.sideFamily(String(it.displaySku || it.id)));
+    if (sideRad && sec3.some(it => /^SVTD?-000[12]/i.test(String(it.displaySku || it.id)))) {
+        Object.keys(app.SIDE_LAB_RE).forEach(pk => {
+            if (pk === 'kit' && app.sideFamily(String(sideRad.displaySku || sideRad.id)).fam !== 'sect') return;
+            if (!sec3.some(it => app.SIDE_LAB_RE[pk].test(nm(it)))) miss.push('боковое подключение: ' + pk);
+        });
     }
     if (miss.length) miss.forEach(m => fail(title, 'нет строки сметы: ' + m));
     else console.log('  ✓ ' + title);
