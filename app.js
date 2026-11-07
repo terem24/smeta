@@ -99449,8 +99449,31 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 let grp = "3.1. Обвязка радиаторов";
                 // Головки на приборах может считать автоматика (раздел 4.5, режим
                 // «Головки на приборах») — тогда здесь их не добавляем, иначе двойной счёт.
+                // Цвет арматуры бокового подключения: STOUT Design в цвет дизайн-радиаторов (белый→белый,
+                // чёрный→чёрный, прочие→хром) или выбранный вручную (radValveColor). Нужен и здесь: на
+                // клапаны Design ставится головка SHTD-0002 того же цвета (паспорт SVTD: «могут
+                // устанавливаться термоголовки STOUT SHTD-0002»), решение владельца 07.11.2026.
+                let _designColor = null, _designSideN = 0;
+                if (totalRadCountSide > 0) {
+                    _designColor = this.state.radValveColor || null;
+                    if (!_designColor) {
+                        const _dr = bill.filter(x => x.isDesignRad);
+                        if (_dr.length > 0) {
+                            const _cs = new Set(_dr.map(x => x.color || 'standard'));
+                            const _c1 = (_cs.size === 1) ? Array.from(_cs)[0] : 'mixed';
+                            _designColor = (_c1 === 'white') ? 'white' : (_c1 === 'black') ? 'black' : 'chrome';
+                        }
+                    }
+                    if (_designColor) _designSideN = totalRadCountSide;
+                }
                 if (!this.zoneHeadsExternal()) {
-                    let activeHead = catalog.heads.find(h => h.type === this.state.headType) || catalog.heads[0]; activeHead.alts = catalog.heads; addToBill(activeHead, totalRadCount, this.getDesc('rad_head'), grp);
+                    let activeHead = catalog.heads.find(h => h.type === this.state.headType) || catalog.heads[0]; activeHead.alts = catalog.heads;
+                    const _dHead = (_designSideN > 0 && activeHead.type !== 'smart')
+                        ? radValvesDesign.find(v => v.kind === 'head' && v.color === _designColor) : null;
+                    const _stdHeadN = _dHead ? totalRadCount - _designSideN : totalRadCount;
+                    if (_stdHeadN > 0) addToBill(activeHead, _stdHeadN, this.getDesc('rad_head'), grp);
+                    if (_dHead) addToBill({ ..._dHead, alts: radValvesDesign.filter(v => v.kind === 'head').concat(catalog.heads) }, _designSideN,
+                        `Термоголовка STOUT Design в цвет клапанов STOUT Design (паспорт SVTD: на клапан устанавливаются головки SHTD-0002). Требуется: ${_designSideN} шт.`, grp);
                     if (activeHead.type === 'smart') { let radHubs = Math.ceil(totalRadCount / 15); addToBill(catalog.smart_hub, radHubs, `Шлюз Zigbee.`, grp); }
                 }
 
@@ -99538,7 +99561,27 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     addToBill(lockshieldValve, totalRadCountSide, this.getDesc('rad_valves', 'svl'), grp);
                 }
                 let radEurocone = (this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp') ? catalog.parts[3] : catalog.parts[1];
-                addEurocone(radEurocone, totalRadCount * 2, "Евроконус 16 (Рад).", grp); addToBill(catalog.parts[2], totalRadCount * 2, "Фиксатор 90°.", grp); addToBill(catalog.protective_sleeves[0], totalRadCount, "Втулка (под).", grp); addToBill(catalog.protective_sleeves[1], totalRadCount, "Втулка (обр).", grp); addToBill(catalog.label_kits[0], 1, "Наклейки.", grp);
+                // У клапанов STOUT Design со стороны трубы ВР 1/2" (паспорт SVTD/SVLD, разрез; вариантов
+                // под евроконус нет) — евроконус 16 (G 3/4") на них не садится. На эти приборы вместо
+                // евроконусов: PEX — переходник 16 x НР 1/2" с монтажной гильзой, металлопластик —
+                // пресс-переходник 16 x 1/2" НР. Решение владельца 07.11.2026.
+                const _ekN = totalRadCount * 2 - _designSideN * 2;
+                if (_ekN > 0) addEurocone(radEurocone, _ekN, "Евроконус 16 (Рад).", grp);
+                if (_designSideN > 0) {
+                    const _isMp = (this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp');
+                    const _axAd = (catalog.axial_fittings_pex || []).find(x => x.id === 'SFA-0001-001612');
+                    const _axSl = (catalog.axial_fittings_pex || []).find(x => x.id === 'SFA-0020-000016');
+                    const _prAd = (catalog.water_fittings_press_mp || []).find(x => x.id === 'SFP-0001-001216');
+                    if (_isMp && _prAd) {
+                        addToBill({ ..._prAd, originalId: _prAd.id + '_design' }, _designSideN * 2,
+                            `Пресс-переходник 16 x 1/2" НР к клапанам STOUT Design: у них ВР 1/2", евроконус не садится. Требуется: ${_designSideN * 2} шт.`, grp);
+                    } else if (_axAd) {
+                        addToBill({ ..._axAd, originalId: _axAd.id + '_design' }, _designSideN * 2,
+                            `Переходник 16 x НР 1/2" к клапанам STOUT Design: у них со стороны трубы ВР 1/2", евроконус не садится. Требуется: ${_designSideN * 2} шт.`, grp);
+                        if (_axSl) addToBill({ ..._axSl, originalId: _axSl.id + '_design' }, _designSideN * 2,
+                            `Монтажная гильза 16 на переходник к клапану STOUT Design. Требуется: ${_designSideN * 2} шт.`, grp);
+                    }
+                } addToBill(catalog.parts[2], totalRadCount * 2, "Фиксатор 90°.", grp); addToBill(catalog.protective_sleeves[0], totalRadCount, "Втулка (под).", grp); addToBill(catalog.protective_sleeves[1], totalRadCount, "Втулка (обр).", grp); addToBill(catalog.label_kits[0], 1, "Наклейки.", grp);
                 // Секционные (алюминиевые/биметаллические) радиаторы кронштейны в комплект не включают —
                 // в отличие от стальных панельных, которые продаются с кронштейнами в заводской упаковке.
                 if (totalRadCountSectional > 0) {
