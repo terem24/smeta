@@ -299,6 +299,9 @@ const OBJ = {
     'Секционные боковые (Space Россия), угловые': { area: 120, floors: 1, systems: ['rad'], radType: 'space_ru', connectionType: 'angled' },
     'OSCAR чёрный, Design чёрная': { area: 120, floors: 1, systems: ['rad'], radType: 'oscar_1800_black_s', connectionType: 'angled' },
     'TUBE ROUND натуральный, прямые': { area: 120, floors: 1, systems: ['rad'], radType: 'tube_round_1800_natural_s', connectionType: 'straight' },
+    'TITAN графит, нижнее, угловой': { area: 120, floors: 1, systems: ['rad'], radType: 'titan_graphite', connectionType: 'angled' },
+    'TUBE QUADRO чёрный, нижнее, прямой': { area: 120, floors: 1, systems: ['rad'], radType: 'tube_quadro_1800_black_b', connectionType: 'straight' },
+    'ROMMER RST 2, нижнее, угловой': { area: 120, floors: 1, systems: ['rad'], radType: 'rommer_rst_2_1750', connectionType: 'angled' },
     'Ventil (ROMMER), узел угловой': { area: 200, floors: 2, systems: ['rad'], brandMode: 'rommer', connectionType: 'angled' },
     'Ventil (ROMMER), узел прямой': { area: 200, floors: 2, systems: ['rad'], brandMode: 'rommer', connectionType: 'straight' },
     'Стальные панельные, клапаны угловые (из стены)': { area: 120, floors: 1, systems: ['rad'], radType: 'steel', connectionType: 'angled' },
@@ -355,10 +358,12 @@ for (const [title, patch] of Object.entries(OBJ)) {
     const svh = sec3.find(it => /^SVH-000[24]/i.test(String(it.displaySku || it.id)));
     const hasSpace = sec3.some(it => /^SRB-032[01]/i.test(String(it.displaySku || it.id)));
     const hasVentil = sec3.some(it => /^RRS-2020/i.test(String(it.displaySku || it.id)));
-    if (svh && (hasSpace || hasVentil)) {
+    const hasOther = sec3.some(it => app.bottomFamily(String(it.displaySku || it.id)));
+    const hasTitan = sec3.some(it => /^SRB-3320/i.test(String(it.displaySku || it.id)));
+    if (svh && (hasSpace || hasVentil || hasOther)) {
         const straight = /^SVH-0002/i.test(String(svh.displaySku || svh.id));
         Object.keys(app.RADNODE_LAB_RE).forEach(pk => {
-            if (pk === 'bracket' && !hasSpace) return;
+            if (pk === 'bracket' && !hasSpace && !hasTitan) return;
             const re = (straight && app.RADNODE_LAB_RE_STRAIGHT[pk]) || app.RADNODE_LAB_RE[pk];
             if (!sec3.some(it => re.test(nm(it)))) miss.push('подключение радиатора: ' + pk);
         });

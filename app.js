@@ -46328,7 +46328,7 @@ const app = {
     radNodeIndex: function () {
         if (this._rnIdx !== undefined) return this._rnIdx;
         this._rnIdx = null;
-        fetch(this.RADNODE_DIR + 'radnode.json?v=3')
+        fetch(this.RADNODE_DIR + 'radnode.json?v=4')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._rnIdx = j || {}; if (Object.keys(this._rnIdx).length) this.render(); });
@@ -46340,6 +46340,17 @@ const app = {
         fix: /^Фиксатор|^Защитная втулка/i, bracket: /^Комплект настенных.*кронштейн|^Кронштейн.*радиатор/i
     },
     RADNODE_LAB_RE_STRAIGHT: { ek: /^Фитинг компрессионный/i, tube: /^Трубка Г-образная/i, fix: /^Фиксирующая скоба/i },
+    // Прочие приборы с нижним подключением (кадры tools/render_side_node.py, ключ <семейство>-b<узел>-<головка>-<цвет>):
+    // TITAN SRB-3320 (…-7024 — графит), TUBE QUADRO QV40 с «-R/-L/-CU», TUBE ROUND R40 с «-RT/-LT», ROMMER RST.
+    bottomFamily: function (sku) {
+        sku = String(sku || '');
+        if (/^SRB-3320/i.test(sku)) return /-7024$/i.test(sku) ? { fam: 'titangr', col: 'graphite', ru: 'TITAN графит' } : { fam: 'titan', col: 'white', ru: 'TITAN' };
+        if (/^QV40-/i.test(sku) && /-(R|L|CU)-/i.test(sku)) return { fam: 'quadro', col: /BLACK/i.test(sku) ? 'black' : 'white', ru: 'TUBE QUADRO' };
+        if (/^R40-/i.test(sku) && /-(RT|LT)-/i.test(sku)) return { fam: 'round', col: /BLACK/i.test(sku) ? 'black' : 'natural', ru: 'TUBE ROUND' };
+        const m = /^RST-([123])/i.exec(sku);
+        if (m) return { fam: 'rst' + m[1], col: 'white', ru: 'ROMMER RST ' + m[1] + '-колончатый' };
+        return null;
+    },
     radNodeLabRows: function (pk) {
         const all = Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr =>
             /Приборы отопления|^3\./i.test(String(tr.dataset.rk || '').split('|')[1] || ''));
@@ -46348,6 +46359,7 @@ const app = {
         if (pk.indexOf('mf:') === 0) {
             const f = (this._rnFrames || {})[pk.slice(3)] || {};
             if (f.ventil) return all.filter(tr => (/^RRS-2020/i.test(sku(tr)) || /Ventil/i.test(nm(tr))) && nm(tr).indexOf('Тип ' + f.type) >= 0);
+            if (f.bfam) return all.filter(tr => { const d = this.bottomFamily(sku(tr)); return d && d.fam === f.bfam && d.col === f.col; });
             return all.filter(tr => /^SRB-032[01]/i.test(sku(tr)) || /^Радиатор.*Space/i.test(nm(tr)));
         }
         const re = (this._rnStraight && this.RADNODE_LAB_RE_STRAIGHT[pk]) || this.RADNODE_LAB_RE[pk];
@@ -46359,7 +46371,8 @@ const app = {
         const skuOf = it => String(it.displaySku || it.id || '');
         const space = eq.filter(it => inRad(it) && /^SRB-032[01]/i.test(skuOf(it)));
         const ventil = eq.filter(it => inRad(it) && (/^RRS-2020/i.test(skuOf(it)) || /Ventil/i.test(String(it.name || ''))));
-        if (!space.length && !ventil.length) return null;
+        const other = eq.filter(it => inRad(it) && this.bottomFamily(skuOf(it)));
+        if (!space.length && !ventil.length && !other.length) return null;
         const nodes = eq.filter(it => inRad(it) && /^SVH-000[24]/i.test(skuOf(it)));
         if (nodes.length !== 1) return null;
         const angled = /^SVH-0004/i.test(skuOf(nodes[0]));
@@ -46382,6 +46395,13 @@ const app = {
         for (const t of Array.from(new Set(ventil.map(typeOf).filter(Boolean))).sort()) {
             if (!add('ventil' + t + '_' + kind + '_' + head, { ventil: true, type: t })) return null;
         }
+        const seenB = {};
+        for (const it of other) {
+            const d = this.bottomFamily(skuOf(it));
+            if (seenB[d.fam + d.col]) continue;
+            seenB[d.fam + d.col] = 1;
+            if (!add([d.fam, 'b' + kind, head, d.col].join('-'), { bfam: d.fam, col: d.col, ru: d.ru })) return null;
+        }
         if (!frames.length) return null;
         this._rnStraight = !angled;
         this._rnFrames = {};
@@ -46401,10 +46421,11 @@ const app = {
             if (key.indexOf('mf:') === 0) {
                 const f = frames.find(x => 'mf:' + x.id === key);
                 text = f.ventil ? ['Радиатор стальной панельный Ventil', 'тип ' + f.type + ', нижнее подключение']
+                    : f.bfam ? ['Радиатор ' + f.ru, 'нижнее подключение']
                     : ['Радиатор STOUT Space 500', 'нижнее подключение ' + (f.side === '0321' ? 'слева' : 'справа')];
             } else if (key === 'head') text = ['Термостатическая головка', 'на встроенный клапан, M30x1,5'];
             else if (key === 'node') text = ['Узел нижнего подключения', (angled ? 'угловой, трубы из стены' : 'прямой, трубы из пола') +
-                (frames.some(f => f.ventil) ? '; ниппели 1/2" x 3/4"' : '')];
+                (frames.some(f => f.ventil || (f.bfam && !/^titan/.test(f.bfam))) ? '; ниппели 1/2" x 3/4"' : '')];
             else if (key === 'ek') text = angled ? ['Евроконус', (/(\d+\s*x\s*[\d.,]+)/i.exec(nameOf(rs)) || ['', '16x2.2'])[1]]
                 : ['Фитинг компрессионный', '15x3/4" на трубку'];
             else if (key === 'tube') text = angled ? ['Подводка к радиатору', 'подача и обратка'] : ['Трубка Г-образная', '16/500, из пола'];
@@ -46415,14 +46436,15 @@ const app = {
                 mx: zs.reduce((sum, q) => sum + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
         }).filter(Boolean);
         const miss = items.filter(it => !it.ok).map(it => it.lines[0].toLowerCase());
-        const n = space.concat(ventil).reduce((sum, it) => sum + (it.q || 1), 0);
-        const what = [space.length ? 'STOUT Space 500' : '', ventil.length ? 'стальные панельные Ventil' : ''].filter(Boolean).join(', ');
+        const n = space.concat(ventil, other).reduce((sum, it) => sum + (it.q || 1), 0);
+        const what = [space.length ? 'STOUT Space 500' : '', ventil.length ? 'стальные панельные Ventil' : '']
+            .concat(frames.filter(f => f.bfam).map(f => f.ru)).filter(Boolean).join(', ');
         const sum = `<div class="sg-summary no-print">Подключение радиаторов снизу: ${what}, ${n} шт., узел ${angled ? 'угловой' : 'прямой'}.` +
             (miss.length ? ` <span class="sg-miss-txt">Нет в смете: ${miss.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
             ` <span class="sg-hint">Размер прибора на схеме условный; число секций и длина каждого — в смете.</span></div>`;
         const html = this.wmSheet({
             kind: 'radnode', frames, items, iw, ih, spec, hk: null, title: 'Подключение радиатора', subtitle: 'Обвязка прибора',
-            places: frames.map(f => ({ name: f.ventil ? 'Ventil, тип ' + f.type : 'Space, подключение ' + (f.side === '0321' ? 'слева' : 'справа'),
+            places: frames.map(f => ({ name: f.ventil ? 'Ventil, тип ' + f.type : f.bfam ? f.ru : 'Space, подключение ' + (f.side === '0321' ? 'слева' : 'справа'),
                 rows: [`Узел ${angled ? 'угловой SVH-0004' : 'прямой SVH-0002'}`, 'термоголовка ' + (head === 'rht' ? 'RHT-0001' : 'SHT-0001')] }))
         });
         return { html, sum };

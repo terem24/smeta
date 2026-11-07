@@ -26,16 +26,24 @@ from blender_parts import *  # noqa: F401,F403
 from mathutils import Vector, Matrix
 import bpy
 import rad_side as rs
+import rad_bottom as rb
 
 _argv = sys.argv[sys.argv.index('--') + 1:]
 OUT, VAR = _argv[0], _argv[1]
-TAG = 'side_' + VAR
 _p = VAR.split('-')
+# нижнее подключение: <семейство>-b<angled|straight>-<sht|rht>-<цвет прибора> — кадры в индексе узла
+# радиатора (radnode): titan, quadro, round, rst1/rst2/rst3
+BOTTOM = _p[1].startswith('b')
+TAG = ('radnode_' if BOTTOM else 'side_') + VAR
 FAMILY, NODE, STYLE, VCOL = _p[0], _p[1], _p[2], _p[3]
 KITCOL = _p[4] if len(_p) > 4 else 'white'          # цвет набора (секционные) или цвет прибора (дизайнерские)
-VERT = FAMILY in ('sebino', 'tonale', 'anteprima', 'oscar', 'quadro', 'round')
-ANGLED = NODE == 'angled'
-HEAD = 'shtd' if STYLE == 'design' else 'sht'
+VERT = FAMILY in ('sebino', 'tonale', 'anteprima', 'oscar', 'quadro', 'round', 'rst1', 'rst2', 'rst3')
+# ROMMER RST (паспорт: шаг секции T 41, трубки по колонкам, высоты 1500–2000; присоединение G 1/2" ВР) — на
+# кадре 1750; глубина — по числу колонок (1: 41, 2: ~81, 3: ~121, оценка по рис. 1 паспорта)
+ANGLED = NODE in ('angled', 'bangled')
+HEAD = 'shtd' if STYLE == 'design' else ('rht' if STYLE == 'rht' else 'sht')
+if BOTTOM:
+    KITCOL = VCOL                                     # у нижнего варианта 4-е поле — цвет прибора
 
 add_colors({'radwhite': (0.95, 0.95, 0.94), 'radgraphite': (0.29, 0.31, 0.33),
             'rgray': (0.36, 0.37, 0.38),      # «2676 серый» GLOBAL/STOUT — тёмно-серый муар
@@ -51,9 +59,12 @@ add_colors({'radwhite': (0.95, 0.95, 0.94), 'radgraphite': (0.29, 0.31, 0.33),
 #   TUBE ROUND R40 1-1750 — круглые трубки, шаг 50, межосевое 1750, однорядный, глубина 40.
 VGEOM = {'sebino': (4, 0.085, 0.060, 1.834, 1.800), 'tonale': (6, 0.050, 0.095, 1.834, 1.800),
          'anteprima': (6, 0.050, 0.095, 1.834, 1.800), 'oscar': (4, 0.080, 0.070, 1.834, 1.800),
-         'quadro': (4, 0.060, 0.040, 1.790, 1.750), 'round': (6, 0.050, 0.040, 1.790, 1.750)}
+         'quadro': (4, 0.060, 0.040, 1.790, 1.750), 'round': (6, 0.050, 0.040, 1.790, 1.750),
+         'rst1': (8, 0.041, 0.041, 1.750, 1.700), 'rst2': (8, 0.041, 0.081, 1.750, 1.700), 'rst3': (8, 0.041, 0.121, 1.750, 1.700)}
 if VERT:
     NSEC, SW_, BD, HR, FA = VGEOM[FAMILY]
+elif FAMILY in ('titan', 'titangr'):
+    NSEC, SW_, BD, HR, FA = 5, 0.080, 0.090, 0.561, 0.500   # TITAN 500 — как Space (секция 80, межосевое 500)
 else:
     NSEC, SW_, BD, HR, FA = 6, 0.080, 0.090, 0.561, 0.500
 ZB = 0.120
@@ -66,6 +77,8 @@ ANCH = {}
 
 
 def body_mat():
+    if FAMILY == 'titangr':
+        return mat('radgraphite', rough=0.45, coat=0.2)
     if VERT:
         return mat({'white': 'radwhite', 'black': 'rblack', 'gray': 'rgray', 'natural': 'rnatural'}.get(KITCOL, 'radwhite'),
                    rough=0.40 if KITCOL != 'natural' else 0.30, coat=0.3, metal=0.4 if KITCOL == 'natural' else 0.0)
@@ -81,6 +94,13 @@ def vsection(x0):
     xc = x0 + SW_ / 2
     zc = ZB + HR / 2
     to_xz = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
+    if FAMILY.startswith('rst'):
+        cols = int(FAMILY[3])
+        for c in range(cols):
+            lathe('трубка RST', [(0.0125, 0), (0.0125, HR)], m, (xc, -BD / 2 + 0.0205 + c * 0.040, ZB), 'Z', segs=28)
+        for zz in (ZC0, ZC1):
+            box('коллектор RST', (SW_, BD, 0.050), m, (xc, 0.0, zz))
+        return
     if FAMILY in ('sebino', 'oscar', 'tonale'):
         w = SW_ - 0.004
         pan = rounded([(-w / 2, 0.0), (w / 2, 0.0), (w / 2, HR), (-w / 2, HR)], 0.006, seg=4)
@@ -178,8 +198,55 @@ def build():
     return sc
 
 
+def build_bottom():
+    """Нижнее подключение (узел SVH под правым торцом, как у Space): встроенный термоклапан в верхнем
+    правом патрубке — термоголовка горизонтально; у дальнего торца кран Маевского сверху и заглушка снизу.
+    TITAN — редукционные ниппели G 3/4" НР в приборе (как Space); трубчатые TUBE QUADRO/ROUND и RST — у
+    прибора нижние патрубки G 1/2" ВР (паспорта), поэтому под узел — ниппель 1/2" x 3/4" (как у Ventil)."""
+    sc = reset()
+    sg = 1
+    x_end = LR / 2
+    room(x_end)
+    part('rad')
+    for k in range(NSEC):
+        (vsection if VERT else section)(-LR / 2 + k * SW_)
+    marks['rad'] = (0.0, -BD / 2, ZB + HR * 0.55)
+    pc = 'black' if KITCOL == 'black' else ('chrome' if KITCOL in ('natural', 'gray') else 'white')
+    rs.kit_vent(-x_end - 0.002, ZC1, -sg, pc)
+    rs.kit_plug(-x_end - 0.002, ZC0, -sg, pc)
+    rs.kit_plug(x_end + 0.002, ZC0, sg, pc)
+    for o in list(coll('solid').objects):
+        if o.get('part') == 'kit':
+            o['part'] = 'rad'
+    lathe('вставка клапана', [(0.0120, 0), (0.0120, 0.010)], M_NICKEL(), (x_end + 0.002, 0, ZC1), 'X', segs=40)
+    (rb.rht_head if HEAD == 'rht' else rb.sht_head)((x_end + 0.012, 0, ZC1), 'X')
+    part('node')
+    x_sup = x_end - 0.020
+    x_ret = x_sup - 0.050
+    if FAMILY in ('titan', 'titangr'):
+        m = body_mat()
+        box('прилив подключения', (0.084, 0.034, 0.016), m, ((x_sup + x_ret) / 2, 0.0, ZB + 0.004))
+        zt = ZB - 0.002
+        for x in (x_sup, x_ret):
+            lathe('ниппель прибора', thread(0.0128, 0.012), M_NICKEL(), (x, 0, zt), '-Z', segs=40)
+        zn = zt - 0.012
+    else:
+        zn = min(rb.nipple_sft0049(x, ZB) for x in (x_sup, x_ret))
+    outs = rb.svh([x_sup, x_ret], zn, ANGLED)
+    for (loc, ax), sup in zip(outs, (True, False)):
+        if ANGLED:
+            part('ek:' + ('s' if sup else 'r'))
+            p0 = rb.ek(loc, ax)
+            rb.wall_run(loc[0], p0, sup, YW, ANCH)
+        else:
+            rb.gtube_kit(loc[0], loc[2], sup, ANCH)
+    if not ANGLED:
+        rb.floor_bracket([x_sup, x_ret], ANCH)
+    return sc
+
+
 def main():
-    sc = build()
+    sc = build_bottom() if BOTTOM else build()
     cam = camera(sc, objects=list(coll('solid').objects))
     zones, pts, proj = frame_meta(sc, cam, ANCH)
     sheath = list(coll('sheath').objects)

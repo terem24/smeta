@@ -26,6 +26,11 @@ PX_PER_M = 2550
 # подключение справа (SRB-0320) или слева (SRB-0321, «_l»)
 VARIANTS = ['space_angled', 'space_straight', 'space_angled_l', 'space_straight_l'] +     ['ventil%s_%s_%s' % (t, k, h) for t in ('22', '21', '11', '33') for k in ('angled', 'straight') for h in ('rht', 'sht')]
 PANEL_SCRIPT = os.path.join(HERE, 'tools', 'render_panel_node.py')     # Ventil — панельный радиатор
+SIDE_SCRIPT = os.path.join(HERE, 'tools', 'render_side_node.py')       # TITAN, трубчатые, RST — нижнее подключение
+_BCOLS = {'titan': ('white',), 'titangr': ('graphite',), 'quadro': ('white', 'black'), 'round': ('natural', 'black'),
+          'rst1': ('white',), 'rst2': ('white',), 'rst3': ('white',)}
+VARIANTS += ['%s-b%s-%s-%s' % (f, k, h, c) for f, cs in _BCOLS.items() for c in cs for k in ('angled', 'straight')
+             for h in (('sht', 'rht') if f.startswith('rst') else ('sht',))]
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
                     255, 255, 255] + [0, 0, 0] * 248)
@@ -33,7 +38,7 @@ PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 
 
 def build(v, tmp):
     t = 'radnode_' + v
-    subprocess.run([BLENDER, '--background', '--python', PANEL_SCRIPT if v.startswith('ventil') else SCRIPT, '--', tmp, v],
+    subprocess.run([BLENDER, '--background', '--python', PANEL_SCRIPT if v.startswith('ventil') else (SIDE_SCRIPT if '-b' in v else SCRIPT), '--', tmp, v],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                    env=dict(os.environ, HC_PX_PER_M=str(PX_PER_M)))
     meta_path = os.path.join(tmp, t + '.json')
