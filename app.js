@@ -46342,6 +46342,12 @@ const app = {
     RADNODE_LAB_RE_STRAIGHT: { ek: /^Фитинг компрессионный/i, tube: /^Трубка Г-образная/i, fix: /^Фиксирующая скоба/i },
     // Прочие приборы с нижним подключением (кадры tools/render_side_node.py, ключ <семейство>-b<узел>-<головка>-<цвет>):
     // TITAN SRB-3320 (…-7024 — графит), TUBE QUADRO QV40 с «-R/-L/-CU», TUBE ROUND R40 с «-RT/-LT», ROMMER RST.
+    // Прибор с нижними патрубками G 1/2" ВР (паспорта STOUT TUBE QV40/R40, п. 3.3; ROMMER RST, п. 2.3;
+    // Ventil — паспорт ROMMER): под накидную гайку узла SVH (ВР 3/4") нужен ниппель SFT-0049.
+    radBottomFemale: function (it) {
+        const id = String((it && (it.id || it.originalId)) || '');
+        return /^(QV40-|R40-|RST-|RRS-2020)/i.test(id);
+    },
     bottomFamily: function (sku) {
         sku = String(sku || '');
         if (/^SRB-3320/i.test(sku)) return /-7024$/i.test(sku) ? { fam: 'titangr', col: 'graphite', ru: 'TITAN графит' } : { fam: 'titan', col: 'white', ru: 'TITAN' };
@@ -99373,7 +99379,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                                 const _isPanel = !!(_finalSeries && _finalSeries.isPanel);
                                 const _isBottom = _finalSeries ? (_isPanel ? !!activeItem.bottom : !!_finalSeries.bottom) : true;
                                 _radIsBottom = _isBottom;
-                                if (_isBottom) { totalRadCountBottom += _radQty; if (_isPanel) totalRadCountBottomSteel += _radQty; } else totalRadCountSide += _radQty;
+                                if (_isBottom) { totalRadCountBottom += _radQty; if (_isPanel || this.radBottomFemale(activeItem)) totalRadCountBottomSteel += _radQty; } else totalRadCountSide += _radQty;
                                 if (!_isPanel) { totalRadCountSectional += _radQty; if (!activeItem.kitIncluded && !_isBottom) radKitColorCounts[this._radKitColorFor(activeItem)] += _radQty; }
                             }
 
@@ -99583,7 +99589,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     const _isBottom = _finalSeries ? (_isPanel ? !!_classifyItem.bottom : !!_finalSeries.bottom) : true;
                     _quickRadIsBottom = _isBottom;
                     app.radDevices.forEach(d => { if (d.kind === 'rad') d.bottom = _isBottom; });
-                    if (_isBottom) { totalRadCountBottom += totalCount; if (_isPanel) totalRadCountBottomSteel += totalCount; } else totalRadCountSide += totalCount;
+                    if (_isBottom) { totalRadCountBottom += totalCount; if (_isPanel || this.radBottomFemale(_classifyItem)) totalRadCountBottomSteel += totalCount; } else totalRadCountSide += totalCount;
                     if (!_isPanel) { totalRadCountSectional += totalCount; if (!_classifyItem.kitIncluded && !_isBottom) radKitColorCounts[this._radKitColorFor(_classifyItem)] += totalCount; }
                 }
 
@@ -99653,7 +99659,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // арматуру каждая на свою часть, а не одну арматуру на все радиаторы подряд.
                 if (totalRadCountBottom > 0) {
                     let activeHValve = catalog.h_valves.find(v => v.type === this.state.connectionType) || catalog.h_valves[0]; activeHValve.alts = catalog.h_valves; addToBill(activeHValve, totalRadCountBottom, this.getDesc('rad_valves', 'bottom'), grp);
-                    if (totalRadCountBottomSteel > 0) { addToBill(catalog.rad_kits[0], totalRadCountBottomSteel * 2, "Ниппель переходной.", grp); }
+                    if (totalRadCountBottomSteel > 0) { addToBill(catalog.rad_kits[0], totalRadCountBottomSteel * 2, "Ниппель переходной 1/2\" НР x 3/4\" НР: у стальных Ventil, трубчатых STOUT TUBE и ROMMER RST нижние патрубки ВР 1/2\", узел SVH садится на НР 3/4\".", grp); }
                     // Подключение к нижним выводам радиатора при трубах из пола: либо
                     // Г-образные трубки с гильзами и компрессионными фитингами, либо фиксаторы
                     // поворота типа «башмак» — они держат ту же трубу 16, что идёт по полу,
