@@ -23,7 +23,7 @@ BLENDER = os.environ.get('BLENDER') or r'C:\Program Files\Blender Foundation\Ble
 SCRIPT = os.path.join(HERE, 'tools', 'render_panel_node.py')
 PX_PER_M = 2550
 # ROMMER Compact тип 11/21/22/33, высота 500: клапаны угловые (трубы из стены) или прямые (из пола)
-VARIANTS = ['panel%s_%s' % (t, k) for t in ('21', '22', '11', '33') for k in ('angled', 'straight')]
+VARIANTS = ['panel%s_%s%s' % (t, k, h) for t in ('21', '22', '11', '33') for k in ('angled', 'straight') for h in ('', '_rht')]
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
                     255, 255, 255] + [0, 0, 0] * 248)

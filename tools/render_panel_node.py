@@ -199,7 +199,10 @@ def valve(x_end, z, sg, thermo):
     d = {'Z': Vector((0, 0, 1)), '-Y': Vector((0, -1, 0))}[stem_ax]
     if thermo:
         lathe('резьба M30x1,5', [(0.0150, 0), (0.0150, 0.008)], ni, stem_c, stem_ax, segs=40)
-        thermo_head(tuple(Vector(stem_c) + d * 0.008), stem_ax)
+        if VAR.endswith('_rht'):            # режим ROMMER: головка ROMMER RHT-0001 (как в смете)
+            rb.rht_head(tuple(Vector(stem_c) + d * 0.008), stem_ax)
+        else:
+            thermo_head(tuple(Vector(stem_c) + d * 0.008), stem_ax)
         part('node')
     else:
         # шток с белым шестигранным колпачком D 25 (фото SVL)

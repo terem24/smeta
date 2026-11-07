@@ -46124,7 +46124,12 @@ const app = {
     // (боковые — без «-RT»/«-LT»; NAT — натуральный).
     sideFamily: function (sku) {
         sku = String(sku || '');
-        if (this.SIDE_SECT_RE.test(sku)) return { fam: 'sect', col: 'white', ru: 'секционный' };
+        if (this.SIDE_SECT_RE.test(sku)) {
+            // высота — по артикулу: …-035… — 350, …-020… — 200, иначе 500
+            const h = /^[A-Z]{3}-\d{4}-0(35|20)/i.exec(sku);
+            const hh = h ? (h[1] === '35' ? '350' : '200') : '';
+            return { fam: 'sect' + hh, col: 'white', ru: 'секционный' + (hh ? ' ' + hh : '') };
+        }
         const m = /^SRA-(0110|1120|2120|3120)-\d{4}(\d{2})?/i.exec(sku);
         if (m) {
             const fam = { '0110': 'oscar', '1120': 'sebino', '2120': 'tonale', '3120': 'anteprima' }[m[1]];
@@ -46182,7 +46187,7 @@ const app = {
             const k = d.fam + '/' + d.col;
             if (seen[k]) continue;
             seen[k] = 1;
-            const key = [d.fam, angled ? 'angled' : 'straight', design ? 'design' : 'std', vcol, d.fam === 'sect' ? kit : d.col].join('-');
+            const key = [d.fam, angled ? 'angled' : 'straight', design ? 'design' : 'std', vcol, /^sect/.test(d.fam) ? kit : d.col].join('-');
             const fr = idx[key];
             if (!fr || !fr.o) return null;
             frames.push({ id: 's' + frames.length, at: frames.length, fr, fam: d.fam, col: d.col, ru: d.ru, path: this.SIDE_DIR + 'side_' + key });
@@ -46204,7 +46209,7 @@ const app = {
             fix: ['Выход трубы ' + (angled ? 'из стены' : 'из пола'), 'фиксатор 90°, защитные втулки'],
             kit: ['Монтажный набор', 'переходники 1" x 1/2", заглушка, кран Маевского']
         };
-        frames.forEach(f => { T['mf:' + f.id] = [f.fam === 'sect' ? 'Радиатор секционный' : 'Радиатор ' + f.ru, (f.fam === 'sect' ? '' : radColRu[f.col] + ', ') + 'боковое подключение']; });
+        frames.forEach(f => { const sec = /^sect/.test(f.fam); T['mf:' + f.id] = [sec ? 'Радиатор ' + f.ru : 'Радиатор ' + f.ru, (sec ? '' : radColRu[f.col] + ', ') + 'боковое подключение']; });
         const keys = frames.map(f => 'mf:' + f.id).concat(['head', 'node', 'lock', 'ek', 'tube', 'fix', 'kit']);
         const items = keys.map(key2 => {
             const zs = zonesOf[key2] || [];
@@ -46221,8 +46226,8 @@ const app = {
             ` <span class="sg-hint">Число секций и высота каждого прибора — в смете; кронштейны — за прибором.</span></div>`;
         const html = this.wmSheet({
             kind: 'side', frames, items, iw, ih, spec, hk: null, title: 'Подключение радиатора', subtitle: 'Обвязка прибора',
-            places: frames.map(f => ({ name: f.fam === 'sect' ? 'Секционный' : f.ru + ', ' + radColRu[f.col],
-                rows: [design ? 'Арматура STOUT Design, ' + colRu : 'Клапаны под евроконус', f.fam === 'sect' ? 'Монтажный набор' : 'Пробка и кран Маевского — в комплекте'] }))
+            places: frames.map(f => ({ name: /^sect/.test(f.fam) ? 'Секционный' + (f.fam.slice(4) ? ' ' + f.fam.slice(4) : '') : f.ru + ', ' + radColRu[f.col],
+                rows: [design ? 'Арматура STOUT Design, ' + colRu : 'Клапаны под евроконус', /^sect/.test(f.fam) ? 'Монтажный набор' : 'Пробка и кран Маевского — в комплекте'] }))
         });
         return { html, sum };
     },
@@ -46235,7 +46240,7 @@ const app = {
     panelIndex: function () {
         if (this._pnIdx !== undefined) return this._pnIdx;
         this._pnIdx = null;
-        fetch(this.PANEL_DIR + 'panel.json?v=1')
+        fetch(this.PANEL_DIR + 'panel.json?v=2')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._pnIdx = j || {}; if (Object.keys(this._pnIdx).length) this.render(); });
@@ -46275,11 +46280,14 @@ const app = {
         const typeOf = it => (/Тип\s*(\d\d)/i.exec(String(it.name || '')) || [])[1];
         const types = Array.from(new Set(rads.map(typeOf).filter(Boolean))).sort();
         const kind = angled ? 'angled' : 'straight';
+        // головка — как в смете: ROMMER RHT-0001 (режим ROMMER) — свой кадр «…_rht»
+        const headIt = eq.find(it => inRad(it) && /^Головка термостат/i.test(String(it.name || '')));
+        const hs = headIt && /^RHT/i.test(skuOf(headIt)) ? '_rht' : '';
         const frames = [];
         for (const t of types) {
-            const fr = idx[t + '_' + kind];
+            const fr = idx[t + '_' + kind + hs];
             if (!fr || !fr.o) return null;
-            frames.push({ id: 'p' + frames.length, at: frames.length, fr, type: t, path: this.PANEL_DIR + 'panel_' + t + '_' + kind });
+            frames.push({ id: 'p' + frames.length, at: frames.length, fr, type: t, path: this.PANEL_DIR + 'panel_' + t + '_' + kind + hs });
         }
         if (!frames.length) return null;
         this._pnTypes = {};
@@ -99731,6 +99739,10 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     thermoAlts = [...radValves.filter(v => v.id.startsWith('SVT-')), ..._euroThermo, ...radValvesDesign.filter(v => v.kind === 'valve')];
                     lockshieldAlts = [...radValves.filter(v => v.id.startsWith('SVL-')), ..._euroLock, ...radValvesDesign.filter(v => v.kind === 'lockshield')];
                     thermoValve.alts = thermoAlts; lockshieldValve.alts = lockshieldAlts;
+                    // «Бюджетнее» (ROMMER) не должен менять клапан под евроконус на более дешёвый с ВР 1/2":
+                    // евроконус 16 на него не сядет (см. выбор клапанов выше). Ручная замена из списка остаётся.
+                    thermoValve = { ...thermoValve, noCheapenAlts: true };
+                    lockshieldValve = { ...lockshieldValve, noCheapenAlts: true };
                     addToBill(thermoValve, totalRadCountSide, this.getDesc('rad_valves', 'thermo'), grp);
                     addToBill(lockshieldValve, totalRadCountSide, this.getDesc('rad_valves', 'svl'), grp);
                 }

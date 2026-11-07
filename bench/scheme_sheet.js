@@ -377,7 +377,7 @@ for (const [title, patch] of Object.entries(OBJ)) {
     const sideRad = sec3.find(it => app.sideFamily(String(it.displaySku || it.id)));
     if (sideRad && sec3.some(it => /^SVTD?-000[12]/i.test(String(it.displaySku || it.id)))) {
         Object.keys(app.SIDE_LAB_RE).forEach(pk => {
-            if (pk === 'kit' && app.sideFamily(String(sideRad.displaySku || sideRad.id)).fam !== 'sect') return;
+            if (pk === 'kit' && !/^sect/.test(app.sideFamily(String(sideRad.displaySku || sideRad.id)).fam)) return;
             if (!sec3.some(it => app.SIDE_LAB_RE[pk].test(nm(it)))) miss.push('боковое подключение: ' + pk);
         });
     }

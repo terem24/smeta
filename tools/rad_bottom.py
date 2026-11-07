@@ -158,7 +158,7 @@ def rht_head(c, ax):
     """Термоголовка ROMMER RHT-0001-103015 (фото): никелированная гайка с накаткой, чёрное кольцо,
     белый корпус со шкалой 1–5 и указателем, ребристый колпак с плоским торцом."""
     ni = M_NICKEL()
-    d = {'X': Vector((1, 0, 0)), '-X': Vector((-1, 0, 0)), 'Z': Vector((0, 0, 1))}[ax]
+    d = {'X': Vector((1, 0, 0)), '-X': Vector((-1, 0, 0)), 'Z': Vector((0, 0, 1)), '-Y': Vector((0, -1, 0))}[ax]
     c = Vector(c)
     part('head')
     lathe('гайка головки', [(0.0160, 0), (0.0165, 0.001), (0.0165, 0.012), (0.0155, 0.013)], ni, tuple(c), ax,
@@ -168,13 +168,14 @@ def rht_head(c, ax):
     lathe('термоголовка RHT', [(0.0240, 0), (0.0255, 0.004), (0.0255, 0.026), (0.0245, 0.030), (0.0235, 0.034), (0.0225, 0.064),
                                (0.0200, 0.070), (0.0, 0.072)], w, tuple(c + d * 0.019), ax, segs=80, sharp=40,
           ribs=(16, 0.08, 0.034, 0.066))
-    side = Vector((0, -1, 0)) if ax != 'Z' else Vector((0, -1, 0))
+    side = Vector((0, 0, 1)) if abs(d.y) > 0.5 else Vector((0, -1, 0))
     up = d.cross(side).normalized()
     dark = mat('scaleink', rough=0.5)
     for k in range(-3, 4):
         a = math.radians(k * 15)
         p = c + d * (0.031 if k % 2 else 0.033) + (side * math.cos(a) + up * math.sin(a)) * 0.0257
-        size = (0.006 if not k % 2 else 0.003, 0.0008, 0.0012) if ax != 'Z' else (0.0012, 0.0008, 0.006 if not k % 2 else 0.003)
+        ln = 0.006 if not k % 2 else 0.003
+        size = (0.0012, 0.0008, ln) if ax == 'Z' else ((0.0012, ln, 0.0008) if ax == '-Y' else (ln, 0.0008, 0.0012))
         box('цифра шкалы', size, dark, tuple(p))
     marks['head'] = tuple(c + d * 0.050 + side * 0.025)
 

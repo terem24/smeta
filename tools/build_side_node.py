@@ -31,7 +31,8 @@ _AUTO = {'white': 'white', 'black': 'black', 'gray': 'chrome', 'natural': 'chrom
 _COLS = {'oscar': ('white', 'black', 'gray'), 'sebino': ('white', 'black', 'gray'), 'tonale': ('white', 'black', 'gray'),
          'anteprima': ('white', 'black', 'gray'), 'quadro': ('white', 'black'), 'round': ('natural', 'black')}
 VARIANTS = ['sect-%s-%s' % (k, st) for k in ('angled', 'straight')
-            for st in ('std-x-white', 'design-chrome-white', 'design-white-white', 'design-black-white')] +     ['%s-%s-design-%s-%s' % (f, k, _AUTO[c], c) for f, cs in _COLS.items() for c in cs for k in ('angled', 'straight')]
+            for st in ('std-x-white', 'design-chrome-white', 'design-white-white', 'design-black-white')] +     ['%s-%s-design-%s-%s' % (f, k, _AUTO[c], c) for f, cs in _COLS.items() for c in cs for k in ('angled', 'straight')] +     ['%s-%s-%s' % (f, k, st) for f in ('sect350', 'sect200') for k in ('angled', 'straight')
+     for st in ('std-x-white', 'design-chrome-white', 'design-white-white', 'design-black-white')]
 
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
