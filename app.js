@@ -46513,7 +46513,7 @@ const app = {
     convIndex: function () {
         if (this._cvIdx !== undefined) return this._cvIdx;
         this._cvIdx = null;
-        fetch(this.CONV_DIR + 'conv.json?v=3')
+        fetch(this.CONV_DIR + 'conv.json?v=4')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._cvIdx = j || {}; if (Object.keys(this._cvIdx).length) this.render(); });
@@ -46605,7 +46605,7 @@ const app = {
     radNodeIndex: function () {
         if (this._rnIdx !== undefined) return this._rnIdx;
         this._rnIdx = null;
-        fetch(this.RADNODE_DIR + 'radnode.json?v=5')
+        fetch(this.RADNODE_DIR + 'radnode.json?v=6')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._rnIdx = j || {}; if (Object.keys(this._rnIdx).length) this.render(); });
