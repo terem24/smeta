@@ -45460,7 +45460,7 @@ const app = {
     woIndex: function () {
         if (this._woIdx !== undefined) return this._woIdx;
         this._woIdx = null;
-        fetch(this.WO_DIR + 'wo.json?v=1')
+        fetch(this.WO_DIR + 'wo.json?v=2')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._woIdx = j || {}; if (Object.keys(this._woIdx).length) this.render(); });
@@ -45472,7 +45472,7 @@ const app = {
     },
     woLabRows: function (pk) {
         const rows = Array.from(document.querySelectorAll('#print-area tr[data-rk]'))
-            .filter(tr => /^5\./.test(String(tr.dataset.rk || '').split('|')[1] || ''));
+            .filter(tr => /водоснабжени|^5\./i.test(String(tr.dataset.rk || '').split('|')[1] || ''));   // раздел без номера (_rowKey)
         const nm = tr => ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
         const sku = tr => ((tr.querySelector('.col-sku') || {}).innerText || '').trim();
         if (pk.indexOf('mf:') === 0) {
@@ -45541,7 +45541,7 @@ const app = {
     swIndex: function () {
         if (this._swIdx !== undefined) return this._swIdx;
         this._swIdx = null;
-        fetch(this.SW_DIR + 'sw.json?v=1')
+        fetch(this.SW_DIR + 'sw.json?v=2')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._swIdx = j || {}; if (Object.keys(this._swIdx).length) this.render(); });
@@ -45553,7 +45553,7 @@ const app = {
     },
     swLabRows: function (pk) {
         const rows = Array.from(document.querySelectorAll('#print-area tr[data-rk]'))
-            .filter(tr => /^8\./.test(String(tr.dataset.rk || '').split('|')[1] || ''));
+            .filter(tr => /Канализац|Инсталляц|^8\./i.test(String(tr.dataset.rk || '').split('|')[1] || ''));   // раздел без номера (_rowKey)
         const nm = tr => ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
         const re = this.SW_LAB_RE[String(pk).split(':')[0]];
         return re ? rows.filter(tr => re.test(nm(tr))) : [];
@@ -45635,8 +45635,12 @@ const app = {
     wmZonesOf: function (frames, iw, ih, keyOf) {
         const out = {};
         frames.forEach(f => Object.keys(f.fr.zones).forEach(z => {
+            // точки на самой детали (tools/frame_points.py); пустой список — деталь на кадре не видна
+            const pp = f.fr.pts && f.fr.pts[z];
+            if (pp && !pp.length) return;
             const pk = keyOf(z, f), q = f.fr.zones[z];
             (out[pk] = out[pk] || []).push({ line: f.id, pk,
+                pts: pp ? pp.map(p => [(f.x + p[0] * f.fr.w) / iw, (f.y + p[1] * f.fr.h) / ih]) : null,
                 z: [(f.x + q[0] * f.fr.w) / iw, (f.y + q[1] * f.fr.h) / ih, (f.x + q[2] * f.fr.w) / iw, (f.y + q[3] * f.fr.h) / ih] });
         }));
         return out;
@@ -45671,8 +45675,10 @@ const app = {
             it.cs = {};
             ['L', 'R'].forEach(side => {
                 const out = it.cs[side] = [];
-                it.zs.forEach(({ pk, z }) => {
+                it.zs.forEach(({ pk, z, pts }) => {
                     const near = side === 'L' ? 0.25 : 0.75;
+                    // есть точки на самой детали — только они (рамка у детали наискось — пустое место)
+                    if (pts) { pts.forEach(p => out.push([ox + p[0] * iw, oy + p[1] * ih])); return; }
                     [near, 0.5, 1 - near].forEach(fx => (pk === 'tube' ? [0.4, 0.62, 0.8] : pk === 'mf' ? [0.15, 0.5] : [0.5]).forEach(fy =>
                         out.push([ox + (z[0] + (z[2] - z[0]) * fx) * iw, oy + (z[1] + (z[3] - z[1]) * fy) * ih])));
                 });
@@ -45809,7 +45815,7 @@ const app = {
             const at = `data-tag="${mk}" data-line="${f.id}" data-end="${f.end || ''}" data-kind="${o.kind}"`;
             // Кадры грузятся лениво (data-href -> href в wmReveal): схема собирается при каждом
             // пересчёте сметы, а видна, только когда до неё прокрутили
-            photos += `<image class="wm-photo" ${at} x="${X}" y="${Y}" width="${w}" height="${h}" data-href="${f.path}.webp?v=12"/>` +
+            photos += `<image class="wm-photo" ${at} x="${X}" y="${Y}" width="${w}" height="${h}" data-href="${f.path}.webp?v=13"/>` +
                 (hb ? `<image class="wm-handle" x="${X + hb[0] * w}" y="${Y + hb[1] * h}" width="${hb[2] * w}" height="${hb[3] * h}" data-href="${f.path}_h_${o.hk}.png?v=9"/>` : '');
             glows += `<g class="wm-glows" ${at} data-miss="${missK.join(',')}" data-box="${X},${Y},${w},${h}"></g>`;
         });
@@ -45881,7 +45887,7 @@ const app = {
         if (cache[key]) return cache[key];
         const [tag, hk, hbox] = key.split('|');
         const load = u => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = u; });
-        cache[key] = Promise.all([load(tag + '.webp?v=12'), load(tag + '_id.png?v=12'),
+        cache[key] = Promise.all([load(tag + '.webp?v=13'), load(tag + '_id.png?v=13'),
             hk ? load(`${tag}_h_${hk}.png?v=9`) : null]).then(([ph, id, hi]) => {
             const w = id.naturalWidth, h = id.naturalHeight;
             const cv = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
@@ -46315,7 +46321,7 @@ const app = {
     sideIndex: function () {
         if (this._sdIdx !== undefined) return this._sdIdx;
         this._sdIdx = null;
-        fetch(this.SIDE_DIR + 'side.json?v=3')
+        fetch(this.SIDE_DIR + 'side.json?v=4')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._sdIdx = j || {}; if (Object.keys(this._sdIdx).length) this.render(); });
@@ -46418,7 +46424,7 @@ const app = {
     panelIndex: function () {
         if (this._pnIdx !== undefined) return this._pnIdx;
         this._pnIdx = null;
-        fetch(this.PANEL_DIR + 'panel.json?v=2')
+        fetch(this.PANEL_DIR + 'panel.json?v=3')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._pnIdx = j || {}; if (Object.keys(this._pnIdx).length) this.render(); });
@@ -46513,7 +46519,7 @@ const app = {
     convIndex: function () {
         if (this._cvIdx !== undefined) return this._cvIdx;
         this._cvIdx = null;
-        fetch(this.CONV_DIR + 'conv.json?v=4')
+        fetch(this.CONV_DIR + 'conv.json?v=5')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._cvIdx = j || {}; if (Object.keys(this._cvIdx).length) this.render(); });
@@ -46525,19 +46531,20 @@ const app = {
     },
     convLabRows: function (pk) {
         const rows = Array.from(document.querySelectorAll('#print-area tr[data-rk]'));
-        const grp = tr => String(tr.dataset.rk || '').split('|')[1] || '';
+        // в ключе строки (_rowKey) раздел записан без номера: «Приборы отопления», «Обвязка конвекторов»
+        const sec3 = tr => /Приборы отопления|Обвязка|Трубы отопления|^3\./i.test(String(tr.dataset.rk || '').split('|')[1] || '');
         const nm = tr => ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
         const sku = tr => ((tr.querySelector('.col-sku') || {}).innerText || '').trim();
         if (pk.indexOf('mf:') === 0) {
             const t = (this._cvTypes || {})[pk.slice(3)];
-            return rows.filter(tr => /^3\./.test(grp(tr)) && (t ? new RegExp('^' + t + '-', 'i') : /^SC[NQ]-/i).test(sku(tr)));
+            return rows.filter(tr => sec3(tr) && (t ? new RegExp('^' + t + '-', 'i') : /^SC[NQ]-/i).test(sku(tr)));
         }
-        if (pk === 'tube') return rows.filter(tr => /^3\./.test(grp(tr)) && /^Труба/i.test(nm(tr)));
+        if (pk === 'tube') return rows.filter(tr => sec3(tr) && /^Труба/i.test(nm(tr)));
         // в таблице строка подписана разделом «3.», подраздел 3.2 — только у позиции сметы: берём её артикулы
         const skus = new Set((this.currentEquipmentList || []).filter(it => /Обвязка конвектор/i.test(String(it.group || '')))
             .map(it => String(it.displaySku || it.id || '')));
         const re = this.CONV_LAB_RE[pk];
-        return re ? rows.filter(tr => /^3\./.test(grp(tr)) && skus.has(sku(tr)) && re.test(nm(tr))) : [];
+        return re ? rows.filter(tr => sec3(tr) && skus.has(sku(tr)) && re.test(nm(tr))) : [];
     },
     renderConvNodeSheet: function () {
         const eq = this.currentEquipmentList || [];
@@ -46605,7 +46612,7 @@ const app = {
     radNodeIndex: function () {
         if (this._rnIdx !== undefined) return this._rnIdx;
         this._rnIdx = null;
-        fetch(this.RADNODE_DIR + 'radnode.json?v=6')
+        fetch(this.RADNODE_DIR + 'radnode.json?v=7')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._rnIdx = j || {}; if (Object.keys(this._rnIdx).length) this.render(); });

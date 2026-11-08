@@ -86,8 +86,10 @@ function checkSheet(name, svg, o, ox, oy) {
         // точка на детали: в рамке хоть одной зоны подписи (в пикселях листа, запас 2 px)
         const it = o.items.find(i => i.pk === L.pk);
         if (it && L.dot) {
-            const on = it.zs.some(({ z }) => L.dot[0] >= ox + z[0] * o.iw - 2 && L.dot[0] <= ox + z[2] * o.iw + 2 &&
-                L.dot[1] >= oy + z[1] * o.ih - 2 && L.dot[1] <= oy + z[3] * o.ih + 2);
+            // точки на самой детали (pts, tools/frame_points.py — по карте деталей) засчитываются как есть
+            const on = it.zs.some(({ z, pts }) => (pts || []).some(p => Math.hypot(L.dot[0] - (ox + p[0] * o.iw), L.dot[1] - (oy + p[1] * o.ih)) < 2) ||
+                (L.dot[0] >= ox + z[0] * o.iw - 2 && L.dot[0] <= ox + z[2] * o.iw + 2 &&
+                L.dot[1] >= oy + z[1] * o.ih - 2 && L.dot[1] <= oy + z[3] * o.ih + 2));
             if (!on) fail(name, `точка сноски мимо детали (${L.pk})`);
         }
     });
