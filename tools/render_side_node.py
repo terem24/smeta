@@ -222,6 +222,7 @@ def build():
         for o in list(coll('solid').objects):
             if o.get('part') == 'kit':
                 o['part'] = 'rad'
+        marks.pop('kit', None)          # пробка и кран Маевского — часть прибора, своей сноски нет
     else:
         # дальний торец: кран Маевского сверху, заглушка снизу (набор)
         rs.kit_vent(-x_end + 0.002, ZC1, -sg, KITCOL)
@@ -255,6 +256,7 @@ def build_bottom():
     for o in list(coll('solid').objects):
         if o.get('part') == 'kit':
             o['part'] = 'rad'
+    marks.pop('kit', None)
     lathe('вставка клапана', [(0.0120, 0), (0.0120, 0.010)], M_NICKEL(), (x_end + 0.002, 0, ZC1), 'X', segs=40)
     (rb.rht_head if HEAD == 'rht' else rb.sht_head)((x_end + 0.012, 0, ZC1), 'X')
     part('node')

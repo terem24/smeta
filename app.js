@@ -45650,7 +45650,7 @@ const app = {
             const at = `data-tag="${mk}" data-line="${f.id}" data-end="${f.end || ''}" data-kind="${o.kind}"`;
             // Кадры грузятся лениво (data-href -> href в wmReveal): схема собирается при каждом
             // пересчёте сметы, а видна, только когда до неё прокрутили
-            photos += `<image class="wm-photo" ${at} x="${X}" y="${Y}" width="${w}" height="${h}" data-href="${f.path}.webp?v=10"/>` +
+            photos += `<image class="wm-photo" ${at} x="${X}" y="${Y}" width="${w}" height="${h}" data-href="${f.path}.webp?v=11"/>` +
                 (hb ? `<image class="wm-handle" x="${X + hb[0] * w}" y="${Y + hb[1] * h}" width="${hb[2] * w}" height="${hb[3] * h}" data-href="${f.path}_h_${o.hk}.png?v=9"/>` : '');
             glows += `<g class="wm-glows" ${at} data-miss="${missK.join(',')}" data-box="${X},${Y},${w},${h}"></g>`;
         });
@@ -45716,7 +45716,7 @@ const app = {
         if (cache[key]) return cache[key];
         const [tag, hk, hbox] = key.split('|');
         const load = u => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = u; });
-        cache[key] = Promise.all([load(tag + '.webp?v=10'), load(tag + '_id.png?v=10'),
+        cache[key] = Promise.all([load(tag + '.webp?v=11'), load(tag + '_id.png?v=11'),
             hk ? load(`${tag}_h_${hk}.png?v=9`) : null]).then(([ph, id, hi]) => {
             const w = id.naturalWidth, h = id.naturalHeight;
             const cv = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
