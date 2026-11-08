@@ -41,6 +41,9 @@ VERT = FAMILY in ('sebino', 'tonale', 'anteprima', 'oscar', 'quadro', 'round', '
 # ROMMER RST (паспорт: шаг секции T 41, трубки по колонкам, высоты 1500–2000; присоединение G 1/2" ВР) — на
 # кадре 1750; глубина — по числу колонок (1: 41, 2: ~81, 3: ~121, оценка по рис. 1 паспорта)
 ANGLED = NODE in ('angled', 'bangled')
+import re as _re
+_m = _re.match(r'^(titan|alpha|vega)(gr)?(350|200)?$', FAMILY)
+SBASE, SHGT = (_m.group(1), _m.group(3) or '') if _m else ('', '')
 HEAD = 'shtd' if STYLE == 'design' else ('rht' if STYLE == 'rht' else 'sht')
 if BOTTOM:
     KITCOL = VCOL                                     # у нижнего варианта 4-е поле — цвет прибора
@@ -63,8 +66,14 @@ VGEOM = {'sebino': (4, 0.085, 0.060, 1.834, 1.800), 'tonale': (6, 0.050, 0.095, 
          'rst1': (8, 0.041, 0.041, 1.750, 1.700), 'rst2': (8, 0.041, 0.081, 1.750, 1.700), 'rst3': (8, 0.041, 0.121, 1.750, 1.700)}
 if VERT:
     NSEC, SW_, BD, HR, FA = VGEOM[FAMILY]
-elif FAMILY in ('titan', 'titangr'):
-    NSEC, SW_, BD, HR, FA = 5, 0.080, 0.090, 0.561, 0.500   # TITAN 500 — как Space (секция 80, межосевое 500)
+elif SBASE:
+    # TITAN, ALPHA, VEGA — каталог STOUT «Отопительные приборы» (окт. 2025), таблицы «Размеры» с. 68, 76, 80:
+    #   TITAN — секция 82, глубина 100, высота 570/420/270 при межосевом 500/350/200;
+    #   ALPHA — секция 84, глубина 80, высота 572/422 при 500/350;
+    #   VEGA  — секция 84, глубина 80, высота 576 при 500 (350/200 — с той же надставкой, оценка).
+    _n, _sw, _bd, _dh = {'titan': (5, 0.082, 0.100, 0.070), 'alpha': (6, 0.084, 0.080, 0.072), 'vega': (6, 0.084, 0.080, 0.076)}[SBASE]
+    _fa = {'350': 0.350, '200': 0.200}.get(SHGT, 0.500)
+    NSEC, SW_, BD, HR, FA = _n, _sw, _bd, _fa + _dh, _fa
 elif FAMILY in ('sect350', 'sect200'):
     # секционные высотой 350 и 200 (Space 350, TITAN 350/200, VEGA 350/200, ALPHA 350, алюминиевые 350):
     # межосевое 350/200, высота ~411/~261 (как у 500: +61 мм)
@@ -164,6 +173,55 @@ def vsection(x0):
 
 
 def section(x0):
+    if SBASE in ('alpha', 'vega'):
+        return section_av(x0)
+    return section_space(x0)
+
+
+def section_av(x0):
+    """Секция ALPHA / VEGA (каталог, крупные фото с. 77 и 81): лицевая панель плоская со скруглёнными
+    углами, сверху и снизу — скруглённый «нос» на всю ширину секции, обнимающий коллектор спереди (у VEGA
+    радиус больше и кромка отогнута волной), под носом — косые рёбра; между секциями — тёмный зазор."""
+    m = body_mat()
+    xc = x0 + SW_ / 2
+    zt = ZB + HR
+    vega = SBASE == 'vega'
+    to_xz = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
+    to_yz = Matrix(((0, 0, 1, 0), (1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
+    w = SW_ - 0.008
+    rn = 0.034 if vega else 0.028           # радиус носа
+    hp = HR - 2 * rn - 0.070               # под носом — открытая зона косых рёбер (фото с. 77, 81)
+    pan = rounded([(-w / 2, 0.0), (w / 2, 0.0), (w / 2, hp), (-w / 2, hp)], 0.010 if vega else 0.006, seg=5)
+    prism('панель секции', pan, 0.004, m, Matrix.Translation(Vector((xc, -BD / 2 + 0.002, ZB + rn + 0.035))) @ to_xz,
+          bevel=0.0018 if vega else 0.0010)
+    box('тело секции', (0.030, BD - 0.020, FA - 0.02), m, (xc, 0.004, (ZC0 + ZC1) / 2))
+    for dx in (-0.026, 0.026):
+        box('ребро', (0.0025, BD - 0.012, FA - 0.06), m, (xc + dx, 0.006, (ZC0 + ZC1) / 2))
+    for top in (True, False):
+        zc = ZC1 if top else ZC0
+        sz = 1 if top else -1
+        # профиль носа в плоскости YZ: четверть-дуга от лица вверх (вниз) и полка назад к стене; толщина 3 мм
+        cy, cz = -BD / 2 + rn, zc + sz * (0.0)
+        outer = [(cy - rn * math.cos(t), cz + sz * rn * math.sin(t)) for t in [k * math.pi / 2 / 10 for k in range(11)]]
+        outer = [(cy - rn, cz - sz * 0.010)] + outer + [(BD / 2 - 0.004, cz + sz * rn)]
+        inner = [(BD / 2 - 0.004, cz + sz * (rn - 0.003))] + \
+                [(cy - (rn - 0.003) * math.cos(t), cz + sz * (rn - 0.003) * math.sin(t)) for t in [k * math.pi / 2 / 10 for k in range(10, -1, -1)]] + \
+                [(cy - rn + 0.003, cz - sz * 0.010)]
+        prof = outer + inner
+        if vega:            # отогнутая волной кромка носа к панели
+            prof = [(cy - rn - 0.003, cz - sz * 0.016)] + prof + [(cy - rn - 0.000, cz - sz * 0.016)]
+        if not top:
+            prof = list(reversed(prof))
+        prism('нос', prof, SW_ - 0.003, m, Matrix.Translation(Vector((xc, 0.0, 0.0))) @ to_yz, bevel=0.0006)
+        for k in range(2):
+            for sgx in (-1, 1):
+                ob = box('ребро под носом', (0.030, 0.022, 0.0024), m, (xc + sgx * 0.019, -0.016, zc - sz * (0.030 + k * 0.018)))
+                ob.rotation_euler = (math.radians(sz * 32), 0, 0)
+    for zc in (ZC0, ZC1):
+        lathe('коллектор', [(RC, 0), (RC, SW_ - 0.004)], m, (x0 + 0.002, 0.0, zc), 'X', segs=40)
+
+
+def section_space(x0):
     """Секция Space (фото листовки STOUT, крупно): лицевая панель плоская со скруглениями сверху,
     сверху козырёк на всю ширину с загнутой передней кромкой, под ним 3 ряда изогнутых рёбер; сзади тело
     с рёбрами; коллекторы 1" сверху и снизу."""
@@ -171,7 +229,11 @@ def section(x0):
     xc = x0 + SW_ / 2
     zt = ZB + HR
     to_xz = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
-    pan = rounded([(-0.036, 0.0), (0.036, 0.0), (0.036, HR - 0.099), (-0.036, HR - 0.099)], 0.014, seg=5)
+    if SBASE == 'titan':     # TITAN (каталог, фото с. 69): плоская панель почти во всю высоту, углы скруглены мягче
+        hw = SW_ / 2 - 0.004
+        pan = rounded([(-hw, 0.0), (hw, 0.0), (hw, HR - 0.070), (-hw, HR - 0.070)], 0.009, seg=5)
+    else:
+        pan = rounded([(-0.036, 0.0), (0.036, 0.0), (0.036, HR - 0.099), (-0.036, HR - 0.099)], 0.014, seg=5)
     prism('панель секции', pan, 0.005, m, Matrix.Translation(Vector((xc, -BD / 2 + 0.0025, ZB + 0.020))) @ to_xz, bevel=0.0012)
     box('тело секции', (0.030, BD - 0.020, FA - 0.02), m, (xc, 0.004, (ZC0 + ZC1) / 2))
     for dx in (-0.024, 0.024):
@@ -262,7 +324,7 @@ def build_bottom():
     part('node')
     x_sup = x_end - 0.020
     x_ret = x_sup - 0.050
-    if FAMILY in ('titan', 'titangr'):
+    if SBASE == 'titan':
         m = body_mat()
         box('прилив подключения', (0.084, 0.034, 0.016), m, ((x_sup + x_ret) / 2, 0.0, ZB + 0.004))
         zt = ZB - 0.002

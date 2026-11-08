@@ -1,0 +1,351 @@
+# -*- coding: utf-8 -*-
+"""
+Кадр узла подключения внутрипольного конвектора STOUT для сметы (раздел 3, «3.2. Обвязка конвекторов»):
+SCN (естественная конвекция, 80x240) или SCQ (с вентилятором, 75x240) и то, что кладёт смета:
+  * прямое подключение — SVT-0001-000015 (термостатический прямой) на подаче и SVL-1176-000015
+    (запорно-балансировочный прямой) на обратке; трубы выходят через торец короба;
+  * угловое — SVT-0005-000015 (термостатический осевой) и SVL-1156-000015 (запорный угловой);
+  * на трубе PEX — переходник 16 x R 1/2" НР SFA-0001-001612 и гильза SFA-0020-000016 на каждый конец;
+  * у SCQ — сервопривод STE-0010-230001 на термостатическом клапане (у SCN — штатный колпачок).
+
+    blender --background --python tools/render_conv_node.py -- <папка> <вариант>
+      вариант — scn-straight | scn-angled | scq-straight | scq-angled
+
+Источники:
+  * конвектор — паспорт STOUT SCN ред. 3 (06.05.2025) и SCQ: корпус из оцинкованной стали в порошковой
+    краске, рамка из алюминиевого U-профиля, рулонная решётка из анодированного алюминия (поперечные
+    профили), теплообменник — медная труба с алюминиевым оребрением (140 пластин на 1 м, шаг 6 мм),
+    окрашен в цвет корпуса; воздухоспускной клапан 3/8"; узел подключения латунный с накидными гайками.
+    Габариты SCN 240.80 (чертёж «Размеры конвекторов SCN 240.80 и 240.110»): ширина 240, высота 80;
+    оси патрубков — 43 и 93 мм от края со стороны окна, 50 мм над дном; узел подключения — справа
+    (цифра «0» в артикуле — правое подключение), в торце и в стенке короба окна 41x41 под трубы.
+    Каталог STOUT «Отопительные приборы» (окт. 2025), с. 86–89: SCQ — глубина 75, SCN — 80.
+  * клапаны — паспорт STOUT SVT ред. 4 (L 54 прямой, 47 осевой, колпачок D 35, гайка SW 30) и SVL.
+  * сервопривод STE-0010 — компактный белый, на резьбе M30x1,5 (габарит ~44x55 мм — оценка по фото).
+Длина конвектора на кадре — 1000 мм (длина прибора на схеме условная, подпись берёт её из сметы).
+Термоклапан и привод лежат горизонтально (паспорт SVT: шток и головка — горизонтально) и не выходят
+выше короба: стоят на трубе со стороны комнаты, запорный — со стороны окна.
+"""
+import math
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import blender_parts as bp
+from blender_parts import *  # noqa: F401,F403
+from mathutils import Vector, Matrix
+import bpy
+
+_argv = sys.argv[sys.argv.index('--') + 1:]
+OUT, VAR = _argv[0], _argv[1]
+TYPE, CONN = VAR.split('-')[:2]          # scn|scq, straight|angled
+FAN = TYPE == 'scq'
+ANGLED = CONN == 'angled'
+TAG = 'conv_' + VAR
+
+add_colors({
+    'convbody': (0.20, 0.21, 0.23),       # корпус в порошковой краске (фото каталога — чёрный)
+    'convfin': (0.13, 0.14, 0.15),        # оребрение в цвет корпуса
+    'copper': (0.80, 0.45, 0.28),
+    'alu': (0.80, 0.81, 0.83),            # анодированный алюминий натурального цвета
+    'headwhite': (0.96, 0.96, 0.95),
+    'fanblue': (0.25, 0.28, 0.32),
+    'ins_sup': (0.93, 0.27, 0.22),
+    'ins_ret': (0.13, 0.56, 0.95),
+    'cable': (0.55, 0.56, 0.58),
+})
+
+# ракурс: конвектор утоплен в пол, при общем ракурсе схем (подъём ~20°) внутренность короба
+# закрывает его же передняя стенка — смотрим круче, кадр стоит на отдельном листе
+bp.VIEW_DIR = (-0.46, -1.0, 1.05)
+
+LC = 1.000                 # длина на кадре
+BW = 0.240                 # ширина
+BH = 0.075 if FAN else 0.080
+X1 = LC / 2                # правый торец (подключение)
+YWIN = BW / 2              # сторона окна
+Y_RET = YWIN - 0.043       # ось трубы теплообменника у окна (паспорт: 43)
+Y_SUP = Y_RET - 0.050      # ось трубы со стороны комнаты (паспорт: 50)
+ZT = -BH + 0.050           # оси патрубков — 50 мм над дном
+XN = X1 - 0.190            # торец узла подключения (накидные гайки)
+ANCH = {}
+
+
+def body():
+    """Короб: дно, стенки (лист 1 мм), по верху рамка из алюминиевого U-профиля, внутри рёбра жёсткости."""
+    m = mat('convbody', rough=0.6)
+    t = 0.0012
+    box('дно', (LC, BW, t), m, (0, 0, -BH + t / 2))
+    for sy in (-1, 1):
+        box('стенка', (LC, t, BH), m, (0, sy * (BW / 2 - t / 2), -BH / 2))
+    for sx in (-1, 1):
+        box('торец', (t, BW, BH), m, (sx * (LC / 2 - t / 2), 0, -BH / 2))
+    al = mat('alu', rough=0.35)
+    for sy in (-1, 1):
+        box('рамка', (LC + 0.006, 0.012, 0.004), al, (0, sy * (BW / 2 - 0.003), -0.002))
+    for sx in (-1, 1):
+        box('рамка', (0.012, BW + 0.006, 0.004), al, (sx * (LC / 2 - 0.003), 0, -0.002))
+    for x in (-0.25, 0.08):
+        box('ребро жёсткости', (0.020, BW - 0.004, 0.004), m, (x, 0, -0.012))
+
+
+def exchanger():
+    """Теплообменник: медная труба петлёй (U-колено слева), оребрение — пластины поперёк трубы,
+    окрашены в цвет корпуса; у правого конца — воздухоспускной клапан 3/8"."""
+    cu = mat('copper', rough=0.35, coat=0.3)
+    fin = mat('convfin', rough=0.55)
+    x0, x1 = -LC / 2 + 0.070, XN - 0.030
+    yc = (Y_SUP + Y_RET) / 2
+    fh, fd = (0.040 if FAN else 0.048), 0.082
+    # пластины: шаг 6 мм на кадре слишком частый — рисуем каждую вторую (шаг 12 мм)
+    n = int((x1 - x0) / 0.012)
+    for k in range(n + 1):
+        box('пластина', (0.0012, fd, fh), fin, (x0 + k * (x1 - x0) / n, yc, ZT))
+    for sy in (-1, 1):            # загибы пластин по краям — сплошная кромка
+        box('загиб пластин', (x1 - x0, 0.003, fh), fin, (0.5 * (x0 + x1), yc + sy * fd / 2, ZT))
+    r = 0.0075
+    R = (Y_RET - Y_SUP) / 2
+    for y in (Y_SUP, Y_RET):
+        tube('медная труба', [(x0 - 0.010, y, ZT), (XN, y, ZT)], r, cu)
+    arc = [(x0 - 0.010 - R * math.sin(t), yc - R * math.cos(t), ZT) for t in [k * math.pi / 16 for k in range(17)]]
+    tube('колено', arc, r, cu)
+    # воздухоспускной клапан на трубе у окна
+    ni = M_NICKEL()
+    lathe('воздухоспускной клапан', [(0.0065, 0), (0.0065, 0.010), (0.0045, 0.012), (0.0045, 0.018), (0.0, 0.019)], ni,
+          (XN - 0.018, Y_RET, ZT + r - 0.001), 'Z', segs=24)
+    marks['conv'] = (-0.15, Y_SUP - 0.030, ZT + fh / 2)
+
+
+def fan():
+    """SCQ: тангенциальный вентилятор вдоль теплообменника со стороны комнаты (паспорт SCQ: вентилятор
+    гонит воздух через теплообменник), в кожухе; слева блок подключения."""
+    dark = mat('fanblue', rough=0.5)
+    m = mat('convbody', rough=0.6)
+    x0, x1 = -LC / 2 + 0.080, XN - 0.040
+    yf = Y_SUP - 0.060
+    box('кожух вентилятора', (x1 - x0, 0.010, BH - 0.020), m, (0.5 * (x0 + x1), yf - 0.028, -BH / 2 - 0.004))
+    lathe('крыльчатка', [(0.020, 0), (0.020, x1 - x0)], dark, (x0, yf, ZT - 0.004), 'X', segs=36, ribs=(18, 0.25, 0.0, x1 - x0))
+    box('блок подключения', (0.060, 0.050, 0.030), m, (-LC / 2 + 0.040, yf, -BH + 0.016))
+
+
+def dirs(ax):
+    return {'X': Vector((1, 0, 0)), '-X': Vector((-1, 0, 0)), 'Y': Vector((0, 1, 0)), '-Y': Vector((0, -1, 0)),
+            'Z': Vector((0, 0, 1)), '-Z': Vector((0, 0, -1))}[ax]
+
+
+def union(y):
+    """Узел подключения: латунная накидная гайка G 3/4" на конце трубы теплообменника (паспорт, поз. 8),
+    в неё — хвостовик клапана. Возвращает X начала корпуса клапана."""
+    part('conv')
+    hexnut('накидная гайка 3/4"', 0.032, 0.014, M_BRASS(), (XN, y, ZT), 'X', ch=0.14)
+    return XN + 0.014
+
+
+def cap(c, ax, white=True):
+    """Защитный колпачок клапана (D 35) — у SCN термостатический клапан стоит без головки."""
+    lathe('колпачок', [(0.0, 0), (0.0160, 0), (0.0175, 0.003), (0.0175, 0.016), (0.0150, 0.020), (0.0, 0.021)],
+          mat('headwhite', rough=0.45, coat=0.2), c, ax, segs=40, knurl=0.0170, sharp=50)
+
+
+def actuator(c, ax):
+    """Сервопривод STE-0010 (компактный, белый, M30x1,5): гайка, корпус, кабель."""
+    part('head')
+    d = dirs(ax)
+    c = Vector(c)
+    lathe('гайка привода', [(0.0160, 0), (0.0160, 0.010)], mat('headwhite', rough=0.45), tuple(c), ax, segs=40, knurl=0.0158)
+    w = mat('headwhite', rough=0.40, coat=0.3)
+    lathe('сервопривод', [(0.0200, 0), (0.0220, 0.004), (0.0220, 0.046), (0.0190, 0.052), (0.0, 0.053)], w,
+          tuple(c + d * 0.010), ax, segs=48, sharp=40)
+    side = Vector((0, 0, 1))
+    tube('кабель', [tuple(c + d * 0.030 + side * 0.021), tuple(c + d * 0.030 + side * 0.026 + Vector((0.02, 0, 0))),
+                    tuple(c + d * 0.030 + side * 0.026 + Vector((0.06, 0, 0)))], 0.0025, mat('cable', rough=0.5))
+    marks['head'] = tuple(c + d * 0.035 + side * 0.022)
+
+
+def valve_straight(y, thermo):
+    """Прямой клапан вдоль оси трубы (+X): хвостовик в гайке узла, корпус, шток — у термостатического
+    к комнате (−Y, горизонтально), у запорного вверх (колпачок не выше короба); выход ВР 1/2" по оси."""
+    ni = M_NICKEL()
+    xb = union(y)
+    part('node' if thermo else 'lock')
+    L = 0.054 if thermo else 0.067
+    xe = XN + L
+    lathe('хвостовик', [(0.0110, 0), (0.0110, 0.006)], ni, (XN, y, ZT), 'X', segs=32)
+    lathe('корпус', [(0.0100, 0), (0.0115, 0.004), (0.0115, xe - xb - 0.004), (0.0105, xe - xb)], ni, (xb, y, ZT), 'X', segs=40)
+    xv = xb + (xe - xb) * 0.45
+    if thermo:
+        sax = '-Y'
+        lathe('прилив штока', [(0.0110, 0), (0.0110, 0.014)], ni, (xv, y, ZT), sax, segs=40)
+        c = (xv, y - 0.014, ZT)
+        lathe('резьба M30x1,5', [(0.0150, 0), (0.0150, 0.008)], ni, c, sax, segs=40)
+        c2 = (xv, y - 0.022, ZT)
+        if FAN:
+            actuator(c2, sax)
+            part('node')
+        else:
+            cap(c2, sax)
+    else:
+        lathe('прилив штока', [(0.0100, 0), (0.0100, 0.012)], ni, (xv, y, ZT), 'Z', segs=32)
+        hexnut('колпачок', 0.022, 0.010, mat('headwhite', rough=0.45, coat=0.2), (xv, y, ZT + 0.012), 'Z', ch=0.18)
+    marks['node' if thermo else 'lock'] = (xv, y - 0.012, ZT + 0.012)
+    return (xe, y, ZT), 'X'
+
+
+def valve_angled(y, thermo):
+    """Угловое подключение. Термостатический осевой SVT-0005 (на трубе со стороны комнаты): шток по оси
+    трубы (+X), колпачок или привод горизонтально, вход сбоку — к комнате (−Y). Запорный угловой SVL-1156
+    (на трубе у окна): выход к окну (+Y), шток вверх."""
+    ni = M_NICKEL()
+    xb = union(y)
+    part('node' if thermo else 'lock')
+    lathe('хвостовик', [(0.0110, 0), (0.0110, 0.006)], ni, (XN, y, ZT), 'X', segs=32)
+    if thermo:
+        xv = XN + 0.035                       # ось входа (L 47 — до торца корпуса со штоком)
+        lathe('корпус', [(0.0105, 0), (0.0115, 0.004), (0.0115, 0.047 - 0.014)], ni, (xb, y, ZT), 'X', segs=40)
+        lathe('прилив входа', [(0.0110, 0), (0.0110, 0.016)], ni, (xv, y, ZT), '-Y', segs=40)
+        c = (XN + 0.047, y, ZT)
+        lathe('резьба M30x1,5', [(0.0150, 0), (0.0150, 0.008)], ni, c, 'X', segs=40)
+        c2 = (XN + 0.055, y, ZT)
+        if FAN:
+            actuator(c2, 'X')
+            part('node')
+        else:
+            cap(c2, 'X')
+        marks['node'] = (xv, y - 0.012, ZT + 0.012)
+        return (xv, y - 0.016, ZT), '-Y'
+    xv = XN + 0.038
+    lathe('корпус к оси', [(0.0100, 0), (0.0100, xv - xb)], ni, (xb, y, ZT), 'X', segs=40)
+    lathe('корпус', [(0.0, -0.014), (0.0115, -0.014), (0.0122, -0.010), (0.0122, 0.010), (0.0115, 0.014), (0.0, 0.014)],
+          ni, (xv, y, ZT), 'Y', segs=40)
+    lathe('прилив штока', [(0.0090, 0), (0.0090, 0.012)], ni, (xv, y, ZT), 'Z', segs=32)
+    hexnut('колпачок', 0.022, 0.010, mat('headwhite', rough=0.45, coat=0.2), (xv, y, ZT + 0.012), 'Z', ch=0.18)
+    marks['lock'] = (xv, y - 0.012, ZT + 0.012)
+    return (xv, y + 0.014, ZT), 'Y'
+
+
+def adapter(loc, ax, key):
+    """Переходник 16 x R 1/2" НР SFA-0001-001612 в ВР 1/2" клапана и монтажная гильза SFA-0020-000016."""
+    part('fit:' + key)
+    d = dirs(ax)
+    p = Vector(loc)
+    br = M_BRASS()
+    lathe('резьба 1/2" НР', [(0.0095, 0), (0.0095, 0.002)], br, tuple(p - d * 0.002), ax, segs=32)
+    hexnut('переходник шестигранник', 0.024, 0.007, br, tuple(p), ax)
+    p = p + d * 0.007
+    lathe('штуцер', [(0.0075, 0), (0.0090, 0.004), (0.0075, 0.010), (0.0090, 0.014), (0.0075, 0.020)], br, tuple(p), ax, segs=32)
+    lathe('гильза', [(0.0115, 0), (0.0115, 0.020), (0.0105, 0.022)], br, tuple(p + d * 0.001), ax, segs=40)
+    return p + d * 0.022
+
+
+def run(p0, ax, sup, pts_tail):
+    key = 's' if sup else 'r'
+    part('tube:' + key)
+    pm = M_PLAST('ins_sup' if sup else 'ins_ret') if illus() else M_PLAST('pex')
+    tube('труба 16', [tuple(p0 - dirs(ax) * 0.004)] + pts_tail, 0.008, pm)
+
+
+def arc(c, u, v, R, n=14):
+    """Четверть дуги радиусом R вокруг c: от c+u*R к c+v*R."""
+    c, u, v = Vector(c), Vector(u), Vector(v)
+    return [tuple(c + (u * math.cos(t) + v * math.sin(t)) * R) for t in [k * math.pi / 2 / n for k in range(n + 1)]]
+
+
+def pipes(outs):
+    """Трубы в стяжке. Прямое: через торец короба наружу, поворот к комнате (−Y) радиусом 5D —
+    подача (ближе к комнате) поворачивает первой, обратка дальше от торца, трубы не пересекаются.
+    Угловое: подача — через стенку короба со стороны комнаты; обратка — через стенку у окна, в стяжке
+    поворачивает вдоль короба и обходит его торец."""
+    R = 0.078
+    yend = -BW / 2 - 0.30
+    for (loc, ax), sup in zip(outs, (True, False)):
+        p0 = adapter(loc, ax, 's' if sup else 'r')
+        if ax == 'X':
+            xt = X1 + 0.030 + (0.0 if sup else 0.055)
+            y = p0.y
+            pts = [(xt, y, ZT)] + arc((xt, y - R, ZT), (0, 1, 0), (1, 0, 0), R)[1:] + [(xt + R, yend, ZT)]
+            run(p0, ax, sup, pts)
+            sl = (X1, y, ZT)
+        elif ax == '-Y':
+            run(p0, ax, sup, [(p0.x, yend, ZT)])
+            sl = (p0.x, -BW / 2, ZT)
+        else:   # обратка к окну и вокруг торца
+            yb = YWIN + 0.040
+            x = p0.x
+            xr = X1 + 0.045
+            pts = [(x, yb - R, ZT)] + arc((x + R, yb - R, ZT), (-1, 0, 0), (0, 1, 0), R)[1:]
+            pts += [(xr - R, yb, ZT)] + arc((xr - R, yb - R, ZT), (0, 1, 0), (1, 0, 0), R)[1:] + [(xr, yend, ZT)]
+            run(p0, ax, sup, pts)
+            sl = (x, YWIN, ZT)
+        # сноска трубы — на участке в стяжке за стенкой короба
+        ANCH['tube:' + ('s' if sup else 'r')] = (sl[0] + (0.10 if ax == 'X' else 0.0), sl[1] - (0.10 if ax != 'X' else 0.0), ZT)
+
+
+def grille():
+    """Рулонная решётка: поперечные алюминиевые профили на шнуре; на кадре снята над узлом подключения
+    (там она съёмная), чтобы были видны клапаны."""
+    al = mat('alu', rough=0.35)
+    x0, x1 = -LC / 2 + 0.008, XN - 0.240
+    pitch = 0.018
+    n = int((x1 - x0) / pitch)
+    part('conv')
+    for k in range(n):
+        box('профиль решётки', (0.009, BW - 0.016, 0.018), al, (x0 + 0.005 + k * pitch, 0, -0.010))
+
+
+def room():
+    part('')
+    g = mat('headwhite', rough=0.6, alpha=0.18)
+    x0, x1 = -LC / 2 - 0.12, X1 + 0.20
+    for name, size, loc in (('пол', (x1 - x0, 0.75, 0.004), ((x0 + x1) / 2, -0.10, -0.002)),):
+        ob = box(name, size, g, loc)
+        ob.modifiers.clear()
+        for c in list(ob.users_collection):
+            c.objects.unlink(ob)
+        coll('sheath').objects.link(ob)
+
+
+def build():
+    sc = reset()
+    room()
+    part('conv')
+    body()
+    exchanger()
+    if FAN:
+        fan()
+    grille()
+    part('conv')
+    v = valve_angled if ANGLED else valve_straight
+    outs = [v(Y_SUP, True), v(Y_RET, False)]
+    pipes(outs)
+    return sc
+
+
+def main():
+    sc = build()
+    cam = camera(sc, objects=list(coll('solid').objects))
+    zones, pts, proj = frame_meta(sc, cam, ANCH)
+    sheath = list(coll('sheath').objects)
+    for o in sheath:
+        o.hide_render = True
+    sc.render.film_transparent = True
+    freestyle(sc, 'solid', LINE_COLOR, 1.8)
+    render(sc, os.path.join(OUT, TAG + '_solid.png'))
+    for o in sheath:
+        o.hide_render = False
+    for o in coll('solid').objects:
+        o.is_holdout = True
+    freestyle(sc, 'sheath', (0.62, 0.64, 0.68), 1.0)
+    eng = sc.render.engine
+    set_engine(sc, 'eevee')
+    render(sc, os.path.join(OUT, TAG + '_sheath.png'))
+    sc.render.engine = eng
+    for o in sheath:
+        o.hide_render = True
+    # карта деталей: конвектор R, переходник с гильзой G, труба B, запорный клапан Y, термоклапан C,
+    # сервопривод W
+    ID = {'conv': (1, 0, 0), 'fit': (0, 1, 0), 'tube': (0, 0, 1), 'lock': (1, 1, 0), 'node': (0, 1, 1), 'head': (1, 1, 1)}
+    id_pass(sc, list(coll('solid').objects), ID, os.path.join(OUT, TAG + '_id.png'))
+    write_meta(sc, os.path.join(OUT, TAG + '.json'), zones, pts, proj)
+
+
+main()

@@ -45448,6 +45448,161 @@ const app = {
             (old ? `<div class="wm-col"><div class="wm-cap no-print">Лист проекта-образца</div>${old}</div>` : '') +
             `<div class="wm-col"><div class="wm-cap no-print">Новая схема узла — по составу сметы</div>${fresh}</div></div>` + sum;
     },
+    // Лист «Точки подключения сантехники» (раздел 5): водорозетки SFA-0032 на монтажных планках — кадры
+    // tools/render_water_outlet.py (img/water_outlet/, индекс wo.json, ключ double150 | double100 | single).
+    // Кадр — на каждый вид планки, что есть в смете: SAC-0022-600150, -600100, -600001. Видит владелец.
+    WO_DIR: 'img/water_outlet/',
+    WO_PLATES: { 'SAC-0022-600150': 'double150', 'SAC-0022-600100': 'double100', 'SAC-0022-600001': 'single' },
+    woIndex: function () {
+        if (this._woIdx !== undefined) return this._woIdx;
+        this._woIdx = null;
+        fetch(this.WO_DIR + 'wo.json?v=1')
+            .then(r => r.ok ? r.json() : {})
+            .catch(() => ({}))
+            .then(j => { this._woIdx = j || {}; if (Object.keys(this._woIdx).length) this.render(); });
+        return null;
+    },
+    WO_LAB_RE: {
+        node: /^Водорозетка/i, ek: /^Гильза монтажная 16|^Монтажная гильза 16/i, tube: /^Труба PEX|^Теплоизоляция/i,
+        fix: /^Фиксатор поворота/i, head: /^Пробка с наружн/i
+    },
+    woLabRows: function (pk) {
+        const rows = Array.from(document.querySelectorAll('#print-area tr[data-rk]'))
+            .filter(tr => /^5\./.test(String(tr.dataset.rk || '').split('|')[1] || ''));
+        const nm = tr => ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
+        const sku = tr => ((tr.querySelector('.col-sku') || {}).innerText || '').trim();
+        if (pk.indexOf('mf:') === 0) {
+            const k = (this._woKeys || {})[pk.slice(3)];
+            return rows.filter(tr => this.WO_PLATES[sku(tr)] === k);
+        }
+        const re = this.WO_LAB_RE[pk];
+        return re ? rows.filter(tr => re.test(nm(tr))) : [];
+    },
+    renderWaterOutletScheme: function () {
+        if (!this.wmPreviewOn()) return '';
+        const eq = this.currentEquipmentList || [];
+        const in5 = it => /^5\./.test(String(it.group || it.sectionTitle || ''));
+        const skuOf = it => String(it.displaySku || it.id || '');
+        if (!eq.some(it => in5(it) && /^SFA-0032/i.test(skuOf(it)))) return '';
+        const idx = this.woIndex();
+        if (!idx) return '';
+        const kinds = ['double150', 'double100', 'single'].filter(k => eq.some(it => in5(it) && this.WO_PLATES[skuOf(it)] === k));
+        if (!kinds.length) return '';
+        const frames = [];
+        for (const k of kinds) {
+            const fr = idx[k];
+            if (!fr || !fr.o) return '';
+            frames.push({ id: 'w' + frames.length, at: frames.length, fr, k, path: this.WO_DIR + 'wo_' + k });
+        }
+        this._woKeys = {};
+        frames.forEach(f => { this._woKeys[f.id] = f.k; });
+        const { iw, ih } = this.wmPlaceFrames(frames, frames.map(f => f.at), [0, 0, 0]);
+        const spec = frames.map(f => f.id).join(',');
+        const zonesOf = this.wmZonesOf(frames, iw, ih, z => String(z).split(':')[0]);
+        frames.forEach(f => (zonesOf['mf'] || []).forEach(q => { if (q.line === f.id) (zonesOf['mf:' + f.id] = zonesOf['mf:' + f.id] || []).push(q); }));
+        const PL = { double150: ['Монтажная планка двойная', '150 мм — смеситель'], double100: ['Монтажная планка двойная', '100 мм'],
+            single: ['Монтажная планка одинарная', 'унитаз, инсталляция — ХВС'] };
+        const T = {
+            node: ['Водорозетка 16 x Rp 1/2"', 'тупиковая, на планке'], ek: ['Гильза монтажная 16', 'на штуцере водорозетки'],
+            tube: ['Труба PEX-a 16x2.2', 'в теплоизоляции: синяя ХВС, красная ГВС'], fix: ['Фиксатор поворота 90°', 'выход трубы из пола'],
+            head: ['Пробка с наружной резьбой', 'на время опрессовки']
+        };
+        frames.forEach(f => { T['mf:' + f.id] = PL[f.k]; });
+        const keys = frames.map(f => 'mf:' + f.id).concat(['node', 'ek', 'tube', 'fix', 'head']);
+        const items = keys.map(key => {
+            const zs = zonesOf[key] || [];
+            if (!zs.length || !T[key]) return null;
+            const rs = this.woLabRows(key);
+            const miss = rs.length ? [] : [T[key][0].toLowerCase()];
+            return { pk: key, rows: rs, miss, off: false, ok: !miss.length, lines: T[key], tail: miss.length ? 'нет в смете' : '', zs,
+                mx: zs.reduce((sum, q) => sum + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
+        }).filter(Boolean);
+        const miss = items.filter(it => !it.ok).map(it => it.lines[0].toLowerCase());
+        const n = eq.filter(it => in5(it) && /^SFA-0032/i.test(skuOf(it))).reduce((sum, it) => sum + (it.q || 1), 0);
+        const sum = `<div class="sg-summary no-print">Точки подключения сантехники: водорозеток ${n} шт.` +
+            (miss.length ? ` <span class="sg-miss-txt">Нет в смете: ${miss.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
+            ` <span class="sg-hint">Высота точки на схеме условная — по прибору и проекту.</span></div>`;
+        const html = this.wmSheet({
+            kind: 'wo', frames, items, iw, ih, spec, hk: null, title: 'Точки подключения', subtitle: 'Сантехника',
+            places: frames.map(f => ({ name: PL[f.k][0] + (f.k === 'single' ? '' : ' ' + f.k.slice(6) + ' мм'),
+                rows: [f.k === 'single' ? 'Одна водорозетка — ХВС' : 'Две водорозетки — ХВС и ГВС', 'Пробки — до установки прибора'] }))
+        });
+        return html + sum;
+    },
+    // Лист «Канализация санузла» (раздел 8): кадры tools/render_sewer_node.py по приборам (img/sewer_node/,
+    // индекс sw.json): main — лежак D110 с ревизией, муфтой и выпуском; toilet — инсталляция и отвод 110x87°;
+    // basin (раковина, биде), shower (душ, ванна), wash (стиральная, посудомоечная) — ветка D58 с тройником
+    // 110x58. Кадр — на вид прибора, что есть в сантехнике объекта. Видит владелец.
+    SW_DIR: 'img/sewer_node/',
+    swIndex: function () {
+        if (this._swIdx !== undefined) return this._swIdx;
+        this._swIdx = null;
+        fetch(this.SW_DIR + 'sw.json?v=1')
+            .then(r => r.ok ? r.json() : {})
+            .catch(() => ({}))
+            .then(j => { this._swIdx = j || {}; if (Object.keys(this._swIdx).length) this.render(); });
+        return null;
+    },
+    SW_LAB_RE: {
+        mf: /^Комплект: инсталляция|^Инсталляция/i, tube: /^Труба канализационная/i, ek: /^Отвод/i, node: /^Тройник/i,
+        head: /^Заглушка/i, lock: /^Ревизия/i, fix: /^Хомут|^Шпилька/i, kit: /^Муфта/i
+    },
+    swLabRows: function (pk) {
+        const rows = Array.from(document.querySelectorAll('#print-area tr[data-rk]'))
+            .filter(tr => /^8\./.test(String(tr.dataset.rk || '').split('|')[1] || ''));
+        const nm = tr => ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
+        const re = this.SW_LAB_RE[String(pk).split(':')[0]];
+        return re ? rows.filter(tr => re.test(nm(tr))) : [];
+    },
+    renderSewerNodeScheme: function () {
+        if (!this.wmPreviewOn()) return '';
+        const eq = this.currentEquipmentList || [];
+        if (!eq.some(it => /^8\./.test(String(it.group || '')) && /^Труба канализационная/i.test(String(it.name || '')))) return '';
+        const idx = this.swIndex();
+        if (!idx) return '';
+        const has = k => (this.state.waterZones || []).some(z => (parseInt((z.fixtures || {})[k]) || 0) > 0);
+        const kinds = ['main'];
+        if (has('toilet')) kinds.push('toilet');
+        if (has('basin') || has('bidet')) kinds.push('basin');
+        if (has('shower') || has('bath')) kinds.push('shower');
+        if (has('wash') || has('dish')) kinds.push('wash');
+        const frames = [];
+        for (const k of kinds) {
+            const fr = idx[k];
+            if (!fr || !fr.o) return '';
+            frames.push({ id: 'k' + frames.length, at: frames.length, fr, k, path: this.SW_DIR + 'sw_' + k });
+        }
+        const { iw, ih } = this.wmPlaceFrames(frames, frames.map(f => f.at), [0, 0, 0]);
+        const spec = frames.map(f => f.id).join(',');
+        // инсталляция — одна деталь на листе (у кадра унитаза), остальные подписи общие для всех кадров
+        const zonesOf = this.wmZonesOf(frames, iw, ih, (z, f) => { const k = String(z).split(':')[0]; return k === 'mf' ? 'mf:' + f.id : k; });
+        const T = {
+            mf: ['Инсталляция', 'выпуск D110 под заглушкой'], tube: ['Труба канализационная', 'бесшумная D110 и D58'],
+            ek: ['Отводы', '110x87°, 58x45°, 58x87°, 110x45° на выпуск'], node: ['Тройник 110x58 87°', 'ветка прибора в лежак'],
+            head: ['Заглушки D110 и D58', 'до установки приборов'], lock: ['Ревизия с крышкой D110', 'на лежаке'],
+            fix: ['Хомуты на шпильках M8', '4" для D110, 2" для D58'], kit: ['Муфта двухраструбная D110', 'стык лежака']
+        };
+        const keys = frames.filter(f => f.k === 'toilet').map(f => 'mf:' + f.id).concat(['tube', 'ek', 'node', 'head', 'lock', 'fix', 'kit']);
+        const items = keys.map(key => {
+            const zs = zonesOf[key] || [];
+            if (!zs.length) return null;
+            const rs = this.swLabRows(key);
+            const t = T[key.split(':')[0]];
+            const miss = rs.length ? [] : [t[0].toLowerCase()];
+            return { pk: key, rows: rs, miss, off: false, ok: !miss.length, lines: t, tail: miss.length ? 'нет в смете' : '', zs,
+                mx: zs.reduce((sum, q) => sum + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
+        }).filter(Boolean);
+        const miss = items.filter(it => !it.ok).map(it => it.lines[0].toLowerCase());
+        const RU = { main: 'Лежак и выпуск', toilet: 'Унитаз (инсталляция)', basin: 'Раковина, биде', shower: 'Душ, ванна', wash: 'Стиральная, посудомоечная' };
+        const sum = `<div class="sg-summary no-print">Канализация санузлов: ${kinds.map(k => RU[k].toLowerCase()).join('; ')}.` +
+            (miss.length ? ` <span class="sg-miss-txt">Нет в смете: ${miss.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
+            ` <span class="sg-hint">Уклон лежака на схеме не показан: D110 — 0,02, D50 — 0,03 (СП 30.13330.2020); длины — в смете.</span></div>`;
+        const html = this.wmSheet({
+            kind: 'sw', frames, items, iw, ih, spec, hk: null, title: 'Канализация', subtitle: 'Санузел',
+            places: frames.map(f => ({ name: RU[f.k], rows: [f.k === 'main' ? 'Бесшумная D110' : (f.k === 'toilet' ? 'Отвод 110x87° в лежак' : 'Ветка D58, тройник 110x58')] }))
+        });
+        return html + sum;
+    },
     wmVyh: function (k) {
         return k % 10 === 1 && k % 100 !== 11 ? 'выход' : (k % 10 >= 2 && k % 10 <= 4 && (k % 100 < 12 || k % 100 > 14) ? 'выхода' : 'выходов');
     },
@@ -45697,6 +45852,9 @@ const app = {
         if (kind === 'radnode') return { mount: 'bracket', end: 'fix', feed: 'node' }[g] || g;
         if (kind === 'panel') return { mount: 'lock', end: 'fix', feed: 'node' }[g] || g;
         if (kind === 'side') return { mount: 'lock', end: 'fix', feed: 'node' }[g] || g;
+        if (kind === 'conv') return { mount: 'lock', feed: 'node' }[g] || g;
+        if (kind === 'wo') return { feed: 'node', end: 'fix' }[g] || g;
+        if (kind === 'sw') return { feed: 'node', end: 'fix', mount: 'lock', mf: 'mf' }[g] || g;
         return g === 'end' ? 'end_' + end : g;
     },
     // Строки сметы подписи — по виду схемы
@@ -45705,6 +45863,9 @@ const app = {
         if (kind === 'radnode') return this.radNodeLabRows(pk);
         if (kind === 'panel') return this.panelLabRows(pk);
         if (kind === 'side') return this.sideLabRows(pk);
+        if (kind === 'conv') return this.convLabRows(pk);
+        if (kind === 'wo') return this.woLabRows(pk);
+        if (kind === 'sw') return this.swLabRows(pk);
         return kind === 'ufh' ? this.ufhLabRows(pk, spec) : this.wmLabRows(pk, spec);
     },
     // Маски деталей кадра: по карте деталей вырезаются пиксели самого кадра — деталь потом
@@ -46108,7 +46269,7 @@ const app = {
             .filter(Boolean).map(url => this._renderSheetImage(url)).join('');
         // Новая схема узла подключения прибора (пока — секционный Space с нижним подключением)
         // видна владельцу; у остальных приборов — прежние листы
-        const fresh = this.wmPreviewOn() ? [this.renderRadNodeSheet(), this.renderPanelNodeSheet(), this.renderSideNodeSheet()].filter(Boolean) : [];
+        const fresh = this.wmPreviewOn() ? [this.renderRadNodeSheet(), this.renderPanelNodeSheet(), this.renderSideNodeSheet(), this.renderConvNodeSheet()].filter(Boolean) : [];
         return fresh.map(f => f.html + f.sum).join('') + old;
     },
     // Лист «Подключение радиатора» с БОКОВЫМ подключением (секционные): кадры tools/render_side_node.py
@@ -46128,7 +46289,11 @@ const app = {
             // высота — по артикулу: …-035… — 350, …-020… — 200, иначе 500
             const h = /^[A-Z]{3}-\d{4}-0(35|20)/i.exec(sku);
             const hh = h ? (h[1] === '35' ? '350' : '200') : '';
-            return { fam: 'sect' + hh, col: 'white', ru: 'секционный' + (hh ? ' ' + hh : '') };
+            // свой вид секции (каталог STOUT, с. 66–81): TITAN SRB-3310, ALPHA SRB-2310/SRA-2310, VEGA SRB-1310/SRA-1310;
+            // остальные (Space SRB-0310, ROMMER) — секция Space
+            const base = /^SRB-3310/i.test(sku) ? 'titan' : /^SR[AB]-2310/i.test(sku) ? 'alpha' : /^SR[AB]-1310/i.test(sku) ? 'vega' : 'sect';
+            const ru = base === 'sect' ? 'секционный' : base.toUpperCase();
+            return { fam: base + hh, col: 'white', ru: ru + (hh ? ' ' + hh : ''), sect: true };
         }
         const m = /^SRA-(0110|1120|2120|3120)-\d{4}(\d{2})?/i.exec(sku);
         if (m) {
@@ -46143,7 +46308,7 @@ const app = {
     sideIndex: function () {
         if (this._sdIdx !== undefined) return this._sdIdx;
         this._sdIdx = null;
-        fetch(this.SIDE_DIR + 'side.json?v=1')
+        fetch(this.SIDE_DIR + 'side.json?v=2')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._sdIdx = j || {}; if (Object.keys(this._sdIdx).length) this.render(); });
@@ -46187,10 +46352,12 @@ const app = {
             const k = d.fam + '/' + d.col;
             if (seen[k]) continue;
             seen[k] = 1;
-            const key = [d.fam, angled ? 'angled' : 'straight', design ? 'design' : 'std', vcol, /^sect/.test(d.fam) ? kit : d.col].join('-');
+            let key = [d.fam, angled ? 'angled' : 'straight', design ? 'design' : 'std', vcol, d.sect ? kit : d.col].join('-');
+            // кадров своего вида секции (TITAN/ALPHA/VEGA) ещё нет — секция Space той же высоты
+            if (!idx[key] && d.sect) key = key.replace(/^(titan|alpha|vega)/, 'sect');
             const fr = idx[key];
             if (!fr || !fr.o) return null;
-            frames.push({ id: 's' + frames.length, at: frames.length, fr, fam: d.fam, col: d.col, ru: d.ru, path: this.SIDE_DIR + 'side_' + key });
+            frames.push({ id: 's' + frames.length, at: frames.length, fr, fam: d.fam, col: d.col, ru: d.ru, sect: !!d.sect, path: this.SIDE_DIR + 'side_' + key });
         }
         this._sdFrames = {};
         frames.forEach(f => { this._sdFrames[f.id] = f; });
@@ -46209,7 +46376,7 @@ const app = {
             fix: ['Выход трубы ' + (angled ? 'из стены' : 'из пола'), 'фиксатор 90°, защитные втулки'],
             kit: ['Монтажный набор', 'переходники 1" x 1/2", заглушка, кран Маевского']
         };
-        frames.forEach(f => { const sec = /^sect/.test(f.fam); T['mf:' + f.id] = [sec ? 'Радиатор ' + f.ru : 'Радиатор ' + f.ru, (sec ? '' : radColRu[f.col] + ', ') + 'боковое подключение']; });
+        frames.forEach(f => { T['mf:' + f.id] = ['Радиатор ' + f.ru, (f.sect ? '' : radColRu[f.col] + ', ') + 'боковое подключение']; });
         const keys = frames.map(f => 'mf:' + f.id).concat(['head', 'node', 'lock', 'ek', 'tube', 'fix', 'kit']);
         const items = keys.map(key2 => {
             const zs = zonesOf[key2] || [];
@@ -46226,8 +46393,8 @@ const app = {
             ` <span class="sg-hint">Число секций и высота каждого прибора — в смете; кронштейны — за прибором.</span></div>`;
         const html = this.wmSheet({
             kind: 'side', frames, items, iw, ih, spec, hk: null, title: 'Подключение радиатора', subtitle: 'Обвязка прибора',
-            places: frames.map(f => ({ name: /^sect/.test(f.fam) ? 'Секционный' + (f.fam.slice(4) ? ' ' + f.fam.slice(4) : '') : f.ru + ', ' + radColRu[f.col],
-                rows: [design ? 'Арматура STOUT Design, ' + colRu : 'Клапаны под евроконус', /^sect/.test(f.fam) ? 'Монтажный набор' : 'Пробка и кран Маевского — в комплекте'] }))
+            places: frames.map(f => ({ name: f.sect ? (/^sect/.test(f.fam) ? 'Секционный' + (f.fam.slice(4) ? ' ' + f.fam.slice(4) : '') : f.ru) : f.ru + ', ' + radColRu[f.col],
+                rows: [design ? 'Арматура STOUT Design, ' + colRu : 'Клапаны под евроконус', f.sect ? 'Монтажный набор' : 'Пробка и кран Маевского — в комплекте'] }))
         });
         return { html, sum };
     },
@@ -46323,6 +46490,94 @@ const app = {
             kind: 'panel', frames, items, iw, ih, spec, hk: null, title: 'Подключение радиатора', subtitle: 'Обвязка прибора',
             places: frames.map(f => ({ name: 'Стальной панельный, тип ' + f.type,
                 rows: ['Боковое одностороннее подключение', `Клапаны ${angled ? 'угловые' : 'прямые'} под евроконус`] }))
+        });
+        return { html, sum };
+    },
+    // Лист «Подключение конвектора»: внутрипольные STOUT SCN/SCQ, кадры tools/render_conv_node.py
+    // (img/rad_conv/, индекс conv.json, ключ «<scn|scq>-<straight|angled>»). Узел — по настройке
+    // convConnectionType, как и клапаны в разделе «3.2. Обвязка конвекторов»: прямые SVT-0001 + SVL-1176
+    // (трубы через торец короба) или осевой SVT-0005 + угловой SVL-1156; на трубе — переходник 16 x НР 1/2"
+    // с гильзой (на металлопластике — пресс-переходник); у SCQ — сервопривод на термоклапане.
+    CONV_DIR: 'img/rad_conv/',
+    convIndex: function () {
+        if (this._cvIdx !== undefined) return this._cvIdx;
+        this._cvIdx = null;
+        fetch(this.CONV_DIR + 'conv.json?v=1')
+            .then(r => r.ok ? r.json() : {})
+            .catch(() => ({}))
+            .then(j => { this._cvIdx = j || {}; if (Object.keys(this._cvIdx).length) this.render(); });
+        return null;
+    },
+    CONV_LAB_RE: {
+        head: /^Сервопривод/i, node: /^Клапан термостатическ/i, lock: /^Клапан запорно-балансир/i,
+        ek: /^Переходник|^Монтажная гильза|^Гильза монтажная|^Пресс-переходник/i, tube: /^Труба/i
+    },
+    convLabRows: function (pk) {
+        const rows = Array.from(document.querySelectorAll('#print-area tr[data-rk]'));
+        const grp = tr => String(tr.dataset.rk || '').split('|')[1] || '';
+        const nm = tr => ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
+        const sku = tr => ((tr.querySelector('.col-sku') || {}).innerText || '').trim();
+        if (pk.indexOf('mf:') === 0) {
+            const t = (this._cvTypes || {})[pk.slice(3)];
+            return rows.filter(tr => /^3\./.test(grp(tr)) && (t ? new RegExp('^' + t + '-', 'i') : /^SC[NQ]-/i).test(sku(tr)));
+        }
+        if (pk === 'tube') return rows.filter(tr => /^3\./.test(grp(tr)) && /^Труба/i.test(nm(tr)));
+        // в таблице строка подписана разделом «3.», подраздел 3.2 — только у позиции сметы: берём её артикулы
+        const skus = new Set((this.currentEquipmentList || []).filter(it => /Обвязка конвектор/i.test(String(it.group || '')))
+            .map(it => String(it.displaySku || it.id || '')));
+        const re = this.CONV_LAB_RE[pk];
+        return re ? rows.filter(tr => /^3\./.test(grp(tr)) && skus.has(sku(tr)) && re.test(nm(tr))) : [];
+    },
+    renderConvNodeSheet: function () {
+        const eq = this.currentEquipmentList || [];
+        const inRad = it => /^3\./.test(String(it.group || it.sectionTitle || ''));
+        const skuOf = it => String(it.displaySku || it.id || '');
+        const convs = eq.filter(it => inRad(it) && /^SC[NQ]-/i.test(skuOf(it)));
+        if (!convs.length) return null;
+        const idx = this.convIndex();
+        if (!idx) return null;
+        const angled = this.state.convConnectionType === 'angled';
+        const kind = angled ? 'angled' : 'straight';
+        const types = Array.from(new Set(convs.map(it => skuOf(it).slice(0, 3).toLowerCase()))).sort();
+        const frames = [];
+        for (const t of types) {
+            const fr = idx[t + '-' + kind];
+            if (!fr || !fr.o) return null;
+            frames.push({ id: 'c' + frames.length, at: frames.length, fr, type: t.toUpperCase(), path: this.CONV_DIR + 'conv_' + t + '-' + kind });
+        }
+        this._cvTypes = {};
+        frames.forEach(f => { this._cvTypes[f.id] = f.type; });
+        const { iw, ih } = this.wmPlaceFrames(frames, frames.map(f => f.at), [0, 0, 0]);
+        const spec = frames.map(f => f.id).join(',');
+        const zonesOf = this.wmZonesOf(frames, iw, ih, z => { const k = String(z).split(':')[0]; return { conv: 'mf', fit: 'ek' }[k] || k; });
+        frames.forEach(f => (zonesOf['mf'] || []).forEach(q => { if (q.line === f.id) (zonesOf['mf:' + f.id] = zonesOf['mf:' + f.id] || []).push(q); }));
+        const mp = this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp';
+        const T = {
+            head: ['Сервопривод', 'на термостатический клапан'],
+            node: ['Клапан термостатический', (angled ? 'осевой' : 'прямой') + ' 1/2", подача'],
+            lock: ['Клапан запорно-балансировочный', (angled ? 'угловой' : 'прямой') + ' 1/2", обратка'],
+            ek: mp ? ['Пресс-переходник 16 x НР 1/2"', 'на металлопластик'] : ['Переходник 16 x НР 1/2"', 'с монтажной гильзой'],
+            tube: ['Подводка к конвектору', 'в стяжке, подача и обратка']
+        };
+        frames.forEach(f => { T['mf:' + f.id] = ['Конвектор внутрипольный ' + f.type, f.type === 'SCQ' ? 'с вентилятором' : 'естественная конвекция']; });
+        const keys = frames.map(f => 'mf:' + f.id).concat(['head', 'node', 'lock', 'ek', 'tube']);
+        const items = keys.map(key => {
+            const zs = zonesOf[key] || [];
+            if (!zs.length || !T[key]) return null;
+            const rs = this.convLabRows(key);
+            const miss = rs.length ? [] : [T[key][0].toLowerCase()];
+            return { pk: key, rows: rs, miss, off: false, ok: !miss.length, lines: T[key], tail: miss.length ? 'нет в смете' : '', zs,
+                mx: zs.reduce((sum, q) => sum + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
+        }).filter(Boolean);
+        const miss = items.filter(it => !it.ok).map(it => it.lines[0].toLowerCase());
+        const n = convs.reduce((sum, it) => sum + (it.q || 1), 0);
+        const sum = `<div class="sg-summary no-print">Подключение внутрипольных конвекторов: ${n} шт., клапаны ${angled ? 'осевой и угловой' : 'прямые (трубы через торец короба)'}.` +
+            (miss.length ? ` <span class="sg-miss-txt">Нет в смете: ${miss.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
+            ` <span class="sg-hint">На схеме конвектор длиной 1000 мм, решётка над узлом подключения снята; длина каждого прибора — в смете.</span></div>`;
+        const html = this.wmSheet({
+            kind: 'conv', frames, items, iw, ih, spec, hk: null, title: 'Подключение конвектора', subtitle: 'Обвязка прибора',
+            places: frames.map(f => ({ name: 'Внутрипольный ' + f.type + (f.type === 'SCQ' ? ', с вентилятором' : ''),
+                rows: ['Подключение справа, трубы в стяжке', `Клапаны ${angled ? 'осевой и угловой' : 'прямые'} 1/2"`] }))
         });
         return { html, sum };
     },
@@ -104519,9 +104774,13 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
          // «4. Водяной тёплый пол», что есть в смете (на нём и радиаторы, и петли)
          ['ufh_plan_scheme_row', ['3. Приборы отопления', '4. Водяной тёплый пол'], () => this.renderUfhPlanScheme(), true],
          ['water_scheme_row', ['5.1.', '5. Внутреннее водоснабжение'], () => this.renderWaterScheme(), true],
+         // точки подключения сантехники (водорозетки на планках) — новая схема, видит владелец
+         ['water_outlet_scheme_row', ['5. Внутреннее водоснабжение'], () => this.renderWaterOutletScheme(), true],
          // планы воды и канализации по плану дома — под схемой раздела, у каждого своя таблица потребителей
          ['water_plan_scheme_row', ['5. Внутреннее водоснабжение'], () => this.renderWaterPlanScheme(), true],
          ['sewer_plan_scheme_row', ['8. Канализация'], () => this.renderSewerPlanScheme(), true],
+         // узлы канализации санузла по приборам — новая схема, видит владелец
+         ['sewer_node_scheme_row', ['8. Канализация'], () => this.renderSewerNodeScheme(), true],
          ['hvs_node_scheme_row', '6. Узел ввода ХВС', () => this.renderHvsNodeScheme(), true]]
         .forEach(([rowId, marker, build, atSec]) => {
             // Только строку на экране: у печатной копии (#print_bin) те же id, а живую
