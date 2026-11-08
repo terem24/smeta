@@ -16,6 +16,9 @@ import tempfile
 
 from PIL import Image
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from frame_clean import clean  # noqa: E402
+
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(HERE, 'img', 'rad_side')
 BLENDER = os.environ.get('BLENDER') or r'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe'
@@ -36,16 +39,26 @@ VARIANTS = ['sect-%s-%s' % (k, st) for k in ('angled', 'straight')
      for k in ('angled', 'straight') for st in ('std-x-white', 'design-chrome-white', 'design-white-white', 'design-black-white')]
 # TITAN, ALPHA, VEGA — свой вид секции (render_side_node.section_av / TITAN), каталог STOUT с. 66–81
 
+# арматура STOUT Design на металлопластике — пресс-переходник вместо переходника с гильзой (смета, альбом STOUT)
+VARIANTS += [v + '_mp' for v in list(VARIANTS) if '-design-' in v]
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
                     255, 255, 255, 255, 128, 0] + [0, 0, 0] * 247)       # + оранжевый — монтажный набор
 
 
 def build(v, tmp):
-    t = 'side_' + v
-    subprocess.run([BLENDER, '--background', '--python', SCRIPT, '--', tmp, v],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                   env=dict(os.environ, HC_PX_PER_M=str(PX_PER_M)))
+    # «…_mp» — арматура Design на металлопластике: пресс-переходник SFP-0001-001216 (rad_side.press_adapter)
+    mp = v.endswith('_mp')
+    vb = v[:-3] if mp else v
+    t = 'side_' + vb
+    env = dict(os.environ, HC_PX_PER_M=str(PX_PER_M))
+    if mp:
+        env['HC_PIPE'] = 'mp'
+        for f in os.listdir(tmp):
+            if f.startswith(t + '.') or f.startswith(t + '_'):
+                os.remove(os.path.join(tmp, f))
+    subprocess.run([BLENDER, '--background', '--python', SCRIPT, '--', tmp, vb],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
     meta_path = os.path.join(tmp, t + '.json')
     if not os.path.isfile(meta_path):
         print('  нет кадра', t)
@@ -56,6 +69,7 @@ def build(v, tmp):
     sh = os.path.join(tmp, t + '_sheath.png')
     if os.path.isfile(sh):
         im = Image.alpha_composite(im, Image.open(sh).convert('RGBA'))
+    im = clean(im)                     # без заливки стены и пола — на листе без серого фона (frame_clean.py)
     W0, H0 = im.size
     bb = im.getchannel('A').point(lambda x: 255 if x > 8 else 0).getbbox()
     pad = 14
@@ -67,9 +81,9 @@ def build(v, tmp):
     size = (int(round(cw * sc)), int(round(ch * sc)))
     im = im.resize(size, Image.LANCZOS)
     im.putalpha(im.getchannel('A').point(lambda x: 0 if x <= 8 else x))
-    im.save(os.path.join(OUT, t + '.webp'), quality=86, method=6)
+    im.save(os.path.join(OUT, 'side_' + v + '.webp'), quality=86, method=6)
     idm = Image.open(os.path.join(tmp, t + '_id.png')).convert('RGB').crop(bb).resize(size, Image.NEAREST)
-    idm.quantize(palette=PALETTE, dither=Image.Dither.NONE).save(os.path.join(OUT, t + '_id.png'), optimize=True)
+    idm.quantize(palette=PALETTE, dither=Image.Dither.NONE).save(os.path.join(OUT, 'side_' + v + '_id.png'), optimize=True)
 
     def fx(x):
         return round((x * W0 - bb[0]) / cw, 4)

@@ -17,6 +17,9 @@ import tempfile
 
 from PIL import Image
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from frame_clean import clean  # noqa: E402
+
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(HERE, 'img', 'water_outlet')
 BLENDER = os.environ.get('BLENDER') or r'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe'
@@ -44,6 +47,7 @@ def build(v, tmp):
     sh = os.path.join(tmp, t + '_sheath.png')
     if os.path.isfile(sh):
         im = Image.alpha_composite(im, Image.open(sh).convert('RGBA'))
+    im = clean(im)                     # без заливки стены и пола — на листе без серого фона (frame_clean.py)
     W0, H0 = im.size
     bb = im.getchannel('A').point(lambda x: 255 if x > 8 else 0).getbbox()
     pad = 14

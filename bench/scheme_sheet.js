@@ -365,6 +365,7 @@ const OBJ = {
     'ТП, узел подмеса на гребёнке': { area: 160, floors: 2, systems: ['rad', 'tp'], tp1: 8, tp2: 30, ufhMixType: 'std' },
     'Радиаторы Space на коллекторе, 120 м²': { area: 120, floors: 1, systems: ['rad'] },
     'Радиаторы Space, узел прямой (из пола)': { area: 120, floors: 1, systems: ['rad'], connectionType: 'straight' },
+    'Радиаторы Space, узел прямой, металлопластик': { area: 120, floors: 1, systems: ['rad'], connectionType: 'straight', pipeType: 'split_mp' },
     'Секционные боковые (Space Россия), угловые': { area: 120, floors: 1, systems: ['rad'], radType: 'space_ru', connectionType: 'angled' },
     'OSCAR чёрный, Design чёрная': { area: 120, floors: 1, systems: ['rad'], radType: 'oscar_1800_black_s', connectionType: 'angled' },
     'TUBE ROUND натуральный, прямые': { area: 120, floors: 1, systems: ['rad'], radType: 'tube_round_1800_natural_s', connectionType: 'straight' },
@@ -376,6 +377,7 @@ const OBJ = {
     'Стальные панельные, клапаны угловые (из стены)': { area: 120, floors: 1, systems: ['rad'], radType: 'steel', connectionType: 'angled' },
     'Стальные панельные, клапаны прямые (из пола)': { area: 120, floors: 1, systems: ['rad'], radType: 'steel', connectionType: 'straight' },
     'Канализация: санузел и кухня': { area: 120, floors: 1, systems: ['rad'], water: true, sewer: true, waterZones: Z3 },
+    'Конвектор SCN, металлопластик': { area: 120, floors: 1, systems: ['rad'], detailedRooms: true, rooms: CONV_ROOMS(), convectorType: 'scn', convConnectionType: 'angled', pipeType: 'split_mp' },
     'Конвектор SCN, клапаны прямые': { area: 120, floors: 1, systems: ['rad'], detailedRooms: true, rooms: CONV_ROOMS(), convectorType: 'scn', convConnectionType: 'straight' },
     'Конвектор SCQ, клапаны осевой и угловой': { area: 120, floors: 1, systems: ['rad'], detailedRooms: true, rooms: CONV_ROOMS(), convectorType: 'scq', convConnectionType: 'angled' }
 };
@@ -436,7 +438,8 @@ for (const [title, patch] of Object.entries(OBJ)) {
         const straight = /^SVH-0002/i.test(String(svh.displaySku || svh.id));
         Object.keys(app.RADNODE_LAB_RE).forEach(pk => {
             if (pk === 'bracket' && !hasSpace && !hasTitan) return;
-            const re = (straight && app.RADNODE_LAB_RE_STRAIGHT[pk]) || app.RADNODE_LAB_RE[pk];
+            const mpPipe = /_mp$/.test(String(app.state.pipeType || ''));
+            const re = (straight && (mpPipe ? app.RADNODE_LAB_RE_STRAIGHT_MP : app.RADNODE_LAB_RE_STRAIGHT)[pk]) || app.RADNODE_LAB_RE[pk];
             if (!sec3.some(it => re.test(nm(it)))) miss.push('подключение радиатора: ' + pk);
         });
     }

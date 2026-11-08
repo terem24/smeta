@@ -44689,6 +44689,10 @@ const app = {
         this.hydHoverOff();
         this.clearPlanHl();
         this.closeHydCard();
+        // и подсветку листов узлов (wmInit): выключенные подсказки гасят её сразу
+        document.querySelectorAll('.wm-hl, .sg-hl').forEach(e => e.classList.remove('wm-hl', 'sg-hl'));
+        document.querySelectorAll('svg.wm-focus').forEach(e => e.classList.remove('wm-focus'));
+        document.querySelectorAll('tr.sg-row-hl').forEach(e => e.classList.remove('sg-row-hl'));
         this._hydHintPos = null;      // ручные положения плашек — до переключения
         this._hydCardPos = null;
         document.querySelectorAll('.scheme-hints-btn, .scheme-zoom-hints').forEach(b => {
@@ -45805,7 +45809,7 @@ const app = {
             const at = `data-tag="${mk}" data-line="${f.id}" data-end="${f.end || ''}" data-kind="${o.kind}"`;
             // Кадры грузятся лениво (data-href -> href в wmReveal): схема собирается при каждом
             // пересчёте сметы, а видна, только когда до неё прокрутили
-            photos += `<image class="wm-photo" ${at} x="${X}" y="${Y}" width="${w}" height="${h}" data-href="${f.path}.webp?v=11"/>` +
+            photos += `<image class="wm-photo" ${at} x="${X}" y="${Y}" width="${w}" height="${h}" data-href="${f.path}.webp?v=12"/>` +
                 (hb ? `<image class="wm-handle" x="${X + hb[0] * w}" y="${Y + hb[1] * h}" width="${hb[2] * w}" height="${hb[3] * h}" data-href="${f.path}_h_${o.hk}.png?v=9"/>` : '');
             glows += `<g class="wm-glows" ${at} data-miss="${missK.join(',')}" data-box="${X},${Y},${w},${h}"></g>`;
         });
@@ -45877,7 +45881,7 @@ const app = {
         if (cache[key]) return cache[key];
         const [tag, hk, hbox] = key.split('|');
         const load = u => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = u; });
-        cache[key] = Promise.all([load(tag + '.webp?v=11'), load(tag + '_id.png?v=11'),
+        cache[key] = Promise.all([load(tag + '.webp?v=12'), load(tag + '_id.png?v=12'),
             hk ? load(`${tag}_h_${hk}.png?v=9`) : null]).then(([ph, id, hi]) => {
             const w = id.naturalWidth, h = id.naturalHeight;
             const cv = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
@@ -46021,9 +46025,12 @@ const app = {
         };
         const hitOf = el => el && el.closest && svgOf(el) ? el.closest('.wm-lab[data-wm], .wm-hit[data-wm]') : null;
         // Подсветка подписи: узел приглушается, детали поднимаются силуэтом со свечением
+        // Подсветка листов узлов подчиняется кнопке «Подсказки» (hydEnabled; по умолчанию выкл) и своей
+        // «Подсветка: выкл» — раньше она слушала только вторую и горела при выключенных подсказках
+        const glowOn = () => this.hydEnabled() && !this.state.schemeGlowOff;
         const focus = (svg, pk) => {
             clear();
-            if (this.state.schemeGlowOff) return;
+            if (!glowOn()) return;
             svg.classList.add('wm-focus');
             svg.querySelectorAll('[data-wm="' + pk + '"]').forEach(x => x.classList.add('wm-hl'));
             this.wmKindRows(svg.dataset.wmKind, pk, svg.dataset.wmSpec).forEach(tr => tr.classList.add('sg-row-hl'));
@@ -46044,7 +46051,7 @@ const app = {
                 return;
             }
             const tr = e.target.closest ? e.target.closest('#print-area tr[data-rk]') : null;
-            if (!tr || this.state.schemeGlowOff) return;
+            if (!tr || !glowOn()) return;
             document.querySelectorAll('.wm-scheme svg.wm-svg').forEach(svg => {
                 const seen = {};
                 svg.querySelectorAll('[data-wm]').forEach(x => {
@@ -46308,7 +46315,7 @@ const app = {
     sideIndex: function () {
         if (this._sdIdx !== undefined) return this._sdIdx;
         this._sdIdx = null;
-        fetch(this.SIDE_DIR + 'side.json?v=2')
+        fetch(this.SIDE_DIR + 'side.json?v=3')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._sdIdx = j || {}; if (Object.keys(this._sdIdx).length) this.render(); });
@@ -46355,6 +46362,8 @@ const app = {
             let key = [d.fam, angled ? 'angled' : 'straight', design ? 'design' : 'std', vcol, d.sect ? kit : d.col].join('-');
             // кадров своего вида секции (TITAN/ALPHA/VEGA) ещё нет — секция Space той же высоты
             if (!idx[key] && d.sect) key = key.replace(/^(titan|alpha|vega)/, 'sect');
+            // Design на металлопластике — пресс-переходник: свой кадр «…_mp»
+            if (design && (this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp') && idx[key + '_mp']) key += '_mp';
             const fr = idx[key];
             if (!fr || !fr.o) return null;
             frames.push({ id: 's' + frames.length, at: frames.length, fr, fam: d.fam, col: d.col, ru: d.ru, sect: !!d.sect, path: this.SIDE_DIR + 'side_' + key });
@@ -46366,12 +46375,14 @@ const app = {
         const zonesOf = this.wmZonesOf(frames, iw, ih, z => { const k = String(z).split(':')[0]; return { rad: 'mf', sleeve: 'fix' }[k] || k; });
         frames.forEach(f => (zonesOf['mf'] || []).forEach(q => { if (q.line === f.id) (zonesOf['mf:' + f.id] = zonesOf['mf:' + f.id] || []).push(q); }));
         const colRu = { chrome: 'хром', white: 'белые', black: 'чёрные' }[vcol];
+        const mpPipe = this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp';
         const radColRu = { white: 'белый', black: 'чёрный', gray: 'серый', natural: 'натуральный' };
         const T = {
             head: design ? ['Термоголовка STOUT Design', { chrome: 'хром', white: 'белая', black: 'чёрная' }[vcol] + ', SHTD-0002'] : ['Термостатическая головка', 'SHT-0001, M30x1,5'],
             node: ['Клапан термостатический', (angled ? 'угловой' : 'прямой') + (design ? ', STOUT Design ' + colRu : ' под евроконус') + ', подача'],
             lock: ['Клапан запорно-балансировочный', (angled ? 'угловой' : 'прямой') + ', обратка'],
-            ek: design ? ['Переходник 16 x НР 1/2"', 'с монтажной гильзой'] : ['Евроконус', '16x2.2'],
+            ek: design ? (mpPipe ? ['Пресс-переходник 16 x НР 1/2"', 'на металлопластик'] : ['Переходник 16 x НР 1/2"', 'с монтажной гильзой'])
+                : ['Евроконус', mpPipe ? '16x2.0' : '16x2.2'],
             tube: ['Подводка к радиатору', 'подача и обратка'],
             fix: ['Выход трубы ' + (angled ? 'из стены' : 'из пола'), 'фиксатор 90°, защитные втулки'],
             kit: ['Монтажный набор', 'переходники 1" x 1/2", заглушка, кран Маевского']
@@ -46474,7 +46485,7 @@ const app = {
             else if (key === 'head') text = ['Термостатическая головка', 'на термоклапан, M30x1,5'];
             else if (key === 'node') text = ['Клапан термостатический', (angled ? 'угловой' : 'прямой') + ' под евроконус, подача'];
             else if (key === 'lock') text = ['Клапан запорно-балансировочный', (angled ? 'угловой' : 'прямой') + ' под евроконус, обратка'];
-            else if (key === 'ek') text = ['Евроконус', '16x2.2'];
+            else if (key === 'ek') text = ['Евроконус', (this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp') ? '16x2.0' : '16x2.2'];
             else if (key === 'tube') text = ['Подводка к радиатору', 'подача и обратка'];
             else text = ['Выход трубы ' + (angled ? 'из стены' : 'из пола'), 'фиксатор 90°, защитные втулки'];
             const miss = rs.length ? [] : [text[0].toLowerCase()];
@@ -46502,7 +46513,7 @@ const app = {
     convIndex: function () {
         if (this._cvIdx !== undefined) return this._cvIdx;
         this._cvIdx = null;
-        fetch(this.CONV_DIR + 'conv.json?v=1')
+        fetch(this.CONV_DIR + 'conv.json?v=3')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._cvIdx = j || {}; if (Object.keys(this._cvIdx).length) this.render(); });
@@ -46536,14 +46547,17 @@ const app = {
         if (!convs.length) return null;
         const idx = this.convIndex();
         if (!idx) return null;
-        const angled = this.state.convConnectionType === 'angled';
+        // как в смете: SCQ — всегда осевой и угловой клапаны (альбом STOUT, черт. 50)
+        const angled = this.state.convConnectionType === 'angled' || this.state.convectorType === 'scq';
         const kind = angled ? 'angled' : 'straight';
         const types = Array.from(new Set(convs.map(it => skuOf(it).slice(0, 3).toLowerCase()))).sort();
+        // на металлопластике — свой кадр «…-mp» (пресс-переходник вместо переходника с гильзой)
+        const ms = (this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp') ? '-mp' : '';
         const frames = [];
         for (const t of types) {
-            const fr = idx[t + '-' + kind];
+            const fr = idx[t + '-' + kind + ms];
             if (!fr || !fr.o) return null;
-            frames.push({ id: 'c' + frames.length, at: frames.length, fr, type: t.toUpperCase(), path: this.CONV_DIR + 'conv_' + t + '-' + kind });
+            frames.push({ id: 'c' + frames.length, at: frames.length, fr, type: t.toUpperCase(), path: this.CONV_DIR + 'conv_' + t + '-' + kind + ms });
         }
         this._cvTypes = {};
         frames.forEach(f => { this._cvTypes[f.id] = f.type; });
@@ -46591,7 +46605,7 @@ const app = {
     radNodeIndex: function () {
         if (this._rnIdx !== undefined) return this._rnIdx;
         this._rnIdx = null;
-        fetch(this.RADNODE_DIR + 'radnode.json?v=4')
+        fetch(this.RADNODE_DIR + 'radnode.json?v=5')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._rnIdx = j || {}; if (Object.keys(this._rnIdx).length) this.render(); });
@@ -46603,6 +46617,8 @@ const app = {
         fix: /^Фиксатор|^Защитная втулка/i, bracket: /^Комплект настенных.*кронштейн|^Кронштейн.*радиатор/i
     },
     RADNODE_LAB_RE_STRAIGHT: { ek: /^Фитинг компрессионный/i, tube: /^Трубка Г-образная/i, fix: /^Фиксирующая скоба/i },
+    // прямой узел на металлопластике (альбом STOUT, черт. 19/26): евроконус 16x2.0, труба, пресс-угольник 90°
+    RADNODE_LAB_RE_STRAIGHT_MP: { ek: /^Евроконус/i, tube: /^Труба/i, fix: /^Угольник 90/i },
     // Прочие приборы с нижним подключением (кадры tools/render_side_node.py, ключ <семейство>-b<узел>-<головка>-<цвет>):
     // TITAN SRB-3320 (…-7024 — графит), TUBE QUADRO QV40 с «-R/-L/-CU», TUBE ROUND R40 с «-RT/-LT», ROMMER RST.
     // Прибор с нижними патрубками G 1/2" ВР (паспорта STOUT TUBE QV40/R40, п. 3.3; ROMMER RST, п. 2.3;
@@ -46631,7 +46647,7 @@ const app = {
             if (f.bfam) return all.filter(tr => { const d = this.bottomFamily(sku(tr)); return d && d.fam === f.bfam && d.col === f.col; });
             return all.filter(tr => /^SRB-032[01]/i.test(sku(tr)) || /^Радиатор.*Space/i.test(nm(tr)));
         }
-        const re = (this._rnStraight && this.RADNODE_LAB_RE_STRAIGHT[pk]) || this.RADNODE_LAB_RE[pk];
+        const re = (this._rnStraight && (this._rnMp ? this.RADNODE_LAB_RE_STRAIGHT_MP : this.RADNODE_LAB_RE_STRAIGHT)[pk]) || this.RADNODE_LAB_RE[pk];
         return re ? all.filter(tr => re.test(nm(tr))) : [];
     },
     renderRadNodeSheet: function () {
@@ -46646,6 +46662,11 @@ const app = {
         if (nodes.length !== 1) return null;
         const angled = /^SVH-0004/i.test(skuOf(nodes[0]));
         const kind = angled ? 'angled' : 'straight';
+        // прямой узел на металлопластике — свой кадр «…_mp» (евроконус 16x2.0 и пресс-угольник вместо Г-трубки)
+        const mp = !angled && (this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp');
+        // «башмак» вместо Г-трубок — кадра нет
+        if (!angled && !mp && (this.state.radBottomKit || 'gtube') !== 'gtube') return null;
+        const ms = mp ? '_mp' : '';
         const headIt = eq.find(it => inRad(it) && /^Головка термостат/i.test(String(it.name || '')));
         const head = headIt && /^RHT/i.test(skuOf(headIt)) ? 'rht' : 'sht';
         const idx = this.radNodeIndex();
@@ -46658,21 +46679,22 @@ const app = {
             return true;
         };
         for (const sd of ['0320', '0321'].filter(k => space.some(it => skuOf(it).indexOf('SRB-' + k) === 0))) {
-            if (!add('space_' + kind + (sd === '0321' ? '_l' : ''), { side: sd })) return null;
+            if (!add('space_' + kind + (sd === '0321' ? '_l' : '') + ms, { side: sd })) return null;
         }
         const typeOf = it => (/Тип\s*(\d\d)/i.exec(String(it.name || '')) || [])[1];
         for (const t of Array.from(new Set(ventil.map(typeOf).filter(Boolean))).sort()) {
-            if (!add('ventil' + t + '_' + kind + '_' + head, { ventil: true, type: t })) return null;
+            if (!add('ventil' + t + '_' + kind + '_' + head + ms, { ventil: true, type: t })) return null;
         }
         const seenB = {};
         for (const it of other) {
             const d = this.bottomFamily(skuOf(it));
             if (seenB[d.fam + d.col]) continue;
             seenB[d.fam + d.col] = 1;
-            if (!add([d.fam, 'b' + kind, head, d.col].join('-'), { bfam: d.fam, col: d.col, ru: d.ru })) return null;
+            if (!add([d.fam, 'b' + kind, head, d.col].join('-') + ms, { bfam: d.fam, col: d.col, ru: d.ru })) return null;
         }
         if (!frames.length) return null;
         this._rnStraight = !angled;
+        this._rnMp = mp;
         this._rnFrames = {};
         frames.forEach(f => { this._rnFrames[f.id] = f; });
         const places = frames.map(f => f.at);
@@ -46695,10 +46717,10 @@ const app = {
             } else if (key === 'head') text = ['Термостатическая головка', 'на встроенный клапан, M30x1,5'];
             else if (key === 'node') text = ['Узел нижнего подключения', (angled ? 'угловой, трубы из стены' : 'прямой, трубы из пола') +
                 (frames.some(f => f.ventil || (f.bfam && !/^titan/.test(f.bfam))) ? '; ниппели 1/2" x 3/4"' : '')];
-            else if (key === 'ek') text = angled ? ['Евроконус', (/(\d+\s*x\s*[\d.,]+)/i.exec(nameOf(rs)) || ['', '16x2.2'])[1]]
+            else if (key === 'ek') text = (angled || mp) ? ['Евроконус', (/(\d+\s*x\s*[\d.,]+)/i.exec(nameOf(rs)) || ['', mp ? '16x2.0' : '16x2.2'])[1]]
                 : ['Фитинг компрессионный', '15x3/4" на трубку'];
-            else if (key === 'tube') text = angled ? ['Подводка к радиатору', 'подача и обратка'] : ['Трубка Г-образная', '16/500, из пола'];
-            else if (key === 'fix') text = angled ? ['Выход трубы из стены', 'фиксатор 90°, защитные втулки'] : ['Фиксирующая скоба', 'для трубок, на полу'];
+            else if (key === 'tube') text = angled ? ['Подводка к радиатору', 'подача и обратка'] : mp ? ['Труба металлопластиковая', '16x2.0, из пола'] : ['Трубка Г-образная', '16/500, из пола'];
+            else if (key === 'fix') text = angled ? ['Выход трубы из стены', 'фиксатор 90°, защитные втулки'] : mp ? ['Угольник 90° пресс', '16x16, в стяжке'] : ['Фиксирующая скоба', 'для трубок, на полу'];
             else text = ['Кронштейны', 'настенные, регулируемые'];
             const miss = rs.length ? [] : [text[0].toLowerCase()];
             return { pk: key, rows: rs, miss, off: false, ok: !miss.length, lines: text, tail: miss.length ? 'нет в смете' : '', zs,
@@ -47122,7 +47144,8 @@ const app = {
         });
         document.addEventListener('mouseover', (e) => {
             const hot = hotOf(e.target);
-            if (hot && this.state.schemeGlowOff) { clear(); hideTip(); return; }
+            // как у листов узлов: подсветка — только при включённых «Подсказках» и не выключенной «Подсветке»
+            if (hot && (this.state.schemeGlowOff || !this.hydEnabled())) { clear(); hideTip(); return; }
             if (hot) {
                 clear();
                 if (window.matchMedia && window.matchMedia('(hover: hover)').matches) {
@@ -47143,7 +47166,7 @@ const app = {
                 return;
             }
             const tr = e.target.closest ? e.target.closest('#print-area tr[data-rk]') : null;
-            if (!tr || this.state.schemeGlowOff || !document.querySelector('.sg-hot')) return;
+            if (!tr || this.state.schemeGlowOff || !this.hydEnabled() || !document.querySelector('.sg-hot')) return;
             const id = this.sgIdOf(tr), sub = this.sgSubTitleOf(tr);
             let any = false;
             document.querySelectorAll('.sg-hot').forEach(h => {
@@ -99102,6 +99125,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // (часть радиаторов боковые, часть нижние через точечный свайп) арматура
             // считалась бы одним типом на всех, хотя часть радиаторов физически другая.
             let totalRadCountBottom = 0;
+            let _bottomNoEk = 0;     // нижние на прямом узле с Г-трубками: компрессионный фитинг вместо евроконуса
             let totalRadCountSide = 0;
             let totalRadCountSectional = 0;
             // Кол-во секционных/дизайн-радиаторов БОКОВОГО подключения по цвету монтажного
@@ -99943,11 +99967,21 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                             const _shoe = catalog.rad_shoe_set[_bottomKit === 'shoe_np' ? 1 : 0];
                             addToBill({ ..._shoe, originalId: 'SFA-0025-001650_bottom', alts: _radBottomKitAlts }, totalRadCountBottom, "Фиксаторы поворота «башмак»: 1 комплект (2 шт.) на радиатор.", grp);
                             addToBill(catalog.rad_shoe_set[2], totalRadCountBottom, "Защитные кожухи на трубу: 1 комплект (2 шт.) на радиатор.", grp);
+                        } else if (this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp') {
+                            // Металлопластик: Г-трубка с аксиальной гильзой на трубу не садится. Альбом технических
+                            // решений STOUT, черт. 19 и 26: евроконус 16x2.0 на выход узла (он считается ниже, со всеми
+                            // евроконусами), труба вниз и пресс-угольник 90° 16x16 в стяжке; скобы нет.
+                            const _mpElbow = (catalog.water_fittings_press_mp || []).find(x => x.id === 'SFP-0009-001616');
+                            if (_mpElbow) addToBill({ ..._mpElbow, originalId: 'SFA-0025-001650_bottom', alts: _radBottomKitAlts }, totalRadCountBottom * 2,
+                                'Пресс-угольник 90° 16x16: труба металлопластиковая из пола к узлу нижнего подключения (альбом STOUT, черт. 19).', grp);
                         } else {
                             addToBill({ ...catalog.rad_tube_set[0], originalId: 'SFA-0025-001650_bottom', alts: _radBottomKitAlts }, totalRadCountBottom * 2, "Трубка Г-образная.", grp);
                             addToBill(catalog.rad_tube_set[1], totalRadCountBottom, "Скоба фиксатор.", grp);
                             addToBill(catalog.rad_tube_set[2], totalRadCountBottom * 2, "Гильза 16.", grp);
                             addToBill(catalog.rad_tube_set[3], totalRadCountBottom * 2, "Фитинг компрессионный.", grp);
+                            // Г-трубка садится на узел своим компрессионным фитингом 15x3/4" — евроконус 16 тут не нужен
+                            // (альбом STOUT, черт. 45: в спецификации евроконуса нет)
+                            _bottomNoEk = totalRadCountBottom;
                         }
                     }
                 }
@@ -100006,7 +100040,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // под евроконус нет) — евроконус 16 (G 3/4") на них не садится. На эти приборы вместо
                 // евроконусов: PEX — переходник 16 x НР 1/2" с монтажной гильзой, металлопластик —
                 // пресс-переходник 16 x 1/2" НР. Решение владельца 07.11.2026.
-                const _ekN = totalRadCount * 2 - _designSideN * 2;
+                const _ekN = totalRadCount * 2 - _designSideN * 2 - _bottomNoEk * 2;
                 if (_ekN > 0) addEurocone(radEurocone, _ekN, "Евроконус 16 (Рад).", grp);
                 if (_designSideN > 0) {
                     const _isMp = (this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp');
@@ -100047,14 +100081,18 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             if (totalConvCount > 0) {
                 let grpC = "3.2. Обвязка конвекторов";
 
-                let isAngled = (this.state.convConnectionType === 'angled');
+                // SCQ — всегда осевой термоклапан SVT-0005 + угловой SVL-1156: сервопривод на прямом клапане в короб
+                // глубиной 75 мм не входит; в альбоме технических решений STOUT привод стоит только на осевом
+                // (черт. 50, 54), прямое подключение — два запорных клапана (черт. 49, 53, 57)
+                let isAngled = (this.state.convConnectionType === 'angled') || this.state.convectorType === 'scq';
                 let vSupply = isAngled ? catalog.conv_valves[2] : catalog.conv_valves[0];
                 let vReturn = isAngled ? catalog.conv_valves[3] : catalog.conv_valves[1];
 
                 vSupply.alts = [catalog.conv_valves[0], catalog.conv_valves[2]];
                 vReturn.alts = [catalog.conv_valves[1], catalog.conv_valves[3]];
 
-                addToBill(vSupply, totalConvCount, "На подачу в конвектор.", grpC);
+                addToBill(vSupply, totalConvCount, this.state.convectorType === 'scq' && this.state.convConnectionType !== 'angled'
+                    ? "На подачу в конвектор. У SCQ — осевой: сервопривод на прямом клапане в короб не входит (альбом STOUT, черт. 50)." : "На подачу в конвектор.", grpC);
                 addToBill(vReturn, totalConvCount, "На обратку из конвектора.", grpC);
 
                 // Подключение следует трубе радиаторов (pipeType): на металлопластике аксиальная

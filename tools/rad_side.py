@@ -20,6 +20,7 @@
 переходник, tube — труба, fix/sleeve — выход трубы, kit — монтажный набор.
 """
 import math
+import os
 
 from blender_parts import *  # noqa: F401,F403
 from mathutils import Vector, Matrix
@@ -174,12 +175,26 @@ def valve(x_end, z, sg, thermo, angled, style='std', color='chrome', head='sht')
     return tuple(out), out_ax
 
 
+def press_adapter(p, d, ax):
+    """Пресс-переходник 16 x R 1/2" НР SFP-0001-001216 на металлопластик (фото STOUT SFP): латунный шестигранник
+    с резьбой, штуцер, гильза из нержавейки с пластиковым кольцом-индикатором. Возвращает начало трубы."""
+    br = M_BRASS()
+    st = metal('stainless_bar')
+    hexnut('переходник шестигранник', 0.024, 0.007, br, tuple(p), ax)
+    p = p + d * 0.007
+    lathe('кольцо', [(0.0120, 0), (0.0120, 0.003)], mat('black', rough=0.6), tuple(p), ax, segs=40)
+    lathe('пресс-гильза', [(0.0115, 0), (0.0115, 0.020), (0.0105, 0.022)], st, tuple(p + d * 0.003), ax, segs=40)
+    return p + d * 0.025
+
+
 def pipe_end(loc, ax, style, key):
     """Присоединение трубы 16 к выходу клапана: евроконус (обычная арматура) или переходник 16 x НР 1/2"
     с монтажной гильзой (STOUT Design: у клапана ВР 1/2"). Возвращает начало трубы."""
     part('ek:' + key)
     d = DIRS[ax]
     p = Vector(loc)
+    if style == 'design' and os.environ.get('HC_PIPE') == 'mp':
+        return tuple(press_adapter(p, d, ax))
     if style == 'design':
         br = M_BRASS()
         hexnut('переходник шестигранник', 0.024, 0.006, br, tuple(p), ax)

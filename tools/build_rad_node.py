@@ -17,6 +17,9 @@ import tempfile
 
 from PIL import Image
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from frame_clean import clean  # noqa: E402
+
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(HERE, 'img', 'rad_node')
 BLENDER = os.environ.get('BLENDER') or r'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe'
@@ -31,16 +34,26 @@ _BCOLS = {'titan': ('white',), 'titangr': ('graphite',), 'quadro': ('white', 'bl
           'rst1': ('white',), 'rst2': ('white',), 'rst3': ('white',)}
 VARIANTS += ['%s-b%s-%s-%s' % (f, k, h, c) for f, cs in _BCOLS.items() for c in cs for k in ('angled', 'straight')
              for h in (('sht', 'rht') if f.startswith('rst') else ('sht',))]
+# прямой узел на металлопластике (альбом STOUT, черт. 19/26) — свой кадр «…_mp»
+VARIANTS += [v + '_mp' for v in list(VARIANTS) if 'straight' in v]
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
                     255, 255, 255] + [0, 0, 0] * 248)
 
 
 def build(v, tmp):
-    t = 'radnode_' + v
-    subprocess.run([BLENDER, '--background', '--python', PANEL_SCRIPT if v.startswith('ventil') else (SIDE_SCRIPT if '-b' in v else SCRIPT), '--', tmp, v],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                   env=dict(os.environ, HC_PX_PER_M=str(PX_PER_M)))
+    # «…_mp» — прямой узел на металлопластике: тот же вариант, HC_PIPE=mp (rad_bottom.mp_kit)
+    mp = v.endswith('_mp')
+    vb = v[:-3] if mp else v
+    t = 'radnode_' + vb
+    env = dict(os.environ, HC_PX_PER_M=str(PX_PER_M))
+    if mp:
+        env['HC_PIPE'] = 'mp'
+        for f in os.listdir(tmp):
+            if f.startswith(t + '.') or f.startswith(t + '_'):
+                os.remove(os.path.join(tmp, f))
+    subprocess.run([BLENDER, '--background', '--python', PANEL_SCRIPT if vb.startswith('ventil') else (SIDE_SCRIPT if '-b' in vb else SCRIPT), '--', tmp, vb],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
     meta_path = os.path.join(tmp, t + '.json')
     if not os.path.isfile(meta_path):
         print('  нет кадра', t)
@@ -51,6 +64,7 @@ def build(v, tmp):
     sh = os.path.join(tmp, t + '_sheath.png')
     if os.path.isfile(sh):
         im = Image.alpha_composite(im, Image.open(sh).convert('RGBA'))
+    im = clean(im)                     # без заливки стены и пола — на листе без серого фона (frame_clean.py)
     W0, H0 = im.size
     bb = im.getchannel('A').point(lambda x: 255 if x > 8 else 0).getbbox()
     pad = 14
@@ -62,9 +76,9 @@ def build(v, tmp):
     size = (int(round(cw * sc)), int(round(ch * sc)))
     im = im.resize(size, Image.LANCZOS)
     im.putalpha(im.getchannel('A').point(lambda x: 0 if x <= 8 else x))
-    im.save(os.path.join(OUT, t + '.webp'), quality=86, method=6)
+    im.save(os.path.join(OUT, 'radnode_' + v + '.webp'), quality=86, method=6)
     idm = Image.open(os.path.join(tmp, t + '_id.png')).convert('RGB').crop(bb).resize(size, Image.NEAREST)
-    idm.quantize(palette=PALETTE, dither=Image.Dither.NONE).save(os.path.join(OUT, t + '_id.png'), optimize=True)
+    idm.quantize(palette=PALETTE, dither=Image.Dither.NONE).save(os.path.join(OUT, 'radnode_' + v + '_id.png'), optimize=True)
 
     def fx(x):
         return round((x * W0 - bb[0]) / cw, 4)

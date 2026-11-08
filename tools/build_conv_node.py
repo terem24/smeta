@@ -17,13 +17,18 @@ import tempfile
 
 from PIL import Image
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from frame_clean import clean  # noqa: E402
+
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(HERE, 'img', 'rad_conv')
 BLENDER = os.environ.get('BLENDER') or r'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe'
 SCRIPT = os.path.join(HERE, 'tools', 'render_conv_node.py')
 PX_PER_M = 1500     # конвектор длиной 1 м: кадр той же ширины, что у радиаторов (2550 px/м)
 # SCN (без вентилятора) и SCQ (с вентилятором): клапаны прямые (трубы через торец) или угловые
-VARIANTS = ['%s-%s' % (t, k) for t in ('scn', 'scq') for k in ('straight', 'angled')]
+VARIANTS = ['scn-straight', 'scn-angled', 'scq-angled']
+VARIANTS += [v + '-mp' for v in VARIANTS]          # металлопластик: пресс-переходник (альбом STOUT, черт. 47–50)
+# SCQ на прямом подключении не бывает: сервопривод — только на осевом клапане (альбом, черт. 50, 54)
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
                     255, 255, 255] + [0, 0, 0] * 248)
@@ -44,6 +49,7 @@ def build(v, tmp):
     sh = os.path.join(tmp, t + '_sheath.png')
     if os.path.isfile(sh):
         im = Image.alpha_composite(im, Image.open(sh).convert('RGBA'))
+    im = clean(im)                     # без заливки стены и пола — на листе без серого фона (frame_clean.py)
     W0, H0 = im.size
     bb = im.getchannel('A').point(lambda x: 255 if x > 8 else 0).getbbox()
     pad = 14
