@@ -282,7 +282,7 @@
 
     <url>
         <loc>https://heatcalc.ru/novosti/</loc>
-        <lastmod>2026-11-02</lastmod>
+        <lastmod>2026-11-09</lastmod>
         <changefreq>weekly</changefreq>
         <priority>0.6</priority>
     </url>
@@ -523,6 +523,13 @@
         <lastmod>2026-11-08</lastmod>
         <changefreq>monthly</changefreq>
         <priority>0.8</priority>
+    </url>
+
+    <url>
+        <loc>https://heatcalc.ru/novosti/2026-11-09/</loc>
+        <lastmod>2026-11-09</lastmod>
+        <changefreq>yearly</changefreq>
+        <priority>0.5</priority>
     </url>
 
 </urlset>
