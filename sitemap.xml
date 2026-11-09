@@ -532,4 +532,11 @@
         <priority>0.5</priority>
     </url>
 
+    <url>
+        <loc>https://heatcalc.ru/raschet-teplogo-pola/</loc>
+        <lastmod>2026-11-09</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.8</priority>
+    </url>
+
 </urlset>

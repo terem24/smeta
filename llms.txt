@@ -151,6 +151,7 @@
 - [Сколько стоит отопление частного дома под ключ](https://heatcalc.ru/skolko-stoit-otoplenie-doma/) — отопление под ключ цена
 - [Первый звонок и выезд на замер: что спросить у заказчика](https://heatcalc.ru/pervyy-zvonok-i-vyezd-na-zamer/) — выезд на замер отопления
 - [Водоснабжение частного дома в Ленобласти](https://heatcalc.ru/vodosnabzhenie-doma-lenoblast/) — водоснабжение частного дома спб
+- [Расчёт тёплого пола: площадь, шаг, длина петли](https://heatcalc.ru/raschet-teplogo-pola/) — расчет теплого пола
 
 ## Примечания для моделей
 
