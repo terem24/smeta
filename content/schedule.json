@@ -403,9 +403,9 @@
    "freq": 1140,
    "audience": "owner",
    "data_block": "наш расчёт с запасом 1,15",
-   "status": "queued",
+   "status": "published",
    "date": "2026-11-01",
-   "published_at": null,
+   "published_at": "2026-11-10",
    "words": 657
   },
   {

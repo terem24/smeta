@@ -152,6 +152,7 @@
 - [Первый звонок и выезд на замер: что спросить у заказчика](https://heatcalc.ru/pervyy-zvonok-i-vyezd-na-zamer/) — выезд на замер отопления
 - [Водоснабжение частного дома в Ленобласти](https://heatcalc.ru/vodosnabzhenie-doma-lenoblast/) — водоснабжение частного дома спб
 - [Расчёт тёплого пола: площадь, шаг, длина петли](https://heatcalc.ru/raschet-teplogo-pola/) — расчет теплого пола
+- [Расчёт мощности котла: почему не 1 кВт на 10 м²](https://heatcalc.ru/raschet-moshchnosti-kotla/) — расчет мощности котла
 
 ## Примечания для моделей
 
