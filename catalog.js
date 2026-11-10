@@ -8536,11 +8536,11 @@ const tonaleRads = [
     { id: "SRA-2120-18000804", name: "Радиатор STOUT TONALE 1800мм 2676 серый 4 секций", sec: 4, price: 71318, power50: 210, height: 1800, color: "gray", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
     { id: "SRA-2120-18000806", name: "Радиатор STOUT TONALE 1800мм 2676 серый 6 секций", sec: 6, price: 106932, power50: 210, height: 1800, color: "gray", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
     { id: "SRA-2120-200004", name: "Радиатор STOUT TONALE 2000мм RAL9010 белый 4 секций", sec: 4, price: 60247, power50: 228, height: 2000, color: "white", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
-    { id: "SRA-2120-200006", name: "Радиатор STOUT TONALE 2000мм RAL9010 белый 6 секций", sec: 6, price: 90320, power50: 228, height: 2000, color: "white", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SRA-2120-20000704", name: "Радиатор STOUT TONALE 2000мм 2748 черный 4 секций", sec: 4, price: 75239, power50: 228, height: 2000, color: "black", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SRA-2120-20000706", name: "Радиатор STOUT TONALE 2000мм 2748 черный 6 секций", sec: 6, price: 112903, power50: 228, height: 2000, color: "black", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SRA-2120-20000804", name: "Радиатор STOUT TONALE 2000мм 2676 серый 4 секций", sec: 4, price: 75239, power50: 228, height: 2000, color: "gray", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SRA-2120-20000806", name: "Радиатор STOUT TONALE 2000мм 2676 серый 6 секций", sec: 6, price: 112903, power50: 228, height: 2000, color: "gray", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" }
+    { id: "SRA-2120-200006", name: "Радиатор STOUT TONALE 2000мм RAL9010 белый 6 секций", sec: 6, price: 90320, power50: 228, height: 2000, color: "white", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SRA-2120-20000704", name: "Радиатор STOUT TONALE 2000мм 2748 черный 4 секций", sec: 4, price: 75239, power50: 228, height: 2000, color: "black", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SRA-2120-20000706", name: "Радиатор STOUT TONALE 2000мм 2748 черный 6 секций", sec: 6, price: 112903, power50: 228, height: 2000, color: "black", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SRA-2120-20000804", name: "Радиатор STOUT TONALE 2000мм 2676 серый 4 секций", sec: 4, price: 75239, power50: 228, height: 2000, color: "gray", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SRA-2120-20000806", name: "Радиатор STOUT TONALE 2000мм 2676 серый 6 секций", sec: 6, price: 112903, power50: 228, height: 2000, color: "gray", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" }
 ];
 
 // Габарит и мощность SEBINO / TONALE / ANTEPRIMA — по техническому паспорту завода-изготовителя
@@ -8721,11 +8721,11 @@ const rommerRstRads = [
 // SVT-0002-000015 в ней нет — при угловом подключении конвектора подставляется осевой
 // SVT-0005-000015. Названия здесь и там теперь совпадают с прайс-листом.
 const radValves = [
-    { id: "SVT-0001-000015", name: "Клапан термостатический, прямой 1/2\"", price: 1274, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVT-0002-000015", name: "Клапан термостатический, угловой 1/2\"", price: 1189, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVT-0005-000015", name: "Клапан термостатический, осевой 1/2\"", price: 1742, type: "axial", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVL-1176-000015", name: "Клапан запорно-балансировочный прямой 1/2\"", price: 734, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVL-1156-000015", name: "Клапан запорно-балансировочный угловой 1/2\"", price: 669, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" }
+    { id: "SVT-0001-000015", name: "Клапан термостатический, прямой 1/2\"", price: 1274, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVT-0002-000015", name: "Клапан термостатический, угловой 1/2\"", price: 1189, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVT-0005-000015", name: "Клапан термостатический, осевой 1/2\"", price: 1742, type: "axial", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVL-1176-000015", name: "Клапан запорно-балансировочный прямой 1/2\"", price: 734, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVL-1156-000015", name: "Клапан запорно-балансировочный угловой 1/2\"", price: 669, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" }
 ];
 
 // Радиаторная арматура STOUT Design — хром/белый/чёрный, прямое/угловое подключение.
@@ -8761,33 +8761,33 @@ const radManualValves = [
     { id: "SVRS-1172-000020", name: "Клапан ручной с неподъемным шпинделем, прямой 3/4\"", price: 1263, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-10-20" },
     { id: "SVRS-1152-000015", name: "Клапан ручной с неподъемным шпинделем, угловой 1/2\"", price: 812, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-10-20" },
     { id: "SVRS-1152-000020", name: "Клапан ручной с неподъемным шпинделем, угловой 3/4\"", price: 1206, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-10-20" },
-    { id: "SVR-2122-000015", name: "Клапан ручной с закрытием \"металл по металлу\", прямой 1/2\"", price: 783, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVR-2122-000020", name: "Клапан ручной с закрытием \"металл по металлу\", прямой 3/4\"", price: 1126, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVR-2102-000015", name: "Клапан ручной с закрытием \"металл по металлу\", угловой 1/2\"", price: 722, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVR-2102-000020", name: "Клапан ручной с закрытием \"металл по металлу\", угловой 3/4\"", price: 1077, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVR-2122-100015", name: "Клапан ручной с закрытием \"металл по металлу\" (доп. уплотнение), прямой 1/2\"", price: 905, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVR-2102-100015", name: "Клапан ручной с закрытием \"металл по металлу\" (доп. уплотнение), угловой 1/2\"", price: 762, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVL-1156-100015", name: "Клапан запорно-балансировочный (доп. уплотнение), угловой 1/2\"", price: 751, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVL-1176-100015", name: "Клапан запорно-балансировочный (доп. уплотнение), прямой 1/2\"", price: 818, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVL-1196-000015", name: "Клапан запорно-балансировочный, прямой (евроконус) 1/2\"х3/4\"ЕК", price: 799, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVL-1166-000015", name: "Клапан запорно-балансировочный, угловой (евроконус) 1/2\"х3/4\"ЕК", price: 734, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVT-0001-100015", name: "Клапан термостатический прямой (евроконус) 1/2\"х3/4\"ЕК", price: 1419, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVT-0002-100015", name: "Клапан термостатический угловой (евроконус) 1/2\"х3/4\"ЕК", price: 1363, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVT-0005-100015", name: "Клапан термостатический осевой (евроконус) 1/2\"х3/4\"ЕК", price: 1830, type: "axial", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-23" }
+    { id: "SVR-2122-000015", name: "Клапан ручной с закрытием \"металл по металлу\", прямой 1/2\"", price: 783, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVR-2122-000020", name: "Клапан ручной с закрытием \"металл по металлу\", прямой 3/4\"", price: 1126, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVR-2102-000015", name: "Клапан ручной с закрытием \"металл по металлу\", угловой 1/2\"", price: 722, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVR-2102-000020", name: "Клапан ручной с закрытием \"металл по металлу\", угловой 3/4\"", price: 1077, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVR-2122-100015", name: "Клапан ручной с закрытием \"металл по металлу\" (доп. уплотнение), прямой 1/2\"", price: 905, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVR-2102-100015", name: "Клапан ручной с закрытием \"металл по металлу\" (доп. уплотнение), угловой 1/2\"", price: 762, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVL-1156-100015", name: "Клапан запорно-балансировочный (доп. уплотнение), угловой 1/2\"", price: 751, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVL-1176-100015", name: "Клапан запорно-балансировочный (доп. уплотнение), прямой 1/2\"", price: 818, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVL-1196-000015", name: "Клапан запорно-балансировочный, прямой (евроконус) 1/2\"х3/4\"ЕК", price: 799, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVL-1166-000015", name: "Клапан запорно-балансировочный, угловой (евроконус) 1/2\"х3/4\"ЕК", price: 734, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVT-0001-100015", name: "Клапан термостатический прямой (евроконус) 1/2\"х3/4\"ЕК", price: 1419, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVT-0002-100015", name: "Клапан термостатический угловой (евроконус) 1/2\"х3/4\"ЕК", price: 1363, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVT-0005-100015", name: "Клапан термостатический осевой (евроконус) 1/2\"х3/4\"ЕК", price: 1830, type: "axial", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-11-10" }
 ];
 
 // Недостающие узлы нижнего подключения (однотрубный и раздельный) — добавляются к существующему
 // catalog.h_valves (SVH-0002/0004 не трогаем). Источник: прайс 07.2026.
 const hValvesExtra = [
-    { id: "SVH-0001-000020", name: "Узел нижн. подкл. однотрубный (Прямой)", price: 2191, type: "straight", desc: "Для однотрубной системы.", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVH-0003-000020", name: "Узел нижн. подкл. однотрубный (Угловой)", price: 2048, type: "angled", desc: "Для однотрубной системы.", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVH-0005-000020", name: "Узел нижн. подкл. раздельный (Прямой)", price: 829, type: "straight", desc: "Раздельный монтаж.", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SVH-0006-000020", name: "Узел нижн. подкл. раздельный (Угловой)", price: 807, type: "angled", desc: "Раздельный монтаж.", availability: "in_stock", price_date: "2026-09-23" }
+    { id: "SVH-0001-000020", name: "Узел нижн. подкл. однотрубный (Прямой)", price: 2191, type: "straight", desc: "Для однотрубной системы.", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVH-0003-000020", name: "Узел нижн. подкл. однотрубный (Угловой)", price: 2048, type: "angled", desc: "Для однотрубной системы.", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVH-0005-000020", name: "Узел нижн. подкл. раздельный (Прямой)", price: 829, type: "straight", desc: "Раздельный монтаж.", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SVH-0006-000020", name: "Узел нижн. подкл. раздельный (Угловой)", price: 807, type: "angled", desc: "Раздельный монтаж.", availability: "in_stock", price_date: "2026-11-10" }
 ];
 
 // Переходник под плоское уплотнение — добавляется к rad_kits (SFT-0049-000002 не трогаем).
 const radKitsExtra = [
-    { id: "SFT-0049-000001", name: "Переходник под плоское уплотнение", price: 122, availability: "in_stock", price_date: "2026-09-23" }
+    { id: "SFT-0049-000001", name: "Переходник под плоское уплотнение", price: 122, availability: "in_stock", price_date: "2026-11-10" }
 ];
 
 // Аксессуары к радиаторам STOUT — монтажные комплекты, кронштейны, ниппель/прокладка, O-ring.
@@ -8799,14 +8799,14 @@ const radAccessories = [
     { id: "SKU-0111-000134", name: "Универсальный монтажный комплект для подключения радиатора 3/4\" RAL9016", price: 1709, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
     // Монтажные наборы для подключения радиатора STOUT в цвет прибора (белый RAL9016 / графит / чёрный 9011),
     // 1/2" и 3/4". Цены РРЦ. Подбираются автоматически по цвету секционного/дизайн-радиатора (см. app.js, раздел 3.1).
-    { id: "SKU-0211-000112", name: "Монтажный набор для подключения радиатора 1/2\" RAL9016", price: 693, color: "white", size: "1/2", brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SKU-0211-000134", name: "Монтажный набор для подключения радиатора 3/4\" RAL9016", price: 792, color: "white", size: "3/4", brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SKU-0221-000112", name: "Монтажный набор для подключения радиатора 1/2\" (Графит)", price: 792, color: "graphite", size: "1/2", brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SKU-0221-000134", name: "Монтажный набор для подключения радиатора 3/4\" (Графит)", price: 891, color: "graphite", size: "3/4", brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SKU-0231-000112", name: "Монтажный набор для подключения радиатора 1/2\" (Чёрный 9011)", price: 792, color: "black", size: "1/2", brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SKU-0231-000134", name: "Монтажный набор для подключения радиатора 3/4\" (Чёрный 9011)", price: 891, color: "black", size: "3/4", brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SKU-0320-000080", name: "Комплект настенных регулируемых кронштейнов", price: 326, color: "white", brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
-    { id: "SKU-0320-000080-7024", name: "Комплект настенных регулируемых кронштейнов (Графит)", price: 541, color: "graphite", brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SKU-0211-000112", name: "Монтажный набор для подключения радиатора 1/2\" RAL9016", price: 693, color: "white", size: "1/2", brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SKU-0211-000134", name: "Монтажный набор для подключения радиатора 3/4\" RAL9016", price: 792, color: "white", size: "3/4", brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SKU-0221-000112", name: "Монтажный набор для подключения радиатора 1/2\" (Графит)", price: 792, color: "graphite", size: "1/2", brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SKU-0221-000134", name: "Монтажный набор для подключения радиатора 3/4\" (Графит)", price: 891, color: "graphite", size: "3/4", brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SKU-0231-000112", name: "Монтажный набор для подключения радиатора 1/2\" (Чёрный 9011)", price: 792, color: "black", size: "1/2", brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SKU-0231-000134", name: "Монтажный набор для подключения радиатора 3/4\" (Чёрный 9011)", price: 891, color: "black", size: "3/4", brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SKU-0320-000080", name: "Комплект настенных регулируемых кронштейнов", price: 326, color: "white", brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
+    { id: "SKU-0320-000080-7024", name: "Комплект настенных регулируемых кронштейнов (Графит)", price: 541, color: "graphite", brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
     { id: "SKU-0320-000080-9005", name: "Комплект настенных регулируемых кронштейнов (Чёрный)", price: 541, color: "black", brand: "STOUT", availability: "in_stock", price_date: "2026-11-10" },
     { id: "SKU-0310-000001", name: "Ниппель межсекционный 1\" (ALPHA, VEGA)", price: 4080, brand: "STOUT", availability: "in_stock", price_date: "2026-07-01" },
     { id: "SKU-0310-000002", name: "Прокладка межсекционная (ALPHA, VEGA)", price: 3376, brand: "STOUT", availability: "in_stock", price_date: "2026-07-01" },
