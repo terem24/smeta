@@ -1334,11 +1334,11 @@ const catalog = {
 
         // С американкой — прямой и угловой
         { id: "SVB-0007-200015", name: "Кран шаровой с американкой 1/2\" ВР/НР (Бабочка)", price: 1110, brand: "STOUT", availability: "in_stock", price_date: "2026-11-10", rommer: { id: "RBV-0005-0510215", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 358, brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" } },
-        { id: "SVB-0007-200020", name: "Кран шаровой с американкой 3/4\" ВР/НР (Бабочка)", price: 1681, brand: "STOUT", availability: "in_stock", price_date: "2026-11-10", rommer: { id: "RBV-0005-0510220", name: "Кран шаровой с американкой ВР/НР 3/4\"", price: 576, brand: "ROMMER", availability: "on_order", price_date: "2026-10-10" } },
-        { id: "SVB-0007-200025", name: "Кран шаровой с американкой 1\" ВР/НР (Бабочка)", price: 2617, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10", rommer: { id: "RBV-0005-0510225", name: "Кран шаровой с американкой ВР/НР 1\"", price: 1234, brand: "ROMMER", availability: "on_order", price_date: "2026-10-10" } },
-        { id: "SVB-0008-200015", name: "Кран шаровой с американкой угловой 1/2\" ВР/НР", price: 1421, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10", rommer: { id: "RBV-0006-0610215", name: "Кран шаровой угловой с американкой ВР/НР 1/2\"", price: 381, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
-        { id: "SVB-0008-200020", name: "Кран шаровой с американкой угловой 3/4\" ВР/НР", price: 2183, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10", rommer: { id: "RBV-0006-0610220", name: "Кран шаровой угловой с американкой ВР/НР 3/4\"", price: 638, brand: "ROMMER", availability: "on_order", price_date: "2026-10-10" } },
-        { id: "SVB-0008-200025", name: "Кран шаровой с американкой угловой 1\" ВР/НР", price: 3411, brand: "STOUT", availability: "in_stock", price_date: "2026-10-10", rommer: { id: "RBV-0006-0610225", name: "Кран шаровой угловой с американкой ВР/НР 1\"", price: 1450, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } }
+        { id: "SVB-0007-200020", name: "Кран шаровой с американкой 3/4\" ВР/НР (Бабочка)", price: 1681, brand: "STOUT", availability: "in_stock", price_date: "2026-11-10", rommer: { id: "RBV-0005-0510220", name: "Кран шаровой с американкой ВР/НР 3/4\"", price: 576, brand: "ROMMER", availability: "on_order", price_date: "2026-11-10" } },
+        { id: "SVB-0007-200025", name: "Кран шаровой с американкой 1\" ВР/НР (Бабочка)", price: 2617, brand: "STOUT", availability: "in_stock", price_date: "2026-11-10", rommer: { id: "RBV-0005-0510225", name: "Кран шаровой с американкой ВР/НР 1\"", price: 1234, brand: "ROMMER", availability: "on_order", price_date: "2026-11-10" } },
+        { id: "SVB-0008-200015", name: "Кран шаровой с американкой угловой 1/2\" ВР/НР", price: 1421, brand: "STOUT", availability: "in_stock", price_date: "2026-11-10", rommer: { id: "RBV-0006-0610215", name: "Кран шаровой угловой с американкой ВР/НР 1/2\"", price: 381, brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" } },
+        { id: "SVB-0008-200020", name: "Кран шаровой с американкой угловой 3/4\" ВР/НР", price: 2183, brand: "STOUT", availability: "in_stock", price_date: "2026-11-10", rommer: { id: "RBV-0006-0610220", name: "Кран шаровой угловой с американкой ВР/НР 3/4\"", price: 638, brand: "ROMMER", availability: "on_order", price_date: "2026-11-10" } },
+        { id: "SVB-0008-200025", name: "Кран шаровой с американкой угловой 1\" ВР/НР", price: 3411, brand: "STOUT", availability: "in_stock", price_date: "2026-11-10", rommer: { id: "RBV-0006-0610225", name: "Кран шаровой угловой с американкой ВР/НР 1\"", price: 1450, brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" } }
     ],
     // Базовая линейка автоподбора — Haier, 18 и 24 кВт. Выше 24 кВт линейка
     // кончается, и подбор идёт по остальным газовым котлам каталога (BAXI,
@@ -1531,26 +1531,26 @@ const catalog = {
     // распознавание перебирает весь каталог, и по нему разбираются старые сметы и
     // накладные, где PLUS ещё встречается. Обратно в подбор не возвращать.
     boilers_plus: [
-        { id: "SEB-2201-000005", name: "Котёл электрический PLUS (5 кВт)", power: 5, price: 59236, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-2201-000007", name: "Котёл электрический PLUS (7 кВт)", power: 7, price: 60121, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-10-10" },
-        { id: "SEB-2201-000009", name: "Котёл электрический PLUS (9 кВт)", power: 9, price: 61715, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-2201-000012", name: "Котёл электрический PLUS (12 кВт)", power: 12, price: 62657, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-10-10" },
-        { id: "SEB-2201-000014", name: "Котёл электрический PLUS (14 кВт)", power: 14, price: 65191, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-10-10" },
-        { id: "SEB-2201-000018", name: "Котёл электрический PLUS (18 кВт)", power: 18, price: 69393, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-2201-000021", name: "Котёл электрический PLUS (21 кВт)", power: 21, price: 71130, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-2201-000024", name: "Котёл электрический PLUS (24 кВт)", power: 24, price: 72724, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-2201-000027", name: "Котёл электрический PLUS (27 кВт)", power: 27, price: 74462, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-10-10" }
+        { id: "SEB-2201-000005", name: "Котёл электрический PLUS (5 кВт)", power: 5, price: 59236, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SEB-2201-000007", name: "Котёл электрический PLUS (7 кВт)", power: 7, price: 60121, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-11-10" },
+        { id: "SEB-2201-000009", name: "Котёл электрический PLUS (9 кВт)", power: 9, price: 61715, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-11-10" },
+        { id: "SEB-2201-000012", name: "Котёл электрический PLUS (12 кВт)", power: 12, price: 62657, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-11-10" },
+        { id: "SEB-2201-000014", name: "Котёл электрический PLUS (14 кВт)", power: 14, price: 65191, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-11-10" },
+        { id: "SEB-2201-000018", name: "Котёл электрический PLUS (18 кВт)", power: 18, price: 69393, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SEB-2201-000021", name: "Котёл электрический PLUS (21 кВт)", power: 21, price: 71130, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SEB-2201-000024", name: "Котёл электрический PLUS (24 кВт)", power: 24, price: 72724, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SEB-2201-000027", name: "Котёл электрический PLUS (27 кВт)", power: 27, price: 74462, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-11-10" }
     ],
     boilers_status: [
-        { id: "SEB-3101-000005", name: "Котёл электрический STATUS (5 кВт)", power: 5, price: 66207, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-3101-000007", name: "Котёл электрический STATUS (7 кВт)", power: 7, price: 67505, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-3101-000009", name: "Котёл электрический STATUS (9 кВт)", power: 9, price: 69453, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-3101-000012", name: "Котёл электрический STATUS (12 кВт)", power: 12, price: 70102, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-3101-000014", name: "Котёл электрический STATUS (14 кВт)", power: 14, price: 72698, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-3101-000018", name: "Котёл электрический STATUS (18 кВт)", power: 18, price: 77242, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-3101-000021", name: "Котёл электрический STATUS (21 кВт)", power: 21, price: 77891, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-3101-000024", name: "Котёл электрический STATUS (24 кВт)", power: 24, price: 78540, type: "el", exp: 0, vol: 11, desc: "STATUS: Premium. Внимание: НЕТ встроенного бака!", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-3101-000027", name: "Котёл электрический STATUS (27 кВт)", power: 27, price: 82435, type: "el", exp: 0, vol: 11, desc: "STATUS: Premium. Внимание: НЕТ встроенного бака!", availability: "in_stock", price_date: "2026-10-10" }
+        { id: "SEB-3101-000005", name: "Котёл электрический STATUS (5 кВт)", power: 5, price: 66207, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SEB-3101-000007", name: "Котёл электрический STATUS (7 кВт)", power: 7, price: 67505, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SEB-3101-000009", name: "Котёл электрический STATUS (9 кВт)", power: 9, price: 69453, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SEB-3101-000012", name: "Котёл электрический STATUS (12 кВт)", power: 12, price: 70102, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SEB-3101-000014", name: "Котёл электрический STATUS (14 кВт)", power: 14, price: 72698, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SEB-3101-000018", name: "Котёл электрический STATUS (18 кВт)", power: 18, price: 77242, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SEB-3101-000021", name: "Котёл электрический STATUS (21 кВт)", power: 21, price: 77891, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SEB-3101-000024", name: "Котёл электрический STATUS (24 кВт)", power: 24, price: 78540, type: "el", exp: 0, vol: 11, desc: "STATUS: Premium. Внимание: НЕТ встроенного бака!", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SEB-3101-000027", name: "Котёл электрический STATUS (27 кВт)", power: 27, price: 82435, type: "el", exp: 0, vol: 11, desc: "STATUS: Premium. Внимание: НЕТ встроенного бака!", availability: "in_stock", price_date: "2026-11-10" }
     ],
     // POLIS — бюджетная линейка электрокотлов (новинка 2026). В отличие от PLUS и STATUS
     // это «голый» котёл: НЕТ ни встроенного циркуляционного насоса, ни расширительного бака
@@ -1564,10 +1564,10 @@ const catalog = {
     // только релейно, по перемычке комнатного термостата, и плата цифровых шин
     // ему не нужна (в отличие от PLUS и STATUS, которые работают по OpenTherm).
     boilers_polis: [
-        { id: "SEB-5101-000006", name: "Котёл электрический POLIS (6 кВт)", power: 6, price: 26877, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "220/380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ.", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-5101-000009", name: "Котёл электрический POLIS (9 кВт)", power: 9, price: 27522, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "220/380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ.", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-5101-000012", name: "Котёл электрический POLIS (12 кВт)", power: 12, price: 39027, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ. Только 380 В.", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SEB-5101-000015", name: "Котёл электрический POLIS (15 кВт)", power: 15, price: 39580, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ. Только 380 В.", availability: "in_stock", price_date: "2026-10-10" }
+        { id: "SEB-5101-000006", name: "Котёл электрический POLIS (6 кВт)", power: 6, price: 26877, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "220/380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ.", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SEB-5101-000009", name: "Котёл электрический POLIS (9 кВт)", power: 9, price: 27522, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "220/380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ.", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SEB-5101-000012", name: "Котёл электрический POLIS (12 кВт)", power: 12, price: 39027, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ. Только 380 В.", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SEB-5101-000015", name: "Котёл электрический POLIS (15 кВт)", power: 15, price: 39580, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ. Только 380 В.", availability: "in_stock", price_date: "2026-11-10" }
     ],
     // Аналоги STATUS и POLIS других брендов. В каталоге только то, что сверено с паспортом производителя
     // и продаётся на teremonline.ru: бак, насос, напряжение, патрубки, сечение кабеля, клапан и датчик ГВС.
@@ -1650,21 +1650,21 @@ const catalog = {
     // второй — «базовый» (state.chimneyType), первый cond без forBrand — для
     // конденсационного котла. Поэтому SCR-8610 (60/100) стоит раньше 80/125.
     chimneys: [
-        { id: "SCR-6010-251000", name: "Комплект дымохода АНТИЛЁД универсальный традиц. коакс. D60/100, L1000", price: 3540, brand: "STOUT", brandKey: "stout", chimType: "trad", dn: "60/100", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SCR-6010-251250", name: "Комплект дымохода АНТИЛЁД универсальный традиц. коакс. D60/100, L1250", price: 4166, brand: "STOUT", brandKey: "stout", chimType: "trad", dn: "60/100", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SCR-8610-251000", name: "Комплект дымохода универсальный конденсац. коакс. D60/100, L1000 (хомут, фланец, втулка, рабочая длина 680 мм)", price: 5606, brand: "STOUT", brandKey: "stout", chimType: "cond", dn: "60/100", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SCR-8125-251000", name: "Комплект дымохода универсальный традиц. коакс. D80/125, L1000", price: 9994, brand: "STOUT", brandKey: "stout", chimType: "trad", dn: "80/125", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SCR-8012-251000", name: "Комплект дымохода универсальный конденсац. коакс. D80/125, L1000", price: 10517, brand: "STOUT", brandKey: "stout", chimType: "cond", dn: "80/125", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SCR-1116-251250", name: "Комплект дымохода универсальный конденсац. коакс. D110/160, L1250", price: 36694, brand: "STOUT", brandKey: "stout", chimType: "cond", dn: "110/160", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SCR-6010-251000", name: "Комплект дымохода АНТИЛЁД универсальный традиц. коакс. D60/100, L1000", price: 3540, brand: "STOUT", brandKey: "stout", chimType: "trad", dn: "60/100", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SCR-6010-251250", name: "Комплект дымохода АНТИЛЁД универсальный традиц. коакс. D60/100, L1250", price: 4166, brand: "STOUT", brandKey: "stout", chimType: "trad", dn: "60/100", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SCR-8610-251000", name: "Комплект дымохода универсальный конденсац. коакс. D60/100, L1000 (хомут, фланец, втулка, рабочая длина 680 мм)", price: 5606, brand: "STOUT", brandKey: "stout", chimType: "cond", dn: "60/100", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SCR-8125-251000", name: "Комплект дымохода универсальный традиц. коакс. D80/125, L1000", price: 9994, brand: "STOUT", brandKey: "stout", chimType: "trad", dn: "80/125", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SCR-8012-251000", name: "Комплект дымохода универсальный конденсац. коакс. D80/125, L1000", price: 10517, brand: "STOUT", brandKey: "stout", chimType: "cond", dn: "80/125", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SCR-1116-251250", name: "Комплект дымохода универсальный конденсац. коакс. D110/160, L1250", price: 36694, brand: "STOUT", brandKey: "stout", chimType: "cond", dn: "110/160", availability: "in_stock", price_date: "2026-11-10" },
         { id: "SCA-6010-210850", name: "Дымоход коаксиальный 60/100", price: 6298, brand: "STOUT", chimType: "trad", rommer: { id: "RCA-6010-251220", name: "Дымоход коаксиальный 60/100", price: 3358, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-10-10' }, availability: "on_order", price_date: "2026-10-10" },
-        { id: "RCA-6100-251000", name: "Дымоход коаксиальный 60/100, INOX Line, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1000мм (раб. дл. 700мм)", price: 2493, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6100-251220", name: "Дымоход коаксиальный 60/100, INOX Line, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1250мм (раб. дл. 950мм)", price: 2934, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-750900", name: "Дымоход коаксиальный 60/100, СТАНДАРТ УНИВЕРСАЛЬНЫЙ, L900мм, однонаправл.", price: 2862, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-751000", name: "Дымоход коаксиальный 60/100, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1000мм, однонаправл.", price: 2854, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-751220", name: "Дымоход коаксиальный 60/100, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1220мм, однонаправл.", price: 3359, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8610-210090", name: "Дымоход коаксиальный 60/100, Комплект универсальный для конденсационных котлов Viessmann, Vaillant, Wolf, Ariston, Baxi, Fondital, Ferroli, Navien", price: 4669, brand: "ROMMER", chimType: "cond", availability: "in_stock", price_date: "2026-10-10" },
+  price_date: '2026-11-10' }, availability: "on_order", price_date: "2026-11-10" },
+        { id: "RCA-6100-251000", name: "Дымоход коаксиальный 60/100, INOX Line, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1000мм (раб. дл. 700мм)", price: 2493, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6100-251220", name: "Дымоход коаксиальный 60/100, INOX Line, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1250мм (раб. дл. 950мм)", price: 2934, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-750900", name: "Дымоход коаксиальный 60/100, СТАНДАРТ УНИВЕРСАЛЬНЫЙ, L900мм, однонаправл.", price: 2862, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-751000", name: "Дымоход коаксиальный 60/100, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1000мм, однонаправл.", price: 2854, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-751220", name: "Дымоход коаксиальный 60/100, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1220мм, однонаправл.", price: 3359, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-8610-210090", name: "Дымоход коаксиальный 60/100, Комплект универсальный для конденсационных котлов Viessmann, Vaillant, Wolf, Ariston, Baxi, Fondital, Ferroli, Navien", price: 4669, brand: "ROMMER", chimType: "cond", availability: "in_stock", price_date: "2026-11-10" },
         // Родные дымоходы Vaillant PP — только для конденсационных Vaillant (forBrand):
         // их render() ставит по умолчанию вместо универсального ROMMER, традиционные
         // turboTEC остаются на STOUT/ROMMER. Цена = прайс ТЕРЕМ × 0,8, как на сайте.
@@ -1698,51 +1698,51 @@ const catalog = {
 
     // Коаксиал 60/100 традиционный (алюминий)
     chimney_trad_60100: [
-        { id: "RCA-6010-750100", name: "Начальный участок 90° универсальный, коаксиальный 60/100", price: 1684, brand: "ROMMER", role: "start_wall", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-210190", name: "Начальный участок 90° коаксиальный 60/100 (BAXI кроме ECO Nova, Ariston, Vaillant, Viessmann)", price: 1679, brand: "ROMMER", role: "start_wall", dn: "60/100", kind: "trad", forGroup: "baxi_vaillant", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-240190", name: "Начальный участок 90° коаксиальный 60/100 (Bosch, Buderus, Navien S/C/E, BAXI ECO Nova)", price: 1675, brand: "ROMMER", role: "start_wall", dn: "60/100", kind: "trad", forGroup: "navien_bosch", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-740100", name: "Начальный участок вертикальный универсальный, коаксиальный 60/100", price: 1119, brand: "ROMMER", role: "start_roof", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-210100", name: "Адаптер вертикальный коаксиальный 60/100 (BAXI кроме ECO Nova, Ariston, Vaillant, Viessmann)", price: 1109, brand: "ROMMER", role: "start_roof", dn: "60/100", kind: "trad", forGroup: "baxi_vaillant", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-240100", name: "Адаптер вертикальный коаксиальный 60/100 (Bosch, Buderus, Navien S/C/E, BAXI ECO Nova)", price: 1118, brand: "ROMMER", role: "start_roof", dn: "60/100", kind: "trad", forGroup: "navien_bosch", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-701001", name: "Труба с наконечником АНТИЛЁД 60/100, рабочая длина 1000 мм", price: 1888, brand: "ROMMER", role: "term_wall", dn: "60/100", kind: "trad", len_m: 1.0, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-700700", name: "Труба с наконечником СТАНДАРТ 60/100, рабочая длина 700 мм", price: 1488, brand: "ROMMER", role: "term_wall", dn: "60/100", kind: "trad", len_m: 0.7, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-000334", name: "Оголовок с ветрозащитой 60/100, белый (для вертикали)", price: 4029, brand: "ROMMER", role: "term_roof", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-000250", name: "Удлинитель коаксиальный 60/100, L 250 мм", price: 767, brand: "ROMMER", role: "ext", dn: "60/100", kind: "trad", len_m: 0.25, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-000500", name: "Удлинитель коаксиальный 60/100, L 500 мм", price: 1105, brand: "ROMMER", role: "ext", dn: "60/100", kind: "trad", len_m: 0.5, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-001000", name: "Удлинитель коаксиальный 60/100, L 1000 мм", price: 1788, brand: "ROMMER", role: "ext", dn: "60/100", kind: "trad", len_m: 1.0, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-001500", name: "Удлинитель коаксиальный 60/100, L 1500 мм", price: 3601, brand: "ROMMER", role: "ext", dn: "60/100", kind: "trad", len_m: 1.5, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-002000", name: "Удлинитель коаксиальный 60/100, L 2000 мм", price: 5028, brand: "ROMMER", role: "ext", dn: "60/100", kind: "trad", len_m: 2.0, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-000090", name: "Отвод промежуточный коаксиальный 60/100, 90°", price: 1507, brand: "ROMMER", role: "bend90", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-000045", name: "Отвод промежуточный коаксиальный 60/100, 45°", price: 1433, brand: "ROMMER", role: "bend45", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "RCA-6010-750100", name: "Начальный участок 90° универсальный, коаксиальный 60/100", price: 1684, brand: "ROMMER", role: "start_wall", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-210190", name: "Начальный участок 90° коаксиальный 60/100 (BAXI кроме ECO Nova, Ariston, Vaillant, Viessmann)", price: 1679, brand: "ROMMER", role: "start_wall", dn: "60/100", kind: "trad", forGroup: "baxi_vaillant", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-240190", name: "Начальный участок 90° коаксиальный 60/100 (Bosch, Buderus, Navien S/C/E, BAXI ECO Nova)", price: 1675, brand: "ROMMER", role: "start_wall", dn: "60/100", kind: "trad", forGroup: "navien_bosch", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-740100", name: "Начальный участок вертикальный универсальный, коаксиальный 60/100", price: 1119, brand: "ROMMER", role: "start_roof", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-210100", name: "Адаптер вертикальный коаксиальный 60/100 (BAXI кроме ECO Nova, Ariston, Vaillant, Viessmann)", price: 1109, brand: "ROMMER", role: "start_roof", dn: "60/100", kind: "trad", forGroup: "baxi_vaillant", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-240100", name: "Адаптер вертикальный коаксиальный 60/100 (Bosch, Buderus, Navien S/C/E, BAXI ECO Nova)", price: 1118, brand: "ROMMER", role: "start_roof", dn: "60/100", kind: "trad", forGroup: "navien_bosch", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-701001", name: "Труба с наконечником АНТИЛЁД 60/100, рабочая длина 1000 мм", price: 1888, brand: "ROMMER", role: "term_wall", dn: "60/100", kind: "trad", len_m: 1.0, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-700700", name: "Труба с наконечником СТАНДАРТ 60/100, рабочая длина 700 мм", price: 1488, brand: "ROMMER", role: "term_wall", dn: "60/100", kind: "trad", len_m: 0.7, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-000334", name: "Оголовок с ветрозащитой 60/100, белый (для вертикали)", price: 4029, brand: "ROMMER", role: "term_roof", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-000250", name: "Удлинитель коаксиальный 60/100, L 250 мм", price: 767, brand: "ROMMER", role: "ext", dn: "60/100", kind: "trad", len_m: 0.25, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-000500", name: "Удлинитель коаксиальный 60/100, L 500 мм", price: 1105, brand: "ROMMER", role: "ext", dn: "60/100", kind: "trad", len_m: 0.5, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-001000", name: "Удлинитель коаксиальный 60/100, L 1000 мм", price: 1788, brand: "ROMMER", role: "ext", dn: "60/100", kind: "trad", len_m: 1.0, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-001500", name: "Удлинитель коаксиальный 60/100, L 1500 мм", price: 3601, brand: "ROMMER", role: "ext", dn: "60/100", kind: "trad", len_m: 1.5, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-002000", name: "Удлинитель коаксиальный 60/100, L 2000 мм", price: 5028, brand: "ROMMER", role: "ext", dn: "60/100", kind: "trad", len_m: 2.0, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-000090", name: "Отвод промежуточный коаксиальный 60/100, 90°", price: 1507, brand: "ROMMER", role: "bend90", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-000045", name: "Отвод промежуточный коаксиальный 60/100, 45°", price: 1433, brand: "ROMMER", role: "bend45", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-11-10" },
         { id: "RCA-6010-000101", name: "Конденсатоотводчик коаксиальный универсальный 60/100", price: 2466, brand: "ROMMER", role: "drain", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-6010-000106", name: "Накладка декоративная D100, белая", price: 145, brand: "ROMMER", role: "rosette", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-000003", name: "Крепление к стене D100, металлическое", price: 309, brand: "ROMMER", role: "bracket", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-6010-000001", name: "Хомут комплект D100 (хомут резиновый, стальной гнутый, саморезы)", price: 200, brand: "ROMMER", role: "clamp", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "RCA-6010-000106", name: "Накладка декоративная D100, белая", price: 145, brand: "ROMMER", role: "rosette", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-000003", name: "Крепление к стене D100, металлическое", price: 309, brand: "ROMMER", role: "bracket", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-6010-000001", name: "Хомут комплект D100 (хомут резиновый, стальной гнутый, саморезы)", price: 200, brand: "ROMMER", role: "clamp", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-11-10" },
     ],
 
     // Коаксиал 60/100 конденсационный (полипропилен)
     chimney_cond_60100: [
-        { id: "RCA-8610-000250", name: "Удлинитель конденсационный коаксиальный 60/100, L 250 мм", price: 1581, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 0.25, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8610-000500", name: "Удлинитель конденсационный коаксиальный 60/100, L 500 мм", price: 2440, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 0.5, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8610-001000", name: "Удлинитель конденсационный коаксиальный 60/100, L 1000 мм", price: 3873, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 1.0, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8610-002000", name: "Удлинитель конденсационный коаксиальный 60/100, L 2000 мм", price: 5913, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 2.0, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8610-010090", name: "Отвод конденсационный коаксиальный 60/100, 90°", price: 1668, brand: "ROMMER", role: "bend90", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8610-000045", name: "Отвод конденсационный коаксиальный 60/100, 45°", price: 1835, brand: "ROMMER", role: "bend45", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8610-000001", name: "Оголовок с ветрозащитой вертикальный конденсационный 60/100", price: 8312, brand: "ROMMER", role: "term_roof", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "RCA-8610-000250", name: "Удлинитель конденсационный коаксиальный 60/100, L 250 мм", price: 1581, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 0.25, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-8610-000500", name: "Удлинитель конденсационный коаксиальный 60/100, L 500 мм", price: 2440, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 0.5, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-8610-001000", name: "Удлинитель конденсационный коаксиальный 60/100, L 1000 мм", price: 3873, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 1.0, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-8610-002000", name: "Удлинитель конденсационный коаксиальный 60/100, L 2000 мм", price: 5913, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 2.0, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-8610-010090", name: "Отвод конденсационный коаксиальный 60/100, 90°", price: 1668, brand: "ROMMER", role: "bend90", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-8610-000045", name: "Отвод конденсационный коаксиальный 60/100, 45°", price: 1835, brand: "ROMMER", role: "bend45", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-8610-000001", name: "Оголовок с ветрозащитой вертикальный конденсационный 60/100", price: 8312, brand: "ROMMER", role: "term_roof", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-11-10" },
     ],
 
     // Коаксиал 80/125 конденсационный (для длинных трасс)
     chimney_cond_80125: [
-        { id: "RCA-8012-000002", name: "Переход с 60/100 на 80/125 конденсационный", price: 2136, brand: "ROMMER", role: "adapter", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8012-250800", name: "Комплект дымохода конденсационный 80/125, 800 мм", price: 8477, brand: "ROMMER", role: "term_wall", dn: "80/125", kind: "cond", len_m: 0.8, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8012-000250", name: "Удлинитель коаксиальный конденсационный 80/125, L 250 мм", price: 1626, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 0.25, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8012-000500", name: "Удлинитель коаксиальный конденсационный 80/125, L 500 мм", price: 3119, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 0.5, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8012-001000", name: "Удлинитель коаксиальный конденсационный 80/125, L 1000 мм", price: 5402, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 1.0, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8012-002000", name: "Удлинитель коаксиальный конденсационный 80/125, L 2000 мм", price: 14714, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 2.0, availability: "on_order", price_date: "2026-10-10" },
-        { id: "RCA-8012-000090", name: "Отвод коаксиальный конденсационный 80/125, 90°", price: 2949, brand: "ROMMER", role: "bend90", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8012-000045", name: "Отвод коаксиальный конденсационный 80/125, 45°", price: 3245, brand: "ROMMER", role: "bend45", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8012-000001", name: "Оголовок с ветрозащитой вертикальный конденсационный 80/125", price: 7934, brand: "ROMMER", role: "term_roof", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8125-000103", name: "Крепление к стене D125, металлическое", price: 447, brand: "ROMMER", role: "bracket", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "RCA-8012-000002", name: "Переход с 60/100 на 80/125 конденсационный", price: 2136, brand: "ROMMER", role: "adapter", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-8012-250800", name: "Комплект дымохода конденсационный 80/125, 800 мм", price: 8477, brand: "ROMMER", role: "term_wall", dn: "80/125", kind: "cond", len_m: 0.8, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-8012-000250", name: "Удлинитель коаксиальный конденсационный 80/125, L 250 мм", price: 1626, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 0.25, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-8012-000500", name: "Удлинитель коаксиальный конденсационный 80/125, L 500 мм", price: 3119, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 0.5, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-8012-001000", name: "Удлинитель коаксиальный конденсационный 80/125, L 1000 мм", price: 5402, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 1.0, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-8012-002000", name: "Удлинитель коаксиальный конденсационный 80/125, L 2000 мм", price: 14714, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 2.0, availability: "on_order", price_date: "2026-11-10" },
+        { id: "RCA-8012-000090", name: "Отвод коаксиальный конденсационный 80/125, 90°", price: 2949, brand: "ROMMER", role: "bend90", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-8012-000045", name: "Отвод коаксиальный конденсационный 80/125, 45°", price: 3245, brand: "ROMMER", role: "bend45", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-8012-000001", name: "Оголовок с ветрозащитой вертикальный конденсационный 80/125", price: 7934, brand: "ROMMER", role: "term_roof", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-8125-000103", name: "Крепление к стене D125, металлическое", price: 447, brand: "ROMMER", role: "bracket", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-11-10" },
     ],
 
 
@@ -1767,15 +1767,15 @@ const catalog = {
     // app.chimneyD80Adapter), а остальные остаются в таблице замены.
     chimney_split_d80: [
         { id: "RCA-8080-290002", name: "Комплект адаптеров D80 на раздельную систему (Kiturami, Hubert, Haier, Arderia и др.)", price: 1783, brand: "ROMMER", role: "adapter_d80", kind: "trad", d80Group: "haier", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8080-210002", name: "Адаптер моноблочный на раздельную систему 80/80 (BAXI кроме ECO Nova/Classic и др.)", price: 2281, brand: "ROMMER", role: "adapter_d80", kind: "trad", d80Group: "baxi", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "RCA-8080-210002", name: "Адаптер моноблочный на раздельную систему 80/80 (BAXI кроме ECO Nova/Classic и др.)", price: 2281, brand: "ROMMER", role: "adapter_d80", kind: "trad", d80Group: "baxi", availability: "in_stock", price_date: "2026-11-10" },
         { id: "RCA-8080-250002", name: "Адаптер моноблочный универсальный на раздельную систему 80/80 (кроме Immergas)", price: 2373, brand: "ROMMER", role: "adapter_d80", kind: "trad", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-8080-240002", name: "Адаптер моноблочный на раздельную систему 80/80 (Ferroli, Bosch, Buderus и др.)", price: 2329, brand: "ROMMER", role: "adapter_d80", kind: "trad", d80Group: "bosch", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "RCA-8080-240002", name: "Адаптер моноблочный на раздельную систему 80/80 (Ferroli, Bosch, Buderus и др.)", price: 2329, brand: "ROMMER", role: "adapter_d80", kind: "trad", d80Group: "bosch", availability: "in_stock", price_date: "2026-11-10" },
         { id: "RCA-8080-280002", name: "Комплект адаптеров (воздуховод + газоход) на раздельную систему 80/80 (Navien и др.)", price: 1783, brand: "ROMMER", role: "adapter_d80", kind: "trad", d80Group: "navien", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-0880-250000", name: "Адаптер моноблочный конденсационный, переход с 60/100 на 80/80", price: 4641, brand: "ROMMER", role: "adapter_d80", kind: "cond", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-0080-000250", name: "Удлинитель D80, L 250 мм", price: 509, brand: "ROMMER", role: "ext", kind: "trad", len_m: 0.25, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-0080-000500", name: "Удлинитель D80, L 500 мм", price: 742, brand: "ROMMER", role: "ext", kind: "trad", len_m: 0.5, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-0080-001000", name: "Удлинитель D80, L 1000 мм", price: 1168, brand: "ROMMER", role: "ext", kind: "trad", len_m: 1.0, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCA-0080-001500", name: "Удлинитель D80, L 1500 мм", price: 1916, brand: "ROMMER", role: "ext", kind: "trad", len_m: 1.5, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "RCA-0880-250000", name: "Адаптер моноблочный конденсационный, переход с 60/100 на 80/80", price: 4641, brand: "ROMMER", role: "adapter_d80", kind: "cond", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-0080-000250", name: "Удлинитель D80, L 250 мм", price: 509, brand: "ROMMER", role: "ext", kind: "trad", len_m: 0.25, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-0080-000500", name: "Удлинитель D80, L 500 мм", price: 742, brand: "ROMMER", role: "ext", kind: "trad", len_m: 0.5, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-0080-001000", name: "Удлинитель D80, L 1000 мм", price: 1168, brand: "ROMMER", role: "ext", kind: "trad", len_m: 1.0, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCA-0080-001500", name: "Удлинитель D80, L 1500 мм", price: 1916, brand: "ROMMER", role: "ext", kind: "trad", len_m: 1.5, availability: "in_stock", price_date: "2026-11-10" },
         { id: "RCA-0080-002000", name: "Удлинитель D80, L 2000 мм", price: 2595, brand: "ROMMER", role: "ext", kind: "trad", len_m: 2.0, availability: "in_stock", price_date: "2026-10-10" },
         { id: "RCA-0080-000090", name: "Отвод D80, 90°", price: 826, brand: "ROMMER", role: "bend90", kind: "trad", availability: "in_stock", price_date: "2026-10-10" },
         { id: "RCA-0080-000045", name: "Отвод D80, 45°", price: 828, brand: "ROMMER", role: "bend45", kind: "trad", availability: "in_stock", price_date: "2026-10-10" },
