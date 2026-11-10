@@ -3399,19 +3399,19 @@ const catalog = {
         // монтажник мог выбрать её и получить в смете строку за 0 ₽. Убрана
         // 09.09.2026; вернуть имеет смысл только вместе с настоящим артикулом.
         { id: "RCS-0001-000052", name: "Блок насосной автоматики EPC-2", price: 2919, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
-        { id: "RCS-0001-000064", name: "Устройство управления насосом EPC-4", price: 2514, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCS-0001-000055", name: "Блок насосной автоматики EPC-5", price: 2994, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-10-10" }
+        { id: "RCS-0001-000064", name: "Устройство управления насосом EPC-4", price: 2514, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCS-0001-000055", name: "Блок насосной автоматики EPC-5", price: 2994, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-11-10" }
     ],
     well_relays: [
-        { id: "RCS-0001-000005", name: "Реле давления KRS-5, 1/4\"", price: 666, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCS-0001-000003", name: "Реле сухого хода KRS-6, 1/4\"", price: 721, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RCS-0001-000053", name: "Реле давления для водоснабжения со встроенным манометром KRS-7", price: 1275, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-10-10" }
+        { id: "RCS-0001-000005", name: "Реле давления KRS-5, 1/4\"", price: 666, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCS-0001-000003", name: "Реле сухого хода KRS-6, 1/4\"", price: 721, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RCS-0001-000053", name: "Реле давления для водоснабжения со встроенным манометром KRS-7", price: 1275, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-11-10" }
     ],
     water_pipes: [
-        { id: "SPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 190, unit: "м", rommer: { id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SPX-0001-002028", name: "Труба PEX-a 20x2.8 (серая)", price: 283, unit: "м", rommer: { id: "RPX-0001-002028", name: "Труба PEX-a 20x2.8", price: 146, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SPX-0001-002535", name: "Труба PEX-a 25x3.5 (серая)", price: 439, unit: "м", rommer: { id: "RPX-0001-002535", name: "Труба PEX-a 25x3.5", price: 235, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SPX-0001-003244", name: "Труба PEX-a 32x4.4 (серая)", price: 714, unit: "м", rommer: { id: "RPX-0001-003244", name: "Труба PEX-a 32x4.4", price: 400, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }, availability: "in_stock", price_date: "2026-10-10" }
+        { id: "SPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 190, unit: "м", rommer: { id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" }, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SPX-0001-002028", name: "Труба PEX-a 20x2.8 (серая)", price: 283, unit: "м", rommer: { id: "RPX-0001-002028", name: "Труба PEX-a 20x2.8", price: 146, brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" }, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SPX-0001-002535", name: "Труба PEX-a 25x3.5 (серая)", price: 439, unit: "м", rommer: { id: "RPX-0001-002535", name: "Труба PEX-a 25x3.5", price: 235, brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" }, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SPX-0001-003244", name: "Труба PEX-a 32x4.4 (серая)", price: 714, unit: "м", rommer: { id: "RPX-0001-003244", name: "Труба PEX-a 32x4.4", price: 400, brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" }, availability: "in_stock", price_date: "2026-11-10" }
     ],
     // Металлопластик, отмеренный метрами (водоснабжение, подводка полотенцесушителя).
     //
@@ -3427,10 +3427,10 @@ const catalog = {
     // Цена стоит ЗА МЕТР: строка добавляется в смету метражом, без asCoilPrice, и поля
     // len здесь быть не должно — иначе метры превратятся в бухты.
     water_pipes_mp: [
-        { id: "SPM-0001-101620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0", price: 157, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10", rommer: { id: "RPM-0002-201620", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 16x2.0", price: 78, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
-        { id: "SPM-0001-102020", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 20x2.0", price: 266, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10", rommer: { id: "RPM-0002-102020", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 20x2.0", price: 125, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
-        { id: "SPM-0001-052630", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 26x3.0", price: 483, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10", rommer: { id: "RPM-0002-052630", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 26x3.0", price: 220, brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" } },
-        { id: "SPM-0001-053230", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 32x3.0", price: 708, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-10-10", rommer: { id: "RPM-0002-053230", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 32x3.0", price: 315, brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" } }
+        { id: "SPM-0001-101620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0", price: 157, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-11-10", rommer: { id: "RPM-0002-201620", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 16x2.0", price: 78, brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" } },
+        { id: "SPM-0001-102020", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 20x2.0", price: 266, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-11-10", rommer: { id: "RPM-0002-102020", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 20x2.0", price: 125, brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" } },
+        { id: "SPM-0001-052630", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 26x3.0", price: 483, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-11-10", rommer: { id: "RPM-0002-052630", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 26x3.0", price: 220, brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" } },
+        { id: "SPM-0001-053230", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 32x3.0", price: 708, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-11-10", rommer: { id: "RPM-0002-053230", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 32x3.0", price: 315, brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" } }
     ],
     // Обе трубки — 18/6 SUPER PROTECT, красная на ГВС и синяя на ХВС.
     //
@@ -3453,149 +3453,149 @@ const catalog = {
         { id: "EFXT018062SUPRS-400", name: "Теплоизоляция 18/6 (Синяя)", price: 27.5, len: 2, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-10-20" }
     ],
     insulation_pro: [
-        { id: "RIC-0001-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (синяя)",  dn: 18, thick: 6, len: 2, pack: 184, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RIC-0001-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (синяя)",  dn: 22, thick: 6, len: 2, pack: 160, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RIC-0001-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (синяя)",  dn: 28, thick: 6, len: 2, pack: 120, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RIC-0002-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (красная)", dn: 18, thick: 6, len: 2, pack: 184, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RIC-0002-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (красная)", dn: 22, thick: 6, len: 2, pack: 160, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "RIC-0002-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (красная)", dn: 28, thick: 6, len: 2, pack: 120, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-10-10" }
+        { id: "RIC-0001-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (синяя)",  dn: 18, thick: 6, len: 2, pack: 184, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RIC-0001-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (синяя)",  dn: 22, thick: 6, len: 2, pack: 160, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RIC-0001-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (синяя)",  dn: 28, thick: 6, len: 2, pack: 120, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RIC-0002-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (красная)", dn: 18, thick: 6, len: 2, pack: 184, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RIC-0002-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (красная)", dn: 22, thick: 6, len: 2, pack: 160, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "RIC-0002-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (красная)", dn: 28, thick: 6, len: 2, pack: 120, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-11-10" }
     ],
     water_fittings: [
-        { id: "SFA-0032-001612", name: "Водорозетка 16x1/2\" (тупиковая)", price: 969, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFA-0040-001612", name: "Угольник проточный 16x1/2\" (Бронза)", price: 3178, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFA-0039-002012", name: "Угольник проточный 20x1/2\" (проходная)", price: 3022, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFA-0027-252525", name: "Кронштейн монтажный (75/150)", price: 968, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFA-0035-100012", name: "Пробка с наружней резьбой (Синяя)", price: 28, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFA-0035-200012", name: "Пробка с наружней резьбой (Красная)", price: 28, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFA-0031-000016", name: "Фиксатор поворота 90° (14-18 мм)", price: 52, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFA-0031-000120", name: "Фиксатор поворота 90° (20 мм)", price: 79, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SMF-0003-028032", name: "Дюбель-крюк двойной", price: 7, availability: "in_stock", price_date: "2026-10-10" }
+        { id: "SFA-0032-001612", name: "Водорозетка 16x1/2\" (тупиковая)", price: 969, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFA-0040-001612", name: "Угольник проточный 16x1/2\" (Бронза)", price: 3178, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFA-0039-002012", name: "Угольник проточный 20x1/2\" (проходная)", price: 3022, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFA-0027-252525", name: "Кронштейн монтажный (75/150)", price: 968, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFA-0035-100012", name: "Пробка с наружней резьбой (Синяя)", price: 24, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFA-0035-200012", name: "Пробка с наружней резьбой (Красная)", price: 24, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFA-0031-000016", name: "Фиксатор поворота 90° (14-18 мм)", price: 52, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFA-0031-000120", name: "Фиксатор поворота 90° (20 мм)", price: 79, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SMF-0003-028032", name: "Дюбель-крюк двойной", price: 7, availability: "in_stock", price_date: "2026-11-10" }
     ],
     water_fittings_press_mp: [
         // Латунные пресс-фитинги STOUT для труб PE-Xb/Al/PE-Xb
         // Переходник с наружной резьбой
-        { id: "SFP-0001-001216", name: "Переходник с наружной резьбой 1/2\"х16", price: 337, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0001-003416", name: "Переходник с наружной резьбой 3/4\"x16", price: 673, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0001-001220", name: "Переходник с наружной резьбой 1/2\"х20", price: 450, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0001-003420", name: "Переходник с наружной резьбой 3/4\"х20", price: 604, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0001-003426", name: "Переходник с наружной резьбой 3/4\"х26", price: 761, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0001-000126", name: "Переходник с наружной резьбой 1\"х26", price: 853, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0001-000132", name: "Переходник с наружной резьбой 1\"х32", price: 1236, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0001-001216", name: "Переходник с наружной резьбой 1/2\"х16", price: 337, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0001-003416", name: "Переходник с наружной резьбой 3/4\"x16", price: 673, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0001-001220", name: "Переходник с наружной резьбой 1/2\"х20", price: 450, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0001-003420", name: "Переходник с наружной резьбой 3/4\"х20", price: 604, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0001-003426", name: "Переходник с наружной резьбой 3/4\"х26", price: 761, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0001-000126", name: "Переходник с наружной резьбой 1\"х26", price: 853, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0001-000132", name: "Переходник с наружной резьбой 1\"х32", price: 1236, availability: "in_stock", price_date: "2026-11-10" },
         // Переходник с внутренней резьбой
-        { id: "SFP-0002-001216", name: "Переходник с внутренней резьбой 1/2\"х16", price: 513, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0002-001220", name: "Переходник с внутренней резьбой 1/2\"х20", price: 601, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0002-003420", name: "Переходник с внутренней резьбой 3/4\"х20", price: 718, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0002-003426", name: "Переходник с внутренней резьбой 3/4\"х26", price: 802, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0002-000126", name: "Переходник с внутренней резьбой 1\"х26", price: 927, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0002-000132", name: "Переходник с внутренней резьбой 1\"х32", price: 1330, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0002-001216", name: "Переходник с внутренней резьбой 1/2\"х16", price: 513, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0002-001220", name: "Переходник с внутренней резьбой 1/2\"х20", price: 601, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0002-003420", name: "Переходник с внутренней резьбой 3/4\"х20", price: 718, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0002-003426", name: "Переходник с внутренней резьбой 3/4\"х26", price: 802, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0002-000126", name: "Переходник с внутренней резьбой 1\"х26", price: 927, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0002-000132", name: "Переходник с внутренней резьбой 1\"х32", price: 1330, availability: "in_stock", price_date: "2026-11-10" },
         // Муфта соединительная равнопроходная
-        { id: "SFP-0003-001616", name: "Муфта соединительная равнопроходная 16х16", price: 609, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0003-002020", name: "Муфта соединительная равнопроходная 20х20", price: 709, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0003-002626", name: "Муфта соединительная равнопроходная 26х26", price: 1213, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0003-003232", name: "Муфта соединительная равнопроходная 32х32", price: 1789, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0003-001616", name: "Муфта соединительная равнопроходная 16х16", price: 609, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0003-002020", name: "Муфта соединительная равнопроходная 20х20", price: 709, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0003-002626", name: "Муфта соединительная равнопроходная 26х26", price: 1213, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0003-003232", name: "Муфта соединительная равнопроходная 32х32", price: 1789, availability: "in_stock", price_date: "2026-11-10" },
         // Муфта соединительная переходная
-        { id: "SFP-0004-002016", name: "Муфта соединительная переходная 20х16", price: 882, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0004-002620", name: "Муфта соединительная переходная 26х20", price: 1177, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0004-003226", name: "Муфта соединительная переходная 32х26", price: 1635, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0004-002016", name: "Муфта соединительная переходная 20х16", price: 882, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0004-002620", name: "Муфта соединительная переходная 26х20", price: 1177, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0004-003226", name: "Муфта соединительная переходная 32х26", price: 1635, availability: "in_stock", price_date: "2026-11-10" },
         // Тройник переходной
-        { id: "SFP-0005-162016", name: "Тройник переходной 16x20x16", price: 1262, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-201616", name: "Тройник переходной 20х16х16", price: 1169, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-201620", name: "Тройник переходной 20х16х20", price: 1214, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-202016", name: "Тройник переходной 20х20х16", price: 1220, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-202620", name: "Тройник переходной 20х26х20", price: 1728, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-261620", name: "Тройник переходной 26х16х20", price: 1699, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-261626", name: "Тройник переходной 26х16х26", price: 1699, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-262016", name: "Тройник переходной 26х20х16", price: 1715, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-262020", name: "Тройник переходной 26х20х20", price: 1715, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-262026", name: "Тройник переходной 26х20х26", price: 1699, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-262616", name: "Тройник переходной 26х26х16", price: 1728, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-262620", name: "Тройник переходной 26х26х20", price: 1712, availability: "on_order", price_date: "2026-10-10" },
-        { id: "SFP-0005-263226", name: "Тройник переходной 26х32х26", price: 2811, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-322026", name: "Тройник переходной 32х20х26", price: 2835, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-322032", name: "Тройник переходной 32х20х32", price: 2968, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-322626", name: "Тройник переходной 32х26х26", price: 2968, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-322632", name: "Тройник переходной 32х26х32", price: 2968, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0005-323226", name: "Тройник переходной 32x32x26", price: 2968, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0005-162016", name: "Тройник переходной 16x20x16", price: 1262, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-201616", name: "Тройник переходной 20х16х16", price: 1169, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-201620", name: "Тройник переходной 20х16х20", price: 1214, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-202016", name: "Тройник переходной 20х20х16", price: 1220, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-202620", name: "Тройник переходной 20х26х20", price: 1728, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-261620", name: "Тройник переходной 26х16х20", price: 1699, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-261626", name: "Тройник переходной 26х16х26", price: 1699, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-262016", name: "Тройник переходной 26х20х16", price: 1715, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-262020", name: "Тройник переходной 26х20х20", price: 1715, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-262026", name: "Тройник переходной 26х20х26", price: 1699, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-262616", name: "Тройник переходной 26х26х16", price: 1728, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-262620", name: "Тройник переходной 26х26х20", price: 1712, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-263226", name: "Тройник переходной 26х32х26", price: 2811, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-322026", name: "Тройник переходной 32х20х26", price: 2835, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-322032", name: "Тройник переходной 32х20х32", price: 2968, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-322626", name: "Тройник переходной 32х26х26", price: 2968, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-322632", name: "Тройник переходной 32х26х32", price: 2968, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0005-323226", name: "Тройник переходной 32x32x26", price: 2968, availability: "in_stock", price_date: "2026-11-10" },
         // Тройник равнопроходный
-        { id: "SFP-0006-161616", name: "Тройник равнопроходный 16х16х16", price: 836, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0006-202020", name: "Тройник равнопроходный 20х20х20", price: 1222, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0006-262626", name: "Тройник равнопроходный 26х26х26", price: 1771, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0006-323232", name: "Тройник равнопроходный 32х32х32", price: 3019, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0006-161616", name: "Тройник равнопроходный 16х16х16", price: 836, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0006-202020", name: "Тройник равнопроходный 20х20х20", price: 1222, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0006-262626", name: "Тройник равнопроходный 26х26х26", price: 1771, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0006-323232", name: "Тройник равнопроходный 32х32х32", price: 3019, availability: "in_stock", price_date: "2026-11-10" },
         // Тройник-переходник с внутренней резьбой
-        { id: "SFP-0007-001216", name: "Тройник-переходник с внутренней резьбой 16х1/2\"х16", price: 1061, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0007-001220", name: "Тройник-переходник с внутренней резьбой 20х1/2\"х20", price: 1252, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0007-003420", name: "Тройник-переходник с внутренней резьбой 20х3/4\"х20", price: 1440, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0007-003426", name: "Тройник-переходник с внутренней резьбой 26х3/4\"х26", price: 1766, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0007-000132", name: "Тройник-переходник с внутренней резьбой 32х1\"х32", price: 2880, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0007-001216", name: "Тройник-переходник с внутренней резьбой 16х1/2\"х16", price: 1061, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0007-001220", name: "Тройник-переходник с внутренней резьбой 20х1/2\"х20", price: 1252, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0007-003420", name: "Тройник-переходник с внутренней резьбой 20х3/4\"х20", price: 1440, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0007-003426", name: "Тройник-переходник с внутренней резьбой 26х3/4\"х26", price: 1766, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0007-000132", name: "Тройник-переходник с внутренней резьбой 32х1\"х32", price: 2880, availability: "in_stock", price_date: "2026-11-10" },
         // Тройник-переходник с наружной резьбой
-        { id: "SFP-0008-161216", name: "Тройник-переходник с наружной резьбой 16х1/2\"х16", price: 1061, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0008-201220", name: "Тройник-переходник с наружной резьбой 20х1/2\"х20", price: 1252, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0008-203420", name: "Тройник-переходник с наружной резьбой 20х3/4\"х20", price: 1440, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0008-263426", name: "Тройник-переходник с наружной резьбой 26х3/4\"х26", price: 1766, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0008-320132", name: "Тройник-переходник с наружной резьбой 32х1\"х32", price: 2903, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0008-161216", name: "Тройник-переходник с наружной резьбой 16х1/2\"х16", price: 1061, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0008-201220", name: "Тройник-переходник с наружной резьбой 20х1/2\"х20", price: 1252, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0008-203420", name: "Тройник-переходник с наружной резьбой 20х3/4\"х20", price: 1440, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0008-263426", name: "Тройник-переходник с наружной резьбой 26х3/4\"х26", price: 1766, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0008-320132", name: "Тройник-переходник с наружной резьбой 32х1\"х32", price: 2903, availability: "in_stock", price_date: "2026-11-10" },
         // Угольник 90°
-        { id: "SFP-0009-001616", name: "Угольник 90° 16х16", price: 696, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0009-002020", name: "Угольник 90° 20х20", price: 877, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0009-002626", name: "Угольник 90° 26х26", price: 1322, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0009-003232", name: "Угольник 90° 32х32", price: 2101, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0009-001616", name: "Угольник 90° 16х16", price: 696, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0009-002020", name: "Угольник 90° 20х20", price: 877, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0009-002626", name: "Угольник 90° 26х26", price: 1322, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0009-003232", name: "Угольник 90° 32х32", price: 2101, availability: "in_stock", price_date: "2026-11-10" },
         // Угольник-переходник с внутренней резьбой
-        { id: "SFP-0010-001216", name: "Угольник-переходник с внутренней резьбой 1/2\"х16", price: 473, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0010-001220", name: "Угольник-переходник с внутренней резьбой 1/2\"х20", price: 722, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0010-003420", name: "Угольник-переходник с внутренней резьбой 3/4\"х20", price: 1138, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0010-003426", name: "Угольник-переходник с внутренней резьбой 3/4\"х26", price: 1235, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0010-000126", name: "Угольник-переходник с внутренней резьбой 1\"х26", price: 1594, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0010-000132", name: "Угольник-переходник с внутренней резьбой 1\"х32", price: 1865, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0010-001216", name: "Угольник-переходник с внутренней резьбой 1/2\"х16", price: 473, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0010-001220", name: "Угольник-переходник с внутренней резьбой 1/2\"х20", price: 722, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0010-003420", name: "Угольник-переходник с внутренней резьбой 3/4\"х20", price: 1138, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0010-003426", name: "Угольник-переходник с внутренней резьбой 3/4\"х26", price: 1235, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0010-000126", name: "Угольник-переходник с внутренней резьбой 1\"х26", price: 1594, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0010-000132", name: "Угольник-переходник с внутренней резьбой 1\"х32", price: 1865, availability: "in_stock", price_date: "2026-11-10" },
         // Угольник-переходник с наружной резьбой
-        { id: "SFP-0011-001216", name: "Угольник-переходник с наружной резьбой 1/2\"х16", price: 500, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0011-001220", name: "Угольник-переходник с наружной резьбой 1/2\"х20", price: 728, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0011-003420", name: "Угольник-переходник с наружной резьбой 3/4\"х20", price: 1139, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0011-003426", name: "Угольник-переходник с наружной резьбой 3/4\"х26", price: 1193, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0011-000126", name: "Угольник-переходник с наружной резьбой 1\"х26", price: 1594, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0011-000132", name: "Угольник-переходник с наружной резьбой 1\"х32", price: 1865, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0011-001216", name: "Угольник-переходник с наружной резьбой 1/2\"х16", price: 500, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0011-001220", name: "Угольник-переходник с наружной резьбой 1/2\"х20", price: 728, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0011-003420", name: "Угольник-переходник с наружной резьбой 3/4\"х20", price: 1139, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0011-003426", name: "Угольник-переходник с наружной резьбой 3/4\"х26", price: 1193, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0011-000126", name: "Угольник-переходник с наружной резьбой 1\"х26", price: 1594, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0011-000132", name: "Угольник-переходник с наружной резьбой 1\"х32", price: 1865, availability: "in_stock", price_date: "2026-11-10" },
         // Угольник настенный с креплением удлиненный
-        { id: "SFP-0012-001216", name: "Угольник настенный с креплением удлиненный 1/2\"х16", price: 891, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0012-001220", name: "Угольник настенный с креплением удлиненный 1/2\"х20", price: 1081, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0012-001216", name: "Угольник настенный с креплением удлиненный 1/2\"х16", price: 891, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0012-001220", name: "Угольник настенный с креплением удлиненный 1/2\"х20", price: 1081, availability: "in_stock", price_date: "2026-11-10" },
         // Угольник настенный с креплением короткий
-        { id: "SFP-0018-001216", name: "Угольник настенный с креплением короткий 1/2\"х16", price: 723, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0018-001220", name: "Угольник настенный с креплением короткий 1/2\"х20", price: 899, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0018-001216", name: "Угольник настенный с креплением короткий 1/2\"х16", price: 723, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0018-001220", name: "Угольник настенный с креплением короткий 1/2\"х20", price: 899, availability: "in_stock", price_date: "2026-11-10" },
         // Настенный комплект для смесителя
-        { id: "SFP-0013-001216", name: "Настенный комплект для смесителя 1/2\"x16", price: 1793, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0013-001220", name: "Настенный комплект для смесителя 1/2\"x20", price: 1888, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0013-001216", name: "Настенный комплект для смесителя 1/2\"x16", price: 1793, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0013-001220", name: "Настенный комплект для смесителя 1/2\"x20", price: 1888, availability: "in_stock", price_date: "2026-11-10" },
         // Вентиль с хромированной ручкой
-        { id: "SFP-0014-001616", name: "Вентиль с хромированной ручкой 16х16", price: 3952, availability: "on_order", price_date: "2026-10-10" },
-        { id: "SFP-0014-002020", name: "Вентиль с хромированной ручкой 20х20", price: 4025, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0014-001616", name: "Вентиль с хромированной ручкой 16х16", price: 3952, availability: "on_order", price_date: "2026-11-10" },
+        { id: "SFP-0014-002020", name: "Вентиль с хромированной ручкой 20х20", price: 4025, availability: "in_stock", price_date: "2026-11-10" },
         // Переходник с накидной гайкой
-        { id: "SFP-0016-001216", name: "Переходник с накидной гайкой 1/2\"x16", price: 483, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0016-001220", name: "Переходник с накидной гайкой 1/2\"x20", price: 573, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0016-003416", name: "Переходник с накидной гайкой 3/4\"x16", price: 873, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0016-003420", name: "Переходник с накидной гайкой 3/4\"x20", price: 902, availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SFP-0016-001216", name: "Переходник с накидной гайкой 1/2\"x16", price: 483, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0016-001220", name: "Переходник с накидной гайкой 1/2\"x20", price: 573, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0016-003416", name: "Переходник с накидной гайкой 3/4\"x16", price: 873, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0016-003420", name: "Переходник с накидной гайкой 3/4\"x20", price: 902, availability: "in_stock", price_date: "2026-11-10" },
         // Зажимная втулка
-        { id: "SFP-0019-000016", name: "Зажимная втулка 16", price: 123, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0019-000017", name: "Зажимная втулка 20", price: 166, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0019-000018", name: "Зажимная втулка 26", price: 207, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SFP-0019-000019", name: "Зажимная втулка 32", price: 401, availability: "in_stock", price_date: "2026-10-10" }
+        { id: "SFP-0019-000016", name: "Зажимная втулка 16", price: 123, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0019-000017", name: "Зажимная втулка 20", price: 166, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0019-000018", name: "Зажимная втулка 26", price: 207, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SFP-0019-000019", name: "Зажимная втулка 32", price: 401, availability: "in_stock", price_date: "2026-11-10" }
     ],
     water_manifolds_cold: [
-        { id: "SMB-6851-343402", name: "Коллектор 3/4\"х3/4\"х2 вых.", loops: 2, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 2178, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SMB-6851-343403", name: "Коллектор 3/4\"х3/4\"х3 вых.", loops: 3, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 3036, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SMB-6851-343404", name: "Коллектор 3/4\"х3/4\"х4 вых.", loops: 4, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 4091, availability: "in_stock", price_date: "2026-10-10" }
+        { id: "SMB-6851-343402", name: "Коллектор 3/4\"х3/4\"х2 вых.", loops: 2, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 2178, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SMB-6851-343403", name: "Коллектор 3/4\"х3/4\"х3 вых.", loops: 3, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 3036, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SMB-6851-343404", name: "Коллектор 3/4\"х3/4\"х4 вых.", loops: 4, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 4091, availability: "in_stock", price_date: "2026-11-10" }
     ],
     water_manifolds_hot: [
-        { id: "SMB-6851-343402", name: "Коллектор 3/4\"х3/4\"х2 вых.", loops: 2, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 2178, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SMB-6851-343403", name: "Коллектор 3/4\"х3/4\"х3 вых.", loops: 3, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 3036, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SMB-6851-343404", name: "Коллектор 3/4\"х3/4\"х4 вых.", loops: 4, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 4091, availability: "in_stock", price_date: "2026-10-10" }
+        { id: "SMB-6851-343402", name: "Коллектор 3/4\"х3/4\"х2 вых.", loops: 2, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 2178, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SMB-6851-343403", name: "Коллектор 3/4\"х3/4\"х3 вых.", loops: 3, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 3036, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SMB-6851-343404", name: "Коллектор 3/4\"х3/4\"х4 вых.", loops: 4, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 4091, availability: "in_stock", price_date: "2026-11-10" }
     ],
     water_manifolds_recirc: [
-        { id: "SMB-6851-343402", name: "Коллектор 3/4\"х3/4\"х2 вых.", loops: 2, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 2178, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SMB-6851-343403", name: "Коллектор 3/4\"х3/4\"х3 вых.", loops: 3, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 3036, availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SMB-6851-343404", name: "Коллектор 3/4\"х3/4\"х4 вых.", loops: 4, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 4091, availability: "in_stock", price_date: "2026-10-10" }
+        { id: "SMB-6851-343402", name: "Коллектор 3/4\"х3/4\"х2 вых.", loops: 2, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 2178, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SMB-6851-343403", name: "Коллектор 3/4\"х3/4\"х3 вых.", loops: 3, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 3036, availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SMB-6851-343404", name: "Коллектор 3/4\"х3/4\"х4 вых.", loops: 4, inSize: "3/4", outSize: "3/4", connType: "ek", series: "shutoff", price: 4091, availability: "in_stock", price_date: "2026-11-10" }
     ],
     water_manifolds_stout: [
         // Хромированные регулирующие, макс. 120°C / 16 бар
-        { id: "SMB-6850-341202", name: "Коллектор хромированный, регулирующий, 3/4\"х1/2\"х2 вых.", price: 2852, brand: "STOUT", inSize: "3/4", outSize: "1/2", loops: 2, connType: "compression", series: "adjustable", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SMB-6850-341203", name: "Коллектор хромированный, регулирующий, 3/4\"х1/2\"х3 вых.", price: 4110, brand: "STOUT", inSize: "3/4", outSize: "1/2", loops: 3, connType: "compression", series: "adjustable", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SMB-6850-341204", name: "Коллектор хромированный, регулирующий, 3/4\"х1/2\"х4 вых.", price: 5388, brand: "STOUT", inSize: "3/4", outSize: "1/2", loops: 4, connType: "compression", series: "adjustable", availability: "in_stock", price_date: "2026-10-10" },
-        { id: "SMB-6850-011202", name: "Коллектор хромированный, регулирующий, 1\"х1/2\"х2 вых.", price: 3272, brand: "STOUT", inSize: "1", outSize: "1/2", loops: 2, connType: "compression", series: "adjustable", availability: "in_stock", price_date: "2026-10-10" },
+        { id: "SMB-6850-341202", name: "Коллектор хромированный, регулирующий, 3/4\"х1/2\"х2 вых.", price: 2852, brand: "STOUT", inSize: "3/4", outSize: "1/2", loops: 2, connType: "compression", series: "adjustable", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SMB-6850-341203", name: "Коллектор хромированный, регулирующий, 3/4\"х1/2\"х3 вых.", price: 4110, brand: "STOUT", inSize: "3/4", outSize: "1/2", loops: 3, connType: "compression", series: "adjustable", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SMB-6850-341204", name: "Коллектор хромированный, регулирующий, 3/4\"х1/2\"х4 вых.", price: 5388, brand: "STOUT", inSize: "3/4", outSize: "1/2", loops: 4, connType: "compression", series: "adjustable", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "SMB-6850-011202", name: "Коллектор хромированный, регулирующий, 1\"х1/2\"х2 вых.", price: 3272, brand: "STOUT", inSize: "1", outSize: "1/2", loops: 2, connType: "compression", series: "adjustable", availability: "in_stock", price_date: "2026-11-10" },
         { id: "SMB-6850-011203", name: "Коллектор хромированный, регулирующий, 1\"х1/2\"х3 вых.", price: 4556, brand: "STOUT", inSize: "1", outSize: "1/2", loops: 3, connType: "compression", series: "adjustable", availability: "in_stock", price_date: "2026-10-10" },
         { id: "SMB-6850-011204", name: "Коллектор хромированный, регулирующий, 1\"х1/2\"х4 вых.", price: 6054, brand: "STOUT", inSize: "1", outSize: "1/2", loops: 4, connType: "compression", series: "adjustable", availability: "in_stock", price_date: "2026-10-10" },
         { id: "SMB-6849-341202", name: "Коллектор хромированный, регулирующий, 3/4\"х1/2\"х2 вых.", price: 2852, brand: "STOUT", inSize: "3/4", outSize: "1/2", loops: 2, connType: "flat", series: "adjustable", availability: "in_stock", price_date: "2026-10-10" },
