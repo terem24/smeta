@@ -417,9 +417,9 @@
    "freq": 0,
    "audience": "owner",
    "data_block": "расчётная пятидневка и три режима",
-   "status": "queued",
+   "status": "published",
    "date": "2026-11-03",
-   "published_at": null,
+   "published_at": "2026-11-11",
    "words": 671
   },
   {
