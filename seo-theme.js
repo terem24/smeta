@@ -60,7 +60,7 @@
     // Учёт визитов и глубины просмотра: подключаем отсюда, чтобы не править 280 страниц
     try {
         var vp = document.createElement('script');
-        vp.src = '/visit_pages.js?v=1.0';
+        vp.src = '/visit_pages.js?v=1.1';
         vp.async = true;
         document.head.appendChild(vp);
     } catch (e) { }

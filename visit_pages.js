@@ -88,7 +88,7 @@
         if (cur && cur.id && cur.vid === vid && !fresh && Date.now() - (cur.at || 0) < GAP) {
             // продолжение визита: ещё одна страница
             visit = cur; cur.at = Date.now(); save(cur);
-            rpc('visit_hit', { p_id: cur.id, p_visitor: vid }).catch(function () { });
+            rpc('visit_hit', { p_id: cur.id, p_visitor: vid, p_path: location.pathname || '/', p_calc: false }).catch(function () { });
             startTime();
             return;
         }
@@ -110,6 +110,7 @@
             if (!id) return;
             visit = { id: id, vid: vid, at: Date.now(), sec: 0 };
             save(visit);
+            rpc('visit_mark', { p_id: id, p_visitor: vid, p_path: location.pathname || '/', p_calc: false }).catch(function () { });
             startTime();
         }).catch(function () { });
     } catch (e) { }

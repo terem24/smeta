@@ -1865,7 +1865,7 @@ const app = {
             if (cur && cur.id && cur.vid === vid && !fresh && Date.now() - (cur.at || 0) < this.VISIT_GAP_MS) {
                 this._visit = cur;
                 // ещё одна страница в том же визите (статья → калькулятор или перезагрузка)
-                supabaseClient.rpc('visit_hit', { p_id: cur.id, p_visitor: vid }).then(() => { }, () => { });
+                supabaseClient.rpc('visit_hit', { p_id: cur.id, p_visitor: vid, p_path: location.pathname || '/', p_calc: true }).then(() => { }, () => { });
                 // визит мог начаться на статье, где город не определяется
                 if (!cur.geo) {
                     cur.geo = 1;
@@ -1888,6 +1888,7 @@ const app = {
                 if (r && r.data) {
                     this._visit = { id: r.data, vid: vid, at: Date.now(), sec: 0 };
                     try { localStorage.setItem(this.VISIT_KEY, JSON.stringify(this._visit)); } catch (e) { }
+                    supabaseClient.rpc('visit_mark', { p_id: r.data, p_visitor: vid, p_path: location.pathname || '/', p_calc: true }).then(() => { }, () => { });
                     this.trackVisitTime();
                     this.stampVisitGeo(this._visit);
                 }
@@ -31538,9 +31539,14 @@ const app = {
             const cols = 'id, visitor_id, created_at, ended_at, seconds, is_new, landing, referrer, utm_source, utm_medium, utm_campaign, device, os, browser, city, region, country, lat, lon';
             try {
                 // pages (миграция 20261112): глубина просмотра. Нет колонки — читаем без неё
+                // exit_page и calc (миграция 20261113): страницы выхода и переход в калькулятор
                 let r;
-                try { r = await this.fetchAllRows('visits', cols + ', pages', { order: 'id', cap: 30000, build: qy => ge(qy, 'created_at') }); }
-                catch (e0) { r = await this.fetchAllRows('visits', cols, { order: 'id', cap: 30000, build: qy => ge(qy, 'created_at') }); }
+                const rd = c => this.fetchAllRows('visits', c, { order: 'id', cap: 30000, build: qy => ge(qy, 'created_at') });
+                try { r = await rd(cols + ', pages, exit_page, calc'); }
+                catch (e0) {
+                    try { r = await rd(cols + ', pages'); }
+                    catch (e1) { r = await rd(cols); }
+                }
                 return { rows: r.rows, capped: r.capped };
             } catch (e) { return { rows: [], missing: true }; }
         });
@@ -32273,6 +32279,7 @@ const app = {
         const ser = { visits: zeros(), people: zeros(), newV: zeros(), reg: zeros() }, pplAt = [];
         const src = {}, pages = {}, refs = {}, camps = {}, dev = {}, os = {}, br = {}, cities = {}, regions = {}, countries = {};
         const hours = new Array(24).fill(0), wd = new Array(7).fill(0);
+        const entry = {}, exits = {};
         const visitRows = [], people = {};
         const bump = (m, key, extra) => { const r = m[key] || (m[key] = Object.assign({ key: key, n: 0, newV: 0 }, extra || {})); r.n++; return r; };
         const srcRow = g => src[g] || (src[g] = { g: g, color: this.visColor(g), visits: 0, ppl: {}, newV: 0, reg: 0, secSum: 0, timedN: 0, ser: zeros() });
@@ -32302,6 +32309,13 @@ const app = {
             if (i >= 0) { ser.visits[i]++; (pplAt[i] || (pplAt[i] = {}))[v.visitor_id] = 1; }
             const page = v.landing || '/';
             const pr = bump(pages, page); if (v.is_new) pr.newV++;
+            // Вход -> калькулятор, выход: по колонкам миграции 20261113 (нет колонок — undefined)
+            if (v.calc !== undefined && !v.synthetic) {
+                const en = entry[page] || (entry[page] = { key: page, n: 0, calc: 0, pgSum: 0, pgN: 0 });
+                en.n++; if (v.calc) en.calc++;
+                if (pg != null) { en.pgSum += pg; en.pgN++; }
+                if (v.exit_page) bump(exits, v.exit_page);
+            }
             if (g.host) bump(refs, g.host, { href: g.hostHref });
             if (g.camp) bump(camps, g.camp, { href: g.href, grp: g.g });
             const dv = v.device || f.device || '';
@@ -32391,7 +32405,9 @@ const app = {
         }).filter(r => r.visits || r.newV).sort((a, b) => b.visits - a.visits || b.newV - a.newV);
         return {
             haveVisits: haveVisits, since: since, cur: fin(per.cur), prev: fin(per.prev), ser: ser,
-            src: srcList, pages: list(pages), refs: list(refs), camps: list(camps),
+            src: srcList, pages: list(pages),
+            entry: Object.keys(entry).map(k => entry[k]).sort((a, b) => b.n - a.n).slice(0, 50),
+            exits: list(exits, 50), refs: list(refs), camps: list(camps),
             dev: list(dev).map(r => ({ key: r.key, n: r.n, label: (this.VIS_DEV[r.key] || [r.key])[0], color: (this.VIS_DEV[r.key] || [0, '#94A3B8'])[1] })),
             os: list(os, 8), br: list(br, 8), hours: hours, wd: wd,
             cities: list(cities, 200).map(r => Object.assign(r, { people: Object.keys(r.ppl).length })), regions: list(regions, 100), countries: list(countries, 50),
@@ -32650,6 +32666,15 @@ const app = {
                 ${V.countries.length > 1 ? `<div class="vx-sub">Страны</div>${barList(V.countries, 'country', r => esc(r.key), { lim: 4 })}` : ''}
             </div></div>` : '<div class="vx-none">Город появится у визитов после выкладки этой версии: он определяется по IP при заходе</div>';
 
+        // Статьи и калькулятор: с какой страницы вошли, дошли ли до калькулятора, сколько страниц открыли
+        const enBody = V.entry && V.entry.length ? `<div class="vx-st vx-en"><div class="vx-st-h"><span>Страница входа</span><span>Визиты</span><span>В калькулятор</span><span>Страниц</span></div>`
+            + V.entry.slice(0, 12).map(r => {
+                const key = this.visKey('page', r.key);
+                const cp = r.n ? Math.round(r.calc / r.n * 100) : 0;
+                return `<button type="button" class="vx-st-r${on('page', r.key)}" onclick="app.visFilter(${key})" title="Показать визиты, начатые с этой страницы">
+                    <span class="vx-path">${esc(r.key)}</span><span>${r.n}</span>
+                    <span class="${cp ? 'vx-good' : 'vx-z'}">${cp}%</span><span class="vx-z2">${r.pgN ? (r.pgSum / r.pgN).toFixed(1).replace('.', ',') : '—'}</span></button>`;
+            }).join('') + '</div>' : '<div class="vx-none">Появится после миграции 20261113: пока не записано, куда уходят и открывают ли калькулятор</div>';
         const pageHint = 'Первая страница визита. Щёлкните строку — визиты с этой страницы, ↗ — открыть страницу';
         return `<div class="vx-grid">
             ${card('Источники трафика', 'Откуда пришли визиты за период и сколько новых посетителей из каждого источника зарегистрировались. Конверсия — регистрации от новых. Щёлкните строку — журнал визитов из этого источника', srcBody, srcCsv, true)}
@@ -32657,6 +32682,8 @@ const app = {
             ${card('География', 'Город и регион визита по IP-адресу (сам адрес не хранится). Точки на карте — города посетителей, размер — число визитов; серые точки — справочник городов для ориентира. Щёлкните город — его визиты', geoBody, '', true)}
             ${card('Устройства', 'Тип устройства, система и браузер — по визитам. Щёлкните, чтобы отфильтровать журнал', devBody)}
             ${card('Страницы входа', pageHint, barList(V.pages, 'page', r => `<span class="vx-path">${esc(r.key)}</span>`, { href: r => r.key }))}
+            ${card('Статьи и калькулятор', 'Для каждой страницы входа: сколько визитов началось с неё, какая доля дошла до калькулятора и сколько страниц в среднем открыли. Это показывает, какие статьи приводят людей в калькулятор, а какие только читают. Щёлкните строку — визиты', enBody, '', true)}
+            ${card('Страницы выхода', 'Последняя страница визита: где посетитель закончил. ↗ — открыть страницу', V.exits && V.exits.length ? '<div class="vx-bars">' + V.exits.slice(0, 8).map(r => `<div class="vx-bar"><span class="vx-bar-f" style="width:${Math.max(3, r.n / (V.exits[0].n || 1) * 100)}%"></span><span class="vx-bar-l"><span class="vx-path">${esc(r.key)}</span></span><span class="vx-bar-n">${r.n}<em>${pctOf(r.n, tot)}%</em></span>${ext(r.key)}</div>`).join('') + '</div>' : empty)}
             ${card('Сайты-источники', 'С каких сайтов перешли: поиск, соцсети, другие сайты. ↗ — открыть сайт', barList(V.refs, 'host', r => esc(r.key), { href: r => r.href }))}
             ${card('Кампании и метки', 'Метки utm в ссылках: посты канала, статьи, магазины, рассылки. ↗ — открыть статью или канал', barList(V.camps, 'camp', r => esc(r.key), { href: r => r.href, color: r => this.visColor(r.grp) }))}
             ${card('Когда приходят', 'Визиты по часам (по вашему времени) и дням недели. Щёлкните столбец — эти визиты', timeBody, '', 'full')}
