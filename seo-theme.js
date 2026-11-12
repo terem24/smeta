@@ -56,4 +56,12 @@
     var btn = document.querySelector('.theme-toggle');
     if (btn) label(btn, isDark());
     syncMeta(isDark());
+
+    // Учёт визитов и глубины просмотра: подключаем отсюда, чтобы не править 280 страниц
+    try {
+        var vp = document.createElement('script');
+        vp.src = '/visit_pages.js?v=1.0';
+        vp.async = true;
+        document.head.appendChild(vp);
+    } catch (e) { }
 })();

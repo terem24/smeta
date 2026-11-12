@@ -1824,6 +1824,7 @@ const app = {
     // разных объекта в одном ключе затирали друг друга — визиты дробились, время терялось
     VISIT_KEY: 'hc_av',
     VISIT_GAP_MS: 30 * 60 * 1000,
+    VISIT_BOT_RE: /bot|crawl|spider|slurp|headless|lighthouse|pagespeed|facebookexternalhit|preview|python-|curl\/|wget|yandex(images|metrika|direct|market|turbo|video|media|favicons|screenshot)/i,
     deviceInfo: function () {
         const ua = navigator.userAgent || '';
         const iPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
@@ -1842,6 +1843,10 @@ const app = {
     logFirstVisit: function (q) {
         try {
             if (window.__HC_NATIVE__ || HC_LOCAL_DEV) return;
+            // Роботы и свои устройства (флаг ставится, когда на устройстве открывают админку)
+            // в визиты не попадают: иначе они раздувают визиты и время на сайте
+            if (this.VISIT_BOT_RE.test(navigator.userAgent || '')) return;
+            try { if (localStorage.getItem('hc_noc') === '1') return; } catch (e) { }
             let vid = '';
             try { vid = localStorage.getItem(this.VISITOR_KEY) || ''; } catch (e) { }
             const isNew = !vid;
@@ -1859,6 +1864,14 @@ const app = {
             const fresh = q.s || q.m || q.c || (ref && !/^heatcalc\.ru/.test(ref));
             if (cur && cur.id && cur.vid === vid && !fresh && Date.now() - (cur.at || 0) < this.VISIT_GAP_MS) {
                 this._visit = cur;
+                // ещё одна страница в том же визите (статья → калькулятор или перезагрузка)
+                supabaseClient.rpc('visit_hit', { p_id: cur.id, p_visitor: vid }).then(() => { }, () => { });
+                // визит мог начаться на статье, где город не определяется
+                if (!cur.geo) {
+                    cur.geo = 1;
+                    try { localStorage.setItem(this.VISIT_KEY, JSON.stringify(cur)); } catch (e) { }
+                    this.stampVisitGeo(cur);
+                }
                 this.trackVisitTime();
                 return;
             }
@@ -31487,6 +31500,8 @@ const app = {
     },
     // Запросы берут два периода сразу (текущий и предыдущий — для сравнения)
     kpiStart: function (p) {
+        // Раз на этом устройстве открыта админка — это свой браузер: дальше его визиты не пишем
+        try { localStorage.setItem('hc_noc', '1'); } catch (e) { }
         const day = 864e5, from = p.days ? Date.now() - 2 * p.days * day : 0;
         const since = from ? new Date(from).toISOString() : null;
         const ge = (qy, col) => since ? qy.gte(col, since) : qy;
@@ -31520,8 +31535,12 @@ const app = {
         });
         // Визиты (миграция 20261102). Нет таблицы — виджет считает по первым заходам
         L('vs', async () => {
+            const cols = 'id, visitor_id, created_at, ended_at, seconds, is_new, landing, referrer, utm_source, utm_medium, utm_campaign, device, os, browser, city, region, country, lat, lon';
             try {
-                const r = await this.fetchAllRows('visits', 'id, visitor_id, created_at, ended_at, seconds, is_new, landing, referrer, utm_source, utm_medium, utm_campaign, device, os, browser, city, region, country, lat, lon', { order: 'id', cap: 30000, build: qy => ge(qy, 'created_at') });
+                // pages (миграция 20261112): глубина просмотра. Нет колонки — читаем без неё
+                let r;
+                try { r = await this.fetchAllRows('visits', cols + ', pages', { order: 'id', cap: 30000, build: qy => ge(qy, 'created_at') }); }
+                catch (e0) { r = await this.fetchAllRows('visits', cols, { order: 'id', cap: 30000, build: qy => ge(qy, 'created_at') }); }
                 return { rows: r.rows, capped: r.capped };
             } catch (e) { return { rows: [], missing: true }; }
         });
@@ -31771,7 +31790,10 @@ const app = {
             else if (!ok('fv') || !(ok('vs') || bad('vs')) || testsWait) w.wait = true;
             else {
                 const V = this.visBuild(S, { cls: cls, t0: t0, B: B, zeros: zeros, testIds: testIds, ok: ok });
-                const d = V.cur, q = V.prev, dl = (a, b, o) => hasPrev ? this.kpiDelta(a, b, o) : '';
+                // Сравнение с прошлым периодом — только если учёт визитов шёл весь прошлый период:
+                // иначе «+1675 %» получается из-за того, что раньше визиты просто не записывались
+                const prevFull = hasPrev && V.since != null && prev0 != null && prev0 >= V.since;
+                const d = V.cur, q = V.prev, dl = (a, b, o) => prevFull ? this.kpiDelta(a, b, o) : '';
                 const mmss = x => x == null ? '—' : (x >= 60 ? Math.floor(x / 60) + ' м ' : '') + Math.round(x % 60) + ' с';
                 w.vis = V;
                 w.lists = V.lists;
@@ -31780,8 +31802,9 @@ const app = {
                     { k: 'people', l: 'Посетители', v: fmt(d.people), d: dl(d.people, q.people), sp: V.ser.people, list: 1, h: 'Разные браузеры за период. Один человек с телефона и компьютера — два посетителя. Щёлкните — список' },
                     { k: 'new', l: 'Новые посетители', v: fmt(d.newV), d: dl(d.newV, q.newV), s: d.people ? pct(d.newV, d.people) + '% посетителей' : '', sp: V.ser.newV, list: 1, h: 'Впервые открыли калькулятор в этом периоде. Щёлкните — кто это и откуда пришёл' },
                     { k: 'reg', l: 'Регистрации', v: fmt(d.reg), d: dl(d.reg, q.reg), s: d.newV ? 'конверсия ' + pct(d.reg, d.newV) + '% новых' : '', sp: V.ser.reg, tone: d.reg ? 'good' : '', list: 1, h: 'Новые посетители периода, которые зарегистрировались. Щёлкните — кто это' },
-                    { k: 'time', l: 'Время на сайте', v: mmss(d.avgSec), d: d.avgSec != null && q.avgSec != null ? dl(d.avgSec, q.avgSec, { fmt: mmss }) : '', s: d.timedN ? 'в среднем за визит' : 'появится после миграции визитов', list: 1, h: 'Сколько вкладка с калькулятором была на экране за визит, в среднем. Щёлкните — самые долгие визиты' },
-                    { k: 'bounce', l: 'Отказы', v: d.bounceP == null ? '—' : d.bounceP + '%', d: d.bounceP != null && q.bounceP != null ? dl(d.bounceP, q.bounceP, { ratio: true, inv: true }) : '', s: d.timedN ? d.bounce + ' визитов короче 15 с' : '', tone: d.bounceP >= 50 ? 'bad' : '', list: 1, h: 'Доля визитов короче 15 секунд: открыли и сразу ушли. Щёлкните — эти визиты' }
+                    { k: 'time', l: 'Время на сайте', v: mmss(d.medSec), d: d.medSec != null && q.medSec != null ? dl(d.medSec, q.medSec, { fmt: mmss }) : '', s: d.timedN ? 'типичный визит; среднее без долгих ' + mmss(d.avgSec) : 'появится после миграции визитов', list: 1, h: 'Медиана: половина визитов короче этого времени, половина длиннее. Среднее арифметическое здесь врёт: вкладка, забытая открытой на мониторе, тянет его вверх (учитываются сеансы до часа). Метрика считает иначе, по активности, поэтому цифры не совпадут. Щёлкните — самые долгие визиты' },
+                    { k: 'depth', l: 'Глубина просмотра', v: d.depth == null ? '—' : d.depth.toFixed(2).replace('.', ','), d: d.depth != null && q.depth != null ? dl(d.depth, q.depth) : '', s: d.depth == null ? 'появится после миграции 20261112' : 'страниц за визит', h: 'Сколько страниц открывает посетитель за визит: статьи, города, калькулятор. Считается для всех, а не только для согласившихся на куки, как в Метрике. До включения счётчика страниц у старых визитов стоит 1, поэтому цифра растёт по мере накопления данных' },
+                    { k: 'bounce', l: 'Отказы', v: d.bounceP == null ? '—' : d.bounceP + '%', d: d.bounceP != null && q.bounceP != null ? dl(d.bounceP, q.bounceP, { ratio: true, inv: true }) : '', s: d.timedN ? d.bounce + ' визитов короче 15 с' : '', tone: d.bounceP >= 50 ? 'bad' : '', list: 1, h: 'Доля визитов короче 15 секунд на экране и с одной страницей: открыли и сразу ушли. У Метрики отказов меньше: она видит только тех, кто нажал «Принять» в плашке куки, а это уже заинтересованные люди. Щёлкните — эти визиты' }
                 ];
                 const top = V.src.slice();
                 w.groups = [
@@ -31794,7 +31817,9 @@ const app = {
                 const since = V.since ? new Date(V.since).toLocaleDateString('ru-RU') : null;
                 w.note = S.fv.missing ? 'Таблица first_visits ещё не создана: выполните миграцию 20261101_add_first_visits.sql.'
                     : (!V.haveVisits ? 'Визиты, время на сайте и отказы появятся после миграции 20261102_add_visits.sql; пока считаются только первые заходы. ' : '')
-                    + (since ? 'Учёт идёт с ' + since + ', раньше заходы не записывались.' : 'Учёт только начался: данные появятся по мере заходов.');
+                    + (since ? 'Учёт идёт с ' + since + ', раньше заходы не записывались.' : 'Учёт только начался: данные появятся по мере заходов.')
+                    + (hasPrev && !prevFull && since ? ' Сравнения с прошлым периодом нет: тогда учёт ещё не шёл.' : '')
+                    + ' Здесь видны все, кто открыл сайт, а Метрика считает только согласившихся на куки и без блокировщиков, поэтому у неё цифры меньше. Свои устройства и роботы не считаются.';
                 if (S.fv.capped || (S.vs && S.vs.capped)) w.note += ' Записей больше, чем читается за один раз: цифры занижены.';
             }
             out.vis = w;
@@ -32243,7 +32268,7 @@ const app = {
         });
         if (vsStart !== Infinity && (since == null || vsStart < since)) since = vsStart;
 
-        const blank = () => ({ visits: 0, ppl: {}, newV: 0, reg: 0, secSum: 0, timedN: 0, bounce: 0 });
+        const blank = () => ({ visits: 0, ppl: {}, newV: 0, reg: 0, secSum: 0, timedN: 0, bounce: 0, secs: [], trimSum: 0, trimN: 0, pgSum: 0, pgN: 0 });
         const per = { cur: blank(), prev: blank() };
         const ser = { visits: zeros(), people: zeros(), newV: zeros(), reg: zeros() }, pplAt = [];
         const src = {}, pages = {}, refs = {}, camps = {}, dev = {}, os = {}, br = {}, cities = {}, regions = {}, countries = {};
@@ -32259,7 +32284,15 @@ const app = {
             const P = per[c];
             P.visits++; P.ppl[v.visitor_id] = 1;
             const timed = !v.synthetic && !!v.ended_at, sec = timed ? (v.seconds || 0) : null;
-            if (timed) { P.timedN++; P.secSum += sec; if (sec < 15) P.bounce++; }
+            // Страницы визита (миграция 20261112); у синтетических и без колонки — неизвестно
+            const pg = (!v.synthetic && v.pages != null) ? Math.max(1, +v.pages || 1) : null;
+            if (pg != null) { P.pgN++; P.pgSum += pg; }
+            if (timed) {
+                P.timedN++; P.secSum += sec; P.secs.push(sec);
+                // сеанс дольше часа — забытая открытой вкладка, среднее он портит
+                if (sec <= 3600) { P.trimN++; P.trimSum += sec; }
+                if (sec < 15 && !(pg > 1)) P.bounce++;
+            }
             if (c !== 'cur') return;
             const i = B.at(t), dt = new Date(t);
             const g = this.visGroupOf(v), f = fvBy[v.visitor_id] || {};
@@ -32286,7 +32319,7 @@ const app = {
             const uid = f.user_id || null;
             const row = {
                 id: v.id, vid: v.visitor_id, uid: uid, t: t, grp: g.g, det: g.det, href: g.href, host: g.host || '', camp: g.camp || '',
-                page: page, dev: dv, os: v.os || f.os || '', br: v.browser || f.browser || '', sec: sec, isNew: !!v.is_new, reg: !!uid,
+                page: page, pg: pg, dev: dv, os: v.os || f.os || '', br: v.browser || f.browser || '', sec: sec, isNew: !!v.is_new, reg: !!uid,
                 city: city, region: region, country: country,
                 hour: dt.getHours(), wd: (dt.getDay() + 6) % 7
             };
@@ -32309,6 +32342,9 @@ const app = {
             if (f.user_id && x.testIds[f.user_id]) return;
             const t = t0(f.created_at), c = cls(t);
             if (!c) return;
+            // Новый посетитель — тот, у кого в периоде есть визит: иначе «новых» выходит больше,
+            // чем всех посетителей (первый заход записан, а визит нет)
+            if (haveVisits && t >= vsStart && !per[c].ppl[f.visitor_id]) return;
             per[c].newV++; if (f.user_id) per[c].reg++;
             if (c !== 'cur') return;
             const i = B.at(t);
@@ -32342,7 +32378,9 @@ const app = {
 
         const fin = P => ({
             visits: P.visits, people: Object.keys(P.ppl).length, newV: P.newV, reg: P.reg, timedN: P.timedN, bounce: P.bounce,
-            avgSec: P.timedN ? P.secSum / P.timedN : null, bounceP: P.timedN ? Math.round(P.bounce / P.timedN * 100) : null
+            avgSec: P.trimN ? P.trimSum / P.trimN : null,
+            medSec: P.secs.length ? (s => { s = s.slice().sort((a, b) => a - b); const h = s.length >> 1; return s.length % 2 ? s[h] : (s[h - 1] + s[h]) / 2; })(P.secs) : null,
+            depth: P.pgN ? P.pgSum / P.pgN : null, bounceP: P.timedN ? Math.round(P.bounce / P.timedN * 100) : null
         });
         const list = (m, lim) => Object.keys(m).map(k => m[k]).sort((a, b) => b.n - a.n).slice(0, lim || 50);
         const byT = (a, b) => b.t - a.t, byLast = (a, b) => b.last - a.last;
@@ -32366,7 +32404,7 @@ const app = {
             lists: {
                 visits: visitRows.sort(byT),
                 time: visitRows.filter(r => r.sec != null).sort((a, b) => b.sec - a.sec),
-                bounce: visitRows.filter(r => r.sec != null && r.sec < 15).sort(byT),
+                bounce: visitRows.filter(r => r.sec != null && r.sec < 15 && !(r.pg > 1)).sort(byT),
                 people: plist.slice().sort(byLast),
                 new: plist.filter(p => p.isNew).sort((a, b) => b.first - a.first),
                 reg: plist.filter(p => p.isNew && p.uid).sort((a, b) => b.first - a.first),
@@ -33400,7 +33438,7 @@ const app = {
         if (edit) h += hidden.map(m => `<button type="button" class="kpi-n kpi-n-add" title="${esc(m.h || '')}" onclick="app.kpiSetHidden('${w.id}','${m.k}',false)">
                 <span class="kpi-plus" aria-hidden="true">+</span><span class="kpi-nl">${esc(m.l)}</span><span class="kpi-ns">добавить плашку</span></button>`).join('');
         if (!h) h = '<div class="ad-tile-note">Все плашки скрыты. Нажмите «Настроить», чтобы вернуть нужные.</div>';
-        return `<div class="kpi-nums${w.id === 'vis' ? ' kpi-nums-6' : ''}">${h}</div>${edit || noList ? '' : this.kpiListHtml(w, esc)}`;
+        return `<div class="kpi-nums${w.id === 'vis' && (w.nums || []).length === 6 ? ' kpi-nums-6' : ''}">${h}</div>${edit || noList ? '' : this.kpiListHtml(w, esc)}`;
     },
 
     // Список людей под плашкой: щелчок по плашке с list открывает, повторный закрывает
