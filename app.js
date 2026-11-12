@@ -31560,11 +31560,13 @@ const app = {
                 // exit_page и calc (миграция 20261113): страницы выхода и переход в калькулятор
                 let r;
                 const rd = c => this.fetchAllRows('visits', c, { order: 'id', cap: 30000, build: qy => ge(qy, 'created_at') });
-                try { r = await rd(cols + ', pages, exit_page, calc'); }
-                catch (e0) {
-                    try { r = await rd(cols + ', pages'); }
-                    catch (e1) { r = await rd(cols); }
+                // consent (миграция 20261114): ответ на плашку куки. Пробуем от полного набора колонок к простому
+                const sets = [', pages, exit_page, calc, consent', ', pages, exit_page, calc', ', pages', ''];
+                let lastErr = null;
+                for (let i = 0; i < sets.length && !r; i++) {
+                    try { r = await rd(cols + sets[i]); } catch (e0) { lastErr = e0; }
                 }
+                if (!r) throw lastErr;
                 return { rows: r.rows, capped: r.capped };
             } catch (e) { return { rows: [], missing: true }; }
         });
@@ -32297,7 +32299,7 @@ const app = {
         const ser = { visits: zeros(), people: zeros(), newV: zeros(), reg: zeros() }, pplAt = [];
         const src = {}, pages = {}, refs = {}, camps = {}, dev = {}, os = {}, br = {}, cities = {}, regions = {}, countries = {};
         const hours = new Array(24).fill(0), wd = new Array(7).fill(0);
-        const entry = {}, exits = {};
+        const entry = {}, exits = {}, cons = { yes: 0, no: 0, none: 0 };
         const visitRows = [], people = {};
         const bump = (m, key, extra) => { const r = m[key] || (m[key] = Object.assign({ key: key, n: 0, newV: 0 }, extra || {})); r.n++; return r; };
         const srcRow = g => src[g] || (src[g] = { g: g, color: this.visColor(g), visits: 0, ppl: {}, newV: 0, reg: 0, secSum: 0, timedN: 0, ser: zeros() });
@@ -32328,6 +32330,7 @@ const app = {
             const page = v.landing || '/';
             const pr = bump(pages, page); if (v.is_new) pr.newV++;
             // Вход -> калькулятор, выход: по колонкам миграции 20261113 (нет колонок — undefined)
+            if (v.consent !== undefined && !v.synthetic) cons[v.consent === 'accepted' ? 'yes' : v.consent === 'declined' ? 'no' : 'none']++;
             if (v.calc !== undefined && !v.synthetic) {
                 const en = entry[page] || (entry[page] = { key: page, n: 0, calc: 0, pgSum: 0, pgN: 0 });
                 en.n++; if (v.calc) en.calc++;
@@ -32425,7 +32428,7 @@ const app = {
             haveVisits: haveVisits, since: since, cur: fin(per.cur), prev: fin(per.prev), ser: ser,
             src: srcList, pages: list(pages),
             entry: Object.keys(entry).map(k => entry[k]).sort((a, b) => b.n - a.n).slice(0, 50),
-            exits: list(exits, 50), refs: list(refs), camps: list(camps),
+            exits: list(exits, 50), cons: cons, haveCons: (S.vs.rows[0] || {}).consent !== undefined, refs: list(refs), camps: list(camps),
             dev: list(dev).map(r => ({ key: r.key, n: r.n, label: (this.VIS_DEV[r.key] || [r.key])[0], color: (this.VIS_DEV[r.key] || [0, '#94A3B8'])[1] })),
             os: list(os, 8), br: list(br, 8), hours: hours, wd: wd,
             cities: list(cities, 200).map(r => Object.assign(r, { people: Object.keys(r.ppl).length })), regions: list(regions, 100), countries: list(countries, 50),
@@ -32603,6 +32606,34 @@ const app = {
         </div>`;
     },
 
+    // Сверка с Метрикой. Запрос идёт в серверную функцию metrika-compare (токен Метрики лежит
+    // в секрете Supabase, не в коде). Нет токена или функции — пишем, что сделать.
+    visYmCompare: async function () {
+        const box = document.getElementById('vx_ym'), V = this._visSummary;
+        if (!box || !V) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        box.innerHTML = '<div class="vx-none">Запрашиваю Метрику…</div>';
+        try {
+            const p = this.kpiPeriod();
+            const { data, error } = await supabaseClient.functions.invoke('metrika-compare', { body: { days: p.days || 365 } });
+            if (error) throw error;
+            if (!data || data.error === 'no_token') { box.innerHTML = '<div class="vx-none">Метрика не подключена: в секреты Supabase нужно добавить YM_TOKEN (токен с правом metrika:read)</div>'; return; }
+            if (data.error) throw new Error(data.error);
+            const d = V.cur, mm = x => x == null ? '—' : (x >= 60 ? Math.floor(x / 60) + ' м ' : '') + Math.round(x % 60) + ' с';
+            const f1 = x => x == null ? '—' : (Math.round(x * 100) / 100).toLocaleString('ru-RU');
+            const row = (l, a, b) => `<div class="vx-st-r" style="cursor:default"><span>${l}</span><span>${a}</span><span>${b}</span></div>`;
+            box.innerHTML = `<div class="vx-st vx-ym-t"><div class="vx-st-h"><span>Показатель</span><span>Наши</span><span>Метрика</span></div>`
+                + row('Визиты', d.visits, f1(data.visits))
+                + row('Посетители', d.people, f1(data.users))
+                + row('Отказы', d.bounceP == null ? '—' : d.bounceP + '%', data.bounce == null ? '—' : Math.round(data.bounce * 10) / 10 + '%')
+                + row('Время на сайте', mm(d.medSec) + ' (медиана)', mm(data.avgSec))
+                + row('Глубина', d.depth == null ? '—' : f1(d.depth), f1(data.depth))
+                + `</div><div class="kpi-note">Метрика видит ${d.visits ? Math.round(data.visits / d.visits * 100) : 0}% наших визитов. Период у Метрики — календарные дни, у нас скользящие сутки, поэтому на границах цифры чуть расходятся.</div>`;
+        } catch (e) {
+            box.innerHTML = '<div class="vx-none">Не вышло: ' + esc((e && e.message) || 'нет связи') + '. Если функция metrika-compare ещё не развёрнута, она появится после выкладки</div>';
+        }
+    },
+
     // Карточки под плашками: источники, страницы, сайты, кампании, устройства, время, воронка
     visInsightsHtml: function (w, esc) {
         const V = w.vis;
@@ -32693,6 +32724,17 @@ const app = {
                     <span class="vx-path">${esc(r.key)}</span><span>${r.n}</span>
                     <span class="${cp ? 'vx-good' : 'vx-z'}">${cp}%</span><span class="vx-z2">${r.pgN ? (r.pgSum / r.pgN).toFixed(1).replace('.', ',') : '—'}</span></button>`;
             }).join('') + '</div>' : '<div class="vx-none">Появится после миграции 20261113: пока не записано, куда уходят и открывают ли калькулятор</div>';
+        // Согласие на куки: у какой доли визитов может работать Метрика
+        const C0 = V.cons || { yes: 0, no: 0, none: 0 }, cTot = C0.yes + C0.no + C0.none;
+        const consBody = V.haveCons && cTot ? `<div class="vx-bars">` + [
+            ['Приняли куки', C0.yes, 'Метрика видит этих посетителей'],
+            ['Отклонили', C0.no, 'Метрика их не видит'],
+            ['Не ответили', C0.none, 'плашку не тронули или ещё не успели; Метрики у них нет']
+        ].map(a => `<div class="vx-bar" title="${esc(a[2])}"><span class="vx-bar-f" style="width:${Math.max(3, a[1] / cTot * 100)}%"></span><span class="vx-bar-l">${a[0]}</span><span class="vx-bar-n">${a[1]}<em>${pctOf(a[1], cTot)}%</em></span></div>`).join('')
+            + `</div><div class="kpi-note">Метрика видит около ${pctOf(C0.yes, cTot)}% визитов: только тех, кто нажал «Принять». Остальное она не считает, поэтому её цифры меньше наших.</div>`
+            : '<div class="vx-none">Появится после миграции 20261114 и первых заходов с ответом на плашку</div>';
+        // Сверка с Метрикой: цифры тянет серверная функция metrika-compare (нужен токен Метрики)
+        const ymBody = `<div id="vx_ym" class="vx-ym"><button type="button" class="vx-btn" onclick="app.visYmCompare()">Сверить с Метрикой</button></div>`;
         const pageHint = 'Первая страница визита. Щёлкните строку — визиты с этой страницы, ↗ — открыть страницу';
         return `<div class="vx-grid">
             ${card('Источники трафика', 'Откуда пришли визиты за период и сколько новых посетителей из каждого источника зарегистрировались. Конверсия — регистрации от новых. Щёлкните строку — журнал визитов из этого источника', srcBody, srcCsv, true)}
@@ -32702,6 +32744,8 @@ const app = {
             ${card('Страницы входа', pageHint, barList(V.pages, 'page', r => `<span class="vx-path">${esc(r.key)}</span>`, { href: r => r.key }))}
             ${card('Статьи и калькулятор', 'Для каждой страницы входа: сколько визитов началось с неё, какая доля дошла до калькулятора и сколько страниц в среднем открыли. Это показывает, какие статьи приводят людей в калькулятор, а какие только читают. Щёлкните строку — визиты', enBody, '', true)}
             ${card('Страницы выхода', 'Последняя страница визита: где посетитель закончил. ↗ — открыть страницу', V.exits && V.exits.length ? '<div class="vx-bars">' + V.exits.slice(0, 8).map(r => `<div class="vx-bar"><span class="vx-bar-f" style="width:${Math.max(3, r.n / (V.exits[0].n || 1) * 100)}%"></span><span class="vx-bar-l"><span class="vx-path">${esc(r.key)}</span></span><span class="vx-bar-n">${r.n}<em>${pctOf(r.n, tot)}%</em></span>${ext(r.key)}</div>`).join('') + '</div>' : empty)}
+            ${card('Согласие на куки', 'Ответ посетителя на плашку про куки. Яндекс Метрика запускается только после «Принять», а наш учёт работает для всех. Это объясняет, почему у Метрики визитов и посетителей меньше', consBody)}
+            ${card('Сверка с Метрикой', 'Наши цифры рядом с цифрами Метрики за тот же период. Расхождение объясняют согласие на куки, блокировщики рекламы и роботы', ymBody)}
             ${card('Сайты-источники', 'С каких сайтов перешли: поиск, соцсети, другие сайты. ↗ — открыть сайт', barList(V.refs, 'host', r => esc(r.key), { href: r => r.href }))}
             ${card('Кампании и метки', 'Метки utm в ссылках: посты канала, статьи, магазины, рассылки. ↗ — открыть статью или канал', barList(V.camps, 'camp', r => esc(r.key), { href: r => r.href, color: r => this.visColor(r.grp) }))}
             ${card('Когда приходят', 'Визиты по часам (по вашему времени) и дням недели. Щёлкните столбец — эти визиты', timeBody, '', 'full')}

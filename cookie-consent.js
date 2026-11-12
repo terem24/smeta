@@ -9,6 +9,30 @@
         return;
     }
 
+    // 0.1 Ответ на плашку — в свой учёт визитов (анонимно, без идентификаторов, кроме
+    //     номера визита): нужно, чтобы админка показывала, у какой доли визитов вообще
+    //     может работать Метрика. Раз на визит и ответ, свои устройства (hc_noc) не пишем.
+    function reportConsent() {
+        try {
+            var val = localStorage.getItem('cookieConsent');
+            if (val !== 'accepted' && val !== 'declined') return;
+            if (localStorage.getItem('hc_noc') === '1') return;
+            var v = JSON.parse(localStorage.getItem('hc_av') || 'null');
+            if (!v || !v.id || !v.vid) return;
+            var mark = v.id + ':' + val;
+            if (localStorage.getItem('hc_cs') === mark) return;
+            localStorage.setItem('hc_cs', mark);
+            fetch('https://ahanbwugsmcyvrwbmtlx.supabase.co/rest/v1/rpc/visit_consent', {
+                method: 'POST', keepalive: true,
+                headers: { 'apikey': 'sb_publishable_gcMJ-PvJmKavObbnePFGZQ_O-pu5O2p', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ p_id: v.id, p_visitor: v.vid, p_value: val })
+            }).catch(function() {});
+        } catch (e) {}
+    }
+    // визит создаётся чуть позже загрузки страницы, поэтому пробуем дважды
+    setTimeout(reportConsent, 4000);
+    setTimeout(reportConsent, 15000);
+
     // 1. Define Yandex.Metrika Initialization Function
     window.initMetrika = function() {
         if (window.ymInitialized) return;
@@ -193,6 +217,7 @@
                 banner.remove();
             }, 400);
             window.initMetrika();
+            reportConsent();
         });
 
         // Bind Decline Event
@@ -202,6 +227,7 @@
             setTimeout(function() {
                 banner.remove();
             }, 400);
+            reportConsent();
         });
     });
 })();
