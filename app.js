@@ -46321,7 +46321,7 @@ const app = {
     sideIndex: function () {
         if (this._sdIdx !== undefined) return this._sdIdx;
         this._sdIdx = null;
-        fetch(this.SIDE_DIR + 'side.json?v=4')
+        fetch(this.SIDE_DIR + 'side.json?v=5')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._sdIdx = j || {}; if (Object.keys(this._sdIdx).length) this.render(); });
