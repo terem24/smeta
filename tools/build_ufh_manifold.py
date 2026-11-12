@@ -23,6 +23,9 @@ from PIL import Image
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RAD = '--rad' in sys.argv
 KIND = 'rad' if RAD else 'ufh'
+# --stable (с --rad): стабильная труба 16,2x2,6 — на выходах аксиальный переходник SFA-0034 с гильзой вместо
+# евроконуса (HC_PIPE=stable, blender_parts.ek_fit); кадры и ключи индекса «…_st»
+STABLE = '--stable' in sys.argv
 OUT = os.path.join(HERE, 'img', 'manifold_rad' if RAD else 'manifold_ufh')
 BLENDER = r'C:\Program Files\Blender Foundation\Blender 5.1\blender.exe'
 SCRIPT = os.path.join(HERE, 'tools', 'render_ufh_manifold.py')
@@ -38,7 +41,7 @@ def build(n, tmp, bare=False):
     subprocess.run([BLENDER, '--background', '--python', SCRIPT, '--', tmp, str(n)] + (['bare'] if bare else [])
                    + (['rad'] if RAD else []),
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                   env=dict(os.environ, HC_PX_PER_M=str(PX_PER_M)))
+                   env=dict(os.environ, HC_PX_PER_M=str(PX_PER_M), **({'HC_PIPE': 'stable'} if STABLE else {})))
     meta_path = os.path.join(tmp, t + '.json')
     if not os.path.isfile(meta_path):
         print('  нет кадра', t)
@@ -61,9 +64,9 @@ def build(n, tmp, bare=False):
     size = (int(round(cw * sc)), int(round(ch * sc)))
     im = im.resize(size, Image.LANCZOS)
     im.putalpha(im.getchannel('A').point(lambda v: 0 if v <= 8 else v))
-    im.save(os.path.join(OUT, t + '.webp'), quality=86, method=6)
+    im.save(os.path.join(OUT, t + ('_st' if STABLE else '') + '.webp'), quality=86, method=6)
     idm = Image.open(os.path.join(tmp, t + '_id.png')).convert('RGB').crop(bb).resize(size, Image.NEAREST)
-    idm.quantize(palette=PALETTE, dither=Image.Dither.NONE).save(os.path.join(OUT, t + '_id.png'), optimize=True)
+    idm.quantize(palette=PALETTE, dither=Image.Dither.NONE).save(os.path.join(OUT, t + ('_st' if STABLE else '') + '_id.png'), optimize=True)
 
     def fx(x):
         return round((x * W0 - bb[0]) / cw, 4)
@@ -88,7 +91,7 @@ def main():
         with open(idx_path, encoding='utf-8') as fh:
             index = json.load(fh)
     # каждый размер — в двух видах: с переходом на транзит и без него («_bare»)
-    key = lambda n, b: str(n) + ('_bare' if b else '')
+    key = lambda n, b: str(n) + ('_bare' if b else '') + ('_st' if STABLE else '')
     todo = [(n, b) for n in NS for b in ((False,) if '--nobare' in sys.argv else (False, True)) if (not args or n in args)
             and (force or args or key(n, b) not in index
                  or not os.path.isfile(os.path.join(OUT, '%s_%s.webp' % (KIND, key(n, b)))))]

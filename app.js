@@ -45482,6 +45482,9 @@ const app = {
     // только владелец — суперадмин, — остальным прежний лист проекта-образца (решение владельца
     // 01.11.2026). Проверка по самой учётке (почта суперадмина), а не по роли: локальные кнопки
     // «Менеджер/Продавец» подменяют роль, и схема пропадала бы у самого владельца.
+    // стабильная труба 16,2x2,6: евроконуса под неё нет — на схемах кадры «…_st» с переходником SFA-0034
+    stablePipe: function () { return this.state.pipeType === 'stable_16' || this.state.pipeType === 'stable_16_r'; },
+    STABLE_EK: ['Переходник 16 x G 3/4"', 'аксиальный, с монтажной гильзой'],
     wmPreviewOn: function () {
         const u = this._currentUserRow || this.state.tgUser || {};
         return !!u.email && this.SUPER_ADMIN_EMAILS.includes(String(u.email).toLowerCase());
@@ -46448,7 +46451,7 @@ const app = {
     sideIndex: function () {
         if (this._sdIdx !== undefined) return this._sdIdx;
         this._sdIdx = null;
-        fetch(this.SIDE_DIR + 'side.json?v=5')
+        fetch(this.SIDE_DIR + 'side.json?v=6')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._sdIdx = j || {}; if (Object.keys(this._sdIdx).length) this.render(); });
@@ -46456,7 +46459,7 @@ const app = {
     },
     SIDE_LAB_RE: {
         head: /^Головка термостат/i, node: /^Клапан термостатическ/i, lock: /^Клапан запорно-балансир/i,
-        ek: /^Евроконус|^Переходник с наружной резьбой 16|^Монтажная гильза 16|^Гильза монтажная 16/i, tube: /^Труба/i,
+        ek: /^Евроконус|^Переходник с наружной резьбой 16|^Монтажная гильза 16|^Гильза монтажная 16|^Переходник с накидной гайкой/i, tube: /^Труба/i,
         fix: /^Фиксатор|^Защитная втулка/i, kit: /^Монтажный набор для подключения радиатора/i
     },
     sideLabRows: function (pk) {
@@ -46495,6 +46498,8 @@ const app = {
             let key = [d.fam, angled ? 'angled' : 'straight', design ? 'design' : 'std', vcol, d.sect ? kit : d.col].join('-');
             // кадров своего вида секции (TITAN/ALPHA/VEGA) ещё нет — секция Space той же высоты
             if (!idx[key] && d.sect) key = key.replace(/^(titan|alpha|vega)/, 'sect');
+            // обычная арматура на стабильной трубе — аксиальный переходник SFA-0034: свой кадр «…_st»
+            if (!design && this.stablePipe() && idx[key + '_st']) key += '_st';
             // Design на металлопластике — пресс-переходник: свой кадр «…_mp»
             if (design && (this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp') && idx[key + '_mp']) key += '_mp';
             const fr = idx[key];
@@ -46515,7 +46520,7 @@ const app = {
             node: ['Клапан термостатический', (angled ? 'угловой' : 'прямой') + (design ? ', STOUT Design ' + colRu : ' под евроконус') + ', подача'],
             lock: ['Клапан запорно-балансировочный', (angled ? 'угловой' : 'прямой') + ', обратка'],
             ek: design ? (mpPipe ? ['Пресс-переходник 16 x НР 1/2"', 'на металлопластик'] : ['Переходник 16 x НР 1/2"', 'с монтажной гильзой'])
-                : ['Евроконус', mpPipe ? '16x2.0' : '16x2.2'],
+                : this.stablePipe() ? this.STABLE_EK : ['Евроконус', mpPipe ? '16x2.0' : '16x2.2'],
             tube: ['Подводка к радиатору', 'подача и обратка'],
             fix: ['Выход трубы ' + (angled ? 'из стены' : 'из пола'), 'фиксатор 90°, защитные втулки'],
             kit: ['Монтажный набор', 'переходники 1" x 1/2", заглушка, кран Маевского']
@@ -46551,7 +46556,7 @@ const app = {
     panelIndex: function () {
         if (this._pnIdx !== undefined) return this._pnIdx;
         this._pnIdx = null;
-        fetch(this.PANEL_DIR + 'panel.json?v=3')
+        fetch(this.PANEL_DIR + 'panel.json?v=4')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._pnIdx = j || {}; if (Object.keys(this._pnIdx).length) this.render(); });
@@ -46559,7 +46564,7 @@ const app = {
     },
     PANEL_LAB_RE: {
         head: /^Головка термостат/i, node: /^Клапан термостатическ/i, lock: /^Клапан запорно-балансир/i,
-        ek: /^Евроконус/i, tube: /^Труба/i, fix: /^Фиксатор|^Защитная втулка/i
+        ek: /^Евроконус|^Переходник с накидной гайкой|^Гильза монтажная 16|^Монтажная гильза 16/i, tube: /^Труба/i, fix: /^Фиксатор|^Защитная втулка/i
     },
     // Строки сметы подписи; у радиатора — по типу панели своего кадра (this._pnTypes: id кадра -> тип)
     panelLabRows: function (pk) {
@@ -46596,9 +46601,10 @@ const app = {
         const hs = headIt && /^RHT/i.test(skuOf(headIt)) ? '_rht' : '';
         const frames = [];
         for (const t of types) {
-            const fr = idx[t + '_' + kind + hs];
+            const k0 = t + '_' + kind + hs, pk0 = this.stablePipe() && idx[k0 + '_st'] ? k0 + '_st' : k0;
+            const fr = idx[pk0];
             if (!fr || !fr.o) return null;
-            frames.push({ id: 'p' + frames.length, at: frames.length, fr, type: t, path: this.PANEL_DIR + 'panel_' + t + '_' + kind + hs });
+            frames.push({ id: 'p' + frames.length, at: frames.length, fr, type: t, path: this.PANEL_DIR + 'panel_' + pk0 });
         }
         if (!frames.length) return null;
         this._pnTypes = {};
@@ -46618,7 +46624,7 @@ const app = {
             else if (key === 'head') text = ['Термостатическая головка', 'на термоклапан, M30x1,5'];
             else if (key === 'node') text = ['Клапан термостатический', (angled ? 'угловой' : 'прямой') + ' под евроконус, подача'];
             else if (key === 'lock') text = ['Клапан запорно-балансировочный', (angled ? 'угловой' : 'прямой') + ' под евроконус, обратка'];
-            else if (key === 'ek') text = ['Евроконус', (this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp') ? '16x2.0' : '16x2.2'];
+            else if (key === 'ek') text = this.stablePipe() ? this.STABLE_EK : ['Евроконус', (this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp') ? '16x2.0' : '16x2.2'];
             else if (key === 'tube') text = ['Подводка к радиатору', 'подача и обратка'];
             else text = ['Выход трубы ' + (angled ? 'из стены' : 'из пола'), 'фиксатор 90°, защитные втулки'];
             const miss = rs.length ? [] : [text[0].toLowerCase()];
@@ -46739,7 +46745,7 @@ const app = {
     radNodeIndex: function () {
         if (this._rnIdx !== undefined) return this._rnIdx;
         this._rnIdx = null;
-        fetch(this.RADNODE_DIR + 'radnode.json?v=7')
+        fetch(this.RADNODE_DIR + 'radnode.json?v=8')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._rnIdx = j || {}; if (Object.keys(this._rnIdx).length) this.render(); });
@@ -46747,7 +46753,7 @@ const app = {
     },
     // подписи — по узлу: у прямого вместо евроконуса и фиксатора — фитинг, трубка и скоба набора
     RADNODE_LAB_RE: {
-        head: /^Головка термостат/i, node: /^Узел нижн|^Ниппель\s*$/i, ek: /^Евроконус/i, tube: /^Труба/i,
+        head: /^Головка термостат/i, node: /^Узел нижн|^Ниппель\s*$/i, ek: /^Евроконус|^Переходник с накидной гайкой|^Гильза монтажная 16|^Монтажная гильза 16/i, tube: /^Труба/i,
         fix: /^Фиксатор|^Защитная втулка/i, bracket: /^Комплект настенных.*кронштейн|^Кронштейн.*радиатор/i
     },
     RADNODE_LAB_RE_STRAIGHT: { ek: /^Фитинг компрессионный/i, tube: /^Трубка Г-образная/i, fix: /^Фиксирующая скоба/i },
@@ -46800,7 +46806,7 @@ const app = {
         const mp = !angled && (this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp');
         // «башмак» вместо Г-трубок — кадра нет
         if (!angled && !mp && (this.state.radBottomKit || 'gtube') !== 'gtube') return null;
-        const ms = mp ? '_mp' : '';
+        const ms = mp ? '_mp' : (angled && this.stablePipe() ? '_st' : '');
         const headIt = eq.find(it => inRad(it) && /^Головка термостат/i.test(String(it.name || '')));
         const head = headIt && /^RHT/i.test(skuOf(headIt)) ? 'rht' : 'sht';
         const idx = this.radNodeIndex();
@@ -46851,7 +46857,7 @@ const app = {
             } else if (key === 'head') text = ['Термостатическая головка', 'на встроенный клапан, M30x1,5'];
             else if (key === 'node') text = ['Узел нижнего подключения', (angled ? 'угловой, трубы из стены' : 'прямой, трубы из пола') +
                 (frames.some(f => f.ventil || (f.bfam && !/^titan/.test(f.bfam))) ? '; ниппели 1/2" x 3/4"' : '')];
-            else if (key === 'ek') text = (angled || mp) ? ['Евроконус', (/(\d+\s*x\s*[\d.,]+)/i.exec(nameOf(rs)) || ['', mp ? '16x2.0' : '16x2.2'])[1]]
+            else if (key === 'ek') text = (angled && this.stablePipe()) ? this.STABLE_EK : (angled || mp) ? ['Евроконус', (/(\d+\s*x\s*[\d.,]+)/i.exec(nameOf(rs)) || ['', mp ? '16x2.0' : '16x2.2'])[1]]
                 : ['Фитинг компрессионный', '15x3/4" на трубку'];
             else if (key === 'tube') text = angled ? ['Подводка к радиатору', 'подача и обратка'] : mp ? ['Труба металлопластиковая', '16x2.0, из пола'] : ['Трубка Г-образная', '16/500, из пола'];
             else if (key === 'fix') text = angled ? ['Выход трубы из стены', 'фиксатор 90°, защитные втулки'] : mp ? ['Угольник 90° пресс', '16x16, в стяжке'] : ['Фиксирующая скоба', 'для трубок, на полу'];
@@ -47362,7 +47368,7 @@ const app = {
     radIndex: function () {
         if (this._radIdx !== undefined) return this._radIdx;
         this._radIdx = null;
-        fetch(this.RAD_DIR + 'rad.json?v=2')
+        fetch(this.RAD_DIR + 'rad.json?v=3')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._radIdx = j || {}; if (Object.keys(this._radIdx).length) this.render(); });
@@ -47370,7 +47376,7 @@ const app = {
     },
     // Строки сметы подписей листа радиаторного коллектора: всё в разделе 3 по названию,
     // подвод — по ключу строки узла обвязки («…_rad_node»)
-    RAD_LAB_RE: { ek: /^Евроконус/i, tube: /^Труба.*(теплоизоляц|изоляц)/i },
+    RAD_LAB_RE: { ek: /^Евроконус|^Переходник с накидной гайкой|^Гильза монтажная 16|^Монтажная гильза 16/i, tube: /^Труба.*(теплоизоляц|изоляц)|^Труба стабильная/i },
     radLabRows: function (pk) {
         const all = Array.from(document.querySelectorAll('#print-area tr[data-rk]')).filter(tr =>
             /Приборы отопления|^3\./i.test(String(tr.dataset.rk || '').split('|')[1] || ''));
@@ -47399,7 +47405,7 @@ const app = {
         rows.forEach(it => {
             const loops = ((catalog.manifolds_rad || []).find(m => m.id === String(it.displaySku || it.id)) || {}).loops;
             for (let k = 0; k < Math.max(1, Math.round(it.q || 1)); k++) {
-                const n = Math.min(13, Math.max(2, loops || 2)), key = n + (bare ? '_bare' : ''), fr = idx[key];
+                const n = Math.min(13, Math.max(2, loops || 2)), key = n + (bare ? '_bare' : '') + (this.stablePipe() && idx[n + (bare ? '_bare' : '') + '_st'] ? '_st' : ''), fr = idx[key];
                 if (!fr || !fr.o) { frames.push(null); return; }
                 const i = frames.length;
                 frames.push({ id: 'm' + i, at: i, loops: n, fr, path: this.RAD_DIR + 'rad_' + key });
@@ -47424,7 +47430,7 @@ const app = {
                 const f = frames.find(x => 'mf:' + x.id === key);
                 text = [`Коллектор радиаторов — ${f.loops} ${vyh(f.loops)}` + (many ? ` (№ ${f.at + 1})` : ''),
                     'балансировочные и термоклапаны, краны'];
-            } else if (key === 'ek') text = ['Евроконус', (/(\d+\s*x\s*[\d.,]+)/i.exec(nameOf(rs)) || ['', '16x2.2'])[1]];
+            } else if (key === 'ek') text = this.stablePipe() ? this.STABLE_EK : ['Евроконус', (/(\d+\s*x\s*[\d.,]+)/i.exec(nameOf(rs)) || ['', '16x2.2'])[1]];
             else if (key === 'tube') {
                 const sp = nameOf(rs).replace(/^Труба\s*/i, '').replace(/\s*\(.*\)\s*$/, '').trim();
                 text = ['Лучи к радиаторам', sp || 'в теплоизоляции'];
@@ -94275,6 +94281,22 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         // отдельной строкой в смете она бы висела мёртвым грузом при компрессионной схеме.
         const addEurocone = (item, qty, tip, group = null) => {
             if (!item || qty <= 0) return;
+            // Стабильная труба PE-Xa/Al/PE-RT 16,2x2,6 (pipeType stable_16): евроконуса под неё у STOUT нет —
+            // паспорт трубы SPS: «соединительные элементы — фитинги аксиальные с надвижной гильзой»; к выходу
+            // G 3/4" под евроконус — переходник SFA-0034-001634 (паспорт SFA ред. 6, п. 18) с гильзой SFA-0020-000016,
+            // как в альбоме технических решений STOUT, с. 136–156. Только отопление (раздел 3): вода и тёплый пол —
+            // своя труба.
+            const _stable = (this.state.pipeType === 'stable_16' || this.state.pipeType === 'stable_16_r') && /^3\./.test(String(group || ''));
+            if (_stable && /^SFC-0020-0016/.test(String(item.id || ''))) {
+                const _ax = catalog.parts.find(x => x.id === 'SFA-0034-001634');
+                const _sl = (catalog.axial_fittings_pex || []).find(x => x.id === 'SFA-0020-000016');
+                if (_ax) {
+                    addToBill({ ..._ax, originalId: (item.originalId || item.id) + '_stable' }, qty,
+                        'Стабильная труба 16,2x2,6: евроконуса под неё нет — переходник аксиальный с накидной гайкой 16 x G 3/4" (паспорт трубы STOUT SPS, фитингов SFA). ' + (tip || ''), group);
+                    if (_sl) addToBill({ ..._sl, originalId: _sl.id + '_stable' }, qty, 'Монтажная гильза 16 на аксиальный переходник (1 шт на переходник).', group);
+                    return;
+                }
+            }
             addToBill(item, qty, tip, group);
             const _chosen = (this.state.swaps || {})[item.originalId || item.id];
             if (_chosen === 'SFA-0034-001634') {

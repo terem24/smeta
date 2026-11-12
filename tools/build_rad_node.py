@@ -36,6 +36,8 @@ VARIANTS += ['%s-b%s-%s-%s' % (f, k, h, c) for f, cs in _BCOLS.items() for c in 
              for h in (('sht', 'rht') if f.startswith('rst') else ('sht',))]
 # прямой узел на металлопластике (альбом STOUT, черт. 19/26) — свой кадр «…_mp»
 VARIANTS += [v + '_mp' for v in list(VARIANTS) if 'straight' in v]
+# угловой узел на стабильной трубе (евроконуса под 16,2x2,6 нет): аксиальный переходник SFA-0034 — «…_st»
+VARIANTS += [v + '_st' for v in list(VARIANTS) if 'angled' in v and not v.endswith('_mp')]
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
                     255, 255, 255] + [0, 0, 0] * 248)
@@ -43,12 +45,13 @@ PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 
 
 def build(v, tmp):
     # «…_mp» — прямой узел на металлопластике: тот же вариант, HC_PIPE=mp (rad_bottom.mp_kit)
-    mp = v.endswith('_mp')
+    # «_st» — стабильная труба 16,2x2,6: аксиальный переходник SFA-0034 вместо евроконуса (HC_PIPE=stable)
+    mp = v.endswith('_mp') or v.endswith('_st')
     vb = v[:-3] if mp else v
     t = 'radnode_' + vb
     env = dict(os.environ, HC_PX_PER_M=str(PX_PER_M))
     if mp:
-        env['HC_PIPE'] = 'mp'
+        env['HC_PIPE'] = 'mp' if v.endswith('_mp') else 'stable'
         for f in os.listdir(tmp):
             if f.startswith(t + '.') or f.startswith(t + '_'):
                 os.remove(os.path.join(tmp, f))

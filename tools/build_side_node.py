@@ -41,6 +41,8 @@ VARIANTS = ['sect-%s-%s' % (k, st) for k in ('angled', 'straight')
 
 # арматура STOUT Design на металлопластике — пресс-переходник вместо переходника с гильзой (смета, альбом STOUT)
 VARIANTS += [v + '_mp' for v in list(VARIANTS) if '-design-' in v]
+# обычная арматура на стабильной трубе: аксиальный переходник SFA-0034 вместо евроконуса — «…_st»
+VARIANTS += [v + '_st' for v in list(VARIANTS) if '-std-' in v]
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
                     255, 255, 255, 255, 128, 0] + [0, 0, 0] * 247)       # + оранжевый — монтажный набор
@@ -48,12 +50,13 @@ PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 
 
 def build(v, tmp):
     # «…_mp» — арматура Design на металлопластике: пресс-переходник SFP-0001-001216 (rad_side.press_adapter)
-    mp = v.endswith('_mp')
+    # «_st» — стабильная труба 16,2x2,6: аксиальный переходник SFA-0034 вместо евроконуса (HC_PIPE=stable)
+    mp = v.endswith('_mp') or v.endswith('_st')
     vb = v[:-3] if mp else v
     t = 'side_' + vb
     env = dict(os.environ, HC_PX_PER_M=str(PX_PER_M))
     if mp:
-        env['HC_PIPE'] = 'mp'
+        env['HC_PIPE'] = 'mp' if v.endswith('_mp') else 'stable'
         for f in os.listdir(tmp):
             if f.startswith(t + '.') or f.startswith(t + '_'):
                 os.remove(os.path.join(tmp, f))

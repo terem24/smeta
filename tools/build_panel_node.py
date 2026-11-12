@@ -27,16 +27,25 @@ SCRIPT = os.path.join(HERE, 'tools', 'render_panel_node.py')
 PX_PER_M = 2550
 # ROMMER Compact тип 11/21/22/33, высота 500: клапаны угловые (трубы из стены) или прямые (из пола)
 VARIANTS = ['panel%s_%s%s' % (t, k, h) for t in ('21', '22', '11', '33') for k in ('angled', 'straight') for h in ('', '_rht')]
+VARIANTS += [v + '_st' for v in list(VARIANTS)]
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
                     255, 255, 255] + [0, 0, 0] * 248)
 
 
 def build(v, tmp):
-    t = 'panel_' + v.replace('panel', '')
-    subprocess.run([BLENDER, '--background', '--python', SCRIPT, '--', tmp, v],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                   env=dict(os.environ, HC_PX_PER_M=str(PX_PER_M)))
+    # «_st» — стабильная труба 16,2x2,6: аксиальный переходник SFA-0034 вместо евроконуса (HC_PIPE=stable)
+    st = v.endswith('_st')
+    vb = v[:-3] if st else v
+    t = 'panel_' + vb.replace('panel', '')
+    env = dict(os.environ, HC_PX_PER_M=str(PX_PER_M))
+    if st:
+        env['HC_PIPE'] = 'stable'
+        for f in os.listdir(tmp):
+            if f.startswith(t + '.') or f.startswith(t + '_'):
+                os.remove(os.path.join(tmp, f))
+    subprocess.run([BLENDER, '--background', '--python', SCRIPT, '--', tmp, vb],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
     meta_path = os.path.join(tmp, t + '.json')
     if not os.path.isfile(meta_path):
         print('  нет кадра', t)
@@ -59,8 +68,9 @@ def build(v, tmp):
     size = (int(round(cw * sc)), int(round(ch * sc)))
     im = im.resize(size, Image.LANCZOS)
     im.putalpha(im.getchannel('A').point(lambda x: 0 if x <= 8 else x))
+    tb, t = t, 'panel_' + v.replace('panel', '')
     im.save(os.path.join(OUT, t + '.webp'), quality=86, method=6)
-    idm = Image.open(os.path.join(tmp, t + '_id.png')).convert('RGB').crop(bb).resize(size, Image.NEAREST)
+    idm = Image.open(os.path.join(tmp, tb + '_id.png')).convert('RGB').crop(bb).resize(size, Image.NEAREST)
     idm.quantize(palette=PALETTE, dither=Image.Dither.NONE).save(os.path.join(OUT, t + '_id.png'), optimize=True)
 
     def fx(x):

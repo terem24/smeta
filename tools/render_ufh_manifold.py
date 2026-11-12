@@ -172,6 +172,8 @@ def rad_outlet(x, y, z):
     part('tube:' + sfx)
     col = 'ins_ret' if ret else 'ins_sup'
     tube('труба 16x2.2', pts, 0.008, M_PLAST(col) if illus() else M_PLAST('pex'))
+    if os.environ.get('HC_PIPE') == 'stable':
+        return                         # стабильная труба 16,2x2,6 — в смете без теплоизоляции
     sp = pts[:-1] + [(xx, 0.0, ZF - 0.012)]
     tube('изоляция', sp, 0.0118, mat(col, rough=0.30, alpha=SHEATH_A), group='sheath')
 
