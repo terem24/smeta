@@ -38,7 +38,7 @@ const fail = (sheet, what) => { bad++; (fails[what] = fails[what] || []).push(sh
 const rd = f => JSON.parse(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'));
 // индексы новых узлов (коллектор радиаторов, подключение радиатора) — пока кадров нет, их листы пропускаются
 const rdOpt = f => fs.existsSync(path.join(__dirname, '..', f)) ? rd(f) : null;
-const IDX = { rad: rdOpt('img/manifold_rad/rad.json'), radnode: rdOpt('img/rad_node/radnode.json'), panel: rdOpt('img/rad_panel/panel.json'), side: rdOpt('img/rad_side/side.json'), conv: rdOpt('img/rad_conv/conv.json'), wo: rdOpt('img/water_outlet/wo.json'), sw: rdOpt('img/sewer_node/sw.json'), st: rd('img/manifold3d/manifold3d_st.json'), rm: rd('img/manifold3d/manifold3d_rm.json'),
+const IDX = { rad: rdOpt('img/manifold_rad/rad.json'), radnode: rdOpt('img/rad_node/radnode.json'), panel: rdOpt('img/rad_panel/panel.json'), side: rdOpt('img/rad_side/side.json'), conv: rdOpt('img/rad_conv/conv.json'), wo: rdOpt('img/water_outlet/wo.json'), sw: rdOpt('img/sewer_node/sw.json'), boiler: rdOpt('img/boiler_node/boiler.json'), st: rd('img/manifold3d/manifold3d_st.json'), rm: rd('img/manifold3d/manifold3d_rm.json'),
     bl: rd('img/manifold3d/manifold3d_bl.json'), ufh: rd('img/manifold_ufh/ufh.json') };
 
 // ── разбор листа ─────────────────────────────────────────────────────────
@@ -313,6 +313,28 @@ function swSheet(list) {
     return { o: { kind: 'sw', frames, items, iw, ih, spec: frames.map(f => f.id).join(','), hk: null, title: 'Канализация', subtitle: 'Санузел',
         places: frames.map(f => ({ name: f.k, rows: ['Бесшумная D110'] })) }, orphan };
 }
+// котельная, котёл с обвязкой: head/kit по котлу (Haier — дымоход и стабилизатор, STATUS — стабилизатор и клапан)
+function boilerSheet(v) {
+    if (!IDX.boiler) return undefined;
+    if (!IDX.boiler[v]) return null;
+    const frames = [{ id: 'b0', at: 0, fr: IDX.boiler[v], key: v, path: 'img/boiler_node/boiler_' + v }];
+    const { iw, ih } = app.wmPlaceFrames(frames, [0], [0, 0, 0]);
+    const zonesOf = app.wmZonesOf(frames, iw, ih, (z, f) => { const k = String(z).split(':')[0]; return k === 'mf' ? 'mf:' + f.id : k; });
+    const T = { mf: ['Котёл', v], ek: ['Кран шаровой ВР/НР 3/4"', 'на подаче и обратке'], feed: ['Американка 3/4" ВР/НР', 'у патрубков котла'],
+        mount: ['Сепаратор воздуха 3/4"', 'на подаче'], end: ['Фильтр-шламоотделитель магнитный', 'на обратке'], tube: ['Переходники ВПр и труба нерж. 22', 'пресс'],
+        head: /^status/.test(v) ? ['Стабилизатор напряжения', 'питание котла'] : ['Комплект дымохода 60/100', 'в стену'],
+        kit: /^status/.test(v) ? ['Трёхходовой клапан', 'A — отопление, B — бойлер'] : ['Стабилизатор напряжения', 'питание котла'] };
+    const items = Object.keys(zonesOf).map(key => {
+        const t = T[key.split(':')[0]];
+        if (!t) return null;
+        const zs = zonesOf[key];
+        return { pk: key, rows: [], miss: [], ok: true, off: false, lines: t, tail: '', zs, mx: zs.reduce((a, q) => a + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
+    }).filter(Boolean);
+    // газовая подводка — не в смете, без подписи: не сирота
+    const orphan = Object.keys(zonesOf).filter(pk => !T[pk.split(':')[0]] && pk !== 'gas');
+    return { o: { kind: 'boiler', frames, items, iw, ih, spec: 'b0', hk: null, title: 'Котельная', subtitle: 'Котёл с обвязкой',
+        places: [{ name: v, rows: ['Котёл с обвязкой'] }] }, orphan };
+}
 function run(name, r) {
     if (r === undefined) return;                 // кадров этого узла ещё нет — лист не проверяем
     if (!r) { fail(name, 'нет кадра в индексе'); return; }
@@ -348,6 +370,7 @@ Object.keys(IDX.side || {}).forEach(v => run('боковое ' + v, sideSheet(v)
 Object.keys(IDX.panel || {}).forEach(v => run('панельный ' + v, panelSheet(v)));
 Object.keys(IDX.conv || {}).forEach(v => run('конвектор ' + v, convSheet(v)));
 Object.keys(IDX.wo || {}).forEach(v => run('водорозетки ' + v, woSheet(v)));
+Object.keys(IDX.boiler || {}).forEach(v => run('котёл ' + v, boilerSheet(v)));
 if (IDX.sw) {
     ['main', 'toilet', 'basin', 'shower', 'wash'].forEach(k => run('канализация ' + k, swSheet([k])));
     run('канализация санузел целиком', swSheet(['main', 'toilet', 'basin', 'shower', 'wash']));
@@ -381,6 +404,8 @@ const OBJ = {
     'Стальные панельные, стабильная труба 16,2x2,6': { area: 120, floors: 1, systems: ['rad'], radType: 'steel', connectionType: 'angled', pipeType: 'stable_16' },
     'Space угловой, стабильная труба 16,2x2,6': { area: 120, floors: 1, systems: ['rad'], connectionType: 'angled', pipeType: 'stable_16' },
     'Секционные боковые, стабильная труба 16,2x2,6': { area: 120, floors: 1, systems: ['rad'], radType: 'space_ru', connectionType: 'angled', pipeType: 'stable_16' },
+    'Котельная: газовый котёл Haier, бойлер': { area: 150, floors: 1, systems: ['rad'], fuels: ['gas'], hotWater: true },
+    'Котельная: электрокотёл STOUT STATUS, бойлер': { area: 120, floors: 1, systems: ['rad'], fuels: ['el'], hotWater: true },
     'Канализация: санузел и кухня': { area: 120, floors: 1, systems: ['rad'], water: true, sewer: true, waterZones: Z3 },
     'Конвектор SCN, металлопластик': { area: 120, floors: 1, systems: ['rad'], detailedRooms: true, rooms: CONV_ROOMS(), convectorType: 'scn', convConnectionType: 'angled', pipeType: 'split_mp' },
     'Конвектор SCN, клапаны прямые': { area: 120, floors: 1, systems: ['rad'], detailedRooms: true, rooms: CONV_ROOMS(), convectorType: 'scn', convConnectionType: 'straight' },
@@ -484,6 +509,16 @@ for (const [title, patch] of Object.entries(OBJ)) {
     if (sec5.some(it => /^SFA-0032/i.test(String(it.displaySku || it.id)))) {
         Object.keys(app.WO_LAB_RE).forEach(pk => { if (!sec5.some(it => app.WO_LAB_RE[pk].test(nm(it)))) miss.push('водорозетки: ' + pk); });
         if (!sec5.some(it => app.WO_PLATES[String(it.displaySku || it.id)])) miss.push('водорозетки: монтажная планка');
+    }
+    // котёл с обвязкой — подписи BOILER_LAB_RE в разделах 2.1/2.2/2.5 (дымоход — у газового, клапан — у электро)
+    const boil = eq.filter(it => app.boilerFrameKey(it));
+    if (boil.length) {
+        const sec2 = eq.filter(it => /^2\.[125]/.test(String(it.group || '')));
+        const keys = boil.some(it => app.boilerFrameKey(it) === 'haier1') ? ['flue'] : [];
+        if (boil.some(it => app.boilerFrameKey(it) === 'status')) keys.push('valve3');
+        ['ek', 'feed', 'mount', 'end', 'tube', 'stab'].concat(keys).forEach(pk => {
+            if (!sec2.some(it => app.BOILER_LAB_RE[pk].test(nm(it)))) miss.push('котёл с обвязкой: ' + pk);
+        });
     }
     if (miss.length) miss.forEach(m => fail(title, 'нет строки сметы: ' + m));
     else console.log('  ✓ ' + title);

@@ -45995,6 +45995,7 @@ const app = {
         if (kind === 'conv') return { mount: 'lock', feed: 'node' }[g] || g;
         if (kind === 'wo') return { feed: 'node', end: 'fix' }[g] || g;
         if (kind === 'sw') return { feed: 'node', end: 'fix', mount: 'lock', mf: 'mf' }[g] || g;
+        if (kind === 'boiler') return g;
         return g === 'end' ? 'end_' + end : g;
     },
     // Строки сметы подписи — по виду схемы
@@ -46006,6 +46007,7 @@ const app = {
         if (kind === 'conv') return this.convLabRows(pk);
         if (kind === 'wo') return this.woLabRows(pk);
         if (kind === 'sw') return this.swLabRows(pk);
+        if (kind === 'boiler') return this.boilerLabRows(pk);
         return kind === 'ufh' ? this.ufhLabRows(pk, spec) : this.wmLabRows(pk, spec);
     },
     // Маски деталей кадра: по карте деталей вырезаются пиксели самого кадра — деталь потом
@@ -46648,6 +46650,106 @@ const app = {
     // convConnectionType, как и клапаны в разделе «3.2. Обвязка конвекторов»: прямые SVT-0001 + SVL-1176
     // (трубы через торец короба) или осевой SVT-0005 + угловой SVL-1156; на трубе — переходник 16 x НР 1/2"
     // с гильзой (на металлопластике — пресс-переходник); у SCQ — сервопривод на термоклапане.
+    // Лист «Котельная: котёл с обвязкой» (разделы 2.1/2.2): кадры img/boiler_node/ (индекс boiler.json,
+    // tools/render_boiler_node.py). Кадр — по котлу сметы: haier1 — Haier NeoSlim 1.x Ti одноконтурный (газ по
+    // умолчанию), status — STOUT STATUS (электро по умолчанию). Цвета карты деталей: mf котёл, ek кран, tube
+    // переходники и труба, mount сепаратор, feed американка, end фильтр, head — дымоход (Haier) или
+    // стабилизатор (STATUS), kit — стабилизатор (Haier) или трёхходовой клапан (STATUS).
+    BOILER_DIR: 'img/boiler_node/',
+    boilerIndex: function () {
+        if (this._blIdx !== undefined) return this._blIdx;
+        this._blIdx = null;
+        fetch(this.BOILER_DIR + 'boiler.json?v=1')
+            .then(r => r.ok ? r.json() : {})
+            .catch(() => ({}))
+            .then(j => { this._blIdx = j || {}; if (Object.keys(this._blIdx).length) this.render(); });
+        return null;
+    },
+    // вариант кадра по позиции котла сметы; другой котёл — кадра пока нет
+    boilerFrameKey: function (it) {
+        const sku = String(it.displaySku || it.id || '');
+        if (/^SEB-3101-/i.test(sku)) return 'status';
+        if (/^GE0Q6/i.test(sku) && /одноконтур/i.test(String(it.name || ''))) return 'haier1';
+        return null;
+    },
+    BOILER_LAB_RE: {
+        ek: /^Кран шаровой ВР\/НР/i, feed: /^Разъемное соед|^Американка 3\/4/i, mount: /^Сепаратор воздуха/i,
+        end: /^Фильтр-шламоотдел|^Магнитный сепаратор шлама/i, tube: /^Переходник ВПр|^Труба нерж/i,
+        flue: /^Комплект дымохода|^Дымоход коаксиальн/i, stab: /^Стабилизатор/i, valve3: /^Комплект 3-х ход|трёхходов|трехходов/i
+    },
+    boilerLabRows: function (pk) {
+        const rows = Array.from(document.querySelectorAll('#print-area tr[data-rk]'));
+        // в ключе строки (_rowKey) — раздел без номера: «Обвязка котельной» (подразделы 2.1–2.5 в ключ не входят)
+        const sec2 = tr => /Обвязка котельной|Обвязка .*котл|Трубопроводы котельной|^2\.[125]/i.test(String(tr.dataset.rk || '').split('|')[1] || '');
+        const nm = tr => ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
+        const sku = tr => ((tr.querySelector('.col-sku') || {}).innerText || '').trim();
+        const k = String(pk).split(':');
+        if (k[0] === 'mf') {
+            const s0 = (this._blSkus || {})[k[1]];
+            return s0 ? rows.filter(tr => sku(tr) === s0) : [];
+        }
+        // head и kit у котлов разные (дымоход/стабилизатор/клапан) — по кадру
+        const role = { head: this._blHas.flue ? 'flue' : 'stab', kit: this._blHas.valve3 ? 'valve3' : 'stab' }[k[0]] || k[0];
+        const re = this.BOILER_LAB_RE[role];
+        return re ? rows.filter(tr => sec2(tr) && re.test(nm(tr))) : [];
+    },
+    renderBoilerNodeScheme: function () {
+        if (!this.wmPreviewOn()) return '';
+        const eq = this.currentEquipmentList || [];
+        const boilers = eq.filter(it => this.boilerFrameKey(it));
+        if (!boilers.length) return '';
+        const idx = this.boilerIndex();
+        if (!idx) return '';
+        const frames = [];
+        const rm = eq.some(it => /^2\.[12]/.test(String(it.group || '')) && /^RBV-/i.test(String(it.displaySku || it.id || '')));
+        this._blSkus = {};
+        boilers.forEach(it => {
+            // смета ROMMER: краны RBV с красной бабочкой — кадр «…_rm»
+            const k0 = this.boilerFrameKey(it), key = rm && idx[k0 + '_rm'] ? k0 + '_rm' : k0, fr = idx[key];
+            if (!fr || !fr.o || frames.some(f => f.key === key)) return;
+            const f = { id: 'b' + frames.length, at: frames.length, fr, key, it, path: this.BOILER_DIR + 'boiler_' + key };
+            this._blSkus[f.id] = String(it.displaySku || it.id || '');
+            frames.push(f);
+        });
+        if (!frames.length) return '';
+        const gas = frames.some(f => /^haier1/.test(f.key)), el = frames.some(f => /^status/.test(f.key));
+        this._blHas = { flue: gas && !el, valve3: el && !gas };
+        const { iw, ih } = this.wmPlaceFrames(frames, frames.map(f => f.at), [0, 0, 0]);
+        const spec = frames.map(f => f.id).join(',');
+        const zonesOf = this.wmZonesOf(frames, iw, ih, (z, f) => { const k = String(z).split(':')[0]; return k === 'mf' ? 'mf:' + f.id : k; });
+        const T = {
+            ek: ['Кран шаровой ВР/НР 3/4"', 'на подаче и обратке'], feed: ['Американка 3/4" ВР/НР', 'у патрубков котла'],
+            mount: ['Сепаратор воздуха 3/4"', 'на подаче, по паре переходников'], end: ['Фильтр-шламоотделитель магнитный', 'на обратке, корпус вертикально'],
+            tube: ['Переходники ВПр и труба нерж. 22', 'пресс-соединения'],
+            head: this._blHas.flue ? ['Комплект дымохода 60/100', 'коаксиальный, в стену'] : ['Стабилизатор напряжения', 'питание котла'],
+            kit: this._blHas.valve3 ? ['Трёхходовой клапан', 'A — отопление, B — змеевик бойлера'] : ['Стабилизатор напряжения', 'питание котла']
+        };
+        // два котла сразу (газ + резервный электро): head/kit у них разные — подписи только общих деталей
+        if (gas && el) { delete T.head; delete T.kit; }
+        frames.forEach(f => {
+            T['mf:' + f.id] = /^status/.test(f.key) ? ['Котёл электрический STOUT STATUS', String(f.it.name || '').replace(/^.*\(([^)]*)\).*$/, '$1')]
+                : ['Котёл газовый Haier NeoSlim', 'одноконтурный, ' + String(f.it.name || '').replace(/^.*\(([^)]*)\).*$/, '$1')];
+        });
+        const keys = frames.map(f => 'mf:' + f.id).concat(['ek', 'feed', 'end', 'mount', 'kit', 'head', 'tube']);
+        const items = keys.map(key => {
+            const zs = zonesOf[key] || [];
+            if (!zs.length || !T[key]) return null;
+            const rs = this.boilerLabRows(key);
+            const miss = rs.length ? [] : [T[key][0].toLowerCase()];
+            return { pk: key, rows: rs, miss, off: false, ok: !miss.length, lines: T[key], tail: miss.length ? 'нет в смете' : '', zs,
+                mx: zs.reduce((sum, q) => sum + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
+        }).filter(Boolean);
+        const miss = items.filter(it => !it.ok).map(it => it.lines[0].toLowerCase());
+        const sum = `<div class="sg-summary no-print">Котёл с обвязкой: ${frames.map(f => T['mf:' + f.id][0].replace(/^Котёл /, '').toLowerCase()).join('; ')}.` +
+            (miss.length ? ` <span class="sg-miss-txt">Нет в смете: ${miss.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
+            ` <span class="sg-hint">Трубы на схеме обрезаны: дальше — к гидравлике и бойлеру. Газовый кран и диэлектрическая муфта — по проекту газоснабжения, в смету не входят.</span></div>`;
+        const html = this.wmSheet({
+            kind: 'boiler', frames, items, iw, ih, spec, hk: null, title: 'Котельная', subtitle: 'Котёл с обвязкой',
+            places: frames.map(f => ({ name: /^status/.test(f.key) ? 'Электрокотёл STOUT STATUS' : 'Газовый котёл Haier NeoSlim',
+                rows: /^status/.test(f.key) ? ['Подача справа, обратка слева', 'Трёхходовой клапан на бойлер'] : ['Подача слева, обратка справа', 'Выход на бойлер — от котла'] }))
+        });
+        return html + sum;
+    },
     CONV_DIR: 'img/rad_conv/',
     convIndex: function () {
         if (this._cvIdx !== undefined) return this._cvIdx;
@@ -105059,6 +105161,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         [['automation_scheme_row', '2.9.1.', () => this.thermaticConfig && this.renderAutomationScheme()],
          ['ufh_scheme_row', '4.5. Автоматика радиаторов', () => this.renderUfhScheme()],
          ['snow_scheme_row', '4.4.1', () => this.renderSnowScheme()],
+         // котёл с обвязкой (лист котельной, узел 1) — новая схема, видит владелец
+         ['boiler_node_scheme_row', ['2. Обвязка котельной'], () => this.renderBoilerNodeScheme(), true],
          ['pump_group_compare_row', '2.4. Гидравлика котельной', () => this.renderGroupCompareOnly()],
          ['pump_group_scheme_row_direct', '2.4.1. Самосборная группа', () => this.renderPumpGroupScheme('direct')],
          ['pump_group_scheme_row_thermo', '2.4.2. Самосборная группа', () => this.renderPumpGroupScheme('thermo')],

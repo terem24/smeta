@@ -24,7 +24,7 @@ COL = {'rad': (255, 0, 0), 'conv': (255, 0, 0), 'mf': (255, 0, 0),
        'node': (0, 255, 255),
        'fix': (255, 0, 255), 'sleeve': (255, 0, 255),
        'head': (255, 255, 255),
-       'kit': (255, 128, 0)}
+       'kit': (255, 128, 0), 'feed': (0, 255, 255), 'end': (255, 0, 255)}
 FX = (0.25, 0.5, 0.75)
 FY = {'tube': (0.4, 0.62, 0.8), 'rad': (0.15, 0.5, 0.85), 'conv': (0.15, 0.5, 0.85), 'mf': (0.15, 0.5, 0.85)}
 
@@ -83,7 +83,7 @@ def main():
     for idx in sys.argv[1:]:
         d = os.path.dirname(idx)
         pref = {'conv.json': 'conv_', 'side.json': 'side_', 'radnode.json': 'radnode_', 'panel.json': 'panel_',
-                'wo.json': 'wo_', 'sw.json': 'sw_'}[os.path.basename(idx)]
+                'wo.json': 'wo_', 'sw.json': 'sw_', 'boiler.json': 'boiler_'}[os.path.basename(idx)]
         with open(idx, encoding='utf-8') as fh:
             index = json.load(fh)
         empty = []
