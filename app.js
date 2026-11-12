@@ -58054,8 +58054,11 @@ const app = {
             details + `<div class="tip-p" style="color:#94A3B8;">Найдено распознаванием в тексте листов проекта. В смету само не попадает — пройдите по списку.</div>`);
     },
 
-    noteBox: function (level, title, short, details) {
+    noteBox: function (level, title, short, details, opts) {
         if (!title && !short) return '';
+        opts = opts || {};
+        // Плашку можно скрыть крестиком (до закрытия вкладки), у неё может быть кнопка действия
+        if (opts.dismiss && this._warnDismissed().indexOf(this._noteKeyText((title ? title : '') + ' ' + (short || ''))) >= 0) return '';
         const ico = { error: '⛔', warn: '⚠️', info: 'ℹ️' }[level] || 'ℹ️';
         // Плашка живёт внутри заголовка раздела, а тот по клику сворачивается.
         // Без stopPropagation чтение подсказки закрывало бы весь раздел.
@@ -58067,8 +58070,28 @@ const app = {
         return `<div class="note-box note-${level}" onclick="event.stopPropagation();">` +
             `<span class="note-ico">${ico}</span>` +
             `<span class="note-text">${title ? `<b>${title}</b>` : ''}${title && short ? ' ' : ''}${short || ''}</span>` +
+            (opts.act ? `<button type="button" class="note-act" onclick="event.stopPropagation(); ${opts.act.js}">${opts.act.label}</button>` : '') +
             tip +
+            (opts.dismiss ? `<button type="button" class="note-ok" title="Скрыть" aria-label="Скрыть" onclick="event.stopPropagation(); app.dismissWarn(this);">×</button>` : '') +
             `</div>`;
+    },
+    _noteKeyText: function (html) {
+        const d = document.createElement('div');
+        d.innerHTML = String(html || '');
+        return d.textContent.replace(/[\d.,]+/g, '#').replace(/\s+/g, ' ').trim().slice(0, 80);
+    },
+    _warnDismissed: function () {
+        try { return JSON.parse(sessionStorage.getItem('hc_warns_ok') || '[]'); } catch (e) { return []; }
+    },
+    dismissWarn: function (btn) {
+        const box = btn.closest('.note-box');
+        if (!box) return;
+        try {
+            const arr = this._warnDismissed(), k = this._noteKey(box);
+            if (arr.indexOf(k) < 0) arr.push(k);
+            sessionStorage.setItem('hc_warns_ok', JSON.stringify(arr.slice(-100)));
+        } catch (e) { }
+        box.remove();
     },
 
     /**
@@ -58137,7 +58160,18 @@ const app = {
         document.querySelectorAll('.tooltip-wrapper.tip-open').forEach(w => {
             if (w !== el) w.classList.remove('tip-open');
         });
-        el.classList.toggle('tip-open');
+        // Подсказка видна и по наведению: одним tip-open её не закрыть, пока курсор над ней.
+        // Видимую закрываем принудительно (tip-shut) до ухода курсора.
+        const panel = el.querySelector('.tooltip-content');
+        const shown = panel && getComputedStyle(panel).visibility === 'visible';
+        if (shown) {
+            el.classList.remove('tip-open');
+            el.classList.add('tip-shut');
+            el.addEventListener('mouseleave', () => el.classList.remove('tip-shut'), { once: true });
+        } else {
+            el.classList.remove('tip-shut');
+            el.classList.add('tip-open');
+        }
     },
 
     /**
@@ -84900,13 +84934,16 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         if (!(this.state.systems || []).includes('rad') || !(this.radDevices || []).length || this.state.radConnectionScheme === 'tee') return out;
         const rm = v => Math.round(v);
         const toAuto = single ? 'Переключите на «Автоподбор трассы» (приборы одной комнаты пойдут общей трассой), ' : 'Автоподбор уже объединил, где мог; ';
+        // Кнопка прямо в плашке: переключатель «Лучи к приборам в комнате» спрятан в настройках плана,
+        // а «Автоподбор схемы» в панели — другая настройка (схема котельной), её путают
+        const actAuto = (single && !this.radBeamInfo().why) ? { label: 'Включить автоподбор трассы', js: "app.setRadBeamMode('auto')" } : null;
         const weak = this.radLoopCheck();
         if (weak.length) {
             out.push({ kind: 'loss', title: 'Ø16 не хватает на длинных ветках',
                 text: weak.length + ' ' + this.plural(weak.length, 'прибор', 'прибора', 'приборов') + ': ' +
                     weak.slice(0, 3).map(w => (w.room || 'прибор') + ' — ' + rm(w.dp) + ' кПа на ' + rm(w.run) + ' м').join('; ') +
                     (weak.length > 3 ? ' и ещё ' + (weak.length - 3) : '') + '. Предел — 10 кПа (≈1 м напора) или скорость выше шумового предела.',
-                fix: toAuto + 'укоротите ветку (переставьте коллектор ближе) или поставьте на этот прибор Ø20: потери ' + rm(weak[0].dp20) + ' кПа вместо ' + rm(weak[0].dp) + '.' });
+                fix: toAuto + 'укоротите ветку (переставьте коллектор ближе) или поставьте на этот прибор Ø20: потери ' + rm(weak[0].dp20) + ' кПа вместо ' + rm(weak[0].dp) + '.', act: actAuto });
         }
         const h = this.radHydro;
         if (h && h.parts && h.parts.length && h.head > 0) {
@@ -84914,7 +84951,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             if (best && best.avail < h.head) {
                 out.push({ kind: 'pump', title: 'Насос не тянет кольцо радиаторов',
                     text: 'Нужно ' + h.head.toFixed(1).replace('.', ',') + ' м напора, насос («' + best.label + '») даёт ' + best.avail.toFixed(1).replace('.', ',') + ' м на рабочем расходе.',
-                    fix: toAuto + 'увеличьте диаметр подводки к коллектору, добавьте ветку (насосную группу) или возьмите насос напористее.' });
+                    fix: toAuto + 'увеличьте диаметр подводки к коллектору, добавьте ветку (насосную группу) или возьмите насос напористее.', act: actAuto });
             }
             if (h.noisy) {
                 const lp = (h.loudParts || [])[0];
@@ -84927,7 +84964,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         if (nm > 1) {
             out.push({ kind: 'outputs', title: 'Выходов коллектора не хватает на одном шкафу',
                 text: 'Приборов столько, что на этаже ' + nm + ' ' + this.plural(nm, 'коллектор', 'коллектора', 'коллекторов') + ' по ' + (this.state.lastRadLoops || '—') + ' выходов; магистраль и гидравлика посчитаны до первого, перемычки к остальным в смете есть.',
-                fix: toAuto + 'перемычки к соседним коллекторам в смете уже посчитаны (коллекторы рядом); если они стоят далеко, добавьте длину по месту.' });
+                fix: toAuto + 'перемычки к соседним коллекторам в смете уже посчитаны (коллекторы рядом); если они стоят далеко, добавьте длину по месту.', act: actAuto });
         }
         return out;
     },
@@ -101320,7 +101357,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 const _gk = '3.3. Трубы отопления';
                 _bw.forEach(w => {
                     this.groupWarns[_gk] = (this.groupWarns[_gk] || '') + this.noteBox('warn', w.title + '.', w.text,
-                        '<div class="tip-p"><b>Что делать:</b> ' + w.fix + '</div>');
+                        '<div class="tip-p"><b>Что делать:</b> ' + w.fix + '</div>', { dismiss: true, act: w.act });
                 });
             }
         }

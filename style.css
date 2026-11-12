@@ -2695,7 +2695,23 @@ body.dark-mode .sec-explain {
     cursor: pointer;
 }
 .note-box .note-ok:hover { opacity: 1; }
-@media print { .note-box .note-ok { display: none !important; } }
+.note-box .note-act {
+    flex-shrink: 0;
+    align-self: flex-start;
+    border: 1px solid currentColor;
+    background: transparent;
+    color: inherit;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.2;
+    padding: 3px 8px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.note-box .note-act:hover { background: currentColor; }
+.note-box .note-act:hover { color: #fff; }
+@media print { .note-box .note-ok, .note-box .note-act { display: none !important; } }
 body.html2pdf-printing .note-box .note-ok { display: none !important; }
 
 /* Кружок «i» перекрашиваем под уровень: синий значок на янтарной плашке
@@ -3398,6 +3414,12 @@ body.html2pdf-printing .expand-locs-btn {
 .tooltip-wrapper.tip-open .tooltip-content {
     visibility: visible;
     opacity: 1;
+}
+/* Закрыта щелчком, хотя курсор ещё над ней: наведение её больше не открывает */
+.tooltip-wrapper.tip-shut .tooltip-content,
+.tooltip-wrapper.tip-shut:hover .tooltip-content {
+    visibility: hidden;
+    opacity: 0;
 }
 
 /* Подсказки в левой панели. Панель узкая (на телефоне ~350 px), а базовая
