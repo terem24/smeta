@@ -1041,6 +1041,9 @@ const app = {
             const msgEl = document.createElement('p');
             msgEl.className = 'calc-dialog-message';
             msgEl.innerText = msg;
+            // Длинная ссылка без пробелов иначе вылезает за окно
+            msgEl.style.overflowWrap = 'anywhere';
+            msgEl.style.wordBreak = 'break-word';
             card.appendChild(msgEl);
 
             const btnContainer = document.createElement('div');
@@ -1809,7 +1812,7 @@ const app = {
             // Старые ссылки магазинов (?ref=КОД без меток) тоже считаем: источник — магазин
             if (!s && !m && !c) {
                 const shop = String(params.get('ref') || params.get('promo') || '').trim();
-                if (/^[\w-]{2,30}$/.test(shop) && shop !== 'SITE') { s = 'shop'; m = 'invite'; c = shop.toLowerCase(); }
+                if (/^[\p{L}\p{N}_-]{2,30}$/u.test(shop) && shop !== 'SITE') { s = 'shop'; m = 'invite'; c = shop.toLowerCase(); }
             }
             if (s || m || c) {
                 let arr = [];
@@ -2939,8 +2942,10 @@ const app = {
     inviteLinkFor: function (code) {
         // Метки нужны, чтобы в «Откуда пришли» видно было, какой магазин привёл человека
         const c = String(code || '').trim().toUpperCase();
-        return this.INVITE_SITE_URL + '?ref=' + encodeURIComponent(c)
-            + '&utm_source=shop&utm_medium=invite&utm_campaign=' + encodeURIComponent(c.toLowerCase());
+        // Одна метка ref: captureUTM сам превращает её в «магазин / приглашение / код».
+        // Раньше код (кириллица, каждая буква = 6 символов) шёл дважды плюс utm, ссылка
+        // выходила ~200 символов и в QR не помещалась.
+        return this.INVITE_SITE_URL + '?ref=' + encodeURIComponent(c);
     },
 
     // Готовый текст сообщения монтажнику — чтобы продавцу ничего не сочинять
@@ -3111,7 +3116,7 @@ const app = {
         box.style.cssText = 'position:fixed; left:-9999px; top:0;';
         document.body.appendChild(box);
         try {
-            new QRCode(box, { text: text, width: size, height: size, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+            new QRCode(box, { text: text, width: size, height: size, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
             const canvas = box.querySelector('canvas');
             if (canvas) return canvas.toDataURL('image/png');
             const img = box.querySelector('img');
