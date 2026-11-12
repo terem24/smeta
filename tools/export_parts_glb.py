@@ -105,6 +105,23 @@ export('boiler_haier_neoslim', 'Котёл Haier NeoSlim 1.18/1.24 Ti', bp)
 reset(); _g['stabilizer'](x=0.0, z=0.0)
 export('stabilizer_st250', 'Стабилизатор ST 250', [])
 
+# Бойлер OptiBase и насосная группа: сборщики лежат в tools/parts3d_boiler_pump.py
+_g['port'] = port
+_bp = os.path.join(TOOLS, 'parts3d_boiler_pump.py')
+exec(compile(open(_bp, encoding='utf-8').read(), _bp, 'exec'), _g)
+_SRC = 'паспорт SWH-2110 рис. 3-5, высота от пола считана с чертежа (±20 мм)'
+# (высота патрубка от пола, м) по чертежам; 300 л — рис. 3, 400/500 л — рис. 4-5
+for lit, D_, H_, hot, pz in (
+        (300, 0.590, 1.690, '1"', {'cold': 0.195, 'coil_out': 0.315, 'recirc': 0.430, 'coil_in': 0.895}),
+        (500, 0.735, 1.655, '1"', {'cold': 0.130, 'coil_out': 0.380, 'recirc': 0.630, 'coil_in': 0.730})):
+    reset()
+    ports_ = {k: (z, '1"', _SRC) for k, z in pz.items()}
+    pl = _g['swh_boiler'](D_, H_, ports_, hot)
+    export('boiler_swh2110_%d' % lit, 'Бойлер STOUT OptiBase SWH-2110-%06d, %d л' % (lit, lit), pl)
+
+reset(); pl = _g['pump_group_mix25']()
+export('pump_group_sdg0002_25', 'Насосная группа STOUT SDG-0002-002501 DN25 (смес.)', pl)
+
 with open(os.path.join(OUT, 'parts.json'), 'w', encoding='utf-8') as f:
     json.dump(index, f, ensure_ascii=False, indent=1)
 print('parts.json', len(index))
