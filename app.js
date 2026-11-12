@@ -316,7 +316,20 @@ function supabaseProxyFetchRaw(input, init) {
     const url = typeof input === 'string' ? input : input.url;
     if (!proxyHost || !url.startsWith(supabaseUrl)) return fetch(input, init);
     // Прокси недоступен (см. начало файла) — сразу напрямую, без ожидания отказа
-    if (window.PROXY_DOWN) return fetch(input, init);
+    if (window.PROXY_DOWN) {
+        // Прямой путь до supabase.co в мобильных сетях РФ иногда обрывается разово («Failed to
+        // fetch» / «Load failed»), и вторая попытка через секунду проходит (регистрация
+        // 12.11.2026: первое нажатие — «Нет связи с сервером», повторное — аккаунт создан).
+        // Повторяем один раз только то, что безопасно слать дважды: чтение и вызовы функций
+        // базы (проверка почты, журнал). Запись (создание аккаунта, вход) не дублируем.
+        const m0 = String((init && init.method) || 'GET').toUpperCase();
+        const safe = typeof input === 'string' && (m0 === 'GET' || m0 === 'HEAD' || /\/rest\/v1\/rpc\//.test(url));
+        if (!safe) return fetch(input, init);
+        return fetch(input, init).catch(err => {
+            if ((err && err.name === 'AbortError') || (init && init.signal && init.signal.aborted)) throw err;
+            return new Promise(r => setTimeout(r, 800)).then(() => fetch(input, init));
+        });
+    }
 
     const proxyUrl = 'https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(url.slice(supabaseUrl.length));
     const method = String((init && init.method) || (typeof input !== 'string' && input.method) || 'GET').toUpperCase();
