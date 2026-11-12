@@ -154,6 +154,7 @@
 - [Расчёт тёплого пола: площадь, шаг, длина петли](https://heatcalc.ru/raschet-teplogo-pola/) — расчет теплого пола
 - [Расчёт мощности котла: почему не 1 кВт на 10 м²](https://heatcalc.ru/raschet-moshchnosti-kotla/) — расчет мощности котла
 - [Котёл не справляется в мороз: что проверять](https://heatcalc.ru/kotel-ne-greet-v-moroz/) — котел не греет дом
+- [Замена котла: что менять вместе с ним](https://heatcalc.ru/zamena-kotla-v-dome/) — замена котла
 
 ## Примечания для моделей
 
