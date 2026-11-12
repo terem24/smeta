@@ -80834,31 +80834,6 @@ const app = {
             (mp ? chip('factory', 'Труба в заводской изоляции') : '') + chip('tube', 'Труба + трубка отдельно') + chip('none', 'Без изоляции') +
             `</div></div>`;
     },
-    /**
-     * Котельная в пристройке или гараже: длина трассы от котельной до стены дома, м (в одну сторону),
-     * 0 — котельная в доме. Метры добавляются к магистрали радиаторов (стояк/трасса) и к транзиту
-     * тёплого пола — и в смету, и в гидравлику. Участок через пристройку изолируется всегда: при «Без
-     * изоляции» на него идёт трубка. 6 мм — для пристройки с плюсом зимой; промерзающая — изоляция
-     * толще или незамерзающий теплоноситель, под землёй — только предызолированная труба.
-     */
-    ANNEX_MAX_M: 50,
-    annexM: function () {
-        const v = parseFloat(this.state.annexM);
-        return (v > 0) ? Math.min(this.ANNEX_MAX_M, Math.round(v * 2) / 2) : 0;
-    },
-    setAnnexM: function (v) {
-        const n = parseFloat(String(v).replace(',', '.'));
-        this.state.annexM = (n > 0) ? Math.min(this.ANNEX_MAX_M, Math.round(n * 2) / 2) : 0;
-        if (this.state.annexM > 0) this._annexLast = this.state.annexM;
-        this.saveState(); this.syncUI(); this.render();
-    },
-    toggleAnnex: function (on) {
-        this.setAnnexM(on ? (this._annexLast || this.state.annexM || 6) : 0);
-    },
-    annexNote: function () {
-        const a = this.annexM();
-        return a > 0 ? `<span style="font-size:11px;line-height:1.5;"><br><b>Котельная в пристройке:</b> +${a} м в одну сторону (×2 подача и обратка) через пристройку или гараж — этот участок изолирован в любом случае. Изоляция 6 мм рассчитана на помещение с плюсовой температурой: если пристройка зимой промерзает — нужна изоляция толще (13–20 мм) или незамерзающий теплоноситель; под землёй — только предызолированная труба.</span>` : '';
-    },
     setTrunkInsul: function (v) {
         this.state.trunkInsul = (v === 'tube' || v === 'none') ? v : 'factory';
         this._pipeSysCache = null;
@@ -82276,7 +82251,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 // считался стоящим вплотную к насосной группе, и его подводка не
                 // попадала ни в напор, ни в смету.
                 const trM = Math.ceil(((f.fl === 2 ? (parseFloat(this.state.h1) || 2.7) : 0) + 1
-                    + Math.sqrt(Math.max(1, f.area)) + this.annexM()) * 2 * 1.1);
+                    + Math.sqrt(Math.max(1, f.area)) ) * 2 * 1.1);
                 mans.push({ label: f.fl + ' этаж' + (n > 1 ? ', коллектор ' + (i + 1) + ' из ' + n : ''),
                     floor: f.fl, outlets: sz, rows: rows, trM: trM });
             }
@@ -84930,7 +84905,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     FINE_TUNE_KEY: 'heatcalc_fine_tune',
     FINE_TUNE_ROWS: {
         // Одна «Тонкая настройка» на весь раздел котельной: котловой перепад, режим радиаторов, шаг тёплого пола.
-        eng: ['blk_boiler_dt', 'blk_boiler_annex', 'lbl_rad_regime', 'blk_rad_regime', 'blk_step_floor1', 'blk_step_floor2', 'blk_ufh_dt'],
+        eng: ['blk_boiler_dt', 'lbl_rad_regime', 'blk_rad_regime', 'blk_step_floor1', 'blk_step_floor2', 'blk_ufh_dt'],
         hw: ['blk_tank_pump_wrap'],
         snow: ['blk_snow_pipe_row'],
         pump: ['rooms_pump_plan'],
@@ -84961,7 +84936,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             if (sys.includes('tp')) parts.push(this.fineTuneSummary('ufh'));
             return parts.filter(Boolean).join(' · ');
         }
-        if (key === 'boiler') return `${this.boilerDT()} K` + (this.annexM() > 0 ? `, котельная в пристройке ${String(this.annexM()).replace('.', ',')} м` : '');
+        if (key === 'boiler') return `${this.boilerDT()} K`;
         if (key === 'pump') return this._pumpPlan ? `${this._pumpPlan.total} шт` : '';
         if (key === 'rad') return (this.RAD_REGIMES[s.radRegime] || this.RAD_REGIMES.r8060).label;
         if (key === 'ufh') {
@@ -85297,18 +85272,6 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
         {
             const _bdtBlock = document.getElementById('blk_boiler_dt');
             if (_bdtBlock) _bdtBlock.style.display = this.state.detailedRooms ? 'block' : 'none';
-            // Котельная в пристройке — в обоих режимах, если есть радиаторы или тёплый пол
-            const _anBlk = document.getElementById('blk_boiler_annex');
-            const _anSys = this.state.systems || [];
-            if (_anBlk) _anBlk.style.display = (_anSys.includes('rad') || _anSys.includes('tp')) ? 'block' : 'none';
-            const _an = this.annexM();
-            const _anTab = (id, on) => { const e = document.getElementById(id); if (e) e.className = on ? 'tab active' : 'tab'; };
-            _anTab('annex_off', !(_an > 0));
-            _anTab('annex_on', _an > 0);
-            const _anRow = document.getElementById('annex_len_row');
-            if (_anRow) _anRow.style.display = _an > 0 ? 'flex' : 'none';
-            const _anVal = document.getElementById('val_annex_m');
-            if (_anVal && document.activeElement !== _anVal) _anVal.textContent = String(_an || 6).replace('.', ',');
             const _bdt = this.boilerDT();
             const _bdtTab = (id, on) => { const e = document.getElementById(id); if (e) e.className = on ? 'tab active' : 'tab'; };
             _bdtTab('boiler_dt_20', _bdt === 20);
@@ -100753,7 +100716,6 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 //               где не надо, и остывает до коллектора;
                 //   'tube'    — голая труба того же бренда + трубки ПРОТЕКТ ПРО (Ø32 — K-FLEX 35/9) отдельно;
                 //   'none'    — без изоляции, как было до 02.11.2026.
-                const _annexM = this.annexM();
                 const _tkIns = _tkMp ? this.trunkInsulNow() : 'none';
                 const _tkInsPipe = (d, col) => ((col === 'red' ? catalog.insulated_pipes_mp_red : catalog.insulated_pipes_mp_blue) || [])
                     .find(x => new RegExp('(^|\\D)' + d + '\\s*[xх]').test(x.name || '')) || null;
@@ -100785,8 +100747,6 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     }
                     addToBill(asCoilPrice({ ...base, originalId: key, alts: _tkAllAlts.filter(x => x.id !== base.id), noCheapenAlts: true }), Math.ceil(meters / base.len), desc, grp);
                     if (isMpBase && _tkIns === 'tube') this.addPipeInsTubes(addToBill, d, meters, `магистраль металлопластик Ø${d}`, grp, key);
-                    // Без изоляции (или материал без заводской изоляции), но котельная в пристройке — трубка на участок через неё.
-                    else if (_annexM > 0) this.addPipeInsTubes(addToBill, d, Math.ceil(_annexM * 2 * 1.1), `магистраль Ø${d}, участок через пристройку ${_annexM} м`, grp, key + '_annex');
                 };
 
                 // Стояк на второй этаж. Раньше при двух этажах в смету шли два
@@ -100812,7 +100772,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     // середины плана к стене. Пара подача+обратка, +10% на запас.
                     // Оценка грубая, как и вся трассировка: плана дома с координатами
                     // шкафа у расчёта нет.
-                    const _riserOneWay = 3.2 + 0.4 * Math.sqrt(floorArea) + _annexM;
+                    const _riserOneWay = 3.2 + 0.4 * Math.sqrt(floorArea);
                     // Ручная правка трассы (state.radTrunkOv, кнопка в проверке гидравлики): длина и
                     // диаметр — как ввёл монтажник, и смета, и кольцо берут одно и то же.
                     const _radOv = this.state.radTrunkOv || null;
@@ -100913,7 +100873,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         // дешевле, и стояк перестал бы проходить по расходу.
                         _tkPipeRows(_riserBase, _riserPick, 'riser_pipe_d' + _riserD0, _riserMeters + _riserComp.extraM + _jumpM,
                             this.getDesc('riser_pipe', _riserPick, _riserMeters, _riserKw, _riserOneWay, floorArea,
-                                { coil: _riserBase.len * _riserCoils, swapped: _riserSwapped, bore: _riserPick === 40 ? 26.6 : _riserBore(_riserBase.name), tableD: _riserD }) + this.radTrunkCompNote(_riserComp) + _jumpNote + this.annexNote(), riserGrp);
+                                { coil: _riserBase.len * _riserCoils, swapped: _riserSwapped, bore: _riserPick === 40 ? 26.6 : _riserBore(_riserBase.name), tableD: _riserD }) + this.radTrunkCompNote(_riserComp) + _jumpNote, riserGrp);
                         this.radTrunkCompItems(_riserComp, _riserPick, _tkPpr, addToBill, riserGrp, 'riser');
                         // Крепление вертикального участка: полимерная труба провисает,
                         // поэтому хомут на каждый метр каждой из двух труб. Типоразмер —
@@ -100962,7 +100922,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     // шкаф ближе к середине плана) плюс 1 м на обвязку у самого коллектора.
                     // Пара подача+обратка, +10% на подрезку и обходы. Оценка грубая, как и
                     // вся трассировка: плана дома с координатами котельной и шкафа нет.
-                    const _trOneWay = 1 + 0.5 * Math.sqrt(floorArea) + _annexM;
+                    const _trOneWay = 1 + 0.5 * Math.sqrt(floorArea);
                     // Ручная правка трассы — см. стояк выше: длина и диаметр из state.radTrunkOv.
                     const _trOv = this.state.radTrunkOv || null;
                     const _trMeters = _trOv && _trOv.len > 0 ? Math.ceil(_trOv.len) : Math.ceil(_trOneWay * 2 * 1.1);
@@ -101040,7 +101000,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                             (_trSwapped && _trPick !== 40 ? `<br><b>Материал:</b> вместо серой PE-Xa подставлена стабильная PE-Xa/Al/PE-RT: у серой линейное расширение примерно в семь раз выше, и на длинной магистрали её выгибает между креплениями.` : ``) +
                             (_trPick === 40 ? `<br><b>Материал:</b> Ø40 — PP-R ProAqua DUO SDR 6 (PN20, внутренний диаметр 26,6 мм), в каталоге других труб этого размера нет. По паспорту рабочее давление при 80 °C на 25 лет — 6,5 бар, при 95 °C — только 10 лет; режим выше 80 °C не использовать. Хомуты — на 40 мм (1 1/4″, 40–45 мм).` : ``) +
                             `</span>`;
-                        _tkPipeRows(_trBase, _trPick, 'rad_trunk_pipe_d' + _trD0, _trMeters + _trComp.extraM + _jumpM, _trDesc + this.radTrunkCompNote(_trComp) + _jumpNote + this.annexNote(), trunkGrp);
+                        _tkPipeRows(_trBase, _trPick, 'rad_trunk_pipe_d' + _trD0, _trMeters + _trComp.extraM + _jumpM, _trDesc + this.radTrunkCompNote(_trComp) + _jumpNote, trunkGrp);
                         this.radTrunkCompItems(_trComp, _trPick, _tkPpr, addToBill, trunkGrp, 'trunk');
                         // Хомуты и шпильки на горизонтальной трассе не считаем: трасса идёт в стяжке или гофре,
                         // а не на хомутах по метру (убрано по решению владельца 23.10.2026). Крепление остаётся
@@ -101616,8 +101576,7 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 const _horiz = Math.sqrt(Math.max(1, _area));                      // средний ход по этажу до коллектора
                 const _man = (this._ufhBal && this._ufhBal.mans.find(m => m.floor === fl && m.tr)) || null;
                 // Расход выше предела самой большой трубы — две параллельные магистрали (см. ufhTransitPlan)
-                // + участок через пристройку, если котельная не в доме (annexM)
-                const _meters = Math.ceil((_h1 + 1 + _horiz + this.annexM()) * 2 * 1.1) * ((_man && _man.trN) || 1);   // подача+обратка, +10 % запас
+                const _meters = Math.ceil((_h1 + 1 + _horiz) * 2 * 1.1) * ((_man && _man.trN) || 1);   // подача+обратка, +10 % запас
                 const _pool = _isMpUfh ? (catalog.metal_plastic_pipes || []) : (catalog.rad_pipes_grey || []);
                 const _base = (_man && _pool.find(x => x.id === _man.tr.id))
                     || _pool.find(x => x.id === (_isMpUfh ? 'SPM-0001-052630' : 'SPX-0001-002535'));
@@ -101740,12 +101699,11 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                         addToBill(row, _cut ? _hCut : _hCoils,
                             `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Транзитная трасса от котельной до коллектора тёплого пола ${g.parts.map(t => t.fl + '-го').join(' и ')} этажа — ${what}, в заводской теплоизоляции 6 мм: трасса идёт в стяжке и по неотапливаемым местам, голая подача грела бы пол не там и остывала до коллектора.<br>` +
                             `<b>Метраж:</b> ${g.meters} м трассы ÷ 2 = ${_half} м на линию → ${_cut ? `отрезок ${_hCut} м (кратно 10)` : `${_hCoils} ${this.plural(_hCoils, 'бухта', 'бухты', 'бухт')} по ${_insR.len || 50} м`}.<br>` +
-                            `Голая труба с трубкой отдельно или без изоляции — в таблице замены, блок «Изоляция».</span>` + this.annexNote(), grpPipe);
+                            `Голая труба с трубкой отдельно или без изоляции — в таблице замены, блок «Изоляция».</span>`, grpPipe);
                     });
                     return;
                 }
                 if (_trIns === 'tube' && _trD) this.addPipeInsTubes(addToBill, _trD, g.meters, `транзит тёплого пола Ø${_trD}`, grpPipe, g.origId);
-                else if (this.annexM() > 0 && _trD) this.addPipeInsTubes(addToBill, _trD, Math.ceil(this.annexM() * 2 * 1.1) * g.parts.length, `транзит тёплого пола Ø${_trD}, участок через пристройку ${this.annexM()} м`, grpPipe, g.origId + '_annex');
                 addToBill(_trItem, _cut ? g.cutM : _trCoils,
                     `<span style="font-size:11px;line-height:1.5;">` +
                     `<b>Зачем:</b> Транзитная трасса от котельной (насосной группы) до коллектора тёплого пола ${g.parts.map(t => t.fl + '-го').join(' и ')} этажа. Петли ТП считаются отдельно (по площади обогрева либо по укладке с планов) и подводку к самому коллектору в себя не включают.<br>` +
