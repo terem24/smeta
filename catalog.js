@@ -2323,7 +2323,9 @@ const catalog = {
     heads: [
         { id: "SHT-0001-003015", name: "Головка термостатическая (Газо-жидкостная)", price: 1420, type: "gas", desc: "Стандартное решение. Быстрая реакция.", rommer: { id: "RHT-0001-103015", name: "Головка термостатическая жидкостная", price: 585, brand: "ROMMER", type: "liquid", availability: "in_stock", price_date: "2026-11-10" }, availability: "in_stock", price_date: "2026-11-10" },
         { id: "SHT-0002-003015", name: "Головка термостатическая (Жидкостная)", price: 1441, type: "liquid", desc: "Классическая надежная модель.", rommer: { id: "RHT-0001-103015", name: "Головка термостатическая жидкостная", price: 585, brand: "ROMMER", type: "liquid", availability: "in_stock", price_date: "2026-11-10" }, availability: "in_stock", price_date: "2026-11-10" },
-        { id: "STE-2070-703011", name: "Умная термостатическая головка Zigbee", price: 3300, type: "smart", desc: "Управление со смартфона. Требует шлюз.", availability: "in_stock", price_date: "2026-11-10" }
+        { id: "STE-2070-703011", name: "Умная термостатическая головка Zigbee", price: 3300, type: "smart", desc: "Управление со смартфона. Требует шлюз.", availability: "in_stock", price_date: "2026-11-10" },
+        { id: "STE-2070-703021", name: "Умная термостатическая головка STOUT Zigbee, черная", price: 3300, type: "smart", color: "black", brand: "STOUT", desc: "Управление со смартфона. Требует шлюз. Цвет: черный.", availability: "in_stock", price_date: "2026-11-12" },
+        { id: "STE-2070-703031", name: "Умная термостатическая головка STOUT Zigbee, серая", price: 3300, type: "smart", color: "gray", brand: "STOUT", desc: "Управление со смартфона. Требует шлюз. Цвет: серый.", availability: "in_stock", price_date: "2026-11-12" }
     ],
     smart_hub: { id: "STE-2071-804010", name: "Беспроводной шлюз Zigbee", price: 4896, availability: "in_stock", price_date: "2026-11-10" },
     ufh_mech: [

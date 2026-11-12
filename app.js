@@ -72446,6 +72446,35 @@ const app = {
         let _tankFiltersHtml = _bpFilterHtml;
         // Узел подмеса / насосная группа тёплого пола: что будет со сметой целиком при каждом варианте (mixSwapOptions)
         let _mixSim = null;
+        // Термоголовки радиаторов: бренд STOUT / ROMMER и цвет под прибор (белый к белому,
+        // чёрный к чёрному, металлик к металлику). Пул — _headSwapPool.
+        const _headPool = this._headSwapPool();
+        const _isHeadItem = _headPool.some(h => h.id === _origId0 || h.id === item.id);
+        if (_isHeadItem) {
+            if (isFirstOpen) this.state.headSwap = null;
+            const _hs = Object.assign({ brand: 'all', color: 'auto' }, this.state.headSwap);
+            const _dev = this._headDeviceColor();
+            const _colorKey = _hs.color === 'auto' ? (_dev ? _dev.key : 'all') : _hs.color;
+            alts = _headPool
+                .filter(h => h.id === item.id || ((_hs.brand === 'all' || (h.brand || 'STOUT') === _hs.brand)
+                    && (_colorKey === 'all' || this._headColorOf(h) === _colorKey
+                        // «В цвет прибора» не прячет головки без указанного цвета (ROMMER, обычные STOUT)
+                        || (_hs.color === 'auto' && this._headColorOf(h) === 'standard'))))
+                .sort((a, b) => (a.price || 0) - (b.price || 0));
+            const _hb = (active) => `class="swap-chip${active ? ' on' : ''}"`;
+            const _brandBtns = [['all', 'Все'], ['STOUT', 'STOUT'], ['ROMMER', 'ROMMER']]
+                .map(([v, t]) => `<span onclick="app.setHeadSwapFilter('brand','${v}')" ${_hb(_hs.brand === v)}>${t}</span>`).join('');
+            const _autoLabel = _dev ? `В цвет прибора (${_dev.label})` : 'В цвет прибора';
+            const _colorBtns = [['auto', _autoLabel], ['all', 'Все цвета'], ['white', 'Белый'], ['black', 'Чёрный'], ['gray', 'Серый'], ['chrome', 'Металлик'], ['standard', 'Стандартный']]
+                .map(([v, t]) => `<span onclick="app.setHeadSwapFilter('color','${v}')" ${_hb(_hs.color === v)}>${t}</span>`).join('');
+            const _headNote = (_hs.color !== 'auto' && _colorKey !== 'all' && !alts.some(h => this._headColorOf(h) === _colorKey && h.id !== item.id))
+                ? `<div style="font-size:12px;color:var(--text-sec);padding:6px 0 0;">Головки в этом цвете у STOUT в каталоге не найдены. Выбирайте «Все цвета» или «Стандартный».</div>` : '';
+            _tankFiltersHtml =
+                `<div style="display:flex;gap:6px 20px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
+                `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;"><span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">Бренд:</span>${_brandBtns}</div>` +
+                `<div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;"><span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:8px;">Цвет:</span>${_colorBtns}</div>` +
+                `</div>${_headNote}`;
+        }
         if (_origId0 === 'well_pump_auto') {
             const _wf = this.state.wellPumpFlowFilter || 'all';
             const _wc = this.state.wellPumpCableFilter || 'cable';
@@ -84276,6 +84305,64 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
     setGasBoilerPower: function (val) {
         this.state.gasBoilerPower = val;
         if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
+    setHeadSwapFilter: function (key, val) {
+        this.state.headSwap = Object.assign({}, this.state.headSwap, { [key]: val });
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
+    // Пул термоголовок для замены: STOUT (SHT/STE и дизайнерские SHTD), ROMMER — из поля rommer.
+    _headSwapPool: function () {
+        const out = [];
+        const seen = new Set();
+        const add = (h) => { if (h && h.id && !seen.has(h.id)) { seen.add(h.id); out.push(h); } };
+        (catalog.heads || []).forEach(h => {
+            add({ ...h, brand: 'STOUT' });
+            if (h.rommer && h.rommer.id) add({ ...h.rommer, brand: 'ROMMER' });
+        });
+        (typeof radValvesDesign !== 'undefined' ? radValvesDesign : []).filter(x => x.kind === 'head').forEach(h => add({ ...h, brand: h.brand || 'STOUT' }));
+        return out;
+    },
+    // Цвет головки: в каталоге у дизайнерских — свой (chrome/white/black), у обычных не указан → standard.
+    _headColorOf: function (h) { return h.color || 'standard'; },
+    // Окраска прибора у текущей сметы — по большинству радиаторов. Серые, графит и натуральные
+    // приборы подбираются к металлику (ближайшая окраска головок в каталоге).
+    // Окраска прибора → окраска головки: чёрный, серый, белый/стандарт, всё металлическое — металлик.
+    _headColorKey: function (c) {
+        if (c === 'black') return 'black';
+        if (c === 'white' || c === 'standard') return 'white';
+        if (c === 'gray' || c === 'grey' || c === 'graphite') return 'gray';
+        return 'chrome';
+    },
+    // То же по строкам сметы, уже собранным в bill (радиатор узнаём по серии его артикула).
+    _headColorForBill: function (rows) {
+        const sers = this._getSecRadSeries();
+        const cnt = {};
+        (rows || []).forEach(r => {
+            const ids = [r.originalId, r.id].filter(Boolean);
+            // Сначала точное совпадение артикула: префикс может попасть в чужую серию
+            const s = sers.find(x => x.arr && x.arr.some(y => ids.some(id => id === y.id)))
+                || sers.find(x => x.arr && x.arr.some(y => ids.some(id => String(id).startsWith(y.id))));
+            if (!s) return;
+            const key = this._headColorKey(this._getColorOf(s));
+            cnt[key] = (cnt[key] || 0) + 1;
+        });
+        const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+        return top || null;
+    },
+    _headDeviceColor: function () {
+        const sers = this._getSecRadSeries();
+        const cnt = {};
+        (this.currentEquipmentList || []).forEach(eq => {
+            const ids = [eq.originalId, eq.id, ...(eq.instanceKeys || [])].filter(Boolean);
+            const s = sers.find(x => x.arr && x.arr.some(y => ids.some(id => id === y.id)))
+                || sers.find(x => x.arr && x.arr.some(y => ids.some(id => String(id).startsWith(y.id))));
+            if (!s) return;
+            const key = this._headColorKey(this._getColorOf(s));
+            cnt[key] = (cnt[key] || 0) + 1;
+        });
+        const top = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0];
+        if (!top) return null;
+        return { key: top, label: { white: 'белый', black: 'чёрный', gray: 'серый', chrome: 'металлик' }[top] };
     },
     setGasBoilerBrand: function (val) {
         this.state.gasBoilerBrand = val;
@@ -99973,14 +100060,21 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     if (_designColor) _designSideN = totalRadCountSide;
                 }
                 if (!this.zoneHeadsExternal()) {
-                    let activeHead = catalog.heads.find(h => h.type === this.state.headType) || catalog.heads[0]; activeHead.alts = catalog.heads;
+                    // Умная головка по умолчанию — в цвет прибора (STE-2070 черная/серая); обычная — по правилам выше
+                    const _headKey = this._headColorForBill(bill);
+                    const _smartColorHead = (this.state.headType === 'smart' && _headKey)
+                        ? (catalog.heads.find(h => h.type === 'smart' && this._headColorOf(h) === _headKey) || null) : null;
+                    let activeHead = _smartColorHead || catalog.heads.find(h => h.type === this.state.headType) || catalog.heads[0]; activeHead.alts = catalog.heads;
                     const _dHead = (_designSideN > 0 && activeHead.type !== 'smart')
                         ? radValvesDesign.find(v => v.kind === 'head' && v.color === _designColor) : null;
                     const _stdHeadN = _dHead ? totalRadCount - _designSideN : totalRadCount;
                     if (_stdHeadN > 0) addToBill(activeHead, _stdHeadN, this.getDesc('rad_head'), grp);
                     if (_dHead) addToBill({ ..._dHead, alts: radValvesDesign.filter(v => v.kind === 'head').concat(catalog.heads) }, _designSideN,
                         `Термоголовка STOUT Design в цвет клапанов STOUT Design (паспорт SVTD: на клапан устанавливаются головки SHTD-0002). Требуется: ${_designSideN} шт.`, grp);
-                    if (activeHead.type === 'smart') { let radHubs = Math.ceil(totalRadCount / 15); addToBill(catalog.smart_hub, radHubs, `Шлюз Zigbee.`, grp); }
+                    // Шлюз Zigbee — по факту умных головок в смете (в т.ч. от ручной замены в state.swaps)
+                    const _smartRadHeads = bill.filter(r => r.group === grp && r.type === 'smart')
+                        .reduce((s, r) => s + (r.q || 0), 0);
+                    if (_smartRadHeads > 0) { let radHubs = Math.ceil(_smartRadHeads / 15); addToBill(catalog.smart_hub, radHubs, `Шлюз Zigbee.`, grp); }
                 }
 
                 // Обвязка считается отдельно для нижних и боковых радиаторов по фактическому
