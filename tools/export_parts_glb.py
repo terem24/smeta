@@ -122,6 +122,34 @@ for lit, D_, H_, hot, pz in (
 reset(); pl = _g['pump_group_mix25']()
 export('pump_group_sdg0002_25', 'Насосная группа STOUT SDG-0002-002501 DN25 (смес.)', pl)
 
+# Гидравлика котельной: коллектор SDG-0018 и насосные группы SDG-0001/0003 — сборщики соседней сессии
+# (tools/render_hydro_node.py), те же, что рисуют кадры узлов. Читаем исходник, не правим.
+_hp = os.path.join(TOOLS, 'render_hydro_node.py')
+_hs = open(_hp, encoding='utf-8').read().rstrip()
+assert _hs.endswith('main()'), 'render_hydro_node.py изменился: хвост main() не найден'
+sys.argv = sys.argv[:sys.argv.index('--') + 1] + [OUT, 'ds']
+_h = {'__file__': _hp, '__name__': 'hydro_export'}
+exec(compile(_hs[:-len('main()')], _hp, 'exec'), _h)
+YA = _h['YA']
+SRC_G = 'паспорт SDG-0001 ред. 3, табл. 4.2: низ G1 1/2" НР, верх Rp 1" ВР, шаг F 125'
+for kind, key, label in (('d', 'pump_group_sdg0001_direct', 'Насосная группа STOUT SDG-0001-002501 DN25 (прямая)'),
+                         ('s', 'pump_group_sdg0003_servo', 'Насосная группа STOUT SDG-0003-002501 DN25 (под сервопривод)')):
+    reset(); _h['part']('')
+    _h['group'](0.0, 0.0, kind)
+    dx = 0.0625
+    gp = [port('bottom_left', Vector((-dx, YA, 0.0)), (0, 0, -1), 'M', '1 1/2"', SRC_G),
+          port('bottom_right', Vector((dx, YA, 0.0)), (0, 0, -1), 'M', '1 1/2"', SRC_G),
+          port('top_left', Vector((-dx, YA, 0.338)), (0, 0, 1), 'F', '1"', SRC_G),
+          port('top_right', Vector((dx, YA, 0.338)), (0, 0, 1), 'F', '1"', SRC_G)]
+    export(key, label, gp)
+reset(); _h['part']('')
+_xs, _zt = _h['collector'](2)
+SRC_C = 'паспорт SDG ред. 30.03.2023, табл. 4.3.6: верх накидные гайки G1 1/2" к группам, низ G1 1/2" НР к котлу'
+cp = [port('top_%d' % i, Vector((x, YA, _zt)), (0, 0, 1), 'F', '1 1/2"', SRC_C) for i, x in enumerate(_xs)]
+cp += [port('boiler_%s' % n, Vector((sx * 0.100, YA, -0.075 - 0.040)), (0, 0, -1), 'M', '1 1/2"', SRC_C)
+       for n, sx in (('supply', -1), ('return', 1))]
+export('hydro_collector_sdg0018_2', 'Коллектор-гидрострелка STOUT SDG-0018-004002 (2 пары выходов)', cp)
+
 with open(os.path.join(OUT, 'parts.json'), 'w', encoding='utf-8') as f:
     json.dump(index, f, ensure_ascii=False, indent=1)
 print('parts.json', len(index))
