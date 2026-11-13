@@ -35,6 +35,38 @@ def _stub(name, x, y, z, axis, r_thread, length, m, hexaf=None):
         hexnut(name + ' шестигранник', hexaf, 0.009, m, (x, y, z), axis)
 
 
+def decal(name, png, w, h, loc, rough=0.35, coat=0.0, group='solid'):
+    """Наклейка: плоскость w x h (м) лицом к -Y с текстурой из tools/blender_assets/tex3d (альфа сохраняется).
+    loc — центр. Для логотипов и панелей, которые надо читать вблизи (TEX задаёт экспортёр)."""
+    me = bpy.data.meshes.new(name)
+    me.from_pydata([(-w / 2, 0, -h / 2), (w / 2, 0, -h / 2), (w / 2, 0, h / 2), (-w / 2, 0, h / 2)], [], [(0, 1, 2, 3)])
+    uv = me.uv_layers.new(name='UV')
+    for i, c in enumerate(((0, 0), (1, 0), (1, 1), (0, 1))):
+        uv.data[i].uv = c
+    mt = bpy.data.materials.new(name)
+    mt.use_nodes = True
+    nt = mt.node_tree
+    b = nt.nodes['Principled BSDF']
+    tx = nt.nodes.new('ShaderNodeTexImage')
+    tx.image = bpy.data.images.load(os.path.join(TEX, png))
+    tx.interpolation = 'Cubic'
+    nt.links.new(tx.outputs['Color'], b.inputs['Base Color'])
+    nt.links.new(tx.outputs['Alpha'], b.inputs['Alpha'])
+    b.inputs['Roughness'].default_value = rough
+    try:
+        b.inputs['Coat Weight'].default_value = coat
+    except Exception:
+        pass
+    try:
+        mt.surface_render_method = 'BLENDED'
+    except Exception:
+        pass
+    me.materials.append(mt)
+    ob = bpy.data.objects.new(name, me)
+    ob.location = Vector(loc)
+    return link(ob, group)
+
+
 def swh_boiler(D, H, ports, hot_inch):
     """Бойлер: белый кожух с чёрной верхней крышкой, термометр и логотип спереди, регулируемые ножки,
     патрубки справа (+X) по ports = {имя: (высота от пола, размер, назначение)}, ТЭН-заглушка слева,
@@ -53,8 +85,8 @@ def swh_boiler(D, H, ports, hot_inch):
     # термометр и логотип спереди, у верха
     zt = H - 0.22
     lathe('термометр рамка', [(0.001, 0), (0.030, 0), (0.030, 0.012), (0.023, 0.014)], mat('grey', rough=0.4, metal=0.5), (0, -R, zt), '-Y', segs=44, knurl=0.0295)
-    lathe('термометр шкала', [(0.001, 0.0135), (0.023, 0.0135)], mat('bscreen', rough=0.3), (0, -R, zt), '-Y', segs=40)
-    box('логотип', (0.072, 0.0012, 0.016), mat('logo', rough=0.5), (0, -R - 0.0004, H - 0.12))
+    decal('термометр шкала', 'thermo_dial.png', 0.046, 0.046, (0, -R - 0.0152, zt), rough=0.25)
+    decal('логотип STOUT', 'stout_logo_dark.png', 0.115, 0.115 * 0.30, (0, -R - 0.0006, H - 0.100))
     out = []
     for name, (z, size, role) in ports.items():
         _stub('патрубок ' + name, R - 0.012, 0, z, 'X', 0.0166, 0.024, ni, hexaf=0.040)

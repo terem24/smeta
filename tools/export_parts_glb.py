@@ -2,6 +2,7 @@
 """
 Выгрузка деталей котельной из процедурной библиотеки Blender в GLB для 3D-режима (вкладка «Дом 3D»).
 
+    python tools/make_tex3d.py      (один раз: текстуры логотипов и панели, tools/blender_assets/ в git не идёт)
     blender --background --python tools/export_parts_glb.py -- <папка вывода>
 
 Источник геометрии — тот же код, что рисует кадры узлов (tools/blender_parts.py и сборщики деталей
@@ -94,21 +95,29 @@ reset(); r = _g['mag_filter'](C0, side=1)
 export('filter_rfw0080', 'Фильтр магнитный RFW-0080 3/4"',
        [port('in', C0, D['-Z'], 'U', '3/4"', 'по коду сборщика (проверить)')])
 
-# Котёл Haier NeoSlim Ti: корпус, патрубки снизу, дымоход
-reset(); _g['boiler'](); _g['chimney']()
-XP, YP = _g['XP'], _g['YP']
-bp = [port(k, Vector((x, YP, 0)), D['-Z'], 'M', '3/4"' if k != 'D' else '1/2"', 'руководство Haier стр. 28-29')
-      for k, x in XP.items()]
-export('boiler_haier_neoslim', 'Котёл Haier NeoSlim 1.18/1.24 Ti', bp)
-
 # Стабилизатор напряжения ST 250
 reset(); _g['stabilizer'](x=0.0, z=0.0)
 export('stabilizer_st250', 'Стабилизатор ST 250', [])
 
 # Бойлер OptiBase и насосная группа: сборщики лежат в tools/parts3d_boiler_pump.py
 _g['port'] = port
+_g['TEX'] = os.path.join(TOOLS, 'blender_assets', 'tex3d')
 _bp = os.path.join(TOOLS, 'parts3d_boiler_pump.py')
 exec(compile(open(_bp, encoding='utf-8').read(), _bp, 'exec'), _g)
+# Котёл Haier NeoSlim Ti: корпус, патрубки снизу, дымоход; панель и логотип — наклейки по фото каталога
+# (панель 193 x 154 мм, дисплей 42 °C, значки и кнопки; Haier над ней), старые прямоугольники панели убираем
+reset(); _g['boiler'](); _g['chimney']()
+for _ob in list(bpy.data.objects):
+    if _ob.name.startswith(('панель индикации', 'экран', 'значок', 'логотип', 'линия', 'цифры', 'кнопка')):
+        bpy.data.objects.remove(_ob, do_unlink=True)
+_W, _H, _D, _YW = _g['W'], _g['H'], _g['D'], _g['YW']
+_g['decal']('панель управления Haier', 'haier_panel.png', 0.198, 0.157, (_W / 2, _YW - _D - 0.0008, 0.031 + 0.0785), rough=0.12, coat=0.8)
+_g['decal']('логотип Haier', 'haier_logo.png', 0.069, 0.069 * 0.30, (_W / 2, _YW - _D - 0.0006, _H - 0.069))
+XP, YP = _g['XP'], _g['YP']
+bp = [port(k, Vector((x, YP, 0)), D['-Z'], 'M', '3/4"' if k != 'D' else '1/2"', 'руководство Haier стр. 28-29')
+      for k, x in XP.items()]
+export('boiler_haier_neoslim', 'Котёл Haier NeoSlim 1.18/1.24 Ti', bp)
+
 _SRC = 'паспорт SWH-2110 рис. 3-5, высота от пола считана с чертежа (±20 мм)'
 # (высота патрубка от пола, м) по чертежам; 300 л — рис. 3, 400/500 л — рис. 4-5
 for lit, D_, H_, hot, pz in (
