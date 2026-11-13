@@ -56,11 +56,13 @@
     // ── поиск деталей ───────────────────────────────────────────────────
     var byId = function (re) { return function (row) { return re.test(row.id); }; };
     // Переходник на трубу: есть пресс-конец (или конец под трубу) и резьбовой конец нужного рода
-    var pipeFit = function (kind) {
+    // size — резьба переходника (у сепаратора 3/4" и 1"): без него цепочка брала первый попавшийся ВПр-НР,
+    // например 22x1 от змеевика бойлера, и сепаратор 3/4" «не стыковался»
+    var pipeFit = function (kind, size) {
       return function (row) {
         var u = row.units[0]; if (!u) return false;
         var press = u.ends.some(function (e) { return e.kind === 'S' || e.kind === 'P'; });
-        var thr = u.ends.filter(function (e) { return e.kind === kind; }).length;
+        var thr = u.ends.filter(function (e) { return e.kind === kind && (!size || e.size === size); }).length;
         return press && thr === 1 && u.ends.length === 2 && /^(переходник|муфта)/i.test(row.name || '');
       };
     };
@@ -225,7 +227,8 @@
     rows.forEach(function (r) {
       if (/^RFW-0070/.test(r.id)) {
         r.units.forEach(function () {
-          runChain('Сепаратор воздуха на трубе', { free: true }, [{ m: pipeFit('M'), nm: 'переходник ВПр-НР на трубу' }, { m: byId(/^RFW-0070/), nm: 'сепаратор воздуха ' + r.name.replace(/.*(\d\/\d|\d)"$/, '$1"') }, { m: pipeFit('M'), nm: 'переходник ВПр-НР на трубу' }], { pipe: true });
+          var ss = ((r.units[0] || {}).ends || [{}])[0].size;
+          runChain('Сепаратор воздуха на трубе', { free: true }, [{ m: pipeFit('M', ss), nm: 'переходник ВПр-НР на трубу' }, { m: byId(/^RFW-0070/), nm: 'сепаратор воздуха ' + r.name.replace(/^.*?(\d+\/\d+|\d+)"$/, '$1"') }, { m: pipeFit('M', ss), nm: 'переходник ВПр-НР на трубу' }], { pipe: true });
         });
       }
     });
