@@ -301,7 +301,11 @@
     [/^SST-0001-000250/, 'stabilizer_st250', 'anchor'],
     [/^SVB-0004/, 'ball_valve_svb0004', 'valve'], [/^SFT-0041/, 'union_sft0041', 'union'],
     [/^(RFW-0070|SFW-0070)/, 'separator_rfw0070', 'separator'], [/^(RFW-0080|SFW-0080)/, 'filter_rfw0080', 'filter'],
-    [/^(SSS|RSS)-2021/, 'adapter_rss1021', 'adapter'], [/^(SSS|RSS)-2022/, 'adapter_rss1022', 'adapter']
+    [/^(SSS|RSS)-2021/, 'adapter_rss1021', 'adapter_m'], [/^(SSS|RSS)-2022/, 'adapter_rss1022', 'adapter_f'],
+    [/^SSS-2003/, 'fit22_elbow90', 'elbow90'], [/^SSS-2004/, 'fit22_elbow45', 'elbow45'], [/^SSS-2013/, 'fit22_tee', 'tee'],
+    [/^SSS-2001/, 'pipe22_250', 'pipe'],
+    [/^STH-0004-000018/, 'exp_tank_sth0004_18', 'anchor'],
+    [/^SCR-6010/, null, 'included']          // коаксиальный дымоход нарисован в модели котла
   ];
 
   function modelFor(it) {
@@ -352,11 +356,14 @@
     var L = (window.app && app.currentEquipmentList) || [];
     if (!L.length) { S.info.textContent = 'В смете пока нет позиций: задайте дом и вернитесь.'; return; }
     clearAll();
-    var parts = [], missing = [];
+    var parts = [], missing = [], included = [];
     L.forEach(function (it) {
       var m = modelFor(it);
       if (!m) { if (/^[12]\./.test(it.sectionTitle || '') && !/Теплоизоляц|Крепёж|Общие материалы/.test(it.group || '')) missing.push(it.name); return; }
-      for (var i = 0; i < Math.min(Math.round(it.q) || 1, 6); i++) parts.push({ key: m.key, role: m.role, name: it.name });
+      if (!m.key) { included.push(it.name); return; }
+      // штанга трубы 4 м в смете одной позицией — показываем два отрезка, чтобы видно было трубу
+      var n = m.role === 'pipe' ? 2 : Math.min(Math.round(it.q) || 1, 6);
+      for (var i = 0; i < n; i++) parts.push({ key: m.key, role: m.role, name: it.name });
     });
     if (!parts.length) { S.info.textContent = 'В смете нет позиций, для которых есть 3D-модель.'; return; }
     S.info.textContent = 'Собираю котельную: ' + parts.length + ' деталей…';
@@ -380,11 +387,12 @@
       });
       // 3) обвязка котла цепочками: американка → кран → сепаратор/фильтр → переходник. Подача и обратка — по гидравлическим
       //    патрубкам Haier (A, G); газ C и ХВС D в смету обвязки не входят
-      var pool = { union: [], valve: [], separator: [], filter: [], adapter: [] };
+      var pool = { union: [], valve: [], separator: [], filter: [], adapter_m: [], adapter_f: [], pipe: [], elbow90: [], tee: [], elbow45: [] };
+      var chainTails = [];
       parts.forEach(function (p) { if (pool[p.role]) pool[p.role].push(p); });
       var boiler = boilers[0];
       var heads = boiler ? portsOf(boiler.o).filter(function (q) { return /^[AG]$/.test(q.p.name); }) : [];
-      var chains = [['union', 'valve', 'separator', 'adapter'], ['union', 'valve', 'filter', 'adapter']];
+      var chains = [['union', 'valve', 'separator', 'adapter_m'], ['union', 'valve', 'filter', 'adapter_f']];
       heads.forEach(function (h, ci) {
         var tail = [h], chain = chains[ci % chains.length];
         chain.forEach(function (role) {
@@ -396,6 +404,19 @@
           seat(p.o, s.a, s.b); p.placed = true;
           tail = freePorts(p.o).filter(function (q) { return q.p.name !== 'in'; });
           if (!tail.length) tail = freePorts(p.o);
+        });
+        chainTails.push(tail);
+      });
+      // 3б) дальше по трубе 22: отрезок, угольник 90°, тройник, угольник 45° — сколько есть в смете (порядок условный)
+      chainTails.forEach(function (tail) {
+        ['pipe', 'elbow90', 'tee', 'elbow45'].forEach(function (role) {
+          var p = pool[role].shift();
+          if (!p) return;
+          put(p, 0, 0);
+          var s = findSeat(p.o, tail, false);
+          if (!s) { unplaced.push(p); S.scene.remove(p.o); S.items.pop(); return; }
+          seat(p.o, s.a, s.b); p.placed = true;
+          tail = freePorts(p.o);
         });
       });
       // 4) остальное — рядом, «на складе»
@@ -409,6 +430,7 @@
       var done = parts.filter(function (p) { return p.placed; }).length;
       var lines = ['Из сметы: ' + done + ' из ' + parts.length + ' деталей поставлено на места, ' + S.links.length + ' стыков.'];
       if (unplaced.length) lines.push('Не нашлось куда поставить (лежат на складе): ' + unplaced.map(function (p) { return p.name; }).slice(0, 5).join('; '));
+      if (included.length) lines.push('Нарисовано в модели котла: ' + included.join('; '));
       if (missing.length) lines.push('Нет 3D-модели: ' + missing.length + ' поз. (' + missing.slice(0, 4).join('; ') + (missing.length > 4 ? '…' : '') + ')');
       lines.push('Порядок цепочек предварительный: сверьте со схемой узла.');
       S.info.textContent = lines.join(String.fromCharCode(10));

@@ -71,6 +71,16 @@ def port(name, pos, axis, kind, size, src):
 C0 = Vector((0, 0, 0))
 D = {'-Z': (0, 0, -1)}
 
+_g['add_colors']({'ringblue': (0.12, 0.30, 0.75)})
+
+
+def _blue_rings():
+    """В кадрах узлов у переходников красное кольцо (ROMMER RSS); в смете STOUT SSS-2021/2022, на их фото кольцо синее."""
+    for _o in _g['coll']('solid').objects:
+        if _o.name.startswith('кольцо пресс') and _o.data.materials:
+            _o.data.materials[0] = _g['mat']('ringblue', rough=0.35)
+
+
 # Кран шаровой SVB-0004 3/4" ВР/НР: вход ВР (c), выход НР (возвращённая точка)
 reset(); e = _g['ball_valve'](C0)
 export('ball_valve_svb0004', 'Кран шаровой SVB-0004 3/4" ВР/НР',
@@ -85,20 +95,24 @@ export('union_sft0041', 'Американка SFT-0041 3/4" ВР/НР',
 
 # Переходники нерж. 22x3/4": RSS-1021 (ВПр-НР), RSS-1022 (ВПр-ВР)
 reset(); e = _g['adapter'](C0, False)
+_blue_rings()
 export('adapter_rss1021', 'Переходник RSS-1021 22x3/4" НР (пресс-НР)',
        [port('in', C0, (0, 0, 1), 'M', '3/4"', 'RSS-1021'), port('out', e, D['-Z'], 'P', '22', 'RSS-1021')])
 reset(); e = _g['adapter'](C0, True)
+_blue_rings()
 export('adapter_rss1022', 'Переходник RSS-1022 22x3/4" ВР (пресс-ВР)',
        [port('in', C0, (0, 0, 1), 'F', '3/4"', 'RSS-1022'), port('out', e, D['-Z'], 'P', '22', 'RSS-1022')])
 
 # Сепаратор и магнитный фильтр: проточная часть по оси; концы, пока без паспортных резьб -> U
 reset(); e = _g['separator'](C0, side=-1)
+SRC_S = 'RFW-0070 ВР/ВР: гнёзда с внутренней резьбой сверху и снизу (docstring сборщика render_boiler_node.py, паспорт ROMMER разд. 4)'
 export('separator_rfw0070', 'Сепаратор воздуха RFW-0070 3/4"',
-       [port('in', C0, (0, 0, 1), 'U', '3/4"', 'гнёзда ВР по коду сборщика (проверить)'),
-        port('out', e, D['-Z'], 'U', '3/4"', 'гнёзда ВР по коду сборщика (проверить)')])
-reset(); r = _g['mag_filter'](C0, side=1)
+       [port('in', C0, (0, 0, 1), 'F', '3/4"', SRC_S), port('out', e, D['-Z'], 'F', '3/4"', SRC_S)])
+reset(); _fp, _fax = _g['mag_filter'](C0, side=1)
+_AX = {'-Z': (0, 0, -1), 'Z': (0, 0, 1), 'X': (1, 0, 0), '-X': (-1, 0, 0)}
+SRC_F = 'RFW-0080: накидная гайка C на НР крана (ВР), вход A — наружная резьба под переходник ВПр-ВР (docstring сборщика render_boiler_node.py)'
 export('filter_rfw0080', 'Фильтр магнитный RFW-0080 3/4"',
-       [port('in', C0, (0, 0, 1), 'U', '3/4"', 'по коду сборщика (проверить)')])
+       [port('in', C0, (0, 0, 1), 'F', '3/4"', SRC_F), port('out', _fp, _AX[_fax], 'M', '3/4"', SRC_F)])
 
 # Стабилизатор напряжения ST 250
 reset(); _g['stabilizer'](x=0.0, z=0.0)
@@ -110,6 +124,7 @@ _g['port'] = port
 _g['TEX'] = os.path.join(TOOLS, 'blender_assets', 'tex3d')
 _bp = os.path.join(TOOLS, 'parts3d_boiler_pump.py')
 exec(compile(open(_bp, encoding='utf-8').read(), _bp, 'exec'), _g)
+
 # Котёл Haier NeoSlim Ti: корпус, патрубки снизу, дымоход; панель и логотип — наклейки по фото каталога
 # (панель 193 x 154 мм, дисплей 42 °C, значки и кнопки; Haier над ней), старые прямоугольники панели убираем
 reset(); _g['boiler'](); _g['chimney']()
@@ -123,6 +138,16 @@ XP, YP = _g['XP'], _g['YP']
 bp = [port(k, Vector((x, YP, 0)), D['-Z'], 'M', '3/4"' if k != 'D' else '1/2"', 'руководство Haier стр. 28-29')
       for k, x in XP.items()]
 export('boiler_haier_neoslim', 'Котёл Haier NeoSlim 1.18/1.24 Ti', bp)
+
+# Обвязка: пресс-фитинги 22, труба, расширительный бак (tools/parts3d_piping.py)
+_pp = os.path.join(TOOLS, 'parts3d_piping.py')
+exec(compile(open(_pp, encoding='utf-8').read(), _pp, 'exec'), _g)
+for _fn, _key, _label in (('elbow90', 'fit22_elbow90', 'Угольник 90° ВПр-ВПр 22 SSS-2003-000022 (пресс, нерж.)'),
+                          ('elbow45', 'fit22_elbow45', 'Угольник 45° ВПр-НПр 22 SSS-2004-000022 (пресс, нерж.)'),
+                          ('tee22', 'fit22_tee', 'Тройник равнопроходной ВПр 22 SSS-2013-000022 (пресс, нерж.)'),
+                          ('pipe22', 'pipe22_250', 'Труба нерж. 22x1,2, отрезок 250 мм (SSS-2001-000022)'),
+                          ('expansion_tank_18', 'exp_tank_sth0004_18', 'Расширительный бак STOUT STH-0004-000018, 18 л')):
+    reset(); _pl = _g[_fn](); export(_key, _label, _pl)
 
 _SRC = 'паспорт SWH-2110 рис. 3-5, высота от пола считана с чертежа (±20 мм)'
 # (высота патрубка от пола, м) по чертежам; 300 л — рис. 3, 400/500 л — рис. 4-5
