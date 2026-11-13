@@ -87,7 +87,7 @@ const eq = (what, got, want, tol) => {
     eq('импорт: стен без дублей (гостиная 4, спальня 3 новых, кухня 3 новых)', r.walls, 10);
     const rooms = HC.detectRooms(m, f.id);
     eq('импорт: сумма площадей по осям', Math.round(rooms.reduce((s, x) => s + x.areaGross, 0)), 80);
-    const names = Object.values(m.roomOv).map(o => o.name).sort().join(',');
+    const names = rooms.map(x => x.name).sort().join(',');
     console.log('     имена комнат из контуров: ' + names + (names === 'Гостиная,Кухня,Спальня' ? '' : '  <-- не те'));
     if (names !== 'Гостиная,Кухня,Спальня') fail++;
     const n = HC.addOpeningsAt(m, f.id, [{ x: 3, y: 4.0, w: 1.5, kind: 'window' }, { x: 8, y: 0, w: 0.9, kind: 'door' }, { x: 50, y: 50, w: 1, kind: 'window' }]);
@@ -116,6 +116,32 @@ const eq = (what, got, want, tol) => {
     eq('как на плане: чистая площадь после импорта = площадь исходных контуров (5,8x7,8 + 2 x 3,8x3,8)', Math.round(rooms.reduce((s2, x) => s2 + x.area, 0) * 100) / 100, 74.12, 0.05);
     const bad = rooms.filter(x => x.edges.length && x.edges.every(e => !e.neighbor)).length;
     eq('как на плане: комнат, у которых все стены наружные (должно быть 0)', bad, 0);
+}
+
+// 3в. Комнаты из зон: зоны перекрываются и неровные — комнат ровно столько же, сколько зон, площади = площадям зон
+{
+    const m = HC.create({ Tn: -25 });
+    const f = HC.addFloor(m, { level: 0 });
+    const zones = [
+        { name: 'А', pts: [[0, 0], [6, 0], [6, 4], [0, 4]] },
+        { name: 'Б', pts: [[5.5, 0], [10, 0], [10, 4], [5.5, 4]] },              // перекрывает А на полметра
+        { name: 'В', pts: [[0, 4.1], [4, 4.1], [4, 7], [2, 8], [0, 8]] },          // неровная, зазор 0,1 м
+        { name: 'Г', pts: [[4.2, 4.1], [10, 4.1], [10, 8], [4.2, 8]] },
+        { name: 'Д', pts: [[11, 0], [12, 0], [12, 1], [11, 1]] }                  // отдельная кладовка, не касается остальных
+    ];
+    const polyArea = P => Math.abs(P.reduce((a2, p, i) => { const q = P[(i + 1) % P.length]; return a2 + p[0] * q[1] - q[0] * p[1]; }, 0) / 2);
+    const want = zones.reduce((t, z) => t + polyArea(z.pts), 0);
+    const r = HC.fromPolygons(m, f.id, zones, {});
+    const rooms = HC.detectRooms(m, f.id);
+    eq('из зон: комнат столько же, сколько зон', rooms.length, 5);
+    eq('из зон: чистая площадь комнат = площади зон', Math.round(rooms.reduce((t, x) => t + x.area, 0) * 100) / 100, Math.round(want * 100) / 100, 0.01);
+    const L = HC.heatLoss(m);
+    eq('из зон: расчёт дошёл до каждой комнаты', L.rooms.length, 5);
+    eq('из зон: потери положительные у всех', L.rooms.every(x => x.Q > 0) ? 1 : 0, 1);
+    eq('из зон: отдельная кладовка — все стены наружные', rooms.find(x => x.name === 'Д').edges.every(e => !e.neighbor) ? 1 : 0, 1);
+    eq('из зон: после правки стен комнаты ищутся по стенам', HC.hasFixed(m) ? 1 : 0, 1);
+    HC.dropFixed(m);
+    eq('после dropFixed признак снят', HC.hasFixed(m) ? 1 : 0, 0);
 }
 
 // 4. Сверка формулы с Galf

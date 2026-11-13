@@ -99,6 +99,14 @@
 
   function save() { try { localStorage.setItem(KEY, JSON.stringify(E.model)); } catch (e) { /* без сохранения */ } }
 
+  // Стены правили: комнаты, заданные импортом, больше не соответствуют им — дальше ищем комнаты по замкнутым контурам стен
+  function wallsChanged() {
+    if (E.HC.hasFixed(E.model)) {
+      E.HC.dropFixed(E.model);
+      E.msg = 'Стены изменены: комнаты теперь определяются по замкнутым контурам стен (имена и температуры импорта сброшены).';
+    }
+  }
+
   function snapshot() { E.undo.push(JSON.stringify(E.model)); if (E.undo.length > 60) E.undo.shift(); }
 
   function undo() {
@@ -254,7 +262,7 @@
       box.appendChild(row('Пирог', presetSelect(list, cur, function (i) { snapshot(); w.layers = list[i].l.map(function (l) { return Object.assign({}, l); }); w.thick = list[i].t; w.R = null; rebuild(); })));
       box.appendChild(row('Толщина, м', num(w.thick, 0.01, function (x) { snapshot(); w.thick = x; rebuild(); })));
       box.appendChild(hint(wallInfo(w, isExt) + (isExt ? ' (наружная)' : ' (внутренняя)')));
-      box.appendChild(btn('Удалить стену', false, function () { snapshot(); HC.removeWall(m, w.id); E.sel = null; rebuild(); }));
+      box.appendChild(btn('Удалить стену', false, function () { snapshot(); wallsChanged(); HC.removeWall(m, w.id); E.sel = null; rebuild(); }));
     } else if (sel.kind === 'opening') {
       var o = m.openings.find(function (x) { return x.id === sel.id; });
       if (!o) return;
@@ -301,7 +309,7 @@
     (g.wins || []).forEach(function (w) { wl.push({ x: w.x * k, y: -w.y * k, w: Math.max(0.6, (w.mm || 1500) / 1000), kind: 'window' }); });
     (g.doors || []).forEach(function (d) { wl.push({ x: d.x * k, y: -d.y * k, w: Math.max(0.6, (d.mm || 900) / 1000), kind: 'door' }); });
     var no = HC.addOpeningsAt(m, fl.id, wl);
-    E.msg = 'Импорт: комнат ' + r.rooms + ', стен ' + r.walls + ', проёмов ' + no + ' из ' + wl.length + (r.gap ? ', толщина стен по зазорам между комнатами ' + Math.round(r.gap * 100) + ' см' : ', соседних комнат не найдено, контуры сдвинуты на полтолщины наружной стены') + '. Пирог наружных стен — выбранный в списке (' + ep.n.slice(0, 22) + '...): проверьте стены.' +
+    E.msg = (r.fixed ? 'Комнаты — ваши зоны с плана как есть (площади не пересчитываются), стены построены по их рёбрам. ' : '') + 'Импорт: комнат ' + r.rooms + ', стен ' + r.walls + ', проёмов ' + no + ' из ' + wl.length + (r.gap ? ', толщина стен по зазорам между комнатами ' + Math.round(r.gap * 100) + ' см' : ', соседних комнат не найдено, контуры сдвинуты на полтолщины наружной стены') + '. Пирог наружных стен — выбранный в списке (' + ep.n.slice(0, 22) + '...): проверьте стены.' +
       (P.floors.length > 1 ? ' Редактор правит один этаж: импортирован первый.' : '');
     E.sel = null;
     if (f.img && /^(data:|https?:)/.test(f.img)) setUnderlay(f.img, f.w || 0, f.h || 0, k, [0, 0]);
@@ -507,6 +515,7 @@
       if (Math.hypot(s[0] - a[0], s[1] - a[1]) < 0.1) return;
       snapshot();
       var pr = (E.wtype === 'ext' ? EXT[E.ext] : INT[E.int]);
+      wallsChanged();
       HC.addWall(m, { floor: m.floors[0].id, a: a.slice(), b: s.slice(), thick: pr.t, layers: pr.l.map(function (l) { return Object.assign({}, l); }) });
       var closed = E.chain.length >= 2 && Math.hypot(s[0] - E.chain[0][0], s[1] - E.chain[0][1]) < 0.05;
       E.chain.push(s);
@@ -553,7 +562,7 @@
     if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'я')) { undo(); e.preventDefault(); e.stopPropagation(); return; }
     if (e.key === 'Delete' && E.sel) {
       snapshot();
-      if (E.sel.kind === 'wall') E.HC.removeWall(E.model, E.sel.id);
+      if (E.sel.kind === 'wall') { wallsChanged(); E.HC.removeWall(E.model, E.sel.id); }
       else if (E.sel.kind === 'opening') E.HC.removeOpening(E.model, E.sel.id);
       E.sel = null; rebuild(); e.stopPropagation();
     }

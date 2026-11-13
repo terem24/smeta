@@ -185,6 +185,7 @@
 
   // Помещения этажа: замкнутые контуры, обход против часовой. Возвращает [{ id, poly, area, perimeter, edges }]
   function detectRooms(m, floorId) {
+    if (m.fixedRooms && m.fixedRooms[floorId] && m.fixedRooms[floorId].length) return hydrateFixed(m, floorId);
     var tol = m.settings.tol * 2;
     var pieces = splitWalls(m, floorId), nodes = {}, half = [];
     pieces.forEach(function (p) {
@@ -347,7 +348,14 @@
 
   function fromPolygons(m, floorId, polys, opts) {
     opts = opts || {};
+    var fixed = opts.fixed !== false;             // комнаты = ваши контуры; false — искать комнаты по замкнутым стенам
     var snapTol = opts.snap || 0.12, eps = opts.simplify || 0.08;
+    // Чистим контуры: лишние вершины, обход против часовой, исходная (чистая) площадь
+    polys = polys.map(function (pl) {
+      var P = simplifyPoly(pl.pts, eps);
+      if (polyArea(P) < 0) P = P.slice().reverse();
+      return Object.assign({}, pl, { pts: P, inner: Math.abs(polyArea(P)) });
+    }).filter(function (pl) { return pl.pts.length >= 3 && pl.inner > 0.3; });
     // Контуры комнат на плане — по внутренним граням: между соседними остаётся зазор в толщину стены. Сдвигаем каждый
     // наружу на полтолщины — тогда соседи встают на общую ось и склеиваются. Толщина: opts.gap (м), 'auto' — по
     // зазорам между параллельными рёбрами, иначе по толщине наружной стены.
@@ -365,11 +373,14 @@
       V.push(p.slice()); return V.length - 1;
     };
     var loops = polys.map(function (pl) {
-      var P = simplifyPoly(pl.pts, eps);
-      return P.length >= 3 ? P.map(vid) : null;
+      var ids = [];
+      pl.pts.forEach(function (p) { var id = vid(p); if (!ids.length || ids[ids.length - 1] !== id) ids.push(id); });
+      if (ids.length > 1 && ids[0] === ids[ids.length - 1]) ids.pop();
+      return ids.length >= 3 ? ids : null;
     });
-    var seen = {}, segs = [];
-    loops.forEach(function (L) {
+    var seen = {}, segs = [], edgesOf = [], ownersOf = {};
+    loops.forEach(function (L, li) {
+      edgesOf[li] = [];
       if (!L) return;
       for (var i = 0; i < L.length; i++) {
         var a = L[i], b = L[(i + 1) % L.length];
@@ -386,22 +397,47 @@
         cuts.sort(function (x, y) { return x.t - y.t; });
         for (var j = 0; j + 1 < cuts.length; j++) {
           var u = cuts[j].id, w = cuts[j + 1].id, key = Math.min(u, w) + '_' + Math.max(u, w);
-          if (!seen[key]) { seen[key] = 1; segs.push([u, w]); }
+          if (!seen[key]) { seen[key] = 1; segs.push([u, w, key]); }
+          edgesOf[li].push({ u: u, w: w, key: key });
+          (ownersOf[key] = ownersOf[key] || []);
+          if (ownersOf[key].indexOf(li) < 0) ownersOf[key].push(li);
         }
       }
     });
+    var wallByKey = {};
     var created = segs.map(function (sg) {
-      return addWall(m, { floor: floorId, a: V[sg[0]].slice(), b: V[sg[1]].slice(), thick: gapUsed || itn.thick, layers: itn.layers ? itn.layers.map(function (l) { return Object.assign({}, l); }) : null });
+      var w = addWall(m, { floor: floorId, a: V[sg[0]].slice(), b: V[sg[1]].slice(), thick: gapUsed || itn.thick, layers: itn.layers ? itn.layers.map(function (l) { return Object.assign({}, l); }) : null });
+      w.imported = true; wallByKey[sg[2]] = w;
+      return w;
     });
-    var rooms = detectRooms(m, floorId);
-    created.forEach(function (w) { w.imported = true; });
-    rooms.forEach(function (r) {
-      r.edges.forEach(function (e) {
-        if (!e.neighbor && !e.wall._ext) {
-          e.wall._ext = true;
-          e.wall.thick = gapUsed || ext.thick; e.wall.layers = ext.layers ? ext.layers.map(function (l) { return Object.assign({}, l); }) : null;
-        }
+    var setExt = function (w) { w.thick = gapUsed || ext.thick; w.layers = ext.layers ? ext.layers.map(function (l) { return Object.assign({}, l); }) : null; };
+
+    if (fixed) {
+      // комнаты — сами контуры; стены — по их рёбрам, соседство — по общим кускам рёбер
+      var rooms = [];
+      polys.forEach(function (pl, li) {
+        if (!loops[li]) return;
+        var id = floorId + '_z' + (rooms.length + 1);
+        pl._id = id;
+        rooms.push({ id: id, li: li, name: pl.name || '', tv: pl.tv, poly: loops[li].map(function (v) { return V[v].slice(); }), inner: pl.inner });
       });
+      var idOf = {}; rooms.forEach(function (r) { idOf[r.li] = r.id; });
+      rooms.forEach(function (r) {
+        r.edges = edgesOf[r.li].map(function (e) {
+          var others = (ownersOf[e.key] || []).filter(function (x) { return x !== r.li && idOf[x]; });
+          return { w: wallByKey[e.key].id, a: V[e.u].slice(), b: V[e.w].slice(), nb: others.length ? idOf[others[0]] : null };
+        });
+        delete r.li;
+      });
+      Object.keys(ownersOf).forEach(function (k) { if (ownersOf[k].length === 1) setExt(wallByKey[k]); });
+      m.fixedRooms = m.fixedRooms || {};
+      m.fixedRooms[floorId] = rooms;
+      return { walls: created.length, rooms: rooms.length, gap: gapUsed, fixed: true };
+    }
+
+    var found = detectRooms(m, floorId);
+    found.forEach(function (r) {
+      r.edges.forEach(function (e) { if (!e.neighbor && !e.wall._ext) { e.wall._ext = true; setExt(e.wall); } });
     });
     created.forEach(function (w) { delete w._ext; });
     // имена и температуры — по контуру, в который попал центр найденной комнаты
@@ -412,12 +448,37 @@
       }
       return ins;
     };
-    rooms.forEach(function (r) {
+    found.forEach(function (r) {
       var c = r.poly.reduce(function (a, p) { return [a[0] + p[0] / r.poly.length, a[1] + p[1] / r.poly.length]; }, [0, 0]);
       var src = polys.find(function (pl) { return inside(c, pl.pts); });
       if (src && (src.name || src.tv !== undefined)) m.roomOv[r.id] = { name: src.name || undefined, tv: src.tv };
     });
-    return { walls: created.length, rooms: rooms.length, gap: gapUsed };
+    return { walls: created.length, rooms: found.length, gap: gapUsed, fixed: false };
+  }
+
+  // Комнаты заданы контурами (импорт) — пока стены не правили; после правки стен вернуться к поиску по замкнутым контурам
+  function hasFixed(m) { return !!(m.fixedRooms && Object.keys(m.fixedRooms).some(function (k) { return m.fixedRooms[k] && m.fixedRooms[k].length; })); }
+  function dropFixed(m) { m.fixedRooms = {}; }
+
+  function hydrateFixed(m, floorId) {
+    var byId = {};
+    m.walls.forEach(function (w) { byId[w.id] = w; });
+    var out = m.fixedRooms[floorId].map(function (r) {
+      var ov = m.roomOv[r.id] || {};
+      var edges = [];
+      r.edges.forEach(function (e) {
+        var w = byId[e.w];
+        if (!w) return;
+        edges.push({ wall: w, piece: { wall: w, t0: 0, t1: dist(w.a, w.b) }, a: e.a, b: e.b, len: dist(e.a, e.b), neighbor: e.nb, dirAlong: 1 });
+      });
+      return { id: r.id, floor: floorId, poly: r.poly, edges: edges, areaGross: Math.abs(polyArea(r.poly)), area: r.inner,
+               perimeter: edges.reduce(function (t, e) { return t + e.len; }, 0),
+               name: ov.name !== undefined ? ov.name : r.name, tv: ov.tv !== undefined ? ov.tv : r.tv, kind: 'room' };
+    });
+    var cen = function (r) { var c = [0, 0]; r.poly.forEach(function (p) { c[0] += p[0] / r.poly.length; c[1] += p[1] / r.poly.length; }); return c; };
+    out.slice().sort(function (a, b) { var ca = cen(a), cb = cen(b); return (cb[1] - ca[1]) || (ca[0] - cb[0]); })
+      .forEach(function (r, i) { if (!r.name) r.name = 'Комната ' + (i + 1); });
+    return out;
   }
 
   // Проёмы по точкам плана: [{ x, y, w, kind, h?, sill? }] — ставятся на ближайшую стену этажа не дальше maxD
@@ -470,7 +531,7 @@
     return m;
   }
 
-  var api = { DEFAULTS: DEFAULTS, create: create, addFloor: addFloor, addWall: addWall, addOpening: addOpening, removeWall: removeWall, removeOpening: removeOpening, fromPolygons: fromPolygons, addOpeningsAt: addOpeningsAt, estimateGap: estimateGap, offsetPoly: offsetPoly, wallR: wallR,
+  var api = { DEFAULTS: DEFAULTS, create: create, addFloor: addFloor, addWall: addWall, addOpening: addOpening, removeWall: removeWall, removeOpening: removeOpening, fromPolygons: fromPolygons, hasFixed: hasFixed, dropFixed: dropFixed, addOpeningsAt: addOpeningsAt, estimateGap: estimateGap, offsetPoly: offsetPoly, wallR: wallR,
               detectRooms: detectRooms, heatLoss: heatLoss, sampleHouse: sampleHouse, openingsOn: openingsOn };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.HouseCore = api;
 })(typeof window !== 'undefined' ? window : this);
