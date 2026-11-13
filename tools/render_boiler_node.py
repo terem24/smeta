@@ -48,6 +48,12 @@ TAG = 'boiler_' + VAR
 # «…_rm» — смета ROMMER: кран RBV-0004 с красной бабочкой (фото каталога RBV-0004-2210220), остальное то же
 RM = VAR.endswith('_rm')
 VAR = VAR[:-3] if RM else VAR
+# «…_c» — газ и резервный электрокотёл без гидрострелки: на подаче каждого котла обратный клапан SVC-0011 с ниппелем
+CASC = VAR.endswith('_c')
+VAR = VAR[:-2] if CASC else VAR
+# «…_n» — без бойлера косвенного нагрева: у STATUS нет трёхходового клапана (в смете его нет), подача прямо на трубу
+NODHW = VAR.endswith('_n')
+VAR = VAR[:-2] if NODHW else VAR
 
 add_colors({
     'bwhite': (0.95, 0.95, 0.95),
@@ -185,7 +191,7 @@ def stab600(x, z):
     return (x, y, z)
 
 
-def boiler_status(ox=0.0):
+def boiler_status(ox=0.0, big=False):
     """Электрокотёл STOUT STATUS 5–18 кВт (SEB-3101; паспорт stout_bf87195c29c2, рис. 9 и 10: 426 x 741 x 294 с
     кронштейном; рис. 2: патрубок входа теплоносителя 12 (обратка) — 38 от левого края, выхода 13 (подача) — 26 от
     правого, оба 3/4" НР в 107 от стены; сброс предохранительного клапана 1/2" — 238 от левого, 60 от стены).
@@ -195,6 +201,12 @@ def boiler_status(ox=0.0):
     W, H, D = 0.426, 0.741, 0.268
     YP = YW - 0.107
     XP = {'R': 0.038, 'S': 0.400, 'E': 0.238}
+    if big:
+        # 21–27 кВт (рис. 3 и 9 справа): вход 11 (обратка) — 29 от левого края, выход 12 (подача) — 105 от правого,
+        # оба в 105 от стены; патрубок внешнего бака 28 (3/4") — тоже 29 от левого, 35 от стены; сброс 13 — 184,5; глубина 304
+        D = 0.278
+        YP = YW - 0.105
+        XP = {'R': 0.029, 'S': 0.321, 'E': 0.1845, 'T': 0.029}
     part('mf')
     m = mat('bwhite', rough=0.35, coat=0.4)
     plan = rounded([(0.0, YW - D - 0.022), (W, YW - D - 0.022), (W, YW - 0.004), (0.0, YW - 0.004)], 0.006, seg=4)
@@ -215,6 +227,9 @@ def boiler_status(ox=0.0):
         lathe('патрубок ' + k, [(0.0110, 0), (0.0110, 0.006)] + thread(0.0128, 0.014, start=0.006), M_NICKEL(),
               (ox + XP[k], YP, ZB), '-Z', segs=32)
     lathe('сброс клапана', [(0.0090, 0), (0.0090, 0.012)], M_BRASS(), (ox + XP['E'], YW - 0.060, ZB), '-Z', segs=24)
+    if big:      # патрубок внешнего расширительного бака 3/4" — в смете не подключается, без пары
+        lathe('патрубок бака', [(0.0110, 0), (0.0110, 0.006)] + thread(0.0128, 0.014, start=0.006), M_NICKEL(),
+              (ox + XP['T'], YW - 0.035, ZB), '-Z', segs=32)
     return ZB - 0.020
 
 
@@ -244,6 +259,27 @@ def three_way(c, side=1):
                             (c.x - 0.080, c.y - 0.040, zc + 0.120)], 0.0030, mat('filterblk', rough=0.5))
     marks['kit'] = (c.x, c.y - 0.083, zc)
     return a + Vector((0, 0, -0.016)), b + Vector((side * 0.020, 0, 0))
+
+
+def check_cascade(c):
+    """Обратный клапан SVC-0011-000020 3/4" ВР/ВР (паспорт stout_5d5495cc674d, разд. 4: L 65, D 41,5; фото каталога:
+    латунь, шестигранники ВР по концам, цилиндр с надписью STOUT EUROPA и стрелкой) и ниппель 3/4" НР SFT-0004 под
+    переходник — по цепочке сметы «кран — обратный клапан каскада — ниппель — переходник ВПр-ВР». Вниз от c."""
+    br = M_BRASS()
+    part('feed')
+    c = Vector(c)
+    hexnut('клапан ВР верх', 0.034, 0.013, br, tuple(c), '-Z')
+    lathe('клапан корпус', [(0.0185, 0), (0.0208, 0.002), (0.0208, 0.037), (0.0185, 0.039)], br,
+          tuple(c + Vector((0, 0, -0.013))), '-Z', segs=48)
+    box('стрелка', (0.002, 0.001, 0.016), mat('logo', rough=0.5), (c.x + 0.012, c.y - 0.0205, c.z - 0.032))
+    hexnut('клапан ВР низ', 0.034, 0.013, br, tuple(c + Vector((0, 0, -0.052))), '-Z')
+    ni = M_NICKEL()
+    p = c + Vector((0, 0, -0.065 + 0.010))
+    lathe('ниппель НР верх', thread(0.0128, 0.010), ni, tuple(p), '-Z', segs=40)
+    hexnut('ниппель шестигранник', 0.032, 0.008, ni, tuple(p + Vector((0, 0, -0.010))), '-Z')
+    lathe('ниппель НР низ', thread(0.0128, 0.012), ni, tuple(p + Vector((0, 0, -0.018))), '-Z', segs=40)
+    marks['feed'] = tuple(c + Vector((0, -0.021, -0.030)))
+    return p + Vector((0, 0, -0.030 + 0.012))
 
 
 def ball_valve(c, ax='-Z', col=None):
@@ -433,8 +469,8 @@ def parts_sheet():
 def build():
     if VAR == 'parts':
         return parts_sheet()
-    if VAR == 'status':
-        return build_status()
+    if VAR in ('status', 'status27'):
+        return build_status(VAR == 'status27')
     sc = reset()
     part('')
     g = mat('bwhite', rough=0.6, alpha=0.18)
@@ -452,6 +488,8 @@ def build():
     x = XP['A']
     p = union((x, YP, z0))
     p = ball_valve(p + Vector((0, 0, 0.012)))
+    if CASC:
+        p = check_cascade(p + Vector((0, 0, 0.012)))
     p = adapter(p + Vector((0, 0, 0.016)), fem=True)
     zsep = p.z - 0.110                                  # верх сепаратора (гнездо ВР)
     top = adapter((x, YP, zsep - 0.012), fem=False, ax='Z')   # НР вкручен в гнездо, раструб вверх
@@ -460,11 +498,14 @@ def build():
     p = adapter(q + Vector((0, 0, 0.012)), fem=False)
     pipe([p + Vector((0, 0, 0.004)), (x, YP, ZE)])
     ANCH['tube:a'] = (x, YP, (p.z + ZE) / 2)
-    # на бойлер I: переход ВПр-ВР прямо на патрубок — труба
-    x = XP['I']
-    p = union((x, YP, z0))
-    p = adapter(p + Vector((0, 0, 0.012)), fem=True)
-    pipe([p + Vector((0, 0, 0.004)), (x, YP, ZE)])
+    # на бойлер I: американка — переход ВПр-ВР — труба. У двухконтурного 2.x (то же руководство NeoSlim
+    # 1.18/2.18/1.24/2.24 Ti, общий чертёж стр. 28) на этих местах патрубки ГВС и ХВС — их подключает раздел
+    # водоснабжения, в обвязке котла их нет: на кадре голые патрубки
+    if VAR == 'haier1':
+        x = XP['I']
+        p = union((x, YP, z0))
+        p = adapter(p + Vector((0, 0, 0.012)), fem=True)
+        pipe([p + Vector((0, 0, 0.004)), (x, YP, ZE)])
     # газ C — не в смете
     gas_line((XP['C'], YP, z0), ZE + 0.10)
     # обратка G: американка — кран — фильтр (гайка вверх, корпус под ней, вход вправо) — переход ВР — труба вниз
@@ -479,7 +520,7 @@ def build():
     return sc
 
 
-def build_status():
+def build_status(big=False):
     """Электрокотёл STOUT STATUS и обвязка раздела 2.2 сметы (цепочки assembly_chains):
       подача (13, справа): американка — кран — трёхходовой клапан (AB ВР на НР крана): A вниз — переходник ВПр-ВР —
                            труба в отопление, на ней сепаратор воздуха (по паре ВПр-НР); B вправо — переходник ВПр-ВР —
@@ -494,7 +535,7 @@ def build_status():
     for cl in list(ob.users_collection):
         cl.objects.unlink(ob)
     coll('sheath').objects.link(ob)
-    z0 = boiler_status()
+    z0 = boiler_status(big=big)
     ZE = ZB - 0.47
     sx, sz = -0.130, ZB + 0.250
     stab600(sx, sz)
@@ -508,7 +549,12 @@ def build_status():
     x = XP['S']
     p = union((x, YP, z0))
     p = ball_valve(p + Vector((0, 0, 0.012)))
-    a, b = three_way(p + Vector((0, 0, 0.012)), side=1)
+    if CASC:
+        p = check_cascade(p + Vector((0, 0, 0.012))) + Vector((0, 0, 0.004))
+    if NODHW:
+        a, b = p + Vector((0, 0, 0.016)), None
+    else:
+        a, b = three_way(p + Vector((0, 0, 0.012)), side=1)
     p = adapter(a, fem=True)
     zsep = p.z - 0.110
     top = adapter((x, YP, zsep - 0.012), fem=False, ax='Z')
@@ -517,10 +563,11 @@ def build_status():
     p = adapter(q + Vector((0, 0, 0.012)), fem=False)
     pipe([p + Vector((0, 0, 0.004)), (x, YP, ZE)])
     ANCH['tube:a'] = (x, YP, (p.z + ZE) / 2)
-    p = adapter(b, fem=True, ax='X')
     R = 0.040
-    arc = [(p.x + R * math.sin(t), YP, p.z - R + R * math.cos(t)) for t in [k * math.pi / 2 / 10 for k in range(1, 11)]]
-    pipe([p + Vector((-0.004, 0, 0)), (p.x, YP, p.z)] + arc + [(p.x + R, YP, ZE)])
+    if b is not None:
+        p = adapter(b, fem=True, ax='X')
+        arc = [(p.x + R * math.sin(t), YP, p.z - R + R * math.cos(t)) for t in [k * math.pi / 2 / 10 for k in range(1, 11)]]
+        pipe([p + Vector((-0.004, 0, 0)), (p.x, YP, p.z)] + arc + [(p.x + R, YP, ZE)])
     # обратка
     x = XP['R']
     p = union((x, YP, z0))

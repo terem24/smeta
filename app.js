@@ -45995,7 +45995,7 @@ const app = {
         if (kind === 'conv') return { mount: 'lock', feed: 'node' }[g] || g;
         if (kind === 'wo') return { feed: 'node', end: 'fix' }[g] || g;
         if (kind === 'sw') return { feed: 'node', end: 'fix', mount: 'lock', mf: 'mf' }[g] || g;
-        if (kind === 'boiler') return g;
+        if (kind === 'boiler') return this._blTwo && (g === 'head' || g === 'kit') ? g + ':' + line : g;
         return g === 'end' ? 'end_' + end : g;
     },
     // Строки сметы подписи — по виду схемы
@@ -46659,7 +46659,7 @@ const app = {
     boilerIndex: function () {
         if (this._blIdx !== undefined) return this._blIdx;
         this._blIdx = null;
-        fetch(this.BOILER_DIR + 'boiler.json?v=1')
+        fetch(this.BOILER_DIR + 'boiler.json?v=2')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._blIdx = j || {}; if (Object.keys(this._blIdx).length) this.render(); });
@@ -46668,12 +46668,15 @@ const app = {
     // вариант кадра по позиции котла сметы; другой котёл — кадра пока нет
     boilerFrameKey: function (it) {
         const sku = String(it.displaySku || it.id || '');
+        // STATUS 21–27 кВт — свой корпус: патрубки по рис. 3 паспорта (обратка 29 от края, подача 105 от правого)
+        if (/^SEB-3101-0000(21|24|27)$/i.test(sku)) return 'status27';
         if (/^SEB-3101-/i.test(sku)) return 'status';
         if (/^GE0Q6/i.test(sku) && /одноконтур/i.test(String(it.name || ''))) return 'haier1';
+        if (/^GE0Q6/i.test(sku) && /двухконтур/i.test(String(it.name || ''))) return 'haier2';
         return null;
     },
     BOILER_LAB_RE: {
-        ek: /^Кран шаровой ВР\/НР/i, feed: /^Разъемное соед|^Американка 3\/4/i, mount: /^Сепаратор воздуха/i,
+        ek: /^Кран шаровой ВР\/НР/i, feed: /^Разъемное соед|^Американка 3\/4|^Клапан обратный пружинный 3\/4|^Ниппель 3\/4" НР$/i, mount: /^Сепаратор воздуха/i,
         end: /^Фильтр-шламоотдел|^Магнитный сепаратор шлама/i, tube: /^Переходник ВПр|^Труба нерж/i,
         flue: /^Комплект дымохода|^Дымоход коаксиальн/i, stab: /^Стабилизатор/i, valve3: /^Комплект 3-х ход|трёхходов|трехходов/i
     },
@@ -46688,8 +46691,11 @@ const app = {
             const s0 = (this._blSkus || {})[k[1]];
             return s0 ? rows.filter(tr => sku(tr) === s0) : [];
         }
-        // head и kit у котлов разные (дымоход/стабилизатор/клапан) — по кадру
-        const role = { head: this._blHas.flue ? 'flue' : 'stab', kit: this._blHas.valve3 ? 'valve3' : 'stab' }[k[0]] || k[0];
+        // head и kit у котлов разные: у газового — дымоход и стабилизатор, у STATUS — стабилизатор и трёхходовой клапан;
+        // на листе с двумя котлами ключ «head:<кадр>» — роль по своему кадру
+        const fk = k[1] ? (this._blKeys || {})[k[1]] || '' : (this._blHas.flue ? 'haier' : 'status');
+        const gasF = /^haier/.test(fk);
+        const role = { head: gasF ? 'flue' : 'stab', kit: gasF ? 'stab' : 'valve3' }[k[0]] || k[0];
         const re = this.BOILER_LAB_RE[role];
         return re ? rows.filter(tr => sec2(tr) && re.test(nm(tr))) : [];
     },
@@ -46702,35 +46708,55 @@ const app = {
         if (!idx) return '';
         const frames = [];
         const rm = eq.some(it => /^2\.[12]/.test(String(it.group || '')) && /^RBV-/i.test(String(it.displaySku || it.id || '')));
+        const casc = eq.some(it => /^2\.[12]/.test(String(it.group || '')) && /^SVC-0011-/i.test(String(it.displaySku || it.id || '')));
         this._blSkus = {};
+        this._blKeys = {};
         boilers.forEach(it => {
             // смета ROMMER: краны RBV с красной бабочкой — кадр «…_rm»
-            const k0 = this.boilerFrameKey(it), key = rm && idx[k0 + '_rm'] ? k0 + '_rm' : k0, fr = idx[key];
+            // STATUS без бойлера (в смете нет трёхходового клапана) — кадр «…_n»
+            const k1 = this.boilerFrameKey(it), k0 = /^status/.test(k1) && !eq.some(e => /^BX4991100069$/i.test(String(e.displaySku || e.id || ''))) ? k1 + '_n' : k1;
+            // газ + резервный электро без гидрострелки: на подаче каждого котла обратный клапан SVC-0011 — кадр «…_c»
+            const kc = casc && idx[k0 + '_c'] ? k0 + '_c' : k0;
+            const key = rm && idx[kc + '_rm'] ? kc + '_rm' : kc, fr = idx[key];
             if (!fr || !fr.o || frames.some(f => f.key === key)) return;
             const f = { id: 'b' + frames.length, at: frames.length, fr, key, it, path: this.BOILER_DIR + 'boiler_' + key };
             this._blSkus[f.id] = String(it.displaySku || it.id || '');
+            this._blKeys[f.id] = key;
             frames.push(f);
         });
         if (!frames.length) return '';
-        const gas = frames.some(f => /^haier1/.test(f.key)), el = frames.some(f => /^status/.test(f.key));
-        this._blHas = { flue: gas && !el, valve3: el && !gas };
+        const gas = frames.some(f => /^haier/.test(f.key)), el = frames.some(f => /^status/.test(f.key));
+        this._blHas = { flue: gas && !el, valve3: el && !gas && frames.some(f => /^status/.test(f.key) && !/_n(_c)?(_rm)?$/.test(f.key)) };
         const { iw, ih } = this.wmPlaceFrames(frames, frames.map(f => f.at), [0, 0, 0]);
         const spec = frames.map(f => f.id).join(',');
-        const zonesOf = this.wmZonesOf(frames, iw, ih, (z, f) => { const k = String(z).split(':')[0]; return k === 'mf' ? 'mf:' + f.id : k; });
+        // два котла (газ + резервный электро): head/kit у них разные — ключ по кадру
+        const two = frames.length > 1;
+        this._blTwo = two;
+        const zonesOf = this.wmZonesOf(frames, iw, ih, (z, f) => { const k = String(z).split(':')[0];
+            return k === 'mf' || (two && (k === 'head' || k === 'kit')) ? k + ':' + f.id : k; });
         const T = {
-            ek: ['Кран шаровой ВР/НР 3/4"', 'на подаче и обратке'], feed: ['Американка 3/4" ВР/НР', 'у патрубков котла'],
+            ek: ['Кран шаровой ВР/НР 3/4"', 'на подаче и обратке'],
+            feed: casc ? ['Американки, обратный клапан', 'клапан с ниппелем — на подаче котла'] : ['Американка 3/4" ВР/НР', 'у патрубков котла'],
             mount: ['Сепаратор воздуха 3/4"', 'на подаче, по паре переходников'], end: ['Фильтр-шламоотделитель магнитный', 'на обратке, корпус вертикально'],
             tube: ['Переходники ВПр и труба нерж. 22', 'пресс-соединения'],
             head: this._blHas.flue ? ['Комплект дымохода 60/100', 'коаксиальный, в стену'] : ['Стабилизатор напряжения', 'питание котла'],
             kit: this._blHas.valve3 ? ['Трёхходовой клапан', 'A — отопление, B — змеевик бойлера'] : ['Стабилизатор напряжения', 'питание котла']
         };
-        // два котла сразу (газ + резервный электро): head/kit у них разные — подписи только общих деталей
-        if (gas && el) { delete T.head; delete T.kit; }
+        const STAB = ['Стабилизатор напряжения', 'питание котла'], FLUE = ['Комплект дымохода 60/100', 'коаксиальный, в стену'],
+            V3 = ['Трёхходовой клапан', 'A — отопление, B — змеевик бойлера'];
+        if (two) {
+            delete T.head; delete T.kit;
+            frames.forEach(f => {
+                if (/^haier/.test(f.key)) { T['head:' + f.id] = FLUE; T['kit:' + f.id] = STAB; }
+                else { T['head:' + f.id] = STAB; if (!/_n(_c)?(_rm)?$/.test(f.key)) T['kit:' + f.id] = V3; }
+            });
+        }
         frames.forEach(f => {
             T['mf:' + f.id] = /^status/.test(f.key) ? ['Котёл электрический STOUT STATUS', String(f.it.name || '').replace(/^.*\(([^)]*)\).*$/, '$1')]
-                : ['Котёл газовый Haier NeoSlim', 'одноконтурный, ' + String(f.it.name || '').replace(/^.*\(([^)]*)\).*$/, '$1')];
+                : ['Котёл газовый Haier NeoSlim', (/^haier2/.test(f.key) ? 'двухконтурный, ' : 'одноконтурный, ') + String(f.it.name || '').replace(/^.*\(([^)]*)\).*$/, '$1')];
         });
-        const keys = frames.map(f => 'mf:' + f.id).concat(['ek', 'feed', 'end', 'mount', 'kit', 'head', 'tube']);
+        const keys = frames.map(f => 'mf:' + f.id).concat(['ek', 'feed', 'end', 'mount', 'kit', 'head', 'tube'])
+            .concat(two ? frames.reduce((o, f) => o.concat(['head:' + f.id, 'kit:' + f.id]), []) : []);
         const items = keys.map(key => {
             const zs = zonesOf[key] || [];
             if (!zs.length || !T[key]) return null;
@@ -46746,7 +46772,8 @@ const app = {
         const html = this.wmSheet({
             kind: 'boiler', frames, items, iw, ih, spec, hk: null, title: 'Котельная', subtitle: 'Котёл с обвязкой',
             places: frames.map(f => ({ name: /^status/.test(f.key) ? 'Электрокотёл STOUT STATUS' : 'Газовый котёл Haier NeoSlim',
-                rows: /^status/.test(f.key) ? ['Подача справа, обратка слева', 'Трёхходовой клапан на бойлер'] : ['Подача слева, обратка справа', 'Выход на бойлер — от котла'] }))
+                rows: /^status/.test(f.key) ? ['Подача справа, обратка слева', 'Трёхходовой клапан на бойлер']
+                    : ['Подача слева, обратка справа', /^haier2/.test(f.key) ? 'ГВС и ХВС — по разделу водоснабжения' : 'Выход на бойлер — от котла'] }))
         });
         return html + sum;
     },

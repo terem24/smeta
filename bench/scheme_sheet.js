@@ -406,6 +406,9 @@ const OBJ = {
     'Секционные боковые, стабильная труба 16,2x2,6': { area: 120, floors: 1, systems: ['rad'], radType: 'space_ru', connectionType: 'angled', pipeType: 'stable_16' },
     'Котельная: газовый котёл Haier, бойлер': { area: 150, floors: 1, systems: ['rad'], fuels: ['gas'], hotWater: true },
     'Котельная: электрокотёл STOUT STATUS, бойлер': { area: 120, floors: 1, systems: ['rad'], fuels: ['el'], hotWater: true },
+    'Котельная: двухконтурный Haier, без бойлера': { area: 150, floors: 1, systems: ['rad'], fuels: ['gas'], hotWater: false },
+    'Котельная: STATUS 27 кВт': { area: 250, floors: 1, systems: ['rad'], fuels: ['el'], hotWater: false },
+    'Котельная: газ и резервный STATUS (каскад)': { area: 150, floors: 1, systems: ['rad'], fuels: ['gas', 'el'], hotWater: true },
     'Канализация: санузел и кухня': { area: 120, floors: 1, systems: ['rad'], water: true, sewer: true, waterZones: Z3 },
     'Конвектор SCN, металлопластик': { area: 120, floors: 1, systems: ['rad'], detailedRooms: true, rooms: CONV_ROOMS(), convectorType: 'scn', convConnectionType: 'angled', pipeType: 'split_mp' },
     'Конвектор SCN, клапаны прямые': { area: 120, floors: 1, systems: ['rad'], detailedRooms: true, rooms: CONV_ROOMS(), convectorType: 'scn', convConnectionType: 'straight' },
@@ -514,8 +517,8 @@ for (const [title, patch] of Object.entries(OBJ)) {
     const boil = eq.filter(it => app.boilerFrameKey(it));
     if (boil.length) {
         const sec2 = eq.filter(it => /^2\.[125]/.test(String(it.group || '')));
-        const keys = boil.some(it => app.boilerFrameKey(it) === 'haier1') ? ['flue'] : [];
-        if (boil.some(it => app.boilerFrameKey(it) === 'status')) keys.push('valve3');
+        const keys = boil.some(it => /^haier/.test(app.boilerFrameKey(it) || '')) ? ['flue'] : [];
+        if (boil.some(it => /^status/.test(app.boilerFrameKey(it) || '')) && eq.some(it => /^BX4991100069/.test(String(it.displaySku || it.id)))) keys.push('valve3');
         ['ek', 'feed', 'mount', 'end', 'tube', 'stab'].concat(keys).forEach(pk => {
             if (!sec2.some(it => app.BOILER_LAB_RE[pk].test(nm(it)))) miss.push('котёл с обвязкой: ' + pk);
         });

@@ -25,7 +25,10 @@ BLENDER = os.environ.get('BLENDER') or r'C:\Program Files\Blender Foundation\Ble
 SCRIPT = os.path.join(HERE, 'tools', 'render_boiler_node.py')
 PX_PER_M = 1200     # котёл с обвязкой ~0,9 x 1,4 м: кадр ~1100 x 1700 px
 # haier1 — газовый Haier NeoSlim 1.x Ti (газ по умолчанию); status — электрический STOUT STATUS (электро по умолчанию)
-VARIANTS = ['haier1', 'status']
+VARIANTS = ['haier1', 'haier2', 'status', 'status27']   # haier2 — двухконтурный NeoSlim 2.x; status27 — STATUS 21–27 кВт (рис. 3 паспорта)
+VARIANTS += [v + '_n' for v in list(VARIANTS) if v.startswith('status')]   # без бойлера: без трёхходового клапана
+# газ + резервный электрокотёл (каскад без гидрострелки): обратный клапан SVC-0011 с ниппелем на подаче — «…_c»
+VARIANTS += [v + '_c' for v in list(VARIANTS) if v != 'haier2']
 VARIANTS += [v + '_rm' for v in list(VARIANTS)]      # смета ROMMER: краны RBV-0004 с красной бабочкой
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
@@ -80,7 +83,9 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     force = '--force' in sys.argv
-    idx_path = os.path.join(OUT, 'boiler.json')
+    # --index=<файл> — свой индекс для параллельного запуска (потом слить в boiler.json), иначе boiler.json
+    idx_name = next((a_[8:] for a_ in sys.argv if a_.startswith('--index=')), 'boiler.json')
+    idx_path = os.path.join(OUT, idx_name)
     index = {}
     if os.path.isfile(idx_path):
         with open(idx_path, encoding='utf-8') as fh:
