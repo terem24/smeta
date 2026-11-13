@@ -75,6 +75,7 @@
     cv.removeEventListener('contextmenu', E.h.ctx);
     document.removeEventListener('keydown', E.h.key, true);
     S.scene.remove(E.preview); S.scene.remove(E.cursor);
+    if (E.under) { S.scene.remove(E.under.mesh); E.under = null; }
     S.oc.enableRotate = E.saved.rot;
     if (E.panel) { E.panel.remove(); E.panel = null; }
     E.labels.forEach(function (l) { l.el.remove(); }); E.labels = [];
@@ -164,8 +165,29 @@
     acts.appendChild(btn('Очистить', false, function () { snapshot(); E.model = fresh(); E.sel = null; rebuild(); }));
     acts.appendChild(btn(E.ortho ? 'Ортогонально: да' : 'Ортогонально: нет', E.ortho, function () { E.ortho = !E.ortho; refreshPanel(); }));
     p.appendChild(acts);
+    var imp = $('div'); imp.style.cssText = 'margin:4px 0;padding:4px 0;border-top:1px solid #555;border-bottom:1px solid #555';
+    imp.appendChild($('div', '', 'Импорт плана'));
+    imp.appendChild(btn('Из планов калькулятора', false, importPlans, 'Контуры комнат, окна и двери из редактора планов этажей'));
+    var fi = $('input'); fi.type = 'file'; fi.accept = 'image/*'; fi.style.cssText = 'display:none';
+    fi.onchange = function () { if (fi.files && fi.files[0]) loadUnderlay(fi.files[0]); };
+    imp.appendChild(fi);
+    imp.appendChild(btn('Подложка из файла', false, function () { fi.click(); }, 'Картинка плана под стены: обведите её стенами'));
+    if (E.under) {
+      imp.appendChild(btn('Масштаб по двум точкам', E.tool === 'scale', function () { E.tool = 'scale'; E.scalePts = []; E.chain = null; refreshPanel(); }, 'Кликните два конца известного размера, потом введите его длину'));
+      imp.appendChild(row('Прозрачность', num(E.under.op, 0.1, function (x) { E.under.op = Math.max(0.1, Math.min(1, x)); E.under.mesh.material.opacity = E.under.op; })));
+      imp.appendChild(btn('Убрать подложку', false, function () { A.S().scene.remove(E.under.mesh); E.under = null; refreshPanel(); }));
+    }
+    if (E.msg) { var mm = $('div', '', E.msg); mm.style.cssText = 'color:#ffd23f;margin-top:4px'; imp.appendChild(mm); }
+    p.appendChild(imp);
 
-    if (E.tool === 'wall') {
+    if (E.tool === 'scale') {
+      p.appendChild(hint(E.scalePts && E.scalePts.length === 2 ? 'Введите расстояние между двумя точками и нажмите «Применить».' : 'Кликните две точки на подложке (' + (E.scalePts ? E.scalePts.length : 0) + ' из 2).'));
+      if (E.scalePts && E.scalePts.length === 2) {
+        var dI = num(1, 0.01, function () { }); dI.title = 'Расстояние, м';
+        p.appendChild(row('Расстояние, м', dI));
+        p.appendChild(btn('Применить', false, function () { applyScale(parseFloat(dI.value)); }));
+      }
+    } else if (E.tool === 'wall') {
       var ty = $('div');
       ty.appendChild(btn('Наружная', E.wtype === 'ext', function () { E.wtype = 'ext'; refreshPanel(); }));
       ty.appendChild(btn('Внутренняя', E.wtype === 'int', function () { E.wtype = 'int'; refreshPanel(); }));
@@ -255,6 +277,78 @@
       box.appendChild(hint('Площадь ' + r.area.toFixed(1) + ' м², периметр ' + r.perimeter.toFixed(1) + ' м'));
     }
     p.appendChild(box);
+  }
+
+  // ── импорт плана ────────────────────────────────────────────────────────
+  function note(t) { E.msg = t; refreshPanel(); }
+
+  function importPlans() {
+    var HC = E.HC, m = E.model;
+    var P = window.app && app.currentPlans && app.currentPlans();
+    if (!P || !P.floors || !P.floors.length) { note('В калькуляторе нет планов этажей: сначала загрузите план в редакторе планов.'); return; }
+    var f = P.floors[0];
+    if (!f.pxPerM) { note('На плане не задан масштаб: задайте его в редакторе планов.'); return; }
+    var zs = (f.zones || []).filter(function (z) { return z.pts && z.pts.length >= 3; });
+    if (!zs.length) { note('На плане нет контуров комнат.'); return; }
+    var k = 1 / f.pxPerM, xy = function (p) { return Array.isArray(p) ? [p[0] * k, -p[1] * k] : [p.x * k, -p.y * k]; };
+    var polys = zs.map(function (z) { return { pts: z.pts.map(xy), name: z.name || '', tv: z.type === 'wc' ? 25 : (z.type === 'cold' ? 12 : undefined) }; });
+    snapshot();
+    var fl = m.floors[0];
+    m.walls = m.walls.filter(function (w) { return w.floor !== fl.id; }); m.openings = []; m.roomOv = {};
+    var ep = EXT[E.ext], ip = INT[E.int];
+    var r = HC.fromPolygons(m, fl.id, polys, { ext: { layers: ep.l, thick: ep.t }, int: { layers: ip.l, thick: ip.t } });
+    var g = f.geom || {}, wl = [];
+    (g.wins || []).forEach(function (w) { wl.push({ x: w.x * k, y: -w.y * k, w: Math.max(0.6, (w.mm || 1500) / 1000), kind: 'window' }); });
+    (g.doors || []).forEach(function (d) { wl.push({ x: d.x * k, y: -d.y * k, w: Math.max(0.6, (d.mm || 900) / 1000), kind: 'door' }); });
+    var no = HC.addOpeningsAt(m, fl.id, wl);
+    E.msg = 'Импорт: комнат ' + r.rooms + ', стен ' + r.walls + ', проёмов ' + no + ' из ' + wl.length + '. Пирог наружных стен — выбранный в списке (' + ep.n.slice(0, 22) + '...): проверьте стены.' +
+      (P.floors.length > 1 ? ' Редактор правит один этаж: импортирован первый.' : '');
+    E.sel = null;
+    if (f.img && /^(data:|https?:)/.test(f.img)) setUnderlay(f.img, f.w || 0, f.h || 0, k, [0, 0]);
+    rebuild(); topView();
+  }
+
+  // подложка: картинка плана под стенами, плоскость в y = -0,02
+  function loadUnderlay(file) {
+    var rd = new FileReader();
+    rd.onload = function () { setUnderlay(rd.result, 0, 0, 0.01, [0, 0]); };
+    rd.readAsDataURL(file);
+  }
+
+  function setUnderlay(url, w, h, mpp, origin) {
+    var S = A.S(), T = S.T;
+    new T.TextureLoader().load(url, function (tex) {
+      tex.colorSpace = T.SRGBColorSpace;
+      var iw = w || tex.image.width, ih = h || tex.image.height;
+      if (E.under) S.scene.remove(E.under.mesh);
+      var mat = new T.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.6, depthWrite: false });
+      E.under = { mesh: new T.Mesh(new T.PlaneGeometry(1, 1), mat), iw: iw, ih: ih, mpp: mpp, origin: origin.slice(), op: 0.6 };
+      E.under.mesh.rotation.x = -Math.PI / 2; E.under.mesh.renderOrder = -1;
+      S.scene.add(E.under.mesh);
+      placeUnderlay();
+      E.msg = 'Подложка загружена. Если это не из калькулятора, задайте масштаб кнопкой «Масштаб по двум точкам».';
+      refreshPanel();
+    });
+  }
+
+  function placeUnderlay() {
+    var u = E.under, wm = u.iw * u.mpp, hm = u.ih * u.mpp;
+    u.mesh.scale.set(wm, hm, 1);
+    u.mesh.position.set(u.origin[0] + wm / 2, -0.02, hm / 2 - u.origin[1]);
+  }
+
+  function applyScale(D) {
+    var u = E.under, pts = E.scalePts;
+    if (!u || !pts || pts.length < 2 || !(D > 0)) { note('Введите расстояние больше нуля.'); return; }
+    var meas = Math.hypot(pts[1][0] - pts[0][0], pts[1][1] - pts[0][1]);
+    if (meas < 1e-6) { note('Точки совпадают.'); return; }
+    var f = D / meas, A0 = pts[0];
+    u.mpp *= f;
+    u.origin = [A0[0] + (u.origin[0] - A0[0]) * f, A0[1] + (u.origin[1] - A0[1]) * f];     // первая точка остаётся на месте
+    placeUnderlay();
+    E.scalePts = []; E.tool = 'wall';
+    E.msg = 'Масштаб задан: ' + (1 / u.mpp).toFixed(1) + ' пикселей на метр.';
+    refreshPanel(); topView();
   }
 
   // ── перестроение ────────────────────────────────────────────────────────
@@ -399,6 +493,13 @@
     var S = A.S(), q = planPoint(e), m = E.model, HC = E.HC;
     if (!q) return;
     e.stopImmediatePropagation(); e.preventDefault();
+    if (E.tool === 'scale') {
+      E.scalePts = E.scalePts || [];
+      if (E.scalePts.length >= 2) E.scalePts = [];
+      E.scalePts.push(q.slice());
+      refreshPanel();
+      return;
+    }
     if (E.tool === 'wall') {
       var s = snap(q).p;
       if (!E.chain) { E.chain = [s]; return; }

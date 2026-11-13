@@ -62,7 +62,28 @@ const eq = (what, got, want, tol) => {
     L.rooms.forEach(r => console.log('     ' + r.name + ': ' + r.area.toFixed(1) + ' м², ' + Math.round(r.Q) + ' Вт'));
 }
 
-// 3. Сверка формулы с Galf
+// 3. Импорт контуров комнат: общие стены склеиваются, Т-примыкание режет стену, шум в 5 см снимается привязкой
+{
+    const m = HC.create({ Tn: -25 });
+    const f = HC.addFloor(m, { level: 0 });
+    const polys = [
+        { name: 'Гостиная', pts: [[0, 0], [6, 0.03], [6.04, 4], [0, 4.02]] },
+        { name: 'Спальня', pts: [[6.02, 0.0], [10, 0], [10.03, 4], [6, 4]] },
+        { name: 'Кухня', pts: [[0, -4], [10, -4.02], [10, 0], [0, -0.02]], tv: 22 }
+    ];
+    const r = HC.fromPolygons(m, f.id, polys, {});
+    eq('импорт: найдено комнат', r.rooms, 3);
+    eq('импорт: стен без дублей (гостиная 4, спальня 3 новых, кухня 3 новых)', r.walls, 10);
+    const rooms = HC.detectRooms(m, f.id);
+    eq('импорт: сумма площадей', Math.round(rooms.reduce((s, x) => s + x.area, 0)), 80);
+    const names = Object.values(m.roomOv).map(o => o.name).sort().join(',');
+    console.log('     имена комнат из контуров: ' + names + (names === 'Гостиная,Кухня,Спальня' ? '' : '  <-- не те'));
+    if (names !== 'Гостиная,Кухня,Спальня') fail++;
+    const n = HC.addOpeningsAt(m, f.id, [{ x: 3, y: 4.0, w: 1.5, kind: 'window' }, { x: 8, y: 0, w: 0.9, kind: 'door' }, { x: 50, y: 50, w: 1, kind: 'window' }]);
+    eq('импорт: проёмов поставлено (третий слишком далеко)', n, 2);
+}
+
+// 4. Сверка формулы с Galf
 const gf = process.argv[2];
 if (gf && fs.existsSync(gf)) {
     const data = JSON.parse(fs.readFileSync(gf, 'utf8'));

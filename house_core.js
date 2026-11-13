@@ -262,6 +262,111 @@
     return result;
   }
 
+  // ── импорт: контуры комнат (метры) -> стены ────────────────────────────────────────
+  // polys: [{ pts: [[x, y], ...], name, tv }]. Общие стены соседних комнат склеиваются в одну, концы стен, лежащие на
+  // чужой стене, режут её (Т-примыкание). Стены, у которых хоть с одной стороны нет комнаты, получают пирог ext, остальные int.
+  function simplifyPoly(poly, eps) {
+    var P = poly.slice(), changed = true;
+    while (changed && P.length > 3) {
+      changed = false;
+      for (var i = 0; i < P.length; i++) {
+        var a = P[(i - 1 + P.length) % P.length], b = P[i], c = P[(i + 1) % P.length];
+        var dx = c[0] - a[0], dy = c[1] - a[1], L = Math.hypot(dx, dy) || 1e-9;
+        var d = Math.abs((b[0] - a[0]) * dy - (b[1] - a[1]) * dx) / L;
+        if (d < eps || dist(a, b) < eps) { P.splice(i, 1); changed = true; break; }
+      }
+    }
+    return P;
+  }
+
+  function fromPolygons(m, floorId, polys, opts) {
+    opts = opts || {};
+    var snapTol = opts.snap || 0.12, eps = opts.simplify || 0.08;
+    var ext = opts.ext || { layers: null, thick: m.settings.wallThick }, itn = opts.int || { layers: null, thick: 0.15 };
+    var V = [];                                           // уникальные вершины
+    var vid = function (p) {
+      for (var i = 0; i < V.length; i++) if (dist(V[i], p) < snapTol) return i;
+      V.push(p.slice()); return V.length - 1;
+    };
+    var loops = polys.map(function (pl) {
+      var P = simplifyPoly(pl.pts, eps);
+      return P.length >= 3 ? P.map(vid) : null;
+    });
+    var seen = {}, segs = [];
+    loops.forEach(function (L) {
+      if (!L) return;
+      for (var i = 0; i < L.length; i++) {
+        var a = L[i], b = L[(i + 1) % L.length];
+        if (a === b) continue;
+        // вершины других комнат, лежащие на этом ребре, режут его
+        var ux = V[b][0] - V[a][0], uy = V[b][1] - V[a][1], len = Math.hypot(ux, uy);
+        var cuts = [{ t: 0, id: a }, { t: len, id: b }];
+        for (var k = 0; k < V.length; k++) {
+          if (k === a || k === b) continue;
+          var t = ((V[k][0] - V[a][0]) * ux + (V[k][1] - V[a][1]) * uy) / len;
+          var d = Math.abs((V[k][0] - V[a][0]) * uy - (V[k][1] - V[a][1]) * ux) / len;
+          if (d < snapTol && t > snapTol && t < len - snapTol) cuts.push({ t: t, id: k });
+        }
+        cuts.sort(function (x, y) { return x.t - y.t; });
+        for (var j = 0; j + 1 < cuts.length; j++) {
+          var u = cuts[j].id, w = cuts[j + 1].id, key = Math.min(u, w) + '_' + Math.max(u, w);
+          if (!seen[key]) { seen[key] = 1; segs.push([u, w]); }
+        }
+      }
+    });
+    var created = segs.map(function (sg) {
+      return addWall(m, { floor: floorId, a: V[sg[0]].slice(), b: V[sg[1]].slice(), thick: itn.thick, layers: itn.layers ? itn.layers.map(function (l) { return Object.assign({}, l); }) : null });
+    });
+    var rooms = detectRooms(m, floorId);
+    created.forEach(function (w) { w.imported = true; });
+    rooms.forEach(function (r) {
+      r.edges.forEach(function (e) {
+        if (!e.neighbor && !e.wall._ext) {
+          e.wall._ext = true;
+          e.wall.thick = ext.thick; e.wall.layers = ext.layers ? ext.layers.map(function (l) { return Object.assign({}, l); }) : null;
+        }
+      });
+    });
+    created.forEach(function (w) { delete w._ext; });
+    // имена и температуры — по контуру, в который попал центр найденной комнаты
+    var inside = function (pt, P) {
+      var ins = false;
+      for (var i = 0, j = P.length - 1; i < P.length; j = i++) {
+        if ((P[i][1] > pt[1]) !== (P[j][1] > pt[1]) && pt[0] < (P[j][0] - P[i][0]) * (pt[1] - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) ins = !ins;
+      }
+      return ins;
+    };
+    rooms.forEach(function (r) {
+      var c = r.poly.reduce(function (a, p) { return [a[0] + p[0] / r.poly.length, a[1] + p[1] / r.poly.length]; }, [0, 0]);
+      var src = polys.find(function (pl) { return inside(c, pl.pts); });
+      if (src && (src.name || src.tv !== undefined)) m.roomOv[r.id] = { name: src.name || undefined, tv: src.tv };
+    });
+    return { walls: created.length, rooms: rooms.length };
+  }
+
+  // Проёмы по точкам плана: [{ x, y, w, kind, h?, sill? }] — ставятся на ближайшую стену этажа не дальше maxD
+  function addOpeningsAt(m, floorId, list, maxD) {
+    maxD = maxD || 0.5;
+    var n = 0;
+    list.forEach(function (o) {
+      var best = null;
+      m.walls.forEach(function (w) {
+        if (w.floor !== floorId) return;
+        var dx = w.b[0] - w.a[0], dy = w.b[1] - w.a[1], L = Math.hypot(dx, dy);
+        if (L < 1e-6) return;
+        var t = ((o.x - w.a[0]) * dx + (o.y - w.a[1]) * dy) / L;
+        t = Math.max(0, Math.min(L, t));
+        var qx = w.a[0] + dx / L * t, qy = w.a[1] + dy / L * t, d = Math.hypot(o.x - qx, o.y - qy);
+        if (d < maxD && o.w < L - 0.1 && (!best || d < best.d)) best = { w: w, t: t, d: d, L: L };
+      });
+      if (!best) return;
+      var off = Math.max(0.05, Math.min(best.L - o.w - 0.05, best.t - o.w / 2));
+      addOpening(m, { wall: best.w.id, offset: Math.round(off * 100) / 100, width: o.w, height: o.h || (o.kind === 'door' ? 2.1 : 1.5), sill: o.kind === 'door' ? 0 : (o.sill !== undefined ? o.sill : 0.9), kind: o.kind || 'window' });
+      n++;
+    });
+    return n;
+  }
+
   // ── пример для проверки и 3D: одноэтажный дом 10 x 8 м, три комнаты, окна и дверь ──────
   function sampleHouse() {
     var m = create({ Tn: -25 });
@@ -289,7 +394,7 @@
     return m;
   }
 
-  var api = { DEFAULTS: DEFAULTS, create: create, addFloor: addFloor, addWall: addWall, addOpening: addOpening, removeWall: removeWall, removeOpening: removeOpening, wallR: wallR,
+  var api = { DEFAULTS: DEFAULTS, create: create, addFloor: addFloor, addWall: addWall, addOpening: addOpening, removeWall: removeWall, removeOpening: removeOpening, fromPolygons: fromPolygons, addOpeningsAt: addOpeningsAt, wallR: wallR,
               detectRooms: detectRooms, heatLoss: heatLoss, sampleHouse: sampleHouse, openingsOn: openingsOn };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.HouseCore = api;
 })(typeof window !== 'undefined' ? window : this);
