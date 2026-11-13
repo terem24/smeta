@@ -54,7 +54,7 @@
     '#h3d .it:hover{background:#4f4f4f}',
     '#h3d .view{position:relative;flex:1;min-width:0}',
     '#h3d canvas{display:block;width:100%;height:100%}',
-    '#h3d .bar{position:absolute;left:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap}',
+    '#h3d .bar{position:absolute;left:10px;top:10px;right:100px;display:flex;gap:6px;flex-wrap:wrap}',
     '#h3d button{background:#555;color:#eee;border:0;padding:6px 10px;cursor:pointer;border-radius:2px;font:inherit}',
     '#h3d button.on{background:#0696D7}',
     '#h3d .x{position:absolute;right:10px;top:10px}',
@@ -94,6 +94,7 @@
     var clr = el('button', '', 'Очистить'); clr.onclick = clearAll; bar.appendChild(clr);
     var asm = el('button', '', 'Собрать из сметы'); asm.onclick = assembleFromEstimate; asm.title = 'Расставить котельную из текущей сметы'; bar.appendChild(asm);
     var hs = el('button', '', 'Дом (пример)'); hs.onclick = showSampleHouse; hs.title = 'Дом из модели стен: помещения и теплопотери по геометрии'; bar.appendChild(hs);
+    var ed = el('button', '', 'Редактор стен'); ed.onclick = openEditor; ed.title = 'Нарисовать стены, окна и двери; помещения и теплопотери считаются по ходу'; bar.appendChild(ed);
     view.appendChild(bar);
     var x = el('button', 'x', 'Закрыть'); x.onclick = close; view.appendChild(x);
     S.info = el('div', 'info', 'Загрузка 3D…'); view.appendChild(S.info);
@@ -583,7 +584,7 @@
     if (window.HouseCore) return Promise.resolve(window.HouseCore);
     return new Promise(function (res, rej) {
       var s = document.createElement('script');
-      s.src = 'house_core.js?v=1.0';
+      s.src = 'house_core.js?v=1.1';
       s.onload = function () { res(window.HouseCore); };
       s.onerror = function () { rej(new Error('не загрузился house_core.js')); };
       document.head.appendChild(s);
@@ -636,6 +637,17 @@
       });
     });
     return g;
+  }
+
+  function openEditor() {
+    if (!S || !S.T) return;
+    var go = function () { window.House3DEdit.toggle({ S: function () { return S; }, ensureCore: ensureCore, houseMeshes: houseMeshes }); };
+    if (window.House3DEdit) { go(); return; }
+    var sc = document.createElement('script');
+    sc.src = 'house3d_edit.js?v=1.0';
+    sc.onload = go;
+    sc.onerror = function () { S.info.textContent = 'Не загрузился house3d_edit.js'; };
+    document.head.appendChild(sc);
   }
 
   function showSampleHouse() {

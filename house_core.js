@@ -33,7 +33,7 @@
     ORIENT_K: { N: 1.10, NE: 1.10, E: 1.10, NW: 1.10, SE: 1.05, W: 1.05, S: 1.0, SW: 1.0 },
     R_ZONES: [2.1, 4.3, 8.6, 14.2],
     // λ материалов — как WALL_MATERIALS_DB каталога; ядро не зависит от catalog.js, поэтому копия для тестов и 3D
-    LAMBDA: { brick_clay: 0.70, brick_hollow: 0.44, gas_d400: 0.117, gas_d500: 0.141, gas_d600: 0.163, ceramic_block: 0.16,
+    LAMBDA: { gkl: 0.21, brick_clay: 0.70, brick_hollow: 0.44, gas_d400: 0.117, gas_d500: 0.141, gas_d600: 0.163, ceramic_block: 0.16,
               wood_pine: 0.15, concrete: 2.04, polystyrene: 0.041, minwool: 0.042, xps: 0.032, plaster_cement: 0.93 }
   };
 
@@ -67,6 +67,12 @@
     if (o.kind === 'door') { o.sill = 0; if (o.height === 1.5) o.height = 2.1; }
     m.openings.push(o);
     return o;
+  }
+
+  function removeOpening(m, id) { m.openings = m.openings.filter(function (o) { return o.id !== id; }); }
+  function removeWall(m, id) {
+    m.walls = m.walls.filter(function (w) { return w.id !== id; });
+    m.openings = m.openings.filter(function (o) { return o.wall !== id; });
   }
 
   // Сопротивление теплопередаче стены: Rsi + Σ d/λ + Rse (наружная) или + Rsi (внутренняя, обе стороны в воздухе)
@@ -149,7 +155,12 @@
     });
     var rooms = faces.filter(function (f) { return f.area > 0.5; });          // отрицательный — внешняя грань
     var faceOf = new Map();
-    rooms.forEach(function (f, i) { f.id = floorId + '_r' + (i + 1); f.loop.forEach(function (h) { faceOf.set(h, f); }); });
+    rooms.forEach(function (f) {
+      var cx = 0, cy = 0;
+      f.poly.forEach(function (p) { cx += p[0] / f.poly.length; cy += p[1] / f.poly.length; });
+      f.id = floorId + '_r' + Math.round(cx * 10) + '_' + Math.round(cy * 10);       // по центру: правка соседних стен имя не сбрасывает
+      f.loop.forEach(function (h) { faceOf.set(h, f); });
+    });
     rooms.forEach(function (f) {
       f.floor = floorId;
       f.edges = f.loop.map(function (h) {
@@ -159,8 +170,12 @@
       });
       f.perimeter = f.edges.reduce(function (s, e) { return s + e.len; }, 0);
       var o = m.roomOv[f.id] || {};
-      f.name = o.name || f.id; f.tv = o.tv; f.kind = o.kind || 'room';
+      f.name = o.name; f.tv = o.tv; f.kind = o.kind || 'room';
     });
+    // имена по умолчанию: «Комната N» сверху вниз, слева направо (имя, заданное пользователем, главнее)
+    var cen = function (r) { var c = [0, 0]; r.poly.forEach(function (p) { c[0] += p[0] / r.poly.length; c[1] += p[1] / r.poly.length; }); return c; };
+    rooms.slice().sort(function (a, b) { var ca = cen(a), cb = cen(b); return (cb[1] - ca[1]) || (ca[0] - cb[0]); })
+      .forEach(function (r, i) { if (!r.name) r.name = 'Комната ' + (i + 1); });
     return rooms;
   }
 
@@ -274,7 +289,7 @@
     return m;
   }
 
-  var api = { DEFAULTS: DEFAULTS, create: create, addFloor: addFloor, addWall: addWall, addOpening: addOpening, wallR: wallR,
+  var api = { DEFAULTS: DEFAULTS, create: create, addFloor: addFloor, addWall: addWall, addOpening: addOpening, removeWall: removeWall, removeOpening: removeOpening, wallR: wallR,
               detectRooms: detectRooms, heatLoss: heatLoss, sampleHouse: sampleHouse, openingsOn: openingsOn };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.HouseCore = api;
 })(typeof window !== 'undefined' ? window : this);
