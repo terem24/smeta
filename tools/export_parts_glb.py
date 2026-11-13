@@ -119,9 +119,6 @@ for lit, D_, H_, hot, pz in (
     pl = _g['swh_boiler'](D_, H_, ports_, hot)
     export('boiler_swh2110_%d' % lit, 'Бойлер STOUT OptiBase SWH-2110-%06d, %d л' % (lit, lit), pl)
 
-reset(); pl = _g['pump_group_mix25']()
-export('pump_group_sdg0002_25', 'Насосная группа STOUT SDG-0002-002501 DN25 (смес.)', pl)
-
 # Гидравлика котельной: коллектор SDG-0018 и насосные группы SDG-0001/0003 — сборщики соседней сессии
 # (tools/render_hydro_node.py), те же, что рисуют кадры узлов. Читаем исходник, не правим.
 _hp = os.path.join(TOOLS, 'render_hydro_node.py')
@@ -142,6 +139,19 @@ for kind, key, label in (('d', 'pump_group_sdg0001_direct', 'Насосная г
           port('top_left', Vector((-dx, YA, 0.338)), (0, 0, 1), 'F', '1"', SRC_G),
           port('top_right', Vector((dx, YA, 0.338)), (0, 0, 1), 'F', '1"', SRC_G)]
     export(key, label, gp)
+# Группа SDG-0002: кожух, трубы и насос соседней сессии, головка клапана своя
+_h['port'] = port
+_gm = os.path.join(TOOLS, 'parts3d_group_mix.py')
+exec(compile(open(_gm, encoding='utf-8').read(), _gm, 'exec'), _h)
+reset(); _h['part']('')
+_h['group_mix4'](0.0, 0.0)
+SRC_M = 'паспорт SDG-0002 ред. 3, табл. 4.2: низ G1 1/2" НР, верх Rp 1" ВР, шаг F 125; высота верха по сборщику соседней сессии'
+mp = [port('bottom_left', Vector((-0.0625, YA, 0.0)), (0, 0, -1), 'M', '1 1/2"', SRC_M),
+      port('bottom_right', Vector((0.0625, YA, 0.0)), (0, 0, -1), 'M', '1 1/2"', SRC_M),
+      port('top_left', Vector((-0.0625, YA, 0.338)), (0, 0, 1), 'F', '1"', SRC_M),
+      port('top_right', Vector((0.0625, YA, 0.338)), (0, 0, 1), 'F', '1"', SRC_M)]
+export('pump_group_sdg0002_25', 'Насосная группа STOUT SDG-0002-002501 DN25 (4-ходовой клапан)', mp)
+
 reset(); _h['part']('')
 _xs, _zt = _h['collector'](2)
 SRC_C = 'паспорт SDG ред. 30.03.2023, табл. 4.3.6: верх накидные гайки G1 1/2" к группам, низ G1 1/2" НР к котлу'
