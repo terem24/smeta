@@ -283,7 +283,11 @@
       var gt = firstRow(function (r) { return /^STW-/.test(r.id); });
       if (gt && (labels.tee_tank || labels.cross)) {
         var ge = gt.units[0].ends.filter(function (e) { return !e.used; })[0];
-        runChain('В1: бак ГВС', { end: ge, who: gt.name }, [{ m: byId(/^SVS-0008/), nm: 'узел подключения бака SVS-0008' }, nipS], { ref: labels.tee_tank ? 'tee_tank' : 'cross' });
+        // бак висит выше узла В1 и подходит трубой (смета с 13.11.2026, по проектам котельных): у бака — узел
+        // SVS-0008 и переходник с НР 3/4", у тройника (или крестовины) — свой переходник с НР 3/4"
+        var fitM34 = { m: pipeFit('M', '3/4'), nm: 'переходник ВПр-НР 3/4" на трубу' };
+        runChain('В1: бак ГВС', { end: ge, who: gt.name }, [{ m: byId(/^SVS-0008/), nm: 'узел подключения бака SVS-0008' }, fitM34], { pipe: true });
+        runChain('В1: врезка бака ГВС', { ref: labels.tee_tank ? 'tee_tank' : 'cross' }, [fitM34], { pipe: true });
       }
 
       // Т3: выход ГВС и термосмеситель
@@ -293,10 +297,16 @@
         if (tdhw.kind === 'F') hot.push({ m: byId(/^SFT-0004-003434/), nm: 'ниппель 3/4" НР (на ВР-патрубок бойлера)' });
         hot.push({ m: byId(/^SFT-0041-000034/), nm: 'американка 3/4" ВР/НР (выход ГВС)' });
         if (tdhw.size === '1') hot.push({ m: byId(/^SFT-0007-000134/), nm: 'муфта ВР 1"×НР 3/4"' });
-        hot.push({ m: byId(/^SVB-0009-000020/), nm: 'кран 3/4" ВР/накидная гайка (горячий вход)' });
-        hot.push({ m: byId(/^SVM-0/), nm: 'термостатический смесительный клапан', as: 'mixv' });
-        runChain('Т3: выход ГВС → термосмеситель', { end: tdhw, who: tank.name + ' (выход ГВС)' }, hot, null);
-        if (labels.tee_mix) runChain('Т3: холодный подмес', { ref: 'tee_mix' }, [nipS, { m: byId(/^SVC-0012-000020/), nm: 'обратный клапан 3/4" ВР/ВР (подмес)' }, { m: byId(/^SVB-1009-000020/), nm: 'кран НР/накидная гайка (холодный вход)' }], { ref: 'mixv' });
+        // термосмеситель стоит на выходе ГВС в дом, к нему трубы (смета с 13.11.2026, по проектам котельных)
+        var fM34 = { m: pipeFit('M', '3/4'), nm: 'переходник ВПр-НР 3/4" на трубу' };
+        hot.push({ m: pipeFit('F', '3/4'), nm: 'переходник ВПр-ВР 3/4" на трубу' });
+        runChain('Т3: выход ГВС на трубу', { end: tdhw, who: tank.name + ' (выход ГВС)' }, hot, { pipe: true });
+        runChain('Т3: труба → термосмеситель', { free: true }, [fM34, { m: byId(/^SVB-0009-000020/), nm: 'кран 3/4" ВР/накидная гайка (горячий вход)' },
+          { m: byId(/^SVM-0/), nm: 'термостатический смесительный клапан', as: 'mixv' }], null);
+        if (labels.tee_mix) {
+          runChain('Т3: подмес — врезка трубы', { ref: 'tee_mix' }, [fM34], { pipe: true });
+          runChain('Т3: холодный подмес', { free: true }, [fM34, { m: byId(/^SVC-0012-000020/), nm: 'обратный клапан 3/4" ВР/ВР (подмес)' }, { m: byId(/^SVB-1009-000020/), nm: 'кран НР/накидная гайка (холодный вход)' }], { ref: 'mixv' });
+        }
         if (labels.mixv) runChain('Т3: выход термосмесителя в разводку', { ref: 'mixv' }, [{ m: byId(/^SVB-1009-000020/), nm: 'кран НР/накидная гайка (выход)' }], null);
       }
     }
