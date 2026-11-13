@@ -102,7 +102,7 @@ export('filter_rfw0080', 'Фильтр магнитный RFW-0080 3/4"',
 
 # Стабилизатор напряжения ST 250
 reset(); _g['stabilizer'](x=0.0, z=0.0)
-_g['replace_logos']()
+print('логотипы стабилизатора:', _g['replace_logos']())
 export('stabilizer_st250', 'Стабилизатор ST 250', [])
 
 # Бойлер OptiBase и насосная группа: сборщики лежат в tools/parts3d_boiler_pump.py
@@ -160,8 +160,7 @@ SRC_G = 'паспорт SDG-0001 ред. 3, табл. 4.2: низ G1 1/2" НР, 
 for kind, key, label in (('d', 'pump_group_sdg0001_direct', 'Насосная группа STOUT SDG-0001-002501 DN25 (прямая)'),
                          ('s', 'pump_group_sdg0003_servo', 'Насосная группа STOUT SDG-0003-002501 DN25 (под сервопривод)')):
     reset(); _h['part']('')
-    _h['group'](0.0, 0.0, kind)
-    _plaque(_h)
+    _h['group'](0.0, 0.0, kind)      # на фото SDG-0001 и SDG-0003 без передней крышки таблички нет
     dx = 0.0625
     gp = [port('bottom_left', Vector((-dx, YA, 0.0)), (0, 0, -1), 'M', '1 1/2"', SRC_G),
           port('bottom_right', Vector((dx, YA, 0.0)), (0, 0, -1), 'M', '1 1/2"', SRC_G),
@@ -184,7 +183,7 @@ export('pump_group_sdg0002_25', 'Насосная группа STOUT SDG-0002-00
 
 reset(); _h['part']('')
 _xs, _zt = _h['collector'](2)
-_h['replace_logos']()
+print('логотипы коллектора:', _h['replace_logos']())
 SRC_C = 'паспорт SDG ред. 30.03.2023, табл. 4.3.6: верх накидные гайки G1 1/2" к группам, низ G1 1/2" НР к котлу'
 cp = [port('top_%d' % i, Vector((x, YA, _zt)), (0, 0, 1), 'F', '1 1/2"', SRC_C) for i, x in enumerate(_xs)]
 cp += [port('boiler_%s' % n, Vector((sx * 0.100, YA, -0.075 - 0.040)), (0, 0, -1), 'M', '1 1/2"', SRC_C)

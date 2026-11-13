@@ -42,13 +42,14 @@ def decal(name, png, w, h, loc, rough=0.35, coat=0.0, group='solid'):
     return link(ob, group)
 
 
-_ASPECT = {'stout_logo_dark.png': 0.3, 'stout_logo_white.png': 0.3, 'rommer_logo.png': 0.26}
+_ASPECT = {'stout_logo_dark.png': 0.3, 'stout_plaque.png': 0.35, 'rommer_logo.png': 0.26}
 
 
 def replace_logos(group='solid'):
     """Заглушки-прямоугольники логотипов -> настоящие логотипы. Белая заглушка (материал bwhite) — на тёмном
-    кожухе, значит логотип белый; «надпись ROMMER» — красная плашка ROMMER; остальные — тёмно-синий STOUT."""
-    n = 0
+    кожухе — это белая табличка с синим знаком STOUT (фото SDG-0018: так и есть); «надпись ROMMER» — красная плашка
+    ROMMER; остальные — тёмно-синий STOUT. Возвращает список имён замен, чтобы сверить каждую с фото."""
+    n = []
     bpy.context.view_layer.update()      # матрицы мира у только что созданных объектов
     for ob in list(coll(group).objects):
         nm = ob.name
@@ -65,12 +66,12 @@ def replace_logos(group='solid'):
         if nm.startswith('надпись ROMMER'):
             png = 'rommer_logo.png'
         elif 'bwhite' in mname:
-            png = 'stout_logo_white.png'
+            png = 'stout_plaque.png'
         else:
             png = 'stout_logo_dark.png'
         h = w * _ASPECT[png]
         bpy.data.objects.remove(ob, do_unlink=True)
         d = decal('логотип ' + png[:-4], png, w, h, (cx, yf - 0.0005, cz))
         d['is_decal'] = 1
-        n += 1
+        n.append(nm)
     return n

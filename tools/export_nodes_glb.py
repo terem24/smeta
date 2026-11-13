@@ -78,7 +78,9 @@ def node(fname, args, key, label):
         g['TEX'] = os.path.join(TOOLS, 'blender_assets', 'tex3d')
         exec(_DEC, g)
         g['build']()
-        g['replace_logos']()
+        rl = g['replace_logos']()
+        if rl:
+            print('логотипы в узле', key, rl)
         objs = list(g['coll']('solid').objects)
         if not objs:
             raise RuntimeError('пустой solid')
