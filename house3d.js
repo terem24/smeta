@@ -176,7 +176,15 @@
     S.gridObj = new T.GridHelper(10, 100, 0x888888, 0x444444); sc.add(S.gridObj);
     var tc = S.tc = new S.TC(cam, cv);
     tc.setSize(0.8);
-    tc.addEventListener('dragging-changed', function (e) { oc.enabled = !e.value; });
+    tc.addEventListener('dragging-changed', function (e) {
+      oc.enabled = !e.value; S.drag = !!e.value;
+      if (e.value) startDrag(); else endDrag();
+      applyFlags();
+    });
+    tc.addEventListener('objectChange', previewSnap);
+    S.snapMark = new T.Mesh(new T.SphereGeometry(0.02, 16, 12), new T.MeshBasicMaterial({ color: 0x35c46a, transparent: true, opacity: 0.55, depthTest: false }));
+    S.snapMark.renderOrder = 11; S.snapMark.visible = false; sc.add(S.snapMark);
+    S.links = [];
     sc.add(tc);
     S.ray = new T.Raycaster(); S.mouse = new T.Vector2();
     var down = null;
@@ -276,6 +284,7 @@
       s.renderOrder = 10;
       s.position.set(p.pos_mm[0] / 1000, p.pos_mm[2] / 1000, -p.pos_mm[1] / 1000);
       s.userData.port = p; s.userData.isPort = true;
+      s.userData.dir = new T.Vector3(p.axis[0], p.axis[2], -p.axis[1]).normalize();   // наружу из детали, три-оси
       o.add(s);
     });
   }
@@ -284,7 +293,7 @@
     S.items.forEach(function (o) {
       o.traverse(function (m) {
         if (m.userData.edge) m.visible = S.edges;
-        if (m.userData.isPort) m.visible = S.ports;
+        if (m.userData.isPort) m.visible = S.ports || S.drag;
       });
     });
   }
@@ -301,6 +310,83 @@
       if (o) { select(o); return; }
     }
     select(null);
+  }
+
+  // ── стыковка по портам ───────────────────────────────────────────────────
+  var SNAP_R = 0.04;                        // м: ближе этого порты считаются «подведёнными»
+  var TN = { M: 'наружная резьба (НР)', F: 'внутренняя резьба или гайка (ВР)', P: 'труба', U: 'тип резьбы не известен' };
+
+  function normSize(x) { return String(x || '').replace(/^D/, '').trim(); }
+
+  // Что с чем стыкуется: НР–ВР одного размера; труба–труба одного диаметра; неизвестный тип — с оговоркой
+  function compat(a, b) {
+    var ta = a.type, tb = b.type;
+    if (normSize(a.size) !== normSize(b.size)) return { ok: false, why: 'разные размеры: ' + a.size + ' и ' + b.size };
+    if ((ta === 'M' && tb === 'F') || (ta === 'F' && tb === 'M')) return { ok: true };
+    if (ta === 'P' && tb === 'P') return { ok: true };
+    if (ta === 'U' || tb === 'U') return { ok: true, maybe: true, why: 'тип резьбы одного из концов не подтверждён паспортом' };
+    if (ta === tb) return { ok: false, why: TN[ta] + ' не стыкуется с таким же концом: нужна пара НР–ВР' };
+    return { ok: false, why: 'труба не вставляется в резьбу: нужен переходник' };
+  }
+
+  function portsOf(o) {
+    o.updateMatrixWorld(true);
+    var out = [];
+    o.children.forEach(function (m) {
+      if (!m.userData.isPort) return;
+      out.push({ m: m, p: m.userData.port, pos: m.getWorldPosition(new S.T.Vector3()),
+                 dir: m.userData.dir.clone().transformDirection(o.matrixWorld) });
+    });
+    return out;
+  }
+
+  function nearestPair(sel) {
+    var mine = portsOf(sel), best = null;
+    S.items.forEach(function (o) {
+      if (o === sel) return;
+      portsOf(o).forEach(function (b) {
+        mine.forEach(function (a) {
+          var d = a.pos.distanceTo(b.pos);
+          if (d < SNAP_R && (!best || d < best.d)) best = { a: a, b: b, d: d, owner: o };
+        });
+      });
+    });
+    if (best) best.c = compat(best.a.p, best.b.p);
+    return best;
+  }
+
+  function startDrag() {
+    if (!S.sel) return;
+    S.links = S.links.filter(function (l) { return l.a.owner !== S.sel && l.b.owner !== S.sel; });
+    S.cand = null; S.snapMark.visible = false;
+  }
+
+  function previewSnap() {
+    if (!S.sel) return;
+    var c = S.cand = nearestPair(S.sel);
+    if (!c) { S.snapMark.visible = false; return; }
+    S.snapMark.position.copy(c.b.pos);
+    S.snapMark.material.color.set(!c.c.ok ? 0xff4d4d : (c.c.maybe ? 0xffd23f : 0x35c46a));
+    S.snapMark.visible = true;
+    S.info.textContent = (c.c.ok ? 'Можно состыковать: ' : 'Не стыкуется: ') + c.a.p.name + ' (' + TN[c.a.p.type] + ', ' + c.a.p.size +
+      ') и ' + c.b.p.name + ' (' + TN[c.b.p.type] + ', ' + c.b.p.size + ')' + (c.c.why ? '\n' + c.c.why : '');
+  }
+
+  // Отпустили деталь: подходящая пара — поворачиваем так, чтобы концы смотрели навстречу, и сажаем порт на порт
+  function endDrag() {
+    var c = S.cand, sel = S.sel, T = S.T;
+    S.snapMark.visible = false;
+    if (!c || !sel || !c.c.ok) { if (c && !c.c.ok) S.info.textContent = 'Не стыкуется: ' + c.c.why; return; }
+    var q = new T.Quaternion().setFromUnitVectors(c.a.dir, c.b.dir.clone().negate());
+    sel.quaternion.premultiply(q);
+    sel.updateMatrixWorld(true);
+    var pa = c.a.m.getWorldPosition(new T.Vector3());
+    sel.position.add(c.b.pos.clone().sub(pa));
+    sel.updateMatrixWorld(true);
+    S.links.push({ a: { owner: sel, port: c.a.p }, b: { owner: c.owner, port: c.b.p } });
+    S.info.textContent = 'Соединено: ' + sel.userData.label + ' [' + c.a.p.name + '] ↔ ' + c.owner.userData.label + ' [' + c.b.p.name + ']' +
+      '\n' + (c.c.maybe ? 'внимание: ' + c.c.why : (c.a.p.type === 'P' ? 'труба ' + c.a.p.size : 'резьба ' + c.a.p.size + ', НР–ВР')) + '. Всего стыков: ' + S.links.length;
+    S.cand = null;
   }
 
   function showPort(p) {
@@ -323,7 +409,7 @@
     if (!S) return;
     S.tc.detach();
     S.items.forEach(function (o) { S.scene.remove(o); });
-    S.items = []; S.sel = null;
+    S.items = []; S.sel = null; S.links = [];
   }
 
   function onKey(e) {
@@ -334,6 +420,6 @@
     else if (e.key === 'Escape') close();
   }
 
-  window.House3D = { open: open, close: close };
+  window.House3D = { open: open, close: close, _state: function () { return S; }, _nearest: function (o) { return nearestPair(o); }, _end: endDrag };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watch); else watch();
 })();
