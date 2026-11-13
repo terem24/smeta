@@ -584,7 +584,7 @@
     if (window.HouseCore) return Promise.resolve(window.HouseCore);
     return new Promise(function (res, rej) {
       var s = document.createElement('script');
-      s.src = 'house_core.js?v=1.2';
+      s.src = 'house_core.js?v=1.3';
       s.onload = function () { res(window.HouseCore); };
       s.onerror = function () { rej(new Error('не загрузился house_core.js')); };
       document.head.appendChild(s);
@@ -644,7 +644,7 @@
     var go = function () { window.House3DEdit.toggle({ S: function () { return S; }, ensureCore: ensureCore, houseMeshes: houseMeshes }); };
     if (window.House3DEdit) { go(); return; }
     var sc = document.createElement('script');
-    sc.src = 'house3d_edit.js?v=1.1';
+    sc.src = 'house3d_edit.js?v=1.2';
     sc.onload = go;
     sc.onerror = function () { S.info.textContent = 'Не загрузился house3d_edit.js'; };
     document.head.appendChild(sc);

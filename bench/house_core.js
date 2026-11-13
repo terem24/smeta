@@ -19,7 +19,7 @@ const eq = (what, got, want, tol) => {
 
 // 1. Одна комната 5 x 4, стена R 3.0, окно 1.5x1.5, h 2.7, Тн -25, Тв 20, первый и последний этаж
 {
-    const m = HC.create({ Tn: -25, settings: { R_wallDefault: 3.0 } });
+    const m = HC.create({ Tn: -25, settings: { R_wallDefault: 3.0, wallThick: 0 } });
     const f = HC.addFloor(m, { level: 0 });
     const P = [[0, 0], [5, 0], [5, 4], [0, 4]];
     const w = P.map((p, i) => HC.addWall(m, { floor: f.id, a: p, b: P[(i + 1) % 4] }));
@@ -47,8 +47,8 @@ const eq = (what, got, want, tol) => {
     const m = HC.sampleHouse();
     const rooms = HC.detectRooms(m, m.floors[0].id);
     eq('пример: помещений', rooms.length, 3);
-    eq('пример: сумма площадей', rooms.reduce((s, r) => s + r.area, 0), 80, 1e-6);
-    const areas = rooms.map(r => Math.round(r.area)).sort((a, b) => a - b);
+    eq('пример: сумма площадей по осям', rooms.reduce((s, r) => s + r.areaGross, 0), 80, 1e-6);
+    const areas = rooms.map(r => Math.round(r.areaGross)).sort((a, b) => a - b);
     eq('пример: меньшая комната 4x4', areas[0], 16);
     const L = HC.heatLoss(m);
     const inner = L.rooms.reduce((n, r) => n + r.parts.filter(p => /внутренняя/.test(p.what)).length, 0);
@@ -60,6 +60,17 @@ const eq = (what, got, want, tol) => {
     eq('пример: спальня не греет санузел', bedroom.parts.filter(p => /к «Санузел»/.test(p.what)).length, 0);
     console.log('     итого по примеру: ' + Math.round(L.total) + ' Вт, ' + Math.round(L.total / 80) + ' Вт/м²');
     L.rooms.forEach(r => console.log('     ' + r.name + ': ' + r.area.toFixed(1) + ' м², ' + Math.round(r.Q) + ' Вт'));
+}
+
+// 2б. Чистая площадь: комната 5 x 4 по осям при стенах 0,2 м — (5 − 0,2)(4 − 0,2) = 18,24
+{
+    const m = HC.create({ Tn: -25, settings: { wallThick: 0.2 } });
+    const f = HC.addFloor(m, { level: 0 });
+    const P = [[0, 0], [5, 0], [5, 4], [0, 4]];
+    P.forEach((p, i) => HC.addWall(m, { floor: f.id, a: p, b: P[(i + 1) % 4] }));
+    const r = HC.detectRooms(m, f.id)[0];
+    eq('чистая площадь комнаты 5x4 при стенах 0,2 м', r.area, 18.24, 1e-9);
+    eq('площадь по осям', r.areaGross, 20, 1e-9);
 }
 
 // 3. Импорт контуров комнат: общие стены склеиваются, Т-примыкание режет стену, шум в 5 см снимается привязкой
@@ -75,12 +86,36 @@ const eq = (what, got, want, tol) => {
     eq('импорт: найдено комнат', r.rooms, 3);
     eq('импорт: стен без дублей (гостиная 4, спальня 3 новых, кухня 3 новых)', r.walls, 10);
     const rooms = HC.detectRooms(m, f.id);
-    eq('импорт: сумма площадей', Math.round(rooms.reduce((s, x) => s + x.area, 0)), 80);
+    eq('импорт: сумма площадей по осям', Math.round(rooms.reduce((s, x) => s + x.areaGross, 0)), 80);
     const names = Object.values(m.roomOv).map(o => o.name).sort().join(',');
     console.log('     имена комнат из контуров: ' + names + (names === 'Гостиная,Кухня,Спальня' ? '' : '  <-- не те'));
     if (names !== 'Гостиная,Кухня,Спальня') fail++;
     const n = HC.addOpeningsAt(m, f.id, [{ x: 3, y: 4.0, w: 1.5, kind: 'window' }, { x: 8, y: 0, w: 0.9, kind: 'door' }, { x: 50, y: 50, w: 1, kind: 'window' }]);
     eq('импорт: проёмов поставлено (третий слишком далеко)', n, 2);
+}
+
+// 3б. Импорт «как на плане»: контуры по внутренним граням стен 0,2 м, между комнатами зазор 0,2 м
+{
+    const sh = (x0, y0, x1, y1, d) => [[x0 + d, y0 + d], [x1 - d, y0 + d], [x1 - d, y1 - d], [x0 + d, y1 - d]];
+    const m = HC.create({ Tn: -25 });
+    const f = HC.addFloor(m, { level: 0 });
+    const polys = [
+        { name: 'Гостиная', pts: sh(0, 0, 6, 8, 0.1) },
+        { name: 'Спальня', pts: sh(6, 0, 10, 4, 0.1) },
+        { name: 'Санузел', pts: sh(6, 4, 10, 8, 0.1) }
+    ];
+    const gap = HC.estimateGap(polys);
+    eq('зазор между комнатами определён по рёбрам, м', gap, 0.2, 0.011);
+    const r = HC.fromPolygons(m, f.id, polys, { gap: 'auto', ext: { layers: null, thick: 0.2 }, int: { layers: null, thick: 0.2 } });
+    eq('как на плане: комнат', r.rooms, 3);
+    eq('как на плане: стен без дублей (общая стена x=6 режется на 2 куска, y=4 — один)', r.walls, 10);
+    const rooms = HC.detectRooms(m, f.id);
+    const inn = rooms.filter(x => x.edges.some(e => e.neighbor)).length;
+    eq('как на плане: комнат с общими стенами', inn, 3);
+    eq('как на плане: сумма площадей по осям', Math.round(rooms.reduce((s2, x) => s2 + x.areaGross, 0) * 10) / 10, 80, 0.2);
+    eq('как на плане: чистая площадь после импорта = площадь исходных контуров (5,8x7,8 + 2 x 3,8x3,8)', Math.round(rooms.reduce((s2, x) => s2 + x.area, 0) * 100) / 100, 74.12, 0.05);
+    const bad = rooms.filter(x => x.edges.length && x.edges.every(e => !e.neighbor)).length;
+    eq('как на плане: комнат, у которых все стены наружные (должно быть 0)', bad, 0);
 }
 
 // 4. Сверка формулы с Galf

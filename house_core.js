@@ -90,6 +90,68 @@
     return s.R_wallDefault;
   }
 
+  // ── смещение контуров ───────────────────────────────────────────────────
+  function polyArea(P) {
+    var A = 0;
+    for (var i = 0; i < P.length; i++) { var p = P[i], q = P[(i + 1) % P.length]; A += p[0] * q[1] - q[0] * p[1]; }
+    return A / 2;
+  }
+
+  // Сдвиг каждого ребра контура против часовой на d[i] (вдоль правой нормали: наружу — плюс, внутрь — минус);
+  // вершина — пересечение сдвинутых соседних рёбер. Острые углы ограничиваем, чтобы вершина не улетала.
+  function shiftEdges(P, d) {
+    var n = P.length, out = [];
+    var N = P.map(function (p, i) {
+      var q = P[(i + 1) % n], dx = q[0] - p[0], dy = q[1] - p[1], L = Math.hypot(dx, dy) || 1e-9;
+      return [dy / L, -dx / L];
+    });
+    for (var i = 0; i < n; i++) {
+      var a = N[(i - 1 + n) % n], b = N[i], da = d[(i - 1 + n) % n], db = d[i], p = P[i];
+      var det = a[0] * b[1] - a[1] * b[0];
+      if (Math.abs(det) < 0.15) { out.push([p[0] + (a[0] * da + b[0] * db) / 2, p[1] + (a[1] * da + b[1] * db) / 2]); continue; }
+      // решаем a·x = a·p + da, b·x = b·p + db
+      var ca = a[0] * p[0] + a[1] * p[1] + da, cb = b[0] * p[0] + b[1] * p[1] + db;
+      var x = (ca * b[1] - cb * a[1]) / det, y = (a[0] * cb - b[0] * ca) / det;
+      var lim = 3 * Math.max(Math.abs(da), Math.abs(db), 1e-6);
+      if (Math.hypot(x - p[0], y - p[1]) > lim) { var k = lim / Math.hypot(x - p[0], y - p[1]); x = p[0] + (x - p[0]) * k; y = p[1] + (y - p[1]) * k; }
+      out.push([x, y]);
+    }
+    return out;
+  }
+
+  function offsetPoly(P, d) {
+    var Q = polyArea(P) < 0 ? P.slice().reverse() : P;
+    return shiftEdges(Q, Q.map(function () { return d; }));
+  }
+
+  // Толщина стен между комнатами по зазорам между параллельными рёбрами разных контуров, м (медиана) или null
+  function estimateGap(polys) {
+    var edges = [];
+    polys.forEach(function (pl, pi) {
+      var P = polyArea(pl.pts) < 0 ? pl.pts.slice().reverse() : pl.pts;
+      for (var i = 0; i < P.length; i++) edges.push({ pi: pi, a: P[i], b: P[(i + 1) % P.length] });
+    });
+    var gaps = [];
+    edges.forEach(function (e) {
+      var dx = e.b[0] - e.a[0], dy = e.b[1] - e.a[1], L = Math.hypot(dx, dy);
+      if (L < 0.6) return;
+      var mx = (e.a[0] + e.b[0]) / 2, my = (e.a[1] + e.b[1]) / 2, best = null;
+      edges.forEach(function (o) {
+        if (o.pi === e.pi) return;
+        var ox = o.b[0] - o.a[0], oy = o.b[1] - o.a[1], OL = Math.hypot(ox, oy);
+        if (OL < 0.4 || Math.abs((dx * ox + dy * oy) / (L * OL)) < 0.97) return;
+        var t = ((mx - o.a[0]) * ox + (my - o.a[1]) * oy) / (OL * OL);
+        if (t < 0 || t > 1) return;
+        var d = Math.abs((mx - o.a[0]) * oy - (my - o.a[1]) * ox) / OL;
+        if (d > 0.02 && d < 0.9 && (best === null || d < best)) best = d;
+      });
+      if (best !== null) gaps.push(best);
+    });
+    if (gaps.length < 2) return null;
+    gaps.sort(function (x, y) { return x - y; });
+    return gaps[Math.floor(gaps.length / 2)];
+  }
+
   // ── планарный граф: разбиение стен в местах примыканий и обход граней ───────────────
   function splitWalls(m, floorId) {
     var tol = m.settings.tol;
@@ -169,6 +231,10 @@
                  neighbor: n ? n.id : null, dirAlong: h.dir };
       });
       f.perimeter = f.edges.reduce(function (s, e) { return s + e.len; }, 0);
+      f.areaGross = f.area;                                        // по осям стен
+      var th = f.edges.map(function (e) { return -((e.wall.thick !== undefined ? e.wall.thick : m.settings.wallThick) / 2); });
+      var inner = shiftEdges(f.poly, th);
+      f.area = Math.max(polyArea(inner), 0);                      // чистая площадь: для пола, потолка и объёма воздуха
       var o = m.roomOv[f.id] || {};
       f.name = o.name; f.tv = o.tv; f.kind = o.kind || 'room';
     });
@@ -282,6 +348,16 @@
   function fromPolygons(m, floorId, polys, opts) {
     opts = opts || {};
     var snapTol = opts.snap || 0.12, eps = opts.simplify || 0.08;
+    // Контуры комнат на плане — по внутренним граням: между соседними остаётся зазор в толщину стены. Сдвигаем каждый
+    // наружу на полтолщины — тогда соседи встают на общую ось и склеиваются. Толщина: opts.gap (м), 'auto' — по
+    // зазорам между параллельными рёбрами, иначе по толщине наружной стены.
+    var gapUsed = null;
+    if (opts.gap) {
+      var g = opts.gap === 'auto' ? estimateGap(polys) : opts.gap;
+      var half = g ? Math.max(0.03, Math.min(0.4, g / 2)) : ((opts.ext && opts.ext.thick) || m.settings.wallThick) / 2;
+      gapUsed = g || null;
+      polys = polys.map(function (pl) { return Object.assign({}, pl, { pts: offsetPoly(pl.pts, half) }); });
+    }
     var ext = opts.ext || { layers: null, thick: m.settings.wallThick }, itn = opts.int || { layers: null, thick: 0.15 };
     var V = [];                                           // уникальные вершины
     var vid = function (p) {
@@ -315,7 +391,7 @@
       }
     });
     var created = segs.map(function (sg) {
-      return addWall(m, { floor: floorId, a: V[sg[0]].slice(), b: V[sg[1]].slice(), thick: itn.thick, layers: itn.layers ? itn.layers.map(function (l) { return Object.assign({}, l); }) : null });
+      return addWall(m, { floor: floorId, a: V[sg[0]].slice(), b: V[sg[1]].slice(), thick: gapUsed || itn.thick, layers: itn.layers ? itn.layers.map(function (l) { return Object.assign({}, l); }) : null });
     });
     var rooms = detectRooms(m, floorId);
     created.forEach(function (w) { w.imported = true; });
@@ -323,7 +399,7 @@
       r.edges.forEach(function (e) {
         if (!e.neighbor && !e.wall._ext) {
           e.wall._ext = true;
-          e.wall.thick = ext.thick; e.wall.layers = ext.layers ? ext.layers.map(function (l) { return Object.assign({}, l); }) : null;
+          e.wall.thick = gapUsed || ext.thick; e.wall.layers = ext.layers ? ext.layers.map(function (l) { return Object.assign({}, l); }) : null;
         }
       });
     });
@@ -341,7 +417,7 @@
       var src = polys.find(function (pl) { return inside(c, pl.pts); });
       if (src && (src.name || src.tv !== undefined)) m.roomOv[r.id] = { name: src.name || undefined, tv: src.tv };
     });
-    return { walls: created.length, rooms: rooms.length };
+    return { walls: created.length, rooms: rooms.length, gap: gapUsed };
   }
 
   // Проёмы по точкам плана: [{ x, y, w, kind, h?, sill? }] — ставятся на ближайшую стену этажа не дальше maxD
@@ -394,7 +470,7 @@
     return m;
   }
 
-  var api = { DEFAULTS: DEFAULTS, create: create, addFloor: addFloor, addWall: addWall, addOpening: addOpening, removeWall: removeWall, removeOpening: removeOpening, fromPolygons: fromPolygons, addOpeningsAt: addOpeningsAt, wallR: wallR,
+  var api = { DEFAULTS: DEFAULTS, create: create, addFloor: addFloor, addWall: addWall, addOpening: addOpening, removeWall: removeWall, removeOpening: removeOpening, fromPolygons: fromPolygons, addOpeningsAt: addOpeningsAt, estimateGap: estimateGap, offsetPoly: offsetPoly, wallR: wallR,
               detectRooms: detectRooms, heatLoss: heatLoss, sampleHouse: sampleHouse, openingsOn: openingsOn };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.HouseCore = api;
 })(typeof window !== 'undefined' ? window : this);

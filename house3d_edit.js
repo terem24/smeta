@@ -296,12 +296,12 @@
     var fl = m.floors[0];
     m.walls = m.walls.filter(function (w) { return w.floor !== fl.id; }); m.openings = []; m.roomOv = {};
     var ep = EXT[E.ext], ip = INT[E.int];
-    var r = HC.fromPolygons(m, fl.id, polys, { ext: { layers: ep.l, thick: ep.t }, int: { layers: ip.l, thick: ip.t } });
+    var r = HC.fromPolygons(m, fl.id, polys, { gap: 'auto', ext: { layers: ep.l, thick: ep.t }, int: { layers: ip.l, thick: ip.t } });
     var g = f.geom || {}, wl = [];
     (g.wins || []).forEach(function (w) { wl.push({ x: w.x * k, y: -w.y * k, w: Math.max(0.6, (w.mm || 1500) / 1000), kind: 'window' }); });
     (g.doors || []).forEach(function (d) { wl.push({ x: d.x * k, y: -d.y * k, w: Math.max(0.6, (d.mm || 900) / 1000), kind: 'door' }); });
     var no = HC.addOpeningsAt(m, fl.id, wl);
-    E.msg = 'Импорт: комнат ' + r.rooms + ', стен ' + r.walls + ', проёмов ' + no + ' из ' + wl.length + '. Пирог наружных стен — выбранный в списке (' + ep.n.slice(0, 22) + '...): проверьте стены.' +
+    E.msg = 'Импорт: комнат ' + r.rooms + ', стен ' + r.walls + ', проёмов ' + no + ' из ' + wl.length + (r.gap ? ', толщина стен по зазорам между комнатами ' + Math.round(r.gap * 100) + ' см' : ', соседних комнат не найдено, контуры сдвинуты на полтолщины наружной стены') + '. Пирог наружных стен — выбранный в списке (' + ep.n.slice(0, 22) + '...): проверьте стены.' +
       (P.floors.length > 1 ? ' Редактор правит один этаж: импортирован первый.' : '');
     E.sel = null;
     if (f.img && /^(data:|https?:)/.test(f.img)) setUnderlay(f.img, f.w || 0, f.h || 0, k, [0, 0]);
