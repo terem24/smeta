@@ -26,6 +26,45 @@ from mathutils import Vector  # noqa: E402
 index = {}
 
 
+PIPE_NAMES = ('труба', 'лежак', 'транзит', 'подающая труба', 'медная труба', 'выпуск')
+
+
+def free_pipe_ends(objs):
+    """Порты узла: свободные концы труб. Труба в сборщиках — кривая (tube()); её конец — порт, если в этой
+    точке нет другой детали: ни габарит корпуса или фитинга (запас 3 мм), ни конец другой кривой (4 мм —
+    стык труба-фитинг). Фитинговые кривые (раструб, отвод, колено, тройник), изоляция и шпильки портами
+    не бывают. Ось порта — направление последнего звена наружу, размер — наружный диаметр трубы (мм)."""
+    boxes, ends = [], []
+    for o in objs:
+        if o.type == 'MESH':
+            pts = [o.matrix_world @ Vector(c) for c in o.bound_box]
+            boxes.append(([min(p[i] for p in pts) - 0.003 for i in range(3)], [max(p[i] for p in pts) + 0.003 for i in range(3)]))
+        elif o.type == 'CURVE':
+            for sp in o.data.splines:
+                if len(sp.points) >= 2:
+                    ends.append((o, [o.matrix_world @ Vector(p.co[:3]) for p in sp.points]))
+    out = []
+    for o, pts in ends:
+        if not o.name.startswith(PIPE_NAMES) or 'изоляц' in o.name:
+            continue
+        for end, prev in ((pts[-1], pts[-2]), (pts[0], pts[1])):
+            if any(all(lo[i] <= end[i] <= hi[i] for i in range(3)) for lo, hi in boxes):
+                continue
+            if any(o2 is not o and any((end - e2).length < 0.004 for e2 in (p2[0], p2[-1])) for o2, p2 in ends):
+                continue
+            d = end - prev
+            if d.length < 1e-9:
+                continue
+            d.normalize()
+            pos = [round(v * 1000, 1) for v in end]
+            if any(max(abs(pos[i] - q['pos_mm'][i]) for i in range(3)) < 2.0 for q in out):
+                continue
+            out.append({'name': 'pipe_%d' % (len(out) + 1), 'pos_mm': pos, 'axis': [round(v, 3) for v in d], 'type': 'P',
+                        'size': 'D%g' % round(o.data.bevel_depth * 2000, 1),
+                        'src': 'свободный конец трубы узла (определён по геометрии сборщика), деталь «%s»' % o.name})
+    return out
+
+
 def node(fname, args, key, label):
     sys.argv = HEAD + [OUT] + args
     path = os.path.join(TOOLS, fname)
@@ -47,8 +86,9 @@ def node(fname, args, key, label):
         lo = [min(p[i] for p in pts) for i in range(3)]
         hi = [max(p[i] for p in pts) for i in range(3)]
         index[key] = {'label': label, 'source': fname, 'args': args, 'objects': len(objs),
-                      'size_mm': [round((hi[i] - lo[i]) * 1000, 1) for i in range(3)]}
-        print('ok', key, index[key]['size_mm'])
+                      'size_mm': [round((hi[i] - lo[i]) * 1000, 1) for i in range(3)],
+                      'ports': free_pipe_ends(objs)}
+        print('ok', key, index[key]['size_mm'], 'портов', len(index[key]['ports']))
     except Exception:
         print('FAIL', key)
         traceback.print_exc(limit=3)
