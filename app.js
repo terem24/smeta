@@ -45966,7 +45966,11 @@ const app = {
         const listY = k => y3 + SSUB * 1.9 + k * SSUB * 1.4;
         const rowsMax = Math.max.apply(null, o.places.map(p => p.rows.length).concat([1]));
         const hh = listY(rowsMax - 1) + SSUB * 2.2;
-        const colX = k => fs * 1.05 + k * Math.max(W * 0.4, fs * 16);
+        // шаг колонок мест: 40 % листа, но не шире, чем нужно, чтобы последняя (черта 13 кеглей) встала на лист —
+        // на листе «Бойлер ГВС» мест четыре, четвёртая уходила за край
+        const _np = o.places.length;
+        const colStep = Math.max(W * 0.4, fs * 16);
+        const colX = k => fs * 1.05 + k * (_np > 1 ? Math.min(colStep, (W * 0.97 - fs * 15) / (_np - 1)) : colStep);
         const head = `<g class="wm-sheet">` +
             `<line x1="${W * 0.006}" y1="0" x2="${W * 0.006}" y2="${H + hh}" class="wm-margin"/>` +
             `<line x1="${W * 0.994}" y1="0" x2="${W * 0.994}" y2="${H + hh}" class="wm-margin"/>` +
@@ -46003,6 +46007,7 @@ const app = {
         if (kind === 'wo') return { feed: 'node', end: 'fix' }[g] || g;
         if (kind === 'sw') return { feed: 'node', end: 'fix', mount: 'lock', mf: 'mf' }[g] || g;
         if (kind === 'boiler') return this._blTwo && (g === 'head' || g === 'kit') ? g + ':' + line : g;
+        if (kind === 'hydro' || kind === 'dhw') return g;
         return g === 'end' ? 'end_' + end : g;
     },
     // Строки сметы подписи — по виду схемы
@@ -46015,6 +46020,8 @@ const app = {
         if (kind === 'wo') return this.woLabRows(pk);
         if (kind === 'sw') return this.swLabRows(pk);
         if (kind === 'boiler') return this.boilerLabRows(pk);
+        if (kind === 'hydro') return this.nodeLabRows(/^2\.4/, this.HYDRO_LAB_RE, this._hySku, pk);
+        if (kind === 'dhw') return this.nodeLabRows(/^2\.(3|8\.1)/, this.DHW_LAB_RE, this._dhSku, pk);
         return kind === 'ufh' ? this.ufhLabRows(pk, spec) : this.wmLabRows(pk, spec);
     },
     // Маски деталей кадра: по карте деталей вырезаются пиксели самого кадра — деталь потом
@@ -46783,6 +46790,145 @@ const app = {
                     : ['Подача слева, обратка справа', /^haier2/.test(f.key) ? 'ГВС и ХВС — по разделу водоснабжения' : 'Выход на бойлер — от котла'] }))
         });
         return html + sum;
+    },
+    // ── Листы котельной: «Гидравлика» (2.4) и «Бойлер ГВС» (2.3) ─────────────────────────────────────────
+    // Общий поиск строк: подпись берёт строки таблицы только среди артикулов своего подраздела сметы (grpRe),
+    // mf:<кадр> — по артикулу главной позиции кадра. В ключе строки (_rowKey) раздел «Обвязка котельной» один на
+    // все подразделы 2.x, поэтому подраздел — по позициям сметы, как у конвекторов.
+    nodeLabRows: function (grpRe, RE, skuOf, pk) {
+        const rows = Array.from(document.querySelectorAll('#print-area tr[data-rk]'));
+        const nm = tr => ((tr.querySelector('.col-name') || {}).innerText || '').split('\n')[0].trim();
+        const sku = tr => ((tr.querySelector('.col-sku') || {}).innerText || '').trim();
+        const k = String(pk).split(':');
+        if (k[0] === 'mf') { const s0 = (skuOf || {})[k[1]]; return s0 ? rows.filter(tr => sku(tr) === s0) : []; }
+        const skus = new Set((this.currentEquipmentList || []).filter(it => grpRe.test(String(it.group || '')))
+            .map(it => String(it.displaySku || it.id || '')));
+        const re = RE[k[0]];
+        return re ? rows.filter(tr => skus.has(sku(tr)) && re.test(nm(tr))) : [];
+    },
+    nodeIndex: function (key, dir, file) {
+        this._nodeIdx = this._nodeIdx || {};
+        if (this._nodeIdx[key] !== undefined) return this._nodeIdx[key];
+        this._nodeIdx[key] = null;
+        fetch(dir + file)
+            .then(r => r.ok ? r.json() : {})
+            .catch(() => ({}))
+            .then(j => { this._nodeIdx[key] = j || {}; if (Object.keys(this._nodeIdx[key]).length) this.render(); });
+        return null;
+    },
+    // Лист из кадров-мест: frames [{id, key, path, name, rows}], T — подписи по ключам, rowsOf(pk) — строки сметы
+    nodeSheet: function (kind, frames, T, rowsOf, title, subtitle, sumHead, hint) {
+        const { iw, ih } = this.wmPlaceFrames(frames, frames.map(f => f.at), [0, 0, 0]);
+        const spec = frames.map(f => f.id).join(',');
+        const zonesOf = this.wmZonesOf(frames, iw, ih, (z, f) => { const k = String(z).split(':')[0]; return k === 'mf' ? 'mf:' + f.id : k; });
+        const keys = frames.map(f => 'mf:' + f.id).concat(Object.keys(T).filter(k => k.indexOf('mf') !== 0));
+        frames.forEach(f => { if (f.mf) T['mf:' + f.id] = f.mf; });
+        const items = keys.map(key => {
+            const zs = zonesOf[key] || [];
+            if (!zs.length || !T[key]) return null;
+            const rs = rowsOf(key);
+            const miss = rs.length ? [] : [T[key][0].toLowerCase()];
+            return { pk: key, rows: rs, miss, off: false, ok: !miss.length, lines: T[key], tail: miss.length ? 'нет в смете' : '', zs,
+                mx: zs.reduce((sum, q) => sum + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
+        }).filter(Boolean);
+        const miss = items.filter(it => !it.ok).map(it => it.lines[0].toLowerCase());
+        const sum = `<div class="sg-summary no-print">${sumHead}` +
+            (miss.length ? ` <span class="sg-miss-txt">Нет в смете: ${miss.join('; ')}.</span>` : ` <span class="sg-ok-txt">Всё со схемы есть в смете.</span>`) +
+            ` <span class="sg-hint">${hint}</span></div>`;
+        return this.wmSheet({ kind, frames, items, iw, ih, spec, hk: null, title, subtitle,
+            places: frames.map(f => ({ name: f.name, rows: f.rows })) }) + sum;
+    },
+    // Гидравлика: коллектор SDG-0018 (2 или 3 пары) и группы DN25 STOUT на нём — кадр «<пар>_<группы>» (d прямая
+    // SDG-0001, s под сервопривод SDG-0003, m термостатическая SDG-0002), tools/render_hydro_node.py.
+    HYDRO_DIR: 'img/hydro_node/',
+    HYDRO_LAB_RE: {
+        end: /^Группа (насосная|быстрого)/i, kit: /^Насос циркуляционный/i, head: /^Сервопривод/i,
+        feed: /^Многофункциональный узел|^Заглушка 1\/2/i, mount: /^Воздухоотводчик|^Клапан отсекающий/i,
+        ek: /^Кран шаровой 1\/2/i, tube: /^Муфта переходная ВР 1 1\/2/i
+    },
+    hydroFrameKey: function () {
+        const eq = (this.currentEquipmentList || []).filter(it => /^2\.4/.test(String(it.group || '')));
+        const sku = it => String(it.displaySku || it.id || '');
+        const col = eq.find(it => /^SDG-0018-00400[23]$/i.test(sku(it)));
+        if (!col) return null;
+        const np = /3$/.test(sku(col)) ? 3 : 2;
+        const qty = re => eq.filter(it => re.test(sku(it))).reduce((s0, it) => s0 + (it.q || it.qty || 1), 0);
+        // другие группы (ROMMER, DN20/DN32, самосборные) — кадров пока нет
+        if (eq.some(it => /^(RDG-|SDG-000[1-7]-00(20|32))/i.test(sku(it)))) return null;
+        const g = 'd'.repeat(qty(/^SDG-0001-002501$/i)) + 's'.repeat(qty(/^SDG-0003-002501$/i)) + 'm'.repeat(qty(/^SDG-0002-002501$/i));
+        if (!g.length || g.length > np) return null;
+        return { key: np + '_' + g, col: sku(col), np, g };
+    },
+    renderHydroNodeScheme: function () {
+        if (!this.wmPreviewOn()) return '';
+        const hk = this.hydroFrameKey();
+        if (!hk) return '';
+        const idx = this.nodeIndex('hydro', this.HYDRO_DIR, 'hydro.json?v=1');
+        if (!idx || !idx[hk.key] || !idx[hk.key].o) return '';
+        const RU = { d: 'прямая', s: 'под сервопривод', m: 'термостатическая' };
+        const kinds = Array.from(new Set(hk.g.split(''))).map(c => RU[c]);
+        const frames = [{ id: 'h0', at: 0, fr: idx[hk.key], key: hk.key, path: this.HYDRO_DIR + 'hydro_' + hk.key,
+            mf: ['Коллектор с гидроразделителем', `SDG-0018 DN25, ${hk.np} пары выходов`],
+            name: 'Коллектор и насосные группы', rows: [`Групп: ${hk.g.length} — ${kinds.join(', ')}`, 'Слева обратка, справа подача'] }];
+        const T = {
+            end: ['Группы насосные DN25', kinds.join(', ')], kit: ['Насос циркуляционный 25/60-180', 'на подаче каждой группы'],
+            feed: ['Узлы МУ-25М и заглушки', 'два узла на группу, отводы 1/2" закрыты'], mount: ['Воздухоотводчик с отсечным клапаном', 'на узле подачи каждой группы'],
+            ek: ['Кран слива 1/2"', 'на торце коллектора, второй торец — заглушка'], tube: ['Муфты 1 1/2" × 1"', 'к котлу: подача слева, обратка справа']
+        };
+        if (/s/.test(hk.g)) T.head = ['Сервопривод с датчиком', 'на трёхходовой клапан группы'];
+        this._hySku = { h0: hk.col };
+        return this.nodeSheet('hydro', frames, T, pk => this.nodeLabRows(/^2\.4/, this.HYDRO_LAB_RE, this._hySku, pk),
+            'Котельная', 'Гидравлика', `Гидравлика котельной: коллектор SDG-0018, групп ${hk.g.length}.`,
+            'Коллектор — горизонтально, группы сверху (паспорт SDG, п. 5). Трубы к котлу и в систему на схеме обрезаны.');
+    },
+    // Бойлер ГВС: бойлер, узел входа ХВС на стене, бак ГВС, термосмеситель — четыре кадра (tools/render_dhw_node.py),
+    // между узлами труба 22 (смета с 13.11.2026), как в проектах котельных.
+    DHW_DIR: 'img/dhw_node/',
+    DHW_LAB_RE: {
+        ek: /^Кран шаровой/i, feed: /^Разъемное|^Американка|^Тройник 3\/4|^Крестовина|^Ниппель|^Муфта переходная ВР 1"/i,
+        mount: /^Клапан обратный/i, end: /^Клапан предохранительный/i, kit: /^Комплект подключения мембранного бака/i,
+        head: /^Кронштейн|^Крепление для бака|^Комплект крепления/i, tube: /^Переходник|^Муфта комбинированная/i
+    },
+    renderDhwNodeScheme: function () {
+        if (!this.wmPreviewOn()) return '';
+        const eq = (this.currentEquipmentList || []);
+        const sku = it => String(it.displaySku || it.id || '');
+        const boiler = eq.find(it => /^SWH-2110-000200$/i.test(sku(it)));
+        const g23 = eq.filter(it => /^2\.3/.test(String(it.group || '')));
+        const tank = g23.find(it => /^STW-0015-0000(24|18|12)$/i.test(sku(it)));
+        if (!boiler || !tank || !this._dhwPipe || !this._dhwPipe.cold) return '';
+        const mix = g23.find(it => /^SVM-0125-/i.test(sku(it)));
+        const idx = this.nodeIndex('dhw', this.DHW_DIR, 'dhw.json?v=1');
+        if (!idx) return '';
+        const vol = sku(tank).slice(-2);
+        const plan = [
+            { key: 'b200', it: boiler, mf: ['Бойлер OptiBase 200 л', 'змеевик, вход ХВС, выход ГВС'], name: 'Бойлер', rows: ['Патрубки к зрителю', 'Змеевик — к котлу'] },
+            { key: mix ? 'g' : 'g_n', it: null, mf: null, name: 'Узел входа ХВС', rows: ['На стене, поток снизу вверх', 'К бойлеру — трубой'] },
+            // крепление STOUT SAC-0030 (пластина и хомут) — свой кадр «…_s», иначе L-кронштейн ASKON
+            { key: 't' + vol + (eq.some(it => /^SAC-0030-000825$/i.test(sku(it))) ? '_s' : ''), it: tank, mf: [`Бак ГВС ${vol} л`, 'на стене, выше узла входа'], name: 'Бак ГВС', rows: ['На креплении к стене', 'К тройнику узла — трубой'] }
+        ];
+        // без термосмесителя бак — в середину: крайним справа его сноски крепления и узла SVS-0008 пересекались
+        if (!mix) plan.splice(1, 0, plan.splice(2, 1)[0]);
+        if (mix) plan.push({ key: 'mix', it: mix, mf: ['Термостатический клапан ГВС', 'на выходе горячей воды в дом'], name: 'Термосмеситель', rows: ['Горячий вход — от бойлера', 'Холодный — от тройника подмеса'] });
+        const frames = [];
+        this._dhSku = {};
+        for (const pl of plan) {
+            const fr = idx[pl.key];
+            if (!fr || !fr.o) return '';
+            const f = { id: 'w' + frames.length, at: frames.length, fr, key: pl.key, path: this.DHW_DIR + 'dhw_' + pl.key, mf: pl.mf, name: pl.name, rows: pl.rows };
+            if (pl.it) this._dhSku[f.id] = sku(pl.it);
+            frames.push(f);
+        }
+        const T = {
+            ek: ['Краны шаровые', 'змеевик, вход ХВС, слив, термосмеситель'], feed: ['Фитинги узлов', 'американки, тройники, крестовина, ниппели'],
+            mount: ['Клапаны обратные 3/4"', 'на входе ХВС и на подмесе'], end: ['Клапан предохранительный 6 бар', 'сброс — в канализацию через воронку'],
+            kit: ['Узел подключения бака SVS-0008', 'кран с фиксатором и сливом'], head: ['Крепление бака к стене', 'держит бак, а не резьба'],
+            tube: ['Переходники на трубу 22', 'соединения узлов трубой']
+        };
+        // крепёж бака смета переносит в «2.8.1. Крепёж» — ищем и там
+        return this.nodeSheet('dhw', frames, T, pk => this.nodeLabRows(/^2\.(3|8\.1)/, this.DHW_LAB_RE, this._dhSku, pk),
+            'Котельная', 'Бойлер ГВС', `Обвязка бойлера: бойлер, узел входа ХВС, бак ГВС${mix ? ', термосмеситель' : ''}.`,
+            'Узлы соединяются трубой 22 (на схеме обрезана): бак висит выше узла входа, термосмеситель — на выходе ГВС в дом, как в проектах котельных.');
     },
     CONV_DIR: 'img/rad_conv/',
     convIndex: function () {
@@ -96540,7 +96686,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // Американка на ХВС — как на Т3, змеевике и рециркуляции: без неё бойлер
             // снимается только вместе с раскрученным узлом В1.
             addToBill(_named(catalog.dhw_fittings[2], 'вход ХВС, В1', 'cold_un'), 1,
-                `Разъёмное соединение (американка) 3/4" между крестовиной В1 и бойлером — бойлер снимается без разборки узла входа.${_portNote(_coldSz)}`, grp);
+                `Разъёмное соединение (американка) 3/4" на патрубке ХВС бойлера — бойлер снимается без разборки узла входа. Узел В1 висит на стене отдельно и подходит к ней трубой: переходник с ВР 3/4" на американку, переходник с НР 3/4" в крестовину (в «2.5. Трубопроводы котельной»). Вкрутить узел прямо в патрубок нельзя — у OptiBase выход змеевика на 120 мм выше ХВС, и предохранительный клапан на крестовине упирается в его кран.${_portNote(_coldSz)}`, grp);
+            if (this._dhwPipe) this._dhwPipe.cold = true;
             // Патрубок ХВС 1" (OptiBase 150/200) при узле В1 на 3/4": муфта ВР 1" × НР 3/4"
             // на патрубок, американка 3/4" — в неё (так же собраны Т3 и Т4).
             const _coldRed = _coldSz === '1"' ? _mixFit('SFT-0007-000134') : null;
@@ -97493,7 +97640,19 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             // ранги -0,2 и -0,1 ставят их сразу за насосами (-1) и перед остальной
             // обвязкой (0), которая сортируется по сумме. Без рангов клапан за 251 ₽
             // уезжал от своего воздухоотводчика в самый низ подраздела.
-            if (catalog.air_vent_12 && !_bufSep) {
+            // Коллектор со встроенным разделителем SDG-0018 (ROMMER RDG-0017) стоит горизонтально, группы сверху
+            // (паспорт, ред. 30.03.2023, п. 5: «рекомендуется в горизонтальном положении»). Его патрубки G 1/2" — на
+            // ТОРЦАХ, они для вертикальной установки («можно использовать для воздухоотводчика и сливного крана»).
+            // На горизонтальном торцевой патрубок смотрит вбок: поплавковому воздухоотводчику там не работать, воздух
+            // уходит вверх через группы на воздухоотводчики узлов МУ-25М. Поэтому у SDG-0018: один торец — сливной кран,
+            // второй — заглушка (13.11.2026). У отдельной гидрострелки патрубки сверху и снизу — там как было.
+            const _comboHoriz = (this.currentSpec || []).some(x => x.group === grpHydro &&
+                /^(SDG-0018|RDG-0017)-/.test(String(x.originalId || x.id || '')));
+            if (_comboHoriz && !_bufSep && catalog.plug_12) {
+                addToBill({ ...catalog.plug_12, originalId: 'SFT-0024-000012_hydro', sortRank: -0.05 }, 1,
+                    "Заглушка 1/2\" НР на второй торцевой патрубок коллектора со встроенным разделителем. Патрубки G 1/2\" у него на торцах — для вертикальной установки (паспорт SDG, п. 5); коллектор стоит горизонтально, группами вверх, и воздухоотводчику на торце не работать: воздух снимают воздухоотводчики узлов МУ-25М над группами. Первый торцевой патрубок — под сливной кран.", grpHydro);
+            }
+            if (catalog.air_vent_12 && !_bufSep && !_comboHoriz) {
                 addToBill({ ...catalog.air_vent_12, alts: catalog.air_vent_12_alts || [], noCheapenAlts: true, sortRank: -0.2 },
                     1, this.getDesc('air_vent_hydro'), grpHydro);
                 if (catalog.air_vent_check_12) {
@@ -98757,20 +98916,21 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
             }
 
             // Узел бойлера: соединения трубой (см. this._dhwPipe в обвязке водонагревателя, 13.11.2026).
+            // Вход ХВС: американка на патрубке (НР) → переходник ВР 3/4" → труба → переходник НР 3/4" → крестовина узла В1.
             // Бак ГВС: тройник В1 → переходник НР 3/4" → труба → переходник НР 3/4" → накидная гайка SVS-0008.
             // Горячий вход клапана: американка Т3 (НР) → переходник ВР 3/4" → труба → переходник НР 3/4" → кран с гайкой.
             // Подмес: отвод тройника → переходник НР 3/4" → труба → переходник НР 3/4" → обратный клапан (ВР).
             const _dp = this._dhwPipe || {};
-            const _dpMi = (_dp.tank ? 2 : 0) + (_dp.hot ? 1 : 0) + (_dp.mix ? 2 : 0), _dpFi = _dp.hot ? 1 : 0;
+            const _dpMi = (_dp.tank ? 2 : 0) + (_dp.hot ? 1 : 0) + (_dp.mix ? 2 : 0) + (_dp.cold ? 1 : 0), _dpFi = (_dp.hot ? 1 : 0) + (_dp.cold ? 1 : 0);
             if (_dpMi || _dpFi) {
-                const _dpWhat = [_dp.tank ? 'бак ГВС' : '', _dp.hot ? 'горячий вход термостатического клапана' : '', _dp.mix ? 'подмес холодной к клапану' : ''].filter(Boolean).join(', ');
+                const _dpWhat = [_dp.cold ? 'узел входа ХВС к бойлеру' : '', _dp.tank ? 'бак ГВС' : '', _dp.hot ? 'горячий вход термостатического клапана' : '', _dp.mix ? 'подмес холодной к клапану' : ''].filter(Boolean).join(', ');
                 const _dpTxt = `— соединения узла бойлера трубой (${_dpWhat}): бак висит на стене выше узла В1, термостатический клапан стоит на выходе ГВС в дом — как в проектах котельных.`;
                 if (!ss_pipes_demand[_tankSize]) ss_pipes_demand[_tankSize] = { length: 0, components: [] };
-                ss_pipes_demand[_tankSize].length += (_dp.tank ? 1.0 : 0) + (_dp.hot ? 1.0 : 0) + (_dp.mix ? 1.5 : 0);
+                ss_pipes_demand[_tankSize].length += (_dp.tank ? 1.0 : 0) + (_dp.hot ? 1.0 : 0) + (_dp.mix ? 1.5 : 0) + (_dp.cold ? 1.0 : 0);
                 ss_pipes_demand[_tankSize].components.push("узел бойлера (бак ГВС, термостатический клапан)");
                 if (isAnalog) {
                     if (_dpMi) addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_mi, 'SZE03225RCT'), _dpMi, `Муфта комбинированная с наружной резьбой 32х3/4" PP-RCT ${_dpTxt} Требуется: ${_dpMi} шт.`, grp);
-                    if (_dpFi) addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_fi, 'SZI03225RCT'), _dpFi, `Муфта комбинированная с ВР PP-RCT 32х3/4" на американку выхода ГВС Т3 ${_dpTxt} Требуется: ${_dpFi} шт.`, grp);
+                    if (_dpFi) addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_fi, 'SZI03225RCT'), _dpFi, `Муфта комбинированная с ВР PP-RCT 32х3/4" на американки бойлера (выход ГВС, вход ХВС) ${_dpTxt} Требуется: ${_dpFi} шт.`, grp);
                 } else if (isPress) {
                     const _dpD = mpD(22);
                     if (_dpMi) {
@@ -98779,13 +98939,13 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                     }
                     if (_dpFi) {
                         const _t = bpThreadFor('fi', _dpD, '3/4');
-                        bpPress(_t.item, _dpFi, `Переходник с трубы ${_dpD} на внутреннюю резьбу ${bpThLabel(_t.key)} на американку выхода ГВС Т3 ${_dpTxt} Требуется: ${_dpFi} шт.`, grp, 1, _dpD);
+                        bpPress(_t.item, _dpFi, `Переходник с трубы ${_dpD} на внутреннюю резьбу ${bpThLabel(_t.key)} на американки бойлера (выход ГВС, вход ХВС) ${_dpTxt} Требуется: ${_dpFi} шт.`, grp, 1, _dpD);
                     }
                 } else {
                     if (_dpMi) addToBill(this.ssFit('ss_adapter_mi', _tankSize, this.ssThreadFor('ss_adapter_mi', _tankSize, '3/4')), _dpMi,
                         `Переходник ВПр-НР ${_tankSize}х3/4" ${_dpTxt} Требуется: ${_dpMi} шт.`, grp);
                     if (_dpFi) addToBill(this.ssFit('ss_adapter_fi', _tankSize, this.ssThreadFor('ss_adapter_fi', _tankSize, '3/4')), _dpFi,
-                        `Переходник ВПр-ВР ${_tankSize}х3/4" на американку выхода ГВС Т3 ${_dpTxt} Требуется: ${_dpFi} шт.`, grp);
+                        `Переходник ВПр-ВР ${_tankSize}х3/4" на американки бойлера (выход ГВС, вход ХВС) ${_dpTxt} Требуется: ${_dpFi} шт.`, grp);
                 }
             }
         }
@@ -105261,6 +105421,9 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
          ['snow_scheme_row', '4.4.1', () => this.renderSnowScheme()],
          // котёл с обвязкой (лист котельной, узел 1) — новая схема, видит владелец
          ['boiler_node_scheme_row', ['2. Обвязка котельной'], () => this.renderBoilerNodeScheme(), true],
+         // гидравлика и бойлер ГВС (листы котельной, узлы 2 и 3) — новые схемы, видит владелец
+         ['hydro_node_scheme_row', '2.4. Гидравлика котельной', () => this.renderHydroNodeScheme()],
+         ['dhw_node_scheme_row', '2.3. Обвязка Водонагревателя', () => this.renderDhwNodeScheme()],
          ['pump_group_compare_row', '2.4. Гидравлика котельной', () => this.renderGroupCompareOnly()],
          ['pump_group_scheme_row_direct', '2.4.1. Самосборная группа', () => this.renderPumpGroupScheme('direct')],
          ['pump_group_scheme_row_thermo', '2.4.2. Самосборная группа', () => this.renderPumpGroupScheme('thermo')],

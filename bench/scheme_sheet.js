@@ -38,7 +38,7 @@ const fail = (sheet, what) => { bad++; (fails[what] = fails[what] || []).push(sh
 const rd = f => JSON.parse(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'));
 // индексы новых узлов (коллектор радиаторов, подключение радиатора) — пока кадров нет, их листы пропускаются
 const rdOpt = f => fs.existsSync(path.join(__dirname, '..', f)) ? rd(f) : null;
-const IDX = { rad: rdOpt('img/manifold_rad/rad.json'), radnode: rdOpt('img/rad_node/radnode.json'), panel: rdOpt('img/rad_panel/panel.json'), side: rdOpt('img/rad_side/side.json'), conv: rdOpt('img/rad_conv/conv.json'), wo: rdOpt('img/water_outlet/wo.json'), sw: rdOpt('img/sewer_node/sw.json'), boiler: rdOpt('img/boiler_node/boiler.json'), st: rd('img/manifold3d/manifold3d_st.json'), rm: rd('img/manifold3d/manifold3d_rm.json'),
+const IDX = { rad: rdOpt('img/manifold_rad/rad.json'), radnode: rdOpt('img/rad_node/radnode.json'), panel: rdOpt('img/rad_panel/panel.json'), side: rdOpt('img/rad_side/side.json'), conv: rdOpt('img/rad_conv/conv.json'), wo: rdOpt('img/water_outlet/wo.json'), sw: rdOpt('img/sewer_node/sw.json'), boiler: rdOpt('img/boiler_node/boiler.json'), hydro: rdOpt('img/hydro_node/hydro.json'), dhw: rdOpt('img/dhw_node/dhw.json'), st: rd('img/manifold3d/manifold3d_st.json'), rm: rd('img/manifold3d/manifold3d_rm.json'),
     bl: rd('img/manifold3d/manifold3d_bl.json'), ufh: rd('img/manifold_ufh/ufh.json') };
 
 // ── разбор листа ─────────────────────────────────────────────────────────
@@ -335,6 +335,27 @@ function boilerSheet(v) {
     return { o: { kind: 'boiler', frames, items, iw, ih, spec: 'b0', hk: null, title: 'Котельная', subtitle: 'Котёл с обвязкой',
         places: [{ name: v, rows: ['Котёл с обвязкой'] }] }, orphan };
 }
+// гидравлика и бойлер ГВС: ключи деталей одинаковые у всех кадров листа (mf — у каждого свой)
+function nodeSheetB(kind, idx, dir, pref, keys, T) {
+    if (!idx) return undefined;
+    if (keys.some(k => !idx[k])) return null;
+    const frames = keys.map((k, i) => ({ id: 'n' + i, at: i, fr: idx[k], key: k, path: dir + pref + k }));
+    const { iw, ih } = app.wmPlaceFrames(frames, frames.map(f => f.at), [0, 0, 0]);
+    const zonesOf = app.wmZonesOf(frames, iw, ih, (z, f) => { const k = String(z).split(':')[0]; return k === 'mf' ? 'mf:' + f.id : k; });
+    const items = Object.keys(zonesOf).map(key => {
+        const t = T[key.split(':')[0]];
+        if (!t) return null;
+        const zs = zonesOf[key];
+        return { pk: key, rows: [], miss: [], ok: true, off: false, lines: t, tail: '', zs, mx: zs.reduce((a, q) => a + (q.z[0] + q.z[2]) / 2, 0) / zs.length };
+    }).filter(Boolean);
+    const orphan = Object.keys(zonesOf).filter(pk => !T[pk.split(':')[0]]);
+    return { o: { kind, frames, items, iw, ih, spec: frames.map(f => f.id).join(','), hk: null, title: 'Котельная', subtitle: kind,
+        places: frames.map(f => ({ name: f.key, rows: ['узел'] })) }, orphan };
+}
+const HY_T = { mf: ['Коллектор', 'SDG-0018'], end: ['Группы насосные DN25', 'прямая'], kit: ['Насос 25/60-180', 'на подаче'], head: ['Сервопривод', 'на клапан'],
+    feed: ['Узлы МУ-25М и заглушки', 'два на группу'], mount: ['Воздухоотводчик', 'с отсечным клапаном'], ek: ['Кран слива 1/2"', 'на торце'], tube: ['Муфты 1 1/2" × 1"', 'к котлу'] };
+const DH_T = { mf: ['Бойлер', 'OptiBase'], ek: ['Краны шаровые', 'узлы'], feed: ['Фитинги узлов', 'американки'], mount: ['Клапаны обратные', '3/4"'],
+    end: ['Клапан предохранительный', '6 бар'], kit: ['Узел SVS-0008', 'бак'], head: ['Кронштейн бака', 'L'], tube: ['Переходники на трубу 22', 'пресс'] };
 function run(name, r) {
     if (r === undefined) return;                 // кадров этого узла ещё нет — лист не проверяем
     if (!r) { fail(name, 'нет кадра в индексе'); return; }
@@ -371,6 +392,9 @@ Object.keys(IDX.panel || {}).forEach(v => run('панельный ' + v, panelSh
 Object.keys(IDX.conv || {}).forEach(v => run('конвектор ' + v, convSheet(v)));
 Object.keys(IDX.wo || {}).forEach(v => run('водорозетки ' + v, woSheet(v)));
 Object.keys(IDX.boiler || {}).forEach(v => run('котёл ' + v, boilerSheet(v)));
+Object.keys(IDX.hydro || {}).forEach(v => run('гидравлика ' + v, nodeSheetB('hydro', IDX.hydro, 'img/hydro_node/', 'hydro_', [v], HY_T)));
+if (IDX.dhw) ['t24', 't18', 't12', 't24_s', 't18_s', 't12_s'].forEach(t => [['b200', 'g', t, 'mix'], ['b200', t, 'g_n']].forEach(ks =>
+    run('бойлер ГВС ' + ks.join('+'), nodeSheetB('dhw', IDX.dhw, 'img/dhw_node/', 'dhw_', ks, DH_T))));
 if (IDX.sw) {
     ['main', 'toilet', 'basin', 'shower', 'wash'].forEach(k => run('канализация ' + k, swSheet([k])));
     run('канализация санузел целиком', swSheet(['main', 'toilet', 'basin', 'shower', 'wash']));
@@ -408,6 +432,8 @@ const OBJ = {
     'Котельная: электрокотёл STOUT STATUS, бойлер': { area: 120, floors: 1, systems: ['rad'], fuels: ['el'], hotWater: true },
     'Котельная: двухконтурный Haier, без бойлера': { area: 150, floors: 1, systems: ['rad'], fuels: ['gas'], hotWater: false },
     'Котельная: STATUS 27 кВт': { area: 250, floors: 1, systems: ['rad'], fuels: ['el'], hotWater: false },
+    'Котельная: гидравлика, радиаторы + тёплый пол': { area: 200, floors: 1, systems: ['rad', 'tp'], tp1: 80, fuels: ['gas'], hotWater: true },
+    'Котельная: гидравлика, 2 этажа тёплого пола': { area: 250, floors: 2, systems: ['rad', 'tp'], tp1: 60, tp2: 40, fuels: ['gas'], hotWater: true },
     'Котельная: газ и резервный STATUS (каскад)': { area: 150, floors: 1, systems: ['rad'], fuels: ['gas', 'el'], hotWater: true },
     'Канализация: санузел и кухня': { area: 120, floors: 1, systems: ['rad'], water: true, sewer: true, waterZones: Z3 },
     'Конвектор SCN, металлопластик': { area: 120, floors: 1, systems: ['rad'], detailedRooms: true, rooms: CONV_ROOMS(), convectorType: 'scn', convConnectionType: 'angled', pipeType: 'split_mp' },
@@ -512,6 +538,20 @@ for (const [title, patch] of Object.entries(OBJ)) {
     if (sec5.some(it => /^SFA-0032/i.test(String(it.displaySku || it.id)))) {
         Object.keys(app.WO_LAB_RE).forEach(pk => { if (!sec5.some(it => app.WO_LAB_RE[pk].test(nm(it)))) miss.push('водорозетки: ' + pk); });
         if (!sec5.some(it => app.WO_PLATES[String(it.displaySku || it.id)])) miss.push('водорозетки: монтажная планка');
+    }
+    // гидравлика — подписи HYDRO_LAB_RE в 2.4 (сервопривод — при группе SDG-0003), бойлер ГВС — DHW_LAB_RE в 2.3
+    if (app.hydroFrameKey()) {
+        const s24 = eq.filter(it => /^2\.4/.test(String(it.group || '')));
+        const hk = app.hydroFrameKey();
+        Object.keys(app.HYDRO_LAB_RE).forEach(pk => {
+            if (pk === 'head' && !/s/.test(hk.g)) return;
+            if (!s24.some(it => app.HYDRO_LAB_RE[pk].test(nm(it)))) miss.push('гидравлика: ' + pk);
+        });
+    }
+    const s23 = eq.filter(it => /^2\.3/.test(String(it.group || '')));
+    if (s23.some(it => /^SWH-2110-000200$/.test(String(it.displaySku || it.id))) && s23.some(it => /^STW-0015/.test(String(it.displaySku || it.id)))) {
+        const s238 = eq.filter(it => /^2\.(3|8\.1)/.test(String(it.group || '')));
+        Object.keys(app.DHW_LAB_RE).forEach(pk => { if (!s238.some(it => app.DHW_LAB_RE[pk].test(nm(it)))) miss.push('бойлер ГВС: ' + pk); });
     }
     // котёл с обвязкой — подписи BOILER_LAB_RE в разделах 2.1/2.2/2.5 (дымоход — у газового, клапан — у электро)
     const boil = eq.filter(it => app.boilerFrameKey(it));

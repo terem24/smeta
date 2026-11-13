@@ -83,7 +83,7 @@ def main():
     for idx in sys.argv[1:]:
         d = os.path.dirname(idx)
         pref = {'conv.json': 'conv_', 'side.json': 'side_', 'radnode.json': 'radnode_', 'panel.json': 'panel_',
-                'wo.json': 'wo_', 'sw.json': 'sw_', 'boiler.json': 'boiler_'}[os.path.basename(idx)]
+                'wo.json': 'wo_', 'sw.json': 'sw_', 'boiler.json': 'boiler_', 'hydro.json': 'hydro_', 'dhw.json': 'dhw_'}[os.path.basename(idx)]
         with open(idx, encoding='utf-8') as fh:
             index = json.load(fh)
         empty = []
