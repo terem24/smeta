@@ -25677,8 +25677,12 @@ const app = {
         // из-за чего только что включённый доступ «не появлялся».
         this._accessListsPromise = fetch(this.ACCESS_LISTS_URL + (bust ? '&_=' + Date.now() : ''))
             .then(r => r.json())
-            .then(data => {
+            .then(async data => {
                 if (data && data.ok) this._accessLists = data;
+                else if (window.PROXY_DOWN || (data && data.error === 'proxy_down')) {
+                    await this.loadAppSettings();
+                    this._accessLists = this.accessListsFromDb();
+                }
                 return this._accessLists;
             })
             .catch(e => {
@@ -53551,6 +53555,9 @@ const app = {
             if (data && data.ok) {
                 this._recognitionAccess = data;
                 this._accessLists = data;
+            } else if (window.PROXY_DOWN || (data && data.error === 'proxy_down')) {
+                await this.loadAppSettings();
+                this._recognitionAccess = this._accessLists = this.accessListsFromDb();
             }
         } catch (e) {
             console.warn('[доступ] списки не получены:', e.message);
@@ -53570,13 +53577,60 @@ const app = {
         if (!headers) throw new Error('Нет активной сессии: переключатели доступа подписываются токеном входа. Войдите по email или через Яндекс ID — на локальной копии вход отдельный от heatcalc.ru. Через Telegram сессии Supabase не создаётся.');
         const body = { action: 'setAccess', kind: kind, name: name, enabled: enabled };
         if (feature) body.feature = feature;
+        // Пока Beget выключен, списки доступа живут в базе (app_settings.access_lists)
+        if (window.PROXY_DOWN) return this.postAccessChangeDb(feature, kind, name, enabled);
         const r = await fetch(this.RECOGNIZE_ARCHIVE, {
             method: 'POST',
             headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
             body: JSON.stringify(body),
         });
         const data = await r.json();
-        if (!data.ok) throw new Error(data.error || 'сервер отказал');
+        if (!data.ok) {
+            if (data.error === 'proxy_down') return this.postAccessChangeDb(feature, kind, name, enabled);
+            throw new Error(data.error || 'сервер отказал');
+        }
+        this._recognitionAccess = data;
+        this._accessLists = data;
+        return data;
+    },
+
+    /**
+     * Списки доступа в базе — на время, пока Beget (recognize_archive.php) не отвечает.
+     * Форма та же, что в ответе сервера: users/dists/regions и design{...}.
+     * Когда Beget вернётся, сервер снова главный; эти отметки при необходимости
+     * переносятся туда вручную.
+     */
+    accessListsFromDb: function () {
+        const v = (this.appSettings && this.appSettings.access_lists) || {};
+        const d = v.design || {};
+        return {
+            ok: true, fromDb: true,
+            users: v.users || {}, dists: v.dists || {}, regions: v.regions || {},
+            design: { users: d.users || {}, dists: d.dists || {}, regions: d.regions || {} },
+        };
+    },
+    postAccessChangeDb: async function (feature, kind, name, enabled) {
+        const bucket = kind === 'dist' ? 'dists' : (kind === 'region' ? 'regions' : 'users');
+        const clone = (x) => JSON.parse(JSON.stringify(x || {}));
+        const patch = (v) => {
+            v = clone(v);
+            let t = v;
+            if (feature === 'design') { v.design = v.design || {}; t = v.design; }
+            t[bucket] = t[bucket] || {};
+            Object.keys(t[bucket]).forEach(k => { if (String(k).toLowerCase() === String(name).toLowerCase()) delete t[bucket][k]; });
+            t[bucket][name] = !!enabled;
+            return v;
+        };
+        const { data: cur, error: readErr } = await supabaseClient.from('app_settings')
+            .select('value').eq('key', 'access_lists').maybeSingle();
+        if (readErr) throw readErr;
+        const value = patch(cur && cur.value);
+        const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+        const { error } = await supabaseClient.from('app_settings')
+            .upsert({ key: 'access_lists', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+        if (error) throw error;
+        this.appSettings = Object.assign({}, this.appSettings, { access_lists: value });
+        const data = this.accessListsFromDb();
         this._recognitionAccess = data;
         this._accessLists = data;
         return data;
@@ -53676,26 +53730,9 @@ const app = {
         };
         setLabel(enabled ? 'включено' : 'выключено', enabled ? '#10B981' : 'var(--text-sec)');
 
-        const headers = await this.recognitionAuthHeaders();
-        if (!headers) {
-            if (input) input.checked = !enabled;
-            setLabel(!enabled ? 'включено' : 'выключено', !enabled ? '#10B981' : 'var(--text-sec)');
-            app.alert('Нет активной сессии: переключатели доступа подписываются токеном входа. Войдите по email или через Яндекс ID — на локальной копии вход отдельный от heatcalc.ru. Через Telegram сессии Supabase не создаётся.');
-            return;
-        }
         try {
-            const r = await fetch(this.RECOGNIZE_ARCHIVE, {
-                method: 'POST',
-                headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
-                body: JSON.stringify({ action: 'setAccess', kind: 'user', name: key, enabled }),
-            });
-            const data = await r.json();
-            if (!data.ok) throw new Error(data.error || 'сервер отказал');
-            // Сохраняем ответ целиком: раньше пересобирали объект из users+regions и
-            // тем самым теряли ключ design — после любого переключения
-            // распознавания все переключатели проектирования гасли до перезагрузки.
-            this._recognitionAccess = data;
-            this._accessLists = data;
+            // Ответ сохраняется целиком (postAccessChange), иначе гаснут переключатели проектирования
+            await this.postAccessChange('', 'user', key, enabled);
         } catch (e) {
             if (input) input.checked = !enabled;
             setLabel(!enabled ? 'включено' : 'выключено', !enabled ? '#10B981' : 'var(--text-sec)');
@@ -53817,21 +53854,8 @@ const app = {
         if (!region) { revert(); app.alert('Сначала выберите регион в списке слева от переключателя.'); return; }
         if (!await this.confirm(`${enabled ? 'Включить' : 'Выключить'} распознавание для региона «${region}»?`)) { revert(); return; }
 
-        const headers = await this.recognitionAuthHeaders();
-        if (!headers) { revert(); app.alert('Нет активной сессии: переключатели доступа подписываются токеном входа. Войдите по email или через Яндекс ID — на локальной копии вход отдельный от heatcalc.ru. Через Telegram сессии Supabase не создаётся.'); return; }
         try {
-            const r = await fetch(this.RECOGNIZE_ARCHIVE, {
-                method: 'POST',
-                headers: Object.assign({ 'Content-Type': 'application/json' }, headers),
-                body: JSON.stringify({ action: 'setAccess', kind: 'region', name: region, enabled }),
-            });
-            const data = await r.json();
-            if (!data.ok) throw new Error(data.error || 'сервер отказал');
-            // Сохраняем ответ целиком: раньше пересобирали объект из users+regions и
-            // тем самым теряли ключ design — после любого переключения
-            // распознавания все переключатели проектирования гасли до перезагрузки.
-            this._recognitionAccess = data;
-            this._accessLists = data;
+            await this.postAccessChange('', 'region', region, enabled);
             this.renderAdminMain();
             this.loadAdminData(this._adminOffset || 0);
         } catch (e) {
