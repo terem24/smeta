@@ -634,6 +634,44 @@
     return n;
   }
 
+  // Окна по оценке: в жилые комнаты с наружной стеной, где окон нет или их мало, добавляем окна так, чтобы площадь остекления
+  // была ratio от площади комнаты (по умолчанию 1:8). Это оценка по практике проектирования, а не норма калькулятора:
+  // нужна, когда с плана окна не определились. Подсобные помещения (по названию) пропускаются. Окна помечены est.
+  function estimateWindows(m, floorId, opts) {
+    opts = opts || {};
+    var ratio = opts.ratio || 0.125, ww = opts.width || 1.5, hh = opts.height || 1.5, sill = opts.sill !== undefined ? opts.sill : 0.9;
+    var skip = opts.skip || /с\/у|санузел|туалет|ванн|душ|кладов|гардероб|коридор|холл|тамбур|котельн|постир|гараж|техн|лестн|прихож/i;
+    var rooms = detectRooms(m, floorId), added = 0, touched = 0;
+    rooms.forEach(function (r) {
+      if (skip.test(r.name || '')) return;
+      var ext = r.edges.filter(function (e) { return !e.neighbor && e.len >= ww + 0.5; });
+      if (!ext.length) return;
+      var have = 0;
+      r.edges.forEach(function (e) { openingsOn(m, e.piece).forEach(function (o) { if (o.kind === 'window') have += o.width * o.height; }); });
+      var need = ratio * r.area - have;
+      if (need < 0.8) return;
+      var n = Math.max(1, Math.round(need / (ww * hh)));
+      ext.sort(function (a, b) { return b.len - a.len; });
+      var slots = {}, order = [];
+      for (var j = 0; j < n; j++) {
+        var e = ext[j % ext.length], k = e.piece.wall.id + '|' + e.a[0] + '|' + e.a[1];
+        if (!slots[k]) { slots[k] = { e: e, c: 0 }; order.push(k); }
+        slots[k].c++;
+      }
+      order.forEach(function (k) {
+        var sl = slots[k], L = sl.e.len, w = Math.min(ww, (L - 0.6) / sl.c), wall = sl.e.piece.wall;
+        var same = dist(wall.a, sl.e.a) <= dist(wall.a, sl.e.b);
+        for (var i = 0; i < sl.c; i++) {
+          var c = L * (i + 1) / (sl.c + 1), off = (same ? c : L - c) - w / 2;
+          var o = addOpening(m, { wall: wall.id, offset: Math.round(off * 100) / 100, width: Math.round(w * 100) / 100, height: hh, sill: sill, kind: 'window' });
+          o.est = true; added++;
+        }
+      });
+      touched++;
+    });
+    return { added: added, rooms: touched };
+  }
+
   // ── пример для проверки и 3D: одноэтажный дом 10 x 8 м, три комнаты, окна и дверь ──────
   function sampleHouse() {
     var m = create({ Tn: -25 });
@@ -661,7 +699,7 @@
     return m;
   }
 
-  var api = { DEFAULTS: DEFAULTS, create: create, addFloor: addFloor, addWall: addWall, addOpening: addOpening, removeWall: removeWall, removeOpening: removeOpening, fromPolygons: fromPolygons, hasFixed: hasFixed, dropFixed: dropFixed, addOpeningsAt: addOpeningsAt, estimateGap: estimateGap, offsetPoly: offsetPoly, orthoPoly: orthoPoly, cleanZones: cleanZones, wallR: wallR,
+  var api = { DEFAULTS: DEFAULTS, create: create, addFloor: addFloor, addWall: addWall, addOpening: addOpening, removeWall: removeWall, removeOpening: removeOpening, fromPolygons: fromPolygons, hasFixed: hasFixed, dropFixed: dropFixed, addOpeningsAt: addOpeningsAt, estimateGap: estimateGap, offsetPoly: offsetPoly, orthoPoly: orthoPoly, cleanZones: cleanZones, estimateWindows: estimateWindows, wallR: wallR,
               detectRooms: detectRooms, heatLoss: heatLoss, sampleHouse: sampleHouse, openingsOn: openingsOn };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.HouseCore = api;
 })(typeof window !== 'undefined' ? window : this);

@@ -176,6 +176,12 @@
     var imp = $('div'); imp.style.cssText = 'margin:4px 0;padding:4px 0;border-top:1px solid #555;border-bottom:1px solid #555';
     imp.appendChild($('div', '', 'Импорт плана'));
     imp.appendChild(btn('Из планов калькулятора', false, function () { importPlans(false); }, 'Контуры комнат, окна и двери из редактора планов этажей; зоны вне здания (легенда, штамп) отбрасываются, контуры выпрямляются'));
+    imp.appendChild(btn('Окна по оценке', false, function () {
+      snapshot();
+      var er = E.HC.estimateWindows(E.model, E.model.floors[0].id);
+      E.msg = er.added ? 'Окна по оценке: добавлено ' + er.added + ' в комнатах: ' + er.rooms + ' (остекление ~1/8 площади пола, 1,5 x 1,5 м). Это оценка по практике, не данные плана: проверьте размеры и положение (оценочные окна можно выбрать и поправить).' : 'Окна по оценке не понадобились: в жилых комнатах с наружной стеной остекления хватает (или названия комнат подсобные).';
+      rebuild();
+    }, 'Для жилых комнат без окон на плане: остекление около 1/8 площади пола'));
     imp.appendChild(btn('Импорт со всеми зонами', false, function () { importPlans(true); }, 'Без чистки: все зоны плана как комнаты'));
     var fi = $('input'); fi.type = 'file'; fi.accept = 'image/*'; fi.style.cssText = 'display:none';
     fi.onchange = function () { if (fi.files && fi.files[0]) loadUnderlay(fi.files[0]); };
@@ -310,9 +316,10 @@
     (g.wins || []).forEach(function (w) { wl.push({ x: w.x * k, y: -w.y * k, w: Math.max(0.6, (w.mm || 1500) / 1000), kind: 'window' }); });
     (g.doors || []).forEach(function (d) { wl.push({ x: d.x * k, y: -d.y * k, w: Math.max(0.6, (d.mm || 900) / 1000), kind: 'door' }); });
     var no = HC.addOpeningsAt(m, fl.id, wl);
+    var nw = wl.filter(function (o) { return o.kind === 'window'; }).length;
     var drop = r.dropped && r.dropped.length ? ' Отброшено зон вне здания: ' + r.dropped.length + ' (' + r.dropped.reduce(function (t, d) { return t + d.area; }, 0).toFixed(0) + ' м2 — легенда, таблицы, штамп листа); кнопка «Импорт со всеми зонами» вернёт их.' : '';
     E.msg = (r.fixed ? 'Комнаты — ваши зоны с плана как есть (площади не пересчитываются), стены построены по их рёбрам. ' : '') + 'Импорт: комнат ' + r.rooms + ', стен ' + r.walls + ', проёмов ' + no + ' из ' + wl.length + (r.gap ? ', толщина стен по зазорам между комнатами ' + Math.round(r.gap * 100) + ' см' : ', соседних комнат не найдено, контуры сдвинуты на полтолщины наружной стены') + '. Пирог наружных стен — выбранный в списке (' + ep.n.slice(0, 22) + '...): проверьте стены.' +
-      (r.straightened ? ' Контуров выпрямлено: ' + r.straightened + '.' : '') + drop + (P.floors.length > 1 ? ' Редактор правит один этаж: импортирован первый.' : '');
+      (nw < Math.max(2, Math.round(r.rooms / 2)) ? ' Окон с плана найдено мало (' + nw + '): кнопка «Окна по оценке» добавит остекление жилым комнатам.' : '') + (r.straightened ? ' Контуров выпрямлено: ' + r.straightened + '.' : '') + drop + (P.floors.length > 1 ? ' Редактор правит один этаж: импортирован первый.' : '');
     E.sel = null;
     if (f.img && /^(data:|https?:)/.test(f.img)) setUnderlay(f.img, f.w || 0, f.h || 0, k, [0, 0]);
     rebuild(); topView();

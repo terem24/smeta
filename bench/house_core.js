@@ -172,6 +172,29 @@ const eq = (what, got, want, tol) => {
     eq('чистка выключена: все пять зон остаются комнатами', r2.rooms, 5);
 }
 
+// 3д. Окна по оценке: жилая комната без окон получает остекление ~1/8 площади, санузел — нет, комната с окнами не трогается
+{
+    const m = HC.create({ Tn: -25 });
+    const f = HC.addFloor(m, { level: 0 });
+    const r = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+    HC.fromPolygons(m, f.id, [
+        { name: 'Гостиная', pts: r(0, 0, 6, 4) },
+        { name: 'С/у', pts: r(6.2, 0, 8.2, 2) },
+        { name: 'Спальня', pts: r(0, 4.2, 4, 8) }
+    ], { gap: 'auto' });
+    const rooms0 = HC.detectRooms(m, f.id);
+    const spal = rooms0.find(x => x.name === 'Спальня');
+    HC.addOpeningsAt(m, f.id, [{ x: 2, y: 8.1, w: 1.5, kind: 'window' }, { x: 3.4, y: 8.1, w: 1.5, kind: 'window' }]);   // у спальни уже 2 окна: хватает
+    const est = HC.estimateWindows(m, f.id);
+    const rooms = HC.detectRooms(m, f.id);
+    const winArea = rn => { const rm = rooms.find(x => x.name === rn); return rm.edges.reduce((s2, e) => s2 + HC.openingsOn(m, e.piece).filter(o => o.kind === 'window').reduce((t, o) => t + o.width * o.height, 0), 0); };
+    const g = rooms.find(x => x.name === 'Гостиная');
+    eq('окна по оценке: гостиная получила остекление ≈ 1/8 площади', Math.round(winArea('Гостиная') / g.area * 100) / 100, 0.125, 0.06);
+    eq('окна по оценке: санузел окон не получил', winArea('С/у'), 0, 1e-9);
+    eq('окна по оценке: тронута одна комната — гостиная (спальня и санузел не тронуты)', est.rooms, 1);
+    eq('окна по оценке: помечены как оценка', m.openings.filter(o => o.est).length > 0 ? 1 : 0, 1);
+}
+
 // 4. Сверка формулы с Galf
 const gf = process.argv[2];
 if (gf && fs.existsSync(gf)) {
