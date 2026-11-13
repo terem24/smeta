@@ -3,7 +3,7 @@
 Выгрузка узлов из сборщиков соседней сессии (tools/render_*_node.py, коллекторы, канализация,
 водорозетки) в GLB целиком, одним файлом на узел — для 3D-режима «Дом 3D».
 
-    blender --background --python tools/export_nodes_glb.py -- <папка вывода>
+    blender --background --python tools/export_nodes_glb.py -- <папка вывода> [--no-draco]
 
 Файлы сборщиков не правим: читаем исходник, отрезаем хвостовой вызов main() (он рисует кадр) и
 вызываем build(), как делает сам кадр. Берётся только группа solid (детали), стена-подложка
@@ -24,6 +24,9 @@ import bpy  # noqa: E402
 from mathutils import Vector  # noqa: E402
 
 index = {}
+# Draco-сжатие сетки (встроено в экспортёр glTF Blender): узлы 1-3 МБ сжимаются в разы; вкладка «Дом 3D» читает их DRACOLoader'ом.
+# --no-draco в аргументах после «--» выключает (для отладки в сторонних просмотрщиках).
+DRACO = '--no-draco' not in sys.argv
 _dp = os.path.join(TOOLS, 'parts3d_decals.py')
 _DEC = compile(open(_dp, encoding='utf-8').read(), _dp, 'exec')
 
@@ -88,7 +91,8 @@ def node(fname, args, key, label):
         for o in objs:
             o.select_set(True)
         bpy.ops.export_scene.gltf(filepath=os.path.join(OUT, key + '.glb'), use_selection=True,
-                                  export_format='GLB', export_apply=True)
+                                  export_format='GLB', export_apply=True,
+                                  export_draco_mesh_compression_enable=DRACO, export_draco_mesh_compression_level=7)
         pts = [o.matrix_world @ Vector(c) for o in objs for c in o.bound_box]
         lo = [min(p[i] for p in pts) for i in range(3)]
         hi = [max(p[i] for p in pts) for i in range(3)]

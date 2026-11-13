@@ -115,17 +115,26 @@
       import(THREE_URL + 'examples/jsm/controls/OrbitControls.js'),
       import(THREE_URL + 'examples/jsm/controls/TransformControls.js'),
       import(THREE_URL + 'examples/jsm/loaders/GLTFLoader.js'),
+      import(THREE_URL + 'examples/jsm/loaders/DRACOLoader.js'),
       import(THREE_URL + 'examples/jsm/environments/RoomEnvironment.js'),
       loadJson(DIRS.parts + 'parts.json'), loadJson(DIRS.nodes + 'nodes.json').catch(function () { return {}; })
     ]).then(function (m) {
-      S.T = m[0]; S.OC = m[1].OrbitControls; S.TC = m[2].TransformControls; S.GL = m[3].GLTFLoader; S.RE = m[4].RoomEnvironment;
-      S.meta = { parts: m[5], nodes: m[6] };
+      S.T = m[0]; S.OC = m[1].OrbitControls; S.TC = m[2].TransformControls; S.GL = m[3].GLTFLoader; S.DL = m[4].DRACOLoader; S.RE = m[5].RoomEnvironment;
+      S.meta = { parts: m[6], nodes: m[7] };
       initScene();
       fillList();
-      S.info.textContent = Object.keys(m[5]).length + ' деталей и ' + Object.keys(m[6]).length + ' узлов. Выберите слева, что поставить.';
+      S.info.textContent = Object.keys(m[6]).length + ' деталей и ' + Object.keys(m[7]).length + ' узлов. Выберите слева, что поставить.';
     }).catch(function (e) {
       S.info.textContent = 'Не удалось запустить 3D: ' + (e && e.message ? e.message : e);
     });
+  }
+
+  // Загрузчик GLB: узлы сжаты Draco (tools/export_nodes_glb.py), декодер берём с того же CDN, что и three.js
+  function gltfLoader() {
+    var l = new S.GL();
+    if (!S.dracoLoader) { S.dracoLoader = new S.DL(); S.dracoLoader.setDecoderPath(THREE_URL + 'examples/jsm/libs/draco/gltf/'); }
+    l.setDRACOLoader(S.dracoLoader);
+    return l;
   }
 
   function loadJson(u) {
@@ -262,7 +271,7 @@
     var T = S.T, meta = S.meta[group][key];
     var k = group + '/' + key;
     var p = S.cache[k] || (S.cache[k] = new Promise(function (res, rej) {
-      new S.GL().load(DIRS[group] + key + '.glb', function (g) { res(g.scene); }, undefined, rej);
+      gltfLoader().load(DIRS[group] + key + '.glb', function (g) { res(g.scene); }, undefined, rej);
     }));
     return p.then(function (src) {
       var o = src.clone(true);

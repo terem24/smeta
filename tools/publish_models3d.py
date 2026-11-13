@@ -2,13 +2,12 @@
 """
 Отбор 3D-моделей для сайта: models/parts3d и models/nodes3d (локальные, в .gitignore) -> models3d/ (идёт в git и на сайт).
 
-    python tools/publish_models3d.py [--node-limit-kb 300]
+    python tools/publish_models3d.py [--node-limit-kb 1000]
 
 Что выкладываем:
   * models3d/parts/ — все детали котельной (GLB и parts.json): около 4,5 МБ, нужны вкладке «Дом 3D» для сборки из сметы;
-  * models3d/nodes/ — только лёгкие узлы (до --node-limit-kb, по умолчанию 300 КБ: водорозетки и канализация) и nodes.json
-    с теми же ключами. Тяжёлые узлы (коллекторы, радиаторные и конвекторные узлы, 1-3 МБ каждый, всего около 30 МБ)
-    остаются локальными: файл в git навсегда, а в списке вкладки они просто не появятся.
+  * models3d/nodes/ — все узлы подключения (27) и nodes.json: GLB сжаты Draco (tools/export_nodes_glb.py), около 6,5 МБ вместо
+    30; --node-limit-kb отсекает файлы больше порога (по умолчанию 1000 КБ — режет только случайно несжатые).
 Папка models/ в .gitignore остаётся как есть (там FBX и 99 МБ исходников), выкладка идёт отдельной папкой.
 Запускать после tools/export_parts_glb.py и tools/export_nodes_glb.py; результат коммитить вместе с кодом.
 """
@@ -18,7 +17,7 @@ import shutil
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LIMIT = 300
+LIMIT = 1000
 if '--node-limit-kb' in sys.argv:
     LIMIT = int(sys.argv[sys.argv.index('--node-limit-kb') + 1])
 
