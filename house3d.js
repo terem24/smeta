@@ -6,7 +6,8 @@
  *
  * Показывается только если app.wmPreviewOn() (учётка суперадмина). Остальным файл ничего не делает.
  * three.js грузится только при первом открытии окна (динамический import, версия закреплена).
- * Модели — models/parts3d/*.glb и models/nodes3d/*.glb (tools/export_parts_glb.py, export_nodes_glb.py);
+ * Модели — models3d/parts и models3d/nodes (выкладка tools/publish_models3d.py из models/parts3d, models/nodes3d,
+ * которые делают tools/export_parts_glb.py и export_nodes_glb.py);
  * описание и порты — parts.json и nodes.json рядом с ними. Координаты портов в файлах — как в Blender
  * (X вправо, Y в стену, Z вверх, мм); в сцене three.js — (x, z, -y), метры, как переводит экспортёр glTF.
  *
@@ -16,7 +17,7 @@
   'use strict';
 
   var THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.160.0/';
-  var DIRS = { parts: 'models/parts3d/', nodes: 'models/nodes3d/' };
+  var DIRS = { parts: 'models3d/parts/', nodes: 'models3d/nodes/' };   // выкладка: tools/publish_models3d.py
   var S = null;           // состояние окна: три-объекты, список деталей, выбранное
   var tabTimer = null;
 
@@ -115,7 +116,7 @@
       import(THREE_URL + 'examples/jsm/controls/TransformControls.js'),
       import(THREE_URL + 'examples/jsm/loaders/GLTFLoader.js'),
       import(THREE_URL + 'examples/jsm/environments/RoomEnvironment.js'),
-      loadJson(DIRS.parts + 'parts.json'), loadJson(DIRS.nodes + 'nodes.json')
+      loadJson(DIRS.parts + 'parts.json'), loadJson(DIRS.nodes + 'nodes.json').catch(function () { return {}; })
     ]).then(function (m) {
       S.T = m[0]; S.OC = m[1].OrbitControls; S.TC = m[2].TransformControls; S.GL = m[3].GLTFLoader; S.RE = m[4].RoomEnvironment;
       S.meta = { parts: m[5], nodes: m[6] };
@@ -128,7 +129,7 @@
   }
 
   function loadJson(u) {
-    return fetch(u).then(function (r) { if (!r.ok) throw new Error(u + ': ' + r.status + ' (модели не выложены на сайт, работает только локально)'); return r.json(); });
+    return fetch(u).then(function (r) { if (!r.ok) throw new Error(u + ': ' + r.status + ' (папка models3d не найдена: на сервер её нужно выложить вместе с кодом)'); return r.json(); });
   }
 
   function btn(label, key, on) {
@@ -147,6 +148,7 @@
   function fillList() {
     S.side.innerHTML = '';
     [['parts', 'Детали котельной'], ['nodes', 'Узлы подключения']].forEach(function (g) {
+      if (!Object.keys(S.meta[g[0]] || {}).length) return;
       var h = el('h4', '', g[1] + ' (' + Object.keys(S.meta[g[0]]).length + ')');
       var box = el('div');
       h.onclick = function () { box.style.display = box.style.display === 'none' ? '' : 'none'; };
