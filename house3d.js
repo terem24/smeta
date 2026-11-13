@@ -93,6 +93,7 @@
     var del = el('button', '', 'Удалить'); del.onclick = removeSel; bar.appendChild(del);
     var clr = el('button', '', 'Очистить'); clr.onclick = clearAll; bar.appendChild(clr);
     var asm = el('button', '', 'Собрать из сметы'); asm.onclick = assembleFromEstimate; asm.title = 'Расставить котельную из текущей сметы'; bar.appendChild(asm);
+    var hs = el('button', '', 'Дом (пример)'); hs.onclick = showSampleHouse; hs.title = 'Дом из модели стен: помещения и теплопотери по геометрии'; bar.appendChild(hs);
     view.appendChild(bar);
     var x = el('button', 'x', 'Закрыть'); x.onclick = close; view.appendChild(x);
     S.info = el('div', 'info', 'Загрузка 3D…'); view.appendChild(S.info);
@@ -574,6 +575,85 @@
     S.tc.detach();
     S.items.forEach(function (o) { S.scene.remove(o); });
     S.items = []; S.sel = null; S.links = [];
+    if (S.house) { S.scene.remove(S.house); S.house = null; }
+  }
+
+  // ── дом из ядра (house_core.js): стены с проёмами, окна, полы по теплопотерям ────────────
+  function ensureCore() {
+    if (window.HouseCore) return Promise.resolve(window.HouseCore);
+    return new Promise(function (res, rej) {
+      var s = document.createElement('script');
+      s.src = 'house_core.js?v=1.0';
+      s.onload = function () { res(window.HouseCore); };
+      s.onerror = function () { rej(new Error('не загрузился house_core.js')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  // План (x, y) -> три (x, высота, -y)
+  function houseMeshes(m, HC, res) {
+    var T = S.T, g = new T.Group();
+    var wallMat = new T.MeshStandardMaterial({ color: 0xe9e0cf, roughness: 0.9 });
+    var intMat = new T.MeshStandardMaterial({ color: 0xf3efe6, roughness: 0.9 });
+    var glassMat = new T.MeshStandardMaterial({ color: 0x9ec9ee, roughness: 0.1, transparent: true, opacity: 0.35 });
+    var doorMat = new T.MeshStandardMaterial({ color: 0x8a5a33, roughness: 0.7 });
+    var lineMat = new T.LineBasicMaterial({ color: 0x14161a });
+    function box(parent, len, hgt, thick, cx, cy, cz, ang, mat, edges) {
+      if (len < 1e-4 || hgt < 1e-4) return;
+      var mesh = new T.Mesh(new T.BoxGeometry(len, hgt, thick), mat);
+      mesh.position.set(cx, cy, cz); mesh.rotation.y = ang;
+      if (edges !== false) mesh.add(new T.LineSegments(new T.EdgesGeometry(mesh.geometry), lineMat));
+      parent.add(mesh);
+    }
+    m.floors.forEach(function (f) {
+      var y0 = f.elevation, h = f.h;
+      HC.detectRooms(m, f.id).forEach(function (r) {
+        var rr = res.rooms.find(function (x) { return x.id === r.id; }), dens = rr ? rr.Q / rr.area : 60;
+        var k = Math.max(0, Math.min(1, (dens - 40) / 80));                      // 40 Вт/м² — холодный, 120 — тёплый тон
+        var shape = new T.Shape(r.poly.map(function (p) { return new T.Vector2(p[0], p[1]); }));
+        var fl = new T.Mesh(new T.ShapeGeometry(shape), new T.MeshStandardMaterial({ color: new T.Color().setRGB(0.55 + 0.4 * k, 0.78 - 0.35 * k, 0.9 - 0.7 * k), roughness: 0.95, side: T.DoubleSide }));
+        fl.rotation.x = -Math.PI / 2; fl.position.y = y0 + 0.01; g.add(fl);
+      });
+      m.walls.filter(function (w) { return w.floor === f.id; }).forEach(function (w) {
+        var L = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]), ux = (w.b[0] - w.a[0]) / L, uy = (w.b[1] - w.a[1]) / L;
+        var ang = Math.atan2(uy, ux), th = w.thick || 0.3;
+        var ops = m.openings.filter(function (o) { return o.wall === w.id; }).sort(function (a, b) { return a.offset - b.offset; });
+        var pos = function (t) { return [w.a[0] + ux * t, w.a[1] + uy * t]; };
+        var seg = function (t0, t1, yb, yt, mat) {
+          var c = pos((t0 + t1) / 2);
+          box(g, t1 - t0, yt - yb, th, c[0], y0 + (yb + yt) / 2, -c[1], ang, mat);
+        };
+        var wm = (w.layers && w.layers.length > 1) ? wallMat : intMat, t = 0;
+        ops.forEach(function (o) {
+          seg(t, o.offset, 0, h, wm);
+          if (o.sill > 0) seg(o.offset, o.offset + o.width, 0, o.sill, wm);
+          if (o.sill + o.height < h) seg(o.offset, o.offset + o.width, o.sill + o.height, h, wm);
+          var c = pos(o.offset + o.width / 2);
+          box(g, o.width, o.height, o.kind === 'door' ? 0.05 : 0.04, c[0], y0 + o.sill + o.height / 2, -c[1], ang, o.kind === 'door' ? doorMat : glassMat);
+          t = o.offset + o.width;
+        });
+        seg(t, L, 0, h, wm);
+      });
+    });
+    return g;
+  }
+
+  function showSampleHouse() {
+    if (!S || !S.T) return;
+    S.info.textContent = 'Строю дом из модели…';
+    ensureCore().then(function (HC) {
+      clearAll();
+      var m = HC.sampleHouse(), res = HC.heatLoss(m);
+      S.model = m;
+      S.house = houseMeshes(m, HC, res);
+      S.scene.add(S.house);
+      var nl = String.fromCharCode(10), A = 0;
+      var lines = ['Дом из модели: стены, проёмы и помещения найдены по геометрии. Tн ' + m.Tn + ' °C'];
+      res.rooms.forEach(function (r) { A += r.area; lines.push(r.name + ': ' + r.area.toFixed(1) + ' м², ' + Math.round(r.Q) + ' Вт, ' + Math.round(r.Q / r.area) + ' Вт/м²'); });
+      lines.push('Итого: ' + Math.round(res.total) + ' Вт, ' + Math.round(res.total / A) + ' Вт/м² (цвет пола: холоднее — меньше потерь на м²)');
+      S.info.textContent = lines.join(nl);
+      S.oc.target.set(5, 1, -4); S.cam.position.set(14, 11, 12); S.oc.update();
+    }).catch(function (e) { S.info.textContent = 'Не удалось построить дом: ' + (e && e.message ? e.message : e); });
   }
 
   function onKey(e) {

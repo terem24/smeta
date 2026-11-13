@@ -1,0 +1,82 @@
+/**
+ * Стенд ядра дома (house_core.js): ручные случаи с проверкой чисел и, если дан файл корпуса Galf, сверка самой
+ * формулы Q = A·(tв − tн)/R·n с расчётами проектировщиков построчно.
+ *
+ *   node bench/house_core.js [D:\galf_chat2\galf_heatcalc.json]
+ *
+ * Код выхода 0 — все ручные случаи сошлись. Сверка с Galf только печатает расхождения (там округления проектировщика).
+ */
+const fs = require('fs');
+const path = require('path');
+const HC = require(path.join(__dirname, '..', 'house_core.js'));
+
+let fail = 0;
+const eq = (what, got, want, tol) => {
+    const ok = Math.abs(got - want) <= (tol === undefined ? 1e-6 : tol);
+    if (!ok) fail++;
+    console.log((ok ? 'ok   ' : 'FAIL ') + what + ': ' + (Math.round(got * 1000) / 1000) + (ok ? '' : ' (ждали ' + want + ')'));
+};
+
+// 1. Одна комната 5 x 4, стена R 3.0, окно 1.5x1.5, h 2.7, Тн -25, Тв 20, первый и последний этаж
+{
+    const m = HC.create({ Tn: -25, settings: { R_wallDefault: 3.0 } });
+    const f = HC.addFloor(m, { level: 0 });
+    const P = [[0, 0], [5, 0], [5, 4], [0, 4]];
+    const w = P.map((p, i) => HC.addWall(m, { floor: f.id, a: p, b: P[(i + 1) % 4] }));
+    HC.addOpening(m, { wall: w[0].id, offset: 1, width: 1.5, height: 1.5 });
+    const rooms = HC.detectRooms(m, f.id);
+    eq('одна комната: найдено помещений', rooms.length, 1);
+    eq('одна комната: площадь', rooms[0].area, 20);
+    eq('одна комната: периметр', rooms[0].perimeter, 18);
+    const L = HC.heatLoss(m).rooms[0];
+    const dT = 45, h = 2.7;
+    const part = n => L.parts.filter(p => p.what.indexOf(n) === 0).reduce((s, p) => s + p.Q, 0);
+    // стены: периметр 18 · 2.7 = 48.6 м² минус окно 2.25; ориентация: южная (низ плана, нормаль -Y) 1.0, остальные 1.10 или 1.05
+    const k = { S: 1.0, E: 1.10, N: 1.10, W: 1.05 };
+    const wallsQ = (5 * h - 2.25) * dT / 3.0 * k.S + (4 * h) * dT / 3.0 * k.E + (5 * h) * dT / 3.0 * k.N + (4 * h) * dT / 3.0 * k.W;
+    eq('одна комната: стены', part('стена'), wallsQ, 1e-6);
+    eq('одна комната: окно', part('окно'), 2.25 * dT / 0.51 * k.S, 1e-6);
+    // пол: периметр 18 · 2 = 36 + 4 угла · 4 = 52 > 20 → вся площадь в зоне I
+    eq('одна комната: пол, зона I', part('пол, зона 1'), 20 * dT / (2.1 + 2.8), 1e-6);
+    eq('одна комната: кровля', part('кровля'), 20 * dT / 3.95, 1e-6);
+    eq('одна комната: вентиляция', part('вентиляция'), 20 * h * 0.35 * 0.34 * dT, 1e-6);
+}
+
+// 2. Т-примыкания: пример дома 10 x 8 делится на три комнаты, площади складываются в 80
+{
+    const m = HC.sampleHouse();
+    const rooms = HC.detectRooms(m, m.floors[0].id);
+    eq('пример: помещений', rooms.length, 3);
+    eq('пример: сумма площадей', rooms.reduce((s, r) => s + r.area, 0), 80, 1e-6);
+    const areas = rooms.map(r => Math.round(r.area)).sort((a, b) => a - b);
+    eq('пример: меньшая комната 4x4', areas[0], 16);
+    const L = HC.heatLoss(m);
+    const inner = L.rooms.reduce((n, r) => n + r.parts.filter(p => /внутренняя/.test(p.what)).length, 0);
+    console.log('     внутренних стен в расчёте (со стороны тёплой комнаты): ' + inner);
+    // симметрия: санузел (25 °C) теряет в соседние комнаты, они (20 °C) ему — нет
+    const bath = L.rooms.find(r => r.name === 'Санузел');
+    eq('пример: санузел отдаёт в соседей', bath.parts.filter(p => /внутренняя/.test(p.what)).length > 0 ? 1 : 0, 1);
+    const bedroom = L.rooms.find(r => r.name === 'Спальня');
+    eq('пример: спальня не греет санузел', bedroom.parts.filter(p => /к «Санузел»/.test(p.what)).length, 0);
+    console.log('     итого по примеру: ' + Math.round(L.total) + ' Вт, ' + Math.round(L.total / 80) + ' Вт/м²');
+    L.rooms.forEach(r => console.log('     ' + r.name + ': ' + r.area.toFixed(1) + ' м², ' + Math.round(r.Q) + ' Вт'));
+}
+
+// 3. Сверка формулы с Galf
+const gf = process.argv[2];
+if (gf && fs.existsSync(gf)) {
+    const data = JSON.parse(fs.readFileSync(gf, 'utf8'));
+    let n = 0, sumErr = 0, maxErr = 0, over = 0, theirs = 0, ours = 0;
+    data.forEach(p => p.rooms.forEach(r => r.rows.forEach(x => {
+        if (!(x.area > 0 && x.R > 0 && x.q > 0 && Number.isFinite(x.tv) && Number.isFinite(x.tn))) return;
+        const q = x.area * (x.tv - x.tn) / x.R * (x.n || 1) * (x.count || 1);
+        const e = Math.abs(q - x.q) / x.q;
+        n++; sumErr += e; maxErr = Math.max(maxErr, e); if (e > 0.1) over++;
+        theirs += x.q; ours += q;
+    })));
+    console.log('Galf: строк ' + n + ', средняя ошибка формулы ' + (sumErr / n * 100).toFixed(1) + ' %, максимум ' + (maxErr * 100).toFixed(0) +
+        ' %, строк с ошибкой больше 10 %: ' + over + ', сумма проектировщика ' + Math.round(theirs) + ' Вт, по нашей формуле ' + Math.round(ours) + ' Вт');
+}
+
+console.log(fail ? '\nНе сошлось: ' + fail : '\nВсе ручные случаи сошлись');
+process.exit(fail ? 1 : 0);
