@@ -30,6 +30,11 @@ _src = open(_path, encoding='utf-8').read().rstrip()
 assert _src.endswith('main()'), 'render_boiler_node.py изменился: хвост main() не найден'
 _g = {'__file__': _path, '__name__': 'parts_export'}
 exec(compile(_src[:-len('main()')], _path, 'exec'), _g)
+# наклейки и подмена логотипов (tools/parts3d_decals.py); текстуры — tools/make_tex3d.py и make_tex3d_logos.py
+_g['TEX'] = os.path.join(TOOLS, 'blender_assets', 'tex3d')
+_dp = os.path.join(TOOLS, 'parts3d_decals.py')
+_DEC = compile(open(_dp, encoding='utf-8').read(), _dp, 'exec')
+exec(_DEC, _g)
 
 import bpy  # noqa: E402
 from mathutils import Vector  # noqa: E402
@@ -97,6 +102,7 @@ export('filter_rfw0080', 'Фильтр магнитный RFW-0080 3/4"',
 
 # Стабилизатор напряжения ST 250
 reset(); _g['stabilizer'](x=0.0, z=0.0)
+_g['replace_logos']()
 export('stabilizer_st250', 'Стабилизатор ST 250', [])
 
 # Бойлер OptiBase и насосная группа: сборщики лежат в tools/parts3d_boiler_pump.py
@@ -136,12 +142,26 @@ assert _hs.endswith('main()'), 'render_hydro_node.py изменился: хво�
 sys.argv = sys.argv[:sys.argv.index('--') + 1] + [OUT, 'ds']
 _h = {'__file__': _hp, '__name__': 'hydro_export'}
 exec(compile(_hs[:-len('main()')], _hp, 'exec'), _h)
+_h['TEX'] = _g['TEX']
+exec(_DEC, _h)
 YA = _h['YA']
+
+
+def _plaque(ns):
+    """Табличка STOUT на лицевой стороне насосной группы (фото SDG-0002): по низу переднего края днища кожуха."""
+    ob = [o for o in ns['coll']('solid').objects if o.name.startswith('кожух дно')][0]
+    pts = [ob.matrix_world @ Vector(c) for c in ob.bound_box]
+    yf = min(p[1] for p in pts)
+    xc = sum(p[0] for p in pts) / 8
+    ns['decal']('табличка STOUT', 'stout_plaque.png', 0.074, 0.074 * 0.35, (xc, yf - 0.0006, 0.040))
+
+
 SRC_G = 'паспорт SDG-0001 ред. 3, табл. 4.2: низ G1 1/2" НР, верх Rp 1" ВР, шаг F 125'
 for kind, key, label in (('d', 'pump_group_sdg0001_direct', 'Насосная группа STOUT SDG-0001-002501 DN25 (прямая)'),
                          ('s', 'pump_group_sdg0003_servo', 'Насосная группа STOUT SDG-0003-002501 DN25 (под сервопривод)')):
     reset(); _h['part']('')
     _h['group'](0.0, 0.0, kind)
+    _plaque(_h)
     dx = 0.0625
     gp = [port('bottom_left', Vector((-dx, YA, 0.0)), (0, 0, -1), 'M', '1 1/2"', SRC_G),
           port('bottom_right', Vector((dx, YA, 0.0)), (0, 0, -1), 'M', '1 1/2"', SRC_G),
@@ -154,6 +174,7 @@ _gm = os.path.join(TOOLS, 'parts3d_group_mix.py')
 exec(compile(open(_gm, encoding='utf-8').read(), _gm, 'exec'), _h)
 reset(); _h['part']('')
 _h['group_mix4'](0.0, 0.0)
+_plaque(_h)
 SRC_M = 'паспорт SDG-0002 ред. 3, табл. 4.2: низ G1 1/2" НР, верх Rp 1" ВР, шаг F 125; высота верха по сборщику соседней сессии'
 mp = [port('bottom_left', Vector((-0.0625, YA, 0.0)), (0, 0, -1), 'M', '1 1/2"', SRC_M),
       port('bottom_right', Vector((0.0625, YA, 0.0)), (0, 0, -1), 'M', '1 1/2"', SRC_M),
@@ -163,6 +184,7 @@ export('pump_group_sdg0002_25', 'Насосная группа STOUT SDG-0002-00
 
 reset(); _h['part']('')
 _xs, _zt = _h['collector'](2)
+_h['replace_logos']()
 SRC_C = 'паспорт SDG ред. 30.03.2023, табл. 4.3.6: верх накидные гайки G1 1/2" к группам, низ G1 1/2" НР к котлу'
 cp = [port('top_%d' % i, Vector((x, YA, _zt)), (0, 0, 1), 'F', '1 1/2"', SRC_C) for i, x in enumerate(_xs)]
 cp += [port('boiler_%s' % n, Vector((sx * 0.100, YA, -0.075 - 0.040)), (0, 0, -1), 'M', '1 1/2"', SRC_C)

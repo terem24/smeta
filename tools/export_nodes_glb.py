@@ -24,6 +24,8 @@ import bpy  # noqa: E402
 from mathutils import Vector  # noqa: E402
 
 index = {}
+_dp = os.path.join(TOOLS, 'parts3d_decals.py')
+_DEC = compile(open(_dp, encoding='utf-8').read(), _dp, 'exec')
 
 
 PIPE_NAMES = ('труба', 'лежак', 'транзит', 'подающая труба', 'медная труба', 'выпуск')
@@ -73,7 +75,10 @@ def node(fname, args, key, label):
     g = {'__file__': path, '__name__': 'node_export'}
     try:
         exec(compile(src[:-len('main()')], path, 'exec'), g)
+        g['TEX'] = os.path.join(TOOLS, 'blender_assets', 'tex3d')
+        exec(_DEC, g)
         g['build']()
+        g['replace_logos']()
         objs = list(g['coll']('solid').objects)
         if not objs:
             raise RuntimeError('пустой solid')
