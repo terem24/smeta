@@ -445,9 +445,9 @@
    "freq": 0,
    "audience": "pro",
    "data_block": "исходные данные калькулятора",
-   "status": "queued",
+   "status": "published",
    "date": "2026-11-04",
-   "published_at": null,
+   "published_at": "2026-11-13",
    "words": 557
   },
   {
