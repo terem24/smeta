@@ -84,7 +84,7 @@
     var view = el('div', 'view');
     root.appendChild(side); root.appendChild(view);
     document.body.appendChild(root);
-    S = { root: root, side: side, view: view, items: [], sel: null, edges: true, ports: false, grid: true, n: 0 };
+    S = { root: root, side: side, view: view, items: [], sel: null, edges: true, ports: false, grid: true, n: 0, cache: {} };
 
     var bar = el('div', 'bar');
     bar.appendChild(btn('Контур', 'edges', true));
@@ -92,6 +92,7 @@
     bar.appendChild(btn('Сетка', 'grid', true));
     var del = el('button', '', 'Удалить'); del.onclick = removeSel; bar.appendChild(del);
     var clr = el('button', '', 'Очистить'); clr.onclick = clearAll; bar.appendChild(clr);
+    var asm = el('button', '', 'Собрать из сметы'); asm.onclick = assembleFromEstimate; asm.title = 'Расставить котельную из текущей сметы'; bar.appendChild(asm);
     view.appendChild(bar);
     var x = el('button', 'x', 'Закрыть'); x.onclick = close; view.appendChild(x);
     S.info = el('div', 'info', 'Загрузка 3D…'); view.appendChild(S.info);
@@ -252,11 +253,15 @@
   }
 
   // ── детали ──────────────────────────────────────────────────────────────
-  function addPart(group, key) {
+  // Деталь целиком: модель (загружается один раз, дальше копии), контурные линии, порты. В сцену не ставит.
+  function makePart(group, key) {
     var T = S.T, meta = S.meta[group][key];
-    S.info.textContent = 'Загрузка «' + meta.label + '»…';
-    new S.GL().load(DIRS[group === 'parts' ? 'parts' : 'nodes'] + key + '.glb', function (g) {
-      var o = g.scene;
+    var k = group + '/' + key;
+    var p = S.cache[k] || (S.cache[k] = new Promise(function (res, rej) {
+      new S.GL().load(DIRS[group] + key + '.glb', function (g) { res(g.scene); }, undefined, rej);
+    }));
+    return p.then(function (src) {
+      var o = src.clone(true);
       o.userData = { key: key, group: group, label: meta.label, id: ++S.n };
       o.traverse(function (m) {
         if (!m.isMesh) return;
@@ -267,13 +272,150 @@
           l.userData.edge = true; m.add(l);
         }
       });
+      addPortMarkers(o, meta);
+      return o;
+    });
+  }
+
+  function addPart(group, key) {
+    var meta = S.meta[group][key];
+    S.info.textContent = 'Загрузка «' + meta.label + '»…';
+    makePart(group, key).then(function (o) {
       o.position.set((S.items.length % 4) * 0.8 - 1.2, 0, Math.floor(S.items.length / 4) * 0.8);
       S.scene.add(o); S.items.push(o);
-      addPortMarkers(o, meta);
       applyFlags();
       select(o);
       S.info.textContent = meta.label + '\nпортов: ' + ((meta.ports || []).length);
-    }, undefined, function (e) { S.info.textContent = 'Не удалось загрузить ' + key + ': ' + (e && e.message ? e.message : e); });
+    }).catch(function (e) { S.info.textContent = 'Не удалось загрузить ' + key + ': ' + (e && e.message ? e.message : e); });
+  }
+
+  // ── сборка котельной из сметы ───────────────────────────────────────────
+  // Позиция сметы -> модель. Ищем по артикулу (id/артикул ТЕРЕМ); у ROMMER те же детали с другим префиксом
+  // в списке не заменяем: другой бренд выглядит иначе, честнее показать «нет модели».
+  var MODEL_MAP = [
+    [/^GE0Q6/, 'boiler_haier_neoslim', 'anchor'],
+    [/^SWH-2110-000300/, 'boiler_swh2110_300', 'anchor'], [/^SWH-2110-000500/, 'boiler_swh2110_500', 'anchor'],
+    [/^SDG-0001-0025/, 'pump_group_sdg0001_direct', 'group'], [/^SDG-0002-0025/, 'pump_group_sdg0002_25', 'group'],
+    [/^SDG-0003-0025/, 'pump_group_sdg0003_servo', 'group'],
+    [/^SDG-0018-004002/, 'hydro_collector_sdg0018_2', 'anchor'],
+    [/^SST-0001-000250/, 'stabilizer_st250', 'anchor'],
+    [/^SVB-0004/, 'ball_valve_svb0004', 'valve'], [/^SFT-0041/, 'union_sft0041', 'union'],
+    [/^(RFW-0070|SFW-0070)/, 'separator_rfw0070', 'separator'], [/^(RFW-0080|SFW-0080)/, 'filter_rfw0080', 'filter'],
+    [/^(SSS|RSS)-2021/, 'adapter_rss1021', 'adapter'], [/^(SSS|RSS)-2022/, 'adapter_rss1022', 'adapter']
+  ];
+
+  function modelFor(it) {
+    var ids = [it.id, it.displaySku].map(function (x) { return String(x || ''); });
+    for (var i = 0; i < MODEL_MAP.length; i++) {
+      if (ids.some(function (x) { return MODEL_MAP[i][0].test(x); })) return { key: MODEL_MAP[i][1], role: MODEL_MAP[i][2] };
+    }
+    return null;
+  }
+
+  function freePorts(o) {
+    return portsOf(o).filter(function (q) { return !q.m.userData.used; });
+  }
+
+  // Посадить деталь o своим портом a на свободный порт b другой детали (как при перетаскивании)
+  function seat(o, a, b) {
+    var T = S.T;
+    var q = new T.Quaternion().setFromUnitVectors(a.dir, b.dir.clone().negate());
+    o.quaternion.premultiply(q); o.updateMatrixWorld(true);
+    var pa = a.m.getWorldPosition(new T.Vector3());
+    o.position.add(b.pos.clone().sub(pa)); o.updateMatrixWorld(true);
+    a.m.userData.used = b.m.userData.used = true;
+    // заодно занимаем остальные порты, которые встали вплотную (группа на двух патрубках коллектора)
+    var others = [];
+    S.items.forEach(function (x) { if (x !== o) others = others.concat(portsOf(x)); });
+    portsOf(o).forEach(function (mine) {
+      if (mine.m.userData.used) return;
+      others.forEach(function (t) { if (!t.m.userData.used && mine.pos.distanceTo(t.pos) < 0.004 && compat(mine.p, t.p).ok) mine.m.userData.used = t.m.userData.used = true; });
+    });
+    S.links.push({ a: { owner: o, port: a.p }, b: { owner: b.m.parent, port: b.p } });
+  }
+
+  // Подобрать пару портов: порт нового элемента × свободный порт уже стоящей детали
+  function findSeat(o, targets, allowMaybe) {
+    var mine = freePorts(o), best = null;
+    targets.forEach(function (t) {
+      mine.forEach(function (a) {
+        var c = compat(a.p, t.p);
+        if (!c.ok || (c.maybe && !allowMaybe)) return;
+        var score = (c.maybe ? 10 : 0) + (a.p.name === 'in' ? 0 : 1);
+        if (!best || score < best.score) best = { a: a, b: t, score: score };
+      });
+    });
+    return best;
+  }
+
+  function assembleFromEstimate() {
+    var L = (window.app && app.currentEquipmentList) || [];
+    if (!L.length) { S.info.textContent = 'В смете пока нет позиций: задайте дом и вернитесь.'; return; }
+    clearAll();
+    var parts = [], missing = [];
+    L.forEach(function (it) {
+      var m = modelFor(it);
+      if (!m) { if (/^[12]\./.test(it.sectionTitle || '') && !/Теплоизоляц|Крепёж|Общие материалы/.test(it.group || '')) missing.push(it.name); return; }
+      for (var i = 0; i < Math.min(Math.round(it.q) || 1, 6); i++) parts.push({ key: m.key, role: m.role, name: it.name });
+    });
+    if (!parts.length) { S.info.textContent = 'В смете нет позиций, для которых есть 3D-модель.'; return; }
+    S.info.textContent = 'Собираю котельную: ' + parts.length + ' деталей…';
+    Promise.all(parts.map(function (p) { return makePart('parts', p.key).then(function (o) { p.o = o; return p; }); })).then(function () {
+      var T = S.T, x = 0, unplaced = [];
+      function put(p, px, pz) { p.o.position.set(px, 0, pz); S.scene.add(p.o); S.items.push(p.o); p.o.updateMatrixWorld(true); }
+      function width(o) { var b = new T.Box3().setFromObject(o); return b.max.x - b.min.x; }
+      // 1) крупное — в ряд у стены: котлы, коллектор, стабилизатор (группы — на коллектор, если он есть)
+      var hasCollector = parts.some(function (p) { return p.key.indexOf('hydro_collector') === 0; });
+      parts.forEach(function (p) {
+        if (p.role === 'anchor' || (p.role === 'group' && !hasCollector)) { var w = width(p.o); put(p, x + w / 2, 0); x += w + 0.25; p.placed = true; }
+      });
+      var boilers = parts.filter(function (p) { return p.placed && /^boiler_/.test(p.key); });
+      var coll = parts.filter(function (p) { return p.placed && /^hydro_collector/.test(p.key); });
+      // 2) группы — на верхние патрубки коллектора
+      parts.filter(function (p) { return p.role === 'group' && !p.placed; }).forEach(function (p) {
+        put(p, 0, 0);
+        var seatC = null;
+        for (var i = 0; i < coll.length && !seatC; i++) seatC = findSeat(p.o, freePorts(coll[i].o), false);
+        if (seatC) { seat(p.o, seatC.a, seatC.b); p.placed = true; } else { S.scene.remove(p.o); S.items.pop(); }
+      });
+      // 3) обвязка котла цепочками: американка → кран → сепаратор/фильтр → переходник. Подача и обратка — по гидравлическим
+      //    патрубкам Haier (A, G); газ C и ХВС D в смету обвязки не входят
+      var pool = { union: [], valve: [], separator: [], filter: [], adapter: [] };
+      parts.forEach(function (p) { if (pool[p.role]) pool[p.role].push(p); });
+      var boiler = boilers[0];
+      var heads = boiler ? portsOf(boiler.o).filter(function (q) { return /^[AG]$/.test(q.p.name); }) : [];
+      var chains = [['union', 'valve', 'separator', 'adapter'], ['union', 'valve', 'filter', 'adapter']];
+      heads.forEach(function (h, ci) {
+        var tail = [h], chain = chains[ci % chains.length];
+        chain.forEach(function (role) {
+          var p = pool[role].shift();
+          if (!p) return;
+          put(p, 0, 0);
+          var s = findSeat(p.o, tail, true);
+          if (!s) { unplaced.push(p); S.scene.remove(p.o); S.items.pop(); return; }
+          seat(p.o, s.a, s.b); p.placed = true;
+          tail = freePorts(p.o).filter(function (q) { return q.p.name !== 'in'; });
+          if (!tail.length) tail = freePorts(p.o);
+        });
+      });
+      // 4) остальное — рядом, «на складе»
+      var sx = 0;
+      parts.forEach(function (p) {
+        if (p.placed) return;
+        if (S.items.indexOf(p.o) < 0) { var w = width(p.o); put(p, sx + w / 2, 0.8); sx += w + 0.08; }
+        unplaced.push(p);
+      });
+      applyFlags();
+      var done = parts.filter(function (p) { return p.placed; }).length;
+      var lines = ['Из сметы: ' + done + ' из ' + parts.length + ' деталей поставлено на места, ' + S.links.length + ' стыков.'];
+      if (unplaced.length) lines.push('Не нашлось куда поставить (лежат на складе): ' + unplaced.map(function (p) { return p.name; }).slice(0, 5).join('; '));
+      if (missing.length) lines.push('Нет 3D-модели: ' + missing.length + ' поз. (' + missing.slice(0, 4).join('; ') + (missing.length > 4 ? '…' : '') + ')');
+      lines.push('Порядок цепочек предварительный: сверьте со схемой узла.');
+      S.info.textContent = lines.join(String.fromCharCode(10));
+      var b = new T.Box3(); S.items.forEach(function (o) { b.expandByObject(o); });
+      var c = b.getCenter(new T.Vector3()), d = Math.max(b.getSize(new T.Vector3()).length(), 1);
+      S.oc.target.copy(c); S.cam.position.set(c.x + d * 0.3, c.y + d * 0.3, c.z + d * 1.1); S.oc.update();
+    }).catch(function (e) { S.info.textContent = 'Не удалось собрать: ' + (e && e.message ? e.message : e); });
   }
 
   // порты: из Blender (X, Y, Z) мм -> три (x, z, -y) м
