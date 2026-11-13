@@ -1,0 +1,339 @@
+/* house3d.js — режим «Дом 3D» (тест, видит только владелец).
+ *
+ * Отдельная вкладка рядом с «Оборудование / Монтаж»: открывает окно на весь экран с 3D-сценой, где детали
+ * (котёл, бойлер, насосные группы, коллекторы, узлы) ставятся как в Revit: вращение, панорама, зум, куб видов,
+ * контурные линии, порты деталей, перемещение мышью. Старый калькулятор не трогает: ни state, ни render().
+ *
+ * Показывается только если app.wmPreviewOn() (учётка суперадмина). Остальным файл ничего не делает.
+ * three.js грузится только при первом открытии окна (динамический import, версия закреплена).
+ * Модели — models/parts3d/*.glb и models/nodes3d/*.glb (tools/export_parts_glb.py, export_nodes_glb.py);
+ * описание и порты — parts.json и nodes.json рядом с ними. Координаты портов в файлах — как в Blender
+ * (X вправо, Y в стену, Z вверх, мм); в сцене three.js — (x, z, -y), метры, как переводит экспортёр glTF.
+ *
+ * Глобал: window.House3D — { open, close }
+ */
+(function () {
+  'use strict';
+
+  var THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.160.0/';
+  var DIRS = { parts: 'models/parts3d/', nodes: 'models/nodes3d/' };
+  var S = null;           // состояние окна: три-объекты, список деталей, выбранное
+  var tabTimer = null;
+
+  // ── вкладка: ждём, пока приложение поймёт, кто пользователь ──────────────
+  function mountTab() {
+    if (document.getElementById('tab_house3d')) return true;
+    if (!window.app || typeof app.wmPreviewOn !== 'function' || !app.wmPreviewOn()) return false;
+    var bar = document.querySelector('.main-view-tabs');
+    if (!bar) return false;
+    var t = document.createElement('div');
+    t.id = 'tab_house3d';
+    t.className = 'tab';
+    t.style.cssText = 'font-size:14px;font-weight:700;';
+    t.title = 'Тест: 3D-модель дома и котельной (видите только вы)';
+    t.textContent = 'Дом 3D';
+    t.onclick = open;
+    bar.appendChild(t);
+    return true;
+  }
+
+  function watch() {
+    var n = 0;
+    tabTimer = setInterval(function () {
+      if (mountTab() || ++n > 40) clearInterval(tabTimer);   // 40 попыток по 1,5 с: вход в учётку бывает не сразу
+    }, 1500);
+  }
+
+  // ── окно ────────────────────────────────────────────────────────────────
+  var CSS = [
+    '#h3d{position:fixed;inset:0;z-index:9000;background:#2c2c2c;color:#e6e6e6;font:13px system-ui,sans-serif;display:flex}',
+    '#h3d *{box-sizing:border-box}',
+    '#h3d .side{width:290px;background:#3c3c3c;overflow:auto;padding:8px;flex:none}',
+    '#h3d h4{margin:12px 0 4px;color:#7cc4ee;cursor:pointer;font-size:13px}',
+    '#h3d .it{padding:4px 8px;border-radius:3px;cursor:pointer;font-size:12px;line-height:1.3}',
+    '#h3d .it:hover{background:#4f4f4f}',
+    '#h3d .view{position:relative;flex:1;min-width:0}',
+    '#h3d canvas{display:block;width:100%;height:100%}',
+    '#h3d .bar{position:absolute;left:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap}',
+    '#h3d button{background:#555;color:#eee;border:0;padding:6px 10px;cursor:pointer;border-radius:2px;font:inherit}',
+    '#h3d button.on{background:#0696D7}',
+    '#h3d .x{position:absolute;right:10px;top:10px}',
+    '#h3d .info{position:absolute;left:10px;bottom:10px;background:#000a;padding:8px 10px;border-radius:4px;max-width:420px;line-height:1.5;white-space:pre-wrap}',
+    '#h3d .cube{position:absolute;right:20px;top:60px;width:96px;height:96px;perspective:420px}',
+    '#h3d .cube .c3{position:absolute;inset:0;transform-style:preserve-3d}',
+    '#h3d .cube .f{position:absolute;width:56px;height:56px;left:20px;top:20px;background:#d7dbe0;color:#222;border:1px solid #6a6f76;',
+    'display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;backface-visibility:hidden;user-select:none}',
+    '#h3d .cube .f:hover{background:#0696D7;color:#fff}',
+    '#h3d .hint{position:absolute;right:10px;bottom:10px;color:#9aa;font-size:11px;text-align:right;line-height:1.5}'
+  ].join('');
+
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text) e.textContent = text;
+    return e;
+  }
+
+  function open() {
+    if (S) { S.root.style.display = 'flex'; resize(); return; }
+    var st = document.createElement('style');
+    st.textContent = CSS;
+    document.head.appendChild(st);
+    var root = el('div'); root.id = 'h3d';
+    var side = el('div', 'side');
+    var view = el('div', 'view');
+    root.appendChild(side); root.appendChild(view);
+    document.body.appendChild(root);
+    S = { root: root, side: side, view: view, items: [], sel: null, edges: true, ports: false, grid: true, n: 0 };
+
+    var bar = el('div', 'bar');
+    bar.appendChild(btn('Контур', 'edges', true));
+    bar.appendChild(btn('Порты', 'ports', false));
+    bar.appendChild(btn('Сетка', 'grid', true));
+    var del = el('button', '', 'Удалить'); del.onclick = removeSel; bar.appendChild(del);
+    var clr = el('button', '', 'Очистить'); clr.onclick = clearAll; bar.appendChild(clr);
+    view.appendChild(bar);
+    var x = el('button', 'x', 'Закрыть'); x.onclick = close; view.appendChild(x);
+    S.info = el('div', 'info', 'Загрузка 3D…'); view.appendChild(S.info);
+    view.appendChild(el('div', 'hint', 'Левая кнопка — вращать, правая — панорама, колесо — зум\nклик по детали — выбрать, W — двигать, E — вращать, Del — удалить'));
+    document.addEventListener('keydown', onKey);
+
+    // дополнения three.js импортируют «three» по имени — подсказываем адрес через import map (один раз)
+    if (!document.querySelector('script[data-h3d-map]')) {
+      var im = document.createElement('script');
+      im.type = 'importmap';
+      im.setAttribute('data-h3d-map', '1');
+      im.textContent = JSON.stringify({ imports: { 'three': THREE_URL + 'build/three.module.js', 'three/addons/': THREE_URL + 'examples/jsm/' } });
+      document.head.appendChild(im);
+    }
+    Promise.all([
+      import(THREE_URL + 'build/three.module.js'),
+      import(THREE_URL + 'examples/jsm/controls/OrbitControls.js'),
+      import(THREE_URL + 'examples/jsm/controls/TransformControls.js'),
+      import(THREE_URL + 'examples/jsm/loaders/GLTFLoader.js'),
+      import(THREE_URL + 'examples/jsm/environments/RoomEnvironment.js'),
+      loadJson(DIRS.parts + 'parts.json'), loadJson(DIRS.nodes + 'nodes.json')
+    ]).then(function (m) {
+      S.T = m[0]; S.OC = m[1].OrbitControls; S.TC = m[2].TransformControls; S.GL = m[3].GLTFLoader; S.RE = m[4].RoomEnvironment;
+      S.meta = { parts: m[5], nodes: m[6] };
+      initScene();
+      fillList();
+      S.info.textContent = Object.keys(m[5]).length + ' деталей и ' + Object.keys(m[6]).length + ' узлов. Выберите слева, что поставить.';
+    }).catch(function (e) {
+      S.info.textContent = 'Не удалось запустить 3D: ' + (e && e.message ? e.message : e);
+    });
+  }
+
+  function loadJson(u) {
+    return fetch(u).then(function (r) { if (!r.ok) throw new Error(u + ': ' + r.status + ' (модели не выложены на сайт, работает только локально)'); return r.json(); });
+  }
+
+  function btn(label, key, on) {
+    var b = el('button', on ? 'on' : '', label);
+    b.onclick = function () {
+      S[key] = !S[key];
+      b.className = S[key] ? 'on' : '';
+      if (key === 'grid' && S.gridObj) S.gridObj.visible = S.grid;
+      applyFlags();
+    };
+    return b;
+  }
+
+  function close() { if (S) S.root.style.display = 'none'; }
+
+  function fillList() {
+    S.side.innerHTML = '';
+    [['parts', 'Детали котельной'], ['nodes', 'Узлы подключения']].forEach(function (g) {
+      var h = el('h4', '', g[1] + ' (' + Object.keys(S.meta[g[0]]).length + ')');
+      var box = el('div');
+      h.onclick = function () { box.style.display = box.style.display === 'none' ? '' : 'none'; };
+      S.side.appendChild(h); S.side.appendChild(box);
+      Object.keys(S.meta[g[0]]).forEach(function (k) {
+        var it = el('div', 'it', S.meta[g[0]][k].label);
+        it.onclick = function () { addPart(g[0], k); };
+        box.appendChild(it);
+      });
+    });
+  }
+
+  // ── сцена ───────────────────────────────────────────────────────────────
+  function initScene() {
+    var T = S.T;
+    var R = S.renderer = new T.WebGLRenderer({ antialias: true });
+    R.setPixelRatio(window.devicePixelRatio);
+    var cv = R.domElement;
+    S.view.insertBefore(cv, S.view.firstChild);
+    var sc = S.scene = new T.Scene();
+    sc.background = new T.Color(0x2c2c2c);
+    sc.environment = new T.PMREMGenerator(R).fromScene(new S.RE(), 0.04).texture;
+    sc.environmentIntensity = 0.55;
+    sc.add(new T.HemisphereLight(0xffffff, 0x888a90, 0.55));
+    var dl = new T.DirectionalLight(0xffffff, 1.1); dl.position.set(2, 3, 4); sc.add(dl);
+    var cam = S.cam = new T.PerspectiveCamera(35, 1, 0.01, 200);
+    cam.position.set(2.2, 1.6, 3.0);
+    var oc = S.oc = new S.OC(cam, cv);
+    oc.target.set(0, 0.6, 0); oc.update();
+    S.gridObj = new T.GridHelper(10, 100, 0x888888, 0x444444); sc.add(S.gridObj);
+    var tc = S.tc = new S.TC(cam, cv);
+    tc.setSize(0.8);
+    tc.addEventListener('dragging-changed', function (e) { oc.enabled = !e.value; });
+    sc.add(tc);
+    S.ray = new T.Raycaster(); S.mouse = new T.Vector2();
+    var down = null;
+    cv.addEventListener('pointerdown', function (e) { down = [e.clientX, e.clientY]; });
+    cv.addEventListener('pointerup', function (e) {
+      if (down && Math.abs(e.clientX - down[0]) + Math.abs(e.clientY - down[1]) < 5 && !tc.dragging) pick(e);
+    });
+    buildCube();
+    window.addEventListener('resize', resize);
+    resize();
+    (function loop() {
+      if (!S) return;
+      requestAnimationFrame(loop);
+      if (S.root.style.display === 'none') return;
+      oc.update(); syncCube();
+      R.render(sc, cam);
+    })();
+  }
+
+  function resize() {
+    if (!S || !S.renderer) return;
+    var w = S.view.clientWidth, h = S.view.clientHeight;
+    S.renderer.setSize(w, h);
+    S.cam.aspect = w / Math.max(h, 1);
+    S.cam.updateProjectionMatrix();
+  }
+
+  // ── куб видов, как в Revit: поворот синхронен камере, клик по грани — вид с этой стороны ────
+  var FACES = [
+    ['Спереди', [0, 0, 1], 'rotateY(0deg)'], ['Сзади', [0, 0, -1], 'rotateY(180deg)'],
+    ['Справа', [1, 0, 0], 'rotateY(90deg)'], ['Слева', [-1, 0, 0], 'rotateY(-90deg)'],
+    ['Сверху', [0, 1, 0.0001], 'rotateX(90deg)'], ['Снизу', [0, -1, 0.0001], 'rotateX(-90deg)']
+  ];
+
+  function buildCube() {
+    var c = el('div', 'cube'), c3 = el('div', 'c3');
+    FACES.forEach(function (f) {
+      var d = el('div', 'f', f[0]);
+      d.style.transform = f[2] + ' translateZ(28px)';
+      d.onclick = function () { snapView(f[1]); };
+      c3.appendChild(d);
+    });
+    c.appendChild(c3);
+    S.view.appendChild(c);
+    S.c3 = c3;
+  }
+
+  function syncCube() {
+    var m = S.cam.matrixWorldInverse.elements;       // вращение мира в системе камеры
+    // three: x вправо, y вверх; CSS: y вниз — сопрягаем отражением по Y
+    var r = [
+      m[0], -m[1], m[2], 0,
+      -m[4], m[5], -m[6], 0,
+      m[8], -m[9], m[10], 0,
+      0, 0, 0, 1
+    ];
+    S.c3.style.transform = 'matrix3d(' + r.join(',') + ')';
+  }
+
+  function snapView(dir) {
+    var T = S.T, t = S.oc.target, d = S.cam.position.distanceTo(t);
+    var v = new T.Vector3(dir[0], dir[1], dir[2]).normalize().multiplyScalar(d).add(t);
+    S.cam.position.copy(v);
+    S.oc.update();
+  }
+
+  // ── детали ──────────────────────────────────────────────────────────────
+  function addPart(group, key) {
+    var T = S.T, meta = S.meta[group][key];
+    S.info.textContent = 'Загрузка «' + meta.label + '»…';
+    new S.GL().load(DIRS[group === 'parts' ? 'parts' : 'nodes'] + key + '.glb', function (g) {
+      var o = g.scene;
+      o.userData = { key: key, group: group, label: meta.label, id: ++S.n };
+      o.traverse(function (m) {
+        if (!m.isMesh) return;
+        var mt = [].concat(m.material)[0];
+        var flat = mt && (mt.transparent || (mt.map && mt.alphaTest >= 0 && /логотип|табличка|панель управления|шкала/i.test(m.name || '')));
+        if (!flat) {
+          var l = new T.LineSegments(new T.EdgesGeometry(m.geometry, 28), new T.LineBasicMaterial({ color: 0x14161a }));
+          l.userData.edge = true; m.add(l);
+        }
+      });
+      o.position.set((S.items.length % 4) * 0.8 - 1.2, 0, Math.floor(S.items.length / 4) * 0.8);
+      S.scene.add(o); S.items.push(o);
+      addPortMarkers(o, meta);
+      applyFlags();
+      select(o);
+      S.info.textContent = meta.label + '\nпортов: ' + ((meta.ports || []).length);
+    }, undefined, function (e) { S.info.textContent = 'Не удалось загрузить ' + key + ': ' + (e && e.message ? e.message : e); });
+  }
+
+  // порты: из Blender (X, Y, Z) мм -> три (x, z, -y) м
+  function addPortMarkers(o, meta) {
+    var T = S.T, col = { M: 0xff9a2e, F: 0x2e8cff, P: 0x35c46a, U: 0x999999 };
+    (meta.ports || []).forEach(function (p) {
+      var s = new T.Mesh(new T.SphereGeometry(0.008, 12, 8), new T.MeshBasicMaterial({ color: col[p.type] || 0x999999, depthTest: false }));
+      s.renderOrder = 10;
+      s.position.set(p.pos_mm[0] / 1000, p.pos_mm[2] / 1000, -p.pos_mm[1] / 1000);
+      s.userData.port = p; s.userData.isPort = true;
+      o.add(s);
+    });
+  }
+
+  function applyFlags() {
+    S.items.forEach(function (o) {
+      o.traverse(function (m) {
+        if (m.userData.edge) m.visible = S.edges;
+        if (m.userData.isPort) m.visible = S.ports;
+      });
+    });
+  }
+
+  function pick(e) {
+    var r = S.renderer.domElement.getBoundingClientRect();
+    S.mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    S.ray.setFromCamera(S.mouse, S.cam);
+    var hits = S.ray.intersectObjects(S.items, true);
+    for (var i = 0; i < hits.length; i++) {
+      if (hits[i].object.userData.edge || hits[i].object.userData.isPort) { if (hits[i].object.userData.isPort) { showPort(hits[i].object.userData.port); return; } continue; }
+      var o = hits[i].object;
+      while (o && S.items.indexOf(o) < 0) o = o.parent;
+      if (o) { select(o); return; }
+    }
+    select(null);
+  }
+
+  function showPort(p) {
+    var t = { M: 'наружная резьба (НР)', F: 'внутренняя резьба или накидная гайка (ВР)', P: 'труба', U: 'тип не известен' }[p.type] || p.type;
+    S.info.textContent = 'Порт ' + p.name + ': ' + t + ', ' + p.size + '\nисточник: ' + p.src;
+  }
+
+  function select(o) {
+    S.sel = o;
+    if (o) { S.tc.attach(o); S.info.textContent = o.userData.label; } else S.tc.detach();
+  }
+
+  function removeSel() {
+    if (!S || !S.sel) return;
+    S.tc.detach(); S.scene.remove(S.sel);
+    S.items.splice(S.items.indexOf(S.sel), 1); S.sel = null;
+  }
+
+  function clearAll() {
+    if (!S) return;
+    S.tc.detach();
+    S.items.forEach(function (o) { S.scene.remove(o); });
+    S.items = []; S.sel = null;
+  }
+
+  function onKey(e) {
+    if (!S || S.root.style.display === 'none') return;
+    if (e.key === 'w' || e.key === 'W' || e.key === 'ц' || e.key === 'Ц') S.tc.setMode('translate');
+    else if (e.key === 'e' || e.key === 'E' || e.key === 'у' || e.key === 'У') S.tc.setMode('rotate');
+    else if (e.key === 'Delete') removeSel();
+    else if (e.key === 'Escape') close();
+  }
+
+  window.House3D = { open: open, close: close };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watch); else watch();
+})();
