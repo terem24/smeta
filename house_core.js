@@ -346,10 +346,140 @@
     return P;
   }
 
+  // ── чистка зон перед импортом ───────────────────────────────────────────
+  function segSegDist(a, b, c, d) {
+    var seg = function (p, q, r) {
+      var dx = q[0] - p[0], dy = q[1] - p[1], L2 = dx * dx + dy * dy, t = L2 ? ((r[0] - p[0]) * dx + (r[1] - p[1]) * dy) / L2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      return Math.hypot(r[0] - (p[0] + dx * t), r[1] - (p[1] + dy * t));
+    };
+    var cross = function (p, q, r, t) {
+      var d1 = (q[0] - p[0]) * (t[1] - r[1]) - (q[1] - p[1]) * (t[0] - r[0]);
+      return d1;
+    };
+    // пересекаются — расстояние 0
+    var o1 = cross(a, b, a, c), o2 = cross(a, b, a, d), o3 = cross(c, d, c, a), o4 = cross(c, d, c, b);
+    if (((o1 > 0) !== (o2 > 0)) && ((o3 > 0) !== (o4 > 0))) return 0;
+    return Math.min(seg(a, b, c), seg(a, b, d), seg(c, d, a), seg(c, d, b));
+  }
+
+  function polyDist(A, B) {
+    var best = Infinity;
+    for (var i = 0; i < A.length; i++) {
+      for (var j = 0; j < B.length; j++) {
+        var d = segSegDist(A[i], A[(i + 1) % A.length], B[j], B[(j + 1) % B.length]);
+        if (d < best) best = d;
+        if (best === 0) return 0;
+      }
+    }
+    return best;
+  }
+
+  // Кластеры зон, связанных между собой (зазор не больше link, м). Главный — с наибольшей суммарной площадью.
+  // Легенда, таблицы и штамп листа распознаются как «комнаты» вне здания: они образуют свои кластеры.
+  function clusterZones(polys, link) {
+    var n = polys.length, parent = polys.map(function (_, i) { return i; });
+    var find = function (x) { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+    for (var i = 0; i < n; i++) for (var j = i + 1; j < n; j++) {
+      if (find(i) !== find(j) && polyDist(polys[i].pts, polys[j].pts) <= link) parent[find(i)] = find(j);
+    }
+    var groups = {};
+    polys.forEach(function (pl, i) { var r = find(i); (groups[r] = groups[r] || []).push(i); });
+    return Object.keys(groups).map(function (k) {
+      var idx = groups[k];
+      return { idx: idx, area: idx.reduce(function (t, i) { return t + Math.abs(polyArea(polys[i].pts)); }, 0) };
+    }).sort(function (a, b) { return b.area - a.area; });
+  }
+
+  // Выпрямление контура: рёбра, близкие к осям (с учётом общего поворота плана), становятся строго горизонтальными и
+  // вертикальными, цепочки коротких «ступенек» и параллельных кусков сливаются. Косые рёбра остаются как есть.
+  function orthoPoly(P, tolDeg, minEdge) {
+    var Q = P.slice(), changed = true, n;
+    while (changed && Q.length > 4) {
+      changed = false; n = Q.length;
+      for (var i = 0; i < n; i++) {
+        var j = (i + 1) % n;
+        if (dist(Q[i], Q[j]) < minEdge) {
+          var mid = [(Q[i][0] + Q[j][0]) / 2, (Q[i][1] + Q[j][1]) / 2];
+          Q[i] = mid; Q.splice(j, 1); changed = true; break;
+        }
+      }
+    }
+    n = Q.length;
+    var sx = 0, sy = 0;
+    for (var e = 0; e < n; e++) {
+      var f = Q[(e + 1) % n], ang = Math.atan2(f[1] - Q[e][1], f[0] - Q[e][0]), w = dist(Q[e], f);
+      sx += w * Math.cos(4 * ang); sy += w * Math.sin(4 * ang);
+    }
+    var th = Math.atan2(sy, sx) / 4;
+    if (Math.abs(th) < 3 * Math.PI / 180) th = 0;               // план почти ровный — не крутим, оси остаются осями
+    var c = Math.cos(-th), sn = Math.sin(-th);
+    var R = Q.map(function (p) { return [p[0] * c - p[1] * sn, p[0] * sn + p[1] * c]; });
+    var tg = Math.tan(tolDeg * Math.PI / 180);
+    var type = R.map(function (p, i) {
+      var q = R[(i + 1) % n], dx = Math.abs(q[0] - p[0]), dy = Math.abs(q[1] - p[1]);
+      return dy <= tg * dx ? 'H' : (dx <= tg * dy ? 'V' : 'D');
+    });
+    // начинаем с ребра, перед которым тип другой
+    var st = 0;
+    for (var s0 = 0; s0 < n; s0++) if (type[s0] !== type[(s0 - 1 + n) % n] || type[s0] === 'D') { st = s0; break; }
+    var runs = [], cur = null;
+    for (var k = 0; k < n; k++) {
+      var ei = (st + k) % n, t = type[ei];
+      if (cur && t !== 'D' && cur.t === t) cur.edges.push(ei); else { cur = { t: t, edges: [ei] }; runs.push(cur); }
+    }
+    if (runs.length < 3) return P;
+    runs.forEach(function (r) {
+      if (r.t === 'D') return;
+      var sum = 0, wsum = 0;
+      r.edges.forEach(function (ei) {
+        var a = R[ei], b = R[(ei + 1) % n], w = dist(a, b);
+        sum += w * (r.t === 'H' ? (a[1] + b[1]) / 2 : (a[0] + b[0]) / 2); wsum += w;
+      });
+      r.v = sum / (wsum || 1);
+    });
+    var out = [];
+    for (var ri = 0; ri < runs.length; ri++) {
+      var prev = runs[(ri - 1 + runs.length) % runs.length], me = runs[ri], v0 = R[me.edges[0]];
+      var x = v0[0], y = v0[1];
+      if (prev.t === 'H' && me.t === 'V') { x = me.v; y = prev.v; }
+      else if (prev.t === 'V' && me.t === 'H') { x = prev.v; y = me.v; }
+      else if (me.t === 'H' || prev.t === 'H') { y = me.t === 'H' ? me.v : prev.v; }
+      else if (me.t === 'V' || prev.t === 'V') { x = me.t === 'V' ? me.v : prev.v; }
+      out.push([x, y]);
+    }
+    var c2 = Math.cos(th), s2 = Math.sin(th);
+    var res = out.map(function (p) { return [p[0] * c2 - p[1] * s2, p[0] * s2 + p[1] * c2]; });
+    var a0 = Math.abs(polyArea(P)), a1 = Math.abs(polyArea(res));
+    return a0 > 0 && Math.abs(a1 - a0) / a0 < 0.1 && res.length >= 3 ? res : P;     // площадь не должна уехать больше чем на 10 %
+  }
+
+  // Чистка зон: отбрасываем кластеры вне здания и выпрямляем контуры. Возвращает { polys, dropped, straightened }
+  function cleanZones(polys, opts) {
+    var link = opts.link || 1.2, keep = opts.keepRatio !== undefined ? opts.keepRatio : 0.5, info = { dropped: [], straightened: 0 };
+    if (polys.length > 2) {
+      var cl = clusterZones(polys, link), main = cl[0], keepIdx = {};
+      cl.forEach(function (c) { if (c === main || c.area >= keep * main.area) c.idx.forEach(function (i) { keepIdx[i] = 1; }); });
+      info.dropped = polys.map(function (pl, i) { return keepIdx[i] ? null : { name: pl.name || '', area: Math.round(Math.abs(polyArea(pl.pts)) * 10) / 10 }; }).filter(Boolean);
+      polys = polys.filter(function (pl, i) { return keepIdx[i]; });
+    }
+    if (opts.ortho !== false) {
+      polys = polys.map(function (pl) {
+        var q = orthoPoly(pl.pts, opts.orthoTol || 8, opts.minEdge || 0.25);
+        if (q !== pl.pts) info.straightened++;
+        return Object.assign({}, pl, { pts: q });
+      });
+    }
+    info.polys = polys;
+    return info;
+  }
+
   function fromPolygons(m, floorId, polys, opts) {
     opts = opts || {};
     var fixed = opts.fixed !== false;             // комнаты = ваши контуры; false — искать комнаты по замкнутым стенам
     var snapTol = opts.snap || 0.12, eps = opts.simplify || 0.08;
+    var cleanInfo = { dropped: [], straightened: 0 };
+    if (opts.clean !== false) { cleanInfo = cleanZones(polys, opts); polys = cleanInfo.polys; }
     // Чистим контуры: лишние вершины, обход против часовой, исходная (чистая) площадь
     polys = polys.map(function (pl) {
       var P = simplifyPoly(pl.pts, eps);
@@ -432,7 +562,7 @@
       Object.keys(ownersOf).forEach(function (k) { if (ownersOf[k].length === 1) setExt(wallByKey[k]); });
       m.fixedRooms = m.fixedRooms || {};
       m.fixedRooms[floorId] = rooms;
-      return { walls: created.length, rooms: rooms.length, gap: gapUsed, fixed: true };
+      return { walls: created.length, rooms: rooms.length, gap: gapUsed, fixed: true, dropped: cleanInfo.dropped, straightened: cleanInfo.straightened };
     }
 
     var found = detectRooms(m, floorId);
@@ -453,7 +583,7 @@
       var src = polys.find(function (pl) { return inside(c, pl.pts); });
       if (src && (src.name || src.tv !== undefined)) m.roomOv[r.id] = { name: src.name || undefined, tv: src.tv };
     });
-    return { walls: created.length, rooms: found.length, gap: gapUsed, fixed: false };
+    return { walls: created.length, rooms: found.length, gap: gapUsed, fixed: false, dropped: cleanInfo.dropped, straightened: cleanInfo.straightened };
   }
 
   // Комнаты заданы контурами (импорт) — пока стены не правили; после правки стен вернуться к поиску по замкнутым контурам
@@ -531,7 +661,7 @@
     return m;
   }
 
-  var api = { DEFAULTS: DEFAULTS, create: create, addFloor: addFloor, addWall: addWall, addOpening: addOpening, removeWall: removeWall, removeOpening: removeOpening, fromPolygons: fromPolygons, hasFixed: hasFixed, dropFixed: dropFixed, addOpeningsAt: addOpeningsAt, estimateGap: estimateGap, offsetPoly: offsetPoly, wallR: wallR,
+  var api = { DEFAULTS: DEFAULTS, create: create, addFloor: addFloor, addWall: addWall, addOpening: addOpening, removeWall: removeWall, removeOpening: removeOpening, fromPolygons: fromPolygons, hasFixed: hasFixed, dropFixed: dropFixed, addOpeningsAt: addOpeningsAt, estimateGap: estimateGap, offsetPoly: offsetPoly, orthoPoly: orthoPoly, cleanZones: cleanZones, wallR: wallR,
               detectRooms: detectRooms, heatLoss: heatLoss, sampleHouse: sampleHouse, openingsOn: openingsOn };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.HouseCore = api;
 })(typeof window !== 'undefined' ? window : this);

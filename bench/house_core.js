@@ -134,7 +134,7 @@ const eq = (what, got, want, tol) => {
     const r = HC.fromPolygons(m, f.id, zones, {});
     const rooms = HC.detectRooms(m, f.id);
     eq('из зон: комнат столько же, сколько зон', rooms.length, 5);
-    eq('из зон: чистая площадь комнат = площади зон', Math.round(rooms.reduce((t, x) => t + x.area, 0) * 100) / 100, Math.round(want * 100) / 100, 0.01);
+    eq('из зон: чистая площадь комнат = площади зон', Math.round(rooms.reduce((t, x) => t + x.area, 0) * 100) / 100, Math.round(want * 100) / 100, 0.1);     // выпрямление чуть двигает косую зону
     const L = HC.heatLoss(m);
     eq('из зон: расчёт дошёл до каждой комнаты', L.rooms.length, 5);
     eq('из зон: потери положительные у всех', L.rooms.every(x => x.Q > 0) ? 1 : 0, 1);
@@ -142,6 +142,34 @@ const eq = (what, got, want, tol) => {
     eq('из зон: после правки стен комнаты ищутся по стенам', HC.hasFixed(m) ? 1 : 0, 1);
     HC.dropFixed(m);
     eq('после dropFixed признак снят', HC.hasFixed(m) ? 1 : 0, 0);
+}
+
+// 3г. Чистка зон: легенда и штамп листа (далеко от здания) отбрасываются, ступеньки выпрямляются
+{
+    const m = HC.create({ Tn: -25 });
+    const f = HC.addFloor(m, { level: 0 });
+    const rect = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+    // комната 6 x 4 со «ступенькой» в 6 см по краю и слегка кривым ребром
+    const rough = [[0, 0], [3, 0.03], [6, 0], [6.06, 0.02], [6.04, 4], [3, 4.03], [0, 3.97], [0.05, 2]];
+    const zones = [
+        { name: 'Дом 1', pts: rough },
+        { name: 'Дом 2', pts: rect(6.2, 0, 10, 4) },
+        { name: 'Легенда', pts: rect(30, 0, 33, 2) },          // коробки таблицы вдали от плана
+        { name: 'Легенда 2', pts: rect(33, 0, 36, 2) },
+        { name: 'Штамп', pts: rect(0, 40, 8, 42) }
+    ];
+    const r = HC.fromPolygons(m, f.id, zones, {});
+    eq('чистка: отброшено зон вне здания (легенда x2 и штамп)', r.dropped.length, 3);
+    eq('чистка: осталось комнат', r.rooms, 2);
+    const q = HC.orthoPoly(rough, 8, 0.25);
+    const rectLike = q.every((p, i) => { const n = q[(i + 1) % q.length]; return Math.abs(p[0] - n[0]) < 1e-9 || Math.abs(p[1] - n[1]) < 1e-9; });
+    eq('чистка: ступеньки сведены в прямоугольник (все рёбра осевые)', rectLike ? 1 : 0, 1);
+    eq('чистка: вершин после выпрямления', q.length, 4);
+    const ar = Math.abs(q.reduce((a2, p, i) => { const n = q[(i + 1) % q.length]; return a2 + p[0] * n[1] - n[0] * p[1]; }, 0) / 2);
+    eq('чистка: площадь после выпрямления ~ 6 x 4', ar, 24, 0.5);
+    const keepAll = HC.create({ Tn: -25 }); const f2 = HC.addFloor(keepAll, { level: 0 });
+    const r2 = HC.fromPolygons(keepAll, f2.id, zones, { clean: false });
+    eq('чистка выключена: все пять зон остаются комнатами', r2.rooms, 5);
 }
 
 // 4. Сверка формулы с Galf

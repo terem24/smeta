@@ -175,7 +175,8 @@
     p.appendChild(acts);
     var imp = $('div'); imp.style.cssText = 'margin:4px 0;padding:4px 0;border-top:1px solid #555;border-bottom:1px solid #555';
     imp.appendChild($('div', '', 'Импорт плана'));
-    imp.appendChild(btn('Из планов калькулятора', false, importPlans, 'Контуры комнат, окна и двери из редактора планов этажей'));
+    imp.appendChild(btn('Из планов калькулятора', false, function () { importPlans(false); }, 'Контуры комнат, окна и двери из редактора планов этажей; зоны вне здания (легенда, штамп) отбрасываются, контуры выпрямляются'));
+    imp.appendChild(btn('Импорт со всеми зонами', false, function () { importPlans(true); }, 'Без чистки: все зоны плана как комнаты'));
     var fi = $('input'); fi.type = 'file'; fi.accept = 'image/*'; fi.style.cssText = 'display:none';
     fi.onchange = function () { if (fi.files && fi.files[0]) loadUnderlay(fi.files[0]); };
     imp.appendChild(fi);
@@ -290,7 +291,7 @@
   // ── импорт плана ────────────────────────────────────────────────────────
   function note(t) { E.msg = t; refreshPanel(); }
 
-  function importPlans() {
+  function importPlans(keepAll) {
     var HC = E.HC, m = E.model;
     var P = window.app && app.currentPlans && app.currentPlans();
     if (!P || !P.floors || !P.floors.length) { note('В калькуляторе нет планов этажей: сначала загрузите план в редакторе планов.'); return; }
@@ -304,13 +305,14 @@
     var fl = m.floors[0];
     m.walls = m.walls.filter(function (w) { return w.floor !== fl.id; }); m.openings = []; m.roomOv = {};
     var ep = EXT[E.ext], ip = INT[E.int];
-    var r = HC.fromPolygons(m, fl.id, polys, { gap: 'auto', ext: { layers: ep.l, thick: ep.t }, int: { layers: ip.l, thick: ip.t } });
+    var r = HC.fromPolygons(m, fl.id, polys, { gap: 'auto', clean: !keepAll, ext: { layers: ep.l, thick: ep.t }, int: { layers: ip.l, thick: ip.t } });
     var g = f.geom || {}, wl = [];
     (g.wins || []).forEach(function (w) { wl.push({ x: w.x * k, y: -w.y * k, w: Math.max(0.6, (w.mm || 1500) / 1000), kind: 'window' }); });
     (g.doors || []).forEach(function (d) { wl.push({ x: d.x * k, y: -d.y * k, w: Math.max(0.6, (d.mm || 900) / 1000), kind: 'door' }); });
     var no = HC.addOpeningsAt(m, fl.id, wl);
+    var drop = r.dropped && r.dropped.length ? ' Отброшено зон вне здания: ' + r.dropped.length + ' (' + r.dropped.reduce(function (t, d) { return t + d.area; }, 0).toFixed(0) + ' м2 — легенда, таблицы, штамп листа); кнопка «Импорт со всеми зонами» вернёт их.' : '';
     E.msg = (r.fixed ? 'Комнаты — ваши зоны с плана как есть (площади не пересчитываются), стены построены по их рёбрам. ' : '') + 'Импорт: комнат ' + r.rooms + ', стен ' + r.walls + ', проёмов ' + no + ' из ' + wl.length + (r.gap ? ', толщина стен по зазорам между комнатами ' + Math.round(r.gap * 100) + ' см' : ', соседних комнат не найдено, контуры сдвинуты на полтолщины наружной стены') + '. Пирог наружных стен — выбранный в списке (' + ep.n.slice(0, 22) + '...): проверьте стены.' +
-      (P.floors.length > 1 ? ' Редактор правит один этаж: импортирован первый.' : '');
+      (r.straightened ? ' Контуров выпрямлено: ' + r.straightened + '.' : '') + drop + (P.floors.length > 1 ? ' Редактор правит один этаж: импортирован первый.' : '');
     E.sel = null;
     if (f.img && /^(data:|https?:)/.test(f.img)) setUnderlay(f.img, f.w || 0, f.h || 0, k, [0, 0]);
     rebuild(); topView();
