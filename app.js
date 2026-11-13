@@ -23163,13 +23163,16 @@ const app = {
         if (!dot) return;
 
         try {
-            // Сверхлегкий пинг Supabase
-            const { data, error } = await Promise.race([
-                supabaseClient.from('users').select('id').limit(1),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 2500))
-            ]);
-
-            if (error) throw error;
+            // Сверхлегкий пинг Supabase: таймаут 6 с и один повтор при сбое
+            const pingOnce = async () => {
+                const r = await Promise.race([
+                    supabaseClient.from('users').select('id').limit(1),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 6000))
+                ]);
+                if (r.error) throw r.error;
+                return r;
+            };
+            try { await pingOnce(); } catch (e1) { await pingOnce(); }
 
             // Если все успешно — зеленая точка (соединение работает)
             dot.style.backgroundColor = '#10B981';
