@@ -30,6 +30,7 @@ VARIANTS += [v + '_n' for v in list(VARIANTS) if v.startswith('status')]   # б�
 # газ + резервный электрокотёл (каскад без гидрострелки): обратный клапан SVC-0011 с ниппелем на подаче — «…_c»
 VARIANTS += [v + '_c' for v in list(VARIANTS) if v != 'haier2']
 VARIANTS += [v + '_rm' for v in list(VARIANTS)]      # смета ROMMER: краны RBV-0004 с красной бабочкой
+VARIANTS += ['polis', 'polis_r']   # электрокотёл POLIS (SEB-5101) на группе быстрого монтажа: STOUT SDG-0001 + SPC-0010, ROMMER RDG-1001 + RCP-0004
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
                     255, 255, 255, 255, 128, 0] + [0, 0, 0] * 247)
