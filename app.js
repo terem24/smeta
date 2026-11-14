@@ -46934,8 +46934,9 @@ const app = {
         const g23 = eq.filter(it => /^2\.3/.test(String(it.group || '')));
         const tank = g23.find(it => /^STW-0015-0000(24|18|12)$/i.test(sku(it)));
         if (!boiler || !tank || !this._dhwPipe || !this._dhwPipe.cold) return '';
-        const mix = g23.find(it => /^SVM-0125-/i.test(sku(it)));
-        const idx = this.nodeIndex('dhw', this.DHW_DIR, 'dhw.json?v=2');
+        // термосмеситель STOUT SVM-0125 или ROMMER RVM-0122 (смета ROMMER) — у ROMMER свой кадр «mix_r»
+        const mix = g23.find(it => /^(SVM-0125|RVM-0122)-/i.test(sku(it)));
+        const idx = this.nodeIndex('dhw', this.DHW_DIR, 'dhw.json?v=3');
         if (!idx) return '';
         const vol = sku(tank).slice(-2);
         const plan = [
@@ -46950,7 +46951,7 @@ const app = {
         // у ROMMER GT (узел «go» без тройника бака) бак — крайним слева: в середине и справа его сноска крепления
         // пересекала сноски узла входа
         if (!mix) { if (bk[0] === 'gt') plan.unshift(plan.pop()); else plan.splice(1, 0, plan.splice(2, 1)[0]); }
-        if (mix) plan.push({ key: 'mix', it: mix, mf: ['Термостатический клапан ГВС', 'на выходе горячей воды в дом'], name: 'Термосмеситель', rows: ['Горячий вход — от бойлера', 'Холодный — от тройника подмеса'] });
+        if (mix) plan.push({ key: /^RVM/i.test(sku(mix)) ? 'mix_r' : 'mix', it: mix, mf: ['Термостатический клапан ГВС', 'на выходе горячей воды в дом'], name: 'Термосмеситель', rows: ['Горячий вход — от бойлера', 'Холодный — от тройника подмеса'] });
         const frames = [];
         this._dhSku = {};
         for (const pl of plan) {
