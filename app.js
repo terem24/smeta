@@ -45952,7 +45952,7 @@ const app = {
             const at = `data-tag="${mk}" data-line="${f.id}" data-end="${f.end || ''}" data-kind="${o.kind}"`;
             // Кадры грузятся лениво (data-href -> href в wmReveal): схема собирается при каждом
             // пересчёте сметы, а видна, только когда до неё прокрутили
-            photos += `<image class="wm-photo" ${at} x="${X}" y="${Y}" width="${w}" height="${h}" data-href="${f.path}.webp?v=13"/>` +
+            photos += `<image class="wm-photo" ${at} x="${X}" y="${Y}" width="${w}" height="${h}" data-href="${f.path}.webp?v=14"/>` +
                 (hb ? `<image class="wm-handle" x="${X + hb[0] * w}" y="${Y + hb[1] * h}" width="${hb[2] * w}" height="${hb[3] * h}" data-href="${f.path}_h_${o.hk}.png?v=9"/>` : '');
             glows += `<g class="wm-glows" ${at} data-miss="${missK.join(',')}" data-box="${X},${Y},${w},${h}"></g>`;
         });
@@ -46035,7 +46035,7 @@ const app = {
         if (cache[key]) return cache[key];
         const [tag, hk, hbox] = key.split('|');
         const load = u => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = u; });
-        cache[key] = Promise.all([load(tag + '.webp?v=13'), load(tag + '_id.png?v=13'),
+        cache[key] = Promise.all([load(tag + '.webp?v=14'), load(tag + '_id.png?v=14'),
             hk ? load(`${tag}_h_${hk}.png?v=9`) : null]).then(([ph, id, hi]) => {
             const w = id.naturalWidth, h = id.naturalHeight;
             const cv = () => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
@@ -46675,7 +46675,7 @@ const app = {
     boilerIndex: function () {
         if (this._blIdx !== undefined) return this._blIdx;
         this._blIdx = null;
-        fetch(this.BOILER_DIR + 'boiler.json?v=2')
+        fetch(this.BOILER_DIR + 'boiler.json?v=3')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._blIdx = j || {}; if (Object.keys(this._blIdx).length) this.render(); });
@@ -46964,7 +46964,8 @@ const app = {
         const T = {
             ek: ['Краны шаровые', 'змеевик, вход ХВС, слив, термосмеситель'], feed: ['Фитинги узлов', 'американки, тройники, крестовина, ниппели'],
             mount: ['Клапаны обратные 3/4"', 'на входе ХВС и на подмесе'], end: ['Клапан предохранительный 6 бар', 'сброс — в канализацию через воронку'],
-            kit: ['Узел подключения бака SVS-0008', 'кран с фиксатором и сливом'], head: ['Крепление бака к стене', 'держит бак, а не резьба'],
+            // артикул узла — из сметы (STOUT SVS-0008 или ROMMER RVS-0008)
+            kit: ['Узел подключения бака ' + ((g23.find(it => /^[SR]VS-0008-/i.test(sku(it))) && sku(g23.find(it => /^[SR]VS-0008-/i.test(sku(it)))).slice(0, 8)) || 'SVS-0008'), 'кран с фиксатором и сливом'], head: ['Крепление бака к стене', 'держит бак, а не резьба'],
             tube: ['Переходники на трубу 22', 'соединения узлов трубой']
         };
         // крепёж бака смета переносит в «2.8.1. Крепёж» — ищем и там
