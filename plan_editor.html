@@ -979,6 +979,8 @@ function putFloorImage(fi, onProgress) {
   var f = DATA.floors[fi];
   var m = /^data:image\/(jpeg|png|webp);base64,(.+)$/.exec(f.img || '');
   if (!m) return Promise.resolve(null);
+  // Прокси отключён — не ждём обрыва по времени (90 с на этаж), сразу отказ; разметка остаётся в браузере
+  if (begetDown()) return Promise.reject(new Error('сервер подложек временно недоступен'));
   var tok = authToken();
   if (!tok) {
     console.warn('[plan_editor] ключи хранилища Supabase:', authKeysSeen);
@@ -3894,16 +3896,25 @@ var AREA_READ_URL = 'https://proxy.heatcalc.ru/gemini_proxy.php';
  *  включено ли автоотключение; hc_beget_fail — недавний сбой запроса (10 минут); hc_proxy_status —
  *  статус от автопроверки GitHub. Нет данных — читаем как раньше.
  *  Для проверки руками: localStorage.heatcalc_ai_scan = '1' (включить) / '0' (выключить). */
+/** Прокси на Beget отключён? Те же правила, что у заглушки в начале app.js: ?proxy=1 (hc_proxy_force) включает,
+ *  иначе берём кэш hc_proxy_down, а без него считаем «отключён» (PROXY_DEFAULT_DOWN в app.js).
+ *  Нужно, чтобы запросы к proxy.heatcalc.ru не ждали обрыва по времени (минуту и дольше) в этом окне,
+ *  куда заглушка fetch не доходит. */
+function begetDown() {
+  try {
+    if (localStorage.getItem('hc_proxy_force') === '1') return false;
+    var pd = JSON.parse(localStorage.getItem('hc_proxy_down') || 'null');
+    if (pd && typeof pd.down === 'boolean' && Date.now() - (pd.t || 0) < 7 * 24 * 3600 * 1000) return pd.down;
+  } catch (e) { }
+  return true;
+}
 function aiScanOn() {
   try {
     var v = localStorage.getItem('heatcalc_ai_scan');
     if (v === '1') return true;
     if (v === '0') return false;
     var wk = 7 * 24 * 3600 * 1000, now = Date.now(), J = function (k) { return JSON.parse(localStorage.getItem(k) || 'null'); };
-    if (localStorage.getItem('hc_proxy_force') !== '1') {
-      var pd = J('hc_proxy_down');
-      if (pd && pd.down === true && now - (pd.t || 0) < wk) return false;
-    }
+    if (begetDown()) return false;
     var fo = J('hc_feat_off');
     if (fo && now - (fo.t || 0) < wk) {
       if (fo.off && fo.off.ai_plan === true) return false;
