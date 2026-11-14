@@ -32,9 +32,15 @@ VARIANTS += [v + '_v' for v in list(VARIANTS)]      # воздухоотводч
 # насосы, кроме SPC-0011 (фото каталога): только наборы групп, которые реально кладёт смета
 _PSET = ['2_d', '2_s', '2_m', '2_dd', '2_ds', '2_dm', '3_ddd', '3_dds', '3_ddm', '3_dmm']
 VARIANTS += [g + v + '_p' + f for f in ('10', 'mini', 'minipro', 'profi', 'evo') for g in _PSET for v in ('', '_v')]
+# ROMMER «…_r»: коллектор RDG-0017 со стрелкой RDG-0015, группы RDG-1001/1003/1002; насос в смете ROMMER — RCP-0004 PROFI
+# (все наборы групп), частотный EVO — наборы, которые реально кладёт смета
+_BASE = ['2_d', '2_s', '2_m', '2_dd', '2_ds', '2_dm', '2_ss', '2_sm', '2_mm',
+         '3_ddd', '3_dds', '3_ddm', '3_dss', '3_dsm', '3_dmm', '3_sss', '3_smm', '3_mmm']
+VARIANTS += [g + v + '_r_pprofi' for g in _BASE for v in ('', '_v')]
+VARIANTS += [g + v + '_r_pevo' for g in _PSET for v in ('', '_v')]
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
-                    255, 255, 255, 255, 128, 0] + [0, 0, 0] * 247)
+                    255, 255, 255, 255, 128, 0, 128, 0, 255, 0, 128, 255] + [0, 0, 0] * 245)   # + sep, cap (ROMMER)
 
 
 def build(v, tmp):

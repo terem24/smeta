@@ -45993,7 +45993,9 @@ const app = {
     // Цвета сносок на карте деталей (tools/render_water_manifold.py, проход 3)
     // Цвета карты деталей (*_id.png). Каждый канал — три уровня (0, 128, 255): 26 цветов вместо 7;
     // kit — монтажный набор радиатора (оранжевый 255,128,0).
-    WM_GCOL: { mf: [1, 0, 0], ek: [0, 1, 0], tube: [0, 0, 1], mount: [1, 1, 0], end: [1, 0, 1], feed: [0, 1, 1], head: [1, 1, 1], kit: [1, 0.5, 0] },
+    WM_GCOL: { mf: [1, 0, 0], ek: [0, 1, 0], tube: [0, 0, 1], mount: [1, 1, 0], end: [1, 0, 1], feed: [0, 1, 1], head: [1, 1, 1], kit: [1, 0.5, 0],
+        // гидравлика ROMMER: sep — стрелка RDG-0015, cap — заглушки ВР 3/4" (фиолетовый 128,0,255 и голубой 0,128,255)
+        sep: [0.5, 0, 1], cap: [0, 0.5, 1] },
     // Ключ подписи по цвету карты деталей: коллектор — свой у каждого кадра; у водоснабжения
     // торец — по виду, у тёплого пола жёлтый — защитные втулки, голубой — переход на транзит
     wmLabKey: function (g, line, end, kind) {
@@ -46842,20 +46844,29 @@ const app = {
     // SDG-0001, s под сервопривод SDG-0003, m термостатическая SDG-0002), tools/render_hydro_node.py.
     HYDRO_DIR: 'img/hydro_node/',
     HYDRO_LAB_RE: {
-        end: /^Группа (насосная|быстрого)/i, kit: /^Насос (циркуляционный|частотный)/i, head: /^Сервопривод/i,
+        end: /^Группа (насосная|быстрого)|^Насосная группа/i, kit: /^Насос (циркуляционный|частотный)/i, head: /^Сервопривод/i,
         feed: /^Многофункциональный узел|^Заглушка 1\/2/i, mount: /^Воздухоотводчик|^Клапан отсекающий/i,
-        ek: /^Кран шаровой 1\/2/i, tube: /^Муфта переходная ВР 1 1\/2/i
+        ek: /^Кран шаровой/i, tube: /^Муфта переходная ВР 1 1\/2/i,
+        // только у ROMMER (кадры «…_r»): стрелка RDG-0015 под коллектором и заглушки ВР 3/4" её торца и отвода коллектора
+        sep: /^Гидравлическая стрелка/i, cap: /^Заглушка 3\/4" ВР/i
     },
     hydroFrameKey: function () {
         const eq = (this.currentEquipmentList || []).filter(it => /^2\.4/.test(String(it.group || '')));
         const sku = it => String(it.displaySku || it.id || '');
-        const col = eq.find(it => /^SDG-0018-00400[23]$/i.test(sku(it)));
+        // STOUT: коллектор-гидрострелка SDG-0018; ROMMER: коллектор RDG-0017 со стрелкой RDG-0015-004003 под ним — кадр «…_r»
+        const col = eq.find(it => /^(SDG-0018|RDG-0017)-00400[23]$/i.test(sku(it)));
         if (!col) return null;
+        const rm = /^RDG/i.test(sku(col));
         const np = /3$/.test(sku(col)) ? 3 : 2;
         const qty = re => eq.filter(it => re.test(sku(it))).reduce((s0, it) => s0 + (it.q || it.qty || 1), 0);
-        // другие группы (ROMMER, DN20/DN32, самосборные) — кадров пока нет
-        if (eq.some(it => /^(RDG-|SDG-000[1-7]-00(20|32))/i.test(sku(it)))) return null;
-        const g = 'd'.repeat(qty(/^SDG-0001-002501$/i)) + 's'.repeat(qty(/^SDG-0003-002501$/i)) + 'm'.repeat(qty(/^SDG-0002-002501$/i));
+        // группы только своего бренда DN25 с правым насосом (RDG-…-002501 / SDG-…-002501); чужие, левые (…-012501),
+        // DN20/DN32 и самосборные — кадров нет. У ROMMER стрелка обязательна: без неё кадр показал бы чужую сборку.
+        const GR = rm ? { d: /^RDG-1001-002501$/i, s: /^RDG-1003-002501$/i, m: /^RDG-1002-002501$/i }
+            : { d: /^SDG-0001-002501$/i, s: /^SDG-0003-002501$/i, m: /^SDG-0002-002501$/i };
+        const isGr = it => /^(RDG-10\d\d|SDG-000[1-7])-/i.test(sku(it));
+        if (eq.some(it => isGr(it) && !Object.values(GR).some(re => re.test(sku(it))))) return null;
+        if (rm && !eq.some(it => /^RDG-0015-004003$/i.test(sku(it)))) return null;
+        const g = 'd'.repeat(qty(GR.d)) + 's'.repeat(qty(GR.s)) + 'm'.repeat(qty(GR.m));
         if (!g.length || g.length > np) return null;
         // воздухоотводчик на обратке всех групп — кадр «…_v», снят хотя бы с одной — кадр с заглушками
         const rv = this._gbmRetVents;
@@ -46868,18 +46879,19 @@ const app = {
         const pumpIt = eq.find(it => /^(SPC|RCP)-/i.test(sku(it)));
         const pm = pumpIt ? PUMPS[sku(pumpIt).toUpperCase()] : PUMPS['SPC-0011-2560180'];
         if (!pm) return null;
-        return { key: np + '_' + g + v + pm[0], col: sku(col), np, g, retV: !!v, pump: pm[1] };
+        return { key: np + '_' + g + v + (rm ? '_r' : '') + pm[0], col: sku(col), np, g, retV: !!v, pump: pm[1], rm };
     },
     renderHydroNodeScheme: function () {
         if (!this.wmPreviewOn()) return '';
         const hk = this.hydroFrameKey();
         if (!hk) return '';
-        const idx = this.nodeIndex('hydro', this.HYDRO_DIR, 'hydro.json?v=2');
+        const idx = this.nodeIndex('hydro', this.HYDRO_DIR, 'hydro.json?v=3');
         if (!idx || !idx[hk.key] || !idx[hk.key].o) return '';
         const RU = { d: 'прямая', s: 'под сервопривод', m: 'термостатическая' };
         const kinds = Array.from(new Set(hk.g.split(''))).map(c => RU[c]);
         const frames = [{ id: 'h0', at: 0, fr: idx[hk.key], key: hk.key, path: this.HYDRO_DIR + 'hydro_' + hk.key,
-            mf: ['Коллектор с гидроразделителем', `SDG-0018 DN25, ${hk.np} пары выходов`],
+            mf: hk.rm ? ['Коллектор распределительный', `ROMMER RDG-0017, ${hk.np} контура, к группам накидные гайки`]
+                : ['Коллектор с гидроразделителем', `SDG-0018 DN25, ${hk.np} пары выходов`],
             name: 'Коллектор и насосные группы', rows: [`Групп: ${hk.g.length} — ${kinds.join(', ')}`, 'Слева обратка, справа подача'] }];
         const T = {
             end: ['Группы насосные DN25', kinds.join(', ')], kit: ['Насос циркуляционный', `${hk.pump}, на подаче каждой группы`],
@@ -46887,11 +46899,20 @@ const app = {
             mount: ['Воздухоотводчики с отсечным клапаном', hk.retV ? 'на подаче и обратке каждой группы' : 'на подаче групп, на обратке заглушка'],
             ek: ['Кран слива 1/2"', 'на торце коллектора, второй торец — заглушка'], tube: ['Муфты 1 1/2" × 1"', 'к котлу: подача слева, обратка справа']
         };
-        if (/s/.test(hk.g)) T.head = ['Сервопривод с датчиком', 'на трёхходовой клапан группы'];
+        if (hk.rm) {
+            T.end = ['Группы насосные ROMMER DN25', kinds.join(', ')];
+            T.sep = ['Гидрострелка RDG-0015', 'под коллектором, на накидных гайках'];
+            T.ek = ['Кран слива 3/4" ВР/НР', 'на нижнем торце стрелки (грязевик)'];
+            T.cap = ['Заглушки ВР 3/4"', 'отвод коллектора и верхний торец стрелки'];
+            T.tube = ['Муфты 1 1/2" × 1"', 'на стрелке, к котлу'];
+        }
+        if (/s/.test(hk.g)) T.head = ['Сервопривод с датчиком', hk.rm ? 'ROMMER RVM-0015, на трёхходовой клапан группы' : 'на трёхходовой клапан группы'];
         this._hySku = { h0: hk.col };
         return this.nodeSheet('hydro', frames, T, pk => this.nodeLabRows(/^2\.4/, this.HYDRO_LAB_RE, this._hySku, pk),
-            'Котельная', 'Гидравлика', `Гидравлика котельной: коллектор SDG-0018, групп ${hk.g.length}.`,
-            'Коллектор — горизонтально, группы сверху (паспорт SDG, п. 5). Трубы к котлу и в систему на схеме обрезаны.');
+            'Котельная', 'Гидравлика', hk.rm ? `Гидравлика котельной: коллектор RDG-0017 и стрелка RDG-0015, групп ${hk.g.length}.`
+                : `Гидравлика котельной: коллектор SDG-0018, групп ${hk.g.length}.`,
+            hk.rm ? 'Коллектор — горизонтально, группы сверху на его накидных гайках, стрелка снизу. Трубы к котлу и в систему на схеме обрезаны.'
+                : 'Коллектор — горизонтально, группы сверху (паспорт SDG, п. 5). Трубы к котлу и в систему на схеме обрезаны.');
     },
     // Бойлер ГВС: бойлер, узел входа ХВС на стене, бак ГВС, термосмеситель — четыре кадра (tools/render_dhw_node.py),
     // между узлами труба 22 (смета с 13.11.2026), как в проектах котельных.

@@ -353,7 +353,8 @@ function nodeSheetB(kind, idx, dir, pref, keys, T) {
         places: frames.map(f => ({ name: f.key, rows: ['узел'] })) }, orphan };
 }
 const HY_T = { mf: ['Коллектор', 'SDG-0018'], end: ['Группы насосные DN25', 'прямая'], kit: ['Насос 25/60-180', 'на подаче'], head: ['Сервопривод', 'на клапан'],
-    feed: ['Узлы МУ-25М и заглушки', 'два на группу'], mount: ['Воздухоотводчик', 'с отсечным клапаном'], ek: ['Кран слива 1/2"', 'на торце'], tube: ['Муфты 1 1/2" × 1"', 'к котлу'] };
+    feed: ['Узлы МУ-25М и заглушки', 'два на группу'], mount: ['Воздухоотводчик', 'с отсечным клапаном'], ek: ['Кран слива 1/2"', 'на торце'], tube: ['Муфты 1 1/2" × 1"', 'к котлу'],
+    sep: ['Гидрострелка RDG-0015', 'под коллектором'], cap: ['Заглушки ВР 3/4"', 'отвод и торец'] };
 const DH_T = { mf: ['Бойлер', 'OptiBase'], ek: ['Краны шаровые', 'узлы'], feed: ['Фитинги узлов', 'американки'], mount: ['Клапаны обратные', '3/4"'],
     end: ['Клапан предохранительный', '6 бар'], kit: ['Узел SVS-0008', 'бак'], head: ['Кронштейн бака', 'L'], tube: ['Переходники на трубу 22', 'пресс'] };
 function run(name, r) {
@@ -437,6 +438,7 @@ const OBJ = {
     'Котельная: STATUS 27 кВт': { area: 250, floors: 1, systems: ['rad'], fuels: ['el'], hotWater: false },
     'Котельная: гидравлика, радиаторы + тёплый пол': { area: 200, floors: 1, systems: ['rad', 'tp'], tp1: 80, fuels: ['gas'], hotWater: true },
     'Котельная: гидравлика, 2 этажа тёплого пола': { area: 250, floors: 2, systems: ['rad', 'tp'], tp1: 60, tp2: 40, fuels: ['gas'], hotWater: true },
+    'Котельная: гидравлика ROMMER, радиаторы + тёплый пол': { area: 200, floors: 1, systems: ['rad', 'tp'], tp1: 80, fuels: ['gas'], hotWater: true, brandMode: 'rommer' },
     'Котельная: газ и резервный STATUS (каскад)': { area: 150, floors: 1, systems: ['rad'], fuels: ['gas', 'el'], hotWater: true },
     'Канализация: санузел и кухня': { area: 120, floors: 1, systems: ['rad'], water: true, sewer: true, waterZones: Z3 },
     'Конвектор SCN, металлопластик': { area: 120, floors: 1, systems: ['rad'], detailedRooms: true, rooms: CONV_ROOMS(), convectorType: 'scn', convConnectionType: 'angled', pipeType: 'split_mp' },
@@ -548,6 +550,7 @@ for (const [title, patch] of Object.entries(OBJ)) {
         const hk = app.hydroFrameKey();
         Object.keys(app.HYDRO_LAB_RE).forEach(pk => {
             if (pk === 'head' && !/s/.test(hk.g)) return;
+            if ((pk === 'sep' || pk === 'cap') && !hk.rm) return;
             if (!s24.some(it => app.HYDRO_LAB_RE[pk].test(nm(it)))) miss.push('гидравлика: ' + pk);
         });
     }
