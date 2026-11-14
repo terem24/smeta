@@ -67,6 +67,10 @@ add_colors({
     'alu': (0.80, 0.81, 0.83),
     'gasyel': (0.95, 0.78, 0.10),
     'grey': (0.70, 0.71, 0.73),
+    # группа SDG-0001 и насос SPC-0010 у POLIS (как в render_hydro_node.py)
+    'castblk': (0.11, 0.11, 0.12), 'lblue': (0.12, 0.55, 0.85), 'pred': (0.80, 0.12, 0.10), 'epp': (0.10, 0.10, 0.11),
+    'galv': (0.74, 0.73, 0.58), 'pumpblue': (0.10, 0.27, 0.55), 'bred': (0.82, 0.13, 0.11), 'bblue': (0.13, 0.36, 0.82),
+    'dial': (0.95, 0.95, 0.93), 'black': (0.10, 0.10, 0.11), 'galvy': (0.80, 0.68, 0.32),
 })
 
 TEXD = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tex')     # текстуры фасадов — tools/make_boiler_faces.py
@@ -446,6 +450,105 @@ def gas_line(c, z_end):
     tube('газовая труба', [tuple(p + Vector((0, 0, -0.034))), (p.x, p.y, z_end)], 0.0105, mat('gasyel', rough=0.45))
 
 
+# ───────────────────────── STOUT POLIS (SEB-5101): котёл на группе быстрого монтажа SDG-0001 ─────────────────────────
+# Источники: паспорт POLIS (stout_f0c052babddd, 18.06.2026): Рис. 10 — 247 x 750 x 251, патрубки G1" наружная резьба в 61 от
+# левого и правого края (шаг 125), ось в 56 от стены; Рис. 5 — котёл стоит прямо над ГБМ SDG-0001-002501, между патрубками
+# котла и верхними кранами группы американки SFT-0041-000001 (1" ВР/НР). Фасад — фото каталога (make_boiler_faces.py).
+# Группа и насос — из render_hydro_node.py (те же функции, берутся из его исходника: геометрия одна на все листы).
+YA = YW - 0.068                    # ось патрубков котла и группы (корпус котла — в 12 мм от стены, патрубки в 56 от корпуса)
+PUMP, RETV = '10', False           # насос SPC-0010 Std (так в смете), на обратке группы — заглушка (воздухоотводчика у POLIS нет)
+
+
+def askon(*a, **k):                # присоединительные узлы коллектора — к POLIS не относятся
+    return None
+
+
+def _from_hydro():
+    """Подтягивает функции группы и насоса из render_hydro_node.py (разбор через ast, без запуска его main)."""
+    import ast
+    src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'render_hydro_node.py'), encoding='utf-8').read()
+    want_f = {'thermo_valve', '_ph', '_face', 'pump', 'pump_cast', 'flange', 'pump_family', 'group',
+              'thermo_valve_rm', 'servo_rm', 'group_rm'}
+    want_a = {'IMG', 'TEX', 'FACE'}
+    body = []
+    for n in ast.parse(src).body:
+        if isinstance(n, ast.FunctionDef) and n.name in want_f:
+            body.append(n)
+        elif isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id in want_a for t in n.targets):
+            body.append(n)
+    exec(compile(ast.Module(body=body, type_ignores=[]), 'render_hydro_node.py', 'exec'), globals())
+
+
+def union1(c):
+    """Американка SFT-0041-000001 1" ВР/НР: шестигранник ВР (на патрубок котла), накидная гайка, НР вниз в верхний кран группы."""
+    ni = M_NICKEL()
+    part('feed')
+    c = Vector(c)
+    hexnut('американка ВР', 0.046, 0.018, ni, tuple(c), '-Z')
+    lathe('американка шейка', [(0.0200, 0), (0.0200, 0.004)], ni, tuple(c + Vector((0, 0, -0.018))), '-Z', segs=40)
+    hexnut('американка гайка', 0.055, 0.020, ni, tuple(c + Vector((0, 0, -0.022))), '-Z', ch=0.12)
+    lathe('американка НР', [(0.0185, 0), (0.0185, 0.004)] + thread(0.0166, 0.012, start=0.004), ni,
+          tuple(c + Vector((0, 0, -0.042))), '-Z', segs=40)
+    marks['feed'] = tuple(c + Vector((0, -0.026, -0.030)))
+    return c + Vector((0, 0, -0.058))
+
+
+def boiler_polis(zb):
+    """Электрокотёл POLIS 247 x 750 x 251: белый корпус с фасадом по фото, снизу два патрубка G1" НР (в 61 от краёв)."""
+    W_, H_, D_ = 0.247, 0.750, 0.251
+    part('mf')
+    m = mat('bwhite', rough=0.35, coat=0.4)
+    yr = YW - 0.012
+    plan = rounded([(0.0, yr - (D_ - 0.012)), (W_, yr - (D_ - 0.012)), (W_, yr), (0.0, yr)], 0.006, seg=4)
+    prism('корпус котла', plan, H_, m, Matrix.Translation(Vector((0, 0, zb + H_ / 2))), bevel=0.003)
+    yf = yr - (D_ - 0.012)
+    photo_quad('фасад POLIS', os.path.join(TEXD, 'SEB-5101_front.png'), (0, 0, 380, 1154), (W_ / 2, yf - 0.0008, zb + H_ / 2),
+               TO_XZ, W_ - 0.002, H_ - 0.002, (380, 1154))
+    marks['mf'] = (W_ * 0.35, yf, zb + H_ * 0.55)
+    # панель управления (паспорт, рис. 1 и 10; фото каталога): чёрная рамка, слева ручка термостата, три клавиши
+    # переключателя ступеней мощности, справа манометр
+    yp = yf - 0.0008
+    blk = mat('bpanel', rough=0.4, coat=0.2)
+    pz = zb + 0.092
+    box('панель управления', (0.143, 0.004, 0.094), blk, (0.108, yp - 0.002, pz))
+    zk = zb + 0.081
+    lathe('ручка термостата', [(0.0, 0), (0.0185, 0), (0.0185, 0.012), (0.0165, 0.016), (0.0, 0.016)], mat('dial', rough=0.45),
+          (0.049, yp - 0.004, zk), '-Y', segs=48, ribs=(24, 0.05, 0.001, 0.010))
+    box('метка ручки', (0.0025, 0.0006, 0.010), mat('logo', rough=0.4), (0.049, yp - 0.0206, zk + 0.008))
+    for k, x in enumerate((0.091, 0.109, 0.127)):
+        box('клавиша %d' % (k + 1), (0.012, 0.009, 0.024), mat('grey', rough=0.45), (x, yp - 0.0085, zk))
+        lathe('индикатор %d' % (k + 1), [(0.0, 0), (0.0020, 0), (0.0020, 0.0012)], mat('redring', rough=0.4), (x, yp - 0.0042, zk + 0.034), '-Y', segs=12)
+    lathe('манометр', [(0.0, 0), (0.0175, 0), (0.0175, 0.010), (0.0, 0.010)], M_CHROME(), (0.159, yp - 0.004, zk), '-Y', segs=48)
+    lathe('шкала манометра', [(0.0, 0), (0.0145, 0)], mat('dial', rough=0.3), (0.159, yp - 0.0143, zk), '-Y', segs=48)
+    box('стрелка манометра', (0.0012, 0.0006, 0.012), mat('logo', rough=0.4), (0.1612, yp - 0.0147, zk + 0.003))
+    lathe('зелёная зона', [(0.0095, 0), (0.0125, 0)], mat('bscreen', rough=0.4), (0.159, yp - 0.0146, zk), '-Y', segs=48)
+    for x in (0.061, 0.186):
+        lathe('патрубок котла G1', [(0.0140, 0), (0.0140, 0.006)] + thread(0.0166, 0.026, start=0.006), M_NICKEL(), (x, YA, zb), '-Z', segs=40)
+
+
+def build_polis():
+    sc = reset()
+    part('')
+    g = mat('bwhite', rough=0.6, alpha=0.18)
+    ob = box('стена', (0.90, 0.004, 1.55), g, (0.12, YW + 0.002, 0.55))
+    ob.modifiers.clear()
+    for cl in list(ob.users_collection):
+        cl.objects.unlink(ob)
+    coll('sheath').objects.link(ob)
+    _from_hydro()
+    global PUMP
+    z0, xc = 0.0, 0.1235
+    rmv = VAR == 'polis_r'                             # смета ROMMER: группа RDG-1001 и насос PROFI RCP-0004
+    PUMP = 'profi' if rmv else '10'
+    (group_rm if rmv else group)(xc, z0, 'd')
+    zg = z0 + (0.420 if rmv else 0.337)                # верх гнёзд Rp 1" группы (по построению кранов: SDG 337, RDG 420 от низа)
+    zb = zg + 0.040 + 0.032                            # низ корпуса котла: американка 0,052 выше гнезда, конец патрубка входит в неё
+    for x in (xc - 0.0625, xc + 0.0625):
+        union1((x, YA, zg + 0.052))
+    boiler_polis(zb)
+    return sc
+
+
 def parts_sheet():
     """Детали по отдельности, крупно, в ряд — для сверки с фото (вариант parts)."""
     sc = reset()
@@ -464,6 +567,8 @@ def build():
         return parts_sheet()
     if VAR in ('status', 'status27'):
         return build_status(VAR == 'status27')
+    if VAR in ('polis', 'polis_r'):
+        return build_polis()
     sc = reset()
     part('')
     g = mat('bwhite', rough=0.6, alpha=0.18)

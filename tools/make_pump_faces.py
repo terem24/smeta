@@ -12,7 +12,7 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # артикул: (cx, cy, rx, ry) эллипса торца на фото 600 x 600 (замер по сетке 50 px)
-FACES = {'SPC-0011-2560180': (288, 342, 112, 112), 'SPC-0010-2560180': (185, 360, 92, 162),
+FACES = {'SPC-0011-2560180': (288, 342, 112, 112), 'SPC-0010-2560180': (190, 348, 95, 15, 5, 145),   # косая: (cx, cy, ux, uy, vx, vy) — оси торца на фото, надписи встают горизонтально
          'SPC-0002-2560180': (165, 395, 100, 160), 'SPC-0003-2560180': (155, 383, 100, 162),
          'RCP-0004-2560180': (300, 365, 150, 150)}
 N = 512
@@ -22,14 +22,16 @@ OBLIQUE = {'SPC-0010-2560180', 'SPC-0002-2560180', 'SPC-0003-2560180'}
 
 def main():
     os.makedirs(os.path.join(HERE, 'tools', 'tex'), exist_ok=True)
-    for sku, (cx, cy, rx, ry) in FACES.items():
+    for sku, fc in FACES.items():
+        cx, cy = fc[0], fc[1]
+        ax = fc[2:] if len(fc) == 6 else (fc[2], 0, 0, fc[3])      # (ux, uy, vx, vy)
         src = np.asarray(Image.open(os.path.join(HERE, 'img', sku + '.jpg')).convert('RGB')).astype(np.float32)
         H, W = src.shape[:2]
         yy, xx = np.mgrid[0:N, 0:N]
         u = (xx + 0.5) / N * 2 - 1
         v = (yy + 0.5) / N * 2 - 1
-        sx = np.clip(cx + u * rx, 0, W - 1).astype(int)
-        sy = np.clip(cy + v * ry, 0, H - 1).astype(int)
+        sx = np.clip(cx + u * ax[0] + v * ax[2], 0, W - 1).astype(int)
+        sy = np.clip(cy + u * ax[1] + v * ax[3], 0, H - 1).astype(int)
         out = src[sy, sx]
         r = np.sqrt(u * u + v * v)
         white = (out.min(axis=2) > 185) & (out.max(axis=2) - out.min(axis=2) < 30)
