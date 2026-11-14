@@ -550,7 +550,10 @@ for (const [title, patch] of Object.entries(OBJ)) {
         const hk = app.hydroFrameKey();
         Object.keys(app.HYDRO_LAB_RE).forEach(pk => {
             if (pk === 'head' && !/s/.test(hk.g)) return;
-            if ((pk === 'sep' || pk === 'cap') && !hk.rm) return;
+            if ((pk === 'sep' || pk === 'cap') && !hk.rm && !hk.s16) return;
+            if (pk === 'cap' && hk.s16) return;
+            if (pk === 'th' && !hk.s16) return;
+            if (pk === 'ek' && hk.s16) return;
             if (!s24.some(it => app.HYDRO_LAB_RE[pk].test(nm(it)))) miss.push('гидравлика: ' + pk);
         });
     }

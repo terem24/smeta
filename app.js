@@ -45995,7 +45995,9 @@ const app = {
     // kit — монтажный набор радиатора (оранжевый 255,128,0).
     WM_GCOL: { mf: [1, 0, 0], ek: [0, 1, 0], tube: [0, 0, 1], mount: [1, 1, 0], end: [1, 0, 1], feed: [0, 1, 1], head: [1, 1, 1], kit: [1, 0.5, 0],
         // гидравлика ROMMER: sep — стрелка RDG-0015, cap — заглушки ВР 3/4" (фиолетовый 128,0,255 и голубой 0,128,255)
-        sep: [0.5, 0, 1], cap: [0, 0.5, 1] },
+        sep: [0.5, 0, 1], cap: [0, 0.5, 1],
+        // гидравлика STOUT с коллектором SDG-0016: th — термометр стрелки (салатовый 128,255,0)
+        th: [0.5, 1, 0] },
     // Ключ подписи по цвету карты деталей: коллектор — свой у каждого кадра; у водоснабжения
     // торец — по виду, у тёплого пола жёлтый — защитные втулки, голубой — переход на транзит
     wmLabKey: function (g, line, end, kind) {
@@ -46848,16 +46850,25 @@ const app = {
         feed: /^Многофункциональный узел|^Заглушка 1\/2/i, mount: /^Воздухоотводчик|^Клапан отсекающий/i,
         ek: /^Кран шаровой/i, tube: /^Муфта переходная ВР 1 1\/2/i,
         // только у ROMMER (кадры «…_r»): стрелка RDG-0015 под коллектором и заглушки ВР 3/4" её торца и отвода коллектора
-        sep: /^Гидравлическая стрелка/i, cap: /^Заглушка 3\/4" ВР/i
+        sep: /^Гидравлическая стрелка/i, cap: /^Заглушка 3\/4" ВР/i,
+        // только у STOUT с обычным коллектором SDG-0016 (кадры «…_s»): термометр на стрелке SDG-0015
+        th: /^Термометр/i
     },
     hydroFrameKey: function () {
         const eq = (this.currentEquipmentList || []).filter(it => /^2\.4/.test(String(it.group || '')));
         const sku = it => String(it.displaySku || it.id || '');
         // STOUT: коллектор-гидрострелка SDG-0018; ROMMER: коллектор RDG-0017 со стрелкой RDG-0015-004003 под ним — кадр «…_r»
-        const col = eq.find(it => /^(SDG-0018|RDG-0017)-00400[23]$/i.test(sku(it)));
+        // обычный коллектор STOUT SDG-0016-0040xx (2-4 пары) с отдельной стрелкой SDG-0015-004001 — кадр «…_s»
+        let col = eq.find(it => /^(SDG-0018|RDG-0017)-00400[23]$/i.test(sku(it)));
+        let s16 = false;
+        if (!col) {
+            col = eq.find(it => /^SDG-0016-00400[2-6]$/i.test(sku(it)));
+            if (!col || !eq.some(it => /^SDG-0015-004001$/i.test(sku(it)))) return null;
+            s16 = true;
+        }
         if (!col) return null;
         const rm = /^RDG/i.test(sku(col));
-        const np = /3$/.test(sku(col)) ? 3 : 2;
+        const np = s16 ? +sku(col).slice(-1) : (/3$/.test(sku(col)) ? 3 : 2);
         const qty = re => eq.filter(it => re.test(sku(it))).reduce((s0, it) => s0 + (it.q || it.qty || 1), 0);
         // группы только своего бренда DN25 с правым насосом (RDG-…-002501 / SDG-…-002501); чужие, левые (…-012501),
         // DN20/DN32 и самосборные — кадров нет. У ROMMER стрелка обязательна: без неё кадр показал бы чужую сборку.
@@ -46879,18 +46890,19 @@ const app = {
         const pumpIt = eq.find(it => /^(SPC|RCP)-/i.test(sku(it)));
         const pm = pumpIt ? PUMPS[sku(pumpIt).toUpperCase()] : PUMPS['SPC-0011-2560180'];
         if (!pm) return null;
-        return { key: np + '_' + g + v + (rm ? '_r' : '') + pm[0], col: sku(col), np, g, retV: !!v, pump: pm[1], rm };
+        return { key: np + '_' + g + v + (rm ? '_r' : '') + (s16 ? '_s' : '') + pm[0], col: sku(col), np, g, retV: !!v, pump: pm[1], rm, s16 };
     },
     renderHydroNodeScheme: function () {
         if (!this.wmPreviewOn()) return '';
         const hk = this.hydroFrameKey();
         if (!hk) return '';
-        const idx = this.nodeIndex('hydro', this.HYDRO_DIR, 'hydro.json?v=3');
+        const idx = this.nodeIndex('hydro', this.HYDRO_DIR, 'hydro.json?v=4');
         if (!idx || !idx[hk.key] || !idx[hk.key].o) return '';
         const RU = { d: 'прямая', s: 'под сервопривод', m: 'термостатическая' };
         const kinds = Array.from(new Set(hk.g.split(''))).map(c => RU[c]);
         const frames = [{ id: 'h0', at: 0, fr: idx[hk.key], key: hk.key, path: this.HYDRO_DIR + 'hydro_' + hk.key,
             mf: hk.rm ? ['Коллектор распределительный', `ROMMER RDG-0017, ${hk.np} контура, к группам накидные гайки`]
+                : hk.s16 ? ['Коллектор распределительный', `SDG-0016 DN25, ${hk.np} пары выходов`]
                 : ['Коллектор с гидроразделителем', `SDG-0018 DN25, ${hk.np} пары выходов`],
             name: 'Коллектор и насосные группы', rows: [`Групп: ${hk.g.length} — ${kinds.join(', ')}`, 'Слева обратка, справа подача'] }];
         const T = {
@@ -46899,6 +46911,14 @@ const app = {
             mount: ['Воздухоотводчики с отсечным клапаном', hk.retV ? 'на подаче и обратке каждой группы' : 'на подаче групп, на обратке заглушка'],
             ek: ['Кран слива 1/2"', 'на торце коллектора, второй торец — заглушка'], tube: ['Муфты 1 1/2" × 1"', 'к котлу: подача слева, обратка справа']
         };
+        if (hk.s16) {
+            frames[0].mf = ['Коллектор распределительный', `SDG-0016 DN25, ${hk.np} пары выходов, кронштейны к стене`];
+            T.sep = ['Гидрострелка SDG-0015', 'под коллектором, порты ВР на его нижних патрубках'];
+            T.feed = ['Узлы МУ-25М и заглушки', 'отводы 1/2" узлов и оба торцевых штуцера стрелки закрыты'];
+            T.mount = ['Воздухоотводчики с отсечным клапаном', 'на подаче групп' + (hk.retV ? ' и обратке' : '') + ', на узлах МУ-25М'];
+            T.th = ['Термометр Dn63', 'на переднем штуцере стрелки'];
+            T.tube = ['Муфты 1 1/2" × 1"', 'на стрелке, к котлу'];
+        }
         if (hk.rm) {
             T.end = ['Группы насосные ROMMER DN25', kinds.join(', ')];
             T.sep = ['Гидрострелка RDG-0015', 'под коллектором, на накидных гайках'];
@@ -46910,6 +46930,7 @@ const app = {
         this._hySku = { h0: hk.col };
         return this.nodeSheet('hydro', frames, T, pk => this.nodeLabRows(/^2\.4/, this.HYDRO_LAB_RE, this._hySku, pk),
             'Котельная', 'Гидравлика', hk.rm ? `Гидравлика котельной: коллектор RDG-0017 и стрелка RDG-0015, групп ${hk.g.length}.`
+                : hk.s16 ? `Гидравлика котельной: коллектор SDG-0016 и стрелка SDG-0015, групп ${hk.g.length}.`
                 : `Гидравлика котельной: коллектор SDG-0018, групп ${hk.g.length}.`,
             hk.rm ? 'Коллектор — горизонтально, группы сверху на его накидных гайках, стрелка снизу. Трубы к котлу и в систему на схеме обрезаны.'
                 : 'Коллектор — горизонтально, группы сверху (паспорт SDG, п. 5). Трубы к котлу и в систему на схеме обрезаны.');
@@ -97718,7 +97739,8 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 addToBill({ ...catalog.plug_12, originalId: 'SFT-0024-000012_hydro', sortRank: -0.05 }, 1,
                     "Заглушка 1/2\" НР на второй торцевой патрубок коллектора со встроенным разделителем. Патрубки G 1/2\" у него на торцах — для вертикальной установки (паспорт SDG, п. 5); коллектор стоит горизонтально, группами вверх, и воздухоотводчику на торце не работать: воздух снимают воздухоотводчики узлов МУ-25М над группами. Первый торцевой патрубок — под сливной кран.", grpHydro);
             }
-            if (catalog.air_vent_12 && !_bufSep && !_comboHoriz && !_rmCol) {
+            const _noVent15 = (this.currentSpec || []).some(x => x.group === grpHydro && /^SDG-0015-/.test(String(x.originalId || x.id || '')));
+            if (catalog.air_vent_12 && !_bufSep && !_comboHoriz && !_rmCol && !_noVent15) {
                 addToBill({ ...catalog.air_vent_12, alts: catalog.air_vent_12_alts || [], noCheapenAlts: true, sortRank: -0.2 },
                     1, this.getDesc('air_vent_hydro'), grpHydro);
                 if (catalog.air_vent_check_12) {
@@ -97751,7 +97773,15 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
 
             // у ROMMER RDG-0017 + RDG-0015 слив — на торцевой отвод стрелки 3/4" НР: кран 3/4" ВР/НР (см. выше)
             const _hydroDrain = (catalog.ball_valves || []).find(v => v.id === (_rmCol ? 'SVB-0004-200020' : 'SVB-0006-200015'));
-            if (_hydroDrain && !_bufSep) {
+            // Отдельная стрелка STOUT SDG-0015 (модульная схема): сливной кран на ней не нужен — штуцер G1/2" слева
+            // закрывается заглушкой (решение владельца 14.11.2026); воздухоотводчик с клапаном и термометр остаются.
+            const _sep15 = !_rmCol && !_comboHoriz && !_bufSep && (this.currentSpec || []).some(x => x.group === grpHydro &&
+                /^SDG-0015-/.test(String(x.originalId || x.id || '')));
+            if (_sep15 && catalog.plug_12) {
+                addToBill({ ...catalog.plug_12, originalId: 'SFT-0024-000012_hydro_sep', sortRank: -0.05 }, 2,
+                    "Заглушки 1/2\" НР на боковые штуцеры G1/2\" гидрострелки SDG-0015 (по одной на каждый торец): третий штуцер, спереди, занят термометром. Сливной кран и воздухоотводчик на стрелке не нужны: она висит горизонтально под коллектором, воздух снимают воздухоотводчики узлов МУ-25М над группами.", grpHydro);
+            }
+            if (_hydroDrain && !_bufSep && !_sep15) {
                 // Свой originalId — кран 1/2" НР/НР встречается в смете и в других узлах,
                 // а этот должен иметь отдельную строку и собственную ручную замену.
                 addToBill({ ...withRommerAlt(_hydroDrain), originalId: _rmCol ? 'SVB-0004-200020_hydro_drain' : 'SVB-0006-200015_hydro_drain' },

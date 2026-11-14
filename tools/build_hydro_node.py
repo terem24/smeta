@@ -38,9 +38,21 @@ _BASE = ['2_d', '2_s', '2_m', '2_dd', '2_ds', '2_dm', '2_ss', '2_sm', '2_mm',
          '3_ddd', '3_dds', '3_ddm', '3_dss', '3_dsm', '3_dmm', '3_sss', '3_smm', '3_mmm']
 VARIANTS += [g + v + '_r_pprofi' for g in _BASE for v in ('', '_v')]
 VARIANTS += [g + v + '_r_pevo' for g in _PSET for v in ('', '_v')]
+# STOUT «…_s»: обычный коллектор SDG-0016 (2-4 пары) с отдельной стрелкой SDG-0015-004001; группы d → s → m, насос SPC-0011,
+# воздухоотводчик на обратке (по умолчанию в смете). До 3 групп на 2-3 парах, до 2 на 4 парах
+def _combos(n):
+    out = ['']
+    for _ in range(n):
+        out = sorted(set(o + c for o in out for c in 'dsm' if not o or 'dsm'.index(c) >= 'dsm'.index(o[-1])))
+    return out
+
+
+for _np, _mx in ((2, 2), (3, 3), (4, 2)):
+    for _n in range(1, _mx + 1):
+        VARIANTS += ['%d_%s_v_s' % (_np, g) for g in _combos(_n)]
 PALETTE = Image.new('P', (1, 1))
 PALETTE.putpalette([0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0, 255, 0, 255, 0, 255, 255,
-                    255, 255, 255, 255, 128, 0, 128, 0, 255, 0, 128, 255] + [0, 0, 0] * 245)   # + sep, cap (ROMMER)
+                    255, 255, 255, 255, 128, 0, 128, 0, 255, 0, 128, 255, 128, 255, 0] + [0, 0, 0] * 244)   # + sep, cap (ROMMER), th (термометр)
 
 
 def build(v, tmp):
