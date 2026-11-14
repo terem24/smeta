@@ -46677,7 +46677,7 @@ const app = {
     boilerIndex: function () {
         if (this._blIdx !== undefined) return this._blIdx;
         this._blIdx = null;
-        fetch(this.BOILER_DIR + 'boiler.json?v=4')
+        fetch(this.BOILER_DIR + 'boiler.json?v=5')
             .then(r => r.ok ? r.json() : {})
             .catch(() => ({}))
             .then(j => { this._blIdx = j || {}; if (Object.keys(this._blIdx).length) this.render(); });
